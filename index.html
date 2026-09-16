@@ -40,9 +40,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   -webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
   font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 #root{height:100%}
-.app{display:flex;flex-direction:column;height:100vh;height:100dvh}
-.view{position:relative;flex:1 1 auto;min-height:0}
-.game{display:block;width:100%;height:100%}
+.app{position:fixed;inset:0;display:flex;flex-direction:column}
+.view{position:relative;flex:1 1 0;min-height:0;overflow:hidden}
+.game{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
 .controls{flex:0 0 38%;display:flex;justify-content:space-evenly;align-items:center;
   padding-bottom:env(safe-area-inset-bottom);background:var(--bg)}
 .stick{position:relative;flex:none;border-radius:50%;background:var(--pad);
@@ -125,11 +125,12 @@ function Game({ input }) {
     let raf, last = performance.now();
 
     const resize = () => {
-      const r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+      const r = c.parentElement.getBoundingClientRect(), d = window.devicePixelRatio || 1;
       c.width = Math.max(1, r.width * d); c.height = Math.max(1, r.height * d);
     };
     resize();
-    const ro = new ResizeObserver(resize); ro.observe(c);
+    const ro = new ResizeObserver(resize); ro.observe(c.parentElement);
+    window.addEventListener('resize', resize);
 
     function burst(x, y, n, c) {
       for (let i = 0; i < n; i++) {
@@ -185,6 +186,9 @@ function Game({ input }) {
         }
         if (p.y < 0) { p.y = 0; if (p.vy < 0) p.vy = 0; }
       }
+
+      // safety net: if the player ever ends up below the world, put them back on the floor
+      if (p.y > H) { p.x = W / 2 - 9; p.y = H - 50; p.vx = 0; p.vy = 0; }
 
       // standing check
       p.onGround = false;
@@ -436,13 +440,13 @@ function Game({ input }) {
     }
 
     const loop = t => {
-      const dt = Math.min(0.033, (t - last) / 1000);
+      const dt = Math.max(0, Math.min(0.033, (t - last) / 1000));
       last = t;
       step(dt); draw();
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('resize', resize); };
   }, []);
   return h('canvas', { ref: cv, className: 'game' });
 }
