@@ -74,6 +74,9 @@ const WALK = 180, GROUND_ACC = 1400, AIR_ACC = 600;
 const JET = 260, JET_ACC = 900;
 const DEAD = 0.12;                // stick dead zone
 const BULLET = 540, FIRE_RATE = 0.1;
+const FUEL_DRAIN = 0.28;          // per second at full thrust
+const FUEL_REGEN = 0.7;           // per second while on the ground
+const FUEL_RESTART = 0.2;         // needed before jets work again after running dry
 
 function makeLevel() {
   let seed = 7;
@@ -86,7 +89,7 @@ function makeLevel() {
     const n = two ? 2 : 1;
     for (let i = 0; i < n; i++) {
       const w = 60 + rnd() * 70;
-      const x = two ? (i === 0 ? rnd() * (W / 2 - w) : W / 2 + rnd() * (W / 2 - w)) : rnd() * (W - w);
+      const x = two ? (i === 0 ? rnd() * (W / 2 - 20 - w) : W / 2 + 20 + rnd() * (W / 2 - 20 - w)) : rnd() * (W - w);
       plats.push({ x, y, w, h: 12 });
     }
   }
@@ -112,7 +115,7 @@ function Game({ input }) {
     const total = targets.length;
     const sparks = [];
     let time = 0;
-    const p = { x: W / 2 - 9, y: H - 50, w: 18, h: 30, vx: 0, vy: 0, onGround: false, face: 1, jet: 0 };
+    const p = { x: W / 2 - 9, y: H - 50, w: 18, h: 30, vx: 0, vy: 0, onGround: false, face: 1, jet: 0, fuel: 1, empty: false };
     const bullets = [];
     let fireT = 0, camY = H, col = readColors(), frame = 0, won = false, best = 0;
     let raf, last = performance.now();
@@ -129,8 +132,16 @@ function Game({ input }) {
       const L = input.current.left, R = input.current.right;
       const raw = L.active ? L.mag : 0;
       const mag = raw > DEAD ? (raw - DEAD) / (1 - DEAD) : 0;
-      const jet = mag > 0 && L.dy < 0;   // above the line = jetpack
+      const wantJet = mag > 0 && L.dy < 0;   // above the line = jetpack
+      if (p.empty && p.fuel >= FUEL_RESTART) p.empty = false;
+      const jet = wantJet && !p.empty;
       p.jet = jet ? mag : 0;
+      if (jet) {
+        p.fuel -= FUEL_DRAIN * (0.5 + 0.5 * mag) * dt;
+        if (p.fuel <= 0) { p.fuel = 0; p.empty = true; }
+      } else if (p.onGround) {
+        p.fuel = Math.min(1, p.fuel + FUEL_REGEN * dt);
+      }
 
       if (jet) {
         p.vx = approach(p.vx, L.nx * mag * JET, JET_ACC * dt);
@@ -141,26 +152,38 @@ function Game({ input }) {
         p.vy = Math.min(p.vy + GRAVITY * dt, 900);
       }
 
-      // move x
-      p.x += p.vx * dt;
-      if (p.x < 0) { p.x = 0; p.vx = 0; }
-      if (p.x + p.w > W) { p.x = W - p.w; p.vx = 0; }
-
-      // move y (one-way platforms)
-      const prevB = p.y + p.h;
-      p.y += p.vy * dt;
-      const b = p.y + p.h;
-      p.onGround = false;
-      if (p.vy >= 0) {
+      // move in small steps so fast movement can't skip through platforms
+      const hits = q => p.x < q.x + q.w && p.x + p.w > q.x && p.y < q.y + q.h && p.y + p.h > q.y;
+      const n = Math.max(1, Math.ceil(Math.max(Math.abs(p.vx), Math.abs(p.vy)) * dt / 5));
+      const sdt = dt / n;
+      for (let i = 0; i < n; i++) {
+        p.x += p.vx * sdt;
+        if (p.x < 0) { p.x = 0; p.vx = 0; }
+        if (p.x + p.w > W) { p.x = W - p.w; p.vx = 0; }
         for (const q of plats) {
-          if (p.x + p.w > q.x && p.x < q.x + q.w && prevB <= q.y + 0.5 && b >= q.y) {
-            p.y = q.y - p.h; p.vy = 0; p.onGround = true;
-            if (q.goal) won = true;
-            break;
-          }
+          if (!hits(q)) continue;
+          if (p.vx > 0) p.x = q.x - p.w; else if (p.vx < 0) p.x = q.x + q.w;
+          p.vx = 0;
+        }
+        p.y += p.vy * sdt;
+        for (const q of plats) {
+          if (!hits(q)) continue;
+          if (p.vy > 0) p.y = q.y - p.h;          // land on top
+          else if (p.vy < 0) p.y = q.y + q.h;     // bonk head underneath
+          p.vy = 0;
+        }
+        if (p.y < 0) { p.y = 0; if (p.vy < 0) p.vy = 0; }
+      }
+
+      // standing check
+      p.onGround = false;
+      for (const q of plats) {
+        if (p.x < q.x + q.w && p.x + p.w > q.x && Math.abs(p.y + p.h - q.y) < 0.5) {
+          p.onGround = true;
+          if (q.goal) won = true;
+          break;
         }
       }
-      if (p.y < 0) { p.y = 0; if (p.vy < 0) p.vy = 0; }
 
       // facing
       if (R.on) p.face = R.nx >= 0 ? 1 : -1;
@@ -299,16 +322,24 @@ function Game({ input }) {
       ctx.font = '600 15px system-ui, sans-serif';
       ctx.fillText('Best ' + best + ' m', 12, 26);
       ctx.fillText('Targets ' + (total - targets.length) + '/' + total, 12, 46);
+      ctx.fillText('Fuel', 12, 68);
+      const bw = 110, bx = 52, byy = 58;
+      ctx.fillStyle = col.grid;
+      ctx.fillRect(bx, byy, bw, 10);
+      ctx.fillStyle = p.empty ? col.player : col.flame;
+      ctx.fillRect(bx, byy, bw * p.fuel, 10);
+      ctx.strokeStyle = col.muted; ctx.lineWidth = 1;
+      ctx.strokeRect(bx + 0.5, byy + 0.5, bw - 1, 9);
       if (targets.length === 0) {
         ctx.textAlign = 'center';
         ctx.font = '700 18px system-ui, sans-serif';
-        ctx.fillText('All targets destroyed', c.width / d / 2, won ? 110 : 84);
+        ctx.fillText('All targets destroyed', c.width / d / 2, won ? 130 : 104);
         ctx.textAlign = 'left';
       }
       if (won) {
         ctx.textAlign = 'center';
         ctx.font = '700 22px system-ui, sans-serif';
-        ctx.fillText('You made it to the top', c.width / d / 2, 84);
+        ctx.fillText('You made it to the top', c.width / d / 2, 104);
         ctx.textAlign = 'left';
       }
     }
