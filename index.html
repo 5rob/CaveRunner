@@ -32,9 +32,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 #root{height:100%}
 .app{position:fixed;inset:0;display:flex;flex-direction:column}
 .view{position:relative;flex:1 1 0;min-height:0;overflow:hidden;background:#12141a}
-.game{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
-.controls{position:relative;flex:0 0 40%;box-sizing:border-box;display:flex;justify-content:space-evenly;
-  align-items:flex-end;padding-bottom:calc(12px + env(safe-area-inset-bottom));background:var(--bg)}
+.game{position:absolute;left:0;top:0;width:100%;height:100%;display:block;cursor:none}
+.controls{flex:0 0 auto;display:flex;flex-direction:column;gap:8px;
+  padding:8px 0 calc(12px + env(safe-area-inset-bottom));background:var(--bg)}
+.toolbar{display:flex;align-items:center;justify-content:space-between;padding:0 10px;height:42px}
+.sticks{display:flex;justify-content:space-evenly}
+.slots{display:flex;gap:6px}
+.slot{position:relative;width:46px;height:40px;border-radius:8px;border:1px solid var(--ring);
+  background:var(--btn);padding:0;touch-action:none;cursor:pointer}
+.slot.on{border:2px solid #ff8a1f}
+.slot.empty{opacity:.4;cursor:default}
+.num{position:absolute;top:2px;left:5px;font-size:10px;color:var(--muted)}
+.ico{position:absolute;left:50%;top:56%;transform:translate(-50%,-50%)}
+.ico.gun{width:18px;height:5px;border-radius:2px;background:#e0a100}
+.ico.grenade{width:12px;height:12px;border-radius:50%;background:#5f9e3a}
 .stick{position:relative;flex:none;border-radius:50%;background:var(--pad);
   border:2px solid var(--ring);overflow:hidden;touch-action:none}
 .hline{position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line)}
@@ -45,7 +56,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .lbl{position:absolute;left:50%;transform:translateX(-50%);font-size:12px;color:var(--muted);pointer-events:none}
 .lbl.top{top:13%}
 .lbl.bot{bottom:13%}
-.weapon{position:absolute;top:10px;right:10px;height:40px;padding:0 16px;border-radius:20px;
+.weapon{height:40px;padding:0 16px;border-radius:20px;cursor:pointer;
   border:1px solid var(--ring);background:var(--btn);color:var(--text);
   font:600 14px system-ui,-apple-system,sans-serif;display:flex;align-items:center;gap:8px;touch-action:none}
 .wicon{width:10px;height:10px;border-radius:50%;background:#e0a100}
@@ -67,7 +78,9 @@ const CELL = 2;                   // world units per terrain pixel
 const CW = 320, CH = 800;         // terrain size in pixels
 const WW = CW * CELL, WH = CH * CELL;
 const BW = CW / 2, BH = CH / 2;   // background at half resolution
-const VIEW_W = 360;               // world units visible across the screen
+const VIEW_W = 360;               // world units visible across a phone screen
+const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
+const SLOTS = [{ id: 'gun', name: 'Gun' }, { id: 'grenade', name: 'Grenades' }, null, null];
 const ROCK = 1, BRICK = 2, BED = 3;
 
 // ---- tuning ----
@@ -130,9 +143,9 @@ function makeLevel(seed) {
   //    A slow "openness" noise decides whether an area is cramped or vast.
   for (let cy = 0; cy < CH; cy++) {
     for (let cx = 0; cx < CW; cx++) {
-      const open = Math.min(1, Math.max(0, (fbm(cx / 80 + 500, cy / 80 + 500) - 0.42) / 0.16));
-      const pocket = fbm(cx / 30, cy / 30) < 0.30 + 0.24 * open;
-      const tunnel = Math.abs(fbm(cx / 45 + 200, cy / 45 + 200) - 0.5) < 0.008 + 0.012 * open;
+      const open = Math.min(1, Math.max(0, (fbm(cx / 160 + 500, cy / 160 + 500) - 0.42) / 0.16));
+      const pocket = fbm(cx / 60, cy / 60) < 0.34 + 0.24 * open;
+      const tunnel = Math.abs(fbm(cx / 90 + 200, cy / 90 + 200) - 0.5) < 0.014 + 0.016 * open;
       mat[cy * CW + cx] = pocket || tunnel ? 0 : ROCK;
     }
   }
@@ -352,7 +365,8 @@ function Game({ input }) {
     bg.getContext('2d').putImageData(level.bgImg, 0, 0);
 
     const p = { x: start.x, y: start.y, vx: 0, vy: 0, onGround: false, face: 1, jet: 0,
-      fuel: 1, empty: false, hp: PLAYER_HP, hitT: 0, dead: false, kick: 0 };
+      fuel: 1, empty: false, hp: PLAYER_HP, hitT: 0, dead: false, kick: 0,
+      jx: 0, jy: 0, aim: { on: false, show: false, nx: 1, ny: 0 } };
     const bullets = [], grenades = [], enemyShots = [], smoke = [], sparks = [], flashes = [];
     let smokeAcc = 0, time = 0, fireT = 0, camX = 0, camY = 0, camReady = false;
     let won = false, best = 0, raf, last = performance.now();
@@ -364,6 +378,27 @@ function Game({ input }) {
     resize();
     const ro = new ResizeObserver(resize); ro.observe(c.parentElement);
     window.addEventListener('resize', resize);
+
+    // ---- mouse ----
+    const mouse = input.current.mouse;
+    let unitPx = 1;   // css pixels per world unit, set while drawing
+    const mMove = e => {
+      if (e.pointerType !== 'mouse') return;
+      const r = c.getBoundingClientRect();
+      mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top; mouse.inside = true;
+    };
+    const mDown = e => {
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      mMove(e); mouse.down = true;
+      try { c.setPointerCapture(e.pointerId); } catch (_) {}
+    };
+    const mUp = e => { if (e.pointerType === 'mouse') mouse.down = false; };
+    const mLeave = e => { if (e.pointerType === 'mouse' && !mouse.down) mouse.inside = false; };
+    c.addEventListener('pointermove', mMove);
+    c.addEventListener('pointerdown', mDown);
+    c.addEventListener('pointerup', mUp);
+    c.addEventListener('pointercancel', mUp);
+    c.addEventListener('pointerleave', mLeave);
 
     // ---- terrain queries ----
     const solidAt = (x, y) => {
@@ -466,8 +501,19 @@ function Game({ input }) {
 
     function step(dt) {
       time += dt;
-      const L = p.dead ? NO_INPUT : input.current.left, R = p.dead ? NO_INPUT : input.current.right;
       const weapon = input.current.weapon;
+      // movement: thumbstick first, otherwise keyboard (full strength)
+      let L = input.current.left;
+      if (!L.active) {
+        const keys = input.current.keys;
+        const kx = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
+        if (kx || keys.w) {
+          const ny = keys.w ? -1 : 0, len = Math.hypot(kx, ny);
+          L = { active: true, nx: kx / len, ny: ny / len, mag: 1, dy: keys.w ? -1 : 1, on: true };
+        }
+      }
+      if (p.dead) L = NO_INPUT;
+      p.jx = L.nx; p.jy = L.ny;
 
       // ---- jetpack and fuel ----
       const raw = L.active ? L.mag : 0;
@@ -538,12 +584,22 @@ function Game({ input }) {
       const pcx = p.x + PW / 2, pcy = p.y + PH / 2;
       if (!won && pcx > portal.x && pcx < portal.x + portal.w && pcy > portal.y && pcy < portal.y + portal.h) won = true;
 
-      // ---- facing & firing ----
-      if (R.on) p.face = R.nx >= 0 ? 1 : -1;
+      // ---- aiming: thumbstick first, otherwise mouse ----
+      const gx = pcx, gy = p.y + PH * 0.4;
+      const TR = input.current.right;
+      let R = { on: false, show: false, nx: p.face, ny: 0 };
+      if (TR.active) R = { on: TR.on, show: TR.on, nx: TR.nx, ny: TR.ny };
+      else if (mouse.inside) {
+        const dx = camX + mouse.x / unitPx - gx, dy = camY + mouse.y / unitPx - gy, d = Math.hypot(dx, dy);
+        if (d > 1) R = { on: mouse.down, show: true, nx: dx / d, ny: dy / d };
+      }
+      if (p.dead) R.on = false;
+      p.aim = R;
+
+      if (R.show) p.face = R.nx >= 0 ? 1 : -1;
       else if (Math.abs(p.vx) > 10) p.face = p.vx > 0 ? 1 : -1;
 
       fireT -= dt;
-      const gx = pcx, gy = p.y + PH * 0.4;
       if (R.on && fireT <= 0) {
         if (weapon === 'grenade') {
           fireT = GRENADE_RATE;
@@ -622,7 +678,7 @@ function Game({ input }) {
 
       // ---- jetpack smoke ----
       if (p.jet > 0) {
-        let fx = -input.current.left.nx, fy = -input.current.left.ny + 0.8;
+        let fx = -p.jx, fy = -p.jy + 0.8;
         const fl = Math.hypot(fx, fy) || 1; fx /= fl; fy /= fl;
         smokeAcc += dt * (25 + 35 * p.jet);
         while (smokeAcc >= 1) {
@@ -658,11 +714,12 @@ function Game({ input }) {
 
     function draw() {
       const dpr = window.devicePixelRatio || 1;
-      const s = c.width / VIEW_W, vh = c.height / s;
+      const s = Math.min(c.width / VIEW_W, c.height / VIEW_MIN_H), vw = c.width / s, vh = c.height / s;
+      unitPx = s / dpr;
       const pcx = p.x + PW / 2, pcy = p.y + PH / 2;
 
       // camera
-      const tx = clamp(pcx - VIEW_W / 2, 0, Math.max(0, WW - VIEW_W));
+      const tx = vw >= WW ? (WW - vw) / 2 : clamp(pcx - vw / 2, 0, WW - vw);
       const ty = clamp(pcy - vh * 0.55, 0, Math.max(0, WH - vh));
       if (!camReady) { camX = tx; camY = ty; camReady = true; }
       camX += (tx - camX) * 0.15;
@@ -676,10 +733,10 @@ function Game({ input }) {
 
       // background and terrain (visible part only)
       const bx0 = clamp(Math.floor(camX / 4), 0, BW - 1), by0 = clamp(Math.floor(camY / 4), 0, BH - 1);
-      const bx1 = clamp(Math.ceil((camX + VIEW_W) / 4) + 1, 1, BW), by1 = clamp(Math.ceil((camY + vh) / 4) + 1, 1, BH);
+      const bx1 = clamp(Math.ceil((camX + vw) / 4) + 1, 1, BW), by1 = clamp(Math.ceil((camY + vh) / 4) + 1, 1, BH);
       ctx.drawImage(bg, bx0, by0, bx1 - bx0, by1 - by0, bx0 * 4, by0 * 4, (bx1 - bx0) * 4, (by1 - by0) * 4);
       const tx0 = clamp(Math.floor(camX / CELL), 0, CW - 1), ty0 = clamp(Math.floor(camY / CELL), 0, CH - 1);
-      const tx1 = clamp(Math.ceil((camX + VIEW_W) / CELL) + 1, 1, CW), ty1 = clamp(Math.ceil((camY + vh) / CELL) + 1, 1, CH);
+      const tx1 = clamp(Math.ceil((camX + vw) / CELL) + 1, 1, CW), ty1 = clamp(Math.ceil((camY + vh) / CELL) + 1, 1, CH);
       ctx.drawImage(terrain, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
 
       // exit portal
@@ -702,7 +759,7 @@ function Game({ input }) {
       // enemies
       for (const e of enemies) {
         const ey = e.ty;
-        if (ey > camY + vh + 20 || ey < camY - 20 || e.x < camX - 20 || e.x > camX + VIEW_W + 20) continue;
+        if (ey > camY + vh + 20 || ey < camY - 20 || e.x < camX - 20 || e.x > camX + vw + 20) continue;
         ctx.fillStyle = e.flash > 0 ? COL.eye : COL.enemy;
         ctx.beginPath(); ctx.arc(e.x, ey, e.r, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = COL.eye;
@@ -747,8 +804,7 @@ function Game({ input }) {
 
       // jet flame
       if (p.jet > 0) {
-        const L = input.current.left;
-        let fx = -L.nx, fy = -L.ny + 0.8;
+        let fx = -p.jx, fy = -p.jy + 0.8;
         const fl = Math.hypot(fx, fy) || 1; fx /= fl; fy /= fl;
         const len = 6 + p.jet * 16 + Math.random() * 3;
         const bx = pcx, by = p.y + PH - 2;
@@ -759,10 +815,10 @@ function Game({ input }) {
       }
 
       // aim, grenade arc preview, gun
-      const R = input.current.right, weapon = input.current.weapon;
-      const ax = R.on ? R.nx : p.face, ay = R.on ? R.ny : 0;
+      const R = p.aim, weapon = input.current.weapon;
+      const ax = R.show ? R.nx : p.face, ay = R.show ? R.ny : 0;
       const gy = p.y + PH * 0.4;
-      if (!p.dead && R.on && weapon === 'grenade') {
+      if (!p.dead && R.show && weapon === 'grenade') {
         let x = pcx + R.nx * 10, y = gy + R.ny * 10, vx = R.nx * GRENADE_SPEED, vy = R.ny * GRENADE_SPEED;
         ctx.fillStyle = COL.grenade;
         for (let i = 0; i < 40; i++) {
@@ -838,6 +894,21 @@ function Game({ input }) {
       }
       ctx.textAlign = 'left';
       ctx.shadowBlur = 0;
+
+      // mouse reticule
+      if (mouse.inside) {
+        const mx = mouse.x, my = mouse.y;
+        for (const [w, colr] of [[4, 'rgba(0,0,0,0.6)'], [2, mouse.down ? COL.flame2 : COL.text]]) {
+          ctx.strokeStyle = colr; ctx.lineWidth = w;
+          ctx.beginPath(); ctx.arc(mx, my, 9, 0, Math.PI * 2); ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(mx - 15, my); ctx.lineTo(mx - 5, my);
+          ctx.moveTo(mx + 5, my); ctx.lineTo(mx + 15, my);
+          ctx.moveTo(mx, my - 15); ctx.lineTo(mx, my - 5);
+          ctx.moveTo(mx, my + 5); ctx.lineTo(mx, my + 15);
+          ctx.stroke();
+        }
+      }
     }
 
     const loop = t => {
@@ -847,7 +918,15 @@ function Game({ input }) {
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('resize', resize); };
+    return () => {
+      cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('resize', resize);
+      c.removeEventListener('pointermove', mMove);
+      c.removeEventListener('pointerdown', mDown);
+      c.removeEventListener('pointerup', mUp);
+      c.removeEventListener('pointercancel', mUp);
+      c.removeEventListener('pointerleave', mLeave);
+      mouse.inside = false; mouse.down = false;
+    };
   }, []);
   return h('canvas', { ref: cv, className: 'game' });
 }
@@ -901,17 +980,19 @@ function Stick({ size, kind, input }) {
 
 function App() {
   const blank = () => ({ active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false });
-  const input = useRef({ left: blank(), right: blank(), weapon: 'gun' });
-  const ctrl = useRef(null);
+  const input = useRef({
+    left: blank(), right: blank(), weapon: 'gun',
+    keys: { w: false, a: false, s: false, d: false },
+    mouse: { x: 0, y: 0, inside: false, down: false },
+  });
   const [size, setSize] = useState(150);
   const [run, setRun] = useState(0);
   const [weapon, setWeapon] = useState('gun');
 
+  const select = id => { input.current.weapon = id; setWeapon(id); };
+
   useEffect(() => {
-    const fit = () => {
-      const r = ctrl.current.getBoundingClientRect();
-      setSize(Math.max(80, Math.floor(Math.min((r.width - 36) / 2, r.height - 12 - 58))));
-    };
+    const fit = () => setSize(Math.max(80, Math.floor(Math.min((window.innerWidth - 36) / 2, window.innerHeight * 0.28))));
     fit();
     window.addEventListener('resize', fit);
     return () => window.removeEventListener('resize', fit);
@@ -921,30 +1002,66 @@ function App() {
     const stop = e => e.preventDefault();
     document.addEventListener('contextmenu', stop);
     document.addEventListener('touchmove', stop, { passive: false });
+
+    const map = { w: 'w', arrowup: 'w', ' ': 'w', a: 'a', arrowleft: 'a', s: 's', arrowdown: 's', d: 'd', arrowright: 'd' };
+    const key = down => e => {
+      const k = e.key.toLowerCase();
+      if (map[k]) { input.current.keys[map[k]] = down; e.preventDefault(); }
+      if (down && k >= '1' && k <= '4') {
+        const slot = SLOTS[Number(k) - 1];
+        if (slot) select(slot.id);
+      }
+    };
+    const kd = key(true), ku = key(false);
+    const blur = () => {
+      Object.keys(input.current.keys).forEach(k => { input.current.keys[k] = false; });
+      input.current.mouse.down = false;
+    };
+    window.addEventListener('keydown', kd);
+    window.addEventListener('keyup', ku);
+    window.addEventListener('blur', blur);
     return () => {
       document.removeEventListener('contextmenu', stop);
       document.removeEventListener('touchmove', stop);
+      window.removeEventListener('keydown', kd);
+      window.removeEventListener('keyup', ku);
+      window.removeEventListener('blur', blur);
     };
   }, []);
 
-  const toggleWeapon = e => {
+  const cycleWeapon = e => {
     e.preventDefault();
-    e.stopPropagation();
-    const next = input.current.weapon === 'gun' ? 'grenade' : 'gun';
-    input.current.weapon = next;
-    setWeapon(next);
+    const owned = SLOTS.filter(Boolean);
+    const i = owned.findIndex(w => w.id === input.current.weapon);
+    select(owned[(i + 1) % owned.length].id);
   };
+  const current = SLOTS.find(w => w && w.id === weapon);
 
   return h('div', { className: 'app' },
     h('div', { className: 'view' },
       h(Game, { key: run, input }),
       h('button', { className: 'reset', onClick: () => setRun(r => r + 1) }, 'Restart')
     ),
-    h('div', { className: 'controls', ref: ctrl },
-      h('button', { className: 'weapon ' + weapon, onPointerDown: toggleWeapon },
-        h('span', { className: 'wicon' }), weapon === 'gun' ? 'Gun' : 'Grenades'),
-      h(Stick, { size, kind: 'left', input }),
-      h(Stick, { size, kind: 'right', input })
+    h('div', { className: 'controls' },
+      h('div', { className: 'toolbar' },
+        h('div', { className: 'slots' },
+          SLOTS.map((slot, i) => h('button', {
+              key: i,
+              className: 'slot' + (slot ? '' : ' empty') + (slot && slot.id === weapon ? ' on' : ''),
+              title: slot ? slot.name + ' (' + (i + 1) + ')' : 'Empty slot',
+              onPointerDown: e => { e.preventDefault(); if (slot) select(slot.id); },
+            },
+            h('span', { className: 'num' }, i + 1),
+            slot && h('span', { className: 'ico ' + slot.id })
+          ))
+        ),
+        h('button', { className: 'weapon ' + weapon, onPointerDown: cycleWeapon },
+          h('span', { className: 'wicon' }), current ? current.name : '')
+      ),
+      h('div', { className: 'sticks' },
+        h(Stick, { size, kind: 'left', input }),
+        h(Stick, { size, kind: 'right', input })
+      )
     )
   );
 }
