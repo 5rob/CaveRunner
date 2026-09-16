@@ -13,7 +13,7 @@
   --text:#1c2a38; --muted:rgba(28,42,56,0.55);
   --pad:rgba(28,42,56,0.07); --ring:rgba(28,42,56,0.25);
   --line:rgba(28,42,56,0.3); --knob:#1c2a38; --jet:rgba(255,138,31,0.18);
-  --target:#8b3fd9; --target-ring:#f4f0ff;
+  --target:#8b3fd9; --target-ring:#f4f0ff; --smoke:#8a949e; --hp:#2e9a6a;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -23,7 +23,7 @@
     --text:#dbe6ef; --muted:rgba(219,230,239,0.5);
     --pad:rgba(219,230,239,0.06); --ring:rgba(219,230,239,0.22);
     --line:rgba(219,230,239,0.3); --knob:#dbe6ef; --jet:rgba(255,138,31,0.2);
-    --target:#c08bff; --target-ring:#1a1030;
+    --target:#c08bff; --target-ring:#1a1030; --smoke:#8793a0; --hp:#46c48c;
   }
 }
 :root[data-theme="dark"]{
@@ -33,7 +33,7 @@
   --text:#dbe6ef; --muted:rgba(219,230,239,0.5);
   --pad:rgba(219,230,239,0.06); --ring:rgba(219,230,239,0.22);
   --line:rgba(219,230,239,0.3); --knob:#dbe6ef; --jet:rgba(255,138,31,0.2);
-    --target:#c08bff; --target-ring:#1a1030;
+    --target:#c08bff; --target-ring:#1a1030; --smoke:#8793a0; --hp:#46c48c;
 }
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:hidden;
   overscroll-behavior:none;touch-action:none;-webkit-user-select:none;user-select:none;
@@ -77,6 +77,9 @@ const BULLET = 540, FIRE_RATE = 0.1;
 const FUEL_DRAIN = 0.28;          // per second at full thrust
 const FUEL_REGEN = 0.7;           // per second while on the ground
 const FUEL_RESTART = 0.2;         // needed before jets work again after running dry
+const PLAYER_HP = 100;
+const ENEMY_HP = 3, ENEMY_RANGE = 250, ENEMY_BULLET = 190, ENEMY_DMG = 10;
+const NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
 
 function makeLevel() {
   let seed = 7;
@@ -84,7 +87,7 @@ function makeLevel() {
   const plats = [{ x: 0, y: H - 20, w: W, h: 20 }];
   const targets = [];
   for (let y = H - 125; y > 180; y -= 105) {
-    if (rnd() < 0.55) targets.push({ x: 20 + rnd() * (W - 40), y: y - 52, r: 9, phase: rnd() * 6.28 });
+    if (rnd() < 0.55) targets.push({ x: 20 + rnd() * (W - 40), y: y - 52, r: 10, phase: rnd() * 6.28, hp: ENEMY_HP, cd: 1 + rnd() * 2, flash: 0, ty: y - 52, lx: 0, ly: 1 });
     const two = rnd() < 0.35;
     const n = two ? 2 : 1;
     for (let i = 0; i < n; i++) {
@@ -102,7 +105,7 @@ function readColors() {
   const g = n => s.getPropertyValue('--' + n).trim();
   return { sky: g('sky'), grid: g('grid'), plat: g('plat'), platTop: g('plat-top'), goal: g('goal'),
     player: g('player'), visor: g('visor'), bullet: g('bullet'), flame: g('flame'), flame2: g('flame2'),
-    text: g('text'), muted: g('muted'), target: g('target'), targetRing: g('target-ring') };
+    text: g('text'), muted: g('muted'), target: g('target'), targetRing: g('target-ring'), smoke: g('smoke'), hp: g('hp') };
 }
 
 const approach = (v, t, a) => (v < t ? Math.min(t, v + a) : Math.max(t, v - a));
@@ -115,8 +118,9 @@ function Game({ input }) {
     const total = targets.length;
     const sparks = [];
     let time = 0;
-    const p = { x: W / 2 - 9, y: H - 50, w: 18, h: 30, vx: 0, vy: 0, onGround: false, face: 1, jet: 0, fuel: 1, empty: false };
-    const bullets = [];
+    const p = { x: W / 2 - 9, y: H - 50, w: 18, h: 30, vx: 0, vy: 0, onGround: false, face: 1, jet: 0, fuel: 1, empty: false, hp: PLAYER_HP, hitT: 0, dead: false };
+    const bullets = [], enemyShots = [], smoke = [];
+    let smokeAcc = 0;
     let fireT = 0, camY = H, col = readColors(), frame = 0, won = false, best = 0;
     let raf, last = performance.now();
 
@@ -127,9 +131,16 @@ function Game({ input }) {
     resize();
     const ro = new ResizeObserver(resize); ro.observe(c);
 
+    function burst(x, y, n, c) {
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * 6.28, sp = 60 + Math.random() * 160;
+        sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.45, c });
+      }
+    }
+
     function step(dt) {
       time += dt;
-      const L = input.current.left, R = input.current.right;
+      const L = p.dead ? NO_INPUT : input.current.left, R = p.dead ? NO_INPUT : input.current.right;
       const raw = L.active ? L.mag : 0;
       const mag = raw > DEAD ? (raw - DEAD) / (1 - DEAD) : 0;
       const wantJet = mag > 0 && L.dy < 0;   // above the line = jetpack
@@ -205,19 +216,69 @@ function Game({ input }) {
         }
         if (!dead) for (let j = targets.length - 1; j >= 0; j--) {
           const t = targets[j];
-          const ty = t.y + Math.sin(time * 2 + t.phase) * 4;
-          if (Math.hypot(k.x - t.x, k.y - ty) < t.r + 2.5) {
-            for (let n = 0; n < 12; n++) {
-              const a = Math.random() * 6.28, sp = 60 + Math.random() * 160;
-              sparks.push({ x: t.x, y: ty, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.45 });
-            }
-            targets.splice(j, 1);
+          if (Math.hypot(k.x - t.x, k.y - t.ty) < t.r + 2.5) {
+            t.hp--; t.flash = 0.08;
+            if (t.hp <= 0) { burst(t.x, t.ty, 16, 'target'); targets.splice(j, 1); }
+            else burst(k.x, k.y, 4, 'bullet');
             dead = true;
             break;
           }
         }
         if (dead) bullets.splice(i, 1);
       }
+      // enemies: bob, watch the player, shoot when close
+      const pcx = p.x + p.w / 2, pcy = p.y + p.h / 2;
+      for (const t of targets) {
+        t.ty = t.y + Math.sin(time * 2 + t.phase) * 4;
+        t.flash -= dt;
+        const dx = pcx - t.x, dy = pcy - t.ty, dist = Math.hypot(dx, dy) || 1;
+        t.lx = dx / dist; t.ly = dy / dist;
+        t.cd -= dt;
+        if (!p.dead && dist < ENEMY_RANGE && t.cd <= 0) {
+          t.cd = 1.4 + Math.random() * 1.2;
+          const a = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.25;
+          enemyShots.push({ x: t.x + Math.cos(a) * 12, y: t.ty + Math.sin(a) * 12,
+            vx: Math.cos(a) * ENEMY_BULLET, vy: Math.sin(a) * ENEMY_BULLET, life: 2.5 });
+        }
+      }
+      for (let i = enemyShots.length - 1; i >= 0; i--) {
+        const k = enemyShots[i];
+        k.x += k.vx * dt; k.y += k.vy * dt; k.life -= dt;
+        let gone = k.life <= 0 || k.x < 0 || k.x > W;
+        if (!gone) for (const q of plats) {
+          if (k.x > q.x && k.x < q.x + q.w && k.y > q.y && k.y < q.y + q.h) { gone = true; break; }
+        }
+        if (!gone && !p.dead && k.x > p.x - 3 && k.x < p.x + p.w + 3 && k.y > p.y - 3 && k.y < p.y + p.h + 3) {
+          gone = true;
+          p.hp = Math.max(0, p.hp - ENEMY_DMG);
+          p.hitT = 0.3;
+          burst(k.x, k.y, 5, 'player');
+          if (p.hp === 0) { p.dead = true; burst(pcx, pcy, 24, 'player'); }
+        }
+        if (gone) enemyShots.splice(i, 1);
+      }
+      p.hitT -= dt;
+
+      // jetpack smoke trail
+      if (p.jet > 0) {
+        let fx = -input.current.left.nx, fy = -input.current.left.ny + 0.8;
+        const fl = Math.hypot(fx, fy) || 1; fx /= fl; fy /= fl;
+        smokeAcc += dt * (25 + 35 * p.jet);
+        while (smokeAcc >= 1) {
+          smokeAcc--;
+          smoke.push({ x: pcx + (Math.random() - 0.5) * 6, y: p.y + p.h + 4,
+            vx: fx * 50 + (Math.random() - 0.5) * 20, vy: fy * 50 + (Math.random() - 0.5) * 20,
+            r: 1.5 + Math.random(), life: 0.9 });
+        }
+      }
+      for (let i = smoke.length - 1; i >= 0; i--) {
+        const m = smoke[i];
+        m.x += m.vx * dt; m.y += m.vy * dt;
+        m.vx *= 1 - 2.5 * dt; m.vy = m.vy * (1 - 2.5 * dt) - 12 * dt;
+        m.r += 5 * dt; m.life -= dt;
+        if (m.life <= 0) smoke.splice(i, 1);
+      }
+
       for (let i = sparks.length - 1; i >= 0; i--) {
         const q = sparks[i];
         q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 300 * dt; q.life -= dt;
@@ -263,21 +324,37 @@ function Game({ input }) {
         }
       }
 
-      // targets
+      // smoke
+      ctx.fillStyle = col.smoke;
+      for (const m of smoke) {
+        ctx.globalAlpha = Math.max(0, m.life / 0.9) * 0.55;
+        ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // enemies
       for (const t of targets) {
-        const ty = t.y + Math.sin(time * 2 + t.phase) * 4;
+        const ty = t.ty;
         if (ty > camY + vh + 20 || ty < camY - 20) continue;
-        ctx.fillStyle = col.target;
+        ctx.fillStyle = t.flash > 0 ? col.targetRing : col.target;
         ctx.beginPath(); ctx.arc(t.x, ty, t.r, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = col.targetRing;
-        ctx.beginPath(); ctx.arc(t.x, ty, t.r * 0.6, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(t.x + t.lx * 2, ty + t.ly * 2, t.r * 0.55, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = col.target;
-        ctx.beginPath(); ctx.arc(t.x, ty, t.r * 0.28, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(t.x + t.lx * 4, ty + t.ly * 4, t.r * 0.25, 0, Math.PI * 2); ctx.fill();
+        // health bar
+        const hw = 22, hx = t.x - hw / 2, hy = ty - t.r - 7;
+        ctx.fillStyle = col.grid; ctx.fillRect(hx, hy, hw, 3);
+        ctx.fillStyle = col.player; ctx.fillRect(hx, hy, hw * t.hp / ENEMY_HP, 3);
       }
 
-      // sparks
+      // enemy shots
       ctx.fillStyle = col.target;
+      for (const k of enemyShots) { ctx.beginPath(); ctx.arc(k.x, k.y, 3.2, 0, Math.PI * 2); ctx.fill(); }
+
+      // sparks
       for (const q of sparks) {
+        ctx.fillStyle = col[q.c];
         ctx.globalAlpha = Math.max(0, q.life / 0.45);
         ctx.fillRect(q.x - 1.5, q.y - 1.5, 3, 3);
       }
@@ -308,38 +385,52 @@ function Game({ input }) {
       const ax = R.on ? R.nx : p.face, ay = R.on ? R.ny : 0;
       const gy = p.y + p.h * 0.4;
       ctx.strokeStyle = col.visor; ctx.lineWidth = 3; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(cx, gy); ctx.lineTo(cx + ax * 14, gy + ay * 14); ctx.stroke();
+      if (!p.dead) { ctx.beginPath(); ctx.moveTo(cx, gy); ctx.lineTo(cx + ax * 14, gy + ay * 14); ctx.stroke(); }
 
       // player
-      ctx.fillStyle = col.player;
+      if (p.dead) ctx.globalAlpha = 0.35;
+      const flashing = p.hitT > 0 && Math.floor(p.hitT * 30) % 2 === 0;
+      ctx.fillStyle = flashing ? col.targetRing : col.player;
       ctx.fillRect(p.x, p.y, p.w, p.h);
       ctx.fillStyle = col.visor;
       ctx.fillRect(p.face > 0 ? p.x + p.w - 9 : p.x + 1, p.y + 5, 8, 5);
+      ctx.globalAlpha = 1;
 
       // HUD
       ctx.setTransform(d, 0, 0, d, 0, 0);
       ctx.fillStyle = col.text;
       ctx.font = '600 15px system-ui, sans-serif';
       ctx.fillText('Best ' + best + ' m', 12, 26);
-      ctx.fillText('Targets ' + (total - targets.length) + '/' + total, 12, 46);
-      ctx.fillText('Fuel', 12, 68);
-      const bw = 110, bx = 52, byy = 58;
-      ctx.fillStyle = col.grid;
-      ctx.fillRect(bx, byy, bw, 10);
-      ctx.fillStyle = p.empty ? col.player : col.flame;
-      ctx.fillRect(bx, byy, bw * p.fuel, 10);
-      ctx.strokeStyle = col.muted; ctx.lineWidth = 1;
-      ctx.strokeRect(bx + 0.5, byy + 0.5, bw - 1, 9);
-      if (targets.length === 0) {
-        ctx.textAlign = 'center';
-        ctx.font = '700 18px system-ui, sans-serif';
-        ctx.fillText('All targets destroyed', c.width / d / 2, won ? 130 : 104);
-        ctx.textAlign = 'left';
-      }
-      if (won) {
+      ctx.fillText('Enemies ' + (total - targets.length) + '/' + total, 12, 46);
+      const bar = (label, y, frac, fill) => {
+        ctx.fillStyle = col.text;
+        ctx.fillText(label, 12, y + 10);
+        ctx.fillStyle = col.grid; ctx.fillRect(66, y, 110, 10);
+        ctx.fillStyle = fill; ctx.fillRect(66, y, 110 * frac, 10);
+        ctx.strokeStyle = col.muted; ctx.lineWidth = 1;
+        ctx.strokeRect(66.5, y + 0.5, 109, 9);
+      };
+      bar('Health', 58, p.hp / PLAYER_HP, p.hp <= 30 ? col.player : col.hp);
+      bar('Fuel', 78, p.fuel, p.empty ? col.player : col.flame);
+      ctx.fillStyle = col.text;
+      if (p.dead) {
         ctx.textAlign = 'center';
         ctx.font = '700 22px system-ui, sans-serif';
-        ctx.fillText('You made it to the top', c.width / d / 2, 104);
+        ctx.fillText('You were shot down', c.width / d / 2, 124);
+        ctx.font = '500 14px system-ui, sans-serif';
+        ctx.fillText('Tap Restart to try again', c.width / d / 2, 146);
+        ctx.textAlign = 'left';
+      }
+      if (targets.length === 0 && !p.dead) {
+        ctx.textAlign = 'center';
+        ctx.font = '700 18px system-ui, sans-serif';
+        ctx.fillText('All enemies destroyed', c.width / d / 2, won ? 150 : 124);
+        ctx.textAlign = 'left';
+      }
+      if (won && !p.dead) {
+        ctx.textAlign = 'center';
+        ctx.font = '700 22px system-ui, sans-serif';
+        ctx.fillText('You made it to the top', c.width / d / 2, 124);
         ctx.textAlign = 'left';
       }
     }
