@@ -145,13 +145,13 @@ function makeLevel(seed) {
     for (let cx = 0; cx < CW; cx++) {
       const open = Math.min(1, Math.max(0, (fbm(cx / 160 + 500, cy / 160 + 500) - 0.42) / 0.16));
       const pocket = fbm(cx / 60, cy / 60) < 0.34 + 0.24 * open;
-      const tunnel = Math.abs(fbm(cx / 90 + 200, cy / 90 + 200) - 0.5) < 0.014 + 0.016 * open;
+      const tunnel = Math.abs(fbm(cx / 90 + 200, cy / 90 + 200) - 0.5) < 0.018 + 0.018 * open;
       mat[cy * CW + cx] = pocket || tunnel ? 0 : ROCK;
     }
   }
 
-  // 2. main route from bottom to top: chambers linked by winding tunnels,
-  //    some of them too tight to fit through without blasting
+  // 2. main route from bottom to top: chambers linked by winding tunnels
+  //    that are always wide enough to fly through (side pockets still need blasting)
   const points = [{ x: CW / 2, y: CH - 26 }];
   const hops = 6;
   for (let i = 1; i <= hops; i++) {
@@ -169,10 +169,12 @@ function makeLevel(seed) {
         if (Math.hypot(x - ex, (y - ey) * 1.4) <= wob) mat[y * CW + x] = 0;
       }
   };
-  const worm = (x, y, tx, ty, r, maxSteps) => {
+  const routePath = [];   // remembered so smoothing can't pinch the links shut
+  const worm = (x, y, tx, ty, r, maxSteps, keep) => {
     let ang = tx !== null ? Math.atan2(ty - y, tx - x) : rnd() * Math.PI * 2;
     for (let s = 0; s < maxSteps; s++) {
       disc(x, y, r, 0);
+      if (keep) routePath.push({ x, y, r: r - 1 });
       if (tx !== null && Math.hypot(tx - x, ty - y) < 3) break;
       const want = tx !== null ? Math.atan2(ty - y, tx - x) : ang;
       let diff = want - ang;
@@ -188,12 +190,12 @@ function makeLevel(seed) {
   }
   for (let i = 0; i < points.length - 1; i++) {
     const a = points[i], b = points[i + 1];
-    const r = rnd() < 0.4 ? 2 + rnd() * 1.5 : 6 + rnd() * 5;   // narrow ones need digging
-    worm(a.x, a.y, b.x, b.y, r, 2000);
+    const r = rnd() < 0.4 ? 7 + rnd() * 2 : 11 + rnd() * 6;   // tight ones are still snug, but you fit
+    worm(a.x, a.y, b.x, b.y, r, 2000, true);
   }
   // side branches and dead ends
   for (let i = 0; i < 12; i++) {
-    worm(10 + rnd() * (CW - 20), 20 + rnd() * (CH - 60), null, null, 2.5 + rnd() * 6, 40 + rnd() * 150);
+    worm(10 + rnd() * (CW - 20), 20 + rnd() * (CH - 60), null, null, 5 + rnd() * 6, 40 + rnd() * 150, true);
   }
 
   // 3. smooth everything into natural shapes
@@ -207,6 +209,7 @@ function makeLevel(seed) {
         mat[cy * CW + cx] = n >= 5 ? ROCK : 0;
       }
   }
+  for (const c of routePath) disc(c.x, c.y, c.r, 0);
 
   // solid floor, start room and exit room
   for (let cy = CH - 10; cy < CH; cy++) for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = ROCK;
@@ -272,6 +275,9 @@ function makeLevel(seed) {
     slab(x0, y0, len, 4);
     floats++;
   }
+
+  // clear a doorway wherever a ledge, frame or platform landed across a link
+  for (const c of routePath) disc(c.x, c.y, Math.min(c.r, 7), 0);
 
   // exit ledge
   slab(CW / 2 - 24, 34, 48, 3);
