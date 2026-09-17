@@ -51,6 +51,12 @@ A modifier only affects the shots to its **right** on the gun, so the order you
 drag them into matters. Firing walks the list left to right; run off the end and
 the gun recharges before starting over.
 
+Cast delay is accumulated in that same order, which makes **Buzzsaw** special: it
+does not subtract from the delay, it resets it to zero at the moment it is cast.
+Anything cast after it adds its delay back, so it belongs at the tail of a
+multicast group — `Double Cast, Bolt, Buzzsaw` fires the bolt and leaves the gun
+ready immediately. Recharge, by contrast, counts from any slot.
+
 ## Features
 
 - Floors that chain: shop, cave, exit, next shop, with gold and gear carried over

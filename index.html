@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v17</title>
+<title>CaveRunner v18</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -127,6 +127,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .pclose{flex:0 0 auto;width:34px;height:34px;border-radius:17px;border:1px solid var(--ring);
   background:var(--pad);color:var(--text);font-size:19px;line-height:1;padding:0}
 .pinfo{margin:9px 0 0;font-size:13px}
+.pnote{margin:7px 0 0;font-size:11.5px;line-height:1.45;color:var(--muted);
+  border-left:2px solid var(--ring);padding-left:8px}
 .prows{display:flex;flex-direction:column;margin-top:9px}
 .prow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
   font-size:12px;color:var(--muted);padding:4px 2px;border-bottom:1px solid var(--pad)}
@@ -186,7 +188,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v17';
+const VERSION = 'v18';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -225,7 +227,7 @@ const MODS = {
              info: 'Cheap all-rounder',
              dmg: 1, speed: 540, spread: 2, delay: 0.10, size: 2, life: 1.2, recoil: 6 },
   spark:   { name: 'Spark', kind: 'shot', glyph: '·', col: '#ffe066', mana: 3,
-             info: 'Fast, weak and nearly free',
+             info: 'Fast, weak and nearly free', rech: -0.05,
              dmg: 0.5, speed: 720, spread: 5, delay: 0.05, size: 1.5, life: 0.8, recoil: 2 },
   slug:    { name: 'Slug', kind: 'shot', glyph: '⬤', col: '#e88a3c', mana: 20,
              info: 'Slow and very heavy',
@@ -239,6 +241,10 @@ const MODS = {
   orb:     { name: 'Bounce Orb', kind: 'shot', glyph: '◍', col: '#9ef07a', mana: 8,
              info: 'Ricochets off rock ten times',
              dmg: 2, speed: 300, spread: 0.6, delay: 0.14, size: 3.5, life: 4, bounce: 10, recoil: 8 },
+  saw:     { name: 'Buzzsaw', kind: 'shot', glyph: '⚙', col: '#d9dde4', mana: 2,
+             info: 'Shreds whatever is right in front of you, and chews rock',
+             dmg: 3, speed: 150, spread: 6, delay: 0, size: 5, life: 0.12, bore: 4,
+             recoil: 0, setDelay: 0, rech: -0.17 },
   blast:   { name: 'Blast', kind: 'shot', glyph: '✹', col: '#7cc04f', mana: 28,
              info: 'Lobbed, explodes and digs',
              dmg: 2, speed: 380, spread: 2, delay: 0.5, size: 3.5, life: 3, grav: 600,
@@ -293,6 +299,13 @@ const MODS = {
   cheap:   { name: 'Efficient', kind: 'mod', glyph: '◇', col: '#46c48c', mana: 0, d: 0.1,
              info: 'halves the mana cost', manaMul: 0.5 },
 
+  trigger:  { name: 'Hair Trigger', kind: 'mod', glyph: '↺', col: '#46c48c', mana: 4, d: 0.05,
+              info: '-0.15s recharge, +0.05s cast delay', rech: -0.15 },
+  over_heat: { name: 'Overheat', kind: 'mod', glyph: '♨', col: '#ff7a5a', mana: 8,
+              info: 'x2 damage, but x1.8 recharge', rechMul: 1.8,
+              f: s => { s.dmg *= 2; s.recoil += 15; } },
+  cold:     { name: 'Cold Start', kind: 'passive', glyph: '❄', col: '#46c48c', mana: 0,
+              info: 'x0.55 recharge', rechMul: 0.55 },
   recharge: { name: 'Quick Recharge', kind: 'passive', glyph: '↻', col: '#46c48c', mana: 0,
               info: '-0.33s recharge', rech: -0.33 },
   battery:  { name: 'Mana Battery', kind: 'passive', glyph: '▮', col: '#46c48c', mana: 0,
@@ -304,7 +317,7 @@ const MOD_PRICE = {
   dmg_up: 30, heavy: 40, light: 30, speed: 25, accel: 35, homing: 70, seeker: 90,
   bounce: 25, pierce: 85, tight: 15, scatter: 35, big: 30, range: 30, brief: 20,
   tip: 55, borer: 25, fast: 30, over: 45, double: 45, triple: 60, quad: 75, cheap: 40,
-  recharge: 50, battery: 50,
+  saw: 80, trigger: 35, over_heat: 45, cold: 60, recharge: 50, battery: 50,
 };
 const priceOf = id => MOD_PRICE[id] || 30;
 
@@ -314,6 +327,16 @@ const SHOP_H = 48;                     // interior height
 const SHOP_TOP = SHOP_FLOOR - SHOP_H;  // first open row of the room
 const SHOP_ROOF = 6;                   // roof thickness
 const SHOP_Y = SHOP_TOP * CELL;        // world y of the ceiling, for "am I in the shop?"
+
+const MIN_CAST = 0.016;      // one frame: the fastest a gun can chain casts
+const MIN_RECH = 0.05;
+
+// Recharge counts every slot on the gun, wherever the mod sits, so the number on
+// the gun card is always the number you get.
+function effRecharge(g) {
+  const pas = gunPassives(g);
+  return Math.max(MIN_RECH, (g.recharge + pas.rech) * pas.rechMul);
+}
 
 const SHOT_IDS = Object.keys(MODS).filter(k => MODS[k].kind === 'shot');
 const ALL_IDS = Object.keys(MODS);
@@ -381,7 +404,14 @@ function startingGuns() {
 // Advances g.idx; the caller rolls it back if there isn't the mana to pay.
 function planCast(g) {
   const start = g.idx, mods = [], defs = [];
-  let multi = g.multi, cost = 0, manaMul = 1, delay = 0, ran = false, wrapped = 0;
+  let multi = g.multi, cost = 0, manaMul = 1, ran = false, wrapped = 0;
+  // delay is walked in draw order: most mods nudge it, a few reset it outright,
+  // and anything drawn after a reset adds its own delay back on top
+  let delay = g.castDelay;
+  const timing = m => {
+    if (m.setDelay !== undefined) delay = m.setDelay;
+    else delay += (m.kind === 'shot' ? m.delay : m.d) || 0;
+  };
   for (let guard = 0; defs.length < multi && guard < 64; guard++) {
     if (g.idx >= g.order.length) {
       ran = true;
@@ -399,20 +429,20 @@ function planCast(g) {
       cost += m.mana || 0;
       if (m.multi) multi += m.multi;
       if (m.manaMul) manaMul *= m.manaMul;
-      if (m.d) delay += m.d;
+      timing(m);
       continue;
     }
     defs.push(m);
     cost += m.mana;
+    timing(m);
   }
   const shots = defs.map(sm => {
     const sh = { dmg: sm.dmg, speed: sm.speed, spread: sm.spread + g.spread, size: sm.size,
       life: sm.life, count: sm.count || 1, bounce: sm.bounce || 0, pierce: sm.pierce || 0,
-      explode: sm.explode || 0, grav: sm.grav || 0, homing: 0, accel: 0, bore: 0,
-      recoil: sm.recoil || 0, col: sm.col };
+      explode: sm.explode || 0, grav: sm.grav || 0, homing: 0, accel: 0,
+      bore: sm.bore || 0, recoil: sm.recoil || 0, col: sm.col };
     for (const m of mods) if (m.f) m.f(sh);
     sh.speed *= g.speedMul || 1;
-    delay += sm.delay;
     return sh;
   });
   let more = false;                       // anything left worth firing this cycle?
@@ -421,7 +451,7 @@ function planCast(g) {
     if (id && MODS[id].kind === 'shot') { more = true; break; }
   }
   return { shots, start, cost: cost * manaMul,
-    delay: Math.max(0.03, g.castDelay + delay),
+    delay: Math.max(MIN_CAST, delay),
     wrap: ran || !more };
 }
 
@@ -435,17 +465,37 @@ const num = v => {
   const r = Math.round(v * 100) / 100;
   return String(r);
 };
-function previewPlan(slots) {
-  return planCast(resetGun({ name: 'p', cap: slots.length, castDelay: 0, recharge: 1,
+function previewGun(slots, over) {
+  return resetGun(Object.assign({ name: 'p', cap: slots.length, castDelay: 0.2, recharge: 1,
     manaMax: 99999, manaRegen: 0, spread: 0, multi: 1, shuffle: false, mana: 99999,
-    speedMul: 1, slots }));
+    speedMul: 1, slots }, over || {}));
 }
+function previewPlan(slots) { return planCast(previewGun(slots)); }
 function modPreview(id) {
   const m = MODS[id];
-  if (m.kind === 'passive') return { rows: [] };
+  const rows = [];
+  const push = (label, x, y, unit) => {
+    if (Math.abs(x - y) < 1e-6) return;
+    rows.push([label, num(x) + (unit || '') + ' \u2192 ' + num(y) + (unit || '')]);
+  };
+  // a plain, readable gun to measure against
+  const REF = { recharge: 1, manaMax: 100, manaRegen: 40 };
+  const ref = slots => previewGun(slots, REF);
+
+  if (m.kind === 'passive') {
+    const a = ref(['bolt']), b = ref([id, 'bolt']);
+    push('recharge', effRecharge(a), effRecharge(b), 's');
+    push('mana', a.manaMax + gunPassives(a).manaMax, b.manaMax + gunPassives(b).manaMax);
+    push('mana regen', a.manaRegen + gunPassives(a).manaRegen,
+      b.manaRegen + gunPassives(b).manaRegen, '/s');
+    return { rows };
+  }
+
   if (m.kind === 'shot') {
     const p = previewPlan([id]);
-    const sh = p.shots[0], rows = [['mana', num(p.cost)], ['cast delay', num(p.delay) + 's']];
+    const sh = p.shots[0];
+    rows.push(['mana', num(p.cost)], ['cast delay', num(p.delay) + 's']);
+    if (m.rech || m.rechMul) rows.push(['recharge', num(effRecharge(ref([id]))) + 's']);
     for (const [key, label, unit] of PREVIEW_FIELDS) {
       if (!sh[key]) continue;
       rows.push([label, num(sh[key]) + (unit || '')]);
@@ -453,16 +503,13 @@ function modPreview(id) {
     if (sh.count > 1) rows.splice(2, 0, ['pellets', num(sh.count)]);
     return { rows };
   }
+
   const a = previewPlan(['bolt']);
   const b = previewPlan([id, 'bolt', 'bolt', 'bolt', 'bolt']);
-  const rows = [];
-  const push = (label, x, y, unit) => {
-    if (Math.abs(x - y) < 1e-6) return;
-    rows.push([label, num(x) + (unit || '') + ' \u2192 ' + num(y) + (unit || '')]);
-  };
   push('shots per pull', a.shots.length, b.shots.length);
   push('mana', a.cost, b.cost);
   push('cast delay', a.delay, b.delay, 's');
+  push('recharge', effRecharge(ref(['bolt'])), effRecharge(ref([id, 'bolt'])), 's');
   const sa = a.shots[0], sb = b.shots[0];
   if (sa && sb) for (const [key, label, unit] of PREVIEW_FIELDS) push(label, sa[key] || 0, sb[key] || 0, unit);
   return { rows };
@@ -470,15 +517,16 @@ function modPreview(id) {
 
 // what the gun actually does with the mods on it right now
 function gunPassives(g) {
-  let rech = 0, manaMax = 0, manaRegen = 0;
+  let rech = 0, rechMul = 1, manaMax = 0, manaRegen = 0;
   for (const id of g.slots) {
     if (!id) continue;
     const m = MODS[id];
     if (m.rech) rech += m.rech;
+    if (m.rechMul) rechMul *= m.rechMul;
     if (m.manaMax) manaMax += m.manaMax;
     if (m.manaRegen) manaRegen += m.manaRegen;
   }
-  return { rech, manaMax, manaRegen };
+  return { rech, rechMul, manaMax, manaRegen };
 }
 
 const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
@@ -915,7 +963,7 @@ function Game({ input }) {
       const pas = gunPassives(g);
       const wrap = () => {
         g.idx = 0;
-        g.rechT = Math.max(0.15, g.recharge + pas.rech);
+        g.rechT = effRecharge(g);
         shuffleOrder(g);
       };
       const plan = planCast(g);
@@ -1739,8 +1787,7 @@ function holdPress(onTap, onHold, onState, ms) {
 const GUN_STATS = [
   { k: 'cap', label: 'slots', better: 1, get: g => g.cap, fmt: v => String(v) },
   { k: 'delay', label: 'cast delay', better: -1, get: g => g.castDelay, fmt: v => v.toFixed(2) + 's' },
-  { k: 'rech', label: 'recharge', better: -1,
-    get: g => Math.max(0.15, g.recharge + gunPassives(g).rech), fmt: v => v.toFixed(2) + 's' },
+  { k: 'rech', label: 'recharge', better: -1, get: effRecharge, fmt: v => v.toFixed(2) + 's' },
   { k: 'mana', label: 'mana', better: 1,
     get: g => g.manaMax + gunPassives(g).manaMax, fmt: v => String(Math.round(v)) },
   { k: 'regen', label: 'mana regen', better: 1,
@@ -1856,8 +1903,30 @@ function ModCard({ id, onClose, ingame }) {
     h('div', null,
       h('div', { className: 'dtiles' }, tiles),
       h('span', { className: 'dnote' }, note)));
+  // cast delay is walked in order, so anything that touches it needs explaining
+  let timing = null;
+  if (m.setDelay !== undefined) {
+    timing = 'Sets the gun\u2019s cast delay to ' + m.setDelay + 's the moment it is cast, ' +
+      'instead of nudging it like other mods. Anything cast AFTER it adds its own delay back ' +
+      'on top, so it only pays off last \u2014 usually at the tail of a multicast group, where ' +
+      'it fires alongside your real shot and leaves the gun ready immediately.';
+  } else if (m.d) {
+    timing = (m.d < 0 ? 'Takes ' + Math.abs(m.d) : 'Adds ' + m.d) + 's ' +
+      (m.d < 0 ? 'off' : 'to') + ' the cast delay of the pull it is drawn in. ' +
+      'Cast delay is the gap between shots; a mod that zeroes it outright (Buzzsaw) ' +
+      'wipes this out if it comes after.';
+  } else if (m.rech || m.rechMul) {
+    timing = 'Recharge is the pause once the gun reaches the end of its list. This counts ' +
+      'from any slot, so position does not matter for it.';
+  }
+
   let demo;
-  if (m.kind === 'passive') {
+  if (m.setDelay !== undefined) {
+    demo = [drow(true, [dtile('double', 'a'), dtile('bolt', 'b'), dtile(id, 'c')],
+              'the bolt fires, then this wipes the delay \u2014 shoot again at once', 1),
+            drow(false, [dtile(id, 'd'), dtile('bolt', 'e', true)],
+              'the bolt adds its delay back after the reset', 2)];
+  } else if (m.kind === 'passive') {
     demo = [drow(true, [dtile(id, 'a'), dtile('bolt', 'b')], 'counts wherever you put it', 1),
             drow(true, [dtile('bolt', 'c'), dtile(id, 'd')], 'same here — order does not matter', 2)];
   } else if (m.kind === 'shot') {
@@ -1881,6 +1950,7 @@ function ModCard({ id, onClose, ingame }) {
         onPointerDown: e => { e.preventDefault(); onClose(); } }, '\u00d7') : null
     ),
     m.info ? h('p', { className: 'pinfo' }, m.info) : null,
+    timing ? h('p', { className: 'pnote' }, timing) : null,
     rows.length ? h('div', { className: 'prows' },
       rows.map((r, i) => h('div', { className: 'prow', key: i },
         h('span', null, r[0]), h('b', null, r[1])))) : null,
