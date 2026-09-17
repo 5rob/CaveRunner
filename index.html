@@ -60,7 +60,49 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   border:1px solid var(--ring);background:var(--btn);color:var(--text);
   font:600 14px system-ui,-apple-system,sans-serif;display:flex;align-items:center;gap:8px;touch-action:none}
 .wicon{width:10px;height:10px;border-radius:50%;background:#e0a100}
-.weapon.grenade .wicon{width:13px;height:13px;background:#5f9e3a}
+.slots{flex:1 1 auto;min-width:0}
+.slot{flex:1 1 0;width:auto;min-width:0;display:flex;flex-direction:column;justify-content:center;
+  align-items:center;gap:1px;overflow:hidden}
+.gname{font:600 10px system-ui,sans-serif;color:var(--text);max-width:100%;padding:0 3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gsub{font:500 9px system-ui,sans-serif;color:var(--muted)}
+.badge{margin-left:2px;font-size:11px;opacity:.7}
+
+/* ---- mod sheet ---- */
+.sheet{position:fixed;inset:0;z-index:20;background:var(--bg);color:var(--text);
+  display:flex;flex-direction:column;padding:0 12px calc(12px + env(safe-area-inset-bottom));
+  padding-top:calc(10px + env(safe-area-inset-top))}
+.shead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 0 8px}
+.shead h2{margin:0;font-size:17px}
+.done{height:36px;padding:0 16px;border-radius:18px;border:1px solid var(--ring);
+  background:var(--btn);color:var(--text);font:600 14px system-ui,sans-serif}
+.gtabs{display:flex;gap:6px;margin-bottom:8px}
+.gtab{flex:1 1 0;min-width:0;height:44px;border-radius:9px;border:1px solid var(--ring);
+  background:var(--btn);color:var(--text);padding:0 4px;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;gap:1px;overflow:hidden}
+.gtab.on{border:2px solid #ff8a1f}
+.gtab.empty{opacity:.4}
+.stats{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
+.st{background:var(--pad);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--muted);
+  display:flex;gap:5px;align-items:baseline}
+.st b{font-size:12px;color:var(--text)}
+.lab{font-size:11px;color:var(--muted);margin:0 0 5px;text-transform:uppercase;letter-spacing:.06em}
+.slotRow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.bag{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;overflow-y:auto;
+  flex:1 1 0;min-height:70px;border-radius:9px;background:var(--pad);padding:6px}
+.tile{width:60px;height:56px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  touch-action:none;cursor:grab;overflow:hidden;flex:0 0 auto}
+.tile.hole{border-style:dashed;opacity:.5;cursor:default}
+.tile.shot{box-shadow:inset 0 0 0 2px currentColor}
+.tg{font-size:17px;line-height:1}
+.tn{font:500 8.5px system-ui,sans-serif;color:var(--muted);text-align:center;line-height:1.1;
+  max-width:100%;padding:0 2px}
+.ghost{position:fixed;z-index:30;width:60px;height:56px;border-radius:9px;border:2px solid;
+  background:var(--btn);display:flex;align-items:center;justify-content:center;font-size:20px;
+  transform:translate(-50%,-50%);pointer-events:none;opacity:.9}
+.info{min-height:30px;font-size:12px;color:var(--muted);padding:7px 2px 0}
+.info b{color:var(--text)}
 .reset{position:absolute;top:10px;right:10px;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.35);
   color:#e9ecf2;border-radius:8px;padding:6px 12px;font:inherit;font-size:13px}
 </style>
@@ -80,9 +122,8 @@ const WW = CW * CELL, WH = CH * CELL;
 const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
-const SLOTS = [{ id: 'gun', name: 'Gun' }, { id: 'grenade', name: 'Grenades' }, null, null];
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v9';
+const VERSION = 'v10';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -90,8 +131,6 @@ const WALK = 150, GROUND_ACC = 1400, AIR_ACC = 600;
 const JET = 240, JET_ACC = 900;
 const DEAD = 0.12;
 const PW = 12, PH = 22;
-const BULLET = 540, FIRE_RATE = 0.1;
-const GRENADE_SPEED = 380, GRENADE_GRAVITY = 600, GRENADE_RATE = 0.55, BLAST = 28;
 const FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
 const PLAYER_HP = 100;
 const ENEMY_HP = 3, ENEMY_RANGE = 220, ENEMY_BULLET = 180, ENEMY_DMG = 10, ENEMY_COUNT = 20;
@@ -111,6 +150,199 @@ const COL = {
   player: '#ff5a36', visor: '#17222e', bullet: '#ffc93c', flame: '#ff8a1f', flame2: '#ffe066',
   enemy: '#b57cff', eye: '#f4f0ff', smoke: '#9aa3ad', hp: '#46c48c', grenade: '#7cc04f', portal: '#5ee0a0',
 };
+
+// ---- mods ----
+// 'shot' mods are the projectiles. 'mod' mods change the shots cast AFTER them in
+// the list, so the order you arrange them in is the whole game. 'passive' mods
+// work from anywhere on the gun.
+const MODS = {
+  bolt:    { name: 'Bolt', kind: 'shot', glyph: '•', col: '#ffc93c', mana: 5,
+             dmg: 1, speed: 540, spread: 2, delay: 0.10, size: 2, life: 1.2, recoil: 6 },
+  spark:   { name: 'Spark', kind: 'shot', glyph: '·', col: '#ffe066', mana: 3,
+             dmg: 0.5, speed: 720, spread: 5, delay: 0.05, size: 1.5, life: 0.8, recoil: 2 },
+  slug:    { name: 'Slug', kind: 'shot', glyph: '⬤', col: '#e88a3c', mana: 20,
+             dmg: 4, speed: 320, spread: 1, delay: 0.26, size: 4, life: 1.6, recoil: 45 },
+  buck:    { name: 'Buckshot', kind: 'shot', glyph: '⁙', col: '#ffb347', mana: 12,
+             dmg: 0.7, speed: 460, spread: 15, delay: 0.32, size: 2, life: 0.7, count: 5, recoil: 32 },
+  lance:   { name: 'Lance', kind: 'shot', glyph: '➤', col: '#7ad7ff', mana: 20,
+             dmg: 2, speed: 900, spread: 0.6, delay: 0.28, size: 2, life: 1.2, pierce: 2, recoil: 22 },
+  orb:     { name: 'Bounce Orb', kind: 'shot', glyph: '◍', col: '#9ef07a', mana: 8,
+             dmg: 2, speed: 300, spread: 0.6, delay: 0.14, size: 3.5, life: 4, bounce: 10, recoil: 8 },
+  blast:   { name: 'Blast', kind: 'shot', glyph: '✹', col: '#7cc04f', mana: 28,
+             dmg: 2, speed: 380, spread: 2, delay: 0.5, size: 3.5, life: 3, grav: 600,
+             explode: 28, recoil: 25 },
+
+  dmg_up:  { name: 'Damage Plus', kind: 'mod', glyph: '✚', col: '#ff7a5a', mana: 5, d: 0.08,
+             info: '+1.5 damage', f: s => { s.dmg += 1.5; s.recoil += 10; } },
+  heavy:   { name: 'Heavy Shot', kind: 'mod', glyph: '⬇', col: '#ff7a5a', mana: 7, d: 0.17,
+             info: 'x2.5 damage, x0.35 speed, big kick',
+             f: s => { s.dmg *= 2.5; s.speed *= 0.35; s.size *= 1.4; s.recoil += 50; } },
+  light:   { name: 'Light Shot', kind: 'mod', glyph: '⬆', col: '#7ad7ff', mana: 5, d: -0.05,
+             info: 'x4 speed, x0.6 damage, tighter',
+             f: s => { s.dmg *= 0.6; s.speed *= 4; s.size *= 0.7; s.spread = Math.max(0, s.spread - 6); s.recoil *= 0.5; } },
+  speed:   { name: 'Speed Up', kind: 'mod', glyph: '»', col: '#7ad7ff', mana: 3,
+             info: 'x2.5 speed', f: s => { s.speed *= 2.5; } },
+  accel:   { name: 'Accelerating', kind: 'mod', glyph: '↗', col: '#7ad7ff', mana: 18, d: 0.13,
+             info: 'starts slow, speeds up hard', f: s => { s.speed *= 0.35; s.accel = 3.6; } },
+  homing:  { name: 'Homing', kind: 'mod', glyph: '◎', col: '#b57cff', mana: 40,
+             info: 'curves onto enemies', f: s => { s.homing += 3.5; } },
+  seeker:  { name: 'Seeker', kind: 'mod', glyph: '⊙', col: '#b57cff', mana: 60,
+             info: 'hard homing, x0.8 speed', f: s => { s.homing += 10; s.speed *= 0.8; } },
+  bounce:  { name: 'Bouncing', kind: 'mod', glyph: '⤢', col: '#9ef07a', mana: 6,
+             info: '+5 bounces', f: s => { s.bounce += 5; } },
+  pierce:  { name: 'Piercing', kind: 'mod', glyph: '⊹', col: '#9ef07a', mana: 70,
+             info: '+3 pierce, x0.75 damage', f: s => { s.pierce += 3; s.dmg *= 0.75; } },
+  tight:   { name: 'Reduce Spread', kind: 'mod', glyph: '│', col: '#e9ecf2', mana: 1,
+             info: '-20° spread', f: s => { s.spread = Math.max(0, s.spread - 20); } },
+  scatter: { name: 'Scatter', kind: 'mod', glyph: '≡', col: '#ffb347', mana: 4, d: -0.1,
+             info: 'x3 shots, wide, weaker',
+             f: s => { s.count *= 3; s.spread += 14; s.dmg *= 0.55; } },
+  big:     { name: 'Big Shot', kind: 'mod', glyph: '⬢', col: '#ff7a5a', mana: 6, d: 0.06,
+             info: 'x2 size, x1.3 damage', f: s => { s.size *= 2; s.dmg *= 1.3; s.recoil += 20; } },
+  range:   { name: 'Long Range', kind: 'mod', glyph: '⟶', col: '#e9ecf2', mana: 30, d: 0.2,
+             info: 'x2.5 flight time', f: s => { s.life *= 2.5; } },
+  brief:   { name: 'Short Fuse', kind: 'mod', glyph: '⟜', col: '#e9ecf2', mana: 8, d: -0.22,
+             info: 'x0.45 flight time, fast cast', f: s => { s.life *= 0.45; } },
+  tip:     { name: 'Explosive Tip', kind: 'mod', glyph: '✸', col: '#ff8a1f', mana: 28, d: 0.3,
+             info: 'blows a hole on impact',
+             f: s => { s.explode = Math.max(s.explode, 15); s.dmg += 1; s.speed *= 0.8; } },
+  borer:   { name: 'Borer', kind: 'mod', glyph: '⛏', col: '#c8a06a', mana: 4, d: 0.02,
+             info: 'drills through rock', f: s => { s.bore = 6; s.life *= 1.4; } },
+  fast:    { name: 'Fast Cast', kind: 'mod', glyph: '≫', col: '#46c48c', mana: 3, d: -0.08,
+             info: '-0.08s cast delay' },
+  over:    { name: 'Overcharge', kind: 'mod', glyph: '⚡', col: '#ff7a5a', mana: 12, d: 0.2,
+             info: 'x1.8 damage, slow cast', f: s => { s.dmg *= 1.8; s.recoil += 30; } },
+  double:  { name: 'Double Cast', kind: 'mod', glyph: '②', col: '#ffe066', mana: 0,
+             info: 'fires the next 2 shots at once', multi: 1 },
+  triple:  { name: 'Triple Cast', kind: 'mod', glyph: '③', col: '#ffe066', mana: 2,
+             info: 'fires the next 3 shots at once', multi: 2 },
+  quad:    { name: 'Quad Cast', kind: 'mod', glyph: '④', col: '#ffe066', mana: 5,
+             info: 'fires the next 4 shots at once', multi: 3 },
+  cheap:   { name: 'Efficient', kind: 'mod', glyph: '◇', col: '#46c48c', mana: 0, d: 0.1,
+             info: 'halves the mana cost', manaMul: 0.5 },
+
+  recharge: { name: 'Quick Recharge', kind: 'passive', glyph: '↻', col: '#46c48c', mana: 0,
+              info: '-0.33s recharge', rech: -0.33 },
+  battery:  { name: 'Mana Battery', kind: 'passive', glyph: '▮', col: '#46c48c', mana: 0,
+              info: '+60 mana, +30 regen', manaMax: 60, manaRegen: 30 },
+};
+const SHOT_IDS = Object.keys(MODS).filter(k => MODS[k].kind === 'shot');
+const ALL_IDS = Object.keys(MODS);
+
+// ---- guns ----
+const GUN_A = ['Rusty', 'Bone', 'Cracked', 'Copper', 'Glass', 'Ivory', 'Molten', 'Static',
+               'Hollow', 'Ember', 'Quartz', 'Iron', 'Pale', 'Gilded'];
+const GUN_B = ['Pistol', 'Repeater', 'Carbine', 'Scattergun', 'Lance', 'Sidearm',
+               'Blaster', 'Cannon', 'Spitter', 'Wand'];
+
+function shuffleOrder(g) {
+  g.order = g.slots.map((_, i) => i);
+  if (g.shuffle) for (let i = g.order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [g.order[i], g.order[j]] = [g.order[j], g.order[i]];
+  }
+}
+function resetGun(g) {
+  g.idx = 0; g.delayT = 0; g.rechT = 0;
+  shuffleOrder(g);
+  return g;
+}
+
+// tier 0..1: guns found higher up the cave are better
+function makeGun(rnd, tier) {
+  const cap = Math.min(8, 2 + Math.floor(rnd() * 4 + tier * 3));
+  const g = {
+    name: GUN_A[Math.floor(rnd() * GUN_A.length)] + ' ' + GUN_B[Math.floor(rnd() * GUN_B.length)],
+    cap,
+    castDelay: Math.max(0.04, 0.34 - tier * 0.14 + rnd() * 0.2),
+    recharge: Math.max(0.15, 1.2 - tier * 0.45 + rnd() * 0.6),
+    manaMax: Math.round(90 + tier * 260 + rnd() * 130),
+    manaRegen: Math.round(25 + tier * 75 + rnd() * 45),
+    spread: rnd() * 9 * (1 - tier * 0.5),
+    speedMul: 0.8 + rnd() * (0.5 + tier * 0.5),
+    multi: rnd() < 0.12 + tier * 0.22 ? 2 : 1,
+    shuffle: rnd() < 0.35 - tier * 0.18,
+    slots: new Array(cap).fill(null),
+  };
+  // seed it with something that already shoots
+  const used = 1 + Math.floor(rnd() * Math.min(cap, 2 + tier * 3));
+  const spots = g.slots.map((_, i) => i).sort(() => rnd() - 0.5).slice(0, used);
+  spots.forEach((slot, n) => {
+    g.slots[slot] = n === 0 ? SHOT_IDS[Math.floor(rnd() * SHOT_IDS.length)]
+                            : ALL_IDS[Math.floor(rnd() * ALL_IDS.length)];
+  });
+  if (!g.slots.some(id => id && MODS[id].kind === 'shot')) g.slots[spots[0]] = 'bolt';
+  g.mana = g.manaMax;
+  return resetGun(g);
+}
+
+function startingGuns() {
+  // three bolts before it needs a breather, so it feels like a gun from the start
+  const pistol = resetGun({ name: 'Scratch Pistol', cap: 4, castDelay: 0.12, recharge: 0.35,
+    manaMax: 140, manaRegen: 55, spread: 3, multi: 1, shuffle: false, mana: 140, speedMul: 1,
+    slots: ['bolt', 'bolt', 'bolt', null] });
+  const blaster = resetGun({ name: 'Old Blaster', cap: 3, castDelay: 0.5, recharge: 1.1,
+    manaMax: 150, manaRegen: 30, spread: 2, multi: 1, shuffle: false, mana: 150, speedMul: 1,
+    slots: ['blast', null, null] });
+  return [pistol, blaster, null, null];
+}
+
+// Work out what the next pull of the trigger fires. Walks the slot list from where
+// the gun left off, piling up modifiers and applying them to the shots that follow.
+// Advances g.idx; the caller rolls it back if there isn't the mana to pay.
+function planCast(g) {
+  const start = g.idx, mods = [], defs = [];
+  let multi = g.multi, cost = 0, manaMul = 1, delay = 0, ran = false, wrapped = 0;
+  for (let guard = 0; defs.length < multi && guard < 64; guard++) {
+    if (g.idx >= g.order.length) {
+      ran = true;
+      // a multicast still owed shots wraps back to the front to find them
+      if (defs.length >= multi || wrapped++ || !defs.length && !mods.length) break;
+      g.idx = 0;
+    }
+    const id = g.slots[g.order[g.idx]];
+    g.idx++;
+    if (!id) continue;
+    const m = MODS[id];
+    if (m.kind === 'passive') continue;
+    if (m.kind === 'mod') {
+      mods.push(m);
+      cost += m.mana || 0;
+      if (m.multi) multi += m.multi;
+      if (m.manaMul) manaMul *= m.manaMul;
+      if (m.d) delay += m.d;
+      continue;
+    }
+    defs.push(m);
+    cost += m.mana;
+  }
+  const shots = defs.map(sm => {
+    const sh = { dmg: sm.dmg, speed: sm.speed, spread: sm.spread + g.spread, size: sm.size,
+      life: sm.life, count: sm.count || 1, bounce: sm.bounce || 0, pierce: sm.pierce || 0,
+      explode: sm.explode || 0, grav: sm.grav || 0, homing: 0, accel: 0, bore: 0,
+      recoil: sm.recoil || 0, col: sm.col };
+    for (const m of mods) if (m.f) m.f(sh);
+    sh.speed *= g.speedMul || 1;
+    delay += sm.delay;
+    return sh;
+  });
+  return { shots, start, cost: cost * manaMul,
+    delay: Math.max(0.03, g.castDelay + delay),
+    wrap: ran || g.idx >= g.order.length };
+}
+
+// what the gun actually does with the mods on it right now
+function gunPassives(g) {
+  let rech = 0, manaMax = 0, manaRegen = 0;
+  for (const id of g.slots) {
+    if (!id) continue;
+    const m = MODS[id];
+    if (m.rech) rech += m.rech;
+    if (m.manaMax) manaMax += m.manaMax;
+    if (m.manaRegen) manaRegen += m.manaRegen;
+  }
+  return { rech, manaMax, manaRegen };
+}
 
 const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
@@ -348,7 +580,24 @@ function makeLevel(seed) {
     enemies.push({ x, y, ty: y, r: 9, phase: rnd() * 6.28, hp: ENEMY_HP, cd: 1 + rnd() * 2, flash: 0, lx: 0, ly: 1 });
   }
 
-  return { mat, img, bgImg, start, portal, enemies };
+  // guns and mods to find: the higher up the cave, the better the roll
+  const pickups = [];
+  for (let a = 0; a < 5000 && pickups.length < 18; a++) {
+    const cx = 8 + Math.floor(rnd() * (CW - 16)), cy = 30 + Math.floor(rnd() * (CH - 100));
+    if (!clear(cx, cy, 6)) continue;
+    const x = cx * CELL, y = cy * CELL;
+    if (Math.hypot(x - start.x, y - start.y) < 130) continue;
+    if (pickups.some(q => Math.hypot(q.x - x, q.y - y) < 110)) continue;
+    const tier = Math.min(1, Math.max(0, (CH - 60 - cy) / (CH - 140)));
+    const guns = pickups.filter(q => q.kind === 'gun').length;
+    if (guns < 5 && (rnd() < 0.3 || pickups.length > 12 && guns < 2)) {
+      pickups.push({ kind: 'gun', x, y, gun: makeGun(rnd, tier), t: rnd() * 6.28 });
+    } else {
+      pickups.push({ kind: 'mod', x, y, id: ALL_IDS[Math.floor(rnd() * ALL_IDS.length)], t: rnd() * 6.28 });
+    }
+  }
+
+  return { mat, img, bgImg, start, portal, enemies, pickups };
 }
 
 const approach = (v, t, a) => (v < t ? Math.min(t, v + a) : Math.max(t, v - a));
@@ -360,7 +609,7 @@ function Game({ input }) {
     const c = cv.current, ctx = c.getContext('2d');
     const seed = 1 + Math.floor(Math.random() * 2147483000);
     const level = makeLevel(seed);
-    const { mat, img, start, portal, enemies } = level;
+    const { mat, img, start, portal, enemies, pickups } = level;
     const total = enemies.length;
 
     const terrain = document.createElement('canvas');
@@ -374,8 +623,9 @@ function Game({ input }) {
     const p = { x: start.x, y: start.y, vx: 0, vy: 0, onGround: false, face: 1, jet: 0,
       fuel: 1, empty: false, hp: PLAYER_HP, hitT: 0, dead: false, kick: 0,
       jx: 0, jy: 0, aim: { on: false, show: false, nx: 1, ny: 0 } };
-    const bullets = [], grenades = [], enemyShots = [], smoke = [], sparks = [], flashes = [];
-    let smokeAcc = 0, time = 0, fireT = 0, camX = 0, camY = 0, camReady = false;
+    const bullets = [], enemyShots = [], smoke = [], sparks = [], flashes = [], toasts = [];
+    let smokeAcc = 0, time = 0, camX = 0, camY = 0, camReady = false;
+    const toast = text => { toasts.push({ text, t: 2.2 }); if (toasts.length > 3) toasts.shift(); };
     let won = false, best = 0, raf, last = performance.now();
 
     const resize = () => {
@@ -455,6 +705,69 @@ function Game({ input }) {
       if (e.hp <= 0) { burst(e.x, e.ty, 16, COL.enemy); enemies.splice(j, 1); }
     }
 
+    // clear rock without the bang, for drilling shots
+    function dig(x, y, R) {
+      const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL;
+      const minX = Math.max(0, Math.floor(cx0 - rc)), maxX = Math.min(CW - 1, Math.ceil(cx0 + rc));
+      const minY = Math.max(0, Math.floor(cy0 - rc)), maxY = Math.min(CH - 1, Math.ceil(cy0 + rc));
+      const d = img.data;
+      let changed = false;
+      for (let cy = minY; cy <= maxY; cy++)
+        for (let cx = minX; cx <= maxX; cx++) {
+          const i = cy * CW + cx;
+          if (!mat[i] || mat[i] === BED) continue;
+          if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
+          mat[i] = 0; d[i * 4 + 3] = 0; changed = true;
+        }
+      if (changed) tctx.putImageData(img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
+    }
+
+    // ---- casting ----
+    // Walk the gun's slot list from where it left off. Modifiers pile up and apply
+    // to the shots that come after them; running off the end triggers the recharge.
+    function peekShot(g) {
+      if (!g) return null;
+      for (let i = g.idx, guard = 0; i < g.order.length && guard < 64; i++, guard++) {
+        const id = g.slots[g.order[i]];
+        if (id && MODS[id].kind === 'shot') return MODS[id];
+      }
+      return null;
+    }
+    function cast(g, gx, gy, nx, ny) {
+      const pas = gunPassives(g);
+      const wrap = () => {
+        g.idx = 0;
+        g.rechT = Math.max(0.15, g.recharge + pas.rech);
+        shuffleOrder(g);
+      };
+      const plan = planCast(g);
+      if (!plan.shots.length) { wrap(); return; }        // modifiers with nothing to modify
+      if (g.mana < plan.cost) { g.idx = plan.start; g.delayT = 0.12; return; }
+      g.mana -= plan.cost;
+
+      const base = Math.atan2(ny, nx);
+      for (const sh of plan.shots) {
+        const n = Math.min(24, Math.max(1, Math.round(sh.count)));
+        for (let i = 0; i < n; i++) {
+          const a = base + (Math.random() - 0.5) * sh.spread * Math.PI / 180;
+          bullets.push({ x: gx + Math.cos(a) * 10, y: gy + Math.sin(a) * 10,
+            vx: Math.cos(a) * sh.speed, vy: Math.sin(a) * sh.speed,
+            life: sh.life, dmg: sh.dmg, size: sh.size, col: sh.col, spin: 0,
+            homing: sh.homing, bounce: sh.bounce, pierce: sh.pierce,
+            explode: sh.explode, grav: sh.grav, accel: sh.accel, bore: sh.bore, hit: null });
+        }
+      }
+      let kick = 0;
+      for (const sh of plan.shots) kick += sh.recoil;
+      if (kick && !p.dead) {
+        kick = Math.min(150, kick * 1.4);
+        p.vx -= Math.cos(base) * kick;
+        p.vy -= Math.sin(base) * kick;
+      }
+      g.delayT = plan.delay;
+      if (plan.wrap) wrap();
+    }
+
     function explode(x, y, R) {
       const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL, ring = rc + 2.5;
       const minX = Math.max(0, Math.floor(cx0 - ring)), maxX = Math.min(CW - 1, Math.ceil(cx0 + ring));
@@ -508,7 +821,7 @@ function Game({ input }) {
 
     function step(dt) {
       time += dt;
-      const weapon = input.current.weapon;
+      const LO = input.current.loadout;
       // movement: thumbstick first, otherwise keyboard (full strength)
       let L = input.current.left;
       if (!L.active) {
@@ -609,47 +922,101 @@ function Game({ input }) {
       if (R.show) p.face = R.nx >= 0 ? 1 : -1;
       else if (Math.abs(p.vx) > 10) p.face = p.vx > 0 ? 1 : -1;
 
-      fireT -= dt;
-      if (R.on && fireT <= 0) {
-        if (weapon === 'grenade') {
-          fireT = GRENADE_RATE;
-          grenades.push({ x: gx + R.nx * 10, y: gy + R.ny * 10, vx: R.nx * GRENADE_SPEED, vy: R.ny * GRENADE_SPEED, life: 3, spin: 0 });
-        } else {
-          fireT = FIRE_RATE;
-          bullets.push({ x: gx + R.nx * 10, y: gy + R.ny * 10, vx: R.nx * BULLET, vy: R.ny * BULLET, life: 1.2 });
-        }
+      // every gun you carry ticks down and tops up its mana, holstered or not
+      for (const g of LO.guns) {
+        if (!g) continue;
+        const pas = gunPassives(g);
+        g.delayT -= dt; g.rechT -= dt;
+        g.mana = Math.min(g.manaMax + pas.manaMax, g.mana + (g.manaRegen + pas.manaRegen) * dt);
       }
+      const gun = LO.guns[LO.sel];
+      if (R.on && gun && gun.delayT <= 0 && gun.rechT <= 0) cast(gun, gx, gy, R.nx, R.ny);
 
-      // ---- player bullets ----
+      // ---- shots ----
       for (let i = bullets.length - 1; i >= 0; i--) {
         const b = bullets[i];
-        b.life -= dt;
-        let dead = b.life <= 0;
-        const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
-        for (let s = 0; s < sn && !dead; s++) {
-          b.x += b.vx * dt / sn; b.y += b.vy * dt / sn;
-          if (solidAt(b.x, b.y)) { burst(b.x - b.vx * 0.004, b.y - b.vy * 0.004, 3, COL.bullet); dead = true; break; }
-          const j = enemyAt(b.x, b.y, 2.5);
-          if (j >= 0) { damageEnemy(j, 1); burst(b.x, b.y, 4, COL.bullet); dead = true; }
+        b.life -= dt; b.spin += dt * 12;
+        let dead = b.life <= 0, boom = false;
+        if (b.grav) b.vy += b.grav * dt;
+        if (b.accel) { const f = 1 + b.accel * dt; b.vx *= f; b.vy *= f; }
+        if (b.homing) {
+          let best = null, bd = 260;
+          for (const e of enemies) {
+            const d = Math.hypot(e.x - b.x, e.ty - b.y);
+            if (d < bd) { bd = d; best = e; }
+          }
+          if (best) {
+            const sp = Math.hypot(b.vx, b.vy) || 1;
+            let ang = Math.atan2(b.vy, b.vx);
+            let diff = Math.atan2(best.ty - b.y, best.x - b.x) - ang;
+            while (diff > Math.PI) diff -= 2 * Math.PI;
+            while (diff < -Math.PI) diff += 2 * Math.PI;
+            ang += clamp(diff, -b.homing * dt, b.homing * dt);
+            b.vx = Math.cos(ang) * sp; b.vy = Math.sin(ang) * sp;
+          }
         }
+        const sn = Math.max(1, Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2));
+        for (let st = 0; st < sn && !dead && !boom; st++) {
+          const nx = b.x + b.vx * dt / sn, ny = b.y + b.vy * dt / sn;
+          const j = enemyAt(nx, ny, b.size + 1);
+          if (j >= 0 && !(b.hit && b.hit.has(enemies[j]))) {
+            const e = enemies[j];
+            damageEnemy(j, b.dmg);
+            burst(nx, ny, 4, b.col);
+            b.x = nx; b.y = ny;
+            if (b.explode) { boom = true; break; }
+            if (b.pierce > 0) { b.pierce--; (b.hit || (b.hit = new Set())).add(e); }
+            else { dead = true; break; }
+          }
+          if (solidAt(nx, ny)) {
+            b.x = nx; b.y = ny;
+            if (b.bore > 0) { dig(nx, ny, b.bore); continue; }
+            if (b.explode) { boom = true; break; }
+            if (b.bounce > 0) {
+              b.bounce--;
+              const hx = solidAt(nx, b.y), hy = solidAt(b.x, ny);
+              if (hx || !hy) b.vx = -b.vx;
+              if (hy || !hx) b.vy = -b.vy;
+              b.x -= b.vx * dt / sn; b.y -= b.vy * dt / sn;
+              b.vx *= 0.92; b.vy *= 0.92;
+              break;
+            }
+            burst(b.x, b.y, 3, b.col);
+            dead = true;
+            break;
+          }
+          b.x = nx; b.y = ny;
+        }
+        if (boom) { explode(b.x, b.y, b.explode); dead = true; }
         if (dead) bullets.splice(i, 1);
       }
 
-      // ---- grenades ----
-      for (let i = grenades.length - 1; i >= 0; i--) {
-        const g = grenades[i];
-        g.life -= dt; g.spin += dt * 12;
-        g.vy += GRENADE_GRAVITY * dt;
-        let boom = g.life <= 0;
-        const sn = Math.ceil(Math.hypot(g.vx, g.vy) * dt / 2);
-        for (let s = 0; s < sn && !boom; s++) {
-          const nx = g.x + g.vx * dt / sn, ny = g.y + g.vy * dt / sn;
-          if (solidAt(nx, ny) || enemyAt(nx, ny, 3) >= 0) { boom = true; break; }
-          g.x = nx; g.y = ny;
+      // ---- pickups ----
+      for (let i = pickups.length - 1; i >= 0; i--) {
+        const q = pickups[i];
+        if (Math.abs(q.x - pcx) > 18 || Math.abs(q.y - pcy) > 20) { q.lock = false; continue; }
+        if (q.lock || p.dead) continue;
+        if (q.kind === 'mod') {
+          LO.bag.push(q.id);
+          toast('Found ' + MODS[q.id].name);
+          pickups.splice(i, 1);
+        } else {
+          const free = LO.guns.indexOf(null);
+          if (free >= 0) {
+            LO.guns[free] = resetGun(q.gun);
+            LO.sel = free;
+            toast('Picked up ' + q.gun.name);
+            pickups.splice(i, 1);
+          } else {
+            const old = LO.guns[LO.sel];               // full hands: swap, leave the old one here
+            LO.guns[LO.sel] = resetGun(q.gun);
+            q.gun = old; q.lock = true;
+            toast('Swapped for ' + LO.guns[LO.sel].name);
+          }
         }
-        if (Math.random() < 0.5) smoke.push({ x: g.x, y: g.y, vx: 0, vy: -8, r: 1.2, life: 0.5, max: 0.5 });
-        if (boom) { explode(g.x, g.y, BLAST); grenades.splice(i, 1); }
+        input.current.notify();
       }
+      for (let i = toasts.length - 1; i >= 0; i--) if ((toasts[i].t -= dt) <= 0) toasts.splice(i, 1);
 
       // ---- enemies ----
       for (const e of enemies) {
@@ -784,13 +1151,48 @@ function Game({ input }) {
       // projectiles
       ctx.fillStyle = COL.enemy;
       for (const b of enemyShots) { ctx.beginPath(); ctx.arc(b.x, b.y, 3, 0, Math.PI * 2); ctx.fill(); }
-      ctx.fillStyle = COL.bullet;
-      for (const b of bullets) { ctx.beginPath(); ctx.arc(b.x, b.y, 2, 0, Math.PI * 2); ctx.fill(); }
-      for (const g of grenades) {
-        ctx.fillStyle = COL.grenade;
-        ctx.beginPath(); ctx.arc(g.x, g.y, 3.5, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = Math.sin(g.spin) > 0 ? COL.flame2 : COL.visor;
-        ctx.fillRect(g.x - 1, g.y - 1, 2, 2);
+      for (const b of bullets) {
+        ctx.fillStyle = b.col;
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2); ctx.fill();
+        if (b.explode) {
+          ctx.fillStyle = Math.sin(b.spin) > 0 ? COL.flame2 : COL.visor;
+          ctx.fillRect(b.x - 1, b.y - 1, 2, 2);
+        }
+        if (b.homing) {
+          ctx.globalAlpha = 0.35; ctx.fillStyle = COL.enemy;
+          ctx.beginPath(); ctx.arc(b.x, b.y, b.size + 2.5, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      // pickups
+      for (const q of pickups) {
+        const qy = q.y + Math.sin(time * 2 + q.t) * 3;
+        if (qy > camY + vh + 30 || qy < camY - 30 || q.x < camX - 30 || q.x > camX + vw + 30) continue;
+        if (q.kind === 'gun') {
+          ctx.globalAlpha = 0.25; ctx.fillStyle = COL.bullet;
+          ctx.beginPath(); ctx.arc(q.x, qy, 13, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = '#c9ccd4';
+          ctx.fillRect(q.x - 9, qy - 2, 14, 4);
+          ctx.fillRect(q.x - 9, qy - 1, 4, 7);
+          ctx.fillStyle = COL.bullet;
+          ctx.fillRect(q.x + 4, qy - 1, 3, 2);
+        } else {
+          const m = MODS[q.id];
+          ctx.globalAlpha = 0.22; ctx.fillStyle = m.col;
+          ctx.beginPath(); ctx.arc(q.x, qy, 12, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = m.col;
+          ctx.beginPath();
+          ctx.moveTo(q.x, qy - 8); ctx.lineTo(q.x + 8, qy); ctx.lineTo(q.x, qy + 8); ctx.lineTo(q.x - 8, qy);
+          ctx.fill();
+          ctx.fillStyle = '#12141a';
+          ctx.font = '600 9px system-ui, sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(m.glyph, q.x, qy + 0.5);
+          ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+        }
       }
 
       // sparks and debris
@@ -825,14 +1227,17 @@ function Game({ input }) {
       }
 
       // aim, grenade arc preview, gun
-      const R = p.aim, weapon = input.current.weapon;
+      const R = p.aim;
+      const held = input.current.loadout.guns[input.current.loadout.sel];
+      const next = peekShot(held);
+      const lobbed = next && next.grav;
       const ax = R.show ? R.nx : p.face, ay = R.show ? R.ny : 0;
       const gy = p.y + PH * 0.4;
-      if (!p.dead && R.show && weapon === 'grenade') {
-        let x = pcx + R.nx * 10, y = gy + R.ny * 10, vx = R.nx * GRENADE_SPEED, vy = R.ny * GRENADE_SPEED;
-        ctx.fillStyle = COL.grenade;
+      if (!p.dead && R.show && lobbed) {
+        let x = pcx + R.nx * 10, y = gy + R.ny * 10, vx = R.nx * next.speed, vy = R.ny * next.speed;
+        ctx.fillStyle = next.col;
         for (let i = 0; i < 40; i++) {
-          vy += GRENADE_GRAVITY * 0.03; x += vx * 0.03; y += vy * 0.03;
+          vy += next.grav * 0.03; x += vx * 0.03; y += vy * 0.03;
           if (solidAt(x, y)) break;
           if (i % 2 === 0) { ctx.globalAlpha = 0.7 * (1 - i / 40); ctx.fillRect(x - 1, y - 1, 2, 2); }
         }
@@ -840,8 +1245,8 @@ function Game({ input }) {
       }
       if (!p.dead) {
         ctx.strokeStyle = COL.visor; ctx.lineCap = 'round';
-        ctx.lineWidth = weapon === 'grenade' ? 4.5 : 2.5;
-        const len = weapon === 'grenade' ? 10 : 12;
+        ctx.lineWidth = lobbed ? 4.5 : 2.5;
+        const len = lobbed ? 10 : 12;
         ctx.beginPath(); ctx.moveTo(pcx, gy); ctx.lineTo(pcx + ax * len, gy + ay * len); ctx.stroke();
       }
 
@@ -872,22 +1277,42 @@ function Game({ input }) {
       };
       bar('Health', 58, p.hp / PLAYER_HP, p.hp <= 30 ? COL.player : COL.hp);
       bar('Fuel', 78, p.fuel, p.empty ? COL.player : COL.flame);
+      const gpas = held ? gunPassives(held) : null;
+      if (held) bar('Mana', 98, held.mana / (held.manaMax + gpas.manaMax),
+        held.rechT > 0 ? COL.muted : '#6db8ff');
+
+      ctx.font = '600 12px system-ui, sans-serif';
+      ctx.fillStyle = held && held.rechT > 0 ? COL.flame : COL.muted;
+      ctx.fillText(held ? (held.rechT > 0 ? 'RECHARGING' : held.name) : 'No gun', 12, 124);
       ctx.fillStyle = COL.muted;
       ctx.font = '500 12px system-ui, sans-serif';
-      ctx.fillText(VERSION, 12, 106);
+      ctx.fillText(VERSION, 12, 142);
+
+      // pickup messages
+      ctx.textAlign = 'center';
+      const ch = c.height / dpr;
+      for (let i = 0; i < toasts.length; i++) {
+        const tm = toasts[i];
+        ctx.globalAlpha = Math.min(1, tm.t * 1.5);
+        ctx.fillStyle = COL.text;
+        ctx.font = '600 14px system-ui, sans-serif';
+        ctx.fillText(tm.text, cw / 2, ch - 18 - (toasts.length - 1 - i) * 19);
+      }
+      ctx.globalAlpha = 1;
+      ctx.textAlign = 'left';
 
       ctx.textAlign = 'center';
       if (time < 3) {
         ctx.fillStyle = COL.text;
         ctx.globalAlpha = Math.min(1, 3 - time);
         ctx.font = '700 22px system-ui, sans-serif';
-        ctx.fillText(THEME.name, cw / 2, 130);
+        ctx.fillText(THEME.name, cw / 2, 196);
         ctx.font = '500 14px system-ui, sans-serif';
-        ctx.fillText('Find the green exit at the top', cw / 2, 152);
-        ctx.fillText('Blast through tight spots', cw / 2, 170);
+        ctx.fillText('Find the green exit at the top', cw / 2, 218);
+        ctx.fillText('Grab guns and mods, build them in Mods', cw / 2, 236);
         ctx.globalAlpha = 1;
       }
-      let msgY = 130;
+      let msgY = 196;
       ctx.fillStyle = COL.text;
       if (p.dead) {
         ctx.font = '700 22px system-ui, sans-serif';
@@ -927,7 +1352,8 @@ function Game({ input }) {
     const loop = t => {
       const dt = Math.max(0, Math.min(0.033, (t - last) / 1000));
       last = t;
-      step(dt); draw();
+      if (!input.current.paused) step(dt);
+      draw();
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -991,18 +1417,139 @@ function Stick({ size, kind, input }) {
   );
 }
 
+function Editor({ input, close, refresh }) {
+  const LO = input.current.loadout;
+  const [sel, setSel] = useState(LO.sel);
+  const [drag, setDrag] = useState(null);
+  const [info, setInfo] = useState(null);
+  const gun = LO.guns[sel];
+
+  const drop = (x, y, id, from) => {
+    const el = document.elementFromPoint(x, y);
+    const node = el && el.closest ? el.closest('[data-drop]') : null;
+    const to = node && node.dataset.drop;
+    const g = LO.guns[sel];
+    if (!to) return;
+    if (to === 'bag') {
+      if (from.type === 'slot' && g) { g.slots[from.i] = null; LO.bag.push(id); }
+    } else if (to.slice(0, 5) === 'slot:' && g) {
+      const k = Number(to.slice(5));
+      if (from.type === 'bag') {
+        LO.bag.splice(from.i, 1);
+        if (g.slots[k]) LO.bag.push(g.slots[k]);
+        g.slots[k] = id;
+      } else if (from.i !== k) {
+        const swap = g.slots[k];
+        g.slots[k] = id;
+        g.slots[from.i] = swap;
+      }
+    }
+    if (g) resetGun(g);
+    refresh();
+  };
+
+  const startDrag = (id, from) => e => {
+    e.preventDefault();
+    setInfo(id);
+    setDrag({ id, from, x: e.clientX, y: e.clientY });
+    const move = ev => setDrag(d => (d ? { id: d.id, from: d.from, x: ev.clientX, y: ev.clientY } : d));
+    const up = ev => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      setDrag(null);
+      drop(ev.clientX, ev.clientY, id, from);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  };
+
+  const tile = (id, from, key) => {
+    const m = id ? MODS[id] : null;
+    return h('div', {
+        key,
+        className: 'tile' + (m ? '' : ' hole') + (m && m.kind === 'shot' ? ' shot' : ''),
+        style: m ? { borderColor: m.col, color: m.col } : null,
+        'data-drop': from.type === 'slot' ? 'slot:' + from.i : 'bag',
+        onPointerDown: m ? startDrag(id, from) : undefined,
+      },
+      m ? h('span', { className: 'tg' }, m.glyph) : h('span', { className: 'tg' }, '+'),
+      m ? h('span', { className: 'tn' }, m.name) : null
+    );
+  };
+
+  const stat = (k, v) => h('div', { className: 'st' }, h('b', null, String(v)), h('span', null, k));
+  const shown = info && MODS[info];
+
+  return h('div', { className: 'sheet' },
+    h('div', { className: 'shead' },
+      h('h2', null, 'Guns & Mods'),
+      h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Done')
+    ),
+    h('div', { className: 'gtabs' },
+      LO.guns.map((g, i) => h('button', {
+          key: i,
+          className: 'gtab' + (g ? '' : ' empty') + (i === sel ? ' on' : ''),
+          onPointerDown: e => { e.preventDefault(); if (g) { setSel(i); LO.sel = i; refresh(); } },
+        },
+        h('span', { className: 'gname' }, g ? g.name : 'Empty'),
+        h('span', { className: 'gsub' }, g ? g.cap + ' slots' : '—')
+      ))
+    ),
+    gun ? h('div', { className: 'stats' },
+      stat('cast delay', gun.castDelay.toFixed(2) + 's'),
+      stat('recharge', gun.recharge.toFixed(2) + 's'),
+      stat('mana', Math.round(gun.manaMax) + ' +' + Math.round(gun.manaRegen) + '/s'),
+      stat('spread', gun.spread.toFixed(1) + '\u00b0'),
+      stat('per cast', gun.multi),
+      stat('shot speed', 'x' + (gun.speedMul || 1).toFixed(2)),
+      stat('order', gun.shuffle ? 'shuffle' : 'in order')
+    ) : null,
+    h('p', { className: 'lab' }, gun ? 'On the gun — cast left to right' : 'No gun in this slot'),
+    gun ? h('div', { className: 'slotRow' },
+      gun.slots.map((id, i) => tile(id, { type: 'slot', i }, i))
+    ) : null,
+    h('p', { className: 'lab' }, 'Collected mods' + (LO.bag.length ? '' : ' — none yet, find them in the cave')),
+    h('div', { className: 'bag scroll', 'data-drop': 'bag' },
+      LO.bag.map((id, i) => tile(id, { type: 'bag', i }, 'b' + i))
+    ),
+    h('div', { className: 'info' }, shown
+      ? h('span', null, h('b', null, shown.name), ' — ',
+          shown.kind === 'shot' ? 'shot, ' + shown.mana + ' mana'
+            : shown.kind === 'passive' ? 'always on: ' + shown.info
+            : shown.info + (shown.mana ? ', +' + shown.mana + ' mana' : ''))
+      : 'Drag a mod onto the gun. Modifiers change the shots to their right.'),
+    drag ? h('div', { className: 'ghost',
+      style: { left: drag.x, top: drag.y, borderColor: MODS[drag.id].col, color: MODS[drag.id].col } },
+      MODS[drag.id].glyph) : null
+  );
+}
+
 function App() {
   const blank = () => ({ active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false });
   const input = useRef({
-    left: blank(), right: blank(), weapon: 'gun',
+    left: blank(), right: blank(),
+    loadout: { guns: startingGuns(), bag: [], sel: 0 },
+    paused: false, notify: () => {},
     keys: { w: false, a: false, s: false, d: false },
     mouse: { x: 0, y: 0, inside: false, down: false },
   });
   const [size, setSize] = useState(150);
   const [run, setRun] = useState(0);
-  const [weapon, setWeapon] = useState('gun');
+  const [edit, setEdit] = useState(false);
+  const [, bump] = useState(0);
+  const refresh = () => bump(n => n + 1);
+  input.current.notify = refresh;
+  input.current.paused = edit;
 
-  const select = id => { input.current.weapon = id; setWeapon(id); };
+  const LO = input.current.loadout;
+  const select = i => { if (LO.guns[i]) { LO.sel = i; refresh(); } };
+  const restart = () => {
+    input.current.loadout = { guns: startingGuns(), bag: [], sel: 0 };
+    setEdit(false);
+    setRun(r => r + 1);
+  };
 
   useEffect(() => {
     const fit = () => setSize(Math.max(80, Math.floor(Math.min((window.innerWidth - 36) / 2, window.innerHeight * 0.28))));
@@ -1012,7 +1559,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const stop = e => e.preventDefault();
+    const stop = e => { if (!e.target.closest || !e.target.closest('.scroll')) e.preventDefault(); };
     document.addEventListener('contextmenu', stop);
     document.addEventListener('touchmove', stop, { passive: false });
 
@@ -1020,10 +1567,10 @@ function App() {
     const key = down => e => {
       const k = e.key.toLowerCase();
       if (map[k]) { input.current.keys[map[k]] = down; e.preventDefault(); }
-      if (down && k >= '1' && k <= '4') {
-        const slot = SLOTS[Number(k) - 1];
-        if (slot) select(slot.id);
-      }
+      if (!down) return;
+      if (k >= '1' && k <= '4') select(Number(k) - 1);
+      if (k === 'e' || k === 'tab') { e.preventDefault(); setEdit(v => !v); }
+      if (k === 'escape') setEdit(false);
     };
     const kd = key(true), ku = key(false);
     const blur = () => {
@@ -1042,40 +1589,35 @@ function App() {
     };
   }, []);
 
-  const cycleWeapon = e => {
-    e.preventDefault();
-    const owned = SLOTS.filter(Boolean);
-    const i = owned.findIndex(w => w.id === input.current.weapon);
-    select(owned[(i + 1) % owned.length].id);
-  };
-  const current = SLOTS.find(w => w && w.id === weapon);
-
   return h('div', { className: 'app' },
     h('div', { className: 'view' },
       h(Game, { key: run, input }),
-      h('button', { className: 'reset', onClick: () => setRun(r => r + 1) }, 'Restart')
+      h('button', { className: 'reset', onClick: restart }, 'Restart')
     ),
     h('div', { className: 'controls' },
       h('div', { className: 'toolbar' },
         h('div', { className: 'slots' },
-          SLOTS.map((slot, i) => h('button', {
+          LO.guns.map((g, i) => h('button', {
               key: i,
-              className: 'slot' + (slot ? '' : ' empty') + (slot && slot.id === weapon ? ' on' : ''),
-              title: slot ? slot.name + ' (' + (i + 1) + ')' : 'Empty slot',
-              onPointerDown: e => { e.preventDefault(); if (slot) select(slot.id); },
+              className: 'slot' + (g ? '' : ' empty') + (i === LO.sel ? ' on' : ''),
+              title: g ? g.name : 'Empty slot',
+              onPointerDown: e => { e.preventDefault(); select(i); },
             },
             h('span', { className: 'num' }, i + 1),
-            slot && h('span', { className: 'ico ' + slot.id })
+            h('span', { className: 'gname' }, g ? g.name : '—'),
+            g ? h('span', { className: 'gsub' }, g.slots.filter(Boolean).length + '/' + g.cap) : null
           ))
         ),
-        h('button', { className: 'weapon ' + weapon, onPointerDown: cycleWeapon },
-          h('span', { className: 'wicon' }), current ? current.name : '')
+        h('button', { className: 'weapon', onPointerDown: e => { e.preventDefault(); setEdit(true); } },
+          h('span', { className: 'wicon' }), 'Mods',
+          LO.bag.length ? h('b', { className: 'badge' }, LO.bag.length) : null)
       ),
       h('div', { className: 'sticks' },
         h(Stick, { size, kind: 'left', input }),
         h(Stick, { size, kind: 'right', input })
       )
-    )
+    ),
+    edit ? h(Editor, { input, refresh, close: () => setEdit(false) }) : null
   );
 }
 
