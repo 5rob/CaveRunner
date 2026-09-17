@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v12</title>
+<title>CaveRunner v13</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -103,6 +103,37 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   transform:translate(-50%,-50%);pointer-events:none;opacity:.9}
 .info{min-height:30px;font-size:12px;color:var(--muted);padding:7px 2px 0}
 .info b{color:var(--text)}
+
+/* ---- mod detail card ---- */
+.shade{position:fixed;inset:0;z-index:27;background:rgba(0,0,0,0.42)}
+.pop{position:fixed;z-index:28;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));
+  max-height:82%;overflow-y:auto;background:var(--btn);border:1px solid var(--ring);
+  border-radius:15px;padding:12px 13px 14px;box-shadow:0 12px 40px rgba(0,0,0,0.35)}
+.phead{display:flex;align-items:center;gap:10px}
+.pglyph{width:42px;height:42px;flex:0 0 auto;border:2px solid;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:20px}
+.ptitle{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px}
+.ptitle b{font-size:16px}
+.ptitle span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.pclose{flex:0 0 auto;width:34px;height:34px;border-radius:17px;border:1px solid var(--ring);
+  background:var(--pad);color:var(--text);font-size:19px;line-height:1;padding:0}
+.pinfo{margin:9px 0 0;font-size:13px}
+.prows{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:9px}
+.prow{background:var(--pad);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--muted);
+  display:flex;gap:6px;align-items:baseline}
+.prow b{font-size:12px;color:var(--text)}
+.pdemo{margin-top:11px;border-top:1px solid var(--ring);padding-top:9px;
+  display:flex;flex-direction:column;gap:9px}
+.drow{display:flex;align-items:flex-start;gap:8px}
+.dmark{flex:0 0 auto;width:18px;font-size:14px;font-weight:700;line-height:20px;text-align:center}
+.dmark.yes{color:#3aa76d}
+.dmark.no{color:#d5563a}
+.dtiles{display:flex;gap:4px;flex-wrap:wrap}
+.dtile{border:1px solid;border-radius:6px;padding:2px 6px;display:flex;align-items:center;gap:4px}
+.dtile b{font-size:12px;line-height:1}
+.dtile i{font-style:normal;font:600 10px system-ui,sans-serif;color:var(--text);opacity:.8}
+.dtile.off{opacity:.42}
+.dnote{display:block;font-size:11px;color:var(--muted);margin-top:3px}
 .reset{position:absolute;top:10px;right:10px;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.35);
   color:#e9ecf2;border-radius:8px;padding:6px 12px;font:inherit;font-size:13px}
 </style>
@@ -123,7 +154,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v12';
+const VERSION = 'v13';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -157,18 +188,25 @@ const COL = {
 // work from anywhere on the gun.
 const MODS = {
   bolt:    { name: 'Bolt', kind: 'shot', glyph: '•', col: '#ffc93c', mana: 5,
+             info: 'Cheap all-rounder',
              dmg: 1, speed: 540, spread: 2, delay: 0.10, size: 2, life: 1.2, recoil: 6 },
   spark:   { name: 'Spark', kind: 'shot', glyph: '·', col: '#ffe066', mana: 3,
+             info: 'Fast, weak and nearly free',
              dmg: 0.5, speed: 720, spread: 5, delay: 0.05, size: 1.5, life: 0.8, recoil: 2 },
   slug:    { name: 'Slug', kind: 'shot', glyph: '⬤', col: '#e88a3c', mana: 20,
+             info: 'Slow and very heavy',
              dmg: 4, speed: 320, spread: 1, delay: 0.26, size: 4, life: 1.6, recoil: 45 },
   buck:    { name: 'Buckshot', kind: 'shot', glyph: '⁙', col: '#ffb347', mana: 12,
+             info: 'Five pellets in a cone',
              dmg: 0.7, speed: 460, spread: 15, delay: 0.32, size: 2, life: 0.7, count: 5, recoil: 32 },
   lance:   { name: 'Lance', kind: 'shot', glyph: '➤', col: '#7ad7ff', mana: 20,
+             info: 'Very fast, punches through two',
              dmg: 2, speed: 900, spread: 0.6, delay: 0.28, size: 2, life: 1.2, pierce: 2, recoil: 22 },
   orb:     { name: 'Bounce Orb', kind: 'shot', glyph: '◍', col: '#9ef07a', mana: 8,
+             info: 'Ricochets off rock ten times',
              dmg: 2, speed: 300, spread: 0.6, delay: 0.14, size: 3.5, life: 4, bounce: 10, recoil: 8 },
   blast:   { name: 'Blast', kind: 'shot', glyph: '✹', col: '#7cc04f', mana: 28,
+             info: 'Lobbed, explodes and digs',
              dmg: 2, speed: 380, spread: 2, delay: 0.5, size: 3.5, life: 3, grav: 600,
              explode: 28, recoil: 25 },
 
@@ -334,6 +372,49 @@ function planCast(g) {
   return { shots, start, cost: cost * manaMul,
     delay: Math.max(0.03, g.castDelay + delay),
     wrap: ran || !more };
+}
+
+// What does this mod actually do? Rather than describing it by hand, run a plain
+// bolt through the planner with and without it and report whatever changed.
+const PREVIEW_FIELDS = [['dmg', 'damage'], ['speed', 'speed'], ['spread', 'spread', '\u00b0'],
+  ['size', 'size'], ['life', 'flight time', 's'], ['bounce', 'bounces'], ['pierce', 'pierce'],
+  ['homing', 'homing'], ['explode', 'blast radius'], ['bore', 'drill'], ['recoil', 'recoil'],
+  ['accel', 'acceleration']];
+const num = v => {
+  const r = Math.round(v * 100) / 100;
+  return String(r);
+};
+function previewPlan(slots) {
+  return planCast(resetGun({ name: 'p', cap: slots.length, castDelay: 0, recharge: 1,
+    manaMax: 99999, manaRegen: 0, spread: 0, multi: 1, shuffle: false, mana: 99999,
+    speedMul: 1, slots }));
+}
+function modPreview(id) {
+  const m = MODS[id];
+  if (m.kind === 'passive') return { rows: [] };
+  if (m.kind === 'shot') {
+    const p = previewPlan([id]);
+    const sh = p.shots[0], rows = [['mana', num(p.cost)], ['cast delay', num(p.delay) + 's']];
+    for (const [key, label, unit] of PREVIEW_FIELDS) {
+      if (!sh[key]) continue;
+      rows.push([label, num(sh[key]) + (unit || '')]);
+    }
+    if (sh.count > 1) rows.splice(2, 0, ['pellets', num(sh.count)]);
+    return { rows };
+  }
+  const a = previewPlan(['bolt']);
+  const b = previewPlan([id, 'bolt', 'bolt', 'bolt', 'bolt']);
+  const rows = [];
+  const push = (label, x, y, unit) => {
+    if (Math.abs(x - y) < 1e-6) return;
+    rows.push([label, num(x) + (unit || '') + ' \u2192 ' + num(y) + (unit || '')]);
+  };
+  push('shots per pull', a.shots.length, b.shots.length);
+  push('mana', a.cost, b.cost);
+  push('cast delay', a.delay, b.delay, 's');
+  const sa = a.shots[0], sb = b.shots[0];
+  if (sa && sb) for (const [key, label, unit] of PREVIEW_FIELDS) push(label, sa[key] || 0, sb[key] || 0, unit);
+  return { rows };
 }
 
 // what the gun actually does with the mods on it right now
@@ -1452,17 +1533,20 @@ function Editor({ input, close, refresh }) {
     refresh();
   };
 
+  const SLOP = 7;                      // move further than this and it's a drag, not a tap
   const startDrag = (id, from) => e => {
     e.preventDefault();
-    setInfo(id);
-    setDrag({ id, from, x: e.clientX, y: e.clientY });
-    const move = ev => setDrag(d => (d ? { id: d.id, from: d.from, x: ev.clientX, y: ev.clientY } : d));
+    const sx = e.clientX, sy = e.clientY;
+    setDrag({ id, from, x: sx, y: sy, armed: false });
+    const move = ev => setDrag(d => d && { id: d.id, from: d.from, x: ev.clientX, y: ev.clientY,
+      armed: d.armed || Math.hypot(ev.clientX - sx, ev.clientY - sy) > SLOP });
     const up = ev => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
       setDrag(null);
-      drop(ev.clientX, ev.clientY, id, from);
+      if (Math.hypot(ev.clientX - sx, ev.clientY - sy) <= SLOP) setInfo(cur => (cur === id ? null : id));
+      else drop(ev.clientX, ev.clientY, id, from);
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
@@ -1476,6 +1560,7 @@ function Editor({ input, close, refresh }) {
         className: 'tile' + (m ? '' : ' hole') + (m && m.kind === 'shot' ? ' shot' : ''),
         style: m ? { borderColor: m.col, color: m.col } : null,
         'data-drop': from.type === 'slot' ? 'slot:' + from.i : 'bag',
+        'data-mod': id || undefined,
         onPointerDown: m ? startDrag(id, from) : undefined,
       },
       m ? h('span', { className: 'tg' }, m.glyph) : h('span', { className: 'tg' }, '+'),
@@ -1485,6 +1570,63 @@ function Editor({ input, close, refresh }) {
 
   const stat = (k, v) => h('div', { className: 'st' }, h('b', null, String(v)), h('span', null, k));
   const shown = info && MODS[info];
+
+  const card = shown ? (() => {
+    const m = shown;
+    const kind = m.kind === 'shot' ? 'Shot' : m.kind === 'passive' ? 'Always on' : 'Modifier';
+    const rows = modPreview(info).rows;
+    const dtile = (did, key, faded) => h('div', {
+        key, className: 'dtile' + (faded ? ' off' : ''),
+        style: { borderColor: MODS[did].col, color: MODS[did].col } },
+      h('b', null, MODS[did].glyph), h('i', null, MODS[did].name));
+    const drow = (ok, tiles, note, key) => h('div', { className: 'drow', key },
+      h('span', { className: 'dmark ' + (ok ? 'yes' : 'no') }, ok ? '\u2713' : '\u2717'),
+      h('div', null,
+        h('div', { className: 'dtiles' }, tiles),
+        h('span', { className: 'dnote' }, note)));
+    let demo;
+    if (m.kind === 'passive') {
+      demo = [drow(true, [dtile(info, 'a'), dtile('bolt', 'b')], 'counts wherever you put it', 1),
+              drow(true, [dtile('bolt', 'c'), dtile(info, 'd')], 'same here — order does not matter', 2)];
+    } else if (m.kind === 'shot') {
+      demo = [drow(true, [dtile('dmg_up', 'a'), dtile(info, 'b')], 'modifiers go to its left', 1),
+              drow(false, [dtile(info, 'c'), dtile('dmg_up', 'd', true)], 'a modifier here comes too late', 2)];
+    } else if (m.multi) {
+      demo = [drow(true, [dtile(info, 'a'), dtile('bolt', 'b'), dtile('bolt', 'c')],
+                'both bolts fire on one pull', 1),
+              drow(false, [dtile('bolt', 'd'), dtile(info, 'e', true)], 'nothing after it to gather', 2)];
+    } else {
+      demo = [drow(true, [dtile(info, 'a'), dtile('bolt', 'b')], 'the bolt gets the effect', 1),
+              drow(false, [dtile('bolt', 'c'), dtile(info, 'd', true)], 'too late — the bolt already fired', 2)];
+    }
+    const close = e => { e.preventDefault(); setInfo(null); };
+    const behind = e => {
+      e.preventDefault();
+      const el = e.currentTarget;
+      el.style.pointerEvents = 'none';                 // see what the finger is really over
+      const under = document.elementFromPoint(e.clientX, e.clientY);
+      el.style.pointerEvents = '';
+      const tile = under && under.closest ? under.closest('[data-mod]') : null;
+      const next = tile && tile.dataset.mod;
+      setInfo(next && next !== info ? next : null);    // same mod closes, another one switches
+    };
+    return h('div', { key: 'card' },
+      h('div', { className: 'shade', onPointerDown: behind }),
+      h('div', { className: 'pop' },
+        h('div', { className: 'phead' },
+          h('div', { className: 'pglyph', style: { borderColor: m.col, color: m.col } }, m.glyph),
+          h('div', { className: 'ptitle' },
+            h('b', null, m.name),
+            h('span', null, kind + (m.mana ? ' \u00b7 ' + m.mana + ' mana' : ''))),
+          h('button', { className: 'pclose', onPointerDown: close }, '\u00d7')
+        ),
+        m.info ? h('p', { className: 'pinfo' }, m.info) : null,
+        rows.length ? h('div', { className: 'prows' },
+          rows.map((r, i) => h('div', { className: 'prow', key: i },
+            h('span', null, r[0]), h('b', null, r[1])))) : null,
+        h('div', { className: 'pdemo' }, demo)
+      ));
+  })() : null;
 
   return h('div', { className: 'sheet' },
     h('div', { className: 'shead' },
@@ -1518,15 +1660,11 @@ function Editor({ input, close, refresh }) {
     h('div', { className: 'bag scroll', 'data-drop': 'bag' },
       LO.bag.map((id, i) => tile(id, { type: 'bag', i }, 'b' + i))
     ),
-    h('div', { className: 'info' }, shown
-      ? h('span', null, h('b', null, shown.name), ' — ',
-          shown.kind === 'shot' ? 'shot, ' + shown.mana + ' mana'
-            : shown.kind === 'passive' ? 'always on: ' + shown.info
-            : shown.info + (shown.mana ? ', +' + shown.mana + ' mana' : ''))
-      : 'Drag a mod onto the gun. Modifiers change the shots to their right.'),
-    drag ? h('div', { className: 'ghost',
+    h('div', { className: 'info' }, 'Drag a mod to move it. Tap one to see what it does.'),
+    drag && drag.armed ? h('div', { className: 'ghost',
       style: { left: drag.x, top: drag.y, borderColor: MODS[drag.id].col, color: MODS[drag.id].col } },
-      MODS[drag.id].glyph) : null
+      MODS[drag.id].glyph) : null,
+    card
   );
 }
 
