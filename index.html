@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v24</title>
+<title>CaveRunner v25</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -95,6 +95,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   display:flex;gap:5px;align-items:baseline}
 .st b{font-size:12px;color:var(--text)}
 .lab{font-size:11px;color:var(--muted);margin:0 0 5px;text-transform:uppercase;letter-spacing:.06em}
+.legend{display:flex;flex-wrap:wrap;gap:3px 8px;margin:0 0 7px}
+.lg{display:flex;align-items:center;gap:4px;font:500 9.5px system-ui,sans-serif;color:var(--muted)}
+.lg i{width:8px;height:8px;border-radius:2px;display:block}
 .slotRow{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:flex-start}
 .grp{display:flex;flex-direction:column;gap:2px}
 .gtiles{display:flex;gap:6px;padding:5px;border:1.5px solid var(--ring);border-radius:12px;
@@ -111,7 +114,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .fx.down u{color:var(--bad)}
 .grp.cold .gtiles{border-style:dashed;border-color:var(--pad);background:transparent;opacity:.6}
 .bag{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;overflow-y:auto;
-  flex:1 1 0;min-height:70px;border-radius:9px;background:var(--pad);padding:6px}
+  flex:1 1 0;min-height:70px;border-radius:9px;background:var(--pad);padding:6px;
+  scroll-padding-bottom:40vh}
+.sheet.withcard .bag{padding-bottom:40vh}
 .tile{width:60px;height:56px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
   touch-action:none;cursor:grab;overflow:hidden;flex:0 0 auto}
@@ -220,7 +225,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v24';
+const VERSION = 'v25';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -343,6 +348,30 @@ const MODS = {
   battery:  { name: 'Mana Battery', kind: 'passive', glyph: '▮', col: '#46c48c', mana: 0,
               info: '+60 mana, +30 regen', manaMax: 60, manaRegen: 30 },
 };
+// Mods are coloured by what they are FOR, not one colour each: an amber shot
+// needs a blue mod to speed it up, a red one to hit harder, and so on. The
+// projectile colours in `col` are separate and stay distinct in flight.
+const FAMILIES = {
+  shots:   { name: 'Shot', col: '#ffc93c' },
+  dmg:     { name: 'Damage', col: '#ff5a52' },
+  vel:     { name: 'Speed & range', col: '#63c8ff' },
+  path:    { name: 'Flight path', col: '#b57cff' },
+  pattern: { name: 'Shot pattern', col: '#ff7ac8' },
+  upkeep:  { name: 'Gun upkeep', col: '#3fcf8e' },
+};
+const FAMILY_OF = {
+  bolt: 'shots', spark: 'shots', slug: 'shots', buck: 'shots', lance: 'shots',
+  orb: 'shots', blast: 'shots', saw: 'shots',
+  dmg_up: 'dmg', heavy: 'dmg', big: 'dmg', over: 'dmg', over_heat: 'dmg', tip: 'dmg',
+  speed: 'vel', light: 'vel', accel: 'vel', range: 'vel', brief: 'vel',
+  homing: 'path', seeker: 'path', bounce: 'path', pierce: 'path', borer: 'path',
+  tight: 'pattern', scatter: 'pattern', double: 'pattern', triple: 'pattern', quad: 'pattern',
+  fast: 'upkeep', trigger: 'upkeep', cold: 'upkeep', recharge: 'upkeep',
+  cheap: 'upkeep', battery: 'upkeep',
+};
+const famOf = id => FAMILIES[FAMILY_OF[id]] || FAMILIES.shots;
+const famCol = id => famOf(id).col;
+
 // shop prices in gold
 const MOD_PRICE = {
   bolt: 20, spark: 12, slug: 40, buck: 35, lance: 45, orb: 30, blast: 45,
@@ -1663,9 +1692,9 @@ function Game({ input }) {
           ctx.fillRect(it.x - 2.5, it.y - 7 + bob, 5, 14);
         } else {
           const m = MODS[it.id];
-          ctx.globalAlpha = 0.22; ctx.fillStyle = m.col;
+          ctx.globalAlpha = 0.22; ctx.fillStyle = famCol(it.id);
           ctx.beginPath(); ctx.arc(it.x, it.y + bob, 13, 0, Math.PI * 2); ctx.fill();
-          ctx.globalAlpha = 1; ctx.fillStyle = m.col;
+          ctx.globalAlpha = 1; ctx.fillStyle = famCol(it.id);
           ctx.beginPath();
           ctx.moveTo(it.x, it.y - 8 + bob); ctx.lineTo(it.x + 8, it.y + bob);
           ctx.lineTo(it.x, it.y + 8 + bob); ctx.lineTo(it.x - 8, it.y + bob);
@@ -1707,10 +1736,10 @@ function Game({ input }) {
           ctx.fillRect(q.x + 4, qy - 1, 3, 2);
         } else {
           const m = MODS[q.id];
-          ctx.globalAlpha = 0.22; ctx.fillStyle = m.col;
+          ctx.globalAlpha = 0.22; ctx.fillStyle = famCol(q.id);
           ctx.beginPath(); ctx.arc(q.x, qy, 12, 0, Math.PI * 2); ctx.fill();
           ctx.globalAlpha = 1;
-          ctx.fillStyle = m.col;
+          ctx.fillStyle = famCol(q.id);
           ctx.beginPath();
           ctx.moveTo(q.x, qy - 8); ctx.lineTo(q.x + 8, qy); ctx.lineTo(q.x, qy + 8); ctx.lineTo(q.x - 8, qy);
           ctx.fill();
@@ -2034,7 +2063,7 @@ function GunCard({ gun, label, onClose, ingame, flow, compare, compareName }) {
       h('div', { className: 'dtiles' },
         gun.slots.map((id, i) => id
           ? h('div', { key: i, className: 'dtile',
-              style: { borderColor: MODS[id].col, color: MODS[id].col } },
+              style: { borderColor: famCol(id), color: famCol(id) } },
             h('b', null, MODS[id].glyph), h('i', null, MODS[id].name))
           : h('div', { key: i, className: 'dtile off' }, h('i', null, 'empty')))),
       h('span', { className: 'dnote' }, gun.slots.some(Boolean)
@@ -2097,11 +2126,11 @@ function GunSwap({ input, refresh, onDone }) {
 
 function ModCard({ id, onClose, ingame }) {
   const m = MODS[id];
-  const kind = m.kind === 'shot' ? 'Shot' : m.kind === 'passive' ? 'Always on' : 'Modifier';
+  const kind = famOf(id).name + (m.kind === 'passive' ? ' \u00b7 always on' : '');
   const rows = modPreview(id).rows;
   const dtile = (did, key, faded) => h('div', {
       key, className: 'dtile' + (faded ? ' off' : ''),
-      style: { borderColor: MODS[did].col, color: MODS[did].col } },
+      style: { borderColor: famCol(did), color: famCol(did) } },
     h('b', null, MODS[did].glyph), h('i', null, MODS[did].name));
   const drow = (ok, tiles, note, key) => h('div', { className: 'drow', key },
     h('span', { className: 'dmark ' + (ok ? 'yes' : 'no') }, ok ? '\u2713' : '\u2717'),
@@ -2147,7 +2176,7 @@ function ModCard({ id, onClose, ingame }) {
   }
   return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') },
     h('div', { className: 'phead' },
-      h('div', { className: 'pglyph', style: { borderColor: m.col, color: m.col } }, m.glyph),
+      h('div', { className: 'pglyph', style: { borderColor: famCol(id), color: famCol(id) } }, m.glyph),
       h('div', { className: 'ptitle' },
         h('b', null, m.name),
         h('span', null, kind + (m.mana ? ' \u00b7 ' + m.mana + ' mana' : ''))),
@@ -2268,7 +2297,7 @@ function Editor({ input, close, refresh }) {
     return h('div', {
         key,
         className: 'tile' + (m ? '' : ' hole') + (m && m.kind === 'shot' ? ' shot' : ''),
-        style: m ? { borderColor: m.col, color: m.col } : null,
+        style: m ? { borderColor: famCol(id), color: famCol(id) } : null,
         'data-drop': from.type === 'slot' ? 'slot:' + from.i : 'bag',
         'data-mod': id || undefined,
         onPointerDown: m ? startDrag(id, from) : undefined,
@@ -2332,7 +2361,7 @@ function Editor({ input, close, refresh }) {
         h(ModCard, { id: info, onClose: () => setInfo(null) }))
     : null;
 
-  return h('div', { className: 'sheet' },
+  return h('div', { className: 'sheet' + (shown ? ' withcard' : '') },
     h('div', { className: 'shead' },
       h('h2', null, 'Guns & Mods'),
       h('span', { className: 'purse' }, LO.gold + 'g'),
@@ -2365,6 +2394,9 @@ function Editor({ input, close, refresh }) {
                      : 'On the gun — each outline is one pull of the trigger')
       : 'No gun in this slot'),
     gun ? h('div', { className: 'slotRow' }, slotRow(gun, tile)) : null,
+    h('div', { className: 'legend' },
+      Object.keys(FAMILIES).map(k => h('span', { key: k, className: 'lg' },
+        h('i', { style: { background: FAMILIES[k].col } }), FAMILIES[k].name))),
     h('p', { className: 'lab' }, 'Collected mods' + (LO.bag.length ? '' : ' — none yet, find them in the cave')),
     h('div', { className: 'bag scroll', 'data-drop': 'bag' },
       LO.bag.map((id, i) => tile(id, { type: 'bag', i }, 'b' + i))
@@ -2374,7 +2406,7 @@ function Editor({ input, close, refresh }) {
     gdrag && LO.guns[gdrag.from] ? h('div', { className: 'gghost',
       style: { left: gdrag.x, top: gdrag.y } }, LO.guns[gdrag.from].name) : null,
     drag && drag.armed ? h('div', { className: 'ghost',
-      style: { left: drag.x, top: drag.y, borderColor: MODS[drag.id].col, color: MODS[drag.id].col } },
+      style: { left: drag.x, top: drag.y, borderColor: famCol(drag.id), color: famCol(drag.id) } },
       MODS[drag.id].glyph) : null,
     card
   );

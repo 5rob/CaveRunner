@@ -47,6 +47,11 @@ coloured against whichever of your guns you last tapped (your held gun to start
 with), green for better and red for worse, counting a smaller cast delay,
 recharge or spread as better.
 
+Mods are coloured by what they are for, not one colour each, so you can tell a
+bullet from the things that change it at a glance: amber shots, red damage, blue
+speed and range, purple flight path, pink shot pattern, green gun upkeep. A
+legend sits above your collected mods.
+
 Mods are the spells. Some are shots (Bolt, Buckshot, Slug, Blast, Bounce Orb...)
 and the rest are modifiers (Homing, Heavy Shot, Scatter, Double Cast, Borer...).
 A modifier only affects the shots to its **right** on the gun, so the order you
