@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v11</title>
+<title>CaveRunner v12</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -123,7 +123,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v11';
+const VERSION = 'v12';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -1596,7 +1596,10 @@ function App() {
   return h('div', { className: 'app' },
     h('div', { className: 'view' },
       h(Game, { key: run, input }),
-      h('button', { className: 'reset', onClick: restart }, 'Restart')
+      h('button', { className: 'reset',
+        // pointerdown, like every other control: a click synthesised after the mod
+        // sheet closes must not land here and wipe the run
+        onPointerDown: e => { e.preventDefault(); restart(); } }, 'Restart')
     ),
     h('div', { className: 'controls' },
       h('div', { className: 'toolbar' },
