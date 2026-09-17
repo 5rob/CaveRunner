@@ -70,6 +70,7 @@ ready immediately. Recharge, by contrast, counts from any slot.
 - Randomly generated caves with cramped and open areas, winding tunnels, built ledges and half-buried brick frames
 - Destructible pixel terrain: explosions and drilling shots eat everything except the outer border
 - Guns and mods to find, with a drag-and-drop screen for building them
+- An aim line that simulates the next shot for real: gravity, acceleration, homing, ricochets, drilling and spread
 - Recoil that shoves you around, which the jetpack can work with
 - Gold that flies to you once you are close enough (a short range for now)
 - Jetpack with fuel that refills on the ground; upward thrust is instant

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v23</title>
+<title>CaveRunner v24</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -220,7 +220,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v23';
+const VERSION = 'v24';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -914,6 +914,62 @@ function makeLevel(seed, floor) {
   return { mat, img, bgImg, start, portal, enemies, pickups, stock, shopExit, arrival };
 }
 
+// Fly a shot forward with the same rules the live bullets use, so the aim line
+// shows what this gun with these mods will actually do: gravity, acceleration,
+// homing, ricochets and drilling all included.
+function tracePath(sh, x0, y0, nx, ny, solid, enemies, out) {
+  const dt = 1 / 60;
+  let x = x0 + nx * 10, y = y0 + ny * 10;
+  let vx = nx * sh.speed, vy = ny * sh.speed;
+  let life = Math.min(sh.life, 2.5), bounce = sh.bounce || 0;
+  out.length = 0;
+  out.push(x, y);
+  for (let i = 0; i < 110 && life > 0; i++) {
+    life -= dt;
+    if (sh.grav) vy += sh.grav * dt;
+    if (sh.accel) { const f = 1 + sh.accel * dt; vx *= f; vy *= f; }
+    if (sh.homing && enemies && enemies.length) {
+      let best = null, bd = 260;
+      for (const e of enemies) {
+        const d = Math.hypot(e.x - x, e.ty - y);
+        if (d < bd) { bd = d; best = e; }
+      }
+      if (best) {
+        const sp = Math.hypot(vx, vy) || 1;
+        let ang = Math.atan2(vy, vx);
+        let diff = Math.atan2(best.ty - y, best.x - x) - ang;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+        const turn = sh.homing * dt;
+        ang += Math.max(-turn, Math.min(turn, diff));
+        vx = Math.cos(ang) * sp; vy = Math.sin(ang) * sp;
+      }
+    }
+    const n = Math.max(1, Math.ceil(Math.hypot(vx, vy) * dt / 3));
+    let stop = false;
+    for (let st = 0; st < n; st++) {
+      const ax = x + vx * dt / n, ay = y + vy * dt / n;
+      if (solid(ax, ay)) {
+        if (sh.bore > 0) { x = ax; y = ay; continue; }
+        if (bounce > 0) {
+          bounce--;
+          const hx = solid(ax, y), hy = solid(x, ay);
+          if (hx || !hy) vx = -vx;
+          if (hy || !hx) vy = -vy;
+          vx *= 0.92; vy *= 0.92;
+          break;
+        }
+        stop = true;
+        break;
+      }
+      x = ax; y = ay;
+    }
+    out.push(x, y);
+    if (stop) break;
+  }
+  return out;
+}
+
 const approach = (v, t, a) => (v < t ? Math.min(t, v + a) : Math.max(t, v - a));
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -934,6 +990,7 @@ function Game({ input }) {
       fuel: 1, empty: false, hp: PLAYER_HP, hitT: 0, dead: false, kick: 0,
       jx: 0, jy: 0, aim: { on: false, show: false, nx: 1, ny: 0 } };
     const bullets = [], enemyShots = [], smoke = [], sparks = [], flashes = [], toasts = [], coins = [];
+    const aimPath = [];                              // scratch buffer for the aim line
     let smokeAcc = 0, time = 0, camX = 0, camY = 0, camReady = false;
     const toast = text => { toasts.push({ text, t: 2.2 }); if (toasts.length > 3) toasts.shift(); };
     let best = 0, raf, last = performance.now();
@@ -1241,7 +1298,7 @@ function Game({ input }) {
       const gx = pcx, gy = p.y + PH * 0.4;
       const TR = input.current.right;
       let R = { on: false, show: false, nx: p.face, ny: 0 };
-      if (TR.active) R = { on: TR.on, show: TR.on, nx: TR.nx, ny: TR.ny };
+      if (TR.active) R = { on: TR.on, show: true, nx: TR.nx, ny: TR.ny };   // line shows as soon as you touch the stick
       else if (mouse.inside) {
         const dx = camX + mouse.x / unitPx - gx, dy = camY + mouse.y / unitPx - gy, d = Math.hypot(dx, dy);
         if (d > 1) R = { on: mouse.down, show: true, nx: dx / d, ny: dy / d };
@@ -1701,6 +1758,38 @@ function Game({ input }) {
       const held = input.current.loadout.guns[input.current.loadout.sel];
       const ax = R.show ? R.nx : p.face, ay = R.show ? R.ny : 0;
       const gy = p.y + PH * 0.4;
+
+      // where the next pull actually goes, mods and all
+      if (!p.dead && R.show && held) {
+        const sim = Object.assign({}, held, { slots: held.slots.slice(),
+          order: held.order.slice(), idx: held.idx });
+        const plan = planCast(sim);                 // a copy, so the real gun is untouched
+        const seen = {};
+        let drawn = 0;
+        for (const sh of plan.shots) {
+          const key = [Math.round(sh.speed), Math.round(sh.grav), sh.accel, sh.bounce,
+            sh.bore, sh.homing, Math.round(sh.life * 20)].join(',');
+          if (seen[key] || drawn >= 3) continue;
+          seen[key] = 1;
+          const cone = drawn === 0 && sh.spread > 2
+            ? [-sh.spread / 2, 0, sh.spread / 2] : [0];
+          drawn++;
+          for (const off of cone) {
+            const a = Math.atan2(R.ny, R.nx) + off * Math.PI / 180;
+            tracePath(sh, pcx, gy, Math.cos(a), Math.sin(a), solidAt, enemies, aimPath);
+            ctx.fillStyle = sh.col;
+            const edge = off !== 0;
+            const size = edge ? 1.6 : 2.4;
+            for (let i = 2; i < aimPath.length; i += edge ? 8 : 4) {
+              const t = i / aimPath.length;
+              ctx.globalAlpha = (edge ? 0.3 : 0.9) * (1 - 0.6 * t);
+              ctx.fillRect(aimPath[i] - size / 2, aimPath[i + 1] - size / 2, size, size);
+            }
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+
       if (!p.dead) {
         ctx.strokeStyle = COL.visor; ctx.lineCap = 'round';
         ctx.lineWidth = 2.5;
