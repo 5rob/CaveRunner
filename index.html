@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner</title>
+<title>CaveRunner v9</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -82,6 +82,7 @@ const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const SLOTS = [{ id: 'gun', name: 'Gun' }, { id: 'grenade', name: 'Grenades' }, null, null];
 const ROCK = 1, BRICK = 2, BED = 3;
+const VERSION = 'v9';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -540,7 +541,10 @@ function Game({ input }) {
       const k = p.kick > 0 ? 0.15 : 1;   // let explosions push you around briefly
       if (jet) {
         p.vx = approach(p.vx, L.nx * mag * JET, JET_ACC * dt * k);
-        p.vy = approach(p.vy, L.ny * mag * JET, JET_ACC * dt * k);
+        const ty = L.ny * mag * JET;
+        // rising beats a fall instantly; only an explosion still throws you around
+        if (ty < p.vy && p.kick <= 0) p.vy = ty;
+        else p.vy = approach(p.vy, ty, JET_ACC * dt * k);
       } else {
         const target = mag > 0 ? L.nx * mag * WALK : 0;
         p.vx = approach(p.vx, target, (p.onGround ? GROUND_ACC : AIR_ACC) * dt * k);
@@ -868,6 +872,9 @@ function Game({ input }) {
       };
       bar('Health', 58, p.hp / PLAYER_HP, p.hp <= 30 ? COL.player : COL.hp);
       bar('Fuel', 78, p.fuel, p.empty ? COL.player : COL.flame);
+      ctx.fillStyle = COL.muted;
+      ctx.font = '500 12px system-ui, sans-serif';
+      ctx.fillText(VERSION, 12, 106);
 
       ctx.textAlign = 'center';
       if (time < 3) {
