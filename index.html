@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v15</title>
+<title>CaveRunner v16</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -146,6 +146,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .buy b{color:#ffc93c}
 .buy.cant{border-color:rgba(255,255,255,0.25);opacity:.55}
 .weapon.locked{opacity:.45}
+.pop.flow{position:static;max-height:none;box-shadow:none;margin-bottom:2px}
+.spacer{flex:1 1 auto;min-height:6px}
+.swaprow{display:flex;gap:6px;margin-top:4px}
+.swaprow .gtab{position:relative;height:62px;padding-top:6px}
+.gtab.holding,.slot.holding{background:linear-gradient(to right,#ff8a1f 0%,#ff8a1f 100%);
+  background-size:100% 100%;animation:fill .45s linear forwards;color:#12141a}
+@keyframes fill{from{background-size:0% 100%}to{background-size:100% 100%}}
+.gtab.holding{background-repeat:no-repeat}
+.slot.holding{background-repeat:no-repeat}
 .purse{font:700 14px system-ui,sans-serif;color:#c08a1f;margin-left:auto;margin-right:10px}
 .reset{position:absolute;top:10px;right:10px;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.35);
   color:#e9ecf2;border-radius:8px;padding:6px 12px;font:inherit;font-size:13px}
@@ -167,7 +176,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v15';
+const VERSION = 'v16';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -178,6 +187,7 @@ const PW = 12, PH = 22;
 const FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
 const PLAYER_HP = 100;
 const START_GOLD = 40;
+const COIN_PULL = 110;        // gold within this many units flies to you
 const ENEMY_HP = 3, ENEMY_RANGE = 220, ENEMY_BULLET = 180, ENEMY_DMG = 10, ENEMY_COUNT = 20;
 const NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
 
@@ -1166,6 +1176,7 @@ function Game({ input }) {
       // ---- pickups ----
       for (let i = pickups.length - 1; i >= 0; i--) {
         const q = pickups[i];
+        if (q.taken) { pickups.splice(i, 1); continue; }
         if (Math.abs(q.x - pcx) > 18 || Math.abs(q.y - pcy) > 20) { q.lock = false; continue; }
         if (q.lock || p.dead) continue;
         if (q.kind === 'mod') {
@@ -1173,32 +1184,34 @@ function Game({ input }) {
           toast('Found ' + MODS[q.id].name);
           pickups.splice(i, 1);
         } else {
-          const free = LO.guns.indexOf(null);
-          if (free >= 0) {
-            LO.guns[free] = resetGun(q.gun);
-            LO.sel = free;
-            toast('Picked up ' + q.gun.name);
-            pickups.splice(i, 1);
-          } else {
-            const old = LO.guns[LO.sel];               // full hands: swap, leave the old one here
-            LO.guns[LO.sel] = resetGun(q.gun);
-            q.gun = old; q.lock = true;
-            toast('Swapped for ' + LO.guns[LO.sel].name);
-          }
+          q.lock = true;                    // the chooser decides what happens to it
+          input.current.found = q;
         }
         input.current.notify();
       }
       // ---- gold ----
       for (let i = coins.length - 1; i >= 0; i--) {
         const g = coins[i];
-        g.vy += 320 * dt;
-        const ny = g.y + g.vy * dt;
-        if (solidAt(g.x, ny + 3)) { g.vy = 0; } else { g.y = ny; }
-        if (Math.abs(g.x - pcx) < 16 && Math.abs(g.y - pcy) < 18 && !p.dead) {
-          LO.gold += g.amount;
-          coins.splice(i, 1);
-          input.current.notify();
+        const dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;
+        if (d < COIN_PULL && !p.dead) {
+          // inside the pull radius it flies to you, straight through rock
+          const grab = 180 + 900 * (1 - d / COIN_PULL);
+          g.vx = (g.vx || 0) + (dx / d) * grab * dt * 6;
+          g.vy += (dy / d) * grab * dt * 6;
+          g.vx *= 0.88; g.vy *= 0.88;
+          g.x += g.vx * dt; g.y += g.vy * dt;
+          if (d < 12) {
+            LO.gold += g.amount;
+            coins.splice(i, 1);
+            input.current.notify();
+          }
+          continue;
         }
+        g.vx = (g.vx || 0) * 0.9;
+        g.vy += 320 * dt;
+        const nx = g.x + g.vx * dt, ny = g.y + g.vy * dt;
+        if (!solidAt(nx, g.y)) g.x = nx;
+        if (solidAt(g.x, ny + 3)) g.vy = 0; else g.y = ny;
       }
 
       // ---- the shop ----
@@ -1707,6 +1720,114 @@ function Stick({ size, kind, input }) {
 
 // The same detail card is used by the build screen and by the shop, so what you
 // read standing on a plinth is exactly what you get once you own it.
+// Tap or hold, told apart: a hold fires on its own after `ms`, a release before
+// that counts as a tap, and sliding off cancels both.
+function holdPress(onTap, onHold, onState, ms) {
+  return e => {
+    e.preventDefault();
+    const sx = e.clientX, sy = e.clientY;
+    let fired = false;
+    const done = () => {
+      clearTimeout(timer);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      if (onState) onState(false);
+    };
+    const timer = setTimeout(() => { fired = true; done(); onHold(); }, ms || 450);
+    const move = ev => { if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 14) done(); };
+    const up = () => { const tap = !fired; done(); if (tap && onTap) onTap(); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    if (onState) onState(true);
+  };
+}
+
+// One card for a gun: its rolled stats and the mods sitting on it.
+function GunCard({ gun, label, onClose, ingame, flow }) {
+  const stat = (k, v) => h('div', { className: 'prow', key: k }, h('span', null, k), h('b', null, String(v)));
+  const pas = gunPassives(gun);
+  return h('div', { className: 'pop' + (ingame ? ' ingame' : '') + (flow ? ' flow' : '') },
+    h('div', { className: 'phead' },
+      h('div', { className: 'pglyph', style: { borderColor: '#c9ccd4', color: '#c9ccd4' } }, '⌥'),
+      h('div', { className: 'ptitle' },
+        h('b', null, gun.name),
+        h('span', null, (label || 'Gun') + ' · ' + gun.cap + ' slots')),
+      onClose ? h('button', { className: 'pclose',
+        onPointerDown: e => { e.preventDefault(); onClose(); } }, '×') : null
+    ),
+    h('div', { className: 'prows' },
+      stat('cast delay', gun.castDelay.toFixed(2) + 's'),
+      stat('recharge', Math.max(0.15, gun.recharge + pas.rech).toFixed(2) + 's'),
+      stat('mana', Math.round(gun.manaMax + pas.manaMax) + ' +' + Math.round(gun.manaRegen + pas.manaRegen) + '/s'),
+      stat('spread', gun.spread.toFixed(1) + '°'),
+      stat('per cast', gun.multi),
+      stat('shot speed', 'x' + (gun.speedMul || 1).toFixed(2)),
+      stat('order', gun.shuffle ? 'shuffle' : 'in order')
+    ),
+    h('div', { className: 'pdemo' },
+      h('div', { className: 'dtiles' },
+        gun.slots.map((id, i) => id
+          ? h('div', { key: i, className: 'dtile',
+              style: { borderColor: MODS[id].col, color: MODS[id].col } },
+            h('b', null, MODS[id].glyph), h('i', null, MODS[id].name))
+          : h('div', { key: i, className: 'dtile off' }, h('i', null, 'empty')))),
+      h('span', { className: 'dnote' }, gun.slots.some(Boolean)
+        ? 'cast left to right' : 'nothing fitted yet'))
+  );
+}
+
+// Walked onto a gun: pick which of your four it replaces, or leave it.
+function GunSwap({ input, refresh, onDone }) {
+  const LO = input.current.loadout;
+  const found = input.current.found;
+  const [peek, setPeek] = useState(null);
+  const [held, setHeld] = useState(-1);
+  if (!found) return null;
+
+  const take = i => {
+    const old = LO.guns[i];
+    LO.guns[i] = resetGun(found.gun);
+    LO.sel = i;
+    if (old) { found.gun = old; }       // your old gun stays here on the ground
+    else found.taken = true;
+    input.current.found = null;
+    refresh();
+    onDone();
+  };
+  const leave = () => { input.current.found = null; refresh(); onDone(); };
+
+  return h('div', { className: 'sheet' },
+    h('div', { className: 'shead' },
+      h('h2', null, 'Gun on the ground'),
+      h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); leave(); } }, 'Leave it')
+    ),
+    h(GunCard, { gun: found.gun, label: 'Found', flow: true }),
+    h('div', { className: 'spacer' }),
+    h('p', { className: 'lab' }, 'Hold a slot to swap it · tap to look at it first'),
+    h('div', { className: 'swaprow' },
+      LO.guns.map((g, i) => h('button', {
+          key: i,
+          className: 'gtab' + (g ? '' : ' empty') + (held === i ? ' holding' : ''),
+          onPointerDown: holdPress(
+            () => setPeek(g ? i : null),
+            () => take(i),
+            on => setHeld(on ? i : -1)),
+        },
+        h('span', { className: 'num' }, i + 1),
+        h('span', { className: 'gname' }, g ? g.name : 'Empty slot'),
+        h('span', { className: 'gsub' }, g ? g.slots.filter(Boolean).length + '/' + g.cap + ' mods' : 'hold to take')
+      ))
+    ),
+    peek !== null && LO.guns[peek]
+      ? h('div', null,
+          h('div', { className: 'shade', onPointerDown: e => { e.preventDefault(); setPeek(null); } }),
+          h(GunCard, { gun: LO.guns[peek], label: 'Slot ' + (peek + 1), onClose: () => setPeek(null) }))
+      : null
+  );
+}
+
 function ModCard({ id, onClose, ingame }) {
   const m = MODS[id];
   const kind = m.kind === 'shot' ? 'Shot' : m.kind === 'passive' ? 'Always on' : 'Modifier';
@@ -1892,16 +2013,26 @@ function App() {
   const [size, setSize] = useState(150);
   const [run, setRun] = useState(0);
   const [edit, setEdit] = useState(false);
+  const [gunInfo, setGunInfo] = useState(-1);
+  const [held, setHeld] = useState(-1);
   const [, bump] = useState(0);
   const refresh = () => bump(n => n + 1);
   input.current.notify = refresh;
-  input.current.paused = edit;
+  const found = input.current.found;
+  input.current.paused = edit || !!found;
 
   const LO = input.current.loadout;
-  const select = i => { if (LO.guns[i]) { LO.sel = i; refresh(); } };
+  // read through the ref: after a Restart the loadout object is replaced, and a
+  // handler that closed over the old one silently edits a discarded loadout
+  const select = i => {
+    const L = input.current.loadout;
+    if (L.guns[i]) { L.sel = i; refresh(); }
+  };
   const restart = () => {
     input.current.loadout = { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD };
     input.current.sig = '';
+    input.current.found = null;
+    setGunInfo(-1);
     setEdit(false);
     setRun(r => r + 1);
   };
@@ -1915,6 +2046,11 @@ function App() {
 
   useEffect(() => {
     const stop = e => { if (!e.target.closest || !e.target.closest('.scroll')) e.preventDefault(); };
+    // in an embedded preview the page starts without keyboard focus, so the number
+    // keys go nowhere until something in here is touched
+    const grab = () => { try { window.focus(); } catch (_) {} };
+    grab();
+    document.addEventListener('pointerdown', grab, true);
     document.addEventListener('contextmenu', stop);
     document.addEventListener('touchmove', stop, { passive: false });
 
@@ -1937,6 +2073,7 @@ function App() {
     window.addEventListener('keyup', ku);
     window.addEventListener('blur', blur);
     return () => {
+      document.removeEventListener('pointerdown', grab, true);
       document.removeEventListener('contextmenu', stop);
       document.removeEventListener('touchmove', stop);
       window.removeEventListener('keydown', kd);
@@ -1968,9 +2105,13 @@ function App() {
         h('div', { className: 'slots' },
           LO.guns.map((g, i) => h('button', {
               key: i,
-              className: 'slot' + (g ? '' : ' empty') + (i === LO.sel ? ' on' : ''),
-              title: g ? g.name : 'Empty slot',
-              onPointerDown: e => { e.preventDefault(); select(i); },
+              className: 'slot' + (g ? '' : ' empty') + (i === LO.sel ? ' on' : '') +
+                (held === i ? ' holding' : ''),
+              title: g ? g.name + ' — hold for details' : 'Empty slot',
+              onPointerDown: holdPress(
+                () => select(i),
+                () => { if (input.current.loadout.guns[i]) setGunInfo(i); },
+                on => setHeld(on ? i : -1)),
             },
             h('span', { className: 'num' }, i + 1),
             h('span', { className: 'gname' }, g ? g.name : '—'),
@@ -1989,7 +2130,14 @@ function App() {
         h(Stick, { size, kind: 'right', input })
       )
     ),
-    edit ? h(Editor, { input, refresh, close: () => setEdit(false) }) : null
+    edit ? h(Editor, { input, refresh, close: () => setEdit(false) }) : null,
+    found ? h(GunSwap, { input, refresh, onDone: () => { setGunInfo(-1); refresh(); } }) : null,
+    gunInfo >= 0 && LO.guns[gunInfo]
+      ? h('div', null,
+          h('div', { className: 'shade', onPointerDown: e => { e.preventDefault(); setGunInfo(-1); } }),
+          h(GunCard, { gun: LO.guns[gunInfo], label: 'Slot ' + (gunInfo + 1),
+            onClose: () => setGunInfo(-1) }))
+      : null
   );
 }
 
