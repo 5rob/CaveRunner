@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v20</title>
+<title>CaveRunner v21</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -84,6 +84,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   background:var(--btn);color:var(--text);padding:0 4px;display:flex;flex-direction:column;
   justify-content:center;align-items:center;gap:1px;overflow:hidden}
 .gtab.on{border:2px solid #ff8a1f}
+.gtab.lifted{opacity:.35}
+.gtab.target{border:2px dashed #ff8a1f}
+.gghost{position:fixed;z-index:30;transform:translate(-50%,-50%);pointer-events:none;
+  padding:7px 12px;border-radius:9px;border:2px solid #ff8a1f;background:var(--btn);
+  color:var(--text);font:600 12px system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .gtab.empty{opacity:.4}
 .stats{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
 .st{background:var(--pad);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--muted);
@@ -207,7 +212,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v20';
+const VERSION = 'v21';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -2024,7 +2029,56 @@ function Editor({ input, close, refresh }) {
   const [sel, setSel] = useState(LO.sel);
   const [drag, setDrag] = useState(null);
   const [info, setInfo] = useState(null);
+  const [gdrag, setGdrag] = useState(null);
   const gun = LO.guns[sel];
+
+  // move a gun to another slot, keeping whatever you had selected selected
+  const moveGun = (from, to) => {
+    if (from === to) return;
+    const held = LO.guns[LO.sel];
+    const [g] = LO.guns.splice(from, 1);
+    LO.guns.splice(to, 0, g);
+    if (held) LO.sel = LO.guns.indexOf(held);
+    setSel(LO.sel);
+    refresh();
+  };
+
+  // tap selects; hold picks the gun up and dragging drops it on another slot
+  const gunPress = i => e => {
+    e.preventDefault();
+    const sx = e.clientX, sy = e.clientY;
+    let dragging = false, over = i;
+    const cleanup = () => {
+      clearTimeout(timer);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+    const timer = setTimeout(() => {
+      if (!LO.guns[i]) return;                       // nothing to pick up
+      dragging = true;
+      setGdrag({ from: i, x: sx, y: sy, over: i });
+    }, 320);
+    const move = ev => {
+      if (!dragging) {
+        if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 14) { cleanup(); setGdrag(null); }
+        return;
+      }
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      const tab = el && el.closest ? el.closest('[data-gun]') : null;
+      if (tab) over = Number(tab.dataset.gun);
+      setGdrag({ from: i, x: ev.clientX, y: ev.clientY, over });
+    };
+    const up = () => {
+      cleanup();
+      setGdrag(null);
+      if (dragging) moveGun(i, over);
+      else if (LO.guns[i]) { setSel(i); LO.sel = i; refresh(); }
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  };
 
   const drop = (x, y, id, from) => {
     const el = document.elementFromPoint(x, y);
@@ -2143,8 +2197,11 @@ function Editor({ input, close, refresh }) {
     h('div', { className: 'gtabs' },
       LO.guns.map((g, i) => h('button', {
           key: i,
-          className: 'gtab' + (g ? '' : ' empty') + (i === sel ? ' on' : ''),
-          onPointerDown: e => { e.preventDefault(); if (g) { setSel(i); LO.sel = i; refresh(); } },
+          'data-gun': i,
+          className: 'gtab' + (g ? '' : ' empty') + (i === sel ? ' on' : '') +
+            (gdrag && gdrag.from === i ? ' lifted' : '') +
+            (gdrag && gdrag.over === i && gdrag.from !== i ? ' target' : ''),
+          onPointerDown: gunPress(i),
         },
         h('span', { className: 'gname' }, g ? g.name : 'Empty'),
         h('span', { className: 'gsub' }, g ? g.cap + ' slots' : '—')
@@ -2168,7 +2225,10 @@ function Editor({ input, close, refresh }) {
     h('div', { className: 'bag scroll', 'data-drop': 'bag' },
       LO.bag.map((id, i) => tile(id, { type: 'bag', i }, 'b' + i))
     ),
-    h('div', { className: 'info' }, 'Drag a mod to move it. Tap one to see what it does.'),
+    h('div', { className: 'info' },
+      'Drag a mod to move it. Tap one to see what it does. Hold a gun to reorder it.'),
+    gdrag && LO.guns[gdrag.from] ? h('div', { className: 'gghost',
+      style: { left: gdrag.x, top: gdrag.y } }, LO.guns[gdrag.from].name) : null,
     drag && drag.armed ? h('div', { className: 'ghost',
       style: { left: drag.x, top: drag.y, borderColor: MODS[drag.id].col, color: MODS[drag.id].col } },
       MODS[drag.id].glyph) : null,

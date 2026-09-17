@@ -20,6 +20,7 @@ Open `index.html` in a browser. It is a single file with no build step; React lo
 | Shoot | Hold right stick | Left mouse button |
 | Pick gun | Tap a gun slot | 1 to 4 |
 | Gun details | Hold a gun slot | — |
+| Reorder guns | Hold and drag a gun tab in the build screen | — |
 | Guns & mods screen (shop only) | Tap Mods | E |
 | Buy / take shop item | Tap Buy | F |
 
