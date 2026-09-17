@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v26</title>
+<title>CaveRunner v27</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -225,7 +225,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v26';
+const VERSION = 'v27';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -1640,7 +1640,7 @@ function Game({ input }) {
       ctx.lineCap = 'round';
       for (const b of bullets) {
         const sp = Math.hypot(b.vx, b.vy) || 1;
-        const len = Math.max(b.size * 1.1, Math.min(46, sp * 0.022));
+        const len = Math.max(0.5, Math.min(46, sp * 0.022));   // length is speed alone
         const hx = b.vx / sp * len, hy = b.vy / sp * len;
         if (b.homing) {
           ctx.globalAlpha = 0.3;
