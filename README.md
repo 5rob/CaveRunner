@@ -26,7 +26,8 @@ Open `index.html` in a browser. It is a single file with no build step; React lo
 ## The shop
 
 Every floor starts in an enclosed room spanning the width of the level, with one
-hole in the roof leading up into the cave. It stocks four random mods for gold
+hole in the roof leading up into the cave. You arrive at the far left, beside the
+portal you came in through, and the stock is laid out to your right. It stocks four random mods for gold
 and one free full heal; stand on a plinth and its full detail card appears, the
 same one the build screen shows, so you can read what a mod does before paying
 for it. and it is the only place you can rearrange your guns —
