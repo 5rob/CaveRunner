@@ -53,8 +53,9 @@ A modifier only affects the shots to its **right** on the gun, so the order you
 drag them into matters. Firing walks the list left to right; run off the end and
 the gun recharges before starting over.
 
-In the build screen each pull of the trigger is drawn as its own outline, so you
-can see which mods come out together — a modifier sits inside the outline of the
+In the build screen each pull of the trigger is drawn as its own outline with a
+line of stats under it — what that pull does, and what its modifiers added or
+cost, green for better and red for worse. So you can see which mods come out together — a modifier sits inside the outline of the
 shots it affects, and anything the gun never reaches is marked "never cast".
 
 Cast delay is accumulated in that same order, which makes **Buzzsaw** special: it

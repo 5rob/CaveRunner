@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v22</title>
+<title>CaveRunner v23</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -101,6 +101,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   background:var(--pad)}
 .glab{font:600 9px system-ui,sans-serif;color:var(--muted);padding-left:6px;
   text-transform:uppercase;letter-spacing:.04em}
+.gfx{display:flex;flex-wrap:wrap;gap:3px 4px;padding:2px 4px 0;max-width:100%}
+.fx{display:flex;align-items:baseline;gap:3px;font:500 9.5px system-ui,sans-serif;
+  color:var(--muted);background:var(--pad);border-radius:5px;padding:1px 5px}
+.fx i{font-style:normal}
+.fx b{color:var(--text);font-size:10px;font-variant-numeric:tabular-nums}
+.fx u{text-decoration:none;font-weight:700;font-size:9.5px}
+.fx.up u{color:var(--good)}
+.fx.down u{color:var(--bad)}
 .grp.cold .gtiles{border-style:dashed;border-color:var(--pad);background:transparent;opacity:.6}
 .bag{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;overflow-y:auto;
   flex:1 1 0;min-height:70px;border-radius:9px;background:var(--pad);padding:6px}
@@ -122,7 +130,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .shade{position:fixed;inset:0;z-index:27;background:rgba(0,0,0,0.42)}
 .pop{position:fixed;z-index:28;box-sizing:border-box;left:10px;right:10px;
   bottom:calc(10px + env(safe-area-inset-bottom));
-  max-height:42%;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--btn);border:1px solid var(--ring);
+  max-height:34%;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--btn);border:1px solid var(--ring);
   border-radius:15px;padding:12px 13px 14px;box-shadow:0 12px 40px rgba(0,0,0,0.35)}
 .pop.ingame{position:absolute;top:8px;left:8px;right:8px;bottom:auto;z-index:5;
   max-height:calc(100% - 134px);        /* always clears the Buy button below it */
@@ -212,7 +220,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v22';
+const VERSION = 'v23';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -352,6 +360,8 @@ const SHOP_TOP = SHOP_FLOOR - SHOP_H;  // first open row of the room
 const SHOP_ROOF = 6;                   // roof thickness
 const SHOP_Y = SHOP_TOP * CELL;        // world y of the ceiling, for "am I in the shop?"
 
+for (const k of Object.keys(MODS)) MODS[k].id = k;
+
 const MIN_CAST = 0.016;      // one frame: the fastest a gun can chain casts
 const MIN_RECH = 0.05;
 
@@ -474,7 +484,7 @@ function planCast(g) {
     const id = g.slots[g.order[i]];
     if (id && MODS[id].kind === 'shot') { more = true; break; }
   }
-  return { shots, start, cost: cost * manaMul,
+  return { shots, defs, start, cost: cost * manaMul,
     delay: Math.max(MIN_CAST, delay),
     wrap: ran || !more };
 }
@@ -553,10 +563,51 @@ function castGroups(gun) {
     let to = sim.idx;
     const wrapped = to <= from;              // a multicast that ran back to the front
     if (wrapped) to = sim.order.length;
-    if (plan.shots.length) groups.push({ from, to, wrapped, shots: plan.shots.length });
+    if (plan.shots.length) groups.push({ from, to, wrapped, shots: plan.shots.length, plan });
     if (plan.wrap) break;
   }
   return groups;
+}
+
+// Replay a pull with its modifiers stripped out, so the difference is exactly
+// what the mods in that group are contributing.
+function groupStats(gun, plan) {
+  const ids = plan.defs.map(d => d.id);
+  const bare = planCast(resetGun(Object.assign({}, gun, {
+    cap: Math.max(1, ids.length), slots: ids.slice(),
+    multi: Math.max(1, ids.length), shuffle: false })));
+  const sum = (p, f) => p.shots.reduce((t, sh) => t + (sh[f] || 0), 0);
+  // damage is what the whole pull puts out, so a pellet spray counts every pellet
+  const power = p => p.shots.reduce((t, sh) => t + (sh.dmg || 0) * Math.max(1, Math.round(sh.count || 1)), 0);
+  const top = (p, f) => p.shots.reduce((t, sh) => Math.max(t, sh[f] || 0), 0);
+  const pellets = p => p.shots.reduce((t, sh) => t + Math.max(1, Math.round(sh.count || 1)), 0);
+  const avg = (p, f) => (p.shots.length ? sum(p, f) / p.shots.length : 0);
+
+  const out = [];
+  const add = (label, now, was, better, fmt, always) => {
+    const d = now - was;
+    if (!always && Math.abs(d) < 1e-6) return;
+    const dir = Math.abs(d) < 1e-6 ? '' : (d > 0) === (better > 0) ? 'up' : 'down';
+    const delta = Math.abs(d) < 1e-6 ? ''
+      : (d > 0 ? '+' : '\u2212') + fmt(Math.abs(d));
+    out.push({ label, value: fmt(now), delta, dir });
+  };
+  const n = v => String(Math.round(v * 100) / 100);
+  const sec = v => (Math.round(v * 1000) / 1000) + 's';
+
+  add('dmg', power(plan), power(bare), 1, n, true);
+  add('shots', pellets(plan), pellets(bare), 1, n, pellets(plan) > plan.shots.length);
+  add('mana', plan.cost, bare.cost, -1, n, true);
+  add('delay', plan.delay, bare.delay, -1, sec, true);
+  add('speed', avg(plan, 'speed'), avg(bare, 'speed'), 1, v => String(Math.round(v)));
+  add('spread', avg(plan, 'spread'), avg(bare, 'spread'), -1, v => n(v) + '\u00b0');
+  add('homing', top(plan, 'homing'), top(bare, 'homing'), 1, n);
+  add('bounces', top(plan, 'bounce'), top(bare, 'bounce'), 1, n);
+  add('pierce', top(plan, 'pierce'), top(bare, 'pierce'), 1, n);
+  add('blast', top(plan, 'explode'), top(bare, 'explode'), 1, n);
+  add('drill', top(plan, 'bore'), top(bare, 'bore'), 1, n);
+  add('life', avg(plan, 'life'), avg(bare, 'life'), 1, sec);
+  return out;
 }
 
 // what the gun actually does with the mods on it right now
@@ -2160,7 +2211,12 @@ function Editor({ input, close, refresh }) {
         h('span', { className: 'glab' }, gr
           ? ordinal(n) + ' pull · ' + gr.shots + (gr.shots > 1 ? ' shots' : ' shot') +
             (gr.wrapped ? ' ↩' : '')
-          : 'never cast')));
+          : 'never cast'),
+        gr ? h('div', { className: 'gfx' },
+          groupStats(g, gr.plan).map((r, k) => h('span', {
+              key: k, className: 'fx' + (r.dir ? ' ' + r.dir : '') },
+            h('i', null, r.label), h('b', null, r.value),
+            r.delta ? h('u', null, r.delta) : null))) : null));
       i = j;
     }
     return out;
