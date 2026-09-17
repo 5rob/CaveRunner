@@ -69,12 +69,27 @@ Anything cast after it adds its delay back, so it belongs at the tail of a
 multicast group — `Double Cast, Bolt, Buzzsaw` fires the bolt and leaves the gun
 ready immediately. Recharge, by contrast, counts from any slot.
 
+Any mod in a group that changes the recharge time shows it in that group's stat
+line too, even though recharge itself is paid once per full cycle rather than
+per pull — so a Buzzsaw or a Cold Start reads as the saving it actually makes.
+
+## Build advice
+
+Under the outlines the build screen works out your sustained damage per second
+and names whatever is holding it back: recharge, cast delay, or mana running out
+faster than it comes back. It then tries every mod in your bag in every slot,
+and every swap of two mods you already have on, and offers up to three changes
+that measurably beat what you have. Each one is a button — tap it and the change
+is made, with anything it displaces going back to your bag. It is all arithmetic
+on the same cast planner the gun fires with, so the numbers are the real ones.
+
 ## Features
 
 - Floors that chain: shop, cave, exit, next shop, with gold and gear carried over
 - Randomly generated caves with cramped and open areas, winding tunnels, built ledges and half-buried brick frames
 - Destructible pixel terrain: explosions and drilling shots eat everything except the outer border
 - Guns and mods to find, with a drag-and-drop screen for building them
+- A build advisor that measures your damage per second, names the limiting factor and offers one-tap fixes
 - An aim line that simulates the next shot for real: gravity, acceleration, homing, ricochets, drilling and spread
 - Recoil that shoves you around, which the jetpack can work with
 - Gold that flies to you once you are close enough (a short range for now)

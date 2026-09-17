@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v27</title>
+<title>CaveRunner v28</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -95,6 +95,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   display:flex;gap:5px;align-items:baseline}
 .st b{font-size:12px;color:var(--text)}
 .lab{font-size:11px;color:var(--muted);margin:0 0 5px;text-transform:uppercase;letter-spacing:.06em}
+.advice{margin:0 0 9px}
+.diag{display:flex;align-items:baseline;gap:7px;font-size:11.5px;color:var(--muted);
+  border-left:3px solid var(--ring);padding:2px 0 2px 8px}
+.diag b{font:700 13px system-ui,sans-serif;color:var(--text)}
+.diag.rech{border-left-color:var(--bad)}
+.diag.mana{border-left-color:#63c8ff}
+.diag.cast{border-left-color:#ff9e3d}
+.diag.none{border-left-color:var(--muted)}
+.tips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.tip{display:flex;align-items:center;gap:6px;border:1px solid var(--ring);background:var(--pad);
+  color:var(--text);border-radius:8px;padding:5px 9px;font:500 11px system-ui,sans-serif;
+  touch-action:none}
+.tip b{color:var(--good);font-size:11px}
 .legend{display:flex;flex-wrap:wrap;gap:3px 8px;margin:0 0 7px}
 .lg{display:flex;align-items:center;gap:4px;font:500 9.5px system-ui,sans-serif;color:var(--muted)}
 .lg i{width:8px;height:8px;border-radius:2px;display:block}
@@ -115,8 +128,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .grp.cold .gtiles{border-style:dashed;border-color:var(--pad);background:transparent;opacity:.6}
 .bag{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;overflow-y:auto;
   flex:1 1 0;min-height:70px;border-radius:9px;background:var(--pad);padding:6px;
-  scroll-padding-bottom:40vh}
-.sheet.withcard .bag{padding-bottom:40vh}
+  scroll-padding-bottom:12px}
 .tile{width:60px;height:56px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
   touch-action:none;cursor:grab;overflow:hidden;flex:0 0 auto}
@@ -137,6 +149,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   bottom:calc(10px + env(safe-area-inset-bottom));
   max-height:34%;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--btn);border:1px solid var(--ring);
   border-radius:15px;padding:12px 13px 14px;box-shadow:0 12px 40px rgba(0,0,0,0.35)}
+.pop.top{top:calc(10px + env(safe-area-inset-top));bottom:auto;
+  max-height:min(62%, calc(100vh - 320px))}   /* stays clear of the mod bag below */
 .pop.ingame{position:absolute;top:8px;left:8px;right:8px;bottom:auto;z-index:5;
   max-height:calc(100% - 134px);        /* always clears the Buy button below it */
   overflow:hidden;padding:11px 12px 16px;
@@ -225,7 +239,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v27';
+const VERSION = 'v28';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -578,6 +592,87 @@ function modPreview(id) {
   return { rows };
 }
 
+// How much damage a gun really puts out, averaged over a whole cycle: every pull
+// in the list, then the recharge. Firing faster than mana allows just stalls, so
+// the rate is capped by what regen can sustain.
+function gunRate(gun) {
+  const g = resetGun(Object.assign({}, gun, { slots: gun.slots.slice() }));
+  let cast = 0, dmg = 0, cost = 0, shots = 0;
+  for (let guard = 0; guard < 16; guard++) {
+    const p = planCast(g);
+    cast += p.delay;
+    cost += p.cost;
+    for (const sh of p.shots) {
+      shots++;
+      dmg += (sh.dmg || 0) * Math.max(1, Math.round(sh.count || 1));
+    }
+    if (p.wrap) break;
+  }
+  const rech = effRecharge(g);
+  const cycle = Math.max(0.001, cast + rech);
+  const pas = gunPassives(gun);
+  const regen = gun.manaRegen + pas.manaRegen;
+  const manaPerSec = cost / cycle;
+  const sustain = manaPerSec > regen ? regen / manaPerSec : 1;
+  return { dps: (dmg / cycle) * sustain, cycle, cast, rech, manaPerSec, regen, shots, sustain };
+}
+
+// Spot the bottleneck, then brute-force every single swap between the gun and the
+// bag to see which one helps most. No cleverness, just the planner run a few
+// hundred times, which costs a few milliseconds.
+function buildAdvice(gun, bag) {
+  const now = gunRate(gun);
+  let limit;
+  if (!now.shots) limit = { key: 'none', text: 'Nothing on this gun fires — it needs a shot mod' };
+  else if (now.sustain < 0.95) limit = { key: 'mana',
+    text: 'Mana is the limit — ' + Math.round(now.manaPerSec) + '/s used against ' +
+      Math.round(now.regen) + '/s regen' };
+  else if (now.rech > now.cast) limit = { key: 'rech',
+    text: 'Recharge is the limit — ' + Math.round(100 * now.rech / now.cycle) + '% of the cycle' };
+  else limit = { key: 'cast',
+    text: 'Cast delay is the limit — ' + Math.round(100 * now.cast / now.cycle) + '% of the cycle' };
+
+  const tips = [];
+  const score = slots => gunRate(Object.assign({}, gun, { slots })).dps;
+  if (now.shots) {
+    const seen = {};
+    const pool = bag.filter(id => !seen[id] && (seen[id] = 1));
+    // bringing one mod in from the bag
+    for (let i = 0; i < gun.slots.length; i++) {
+      for (const id of pool) {
+        if (gun.slots[i] === id) continue;
+        const slots = gun.slots.slice();
+        slots[i] = id;
+        const dps = score(slots);
+        if (dps > now.dps * 1.05) tips.push({ kind: 'fit', slot: i, id, dps, gain: dps / now.dps });
+      }
+    }
+    // or just moving what is already on the gun, which is often the real fix
+    for (let i = 0; i < gun.slots.length; i++) {
+      for (let j = i + 1; j < gun.slots.length; j++) {
+        if (!gun.slots[i] && !gun.slots[j]) continue;
+        const slots = gun.slots.slice();
+        slots[i] = gun.slots[j]; slots[j] = gun.slots[i];
+        const dps = score(slots);
+        if (dps > now.dps * 1.05) tips.push({ kind: 'move', slot: i, other: j, dps, gain: dps / now.dps });
+      }
+    }
+    tips.sort((a, b) => b.dps - a.dps);
+  }
+  // one tip per slot, so the list does not fill up with variations on one idea
+  const picked = [], usedSlot = {}, usedMod = {};
+  for (const t of tips) {
+    if (usedSlot[t.slot] || (t.other !== undefined && usedSlot[t.other])) continue;
+    if (t.id && usedMod[t.id]) continue;   // you only own one of each, so only its best slot
+    if (t.id) usedMod[t.id] = 1;
+    usedSlot[t.slot] = 1;
+    if (t.other !== undefined) usedSlot[t.other] = 1;
+    picked.push(t);
+    if (picked.length === 3) break;
+  }
+  return { now, limit, tips: picked };
+}
+
 // Which slots come out together on one pull. A modifier lands in the same group
 // as the shots it modifies, which is exactly what the outline in the build screen
 // draws. Null means the order is shuffled, so there is nothing fixed to show.
@@ -600,7 +695,8 @@ function castGroups(gun) {
 
 // Replay a pull with its modifiers stripped out, so the difference is exactly
 // what the mods in that group are contributing.
-function groupStats(gun, plan) {
+function groupStats(gun, gr) {
+  const plan = gr.plan;
   const ids = plan.defs.map(d => d.id);
   const bare = planCast(resetGun(Object.assign({}, gun, {
     cap: Math.max(1, ids.length), slots: ids.slice(),
@@ -623,6 +719,11 @@ function groupStats(gun, plan) {
   };
   const n = v => String(Math.round(v * 100) / 100);
   const sec = v => (Math.round(v * 1000) / 1000) + 's';
+
+  // recharge counts from any slot, so credit it to the group its mods sit in
+  const without = Object.assign({}, gun, {
+    slots: gun.slots.map((id, i) => (i >= gr.from && i < gr.to ? null : id)) });
+  add('recharge', effRecharge(gun), effRecharge(without), -1, sec);
 
   add('dmg', power(plan), power(bare), 1, n, true);
   add('shots', pellets(plan), pellets(bare), 1, n, pellets(plan) > plan.shots.length);
@@ -2133,7 +2234,7 @@ function GunSwap({ input, refresh, onDone }) {
   );
 }
 
-function ModCard({ id, onClose, ingame }) {
+function ModCard({ id, onClose, ingame, top }) {
   const m = MODS[id];
   const kind = famOf(id).name + (m.kind === 'passive' ? ' \u00b7 always on' : '');
   const rows = modPreview(id).rows;
@@ -2183,7 +2284,7 @@ function ModCard({ id, onClose, ingame }) {
     demo = [drow(true, [dtile(id, 'a'), dtile('bolt', 'b')], 'the bolt gets the effect', 1),
             drow(false, [dtile('bolt', 'c'), dtile(id, 'd', true)], 'too late — the bolt already fired', 2)];
   }
-  return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') },
+  return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') + (top ? ' top' : '') },
     h('div', { className: 'phead' },
       h('div', { className: 'pglyph', style: { borderColor: famCol(id), color: famCol(id) } }, m.glyph),
       h('div', { className: 'ptitle' },
@@ -2340,7 +2441,7 @@ function Editor({ input, close, refresh }) {
             (gr.wrapped ? ' ↩' : '')
           : 'never cast'),
         gr ? h('div', { className: 'gfx' },
-          groupStats(g, gr.plan).map((r, k) => h('span', {
+          groupStats(g, gr).map((r, k) => h('span', {
               key: k, className: 'fx' + (r.dir ? ' ' + r.dir : '') },
             h('i', null, r.label), h('b', null, r.value),
             r.delta ? h('u', null, r.delta) : null))) : null));
@@ -2367,7 +2468,7 @@ function Editor({ input, close, refresh }) {
   const card = shown
     ? h('div', { key: 'card' },
         h('div', { className: 'shade', onPointerDown: behind }),
-        h(ModCard, { id: info, onClose: () => setInfo(null) }))
+        h(ModCard, { id: info, onClose: () => setInfo(null), top: true }))
     : null;
 
   return h('div', { className: 'sheet' + (shown ? ' withcard' : '') },
@@ -2403,6 +2504,35 @@ function Editor({ input, close, refresh }) {
                      : 'On the gun — each outline is one pull of the trigger')
       : 'No gun in this slot'),
     gun ? h('div', { className: 'slotRow' }, slotRow(gun, tile)) : null,
+    gun ? (() => {
+      const adv = buildAdvice(gun, LO.bag);
+      const apply = t => e => {
+        e.preventDefault();
+        if (t.kind === 'move') {
+          const a = gun.slots[t.slot];
+          gun.slots[t.slot] = gun.slots[t.other];
+          gun.slots[t.other] = a;
+        } else {
+          const outgoing = gun.slots[t.slot];
+          const k = LO.bag.indexOf(t.id);
+          if (k >= 0) LO.bag.splice(k, 1);
+          gun.slots[t.slot] = t.id;
+          if (outgoing) LO.bag.push(outgoing);
+        }
+        resetGun(gun);
+        refresh();
+      };
+      return h('div', { className: 'advice' },
+        h('div', { className: 'diag ' + adv.limit.key },
+          h('b', null, adv.now.dps.toFixed(1) + ' dmg/s'), adv.limit.text),
+        adv.tips.length ? h('div', { className: 'tips' },
+          adv.tips.map((t, k) => h('button', { key: k, className: 'tip', onPointerDown: apply(t) },
+            t.kind === 'move'
+              ? 'Swap slots ' + (t.slot + 1) + ' and ' + (t.other + 1)
+              : (gun.slots[t.slot] ? 'Replace slot ' + (t.slot + 1) + ' with ' : 'Slot ' +
+                  (t.slot + 1) + ': ') + MODS[t.id].name,
+            h('b', null, '\u00d7' + t.gain.toFixed(1) + ' dmg')))) : null);
+    })() : null,
     h('div', { className: 'legend' },
       Object.keys(FAMILIES).map(k => h('span', { key: k, className: 'lg' },
         h('i', { style: { background: FAMILIES[k].col } }), FAMILIES[k].name))),
