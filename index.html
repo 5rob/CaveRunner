@@ -123,7 +123,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v10';
+const VERSION = 'v11';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -326,9 +326,14 @@ function planCast(g) {
     delay += sm.delay;
     return sh;
   });
+  let more = false;                       // anything left worth firing this cycle?
+  for (let i = g.idx; i < g.order.length; i++) {
+    const id = g.slots[g.order[i]];
+    if (id && MODS[id].kind === 'shot') { more = true; break; }
+  }
   return { shots, start, cost: cost * manaMul,
     delay: Math.max(0.03, g.castDelay + delay),
-    wrap: ran || g.idx >= g.order.length };
+    wrap: ran || !more };
 }
 
 // what the gun actually does with the mods on it right now
@@ -969,18 +974,17 @@ function Game({ input }) {
             else { dead = true; break; }
           }
           if (solidAt(nx, ny)) {
-            b.x = nx; b.y = ny;
-            if (b.bore > 0) { dig(nx, ny, b.bore); continue; }
-            if (b.explode) { boom = true; break; }
-            if (b.bounce > 0) {
+            if (b.bounce > 0 && !b.bore && !b.explode) {
               b.bounce--;
               const hx = solidAt(nx, b.y), hy = solidAt(b.x, ny);
               if (hx || !hy) b.vx = -b.vx;
               if (hy || !hx) b.vy = -b.vy;
-              b.x -= b.vx * dt / sn; b.y -= b.vy * dt / sn;
               b.vx *= 0.92; b.vy *= 0.92;
-              break;
+              break;                      // stay put: b.x/b.y are still outside the rock
             }
+            b.x = nx; b.y = ny;
+            if (b.bore > 0) { dig(nx, ny, b.bore); continue; }
+            if (b.explode) { boom = true; break; }
             burst(b.x, b.y, 3, b.col);
             dead = true;
             break;
