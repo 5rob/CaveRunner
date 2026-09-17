@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v13</title>
+<title>CaveRunner v14</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -134,6 +134,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .dtile i{font-style:normal;font:600 10px system-ui,sans-serif;color:var(--text);opacity:.8}
 .dtile.off{opacity:.42}
 .dnote{display:block;font-size:11px;color:var(--muted);margin-top:3px}
+.buy{position:absolute;left:50%;transform:translateX(-50%);bottom:78px;display:flex;align-items:center;
+  gap:8px;height:42px;padding:0 18px;border-radius:21px;border:2px solid #ffc93c;
+  background:rgba(20,22,28,0.82);color:#fff;font:600 14px system-ui,sans-serif;touch-action:none}
+.buy b{color:#ffc93c}
+.buy.cant{border-color:rgba(255,255,255,0.25);opacity:.55}
+.weapon.locked{opacity:.45}
+.purse{font:700 14px system-ui,sans-serif;color:#c08a1f;margin-left:auto;margin-right:10px}
 .reset{position:absolute;top:10px;right:10px;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.35);
   color:#e9ecf2;border-radius:8px;padding:6px 12px;font:inherit;font-size:13px}
 </style>
@@ -154,7 +161,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v13';
+const VERSION = 'v14';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -164,6 +171,7 @@ const DEAD = 0.12;
 const PW = 12, PH = 22;
 const FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
 const PLAYER_HP = 100;
+const START_GOLD = 40;
 const ENEMY_HP = 3, ENEMY_RANGE = 220, ENEMY_BULLET = 180, ENEMY_DMG = 10, ENEMY_COUNT = 20;
 const NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
 
@@ -264,6 +272,23 @@ const MODS = {
   battery:  { name: 'Mana Battery', kind: 'passive', glyph: '▮', col: '#46c48c', mana: 0,
               info: '+60 mana, +30 regen', manaMax: 60, manaRegen: 30 },
 };
+// shop prices in gold
+const MOD_PRICE = {
+  bolt: 20, spark: 12, slug: 40, buck: 35, lance: 45, orb: 30, blast: 45,
+  dmg_up: 30, heavy: 40, light: 30, speed: 25, accel: 35, homing: 70, seeker: 90,
+  bounce: 25, pierce: 85, tight: 15, scatter: 35, big: 30, range: 30, brief: 20,
+  tip: 55, borer: 25, fast: 30, over: 45, double: 45, triple: 60, quad: 75, cheap: 40,
+  recharge: 50, battery: 50,
+};
+const priceOf = id => MOD_PRICE[id] || 30;
+
+// the shop room sits under the whole cave: floor, interior, then a brick roof
+const SHOP_FLOOR = CH - 10;            // first row of solid floor
+const SHOP_H = 48;                     // interior height
+const SHOP_TOP = SHOP_FLOOR - SHOP_H;  // first open row of the room
+const SHOP_ROOF = 6;                   // roof thickness
+const SHOP_Y = SHOP_TOP * CELL;        // world y of the ceiling, for "am I in the shop?"
+
 const SHOT_IDS = Object.keys(MODS).filter(k => MODS[k].kind === 'shot');
 const ALL_IDS = Object.keys(MODS);
 
@@ -432,7 +457,8 @@ function gunPassives(g) {
 
 const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
-function makeLevel(seed) {
+function makeLevel(seed, floor) {
+  floor = floor || 1;
   const hash = (x, y) => {
     let v = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 982451653)) | 0;
     v = Math.imul(v ^ (v >>> 13), 1274126177);
@@ -448,6 +474,7 @@ function makeLevel(seed) {
   const fbm = (x, y) => 0.55 * vn(x, y) + 0.3 * vn(x * 2 + 17, y * 2 + 31) + 0.15 * vn(x * 4 + 53, y * 4 + 7);
   let rs = seed % 2147483646 + 1;
   const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 12; i++) rnd();     // this generator starts cold on small seeds
 
   const mat = new Uint8Array(CW * CH);
   const inside = (x, y) => x >= 0 && y >= 0 && x < CW && y < CH;
@@ -471,7 +498,8 @@ function makeLevel(seed) {
 
   // 2. main route from bottom to top: chambers linked by winding tunnels
   //    that are always wide enough to fly through (side pockets still need blasting)
-  const points = [{ x: CW / 2, y: CH - 26 }];
+  const shopExit = 40 + Math.floor(rnd() * (CW - 80));   // the one way out of the shop
+  const points = [{ x: shopExit, y: SHOP_TOP - 30 }];
   const hops = 6;
   for (let i = 1; i <= hops; i++) {
     points.push({ x: 40 + rnd() * (CW - 80), y: CH - 26 - (CH - 60) * i / (hops + 1) + (rnd() - 0.5) * 40 });
@@ -530,8 +558,8 @@ function makeLevel(seed) {
   }
   for (const c of routePath) disc(c.x, c.y, c.r, 0);
 
-  // solid floor, start room and exit room
-  for (let cy = CH - 10; cy < CH; cy++) for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = ROCK;
+  // solid floor and the exit room at the top
+  for (let cy = SHOP_FLOOR; cy < CH; cy++) for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = ROCK;
   const carve = (ex, ey, rx, ry, maxY) => {
     for (let y = Math.max(0, ey - ry); y <= Math.min(maxY, ey + ry); y++)
       for (let x = Math.max(0, ex - rx); x <= Math.min(CW - 1, ex + rx); x++) {
@@ -539,7 +567,6 @@ function makeLevel(seed) {
         if (dx * dx + dy * dy <= 1) mat[y * CW + x] = 0;
       }
   };
-  carve(CW / 2, CH - 26, 40, 16, CH - 11);
   carve(CW / 2, 22, 40, 16, CH);
 
   const emptyRatio = (x0, y0, w, hh) => {
@@ -556,7 +583,7 @@ function makeLevel(seed) {
   // 4. built ledges sticking out of cave walls
   let ledges = 0;
   for (let a = 0; a < 600 && ledges < 30; a++) {
-    const x = 10 + Math.floor(rnd() * (CW - 20)), y = 20 + Math.floor(rnd() * (CH - 50));
+    const x = 10 + Math.floor(rnd() * (CW - 20)), y = 20 + Math.floor(rnd() * (SHOP_TOP - 50));
     if (mat[y * CW + x]) continue;
     const dir = rnd() < 0.5 ? -1 : 1;
     let wx = x, dist = 0;
@@ -572,7 +599,7 @@ function makeLevel(seed) {
   // 5. old brick frames half buried in the rock
   for (let i = 0; i < 9; i++) {
     const fw = 30 + Math.floor(rnd() * 40), fh = 20 + Math.floor(rnd() * 20);
-    const fx = 8 + Math.floor(rnd() * (CW - 16 - fw)), fy = 60 + Math.floor(rnd() * (CH - 140));
+    const fx = 8 + Math.floor(rnd() * (CW - 16 - fw)), fy = 60 + Math.floor(rnd() * (SHOP_TOP - 120));
     const rockRatio = 1 - emptyRatio(fx, fy, fw, fh);
     if (rockRatio < 0.25 || rockRatio > 0.85) continue;
     const gap = Math.floor(rnd() * 4);   // which side gets a doorway
@@ -589,7 +616,7 @@ function makeLevel(seed) {
   let floats = 0;
   for (let a = 0; a < 400 && floats < 10; a++) {
     const len = 18 + Math.floor(rnd() * 22);
-    const x0 = 8 + Math.floor(rnd() * (CW - 16 - len)), y0 = 40 + Math.floor(rnd() * (CH - 90));
+    const x0 = 8 + Math.floor(rnd() * (CW - 16 - len)), y0 = 40 + Math.floor(rnd() * (SHOP_TOP - 80));
     if (emptyRatio(x0 - 12, y0 - 18, len + 24, 34) < 0.98) continue;
     slab(x0, y0, len, 4);
     floats++;
@@ -597,6 +624,18 @@ function makeLevel(seed) {
 
   // clear a doorway wherever a ledge, frame or platform landed across a link
   for (const c of routePath) disc(c.x, c.y, Math.min(c.r, 7), 0);
+
+  // ---- the shop: an enclosed room the full width of the level, one hole in the roof ----
+  for (let cy = SHOP_TOP; cy < SHOP_FLOOR; cy++)
+    for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = 0;
+  for (let cy = SHOP_TOP - SHOP_ROOF; cy < SHOP_TOP; cy++)
+    for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BRICK;
+  for (let cy = SHOP_FLOOR; cy < SHOP_FLOOR + 4; cy++)
+    for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BRICK;
+  // the way up, and a short shaft so the cave above is always reachable
+  for (let cy = SHOP_TOP - SHOP_ROOF - 26; cy < SHOP_TOP; cy++)
+    for (let cx = shopExit - 9; cx <= shopExit + 9; cx++)
+      if (inside(cx, cy)) mat[cy * CW + cx] = 0;
 
   // exit ledge
   slab(CW / 2 - 24, 34, 48, 3);
@@ -643,7 +682,24 @@ function makeLevel(seed) {
       bgImg.data[k] = c[0] + j; bgImg.data[k + 1] = c[1] + j; bgImg.data[k + 2] = c[2] + j; bgImg.data[k + 3] = 255;
     }
 
-  const start = { x: WW / 2 - PW / 2, y: (CH - 10) * CELL - PH };
+  const start = { x: shopExit * CELL - PW / 2, y: SHOP_FLOOR * CELL - PH };
+
+  // shop stock: a free heal and four mods, spread across the room
+  const stock = [];
+  const offer = ALL_IDS.slice();
+  for (let i = offer.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [offer[i], offer[j]] = [offer[j], offer[i]];
+  }
+  const shelf = (SHOP_FLOOR - 13) * CELL;
+  for (let i = 0; i < 5; i++) {
+    const x = (CW / 6) * (i + 1) * CELL;
+    if (i === 0) stock.push({ kind: 'heal', x, y: shelf, price: 0, sold: false });
+    else {
+      const id = offer[i - 1];
+      stock.push({ kind: 'mod', id, x, y: shelf, price: priceOf(id), sold: false });
+    }
+  }
   const portal = { x: WW / 2 - 10, y: 34 * CELL - 30, w: 20, h: 30 };
 
   // enemies in open spaces
@@ -657,11 +713,12 @@ function makeLevel(seed) {
     return true;
   };
   const enemies = [];
-  for (let a = 0; a < 3000 && enemies.length < ENEMY_COUNT; a++) {
-    const cx = 8 + Math.floor(rnd() * (CW - 16)), cy = 50 + Math.floor(rnd() * (CH - 120));
+  const wanted = Math.min(34, ENEMY_COUNT + (floor - 1) * 3);
+  for (let a = 0; a < 4000 && enemies.length < wanted; a++) {
+    const cx = 8 + Math.floor(rnd() * (CW - 16)), cy = 50 + Math.floor(rnd() * (SHOP_TOP - 70));
     if (!clear(cx, cy, 8)) continue;
     const x = cx * CELL, y = cy * CELL;
-    if (Math.hypot(x - start.x, y - start.y) < 220) continue;
+    if (Math.hypot(x - start.x, y - start.y) < 200) continue;
     if (enemies.some(e => Math.hypot(e.x - x, e.y - y) < 90)) continue;
     enemies.push({ x, y, ty: y, r: 9, phase: rnd() * 6.28, hp: ENEMY_HP, cd: 1 + rnd() * 2, flash: 0, lx: 0, ly: 1 });
   }
@@ -669,12 +726,12 @@ function makeLevel(seed) {
   // guns and mods to find: the higher up the cave, the better the roll
   const pickups = [];
   for (let a = 0; a < 5000 && pickups.length < 18; a++) {
-    const cx = 8 + Math.floor(rnd() * (CW - 16)), cy = 30 + Math.floor(rnd() * (CH - 100));
+    const cx = 8 + Math.floor(rnd() * (CW - 16)), cy = 30 + Math.floor(rnd() * (SHOP_TOP - 60));
     if (!clear(cx, cy, 6)) continue;
     const x = cx * CELL, y = cy * CELL;
     if (Math.hypot(x - start.x, y - start.y) < 130) continue;
     if (pickups.some(q => Math.hypot(q.x - x, q.y - y) < 110)) continue;
-    const tier = Math.min(1, Math.max(0, (CH - 60 - cy) / (CH - 140)));
+    const tier = Math.min(1, Math.max(0, (CH - 60 - cy) / (CH - 140) + (floor - 1) * 0.12));
     const guns = pickups.filter(q => q.kind === 'gun').length;
     if (guns < 5 && (rnd() < 0.3 || pickups.length > 12 && guns < 2)) {
       pickups.push({ kind: 'gun', x, y, gun: makeGun(rnd, tier), t: rnd() * 6.28 });
@@ -683,7 +740,7 @@ function makeLevel(seed) {
     }
   }
 
-  return { mat, img, bgImg, start, portal, enemies, pickups };
+  return { mat, img, bgImg, start, portal, enemies, pickups, stock, shopExit };
 }
 
 const approach = (v, t, a) => (v < t ? Math.min(t, v + a) : Math.max(t, v - a));
@@ -693,26 +750,39 @@ function Game({ input }) {
   const cv = useRef(null);
   useEffect(() => {
     const c = cv.current, ctx = c.getContext('2d');
-    const seed = 1 + Math.floor(Math.random() * 2147483000);
-    const level = makeLevel(seed);
-    const { mat, img, start, portal, enemies, pickups } = level;
-    const total = enemies.length;
-
     const terrain = document.createElement('canvas');
     terrain.width = CW; terrain.height = CH;
     const tctx = terrain.getContext('2d');
-    tctx.putImageData(img, 0, 0);
     const bg = document.createElement('canvas');
     bg.width = BW; bg.height = BH;
-    bg.getContext('2d').putImageData(level.bgImg, 0, 0);
+    const bgctx = bg.getContext('2d');
 
-    const p = { x: start.x, y: start.y, vx: 0, vy: 0, onGround: false, face: 1, jet: 0,
+    let mat, img, start, portal, enemies, pickups, stock, total, floor = 1;
+
+    const p = { x: 0, y: 0, vx: 0, vy: 0, onGround: false, face: 1, jet: 0,
       fuel: 1, empty: false, hp: PLAYER_HP, hitT: 0, dead: false, kick: 0,
       jx: 0, jy: 0, aim: { on: false, show: false, nx: 1, ny: 0 } };
-    const bullets = [], enemyShots = [], smoke = [], sparks = [], flashes = [], toasts = [];
+    const bullets = [], enemyShots = [], smoke = [], sparks = [], flashes = [], toasts = [], coins = [];
     let smokeAcc = 0, time = 0, camX = 0, camY = 0, camReady = false;
     const toast = text => { toasts.push({ text, t: 2.2 }); if (toasts.length > 3) toasts.shift(); };
-    let won = false, best = 0, raf, last = performance.now();
+    let best = 0, raf, last = performance.now();
+
+    // a floor is a fresh cave with its own shop at the bottom; you keep everything else
+    function enterLevel() {
+      const level = makeLevel(1 + Math.floor(Math.random() * 2147483000), floor);
+      mat = level.mat; img = level.img;
+      start = level.start; portal = level.portal;
+      enemies = level.enemies; pickups = level.pickups; stock = level.stock;
+      total = enemies.length;
+      tctx.putImageData(img, 0, 0);
+      bgctx.putImageData(level.bgImg, 0, 0);
+      p.x = start.x; p.y = start.y; p.vx = 0; p.vy = 0;
+      p.fuel = 1; p.empty = false; p.kick = 0;
+      bullets.length = enemyShots.length = smoke.length = 0;
+      sparks.length = flashes.length = coins.length = 0;
+      camReady = false; best = 0;
+    }
+    enterLevel();
 
     const resize = () => {
       const r = c.parentElement.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
@@ -788,7 +858,11 @@ function Game({ input }) {
     function damageEnemy(j, dmg) {
       const e = enemies[j];
       e.hp -= dmg; e.flash = 0.08;
-      if (e.hp <= 0) { burst(e.x, e.ty, 16, COL.enemy); enemies.splice(j, 1); }
+      if (e.hp > 0) return;
+      burst(e.x, e.ty, 16, COL.enemy);
+      enemies.splice(j, 1);
+      coins.push({ x: e.x, y: e.ty, amount: 5 + Math.floor(Math.random() * 6) + floor,
+        t: Math.random() * 6.28, vy: -60 - Math.random() * 40 });
     }
 
     // clear rock without the bang, for drilling shots
@@ -991,7 +1065,14 @@ function Game({ input }) {
       p.onGround = boxHit(p.x, p.y + 0.5);
 
       const pcx = p.x + PW / 2, pcy = p.y + PH / 2;
-      if (!won && pcx > portal.x && pcx < portal.x + portal.w && pcy > portal.y && pcy < portal.y + portal.h) won = true;
+      if (!p.dead && pcx > portal.x && pcx < portal.x + portal.w &&
+          pcy > portal.y && pcy < portal.y + portal.h) {
+        floor++;
+        enterLevel();
+        toast('Floor ' + floor);
+        input.current.notify();
+        return;
+      }
 
       // ---- aiming: thumbstick first, otherwise mouse ----
       const gx = pcx, gy = p.y + PH * 0.4;
@@ -1101,6 +1182,56 @@ function Game({ input }) {
         }
         input.current.notify();
       }
+      // ---- gold ----
+      for (let i = coins.length - 1; i >= 0; i--) {
+        const g = coins[i];
+        g.vy += 320 * dt;
+        const ny = g.y + g.vy * dt;
+        if (solidAt(g.x, ny + 3)) { g.vy = 0; } else { g.y = ny; }
+        if (Math.abs(g.x - pcx) < 16 && Math.abs(g.y - pcy) < 18 && !p.dead) {
+          LO.gold += g.amount;
+          coins.splice(i, 1);
+          input.current.notify();
+        }
+      }
+
+      // ---- the shop ----
+      const inShop = p.y + PH > SHOP_Y;
+      let prompt = null;
+      for (const it of stock) {
+        if (it.sold) continue;
+        if (Math.abs(it.x - pcx) > 15 || Math.abs(it.y - pcy) > 22) continue;
+        prompt = it;
+        break;
+      }
+      const promptKey = prompt ? stock.indexOf(prompt) : -1;
+      const label = !prompt ? null
+        : prompt.kind === 'heal' ? { text: 'Full heal', price: 0, can: p.hp < PLAYER_HP }
+        : { text: MODS[prompt.id].name, price: prompt.price, can: LO.gold >= prompt.price };
+      const sig = promptKey + ':' + (label && label.can ? 1 : 0) + ':' + inShop;
+      if (sig !== input.current.sig) {
+        input.current.sig = sig;
+        input.current.prompt = label;
+        input.current.inShop = inShop;
+        input.current.notify();
+      }
+      if (input.current.buy && prompt) {
+        input.current.buy = false;
+        if (prompt.kind === 'heal') {
+          if (p.hp < PLAYER_HP) { p.hp = PLAYER_HP; prompt.sold = true; toast('Patched up'); }
+        } else if (LO.gold >= prompt.price) {
+          LO.gold -= prompt.price;
+          LO.bag.push(prompt.id);
+          prompt.sold = true;
+          toast('Bought ' + MODS[prompt.id].name);
+        } else {
+          toast('Not enough gold');
+        }
+        input.current.sig = '';
+        input.current.notify();
+      }
+      input.current.buy = false;
+
       for (let i = toasts.length - 1; i >= 0; i--) if ((toasts[i].t -= dt) <= 0) toasts.splice(i, 1);
 
       // ---- enemies ----
@@ -1197,6 +1328,21 @@ function Game({ input }) {
       const bx0 = clamp(Math.floor(camX / 4), 0, BW - 1), by0 = clamp(Math.floor(camY / 4), 0, BH - 1);
       const bx1 = clamp(Math.ceil((camX + vw) / 4) + 1, 1, BW), by1 = clamp(Math.ceil((camY + vh) / 4) + 1, 1, BH);
       ctx.drawImage(bg, bx0, by0, bx1 - bx0, by1 - by0, bx0 * 4, by0 * 4, (bx1 - bx0) * 4, (by1 - by0) * 4);
+      // the shop's back wall
+      if (camY + vh > SHOP_Y) {
+        ctx.fillStyle = '#241f28';
+        ctx.fillRect(0, SHOP_Y, WW, (SHOP_FLOOR * CELL) - SHOP_Y);
+        ctx.fillStyle = 'rgba(255,255,255,0.03)';
+        for (let bx = 0; bx < WW; bx += 24)
+          for (let by = SHOP_Y; by < SHOP_FLOOR * CELL; by += 12)
+            ctx.fillRect(bx + ((by / 12) % 2) * 12, by, 11, 11);
+        ctx.fillStyle = 'rgba(233,236,242,0.30)';
+        ctx.font = '600 11px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('SHOP', WW / 2, SHOP_Y + 14);
+        ctx.textAlign = 'left';
+      }
+
       const tx0 = clamp(Math.floor(camX / CELL), 0, CW - 1), ty0 = clamp(Math.floor(camY / CELL), 0, CH - 1);
       const tx1 = clamp(Math.ceil((camX + vw) / CELL) + 1, 1, CW), ty1 = clamp(Math.ceil((camY + vh) / CELL) + 1, 1, CH);
       ctx.drawImage(terrain, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
@@ -1248,6 +1394,58 @@ function Game({ input }) {
           ctx.beginPath(); ctx.arc(b.x, b.y, b.size + 2.5, 0, Math.PI * 2); ctx.fill();
           ctx.globalAlpha = 1;
         }
+      }
+
+      // shop stock on its plinths
+      for (const it of stock) {
+        if (it.y > camY + vh + 40 || it.y < camY - 40) continue;
+        const bob = Math.sin(time * 2 + it.x) * 2;
+        ctx.fillStyle = '#4a4550';
+        ctx.fillRect(it.x - 11, it.y + 12, 22, 5);
+        ctx.fillRect(it.x - 6, it.y + 4, 12, 9);
+        if (it.sold) {
+          ctx.fillStyle = COL.muted;
+          ctx.font = '600 8px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('SOLD', it.x, it.y - 2);
+          ctx.textAlign = 'left';
+          continue;
+        }
+        if (it.kind === 'heal') {
+          ctx.globalAlpha = 0.25; ctx.fillStyle = COL.hp;
+          ctx.beginPath(); ctx.arc(it.x, it.y + bob, 13, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1; ctx.fillStyle = COL.hp;
+          ctx.fillRect(it.x - 7, it.y - 2.5 + bob, 14, 5);
+          ctx.fillRect(it.x - 2.5, it.y - 7 + bob, 5, 14);
+        } else {
+          const m = MODS[it.id];
+          ctx.globalAlpha = 0.22; ctx.fillStyle = m.col;
+          ctx.beginPath(); ctx.arc(it.x, it.y + bob, 13, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1; ctx.fillStyle = m.col;
+          ctx.beginPath();
+          ctx.moveTo(it.x, it.y - 8 + bob); ctx.lineTo(it.x + 8, it.y + bob);
+          ctx.lineTo(it.x, it.y + 8 + bob); ctx.lineTo(it.x - 8, it.y + bob);
+          ctx.fill();
+          ctx.fillStyle = '#12141a';
+          ctx.font = '600 9px system-ui, sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(m.glyph, it.x, it.y + 0.5 + bob);
+          ctx.textBaseline = 'alphabetic';
+          ctx.fillStyle = COL.bullet;
+          ctx.font = '600 9px system-ui, sans-serif';
+          ctx.fillText(it.price + 'g', it.x, it.y - 12 + bob);
+          ctx.textAlign = 'left';
+        }
+      }
+
+      // gold
+      for (const g of coins) {
+        if (g.y > camY + vh + 30 || g.y < camY - 30) continue;
+        const bob = Math.sin(time * 4 + g.t) * 1.5;
+        ctx.fillStyle = '#d8a52a';
+        ctx.beginPath(); ctx.ellipse(g.x, g.y + bob, 3.2, 4, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = COL.flame2;
+        ctx.beginPath(); ctx.ellipse(g.x - 0.8, g.y - 0.8 + bob, 1.2, 1.8, 0, 0, Math.PI * 2); ctx.fill();
       }
 
       // pickups
@@ -1350,8 +1548,13 @@ function Game({ input }) {
       ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 3;
       ctx.fillStyle = COL.text;
       ctx.font = '600 15px system-ui, sans-serif';
-      ctx.fillText('Height ' + best + ' m', 12, 26);
+      ctx.fillText('Floor ' + floor + '  ·  ' + best + ' m', 12, 26);
       ctx.fillText('Enemies ' + (total - enemies.length) + '/' + total, 12, 46);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = COL.bullet;
+      ctx.fillText(input.current.loadout.gold + ' gold', cw - 12, 66);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = COL.text;
       const bar = (label, y, frac, fill) => {
         ctx.fillStyle = COL.text;
         ctx.fillText(label, 12, y + 10);
@@ -1394,26 +1597,19 @@ function Game({ input }) {
         ctx.fillText(THEME.name, cw / 2, 196);
         ctx.font = '500 14px system-ui, sans-serif';
         ctx.fillText('Find the green exit at the top', cw / 2, 218);
-        ctx.fillText('Grab guns and mods, build them in Mods', cw / 2, 236);
+        ctx.fillText('Buy and fit mods here, then climb', cw / 2, 236);
         ctx.globalAlpha = 1;
       }
-      let msgY = 196;
+      const msgY = 196;
       ctx.fillStyle = COL.text;
       if (p.dead) {
         ctx.font = '700 22px system-ui, sans-serif';
         ctx.fillText('You were shot down', cw / 2, msgY);
         ctx.font = '500 14px system-ui, sans-serif';
-        ctx.fillText('Tap Restart for a new cave', cw / 2, msgY + 22);
-      } else {
-        if (won) {
-          ctx.font = '700 22px system-ui, sans-serif';
-          ctx.fillText('You found the exit', cw / 2, msgY);
-          msgY += 26;
-        }
-        if (enemies.length === 0) {
-          ctx.font = '700 18px system-ui, sans-serif';
-          ctx.fillText('All enemies destroyed', cw / 2, msgY);
-        }
+        ctx.fillText('Tap Restart to start again', cw / 2, msgY + 22);
+      } else if (enemies.length === 0) {
+        ctx.font = '700 18px system-ui, sans-serif';
+        ctx.fillText('All enemies destroyed', cw / 2, msgY);
       }
       ctx.textAlign = 'left';
       ctx.shadowBlur = 0;
@@ -1631,6 +1827,7 @@ function Editor({ input, close, refresh }) {
   return h('div', { className: 'sheet' },
     h('div', { className: 'shead' },
       h('h2', null, 'Guns & Mods'),
+      h('span', { className: 'purse' }, LO.gold + 'g'),
       h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Done')
     ),
     h('div', { className: 'gtabs' },
@@ -1672,8 +1869,8 @@ function App() {
   const blank = () => ({ active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false });
   const input = useRef({
     left: blank(), right: blank(),
-    loadout: { guns: startingGuns(), bag: [], sel: 0 },
-    paused: false, notify: () => {},
+    loadout: { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD },
+    paused: false, notify: () => {}, inShop: true, prompt: null, buy: false, sig: '',
     keys: { w: false, a: false, s: false, d: false },
     mouse: { x: 0, y: 0, inside: false, down: false },
   });
@@ -1688,7 +1885,8 @@ function App() {
   const LO = input.current.loadout;
   const select = i => { if (LO.guns[i]) { LO.sel = i; refresh(); } };
   const restart = () => {
-    input.current.loadout = { guns: startingGuns(), bag: [], sel: 0 };
+    input.current.loadout = { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD };
+    input.current.sig = '';
     setEdit(false);
     setRun(r => r + 1);
   };
@@ -1711,7 +1909,8 @@ function App() {
       if (map[k]) { input.current.keys[map[k]] = down; e.preventDefault(); }
       if (!down) return;
       if (k >= '1' && k <= '4') select(Number(k) - 1);
-      if (k === 'e' || k === 'tab') { e.preventDefault(); setEdit(v => !v); }
+      if (k === 'e' || k === 'tab') { e.preventDefault(); if (input.current.inShop) setEdit(v => !v); }
+      if (k === 'f') input.current.buy = true;
       if (k === 'escape') setEdit(false);
     };
     const kd = key(true), ku = key(false);
@@ -1731,9 +1930,18 @@ function App() {
     };
   }, []);
 
+  const prompt = input.current.prompt;
+  const inShop = input.current.inShop;
+  const buy = e => { e.preventDefault(); input.current.buy = true; };
+
   return h('div', { className: 'app' },
     h('div', { className: 'view' },
       h(Game, { key: run, input }),
+      prompt ? h('button', {
+          className: 'buy' + (prompt.can ? '' : ' cant'),
+          onPointerDown: prompt.can ? buy : e => e.preventDefault() },
+        prompt.price ? 'Buy ' + prompt.text : 'Take ' + prompt.text,
+        h('b', null, prompt.price ? prompt.price + 'g' : 'free')) : null,
       h('button', { className: 'reset',
         // pointerdown, like every other control: a click synthesised after the mod
         // sheet closes must not land here and wipe the run
@@ -1753,9 +1961,12 @@ function App() {
             g ? h('span', { className: 'gsub' }, g.slots.filter(Boolean).length + '/' + g.cap) : null
           ))
         ),
-        h('button', { className: 'weapon', onPointerDown: e => { e.preventDefault(); setEdit(true); } },
-          h('span', { className: 'wicon' }), 'Mods',
-          LO.bag.length ? h('b', { className: 'badge' }, LO.bag.length) : null)
+        h('button', {
+            className: 'weapon' + (inShop ? '' : ' locked'),
+            title: inShop ? 'Edit your guns' : 'Only in the shop',
+            onPointerDown: e => { e.preventDefault(); if (inShop) setEdit(true); } },
+          h('span', { className: 'wicon' }), inShop ? 'Mods' : 'Shop only',
+          inShop && LO.bag.length ? h('b', { className: 'badge' }, LO.bag.length) : null)
       ),
       h('div', { className: 'sticks' },
         h(Stick, { size, kind: 'left', input }),

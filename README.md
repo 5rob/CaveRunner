@@ -1,6 +1,10 @@
 # CaveRunner
 
-A jetpack cave platformer prototype that runs in the browser. Each run generates a new destructible cave to climb, from the start at the bottom to the green exit at the top.
+A jetpack cave platformer prototype that runs in the browser. Each floor is a
+shop room with a freshly generated destructible cave above it: climb from the
+shop to the green exit at the top, and the exit drops you into the next floor's
+shop. You keep your guns, mods and gold; the cave, the enemies and the loot are
+new every time.
 
 ## Play
 
@@ -15,7 +19,16 @@ Open `index.html` in a browser. It is a single file with no build step; React lo
 | Aim | Right stick | Mouse |
 | Shoot | Hold right stick | Left mouse button |
 | Pick gun | Tap a gun slot | 1 to 4 |
-| Guns & mods screen | Tap Mods | E |
+| Guns & mods screen (shop only) | Tap Mods | E |
+| Buy / take shop item | Tap Buy | F |
+
+## The shop
+
+Every floor starts in an enclosed room spanning the width of the level, with one
+hole in the roof leading up into the cave. It stocks four random mods for gold
+and one free full heal, and it is the only place you can rearrange your guns —
+the Mods button is locked while you are out in the cave. Enemies drop gold when
+they die, so a floor you clear pays for the next floor's shopping.
 
 ## Guns and mods
 
@@ -32,6 +45,7 @@ the gun recharges before starting over.
 
 ## Features
 
+- Floors that chain: shop, cave, exit, next shop, with gold and gear carried over
 - Randomly generated caves with cramped and open areas, winding tunnels, built ledges and half-buried brick frames
 - Destructible pixel terrain: explosions and drilling shots eat everything except the outer border
 - Guns and mods to find, with a drag-and-drop screen for building them
