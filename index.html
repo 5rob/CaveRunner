@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v18</title>
+<title>CaveRunner v19</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -90,7 +90,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   display:flex;gap:5px;align-items:baseline}
 .st b{font-size:12px;color:var(--text)}
 .lab{font-size:11px;color:var(--muted);margin:0 0 5px;text-transform:uppercase;letter-spacing:.06em}
-.slotRow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.slotRow{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:flex-start}
+.grp{display:flex;flex-direction:column;gap:2px}
+.gtiles{display:flex;gap:6px;padding:5px;border:1.5px solid var(--ring);border-radius:12px;
+  background:var(--pad)}
+.glab{font:600 9px system-ui,sans-serif;color:var(--muted);padding-left:6px;
+  text-transform:uppercase;letter-spacing:.04em}
+.grp.cold .gtiles{border-style:dashed;border-color:var(--pad);background:transparent;opacity:.6}
 .bag{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;overflow-y:auto;
   flex:1 1 0;min-height:70px;border-radius:9px;background:var(--pad);padding:6px}
 .tile{width:60px;height:56px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);
@@ -110,7 +116,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* ---- mod detail card ---- */
 .shade{position:fixed;inset:0;z-index:27;background:rgba(0,0,0,0.42)}
 .pop{position:fixed;z-index:28;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));
-  max-height:82%;overflow-y:auto;background:var(--btn);border:1px solid var(--ring);
+  max-height:42%;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--btn);border:1px solid var(--ring);
   border-radius:15px;padding:12px 13px 14px;box-shadow:0 12px 40px rgba(0,0,0,0.35)}
 .pop.ingame{position:absolute;top:8px;left:8px;right:8px;bottom:auto;z-index:5;max-height:66%;
   pointer-events:none;background:rgba(18,20,26,0.93);border-color:rgba(255,255,255,0.18);color:#e9ecf2}
@@ -188,7 +194,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v18';
+const VERSION = 'v19';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -513,6 +519,26 @@ function modPreview(id) {
   const sa = a.shots[0], sb = b.shots[0];
   if (sa && sb) for (const [key, label, unit] of PREVIEW_FIELDS) push(label, sa[key] || 0, sb[key] || 0, unit);
   return { rows };
+}
+
+// Which slots come out together on one pull. A modifier lands in the same group
+// as the shots it modifies, which is exactly what the outline in the build screen
+// draws. Null means the order is shuffled, so there is nothing fixed to show.
+function castGroups(gun) {
+  if (gun.shuffle) return null;
+  const sim = resetGun(Object.assign({}, gun, { slots: gun.slots.slice() }));
+  const groups = [];
+  for (let guard = 0; guard < 16; guard++) {
+    const from = sim.idx;
+    if (from >= sim.order.length) break;
+    const plan = planCast(sim);
+    let to = sim.idx;
+    const wrapped = to <= from;              // a multicast that ran back to the front
+    if (wrapped) to = sim.order.length;
+    if (plan.shots.length) groups.push({ from, to, wrapped, shots: plan.shots.length });
+    if (plan.wrap) break;
+  }
+  return groups;
 }
 
 // what the gun actually does with the mods on it right now
@@ -1802,7 +1828,7 @@ const GUN_STATS = [
 // One card for a gun: its rolled stats and the mods sitting on it.
 function GunCard({ gun, label, onClose, ingame, flow, compare, compareName }) {
   const vs = compare && compare !== gun ? compare : null;
-  return h('div', { className: 'pop' + (ingame ? ' ingame' : '') + (flow ? ' flow' : '') },
+  return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') + (flow ? ' flow' : '') },
     h('div', { className: 'phead' },
       h('div', { className: 'pglyph', style: { borderColor: '#c9ccd4', color: '#c9ccd4' } }, '⌥'),
       h('div', { className: 'ptitle' },
@@ -1940,7 +1966,7 @@ function ModCard({ id, onClose, ingame }) {
     demo = [drow(true, [dtile(id, 'a'), dtile('bolt', 'b')], 'the bolt gets the effect', 1),
             drow(false, [dtile('bolt', 'c'), dtile(id, 'd', true)], 'too late — the bolt already fired', 2)];
   }
-  return h('div', { className: 'pop' + (ingame ? ' ingame' : '') },
+  return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') },
     h('div', { className: 'phead' },
       h('div', { className: 'pglyph', style: { borderColor: m.col, color: m.col } }, m.glyph),
       h('div', { className: 'ptitle' },
@@ -2024,6 +2050,34 @@ function Editor({ input, close, refresh }) {
     );
   };
 
+  // draw the slots grouped by the pull they come out on
+  const slotRow = (g, mk) => {
+    const groups = castGroups(g);
+    if (!groups) return g.slots.map((id, i) => mk(id, { type: 'slot', i }, i));
+    const owner = new Array(g.slots.length).fill(-1);
+    groups.forEach((gr, n) => {
+      for (let i = gr.from; i < gr.to && i < owner.length; i++) owner[i] = n;
+    });
+    const ordinal = n => ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'][n] || (n + 1) + 'th';
+    const out = [];
+    for (let i = 0; i < g.slots.length;) {
+      const n = owner[i];
+      let j = i;
+      while (j < g.slots.length && owner[j] === n) j++;
+      const tiles = [];
+      for (let k = i; k < j; k++) tiles.push(mk(g.slots[k], { type: 'slot', i: k }, k));
+      const gr = n >= 0 ? groups[n] : null;
+      out.push(h('div', { className: 'grp' + (gr ? '' : ' cold'), key: 'g' + i },
+        h('div', { className: 'gtiles' }, tiles),
+        h('span', { className: 'glab' }, gr
+          ? ordinal(n) + ' pull · ' + gr.shots + (gr.shots > 1 ? ' shots' : ' shot') +
+            (gr.wrapped ? ' ↩' : '')
+          : 'never cast')));
+      i = j;
+    }
+    return out;
+  };
+
   const stat = (k, v) => h('div', { className: 'st' }, h('b', null, String(v)), h('span', null, k));
   const shown = info && MODS[info];
 
@@ -2070,10 +2124,11 @@ function Editor({ input, close, refresh }) {
       stat('shot speed', 'x' + (gun.speedMul || 1).toFixed(2)),
       stat('order', gun.shuffle ? 'shuffle' : 'in order')
     ) : null,
-    h('p', { className: 'lab' }, gun ? 'On the gun — cast left to right' : 'No gun in this slot'),
-    gun ? h('div', { className: 'slotRow' },
-      gun.slots.map((id, i) => tile(id, { type: 'slot', i }, i))
-    ) : null,
+    h('p', { className: 'lab' }, gun
+      ? (gun.shuffle ? 'On the gun — order is shuffled every recharge'
+                     : 'On the gun — each outline is one pull of the trigger')
+      : 'No gun in this slot'),
+    gun ? h('div', { className: 'slotRow' }, slotRow(gun, tile)) : null,
     h('p', { className: 'lab' }, 'Collected mods' + (LO.bag.length ? '' : ' — none yet, find them in the cave')),
     h('div', { className: 'bag scroll', 'data-drop': 'bag' },
       LO.bag.map((id, i) => tile(id, { type: 'bag', i }, 'b' + i))
