@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v25</title>
+<title>CaveRunner v26</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -225,7 +225,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v25';
+const VERSION = 'v26';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -1635,17 +1635,26 @@ function Game({ input }) {
       // projectiles
       ctx.fillStyle = COL.enemy;
       for (const b of enemyShots) { ctx.beginPath(); ctx.arc(b.x, b.y, 3, 0, Math.PI * 2); ctx.fill(); }
+      // shots are drawn as streaks along their own velocity, so a fast one reads
+      // as a long dash and a slow heavy one as a stub
+      ctx.lineCap = 'round';
       for (const b of bullets) {
-        ctx.fillStyle = b.col;
-        ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2); ctx.fill();
+        const sp = Math.hypot(b.vx, b.vy) || 1;
+        const len = Math.max(b.size * 1.1, Math.min(46, sp * 0.022));
+        const hx = b.vx / sp * len, hy = b.vy / sp * len;
+        if (b.homing) {
+          ctx.globalAlpha = 0.3;
+          ctx.strokeStyle = COL.enemy;
+          ctx.lineWidth = b.size * 1.7 + 4;
+          ctx.beginPath(); ctx.moveTo(b.x - hx, b.y - hy); ctx.lineTo(b.x, b.y); ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+        ctx.strokeStyle = b.col;
+        ctx.lineWidth = b.size * 1.7;
+        ctx.beginPath(); ctx.moveTo(b.x - hx, b.y - hy); ctx.lineTo(b.x, b.y); ctx.stroke();
         if (b.explode) {
           ctx.fillStyle = Math.sin(b.spin) > 0 ? COL.flame2 : COL.visor;
           ctx.fillRect(b.x - 1, b.y - 1, 2, 2);
-        }
-        if (b.homing) {
-          ctx.globalAlpha = 0.35; ctx.fillStyle = COL.enemy;
-          ctx.beginPath(); ctx.arc(b.x, b.y, b.size + 2.5, 0, Math.PI * 2); ctx.fill();
-          ctx.globalAlpha = 1;
         }
       }
 
