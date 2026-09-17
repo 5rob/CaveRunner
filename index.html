@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v14</title>
+<title>CaveRunner v15</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -109,6 +109,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .pop{position:fixed;z-index:28;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));
   max-height:82%;overflow-y:auto;background:var(--btn);border:1px solid var(--ring);
   border-radius:15px;padding:12px 13px 14px;box-shadow:0 12px 40px rgba(0,0,0,0.35)}
+.pop.ingame{position:absolute;top:8px;left:8px;right:8px;bottom:auto;z-index:5;max-height:66%;
+  pointer-events:none;background:rgba(18,20,26,0.93);border-color:rgba(255,255,255,0.18);color:#e9ecf2}
+.pop.ingame .ptitle span,.pop.ingame .dnote,.pop.ingame .prow{color:rgba(233,236,242,0.62)}
+.pop.ingame .prow,.pop.ingame .pglyph{background:rgba(255,255,255,0.07)}
+.pop.ingame .prow b,.pop.ingame .dtile i{color:#e9ecf2}
+.pop.ingame .pdemo{border-top-color:rgba(255,255,255,0.18)}
 .phead{display:flex;align-items:center;gap:10px}
 .pglyph{width:42px;height:42px;flex:0 0 auto;border:2px solid;border-radius:10px;
   display:flex;align-items:center;justify-content:center;font-size:20px}
@@ -161,7 +167,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v14';
+const VERSION = 'v15';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -1207,7 +1213,8 @@ function Game({ input }) {
       const promptKey = prompt ? stock.indexOf(prompt) : -1;
       const label = !prompt ? null
         : prompt.kind === 'heal' ? { text: 'Full heal', price: 0, can: p.hp < PLAYER_HP }
-        : { text: MODS[prompt.id].name, price: prompt.price, can: LO.gold >= prompt.price };
+        : { text: MODS[prompt.id].name, id: prompt.id, price: prompt.price,
+            can: LO.gold >= prompt.price };
       const sig = promptKey + ':' + (label && label.can ? 1 : 0) + ':' + inShop;
       if (sig !== input.current.sig) {
         input.current.sig = sig;
@@ -1698,6 +1705,53 @@ function Stick({ size, kind, input }) {
   );
 }
 
+// The same detail card is used by the build screen and by the shop, so what you
+// read standing on a plinth is exactly what you get once you own it.
+function ModCard({ id, onClose, ingame }) {
+  const m = MODS[id];
+  const kind = m.kind === 'shot' ? 'Shot' : m.kind === 'passive' ? 'Always on' : 'Modifier';
+  const rows = modPreview(id).rows;
+  const dtile = (did, key, faded) => h('div', {
+      key, className: 'dtile' + (faded ? ' off' : ''),
+      style: { borderColor: MODS[did].col, color: MODS[did].col } },
+    h('b', null, MODS[did].glyph), h('i', null, MODS[did].name));
+  const drow = (ok, tiles, note, key) => h('div', { className: 'drow', key },
+    h('span', { className: 'dmark ' + (ok ? 'yes' : 'no') }, ok ? '\u2713' : '\u2717'),
+    h('div', null,
+      h('div', { className: 'dtiles' }, tiles),
+      h('span', { className: 'dnote' }, note)));
+  let demo;
+  if (m.kind === 'passive') {
+    demo = [drow(true, [dtile(id, 'a'), dtile('bolt', 'b')], 'counts wherever you put it', 1),
+            drow(true, [dtile('bolt', 'c'), dtile(id, 'd')], 'same here — order does not matter', 2)];
+  } else if (m.kind === 'shot') {
+    demo = [drow(true, [dtile('dmg_up', 'a'), dtile(id, 'b')], 'modifiers go to its left', 1),
+            drow(false, [dtile(id, 'c'), dtile('dmg_up', 'd', true)], 'a modifier here comes too late', 2)];
+  } else if (m.multi) {
+    demo = [drow(true, [dtile(id, 'a'), dtile('bolt', 'b'), dtile('bolt', 'c')],
+              'both bolts fire on one pull', 1),
+            drow(false, [dtile('bolt', 'd'), dtile(id, 'e', true)], 'nothing after it to gather', 2)];
+  } else {
+    demo = [drow(true, [dtile(id, 'a'), dtile('bolt', 'b')], 'the bolt gets the effect', 1),
+            drow(false, [dtile('bolt', 'c'), dtile(id, 'd', true)], 'too late — the bolt already fired', 2)];
+  }
+  return h('div', { className: 'pop' + (ingame ? ' ingame' : '') },
+    h('div', { className: 'phead' },
+      h('div', { className: 'pglyph', style: { borderColor: m.col, color: m.col } }, m.glyph),
+      h('div', { className: 'ptitle' },
+        h('b', null, m.name),
+        h('span', null, kind + (m.mana ? ' \u00b7 ' + m.mana + ' mana' : ''))),
+      onClose ? h('button', { className: 'pclose',
+        onPointerDown: e => { e.preventDefault(); onClose(); } }, '\u00d7') : null
+    ),
+    m.info ? h('p', { className: 'pinfo' }, m.info) : null,
+    rows.length ? h('div', { className: 'prows' },
+      rows.map((r, i) => h('div', { className: 'prow', key: i },
+        h('span', null, r[0]), h('b', null, r[1])))) : null,
+    h('div', { className: 'pdemo' }, demo)
+  );
+}
+
 function Editor({ input, close, refresh }) {
   const LO = input.current.loadout;
   const [sel, setSel] = useState(LO.sel);
@@ -1767,62 +1821,23 @@ function Editor({ input, close, refresh }) {
   const stat = (k, v) => h('div', { className: 'st' }, h('b', null, String(v)), h('span', null, k));
   const shown = info && MODS[info];
 
-  const card = shown ? (() => {
-    const m = shown;
-    const kind = m.kind === 'shot' ? 'Shot' : m.kind === 'passive' ? 'Always on' : 'Modifier';
-    const rows = modPreview(info).rows;
-    const dtile = (did, key, faded) => h('div', {
-        key, className: 'dtile' + (faded ? ' off' : ''),
-        style: { borderColor: MODS[did].col, color: MODS[did].col } },
-      h('b', null, MODS[did].glyph), h('i', null, MODS[did].name));
-    const drow = (ok, tiles, note, key) => h('div', { className: 'drow', key },
-      h('span', { className: 'dmark ' + (ok ? 'yes' : 'no') }, ok ? '\u2713' : '\u2717'),
-      h('div', null,
-        h('div', { className: 'dtiles' }, tiles),
-        h('span', { className: 'dnote' }, note)));
-    let demo;
-    if (m.kind === 'passive') {
-      demo = [drow(true, [dtile(info, 'a'), dtile('bolt', 'b')], 'counts wherever you put it', 1),
-              drow(true, [dtile('bolt', 'c'), dtile(info, 'd')], 'same here — order does not matter', 2)];
-    } else if (m.kind === 'shot') {
-      demo = [drow(true, [dtile('dmg_up', 'a'), dtile(info, 'b')], 'modifiers go to its left', 1),
-              drow(false, [dtile(info, 'c'), dtile('dmg_up', 'd', true)], 'a modifier here comes too late', 2)];
-    } else if (m.multi) {
-      demo = [drow(true, [dtile(info, 'a'), dtile('bolt', 'b'), dtile('bolt', 'c')],
-                'both bolts fire on one pull', 1),
-              drow(false, [dtile('bolt', 'd'), dtile(info, 'e', true)], 'nothing after it to gather', 2)];
-    } else {
-      demo = [drow(true, [dtile(info, 'a'), dtile('bolt', 'b')], 'the bolt gets the effect', 1),
-              drow(false, [dtile('bolt', 'c'), dtile(info, 'd', true)], 'too late — the bolt already fired', 2)];
-    }
-    const close = e => { e.preventDefault(); setInfo(null); };
-    const behind = e => {
-      e.preventDefault();
-      const el = e.currentTarget;
-      el.style.pointerEvents = 'none';                 // see what the finger is really over
-      const under = document.elementFromPoint(e.clientX, e.clientY);
-      el.style.pointerEvents = '';
-      const tile = under && under.closest ? under.closest('[data-mod]') : null;
-      const next = tile && tile.dataset.mod;
-      setInfo(next && next !== info ? next : null);    // same mod closes, another one switches
-    };
-    return h('div', { key: 'card' },
-      h('div', { className: 'shade', onPointerDown: behind }),
-      h('div', { className: 'pop' },
-        h('div', { className: 'phead' },
-          h('div', { className: 'pglyph', style: { borderColor: m.col, color: m.col } }, m.glyph),
-          h('div', { className: 'ptitle' },
-            h('b', null, m.name),
-            h('span', null, kind + (m.mana ? ' \u00b7 ' + m.mana + ' mana' : ''))),
-          h('button', { className: 'pclose', onPointerDown: close }, '\u00d7')
-        ),
-        m.info ? h('p', { className: 'pinfo' }, m.info) : null,
-        rows.length ? h('div', { className: 'prows' },
-          rows.map((r, i) => h('div', { className: 'prow', key: i },
-            h('span', null, r[0]), h('b', null, r[1])))) : null,
-        h('div', { className: 'pdemo' }, demo)
-      ));
-  })() : null;
+  // the backdrop closes the card, but a tap that lands on another mod switches to it
+  const behind = e => {
+    e.preventDefault();
+    const el = e.currentTarget;
+    el.style.pointerEvents = 'none';
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    el.style.pointerEvents = '';
+    const tile = under && under.closest ? under.closest('[data-mod]') : null;
+    const next = tile && tile.dataset.mod;
+    setInfo(next && next !== info ? next : null);
+  };
+
+  const card = shown
+    ? h('div', { key: 'card' },
+        h('div', { className: 'shade', onPointerDown: behind }),
+        h(ModCard, { id: info, onClose: () => setInfo(null) }))
+    : null;
 
   return h('div', { className: 'sheet' },
     h('div', { className: 'shead' },
@@ -1937,6 +1952,7 @@ function App() {
   return h('div', { className: 'app' },
     h('div', { className: 'view' },
       h(Game, { key: run, input }),
+      prompt && prompt.id ? h(ModCard, { id: prompt.id, ingame: true }) : null,
       prompt ? h('button', {
           className: 'buy' + (prompt.can ? '' : ' cant'),
           onPointerDown: prompt.can ? buy : e => e.preventDefault() },
