@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v21</title>
+<title>CaveRunner v22</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -212,7 +212,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v21';
+const VERSION = 'v22';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -1914,8 +1914,7 @@ function GunSwap({ input, refresh, onDone }) {
 
   const take = i => {
     const old = LO.guns[i];
-    LO.guns[i] = resetGun(found.gun);
-    LO.sel = i;
+    LO.guns[i] = resetGun(found.gun);   // taking a gun never changes which one you hold
     if (old) { found.gun = old; }       // your old gun stays here on the ground
     else found.taken = true;
     input.current.found = null;
