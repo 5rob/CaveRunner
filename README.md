@@ -40,7 +40,10 @@ cast delay, recharge time, mana pool, spread and shot speed, and some of them
 shuffle their firing order. You carry up to four. Walking onto a gun on the ground pauses the game and opens
 a chooser: it shows what you found, with a button for each of your four slots.
 Tap a slot to compare that gun, hold one to swap it out — whatever it replaces
-is left on the ground where you found the new one.
+is left on the ground where you found the new one. The found gun's stats are
+coloured against whichever of your guns you last tapped (your held gun to start
+with), green for better and red for worse, counting a smaller cast delay,
+recharge or spread as better.
 
 Mods are the spells. Some are shots (Bolt, Buckshot, Slug, Blast, Bounce Orb...)
 and the rest are modifiers (Homing, Heavy Shot, Scatter, Double Cast, Borer...).
@@ -55,6 +58,6 @@ the gun recharges before starting over.
 - Destructible pixel terrain: explosions and drilling shots eat everything except the outer border
 - Guns and mods to find, with a drag-and-drop screen for building them
 - Recoil that shoves you around, which the jetpack can work with
-- Gold that flies to you once you are close enough
+- Gold that flies to you once you are close enough (a short range for now)
 - Jetpack with fuel that refills on the ground; upward thrust is instant
 - Enemies with health bars that shoot back when they can see you

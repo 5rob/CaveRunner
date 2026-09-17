@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v16</title>
+<title>CaveRunner v17</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
   --pad:rgba(28,42,56,0.07); --ring:rgba(28,42,56,0.25);
   --line:rgba(28,42,56,0.3); --knob:#1c2a38; --jet:rgba(255,138,31,0.18);
   --btn:#e3ebf1;
+  --good:#1d8a52; --bad:#c2401f;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -17,6 +18,7 @@
     --pad:rgba(219,230,239,0.06); --ring:rgba(219,230,239,0.22);
     --line:rgba(219,230,239,0.3); --knob:#dbe6ef; --jet:rgba(255,138,31,0.2);
     --btn:#1a2633;
+    --good:#5fd39a; --bad:#ff8a6a;
   }
 }
 :root[data-theme="dark"]{
@@ -24,6 +26,7 @@
   --pad:rgba(219,230,239,0.06); --ring:rgba(219,230,239,0.22);
   --line:rgba(219,230,239,0.3); --knob:#dbe6ef; --jet:rgba(255,138,31,0.2);
   --btn:#1a2633;
+  --good:#5fd39a; --bad:#ff8a6a;
 }
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:hidden;
   overscroll-behavior:none;touch-action:none;-webkit-user-select:none;user-select:none;
@@ -124,10 +127,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .pclose{flex:0 0 auto;width:34px;height:34px;border-radius:17px;border:1px solid var(--ring);
   background:var(--pad);color:var(--text);font-size:19px;line-height:1;padding:0}
 .pinfo{margin:9px 0 0;font-size:13px}
-.prows{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:9px}
-.prow{background:var(--pad);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--muted);
-  display:flex;gap:6px;align-items:baseline}
-.prow b{font-size:12px;color:var(--text)}
+.prows{display:flex;flex-direction:column;margin-top:9px}
+.prow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  font-size:12px;color:var(--muted);padding:4px 2px;border-bottom:1px solid var(--pad)}
+.prow:last-child{border-bottom:0}
+.prow b{font-size:12.5px;color:var(--text);font-variant-numeric:tabular-nums}
+.prow.up b{color:var(--good)}
+.prow.down b{color:var(--bad)}
+.prow.up b::after{content:' \25b2';font-size:8px}
+.prow.down b::after{content:' \25bc';font-size:8px}
+.vs{margin:8px 0 0;font-size:11px;color:var(--muted)}
+.gtab.base{box-shadow:inset 0 0 0 2px var(--ring)}
 .pdemo{margin-top:11px;border-top:1px solid var(--ring);padding-top:9px;
   display:flex;flex-direction:column;gap:9px}
 .drow{display:flex;align-items:flex-start;gap:8px}
@@ -176,7 +186,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v16';
+const VERSION = 'v17';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -187,7 +197,7 @@ const PW = 12, PH = 22;
 const FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
 const PLAYER_HP = 100;
 const START_GOLD = 40;
-const COIN_PULL = 110;        // gold within this many units flies to you
+const COIN_PULL = 36;         // gold within this many units flies to you
 const ENEMY_HP = 3, ENEMY_RANGE = 220, ENEMY_BULLET = 180, ENEMY_DMG = 10, ENEMY_COUNT = 20;
 const NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
 
@@ -901,14 +911,6 @@ function Game({ input }) {
     // ---- casting ----
     // Walk the gun's slot list from where it left off. Modifiers pile up and apply
     // to the shots that come after them; running off the end triggers the recharge.
-    function peekShot(g) {
-      if (!g) return null;
-      for (let i = g.idx, guard = 0; i < g.order.length && guard < 64; i++, guard++) {
-        const id = g.slots[g.order[i]];
-        if (id && MODS[id].kind === 'shot') return MODS[id];
-      }
-      return null;
-    }
     function cast(g, gx, gy, nx, ny) {
       const pas = gunPassives(g);
       const wrap = () => {
@@ -1532,24 +1534,12 @@ function Game({ input }) {
       // aim, grenade arc preview, gun
       const R = p.aim;
       const held = input.current.loadout.guns[input.current.loadout.sel];
-      const next = peekShot(held);
-      const lobbed = next && next.grav;
       const ax = R.show ? R.nx : p.face, ay = R.show ? R.ny : 0;
       const gy = p.y + PH * 0.4;
-      if (!p.dead && R.show && lobbed) {
-        let x = pcx + R.nx * 10, y = gy + R.ny * 10, vx = R.nx * next.speed, vy = R.ny * next.speed;
-        ctx.fillStyle = next.col;
-        for (let i = 0; i < 40; i++) {
-          vy += next.grav * 0.03; x += vx * 0.03; y += vy * 0.03;
-          if (solidAt(x, y)) break;
-          if (i % 2 === 0) { ctx.globalAlpha = 0.7 * (1 - i / 40); ctx.fillRect(x - 1, y - 1, 2, 2); }
-        }
-        ctx.globalAlpha = 1;
-      }
       if (!p.dead) {
         ctx.strokeStyle = COL.visor; ctx.lineCap = 'round';
-        ctx.lineWidth = lobbed ? 4.5 : 2.5;
-        const len = lobbed ? 10 : 12;
+        ctx.lineWidth = 2.5;
+        const len = 12;
         ctx.beginPath(); ctx.moveTo(pcx, gy); ctx.lineTo(pcx + ax * len, gy + ay * len); ctx.stroke();
       }
 
@@ -1744,10 +1734,27 @@ function holdPress(onTap, onHold, onState, ms) {
   };
 }
 
+// Every gun stat in one place, with which direction counts as an improvement:
+// a smaller cast delay, recharge or spread is better, so those read green.
+const GUN_STATS = [
+  { k: 'cap', label: 'slots', better: 1, get: g => g.cap, fmt: v => String(v) },
+  { k: 'delay', label: 'cast delay', better: -1, get: g => g.castDelay, fmt: v => v.toFixed(2) + 's' },
+  { k: 'rech', label: 'recharge', better: -1,
+    get: g => Math.max(0.15, g.recharge + gunPassives(g).rech), fmt: v => v.toFixed(2) + 's' },
+  { k: 'mana', label: 'mana', better: 1,
+    get: g => g.manaMax + gunPassives(g).manaMax, fmt: v => String(Math.round(v)) },
+  { k: 'regen', label: 'mana regen', better: 1,
+    get: g => g.manaRegen + gunPassives(g).manaRegen, fmt: v => Math.round(v) + '/s' },
+  { k: 'spread', label: 'spread', better: -1, get: g => g.spread, fmt: v => v.toFixed(1) + '\u00b0' },
+  { k: 'multi', label: 'shots per cast', better: 1, get: g => g.multi, fmt: v => String(v) },
+  { k: 'speed', label: 'shot speed', better: 1, get: g => g.speedMul || 1, fmt: v => 'x' + v.toFixed(2) },
+  { k: 'order', label: 'cast order', better: 1,
+    get: g => (g.shuffle ? 0 : 1), fmt: v => (v ? 'in order' : 'shuffle') },
+];
+
 // One card for a gun: its rolled stats and the mods sitting on it.
-function GunCard({ gun, label, onClose, ingame, flow }) {
-  const stat = (k, v) => h('div', { className: 'prow', key: k }, h('span', null, k), h('b', null, String(v)));
-  const pas = gunPassives(gun);
+function GunCard({ gun, label, onClose, ingame, flow, compare, compareName }) {
+  const vs = compare && compare !== gun ? compare : null;
   return h('div', { className: 'pop' + (ingame ? ' ingame' : '') + (flow ? ' flow' : '') },
     h('div', { className: 'phead' },
       h('div', { className: 'pglyph', style: { borderColor: '#c9ccd4', color: '#c9ccd4' } }, '⌥'),
@@ -1757,14 +1764,18 @@ function GunCard({ gun, label, onClose, ingame, flow }) {
       onClose ? h('button', { className: 'pclose',
         onPointerDown: e => { e.preventDefault(); onClose(); } }, '×') : null
     ),
+    vs ? h('p', { className: 'vs' }, 'compared with ' + compareName) : null,
     h('div', { className: 'prows' },
-      stat('cast delay', gun.castDelay.toFixed(2) + 's'),
-      stat('recharge', Math.max(0.15, gun.recharge + pas.rech).toFixed(2) + 's'),
-      stat('mana', Math.round(gun.manaMax + pas.manaMax) + ' +' + Math.round(gun.manaRegen + pas.manaRegen) + '/s'),
-      stat('spread', gun.spread.toFixed(1) + '°'),
-      stat('per cast', gun.multi),
-      stat('shot speed', 'x' + (gun.speedMul || 1).toFixed(2)),
-      stat('order', gun.shuffle ? 'shuffle' : 'in order')
+      GUN_STATS.map(st => {
+        const v = st.get(gun);
+        let cls = '';
+        if (vs) {
+          const o = st.get(vs);
+          if (Math.abs(v - o) > 1e-6) cls = (v > o) === (st.better > 0) ? ' up' : ' down';
+        }
+        return h('div', { className: 'prow' + cls, key: st.k },
+          h('span', null, st.label), h('b', null, st.fmt(v)));
+      })
     ),
     h('div', { className: 'pdemo' },
       h('div', { className: 'dtiles' },
@@ -1782,9 +1793,11 @@ function GunCard({ gun, label, onClose, ingame, flow }) {
 function GunSwap({ input, refresh, onDone }) {
   const LO = input.current.loadout;
   const found = input.current.found;
-  const [peek, setPeek] = useState(null);
+  const [base, setBase] = useState(LO.guns[LO.sel] ? LO.sel : LO.guns.findIndex(Boolean));
+  const [peek, setPeek] = useState(false);
   const [held, setHeld] = useState(-1);
   if (!found) return null;
+  const baseGun = base >= 0 ? LO.guns[base] : null;
 
   const take = i => {
     const old = LO.guns[i];
@@ -1803,15 +1816,17 @@ function GunSwap({ input, refresh, onDone }) {
       h('h2', null, 'Gun on the ground'),
       h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); leave(); } }, 'Leave it')
     ),
-    h(GunCard, { gun: found.gun, label: 'Found', flow: true }),
+    h(GunCard, { gun: found.gun, label: 'Found', flow: true, compare: baseGun,
+      compareName: baseGun ? 'slot ' + (base + 1) + ', ' + baseGun.name : '' }),
     h('div', { className: 'spacer' }),
     h('p', { className: 'lab' }, 'Hold a slot to swap it · tap to look at it first'),
     h('div', { className: 'swaprow' },
       LO.guns.map((g, i) => h('button', {
           key: i,
-          className: 'gtab' + (g ? '' : ' empty') + (held === i ? ' holding' : ''),
+          className: 'gtab' + (g ? '' : ' empty') + (held === i ? ' holding' : '') +
+            (base === i ? ' base' : ''),
           onPointerDown: holdPress(
-            () => setPeek(g ? i : null),
+            () => { if (g) { setBase(i); setPeek(true); } },
             () => take(i),
             on => setHeld(on ? i : -1)),
         },
@@ -1820,10 +1835,10 @@ function GunSwap({ input, refresh, onDone }) {
         h('span', { className: 'gsub' }, g ? g.slots.filter(Boolean).length + '/' + g.cap + ' mods' : 'hold to take')
       ))
     ),
-    peek !== null && LO.guns[peek]
+    peek && baseGun
       ? h('div', null,
-          h('div', { className: 'shade', onPointerDown: e => { e.preventDefault(); setPeek(null); } }),
-          h(GunCard, { gun: LO.guns[peek], label: 'Slot ' + (peek + 1), onClose: () => setPeek(null) }))
+          h('div', { className: 'shade', onPointerDown: e => { e.preventDefault(); setPeek(false); } }),
+          h(GunCard, { gun: baseGun, label: 'Slot ' + (base + 1), onClose: () => setPeek(false) }))
       : null
   );
 }
