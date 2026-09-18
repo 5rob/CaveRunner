@@ -96,15 +96,50 @@ right mod drops. Your own bag is left completely alone while it is on — switch
 it off and your mods come straight back, with whatever you fitted still on the
 gun.
 
+## The spell book
+
+There are 108 mods, most of them lifted from Noita's spell list and rebuilt to fit
+a cave shooter. They come in a few shapes:
+
+- **Shots** are the things that come out of the barrel — Bolt, Slug, Magic Missile,
+  Fireball, Lightning Bolt, Chain Bolt (which hops from enemy to enemy), Black Hole
+  (which crawls forward eating rock), Nuke, Meteor, and twenty-odd more. **Plasma Beam**
+  and **Luminous Drill** are instant: they hit along a line with no travel time.
+- **Static fields** stay where you cast them and work over time. Unstable Crystal is a
+  proximity mine; Dormant Crystal sits harmless until another blast reaches it; Circle
+  of Stillness leaves enemies crawling; Circle of Shielding swallows their fire; Circle
+  of Vigour heals you while you stand in it; Thundercloud, Vacuum Field and Glittering
+  Field cover an area. They take a cast slot like a shot does.
+- **Modifiers** change the shots drawn after them, as always. Nine of the new ones bend
+  the flight path — Boomerang, Spiral Arc, Ping-Pong, Orbiting Arc, Gravity, Anti-Gravity,
+  Horizontal Path, Auto-Aim, Short-range Homing — and the aim line draws every one of
+  them properly, so you can see what a path mod will do before you fire it.
+- **Utility** does something to the world or to you. Summon Platform and Summon Wall
+  build terrain. Wand Refresh skips the next recharge. Long-Distance Cast, Teleporting
+  Cast and Warp Cast move where the shot starts. Blood Magic, Blood To Power and Gold
+  To Power buy power with health or gold.
+- **The Greek letters** copy other spells off the gun. Alpha copies the first, Gamma the
+  last, Tau repeats the next two, Phi copies every shot, Sigma every field, Omega
+  everything. Mu applies every modifier on the gun to one shot no matter where they sit.
+  Zeta borrows a random spell off one of your other three guns.
+
+What the cave and the shops hand out is weighted by rarity, and each floor reaches a
+little further up the scale, so the early game is workhorses and the Greek letters
+stay a find.
+
 ## Build advice
 
 Under the outlines the build screen works out your sustained damage per second
 and names whatever is holding it back: recharge, cast delay, or mana running out
-faster than it comes back. It then tries every mod in your bag in every slot,
-and every swap of two mods you already have on, and offers up to three changes
-that measurably beat what you have. Each one is a button — tap it and the change
+faster than it comes back. It then looks for changes that measurably beat what you
+have: bringing a mod in from your bag, or swapping two you already have on. With a
+hundred-odd mods to hand it takes a cheap first look at each one in a couple of slots,
+then gives the dozen or so that showed promise the full every-slot treatment, which
+keeps a render at about four milliseconds. It offers up to three. Each one is a button — tap it and the change
 is made, with anything it displaces going back to your bag. It is all arithmetic
-on the same cast planner the gun fires with, so the numbers are the real ones.
+on the same cast planner the gun fires with, so the numbers are the real ones. Health
+counts as a resource alongside mana, so a build that bleeds you dry in five seconds is
+not credited with the damage it would do if you survived it.
 
 ## Features
 
@@ -112,6 +147,7 @@ on the same cast planner the gun fires with, so the numbers are the real ones.
 - Randomly generated caves with cramped and open areas, winding tunnels, built ledges and half-buried brick frames
 - Destructible pixel terrain: explosions and drilling shots eat everything except the outer border
 - Guns and mods to find, with a drag-and-drop screen for building them
+- 108 mods: shots, static fields, path modifiers, utility casts and the Greek letter copy spells
 - A build advisor that measures your damage per second, names the limiting factor and offers one-tap fixes
 - An aim line that simulates the next shot for real: gravity, acceleration, homing, ricochets, drilling and spread
 - Recoil that shoves you around, which the jetpack can work with

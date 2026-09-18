@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v29</title>
+<title>CaveRunner v30</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -101,6 +101,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .diag b{font:700 13px system-ui,sans-serif;color:var(--text)}
 .diag.rech{border-left-color:var(--bad)}
 .diag.mana{border-left-color:#63c8ff}
+.diag.blood{border-left-color:#c2401f}
 .diag.cast{border-left-color:#ff9e3d}
 .diag.none{border-left-color:var(--muted)}
 .tips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
@@ -243,7 +244,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v29';
+const VERSION = 'v30';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -368,6 +369,213 @@ const MODS = {
               info: '-0.33s recharge', rech: -0.33 },
   battery:  { name: 'Mana Battery', kind: 'passive', glyph: '▮', col: '#46c48c', mana: 0,
               info: '+60 mana, +30 regen', manaMax: 60, manaRegen: 30 },
+
+  // ---- shots (Noita "Projectile" spells) ----
+  arrow:   { name: 'Magic Arrow', kind: 'shot', glyph: '➣', col: '#ffd77a', mana: 12,
+             info: 'Straight, accurate, dependable',
+             dmg: 1.8, speed: 620, spread: 0.8, delay: 0.13, size: 2, life: 1.4, recoil: 10 },
+  missile: { name: 'Magic Missile', kind: 'shot', glyph: '✦', col: '#ff9e3d', mana: 30,
+             info: 'Fiery and explosive',
+             dmg: 3, speed: 420, spread: 2, delay: 0.3, size: 3, life: 2, explode: 18, recoil: 30 },
+  fball:   { name: 'Fireball', kind: 'shot', glyph: '✷', col: '#ff7a2f', mana: 26,
+             info: 'A big exploding ball that droops as it flies',
+             dmg: 2.5, speed: 360, spread: 2.5, delay: 0.34, size: 4, life: 2.2,
+             explode: 24, grav: 120, recoil: 26 },
+  fbolt:   { name: 'Firebolt', kind: 'shot', glyph: '❈', col: '#ff8a1f', mana: 16,
+             info: 'Bounces off rock, then explodes on whatever it hits',
+             dmg: 1.6, speed: 400, spread: 3, delay: 0.2, size: 2.5, life: 1.6,
+             explode: 12, bounce: 2, recoil: 14 },
+  bubble:  { name: 'Bubble Spark', kind: 'shot', glyph: '○', col: '#7fd7ff', mana: 5,
+             info: 'Cheap, bouncy and hopeless at aiming',
+             dmg: 1.2, speed: 300, spread: 14, delay: 0.1, size: 2.5, life: 1.5, bounce: 4, recoil: 3 },
+  spit:    { name: 'Spitter Bolt', kind: 'shot', glyph: '▪', col: '#ffe066', mana: 5,
+             info: 'A quick short-lived bolt',
+             dmg: 1.5, speed: 660, spread: 3, delay: 0.07, size: 1.8, life: 0.55, recoil: 4 },
+  eorb:    { name: 'Energy Orb', kind: 'shot', glyph: '◉', col: '#b0ff6a', mana: 22,
+             info: 'Slow, fat and heavy-hitting',
+             dmg: 3.5, speed: 230, spread: 1, delay: 0.32, size: 5, life: 2.4, recoil: 30 },
+  esph:    { name: 'Energy Sphere', kind: 'shot', glyph: '◌', col: '#9ef07a', mana: 12,
+             info: 'Fast, and arcs as it goes',
+             dmg: 1.4, speed: 520, spread: 2, delay: 0.1, size: 2, life: 1.4, grav: 240, recoil: 8 },
+  zap:     { name: 'Lightning Bolt', kind: 'shot', glyph: '⌁', col: '#a8e4ff', mana: 34,
+             info: 'The primordial force of nature. Punches through a crowd',
+             dmg: 2.2, speed: 1400, spread: 0.5, delay: 0.3, size: 2, life: 0.5, pierce: 4, recoil: 8 },
+  chain:   { name: 'Chain Bolt', kind: 'shot', glyph: '⋈', col: '#7ad7ff', mana: 28,
+             info: 'Jumps from enemy to enemy, three times',
+             dmg: 2, speed: 560, spread: 1.5, delay: 0.26, size: 2.5, life: 1.2, chain: 3, recoil: 10 },
+  void:    { name: 'Black Hole', kind: 'shot', glyph: '◯', col: '#9a6ad6', mana: 60,
+             info: 'Crawls forward eating rock and dragging things in',
+             dmg: 1, speed: 70, spread: 0, delay: 0.5, size: 6, life: 3.5, eat: 7, pull: 70, recoil: 0 },
+  digbolt: { name: 'Digging Bolt', kind: 'shot', glyph: '▤', col: '#c8a06a', mana: 0,
+             info: 'Free, harmless, and very good at mining',
+             dmg: 0, speed: 520, spread: 2, delay: 0.1, size: 2, life: 0.9, bore: 5, recoil: 2 },
+  glance:  { name: 'Glowing Lance', kind: 'shot', glyph: '▬', col: '#fff0a8', mana: 26,
+             info: 'Cuts straight through a line of enemies',
+             dmg: 3.2, speed: 780, spread: 0.4, delay: 0.3, size: 2.5, life: 1.3, pierce: 3, recoil: 20 },
+  plasma:  { name: 'Plasma Beam', kind: 'shot', glyph: '━', col: '#ff6ad6', mana: 30,
+             info: 'Hits instantly along a line. No travel time at all',
+             dmg: 3, beam: 320, delay: 0.3, spread: 0.5, size: 2, life: 0.12, recoil: 6 },
+  ldrill:  { name: 'Luminous Drill', kind: 'shot', glyph: '▸', col: '#ffe9a8', mana: 8,
+             info: 'A short instant beam that chews through rock',
+             dmg: 1.2, beam: 95, bore: 3, delay: 0.06, spread: 1, size: 1.6, life: 0.08, recoil: 2 },
+  cross:   { name: 'Death Cross', kind: 'shot', glyph: '✜', col: '#ff5a52', mana: 34,
+             info: 'Settles, then blows up in a cross',
+             dmg: 2, speed: 260, spread: 1.5, delay: 0.36, size: 3, life: 2,
+             fuse: 0.55, explode: 22, recoil: 12 },
+  pollen:  { name: 'Pollen', kind: 'shot', glyph: '❁', col: '#d8ff6a', mana: 6,
+             info: 'Drifts about and gently finds its way to enemies',
+             dmg: 0.8, speed: 130, spread: 20, delay: 0.06, size: 2, life: 3,
+             homing: 2.5, count: 2, recoil: 1 },
+  disc:    { name: 'Disc Projectile', kind: 'shot', glyph: '⊘', col: '#d9dde4', mana: 20,
+             info: 'A sawblade that skips along the floor',
+             dmg: 2.6, speed: 340, spread: 1, delay: 0.22, size: 4, life: 3,
+             bounce: 6, grav: 200, recoil: 14 },
+  nuke:    { name: 'Nuke', kind: 'shot', glyph: '☢', col: '#ffe066', mana: 120,
+             info: 'Take cover',
+             dmg: 8, speed: 300, spread: 1, delay: 0.9, size: 5, life: 2.5, explode: 90, recoil: 90 },
+  meteor:  { name: 'Meteor', kind: 'shot', glyph: '☄', col: '#ff8a1f', mana: 70,
+             info: 'Falls hard, digs deep and explodes',
+             dmg: 5, speed: 420, spread: 2, delay: 0.55, size: 5, life: 3,
+             explode: 40, grav: 700, bore: 4, recoil: 50 },
+
+  // ---- static projectiles: they stay where you put them and do their work over time ----
+  boom:    { name: 'Explosion', kind: 'static', glyph: '✺', col: '#ff8a1f', mana: 40,
+             info: 'A powerful blast, right where you aimed',
+             field: 'explode', r: 34, life: 0.1, delay: 0.4, recoil: 20 },
+  brim:    { name: 'Explosion of Brimstone', kind: 'static', glyph: '✶', col: '#ff7a2f', mana: 10,
+             info: 'A small, cheap, fiery blast',
+             field: 'explode', r: 20, life: 0.1, delay: 0.25, recoil: 10 },
+  crystal: { name: 'Unstable Crystal', kind: 'static', glyph: '◈', col: '#ff5a52', mana: 14,
+             info: 'A mine. It waits, then goes off when something walks near',
+             field: 'mine', r: 26, life: 12, delay: 0.2 },
+  dormant: { name: 'Dormant Crystal', kind: 'static', glyph: '❖', col: '#ffb347', mana: 12,
+             info: 'Sits harmless until another explosion sets it off',
+             field: 'dormant', r: 30, life: 20, delay: 0.2 },
+  stillc:  { name: 'Circle of Stillness', kind: 'static', glyph: '❅', col: '#7fd7ff', mana: 24,
+             info: 'Enemies caught inside crawl',
+             field: 'slow', r: 44, life: 6, delay: 0.3 },
+  shieldc: { name: 'Circle of Shielding', kind: 'static', glyph: '⊛', col: '#63c8ff', mana: 22,
+             info: 'Eats enemy fire that crosses it',
+             field: 'shield', r: 40, life: 6, delay: 0.3 },
+  vigour:  { name: 'Circle of Vigour', kind: 'static', glyph: '✛', col: '#46c48c', mana: 30,
+             info: 'Stand in it and you heal',
+             field: 'heal', r: 36, life: 5, delay: 0.35 },
+  storm:   { name: 'Thundercloud', kind: 'static', glyph: '⛈', col: '#a8e4ff', mana: 34,
+             info: 'Rains lightning over everything under it',
+             field: 'storm', r: 50, life: 6, delay: 0.4 },
+  vacfield:{ name: 'Vacuum Field', kind: 'static', glyph: '⊗', col: '#b57cff', mana: 26,
+             info: 'Drags enemies and loose shots into the middle',
+             field: 'vacuum', r: 60, life: 4, delay: 0.35 },
+  glitter: { name: 'Glittering Field', kind: 'static', glyph: '❃', col: '#ffe066', mana: 36,
+             info: 'Small blasts going off all over a wide patch',
+             field: 'glitter', r: 64, life: 4, delay: 0.4 },
+
+  // ---- utility ----
+  platform:{ name: 'Summon Platform', kind: 'util', glyph: '▁', col: '#c8a06a', mana: 14,
+             info: 'Lays a short ledge under your feet', act: 'platform', d: 0.1 },
+  wallup:  { name: 'Summon Wall', kind: 'util', glyph: '▐', col: '#c8a06a', mana: 18,
+             info: 'Drops a pillar in front of you', act: 'wall', d: 0.12 },
+  refresh: { name: 'Wand Refresh', kind: 'util', glyph: '⟲', col: '#3fcf8e', mana: 20,
+             info: 'Recharges the gun on the spot', act: 'refresh', d: 0.05 },
+  blood:   { name: 'Blood Magic', kind: 'util', glyph: '☠', col: '#c2401f', mana: 0,
+             info: 'Mana is nearly free and recharge is fast, but casting costs blood',
+             act: 'blood', manaMul: 0.15, rech: -0.4, hp: 4 },
+  bpower:  { name: 'Blood To Power', kind: 'util', glyph: '⊕', col: '#c2401f', mana: 10,
+             info: 'Pays health for a big damage boost', act: 'bpower', hp: 8,
+             f: s => { s.dmg += 2; } },
+  gpower:  { name: 'Gold To Power', kind: 'util', glyph: '⛁', col: '#d8a52a', mana: 10,
+             info: 'Spends some of your gold to make the shot hit harder', act: 'gpower' },
+  farcast: { name: 'Long-Distance Cast', kind: 'util', glyph: '➟', col: '#f0f0f0', mana: 4,
+             info: 'The shot starts well ahead of you', act: 'far', d: 0.02 },
+  telecast:{ name: 'Teleporting Cast', kind: 'util', glyph: '⇝', col: '#f0f0f0', mana: 26,
+             info: 'The shot starts at the nearest enemy instead of at you', act: 'tele', d: 0.04 },
+  warpcast:{ name: 'Warp Cast', kind: 'util', glyph: '⇉', col: '#f0f0f0', mana: 12,
+             info: 'The shot jumps forward the instant it is cast, stopped by walls',
+             act: 'warp', d: 0.02 },
+  sawstorm:{ name: 'Spells To Giga Sawblades', kind: 'util', glyph: '✳', col: '#d9dde4', mana: 40,
+             info: 'Every shot of yours still in the air turns into a sawblade', act: 'saws', d: 0.1 },
+
+  // ---- projectile modifiers ----
+  knock:   { name: 'Knockback', kind: 'mod', glyph: '↦', col: '#ff7a5a', mana: 4, d: 0.03,
+             info: 'Shoves whatever it hits', f: s => { s.knock += 260; } },
+  kick:    { name: 'Recoil', kind: 'mod', glyph: '⇤', col: '#ff7a5a', mana: 2, d: -0.02,
+             info: 'More kick. Handy if you like being launched',
+             f: s => { s.recoil += 70; s.dmg += 0.4; } },
+  damper:  { name: 'Recoil Damper', kind: 'mod', glyph: '⊖', col: '#3fcf8e', mana: 3, d: 0.02,
+             info: 'Takes the shove out of a heavy gun', f: s => { s.recoil *= 0.2; } },
+  crit:    { name: 'Critical Plus', kind: 'mod', glyph: '✴', col: '#ff5a52', mana: 6, d: 0.04,
+             info: '+25% chance of a hit doing triple damage', f: s => { s.crit += 0.25; } },
+  gravmod: { name: 'Gravity', kind: 'mod', glyph: '⇓', col: '#63c8ff', mana: 2, d: 0.02,
+             info: 'Drags the shot down as it flies', f: s => { s.grav += 420; } },
+  float:   { name: 'Anti-Gravity', kind: 'mod', glyph: '⇑', col: '#63c8ff', mana: 3, d: 0.02,
+             info: 'Lifts the shot as it flies', f: s => { s.grav -= 340; } },
+  boomer:  { name: 'Boomerang', kind: 'mod', glyph: '↩', col: '#b57cff', mana: 8, d: 0.05,
+             info: 'Curves back round towards you', f: s => { s.boomer += 3.2; s.life *= 1.5; } },
+  spiral:  { name: 'Spiral Arc', kind: 'mod', glyph: '⟳', col: '#b57cff', mana: 5, d: 0.04,
+             info: 'Corkscrews through the air', f: s => { s.spiral += 5.5; } },
+  pong:    { name: 'Ping-Pong Path', kind: 'mod', glyph: '⇄', col: '#b57cff', mana: 6, d: 0.05,
+             info: 'Flies out, snaps back, and does it again', f: s => { s.pong += 4; s.life *= 1.4; } },
+  orbit:   { name: 'Orbiting Arc', kind: 'mod', glyph: '◴', col: '#b57cff', mana: 9, d: 0.06,
+             info: 'Circles the spot it was cast at', f: s => { s.orbit += 3.4; s.life *= 1.6; } },
+  autoaim: { name: 'Auto-Aim', kind: 'mod', glyph: '✢', col: '#b57cff', mana: 7, d: 0.03,
+             info: 'Snaps onto the nearest enemy the moment it leaves the barrel',
+             f: s => { s.autoaim = 1; } },
+  nearhome:{ name: 'Short-range Homing', kind: 'mod', glyph: '⌒', col: '#b57cff', mana: 5, d: 0.02,
+             info: 'Only steers once it is already close to something',
+             f: s => { s.homing += 7; s.homeR = 70; } },
+  flat:    { name: 'Horizontal Path', kind: 'mod', glyph: '═', col: '#ff5a52', mana: 4, d: 0.03,
+             info: 'Forces the shot dead level, and it hits harder for it',
+             f: s => { s.flat = 1; s.dmg *= 1.6; } },
+  eater:   { name: 'Matter Eater', kind: 'mod', glyph: '▩', col: '#b57cff', mana: 14, d: 0.06,
+             info: 'Eats a tunnel through rock the whole way',
+             f: s => { s.eat = Math.max(s.eat, 4); } },
+  lust:    { name: 'Bloodlust', kind: 'mod', glyph: '♥', col: '#ff5a52', mana: 10, d: 0.05,
+             info: 'A hefty damage boost, but the shot can hurt you too',
+             f: s => { s.dmg *= 2.2; s.friendly = 1; } },
+  manapow: { name: 'Mana To Damage', kind: 'mod', glyph: '▰', col: '#ff5a52', mana: 0, d: 0.08,
+             info: 'Burns every point of mana over 50 and turns it into damage', act: 'manapow' },
+  split:   { name: 'Quantum Split', kind: 'mod', glyph: '≬', col: '#ff7ac8', mana: 8, d: 0.05,
+             info: 'Splits into three weaker copies partway through its flight',
+             f: s => { s.split = 3; s.dmg *= 0.6; } },
+  cluster: { name: 'Clusterbolt', kind: 'mod', glyph: '⁘', col: '#ff7ac8', mana: 12, d: 0.06,
+             info: 'Bursts into a spray of small explosives where it lands',
+             f: s => { s.cluster = 5; } },
+  bboom:   { name: 'Explosive Bounce', kind: 'mod', glyph: '✱', col: '#ff5a52', mana: 9, d: 0.05,
+             info: 'Every ricochet sets off a blast',
+             f: s => { s.bounceFx = 'explode'; s.bounce += 2; } },
+  hspread: { name: 'Heavy Spread', kind: 'mod', glyph: '∴', col: '#3fcf8e', mana: 3, d: -0.14,
+             info: 'Much faster casting, and no respect at all for where you aimed',
+             f: s => { s.spread += 26; } },
+
+  // ---- multicast ----
+  oct:     { name: 'Octuple Spell', kind: 'mod', glyph: '⑧', col: '#ff7ac8', mana: 20,
+             info: 'fires the next 8 shots at once', multi: 7 },
+  myriad:  { name: 'Myriad Spell', kind: 'mod', glyph: '∞', col: '#ff7ac8', mana: 40,
+             info: 'fires everything left on the gun at once', myriad: 1 },
+  bifur:   { name: 'Formation - Bifurcated', kind: 'mod', glyph: '⋎', col: '#ff7ac8', mana: 2,
+             info: 'fires the next 2 shots in a narrow V', multi: 1, form: [-11, 11] },
+  trifur:  { name: 'Formation - Trifurcated', kind: 'mod', glyph: '⋔', col: '#ff7ac8', mana: 3,
+             info: 'fires the next 3 shots in a fan', multi: 2, form: [-17, 0, 17] },
+  behind:  { name: 'Formation - Behind Your Back', kind: 'mod', glyph: '⇅', col: '#ff7ac8', mana: 1,
+             info: 'fires one ahead and one straight behind you', multi: 1, form: [0, 180] },
+
+  // ---- the Greek letters: they copy other spells off the gun ----
+  alpha:   { name: 'Alpha', kind: 'mod', glyph: 'Α', col: '#f0f0f0', mana: 5, d: 0.02,
+             info: 'also casts a copy of the first spell on the gun', copy: 'first' },
+  gamma:   { name: 'Gamma', kind: 'mod', glyph: 'Γ', col: '#f0f0f0', mana: 5, d: 0.02,
+             info: 'also casts a copy of the last spell on the gun', copy: 'last' },
+  tau:     { name: 'Tau', kind: 'mod', glyph: 'Τ', col: '#f0f0f0', mana: 8, d: 0.03,
+             info: 'casts the next two spells a second time', copy: 'next2' },
+  omega:   { name: 'Omega', kind: 'mod', glyph: 'Ω', col: '#f0f0f0', mana: 40, d: 0.1,
+             info: 'casts a copy of every single spell on the gun', copy: 'all' },
+  phi:     { name: 'Phi', kind: 'mod', glyph: 'Φ', col: '#f0f0f0', mana: 20, d: 0.06,
+             info: 'casts a copy of every shot on the gun', copy: 'shots' },
+  sigma:   { name: 'Sigma', kind: 'mod', glyph: 'Σ', col: '#f0f0f0', mana: 20, d: 0.06,
+             info: 'casts a copy of every static field on the gun', copy: 'statics' },
+  mu:      { name: 'Mu', kind: 'mod', glyph: 'Μ', col: '#f0f0f0', mana: 15, d: 0.05,
+             info: 'applies every modifier on the gun to this shot, wherever they sit', copy: 'mods' },
+  zeta:    { name: 'Zeta', kind: 'mod', glyph: 'Ζ', col: '#f0f0f0', mana: 12, d: 0.04,
+             info: 'casts a random spell borrowed off one of your other guns', copy: 'other' },
 };
 // Mods are coloured by what they are FOR, not one colour each: an amber shot
 // needs a blue mod to speed it up, a red one to hit harder, and so on. The
@@ -379,6 +587,8 @@ const FAMILIES = {
   path:    { name: 'Flight path', col: '#b57cff' },
   pattern: { name: 'Shot pattern', col: '#ff7ac8' },
   upkeep:  { name: 'Gun upkeep', col: '#3fcf8e' },
+  field:   { name: 'Static field', col: '#2fd4c4' },
+  cast:    { name: 'Casting & copies', col: '#e8e4f0' },
 };
 const FAMILY_OF = {
   bolt: 'shots', spark: 'shots', slug: 'shots', buck: 'shots', lance: 'shots',
@@ -389,6 +599,34 @@ const FAMILY_OF = {
   tight: 'pattern', scatter: 'pattern', double: 'pattern', triple: 'pattern', quad: 'pattern',
   fast: 'upkeep', trigger: 'upkeep', cold: 'upkeep', recharge: 'upkeep',
   cheap: 'upkeep', battery: 'upkeep',
+  arrow: 'shots', missile: 'shots', fball: 'shots', fbolt: 'shots', bubble: 'shots',
+  spit: 'shots', eorb: 'shots', esph: 'shots', zap: 'shots', chain: 'shots', void: 'shots',
+  digbolt: 'shots', glance: 'shots', plasma: 'shots', ldrill: 'shots', cross: 'shots',
+  pollen: 'shots', disc: 'shots', nuke: 'shots', meteor: 'shots',
+  boom: 'field', brim: 'field', crystal: 'field', dormant: 'field', stillc: 'field',
+  shieldc: 'field', vigour: 'field', storm: 'field', vacfield: 'field', glitter: 'field',
+  platform: 'cast', wallup: 'cast', refresh: 'cast', farcast: 'cast', telecast: 'cast',
+  warpcast: 'cast', sawstorm: 'cast', alpha: 'cast', gamma: 'cast', tau: 'cast',
+  omega: 'cast', phi: 'cast', sigma: 'cast', mu: 'cast', zeta: 'cast',
+  knock: 'dmg', kick: 'dmg', crit: 'dmg', flat: 'dmg', lust: 'dmg', manapow: 'dmg',
+  bboom: 'dmg', bpower: 'dmg', gpower: 'dmg',
+  gravmod: 'vel', float: 'vel',
+  boomer: 'path', spiral: 'path', pong: 'path', orbit: 'path', autoaim: 'path',
+  nearhome: 'path', eater: 'path',
+  split: 'pattern', cluster: 'pattern', oct: 'pattern', myriad: 'pattern', bifur: 'pattern',
+  trifur: 'pattern', behind: 'pattern',
+  damper: 'upkeep', hspread: 'upkeep', blood: 'upkeep',
+};
+const FIELD_WHAT = {
+  explode: 'blows up on the spot',
+  mine: 'waits, then detonates when something comes near',
+  dormant: 'detonates when another explosion reaches it',
+  slow: 'enemies inside crawl',
+  shield: 'swallows enemy fire crossing it',
+  heal: 'heals you while you stand in it',
+  storm: 'strikes random spots inside with lightning',
+  vacuum: 'drags enemies and loose shots to the middle',
+  glitter: 'small blasts going off all over it',
 };
 const famOf = id => FAMILIES[FAMILY_OF[id]] || FAMILIES.shots;
 const famCol = id => famOf(id).col;
@@ -400,7 +638,57 @@ const MOD_PRICE = {
   bounce: 25, pierce: 85, tight: 15, scatter: 35, big: 30, range: 30, brief: 20,
   tip: 55, borer: 25, fast: 30, over: 45, double: 45, triple: 60, quad: 75, cheap: 40,
   saw: 80, trigger: 35, over_heat: 45, cold: 60, recharge: 50, battery: 50,
+  arrow: 25, missile: 60, fball: 55, fbolt: 40, bubble: 15, spit: 15, eorb: 45, esph: 30,
+  zap: 70, chain: 75, void: 110, digbolt: 20, glance: 55, plasma: 80, ldrill: 35,
+  cross: 65, pollen: 20, disc: 40, nuke: 150, meteor: 120, boom: 55, brim: 20,
+  crystal: 30, dormant: 25, stillc: 50, shieldc: 50, vigour: 60, storm: 85, vacfield: 60,
+  glitter: 80, platform: 20, wallup: 25, refresh: 55, blood: 90, bpower: 45, gpower: 50,
+  farcast: 25, telecast: 65, warpcast: 40, sawstorm: 85, knock: 25, kick: 15, damper: 25,
+  crit: 50, gravmod: 15, float: 20, boomer: 40, spiral: 30, pong: 35, orbit: 50,
+  autoaim: 45, nearhome: 35, flat: 35, eater: 60, lust: 55, manapow: 55, split: 50,
+  cluster: 60, bboom: 50, hspread: 30, oct: 110, myriad: 130, bifur: 30, trifur: 45,
+  behind: 25, alpha: 45, gamma: 45, tau: 70, omega: 160, phi: 95, sigma: 90, mu: 85,
+  zeta: 70,
 };
+
+// How rare a mod is, 1 common to 4 rare. Shops and the cave weight what they hand out by
+// this, so early floors offer workhorses and the Greek letters stay a find.
+const MOD_TIER = {
+  bolt: 1, spark: 1, buck: 1, tight: 1, fast: 1, cheap: 1, spit: 1, bubble: 1, pollen: 1,
+  digbolt: 1, arrow: 1, brim: 1, platform: 1, hspread: 1, damper: 1, knock: 1, kick: 1,
+  gravmod: 1, float: 1, farcast: 1, bifur: 1, behind: 1, dmg_up: 1, speed: 1, brief: 1,
+  slug: 2, lance: 2, orb: 2, blast: 2, heavy: 2, light: 2, accel: 2, bounce: 2, big: 2,
+  range: 2, borer: 2, double: 2, over: 2, trigger: 2, esph: 2, fbolt: 2, eorb: 2,
+  disc: 2, glance: 2, ldrill: 2, crystal: 2, dormant: 2, wallup: 2, boomer: 2, spiral: 2,
+  pong: 2, autoaim: 2, nearhome: 2, flat: 2, crit: 2, split: 2, bboom: 2, refresh: 2,
+  warpcast: 2, trifur: 2, alpha: 2, gamma: 2, scatter: 2, homing: 3, tip: 3, triple: 3,
+  over_heat: 3, recharge: 3, battery: 3, saw: 3, missile: 3, fball: 3, zap: 3, chain: 3,
+  cross: 3, plasma: 3, boom: 3, stillc: 3, shieldc: 3, vigour: 3, vacfield: 3, orbit: 3,
+  eater: 3, lust: 3, cluster: 3, manapow: 3, bpower: 3, gpower: 3, telecast: 3, tau: 3,
+  mu: 3, phi: 3, sigma: 3, seeker: 4, pierce: 4, quad: 4, cold: 4, void: 4, nuke: 4,
+  meteor: 4, storm: 4, glitter: 4, sawstorm: 4, blood: 4, oct: 4, myriad: 4, omega: 4,
+  zeta: 4,
+};
+const tierOf = id => MOD_TIER[id] || 2;
+
+// What a floor is likely to hand you. Each floor reaches a little further up the
+// tiers, so the early cave is workhorses and the Greek letters stay a find.
+function modWeight(id, floor) {
+  const over = Math.max(0, tierOf(id) - (1 + (floor - 1) * 0.55));
+  return 1 / (1 + over * over);
+}
+function rollMod(rnd, floor, skip) {
+  let total = 0;
+  for (const id of ALL_IDS) if (!skip || !skip[id]) total += modWeight(id, floor);
+  let r = rnd() * total;
+  for (const id of ALL_IDS) {
+    if (skip && skip[id]) continue;
+    r -= modWeight(id, floor);
+    if (r <= 0) return id;
+  }
+  return 'bolt';
+}
+
 const priceOf = id => MOD_PRICE[id] || 30;
 
 // Guns are priced off what they actually do: slots to build in, how fast they
@@ -485,9 +773,10 @@ function makeGun(rnd, tier) {
   // seed it with something that already shoots
   const used = 1 + Math.floor(rnd() * Math.min(cap, 2 + tier * 3));
   const spots = g.slots.map((_, i) => i).sort(() => rnd() - 0.5).slice(0, used);
+  const asFloor = 1 + tier * 5;               // a high-tier gun comes with better mods on it
   spots.forEach((slot, n) => {
     g.slots[slot] = n === 0 ? SHOT_IDS[Math.floor(rnd() * SHOT_IDS.length)]
-                            : ALL_IDS[Math.floor(rnd() * ALL_IDS.length)];
+                            : rollMod(rnd, asFloor);
   });
   if (!g.slots.some(id => id && MODS[id].kind === 'shot')) g.slots[spots[0]] = 'bolt';
   g.mana = g.manaMax;
@@ -508,33 +797,119 @@ function startingGuns() {
 // Work out what the next pull of the trigger fires. Walks the slot list from where
 // the gun left off, piling up modifiers and applying them to the shots that follow.
 // Advances g.idx; the caller rolls it back if there isn't the mana to pay.
-function planCast(g) {
+// Anything that comes out of the barrel: a shot has these and nothing else, so a
+// modifier's f() can only touch fields that exist here.
+function blankShot(sm, spread) {
+  return { dmg: sm.dmg || 0, speed: sm.speed || 0, spread: (sm.spread || 0) + spread,
+    size: sm.size || 2, life: sm.life || 1, count: sm.count || 1,
+    bounce: sm.bounce || 0, pierce: sm.pierce || 0, explode: sm.explode || 0,
+    grav: sm.grav || 0, homing: 0, accel: 0, bore: sm.bore || 0, recoil: sm.recoil || 0,
+    col: sm.col, knock: 0, crit: 0, boomer: 0, spiral: 0, pong: 0, orbit: 0,
+    autoaim: 0, homeR: 0, flat: 0, eat: sm.eat || 0, pull: sm.pull || 0,
+    split: 0, cluster: 0, bounceFx: null, friendly: 0, chain: sm.chain || 0,
+    fuse: sm.fuse || 0, beam: sm.beam || 0,
+    still: sm.kind === 'static' ? 1 : 0, field: sm.field || null, r: sm.r || 0 };
+}
+
+// Work out what the next pull of the trigger fires. Walks the slot list from where
+// the gun left off, piling up modifiers and applying them to the spells that follow.
+// Advances g.idx; the caller rolls it back if there isn't the mana to pay.
+// `others` is your other guns, which only Zeta looks at.
+function planCast(g, others) {
   const start = g.idx, mods = [], defs = [];
   let multi = g.multi, cost = 0, manaMul = 1, ran = false, wrapped = 0;
   // delay is walked in draw order: most mods nudge it, a few reset it outright,
   // and anything drawn after a reset adds its own delay back on top
   let delay = g.castDelay;
+  let form = null, hp = 0;
+  const acts = [];
   const timing = m => {
     if (m.setDelay !== undefined) delay = m.setDelay;
-    else delay += (m.kind === 'shot' ? m.delay : m.d) || 0;
+    else delay += (m.kind === 'shot' || m.kind === 'static' ? m.delay : m.d) || 0;
   };
-  for (let guard = 0; defs.length < multi && guard < 64; guard++) {
-    if (g.idx >= g.order.length) {
-      ran = true;
-      // a multicast still owed shots wraps back to the front to find them
-      if (defs.length >= multi || wrapped++ || !defs.length && !mods.length) break;
-      g.idx = 0;
+  const live = () => g.slots.filter(id => id && MODS[id].kind !== 'passive');
+  const casts = id => id && (MODS[id].kind === 'shot' || MODS[id].kind === 'static');
+  // how many things the gun still has left to fire this cycle, which is what Myriad takes
+  const rest = () => {
+    let n = 0;
+    for (let i = g.idx; i < g.order.length; i++) if (casts(g.slots[g.order[i]])) n++;
+    return n;
+  };
+  const onGun = () => g.slots.filter(casts).length;
+  let queued = 0;                       // copies waiting in the queue that will fire
+  // A Greek letter drops the spells it copies into this queue, and they are drawn
+  // before the gun moves on. Copies never copy again, so Omega cannot run away.
+  const queue = [];
+  const copiesOf = m => {
+    const all = live().filter(id => !MODS[id].copy);   // a copy never copies a copy
+    if (m.copy === 'first') return all.slice(0, 1);
+    if (m.copy === 'last') return all.slice(-1);
+    if (m.copy === 'all') return all;
+    if (m.copy === 'shots') return all.filter(id => MODS[id].kind === 'shot');
+    if (m.copy === 'statics') return all.filter(id => MODS[id].kind === 'static');
+    if (m.copy === 'next2') {
+      const out = [];
+      for (let i = g.idx; i < g.order.length && out.length < 2; i++) {
+        const id = g.slots[g.order[i]];
+        if (id && MODS[id].kind !== 'passive') out.push(id);
+      }
+      return out;
     }
-    const id = g.slots[g.order[g.idx]];
-    g.idx++;
+    if (m.copy === 'other') {
+      const pool = [];
+      for (const o of others || []) {
+        if (!o || o === g) continue;
+        for (const id of o.slots) if (id && MODS[id].kind !== 'passive' && !MODS[id].copy) pool.push(id);
+      }
+      return pool.length ? [pool[Math.floor(Math.random() * pool.length)]] : [];
+    }
+    return [];
+  };
+
+  for (let guard = 0; defs.length < multi && guard < 96; guard++) {
+    let id, copied = false;
+    if (queue.length) { id = queue.shift(); copied = true; }
+    else {
+      if (g.idx >= g.order.length) {
+        ran = true;
+        // a multicast still owed spells wraps back to the front to find them
+        if (defs.length >= multi || wrapped++ || !defs.length && !mods.length) break;
+        g.idx = 0;
+      }
+      id = g.slots[g.order[g.idx]];
+      g.idx++;
+    }
     if (!id) continue;
     const m = MODS[id];
     if (m.kind === 'passive') continue;
-    if (m.kind === 'mod') {
-      mods.push(m);
+    if (m.kind === 'mod' || m.kind === 'util') {
       cost += m.mana || 0;
-      if (m.multi) multi += m.multi;
+      if (m.hp) hp += m.hp;
+      if (m.act) acts.push(m.act);
       if (m.manaMul) manaMul *= m.manaMul;
+      if (m.f) mods.push(m);
+      // Copies and multicasts only open up on the first pass. Once the gun has
+      // wrapped round to the front they are skipped, or a Myriad would widen the
+      // cast every time it came round and never finish.
+      if (!copied && !wrapped) {
+        if (m.multi) multi += m.multi;
+        if (m.form) form = m.form;
+        if (m.myriad) { multi += rest(); multi = Math.min(multi, queued + onGun()); }
+        if (m.copy === 'mods') {
+          for (const oid of live()) if (MODS[oid].f && !mods.includes(MODS[oid])) mods.push(MODS[oid]);
+        } else if (m.copy) {
+          let room = 0;
+          for (const c of copiesOf(m)) { queue.push(c); if (casts(c)) { room++; queued++; } }
+          // the copies need room, and so do the originals they came from: sweeping the
+          // whole gun fires everything on it, and Tau fires its pair twice
+          if (m.copy === 'all' || m.copy === 'shots' || m.copy === 'statics') multi += room + rest();
+          else if (m.copy === 'next2') multi += room * 2;
+          else multi += room;
+          // never ask for more than the gun can actually produce, or the wrap-around
+          // hands out a stray extra shot
+          multi = Math.min(multi, queued + onGun());
+        }
+      }
       timing(m);
       continue;
     }
@@ -543,20 +918,20 @@ function planCast(g) {
     timing(m);
   }
   const shots = defs.map(sm => {
-    const sh = { dmg: sm.dmg, speed: sm.speed, spread: sm.spread + g.spread, size: sm.size,
-      life: sm.life, count: sm.count || 1, bounce: sm.bounce || 0, pierce: sm.pierce || 0,
-      explode: sm.explode || 0, grav: sm.grav || 0, homing: 0, accel: 0,
-      bore: sm.bore || 0, recoil: sm.recoil || 0, col: sm.col };
+    const sh = blankShot(sm, g.spread);
     for (const m of mods) if (m.f) m.f(sh);
     sh.speed *= g.speedMul || 1;
+    if (sh.flat) sh.grav = 0;
     return sh;
   });
+  if (form) shots.forEach((sh, i) => { sh.ang = form[i % form.length]; });
   let more = false;                       // anything left worth firing this cycle?
   for (let i = g.idx; i < g.order.length; i++) {
     const id = g.slots[g.order[i]];
-    if (id && MODS[id].kind === 'shot') { more = true; break; }
+    const k = id && MODS[id].kind;
+    if (k === 'shot' || k === 'static') { more = true; break; }
   }
-  return { shots, defs, start, cost: cost * manaMul,
+  return { shots, defs, start, cost: cost * manaMul, acts, hp,
     delay: Math.max(MIN_CAST, delay),
     wrap: ran || !more };
 }
@@ -597,6 +972,27 @@ function modPreview(id) {
     return { rows };
   }
 
+  if (m.kind === 'static') {
+    const p = previewPlan([id]);
+    rows.push(['mana', num(p.cost)], ['cast delay', num(p.delay) + 's'],
+      ['radius', num(m.r)]);
+    if (m.life > 0.2) rows.push(['lasts', num(m.life) + 's']);
+    rows.push(['does', FIELD_WHAT[m.field] || m.field]);
+    return { rows };
+  }
+
+  if (m.kind === 'util') {
+    const p = previewPlan([id, 'bolt']), a = previewPlan(['bolt']);
+    rows.push(['mana', num(m.mana || 0)]);
+    push('cast delay', a.delay, p.delay, 's');
+    push('recharge', effRecharge(ref(['bolt'])), effRecharge(ref([id, 'bolt'])), 's');
+    if (m.manaMul) rows.push(['mana cost', '\u00d7' + num(m.manaMul)]);
+    if (m.hp) rows.push(['health per pull', '\u2212' + num(m.hp)]);
+    const sa = a.shots[0], sb = p.shots[0];
+    if (sa && sb) for (const [key, label, unit] of PREVIEW_FIELDS) push(label, sa[key] || 0, sb[key] || 0, unit);
+    return { rows };
+  }
+
   if (m.kind === 'shot') {
     const p = previewPlan([id]);
     const sh = p.shots[0];
@@ -624,13 +1020,17 @@ function modPreview(id) {
 // How much damage a gun really puts out, averaged over a whole cycle: every pull
 // in the list, then the recharge. Firing faster than mana allows just stalls, so
 // the rate is capped by what regen can sustain.
+// what your health can pay out per second and still last a decent fight
+const HP_BUDGET = PLAYER_HP / 25;
+
 function gunRate(gun) {
   const g = resetGun(Object.assign({}, gun, { slots: gun.slots.slice() }));
-  let cast = 0, dmg = 0, cost = 0, shots = 0;
+  let cast = 0, dmg = 0, cost = 0, shots = 0, blood = 0;
   for (let guard = 0; guard < 16; guard++) {
     const p = planCast(g);
     cast += p.delay;
     cost += p.cost;
+    blood += p.hp || 0;
     for (const sh of p.shots) {
       shots++;
       dmg += (sh.dmg || 0) * Math.max(1, Math.round(sh.count || 1));
@@ -643,16 +1043,26 @@ function gunRate(gun) {
   const regen = gun.manaRegen + pas.manaRegen;
   const manaPerSec = cost / cycle;
   const sustain = manaPerSec > regen ? regen / manaPerSec : 1;
-  return { dps: (dmg / cycle) * sustain, cycle, cast, rech, manaPerSec, regen, shots, sustain };
+  // health is a resource too: a gun that bleeds you dry in five seconds is not really
+  // doing that much damage per second, however good the raw numbers look
+  const hpPerSec = blood / cycle;
+  const bleed = hpPerSec > HP_BUDGET ? HP_BUDGET / hpPerSec : 1;
+  return { dps: (dmg / cycle) * sustain * bleed, cycle, cast, rech, manaPerSec, regen,
+    shots, sustain, hpPerSec, bleed };
 }
 
 // Spot the bottleneck, then brute-force every single swap between the gun and the
 // bag to see which one helps most. No cleverness, just the planner run a few
 // hundred times, which costs a few milliseconds.
+// how many promising mods get the full every-slot treatment
+const SHORTLIST = 14;
+
 function buildAdvice(gun, bag) {
   const now = gunRate(gun);
   let limit;
   if (!now.shots) limit = { key: 'none', text: 'Nothing on this gun fires — it needs a shot mod' };
+  else if (now.bleed < 0.95) limit = { key: 'blood',
+    text: 'Your health is the limit — ' + now.hpPerSec.toFixed(1) + ' hp/s to keep this up' };
   else if (now.sustain < 0.95) limit = { key: 'mana',
     text: 'Mana is the limit — ' + Math.round(now.manaPerSec) + '/s used against ' +
       Math.round(now.regen) + '/s regen' };
@@ -666,9 +1076,30 @@ function buildAdvice(gun, bag) {
   if (now.shots) {
     const seen = {};
     const pool = bag.filter(id => !seen[id] && (seen[id] = 1));
+    // With a hundred-odd mods to hand, trying every one in every slot is far too much
+    // work for one render. So: a cheap first look at each mod in a couple of slots,
+    // then the handful that showed promise get tried properly everywhere.
+    const probe = [0, gun.slots.indexOf(null) >= 0 ? gun.slots.indexOf(null) : gun.slots.length - 1]
+      .filter((v, i, a) => v >= 0 && a.indexOf(v) === i);
+    let shortlist = pool;
+    if (pool.length > SHORTLIST) {
+      const rough = [];
+      for (const id of pool) {
+        let bestDps = 0;
+        for (const i of probe) {
+          if (gun.slots[i] === id) continue;
+          const slots = gun.slots.slice();
+          slots[i] = id;
+          bestDps = Math.max(bestDps, score(slots));
+        }
+        rough.push({ id, bestDps });
+      }
+      rough.sort((a, b) => b.bestDps - a.bestDps);
+      shortlist = rough.slice(0, SHORTLIST).map(r => r.id);
+    }
     // bringing one mod in from the bag
     for (let i = 0; i < gun.slots.length; i++) {
-      for (const id of pool) {
+      for (const id of shortlist) {
         if (gun.slots[i] === id) continue;
         const slots = gun.slots.slice();
         slots[i] = id;
@@ -918,6 +1349,19 @@ function gunAccent(g) {
   return COL.bullet;
 }
 
+// shortest signed angle from b to a
+function angDiff(a, b) {
+  let d = a - b;
+  while (d > Math.PI) d -= 2 * Math.PI;
+  while (d < -Math.PI) d += 2 * Math.PI;
+  return d;
+}
+// swing a projectile's velocity without changing how fast it is going
+function turn(b, by) {
+  const sp = Math.hypot(b.vx, b.vy), a = Math.atan2(b.vy, b.vx) + by;
+  b.vx = Math.cos(a) * sp; b.vy = Math.sin(a) * sp;
+}
+
 const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
 function makeLevel(seed, floor) {
@@ -1151,10 +1595,11 @@ function makeLevel(seed, floor) {
 
   // shop stock: a free heal and four mods, spread across the room
   const stock = [];
-  const offer = ALL_IDS.slice();
-  for (let i = offer.length - 1; i > 0; i--) {
-    const j = Math.floor(rnd() * (i + 1));
-    [offer[i], offer[j]] = [offer[j], offer[i]];
+  const offer = [], taken = {};
+  for (let i = 0; i < 4; i++) {
+    const id = rollMod(rnd, floor, taken);
+    taken[id] = 1;
+    offer.push(id);
   }
   const shelf = (SHOP_FLOOR - 13) * CELL;
   const gunShop = isGunShop(floor);
@@ -1207,7 +1652,7 @@ function makeLevel(seed, floor) {
     if (guns < 5 && (rnd() < 0.3 || pickups.length > 12 && guns < 2)) {
       pickups.push({ kind: 'gun', x, y, gun: makeGun(rnd, tier), t: rnd() * 6.28 });
     } else {
-      pickups.push({ kind: 'mod', x, y, id: ALL_IDS[Math.floor(rnd() * ALL_IDS.length)], t: rnd() * 6.28 });
+      pickups.push({ kind: 'mod', x, y, id: rollMod(rnd, floor), t: rnd() * 6.28 });
     }
   }
 
@@ -1217,19 +1662,40 @@ function makeLevel(seed, floor) {
 // Fly a shot forward with the same rules the live bullets use, so the aim line
 // shows what this gun with these mods will actually do: gravity, acceleration,
 // homing, ricochets and drilling all included.
-function tracePath(sh, x0, y0, nx, ny, solid, enemies, out) {
+function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
   const dt = 1 / 60;
+  if (sh.flat) { nx = nx >= 0 ? 1 : -1; ny = 0; }
+  if (sh.beam) {                       // a beam is a straight line, drawn to whatever stops it
+    out.length = 0;
+    out.push(x0, y0);
+    for (let d = 6; d <= sh.beam; d += 5) {
+      const bx = x0 + nx * d, by = y0 + ny * d;
+      if (!sh.bore && solid(bx, by)) break;
+      out.push(bx, by);
+    }
+    return out;
+  }
   let x = x0 + nx * 10, y = y0 + ny * 10;
+  const ox = x, oy = y;
   let vx = nx * sh.speed, vy = ny * sh.speed;
   let life = Math.min(sh.life, 2.5), bounce = sh.bounce || 0;
+  let age = 0;
   out.length = 0;
   out.push(x, y);
   for (let i = 0; i < 110 && life > 0; i++) {
-    life -= dt;
+    life -= dt; age += dt;
     if (sh.grav) vy += sh.grav * dt;
     if (sh.accel) { const f = 1 + sh.accel * dt; vx *= f; vy *= f; }
+    // the same bends the live bullets get, so the line stays honest
+    const swing = by => { const sp = Math.hypot(vx, vy), a = Math.atan2(vy, vx) + by;
+      vx = Math.cos(a) * sp; vy = Math.sin(a) * sp; };
+    if (sh.spiral) swing(sh.spiral * dt);
+    if (sh.orbit) swing(sh.orbit * dt);
+    if (sh.pong && Math.floor(age / 0.45) % 2 === 1) { vx = -vx; vy = -vy; age += dt; }
+    if (sh.boomer && home) swing(Math.max(-sh.boomer * dt, Math.min(sh.boomer * dt,
+      angDiff(Math.atan2(home.y - y, home.x - x), Math.atan2(vy, vx)))));
     if (sh.homing && enemies && enemies.length) {
-      let best = null, bd = 260;
+      let best = null, bd = sh.homeR || 260;
       for (const e of enemies) {
         const d = Math.hypot(e.x - x, e.ty - y);
         if (d < bd) { bd = d; best = e; }
@@ -1250,7 +1716,7 @@ function tracePath(sh, x0, y0, nx, ny, solid, enemies, out) {
     for (let st = 0; st < n; st++) {
       const ax = x + vx * dt / n, ay = y + vy * dt / n;
       if (solid(ax, ay)) {
-        if (sh.bore > 0) { x = ax; y = ay; continue; }
+        if (sh.bore > 0 || sh.eat > 0) { x = ax; y = ay; continue; }
         if (bounce > 0) {
           bounce--;
           const hx = solid(ax, y), hy = solid(x, ay);
@@ -1290,6 +1756,7 @@ function Game({ input }) {
       fuel: 1, empty: false, hp: PLAYER_HP, hitT: 0, dead: false, kick: 0,
       jx: 0, jy: 0, aim: { on: false, show: false, nx: 1, ny: 0 } };
     const bullets = [], enemyShots = [], smoke = [], sparks = [], flashes = [], toasts = [], coins = [];
+    const fields = [], beams = [];                   // static projectiles, and instant beam streaks
     const aimPath = [];                              // scratch buffer for the aim line
     let smokeAcc = 0, time = 0, camX = 0, camY = 0, camReady = false;
     const toast = text => { toasts.push({ text, t: 2.2 }); if (toasts.length > 3) toasts.shift(); };
@@ -1410,6 +1877,22 @@ function Game({ input }) {
       if (changed) tctx.putImageData(img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
     }
 
+    // lay solid brick down, the opposite of dig()
+    function paint(x, y, w, hh) {
+      const x0 = Math.max(1, Math.round(x / CELL - w / 2)), x1 = Math.min(CW - 2, x0 + w);
+      const y0 = Math.max(1, Math.round(y / CELL)), y1 = Math.min(CH - 2, y0 + hh);
+      const d = img.data;
+      for (let cy = y0; cy < y1; cy++)
+        for (let cx = x0; cx < x1; cx++) {
+          const i = cy * CW + cx;
+          if (mat[i]) continue;
+          mat[i] = BRICK;
+          const k = i * 4;
+          d[k] = 132; d[k + 1] = 99; d[k + 2] = 71; d[k + 3] = 255;
+        }
+      if (x1 > x0 && y1 > y0) tctx.putImageData(img, 0, 0, x0, y0, x1 - x0, y1 - y0);
+    }
+
     // ---- casting ----
     // Walk the gun's slot list from where it left off. Modifiers pile up and apply
     // to the shots that come after them; running off the end triggers the recharge.
@@ -1417,24 +1900,96 @@ function Game({ input }) {
       const pas = gunPassives(g);
       const wrap = () => {
         g.idx = 0;
-        g.rechT = effRecharge(g);
+        g.rechT = g.skipRech ? 0 : effRecharge(g);
+        g.skipRech = false;
         shuffleOrder(g);
       };
-      const plan = planCast(g);
+      const plan = planCast(g, input.current.loadout.guns);
       if (!plan.shots.length) { wrap(); return; }        // modifiers with nothing to modify
       if (g.mana < plan.cost) { g.idx = plan.start; g.delayT = 0.12; return; }
       g.mana -= plan.cost;
 
       const base = Math.atan2(ny, nx);
+      const acts = plan.acts || [];
+      let bonus = 0;                                   // damage bought with something else
+
+      if (plan.hp && !p.dead) hurt(plan.hp);
+      if (acts.includes('refresh')) g.skipRech = true;
+      if (acts.includes('platform')) paint(gx + nx * 14, p.y + PH + 6, 26, 4);
+      if (acts.includes('wall')) paint(gx + nx * 26, p.y - 16, 5, 34);
+      if (acts.includes('manapow')) {
+        const spare = Math.max(0, g.mana - 50);
+        g.mana -= spare; bonus += spare / 12;
+      }
+      if (acts.includes('gpower')) {
+        const LO2 = input.current.loadout;
+        const spend = Math.floor(LO2.gold * 0.05);
+        LO2.gold -= spend; bonus += spend / 8;
+        if (spend) input.current.notify();
+      }
+      if (acts.includes('saws')) {
+        for (const b of bullets) {
+          b.dmg = Math.max(b.dmg, 3); b.size = 5; b.bore = 4; b.col = '#d9dde4';
+          b.life = Math.max(b.life, 1.2); b.bounce = Math.max(b.bounce, 4); b.explode = 0;
+        }
+      }
+
+      // where the shots come into the world. A spot buried in rock would eat the
+      // whole cast, so anything that moves the origin backs off to clear ground.
+      let ox = gx, oy = gy;
+      const clearSpot = (tx, ty) => {
+        for (let k = 0; k <= 10; k++) {
+          const t = k / 10;
+          const cx = tx + (gx - tx) * t, cy = ty + (gy - ty) * t;
+          if (!solidAt(cx, cy)) return [cx, cy];
+        }
+        return [gx, gy];
+      };
+      if (acts.includes('far')) [ox, oy] = clearSpot(gx + nx * 95, gy + ny * 95);
+      if (acts.includes('tele')) {
+        let best = null, bd = 420;
+        for (const e of enemies) {
+          const d = Math.hypot(e.x - gx, e.ty - gy);
+          if (d < bd) { bd = d; best = e; }
+        }
+        if (best) [ox, oy] = clearSpot(best.x - nx * 14, best.ty - ny * 14);
+      }
+      const warp = acts.includes('warp');
+
       for (const sh of plan.shots) {
+        if (sh.still) { castField(sh, ox + nx * 30, oy + ny * 30); continue; }
         const n = Math.min(24, Math.max(1, Math.round(sh.count)));
+        const off = (sh.ang || 0) * Math.PI / 180;
         for (let i = 0; i < n; i++) {
-          const a = base + (Math.random() - 0.5) * sh.spread * Math.PI / 180;
-          bullets.push({ x: gx + Math.cos(a) * 10, y: gy + Math.sin(a) * 10,
+          let a = base + off + (Math.random() - 0.5) * sh.spread * Math.PI / 180;
+          if (sh.autoaim) {
+            let best = null, bd = 320;
+            for (const e of enemies) {
+              const d = Math.hypot(e.x - ox, e.ty - oy);
+              if (d < bd) { bd = d; best = e; }
+            }
+            if (best) a = Math.atan2(best.ty - oy, best.x - ox);
+          }
+          if (sh.flat) a = Math.cos(a) >= 0 ? 0 : Math.PI;
+          if (sh.beam) { fireBeam(sh, ox, oy, Math.cos(a), Math.sin(a), bonus); continue; }
+          let bx = ox + Math.cos(a) * 10, by = oy + Math.sin(a) * 10;
+          if (warp) {                                   // jump forward, but not into rock
+            for (let step = 0; step < 14; step++) {
+              const tx = bx + Math.cos(a) * 10, ty = by + Math.sin(a) * 10;
+              if (solidAt(tx, ty)) break;
+              bx = tx; by = ty;
+            }
+          }
+          bullets.push({ x: bx, y: by,
             vx: Math.cos(a) * sh.speed, vy: Math.sin(a) * sh.speed,
-            life: sh.life, dmg: sh.dmg, size: sh.size, col: sh.col, spin: 0,
+            life: sh.life, dmg: sh.dmg + bonus, size: sh.size, col: sh.col, spin: 0,
             homing: sh.homing, bounce: sh.bounce, pierce: sh.pierce,
-            explode: sh.explode, grav: sh.grav, accel: sh.accel, bore: sh.bore, hit: null });
+            explode: sh.explode, grav: sh.grav, accel: sh.accel, bore: sh.bore, hit: null,
+            knock: sh.knock, crit: sh.crit, boomer: sh.boomer, spiral: sh.spiral,
+            pong: sh.pong, orbit: sh.orbit, homeR: sh.homeR, eat: sh.eat, pull: sh.pull,
+            split: sh.split, cluster: sh.cluster, bounceFx: sh.bounceFx,
+            friendly: sh.friendly, chain: sh.chain, fuse: sh.fuse,
+            ox: bx, oy: by, age: 0, born: sh.life });
         }
       }
       let kick = 0;
@@ -1446,6 +2001,57 @@ function Game({ input }) {
       }
       g.delayT = plan.delay;
       if (plan.wrap) wrap();
+    }
+
+    // A beam is instant: it walks a line, damages what it touches and leaves a streak.
+    function fireBeam(sh, x, y, nx, ny, bonus) {
+      let hitAt = sh.beam;
+      for (let d = 6; d <= sh.beam; d += 4) {
+        const bx = x + nx * d, by = y + ny * d;
+        if (sh.bore) dig(bx, by, sh.bore);
+        else if (solidAt(bx, by)) { hitAt = d; break; }
+        const j = enemyAt(bx, by, sh.size + 3);
+        if (j >= 0) {
+          damageEnemy(j, critRoll(sh.dmg + bonus, sh.crit));
+          burst(bx, by, 4, sh.col);
+          if (sh.knock) shove(enemies[j], nx, ny, sh.knock);
+          if (!sh.pierce) { hitAt = d; break; }
+        }
+      }
+      beams.push({ x, y, nx, ny, len: hitAt, col: sh.col, w: sh.size, t: 0 });
+      if (sh.explode) explode(x + nx * hitAt, y + ny * hitAt, sh.explode);
+    }
+
+    // Clusterbolt: the shot bursts into a handful of small explosive bolts
+    function spray(b) {
+      const n = Math.min(8, b.cluster);
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2, sp = 140 + Math.random() * 120;
+        bullets.push({ x: b.x, y: b.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+          life: 0.5 + Math.random() * 0.3, dmg: Math.max(0.6, b.dmg * 0.3), size: 2,
+          col: b.col, spin: 0, homing: 0, bounce: 0, pierce: 0, explode: 9,
+          grav: 300, accel: 0, bore: 0, hit: null, age: 0 });
+      }
+      burst(b.x, b.y, 8, b.col);
+    }
+    // Death Cross: four arms of blast rather than one round crater
+    function explodeCross(b) {
+      const R = b.explode || 20;
+      explode(b.x, b.y, R * 0.6);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]])
+        explode(b.x + dx * R * 0.9, b.y + dy * R * 0.9, R * 0.55);
+    }
+
+    const critRoll = (dmg, chance) => (chance && Math.random() < chance ? dmg * 3 : dmg);
+    const shove = (e, nx, ny, force) => {
+      e.x += nx * force * 0.03; e.y += ny * force * 0.03; e.tgt = null;
+    };
+
+    // Static projectiles: they sit where you cast them and work over time.
+    function castField(sh, x, y) {
+      if (sh.field === 'explode') { explode(x, y, sh.r); return; }
+      fields.push({ x, y, r: sh.r, field: sh.field, life: sh.life, max: sh.life,
+        col: sh.col, dmg: sh.dmg || 1, tick: 0 });
     }
 
     function explode(x, y, R) {
@@ -1622,12 +2228,38 @@ function Game({ input }) {
       // ---- shots ----
       for (let i = bullets.length - 1; i >= 0; i--) {
         const b = bullets[i];
-        b.life -= dt; b.spin += dt * 12;
+        b.life -= dt; b.spin += dt * 12; b.age = (b.age || 0) + dt;
         let dead = b.life <= 0, boom = false;
+        if (b.fuse && b.age >= b.fuse) { boom = b.explode ? true : false; if (!b.explode) dead = true;
+          else { explodeCross(b); dead = true; boom = false; } }
         if (b.grav) b.vy += b.grav * dt;
         if (b.accel) { const f = 1 + b.accel * dt; b.vx *= f; b.vy *= f; }
+        // paths: each one bends the velocity, and tracePath draws the same bends
+        if (b.spiral) turn(b, b.spiral * dt);
+        if (b.pong && Math.floor(b.age / 0.45) % 2 === 1) { b.vx = -b.vx; b.vy = -b.vy; b.age += dt; }
+        if (b.orbit) turn(b, b.orbit * dt);
+        if (b.boomer) {
+          const want = Math.atan2(p.y + PH / 2 - b.y, p.x + PW / 2 - b.x);
+          turn(b, clamp(angDiff(want, Math.atan2(b.vy, b.vx)), -b.boomer * dt, b.boomer * dt));
+        }
+        if (b.eat) dig(b.x, b.y, b.eat);
+        if (b.pull) {
+          for (const e of enemies) {
+            const dx = b.x - e.x, dy = b.y - e.ty, d = Math.hypot(dx, dy) || 1;
+            if (d < b.pull) { e.x += dx / d * 70 * dt; e.y += dy / d * 70 * dt; e.tgt = null; }
+          }
+        }
+        if (b.split && b.age > 0.28) {                   // one clean split, partway along
+          b.split = 0;
+          for (const turnBy of [-0.3, 0.3]) {
+            const c = Object.assign({}, b, { hit: null, split: 0, age: 0 });
+            const sp = Math.hypot(b.vx, b.vy), a = Math.atan2(b.vy, b.vx) + turnBy;
+            c.vx = Math.cos(a) * sp; c.vy = Math.sin(a) * sp;
+            bullets.push(c);
+          }
+        }
         if (b.homing) {
-          let best = null, bd = 260;
+          let best = null, bd = b.homeR || 260;
           for (const e of enemies) {
             const d = Math.hypot(e.x - b.x, e.ty - b.y);
             if (d < bd) { bd = d; best = e; }
@@ -1648,24 +2280,49 @@ function Game({ input }) {
           const j = enemyAt(nx, ny, b.size + 1);
           if (j >= 0 && !(b.hit && b.hit.has(enemies[j]))) {
             const e = enemies[j];
-            damageEnemy(j, b.dmg);
+            const sp = Math.hypot(b.vx, b.vy) || 1;
+            damageEnemy(j, critRoll(b.dmg, b.crit));
             burst(nx, ny, 4, b.col);
+            if (b.knock) shove(e, b.vx / sp, b.vy / sp, b.knock);
             b.x = nx; b.y = ny;
+            if (b.chain > 0) {                            // hop to the next one along
+              (b.hit || (b.hit = new Set())).add(e);
+              let best = null, bd = 150;
+              for (const o of enemies) {
+                if (b.hit.has(o)) continue;
+                const d = Math.hypot(o.x - nx, o.ty - ny);
+                if (d < bd) { bd = d; best = o; }
+              }
+              if (best) {
+                b.chain--;
+                const a = Math.atan2(best.ty - ny, best.x - nx);
+                b.vx = Math.cos(a) * sp; b.vy = Math.sin(a) * sp;
+                b.life = Math.max(b.life, 0.4);
+                continue;
+              }
+            }
+            if (b.cluster) { spray(b); dead = true; break; }
             if (b.explode) { boom = true; break; }
             if (b.pierce > 0) { b.pierce--; (b.hit || (b.hit = new Set())).add(e); }
             else { dead = true; break; }
           }
+          if (b.friendly && !p.dead && nx > p.x - 2 && nx < p.x + PW + 2 &&
+              ny > p.y - 2 && ny < p.y + PH + 2) {
+            burst(nx, ny, 5, b.col); hurt(Math.round(b.dmg * 2)); dead = true; break;
+          }
           if (solidAt(nx, ny)) {
-            if (b.bounce > 0 && !b.bore && !b.explode) {
+            if (b.bounce > 0 && !b.bore) {
               b.bounce--;
               const hx = solidAt(nx, b.y), hy = solidAt(b.x, ny);
               if (hx || !hy) b.vx = -b.vx;
               if (hy || !hx) b.vy = -b.vy;
               b.vx *= 0.92; b.vy *= 0.92;
+              if (b.bounceFx === 'explode') explode(b.x, b.y, Math.max(10, b.explode || 12));
               break;                      // stay put: b.x/b.y are still outside the rock
             }
             b.x = nx; b.y = ny;
             if (b.bore > 0) { dig(nx, ny, b.bore); continue; }
+            if (b.cluster) { spray(b); dead = true; break; }
             if (b.explode) { boom = true; break; }
             burst(b.x, b.y, 3, b.col);
             dead = true;
@@ -1676,6 +2333,63 @@ function Game({ input }) {
         if (boom) { explode(b.x, b.y, b.explode); dead = true; }
         if (dead) bullets.splice(i, 1);
       }
+
+      // ---- static fields ----
+      for (let i = fields.length - 1; i >= 0; i--) {
+        const f = fields[i];
+        f.life -= dt; f.tick -= dt;
+        const near = j => Math.hypot(enemies[j].x - f.x, enemies[j].ty - f.y) < f.r;
+        if (f.field === 'mine') {
+          let trip = f.life <= 0;
+          for (let j = 0; j < enemies.length && !trip; j++) if (near(j)) trip = true;
+          if (trip) { explode(f.x, f.y, f.r); fields.splice(i, 1); continue; }
+        } else if (f.field === 'dormant') {
+          // set off by any blast of yours, which is the whole point of it
+          for (const fl of flashes) {
+            if (Math.hypot(fl.x - f.x, fl.y - f.y) < fl.r + f.r * 0.5) {
+              explode(f.x, f.y, f.r * 1.6); fields.splice(i, 1); f.life = -1; break;
+            }
+          }
+          if (f.life < 0) continue;
+        } else if (f.field === 'slow') {
+          for (const e of enemies) if (Math.hypot(e.x - f.x, e.ty - f.y) < f.r) e.chill = 0.2;
+        } else if (f.field === 'shield') {
+          for (let k = enemyShots.length - 1; k >= 0; k--) {
+            const b = enemyShots[k];
+            if (Math.hypot(b.x - f.x, b.y - f.y) < f.r) { burst(b.x, b.y, 3, f.col); enemyShots.splice(k, 1); }
+          }
+        } else if (f.field === 'heal') {
+          if (Math.hypot(pcx - f.x, pcy - f.y) < f.r && p.hp < PLAYER_HP && f.tick <= 0) {
+            f.tick = 0.4; p.hp = Math.min(PLAYER_HP, p.hp + 4); input.current.notify();
+          }
+        } else if (f.field === 'storm') {
+          if (f.tick <= 0) {
+            f.tick = 0.22;
+            const a = Math.random() * Math.PI * 2, rr = Math.random() * f.r;
+            const sx = f.x + Math.cos(a) * rr, sy = f.y + Math.sin(a) * rr;
+            for (let j = enemies.length - 1; j >= 0; j--)
+              if (Math.hypot(enemies[j].x - sx, enemies[j].ty - sy) < 22) damageEnemy(j, 2);
+            burst(sx, sy, 6, '#a8e4ff');
+          }
+        } else if (f.field === 'vacuum') {
+          for (const e of enemies) {
+            const dx = f.x - e.x, dy = f.y - e.ty, d = Math.hypot(dx, dy) || 1;
+            if (d < f.r) { e.x += dx / d * 90 * dt; e.y += dy / d * 90 * dt; e.tgt = null; }
+          }
+          for (const b of bullets) {
+            const dx = f.x - b.x, dy = f.y - b.y, d = Math.hypot(dx, dy) || 1;
+            if (d < f.r) { b.vx += dx / d * 500 * dt; b.vy += dy / d * 500 * dt; }
+          }
+        } else if (f.field === 'glitter') {
+          if (f.tick <= 0) {
+            f.tick = 0.16;
+            const a = Math.random() * Math.PI * 2, rr = Math.random() * f.r;
+            explode(f.x + Math.cos(a) * rr, f.y + Math.sin(a) * rr, 9);
+          }
+        }
+        if (f.life <= 0) fields.splice(i, 1);
+      }
+      for (let i = beams.length - 1; i >= 0; i--) if ((beams[i].t += dt) > 0.12) beams.splice(i, 1);
 
       // ---- pickups ----
       for (let i = pickups.length - 1; i >= 0; i--) {
@@ -1779,7 +2493,8 @@ function Game({ input }) {
           e.rest = 2 + Math.random() * 3.5;
         }
         const tdx = e.tgt.x - e.x, tdy = e.tgt.y - e.y, td = Math.hypot(tdx, tdy) || 1;
-        const step = PATROL_SPEED * dt;
+        const step = PATROL_SPEED * (e.chill || 1) * dt;
+        e.chill = 1;                                  // fields re-apply it every frame
         const wx = e.x + tdx / td * step, wy = e.y + tdy / td * step;
         if (solidAt(wx - e.r, wy) || solidAt(wx + e.r, wy) ||
             solidAt(wx, wy - e.r) || solidAt(wx, wy + e.r)) { e.tgt = null; e.rest = 0; }
@@ -1912,6 +2627,27 @@ function Game({ input }) {
       }
       ctx.globalAlpha = 1;
 
+      // static fields
+      for (const f of fields) {
+        if (f.y > camY + vh + f.r || f.y < camY - f.r) continue;
+        const t = f.life / f.max;
+        const beat = 0.75 + 0.25 * Math.sin(time * (f.field === 'mine' ? 7 : 3));
+        ctx.globalAlpha = 0.14 * beat * (f.field === 'mine' || f.field === 'dormant' ? 2 : 1);
+        ctx.fillStyle = f.col;
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (f.field === 'mine' ? 0.35 : 1), 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 0.55 * beat;
+        ctx.strokeStyle = f.col;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.lineDashOffset = -time * 14;
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.4 + 0.6 * t), 0, Math.PI * 2); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = f.col;
+        ctx.beginPath(); ctx.arc(f.x, f.y, 3.5, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
       // enemies
       for (const e of enemies) {
         const ey = e.ty;
@@ -1947,6 +2683,19 @@ function Game({ input }) {
           ctx.fillRect(b.x - 1, b.y - 1, 2, 2);
         }
       }
+      // instant beams, which fade over a few frames
+      for (const bm of beams) {
+        const fade = 1 - bm.t / 0.12;
+        ctx.globalAlpha = fade * 0.35;
+        ctx.strokeStyle = bm.col; ctx.lineWidth = bm.w * 3.5;
+        ctx.beginPath(); ctx.moveTo(bm.x, bm.y);
+        ctx.lineTo(bm.x + bm.nx * bm.len, bm.y + bm.ny * bm.len); ctx.stroke();
+        ctx.globalAlpha = fade;
+        ctx.lineWidth = bm.w * 1.2;
+        ctx.beginPath(); ctx.moveTo(bm.x, bm.y);
+        ctx.lineTo(bm.x + bm.nx * bm.len, bm.y + bm.ny * bm.len); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
 
       // the portal you arrived through: scenery only
       if (arrival.y < camY + vh + 40 && arrival.y > camY - 40) {
@@ -2104,8 +2853,17 @@ function Game({ input }) {
         const seen = {};
         let drawn = 0;
         for (const sh of plan.shots) {
+          if (sh.still) {                    // a field lands in front of you, it does not fly
+            const fx = pcx + R.nx * 30, fy = gy + R.ny * 30;
+            ctx.globalAlpha = 0.5; ctx.strokeStyle = sh.col; ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath(); ctx.arc(fx, fy, Math.max(8, sh.r), 0, Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]); ctx.globalAlpha = 1;
+            continue;
+          }
           const key = [Math.round(sh.speed), Math.round(sh.grav), sh.accel, sh.bounce,
-            sh.bore, sh.homing, Math.round(sh.life * 20)].join(',');
+            sh.bore, sh.homing, Math.round(sh.life * 20), sh.beam, sh.spiral, sh.orbit,
+            sh.pong, sh.boomer, sh.flat].join(',');
           if (seen[key] || drawn >= 3) continue;
           seen[key] = 1;
           const cone = drawn === 0 && sh.spread > 2
@@ -2113,7 +2871,8 @@ function Game({ input }) {
           drawn++;
           for (const off of cone) {
             const a = Math.atan2(R.ny, R.nx) + off * Math.PI / 180;
-            tracePath(sh, pcx, gy, Math.cos(a), Math.sin(a), solidAt, enemies, aimPath);
+            tracePath(sh, pcx, gy, Math.cos(a), Math.sin(a), solidAt, enemies, aimPath,
+              { x: pcx, y: gy });
             ctx.fillStyle = sh.col;
             const edge = off !== 0;
             const size = edge ? 1.6 : 2.4;
@@ -2471,10 +3230,33 @@ function ModCard({ id, onClose, ingame, top }) {
   } else if (m.kind === 'shot') {
     demo = [drow(true, [dtile('dmg_up', 'a'), dtile(id, 'b')], 'modifiers go to its left', 1),
             drow(false, [dtile(id, 'c'), dtile('dmg_up', 'd', true)], 'a modifier here comes too late', 2)];
+  } else if (m.kind === 'static') {
+    demo = [drow(true, [dtile('dmg_up', 'a'), dtile(id, 'b')],
+              'modifiers to its left still count', 1),
+            drow(true, [dtile('double', 'c'), dtile(id, 'd'), dtile('bolt', 'e')],
+              'it takes a cast slot like any shot does', 2)];
+  } else if (m.copy === 'mods') {
+    demo = [drow(true, [dtile(id, 'a'), dtile('bolt', 'b'), dtile('heavy', 'c')],
+              'the heavy shot counts even though it sits after the bolt', 1),
+            drow(true, [dtile('heavy', 'd'), dtile(id, 'e'), dtile('bolt', 'f')],
+              'and here too \u2014 Mu does not care where they are', 2)];
+  } else if (m.copy) {
+    demo = [drow(true, [dtile('bolt', 'a'), dtile(id, 'b')],
+              'it copies off the gun, so give it something to copy', 1),
+            drow(false, [dtile(id, 'c'), dtile('bolt', 'd', true)],
+              'first in an empty gun, there is nothing to copy yet', 2)];
+  } else if (m.myriad) {
+    demo = [drow(true, [dtile(id, 'a'), dtile('bolt', 'b'), dtile('bolt', 'c'), dtile('slug', 'd')],
+              'all three fire together on one pull', 1),
+            drow(false, [dtile('bolt', 'e'), dtile(id, 'f', true)], 'nothing left after it', 2)];
   } else if (m.multi) {
     demo = [drow(true, [dtile(id, 'a'), dtile('bolt', 'b'), dtile('bolt', 'c')],
               'both bolts fire on one pull', 1),
             drow(false, [dtile('bolt', 'd'), dtile(id, 'e', true)], 'nothing after it to gather', 2)];
+  } else if (m.kind === 'util' && !m.f) {
+    demo = [drow(true, [dtile(id, 'a'), dtile('bolt', 'b')],
+              'it fires along with the pull it is drawn in', 1),
+            drow(true, [dtile('bolt', 'c'), dtile(id, 'd')], 'same pull, same effect', 2)];
   } else {
     demo = [drow(true, [dtile(id, 'a'), dtile('bolt', 'b')], 'the bolt gets the effect', 1),
             drow(false, [dtile('bolt', 'c'), dtile(id, 'd', true)], 'too late — the bolt already fired', 2)];
