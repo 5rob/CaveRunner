@@ -28,12 +28,26 @@ Open `index.html` in a browser. It is a single file with no build step; React lo
 
 Every floor starts in an enclosed room spanning the width of the level, with one
 hole in the roof leading up into the cave. You arrive at the far left, beside the
-portal you came in through, and the stock is laid out to your right. It stocks four random mods for gold
-and one free full heal; stand on a plinth and its full detail card appears, the
-same one the build screen shows, so you can read what a mod does before paying
-for it. and it is the only place you can rearrange your guns —
-the Mods button is locked while you are out in the cave. Enemies drop gold when
-they die, so a floor you clear pays for the next floor's shopping.
+portal you came in through, and the stock is laid out to your right. There is
+always one free full heal, and four things for sale beside it.
+
+Odd floors sell mods. **Even floors sell guns instead** — four freshly rolled
+ones, priced on what they can actually do: slots, how fast they cycle, mana, and
+whether they fire in the order you set them. Buying one drops it at the plinth
+and the usual pickup chooser opens, so you decide which slot it takes, and
+walking away parks it on the shop floor rather than binning what you paid for.
+
+Stand on any plinth and its full detail card appears — the mod card the build
+screen shows, or the gun's stat sheet compared against the one you are holding —
+so you can read what you are buying before paying for it. The shop is also the
+only place you can rearrange your guns: the Mods button is locked while you are
+out in the cave. Enemies drop gold when they die, so a floor you clear pays for
+the next floor's shopping.
+
+Guns get better as you go. Height in the cave still matters — the ones lying
+around near the top of a floor beat the ones near the bottom — but every floor
+you clear lifts the whole range, so by floor five or six the scratch pistols have
+stopped turning up.
 
 ## Guns and mods
 
@@ -73,6 +87,15 @@ Any mod in a group that changes the recharge time shows it in that group's stat
 line too, even though recharge itself is paid once per full cycle rather than
 per pull — so a Buzzsaw or a Cold Start reads as the saving it actually makes.
 
+## DEBUG mode
+
+There is a DEBUG switch in the build screen header. Turn it on and your
+collection is replaced by a shelf holding one of every mod in the game, none of
+which is ever used up, so you can try a build out properly instead of hoping the
+right mod drops. Your own bag is left completely alone while it is on — switch
+it off and your mods come straight back, with whatever you fitted still on the
+gun.
+
 ## Build advice
 
 Under the outlines the build screen works out your sustained damage per second
@@ -94,4 +117,6 @@ on the same cast planner the gun fires with, so the numbers are the real ones.
 - Recoil that shoves you around, which the jetpack can work with
 - Gold that flies to you once you are close enough (a short range for now)
 - Jetpack with fuel that refills on the ground; upward thrust is instant
-- Enemies with health bars that shoot back when they can see you
+- Enemies with health bars that patrol around their patch and shoot back when they can see you
+- A gun you decided against stays quiet for two seconds, so you can squeeze past it in a tunnel
+- A DEBUG shelf with one of every mod, for trying builds out

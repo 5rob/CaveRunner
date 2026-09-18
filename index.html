@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v28</title>
+<title>CaveRunner v29</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -219,6 +219,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .gtab.holding{background-repeat:no-repeat}
 .slot.holding{background-repeat:no-repeat}
 .purse{font:700 14px system-ui,sans-serif;color:#c08a1f;margin-left:auto;margin-right:10px}
+.dbg{height:28px;padding:0 10px;border-radius:14px;border:1px solid var(--ring);
+  background:var(--pad);color:var(--muted);font:700 10px system-ui,sans-serif;letter-spacing:.09em}
+.dbg.on{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}
+.bag.debug{box-shadow:inset 0 0 0 1.5px rgba(255,138,31,0.5)}
 .reset{position:absolute;top:10px;right:10px;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.35);
   color:#e9ecf2;border-radius:8px;padding:6px 12px;font:inherit;font-size:13px}
 </style>
@@ -239,7 +243,7 @@ const BW = CW / 2, BH = CH / 2;   // background at half resolution
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v28';
+const VERSION = 'v29';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -252,6 +256,9 @@ const PLAYER_HP = 100;
 const START_GOLD = 40;
 const COIN_PULL = 36;         // gold within this many units flies to you
 const ENEMY_HP = 3, ENEMY_RANGE = 220, ENEMY_BULLET = 180, ENEMY_DMG = 10, ENEMY_COUNT = 20;
+const PATROL_R = 70;          // how far an enemy will drift from where it spawned
+const PATROL_SPEED = 34;
+const PICKUP_COOL = 2;        // a gun you walked away from stays quiet this long
 const NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
 
 const THEME = {
@@ -396,6 +403,19 @@ const MOD_PRICE = {
 };
 const priceOf = id => MOD_PRICE[id] || 30;
 
+// Guns are priced off what they actually do: slots to build in, how fast they
+// cycle, how much mana they hold, and whether they fire in the order you set.
+function gunPrice(g) {
+  const rate = 1 / Math.max(0.05, g.castDelay) + 1 / Math.max(0.1, g.recharge);
+  const v = g.cap * 20 + rate * 7 + g.manaMax * 0.1 + g.manaRegen * 0.3
+    + (g.multi - 1) * 45 + ((g.speedMul || 1) - 1) * 40 - g.spread * 3
+    + (g.shuffle ? -30 : 20);
+  return Math.max(45, Math.round(v / 5) * 5);
+}
+
+// Every second shop is a gun shop instead of a mod shop.
+const isGunShop = floor => floor % 2 === 0;
+
 // the shop room sits under the whole cave: floor, interior, then a brick roof
 const SHOP_FLOOR = CH - 10;            // first row of solid floor
 const SHOP_H = 48;                     // interior height
@@ -435,6 +455,15 @@ function resetGun(g) {
   g.idx = 0; g.delayT = 0; g.rechT = 0;
   shuffleOrder(g);
   return g;
+}
+
+// How good a gun should roll. Height in the cave still matters, but every floor
+// you clear lifts the whole range, so late floors stop handing out scratch pistols.
+const FLOOR_TIER = 0.16;
+function gunTier(cy, floor) {
+  const depth = (CH - 60 - cy) / (CH - 140);          // 0 at the bottom, 1 at the top
+  const run = Math.min(0.85, (floor - 1) * FLOOR_TIER);
+  return Math.min(1, Math.max(0, run + Math.max(0, depth) * (1 - run * 0.5)));
 }
 
 // tier 0..1: guns found higher up the cave are better
@@ -754,6 +783,141 @@ function gunPassives(g) {
   return { rech, rechMul, manaMax, manaRegen };
 }
 
+// ---- sprites ----
+// Everything is drawn from primitives at world scale (the player is 12x22 units),
+// so it stays crisp at any zoom and there are no images to load.
+function rr(ctx, x, y, w, hh, r) {
+  const k = Math.min(r, w / 2, hh / 2);
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, hh, k);
+  else {
+    ctx.moveTo(x + k, y);
+    ctx.arcTo(x + w, y, x + w, y + hh, k);
+    ctx.arcTo(x + w, y + hh, x, y + hh, k);
+    ctx.arcTo(x, y + hh, x, y, k);
+    ctx.arcTo(x, y, x + w, y, k);
+    ctx.closePath();
+  }
+}
+
+// A gun, grip at the origin, barrel down +x. Scaled so the same drawing works for
+// the one in your hands and the little one lying on the cave floor.
+function drawGun(ctx, x, y, ang, sc, accent) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(ang);
+  if (Math.cos(ang) < 0) ctx.scale(1, -1);     // aiming left: flip, don't hang upside down
+  ctx.scale(sc, sc);
+  ctx.fillStyle = '#20242c';                    // stock and grip
+  rr(ctx, -6.5, -4.6, 4.5, 3.6, 1.2); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-1.4, -1.2); ctx.lineTo(1.8, -1.2); ctx.lineTo(0.9, 4.6); ctx.lineTo(-2.2, 4.2);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#3c424e';                    // magazine
+  ctx.beginPath();
+  ctx.moveTo(2.2, -1); ctx.lineTo(5, -1); ctx.lineTo(4.4, 3.4); ctx.lineTo(1.8, 3.4);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#4a515f';                    // receiver
+  rr(ctx, -4.4, -5.2, 10.5, 4.4, 1.3); ctx.fill();
+  ctx.fillStyle = '#5f6878';                    // barrel
+  rr(ctx, 5.5, -4.4, 7.5, 2.4, 1); ctx.fill();
+  ctx.fillStyle = '#343a45';                    // sight
+  rr(ctx, 0.5, -6.6, 2.4, 1.6, 0.6); ctx.fill();
+  ctx.fillStyle = accent || COL.bullet;         // muzzle and a flash of the gun's colour
+  rr(ctx, 12.4, -5, 1.8, 3.6, 0.7); ctx.fill();
+  rr(ctx, -3.4, -4.4, 2.6, 2.6, 0.8); ctx.fill();
+  ctx.restore();
+}
+
+// The runner: jetpack on the back, sealed helmet, legs that actually move.
+function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash) {
+  const suit = flash ? '#ffffff' : '#ff5a36';
+  const dark = flash ? '#d8dde6' : '#c33a1f';
+  ctx.save();
+  ctx.translate(x + w / 2, y);
+  ctx.scale(face, 1);
+  // jetpack
+  ctx.fillStyle = '#2b3039';
+  rr(ctx, -6.2, 6.5, 4.4, 9, 1.6); ctx.fill();
+  ctx.fillStyle = '#ff8a1f';
+  rr(ctx, -5.6, 8.4, 3.2, 1.4, 0.6); ctx.fill();
+  ctx.fillStyle = '#1b1f26';
+  rr(ctx, -5.4, 15, 3, 2.2, 0.8); ctx.fill();
+  if (jet > 0) {                                  // the nozzle glows when it is lit
+    ctx.fillStyle = COL.flame2;
+    rr(ctx, -5.2, 16.4, 2.6, 1.6, 0.8); ctx.fill();
+  }
+  // legs: a stride on the ground, tucked up in the air
+  ctx.fillStyle = dark;
+  const swing = air ? -1.4 : gait * 2.6;
+  const lift = air ? 2 : 0;
+  rr(ctx, -3.4 + swing, 15.5 - lift * 0.5, 3, 6.5 - lift, 1.2); ctx.fill();
+  rr(ctx, 0.4 - swing, 15.5 - lift, 3, 6.5 - lift * 0.6, 1.2); ctx.fill();
+  ctx.fillStyle = '#24282f';                      // boots
+  rr(ctx, -3.6 + swing, 20.2 - lift * 1.2, 3.6, 1.8, 0.7); ctx.fill();
+  rr(ctx, 0.2 - swing, 20.2 - lift * 1.4, 3.6, 1.8, 0.7); ctx.fill();
+  // torso
+  ctx.fillStyle = suit;
+  rr(ctx, -3.8, 6, 7.6, 10.5, 2.6); ctx.fill();
+  ctx.fillStyle = dark;
+  rr(ctx, -3.8, 12.4, 7.6, 2.2, 1); ctx.fill();   // belt
+  // arm reaching for the gun
+  ctx.fillStyle = suit;
+  rr(ctx, 1, 8.4, 5, 2.8, 1.3); ctx.fill();
+  // helmet
+  ctx.fillStyle = flash ? '#ffffff' : '#d7dbe3';
+  ctx.beginPath(); ctx.arc(0, 4.4, 4.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1d2733';                      // visor
+  rr(ctx, -0.6, 1.9, 4.6, 4.2, 1.8); ctx.fill();
+  ctx.fillStyle = 'rgba(126,214,255,0.75)';       // glint
+  rr(ctx, 1.4, 2.7, 1.8, 1.4, 0.6); ctx.fill();
+  ctx.restore();
+}
+
+// The enemy: a hovering drone with one big eye that follows you around.
+function drawDrone(ctx, x, y, r, lx, ly, time, phase, flash) {
+  const shell = flash ? '#f4f0ff' : '#463462';
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(lx * 0.22);
+  // thruster wash underneath
+  const puff = 0.55 + 0.25 * Math.sin(time * 9 + phase);
+  ctx.globalAlpha = 0.3 * puff;
+  ctx.fillStyle = COL.enemy;
+  ctx.beginPath(); ctx.ellipse(0, r * 0.9, r * 0.45, r * 0.8 * puff, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+  // stubby fins, drawn first so they read as sticking out of the hull
+  ctx.fillStyle = flash ? '#e6e0f5' : '#241c36';
+  rr(ctx, -r * 1.52, -r * 0.4, r * 0.62, r * 0.9, r * 0.22); ctx.fill();
+  rr(ctx, r * 0.9, -r * 0.4, r * 0.62, r * 0.9, r * 0.22); ctx.fill();
+  rr(ctx, -r * 0.34, r * 0.5, r * 0.68, r * 0.5, r * 0.18); ctx.fill();    // vent
+  // hull
+  ctx.fillStyle = shell;
+  rr(ctx, -r * 1.05, -r * 0.78, r * 2.1, r * 1.5, r * 0.62); ctx.fill();
+  ctx.strokeStyle = flash ? '#ffffff' : '#6d54a0';
+  ctx.lineWidth = r * 0.14;
+  rr(ctx, -r * 1.05, -r * 0.78, r * 2.1, r * 1.5, r * 0.62); ctx.stroke();
+  ctx.fillStyle = flash ? '#ffffff' : '#5b4482';
+  rr(ctx, -r * 0.72, -r * 0.7, r * 1.44, r * 0.46, r * 0.22); ctx.fill();  // canopy
+  ctx.restore();
+  // the eye sits in the hull and swivels to keep you in view
+  const ex = x + lx * r * 0.34, ey = y + ly * r * 0.26;
+  ctx.globalAlpha = 0.3;
+  ctx.fillStyle = COL.enemy;
+  ctx.beginPath(); ctx.arc(ex, ey, r * 0.62, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = flash ? '#ffffff' : '#ffd98a';
+  ctx.beginPath(); ctx.arc(ex, ey, r * 0.36, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1b1526';
+  ctx.beginPath(); ctx.arc(ex + lx * r * 0.15, ey + ly * r * 0.15, r * 0.16, 0, Math.PI * 2); ctx.fill();
+}
+
+// the colour a gun wears: whatever family its first shot belongs to
+function gunAccent(g) {
+  if (g) for (const id of g.slots) if (id && MODS[id].kind === 'shot') return famCol(id);
+  return COL.bullet;
+}
+
 const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
 function makeLevel(seed, floor) {
@@ -993,10 +1157,15 @@ function makeLevel(seed, floor) {
     [offer[i], offer[j]] = [offer[j], offer[i]];
   }
   const shelf = (SHOP_FLOOR - 13) * CELL;
+  const gunShop = isGunShop(floor);
   for (let i = 0; i < 5; i++) {
     const x = (CW / 6) * (i + 1) * CELL;
     if (i === 0) stock.push({ kind: 'heal', x, y: shelf, price: 0, sold: false });
-    else {
+    else if (gunShop) {
+      // shop guns roll a touch above whatever the cave is dropping on this floor
+      const gun = makeGun(rnd, Math.min(1, gunTier(120, floor) + 0.1));
+      stock.push({ kind: 'gun', gun, x, y: shelf, price: gunPrice(gun), sold: false });
+    } else {
       const id = offer[i - 1];
       stock.push({ kind: 'mod', id, x, y: shelf, price: priceOf(id), sold: false });
     }
@@ -1021,7 +1190,8 @@ function makeLevel(seed, floor) {
     const x = cx * CELL, y = cy * CELL;
     if (Math.hypot(x - start.x, y - start.y) < 200) continue;
     if (enemies.some(e => Math.hypot(e.x - x, e.y - y) < 90)) continue;
-    enemies.push({ x, y, ty: y, r: 9, phase: rnd() * 6.28, hp: ENEMY_HP, cd: 1 + rnd() * 2, flash: 0, lx: 0, ly: 1 });
+    enemies.push({ x, y, ty: y, r: 9, phase: rnd() * 6.28, hp: ENEMY_HP, cd: 1 + rnd() * 2,
+      flash: 0, lx: 0, ly: 1, hx: x, hy: y, tgt: null, rest: rnd() * 3 });
   }
 
   // guns and mods to find: the higher up the cave, the better the roll
@@ -1032,7 +1202,7 @@ function makeLevel(seed, floor) {
     const x = cx * CELL, y = cy * CELL;
     if (Math.hypot(x - start.x, y - start.y) < 130) continue;
     if (pickups.some(q => Math.hypot(q.x - x, q.y - y) < 110)) continue;
-    const tier = Math.min(1, Math.max(0, (CH - 60 - cy) / (CH - 140) + (floor - 1) * 0.12));
+    const tier = gunTier(cy, floor);
     const guns = pickups.filter(q => q.kind === 'gun').length;
     if (guns < 5 && (rnd() < 0.3 || pickups.length > 12 && guns < 2)) {
       pickups.push({ kind: 'gun', x, y, gun: makeGun(rnd, tier), t: rnd() * 6.28 });
@@ -1511,8 +1681,9 @@ function Game({ input }) {
       for (let i = pickups.length - 1; i >= 0; i--) {
         const q = pickups[i];
         if (q.taken) { pickups.splice(i, 1); continue; }
+        if (q.cool > 0) q.cool -= dt;
         if (Math.abs(q.x - pcx) > 18 || Math.abs(q.y - pcy) > 20) { q.lock = false; continue; }
-        if (q.lock || p.dead) continue;
+        if (q.lock || q.cool > 0 || p.dead) continue;
         if (q.kind === 'mod') {
           LO.bag.push(q.id);
           toast('Found ' + MODS[q.id].name);
@@ -1560,6 +1731,8 @@ function Game({ input }) {
       const promptKey = prompt ? stock.indexOf(prompt) : -1;
       const label = !prompt ? null
         : prompt.kind === 'heal' ? { text: 'Full heal', price: 0, can: p.hp < PLAYER_HP }
+        : prompt.kind === 'gun' ? { text: prompt.gun.name, gun: prompt.gun,
+            price: prompt.price, can: LO.gold >= prompt.price }
         : { text: MODS[prompt.id].name, id: prompt.id, price: prompt.price,
             can: LO.gold >= prompt.price };
       const sig = promptKey + ':' + (label && label.can ? 1 : 0) + ':' + inShop;
@@ -1573,13 +1746,20 @@ function Game({ input }) {
         input.current.buy = false;
         if (prompt.kind === 'heal') {
           if (p.hp < PLAYER_HP) { p.hp = PLAYER_HP; prompt.sold = true; toast('Patched up'); }
-        } else if (LO.gold >= prompt.price) {
+        } else if (LO.gold < prompt.price) {
+          toast('Not enough gold');
+        } else if (prompt.kind === 'gun') {
+          LO.gold -= prompt.price;
+          prompt.sold = true;
+          // it drops at the plinth, so the usual chooser decides which slot it takes
+          // and "leave it" parks the gun you paid for on the floor rather than binning it
+          pickups.push({ kind: 'gun', x: prompt.x, y: prompt.y, gun: prompt.gun, t: 0 });
+          toast('Bought ' + prompt.gun.name);
+        } else {
           LO.gold -= prompt.price;
           LO.bag.push(prompt.id);
           prompt.sold = true;
           toast('Bought ' + MODS[prompt.id].name);
-        } else {
-          toast('Not enough gold');
         }
         input.current.sig = '';
         input.current.notify();
@@ -1590,6 +1770,20 @@ function Game({ input }) {
 
       // ---- enemies ----
       for (const e of enemies) {
+        // patrol: pick a spot near home, drift to it, pause, pick another. Rock in
+        // the way just means the spot was a bad idea, so it chooses a different one.
+        e.rest -= dt;
+        if (!e.tgt || e.rest <= 0 || Math.hypot(e.tgt.x - e.x, e.tgt.y - e.y) < 6) {
+          const a = Math.random() * Math.PI * 2, r = 10 + Math.random() * PATROL_R;
+          e.tgt = { x: e.hx + Math.cos(a) * r, y: e.hy + Math.sin(a) * r };
+          e.rest = 2 + Math.random() * 3.5;
+        }
+        const tdx = e.tgt.x - e.x, tdy = e.tgt.y - e.y, td = Math.hypot(tdx, tdy) || 1;
+        const step = PATROL_SPEED * dt;
+        const wx = e.x + tdx / td * step, wy = e.y + tdy / td * step;
+        if (solidAt(wx - e.r, wy) || solidAt(wx + e.r, wy) ||
+            solidAt(wx, wy - e.r) || solidAt(wx, wy + e.r)) { e.tgt = null; e.rest = 0; }
+        else { e.x = wx; e.y = wy; }
         e.ty = e.y + Math.sin(time * 2 + e.phase) * 4;
         e.flash -= dt;
         const dx = pcx - e.x, dy = pcy - e.ty, dist = Math.hypot(dx, dy) || 1;
@@ -1722,13 +1916,8 @@ function Game({ input }) {
       for (const e of enemies) {
         const ey = e.ty;
         if (ey > camY + vh + 20 || ey < camY - 20 || e.x < camX - 20 || e.x > camX + vw + 20) continue;
-        ctx.fillStyle = e.flash > 0 ? COL.eye : COL.enemy;
-        ctx.beginPath(); ctx.arc(e.x, ey, e.r, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = COL.eye;
-        ctx.beginPath(); ctx.arc(e.x + e.lx * 2, ey + e.ly * 2, e.r * 0.55, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = COL.enemy;
-        ctx.beginPath(); ctx.arc(e.x + e.lx * 4, ey + e.ly * 4, e.r * 0.25, 0, Math.PI * 2); ctx.fill();
-        const hw = 20, hx = e.x - hw / 2, hy = ey - e.r - 6;
+        drawDrone(ctx, e.x, ey, e.r, e.lx, e.ly, time, e.phase, e.flash > 0);
+        const hw = 20, hx = e.x - hw / 2, hy = ey - e.r - 9;
         ctx.fillStyle = COL.barBg; ctx.fillRect(hx, hy, hw, 3);
         ctx.fillStyle = COL.player; ctx.fillRect(hx, hy, hw * e.hp / ENEMY_HP, 3);
       }
@@ -1800,6 +1989,19 @@ function Game({ input }) {
           ctx.globalAlpha = 1; ctx.fillStyle = COL.hp;
           ctx.fillRect(it.x - 7, it.y - 2.5 + bob, 14, 5);
           ctx.fillRect(it.x - 2.5, it.y - 7 + bob, 5, 14);
+        } else if (it.kind === 'gun') {
+          ctx.globalAlpha = 0.22; ctx.fillStyle = gunAccent(it.gun);
+          ctx.beginPath(); ctx.arc(it.x, it.y + bob, 14, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1;
+          drawGun(ctx, it.x - 5, it.y + 1 + bob, -0.22, 0.9, gunAccent(it.gun));
+          ctx.fillStyle = COL.bullet;
+          ctx.font = '600 9px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(it.price + 'g', it.x, it.y - 13 + bob);
+          ctx.fillStyle = COL.muted;
+          ctx.font = '600 8px system-ui, sans-serif';
+          ctx.fillText(it.gun.cap + ' slots', it.x, it.y + 24 + bob);
+          ctx.textAlign = 'left';
         } else {
           const m = MODS[it.id];
           ctx.globalAlpha = 0.22; ctx.fillStyle = famCol(it.id);
@@ -1839,11 +2041,7 @@ function Game({ input }) {
           ctx.globalAlpha = 0.25; ctx.fillStyle = COL.bullet;
           ctx.beginPath(); ctx.arc(q.x, qy, 13, 0, Math.PI * 2); ctx.fill();
           ctx.globalAlpha = 1;
-          ctx.fillStyle = '#c9ccd4';
-          ctx.fillRect(q.x - 9, qy - 2, 14, 4);
-          ctx.fillRect(q.x - 9, qy - 1, 4, 7);
-          ctx.fillStyle = COL.bullet;
-          ctx.fillRect(q.x + 4, qy - 1, 3, 2);
+          drawGun(ctx, q.x - 5, qy + 1, -0.22, 0.85, gunAccent(q.gun));
         } else {
           const m = MODS[q.id];
           ctx.globalAlpha = 0.22; ctx.fillStyle = famCol(q.id);
@@ -1896,7 +2094,7 @@ function Game({ input }) {
       const R = p.aim;
       const held = input.current.loadout.guns[input.current.loadout.sel];
       const ax = R.show ? R.nx : p.face, ay = R.show ? R.ny : 0;
-      const gy = p.y + PH * 0.4;
+      const gy = p.y + PH * 0.52;
 
       // where the next pull actually goes, mods and all
       if (!p.dead && R.show && held) {
@@ -1929,20 +2127,13 @@ function Game({ input }) {
         ctx.globalAlpha = 1;
       }
 
-      if (!p.dead) {
-        ctx.strokeStyle = COL.visor; ctx.lineCap = 'round';
-        ctx.lineWidth = 2.5;
-        const len = 12;
-        ctx.beginPath(); ctx.moveTo(pcx, gy); ctx.lineTo(pcx + ax * len, gy + ay * len); ctx.stroke();
-      }
-
       // player
       if (p.dead) ctx.globalAlpha = 0.35;
       const flashing = p.hitT > 0 && Math.floor(p.hitT * 30) % 2 === 0;
-      ctx.fillStyle = flashing ? COL.eye : COL.player;
-      ctx.fillRect(p.x, p.y, PW, PH);
-      ctx.fillStyle = COL.visor;
-      ctx.fillRect(p.face > 0 ? p.x + PW - 7 : p.x + 1, p.y + 4, 6, 4);
+      const running = p.onGround && Math.abs(p.vx) > 15;
+      const gait = running ? Math.sin(time * 15) : 0;
+      drawRunner(ctx, p.x, p.y, PW, PH, p.face, gait, !p.onGround, p.jet, flashing);
+      if (!p.dead) drawGun(ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
       ctx.globalAlpha = 1;
 
       // ---- HUD ----
@@ -2196,11 +2387,15 @@ function GunSwap({ input, refresh, onDone }) {
     LO.guns[i] = resetGun(found.gun);   // taking a gun never changes which one you hold
     if (old) { found.gun = old; }       // your old gun stays here on the ground
     else found.taken = true;
+    found.cool = PICKUP_COOL;           // don't reopen the moment you step past it
     input.current.found = null;
     refresh();
     onDone();
   };
-  const leave = () => { input.current.found = null; refresh(); onDone(); };
+  const leave = () => {
+    found.cool = PICKUP_COOL;         // same for one you looked at and walked away from
+    input.current.found = null; refresh(); onDone();
+  };
 
   return h('div', { className: 'sheet' },
     h('div', { className: 'shead' },
@@ -2310,6 +2505,14 @@ function Editor({ input, close, refresh }) {
   const [gdrag, setGdrag] = useState(null);
   const gun = LO.guns[sel];
 
+  // DEBUG swaps your collection for a shelf holding one of every mod, and nothing
+  // you drag off it is used up. Your own bag is left completely alone while it is
+  // on, so switching back hands your real mods straight back — the ones you fitted
+  // to a gun stay fitted, because they live on the gun, not in the bag.
+  const bagIds = LO.debug ? ALL_IDS : LO.bag;
+  const takeFromBag = i => { if (!LO.debug) LO.bag.splice(i, 1); };
+  const returnToBag = id => { if (!LO.debug && id) LO.bag.push(id); };
+
   // move a gun to another slot, keeping whatever you had selected selected
   const moveGun = (from, to) => {
     if (from === to) return;
@@ -2365,12 +2568,12 @@ function Editor({ input, close, refresh }) {
     const g = LO.guns[sel];
     if (!to) return;
     if (to === 'bag') {
-      if (from.type === 'slot' && g) { g.slots[from.i] = null; LO.bag.push(id); }
+      if (from.type === 'slot' && g) { g.slots[from.i] = null; returnToBag(id); }
     } else if (to.slice(0, 5) === 'slot:' && g) {
       const k = Number(to.slice(5));
       if (from.type === 'bag') {
-        LO.bag.splice(from.i, 1);
-        if (g.slots[k]) LO.bag.push(g.slots[k]);
+        takeFromBag(from.i);
+        returnToBag(g.slots[k]);
         g.slots[k] = id;
       } else if (from.i !== k) {
         const swap = g.slots[k];
@@ -2475,6 +2678,8 @@ function Editor({ input, close, refresh }) {
     h('div', { className: 'shead' },
       h('h2', null, 'Guns & Mods'),
       h('span', { className: 'purse' }, LO.gold + 'g'),
+      h('button', { className: 'dbg' + (LO.debug ? ' on' : ''),
+        onPointerDown: e => { e.preventDefault(); LO.debug = !LO.debug; refresh(); } }, 'DEBUG'),
       h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Done')
     ),
     h('div', { className: 'gtabs' },
@@ -2505,7 +2710,7 @@ function Editor({ input, close, refresh }) {
       : 'No gun in this slot'),
     gun ? h('div', { className: 'slotRow' }, slotRow(gun, tile)) : null,
     gun ? (() => {
-      const adv = buildAdvice(gun, LO.bag);
+      const adv = buildAdvice(gun, bagIds);
       const apply = t => e => {
         e.preventDefault();
         if (t.kind === 'move') {
@@ -2514,10 +2719,10 @@ function Editor({ input, close, refresh }) {
           gun.slots[t.other] = a;
         } else {
           const outgoing = gun.slots[t.slot];
-          const k = LO.bag.indexOf(t.id);
-          if (k >= 0) LO.bag.splice(k, 1);
+          const k = bagIds.indexOf(t.id);
+          if (k >= 0) takeFromBag(k);
           gun.slots[t.slot] = t.id;
-          if (outgoing) LO.bag.push(outgoing);
+          returnToBag(outgoing);
         }
         resetGun(gun);
         refresh();
@@ -2536,9 +2741,11 @@ function Editor({ input, close, refresh }) {
     h('div', { className: 'legend' },
       Object.keys(FAMILIES).map(k => h('span', { key: k, className: 'lg' },
         h('i', { style: { background: FAMILIES[k].col } }), FAMILIES[k].name))),
-    h('p', { className: 'lab' }, 'Collected mods' + (LO.bag.length ? '' : ' — none yet, find them in the cave')),
-    h('div', { className: 'bag scroll', 'data-drop': 'bag' },
-      LO.bag.map((id, i) => tile(id, { type: 'bag', i }, 'b' + i))
+    h('p', { className: 'lab' }, LO.debug
+      ? 'Debug shelf — one of every mod, never used up'
+      : 'Collected mods' + (LO.bag.length ? '' : ' — none yet, find them in the cave')),
+    h('div', { className: 'bag scroll' + (LO.debug ? ' debug' : ''), 'data-drop': 'bag' },
+      bagIds.map((id, i) => tile(id, { type: 'bag', i }, 'b' + i))
     ),
     h('div', { className: 'info' },
       'Drag a mod to move it. Tap one to see what it does. Hold a gun to reorder it.'),
@@ -2555,7 +2762,7 @@ function App() {
   const blank = () => ({ active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false });
   const input = useRef({
     left: blank(), right: blank(),
-    loadout: { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD },
+    loadout: { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false },
     paused: false, notify: () => {}, inShop: true, prompt: null, buy: false, sig: '',
     keys: { w: false, a: false, s: false, d: false },
     mouse: { x: 0, y: 0, inside: false, down: false },
@@ -2579,7 +2786,7 @@ function App() {
     if (L.guns[i]) { L.sel = i; refresh(); }
   };
   const restart = () => {
-    input.current.loadout = { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD };
+    input.current.loadout = { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false };
     input.current.sig = '';
     input.current.found = null;
     setGunInfo(-1);
@@ -2634,12 +2841,15 @@ function App() {
 
   const prompt = input.current.prompt;
   const inShop = input.current.inShop;
+  const heldGun = input.current.loadout.guns[input.current.loadout.sel];
   const buy = e => { e.preventDefault(); input.current.buy = true; };
 
   return h('div', { className: 'app' },
     h('div', { className: 'view' },
       h(Game, { key: run, input }),
       prompt && prompt.id ? h(ModCard, { id: prompt.id, ingame: true }) : null,
+      prompt && prompt.gun ? h(GunCard, { gun: prompt.gun, label: 'For sale', ingame: true,
+        compare: heldGun, compareName: heldGun ? heldGun.name : '' }) : null,
       prompt ? h('button', {
           className: 'buy' + (prompt.can ? '' : ' cant'),
           onPointerDown: prompt.can ? buy : e => e.preventDefault() },
