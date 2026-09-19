@@ -79,7 +79,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.tap('.slot >> nth=0');
   await page.waitForTimeout(150);
 
-  // --- 4. walking onto a gun opens the chooser ---
+  // --- 4. walking onto a gun shows its card; interacting opens the chooser ---
   const before = await LO();
   const foundName = await page.evaluate(async () => {
     const { pickups, p } = window.__lvl;
@@ -88,6 +88,10 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     await new Promise(r => setTimeout(r, 250));
     return gp.gun.name;
   });
+  check('walking onto it does not open the chooser', (await page.$('.sheet')) === null);
+  check('but shows its card', (await page.$('.pop.ingame')) !== null);
+  await page.evaluate(() => { window.__in.current.interact = true; });
+  await page.waitForTimeout(200);
   check('the chooser opens', (await page.$('.sheet')) !== null);
   check('it does NOT equip on its own', JSON.stringify((await LO()).guns) === JSON.stringify(before.guns), await LO());
   const paused = await page.evaluate(async () => {
@@ -135,10 +139,13 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     const { pickups, p } = window.__lvl;
     const gp = pickups.find(q => q.kind === 'gun');
     // stands in for walking onto a different gun: the one just dropped is still
-    // inside its two-second cooldown, which is what stops it reopening on its own
-    gp.lock = false; gp.cool = 0; gp.x = p.x + 6; gp.y = p.y + 11;
+    // inside its two-second cooldown, which is what stops its card reappearing on its own
+    gp.cool = 0; gp.x = p.x + 6; gp.y = p.y + 11;
     await new Promise(r => setTimeout(r, 250));
   });
+  check('its card is back', (await page.$('.pop.ingame')) !== null);
+  await page.evaluate(() => { window.__in.current.interact = true; });
+  await page.waitForTimeout(200);
   check('chooser opens again for another gun', (await page.$('.sheet')) !== null);
   await page.tap('.done');
   await page.waitForTimeout(250);
@@ -167,9 +174,11 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       L.guns[1] = mk('Cataclysmic Devastator');
       const gp = window.__lvl.pickups.find(q => q.kind === 'gun');
       gp.gun = mk('Apocalyptic Annihilator');
-      gp.lock = false; gp.cool = 0; gp.taken = false;
+      gp.cool = 0; gp.taken = false;
       gp.x = window.__lvl.p.x + 6; gp.y = window.__lvl.p.y + 11;
       await new Promise(r => setTimeout(r, 350));
+      window.__in.current.interact = true;         // open the chooser — walking up only shows the card now
+      await new Promise(r => setTimeout(r, 200));
     });
     const fit = await pg.evaluate(() => {
       const V = { w: innerWidth, h: innerHeight };

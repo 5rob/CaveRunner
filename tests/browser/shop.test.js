@@ -27,19 +27,21 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   const modsLabel = () => page.evaluate(() => document.querySelector('.weapon').textContent);
   check('Mods available in the shop', (await modsLabel()).indexOf('Mods') >= 0, await modsLabel());
 
-  // walk onto the free heal: prompt appears, taking it heals
+  // walk onto the free heal: prompt appears, interacting heals
   const goTo = async (item) => page.evaluate(async i => {
     const { p, stock } = window.__lvl;
     p.x = stock[i].x - 6; p.y = stock[i].y + 4; p.vx = 0; p.vy = 0;
     await new Promise(r => setTimeout(r, 260));
   }, item);
+  // buying/taking is now a tap on the right stick's dead zone; drive it the same way
+  // the aim tests do, straight through the ref, and give step() a moment to consume it
+  const interact = async () => { await page.evaluate(() => { window.__in.current.interact = true; }); await page.waitForTimeout(200); };
 
   await page.evaluate(() => { window.__lvl.p.hp = 40; });
   await goTo(0);
-  let btn = await page.evaluate(() => { const b = document.querySelector('.buy'); return b && b.textContent; });
+  let btn = await page.evaluate(() => { const b = document.querySelector('.pickhint'); return b && b.textContent; });
   check('standing on the heal shows a prompt', !!btn && /Take/.test(btn), btn);
-  await page.tap('.buy');
-  await page.waitForTimeout(250);
+  await interact();
   st = await page.evaluate(() => ({ hp: window.__lvl.p.hp, sold: window.__lvl.stock[0].sold }));
   check('the heal restores full health and is used up', st.hp === 100 && st.sold === true, st);
 
@@ -48,8 +50,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   const item1 = await page.evaluate(() => ({ id: window.__lvl.stock[1].id, price: window.__lvl.stock[1].price }));
   await page.evaluate(() => { window.__in.current.loadout.gold = 500; window.__in.current.sig = ''; });
   await page.waitForTimeout(220);
-  await page.tap('.buy');
-  await page.waitForTimeout(250);
+  await interact();
   st = await page.evaluate(() => ({ gold: window.__in.current.loadout.gold,
     bag: window.__in.current.loadout.bag.slice(), sold: window.__lvl.stock[1].sold }));
   check('buying takes the gold', st.gold === 500 - item1.price, { st, item1 });
@@ -60,10 +61,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await goTo(2);
   await page.evaluate(() => { window.__in.current.loadout.gold = 0; window.__in.current.sig = ''; });
   await page.waitForTimeout(250);
-  const cant = await page.evaluate(() => { const b = document.querySelector('.buy'); return b && b.className; });
+  const cant = await page.evaluate(() => { const b = document.querySelector('.pickhint'); return b && b.className; });
   check('unaffordable stock is shown greyed', /cant/.test(cant || ''), cant);
-  await page.tap('.buy');
-  await page.waitForTimeout(200);
+  await interact();
   check('and cannot be bought', (await page.evaluate(() => window.__lvl.stock[2].sold)) === false);
 
   // enemies drop gold

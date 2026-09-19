@@ -29,8 +29,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
         out.push({ id, clipped: el.scrollHeight - el.clientHeight, pad,
           bottom: Math.round(el.getBoundingClientRect().bottom) });
       }
-      const buy = document.querySelector('.buy');
-      return { rows: out, buyTop: buy ? Math.round(buy.getBoundingClientRect().top) : null,
+      const hint = document.querySelector('.pickhint');
+      return { rows: out, hintTop: hint ? Math.round(hint.getBoundingClientRect().top) : null,
         viewBottom: Math.round(document.querySelector('.view').getBoundingClientRect().bottom) };
     });
     const bad = worst.rows.filter(r => r.missing || r.clipped > 1);
@@ -38,9 +38,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       bad.slice(0, 5).map(b => b.id + ':' + (b.missing ? 'missing' : b.clipped + 'px cut')));
     check(`cards have bottom padding at ${vh}px`, worst.rows.every(r => r.missing || r.pad >= 14),
       worst.rows[0] && worst.rows[0].pad);
-    check(`the card still clears the Buy button at ${vh}px`,
-      worst.rows.every(r => r.missing || r.bottom < worst.buyTop),
-      { maxBottom: Math.max(...worst.rows.filter(r => !r.missing).map(r => r.bottom)), buyTop: worst.buyTop });
+    check(`the card still clears the pickup hint at ${vh}px`,
+      worst.rows.every(r => r.missing || r.bottom < worst.hintTop),
+      { maxBottom: Math.max(...worst.rows.filter(r => !r.missing).map(r => r.bottom)), hintTop: worst.hintTop });
     await ctx.close();
   }
   console.log(fails ? `\n${fails} failed` : '\nall good');

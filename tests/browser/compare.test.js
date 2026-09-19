@@ -23,6 +23,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       manaMax: 200, manaRegen: 20, spread: 8, multi: 2, speedMul: 1.5, shuffle: true });
     gp.x = p.x + 6; gp.y = p.y + 11;
     await new Promise(r => setTimeout(r, 300));
+    window.__in.current.interact = true;   // walking up only shows the card; interact opens the chooser
+    await new Promise(r => setTimeout(r, 200));
   });
 
   // the pickup screen shows the stats as chips so both guns fit; same labels, same up/down

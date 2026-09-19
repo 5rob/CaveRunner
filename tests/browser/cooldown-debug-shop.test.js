@@ -30,30 +30,42 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('enemies wander off their spawn point', spread.medMoved > 20, spread);
   check('but they never leave their patch', spread.maxFar < 90, spread.maxFar);
 
-  // ---- a gun you walked away from stays quiet ----
+  // ---- a gun needs an interact tap now, and one you declined stays quiet ----
   // put a gun under the player's feet. `fresh` also clears any cooldown on it.
   const drop = async fresh => page.evaluate(f => {
     const L = window.__lvl, q = L.pickups.find(g => g.kind === 'gun');
-    q.x = L.p.x + 4; q.y = L.p.y + 6; q.lock = false;
+    q.x = L.p.x + 4; q.y = L.p.y + 6;
     if (f) q.cool = 0;
     return { name: q.gun.name, cool: q.cool };
   }, fresh);
+  const interact = () => page.evaluate(() => { window.__in.current.interact = true; });
+
   await drop(true);
-  await page.waitForTimeout(400);
-  check('walking onto a gun opens the chooser', !!(await page.$('.sheet')));
+  await page.waitForTimeout(300);
+  check('walking onto a gun shows its card, not the chooser',
+    (await page.$('.pop.ingame')) !== null && (await page.$('.sheet')) === null);
+  await interact();
+  await page.waitForTimeout(250);
+  check('interacting opens the chooser', !!(await page.$('.sheet')));
   await page.evaluate(() => [...document.querySelectorAll('.done')].find(x => /Leave/.test(x.textContent)).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
   await page.waitForTimeout(250);
   check('leaving it closes the chooser', (await page.$('.sheet')) === null);
   const cool = await page.evaluate(() => window.__lvl.pickups.find(g => g.kind === 'gun').cool);
   check('and starts a cooldown', cool > 1.4 && cool <= 2, cool);
-  await drop();                                    // still standing on it
-  await page.waitForTimeout(700);
-  check('it does not reopen while the cooldown runs', (await page.$('.sheet')) === null,
+  await drop();                                    // still standing on it, cooldown untouched
+  await page.waitForTimeout(400);
+  check('its card is hidden while the cooldown runs', (await page.$('.pop.ingame')) === null,
     await page.evaluate(() => window.__lvl.pickups.find(g => g.kind === 'gun').cool));
+  await interact();
+  await page.waitForTimeout(300);
+  check('interacting does nothing while it is quiet', (await page.$('.sheet')) === null);
   await page.waitForTimeout(1700);
   await drop(false);
-  await page.waitForTimeout(350);
-  check('once it expires you can look again', !!(await page.$('.sheet')));
+  await page.waitForTimeout(300);
+  check('once it expires the card is back', !!(await page.$('.pop.ingame')));
+  await interact();
+  await page.waitForTimeout(250);
+  check('and interacting opens it again', !!(await page.$('.sheet')));
   await page.evaluate(() => [...document.querySelectorAll('.done')].find(x => /Leave/.test(x.textContent)).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
   await page.waitForTimeout(250);
 
@@ -67,20 +79,26 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     window.__in.current.sig = '';
   });
   await page.waitForTimeout(400);
-  const buyTxt = await page.evaluate(() => { const e = document.querySelector('.buy'); return e && e.textContent; });
-  check('a gun plinth offers the gun by name', /^Buy .+120g$/.test(buyTxt || ''), buyTxt);
+  const buyTxt = await page.evaluate(() => { const e = document.querySelector('.pickhint'); return e && e.textContent; });
+  check('a gun plinth offers the gun by name', /^Buy .+120g/.test(buyTxt || ''), buyTxt);
   const card = await page.evaluate(() => { const e = document.querySelector('.pop.ingame .ptitle'); return e && e.textContent; });
   check('and shows its stats while you stand there', /For sale/.test(card || ''), card);
-  await page.tap('.buy');
+  await interact();
   await page.waitForTimeout(500);
   const after = await page.evaluate(() => ({
     gold: window.__in.current.loadout.gold,
     sold: window.__lvl.stock[1].sold,
     onFloor: window.__lvl.pickups.filter(q => q.kind === 'gun').length,
+    card: !!document.querySelector('.pop.ingame'),
     chooser: !!document.querySelector('.sheet'),
   }));
   check('buying takes the gold and marks it sold', after.gold === 380 && after.sold, after);
-  check('the gun drops at the plinth and the chooser opens', after.onFloor === 1 && after.chooser, after);
+  // buying is one interact tap; it drops the gun at your feet and shows its card —
+  // taking it off the ground is a further, separate interact, same as any other pickup
+  check('the gun drops at the plinth, showing its card', after.onFloor === 1 && after.card && !after.chooser, after);
+  await interact();
+  await page.waitForTimeout(250);
+  check('interacting again opens the chooser', !!(await page.$('.sheet')));
   await page.evaluate(() => [...document.querySelectorAll('.done')].find(x => /Leave/.test(x.textContent)).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
   await page.waitForTimeout(250);
 

@@ -51,8 +51,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the card carries the effect rows', c && c.rows.length > 0, c && c.rows);
   check('and the placement demo', c && c.demo === 2, c && c.demo);
   check('the card never eats a tap', c && c.clickThrough === true);
-  const buyBox = await page.evaluate(() => { const b = document.querySelector('.buy'); const r = b.getBoundingClientRect(); return Math.round(r.top); });
-  check('it sits clear of the Buy button', c && c.bottom < buyBox, { cardBottom: c && c.bottom, buyTop: buyBox });
+  const hintBox = await page.evaluate(() => { const b = document.querySelector('.pickhint'); const r = b.getBoundingClientRect(); return Math.round(r.top); });
+  check('it sits clear of the pickup hint', c && c.bottom < hintBox, { cardBottom: c && c.bottom, hintTop: hintBox });
   await page.screenshot({ path: path.join(__dirname, '..', 'build', 'shop_card.png') });
 
   await stand(2);
@@ -62,7 +62,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
   await stand(0);
   check('the free heal shows no mod card', (await card()) === null);
-  const healBtn = await page.evaluate(() => document.querySelector('.buy').textContent);
+  const healBtn = await page.evaluate(() => document.querySelector('.pickhint').textContent);
   check('but still offers the heal', /Take/.test(healBtn), healBtn);
 
   // step away
@@ -71,14 +71,14 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     await new Promise(r => setTimeout(r, 280));
   });
   check('walking away hides the card', (await card()) === null);
-  check('and the Buy button', (await page.$('.buy')) === null);
+  check('and the pickup hint', (await page.$('.pickhint')) === null);
 
   // buying from the plinth still works with the card up
   await stand(3);
   const it = await page.evaluate(() => ({ id: window.__lvl.stock[3].id, price: window.__lvl.stock[3].price }));
   await page.evaluate(() => { window.__in.current.loadout.gold = 999; window.__in.current.sig = ''; });
   await page.waitForTimeout(220);
-  await page.tap('.buy');
+  await page.evaluate(() => { window.__in.current.interact = true; });
   await page.waitForTimeout(250);
   const after = await page.evaluate(() => ({ bag: window.__in.current.loadout.bag.slice(),
     gold: window.__in.current.loadout.gold, sold: window.__lvl.stock[3].sold, card: !!document.querySelector('.pop.ingame') }));
