@@ -47,7 +47,7 @@ replace it with a general static server.
    Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
    link. If this session hasn't published yet, read the artifact first, then publish.
 
-Current version: **v32**. Branch: `claude/compassionate-rubin-fcqsif`.
+Current version: **v33**. Branch: `claude/compassionate-rubin-fcqsif`.
 
 ### The version number is not optional
 
@@ -137,6 +137,25 @@ separate bugs came from that; don't move it back.
 **UI controls fire on `onPointerDown`, not `onClick`.** A click synthesised after a sheet
 closes lands on whatever is underneath — that's how the Done button used to restart the
 run.
+
+**A mod on the ground asks before it is taken.** The interact tap sets
+`input.current.confirm`; `ModFound` renders the card with **Pick up** / **Leave** and the
+game pauses behind it. It publishes its `{ take, leave, aim }` on
+`input.current.confirmAct`, and `Stick()` reads that on release, so a drag points at a
+button and letting go picks it. Two things about it are easy to break. The overlay is
+`pointer-events:none` on purpose — the right stick has to stay live underneath it, and
+only `.pop.ingame` and `.modfoundbtn` take touches back. And it stops above the control
+deck via an inline `bottom` measured in `ModFound`, so the stick you are being asked to
+drag isn't sitting in shadow.
+
+**`found` is already taken as a class name.** `GunCard` is rendered with `mark: 'found'`
+for a gun on the ground, and `tests/browser/gunpickup.test.js` queries `.pop.found`. So
+the mod overlay's classes are all `modfound*`. Reusing `.found` silently restyled every
+found-gun card, and it took a browser suite to surface it.
+
+**The lamp has to stay inside the screen.** `SIGHT` is deliberately well under `VIEW_W`:
+at 200 it lit a circle wider than the phone screen, which revealed terrain you could not
+look at. If you raise it, check it against `VIEW_W` rather than against the map.
 
 **Unicode is stored raw** in `index.html` (`·`, `—`, `×`, `Ω`), not as `\uXXXX`. Match the
 literal characters when editing with a script, or the edit silently finds nothing.

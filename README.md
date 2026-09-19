@@ -14,8 +14,10 @@ where you are before you have read the number.
 
 The cave starts dark. You reveal it by flying through it, and what you have seen
 stays on the map for the rest of that floor — dimmed once you move away, so you
-can still read the terrain you explored but not what is moving in it. Enemies
-shoot slightly further than you can see, so a dark corner is a real risk.
+can still read the terrain you explored but not what is moving in it. The lamp you
+carry lights a pool well inside the edges of the screen, so the dark is a real
+edge you have to fly into, not a tint over everything you can already see. Enemies
+shoot further than you can see, so a dark corner is a real risk.
 
 ## Play
 
@@ -30,10 +32,16 @@ Open `index.html` in a browser. It is a single file with no build step; React lo
 | Aim | Right stick | Mouse |
 | Shoot | Drag the right stick out past the dead zone | Left mouse button |
 | Interact: buy, take a gun or mod | Tap the middle of the right stick | F |
+| Choose on a card that is asking | Drag the right stick at a button, or tap the button | — |
 | Pick gun | Tap a gun slot | 1 to 4 |
 | Gun details | Hold a gun slot | — |
 | Reorder guns | Hold and drag a gun tab in the build screen | — |
 | Guns & mods screen (shop only) | Tap Mods | E |
+
+The controls sit on a black arcade panel with a scanline wash over it. The right
+stick carries two rings: the amber one is the dead zone you have to leave for a
+drag to count as aiming, and the dashed one outside it is the full travel of the
+knob. Between them is everything a drag can be.
 
 ## Picking things up
 
@@ -43,17 +51,22 @@ That one button buys from a shop plinth and picks up guns and mods in the cave.
 
 Walking over something no longer takes it. You get its card instead — the same
 detail card the build screen shows — so you can read a mod or compare a gun
-against the one you are holding before deciding. Tap to take it, or walk away
-and leave it there.
+against the one you are holding before deciding.
+
+A mod on the ground is not taken by the tap either. The tap opens the card,
+pauses the game behind it, and asks: **Pick up** or **Leave**. Drag the right
+stick in the direction of the button you want and let go, or just tap it. Point
+somewhere else and let go and nothing happens — you were not choosing.
 
 ## The shop
 
 Every floor starts in an enclosed room spanning the width of the level, with one
 hole in the roof leading up into the cave. You arrive at the far left, beside the
-portal you came in through, and the stock is laid out to your right. There is
-always one free full heal, and four things for sale beside it.
+portal you came in through, and the free full heal is right there with you.
 
-Odd floors sell mods. **Even floors sell guns instead** — four freshly rolled
+The four things for sale sit together in one row across the middle of the room,
+close enough to read all four without walking between them. Odd floors sell mods.
+**Even floors sell guns instead** — four freshly rolled
 ones, priced on what they can actually do: slots, how fast they cycle, mana, and
 whether they fire in the order you set them. Buying one drops it at the plinth as an ordinary ground gun, so it is yours to
 pick up with a second tap whenever you like, and walking away parks it on the
@@ -246,7 +259,7 @@ them if it cannot find either.
 - Floors that chain: shop, cave, exit, next shop, with gold and gear carried over
 - A colour scheme per floor that stays with that floor run to run, so you can tell where you are at a glance
 - Large randomly generated caves with cramped and open areas, winding tunnels, built ledges and half-buried brick frames
-- Fog of war: the cave starts dark and you reveal it by exploring, with what you have seen left dimmed behind you
+- Fog of war: the cave starts dark and you reveal it by exploring, with what you have seen left dimmed behind you and the lamp lighting a pool inside the screen
 - Destructible pixel terrain: explosions and drilling shots eat everything except the outer border
 - Guns and mods to find, with a drag-and-drop screen for building them
 - 111 mods: shots, static fields, path modifiers, trigger spells, utility casts and the Greek letter copy spells
@@ -254,6 +267,8 @@ them if it cannot find either.
 - An aim line that simulates the next shot for real: gravity, acceleration, homing, ricochets, drilling and spread
 - Recoil that shoves you around, which the jetpack can work with
 - Gold that flies to you once you are close enough (a short range for now)
+- A black arcade control deck: mono type, scanlines, and two rings on the right stick — the dead zone and the full throw
+- Picking a mod up off the ground asks first: card, game paused, pick up or leave, chosen with the stick
 - Jetpack with fuel that refills on the ground; upward thrust is instant
 - 16 creatures in five shapes, each floor owning its own fixed roster: shooters that hover and fire, turrets that wind up a long shot, chasers that come at you and bombers that burst on contact
 - Creature stats and gold scale with the floor they belong to, so the same enemy gets harder as you climb
