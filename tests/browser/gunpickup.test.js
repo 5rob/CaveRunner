@@ -29,6 +29,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.waitForTimeout(120);
   check('keys work at the start', (await LO()).sel === 1, await LO());
   await page.click('.reset');
+  await page.waitForTimeout(500);
+  await page.click('.confirmRow .go');
   await page.waitForTimeout(700);
   await page.keyboard.press('2');
   await page.waitForTimeout(150);
