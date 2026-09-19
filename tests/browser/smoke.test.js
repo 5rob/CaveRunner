@@ -31,18 +31,22 @@ const check = (name, ok, extra) => { if (!ok) fails++; console.log(`${ok ? 'ok  
   check('firing spends mana', shot.after < shot.before, shot);
   check('bullets exist in flight', shot.peak > 0, shot.peak);
 
-  // --- walking onto a mod pickup collects it ---
+  // --- walking onto a mod pickup shows its card; interacting takes it ---
   const grab = await page.evaluate(async () => {
     const { pickups, p } = window.__lvl;
     const LO = window.__in.current.loadout;
     const mod = pickups.find(q => q.kind === 'mod');
     mod.x = p.x + 6; mod.y = p.y + 11;                  // drop it on the player's head
     await new Promise(r => setTimeout(r, 120));
-    return { bag: LO.bag.slice(), gone: !pickups.includes(mod) };
+    const beforeTake = { bag: LO.bag.slice(), card: !!document.querySelector('.pop.ingame') };
+    window.__in.current.interact = true;
+    await new Promise(r => setTimeout(r, 120));
+    return { beforeTake, bag: LO.bag.slice(), gone: !pickups.includes(mod) };
   });
-  check('mod pickup goes into the bag', grab.bag.length === 1 && grab.gone, grab);
+  check('walking onto it shows the card, not the bag', grab.beforeTake.card && grab.beforeTake.bag.length === 0, grab);
+  check('interacting puts the mod in the bag', grab.bag.length === 1 && grab.gone, grab);
 
-  // --- a gun pickup now opens the chooser rather than equipping itself ---
+  // --- a gun pickup shows its card; interacting opens the chooser, not equipping it ---
   const gunFind = await page.evaluate(async () => {
     const { pickups, p } = window.__lvl;
     const LO = window.__in.current.loadout;
@@ -50,9 +54,13 @@ const check = (name, ok, extra) => { if (!ok) fails++; console.log(`${ok ? 'ok  
     const before = LO.guns.map(g => g && g.name);
     gp.x = p.x + 6; gp.y = p.y + 11;
     await new Promise(r => setTimeout(r, 250));
-    return { before, after: LO.guns.map(g => g && g.name), name: gp.gun.name };
+    const beforeInteract = { sheet: !!document.querySelector('.sheet'), card: !!document.querySelector('.pop.ingame') };
+    window.__in.current.interact = true;
+    await new Promise(r => setTimeout(r, 250));
+    return { before, beforeInteract, after: LO.guns.map(g => g && g.name), name: gp.gun.name };
   });
-  check('walking onto a gun opens the chooser', (await page.$('.sheet')) !== null, gunFind);
+  check('walking onto it shows the card, not the chooser', gunFind.beforeInteract.card && !gunFind.beforeInteract.sheet, gunFind);
+  check('interacting opens the chooser', (await page.$('.sheet')) !== null, gunFind);
   check('it does not equip by itself', JSON.stringify(gunFind.before) === JSON.stringify(gunFind.after), gunFind);
   await page.click('.done');                       // leave it, carry on with the rest
   await page.waitForTimeout(250);

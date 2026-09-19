@@ -59,6 +59,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .hline{position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line)}
 .jetzone{position:absolute;left:0;right:0;top:0;height:50%;background:var(--jet);opacity:0;transition:opacity .1s}
 .jetting .jetzone{opacity:1}
+.deadzone{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;
+  border:1px dashed var(--line);pointer-events:none}
 .knob{position:absolute;left:50%;top:50%;width:26%;height:26%;border-radius:50%;
   background:var(--knob);opacity:.75;pointer-events:none}
 .lbl{position:absolute;left:50%;transform:translateX(-50%);font-size:12px;color:var(--muted);pointer-events:none}
@@ -215,11 +217,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .dtile i{font-style:normal;font:600 10px system-ui,sans-serif;color:var(--text);opacity:.8}
 .dtile.off{opacity:.42}
 .dnote{display:block;font-size:11px;color:var(--muted);margin-top:3px}
-.buy{position:absolute;left:50%;transform:translateX(-50%);bottom:78px;display:flex;align-items:center;
+.pickhint{position:absolute;left:50%;transform:translateX(-50%);bottom:78px;display:flex;align-items:center;
   gap:8px;height:42px;padding:0 18px;border-radius:21px;border:2px solid #ffc93c;
-  background:rgba(20,22,28,0.82);color:#fff;font:600 14px system-ui,sans-serif;touch-action:none}
-.buy b{color:#ffc93c}
-.buy.cant{border-color:rgba(255,255,255,0.25);opacity:.55}
+  background:rgba(20,22,28,0.82);color:#fff;font:600 14px system-ui,sans-serif;pointer-events:none}
+.pickhint b{color:#ffc93c}
+.pickhint .hint{font:500 10px system-ui,sans-serif;color:rgba(255,255,255,0.55)}
+.pickhint.cant{border-color:rgba(255,255,255,0.25);opacity:.55}
 .weapon.locked{opacity:.45}
 .pop.flow{position:static;max-height:none;box-shadow:none;margin-bottom:2px}
 .spacer{flex:1 1 auto;min-height:6px}
@@ -296,6 +299,11 @@ const GRAVITY = 1400;
 const WALK = 150, GROUND_ACC = 1400, AIR_ACC = 600;
 const JET = 240, JET_ACC = 900;
 const DEAD = 0.12;
+// the right stick's own dead zone: drag past this fraction of its throw to aim/fire.
+// A tap that never leaves it is an interact instead — see Stick() and the pickup/shop
+// code in Game.step. 0.35 of the stick's max throw is a big enough circle to land a
+// thumb on reliably without eating so much of the throw that aiming feels numb.
+const AIM_DEAD = 0.35;
 const PW = 12, PH = 22;
 const FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
 const PLAYER_HP = 100;
@@ -2622,22 +2630,13 @@ function Game({ input }) {
       }
       for (let i = beams.length - 1; i >= 0; i--) if ((beams[i].t += dt) > 0.12) beams.splice(i, 1);
 
-      // ---- pickups ----
+      // ---- pickups: just cooldown upkeep and clearing what was taken. Whether one is
+      // near enough to show its card, and whether you actually take it, is decided
+      // below together with the shop — both go through the same interact tap now. ----
       for (let i = pickups.length - 1; i >= 0; i--) {
         const q = pickups[i];
         if (q.taken) { pickups.splice(i, 1); continue; }
         if (q.cool > 0) q.cool -= dt;
-        if (Math.abs(q.x - pcx) > 18 || Math.abs(q.y - pcy) > 20) { q.lock = false; continue; }
-        if (q.lock || q.cool > 0 || p.dead) continue;
-        if (q.kind === 'mod') {
-          LO.bag.push(q.id);
-          toast('Found ' + MODS[q.id].name);
-          pickups.splice(i, 1);
-        } else {
-          q.lock = true;                    // the chooser decides what happens to it
-          input.current.found = q;
-        }
-        input.current.notify();
       }
       // ---- gold ----
       for (let i = coins.length - 1; i >= 0; i--) {
@@ -2664,52 +2663,76 @@ function Game({ input }) {
         if (solidAt(g.x, ny + 3)) g.vy = 0; else g.y = ny;
       }
 
-      // ---- the shop ----
+      // ---- what you can interact with: a shop plinth, or something on the ground ----
       const inShop = p.y + PH > SHOP_Y;
-      let prompt = null;
+      let near = null;                      // { src: 'shop', it } or { src: 'pickup', q }
       for (const it of stock) {
         if (it.sold) continue;
         if (Math.abs(it.x - pcx) > 15 || Math.abs(it.y - pcy) > 22) continue;
-        prompt = it;
+        near = { src: 'shop', it };
         break;
       }
-      const promptKey = prompt ? stock.indexOf(prompt) : -1;
-      const label = !prompt ? null
-        : prompt.kind === 'heal' ? { text: 'Full heal', price: 0, can: p.hp < PLAYER_HP }
-        : prompt.kind === 'gun' ? { text: prompt.gun.name, gun: prompt.gun,
-            price: prompt.price, can: LO.gold >= prompt.price }
-        : { text: MODS[prompt.id].name, id: prompt.id, price: prompt.price,
-            can: LO.gold >= prompt.price };
-      const sig = promptKey + ':' + (label && label.can ? 1 : 0) + ':' + inShop;
+      if (!near) for (const q of pickups) {
+        if (q.cool > 0) continue;
+        if (Math.abs(q.x - pcx) > 18 || Math.abs(q.y - pcy) > 20) continue;
+        near = { src: 'pickup', q };
+        break;
+      }
+      const nearKey = !near ? -1 : near.src + ':' + (near.src === 'shop' ? stock.indexOf(near.it) : pickups.indexOf(near.q));
+      const label = !near ? null
+        : near.src === 'shop'
+          ? (near.it.kind === 'heal' ? { text: 'Full heal', price: 0, can: p.hp < PLAYER_HP }
+            : near.it.kind === 'gun' ? { text: near.it.gun.name, gun: near.it.gun,
+                price: near.it.price, can: LO.gold >= near.it.price }
+            : { text: MODS[near.it.id].name, id: near.it.id, price: near.it.price,
+                can: LO.gold >= near.it.price })
+          // things on the ground are always yours for the taking — the price is what
+          // the "For sale"/"Found" split cares about, not whether you're allowed to
+          : (near.q.kind === 'gun' ? { text: near.q.gun.name, gun: near.q.gun, price: 0, can: true, found: true }
+            : { text: MODS[near.q.id].name, id: near.q.id, price: 0, can: true, found: true });
+      const sig = nearKey + ':' + (label && label.can ? 1 : 0) + ':' + inShop;
       if (sig !== input.current.sig) {
         input.current.sig = sig;
         input.current.prompt = label;
         input.current.inShop = inShop;
         input.current.notify();
       }
-      if (input.current.buy && prompt) {
-        input.current.buy = false;
-        if (prompt.kind === 'heal') {
-          if (p.hp < PLAYER_HP) { p.hp = PLAYER_HP; prompt.sold = true; toast('Patched up'); }
-        } else if (LO.gold < prompt.price) {
-          toast('Not enough gold');
-        } else if (prompt.kind === 'gun') {
-          LO.gold -= prompt.price;
-          prompt.sold = true;
-          // it drops at the plinth, so the usual chooser decides which slot it takes
-          // and "leave it" parks the gun you paid for on the floor rather than binning it
-          pickups.push({ kind: 'gun', x: prompt.x, y: prompt.y, gun: prompt.gun, t: 0 });
-          toast('Bought ' + prompt.gun.name);
+      if (input.current.interact && near) {
+        input.current.interact = false;
+        if (near.src === 'shop') {
+          const it = near.it;
+          if (it.kind === 'heal') {
+            if (p.hp < PLAYER_HP) { p.hp = PLAYER_HP; it.sold = true; toast('Patched up'); }
+          } else if (LO.gold < it.price) {
+            toast('Not enough gold');
+          } else if (it.kind === 'gun') {
+            LO.gold -= it.price;
+            it.sold = true;
+            // it drops at the plinth, so the usual chooser decides which slot it takes
+            // and "leave it" parks the gun you paid for on the floor rather than binning it
+            pickups.push({ kind: 'gun', x: it.x, y: it.y, gun: it.gun, t: 0 });
+            toast('Bought ' + it.gun.name);
+          } else {
+            LO.gold -= it.price;
+            LO.bag.push(it.id);
+            it.sold = true;
+            toast('Bought ' + MODS[it.id].name);
+          }
         } else {
-          LO.gold -= prompt.price;
-          LO.bag.push(prompt.id);
-          prompt.sold = true;
-          toast('Bought ' + MODS[prompt.id].name);
+          const q = near.q;
+          if (q.kind === 'mod') {
+            LO.bag.push(q.id);
+            toast('Picked up ' + MODS[q.id].name);
+            const qi = pickups.indexOf(q);
+            if (qi >= 0) pickups.splice(qi, 1);
+          } else {
+            input.current.found = q;          // the chooser decides what happens to it
+          }
         }
         input.current.sig = '';
         input.current.notify();
       }
-      input.current.buy = false;
+      input.current.interact = false;
 
       for (let i = toasts.length - 1; i >= 0; i--) if ((toasts[i].t -= dt) <= 0) toasts.splice(i, 1);
 
@@ -3263,7 +3286,12 @@ function Stick({ size, kind, input }) {
   const [knob, setKnob] = useState({ x: 0, y: 0, jet: false });
   const ref = useRef(null);
   const pid = useRef(null);
+  // right stick only: true while this touch has never left the dead zone. A tap that
+  // stays true until release is an interact; a drag out (even one that comes back to
+  // centre) sets it false the moment it first crosses AIM_DEAD, and stays false.
+  const stayed = useRef(true);
 
+  const right = kind === 'right';
   const update = e => {
     const r = ref.current.getBoundingClientRect();
     const rad = r.width / 2;
@@ -3273,13 +3301,16 @@ function Stick({ size, kind, input }) {
     const cl = Math.min(dist, maxD);
     const nx = dist ? dx / dist : 0, ny = dist ? dy / dist : 0;
     const mag = cl / maxD;
+    const thresh = right ? AIM_DEAD : 0.15;
+    if (right && mag > AIM_DEAD) stayed.current = false;
     const st = input.current[kind];
-    st.active = true; st.nx = nx; st.ny = ny; st.mag = mag; st.dy = dy; st.on = mag > 0.15;
+    st.active = true; st.nx = nx; st.ny = ny; st.mag = mag; st.dy = dy; st.on = mag > thresh;
     setKnob({ x: nx * cl, y: ny * cl, jet: kind === 'left' && dy < 0 && mag > DEAD });
   };
   const down = e => {
     if (pid.current !== null) return;
     pid.current = e.pointerId;
+    stayed.current = true;
     try { ref.current.setPointerCapture(e.pointerId); } catch (_) {}
     update(e);
   };
@@ -3287,6 +3318,7 @@ function Stick({ size, kind, input }) {
   const end = e => {
     if (e.pointerId !== pid.current) return;
     pid.current = null;
+    if (right && stayed.current) input.current.interact = true;
     Object.assign(input.current[kind], { active: false, mag: 0, on: false, dy: 0 });
     setKnob({ x: 0, y: 0, jet: false });
   };
@@ -3300,6 +3332,8 @@ function Stick({ size, kind, input }) {
     },
     left && h('div', { className: 'jetzone' }),
     left && h('div', { className: 'hline' }),
+    // the circle you have to drag out of to aim/fire; tapping inside it interacts
+    right && h('div', { className: 'deadzone', style: { width: (AIM_DEAD * 72) + '%', height: (AIM_DEAD * 72) + '%' } }),
     h('span', { className: 'lbl top' }, left ? 'jet' : 'aim'),
     left && h('span', { className: 'lbl bot' }, 'walk'),
     h('div', { className: 'knob', style: { transform: `translate(-50%,-50%) translate(${knob.x}px,${knob.y}px)` } })
@@ -3827,7 +3861,7 @@ function App() {
   const input = useRef({
     left: blank(), right: blank(),
     loadout: { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false },
-    paused: false, notify: () => {}, inShop: true, prompt: null, buy: false, sig: '',
+    paused: false, notify: () => {}, inShop: true, prompt: null, interact: false, sig: '',
     keys: { w: false, a: false, s: false, d: false },
     mouse: { x: 0, y: 0, inside: false, down: false },
   });
@@ -3886,7 +3920,7 @@ function App() {
       if (!down) return;
       if (k >= '1' && k <= '4') select(Number(k) - 1);
       if (k === 'e' || k === 'tab') { e.preventDefault(); if (input.current.inShop) setEdit(v => !v); }
-      if (k === 'f') input.current.buy = true;
+      if (k === 'f') input.current.interact = true;
       if (k === 'escape') setEdit(false);
     };
     const kd = key(true), ku = key(false);
@@ -3910,19 +3944,22 @@ function App() {
   const prompt = input.current.prompt;
   const inShop = input.current.inShop;
   const heldGun = input.current.loadout.guns[input.current.loadout.sel];
-  const buy = e => { e.preventDefault(); input.current.buy = true; };
 
   return h('div', { className: 'app' },
     h('div', { className: 'view' },
       h(Game, { key: run, input }),
-      prompt && prompt.id ? h(ModCard, { id: prompt.id, ingame: true }) : null,
-      prompt && prompt.gun ? h(GunCard, { gun: prompt.gun, label: 'For sale', ingame: true,
+      // hidden once the chooser (found) is up: the game pauses behind it, so the prompt
+      // that was showing the moment it opened would otherwise sit there stale, doubled
+      // up with the chooser's own card for the same gun
+      prompt && prompt.id && !found ? h(ModCard, { id: prompt.id, ingame: true }) : null,
+      prompt && prompt.gun && !found ? h(GunCard, { gun: prompt.gun, label: prompt.found ? 'Found' : 'For sale', ingame: true,
         compare: heldGun, compareName: heldGun ? heldGun.name : '' }) : null,
-      prompt ? h('button', {
-          className: 'buy' + (prompt.can ? '' : ' cant'),
-          onPointerDown: prompt.can ? buy : e => e.preventDefault() },
+      // no button any more — this is just a label. Buying/picking up is a tap on the
+      // right stick's dead zone (or the f key), so the label says so.
+      prompt && !found ? h('div', { className: 'pickhint' + (prompt.can ? '' : ' cant') },
         prompt.price ? 'Buy ' + prompt.text : 'Take ' + prompt.text,
-        h('b', null, prompt.price ? prompt.price + 'g' : 'free')) : null,
+        h('b', null, prompt.price ? prompt.price + 'g' : 'free'),
+        h('span', { className: 'hint' }, 'tap dead zone')) : null,
       h('button', { className: 'reset',
         // pointerdown, like every other control: a click synthesised after the mod
         // sheet closes must not land here and wipe the run. This only opens the

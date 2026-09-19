@@ -17,7 +17,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     firstPlinth: Math.round(Math.min(...window.__lvl.stock.map(s => s.x))),
     shopLeft: 3 * window.__lvl.world.CELL, worldW: window.__lvl.world.WW, floor: window.__lvl.floor,
     shopY: window.__lvl.world.SHOP_Y,
-    onPlinth: !!document.querySelector('.buy'),
+    onPlinth: !!document.querySelector('.pickhint'),
   }));
   let a = await at();
   check('spawns at the far left of the shop', a.px < 60, a);
