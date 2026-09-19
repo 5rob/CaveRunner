@@ -47,7 +47,7 @@ replace it with a general static server.
    Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
    link. If this session hasn't published yet, read the artifact first, then publish.
 
-Current version: **v36**. Branch: `claude/compassionate-rubin-fcqsif`.
+Current version: **v37**. Branch: `claude/compassionate-rubin-fcqsif`.
 
 ### The version number is not optional
 
@@ -188,6 +188,14 @@ screen (`pcy - camY`, so it grows with the viewport); `SIGHT` is only how far aw
 the map as somewhere you have been, and stays well under `VIEW_W` so you don't reveal
 terrain you cannot look at. `FOG_DIM` is what that remembered ground is worth once the
 light has left it — 0.85, near black, which is deliberate: the dark is a real edge.
+
+**The map only gets what the torch could see.** `fogReveal` takes the fan `visPoly` cast
+from the same spot and skips any cell the fan did not reach in its direction, so ground
+round the corner of a wall is never lit and never remembered. It runs in `draw()`, off the
+fan the light is already drawn from, so the two can never disagree about what a wall hides.
+The reach test takes the *shorter* of the two rays either side of a cell rather than
+interpolating between them: interpolating reaches slightly further than either ray and
+marks cells just past a corner, which is the one thing this is here to stop.
 
 **Enemies are hidden, not just dimmed.** The draw loop skips any enemy the player has no
 line of sight to, health bar and all. The mask would hide it anyway, but a health bar over

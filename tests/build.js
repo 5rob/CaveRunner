@@ -23,7 +23,7 @@ const HOOK_LVL =
   "fog: { get seen(){return seen}, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal }, " +
   "light: { get flick(){return flick}, get r(){return torchR}, " +
   "  get cam(){return { x: camX, y: camY }}, get s(){return unitPx * (window.devicePixelRatio || 1)}, " +
-  "  get embers(){return torchP.length}, visPoly } };\n";
+  "  get embers(){return torchP.length}, get vis(){return visPts}, visPoly, losClear } };\n";
 
 function build() {
   let s = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');

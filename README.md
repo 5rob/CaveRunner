@@ -17,8 +17,8 @@ from a pool of clear light at your feet out to near black at the top of the scre
 guttering as it burns, and it only reaches as far as the rock lets it: a wall puts its
 far side in shadow, so you cannot see round a corner. A creature behind one is not
 drawn at all, and enemies shoot further than you can see, so a dark corner is a real
-risk. Where you have already been stays on the map behind you, deep in the dark, and
-fades out entirely once the light stops reaching it.
+risk. The map only remembers what you could actually see — ground you never had a line
+on stays black for the rest of the floor.
 
 ## Play
 
@@ -267,7 +267,7 @@ them if it cannot find either.
 - Floors that chain: shop, cave, exit, next shop, with gold and gear carried over
 - A colour scheme per floor that stays with that floor run to run, so you can tell where you are at a glance
 - Large randomly generated caves with cramped and open areas, winding tunnels, built ledges and half-buried brick frames
-- Fog of war: the cave starts dark and you reveal it by exploring, with what you have seen kept as a faint map behind you and the torch lighting a pool that falls away to black at the top of the screen
+- Fog of war: the cave starts dark and you reveal it by exploring — only what the torch could actually see, never what was round a corner — with what you have seen kept as a faint map behind you
 - A torch in the runner's free hand, throwing embers, guttering — and the light in the cave gutters with it
 - Line-of-sight lighting: walls cast real shadows, and a creature behind one is not drawn until you can see it
 - Destructible pixel terrain: explosions and drilling shots eat everything except the outer border
