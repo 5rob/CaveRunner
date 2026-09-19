@@ -153,6 +153,10 @@ only because someone noticed.
 - Don't hardcode machine paths. Logic suites find `index.html` relative to `__dirname`;
   browser suites get Chromium from `tests/chromium.js`. Keep both that way so the suites
   still run on a different machine.
+- Don't assume LF, either. A Windows checkout with `core.autocrlf` on hands you `index.html`
+  with CRLF, and the logic suites slice the script out on `'<script>\n'`, which then finds
+  nothing and every suite fails with a syntax error. They all normalise with
+  `.replace(/\r\n/g, '\n')` before slicing now — keep that when adding one.
 - Before finishing a session, `git status` — anything untracked under `tests/` is about to
   be lost.
 
