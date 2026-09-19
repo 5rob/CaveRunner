@@ -62,6 +62,10 @@ const check = (name, ok, extra) => { if (!ok) fails++; console.log(`${ok ? 'ok  
   await page.evaluate(() => {
     const LO = window.__in.current.loadout;
     LO.sel = 0;
+    // start from a known bag: the mod the cave handed us above is whatever the
+    // level rolled, and if it happens to match one of these the drag checks
+    // below cannot tell the two copies apart
+    LO.bag.length = 0;
     LO.bag.push('dmg_up', 'homing', 'double', 'bounce', 'scatter', 'borer', 'tip', 'battery');
     window.__in.current.notify();
   });
