@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v37</title>
+<title>CaveRunner v38</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -354,7 +354,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v37';
+const VERSION = 'v38';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -1021,14 +1021,18 @@ const FOG_U = FOG * CELL;              // world units per fog cell
 const FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
 const SIGHT = 120;                     // how far away you remember the map — a cell this
                                        // close to you is marked as somewhere you have been,
-                                       // and stays marked for the rest of the floor
+                                       // and stays marked for the rest of the floor. This
+                                       // is the only thing line of sight applies to
+const LAMP_REACH = 1.5;                // the light reaches this many screen-heights out, so
+                                       // at the top of the screen it is still around half
+                                       // bright rather than black. It does NOT stop at
+                                       // walls — see the note on the lamp in draw()
 const FOG_DIM = 0.85;                  // how dark somewhere you have been but cannot see
 const FOG_DARK = 0.97;                 // how dark somewhere you have never been
 
-// The torch. Light is cast as a fan of rays out from the player, each stopping at the
-// first wall, and the lamp is clipped to what the fan encloses — that is the whole
-// reason you cannot see round a corner. One ray per fog cell the fan crosses at full
-// reach, so a shadow edge lands on about the grid it is drawn into.
+// What the map is allowed to remember is worked out as a fan of rays out from the player,
+// each stopping at the first wall: one ray per fog cell the fan crosses, so a shadow edge
+// lands on about the grid it is drawn into. See fogReveal.
 const VIS_RAYS = 160;
 
 // Light every cell within r world units of (wx, wy) that the torch can actually reach,
@@ -3428,13 +3432,10 @@ function Game({ input }) {
       }
       ctx.globalAlpha = 1;
 
-      // enemies. One behind a wall is not drawn at all, so nothing gives away a cave
-      // you have not lit — the lamp would hide it anyway, but a health bar over a
-      // silhouette is exactly the kind of tell that gives the game away
+      // enemies
       for (const e of enemies) {
         const ey = e.ty;
         if (ey > camY + vh + 20 || ey < camY - 20 || e.x < camX - 20 || e.x > camX + vw + 20) continue;
-        if (!lineOfSight(pcx, pcy, e.x, ey)) continue;
         drawEnemy(ctx, e, time);
         const hw = 20, hx = e.x - hw / 2, hy = ey - e.r - 9;
         ctx.fillStyle = COL.barBg; ctx.fillRect(hx, hy, hw, 3);
@@ -3684,26 +3685,21 @@ function Game({ input }) {
       ctx.globalAlpha = 1;
 
       // ---- torchlight ----
-      // The mask holds two shades: never been there, and been there but can't see it
-      // now. The lamp is the torch: it runs from clear at your feet out to the mask's own
-      // darkness at about the top of the screen, and it is clipped to the fan of rays
-      // that reach the player without crossing rock, so a wall puts the far side of it in
-      // shadow and you cannot see round a corner. `flick` is the flame's own number, so
-      // the light in the cave rises and dips exactly as much as the fire does.
-      torchR = clamp(pcy - camY, 170, 560) * flick;
-      visPts = visPoly(pcx, pcy, torchR, solidCell, VIS_RAYS);
-      // and whatever the torch reaches and you can actually see goes on the map. This runs
-      // off the same fan the light is drawn from, so the map and the light agree about
-      // what a wall hides — nothing behind one is lit and nothing behind one is remembered.
+      // The mask holds two shades: never been there, and been there but can't see it now.
+      // The lamp is the torch: clear at your feet, out to the mask's own darkness a screen
+      // and a half away, so at the top of the screen the cave is still about half lit
+      // rather than black. It is a plain circle and does NOT stop at walls — a wall you
+      // can see over the top of is still rock you can see, and clipping the light to what
+      // is strictly in sight made the whole cave feel like a keyhole. Line of sight is for
+      // the map and nothing else; see the reveal just below. `flick` is the flame's own
+      // number, so the light in the cave rises and dips exactly as much as the fire does.
+      torchR = clamp((pcy - camY) * LAMP_REACH, 260, 800) * flick;
+      // what goes on the map is a different question: only what the torch would reach if
+      // nothing were in the way is *remembered*, so ground round a corner never is
+      visPts = visPoly(pcx, pcy, SIGHT, solidCell, VIS_RAYS);
       if (fogReveal(seen, pcx, pcy, SIGHT, visPts, VIS_RAYS)) paintFog();
       fctx.putImageData(fogImg, 0, 0);
-      fctx.save();
       fctx.globalCompositeOperation = 'destination-out';
-      fctx.beginPath();
-      fctx.moveTo(visPts[0] / FOG_U, visPts[1] / FOG_U);
-      for (let i = 2; i < visPts.length; i += 2) fctx.lineTo(visPts[i] / FOG_U, visPts[i + 1] / FOG_U);
-      fctx.closePath();
-      fctx.clip();
       const lx = pcx / FOG_U, ly = pcy / FOG_U, lr = torchR / FOG_U;
       const lamp = fctx.createRadialGradient(lx, ly, 0, lx, ly, lr);
       lamp.addColorStop(0, 'rgba(0,0,0,1)');
@@ -3712,7 +3708,8 @@ function Game({ input }) {
       fctx.globalAlpha = flick;
       fctx.fillStyle = lamp;
       fctx.fillRect(lx - lr, ly - lr, lr * 2, lr * 2);
-      fctx.restore();
+      fctx.globalAlpha = 1;
+      fctx.globalCompositeOperation = 'source-over';
       // a cell of margin each way, so the bilinear edge clamp falls off screen
       const fx0 = clamp(Math.floor(camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(camY / FOG_U) - 1, 0, FH - 1);
       const fx1 = clamp(Math.ceil((camX + vw) / FOG_U) + 2, 1, FW), fy1 = clamp(Math.ceil((camY + vh) / FOG_U) + 2, 1, FH);

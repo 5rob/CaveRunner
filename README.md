@@ -12,13 +12,12 @@ cave layout and the loot are rolled fresh, but who lives there and what it looks
 like are not. That is deliberate: you learn a floor, and the colour tells you
 where you are before you have read the number.
 
-The cave starts dark, and what lights it is the torch in your other hand. It burns
-from a pool of clear light at your feet out to near black at the top of the screen,
-guttering as it burns, and it only reaches as far as the rock lets it: a wall puts its
-far side in shadow, so you cannot see round a corner. A creature behind one is not
-drawn at all, and enemies shoot further than you can see, so a dark corner is a real
-risk. The map only remembers what you could actually see — ground you never had a line
-on stays black for the rest of the floor.
+The cave starts dark, and what lights it is the torch in your other hand. It burns from
+a bright pool at your feet out to near black at the edges of the screen, guttering as it
+burns, so the cave reads all around you rather than closing in to a keyhole. What it
+will not do is remember: the map only keeps what you actually had a line on, so ground
+round the corner of a wall stays black for the rest of the floor. Enemies shoot further
+than you can see, so a dark corner is still a real risk.
 
 ## Play
 
@@ -269,7 +268,7 @@ them if it cannot find either.
 - Large randomly generated caves with cramped and open areas, winding tunnels, built ledges and half-buried brick frames
 - Fog of war: the cave starts dark and you reveal it by exploring — only what the torch could actually see, never what was round a corner — with what you have seen kept as a faint map behind you
 - A torch in the runner's free hand, throwing embers, guttering — and the light in the cave gutters with it
-- Line-of-sight lighting: walls cast real shadows, and a creature behind one is not drawn until you can see it
+- The map only keeps what you had a line on: a wall hides its far side from the fog of war for good
 - Destructible pixel terrain: explosions and drilling shots eat everything except the outer border
 - Guns and mods to find, with a drag-and-drop screen for building them
 - 111 mods: shots, static fields, path modifiers, trigger spells, utility casts and the Greek letter copy spells

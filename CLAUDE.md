@@ -52,7 +52,7 @@ replace it with a general static server.
    Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
    link. If this session hasn't published yet, read the artifact first, then publish.
 
-Current version: **v37**. Branch: `claude/compassionate-rubin-fcqsif`.
+Current version: **v38**. Branch: `claude/compassionate-rubin-fcqsif`.
 
 ### The version number is not optional
 
@@ -174,37 +174,42 @@ for a gun on the ground, and `tests/browser/gunpickup.test.js` queries `.pop.fou
 the mod overlay's classes are all `modfound*`. Reusing `.found` silently restyled every
 found-gun card, and it took a browser suite to surface it.
 
-**The lamp is the torch, and it stops at walls.** `visPoly(cx, cy, r, solidCell, rays)`
-fans `VIS_RAYS` rays out from the player and hands back the points that bound what can be
-seen from there; the lamp gradient is clipped to that polygon, which is the whole reason a
-wall casts a shadow. It runs every frame in `draw()`, so anything expensive added to it is
-expensive 60 times a second. `rayDist` marches from cell boundary to cell boundary rather
-than sampling at a fixed step — a fixed step jumps clean over a one-cell wall and lets a
-sliver of light through the far side of it — and `losClear` is the same march, so what an
-enemy can shoot and what you can see agree.
+**The light does not stop at walls; the map does.** The lamp is a plain circle: clear at
+your feet, down to the mask's own darkness `LAMP_REACH` screen-heights out, so the cave
+around you reads instead of feeling like a keyhole. v37 clipped it to a visibility fan and
+the owner asked for that back off — it is the *map* that line of sight is for now, not the
+light. Don't put the clip back without asking.
+
+**`rayDist` / `visPoly` / `losClear` are exact, and that is the point.** `rayDist` marches
+from cell boundary to cell boundary rather than sampling at a fixed step — a fixed step
+jumps clean over a one-cell wall — and `losClear` is the same march, which is why a line of
+sight and a bullet stop agree. `visPoly` fans `VIS_RAYS` of them out from the player; it
+runs every frame in `draw()`, so anything expensive added to it is expensive 60 times a
+second.
+
+**An enemy is drawn if the light reaches it.** There is no line-of-sight test on the draw
+loop any more, for the same reason the lamp has none. `lineOfSight` is still what the enemy
+AI aims and shoots on, so nothing fires through a wall.
 
 **Everything that lights the cave uses one number, `flick`.** The flame, the light's reach
 and its brightness all read it, so the cave reads as torchlight rather than as a dimmer
 switch. It is clamped to at most 1 because a canvas `globalAlpha` over 1 is silently
 ignored — a flicker that overshoots simply stops flickering.
 
-**`SIGHT` is the memory radius, not the light.** The light reaches about the top of the
-screen (`pcy - camY`, so it grows with the viewport); `SIGHT` is only how far away you mark
-the map as somewhere you have been, and stays well under `VIEW_W` so you don't reveal
-terrain you cannot look at. `FOG_DIM` is what that remembered ground is worth once the
-light has left it — 0.85, near black, which is deliberate: the dark is a real edge.
+**`SIGHT` is the memory radius, not the light.** The light reaches `LAMP_REACH` screen
+heights out, growing with the viewport; `SIGHT` is only how far away you mark the map as
+somewhere you have been, and stays well under `VIEW_W` so you don't reveal terrain you
+cannot look at. `FOG_DIM` is what that remembered ground is worth once the light has left
+it — 0.85, near black, which is deliberate: the dark is a real edge.
 
-**The map only gets what the torch could see.** `fogReveal` takes the fan `visPoly` cast
-from the same spot and skips any cell the fan did not reach in its direction, so ground
-round the corner of a wall is never lit and never remembered. It runs in `draw()`, off the
-fan the light is already drawn from, so the two can never disagree about what a wall hides.
-The reach test takes the *shorter* of the two rays either side of a cell rather than
-interpolating between them: interpolating reaches slightly further than either ray and
-marks cells just past a corner, which is the one thing this is here to stop.
+**The map only gets what was in line of sight.** `fogReveal` takes the fan `visPoly` cast
+from the player and skips any cell the fan did not reach in its direction, so ground round
+the corner of a wall is never remembered. It runs in `draw()`, every frame. The reach test
+takes the *shorter* of the two rays either side of a cell rather than interpolating between
+them: interpolating reaches slightly further than either ray and marks cells just past a
+corner, which is the one thing this is here to stop.
 
-**Enemies are hidden, not just dimmed.** The draw loop skips any enemy the player has no
-line of sight to, health bar and all. The mask would hide it anyway, but a health bar over
-a silhouette is exactly the kind of tell that gives the game away.
+
 
 **Unicode is stored raw** in `index.html` (`·`, `—`, `×`, `Ω`), not as `\uXXXX`. Match the
 literal characters when editing with a script, or the edit silently finds nothing.
