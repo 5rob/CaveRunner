@@ -113,9 +113,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .lg{display:flex;align-items:center;gap:4px;font:500 9.5px system-ui,sans-serif;color:var(--muted)}
 .lg i{width:8px;height:8px;border-radius:2px;display:block}
 .slotRow{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:flex-start}
-.grp{display:flex;flex-direction:column;gap:2px}
-.gtiles{display:flex;gap:6px;padding:5px;border:1.5px solid var(--ring);border-radius:12px;
-  background:var(--pad)}
+.grp{display:flex;flex-direction:column;gap:2px;min-width:0;max-width:100%}
+.gtiles{display:flex;flex-wrap:wrap;gap:6px;padding:5px;border:1.5px solid var(--ring);border-radius:12px;
+  background:var(--pad);min-width:0;max-width:100%;box-sizing:border-box}
 .glab{font:600 9px system-ui,sans-serif;color:var(--muted);padding-left:6px;
   text-transform:uppercase;letter-spacing:.04em}
 .gfx{display:flex;flex-wrap:wrap;gap:3px 4px;padding:2px 4px 0;max-width:100%}
@@ -212,7 +212,32 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .weapon.locked{opacity:.45}
 .pop.flow{position:static;max-height:none;box-shadow:none;margin-bottom:2px}
 .spacer{flex:1 1 auto;min-height:6px}
-.swaprow{display:flex;gap:6px;margin-top:4px}
+/* gun pickup: the two cards share what is left over. Head and mod row are fixed,
+   only the stat chips give way, so neither gun's mods can fall off the bottom. */
+.swapsheet{gap:6px}
+.pop.split{display:flex;flex-direction:column;flex:0 1 auto;min-height:0;overflow:hidden;
+  padding:9px 11px 10px;margin-bottom:0}
+.pop.split .phead{flex:0 0 auto}
+.pop.split .pglyph{width:32px;height:32px;font-size:16px;border-radius:9px}
+.pop.split .ptitle b{font-size:14.5px}
+.pop.split .ptitle span{font-size:10px}
+.pop.split .vs{flex:0 0 auto;margin:5px 0 0}
+.pop.split .gstats{flex:0 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  margin:7px 0 0;gap:4px}
+.pop.split .gstats .st{padding:2px 7px;font-size:10px}
+.pop.split .gstats .st b{font-size:11px}
+.pop.split .st.up b{color:var(--good)}
+.pop.split .st.down b{color:var(--bad)}
+.pop.split .pdemo{flex:0 0 auto;margin-top:7px;padding-top:7px;gap:6px}
+.pop.split .dtile{padding:1px 5px}
+.pop.split .dtile b{font-size:11px}
+.pop.split .dtile i{font-size:9.5px}
+.pop.split .dnote{font-size:10px;margin-top:2px}
+.swapsheet>.shead,.swapsheet>.lab{flex:0 0 auto}
+.swapsheet>.lab{margin:0}
+/* keeps the slot row down by the thumb when there is space, and costs nothing when there is not */
+.swapsheet>.lab.hint{margin-top:auto;padding-top:4px}
+.swaprow{display:flex;gap:6px;margin-top:4px;flex:0 0 auto}
 .swaprow .gtab{position:relative;height:62px;padding-top:6px}
 .gtab.holding,.slot.holding{background:linear-gradient(to right,#ff8a1f 0%,#ff8a1f 100%);
   background-size:100% 100%;animation:fill .45s linear forwards;color:#12141a}
@@ -3095,9 +3120,21 @@ const GUN_STATS = [
 ];
 
 // One card for a gun: its rolled stats and the mods sitting on it.
-function GunCard({ gun, label, onClose, ingame, flow, compare, compareName }) {
+// `split` is the gun-pickup variant: the stats collapse to wrapping chips and the
+// card becomes a flex column, so the mod row at the bottom never gets pushed off.
+function GunCard({ gun, label, onClose, ingame, flow, split, mark, compare, compareName }) {
   const vs = compare && compare !== gun ? compare : null;
-  return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') + (flow ? ' flow' : '') },
+  const stats = GUN_STATS.map(st => {
+    const v = st.get(gun);
+    let cls = '';
+    if (vs) {
+      const o = st.get(vs);
+      if (Math.abs(v - o) > 1e-6) cls = (v > o) === (st.better > 0) ? ' up' : ' down';
+    }
+    return { st, v, cls };
+  });
+  return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') + (flow ? ' flow' : '') +
+      (split ? ' split' : '') + (mark ? ' ' + mark : '') },
     h('div', { className: 'phead' },
       h('div', { className: 'pglyph', style: { borderColor: '#c9ccd4', color: '#c9ccd4' } }, '⌥'),
       h('div', { className: 'ptitle' },
@@ -3107,18 +3144,13 @@ function GunCard({ gun, label, onClose, ingame, flow, compare, compareName }) {
         onPointerDown: e => { e.preventDefault(); onClose(); } }, '×') : null
     ),
     vs ? h('p', { className: 'vs' }, 'compared with ' + compareName) : null,
-    h('div', { className: 'prows' },
-      GUN_STATS.map(st => {
-        const v = st.get(gun);
-        let cls = '';
-        if (vs) {
-          const o = st.get(vs);
-          if (Math.abs(v - o) > 1e-6) cls = (v > o) === (st.better > 0) ? ' up' : ' down';
-        }
-        return h('div', { className: 'prow' + cls, key: st.k },
-          h('span', null, st.label), h('b', null, st.fmt(v)));
-      })
-    ),
+    split
+      ? h('div', { className: 'stats gstats' },
+          stats.map(r => h('div', { className: 'st' + r.cls, key: r.st.k },
+            h('b', null, r.st.fmt(r.v)), h('span', null, r.st.label))))
+      : h('div', { className: 'prows' },
+          stats.map(r => h('div', { className: 'prow' + r.cls, key: r.st.k },
+            h('span', null, r.st.label), h('b', null, r.st.fmt(r.v))))),
     h('div', { className: 'pdemo' },
       h('div', { className: 'dtiles' },
         gun.slots.map((id, i) => id
@@ -3126,8 +3158,9 @@ function GunCard({ gun, label, onClose, ingame, flow, compare, compareName }) {
               style: { borderColor: famCol(id), color: famCol(id) } },
             h('b', null, MODS[id].glyph), h('i', null, MODS[id].name))
           : h('div', { key: i, className: 'dtile off' }, h('i', null, 'empty')))),
-      h('span', { className: 'dnote' }, gun.slots.some(Boolean)
-        ? 'cast left to right' : 'nothing fitted yet'))
+      split && gun.slots.some(Boolean) ? null       // the split view needs the height more
+        : h('span', { className: 'dnote' }, gun.slots.some(Boolean)
+          ? 'cast left to right' : 'nothing fitted yet'))
   );
 }
 
@@ -3136,7 +3169,6 @@ function GunSwap({ input, refresh, onDone }) {
   const LO = input.current.loadout;
   const found = input.current.found;
   const [base, setBase] = useState(LO.guns[LO.sel] ? LO.sel : LO.guns.findIndex(Boolean));
-  const [peek, setPeek] = useState(false);
   const [held, setHeld] = useState(-1);
   if (!found) return null;
   const baseGun = base >= 0 ? LO.guns[base] : null;
@@ -3156,22 +3188,30 @@ function GunSwap({ input, refresh, onDone }) {
     input.current.found = null; refresh(); onDone();
   };
 
-  return h('div', { className: 'sheet' },
+  // Both guns are on screen at once and split the space between them: the found one
+  // above, the slot you are comparing it against below. Each card keeps its head and
+  // its mod row pinned, so the mods are never the thing that falls off the bottom.
+  return h('div', { className: 'sheet swapsheet' },
     h('div', { className: 'shead' },
       h('h2', null, 'Gun on the ground'),
       h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); leave(); } }, 'Leave it')
     ),
-    h(GunCard, { gun: found.gun, label: 'Found', flow: true, compare: baseGun,
+    h(GunCard, { gun: found.gun, label: 'Found', flow: true, split: true, mark: 'found',
+      compare: baseGun,
       compareName: baseGun ? 'slot ' + (base + 1) + ', ' + baseGun.name : '' }),
-    h('div', { className: 'spacer' }),
-    h('p', { className: 'lab' }, 'Hold a slot to swap it · tap to look at it first'),
+    baseGun
+      ? h(GunCard, { gun: baseGun, label: 'Slot ' + (base + 1) + ' · yours', flow: true,
+          split: true, mark: 'mine', compare: found.gun, compareName: found.gun.name })
+      : h('p', { className: 'lab mine' }, base >= 0
+          ? 'Slot ' + (base + 1) + ' is empty' : 'No guns to compare it with'),
+    h('p', { className: 'lab hint' }, 'Hold a slot to swap it · tap to compare it'),
     h('div', { className: 'swaprow' },
       LO.guns.map((g, i) => h('button', {
           key: i,
           className: 'gtab' + (g ? '' : ' empty') + (held === i ? ' holding' : '') +
             (base === i ? ' base' : ''),
           onPointerDown: holdPress(
-            () => { if (g) { setBase(i); setPeek(true); } },
+            () => { if (g) setBase(i); },
             () => take(i),
             on => setHeld(on ? i : -1)),
         },
@@ -3179,12 +3219,7 @@ function GunSwap({ input, refresh, onDone }) {
         h('span', { className: 'gname' }, g ? g.name : 'Empty slot'),
         h('span', { className: 'gsub' }, g ? g.slots.filter(Boolean).length + '/' + g.cap + ' mods' : 'hold to take')
       ))
-    ),
-    peek && baseGun
-      ? h('div', null,
-          h('div', { className: 'shade', onPointerDown: e => { e.preventDefault(); setPeek(false); } }),
-          h(GunCard, { gun: baseGun, label: 'Slot ' + (base + 1), onClose: () => setPeek(false) }))
-      : null
+    )
   );
 }
 

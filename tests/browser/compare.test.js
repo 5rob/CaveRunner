@@ -25,14 +25,15 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     await new Promise(r => setTimeout(r, 300));
   });
 
-  const rows = () => page.evaluate(() => [...document.querySelectorAll('.pop.flow .prow')]
+  // the pickup screen shows the stats as chips so both guns fit; same labels, same up/down
+  const rows = () => page.evaluate(() => [...document.querySelectorAll('.pop.found .gstats .st')]
     .map(r => ({ label: r.querySelector('span').textContent,
                  value: r.querySelector('b').textContent,
-                 cls: r.className.replace('prow', '').trim() })));
+                 cls: r.className.replace('st', '').trim() })));
   let r = await rows();
   console.log(r.map(x => `${x.label.padEnd(15)} ${x.value.padEnd(10)} ${x.cls || '-'}`).join('\n'));
   const by = k => r.find(x => x.label === k);
-  check('all stats stacked vertically', r.length === 9, r.length);
+  check('all nine stats are on the card', r.length === 9, r.length);
   check('more slots is green', by('slots').cls === 'up');
   check('FASTER cast delay is green (lower is better)', by('cast delay').cls === 'up', by('cast delay'));
   check('longer recharge is red (lower is better)', by('recharge').cls === 'down', by('recharge'));
@@ -53,9 +54,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     Object.assign(LO.guns[1], { name: 'Other', castDelay: 0.05, spread: 1, cap: 8 });
   });
   await page.tap('.swaprow .gtab >> nth=1');
-  await page.waitForTimeout(220);
-  await page.tap('.shade', { position: { x: 20, y: 20 } });
-  await page.waitForTimeout(220);
+  await page.waitForTimeout(250);
   r = await rows();
   check('comparison re-bases to the tapped gun',
     /slot 2, Other/.test(await page.evaluate(() => document.querySelector('.vs').textContent)),
