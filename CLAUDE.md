@@ -47,7 +47,7 @@ replace it with a general static server.
    Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
    link. If this session hasn't published yet, read the artifact first, then publish.
 
-Current version: **v35**. Branch: `claude/compassionate-rubin-fcqsif`.
+Current version: **v36**. Branch: `claude/compassionate-rubin-fcqsif`.
 
 ### The version number is not optional
 
@@ -153,22 +153,45 @@ run.
 
 **A mod on the ground asks before it is taken.** The interact tap sets
 `input.current.confirm`; `ModFound` renders the card with **Pick up** / **Leave** and the
-game pauses behind it. It publishes its `{ take, leave, aim }` on
-`input.current.confirmAct`, and `Stick()` reads that on release, so a drag points at a
-button and letting go picks it. Two things about it are easy to break. The overlay is
-`pointer-events:none` on purpose — the right stick has to stay live underneath it, and
-only `.pop.ingame` and `.modfoundbtn` take touches back. And it stops above the control
-deck via an inline `bottom` measured in `ModFound`, so the stick you are being asked to
-drag isn't sitting in shadow.
+game pauses behind it. The two sit left and right of each other, and **neither is lit
+until the knob is past the trigger line and pointing at one**: `Stick()` writes
+`input.current.confirmAim` (`'take'` left, `'leave'` right, `null` inside the dead zone)
+as the drag goes, and `ModFound` lights the button that matches. It publishes its
+`{ take, leave }` on `input.current.confirmAct` and the release reads `confirmAim`, so
+coming back to the middle before letting go chooses nothing. Two things about it are easy
+to break. The overlay is `pointer-events:none` on purpose — the right stick has to stay
+live underneath it, and only `.pop.ingame` and `.modfoundbtn` take touches back. And it
+stops above the control deck via an inline `bottom` measured in `ModFound`, so the stick
+you are being asked to drag isn't sitting in shadow.
 
 **`found` is already taken as a class name.** `GunCard` is rendered with `mark: 'found'`
 for a gun on the ground, and `tests/browser/gunpickup.test.js` queries `.pop.found`. So
 the mod overlay's classes are all `modfound*`. Reusing `.found` silently restyled every
 found-gun card, and it took a browser suite to surface it.
 
-**The lamp has to stay inside the screen.** `SIGHT` is deliberately well under `VIEW_W`:
-at 200 it lit a circle wider than the phone screen, which revealed terrain you could not
-look at. If you raise it, check it against `VIEW_W` rather than against the map.
+**The lamp is the torch, and it stops at walls.** `visPoly(cx, cy, r, solidCell, rays)`
+fans `VIS_RAYS` rays out from the player and hands back the points that bound what can be
+seen from there; the lamp gradient is clipped to that polygon, which is the whole reason a
+wall casts a shadow. It runs every frame in `draw()`, so anything expensive added to it is
+expensive 60 times a second. `rayDist` marches from cell boundary to cell boundary rather
+than sampling at a fixed step — a fixed step jumps clean over a one-cell wall and lets a
+sliver of light through the far side of it — and `losClear` is the same march, so what an
+enemy can shoot and what you can see agree.
+
+**Everything that lights the cave uses one number, `flick`.** The flame, the light's reach
+and its brightness all read it, so the cave reads as torchlight rather than as a dimmer
+switch. It is clamped to at most 1 because a canvas `globalAlpha` over 1 is silently
+ignored — a flicker that overshoots simply stops flickering.
+
+**`SIGHT` is the memory radius, not the light.** The light reaches about the top of the
+screen (`pcy - camY`, so it grows with the viewport); `SIGHT` is only how far away you mark
+the map as somewhere you have been, and stays well under `VIEW_W` so you don't reveal
+terrain you cannot look at. `FOG_DIM` is what that remembered ground is worth once the
+light has left it — 0.85, near black, which is deliberate: the dark is a real edge.
+
+**Enemies are hidden, not just dimmed.** The draw loop skips any enemy the player has no
+line of sight to, health bar and all. The mask would hide it anyway, but a health bar over
+a silhouette is exactly the kind of tell that gives the game away.
 
 **Unicode is stored raw** in `index.html` (`·`, `—`, `×`, `Ω`), not as `\uXXXX`. Match the
 literal characters when editing with a script, or the edit silently finds nothing.
@@ -237,6 +260,9 @@ actually wrong; it's been both.
 - A floor looking wrong, or a creature that isn't behaving → `tests/logic/creatures.test.js`
   covers the tables; `tests/browser/creatures.test.js` climbs five floors in the real game
   and checks each one's palette, roster and behaviour.
+- Seeing through a wall, or an enemy appearing through one → `tests/logic/vision.test.js`
+  (the fan and the line of sight, cheap) and `tests/browser/torch.test.js` (the light read
+  off the real canvas: falloff, flicker, shadow, hidden enemy).
 - A mod doing nothing → `tests/browser/everymod.test.js` will name it.
 - Aim line wrong → the mod is in the bullet loop but not `tracePath`.
 - Build screen card covering something → `.pop.top` height cap and the sheet layout.

@@ -20,7 +20,10 @@ const HOOK_LVL =
   "get arrival(){return arrival}, get start(){return start}, get portal(){return portal}, " +
   "enemyShots, fields, beams, flashes, dig, " +
   "world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y }, " +
-  "fog: { get seen(){return seen}, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal } };\n";
+  "fog: { get seen(){return seen}, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal }, " +
+  "light: { get flick(){return flick}, get r(){return torchR}, " +
+  "  get cam(){return { x: camX, y: camY }}, get s(){return unitPx * (window.devicePixelRatio || 1)}, " +
+  "  get embers(){return torchP.length}, visPoly } };\n";
 
 function build() {
   let s = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v35</title>
+<title>CaveRunner v36</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -133,7 +133,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .modfoundbtn{flex:1 1 0;height:54px;border-radius:3px;border:2px solid var(--ctl-line);
   background:var(--ctl-face);color:var(--ctl-fg);touch-action:none;pointer-events:auto;
   font:700 15px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase}
-.modfoundbtn.pick{border-color:var(--ctl-hot);color:var(--ctl-hot);
+/* neither button is lit until the stick is past the trigger line and pointing at one:
+   the card must not look like it has already chosen for you */
+.modfoundbtn.hot{border-color:var(--ctl-hot);color:var(--ctl-hot);
   box-shadow:0 0 16px rgba(255,176,46,0.25)}
 .modfoundhint{margin:0;text-align:center;font:600 11px ui-monospace,SFMono-Regular,Menlo,monospace;
   letter-spacing:.06em;color:var(--ctl-dim)}
@@ -352,7 +354,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v35';
+const VERSION = 'v36';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -1017,12 +1019,17 @@ const SHOP_Y = SHOP_TOP * CELL;        // world y of the ceiling, for "am I in t
 const FOG = 8;                         // terrain pixels per fog cell
 const FOG_U = FOG * CELL;              // world units per fog cell
 const FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
-const SIGHT = 120;                     // world units you can see, and light up as you go.
-                                       // Well inside VIEW_W, so the lit circle sits on the
-                                       // screen rather than reaching past both edges — you
-                                       // light up what you can actually look at
-const FOG_DIM = 0.52;                  // how dark somewhere you have been but cannot see
-const FOG_DARK = 0.96;                 // how dark somewhere you have never been
+const SIGHT = 120;                     // how far away you remember the map — a cell this
+                                       // close to you is marked as somewhere you have been,
+                                       // and stays marked for the rest of the floor
+const FOG_DIM = 0.85;                  // how dark somewhere you have been but cannot see
+const FOG_DARK = 0.97;                 // how dark somewhere you have never been
+
+// The torch. Light is cast as a fan of rays out from the player, each stopping at the
+// first wall, and the lamp is clipped to what the fan encloses — that is the whole
+// reason you cannot see round a corner. One ray per fog cell the fan crosses at full
+// reach, so a shadow edge lands on about the grid it is drawn into.
+const VIS_RAYS = 160;
 
 // Light every cell within r world units of (wx, wy). Returns how many were newly lit,
 // so the caller can leave the overlay alone on the frames where nothing changed.
@@ -1050,6 +1057,47 @@ function fogStart() {
   for (let y = Math.floor((SHOP_TOP - SHOP_ROOF) / FOG); y < FH; y++)
     for (let x = 0; x < FW; x++) seen[y * FW + x] = 2;
   return seen;
+}
+
+// How far a ray from (x, y) heading (dx, dy) gets before it walks into a solid cell,
+// capped at r. It steps from one cell boundary to the next, so it visits every cell the
+// ray crosses — a fixed sampling step would jump clean over a one-pixel wall and let a
+// sliver of light through the far side of it.
+function rayDist(x, y, dx, dy, r, solidCell) {
+  let cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+  const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1;
+  const dtx = dx ? Math.abs(CELL / dx) : Infinity;
+  const dty = dy ? Math.abs(CELL / dy) : Infinity;
+  let tx = dx ? (dx > 0 ? ((cx + 1) * CELL - x) / dx : (cx * CELL - x) / dx) : Infinity;
+  let ty = dy ? (dy > 0 ? ((cy + 1) * CELL - y) / dy : (cy * CELL - y) / dy) : Infinity;
+  let t = 0;
+  for (;;) {
+    if (tx < ty) { t = tx; tx += dtx; cx += sx; }
+    else { t = ty; ty += dty; cy += sy; }
+    if (t >= r) return r;
+    if (solidCell(cx, cy)) return t;
+  }
+}
+
+// Is the straight line from one point to another clear of rock? Marched the same way the
+// light is, so "can I shoot that" and "can I see that" give the same answer, and a
+// one-pixel wall stops both.
+function losClear(x0, y0, x1, y1, solidCell) {
+  const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy);
+  if (d < 0.001) return true;
+  return rayDist(x0, y0, dx / d, dy / d, d, solidCell) >= d - 0.001;
+}
+
+// The fan of points that bound what can be seen from (cx, cy) out to r. The lamp is
+// clipped to this, which is what makes walls cast shadows.
+function visPoly(cx, cy, r, solidCell, rays) {
+  const pts = [];
+  for (let i = 0; i < rays; i++) {
+    const a = i / rays * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
+    const d = rayDist(cx, cy, dx, dy, r, solidCell);
+    pts.push(cx + dx * d, cy + dy * d);
+  }
+  return pts;
 }
 
 for (const k of Object.keys(MODS)) MODS[k].id = k;
@@ -1690,6 +1738,34 @@ function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash) {
   ctx.restore();
 }
 
+// The torch in the runner's free hand. `flick` is the very same number the lamp is drawn
+// with, so the flame and the light it throws gutter together and the cave reads as
+// torchlight rather than as a dimmer switch. The embers are the loop's particles.
+function drawTorch(ctx, x, y, face, flick, embers) {
+  const fx = x + face * 1.6, fy = y - 7;           // the flame rides above the fist
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#5b4630'; ctx.lineWidth = 2.6;
+  ctx.beginPath(); ctx.moveTo(x, y + 2.5); ctx.lineTo(fx, fy); ctx.stroke();
+  ctx.strokeStyle = '#8a6b45'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x, y + 2.5); ctx.lineTo(fx, fy); ctx.stroke();
+  const s = flick;                                 // a low flame is a small one
+  ctx.globalAlpha = 0.32 * flick;                  // the halo is what really gutters
+  ctx.fillStyle = COL.flame;
+  ctx.beginPath(); ctx.ellipse(fx, fy - 3.5 * s, 4.4 * s, 7 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = flick;
+  ctx.beginPath(); ctx.ellipse(fx, fy - 2.5 * s, 2.9 * s, 4.8 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = COL.flame2;
+  ctx.beginPath(); ctx.ellipse(fx, fy - 2 * s, 1.5 * s, 2.6 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  for (const q of embers) {
+    ctx.globalAlpha = Math.max(0, q.life / q.max) * 0.85;
+    ctx.fillStyle = q.c;
+    ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
+  }
+  ctx.globalAlpha = 1;
+}
+
 // The enemies, one sprite per body. Every one of them takes the same colour set
 // ({ a main, b dark, c light, eye }) so a creature's identity is carried by shape and
 // colour together, and a flash on hit is the same white for all of them.
@@ -2304,8 +2380,19 @@ function Game({ input }) {
       jx: 0, jy: 0, aim: { on: false, show: false, nx: 1, ny: 0 } };
     const bullets = [], enemyShots = [], smoke = [], sparks = [], flashes = [], toasts = [], coins = [];
     const fields = [], beams = [];                   // static projectiles, and instant beam streaks
+    const torchP = [];                               // the embers the torch throws off
     const aimPath = [];                              // scratch buffer for the aim line
     let smokeAcc = 0, time = 0, levelT = 0, camX = 0, camY = 0, camReady = false;
+    // the torch: one flicker number drives both the flame and the lamp, so the light
+    // in the cave breathes exactly as much as the fire does
+    let flick = 1, flickN = 0, torchT = 0, torchAcc = 0, torchR = SIGHT, visPts = [];
+
+    // The torch hand: whichever one the gun is not in, so the two never sit on top of
+    // each other. Aiming behind you swaps hands, the same way the gun does.
+    const torchHand = () => {
+      const a = p.aim.show ? p.aim.nx : p.face;
+      return { x: p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: p.y + 9 };
+    };
     const toast = text => { toasts.push({ text, t: 2.2 }); if (toasts.length > 3) toasts.shift(); };
     let best = 0, raf, last = performance.now();
 
@@ -2323,6 +2410,7 @@ function Game({ input }) {
       p.fuel = 1; p.empty = false; p.kick = 0;
       bullets.length = enemyShots.length = smoke.length = 0;
       sparks.length = flashes.length = coins.length = 0;
+      torchP.length = 0;
       camReady = false; best = 0;
       levelT = 0;                             // the floor's name card gets its three seconds
       seen = fogStart(); paintFog();          // every floor is dark again
@@ -2369,11 +2457,9 @@ function Game({ input }) {
     c.addEventListener('pointerleave', mLeave);
 
     // ---- terrain queries ----
-    const solidAt = (x, y) => {
-      const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
-      if (cx < 0 || cy < 0 || cx >= CW || cy >= CH) return true;
-      return mat[cy * CW + cx] !== 0;
-    };
+    const solidCell = (cx, cy) =>
+      cx < 0 || cy < 0 || cx >= CW || cy >= CH || mat[cy * CW + cx] !== 0;
+    const solidAt = (x, y) => solidCell(Math.floor(x / CELL), Math.floor(y / CELL));
     const boxHit = (x, y) => {
       const x0 = Math.floor(x / CELL), x1 = Math.floor((x + PW - 0.001) / CELL);
       const y0 = Math.floor(y / CELL), y1 = Math.floor((y + PH - 0.001) / CELL);
@@ -2385,11 +2471,7 @@ function Game({ input }) {
       }
       return false;
     };
-    const lineOfSight = (x0, y0, x1, y1) => {
-      const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 3);
-      for (let i = 1; i < n; i++) if (solidAt(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n)) return false;
-      return true;
-    };
+    const lineOfSight = (x0, y0, x1, y1) => losClear(x0, y0, x1, y1, solidCell);
     const enemyAt = (x, y, pad) => {
       for (let j = 0; j < enemies.length; j++) {
         const e = enemies[j];
@@ -3089,6 +3171,7 @@ function Game({ input }) {
             // ask first: the card comes up with the game paused behind it, and the
             // right stick picks up or leaves. See ModFound.
             input.current.confirm = { id: q.id, q };
+            input.current.confirmAim = null;      // neither button starts lit
           } else {
             input.current.found = q;          // the chooser decides what happens to it
           }
@@ -3223,6 +3306,33 @@ function Game({ input }) {
 
       best = Math.max(best, Math.round((start.y - p.y) / 10));
 
+      // ---- the torch ----
+      // A random walk with two sines on top, which is what makes a flame gutter rather
+      // than pulse. It never goes above 1: flicker means the light dipping, and a canvas
+      // globalAlpha over 1 is simply ignored.
+      torchT += dt;
+      flickN += (Math.random() - 0.5) * 2.6 * dt;
+      flickN *= 0.94;
+      flick = clamp(0.94 + flickN + 0.04 * Math.sin(torchT * 11.3) + 0.025 * Math.sin(torchT * 19.7),
+        0.84, 1);
+      torchAcc += dt;
+      while (torchAcc > 0.04) {
+        torchAcc -= 0.04;
+        const th = torchHand();
+        const life = 0.3 + Math.random() * 0.35;
+        torchP.push({ x: th.x + (Math.random() - 0.5) * 2, y: th.y - 7,
+          vx: (Math.random() - 0.5) * 10 + p.vx * 0.15, vy: -20 - Math.random() * 22,
+          life, max: life, s: 1 + Math.random() * 1.3,
+          c: Math.random() < 0.5 ? COL.flame2 : COL.flame });
+        if (torchP.length > 60) torchP.shift();
+      }
+      for (let i = torchP.length - 1; i >= 0; i--) {
+        const q = torchP[i];
+        q.vy += 30 * dt; q.vx *= 0.98;
+        q.x += q.vx * dt; q.y += q.vy * dt;
+        if ((q.life -= dt) <= 0) torchP.splice(i, 1);
+      }
+
       // fog of war: wherever you go stays revealed for the rest of the floor
       if (fogReveal(seen, p.x + PW / 2, p.y + PH / 2, SIGHT)) paintFog();
     }
@@ -3307,10 +3417,13 @@ function Game({ input }) {
       }
       ctx.globalAlpha = 1;
 
-      // enemies
+      // enemies. One behind a wall is not drawn at all, so nothing gives away a cave
+      // you have not lit — the lamp would hide it anyway, but a health bar over a
+      // silhouette is exactly the kind of tell that gives the game away
       for (const e of enemies) {
         const ey = e.ty;
         if (ey > camY + vh + 20 || ey < camY - 20 || e.x < camX - 20 || e.x > camX + vw + 20) continue;
+        if (!lineOfSight(pcx, pcy, e.x, ey)) continue;
         drawEnemy(ctx, e, time);
         const hw = 20, hx = e.x - hw / 2, hy = ey - e.r - 9;
         ctx.fillStyle = COL.barBg; ctx.fillRect(hx, hy, hw, 3);
@@ -3555,21 +3668,36 @@ function Game({ input }) {
       const gait = running ? Math.sin(time * 15) : 0;
       drawRunner(ctx, p.x, p.y, PW, PH, p.face, gait, !p.onGround, p.jet, flashing);
       if (!p.dead) drawGun(ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
+      // the torch, in the hand the gun is not in
+      if (!p.dead) { const th = torchHand(); drawTorch(ctx, th.x, th.y, ax >= 0 ? -1 : 1, flick, torchP); }
       ctx.globalAlpha = 1;
 
-      // ---- fog of war ----
+      // ---- torchlight ----
       // The mask holds two shades: never been there, and been there but can't see it
-      // now. The circle you are standing in is punched clear of both, so the player,
-      // whatever is shooting at you and the ground under your feet always read.
+      // now. The lamp is the torch: it runs from clear at your feet out to the mask's own
+      // darkness at about the top of the screen, and it is clipped to the fan of rays
+      // that reach the player without crossing rock, so a wall puts the far side of it in
+      // shadow and you cannot see round a corner. `flick` is the flame's own number, so
+      // the light in the cave rises and dips exactly as much as the fire does.
+      torchR = clamp(pcy - camY, 170, 560) * flick;
+      visPts = visPoly(pcx, pcy, torchR, solidCell, VIS_RAYS);
       fctx.putImageData(fogImg, 0, 0);
+      fctx.save();
       fctx.globalCompositeOperation = 'destination-out';
-      const lx = pcx / FOG_U, ly = pcy / FOG_U, lr = SIGHT / FOG_U;
-      const lamp = fctx.createRadialGradient(lx, ly, lr * 0.5, lx, ly, lr);
+      fctx.beginPath();
+      fctx.moveTo(visPts[0] / FOG_U, visPts[1] / FOG_U);
+      for (let i = 2; i < visPts.length; i += 2) fctx.lineTo(visPts[i] / FOG_U, visPts[i + 1] / FOG_U);
+      fctx.closePath();
+      fctx.clip();
+      const lx = pcx / FOG_U, ly = pcy / FOG_U, lr = torchR / FOG_U;
+      const lamp = fctx.createRadialGradient(lx, ly, 0, lx, ly, lr);
       lamp.addColorStop(0, 'rgba(0,0,0,1)');
+      lamp.addColorStop(0.5, 'rgba(0,0,0,0.55)');
       lamp.addColorStop(1, 'rgba(0,0,0,0)');
+      fctx.globalAlpha = flick;
       fctx.fillStyle = lamp;
       fctx.fillRect(lx - lr, ly - lr, lr * 2, lr * 2);
-      fctx.globalCompositeOperation = 'source-over';
+      fctx.restore();
       // a cell of margin each way, so the bilinear edge clamp falls off screen
       const fx0 = clamp(Math.floor(camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(camY / FOG_U) - 1, 0, FH - 1);
       const fx1 = clamp(Math.ceil((camX + vw) / FOG_U) + 2, 1, FW), fy1 = clamp(Math.ceil((camY + vh) / FOG_U) + 2, 1, FH);
@@ -3687,7 +3815,7 @@ function Game({ input }) {
   return h('canvas', { ref: cv, className: 'game' });
 }
 
-function Stick({ size, kind, input }) {
+function Stick({ size, kind, input, refresh }) {
   const [knob, setKnob] = useState({ x: 0, y: 0, jet: false });
   const ref = useRef(null);
   const pid = useRef(null);
@@ -3708,6 +3836,12 @@ function Stick({ size, kind, input }) {
     const mag = cl / maxD;
     const thresh = right ? AIM_DEAD : 0.15;
     if (right && mag > AIM_DEAD) stayed.current = false;
+    // A card is up: left picks up, right leaves, and the one you are pointing at is the
+    // one lit. Inside the dead zone neither is lit, because you have not chosen yet.
+    if (right && input.current.confirmAct) {
+      const side = mag > AIM_DEAD ? (nx < 0 ? 'take' : 'leave') : null;
+      if (input.current.confirmAim !== side) { input.current.confirmAim = side; refresh(); }
+    }
     const st = input.current[kind];
     st.active = true; st.nx = nx; st.ny = ny; st.mag = mag; st.dy = dy; st.on = mag > thresh;
     setKnob({ x: nx * cl, y: ny * cl, jet: kind === 'left' && dy < 0 && mag > DEAD });
@@ -3725,21 +3859,12 @@ function Stick({ size, kind, input }) {
     pid.current = null;
     const act = input.current.confirmAct;
     if (right && act) {
-      // a confirmation is up, so the gesture is "point at a button and let go".
-      // Measured from the release point, so dragging out and coming back to the middle
+      // a confirmation is up, so the gesture is "point left or right and let go". The
+      // side was decided while dragging, so coming back to the middle before releasing
       // picks nothing, which is the right answer — you were not pointing anywhere.
-      const r = ref.current.getBoundingClientRect();
-      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-      const dx = e.clientX - cx, dy = e.clientY - cy;
-      if (Math.hypot(dx, dy) / (r.width / 2 * 0.72) > AIM_DEAD) {
-        const a = Math.atan2(dy, dx);
-        let pick = null, closest = Math.PI / 3;        // within 60 degrees counts as pointing
-        for (const t of act.aim()) {
-          const d = Math.abs(angDiff(Math.atan2(t.y - cy, t.x - cx), a));
-          if (d < closest) { closest = d; pick = t.key; }
-        }
-        if (pick) act[pick]();
-      }
+      const side = input.current.confirmAim;
+      input.current.confirmAim = null;
+      if (side) act[side]();
     } else if (right && stayed.current) {
       input.current.interact = true;
     }
@@ -3919,8 +4044,8 @@ function GunSwap({ input, refresh, onDone }) {
 }
 
 // Walked onto a mod: what it is, and two ways out of it. The game is paused behind this.
-// The right stick chooses — drag it in the direction of a button and let go — and the
-// buttons take a plain tap as well, for when a thumb is already somewhere else.
+// The right stick chooses — drag it left for the left button, right for the right one —
+// and the buttons take a plain tap as well, for when a thumb is already somewhere else.
 function ModFound({ input, refresh }) {
   const cf = input.current.confirm;
   const takeRef = useRef(null), leaveRef = useRef(null);
@@ -3932,22 +4057,10 @@ function ModFound({ input, refresh }) {
     if (el) setDeck(Math.round(el.getBoundingClientRect().height));
   });
 
-  // where the two buttons are in screen coordinates, so a stick release can work out
-  // which one it was pointing at. Read live, because the row moves with the viewport.
-  const aim = () => {
-    const pts = [];
-    for (const [key, r] of [['take', takeRef], ['leave', leaveRef]]) {
-      const el = r.current;
-      if (!el) continue;
-      const b = el.getBoundingClientRect();
-      pts.push({ key, x: b.left + b.width / 2, y: b.top + b.height / 2 });
-    }
-    return pts;
-  };
-
   const close = () => {
     input.current.confirm = null;
     input.current.confirmAct = null;
+    input.current.confirmAim = null;
     input.current.sig = '';             // let the prompt re-announce itself
     refresh();
   };
@@ -3966,17 +4079,21 @@ function ModFound({ input, refresh }) {
 
   if (!cf) { input.current.confirmAct = null; return null; }
   // the stick reads this on release. Assigned during render, the same way `paused` is.
-  input.current.confirmAct = { take, leave, aim };
+  input.current.confirmAct = { take, leave };
+  // which way the stick is being held, set by Stick while the drag is live. Neither is
+  // lit until the knob is past the trigger line, so the card does not look like it has
+  // already picked for you.
+  const lit = input.current.confirmAim;
 
   return h('div', { className: 'modfound', style: { bottom: deck } },
     h(ModCard, { id: cf.id, ingame: true }),
     h('div', { className: 'modfoundrow' },
-      h('button', { ref: takeRef, className: 'modfoundbtn pick',
+      h('button', { ref: takeRef, className: 'modfoundbtn pick' + (lit === 'take' ? ' hot' : ''),
         onPointerDown: e => { e.preventDefault(); take(); } }, 'Pick up'),
-      h('button', { ref: leaveRef, className: 'modfoundbtn',
+      h('button', { ref: leaveRef, className: 'modfoundbtn' + (lit === 'leave' ? ' hot' : ''),
         onPointerDown: e => { e.preventDefault(); leave(); } }, 'Leave')
     ),
-    h('p', { className: 'modfoundhint' }, 'drag the right stick at one, or tap it')
+    h('p', { className: 'modfoundhint' }, 'drag the right stick left or right, or tap it')
   );
 }
 
@@ -4358,6 +4475,7 @@ function App() {
     found: null,                 // a gun on the ground, waiting on the chooser
     confirm: null,              // a mod on the ground, waiting on pick up / leave
     confirmAct: null,           // ModFound's handlers, read by the right stick's release
+    confirmAim: null,           // which of the two the stick is held toward, or null
     pendingToast: null,         // raised while paused, shown by the loop when it resumes
     keys: { w: false, a: false, s: false, d: false },
     mouse: { x: 0, y: 0, inside: false, down: false },
@@ -4391,6 +4509,7 @@ function App() {
     input.current.found = null;
     input.current.confirm = null;
     input.current.confirmAct = null;
+    input.current.confirmAim = null;
     setGunInfo(-1);
     setEdit(false);
     setRun(r => r + 1);
@@ -4516,8 +4635,8 @@ function App() {
           inShop && LO.bag.length ? h('b', { className: 'badge' }, LO.bag.length) : null)
       ),
       h('div', { className: 'sticks' },
-        h(Stick, { size, kind: 'left', input }),
-        h(Stick, { size, kind: 'right', input })
+        h(Stick, { size, kind: 'left', input, refresh }),
+        h(Stick, { size, kind: 'right', input, refresh })
       )
     ),
     edit ? h(Editor, { input, refresh, close: () => setEdit(false) }) : null,

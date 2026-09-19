@@ -12,12 +12,13 @@ cave layout and the loot are rolled fresh, but who lives there and what it looks
 like are not. That is deliberate: you learn a floor, and the colour tells you
 where you are before you have read the number.
 
-The cave starts dark. You reveal it by flying through it, and what you have seen
-stays on the map for the rest of that floor — dimmed once you move away, so you
-can still read the terrain you explored but not what is moving in it. The lamp you
-carry lights a pool well inside the edges of the screen, so the dark is a real
-edge you have to fly into, not a tint over everything you can already see. Enemies
-shoot further than you can see, so a dark corner is a real risk.
+The cave starts dark, and what lights it is the torch in your other hand. It burns
+from a pool of clear light at your feet out to near black at the top of the screen,
+guttering as it burns, and it only reaches as far as the rock lets it: a wall puts its
+far side in shadow, so you cannot see round a corner. A creature behind one is not
+drawn at all, and enemies shoot further than you can see, so a dark corner is a real
+risk. Where you have already been stays on the map behind you, deep in the dark, and
+fades out entirely once the light stops reaching it.
 
 ## Play
 
@@ -32,7 +33,7 @@ Open `index.html` in a browser. It is a single file with no build step; React lo
 | Aim | Right stick | Mouse |
 | Shoot | Drag the right stick out past the dead zone | Left mouse button |
 | Interact: buy, take a gun or mod | Tap the middle of the right stick | F |
-| Choose on a card that is asking | Drag the right stick at a button, or tap the button | — |
+| Choose on a card that is asking | Drag the right stick left or right, or tap the button | — |
 | Pick gun | Tap a gun slot | 1 to 4 |
 | Gun details | Hold a gun slot | — |
 | Reorder guns | Hold and drag a gun tab in the build screen | — |
@@ -60,9 +61,10 @@ detail card the build screen shows — so you can read a mod or compare a gun
 against the one you are holding before deciding.
 
 A mod on the ground is not taken by the tap either. The tap opens the card,
-pauses the game behind it, and asks: **Pick up** or **Leave**. Drag the right
-stick in the direction of the button you want and let go, or just tap it. Point
-somewhere else and let go and nothing happens — you were not choosing.
+pauses the game behind it, and asks: **Pick up** on the left, **Leave** on the
+right. Neither is lit to begin with — drag the right stick left or right and the
+one you are pointing at lights up, then let go to take it. Come back to the middle
+before you let go and nothing happens, or just tap a button instead.
 
 ## The shop
 
@@ -265,7 +267,9 @@ them if it cannot find either.
 - Floors that chain: shop, cave, exit, next shop, with gold and gear carried over
 - A colour scheme per floor that stays with that floor run to run, so you can tell where you are at a glance
 - Large randomly generated caves with cramped and open areas, winding tunnels, built ledges and half-buried brick frames
-- Fog of war: the cave starts dark and you reveal it by exploring, with what you have seen left dimmed behind you and the lamp lighting a pool inside the screen
+- Fog of war: the cave starts dark and you reveal it by exploring, with what you have seen kept as a faint map behind you and the torch lighting a pool that falls away to black at the top of the screen
+- A torch in the runner's free hand, throwing embers, guttering — and the light in the cave gutters with it
+- Line-of-sight lighting: walls cast real shadows, and a creature behind one is not drawn until you can see it
 - Destructible pixel terrain: explosions and drilling shots eat everything except the outer border
 - Guns and mods to find, with a drag-and-drop screen for building them
 - 111 mods: shots, static fields, path modifiers, trigger spells, utility casts and the Greek letter copy spells
@@ -274,7 +278,7 @@ them if it cannot find either.
 - Recoil that shoves you around, which the jetpack can work with
 - Gold that flies to you once you are close enough (a short range for now)
 - A black arcade control deck: mono type, scanlines, and two rings on the right stick — the dead zone and the full throw
-- Picking a mod up off the ground asks first: card, game paused, pick up or leave, chosen with the stick
+- Picking a mod up off the ground asks first: card, game paused, pick up or leave — neither button lit until you drag the stick one way or the other
 - Jetpack with fuel that refills on the ground; upward thrust is instant
 - 16 creatures in five shapes, each floor owning its own fixed roster: shooters that hover and fire, turrets that wind up a long shot, chasers that come at you and bombers that burst on contact
 - Creature stats and gold scale with the floor they belong to, so the same enemy gets harder as you climb

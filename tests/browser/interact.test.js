@@ -134,48 +134,78 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('and it offers exactly pick up or leave',
     modRes.buttons.join('|') === 'Pick up|Leave', modRes.buttons);
 
-  // the gesture the card is built around: drag the right stick at a button and let go.
-  // The point is computed from the button's own position, so it holds at any viewport.
-  const aimStick = which => page.evaluate(async which => {
+  // the gesture the card is built around: drag the right stick left for Pick up, right
+  // for Leave, and let go. Nothing is lit until the knob is past the trigger line, and
+  // the button you are pointing at lights while you hold it there.
+  const aimStick = (which, release = true) => page.evaluate(async ({ which, release }) => {
     const el = [...document.querySelectorAll('.sticks .stick')][1];
     const r = el.getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    const btn = [...document.querySelectorAll('.modfoundbtn')][which === 'take' ? 0 : 1];
-    const b = btn.getBoundingClientRect();
-    const a = Math.atan2(b.top + b.height / 2 - cy, b.left + b.width / 2 - cx);
     const maxD = (r.width / 2) * 0.72;
-    const x = cx + Math.cos(a) * maxD * 0.85, y = cy + Math.sin(a) * maxD * 0.85;
+    const dir = which === 'take' ? -1 : 1;                    // Pick up is the left button
     const fire = (type, px, py) => el.dispatchEvent(new PointerEvent(type, {
       bubbles: true, cancelable: true, pointerId: 11, pointerType: 'touch',
       clientX: px, clientY: py }));
+    const lit = () => [...document.querySelectorAll('.modfoundbtn')]
+      .map(b => b.classList.contains('hot'));
     fire('pointerdown', cx, cy);
-    fire('pointermove', x, y);
+    const atStart = lit();
+    fire('pointermove', cx + dir * maxD * 0.25, cy);           // inside the dead zone
     await new Promise(r2 => setTimeout(r2, 40));
-    fire('pointerup', x, y);
+    const inDead = lit();
+    fire('pointermove', cx + dir * maxD * 0.9, cy);            // out past the trigger line
+    await new Promise(r2 => setTimeout(r2, 40));
+    const out = lit();
+    if (release) fire('pointerup', cx + dir * maxD * 0.9, cy);
     await new Promise(r2 => setTimeout(r2, 250));
-    return { deg: Math.round(a * 180 / Math.PI) };
-  }, which);
+    return { atStart, inDead, out };
+  }, { which, release });
 
-  await aimStick('take');
+  const g1 = await aimStick('take');
+  check('neither button is lit when the card opens', g1.atStart.join() === 'false,false', g1);
+  check('and still not inside the dead zone', g1.inDead.join() === 'false,false', g1);
+  check('dragging left lights the left button, and only it', g1.out.join() === 'true,false', g1);
   const took = await page.evaluate(() => ({
     bag: window.__in.current.loadout.bag.length,
     overlay: !!document.querySelector('.modfound'),
     paused: window.__in.current.paused,
   }));
-  check('dragging the stick at Pick up takes it', took.bag === 1, took);
+  check('letting go out to the left takes it', took.bag === 1, took);
   check('and closes the card, resuming the game', !took.overlay && !took.paused, took);
 
   // and the other way out: leaving keeps it on the ground and out of the bag
   modRes = await openMod();
   check('a second mod opens the card again', modRes.overlay && modRes.bagAfter === 0, modRes.overlay);
-  await aimStick('leave');
+  const g2 = await aimStick('leave');
+  check('dragging right lights the right button, and only it', g2.out.join() === 'false,true', g2);
   const left = await page.evaluate(() => ({
     bag: window.__in.current.loadout.bag.length,
     overlay: !!document.querySelector('.modfound'),
     onGround: window.__lvl.pickups.filter(q => q.kind === 'mod' && !q.taken).length,
   }));
-  check('dragging the stick at Leave leaves it', left.bag === 0 && !left.overlay, left);
+  check('letting go out to the right leaves it', left.bag === 0 && !left.overlay, left);
   check('and the mod is still lying there', left.onGround > 0, left.onGround);
+
+  // out and back to the middle before releasing picks nothing, even though the drag did
+  // pass the trigger line — you are not pointing anywhere when you let go
+  modRes = await openMod();
+  await aimStick('take', false);
+  const g3 = await page.evaluate(async () => {
+    const el = [...document.querySelectorAll('.sticks .stick')][1];
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const fire = (type, px, py) => el.dispatchEvent(new PointerEvent(type, {
+      bubbles: true, cancelable: true, pointerId: 11, pointerType: 'touch', clientX: px, clientY: py }));
+    fire('pointermove', cx, cy);
+    await new Promise(r2 => setTimeout(r2, 40));
+    const lit = [...document.querySelectorAll('.modfoundbtn')].map(b => b.classList.contains('hot'));
+    fire('pointerup', cx, cy);
+    await new Promise(r2 => setTimeout(r2, 250));
+    return { lit, bag: window.__in.current.loadout.bag.length,
+      overlay: !!document.querySelector('.modfound') };
+  });
+  check('coming back to the middle unlights both', g3.lit.join() === 'false,false', g3);
+  check('and releasing there decides nothing', g3.bag === 0 && g3.overlay, g3);
 
   // a tap on the dead zone while the card is up must not take anything, or the card
   // would swallow the very tap that was meant to open it
