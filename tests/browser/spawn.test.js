@@ -15,12 +15,13 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     start: { x: Math.round(window.__lvl.start.x), y: Math.round(window.__lvl.start.y) },
     arrival: { x: Math.round(window.__lvl.arrival.x), y: Math.round(window.__lvl.arrival.y) },
     firstPlinth: Math.round(Math.min(...window.__lvl.stock.map(s => s.x))),
-    shopLeft: 3 * 2, worldW: 320 * 2, floor: window.__lvl.floor,
+    shopLeft: 3 * window.__lvl.world.CELL, worldW: window.__lvl.world.WW, floor: window.__lvl.floor,
+    shopY: window.__lvl.world.SHOP_Y,
     onPlinth: !!document.querySelector('.buy'),
   }));
   let a = await at();
   check('spawns at the far left of the shop', a.px < 60, a);
-  check('and on the shop floor', a.py > 742 * 2, { py: a.py });
+  check('and on the shop floor', a.py > a.shopY, { py: a.py, shopY: a.shopY });
   check('clear of the first plinth', a.firstPlinth - a.px > 60, { spawn: a.px, plinth: a.firstPlinth });
   check('so nothing is being offered on arrival', a.onPlinth === false);
   check('the arrival portal sits by the spawn', Math.abs(a.arrival.x - a.px) < 40, a.arrival);
@@ -28,8 +29,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
   // and the next floor puts you in the same place
   await page.evaluate(async () => {
-    const { p } = window.__lvl;
-    p.x = 320; p.y = 30;
+    const { p, portal } = window.__lvl;
+    p.x = portal.x; p.y = portal.y;
     await new Promise(r => setTimeout(r, 500));
   });
   const b = await at();

@@ -6,7 +6,7 @@ const js = src.slice(open, src.indexOf('</script>', open));
 const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
 const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
 const G = new Function('React', shim + upto +
-  'return { makeLevel, gunPrice, isGunShop, makeGun, gunTier };')({ createElement: () => {} });
+  'return { makeLevel, gunPrice, isGunShop, makeGun, gunTier, CH };')({ createElement: () => {} });
 
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
@@ -39,18 +39,20 @@ const goodGun = { cap: 8, castDelay: 0.06, recharge: 0.2, manaMax: 340, manaRege
 check('a better gun costs more', G.gunPrice(goodGun) > G.gunPrice(cheapGun) * 3,
   { cheap: G.gunPrice(cheapGun), good: G.gunPrice(goodGun) });
 
-// tier rises with the floor
+// tier rises with the floor. Sample three quarters of the way down the cave, as a
+// share of its height, so this still means "deep" when the map grows.
+const DEEP = Math.round(G.CH * 0.75);
 const low = [], high = [];
 for (let seed = 1; seed <= 200; seed++) {
   let rs = seed % 2147483646 + 1;
   const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
-  low.push(G.makeGun(rnd, G.gunTier(600, 1)).cap);
-  high.push(G.makeGun(rnd, G.gunTier(600, 6)).cap);
+  low.push(G.makeGun(rnd, G.gunTier(DEEP, 1)).cap);
+  high.push(G.makeGun(rnd, G.gunTier(DEEP, 6)).cap);
 }
 const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
 check('deep guns get better as floors go by', avg(high) > avg(low) + 1,
   { floor1: +avg(low).toFixed(2), floor6: +avg(high).toFixed(2) });
-const t = [1, 2, 3, 4, 5, 6].map(f => +G.gunTier(600, f).toFixed(2));
+const t = [1, 2, 3, 4, 5, 6].map(f => +G.gunTier(DEEP, f).toFixed(2));
 check('tier climbs every floor', t.every((v, i) => i === 0 || v > t[i - 1]), t);
 
 console.log(fails ? `\n${fails} failed` : '\nall good');

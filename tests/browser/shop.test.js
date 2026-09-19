@@ -15,7 +15,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     floor: window.__lvl.floor, inShop: window.__in.current.inShop,
     gold: window.__in.current.loadout.gold,
     stock: window.__lvl.stock.map(i => i.kind === 'heal' ? 'heal' : i.id + '/' + i.price),
-    py: window.__lvl.p.y, shopY: 742 * 2,
+    py: window.__lvl.p.y, shopY: window.__lvl.world.SHOP_Y,
   }));
   check('starts on floor 1 inside the shop', st.floor === 1 && st.inShop === true, st);
   check('shop has a heal and 4 mods', st.stock.length === 5 && st.stock[0] === 'heal', st.stock);
@@ -85,7 +85,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
   // leaving the shop locks the mod screen
   await page.evaluate(async () => {
-    window.__lvl.p.y = 400; window.__lvl.p.x = 320; window.__lvl.p.vy = 0;
+    window.__lvl.p.y = window.__lvl.world.SHOP_Y - 400; window.__lvl.p.x = window.__lvl.world.WW / 2; window.__lvl.p.vy = 0;
     await new Promise(r => setTimeout(r, 200));
   });
   check('Mods locked outside the shop', (await modsLabel()).indexOf('Shop only') >= 0, await modsLabel());
@@ -101,15 +101,16 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     LO.bag.push('homing');
     const before = { floor: window.__lvl.floor, bag: LO.bag.length, gold: LO.gold, hp: window.__lvl.p.hp };
     window.__lvl.p.hp = 55;
-    const pt = { x: 320, y: 34 * 2 };
-    window.__lvl.p.x = 320 - 6; window.__lvl.p.y = 30;      // drop onto the portal
+    const pt = window.__lvl.portal;
+    window.__lvl.p.x = pt.x; window.__lvl.p.y = pt.y;       // drop onto the portal
     await new Promise(r => setTimeout(r, 400));
     return { before, floor: window.__lvl.floor, inShop: window.__in.current.inShop,
+      shopY: window.__lvl.world.SHOP_Y,
       py: window.__lvl.p.y, bag: LO.bag.length, gold: LO.gold, hp: window.__lvl.p.hp,
       stock: window.__lvl.stock.filter(i => !i.sold).length, enemies: window.__lvl.enemies.length };
   });
   check('portal advances the floor', st.floor === st.before.floor + 1, st);
-  check('you arrive in the new shop', st.inShop === true && st.py > 742 * 2, st);
+  check('you arrive in the new shop', st.inShop === true && st.py > st.shopY, st);
   check('the new shop is fully stocked', st.stock === 5, st);
   check('the new floor has enemies', st.enemies > 0, st.enemies);
   check('you keep your mods and gold', st.bag === st.before.bag && st.gold === st.before.gold, st);
