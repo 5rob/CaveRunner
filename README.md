@@ -38,10 +38,15 @@ Open `index.html` in a browser. It is a single file with no build step; React lo
 | Reorder guns | Hold and drag a gun tab in the build screen | — |
 | Guns & mods screen (shop only) | Tap Mods | E |
 
-The controls sit on a black arcade panel with a scanline wash over it. The right
-stick carries two rings: the amber one is the dead zone you have to leave for a
-drag to count as aiming, and the dashed one outside it is the full travel of the
-knob. Between them is everything a drag can be.
+The controls sit on a black arcade panel with a scanline wash over it. The knob
+that follows your thumb is sized to still show an edge around a thumbprint rather
+than vanishing underneath one, so you can see where your thumb is pointing without
+lifting it.
+
+The right stick carries two rings as well. The amber one is the dead zone you have
+to leave for a drag to count as aiming; it is drawn over the knob, because a knob
+that size would otherwise bury it. The dashed one outside is the full travel of
+the knob. Between them is everything a drag can be.
 
 ## Picking things up
 

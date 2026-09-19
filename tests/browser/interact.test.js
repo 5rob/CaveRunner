@@ -16,14 +16,15 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   await page.waitForTimeout(1200);
 
-  // ---- the control deck: circles that use the width, two rings on the right one ----
+  // ---- the control deck: a thumb-sized knob, and two rings on the right stick ----
   const deck = await page.evaluate(() => {
     const s = [...document.querySelectorAll('.sticks .stick')];
-    const w = el => Math.round(el.getBoundingClientRect().width);
+    const w = el => el ? Math.round(el.getBoundingClientRect().width) : 0;
     const ring = (el, sel) => { const e = el.querySelector(sel); return e ? Math.round(e.getBoundingClientRect().width) : 0; };
     const bg = getComputedStyle(document.querySelector('.controls')).backgroundColor.match(/\d+/g) || [];
     return {
-      n: s.length, left: w(s[0]), right: w(s[1]), inner: innerWidth,
+      n: s.length, stick: w(s[0]), right: w(s[1]),
+      knob: w(s[1].querySelector('.knob')), knobLeft: w(s[0].querySelector('.knob')),
       dead: ring(s[1], '.deadzone'), thr: ring(s[1], '.throw'),
       leftRings: s[0] ? s[0].querySelectorAll('.deadzone, .throw').length : -1,
       // how dark the panel actually is, 0 black to 255 white
@@ -31,11 +32,13 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     };
   });
   check('there are two thumb circles', deck.n === 2, deck);
-  check('and together they take nearly the whole width',
-    (deck.left + deck.right) / deck.inner > 0.95, deck);
-  check('the two are the same size', deck.left === deck.right, deck);
+  // the knob is the bit under your thumb, and it has to show an edge around one
+  check('the knob you drag is thumb-sized, not a dot',
+    deck.knob >= 60 && deck.knob / deck.stick > 0.3, deck);
+  check('both sticks carry one', deck.knob === deck.knobLeft, deck);
   check('the right one shows the dead zone it has to leave', deck.dead > 0, deck.dead);
-  check('and a second ring for the full travel of the knob', deck.thr > deck.dead, deck);
+  check('and the ring is not buried under the knob', deck.dead < deck.knob, deck);
+  check('a second ring marks the full travel of the knob', deck.thr > deck.dead, deck);
   check('the left one has neither ring', deck.leftRings === 0, deck.leftRings);
   check('the deck is black rather than blue', deck.lum < 40, deck.lum);
 
