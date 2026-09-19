@@ -11,9 +11,11 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   await page.waitForTimeout(1600);
 
-  // ---- enemies patrol around where they spawned ----
+  // ---- enemies move: patrollers around where they spawned, chasers at you ----
+  // Enemies are creatures now, and they do not all move the same way. The ones with
+  // a gun patrol their patch; the ones that come at you are allowed to leave it.
   const spread = await page.evaluate(() => new Promise(res => {
-    const es = window.__lvl.enemies.slice(0, 12).map(e => ({ e, hx: e.hx, hy: e.hy, far: 0, moved: 0, px: e.x, py: e.y }));
+    const es = window.__lvl.enemies.slice(0, 24).map(e => ({ e, act: e.k.act, hx: e.hx, hy: e.hy, far: 0, moved: 0, px: e.x, py: e.y }));
     let n = 0;
     const tick = () => {
       for (const s of es) {
@@ -22,13 +24,40 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
         s.px = s.e.x; s.py = s.e.y;
       }
       if (++n < 300) requestAnimationFrame(tick);
-      else res({ maxFar: Math.max(...es.map(s => s.far)), minMoved: Math.min(...es.map(s => s.moved)),
-                 medMoved: es.map(s => s.moved).sort((a, x) => a - x)[es.length >> 1] });
+      else {
+        const med = a => a.length ? a.slice().sort((x, y) => x - y)[a.length >> 1] : 0;
+        const pat = es.filter(s => s.act === 'shoot');
+        res({ n: es.length, pat: pat.length,
+              medMoved: med(pat.map(s => s.moved)), maxFar: Math.max(0, ...pat.map(s => s.far)) });
+      }
     };
     requestAnimationFrame(tick);
   }));
+  check('there are patrolling enemies to measure', spread.pat > 0, spread);
   check('enemies wander off their spawn point', spread.medMoved > 20, spread);
   check('but they never leave their patch', spread.maxFar < 90, spread.maxFar);
+
+  // a chaser closes the distance when you are inside its aggro range. Dropped next to
+  // the player, then taken back out again so it cannot shoot up the rest of the run.
+  const chase = await page.evaluate(() => new Promise(res => {
+    const L = window.__lvl, p = L.p;
+    const i = L.enemies.findIndex(e => e.k.act === 'chase');
+    if (i < 0) return res({ none: true });
+    const e = L.enemies[i];
+    e.x = p.x + 110; e.y = p.y - 40; e.ty = e.y; e.hx = e.x; e.hy = e.y; e.tgt = null;
+    const d0 = Math.hypot(e.x - p.x, e.ty - p.y);
+    let n = 0;
+    const tick = () => {
+      if (++n < 80) return requestAnimationFrame(tick);
+      const d1 = Math.hypot(e.x - p.x, e.ty - p.y);
+      L.enemies.splice(L.enemies.indexOf(e), 1);        // put it back out of the way
+      p.hp = 100; p.dead = false; p.hitT = 0;
+      res({ id: e.k.id, d0: Math.round(d0), d1: Math.round(d1) });
+    };
+    requestAnimationFrame(tick);
+  }));
+  check('a chaser closes on you when you are in reach',
+    chase.none || chase.d1 < chase.d0 - 15, chase);
 
   // ---- a gun needs an interact tap now, and one you declined stays quiet ----
   // put a gun under the player's feet. `fresh` also clears any cooldown on it.

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v31</title>
+<title>CaveRunner v32</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -292,7 +292,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v31';
+const VERSION = 'v32';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -309,23 +309,166 @@ const FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
 const PLAYER_HP = 100;
 const START_GOLD = 40;
 const COIN_PULL = 36;         // gold within this many units flies to you
-const ENEMY_HP = 3, ENEMY_RANGE = 220, ENEMY_BULLET = 180, ENEMY_DMG = 10, ENEMY_COUNT = 80;
+// how many enemies a floor gets before the floor lift. What they are and how hard
+// they hit is the roster's business now — see CREATURES.
+const ENEMY_COUNT = 80;
 const MOD_DROPS = 7;          // mods lying in the cave: half what it used to be
 const GUN_DROPS = 5;          // guns lying in the cave, unchanged
 const PICKUP_GAP = 260;       // and no two of them closer than this
 const PATROL_R = 70;          // how far an enemy will drift from where it spawned
-const PATROL_SPEED = 34;
+                              // (each creature carries its own patrol speed — see CREATURES)
 const PICKUP_COOL = 2;        // a gun you walked away from stays quiet this long
 const NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
 
-const THEME = {
-  name: 'Mossy caves',
-  bg: [16, 18, 24], bg2: [34, 37, 46],
-  rock: [[62, 56, 54], [96, 84, 74]],
-  moss: [[62, 104, 40], [108, 150, 64]],
-  brick: [[112, 84, 62], [146, 110, 78]], mortar: [66, 50, 40],
-  bed: [[28, 28, 34], [44, 44, 52]],
+// ---- level themes ----
+// One palette per floor, picked by the floor number rather than rolled with the seed.
+// So floor 3 is the same frozen cave on every run and every restart, which is the
+// whole point: you learn "3 is the ice one" the way you learn a map, and the colour
+// tells you where you are before you have read the number. Wraps at the end rather
+// than running out.
+const THEMES = [
+  { name: 'Mossy caves',    bg: [16, 18, 24],  bg2: [34, 37, 46],
+    rock: [[62, 56, 54], [96, 84, 74]],    moss: [[62, 104, 40], [108, 150, 64]],
+    brick: [[112, 84, 62], [146, 110, 78]], mortar: [66, 50, 40], bed: [[28, 28, 34], [44, 44, 52]] },
+  { name: 'Coal seams',     bg: [12, 13, 17],  bg2: [28, 30, 36],
+    rock: [[44, 44, 50], [74, 74, 82]],    moss: [[46, 74, 52], [84, 116, 74]],
+    brick: [[64, 62, 66], [96, 92, 98]],   mortar: [38, 36, 40], bed: [[24, 24, 28], [40, 40, 46]] },
+  { name: 'Frozen deep',    bg: [14, 20, 30],  bg2: [32, 44, 60],
+    rock: [[62, 72, 88], [104, 118, 138]], moss: [[120, 150, 170], [176, 204, 222]],
+    brick: [[86, 100, 120], [126, 142, 164]], mortar: [52, 62, 78], bed: [[26, 32, 44], [44, 52, 66]] },
+  { name: 'Ember halls',    bg: [22, 12, 12],  bg2: [48, 24, 22],
+    rock: [[70, 48, 44], [110, 74, 62]],   moss: [[150, 72, 36], [204, 120, 52]],
+    brick: [[100, 58, 44], [138, 84, 62]], mortar: [54, 32, 26], bed: [[34, 20, 20], [56, 34, 32]] },
+  { name: 'Fungal grotto',  bg: [18, 14, 26],  bg2: [42, 34, 56],
+    rock: [[66, 58, 80], [104, 92, 124]],  moss: [[88, 150, 120], [140, 200, 168]],
+    brick: [[92, 72, 110], [130, 104, 150]], mortar: [50, 40, 62], bed: [[30, 26, 40], [50, 44, 64]] },
+  { name: 'Salt flats',     bg: [24, 24, 22],  bg2: [50, 50, 46],
+    rock: [[112, 108, 96], [160, 154, 138]], moss: [[170, 164, 132], [214, 208, 178]],
+    brick: [[132, 124, 104], [172, 162, 138]], mortar: [76, 72, 62], bed: [[40, 40, 36], [62, 62, 56]] },
+  { name: 'Amethyst vein',  bg: [20, 14, 28],  bg2: [46, 32, 62],
+    rock: [[74, 54, 92], [114, 86, 140]],  moss: [[168, 96, 190], [214, 150, 232]],
+    brick: [[94, 68, 116], [134, 100, 158]], mortar: [54, 38, 68], bed: [[32, 24, 44], [54, 40, 72]] },
+  { name: 'Rustworks',      bg: [18, 18, 20],  bg2: [44, 38, 34],
+    rock: [[84, 62, 48], [126, 94, 70]],   moss: [[96, 124, 110], [148, 180, 162]],
+    brick: [[118, 80, 52], [158, 112, 76]], mortar: [62, 44, 30], bed: [[30, 28, 28], [50, 46, 44]] },
+  { name: 'Bone garden',    bg: [20, 20, 18],  bg2: [46, 46, 42],
+    rock: [[108, 104, 94], [152, 146, 132]], moss: [[110, 120, 72], [158, 170, 108]],
+    brick: [[124, 116, 98], [164, 154, 132]], mortar: [70, 66, 56], bed: [[38, 38, 34], [60, 58, 52]] },
+  { name: 'Drowned halls',  bg: [10, 18, 22],  bg2: [24, 42, 50],
+    rock: [[48, 68, 72], [82, 108, 112]],  moss: [[56, 124, 124], [104, 176, 170]],
+    brick: [[62, 84, 88], [98, 124, 128]], mortar: [36, 52, 56], bed: [[22, 32, 36], [40, 54, 58]] },
+  { name: 'Ash wastes',     bg: [18, 17, 17],  bg2: [42, 40, 40],
+    rock: [[72, 68, 66], [110, 104, 100]], moss: [[120, 96, 80], [168, 140, 116]],
+    brick: [[92, 84, 80], [130, 120, 114]], mortar: [54, 50, 48], bed: [[30, 29, 29], [50, 48, 48]] },
+  { name: 'Void hollow',    bg: [8, 8, 14],    bg2: [22, 20, 38],
+    rock: [[42, 38, 58], [70, 64, 94]],    moss: [[72, 180, 190], [130, 230, 236]],
+    brick: [[56, 48, 78], [88, 76, 116]],  mortar: [32, 28, 46], bed: [[18, 16, 28], [34, 30, 48]] },
+];
+const themeFor = floor => THEMES[(Math.max(1, floor) - 1) % THEMES.length];
+
+// ---- creatures ----
+// Who lives on a floor. Floors 1-10 each own a fixed roster of 2-6 of these, and the
+// roster is the same on every run, so the thing that killed you on floor 6 is the
+// thing you meet on floor 6 next time. Stats and gold scale with the floor a creature
+// belongs to, so a floor 9 Hiisi is worth more and takes more killing than a floor 2
+// one. Past floor 10 the roster is drawn at random instead, so the run keeps moving.
+//
+// act:  shoot   hovers, patrols, fires when it has a line on you
+//       turret  holds station, longer reach, winds up before it fires
+//       chase   comes at you and hurts on contact
+//       bomb    comes at you and bursts on contact
+// body: which sprite draws it
+const CREATURES = {
+  heikko: { name: 'Heikkohiisi', body: 'drone', act: 'shoot',
+    col: { a: '#6b8f4e', b: '#2e3d22', c: '#9dc46f', eye: '#d8ff9a' },
+    hp: 2, dmg: 6, bspd: 170, range: 200, cd: 1.9, gold: 4, r: 8, spd: 34 },
+  hiisi:  { name: 'Hiisi', body: 'drone', act: 'shoot',
+    col: { a: '#4f7a52', b: '#22331f', c: '#7fb383', eye: '#ffd98a' },
+    hp: 5, dmg: 10, bspd: 190, range: 230, cd: 1.5, gold: 8, r: 9, spd: 34 },
+  tappura: { name: 'Tappurahiisi', body: 'drone', act: 'shoot', shots: 4,
+    col: { a: '#7a5a3a', b: '#33241a', c: '#b08a5c', eye: '#ffb347' },
+    hp: 6, dmg: 7, bspd: 200, range: 180, cd: 2.3, gold: 10, r: 10, spd: 30 },
+  chain:  { name: 'Chaingunner', body: 'drone', act: 'shoot',
+    col: { a: '#8a3f3f', b: '#3a1c1c', c: '#c06a6a', eye: '#ff8a8a' },
+    hp: 7, dmg: 5, bspd: 230, range: 250, cd: 0.6, gold: 12, r: 10, spd: 32 },
+  snipu:  { name: 'Snipuhiisi', body: 'drone', act: 'turret', tele: 0.55,
+    col: { a: '#5a5f8a', b: '#252a44', c: '#8f95c4', eye: '#9ad4ff' },
+    hp: 4, dmg: 22, bspd: 420, range: 460, cd: 3.0, gold: 14, r: 9, spd: 0 },
+  hamahakki: { name: 'Hämähäkki', body: 'crawler', act: 'chase', aggro: 300,
+    col: { a: '#6a4a86', b: '#2b1d38', c: '#a077c4', eye: '#ffd98a' },
+    hp: 4, dmg: 12, bspd: 0, range: 0, cd: 0, gold: 6, r: 9, spd: 62 },
+  lohkare: { name: 'Lohkare', body: 'crawler', act: 'chase', aggro: 260,
+    col: { a: '#6a625a', b: '#2c2823', c: '#9d948a', eye: '#ffb347' },
+    hp: 16, dmg: 18, bspd: 0, range: 0, cd: 0, gold: 20, r: 13, spd: 26 },
+  mato:   { name: 'Mato', body: 'worm', act: 'chase', aggro: 320,
+    col: { a: '#a2607a', b: '#40222e', c: '#d68fa8', eye: '#ffd98a' },
+    hp: 6, dmg: 14, bspd: 0, range: 0, cd: 0, gold: 9, r: 8, spd: 84 },
+  hurtta: { name: 'Hurtta', body: 'crawler', act: 'chase', aggro: 360,
+    col: { a: '#7a4a3a', b: '#2f1a14', c: '#b3765c', eye: '#ff9a5a' },
+    hp: 5, dmg: 15, bspd: 0, range: 0, cd: 0, gold: 10, r: 9, spd: 105 },
+  kobold: { name: 'Kobold', body: 'crawler', act: 'chase', aggro: 300,
+    col: { a: '#8a7a4a', b: '#332d18', c: '#c0ad74', eye: '#ffe066' },
+    hp: 3, dmg: 8, bspd: 0, range: 0, cd: 0, gold: 5, r: 7, spd: 92 },
+  konna:  { name: 'Konna', body: 'blob', act: 'chase', aggro: 260,
+    col: { a: '#4a7a6a', b: '#1c332c', c: '#79b3a0', eye: '#d8ff9a' },
+    hp: 6, dmg: 11, bspd: 0, range: 0, cd: 0, gold: 7, r: 10, spd: 48 },
+  lima:   { name: 'Limanuljaska', body: 'blob', act: 'bomb', aggro: 300,
+    col: { a: '#6fa03a', b: '#2a3d14', c: '#a6d46a', eye: '#e6ff9a' },
+    hp: 5, dmg: 20, bspd: 0, range: 0, cd: 0, gold: 11, r: 10, spd: 55 },
+  tuli:   { name: 'Stendari', body: 'blob', act: 'bomb', aggro: 330,
+    col: { a: '#c05a2a', b: '#3f1c0e', c: '#ff9a5a', eye: '#ffe066' },
+    hp: 6, dmg: 26, bspd: 0, range: 0, cd: 0, gold: 13, r: 10, spd: 60 },
+  karpas: { name: 'Kärpässieni', body: 'blob', act: 'turret',
+    col: { a: '#b04a4a', b: '#3d1616', c: '#e88a8a', eye: '#ffffff' },
+    hp: 5, dmg: 12, bspd: 150, range: 300, cd: 1.9, gold: 9, r: 10, spd: 0 },
+  jaatio: { name: 'Jäätiö', body: 'skull', act: 'turret', tele: 0.3,
+    col: { a: '#7ab8d8', b: '#22414f', c: '#b6e2f4', eye: '#d8f4ff' },
+    hp: 8, dmg: 12, bspd: 130, range: 240, cd: 1.7, gold: 15, r: 10, spd: 0 },
+  skull:  { name: 'Elävät luut', body: 'skull', act: 'turret', tele: 0.35,
+    col: { a: '#d8d2be', b: '#4a463c', c: '#f4f0e0', eye: '#5ee0a0' },
+    hp: 7, dmg: 14, bspd: 200, range: 320, cd: 2.1, gold: 16, r: 9, spd: 0 },
 };
+const CREATURE_IDS = Object.keys(CREATURES);
+
+// Floors 1-10, fixed for good — that is the familiarity. Order is roughly the order
+// you meet them: weak gunners and one crawler first, snipers and bombers in the
+// middle, the armoured and the wind-up shooters at the top.
+const ROSTERS = [
+  ['heikko', 'hamahakki'],
+  ['heikko', 'hamahakki', 'hiisi'],
+  ['hiisi', 'konna', 'hamahakki'],
+  ['hiisi', 'mato', 'lima', 'kobold'],
+  ['hiisi', 'karpas', 'hurtta', 'lima'],
+  ['snipu', 'hiisi', 'hurtta', 'tuli', 'karpas'],
+  ['snipu', 'lohkare', 'mato', 'tuli', 'kobold'],
+  ['jaatio', 'chain', 'lohkare', 'hamahakki', 'hurtta', 'karpas'],
+  ['jaatio', 'chain', 'snipu', 'tuli', 'lohkare', 'skull'],
+  ['chain', 'snipu', 'lohkare', 'skull', 'jaatio', 'tappura'],
+];
+// the roster for a floor. Past the fixed ten it rolls a fresh 2-6 off the whole list,
+// using the level's own seeded rnd so a floor stays consistent while you are on it.
+function rosterFor(floor, rnd) {
+  if (floor >= 1 && floor <= ROSTERS.length) return ROSTERS[floor - 1].slice();
+  const r = rnd || Math.random, pool = CREATURE_IDS.slice(), out = [];
+  const n = 2 + Math.floor(r() * 5);
+  while (out.length < n && pool.length) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
+  return out;
+}
+
+// One floor's worth of one creature: the type's own numbers, lifted by the floor it
+// belongs to. Health climbs hardest, gold next, damage least — a floor 10 enemy is
+// worth a lot more than it hurts, or the shop heal would never keep up.
+function enemyFor(id, floor) {
+  const c = CREATURES[id];
+  const hp = 1 + (floor - 1) * 0.35, dmg = 1 + (floor - 1) * 0.16, gold = 1 + (floor - 1) * 0.30;
+  return { id, name: c.name, body: c.body, act: c.act, col: c.col,
+    hp: Math.max(1, Math.round(c.hp * hp)),
+    dmg: Math.max(1, Math.round(c.dmg * dmg)),
+    bspd: Math.round(c.bspd * (1 + (floor - 1) * 0.05)),
+    gold: Math.max(1, Math.round(c.gold * gold)),
+    range: c.range, cd: c.cd, tele: c.tele || 0, shots: c.shots || 1,
+    r: c.r, spd: c.spd, aggro: c.aggro || 300 };
+}
 
 const COL = {
   text: '#e9ecf2', muted: 'rgba(233,236,242,0.55)', barBg: 'rgba(255,255,255,0.12)',
@@ -1476,42 +1619,159 @@ function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash) {
   ctx.restore();
 }
 
-// The enemy: a hovering drone with one big eye that follows you around.
-function drawDrone(ctx, x, y, r, lx, ly, time, phase, flash) {
-  const shell = flash ? '#f4f0ff' : '#463462';
+// The enemies, one sprite per body. Every one of them takes the same colour set
+// ({ a main, b dark, c light, eye }) so a creature's identity is carried by shape and
+// colour together, and a flash on hit is the same white for all of them.
+//
+// The drone: a hovering gunner with one big eye that follows you around.
+function drawDrone(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+  const shell = flash ? '#f4f0ff' : col.b;
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(lx * 0.22);
   // thruster wash underneath
   const puff = 0.55 + 0.25 * Math.sin(time * 9 + phase);
   ctx.globalAlpha = 0.3 * puff;
-  ctx.fillStyle = COL.enemy;
+  ctx.fillStyle = col.a;
   ctx.beginPath(); ctx.ellipse(0, r * 0.9, r * 0.45, r * 0.8 * puff, 0, 0, Math.PI * 2); ctx.fill();
   ctx.globalAlpha = 1;
   // stubby fins, drawn first so they read as sticking out of the hull
-  ctx.fillStyle = flash ? '#e6e0f5' : '#241c36';
+  ctx.fillStyle = flash ? '#e6e0f5' : col.b;
   rr(ctx, -r * 1.52, -r * 0.4, r * 0.62, r * 0.9, r * 0.22); ctx.fill();
   rr(ctx, r * 0.9, -r * 0.4, r * 0.62, r * 0.9, r * 0.22); ctx.fill();
   rr(ctx, -r * 0.34, r * 0.5, r * 0.68, r * 0.5, r * 0.18); ctx.fill();    // vent
   // hull
   ctx.fillStyle = shell;
   rr(ctx, -r * 1.05, -r * 0.78, r * 2.1, r * 1.5, r * 0.62); ctx.fill();
-  ctx.strokeStyle = flash ? '#ffffff' : '#6d54a0';
+  ctx.strokeStyle = flash ? '#ffffff' : col.a;
   ctx.lineWidth = r * 0.14;
   rr(ctx, -r * 1.05, -r * 0.78, r * 2.1, r * 1.5, r * 0.62); ctx.stroke();
-  ctx.fillStyle = flash ? '#ffffff' : '#5b4482';
+  ctx.fillStyle = flash ? '#ffffff' : col.c;
   rr(ctx, -r * 0.72, -r * 0.7, r * 1.44, r * 0.46, r * 0.22); ctx.fill();  // canopy
   ctx.restore();
   // the eye sits in the hull and swivels to keep you in view
   const ex = x + lx * r * 0.34, ey = y + ly * r * 0.26;
   ctx.globalAlpha = 0.3;
-  ctx.fillStyle = COL.enemy;
+  ctx.fillStyle = col.a;
   ctx.beginPath(); ctx.arc(ex, ey, r * 0.62, 0, Math.PI * 2); ctx.fill();
   ctx.globalAlpha = 1;
-  ctx.fillStyle = flash ? '#ffffff' : '#ffd98a';
+  ctx.fillStyle = flash ? '#ffffff' : col.eye;
   ctx.beginPath(); ctx.arc(ex, ey, r * 0.36, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#1b1526';
   ctx.beginPath(); ctx.arc(ex + lx * r * 0.15, ey + ly * r * 0.15, r * 0.16, 0, Math.PI * 2); ctx.fill();
+}
+
+// The crawler: a low body on six legs that scuttle as it walks. Spiders, hounds,
+// kobolds and the armoured Lohkare all wear this one.
+function drawCrawler(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+  const s = Math.sin(time * 7 + phase);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.strokeStyle = flash ? '#ffffff' : col.b;
+  ctx.lineWidth = r * 0.2; ctx.lineCap = 'round';
+  for (let i = 0; i < 3; i++) {
+    const o = (i - 1) * r * 0.5, sw = s * r * 0.26 * (i % 2 ? 1 : -1);
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(o * 0.6, 0);
+      ctx.lineTo(o * 0.6 + side * r * 0.8, side * r * 0.5 + sw);
+      ctx.lineTo(o * 0.6 + side * r * 1.3, side * r * 0.95 - sw * 0.5);
+      ctx.stroke();
+    }
+  }
+  ctx.fillStyle = flash ? '#f4f0ff' : col.b;
+  ctx.beginPath(); ctx.ellipse(0, 0, r * 1.05, r * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = flash ? '#ffffff' : col.a;
+  ctx.beginPath(); ctx.ellipse(0, -r * 0.12, r * 0.82, r * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  for (const side of [-1, 1]) {
+    ctx.fillStyle = flash ? '#ffffff' : col.eye;
+    ctx.beginPath(); ctx.arc(x + lx * r * 0.35 + side * r * 0.3, y + ly * r * 0.25, r * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// The blob: a wobbling sac with two eyes. Slimes, toads and the fungal turret.
+function drawBlob(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+  const wob = 1 + 0.09 * Math.sin(time * 3.4 + phase);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = 0.32;
+  ctx.fillStyle = col.a;
+  ctx.beginPath(); ctx.ellipse(0, r * 0.85, r * 0.72, r * 0.26, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = flash ? '#f4f0ff' : col.b;
+  ctx.beginPath(); ctx.ellipse(0, r * 0.18, r * 1.0, r * 0.92 * wob, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = flash ? '#ffffff' : col.a;
+  ctx.beginPath(); ctx.ellipse(0, r * 0.3, r * 0.76, r * 0.66 * wob, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  for (const side of [-1, 1]) {
+    ctx.fillStyle = '#1b1526';
+    ctx.beginPath(); ctx.arc(x + lx * r * 0.3 + side * r * 0.26, y + r * 0.12 + ly * r * 0.18,
+      r * 0.15, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+// The skull: bone, a jaw, and a halo of whatever it is made of. The Jäätiö and the
+// living bones are both this, one frozen blue and one bare.
+function drawSkull(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(lx * 0.18);
+  ctx.globalAlpha = 0.26 + 0.1 * Math.sin(time * 4 + phase);
+  ctx.fillStyle = col.a;
+  ctx.beginPath(); ctx.arc(0, 0, r * 1.55, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = flash ? '#ffffff' : col.a;
+  ctx.beginPath(); ctx.ellipse(0, -r * 0.15, r * 0.85, r * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+  rr(ctx, -r * 0.55, r * 0.4, r * 1.1, r * 0.55, r * 0.2); ctx.fill();      // jaw
+  ctx.fillStyle = '#1b1526';
+  for (const side of [-1, 1]) {
+    ctx.beginPath(); ctx.ellipse(side * r * 0.34, -r * 0.18, r * 0.24, r * 0.28, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = col.eye;
+  for (const side of [-1, 1]) {
+    ctx.beginPath(); ctx.arc(side * r * 0.34 + lx * r * 0.1, -r * 0.18 + ly * r * 0.1,
+      r * 0.11, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// The worm: a chain of segments that trails behind wherever the head is pointing.
+function drawWorm(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(Math.atan2(ly, lx));
+  for (let i = 4; i >= 0; i--) {
+    const t = i / 4, off = -r * 1.5 * i * 0.62, w = r * (1 - t * 0.4);
+    ctx.fillStyle = flash ? '#ffffff' : (i % 2 ? col.b : col.a);
+    ctx.beginPath();
+    ctx.ellipse(off, Math.sin(time * 6 + phase - i * 0.7) * r * 0.34, w * 0.62, w, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#1b1526';
+  ctx.beginPath(); ctx.arc(r * 0.55, 0, r * 0.26, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+// Whatever this enemy is, plus the ring that warns you a charged shot is coming.
+function drawEnemy(ctx, e, time) {
+  const k = e.k, flash = e.flash > 0;
+  const x = e.x, y = e.ty, r = e.r, lx = e.lx, ly = e.ly;
+  if (k.body === 'crawler') drawCrawler(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+  else if (k.body === 'blob') drawBlob(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+  else if (k.body === 'skull') drawSkull(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+  else if (k.body === 'worm') drawWorm(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+  else drawDrone(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+  if (e.charge > 0 && k.tele) {
+    ctx.globalAlpha = 0.65;
+    ctx.strokeStyle = k.col.eye;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(x, y, e.r + 4 + e.charge * 10, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
 }
 
 // the colour a gun wears: whatever family its first shot belongs to
@@ -1743,7 +2003,9 @@ function makeLevel(seed, floor) {
   for (let cy = 0; cy < CH; cy++)
     for (let cx = 0; cx < CW; cx++)
       if (cx < 3 || cx >= CW - 3 || cy < 3 || cy >= CH - 3) mat[cy * CW + cx] = BED;
-  // colour the terrain (the rock mottle rides the same interpolated lattice)
+  // colour the terrain (the rock mottle rides the same interpolated lattice).
+  // The palette is the floor's own, so the same floor always looks the same.
+  const T = themeFor(floor);
   const tintL = lattice(4, (x, y) => fbm(x / 6 + 100, y / 6 + 100));
   const img = new ImageData(CW, CH);
   const d = img.data;
@@ -1755,17 +2017,17 @@ function makeLevel(seed, floor) {
       let c;
       if (m === ROCK) {
         const exposed = cy > 1 && (mat[i - CW] === 0 || mat[i - 2 * CW] === 0);
-        c = exposed ? mix(THEME.moss[0], THEME.moss[1], r1)
-                    : mix(THEME.rock[0], THEME.rock[1], at(tintL, cx, cy));
+        c = exposed ? mix(T.moss[0], T.moss[1], r1)
+                    : mix(T.rock[0], T.rock[1], at(tintL, cx, cy));
       } else if (m === BRICK) {
         const k = cx + (cy % 2) * 3;
-        if (k % 6 === 0) c = THEME.mortar;
+        if (k % 6 === 0) c = T.mortar;
         else {
-          c = mix(THEME.brick[0], THEME.brick[1], hash(Math.floor(k / 6), cy));
+          c = mix(T.brick[0], T.brick[1], hash(Math.floor(k / 6), cy));
           if (cy > 0 && mat[i - CW] === 0) c = c.map(v => v * 1.18);
         }
       } else {
-        c = mix(THEME.bed[0], THEME.bed[1], r1);
+        c = mix(T.bed[0], T.bed[1], r1);
       }
       const j = (r1 - 0.5) * 10;
       d[i * 4] = c[0] + j; d[i * 4 + 1] = c[1] + j; d[i * 4 + 2] = c[2] + j; d[i * 4 + 3] = 255;
@@ -1777,7 +2039,7 @@ function makeLevel(seed, floor) {
   for (let y = 0; y < BH; y++)
     for (let x = 0; x < BW; x++) {
       const t = Math.pow(fbm(x / 10 + 300, y / 10 + 300), 1.6);
-      const c = mix(THEME.bg, THEME.bg2, Math.min(1, t * 1.3));
+      const c = mix(T.bg, T.bg2, Math.min(1, t * 1.3));
       const j = (hash(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
       bgImg.data[k] = c[0] + j; bgImg.data[k + 1] = c[1] + j; bgImg.data[k + 2] = c[2] + j; bgImg.data[k + 3] = 255;
     }
@@ -1810,7 +2072,8 @@ function makeLevel(seed, floor) {
   }
   const portal = { x: WW / 2 - 10, y: 34 * CELL - 30, w: 20, h: 30 };
 
-  // enemies in open spaces
+  // enemies in open spaces. Each one is drawn off this floor's roster, so the mix you
+  // meet is the floor's own and stays the same run to run.
   const clear = (cx, cy, r) => {
     for (let dy = -r; dy <= r; dy++)
       for (let dx = -r; dx <= r; dx++) {
@@ -1821,6 +2084,7 @@ function makeLevel(seed, floor) {
     return true;
   };
   const enemies = [];
+  const roster = rosterFor(floor, rnd);
   const wanted = Math.min(136, ENEMY_COUNT + (floor - 1) * 12);
   for (let a = 0; a < 20000 && enemies.length < wanted; a++) {
     const cx = 8 + Math.floor(rnd() * (CW - 16)), cy = 50 + Math.floor(rnd() * (SHOP_TOP - 70));
@@ -1828,8 +2092,10 @@ function makeLevel(seed, floor) {
     const x = cx * CELL, y = cy * CELL;
     if (Math.hypot(x - start.x, y - start.y) < 200) continue;
     if (enemies.some(e => Math.hypot(e.x - x, e.y - y) < 90)) continue;
-    enemies.push({ x, y, ty: y, r: 9, phase: rnd() * 6.28, hp: ENEMY_HP, cd: 1 + rnd() * 2,
-      flash: 0, lx: 0, ly: 1, hx: x, hy: y, tgt: null, rest: rnd() * 3 });
+    const k = enemyFor(roster[Math.floor(rnd() * roster.length)], floor);
+    enemies.push({ x, y, ty: y, r: k.r, phase: rnd() * 6.28, hp: k.hp, hpMax: k.hp,
+      cd: 1 + rnd() * 2, flash: 0, lx: 0, ly: 1, hx: x, hy: y, tgt: null, rest: rnd() * 3,
+      k, touch: 0, charge: 0 });
   }
 
   // guns and mods to find: the higher up the cave, the better the roll.
@@ -1853,7 +2119,8 @@ function makeLevel(seed, floor) {
     }
   }
 
-  return { mat, img, bgImg, start, portal, enemies, pickups, stock, shopExit, arrival };
+  return { mat, img, bgImg, start, portal, enemies, pickups, stock, shopExit, arrival,
+    roster, theme: T.name };
 }
 
 // Fly a shot forward with the same rules the live bullets use, so the aim line
@@ -1954,6 +2221,7 @@ function Game({ input }) {
     let seen = fogStart();
 
     let mat, img, start, portal, enemies, pickups, stock, arrival, total, floor = 1;
+    let roster = [], themeName = '';                 // this floor's creatures, and its palette
 
     const p = { x: 0, y: 0, vx: 0, vy: 0, onGround: false, face: 1, jet: 0,
       fuel: 1, empty: false, hp: PLAYER_HP, hitT: 0, dead: false, kick: 0,
@@ -1961,7 +2229,7 @@ function Game({ input }) {
     const bullets = [], enemyShots = [], smoke = [], sparks = [], flashes = [], toasts = [], coins = [];
     const fields = [], beams = [];                   // static projectiles, and instant beam streaks
     const aimPath = [];                              // scratch buffer for the aim line
-    let smokeAcc = 0, time = 0, camX = 0, camY = 0, camReady = false;
+    let smokeAcc = 0, time = 0, levelT = 0, camX = 0, camY = 0, camReady = false;
     const toast = text => { toasts.push({ text, t: 2.2 }); if (toasts.length > 3) toasts.shift(); };
     let best = 0, raf, last = performance.now();
 
@@ -1971,6 +2239,7 @@ function Game({ input }) {
       mat = level.mat; img = level.img;
       start = level.start; portal = level.portal; arrival = level.arrival;
       enemies = level.enemies; pickups = level.pickups; stock = level.stock;
+      roster = level.roster; themeName = level.theme;
       total = enemies.length;
       tctx.putImageData(img, 0, 0);
       bgctx.putImageData(level.bgImg, 0, 0);
@@ -1979,6 +2248,7 @@ function Game({ input }) {
       bullets.length = enemyShots.length = smoke.length = 0;
       sparks.length = flashes.length = coins.length = 0;
       camReady = false; best = 0;
+      levelT = 0;                             // the floor's name card gets its three seconds
       seen = fogStart(); paintFog();          // every floor is dark again
     }
 
@@ -2064,13 +2334,28 @@ function Game({ input }) {
       p.hitT = 0.3;
       if (p.hp === 0) { p.dead = true; burst(p.x + PW / 2, p.y + PH / 2, 24, COL.player); }
     }
+    // one pull of an enemy's trigger: aimed at the player, and a shotgun type throws
+    // its pellets in a cone. Refuses the shot if the player has broken line of sight
+    // since it decided to take it.
+    function fireEnemyShot(e, tx, ty) {
+      const k = e.k;
+      if (!lineOfSight(e.x, e.ty, tx, ty)) return;
+      const base = Math.atan2(ty - e.ty, tx - e.x);
+      for (let s = 0; s < k.shots; s++) {
+        const cone = k.shots > 1 ? (s - (k.shots - 1) / 2) * 0.15 : 0;
+        const a = base + cone + (Math.random() - 0.5) * 0.22;
+        enemyShots.push({ x: e.x + Math.cos(a) * (e.r + 4), y: e.ty + Math.sin(a) * (e.r + 4),
+          vx: Math.cos(a) * k.bspd, vy: Math.sin(a) * k.bspd, life: 2.5,
+          col: k.col.a, dmg: k.dmg, size: k.body === 'blob' ? 4 : 3 });
+      }
+    }
     function damageEnemy(j, dmg) {
       const e = enemies[j];
       e.hp -= dmg; e.flash = 0.08;
       if (e.hp > 0) return;
-      burst(e.x, e.ty, 16, COL.enemy);
+      burst(e.x, e.ty, 16, e.k.col.a);
       enemies.splice(j, 1);
-      coins.push({ x: e.x, y: e.ty, amount: 5 + Math.floor(Math.random() * 6) + floor,
+      coins.push({ x: e.x, y: e.ty, amount: e.k.gold + Math.floor(Math.random() * 3),
         t: Math.random() * 6.28, vy: -60 - Math.random() * 40 });
     }
 
@@ -2345,6 +2630,7 @@ function Game({ input }) {
 
     function step(dt) {
       time += dt;
+      levelT += dt;
       const LO = input.current.loadout;
       // movement: thumbstick first, otherwise keyboard (full strength)
       let L = input.current.left;
@@ -2737,34 +3023,72 @@ function Game({ input }) {
       for (let i = toasts.length - 1; i >= 0; i--) if ((toasts[i].t -= dt) <= 0) toasts.splice(i, 1);
 
       // ---- enemies ----
-      for (const e of enemies) {
-        // patrol: pick a spot near home, drift to it, pause, pick another. Rock in
-        // the way just means the spot was a bad idea, so it chooses a different one.
-        e.rest -= dt;
-        if (!e.tgt || e.rest <= 0 || Math.hypot(e.tgt.x - e.x, e.tgt.y - e.y) < 6) {
-          const a = Math.random() * Math.PI * 2, r = 10 + Math.random() * PATROL_R;
-          e.tgt = { x: e.hx + Math.cos(a) * r, y: e.hy + Math.sin(a) * r };
-          e.rest = 2 + Math.random() * 3.5;
-        }
-        const tdx = e.tgt.x - e.x, tdy = e.tgt.y - e.y, td = Math.hypot(tdx, tdy) || 1;
-        const step = PATROL_SPEED * (e.chill || 1) * dt;
-        e.chill = 1;                                  // fields re-apply it every frame
-        const wx = e.x + tdx / td * step, wy = e.y + tdy / td * step;
-        if (solidAt(wx - e.r, wy) || solidAt(wx + e.r, wy) ||
-            solidAt(wx, wy - e.r) || solidAt(wx, wy + e.r)) { e.tgt = null; e.rest = 0; }
-        else { e.x = wx; e.y = wy; }
-        e.ty = e.y + Math.sin(time * 2 + e.phase) * 4;
+      // What an enemy does is what it is. Shooters hold a hover and fire on sight,
+      // turrets never move and wind up a long shot, chasers come at you and hurt on
+      // contact, bombers come at you and burst. Runs backwards because a bomber
+      // takes itself out of the list.
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i], k = e.k;
         e.flash -= dt;
+        e.cd -= dt;
+        e.touch -= dt;
         const dx = pcx - e.x, dy = pcy - e.ty, dist = Math.hypot(dx, dy) || 1;
         e.lx = dx / dist; e.ly = dy / dist;
-        e.cd -= dt;
-        if (!p.dead && dist < ENEMY_RANGE && e.cd <= 0) {
-          e.cd = 0.4;   // re-check soon if we can't see the player
-          if (lineOfSight(e.x, e.ty, pcx, pcy)) {
-            e.cd = 1.4 + Math.random() * 1.2;
-            const a = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.25;
-            enemyShots.push({ x: e.x + Math.cos(a) * 12, y: e.ty + Math.sin(a) * 12,
-              vx: Math.cos(a) * ENEMY_BULLET, vy: Math.sin(a) * ENEMY_BULLET, life: 2.5 });
+        const hunting = (k.act === 'chase' || k.act === 'bomb') && !p.dead && dist < k.aggro;
+
+        if (k.act === 'turret') {
+          // holds station: the hover is all the movement it gets
+        } else if (hunting) {
+          const step = k.spd * (e.chill || 1) * dt;
+          const wx = e.x + dx / dist * step, wy = e.y + dy / dist * step;
+          if (!solidAt(wx - e.r, wy) && !solidAt(wx + e.r, wy) &&
+              !solidAt(wx, wy - e.r) && !solidAt(wx, wy + e.r)) { e.x = wx; e.y = wy; }
+          else if (!solidAt(wx, e.y)) e.x = wx;            // slide along whatever it hit
+          else if (!solidAt(e.x, wy)) e.y = wy;
+          else { e.tgt = null; e.rest = 0; }
+        } else {
+          // patrol: pick a spot near home, drift to it, pause, pick another. Rock in
+          // the way just means the spot was a bad idea, so it chooses a different one.
+          e.rest -= dt;
+          if (!e.tgt || e.rest <= 0 || Math.hypot(e.tgt.x - e.x, e.tgt.y - e.y) < 6) {
+            const a = Math.random() * Math.PI * 2, r = 10 + Math.random() * PATROL_R;
+            e.tgt = { x: e.hx + Math.cos(a) * r, y: e.hy + Math.sin(a) * r };
+            e.rest = 2 + Math.random() * 3.5;
+          }
+          const tdx = e.tgt.x - e.x, tdy = e.tgt.y - e.y, td = Math.hypot(tdx, tdy) || 1;
+          const step = k.spd * (e.chill || 1) * dt;
+          const wx = e.x + tdx / td * step, wy = e.y + tdy / td * step;
+          if (solidAt(wx - e.r, wy) || solidAt(wx + e.r, wy) ||
+              solidAt(wx, wy - e.r) || solidAt(wx, wy + e.r)) { e.tgt = null; e.rest = 0; }
+          else { e.x = wx; e.y = wy; }
+        }
+        e.chill = 1;                                  // fields re-apply it every frame
+        e.ty = e.y + Math.sin(time * 2 + e.phase) * (hunting ? 2 : 4);
+
+        // contact: a chaser hurts you by reaching you, a bomber goes off
+        if (hunting && dist < e.r + 14 && e.touch <= 0) {
+          if (k.act === 'bomb') {
+            burst(e.x, e.ty, 22, k.col.a);
+            hurt(k.dmg);
+            enemies.splice(i, 1);
+            continue;
+          }
+          hurt(k.dmg);
+          e.touch = 0.9;
+        }
+
+        // firing. A turret with a wind-up shows the ring first and only shoots if it
+        // still has a line on you when the ring closes.
+        if (k.act === 'shoot' || k.act === 'turret') {
+          if (e.charge > 0) {
+            e.charge -= dt;
+            if (e.charge <= 0) fireEnemyShot(e, pcx, pcy);
+          } else if (!p.dead && dist < k.range && e.cd <= 0) {
+            e.cd = 0.4;   // re-check soon if we can't see the player
+            if (lineOfSight(e.x, e.ty, pcx, pcy)) {
+              e.cd = k.cd * (0.85 + Math.random() * 0.3);
+              if (k.tele) e.charge = k.tele; else fireEnemyShot(e, pcx, pcy);
+            }
           }
         }
       }
@@ -2779,7 +3103,7 @@ function Game({ input }) {
           if (!p.dead && b.x > p.x - 2 && b.x < p.x + PW + 2 && b.y > p.y - 2 && b.y < p.y + PH + 2) {
             gone = true;
             burst(b.x, b.y, 5, COL.player);
-            hurt(ENEMY_DMG);
+            hurt(b.dmg);
           }
         }
         if (gone) enemyShots.splice(i, 1);
@@ -2840,7 +3164,7 @@ function Game({ input }) {
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.imageSmoothingEnabled = false;
-      ctx.fillStyle = 'rgb(' + THEME.bg.join(',') + ')';
+      ctx.fillStyle = 'rgb(' + themeFor(floor).bg.join(',') + ')';
       ctx.fillRect(0, 0, c.width, c.height);
       ctx.setTransform(s, 0, 0, s, -Math.round(camX * s), -Math.round(camY * s));
 
@@ -2909,15 +3233,18 @@ function Game({ input }) {
       for (const e of enemies) {
         const ey = e.ty;
         if (ey > camY + vh + 20 || ey < camY - 20 || e.x < camX - 20 || e.x > camX + vw + 20) continue;
-        drawDrone(ctx, e.x, ey, e.r, e.lx, e.ly, time, e.phase, e.flash > 0);
+        drawEnemy(ctx, e, time);
         const hw = 20, hx = e.x - hw / 2, hy = ey - e.r - 9;
         ctx.fillStyle = COL.barBg; ctx.fillRect(hx, hy, hw, 3);
-        ctx.fillStyle = COL.player; ctx.fillRect(hx, hy, hw * e.hp / ENEMY_HP, 3);
+        ctx.fillStyle = e.k.col.a;
+        ctx.fillRect(hx, hy, hw * Math.max(0, e.hp / e.hpMax), 3);
       }
 
       // projectiles
-      ctx.fillStyle = COL.enemy;
-      for (const b of enemyShots) { ctx.beginPath(); ctx.arc(b.x, b.y, 3, 0, Math.PI * 2); ctx.fill(); }
+      for (const b of enemyShots) {
+        ctx.fillStyle = b.col;
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2); ctx.fill();
+      }
       // shots are drawn as streaks along their own velocity, so a fast one reads
       // as a long dash and a slow heavy one as a stub
       ctx.lineCap = 'round';
@@ -3221,11 +3548,11 @@ function Game({ input }) {
       ctx.textAlign = 'left';
 
       ctx.textAlign = 'center';
-      if (time < 3) {
+      if (levelT < 3) {
         ctx.fillStyle = COL.text;
-        ctx.globalAlpha = Math.min(1, 3 - time);
+        ctx.globalAlpha = Math.min(1, 3 - levelT);
         ctx.font = '700 22px system-ui, sans-serif';
-        ctx.fillText(THEME.name, cw / 2, 196);
+        ctx.fillText(themeFor(floor).name, cw / 2, 196);
         ctx.font = '500 14px system-ui, sans-serif';
         ctx.fillText('Find the green exit at the top', cw / 2, 218);
         ctx.fillText('Buy and fit mods here, then climb', cw / 2, 236);

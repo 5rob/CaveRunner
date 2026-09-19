@@ -3,8 +3,14 @@
 A jetpack cave platformer prototype that runs in the browser. Each floor is a
 shop room with a freshly generated destructible cave above it: climb from the
 shop to the green exit at the top, and the exit drops you into the next floor's
-shop. You keep your guns, mods and gold; the cave, the enemies and the loot are
-new every time.
+shop. You keep your guns, mods and gold; the cave and the loot are new every
+time.
+
+**Every floor keeps its identity.** Floor 3 is always the frozen one and always
+holds the same mix of creatures, on every run and after every restart — the
+cave layout and the loot are rolled fresh, but who lives there and what it looks
+like are not. That is deliberate: you learn a floor, and the colour tells you
+where you are before you have read the number.
 
 The cave starts dark. You reveal it by flying through it, and what you have seen
 stays on the map for the rest of that floor — dimmed once you move away, so you
@@ -64,6 +70,49 @@ Guns get better as you go. Height in the cave still matters — the ones lying
 around near the top of a floor beat the ones near the bottom — but every floor
 you clear lifts the whole range, so by floor five or six the scratch pistols have
 stopped turning up.
+
+## Floors
+
+Floors 1 to 10 are hand-picked, and they are always the same. Each has its own
+colour scheme and its own roster of two to six creatures, and both are fixed to
+the floor number rather than rolled with the seed — so the floor you learn on
+this run is the floor you meet on the next one. The palette wraps around after
+twelve floors, and from floor 11 up the creatures are rolled fresh each floor, so
+the run keeps moving rather than settling into a pattern.
+
+| Floor | Cave | Who is in it |
+|---|---|---|
+| 1 | Mossy caves | Heikkohiisi, Hämähäkki |
+| 2 | Coal seams | Heikkohiisi, Hämähäkki, Hiisi |
+| 3 | Frozen deep | Hiisi, Konna, Hämähäkki |
+| 4 | Ember halls | Hiisi, Mato, Limanuljaska, Kobold |
+| 5 | Fungal grotto | Hiisi, Kärpässieni, Hurtta, Limanuljaska |
+| 6 | Salt flats | Snipuhiisi, Hiisi, Hurtta, Stendari, Kärpässieni |
+| 7 | Amethyst vein | Snipuhiisi, Lohkare, Mato, Stendari, Kobold |
+| 8 | Rustworks | Jäätiö, Chaingunner, Lohkare, Hämähäkki, Hurtta, Kärpässieni |
+| 9 | Bone garden | Jäätiö, Chaingunner, Snipuhiisi, Stendari, Lohkare, Elävät luut |
+| 10 | Drowned halls | Chaingunner, Snipuhiisi, Lohkare, Elävät luut, Jäätiö, Tappurahiisi |
+
+## Creatures
+
+Sixteen of them, named after Noita's, and they do not all behave the same way:
+
+- **Shooters** (Hiisi, Heikkohiisi, Tappurahiisi, Chaingunner) hover around their
+  patch and fire when they have a line on you. The Tappurahiisi throws a cone of
+  pellets, the Chaingunner fires in short bursts.
+- **Turrets** (Snipuhiisi, Kärpässieni, Jäätiö, Elävät luut) never move. They have
+  longer reach and more punch, and the ones worth worrying about show a ring that
+  closes before they fire — break the line and the shot never comes.
+- **Chasers** (Hämähäkki, Lohkare, Mato, Hurtta, Kobold, Konna) come at you and
+  hurt you by reaching you. The Lohkare is slow and armoured; the Hurtta is not.
+- **Bombers** (Limanuljaska, Stendari) run at you and burst on contact, taking
+  themselves out with you. The Stendari hurts more.
+
+Every creature's health, damage and gold are lifted by the floor it belongs to,
+so a floor 9 Hiisi is worth a lot more than a floor 2 one and takes a lot more
+killing. Health climbs fastest, gold next, damage slowest — a floor 10 enemy is
+worth more than it hurts, or the shop heal would never keep up. Deeper floors
+also hold more of them.
 
 ## Guns and mods
 
@@ -180,6 +229,7 @@ them if it cannot find either.
 ## Features
 
 - Floors that chain: shop, cave, exit, next shop, with gold and gear carried over
+- A colour scheme per floor that stays with that floor run to run, so you can tell where you are at a glance
 - Large randomly generated caves with cramped and open areas, winding tunnels, built ledges and half-buried brick frames
 - Fog of war: the cave starts dark and you reveal it by exploring, with what you have seen left dimmed behind you
 - Destructible pixel terrain: explosions and drilling shots eat everything except the outer border
@@ -190,7 +240,9 @@ them if it cannot find either.
 - Recoil that shoves you around, which the jetpack can work with
 - Gold that flies to you once you are close enough (a short range for now)
 - Jetpack with fuel that refills on the ground; upward thrust is instant
-- Enemies with health bars that patrol around their patch and shoot back when they can see you
+- 16 creatures in five shapes, each floor owning its own fixed roster: shooters that hover and fire, turrets that wind up a long shot, chasers that come at you and bombers that burst on contact
+- Creature stats and gold scale with the floor they belong to, so the same enemy gets harder as you climb
+- Enemies with health bars, drawn in their own colours so you can read what is shooting you
 - A gun you decided against stays quiet for two seconds, so you can squeeze past it in a tunnel
 - Mods in the wild are rare, so the shop is the reliable place to stock up
 - Restart asks before it wipes the run

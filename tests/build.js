@@ -2,7 +2,8 @@
 // tests never depend on the network, and two hooks the browser suites drive it through.
 //
 //   window.__in   the App's input ref: loadout, guns, bag, prompt, found, keys, sticks
-//   window.__lvl  the live level: player, enemies, bullets, fields, beams, pickups, stock
+//   window.__lvl  the live level: player, enemies, bullets, fields, beams, pickups,
+//                 stock, roster, theme
 //
 // Nothing here changes game logic. If a test needs to reach something new, add it to the
 // __lvl object below rather than reaching into the game from the test.
@@ -15,8 +16,9 @@ const OUT = path.join(__dirname, 'build');
 const HOOK_LVL =
   "    window.__lvl = { get pickups(){return pickups}, get enemies(){return enemies}, " +
   "bullets, p, get mat(){return mat}, get stock(){return stock}, coins, get floor(){return floor}, " +
+  "get roster(){return roster}, get theme(){return themeName}, " +
   "get arrival(){return arrival}, get start(){return start}, get portal(){return portal}, " +
-  "fields, beams, flashes, dig, " +
+  "enemyShots, fields, beams, flashes, dig, " +
   "world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y }, " +
   "fog: { get seen(){return seen}, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal } };\n";
 

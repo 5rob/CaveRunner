@@ -41,7 +41,7 @@ phone width with touch**.
    Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
    link. If this session hasn't published yet, read the artifact first, then publish.
 
-Current version: **v31**. Branch: `claude/compassionate-rubin-fcqsif`.
+Current version: **v32**. Branch: `claude/compassionate-rubin-fcqsif`.
 
 ### The version number is not optional
 
@@ -63,6 +63,9 @@ Roughly top to bottom:
 |---|---|
 | CSS | in `<style>`, one block, light and dark via `prefers-color-scheme` |
 | World constants | `CELL`, `CW`/`CH`, `SHOP_*`, tuning consts (`GRAVITY`, `JET`, …) |
+| `THEMES` / `themeFor` | the 12 level palettes; the floor number picks one |
+| `CREATURES` / `ROSTERS` | the 16 creature types, and which live on floors 1–10 |
+| `rosterFor` / `enemyFor` | a floor's creatures, and one creature's floor-scaled stats |
 | `MODS` | the 111 spells, each a plain object |
 | `FAMILIES` / `FAMILY_OF` | the 8 colour families the UI groups mods by |
 | `MOD_PRICE` / `MOD_TIER` | shop price and rarity 1–4 for every mod |
@@ -71,7 +74,7 @@ Roughly top to bottom:
 | `castGroups` / `groupStats` | the outlines and stat lines in the build screen |
 | `tracePath` | simulates a shot for the aim line |
 | `makeLevel` | terrain, shop, enemies, pickups |
-| sprites | `drawRunner`, `drawDrone`, `drawGun`, `rr` |
+| sprites | `drawRunner`, `drawEnemy` (one per creature body), `drawGun`, `rr` |
 | `Game` | the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields |
 | React UI | `ModCard`, `GunCard`, `Editor`, `GunSwap`, `App` |
 
@@ -107,6 +110,19 @@ slot. `effRecharge(g)` is the one true answer.
 **The advisor prices resources.** `gunRate` scales damage by mana sustain *and* by health
 drain, so a build that bleeds you dry isn't credited with damage you'd never live to
 deal. If you add a mod that spends something, make sure `gunRate` sees the cost.
+
+**A floor's identity is the floor number, not the seed.** `themeFor(floor)` and
+`rosterFor(floor)` are pure functions of the floor alone. Floors 1–10 hand back the same
+palette and the same creatures on every run, and that is the feature, not an oversight —
+the player is meant to learn floor 3. Only past floor 10 does `rosterFor` take `rnd`.
+Don't be tempted to roll either one from the level seed.
+
+**Enemy behaviour belongs to the creature.** Every enemy carries `e.k`, its floor-scaled
+stats, and `e.k.act` decides how it moves and fights: `shoot`, `turret`, `chase` or
+`bomb`. `e.k.body` picks the sprite, `e.k.col` its colours. `enemyShots` carry their own
+`dmg`, `col` and `size` — there is no global enemy damage constant any more. The enemy
+loop runs backwards because a bomber splices itself out mid-loop. If you add a creature,
+give it all of those fields and a body that already has a sprite.
 
 **Detail cards in the build screen open at the top** (`.pop.top`). The editor's content
 reaches the bottom of the screen, so a bottom-anchored card buried the mod bag. Four
@@ -176,6 +192,9 @@ actually wrong; it's been both.
 ## Where to look when something breaks
 
 - Terrain sealed off or unreachable → `tests/logic/level.test.js` flood-fills 20 seeds.
+- A floor looking wrong, or a creature that isn't behaving → `tests/logic/creatures.test.js`
+  covers the tables; `tests/browser/creatures.test.js` climbs five floors in the real game
+  and checks each one's palette, roster and behaviour.
 - A mod doing nothing → `tests/browser/everymod.test.js` will name it.
 - Aim line wrong → the mod is in the bullet loop but not `tracePath`.
 - Build screen card covering something → `.pop.top` height cap and the sheet layout.
