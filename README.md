@@ -222,6 +222,21 @@ not credited with the damage it would do if you survived it.
 
 Open `index.html`. There is no build step and nothing to install.
 
+**To play it on your phone**, with the PC and the phone on the same wifi:
+
+```
+node serve.js          # prints the address to type in, e.g. http://192.168.1.20:8000
+node serve.js 8080     # a different port
+```
+
+Reload the page on the phone and it picks up whatever is in `index.html` — there is no
+build step to re-run. If the phone cannot connect, the usual culprits are Windows
+Firewall asking about Node the first time, and a VPN with a LAN block turned on.
+
+Don't serve the project folder with a plain static server (`python -m http.server` and
+the like). That hands out everything in it, and `.claude/settings.json` holds an API
+token. `serve.js` answers for `index.html` and nothing else.
+
 Tests live in `tests/`: `node tests/run.js` runs the lot, `node tests/run.js logic` runs
 just the fast ones. The browser suites need Chromium and Playwright; the runner skips
 them if it cannot find either.

@@ -27,6 +27,12 @@ game itself.
 They play on a phone through the published artifact, so **every change has to work at
 phone width with touch**.
 
+**`node serve.js`** serves the game to their phone over the LAN, for testing before or
+instead of publishing. It answers only for `index.html` — deliberately, because
+`.claude/settings.json` in this folder holds an API token, and a plain
+`python -m http.server` from the project root would hand that to the whole wifi. Don't
+replace it with a general static server.
+
 ## The loop we've settled into
 
 1. Make the change in `index.html`.
