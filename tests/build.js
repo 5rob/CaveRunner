@@ -15,7 +15,10 @@ const OUT = path.join(__dirname, 'build');
 const HOOK_LVL =
   "    window.__lvl = { get pickups(){return pickups}, get enemies(){return enemies}, " +
   "bullets, p, get mat(){return mat}, get stock(){return stock}, coins, get floor(){return floor}, " +
-  "get arrival(){return arrival}, get start(){return start}, fields, beams, flashes, dig };\n";
+  "get arrival(){return arrival}, get start(){return start}, get portal(){return portal}, " +
+  "fields, beams, flashes, dig, " +
+  "world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y }, " +
+  "fog: { get seen(){return seen}, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal } };\n";
 
 function build() {
   let s = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');

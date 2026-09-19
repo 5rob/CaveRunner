@@ -263,9 +263,10 @@ const h = React.createElement;
 
 // ---- world ----
 const CELL = 2;                   // world units per terrain pixel
-const CW = 320, CH = 800;         // terrain size in pixels
+const CW = 640, CH = 1600;        // terrain size in pixels
 const WW = CW * CELL, WH = CH * CELL;
-const BW = CW / 2, BH = CH / 2;   // background at half resolution
+const BW = CW / 4, BH = CH / 4;   // background at quarter resolution
+const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
@@ -281,7 +282,10 @@ const FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
 const PLAYER_HP = 100;
 const START_GOLD = 40;
 const COIN_PULL = 36;         // gold within this many units flies to you
-const ENEMY_HP = 3, ENEMY_RANGE = 220, ENEMY_BULLET = 180, ENEMY_DMG = 10, ENEMY_COUNT = 20;
+const ENEMY_HP = 3, ENEMY_RANGE = 220, ENEMY_BULLET = 180, ENEMY_DMG = 10, ENEMY_COUNT = 80;
+const MOD_DROPS = 7;          // mods lying in the cave: half what it used to be
+const GUN_DROPS = 5;          // guns lying in the cave, unchanged
+const PICKUP_GAP = 260;       // and no two of them closer than this
 const PATROL_R = 70;          // how far an enemy will drift from where it spawned
 const PATROL_SPEED = 34;
 const PICKUP_COOL = 2;        // a gun you walked away from stays quiet this long
@@ -751,6 +755,45 @@ const SHOP_H = 48;                     // interior height
 const SHOP_TOP = SHOP_FLOOR - SHOP_H;  // first open row of the room
 const SHOP_ROOF = 6;                   // roof thickness
 const SHOP_Y = SHOP_TOP * CELL;        // world y of the ceiling, for "am I in the shop?"
+
+// ---- fog of war ----
+// A coarse reveal grid, never per pixel: one fog cell covers FOG terrain pixels each
+// way, and the overlay is a tiny FW x FH canvas scaled up over the view, so hiding the
+// map costs one image draw a frame however big the map gets.
+const FOG = 8;                         // terrain pixels per fog cell
+const FOG_U = FOG * CELL;              // world units per fog cell
+const FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
+const SIGHT = 200;                     // world units you can see, and light up as you go
+const FOG_DIM = 0.52;                  // how dark somewhere you have been but cannot see
+const FOG_DARK = 0.96;                 // how dark somewhere you have never been
+
+// Light every cell within r world units of (wx, wy). Returns how many were newly lit,
+// so the caller can leave the overlay alone on the frames where nothing changed.
+function fogReveal(seen, wx, wy, r) {
+  const cx = wx / FOG_U, cy = wy / FOG_U, cr = r / FOG_U, r2 = cr * cr;
+  const x0 = Math.max(0, Math.floor(cx - cr)), x1 = Math.min(FW - 1, Math.ceil(cx + cr));
+  const y0 = Math.max(0, Math.floor(cy - cr)), y1 = Math.min(FH - 1, Math.ceil(cy + cr));
+  let n = 0;
+  for (let y = y0; y <= y1; y++) {
+    const row = y * FW, dy = y + 0.5 - cy, dy2 = dy * dy;
+    for (let x = x0; x <= x1; x++) {
+      const dx = x + 0.5 - cx;
+      if (dx * dx + dy2 > r2 || seen[row + x]) continue;
+      seen[row + x] = 1; n++;
+    }
+  }
+  return n;
+}
+
+// A fresh grid for a fresh floor. 0 is never been there, 1 is been there, 2 is never
+// fogged at all - which is the shop, a known safe room you are put down in, where a
+// haze over the plinths would just hide the stock you came here to buy.
+function fogStart() {
+  const seen = new Uint8Array(FW * FH);
+  for (let y = Math.floor((SHOP_TOP - SHOP_ROOF) / FOG); y < FH; y++)
+    for (let x = 0; x < FW; x++) seen[y * FW + x] = 2;
+  return seen;
+}
 
 for (const k of Object.keys(MODS)) MODS[k].id = k;
 
@@ -1478,11 +1521,30 @@ function makeLevel(seed, floor) {
 
   // 1. solid ground with caves eaten out of it.
   //    A slow "openness" noise decides whether an area is cramped or vast.
+  //    All three fields are far smoother than one pixel, so they are sampled on a
+  //    coarse lattice and interpolated: an fbm per pixel was over half the cost of
+  //    generating a level, and the map is four times the area it used to be.
+  const lattice = (step, fn) => {
+    const gw = Math.ceil(CW / step) + 2, gh = Math.ceil(CH / step) + 2;
+    const g = new Float32Array(gw * gh);
+    for (let j = 0; j < gh; j++)
+      for (let i = 0; i < gw; i++) g[j * gw + i] = fn(i * step, j * step);
+    return { g, gw, inv: 1 / step };
+  };
+  const at = (L, x, y) => {
+    const fx = x * L.inv, fy = y * L.inv;
+    const xi = fx | 0, yi = fy | 0, u = fx - xi, v = fy - yi, i = yi * L.gw + xi;
+    const a = L.g[i], b = L.g[i + 1], c = L.g[i + L.gw], d2 = L.g[i + L.gw + 1];
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d2) * u * v;
+  };
+  const openL = lattice(8, (x, y) => fbm(x / 160 + 500, y / 160 + 500));
+  const pocketL = lattice(4, (x, y) => fbm(x / 60, y / 60));
+  const tunnelL = lattice(4, (x, y) => fbm(x / 90 + 200, y / 90 + 200));
   for (let cy = 0; cy < CH; cy++) {
     for (let cx = 0; cx < CW; cx++) {
-      const open = Math.min(1, Math.max(0, (fbm(cx / 160 + 500, cy / 160 + 500) - 0.42) / 0.16));
-      const pocket = fbm(cx / 60, cy / 60) < 0.34 + 0.24 * open;
-      const tunnel = Math.abs(fbm(cx / 90 + 200, cy / 90 + 200) - 0.5) < 0.018 + 0.018 * open;
+      const open = Math.min(1, Math.max(0, (at(openL, cx, cy) - 0.42) / 0.16));
+      const pocket = at(pocketL, cx, cy) < 0.34 + 0.24 * open;
+      const tunnel = Math.abs(at(tunnelL, cx, cy) - 0.5) < 0.018 + 0.018 * open;
       mat[cy * CW + cx] = pocket || tunnel ? 0 : ROCK;
     }
   }
@@ -1491,7 +1553,7 @@ function makeLevel(seed, floor) {
   //    that are always wide enough to fly through (side pockets still need blasting)
   const shopExit = 40 + Math.floor(rnd() * (CW - 80));   // the one way out of the shop
   const points = [{ x: shopExit, y: SHOP_TOP - 30 }];
-  const hops = 6;
+  const hops = 12;                                       // the cave is twice as tall now
   for (let i = 1; i <= hops; i++) {
     points.push({ x: 40 + rnd() * (CW - 80), y: CH - 26 - (CH - 60) * i / (hops + 1) + (rnd() - 0.5) * 40 });
   }
@@ -1532,20 +1594,22 @@ function makeLevel(seed, floor) {
     worm(a.x, a.y, b.x, b.y, r, 2000, true);
   }
   // side branches and dead ends
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 48; i++) {
     worm(10 + rnd() * (CW - 20), 20 + rnd() * (CH - 60), null, null, 5 + rnd() * 6, 40 + rnd() * 150, true);
   }
 
-  // 3. smooth everything into natural shapes
+  // 3. smooth everything into natural shapes. Same 3x3 majority as always, but the
+  //    column sums are shared along the row instead of re-read nine times a pixel.
+  const src = new Uint8Array(CW * CH), col = new Uint8Array(CW);
   for (let pass = 0; pass < 4; pass++) {
-    const src = mat.slice();
-    for (let cy = 1; cy < CH - 1; cy++)
-      for (let cx = 1; cx < CW - 1; cx++) {
-        let n = 0;
-        for (let dy = -1; dy <= 1; dy++)
-          for (let dx = -1; dx <= 1; dx++) if (src[(cy + dy) * CW + cx + dx]) n++;
-        mat[cy * CW + cx] = n >= 5 ? ROCK : 0;
-      }
+    src.set(mat);
+    for (let cy = 1; cy < CH - 1; cy++) {
+      const r0 = (cy - 1) * CW, r1 = cy * CW, r2 = (cy + 1) * CW;
+      for (let cx = 0; cx < CW; cx++)
+        col[cx] = (src[r0 + cx] ? 1 : 0) + (src[r1 + cx] ? 1 : 0) + (src[r2 + cx] ? 1 : 0);
+      for (let cx = 1; cx < CW - 1; cx++)
+        mat[r1 + cx] = col[cx - 1] + col[cx] + col[cx + 1] >= 5 ? ROCK : 0;
+    }
   }
   for (const c of routePath) disc(c.x, c.y, c.r, 0);
 
@@ -1573,7 +1637,7 @@ function makeLevel(seed, floor) {
 
   // 4. built ledges sticking out of cave walls
   let ledges = 0;
-  for (let a = 0; a < 600 && ledges < 30; a++) {
+  for (let a = 0; a < 2400 && ledges < 120; a++) {
     const x = 10 + Math.floor(rnd() * (CW - 20)), y = 20 + Math.floor(rnd() * (SHOP_TOP - 50));
     if (mat[y * CW + x]) continue;
     const dir = rnd() < 0.5 ? -1 : 1;
@@ -1588,7 +1652,7 @@ function makeLevel(seed, floor) {
   }
 
   // 5. old brick frames half buried in the rock
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < 36; i++) {
     const fw = 30 + Math.floor(rnd() * 40), fh = 20 + Math.floor(rnd() * 20);
     const fx = 8 + Math.floor(rnd() * (CW - 16 - fw)), fy = 60 + Math.floor(rnd() * (SHOP_TOP - 120));
     const rockRatio = 1 - emptyRatio(fx, fy, fw, fh);
@@ -1605,7 +1669,7 @@ function makeLevel(seed, floor) {
 
   // 6. a few floating platforms in the big open spaces
   let floats = 0;
-  for (let a = 0; a < 400 && floats < 10; a++) {
+  for (let a = 0; a < 1600 && floats < 40; a++) {
     const len = 18 + Math.floor(rnd() * 22);
     const x0 = 8 + Math.floor(rnd() * (CW - 16 - len)), y0 = 40 + Math.floor(rnd() * (SHOP_TOP - 80));
     if (emptyRatio(x0 - 12, y0 - 18, len + 24, 34) < 0.98) continue;
@@ -1635,7 +1699,8 @@ function makeLevel(seed, floor) {
   for (let cy = 0; cy < CH; cy++)
     for (let cx = 0; cx < CW; cx++)
       if (cx < 3 || cx >= CW - 3 || cy < 3 || cy >= CH - 3) mat[cy * CW + cx] = BED;
-  // colour the terrain
+  // colour the terrain (the rock mottle rides the same interpolated lattice)
+  const tintL = lattice(4, (x, y) => fbm(x / 6 + 100, y / 6 + 100));
   const img = new ImageData(CW, CH);
   const d = img.data;
   for (let cy = 0; cy < CH; cy++) {
@@ -1647,7 +1712,7 @@ function makeLevel(seed, floor) {
       if (m === ROCK) {
         const exposed = cy > 1 && (mat[i - CW] === 0 || mat[i - 2 * CW] === 0);
         c = exposed ? mix(THEME.moss[0], THEME.moss[1], r1)
-                    : mix(THEME.rock[0], THEME.rock[1], fbm(cx / 6 + 100, cy / 6 + 100));
+                    : mix(THEME.rock[0], THEME.rock[1], at(tintL, cx, cy));
       } else if (m === BRICK) {
         const k = cx + (cy % 2) * 3;
         if (k % 6 === 0) c = THEME.mortar;
@@ -1692,7 +1757,7 @@ function makeLevel(seed, floor) {
     if (i === 0) stock.push({ kind: 'heal', x, y: shelf, price: 0, sold: false });
     else if (gunShop) {
       // shop guns roll a touch above whatever the cave is dropping on this floor
-      const gun = makeGun(rnd, Math.min(1, gunTier(120, floor) + 0.1));
+      const gun = makeGun(rnd, Math.min(1, gunTier(CH * 0.15, floor) + 0.1));
       stock.push({ kind: 'gun', gun, x, y: shelf, price: gunPrice(gun), sold: false });
     } else {
       const id = offer[i - 1];
@@ -1712,8 +1777,8 @@ function makeLevel(seed, floor) {
     return true;
   };
   const enemies = [];
-  const wanted = Math.min(34, ENEMY_COUNT + (floor - 1) * 3);
-  for (let a = 0; a < 4000 && enemies.length < wanted; a++) {
+  const wanted = Math.min(136, ENEMY_COUNT + (floor - 1) * 12);
+  for (let a = 0; a < 20000 && enemies.length < wanted; a++) {
     const cx = 8 + Math.floor(rnd() * (CW - 16)), cy = 50 + Math.floor(rnd() * (SHOP_TOP - 70));
     if (!clear(cx, cy, 8)) continue;
     const x = cx * CELL, y = cy * CELL;
@@ -1723,19 +1788,23 @@ function makeLevel(seed, floor) {
       flash: 0, lx: 0, ly: 1, hx: x, hy: y, tgt: null, rest: rnd() * 3 });
   }
 
-  // guns and mods to find: the higher up the cave, the better the roll
+  // guns and mods to find: the higher up the cave, the better the roll.
+  // Half the mods there used to be, and they have to sit far enough apart that the
+  // few of them are spread over the whole cave rather than bunched in one corner.
   const pickups = [];
-  for (let a = 0; a < 5000 && pickups.length < 18; a++) {
+  let gunsLeft = GUN_DROPS, modsLeft = MOD_DROPS;
+  for (let a = 0; a < 20000 && gunsLeft + modsLeft > 0; a++) {
     const cx = 8 + Math.floor(rnd() * (CW - 16)), cy = 30 + Math.floor(rnd() * (SHOP_TOP - 60));
     if (!clear(cx, cy, 6)) continue;
     const x = cx * CELL, y = cy * CELL;
-    if (Math.hypot(x - start.x, y - start.y) < 130) continue;
-    if (pickups.some(q => Math.hypot(q.x - x, q.y - y) < 110)) continue;
+    if (Math.hypot(x - start.x, y - start.y) < 200) continue;
+    if (pickups.some(q => Math.hypot(q.x - x, q.y - y) < PICKUP_GAP)) continue;
     const tier = gunTier(cy, floor);
-    const guns = pickups.filter(q => q.kind === 'gun').length;
-    if (guns < 5 && (rnd() < 0.3 || pickups.length > 12 && guns < 2)) {
+    if (gunsLeft && (!modsLeft || rnd() < gunsLeft / (gunsLeft + modsLeft))) {
+      gunsLeft--;
       pickups.push({ kind: 'gun', x, y, gun: makeGun(rnd, tier), t: rnd() * 6.28 });
     } else {
+      modsLeft--;
       pickups.push({ kind: 'mod', x, y, id: rollMod(rnd, floor), t: rnd() * 6.28 });
     }
   }
@@ -1833,6 +1902,12 @@ function Game({ input }) {
     const bg = document.createElement('canvas');
     bg.width = BW; bg.height = BH;
     const bgctx = bg.getContext('2d');
+    // the fog overlay: one pixel per fog cell, drawn scaled up over the world
+    const fogC = document.createElement('canvas');
+    fogC.width = FW; fogC.height = FH;
+    const fctx = fogC.getContext('2d');
+    const fogImg = new ImageData(FW, FH);
+    let seen = fogStart();
 
     let mat, img, start, portal, enemies, pickups, stock, arrival, total, floor = 1;
 
@@ -1860,6 +1935,17 @@ function Game({ input }) {
       bullets.length = enemyShots.length = smoke.length = 0;
       sparks.length = flashes.length = coins.length = 0;
       camReady = false; best = 0;
+      seen = fogStart(); paintFog();          // every floor is dark again
+    }
+
+    // Repaint the whole overlay mask from the reveal grid. FW x FH is a few thousand
+    // cells, and it only runs on the frames where you actually light something new.
+    function paintFog() {
+      const d = fogImg.data, dim = Math.round(255 * FOG_DIM), dark = Math.round(255 * FOG_DARK);
+      for (let i = 0, k = 0; i < FW * FH; i++, k += 4) {
+        d[k] = 9; d[k + 1] = 10; d[k + 2] = 14;
+        d[k + 3] = seen[i] === 2 ? 0 : seen[i] ? dim : dark;
+      }
     }
     enterLevel();
 
@@ -2675,6 +2761,9 @@ function Game({ input }) {
       }
 
       best = Math.max(best, Math.round((start.y - p.y) / 10));
+
+      // fog of war: wherever you go stays revealed for the rest of the floor
+      if (fogReveal(seen, p.x + PW / 2, p.y + PH / 2, SIGHT)) paintFog();
     }
 
     function draw() {
@@ -2697,9 +2786,9 @@ function Game({ input }) {
       ctx.setTransform(s, 0, 0, s, -Math.round(camX * s), -Math.round(camY * s));
 
       // background and terrain (visible part only)
-      const bx0 = clamp(Math.floor(camX / 4), 0, BW - 1), by0 = clamp(Math.floor(camY / 4), 0, BH - 1);
-      const bx1 = clamp(Math.ceil((camX + vw) / 4) + 1, 1, BW), by1 = clamp(Math.ceil((camY + vh) / 4) + 1, 1, BH);
-      ctx.drawImage(bg, bx0, by0, bx1 - bx0, by1 - by0, bx0 * 4, by0 * 4, (bx1 - bx0) * 4, (by1 - by0) * 4);
+      const bx0 = clamp(Math.floor(camX / BCELL), 0, BW - 1), by0 = clamp(Math.floor(camY / BCELL), 0, BH - 1);
+      const bx1 = clamp(Math.ceil((camX + vw) / BCELL) + 1, 1, BW), by1 = clamp(Math.ceil((camY + vh) / BCELL) + 1, 1, BH);
+      ctx.drawImage(bg, bx0, by0, bx1 - bx0, by1 - by0, bx0 * BCELL, by0 * BCELL, (bx1 - bx0) * BCELL, (by1 - by0) * BCELL);
       // the shop's back wall
       if (camY + vh > SHOP_Y) {
         ctx.fillStyle = '#241f28';
@@ -3003,6 +3092,27 @@ function Game({ input }) {
       drawRunner(ctx, p.x, p.y, PW, PH, p.face, gait, !p.onGround, p.jet, flashing);
       if (!p.dead) drawGun(ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
       ctx.globalAlpha = 1;
+
+      // ---- fog of war ----
+      // The mask holds two shades: never been there, and been there but can't see it
+      // now. The circle you are standing in is punched clear of both, so the player,
+      // whatever is shooting at you and the ground under your feet always read.
+      fctx.putImageData(fogImg, 0, 0);
+      fctx.globalCompositeOperation = 'destination-out';
+      const lx = pcx / FOG_U, ly = pcy / FOG_U, lr = SIGHT / FOG_U;
+      const lamp = fctx.createRadialGradient(lx, ly, lr * 0.5, lx, ly, lr);
+      lamp.addColorStop(0, 'rgba(0,0,0,1)');
+      lamp.addColorStop(1, 'rgba(0,0,0,0)');
+      fctx.fillStyle = lamp;
+      fctx.fillRect(lx - lr, ly - lr, lr * 2, lr * 2);
+      fctx.globalCompositeOperation = 'source-over';
+      // a cell of margin each way, so the bilinear edge clamp falls off screen
+      const fx0 = clamp(Math.floor(camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(camY / FOG_U) - 1, 0, FH - 1);
+      const fx1 = clamp(Math.ceil((camX + vw) / FOG_U) + 2, 1, FW), fy1 = clamp(Math.ceil((camY + vh) / FOG_U) + 2, 1, FH);
+      ctx.imageSmoothingEnabled = true;     // the upscale is what makes the edge soft
+      ctx.drawImage(fogC, fx0, fy0, fx1 - fx0, fy1 - fy0,
+        fx0 * FOG_U, fy0 * FOG_U, (fx1 - fx0) * FOG_U, (fy1 - fy0) * FOG_U);
+      ctx.imageSmoothingEnabled = false;
 
       // ---- HUD ----
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
