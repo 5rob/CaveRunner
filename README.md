@@ -43,10 +43,11 @@ that follows your thumb is sized to still show an edge around a thumbprint rathe
 than vanishing underneath one, so you can see where your thumb is pointing without
 lifting it.
 
-The right stick carries two rings as well. The amber one is the dead zone you have
-to leave for a drag to count as aiming; it is drawn over the knob, because a knob
-that size would otherwise bury it. The dashed one outside is the full travel of
-the knob. Between them is everything a drag can be.
+The right stick carries two rings as well. The amber one is the trigger line: it is
+drawn one knob radius outside the point where the drag starts counting as aiming,
+so when the knob's edge reaches that circle, the gun fires. The dashed one outside
+it is how far the knob travels before it is against the rim. The stick does not
+clip the knob to the circle, so at full deflection the knob is still a whole knob.
 
 ## Picking things up
 

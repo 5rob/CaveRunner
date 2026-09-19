@@ -22,11 +22,16 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     const w = el => el ? Math.round(el.getBoundingClientRect().width) : 0;
     const ring = (el, sel) => { const e = el.querySelector(sel); return e ? Math.round(e.getBoundingClientRect().width) : 0; };
     const bg = getComputedStyle(document.querySelector('.controls')).backgroundColor.match(/\d+/g) || [];
+    const half = w(s[1]) / 2;
     return {
       n: s.length, stick: w(s[0]), right: w(s[1]),
       knob: w(s[1].querySelector('.knob')), knobLeft: w(s[0].querySelector('.knob')),
       dead: ring(s[1], '.deadzone'), thr: ring(s[1], '.throw'),
       leftRings: s[0] ? s[0].querySelectorAll('.deadzone, .throw').length : -1,
+      // where the amber ring ought to be: the throw you have to make (AIM_DEAD of the
+      // knob's travel) plus one knob radius, so the knob's EDGE crosses it exactly as
+      // the trigger goes live
+      want: 2 * (AIM_DEAD * 0.72 * half + w(s[1].querySelector('.knob')) / 2),
       // how dark the panel actually is, 0 black to 255 white
       lum: bg.length >= 3 ? Math.round((+bg[0] + +bg[1] + +bg[2]) / 3) : 999,
     };
@@ -36,9 +41,12 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the knob you drag is thumb-sized, not a dot',
     deck.knob >= 60 && deck.knob / deck.stick > 0.3, deck);
   check('both sticks carry one', deck.knob === deck.knobLeft, deck);
-  check('the right one shows the dead zone it has to leave', deck.dead > 0, deck.dead);
-  check('and the ring is not buried under the knob', deck.dead < deck.knob, deck);
-  check('a second ring marks the full travel of the knob', deck.thr > deck.dead, deck);
+  check('the amber ring is outside the knob, so crossing it means something',
+    deck.dead > deck.knob, deck);
+  check('and it is drawn where the trigger actually goes live',
+    Math.abs(deck.dead - deck.want) < 8, { ring: deck.dead, shouldBe: Math.round(deck.want) });
+  check('the dashed ring is outside that again',
+    deck.thr > deck.dead, deck);
   check('the left one has neither ring', deck.leftRings === 0, deck.leftRings);
   check('the deck is black rather than blue', deck.lum < 40, deck.lum);
 

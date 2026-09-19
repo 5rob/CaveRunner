@@ -47,7 +47,7 @@ replace it with a general static server.
    Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
    link. If this session hasn't published yet, read the artifact first, then publish.
 
-Current version: **v34**. Branch: `claude/compassionate-rubin-fcqsif`.
+Current version: **v35**. Branch: `claude/compassionate-rubin-fcqsif`.
 
 ### The version number is not optional
 
@@ -130,11 +130,18 @@ stats, and `e.k.act` decides how it moves and fights: `shoot`, `turret`, `chase`
 loop runs backwards because a bomber splices itself out mid-loop. If you add a creature,
 give it all of those fields and a body that already has a sprite.
 
-**The knob is the bit under the thumb, and the rings go over it.** The owner asked for
-"the thumb control circles" to be bigger meaning the knobs, not the pads, and a knob
-much under 30% of the stick disappears under a thumbprint. The dead-zone ring is
-rendered *after* the knob in `Stick()` for that reason — at 25.2% of the stick it sits
-inside a knob that size, and anything painted before it is never seen.
+**The knob is the bit under the thumb, and the amber ring is a trigger line.** The owner
+asked for "the thumb control circles" to be bigger meaning the knobs, not the pads, and a
+knob much under 30% of the stick disappears under a thumbprint. `KNOB` is that size and
+`AIM_RING` is built from it — `AIM_DEAD * 0.72 + KNOB` — so the amber ring is exactly the
+circle the knob's *edge* crosses at the moment the drag starts counting as aiming. It has
+to stay a derived number; if you change `AIM_DEAD` or `KNOB` and hardcode the ring, the
+circle stops meaning anything.
+
+The stick deliberately has **no `overflow:hidden`**. Four out of five of the knob's radius
+travels outwards, so clipping to the rim would slice a bite off it at full deflection.
+`.stickclip` holds the wash and the centre line and does the clipping instead, so the knob
+can pass the rim as a whole knob.
 
 **Detail cards in the build screen open at the top** (`.pop.top`). The editor's content
 reaches the bottom of the screen, so a bottom-anchored card buried the mod bag. Four

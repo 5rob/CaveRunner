@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v34</title>
+<title>CaveRunner v35</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -69,17 +69,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .ico{position:absolute;left:50%;top:56%;transform:translate(-50%,-50%)}
 .ico.gun{width:18px;height:5px;border-radius:1px;background:var(--ctl-hot)}
 .ico.grenade{width:12px;height:12px;border-radius:2px;background:#7fbf4a}
-.stick{position:relative;flex:none;box-sizing:border-box;border-radius:50%;overflow:hidden;
+/* No overflow:hidden here, deliberately: a knob this size is wider than the gap
+   between the middle and the rim, so clipping to the rim would take a bite out of it
+   at full deflection. The decorations get their own clip layer instead (see .stickclip)
+   so the wash and the centre line still stop at the circle. */
+.stick{position:relative;flex:none;box-sizing:border-box;border-radius:50%;
   touch-action:none;
   background:radial-gradient(circle at 50% 40%,#1d1d23 0%,#0c0c0f 74%);
   border:3px solid var(--ctl-edge);box-shadow:0 0 0 2px var(--ctl-line),inset 0 0 16px rgba(0,0,0,0.9)}
+.stickclip{position:absolute;inset:0;border-radius:50%;overflow:hidden;pointer-events:none}
 .hline{position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,0.09)}
 .jetzone{position:absolute;left:0;right:0;top:0;height:50%;background:rgba(255,176,46,0.16);opacity:0;transition:opacity .1s}
 .jetting .jetzone{opacity:1}
-/* the two rings that tell you what the stick does: where the dead zone ends, and how far
-   the knob goes before it is against the edge of its travel. The dead zone ring is
-   painted after the knob, so with a knob this size it still shows — it is the line the
-   knob's centre has to cross. */
+/* the two rings that tell you what the stick does: the amber one is the line the knob
+   has to cross before the gun fires, the dashed one outside it is how far the knob
+   goes before it is against the edge of its travel */
 .deadzone{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;
   border:1.5px solid rgba(255,176,46,0.8);pointer-events:none}
 /* 72% of the stick is exactly where the knob stops: Stick() clamps its travel to
@@ -87,8 +91,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .throw{position:absolute;left:50%;top:50%;width:72%;height:72%;transform:translate(-50%,-50%);
   border-radius:50%;border:1px dashed rgba(234,231,222,0.2);pointer-events:none}
 /* the knob is the thing under your thumb, so it is sized to still show an edge around
-   a thumbprint rather than disappearing underneath one */
-.knob{position:absolute;left:50%;top:50%;width:38%;height:38%;border-radius:50%;
+   a thumbprint rather than disappearing underneath one. Its size comes from KNOB, and
+   the dead-zone ring is built from the same number — see AIM_RING. */
+.knob{position:absolute;left:50%;top:50%;box-sizing:border-box;border-radius:50%;
   background:radial-gradient(circle at 50% 34%,#f4f1e6 0%,#9c988e 100%);
   border:2px solid var(--ctl-edge);box-shadow:0 2px 7px rgba(0,0,0,0.75);
   opacity:.95;pointer-events:none}
@@ -347,7 +352,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v34';
+const VERSION = 'v35';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -359,6 +364,14 @@ const DEAD = 0.12;
 // code in Game.step. 0.35 of the stick's max throw is a big enough circle to land a
 // thumb on reliably without eating so much of the throw that aiming feels numb.
 const AIM_DEAD = 0.35;
+// The knob's diameter as a share of the stick. Big enough that its edge still shows
+// around a thumbprint, which is the whole point of it.
+const KNOB = 0.38;
+// The ring drawn on the right stick, as a share of the stick: the throw you have to
+// make (AIM_DEAD of the knob's full travel) plus one knob radius. So the ring is the
+// line the knob's *edge* crosses at the exact moment the trigger goes live, which is
+// what makes it worth drawing rather than just being another circle.
+const AIM_RING = AIM_DEAD * 0.72 + KNOB;
 const PW = 12, PH = 22;
 const FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
 const PLAYER_HP = 100;
@@ -3741,16 +3754,18 @@ function Stick({ size, kind, input }) {
       onPointerDown: down, onPointerMove: move, onPointerUp: end,
       onPointerCancel: end, onLostPointerCapture: end,
     },
-    left && h('div', { className: 'jetzone' }),
-    left && h('div', { className: 'hline' }),
-    // the right stick carries two rings: how far it goes before it is against the edge
-    // of its travel, and the dead zone it has to leave before a drag counts as aiming
-    // (rather than as a tap on the dead zone, which interacts). The dead zone ring is
-    // rendered after the knob on purpose — the knob is a thumb wide, and a ring behind
-    // it would never be seen.
+    left && h('div', { className: 'stickclip' },
+      h('div', { className: 'jetzone' }),
+      h('div', { className: 'hline' })),
+    // the right stick carries two rings: the amber one is the line the knob's edge crosses
+    // when the drag starts counting as aiming rather than as a tap on the dead zone, and
+    // the dashed one is how far the knob goes before it is against the edge of its travel
     right && h('div', { className: 'throw' }),
-    h('div', { className: 'knob', style: { transform: `translate(-50%,-50%) translate(${knob.x}px,${knob.y}px)` } }),
-    right && h('div', { className: 'deadzone', style: { width: (AIM_DEAD * 72) + '%', height: (AIM_DEAD * 72) + '%' } }),
+    h('div', { className: 'knob', style: {
+      width: (KNOB * 100) + '%', height: (KNOB * 100) + '%',
+      transform: `translate(-50%,-50%) translate(${knob.x}px,${knob.y}px)` } }),
+    right && h('div', { className: 'deadzone', style: {
+      width: (AIM_RING * 100) + '%', height: (AIM_RING * 100) + '%' } }),
     h('span', { className: 'lbl top' }, left ? 'jet' : 'aim'),
     left && h('span', { className: 'lbl bot' }, 'walk')
   );
