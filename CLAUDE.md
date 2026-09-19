@@ -41,7 +41,7 @@ phone width with touch**.
    Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
    link. If this session hasn't published yet, read the artifact first, then publish.
 
-Current version: **v30**. Branch: `claude/compassionate-rubin-fcqsif`.
+Current version: **v31**. Branch: `claude/compassionate-rubin-fcqsif`.
 
 ### The version number is not optional
 
@@ -63,7 +63,7 @@ Roughly top to bottom:
 |---|---|
 | CSS | in `<style>`, one block, light and dark via `prefers-color-scheme` |
 | World constants | `CELL`, `CW`/`CH`, `SHOP_*`, tuning consts (`GRAVITY`, `JET`, …) |
-| `MODS` | the 108 spells, each a plain object |
+| `MODS` | the 111 spells, each a plain object |
 | `FAMILIES` / `FAMILY_OF` | the 8 colour families the UI groups mods by |
 | `MOD_PRICE` / `MOD_TIER` | shop price and rarity 1–4 for every mod |
 | `planCast` | **the heart of it** — works out what one pull of the trigger fires |
@@ -184,7 +184,8 @@ actually wrong; it's been both.
 ## Ideas raised but not built
 
 - **Delayed Spellcast** — a static phenomenon that casts three more spells after a pause.
-  Needs the trigger/timer machinery Noita has and we don't.
+  The trigger/timer machinery now exists (`payload` on a shot, `firePayload` in the bullet
+  loop, v31), so this is a much smaller job than it was.
 - **Perks**, mentioned when gold pickup range was reduced: "later when I introduce perks
   we could have a perk that increases that range". The range is deliberately short now.
 - Noita spell categories we only partly mined: Material spells (none), and the rest of

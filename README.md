@@ -6,6 +6,11 @@ shop to the green exit at the top, and the exit drops you into the next floor's
 shop. You keep your guns, mods and gold; the cave, the enemies and the loot are
 new every time.
 
+The cave starts dark. You reveal it by flying through it, and what you have seen
+stays on the map for the rest of that floor — dimmed once you move away, so you
+can still read the terrain you explored but not what is moving in it. Enemies
+shoot slightly further than you can see, so a dark corner is a real risk.
+
 ## Play
 
 Open `index.html` in a browser. It is a single file with no build step; React loads from a CDN.
@@ -17,12 +22,23 @@ Open `index.html` in a browser. It is a single file with no build step; React lo
 | Walk | Left stick, below the line | A / D |
 | Jetpack | Left stick, above the line (distance sets speed) | W, or W + A / D |
 | Aim | Right stick | Mouse |
-| Shoot | Hold right stick | Left mouse button |
+| Shoot | Drag the right stick out past the dead zone | Left mouse button |
+| Interact: buy, take a gun or mod | Tap the middle of the right stick | F |
 | Pick gun | Tap a gun slot | 1 to 4 |
 | Gun details | Hold a gun slot | — |
 | Reorder guns | Hold and drag a gun tab in the build screen | — |
 | Guns & mods screen (shop only) | Tap Mods | E |
-| Buy / take shop item | Tap Buy | F |
+
+## Picking things up
+
+The middle of the right stick is a dead zone: drag out past it to aim and fire,
+tap it without leaving it and you interact with whatever you are standing at.
+That one button buys from a shop plinth and picks up guns and mods in the cave.
+
+Walking over something no longer takes it. You get its card instead — the same
+detail card the build screen shows — so you can read a mod or compare a gun
+against the one you are holding before deciding. Tap to take it, or walk away
+and leave it there.
 
 ## The shop
 
@@ -33,9 +49,9 @@ always one free full heal, and four things for sale beside it.
 
 Odd floors sell mods. **Even floors sell guns instead** — four freshly rolled
 ones, priced on what they can actually do: slots, how fast they cycle, mana, and
-whether they fire in the order you set them. Buying one drops it at the plinth
-and the usual pickup chooser opens, so you decide which slot it takes, and
-walking away parks it on the shop floor rather than binning what you paid for.
+whether they fire in the order you set them. Buying one drops it at the plinth as an ordinary ground gun, so it is yours to
+pick up with a second tap whenever you like, and walking away parks it on the
+shop floor rather than binning what you paid for.
 
 Stand on any plinth and its full detail card appears — the mod card the build
 screen shows, or the gun's stat sheet compared against the one you are holding —
@@ -53,18 +69,25 @@ stopped turning up.
 
 Guns work like Noita wands. Each one is rolled at random with its own capacity,
 cast delay, recharge time, mana pool, spread and shot speed, and some of them
-shuffle their firing order. You carry up to four. Walking onto a gun on the ground pauses the game and opens
-a chooser: it shows what you found, with a button for each of your four slots.
+shuffle their firing order. You carry up to four. Interacting with a gun on the ground pauses the game and
+opens a chooser: it shows what you found, with a button for each of your four
+slots, both guns laid out at once so you can read either one's mods without
+scrolling.
 Tap a slot to compare that gun, hold one to swap it out — whatever it replaces
 is left on the ground where you found the new one. The found gun's stats are
 coloured against whichever of your guns you last tapped (your held gun to start
 with), green for better and red for worse, counting a smaller cast delay,
 recharge or spread as better.
 
+Every gun is given its own colour when it is made, and keeps it for the run, so
+the name reads the same in the toolbar, the build screen and on its card — handy
+once you are carrying four guns with similar names.
+
 Mods are coloured by what they are for, not one colour each, so you can tell a
 bullet from the things that change it at a glance: amber shots, red damage, blue
 speed and range, purple flight path, pink shot pattern, green gun upkeep. A
-legend sits above your collected mods.
+legend sits above your collected mods, and a Sort button next to them reorders
+your collection into those same groups.
 
 Mods are the spells. Some are shots (Bolt, Buckshot, Slug, Blast, Bounce Orb...)
 and the rest are modifiers (Homing, Heavy Shot, Scatter, Double Cast, Borer...).
@@ -98,12 +121,12 @@ gun.
 
 ## The spell book
 
-There are 108 mods, most of them lifted from Noita's spell list and rebuilt to fit
+There are 111 mods, most of them lifted from Noita's spell list and rebuilt to fit
 a cave shooter. They come in a few shapes:
 
 - **Shots** are the things that come out of the barrel — Bolt, Slug, Magic Missile,
   Fireball, Lightning Bolt, Chain Bolt (which hops from enemy to enemy), Black Hole
-  (which crawls forward eating rock), Nuke, Meteor, and twenty-odd more. **Plasma Beam**
+  (a big fast sphere that eats rock and drags things into it), Nuke, Meteor, and twenty-odd more. **Plasma Beam**
   and **Luminous Drill** are instant: they hit along a line with no travel time.
 - **Static fields** stay where you cast them and work over time. Unstable Crystal is a
   proximity mine; Dormant Crystal sits harmless until another blast reaches it; Circle
@@ -118,6 +141,11 @@ a cave shooter. They come in a few shapes:
   build terrain. Wand Refresh skips the next recharge. Long-Distance Cast, Teleporting
   Cast and Warp Cast move where the shot starts. Blood Magic, Blood To Power and Gold
   To Power buy power with health or gold.
+- **Trigger spells** carry another spell and cast it where they land. **Spell With
+  Trigger** takes the next spell on the gun, **Spell With Double Trigger** takes two,
+  and **Spell With Timer** lets go in mid-air instead of on impact. The payload is
+  cast however the carrier's flight ends, so it is never wasted, and a carried spell
+  never carries one of its own.
 - **The Greek letters** copy other spells off the gun. Alpha copies the first, Gamma the
   last, Tau repeats the next two, Phi copies every shot, Sigma every field, Omega
   everything. Mu applies every modifier on the gun to one shot no matter where they sit.
@@ -152,10 +180,11 @@ them if it cannot find either.
 ## Features
 
 - Floors that chain: shop, cave, exit, next shop, with gold and gear carried over
-- Randomly generated caves with cramped and open areas, winding tunnels, built ledges and half-buried brick frames
+- Large randomly generated caves with cramped and open areas, winding tunnels, built ledges and half-buried brick frames
+- Fog of war: the cave starts dark and you reveal it by exploring, with what you have seen left dimmed behind you
 - Destructible pixel terrain: explosions and drilling shots eat everything except the outer border
 - Guns and mods to find, with a drag-and-drop screen for building them
-- 108 mods: shots, static fields, path modifiers, utility casts and the Greek letter copy spells
+- 111 mods: shots, static fields, path modifiers, trigger spells, utility casts and the Greek letter copy spells
 - A build advisor that measures your damage per second, names the limiting factor and offers one-tap fixes
 - An aim line that simulates the next shot for real: gravity, acceleration, homing, ricochets, drilling and spread
 - Recoil that shoves you around, which the jetpack can work with
@@ -163,4 +192,6 @@ them if it cannot find either.
 - Jetpack with fuel that refills on the ground; upward thrust is instant
 - Enemies with health bars that patrol around their patch and shoot back when they can see you
 - A gun you decided against stays quiet for two seconds, so you can squeeze past it in a tunnel
+- Mods in the wild are rare, so the shop is the reliable place to stock up
+- Restart asks before it wipes the run
 - A DEBUG shelf with one of every mod, for trying builds out
