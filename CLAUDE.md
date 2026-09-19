@@ -5,6 +5,16 @@ A single-file browser game: a jetpack cave shooter with Noita-style wand buildin
 
 ## How the owner likes to work
 
+**Talk briefly.** Short, concise replies. Minimal technical jargon unless they ask about
+something specific — then give them the real mechanism, not a summary. They do ask, and
+they want the actual answer when they do.
+
+**Iterate fast, don't plan at length.** They'd rather see the thing working than read a
+plan for it. Build the idea, show it, adjust. Don't open a planning session for something
+you could just try. Don't ask permission for the obvious next step.
+
+**Don't stress about polish** unless they ask for it. Working beats tidy.
+
 Their words, from the first session:
 
 > This is just a fun personal project, so don't focus on production level
@@ -12,8 +22,7 @@ Their words, from the first session:
 > technical jargon to a minimum unless I ask about something specific.
 
 So: do the thing asked, no more. No frameworks, no bundler, no package.json for the
-game itself. Explain in plain language unless they ask about internals — they do ask,
-and when they do they want the real mechanism, not a summary.
+game itself.
 
 They play on a phone through the published artifact, so **every change has to work at
 phone width with touch**.
@@ -26,12 +35,25 @@ phone width with touch**.
    They asked for this so the published page doesn't get stuck on a cached old build.
 4. Update `README.md` — it describes the game for a player, and stays current.
 5. Commit and push to the working branch.
-6. Republish the artifact to the **same URL** so their link keeps working:
+6. **Publish it.** They test on their phone, so a change isn't delivered until it's live
+   at the link. Republish to the **same URL** every time:
    `https://claude.ai/artifact/2rarFzJoTseCKXhTPwMyLT`
-   Publish with that `url`; a publish without it makes a second artifact and they lose
-   the link. Read the artifact first if this session hasn't published it yet.
+   Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
+   link. If this session hasn't published yet, read the artifact first, then publish.
 
 Current version: **v30**. Branch: `claude/compassionate-rubin-fcqsif`.
+
+### The version number is not optional
+
+Their phone caches the page. A build published under the old number can silently serve
+them the previous version, and then you're both debugging a bug that's already fixed.
+So **every published build gets a new number**, in both places:
+
+- `<title>CaveRunner vNN</title>` — line 6
+- `const VERSION = 'vNN';` — near the top of the script, drawn on screen in-game
+
+The number on screen is how they tell you which build they're looking at. Bump it before
+publishing, never after.
 
 ## Layout of index.html
 
@@ -98,6 +120,25 @@ run.
 literal characters when editing with a script, or the edit silently finds nothing.
 
 ## Testing
+
+### Write tests into the repo, never the scratchpad
+
+This already went wrong once: every suite was built in the session scratchpad, so when
+that session ended the project had no tests at all. They were rescued and committed, but
+only because someone noticed.
+
+**Rules:**
+
+- A new test goes in `tests/logic/` or `tests/browser/` from the start. Don't write it in
+  the scratchpad "for now" — there is no later, the scratchpad is deleted with the session.
+- Commit it in the same commit as the change it covers.
+- Throwaway debug scripts (one-off probes, screenshot scratch) can live in the scratchpad.
+  If a probe turns out to be worth keeping, move it into `tests/` before the turn ends.
+- Don't hardcode machine paths. Logic suites find `index.html` relative to `__dirname`;
+  browser suites get Chromium from `tests/chromium.js`. Keep both that way so the suites
+  still run on a different machine.
+- Before finishing a session, `git status` — anything untracked under `tests/` is about to
+  be lost.
 
 ```
 node tests/run.js           # everything
