@@ -11,6 +11,9 @@
   --line:rgba(28,42,56,0.3); --knob:#1c2a38; --jet:rgba(255,138,31,0.18);
   --btn:#e3ebf1;
   --good:#1d8a52; --bad:#c2401f;
+  /* per-gun name colour: hue varies per gun (see gunColor), s/l fixed so every
+     hue clears an accessible contrast floor against this theme's backgrounds */
+  --gun-s:65%; --gun-l:22%;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -19,6 +22,7 @@
     --line:rgba(219,230,239,0.3); --knob:#dbe6ef; --jet:rgba(255,138,31,0.2);
     --btn:#1a2633;
     --good:#5fd39a; --bad:#ff8a6a;
+    --gun-s:65%; --gun-l:72%;
   }
 }
 :root[data-theme="dark"]{
@@ -27,6 +31,7 @@
   --line:rgba(219,230,239,0.3); --knob:#dbe6ef; --jet:rgba(255,138,31,0.2);
   --btn:#1a2633;
   --good:#5fd39a; --bad:#ff8a6a;
+  --gun-s:65%; --gun-l:72%;
 }
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:hidden;
   overscroll-behavior:none;touch-action:none;-webkit-user-select:none;user-select:none;
@@ -127,9 +132,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .fx.up u{color:var(--good)}
 .fx.down u{color:var(--bad)}
 .grp.cold .gtiles{border-style:dashed;border-color:var(--pad);background:transparent;opacity:.6}
+.bagHead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.bagHead .lab{margin:0}
+.sortBag{flex:0 0 auto;height:22px;padding:0 10px;border-radius:11px;border:1px solid var(--ring);
+  background:var(--pad);color:var(--muted);font:700 10px system-ui,sans-serif;letter-spacing:.06em}
 .bag{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;overflow-y:auto;
   flex:1 1 0;min-height:70px;border-radius:9px;background:var(--pad);padding:6px;
-  scroll-padding-bottom:12px}
+  scroll-padding-bottom:12px;margin-top:5px}
 .tile{width:60px;height:56px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
   touch-action:none;cursor:grab;overflow:hidden;flex:0 0 auto}
@@ -155,7 +164,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .pop.ingame{position:absolute;top:8px;left:8px;right:8px;bottom:auto;z-index:5;
   max-height:calc(100% - 134px);        /* always clears the Buy button below it */
   overflow:hidden;padding:11px 12px 16px;
-  pointer-events:none;background:rgba(18,20,26,0.93);border-color:rgba(255,255,255,0.18);color:#e9ecf2}
+  pointer-events:none;background:rgba(18,20,26,0.93);border-color:rgba(255,255,255,0.18);color:#e9ecf2;
+  /* this card is always dark regardless of site theme, so force the dark-bg gun colour */
+  --gun-l:72%}
 .pop.ingame .pinfo{margin-top:7px;font-size:12.5px}
 .pop.ingame .pnote{display:none}
 .pop.ingame .prows{margin-top:6px}
@@ -251,6 +262,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .bag.debug{box-shadow:inset 0 0 0 1.5px rgba(255,138,31,0.5)}
 .reset{position:absolute;top:10px;right:10px;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.35);
   color:#e9ecf2;border-radius:8px;padding:6px 12px;font:inherit;font-size:13px}
+.confirm{position:fixed;inset:0;z-index:29;display:flex;align-items:center;justify-content:center;padding:24px}
+.confirmCard{position:relative;z-index:30;background:var(--btn);border:1px solid var(--ring);border-radius:14px;
+  padding:18px 20px;max-width:260px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.4)}
+.confirmCard p{margin:0 0 14px;font:600 14px system-ui,sans-serif;color:var(--text)}
+.confirmRow{display:flex;gap:10px;justify-content:center}
+.confirmRow button{height:40px;padding:0 16px;border-radius:20px;font:600 13px system-ui,sans-serif}
+.confirmRow .cancel{background:var(--pad);color:var(--text);border:1px solid var(--ring)}
+.confirmRow .go{background:#c2401f;color:#fff;border:1px solid #c2401f}
 </style>
 </head>
 <body>
@@ -676,6 +695,22 @@ const FIELD_WHAT = {
 const famOf = id => FAMILIES[FAMILY_OF[id]] || FAMILIES.shots;
 const famCol = id => famOf(id).col;
 
+// Every gun gets its own hue, fixed for the run so it works as an identifier.
+// Saturation and lightness come from the --gun-s/--gun-l CSS vars (see :root),
+// which flip per theme so the same hue stays readable in light and dark —
+// measured worst case is ~4.9:1 contrast against every background it lands on.
+// A gun made before this field existed (or any gun object missing .hue) falls
+// back to a hash of its name, so it still renders — just not stored, so it can
+// drift if the name is reused; that only ever happens to old data, never a
+// freshly made gun.
+const hueFromName = name => {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return h % 360;
+};
+const gunHue = g => (g && g.hue != null) ? g.hue : hueFromName(g ? g.name : '');
+const gunColor = g => 'hsl(' + gunHue(g) + ', var(--gun-s), var(--gun-l))';
+
 // shop prices in gold
 const MOD_PRICE = {
   bolt: 20, spark: 12, slug: 40, buck: 35, lance: 45, orb: 30, blast: 45,
@@ -855,6 +890,7 @@ function makeGun(rnd, tier) {
     multi: rnd() < 0.12 + tier * 0.22 ? 2 : 1,
     shuffle: rnd() < 0.35 - tier * 0.18,
     slots: new Array(cap).fill(null),
+    hue: Math.floor(rnd() * 360),
   };
   // seed it with something that already shoots
   const used = 1 + Math.floor(rnd() * Math.min(cap, 2 + tier * 3));
@@ -873,10 +909,10 @@ function startingGuns() {
   // three bolts before it needs a breather, so it feels like a gun from the start
   const pistol = resetGun({ name: 'Scratch Pistol', cap: 4, castDelay: 0.12, recharge: 0.35,
     manaMax: 140, manaRegen: 55, spread: 3, multi: 1, shuffle: false, mana: 140, speedMul: 1,
-    slots: ['bolt', 'bolt', 'bolt', null] });
+    slots: ['bolt', 'bolt', 'bolt', null], hue: Math.floor(Math.random() * 360) });
   const blaster = resetGun({ name: 'Old Blaster', cap: 3, castDelay: 0.5, recharge: 1.1,
     manaMax: 150, manaRegen: 30, spread: 2, multi: 1, shuffle: false, mana: 150, speedMul: 1,
-    slots: ['blast', null, null] });
+    slots: ['blast', null, null], hue: Math.floor(Math.random() * 360) });
   return [pistol, blaster, null, null];
 }
 
@@ -3332,7 +3368,7 @@ function GunCard({ gun, label, onClose, ingame, flow, split, mark, compare, comp
     h('div', { className: 'phead' },
       h('div', { className: 'pglyph', style: { borderColor: '#c9ccd4', color: '#c9ccd4' } }, '⌥'),
       h('div', { className: 'ptitle' },
-        h('b', null, gun.name),
+        h('b', { style: { color: gunColor(gun) } }, gun.name),
         h('span', null, (label || 'Gun') + ' · ' + gun.cap + ' slots')),
       onClose ? h('button', { className: 'pclose',
         onPointerDown: e => { e.preventDefault(); onClose(); } }, '×') : null
@@ -3410,7 +3446,7 @@ function GunSwap({ input, refresh, onDone }) {
             on => setHeld(on ? i : -1)),
         },
         h('span', { className: 'num' }, i + 1),
-        h('span', { className: 'gname' }, g ? g.name : 'Empty slot'),
+        h('span', { className: 'gname', style: g ? { color: gunColor(g) } : null }, g ? g.name : 'Empty slot'),
         h('span', { className: 'gsub' }, g ? g.slots.filter(Boolean).length + '/' + g.cap + ' mods' : 'hold to take')
       ))
     )
@@ -3523,6 +3559,20 @@ function Editor({ input, close, refresh }) {
   const bagIds = LO.debug ? ALL_IDS : LO.bag;
   const takeFromBag = i => { if (!LO.debug) LO.bag.splice(i, 1); };
   const returnToBag = id => { if (!LO.debug && id) LO.bag.push(id); };
+
+  // one-shot reorder into the 8 colour families (same grouping as the legend
+  // below), not a display toggle — the bag is already player-mutable state
+  // (dragging reorders it too), so this is just another way to reorder it, and
+  // it keeps the sort useful as a resting order rather than something to redo
+  // every time the sheet reopens. Stable sort: mods keep their relative order
+  // within a family.
+  const famKeys = Object.keys(FAMILIES);
+  const sortBag = () => {
+    if (LO.debug) return;
+    const rank = id => famKeys.indexOf(FAMILY_OF[id] || 'shots');
+    LO.bag.sort((a, b) => rank(a) - rank(b));
+    refresh();
+  };
 
   // move a gun to another slot, keeping whatever you had selected selected
   const moveGun = (from, to) => {
@@ -3702,7 +3752,7 @@ function Editor({ input, close, refresh }) {
             (gdrag && gdrag.over === i && gdrag.from !== i ? ' target' : ''),
           onPointerDown: gunPress(i),
         },
-        h('span', { className: 'gname' }, g ? g.name : 'Empty'),
+        h('span', { className: 'gname', style: g ? { color: gunColor(g) } : null }, g ? g.name : 'Empty'),
         h('span', { className: 'gsub' }, g ? g.cap + ' slots' : '—')
       ))
     ),
@@ -3752,9 +3802,12 @@ function Editor({ input, close, refresh }) {
     h('div', { className: 'legend' },
       Object.keys(FAMILIES).map(k => h('span', { key: k, className: 'lg' },
         h('i', { style: { background: FAMILIES[k].col } }), FAMILIES[k].name))),
-    h('p', { className: 'lab' }, LO.debug
-      ? 'Debug shelf — one of every mod, never used up'
-      : 'Collected mods' + (LO.bag.length ? '' : ' — none yet, find them in the cave')),
+    h('div', { className: 'bagHead' },
+      h('p', { className: 'lab' }, LO.debug
+        ? 'Debug shelf — one of every mod, never used up'
+        : 'Collected mods' + (LO.bag.length ? '' : ' — none yet, find them in the cave')),
+      !LO.debug && LO.bag.length > 1 ? h('button', { className: 'sortBag',
+          onPointerDown: e => { e.preventDefault(); sortBag(); } }, 'Sort') : null),
     h('div', { className: 'bag scroll' + (LO.debug ? ' debug' : ''), 'data-drop': 'bag' },
       bagIds.map((id, i) => tile(id, { type: 'bag', i }, 'b' + i))
     ),
@@ -3783,6 +3836,10 @@ function App() {
   const [edit, setEdit] = useState(false);
   const [gunInfo, setGunInfo] = useState(-1);
   const [held, setHeld] = useState(-1);
+  // null when closed; a timestamp (from the tap that opened it) while open, so
+  // the Restart button's own tap can't also land on the Yes button underneath —
+  // see the guard on the confirm button below
+  const [confirmAt, setConfirmAt] = useState(null);
   const [, bump] = useState(0);
   const refresh = () => bump(n => n + 1);
   input.current.notify = refresh;
@@ -3868,8 +3925,26 @@ function App() {
         h('b', null, prompt.price ? prompt.price + 'g' : 'free')) : null,
       h('button', { className: 'reset',
         // pointerdown, like every other control: a click synthesised after the mod
-        // sheet closes must not land here and wipe the run
-        onPointerDown: e => { e.preventDefault(); restart(); } }, 'Restart')
+        // sheet closes must not land here and wipe the run. This only opens the
+        // confirm below — restart() itself is gated further down.
+        onPointerDown: e => { e.preventDefault(); setConfirmAt(performance.now()); } }, 'Restart'),
+      confirmAt != null ? h('div', { className: 'confirm' },
+        h('div', { className: 'shade', onPointerDown: e => { e.preventDefault(); setConfirmAt(null); } }),
+        h('div', { className: 'confirmCard' },
+          h('p', null, 'Restart the run? You’ll lose your guns and mods.'),
+          h('div', { className: 'confirmRow' },
+            h('button', { className: 'cancel',
+              onPointerDown: e => { e.preventDefault(); setConfirmAt(null); } }, 'Cancel'),
+            h('button', { className: 'go',
+              onPointerDown: e => {
+                e.preventDefault();
+                // the tap that opened this dialog can land here too, on some devices,
+                // as a second pointerdown a moment later — ignore anything that close
+                // to the open so that one tap can never both open and confirm
+                if (performance.now() - confirmAt < 400) return;
+                setConfirmAt(null);
+                restart();
+              } }, 'Yes, restart')))) : null
     ),
     h('div', { className: 'controls' },
       h('div', { className: 'toolbar' },
@@ -3885,7 +3960,7 @@ function App() {
                 on => setHeld(on ? i : -1)),
             },
             h('span', { className: 'num' }, i + 1),
-            h('span', { className: 'gname' }, g ? g.name : '—'),
+            h('span', { className: 'gname', style: g ? { color: gunColor(g) } : null }, g ? g.name : '—'),
             g ? h('span', { className: 'gsub' }, g.slots.filter(Boolean).length + '/' + g.cap) : null
           ))
         ),

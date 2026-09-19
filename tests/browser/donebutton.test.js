@@ -26,8 +26,10 @@ async function run(label, opts, useTap) {
   check(`${label}: Done keeps the run`, st.marker === 'run-1', st);
   check(`${label}: Done keeps collected mods`, st.bag === 2, st);
 
-  // Restart must still do its job
+  // Restart must still do its job — it opens a confirm now, so press that too
   await press('.reset');
+  await page.waitForTimeout(500);
+  await press('.confirmRow .go');
   await page.waitForTimeout(600);
   st = await page.evaluate(() => ({ marker: window.__lvl.marker || null,
     bag: window.__in.current.loadout.bag.length, guns: window.__in.current.loadout.guns.filter(Boolean).length }));
