@@ -141,6 +141,14 @@ on the same cast planner the gun fires with, so the numbers are the real ones. H
 counts as a resource alongside mana, so a build that bleeds you dry in five seconds is
 not credited with the damage it would do if you survived it.
 
+## Running it
+
+Open `index.html`. There is no build step and nothing to install.
+
+Tests live in `tests/`: `node tests/run.js` runs the lot, `node tests/run.js logic` runs
+just the fast ones. The browser suites need Chromium and Playwright; the runner skips
+them if it cannot find either.
+
 ## Features
 
 - Floors that chain: shop, cave, exit, next shop, with gold and gear carried over

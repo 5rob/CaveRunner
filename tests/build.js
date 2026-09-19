@@ -1,0 +1,39 @@
+// Makes tests/build/test.html: the real game, but with React served from disk so the
+// tests never depend on the network, and two hooks the browser suites drive it through.
+//
+//   window.__in   the App's input ref: loadout, guns, bag, prompt, found, keys, sticks
+//   window.__lvl  the live level: player, enemies, bullets, fields, beams, pickups, stock
+//
+// Nothing here changes game logic. If a test needs to reach something new, add it to the
+// __lvl object below rather than reaching into the game from the test.
+const fs = require('fs');
+const path = require('path');
+
+const ROOT = path.join(__dirname, '..');
+const OUT = path.join(__dirname, 'build');
+
+const HOOK_LVL =
+  "    window.__lvl = { get pickups(){return pickups}, get enemies(){return enemies}, " +
+  "bullets, p, get mat(){return mat}, get stock(){return stock}, coins, get floor(){return floor}, " +
+  "get arrival(){return arrival}, get start(){return start}, fields, beams, flashes, dig };\n";
+
+function build() {
+  let s = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const swap = (from, to) => {
+    if (!s.includes(from)) throw new Error('build.js is out of date: could not find ' + from);
+    s = s.replace(from, to);
+  };
+  swap('https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js',
+    '../lib/react.production.min.js');
+  swap('https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js',
+    '../lib/react-dom.production.min.js');
+  swap('    const toast = text => {', HOOK_LVL + '    const toast = text => {');
+  swap('  const [size, setSize] = useState(150);',
+    '  window.__in = input;\n  const [size, setSize] = useState(150);');
+  fs.mkdirSync(OUT, { recursive: true });
+  fs.writeFileSync(path.join(OUT, 'test.html'), s);
+  return path.join(OUT, 'test.html');
+}
+
+if (require.main === module) console.log('built ' + build());
+module.exports = build;

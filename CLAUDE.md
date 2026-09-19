@@ -1,0 +1,150 @@
+# CaveRunner
+
+A single-file browser game: a jetpack cave shooter with Noita-style wand building.
+`index.html` is the whole thing — markup, CSS, React and game loop, no build step.
+
+## How the owner likes to work
+
+Their words, from the first session:
+
+> This is just a fun personal project, so don't focus on production level
+> infrastructure, just keep it simple and focus on just what I ask for. Reduce
+> technical jargon to a minimum unless I ask about something specific.
+
+So: do the thing asked, no more. No frameworks, no bundler, no package.json for the
+game itself. Explain in plain language unless they ask about internals — they do ask,
+and when they do they want the real mechanism, not a summary.
+
+They play on a phone through the published artifact, so **every change has to work at
+phone width with touch**.
+
+## The loop we've settled into
+
+1. Make the change in `index.html`.
+2. Test it. `node tests/run.js` — see **Testing** below. Add a suite for anything new.
+3. Bump the version: `<title>` on line 6 and `const VERSION` near the top of the script.
+   They asked for this so the published page doesn't get stuck on a cached old build.
+4. Update `README.md` — it describes the game for a player, and stays current.
+5. Commit and push to the working branch.
+6. Republish the artifact to the **same URL** so their link keeps working:
+   `https://claude.ai/artifact/2rarFzJoTseCKXhTPwMyLT`
+   Publish with that `url`; a publish without it makes a second artifact and they lose
+   the link. Read the artifact first if this session hasn't published it yet.
+
+Current version: **v30**. Branch: `claude/compassionate-rubin-fcqsif`.
+
+## Layout of index.html
+
+Roughly top to bottom:
+
+| What | Where |
+|---|---|
+| CSS | in `<style>`, one block, light and dark via `prefers-color-scheme` |
+| World constants | `CELL`, `CW`/`CH`, `SHOP_*`, tuning consts (`GRAVITY`, `JET`, …) |
+| `MODS` | the 108 spells, each a plain object |
+| `FAMILIES` / `FAMILY_OF` | the 8 colour families the UI groups mods by |
+| `MOD_PRICE` / `MOD_TIER` | shop price and rarity 1–4 for every mod |
+| `planCast` | **the heart of it** — works out what one pull of the trigger fires |
+| `gunRate` / `buildAdvice` | the build advisor |
+| `castGroups` / `groupStats` | the outlines and stat lines in the build screen |
+| `tracePath` | simulates a shot for the aim line |
+| `makeLevel` | terrain, shop, enemies, pickups |
+| sprites | `drawRunner`, `drawDrone`, `drawGun`, `rr` |
+| `Game` | the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields |
+| React UI | `ModCard`, `GunCard`, `Editor`, `GunSwap`, `App` |
+
+Everything above `makeLevel` is pure and top-level, which is why the logic tests can
+load it and call it directly. **Keep it that way** — if a new mechanic can be a pure
+function, make it one.
+
+## Things worth knowing before you change anything
+
+**`planCast(g, others)` mutates `g.idx`.** It walks the slot list from wherever the gun
+left off. Callers that only want to look (previews, the advisor, `castGroups`) pass a
+copy. It returns `{ shots, defs, start, cost, delay, acts, hp, wrap }`.
+
+**Spell kinds.** `shot` (a projectile) and `static` (a field that stays put) each take a
+cast slot, so multicasts gather them. `mod` and `util` are modifiers that don't — `util`
+also carries an `act` string the game switches on. `passive` works from anywhere on the
+gun. A modifier only affects spells drawn *after* it, which is the whole game.
+
+**Copies (the Greek letters) are fiddly.** They push ids into a queue drawn before the
+gun's own list, and they must widen `multi` to make room for themselves *and* the
+originals they came from, or the multicast limit eats them. They never copy a copy, they
+never expand after a wrap-around, and `multi` is clamped to what the gun can actually
+produce. Break any one of those and Omega or Myriad runs away. `spells.test.js` covers it.
+
+**The aim line must stay honest.** Anything that changes how a bullet flies has to be
+added to `tracePath` as well as the bullet loop, or the line lies. There's a test for
+every path mod.
+
+**Cast delay vs recharge.** Cast delay accumulates in draw order and a few mods (Buzzsaw)
+*reset* it to zero rather than subtracting, so position matters. Recharge counts from any
+slot. `effRecharge(g)` is the one true answer.
+
+**The advisor prices resources.** `gunRate` scales damage by mana sustain *and* by health
+drain, so a build that bleeds you dry isn't credited with damage you'd never live to
+deal. If you add a mod that spends something, make sure `gunRate` sees the cost.
+
+**Detail cards in the build screen open at the top** (`.pop.top`). The editor's content
+reaches the bottom of the screen, so a bottom-anchored card buried the mod bag. Four
+separate bugs came from that; don't move it back.
+
+**UI controls fire on `onPointerDown`, not `onClick`.** A click synthesised after a sheet
+closes lands on whatever is underneath — that's how the Done button used to restart the
+run.
+
+**Unicode is stored raw** in `index.html` (`·`, `—`, `×`, `Ω`), not as `\uXXXX`. Match the
+literal characters when editing with a script, or the edit silently finds nothing.
+
+## Testing
+
+```
+node tests/run.js           # everything
+node tests/run.js logic     # the fast ones, ~2 seconds
+node tests/run.js browser   # Chromium, ~2 minutes, runs one at a time
+node tests/run.js advice    # anything matching "advice"
+```
+
+**Logic suites** (`tests/logic/`) slice the `<script>` block out of `index.html`, eval it,
+and call the pure functions. ~1250 checks. Add to these first — they're fast and they've
+caught most of the real bugs.
+
+**Browser suites** (`tests/browser/`) drive the real page in Chromium through
+`playwright-core`. `tests/build.js` makes `tests/build/test.html`: the game with React
+served from `tests/lib/` and two debug hooks, `window.__in` (the input ref — loadout,
+guns, bag, prompt) and `window.__lvl` (the live level — player, enemies, bullets, fields).
+If a suite needs to reach something new, add it to the hook in `build.js` rather than
+reaching into the game from the test.
+
+`tests/chromium.js` finds Playwright and a Chromium wherever this machine keeps them, so
+no suite hardcodes a path; override with `CAVERUNNER_PLAYWRIGHT` and `CAVERUNNER_CHROME`.
+The runner skips the browser suites if there's no Chromium to drive. On this environment
+it's the preinstalled one at `/opt/pw-browsers/` — don't run `playwright install`.
+
+Two suites are worth knowing about: `everymod.test.js` equips and fires all 108 mods in
+the real game and checks each puts something into the world, and `smoke.test.js` plays a
+short run and asserts no page errors.
+
+**Measure, don't assert.** This project has a habit of proving things rather than
+claiming them — flood-fill the cave to prove tunnels connect, count buried bullets before
+and after a bounce fix, screenshot the build screen to check a card fits. It has caught
+several things that looked fine. When a test disagrees with you, check which one is
+actually wrong; it's been both.
+
+## Where to look when something breaks
+
+- Terrain sealed off or unreachable → `tests/logic/level.test.js` flood-fills 20 seeds.
+- A mod doing nothing → `tests/browser/everymod.test.js` will name it.
+- Aim line wrong → the mod is in the bullet loop but not `tracePath`.
+- Build screen card covering something → `.pop.top` height cap and the sheet layout.
+- Editor slow → `buildAdvice`; it shortlists for a reason (`SHORTLIST`).
+
+## Ideas raised but not built
+
+- **Delayed Spellcast** — a static phenomenon that casts three more spells after a pause.
+  Needs the trigger/timer machinery Noita has and we don't.
+- **Perks**, mentioned when gold pickup range was reduced: "later when I introduce perks
+  we could have a perk that increases that range". The range is deliberately short now.
+- Noita spell categories we only partly mined: Material spells (none), and the rest of
+  Other (Add Trigger / Add Timer, Divide By N, the Requirement spells).
