@@ -7,13 +7,20 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v41.** Branch: `claude/compassionate-rubin-fcqsif` (pushed).
+- **On-disk version: v42.** Branch: `claude/compassionate-rubin-fcqsif` (pushed).
 - Working tree is clean apart from `.claude/` (untracked on purpose — it holds an API token,
   never commit it).
 - Full test suite is green (`node tests/run.js`), see **Testing** below for two known flakes.
 
 ## What shipped recently (most recent first)
 
+- **v42 — unified pickup panel, bolder knobs, zoom-aware aggro.** The shop/pickup info
+  card and the buy pill are one panel now (`.buypanel`, grown up from the bottom): the
+  item card, then a `.pbuy` line reading `Buy <price>` for stock or `Take`/`free` for
+  loot. The mod use-example is dropped from the in-game preview (kept in the editor). The
+  stick knobs are white rings with a black fill (stroke 1.5× the ring lines). Enemy aggro
+  and firing reaches now scale by `1/DEV.zoom` (via the `sees` factor), so zooming the
+  camera in no longer lets off-screen enemies hunt and shoot you.
 - **v41 — Dev panel.** A **Dev** button next to **Restart** in the view (always reachable,
   not shop-only) opens `DevPanel`: pauses the run but keeps drawing behind a light backdrop
   so the visual knobs preview live. Holds the **All mods** toggle (the old DEBUG shelf,

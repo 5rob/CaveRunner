@@ -52,7 +52,7 @@ replace it with a general static server.
    Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
    link. If this session hasn't published yet, read the artifact first, then publish.
 
-Current version: **v41**. Branch: `claude/compassionate-rubin-fcqsif`.
+Current version: **v42**. Branch: `claude/compassionate-rubin-fcqsif`.
 
 ### The version number is not optional
 
@@ -161,6 +161,19 @@ can pass the rim as a whole knob.
 **Detail cards in the build screen open at the top** (`.pop.top`). The editor's content
 reaches the bottom of the screen, so a bottom-anchored card buried the mod bag. Four
 separate bugs came from that; don't move it back.
+
+**The shop/pickup preview is one panel now (v42), `.buypanel`, grown up from the bottom.**
+Walking up to a plinth or a piece of ground loot renders `.buypanel` at the bottom of the
+view: the item's card (`ModCard`/`GunCard`/`PerkCard`, all `ingame`) followed by one
+`.pbuy` line — `Buy <price>` for shop stock, `Take`/`free` for anything you pick up
+(a nameless prompt like the heal puts its name here since there's no card above it). The
+info box no longer floats at the top and there's no separate `.pickhint` any more.
+`.buypanel .pop` strips the inner card's own frame so the panel is the box; it wins over
+`.pop.ingame` on source order, so keep the `.buypanel` block *after* `.pop.ingame` in the
+CSS. The whole panel is `pointer-events:none`, same as before — buying is still a dead-zone
+tap on the right stick. **The mod use-example (`.pdemo`) is dropped when `ingame`** — it's
+for the editor, where you're deciding placement; `ModCard` renders it only when not `ingame`.
+`.pop.ingame` is still the query in the shop tests, so the inner card keeps that class.
 
 **UI controls fire on `onPointerDown`, not `onClick`.** A click synthesised after a sheet
 closes lands on whatever is underneath — that's how the Done button used to restart the

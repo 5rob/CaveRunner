@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v41</title>
+<title>CaveRunner v42</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -99,9 +99,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* the knob is the thing under your thumb, so it is sized to still show an edge around
    a thumbprint rather than disappearing underneath one. Its size comes from KNOB, and
    the dead-zone ring is built from the same number — see AIM_RING. */
+/* a white ring with a black fill. Its stroke is 1.5x the deadzone ring's 1.5px line,
+   so the knob reads as the boldest circle on the stick. */
 .knob{position:absolute;left:50%;top:50%;box-sizing:border-box;border-radius:50%;
-  background:radial-gradient(circle at 50% 34%,#f4f1e6 0%,#9c988e 100%);
-  border:2px solid var(--ctl-edge);box-shadow:0 2px 7px rgba(0,0,0,0.75);
+  background:#000;
+  border:2.25px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,0.75);
   opacity:.95;pointer-events:none}
 .lbl{position:absolute;left:50%;transform:translateX(-50%);pointer-events:none;
   font:700 10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;
@@ -285,12 +287,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .dtile i{font-style:normal;font:600 10px system-ui,sans-serif;color:var(--text);opacity:.8}
 .dtile.off{opacity:.42}
 .dnote{display:block;font-size:11px;color:var(--muted);margin-top:3px}
-.pickhint{position:absolute;left:50%;transform:translateX(-50%);bottom:78px;display:flex;align-items:center;
-  gap:8px;height:42px;padding:0 18px;border-radius:21px;border:2px solid #ffc93c;
-  background:rgba(20,22,28,0.82);color:#fff;font:600 14px system-ui,sans-serif;pointer-events:none}
-.pickhint b{color:#ffc93c}
-.pickhint .hint{font:500 10px system-ui,sans-serif;color:rgba(255,255,255,0.55)}
-.pickhint.cant{border-color:rgba(255,255,255,0.25);opacity:.55}
+/* the shop/pickup panel: the item's card and its buy/take line in one box, grown up
+   from the bottom of the view. pointer-events:none so a tap falls through to the sticks —
+   buying is a tap on the right stick's dead zone. */
+.buypanel{position:absolute;left:8px;right:8px;bottom:12px;z-index:5;box-sizing:border-box;
+  display:flex;flex-direction:column;gap:9px;pointer-events:none;
+  max-height:calc(100% - 24px);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  background:rgba(18,20,26,0.93);border:1px solid rgba(255,255,255,0.18);border-radius:15px;
+  padding:11px 12px 13px;color:#e9ecf2;box-shadow:0 12px 40px rgba(0,0,0,0.35);
+  /* the card inside is always dark regardless of site theme, so force the dark-bg gun colour */
+  --gun-l:72%}
+/* the card sits inline inside the panel: strip its own frame and let the panel be the box */
+.buypanel .pop{position:static;top:auto;left:auto;right:auto;bottom:auto;width:auto;
+  background:none;border:0;box-shadow:none;padding:0;margin:0;max-height:none;overflow:visible}
+/* the buy/take line: the amber price is the thing your eye goes to */
+.pbuy{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:9px;
+  height:40px;border-radius:20px;border:2px solid #ffc93c;background:rgba(255,201,60,0.1);
+  color:#fff;font:700 14px system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase}
+.pbuy b{color:#ffc93c;font-size:15px;text-transform:none}
+.pbuy.cant{border-color:rgba(255,255,255,0.25);background:none;opacity:.55}
 .weapon.locked{opacity:.45}
 .pop.flow{position:static;max-height:none;box-shadow:none;margin-bottom:2px}
 .spacer{flex:1 1 auto;min-height:6px}
@@ -381,7 +396,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v41';
+const VERSION = 'v42';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -3534,7 +3549,12 @@ function Game({ input }) {
         e.touch -= dt;
         const dx = pcx - e.x, dy = pcy - e.ty, dist = Math.hypot(dx, dy) || 1;
         e.lx = dx / dist; e.ly = dy / dist;
-        const sees = pb.invis ? 0.4 : 1;    // Invisibility: creatures notice you far later
+        // Aggro (k.aggro) and firing (k.range) reaches are in world units, but the
+        // camera zoom changes how much world fits on screen — zoomed in, an enemy off
+        // the edge of the view could still hunt and shoot you. Scale both by 1/zoom so
+        // they engage at roughly the same on-screen distance whatever the zoom.
+        // Invisibility still folds in on top: creatures notice you far later.
+        const sees = (pb.invis ? 0.4 : 1) / DEV.zoom;
         const hunting = (k.act === 'chase' || k.act === 'bomb') && !p.dead && dist < k.aggro * sees;
 
         if (k.act === 'turret') {
@@ -4591,7 +4611,7 @@ function ModFound({ input, refresh }) {
   );
 }
 
-function ModCard({ id, onClose, ingame, top }) {
+function ModCard({ id, onClose, ingame, top, flow }) {
   const m = MODS[id];
   const kind = famOf(id).name + (m.kind === 'passive' ? ' \u00b7 always on' : '');
   const rows = modPreview(id).rows;
@@ -4664,7 +4684,7 @@ function ModCard({ id, onClose, ingame, top }) {
     demo = [drow(true, [dtile(id, 'a'), dtile('bolt', 'b')], 'the bolt gets the effect', 1),
             drow(false, [dtile('bolt', 'c'), dtile(id, 'd', true)], 'too late — the bolt already fired', 2)];
   }
-  return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') + (top ? ' top' : '') },
+  return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') + (top ? ' top' : '') + (flow ? ' flow' : '') },
     h('div', { className: 'phead' },
       h('div', { className: 'pglyph', style: { borderColor: famCol(id), color: famCol(id) } }, m.glyph),
       h('div', { className: 'ptitle' },
@@ -4678,7 +4698,9 @@ function ModCard({ id, onClose, ingame, top }) {
     rows.length ? h('div', { className: 'prows' },
       rows.map((r, i) => h('div', { className: 'prow', key: i },
         h('span', null, r[0]), h('b', null, r[1])))) : null,
-    h('div', { className: 'pdemo' }, demo)
+    // the placement use-example is for the editor, where you're deciding where a mod
+    // goes — the shop/pickup preview leaves it off and keeps the card compact.
+    ingame ? null : h('div', { className: 'pdemo' }, demo)
   );
 }
 
@@ -4960,9 +4982,9 @@ function Editor({ input, close, refresh }) {
 
 // The card that comes up standing on a perk altar, so you know what you're taking before
 // you take it. A perk is permanent, so this is the only look you get.
-function PerkCard({ id, ingame }) {
+function PerkCard({ id, ingame, flow }) {
   const pk = PERKS[id];
-  return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') },
+  return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') + (flow ? ' flow' : '') },
     h('div', { className: 'phead' },
       h('div', { className: 'pglyph', style: { borderColor: pk.tint, color: pk.tint } }, pk.glyph),
       h('div', { className: 'ptitle' },
@@ -5136,19 +5158,25 @@ function App() {
   return h('div', { className: 'app' },
     h('div', { className: 'view' },
       h(Game, { key: run, input }),
-      // hidden once the chooser (found) or the mod card (confirm) is up: the game pauses
-      // behind those, so the prompt that was showing the moment they opened would
-      // otherwise sit there stale, doubled up with their own card for the same thing
-      prompt && prompt.id && !found && !confirming ? h(ModCard, { id: prompt.id, ingame: true }) : null,
-      prompt && prompt.perk && !found && !confirming ? h(PerkCard, { id: prompt.perk, ingame: true }) : null,
-      prompt && prompt.gun && !found && !confirming ? h(GunCard, { gun: prompt.gun, label: prompt.found ? 'Found' : 'For sale', ingame: true,
-        compare: heldGun, compareName: heldGun ? heldGun.name : '' }) : null,
-      // no button any more — this is just a label. Buying/picking up is a tap on the
-      // right stick's dead zone (or the f key), so the label says so.
-      prompt && !found && !confirming ? h('div', { className: 'pickhint' + (prompt.can ? '' : ' cant') },
-        prompt.price ? 'Buy ' + prompt.text : 'Take ' + prompt.text,
-        h('b', null, prompt.price ? prompt.price + 'g' : 'free'),
-        h('span', { className: 'hint' }, 'tap dead zone')) : null,
+      // The item's card and its buy/take line are one panel now, grown up from the
+      // bottom: the info you're reading and the price you're paying sit together.
+      // Hidden once the chooser (found) or the mod card (confirm) is up — the game
+      // pauses behind those, so a prompt left over from the moment they opened would
+      // otherwise sit there stale, doubled up with their own card for the same thing.
+      // The panel is pointer-events:none so a tap still reaches the sticks underneath;
+      // buying/picking up is a tap on the right stick's dead zone (or the f key).
+      prompt && !found && !confirming ? h('div', { className: 'buypanel' },
+        prompt.id ? h(ModCard, { id: prompt.id, ingame: true }) : null,
+        prompt.perk ? h(PerkCard, { id: prompt.perk, ingame: true }) : null,
+        prompt.gun ? h(GunCard, { gun: prompt.gun, label: prompt.found ? 'Found' : 'For sale',
+          ingame: true, compare: heldGun, compareName: heldGun ? heldGun.name : '' }) : null,
+        // shop stock is "Buy <price>"; anything you pick up for free is just "Take" —
+        // the card above already names it, so a nameless item (the heal) shows its name here.
+        h('div', { className: 'pbuy' + (prompt.can ? '' : ' cant') },
+          prompt.price
+            ? [ h('span', { key: 't' }, 'Buy'), h('b', { key: 'p' }, prompt.price + 'g') ]
+            : [ h('span', { key: 't' }, (prompt.id || prompt.gun || prompt.perk) ? 'Take' : 'Take ' + prompt.text),
+                h('b', { key: 'p' }, 'free') ])) : null,
       h('button', { className: 'reset',
         // pointerdown, like every other control: a click synthesised after the mod
         // sheet closes must not land here and wipe the run. This only opens the

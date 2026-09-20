@@ -40,9 +40,9 @@ Open `index.html` in a browser. It is a single file with no build step; React lo
 | Guns & mods screen (shop only) | Tap Mods | E |
 
 The controls sit on a black arcade panel with a scanline wash over it. The knob
-that follows your thumb is sized to still show an edge around a thumbprint rather
-than vanishing underneath one, so you can see where your thumb is pointing without
-lifting it.
+that follows your thumb is a white ring with a black fill — the boldest circle on
+the stick — sized to still show an edge around a thumbprint rather than vanishing
+underneath one, so you can see where your thumb is pointing without lifting it.
 
 The right stick carries two rings as well. The amber one is the trigger line: it is
 drawn one knob radius outside the point where the drag starts counting as aiming,
@@ -58,9 +58,10 @@ The middle of the right stick is a dead zone: drag out past it to aim and fire,
 tap it without leaving it and you interact with whatever you are standing at.
 That one button buys from a shop plinth and picks up guns and mods in the cave.
 
-Walking over something no longer takes it. You get its card instead — the same
-detail card the build screen shows — so you can read a mod or compare a gun
-against the one you are holding before deciding.
+Walking over something no longer takes it. You get its card instead, grown up from
+the bottom of the screen with the price built into it — so you can read a mod or
+compare a gun against the one you are holding, and see what it costs, in one panel.
+Shop stock reads **Buy** and its price; anything free just reads **Take**.
 
 A mod on the ground is not taken by the tap either. The tap opens the card,
 pauses the game behind it, and asks: **Pick up** on the left, **Leave** on the
@@ -82,8 +83,8 @@ whether they fire in the order you set them. Buying one drops it at the plinth a
 pick up with a second tap whenever you like, and walking away parks it on the
 shop floor rather than binning what you paid for.
 
-Stand on any plinth and its full detail card appears — the mod card the build
-screen shows, or the gun's stat sheet compared against the one you are holding —
+Stand on any plinth and its card appears with the **Buy** price built in — a mod's
+effect and stats, or a gun's stat sheet compared against the one you are holding —
 so you can read what you are buying before paying for it. The shop is also the
 only place you can rearrange your guns: the Mods button is locked while you are
 out in the cave. Enemies drop gold when they die, so a floor you clear pays for

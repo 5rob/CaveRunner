@@ -23,24 +23,24 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
         window.__in.current.sig = '';
         await new Promise(r => requestAnimationFrame(r));
         await new Promise(r => setTimeout(r, 90));
-        const el = document.querySelector('.pop.ingame');
-        if (!el) { out.push({ id, missing: true }); continue; }
+        // the item card and the buy line now live in one panel, grown from the bottom
+        const el = document.querySelector('.buypanel');
+        if (!el || !el.querySelector('.pop.ingame')) { out.push({ id, missing: true }); continue; }
         const pad = parseFloat(getComputedStyle(el).paddingBottom);
         out.push({ id, clipped: el.scrollHeight - el.clientHeight, pad,
           bottom: Math.round(el.getBoundingClientRect().bottom) });
       }
-      const hint = document.querySelector('.pickhint');
-      return { rows: out, hintTop: hint ? Math.round(hint.getBoundingClientRect().top) : null,
+      return { rows: out,
         viewBottom: Math.round(document.querySelector('.view').getBoundingClientRect().bottom) };
     });
     const bad = worst.rows.filter(r => r.missing || r.clipped > 1);
-    check(`no mod card clips at ${vh}px tall`, bad.length === 0,
+    check(`no buy panel clips at ${vh}px tall`, bad.length === 0,
       bad.slice(0, 5).map(b => b.id + ':' + (b.missing ? 'missing' : b.clipped + 'px cut')));
-    check(`cards have bottom padding at ${vh}px`, worst.rows.every(r => r.missing || r.pad >= 14),
+    check(`panels have bottom padding at ${vh}px`, worst.rows.every(r => r.missing || r.pad >= 12),
       worst.rows[0] && worst.rows[0].pad);
-    check(`the card still clears the pickup hint at ${vh}px`,
-      worst.rows.every(r => r.missing || r.bottom < worst.hintTop),
-      { maxBottom: Math.max(...worst.rows.filter(r => !r.missing).map(r => r.bottom)), hintTop: worst.hintTop });
+    check(`the panel stays inside the view at ${vh}px`,
+      worst.rows.every(r => r.missing || r.bottom <= worst.viewBottom),
+      { maxBottom: Math.max(...worst.rows.filter(r => !r.missing).map(r => r.bottom)), viewBottom: worst.viewBottom });
     await ctx.close();
   }
   console.log(fails ? `\n${fails} failed` : '\nall good');
