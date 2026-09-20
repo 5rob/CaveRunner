@@ -84,9 +84,10 @@ Talk briefly, iterate fast, don't over-plan. Every change works at phone width w
   - `CAVERUNNER_CHROME="C:/Program Files/Google/Chrome/Application/chrome.exe"`
 - Do **not** run `playwright install`.
 - **Known flakes** (pass reliably in isolation, occasionally fail under full-suite load —
-  re-run the single suite to confirm; both are enemy-geometry / random-seed sensitive, not
-  regressions): `everymod` (telecast) and `trigger` (double trigger). See
-  `memory/cardfit-known-failure.md`.
+  re-run the single suite to confirm; all are enemy-geometry / random-seed sensitive, not
+  regressions): `everymod` (telecast), `trigger` (double trigger), and `compare` (a
+  found gun that happens not to differ in regen, so "less regen is red" finds nothing —
+  seen once during the v47 run, green on its own). See `memory/cardfit-known-failure.md`.
 
 ## Testing on the phone over WiFi
 

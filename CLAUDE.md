@@ -181,9 +181,11 @@ it brightens under `.jetting` and goes red under `.dry`. The **right** stick sho
 a gold ring the same way (dimmed when there's no gun or it's recharging). The ring geometry
 is `GAUGE_R`/`GAUGE_C` + `strokeDasharray`; keep the track circle behind it for legibility.
 Only the version (top-left) is still drawn on the canvas; **gold is a DOM readout
-(`.gold`) in the gap between the two sticks** (`fmtGold`, a pure fn above `makeLevel` and
-covered by `gold.test.js`: a bare number, thousands truncated to a `k`, then a small `g`).
-The floor
+(`.gold`) in the gap between the two sticks, just under their tops** (`top:5%`, v48;
+`pointer-events:none` so a tap still falls to a stick). It formats with `fmtGold` — a pure
+fn above `makeLevel`, covered by `gold.test.js`: a bare number, thousands truncated (not
+rounded) to a `k`, then a small `g` (so `1234` → `1.2kg`). It updates because gold changes
+already call `input.current.notify()`, which re-renders `App`. The floor
 number is painted big and letter-spaced across the shop's back-wall block in `draw()`, a
 touch brighter than the wall (`rgba(255,255,255,0.07)`). **Restart moved into the Dev
 panel** (`.dbg.restart`, opens the same confirm via `onRestart`), and the Dev button is now
