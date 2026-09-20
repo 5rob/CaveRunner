@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v40</title>
+<title>CaveRunner v41</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -333,6 +333,27 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .bag.debug{box-shadow:inset 0 0 0 1.5px rgba(255,138,31,0.5)}
 .reset{position:absolute;top:10px;right:10px;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.35);
   color:#e9ecf2;border-radius:8px;padding:6px 12px;font:inherit;font-size:13px}
+/* the dev tools: a button by Restart, and the panel it opens */
+.devbtn{position:absolute;top:10px;right:88px;z-index:6;border:1px solid rgba(255,255,255,0.25);
+  background:rgba(0,0,0,0.35);color:#e9ecf2;border-radius:8px;padding:6px 12px;font:inherit;font-size:13px}
+.devwrap{position:fixed;left:0;right:0;top:0;bottom:0;z-index:26;display:flex;
+  align-items:flex-start;justify-content:center;padding:52px 12px 12px}
+/* a light backdrop so the cave is still visible behind while you tune the look of it */
+.devback{position:absolute;inset:0;background:rgba(0,0,0,0.2)}
+.devpanel{position:relative;z-index:1;width:100%;max-width:360px;max-height:calc(100% - 64px);
+  overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;background:var(--btn);
+  border:1px solid var(--ring);border-radius:14px;padding:14px 16px;box-shadow:0 12px 40px rgba(0,0,0,0.45);color:var(--text)}
+.devhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.devhead h2{margin:0;font-size:17px}
+.devbtns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.devvars{display:flex;flex-direction:column;gap:10px}
+.devrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.devrow label{font-size:13px;color:var(--text);flex:1 1 auto}
+.devrow input{width:92px;flex:0 0 auto;box-sizing:border-box;height:36px;border-radius:8px;
+  border:1px solid var(--ring);background:var(--pad);color:var(--text);
+  font:600 14px system-ui,sans-serif;padding:0 9px;text-align:right;
+  user-select:text;-webkit-user-select:text}
+.devnote{margin:14px 0 0;font-size:11px;color:var(--muted);line-height:1.45}
 .confirm{position:fixed;inset:0;z-index:29;display:flex;align-items:center;justify-content:center;padding:24px}
 .confirmCard{position:relative;z-index:30;background:var(--btn);border:1px solid var(--ring);border-radius:14px;
   padding:18px 20px;max-width:260px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.4)}
@@ -360,7 +381,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v40';
+const VERSION = 'v41';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -384,6 +405,33 @@ const PW = 12, PH = 22;
 const FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
 const PLAYER_HP = 100;
 const START_GOLD = 40;
+
+// ---- dev settings ----
+// Live, tweakable knobs for testing, read by the Game every frame so a change shows at
+// once, and saved to localStorage so they survive a reload and carry across sessions.
+// Each has a default; clearing a field in the dev panel puts the default back. Every
+// localStorage touch is wrapped: it throws in a private window and does not exist at all
+// under Node (the logic tests eval this file), and a missing store just means "defaults".
+const DEV_DEFAULTS = { zoom: 1, torch: 1, fogDark: 0.99, fogDim: 0.85, move: 1 };
+const DEV_META = [
+  { k: 'zoom',    label: 'Camera zoom',                 min: 0.3, max: 3,  step: 0.05 },
+  { k: 'torch',   label: 'Torch fall-off distance',     min: 0.2, max: 5,  step: 0.05 },
+  { k: 'fogDark', label: 'Fog of war darkness',         min: 0,   max: 1,  step: 0.01 },
+  { k: 'fogDim',  label: 'Outside-torchlight darkness', min: 0,   max: 1,  step: 0.01 },
+  { k: 'move',    label: 'Base movement speed',         min: 0.2, max: 5,  step: 0.05 },
+];
+const DEV_KEY = 'caverunner-dev';
+const DEV = Object.assign({}, DEV_DEFAULTS);
+(() => { try {
+  const raw = localStorage.getItem(DEV_KEY);
+  if (raw) { const o = JSON.parse(raw); for (const k in DEV_DEFAULTS)
+    if (typeof o[k] === 'number' && isFinite(o[k])) DEV[k] = o[k]; }
+} catch (_) {} })();
+function devSet(k, v) {
+  DEV[k] = v;
+  try { localStorage.setItem(DEV_KEY, JSON.stringify(DEV)); } catch (_) {}
+}
+
 const COIN_PULL = 36;         // gold within this many units flies to you
 // how many enemies a floor gets before the floor lift. What they are and how hard
 // they hit is the roster's business now — see CREATURES.
@@ -3071,13 +3119,13 @@ function Game({ input }) {
       p.kick -= dt;
       const k = p.kick > 0 ? 0.15 : 1;   // let explosions push you around briefly
       if (jet) {
-        p.vx = approach(p.vx, L.nx * mag * JET * pb.walk, JET_ACC * dt * k);
-        const ty = L.ny * mag * JET * pb.jet;    // Faster Levitation lifts harder
+        p.vx = approach(p.vx, L.nx * mag * JET * pb.walk * DEV.move, JET_ACC * dt * k);
+        const ty = L.ny * mag * JET * pb.jet * DEV.move;    // Faster Levitation lifts harder
         // rising beats a fall instantly; only an explosion still throws you around
         if (ty < p.vy && p.kick <= 0) p.vy = ty;
         else p.vy = approach(p.vy, ty, JET_ACC * dt * k);
       } else {
-        const target = mag > 0 ? L.nx * mag * WALK * pb.walk : 0;
+        const target = mag > 0 ? L.nx * mag * WALK * pb.walk * DEV.move : 0;
         p.vx = approach(p.vx, target, (p.onGround ? GROUND_ACC : AIR_ACC) * dt * k);
         p.vy = Math.min(p.vy + GRAVITY * dt, 900);
       }
@@ -3674,7 +3722,7 @@ function Game({ input }) {
 
     function draw() {
       const dpr = window.devicePixelRatio || 1;
-      const s = Math.min(c.width / VIEW_W, c.height / VIEW_MIN_H), vw = c.width / s, vh = c.height / s;
+      const s = Math.min(c.width / VIEW_W, c.height / VIEW_MIN_H) * DEV.zoom, vw = c.width / s, vh = c.height / s;
       unitPx = s / dpr;
       const pcx = p.x + PW / 2, pcy = p.y + PH / 2;
 
@@ -4088,13 +4136,14 @@ function Game({ input }) {
       // lamp does not itself stop at walls; it is the *reveal* that respects them, so what
       // you have already uncovered round a corner still lights up. `flick` is the flame's
       // own number, so both the reach and the brightness breathe exactly as the fire does.
-      torchR = clamp(SIGHT * LAMP_REACH * (0.5 + 0.55 * flick), 150, 380);
-      visPts = visPoly(pcx, pcy, SIGHT, solidCell, VIS_RAYS);
-      fogReveal(seen, pcx, pcy, SIGHT, visPts, VIS_RAYS);   // line of sight lifts the fog
+      const sight = SIGHT * DEV.torch;                       // dev knob scales the whole bubble
+      torchR = clamp(sight * LAMP_REACH * (0.5 + 0.55 * flick), 120, 1400);
+      visPts = visPoly(pcx, pcy, sight, solidCell, VIS_RAYS);
+      fogReveal(seen, pcx, pcy, sight, visPts, VIS_RAYS);   // line of sight lifts the fog
       // bake the visible slab of the overlay every frame: the base darkness is the fog
       // state, then the lamp brightens the cells the fog has already been lifted from
       const fdat = fogImg.data;
-      const dim = Math.round(255 * FOG_DIM), dark = Math.round(255 * FOG_DARK);
+      const dim = Math.round(255 * DEV.fogDim), dark = Math.round(255 * DEV.fogDark);
       const lr2 = torchR * torchR;
       const fx0 = clamp(Math.floor(camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(camY / FOG_U) - 1, 0, FH - 1);
       const fx1 = clamp(Math.ceil((camX + vw) / FOG_U) + 2, 1, FW), fy1 = clamp(Math.ceil((camY + vh) / FOG_U) + 2, 1, FH);
@@ -4828,8 +4877,6 @@ function Editor({ input, close, refresh }) {
     h('div', { className: 'shead' },
       h('h2', null, 'Guns & Mods'),
       h('span', { className: 'purse' }, LO.gold + 'g'),
-      h('button', { className: 'dbg' + (LO.debug ? ' on' : ''),
-        onPointerDown: e => { e.preventDefault(); LO.debug = !LO.debug; refresh(); } }, 'DEBUG'),
       h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Done')
     ),
     h('div', { className: 'gtabs' },
@@ -4924,6 +4971,54 @@ function PerkCard({ id, ingame }) {
     h('p', { className: 'pinfo' }, pk.info));
 }
 
+// One tweakable value in the dev panel: a labelled number box prefilled with the live
+// value, its default shown as the placeholder. Committing an empty box restores the
+// default; anything else is parsed, clamped to the knob's range and saved at once.
+function DevRow({ meta }) {
+  const [val, setVal] = useState(String(DEV[meta.k]));
+  const commit = () => {
+    const s = val.trim();
+    let v;
+    if (s === '') v = DEV_DEFAULTS[meta.k];
+    else { v = parseFloat(s); if (!isFinite(v)) { setVal(String(DEV[meta.k])); return; } }
+    v = Math.max(meta.min, Math.min(meta.max, v));
+    devSet(meta.k, v);
+    setVal(String(v));
+  };
+  return h('div', { className: 'devrow' },
+    h('label', null, meta.label),
+    h('input', { type: 'number', inputMode: 'decimal', step: meta.step,
+      value: val, placeholder: String(DEV_DEFAULTS[meta.k]),
+      onChange: e => setVal(e.target.value),
+      onBlur: commit,
+      onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } } })
+  );
+}
+
+// The dev window: it pauses the run but the game keeps drawing behind a light backdrop,
+// so the look-of-it knobs (zoom, torch, fog) preview live as you type. Holds the toggle
+// buttons — "All mods" is the old DEBUG shelf — and the saved, persisted variables.
+function DevPanel({ input, refresh, close }) {
+  const LO = input.current.loadout;
+  const [, bump] = useState(0);
+  return h('div', { className: 'devwrap' },
+    h('div', { className: 'devback', onPointerDown: e => { e.preventDefault(); close(); } }),
+    h('div', { className: 'devpanel scroll' },
+      h('div', { className: 'devhead' },
+        h('h2', null, 'Dev'),
+        h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Done')),
+      h('div', { className: 'devbtns' },
+        h('button', { className: 'dbg' + (LO.debug ? ' on' : ''),
+          onPointerDown: e => { e.preventDefault(); LO.debug = !LO.debug; refresh(); bump(n => n + 1); } },
+          'All mods')),
+      h('div', { className: 'devvars' },
+        DEV_META.map(m => h(DevRow, { key: m.k, meta: m }))),
+      h('p', { className: 'devnote' },
+        'Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back.')
+    )
+  );
+}
+
 function App() {
   const blank = () => ({ active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false });
   const input = useRef({
@@ -4942,6 +5037,7 @@ function App() {
   const [size, setSize] = useState(150);
   const [run, setRun] = useState(0);
   const [edit, setEdit] = useState(false);
+  const [devOpen, setDevOpen] = useState(false);
   const [gunInfo, setGunInfo] = useState(-1);
   const [held, setHeld] = useState(-1);
   // null when closed; a timestamp (from the tap that opened it) while open, so
@@ -4953,7 +5049,7 @@ function App() {
   input.current.notify = refresh;
   const found = input.current.found;
   const confirming = input.current.confirm;
-  input.current.paused = edit || !!found || !!confirming;
+  input.current.paused = edit || !!found || !!confirming || devOpen;
 
   const LO = input.current.loadout;
   // read through the ref: after a Restart the loadout object is replaced, and a
@@ -5001,6 +5097,9 @@ function App() {
 
     const map = { w: 'w', arrowup: 'w', ' ': 'w', a: 'a', arrowleft: 'a', s: 's', arrowdown: 's', d: 'd', arrowright: 'd' };
     const key = down => e => {
+      // never let the game read keys meant for a text field, like the dev panel's inputs
+      const t = e.target;
+      if (t && /^(input|textarea|select)$/i.test(t.tagName)) return;
       const k = e.key.toLowerCase();
       if (map[k]) { input.current.keys[map[k]] = down; e.preventDefault(); }
       if (!down) return;
@@ -5055,6 +5154,8 @@ function App() {
         // sheet closes must not land here and wipe the run. This only opens the
         // confirm below — restart() itself is gated further down.
         onPointerDown: e => { e.preventDefault(); setConfirmAt(performance.now()); } }, 'Restart'),
+      h('button', { className: 'devbtn',
+        onPointerDown: e => { e.preventDefault(); setDevOpen(true); } }, 'Dev'),
       confirmAt != null ? h('div', { className: 'confirm' },
         h('div', { className: 'shade', onPointerDown: e => { e.preventDefault(); setConfirmAt(null); } }),
         h('div', { className: 'confirmCard' },
@@ -5110,6 +5211,7 @@ function App() {
       )
     ),
     edit ? h(Editor, { input, refresh, close: () => setEdit(false) }) : null,
+    devOpen ? h(DevPanel, { input, refresh, close: () => setDevOpen(false) }) : null,
     h(ModFound, { input, refresh }),
     found ? h(GunSwap, { input, refresh, onDone: () => { setGunInfo(-1); refresh(); } }) : null,
     gunInfo >= 0 && LO.guns[gunInfo]

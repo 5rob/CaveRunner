@@ -131,22 +131,36 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.evaluate(() => [...document.querySelectorAll('.done')].find(x => /Leave/.test(x.textContent)).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
   await page.waitForTimeout(250);
 
-  // ---- DEBUG shelf ----
+  // ---- All mods shelf, toggled from the Dev panel (was the DEBUG button in the sheet) ----
   await page.evaluate(() => {
     const LO = window.__in.current.loadout;
     LO.bag.length = 0; LO.bag.push('bounce', 'homing');
     LO.guns[0].slots = ['bolt', null, null, null];
+    LO.debug = false;
     window.__in.current.notify();
   });
   await page.tap('.weapon');
   await page.waitForTimeout(400);
   const nBag = await page.$$eval('.bag .tile', t => t.length);
   check('the bag starts with just your mods', nBag === 2, nBag);
-  await page.tap('.dbg');
-  await page.waitForTimeout(300);
+  await page.tap('.sheet .done');            // close the sheet to reach the Dev button
+  await page.waitForTimeout(200);
+  // the debug shelf lives behind the Dev window now, as "All mods"
+  await page.tap('.devbtn');
+  await page.waitForTimeout(200);
+  check('the Dev panel opens', !!(await page.$('.devpanel')));
+  check('and it offers an All mods button',
+    (await page.$$eval('.devpanel .dbg', b => b.map(x => x.textContent))).join() === 'All mods');
+  await page.tap('.devpanel .dbg');
+  await page.waitForTimeout(150);
+  check('All mods turns the shelf on', await page.evaluate(() => window.__in.current.loadout.debug === true));
+  await page.tap('.devpanel .done');
+  await page.waitForTimeout(200);
+  await page.tap('.weapon');
+  await page.waitForTimeout(400);
   const nDbg = await page.$$eval('.bag .tile', t => t.length);
   const allMods = await page.evaluate(() => Object.keys(MODS).length);
-  check('DEBUG shows one of every mod', nDbg === allMods, { nDbg, allMods });
+  check('All mods shows one of every mod', nDbg === allMods, { nDbg, allMods });
   check('and marks the shelf', await page.$$eval('.bag', b => b[0].className.includes('debug')));
 
   // drag a shelf mod onto the gun twice: infinite uses, real bag untouched
@@ -174,13 +188,23 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the shelf never runs down', st.tiles === allMods, st.tiles);
   check('and your real collection is untouched', JSON.stringify(st.bag) === JSON.stringify(['bounce', 'homing']), st.bag);
 
-  await page.tap('.dbg');
+  // turn it back off, again from the Dev panel
+  await page.tap('.sheet .done');
+  await page.waitForTimeout(200);
+  await page.tap('.devbtn');
+  await page.waitForTimeout(200);
+  await page.tap('.devpanel .dbg');
+  await page.waitForTimeout(150);
+  check('All mods turns back off', await page.evaluate(() => window.__in.current.loadout.debug === false));
+  await page.tap('.devpanel .done');
+  await page.waitForTimeout(200);
+  await page.tap('.weapon');
   await page.waitForTimeout(300);
   const off = await page.evaluate(() => ({
     tiles: [...document.querySelectorAll('.bag .tile')].map(t => t.dataset.mod),
     slots: window.__in.current.loadout.guns[0].slots.slice(),
   }));
-  check('switching DEBUG off hands your mods back', JSON.stringify(off.tiles) === JSON.stringify(['bounce', 'homing']), off.tiles);
+  check('switching All mods off hands your mods back', JSON.stringify(off.tiles) === JSON.stringify(['bounce', 'homing']), off.tiles);
   check('and the gun keeps what you fitted', off.slots[1] === 'scatter' && off.slots[2] === 'scatter', off.slots);
 
   console.log(fails ? `\n${fails} failed` : '\nall good');

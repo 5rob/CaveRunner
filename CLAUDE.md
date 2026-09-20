@@ -52,7 +52,7 @@ replace it with a general static server.
    Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
    link. If this session hasn't published yet, read the artifact first, then publish.
 
-Current version: **v40**. Branch: `claude/compassionate-rubin-fcqsif`.
+Current version: **v41**. Branch: `claude/compassionate-rubin-fcqsif`.
 
 ### The version number is not optional
 
@@ -74,6 +74,7 @@ Roughly top to bottom:
 |---|---|
 | CSS | in `<style>`, one block, light and dark via `prefers-color-scheme` |
 | World constants | `CELL`, `CW`/`CH`, `SHOP_*`, tuning consts (`GRAVITY`, `JET`, …) |
+| `DEV` / `DEV_META` / `devSet` | live dev-panel knobs, saved to localStorage (see note below) |
 | `THEMES` / `themeFor` | the 12 level palettes; the floor number picks one |
 | `CREATURES` / `ROSTERS` | the 16 creature types, and which live on floors 1–10 |
 | `rosterFor` / `enemyFor` | a floor's creatures, and one creature's floor-scaled stats |
@@ -88,7 +89,7 @@ Roughly top to bottom:
 | `makeLevel` | terrain, shop, enemies, pickups |
 | sprites | `drawRunner`, `drawEnemy` (one per creature body), `drawGun`, `rr` |
 | `Game` | the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields |
-| React UI | `ModCard`, `GunCard`, `Editor`, `GunSwap`, `App` |
+| React UI | `ModCard`, `GunCard`, `PerkCard`, `Editor`, `GunSwap`, `DevPanel`, `App` |
 
 Everything above `makeLevel` is pure and top-level, which is why the logic tests can
 load it and call it directly. **Keep it that way** — if a new mechanic can be a pure
@@ -228,7 +229,20 @@ takes the *shorter* of the two rays either side of a cell rather than interpolat
 them: interpolating reaches slightly further than either ray and marks cells just past a
 corner, which is the one thing this is here to stop.
 
-
+**The Dev panel (v41) is live-tweak knobs, saved to localStorage.** The **Dev** button sits
+by **Restart** in the view (always reachable, not shop-only), and opens `DevPanel`, which
+pauses the run but leaves `draw()` running behind a light backdrop so the look-of-it knobs
+preview live as you type. `DEV` is a plain mutable object the `Game` reads every frame —
+`DEV.zoom` (draw scale), `DEV.torch` (scales the effective `sight`, so reveal and lamp grow
+together), `DEV.fogDark`/`DEV.fogDim` (the two fog shades), `DEV.move` (a `WALK`/`JET`
+multiplier). `DEV_META` drives the rows; a blank field restores `DEV_DEFAULTS[k]`; `devSet`
+writes through to `localStorage` under `caverunner-dev`. Every localStorage touch is wrapped
+in try/catch because it throws in a private window and does not exist under Node, where the
+logic tests eval this file — a missing store just means defaults, so the load IIFE must stay
+guarded. The old **DEBUG** shelf toggle moved into this panel as **All mods** (still class
+`.dbg`, still flips `LO.debug`); `cooldown-debug-shop.test.js` drives it through the panel
+now. The global key handler early-returns on `input`/`textarea`/`select` targets so typing a
+value doesn't also steer the runner.
 
 **Unicode is stored raw** in `index.html` (`·`, `—`, `×`, `Ω`), not as `\uXXXX`. Match the
 literal characters when editing with a script, or the edit silently finds nothing.
