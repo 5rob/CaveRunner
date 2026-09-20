@@ -7,10 +7,35 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v48.** Branch: `claude/compassionate-rubin-fcqsif` (pushed).
+- **On-disk version: v48.** Branch: `claude/compassionate-rubin-fcqsif` (pushed). **Release
+  channel is now `main`** — CI there deploys Pages + builds the APK.
+- **The game now ships as a self-updating Android app** (built this session, working end to
+  end). The delivery path changed: pushing to `main` is the release, and the app on the
+  phone offers the update. You no longer publish the artifact. See the new **The Android
+  app** section in `CLAUDE.md` and `android/README.md`. Details below.
 - Working tree is clean apart from `.claude/` (untracked on purpose — it holds an API token,
   never commit it).
 - Full test suite is green (`node tests/run.js`), see **Testing** below for two known flakes.
+  (The suite covers `index.html` logic/browser only; the Android shell isn't unit-tested —
+  its test is the CI build + installing the APK.)
+
+## The Android app (new this session)
+
+- Everything is live: APK at `https://github.com/5rob/CaveRunner/releases/tag/app`, game at
+  `https://5rob.github.io/CaveRunner/`, `version.txt` = `v48`. Last CI run on `main` was
+  green (both `build-apk` and `deploy-pages`).
+- **What it is:** a thin WebView shell (`android/`) that bundles `index.html` + React so it
+  plays offline, then checks Pages' `version.txt` on launch and offers to download a newer
+  `index.html` and reload. CI (`.github/workflows/android.yml`, on push to `main`) builds the
+  APK and deploys Pages; nothing builds on the PC.
+- **Owner still needs to (or has just) install the APK once** from the release page (allow
+  installs from the browser). After that, game updates never need a reinstall.
+- **Gotchas for the next session:** the CDN→local React rewrite lives in *two* places
+  (`android/prep-assets.js` and `localize()` in `MainActivity.java`) — keep them in sync and
+  never edit the canonical `index.html`'s CDN tags. `android/app/src/main/assets/index.html`
+  is git-ignored (CI regenerates it); the React `.js` beside it are committed. GitHub job
+  *logs* need auth, but run status / job steps / check-run *annotations* are public — use
+  those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
 
@@ -68,10 +93,12 @@ it's stale.
 3. Bump the version in **two** places: `<title>` (line 6) and `const VERSION` near the top.
 4. Update `README.md` if it's a player-facing change (the Dev panel is a dev tool, so v41
    left the README alone — that was deliberate).
-5. Commit + push to the working branch.
-6. **Publish** to the SAME artifact URL so the owner's link keeps working:
-   `https://claude.ai/artifact/2rarFzJoTseCKXhTPwMyLT` (pass it as `url`). The publish tool
-   makes you read the current live version in full before it will overwrite it.
+5. Commit, then **get it onto `main`** (working branch + merge is fine). That push is the
+   release: CI deploys Pages and rebuilds the APK.
+6. **Confirm CI is green** (public API, no token needed — see `CLAUDE.md`'s loop section),
+   and that `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`. Then the
+   owner opens the app and it prompts to update. No artifact publish any more (it and
+   `serve.js` remain as fallbacks).
 
 Talk briefly, iterate fast, don't over-plan. Every change works at phone width with touch.
 
