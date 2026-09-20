@@ -52,7 +52,7 @@ replace it with a general static server.
    Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
    link. If this session hasn't published yet, read the artifact first, then publish.
 
-Current version: **v44**. Branch: `claude/compassionate-rubin-fcqsif`.
+Current version: **v45**. Branch: `claude/compassionate-rubin-fcqsif`.
 
 ### The version number is not optional
 
@@ -182,7 +182,8 @@ panel re-lays-out as the camera settles, and `App` applies it as the panel's inl
 plus a matching `maxHeight`. It holds the item's card (`ModCard`/`GunCard`/`PerkCard`, all
 `ingame`) followed by one `.pbuy` line — `Buy <price>` for shop stock, `Take`/`free` for
 anything you pick up. **The stat list (`.prows`) inside the panel gets its own `max-height`
-+ scroll (v44)** so a loaded gun or a busy mod can't make the panel fill the screen; that
++ scroll (v44, tightened to ~3 rows / 60px in v45)** so a loaded gun or a busy mod can't
+make the panel fill the screen; that
 scroll box is the one part of the panel with `pointer-events:auto`, the rest stays
 click-through so a tap falls to the sticks. A nameless prompt (the heal) has no card, so
 `.pbuy` puts its name there instead. The info box no longer floats at the top and there's

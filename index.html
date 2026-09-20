@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v44</title>
+<title>CaveRunner v45</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -296,9 +296,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .buypanel .pop{position:static;top:auto;left:auto;right:auto;bottom:auto;width:auto;
   background:none;border:0;box-shadow:none;padding:0;margin:0;max-height:none;overflow:visible}
 /* a long stat list (a loaded gun, a busy mod) gets its own small scroll box so the panel
-   stays short — pointer-events back on just here so you can flick through it; the rest of
-   the panel stays click-through */
-.buypanel .prows{max-height:156px;overflow-y:auto;-webkit-overflow-scrolling:touch;pointer-events:auto}
+   stays short — about three rows, then it scrolls. pointer-events back on just here so you
+   can flick through it; the rest of the panel stays click-through */
+.buypanel .prows{max-height:60px;overflow-y:auto;-webkit-overflow-scrolling:touch;pointer-events:auto}
 /* the buy/take line: the amber price is the thing your eye goes to */
 .pbuy{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:9px;
   height:40px;border-radius:20px;border:2px solid #ffc93c;background:rgba(255,201,60,0.1);
@@ -395,7 +395,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v44';
+const VERSION = 'v45';
 
 // ---- tuning ----
 const GRAVITY = 1400;
