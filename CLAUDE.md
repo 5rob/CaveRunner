@@ -52,7 +52,7 @@ replace it with a general static server.
    Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
    link. If this session hasn't published yet, read the artifact first, then publish.
 
-Current version: **v39**. Branch: `claude/compassionate-rubin-fcqsif`.
+Current version: **v40**. Branch: `claude/compassionate-rubin-fcqsif`.
 
 ### The version number is not optional
 
@@ -183,11 +183,18 @@ for a gun on the ground, and `tests/browser/gunpickup.test.js` queries `.pop.fou
 the mod overlay's classes are all `modfound*`. Reusing `.found` silently restyled every
 found-gun card, and it took a browser suite to surface it.
 
-**The light does not stop at walls; the map does.** The lamp is a plain circle: clear at
-your feet, down to the mask's own darkness `LAMP_REACH` screen-heights out, so the cave
-around you reads instead of feeling like a keyhole. v37 clipped it to a visibility fan and
-the owner asked for that back off — it is the *map* that line of sight is for now, not the
-light. Don't put the clip back without asking.
+**The lamp is masked by the fog of war (v40).** The torch lights a bubble around you, but
+only where the fog has already been lifted: a cell you have never had line of sight to
+stays dark even with the lamp right on it, so the cave ahead is a real unknown. The draw
+fog block bakes the visible slab of the overlay every frame — base darkness by fog state
+(`seen`), then the lamp brightens the cells `seen` marks as uncovered, brightest at your
+feet and fading out to `torchR`. It is NOT a `destination-out` gradient any more; that
+version (v38) cleared fog everywhere inside the radius and, on a phone's tall screen, lit
+the whole cave so there was no fog left to see — the owner reported it as "fog missing".
+The lamp itself does not stop at walls; it is the *reveal* (`fogReveal`, gated by `visPoly`)
+that respects them, so ground you have already uncovered round a corner still lights up.
+`torchR` is derived from `SIGHT * LAMP_REACH` and breathes with `flick`. Don't turn it back
+into a blanket gradient without asking.
 
 **`rayDist` / `visPoly` / `losClear` are exact, and that is the point.** `rayDist` marches
 from cell boundary to cell boundary rather than sampling at a fixed step — a fixed step
@@ -205,11 +212,14 @@ and its brightness all read it, so the cave reads as torchlight rather than as a
 switch. It is clamped to at most 1 because a canvas `globalAlpha` over 1 is silently
 ignored — a flicker that overshoots simply stops flickering.
 
-**`SIGHT` is the memory radius, not the light.** The light reaches `LAMP_REACH` screen
-heights out, growing with the viewport; `SIGHT` is only how far away you mark the map as
-somewhere you have been, and stays well under `VIEW_W` so you don't reveal terrain you
-cannot look at. `FOG_DIM` is what that remembered ground is worth once the light has left
-it — 0.85, near black, which is deliberate: the dark is a real edge.
+**`SIGHT` is both the reveal radius and the size of the lit bubble (v40).** Line of sight
+out to `SIGHT` (200) lifts the fog, and the lamp (`torchR = SIGHT * LAMP_REACH`, ~230) then
+lights that lifted ground, so the two move together — bump `SIGHT` and the bubble grows
+with it. It stays under `VIEW_W` (360) so the cave beyond the bubble is genuinely dark.
+`FOG_DIM` (0.85) is what remembered-but-unlit ground is worth, `FOG_DARK` (0.99) is
+never-seen ground — near black, because that darkness *is* the fog of war now. If you widen
+`SIGHT` much, the visibility fan spreads and can leak a cell or two round a corner; that is
+a `VIS_RAYS` (ray density) tradeoff, not a bug in the reveal.
 
 **The map only gets what was in line of sight.** `fogReveal` takes the fan `visPoly` cast
 from the player and skips any cell the fan did not reach in its direction, so ground round

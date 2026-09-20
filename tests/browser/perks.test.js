@@ -38,15 +38,28 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('a neutral bag has dmg 1 and no flags', start.pb.dmg === 1 && start.pb.shield === 0 && start.pb.seeAll === 0 && start.pb.tinker === 0, start.pb);
 
   // walk onto a room's altar and trip interact the same way the real stick's dead-zone
-  // tap does: set interact true for a beat, then let it clear
+  // tap does. The room interior is hollow, so gravity would pull the player off the altar
+  // before the interact is read — hold it pinned there and keep asking for a few frames.
   const takeRoom = (x, y) => page.evaluate(async ({ x, y }) => {
     const { p } = window.__lvl;
-    p.x = x - 4; p.y = y - 8; p.vx = 0; p.vy = 0;
+    const pin = () => { p.x = x - 4; p.y = y - 8; p.vx = 0; p.vy = 0; };
+    pin();
     await new Promise(r => requestAnimationFrame(r));
-    window.__in.current.interact = true;
-    for (let i = 0; i < 6; i++) await new Promise(r => requestAnimationFrame(r));
-    await new Promise(r => setTimeout(r, 250));
+    for (let i = 0; i < 8; i++) {
+      pin();
+      window.__in.current.interact = true;
+      await new Promise(r => requestAnimationFrame(r));
+    }
+    await new Promise(r => setTimeout(r, 150));
   }, { x, y });
+
+  // clear the floor of loose pickups and creatures: a mod or gun lying near an altar is
+  // offered to the interact tap before the room is, and a creature could chip the player's
+  // health while it is pinned — either one turns a room take into a flake
+  await page.evaluate(() => {
+    const L = window.__lvl;
+    L.pickups.length = 0; L.enemies.length = 0; L.enemyShots.length = 0;
+  });
 
   // ---- 3. collecting the perk ----
   await takeRoom(perkRoom.x, perkRoom.y);
@@ -60,9 +73,13 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('a perk pip appears in the DOM, one per held perk', afterPerk.pips === afterPerk.perks.length, afterPerk);
 
   // ---- 4. collecting the heart raises the cap but never heals ----
+  // clear the floor of anything that could shoot the player while it is pinned on the
+  // altar, so the only thing that can move hp here is the heart itself
   const before = await page.evaluate(() => {
-    window.__lvl.p.hp = 50;
-    return { hp: window.__lvl.p.hp, maxHp: window.__lvl.maxHp() };
+    const L = window.__lvl;
+    L.enemies.length = 0; L.enemyShots.length = 0;
+    L.p.hp = 50;
+    return { hp: L.p.hp, maxHp: L.maxHp() };
   });
   check('hp was set below max to make the heal-check meaningful', before.hp === 50, before);
   await takeRoom(heartRoom.x, heartRoom.y);

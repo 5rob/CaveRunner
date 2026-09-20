@@ -1,6 +1,7 @@
 // The torch. Three things, all of them measured off the real canvas rather than asserted
-// from the code: the light falls away with distance but is still reading at the top of the
-// screen, it breathes with the flame, and it does not stop at walls.
+// from the code: the light falls away with distance into the fog beyond its bubble, it
+// breathes with the flame, and it does not stop at walls (the reveal respects them, the
+// lamp lighting what has already been revealed does not).
 //
 // Every brightness here is read straight out of the game canvas at a world point, which is
 // why the light hook exposes the camera and the draw scale — the test has to know where a
@@ -172,8 +173,10 @@ const STEPS = [270, 220, 170, 120, 70];   // the distance the far point is read 
       profile.every((v, i) => i === 0 || v >= profile[i - 1] - 1), profile.map(v => +v.toFixed(1)));
     const near = profile[4], far = profile[0];
     check('it is brightest closest in', near > profile[2], profile.map(v => +v.toFixed(1)));
-    check('and it is still more than half lit at the top of the screen',
-      far > near * 0.5, `${near.toFixed(1)} at 70 units -> ${far.toFixed(1)} at 270, ` +
+    // the lamp is a bubble now: it fades out into the fog rather than lighting the whole
+    // screen, so a point out past its edge reads clearly darker than one at your feet
+    check('and it falls off into the dark rather than lighting the whole screen',
+      far < near * 0.75, `${near.toFixed(1)} at 70 units -> ${far.toFixed(1)} at 270, ` +
       `${(far / near * 100).toFixed(0)}%`);
   }
 

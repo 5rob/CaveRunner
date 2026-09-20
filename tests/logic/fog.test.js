@@ -78,9 +78,11 @@ check('revealed cells stay revealed', lost === 0, `${lost} cells went dark again
 
 // ---- a wall keeps its far side off the map ----
 // The whole point: the light cannot reach round a corner, so neither can the map. A wall
-// sixty units to the right of the player, tall enough to cover the whole sight radius.
+// sixty units to the right of the player, tall enough to cover the whole sight radius —
+// its ends sit further out than SIGHT reaches, or the player would legitimately see past
+// them and this would stop being a test of corners.
 const wallX = 560;
-const wall = (cx, cy) => cx * CELL >= wallX && cy > 180 && cy < 320;
+const wall = (cx, cy) => cx * CELL >= wallX && cy > 130 && cy < 370;
 const s3 = new Uint8Array(FW * FH);
 const n3 = reveal(s3, 500, 500, wall);
 let behind = 0, inRock = 0, front = 0;

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v39</title>
+<title>CaveRunner v40</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -360,7 +360,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v39';
+const VERSION = 'v40';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -1025,16 +1025,20 @@ const SHOP_Y = SHOP_TOP * CELL;        // world y of the ceiling, for "am I in t
 const FOG = 8;                         // terrain pixels per fog cell
 const FOG_U = FOG * CELL;              // world units per fog cell
 const FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
-const SIGHT = 120;                     // how far away you remember the map — a cell this
-                                       // close to you is marked as somewhere you have been,
-                                       // and stays marked for the rest of the floor. This
-                                       // is the only thing line of sight applies to
-const LAMP_REACH = 1.5;                // the light reaches this many screen-heights out, so
-                                       // at the top of the screen it is still around half
-                                       // bright rather than black. It does NOT stop at
-                                       // walls — see the note on the lamp in draw()
+const SIGHT = 200;                     // how far the torch reaches: line of sight out to
+                                       // here lifts the fog, and the lamp then lights the
+                                       // ground it lifted. A cell this close and in view is
+                                       // marked as somewhere you have been and stays marked
+                                       // for the rest of the floor. This is a medium bubble —
+                                       // generous, but the cave beyond it stays dark
+const LAMP_REACH = 1.15;               // the lamp's pool is this many times the sight radius,
+                                       // so the whole lifted bubble is lit and fades out at
+                                       // its edge. The lamp is MASKED by the fog: it brightens
+                                       // ground the line of sight has already uncovered and
+                                       // leaves the rest dark — see the note on the lamp in draw()
 const FOG_DIM = 0.85;                  // how dark somewhere you have been but cannot see
-const FOG_DARK = 0.97;                 // how dark somewhere you have never been
+const FOG_DARK = 0.99;                 // how dark somewhere you have never been — near black,
+                                       // because that darkness is the fog of war now
 
 // What the map is allowed to remember is worked out as a fan of rays out from the player,
 // each stopping at the first wall: one ray per fog cell the fan crosses, so a shadow edge
@@ -4075,35 +4079,44 @@ function Game({ input }) {
         ctx.fillRect(ghost.x + 1.4, ghost.y + gb - 1, 1.6, 2.4);
       }
 
-      // ---- torchlight ----
-      // The mask holds two shades: never been there, and been there but can't see it now.
-      // The lamp is the torch: clear at your feet, out to the mask's own darkness a screen
-      // and a half away, so at the top of the screen the cave is still about half lit
-      // rather than black. It is a plain circle and does NOT stop at walls — a wall you
-      // can see over the top of is still rock you can see, and clipping the light to what
-      // is strictly in sight made the whole cave feel like a keyhole. Line of sight is for
-      // the map and nothing else; see the reveal just below. `flick` is the flame's own
-      // number, so the light in the cave rises and dips exactly as much as the fire does.
-      torchR = clamp((pcy - camY) * LAMP_REACH, 260, 800) * flick;
-      // what goes on the map is a different question: only what the torch would reach if
-      // nothing were in the way is *remembered*, so ground round a corner never is
+      // ---- torchlight, masked by the fog of war ----
+      // Line of sight is what lifts the fog: fogReveal marks every cell the fan reaches as
+      // somewhere you have been, and it stays marked for the rest of the floor. The lamp
+      // then lights that lifted ground — brightest at your feet, fading out to torchR — but
+      // it is MASKED by the fog: a cell you have never had line of sight to stays dark even
+      // with the torch right on top of it, so the cave ahead of you is a real unknown. The
+      // lamp does not itself stop at walls; it is the *reveal* that respects them, so what
+      // you have already uncovered round a corner still lights up. `flick` is the flame's
+      // own number, so both the reach and the brightness breathe exactly as the fire does.
+      torchR = clamp(SIGHT * LAMP_REACH * (0.5 + 0.55 * flick), 150, 380);
       visPts = visPoly(pcx, pcy, SIGHT, solidCell, VIS_RAYS);
-      if (fogReveal(seen, pcx, pcy, SIGHT, visPts, VIS_RAYS)) paintFog();
-      fctx.putImageData(fogImg, 0, 0);
-      fctx.globalCompositeOperation = 'destination-out';
-      const lx = pcx / FOG_U, ly = pcy / FOG_U, lr = torchR / FOG_U;
-      const lamp = fctx.createRadialGradient(lx, ly, 0, lx, ly, lr);
-      lamp.addColorStop(0, 'rgba(0,0,0,1)');
-      lamp.addColorStop(0.5, 'rgba(0,0,0,0.55)');
-      lamp.addColorStop(1, 'rgba(0,0,0,0)');
-      fctx.globalAlpha = flick;
-      fctx.fillStyle = lamp;
-      fctx.fillRect(lx - lr, ly - lr, lr * 2, lr * 2);
-      fctx.globalAlpha = 1;
-      fctx.globalCompositeOperation = 'source-over';
-      // a cell of margin each way, so the bilinear edge clamp falls off screen
+      fogReveal(seen, pcx, pcy, SIGHT, visPts, VIS_RAYS);   // line of sight lifts the fog
+      // bake the visible slab of the overlay every frame: the base darkness is the fog
+      // state, then the lamp brightens the cells the fog has already been lifted from
+      const fdat = fogImg.data;
+      const dim = Math.round(255 * FOG_DIM), dark = Math.round(255 * FOG_DARK);
+      const lr2 = torchR * torchR;
       const fx0 = clamp(Math.floor(camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(camY / FOG_U) - 1, 0, FH - 1);
       const fx1 = clamp(Math.ceil((camX + vw) / FOG_U) + 2, 1, FW), fy1 = clamp(Math.ceil((camY + vh) / FOG_U) + 2, 1, FH);
+      for (let cy = fy0; cy < fy1; cy++) {
+        const ddy = (cy + 0.5) * FOG_U - pcy;
+        for (let cx = fx0; cx < fx1; cx++) {
+          const i = cy * FW + cx, k = i * 4;
+          fdat[k] = 9; fdat[k + 1] = 10; fdat[k + 2] = 14;
+          const s = seen[i];
+          let a = s === 2 ? 0 : s ? dim : dark;
+          if (s && a) {                        // the lamp only reaches ground the fog has lifted
+            const ddx = (cx + 0.5) * FOG_U - pcx, dd2 = ddx * ddx + ddy * ddy;
+            if (dd2 < lr2) {
+              const t = Math.sqrt(dd2) / torchR;               // 0 at your feet, 1 at the edge
+              const lift = t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45;
+              a = a * (1 - lift);
+            }
+          }
+          fdat[k + 3] = a;
+        }
+      }
+      fctx.putImageData(fogImg, 0, 0, fx0, fy0, fx1 - fx0, fy1 - fy0);
       ctx.imageSmoothingEnabled = true;     // the upscale is what makes the edge soft
       ctx.drawImage(fogC, fx0, fy0, fx1 - fx0, fy1 - fy0,
         fx0 * FOG_U, fy0 * FOG_U, (fx1 - fx0) * FOG_U, (fy1 - fy0) * FOG_U);

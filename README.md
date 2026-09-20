@@ -12,12 +12,13 @@ cave layout and the loot are rolled fresh, but who lives there and what it looks
 like are not. That is deliberate: you learn a floor, and the colour tells you
 where you are before you have read the number.
 
-The cave starts dark, and what lights it is the torch in your other hand. It burns from
-a bright pool at your feet out to near black at the edges of the screen, guttering as it
-burns, so the cave reads all around you rather than closing in to a keyhole. What it
-will not do is remember: the map only keeps what you actually had a line on, so ground
-round the corner of a wall stays black for the rest of the floor. Enemies shoot further
-than you can see, so a dark corner is still a real risk.
+The cave starts dark, and what lights it is the torch in your other hand. It lights a
+generous bubble around you — bright at your feet, guttering as it burns, fading out to
+black — and the cave beyond that bubble stays a real unknown. The torch only lights
+ground you have actually laid eyes on: line of sight is what lifts the dark, so a wall
+hides its far side until you go and look round it, and what you have already uncovered
+stays a faint map behind you for the rest of the floor. Enemies shoot further than the
+bubble reaches, so a dark corner is a real risk.
 
 ## Play
 
