@@ -44,11 +44,10 @@ that follows your thumb is a white ring with a black fill — the boldest circle
 the stick — sized to still show an edge around a thumbprint rather than vanishing
 underneath one, so you can see where your thumb is pointing without lifting it.
 
-The right stick carries two rings as well. The amber one is the trigger line: it is
-drawn one knob radius outside the point where the drag starts counting as aiming,
-so when the knob's edge reaches that circle, the gun fires. The dashed one outside
-it is how far the knob travels before it is against the rim. The stick does not
-clip the knob to the circle, so at full deflection the knob is still a whole knob.
+The right stick carries a dotted amber ring: the trigger line. It is drawn one knob
+radius outside the point where the drag starts counting as aiming, so when the knob's
+edge reaches that circle, the gun fires. The stick does not clip the knob to the
+circle, so at full deflection the knob is still a whole knob.
 
 ## Picking things up
 
@@ -61,7 +60,9 @@ That one button buys from a shop plinth and picks up guns and mods in the cave.
 Walking over something no longer takes it. You get its card instead — a slim panel
 that floats just above the item with the price built into it — so you can read a mod
 or compare a gun against the one you are holding, and see what it costs, in one panel.
-Shop stock reads **Buy** and its price; anything free just reads **Take**.
+A long stat list (a loaded gun, a busy mod) scrolls inside the panel so it never grows
+tall enough to fill the screen. Shop stock reads **Buy** and its price; anything free
+just reads **Take**.
 
 A mod on the ground is not taken by the tap either. The tap opens the card,
 pauses the game behind it, and asks: **Pick up** on the left, **Leave** on the
@@ -151,6 +152,9 @@ Sixteen of them, named after Noita's, and they do not all behave the same way:
   hurt you by reaching you. The Lohkare is slow and armoured; the Hurtta is not.
 - **Bombers** (Limanuljaska, Stendari) run at you and burst on contact, taking
   themselves out with you. The Stendari hurts more.
+
+Nothing comes for you through a wall: chasers and bombers only wake and give chase
+once they can actually see you, so breaking their line of sight shakes them off.
 
 Every creature's health, damage and gold are lifted by the floor it belongs to,
 so a floor 9 Hiisi is worth a lot more than a floor 2 one and takes a lot more

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v43</title>
+<title>CaveRunner v44</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -87,15 +87,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .hline{position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,0.09)}
 .jetzone{position:absolute;left:0;right:0;top:0;height:50%;background:rgba(255,176,46,0.16);opacity:0;transition:opacity .1s}
 .jetting .jetzone{opacity:1}
-/* the two rings that tell you what the stick does: the amber one is the line the knob
-   has to cross before the gun fires, the dashed one outside it is how far the knob
-   goes before it is against the edge of its travel */
+/* the amber ring is the line the knob's edge has to cross before the gun fires. Dotted,
+   so it reads as a threshold rather than a solid boundary. */
 .deadzone{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;
-  border:1.5px solid rgba(255,176,46,0.8);pointer-events:none}
-/* 72% of the stick is exactly where the knob stops: Stick() clamps its travel to
-   0.72 of the radius, so this ring is the edge of the throw, not a guess */
-.throw{position:absolute;left:50%;top:50%;width:72%;height:72%;transform:translate(-50%,-50%);
-  border-radius:50%;border:1px dashed rgba(234,231,222,0.2);pointer-events:none}
+  border:1.5px dotted rgba(255,176,46,0.85);pointer-events:none}
 /* the knob is the thing under your thumb, so it is sized to still show an edge around
    a thumbprint rather than disappearing underneath one. Its size comes from KNOB, and
    the dead-zone ring is built from the same number — see AIM_RING. */
@@ -300,6 +295,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* the card sits inline inside the panel: strip its own frame and let the panel be the box */
 .buypanel .pop{position:static;top:auto;left:auto;right:auto;bottom:auto;width:auto;
   background:none;border:0;box-shadow:none;padding:0;margin:0;max-height:none;overflow:visible}
+/* a long stat list (a loaded gun, a busy mod) gets its own small scroll box so the panel
+   stays short — pointer-events back on just here so you can flick through it; the rest of
+   the panel stays click-through */
+.buypanel .prows{max-height:156px;overflow-y:auto;-webkit-overflow-scrolling:touch;pointer-events:auto}
 /* the buy/take line: the amber price is the thing your eye goes to */
 .pbuy{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:9px;
   height:40px;border-radius:20px;border:2px solid #ffc93c;background:rgba(255,201,60,0.1);
@@ -396,7 +395,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v43';
+const VERSION = 'v44';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -3567,7 +3566,12 @@ function Game({ input }) {
         // they engage at roughly the same on-screen distance whatever the zoom.
         // Invisibility still folds in on top: creatures notice you far later.
         const sees = (pb.invis ? 0.4 : 1) / DEV.zoom;
-        const hunting = (k.act === 'chase' || k.act === 'bomb') && !p.dead && dist < k.aggro * sees;
+        // aggro only on a real sightline: a chaser or bomber won't come for you through a
+        // wall any more, only once it can actually see you (and within its aggro reach).
+        // The range check comes first so the line-of-sight march only runs for the few
+        // enemies already close enough to care.
+        const hunting = (k.act === 'chase' || k.act === 'bomb') && !p.dead &&
+          dist < k.aggro * sees && lineOfSight(e.x, e.ty, pcx, pcy);
 
         if (k.act === 'turret') {
           // holds station: the hover is all the movement it gets
@@ -4408,10 +4412,8 @@ function Stick({ size, kind, input, refresh }) {
     left && h('div', { className: 'stickclip' },
       h('div', { className: 'jetzone' }),
       h('div', { className: 'hline' })),
-    // the right stick carries two rings: the amber one is the line the knob's edge crosses
-    // when the drag starts counting as aiming rather than as a tap on the dead zone, and
-    // the dashed one is how far the knob goes before it is against the edge of its travel
-    right && h('div', { className: 'throw' }),
+    // the right stick's amber ring: the line the knob's edge crosses when the drag starts
+    // counting as aiming rather than as a tap on the dead zone
     h('div', { className: 'knob', style: {
       width: (KNOB * 100) + '%', height: (KNOB * 100) + '%',
       transform: `translate(-50%,-50%) translate(${knob.x}px,${knob.y}px)` } }),

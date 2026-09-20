@@ -52,7 +52,7 @@ replace it with a general static server.
    Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
    link. If this session hasn't published yet, read the artifact first, then publish.
 
-Current version: **v43**. Branch: `claude/compassionate-rubin-fcqsif`.
+Current version: **v44**. Branch: `claude/compassionate-rubin-fcqsif`.
 
 ### The version number is not optional
 
@@ -145,13 +145,24 @@ stats, and `e.k.act` decides how it moves and fights: `shoot`, `turret`, `chase`
 loop runs backwards because a bomber splices itself out mid-loop. If you add a creature,
 give it all of those fields and a body that already has a sprite.
 
+**Aggro is line-of-sight only (v44), and scaled by zoom.** `hunting` (whether a `chase`/
+`bomb` enemy comes for you) is `dist < k.aggro * sees && lineOfSight(e.x, e.ty, pcx, pcy)`,
+so nothing chases you through a wall — break the sightline and it drops back to patrol. The
+range check is written first on purpose, so the exact `rayDist` march only runs for the few
+enemies already in aggro range, not all ~136 every frame. `sees` also folds in `1/DEV.zoom`
+(so aggro/fire reach track the camera zoom) and Invisibility. Shooters/turrets already gate
+firing on `lineOfSight`; this brings the movers in line with them.
+
 **The knob is the bit under the thumb, and the amber ring is a trigger line.** The owner
 asked for "the thumb control circles" to be bigger meaning the knobs, not the pads, and a
 knob much under 30% of the stick disappears under a thumbprint. `KNOB` is that size and
 `AIM_RING` is built from it — `AIM_DEAD * 0.72 + KNOB` — so the amber ring is exactly the
 circle the knob's *edge* crosses at the moment the drag starts counting as aiming. It has
 to stay a derived number; if you change `AIM_DEAD` or `KNOB` and hardcode the ring, the
-circle stops meaning anything.
+circle stops meaning anything. The knob is a white ring with a black fill (v42), and the
+amber ring is **dotted** (v44). The old dashed outer `.throw` ring — the edge of the knob's
+travel — was removed in v44; the owner found it noise. Don't add a second ring back without
+asking.
 
 The stick deliberately has **no `overflow:hidden`**. Four out of five of the knob's radius
 travels outwards, so clipping to the rim would slice a bite off it at full deflection.
@@ -170,9 +181,12 @@ position from the last frame's `camY`/`unitPx`, stores it as `input.current.prom
 panel re-lays-out as the camera settles, and `App` applies it as the panel's inline `bottom`
 plus a matching `maxHeight`. It holds the item's card (`ModCard`/`GunCard`/`PerkCard`, all
 `ingame`) followed by one `.pbuy` line — `Buy <price>` for shop stock, `Take`/`free` for
-anything you pick up
-(a nameless prompt like the heal puts its name here since there's no card above it). The
-info box no longer floats at the top and there's no separate `.pickhint` any more.
+anything you pick up. **The stat list (`.prows`) inside the panel gets its own `max-height`
++ scroll (v44)** so a loaded gun or a busy mod can't make the panel fill the screen; that
+scroll box is the one part of the panel with `pointer-events:auto`, the rest stays
+click-through so a tap falls to the sticks. A nameless prompt (the heal) has no card, so
+`.pbuy` puts its name there instead. The info box no longer floats at the top and there's
+no separate `.pickhint` any more.
 `.buypanel .pop` strips the inner card's own frame so the panel is the box; it wins over
 `.pop.ingame` on source order, so keep the `.buypanel` block *after* `.pop.ingame` in the
 CSS. The whole panel is `pointer-events:none`, same as before — buying is still a dead-zone

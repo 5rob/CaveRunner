@@ -7,13 +7,19 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v43.** Branch: `claude/compassionate-rubin-fcqsif` (pushed).
+- **On-disk version: v44.** Branch: `claude/compassionate-rubin-fcqsif` (pushed).
 - Working tree is clean apart from `.claude/` (untracked on purpose — it holds an API token,
   never commit it).
 - Full test suite is green (`node tests/run.js`), see **Testing** below for two known flakes.
 
 ## What shipped recently (most recent first)
 
+- **v44 — scrollable panel stats, line-of-sight aggro, dotted trigger ring.** The panel's
+  stat list (`.prows`) now caps at 156px and scrolls, so a loaded gun/busy mod can't fill
+  the screen (that scroll box is the one `pointer-events:auto` part). Chasers and bombers
+  now need an actual sightline to aggro (`hunting` gained a `lineOfSight` gate), so nothing
+  chases through a wall. The right stick's amber ring is dotted, and the old dashed `.throw`
+  ring (edge of the knob's travel) was removed.
 - **v43 — pickup panel is half width and floats above the item.** `.buypanel` is now
   `left:25%;right:25%` (half width, centred) and its bottom edge sits just above the plinth
   instead of at the screen bottom: `step()` measures the item's on-screen spot and stores

@@ -27,6 +27,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       n: s.length, stick: w(s[0]), right: w(s[1]),
       knob: w(s[1].querySelector('.knob')), knobLeft: w(s[0].querySelector('.knob')),
       dead: ring(s[1], '.deadzone'), thr: ring(s[1], '.throw'),
+      deadStyle: getComputedStyle(s[1].querySelector('.deadzone')).borderStyle,
       leftRings: s[0] ? s[0].querySelectorAll('.deadzone, .throw').length : -1,
       // where the amber ring ought to be: the throw you have to make (AIM_DEAD of the
       // knob's travel) plus one knob radius, so the knob's EDGE crosses it exactly as
@@ -45,9 +46,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     deck.dead > deck.knob, deck);
   check('and it is drawn where the trigger actually goes live',
     Math.abs(deck.dead - deck.want) < 8, { ring: deck.dead, shouldBe: Math.round(deck.want) });
-  check('the dashed ring is outside that again',
-    deck.thr > deck.dead, deck);
-  check('the left one has neither ring', deck.leftRings === 0, deck.leftRings);
+  check('the amber ring is dotted', deck.deadStyle === 'dotted', deck.deadStyle);
+  check('the old dashed throw ring is gone', deck.thr === 0, deck.thr);
+  check('the left one has no ring', deck.leftRings === 0, deck.leftRings);
   check('the deck is black rather than blue', deck.lum < 40, deck.lum);
 
   // Drive the right stick with real PointerEvents, the same way a finger would:
