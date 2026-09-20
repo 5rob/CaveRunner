@@ -14,13 +14,13 @@ it's stale.
 
 ## What shipped recently (most recent first)
 
-- **v45 — panel stat list caps at ~3 rows** (`.buypanel .prows` max-height 60px), then scrolls.
-- **v44 — scrollable panel stats, line-of-sight aggro, dotted trigger ring.** The panel's
-  stat list (`.prows`) caps and scrolls (60px ≈ 3 rows as of v45), so a loaded gun/busy mod can't fill
-  the screen (that scroll box is the one `pointer-events:auto` part). Chasers and bombers
+- **v44–v45 — scrollable panel stats, line-of-sight aggro, dotted trigger ring.** The pickup
+  panel's stat list (`.buypanel .prows`) caps at ~3 rows (`max-height:60px`, tightened from
+  156px in v45) and scrolls the rest, so a loaded gun/busy mod can't fill the screen — it's
+  the one `pointer-events:auto` part of an otherwise click-through panel. Chasers and bombers
   now need an actual sightline to aggro (`hunting` gained a `lineOfSight` gate), so nothing
-  chases through a wall. The right stick's amber ring is dotted, and the old dashed `.throw`
-  ring (edge of the knob's travel) was removed.
+  chases through a wall. The right stick's amber trigger ring is dotted, and the old dashed
+  `.throw` ring (edge of the knob's travel) was removed.
 - **v43 — pickup panel is half width and floats above the item.** `.buypanel` is now
   `left:25%;right:25%` (half width, centred) and its bottom edge sits just above the plinth
   instead of at the screen bottom: `step()` measures the item's on-screen spot and stores
