@@ -16,6 +16,7 @@ const OUT = path.join(__dirname, 'build');
 const HOOK_LVL =
   "    window.__lvl = { get pickups(){return pickups}, get enemies(){return enemies}, " +
   "bullets, p, get mat(){return mat}, get stock(){return stock}, coins, get floor(){return floor}, " +
+  "get rooms(){return rooms}, get pb(){return pb}, maxHp, " +
   "get roster(){return roster}, get theme(){return themeName}, " +
   "get arrival(){return arrival}, get start(){return start}, get portal(){return portal}, " +
   "enemyShots, fields, beams, flashes, dig, " +

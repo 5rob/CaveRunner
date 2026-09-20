@@ -31,7 +31,7 @@ Open `index.html` in a browser. It is a single file with no build step; React lo
 | Jetpack | Left stick, above the line (distance sets speed) | W, or W + A / D |
 | Aim | Right stick | Mouse |
 | Shoot | Drag the right stick out past the dead zone | Left mouse button |
-| Interact: buy, take a gun or mod | Tap the middle of the right stick | F |
+| Interact: buy, take a gun, mod or perk | Tap the middle of the right stick | F |
 | Choose on a card that is asking | Drag the right stick left or right, or tap the button | — |
 | Pick gun | Tap a gun slot | 1 to 4 |
 | Gun details | Hold a gun slot | — |
@@ -50,6 +50,8 @@ it is how far the knob travels before it is against the rim. The stick does not
 clip the knob to the circle, so at full deflection the knob is still a whole knob.
 
 ## Picking things up
+
+Mods and guns in the cave sit on a floor of their own now, not floating in place.
 
 The middle of the right stick is a dead zone: drag out past it to aim and fire,
 tap it without leaving it and you interact with whatever you are standing at.
@@ -90,6 +92,26 @@ Guns get better as you go. Height in the cave still matters — the ones lying
 around near the top of a floor beat the ones near the bottom — but every floor
 you clear lifts the whole range, so by floor five or six the scratch pistols have
 stopped turning up.
+
+## Perks
+
+Every floor also hides two small rooms, built brick-lined like the shop, carved out of
+the cave and connected back to the main route by a tunnel — you have to find them.
+
+One holds a perk on an altar. Walk onto it and a card describes the upgrade; tap the
+right stick's dead zone (or F) to take it, same as any other pickup. There are 30 perks,
+copied from Noita — Glass Cannon, Extra Health, Faster Wands, Homing Shots, Unlimited
+Spells, Permanent Shield, Pinpointer, Angry Ghost, Attract Gold, radars and Invisibility
+among them — and once taken, a perk lasts the rest of the run: until you die or hit
+Restart. A perk room never offers one you already hold. What you've collected shows as a
+row of small icons along the bottom of the screen, just above the thumbsticks.
+
+The other room holds a heart that raises your maximum health by 25. It does not heal
+you — it only raises the ceiling.
+
+A couple of perks reach into other systems: Extra Item in Holy Mountain makes the shop
+offer five things instead of four, and Tinker with Wands Everywhere opens the Mods
+editor anywhere, not just in the shop.
 
 ## Floors
 
@@ -286,3 +308,6 @@ them if it cannot find either.
 - Mods in the wild are rare, so the shop is the reliable place to stock up
 - Restart asks before it wipes the run
 - A DEBUG shelf with one of every mod, for trying builds out
+- 30 perks, hidden one to a brick-lined room on every floor, permanent for the run and shown as icons above the sticks
+- A second hidden room per floor holding a +25 max health heart (it raises the ceiling, doesn't heal)
+- Loot in the cave sits on the ground now, not floating in place

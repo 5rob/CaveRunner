@@ -52,7 +52,7 @@ replace it with a general static server.
    Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
    link. If this session hasn't published yet, read the artifact first, then publish.
 
-Current version: **v38**. Branch: `claude/compassionate-rubin-fcqsif`.
+Current version: **v39**. Branch: `claude/compassionate-rubin-fcqsif`.
 
 ### The version number is not optional
 
@@ -80,6 +80,7 @@ Roughly top to bottom:
 | `MODS` | the 111 spells, each a plain object |
 | `FAMILIES` / `FAMILY_OF` | the 8 colour families the UI groups mods by |
 | `MOD_PRICE` / `MOD_TIER` | shop price and rarity 1–4 for every mod |
+| `PERKS` / `perkBag` | the 30 perks, and folding an owned list into one effective bag |
 | `planCast` | **the heart of it** — works out what one pull of the trigger fires |
 | `gunRate` / `buildAdvice` | the build advisor |
 | `castGroups` / `groupStats` | the outlines and stat lines in the build screen |
@@ -127,6 +128,14 @@ deal. If you add a mod that spends something, make sure `gunRate` sees the cost.
 palette and the same creatures on every run, and that is the feature, not an oversight —
 the player is meant to learn floor 3. Only past floor 10 does `rosterFor` take `rnd`.
 Don't be tempted to roll either one from the level seed.
+
+**Perks live in `PERKS` + `perkBag()`, both pure and above `makeLevel`.**
+`makeLevel(seed, floor, owned)` carves the two hidden perk rooms and returns `rooms`
+alongside the rest of the level; `owned` is how it skips perks the player already holds.
+The Game closure reads one folded bag, `pb = perkBag(loadout.perks)`, and both `step()`
+and `draw()` read off that rather than walking `loadout.perks` themselves. Max health is
+`perkBag(perks).maxHp + loadout.maxBonus` — the +25 hearts are `maxBonus`, and they raise
+the ceiling only, never heal.
 
 **Enemy behaviour belongs to the creature.** Every enemy carries `e.k`, its floor-scaled
 stats, and `e.k.act` decides how it moves and fights: `shoot`, `turret`, `chase` or
@@ -291,7 +300,5 @@ actually wrong; it's been both.
 - **Delayed Spellcast** — a static phenomenon that casts three more spells after a pause.
   The trigger/timer machinery now exists (`payload` on a shot, `firePayload` in the bullet
   loop, v31), so this is a much smaller job than it was.
-- **Perks**, mentioned when gold pickup range was reduced: "later when I introduce perks
-  we could have a perk that increases that range". The range is deliberately short now.
 - Noita spell categories we only partly mined: Material spells (none), and the rest of
   Other (Add Trigger / Add Timer, Divide By N, the Requirement spells).

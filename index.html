@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v38</title>
+<title>CaveRunner v39</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -59,6 +59,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   background:repeating-linear-gradient(180deg,rgba(255,255,255,0.04) 0 1px,rgba(0,0,0,0) 1px 3px)}
 .toolbar{display:flex;align-items:center;justify-content:space-between;padding:0 8px;height:36px}
 .sticks{display:flex;justify-content:space-evenly;position:relative;z-index:3}
+/* the perks you have found, a row of glyphs above the thumbsticks */
+.perkrow{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;align-items:center;
+  min-height:26px;padding:0 8px;position:relative;z-index:3}
+.perkpip{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;
+  justify-content:center;font-size:14px;line-height:1;box-sizing:border-box;
+  border:1.5px solid currentColor;background:rgba(255,255,255,0.05)}
 .slots{display:flex;gap:6px}
 .slot{position:relative;box-sizing:border-box;width:46px;height:36px;border-radius:3px;
   border:2px solid var(--ctl-line);background:var(--ctl-face);color:var(--ctl-fg);
@@ -354,7 +360,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v38';
+const VERSION = 'v39';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -1960,8 +1966,108 @@ function turn(b, by) {
 
 const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
-function makeLevel(seed, floor) {
+// ---- perks ----
+// One per hidden room, yours for the rest of the run. Each is a plain bag of multipliers
+// and flags — nothing clever — and perkBag() adds them up into the one object the rest of
+// the game reads. That keeps every effect in one place and testable on its own: a perk
+// that does nothing is a field nobody read, and the logic suite checks the fields that
+// matter actually move.
+const PERKS = {
+  eye:      { name: 'All-Seeing Eye', glyph: '◉', tint: '#8fd3ff', seeAll: 1,
+              info: 'The whole floor is lit. No fog anywhere, on this floor or any other.' },
+  ghost:    { name: 'Angry Ghost', glyph: '☾', tint: '#c9a6ff', ghost: 1,
+              info: 'A spirit trails you and fires at whatever is nearest.' },
+  gold:     { name: 'Attract Gold', glyph: '◇', tint: '#ffc93c', goldPull: 3,
+              info: 'Coin flies to you from three times as far away.' },
+  bounce:   { name: 'Bouncing Spells', glyph: '⤢', tint: '#7ad7ff', bounce: 1,
+              info: 'Every shot bounces once more than it otherwise would.' },
+  close:    { name: 'Close Call', glyph: '✧', tint: '#ff8a1f', close: 1,
+              info: '+40% critical chance while something is within 56 units of you.' },
+  conc:     { name: 'Concentrated Spells', glyph: '✹', tint: '#ff5a52',
+              dmg: 1.25, spread: 0.5, delay: 1.15, recoil: 1.25,
+              info: 'A quarter more damage and half the spread, but a slower gun and a harder kick.' },
+  contact:  { name: 'Contact Damage', glyph: '✺', tint: '#ff5a36', contact: 1,
+              info: 'Anything that touches you is hurt by it.' },
+  crit:     { name: 'Critical Hit +', glyph: '✳', tint: '#ff5a52', crit: 0.15,
+              info: '+15% chance of a hit doing triple damage.' },
+  eradar:   { name: 'Enemy Radar', glyph: '▲', tint: '#ff5a52', radarEnemy: 1,
+              info: 'The nearest creatures are marked at the edge of the screen.' },
+  health:   { name: 'Extra Health', glyph: '✚', tint: '#46c48c', hpAdd: 50,
+              info: '50 more maximum health, and it comes full.' },
+  holyitem: { name: 'Extra Item in Holy Mountain', glyph: '♦', tint: '#ffc93c', extraItem: 1,
+              info: 'Every shop offers five things instead of four.' },
+  life:     { name: 'Extra Life', glyph: '♥', tint: '#ff5a36', lives: 1,
+              info: 'You get back up once, at full health, the first time you are killed.' },
+  knock:    { name: 'Extra Knockback on Spells', glyph: '⟫', tint: '#e88a3c', recoil: 1.5,
+              info: 'Half again the kick out of every shot — which the jetpack can work with.' },
+  lev:      { name: 'Faster Levitation', glyph: '⬆', tint: '#7ad7ff', jet: 1.25,
+              info: 'A quarter more thrust out of the jetpack.' },
+  move:     { name: 'Faster Movement', glyph: '➤', tint: '#6db8ff', walk: 1.3,
+              info: 'Walk and fly a third faster.' },
+  proj:     { name: 'Faster Projectiles', glyph: '⇒', tint: '#ffc93c', speed: 1.25,
+              info: 'Everything you fire travels a quarter faster.' },
+  wands:    { name: 'Faster Wands', glyph: '↻', tint: '#6db8ff', delay: 0.75, rech: 0.75,
+              info: 'Cast delay and recharge are three quarters of what they were.' },
+  glass:    { name: 'Glass Cannon', glyph: '✷', tint: '#ff5a52', dmg: 2.5, hpMul: 0.5,
+              info: 'Two and a half times the damage, and half the health to spend.' },
+  greed:    { name: 'Greed', glyph: '⬤', tint: '#ffc93c', gold: 2,
+              info: 'Every coin is worth double.' },
+  homing:   { name: 'Homing Shots', glyph: '↝', tint: '#b57cff', homing: 3,
+              info: 'Your shots bend towards whatever is nearest.' },
+  invis:    { name: 'Invisibility', glyph: '☁', tint: '#9aa3ad', invis: 1,
+              info: 'Creatures do not notice you until you are almost on top of them.' },
+  iradar:   { name: 'Item Radar', glyph: '◆', tint: '#b57cff', radarItem: 1,
+              info: 'The nearest mod lying in the cave is marked at the edge of the screen.' },
+  trail:    { name: 'Levitation Trail', glyph: '≈', tint: '#ff8a1f', trail: 1,
+              info: 'Flying leaves a trail of fire behind you that burns what it touches.' },
+  shield:   { name: 'Permanent Shield', glyph: '⬡', tint: '#7ad7ff', shield: 1,
+              info: 'A shield soaks the first hit and comes back a couple of seconds later.' },
+  pinpoint: { name: 'Pinpointer', glyph: '⊙', tint: '#5ee0a0', pinpointer: 1, speed: 1.2, spread: 0.6,
+              info: 'You aim at the nearest creature instead of by hand, with a sightline to it.' },
+  repel:    { name: 'Projectile Repulsion Field', glyph: '⊘', tint: '#8fd3ff', repel: 1,
+              info: 'Shots aimed at you are shoved aside before they arrive.' },
+  tinker:   { name: 'Tinker with Wands Everywhere', glyph: '⚙', tint: '#e9ecf2', tinker: 1,
+              info: 'The mod screen works out in the cave, not only in the shop.' },
+  unlimited:{ name: 'Unlimited Spells', glyph: '∞', tint: '#6db8ff', mana: 0,
+              info: 'Spells cost no mana at all.' },
+  wradar:   { name: 'Wand Radar', glyph: '▣', tint: '#ffc93c', radarWand: 1,
+              info: 'The nearest gun lying in the cave is marked at the edge of the screen.' },
+  hearts:   { name: 'Stronger Hearts', glyph: '❤', tint: '#46c48c', heal: 1.5,
+              info: 'Anything that heals you heals half again as much.' },
+};
+const PERK_IDS = Object.keys(PERKS);
+
+// Everything the perks you are carrying add up to. Multipliers multiply, flags stick,
+// `mana: 0` means unlimited and stays unlimited however many of them you find.
+function perkBag(ids) {
+  const P = { dmg: 1, speed: 1, spread: 1, bounce: 0, recoil: 1, crit: 0, mana: 1,
+    delay: 1, rech: 1, walk: 1, jet: 1, hpMul: 1, hpAdd: 0, heal: 1, gold: 1, goldPull: 1,
+    shield: 0, lives: 0, ghost: 0, homing: 0, trail: 0, contact: 0, close: 0, invis: 0,
+    repel: 0, seeAll: 0, radarEnemy: 0, radarItem: 0, radarWand: 0, tinker: 0,
+    extraItem: 0, pinpointer: 0 };
+  for (const id of ids || []) {
+    const k = PERKS[id];
+    if (!k) continue;
+    P.dmg *= k.dmg || 1; P.speed *= k.speed || 1; P.spread *= k.spread || 1;
+    P.recoil *= k.recoil || 1; P.delay *= k.delay || 1; P.rech *= k.rech || 1;
+    P.walk *= k.walk || 1; P.jet *= k.jet || 1; P.hpMul *= k.hpMul || 1;
+    P.heal *= k.heal || 1; P.gold *= k.gold || 1; P.goldPull *= k.goldPull || 1;
+    if (k.mana === 0) P.mana = 0; else P.mana *= k.mana || 1;
+    P.bounce += k.bounce || 0; P.crit += k.crit || 0; P.hpAdd += k.hpAdd || 0;
+    P.lives += k.lives || 0; P.ghost += k.ghost || 0;
+    P.homing = Math.max(P.homing, k.homing || 0);
+    for (const f of ['shield', 'trail', 'contact', 'close', 'invis', 'repel', 'seeAll',
+      'radarEnemy', 'radarItem', 'radarWand', 'tinker', 'extraItem', 'pinpointer'])
+      if (k[f]) P[f] = 1;
+  }
+  P.maxHp = Math.max(10, Math.round((PLAYER_HP + P.hpAdd) * P.hpMul));
+  return P;
+}
+
+function makeLevel(seed, floor, owned) {
   floor = floor || 1;
+  const have = new Set(owned || []);     // perks you are already carrying, so a room is
+                                         // never a wasted trip if it can help it
   const hash = (x, y) => {
     let v = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 982451653)) | 0;
     v = Math.imul(v ^ (v >>> 13), 1274126177);
@@ -2164,6 +2270,61 @@ function makeLevel(seed, floor) {
   // exit ledge
   slab(CW / 2 - 24, 34, 48, 3);
 
+  // ---- hidden rooms ----
+  // One perk and one heart, each cut out of whatever rock is there and lined with brick
+  // the way the shop is, so it reads as somewhere somebody built. The tunnel runs back to
+  // a point on the main route, which is the only thing in a level guaranteed to be
+  // reachable — a room carved into the rock on its own would be a room nobody ever finds.
+  const rect = (x0, y0, w, h, v) => {
+    for (let y = y0; y < y0 + h; y++)
+      for (let x = x0; x < x0 + w; x++) if (inside(x, y)) mat[y * CW + x] = v;
+  };
+  const tunnelTo = (x0, y0, x1, y1, r) => {
+    const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0)));
+    for (let i = 0; i <= n; i++) disc(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, r, 0);
+  };
+  const makeRoom = () => {
+    for (let tries = 0; tries < 80; tries++) {
+      const p0 = points[1 + Math.floor(rnd() * (points.length - 2))];
+      const a = rnd() * Math.PI * 2, d = 50 + rnd() * 100;
+      const ex = Math.round(Math.max(40, Math.min(CW - 40, p0.x + Math.cos(a) * d)));
+      const ey = Math.round(Math.max(70, Math.min(SHOP_TOP - 70, p0.y + Math.sin(a) * d)));
+      const rx = 20, ry = 12, sh = 3;
+      rect(ex - rx - sh, ey - ry - sh, (rx + sh) * 2, (ry + sh) * 2, BRICK);   // the shell
+      rect(ex - rx, ey - ry, rx * 2, ry * 2, 0);                               // and the room
+      const back = Math.atan2(p0.y - ey, p0.x - ex);
+      tunnelTo(ex + Math.cos(back) * (rx - 2), ey + Math.sin(back) * (ry - 2), p0.x, p0.y, 7);
+      rect(ex - rx, ey - ry, rx * 2, ry * 2, 0);         // the tunnel may have eaten an edge
+      return { x: ex * CELL, y: ey * CELL };
+    }
+    return null;
+  };
+  const perkRoom = makeRoom();
+  const heartRoom = makeRoom();
+  // and clear the route again: a room's shell is solid brick and can land straight across
+  // the one tunnel the whole level hangs off. Above the shop only, or the same pass would
+  // punch extra holes in the shop roof, which is laid down after the first one.
+  for (const c of routePath)
+    if (c.y < SHOP_TOP - SHOP_ROOF - 9) disc(c.x, c.y, Math.min(c.r, 7), 0);
+  // and lay the roof back down. A disc is round, so clearing the route anywhere near the
+  // roof opens a few columns of it, and a shell across the shaft plugs it: either way the
+  // roof stops being a roof. Whatever happened up here, the shop has one hole in it.
+  for (let cy = SHOP_TOP - SHOP_ROOF; cy < SHOP_TOP; cy++)
+    for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BRICK;
+  for (let cy = SHOP_TOP - SHOP_ROOF - 26; cy < SHOP_TOP; cy++)
+    for (let cx = shopExit - 9; cx <= shopExit + 9; cx++)
+      if (inside(cx, cy)) mat[cy * CW + cx] = 0;
+  // which perk is in it: anything you have not got, if the run of the pool allows
+  let perkId = null;
+  if (perkRoom) {
+    const fresh = PERK_IDS.filter(k => !have.has(k));
+    const pool = fresh.length ? fresh : PERK_IDS;
+    perkId = pool[Math.floor(rnd() * pool.length)];
+  }
+  const rooms = [];
+  if (perkRoom) rooms.push({ kind: 'perk', id: perkId, x: perkRoom.x, y: perkRoom.y, taken: false });
+  if (heartRoom) rooms.push({ kind: 'heart', x: heartRoom.x, y: heartRoom.y, taken: false });
+
   // unbreakable border
   for (let cy = 0; cy < CH; cy++)
     for (let cx = 0; cx < CW; cx++)
@@ -2218,7 +2379,9 @@ function makeLevel(seed, floor) {
   // it; the heal stays on its own beside the portal you arrive through, where you land.
   const stock = [];
   const offer = [], taken = {};
-  for (let i = 0; i < 4; i++) {
+  // five things for sale if you are carrying Extra Item in Holy Mountain, four otherwise
+  const items = have.has('holyitem') ? 5 : 4;
+  for (let i = 0; i < items; i++) {
     const id = rollMod(rnd, floor, taken);
     taken[id] = 1;
     offer.push(id);
@@ -2228,9 +2391,9 @@ function makeLevel(seed, floor) {
   // the free heal, just along from the portal you arrive through. Far enough along that
   // you are not standing on it the moment you land.
   stock.push({ kind: 'heal', x: arrival.x + 62, y: shelf, price: 0, sold: false });
-  const PLINTH_GAP = 64;                 // world units between the four in the row
-  for (let i = 0; i < 4; i++) {
-    const x = WW / 2 + (i - 1.5) * PLINTH_GAP;
+  const PLINTH_GAP = 64;                 // world units between the ones in the row
+  for (let i = 0; i < items; i++) {
+    const x = WW / 2 + (i - (items - 1) / 2) * PLINTH_GAP;
     if (gunShop) {
       // shop guns roll a touch above whatever the cave is dropping on this floor
       const gun = makeGun(rnd, Math.min(1, gunTier(CH * 0.15, floor) + 0.1));
@@ -2272,11 +2435,19 @@ function makeLevel(seed, floor) {
   // Half the mods there used to be, and they have to sit far enough apart that the
   // few of them are spread over the whole cave rather than bunched in one corner.
   const pickups = [];
+  // the first floor under a spot, so a pickup sits on the ground rather than hanging in
+  // the air wherever an open cell happened to be
   let gunsLeft = GUN_DROPS, modsLeft = MOD_DROPS;
   for (let a = 0; a < 20000 && gunsLeft + modsLeft > 0; a++) {
     const cx = 8 + Math.floor(rnd() * (CW - 16)), cy = 30 + Math.floor(rnd() * (SHOP_TOP - 60));
     if (!clear(cx, cy, 6)) continue;
-    const x = cx * CELL, y = cy * CELL;
+    // and drop it onto the first floor below, but only as far as the open box it was
+    // picked for — further than that and it lands in a crack you cannot stand next to.
+    // Nothing to land on inside the box means this spot is no good and another is tried.
+    let gy = cy;
+    while (gy - cy < 6 && !mat[(gy + 1) * CW + cx]) gy++;
+    if (!mat[(gy + 1) * CW + cx]) continue;
+    const x = cx * CELL, y = (gy + 1) * CELL - 9;
     if (Math.hypot(x - start.x, y - start.y) < 200) continue;
     if (pickups.some(q => Math.hypot(q.x - x, q.y - y) < PICKUP_GAP)) continue;
     const tier = gunTier(cy, floor);
@@ -2290,7 +2461,7 @@ function makeLevel(seed, floor) {
   }
 
   return { mat, img, bgImg, start, portal, enemies, pickups, stock, shopExit, arrival,
-    roster, theme: T.name };
+    rooms, roster, theme: T.name };
 }
 
 // Fly a shot forward with the same rules the live bullets use, so the aim line
@@ -2391,10 +2562,12 @@ function Game({ input }) {
     let seen = fogStart();
 
     let mat, img, start, portal, enemies, pickups, stock, arrival, total, floor = 1;
+    let rooms = [];                                  // the perk room and the heart room
     let roster = [], themeName = '';                 // this floor's creatures, and its palette
 
     const p = { x: 0, y: 0, vx: 0, vy: 0, onGround: false, face: 1, jet: 0,
       fuel: 1, empty: false, hp: PLAYER_HP, hitT: 0, dead: false, kick: 0,
+      shieldReady: true, shieldT: 0,        // Permanent Shield: up, and its recharge clock
       jx: 0, jy: 0, aim: { on: false, show: false, nx: 1, ny: 0 } };
     const bullets = [], enemyShots = [], smoke = [], sparks = [], flashes = [], toasts = [], coins = [];
     const fields = [], beams = [];                   // static projectiles, and instant beam streaks
@@ -2411,17 +2584,34 @@ function Game({ input }) {
       const a = p.aim.show ? p.aim.nx : p.face;
       return { x: p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: p.y + 9 };
     };
+    // ---- perks ----
+    // Everything the perks you are carrying add up to, recomputed whenever the run's perk
+    // list changes and read all over step() and draw(). Neutral (all multipliers 1, all
+    // flags 0) until a perk is found, so a run with no perks behaves exactly as before.
+    let pb = perkBag([]);
+    const refreshBag = () => { pb = perkBag(input.current.loadout.perks || []); };
+    // the true maximum health: the perk bag's answer plus the running +25 per heart room.
+    const maxHp = () => pb.maxHp + (input.current.loadout.maxBonus || 0);
+    // the ghost companion (Angry Ghost) and the fire trail (Levitation Trail), if owned
+    let ghost = null;
+    const burns = [];
+
     const toast = text => { toasts.push({ text, t: 2.2 }); if (toasts.length > 3) toasts.shift(); };
     let best = 0, raf, last = performance.now();
 
     // a floor is a fresh cave with its own shop at the bottom; you keep everything else
     function enterLevel() {
-      const level = makeLevel(1 + Math.floor(Math.random() * 2147483000), floor);
+      refreshBag();
+      const level = makeLevel(1 + Math.floor(Math.random() * 2147483000), floor,
+        input.current.loadout.perks);
       mat = level.mat; img = level.img;
       start = level.start; portal = level.portal; arrival = level.arrival;
       enemies = level.enemies; pickups = level.pickups; stock = level.stock;
+      rooms = level.rooms || [];
       roster = level.roster; themeName = level.theme;
       total = enemies.length;
+      ghost = pb.ghost ? { x: level.start.x, y: level.start.y, cd: 0 } : null;
+      burns.length = 0;
       tctx.putImageData(img, 0, 0);
       bgctx.putImageData(level.bgImg, 0, 0);
       p.x = start.x; p.y = start.y; p.vx = 0; p.vy = 0;
@@ -2431,7 +2621,9 @@ function Game({ input }) {
       torchP.length = 0;
       camReady = false; best = 0;
       levelT = 0;                             // the floor's name card gets its three seconds
-      seen = fogStart(); paintFog();          // every floor is dark again
+      seen = fogStart();
+      if (pb.seeAll) seen.fill(2);            // All-Seeing Eye lights the whole floor
+      paintFog();                             // otherwise every floor starts dark again
     }
 
     // Repaint the whole overlay mask from the reveal grid. FW x FH is a few thousand
@@ -2506,9 +2698,28 @@ function Game({ input }) {
     }
     function hurt(n) {
       if (p.dead || n <= 0) return;
+      // Permanent Shield soaks a hit whole, then winds back up over a couple of seconds
+      if (pb.shield && p.shieldReady) {
+        p.shieldReady = false; p.shieldT = 2.5;
+        burst(p.x + PW / 2, p.y + PH / 2, 10, '#7ad7ff');
+        return;
+      }
       p.hp = Math.max(0, p.hp - n);
       p.hitT = 0.3;
-      if (p.hp === 0) { p.dead = true; burst(p.x + PW / 2, p.y + PH / 2, 24, COL.player); }
+      if (p.hp === 0) {
+        // Extra Life gets you back up once, at full health
+        const LO = input.current.loadout;
+        if (pb.lives > (LO.usedLives || 0)) {
+          LO.usedLives = (LO.usedLives || 0) + 1;
+          p.hp = maxHp();
+          p.shieldReady = true; p.shieldT = 0;
+          burst(p.x + PW / 2, p.y + PH / 2, 24, '#ff5a36');
+          toast('Back from the dead');
+          input.current.notify();
+          return;
+        }
+        p.dead = true; burst(p.x + PW / 2, p.y + PH / 2, 24, COL.player);
+      }
     }
     // one pull of an enemy's trigger: aimed at the player, and a shotgun type throws
     // its pellets in a cone. Refuses the shot if the player has broken line of sight
@@ -2531,7 +2742,8 @@ function Game({ input }) {
       if (e.hp > 0) return;
       burst(e.x, e.ty, 16, e.k.col.a);
       enemies.splice(j, 1);
-      coins.push({ x: e.x, y: e.ty, amount: e.k.gold + Math.floor(Math.random() * 3),
+      coins.push({ x: e.x, y: e.ty,
+        amount: Math.round((e.k.gold + Math.floor(Math.random() * 3)) * pb.gold),
         t: Math.random() * 6.28, vy: -60 - Math.random() * 40 });
     }
 
@@ -2575,14 +2787,15 @@ function Game({ input }) {
       const pas = gunPassives(g);
       const wrap = () => {
         g.idx = 0;
-        g.rechT = g.skipRech ? 0 : effRecharge(g);
+        g.rechT = g.skipRech ? 0 : effRecharge(g) * pb.rech;   // Faster Wands shortens it
         g.skipRech = false;
         shuffleOrder(g);
       };
       const plan = planCast(g, input.current.loadout.guns);
       if (!plan.shots.length) { wrap(); return; }        // modifiers with nothing to modify
-      if (g.mana < plan.cost) { g.idx = plan.start; g.delayT = 0.12; return; }
-      g.mana -= plan.cost;
+      const cost = pb.mana === 0 ? 0 : plan.cost;        // Unlimited Spells: nothing costs mana
+      if (g.mana < cost) { g.idx = plan.start; g.delayT = 0.12; return; }
+      g.mana -= cost;
 
       const base = Math.atan2(ny, nx);
       const acts = plan.acts || [];
@@ -2635,11 +2848,11 @@ function Game({ input }) {
       let kick = 0;
       for (const sh of plan.shots) kick += sh.recoil;
       if (kick && !p.dead) {
-        kick = Math.min(150, kick * 1.4);
+        kick = Math.min(220, kick * 1.4 * pb.recoil);   // Knockback / Concentrated add kick
         p.vx -= Math.cos(base) * kick;
         p.vy -= Math.sin(base) * kick;
       }
-      g.delayT = plan.delay;
+      g.delayT = plan.delay * pb.delay;                 // Concentrated slows, Faster Wands quickens
       if (plan.wrap) wrap();
     }
 
@@ -2651,8 +2864,14 @@ function Game({ input }) {
       if (sh.still) { castField(sh, ox + Math.cos(base) * fd, oy + Math.sin(base) * fd); return; }
       const n = Math.min(24, Math.max(1, Math.round(sh.count)));
       const off = (sh.ang || 0) * Math.PI / 180;
+      // perk touches: Glass/Concentrated damage, Critical/Close-Call chance, Faster
+      // Projectiles speed, Bouncing/Homing paths. Close Call only counts if something is
+      // right on top of you, so it is worked out once per cast, not once per pellet.
+      const pd = pb.dmg;
+      let pc = pb.crit;
+      if (pb.close && enemies.some(e => Math.hypot(e.x - ox, e.ty - oy) < 56)) pc += 0.4;
       for (let i = 0; i < n; i++) {
-        let a = base + off + (Math.random() - 0.5) * sh.spread * Math.PI / 180;
+        let a = base + off + (Math.random() - 0.5) * sh.spread * pb.spread * Math.PI / 180;
         if (sh.autoaim) {
           let best = null, bd = 320;
           for (const e of enemies) {
@@ -2662,7 +2881,7 @@ function Game({ input }) {
           if (best) a = Math.atan2(best.ty - oy, best.x - ox);
         }
         if (sh.flat) a = Math.cos(a) >= 0 ? 0 : Math.PI;
-        if (sh.beam) { fireBeam(sh, ox, oy, Math.cos(a), Math.sin(a), bonus); continue; }
+        if (sh.beam) { fireBeam(sh, ox, oy, Math.cos(a), Math.sin(a), bonus, pd, pc); continue; }
         let bx = ox + Math.cos(a) * 10, by = oy + Math.sin(a) * 10;
         if (warp) {                                   // jump forward, but not into rock
           for (let step = 0; step < 14; step++) {
@@ -2672,11 +2891,11 @@ function Game({ input }) {
           }
         }
         bullets.push({ x: bx, y: by,
-          vx: Math.cos(a) * sh.speed, vy: Math.sin(a) * sh.speed,
-          life: sh.life, dmg: sh.dmg + bonus, size: sh.size, col: sh.col, spin: 0,
-          homing: sh.homing, bounce: sh.bounce, pierce: sh.pierce,
+          vx: Math.cos(a) * sh.speed * pb.speed, vy: Math.sin(a) * sh.speed * pb.speed,
+          life: sh.life, dmg: (sh.dmg + bonus) * pd, size: sh.size, col: sh.col, spin: 0,
+          homing: Math.max(sh.homing, pb.homing), bounce: sh.bounce + pb.bounce, pierce: sh.pierce,
           explode: sh.explode, grav: sh.grav, accel: sh.accel, bore: sh.bore, hit: null,
-          knock: sh.knock, crit: sh.crit, boomer: sh.boomer, spiral: sh.spiral,
+          knock: sh.knock, crit: sh.crit + pc, boomer: sh.boomer, spiral: sh.spiral,
           pong: sh.pong, orbit: sh.orbit, homeR: sh.homeR, eat: sh.eat, pull: sh.pull,
           split: sh.split, cluster: sh.cluster, bounceFx: sh.bounceFx,
           friendly: sh.friendly, chain: sh.chain, fuse: sh.fuse,
@@ -2703,7 +2922,8 @@ function Game({ input }) {
     }
 
     // A beam is instant: it walks a line, damages what it touches and leaves a streak.
-    function fireBeam(sh, x, y, nx, ny, bonus) {
+    function fireBeam(sh, x, y, nx, ny, bonus, pd, pc) {
+      pd = pd || 1; pc = pc || 0;
       let hitAt = sh.beam;
       for (let d = 6; d <= sh.beam; d += 4) {
         const bx = x + nx * d, by = y + ny * d;
@@ -2711,7 +2931,7 @@ function Game({ input }) {
         else if (solidAt(bx, by)) { hitAt = d; break; }
         const j = enemyAt(bx, by, sh.size + 3);
         if (j >= 0) {
-          damageEnemy(j, critRoll(sh.dmg + bonus, sh.crit));
+          damageEnemy(j, critRoll((sh.dmg + bonus) * pd, sh.crit + pc));
           burst(bx, by, 4, sh.col);
           if (sh.knock) shove(enemies[j], nx, ny, sh.knock);
           if (!sh.pierce) { hitAt = d; break; }
@@ -2811,6 +3031,11 @@ function Game({ input }) {
       // because nothing runs on a paused frame
       if (input.current.pendingToast) { toast(input.current.pendingToast); input.current.pendingToast = null; }
       const LO = input.current.loadout;
+      // perks: keep the current maximum health honest, wind the shield back up, and never
+      // let a shrunken cap (Glass Cannon) leave the bar reading over full
+      const MHP = maxHp();
+      if (p.hp > MHP) p.hp = MHP;
+      if (pb.shield && !p.shieldReady) { p.shieldT -= dt; if (p.shieldT <= 0) p.shieldReady = true; }
       // movement: thumbstick first, otherwise keyboard (full strength)
       let L = input.current.left;
       if (!L.active) {
@@ -2842,13 +3067,13 @@ function Game({ input }) {
       p.kick -= dt;
       const k = p.kick > 0 ? 0.15 : 1;   // let explosions push you around briefly
       if (jet) {
-        p.vx = approach(p.vx, L.nx * mag * JET, JET_ACC * dt * k);
-        const ty = L.ny * mag * JET;
+        p.vx = approach(p.vx, L.nx * mag * JET * pb.walk, JET_ACC * dt * k);
+        const ty = L.ny * mag * JET * pb.jet;    // Faster Levitation lifts harder
         // rising beats a fall instantly; only an explosion still throws you around
         if (ty < p.vy && p.kick <= 0) p.vy = ty;
         else p.vy = approach(p.vy, ty, JET_ACC * dt * k);
       } else {
-        const target = mag > 0 ? L.nx * mag * WALK : 0;
+        const target = mag > 0 ? L.nx * mag * WALK * pb.walk : 0;
         p.vx = approach(p.vx, target, (p.onGround ? GROUND_ACC : AIR_ACC) * dt * k);
         p.vy = Math.min(p.vy + GRAVITY * dt, 900);
       }
@@ -2911,6 +3136,19 @@ function Game({ input }) {
       else if (mouse.inside) {
         const dx = camX + mouse.x / unitPx - gx, dy = camY + mouse.y / unitPx - gy, d = Math.hypot(dx, dy);
         if (d > 1) R = { on: mouse.down, show: true, nx: dx / d, ny: dy / d };
+      }
+      // Pinpointer aims for you: the gun locks onto the nearest creature and you only
+      // decide whether to fire. It replaces hand-aiming — the stick becomes a trigger.
+      if (pb.pinpointer && !p.dead) {
+        let best = null, bd = 1e9;
+        for (const e of enemies) {
+          const d = Math.hypot(e.x - gx, e.ty - gy);
+          if (d < bd && lineOfSight(gx, gy, e.x, e.ty)) { bd = d; best = e; }
+        }
+        if (best) {
+          const a = Math.atan2(best.ty - gy, best.x - gx);
+          R = { on: R.on || (TR.active && TR.on), show: true, nx: Math.cos(a), ny: Math.sin(a) };
+        }
       }
       if (p.dead) R.on = false;
       p.aim = R;
@@ -3063,8 +3301,8 @@ function Game({ input }) {
             if (Math.hypot(b.x - f.x, b.y - f.y) < f.r) { burst(b.x, b.y, 3, f.col); enemyShots.splice(k, 1); }
           }
         } else if (f.field === 'heal') {
-          if (Math.hypot(pcx - f.x, pcy - f.y) < f.r && p.hp < PLAYER_HP && f.tick <= 0) {
-            f.tick = 0.4; p.hp = Math.min(PLAYER_HP, p.hp + 4); input.current.notify();
+          if (Math.hypot(pcx - f.x, pcy - f.y) < f.r && p.hp < MHP && f.tick <= 0) {
+            f.tick = 0.4; p.hp = Math.min(MHP, p.hp + 4 * pb.heal); input.current.notify();
           }
         } else if (f.field === 'storm') {
           if (f.tick <= 0) {
@@ -3107,9 +3345,10 @@ function Game({ input }) {
       for (let i = coins.length - 1; i >= 0; i--) {
         const g = coins[i];
         const dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;
-        if (d < COIN_PULL && !p.dead) {
+        const pull = COIN_PULL * pb.goldPull;    // Attract Gold reaches further
+        if (d < pull && !p.dead) {
           // inside the pull radius it flies to you, straight through rock
-          const grab = 180 + 900 * (1 - d / COIN_PULL);
+          const grab = 180 + 900 * (1 - d / pull);
           g.vx = (g.vx || 0) + (dx / d) * grab * dt * 6;
           g.vy += (dy / d) * grab * dt * 6;
           g.vx *= 0.88; g.vy *= 0.88;
@@ -3143,14 +3382,27 @@ function Game({ input }) {
         near = { src: 'pickup', q };
         break;
       }
-      const nearKey = !near ? -1 : near.src + ':' + (near.src === 'shop' ? stock.indexOf(near.it) : pickups.indexOf(near.q));
+      // the hidden rooms' prizes: a perk on its altar, or the +25 heart
+      if (!near) for (const r of rooms) {
+        if (r.taken) continue;
+        if (Math.abs(r.x - pcx) > 20 || Math.abs(r.y - pcy) > 26) continue;
+        near = { src: 'room', r };
+        break;
+      }
+      const nearKey = !near ? -1 : near.src + ':' +
+        (near.src === 'shop' ? stock.indexOf(near.it)
+          : near.src === 'room' ? rooms.indexOf(near.r) : pickups.indexOf(near.q));
       const label = !near ? null
         : near.src === 'shop'
-          ? (near.it.kind === 'heal' ? { text: 'Full heal', price: 0, can: p.hp < PLAYER_HP }
+          ? (near.it.kind === 'heal' ? { text: 'Full heal', price: 0, can: p.hp < MHP }
             : near.it.kind === 'gun' ? { text: near.it.gun.name, gun: near.it.gun,
                 price: near.it.price, can: LO.gold >= near.it.price }
             : { text: MODS[near.it.id].name, id: near.it.id, price: near.it.price,
                 can: LO.gold >= near.it.price })
+          : near.src === 'room'
+            ? (near.r.kind === 'perk'
+                ? { text: PERKS[near.r.id].name, perk: near.r.id, price: 0, can: true }
+                : { text: '+25 Max Health', heart: true, price: 0, can: true })
           // things on the ground are always yours for the taking — the price is what
           // the "For sale"/"Found" split cares about, not whether you're allowed to
           : (near.q.kind === 'gun' ? { text: near.q.gun.name, gun: near.q.gun, price: 0, can: true, found: true }
@@ -3167,7 +3419,7 @@ function Game({ input }) {
         if (near.src === 'shop') {
           const it = near.it;
           if (it.kind === 'heal') {
-            if (p.hp < PLAYER_HP) { p.hp = PLAYER_HP; it.sold = true; toast('Patched up'); }
+            if (p.hp < MHP) { p.hp = MHP; it.sold = true; toast('Patched up'); }
           } else if (LO.gold < it.price) {
             toast('Not enough gold');
           } else if (it.kind === 'gun') {
@@ -3183,6 +3435,23 @@ function Game({ input }) {
             it.sold = true;
             toast('Bought ' + MODS[it.id].name);
           }
+        } else if (near.src === 'room') {
+          const r = near.r;
+          if (r.kind === 'perk') {
+            const before = maxHp();
+            (LO.perks || (LO.perks = [])).push(r.id);
+            refreshBag();
+            const after = maxHp();
+            if (after > before) p.hp += after - before;   // Extra Health comes full
+            p.hp = Math.min(p.hp, after);                 // Glass Cannon trims it
+            if (pb.seeAll) { seen.fill(2); paintFog(); }  // All-Seeing Eye lights it up now
+            if (pb.ghost && !ghost) ghost = { x: pcx, y: pcy, cd: 0 };
+            toast('Perk: ' + PERKS[r.id].name);
+          } else {
+            LO.maxBonus = (LO.maxBonus || 0) + 25;        // the heart raises the cap, no heal
+            toast('+25 Max Health');
+          }
+          r.taken = true;
         } else {
           const q = near.q;
           if (q.kind === 'mod') {
@@ -3213,7 +3482,8 @@ function Game({ input }) {
         e.touch -= dt;
         const dx = pcx - e.x, dy = pcy - e.ty, dist = Math.hypot(dx, dy) || 1;
         e.lx = dx / dist; e.ly = dy / dist;
-        const hunting = (k.act === 'chase' || k.act === 'bomb') && !p.dead && dist < k.aggro;
+        const sees = pb.invis ? 0.4 : 1;    // Invisibility: creatures notice you far later
+        const hunting = (k.act === 'chase' || k.act === 'bomb') && !p.dead && dist < k.aggro * sees;
 
         if (k.act === 'turret') {
           // holds station: the hover is all the movement it gets
@@ -3262,7 +3532,7 @@ function Game({ input }) {
           if (e.charge > 0) {
             e.charge -= dt;
             if (e.charge <= 0) fireEnemyShot(e, pcx, pcy);
-          } else if (!p.dead && dist < k.range && e.cd <= 0) {
+          } else if (!p.dead && dist < k.range * sees && e.cd <= 0) {
             e.cd = 0.4;   // re-check soon if we can't see the player
             if (lineOfSight(e.x, e.ty, pcx, pcy)) {
               e.cd = k.cd * (0.85 + Math.random() * 0.3);
@@ -3271,9 +3541,22 @@ function Game({ input }) {
           }
         }
       }
+      // Contact Damage: anything touching you is hurt for it, whether or not it's hunting
+      if (pb.contact && !p.dead) {
+        for (let i = enemies.length - 1; i >= 0; i--) {
+          const e = enemies[i];
+          if (Math.hypot(e.x - pcx, e.ty - pcy) < e.r + 12) damageEnemy(i, 45 * dt);
+        }
+      }
+
       for (let i = enemyShots.length - 1; i >= 0; i--) {
         const b = enemyShots[i];
         b.life -= dt;
+        // Projectile Repulsion Field: shots on their way to you are shoved aside
+        if (pb.repel) {
+          const rx = b.x - pcx, ry = b.y - pcy, rd = Math.hypot(rx, ry) || 1;
+          if (rd < 72) { b.vx += rx / rd * 1100 * dt; b.vy += ry / rd * 1100 * dt; }
+        }
         let gone = b.life <= 0;
         const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
         for (let s = 0; s < sn && !gone; s++) {
@@ -3288,6 +3571,39 @@ function Game({ input }) {
         if (gone) enemyShots.splice(i, 1);
       }
       p.hitT -= dt;
+
+      // ---- Angry Ghost: a spirit that trails you and fires at what's nearest ----
+      if (pb.ghost) {
+        if (!ghost) ghost = { x: pcx, y: pcy, cd: 0 };
+        const gtx = pcx - p.face * 22, gty = p.y - 4;
+        const lp = Math.min(1, dt * 4);
+        ghost.x += (gtx - ghost.x) * lp; ghost.y += (gty - ghost.y) * lp;
+        ghost.cd -= dt;
+        if (ghost.cd <= 0 && !p.dead) {
+          let best = null, bd = 340;
+          for (const e of enemies) { const d = Math.hypot(e.x - ghost.x, e.ty - ghost.y); if (d < bd) { bd = d; best = e; } }
+          if (best) {
+            ghost.cd = 0.7;
+            const a = Math.atan2(best.ty - ghost.y, best.x - ghost.x);
+            bullets.push({ x: ghost.x, y: ghost.y, vx: Math.cos(a) * 480, vy: Math.sin(a) * 480,
+              life: 1.2, dmg: 2 * pb.dmg, size: 2, col: '#c9a6ff', spin: 0, homing: 3, bounce: 0,
+              pierce: 0, explode: 0, grav: 0, accel: 0, bore: 0, hit: null, knock: 0, crit: 0,
+              age: 0, born: 1.2 });
+          }
+        }
+      } else ghost = null;
+
+      // ---- Levitation Trail: flying lays down fire that burns what it touches ----
+      if (pb.trail && p.jet > 0 && !p.dead) {
+        burns.push({ x: pcx + (Math.random() - 0.5) * 6, y: p.y + PH, life: 0.7, max: 0.7 });
+        if (burns.length > 48) burns.shift();
+      }
+      for (let i = burns.length - 1; i >= 0; i--) {
+        const bn = burns[i]; bn.life -= dt;
+        for (let j = enemies.length - 1; j >= 0; j--)
+          if (Math.hypot(enemies[j].x - bn.x, enemies[j].ty - bn.y) < 15) damageEnemy(j, 22 * dt);
+        if (bn.life <= 0) burns.splice(i, 1);
+      }
 
       // ---- jetpack smoke ----
       if (p.jet > 0) {
@@ -3595,6 +3911,53 @@ function Game({ input }) {
         }
       }
 
+      // the hidden rooms' prizes on their altars: a glowing perk sigil, or the +25 heart
+      for (const r of rooms) {
+        if (r.taken) continue;
+        if (r.y > camY + vh + 40 || r.y < camY - 40 || r.x < camX - 40 || r.x > camX + vw + 40) continue;
+        const bob = Math.sin(time * 2 + r.x) * 2.5;
+        ctx.fillStyle = '#4a4550';
+        ctx.fillRect(r.x - 12, r.y + 14, 24, 5);
+        ctx.fillRect(r.x - 7, r.y + 5, 14, 10);
+        if (r.kind === 'perk') {
+          const pk = PERKS[r.id], col = pk.tint || COL.portal;
+          ctx.globalAlpha = 0.22 + 0.12 * Math.sin(time * 3);
+          ctx.fillStyle = col;
+          ctx.beginPath(); ctx.arc(r.x, r.y + bob, 16, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = col;
+          ctx.font = '700 20px system-ui, sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(pk.glyph, r.x, r.y + 0.5 + bob);
+          ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+        } else {
+          ctx.globalAlpha = 0.25 + 0.12 * Math.sin(time * 3);
+          ctx.fillStyle = COL.hp;
+          ctx.beginPath(); ctx.arc(r.x, r.y + bob, 16, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1; ctx.fillStyle = COL.hp;
+          // a plump heart
+          ctx.beginPath();
+          ctx.moveTo(r.x, r.y + 7 + bob);
+          ctx.bezierCurveTo(r.x - 11, r.y - 2 + bob, r.x - 6, r.y - 11 + bob, r.x, r.y - 4 + bob);
+          ctx.bezierCurveTo(r.x + 6, r.y - 11 + bob, r.x + 11, r.y - 2 + bob, r.x, r.y + 7 + bob);
+          ctx.fill();
+          ctx.fillStyle = '#0c130f';
+          ctx.font = '700 8px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('+25', r.x, r.y - 14 + bob);
+          ctx.textAlign = 'left';
+        }
+      }
+
+      // Levitation Trail: the fire you left behind, still burning
+      for (const bn of burns) {
+        const t = bn.life / bn.max;
+        ctx.globalAlpha = t * 0.8;
+        ctx.fillStyle = t > 0.5 ? COL.flame2 : COL.flame;
+        ctx.beginPath(); ctx.arc(bn.x, bn.y, 3 + (1 - t) * 5, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
       // sparks and debris
       for (const q of sparks) {
         ctx.fillStyle = q.c;
@@ -3656,9 +4019,12 @@ function Game({ input }) {
           const cone = drawn === 0 && sh.spread > 2
             ? [-sh.spread / 2, 0, sh.spread / 2] : [0];
           drawn++;
+          // the perks that bend a bullet in flight bend the aim line too, or it lies
+          const tsh = Object.assign({}, sh, { bounce: sh.bounce + pb.bounce,
+            homing: Math.max(sh.homing, pb.homing), speed: sh.speed * pb.speed });
           for (const off of cone) {
             const a = Math.atan2(R.ny, R.nx) + off * Math.PI / 180;
-            tracePath(sh, pcx, gy, Math.cos(a), Math.sin(a), solidAt, enemies, aimPath,
+            tracePath(tsh, pcx, gy, Math.cos(a), Math.sin(a), solidAt, enemies, aimPath,
               { x: pcx, y: gy });
             ctx.fillStyle = sh.col;
             const edge = off !== 0;
@@ -3683,6 +4049,31 @@ function Game({ input }) {
       // the torch, in the hand the gun is not in
       if (!p.dead) { const th = torchHand(); drawTorch(ctx, th.x, th.y, ax >= 0 ? -1 : 1, flick, torchP); }
       ctx.globalAlpha = 1;
+
+      // Permanent Shield: a soft ring while it is up, gone the moment it is spent
+      if (pb.shield && p.shieldReady && !p.dead) {
+        ctx.globalAlpha = 0.35 + 0.15 * Math.sin(time * 4);
+        ctx.strokeStyle = '#7ad7ff'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(pcx, pcy, PW * 1.15, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
+      // Angry Ghost: a pale wisp that drifts at your shoulder
+      if (pb.ghost && ghost && !p.dead) {
+        const gb = Math.sin(time * 3) * 2;
+        ctx.globalAlpha = 0.55;
+        ctx.fillStyle = '#c9a6ff';
+        ctx.beginPath(); ctx.arc(ghost.x, ghost.y + gb, 6, Math.PI, 0);
+        ctx.lineTo(ghost.x + 6, ghost.y + gb + 6);
+        ctx.lineTo(ghost.x + 2, ghost.y + gb + 4);
+        ctx.lineTo(ghost.x - 2, ghost.y + gb + 6);
+        ctx.lineTo(ghost.x - 6, ghost.y + gb + 4);
+        ctx.closePath(); ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#3a2f52';
+        ctx.fillRect(ghost.x - 3, ghost.y + gb - 1, 1.6, 2.4);
+        ctx.fillRect(ghost.x + 1.4, ghost.y + gb - 1, 1.6, 2.4);
+      }
 
       // ---- torchlight ----
       // The mask holds two shades: never been there, and been there but can't see it now.
@@ -3739,7 +4130,8 @@ function Game({ input }) {
         ctx.fillStyle = fill; ctx.fillRect(66, y, 110 * frac, 10);
         ctx.shadowBlur = 3;
       };
-      bar('Health', 58, p.hp / PLAYER_HP, p.hp <= 30 ? COL.player : COL.hp);
+      const MHP = maxHp();
+      bar('Health', 58, MHP > 0 ? p.hp / MHP : 0, p.hp <= 30 ? COL.player : COL.hp);
       bar('Fuel', 78, p.fuel, p.empty ? COL.player : COL.flame);
       const gpas = held ? gunPassives(held) : null;
       if (held) bar('Mana', 98, held.mana / (held.manaMax + gpas.manaMax),
@@ -3751,6 +4143,34 @@ function Game({ input }) {
       ctx.fillStyle = COL.muted;
       ctx.font = '500 12px system-ui, sans-serif';
       ctx.fillText(VERSION, 12, 142);
+
+      // ---- radar perks: point at the nearest enemy / mod / gun still out there ----
+      if (pb.radarEnemy || pb.radarItem || pb.radarWand) {
+        const cwv = c.width / dpr, chv = c.height / dpr, m = 18;
+        const nearest = list => {
+          let best = null, bd = 1e18;
+          for (const t of list) { const d = (t.x - pcx) * (t.x - pcx) + ((t.ty || t.y) - pcy) * ((t.ty || t.y) - pcy); if (d < bd) { bd = d; best = t; } }
+          return best;
+        };
+        const marker = (t, col) => {
+          if (!t) return;
+          const sx = (t.x - camX) * unitPx, sy = ((t.ty || t.y) - camY) * unitPx;
+          if (sx > m && sx < cwv - m && sy > m && sy < chv - m) {
+            ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.globalAlpha = 0.85;
+            ctx.beginPath(); ctx.arc(sx, sy, 11, 0, Math.PI * 2); ctx.stroke();
+            ctx.globalAlpha = 1; return;
+          }
+          const ex = clamp(sx, m, cwv - m), ey = clamp(sy, m, chv - m);
+          const a = Math.atan2(sy - ey, sx - ex);
+          ctx.save(); ctx.translate(ex, ey); ctx.rotate(a);
+          ctx.fillStyle = col; ctx.globalAlpha = 0.9;
+          ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(-7, -6); ctx.lineTo(-7, 6); ctx.closePath(); ctx.fill();
+          ctx.restore(); ctx.globalAlpha = 1;
+        };
+        if (pb.radarEnemy) marker(nearest(enemies), COL.enemy);
+        if (pb.radarItem) marker(nearest(pickups.filter(q => q.kind === 'mod')), '#b57cff');
+        if (pb.radarWand) marker(nearest(pickups.filter(q => q.kind === 'gun')), COL.bullet);
+      }
 
       // pickup messages
       ctx.textAlign = 'center';
@@ -4478,11 +4898,25 @@ function Editor({ input, close, refresh }) {
   );
 }
 
+// The card that comes up standing on a perk altar, so you know what you're taking before
+// you take it. A perk is permanent, so this is the only look you get.
+function PerkCard({ id, ingame }) {
+  const pk = PERKS[id];
+  return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') },
+    h('div', { className: 'phead' },
+      h('div', { className: 'pglyph', style: { borderColor: pk.tint, color: pk.tint } }, pk.glyph),
+      h('div', { className: 'ptitle' },
+        h('b', { style: { color: pk.tint } }, pk.name),
+        h('span', null, 'Perk · rest of the run'))),
+    h('p', { className: 'pinfo' }, pk.info));
+}
+
 function App() {
   const blank = () => ({ active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false });
   const input = useRef({
     left: blank(), right: blank(),
-    loadout: { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false },
+    loadout: { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false,
+      perks: [], maxBonus: 0, usedLives: 0 },
     paused: false, notify: () => {}, inShop: true, prompt: null, interact: false, sig: '',
     found: null,                 // a gun on the ground, waiting on the chooser
     confirm: null,              // a mod on the ground, waiting on pick up / leave
@@ -4516,7 +4950,8 @@ function App() {
     if (L.guns[i]) { L.sel = i; refresh(); }
   };
   const restart = () => {
-    input.current.loadout = { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false };
+    input.current.loadout = { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false,
+      perks: [], maxBonus: 0, usedLives: 0 };
     input.current.sig = '';
     input.current.found = null;
     input.current.confirm = null;
@@ -4557,7 +4992,8 @@ function App() {
       if (map[k]) { input.current.keys[map[k]] = down; e.preventDefault(); }
       if (!down) return;
       if (k >= '1' && k <= '4') select(Number(k) - 1);
-      if (k === 'e' || k === 'tab') { e.preventDefault(); if (input.current.inShop) setEdit(v => !v); }
+      if (k === 'e' || k === 'tab') { e.preventDefault();
+        if (input.current.inShop || perkBag(input.current.loadout.perks || []).tinker) setEdit(v => !v); }
       if (k === 'f') input.current.interact = true;
       if (k === 'escape') setEdit(false);
     };
@@ -4581,6 +5017,8 @@ function App() {
 
   const prompt = input.current.prompt;
   const inShop = input.current.inShop;
+  const perkB = perkBag(LO.perks || []);
+  const canEdit = inShop || perkB.tinker;      // Tinker with Wands Everywhere frees the editor
   const heldGun = input.current.loadout.guns[input.current.loadout.sel];
 
   return h('div', { className: 'app' },
@@ -4590,6 +5028,7 @@ function App() {
       // behind those, so the prompt that was showing the moment they opened would
       // otherwise sit there stale, doubled up with their own card for the same thing
       prompt && prompt.id && !found && !confirming ? h(ModCard, { id: prompt.id, ingame: true }) : null,
+      prompt && prompt.perk && !found && !confirming ? h(PerkCard, { id: prompt.perk, ingame: true }) : null,
       prompt && prompt.gun && !found && !confirming ? h(GunCard, { gun: prompt.gun, label: prompt.found ? 'Found' : 'For sale', ingame: true,
         compare: heldGun, compareName: heldGun ? heldGun.name : '' }) : null,
       // no button any more — this is just a label. Buying/picking up is a tap on the
@@ -4640,12 +5079,18 @@ function App() {
           ))
         ),
         h('button', {
-            className: 'weapon' + (inShop ? '' : ' locked'),
-            title: inShop ? 'Edit your guns' : 'Only in the shop',
-            onPointerDown: e => { e.preventDefault(); if (inShop && !confirming) setEdit(true); } },
-          h('span', { className: 'wicon' }), inShop ? 'Mods' : 'Shop only',
-          inShop && LO.bag.length ? h('b', { className: 'badge' }, LO.bag.length) : null)
+            className: 'weapon' + (canEdit ? '' : ' locked'),
+            title: canEdit ? 'Edit your guns' : 'Only in the shop',
+            onPointerDown: e => { e.preventDefault(); if (canEdit && !confirming) setEdit(true); } },
+          h('span', { className: 'wicon' }), canEdit ? 'Mods' : 'Shop only',
+          canEdit && LO.bag.length ? h('b', { className: 'badge' }, LO.bag.length) : null)
       ),
+      (LO.perks && LO.perks.length)
+        ? h('div', { className: 'perkrow' },
+            LO.perks.map((id, i) => PERKS[id] ? h('span', {
+                key: i, className: 'perkpip', title: PERKS[id].name,
+                style: { color: PERKS[id].tint } }, PERKS[id].glyph) : null))
+        : null,
       h('div', { className: 'sticks' },
         h(Stick, { size, kind: 'left', input, refresh }),
         h(Stick, { size, kind: 'right', input, refresh })
