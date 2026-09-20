@@ -73,8 +73,8 @@ jobs:
       - name: Bundle current game into the app
         run: node android/prep-assets.js
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Point Gradle at the runner's preinstalled Android SDK
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
