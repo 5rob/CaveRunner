@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v46</title>
+<title>CaveRunner v47</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -59,6 +59,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   background:repeating-linear-gradient(180deg,rgba(255,255,255,0.04) 0 1px,rgba(0,0,0,0) 1px 3px)}
 .toolbar{display:flex;align-items:center;justify-content:space-between;padding:0 8px;height:36px}
 .sticks{display:flex;justify-content:space-evenly;position:relative;z-index:3}
+/* gold readout in the gap between the sticks, level with their top halves. Sits on top
+   of the deck (pointer-events:none so a tap still falls to a stick) and reads amber. */
+.gold{position:absolute;left:50%;top:16%;transform:translateX(-50%);pointer-events:none;z-index:4;
+  display:flex;align-items:baseline;gap:1px;line-height:1;
+  font:800 19px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffc93c;
+  text-shadow:0 1px 3px rgba(0,0,0,0.85),0 0 6px rgba(0,0,0,0.6)}
+.gold span{font-size:12px;font-weight:700;color:#c9a24a}
 /* the perks you have found, a row of glyphs above the thumbsticks */
 .perkrow{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;align-items:center;
   min-height:26px;padding:0 8px;position:relative;z-index:3}
@@ -404,7 +411,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v46';
+const VERSION = 'v47';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -2137,6 +2144,15 @@ function perkBag(ids) {
   }
   P.maxHp = Math.max(10, Math.round((PLAYER_HP + P.hpAdd) * P.hpMul));
   return P;
+}
+
+// Gold for the deck readout: a bare number under 1000, and thousands truncated (not
+// rounded) to one decimal with a "k" — 999 -> "999", 1234 -> "1.2k", 2000 -> "2k".
+// Pure and above makeLevel so the logic suite can load it.
+function fmtGold(g) {
+  g = Math.max(0, Math.floor(g || 0));
+  if (g < 1000) return String(g);
+  return (Math.floor(g / 100) / 10).toString() + 'k';
 }
 
 function makeLevel(seed, floor, owned) {
@@ -4232,8 +4248,8 @@ function Game({ input }) {
       // ---- HUD ----
       // The old top-left stack (floor / enemies / health / fuel / mana / gun) is gone:
       // health, mana and fuel are the rings and top-half wipe on the thumbsticks now,
-      // the floor number is written big along the shop wall, and the top bar is left
-      // clear. Only the version (top-left) and the gold (top-right) remain up here.
+      // the floor number is written big along the shop wall, and gold sits in the deck
+      // between the sticks (a DOM readout in App). Only the version is drawn up here.
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const cw = c.width / dpr;
       ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 3;
@@ -4241,11 +4257,6 @@ function Game({ input }) {
       ctx.font = '500 12px system-ui, sans-serif';
       ctx.textAlign = 'left';
       ctx.fillText(VERSION, 12, 22);
-      ctx.fillStyle = COL.bullet;
-      ctx.font = '600 15px system-ui, sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText(input.current.loadout.gold + ' gold', cw - 12, 22);
-      ctx.textAlign = 'left';
       ctx.shadowBlur = 0;
 
       // hand the sticks the live health / fuel / mana so they can draw their gauges:
@@ -5310,7 +5321,10 @@ function App() {
         : null,
       h('div', { className: 'sticks' },
         h(Stick, { size, kind: 'left', input, refresh }),
-        h(Stick, { size, kind: 'right', input, refresh })
+        h(Stick, { size, kind: 'right', input, refresh }),
+        // gold sits in the gap between the two sticks, up level with their top halves.
+        // "g" not "gold", and thousands truncate to a "k" (1234 -> 1.2k, 2000 -> 2k).
+        h('div', { className: 'gold' }, fmtGold(LO.gold), h('span', null, 'g'))
       )
     ),
     edit ? h(Editor, { input, refresh, close: () => setEdit(false) }) : null,

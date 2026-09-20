@@ -7,13 +7,17 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v46.** Branch: `claude/compassionate-rubin-fcqsif` (pushed).
+- **On-disk version: v47.** Branch: `claude/compassionate-rubin-fcqsif` (pushed).
 - Working tree is clean apart from `.claude/` (untracked on purpose — it holds an API token,
   never commit it).
 - Full test suite is green (`node tests/run.js`), see **Testing** below for two known flakes.
 
 ## What shipped recently (most recent first)
 
+- **v47 — gold moved into the deck.** The gold readout came off the canvas (was top-right)
+  and is now a DOM element (`.gold`) in the gap between the two sticks, level with their top
+  halves. Shows a `g` not the word, and truncates thousands to a `k` (`1234` → `1.2kg`) via
+  `fmtGold` (pure, above `makeLevel`, tested by `tests/logic/gold.test.js`).
 - **v46 — HUD cleared out, moved onto the thumbsticks.** The whole top-left stack (floor,
   enemies, health/fuel/mana bars, gun name) is gone. Health is now a green ring round the
   left stick, mana a gold ring round the right, each wiped clockwise as it drops; fuel is

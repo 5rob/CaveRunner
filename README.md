@@ -55,7 +55,8 @@ turns red when the tank is dry); your mana is the gold ring around the right sti
 draining the same way and recharging back; and your fuel is the amber fill in the top
 half of the left stick, sinking towards the centre line as the jetpack burns it. The
 floor number is painted big across the shop's back wall, the version sits top-left, and
-your gold top-right.
+your gold reads in the gap between the two sticks — a `g`, with thousands shortened to a
+`k` (so `1234` shows as `1.2kg`).
 
 ## Picking things up
 

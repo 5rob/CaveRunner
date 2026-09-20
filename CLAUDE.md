@@ -52,7 +52,7 @@ replace it with a general static server.
    Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
    link. If this session hasn't published yet, read the artifact first, then publish.
 
-Current version: **v46**. Branch: `claude/compassionate-rubin-fcqsif`.
+Current version: **v47**. Branch: `claude/compassionate-rubin-fcqsif`.
 
 ### The version number is not optional
 
@@ -180,7 +180,10 @@ anchored to the centre line (`bottom:50%`), height = fuel fraction, so it drains
 it brightens under `.jetting` and goes red under `.dry`. The **right** stick shows mana as
 a gold ring the same way (dimmed when there's no gun or it's recharging). The ring geometry
 is `GAUGE_R`/`GAUGE_C` + `strokeDasharray`; keep the track circle behind it for legibility.
-Only the version (top-left) and gold (top-right) are still drawn on the canvas. The floor
+Only the version (top-left) is still drawn on the canvas; **gold is a DOM readout
+(`.gold`) in the gap between the two sticks** (`fmtGold`, a pure fn above `makeLevel` and
+covered by `gold.test.js`: a bare number, thousands truncated to a `k`, then a small `g`).
+The floor
 number is painted big and letter-spaced across the shop's back-wall block in `draw()`, a
 touch brighter than the wall (`rgba(255,255,255,0.07)`). **Restart moved into the Dev
 panel** (`.dbg.restart`, opens the same confirm via `onRestart`), and the Dev button is now
