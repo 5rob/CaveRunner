@@ -149,8 +149,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.tap('.devbtn');
   await page.waitForTimeout(200);
   check('the Dev panel opens', !!(await page.$('.devpanel')));
+  // the panel now also carries Restart run, so just prove All mods is one of its buttons
   check('and it offers an All mods button',
-    (await page.$$eval('.devpanel .dbg', b => b.map(x => x.textContent))).join() === 'All mods');
+    (await page.$$eval('.devpanel .dbg', b => b.map(x => x.textContent))).includes('All mods'));
   await page.tap('.devpanel .dbg');
   await page.waitForTimeout(150);
   check('All mods turns the shelf on', await page.evaluate(() => window.__in.current.loadout.debug === true));

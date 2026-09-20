@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v45</title>
+<title>CaveRunner v46</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -85,8 +85,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   border:3px solid var(--ctl-edge);box-shadow:0 0 0 2px var(--ctl-line),inset 0 0 16px rgba(0,0,0,0.9)}
 .stickclip{position:absolute;inset:0;border-radius:50%;overflow:hidden;pointer-events:none}
 .hline{position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,0.09)}
-.jetzone{position:absolute;left:0;right:0;top:0;height:50%;background:rgba(255,176,46,0.16);opacity:0;transition:opacity .1s}
-.jetting .jetzone{opacity:1}
+/* the fuel gauge lives in the left stick's top half. It is anchored to the centre line
+   (bottom:50%) and its height is the fuel fraction, so as fuel burns the top edge wipes
+   down towards the centre. It brightens while the jet is firing (.jetting), and reads
+   red when the tank has run dry. Height is set inline by Stick. */
+.jetzone{position:absolute;left:0;right:0;bottom:50%;height:50%;background:rgba(255,176,46,0.16);
+  transition:background .1s}
+.jetting .jetzone{background:rgba(255,176,46,0.34)}
+.jetzone.dry{background:rgba(226,74,44,0.42)}
+/* the circular health / mana gauges: a ring round the stick's rim, wiped clockwise from
+   the top as the stat drops. Sits under the knob, never takes a touch. */
+.gauge{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
 /* the amber ring is the line the knob's edge has to cross before the gun fires. Dotted,
    so it reads as a threshold rather than a solid boundary. */
 .deadzone{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;
@@ -345,11 +354,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   background:var(--pad);color:var(--muted);font:700 10px system-ui,sans-serif;letter-spacing:.09em}
 .dbg.on{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}
 .bag.debug{box-shadow:inset 0 0 0 1.5px rgba(255,138,31,0.5)}
-.reset{position:absolute;top:10px;right:10px;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.35);
-  color:#e9ecf2;border-radius:8px;padding:6px 12px;font:inherit;font-size:13px}
-/* the dev tools: a button by Restart, and the panel it opens */
-.devbtn{position:absolute;top:10px;right:88px;z-index:6;border:1px solid rgba(255,255,255,0.25);
-  background:rgba(0,0,0,0.35);color:#e9ecf2;border-radius:8px;padding:6px 12px;font:inherit;font-size:13px}
+/* the dev tools: a gear in the top-right, and the panel it opens (Restart lives inside) */
+.devbtn{position:absolute;top:10px;right:10px;z-index:6;border:1px solid rgba(255,255,255,0.25);
+  background:rgba(0,0,0,0.35);color:#e9ecf2;border-radius:8px;width:38px;height:38px;padding:0;
+  font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center}
+.dbg.restart{background:#c2401f;border-color:#c2401f;color:#fff}
 .devwrap{position:fixed;left:0;right:0;top:0;bottom:0;z-index:26;display:flex;
   align-items:flex-start;justify-content:center;padding:52px 12px 12px}
 /* a light backdrop so the cave is still visible behind while you tune the look of it */
@@ -395,7 +404,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v45';
+const VERSION = 'v46';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -3791,6 +3800,19 @@ function Game({ input }) {
         ctx.font = '600 11px system-ui, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('SHOP', WW / 2, SHOP_Y + 14);
+        // The floor number, huge and widely spaced along the whole back wall — just a
+        // touch brighter than the wall itself, so it reads as painted-on lettering
+        // rather than a label. Each glyph is placed by hand so the word spans most of
+        // the wall's width no matter how many digits the floor has.
+        const wallBot = SHOP_FLOOR * CELL, wallH = wallBot - SHOP_Y;
+        const label = 'FLOOR ' + floor;
+        ctx.fillStyle = 'rgba(255,255,255,0.07)';
+        ctx.font = '800 ' + Math.round(wallH * 0.62) + 'px system-ui, sans-serif';
+        ctx.textBaseline = 'middle';
+        const margin = WW * 0.05, span = WW - margin * 2, cyText = SHOP_Y + wallH / 2 + 4;
+        for (let i = 0; i < label.length; i++)
+          ctx.fillText(label[i], margin + span * (i + 0.5) / label.length, cyText);
+        ctx.textBaseline = 'alphabetic';
         ctx.textAlign = 'left';
       }
 
@@ -4208,39 +4230,38 @@ function Game({ input }) {
       ctx.imageSmoothingEnabled = false;
 
       // ---- HUD ----
+      // The old top-left stack (floor / enemies / health / fuel / mana / gun) is gone:
+      // health, mana and fuel are the rings and top-half wipe on the thumbsticks now,
+      // the floor number is written big along the shop wall, and the top bar is left
+      // clear. Only the version (top-left) and the gold (top-right) remain up here.
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const cw = c.width / dpr;
       ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 3;
-      ctx.fillStyle = COL.text;
-      ctx.font = '600 15px system-ui, sans-serif';
-      ctx.fillText('Floor ' + floor + '  ·  ' + best + ' m', 12, 26);
-      ctx.fillText('Enemies ' + (total - enemies.length) + '/' + total, 12, 46);
-      ctx.textAlign = 'right';
-      ctx.fillStyle = COL.bullet;
-      ctx.fillText(input.current.loadout.gold + ' gold', cw - 12, 66);
-      ctx.textAlign = 'left';
-      ctx.fillStyle = COL.text;
-      const bar = (label, y, frac, fill) => {
-        ctx.fillStyle = COL.text;
-        ctx.fillText(label, 12, y + 10);
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = COL.barBg; ctx.fillRect(66, y, 110, 10);
-        ctx.fillStyle = fill; ctx.fillRect(66, y, 110 * frac, 10);
-        ctx.shadowBlur = 3;
-      };
-      const MHP = maxHp();
-      bar('Health', 58, MHP > 0 ? p.hp / MHP : 0, p.hp <= 30 ? COL.player : COL.hp);
-      bar('Fuel', 78, p.fuel, p.empty ? COL.player : COL.flame);
-      const gpas = held ? gunPassives(held) : null;
-      if (held) bar('Mana', 98, held.mana / (held.manaMax + gpas.manaMax),
-        held.rechT > 0 ? COL.muted : '#6db8ff');
-
-      ctx.font = '600 12px system-ui, sans-serif';
-      ctx.fillStyle = held && held.rechT > 0 ? COL.flame : COL.muted;
-      ctx.fillText(held ? (held.rechT > 0 ? 'RECHARGING' : held.name) : 'No gun', 12, 124);
       ctx.fillStyle = COL.muted;
       ctx.font = '500 12px system-ui, sans-serif';
-      ctx.fillText(VERSION, 12, 142);
+      ctx.textAlign = 'left';
+      ctx.fillText(VERSION, 12, 22);
+      ctx.fillStyle = COL.bullet;
+      ctx.font = '600 15px system-ui, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(input.current.loadout.gold + ' gold', cw - 12, 22);
+      ctx.textAlign = 'left';
+      ctx.shadowBlur = 0;
+
+      // hand the sticks the live health / fuel / mana so they can draw their gauges:
+      // the green ring round the left stick, the amber fuel wipe in its top half, and
+      // the gold ring round the right stick. Written every frame the loop draws.
+      const MHP = maxHp();
+      const gpas = held ? gunPassives(held) : null;
+      input.current.hud = {
+        hp: MHP > 0 ? Math.max(0, Math.min(1, p.hp / MHP)) : 0,
+        low: p.hp <= 30,
+        fuel: Math.max(0, Math.min(1, p.fuel)),
+        empty: !!p.empty,
+        mana: held ? Math.max(0, Math.min(1, held.mana / (held.manaMax + gpas.manaMax))) : 0,
+        recharging: !!(held && held.rechT > 0),
+        hasGun: !!held,
+      };
 
       // ---- radar perks: point at the nearest enemy / mod / gun still out there ----
       if (pb.radarEnemy || pb.radarItem || pb.radarWand) {
@@ -4300,7 +4321,7 @@ function Game({ input }) {
         ctx.font = '700 22px system-ui, sans-serif';
         ctx.fillText('You were shot down', cw / 2, msgY);
         ctx.font = '500 14px system-ui, sans-serif';
-        ctx.fillText('Tap Restart to start again', cw / 2, msgY + 22);
+        ctx.fillText('Open the gear (top right) to restart', cw / 2, msgY + 22);
       } else if (enemies.length === 0) {
         ctx.font = '700 18px system-ui, sans-serif';
         ctx.fillText('All enemies destroyed', cw / 2, msgY);
@@ -4345,8 +4366,33 @@ function Game({ input }) {
   return h('canvas', { ref: cv, className: 'game' });
 }
 
+// the circumference of the gauge ring (r=46 in a 0..100 viewBox), used to turn a 0..1
+// fraction into a stroke-dasharray so the ring is drawn only as far as the stat reaches
+const GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
 function Stick({ size, kind, input, refresh }) {
   const [knob, setKnob] = useState({ x: 0, y: 0, jet: false });
+  // the live stat this stick shows: hp+fuel on the left, mana on the right. Read off
+  // input.current.hud each animation frame, and only re-rendered when a value actually
+  // moves (rounded to 1%), so the ring animates without churning the whole tree.
+  const [gauge, setGauge] = useState({ ring: 1, fuel: 1, empty: false, dry: true });
+  const left = kind === 'left';
+  useEffect(() => {
+    let raf, prev = '';
+    const tick = () => {
+      const s = input.current.hud;
+      if (s) {
+        const g = left
+          ? { ring: s.hp, fuel: s.fuel, empty: s.empty, dry: false }
+          : { ring: s.hasGun ? s.mana : 0, fuel: 0, empty: false, dry: !s.hasGun || s.recharging };
+        const key = Math.round(g.ring * 100) + '|' + Math.round(g.fuel * 100) + '|' +
+          (g.empty ? 1 : 0) + '|' + (g.dry ? 1 : 0);
+        if (key !== prev) { prev = key; setGauge(g); }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [left]);
   const ref = useRef(null);
   const pid = useRef(null);
   // right stick only: true while this touch has never left the dead zone. A tap that
@@ -4402,16 +4448,31 @@ function Stick({ size, kind, input, refresh }) {
     setKnob({ x: 0, y: 0, jet: false });
   };
 
-  const left = kind === 'left';
+  // the circular gauge: green health round the left stick, gold mana round the right,
+  // each wiped clockwise from the top as its stat falls
+  const ringCol = left
+    ? (gauge.empty ? '#e24a2c' : '#57d267')
+    : (gauge.dry ? 'rgba(255,201,60,0.28)' : '#ffc93c');
+  const ring = h('svg', { className: 'gauge', viewBox: '0 0 100 100' },
+    h('circle', { cx: 50, cy: 50, r: GAUGE_R, fill: 'none',
+      stroke: 'rgba(0,0,0,0.35)', strokeWidth: 4.5 }),
+    h('circle', { cx: 50, cy: 50, r: GAUGE_R, fill: 'none', stroke: ringCol,
+      strokeWidth: 4.5, strokeLinecap: 'round',
+      strokeDasharray: (gauge.ring * GAUGE_C) + ' ' + GAUGE_C,
+      transform: 'rotate(-90 50 50)' }));
   return h('div', {
       ref, className: 'stick' + (knob.jet ? ' jetting' : ''),
       style: { width: size, height: size },
       onPointerDown: down, onPointerMove: move, onPointerUp: end,
       onPointerCancel: end, onLostPointerCapture: end,
     },
+    // the fuel wipe rides inside the clip so it keeps the circle's shape; its height is
+    // the fuel fraction, anchored to the centre line, so it drains downward as fuel burns
     left && h('div', { className: 'stickclip' },
-      h('div', { className: 'jetzone' }),
+      h('div', { className: 'jetzone' + (gauge.empty ? ' dry' : ''),
+        style: { height: (gauge.fuel * 50) + '%' } }),
       h('div', { className: 'hline' })),
+    ring,
     // the right stick's amber ring: the line the knob's edge crosses when the drag starts
     // counting as aiming rather than as a tap on the dead zone
     h('div', { className: 'knob', style: {
@@ -5034,7 +5095,7 @@ function DevRow({ meta }) {
 // The dev window: it pauses the run but the game keeps drawing behind a light backdrop,
 // so the look-of-it knobs (zoom, torch, fog) preview live as you type. Holds the toggle
 // buttons — "All mods" is the old DEBUG shelf — and the saved, persisted variables.
-function DevPanel({ input, refresh, close }) {
+function DevPanel({ input, refresh, close, onRestart }) {
   const LO = input.current.loadout;
   const [, bump] = useState(0);
   return h('div', { className: 'devwrap' },
@@ -5046,7 +5107,9 @@ function DevPanel({ input, refresh, close }) {
       h('div', { className: 'devbtns' },
         h('button', { className: 'dbg' + (LO.debug ? ' on' : ''),
           onPointerDown: e => { e.preventDefault(); LO.debug = !LO.debug; refresh(); bump(n => n + 1); } },
-          'All mods')),
+          'All mods'),
+        h('button', { className: 'dbg restart',
+          onPointerDown: e => { e.preventDefault(); onRestart(); } }, 'Restart run')),
       h('div', { className: 'devvars' },
         DEV_META.map(m => h(DevRow, { key: m.k, meta: m }))),
       h('p', { className: 'devnote' },
@@ -5193,13 +5256,9 @@ function App() {
             ? [ h('span', { key: 't' }, 'Buy'), h('b', { key: 'p' }, prompt.price + 'g') ]
             : [ h('span', { key: 't' }, (prompt.id || prompt.gun || prompt.perk) ? 'Take' : 'Take ' + prompt.text),
                 h('b', { key: 'p' }, 'free') ])) : null,
-      h('button', { className: 'reset',
-        // pointerdown, like every other control: a click synthesised after the mod
-        // sheet closes must not land here and wipe the run. This only opens the
-        // confirm below — restart() itself is gated further down.
-        onPointerDown: e => { e.preventDefault(); setConfirmAt(performance.now()); } }, 'Restart'),
-      h('button', { className: 'devbtn',
-        onPointerDown: e => { e.preventDefault(); setDevOpen(true); } }, 'Dev'),
+      // one gear in the top-right opens the Dev panel; Restart now lives inside it.
+      h('button', { className: 'devbtn', title: 'Dev tools',
+        onPointerDown: e => { e.preventDefault(); setDevOpen(true); } }, '⚙️'),
       confirmAt != null ? h('div', { className: 'confirm' },
         h('div', { className: 'shade', onPointerDown: e => { e.preventDefault(); setConfirmAt(null); } }),
         h('div', { className: 'confirmCard' },
@@ -5255,7 +5314,8 @@ function App() {
       )
     ),
     edit ? h(Editor, { input, refresh, close: () => setEdit(false) }) : null,
-    devOpen ? h(DevPanel, { input, refresh, close: () => setDevOpen(false) }) : null,
+    devOpen ? h(DevPanel, { input, refresh, close: () => setDevOpen(false),
+      onRestart: () => { setDevOpen(false); setConfirmAt(performance.now()); } }) : null,
     h(ModFound, { input, refresh }),
     found ? h(GunSwap, { input, refresh, onDone: () => { setGunInfo(-1); refresh(); } }) : null,
     gunInfo >= 0 && LO.guns[gunInfo]

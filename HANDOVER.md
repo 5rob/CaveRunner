@@ -7,13 +7,21 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v45.** Branch: `claude/compassionate-rubin-fcqsif` (pushed).
+- **On-disk version: v46.** Branch: `claude/compassionate-rubin-fcqsif` (pushed).
 - Working tree is clean apart from `.claude/` (untracked on purpose — it holds an API token,
   never commit it).
 - Full test suite is green (`node tests/run.js`), see **Testing** below for two known flakes.
 
 ## What shipped recently (most recent first)
 
+- **v46 — HUD cleared out, moved onto the thumbsticks.** The whole top-left stack (floor,
+  enemies, health/fuel/mana bars, gun name) is gone. Health is now a green ring round the
+  left stick, mana a gold ring round the right, each wiped clockwise as it drops; fuel is
+  the amber wipe in the left stick's top half, draining down to the centre line. Floor
+  number is painted big along the shop's back wall. Version top-left, gold top-right.
+  Restart moved into the Dev panel; the Dev button is a bare ⚙️ top-right. `draw()` publishes
+  `input.current.hud` each frame and each `Stick` reads it on a rAF loop. See the HUD note
+  in `CLAUDE.md`.
 - **v44–v45 — scrollable panel stats, line-of-sight aggro, dotted trigger ring.** The pickup
   panel's stat list (`.buypanel .prows`) caps at ~3 rows (`max-height:60px`, tightened from
   156px in v45) and scrolls the rest, so a loaded gun/busy mod can't fill the screen — it's

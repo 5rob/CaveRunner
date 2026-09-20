@@ -26,8 +26,11 @@ async function run(label, opts, useTap) {
   check(`${label}: Done keeps the run`, st.marker === 'run-1', st);
   check(`${label}: Done keeps collected mods`, st.bag === 2, st);
 
-  // Restart must still do its job — it opens a confirm now, so press that too
-  await press('.reset');
+  // Restart must still do its job — it lives in the Dev panel now (open the gear, tap
+  // Restart run) and opens a confirm, so press that too
+  await press('.devbtn');
+  await page.waitForTimeout(150);
+  await press('.dbg.restart');
   await page.waitForTimeout(500);
   await press('.confirmRow .go');
   await page.waitForTimeout(600);

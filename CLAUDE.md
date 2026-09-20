@@ -52,7 +52,7 @@ replace it with a general static server.
    Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
    link. If this session hasn't published yet, read the artifact first, then publish.
 
-Current version: **v45**. Branch: `claude/compassionate-rubin-fcqsif`.
+Current version: **v46**. Branch: `claude/compassionate-rubin-fcqsif`.
 
 ### The version number is not optional
 
@@ -168,6 +168,23 @@ The stick deliberately has **no `overflow:hidden`**. Four out of five of the kno
 travels outwards, so clipping to the rim would slice a bite off it at full deflection.
 `.stickclip` holds the wash and the centre line and does the clipping instead, so the knob
 can pass the rim as a whole knob.
+
+**The HUD is the thumbsticks now (v46).** The old top-left stack — floor, enemies,
+health/fuel/mana bars, equipped-gun name — is gone. `draw()` writes the live stats to
+`input.current.hud` (`{hp, low, fuel, empty, mana, recharging, hasGun}`, all 0–1 fractions)
+every frame; each `Stick` reads that on its own `requestAnimationFrame` loop and only
+re-renders when a value moves by ≥1%, so the gauges animate without churning React. The
+**left** stick shows health as a green SVG ring round the rim (red when `empty`) wiped
+clockwise from 12 o'clock, and fuel as the amber `.jetzone` fill in its top half —
+anchored to the centre line (`bottom:50%`), height = fuel fraction, so it drains downward;
+it brightens under `.jetting` and goes red under `.dry`. The **right** stick shows mana as
+a gold ring the same way (dimmed when there's no gun or it's recharging). The ring geometry
+is `GAUGE_R`/`GAUGE_C` + `strokeDasharray`; keep the track circle behind it for legibility.
+Only the version (top-left) and gold (top-right) are still drawn on the canvas. The floor
+number is painted big and letter-spaced across the shop's back-wall block in `draw()`, a
+touch brighter than the wall (`rgba(255,255,255,0.07)`). **Restart moved into the Dev
+panel** (`.dbg.restart`, opens the same confirm via `onRestart`), and the Dev button is now
+a bare ⚙️ in the top-right (`.devbtn`, class unchanged so the browser tests still find it).
 
 **Detail cards in the build screen open at the top** (`.pop.top`). The editor's content
 reaches the bottom of the screen, so a bottom-anchored card buried the mod bag. Four

@@ -49,6 +49,14 @@ radius outside the point where the drag starts counting as aiming, so when the k
 edge reaches that circle, the gun fires. The stick does not clip the knob to the
 circle, so at full deflection the knob is still a whole knob.
 
+The sticks are your dashboard too. There are no numbers up top any more: your health
+is the green ring around the left stick, wiping away clockwise as you take hits (it
+turns red when the tank is dry); your mana is the gold ring around the right stick,
+draining the same way and recharging back; and your fuel is the amber fill in the top
+half of the left stick, sinking towards the centre line as the jetpack burns it. The
+floor number is painted big across the shop's back wall, the version sits top-left, and
+your gold top-right.
+
 ## Picking things up
 
 Mods and guns in the cave sit on a floor of their own now, not floating in place.
