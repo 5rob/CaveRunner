@@ -39,7 +39,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
   await page.evaluate(() => { window.__lvl.p.hp = 40; });
   await goTo(0);
-  let btn = await page.evaluate(() => { const b = document.querySelector('.pickhint'); return b && b.textContent; });
+  let btn = await page.evaluate(() => { const b = document.querySelector('.pbuy'); return b && b.textContent; });
   check('standing on the heal shows a prompt', !!btn && /Take/.test(btn), btn);
   await interact();
   st = await page.evaluate(() => ({ hp: window.__lvl.p.hp, sold: window.__lvl.stock[0].sold }));
@@ -61,7 +61,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await goTo(2);
   await page.evaluate(() => { window.__in.current.loadout.gold = 0; window.__in.current.sig = ''; });
   await page.waitForTimeout(250);
-  const cant = await page.evaluate(() => { const b = document.querySelector('.pickhint'); return b && b.className; });
+  const cant = await page.evaluate(() => { const b = document.querySelector('.pbuy'); return b && b.className; });
   check('unaffordable stock is shown greyed', /cant/.test(cant || ''), cant);
   await interact();
   check('and cannot be bought', (await page.evaluate(() => window.__lvl.stock[2].sold)) === false);

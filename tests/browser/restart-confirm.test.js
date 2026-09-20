@@ -16,6 +16,14 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   await page.waitForTimeout(1200);
 
+  // Restart lives in the Dev panel now: open the gear, then tap Restart run. That tap
+  // is what opens the confirm (and arms the anti-double-fire gate), same as the old
+  // in-view Restart button did.
+  const restart = async () => {
+    await page.tap('.devbtn');
+    await page.waitForTimeout(120);
+    await page.tap('.dbg.restart');
+  };
   const mark = txt => page.evaluate(t => { window.__lvl.marker = t; }, txt);
   const state = () => page.evaluate(() => ({
     marker: window.__lvl.marker || null,
@@ -25,7 +33,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
   // --- 1. a single tap opens the confirm, but does not restart ---
   await mark('run-a');
-  await page.tap('.reset');
+  await restart();
   await page.waitForTimeout(150);
   let st = await state();
   check('one tap on Restart does not restart the run', st.marker === 'run-a', st);
@@ -39,7 +47,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('Cancel keeps the run', st.marker === 'run-a', st);
 
   // --- 2. confirming after the gate does restart ---
-  await page.tap('.reset');
+  await restart();
   await page.waitForTimeout(500);           // clear of the anti-double-fire gate
   await page.tap('.confirmRow .go');
   await page.waitForTimeout(400);
@@ -55,7 +63,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   // a pointerdown directly on the Yes button's DOM node right as it appears,
   // before the anti-double-fire gate's window has elapsed.
   await mark('run-b');
-  await page.tap('.reset');
+  await restart();
   await page.waitForTimeout(30);            // the confirm is open; well inside the gate
   const early = await page.evaluate(() => {
     const go = document.querySelector('.confirmRow .go');

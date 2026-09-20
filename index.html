@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v31</title>
+<title>CaveRunner v48</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -33,6 +33,14 @@
   --good:#5fd39a; --bad:#ff8a6a;
   --gun-s:65%; --gun-l:72%;
 }
+/* ---- the control deck's own palette ----
+   The sticks and the toolbar are a black arcade panel, in both light and dark, so they
+   get their own variables rather than borrowing the sheet's. Amber is the live colour:
+   the selected slot, the dead-zone ring, the button you are pointing at. */
+:root{
+  --ctl-bg:#0a0a0c; --ctl-face:#151519; --ctl-edge:#000;
+  --ctl-line:#33333d; --ctl-fg:#eae7de; --ctl-dim:#8b8b96; --ctl-hot:#ffb02e;
+}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:hidden;
   overscroll-behavior:none;touch-action:none;-webkit-user-select:none;user-select:none;
   -webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
@@ -41,42 +49,115 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .app{position:fixed;inset:0;display:flex;flex-direction:column}
 .view{position:relative;flex:1 1 0;min-height:0;overflow:hidden;background:#12141a}
 .game{position:absolute;left:0;top:0;width:100%;height:100%;display:block;cursor:none}
-.controls{flex:0 0 auto;display:flex;flex-direction:column;gap:8px;
-  padding:8px 0 calc(12px + env(safe-area-inset-bottom));background:var(--bg)}
-.toolbar{display:flex;align-items:center;justify-content:space-between;padding:0 10px;height:42px}
-.sticks{display:flex;justify-content:space-evenly}
+.controls{flex:0 0 auto;display:flex;flex-direction:column;gap:6px;position:relative;
+  padding:5px 0 calc(10px + env(safe-area-inset-bottom));background:var(--ctl-bg);
+  color:var(--ctl-fg);border-top:2px solid var(--ctl-edge);
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.06)}
+/* a scanline wash over the panel, the way a cabinet bezel reads up close */
+.controls::after{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,0.04) 0 1px,rgba(0,0,0,0) 1px 3px)}
+.toolbar{display:flex;align-items:center;justify-content:space-between;padding:0 8px;height:36px}
+.sticks{display:flex;justify-content:space-evenly;position:relative;z-index:3}
+/* gold readout in the gap between the sticks, level with their top halves. Sits on top
+   of the deck (pointer-events:none so a tap still falls to a stick) and reads amber. */
+.gold{position:absolute;left:50%;top:5%;transform:translateX(-50%);pointer-events:none;z-index:4;
+  display:flex;align-items:baseline;gap:1px;line-height:1;
+  font:800 19px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffc93c;
+  text-shadow:0 1px 3px rgba(0,0,0,0.85),0 0 6px rgba(0,0,0,0.6)}
+.gold span{font-size:12px;font-weight:700;color:#c9a24a}
+/* the perks you have found, a row of glyphs above the thumbsticks */
+.perkrow{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;align-items:center;
+  min-height:26px;padding:0 8px;position:relative;z-index:3}
+.perkpip{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;
+  justify-content:center;font-size:14px;line-height:1;box-sizing:border-box;
+  border:1.5px solid currentColor;background:rgba(255,255,255,0.05)}
 .slots{display:flex;gap:6px}
-.slot{position:relative;width:46px;height:40px;border-radius:8px;border:1px solid var(--ring);
-  background:var(--btn);padding:0;touch-action:none;cursor:pointer}
-.slot.on{border:2px solid #ff8a1f}
-.slot.empty{opacity:.4;cursor:default}
-.num{position:absolute;top:2px;left:5px;font-size:10px;color:var(--muted)}
+.slot{position:relative;box-sizing:border-box;width:46px;height:36px;border-radius:3px;
+  border:2px solid var(--ctl-line);background:var(--ctl-face);color:var(--ctl-fg);
+  padding:0;touch-action:none;cursor:pointer}
+.slot.on{border-color:var(--ctl-hot);box-shadow:0 0 0 1px var(--ctl-hot),0 0 14px rgba(255,176,46,0.3)}
+.slot.empty{opacity:.35;cursor:default}
+.num{position:absolute;top:2px;left:5px;font:600 10px ui-monospace,monospace;color:var(--ctl-dim)}
 .ico{position:absolute;left:50%;top:56%;transform:translate(-50%,-50%)}
-.ico.gun{width:18px;height:5px;border-radius:2px;background:#e0a100}
-.ico.grenade{width:12px;height:12px;border-radius:50%;background:#5f9e3a}
-.stick{position:relative;flex:none;border-radius:50%;background:var(--pad);
-  border:2px solid var(--ring);overflow:hidden;touch-action:none}
-.hline{position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line)}
-.jetzone{position:absolute;left:0;right:0;top:0;height:50%;background:var(--jet);opacity:0;transition:opacity .1s}
-.jetting .jetzone{opacity:1}
+.ico.gun{width:18px;height:5px;border-radius:1px;background:var(--ctl-hot)}
+.ico.grenade{width:12px;height:12px;border-radius:2px;background:#7fbf4a}
+/* No overflow:hidden here, deliberately: a knob this size is wider than the gap
+   between the middle and the rim, so clipping to the rim would take a bite out of it
+   at full deflection. The decorations get their own clip layer instead (see .stickclip)
+   so the wash and the centre line still stop at the circle. */
+.stick{position:relative;flex:none;box-sizing:border-box;border-radius:50%;
+  touch-action:none;
+  background:radial-gradient(circle at 50% 40%,#1d1d23 0%,#0c0c0f 74%);
+  border:3px solid var(--ctl-edge);box-shadow:0 0 0 2px var(--ctl-line),inset 0 0 16px rgba(0,0,0,0.9)}
+.stickclip{position:absolute;inset:0;border-radius:50%;overflow:hidden;pointer-events:none}
+.hline{position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,0.09)}
+/* the fuel gauge lives in the left stick's top half. It is anchored to the centre line
+   (bottom:50%) and its height is the fuel fraction, so as fuel burns the top edge wipes
+   down towards the centre. It brightens while the jet is firing (.jetting), and reads
+   red when the tank has run dry. Height is set inline by Stick. */
+.jetzone{position:absolute;left:0;right:0;bottom:50%;height:50%;background:rgba(255,176,46,0.16);
+  transition:background .1s}
+.jetting .jetzone{background:rgba(255,176,46,0.34)}
+.jetzone.dry{background:rgba(226,74,44,0.42)}
+/* the circular health / mana gauges: a ring round the stick's rim, wiped clockwise from
+   the top as the stat drops. Sits under the knob, never takes a touch. */
+.gauge{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+/* the amber ring is the line the knob's edge has to cross before the gun fires. Dotted,
+   so it reads as a threshold rather than a solid boundary. */
 .deadzone{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;
-  border:1px dashed var(--line);pointer-events:none}
-.knob{position:absolute;left:50%;top:50%;width:26%;height:26%;border-radius:50%;
-  background:var(--knob);opacity:.75;pointer-events:none}
-.lbl{position:absolute;left:50%;transform:translateX(-50%);font-size:12px;color:var(--muted);pointer-events:none}
-.lbl.top{top:13%}
-.lbl.bot{bottom:13%}
-.weapon{height:40px;padding:0 16px;border-radius:20px;cursor:pointer;
-  border:1px solid var(--ring);background:var(--btn);color:var(--text);
-  font:600 14px system-ui,-apple-system,sans-serif;display:flex;align-items:center;gap:8px;touch-action:none}
-.wicon{width:10px;height:10px;border-radius:50%;background:#e0a100}
+  border:1.5px dotted rgba(255,176,46,0.85);pointer-events:none}
+/* the knob is the thing under your thumb, so it is sized to still show an edge around
+   a thumbprint rather than disappearing underneath one. Its size comes from KNOB, and
+   the dead-zone ring is built from the same number — see AIM_RING. */
+/* a white ring with a black fill. Its stroke is 1.5x the deadzone ring's 1.5px line,
+   so the knob reads as the boldest circle on the stick. */
+.knob{position:absolute;left:50%;top:50%;box-sizing:border-box;border-radius:50%;
+  background:#000;
+  border:2.25px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,0.75);
+  opacity:.95;pointer-events:none}
+.lbl{position:absolute;left:50%;transform:translateX(-50%);pointer-events:none;
+  font:700 10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--ctl-dim)}
+.lbl.top{top:12%}
+.lbl.bot{bottom:12%}
+.weapon{box-sizing:border-box;height:36px;padding:0 14px;border-radius:3px;cursor:pointer;
+  border:2px solid var(--ctl-line);background:var(--ctl-face);color:var(--ctl-fg);
+  font:700 13px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;
+  text-transform:uppercase;display:flex;align-items:center;gap:8px;touch-action:none}
+.wicon{width:10px;height:10px;border-radius:1px;background:var(--ctl-hot)}
 .slots{flex:1 1 auto;min-width:0}
 .slot{flex:1 1 0;width:auto;min-width:0;display:flex;flex-direction:column;justify-content:center;
   align-items:center;gap:1px;overflow:hidden}
-.gname{font:600 10px system-ui,sans-serif;color:var(--text);max-width:100%;padding:0 3px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gsub{font:500 9px system-ui,sans-serif;color:var(--muted)}
+.gname{font:700 10px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ctl-fg);max-width:100%;
+  padding:0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gsub{font:600 9px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ctl-dim)}
 .badge{margin-left:2px;font-size:11px;opacity:.7}
+
+/* ---- a mod on the ground: read it, then pick it up or leave it ----
+   pointer-events:none across the overlay on purpose: the right stick has to stay live
+   underneath it, because dragging the stick at a button is how you choose. Only the
+   card and the two buttons take touches back. ModFound also stops the overlay short of
+   the control deck, so the stick you are being asked to drag is not sat in shadow. */
+.modfound{position:fixed;top:0;left:0;right:0;bottom:0;z-index:29;display:flex;
+  flex-direction:column;justify-content:center;
+  gap:12px;background:rgba(6,6,8,0.88);pointer-events:none;
+  padding:calc(14px + env(safe-area-inset-top)) 12px 14px}
+/* the standing-on-a-plinth card, sat in the middle of the overlay instead of pinned
+   to the top of the view */
+.modfound .pop.ingame{position:static;left:auto;right:auto;top:auto;width:100%;max-width:340px;
+  align-self:center;max-height:calc(100% - 108px);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  pointer-events:auto;background:rgba(16,17,22,0.98);border-color:rgba(255,255,255,0.16)}
+.modfoundrow{display:flex;gap:10px;width:100%;max-width:340px;align-self:center;flex:0 0 auto}
+.modfoundbtn{flex:1 1 0;height:54px;border-radius:3px;border:2px solid var(--ctl-line);
+  background:var(--ctl-face);color:var(--ctl-fg);touch-action:none;pointer-events:auto;
+  font:700 15px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase}
+/* neither button is lit until the stick is past the trigger line and pointing at one:
+   the card must not look like it has already chosen for you */
+.modfoundbtn.hot{border-color:var(--ctl-hot);color:var(--ctl-hot);
+  box-shadow:0 0 16px rgba(255,176,46,0.25)}
+.modfoundhint{margin:0;text-align:center;font:600 11px ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.06em;color:var(--ctl-dim)}
 
 /* ---- mod sheet ---- */
 .sheet{position:fixed;inset:0;z-index:20;background:var(--bg);color:var(--text);
@@ -217,12 +298,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .dtile i{font-style:normal;font:600 10px system-ui,sans-serif;color:var(--text);opacity:.8}
 .dtile.off{opacity:.42}
 .dnote{display:block;font-size:11px;color:var(--muted);margin-top:3px}
-.pickhint{position:absolute;left:50%;transform:translateX(-50%);bottom:78px;display:flex;align-items:center;
-  gap:8px;height:42px;padding:0 18px;border-radius:21px;border:2px solid #ffc93c;
-  background:rgba(20,22,28,0.82);color:#fff;font:600 14px system-ui,sans-serif;pointer-events:none}
-.pickhint b{color:#ffc93c}
-.pickhint .hint{font:500 10px system-ui,sans-serif;color:rgba(255,255,255,0.55)}
-.pickhint.cant{border-color:rgba(255,255,255,0.25);opacity:.55}
+/* the shop/pickup panel: the item's card and its buy/take line in one box, grown up
+   from the bottom of the view. pointer-events:none so a tap falls through to the sticks —
+   buying is a tap on the right stick's dead zone. */
+.buypanel{position:absolute;left:25%;right:25%;bottom:12px;z-index:5;box-sizing:border-box;
+  display:flex;flex-direction:column;gap:9px;pointer-events:none;
+  max-height:calc(100% - 24px);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  background:rgba(18,20,26,0.93);border:1px solid rgba(255,255,255,0.18);border-radius:15px;
+  padding:11px 12px 13px;color:#e9ecf2;box-shadow:0 12px 40px rgba(0,0,0,0.35);
+  /* the card inside is always dark regardless of site theme, so force the dark-bg gun colour */
+  --gun-l:72%}
+/* the card sits inline inside the panel: strip its own frame and let the panel be the box */
+.buypanel .pop{position:static;top:auto;left:auto;right:auto;bottom:auto;width:auto;
+  background:none;border:0;box-shadow:none;padding:0;margin:0;max-height:none;overflow:visible}
+/* a long stat list (a loaded gun, a busy mod) gets its own small scroll box so the panel
+   stays short — about three rows, then it scrolls. pointer-events back on just here so you
+   can flick through it; the rest of the panel stays click-through */
+.buypanel .prows{max-height:60px;overflow-y:auto;-webkit-overflow-scrolling:touch;pointer-events:auto}
+/* the buy/take line: the amber price is the thing your eye goes to */
+.pbuy{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:9px;
+  height:40px;border-radius:20px;border:2px solid #ffc93c;background:rgba(255,201,60,0.1);
+  color:#fff;font:700 14px system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase}
+.pbuy b{color:#ffc93c;font-size:15px;text-transform:none}
+.pbuy.cant{border-color:rgba(255,255,255,0.25);background:none;opacity:.55}
 .weapon.locked{opacity:.45}
 .pop.flow{position:static;max-height:none;box-shadow:none;margin-bottom:2px}
 .spacer{flex:1 1 auto;min-height:6px}
@@ -263,8 +361,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   background:var(--pad);color:var(--muted);font:700 10px system-ui,sans-serif;letter-spacing:.09em}
 .dbg.on{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}
 .bag.debug{box-shadow:inset 0 0 0 1.5px rgba(255,138,31,0.5)}
-.reset{position:absolute;top:10px;right:10px;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.35);
-  color:#e9ecf2;border-radius:8px;padding:6px 12px;font:inherit;font-size:13px}
+/* the dev tools: a gear in the top-right, and the panel it opens (Restart lives inside) */
+.devbtn{position:absolute;top:10px;right:10px;z-index:6;border:1px solid rgba(255,255,255,0.25);
+  background:rgba(0,0,0,0.35);color:#e9ecf2;border-radius:8px;width:38px;height:38px;padding:0;
+  font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center}
+.dbg.restart{background:#c2401f;border-color:#c2401f;color:#fff}
+.devwrap{position:fixed;left:0;right:0;top:0;bottom:0;z-index:26;display:flex;
+  align-items:flex-start;justify-content:center;padding:52px 12px 12px}
+/* a light backdrop so the cave is still visible behind while you tune the look of it */
+.devback{position:absolute;inset:0;background:rgba(0,0,0,0.2)}
+.devpanel{position:relative;z-index:1;width:100%;max-width:360px;max-height:calc(100% - 64px);
+  overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;background:var(--btn);
+  border:1px solid var(--ring);border-radius:14px;padding:14px 16px;box-shadow:0 12px 40px rgba(0,0,0,0.45);color:var(--text)}
+.devhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.devhead h2{margin:0;font-size:17px}
+.devbtns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.devvars{display:flex;flex-direction:column;gap:10px}
+.devrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.devrow label{font-size:13px;color:var(--text);flex:1 1 auto}
+.devrow input{width:92px;flex:0 0 auto;box-sizing:border-box;height:36px;border-radius:8px;
+  border:1px solid var(--ring);background:var(--pad);color:var(--text);
+  font:600 14px system-ui,sans-serif;padding:0 9px;text-align:right;
+  user-select:text;-webkit-user-select:text}
+.devnote{margin:14px 0 0;font-size:11px;color:var(--muted);line-height:1.45}
 .confirm{position:fixed;inset:0;z-index:29;display:flex;align-items:center;justify-content:center;padding:24px}
 .confirmCard{position:relative;z-index:30;background:var(--btn);border:1px solid var(--ring);border-radius:14px;
   padding:18px 20px;max-width:260px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.4)}
@@ -292,7 +411,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v31';
+const VERSION = 'v48';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -304,28 +423,206 @@ const DEAD = 0.12;
 // code in Game.step. 0.35 of the stick's max throw is a big enough circle to land a
 // thumb on reliably without eating so much of the throw that aiming feels numb.
 const AIM_DEAD = 0.35;
+// The knob's diameter as a share of the stick. Big enough that its edge still shows
+// around a thumbprint, which is the whole point of it.
+const KNOB = 0.38;
+// The ring drawn on the right stick, as a share of the stick: the throw you have to
+// make (AIM_DEAD of the knob's full travel) plus one knob radius. So the ring is the
+// line the knob's *edge* crosses at the exact moment the trigger goes live, which is
+// what makes it worth drawing rather than just being another circle.
+const AIM_RING = AIM_DEAD * 0.72 + KNOB;
 const PW = 12, PH = 22;
 const FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
 const PLAYER_HP = 100;
 const START_GOLD = 40;
+
+// ---- dev settings ----
+// Live, tweakable knobs for testing, read by the Game every frame so a change shows at
+// once, and saved to localStorage so they survive a reload and carry across sessions.
+// Each has a default; clearing a field in the dev panel puts the default back. Every
+// localStorage touch is wrapped: it throws in a private window and does not exist at all
+// under Node (the logic tests eval this file), and a missing store just means "defaults".
+const DEV_DEFAULTS = { zoom: 1, torch: 1, fogDark: 0.99, fogDim: 0.85, move: 1 };
+const DEV_META = [
+  { k: 'zoom',    label: 'Camera zoom',                 min: 0.3, max: 3,  step: 0.05 },
+  { k: 'torch',   label: 'Torch fall-off distance',     min: 0.2, max: 5,  step: 0.05 },
+  { k: 'fogDark', label: 'Fog of war darkness',         min: 0,   max: 1,  step: 0.01 },
+  { k: 'fogDim',  label: 'Outside-torchlight darkness', min: 0,   max: 1,  step: 0.01 },
+  { k: 'move',    label: 'Base movement speed',         min: 0.2, max: 5,  step: 0.05 },
+];
+const DEV_KEY = 'caverunner-dev';
+const DEV = Object.assign({}, DEV_DEFAULTS);
+(() => { try {
+  const raw = localStorage.getItem(DEV_KEY);
+  if (raw) { const o = JSON.parse(raw); for (const k in DEV_DEFAULTS)
+    if (typeof o[k] === 'number' && isFinite(o[k])) DEV[k] = o[k]; }
+} catch (_) {} })();
+function devSet(k, v) {
+  DEV[k] = v;
+  try { localStorage.setItem(DEV_KEY, JSON.stringify(DEV)); } catch (_) {}
+}
+
 const COIN_PULL = 36;         // gold within this many units flies to you
-const ENEMY_HP = 3, ENEMY_RANGE = 220, ENEMY_BULLET = 180, ENEMY_DMG = 10, ENEMY_COUNT = 80;
+// how many enemies a floor gets before the floor lift. What they are and how hard
+// they hit is the roster's business now — see CREATURES.
+const ENEMY_COUNT = 80;
 const MOD_DROPS = 7;          // mods lying in the cave: half what it used to be
 const GUN_DROPS = 5;          // guns lying in the cave, unchanged
 const PICKUP_GAP = 260;       // and no two of them closer than this
 const PATROL_R = 70;          // how far an enemy will drift from where it spawned
-const PATROL_SPEED = 34;
+                              // (each creature carries its own patrol speed — see CREATURES)
 const PICKUP_COOL = 2;        // a gun you walked away from stays quiet this long
 const NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
 
-const THEME = {
-  name: 'Mossy caves',
-  bg: [16, 18, 24], bg2: [34, 37, 46],
-  rock: [[62, 56, 54], [96, 84, 74]],
-  moss: [[62, 104, 40], [108, 150, 64]],
-  brick: [[112, 84, 62], [146, 110, 78]], mortar: [66, 50, 40],
-  bed: [[28, 28, 34], [44, 44, 52]],
+// ---- level themes ----
+// One palette per floor, picked by the floor number rather than rolled with the seed.
+// So floor 3 is the same frozen cave on every run and every restart, which is the
+// whole point: you learn "3 is the ice one" the way you learn a map, and the colour
+// tells you where you are before you have read the number. Wraps at the end rather
+// than running out.
+const THEMES = [
+  { name: 'Mossy caves',    bg: [16, 18, 24],  bg2: [34, 37, 46],
+    rock: [[62, 56, 54], [96, 84, 74]],    moss: [[62, 104, 40], [108, 150, 64]],
+    brick: [[112, 84, 62], [146, 110, 78]], mortar: [66, 50, 40], bed: [[28, 28, 34], [44, 44, 52]] },
+  { name: 'Coal seams',     bg: [12, 13, 17],  bg2: [28, 30, 36],
+    rock: [[44, 44, 50], [74, 74, 82]],    moss: [[46, 74, 52], [84, 116, 74]],
+    brick: [[64, 62, 66], [96, 92, 98]],   mortar: [38, 36, 40], bed: [[24, 24, 28], [40, 40, 46]] },
+  { name: 'Frozen deep',    bg: [14, 20, 30],  bg2: [32, 44, 60],
+    rock: [[62, 72, 88], [104, 118, 138]], moss: [[120, 150, 170], [176, 204, 222]],
+    brick: [[86, 100, 120], [126, 142, 164]], mortar: [52, 62, 78], bed: [[26, 32, 44], [44, 52, 66]] },
+  { name: 'Ember halls',    bg: [22, 12, 12],  bg2: [48, 24, 22],
+    rock: [[70, 48, 44], [110, 74, 62]],   moss: [[150, 72, 36], [204, 120, 52]],
+    brick: [[100, 58, 44], [138, 84, 62]], mortar: [54, 32, 26], bed: [[34, 20, 20], [56, 34, 32]] },
+  { name: 'Fungal grotto',  bg: [18, 14, 26],  bg2: [42, 34, 56],
+    rock: [[66, 58, 80], [104, 92, 124]],  moss: [[88, 150, 120], [140, 200, 168]],
+    brick: [[92, 72, 110], [130, 104, 150]], mortar: [50, 40, 62], bed: [[30, 26, 40], [50, 44, 64]] },
+  { name: 'Salt flats',     bg: [24, 24, 22],  bg2: [50, 50, 46],
+    rock: [[112, 108, 96], [160, 154, 138]], moss: [[170, 164, 132], [214, 208, 178]],
+    brick: [[132, 124, 104], [172, 162, 138]], mortar: [76, 72, 62], bed: [[40, 40, 36], [62, 62, 56]] },
+  { name: 'Amethyst vein',  bg: [20, 14, 28],  bg2: [46, 32, 62],
+    rock: [[74, 54, 92], [114, 86, 140]],  moss: [[168, 96, 190], [214, 150, 232]],
+    brick: [[94, 68, 116], [134, 100, 158]], mortar: [54, 38, 68], bed: [[32, 24, 44], [54, 40, 72]] },
+  { name: 'Rustworks',      bg: [18, 18, 20],  bg2: [44, 38, 34],
+    rock: [[84, 62, 48], [126, 94, 70]],   moss: [[96, 124, 110], [148, 180, 162]],
+    brick: [[118, 80, 52], [158, 112, 76]], mortar: [62, 44, 30], bed: [[30, 28, 28], [50, 46, 44]] },
+  { name: 'Bone garden',    bg: [20, 20, 18],  bg2: [46, 46, 42],
+    rock: [[108, 104, 94], [152, 146, 132]], moss: [[110, 120, 72], [158, 170, 108]],
+    brick: [[124, 116, 98], [164, 154, 132]], mortar: [70, 66, 56], bed: [[38, 38, 34], [60, 58, 52]] },
+  { name: 'Drowned halls',  bg: [10, 18, 22],  bg2: [24, 42, 50],
+    rock: [[48, 68, 72], [82, 108, 112]],  moss: [[56, 124, 124], [104, 176, 170]],
+    brick: [[62, 84, 88], [98, 124, 128]], mortar: [36, 52, 56], bed: [[22, 32, 36], [40, 54, 58]] },
+  { name: 'Ash wastes',     bg: [18, 17, 17],  bg2: [42, 40, 40],
+    rock: [[72, 68, 66], [110, 104, 100]], moss: [[120, 96, 80], [168, 140, 116]],
+    brick: [[92, 84, 80], [130, 120, 114]], mortar: [54, 50, 48], bed: [[30, 29, 29], [50, 48, 48]] },
+  { name: 'Void hollow',    bg: [8, 8, 14],    bg2: [22, 20, 38],
+    rock: [[42, 38, 58], [70, 64, 94]],    moss: [[72, 180, 190], [130, 230, 236]],
+    brick: [[56, 48, 78], [88, 76, 116]],  mortar: [32, 28, 46], bed: [[18, 16, 28], [34, 30, 48]] },
+];
+const themeFor = floor => THEMES[(Math.max(1, floor) - 1) % THEMES.length];
+
+// ---- creatures ----
+// Who lives on a floor. Floors 1-10 each own a fixed roster of 2-6 of these, and the
+// roster is the same on every run, so the thing that killed you on floor 6 is the
+// thing you meet on floor 6 next time. Stats and gold scale with the floor a creature
+// belongs to, so a floor 9 Hiisi is worth more and takes more killing than a floor 2
+// one. Past floor 10 the roster is drawn at random instead, so the run keeps moving.
+//
+// act:  shoot   hovers, patrols, fires when it has a line on you
+//       turret  holds station, longer reach, winds up before it fires
+//       chase   comes at you and hurts on contact
+//       bomb    comes at you and bursts on contact
+// body: which sprite draws it
+const CREATURES = {
+  heikko: { name: 'Heikkohiisi', body: 'drone', act: 'shoot',
+    col: { a: '#6b8f4e', b: '#2e3d22', c: '#9dc46f', eye: '#d8ff9a' },
+    hp: 2, dmg: 6, bspd: 170, range: 200, cd: 1.9, gold: 4, r: 8, spd: 34 },
+  hiisi:  { name: 'Hiisi', body: 'drone', act: 'shoot',
+    col: { a: '#4f7a52', b: '#22331f', c: '#7fb383', eye: '#ffd98a' },
+    hp: 5, dmg: 10, bspd: 190, range: 230, cd: 1.5, gold: 8, r: 9, spd: 34 },
+  tappura: { name: 'Tappurahiisi', body: 'drone', act: 'shoot', shots: 4,
+    col: { a: '#7a5a3a', b: '#33241a', c: '#b08a5c', eye: '#ffb347' },
+    hp: 6, dmg: 7, bspd: 200, range: 180, cd: 2.3, gold: 10, r: 10, spd: 30 },
+  chain:  { name: 'Chaingunner', body: 'drone', act: 'shoot',
+    col: { a: '#8a3f3f', b: '#3a1c1c', c: '#c06a6a', eye: '#ff8a8a' },
+    hp: 7, dmg: 5, bspd: 230, range: 250, cd: 0.6, gold: 12, r: 10, spd: 32 },
+  snipu:  { name: 'Snipuhiisi', body: 'drone', act: 'turret', tele: 0.55,
+    col: { a: '#5a5f8a', b: '#252a44', c: '#8f95c4', eye: '#9ad4ff' },
+    hp: 4, dmg: 22, bspd: 420, range: 460, cd: 3.0, gold: 14, r: 9, spd: 0 },
+  hamahakki: { name: 'Hämähäkki', body: 'crawler', act: 'chase', aggro: 300,
+    col: { a: '#6a4a86', b: '#2b1d38', c: '#a077c4', eye: '#ffd98a' },
+    hp: 4, dmg: 12, bspd: 0, range: 0, cd: 0, gold: 6, r: 9, spd: 62 },
+  lohkare: { name: 'Lohkare', body: 'crawler', act: 'chase', aggro: 260,
+    col: { a: '#6a625a', b: '#2c2823', c: '#9d948a', eye: '#ffb347' },
+    hp: 16, dmg: 18, bspd: 0, range: 0, cd: 0, gold: 20, r: 13, spd: 26 },
+  mato:   { name: 'Mato', body: 'worm', act: 'chase', aggro: 320,
+    col: { a: '#a2607a', b: '#40222e', c: '#d68fa8', eye: '#ffd98a' },
+    hp: 6, dmg: 14, bspd: 0, range: 0, cd: 0, gold: 9, r: 8, spd: 84 },
+  hurtta: { name: 'Hurtta', body: 'crawler', act: 'chase', aggro: 360,
+    col: { a: '#7a4a3a', b: '#2f1a14', c: '#b3765c', eye: '#ff9a5a' },
+    hp: 5, dmg: 15, bspd: 0, range: 0, cd: 0, gold: 10, r: 9, spd: 105 },
+  kobold: { name: 'Kobold', body: 'crawler', act: 'chase', aggro: 300,
+    col: { a: '#8a7a4a', b: '#332d18', c: '#c0ad74', eye: '#ffe066' },
+    hp: 3, dmg: 8, bspd: 0, range: 0, cd: 0, gold: 5, r: 7, spd: 92 },
+  konna:  { name: 'Konna', body: 'blob', act: 'chase', aggro: 260,
+    col: { a: '#4a7a6a', b: '#1c332c', c: '#79b3a0', eye: '#d8ff9a' },
+    hp: 6, dmg: 11, bspd: 0, range: 0, cd: 0, gold: 7, r: 10, spd: 48 },
+  lima:   { name: 'Limanuljaska', body: 'blob', act: 'bomb', aggro: 300,
+    col: { a: '#6fa03a', b: '#2a3d14', c: '#a6d46a', eye: '#e6ff9a' },
+    hp: 5, dmg: 20, bspd: 0, range: 0, cd: 0, gold: 11, r: 10, spd: 55 },
+  tuli:   { name: 'Stendari', body: 'blob', act: 'bomb', aggro: 330,
+    col: { a: '#c05a2a', b: '#3f1c0e', c: '#ff9a5a', eye: '#ffe066' },
+    hp: 6, dmg: 26, bspd: 0, range: 0, cd: 0, gold: 13, r: 10, spd: 60 },
+  karpas: { name: 'Kärpässieni', body: 'blob', act: 'turret',
+    col: { a: '#b04a4a', b: '#3d1616', c: '#e88a8a', eye: '#ffffff' },
+    hp: 5, dmg: 12, bspd: 150, range: 300, cd: 1.9, gold: 9, r: 10, spd: 0 },
+  jaatio: { name: 'Jäätiö', body: 'skull', act: 'turret', tele: 0.3,
+    col: { a: '#7ab8d8', b: '#22414f', c: '#b6e2f4', eye: '#d8f4ff' },
+    hp: 8, dmg: 12, bspd: 130, range: 240, cd: 1.7, gold: 15, r: 10, spd: 0 },
+  skull:  { name: 'Elävät luut', body: 'skull', act: 'turret', tele: 0.35,
+    col: { a: '#d8d2be', b: '#4a463c', c: '#f4f0e0', eye: '#5ee0a0' },
+    hp: 7, dmg: 14, bspd: 200, range: 320, cd: 2.1, gold: 16, r: 9, spd: 0 },
 };
+const CREATURE_IDS = Object.keys(CREATURES);
+
+// Floors 1-10, fixed for good — that is the familiarity. Order is roughly the order
+// you meet them: weak gunners and one crawler first, snipers and bombers in the
+// middle, the armoured and the wind-up shooters at the top.
+const ROSTERS = [
+  ['heikko', 'hamahakki'],
+  ['heikko', 'hamahakki', 'hiisi'],
+  ['hiisi', 'konna', 'hamahakki'],
+  ['hiisi', 'mato', 'lima', 'kobold'],
+  ['hiisi', 'karpas', 'hurtta', 'lima'],
+  ['snipu', 'hiisi', 'hurtta', 'tuli', 'karpas'],
+  ['snipu', 'lohkare', 'mato', 'tuli', 'kobold'],
+  ['jaatio', 'chain', 'lohkare', 'hamahakki', 'hurtta', 'karpas'],
+  ['jaatio', 'chain', 'snipu', 'tuli', 'lohkare', 'skull'],
+  ['chain', 'snipu', 'lohkare', 'skull', 'jaatio', 'tappura'],
+];
+// the roster for a floor. Past the fixed ten it rolls a fresh 2-6 off the whole list,
+// using the level's own seeded rnd so a floor stays consistent while you are on it.
+function rosterFor(floor, rnd) {
+  if (floor >= 1 && floor <= ROSTERS.length) return ROSTERS[floor - 1].slice();
+  const r = rnd || Math.random, pool = CREATURE_IDS.slice(), out = [];
+  const n = 2 + Math.floor(r() * 5);
+  while (out.length < n && pool.length) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
+  return out;
+}
+
+// One floor's worth of one creature: the type's own numbers, lifted by the floor it
+// belongs to. Health climbs hardest, gold next, damage least — a floor 10 enemy is
+// worth a lot more than it hurts, or the shop heal would never keep up.
+function enemyFor(id, floor) {
+  const c = CREATURES[id];
+  const hp = 1 + (floor - 1) * 0.35, dmg = 1 + (floor - 1) * 0.16, gold = 1 + (floor - 1) * 0.30;
+  return { id, name: c.name, body: c.body, act: c.act, col: c.col,
+    hp: Math.max(1, Math.round(c.hp * hp)),
+    dmg: Math.max(1, Math.round(c.dmg * dmg)),
+    bspd: Math.round(c.bspd * (1 + (floor - 1) * 0.05)),
+    gold: Math.max(1, Math.round(c.gold * gold)),
+    range: c.range, cd: c.cd, tele: c.tele || 0, shots: c.shots || 1,
+    r: c.r, spd: c.spd, aggro: c.aggro || 300 };
+}
 
 const COL = {
   text: '#e9ecf2', muted: 'rgba(233,236,242,0.55)', barBg: 'rgba(255,255,255,0.12)',
@@ -806,13 +1103,32 @@ const SHOP_Y = SHOP_TOP * CELL;        // world y of the ceiling, for "am I in t
 const FOG = 8;                         // terrain pixels per fog cell
 const FOG_U = FOG * CELL;              // world units per fog cell
 const FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
-const SIGHT = 200;                     // world units you can see, and light up as you go
-const FOG_DIM = 0.52;                  // how dark somewhere you have been but cannot see
-const FOG_DARK = 0.96;                 // how dark somewhere you have never been
+const SIGHT = 200;                     // how far the torch reaches: line of sight out to
+                                       // here lifts the fog, and the lamp then lights the
+                                       // ground it lifted. A cell this close and in view is
+                                       // marked as somewhere you have been and stays marked
+                                       // for the rest of the floor. This is a medium bubble —
+                                       // generous, but the cave beyond it stays dark
+const LAMP_REACH = 1.15;               // the lamp's pool is this many times the sight radius,
+                                       // so the whole lifted bubble is lit and fades out at
+                                       // its edge. The lamp is MASKED by the fog: it brightens
+                                       // ground the line of sight has already uncovered and
+                                       // leaves the rest dark — see the note on the lamp in draw()
+const FOG_DIM = 0.85;                  // how dark somewhere you have been but cannot see
+const FOG_DARK = 0.99;                 // how dark somewhere you have never been — near black,
+                                       // because that darkness is the fog of war now
 
-// Light every cell within r world units of (wx, wy). Returns how many were newly lit,
-// so the caller can leave the overlay alone on the frames where nothing changed.
-function fogReveal(seen, wx, wy, r) {
+// What the map is allowed to remember is worked out as a fan of rays out from the player,
+// each stopping at the first wall: one ray per fog cell the fan crosses, so a shadow edge
+// lands on about the grid it is drawn into. See fogReveal.
+const VIS_RAYS = 160;
+
+// Light every cell within r world units of (wx, wy) that the torch can actually reach,
+// and return how many were newly lit so the caller can leave the overlay alone on the
+// frames where nothing changed. `pts` is the fan visPoly cast from the same spot, and a
+// cell is only lit if the fan reaches at least that far in its direction — so ground
+// round the corner of a wall is not seen and never goes on the map.
+function fogReveal(seen, wx, wy, r, pts, rays) {
   const cx = wx / FOG_U, cy = wy / FOG_U, cr = r / FOG_U, r2 = cr * cr;
   const x0 = Math.max(0, Math.floor(cx - cr)), x1 = Math.min(FW - 1, Math.ceil(cx + cr));
   const y0 = Math.max(0, Math.floor(cy - cr)), y1 = Math.min(FH - 1, Math.ceil(cy + cr));
@@ -820,8 +1136,19 @@ function fogReveal(seen, wx, wy, r) {
   for (let y = y0; y <= y1; y++) {
     const row = y * FW, dy = y + 0.5 - cy, dy2 = dy * dy;
     for (let x = x0; x <= x1; x++) {
+      if (seen[row + x]) continue;
       const dx = x + 0.5 - cx;
-      if (dx * dx + dy2 > r2 || seen[row + x]) continue;
+      if (dx * dx + dy2 > r2) continue;
+      const d = Math.sqrt(dx * dx + dy2) * FOG_U;            // world units, to match the fan
+      // how far the fan got in this direction: the shorter of the two rays either side of
+      // it, so a cell only goes on the map if a ray actually reached it. Interpolating
+      // between the two would reach a little further than either and mark cells just round
+      // a corner — which is the one thing this is here to stop.
+      const t = (Math.atan2(dy, dx) / (Math.PI * 2) + 1) % 1 * rays;
+      const i0 = Math.floor(t), i1 = (i0 + 1) % rays;
+      const a = Math.hypot(pts[i0 * 2] - wx, pts[i0 * 2 + 1] - wy);
+      const b = Math.hypot(pts[i1 * 2] - wx, pts[i1 * 2 + 1] - wy);
+      if (d > Math.min(a, b)) continue;
       seen[row + x] = 1; n++;
     }
   }
@@ -836,6 +1163,47 @@ function fogStart() {
   for (let y = Math.floor((SHOP_TOP - SHOP_ROOF) / FOG); y < FH; y++)
     for (let x = 0; x < FW; x++) seen[y * FW + x] = 2;
   return seen;
+}
+
+// How far a ray from (x, y) heading (dx, dy) gets before it walks into a solid cell,
+// capped at r. It steps from one cell boundary to the next, so it visits every cell the
+// ray crosses — a fixed sampling step would jump clean over a one-pixel wall and let a
+// sliver of light through the far side of it.
+function rayDist(x, y, dx, dy, r, solidCell) {
+  let cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+  const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1;
+  const dtx = dx ? Math.abs(CELL / dx) : Infinity;
+  const dty = dy ? Math.abs(CELL / dy) : Infinity;
+  let tx = dx ? (dx > 0 ? ((cx + 1) * CELL - x) / dx : (cx * CELL - x) / dx) : Infinity;
+  let ty = dy ? (dy > 0 ? ((cy + 1) * CELL - y) / dy : (cy * CELL - y) / dy) : Infinity;
+  let t = 0;
+  for (;;) {
+    if (tx < ty) { t = tx; tx += dtx; cx += sx; }
+    else { t = ty; ty += dty; cy += sy; }
+    if (t >= r) return r;
+    if (solidCell(cx, cy)) return t;
+  }
+}
+
+// Is the straight line from one point to another clear of rock? Marched the same way the
+// light is, so "can I shoot that" and "can I see that" give the same answer, and a
+// one-pixel wall stops both.
+function losClear(x0, y0, x1, y1, solidCell) {
+  const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy);
+  if (d < 0.001) return true;
+  return rayDist(x0, y0, dx / d, dy / d, d, solidCell) >= d - 0.001;
+}
+
+// The fan of points that bound what can be seen from (cx, cy) out to r. The lamp is
+// clipped to this, which is what makes walls cast shadows.
+function visPoly(cx, cy, r, solidCell, rays) {
+  const pts = [];
+  for (let i = 0; i < rays; i++) {
+    const a = i / rays * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
+    const d = rayDist(cx, cy, dx, dy, r, solidCell);
+    pts.push(cx + dx * d, cy + dy * d);
+  }
+  return pts;
 }
 
 for (const k of Object.keys(MODS)) MODS[k].id = k;
@@ -1476,42 +1844,187 @@ function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash) {
   ctx.restore();
 }
 
-// The enemy: a hovering drone with one big eye that follows you around.
-function drawDrone(ctx, x, y, r, lx, ly, time, phase, flash) {
-  const shell = flash ? '#f4f0ff' : '#463462';
+// The torch in the runner's free hand. `flick` is the very same number the lamp is drawn
+// with, so the flame and the light it throws gutter together and the cave reads as
+// torchlight rather than as a dimmer switch. The embers are the loop's particles.
+function drawTorch(ctx, x, y, face, flick, embers) {
+  const fx = x + face * 1.6, fy = y - 7;           // the flame rides above the fist
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#5b4630'; ctx.lineWidth = 2.6;
+  ctx.beginPath(); ctx.moveTo(x, y + 2.5); ctx.lineTo(fx, fy); ctx.stroke();
+  ctx.strokeStyle = '#8a6b45'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x, y + 2.5); ctx.lineTo(fx, fy); ctx.stroke();
+  const s = flick;                                 // a low flame is a small one
+  ctx.globalAlpha = 0.32 * flick;                  // the halo is what really gutters
+  ctx.fillStyle = COL.flame;
+  ctx.beginPath(); ctx.ellipse(fx, fy - 3.5 * s, 4.4 * s, 7 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = flick;
+  ctx.beginPath(); ctx.ellipse(fx, fy - 2.5 * s, 2.9 * s, 4.8 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = COL.flame2;
+  ctx.beginPath(); ctx.ellipse(fx, fy - 2 * s, 1.5 * s, 2.6 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  for (const q of embers) {
+    ctx.globalAlpha = Math.max(0, q.life / q.max) * 0.85;
+    ctx.fillStyle = q.c;
+    ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// The enemies, one sprite per body. Every one of them takes the same colour set
+// ({ a main, b dark, c light, eye }) so a creature's identity is carried by shape and
+// colour together, and a flash on hit is the same white for all of them.
+//
+// The drone: a hovering gunner with one big eye that follows you around.
+function drawDrone(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+  const shell = flash ? '#f4f0ff' : col.b;
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(lx * 0.22);
   // thruster wash underneath
   const puff = 0.55 + 0.25 * Math.sin(time * 9 + phase);
   ctx.globalAlpha = 0.3 * puff;
-  ctx.fillStyle = COL.enemy;
+  ctx.fillStyle = col.a;
   ctx.beginPath(); ctx.ellipse(0, r * 0.9, r * 0.45, r * 0.8 * puff, 0, 0, Math.PI * 2); ctx.fill();
   ctx.globalAlpha = 1;
   // stubby fins, drawn first so they read as sticking out of the hull
-  ctx.fillStyle = flash ? '#e6e0f5' : '#241c36';
+  ctx.fillStyle = flash ? '#e6e0f5' : col.b;
   rr(ctx, -r * 1.52, -r * 0.4, r * 0.62, r * 0.9, r * 0.22); ctx.fill();
   rr(ctx, r * 0.9, -r * 0.4, r * 0.62, r * 0.9, r * 0.22); ctx.fill();
   rr(ctx, -r * 0.34, r * 0.5, r * 0.68, r * 0.5, r * 0.18); ctx.fill();    // vent
   // hull
   ctx.fillStyle = shell;
   rr(ctx, -r * 1.05, -r * 0.78, r * 2.1, r * 1.5, r * 0.62); ctx.fill();
-  ctx.strokeStyle = flash ? '#ffffff' : '#6d54a0';
+  ctx.strokeStyle = flash ? '#ffffff' : col.a;
   ctx.lineWidth = r * 0.14;
   rr(ctx, -r * 1.05, -r * 0.78, r * 2.1, r * 1.5, r * 0.62); ctx.stroke();
-  ctx.fillStyle = flash ? '#ffffff' : '#5b4482';
+  ctx.fillStyle = flash ? '#ffffff' : col.c;
   rr(ctx, -r * 0.72, -r * 0.7, r * 1.44, r * 0.46, r * 0.22); ctx.fill();  // canopy
   ctx.restore();
   // the eye sits in the hull and swivels to keep you in view
   const ex = x + lx * r * 0.34, ey = y + ly * r * 0.26;
   ctx.globalAlpha = 0.3;
-  ctx.fillStyle = COL.enemy;
+  ctx.fillStyle = col.a;
   ctx.beginPath(); ctx.arc(ex, ey, r * 0.62, 0, Math.PI * 2); ctx.fill();
   ctx.globalAlpha = 1;
-  ctx.fillStyle = flash ? '#ffffff' : '#ffd98a';
+  ctx.fillStyle = flash ? '#ffffff' : col.eye;
   ctx.beginPath(); ctx.arc(ex, ey, r * 0.36, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#1b1526';
   ctx.beginPath(); ctx.arc(ex + lx * r * 0.15, ey + ly * r * 0.15, r * 0.16, 0, Math.PI * 2); ctx.fill();
+}
+
+// The crawler: a low body on six legs that scuttle as it walks. Spiders, hounds,
+// kobolds and the armoured Lohkare all wear this one.
+function drawCrawler(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+  const s = Math.sin(time * 7 + phase);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.strokeStyle = flash ? '#ffffff' : col.b;
+  ctx.lineWidth = r * 0.2; ctx.lineCap = 'round';
+  for (let i = 0; i < 3; i++) {
+    const o = (i - 1) * r * 0.5, sw = s * r * 0.26 * (i % 2 ? 1 : -1);
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(o * 0.6, 0);
+      ctx.lineTo(o * 0.6 + side * r * 0.8, side * r * 0.5 + sw);
+      ctx.lineTo(o * 0.6 + side * r * 1.3, side * r * 0.95 - sw * 0.5);
+      ctx.stroke();
+    }
+  }
+  ctx.fillStyle = flash ? '#f4f0ff' : col.b;
+  ctx.beginPath(); ctx.ellipse(0, 0, r * 1.05, r * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = flash ? '#ffffff' : col.a;
+  ctx.beginPath(); ctx.ellipse(0, -r * 0.12, r * 0.82, r * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  for (const side of [-1, 1]) {
+    ctx.fillStyle = flash ? '#ffffff' : col.eye;
+    ctx.beginPath(); ctx.arc(x + lx * r * 0.35 + side * r * 0.3, y + ly * r * 0.25, r * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// The blob: a wobbling sac with two eyes. Slimes, toads and the fungal turret.
+function drawBlob(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+  const wob = 1 + 0.09 * Math.sin(time * 3.4 + phase);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = 0.32;
+  ctx.fillStyle = col.a;
+  ctx.beginPath(); ctx.ellipse(0, r * 0.85, r * 0.72, r * 0.26, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = flash ? '#f4f0ff' : col.b;
+  ctx.beginPath(); ctx.ellipse(0, r * 0.18, r * 1.0, r * 0.92 * wob, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = flash ? '#ffffff' : col.a;
+  ctx.beginPath(); ctx.ellipse(0, r * 0.3, r * 0.76, r * 0.66 * wob, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  for (const side of [-1, 1]) {
+    ctx.fillStyle = '#1b1526';
+    ctx.beginPath(); ctx.arc(x + lx * r * 0.3 + side * r * 0.26, y + r * 0.12 + ly * r * 0.18,
+      r * 0.15, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+// The skull: bone, a jaw, and a halo of whatever it is made of. The Jäätiö and the
+// living bones are both this, one frozen blue and one bare.
+function drawSkull(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(lx * 0.18);
+  ctx.globalAlpha = 0.26 + 0.1 * Math.sin(time * 4 + phase);
+  ctx.fillStyle = col.a;
+  ctx.beginPath(); ctx.arc(0, 0, r * 1.55, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = flash ? '#ffffff' : col.a;
+  ctx.beginPath(); ctx.ellipse(0, -r * 0.15, r * 0.85, r * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+  rr(ctx, -r * 0.55, r * 0.4, r * 1.1, r * 0.55, r * 0.2); ctx.fill();      // jaw
+  ctx.fillStyle = '#1b1526';
+  for (const side of [-1, 1]) {
+    ctx.beginPath(); ctx.ellipse(side * r * 0.34, -r * 0.18, r * 0.24, r * 0.28, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = col.eye;
+  for (const side of [-1, 1]) {
+    ctx.beginPath(); ctx.arc(side * r * 0.34 + lx * r * 0.1, -r * 0.18 + ly * r * 0.1,
+      r * 0.11, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// The worm: a chain of segments that trails behind wherever the head is pointing.
+function drawWorm(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(Math.atan2(ly, lx));
+  for (let i = 4; i >= 0; i--) {
+    const t = i / 4, off = -r * 1.5 * i * 0.62, w = r * (1 - t * 0.4);
+    ctx.fillStyle = flash ? '#ffffff' : (i % 2 ? col.b : col.a);
+    ctx.beginPath();
+    ctx.ellipse(off, Math.sin(time * 6 + phase - i * 0.7) * r * 0.34, w * 0.62, w, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#1b1526';
+  ctx.beginPath(); ctx.arc(r * 0.55, 0, r * 0.26, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+// Whatever this enemy is, plus the ring that warns you a charged shot is coming.
+function drawEnemy(ctx, e, time) {
+  const k = e.k, flash = e.flash > 0;
+  const x = e.x, y = e.ty, r = e.r, lx = e.lx, ly = e.ly;
+  if (k.body === 'crawler') drawCrawler(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+  else if (k.body === 'blob') drawBlob(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+  else if (k.body === 'skull') drawSkull(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+  else if (k.body === 'worm') drawWorm(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+  else drawDrone(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+  if (e.charge > 0 && k.tele) {
+    ctx.globalAlpha = 0.65;
+    ctx.strokeStyle = k.col.eye;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(x, y, e.r + 4 + e.charge * 10, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
 }
 
 // the colour a gun wears: whatever family its first shot belongs to
@@ -1535,8 +2048,117 @@ function turn(b, by) {
 
 const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
-function makeLevel(seed, floor) {
+// ---- perks ----
+// One per hidden room, yours for the rest of the run. Each is a plain bag of multipliers
+// and flags — nothing clever — and perkBag() adds them up into the one object the rest of
+// the game reads. That keeps every effect in one place and testable on its own: a perk
+// that does nothing is a field nobody read, and the logic suite checks the fields that
+// matter actually move.
+const PERKS = {
+  eye:      { name: 'All-Seeing Eye', glyph: '◉', tint: '#8fd3ff', seeAll: 1,
+              info: 'The whole floor is lit. No fog anywhere, on this floor or any other.' },
+  ghost:    { name: 'Angry Ghost', glyph: '☾', tint: '#c9a6ff', ghost: 1,
+              info: 'A spirit trails you and fires at whatever is nearest.' },
+  gold:     { name: 'Attract Gold', glyph: '◇', tint: '#ffc93c', goldPull: 3,
+              info: 'Coin flies to you from three times as far away.' },
+  bounce:   { name: 'Bouncing Spells', glyph: '⤢', tint: '#7ad7ff', bounce: 1,
+              info: 'Every shot bounces once more than it otherwise would.' },
+  close:    { name: 'Close Call', glyph: '✧', tint: '#ff8a1f', close: 1,
+              info: '+40% critical chance while something is within 56 units of you.' },
+  conc:     { name: 'Concentrated Spells', glyph: '✹', tint: '#ff5a52',
+              dmg: 1.25, spread: 0.5, delay: 1.15, recoil: 1.25,
+              info: 'A quarter more damage and half the spread, but a slower gun and a harder kick.' },
+  contact:  { name: 'Contact Damage', glyph: '✺', tint: '#ff5a36', contact: 1,
+              info: 'Anything that touches you is hurt by it.' },
+  crit:     { name: 'Critical Hit +', glyph: '✳', tint: '#ff5a52', crit: 0.15,
+              info: '+15% chance of a hit doing triple damage.' },
+  eradar:   { name: 'Enemy Radar', glyph: '▲', tint: '#ff5a52', radarEnemy: 1,
+              info: 'The nearest creatures are marked at the edge of the screen.' },
+  health:   { name: 'Extra Health', glyph: '✚', tint: '#46c48c', hpAdd: 50,
+              info: '50 more maximum health, and it comes full.' },
+  holyitem: { name: 'Extra Item in Holy Mountain', glyph: '♦', tint: '#ffc93c', extraItem: 1,
+              info: 'Every shop offers five things instead of four.' },
+  life:     { name: 'Extra Life', glyph: '♥', tint: '#ff5a36', lives: 1,
+              info: 'You get back up once, at full health, the first time you are killed.' },
+  knock:    { name: 'Extra Knockback on Spells', glyph: '⟫', tint: '#e88a3c', recoil: 1.5,
+              info: 'Half again the kick out of every shot — which the jetpack can work with.' },
+  lev:      { name: 'Faster Levitation', glyph: '⬆', tint: '#7ad7ff', jet: 1.25,
+              info: 'A quarter more thrust out of the jetpack.' },
+  move:     { name: 'Faster Movement', glyph: '➤', tint: '#6db8ff', walk: 1.3,
+              info: 'Walk and fly a third faster.' },
+  proj:     { name: 'Faster Projectiles', glyph: '⇒', tint: '#ffc93c', speed: 1.25,
+              info: 'Everything you fire travels a quarter faster.' },
+  wands:    { name: 'Faster Wands', glyph: '↻', tint: '#6db8ff', delay: 0.75, rech: 0.75,
+              info: 'Cast delay and recharge are three quarters of what they were.' },
+  glass:    { name: 'Glass Cannon', glyph: '✷', tint: '#ff5a52', dmg: 2.5, hpMul: 0.5,
+              info: 'Two and a half times the damage, and half the health to spend.' },
+  greed:    { name: 'Greed', glyph: '⬤', tint: '#ffc93c', gold: 2,
+              info: 'Every coin is worth double.' },
+  homing:   { name: 'Homing Shots', glyph: '↝', tint: '#b57cff', homing: 3,
+              info: 'Your shots bend towards whatever is nearest.' },
+  invis:    { name: 'Invisibility', glyph: '☁', tint: '#9aa3ad', invis: 1,
+              info: 'Creatures do not notice you until you are almost on top of them.' },
+  iradar:   { name: 'Item Radar', glyph: '◆', tint: '#b57cff', radarItem: 1,
+              info: 'The nearest mod lying in the cave is marked at the edge of the screen.' },
+  trail:    { name: 'Levitation Trail', glyph: '≈', tint: '#ff8a1f', trail: 1,
+              info: 'Flying leaves a trail of fire behind you that burns what it touches.' },
+  shield:   { name: 'Permanent Shield', glyph: '⬡', tint: '#7ad7ff', shield: 1,
+              info: 'A shield soaks the first hit and comes back a couple of seconds later.' },
+  pinpoint: { name: 'Pinpointer', glyph: '⊙', tint: '#5ee0a0', pinpointer: 1, speed: 1.2, spread: 0.6,
+              info: 'You aim at the nearest creature instead of by hand, with a sightline to it.' },
+  repel:    { name: 'Projectile Repulsion Field', glyph: '⊘', tint: '#8fd3ff', repel: 1,
+              info: 'Shots aimed at you are shoved aside before they arrive.' },
+  tinker:   { name: 'Tinker with Wands Everywhere', glyph: '⚙', tint: '#e9ecf2', tinker: 1,
+              info: 'The mod screen works out in the cave, not only in the shop.' },
+  unlimited:{ name: 'Unlimited Spells', glyph: '∞', tint: '#6db8ff', mana: 0,
+              info: 'Spells cost no mana at all.' },
+  wradar:   { name: 'Wand Radar', glyph: '▣', tint: '#ffc93c', radarWand: 1,
+              info: 'The nearest gun lying in the cave is marked at the edge of the screen.' },
+  hearts:   { name: 'Stronger Hearts', glyph: '❤', tint: '#46c48c', heal: 1.5,
+              info: 'Anything that heals you heals half again as much.' },
+};
+const PERK_IDS = Object.keys(PERKS);
+
+// Everything the perks you are carrying add up to. Multipliers multiply, flags stick,
+// `mana: 0` means unlimited and stays unlimited however many of them you find.
+function perkBag(ids) {
+  const P = { dmg: 1, speed: 1, spread: 1, bounce: 0, recoil: 1, crit: 0, mana: 1,
+    delay: 1, rech: 1, walk: 1, jet: 1, hpMul: 1, hpAdd: 0, heal: 1, gold: 1, goldPull: 1,
+    shield: 0, lives: 0, ghost: 0, homing: 0, trail: 0, contact: 0, close: 0, invis: 0,
+    repel: 0, seeAll: 0, radarEnemy: 0, radarItem: 0, radarWand: 0, tinker: 0,
+    extraItem: 0, pinpointer: 0 };
+  for (const id of ids || []) {
+    const k = PERKS[id];
+    if (!k) continue;
+    P.dmg *= k.dmg || 1; P.speed *= k.speed || 1; P.spread *= k.spread || 1;
+    P.recoil *= k.recoil || 1; P.delay *= k.delay || 1; P.rech *= k.rech || 1;
+    P.walk *= k.walk || 1; P.jet *= k.jet || 1; P.hpMul *= k.hpMul || 1;
+    P.heal *= k.heal || 1; P.gold *= k.gold || 1; P.goldPull *= k.goldPull || 1;
+    if (k.mana === 0) P.mana = 0; else P.mana *= k.mana || 1;
+    P.bounce += k.bounce || 0; P.crit += k.crit || 0; P.hpAdd += k.hpAdd || 0;
+    P.lives += k.lives || 0; P.ghost += k.ghost || 0;
+    P.homing = Math.max(P.homing, k.homing || 0);
+    for (const f of ['shield', 'trail', 'contact', 'close', 'invis', 'repel', 'seeAll',
+      'radarEnemy', 'radarItem', 'radarWand', 'tinker', 'extraItem', 'pinpointer'])
+      if (k[f]) P[f] = 1;
+  }
+  P.maxHp = Math.max(10, Math.round((PLAYER_HP + P.hpAdd) * P.hpMul));
+  return P;
+}
+
+// Gold for the deck readout: a bare number under 1000, and thousands truncated (not
+// rounded) to one decimal with a "k" — 999 -> "999", 1234 -> "1.2k", 2000 -> "2k".
+// Pure and above makeLevel so the logic suite can load it.
+function fmtGold(g) {
+  g = Math.max(0, Math.floor(g || 0));
+  if (g < 1000) return String(g);
+  return (Math.floor(g / 100) / 10).toString() + 'k';
+}
+
+function makeLevel(seed, floor, owned) {
   floor = floor || 1;
+  const have = new Set(owned || []);     // perks you are already carrying, so a room is
+                                         // never a wasted trip if it can help it
   const hash = (x, y) => {
     let v = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 982451653)) | 0;
     v = Math.imul(v ^ (v >>> 13), 1274126177);
@@ -1739,11 +2361,68 @@ function makeLevel(seed, floor) {
   // exit ledge
   slab(CW / 2 - 24, 34, 48, 3);
 
+  // ---- hidden rooms ----
+  // One perk and one heart, each cut out of whatever rock is there and lined with brick
+  // the way the shop is, so it reads as somewhere somebody built. The tunnel runs back to
+  // a point on the main route, which is the only thing in a level guaranteed to be
+  // reachable — a room carved into the rock on its own would be a room nobody ever finds.
+  const rect = (x0, y0, w, h, v) => {
+    for (let y = y0; y < y0 + h; y++)
+      for (let x = x0; x < x0 + w; x++) if (inside(x, y)) mat[y * CW + x] = v;
+  };
+  const tunnelTo = (x0, y0, x1, y1, r) => {
+    const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0)));
+    for (let i = 0; i <= n; i++) disc(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, r, 0);
+  };
+  const makeRoom = () => {
+    for (let tries = 0; tries < 80; tries++) {
+      const p0 = points[1 + Math.floor(rnd() * (points.length - 2))];
+      const a = rnd() * Math.PI * 2, d = 50 + rnd() * 100;
+      const ex = Math.round(Math.max(40, Math.min(CW - 40, p0.x + Math.cos(a) * d)));
+      const ey = Math.round(Math.max(70, Math.min(SHOP_TOP - 70, p0.y + Math.sin(a) * d)));
+      const rx = 20, ry = 12, sh = 3;
+      rect(ex - rx - sh, ey - ry - sh, (rx + sh) * 2, (ry + sh) * 2, BRICK);   // the shell
+      rect(ex - rx, ey - ry, rx * 2, ry * 2, 0);                               // and the room
+      const back = Math.atan2(p0.y - ey, p0.x - ex);
+      tunnelTo(ex + Math.cos(back) * (rx - 2), ey + Math.sin(back) * (ry - 2), p0.x, p0.y, 7);
+      rect(ex - rx, ey - ry, rx * 2, ry * 2, 0);         // the tunnel may have eaten an edge
+      return { x: ex * CELL, y: ey * CELL };
+    }
+    return null;
+  };
+  const perkRoom = makeRoom();
+  const heartRoom = makeRoom();
+  // and clear the route again: a room's shell is solid brick and can land straight across
+  // the one tunnel the whole level hangs off. Above the shop only, or the same pass would
+  // punch extra holes in the shop roof, which is laid down after the first one.
+  for (const c of routePath)
+    if (c.y < SHOP_TOP - SHOP_ROOF - 9) disc(c.x, c.y, Math.min(c.r, 7), 0);
+  // and lay the roof back down. A disc is round, so clearing the route anywhere near the
+  // roof opens a few columns of it, and a shell across the shaft plugs it: either way the
+  // roof stops being a roof. Whatever happened up here, the shop has one hole in it.
+  for (let cy = SHOP_TOP - SHOP_ROOF; cy < SHOP_TOP; cy++)
+    for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BRICK;
+  for (let cy = SHOP_TOP - SHOP_ROOF - 26; cy < SHOP_TOP; cy++)
+    for (let cx = shopExit - 9; cx <= shopExit + 9; cx++)
+      if (inside(cx, cy)) mat[cy * CW + cx] = 0;
+  // which perk is in it: anything you have not got, if the run of the pool allows
+  let perkId = null;
+  if (perkRoom) {
+    const fresh = PERK_IDS.filter(k => !have.has(k));
+    const pool = fresh.length ? fresh : PERK_IDS;
+    perkId = pool[Math.floor(rnd() * pool.length)];
+  }
+  const rooms = [];
+  if (perkRoom) rooms.push({ kind: 'perk', id: perkId, x: perkRoom.x, y: perkRoom.y, taken: false });
+  if (heartRoom) rooms.push({ kind: 'heart', x: heartRoom.x, y: heartRoom.y, taken: false });
+
   // unbreakable border
   for (let cy = 0; cy < CH; cy++)
     for (let cx = 0; cx < CW; cx++)
       if (cx < 3 || cx >= CW - 3 || cy < 3 || cy >= CH - 3) mat[cy * CW + cx] = BED;
-  // colour the terrain (the rock mottle rides the same interpolated lattice)
+  // colour the terrain (the rock mottle rides the same interpolated lattice).
+  // The palette is the floor's own, so the same floor always looks the same.
+  const T = themeFor(floor);
   const tintL = lattice(4, (x, y) => fbm(x / 6 + 100, y / 6 + 100));
   const img = new ImageData(CW, CH);
   const d = img.data;
@@ -1755,17 +2434,17 @@ function makeLevel(seed, floor) {
       let c;
       if (m === ROCK) {
         const exposed = cy > 1 && (mat[i - CW] === 0 || mat[i - 2 * CW] === 0);
-        c = exposed ? mix(THEME.moss[0], THEME.moss[1], r1)
-                    : mix(THEME.rock[0], THEME.rock[1], at(tintL, cx, cy));
+        c = exposed ? mix(T.moss[0], T.moss[1], r1)
+                    : mix(T.rock[0], T.rock[1], at(tintL, cx, cy));
       } else if (m === BRICK) {
         const k = cx + (cy % 2) * 3;
-        if (k % 6 === 0) c = THEME.mortar;
+        if (k % 6 === 0) c = T.mortar;
         else {
-          c = mix(THEME.brick[0], THEME.brick[1], hash(Math.floor(k / 6), cy));
+          c = mix(T.brick[0], T.brick[1], hash(Math.floor(k / 6), cy));
           if (cy > 0 && mat[i - CW] === 0) c = c.map(v => v * 1.18);
         }
       } else {
-        c = mix(THEME.bed[0], THEME.bed[1], r1);
+        c = mix(T.bed[0], T.bed[1], r1);
       }
       const j = (r1 - 0.5) * 10;
       d[i * 4] = c[0] + j; d[i * 4 + 1] = c[1] + j; d[i * 4 + 2] = c[2] + j; d[i * 4 + 3] = 255;
@@ -1777,7 +2456,7 @@ function makeLevel(seed, floor) {
   for (let y = 0; y < BH; y++)
     for (let x = 0; x < BW; x++) {
       const t = Math.pow(fbm(x / 10 + 300, y / 10 + 300), 1.6);
-      const c = mix(THEME.bg, THEME.bg2, Math.min(1, t * 1.3));
+      const c = mix(T.bg, T.bg2, Math.min(1, t * 1.3));
       const j = (hash(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
       bgImg.data[k] = c[0] + j; bgImg.data[k + 1] = c[1] + j; bgImg.data[k + 2] = c[2] + j; bgImg.data[k + 3] = 255;
     }
@@ -1786,31 +2465,39 @@ function makeLevel(seed, floor) {
   const start = { x: startCX * CELL, y: SHOP_FLOOR * CELL - PH };
   const arrival = { x: (startCX + 3) * CELL, y: (SHOP_FLOOR - 13) * CELL };
 
-  // shop stock: a free heal and four mods, spread across the room
+  // shop stock: the free heal, and the four things you came for. The four sit in one row
+  // across the middle of the room so you can read them all without walking the width of
+  // it; the heal stays on its own beside the portal you arrive through, where you land.
   const stock = [];
   const offer = [], taken = {};
-  for (let i = 0; i < 4; i++) {
+  // five things for sale if you are carrying Extra Item in Holy Mountain, four otherwise
+  const items = have.has('holyitem') ? 5 : 4;
+  for (let i = 0; i < items; i++) {
     const id = rollMod(rnd, floor, taken);
     taken[id] = 1;
     offer.push(id);
   }
   const shelf = (SHOP_FLOOR - 13) * CELL;
   const gunShop = isGunShop(floor);
-  for (let i = 0; i < 5; i++) {
-    const x = (CW / 6) * (i + 1) * CELL;
-    if (i === 0) stock.push({ kind: 'heal', x, y: shelf, price: 0, sold: false });
-    else if (gunShop) {
+  // the free heal, just along from the portal you arrive through. Far enough along that
+  // you are not standing on it the moment you land.
+  stock.push({ kind: 'heal', x: arrival.x + 62, y: shelf, price: 0, sold: false });
+  const PLINTH_GAP = 64;                 // world units between the ones in the row
+  for (let i = 0; i < items; i++) {
+    const x = WW / 2 + (i - (items - 1) / 2) * PLINTH_GAP;
+    if (gunShop) {
       // shop guns roll a touch above whatever the cave is dropping on this floor
       const gun = makeGun(rnd, Math.min(1, gunTier(CH * 0.15, floor) + 0.1));
       stock.push({ kind: 'gun', gun, x, y: shelf, price: gunPrice(gun), sold: false });
     } else {
-      const id = offer[i - 1];
+      const id = offer[i];
       stock.push({ kind: 'mod', id, x, y: shelf, price: priceOf(id), sold: false });
     }
   }
   const portal = { x: WW / 2 - 10, y: 34 * CELL - 30, w: 20, h: 30 };
 
-  // enemies in open spaces
+  // enemies in open spaces. Each one is drawn off this floor's roster, so the mix you
+  // meet is the floor's own and stays the same run to run.
   const clear = (cx, cy, r) => {
     for (let dy = -r; dy <= r; dy++)
       for (let dx = -r; dx <= r; dx++) {
@@ -1821,6 +2508,7 @@ function makeLevel(seed, floor) {
     return true;
   };
   const enemies = [];
+  const roster = rosterFor(floor, rnd);
   const wanted = Math.min(136, ENEMY_COUNT + (floor - 1) * 12);
   for (let a = 0; a < 20000 && enemies.length < wanted; a++) {
     const cx = 8 + Math.floor(rnd() * (CW - 16)), cy = 50 + Math.floor(rnd() * (SHOP_TOP - 70));
@@ -1828,19 +2516,29 @@ function makeLevel(seed, floor) {
     const x = cx * CELL, y = cy * CELL;
     if (Math.hypot(x - start.x, y - start.y) < 200) continue;
     if (enemies.some(e => Math.hypot(e.x - x, e.y - y) < 90)) continue;
-    enemies.push({ x, y, ty: y, r: 9, phase: rnd() * 6.28, hp: ENEMY_HP, cd: 1 + rnd() * 2,
-      flash: 0, lx: 0, ly: 1, hx: x, hy: y, tgt: null, rest: rnd() * 3 });
+    const k = enemyFor(roster[Math.floor(rnd() * roster.length)], floor);
+    enemies.push({ x, y, ty: y, r: k.r, phase: rnd() * 6.28, hp: k.hp, hpMax: k.hp,
+      cd: 1 + rnd() * 2, flash: 0, lx: 0, ly: 1, hx: x, hy: y, tgt: null, rest: rnd() * 3,
+      k, touch: 0, charge: 0 });
   }
 
   // guns and mods to find: the higher up the cave, the better the roll.
   // Half the mods there used to be, and they have to sit far enough apart that the
   // few of them are spread over the whole cave rather than bunched in one corner.
   const pickups = [];
+  // the first floor under a spot, so a pickup sits on the ground rather than hanging in
+  // the air wherever an open cell happened to be
   let gunsLeft = GUN_DROPS, modsLeft = MOD_DROPS;
   for (let a = 0; a < 20000 && gunsLeft + modsLeft > 0; a++) {
     const cx = 8 + Math.floor(rnd() * (CW - 16)), cy = 30 + Math.floor(rnd() * (SHOP_TOP - 60));
     if (!clear(cx, cy, 6)) continue;
-    const x = cx * CELL, y = cy * CELL;
+    // and drop it onto the first floor below, but only as far as the open box it was
+    // picked for — further than that and it lands in a crack you cannot stand next to.
+    // Nothing to land on inside the box means this spot is no good and another is tried.
+    let gy = cy;
+    while (gy - cy < 6 && !mat[(gy + 1) * CW + cx]) gy++;
+    if (!mat[(gy + 1) * CW + cx]) continue;
+    const x = cx * CELL, y = (gy + 1) * CELL - 9;
     if (Math.hypot(x - start.x, y - start.y) < 200) continue;
     if (pickups.some(q => Math.hypot(q.x - x, q.y - y) < PICKUP_GAP)) continue;
     const tier = gunTier(cy, floor);
@@ -1853,7 +2551,8 @@ function makeLevel(seed, floor) {
     }
   }
 
-  return { mat, img, bgImg, start, portal, enemies, pickups, stock, shopExit, arrival };
+  return { mat, img, bgImg, start, portal, enemies, pickups, stock, shopExit, arrival,
+    rooms, roster, theme: T.name };
 }
 
 // Fly a shot forward with the same rules the live bullets use, so the aim line
@@ -1954,32 +2653,68 @@ function Game({ input }) {
     let seen = fogStart();
 
     let mat, img, start, portal, enemies, pickups, stock, arrival, total, floor = 1;
+    let rooms = [];                                  // the perk room and the heart room
+    let roster = [], themeName = '';                 // this floor's creatures, and its palette
 
     const p = { x: 0, y: 0, vx: 0, vy: 0, onGround: false, face: 1, jet: 0,
       fuel: 1, empty: false, hp: PLAYER_HP, hitT: 0, dead: false, kick: 0,
+      shieldReady: true, shieldT: 0,        // Permanent Shield: up, and its recharge clock
       jx: 0, jy: 0, aim: { on: false, show: false, nx: 1, ny: 0 } };
     const bullets = [], enemyShots = [], smoke = [], sparks = [], flashes = [], toasts = [], coins = [];
     const fields = [], beams = [];                   // static projectiles, and instant beam streaks
+    const torchP = [];                               // the embers the torch throws off
     const aimPath = [];                              // scratch buffer for the aim line
-    let smokeAcc = 0, time = 0, camX = 0, camY = 0, camReady = false;
+    let smokeAcc = 0, time = 0, levelT = 0, camX = 0, camY = 0, camReady = false;
+    // the torch: one flicker number drives both the flame and the lamp, so the light
+    // in the cave breathes exactly as much as the fire does
+    let flick = 1, flickN = 0, torchT = 0, torchAcc = 0, torchR = SIGHT, visPts = [];
+
+    // The torch hand: whichever one the gun is not in, so the two never sit on top of
+    // each other. Aiming behind you swaps hands, the same way the gun does.
+    const torchHand = () => {
+      const a = p.aim.show ? p.aim.nx : p.face;
+      return { x: p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: p.y + 9 };
+    };
+    // ---- perks ----
+    // Everything the perks you are carrying add up to, recomputed whenever the run's perk
+    // list changes and read all over step() and draw(). Neutral (all multipliers 1, all
+    // flags 0) until a perk is found, so a run with no perks behaves exactly as before.
+    let pb = perkBag([]);
+    const refreshBag = () => { pb = perkBag(input.current.loadout.perks || []); };
+    // the true maximum health: the perk bag's answer plus the running +25 per heart room.
+    const maxHp = () => pb.maxHp + (input.current.loadout.maxBonus || 0);
+    // the ghost companion (Angry Ghost) and the fire trail (Levitation Trail), if owned
+    let ghost = null;
+    const burns = [];
+
     const toast = text => { toasts.push({ text, t: 2.2 }); if (toasts.length > 3) toasts.shift(); };
     let best = 0, raf, last = performance.now();
 
     // a floor is a fresh cave with its own shop at the bottom; you keep everything else
     function enterLevel() {
-      const level = makeLevel(1 + Math.floor(Math.random() * 2147483000), floor);
+      refreshBag();
+      const level = makeLevel(1 + Math.floor(Math.random() * 2147483000), floor,
+        input.current.loadout.perks);
       mat = level.mat; img = level.img;
       start = level.start; portal = level.portal; arrival = level.arrival;
       enemies = level.enemies; pickups = level.pickups; stock = level.stock;
+      rooms = level.rooms || [];
+      roster = level.roster; themeName = level.theme;
       total = enemies.length;
+      ghost = pb.ghost ? { x: level.start.x, y: level.start.y, cd: 0 } : null;
+      burns.length = 0;
       tctx.putImageData(img, 0, 0);
       bgctx.putImageData(level.bgImg, 0, 0);
       p.x = start.x; p.y = start.y; p.vx = 0; p.vy = 0;
       p.fuel = 1; p.empty = false; p.kick = 0;
       bullets.length = enemyShots.length = smoke.length = 0;
       sparks.length = flashes.length = coins.length = 0;
+      torchP.length = 0;
       camReady = false; best = 0;
-      seen = fogStart(); paintFog();          // every floor is dark again
+      levelT = 0;                             // the floor's name card gets its three seconds
+      seen = fogStart();
+      if (pb.seeAll) seen.fill(2);            // All-Seeing Eye lights the whole floor
+      paintFog();                             // otherwise every floor starts dark again
     }
 
     // Repaint the whole overlay mask from the reveal grid. FW x FH is a few thousand
@@ -2023,11 +2758,9 @@ function Game({ input }) {
     c.addEventListener('pointerleave', mLeave);
 
     // ---- terrain queries ----
-    const solidAt = (x, y) => {
-      const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
-      if (cx < 0 || cy < 0 || cx >= CW || cy >= CH) return true;
-      return mat[cy * CW + cx] !== 0;
-    };
+    const solidCell = (cx, cy) =>
+      cx < 0 || cy < 0 || cx >= CW || cy >= CH || mat[cy * CW + cx] !== 0;
+    const solidAt = (x, y) => solidCell(Math.floor(x / CELL), Math.floor(y / CELL));
     const boxHit = (x, y) => {
       const x0 = Math.floor(x / CELL), x1 = Math.floor((x + PW - 0.001) / CELL);
       const y0 = Math.floor(y / CELL), y1 = Math.floor((y + PH - 0.001) / CELL);
@@ -2039,11 +2772,7 @@ function Game({ input }) {
       }
       return false;
     };
-    const lineOfSight = (x0, y0, x1, y1) => {
-      const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 3);
-      for (let i = 1; i < n; i++) if (solidAt(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n)) return false;
-      return true;
-    };
+    const lineOfSight = (x0, y0, x1, y1) => losClear(x0, y0, x1, y1, solidCell);
     const enemyAt = (x, y, pad) => {
       for (let j = 0; j < enemies.length; j++) {
         const e = enemies[j];
@@ -2060,17 +2789,52 @@ function Game({ input }) {
     }
     function hurt(n) {
       if (p.dead || n <= 0) return;
+      // Permanent Shield soaks a hit whole, then winds back up over a couple of seconds
+      if (pb.shield && p.shieldReady) {
+        p.shieldReady = false; p.shieldT = 2.5;
+        burst(p.x + PW / 2, p.y + PH / 2, 10, '#7ad7ff');
+        return;
+      }
       p.hp = Math.max(0, p.hp - n);
       p.hitT = 0.3;
-      if (p.hp === 0) { p.dead = true; burst(p.x + PW / 2, p.y + PH / 2, 24, COL.player); }
+      if (p.hp === 0) {
+        // Extra Life gets you back up once, at full health
+        const LO = input.current.loadout;
+        if (pb.lives > (LO.usedLives || 0)) {
+          LO.usedLives = (LO.usedLives || 0) + 1;
+          p.hp = maxHp();
+          p.shieldReady = true; p.shieldT = 0;
+          burst(p.x + PW / 2, p.y + PH / 2, 24, '#ff5a36');
+          toast('Back from the dead');
+          input.current.notify();
+          return;
+        }
+        p.dead = true; burst(p.x + PW / 2, p.y + PH / 2, 24, COL.player);
+      }
+    }
+    // one pull of an enemy's trigger: aimed at the player, and a shotgun type throws
+    // its pellets in a cone. Refuses the shot if the player has broken line of sight
+    // since it decided to take it.
+    function fireEnemyShot(e, tx, ty) {
+      const k = e.k;
+      if (!lineOfSight(e.x, e.ty, tx, ty)) return;
+      const base = Math.atan2(ty - e.ty, tx - e.x);
+      for (let s = 0; s < k.shots; s++) {
+        const cone = k.shots > 1 ? (s - (k.shots - 1) / 2) * 0.15 : 0;
+        const a = base + cone + (Math.random() - 0.5) * 0.22;
+        enemyShots.push({ x: e.x + Math.cos(a) * (e.r + 4), y: e.ty + Math.sin(a) * (e.r + 4),
+          vx: Math.cos(a) * k.bspd, vy: Math.sin(a) * k.bspd, life: 2.5,
+          col: k.col.a, dmg: k.dmg, size: k.body === 'blob' ? 4 : 3 });
+      }
     }
     function damageEnemy(j, dmg) {
       const e = enemies[j];
       e.hp -= dmg; e.flash = 0.08;
       if (e.hp > 0) return;
-      burst(e.x, e.ty, 16, COL.enemy);
+      burst(e.x, e.ty, 16, e.k.col.a);
       enemies.splice(j, 1);
-      coins.push({ x: e.x, y: e.ty, amount: 5 + Math.floor(Math.random() * 6) + floor,
+      coins.push({ x: e.x, y: e.ty,
+        amount: Math.round((e.k.gold + Math.floor(Math.random() * 3)) * pb.gold),
         t: Math.random() * 6.28, vy: -60 - Math.random() * 40 });
     }
 
@@ -2114,14 +2878,15 @@ function Game({ input }) {
       const pas = gunPassives(g);
       const wrap = () => {
         g.idx = 0;
-        g.rechT = g.skipRech ? 0 : effRecharge(g);
+        g.rechT = g.skipRech ? 0 : effRecharge(g) * pb.rech;   // Faster Wands shortens it
         g.skipRech = false;
         shuffleOrder(g);
       };
       const plan = planCast(g, input.current.loadout.guns);
       if (!plan.shots.length) { wrap(); return; }        // modifiers with nothing to modify
-      if (g.mana < plan.cost) { g.idx = plan.start; g.delayT = 0.12; return; }
-      g.mana -= plan.cost;
+      const cost = pb.mana === 0 ? 0 : plan.cost;        // Unlimited Spells: nothing costs mana
+      if (g.mana < cost) { g.idx = plan.start; g.delayT = 0.12; return; }
+      g.mana -= cost;
 
       const base = Math.atan2(ny, nx);
       const acts = plan.acts || [];
@@ -2174,11 +2939,11 @@ function Game({ input }) {
       let kick = 0;
       for (const sh of plan.shots) kick += sh.recoil;
       if (kick && !p.dead) {
-        kick = Math.min(150, kick * 1.4);
+        kick = Math.min(220, kick * 1.4 * pb.recoil);   // Knockback / Concentrated add kick
         p.vx -= Math.cos(base) * kick;
         p.vy -= Math.sin(base) * kick;
       }
-      g.delayT = plan.delay;
+      g.delayT = plan.delay * pb.delay;                 // Concentrated slows, Faster Wands quickens
       if (plan.wrap) wrap();
     }
 
@@ -2190,8 +2955,14 @@ function Game({ input }) {
       if (sh.still) { castField(sh, ox + Math.cos(base) * fd, oy + Math.sin(base) * fd); return; }
       const n = Math.min(24, Math.max(1, Math.round(sh.count)));
       const off = (sh.ang || 0) * Math.PI / 180;
+      // perk touches: Glass/Concentrated damage, Critical/Close-Call chance, Faster
+      // Projectiles speed, Bouncing/Homing paths. Close Call only counts if something is
+      // right on top of you, so it is worked out once per cast, not once per pellet.
+      const pd = pb.dmg;
+      let pc = pb.crit;
+      if (pb.close && enemies.some(e => Math.hypot(e.x - ox, e.ty - oy) < 56)) pc += 0.4;
       for (let i = 0; i < n; i++) {
-        let a = base + off + (Math.random() - 0.5) * sh.spread * Math.PI / 180;
+        let a = base + off + (Math.random() - 0.5) * sh.spread * pb.spread * Math.PI / 180;
         if (sh.autoaim) {
           let best = null, bd = 320;
           for (const e of enemies) {
@@ -2201,7 +2972,7 @@ function Game({ input }) {
           if (best) a = Math.atan2(best.ty - oy, best.x - ox);
         }
         if (sh.flat) a = Math.cos(a) >= 0 ? 0 : Math.PI;
-        if (sh.beam) { fireBeam(sh, ox, oy, Math.cos(a), Math.sin(a), bonus); continue; }
+        if (sh.beam) { fireBeam(sh, ox, oy, Math.cos(a), Math.sin(a), bonus, pd, pc); continue; }
         let bx = ox + Math.cos(a) * 10, by = oy + Math.sin(a) * 10;
         if (warp) {                                   // jump forward, but not into rock
           for (let step = 0; step < 14; step++) {
@@ -2211,11 +2982,11 @@ function Game({ input }) {
           }
         }
         bullets.push({ x: bx, y: by,
-          vx: Math.cos(a) * sh.speed, vy: Math.sin(a) * sh.speed,
-          life: sh.life, dmg: sh.dmg + bonus, size: sh.size, col: sh.col, spin: 0,
-          homing: sh.homing, bounce: sh.bounce, pierce: sh.pierce,
+          vx: Math.cos(a) * sh.speed * pb.speed, vy: Math.sin(a) * sh.speed * pb.speed,
+          life: sh.life, dmg: (sh.dmg + bonus) * pd, size: sh.size, col: sh.col, spin: 0,
+          homing: Math.max(sh.homing, pb.homing), bounce: sh.bounce + pb.bounce, pierce: sh.pierce,
           explode: sh.explode, grav: sh.grav, accel: sh.accel, bore: sh.bore, hit: null,
-          knock: sh.knock, crit: sh.crit, boomer: sh.boomer, spiral: sh.spiral,
+          knock: sh.knock, crit: sh.crit + pc, boomer: sh.boomer, spiral: sh.spiral,
           pong: sh.pong, orbit: sh.orbit, homeR: sh.homeR, eat: sh.eat, pull: sh.pull,
           split: sh.split, cluster: sh.cluster, bounceFx: sh.bounceFx,
           friendly: sh.friendly, chain: sh.chain, fuse: sh.fuse,
@@ -2242,7 +3013,8 @@ function Game({ input }) {
     }
 
     // A beam is instant: it walks a line, damages what it touches and leaves a streak.
-    function fireBeam(sh, x, y, nx, ny, bonus) {
+    function fireBeam(sh, x, y, nx, ny, bonus, pd, pc) {
+      pd = pd || 1; pc = pc || 0;
       let hitAt = sh.beam;
       for (let d = 6; d <= sh.beam; d += 4) {
         const bx = x + nx * d, by = y + ny * d;
@@ -2250,7 +3022,7 @@ function Game({ input }) {
         else if (solidAt(bx, by)) { hitAt = d; break; }
         const j = enemyAt(bx, by, sh.size + 3);
         if (j >= 0) {
-          damageEnemy(j, critRoll(sh.dmg + bonus, sh.crit));
+          damageEnemy(j, critRoll((sh.dmg + bonus) * pd, sh.crit + pc));
           burst(bx, by, 4, sh.col);
           if (sh.knock) shove(enemies[j], nx, ny, sh.knock);
           if (!sh.pierce) { hitAt = d; break; }
@@ -2345,7 +3117,16 @@ function Game({ input }) {
 
     function step(dt) {
       time += dt;
+      levelT += dt;
+      // a toast raised while the game was paused (picking a mod up, say) waits here,
+      // because nothing runs on a paused frame
+      if (input.current.pendingToast) { toast(input.current.pendingToast); input.current.pendingToast = null; }
       const LO = input.current.loadout;
+      // perks: keep the current maximum health honest, wind the shield back up, and never
+      // let a shrunken cap (Glass Cannon) leave the bar reading over full
+      const MHP = maxHp();
+      if (p.hp > MHP) p.hp = MHP;
+      if (pb.shield && !p.shieldReady) { p.shieldT -= dt; if (p.shieldT <= 0) p.shieldReady = true; }
       // movement: thumbstick first, otherwise keyboard (full strength)
       let L = input.current.left;
       if (!L.active) {
@@ -2377,13 +3158,13 @@ function Game({ input }) {
       p.kick -= dt;
       const k = p.kick > 0 ? 0.15 : 1;   // let explosions push you around briefly
       if (jet) {
-        p.vx = approach(p.vx, L.nx * mag * JET, JET_ACC * dt * k);
-        const ty = L.ny * mag * JET;
+        p.vx = approach(p.vx, L.nx * mag * JET * pb.walk * DEV.move, JET_ACC * dt * k);
+        const ty = L.ny * mag * JET * pb.jet * DEV.move;    // Faster Levitation lifts harder
         // rising beats a fall instantly; only an explosion still throws you around
         if (ty < p.vy && p.kick <= 0) p.vy = ty;
         else p.vy = approach(p.vy, ty, JET_ACC * dt * k);
       } else {
-        const target = mag > 0 ? L.nx * mag * WALK : 0;
+        const target = mag > 0 ? L.nx * mag * WALK * pb.walk * DEV.move : 0;
         p.vx = approach(p.vx, target, (p.onGround ? GROUND_ACC : AIR_ACC) * dt * k);
         p.vy = Math.min(p.vy + GRAVITY * dt, 900);
       }
@@ -2446,6 +3227,19 @@ function Game({ input }) {
       else if (mouse.inside) {
         const dx = camX + mouse.x / unitPx - gx, dy = camY + mouse.y / unitPx - gy, d = Math.hypot(dx, dy);
         if (d > 1) R = { on: mouse.down, show: true, nx: dx / d, ny: dy / d };
+      }
+      // Pinpointer aims for you: the gun locks onto the nearest creature and you only
+      // decide whether to fire. It replaces hand-aiming — the stick becomes a trigger.
+      if (pb.pinpointer && !p.dead) {
+        let best = null, bd = 1e9;
+        for (const e of enemies) {
+          const d = Math.hypot(e.x - gx, e.ty - gy);
+          if (d < bd && lineOfSight(gx, gy, e.x, e.ty)) { bd = d; best = e; }
+        }
+        if (best) {
+          const a = Math.atan2(best.ty - gy, best.x - gx);
+          R = { on: R.on || (TR.active && TR.on), show: true, nx: Math.cos(a), ny: Math.sin(a) };
+        }
       }
       if (p.dead) R.on = false;
       p.aim = R;
@@ -2598,8 +3392,8 @@ function Game({ input }) {
             if (Math.hypot(b.x - f.x, b.y - f.y) < f.r) { burst(b.x, b.y, 3, f.col); enemyShots.splice(k, 1); }
           }
         } else if (f.field === 'heal') {
-          if (Math.hypot(pcx - f.x, pcy - f.y) < f.r && p.hp < PLAYER_HP && f.tick <= 0) {
-            f.tick = 0.4; p.hp = Math.min(PLAYER_HP, p.hp + 4); input.current.notify();
+          if (Math.hypot(pcx - f.x, pcy - f.y) < f.r && p.hp < MHP && f.tick <= 0) {
+            f.tick = 0.4; p.hp = Math.min(MHP, p.hp + 4 * pb.heal); input.current.notify();
           }
         } else if (f.field === 'storm') {
           if (f.tick <= 0) {
@@ -2642,9 +3436,10 @@ function Game({ input }) {
       for (let i = coins.length - 1; i >= 0; i--) {
         const g = coins[i];
         const dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;
-        if (d < COIN_PULL && !p.dead) {
+        const pull = COIN_PULL * pb.goldPull;    // Attract Gold reaches further
+        if (d < pull && !p.dead) {
           // inside the pull radius it flies to you, straight through rock
-          const grab = 180 + 900 * (1 - d / COIN_PULL);
+          const grab = 180 + 900 * (1 - d / pull);
           g.vx = (g.vx || 0) + (dx / d) * grab * dt * 6;
           g.vy += (dy / d) * grab * dt * 6;
           g.vx *= 0.88; g.vy *= 0.88;
@@ -2678,22 +3473,47 @@ function Game({ input }) {
         near = { src: 'pickup', q };
         break;
       }
-      const nearKey = !near ? -1 : near.src + ':' + (near.src === 'shop' ? stock.indexOf(near.it) : pickups.indexOf(near.q));
+      // the hidden rooms' prizes: a perk on its altar, or the +25 heart
+      if (!near) for (const r of rooms) {
+        if (r.taken) continue;
+        if (Math.abs(r.x - pcx) > 20 || Math.abs(r.y - pcy) > 26) continue;
+        near = { src: 'room', r };
+        break;
+      }
+      const nearKey = !near ? -1 : near.src + ':' +
+        (near.src === 'shop' ? stock.indexOf(near.it)
+          : near.src === 'room' ? rooms.indexOf(near.r) : pickups.indexOf(near.q));
       const label = !near ? null
         : near.src === 'shop'
-          ? (near.it.kind === 'heal' ? { text: 'Full heal', price: 0, can: p.hp < PLAYER_HP }
+          ? (near.it.kind === 'heal' ? { text: 'Full heal', price: 0, can: p.hp < MHP }
             : near.it.kind === 'gun' ? { text: near.it.gun.name, gun: near.it.gun,
                 price: near.it.price, can: LO.gold >= near.it.price }
             : { text: MODS[near.it.id].name, id: near.it.id, price: near.it.price,
                 can: LO.gold >= near.it.price })
+          : near.src === 'room'
+            ? (near.r.kind === 'perk'
+                ? { text: PERKS[near.r.id].name, perk: near.r.id, price: 0, can: true }
+                : { text: '+25 Max Health', heart: true, price: 0, can: true })
           // things on the ground are always yours for the taking — the price is what
           // the "For sale"/"Found" split cares about, not whether you're allowed to
           : (near.q.kind === 'gun' ? { text: near.q.gun.name, gun: near.q.gun, price: 0, can: true, found: true }
             : { text: MODS[near.q.id].name, id: near.q.id, price: 0, can: true, found: true });
-      const sig = nearKey + ':' + (label && label.can ? 1 : 0) + ':' + inShop;
+      // where the item sits on screen, so the panel can float its bottom edge just above
+      // it (the plinth/pickup) rather than covering it. camY/unitPx are last frame's, from
+      // draw(); the item is static and the camera settles, so it lands right within a frame
+      // or two. In css px measured up from the bottom of the view — that's the panel's
+      // `bottom`. Bucketed into the sig so the panel re-lays-out as the camera settles.
+      let pbottom = 12;
+      if (near) {
+        const iy = near.src === 'shop' ? near.it.y : near.src === 'room' ? near.r.y : near.q.y;
+        const dprc = window.devicePixelRatio || 1;
+        pbottom = Math.round(Math.max(10, c.height / dprc - (iy - 16 - camY) * unitPx));
+      }
+      const sig = nearKey + ':' + (label && label.can ? 1 : 0) + ':' + inShop + ':' + Math.round(pbottom / 16);
       if (sig !== input.current.sig) {
         input.current.sig = sig;
         input.current.prompt = label;
+        input.current.promptBottom = pbottom;
         input.current.inShop = inShop;
         input.current.notify();
       }
@@ -2702,7 +3522,7 @@ function Game({ input }) {
         if (near.src === 'shop') {
           const it = near.it;
           if (it.kind === 'heal') {
-            if (p.hp < PLAYER_HP) { p.hp = PLAYER_HP; it.sold = true; toast('Patched up'); }
+            if (p.hp < MHP) { p.hp = MHP; it.sold = true; toast('Patched up'); }
           } else if (LO.gold < it.price) {
             toast('Not enough gold');
           } else if (it.kind === 'gun') {
@@ -2718,13 +3538,30 @@ function Game({ input }) {
             it.sold = true;
             toast('Bought ' + MODS[it.id].name);
           }
+        } else if (near.src === 'room') {
+          const r = near.r;
+          if (r.kind === 'perk') {
+            const before = maxHp();
+            (LO.perks || (LO.perks = [])).push(r.id);
+            refreshBag();
+            const after = maxHp();
+            if (after > before) p.hp += after - before;   // Extra Health comes full
+            p.hp = Math.min(p.hp, after);                 // Glass Cannon trims it
+            if (pb.seeAll) { seen.fill(2); paintFog(); }  // All-Seeing Eye lights it up now
+            if (pb.ghost && !ghost) ghost = { x: pcx, y: pcy, cd: 0 };
+            toast('Perk: ' + PERKS[r.id].name);
+          } else {
+            LO.maxBonus = (LO.maxBonus || 0) + 25;        // the heart raises the cap, no heal
+            toast('+25 Max Health');
+          }
+          r.taken = true;
         } else {
           const q = near.q;
           if (q.kind === 'mod') {
-            LO.bag.push(q.id);
-            toast('Picked up ' + MODS[q.id].name);
-            const qi = pickups.indexOf(q);
-            if (qi >= 0) pickups.splice(qi, 1);
+            // ask first: the card comes up with the game paused behind it, and the
+            // right stick picks up or leaves. See ModFound.
+            input.current.confirm = { id: q.id, q };
+            input.current.confirmAim = null;      // neither button starts lit
           } else {
             input.current.found = q;          // the chooser decides what happens to it
           }
@@ -2737,40 +3574,102 @@ function Game({ input }) {
       for (let i = toasts.length - 1; i >= 0; i--) if ((toasts[i].t -= dt) <= 0) toasts.splice(i, 1);
 
       // ---- enemies ----
-      for (const e of enemies) {
-        // patrol: pick a spot near home, drift to it, pause, pick another. Rock in
-        // the way just means the spot was a bad idea, so it chooses a different one.
-        e.rest -= dt;
-        if (!e.tgt || e.rest <= 0 || Math.hypot(e.tgt.x - e.x, e.tgt.y - e.y) < 6) {
-          const a = Math.random() * Math.PI * 2, r = 10 + Math.random() * PATROL_R;
-          e.tgt = { x: e.hx + Math.cos(a) * r, y: e.hy + Math.sin(a) * r };
-          e.rest = 2 + Math.random() * 3.5;
-        }
-        const tdx = e.tgt.x - e.x, tdy = e.tgt.y - e.y, td = Math.hypot(tdx, tdy) || 1;
-        const step = PATROL_SPEED * (e.chill || 1) * dt;
-        e.chill = 1;                                  // fields re-apply it every frame
-        const wx = e.x + tdx / td * step, wy = e.y + tdy / td * step;
-        if (solidAt(wx - e.r, wy) || solidAt(wx + e.r, wy) ||
-            solidAt(wx, wy - e.r) || solidAt(wx, wy + e.r)) { e.tgt = null; e.rest = 0; }
-        else { e.x = wx; e.y = wy; }
-        e.ty = e.y + Math.sin(time * 2 + e.phase) * 4;
+      // What an enemy does is what it is. Shooters hold a hover and fire on sight,
+      // turrets never move and wind up a long shot, chasers come at you and hurt on
+      // contact, bombers come at you and burst. Runs backwards because a bomber
+      // takes itself out of the list.
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i], k = e.k;
         e.flash -= dt;
+        e.cd -= dt;
+        e.touch -= dt;
         const dx = pcx - e.x, dy = pcy - e.ty, dist = Math.hypot(dx, dy) || 1;
         e.lx = dx / dist; e.ly = dy / dist;
-        e.cd -= dt;
-        if (!p.dead && dist < ENEMY_RANGE && e.cd <= 0) {
-          e.cd = 0.4;   // re-check soon if we can't see the player
-          if (lineOfSight(e.x, e.ty, pcx, pcy)) {
-            e.cd = 1.4 + Math.random() * 1.2;
-            const a = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.25;
-            enemyShots.push({ x: e.x + Math.cos(a) * 12, y: e.ty + Math.sin(a) * 12,
-              vx: Math.cos(a) * ENEMY_BULLET, vy: Math.sin(a) * ENEMY_BULLET, life: 2.5 });
+        // Aggro (k.aggro) and firing (k.range) reaches are in world units, but the
+        // camera zoom changes how much world fits on screen — zoomed in, an enemy off
+        // the edge of the view could still hunt and shoot you. Scale both by 1/zoom so
+        // they engage at roughly the same on-screen distance whatever the zoom.
+        // Invisibility still folds in on top: creatures notice you far later.
+        const sees = (pb.invis ? 0.4 : 1) / DEV.zoom;
+        // aggro only on a real sightline: a chaser or bomber won't come for you through a
+        // wall any more, only once it can actually see you (and within its aggro reach).
+        // The range check comes first so the line-of-sight march only runs for the few
+        // enemies already close enough to care.
+        const hunting = (k.act === 'chase' || k.act === 'bomb') && !p.dead &&
+          dist < k.aggro * sees && lineOfSight(e.x, e.ty, pcx, pcy);
+
+        if (k.act === 'turret') {
+          // holds station: the hover is all the movement it gets
+        } else if (hunting) {
+          const step = k.spd * (e.chill || 1) * dt;
+          const wx = e.x + dx / dist * step, wy = e.y + dy / dist * step;
+          if (!solidAt(wx - e.r, wy) && !solidAt(wx + e.r, wy) &&
+              !solidAt(wx, wy - e.r) && !solidAt(wx, wy + e.r)) { e.x = wx; e.y = wy; }
+          else if (!solidAt(wx, e.y)) e.x = wx;            // slide along whatever it hit
+          else if (!solidAt(e.x, wy)) e.y = wy;
+          else { e.tgt = null; e.rest = 0; }
+        } else {
+          // patrol: pick a spot near home, drift to it, pause, pick another. Rock in
+          // the way just means the spot was a bad idea, so it chooses a different one.
+          e.rest -= dt;
+          if (!e.tgt || e.rest <= 0 || Math.hypot(e.tgt.x - e.x, e.tgt.y - e.y) < 6) {
+            const a = Math.random() * Math.PI * 2, r = 10 + Math.random() * PATROL_R;
+            e.tgt = { x: e.hx + Math.cos(a) * r, y: e.hy + Math.sin(a) * r };
+            e.rest = 2 + Math.random() * 3.5;
+          }
+          const tdx = e.tgt.x - e.x, tdy = e.tgt.y - e.y, td = Math.hypot(tdx, tdy) || 1;
+          const step = k.spd * (e.chill || 1) * dt;
+          const wx = e.x + tdx / td * step, wy = e.y + tdy / td * step;
+          if (solidAt(wx - e.r, wy) || solidAt(wx + e.r, wy) ||
+              solidAt(wx, wy - e.r) || solidAt(wx, wy + e.r)) { e.tgt = null; e.rest = 0; }
+          else { e.x = wx; e.y = wy; }
+        }
+        e.chill = 1;                                  // fields re-apply it every frame
+        e.ty = e.y + Math.sin(time * 2 + e.phase) * (hunting ? 2 : 4);
+
+        // contact: a chaser hurts you by reaching you, a bomber goes off
+        if (hunting && dist < e.r + 14 && e.touch <= 0) {
+          if (k.act === 'bomb') {
+            burst(e.x, e.ty, 22, k.col.a);
+            hurt(k.dmg);
+            enemies.splice(i, 1);
+            continue;
+          }
+          hurt(k.dmg);
+          e.touch = 0.9;
+        }
+
+        // firing. A turret with a wind-up shows the ring first and only shoots if it
+        // still has a line on you when the ring closes.
+        if (k.act === 'shoot' || k.act === 'turret') {
+          if (e.charge > 0) {
+            e.charge -= dt;
+            if (e.charge <= 0) fireEnemyShot(e, pcx, pcy);
+          } else if (!p.dead && dist < k.range * sees && e.cd <= 0) {
+            e.cd = 0.4;   // re-check soon if we can't see the player
+            if (lineOfSight(e.x, e.ty, pcx, pcy)) {
+              e.cd = k.cd * (0.85 + Math.random() * 0.3);
+              if (k.tele) e.charge = k.tele; else fireEnemyShot(e, pcx, pcy);
+            }
           }
         }
       }
+      // Contact Damage: anything touching you is hurt for it, whether or not it's hunting
+      if (pb.contact && !p.dead) {
+        for (let i = enemies.length - 1; i >= 0; i--) {
+          const e = enemies[i];
+          if (Math.hypot(e.x - pcx, e.ty - pcy) < e.r + 12) damageEnemy(i, 45 * dt);
+        }
+      }
+
       for (let i = enemyShots.length - 1; i >= 0; i--) {
         const b = enemyShots[i];
         b.life -= dt;
+        // Projectile Repulsion Field: shots on their way to you are shoved aside
+        if (pb.repel) {
+          const rx = b.x - pcx, ry = b.y - pcy, rd = Math.hypot(rx, ry) || 1;
+          if (rd < 72) { b.vx += rx / rd * 1100 * dt; b.vy += ry / rd * 1100 * dt; }
+        }
         let gone = b.life <= 0;
         const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
         for (let s = 0; s < sn && !gone; s++) {
@@ -2779,12 +3678,45 @@ function Game({ input }) {
           if (!p.dead && b.x > p.x - 2 && b.x < p.x + PW + 2 && b.y > p.y - 2 && b.y < p.y + PH + 2) {
             gone = true;
             burst(b.x, b.y, 5, COL.player);
-            hurt(ENEMY_DMG);
+            hurt(b.dmg);
           }
         }
         if (gone) enemyShots.splice(i, 1);
       }
       p.hitT -= dt;
+
+      // ---- Angry Ghost: a spirit that trails you and fires at what's nearest ----
+      if (pb.ghost) {
+        if (!ghost) ghost = { x: pcx, y: pcy, cd: 0 };
+        const gtx = pcx - p.face * 22, gty = p.y - 4;
+        const lp = Math.min(1, dt * 4);
+        ghost.x += (gtx - ghost.x) * lp; ghost.y += (gty - ghost.y) * lp;
+        ghost.cd -= dt;
+        if (ghost.cd <= 0 && !p.dead) {
+          let best = null, bd = 340;
+          for (const e of enemies) { const d = Math.hypot(e.x - ghost.x, e.ty - ghost.y); if (d < bd) { bd = d; best = e; } }
+          if (best) {
+            ghost.cd = 0.7;
+            const a = Math.atan2(best.ty - ghost.y, best.x - ghost.x);
+            bullets.push({ x: ghost.x, y: ghost.y, vx: Math.cos(a) * 480, vy: Math.sin(a) * 480,
+              life: 1.2, dmg: 2 * pb.dmg, size: 2, col: '#c9a6ff', spin: 0, homing: 3, bounce: 0,
+              pierce: 0, explode: 0, grav: 0, accel: 0, bore: 0, hit: null, knock: 0, crit: 0,
+              age: 0, born: 1.2 });
+          }
+        }
+      } else ghost = null;
+
+      // ---- Levitation Trail: flying lays down fire that burns what it touches ----
+      if (pb.trail && p.jet > 0 && !p.dead) {
+        burns.push({ x: pcx + (Math.random() - 0.5) * 6, y: p.y + PH, life: 0.7, max: 0.7 });
+        if (burns.length > 48) burns.shift();
+      }
+      for (let i = burns.length - 1; i >= 0; i--) {
+        const bn = burns[i]; bn.life -= dt;
+        for (let j = enemies.length - 1; j >= 0; j--)
+          if (Math.hypot(enemies[j].x - bn.x, enemies[j].ty - bn.y) < 15) damageEnemy(j, 22 * dt);
+        if (bn.life <= 0) burns.splice(i, 1);
+      }
 
       // ---- jetpack smoke ----
       if (p.jet > 0) {
@@ -2821,13 +3753,37 @@ function Game({ input }) {
 
       best = Math.max(best, Math.round((start.y - p.y) / 10));
 
-      // fog of war: wherever you go stays revealed for the rest of the floor
-      if (fogReveal(seen, p.x + PW / 2, p.y + PH / 2, SIGHT)) paintFog();
+      // ---- the torch ----
+      // A random walk with two sines on top, which is what makes a flame gutter rather
+      // than pulse. It never goes above 1: flicker means the light dipping, and a canvas
+      // globalAlpha over 1 is simply ignored.
+      torchT += dt;
+      flickN += (Math.random() - 0.5) * 2.6 * dt;
+      flickN *= 0.94;
+      flick = clamp(0.94 + flickN + 0.04 * Math.sin(torchT * 11.3) + 0.025 * Math.sin(torchT * 19.7),
+        0.84, 1);
+      torchAcc += dt;
+      while (torchAcc > 0.04) {
+        torchAcc -= 0.04;
+        const th = torchHand();
+        const life = 0.3 + Math.random() * 0.35;
+        torchP.push({ x: th.x + (Math.random() - 0.5) * 2, y: th.y - 7,
+          vx: (Math.random() - 0.5) * 10 + p.vx * 0.15, vy: -20 - Math.random() * 22,
+          life, max: life, s: 1 + Math.random() * 1.3,
+          c: Math.random() < 0.5 ? COL.flame2 : COL.flame });
+        if (torchP.length > 60) torchP.shift();
+      }
+      for (let i = torchP.length - 1; i >= 0; i--) {
+        const q = torchP[i];
+        q.vy += 30 * dt; q.vx *= 0.98;
+        q.x += q.vx * dt; q.y += q.vy * dt;
+        if ((q.life -= dt) <= 0) torchP.splice(i, 1);
+      }
     }
 
     function draw() {
       const dpr = window.devicePixelRatio || 1;
-      const s = Math.min(c.width / VIEW_W, c.height / VIEW_MIN_H), vw = c.width / s, vh = c.height / s;
+      const s = Math.min(c.width / VIEW_W, c.height / VIEW_MIN_H) * DEV.zoom, vw = c.width / s, vh = c.height / s;
       unitPx = s / dpr;
       const pcx = p.x + PW / 2, pcy = p.y + PH / 2;
 
@@ -2840,7 +3796,7 @@ function Game({ input }) {
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.imageSmoothingEnabled = false;
-      ctx.fillStyle = 'rgb(' + THEME.bg.join(',') + ')';
+      ctx.fillStyle = 'rgb(' + themeFor(floor).bg.join(',') + ')';
       ctx.fillRect(0, 0, c.width, c.height);
       ctx.setTransform(s, 0, 0, s, -Math.round(camX * s), -Math.round(camY * s));
 
@@ -2860,6 +3816,19 @@ function Game({ input }) {
         ctx.font = '600 11px system-ui, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('SHOP', WW / 2, SHOP_Y + 14);
+        // The floor number, huge and widely spaced along the whole back wall — just a
+        // touch brighter than the wall itself, so it reads as painted-on lettering
+        // rather than a label. Each glyph is placed by hand so the word spans most of
+        // the wall's width no matter how many digits the floor has.
+        const wallBot = SHOP_FLOOR * CELL, wallH = wallBot - SHOP_Y;
+        const label = 'FLOOR ' + floor;
+        ctx.fillStyle = 'rgba(255,255,255,0.07)';
+        ctx.font = '800 ' + Math.round(wallH * 0.62) + 'px system-ui, sans-serif';
+        ctx.textBaseline = 'middle';
+        const margin = WW * 0.05, span = WW - margin * 2, cyText = SHOP_Y + wallH / 2 + 4;
+        for (let i = 0; i < label.length; i++)
+          ctx.fillText(label[i], margin + span * (i + 0.5) / label.length, cyText);
+        ctx.textBaseline = 'alphabetic';
         ctx.textAlign = 'left';
       }
 
@@ -2909,15 +3878,18 @@ function Game({ input }) {
       for (const e of enemies) {
         const ey = e.ty;
         if (ey > camY + vh + 20 || ey < camY - 20 || e.x < camX - 20 || e.x > camX + vw + 20) continue;
-        drawDrone(ctx, e.x, ey, e.r, e.lx, e.ly, time, e.phase, e.flash > 0);
+        drawEnemy(ctx, e, time);
         const hw = 20, hx = e.x - hw / 2, hy = ey - e.r - 9;
         ctx.fillStyle = COL.barBg; ctx.fillRect(hx, hy, hw, 3);
-        ctx.fillStyle = COL.player; ctx.fillRect(hx, hy, hw * e.hp / ENEMY_HP, 3);
+        ctx.fillStyle = e.k.col.a;
+        ctx.fillRect(hx, hy, hw * Math.max(0, e.hp / e.hpMax), 3);
       }
 
       // projectiles
-      ctx.fillStyle = COL.enemy;
-      for (const b of enemyShots) { ctx.beginPath(); ctx.arc(b.x, b.y, 3, 0, Math.PI * 2); ctx.fill(); }
+      for (const b of enemyShots) {
+        ctx.fillStyle = b.col;
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2); ctx.fill();
+      }
       // shots are drawn as streaks along their own velocity, so a fast one reads
       // as a long dash and a slow heavy one as a stub
       ctx.lineCap = 'round';
@@ -3065,6 +4037,53 @@ function Game({ input }) {
         }
       }
 
+      // the hidden rooms' prizes on their altars: a glowing perk sigil, or the +25 heart
+      for (const r of rooms) {
+        if (r.taken) continue;
+        if (r.y > camY + vh + 40 || r.y < camY - 40 || r.x < camX - 40 || r.x > camX + vw + 40) continue;
+        const bob = Math.sin(time * 2 + r.x) * 2.5;
+        ctx.fillStyle = '#4a4550';
+        ctx.fillRect(r.x - 12, r.y + 14, 24, 5);
+        ctx.fillRect(r.x - 7, r.y + 5, 14, 10);
+        if (r.kind === 'perk') {
+          const pk = PERKS[r.id], col = pk.tint || COL.portal;
+          ctx.globalAlpha = 0.22 + 0.12 * Math.sin(time * 3);
+          ctx.fillStyle = col;
+          ctx.beginPath(); ctx.arc(r.x, r.y + bob, 16, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = col;
+          ctx.font = '700 20px system-ui, sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(pk.glyph, r.x, r.y + 0.5 + bob);
+          ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+        } else {
+          ctx.globalAlpha = 0.25 + 0.12 * Math.sin(time * 3);
+          ctx.fillStyle = COL.hp;
+          ctx.beginPath(); ctx.arc(r.x, r.y + bob, 16, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1; ctx.fillStyle = COL.hp;
+          // a plump heart
+          ctx.beginPath();
+          ctx.moveTo(r.x, r.y + 7 + bob);
+          ctx.bezierCurveTo(r.x - 11, r.y - 2 + bob, r.x - 6, r.y - 11 + bob, r.x, r.y - 4 + bob);
+          ctx.bezierCurveTo(r.x + 6, r.y - 11 + bob, r.x + 11, r.y - 2 + bob, r.x, r.y + 7 + bob);
+          ctx.fill();
+          ctx.fillStyle = '#0c130f';
+          ctx.font = '700 8px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('+25', r.x, r.y - 14 + bob);
+          ctx.textAlign = 'left';
+        }
+      }
+
+      // Levitation Trail: the fire you left behind, still burning
+      for (const bn of burns) {
+        const t = bn.life / bn.max;
+        ctx.globalAlpha = t * 0.8;
+        ctx.fillStyle = t > 0.5 ? COL.flame2 : COL.flame;
+        ctx.beginPath(); ctx.arc(bn.x, bn.y, 3 + (1 - t) * 5, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
       // sparks and debris
       for (const q of sparks) {
         ctx.fillStyle = q.c;
@@ -3126,9 +4145,12 @@ function Game({ input }) {
           const cone = drawn === 0 && sh.spread > 2
             ? [-sh.spread / 2, 0, sh.spread / 2] : [0];
           drawn++;
+          // the perks that bend a bullet in flight bend the aim line too, or it lies
+          const tsh = Object.assign({}, sh, { bounce: sh.bounce + pb.bounce,
+            homing: Math.max(sh.homing, pb.homing), speed: sh.speed * pb.speed });
           for (const off of cone) {
             const a = Math.atan2(R.ny, R.nx) + off * Math.PI / 180;
-            tracePath(sh, pcx, gy, Math.cos(a), Math.sin(a), solidAt, enemies, aimPath,
+            tracePath(tsh, pcx, gy, Math.cos(a), Math.sin(a), solidAt, enemies, aimPath,
               { x: pcx, y: gy });
             ctx.fillStyle = sh.col;
             const edge = off !== 0;
@@ -3150,62 +4172,135 @@ function Game({ input }) {
       const gait = running ? Math.sin(time * 15) : 0;
       drawRunner(ctx, p.x, p.y, PW, PH, p.face, gait, !p.onGround, p.jet, flashing);
       if (!p.dead) drawGun(ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
+      // the torch, in the hand the gun is not in
+      if (!p.dead) { const th = torchHand(); drawTorch(ctx, th.x, th.y, ax >= 0 ? -1 : 1, flick, torchP); }
       ctx.globalAlpha = 1;
 
-      // ---- fog of war ----
-      // The mask holds two shades: never been there, and been there but can't see it
-      // now. The circle you are standing in is punched clear of both, so the player,
-      // whatever is shooting at you and the ground under your feet always read.
-      fctx.putImageData(fogImg, 0, 0);
-      fctx.globalCompositeOperation = 'destination-out';
-      const lx = pcx / FOG_U, ly = pcy / FOG_U, lr = SIGHT / FOG_U;
-      const lamp = fctx.createRadialGradient(lx, ly, lr * 0.5, lx, ly, lr);
-      lamp.addColorStop(0, 'rgba(0,0,0,1)');
-      lamp.addColorStop(1, 'rgba(0,0,0,0)');
-      fctx.fillStyle = lamp;
-      fctx.fillRect(lx - lr, ly - lr, lr * 2, lr * 2);
-      fctx.globalCompositeOperation = 'source-over';
-      // a cell of margin each way, so the bilinear edge clamp falls off screen
+      // Permanent Shield: a soft ring while it is up, gone the moment it is spent
+      if (pb.shield && p.shieldReady && !p.dead) {
+        ctx.globalAlpha = 0.35 + 0.15 * Math.sin(time * 4);
+        ctx.strokeStyle = '#7ad7ff'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(pcx, pcy, PW * 1.15, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
+      // Angry Ghost: a pale wisp that drifts at your shoulder
+      if (pb.ghost && ghost && !p.dead) {
+        const gb = Math.sin(time * 3) * 2;
+        ctx.globalAlpha = 0.55;
+        ctx.fillStyle = '#c9a6ff';
+        ctx.beginPath(); ctx.arc(ghost.x, ghost.y + gb, 6, Math.PI, 0);
+        ctx.lineTo(ghost.x + 6, ghost.y + gb + 6);
+        ctx.lineTo(ghost.x + 2, ghost.y + gb + 4);
+        ctx.lineTo(ghost.x - 2, ghost.y + gb + 6);
+        ctx.lineTo(ghost.x - 6, ghost.y + gb + 4);
+        ctx.closePath(); ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#3a2f52';
+        ctx.fillRect(ghost.x - 3, ghost.y + gb - 1, 1.6, 2.4);
+        ctx.fillRect(ghost.x + 1.4, ghost.y + gb - 1, 1.6, 2.4);
+      }
+
+      // ---- torchlight, masked by the fog of war ----
+      // Line of sight is what lifts the fog: fogReveal marks every cell the fan reaches as
+      // somewhere you have been, and it stays marked for the rest of the floor. The lamp
+      // then lights that lifted ground — brightest at your feet, fading out to torchR — but
+      // it is MASKED by the fog: a cell you have never had line of sight to stays dark even
+      // with the torch right on top of it, so the cave ahead of you is a real unknown. The
+      // lamp does not itself stop at walls; it is the *reveal* that respects them, so what
+      // you have already uncovered round a corner still lights up. `flick` is the flame's
+      // own number, so both the reach and the brightness breathe exactly as the fire does.
+      const sight = SIGHT * DEV.torch;                       // dev knob scales the whole bubble
+      torchR = clamp(sight * LAMP_REACH * (0.5 + 0.55 * flick), 120, 1400);
+      visPts = visPoly(pcx, pcy, sight, solidCell, VIS_RAYS);
+      fogReveal(seen, pcx, pcy, sight, visPts, VIS_RAYS);   // line of sight lifts the fog
+      // bake the visible slab of the overlay every frame: the base darkness is the fog
+      // state, then the lamp brightens the cells the fog has already been lifted from
+      const fdat = fogImg.data;
+      const dim = Math.round(255 * DEV.fogDim), dark = Math.round(255 * DEV.fogDark);
+      const lr2 = torchR * torchR;
       const fx0 = clamp(Math.floor(camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(camY / FOG_U) - 1, 0, FH - 1);
       const fx1 = clamp(Math.ceil((camX + vw) / FOG_U) + 2, 1, FW), fy1 = clamp(Math.ceil((camY + vh) / FOG_U) + 2, 1, FH);
+      for (let cy = fy0; cy < fy1; cy++) {
+        const ddy = (cy + 0.5) * FOG_U - pcy;
+        for (let cx = fx0; cx < fx1; cx++) {
+          const i = cy * FW + cx, k = i * 4;
+          fdat[k] = 9; fdat[k + 1] = 10; fdat[k + 2] = 14;
+          const s = seen[i];
+          let a = s === 2 ? 0 : s ? dim : dark;
+          if (s && a) {                        // the lamp only reaches ground the fog has lifted
+            const ddx = (cx + 0.5) * FOG_U - pcx, dd2 = ddx * ddx + ddy * ddy;
+            if (dd2 < lr2) {
+              const t = Math.sqrt(dd2) / torchR;               // 0 at your feet, 1 at the edge
+              const lift = t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45;
+              a = a * (1 - lift);
+            }
+          }
+          fdat[k + 3] = a;
+        }
+      }
+      fctx.putImageData(fogImg, 0, 0, fx0, fy0, fx1 - fx0, fy1 - fy0);
       ctx.imageSmoothingEnabled = true;     // the upscale is what makes the edge soft
       ctx.drawImage(fogC, fx0, fy0, fx1 - fx0, fy1 - fy0,
         fx0 * FOG_U, fy0 * FOG_U, (fx1 - fx0) * FOG_U, (fy1 - fy0) * FOG_U);
       ctx.imageSmoothingEnabled = false;
 
       // ---- HUD ----
+      // The old top-left stack (floor / enemies / health / fuel / mana / gun) is gone:
+      // health, mana and fuel are the rings and top-half wipe on the thumbsticks now,
+      // the floor number is written big along the shop wall, and gold sits in the deck
+      // between the sticks (a DOM readout in App). Only the version is drawn up here.
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const cw = c.width / dpr;
       ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 3;
-      ctx.fillStyle = COL.text;
-      ctx.font = '600 15px system-ui, sans-serif';
-      ctx.fillText('Floor ' + floor + '  ·  ' + best + ' m', 12, 26);
-      ctx.fillText('Enemies ' + (total - enemies.length) + '/' + total, 12, 46);
-      ctx.textAlign = 'right';
-      ctx.fillStyle = COL.bullet;
-      ctx.fillText(input.current.loadout.gold + ' gold', cw - 12, 66);
-      ctx.textAlign = 'left';
-      ctx.fillStyle = COL.text;
-      const bar = (label, y, frac, fill) => {
-        ctx.fillStyle = COL.text;
-        ctx.fillText(label, 12, y + 10);
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = COL.barBg; ctx.fillRect(66, y, 110, 10);
-        ctx.fillStyle = fill; ctx.fillRect(66, y, 110 * frac, 10);
-        ctx.shadowBlur = 3;
-      };
-      bar('Health', 58, p.hp / PLAYER_HP, p.hp <= 30 ? COL.player : COL.hp);
-      bar('Fuel', 78, p.fuel, p.empty ? COL.player : COL.flame);
-      const gpas = held ? gunPassives(held) : null;
-      if (held) bar('Mana', 98, held.mana / (held.manaMax + gpas.manaMax),
-        held.rechT > 0 ? COL.muted : '#6db8ff');
-
-      ctx.font = '600 12px system-ui, sans-serif';
-      ctx.fillStyle = held && held.rechT > 0 ? COL.flame : COL.muted;
-      ctx.fillText(held ? (held.rechT > 0 ? 'RECHARGING' : held.name) : 'No gun', 12, 124);
       ctx.fillStyle = COL.muted;
       ctx.font = '500 12px system-ui, sans-serif';
-      ctx.fillText(VERSION, 12, 142);
+      ctx.textAlign = 'left';
+      ctx.fillText(VERSION, 12, 22);
+      ctx.shadowBlur = 0;
+
+      // hand the sticks the live health / fuel / mana so they can draw their gauges:
+      // the green ring round the left stick, the amber fuel wipe in its top half, and
+      // the gold ring round the right stick. Written every frame the loop draws.
+      const MHP = maxHp();
+      const gpas = held ? gunPassives(held) : null;
+      input.current.hud = {
+        hp: MHP > 0 ? Math.max(0, Math.min(1, p.hp / MHP)) : 0,
+        low: p.hp <= 30,
+        fuel: Math.max(0, Math.min(1, p.fuel)),
+        empty: !!p.empty,
+        mana: held ? Math.max(0, Math.min(1, held.mana / (held.manaMax + gpas.manaMax))) : 0,
+        recharging: !!(held && held.rechT > 0),
+        hasGun: !!held,
+      };
+
+      // ---- radar perks: point at the nearest enemy / mod / gun still out there ----
+      if (pb.radarEnemy || pb.radarItem || pb.radarWand) {
+        const cwv = c.width / dpr, chv = c.height / dpr, m = 18;
+        const nearest = list => {
+          let best = null, bd = 1e18;
+          for (const t of list) { const d = (t.x - pcx) * (t.x - pcx) + ((t.ty || t.y) - pcy) * ((t.ty || t.y) - pcy); if (d < bd) { bd = d; best = t; } }
+          return best;
+        };
+        const marker = (t, col) => {
+          if (!t) return;
+          const sx = (t.x - camX) * unitPx, sy = ((t.ty || t.y) - camY) * unitPx;
+          if (sx > m && sx < cwv - m && sy > m && sy < chv - m) {
+            ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.globalAlpha = 0.85;
+            ctx.beginPath(); ctx.arc(sx, sy, 11, 0, Math.PI * 2); ctx.stroke();
+            ctx.globalAlpha = 1; return;
+          }
+          const ex = clamp(sx, m, cwv - m), ey = clamp(sy, m, chv - m);
+          const a = Math.atan2(sy - ey, sx - ex);
+          ctx.save(); ctx.translate(ex, ey); ctx.rotate(a);
+          ctx.fillStyle = col; ctx.globalAlpha = 0.9;
+          ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(-7, -6); ctx.lineTo(-7, 6); ctx.closePath(); ctx.fill();
+          ctx.restore(); ctx.globalAlpha = 1;
+        };
+        if (pb.radarEnemy) marker(nearest(enemies), COL.enemy);
+        if (pb.radarItem) marker(nearest(pickups.filter(q => q.kind === 'mod')), '#b57cff');
+        if (pb.radarWand) marker(nearest(pickups.filter(q => q.kind === 'gun')), COL.bullet);
+      }
 
       // pickup messages
       ctx.textAlign = 'center';
@@ -3221,11 +4316,11 @@ function Game({ input }) {
       ctx.textAlign = 'left';
 
       ctx.textAlign = 'center';
-      if (time < 3) {
+      if (levelT < 3) {
         ctx.fillStyle = COL.text;
-        ctx.globalAlpha = Math.min(1, 3 - time);
+        ctx.globalAlpha = Math.min(1, 3 - levelT);
         ctx.font = '700 22px system-ui, sans-serif';
-        ctx.fillText(THEME.name, cw / 2, 196);
+        ctx.fillText(themeFor(floor).name, cw / 2, 196);
         ctx.font = '500 14px system-ui, sans-serif';
         ctx.fillText('Find the green exit at the top', cw / 2, 218);
         ctx.fillText('Buy and fit mods here, then climb', cw / 2, 236);
@@ -3237,7 +4332,7 @@ function Game({ input }) {
         ctx.font = '700 22px system-ui, sans-serif';
         ctx.fillText('You were shot down', cw / 2, msgY);
         ctx.font = '500 14px system-ui, sans-serif';
-        ctx.fillText('Tap Restart to start again', cw / 2, msgY + 22);
+        ctx.fillText('Open the gear (top right) to restart', cw / 2, msgY + 22);
       } else if (enemies.length === 0) {
         ctx.font = '700 18px system-ui, sans-serif';
         ctx.fillText('All enemies destroyed', cw / 2, msgY);
@@ -3282,8 +4377,33 @@ function Game({ input }) {
   return h('canvas', { ref: cv, className: 'game' });
 }
 
-function Stick({ size, kind, input }) {
+// the circumference of the gauge ring (r=46 in a 0..100 viewBox), used to turn a 0..1
+// fraction into a stroke-dasharray so the ring is drawn only as far as the stat reaches
+const GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
+function Stick({ size, kind, input, refresh }) {
   const [knob, setKnob] = useState({ x: 0, y: 0, jet: false });
+  // the live stat this stick shows: hp+fuel on the left, mana on the right. Read off
+  // input.current.hud each animation frame, and only re-rendered when a value actually
+  // moves (rounded to 1%), so the ring animates without churning the whole tree.
+  const [gauge, setGauge] = useState({ ring: 1, fuel: 1, empty: false, dry: true });
+  const left = kind === 'left';
+  useEffect(() => {
+    let raf, prev = '';
+    const tick = () => {
+      const s = input.current.hud;
+      if (s) {
+        const g = left
+          ? { ring: s.hp, fuel: s.fuel, empty: s.empty, dry: false }
+          : { ring: s.hasGun ? s.mana : 0, fuel: 0, empty: false, dry: !s.hasGun || s.recharging };
+        const key = Math.round(g.ring * 100) + '|' + Math.round(g.fuel * 100) + '|' +
+          (g.empty ? 1 : 0) + '|' + (g.dry ? 1 : 0);
+        if (key !== prev) { prev = key; setGauge(g); }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [left]);
   const ref = useRef(null);
   const pid = useRef(null);
   // right stick only: true while this touch has never left the dead zone. A tap that
@@ -3303,6 +4423,12 @@ function Stick({ size, kind, input }) {
     const mag = cl / maxD;
     const thresh = right ? AIM_DEAD : 0.15;
     if (right && mag > AIM_DEAD) stayed.current = false;
+    // A card is up: left picks up, right leaves, and the one you are pointing at is the
+    // one lit. Inside the dead zone neither is lit, because you have not chosen yet.
+    if (right && input.current.confirmAct) {
+      const side = mag > AIM_DEAD ? (nx < 0 ? 'take' : 'leave') : null;
+      if (input.current.confirmAim !== side) { input.current.confirmAim = side; refresh(); }
+    }
     const st = input.current[kind];
     st.active = true; st.nx = nx; st.ny = ny; st.mag = mag; st.dy = dy; st.on = mag > thresh;
     setKnob({ x: nx * cl, y: ny * cl, jet: kind === 'left' && dy < 0 && mag > DEAD });
@@ -3318,25 +4444,55 @@ function Stick({ size, kind, input }) {
   const end = e => {
     if (e.pointerId !== pid.current) return;
     pid.current = null;
-    if (right && stayed.current) input.current.interact = true;
+    const act = input.current.confirmAct;
+    if (right && act) {
+      // a confirmation is up, so the gesture is "point left or right and let go". The
+      // side was decided while dragging, so coming back to the middle before releasing
+      // picks nothing, which is the right answer — you were not pointing anywhere.
+      const side = input.current.confirmAim;
+      input.current.confirmAim = null;
+      if (side) act[side]();
+    } else if (right && stayed.current) {
+      input.current.interact = true;
+    }
     Object.assign(input.current[kind], { active: false, mag: 0, on: false, dy: 0 });
     setKnob({ x: 0, y: 0, jet: false });
   };
 
-  const left = kind === 'left';
+  // the circular gauge: green health round the left stick, gold mana round the right,
+  // each wiped clockwise from the top as its stat falls
+  const ringCol = left
+    ? (gauge.empty ? '#e24a2c' : '#57d267')
+    : (gauge.dry ? 'rgba(255,201,60,0.28)' : '#ffc93c');
+  const ring = h('svg', { className: 'gauge', viewBox: '0 0 100 100' },
+    h('circle', { cx: 50, cy: 50, r: GAUGE_R, fill: 'none',
+      stroke: 'rgba(0,0,0,0.35)', strokeWidth: 4.5 }),
+    h('circle', { cx: 50, cy: 50, r: GAUGE_R, fill: 'none', stroke: ringCol,
+      strokeWidth: 4.5, strokeLinecap: 'round',
+      strokeDasharray: (gauge.ring * GAUGE_C) + ' ' + GAUGE_C,
+      transform: 'rotate(-90 50 50)' }));
   return h('div', {
       ref, className: 'stick' + (knob.jet ? ' jetting' : ''),
       style: { width: size, height: size },
       onPointerDown: down, onPointerMove: move, onPointerUp: end,
       onPointerCancel: end, onLostPointerCapture: end,
     },
-    left && h('div', { className: 'jetzone' }),
-    left && h('div', { className: 'hline' }),
-    // the circle you have to drag out of to aim/fire; tapping inside it interacts
-    right && h('div', { className: 'deadzone', style: { width: (AIM_DEAD * 72) + '%', height: (AIM_DEAD * 72) + '%' } }),
+    // the fuel wipe rides inside the clip so it keeps the circle's shape; its height is
+    // the fuel fraction, anchored to the centre line, so it drains downward as fuel burns
+    left && h('div', { className: 'stickclip' },
+      h('div', { className: 'jetzone' + (gauge.empty ? ' dry' : ''),
+        style: { height: (gauge.fuel * 50) + '%' } }),
+      h('div', { className: 'hline' })),
+    ring,
+    // the right stick's amber ring: the line the knob's edge crosses when the drag starts
+    // counting as aiming rather than as a tap on the dead zone
+    h('div', { className: 'knob', style: {
+      width: (KNOB * 100) + '%', height: (KNOB * 100) + '%',
+      transform: `translate(-50%,-50%) translate(${knob.x}px,${knob.y}px)` } }),
+    right && h('div', { className: 'deadzone', style: {
+      width: (AIM_RING * 100) + '%', height: (AIM_RING * 100) + '%' } }),
     h('span', { className: 'lbl top' }, left ? 'jet' : 'aim'),
-    left && h('span', { className: 'lbl bot' }, 'walk'),
-    h('div', { className: 'knob', style: { transform: `translate(-50%,-50%) translate(${knob.x}px,${knob.y}px)` } })
+    left && h('span', { className: 'lbl bot' }, 'walk')
   );
 }
 
@@ -3487,7 +4643,61 @@ function GunSwap({ input, refresh, onDone }) {
   );
 }
 
-function ModCard({ id, onClose, ingame, top }) {
+// Walked onto a mod: what it is, and two ways out of it. The game is paused behind this.
+// The right stick chooses — drag it left for the left button, right for the right one —
+// and the buttons take a plain tap as well, for when a thumb is already somewhere else.
+function ModFound({ input, refresh }) {
+  const cf = input.current.confirm;
+  const takeRef = useRef(null), leaveRef = useRef(null);
+  // the overlay has to stop above the control deck, and the deck's height changes with
+  // the viewport, so it is measured rather than guessed
+  const [deck, setDeck] = useState(0);
+  useEffect(() => {
+    const el = document.querySelector('.controls');
+    if (el) setDeck(Math.round(el.getBoundingClientRect().height));
+  });
+
+  const close = () => {
+    input.current.confirm = null;
+    input.current.confirmAct = null;
+    input.current.confirmAim = null;
+    input.current.sig = '';             // let the prompt re-announce itself
+    refresh();
+  };
+  const take = () => {
+    const q = cf.q;
+    input.current.loadout.bag.push(cf.id);
+    input.current.pendingToast = 'Picked up ' + MODS[cf.id].name;
+    q.taken = true;                     // the game loop sweeps it off the ground
+    q.cool = PICKUP_COOL;
+    close();
+  };
+  const leave = () => {
+    cf.q.cool = PICKUP_COOL;            // stepping back onto it must not reopen this
+    close();
+  };
+
+  if (!cf) { input.current.confirmAct = null; return null; }
+  // the stick reads this on release. Assigned during render, the same way `paused` is.
+  input.current.confirmAct = { take, leave };
+  // which way the stick is being held, set by Stick while the drag is live. Neither is
+  // lit until the knob is past the trigger line, so the card does not look like it has
+  // already picked for you.
+  const lit = input.current.confirmAim;
+
+  return h('div', { className: 'modfound', style: { bottom: deck } },
+    h(ModCard, { id: cf.id, ingame: true }),
+    h('div', { className: 'modfoundrow' },
+      h('button', { ref: takeRef, className: 'modfoundbtn pick' + (lit === 'take' ? ' hot' : ''),
+        onPointerDown: e => { e.preventDefault(); take(); } }, 'Pick up'),
+      h('button', { ref: leaveRef, className: 'modfoundbtn' + (lit === 'leave' ? ' hot' : ''),
+        onPointerDown: e => { e.preventDefault(); leave(); } }, 'Leave')
+    ),
+    h('p', { className: 'modfoundhint' }, 'drag the right stick left or right, or tap it')
+  );
+}
+
+function ModCard({ id, onClose, ingame, top, flow }) {
   const m = MODS[id];
   const kind = famOf(id).name + (m.kind === 'passive' ? ' \u00b7 always on' : '');
   const rows = modPreview(id).rows;
@@ -3560,7 +4770,7 @@ function ModCard({ id, onClose, ingame, top }) {
     demo = [drow(true, [dtile(id, 'a'), dtile('bolt', 'b')], 'the bolt gets the effect', 1),
             drow(false, [dtile('bolt', 'c'), dtile(id, 'd', true)], 'too late — the bolt already fired', 2)];
   }
-  return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') + (top ? ' top' : '') },
+  return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') + (top ? ' top' : '') + (flow ? ' flow' : '') },
     h('div', { className: 'phead' },
       h('div', { className: 'pglyph', style: { borderColor: famCol(id), color: famCol(id) } }, m.glyph),
       h('div', { className: 'ptitle' },
@@ -3574,7 +4784,9 @@ function ModCard({ id, onClose, ingame, top }) {
     rows.length ? h('div', { className: 'prows' },
       rows.map((r, i) => h('div', { className: 'prow', key: i },
         h('span', null, r[0]), h('b', null, r[1])))) : null,
-    h('div', { className: 'pdemo' }, demo)
+    // the placement use-example is for the editor, where you're deciding where a mod
+    // goes — the shop/pickup preview leaves it off and keeps the card compact.
+    ingame ? null : h('div', { className: 'pdemo' }, demo)
   );
 }
 
@@ -3773,8 +4985,6 @@ function Editor({ input, close, refresh }) {
     h('div', { className: 'shead' },
       h('h2', null, 'Guns & Mods'),
       h('span', { className: 'purse' }, LO.gold + 'g'),
-      h('button', { className: 'dbg' + (LO.debug ? ' on' : ''),
-        onPointerDown: e => { e.preventDefault(); LO.debug = !LO.debug; refresh(); } }, 'DEBUG'),
       h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Done')
     ),
     h('div', { className: 'gtabs' },
@@ -3856,18 +5066,88 @@ function Editor({ input, close, refresh }) {
   );
 }
 
+// The card that comes up standing on a perk altar, so you know what you're taking before
+// you take it. A perk is permanent, so this is the only look you get.
+function PerkCard({ id, ingame, flow }) {
+  const pk = PERKS[id];
+  return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') + (flow ? ' flow' : '') },
+    h('div', { className: 'phead' },
+      h('div', { className: 'pglyph', style: { borderColor: pk.tint, color: pk.tint } }, pk.glyph),
+      h('div', { className: 'ptitle' },
+        h('b', { style: { color: pk.tint } }, pk.name),
+        h('span', null, 'Perk · rest of the run'))),
+    h('p', { className: 'pinfo' }, pk.info));
+}
+
+// One tweakable value in the dev panel: a labelled number box prefilled with the live
+// value, its default shown as the placeholder. Committing an empty box restores the
+// default; anything else is parsed, clamped to the knob's range and saved at once.
+function DevRow({ meta }) {
+  const [val, setVal] = useState(String(DEV[meta.k]));
+  const commit = () => {
+    const s = val.trim();
+    let v;
+    if (s === '') v = DEV_DEFAULTS[meta.k];
+    else { v = parseFloat(s); if (!isFinite(v)) { setVal(String(DEV[meta.k])); return; } }
+    v = Math.max(meta.min, Math.min(meta.max, v));
+    devSet(meta.k, v);
+    setVal(String(v));
+  };
+  return h('div', { className: 'devrow' },
+    h('label', null, meta.label),
+    h('input', { type: 'number', inputMode: 'decimal', step: meta.step,
+      value: val, placeholder: String(DEV_DEFAULTS[meta.k]),
+      onChange: e => setVal(e.target.value),
+      onBlur: commit,
+      onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } } })
+  );
+}
+
+// The dev window: it pauses the run but the game keeps drawing behind a light backdrop,
+// so the look-of-it knobs (zoom, torch, fog) preview live as you type. Holds the toggle
+// buttons — "All mods" is the old DEBUG shelf — and the saved, persisted variables.
+function DevPanel({ input, refresh, close, onRestart }) {
+  const LO = input.current.loadout;
+  const [, bump] = useState(0);
+  return h('div', { className: 'devwrap' },
+    h('div', { className: 'devback', onPointerDown: e => { e.preventDefault(); close(); } }),
+    h('div', { className: 'devpanel scroll' },
+      h('div', { className: 'devhead' },
+        h('h2', null, 'Dev'),
+        h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Done')),
+      h('div', { className: 'devbtns' },
+        h('button', { className: 'dbg' + (LO.debug ? ' on' : ''),
+          onPointerDown: e => { e.preventDefault(); LO.debug = !LO.debug; refresh(); bump(n => n + 1); } },
+          'All mods'),
+        h('button', { className: 'dbg restart',
+          onPointerDown: e => { e.preventDefault(); onRestart(); } }, 'Restart run')),
+      h('div', { className: 'devvars' },
+        DEV_META.map(m => h(DevRow, { key: m.k, meta: m }))),
+      h('p', { className: 'devnote' },
+        'Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back.')
+    )
+  );
+}
+
 function App() {
   const blank = () => ({ active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false });
   const input = useRef({
     left: blank(), right: blank(),
-    loadout: { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false },
+    loadout: { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false,
+      perks: [], maxBonus: 0, usedLives: 0 },
     paused: false, notify: () => {}, inShop: true, prompt: null, interact: false, sig: '',
+    found: null,                 // a gun on the ground, waiting on the chooser
+    confirm: null,              // a mod on the ground, waiting on pick up / leave
+    confirmAct: null,           // ModFound's handlers, read by the right stick's release
+    confirmAim: null,           // which of the two the stick is held toward, or null
+    pendingToast: null,         // raised while paused, shown by the loop when it resumes
     keys: { w: false, a: false, s: false, d: false },
     mouse: { x: 0, y: 0, inside: false, down: false },
   });
   const [size, setSize] = useState(150);
   const [run, setRun] = useState(0);
   const [edit, setEdit] = useState(false);
+  const [devOpen, setDevOpen] = useState(false);
   const [gunInfo, setGunInfo] = useState(-1);
   const [held, setHeld] = useState(-1);
   // null when closed; a timestamp (from the tap that opened it) while open, so
@@ -3878,7 +5158,8 @@ function App() {
   const refresh = () => bump(n => n + 1);
   input.current.notify = refresh;
   const found = input.current.found;
-  input.current.paused = edit || !!found;
+  const confirming = input.current.confirm;
+  input.current.paused = edit || !!found || !!confirming || devOpen;
 
   const LO = input.current.loadout;
   // read through the ref: after a Restart the loadout object is replaced, and a
@@ -3888,16 +5169,27 @@ function App() {
     if (L.guns[i]) { L.sel = i; refresh(); }
   };
   const restart = () => {
-    input.current.loadout = { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false };
+    input.current.loadout = { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false,
+      perks: [], maxBonus: 0, usedLives: 0 };
     input.current.sig = '';
     input.current.found = null;
+    input.current.confirm = null;
+    input.current.confirmAct = null;
+    input.current.confirmAim = null;
     setGunInfo(-1);
     setEdit(false);
     setRun(r => r + 1);
   };
 
   useEffect(() => {
-    const fit = () => setSize(Math.max(80, Math.floor(Math.min((window.innerWidth - 36) / 2, window.innerHeight * 0.28))));
+    // the circles are as big as two of them side by side will go: width is the binding
+    // constraint on a phone, not height
+    const fit = () => {
+      // back to the size these were: the complaint was about the knob inside them, not
+      // the pad. The -28 rather than -36 is because they are border-box now, which buys
+      // the toolbar its 4px back and then some.
+      setSize(Math.max(80, Math.floor(Math.min((window.innerWidth - 28) / 2, window.innerHeight * 0.28))));
+    };
     fit();
     window.addEventListener('resize', fit);
     return () => window.removeEventListener('resize', fit);
@@ -3915,11 +5207,15 @@ function App() {
 
     const map = { w: 'w', arrowup: 'w', ' ': 'w', a: 'a', arrowleft: 'a', s: 's', arrowdown: 's', d: 'd', arrowright: 'd' };
     const key = down => e => {
+      // never let the game read keys meant for a text field, like the dev panel's inputs
+      const t = e.target;
+      if (t && /^(input|textarea|select)$/i.test(t.tagName)) return;
       const k = e.key.toLowerCase();
       if (map[k]) { input.current.keys[map[k]] = down; e.preventDefault(); }
       if (!down) return;
       if (k >= '1' && k <= '4') select(Number(k) - 1);
-      if (k === 'e' || k === 'tab') { e.preventDefault(); if (input.current.inShop) setEdit(v => !v); }
+      if (k === 'e' || k === 'tab') { e.preventDefault();
+        if (input.current.inShop || perkBag(input.current.loadout.perks || []).tinker) setEdit(v => !v); }
       if (k === 'f') input.current.interact = true;
       if (k === 'escape') setEdit(false);
     };
@@ -3943,28 +5239,37 @@ function App() {
 
   const prompt = input.current.prompt;
   const inShop = input.current.inShop;
+  const perkB = perkBag(LO.perks || []);
+  const canEdit = inShop || perkB.tinker;      // Tinker with Wands Everywhere frees the editor
   const heldGun = input.current.loadout.guns[input.current.loadout.sel];
 
   return h('div', { className: 'app' },
     h('div', { className: 'view' },
       h(Game, { key: run, input }),
-      // hidden once the chooser (found) is up: the game pauses behind it, so the prompt
-      // that was showing the moment it opened would otherwise sit there stale, doubled
-      // up with the chooser's own card for the same gun
-      prompt && prompt.id && !found ? h(ModCard, { id: prompt.id, ingame: true }) : null,
-      prompt && prompt.gun && !found ? h(GunCard, { gun: prompt.gun, label: prompt.found ? 'Found' : 'For sale', ingame: true,
-        compare: heldGun, compareName: heldGun ? heldGun.name : '' }) : null,
-      // no button any more — this is just a label. Buying/picking up is a tap on the
-      // right stick's dead zone (or the f key), so the label says so.
-      prompt && !found ? h('div', { className: 'pickhint' + (prompt.can ? '' : ' cant') },
-        prompt.price ? 'Buy ' + prompt.text : 'Take ' + prompt.text,
-        h('b', null, prompt.price ? prompt.price + 'g' : 'free'),
-        h('span', { className: 'hint' }, 'tap dead zone')) : null,
-      h('button', { className: 'reset',
-        // pointerdown, like every other control: a click synthesised after the mod
-        // sheet closes must not land here and wipe the run. This only opens the
-        // confirm below — restart() itself is gated further down.
-        onPointerDown: e => { e.preventDefault(); setConfirmAt(performance.now()); } }, 'Restart'),
+      // The item's card and its buy/take line are one panel now, grown up from the
+      // bottom: the info you're reading and the price you're paying sit together.
+      // Hidden once the chooser (found) or the mod card (confirm) is up — the game
+      // pauses behind those, so a prompt left over from the moment they opened would
+      // otherwise sit there stale, doubled up with their own card for the same thing.
+      // The panel is pointer-events:none so a tap still reaches the sticks underneath;
+      // buying/picking up is a tap on the right stick's dead zone (or the f key).
+      prompt && !found && !confirming ? h('div', { className: 'buypanel',
+        style: { bottom: (input.current.promptBottom || 12) + 'px',
+          maxHeight: 'calc(100% - ' + ((input.current.promptBottom || 12) + 12) + 'px)' } },
+        prompt.id ? h(ModCard, { id: prompt.id, ingame: true }) : null,
+        prompt.perk ? h(PerkCard, { id: prompt.perk, ingame: true }) : null,
+        prompt.gun ? h(GunCard, { gun: prompt.gun, label: prompt.found ? 'Found' : 'For sale',
+          ingame: true, compare: heldGun, compareName: heldGun ? heldGun.name : '' }) : null,
+        // shop stock is "Buy <price>"; anything you pick up for free is just "Take" —
+        // the card above already names it, so a nameless item (the heal) shows its name here.
+        h('div', { className: 'pbuy' + (prompt.can ? '' : ' cant') },
+          prompt.price
+            ? [ h('span', { key: 't' }, 'Buy'), h('b', { key: 'p' }, prompt.price + 'g') ]
+            : [ h('span', { key: 't' }, (prompt.id || prompt.gun || prompt.perk) ? 'Take' : 'Take ' + prompt.text),
+                h('b', { key: 'p' }, 'free') ])) : null,
+      // one gear in the top-right opens the Dev panel; Restart now lives inside it.
+      h('button', { className: 'devbtn', title: 'Dev tools',
+        onPointerDown: e => { e.preventDefault(); setDevOpen(true); } }, '⚙️'),
       confirmAt != null ? h('div', { className: 'confirm' },
         h('div', { className: 'shade', onPointerDown: e => { e.preventDefault(); setConfirmAt(null); } }),
         h('div', { className: 'confirmCard' },
@@ -4002,18 +5307,30 @@ function App() {
           ))
         ),
         h('button', {
-            className: 'weapon' + (inShop ? '' : ' locked'),
-            title: inShop ? 'Edit your guns' : 'Only in the shop',
-            onPointerDown: e => { e.preventDefault(); if (inShop) setEdit(true); } },
-          h('span', { className: 'wicon' }), inShop ? 'Mods' : 'Shop only',
-          inShop && LO.bag.length ? h('b', { className: 'badge' }, LO.bag.length) : null)
+            className: 'weapon' + (canEdit ? '' : ' locked'),
+            title: canEdit ? 'Edit your guns' : 'Only in the shop',
+            onPointerDown: e => { e.preventDefault(); if (canEdit && !confirming) setEdit(true); } },
+          h('span', { className: 'wicon' }), canEdit ? 'Mods' : 'Shop only',
+          canEdit && LO.bag.length ? h('b', { className: 'badge' }, LO.bag.length) : null)
       ),
+      (LO.perks && LO.perks.length)
+        ? h('div', { className: 'perkrow' },
+            LO.perks.map((id, i) => PERKS[id] ? h('span', {
+                key: i, className: 'perkpip', title: PERKS[id].name,
+                style: { color: PERKS[id].tint } }, PERKS[id].glyph) : null))
+        : null,
       h('div', { className: 'sticks' },
-        h(Stick, { size, kind: 'left', input }),
-        h(Stick, { size, kind: 'right', input })
+        h(Stick, { size, kind: 'left', input, refresh }),
+        h(Stick, { size, kind: 'right', input, refresh }),
+        // gold sits in the gap between the two sticks, up level with their top halves.
+        // "g" not "gold", and thousands truncate to a "k" (1234 -> 1.2k, 2000 -> 2k).
+        h('div', { className: 'gold' }, fmtGold(LO.gold), h('span', null, 'g'))
       )
     ),
     edit ? h(Editor, { input, refresh, close: () => setEdit(false) }) : null,
+    devOpen ? h(DevPanel, { input, refresh, close: () => setDevOpen(false),
+      onRestart: () => { setDevOpen(false); setConfirmAt(performance.now()); } }) : null,
+    h(ModFound, { input, refresh }),
     found ? h(GunSwap, { input, refresh, onDone: () => { setGunInfo(-1); refresh(); } }) : null,
     gunInfo >= 0 && LO.guns[gunInfo]
       ? h('div', null,

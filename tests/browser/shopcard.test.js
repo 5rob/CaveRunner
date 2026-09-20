@@ -49,10 +49,10 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('standing on a mod shows its card', c !== null);
   check('it is the right mod', c && c.title === want, { got: c && c.title, want });
   check('the card carries the effect rows', c && c.rows.length > 0, c && c.rows);
-  check('and the placement demo', c && c.demo === 2, c && c.demo);
+  check('the shop preview drops the placement demo', c && c.demo === 0, c && c.demo);
   check('the card never eats a tap', c && c.clickThrough === true);
-  const hintBox = await page.evaluate(() => { const b = document.querySelector('.pickhint'); const r = b.getBoundingClientRect(); return Math.round(r.top); });
-  check('it sits clear of the pickup hint', c && c.bottom < hintBox, { cardBottom: c && c.bottom, hintTop: hintBox });
+  const buy = await page.evaluate(() => { const b = document.querySelector('.buypanel .pbuy'); return b && b.textContent; });
+  check('the buy line lives in the same panel as the card', !!buy && /Buy/.test(buy), buy);
   await page.screenshot({ path: path.join(__dirname, '..', 'build', 'shop_card.png') });
 
   await stand(2);
@@ -62,7 +62,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
   await stand(0);
   check('the free heal shows no mod card', (await card()) === null);
-  const healBtn = await page.evaluate(() => document.querySelector('.pickhint').textContent);
+  const healBtn = await page.evaluate(() => document.querySelector('.pbuy').textContent);
   check('but still offers the heal', /Take/.test(healBtn), healBtn);
 
   // step away
@@ -71,7 +71,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     await new Promise(r => setTimeout(r, 280));
   });
   check('walking away hides the card', (await card()) === null);
-  check('and the pickup hint', (await page.$('.pickhint')) === null);
+  check('and the whole panel', (await page.$('.buypanel')) === null);
 
   // buying from the plinth still works with the card up
   await stand(3);

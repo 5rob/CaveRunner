@@ -1,0 +1,9 @@
+# Build outputs and caches
+.gradle/
+build/
+app/build/
+local.properties
+
+# Generated at build time by prep-assets.js (kept out so it can't drift from
+# the canonical ../index.html). The React libs beside it ARE committed.
+app/src/main/assets/index.html

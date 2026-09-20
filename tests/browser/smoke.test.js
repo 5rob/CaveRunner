@@ -31,20 +31,27 @@ const check = (name, ok, extra) => { if (!ok) fails++; console.log(`${ok ? 'ok  
   check('firing spends mana', shot.after < shot.before, shot);
   check('bullets exist in flight', shot.peak > 0, shot.peak);
 
-  // --- walking onto a mod pickup shows its card; interacting takes it ---
+  // --- walking onto a mod pickup shows its card; interacting asks, then the card's
+  //     own button puts it in the bag ---
   const grab = await page.evaluate(async () => {
     const { pickups, p } = window.__lvl;
     const LO = window.__in.current.loadout;
     const mod = pickups.find(q => q.kind === 'mod');
     mod.x = p.x + 6; mod.y = p.y + 11;                  // drop it on the player's head
-    await new Promise(r => setTimeout(r, 120));
+    mod.cool = 0;
+    await new Promise(r => setTimeout(r, 150));
     const beforeTake = { bag: LO.bag.slice(), card: !!document.querySelector('.pop.ingame') };
     window.__in.current.interact = true;
-    await new Promise(r => setTimeout(r, 120));
-    return { beforeTake, bag: LO.bag.slice(), gone: !pickups.includes(mod) };
+    await new Promise(r => setTimeout(r, 200));
+    const asked = { bag: LO.bag.slice(), card: !!document.querySelector('.modfound') };
+    const pick = [...document.querySelectorAll('.modfoundbtn')][0];
+    if (pick) pick.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+    await new Promise(r => setTimeout(r, 200));
+    return { beforeTake, asked, bag: LO.bag.slice(), gone: !pickups.includes(mod) };
   });
-  check('walking onto it shows the card, not the bag', grab.beforeTake.card && grab.beforeTake.bag.length === 0, grab);
-  check('interacting puts the mod in the bag', grab.bag.length === 1 && grab.gone, grab);
+  check('walking onto it shows the card, not the bag', grab.beforeTake.card && grab.beforeTake.bag.length === 0, grab.beforeTake);
+  check('interacting asks rather than taking', grab.asked.card && grab.asked.bag.length === 0, grab.asked);
+  check('and Pick up puts the mod in the bag', grab.bag.length === 1 && grab.gone, grab);
 
   // --- a gun pickup shows its card; interacting opens the chooser, not equipping it ---
   const gunFind = await page.evaluate(async () => {

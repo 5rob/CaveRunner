@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8');
+const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');   // a Windows checkout hands us CRLF
 const open = src.indexOf('<script>\n') + 9;
 const js = src.slice(open, src.indexOf('</script>', open));
 const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
@@ -57,13 +57,30 @@ for (let seed = 1; seed <= 20; seed++) {
   mods += pickups.filter(q => q.kind === 'mod').length;
   guns += pickups.filter(q => q.kind === 'gun').length;
   foes += enemies.length;
-  const near = (x, y) => {                 // reachable within a couple of cells
-    const bx = Math.round(x / CELL), by = Math.round(y / CELL);
-    for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
-      const i = (by + dy) * CW + bx + dx;
-      if (i >= 0 && i < CW * CH && seen[i]) return true;
+  // Loot sits on the ground now, so it sits at the bottom of whatever pocket it was put
+  // in, and the cell it rests on is not one you could *stand* at — you stand a body
+  // higher up and pick it off the floor. So this asks the question that matters instead:
+  // is the pickup's own cave connected to the one you start in? Flooded over plain
+  // emptiness from the spawn, which is what "can I get there" means for something you fly.
+  const air = new Uint8Array(CW * CH);
+  for (let i = 0; i < CW * CH; i++) if (!mat[i]) air[i] = 1;
+  const open3 = new Uint8Array(CW * CH);
+  {
+    const q0 = [[sx, sy]];
+    open3[sy * CW + sx] = 1;
+    while (q0.length) {
+      const [x, y] = q0.pop();
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy, i = ny * CW + nx;
+        if (nx < 0 || ny < 0 || nx >= CW || ny >= CH || open3[i] || !air[i]) continue;
+        open3[i] = 1; q0.push([nx, ny]);
+      }
     }
-    return false;
+  }
+  const near = (x, y) => {
+    const bx = Math.round(x / CELL), by = Math.round(y / CELL);
+    const i = by * CW + bx;
+    return i >= 0 && i < CW * CH && open3[i] === 1;
   };
   for (const q of pickups) { pkTotal++; if (near(q.x, q.y)) pkReach++; }
   for (const e of enemies) if (near(e.x, e.y)) foeReach++;
