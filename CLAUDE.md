@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v48**. Branch: `claude/compassionate-rubin-fcqsif` (release channel is
+Current version: **v49**. Branch: `claude/compassionate-rubin-fcqsif` (release channel is
 `main`).
 
 ### The version number is not optional
@@ -194,7 +194,11 @@ so nothing chases you through a wall — break the sightline and it drops back t
 range check is written first on purpose, so the exact `rayDist` march only runs for the few
 enemies already in aggro range, not all ~136 every frame. `sees` also folds in `1/DEV.zoom`
 (so aggro/fire reach track the camera zoom) and Invisibility. Shooters/turrets already gate
-firing on `lineOfSight`; this brings the movers in line with them.
+firing on `lineOfSight`; this brings the movers in line with them. On top of that,
+**`DEV.aggro` (v49) is a hand-tuning multiplier on the final aggro reach only** — it
+multiplies `k.aggro * sees` for the `hunting` check and leaves firing range (`k.range`)
+alone, so the owner can widen or shrink how close a chaser/bomber comes for you
+independently of the zoom-relative scaling.
 
 **The knob is the bit under the thumb, and the amber ring is a trigger line.** The owner
 asked for "the thumb control circles" to be bigger meaning the knobs, not the pads, and a
@@ -333,7 +337,8 @@ pauses the run but leaves `draw()` running behind a light backdrop so the look-o
 preview live as you type. `DEV` is a plain mutable object the `Game` reads every frame —
 `DEV.zoom` (draw scale), `DEV.torch` (scales the effective `sight`, so reveal and lamp grow
 together), `DEV.fogDark`/`DEV.fogDim` (the two fog shades), `DEV.move` (a `WALK`/`JET`
-multiplier). `DEV_META` drives the rows; a blank field restores `DEV_DEFAULTS[k]`; `devSet`
+multiplier), `DEV.aggro` (v49, an enemy-aggro-distance multiplier — see the aggro note
+above). `DEV_META` drives the rows; a blank field restores `DEV_DEFAULTS[k]`; `devSet`
 writes through to `localStorage` under `caverunner-dev`. Every localStorage touch is wrapped
 in try/catch because it throws in a private window and does not exist under Node, where the
 logic tests eval this file — a missing store just means defaults, so the load IIFE must stay
