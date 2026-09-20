@@ -24,11 +24,11 @@ Their words, from the first session:
 So: do the thing asked, no more. No frameworks, no bundler, no package.json for the
 game itself.
 
-They play on a phone through the published artifact, so **every change has to work at
-phone width with touch**.
+They play on a phone through the **installed Android app** (see **The Android app** below),
+so **every change has to work at phone width with touch**.
 
-**`node serve.js`** serves the game to their phone over the LAN, for testing before or
-instead of publishing. They open it on the phone at **http://192.168.86.233:8000/** —
+**`node serve.js`** serves the game to their phone over the LAN, for a quick look on the
+phone without cutting a full release. They open it on the phone at **http://192.168.86.233:8000/** —
 that is the PC's address on their wifi, so it only works while `serve.js` is running on
 the PC and the phone is on the same network. If the address stops answering, the PC has
 been given a new one: check with `ipconfig` and update the line here.
@@ -43,28 +43,71 @@ replace it with a general static server.
 1. Make the change in `index.html`.
 2. Test it. `node tests/run.js` — see **Testing** below. Add a suite for anything new.
 3. Bump the version: `<title>` on line 6 and `const VERSION` near the top of the script.
-   They asked for this so the published page doesn't get stuck on a cached old build.
+   This is what the phone's update prompt keys off — see **The version number is not
+   optional** below.
 4. Update `README.md` — it describes the game for a player, and stays current.
-5. Commit and push to the working branch.
-6. **Publish it.** They test on their phone, so a change isn't delivered until it's live
-   at the link. Republish to the **same URL** every time:
-   `https://claude.ai/artifact/2rarFzJoTseCKXhTPwMyLT`
-   Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
-   link. If this session hasn't published yet, read the artifact first, then publish.
+5. Commit, then **get it onto `main`** — that is the release. Pushing/merging to `main`
+   triggers CI (`.github/workflows/android.yml`), which deploys the game to GitHub Pages
+   and rebuilds the APK. A change isn't delivered until it's on `main`. (Working on a
+   branch and merging is fine; the workflow only runs on `main` because Pages needs the
+   default branch.)
+6. That's it — the owner opens the app and it offers the update. **You don't publish the
+   artifact any more.** (The old artifact `https://claude.ai/artifact/2rarFzJoTseCKXhTPwMyLT`
+   and `serve.js` still work as a fallback, but the app is the delivery path now.)
 
-Current version: **v48**. Branch: `claude/compassionate-rubin-fcqsif`.
+**Confirm the release landed.** CI can fail (a runner hiccup, a bad workflow edit). The
+GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for the run,
+`.../actions/runs/<id>/jobs` for which step failed, `.../check-runs/<job-id>/annotations`
+for the error text (job *logs* need auth, step names + annotations don't). When green,
+`https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
+
+Current version: **v48**. Branch: `claude/compassionate-rubin-fcqsif` (release channel is
+`main`).
 
 ### The version number is not optional
 
-Their phone caches the page. A build published under the old number can silently serve
-them the previous version, and then you're both debugging a bug that's already fixed.
-So **every published build gets a new number**, in both places:
+The app decides whether to offer an update by comparing its own `VERSION` to a
+`version.txt` that CI generates from `index.html`'s `const VERSION`. If you don't bump the
+number, `version.txt` doesn't change, and **the phone never prompts** — the owner is stuck
+on the old build debugging a bug that's already fixed. So **every release gets a new
+number**, in both places:
 
 - `<title>CaveRunner vNN</title>` — line 6
-- `const VERSION = 'vNN';` — near the top of the script, drawn on screen in-game
+- `const VERSION = 'vNN';` — near the top of the script, drawn on screen in-game, and the
+  string the update check parses (`VERSION = 'v(\d+)'`, so keep the `vNN` shape)
 
 The number on screen is how they tell you which build they're looking at. Bump it before
-publishing, never after.
+you push to `main`, never after.
+
+## The Android app
+
+The owner plays on an installed Android app instead of the artifact link. It's a thin
+WebView shell in `android/`; the game itself is still just `index.html`. Full details in
+`android/README.md` — the essentials:
+
+- **It plays offline.** The APK bundles `index.html` + React, so no network is needed.
+  `index.html` loads React from a CDN (two `<script>` tags, ~line 399); the app rewrites
+  those two URLs to the bundled local copies. This happens in **two** places that must stay
+  in sync: `android/prep-assets.js` (build time, the bundled seed) and `localize()` in
+  `MainActivity.java` (runtime, each downloaded update). **The canonical `index.html` is
+  never touched** — the CDN tags stay, so the artifact / LAN / Pages-in-a-browser all keep
+  working. If you ever pin a new React version, change both those rewrites *and* the two
+  files in `android/app/src/main/assets/`.
+- **Updates come from GitHub Pages**, not the PC. On launch the app fetches
+  `https://5rob.github.io/CaveRunner/version.txt`, compares it to its own `VERSION`, and if
+  newer offers to download the new `index.html` and reload. Any network, no reinstall.
+- **CI does everything** (`.github/workflows/android.yml`, runs on push to `main`):
+  deploys Pages (`index.html` + a generated `version.txt`) and builds the APK, attached to
+  the `app` release tag. It uses the runner's preinstalled Android SDK and a committed
+  `android/debug.keystore` (a fixed debug key so the shell installs in place across builds —
+  a debug-signed APK is normal for sideloading). Nothing is built on the PC.
+- **You only rebuild/reinstall the shell APK when the shell code changes** (rare). Game
+  changes never touch it — they flow through Pages. The bundled `assets/index.html` is
+  git-ignored and regenerated by CI, so don't commit it; the two React `.js` beside it *are*
+  committed.
+- **One-time GitHub settings are already done:** Pages Source = GitHub Actions, and Actions
+  workflow permissions = read/write (CI needs write to publish the release and to commit the
+  keystore on the first run).
 
 ## Layout of index.html
 
