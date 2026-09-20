@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v48</title>
+<title>CaveRunner v49</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -411,7 +411,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v48';
+const VERSION = 'v49';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -442,13 +442,14 @@ const START_GOLD = 40;
 // Each has a default; clearing a field in the dev panel puts the default back. Every
 // localStorage touch is wrapped: it throws in a private window and does not exist at all
 // under Node (the logic tests eval this file), and a missing store just means "defaults".
-const DEV_DEFAULTS = { zoom: 1, torch: 1, fogDark: 0.99, fogDim: 0.85, move: 1 };
+const DEV_DEFAULTS = { zoom: 1, torch: 1, fogDark: 0.99, fogDim: 0.85, move: 1, aggro: 1 };
 const DEV_META = [
   { k: 'zoom',    label: 'Camera zoom',                 min: 0.3, max: 3,  step: 0.05 },
   { k: 'torch',   label: 'Torch fall-off distance',     min: 0.2, max: 5,  step: 0.05 },
   { k: 'fogDark', label: 'Fog of war darkness',         min: 0,   max: 1,  step: 0.01 },
   { k: 'fogDim',  label: 'Outside-torchlight darkness', min: 0,   max: 1,  step: 0.01 },
   { k: 'move',    label: 'Base movement speed',         min: 0.2, max: 5,  step: 0.05 },
+  { k: 'aggro',   label: 'Enemy aggro distance',        min: 0.2, max: 5,  step: 0.05 },
 ];
 const DEV_KEY = 'caverunner-dev';
 const DEV = Object.assign({}, DEV_DEFAULTS);
@@ -3595,8 +3596,10 @@ function Game({ input }) {
         // wall any more, only once it can actually see you (and within its aggro reach).
         // The range check comes first so the line-of-sight march only runs for the few
         // enemies already close enough to care.
+        // DEV.aggro is an extra hand-tuning multiplier on the final aggro reach, on top
+        // of the zoom-relative `sees` scaling — firing range (k.range) is left alone.
         const hunting = (k.act === 'chase' || k.act === 'bomb') && !p.dead &&
-          dist < k.aggro * sees && lineOfSight(e.x, e.ty, pcx, pcy);
+          dist < k.aggro * sees * DEV.aggro && lineOfSight(e.x, e.ty, pcx, pcy);
 
         if (k.act === 'turret') {
           // holds station: the hover is all the movement it gets
