@@ -1,0 +1,23 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- jetpack flame, centred in the adaptive-icon safe zone -->
+    <path
+        android:fillColor="#FFB020"
+        android:pathData="M54,26
+            c6,10 16,16 16,30
+            c0,12 -7,22 -16,26
+            c-9,-4 -16,-14 -16,-26
+            c0,-9 4,-14 8,-19
+            c1,6 4,9 7,11
+            c-2,-8 -3,-15 -1,-23 z" />
+    <path
+        android:fillColor="#FFE08A"
+        android:pathData="M54,52
+            c4,5 7,9 7,15
+            c0,6 -3,11 -7,13
+            c-4,-2 -7,-7 -7,-13
+            c0,-5 3,-9 7,-15 z" />
+</vector>
