@@ -52,7 +52,7 @@ replace it with a general static server.
    Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
    link. If this session hasn't published yet, read the artifact first, then publish.
 
-Current version: **v42**. Branch: `claude/compassionate-rubin-fcqsif`.
+Current version: **v43**. Branch: `claude/compassionate-rubin-fcqsif`.
 
 ### The version number is not optional
 
@@ -162,10 +162,15 @@ can pass the rim as a whole knob.
 reaches the bottom of the screen, so a bottom-anchored card buried the mod bag. Four
 separate bugs came from that; don't move it back.
 
-**The shop/pickup preview is one panel now (v42), `.buypanel`, grown up from the bottom.**
-Walking up to a plinth or a piece of ground loot renders `.buypanel` at the bottom of the
-view: the item's card (`ModCard`/`GunCard`/`PerkCard`, all `ingame`) followed by one
-`.pbuy` line — `Buy <price>` for shop stock, `Take`/`free` for anything you pick up
+**The shop/pickup preview is one panel now (v42), `.buypanel`.** It is **half width**,
+centred (`left:25%;right:25%`), and its **bottom edge floats just above the item** rather
+than sitting at the screen bottom (v43): `step()` measures the plinth/pickup's on-screen
+position from the last frame's `camY`/`unitPx`, stores it as `input.current.promptBottom`
+(css px up from the view's bottom, item world y minus 16), buckets it into `sig` so the
+panel re-lays-out as the camera settles, and `App` applies it as the panel's inline `bottom`
+plus a matching `maxHeight`. It holds the item's card (`ModCard`/`GunCard`/`PerkCard`, all
+`ingame`) followed by one `.pbuy` line — `Buy <price>` for shop stock, `Take`/`free` for
+anything you pick up
 (a nameless prompt like the heal puts its name here since there's no card above it). The
 info box no longer floats at the top and there's no separate `.pickhint` any more.
 `.buypanel .pop` strips the inner card's own frame so the panel is the box; it wins over

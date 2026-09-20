@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v42</title>
+<title>CaveRunner v43</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -290,7 +290,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* the shop/pickup panel: the item's card and its buy/take line in one box, grown up
    from the bottom of the view. pointer-events:none so a tap falls through to the sticks —
    buying is a tap on the right stick's dead zone. */
-.buypanel{position:absolute;left:8px;right:8px;bottom:12px;z-index:5;box-sizing:border-box;
+.buypanel{position:absolute;left:25%;right:25%;bottom:12px;z-index:5;box-sizing:border-box;
   display:flex;flex-direction:column;gap:9px;pointer-events:none;
   max-height:calc(100% - 24px);overflow-y:auto;-webkit-overflow-scrolling:touch;
   background:rgba(18,20,26,0.93);border:1px solid rgba(255,255,255,0.18);border-radius:15px;
@@ -396,7 +396,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v42';
+const VERSION = 'v43';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -3474,10 +3474,22 @@ function Game({ input }) {
           // the "For sale"/"Found" split cares about, not whether you're allowed to
           : (near.q.kind === 'gun' ? { text: near.q.gun.name, gun: near.q.gun, price: 0, can: true, found: true }
             : { text: MODS[near.q.id].name, id: near.q.id, price: 0, can: true, found: true });
-      const sig = nearKey + ':' + (label && label.can ? 1 : 0) + ':' + inShop;
+      // where the item sits on screen, so the panel can float its bottom edge just above
+      // it (the plinth/pickup) rather than covering it. camY/unitPx are last frame's, from
+      // draw(); the item is static and the camera settles, so it lands right within a frame
+      // or two. In css px measured up from the bottom of the view — that's the panel's
+      // `bottom`. Bucketed into the sig so the panel re-lays-out as the camera settles.
+      let pbottom = 12;
+      if (near) {
+        const iy = near.src === 'shop' ? near.it.y : near.src === 'room' ? near.r.y : near.q.y;
+        const dprc = window.devicePixelRatio || 1;
+        pbottom = Math.round(Math.max(10, c.height / dprc - (iy - 16 - camY) * unitPx));
+      }
+      const sig = nearKey + ':' + (label && label.can ? 1 : 0) + ':' + inShop + ':' + Math.round(pbottom / 16);
       if (sig !== input.current.sig) {
         input.current.sig = sig;
         input.current.prompt = label;
+        input.current.promptBottom = pbottom;
         input.current.inShop = inShop;
         input.current.notify();
       }
@@ -5165,7 +5177,9 @@ function App() {
       // otherwise sit there stale, doubled up with their own card for the same thing.
       // The panel is pointer-events:none so a tap still reaches the sticks underneath;
       // buying/picking up is a tap on the right stick's dead zone (or the f key).
-      prompt && !found && !confirming ? h('div', { className: 'buypanel' },
+      prompt && !found && !confirming ? h('div', { className: 'buypanel',
+        style: { bottom: (input.current.promptBottom || 12) + 'px',
+          maxHeight: 'calc(100% - ' + ((input.current.promptBottom || 12) + 12) + 'px)' } },
         prompt.id ? h(ModCard, { id: prompt.id, ingame: true }) : null,
         prompt.perk ? h(PerkCard, { id: prompt.perk, ingame: true }) : null,
         prompt.gun ? h(GunCard, { gun: prompt.gun, label: prompt.found ? 'Found' : 'For sale',

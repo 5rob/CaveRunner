@@ -7,13 +7,17 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v42.** Branch: `claude/compassionate-rubin-fcqsif` (pushed).
+- **On-disk version: v43.** Branch: `claude/compassionate-rubin-fcqsif` (pushed).
 - Working tree is clean apart from `.claude/` (untracked on purpose — it holds an API token,
   never commit it).
 - Full test suite is green (`node tests/run.js`), see **Testing** below for two known flakes.
 
 ## What shipped recently (most recent first)
 
+- **v43 — pickup panel is half width and floats above the item.** `.buypanel` is now
+  `left:25%;right:25%` (half width, centred) and its bottom edge sits just above the plinth
+  instead of at the screen bottom: `step()` measures the item's on-screen spot and stores
+  `input.current.promptBottom`, which `App` applies as the panel's inline `bottom`/`maxHeight`.
 - **v42 — unified pickup panel, bolder knobs, zoom-aware aggro.** The shop/pickup info
   card and the buy pill are one panel now (`.buypanel`, grown up from the bottom): the
   item card, then a `.pbuy` line reading `Buy <price>` for stock or `Take`/`free` for

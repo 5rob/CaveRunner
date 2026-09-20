@@ -58,9 +58,9 @@ The middle of the right stick is a dead zone: drag out past it to aim and fire,
 tap it without leaving it and you interact with whatever you are standing at.
 That one button buys from a shop plinth and picks up guns and mods in the cave.
 
-Walking over something no longer takes it. You get its card instead, grown up from
-the bottom of the screen with the price built into it — so you can read a mod or
-compare a gun against the one you are holding, and see what it costs, in one panel.
+Walking over something no longer takes it. You get its card instead — a slim panel
+that floats just above the item with the price built into it — so you can read a mod
+or compare a gun against the one you are holding, and see what it costs, in one panel.
 Shop stock reads **Buy** and its price; anything free just reads **Take**.
 
 A mod on the ground is not taken by the tap either. The tap opens the card,
