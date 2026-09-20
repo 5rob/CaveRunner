@@ -52,7 +52,7 @@ replace it with a general static server.
    Pass that as `url`. Publishing without it makes a *second* artifact and they lose their
    link. If this session hasn't published yet, read the artifact first, then publish.
 
-Current version: **v47**. Branch: `claude/compassionate-rubin-fcqsif`.
+Current version: **v48**. Branch: `claude/compassionate-rubin-fcqsif`.
 
 ### The version number is not optional
 
