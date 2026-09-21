@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v54</title>
+<title>CaveRunner v55</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -411,7 +411,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v54';
+const VERSION = 'v55';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -2932,7 +2932,7 @@ function Game({ input }) {
       const plan = planCast(g, input.current.loadout.guns);
       if (!plan.shots.length) { wrap(); return; }        // modifiers with nothing to modify
       const cost = pb.mana === 0 ? 0 : plan.cost;        // Unlimited Spells: nothing costs mana
-      if (g.mana < cost) { g.idx = plan.start; g.delayT = 0.12; return; }
+      if (g.mana < cost) { g.idx = plan.start; g.delayT = 0.12; g.delayMax = 0.12; return; }
       g.mana -= cost;
 
       const base = Math.atan2(ny, nx);
@@ -2991,6 +2991,7 @@ function Game({ input }) {
         p.vy -= Math.sin(base) * kick;
       }
       g.delayT = plan.delay * pb.delay;                 // Concentrated slows, Faster Wands quickens
+      g.delayMax = Math.max(g.delayT, 0.001);           // for the cast-delay ring on the stick
       if (plan.wrap) wrap();
     }
 
@@ -4246,13 +4247,21 @@ function Game({ input }) {
       if (!p.dead) drawGun(ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
       // the torch, in the hand the gun is not in
       if (!p.dead) { const th = torchHand(); drawTorch(ctx, th.x, th.y, ax >= 0 ? -1 : 1, flick, torchP); }
-      // a small aim crosshair: a dot at DEV.aimDist out, rotating round you with the aim
+      // a small aim crosshair at DEV.aimDist out, rotating round you with the aim: a "+"
+      // with the centre cut out (two short verticals, two short horizontals), drawn as thin
+      // as the thumbstick lines (~1.5 css px, so 1.5/unitPx world units, whatever the zoom)
       if (!p.dead) {
         const cxp = pcx + ax * DEV.aimDist, cyp = gy + ay * DEV.aimDist;
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = 'rgba(0,0,0,0.55)';
-        ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        ctx.beginPath(); ctx.arc(cxp, cyp, 2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        const inr = 1.25, outr = 3;            // gap radius, arm end (half the v55 size)
+        ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+        ctx.lineWidth = 1.5 / unitPx;
+        ctx.lineCap = 'butt';
+        ctx.beginPath();
+        ctx.moveTo(cxp, cyp - outr); ctx.lineTo(cxp, cyp - inr);   // top
+        ctx.moveTo(cxp, cyp + inr);  ctx.lineTo(cxp, cyp + outr);  // bottom
+        ctx.moveTo(cxp - outr, cyp); ctx.lineTo(cxp - inr, cyp);   // left
+        ctx.moveTo(cxp + inr, cyp);  ctx.lineTo(cxp + outr, cyp);  // right
+        ctx.stroke();
       }
       ctx.globalAlpha = 1;
 
@@ -4386,12 +4395,18 @@ function Game({ input }) {
       // the gold ring round the right stick. Written every frame the loop draws.
       const MHP = maxHp();
       const gpas = held ? gunPassives(held) : null;
+      // recharge / cast-delay "readiness": 1 when ready, dropping to 0 the moment it fires
+      // and filling back over its own time — so the ring that spends the most time refilling
+      // is the one gating your fire. Both normalise by their own max so the wipe is 0..1.
+      const effRech = held ? Math.max(0.001, effRecharge(held) * pb.rech) : 1;
       input.current.hud = {
         hp: MHP > 0 ? Math.max(0, Math.min(1, p.hp / MHP)) : 0,
         low: p.hp <= 30,
         fuel: Math.max(0, Math.min(1, p.fuel)),
         empty: !!p.empty,
         mana: held ? Math.max(0, Math.min(1, held.mana / (held.manaMax + gpas.manaMax))) : 0,
+        rech: held ? (held.rechT > 0 ? clamp(1 - held.rechT / effRech, 0, 1) : 1) : 0,
+        cast: held ? (held.delayT > 0 && held.delayMax ? clamp(1 - held.delayT / held.delayMax, 0, 1) : 1) : 0,
         recharging: !!(held && held.rechT > 0),
         hasGun: !!held,
       };
@@ -4502,6 +4517,9 @@ function Game({ input }) {
 // the circumference of the gauge ring (r=46 in a 0..100 viewBox), used to turn a 0..1
 // fraction into a stroke-dasharray so the ring is drawn only as far as the stat reaches
 const GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
+// the three gun stats shown as rings on the right stick and colour-coded in the bag, so a
+// ring and its stat read as the same thing: mana gold, recharge blue, cast delay purple
+const GAUGE_COL = { mana: '#ffc93c', rech: '#7ad7ff', cast: '#c58cff' };
 // blend two "#rrggbb" colours; t=0 is a, t=1 is b. Used for the health ring, which
 // slides from green at full down through amber to red as it empties.
 function mixHex(a, b, t) {
@@ -4531,9 +4549,11 @@ function Stick({ size, kind, input, refresh }) {
       if (s) {
         const g = left
           ? { ring: s.hp, fuel: s.fuel, empty: s.empty, dry: false }
-          : { ring: s.hasGun ? s.mana : 0, fuel: 0, empty: false, dry: !s.hasGun || s.recharging };
+          : { ring: s.hasGun ? s.mana : 0, rech: s.hasGun ? s.rech : 0, cast: s.hasGun ? s.cast : 0,
+              has: s.hasGun, fuel: 0, empty: false, dry: !s.hasGun || s.recharging };
         const key = Math.round(g.ring * 100) + '|' + Math.round(g.fuel * 100) + '|' +
-          (g.empty ? 1 : 0) + '|' + (g.dry ? 1 : 0);
+          Math.round((g.rech || 0) * 100) + '|' + Math.round((g.cast || 0) * 100) + '|' +
+          (g.has ? 1 : 0) + '|' + (g.empty ? 1 : 0) + '|' + (g.dry ? 1 : 0);
         if (key !== prev) { prev = key; setGauge(g); }
       }
       raf = requestAnimationFrame(tick);
@@ -4596,18 +4616,22 @@ function Stick({ size, kind, input, refresh }) {
     setKnob({ x: 0, y: 0, jet: false });
   };
 
-  // the circular gauge: green health round the left stick, gold mana round the right,
-  // each wiped clockwise from the top as its stat falls
-  const ringCol = left
-    ? healthCol(gauge.ring)
-    : (gauge.dry ? 'rgba(255,201,60,0.28)' : '#ffc93c');
-  const ring = h('svg', { className: 'gauge', viewBox: '0 0 100 100' },
-    h('circle', { cx: 50, cy: 50, r: GAUGE_R, fill: 'none',
-      stroke: 'rgba(0,0,0,0.35)', strokeWidth: 4.5 }),
-    h('circle', { cx: 50, cy: 50, r: GAUGE_R, fill: 'none', stroke: ringCol,
-      strokeWidth: 4.5, strokeLinecap: 'round',
-      strokeDasharray: (gauge.ring * GAUGE_C) + ' ' + GAUGE_C,
-      transform: 'rotate(-90 50 50)' }));
+  // the circular gauge, wiped clockwise from the top as its stat falls. Left: one green
+  // health ring. Right: three rings — gold mana at the very edge, then recharge and cast
+  // delay stacked flush inside it (no gap), so you can see which one is gating your fire.
+  const rw = left ? 4.5 : 3.2;
+  const wipe = (r, frac, col) => [
+    h('circle', { key: 't' + r, cx: 50, cy: 50, r, fill: 'none', stroke: 'rgba(0,0,0,0.35)', strokeWidth: rw }),
+    h('circle', { key: 'w' + r, cx: 50, cy: 50, r, fill: 'none', stroke: col, strokeWidth: rw,
+      strokeLinecap: 'round',
+      strokeDasharray: (Math.max(0, Math.min(1, frac)) * 2 * Math.PI * r) + ' ' + (2 * Math.PI * r),
+      transform: 'rotate(-90 50 50)' })];
+  const ring = left
+    ? h('svg', { className: 'gauge', viewBox: '0 0 100 100' }, wipe(GAUGE_R, gauge.ring, healthCol(gauge.ring)))
+    : h('svg', { className: 'gauge', viewBox: '0 0 100 100' },
+        wipe(GAUGE_R, gauge.ring, gauge.dry ? 'rgba(255,201,60,0.28)' : GAUGE_COL.mana),
+        wipe(GAUGE_R - rw, gauge.rech, gauge.has ? GAUGE_COL.rech : 'rgba(122,215,255,0.22)'),
+        wipe(GAUGE_R - 2 * rw, gauge.cast, gauge.has ? GAUGE_COL.cast : 'rgba(197,140,255,0.22)'));
   return h('div', {
       ref, className: 'stick' + (knob.jet ? ' jetting' : ''),
       style: { width: size, height: size },
@@ -5046,7 +5070,10 @@ function Editor({ input, close, refresh, canEdit }) {
     return out;
   };
 
-  const stat = (k, v) => h('div', { className: 'st' }, h('b', null, String(v)), h('span', null, k));
+  // col ties a stat to its ring on the right stick (recharge blue, cast delay purple, mana gold)
+  const stat = (k, v, col) => h('div', { className: 'st' },
+    h('b', col ? { style: { color: col } } : null, String(v)),
+    h('span', col ? { style: { color: col } } : null, k));
   const shown = info && MODS[info];
 
   // the backdrop closes the card, but a tap that lands on another mod switches to it
@@ -5087,9 +5114,9 @@ function Editor({ input, close, refresh, canEdit }) {
       ))
     ),
     gun ? h('div', { className: 'stats' },
-      stat('cast delay', gun.castDelay.toFixed(2) + 's'),
-      stat('recharge', gun.recharge.toFixed(2) + 's'),
-      stat('mana', Math.round(gun.manaMax) + ' +' + Math.round(gun.manaRegen) + '/s'),
+      stat('cast delay', gun.castDelay.toFixed(2) + 's', GAUGE_COL.cast),
+      stat('recharge', gun.recharge.toFixed(2) + 's', GAUGE_COL.rech),
+      stat('mana', Math.round(gun.manaMax) + ' +' + Math.round(gun.manaRegen) + '/s', GAUGE_COL.mana),
       stat('spread', gun.spread.toFixed(1) + '\u00b0'),
       stat('per cast', gun.multi),
       stat('shot speed', 'x' + (gun.speedMul || 1).toFixed(2)),

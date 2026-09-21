@@ -7,10 +7,11 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v54.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v55.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
-  Matter Eater fix + softer fog + aim crosshair (see **What shipped recently**). After a push,
-  confirm CI green and that `https://5rob.github.io/CaveRunner/version.txt` matches.
+  Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
+  **What shipped recently**). After a push, confirm CI green and that
+  `https://5rob.github.io/CaveRunner/version.txt` matches.
 - **The game now ships as a self-updating Android app** (built this session, working end to
   end). The delivery path changed: pushing to `main` is the release, and the app on the
   phone offers the update. You no longer publish the artifact. See the new **The Android
@@ -41,6 +42,12 @@ it's stale.
 
 ## What shipped recently (most recent first)
 
+- **v55 — crosshair "+" and gun-stat rings.** The aim crosshair is now a `+` with the centre
+  cut out (four thin strokes), as thin as the stick lines. The right stick shows three
+  concentric rings — mana (outer), recharge, cast delay — each a readiness wipe that empties
+  on fire and refills over its own time, so the ring lingering low is the bottleneck. The
+  bag's cast-delay / recharge / mana stats are colour-coded to match (`GAUGE_COL`: gold /
+  blue / purple).
 - **v54 — Matter Eater fix, softer fog, aim crosshair.**
   - **Matter Eater** (and any `eat` bullet) now tunnels *through* rock: the collision check
     digs and continues on `eat` like it does on `bore`, so a fast bolt can't outrun its small

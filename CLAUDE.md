@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v54**. Branch: `main` (release channel is `main`).
+Current version: **v55**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -357,10 +357,26 @@ a hard line. The dilation only changes the *bake*, never the `seen` array (the m
 LOS gating are unchanged), so `fog`/`torch` tests still hold. Blur at source (not a
 full-screen `ctx.filter`) keeps it affordable on a phone.
 
-**A small aim crosshair (v54): a white dot `DEV.aimDist` out, rotating round you with the
-aim.** Drawn in `draw()` right after the gun at `(pcx + ax*DEV.aimDist, gy + ay*DEV.aimDist)`
-where `ax/ay` is the aim (or facing) unit vector. `DEV.aimDist` (default 44) is a Dev-panel
-row ("Crosshair distance"). This is always on, unlike the perk-gated trajectory line.
+**A small aim crosshair: a `+` with the centre cut out, `DEV.aimDist` out, rotating round you
+with the aim.** Drawn in `draw()` right after the gun at `(pcx + ax*DEV.aimDist, gy +
+ay*DEV.aimDist)` where `ax/ay` is the aim (or facing) unit vector — four short strokes (two
+vertical, two horizontal) with a gap in the middle (v55; was a dot in v54). Small — arms
+`inr:1.25`→`outr:3` world units. Line width is `1.5/unitPx` world units so it's ~1.5 css px
+(as thin as the stick lines) at any zoom.
+`DEV.aimDist` (default 44) is a Dev-panel row ("Crosshair distance"). Always on, unlike the
+perk-gated trajectory line.
+
+**The right stick has three rings (v55): mana, recharge, cast delay.** So you can see which
+one is gating your fire. Colours are shared with the bag via `GAUGE_COL` (mana gold `#ffc93c`,
+recharge blue `#7ad7ff`, cast delay purple `#c58cff`) — the bag's `cast delay`/`recharge`/`mana`
+stats are tinted the same, so a ring and its stat read as one thing. Each ring is a
+"readiness" wipe: `1` when ready, dropping to `0` the instant it fires and filling back over
+its own time, so the ring that lingers low is the bottleneck. `hud.rech` = `1 - rechT/(effRecharge*pb.rech)`;
+`hud.cast` = `1 - delayT/delayMax` (`g.delayMax` is stored in `cast()` when `delayT` is set,
+since the effective cast delay varies with mods). The left stick keeps its single health ring.
+The `Stick` builds them with a `wipe(r, frac, col)` helper; the three are stacked **flush at
+the outer edge** (radii `GAUGE_R`, `GAUGE_R-rw`, `GAUGE_R-2*rw` with `rw=3.2`, so their
+strokes touch with no gap). The single left ring is stroke `4.5`.
 
 **`rayDist` / `visPoly` / `losClear` are exact, and that is the point.** `rayDist` marches
 from cell boundary to cell boundary rather than sampling at a fixed step — a fixed step

@@ -44,8 +44,9 @@ that follows your thumb is a white ring with a black fill — the boldest circle
 the stick — sized to still show an edge around a thumbprint rather than vanishing
 underneath one, so you can see where your thumb is pointing without lifting it.
 
-A small white dot marks where you are aiming — it circles the character at a fixed distance
-as you swing the aim stick (its distance is a Dev-panel setting).
+A small white crosshair (a "+" with the centre cut out) marks where you are aiming — it
+circles the character at a fixed distance as you swing the aim stick (its distance is a
+Dev-panel setting).
 
 The right stick carries a dotted amber ring: the trigger line. It is drawn one knob
 radius outside the point where the drag starts counting as aiming, so when the knob's
@@ -55,9 +56,13 @@ circle, so at full deflection the knob is still a whole knob.
 The sticks are your dashboard too. There are no numbers up top any more: your health
 is the ring around the left stick, wiping away clockwise as you take hits — and it slides
 from green through amber to red as it drops, so the colour itself tells you how close you
-are to the end; your mana is the gold ring around the right stick, draining the same way
-and recharging back; and your fuel is the amber fill in the top half of the left stick,
-sinking towards the centre line as the jetpack burns it. The floor number is painted big
+are to the end; and your fuel is the amber fill in the top half of the left stick, sinking
+towards the centre line as the jetpack burns it. The right stick carries three rings for the
+gun you're holding — gold mana on the outside, then blue recharge and purple cast delay inset
+each — every one a readiness gauge that empties when it fires and fills back over its own
+time, so the ring that keeps lingering low is what's limiting your fire. Those same three
+colours tint the cast-delay, recharge and mana numbers in the Bag screen, to tie them
+together. The floor number is painted big
 across the shop's back wall, the version sits top-left, and your gold reads in the gap
 between the two sticks — a `g`, with thousands shortened to a `k` (so `1234` shows as
 `1.2kg`).
