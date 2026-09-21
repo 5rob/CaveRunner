@@ -7,8 +7,10 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v48.** Branch: `claude/compassionate-rubin-fcqsif` (pushed). **Release
-  channel is now `main`** — CI there deploys Pages + builds the APK.
+- **On-disk version: v49.** Currently checked out on `main` (v49 merged and pushed there;
+  the working branch `claude/compassionate-rubin-fcqsif` is merged in). **Release channel
+  is `main`** — CI there deploys Pages + builds the APK. Last run on `main` was green and
+  `https://5rob.github.io/CaveRunner/version.txt` reads `v49`.
 - **The game now ships as a self-updating Android app** (built this session, working end to
   end). The delivery path changed: pushing to `main` is the release, and the app on the
   phone offers the update. You no longer publish the artifact. See the new **The Android
@@ -39,6 +41,13 @@ it's stale.
 
 ## What shipped recently (most recent first)
 
+- **v49 — dev knob for enemy aggro distance.** Added `DEV.aggro` (default 1, range 0.2–5),
+  a new **Enemy aggro distance** row in the Dev panel. It's a hand-tuning multiplier on the
+  *final* aggro reach for chase/bomb enemies — `dist < k.aggro * sees * DEV.aggro` — layered
+  on top of the existing zoom-relative `1/DEV.zoom` (`sees`) scaling, and it leaves firing
+  range (`k.range`) alone. Saved to localStorage like the other knobs. See the aggro note
+  and the Dev-panel note in `CLAUDE.md`. No new test — DEV knobs live in the `Game` step
+  closure (not a pure fn), same as `zoom`/`move`, which are also untested; full suite green.
 - **v48 — gold nudged up** to sit just under the tops of the sticks (`.gold` `top:5%`).
 - **v47 — gold moved into the deck.** The gold readout came off the canvas (was top-right)
   and is now a DOM element (`.gold`) in the gap between the two sticks, just under their tops. Shows a `g` not the word, and truncates thousands to a `k` (`1234` → `1.2kg`) via
