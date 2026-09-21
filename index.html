@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v52</title>
+<title>CaveRunner v53</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -411,7 +411,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v52';
+const VERSION = 'v53';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -657,8 +657,8 @@ const MODS = {
              dmg: 2, speed: 300, spread: 0.6, delay: 0.14, size: 3.5, life: 4, bounce: 10, recoil: 8 },
   saw:     { name: 'Buzzsaw', kind: 'shot', glyph: '⚙', col: '#d9dde4', mana: 2,
              info: 'Cuts a circle right in front of you, and chews rock',
-             dmg: 3, speed: 0, spread: 0, delay: 0, size: 15, life: 0.12, bore: 12,
-             recoil: 0, setDelay: 0, rech: -0.17 },
+             dmg: 3, speed: 0, spread: 0, delay: 0, size: 15, life: 0.16, bore: 12,
+             eat: 14, reach: 5, hidden: 1, recoil: 0, setDelay: 0, rech: -0.17 },
   blast:   { name: 'Blast', kind: 'shot', glyph: '✹', col: '#7cc04f', mana: 28,
              info: 'Lobbed, explodes and digs',
              dmg: 2, speed: 380, spread: 2, delay: 0.5, size: 3.5, life: 3, grav: 600,
@@ -1316,6 +1316,8 @@ function blankShot(sm, spread) {
     autoaim: 0, homeR: 0, flat: 0, eat: sm.eat || 0, pull: sm.pull || 0,
     split: 0, cluster: 0, bounceFx: null, friendly: 0, chain: sm.chain || 0,
     fuse: sm.fuse || 0, beam: sm.beam || 0, payload: null,
+    reach: sm.reach != null ? sm.reach : 10,     // how far ahead of the muzzle it spawns
+    hidden: sm.hidden || 0,                       // don't draw it (Buzzsaw cuts unseen)
     still: sm.kind === 'static' ? 1 : 0, field: sm.field || null, r: sm.r || 0 };
 }
 
@@ -2583,7 +2585,8 @@ function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
     }
     return out;
   }
-  let x = x0 + nx * 10, y = y0 + ny * 10;
+  const reach = sh.reach != null ? sh.reach : 10;
+  let x = x0 + nx * reach, y = y0 + ny * reach;
   const ox = x, oy = y;
   let vx = nx * sh.speed, vy = ny * sh.speed;
   let life = Math.min(sh.life, 2.5), bounce = sh.bounce || 0;
@@ -3011,7 +3014,8 @@ function Game({ input }) {
         }
         if (sh.flat) a = Math.cos(a) >= 0 ? 0 : Math.PI;
         if (sh.beam) { fireBeam(sh, ox, oy, Math.cos(a), Math.sin(a), bonus, pd, pc); continue; }
-        let bx = ox + Math.cos(a) * 10, by = oy + Math.sin(a) * 10;
+        const reach = sh.reach != null ? sh.reach : 10;
+        let bx = ox + Math.cos(a) * reach, by = oy + Math.sin(a) * reach;
         if (warp) {                                   // jump forward, but not into rock
           for (let step = 0; step < 14; step++) {
             const tx = bx + Math.cos(a) * 10, ty = by + Math.sin(a) * 10;
@@ -3028,7 +3032,7 @@ function Game({ input }) {
           pong: sh.pong, orbit: sh.orbit, homeR: sh.homeR, eat: sh.eat, pull: sh.pull,
           split: sh.split, cluster: sh.cluster, bounceFx: sh.bounceFx,
           friendly: sh.friendly, chain: sh.chain, fuse: sh.fuse,
-          payload: sh.payload || null,
+          payload: sh.payload || null, hidden: sh.hidden,
           ox: bx, oy: by, age: 0, born: sh.life });
       }
     }
@@ -3949,6 +3953,7 @@ function Game({ input }) {
       // as a long dash and a slow heavy one as a stub
       ctx.lineCap = 'round';
       for (const b of bullets) {
+        if (b.hidden) continue;                 // Buzzsaw cuts without drawing a circle
         const sp = Math.hypot(b.vx, b.vy) || 1;
         const len = Math.max(0.5, Math.min(46, sp * 0.022));   // length is speed alone
         const hx = b.vx / sp * len, hy = b.vy / sp * len;

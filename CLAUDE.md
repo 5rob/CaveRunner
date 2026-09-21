@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v52**. Branch: `main` (release channel is `main`).
+Current version: **v53**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -275,12 +275,19 @@ card open should select a roomy gun first (see `buzzsaw.test.js`).
 **Starter guns: a weak Scratch Pistol (selected) then a Pick Axe.** `startingGuns()` returns
 `[pistol, pickaxe, null, null]` (v51 — the pistol is first/selected, the Pick Axe second, at
 the owner's request). The Scratch Pistol is deliberately worse than any floor-1 find (slow
-recharge, thirsty, one bolt). The Pick Axe is one slot holding `saw` (Buzzsaw). **Buzzsaw is
-a melee slice (v51):** `speed: 0` (no travel — the bullet sits ~10u in front of the muzzle),
-`size: 15` and `bore: 12` so it carves a circular hole into rock/enemies close in front. It
-only *digs* on the frames its centre is inside rock (push it into a wall). Recharge is back
-to its default `rech: -0.17` (the v50 `rechMul: 0.33` speedup is gone), and the Pick Axe gun
-recharge is `1.0`, so the swing is ~0.83s. `setDelay: 0` still zeroes cast delay.
+recharge, thirsty, one bolt). The Pick Axe is one slot holding `saw` (Buzzsaw). **Buzzsaw is a melee slice:** `speed: 0`
+(no travel), `reach: 5` so it sits just in front of the muzzle (was 10 in v51 — the owner
+found it too far), `size: 15` (visual + enemy hit radius). **Reliability (v53):** it carries
+`eat: 14`, and the bullet loop's `if (b.eat) dig(b.x, b.y, b.eat)` runs *unconditionally*
+every frame it's alive — so it cuts any rock within its radius whether or not its centre is
+on rock. That fixed the "only cuts every tenth try" bug, which was `bore` only digging on the
+frames the centre point happened to be inside rock. `life: 0.16` per swing; recharge is its
+default `rech: -0.17` on the Pick Axe's `1.0` gun recharge, so the swing is ~0.83s.
+`setDelay: 0` still zeroes cast delay. (`reach` is a new `blankShot` field, default 10, used
+by `spawnShot` and `tracePath`; only Buzzsaw overrides it.) It also carries `hidden: 1` (v53)
+— a new bullet flag the draw loop skips, so the slice cuts **without** drawing the big white
+circle (which was the round-capped zero-length streak a speed-0 bullet renders). The dig and
+the enemy hit-flash are its only feedback now.
 
 **The shop/pickup preview is one panel now (v42), `.buypanel`.** It is **half width**,
 centred (`left:25%;right:25%`), and its **bottom edge floats just above the item** rather

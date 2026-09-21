@@ -7,10 +7,11 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v52.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v53.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51 Buzzsaw melee slice + starter
-  order, v52 minimap accuracy + position dot (see **What shipped recently**). After a push,
-  confirm CI green and that `https://5rob.github.io/CaveRunner/version.txt` matches.
+  order, v52 minimap accuracy + dot, v53 Buzzsaw reliability + closer reach (see **What
+  shipped recently**). After a push, confirm CI green and that
+  `https://5rob.github.io/CaveRunner/version.txt` matches.
 - **The game now ships as a self-updating Android app** (built this session, working end to
   end). The delivery path changed: pushing to `main` is the release, and the app on the
   phone offers the update. You no longer publish the artifact. See the new **The Android
@@ -41,6 +42,13 @@ it's stale.
 
 ## What shipped recently (most recent first)
 
+- **v53 — Buzzsaw reliability + closer reach.** The melee slice only dug on frames its
+  centre point was inside rock (`bore`), so at most distances the 15-radius slice overlapped
+  the wall but never cut — "cuts every tenth try". Now it carries `eat: 14`, which digs its
+  radius every frame it's alive regardless of the centre, so it reliably cuts anything within
+  range. Pulled it in closer with a new `reach: 5` field (default 10 for every other shot;
+  `blankShot`/`spawnShot`/`tracePath` all honour it). Also added a `hidden: 1` bullet flag so
+  the slice no longer draws the big white circle — the draw loop skips hidden bullets.
 - **v52 — minimap accuracy + position dot.** The old minimap detected edges on the coarse
   fog grid (16-unit cells), so organic cave walls scattered into loose pixels (only the
   shop's straight walls survived). Now it samples the real terrain in 4px blocks and marks a
