@@ -44,6 +44,9 @@ that follows your thumb is a white ring with a black fill — the boldest circle
 the stick — sized to still show an edge around a thumbprint rather than vanishing
 underneath one, so you can see where your thumb is pointing without lifting it.
 
+A small white dot marks where you are aiming — it circles the character at a fixed distance
+as you swing the aim stick (its distance is a Dev-panel setting).
+
 The right stick carries a dotted amber ring: the trigger line. It is drawn one knob
 radius outside the point where the drag starts counting as aiming, so when the knob's
 edge reaches that circle, the gun fires. The stick does not clip the knob to the

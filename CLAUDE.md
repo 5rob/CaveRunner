@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v53**. Branch: `main` (release channel is `main`).
+Current version: **v54**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -289,6 +289,14 @@ by `spawnShot` and `tracePath`; only Buzzsaw overrides it.) It also carries `hid
 circle (which was the round-capped zero-length streak a speed-0 bullet renders). The dig and
 the enemy hit-flash are its only feedback now.
 
+**`eat` tunnels through rock (v54 fix).** A bullet with `eat` (Matter Eater `eat:4`, Black
+Hole `eat:28`, Buzzsaw `eat:14`) digs its radius every frame *and* — the fix — passes through
+rock in the collision check instead of dying on it (`if (b.eat > 0) { dig(nx,ny,b.eat);
+continue; }`, alongside the `bore` case; the bounce guard also excludes `eat`). Before, a fast
+bolt with Matter Eater moved further per frame (~9u) than its small eat hole (r4) reached
+ahead, so mid-frame substeps hit un-eaten rock and it died on the wall — "Matter Eater doesn't
+work". `tracePath` already passed through for `eat`, so the aim line was already honest.
+
 **The shop/pickup preview is one panel now (v42), `.buypanel`.** It is **half width**,
 centred (`left:25%;right:25%`), and its **bottom edge floats just above the item** rather
 than sitting at the screen bottom (v43): `step()` measures the plinth/pickup's on-screen
@@ -338,6 +346,21 @@ The lamp itself does not stop at walls; it is the *reveal* (`fogReveal`, gated b
 that respects them, so ground you have already uncovered round a corner still lights up.
 `torchR` is derived from `SIGHT * LAMP_REACH` and breathes with `flick`. Don't turn it back
 into a blanket gradient without asking.
+
+**The fog edge is softened and pushed off seen ground (v54).** Two touches in the bake/draw:
+(1) a one-cell **dilation** — an unseen cell that borders a seen one (8-neighbour) is baked as
+if it were remembered (`dim` + lamp), so the darkness sits a cell further out and you can
+actually see the uncovered surface instead of it being right on the edge; (2) a **blur** — the
+`FW×FH` fog slab is blurred at source resolution into `fogBlurC` (`blur(0.9px)`, cheap on an
+80×200 canvas) and that soft copy is what gets upscaled, so the edge reads as a gradient, not
+a hard line. The dilation only changes the *bake*, never the `seen` array (the map memory and
+LOS gating are unchanged), so `fog`/`torch` tests still hold. Blur at source (not a
+full-screen `ctx.filter`) keeps it affordable on a phone.
+
+**A small aim crosshair (v54): a white dot `DEV.aimDist` out, rotating round you with the
+aim.** Drawn in `draw()` right after the gun at `(pcx + ax*DEV.aimDist, gy + ay*DEV.aimDist)`
+where `ax/ay` is the aim (or facing) unit vector. `DEV.aimDist` (default 44) is a Dev-panel
+row ("Crosshair distance"). This is always on, unlike the perk-gated trajectory line.
 
 **`rayDist` / `visPoly` / `losClear` are exact, and that is the point.** `rayDist` marches
 from cell boundary to cell boundary rather than sampling at a fixed step — a fixed step

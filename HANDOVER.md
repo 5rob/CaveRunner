@@ -7,11 +7,10 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v53.** Working on `main` (**release channel is `main`** — CI there
-  deploys Pages + builds the APK). Recent: v50 big batch, v51 Buzzsaw melee slice + starter
-  order, v52 minimap accuracy + dot, v53 Buzzsaw reliability + closer reach (see **What
-  shipped recently**). After a push, confirm CI green and that
-  `https://5rob.github.io/CaveRunner/version.txt` matches.
+- **On-disk version: v54.** Working on `main` (**release channel is `main`** — CI there
+  deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
+  Matter Eater fix + softer fog + aim crosshair (see **What shipped recently**). After a push,
+  confirm CI green and that `https://5rob.github.io/CaveRunner/version.txt` matches.
 - **The game now ships as a self-updating Android app** (built this session, working end to
   end). The delivery path changed: pushing to `main` is the release, and the app on the
   phone offers the update. You no longer publish the artifact. See the new **The Android
@@ -42,6 +41,15 @@ it's stale.
 
 ## What shipped recently (most recent first)
 
+- **v54 — Matter Eater fix, softer fog, aim crosshair.**
+  - **Matter Eater** (and any `eat` bullet) now tunnels *through* rock: the collision check
+    digs and continues on `eat` like it does on `bore`, so a fast bolt can't outrun its small
+    eat hole and die on the wall. (Reminder: the mod must sit *before* the shot to affect it.)
+  - **Fog softened & pushed off seen ground:** one-cell dilation of the visible region in the
+    bake (unseen cells bordering seen ones read as remembered), plus a cheap source-resolution
+    blur (`fogBlurC`) so the edge is a gradient. `seen`/LOS unchanged, so tests still pass.
+  - **Aim crosshair:** a small white dot `DEV.aimDist` (default 44) out, rotating round the
+    character with the aim. New "Crosshair distance" Dev-panel row.
 - **v53 — Buzzsaw reliability + closer reach.** The melee slice only dug on frames its
   centre point was inside rock (`bore`), so at most distances the 15-radius slice overlapped
   the wall but never cut — "cuts every tenth try". Now it carries `eat: 14`, which digs its

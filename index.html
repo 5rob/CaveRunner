@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v53</title>
+<title>CaveRunner v54</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -411,7 +411,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v53';
+const VERSION = 'v54';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -442,7 +442,7 @@ const START_GOLD = 40;
 // Each has a default; clearing a field in the dev panel puts the default back. Every
 // localStorage touch is wrapped: it throws in a private window and does not exist at all
 // under Node (the logic tests eval this file), and a missing store just means "defaults".
-const DEV_DEFAULTS = { zoom: 1, torch: 1, fogDark: 0.99, fogDim: 0.85, move: 1, aggro: 1, loseAggro: 2 };
+const DEV_DEFAULTS = { zoom: 1, torch: 1, fogDark: 0.99, fogDim: 0.85, move: 1, aggro: 1, loseAggro: 2, aimDist: 44 };
 const DEV_META = [
   { k: 'zoom',      label: 'Camera zoom',                 min: 0.3, max: 3,  step: 0.05 },
   { k: 'torch',     label: 'Torch fall-off distance',     min: 0.2, max: 5,  step: 0.05 },
@@ -451,6 +451,7 @@ const DEV_META = [
   { k: 'move',      label: 'Base movement speed',         min: 0.2, max: 5,  step: 0.05 },
   { k: 'aggro',     label: 'Enemy aggro distance',        min: 0.2, max: 5,  step: 0.05 },
   { k: 'loseAggro', label: 'Lose aggro distance (×aggro)', min: 1,  max: 10, step: 0.1 },
+  { k: 'aimDist',   label: 'Crosshair distance',          min: 10,  max: 200, step: 2 },
 ];
 const DEV_KEY = 'caverunner-dev';
 const DEV = Object.assign({}, DEV_DEFAULTS);
@@ -2665,6 +2666,11 @@ function Game({ input }) {
     fogC.width = FW; fogC.height = FH;
     const fctx = fogC.getContext('2d');
     const fogImg = new ImageData(FW, FH);
+    // a second tiny canvas: the fog is blurred here at source resolution (cheap) and the
+    // blurred copy is what gets upscaled, so the fog edge is soft without a full-screen blur
+    const fogBlurC = document.createElement('canvas');
+    fogBlurC.width = FW; fogBlurC.height = FH;
+    const fbctx = fogBlurC.getContext('2d');
     let seen = fogStart();
     // the minimap: an MMW x MMH canvas of white cave outlines, smooth-scaled into the
     // bottom-left of the view. miniEdgeIdx lists the wall-outline cells (static per floor);
@@ -3385,7 +3391,7 @@ function Game({ input }) {
             burst(nx, ny, 5, b.col); hurt(Math.round(b.dmg * 2)); dead = true; break;
           }
           if (solidAt(nx, ny)) {
-            if (b.bounce > 0 && !b.bore) {
+            if (b.bounce > 0 && !b.bore && !b.eat) {
               b.bounce--;
               const hx = solidAt(nx, b.y), hy = solidAt(b.x, ny);
               if (hx || !hy) b.vx = -b.vx;
@@ -3396,6 +3402,9 @@ function Game({ input }) {
             }
             b.x = nx; b.y = ny;
             if (b.bore > 0) { dig(nx, ny, b.bore); continue; }
+            // Matter Eater / Black Hole: eat straight through the rock, digging as it goes,
+            // so a fast shot can't outrun the small hole its per-frame eat carves ahead
+            if (b.eat > 0) { dig(nx, ny, b.eat); continue; }
             if (b.cluster) { spray(b); dead = true; break; }
             if (b.explode) { boom = true; break; }
             burst(b.x, b.y, 3, b.col);
@@ -4237,6 +4246,14 @@ function Game({ input }) {
       if (!p.dead) drawGun(ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
       // the torch, in the hand the gun is not in
       if (!p.dead) { const th = torchHand(); drawTorch(ctx, th.x, th.y, ax >= 0 ? -1 : 1, flick, torchP); }
+      // a small aim crosshair: a dot at DEV.aimDist out, rotating round you with the aim
+      if (!p.dead) {
+        const cxp = pcx + ax * DEV.aimDist, cyp = gy + ay * DEV.aimDist;
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.beginPath(); ctx.arc(cxp, cyp, 2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      }
       ctx.globalAlpha = 1;
 
       // Permanent Shield: a soft ring while it is up, gone the moment it is spent
@@ -4289,7 +4306,14 @@ function Game({ input }) {
         for (let cx = fx0; cx < fx1; cx++) {
           const i = cy * FW + cx, k = i * 4;
           fdat[k] = 9; fdat[k + 1] = 10; fdat[k + 2] = 14;
-          const s = seen[i];
+          let s = seen[i];
+          // push the dark off ground you have seen: an unseen cell that borders a seen one
+          // is treated as remembered (dim + lamp), so a bit more of the uncovered surface
+          // shows instead of the darkness sitting right on its edge
+          if (!s && ((cx > 0 && seen[i - 1]) || (cx < FW - 1 && seen[i + 1]) ||
+              (cy > 0 && seen[i - FW]) || (cy < FH - 1 && seen[i + FW]) ||
+              (cx > 0 && cy > 0 && seen[i - FW - 1]) || (cx < FW - 1 && cy > 0 && seen[i - FW + 1]) ||
+              (cx > 0 && cy < FH - 1 && seen[i + FW - 1]) || (cx < FW - 1 && cy < FH - 1 && seen[i + FW + 1]))) s = 1;
           let a = s === 2 ? 0 : s ? dim : dark;
           if (s && a) {                        // the lamp only reaches ground the fog has lifted
             const ddx = (cx + 0.5) * FOG_U - pcx, dd2 = ddx * ddx + ddy * ddy;
@@ -4303,8 +4327,15 @@ function Game({ input }) {
         }
       }
       fctx.putImageData(fogImg, 0, 0, fx0, fy0, fx1 - fx0, fy1 - fy0);
-      ctx.imageSmoothingEnabled = true;     // the upscale is what makes the edge soft
-      ctx.drawImage(fogC, fx0, fy0, fx1 - fx0, fy1 - fy0,
+      // blur the slab at source resolution (cheap: an 80x200 canvas), then upscale the soft
+      // copy — a source-px of blur becomes ~a fog cell of blur on screen, so the fog edge
+      // reads as a gradient rather than a hard line
+      fbctx.clearRect(fx0, fy0, fx1 - fx0, fy1 - fy0);
+      fbctx.filter = 'blur(0.9px)';
+      fbctx.drawImage(fogC, fx0, fy0, fx1 - fx0, fy1 - fy0, fx0, fy0, fx1 - fx0, fy1 - fy0);
+      fbctx.filter = 'none';
+      ctx.imageSmoothingEnabled = true;     // the upscale further softens the edge
+      ctx.drawImage(fogBlurC, fx0, fy0, fx1 - fx0, fy1 - fy0,
         fx0 * FOG_U, fy0 * FOG_U, (fx1 - fx0) * FOG_U, (fy1 - fy0) * FOG_U);
       ctx.imageSmoothingEnabled = false;
 
