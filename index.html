@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v50</title>
+<title>CaveRunner v51</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -411,7 +411,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v50';
+const VERSION = 'v51';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -656,9 +656,9 @@ const MODS = {
              info: 'Ricochets off rock ten times',
              dmg: 2, speed: 300, spread: 0.6, delay: 0.14, size: 3.5, life: 4, bounce: 10, recoil: 8 },
   saw:     { name: 'Buzzsaw', kind: 'shot', glyph: '⚙', col: '#d9dde4', mana: 2,
-             info: 'Shreds whatever is right in front of you, and chews rock',
-             dmg: 3, speed: 150, spread: 6, delay: 0, size: 5, life: 0.12, bore: 4,
-             recoil: 0, setDelay: 0, rechMul: 0.33 },
+             info: 'Cuts a circle right in front of you, and chews rock',
+             dmg: 3, speed: 0, spread: 0, delay: 0, size: 15, life: 0.12, bore: 12,
+             recoil: 0, setDelay: 0, rech: -0.17 },
   blast:   { name: 'Blast', kind: 'shot', glyph: '✹', col: '#7cc04f', mana: 28,
              info: 'Lobbed, explodes and digs',
              dmg: 2, speed: 380, spread: 2, delay: 0.5, size: 3.5, life: 3, grav: 600,
@@ -1284,17 +1284,17 @@ function makeGun(rnd, tier) {
 }
 
 function startingGuns() {
-  // The Pick Axe is the starter: one slot, a Buzzsaw in it. Buzzsaw zeroes the cast delay
-  // and cuts its recharge to a third, so it chews rock and shreds anything right in front.
-  const pickaxe = resetGun({ name: 'Pick Axe', cap: 1, castDelay: 0.05, recharge: 0.6,
-    manaMax: 120, manaRegen: 60, spread: 4, multi: 1, shuffle: false, mana: 120, speedMul: 1,
-    slots: ['saw'], hue: 20 });
   // The Scratch Pistol is a weak backup on purpose: slow, thirsty and single-shot, so
-  // anything you find on floor 1 is an upgrade over it.
+  // anything you find on floor 1 is an upgrade over it. It's first in line (selected).
   const pistol = resetGun({ name: 'Scratch Pistol', cap: 3, castDelay: 0.32, recharge: 1.7,
     manaMax: 90, manaRegen: 22, spread: 5, multi: 1, shuffle: false, mana: 90, speedMul: 1,
     slots: ['bolt', null, null], hue: Math.floor(Math.random() * 360) });
-  return [pickaxe, pistol, null, null];
+  // The Pick Axe holds a Buzzsaw: no travel, a big circular slice right in front that chews
+  // rock and shreds anything close. Buzzsaw zeroes cast delay, so recharge (1s) sets the swing.
+  const pickaxe = resetGun({ name: 'Pick Axe', cap: 1, castDelay: 0.05, recharge: 1.0,
+    manaMax: 120, manaRegen: 60, spread: 0, multi: 1, shuffle: false, mana: 120, speedMul: 1,
+    slots: ['saw'], hue: 20 });
+  return [pistol, pickaxe, null, null];
 }
 
 // Work out what the next pull of the trigger fires. Walks the slot list from where

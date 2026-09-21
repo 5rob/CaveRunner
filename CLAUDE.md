@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v50**. Branch: `main` (release channel is `main`).
+Current version: **v51**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -269,12 +269,15 @@ separate bugs came from that; don't move it back. One consequence to remember: i
 short and the bag rides up under the top card — browser suites that tap bag tiles with a
 card open should select a roomy gun first (see `buzzsaw.test.js`).
 
-**Starter guns (v50): a Pick Axe and a weak Scratch Pistol.** `startingGuns()` returns
-`[pickaxe, pistol, null, null]`. The Pick Axe is one slot holding `saw` (Buzzsaw); the
-Scratch Pistol is deliberately worse than any floor-1 find (slow recharge, thirsty, one
-bolt). **Buzzsaw now cuts recharge to a third** — its mod is `rechMul: 0.33` (was
-`rech: -0.17`) on top of `setDelay: 0` — so it cuts fast. That change re-diagnosed the
-advisor's sample builds from recharge-bound to mana-bound (see the advice/timing suites).
+**Starter guns: a weak Scratch Pistol (selected) then a Pick Axe.** `startingGuns()` returns
+`[pistol, pickaxe, null, null]` (v51 — the pistol is first/selected, the Pick Axe second, at
+the owner's request). The Scratch Pistol is deliberately worse than any floor-1 find (slow
+recharge, thirsty, one bolt). The Pick Axe is one slot holding `saw` (Buzzsaw). **Buzzsaw is
+a melee slice (v51):** `speed: 0` (no travel — the bullet sits ~10u in front of the muzzle),
+`size: 15` and `bore: 12` so it carves a circular hole into rock/enemies close in front. It
+only *digs* on the frames its centre is inside rock (push it into a wall). Recharge is back
+to its default `rech: -0.17` (the v50 `rechMul: 0.33` speedup is gone), and the Pick Axe gun
+recharge is `1.0`, so the swing is ~0.83s. `setDelay: 0` still zeroes cast delay.
 
 **The shop/pickup preview is one panel now (v42), `.buypanel`.** It is **half width**,
 centred (`left:25%;right:25%`), and its **bottom edge floats just above the item** rather

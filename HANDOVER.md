@@ -7,10 +7,10 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v50.** Working on `main` (**release channel is `main`** — CI there
-  deploys Pages + builds the APK). v50 is a big batch of gameplay/UI changes (see
-  **What shipped recently** below); once pushed, confirm CI green and that
-  `https://5rob.github.io/CaveRunner/version.txt` reads `v50`.
+- **On-disk version: v51.** Working on `main` (**release channel is `main`** — CI there
+  deploys Pages + builds the APK). v50 was a big batch; v51 reworks the Buzzsaw into a
+  melee slice and swaps the starter slot order (see **What shipped recently**). After a
+  push, confirm CI green and that `https://5rob.github.io/CaveRunner/version.txt` matches.
 - **The game now ships as a self-updating Android app** (built this session, working end to
   end). The delivery path changed: pushing to `main` is the release, and the app on the
   phone offers the update. You no longer publish the artifact. See the new **The Android
@@ -41,6 +41,17 @@ it's stale.
 
 ## What shipped recently (most recent first)
 
+- **v51 — Buzzsaw melee slice + starter slot order.**
+  - **Buzzsaw is now a melee cutter:** `speed: 0` (no travel, sits ~10u in front), `size: 15`
+    (3×) and `bore: 12`, so it carves a circular slice into rock/enemies right in front. It
+    only digs when its centre is pushed into rock.
+  - **Buzzsaw recharge back to default** (`rech: -0.17`; the v50 `rechMul: 0.33` speedup is
+    gone). Pick Axe gun recharge set to `1.0`, so the swing is ~0.83s.
+  - **Starter slot order swapped back:** `startingGuns()` returns `[pistol, pickaxe, …]` —
+    Scratch Pistol first (selected), Pick Axe second.
+  - Tests updated: `timing`/`advice` reverted to recharge-bound + bore 12; `cast` and
+    `gunpickup` follow the new slot order; `interact` resets the held gun's clocks so the
+    slow pistol still reads as firing. Full suite green.
 - **v50 — big gameplay/UI batch.** Eleven changes in one go:
   - **Starter guns reworked.** New starter is a **Pick Axe** (one slot, holds Buzzsaw);
     **Buzzsaw** now cuts recharge to a third (`rechMul: 0.33`, was `rech: -0.17`) so it cuts

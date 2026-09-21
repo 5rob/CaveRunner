@@ -68,9 +68,7 @@ a = buildAdvice(molten, bag);
 const ms = Date.now() - t0;
 console.log(`\n   ${a.limit.text}`);
 for (const t of a.tips) console.log(`   ${MODS[t.id].name} into slot ${t.slot + 1}  x${t.gain.toFixed(2)}`);
-// with Buzzsaw now cutting recharge to a third, this build fires fast enough that mana
-// sustain, not recharge, is the bottleneck
-check('the real build is diagnosed as mana-bound', a.limit.key === 'mana');
+check('the real build is diagnosed as recharge-bound', a.limit.key === 'rech');
 check('and it finds a real improvement', a.tips.length && a.tips[0].gain > 2, a.tips[0] && a.tips[0].gain.toFixed(2));
 check('fast enough to run on every edit', ms < 60, ms + 'ms');
 

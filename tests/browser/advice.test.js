@@ -36,10 +36,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   let r = await read();
   console.log('  ', r.diag);
   for (const t of r.tips) console.log('   tip:', t);
-  // Buzzsaw now cuts recharge to a third, so this build fires fast enough to be mana-bound
-  check('the diagnosis shows', /mana is the limit/i.test(r.diag || ''), r.diag);
+  check('the diagnosis shows', /recharge is the limit/i.test(r.diag || ''), r.diag);
   check('with the damage rate', /dmg\/s/.test(r.diag || ''), r.diag);
-  check('and is colour-coded by bottleneck', /mana/.test(r.cls || ''), r.cls);
+  check('and is colour-coded by bottleneck', /rech/.test(r.cls || ''), r.cls);
   check('tips are offered', r.tips.length > 0 && r.tips.length <= 3, r.tips.length);
   check('each tip states its gain', r.tips.every(t => /×[\d.]+ dmg/.test(t)), r.tips);
   await page.screenshot({ path: path.join(__dirname, '..', 'build', 'advice.png') });

@@ -181,10 +181,10 @@ also hold more of them.
 
 Guns work like Noita wands. Each one is rolled at random with its own capacity,
 cast delay, recharge time, mana pool, spread and shot speed, and some of them
-shuffle their firing order. You carry up to four. You start with a **Pick Axe** — a
-one-slot gun holding a **Buzzsaw**, which chews through rock and shreds whatever is
-right in front of you — and a weak **Scratch Pistol** as a backup; anything you find on
-floor 1 beats the pistol.
+shuffle their firing order. You carry up to four. You start with a weak **Scratch Pistol**
+in hand and a **Pick Axe** in the second slot — a one-slot gun holding a **Buzzsaw**, which
+cuts a big circle right in front of you: no travel, it just carves a slice into the rock (or
+anything close) and chews terrain. Anything you find on floor 1 beats the pistol.
 
 Standing next to a gun on the ground shows its card. A tap opens the chooser: it pauses the
 game and shows what you found with a button for each of your four slots, both guns laid out
@@ -216,11 +216,10 @@ cost, green for better and red for worse. So you can see which mods come out tog
 shots it affects, and anything the gun never reaches is marked "never cast".
 
 Cast delay is accumulated in that same order, which makes **Buzzsaw** special: it
-does not subtract from the delay, it resets it to zero at the moment it is cast, and it
-also cuts the gun's recharge to a third — so it cuts fast. Anything cast after it adds
-its delay back, so it belongs at the tail of a multicast group — `Double Cast, Bolt,
-Buzzsaw` fires the bolt and leaves the gun ready immediately. Recharge, by contrast,
-counts from any slot.
+does not subtract from the delay, it resets it to zero at the moment it is cast. Anything
+cast after it adds its delay back, so it belongs at the tail of a multicast group —
+`Double Cast, Bolt, Buzzsaw` fires the bolt and leaves the gun ready immediately.
+Recharge, by contrast, counts from any slot.
 
 Any mod in a group that changes the recharge time shows it in that group's stat
 line too, even though recharge itself is paid once per full cycle rather than

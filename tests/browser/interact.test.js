@@ -84,7 +84,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     const heal = stock.find(s => s.kind === 'heal');
     p.x = heal.x - 6; p.y = heal.y + 4; p.vx = 0; p.vy = 0; p.hp = 10;
     const g = window.__in.current.loadout.guns[0];
-    g.manaRegen = 0; g.mana = g.manaMax;
+    // ready to fire on the next drag: full mana and its clocks cleared, so a slow starter
+    // gun mid-recharge from an earlier check doesn't read as "didn't fire"
+    g.manaRegen = 0; g.mana = g.manaMax; g.rechT = 0; g.delayT = 0; g.idx = 0;
     await new Promise(r => setTimeout(r, 250));
   });
 

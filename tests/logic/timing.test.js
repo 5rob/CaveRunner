@@ -31,7 +31,7 @@ check('a modifier after the saw still counts',
 check('Heavy Shot before the saw is wiped too',
   planCast(gun(['double', 'heavy', 'bolt', 'saw'])).delay, MIN_CAST);
 check('the saw still fires its own shot', planCast(gun(['double', 'bolt', 'saw'])).shots.length, 2);
-check('and it digs', planCast(gun(['saw'])).shots[0].bore, 4);
+check('and it digs a big circle', planCast(gun(['saw'])).shots[0].bore, 12);
 
 console.log('\n--- order does not matter for ordinary delay mods ---');
 check('Fast Cast before the bolt', planCast(gun(['fast', 'bolt'])).delay, 0.5 - 0.08 + 0.10);
@@ -41,7 +41,7 @@ console.log('\n--- recharge counts from any slot ---');
 check('base recharge', effRecharge(gun(['bolt'])), 1.0);
 check('Quick Recharge -0.33', effRecharge(gun(['bolt', 'recharge'])), 0.67);
 check('position is irrelevant', effRecharge(gun(['recharge', 'bolt'])), 0.67);
-check('Buzzsaw cuts recharge to a third', effRecharge(gun(['bolt', 'saw'])), 0.33);
+check('Buzzsaw also shaves 0.17', effRecharge(gun(['bolt', 'saw'])), 0.83);
 check('Hair Trigger -0.15', effRecharge(gun(['bolt', 'trigger'])), 0.85);
 check('Spark carries -0.05', effRecharge(gun(['spark'])), 0.95);
 check('Cold Start x0.55', effRecharge(gun(['bolt', 'cold'])), 0.55);
@@ -61,7 +61,7 @@ console.log(`    -> ${(1 / cycle).toFixed(1)} pulls/sec, ${rp.shots.length} shot
   `${(rp.cost / cycle).toFixed(0)} mana/sec`);
 check('a slow gun becomes fast', cycle < 0.3, true);
 // the point of the saw: cast delay stops being the bottleneck and recharge takes over
-check('recharge now dominates the cycle', effRecharge(rapid) > rp.delay * 5, true);
+check('recharge now dominates the cycle', effRecharge(rapid) > rp.delay * 10, true);
 const plain = gun(['double', 'bolt', 'bolt'], { castDelay: 0.5, recharge: 1.0 });
 check('same gun without the saw is far slower',
   (planCast(plain).delay + effRecharge(plain)) / cycle > 4, true);

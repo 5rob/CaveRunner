@@ -90,8 +90,8 @@ check('200 random guns can all shoot', shooters, 200);
 // a starting kit that works
 const st = startingGuns();
 check('starts with 2 guns, 2 empty slots', st.filter(Boolean).length, 2);
-check('starter pick axe cuts with a buzzsaw', planCast(st[0]).shots[0].bore, 4);
-check('starter pistol shoots', planCast(st[1]).shots.length, 1);
+check('starter pistol shoots', planCast(st[0]).shots.length, 1);
+check('starter pick axe cuts with a buzzsaw', planCast(st[1]).shots[0].bore, 12);
 
 // --- mechanics taken from the wiki: multicast wrapping, recoil, wand speed ---
 p = planCast(gun(['bolt', 'double', 'spark']));        // double sits last, needs 2 shots
