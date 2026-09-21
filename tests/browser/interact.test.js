@@ -109,9 +109,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('it fired while it was out', res.peak > 0, res);
   check('coming back to centre before release still does not interact', hp === 10, hp);
 
-  // ---- 4. walking onto a mod shows the popup, not the bag; interact opens the card,
-  //         and the game waits there until the stick points at pick up or leave ----
-  const openMod = () => page.evaluate(async () => {
+  // ---- 4. walking onto a mod shows its card; a tap takes it straight to the bag ----
+  // The panel you're standing in front of is the only screen now — no confirm overlay.
+  const modRes = await page.evaluate(async () => {
     const { pickups, p } = window.__lvl;
     const LO = window.__in.current.loadout;
     LO.bag.length = 0;
@@ -122,109 +122,19 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     const bagBefore = LO.bag.length;
     window.__in.current.interact = true;
     await new Promise(r => setTimeout(r, 250));
-    return { cardShown, bagBefore, bagAfter: LO.bag.length, mod,
-      overlay: !!document.querySelector('.modfound'),
-      buttons: [...document.querySelectorAll('.modfoundbtn')].map(b => b.textContent),
-      paused: window.__in.current.paused };
+    return { cardShown, bagBefore, bagAfter: LO.bag.length, taken: mod.taken,
+      paused: window.__in.current.paused, overlay: !!document.querySelector('.modfound') };
   });
-
-  let modRes = await openMod();
   check('walking onto a mod shows its card, not the bag', modRes.cardShown && modRes.bagBefore === 0, modRes.cardShown);
-  check('interacting on a mod asks instead of taking it', modRes.bagAfter === 0, modRes.bagAfter);
-  check('the card comes up with the game paused behind it', modRes.overlay && modRes.paused, modRes);
-  check('and it offers exactly pick up or leave',
-    modRes.buttons.join('|') === 'Pick up|Leave', modRes.buttons);
+  check('a tap takes it straight into the bag', modRes.bagAfter === 1, modRes);
+  check('there is no second screen and the game never pauses', !modRes.overlay && !modRes.paused, modRes);
+  check('and the mod is swept off the ground', modRes.taken === true, modRes);
 
-  // the gesture the card is built around: drag the right stick left for Pick up, right
-  // for Leave, and let go. Nothing is lit until the knob is past the trigger line, and
-  // the button you are pointing at lights while you hold it there.
-  const aimStick = (which, release = true) => page.evaluate(async ({ which, release }) => {
-    const el = [...document.querySelectorAll('.sticks .stick')][1];
-    const r = el.getBoundingClientRect();
-    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    const maxD = (r.width / 2) * 0.72;
-    const dir = which === 'take' ? -1 : 1;                    // Pick up is the left button
-    const fire = (type, px, py) => el.dispatchEvent(new PointerEvent(type, {
-      bubbles: true, cancelable: true, pointerId: 11, pointerType: 'touch',
-      clientX: px, clientY: py }));
-    const lit = () => [...document.querySelectorAll('.modfoundbtn')]
-      .map(b => b.classList.contains('hot'));
-    fire('pointerdown', cx, cy);
-    const atStart = lit();
-    fire('pointermove', cx + dir * maxD * 0.25, cy);           // inside the dead zone
-    await new Promise(r2 => setTimeout(r2, 40));
-    const inDead = lit();
-    fire('pointermove', cx + dir * maxD * 0.9, cy);            // out past the trigger line
-    await new Promise(r2 => setTimeout(r2, 40));
-    const out = lit();
-    if (release) fire('pointerup', cx + dir * maxD * 0.9, cy);
-    await new Promise(r2 => setTimeout(r2, 250));
-    return { atStart, inDead, out };
-  }, { which, release });
-
-  const g1 = await aimStick('take');
-  check('neither button is lit when the card opens', g1.atStart.join() === 'false,false', g1);
-  check('and still not inside the dead zone', g1.inDead.join() === 'false,false', g1);
-  check('dragging left lights the left button, and only it', g1.out.join() === 'true,false', g1);
-  const took = await page.evaluate(() => ({
-    bag: window.__in.current.loadout.bag.length,
-    overlay: !!document.querySelector('.modfound'),
-    paused: window.__in.current.paused,
-  }));
-  check('letting go out to the left takes it', took.bag === 1, took);
-  check('and closes the card, resuming the game', !took.overlay && !took.paused, took);
-
-  // and the other way out: leaving keeps it on the ground and out of the bag
-  modRes = await openMod();
-  check('a second mod opens the card again', modRes.overlay && modRes.bagAfter === 0, modRes.overlay);
-  const g2 = await aimStick('leave');
-  check('dragging right lights the right button, and only it', g2.out.join() === 'false,true', g2);
-  const left = await page.evaluate(() => ({
-    bag: window.__in.current.loadout.bag.length,
-    overlay: !!document.querySelector('.modfound'),
-    onGround: window.__lvl.pickups.filter(q => q.kind === 'mod' && !q.taken).length,
-  }));
-  check('letting go out to the right leaves it', left.bag === 0 && !left.overlay, left);
-  check('and the mod is still lying there', left.onGround > 0, left.onGround);
-
-  // out and back to the middle before releasing picks nothing, even though the drag did
-  // pass the trigger line — you are not pointing anywhere when you let go
-  modRes = await openMod();
-  await aimStick('take', false);
-  const g3 = await page.evaluate(async () => {
-    const el = [...document.querySelectorAll('.sticks .stick')][1];
-    const r = el.getBoundingClientRect();
-    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    const fire = (type, px, py) => el.dispatchEvent(new PointerEvent(type, {
-      bubbles: true, cancelable: true, pointerId: 11, pointerType: 'touch', clientX: px, clientY: py }));
-    fire('pointermove', cx, cy);
-    await new Promise(r2 => setTimeout(r2, 40));
-    const lit = [...document.querySelectorAll('.modfoundbtn')].map(b => b.classList.contains('hot'));
-    fire('pointerup', cx, cy);
-    await new Promise(r2 => setTimeout(r2, 250));
-    return { lit, bag: window.__in.current.loadout.bag.length,
-      overlay: !!document.querySelector('.modfound') };
-  });
-  check('coming back to the middle unlights both', g3.lit.join() === 'false,false', g3);
-  check('and releasing there decides nothing', g3.bag === 0 && g3.overlay, g3);
-
-  // a tap on the dead zone while the card is up must not take anything, or the card
-  // would swallow the very tap that was meant to open it
-  modRes = await openMod();
-  await gesture([{ mag: 0.1, dy: 0 }]);
-  const tapped = await page.evaluate(() => ({
-    bag: window.__in.current.loadout.bag.length,
-    overlay: !!document.querySelector('.modfound'),
-  }));
-  check('a plain tap on the dead zone does not decide for you',
-    tapped.bag === 0 && tapped.overlay, tapped);
-  await aimStick('leave');            // tidy up for the checks below
-
-  // ---- 5. same for a gun: popup first, chooser only on interact ----
+  // ---- 5. a gun keeps its chooser: card first, then interact opens the swap sheet ----
   const gunRes = await page.evaluate(async () => {
     const { pickups, p } = window.__lvl;
-    const gp = pickups.find(q => q.kind === 'gun');
-    gp.x = p.x + 6; gp.y = p.y + 11;
+    const gp = pickups.find(q => q.kind === 'gun' && !q.taken);
+    gp.x = p.x + 6; gp.y = p.y + 11; gp.cool = 0;
     await new Promise(r => setTimeout(r, 200));
     const cardShown = !!document.querySelector('.pop.ingame');
     const sheetBefore = !!document.querySelector('.sheet');

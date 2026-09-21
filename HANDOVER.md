@@ -7,10 +7,10 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v49.** Currently checked out on `main` (v49 merged and pushed there;
-  the working branch `claude/compassionate-rubin-fcqsif` is merged in). **Release channel
-  is `main`** — CI there deploys Pages + builds the APK. Last run on `main` was green and
-  `https://5rob.github.io/CaveRunner/version.txt` reads `v49`.
+- **On-disk version: v50.** Working on `main` (**release channel is `main`** — CI there
+  deploys Pages + builds the APK). v50 is a big batch of gameplay/UI changes (see
+  **What shipped recently** below); once pushed, confirm CI green and that
+  `https://5rob.github.io/CaveRunner/version.txt` reads `v50`.
 - **The game now ships as a self-updating Android app** (built this session, working end to
   end). The delivery path changed: pushing to `main` is the release, and the app on the
   phone offers the update. You no longer publish the artifact. See the new **The Android
@@ -41,6 +41,31 @@ it's stale.
 
 ## What shipped recently (most recent first)
 
+- **v50 — big gameplay/UI batch.** Eleven changes in one go:
+  - **Starter guns reworked.** New starter is a **Pick Axe** (one slot, holds Buzzsaw);
+    **Buzzsaw** now cuts recharge to a third (`rechMul: 0.33`, was `rech: -0.17`) so it cuts
+    fast. The **Scratch Pistol** is now a deliberately weak backup (worse than any floor-1
+    find). `startingGuns()` returns `[pickaxe, pistol, null, null]`.
+  - **Trajectory aim line is now a perk** ("Trajectory Sight", `sight`/`pb.trajectory`).
+    31 perks now. Without it you aim by feel; `tracePath` unchanged, only the draw is gated.
+    Distinct from the existing auto-aim `Pinpointer` perk.
+  - **Sticky aggro + a new dev knob.** Chase/bomb enemies acquire aggro on line-of-sight
+    within reach, then keep chasing (out of reach, round walls) until you're `reach *
+    DEV.loseAggro` away. New **Lose aggro distance (×aggro)** row in the Dev panel
+    (`DEV.loseAggro`, default 2).
+  - **Minimap.** Bottom-left, ~1/3 view width, revealed cave as white outlines over the
+    gameplay, everything else transparent. `miniEdge`/`miniC` in the Game closure.
+  - **Mod pickups are direct; guns keep the chooser.** A tap takes a mod straight to the bag
+    (ModFound overlay removed). Guns still open the **GunSwap** chooser (compare + pick the
+    slot to swap) — the owner asked for that to stay after first trying the all-direct
+    version. Buying a gun still drops it at the plinth for the chooser.
+  - **Death restarts on a right-stick tap** (message + `input.current.requestRestart`).
+  - **Health ring colour** slides green→amber→red with health (`healthCol`/`mixHex`).
+  - **"Mods" button → "Bag"**, always opens; editing gated to shop/Tinker (`canEdit` into
+    `Editor`, read-only footer otherwise).
+  - **Shop plinths** extended down to the floor (were hovering).
+  - Full suite green (one known flaky: `torch`'s "light moves with it" is flicker-range
+    sensitive, passes on rerun). Several browser/logic suites updated for the above.
 - **v49 — dev knob for enemy aggro distance.** Added `DEV.aggro` (default 1, range 0.2–5),
   a new **Enemy aggro distance** row in the Dev panel. It's a hand-tuning multiplier on the
   *final* aggro reach for chase/bomb enemies — `dist < k.aggro * sees * DEV.aggro` — layered

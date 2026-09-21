@@ -12,6 +12,12 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.evaluate(() => {
     window.__lvl.p.x = 30;
     const LO = window.__in.current.loadout;
+    // a roomy gun so the sheet is a realistic height (the 1-slot starter Pick Axe would
+    // leave the bag sitting up under the floating detail card)
+    LO.guns[0] = resetGun({ name: 'Test Wand', cap: 6, castDelay: 0.2, recharge: 1,
+      manaMax: 200, manaRegen: 60, spread: 3, multi: 1, shuffle: false, mana: 200,
+      slots: ['bolt', null, null, null, null, null] });
+    LO.sel = 0;
     LO.bag.push('saw', 'fast', 'cold', 'trigger', 'over_heat');
     window.__in.current.notify();
   });

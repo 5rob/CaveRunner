@@ -23,9 +23,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('starts with some gold', st.gold === 40, st.gold);
   await page.screenshot({ path: path.join(__dirname, '..', 'build', 'shop_room.png') });
 
-  // mods are locked outside the shop
+  // the Bag button is always there; editing is what the shop gates, not opening it
   const modsLabel = () => page.evaluate(() => document.querySelector('.weapon').textContent);
-  check('Mods available in the shop', (await modsLabel()).indexOf('Mods') >= 0, await modsLabel());
+  check('the Bag button is present in the shop', (await modsLabel()).indexOf('Bag') >= 0, await modsLabel());
 
   // walk onto the free heal: prompt appears, interacting heals
   const goTo = async (item) => page.evaluate(async i => {
@@ -83,17 +83,21 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('a dead enemy pays out gold', st.gold > 0, st);
   check('and the coin is gone once collected', st.left === 0, st);
 
-  // leaving the shop locks the mod screen
+  // leaving the shop: the Bag still opens, but it becomes read-only
   await page.evaluate(async () => {
     window.__lvl.p.y = window.__lvl.world.SHOP_Y - 400; window.__lvl.p.x = window.__lvl.world.WW / 2; window.__lvl.p.vy = 0;
     await new Promise(r => setTimeout(r, 200));
   });
-  check('Mods locked outside the shop', (await modsLabel()).indexOf('Shop only') >= 0, await modsLabel());
-  await page.evaluate(() => { window.__in.current.found = null; window.__in.current.notify(); });
-  await page.waitForTimeout(120);
+  check('the Bag button is still labelled Bag out in the cave', (await modsLabel()).indexOf('Bag') >= 0, await modsLabel());
   await page.tap('.weapon');
   await page.waitForTimeout(200);
-  check('tapping it out there does nothing', (await page.$('.sheet')) === null);
+  check('the bag opens even outside the shop', (await page.$('.sheet')) !== null);
+  check('but it is read-only out here', await page.evaluate(() => {
+    const el = document.querySelector('.sheet .info');
+    return !!el && /Viewing only/.test(el.textContent);
+  }));
+  await page.tap('.done');
+  await page.waitForTimeout(200);
 
   // the portal drops you into the next floor's shop
   st = await page.evaluate(async () => {

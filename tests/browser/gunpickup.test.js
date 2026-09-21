@@ -68,9 +68,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
                    rows: [...el.querySelectorAll('.prow')].length,
                    mods: [...el.querySelectorAll('.dtile')].map(t => t.textContent) };
   });
-  check('holding a slot shows that gun', card && card.title === 'Old Blaster', card && card.title);
+  check('holding a slot shows that gun', card && card.title === 'Scratch Pistol', card && card.title);
   check('the card lists its stats', card && card.rows === 9, card && card.rows);
-  check('and the mods fitted to it', card && card.mods.join(',').indexOf('Blast') >= 0, card && card.mods);
+  check('and the mods fitted to it', card && card.mods.join(',').indexOf('Bolt') >= 0, card && card.mods);
   check('holding did not change the selection', (await LO()).sel === 0, await LO());
   await page.tap('.shade', { position: { x: 20, y: 20 } });
   await page.waitForTimeout(200);
@@ -112,14 +112,14 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     found: document.querySelector('.pop.found .ptitle b').textContent,
     mine: document.querySelector('.pop.mine .ptitle b').textContent,
   }));
-  check('your gun is shown next to it without tapping', pair0.mine === 'Scratch Pistol', pair0);
+  check('your gun is shown next to it without tapping', pair0.mine === 'Pick Axe', pair0);
   await page.tap('.swaprow .gtab >> nth=1');
   await page.waitForTimeout(220);
   const peek = await page.evaluate(() => ({
     found: document.querySelector('.pop.found .ptitle b').textContent,
     peeked: document.querySelector('.pop.mine .ptitle b').textContent,
   }));
-  check('tapping a slot shows that gun as well', peek.peeked === 'Old Blaster', peek);
+  check('tapping a slot shows that gun as well', peek.peeked === 'Scratch Pistol', peek);
   check('and the found gun stays up beside it', peek.found === foundName, peek);
   await page.screenshot({ path: path.join(__dirname, '..', 'build', 'gun_peek.png') });
 

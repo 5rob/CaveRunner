@@ -61,8 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v49**. Branch: `claude/compassionate-rubin-fcqsif` (release channel is
-`main`).
+Current version: **v50**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -124,7 +123,7 @@ Roughly top to bottom:
 | `MODS` | the 111 spells, each a plain object |
 | `FAMILIES` / `FAMILY_OF` | the 8 colour families the UI groups mods by |
 | `MOD_PRICE` / `MOD_TIER` | shop price and rarity 1–4 for every mod |
-| `PERKS` / `perkBag` | the 30 perks, and folding an owned list into one effective bag |
+| `PERKS` / `perkBag` | the 31 perks, and folding an owned list into one effective bag |
 | `planCast` | **the heart of it** — works out what one pull of the trigger fires |
 | `gunRate` / `buildAdvice` | the build advisor |
 | `castGroups` / `groupStats` | the outlines and stat lines in the build screen |
@@ -157,7 +156,10 @@ produce. Break any one of those and Omega or Myriad runs away. `spells.test.js` 
 
 **The aim line must stay honest.** Anything that changes how a bullet flies has to be
 added to `tracePath` as well as the bullet loop, or the line lies. There's a test for
-every path mod.
+every path mod. **The line only draws with the `trajectory` perk (v50, "Trajectory Sight",
+`pb.trajectory` gates the draw block).** Without the perk you aim by feel; `tracePath` and
+its tests are unchanged, only the draw is gated. (Not to be confused with the older
+`pinpoint`/`Pinpointer` perk, which auto-aims at the nearest creature.)
 
 **Cast delay vs recharge.** Cast delay accumulates in draw order and a few mods (Buzzsaw)
 *reset* it to zero rather than subtracting, so position matters. Recharge counts from any
@@ -188,17 +190,18 @@ stats, and `e.k.act` decides how it moves and fights: `shoot`, `turret`, `chase`
 loop runs backwards because a bomber splices itself out mid-loop. If you add a creature,
 give it all of those fields and a body that already has a sprite.
 
-**Aggro is line-of-sight only (v44), and scaled by zoom.** `hunting` (whether a `chase`/
-`bomb` enemy comes for you) is `dist < k.aggro * sees && lineOfSight(e.x, e.ty, pcx, pcy)`,
-so nothing chases you through a wall — break the sightline and it drops back to patrol. The
-range check is written first on purpose, so the exact `rayDist` march only runs for the few
-enemies already in aggro range, not all ~136 every frame. `sees` also folds in `1/DEV.zoom`
-(so aggro/fire reach track the camera zoom) and Invisibility. Shooters/turrets already gate
-firing on `lineOfSight`; this brings the movers in line with them. On top of that,
-**`DEV.aggro` (v49) is a hand-tuning multiplier on the final aggro reach only** — it
-multiplies `k.aggro * sees` for the `hunting` check and leaves firing range (`k.range`)
-alone, so the owner can widen or shrink how close a chaser/bomber comes for you
-independently of the zoom-relative scaling.
+**Aggro is line-of-sight to acquire, then sticky (v50).** A `chase`/`bomb` enemy carries
+`e.aggro`. It *acquires* aggro only within `reach = k.aggro * sees * DEV.aggro` **and** with
+a real `lineOfSight` (the range check is written first so the exact `rayDist` march only runs
+for the few enemies close enough to care). Once acquired it **keeps coming** — out of the
+initial reach, and round a wall — until you put `reach * DEV.loseAggro` between you, at which
+point it drops back to patrol. So you can be spotted, run, and shake it by getting far
+enough away, but it won't lose you the instant a wall crosses the line. `hunting` is just
+`chaser && e.aggro`. `sees` folds in `1/DEV.zoom` (aggro/fire reach track camera zoom) and
+Invisibility. Shooters/turrets still gate *firing* on `lineOfSight + k.range` independently
+(they don't use `e.aggro`). **`DEV.aggro`** (v49) multiplies the acquire reach; **`DEV.loseAggro`**
+(v50, default 2) is the multiplier from acquire reach to drop reach — both leave firing range
+(`k.range`) alone.
 
 **The knob is the bit under the thumb, and the amber ring is a trigger line.** The owner
 asked for "the thumb control circles" to be bigger meaning the knobs, not the pads, and a
@@ -221,8 +224,10 @@ health/fuel/mana bars, equipped-gun name — is gone. `draw()` writes the live s
 `input.current.hud` (`{hp, low, fuel, empty, mana, recharging, hasGun}`, all 0–1 fractions)
 every frame; each `Stick` reads that on its own `requestAnimationFrame` loop and only
 re-renders when a value moves by ≥1%, so the gauges animate without churning React. The
-**left** stick shows health as a green SVG ring round the rim (red when `empty`) wiped
-clockwise from 12 o'clock, and fuel as the amber `.jetzone` fill in its top half —
+**left** stick shows health as an SVG ring round the rim, wiped clockwise from 12 o'clock;
+its colour slides green→amber→red with the health fraction via `healthCol(frac)` (v50, on
+`mixHex`), so the colour itself reads as danger — independent of the fuel `empty` flag,
+which still only reddens the fuel wipe. Fuel is the amber `.jetzone` fill in its top half —
 anchored to the centre line (`bottom:50%`), height = fuel fraction, so it drains downward;
 it brightens under `.jetting` and goes red under `.dry`. The **right** stick shows mana as
 a gold ring the same way (dimmed when there's no gun or it's recharging). The ring geometry
@@ -237,10 +242,39 @@ number is painted big and letter-spaced across the shop's back-wall block in `dr
 touch brighter than the wall (`rgba(255,255,255,0.07)`). **Restart moved into the Dev
 panel** (`.dbg.restart`, opens the same confirm via `onRestart`), and the Dev button is now
 a bare ⚙️ in the top-right (`.devbtn`, class unchanged so the browser tests still find it).
+**Death now restarts on a right-stick tap** (v50): the death message reads "Tap the right
+stick to restart", and the loop's interact block calls `input.current.requestRestart` (set
+by `App` to its `restart`) when `p.dead && interact`, before the near/pickup handling.
+
+**The minimap (v50) is drawn on the canvas, bottom-left, ~1/3 the view width.** It is a tiny
+`FW×FH` offscreen canvas (`miniC`/`mini32`) blitted scaled up, imageSmoothing off, in the HUD
+(screen-space) part of `draw()`. `miniEdge` (a `Uint8Array`, rebuilt per floor in
+`enterLevel` from the static `mat`) marks fog cells that are solid **and** border open space —
+the cave's outlines; each frame only cells with `seen[i]` are painted, white at ~0.7 alpha,
+everything else transparent, so it reads as an overlay over the gameplay and fills in as you
+explore. Height caps at the view height on short screens. Deliberately *just* the revealed
+outlines — no player dot, no colour — per the owner's ask.
+
+**The Bag button always opens the editor; editing is what's gated (v50).** The deck button
+(`.weapon`, class unchanged) is now labelled **Bag** and opens `Editor` anywhere. `App`
+passes `canEdit = inShop || Tinker` into `Editor`; when false the editor is **read-only** —
+`drop`, gun reorder (`moveGun` in `gunPress`), the advice tips and the Sort button are all
+gated, and the footer reads "Viewing only …". Tapping a mod for its info still works. (The
+`e`/`tab` key also opens it unconditionally now.)
 
 **Detail cards in the build screen open at the top** (`.pop.top`). The editor's content
 reaches the bottom of the screen, so a bottom-anchored card buried the mod bag. Four
-separate bugs came from that; don't move it back.
+separate bugs came from that; don't move it back. One consequence to remember: if the
+*selected* gun has very few slots (the starter Pick Axe has one), the sheet above the bag is
+short and the bag rides up under the top card — browser suites that tap bag tiles with a
+card open should select a roomy gun first (see `buzzsaw.test.js`).
+
+**Starter guns (v50): a Pick Axe and a weak Scratch Pistol.** `startingGuns()` returns
+`[pickaxe, pistol, null, null]`. The Pick Axe is one slot holding `saw` (Buzzsaw); the
+Scratch Pistol is deliberately worse than any floor-1 find (slow recharge, thirsty, one
+bolt). **Buzzsaw now cuts recharge to a third** — its mod is `rechMul: 0.33` (was
+`rech: -0.17`) on top of `setDelay: 0` — so it cuts fast. That change re-diagnosed the
+advisor's sample builds from recharge-bound to mana-bound (see the advice/timing suites).
 
 **The shop/pickup preview is one panel now (v42), `.buypanel`.** It is **half width**,
 centred (`left:25%;right:25%`), and its **bottom edge floats just above the item** rather
@@ -268,23 +302,16 @@ for the editor, where you're deciding placement; `ModCard` renders it only when 
 closes lands on whatever is underneath — that's how the Done button used to restart the
 run.
 
-**A mod on the ground asks before it is taken.** The interact tap sets
-`input.current.confirm`; `ModFound` renders the card with **Pick up** / **Leave** and the
-game pauses behind it. The two sit left and right of each other, and **neither is lit
-until the knob is past the trigger line and pointing at one**: `Stick()` writes
-`input.current.confirmAim` (`'take'` left, `'leave'` right, `null` inside the dead zone)
-as the drag goes, and `ModFound` lights the button that matches. It publishes its
-`{ take, leave }` on `input.current.confirmAct` and the release reads `confirmAim`, so
-coming back to the middle before letting go chooses nothing. Two things about it are easy
-to break. The overlay is `pointer-events:none` on purpose — the right stick has to stay
-live underneath it, and only `.pop.ingame` and `.modfoundbtn` take touches back. And it
-stops above the control deck via an inline `bottom` measured in `ModFound`, so the stick
-you are being asked to drag isn't sitting in shadow.
-
-**`found` is already taken as a class name.** `GunCard` is rendered with `mark: 'found'`
-for a gun on the ground, and `tests/browser/gunpickup.test.js` queries `.pop.found`. So
-the mod overlay's classes are all `modfound*`. Reusing `.found` silently restyled every
-found-gun card, and it took a browser suite to surface it.
+**Mods are taken straight; guns keep the swap chooser (v50).** Standing next to either
+shows the buypanel card. An interact tap on a **mod** takes it there and then in the loop's
+interact block — pushes `q.id` onto `LO.bag`, `q.taken = true`, `PICKUP_COOL` — no second
+screen (a mod has no slot to choose). An interact tap on a **gun** sets
+`input.current.found = q`, which opens **`GunSwap`** (the owner asked for this back in v50):
+it compares the found gun against your slots and you hold a slot to swap or tap "Leave it".
+Buying a gun in the shop drops it as a ground pickup at the plinth, so the same chooser
+handles it. The old **`ModFound`** overlay is gone (mods no longer pause the game); the
+`Stick` still writes `confirmAim`/reads `confirmAct`, but nothing sets `confirmAct` any more,
+so that path is inert — a tap in the dead zone just sets `input.current.interact`.
 
 **The lamp is masked by the fog of war (v40).** The torch lights a bubble around you, but
 only where the fog has already been lifted: a cell you have never had line of sight to
@@ -337,8 +364,9 @@ pauses the run but leaves `draw()` running behind a light backdrop so the look-o
 preview live as you type. `DEV` is a plain mutable object the `Game` reads every frame —
 `DEV.zoom` (draw scale), `DEV.torch` (scales the effective `sight`, so reveal and lamp grow
 together), `DEV.fogDark`/`DEV.fogDim` (the two fog shades), `DEV.move` (a `WALK`/`JET`
-multiplier), `DEV.aggro` (v49, an enemy-aggro-distance multiplier — see the aggro note
-above). `DEV_META` drives the rows; a blank field restores `DEV_DEFAULTS[k]`; `devSet`
+multiplier), `DEV.aggro` (v49, the enemy-aggro-*acquire*-distance multiplier),
+`DEV.loseAggro` (v50, default 2, the multiplier from acquire reach to the *drop* reach —
+see the aggro note above). `DEV_META` drives the rows; a blank field restores `DEV_DEFAULTS[k]`; `devSet`
 writes through to `localStorage` under `caverunner-dev`. Every localStorage touch is wrapped
 in try/catch because it throws in a private window and does not exist under Node, where the
 logic tests eval this file — a missing store just means defaults, so the load IIFE must stay

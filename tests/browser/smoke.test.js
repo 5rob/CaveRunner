@@ -31,11 +31,11 @@ const check = (name, ok, extra) => { if (!ok) fails++; console.log(`${ok ? 'ok  
   check('firing spends mana', shot.after < shot.before, shot);
   check('bullets exist in flight', shot.peak > 0, shot.peak);
 
-  // --- walking onto a mod pickup shows its card; interacting asks, then the card's
-  //     own button puts it in the bag ---
+  // --- walking onto a mod pickup shows its card; a tap takes it straight to the bag ---
   const grab = await page.evaluate(async () => {
     const { pickups, p } = window.__lvl;
     const LO = window.__in.current.loadout;
+    LO.bag.length = 0;
     const mod = pickups.find(q => q.kind === 'mod');
     mod.x = p.x + 6; mod.y = p.y + 11;                  // drop it on the player's head
     mod.cool = 0;
@@ -43,28 +43,25 @@ const check = (name, ok, extra) => { if (!ok) fails++; console.log(`${ok ? 'ok  
     const beforeTake = { bag: LO.bag.slice(), card: !!document.querySelector('.pop.ingame') };
     window.__in.current.interact = true;
     await new Promise(r => setTimeout(r, 200));
-    const asked = { bag: LO.bag.slice(), card: !!document.querySelector('.modfound') };
-    const pick = [...document.querySelectorAll('.modfoundbtn')][0];
-    if (pick) pick.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
-    await new Promise(r => setTimeout(r, 200));
-    return { beforeTake, asked, bag: LO.bag.slice(), gone: !pickups.includes(mod) };
+    return { beforeTake, bag: LO.bag.slice(), gone: mod.taken,
+      overlay: !!document.querySelector('.modfound') };
   });
   check('walking onto it shows the card, not the bag', grab.beforeTake.card && grab.beforeTake.bag.length === 0, grab.beforeTake);
-  check('interacting asks rather than taking', grab.asked.card && grab.asked.bag.length === 0, grab.asked);
-  check('and Pick up puts the mod in the bag', grab.bag.length === 1 && grab.gone, grab);
+  check('a tap puts the mod straight in the bag', grab.bag.length === 1 && grab.gone, grab);
+  check('with no confirm overlay', !grab.overlay, grab);
 
-  // --- a gun pickup shows its card; interacting opens the chooser, not equipping it ---
+  // --- a gun pickup shows its card; interacting opens the swap chooser, not equipping ---
   const gunFind = await page.evaluate(async () => {
     const { pickups, p } = window.__lvl;
     const LO = window.__in.current.loadout;
-    const gp = pickups.find(q => q.kind === 'gun');
+    const gp = pickups.find(q => q.kind === 'gun' && !q.taken);
     const before = LO.guns.map(g => g && g.name);
-    gp.x = p.x + 6; gp.y = p.y + 11;
+    gp.x = p.x + 6; gp.y = p.y + 11; gp.cool = 0;
     await new Promise(r => setTimeout(r, 250));
     const beforeInteract = { sheet: !!document.querySelector('.sheet'), card: !!document.querySelector('.pop.ingame') };
     window.__in.current.interact = true;
     await new Promise(r => setTimeout(r, 250));
-    return { before, beforeInteract, after: LO.guns.map(g => g && g.name), name: gp.gun.name };
+    return { before, beforeInteract, after: LO.guns.map(g => g && g.name) };
   });
   check('walking onto it shows the card, not the chooser', gunFind.beforeInteract.card && !gunFind.beforeInteract.sheet, gunFind);
   check('interacting opens the chooser', (await page.$('.sheet')) !== null, gunFind);
@@ -76,6 +73,10 @@ const check = (name, ok, extra) => { if (!ok) fails++; console.log(`${ok ? 'ok  
   // --- the mod sheet: drag from bag onto the gun ---
   await page.evaluate(() => {
     const LO = window.__in.current.loadout;
+    // a known 4-slot gun to drag onto (the starter Pick Axe has only one slot)
+    LO.guns[0] = resetGun({ name: 'Test Wand', cap: 4, castDelay: 0.2, recharge: 1,
+      manaMax: 150, manaRegen: 50, spread: 3, multi: 1, shuffle: false, mana: 150,
+      slots: ['bolt', 'bolt', 'bolt', null] });
     LO.sel = 0;
     // start from a known bag: the mod the cave handed us above is whatever the
     // level rolled, and if it happens to match one of these the drag checks

@@ -25,7 +25,7 @@ const bare = PERK_IDS.filter(k => !PERKS[k].name || !PERKS[k].glyph || !PERKS[k]
 check('every perk has a name, a glyph and a line explaining it', bare.length === 0, bare);
 const names = PERK_IDS.map(k => PERKS[k].name);
 check('no two perks share a name', new Set(names).size === names.length);
-check('there are thirty of them', PERK_IDS.length === 30, PERK_IDS.length);
+check('there are thirty-one of them', PERK_IDS.length === 31, PERK_IDS.length);
 
 // ---- the bag ----
 const bag = perkBag([]);

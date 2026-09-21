@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v49</title>
+<title>CaveRunner v50</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -411,7 +411,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v49';
+const VERSION = 'v50';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -442,14 +442,15 @@ const START_GOLD = 40;
 // Each has a default; clearing a field in the dev panel puts the default back. Every
 // localStorage touch is wrapped: it throws in a private window and does not exist at all
 // under Node (the logic tests eval this file), and a missing store just means "defaults".
-const DEV_DEFAULTS = { zoom: 1, torch: 1, fogDark: 0.99, fogDim: 0.85, move: 1, aggro: 1 };
+const DEV_DEFAULTS = { zoom: 1, torch: 1, fogDark: 0.99, fogDim: 0.85, move: 1, aggro: 1, loseAggro: 2 };
 const DEV_META = [
-  { k: 'zoom',    label: 'Camera zoom',                 min: 0.3, max: 3,  step: 0.05 },
-  { k: 'torch',   label: 'Torch fall-off distance',     min: 0.2, max: 5,  step: 0.05 },
-  { k: 'fogDark', label: 'Fog of war darkness',         min: 0,   max: 1,  step: 0.01 },
-  { k: 'fogDim',  label: 'Outside-torchlight darkness', min: 0,   max: 1,  step: 0.01 },
-  { k: 'move',    label: 'Base movement speed',         min: 0.2, max: 5,  step: 0.05 },
-  { k: 'aggro',   label: 'Enemy aggro distance',        min: 0.2, max: 5,  step: 0.05 },
+  { k: 'zoom',      label: 'Camera zoom',                 min: 0.3, max: 3,  step: 0.05 },
+  { k: 'torch',     label: 'Torch fall-off distance',     min: 0.2, max: 5,  step: 0.05 },
+  { k: 'fogDark',   label: 'Fog of war darkness',         min: 0,   max: 1,  step: 0.01 },
+  { k: 'fogDim',    label: 'Outside-torchlight darkness', min: 0,   max: 1,  step: 0.01 },
+  { k: 'move',      label: 'Base movement speed',         min: 0.2, max: 5,  step: 0.05 },
+  { k: 'aggro',     label: 'Enemy aggro distance',        min: 0.2, max: 5,  step: 0.05 },
+  { k: 'loseAggro', label: 'Lose aggro distance (×aggro)', min: 1,  max: 10, step: 0.1 },
 ];
 const DEV_KEY = 'caverunner-dev';
 const DEV = Object.assign({}, DEV_DEFAULTS);
@@ -657,7 +658,7 @@ const MODS = {
   saw:     { name: 'Buzzsaw', kind: 'shot', glyph: '⚙', col: '#d9dde4', mana: 2,
              info: 'Shreds whatever is right in front of you, and chews rock',
              dmg: 3, speed: 150, spread: 6, delay: 0, size: 5, life: 0.12, bore: 4,
-             recoil: 0, setDelay: 0, rech: -0.17 },
+             recoil: 0, setDelay: 0, rechMul: 0.33 },
   blast:   { name: 'Blast', kind: 'shot', glyph: '✹', col: '#7cc04f', mana: 28,
              info: 'Lobbed, explodes and digs',
              dmg: 2, speed: 380, spread: 2, delay: 0.5, size: 3.5, life: 3, grav: 600,
@@ -1283,14 +1284,17 @@ function makeGun(rnd, tier) {
 }
 
 function startingGuns() {
-  // three bolts before it needs a breather, so it feels like a gun from the start
-  const pistol = resetGun({ name: 'Scratch Pistol', cap: 4, castDelay: 0.12, recharge: 0.35,
-    manaMax: 140, manaRegen: 55, spread: 3, multi: 1, shuffle: false, mana: 140, speedMul: 1,
-    slots: ['bolt', 'bolt', 'bolt', null], hue: Math.floor(Math.random() * 360) });
-  const blaster = resetGun({ name: 'Old Blaster', cap: 3, castDelay: 0.5, recharge: 1.1,
-    manaMax: 150, manaRegen: 30, spread: 2, multi: 1, shuffle: false, mana: 150, speedMul: 1,
-    slots: ['blast', null, null], hue: Math.floor(Math.random() * 360) });
-  return [pistol, blaster, null, null];
+  // The Pick Axe is the starter: one slot, a Buzzsaw in it. Buzzsaw zeroes the cast delay
+  // and cuts its recharge to a third, so it chews rock and shreds anything right in front.
+  const pickaxe = resetGun({ name: 'Pick Axe', cap: 1, castDelay: 0.05, recharge: 0.6,
+    manaMax: 120, manaRegen: 60, spread: 4, multi: 1, shuffle: false, mana: 120, speedMul: 1,
+    slots: ['saw'], hue: 20 });
+  // The Scratch Pistol is a weak backup on purpose: slow, thirsty and single-shot, so
+  // anything you find on floor 1 is an upgrade over it.
+  const pistol = resetGun({ name: 'Scratch Pistol', cap: 3, castDelay: 0.32, recharge: 1.7,
+    manaMax: 90, manaRegen: 22, spread: 5, multi: 1, shuffle: false, mana: 90, speedMul: 1,
+    slots: ['bolt', null, null], hue: Math.floor(Math.random() * 360) });
+  return [pickaxe, pistol, null, null];
 }
 
 // Work out what the next pull of the trigger fires. Walks the slot list from where
@@ -2117,6 +2121,8 @@ const PERKS = {
               info: 'The nearest gun lying in the cave is marked at the edge of the screen.' },
   hearts:   { name: 'Stronger Hearts', glyph: '❤', tint: '#46c48c', heal: 1.5,
               info: 'Anything that heals you heals half again as much.' },
+  sight:    { name: 'Trajectory Sight', glyph: '⋯', tint: '#7ad7ff', trajectory: 1,
+              info: 'Shows where your next shot flies — the dotted aim line, mods and all.' },
 };
 const PERK_IDS = Object.keys(PERKS);
 
@@ -2127,7 +2133,7 @@ function perkBag(ids) {
     delay: 1, rech: 1, walk: 1, jet: 1, hpMul: 1, hpAdd: 0, heal: 1, gold: 1, goldPull: 1,
     shield: 0, lives: 0, ghost: 0, homing: 0, trail: 0, contact: 0, close: 0, invis: 0,
     repel: 0, seeAll: 0, radarEnemy: 0, radarItem: 0, radarWand: 0, tinker: 0,
-    extraItem: 0, pinpointer: 0 };
+    extraItem: 0, pinpointer: 0, trajectory: 0 };
   for (const id of ids || []) {
     const k = PERKS[id];
     if (!k) continue;
@@ -2140,7 +2146,7 @@ function perkBag(ids) {
     P.lives += k.lives || 0; P.ghost += k.ghost || 0;
     P.homing = Math.max(P.homing, k.homing || 0);
     for (const f of ['shield', 'trail', 'contact', 'close', 'invis', 'repel', 'seeAll',
-      'radarEnemy', 'radarItem', 'radarWand', 'tinker', 'extraItem', 'pinpointer'])
+      'radarEnemy', 'radarItem', 'radarWand', 'tinker', 'extraItem', 'pinpointer', 'trajectory'])
       if (k[f]) P[f] = 1;
   }
   P.maxHp = Math.max(10, Math.round((PLAYER_HP + P.hpAdd) * P.hpMul));
@@ -2652,6 +2658,15 @@ function Game({ input }) {
     const fctx = fogC.getContext('2d');
     const fogImg = new ImageData(FW, FH);
     let seen = fogStart();
+    // the minimap: a tiny FW x FH canvas of white cave outlines, blitted scaled into the
+    // bottom-left of the view. miniEdge marks the wall/open boundary cells (static per
+    // floor); each frame only the cells the fog has revealed are actually painted.
+    const miniC = document.createElement('canvas');
+    miniC.width = FW; miniC.height = FH;
+    const mctx = miniC.getContext('2d');
+    const miniImg = new ImageData(FW, FH);
+    const mini32 = new Uint32Array(miniImg.data.buffer);
+    let miniEdge = new Uint8Array(FW * FH);
 
     let mat, img, start, portal, enemies, pickups, stock, arrival, total, floor = 1;
     let rooms = [];                                  // the perk room and the heart room
@@ -2697,6 +2712,20 @@ function Game({ input }) {
       const level = makeLevel(1 + Math.floor(Math.random() * 2147483000), floor,
         input.current.loadout.perks);
       mat = level.mat; img = level.img;
+      // minimap outlines for this floor: a fog cell is an outline if it's solid and
+      // borders open space (sampled from the static terrain at the cell's centre)
+      miniEdge = new Uint8Array(FW * FH);
+      const fsolid = new Uint8Array(FW * FH);
+      for (let fy = 0; fy < FH; fy++) for (let fx = 0; fx < FW; fx++) {
+        const tx = Math.min(CW - 1, fx * FOG + (FOG >> 1)), ty = Math.min(CH - 1, fy * FOG + (FOG >> 1));
+        fsolid[fy * FW + fx] = mat[ty * CW + tx] ? 1 : 0;
+      }
+      for (let fy = 0; fy < FH; fy++) for (let fx = 0; fx < FW; fx++) {
+        const i = fy * FW + fx;
+        if (!fsolid[i]) continue;
+        if ((fx > 0 && !fsolid[i - 1]) || (fx < FW - 1 && !fsolid[i + 1]) ||
+            (fy > 0 && !fsolid[i - FW]) || (fy < FH - 1 && !fsolid[i + FW])) miniEdge[i] = 1;
+      }
       start = level.start; portal = level.portal; arrival = level.arrival;
       enemies = level.enemies; pickups = level.pickups; stock = level.stock;
       rooms = level.rooms || [];
@@ -3518,6 +3547,11 @@ function Game({ input }) {
         input.current.inShop = inShop;
         input.current.notify();
       }
+      // dead: a tap on the right stick restarts the run (see the death message)
+      if (p.dead && input.current.interact) {
+        input.current.interact = false;
+        if (input.current.requestRestart) input.current.requestRestart();
+      }
       if (input.current.interact && near) {
         input.current.interact = false;
         if (near.src === 'shop') {
@@ -3559,12 +3593,14 @@ function Game({ input }) {
         } else {
           const q = near.q;
           if (q.kind === 'mod') {
-            // ask first: the card comes up with the game paused behind it, and the
-            // right stick picks up or leaves. See ModFound.
-            input.current.confirm = { id: q.id, q };
-            input.current.confirmAim = null;      // neither button starts lit
+            // a mod goes straight to the bag — the panel already showed what it is, and a
+            // mod has no slot to choose, so there's no second screen for it
+            LO.bag.push(q.id);
+            q.taken = true; q.cool = PICKUP_COOL;
+            toast('Picked up ' + MODS[q.id].name);
           } else {
-            input.current.found = q;          // the chooser decides what happens to it
+            // a gun opens the chooser: compare it with yours and pick the slot to swap
+            input.current.found = q;
           }
         }
         input.current.sig = '';
@@ -3596,10 +3632,18 @@ function Game({ input }) {
         // wall any more, only once it can actually see you (and within its aggro reach).
         // The range check comes first so the line-of-sight march only runs for the few
         // enemies already close enough to care.
-        // DEV.aggro is an extra hand-tuning multiplier on the final aggro reach, on top
-        // of the zoom-relative `sees` scaling — firing range (k.range) is left alone.
-        const hunting = (k.act === 'chase' || k.act === 'bomb') && !p.dead &&
-          dist < k.aggro * sees * DEV.aggro && lineOfSight(e.x, e.ty, pcx, pcy);
+        // DEV.aggro is an extra hand-tuning multiplier on the aggro reach, on top of the
+        // zoom-relative `sees` scaling — firing range (k.range) is left alone.
+        // Aggro is sticky: once a chaser/bomber has you it keeps coming (even out of the
+        // initial reach and even round a wall), and only drops back to patrol once you've
+        // put DEV.loseAggro times the aggro reach between you — so you can outrun it.
+        const chaser = (k.act === 'chase' || k.act === 'bomb') && !p.dead;
+        const reach = k.aggro * sees * DEV.aggro;
+        if (chaser) {
+          if (!e.aggro) { if (dist < reach && lineOfSight(e.x, e.ty, pcx, pcy)) e.aggro = true; }
+          else if (dist > reach * DEV.loseAggro) e.aggro = false;
+        } else e.aggro = false;
+        const hunting = chaser && e.aggro;
 
         if (k.act === 'turret') {
           // holds station: the hover is all the movement it gets
@@ -3953,9 +3997,12 @@ function Game({ input }) {
       for (const it of stock) {
         if (it.y > camY + vh + 40 || it.y < camY - 40) continue;
         const bob = Math.sin(time * 2 + it.x) * 2;
+        // the plinth: a narrow column dropping from just under the item down to the shop
+        // floor (so it isn't left hovering), with a wider foot resting on the floor
+        const floorY = SHOP_FLOOR * CELL;
         ctx.fillStyle = '#4a4550';
-        ctx.fillRect(it.x - 11, it.y + 12, 22, 5);
-        ctx.fillRect(it.x - 6, it.y + 4, 12, 9);
+        ctx.fillRect(it.x - 6, it.y + 4, 12, Math.max(9, floorY - (it.y + 4)));
+        ctx.fillRect(it.x - 11, floorY - 5, 22, 5);
         if (it.sold) {
           ctx.fillStyle = COL.muted;
           ctx.font = '600 8px system-ui, sans-serif';
@@ -4124,8 +4171,8 @@ function Game({ input }) {
       const ax = R.show ? R.nx : p.face, ay = R.show ? R.ny : 0;
       const gy = p.y + PH * 0.52;
 
-      // where the next pull actually goes, mods and all
-      if (!p.dead && R.show && held) {
+      // where the next pull actually goes, mods and all — only with the Trajectory Sight perk
+      if (!p.dead && R.show && held && pb.trajectory) {
         const sim = Object.assign({}, held, { slots: held.slots.slice(),
           order: held.order.slice(), idx: held.idx });
         const plan = planCast(sim);                 // a copy, so the real gun is untouched
@@ -4262,6 +4309,20 @@ function Game({ input }) {
       ctx.fillText(VERSION, 12, 22);
       ctx.shadowBlur = 0;
 
+      // ---- minimap: revealed cave as white outlines, bottom-left, ~1/3 the width ----
+      // Everything else is transparent, so it reads as an overlay over the gameplay.
+      {
+        for (let i = 0; i < FW * FH; i++) mini32[i] = (miniEdge[i] && seen[i]) ? 0xb4ffffff : 0;
+        mctx.putImageData(miniImg, 0, 0);
+        const chh = c.height / dpr;
+        let mw = cw / 3, mh = mw * FH / FW;
+        const cap = chh - 16;
+        if (mh > cap) { mw *= cap / mh; mh = cap; }        // keep it inside the view on short screens
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(miniC, 0, 0, FW, FH, 6, chh - mh - 6, mw, mh);
+        ctx.imageSmoothingEnabled = true;
+      }
+
       // hand the sticks the live health / fuel / mana so they can draw their gauges:
       // the green ring round the left stick, the amber fuel wipe in its top half, and
       // the gold ring round the right stick. Written every frame the loop draws.
@@ -4335,7 +4396,7 @@ function Game({ input }) {
         ctx.font = '700 22px system-ui, sans-serif';
         ctx.fillText('You were shot down', cw / 2, msgY);
         ctx.font = '500 14px system-ui, sans-serif';
-        ctx.fillText('Open the gear (top right) to restart', cw / 2, msgY + 22);
+        ctx.fillText('Tap the right stick to restart', cw / 2, msgY + 22);
       } else if (enemies.length === 0) {
         ctx.font = '700 18px system-ui, sans-serif';
         ctx.fillText('All enemies destroyed', cw / 2, msgY);
@@ -4383,6 +4444,21 @@ function Game({ input }) {
 // the circumference of the gauge ring (r=46 in a 0..100 viewBox), used to turn a 0..1
 // fraction into a stroke-dasharray so the ring is drawn only as far as the stat reaches
 const GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
+// blend two "#rrggbb" colours; t=0 is a, t=1 is b. Used for the health ring, which
+// slides from green at full down through amber to red as it empties.
+function mixHex(a, b, t) {
+  t = Math.max(0, Math.min(1, t));
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const r = Math.round((pa >> 16 & 255) + ((pb >> 16 & 255) - (pa >> 16 & 255)) * t);
+  const g = Math.round((pa >> 8 & 255) + ((pb >> 8 & 255) - (pa >> 8 & 255)) * t);
+  const bl = Math.round((pa & 255) + ((pb & 255) - (pa & 255)) * t);
+  return 'rgb(' + r + ',' + g + ',' + bl + ')';
+}
+// green -> amber -> red as health falls, so the colour itself reads as danger
+function healthCol(frac) {
+  return frac > 0.5 ? mixHex('#e6a52c', '#57d267', (frac - 0.5) * 2)
+                    : mixHex('#e24a2c', '#e6a52c', frac * 2);
+}
 function Stick({ size, kind, input, refresh }) {
   const [knob, setKnob] = useState({ x: 0, y: 0, jet: false });
   // the live stat this stick shows: hp+fuel on the left, mana on the right. Read off
@@ -4465,7 +4541,7 @@ function Stick({ size, kind, input, refresh }) {
   // the circular gauge: green health round the left stick, gold mana round the right,
   // each wiped clockwise from the top as its stat falls
   const ringCol = left
-    ? (gauge.empty ? '#e24a2c' : '#57d267')
+    ? healthCol(gauge.ring)
     : (gauge.dry ? 'rgba(255,201,60,0.28)' : '#ffc93c');
   const ring = h('svg', { className: 'gauge', viewBox: '0 0 100 100' },
     h('circle', { cx: 50, cy: 50, r: GAUGE_R, fill: 'none',
@@ -4587,7 +4663,9 @@ function GunCard({ gun, label, onClose, ingame, flow, split, mark, compare, comp
   );
 }
 
-// Walked onto a gun: pick which of your four it replaces, or leave it.
+// Walked onto a gun: compare it with yours and pick which of your four it replaces, or
+// leave it. Mods are taken straight (no screen); guns keep this chooser because a gun goes
+// into one of four slots and is worth comparing before you commit.
 function GunSwap({ input, refresh, onDone }) {
   const LO = input.current.loadout;
   const found = input.current.found;
@@ -4623,11 +4701,11 @@ function GunSwap({ input, refresh, onDone }) {
       compare: baseGun,
       compareName: baseGun ? 'slot ' + (base + 1) + ', ' + baseGun.name : '' }),
     baseGun
-      ? h(GunCard, { gun: baseGun, label: 'Slot ' + (base + 1) + ' · yours', flow: true,
+      ? h(GunCard, { gun: baseGun, label: 'Slot ' + (base + 1) + ' \u00b7 yours', flow: true,
           split: true, mark: 'mine', compare: found.gun, compareName: found.gun.name })
       : h('p', { className: 'lab mine' }, base >= 0
           ? 'Slot ' + (base + 1) + ' is empty' : 'No guns to compare it with'),
-    h('p', { className: 'lab hint' }, 'Hold a slot to swap it · tap to compare it'),
+    h('p', { className: 'lab hint' }, 'Hold a slot to swap it \u00b7 tap to compare it'),
     h('div', { className: 'swaprow' },
       LO.guns.map((g, i) => h('button', {
           key: i,
@@ -4643,60 +4721,6 @@ function GunSwap({ input, refresh, onDone }) {
         h('span', { className: 'gsub' }, g ? g.slots.filter(Boolean).length + '/' + g.cap + ' mods' : 'hold to take')
       ))
     )
-  );
-}
-
-// Walked onto a mod: what it is, and two ways out of it. The game is paused behind this.
-// The right stick chooses — drag it left for the left button, right for the right one —
-// and the buttons take a plain tap as well, for when a thumb is already somewhere else.
-function ModFound({ input, refresh }) {
-  const cf = input.current.confirm;
-  const takeRef = useRef(null), leaveRef = useRef(null);
-  // the overlay has to stop above the control deck, and the deck's height changes with
-  // the viewport, so it is measured rather than guessed
-  const [deck, setDeck] = useState(0);
-  useEffect(() => {
-    const el = document.querySelector('.controls');
-    if (el) setDeck(Math.round(el.getBoundingClientRect().height));
-  });
-
-  const close = () => {
-    input.current.confirm = null;
-    input.current.confirmAct = null;
-    input.current.confirmAim = null;
-    input.current.sig = '';             // let the prompt re-announce itself
-    refresh();
-  };
-  const take = () => {
-    const q = cf.q;
-    input.current.loadout.bag.push(cf.id);
-    input.current.pendingToast = 'Picked up ' + MODS[cf.id].name;
-    q.taken = true;                     // the game loop sweeps it off the ground
-    q.cool = PICKUP_COOL;
-    close();
-  };
-  const leave = () => {
-    cf.q.cool = PICKUP_COOL;            // stepping back onto it must not reopen this
-    close();
-  };
-
-  if (!cf) { input.current.confirmAct = null; return null; }
-  // the stick reads this on release. Assigned during render, the same way `paused` is.
-  input.current.confirmAct = { take, leave };
-  // which way the stick is being held, set by Stick while the drag is live. Neither is
-  // lit until the knob is past the trigger line, so the card does not look like it has
-  // already picked for you.
-  const lit = input.current.confirmAim;
-
-  return h('div', { className: 'modfound', style: { bottom: deck } },
-    h(ModCard, { id: cf.id, ingame: true }),
-    h('div', { className: 'modfoundrow' },
-      h('button', { ref: takeRef, className: 'modfoundbtn pick' + (lit === 'take' ? ' hot' : ''),
-        onPointerDown: e => { e.preventDefault(); take(); } }, 'Pick up'),
-      h('button', { ref: leaveRef, className: 'modfoundbtn' + (lit === 'leave' ? ' hot' : ''),
-        onPointerDown: e => { e.preventDefault(); leave(); } }, 'Leave')
-    ),
-    h('p', { className: 'modfoundhint' }, 'drag the right stick left or right, or tap it')
   );
 }
 
@@ -4793,7 +4817,7 @@ function ModCard({ id, onClose, ingame, top, flow }) {
   );
 }
 
-function Editor({ input, close, refresh }) {
+function Editor({ input, close, refresh, canEdit }) {
   const LO = input.current.loadout;
   const [sel, setSel] = useState(LO.sel);
   const [drag, setDrag] = useState(null);
@@ -4846,7 +4870,7 @@ function Editor({ input, close, refresh }) {
       window.removeEventListener('pointercancel', up);
     };
     const timer = setTimeout(() => {
-      if (!LO.guns[i]) return;                       // nothing to pick up
+      if (!LO.guns[i] || !canEdit) return;           // nothing to pick up, or the bag is read-only
       dragging = true;
       setGdrag({ from: i, x: sx, y: sy, over: i });
     }, 320);
@@ -4863,7 +4887,7 @@ function Editor({ input, close, refresh }) {
     const up = () => {
       cleanup();
       setGdrag(null);
-      if (dragging) moveGun(i, over);
+      if (dragging) { if (canEdit) moveGun(i, over); }
       else if (LO.guns[i]) { setSel(i); LO.sel = i; refresh(); }
     };
     window.addEventListener('pointermove', move);
@@ -4872,6 +4896,7 @@ function Editor({ input, close, refresh }) {
   };
 
   const drop = (x, y, id, from) => {
+    if (!canEdit) return;                 // outside the shop (and without Tinker) the bag is read-only
     const el = document.elementFromPoint(x, y);
     const node = el && el.closest ? el.closest('[data-drop]') : null;
     const to = node && node.dataset.drop;
@@ -5038,7 +5063,7 @@ function Editor({ input, close, refresh }) {
       return h('div', { className: 'advice' },
         h('div', { className: 'diag ' + adv.limit.key },
           h('b', null, adv.now.dps.toFixed(1) + ' dmg/s'), adv.limit.text),
-        adv.tips.length ? h('div', { className: 'tips' },
+        canEdit && adv.tips.length ? h('div', { className: 'tips' },
           adv.tips.map((t, k) => h('button', { key: k, className: 'tip', onPointerDown: apply(t) },
             t.kind === 'move'
               ? 'Swap slots ' + (t.slot + 1) + ' and ' + (t.other + 1)
@@ -5053,13 +5078,15 @@ function Editor({ input, close, refresh }) {
       h('p', { className: 'lab' }, LO.debug
         ? 'Debug shelf — one of every mod, never used up'
         : 'Collected mods' + (LO.bag.length ? '' : ' — none yet, find them in the cave')),
-      !LO.debug && LO.bag.length > 1 ? h('button', { className: 'sortBag',
+      canEdit && !LO.debug && LO.bag.length > 1 ? h('button', { className: 'sortBag',
           onPointerDown: e => { e.preventDefault(); sortBag(); } }, 'Sort') : null),
     h('div', { className: 'bag scroll' + (LO.debug ? ' debug' : ''), 'data-drop': 'bag' },
       bagIds.map((id, i) => tile(id, { type: 'bag', i }, 'b' + i))
     ),
     h('div', { className: 'info' },
-      'Drag a mod to move it. Tap one to see what it does. Hold a gun to reorder it.'),
+      canEdit
+        ? 'Drag a mod to move it. Tap one to see what it does. Hold a gun to reorder it.'
+        : 'Viewing only — reach a shop, or take the Tinker perk, to change your setup. Tap a mod to see what it does.'),
     gdrag && LO.guns[gdrag.from] ? h('div', { className: 'gghost',
       style: { left: gdrag.x, top: gdrag.y } }, LO.guns[gdrag.from].name) : null,
     drag && drag.armed ? h('div', { className: 'ghost',
@@ -5139,10 +5166,8 @@ function App() {
     loadout: { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false,
       perks: [], maxBonus: 0, usedLives: 0 },
     paused: false, notify: () => {}, inShop: true, prompt: null, interact: false, sig: '',
-    found: null,                 // a gun on the ground, waiting on the chooser
-    confirm: null,              // a mod on the ground, waiting on pick up / leave
-    confirmAct: null,           // ModFound's handlers, read by the right stick's release
-    confirmAim: null,           // which of the two the stick is held toward, or null
+    found: null,                // a gun on the ground, waiting on the swap chooser
+    confirmAct: null, confirmAim: null,   // legacy hooks still read (harmlessly) by Stick
     pendingToast: null,         // raised while paused, shown by the loop when it resumes
     keys: { w: false, a: false, s: false, d: false },
     mouse: { x: 0, y: 0, inside: false, down: false },
@@ -5161,8 +5186,7 @@ function App() {
   const refresh = () => bump(n => n + 1);
   input.current.notify = refresh;
   const found = input.current.found;
-  const confirming = input.current.confirm;
-  input.current.paused = edit || !!found || !!confirming || devOpen;
+  input.current.paused = edit || !!found || devOpen;
 
   const LO = input.current.loadout;
   // read through the ref: after a Restart the loadout object is replaced, and a
@@ -5176,13 +5200,12 @@ function App() {
       perks: [], maxBonus: 0, usedLives: 0 };
     input.current.sig = '';
     input.current.found = null;
-    input.current.confirm = null;
-    input.current.confirmAct = null;
-    input.current.confirmAim = null;
     setGunInfo(-1);
     setEdit(false);
     setRun(r => r + 1);
   };
+  // the game loop calls this when you tap the right stick on the death screen
+  input.current.requestRestart = restart;
 
   useEffect(() => {
     // the circles are as big as two of them side by side will go: width is the binding
@@ -5251,12 +5274,11 @@ function App() {
       h(Game, { key: run, input }),
       // The item's card and its buy/take line are one panel now, grown up from the
       // bottom: the info you're reading and the price you're paying sit together.
-      // Hidden once the chooser (found) or the mod card (confirm) is up — the game
-      // pauses behind those, so a prompt left over from the moment they opened would
-      // otherwise sit there stale, doubled up with their own card for the same thing.
       // The panel is pointer-events:none so a tap still reaches the sticks underneath;
-      // buying/picking up is a tap on the right stick's dead zone (or the f key).
-      prompt && !found && !confirming ? h('div', { className: 'buypanel',
+      // buying and taking a mod is a tap on the right stick's dead zone (or the f key),
+      // taken straight. A gun on the ground opens the swap chooser instead, so the panel
+      // hides while that is up (the game pauses behind it).
+      prompt && !found ? h('div', { className: 'buypanel',
         style: { bottom: (input.current.promptBottom || 12) + 'px',
           maxHeight: 'calc(100% - ' + ((input.current.promptBottom || 12) + 12) + 'px)' } },
         prompt.id ? h(ModCard, { id: prompt.id, ingame: true }) : null,
@@ -5311,10 +5333,10 @@ function App() {
         ),
         h('button', {
             className: 'weapon' + (canEdit ? '' : ' locked'),
-            title: canEdit ? 'Edit your guns' : 'Only in the shop',
-            onPointerDown: e => { e.preventDefault(); if (canEdit && !confirming) setEdit(true); } },
-          h('span', { className: 'wicon' }), canEdit ? 'Mods' : 'Shop only',
-          canEdit && LO.bag.length ? h('b', { className: 'badge' }, LO.bag.length) : null)
+            title: canEdit ? 'Guns & mods' : 'Guns & mods (edit in the shop or with Tinker)',
+            onPointerDown: e => { e.preventDefault(); setEdit(true); } },
+          h('span', { className: 'wicon' }), 'Bag',
+          LO.bag.length ? h('b', { className: 'badge' }, LO.bag.length) : null)
       ),
       (LO.perks && LO.perks.length)
         ? h('div', { className: 'perkrow' },
@@ -5330,10 +5352,9 @@ function App() {
         h('div', { className: 'gold' }, fmtGold(LO.gold), h('span', null, 'g'))
       )
     ),
-    edit ? h(Editor, { input, refresh, close: () => setEdit(false) }) : null,
+    edit ? h(Editor, { input, refresh, canEdit, close: () => setEdit(false) }) : null,
     devOpen ? h(DevPanel, { input, refresh, close: () => setDevOpen(false),
       onRestart: () => { setDevOpen(false); setConfirmAt(performance.now()); } }) : null,
-    h(ModFound, { input, refresh }),
     found ? h(GunSwap, { input, refresh, onDone: () => { setGunInfo(-1); refresh(); } }) : null,
     gunInfo >= 0 && LO.guns[gunInfo]
       ? h('div', null,

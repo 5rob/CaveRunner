@@ -33,11 +33,11 @@ Open `index.html` in a browser. It is a single file with no build step; React lo
 | Aim | Right stick | Mouse |
 | Shoot | Drag the right stick out past the dead zone | Left mouse button |
 | Interact: buy, take a gun, mod or perk | Tap the middle of the right stick | F |
-| Choose on a card that is asking | Drag the right stick left or right, or tap the button | — |
+| Restart after dying | Tap the right stick | — |
 | Pick gun | Tap a gun slot | 1 to 4 |
 | Gun details | Hold a gun slot | — |
 | Reorder guns | Hold and drag a gun tab in the build screen | — |
-| Guns & mods screen (shop only) | Tap Mods | E |
+| Bag: guns & mods screen (open anywhere) | Tap Bag | E |
 
 The controls sit on a black arcade panel with a scanline wash over it. The knob
 that follows your thumb is a white ring with a black fill — the boldest circle on
@@ -50,13 +50,18 @@ edge reaches that circle, the gun fires. The stick does not clip the knob to the
 circle, so at full deflection the knob is still a whole knob.
 
 The sticks are your dashboard too. There are no numbers up top any more: your health
-is the green ring around the left stick, wiping away clockwise as you take hits (it
-turns red when the tank is dry); your mana is the gold ring around the right stick,
-draining the same way and recharging back; and your fuel is the amber fill in the top
-half of the left stick, sinking towards the centre line as the jetpack burns it. The
-floor number is painted big across the shop's back wall, the version sits top-left, and
-your gold reads in the gap between the two sticks — a `g`, with thousands shortened to a
-`k` (so `1234` shows as `1.2kg`).
+is the ring around the left stick, wiping away clockwise as you take hits — and it slides
+from green through amber to red as it drops, so the colour itself tells you how close you
+are to the end; your mana is the gold ring around the right stick, draining the same way
+and recharging back; and your fuel is the amber fill in the top half of the left stick,
+sinking towards the centre line as the jetpack burns it. The floor number is painted big
+across the shop's back wall, the version sits top-left, and your gold reads in the gap
+between the two sticks — a `g`, with thousands shortened to a `k` (so `1234` shows as
+`1.2kg`).
+
+A minimap sits in the bottom-left corner: the cave you have uncovered, drawn as thin white
+outlines over the gameplay, about a third of the screen wide. It only shows ground the fog
+of war has lifted, so it fills in as you explore.
 
 ## Picking things up
 
@@ -73,11 +78,10 @@ A long stat list (a loaded gun, a busy mod) scrolls inside the panel so it never
 tall enough to fill the screen. Shop stock reads **Buy** and its price; anything free
 just reads **Take**.
 
-A mod on the ground is not taken by the tap either. The tap opens the card,
-pauses the game behind it, and asks: **Pick up** on the left, **Leave** on the
-right. Neither is lit to begin with — drag the right stick left or right and the
-one you are pointing at lights up, then let go to take it. Come back to the middle
-before you let go and nothing happens, or just tap a button instead.
+Once you have read the card, a tap on the right stick takes it. A **mod** goes straight
+into your bag — no second screen, since a mod has no slot to choose. A **gun** opens the
+swap chooser instead (see **Guns and mods** below): a gun goes into one of four slots and
+is worth comparing before you commit.
 
 ## The shop
 
@@ -89,16 +93,16 @@ The four things for sale sit together in one row across the middle of the room,
 close enough to read all four without walking between them. Odd floors sell mods.
 **Even floors sell guns instead** — four freshly rolled
 ones, priced on what they can actually do: slots, how fast they cycle, mana, and
-whether they fire in the order you set them. Buying one drops it at the plinth as an ordinary ground gun, so it is yours to
-pick up with a second tap whenever you like, and walking away parks it on the
-shop floor rather than binning what you paid for.
+whether they fire in the order you set them. Buying one equips it straight away — into
+an empty slot, or in place of the gun you are holding, with the old one parked on the
+plinth so you can grab it back if you change your mind.
 
 Stand on any plinth and its card appears with the **Buy** price built in — a mod's
 effect and stats, or a gun's stat sheet compared against the one you are holding —
-so you can read what you are buying before paying for it. The shop is also the
-only place you can rearrange your guns: the Mods button is locked while you are
-out in the cave. Enemies drop gold when they die, so a floor you clear pays for
-the next floor's shopping.
+so you can read what you are buying before paying for it. Your **Bag** opens anywhere,
+but *changing* your setup — dragging mods, reordering guns — only works in the shop (or
+anywhere, with the Tinker perk); out in the cave the Bag is read-only. Enemies drop gold
+when they die, so a floor you clear pays for the next floor's shopping.
 
 Guns get better as you go. Height in the cave still matters — the ones lying
 around near the top of a floor beat the ones near the bottom — but every floor
@@ -111,10 +115,11 @@ Every floor also hides two small rooms, built brick-lined like the shop, carved 
 the cave and connected back to the main route by a tunnel — you have to find them.
 
 One holds a perk on an altar. Walk onto it and a card describes the upgrade; tap the
-right stick's dead zone (or F) to take it, same as any other pickup. There are 30 perks,
+right stick's dead zone (or F) to take it, same as any other pickup. There are 31 perks,
 copied from Noita — Glass Cannon, Extra Health, Faster Wands, Homing Shots, Unlimited
-Spells, Permanent Shield, Pinpointer, Angry Ghost, Attract Gold, radars and Invisibility
-among them — and once taken, a perk lasts the rest of the run: until you die or hit
+Spells, Permanent Shield, Pinpointer, Trajectory Sight (draws the dotted aim line for the
+next shot), Angry Ghost, Attract Gold, radars and Invisibility among them — and once
+taken, a perk lasts the rest of the run: until you die or hit
 Restart. A perk room never offers one you already hold. What you've collected shows as a
 row of small icons along the bottom of the screen, just above the thumbsticks.
 
@@ -122,8 +127,9 @@ The other room holds a heart that raises your maximum health by 25. It does not 
 you — it only raises the ceiling.
 
 A couple of perks reach into other systems: Extra Item in Holy Mountain makes the shop
-offer five things instead of four, and Tinker with Wands Everywhere opens the Mods
-editor anywhere, not just in the shop.
+offer five things instead of four, and Tinker with Wands Everywhere lets you *edit* your
+setup anywhere, not just in the shop. Trajectory Sight is what draws the dotted aim line
+that shows where your next shot flies — without it, you aim by feel.
 
 ## Floors
 
@@ -175,14 +181,17 @@ also hold more of them.
 
 Guns work like Noita wands. Each one is rolled at random with its own capacity,
 cast delay, recharge time, mana pool, spread and shot speed, and some of them
-shuffle their firing order. You carry up to four. Interacting with a gun on the ground pauses the game and
-opens a chooser: it shows what you found, with a button for each of your four
-slots, both guns laid out at once so you can read either one's mods without
-scrolling.
-Tap a slot to compare that gun, hold one to swap it out — whatever it replaces
-is left on the ground where you found the new one. The found gun's stats are
-coloured against whichever of your guns you last tapped (your held gun to start
-with), green for better and red for worse, counting a smaller cast delay,
+shuffle their firing order. You carry up to four. You start with a **Pick Axe** — a
+one-slot gun holding a **Buzzsaw**, which chews through rock and shreds whatever is
+right in front of you — and a weak **Scratch Pistol** as a backup; anything you find on
+floor 1 beats the pistol.
+
+Standing next to a gun on the ground shows its card. A tap opens the chooser: it pauses the
+game and shows what you found with a button for each of your four slots, both guns laid out
+at once so you can read either one's mods without scrolling. Tap a slot to compare that gun,
+hold one to swap it out — whatever it replaces is left on the ground where you found the new
+one. The found gun's stats are coloured against whichever of your guns you last tapped (your
+held gun to start with), green for better and red for worse, counting a smaller cast delay,
 recharge or spread as better.
 
 Every gun is given its own colour when it is made, and keeps it for the run, so
@@ -207,10 +216,11 @@ cost, green for better and red for worse. So you can see which mods come out tog
 shots it affects, and anything the gun never reaches is marked "never cast".
 
 Cast delay is accumulated in that same order, which makes **Buzzsaw** special: it
-does not subtract from the delay, it resets it to zero at the moment it is cast.
-Anything cast after it adds its delay back, so it belongs at the tail of a
-multicast group — `Double Cast, Bolt, Buzzsaw` fires the bolt and leaves the gun
-ready immediately. Recharge, by contrast, counts from any slot.
+does not subtract from the delay, it resets it to zero at the moment it is cast, and it
+also cuts the gun's recharge to a third — so it cuts fast. Anything cast after it adds
+its delay back, so it belongs at the tail of a multicast group — `Double Cast, Bolt,
+Buzzsaw` fires the bolt and leaves the gun ready immediately. Recharge, by contrast,
+counts from any slot.
 
 Any mod in a group that changes the recharge time shows it in that group's stat
 line too, even though recharge itself is paid once per full cycle rather than
@@ -310,19 +320,20 @@ them if it cannot find either.
 - Guns and mods to find, with a drag-and-drop screen for building them
 - 111 mods: shots, static fields, path modifiers, trigger spells, utility casts and the Greek letter copy spells
 - A build advisor that measures your damage per second, names the limiting factor and offers one-tap fixes
-- An aim line that simulates the next shot for real: gravity, acceleration, homing, ricochets, drilling and spread
+- A trajectory aim line — unlocked by the Trajectory Sight perk — that simulates the next shot for real: gravity, acceleration, homing, ricochets, drilling and spread
+- A minimap in the bottom-left: the revealed cave drawn as white outlines over the gameplay, a third of the screen wide
 - Recoil that shoves you around, which the jetpack can work with
 - Gold that flies to you once you are close enough (a short range for now)
 - A black arcade control deck: mono type, scanlines, and two rings on the right stick — the dead zone and the full throw
-- Picking a mod up off the ground asks first: card, game paused, pick up or leave — neither button lit until you drag the stick one way or the other
+- Picking a mod up is one tap — its card shows while you stand next to it, and a tap drops it straight in your bag; a gun opens a compare-and-swap chooser so you can pick which of your four slots it takes
 - Jetpack with fuel that refills on the ground; upward thrust is instant
 - 16 creatures in five shapes, each floor owning its own fixed roster: shooters that hover and fire, turrets that wind up a long shot, chasers that come at you and bombers that burst on contact
 - Creature stats and gold scale with the floor they belong to, so the same enemy gets harder as you climb
 - Enemies with health bars, drawn in their own colours so you can read what is shooting you
-- A gun you decided against stays quiet for two seconds, so you can squeeze past it in a tunnel
+- A gun you just swapped out and dropped stays quiet for two seconds, so you can squeeze past it in a tunnel
 - Mods in the wild are rare, so the shop is the reliable place to stock up
 - Restart asks before it wipes the run
 - A DEBUG shelf with one of every mod, for trying builds out
-- 30 perks, hidden one to a brick-lined room on every floor, permanent for the run and shown as icons above the sticks
+- 31 perks, hidden one to a brick-lined room on every floor, permanent for the run and shown as icons above the sticks
 - A second hidden room per floor holding a +25 max health heart (it raises the ceiling, doesn't heal)
 - Loot in the cave sits on the ground now, not floating in place
