@@ -60,8 +60,8 @@ between the two sticks — a `g`, with thousands shortened to a `k` (so `1234` s
 `1.2kg`).
 
 A minimap sits in the bottom-left corner: the cave you have uncovered, drawn as thin white
-outlines over the gameplay, about a third of the screen wide. It only shows ground the fog
-of war has lifted, so it fills in as you explore.
+outlines over the gameplay, about a third of the screen wide, with a yellow dot for where you
+are. It only shows ground the fog of war has lifted, so it fills in as you explore.
 
 ## Picking things up
 
@@ -320,7 +320,7 @@ them if it cannot find either.
 - 111 mods: shots, static fields, path modifiers, trigger spells, utility casts and the Greek letter copy spells
 - A build advisor that measures your damage per second, names the limiting factor and offers one-tap fixes
 - A trajectory aim line — unlocked by the Trajectory Sight perk — that simulates the next shot for real: gravity, acceleration, homing, ricochets, drilling and spread
-- A minimap in the bottom-left: the revealed cave drawn as white outlines over the gameplay, a third of the screen wide
+- A minimap in the bottom-left: the revealed cave drawn as white outlines over the gameplay, a third of the screen wide, with a yellow dot for your position
 - Recoil that shoves you around, which the jetpack can work with
 - Gold that flies to you once you are close enough (a short range for now)
 - A black arcade control deck: mono type, scanlines, and two rings on the right stick — the dead zone and the full throw

@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v51**. Branch: `main` (release channel is `main`).
+Current version: **v52**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -246,14 +246,17 @@ a bare ⚙️ in the top-right (`.devbtn`, class unchanged so the browser tests 
 stick to restart", and the loop's interact block calls `input.current.requestRestart` (set
 by `App` to its `restart`) when `p.dead && interact`, before the near/pickup handling.
 
-**The minimap (v50) is drawn on the canvas, bottom-left, ~1/3 the view width.** It is a tiny
-`FW×FH` offscreen canvas (`miniC`/`mini32`) blitted scaled up, imageSmoothing off, in the HUD
-(screen-space) part of `draw()`. `miniEdge` (a `Uint8Array`, rebuilt per floor in
-`enterLevel` from the static `mat`) marks fog cells that are solid **and** border open space —
-the cave's outlines; each frame only cells with `seen[i]` are painted, white at ~0.7 alpha,
-everything else transparent, so it reads as an overlay over the gameplay and fills in as you
-explore. Height caps at the view height on short screens. Deliberately *just* the revealed
-outlines — no player dot, no colour — per the owner's ask.
+**The minimap is drawn on the canvas, bottom-left, ~1/3 the view width.** It is an
+`MMW×MMH` offscreen canvas (`miniC`/`mini32`) drawn in the HUD (screen-space) part of
+`draw()`. **Rebuilt in v52 for accuracy:** it samples the real `mat` in `MINI_D`×`MINI_D`
+(4px) blocks — much finer than the fog grid — and a block is an *outline* cell if a wall
+runs through it (it holds **both** rock and open). `enterLevel` precomputes `miniEdgeIdx`
+(the list of those cells) per floor; each frame `mini32` is cleared and only the outline
+cells whose fog cell is `seen` are painted white (~0.78 alpha), so it fills in as you
+explore. The source is finer than the display and blitted with **imageSmoothing on**, so the
+walls read as continuous lines rather than the scatter you got detecting edges at the coarse
+fog grid (v50–v51). A **yellow dot** (`#ffd23c`) marks the player, mapped from world
+`(p.x,p.y)` into the map rect. Height caps at the view height on short screens.
 
 **The Bag button always opens the editor; editing is what's gated (v50).** The deck button
 (`.weapon`, class unchanged) is now labelled **Bag** and opens `Editor` anywhere. `App`

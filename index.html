@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v51</title>
+<title>CaveRunner v52</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -411,7 +411,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v51';
+const VERSION = 'v52';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -1105,6 +1105,11 @@ const SHOP_Y = SHOP_TOP * CELL;        // world y of the ceiling, for "am I in t
 const FOG = 8;                         // terrain pixels per fog cell
 const FOG_U = FOG * CELL;              // world units per fog cell
 const FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
+// the minimap samples the real terrain at a finer grid than the fog: a cell is an
+// outline if a wall passes through it (has both rock and open), which traces every wall
+// continuously instead of the scatter you get detecting edges at the coarse fog grid.
+const MINI_D = 4;                      // terrain pixels per minimap cell
+const MMW = Math.ceil(CW / MINI_D), MMH = Math.ceil(CH / MINI_D);
 const SIGHT = 200;                     // how far the torch reaches: line of sight out to
                                        // here lifts the fog, and the lamp then lights the
                                        // ground it lifted. A cell this close and in view is
@@ -2658,15 +2663,15 @@ function Game({ input }) {
     const fctx = fogC.getContext('2d');
     const fogImg = new ImageData(FW, FH);
     let seen = fogStart();
-    // the minimap: a tiny FW x FH canvas of white cave outlines, blitted scaled into the
-    // bottom-left of the view. miniEdge marks the wall/open boundary cells (static per
-    // floor); each frame only the cells the fog has revealed are actually painted.
+    // the minimap: an MMW x MMH canvas of white cave outlines, smooth-scaled into the
+    // bottom-left of the view. miniEdgeIdx lists the wall-outline cells (static per floor);
+    // each frame only the ones the fog has revealed are painted white, the rest cleared.
     const miniC = document.createElement('canvas');
-    miniC.width = FW; miniC.height = FH;
+    miniC.width = MMW; miniC.height = MMH;
     const mctx = miniC.getContext('2d');
-    const miniImg = new ImageData(FW, FH);
+    const miniImg = new ImageData(MMW, MMH);
     const mini32 = new Uint32Array(miniImg.data.buffer);
-    let miniEdge = new Uint8Array(FW * FH);
+    let miniEdgeIdx = [];
 
     let mat, img, start, portal, enemies, pickups, stock, arrival, total, floor = 1;
     let rooms = [];                                  // the perk room and the heart room
@@ -2712,19 +2717,22 @@ function Game({ input }) {
       const level = makeLevel(1 + Math.floor(Math.random() * 2147483000), floor,
         input.current.loadout.perks);
       mat = level.mat; img = level.img;
-      // minimap outlines for this floor: a fog cell is an outline if it's solid and
-      // borders open space (sampled from the static terrain at the cell's centre)
-      miniEdge = new Uint8Array(FW * FH);
-      const fsolid = new Uint8Array(FW * FH);
-      for (let fy = 0; fy < FH; fy++) for (let fx = 0; fx < FW; fx++) {
-        const tx = Math.min(CW - 1, fx * FOG + (FOG >> 1)), ty = Math.min(CH - 1, fy * FOG + (FOG >> 1));
-        fsolid[fy * FW + fx] = mat[ty * CW + tx] ? 1 : 0;
-      }
-      for (let fy = 0; fy < FH; fy++) for (let fx = 0; fx < FW; fx++) {
-        const i = fy * FW + fx;
-        if (!fsolid[i]) continue;
-        if ((fx > 0 && !fsolid[i - 1]) || (fx < FW - 1 && !fsolid[i + 1]) ||
-            (fy > 0 && !fsolid[i - FW]) || (fy < FH - 1 && !fsolid[i + FW])) miniEdge[i] = 1;
+      // minimap outlines for this floor: scan the real terrain in MINI_D x MINI_D blocks;
+      // a block is an outline if a wall runs through it (it holds both rock and open), which
+      // traces the cave walls continuously at a much finer grain than the fog grid.
+      miniEdgeIdx = [];
+      for (let my = 0; my < MMH; my++) for (let mx = 0; mx < MMW; mx++) {
+        let solid = 0, open = 0;
+        for (let dy = 0; dy < MINI_D; dy++) {
+          const ty = my * MINI_D + dy;
+          if (ty >= CH) break;
+          for (let dx = 0; dx < MINI_D; dx++) {
+            const tx = mx * MINI_D + dx;
+            if (tx >= CW) break;
+            if (mat[ty * CW + tx]) solid++; else open++;
+          }
+        }
+        if (solid && open) miniEdgeIdx.push(my * MMW + mx);
       }
       start = level.start; portal = level.portal; arrival = level.arrival;
       enemies = level.enemies; pickups = level.pickups; stock = level.stock;
@@ -4310,17 +4318,31 @@ function Game({ input }) {
       ctx.shadowBlur = 0;
 
       // ---- minimap: revealed cave as white outlines, bottom-left, ~1/3 the width ----
-      // Everything else is transparent, so it reads as an overlay over the gameplay.
+      // Everything else is transparent, so it reads as an overlay over the gameplay. Only
+      // the outline cells the fog has revealed are painted; the source is finer than the
+      // display and smooth-scaled down, so the walls read as continuous lines, not a scatter.
       {
-        for (let i = 0; i < FW * FH; i++) mini32[i] = (miniEdge[i] && seen[i]) ? 0xb4ffffff : 0;
+        mini32.fill(0);
+        for (let k = 0; k < miniEdgeIdx.length; k++) {
+          const i = miniEdgeIdx[k];
+          const tx = (i % MMW) * MINI_D, ty = ((i / MMW) | 0) * MINI_D;
+          const fi = ((ty / FOG) | 0) * FW + ((tx / FOG) | 0);
+          if (seen[fi]) mini32[i] = 0xc8ffffff;            // white, ~0.78 alpha
+        }
         mctx.putImageData(miniImg, 0, 0);
         const chh = c.height / dpr;
-        let mw = cw / 3, mh = mw * FH / FW;
+        let mw = cw / 3, mh = mw * MMH / MMW;
         const cap = chh - 16;
         if (mh > cap) { mw *= cap / mh; mh = cap; }        // keep it inside the view on short screens
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(miniC, 0, 0, FW, FH, 6, chh - mh - 6, mw, mh);
-        ctx.imageSmoothingEnabled = true;
+        const mx0 = 6, my0 = chh - mh - 6;
+        ctx.imageSmoothingEnabled = true;                  // smooth downscale keeps thin walls continuous
+        ctx.drawImage(miniC, 0, 0, MMW, MMH, mx0, my0, mw, mh);
+        // a yellow dot for where you are
+        const wW = CW * CELL, wH = CH * CELL;
+        ctx.fillStyle = '#ffd23c';
+        ctx.beginPath();
+        ctx.arc(mx0 + ((p.x + PW / 2) / wW) * mw, my0 + ((p.y + PH / 2) / wH) * mh, 2.6, 0, Math.PI * 2);
+        ctx.fill();
       }
 
       // hand the sticks the live health / fuel / mana so they can draw their gauges:

@@ -7,10 +7,10 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v51.** Working on `main` (**release channel is `main`** — CI there
-  deploys Pages + builds the APK). v50 was a big batch; v51 reworks the Buzzsaw into a
-  melee slice and swaps the starter slot order (see **What shipped recently**). After a
-  push, confirm CI green and that `https://5rob.github.io/CaveRunner/version.txt` matches.
+- **On-disk version: v52.** Working on `main` (**release channel is `main`** — CI there
+  deploys Pages + builds the APK). Recent: v50 big batch, v51 Buzzsaw melee slice + starter
+  order, v52 minimap accuracy + position dot (see **What shipped recently**). After a push,
+  confirm CI green and that `https://5rob.github.io/CaveRunner/version.txt` matches.
 - **The game now ships as a self-updating Android app** (built this session, working end to
   end). The delivery path changed: pushing to `main` is the release, and the app on the
   phone offers the update. You no longer publish the artifact. See the new **The Android
@@ -41,6 +41,12 @@ it's stale.
 
 ## What shipped recently (most recent first)
 
+- **v52 — minimap accuracy + position dot.** The old minimap detected edges on the coarse
+  fog grid (16-unit cells), so organic cave walls scattered into loose pixels (only the
+  shop's straight walls survived). Now it samples the real terrain in 4px blocks and marks a
+  cell as outline if a wall runs through it (both rock and open), precomputed per floor as
+  `miniEdgeIdx`, and blits with imageSmoothing on so the walls read as continuous lines. Added
+  a **yellow dot** for the player's position. See the minimap note in `CLAUDE.md`.
 - **v51 — Buzzsaw melee slice + starter slot order.**
   - **Buzzsaw is now a melee cutter:** `speed: 0` (no travel, sits ~10u in front), `size: 15`
     (3×) and `bore: 12`, so it carves a circular slice into rock/enemies right in front. It
