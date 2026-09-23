@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v56.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v57.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -41,6 +41,8 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v57 — Black Hole tuning knobs.** Dig radius now equals the drawn black core (was including the glow). Dev knobs for Black Hole max pull range and travel speed. New Dev-panel button copies all changed dev settings as text to paste to Claude, who then makes them the defaults.
 
 - **v56 — Black Hole rework + visuals.** Black Hole hauls creatures in hard, rolls on through them grinding, swallows enemy shots, purple haze + starry core + mote trail. Portal motes (drawn into the exit, wafting out of the way in). Hand torch flame drags as you move, with a flickering halo and a small second light. Wall torches by portals and room prizes. Background parallax (0.8) and big shadow blotches. Browser tests were run on this PC with playwright-core installed in the session scratchpad + system Chrome (`CAVERUNNER_PLAYWRIGHT` / `CAVERUNNER_CHROME`).
 
@@ -190,7 +192,7 @@ Talk briefly, iterate fast, don't over-plan. Every change works at phone width w
   re-run the single suite to confirm; all are enemy-geometry / random-seed sensitive, not
   regressions): `everymod` (telecast), `trigger` (double trigger), and `compare` (a
   found gun that happens not to differ in regen, so "less regen is red" finds nothing —
-  seen once during the v47 run, green on its own). See `memory/cardfit-known-failure.md`.
+  seen once during the v47 run, green on its own), and `fog` "the next floor is dark again" (~1 in 4-5 runs a new floor spawns with a few cave cells already visible up the shaft; also fails on v56 code, seed-dependent). See `memory/cardfit-known-failure.md`.
 
 ## Testing on the phone over WiFi
 

@@ -78,8 +78,8 @@ check('Black Hole moves at 2x the old speed (was 70)', void_.speed === 140, void
 check('Black Hole still pulls at the same range (70) — a gravity well reaching well ' +
   'beyond the visible sphere needs no help from the size change',
   void_.pull === 70, void_.pull);
-check('Black Hole\'s eat radius grew in step with its size (same eat/size ratio as before)',
-  Math.abs(void_.eat / void_.size - 7 / 6) < 0.001, { eat: void_.eat, size: void_.size });
+check('Black Hole digs exactly its drawn black core (v57: ~0.78 of size, not the glow)',
+  Math.abs(void_.eat - void_.size * 0.78) < 1, { eat: void_.eat, size: void_.size });
 
 // ---- Black Hole: the values reach a built shot ----
 sh = shotOf(['void']);

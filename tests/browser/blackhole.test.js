@@ -71,6 +71,24 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the exit portal pulls motes in', ex.n > 10 && ex.closer > 3, ex);
   await page.screenshot({ path: path.join(DIR, 'exit_portal.png') });
 
+  // v57: the Dev panel's Black Hole knobs and the copy-all button
+  await c.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.tap('.devbtn');
+  await page.waitForTimeout(250);
+  const labels = await page.$$eval('.devrow label', ls => ls.map(l => l.textContent));
+  check('Dev panel has the Black Hole pull range knob', labels.includes('Black Hole max pull range'), labels);
+  check('and the travel speed knob', labels.includes('Black Hole travel speed'));
+  const speedBox = (await page.$$('.devrow input'))[labels.indexOf('Black Hole travel speed')];
+  await speedBox.fill('90');
+  await page.tap('.devcopy');
+  await page.waitForTimeout(300);
+  const clip = await page.evaluate(() => navigator.clipboard.readText());
+  console.log(clip.split('\n').map(l => '     | ' + l).join('\n'));
+  check('copy commits the half-typed box first', await page.evaluate(() => DEV.bhSpeed) === 90);
+  check('the clipboard lists the change', /Black Hole travel speed \(DEV\.bhSpeed\): 90/.test(clip), clip);
+  await page.screenshot({ path: path.join(DIR, 'devcopy.png') });
+  await page.evaluate(() => { try { localStorage.removeItem('caverunner-dev'); } catch (_) {} });
+
   check('no page errors', errs.length === 0, errs);
   console.log(fails ? `\n${fails} failed` : '\nall good');
   await b.close();

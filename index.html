@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v56</title>
+<title>CaveRunner v57</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -365,6 +365,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .devbtn{position:absolute;top:10px;right:10px;z-index:6;border:1px solid rgba(255,255,255,0.25);
   background:rgba(0,0,0,0.35);color:#e9ecf2;border-radius:8px;width:38px;height:38px;padding:0;
   font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center}
+.devcopy{display:block;width:100%;margin-top:10px}
+.devcopytext{width:100%;box-sizing:border-box;height:120px;margin-top:6px;font:12px ui-monospace,monospace;
+  background:var(--pad);color:var(--text);border:1px solid var(--ring);border-radius:8px}
 .dbg.restart{background:#c2401f;border-color:#c2401f;color:#fff}
 .devwrap{position:fixed;left:0;right:0;top:0;bottom:0;z-index:26;display:flex;
   align-items:flex-start;justify-content:center;padding:52px 12px 12px}
@@ -411,7 +414,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v56';
+const VERSION = 'v57';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -442,7 +445,7 @@ const START_GOLD = 40;
 // Each has a default; clearing a field in the dev panel puts the default back. Every
 // localStorage touch is wrapped: it throws in a private window and does not exist at all
 // under Node (the logic tests eval this file), and a missing store just means "defaults".
-const DEV_DEFAULTS = { zoom: 1, torch: 1, fogDark: 0.99, fogDim: 0.85, move: 1, aggro: 1, loseAggro: 2, aimDist: 44 };
+const DEV_DEFAULTS = { zoom: 1, torch: 1, fogDark: 0.99, fogDim: 0.85, move: 1, aggro: 1, loseAggro: 2, aimDist: 44, bhPull: 154, bhSpeed: 140 };
 const DEV_META = [
   { k: 'zoom',      label: 'Camera zoom',                 min: 0.3, max: 3,  step: 0.05 },
   { k: 'torch',     label: 'Torch fall-off distance',     min: 0.2, max: 5,  step: 0.05 },
@@ -452,7 +455,21 @@ const DEV_META = [
   { k: 'aggro',     label: 'Enemy aggro distance',        min: 0.2, max: 5,  step: 0.05 },
   { k: 'loseAggro', label: 'Lose aggro distance (×aggro)', min: 1,  max: 10, step: 0.1 },
   { k: 'aimDist',   label: 'Crosshair distance',          min: 10,  max: 200, step: 2 },
+  { k: 'bhPull',    label: 'Black Hole max pull range',   min: 0,   max: 600, step: 5 },
+  { k: 'bhSpeed',   label: 'Black Hole travel speed',     min: 0,   max: 1000, step: 5 },
 ];
+// The dev values that differ from their defaults, as text to paste back to Claude so they
+// can become the new defaults.
+function devReport() {
+  const changed = DEV_META.filter(m => DEV[m.k] !== DEV_DEFAULTS[m.k]);
+  const lines = ['CaveRunner ' + VERSION + ' dev settings — please make these the new defaults:', ''];
+  if (!changed.length) lines.push('(nothing changed — everything is at its default)');
+  for (const m of changed)
+    lines.push('- ' + m.label + ' (DEV.' + m.k + '): ' + DEV[m.k] + '   [default ' + DEV_DEFAULTS[m.k] + ']');
+  lines.push('', 'Unchanged: ' + (DEV_META.filter(m => DEV[m.k] === DEV_DEFAULTS[m.k])
+    .map(m => m.k).join(', ') || 'none'));
+  return lines.join('\n');
+}
 const DEV_KEY = 'caverunner-dev';
 const DEV = Object.assign({}, DEV_DEFAULTS);
 (() => { try {
@@ -464,6 +481,9 @@ function devSet(k, v) {
   DEV[k] = v;
   try { localStorage.setItem(DEV_KEY, JSON.stringify(DEV)); } catch (_) {}
 }
+
+// Black Hole travel speed from the Dev knob, as a multiplier so speed mods still stack
+const bhSp = sh => sh.pull ? DEV.bhSpeed / MODS.void.speed : 1;
 
 const COIN_PULL = 36;         // gold within this many units flies to you
 // how many enemies a floor gets before the floor lift. What they are and how hard
@@ -761,7 +781,7 @@ const MODS = {
              dmg: 2, speed: 560, spread: 1.5, delay: 0.26, size: 2.5, life: 1.2, chain: 3, recoil: 10 },
   void:    { name: 'Black Hole', kind: 'shot', glyph: '◯', col: '#9a6ad6', mana: 60,
              info: 'Rolls forward eating rock, hauls creatures in and swallows their shots',
-             dmg: 1, speed: 140, spread: 0, delay: 0.5, size: 24, life: 3.5, eat: 28, pull: 70, recoil: 0 },
+             dmg: 1, speed: 140, spread: 0, delay: 0.5, size: 24, life: 3.5, eat: 19, pull: 70, recoil: 0 },
   digbolt: { name: 'Digging Bolt', kind: 'shot', glyph: '▤', col: '#c8a06a', mana: 0,
              info: 'Free, harmless, and very good at mining',
              dmg: 0, speed: 520, spread: 2, delay: 0.1, size: 2, life: 0.9, bore: 5, recoil: 2 },
@@ -3098,7 +3118,7 @@ function Game({ input }) {
           }
         }
         bullets.push({ x: bx, y: by,
-          vx: Math.cos(a) * sh.speed * pb.speed, vy: Math.sin(a) * sh.speed * pb.speed,
+          vx: Math.cos(a) * sh.speed * pb.speed * bhSp(sh), vy: Math.sin(a) * sh.speed * pb.speed * bhSp(sh),
           life: sh.life, dmg: (sh.dmg + bonus) * pd, size: sh.size, col: sh.col, spin: 0,
           homing: Math.max(sh.homing, pb.homing), bounce: sh.bounce + pb.bounce, pierce: sh.pierce,
           explode: sh.explode, grav: sh.grav, accel: sh.accel, bore: sh.bore, hit: null,
@@ -3395,7 +3415,7 @@ function Game({ input }) {
           // Black Hole: heavy gravity. It reaches ~2.2x its pull stat and drags harder the
           // closer you are, so creatures get hauled in and held in the middle of it. It
           // swallows enemy shots that come near, and grinds anything in it every 0.3s.
-          const reach = b.pull * 2.2;
+          const reach = DEV.bhPull * b.pull / 70;          // Dev knob: max pull range
           for (const e of enemies) {
             const dx = b.x - e.x, dy = b.y - e.ty, d = Math.hypot(dx, dy) || 1;
             if (d < reach) {
@@ -4125,7 +4145,7 @@ function Game({ input }) {
       for (const b of bullets) {
         if (b.hidden) continue;                 // Buzzsaw cuts without drawing a circle
         if (b.pull) {                           // Black Hole: purple haze, starry black core
-          const r = b.size, core = r * 0.78, beat = 1 + 0.06 * Math.sin(time * 6 + b.spin);
+          const r = b.size, core = b.eat || r * 0.78, beat = 1 + 0.06 * Math.sin(time * 6 + b.spin);
           const g = ctx.createRadialGradient(b.x, b.y, core * 0.8, b.x, b.y, r * 1.55 * beat);
           g.addColorStop(0, 'rgba(197,140,255,0.75)');
           g.addColorStop(0.3, 'rgba(150,90,255,0.35)');
@@ -4421,7 +4441,7 @@ function Game({ input }) {
           drawn++;
           // the perks that bend a bullet in flight bend the aim line too, or it lies
           const tsh = Object.assign({}, sh, { bounce: sh.bounce + pb.bounce,
-            homing: Math.max(sh.homing, pb.homing), speed: sh.speed * pb.speed });
+            homing: Math.max(sh.homing, pb.homing), speed: sh.speed * pb.speed * bhSp(sh) });
           for (const off of cone) {
             const a = Math.atan2(R.ny, R.nx) + off * Math.PI / 180;
             tracePath(tsh, pcx, gy, Math.cos(a), Math.sin(a), solidAt, enemies, aimPath,
@@ -5447,6 +5467,23 @@ function DevRow({ meta }) {
 function DevPanel({ input, refresh, close, onRestart }) {
   const LO = input.current.loadout;
   const [, bump] = useState(0);
+  const [copied, setCopied] = useState(null);     // null, or the text + whether it copied
+  const copyAll = () => {
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // commit a half-typed box
+    const text = devReport();
+    const fallback = () => {
+      let ok = false;
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove();
+      } catch (_) {}
+      setCopied({ text, ok });
+    };
+    try {
+      navigator.clipboard.writeText(text).then(() => setCopied({ text, ok: true }), fallback);
+    } catch (_) { fallback(); }
+  };
   return h('div', { className: 'devwrap' },
     h('div', { className: 'devback', onPointerDown: e => { e.preventDefault(); close(); } }),
     h('div', { className: 'devpanel scroll' },
@@ -5462,7 +5499,12 @@ function DevPanel({ input, refresh, close, onRestart }) {
       h('div', { className: 'devvars' },
         DEV_META.map(m => h(DevRow, { key: m.k, meta: m }))),
       h('p', { className: 'devnote' },
-        'Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back.')
+        'Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back.'),
+      h('button', { className: 'dbg devcopy', onPointerDown: e => { e.preventDefault(); copyAll(); } },
+        'Copy all dev settings to clipboard'),
+      copied ? h('p', { className: 'devnote' }, copied.ok ? 'Copied — paste it to Claude.'
+        : 'Could not reach the clipboard — press and hold the text below to copy it.') : null,
+      copied && !copied.ok ? h('textarea', { className: 'devcopytext', readOnly: true, value: copied.text }) : null
     )
   );
 }
