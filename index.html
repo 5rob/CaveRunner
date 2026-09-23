@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v55</title>
+<title>CaveRunner v56</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -411,7 +411,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v55';
+const VERSION = 'v56';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -760,7 +760,7 @@ const MODS = {
              info: 'Jumps from enemy to enemy, three times',
              dmg: 2, speed: 560, spread: 1.5, delay: 0.26, size: 2.5, life: 1.2, chain: 3, recoil: 10 },
   void:    { name: 'Black Hole', kind: 'shot', glyph: '◯', col: '#9a6ad6', mana: 60,
-             info: 'Rolls forward, eating more rock, and dragging things in',
+             info: 'Rolls forward eating rock, hauls creatures in and swallows their shots',
              dmg: 1, speed: 140, spread: 0, delay: 0.5, size: 24, life: 3.5, eat: 28, pull: 70, recoil: 0 },
   digbolt: { name: 'Digging Bolt', kind: 'shot', glyph: '▤', col: '#c8a06a', mana: 0,
              info: 'Free, harmless, and very good at mining',
@@ -1860,7 +1860,47 @@ function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash) {
 // The torch in the runner's free hand. `flick` is the very same number the lamp is drawn
 // with, so the flame and the light it throws gutter together and the cave reads as
 // torchlight rather than as a dimmer switch. The embers are the loop's particles.
-function drawTorch(ctx, x, y, face, flick, embers) {
+// A teardrop of fire: a round base at (bx, by) of radius r, drawn out to a point at (tx, ty).
+// The tip is wherever the flame is being dragged, so one shape covers upright and leaning.
+function flameDrop(ctx, bx, by, tx, ty, r) {
+  const dx = tx - bx, dy = ty - by, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
+  const px = -uy, py = ux, a = Math.atan2(py, px);
+  ctx.beginPath();
+  ctx.moveTo(tx, ty);
+  ctx.quadraticCurveTo(bx + px * r * 1.15 + ux * L * 0.35, by + py * r * 1.15 + uy * L * 0.35, bx + px * r, by + py * r);
+  ctx.arc(bx, by, r, a, a + Math.PI);
+  ctx.quadraticCurveTo(bx - px * r * 1.15 + ux * L * 0.35, by - py * r * 1.15 + uy * L * 0.35, tx, ty);
+  ctx.fill();
+}
+// The flame itself, three layers, its tip pushed by (lx, ly) — the drag of moving — and a
+// small lick of its own. s scales the whole thing (the wall torches are smaller).
+function drawFlame(ctx, fx, fy, lx, ly, s, flick, time) {
+  const wob = Math.sin(time * 17) * 0.6 + Math.sin(time * 29) * 0.35;
+  const h = 9.5 * s * (0.85 + 0.2 * flick);
+  ctx.fillStyle = COL.flame;
+  ctx.globalAlpha = 0.9;
+  flameDrop(ctx, fx, fy, fx + lx * s + wob * s, fy - h + ly * s, 2.9 * s);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = COL.flame2;
+  flameDrop(ctx, fx, fy + 0.3 * s, fx + (lx * 0.6 + wob * 0.5) * s, fy - h * 0.6 + ly * 0.6 * s, 1.7 * s);
+  ctx.fillStyle = '#fff6d8';
+  flameDrop(ctx, fx, fy + 0.6 * s, fx + lx * 0.3 * s, fy - h * 0.28 + ly * 0.3 * s, 0.8 * s);
+}
+// A soft warm glow at (x, y): additive, so it brightens whatever is under it. Used for the
+// halo round a flame and for the torch's small second light round the player.
+function glowAt(ctx, x, y, r, a, rgb) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, 'rgba(' + rgb + ',' + a + ')');
+  g.addColorStop(0.45, 'rgba(' + rgb + ',' + (a * 0.4) + ')');
+  g.addColorStop(1, 'rgba(' + rgb + ',0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(x - r, y - r, r * 2, r * 2);
+}
+
+// The torch in the runner's free hand. `flick` is the very same number the lamp is drawn
+// with, so the flame and the light it throws gutter together and the cave reads as
+// torchlight rather than as a dimmer switch. (lx, ly) drags the flame about as you move.
+function drawTorch(ctx, x, y, face, flick, embers, lx, ly, time) {
   const fx = x + face * 1.6, fy = y - 7;           // the flame rides above the fist
   ctx.save();
   ctx.lineCap = 'round';
@@ -1868,14 +1908,7 @@ function drawTorch(ctx, x, y, face, flick, embers) {
   ctx.beginPath(); ctx.moveTo(x, y + 2.5); ctx.lineTo(fx, fy); ctx.stroke();
   ctx.strokeStyle = '#8a6b45'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(x, y + 2.5); ctx.lineTo(fx, fy); ctx.stroke();
-  const s = flick;                                 // a low flame is a small one
-  ctx.globalAlpha = 0.32 * flick;                  // the halo is what really gutters
-  ctx.fillStyle = COL.flame;
-  ctx.beginPath(); ctx.ellipse(fx, fy - 3.5 * s, 4.4 * s, 7 * s, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.globalAlpha = flick;
-  ctx.beginPath(); ctx.ellipse(fx, fy - 2.5 * s, 2.9 * s, 4.8 * s, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = COL.flame2;
-  ctx.beginPath(); ctx.ellipse(fx, fy - 2 * s, 1.5 * s, 2.6 * s, 0, 0, Math.PI * 2); ctx.fill();
+  drawFlame(ctx, fx, fy - 1, lx, ly, 1, flick, time);
   ctx.restore();
   for (const q of embers) {
     ctx.globalAlpha = Math.max(0, q.life / q.max) * 0.85;
@@ -1883,6 +1916,22 @@ function drawTorch(ctx, x, y, face, flick, embers) {
     ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
   }
   ctx.globalAlpha = 1;
+}
+// A smaller torch in an iron bracket on the wall, either side of a portal or a room's prize.
+// Its flame sways a little on its own; ph keeps neighbours out of step.
+function drawSconce(ctx, x, y, time, ph) {
+  const s = 0.72, fl = 0.9 + 0.1 * Math.sin(time * 13 + ph) * Math.sin(time * 7.3 + ph * 2);
+  ctx.save();
+  ctx.fillStyle = '#2b2a30';
+  ctx.fillRect(x - 2.5, y + 5, 5, 2);               // the wall plate
+  ctx.fillRect(x - 0.8, y + 1, 1.6, 5);
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#5b4630'; ctx.lineWidth = 2.2;
+  ctx.beginPath(); ctx.moveTo(x, y + 4); ctx.lineTo(x, y - 3); ctx.stroke();
+  ctx.fillStyle = '#3a3840';
+  ctx.fillRect(x - 2.2, y - 3.5, 4.4, 2);           // the cup
+  drawFlame(ctx, x, y - 4, Math.sin(time * 1.9 + ph) * 1.2, 0, s, fl, time + ph);
+  ctx.restore();
 }
 
 // The enemies, one sprite per body. Every one of them takes the same colour set
@@ -2472,8 +2521,11 @@ function makeLevel(seed, floor, owned) {
     for (let x = 0; x < BW; x++) {
       const t = Math.pow(fbm(x / 10 + 300, y / 10 + 300), 1.6);
       const c = mix(T.bg, T.bg2, Math.min(1, t * 1.3));
+      // big, slow blotches of shadow over the pattern, so the back wall has some depth
+      const big = fbm(x / 34 + 700, y / 34 + 500);
+      const shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
       const j = (hash(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
-      bgImg.data[k] = c[0] + j; bgImg.data[k + 1] = c[1] + j; bgImg.data[k + 2] = c[2] + j; bgImg.data[k + 3] = 255;
+      bgImg.data[k] = c[0] * shade + j; bgImg.data[k + 1] = c[1] * shade + j; bgImg.data[k + 2] = c[2] * shade + j; bgImg.data[k + 3] = 255;
     }
 
   const startCX = 14;                                  // far left of the shop room
@@ -2684,6 +2736,7 @@ function Game({ input }) {
 
     let mat, img, start, portal, enemies, pickups, stock, arrival, total, floor = 1;
     let rooms = [];                                  // the perk room and the heart room
+    let sconces = [];                                // wall torches: by the portals and the prizes
     let roster = [], themeName = '';                 // this floor's creatures, and its palette
 
     const p = { x: 0, y: 0, vx: 0, vy: 0, onGround: false, face: 1, jet: 0,
@@ -2693,6 +2746,13 @@ function Game({ input }) {
     const bullets = [], enemyShots = [], smoke = [], sparks = [], flashes = [], toasts = [], coins = [];
     const fields = [], beams = [];                   // static projectiles, and instant beam streaks
     const torchP = [];                               // the embers the torch throws off
+    // soft magic particles: the Black Hole's trail ('drift'), motes sucked into the exit
+    // portal ('in') and motes wafting out of the arrival portal ('out')
+    const motes = [];
+    let portalAcc = 0;
+    // the hand torch's flame lean: a sprung offset dragged opposite to how you move,
+    // the same way the jet flame swings, so the fire trails behind you
+    let leanX = 0, leanY = 0, leanVX = 0, leanVY = 0, glowN = 0;
     const aimPath = [];                              // scratch buffer for the aim line
     let smokeAcc = 0, time = 0, levelT = 0, camX = 0, camY = 0, camReady = false;
     // the torch: one flicker number drives both the flame and the lamp, so the light
@@ -2746,6 +2806,13 @@ function Game({ input }) {
       start = level.start; portal = level.portal; arrival = level.arrival;
       enemies = level.enemies; pickups = level.pickups; stock = level.stock;
       rooms = level.rooms || [];
+      {
+        const pcx0 = portal.x + portal.w / 2, pcy0 = portal.y + portal.h / 2;
+        sconces = [[pcx0 - 26, pcy0 - 2], [pcx0 + 26, pcy0 - 2],
+          [arrival.x - 26, arrival.y - 2], [arrival.x + 26, arrival.y - 2]];
+        for (const r of rooms) sconces.push([r.x - 28, r.y - 2], [r.x + 28, r.y - 2]);
+        sconces = sconces.map(([x, y], i) => ({ x, y, ph: i * 1.7 }));
+      }
       roster = level.roster; themeName = level.theme;
       total = enemies.length;
       ghost = pb.ghost ? { x: level.start.x, y: level.start.y, cd: 0 } : null;
@@ -2756,7 +2823,7 @@ function Game({ input }) {
       p.fuel = 1; p.empty = false; p.kick = 0;
       bullets.length = enemyShots.length = smoke.length = 0;
       sparks.length = flashes.length = coins.length = 0;
-      torchP.length = 0;
+      torchP.length = 0; motes.length = 0;
       camReady = false; best = 0;
       levelT = 0;                             // the floor's name card gets its three seconds
       seen = fogStart();
@@ -3325,9 +3392,31 @@ function Game({ input }) {
         }
         if (b.eat) dig(b.x, b.y, b.eat);
         if (b.pull) {
+          // Black Hole: heavy gravity. It reaches ~2.2x its pull stat and drags harder the
+          // closer you are, so creatures get hauled in and held in the middle of it. It
+          // swallows enemy shots that come near, and grinds anything in it every 0.3s.
+          const reach = b.pull * 2.2;
           for (const e of enemies) {
             const dx = b.x - e.x, dy = b.y - e.ty, d = Math.hypot(dx, dy) || 1;
-            if (d < b.pull) { e.x += dx / d * 70 * dt; e.y += dy / d * 70 * dt; e.tgt = null; }
+            if (d < reach) {
+              const f = Math.min(d / dt, 60 + 420 * (1 - d / reach));   // never overshoot the centre
+              e.x += dx / d * f * dt; e.y += dy / d * f * dt; e.tgt = null;
+            }
+          }
+          for (let k = enemyShots.length - 1; k >= 0; k--) {
+            const es = enemyShots[k];
+            const dx = b.x - es.x, dy = b.y - es.y, d = Math.hypot(dx, dy) || 1;
+            if (d < b.size + 6) { burst(es.x, es.y, 3, '#c58cff'); enemyShots.splice(k, 1); continue; }
+            if (d < reach) { es.vx += dx / d * 900 * dt; es.vy += dy / d * 900 * dt; }
+          }
+          if ((b.grind = (b.grind || 0) + dt) > 0.3) { b.grind = 0; b.hit = null; }
+          // the trail of magic it leaves behind
+          if (Math.random() < 0.9) {
+            const a = Math.random() * 6.28, rr = b.size * (0.6 + Math.random() * 0.5);
+            const life = 0.6 + Math.random() * 0.7;
+            motes.push({ kind: 'drift', x: b.x + Math.cos(a) * rr, y: b.y + Math.sin(a) * rr,
+              vx: (Math.random() - 0.5) * 20, vy: (Math.random() - 0.5) * 20, life, max: life,
+              s: 0.8 + Math.random() * 1.6, c: Math.random() < 0.3 ? '#f0e0ff' : Math.random() < 0.6 ? '#c58cff' : '#8a5cff' });
           }
         }
         if (b.split && b.age > 0.28) {                   // one clean split, partway along
@@ -3384,6 +3473,7 @@ function Game({ input }) {
             }
             if (b.cluster) { spray(b); dead = true; break; }
             if (b.explode) { boom = true; break; }
+            if (b.pull) { (b.hit || (b.hit = new Set())).add(e); continue; }   // a black hole rolls on
             if (b.pierce > 0) { b.pierce--; (b.hit || (b.hit = new Set())).add(e); }
             else { dead = true; break; }
           }
@@ -3848,6 +3938,61 @@ function Game({ input }) {
         q.x += q.vx * dt; q.y += q.vy * dt;
         if ((q.life -= dt) <= 0) torchP.splice(i, 1);
       }
+      // the flame's lean: spring toward "opposite your velocity", so a sudden move flings
+      // it back and it wobbles upright again when you stop
+      const wantX = clamp(-p.vx * 0.022, -5, 5), wantY = clamp(-p.vy * 0.016, -3, 4);
+      leanVX += ((wantX - leanX) * 90 - leanVX * 9) * dt;
+      leanVY += ((wantY - leanY) * 90 - leanVY * 9) * dt;
+      leanX += leanVX * dt; leanY += leanVY * dt;
+      // the glow gets its own quicker, deeper flicker on top of flick (the map light is untouched)
+      glowN += (Math.random() - 0.5) * 6 * dt; glowN *= 0.9;
+
+      // ---- portal motes ----
+      portalAcc += dt;
+      while (portalAcc > 0.05) {
+        portalAcc -= 0.05;
+        const ex = portal.x + portal.w / 2, ey = portal.y + portal.h / 2;
+        if (Math.abs(ey - p.y) < 500) {        // the exit: scattered round it, drawn in
+          const a = Math.random() * 6.28, rr = 30 + Math.random() * 38;
+          const life = 1.4 + Math.random() * 0.8;
+          motes.push({ kind: 'in', x: ex + Math.cos(a) * rr, y: ey + Math.sin(a) * rr * 0.9,
+            tx: ex, ty: ey, vx: 0, vy: 0, life, max: life, age: 0, ph: Math.random() * 6.28,
+            s: 1 + Math.random() * 1.4, c: Math.random() < 0.4 ? '#c8ffe4' : COL.portal });
+        }
+        if (Math.abs(arrival.y - p.y) < 500) { // the way in: breathed out, drifting away
+          const a = Math.random() * 6.28, sp = 10 + Math.random() * 16;
+          motes.push({ kind: 'out', x: arrival.x + (Math.random() - 0.5) * 12,
+            y: arrival.y + (Math.random() - 0.5) * 18, ox: arrival.x, oy: arrival.y,
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 4, life: 4, max: 4, age: 0,
+            ph: Math.random() * 6.28, fade: 34 + Math.random() * 18,
+            s: 1 + Math.random() * 1.3, c: Math.random() < 0.4 ? '#e6d4ff' : COL.enemy });
+        }
+      }
+      for (let i = motes.length - 1; i >= 0; i--) {
+        const q = motes[i];
+        q.age += dt;
+        if (q.kind === 'in') {
+          // accelerate toward the centre, with a sideways wobble so it spirals in unevenly
+          const dx = q.tx - q.x, dy = q.ty - q.y, d = Math.hypot(dx, dy) || 1;
+          const pullF = 70 + 260 * q.age;
+          q.vx += dx / d * pullF * dt; q.vy += dy / d * pullF * dt;
+          q.vx *= 1 - 2.2 * dt; q.vy *= 1 - 2.2 * dt;
+          const w = Math.sin(q.age * 7 + q.ph) * 26;
+          q.x += (q.vx - dy / d * w) * dt; q.y += (q.vy + dx / d * w) * dt;
+          if (d < 3) q.life = 0;
+        } else if (q.kind === 'out') {
+          const w = Math.sin(q.age * 2.3 + q.ph);
+          q.vx += w * 18 * dt; q.vy += (Math.cos(q.age * 1.7 + q.ph) * 12 - 3) * dt;
+          q.vx *= 1 - 0.4 * dt; q.vy *= 1 - 0.4 * dt;
+          q.x += q.vx * dt; q.y += q.vy * dt;
+          if (Math.hypot(q.x - q.ox, q.y - q.oy) > q.fade) q.life = 0;
+        } else {
+          q.vx *= 1 - 1.8 * dt; q.vy = q.vy * (1 - 1.8 * dt) - 6 * dt;
+          q.x += q.vx * dt; q.y += q.vy * dt;
+        }
+        if ((q.life -= dt) <= 0) motes.splice(i, 1);
+      }
+      if (motes.length > 400) motes.splice(0, motes.length - 400);
     }
 
     function draw() {
@@ -3870,9 +4015,15 @@ function Game({ input }) {
       ctx.setTransform(s, 0, 0, s, -Math.round(camX * s), -Math.round(camY * s));
 
       // background and terrain (visible part only)
-      const bx0 = clamp(Math.floor(camX / BCELL), 0, BW - 1), by0 = clamp(Math.floor(camY / BCELL), 0, BH - 1);
-      const bx1 = clamp(Math.ceil((camX + vw) / BCELL) + 1, 1, BW), by1 = clamp(Math.ceil((camY + vh) / BCELL) + 1, 1, BH);
-      ctx.drawImage(bg, bx0, by0, bx1 - bx0, by1 - by0, bx0 * BCELL, by0 * BCELL, (bx1 - bx0) * BCELL, (by1 - by0) * BCELL);
+      // The background sits further back: it slides PARALLAX as far as the terrain does, so
+      // it is shifted by the rest of the camera move. It still covers the view at every edge,
+      // because the shift only ever pushes it toward the camera.
+      const PARALLAX = 0.8;
+      const bgox = camX * (1 - PARALLAX), bgoy = camY * (1 - PARALLAX);
+      const bcx = camX - bgox, bcy = camY - bgoy;
+      const bx0 = clamp(Math.floor(bcx / BCELL), 0, BW - 1), by0 = clamp(Math.floor(bcy / BCELL), 0, BH - 1);
+      const bx1 = clamp(Math.ceil((bcx + vw) / BCELL) + 1, 1, BW), by1 = clamp(Math.ceil((bcy + vh) / BCELL) + 1, 1, BH);
+      ctx.drawImage(bg, bx0, by0, bx1 - bx0, by1 - by0, bx0 * BCELL + bgox, by0 * BCELL + bgoy, (bx1 - bx0) * BCELL, (by1 - by0) * BCELL);
       // the shop's back wall
       if (camY + vh > SHOP_Y) {
         ctx.fillStyle = '#241f28';
@@ -3905,13 +4056,22 @@ function Game({ input }) {
       const tx1 = clamp(Math.ceil((camX + vw) / CELL) + 1, 1, CW), ty1 = clamp(Math.ceil((camY + vh) / CELL) + 1, 1, CH);
       ctx.drawImage(terrain, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
 
-      // exit portal
+      // exit portal: a glowing pool with a slow swirl of dashes round its rim
       const pulse = 0.55 + 0.25 * Math.sin(time * 3);
+      const pcxE = portal.x + portal.w / 2, pcyE = portal.y + portal.h / 2;
       ctx.globalAlpha = pulse * 0.35;
       ctx.fillStyle = COL.portal;
-      ctx.beginPath(); ctx.ellipse(portal.x + portal.w / 2, portal.y + portal.h / 2, portal.w, portal.h * 0.75, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(pcxE, pcyE, portal.w, portal.h * 0.75, 0, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = pulse;
-      ctx.beginPath(); ctx.ellipse(portal.x + portal.w / 2, portal.y + portal.h / 2, portal.w / 2, portal.h / 2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(pcxE, pcyE, portal.w / 2, portal.h / 2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = '#d8fff0';
+      ctx.beginPath(); ctx.ellipse(pcxE, pcyE, portal.w * 0.22, portal.h * 0.26, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.6;
+      ctx.strokeStyle = '#c8ffe4'; ctx.lineWidth = 1.2;
+      ctx.setLineDash([3, 5]); ctx.lineDashOffset = time * 12;
+      ctx.beginPath(); ctx.ellipse(pcxE, pcyE, portal.w * 0.62, portal.h * 0.6, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
       ctx.globalAlpha = 1;
 
       // smoke
@@ -3964,6 +4124,31 @@ function Game({ input }) {
       ctx.lineCap = 'round';
       for (const b of bullets) {
         if (b.hidden) continue;                 // Buzzsaw cuts without drawing a circle
+        if (b.pull) {                           // Black Hole: purple haze, starry black core
+          const r = b.size, core = r * 0.78, beat = 1 + 0.06 * Math.sin(time * 6 + b.spin);
+          const g = ctx.createRadialGradient(b.x, b.y, core * 0.8, b.x, b.y, r * 1.55 * beat);
+          g.addColorStop(0, 'rgba(197,140,255,0.75)');
+          g.addColorStop(0.3, 'rgba(150,90,255,0.35)');
+          g.addColorStop(1, 'rgba(110,50,220,0)');
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(b.x, b.y, r * 1.55 * beat, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#050208';
+          ctx.beginPath(); ctx.arc(b.x, b.y, core, 0, Math.PI * 2); ctx.fill();
+          for (let k = 0; k < 14; k++) {       // twinkling stars wheeling inside
+            const tw = Math.sin(time * 8 + k * 1.7);
+            if (tw < 0.1) continue;
+            const ang = k * 2.4 + time * (0.5 + (k % 3) * 0.35), rad = core * (0.15 + ((k * 0.37) % 0.75));
+            const sx = b.x + Math.cos(ang) * rad, sy = b.y + Math.sin(ang) * rad, sz = 0.6 + tw * 0.9;
+            ctx.globalAlpha = tw;
+            ctx.fillStyle = k % 3 ? '#e6d4ff' : '#ffffff';
+            ctx.fillRect(sx - sz / 2, sy - sz / 2, sz, sz);
+          }
+          ctx.globalAlpha = 0.8;
+          ctx.strokeStyle = '#b98aff'; ctx.lineWidth = 1.2;
+          ctx.beginPath(); ctx.arc(b.x, b.y, core, 0, Math.PI * 2); ctx.stroke();
+          ctx.globalAlpha = 1;
+          continue;
+        }
         const sp = Math.hypot(b.vx, b.vy) || 1;
         const len = Math.max(0.5, Math.min(46, sp * 0.022));   // length is speed alone
         const hx = b.vx / sp * len, hy = b.vy / sp * len;
@@ -4165,6 +4350,22 @@ function Game({ input }) {
       }
       ctx.globalAlpha = 1;
 
+      // magic motes: the Black Hole's trail and the portals' drift, added on as light
+      ctx.globalCompositeOperation = 'lighter';
+      for (const q of motes) {
+        if (q.y > camY + vh + 20 || q.y < camY - 20) continue;
+        let a;
+        if (q.kind === 'in') a = Math.min(1, q.age / 0.6) * 0.9;              // fade in, never pop
+        else if (q.kind === 'out') a = Math.min(1, q.age / 0.3) *
+          Math.max(0, 1 - Math.hypot(q.x - q.ox, q.y - q.oy) / q.fade) * 0.9;  // fade with distance
+        else a = Math.max(0, q.life / q.max) * 0.9;
+        ctx.globalAlpha = a;
+        ctx.fillStyle = q.c;
+        ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+
       // explosion flashes
       for (const f of flashes) {
         const t = f.t / 0.25;
@@ -4246,7 +4447,7 @@ function Game({ input }) {
       drawRunner(ctx, p.x, p.y, PW, PH, p.face, gait, !p.onGround, p.jet, flashing);
       if (!p.dead) drawGun(ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
       // the torch, in the hand the gun is not in
-      if (!p.dead) { const th = torchHand(); drawTorch(ctx, th.x, th.y, ax >= 0 ? -1 : 1, flick, torchP); }
+      if (!p.dead) { const th = torchHand(); drawTorch(ctx, th.x, th.y, ax >= 0 ? -1 : 1, flick, torchP, leanX, leanY, time); }
       // a small aim crosshair at DEV.aimDist out, rotating round you with the aim: a "+"
       // with the centre cut out (two short verticals, two short horizontals), drawn as thin
       // as the thumbstick lines (~1.5 css px, so 1.5/unitPx world units, whatever the zoom)
@@ -4347,6 +4548,28 @@ function Game({ input }) {
       ctx.drawImage(fogBlurC, fx0, fy0, fx1 - fx0, fy1 - fy0,
         fx0 * FOG_U, fy0 * FOG_U, (fx1 - fx0) * FOG_U, (fy1 - fy0) * FOG_U);
       ctx.imageSmoothingEnabled = false;
+
+      // ---- firelight on top of the fog: the wall torches (where you have been) and the hand
+      // torch's glow plus its small, warm second light round you. Additive, so it only ever
+      // brightens; the map lighting under it is unchanged. The glow gutters on its own,
+      // quicker and deeper than the lamp.
+      ctx.globalCompositeOperation = 'lighter';
+      const gl = clamp(0.82 + glowN + 0.08 * Math.sin(time * 23) + 0.06 * Math.sin(time * 37), 0.5, 1.1);
+      const scOn = sc => !(sc.y > camY + vh + 30 || sc.y < camY - 30 || sc.x < camX - 30 || sc.x > camX + vw + 30) &&
+        seen[Math.floor(sc.y / FOG_U) * FW + Math.floor(sc.x / FOG_U)];
+      for (const sc of sconces) {
+        if (!scOn(sc)) continue;
+        const sg = 0.85 + 0.15 * Math.sin(time * 11 + sc.ph) * Math.sin(time * 5.3 + sc.ph);
+        glowAt(ctx, sc.x, sc.y - 6, 34, 0.16 * sg, '255,140,50');
+        glowAt(ctx, sc.x, sc.y - 7, 9, 0.45 * sg, '255,190,90');
+      }
+      if (!p.dead) {
+        const th = torchHand(), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
+        glowAt(ctx, gfx, gfy, 70 * (0.9 + 0.1 * gl), 0.2 * gl, '255,150,60');            // the second light
+        glowAt(ctx, gfx + leanX * 0.5, gfy + leanY * 0.5, 12, 0.5 * gl, '255,190,90');   // the halo
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      for (const sc of sconces) if (scOn(sc)) drawSconce(ctx, sc.x, sc.y, time, sc.ph);
 
       // ---- HUD ----
       // The old top-left stack (floor / enemies / health / fuel / mana / gun) is gone:

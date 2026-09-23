@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v55.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v56.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -41,6 +41,8 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v56 — Black Hole rework + visuals.** Black Hole hauls creatures in hard, rolls on through them grinding, swallows enemy shots, purple haze + starry core + mote trail. Portal motes (drawn into the exit, wafting out of the way in). Hand torch flame drags as you move, with a flickering halo and a small second light. Wall torches by portals and room prizes. Background parallax (0.8) and big shadow blotches. Browser tests were run on this PC with playwright-core installed in the session scratchpad + system Chrome (`CAVERUNNER_PLAYWRIGHT` / `CAVERUNNER_CHROME`).
 
 - **v55 — crosshair "+" and gun-stat rings.** The aim crosshair is now a `+` with the centre
   cut out (four thin strokes), as thin as the stick lines. The right stick shows three

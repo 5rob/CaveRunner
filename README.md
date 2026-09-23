@@ -249,7 +249,7 @@ a cave shooter. They come in a few shapes:
 
 - **Shots** are the things that come out of the barrel — Bolt, Slug, Magic Missile,
   Fireball, Lightning Bolt, Chain Bolt (which hops from enemy to enemy), Black Hole
-  (a big fast sphere that eats rock and drags things into it), Nuke, Meteor, and twenty-odd more. **Plasma Beam**
+  (a slow starry sphere that eats rock, hauls creatures into it and grinds them, and swallows any enemy shot that comes near), Nuke, Meteor, and twenty-odd more. **Plasma Beam**
   and **Luminous Drill** are instant: they hit along a line with no travel time.
 - **Static fields** stay where you cast them and work over time. Unstable Crystal is a
   proximity mine; Dormant Crystal sits harmless until another blast reaches it; Circle
@@ -321,7 +321,10 @@ them if it cannot find either.
 - A colour scheme per floor that stays with that floor run to run, so you can tell where you are at a glance
 - Large randomly generated caves with cramped and open areas, winding tunnels, built ledges and half-buried brick frames
 - Fog of war: the cave starts dark and you reveal it by exploring — only what the torch could actually see, never what was round a corner — with what you have seen kept as a faint map behind you
-- A torch in the runner's free hand, throwing embers, guttering — and the light in the cave gutters with it
+- A torch in the runner's free hand, throwing embers, guttering — and the light in the cave gutters with it. Its flame is dragged about as you move, and it throws a small warm glow round you
+- Wall torches either side of the portals and the prizes in the hidden rooms
+- Portals that breathe: motes drift out of the way in, and get drawn into the exit
+- A background that sits back from the rock, sliding a little slower as you move (parallax)
 - The map only keeps what you had a line on: a wall hides its far side from the fog of war for good
 - Destructible pixel terrain: explosions and drilling shots eat everything except the outer border
 - Guns and mods to find, with a drag-and-drop screen for building them

@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v55**. Branch: `main` (release channel is `main`).
+Current version: **v56**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -429,6 +429,8 @@ value doesn't also steer the runner.
 
 **Unicode is stored raw** in `index.html` (`·`, `—`, `×`, `Ω`), not as `\uXXXX`. Match the
 literal characters when editing with a script, or the edit silently finds nothing.
+
+**v56 visuals + Black Hole.** `motes` is one particle list with three kinds: `drift` (Black Hole trail), `in` (spawned round the exit `portal`, pulled to its centre with a sideways sine wobble, fade in from 0) and `out` (breathed out of `arrival`, wafting, fading to nothing by distance `fade`, then killed). Drawn additive. **Black Hole** (`b.pull`): reach is `pull*2.2`, drag grows toward the centre and is capped so it never overshoots; it does not die on an enemy (`continue` in the hit block) and clears `b.hit` every 0.3s so it grinds; enemy shots within reach bend in and die at `size+6`. It draws its own look (haze + black starry core) and skips the streak. The hand torch flame is `drawFlame` — teardrops whose tip is `leanX/leanY`, a spring toward "opposite your velocity". Its halo and small second light, and the wall `sconces` (built in `enterLevel`: either side of both portals and each room prize), are drawn **after** the fog with `lighter`, so the map lighting is untouched; a sconce only shows once its cell is `seen`. Background parallax is `PARALLAX` (0.8) in `draw()`; the bg image gets big fbm shadow blotches in `makeLevel`. `tests/browser/blackhole.test.js` covers all of it.
 
 ## Testing
 
