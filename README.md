@@ -161,6 +161,27 @@ the run keeps moving rather than settling into a pattern.
 | 9 | Bone garden | Jäätiö, Chaingunner, Snipuhiisi, Stendari, Lohkare, Elävät luut |
 | 10 | Drowned halls | Chaingunner, Snipuhiisi, Lohkare, Elävät luut, Jäätiö, Tappurahiisi |
 
+### What each cave is dressed with
+
+Every cave has its own scenery. Some of it is just to look at; the rest does
+something. Anything hanging off rock falls when you blast that rock away, and
+it hurts if it lands on you.
+
+| Cave | Scenery |
+|---|---|
+| Mossy caves | **Vines** you can hang on (no jetting = you hold on and your fuel refills; push the stick to climb), dripping water, moss and rubble, glowing spores |
+| Coal seams | **Minecarts that explode when shot**, rusty lanterns, soot falling, pit props, old pickaxes |
+| Frozen deep | **Icicles that drop when you walk under them**, **slippery ice**, **snow drifts that slow you**, frozen waterfalls to hang on, icy wind |
+| Ember halls | **Lava drips** and **fire vents** that burn, **obsidian spikes**, ash piles, drifting embers |
+| Fungal grotto | **Bouncy mushrooms** that throw you up, **spore pods** that burst into a poison cloud when shot, **slime that slows you**, glowing caps, mycelium to hang on |
+| Salt flats | **Salt spikes** (brittle, shoot them), salt pillars, cracked ground, old bones, dust devils |
+| Amethyst vein | **Geodes** that fall if you dig out their rock, **resonance stones** that ring when shot and wake everything nearby, **broken glass** that cuts if you run over it, glinting shards, crystal dust |
+| Rustworks | **Acid pools**, **chains** to hang on, leaking pipes, sparks, huge rusted gears |
+| Bone garden | **Skull piles that crunch loudly** and bring creatures running, **bone spikes**, fossil roots to hang on, ribcage arches, dust motes |
+| Drowned halls | **Statues that block shots** (yours and theirs), **deep puddles that slow you**, kelp to hang on, waterfalls, old brick floors |
+| Ash wastes | **Smouldering logs** (don't stand on them), **crumbling pillars** that stop a few shots then break, heavy ash fall, soot-stained walls |
+| Void hollow | **Dark matter** that flips gravity near it, **tendrils** that lash out on a beat, **monoliths** that block shots, neon cracks, eyes in the dark that vanish as you approach |
+
 ## Creatures
 
 Sixteen of them, named after Noita's, and they do not all behave the same way:

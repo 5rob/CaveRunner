@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v57</title>
+<title>CaveRunner v58</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -414,12 +414,13 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v57';
+const VERSION = 'v58';
 
 // ---- tuning ----
 const GRAVITY = 1400;
 const WALK = 150, GROUND_ACC = 1400, AIR_ACC = 600;
 const JET = 240, JET_ACC = 900;
+const CLIMB = 90;                 // how fast you climb a vine, chain or frozen fall
 const DEAD = 0.12;
 // the right stick's own dead zone: drag past this fraction of its throw to aim/fire.
 // A tap that never leaves it is an interact instead — see Stick() and the pickup/shop
@@ -2239,6 +2240,704 @@ function fmtGold(g) {
   return (Math.floor(g / 100) / 10).toString() + 'k';
 }
 
+// ---- level decoration: pass 2 (baked pixels) and pass 3 (props) ----
+// Every floor's theme gets five decorations. They come in three sorts:
+//   bake   pass 2, purely visual. Painted straight into pixels: onto the rock itself (moss,
+//          cracks, fissures — erased for free when the rock is dug), or into the decoration
+//          layer `dimg`, a full-size non-colliding image drawn between the background and the
+//          rock (rubble, beams, pillars, gears, ribs). dig/explode wipe that layer too.
+//   amb    pass 2, a theme-wide particle effect spawned round the camera, not tied to a spot.
+//   a prop kind (pass 3), something that does something. Props are NOT in `mat`: they never
+//          block movement or enemy flight, they carry their own box (l,t,r,b about x,y) and
+//          the Game checks overlaps against it. Most hang off a cell of rock (`anc`); the
+//          Game re-checks that cell every 30 frames and drops the prop if it's gone.
+// `at` is where it goes: ceil / floor / flat (level floor, width `w` cells) / pit (a dip
+// in the floor) / wall / surf (floor or wall) / air (open space).
+const DECOR = [
+  [ // 1 Mossy caves
+    { id: 'vines',   name: 'Hanging Vines',      at: 'ceil',  kind: 'climb', style: 'vine', n: 24 },
+    { id: 'rubble',  name: 'Overgrown Rubble',   at: 'flat',  kind: 'bake',  style: 'rubble', w: 4, n: 45 },
+    { id: 'drips',   name: 'Dripping Water',     at: 'ceil',  kind: 'drip',  style: 'water', n: 26 },
+    { id: 'spores',  name: 'Luminescent Spores', at: 'air',   kind: 'amb',   style: 'spores' },
+    { id: 'moss',    name: 'Soft Moss Patches',  at: 'floor', kind: 'bake',  style: 'moss', n: 80 } ],
+  [ // 2 Coal seams
+    { id: 'beams',   name: 'Wooden Support Beams', at: 'flat',  kind: 'bake',   style: 'beams', w: 9, n: 26 },
+    { id: 'carts',   name: 'Explosive Minecarts',  at: 'flat',  kind: 'barrel', style: 'cart', w: 5, n: 12 },
+    { id: 'soot',    name: 'Soot Falls',           at: 'ceil',  kind: 'drip',   style: 'soot', n: 22 },
+    { id: 'lanterns', name: 'Rusted Lanterns',     at: 'wall',  kind: 'lamp',   style: 'lantern', n: 22 },
+    { id: 'picks',   name: 'Discarded Pickaxes',   at: 'floor', kind: 'bake',   style: 'pickaxe', n: 30 } ],
+  [ // 3 Frozen deep
+    { id: 'icicles', name: 'Fragile Icicles',   at: 'ceil',  kind: 'drop',  style: 'icicle', n: 36 },
+    { id: 'ice',     name: 'Slick Ice Patches', at: 'flat',  kind: 'zone',  style: 'ice', w: 6, n: 18 },
+    { id: 'icefall', name: 'Frozen Waterfalls', at: 'wall',  kind: 'climb', style: 'icefall', n: 16 },
+    { id: 'frost',   name: 'Frost Breaths',     at: 'air',   kind: 'amb',   style: 'frost' },
+    { id: 'snow',    name: 'Snow Drifts',       at: 'pit',   kind: 'zone',  style: 'snow', n: 16 } ],
+  [ // 4 Ember halls
+    { id: 'lava',    name: 'Lava Drips',       at: 'ceil',  kind: 'drip',  style: 'lava', n: 20 },
+    { id: 'vents',   name: 'Scorched Vents',   at: 'flat',  kind: 'vent',  style: 'vent', w: 3, n: 16 },
+    { id: 'obsidian', name: 'Obsidian Spikes', at: 'floor', kind: 'spike', style: 'obsidian', both: 1, n: 22 },
+    { id: 'embers',  name: 'Floating Embers',  at: 'air',   kind: 'amb',   style: 'embers' },
+    { id: 'ash',     name: 'Ash Piles',        at: 'flat',  kind: 'zone',  style: 'ash', w: 4, n: 18 } ],
+  [ // 5 Fungal grotto
+    { id: 'caps',    name: 'Bioluminescent Caps', at: 'floor', kind: 'lamp',  style: 'cap', n: 30 },
+    { id: 'pods',    name: 'Toxic Spore Pods',    at: 'floor', kind: 'pod',   style: 'pod', n: 16 },
+    { id: 'mycel',   name: 'Hanging Mycelium',    at: 'ceil',  kind: 'climb', style: 'myc', n: 22 },
+    { id: 'shrooms', name: 'Bouncy Mushrooms',    at: 'flat',  kind: 'pad',   style: 'shroom', w: 4, n: 14 },
+    { id: 'slime',   name: 'Slime Puddles',       at: 'pit',   kind: 'zone',  style: 'slime', n: 16 } ],
+  [ // 6 Salt flats
+    { id: 'pillars', name: 'Crystallized Pillars', at: 'flat',  kind: 'bake',  style: 'pillar', w: 4, n: 18 },
+    { id: 'cracks',  name: 'Cracked Earth',        at: 'floor', kind: 'bake',  style: 'cracks', n: 60 },
+    { id: 'stalag',  name: 'Salt Stalagmites',     at: 'floor', kind: 'spike', style: 'salt', n: 22 },
+    { id: 'devils',  name: 'Dust Devils',          at: 'air',   kind: 'amb',   style: 'devils' },
+    { id: 'bones',   name: 'Desiccated Bones',     at: 'floor', kind: 'bake',  style: 'bones', n: 36 } ],
+  [ // 7 Amethyst vein
+    { id: 'geodes',  name: 'Ceiling Geodes',    at: 'ceil',  kind: 'drop',  style: 'geode', n: 22 },
+    { id: 'shards',  name: 'Reflective Shards', at: 'surf',  kind: 'shard', style: 'shard', n: 40 },
+    { id: 'stones',  name: 'Resonance Stones',  at: 'wall',  kind: 'noise', style: 'stone', n: 12 },
+    { id: 'dust',    name: 'Crystal Dust',      at: 'ceil',  kind: 'drip',  style: 'crystal', n: 20 },
+    { id: 'glass',   name: 'Shattered Glass',   at: 'flat',  kind: 'zone',  style: 'glass', w: 4, n: 16 } ],
+  [ // 8 Rustworks
+    { id: 'pipes',   name: 'Leaking Pipes',   at: 'wall', kind: 'drip',  style: 'steam', n: 18 },
+    { id: 'gears',   name: 'Rusted Gears',    at: 'air',  kind: 'bake',  style: 'gear', n: 22 },
+    { id: 'acid',    name: 'Corrosive Pools', at: 'pit',  kind: 'zone',  style: 'acid', n: 16 },
+    { id: 'chains',  name: 'Hanging Chains',  at: 'ceil', kind: 'climb', style: 'chain', n: 22 },
+    { id: 'sparks',  name: 'Sparks',          at: 'ceil', kind: 'drip',  style: 'sparks', n: 16 } ],
+  [ // 9 Bone garden
+    { id: 'ribs',    name: 'Ribcage Arches',   at: 'flat',  kind: 'bake',  style: 'ribs', w: 6, n: 14 },
+    { id: 'skulls',  name: 'Skull Piles',      at: 'flat',  kind: 'noise', style: 'skulls', w: 3, n: 16 },
+    { id: 'bspikes', name: 'Bone Spikes',      at: 'floor', kind: 'spike', style: 'bone', both: 1, n: 22 },
+    { id: 'roots',   name: 'Fossilized Roots', at: 'ceil',  kind: 'climb', style: 'root', n: 22 },
+    { id: 'motes',   name: 'Dust Motes',       at: 'air',   kind: 'amb',   style: 'motes' } ],
+  [ // 10 Drowned halls
+    { id: 'statues', name: 'Waterlogged Statues', at: 'flat',  kind: 'cover', style: 'statue', w: 4, n: 12 },
+    { id: 'bricks',  name: 'Submerged Bricks',    at: 'floor', kind: 'bake',  style: 'algae', n: 40 },
+    { id: 'cascade', name: 'Ceiling Cascades',    at: 'ceil',  kind: 'drip',  style: 'cascade', n: 12 },
+    { id: 'kelp',    name: 'Kelp Vines',          at: 'ceil',  kind: 'climb', style: 'kelp', n: 24 },
+    { id: 'puddles', name: 'Deep Puddles',        at: 'pit',   kind: 'zone',  style: 'puddle', n: 18 } ],
+  [ // 11 Ash wastes
+    { id: 'logs',    name: 'Smoldering Logs',    at: 'flat',  kind: 'zone',  style: 'log', w: 4, n: 16 },
+    { id: 'ashfall', name: 'Heavy Ash Fall',     at: 'air',   kind: 'amb',   style: 'ashfall' },
+    { id: 'cpillar', name: 'Crumbling Pillars',  at: 'flat',  kind: 'cover', style: 'pillar', w: 4, hp: 4, n: 14 },
+    { id: 'charred', name: 'Charred Remains',    at: 'floor', kind: 'bake',  style: 'charred', n: 40 },
+    { id: 'sootwall', name: 'Soot-Stained Walls', at: 'bg',   kind: 'bake',  style: 'soot', n: 70 } ],
+  [ // 12 Void hollow
+    { id: 'matter',  name: 'Floating Dark Matter', at: 'air',   kind: 'matter',  style: 'matter', n: 14 },
+    { id: 'eyes',    name: 'Eerie Glowing Eyes',   at: 'air',   kind: 'eyes',    style: 'eyes', n: 30 },
+    { id: 'monolith', name: 'Distorted Monoliths', at: 'flat',  kind: 'cover',   style: 'monolith', w: 4, n: 12 },
+    { id: 'tendrils', name: 'Void Tendrils',       at: 'floor', kind: 'tendril', style: 'tendril', n: 18 },
+    { id: 'fissures', name: 'Neon Fissures',       at: 'surf',  kind: 'bake',    style: 'fissure', n: 50 } ],
+];
+const decorFor = floor => DECOR[(Math.max(1, floor) - 1) % DECOR.length];
+// the hit box of each prop kind about its attach point (x, y), in world units: [l, t, r, b].
+// Ceiling props hang down from y, floor props stand up from it, wall props sit beside it.
+const PROP_BOX = {
+  drop:   { icicle: [-4, 0, 4, 16], geode: [-7, 0, 7, 12] },
+  spike:  [-6, -10, 6, 0],
+  barrel: [-9, -12, 9, 0],
+  lamp:   { lantern: [-5, -7, 5, 7], cap: [-6, -10, 6, 0] },
+  vent:   [-5, -3, 5, 0],
+  pad:    [-10, -11, 10, 0],
+  pod:    [-5, -11, 5, 0],
+  noise:  { skulls: [-8, -7, 8, 0], stone: [-5, -10, 5, 10] },
+  shard:  [-3, -5, 3, 5],
+  eyes:   [-7, -4, 7, 4],
+  cover:  { statue: [-8, -28, 8, 0], pillar: [-7, -30, 7, 0], monolith: [-7, -34, 7, 0] },
+  matter: [-12, -12, 12, 12],
+  tendril: [-4, -8, 4, 0],
+  drip:   [-3, 0, 3, 4],
+};
+// what a hazard does to you when it lands a hit, and how often
+const PROP_DMG = { spike: 8, drop: 12, vent: 7, tendril: 8, matter: 4, lava: 5, cloud: 3 };
+
+// Pass 2 and 3 for one level. Pure: reads `mat`, paints into the three images, and returns
+// the props and the theme's ambient effects. Its own random stream, so adding it changed
+// nothing about the cave, the enemies or the loot a seed already made. `keep` is a list of
+// {x, y, r} spots (portals, loot, rooms) no prop may sit on.
+function decorate(mat, img, dimg, bgImg, floor, seed, keep) {
+  let rs = (Math.imul(seed | 0, 7919) + floor * 104729 >>> 0) % 2147483646 + 1;
+  const R = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+  const T = themeFor(floor), list = decorFor(floor);
+  const d = img.data, dd = dimg.data, bd = bgImg.data;
+  const inb = (cx, cy) => cx >= 0 && cy >= 0 && cx < CW && cy < CH;
+  const solidC = (cx, cy) => inb(cx, cy) && (mat[cy * CW + cx] === ROCK || mat[cy * CW + cx] === BRICK);
+  const openC = (cx, cy) => inb(cx, cy) && !mat[cy * CW + cx];
+  const put = (arr, i, c, a) => { arr[i * 4] = c[0]; arr[i * 4 + 1] = c[1]; arr[i * 4 + 2] = c[2]; arr[i * 4 + 3] = a == null ? 255 : a; };
+  const tset = (cx, cy, c) => { if (solidC(cx, cy)) put(d, cy * CW + cx, c); };          // onto the rock
+  const dset = (cx, cy, c, a) => { if (openC(cx, cy)) put(dd, cy * CW + cx, c, a); };    // the decoration layer
+  const jit = (c, j) => [c[0] + (R() - 0.5) * j, c[1] + (R() - 0.5) * j, c[2] + (R() - 0.5) * j];
+  const shade = (c, f) => [c[0] * f, c[1] * f, c[2] * f];
+  const pick = (a, b) => mix(a, b, R());
+
+  // ---- where things can go: one scan of the cave, above the shop ----
+  const Y0 = 40, Y1 = SHOP_TOP - 14;
+  const sites = { floor: [], ceil: [], wall: [], air: [] };
+  const openRun = (cx, cy, dir, n) => { for (let k = 1; k <= n; k++) if (!openC(cx, cy + dir * k)) return false; return true; };
+  for (let cy = Y0; cy < Y1; cy++) for (let cx = 8; cx < CW - 8; cx++) {
+    const i = cy * CW + cx;
+    if (mat[i]) continue;
+    if (solidC(cx, cy + 1) && openRun(cx, cy, -1, 12)) sites.floor.push(i);
+    if (solidC(cx, cy - 1) && openRun(cx, cy, 1, 12)) sites.ceil.push(i);
+    if (!(cy & 1)) {
+      const s = solidC(cx - 1, cy) ? -1 : solidC(cx + 1, cy) ? 1 : 0;
+      if (s && solidC(cx + s, cy - 3) && solidC(cx + s, cy + 3) && openC(cx - s * 6, cy) && openC(cx - s * 3, cy))
+        sites.wall.push(i * 2 + (s > 0 ? 1 : 0));
+    }
+    if (cx % 5 === 0 && cy % 5 === 0 && openC(cx - 12, cy) && openC(cx + 12, cy) && openC(cx, cy - 12) &&
+        openC(cx, cy + 12) && openC(cx - 8, cy - 8) && openC(cx + 8, cy + 8) && openC(cx + 8, cy - 8) && openC(cx - 8, cy + 8))
+      sites.air.push(i);
+  }
+  // a level stretch of floor `w` cells either side, with the air above it clear
+  const flatAt = (cx, cy, w) => {
+    for (let dx = -w; dx <= w; dx++)
+      if (!solidC(cx + dx, cy + 1) || !openC(cx + dx, cy) || !openC(cx + dx, cy - 3)) return false;
+    return true;
+  };
+  // a dip: the floor climbs at least two cells within a few cells on both sides
+  const pitAt = (cx, cy) => {
+    const side = s => { for (let k = 3; k <= 14; k++) if (solidC(cx + s * k, cy - 2)) return true; return false; };
+    return side(-1) && side(1);
+  };
+  // how far the floor runs level either side, capped, for the width of a zone
+  const runOf = (cx, cy, s, cap) => {
+    let k = 0;
+    while (k < cap && solidC(cx + s * (k + 1), cy + 1) && openC(cx + s * (k + 1), cy)) k++;
+    return k;
+  };
+  const upTo = (cx, cy, cap) => { let k = 0; while (k < cap && openC(cx, cy - k - 1)) k++; return k; };
+  const downTo = (cx, cy, cap) => { let k = 0; while (k < cap && openC(cx, cy + k + 1)) k++; return k; };
+
+  // ---- pass 2 bakes ----
+  const bake = {
+    moss(cx, cy) {                       // a thick soft patch on the ground, grass tufts on top
+      const w = 5 + Math.floor(R() * 8);
+      for (let dx = -w; dx <= w; dx++) {
+        const deep = Math.round((2 + R() * 3) * (1 - Math.abs(dx) / (w + 1)) + 1);
+        for (let k = 1; k <= deep; k++) tset(cx + dx, cy + k, jit(pick(T.moss[0], T.moss[1]), 14));
+        if (R() < 0.35) { const tall = 1 + (R() < 0.4); for (let k = 0; k < tall; k++) dset(cx + dx, cy - k, jit(T.moss[1], 20)); }
+      }
+    },
+    rubble(cx, cy) {                     // a mound of broken brick with moss grown over it
+      const w = 3 + Math.floor(R() * 4), hh = 2 + R() * 2.5;
+      for (let dx = -w; dx <= w; dx++) {
+        const top = Math.round((1 - (dx / (w + 1)) ** 2) * hh);
+        for (let k = 0; k < top; k++) {
+          const c = k === top - 1 && R() < 0.7 ? pick(T.moss[0], T.moss[1])
+            : R() < 0.2 ? T.mortar : pick(T.brick[0], T.brick[1]);
+          dset(cx + dx, cy - k, jit(c, 12));
+        }
+      }
+    },
+    beams(cx, cy) {                      // pit props: two posts to the roof and a cross beam
+      const hgt = upTo(cx, cy, 70);
+      if (hgt < 14 || hgt >= 70) return false;
+      const wood = mix(T.mortar, [118, 84, 52], 0.6), top = cy - hgt;
+      for (const px of [cx - 7, cx + 6]) for (let y = top; y <= cy; y++)
+        for (let k = 0; k < 2; k++) dset(px + k, y, jit(shade(wood, k ? 0.8 : 1), 10));
+      for (let x = cx - 8; x <= cx + 8; x++) for (let k = 1; k <= 2; k++) dset(x, top + k, jit(shade(wood, k === 2 ? 0.75 : 0.95), 10));
+      for (let k = 0; k < 6; k++) { dset(cx - 5 + k, top + 3 + k, jit(shade(wood, 0.7), 8)); dset(cx + 4 - k, top + 3 + k, jit(shade(wood, 0.7), 8)); }
+    },
+    pickaxe(cx, cy) {                    // head buried in the rock, the haft sticking out
+      const s = R() < 0.5 ? -1 : 1, haft = [104, 74, 46], iron = [120, 124, 132];
+      for (let k = 0; k < 7; k++) dset(cx + s * k, cy - k, jit(haft, 12));
+      for (let k = -2; k <= 2; k++) tset(cx + k, cy + 1 + (Math.abs(k) === 2), jit(iron, 16));
+      tset(cx, cy + 2, iron);
+    },
+    cracks(cx, cy, c) {                  // a dry crack wandering down into the ground
+      c = c || shade(T.mortar, 0.8);
+      let x = cx, y = cy + 1;
+      for (let k = 0; k < 8 + R() * 8; k++) {
+        tset(x, y, jit(c, 8));
+        if (R() < 0.15) { let bx = x, by = y; for (let j = 0; j < 4; j++) { bx += R() < 0.5 ? -1 : 1; by++; tset(bx, by, jit(c, 8)); } }
+        y++; x += Math.floor(R() * 3) - 1;
+      }
+    },
+    fissure(cx, cy, side) {              // glowing neon cracks, into the floor or into a wall
+      const glow = T.moss[1], halo = T.moss[0];
+      let x = side ? cx + side : cx, y = side ? cy : cy + 1;
+      for (let k = 0; k < 10 + R() * 10; k++) {
+        tset(x, y, glow);
+        if (side) { tset(x, y - 1, halo); tset(x, y + 1, halo); x += side; y += Math.floor(R() * 3) - 1; }
+        else { tset(x - 1, y, halo); tset(x + 1, y, halo); y++; x += Math.floor(R() * 3) - 1; }
+      }
+    },
+    bones(cx, cy) {                      // a bone half sunk in the ground
+      const len = 4 + Math.floor(R() * 4), bone = [222, 214, 192];
+      for (let k = 0; k < len; k++) { dset(cx + k, cy, jit(bone, 12)); tset(cx + k, cy + 1, jit(shade(bone, 0.85), 12)); }
+      dset(cx - 1, cy - 1, bone); dset(cx + len, cy - 1, bone);
+    },
+    pillar(cx, cy) {                     // a salt column from the floor to the roof, behind you
+      const hgt = upTo(cx, cy, 90);
+      if (hgt < 20 || hgt >= 90) return false;
+      const w = 2 + Math.floor(R() * 3), top = cy - hgt;
+      for (let y = top; y <= cy; y++) {
+        const flare = Math.max(0, 3 - Math.min(y - top, cy - y));
+        for (let dx = -w - flare; dx <= w + flare; dx++) {
+          const c = dx < 0 ? T.moss[1] : dx === 0 ? [236, 232, 214] : T.moss[0];
+          dset(cx + dx, y, jit(shade(c, 0.72), 8));
+        }
+      }
+    },
+    gear(cx, cy) {                       // a big rusted cog set into the back wall
+      const r = 5 + Math.floor(R() * 9), teeth = 8 + Math.floor(R() * 5), rust = shade(T.rock[1], 0.7);
+      const ph = R() * 6.28;
+      for (let dy = -r - 2; dy <= r + 2; dy++) for (let dx = -r - 2; dx <= r + 2; dx++) {
+        const dist = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
+        const tooth = Math.cos((a + ph) * teeth) > 0.3 ? 2 : 0;
+        const rim = dist <= r + tooth && dist >= r - 2;
+        const spoke = dist < r - 2 && (Math.abs(Math.sin((a + ph) * 2)) < 0.18 || dist < 2.5);
+        if (rim || spoke) dset(cx + dx, cy + dy, jit(shade(rust, rim && tooth ? 0.85 : 1), 12));
+      }
+    },
+    ribs(cx, cy) {                       // a ribcage arching over the floor, behind you
+      const hgt = upTo(cx, cy, 80);
+      if (hgt < 24) return false;
+      const bone = [214, 206, 184], H = Math.min(hgt - 2, 36);
+      for (let k = 0; k < 4; k++) {
+        const a = 16 - k * 3, b = H - k * 5, ox = cx + k * 4 - 6, f = 0.78 - k * 0.1;
+        for (let t = 0; t <= 60; t++) {
+          const th = Math.PI * t / 60, x = ox + Math.cos(th) * a, y = cy - Math.sin(th) * b;
+          dset(Math.round(x), Math.round(y), jit(shade(bone, f), 8));
+          dset(Math.round(x) + 1, Math.round(y), jit(shade(bone, f * 0.85), 8));
+        }
+      }
+    },
+    charred(cx, cy) {                    // a burnt log or a heap of cinders
+      const len = 3 + Math.floor(R() * 5);
+      for (let k = 0; k < len; k++) {
+        dset(cx + k, cy, R() < 0.12 ? [190, 84, 30] : jit([34, 28, 26], 10));
+        if (R() < 0.5) dset(cx + k, cy - 1, jit([48, 42, 40], 10));
+      }
+    },
+    soot(bx, by) {                       // a soot stain darkening the back wall
+      const r = 5 + R() * 10;
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        const x = Math.round(bx + dx), y = Math.round(by + dy), f = 1 - Math.hypot(dx, dy) / r;
+        if (f <= 0 || x < 0 || y < 0 || x >= BW || y >= BH) continue;
+        const k = (y * BW + x) * 4, m = 1 - 0.55 * f;
+        bd[k] *= m; bd[k + 1] *= m; bd[k + 2] *= m;
+      }
+    },
+    algae(cx, cy) {                      // the ground here was laid as brick once, long ago
+      const w = 6 + Math.floor(R() * 9);
+      for (let dx = -w; dx <= w; dx++) for (let k = 1; k <= 7; k++) {
+        const x = cx + dx, y = cy + k;
+        if (!inb(x, y) || mat[y * CW + x] !== ROCK) continue;
+        mat[y * CW + x] = BRICK;                    // brick for rock: just as solid
+        const kk = x + (y % 2) * 3;
+        const top = !mat[(y - 1) * CW + x] || (y > 1 && !mat[(y - 2) * CW + x]);
+        put(d, y * CW + x, top ? jit(pick(T.moss[0], T.moss[1]), 16)
+          : kk % 6 === 0 ? T.mortar : jit(pick(T.brick[0], T.brick[1]), 8));
+      }
+    },
+  };
+
+  // ---- pass 3 props ----
+  const props = [], baked = {}, amb = [];
+  const boxOf = (kind, style, side) => {
+    let b = PROP_BOX[kind];
+    if (b && !Array.isArray(b)) b = b[style];
+    b = b ? b.slice() : [-4, -4, 4, 4];
+    if (side === 'ceil' && kind === 'spike') b = [b[0], 0, b[2], -b[1]];   // hanging the other way
+    return b;
+  };
+  function place(it) {
+    const want = it.n, got = [];
+    const pool = it.at === 'surf' ? null : it.at === 'flat' || it.at === 'pit' ? sites.floor : sites[it.at];
+    for (let a = 0; a < want * 40 && got.length < want; a++) {
+      let at = it.at, i, side = 0;
+      if (at === 'bg') {                       // anywhere on the back wall
+        const bx = R() * BW, by = R() * (SHOP_TOP / 4 - 10);
+        if (bake[it.style](bx, by) !== false) got.push(1);
+        continue;
+      }
+      if (at === 'surf') at = R() < 0.5 ? 'floor' : 'wall';
+      if (it.both && R() < 0.4) at = 'ceil';
+      const src = at === 'floor' || at === 'ceil' || at === 'wall' || at === 'air' ? sites[at] : pool;
+      if (!src.length) break;
+      i = src[Math.floor(R() * src.length)];
+      if (at === 'wall') { side = i & 1 ? 1 : -1; i >>= 1; }
+      const cx = i % CW, cy = (i / CW) | 0;
+      if (it.at === 'flat' && !flatAt(cx, cy, it.w || 3)) continue;
+      if (it.at === 'pit' && !pitAt(cx, cy)) continue;
+      // keep the same kind spread out over the cave
+      const x = at === 'wall' ? (side < 0 ? cx : cx + 1) * CELL : (cx + 0.5) * CELL;
+      const y = at === 'floor' || it.at === 'flat' || it.at === 'pit' ? (cy + 1) * CELL : at === 'ceil' ? cy * CELL : (cy + 0.5) * CELL;
+      const gap = it.kind === 'bake' ? 24 : 70;
+      if (got.some(g => Math.abs(g.x - x) < gap && Math.abs(g.y - y) < gap)) continue;
+      if (it.kind === 'bake') {
+        if (bake[it.style](cx, cy, it.style === 'fissure' && at === 'wall' ? side : undefined) === false) continue;
+        got.push({ x, y });
+        continue;
+      }
+      const pr = { id: it.id, k: it.kind, st: it.style, x, y, t: R() * 10, seed: R() };
+      if (at === 'ceil') pr.anc = [cx, cy - 1];
+      else if (at === 'wall') { pr.anc = [cx + side, cy]; pr.side = side; }
+      else if (at === 'floor' || it.at === 'flat' || it.at === 'pit') pr.anc = [cx, cy + 1];
+      pr.hang = at === 'ceil' ? 1 : 0;
+      let box = boxOf(it.kind, it.style, at);
+      if (it.kind === 'climb') {
+        if (at === 'wall') {                   // a frozen fall runs down the wall face
+          let k = 0; while (k < 50 && solidC(cx + side, cy + k + 1) && openC(cx, cy + k + 1)) k++;
+          if (k < 10) continue;
+          pr.len = k * CELL;
+          box = side < 0 ? [0, -4, 7, pr.len] : [-7, -4, 0, pr.len];
+        } else {
+          const room = downTo(cx, cy, 70);
+          if (room < 16) continue;
+          pr.len = Math.round(Math.min(room * 0.7, 55) * CELL);
+          box = [-5, 0, 5, pr.len];
+        }
+      } else if (it.kind === 'zone') {
+        const cap = it.at === 'pit' ? 10 : 16;
+        const lft = runOf(cx, cy, -1, cap), rgt = runOf(cx, cy, 1, cap);
+        if (lft + rgt < 6) continue;
+        box = [-lft * CELL, -5, (rgt + 1) * CELL, 1];
+        pr.x = cx * CELL; pr.anc = [cx, cy + 1];
+      } else if (it.kind === 'drip' && at === 'wall') {
+        box = side < 0 ? [0, -4, 8, 4] : [-8, -4, 0, 4];
+      } else if (it.kind === 'lamp' && at === 'wall') {
+        box = side < 0 ? [0, -7, 9, 7] : [-9, -7, 0, 7];
+      } else if (it.kind === 'noise' && at === 'wall') {
+        box = side < 0 ? [0, -10, 10, 10] : [-10, -10, 0, 10];
+      } else if (it.kind === 'shard' && at === 'wall') {
+        box = side < 0 ? [0, -4, 6, 4] : [-6, -4, 0, 4];
+      }
+      if (it.kind === 'cover') pr.hp = it.hp || 0;          // 0: it can't be broken
+      if (it.kind === 'tendril') pr.ang = -Math.PI / 2 + (R() - 0.5) * 1.2;
+      pr.l = box[0]; pr.t0 = box[1]; pr.r = box[2]; pr.b = box[3];
+      got.push(pr);
+      props.push(pr);
+    }
+    baked[it.id] = it.kind === 'bake' ? got.length : 0;
+  }
+  for (const it of list) {
+    if (it.kind === 'amb') { amb.push(it.style); baked[it.id] = 0; continue; }
+    place(it);
+  }
+  return { props: cullDecor(props, keep || []), amb, baked };
+}
+// Load-time cleanup: drop any prop whose box overlaps one already kept (first placed wins),
+// or that sits on a keep-out spot, so nothing starts life clipped into something else.
+function cullDecor(props, keep) {
+  const out = [];
+  const pad = 3;
+  for (const pr of props) {
+    const x0 = pr.x + pr.l - pad, x1 = pr.x + pr.r + pad, y0 = pr.y + pr.t0 - pad, y1 = pr.y + pr.b + pad;
+    if (keep.some(k => k.x + k.r > x0 && k.x - k.r < x1 && k.y + k.r > y0 && k.y - k.r < y1)) continue;
+    if (out.some(o => o.x + o.l < x1 && o.x + o.r > x0 && o.y + o.t0 < y1 && o.y + o.b > y0)) continue;
+    out.push(pr);
+  }
+  return out;
+}
+// is a prop's anchoring rock still there? The cell it hangs off, or either neighbour, so a
+// one-pixel nick doesn't drop it — you have to really cut it loose.
+function propAnchored(pr, mat) {
+  if (!pr.anc) return true;
+  const [cx, cy] = pr.anc;
+  for (let dx = -1; dx <= 1; dx++) {
+    const x = cx + dx;
+    if (x >= 0 && x < CW && cy >= 0 && cy < CH && mat[cy * CW + x]) return true;
+  }
+  return false;
+}
+
+// ---- drawing the props ----
+const rgbA = (c, a) => 'rgba(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ',' + (a == null ? 1 : a) + ')';
+const rgbS = c => (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0);
+// the colour a prop breaks into
+function propCol(pr, T) {
+  return { icicle: '#bfe6ff', icefall: '#bfe6ff', geode: '#c58cff', salt: '#e8e2cc', bone: '#e6dcc4',
+    obsidian: '#4a3050', cart: '#8a5a3a', statue: rgbA(T.rock[1]), pillar: rgbA(T.brick[1]),
+    monolith: rgbA(T.bg2), skulls: '#e6dcc4', stone: '#c58cff', shard: rgbA(T.moss[1]),
+    chain: '#8a7a6a', lantern: '#ffb050', crystal: '#d6a0ff', lava: '#ff7a2a' }[pr.st] || rgbA(T.moss[1]);
+}
+// One prop, in world units, before the fog. Anything that glows gets its light added after
+// the fog in propGlow, so the light shows in the dark but the prop itself stays hidden.
+function drawProp(ctx, pr, time, T) {
+  const x = pr.x, y = pr.y, st = pr.st;
+  ctx.save();
+  if (pr.shake > 0) ctx.translate(Math.sin(time * 90) * 0.8, 0);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const tri = (ax, ay, bx, by, cx, cy) => { ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(cx, cy); ctx.closePath(); ctx.fill(); };
+  switch (pr.k) {
+    case 'climb': {
+      const len = pr.len, sw = st === 'kelp' ? 5 : st === 'chain' ? 0.8 : 1.6;
+      const off = k => Math.sin(time * (st === 'kelp' ? 1.6 : 1.1) + pr.seed * 6 + k * 0.08) * sw * (k / len);
+      if (st === 'icefall') {
+        const x0 = pr.side < 0 ? x : x - 7;
+        ctx.fillStyle = 'rgba(170,215,240,0.5)'; ctx.fillRect(x0, y - 4, 7, len + 4);
+        ctx.strokeStyle = 'rgba(235,250,255,0.55)'; ctx.lineWidth = 0.8;
+        for (let k = 0; k < 3; k++) { const lx = x0 + 1.5 + k * 2; ctx.beginPath(); ctx.moveTo(lx, y - 2); ctx.lineTo(lx + Math.sin(k + pr.seed * 9) * 0.8, y + len); ctx.stroke(); }
+        ctx.fillStyle = 'rgba(190,230,255,0.75)';
+        for (let k = 0; k < 3; k++) tri(x0 + k * 2.3, y + len, x0 + k * 2.3 + 2.3, y + len, x0 + k * 2.3 + 1.1, y + len + 3 + (k % 2) * 2);
+        break;
+      }
+      if (st === 'chain') {
+        ctx.strokeStyle = '#6f635a'; ctx.lineWidth = 0.9;
+        for (let k = 0; k < len; k += 3.2) {
+          const lx = x + off(k), vert = Math.round(k / 3.2) % 2 === 0;
+          ctx.beginPath(); ctx.ellipse(lx, y + k + 1.6, vert ? 1 : 1.8, vert ? 2 : 1.1, 0, 0, 6.29); ctx.stroke();
+        }
+        break;
+      }
+      if (st === 'myc') {
+        for (let s = -1; s <= 1; s++) {
+          ctx.strokeStyle = rgbA(T.moss[1], 0.45 + 0.15 * s); ctx.lineWidth = 0.6;
+          const l = len * (0.75 + 0.2 * Math.sin(s * 3 + pr.seed * 9));
+          ctx.beginPath(); ctx.moveTo(x + s * 1.6, y);
+          for (let k = 0; k <= l; k += 4) ctx.lineTo(x + s * 1.6 + off(k) + Math.sin(k * 0.3 + s) * 0.6, y + k);
+          ctx.stroke();
+          ctx.fillStyle = rgbA(T.moss[1], 0.8);
+          ctx.beginPath(); ctx.arc(x + s * 1.6 + off(l), y + l, 1, 0, 6.29); ctx.fill();
+        }
+        break;
+      }
+      const col = st === 'root' ? mix(T.moss[0], [200, 190, 160], 0.4) : T.moss[0];
+      ctx.strokeStyle = rgbA(col); ctx.lineWidth = st === 'root' ? 2.2 : st === 'kelp' ? 1.8 : 1.3;
+      ctx.beginPath(); ctx.moveTo(x, y);
+      for (let k = 0; k <= len; k += 3) ctx.lineTo(x + off(k) + (st === 'root' ? Math.sin(k * 0.4 + pr.seed * 5) * 0.8 : 0), y + k);
+      ctx.stroke();
+      ctx.fillStyle = rgbA(T.moss[1]);
+      for (let k = 4, s = 1; k < len; k += st === 'kelp' ? 7 : 5, s = -s) {
+        const lx = x + off(k);
+        if (st === 'root') { ctx.fillRect(lx - 1.4, y + k, 2.8, 1.4); continue; }
+        ctx.beginPath();
+        ctx.ellipse(lx + s * 2, y + k, st === 'kelp' ? 3 : 1.8, 0.9, s * 0.5, 0, 6.29); ctx.fill();
+      }
+      break;
+    }
+    case 'drip': {
+      if (st === 'steam') {                     // a pipe out of the wall
+        const s = -pr.side, x0 = s > 0 ? x : x - 8;
+        ctx.fillStyle = '#5a4a3e'; ctx.fillRect(x0, y - 2, 8, 4);
+        ctx.fillStyle = '#7a6452'; ctx.fillRect(x0 + (s > 0 ? 6 : 0), y - 3, 2, 6);
+        break;
+      }
+      if (st === 'sparks') {
+        ctx.fillStyle = '#35333a'; ctx.fillRect(x - 3, y, 6, 4);
+        ctx.strokeStyle = '#6a6a70'; ctx.lineWidth = 0.6;
+        ctx.beginPath(); ctx.moveTo(x + 1, y + 4); ctx.quadraticCurveTo(x + 3, y + 8, x + 1.5, y + 10); ctx.stroke();
+        break;
+      }
+      if (st === 'crystal') {
+        ctx.fillStyle = rgbA(T.moss[1], 0.9);
+        tri(x - 2.5, y, x - 0.5, y, x - 1.5, y + 5); tri(x, y, x + 2.5, y, x + 1.2, y + 4);
+        break;
+      }
+      const c = st === 'lava' ? [255, 110, 40] : st === 'soot' ? [22, 22, 26] : st === 'cascade' ? [140, 200, 255] : [120, 190, 255];
+      ctx.fillStyle = rgbA(c, st === 'cascade' ? 0.8 : 0.85);
+      if (st === 'cascade') { ctx.fillRect(x - 5, y, 10, 1.6); break; }
+      const g = st === 'soot' ? 0 : ((pr.acc || 0) % 1);
+      ctx.beginPath(); ctx.ellipse(x, y + 0.8 + g * 1.5, 1.2 + g * 0.5, 0.9 + g * 1.2, 0, 0, 6.29); ctx.fill();
+      break;
+    }
+    case 'drop': {
+      if (st === 'icicle') {
+        ctx.fillStyle = 'rgba(190,230,255,0.9)'; tri(x - 3.5, y, x + 3.5, y, x + 0.3, y + 16);
+        ctx.fillStyle = 'rgba(255,255,255,0.7)'; tri(x - 1.8, y, x - 0.6, y, x - 0.2, y + 10);
+      } else {
+        ctx.fillStyle = rgbA(mix(T.rock[0], [0, 0, 0], 0.3)); ctx.beginPath(); ctx.ellipse(x, y + 1.5, 7, 3, 0, 0, 6.29); ctx.fill();
+        const cs = [[-4.5, 8], [-1.5, 12], [1.8, 10], [4.6, 7]];
+        cs.forEach(([dx, l], k) => { ctx.fillStyle = rgbA(k % 2 ? T.moss[1] : T.moss[0]); tri(x + dx - 1.8, y + 2, x + dx + 1.8, y + 2, x + dx, y + l); });
+      }
+      break;
+    }
+    case 'spike': {
+      if (pr.hang) { ctx.translate(0, 2 * y); ctx.scale(1, -1); }
+      const base = st === 'obsidian' ? [44, 28, 48] : st === 'salt' ? [226, 220, 198] : [222, 212, 188];
+      const hs = [[-4, 7], [0, 10], [4, 6]];
+      for (const [dx, hgt] of hs) {
+        ctx.fillStyle = rgbA(base); tri(x + dx - 2.4, y, x + dx + 2.4, y, x + dx, y - hgt);
+        ctx.fillStyle = st === 'obsidian' ? 'rgba(200,110,255,0.55)' : 'rgba(255,255,255,0.45)';
+        tri(x + dx - 0.6, y, x + dx + 0.4, y, x + dx, y - hgt + 1);
+        if (st === 'bone') { ctx.fillStyle = rgbA(base); ctx.beginPath(); ctx.arc(x + dx, y - 0.5, 1.8, 0, 6.29); ctx.fill(); }
+      }
+      break;
+    }
+    case 'barrel': {                           // a minecart full of blasting powder
+      ctx.fillStyle = '#2a2a30';
+      ctx.beginPath(); ctx.arc(x - 5, y - 2.2, 2.2, 0, 6.29); ctx.arc(x + 5, y - 2.2, 2.2, 0, 6.29); ctx.fill();
+      ctx.fillStyle = '#b2362c';
+      for (let k = -1; k <= 1; k++) ctx.fillRect(x + k * 3.5 - 1, y - 13 + Math.abs(k), 2, 4);
+      ctx.fillStyle = '#6e4a32'; ctx.beginPath(); ctx.moveTo(x - 9, y - 10); ctx.lineTo(x + 9, y - 10); ctx.lineTo(x + 7.5, y - 3.5); ctx.lineTo(x - 7.5, y - 3.5); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#8c8f96'; ctx.fillRect(x - 9, y - 10.5, 18, 1.3); ctx.fillRect(x - 8, y - 6.5, 16, 1);
+      ctx.fillStyle = '#ffd23c'; ctx.font = '700 5px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('!', x, y - 4.6);
+      break;
+    }
+    case 'lamp': {
+      if (st === 'cap') {
+        ctx.fillStyle = rgbA(mix(T.moss[1], [240, 240, 240], 0.5)); ctx.fillRect(x - 1, y - 6, 2, 6);
+        ctx.fillStyle = rgbA(T.moss[1]); ctx.beginPath(); ctx.ellipse(x, y - 6, 5, 3.4, 0, Math.PI, 0); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(x - 2.5, y - 8, 1, 1); ctx.fillRect(x + 1.5, y - 7.5, 1, 1);
+        break;
+      }
+      const s = -pr.side, lx = x + s * 5;
+      ctx.strokeStyle = '#4a3e36'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y - 5); ctx.lineTo(lx, y - 5); ctx.lineTo(lx, y - 3); ctx.stroke();
+      ctx.fillStyle = '#5c4632'; ctx.fillRect(lx - 2.5, y - 3, 5, 7);
+      ctx.fillStyle = '#ffcc70'; ctx.fillRect(lx - 1.5, y - 2, 3, 4.5);
+      break;
+    }
+    case 'vent': {
+      ctx.fillStyle = '#1a1010'; ctx.beginPath(); ctx.ellipse(x, y - 0.5, 5, 1.8, 0, 0, 6.29); ctx.fill();
+      ctx.fillStyle = pr.warn || pr.on ? '#ff8a3a' : 'rgba(255,110,40,0.5)';
+      ctx.fillRect(x - 2.5, y - 1, 1, 1); ctx.fillRect(x + 1, y - 1.2, 1.2, 1);
+      break;
+    }
+    case 'pad': {                               // a bouncy mushroom, squashed as it throws you
+      const sq = Math.max(0, pr.sq || 0) / 0.3, hh = 8 * (1 - 0.4 * sq), ww = 10 * (1 + 0.25 * sq);
+      ctx.fillStyle = rgbA(mix(T.moss[1], [240, 230, 220], 0.6)); ctx.fillRect(x - 1.8, y - hh, 3.6, hh);
+      ctx.fillStyle = rgbA(T.moss[0]); ctx.beginPath(); ctx.ellipse(x, y - hh, ww, 5, 0, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      for (const [dx, dy] of [[-5, -2], [0, -3.8], [4.5, -1.8]]) { ctx.beginPath(); ctx.arc(x + dx * ww / 10, y - hh + dy, 0.9, 0, 6.29); ctx.fill(); }
+      break;
+    }
+    case 'zone': {
+      const x0 = x + pr.l, w = pr.r - pr.l;
+      if (st === 'ice') { ctx.fillStyle = 'rgba(190,230,255,0.6)'; ctx.fillRect(x0, y - 1.6, w, 1.6); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(x0 + 2, y - 1.6, w - 4, 0.5); }
+      else if (st === 'snow' || st === 'ash') {
+        ctx.fillStyle = st === 'snow' ? 'rgba(236,244,255,0.95)' : rgbA(mix(T.rock[1], [90, 90, 90], 0.5));
+        ctx.beginPath(); ctx.moveTo(x0, y);
+        for (let k = 0; k <= w; k += 2) ctx.lineTo(x0 + k, y - 1 - 3.2 * Math.sin(Math.PI * k / w) - Math.sin(k * 0.7 + pr.seed * 9) * 0.5);
+        ctx.lineTo(x0 + w, y); ctx.closePath(); ctx.fill();
+      } else if (st === 'slime' || st === 'puddle' || st === 'acid') {
+        const c = st === 'slime' ? [110, 200, 90] : st === 'puddle' ? [70, 130, 190] : [150, 168, 60];
+        ctx.fillStyle = rgbA(c, st === 'puddle' ? 0.6 : 0.7); ctx.fillRect(x0, y - 2.5, w, 2.5);
+        ctx.fillStyle = rgbA(mix(c, [255, 255, 255], 0.4), 0.7);
+        const nb = Math.max(1, Math.floor(w / 8));
+        for (let k = 0; k < nb; k++) {
+          const ph = (time * (st === 'acid' ? 0.9 : 0.4) + k * 0.37 + pr.seed) % 1;
+          ctx.beginPath(); ctx.arc(x0 + (k + 0.5) * w / nb, y - 2.5 - ph * 2, 0.6 + ph * 0.6, 0, 6.29); ctx.fill();
+        }
+      } else if (st === 'glass') {
+        for (let k = 0; k < w; k += 2.2) {
+          const s = Math.sin(k * 12.9 + pr.seed * 78) * 43758.5 % 1;
+          ctx.fillStyle = 'rgba(200,240,255,' + (0.35 + Math.abs(s) * 0.4) + ')';
+          tri(x0 + k, y, x0 + k + 1.6, y, x0 + k + 0.6 + s, y - 1.5 - Math.abs(s) * 2);
+        }
+      } else if (st === 'log') {
+        ctx.fillStyle = '#2c2220'; ctx.fillRect(x0 + 1, y - 4, w - 2, 4);
+        ctx.fillStyle = 'rgba(255,' + Math.round(100 + 40 * Math.sin(time * 3 + pr.seed * 9)) + ',40,0.8)';
+        for (let k = 4; k < w - 3; k += 5) ctx.fillRect(x0 + k, y - 2.8 + (k % 2), 1.6, 0.8);
+      }
+      break;
+    }
+    case 'pod': {
+      const b = 1 + 0.06 * Math.sin(time * 3 + pr.seed * 9);
+      ctx.fillStyle = rgbA(T.moss[0]); ctx.fillRect(x - 0.6, y - 3, 1.2, 3);
+      ctx.fillStyle = '#9cc44a'; ctx.beginPath(); ctx.ellipse(x, y - 6, 4.4 * b, 5 * b, 0, 0, 6.29); ctx.fill();
+      ctx.fillStyle = '#d8f07a';
+      ctx.beginPath(); ctx.arc(x - 1.5, y - 7, 0.9, 0, 6.29); ctx.arc(x + 1.6, y - 5, 0.8, 0, 6.29); ctx.fill();
+      break;
+    }
+    case 'noise': {
+      if (st === 'skulls') {
+        for (const [dx, dy] of [[-4.5, -2.2], [0, -2.4], [4.5, -2.2], [-2.2, -5.8], [2.3, -5.6]]) {
+          ctx.fillStyle = '#ded4bc'; ctx.beginPath(); ctx.arc(x + dx, y + dy, 2.3, 0, 6.29); ctx.fill();
+          ctx.fillStyle = '#2a2622'; ctx.fillRect(x + dx - 1.3, y + dy - 0.4, 0.9, 0.9); ctx.fillRect(x + dx + 0.4, y + dy - 0.4, 0.9, 0.9);
+        }
+      } else {
+        const s = -pr.side, cx = x + s * 4;
+        ctx.fillStyle = rgbA(mix(T.rock[1], T.moss[0], 0.4));
+        ctx.beginPath(); ctx.ellipse(cx, y, 4, 9, 0, 0, 6.29); ctx.fill();
+        ctx.strokeStyle = rgbA(T.moss[1], 0.5 + 0.5 * Math.max(0, pr.ring || 0)); ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.moveTo(cx, y - 6); ctx.lineTo(cx - 1.5, y - 1); ctx.lineTo(cx + 1.2, y + 2); ctx.lineTo(cx, y + 6); ctx.stroke();
+      }
+      break;
+    }
+    case 'shard': {
+      ctx.fillStyle = rgbA(T.moss[1], 0.85);
+      const dir = pr.side ? -pr.side : 0;
+      if (dir) { tri(x, y - 2, x, y + 2, x + dir * 5, y - 0.5); tri(x, y + 1, x, y + 3.5, x + dir * 3, y + 3); }
+      else { tri(x - 2, y, x + 1, y, x - 1, y - 5); tri(x, y, x + 3, y, x + 2.4, y - 3.5); }
+      break;
+    }
+    case 'cover': {
+      if (pr.hitT > 0) ctx.translate(Math.sin(time * 80) * 0.6, 0);
+      if (st === 'statue') {                  // a drowned figure on a plinth, streaked with algae
+        ctx.fillStyle = rgbA(T.rock[0]); ctx.fillRect(x - 8, y - 6, 16, 6);
+        ctx.fillStyle = rgbA(T.rock[1]); ctx.beginPath(); ctx.moveTo(x - 5, y - 6); ctx.lineTo(x - 4, y - 20); ctx.lineTo(x + 4, y - 20); ctx.lineTo(x + 5, y - 6); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.arc(x, y - 23.5, 3.6, 0, 6.29); ctx.fill();
+        ctx.fillStyle = rgbA(T.moss[0], 0.8);
+        ctx.fillRect(x - 3, y - 20, 1, 12); ctx.fillRect(x + 1.5, y - 17, 1, 9); ctx.fillRect(x - 1, y - 26, 2, 1.2);
+      } else if (st === 'pillar') {           // cracks spread as it takes hits
+        ctx.fillStyle = rgbA(T.brick[1]); ctx.fillRect(x - 5, y - 27, 10, 27);
+        ctx.fillStyle = rgbA(T.brick[0]); ctx.fillRect(x - 7, y - 30, 14, 3); ctx.fillRect(x - 7, y - 3, 14, 3);
+        ctx.strokeStyle = '#1e1a1a'; ctx.lineWidth = 0.7;
+        const dmg = 4 - Math.max(0, pr.hp);
+        for (let k = 0; k < dmg; k++) { const cy = y - 8 - k * 6; ctx.beginPath(); ctx.moveTo(x - 5, cy); ctx.lineTo(x - 1, cy - 2); ctx.lineTo(x + 1, cy + 1); ctx.lineTo(x + 5, cy - 1); ctx.stroke(); }
+      } else {                                // a monolith that won't hold still
+        const sk = Math.sin(time * 0.8 + pr.seed * 9) * 0.08;
+        ctx.transform(1, 0, sk, 1, -sk * y, 0);
+        ctx.fillStyle = rgbA(mix(T.bg2, [0, 0, 0], 0.2)); ctx.fillRect(x - 6, y - 34, 12, 34);
+        ctx.fillStyle = rgbA(T.moss[1], 0.5 + 0.3 * Math.sin(time * 2 + pr.seed * 7));
+        ctx.fillRect(x - 0.6, y - 28, 1.2, 8); ctx.fillRect(x - 3, y - 24.6, 6, 1.2);
+      }
+      break;
+    }
+    case 'matter': {
+      const by = y + Math.sin(time * 1.3 + pr.seed * 9) * 3;
+      ctx.fillStyle = '#050208'; ctx.beginPath(); ctx.arc(x, by, 6.5, 0, 6.29); ctx.fill();
+      ctx.strokeStyle = 'rgba(160,90,255,0.7)'; ctx.lineWidth = 1;
+      for (let k = 0; k < 3; k++) { const a = time * 2.4 + k * 2.09; ctx.beginPath(); ctx.arc(x, by, 8 + k, a, a + 1.4); ctx.stroke(); }
+      break;
+    }
+    case 'tendril': {
+      ctx.fillStyle = '#2a1640'; ctx.beginPath(); ctx.ellipse(x, y - 1.5, 4, 2.5, 0, 0, 6.29); ctx.fill();
+      const ext = Math.max(4, pr.ext || 0), a = pr.aimA != null ? pr.aimA : pr.ang;
+      const tx = x + Math.cos(a) * ext, ty = y - 2 + Math.sin(a) * ext;
+      const wob = Math.sin(time * 5 + pr.seed * 9) * ext * 0.2;
+      const mx = (x + tx) / 2 + Math.cos(a + 1.57) * wob, my = (y + ty) / 2 + Math.sin(a + 1.57) * wob;
+      ctx.strokeStyle = '#3e2066'; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(x, y - 2); ctx.quadraticCurveTo(mx, my, tx, ty); ctx.stroke();
+      ctx.strokeStyle = rgbA(T.moss[1], 0.8); ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo((mx + tx) / 2, (my + ty) / 2); ctx.lineTo(tx, ty); ctx.stroke();
+      break;
+    }
+  }
+  ctx.restore();
+}
+// The light a prop gives off, drawn after the fog with 'lighter'. Lanterns, glowing caps,
+// a vent in full roar, shards catching your torch, eyes in the dark.
+function propGlow(ctx, pr, time, T, pdist, torchR) {
+  const x = pr.x, y = pr.y;
+  if (pr.k === 'lamp') {
+    const f = 0.85 + 0.15 * Math.sin(time * 9 + pr.seed * 20) * Math.sin(time * 4.3 + pr.seed * 7);
+    if (pr.st === 'cap') glowAt(ctx, x, y - 7, 30, 0.2 * f, rgbS(T.moss[1]));
+    else { const lx = x - pr.side * 5; glowAt(ctx, lx, y, 46, 0.16 * f, '255,160,70'); glowAt(ctx, lx, y, 8, 0.4 * f, '255,210,130'); }
+  } else if (pr.k === 'vent' && (pr.on || pr.warn)) {
+    glowAt(ctx, x, y - (pr.on ? 28 : 3), pr.on ? 44 : 12, pr.on ? 0.35 : 0.25, '255,120,40');
+    if (pr.on) {
+      const g = ctx.createLinearGradient(0, y - VENT_H, 0, y);
+      g.addColorStop(0, 'rgba(255,90,30,0)'); g.addColorStop(0.5, 'rgba(255,140,50,0.55)'); g.addColorStop(1, 'rgba(255,230,150,0.9)');
+      ctx.fillStyle = g;
+      const w = 4 + Math.sin(time * 40) * 0.8;
+      ctx.fillRect(x - w, y - VENT_H, w * 2, VENT_H);
+    }
+  } else if (pr.k === 'shard' && pdist < torchR) {
+    const g = (1 - pdist / torchR) * Math.pow(0.5 + 0.5 * Math.sin(time * 5 + pr.seed * 40), 6);
+    if (g > 0.03) {
+      ctx.fillStyle = 'rgba(255,255,255,' + g + ')';
+      ctx.fillRect(x - 4, y - 0.4, 8, 0.8); ctx.fillRect(x - 0.4, y - 4, 0.8, 8);
+      glowAt(ctx, x, y, 7, 0.5 * g, rgbS(T.moss[1]));
+    }
+  } else if (pr.k === 'eyes') {
+    // they fade out as you come near, so you never quite catch what's watching
+    const a = eyesAlpha(pdist) * (Math.sin(time * 0.9 + pr.seed * 40) > 0.96 ? 0.1 : 1) *
+      (0.55 + 0.25 * Math.sin(time * 1.7 + pr.seed * 9));
+    if (a > 0.02) {
+      const c = pr.seed < 0.5 ? '255,60,70' : rgbS(T.moss[1]);
+      ctx.fillStyle = 'rgba(' + c + ',' + a + ')';
+      ctx.fillRect(x - 4, y - 0.6, 2, 1.2); ctx.fillRect(x + 2, y - 0.6, 2, 1.2);
+      glowAt(ctx, x, y, 9, 0.25 * a, c);
+    }
+  } else if (pr.k === 'matter') {
+    glowAt(ctx, x, y + Math.sin(time * 1.3 + pr.seed * 9) * 3, 26, 0.12, '140,70,255');
+  } else if (pr.k === 'drip' && pr.st === 'lava') {
+    glowAt(ctx, x, y + 2, 10, 0.3, '255,110,40');
+  }
+}
+// eyes are gone by the time you're 60 units off, and fully there from 180
+const eyesAlpha = d => Math.max(0, Math.min(1, (d - 60) / 120));
+const VENT_H = 64;                     // how tall a scorched vent's fire pillar stands
+
 function makeLevel(seed, floor, owned) {
   floor = floor || 1;
   const have = new Set(owned || []);     // perks you are already carrying, so a room is
@@ -2638,7 +3337,14 @@ function makeLevel(seed, floor, owned) {
     }
   }
 
-  return { mat, img, bgImg, start, portal, enemies, pickups, stock, shopExit, arrival,
+  // pass 2 and 3: decoration, on its own random stream so the cave above is untouched
+  const dimg = new ImageData(CW, CH);
+  const keep = [{ x: start.x, y: start.y, r: 40 }, { x: arrival.x, y: arrival.y, r: 50 },
+    { x: portal.x + portal.w / 2, y: portal.y + portal.h / 2, r: 50 },
+    ...rooms.map(r => ({ x: r.x, y: r.y, r: 70 })), ...pickups.map(q => ({ x: q.x, y: q.y, r: 22 }))];
+  const deco = decorate(mat, img, dimg, bgImg, floor, seed, keep);
+
+  return { mat, img, bgImg, dimg, props: deco.props, amb: deco.amb, start, portal, enemies, pickups, stock, shopExit, arrival,
     rooms, roster, theme: T.name };
 }
 
@@ -2770,6 +3476,16 @@ function Game({ input }) {
     // portal ('in') and motes wafting out of the arrival portal ('out')
     const motes = [];
     let portalAcc = 0;
+    // ---- level decoration (see DECOR): the props, the decoration layer, their particles,
+    // the theme's ambience, spore clouds and noise rings. zfx is what the props did to you
+    // this frame (slowed, slick, holding a vine, gravity flipped), read by next frame's steering.
+    let props = [], ambKinds = [], dimg = null;
+    const decoC = document.createElement('canvas');
+    decoC.width = CW; decoC.height = CH;
+    const dctx = decoC.getContext('2d');
+    const dparts = [], amb = [], clouds = [], rings = [], devils = [];
+    let decoFrame = 0, viewW = VIEW_W, viewH = VIEW_MIN_H, dripHurt = 0;
+    let zfx = { slow: 1, slick: 0, climb: null, rev: 0 };
     // the hand torch's flame lean: a sprung offset dragged opposite to how you move,
     // the same way the jet flame swings, so the fire trails behind you
     let leanX = 0, leanY = 0, leanVX = 0, leanVY = 0, glowN = 0;
@@ -2826,6 +3542,10 @@ function Game({ input }) {
       start = level.start; portal = level.portal; arrival = level.arrival;
       enemies = level.enemies; pickups = level.pickups; stock = level.stock;
       rooms = level.rooms || [];
+      props = level.props || []; ambKinds = level.amb || []; dimg = level.dimg;
+      dctx.putImageData(dimg, 0, 0);
+      dparts.length = amb.length = clouds.length = rings.length = devils.length = 0;
+      zfx = { slow: 1, slick: 0, climb: null, rev: 0 };
       {
         const pcx0 = portal.x + portal.w / 2, pcy0 = portal.y + portal.h / 2;
         sconces = [[pcx0 - 26, pcy0 - 2], [pcx0 + 26, pcy0 - 2],
@@ -2987,6 +3707,20 @@ function Game({ input }) {
           mat[i] = 0; d[i * 4 + 3] = 0; changed = true;
         }
       if (changed) tctx.putImageData(img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
+      unDeco(cx0, cy0, rc, minX, minY, maxX, maxY);
+    }
+    // wipe the decoration layer inside a cleared circle, so baked rubble, beams and pillars
+    // go with the rock round them
+    function unDeco(cx0, cy0, rc, minX, minY, maxX, maxY) {
+      const dd = dimg.data;
+      let changed = false;
+      for (let cy = minY; cy <= maxY; cy++)
+        for (let cx = minX; cx <= maxX; cx++) {
+          const k = (cy * CW + cx) * 4;
+          if (!dd[k + 3] || Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
+          dd[k + 3] = 0; changed = true;
+        }
+      if (changed) dctx.putImageData(dimg, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
     }
 
     // lay solid brick down, the opposite of dig()
@@ -3228,6 +3962,13 @@ function Game({ input }) {
         }
       }
       tctx.putImageData(img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
+      unDeco(cx0, cy0, rc, minX, minY, maxX, maxY);
+      // a blast knocks the props about: carts and pods go off, pillars crack, icicles let go
+      for (const pr of props) {
+        if (pr.gone || Math.abs(pr.x - x) > R + 40 || Math.abs(pr.y - y) > R + 40) continue;
+        const bx = clamp(x, pr.x + pr.l, pr.x + pr.r), by = clamp(y, pr.y + pr.t0, pr.y + pr.b);
+        if (Math.hypot(bx - x, by - y) < R + 6) pr.hurt = (pr.hurt || 0) + 2;
+      }
 
       flashes.push({ x, y, r: R, t: 0 });
       for (let i = 0; i < 10; i++) {
@@ -3248,6 +3989,313 @@ function Game({ input }) {
         p.vx += nx * 500 * f;
         p.vy += ny * 500 * f - 150 * f;
         p.kick = 0.25;
+      }
+    }
+
+    // ---- decoration, pass 3: the props at work ----
+    const pOver = (pr, pad) => p.x + PW > pr.x + pr.l - pad && p.x < pr.x + pr.r + pad &&
+      p.y + PH > pr.y + pr.t0 - pad && p.y < pr.y + pr.b + pad;
+    // a loud noise: every creature within earshot comes looking, and shooters get ready
+    function alertAt(x, y) {
+      rings.push({ x, y, t: 0 });
+      for (const e of enemies) {
+        if (Math.hypot(e.x - x, e.ty - y) > 320) continue;
+        if (e.k.act === 'chase' || e.k.act === 'bomb') e.aggro = true;
+        else e.cd = Math.min(e.cd, 0.3);
+      }
+    }
+    function shatter(pr, n) {
+      burst(pr.x, pr.y + (pr.t0 + pr.b) / 2, n || 10, propCol(pr, themeFor(floor)));
+      pr.gone = true;
+    }
+    function blowProp(pr) {
+      if (pr.gone) return;
+      pr.gone = true;                          // first, so a chain of blasts can't loop
+      if (pr.k === 'barrel') explode(pr.x, pr.y - 6, 30);
+      else if (pr.k === 'pod') {
+        clouds.push({ x: pr.x, y: pr.y - 8, r: 34, life: 4.5, max: 4.5, tick: 0 });
+        burst(pr.x, pr.y - 6, 14, '#b6e36a');
+      }
+    }
+    // a prop whose rock has gone hits the ground: it breaks, blows, or settles there
+    function landProp(pr) {
+      pr.fall = false; pr.vy = 0;
+      if (pr.k === 'barrel' || pr.k === 'pod') { blowProp(pr); return; }
+      const stands = !pr.hang && !pr.side && (pr.k === 'cover' || pr.k === 'pad' || pr.k === 'noise' ||
+        pr.k === 'spike' || pr.k === 'lamp' || pr.k === 'tendril' || pr.k === 'vent');
+      if (!stands) { shatter(pr); return; }
+      const cy = Math.floor((pr.y + pr.b + 1) / CELL);
+      pr.y = cy * CELL - pr.b;
+      pr.anc = [Math.floor(pr.x / CELL), cy];
+    }
+    function spawnDrip(pr) {
+      const r = Math.random, st = pr.st;
+      if (st === 'water') return { x: pr.x + (r() - 0.5) * 2, y: pr.y + 3, vx: 0, vy: 0, g: 0.9, c: '#7ec8ff', s: 1.5, life: 3, max: 3, splash: 1 };
+      if (st === 'lava') return { x: pr.x + (r() - 0.5) * 2, y: pr.y + 3, vx: 0, vy: 0, g: 0.8, c: '#ff7a2a', s: 2, life: 3, max: 3, dmg: PROP_DMG.lava, glow: 1, splash: 1 };
+      if (st === 'soot') return { x: pr.x + (r() - 0.5) * 10, y: pr.y + 1, vx: 0, vy: 12 + r() * 14, g: 0.01, c: 'rgba(16,16,20,0.8)', s: 1.3 + r(), life: 3.5, max: 3.5, wob: r() * 9 };
+      if (st === 'crystal') return { x: pr.x + (r() - 0.5) * 14, y: pr.y + 2, vx: 0, vy: 6 + r() * 10, g: 0.004, c: r() < 0.5 ? '#e0b0ff' : '#b070ff', s: 1 + r() * 0.6, life: 4, max: 4, wob: r() * 9, glow: 1 };
+      if (st === 'cascade') return { x: pr.x + (r() - 0.5) * 9, y: pr.y + 2, vx: (r() - 0.5) * 6, vy: 50 + r() * 40, g: 0.9, c: 'rgba(150,205,255,0.75)', s: 1.6 + r(), life: 2.5, max: 2.5, splash: 1 };
+      if (st === 'steam') {
+        const s = -pr.side, oil = r() < 0.15;
+        return oil ? { x: pr.x + s * 8, y: pr.y + 2, vx: s * 10, vy: 0, g: 0.8, c: '#3a2c1a', s: 1.6, life: 2, max: 2 }
+          : { x: pr.x + s * 9, y: pr.y, vx: s * (40 + r() * 40), vy: -8 - r() * 20, g: -0.01, c: 'rgba(220,226,232,0.45)', s: 2 + r() * 2, life: 1.1, max: 1.1, grow: 1 };
+      }
+    }
+    const DRIP_RATE = { water: 0.7, lava: 1.1, soot: 6, crystal: 3, cascade: 45, steam: 10 };
+
+    function decorStep(dt, pcx, pcy) {
+      decoFrame++;
+      const z = { slow: 1, slick: 0, climb: null, rev: 0 };
+      // the runtime anchor check, staggered: a thirtieth of the props each frame, so each one
+      // finds out within half a second that the rock it hung off has been blown away
+      for (let i = decoFrame % 30; i < props.length; i += 30) {
+        const pr = props[i];
+        if (!pr.gone && !pr.fall && pr.anc && !propAnchored(pr, mat)) { pr.fall = true; pr.vy = 0; pr.anc = null; }
+      }
+      for (let i = props.length - 1; i >= 0; i--) {
+        const pr = props[i];
+        if (pr.gone) { props.splice(i, 1); continue; }
+        if (pr.fall) {                           // physics hand-off: it drops
+          pr.vy = Math.min(pr.vy + GRAVITY * 0.8 * dt, 700);
+          pr.y += pr.vy * dt;
+          if (pr.y > WH) { pr.gone = true; continue; }
+          if (pr.vy > 120 && (pr.k === 'drop' || pr.k === 'spike' || pr.k === 'cover' || pr.k === 'noise')) {
+            if (!p.dead && pOver(pr, 0)) { hurt(PROP_DMG.drop); shatter(pr, 14); continue; }
+            for (let j = enemies.length - 1; j >= 0; j--) {
+              const e = enemies[j];
+              if (Math.abs(e.x - pr.x) < e.r + 4 && Math.abs(e.ty - (pr.y + pr.b)) < e.r + 4) { damageEnemy(j, 4); shatter(pr, 14); break; }
+            }
+            if (pr.gone) continue;
+          }
+          if (solidAt(pr.x, pr.y + pr.b + 1)) landProp(pr);
+          continue;
+        }
+        if (Math.abs(pr.y - pcy) > 520) continue;     // only what's round you does anything
+        pr.cd = (pr.cd || 0) - dt;
+        if (pr.hitT > 0) pr.hitT -= dt;
+        // shots: cover eats them, and carts, pods, stones, salt spikes and pillars feel them
+        const tough = pr.k === 'cover', feels = tough || pr.k === 'barrel' || pr.k === 'pod' ||
+          (pr.k === 'noise' && pr.st === 'stone') || (pr.k === 'spike' && pr.st === 'salt');
+        if (feels) {
+          const x0 = pr.x + pr.l, x1 = pr.x + pr.r, y0 = pr.y + pr.t0, y1 = pr.y + pr.b;
+          for (const b of bullets) {
+            if (b.life <= 0 || b.x + b.size < x0 || b.x - b.size > x1 || b.y + b.size < y0 || b.y - b.size > y1) continue;
+            if (b.pull || b.eat || b.bore) {          // rolls on through, but only counts once
+              const seen = b.propHit || (b.propHit = new Set());
+              if (!seen.has(pr)) { seen.add(pr); pr.hurt = (pr.hurt || 0) + 1; }
+            } else { pr.hurt = (pr.hurt || 0) + 1; burst(b.x, b.y, 3, b.col); b.life = 0; b.vx = b.vy = 0; }
+          }
+          if (tough) for (let k = enemyShots.length - 1; k >= 0; k--) {
+            const es = enemyShots[k];
+            if (es.x > x0 && es.x < x1 && es.y > y0 && es.y < y1) { burst(es.x, es.y, 3, es.col); enemyShots.splice(k, 1); }
+          }
+        }
+        if (pr.hurt) {
+          const n = pr.hurt; pr.hurt = 0;
+          if (pr.k === 'barrel' || pr.k === 'pod') { blowProp(pr); continue; }
+          if (pr.k === 'noise' && pr.st === 'stone') { alertAt(pr.x, pr.y); pr.ring = 1; }
+          if (pr.k === 'spike' && pr.st === 'salt') { shatter(pr, 10); continue; }
+          if (pr.k === 'drop') { pr.fall = true; pr.vy = 0; pr.anc = null; continue; }
+          if (pr.k === 'cover' && pr.hp > 0) {
+            pr.hp -= n; pr.hitT = 0.15;
+            if (pr.hp <= 0) { shatter(pr, 22); continue; }
+          }
+        }
+        if (pr.ring > 0) pr.ring -= dt;
+        const me = !p.dead;
+        switch (pr.k) {
+          case 'climb':
+            if (me && pOver(pr, 0)) z.climb = pr;
+            break;
+          case 'drip':
+            if (pr.st === 'sparks') {
+              pr.t -= dt;
+              if (pr.t <= 0) {
+                pr.t = 1.2 + Math.random() * 2.6;
+                for (let k = 0; k < 10; k++) dparts.push({ x: pr.x, y: pr.y + 4, vx: (Math.random() - 0.5) * 170,
+                  vy: -20 + Math.random() * 90, g: 0.5, c: Math.random() < 0.5 ? '#ffe27a' : '#fff6c8', s: 1.2, life: 0.5, max: 0.5, glow: 1 });
+              }
+            } else {
+              pr.acc = (pr.acc || 0) + DRIP_RATE[pr.st] * dt;
+              while (pr.acc >= 1) { pr.acc--; dparts.push(spawnDrip(pr)); }
+            }
+            break;
+          case 'drop':                             // an icicle lets go when you walk under it
+            if (pr.st === 'icicle' && !pr.shake && me && Math.abs(pcx - pr.x) < 18 && pcy > pr.y &&
+                pcy - pr.y < 170 && lineOfSight(pr.x, pr.y + 18, pcx, pcy)) pr.shake = 0.35;
+            if (pr.shake > 0 && (pr.shake -= dt) <= 0) { pr.fall = true; pr.vy = 0; pr.anc = null; }
+            break;
+          case 'spike':
+            if (me && pOver(pr, -1) && pr.cd <= 0) {
+              hurt(pr.st === 'salt' ? 4 : PROP_DMG.spike); pr.cd = 0.7;
+              p.vy = pr.hang ? 160 : -280; burst(pcx, pr.hang ? p.y : p.y + PH, 5, '#ff5a5a');
+            }
+            break;
+          case 'vent': {
+            pr.t += dt;
+            const ph = pr.t % 3.6;
+            pr.on = ph > 2.6; pr.warn = ph > 1.9 && !pr.on;
+            if (pr.warn && Math.random() < dt * 14) smoke.push({ x: pr.x, y: pr.y - 2, vx: (Math.random() - 0.5) * 10,
+              vy: -30, r: 2 + Math.random() * 2, life: 0.8, max: 0.8 });
+            if (pr.on) {
+              if (Math.random() < dt * 40) dparts.push({ x: pr.x + (Math.random() - 0.5) * 6, y: pr.y - 4, vx: (Math.random() - 0.5) * 20,
+                vy: -140 - Math.random() * 80, g: 0, c: Math.random() < 0.5 ? '#ffb050' : '#ff7a2a', s: 1.6, life: 0.4, max: 0.4, glow: 1 });
+              if (me && pr.cd <= 0 && p.x + PW > pr.x - 6 && p.x < pr.x + 6 && p.y < pr.y && p.y + PH > pr.y - VENT_H) { hurt(PROP_DMG.vent); pr.cd = 0.4; }
+              if ((pr.ecd = (pr.ecd || 0) - dt) <= 0) {
+                pr.ecd = 0.4;
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                  const e = enemies[j];
+                  if (Math.abs(e.x - pr.x) < e.r + 6 && e.ty < pr.y && e.ty > pr.y - VENT_H) damageEnemy(j, 1);
+                }
+              }
+            }
+            break;
+          }
+          case 'pad':                               // a bouncy mushroom throws you up
+            if (pr.sq > 0) pr.sq -= dt;
+            if (me && p.vy >= 0 && Math.abs(pcx - pr.x) < 11 && p.y + PH > pr.y - 12 && p.y + PH < pr.y + 2) {
+              p.vy = -680; p.onGround = false; pr.sq = 0.3;
+              burst(pr.x, pr.y - 8, 5, propCol(pr, themeFor(floor)));
+            }
+            break;
+          case 'zone': {
+            const on = me && p.onGround && p.x + PW > pr.x + pr.l && p.x < pr.x + pr.r && Math.abs(p.y + PH - pr.y) < 5;
+            const st = pr.st, moving = Math.abs(p.vx) > 30;
+            if (st === 'slime') for (const e of enemies)
+              if (e.x > pr.x + pr.l && e.x < pr.x + pr.r && e.ty > pr.y - 30 && e.ty < pr.y) e.chill = 0.45;
+            if (!on) { pr.stand = 0; break; }
+            if (st === 'ice') z.slick = 1;
+            else if (st === 'snow') z.slow = Math.min(z.slow, 0.55);
+            else if (st === 'slime') z.slow = Math.min(z.slow, 0.45);
+            else if (st === 'puddle') {
+              z.slow = Math.min(z.slow, 0.7);
+              if (moving && Math.random() < dt * 20) dparts.push({ x: pcx, y: pr.y - 2, vx: (Math.random() - 0.5) * 60,
+                vy: -60 - Math.random() * 60, g: 0.9, c: 'rgba(150,200,255,0.8)', s: 1.3, life: 0.6, max: 0.6 });
+            } else if (st === 'acid') { if (pr.cd <= 0) { hurt(3); pr.cd = 0.5; } }
+            else if (st === 'glass') {
+              if (Math.abs(p.vx) > 80 && pr.cd <= 0) { hurt(2); pr.cd = 0.35; burst(pcx, pr.y - 1, 3, '#d8f4ff'); }
+            } else if (st === 'log') {
+              pr.stand = (pr.stand || 0) + dt;
+              if (pr.stand > 0.8 && pr.cd <= 0) { hurt(3); pr.cd = 0.5; }
+            } else if (st === 'ash' && moving && Math.random() < dt * 30) {
+              smoke.push({ x: pcx + (Math.random() - 0.5) * 8, y: pr.y - 2, vx: -p.vx * 0.2 + (Math.random() - 0.5) * 20,
+                vy: -15 - Math.random() * 20, r: 1.5 + Math.random() * 2, life: 0.9, max: 0.9 });
+            }
+            break;
+          }
+          case 'noise':                              // skulls crunch underfoot
+            if (pr.st === 'skulls' && me && pr.cd <= 0 && pOver(pr, 0)) {
+              alertAt(pr.x, pr.y); pr.cd = 3; burst(pr.x, pr.y - 4, 6, '#e6dcc4');
+            }
+            break;
+          case 'matter': {                           // gravity turns over near it
+            const by = pr.y + Math.sin(time * 1.3 + pr.seed * 9) * 3, dd = Math.hypot(pcx - pr.x, pcy - by);
+            if (me && dd < 48) z.rev = Math.max(z.rev, 1 - dd / 48);
+            if (me && dd < 12 && pr.cd <= 0) { hurt(PROP_DMG.matter); pr.cd = 0.5; }
+            break;
+          }
+          case 'tendril': {                          // lashes out on a beat
+            pr.t += dt;
+            const ph = (pr.t % 2.4) / 2.4;
+            pr.ext = ph > 0.55 && ph < 0.85 ? Math.sin((ph - 0.55) / 0.3 * Math.PI) * 46 : 0;
+            pr.aimA = pr.ang + Math.sin(pr.t * 0.7) * 0.3;
+            if (me && pr.ext > 18 && pr.cd <= 0) {
+              const tx = pr.x + Math.cos(pr.aimA) * pr.ext, ty = pr.y - 2 + Math.sin(pr.aimA) * pr.ext;
+              const vx = tx - pr.x, vy = ty - pr.y + 2, t = clamp(((pcx - pr.x) * vx + (pcy - pr.y + 2) * vy) / (vx * vx + vy * vy), 0, 1);
+              if (Math.hypot(pr.x + vx * t - pcx, pr.y - 2 + vy * t - pcy) < 10) {
+                hurt(PROP_DMG.tendril); pr.cd = 0.8; p.vx += Math.cos(pr.aimA) * 220; p.kick = 0.15;
+              }
+            }
+            break;
+          }
+        }
+      }
+      // spore clouds from burst pods
+      for (let i = clouds.length - 1; i >= 0; i--) {
+        const cl = clouds[i];
+        cl.life -= dt; cl.tick -= dt;
+        if (cl.tick <= 0) {
+          cl.tick = 0.4;
+          if (!p.dead && Math.hypot(pcx - cl.x, pcy - cl.y) < cl.r) hurt(PROP_DMG.cloud);
+          for (let j = enemies.length - 1; j >= 0; j--)
+            if (Math.hypot(enemies[j].x - cl.x, enemies[j].ty - cl.y) < cl.r + enemies[j].r) damageEnemy(j, 1);
+        }
+        if (cl.life <= 0) clouds.splice(i, 1);
+      }
+      for (let i = rings.length - 1; i >= 0; i--) if ((rings[i].t += dt) > 0.9) rings.splice(i, 1);
+      // drips, sparks, steam and splashes
+      dripHurt -= dt;
+      for (let i = dparts.length - 1; i >= 0; i--) {
+        const q = dparts[i];
+        q.life -= dt;
+        q.vy += GRAVITY * q.g * dt;
+        if (q.wob != null) q.vx = Math.sin(time * 2 + q.wob) * 6;
+        if (q.grow) q.s += dt * 3;
+        q.x += q.vx * dt; q.y += q.vy * dt;
+        let dead = q.life <= 0;
+        if (!dead && solidAt(q.x, q.y)) {
+          dead = true;
+          if (q.splash) for (let k = 0; k < 2; k++) dparts.push({ x: q.x, y: q.y - 2, vx: (Math.random() - 0.5) * 50,
+            vy: -30 - Math.random() * 40, g: 0.8, c: q.c, s: 1, life: 0.35, max: 0.35, glow: q.glow });
+        }
+        if (!dead && q.dmg && !p.dead && q.x > p.x && q.x < p.x + PW && q.y > p.y && q.y < p.y + PH) {
+          if (dripHurt <= 0) { hurt(q.dmg); dripHurt = 0.4; }
+          dead = true;
+        }
+        if (dead) dparts.splice(i, 1);
+      }
+      if (dparts.length > 700) dparts.splice(0, dparts.length - 700);
+      stepAmbience(dt);
+      zfx = z;
+    }
+
+    // ---- the theme's ambience, pooled round the camera rather than tied to a spot ----
+    const AMB_RATE = { spores: 5, frost: 3, embers: 8, motes: 4, ashfall: 55 };
+    const AMB_MAX = { spores: 40, frost: 20, embers: 60, motes: 50, ashfall: 280 };
+    function stepAmbience(dt) {
+      const x0 = camX - 30, y0 = camY - 30, w = viewW + 60, h = viewH + 60;
+      const T = themeFor(floor);
+      for (const kind of ambKinds) {
+        if (kind === 'devils') {
+          if (devils.length < 2 && Math.random() < dt * 0.4) {
+            let x = x0 + Math.random() * w, y = y0 + Math.random() * h, k = 0;
+            while (k++ < 120 && !solidAt(x, y + 1)) y += 2;
+            if (k < 120 && !solidAt(x, y - 30)) devils.push({ x, y, vx: (Math.random() < 0.5 ? -1 : 1) * (15 + Math.random() * 20), life: 6 + Math.random() * 3, max: 9 });
+          }
+          continue;
+        }
+        const n = amb.reduce((a, q) => a + (q.kind === kind), 0);
+        let want = AMB_RATE[kind] * dt;
+        while (want > 0 && n < AMB_MAX[kind]) {
+          if (Math.random() >= want) break;
+          want -= 1;
+          const x = x0 + Math.random() * w, y = y0 + Math.random() * h;
+          if (solidAt(x, y)) continue;
+          const r = Math.random();
+          if (kind === 'spores') amb.push({ kind, x, y, vx: (r - 0.5) * 8, vy: 0, wob: r * 9, life: 5 + r * 3, max: 8, c: rgbA(T.moss[1]), s: 1.3, glow: 1 });
+          else if (kind === 'frost') {
+            const dir = floor % 2 ? 1 : -1;
+            amb.push({ kind, x, y, vx: dir * (100 + r * 60), vy: (r - 0.5) * 10, life: 0.9 + r * 0.5, max: 1.4, c: 'rgba(215,238,255,0.5)', s: 1, streak: 10 });
+          } else if (kind === 'embers') amb.push({ kind, x, y, vx: 0, vy: -20 - r * 30, wob: r * 9, life: 3 + r * 2, max: 5, c: r < 0.5 ? '#ffb050' : '#ff7a2a', s: 1.2, glow: 1 });
+          else if (kind === 'motes') amb.push({ kind, x, y, vx: (r - 0.5) * 6, vy: (Math.random() - 0.5) * 4, wob: r * 9, life: 6 + r * 3, max: 9, c: 'rgba(235,225,200,0.8)', s: 1 });
+          else if (kind === 'ashfall') amb.push({ kind, x, y, vx: 8, vy: 20 + r * 22, wob: r * 9, life: 4 + r * 3, max: 7, c: 'rgba(150,146,142,0.75)', s: 1 + r });
+        }
+      }
+      for (let i = amb.length - 1; i >= 0; i--) {
+        const q = amb[i];
+        q.life -= dt;
+        if (q.wob != null) q.x += Math.sin(time * 1.3 + q.wob) * 6 * dt;
+        q.x += q.vx * dt; q.y += q.vy * dt;
+        if (q.life <= 0 || solidAt(q.x, q.y) || q.x < x0 - 200 || q.x > x0 + w + 200 || q.y < y0 - 200 || q.y > y0 + h + 200) amb.splice(i, 1);
+      }
+      for (let i = devils.length - 1; i >= 0; i--) {
+        const dv = devils[i];
+        dv.life -= dt;
+        const nx = dv.x + dv.vx * dt;
+        if (solidAt(nx + Math.sign(dv.vx) * 6, dv.y - 4)) dv.vx = -dv.vx; else dv.x = nx;
+        if (!solidAt(dv.x, dv.y + 2)) dv.y += 40 * dt;
+        else if (solidAt(dv.x, dv.y)) dv.y -= 2;
+        if (dv.life <= 0) devils.splice(i, 1);
       }
     }
 
@@ -3282,11 +4330,14 @@ function Game({ input }) {
       const wantJet = mag > 0 && L.dy < 0;
       if (p.empty && p.fuel >= FUEL_RESTART) p.empty = false;
       const jet = wantJet && !p.empty;
+      // holding a vine (or chain, root, frozen fall): no jet means you hang on and get your
+      // breath back; the stick climbs you up and down
+      const climbing = zfx.climb && !jet && !p.dead;
       p.jet = jet ? mag : 0;
       if (jet) {
         p.fuel -= FUEL_DRAIN * (0.5 + 0.5 * mag) * dt;
         if (p.fuel <= 0) { p.fuel = 0; p.empty = true; }
-      } else if (p.onGround) {
+      } else if (p.onGround || climbing) {
         p.fuel = Math.min(1, p.fuel + FUEL_REGEN * dt);
       }
 
@@ -3299,10 +4350,13 @@ function Game({ input }) {
         // rising beats a fall instantly; only an explosion still throws you around
         if (ty < p.vy && p.kick <= 0) p.vy = ty;
         else p.vy = approach(p.vy, ty, JET_ACC * dt * k);
+        if (zfx.rev) p.vy -= GRAVITY * zfx.rev * dt;          // dark matter lifts you
       } else {
-        const target = mag > 0 ? L.nx * mag * WALK * pb.walk * DEV.move : 0;
-        p.vx = approach(p.vx, target, (p.onGround ? GROUND_ACC : AIR_ACC) * dt * k);
-        p.vy = Math.min(p.vy + GRAVITY * dt, 900);
+        // decoration underfoot: snow, slime and puddles slow you, ice takes your grip away
+        const target = mag > 0 ? L.nx * mag * WALK * pb.walk * DEV.move * zfx.slow : 0;
+        p.vx = approach(p.vx, target, (p.onGround ? GROUND_ACC * (zfx.slick ? 0.08 : 1) : AIR_ACC) * dt * k);
+        if (climbing && p.kick <= 0) p.vy = approach(p.vy, mag > 0 ? L.ny * mag * CLIMB : 0, 1800 * dt);
+        else p.vy = Math.min(p.vy + GRAVITY * dt * (1 - 2 * zfx.rev), 900);   // dark matter flips it
       }
 
       // ---- move against the pixel terrain ----
@@ -3742,6 +4796,8 @@ function Game({ input }) {
 
       for (let i = toasts.length - 1; i >= 0; i--) if ((toasts[i].t -= dt) <= 0) toasts.splice(i, 1);
 
+      decorStep(dt, pcx, pcy);
+
       // ---- enemies ----
       // What an enemy does is what it is. Shooters hold a hover and fire on sight,
       // turrets never move and wind up a long shot, chasers come at you and hurt on
@@ -4074,7 +5130,52 @@ function Game({ input }) {
 
       const tx0 = clamp(Math.floor(camX / CELL), 0, CW - 1), ty0 = clamp(Math.floor(camY / CELL), 0, CH - 1);
       const tx1 = clamp(Math.ceil((camX + vw) / CELL) + 1, 1, CW), ty1 = clamp(Math.ceil((camY + vh) / CELL) + 1, 1, CH);
+      viewW = vw; viewH = vh;
+      // the decoration layer (pass 2): behind the rock, in front of the back wall
+      ctx.drawImage(decoC, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
       ctx.drawImage(terrain, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
+
+      // the props (pass 3), their drips and the theme's ambience
+      const TH = themeFor(floor);
+      const onView = (x, y, m) => x > camX - m && x < camX + vw + m && y > camY - m && y < camY + vh + m;
+      for (const pr of props)
+        if (pr.x + pr.r > camX - 70 && pr.x + pr.l < camX + vw + 70 && pr.y + pr.b > camY - 90 && pr.y + pr.t0 < camY + vh + 90)
+          drawProp(ctx, pr, time, TH);
+      for (const q of dparts) {
+        if (q.glow) continue;
+        ctx.globalAlpha = Math.min(1, q.life / q.max * 3);
+        ctx.fillStyle = q.c; ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
+      }
+      ctx.lineWidth = 0.8;
+      for (const q of amb) {
+        if (q.glow) continue;
+        ctx.globalAlpha = Math.min(1, q.life);
+        if (q.streak) {
+          ctx.strokeStyle = q.c; ctx.beginPath();
+          ctx.moveTo(q.x - Math.sign(q.vx) * q.streak, q.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+        } else { ctx.fillStyle = q.c; ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s); }
+      }
+      ctx.fillStyle = rgbA(mix(TH.rock[1], [255, 255, 255], 0.2));
+      for (const dv of devils) {                          // a dust devil: a funnel of grit
+        ctx.globalAlpha = 0.7 * Math.min(1, dv.life / 1.5, (dv.max - dv.life) / 1);
+        for (let k = 0; k < 24; k++) {
+          const hh = k / 24 * 30, r = 1.5 + hh * 0.35, a = time * 10 + k * 1.1;
+          ctx.fillRect(dv.x + Math.cos(a) * r + Math.sin(time * 3 + k) - 0.6, dv.y - hh - 0.6, 1.2, 1.2);
+        }
+      }
+      for (const cl of clouds) {                          // a burst pod's spore cloud
+        const a = Math.min(1, cl.life / 1.5) * 0.28;
+        for (let k = 0; k < 5; k++) {
+          const ang = k * 1.26 + time * 0.6, rr = cl.r * 0.45;
+          ctx.globalAlpha = a; ctx.fillStyle = '#a8d85a';
+          ctx.beginPath(); ctx.arc(cl.x + Math.cos(ang) * rr, cl.y + Math.sin(ang) * rr * 0.7, cl.r * 0.6, 0, 6.29); ctx.fill();
+        }
+      }
+      for (const rg of rings) {                           // a noise going out
+        ctx.globalAlpha = 1 - rg.t / 0.9; ctx.strokeStyle = '#f0e6ff'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(rg.x, rg.y, 8 + rg.t * 140, 0, 6.29); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
 
       // exit portal: a glowing pool with a slow swirl of dashes round its rim
       const pulse = 0.55 + 0.25 * Math.sin(time * 3);
@@ -4583,6 +5684,21 @@ function Game({ input }) {
         glowAt(ctx, sc.x, sc.y - 6, 34, 0.16 * sg, '255,140,50');
         glowAt(ctx, sc.x, sc.y - 7, 9, 0.45 * sg, '255,190,90');
       }
+      // lit props and glowing motes, only where the fog has lifted — except the eyes, which
+      // watch from the dark
+      const seenAt = (x, y) => seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)];
+      for (const pr of props) {
+        if (!(pr.k === 'lamp' || pr.k === 'vent' || pr.k === 'shard' || pr.k === 'eyes' || pr.k === 'matter' ||
+          (pr.k === 'drip' && pr.st === 'lava')) || !onView(pr.x, pr.y, 60)) continue;
+        if (pr.k !== 'eyes' && !seenAt(pr.x, pr.y)) continue;
+        propGlow(ctx, pr, time, TH, Math.hypot(pr.x - pcx, pr.y - pcy), torchR);
+      }
+      for (const list of [dparts, amb]) for (const q of list) {
+        if (!q.glow || !onView(q.x, q.y, 10) || !seenAt(q.x, q.y)) continue;
+        ctx.globalAlpha = Math.min(1, q.life / (q.max * 0.3));
+        ctx.fillStyle = q.c; ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
+      }
+      ctx.globalAlpha = 1;
       if (!p.dead) {
         const th = torchHand(), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
         glowAt(ctx, gfx, gfy, 70 * (0.9 + 0.1 * gl), 0.2 * gl, '255,150,60');            // the second light

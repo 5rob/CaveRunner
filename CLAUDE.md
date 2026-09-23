@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v57**. Branch: `main` (release channel is `main`).
+Current version: **v58**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -431,6 +431,32 @@ value doesn't also steer the runner.
 literal characters when editing with a script, or the edit silently finds nothing.
 
 **v56 visuals + Black Hole.** `motes` is one particle list with three kinds: `drift` (Black Hole trail), `in` (spawned round the exit `portal`, pulled to its centre with a sideways sine wobble, fade in from 0) and `out` (breathed out of `arrival`, wafting, fading to nothing by distance `fade`, then killed). Drawn additive. **Black Hole** (`b.pull`): reach is `DEV.bhPull * b.pull / 70` (v57), drag grows toward the centre and is capped so it never overshoots; it does not die on an enemy (`continue` in the hit block) and clears `b.hit` every 0.3s so it grinds; enemy shots within reach bend in and die at `size+6`. It draws its own look (haze + black starry core) and skips the streak. The hand torch flame is `drawFlame` — teardrops whose tip is `leanX/leanY`, a spring toward "opposite your velocity". Its halo and small second light, and the wall `sconces` (built in `enterLevel`: either side of both portals and each room prize), are drawn **after** the fog with `lighter`, so the map lighting is untouched; a sconce only shows once its cell is `seen`. Background parallax is `PARALLAX` (0.8) in `draw()`; the bg image gets big fbm shadow blotches in `makeLevel`. `tests/browser/blackhole.test.js` covers all of it. **v57:** the Black Hole digs only its drawn black core (`eat: 19`, and the draw uses `core = b.eat`, so they cannot drift apart). Two Dev knobs: `DEV.bhPull` (max pull range, default 154) and `DEV.bhSpeed` (travel speed, default 140 — applied as the multiplier `bhSp(sh)` at spawn *and* in the aim line, so speed mods still stack and the line stays honest). The Dev panel's **Copy all dev settings to clipboard** button (`.devcopy`) copies `devReport()` — the changed values with their DEV keys and old defaults. When the owner pastes that, set those numbers as the new `DEV_DEFAULTS`. If the clipboard is blocked (a WebView can refuse), it shows the text in a box to long-press and copy instead. `tests/logic/devsettings.test.js` covers it.
+
+**v58 level decoration: pass 2 (bakes) and pass 3 (props).** `DECOR` (one list of five per
+theme, indexed like `THEMES`) drives it; `decorate(mat, img, dimg, bgImg, floor, seed, keep)`
+is pure, sits above `makeLevel`, runs at the end of it on **its own RNG** (so seeds still make
+the same caves/enemies/loot), and returns `{ props, amb, baked }`. Three sorts of entry:
+`bake` paints pixels — onto rock in `img` (moss, cracks, fissures, pickaxe heads; dig erases
+them for free), into `dimg`, a full-size **non-colliding decoration layer** drawn between the
+background and the rock (rubble, beams, pillars, gears, ribs; `unDeco` in `dig`/`explode` wipes
+it), or darkening `bgImg` (soot). Only `algae` touches `mat`, and only ROCK→BRICK (still solid —
+the logic test checks the solid/open shape never changes). `amb` is a theme-wide particle kind
+spawned round the camera in `stepAmbience`. Everything else is a **prop**: a plain object
+`{ id, k (kind), st (style), x, y, l, t0, r, b (box about x,y), anc, hang, side, ... }`, **never
+in `mat`**, so enemies fly and you walk straight through props — they only act via box overlap.
+`cullDecor` drops overlapping props and keep-out spots at load. **Anchors:** `decorStep` checks a
+thirtieth of the props per frame with `propAnchored` (the anchor cell or either neighbour); a
+prop that's lost its rock gets `fall` and drops; `landProp` breaks it, blows it (carts, pods) or
+settles it (floor things). Player effects go through `zfx` (`slow`, `slick`, `climb`, `rev`),
+written by `decorStep` and read by the **next** frame's steering: climbing happens when on a
+climbable and **not** jetting (hang + fuel regen; stick climbs at `CLIMB`). Shootable props
+(`cover`, carts, pods, stones, salt spikes) catch bullets in `decorStep` by setting `b.life = 0`
+(so payloads still fire); pass-through shots (`pull`/`eat`/`bore`) count once via `b.propHit`.
+`drawProp` draws before the fog; `propGlow` (lamps, vents, shards, eyes, matter, lava) adds
+light after it, only on `seen` cells — except the eyes, which fade as you approach
+(`eyesAlpha`). Snow's "cushions falls" isn't built — the game has no fall damage.
+Tests: `tests/logic/decor.test.js`, `tests/browser/decor.test.js` (hooks: `__lvl.props`,
+`dparts`, `amb`, `clouds`, `rings`, `zfx`).
 
 ## Testing
 
