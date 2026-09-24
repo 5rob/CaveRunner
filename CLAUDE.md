@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v62**. Branch: `main` (release channel is `main`).
+Current version: **v63**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -482,6 +482,24 @@ and the carrier flies on; 'expire' fires on any death; beams release at their en
 they go off (`fieldPayload`). **Greek letters are `off: 1`** — `ALL_IDS`/`SHOT_IDS` skip them;
 their planCast code and `spells.test.js` checks are kept for bringing them back. Summon
 Platform/Wall were deleted (v60).
+
+**Autosave (v63).** `SAVE_KEY` (`caverunner-save`) in localStorage. `readSave`/`cleanLoadout`/
+`cleanGun` are pure, above `makeLevel`, and forgive old saves: unknown mod/perk ids are dropped,
+missing gun fields filled from `GUN_DEFAULTS`, `sel` moved to a real gun. `App` loads it once
+(`useState(loadSave)`) into the loadout and hands `input.current.saved` to `Game`, which calls
+`enterLevel(back)`. The save stores the cave's `seed` and the perks owned on entry (`owned` —
+`makeLevel` reads it, so the same seed needs the same list), plus alive enemy `sid`s (tagged
+by index in `enterLevel`), sold stock and taken rooms by index, and the ground pickups whole
+(guns get swapped on the ground). **The cave only comes back when `ver === VERSION`**; after an
+update gear + floor + hp survive on a fresh cave, since the generator may have changed. You
+always respawn at the floor start (dug terrain isn't saved). `saveRun()` runs every 2s, on
+floor change, `visibilitychange`→hidden and `pagehide`; death and Restart call `clearSave()`.
+In the Android app the page origin is fixed (`appassets.androidplatform.net`) and DOM storage
+is on, so localStorage survives game updates and in-place APK reinstalls — **don't change
+`LOCAL_URL`'s host or the save is orphaned**. If you add a loadout field, add it to
+`cleanLoadout` or it is dropped on load. Tests: `tests/logic/save.test.js`,
+`tests/browser/save.test.js` (note: `pagehide` re-saves on reload, so the browser suite forges
+an old save via `addInitScript`).
 
 ## Testing
 

@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v62.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v63.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -41,6 +41,8 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v63 — autosave.** The run saves to localStorage every 2s and on backgrounding; reopening resumes on the same floor (same cave on the same version, fresh cave after an update, gear kept either way). Death/Restart wipe it. See the Autosave note in CLAUDE.md.
 
 - **v62 — Lightning Bolt looks like lightning.** Jagged flickering bolt, and it forks side arcs at nearby creatures (small damage) and rock as it flies.
 

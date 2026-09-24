@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v62</title>
+<title>CaveRunner v63</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -420,7 +420,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v62';
+const VERSION = 'v63';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -3105,6 +3105,72 @@ function propGlow(ctx, pr, time, T, pdist, torchR) {
 const eyesAlpha = d => Math.max(0, Math.min(1, (d - 60) / 120));
 const VENT_H = 64;                     // how tall a scorched vent's fire pillar stands
 
+// ---- autosave ----
+// The run is kept in localStorage under SAVE_KEY and read back on the next launch. In the
+// Android app the page is always served from the same address, so the save survives a game
+// update too. A save from an older version may name mods or perks that no longer exist, or
+// miss gun fields added since: cleanLoadout / cleanGun drop the unknowns and fill the gaps,
+// so an old save always loads. The exact cave is only restored when the version matches —
+// after an update the generator may have changed, so you get a fresh cave on the same floor.
+const SAVE_KEY = 'caverunner-save';
+const GUN_DEFAULTS = { name: 'Gun', castDelay: 0.2, recharge: 0.5, manaMax: 100, manaRegen: 30,
+  spread: 0, multi: 1, shuffle: false, speedMul: 1, hue: 0 };
+function cleanGun(g) {
+  if (!g || typeof g !== 'object' || !Array.isArray(g.slots) || !g.slots.length) return null;
+  const out = Object.assign({}, GUN_DEFAULTS, g);
+  out.slots = g.slots.map(id => (id && MODS[id] ? id : null));
+  out.cap = out.slots.length;
+  out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
+  return resetGun(out);
+}
+function cleanLoadout(lo) {
+  lo = lo && typeof lo === 'object' ? lo : {};
+  const guns = [0, 1, 2, 3].map(i => cleanGun((lo.guns || [])[i]));
+  if (!guns.some(Boolean)) return null;               // nothing to fight with: not a usable save
+  const num = (v, d) => (Number.isFinite(v) ? v : d);
+  let sel = num(lo.sel, 0);
+  if (!guns[sel]) sel = guns.findIndex(Boolean);
+  return {
+    guns, sel,
+    bag: (Array.isArray(lo.bag) ? lo.bag : []).filter(id => MODS[id]),
+    perks: (Array.isArray(lo.perks) ? lo.perks : []).filter(id => PERKS[id]),
+    gold: Math.max(0, num(lo.gold, START_GOLD)),
+    maxBonus: Math.max(0, num(lo.maxBonus, 0)),
+    usedLives: Math.max(0, num(lo.usedLives, 0)),
+    debug: !!lo.debug,
+  };
+}
+// Turn the stored text back into a run, or null if there isn't a usable one.
+function readSave(raw) {
+  let s;
+  try { s = JSON.parse(raw); } catch (_) { return null; }
+  if (!s || typeof s !== 'object') return null;
+  const loadout = cleanLoadout(s.loadout);
+  if (!loadout) return null;
+  const floor = Math.max(1, Math.floor(Number(s.floor) || 1));
+  const out = { loadout, floor, hp: Number.isFinite(s.hp) && s.hp > 0 ? s.hp : null, level: null };
+  // the cave itself only comes back on the same version, where the seed makes the same cave
+  const L = s.level;
+  if (s.ver === VERSION && L && Number.isFinite(L.seed)) {
+    out.level = {
+      seed: L.seed,
+      owned: (Array.isArray(L.owned) ? L.owned : []).filter(id => PERKS[id]),
+      alive: Array.isArray(L.alive) ? L.alive : null,
+      sold: Array.isArray(L.sold) ? L.sold : [],
+      rooms: Array.isArray(L.rooms) ? L.rooms : [],
+      pickups: Array.isArray(L.pickups) ? L.pickups.map(q => {
+        if (!q || typeof q !== 'object') return null;
+        if (q.kind === 'mod') return MODS[q.id] ? q : null;
+        if (q.kind === 'gun') { const gun = cleanGun(q.gun); return gun ? Object.assign({}, q, { gun }) : null; }
+        return null;
+      }).filter(Boolean) : null,
+    };
+  }
+  return out;
+}
+const loadSave = () => { try { return readSave(localStorage.getItem(SAVE_KEY)); } catch (_) { return null; } };
+const clearSave = () => { try { localStorage.removeItem(SAVE_KEY); } catch (_) {} };
+
 function makeLevel(seed, floor, owned) {
   floor = floor || 1;
   const have = new Set(owned || []);     // perks you are already carrying, so a room is
@@ -3628,6 +3694,7 @@ function Game({ input }) {
     let miniEdgeIdx = [];
 
     let mat, img, start, portal, enemies, pickups, stock, arrival, total, floor = 1;
+    let levelSeed = 0, levelOwned = [];              // what made this cave, for the autosave
     let rooms = [];                                  // the perk room and the heart room
     let sconces = [];                                // wall torches: by the portals and the prizes
     let roster = [], themeName = '';                 // this floor's creatures, and its palette
@@ -3685,10 +3752,20 @@ function Game({ input }) {
     let best = 0, raf, last = performance.now();
 
     // a floor is a fresh cave with its own shop at the bottom; you keep everything else
-    function enterLevel() {
+    // `back` is a saved cave to rebuild (same seed, same perks owned on the way in), with
+    // what was already taken, sold and killed stripped back out of it
+    function enterLevel(back) {
       refreshBag();
-      const level = makeLevel(1 + Math.floor(Math.random() * 2147483000), floor,
-        input.current.loadout.perks);
+      levelSeed = back ? back.seed : 1 + Math.floor(Math.random() * 2147483000);
+      levelOwned = back ? back.owned : (input.current.loadout.perks || []).slice();
+      const level = makeLevel(levelSeed, floor, levelOwned);
+      level.enemies.forEach((e, i) => { e.sid = i; });
+      if (back) {
+        if (back.alive) { const live = new Set(back.alive); level.enemies = level.enemies.filter(e => live.has(e.sid)); }
+        back.sold.forEach(i => { if (level.stock[i]) level.stock[i].sold = true; });
+        back.rooms.forEach(i => { if (level.rooms && level.rooms[i]) level.rooms[i].taken = true; });
+        if (back.pickups) level.pickups = back.pickups;
+      }
       mat = level.mat; img = level.img;
       // minimap outlines for this floor: scan the real terrain in MINI_D x MINI_D blocks;
       // a block is an outline if a wall runs through it (it holds both rock and open), which
@@ -3739,6 +3816,21 @@ function Game({ input }) {
       paintFog();                             // otherwise every floor starts dark again
     }
 
+    // ---- autosave: the run as it stands, written every couple of seconds and whenever the
+    // app is put away, so closing it mid-floor loses almost nothing. A dead run is wiped. ----
+    function saveRun() {
+      if (p.dead) return;
+      const pk = pickups.filter(q => !q.taken && (q.kind === 'mod' || q.kind === 'gun'))
+        .map(q => (q.kind === 'mod' ? { kind: 'mod', id: q.id, x: q.x, y: q.y, t: q.t }
+          : { kind: 'gun', gun: q.gun, x: q.x, y: q.y, t: q.t }));
+      const data = { ver: VERSION, floor, hp: p.hp, loadout: input.current.loadout,
+        level: { seed: levelSeed, owned: levelOwned, alive: enemies.map(e => e.sid),
+          sold: stock.map((it, i) => (it.sold ? i : -1)).filter(i => i >= 0),
+          rooms: rooms.map((r, i) => (r.taken ? i : -1)).filter(i => i >= 0),
+          pickups: pk } };
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (_) {}
+    }
+
     // Wall torches and lanterns follow the same rule as the loot: they show once the fog
     // over them has lifted (`fogLit`), and never clear it themselves — v59 let them clear
     // a circle round themselves, which lit up every prize room on the map from the start.
@@ -3760,7 +3852,21 @@ function Game({ input }) {
         d[k + 3] = seen[i] === 2 ? 0 : seen[i] ? dim : dark;
       }
     }
-    enterLevel();
+    {
+      // picking up where the last session left off, if App found a save
+      const sv = input.current.saved;
+      input.current.saved = null;
+      if (sv) {
+        floor = sv.floor;
+        enterLevel(sv.level);
+        if (sv.hp) p.hp = Math.min(sv.hp, maxHp());
+      } else enterLevel();
+    }
+    const saveTick = setInterval(saveRun, 2000);
+    const saveHidden = () => { if (document.visibilityState === 'hidden') saveRun(); };
+    document.addEventListener('visibilitychange', saveHidden);
+    window.addEventListener('pagehide', saveRun);
+    input.current.saveRun = saveRun;
 
     const resize = () => {
       const r = c.parentElement.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
@@ -3844,6 +3950,7 @@ function Game({ input }) {
           return;
         }
         p.dead = true; burst(p.x + PW / 2, p.y + PH / 2, 24, COL.player);
+        clearSave();                          // a death is final: reopening starts a new run
       }
     }
     // one pull of an enemy's trigger: aimed at the player, and a shotgun type throws
@@ -4660,6 +4767,7 @@ function Game({ input }) {
           pcy > portal.y && pcy < portal.y + portal.h) {
         floor++;
         enterLevel();
+        saveRun();
         toast('Floor ' + floor);
         input.current.notify();
         return;
@@ -6146,6 +6254,9 @@ function Game({ input }) {
     raf = requestAnimationFrame(loop);
     return () => {
       cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('resize', resize);
+      clearInterval(saveTick);
+      document.removeEventListener('visibilitychange', saveHidden);
+      window.removeEventListener('pagehide', saveRun);
       c.removeEventListener('pointermove', mMove);
       c.removeEventListener('pointerdown', mDown);
       c.removeEventListener('pointerup', mUp);
@@ -6927,10 +7038,12 @@ function DevPanel({ input, refresh, close, onRestart }) {
 
 function App() {
   const blank = () => ({ active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false });
+  const [saved] = useState(loadSave);      // last session's run, if there is one
   const input = useRef({
     left: blank(), right: blank(),
-    loadout: { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false,
+    loadout: saved ? saved.loadout : { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false,
       perks: [], maxBonus: 0, usedLives: 0 },
+    saved,                      // handed to Game once, to rebuild the floor
     paused: false, notify: () => {}, inShop: true, prompt: null, interact: false, sig: '',
     found: null,                // a gun on the ground, waiting on the swap chooser
     confirmAct: null, confirmAim: null,   // legacy hooks still read (harmlessly) by Stick
@@ -6962,6 +7075,8 @@ function App() {
     if (L.guns[i]) { L.sel = i; refresh(); }
   };
   const restart = () => {
+    clearSave();
+    input.current.saved = null;
     input.current.loadout = { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false,
       perks: [], maxBonus: 0, usedLives: 0 };
     input.current.sig = '';

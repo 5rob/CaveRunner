@@ -24,6 +24,12 @@ bubble reaches, so a dark corner is a real risk.
 
 Open `index.html` in a browser. It is a single file with no build step; React loads from a CDN.
 
+**Your run saves itself.** Every couple of seconds, and whenever you put the app away, the
+run is saved: floor, guns, bag, perks, gold and health, and the cave itself — what you have
+killed, bought and picked up stays gone. Close the app and reopen it to carry on where you
+were (at the floor's entrance). Updates keep the save: you come back on the same floor with
+all your gear, in a freshly generated cave. Dying or Restart wipes it.
+
 ## Controls
 
 | Action | Touch | Keyboard / mouse |
