@@ -54,6 +54,21 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('every voice plays without an error', r.errors.length === 0, r.errors);
   check('and they actually went out', r.played > r.spells + r.voices * 6, r);
 
+  // every small sound in the fx table, with each surface and material it takes
+  const fxr = await page.evaluate(async () => {
+    const wait = ms => new Promise(res => setTimeout(res, ms));
+    const surfaces = ['rock', 'snow', 'ice', 'slime', 'puddle', 'ash', 'glass', 'log', 'acid'];
+    const mats = ['ice', 'glass', 'crystal', 'salt', 'bone', 'stone'];
+    const p0 = SFX.stats.played; let calls = 0;
+    for (const n of SFX.FX_NAMES) {
+      const args = n === 'step' ? surfaces : n === 'land' ? surfaces.map(s => ({ v: 600, s })) : n === 'shatter' ? mats : [undefined];
+      for (const a of args) { SFX.fx(n, null, null, a); calls++; await wait(n === 'healtick' ? 380 : n === 'whirl' ? 420 : 220); }
+    }
+    return { calls, played: SFX.stats.played - p0, names: SFX.FX_NAMES.length, errors: SFX.stats.errors };
+  });
+  check('every fx sound plays without an error', fxr.errors.length === 0, fxr.errors);
+  check('and every one of them went out', fxr.played >= fxr.calls, fxr);
+
   // far away is not heard at all
   const far = await page.evaluate(() => { const p0 = SFX.stats.played, P = window.__lvl.p;
     SFX.hit(P.x + 5000, P.y); return SFX.stats.played - p0; });
@@ -118,14 +133,39 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('hanging still in them is quiet', vines && vines.still <= 1, vines);
   check('moving through a clump rustles, but not per vine per frame', vines && vines.climbed >= 1 && vines.climbed <= 14, vines);
 
+  // walking makes footsteps, and a drop makes a landing
+  const feet = await page.evaluate(async () => {
+    const L = window.__lvl, room = L.sandbox(), wait = ms => new Promise(res => setTimeout(res, ms));
+    const seen = {}; const orig = SFX.fx;
+    SFX.fx = function (n) { seen[n] = (seen[n] || 0) + 1; return orig.apply(null, arguments); };
+    L.p.x = room.l + 20; L.p.vx = L.p.vy = 0;
+    await wait(300);
+    window.__in.current.left = { active: true, nx: 1, ny: 0, mag: 1, dy: 0, on: true };
+    await wait(1500);
+    window.__in.current.left = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
+    await wait(300);
+    const steps = seen.step || 0;
+    L.p.y = room.y - 160; L.p.vy = 0;
+    await wait(900);
+    SFX.fx = orig;
+    return { steps, land: seen.land || 0 };
+  });
+  check('walking makes footsteps, a few a second', feet.steps >= 4 && feet.steps <= 9, feet);
+  check('dropping onto the floor makes a landing', feet.land >= 1, feet);
+  check('the exit portal hums (a loop is running for it)', await page.evaluate(() => SFX.loops) >= 2);
+
   // a new floor switches the ambience
   const next = await page.evaluate(async () => {
-    const L = window.__lvl, P = L.portal;
+    const L = window.__lvl, P = L.portal, seen = {}, orig = SFX.fx;
+    SFX.fx = function (n) { seen[n] = 1; return orig.apply(null, arguments); };
     L.p.x = P.x + P.w / 2 - 4; L.p.y = P.y + P.h / 2 - 8;
     await new Promise(res => setTimeout(res, 300));
-    return { floor: L.floor, amb: SFX.ambience, theme: L.theme };
+    await new Promise(res => setTimeout(res, 200));
+    SFX.fx = orig;
+    return { floor: L.floor, amb: SFX.ambience, theme: L.theme, portalIn: !!seen.portalIn, portalOut: !!seen.portalOut };
   });
   check('floor 2 has its own ambience', next.floor === 2 && next.amb === next.theme, next);
+  check('stepping into the portal and out the other side both sound', next.portalIn && next.portalOut, next);
   // exploding props: hop floors until there is a minecart, then a spore pod, and set each off
   const hop = () => page.evaluate(async () => { const L = window.__lvl, P = L.portal;
     L.p.x = P.x + P.w / 2 - 4; L.p.y = P.y + P.h / 2 - 8; await new Promise(r => setTimeout(r, 300)); });

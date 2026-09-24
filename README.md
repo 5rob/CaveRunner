@@ -34,7 +34,14 @@ the moss, embers in the halls, chimes in the crystal, whispers in the void). Sou
 where they happen: left, right, near or far. Grabbing a vine or pushing through hanging plants
 rustles (softer for mycelium, woodier for roots, wetter for kelp), minecarts go up with a bang
 and clattering debris, and spore pods burst with a wet pop — and none of these, or the
-explosions, sound exactly the same twice. Volume knobs are in the ⚙️ panel under Sound.
+explosions, sound exactly the same twice. The exit portal hums as you get near, draws you in
+with a rush of air, and you come out the other side on a sparkle. Footsteps and landings sound
+like what you're standing on (crunching snow, squeaking ice, squelching slime, splashing
+puddles). Things break in their own material (icicles tinkle, geodes chime, statues crumble,
+bones clatter); vents hiss before they roar, mushrooms boing, tendrils whip, resonance stones
+gong, dark matter warbles, and the eyes in the dark whisper. Your gun clicks when it's
+recharged, critical hits ring, enemy shots fizzle on rock, and the bag, shop cards and gun
+swaps all have small UI sounds. Volume knobs are in the ⚙️ panel under Sound.
 
 **Your run saves itself.** Every couple of seconds, and whenever you put the app away, the
 run is saved: floor, guns, bag, perks, gold and health, and the cave itself — what you have

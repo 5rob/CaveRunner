@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v65**. Branch: `main` (release channel is `main`).
+Current version: **v66**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -510,6 +510,21 @@ clump can't machine-gun. `decorStep` collects `plantsNow` (climb props whose `st
 of its leaf crackles and swish each call (`RUSTLE` ranges per plant style). `blowProp`: minecart
 → `explode` (boom) + `SFX.debris`, pod → `SFX.pop`. `boom` now rolls pitch/length/tail too.
 Rule the owner set: repeated sounds should be **randomised per play**, not one fixed recipe.
+**v66 fills in the rest: `SFX.fx(name, x, y, a)`** — one table (`FX`) of small, per-play
+randomised recipes with per-name minimum gaps (`FX_GAP`); `SFX.FX_NAMES` lists them and the
+browser suite plays every one. Portals: `portalIn` when you enter the exit, `portalOut` ~0.26s
+later at `arrival` (from `enterLevel`, so a new run gets it too), and a positional `'portal'`
+loop humming at the exit. `'matter'` loop at the nearest dark matter (`matterProps`).
+Footsteps: `stepT` in step() after `p.onGround` (cadence `|vx|/40` per s), `land` when
+`fallV > 200`; both take `zfx.surface` (set by the standing zone's `st`; `surfaceHit` voices
+rock/snow/ice/slime/puddle/ash/glass/log/acid). Props: `shatter` by `MATERIAL[pr.st]`,
+`coverHit`, `iceCreak` (icicle shake), `propLand`, `skulls`, `resonate` (stones), `ventWarn`/
+`ventFire` (on state change), `shroom`, `lash` (tendril out), `eyes` (once per prop), `sparks`,
+`steam`, drip particles carry `snd` (`drip`/`sizzle`/`splash`) played on landing. Combat/other:
+`crit` (in `critRoll`), `chainhop`, `split`, `cluster`, util acts (`refresh`, `drain`, `gspend`,
+`saws`, `warp`), `fizzle`/`absorb` for enemy shots, `healtick`, `shieldUp`, `ghost`,
+`coinland`, `ready` (held gun finishes a recharge ≥0.45s, `g.rechLen`), `switch`, `ignite`,
+`whirl` (dust devils), UI `open`/`close` (Editor, GunSwap), `place`, `prompt` (card comes up).
 **To add a spell:** give it a `SPELL_VOICE` entry (the logic test fails otherwise). New creature:
 it falls back to its body's voice. New theme: add an `AMBIENCE` entry (tested). Tests:
 `tests/logic/sound.test.js`, `tests/browser/sound.test.js` (plays every voice, BH loop lifecycle).

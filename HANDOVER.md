@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v65.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v66.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -42,6 +42,7 @@ it's stale.
 
 ## What shipped recently (most recent first)
 
+- **v66 — sound pass 2: everything else.** Portal in/out + exit hum, footsteps/landings by surface, prop breaks by material, vents, mushrooms, tendrils, stones, eyes, dark matter, drips/lava/steam/sparks, crits, chain hops, splits, util spells, enemy shot fizzle/absorb, recharge-ready click, gun switch, UI open/close/place/prompt. All via `SFX.fx`, randomised per play.
 - **v65 — foliage rustle + prop explosion sounds.** Vines/mycelium/roots/kelp rustle on grab and when moving through (rate-limited by `rustleStep`), minecarts bang + debris clatter, pods pop; rustles, pops, debris and all explosions randomise per play.
 - **v64 — procedural sound.** Web Audio, no files. Themed spell voices bent by the shot's final stats, creature voices by body (alert/idle/fire/charge/hurt/die/bite/fuse), per-theme ambience beds + one-shots, jetpack and Black Hole loops, UI/pickup sounds, positional pan/falloff. Volume knobs in Dev panel → Sound. Owner is judging by ear next — expect tuning requests (levels, individual voices). See the Sound note in CLAUDE.md.
 - **v63 — autosave.** The run saves to localStorage every 2s and on backgrounding; reopening resumes on the same floor (same cave on the same version, fresh cave after an update, gear kept either way). Death/Restart wipe it. See the Autosave note in CLAUDE.md.
