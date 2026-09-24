@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v58.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v59.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -41,6 +41,8 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v59 — denser decoration, vine groves, torches through fog.** 3x decoration density, vines in clumps plus 14 overgrown groves per green floor, torch flame leans ~2.5x more, owner dev settings made defaults (zoom 1.35, aggro 0.8, BH pull 50, BH speed 65), Dev panel split into collapsible groups, wall torches and lanterns clear the fog round themselves.
 
 - **v58 — level decoration.** Every theme gets five decorations (60 total, `DECOR`): baked pixels (moss, rubble, beams, pillars, gears, ribs, cracks, fissures, soot) and working props (vines/chains/roots to hang on, icicles and geodes that drop, explosive minecarts, spikes, fire vents, bouncy mushrooms, spore pods, slow/slick/hurting floor zones, noise-making skulls and stones, cover that blocks shots, dark matter, tendrils, lanterns, eyes). Props drop when their rock is blasted away. Theme ambience (spores, frost, embers, dust devils, motes, ash fall). See the v58 note in CLAUDE.md.
 

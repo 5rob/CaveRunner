@@ -10,7 +10,7 @@ const js = src.slice(open, src.indexOf('</script>', open));
 const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
 const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
 const G = new Function('React', shim + upto +
-  'return { makeLevel, decorate, decorFor, cullDecor, propAnchored, DECOR, CW, CH, BW, BH, CELL, SHOP_Y, ImageData };')(
+  'return { PLANTS, makeLevel, decorate, decorFor, cullDecor, propAnchored, DECOR, CW, CH, BW, BH, CELL, SHOP_Y, ImageData };')(
   { createElement: () => {} });
 const { makeLevel, decorate, decorFor, cullDecor, propAnchored, DECOR, CW, CH, BW, BH, SHOP_Y, ImageData } = G;
 
@@ -20,7 +20,7 @@ const check = (n, ok, x) => { if (ok) pass++; else { fail++; console.log('FAIL '
 check('twelve themes, five decorations each', DECOR.length === 12 && DECOR.every(t => t.length === 5), DECOR.map(t => t.length));
 check('floor 13 dresses like floor 1', decorFor(13) === decorFor(1));
 
-const overlap = (a, b) => a.x + a.l < b.x + b.r && a.x + a.r > b.x + b.l && a.y + a.t0 < b.y + b.b && a.y + a.b > b.y + b.t0;
+const overlap = (a, b) => !(a.k === 'climb' && b.k === 'climb') && a.x + a.l < b.x + b.r && a.x + a.r > b.x + b.l && a.y + a.t0 < b.y + b.b && a.y + a.b > b.y + b.t0;
 for (let floor = 1; floor <= 12; floor++) {
   for (const seed of [3, 71]) {
     const lv = makeLevel(seed, floor);
@@ -48,6 +48,13 @@ for (let floor = 1; floor <= 12; floor++) {
     for (let i = 0; i < mat.length; i++) if ((mat[i] ? 1 : 0) !== before[i]) changed++;
     check(tag + ': decoration never makes or clears rock', changed === 0, changed);
     for (const d of want) if (d.kind === 'bake') check(tag + ': ' + d.name + ' baked', r.baked[d.id] > 0, r.baked);
+    if (want.some(d => d.kind === 'climb' && G.PLANTS[d.style])) {
+      check(tag + ': it grows groves', r.baked.groves >= 8, r.baked.groves);
+      // no lonely vines: nearly every plant has another within a few steps
+      const pl = lv.props.filter(p => p.k === 'climb' && G.PLANTS[p.st]);
+      const alone = pl.filter(p => !pl.some(q => q !== p && Math.abs(q.x - p.x) < 24 && Math.abs(q.y - p.y) < 30)).length;
+      check(tag + ': vines come in bunches', alone / pl.length < 0.15, [alone, pl.length]);
+    }
   }
 }
 

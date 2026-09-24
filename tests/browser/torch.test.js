@@ -42,6 +42,9 @@ const STEPS = [270, 220, 170, 120, 70];   // the distance the far point is read 
   //             screen can never pass as "very dark"
   //   __anchor  the player's live centre
   //   __line    a point on the line the light is read along
+  // the distances below are laid out for a zoom of 1; the default zoom (v59: 1.35) would
+  // push the far points off the top of the screen
+  await page.evaluate(() => { DEV.zoom = 1; });
   await page.evaluate(({ OFF }) => {
     window.__anchor = () => {
       const { p } = window.__lvl;
@@ -62,11 +65,12 @@ const STEPS = [270, 220, 170, 120, 70];   // the distance the far point is read 
     // the flame happened to be doing, which is a couple of units either way at mid-range
     window.__steady = (wx, wy, half) => new Promise(done => {
       const out = [];
-      const tick = () => {
+      let frames = 0;                   // gives up after 60 frames: an off-screen point is a
+      const tick = () => {              // null (a failed check), never a hang
         const s = window.__sample(wx, wy, half);
         if (s) out.push(s.mean);
-        if (out.length < 14) requestAnimationFrame(tick);
-        else done(out.length ? out.reduce((a, b) => a + b, 0) / out.length : null);
+        if (out.length < 14 && ++frames < 60) requestAnimationFrame(tick);
+        else done(out.length >= 14 ? out.reduce((a, b) => a + b, 0) / out.length : null);
       };
       requestAnimationFrame(tick);
     });

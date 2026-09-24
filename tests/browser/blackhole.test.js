@@ -29,6 +29,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   // fire a Black Hole, then park it in the open and feed it an enemy and an enemy shot
   const r = await page.evaluate(async () => {
     const LO = window.__in.current.loadout, L = window.__lvl;
+    DEV.bhPull = 154;                     // a pull reach the 70-unit setup below sits inside
     const g = LO.guns[0];
     g.slots = ['void']; g.manaMax = 9999; g.mana = 9999; resetGun(g);
     LO.sel = 0;
@@ -75,6 +76,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await c.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.tap('.devbtn');
   await page.waitForTimeout(250);
+  check('knobs start folded away in their groups', (await page.$$('.devrow')).length === 0);
+  await page.tap('.devghead[data-g=bh]');
+  await page.waitForTimeout(150);
   const labels = await page.$$eval('.devrow label', ls => ls.map(l => l.textContent));
   check('Dev panel has the Black Hole pull range knob', labels.includes('Black Hole max pull range'), labels);
   check('and the travel speed knob', labels.includes('Black Hole travel speed'));

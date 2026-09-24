@@ -25,10 +25,10 @@ const OUT = path.join(__dirname, '..', 'build');
   });
   // how much of the cave proper (above the shop roof) is lit
   const caveLit = () => page.evaluate(() => {
-    const { seen, FW, FOG, SHOP_TOP, SHOP_ROOF } = window.__lvl.fog;
+    const { seen, torchCells, FW, FOG, SHOP_TOP, SHOP_ROOF } = window.__lvl.fog;
     const roof = Math.floor((SHOP_TOP - SHOP_ROOF) / FOG);
-    let n = 0;
-    for (let y = 0; y < roof; y++) for (let x = 0; x < FW; x++) if (seen[y * FW + x]) n++;
+    let n = 0;      // cells a torch cleared on its own (v59) don't count as lit by you
+    for (let y = 0; y < roof; y++) for (let x = 0; x < FW; x++) if (seen[y * FW + x] && !torchCells[y * FW + x]) n++;
     return { n, total: roof * FW };
   });
 

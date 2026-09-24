@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v58</title>
+<title>CaveRunner v59</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -379,7 +379,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .devhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .devhead h2{margin:0;font-size:17px}
 .devbtns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-.devvars{display:flex;flex-direction:column;gap:10px}
+.devvars{display:flex;flex-direction:column;gap:10px;padding:4px 0 12px}
+.devgroup{border-top:1px solid var(--ring)}
+.devghead{display:flex;align-items:center;gap:8px;width:100%;height:40px;padding:0;border:0;background:none;
+  color:var(--text);font:700 13px system-ui,sans-serif;text-align:left}
+.devcaret{width:12px;color:var(--muted)}
 .devrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .devrow label{font-size:13px;color:var(--text);flex:1 1 auto}
 .devrow input{width:92px;flex:0 0 auto;box-sizing:border-box;height:36px;border-radius:8px;
@@ -414,7 +418,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v58';
+const VERSION = 'v59';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -446,19 +450,22 @@ const START_GOLD = 40;
 // Each has a default; clearing a field in the dev panel puts the default back. Every
 // localStorage touch is wrapped: it throws in a private window and does not exist at all
 // under Node (the logic tests eval this file), and a missing store just means "defaults".
-const DEV_DEFAULTS = { zoom: 1, torch: 1, fogDark: 0.99, fogDim: 0.85, move: 1, aggro: 1, loseAggro: 2, aimDist: 44, bhPull: 154, bhSpeed: 140 };
+const DEV_DEFAULTS = { zoom: 1.35, torch: 1, fogDark: 0.99, fogDim: 0.85, move: 1, aggro: 0.8, loseAggro: 2, aimDist: 44, bhPull: 50, bhSpeed: 65 };
+// g: the collapsible group the knob sits in on the Dev panel (DEV_GROUPS gives the order)
 const DEV_META = [
-  { k: 'zoom',      label: 'Camera zoom',                 min: 0.3, max: 3,  step: 0.05 },
-  { k: 'torch',     label: 'Torch fall-off distance',     min: 0.2, max: 5,  step: 0.05 },
-  { k: 'fogDark',   label: 'Fog of war darkness',         min: 0,   max: 1,  step: 0.01 },
-  { k: 'fogDim',    label: 'Outside-torchlight darkness', min: 0,   max: 1,  step: 0.01 },
-  { k: 'move',      label: 'Base movement speed',         min: 0.2, max: 5,  step: 0.05 },
-  { k: 'aggro',     label: 'Enemy aggro distance',        min: 0.2, max: 5,  step: 0.05 },
-  { k: 'loseAggro', label: 'Lose aggro distance (×aggro)', min: 1,  max: 10, step: 0.1 },
-  { k: 'aimDist',   label: 'Crosshair distance',          min: 10,  max: 200, step: 2 },
-  { k: 'bhPull',    label: 'Black Hole max pull range',   min: 0,   max: 600, step: 5 },
-  { k: 'bhSpeed',   label: 'Black Hole travel speed',     min: 0,   max: 1000, step: 5 },
+  { k: 'zoom',      g: 'view',  label: 'Camera zoom',                 min: 0.3, max: 3,  step: 0.05 },
+  { k: 'aimDist',   g: 'view',  label: 'Crosshair distance',          min: 10,  max: 200, step: 2 },
+  { k: 'torch',     g: 'light', label: 'Torch fall-off distance',     min: 0.2, max: 5,  step: 0.05 },
+  { k: 'fogDark',   g: 'light', label: 'Fog of war darkness',         min: 0,   max: 1,  step: 0.01 },
+  { k: 'fogDim',    g: 'light', label: 'Outside-torchlight darkness', min: 0,   max: 1,  step: 0.01 },
+  { k: 'move',      g: 'player', label: 'Base movement speed',        min: 0.2, max: 5,  step: 0.05 },
+  { k: 'aggro',     g: 'enemy', label: 'Enemy aggro distance',        min: 0.2, max: 5,  step: 0.05 },
+  { k: 'loseAggro', g: 'enemy', label: 'Lose aggro distance (×aggro)', min: 1,  max: 10, step: 0.1 },
+  { k: 'bhPull',    g: 'bh',    label: 'Black Hole max pull range',   min: 0,   max: 600, step: 5 },
+  { k: 'bhSpeed',   g: 'bh',    label: 'Black Hole travel speed',     min: 0,   max: 1000, step: 5 },
 ];
+const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['player', 'Player'],
+  ['enemy', 'Enemies'], ['bh', 'Black Hole tweaks']];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults.
 function devReport() {
@@ -1143,6 +1150,7 @@ const LAMP_REACH = 1.15;               // the lamp's pool is this many times the
                                        // its edge. The lamp is MASKED by the fog: it brightens
                                        // ground the line of sight has already uncovered and
                                        // leaves the rest dark — see the note on the lamp in draw()
+const TORCH_CLEAR = 30;                 // wall torches and lanterns clear the fog this far round them
 const FOG_DIM = 0.85;                  // how dark somewhere you have been but cannot see
 const FOG_DARK = 0.99;                 // how dark somewhere you have never been — near black,
                                        // because that darkness is the fog of war now
@@ -2327,6 +2335,10 @@ const DECOR = [
     { id: 'tendrils', name: 'Void Tendrils',       at: 'floor', kind: 'tendril', style: 'tendril', n: 18 },
     { id: 'fissures', name: 'Neon Fissures',       at: 'surf',  kind: 'bake',    style: 'fissure', n: 50 } ],
 ];
+// v59: three times as much of everything as v58 had, and vines come in clumps and groves
+const DECOR_DENSITY = 3;
+const GROVES = 14;                     // patches of thick growth per floor, on the green themes
+const PLANTS = { vine: 1, myc: 1, root: 1, kelp: 1 };   // the hanging plants (not chains, not ice)
 const decorFor = floor => DECOR[(Math.max(1, floor) - 1) % DECOR.length];
 // the hit box of each prop kind about its attach point (x, y), in world units: [l, t, r, b].
 // Ceiling props hang down from y, floor props stand up from it, wall props sit beside it.
@@ -2540,8 +2552,69 @@ function decorate(mat, img, dimg, bgImg, floor, seed, keep) {
     if (side === 'ceil' && kind === 'spike') b = [b[0], 0, b[2], -b[1]];   // hanging the other way
     return b;
   };
+  // the first ceiling (open cell, rock above, room below) in column cx within `span` rows of cy
+  const ceilNear = (cx, cy, span) => {
+    for (let k = 0; k <= span; k++) for (const y of k ? [cy - k, cy + k] : [cy]) {
+      if (y < Y0 || y >= Y1 || cx < 8 || cx >= CW - 8) continue;
+      if (openC(cx, y) && solidC(cx, y - 1) && openRun(cx, y, 1, 12)) return y;
+    }
+    return -1;
+  };
+  // one prop of kind `it` at cell (cx, cy), or null if the spot doesn't suit it
+  function makeProp(it, cx, cy, at, side) {
+    const x = at === 'wall' ? (side < 0 ? cx : cx + 1) * CELL : (cx + 0.5) * CELL;
+    const y = at === 'floor' || it.at === 'flat' || it.at === 'pit' ? (cy + 1) * CELL : at === 'ceil' ? cy * CELL : (cy + 0.5) * CELL;
+    const pr = { id: it.id, k: it.kind, st: it.style, x, y, t: R() * 10, seed: R() };
+    if (at === 'ceil') pr.anc = [cx, cy - 1];
+    else if (at === 'wall') { pr.anc = [cx + side, cy]; pr.side = side; }
+    else if (at === 'floor' || it.at === 'flat' || it.at === 'pit') pr.anc = [cx, cy + 1];
+    pr.hang = at === 'ceil' ? 1 : 0;
+    let box = boxOf(it.kind, it.style, at);
+    if (it.kind === 'climb') {
+      if (at === 'wall') {                   // a frozen fall runs down the wall face
+        let k = 0; while (k < 50 && solidC(cx + side, cy + k + 1) && openC(cx, cy + k + 1)) k++;
+        if (k < 10) return null;
+        pr.len = k * CELL;
+        box = side < 0 ? [0, -4, 7, pr.len] : [-7, -4, 0, pr.len];
+      } else {                               // plants hang anywhere from a short tuft to long
+        const room = downTo(cx, cy, 90);
+        if (room < 12) return null;
+        const most = Math.min(64, SHOP_TOP - 16 - cy);          // never down into the shop
+        if (most < 8) return null;
+        pr.len = Math.round(Math.max(8, Math.min(room * (0.25 + R() * 0.55), most)) * CELL);
+        box = [-5, 0, 5, pr.len];
+      }
+    } else if (it.kind === 'zone') {
+      const cap = it.at === 'pit' ? 10 : 16;
+      const lft = runOf(cx, cy, -1, cap), rgt = runOf(cx, cy, 1, cap);
+      if (lft + rgt < 6) return null;
+      box = [-lft * CELL, -5, (rgt + 1) * CELL, 1];
+      pr.x = cx * CELL; pr.anc = [cx, cy + 1];
+    } else if (it.kind === 'drip' && at === 'wall') {
+      box = side < 0 ? [0, -4, 8, 4] : [-8, -4, 0, 4];
+    } else if (it.kind === 'lamp' && at === 'wall') {
+      box = side < 0 ? [0, -7, 9, 7] : [-9, -7, 0, 7];
+    } else if (it.kind === 'noise' && at === 'wall') {
+      box = side < 0 ? [0, -10, 10, 10] : [-10, -10, 0, 10];
+    } else if (it.kind === 'shard' && at === 'wall') {
+      box = side < 0 ? [0, -4, 6, 4] : [-6, -4, 0, 4];
+    }
+    if (it.kind === 'cover') pr.hp = it.hp || 0;          // 0: it can't be broken
+    if (it.kind === 'tendril') pr.ang = -Math.PI / 2 + (R() - 0.5) * 1.2;
+    pr.l = box[0]; pr.t0 = box[1]; pr.r = box[2]; pr.b = box[3];
+    return pr;
+  }
+  const plant = it => it.kind === 'climb' && PLANTS[it.style];
+  // a few more of the same plant hanging right beside one, so a vine is never on its own
+  const clump = (it, cx, cy, n) => {
+    for (let k = 0; k < n; k++) {
+      const sx = cx + Math.round((R() - 0.5) * 18), sy = ceilNear(sx, cy, 6);
+      const pr = sy >= 0 && makeProp(it, sx, sy, 'ceil', 0);
+      if (pr) props.push(pr);
+    }
+  };
   function place(it) {
-    const want = it.n, got = [];
+    const want = it.n * DECOR_DENSITY, got = [];
     const pool = it.at === 'surf' ? null : it.at === 'flat' || it.at === 'pit' ? sites.floor : sites[it.at];
     for (let a = 0; a < want * 40 && got.length < want; a++) {
       let at = it.at, i, side = 0;
@@ -2560,59 +2633,80 @@ function decorate(mat, img, dimg, bgImg, floor, seed, keep) {
       if (it.at === 'flat' && !flatAt(cx, cy, it.w || 3)) continue;
       if (it.at === 'pit' && !pitAt(cx, cy)) continue;
       // keep the same kind spread out over the cave
-      const x = at === 'wall' ? (side < 0 ? cx : cx + 1) * CELL : (cx + 0.5) * CELL;
-      const y = at === 'floor' || it.at === 'flat' || it.at === 'pit' ? (cy + 1) * CELL : at === 'ceil' ? cy * CELL : (cy + 0.5) * CELL;
-      const gap = it.kind === 'bake' ? 24 : 70;
+      const x = (cx + 0.5) * CELL, y = cy * CELL;
+      const gap = it.kind === 'bake' ? 14 : 40;
       if (got.some(g => Math.abs(g.x - x) < gap && Math.abs(g.y - y) < gap)) continue;
       if (it.kind === 'bake') {
         if (bake[it.style](cx, cy, it.style === 'fissure' && at === 'wall' ? side : undefined) === false) continue;
         got.push({ x, y });
         continue;
       }
-      const pr = { id: it.id, k: it.kind, st: it.style, x, y, t: R() * 10, seed: R() };
-      if (at === 'ceil') pr.anc = [cx, cy - 1];
-      else if (at === 'wall') { pr.anc = [cx + side, cy]; pr.side = side; }
-      else if (at === 'floor' || it.at === 'flat' || it.at === 'pit') pr.anc = [cx, cy + 1];
-      pr.hang = at === 'ceil' ? 1 : 0;
-      let box = boxOf(it.kind, it.style, at);
-      if (it.kind === 'climb') {
-        if (at === 'wall') {                   // a frozen fall runs down the wall face
-          let k = 0; while (k < 50 && solidC(cx + side, cy + k + 1) && openC(cx, cy + k + 1)) k++;
-          if (k < 10) continue;
-          pr.len = k * CELL;
-          box = side < 0 ? [0, -4, 7, pr.len] : [-7, -4, 0, pr.len];
-        } else {
-          const room = downTo(cx, cy, 70);
-          if (room < 16) continue;
-          pr.len = Math.round(Math.min(room * 0.7, 55) * CELL);
-          box = [-5, 0, 5, pr.len];
-        }
-      } else if (it.kind === 'zone') {
-        const cap = it.at === 'pit' ? 10 : 16;
-        const lft = runOf(cx, cy, -1, cap), rgt = runOf(cx, cy, 1, cap);
-        if (lft + rgt < 6) continue;
-        box = [-lft * CELL, -5, (rgt + 1) * CELL, 1];
-        pr.x = cx * CELL; pr.anc = [cx, cy + 1];
-      } else if (it.kind === 'drip' && at === 'wall') {
-        box = side < 0 ? [0, -4, 8, 4] : [-8, -4, 0, 4];
-      } else if (it.kind === 'lamp' && at === 'wall') {
-        box = side < 0 ? [0, -7, 9, 7] : [-9, -7, 0, 7];
-      } else if (it.kind === 'noise' && at === 'wall') {
-        box = side < 0 ? [0, -10, 10, 10] : [-10, -10, 0, 10];
-      } else if (it.kind === 'shard' && at === 'wall') {
-        box = side < 0 ? [0, -4, 6, 4] : [-6, -4, 0, 4];
-      }
-      if (it.kind === 'cover') pr.hp = it.hp || 0;          // 0: it can't be broken
-      if (it.kind === 'tendril') pr.ang = -Math.PI / 2 + (R() - 0.5) * 1.2;
-      pr.l = box[0]; pr.t0 = box[1]; pr.r = box[2]; pr.b = box[3];
-      got.push(pr);
+      const pr = makeProp(it, cx, cy, at, side);
+      if (!pr) continue;
+      got.push({ x, y });
       props.push(pr);
+      if (plant(it)) clump(it, cx, cy, 1 + Math.floor(R() * 3));
     }
     baked[it.id] = it.kind === 'bake' ? got.length : 0;
   }
   for (const it of list) {
     if (it.kind === 'amb') { amb.push(it.style); baked[it.id] = 0; continue; }
     place(it);
+  }
+
+  // ---- groves: patches of thick growth, densest in the middle and thinning outwards ----
+  // Each is a ceiling spot with a radius. Hanging plants are dropped at a distance picked
+  // uniformly from 0..r, which crowds them toward the middle (the same count spread over a
+  // ring that grows with distance), and the overgrowth bake paints moss, grass, drapes and
+  // leaves with a chance that fades to nothing at the edge.
+  const green = list.find(plant);
+  baked.groves = 0;
+  if (green && sites.ceil.length) {
+    const groves = [];
+    for (let a = 0; a < 600 && groves.length < GROVES; a++) {
+      const i = sites.ceil[Math.floor(R() * sites.ceil.length)];
+      const cx = i % CW, cy = (i / CW) | 0;
+      if (groves.some(g => Math.hypot(g.cx - cx, g.cy - cy) < 100)) continue;
+      groves.push({ cx, cy, r: 32 + R() * 34 });
+    }
+    for (const g of groves) {
+      overgrow(g.cx, g.cy, g.r * 1.5);
+      const n = 14 + Math.floor(R() * 12);
+      for (let k = 0, got = 0; k < n * 4 && got < n; k++) {
+        const d = g.r * R(), a = R() * 6.283;
+        const sx = Math.round(g.cx + Math.cos(a) * d), sy = ceilNear(sx, Math.round(g.cy + Math.sin(a) * d * 0.6), 24);
+        const pr = sy >= 0 && makeProp(green, sx, sy, 'ceil', 0);
+        if (pr) { props.push(pr); got++; }
+      }
+    }
+    baked.groves = groves.length;
+  }
+  // thick growth round (gx, gy) out to radius rr, fading with distance
+  function overgrow(gx, gy, rr) {
+    const leaf = T.moss[1], dark = shade(T.moss[0], 0.8);
+    const bloom = [[236, 214, 120], [226, 140, 170], [240, 240, 230]];
+    for (let y = Math.max(Y0, Math.round(gy - rr)); y <= Math.min(Y1, Math.round(gy + rr)); y++)
+      for (let x = Math.max(4, Math.round(gx - rr)); x <= Math.min(CW - 5, Math.round(gx + rr)); x++) {
+        const f = 1 - Math.hypot(x - gx, (y - gy) * 1.3) / rr;
+        if (f <= 0 || !openC(x, y)) continue;
+        const p = Math.pow(f, 1.2);
+        if (solidC(x, y + 1)) {                    // floor: moss into the rock, grass on top
+          if (R() < p) { tset(x, y + 1, jit(pick(T.moss[0], T.moss[1]), 16)); if (R() < p) tset(x, y + 2, jit(dark, 12)); }
+          if (R() < p * 0.85) {
+            const tall = 1 + Math.floor(R() * (1 + 4 * f));
+            for (let k = 0; k < tall; k++) dset(x, y - k, jit(k === tall - 1 ? leaf : pick(T.moss[0], leaf), 18));
+            if (R() < 0.06 * f) dset(x, y - tall, bloom[Math.floor(R() * bloom.length)]);
+          }
+        } else if (solidC(x, y - 1)) {             // ceiling: moss drapes hanging down
+          if (R() < p) tset(x, y - 1, jit(pick(T.moss[0], T.moss[1]), 16));
+          if (R() < p * 0.75) {
+            const len = 1 + Math.floor(R() * (2 + 9 * f));
+            for (let k = 0; k < len; k++) dset(x, y + k, jit(k > len - 2 ? leaf : dark, 14));
+          }
+        } else if ((solidC(x - 1, y) || solidC(x + 1, y)) && R() < p * 0.5) {
+          dset(x, y, jit(pick(T.moss[0], leaf), 16));   // wall: creeping leaves
+        }
+      }
   }
   return { props: cullDecor(props, keep || []), amb, baked };
 }
@@ -2624,7 +2718,9 @@ function cullDecor(props, keep) {
   for (const pr of props) {
     const x0 = pr.x + pr.l - pad, x1 = pr.x + pr.r + pad, y0 = pr.y + pr.t0 - pad, y1 = pr.y + pr.b + pad;
     if (keep.some(k => k.x + k.r > x0 && k.x - k.r < x1 && k.y + k.r > y0 && k.y - k.r < y1)) continue;
-    if (out.some(o => o.x + o.l < x1 && o.x + o.r > x0 && o.y + o.t0 < y1 && o.y + o.b > y0)) continue;
+    // plants may hang through each other (that's what a clump is); nothing else may overlap
+    if (out.some(o => !(o.k === 'climb' && pr.k === 'climb') &&
+      o.x + o.l < x1 && o.x + o.r > x0 && o.y + o.t0 < y1 && o.y + o.b > y0)) continue;
     out.push(pr);
   }
   return out;
@@ -3567,10 +3663,31 @@ function Game({ input }) {
       camReady = false; best = 0;
       levelT = 0;                             // the floor's name card gets its three seconds
       seen = fogStart();
+      torchFog();                             // every torch shows from the start
       if (pb.seeAll) seen.fill(2);            // All-Seeing Eye lights the whole floor
       paintFog();                             // otherwise every floor starts dark again
     }
 
+    // A torch burns whether or not you have seen it: clear the fog in a little circle round
+    // every wall torch and lantern, so a lit room or a lantern reads from across the dark
+    // (the prize in a perk room already did, and its torches looked missing without this).
+    // torchCells marks the cells cleared this way, so the fog test can tell them apart.
+    let torchCells = new Uint8Array(FW * FH);
+    function torchFog() {
+      torchCells = new Uint8Array(FW * FH);
+      const spots = sconces.map(sc => [sc.x, sc.y - 6]).concat(props.filter(pr => pr.k === 'lamp' && pr.st === 'lantern')
+        .map(pr => [pr.x - pr.side * 5, pr.y]));
+      const R = TORCH_CLEAR, n = Math.ceil(R / FOG_U);
+      for (const [x, y] of spots) {
+        const fx = Math.floor(x / FOG_U), fy = Math.floor(y / FOG_U);
+        for (let dy = -n; dy <= n; dy++) for (let dx = -n; dx <= n; dx++) {
+          const cx = fx + dx, cy = fy + dy;
+          if (cx < 0 || cy < 0 || cx >= FW || cy >= FH) continue;
+          if (Math.hypot((cx + 0.5) * FOG_U - x, (cy + 0.5) * FOG_U - y) > R) continue;
+          seen[cy * FW + cx] = 2; torchCells[cy * FW + cx] = 1;
+        }
+      }
+    }
     // Repaint the whole overlay mask from the reveal grid. FW x FH is a few thousand
     // cells, and it only runs on the frames where you actually light something new.
     function paintFog() {
@@ -5016,7 +5133,7 @@ function Game({ input }) {
       }
       // the flame's lean: spring toward "opposite your velocity", so a sudden move flings
       // it back and it wobbles upright again when you stop
-      const wantX = clamp(-p.vx * 0.022, -5, 5), wantY = clamp(-p.vy * 0.016, -3, 4);
+      const wantX = clamp(-p.vx * 0.055, -11, 11), wantY = clamp(-p.vy * 0.03, -5, 7);
       leanVX += ((wantX - leanX) * 90 - leanVX * 9) * dt;
       leanVY += ((wantY - leanY) * 90 - leanVY * 9) * dt;
       leanX += leanVX * dt; leanY += leanVY * dt;
@@ -6584,6 +6701,14 @@ function DevPanel({ input, refresh, close, onRestart }) {
   const LO = input.current.loadout;
   const [, bump] = useState(0);
   const [copied, setCopied] = useState(null);     // null, or the text + whether it copied
+  // which groups are open: remembered on this device only, all shut the first time
+  const [openG, setOpenG] = useState(() => { try { return JSON.parse(localStorage.getItem('caverunner-devgroups')) || {}; } catch (_) { return {}; } });
+  const toggleG = g => {
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // commit a half-typed box
+    const o = Object.assign({}, openG, { [g]: !openG[g] });
+    setOpenG(o);
+    try { localStorage.setItem('caverunner-devgroups', JSON.stringify(o)); } catch (_) {}
+  };
   const copyAll = () => {
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // commit a half-typed box
     const text = devReport();
@@ -6612,8 +6737,15 @@ function DevPanel({ input, refresh, close, onRestart }) {
           'All mods'),
         h('button', { className: 'dbg restart',
           onPointerDown: e => { e.preventDefault(); onRestart(); } }, 'Restart run')),
-      h('div', { className: 'devvars' },
-        DEV_META.map(m => h(DevRow, { key: m.k, meta: m }))),
+      DEV_GROUPS.map(([g, name]) => {
+        const shut = !openG[g];
+        return h('div', { key: g, className: 'devgroup' },
+          h('button', { className: 'devghead' + (shut ? '' : ' open'), 'data-g': g,
+            onPointerDown: e => { e.preventDefault(); toggleG(g); } },
+            h('span', { className: 'devcaret' }, shut ? '▸' : '▾'), name),
+          shut ? null : h('div', { className: 'devvars' },
+            DEV_META.filter(m => m.g === g).map(m => h(DevRow, { key: m.k, meta: m }))));
+      }),
       h('p', { className: 'devnote' },
         'Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back.'),
       h('button', { className: 'dbg devcopy', onPointerDown: e => { e.preventDefault(); copyAll(); } },

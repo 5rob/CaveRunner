@@ -20,17 +20,22 @@ const list = dir => fs.readdirSync(path.join(__dirname, dir))
   .sort()
   .map(f => path.join(__dirname, dir, f));
 
+// seconds a suite may take before it is called stuck: logic suites run in ~1s, the
+// slowest browser suite (everymod) in well under a minute
+const LOGIC_CAP = 30, BROWSER_CAP = 120;
 let failed = [];
 const run = (file, kind) => {
   const name = path.basename(file, '.test.js');
   process.stdout.write(`${kind === 'logic' ? '  ' : '  '}${name.padEnd(24)}`);
   try {
-    const out = execFileSync('node', [file], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    // a hard cap per suite, so a test that is stuck fails in minutes instead of running forever
+    const out = execFileSync('node', [file], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: (kind === 'logic' ? LOGIC_CAP : BROWSER_CAP) * 1000, killSignal: 'SIGKILL' });
     const last = out.trim().split('\n').filter(Boolean).pop() || 'ok';
     console.log(last.slice(0, 96));
   } catch (e) {
     failed.push(name);
-    console.log('FAILED');
+    console.log(e.signal ? 'TIMED OUT after ' + (kind === 'logic' ? LOGIC_CAP : BROWSER_CAP) + 's' : 'FAILED');
     const out = ((e.stdout || '') + (e.stderr || '')).trim().split('\n');
     for (const line of out.filter(l => /FAIL|Error|error/.test(l)).slice(0, 6)) console.log('      ' + line);
     if (!out.some(l => /FAIL/.test(l))) for (const line of out.slice(-5)) console.log('      ' + line);

@@ -32,6 +32,13 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     return { x: pr.x, y: pr.y, id: pr.id };
   }, [id, dx || 0, dy || 0]);
 
+  // ---- v59: every wall torch has cleared the fog round itself before you get there ----
+  const tf = await page.evaluate(() => {
+    const L = window.__lvl, { seen, FW, FOG_U } = L.fog;
+    return L.sconces.map(s => seen[Math.floor((s.y - 6) / FOG_U) * FW + Math.floor(s.x / FOG_U)]);
+  });
+  check('every wall torch shows through the fog from the start', tf.length >= 6 && tf.every(v => v === 2), tf);
+
   // ---- every theme gets its props, and each one draws ----
   const per = {};
   for (let f = 1; f <= 12; f++) {

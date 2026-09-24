@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v58**. Branch: `main` (release channel is `main`).
+Current version: **v59**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -457,6 +457,16 @@ light after it, only on `seen` cells — except the eyes, which fade as you appr
 (`eyesAlpha`). Snow's "cushions falls" isn't built — the game has no fall damage.
 Tests: `tests/logic/decor.test.js`, `tests/browser/decor.test.js` (hooks: `__lvl.props`,
 `dparts`, `amb`, `clouds`, `rings`, `zfx`).
+**v59:** every entry's count is `n * DECOR_DENSITY` (3). Hanging plants (`PLANTS`: vine, myc, root, kelp)
+never come alone: each placement brings a `clump` of 1–3 more, and `GROVES` (14) patches per
+floor get 14–25 plants at a distance uniform in 0..r (so densest in the middle) plus the
+`overgrow` bake (moss into rock, grass, drapes, leaves, the odd flower) with a chance that fades
+to nothing at 1.5r. `cullDecor` lets plants overlap each other, nothing else. Plant length is
+capped so none hangs into the shop. **Torches clear fog:** `torchFog()` in `enterLevel` sets
+`seen = 2` within `TORCH_CLEAR` (30) of every sconce and lantern, marking them in `torchCells`
+(the fog test ignores those cells when checking a new floor starts dark). **Dev panel groups:**
+each `DEV_META` row has a `g`; `DEV_GROUPS` gives the collapsible sections (`.devghead[data-g]`),
+all shut by default, open state kept in localStorage `caverunner-devgroups`.
 
 ## Testing
 
@@ -509,6 +519,13 @@ it's the preinstalled one at `/opt/pw-browsers/` — don't run `playwright insta
 Two suites are worth knowing about: `everymod.test.js` equips and fires all 108 mods in
 the real game and checks each puts something into the world, and `smoke.test.js` plays a
 short run and asserts no page errors.
+
+**No test may wait forever.** `tests/run.js` kills any suite past a hard cap (`LOGIC_CAP` 30s,
+`BROWSER_CAP` 120s) and reports TIMED OUT. Inside a suite, every wait-until loop needs a frame or
+try limit and must fail rather than spin. (v59: `torch` hung 25 minutes because the new default
+zoom 1.35 pushed its sample points off screen and its sampler waited for an on-screen read
+forever; it now pins `DEV.zoom = 1`. Any suite that measures in world units on the canvas
+should do the same.)
 
 **Measure, don't assert.** This project has a habit of proving things rather than
 claiming them — flood-fill the cave to prove tunnels connect, count buried bullets before

@@ -165,11 +165,12 @@ the run keeps moving rather than settling into a pattern.
 
 Every cave has its own scenery. Some of it is just to look at; the rest does
 something. Anything hanging off rock falls when you blast that rock away, and
-it hurts if it lands on you.
+it hurts if it lands on you. Wall torches and lanterns glow through the dark
+even before you reach them.
 
 | Cave | Scenery |
 |---|---|
-| Mossy caves | **Vines** you can hang on (no jetting = you hold on and your fuel refills; push the stick to climb), dripping water, moss and rubble, glowing spores |
+| Mossy caves | Overgrown groves thick with **vines** you can hang on (no jetting = you hold on and your fuel refills; push the stick to climb), dripping water, moss and rubble, glowing spores |
 | Coal seams | **Minecarts that explode when shot**, rusty lanterns, soot falling, pit props, old pickaxes |
 | Frozen deep | **Icicles that drop when you walk under them**, **slippery ice**, **snow drifts that slow you**, frozen waterfalls to hang on, icy wind |
 | Ember halls | **Lava drips** and **fire vents** that burn, **obsidian spikes**, ash piles, drifting embers |
