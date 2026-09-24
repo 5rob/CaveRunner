@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v67.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v68.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -42,6 +42,8 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v68 — minecart blast ×2, red Enemy Radar, Dev → Spawn gun (pick a level, drops that level's kind of gun in front of you), Trajectory Sight line fades in with the right stick's push.**
 
 - **v67 — jetpack cough + live update check.** Near empty the jet cuts out in short random bursts (flame/smoke/roar off, grey puffs, a small drop — Dev "Jet sputter drop"); jet roar pitch climbs over 3s held. Dev → Sound now has a volume knob per kind of sound (jetpack, spells, explosions, hits, enemy fire, creatures, world, footsteps, UI). The Android shell now checks for updates on resume and every 2 min — **this needs the new APK installed once** (from the `app` release).
 

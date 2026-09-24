@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v67**. Branch: `main` (release channel is `main`).
+Current version: **v68**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -561,6 +561,15 @@ is on, so localStorage survives game updates and in-place APK reinstalls — **d
 `cleanLoadout` or it is dropped on load. Tests: `tests/logic/save.test.js`,
 `tests/browser/save.test.js` (note: `pagehide` re-saves on reload, so the browser suite forges
 an old save via `addInitScript`).
+
+**v68 dev + tweaks.** Minecart blast radius 60 (was 30). Enemy Radar marker is the perk's red
+tint (`PERKS.eradar.tint`), not `COL.enemy` purple. **Dev → Spawn gun** (`.dbg.spawngun`) closes
+the Dev panel and opens `SpawnGun` (`.spawnpanel`, pauses via `spawnOpen`): a level box
+(`.spawnlvl`, defaults to the current floor via `input.current.floor`) and a Spawn button
+(`.spawngo`) that sets `input.current.spawnGun = level`; `step()` then drops `caveGun(level, rnd)`
+(pure, above `makeLevel`: a random cave height's `gunTier`, same as a floor's loot) just in front of
+you. **Trajectory line fades with the push:** `R.vis = min(1, TR.mag / AIM_DEAD)` (mouse/keys = 1),
+multiplied into the line's alpha. Tests: `gunshop` (logic), `tests/browser/spawngun.test.js`.
 
 ## Testing
 

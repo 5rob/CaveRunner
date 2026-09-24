@@ -6,7 +6,7 @@ const js = src.slice(open, src.indexOf('</script>', open));
 const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
 const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
 const G = new Function('React', shim + upto +
-  'return { makeLevel, gunPrice, isGunShop, makeGun, gunTier, CH };')({ createElement: () => {} });
+  'return { makeLevel, gunPrice, isGunShop, makeGun, gunTier, caveGun, CH };')({ createElement: () => {} });
 
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
@@ -21,6 +21,16 @@ for (const fl of [1, 2, 3, 4, 5, 6]) {
     (wantGuns ? guns.length === 4 && mods.length === 0 : mods.length === 4 && guns.length === 0),
     L.stock.map(s => s.kind));
   if (wantGuns) console.log('     ', guns.map(s => `${s.gun.name} ${s.gun.cap}sl ${s.price}g`).join(' | '));
+}
+
+// Dev → Spawn gun: caveGun rolls a floor's cave gun, and deeper floors roll better ones
+{
+  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const avg = fl => { let t = 0; for (let i = 0; i < 60; i++) t += G.gunPrice(G.caveGun(fl, rnd)); return t / 60; };
+  const g = G.caveGun(1, rnd);
+  check('caveGun makes a gun', g && g.cap >= 1 && Array.isArray(g.slots), g && g.cap);
+  const a1 = avg(1), a8 = avg(8);
+  check('floor 8 spawn guns beat floor 1', a8 > a1 * 1.2, { a1: Math.round(a1), a8: Math.round(a8) });
 }
 
 // prices should track quality, not be random

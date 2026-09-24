@@ -165,7 +165,8 @@ you — it only raises the ceiling.
 A couple of perks reach into other systems: Extra Item in Holy Mountain makes the shop
 offer five things instead of four, and Tinker with Wands Everywhere lets you *edit* your
 setup anywhere, not just in the shop. Trajectory Sight is what draws the dotted aim line
-that shows where your next shot flies — without it, you aim by feel.
+that shows where your next shot flies — without it, you aim by feel. The line fades in as
+you push the right stick: invisible at the centre, full strength at the trigger ring.
 
 ## Floors
 
@@ -199,7 +200,7 @@ even before you reach them.
 | Cave | Scenery |
 |---|---|
 | Mossy caves | Overgrown groves thick with **vines** you can hang on (no jetting = you hold on and your fuel refills; push the stick to climb), dripping water, moss and rubble, glowing spores |
-| Coal seams | **Minecarts that explode when shot**, rusty lanterns, soot falling, pit props, old pickaxes |
+| Coal seams | **Minecarts that explode when shot** (a big blast), rusty lanterns, soot falling, pit props, old pickaxes |
 | Frozen deep | **Icicles that drop when you walk under them**, **slippery ice**, **snow drifts that slow you**, frozen waterfalls to hang on, icy wind |
 | Ember halls | **Lava drips** and **fire vents** that burn, **obsidian spikes**, ash piles, drifting embers |
 | Fungal grotto | **Bouncy mushrooms** that throw you up, **spore pods** that burst into a poison cloud when shot, **slime that slows you**, glowing caps, mycelium to hang on |
