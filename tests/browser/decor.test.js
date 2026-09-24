@@ -32,12 +32,15 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     return { x: pr.x, y: pr.y, id: pr.id };
   }, [id, dx || 0, dy || 0]);
 
-  // ---- v59: every wall torch has cleared the fog round itself before you get there ----
+  // ---- v61: wall torches don't clear the fog (v59 did, and it gave away the prize rooms).
+  // Out in the cave they stay dark until you see them, same as the loot; only the ones in
+  // the shop, which is lit from the start, show on arrival.
   const tf = await page.evaluate(() => {
-    const L = window.__lvl, { seen, FW, FOG_U } = L.fog;
-    return L.sconces.map(s => seen[Math.floor((s.y - 6) / FOG_U) * FW + Math.floor(s.x / FOG_U)]);
+    const L = window.__lvl, { seen, FW, FOG_U } = L.fog, a = L.arrival;
+    return L.sconces.filter(s => Math.hypot(s.x - a.x, s.y - a.y) > 60)
+      .map(s => seen[Math.floor((s.y - 6) / FOG_U) * FW + Math.floor(s.x / FOG_U)]);
   });
-  check('every wall torch shows through the fog from the start', tf.length >= 6 && tf.every(v => v === 2), tf);
+  check('wall torches out in the cave are hidden by the fog on arrival', tf.length >= 4 && tf.every(v => !v), tf);
 
   // ---- every theme gets its props, and each one draws ----
   const per = {};

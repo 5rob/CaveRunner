@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v60**. Branch: `main` (release channel is `main`).
+Current version: **v61**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -462,9 +462,11 @@ never come alone: each placement brings a `clump` of 1–3 more, and `GROVES` (1
 floor get 14–25 plants at a distance uniform in 0..r (so densest in the middle) plus the
 `overgrow` bake (moss into rock, grass, drapes, leaves, the odd flower) with a chance that fades
 to nothing at 1.5r. `cullDecor` lets plants overlap each other, nothing else. Plant length is
-capped so none hangs into the shop. **Torches clear fog:** `torchFog()` in `enterLevel` sets
-`seen = 2` within `TORCH_CLEAR` (30) of every sconce and lantern, marking them in `torchCells`
-(the fog test ignores those cells when checking a new floor starts dark). **Dev panel groups:**
+capped so none hangs into the shop. **Torches do NOT clear fog (v61, reverting v59's `torchFog`):** clearing
+fog round them gave away every prize room on arrival. Wall torches, lanterns and every glowing
+prop/particle drawn after the fog are gated by `fogLit(x, y)` — its fog cell or any 8-neighbour
+`seen`, the same one-cell soft edge the fog bake uses — so a torch shows exactly when loot at the
+same spot would. `fog`/`decor` browser suites check rooms and cave torches start hidden. **Dev panel groups:**
 each `DEV_META` row has a `g`; `DEV_GROUPS` gives the collapsible sections (`.devghead[data-g]`),
 all shut by default, open state kept in localStorage `caverunner-devgroups`.
 

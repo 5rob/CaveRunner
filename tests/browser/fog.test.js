@@ -25,10 +25,10 @@ const OUT = path.join(__dirname, '..', 'build');
   });
   // how much of the cave proper (above the shop roof) is lit
   const caveLit = () => page.evaluate(() => {
-    const { seen, torchCells, FW, FOG, SHOP_TOP, SHOP_ROOF } = window.__lvl.fog;
+    const { seen, FW, FOG, SHOP_TOP, SHOP_ROOF } = window.__lvl.fog;
     const roof = Math.floor((SHOP_TOP - SHOP_ROOF) / FOG);
-    let n = 0;      // cells a torch cleared on its own (v59) don't count as lit by you
-    for (let y = 0; y < roof; y++) for (let x = 0; x < FW; x++) if (seen[y * FW + x] && !torchCells[y * FW + x]) n++;
+    let n = 0;      // torches don't clear fog (v61), so every lit cell is one you saw
+    for (let y = 0; y < roof; y++) for (let x = 0; x < FW; x++) if (seen[y * FW + x]) n++;
     return { n, total: roof * FW };
   });
 
@@ -39,6 +39,18 @@ const OUT = path.join(__dirname, '..', 'build');
   check('the cave above the shop is dark on arrival', base / ca.total < 0.01,
     `${base}/${ca.total} cave cells lit, ${(base / ca.total * 100).toFixed(2)}%`);
   await page.screenshot({ path: path.join(OUT, 'fog_shop.png') });
+
+  // v61: the prize rooms and their wall torches stay hidden until you find them — torches
+  // no longer clear fog round themselves, so nothing about a room shows on arrival
+  const hidden = await page.evaluate(() => {
+    const L = window.__lvl, { seen, FW, FOG_U } = L.fog;
+    const at = (x, y) => seen[Math.floor(y / FOG_U) * FW + Math.floor(x / FOG_U)];
+    const roomTorches = L.sconces.filter(sc => L.rooms.some(r => Math.hypot(sc.x - r.x, sc.y - r.y) < 40));
+    return { rooms: L.rooms.length, roomsSeen: L.rooms.filter(r => at(r.x, r.y)).length,
+      torches: roomTorches.length, torchesSeen: roomTorches.filter(sc => at(sc.x, sc.y)).length };
+  });
+  check('the prize rooms are dark on arrival', hidden.rooms > 0 && hidden.roomsSeen === 0, hidden);
+  check('and so are their wall torches', hidden.torches > 0 && hidden.torchesSeen === 0, hidden);
 
   // Somewhere in the cave with room around it to stand, so the torch has something to
   // light. The spots this suite used to teleport to were fine when a reveal was an

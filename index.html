@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v60</title>
+<title>CaveRunner v61</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -420,7 +420,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v60';
+const VERSION = 'v61';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -1190,7 +1190,6 @@ const LAMP_REACH = 1.15;               // the lamp's pool is this many times the
                                        // its edge. The lamp is MASKED by the fog: it brightens
                                        // ground the line of sight has already uncovered and
                                        // leaves the rest dark — see the note on the lamp in draw()
-const TORCH_CLEAR = 30;                 // wall torches and lanterns clear the fog this far round them
 const FOG_DIM = 0.85;                  // how dark somewhere you have been but cannot see
 const FOG_DARK = 0.99;                 // how dark somewhere you have never been — near black,
                                        // because that darkness is the fog of war now
@@ -3734,31 +3733,22 @@ function Game({ input }) {
       camReady = false; best = 0;
       levelT = 0;                             // the floor's name card gets its three seconds
       seen = fogStart();
-      torchFog();                             // every torch shows from the start
       if (pb.seeAll) seen.fill(2);            // All-Seeing Eye lights the whole floor
       paintFog();                             // otherwise every floor starts dark again
     }
 
-    // A torch burns whether or not you have seen it: clear the fog in a little circle round
-    // every wall torch and lantern, so a lit room or a lantern reads from across the dark
-    // (the prize in a perk room already did, and its torches looked missing without this).
-    // torchCells marks the cells cleared this way, so the fog test can tell them apart.
-    let torchCells = new Uint8Array(FW * FH);
-    function torchFog() {
-      torchCells = new Uint8Array(FW * FH);
-      const spots = sconces.map(sc => [sc.x, sc.y - 6]).concat(props.filter(pr => pr.k === 'lamp' && pr.st === 'lantern')
-        .map(pr => [pr.x - pr.side * 5, pr.y]));
-      const R = TORCH_CLEAR, n = Math.ceil(R / FOG_U);
-      for (const [x, y] of spots) {
-        const fx = Math.floor(x / FOG_U), fy = Math.floor(y / FOG_U);
-        for (let dy = -n; dy <= n; dy++) for (let dx = -n; dx <= n; dx++) {
-          const cx = fx + dx, cy = fy + dy;
-          if (cx < 0 || cy < 0 || cx >= FW || cy >= FH) continue;
-          if (Math.hypot((cx + 0.5) * FOG_U - x, (cy + 0.5) * FOG_U - y) > R) continue;
-          seen[cy * FW + cx] = 2; torchCells[cy * FW + cx] = 1;
-        }
+    // Wall torches and lanterns follow the same rule as the loot: they show once the fog
+    // over them has lifted (`fogLit`), and never clear it themselves — v59 let them clear
+    // a circle round themselves, which lit up every prize room on the map from the start.
+    const fogLit = (x, y) => {
+      const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
+      // the fog bake's one-cell soft edge counts, so a torch shows exactly when an item there would
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = cx + dx, ny = cy + dy;
+        if (nx >= 0 && ny >= 0 && nx < FW && ny < FH && seen[ny * FW + nx]) return true;
       }
-    }
+      return false;
+    };
     // Repaint the whole overlay mask from the reveal grid. FW x FH is a few thousand
     // cells, and it only runs on the frames where you actually light something new.
     function paintFog() {
@@ -5885,7 +5875,7 @@ function Game({ input }) {
       ctx.globalCompositeOperation = 'lighter';
       const gl = clamp(0.82 + glowN + 0.08 * Math.sin(time * 23) + 0.06 * Math.sin(time * 37), 0.5, 1.1);
       const scOn = sc => !(sc.y > camY + vh + 30 || sc.y < camY - 30 || sc.x < camX - 30 || sc.x > camX + vw + 30) &&
-        seen[Math.floor(sc.y / FOG_U) * FW + Math.floor(sc.x / FOG_U)];
+        fogLit(sc.x, sc.y);
       for (const sc of sconces) {
         if (!scOn(sc)) continue;
         const sg = 0.85 + 0.15 * Math.sin(time * 11 + sc.ph) * Math.sin(time * 5.3 + sc.ph);
@@ -5894,15 +5884,14 @@ function Game({ input }) {
       }
       // lit props and glowing motes, only where the fog has lifted — except the eyes, which
       // watch from the dark
-      const seenAt = (x, y) => seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)];
       for (const pr of props) {
         if (!(pr.k === 'lamp' || pr.k === 'vent' || pr.k === 'shard' || pr.k === 'eyes' || pr.k === 'matter' ||
           (pr.k === 'drip' && pr.st === 'lava')) || !onView(pr.x, pr.y, 60)) continue;
-        if (pr.k !== 'eyes' && !seenAt(pr.x, pr.y)) continue;
+        if (pr.k !== 'eyes' && !fogLit(pr.x, pr.y)) continue;
         propGlow(ctx, pr, time, TH, Math.hypot(pr.x - pcx, pr.y - pcy), torchR);
       }
       for (const list of [dparts, amb]) for (const q of list) {
-        if (!q.glow || !onView(q.x, q.y, 10) || !seenAt(q.x, q.y)) continue;
+        if (!q.glow || !onView(q.x, q.y, 10) || !fogLit(q.x, q.y)) continue;
         ctx.globalAlpha = Math.min(1, q.life / (q.max * 0.3));
         ctx.fillStyle = q.c; ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
       }
