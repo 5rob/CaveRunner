@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v63**. Branch: `main` (release channel is `main`).
+Current version: **v64**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -482,6 +482,29 @@ and the carrier flies on; 'expire' fires on any death; beams release at their en
 they go off (`fieldPayload`). **Greek letters are `off: 1`** — `ALL_IDS`/`SHOT_IDS` skip them;
 their planCast code and `spells.test.js` checks are kept for bringing them back. Summon
 Platform/Wall were deleted (v60).
+
+**Sound (v64): all procedural, Web Audio, no files.** Pure part above `makeLevel`: `SPELL_VOICE`
+(spell id → theme voice; trigger variants use `MODS[id].base`), `shotSound(sh)` (recipe from a
+shot's *final* stats: pitch from speed/size, vol from dmg×count, dur from size, plus flags
+`wob` homing-ish, `grit` explode/bore/eat/cluster, `bright` pierce/crit, `boing` bounce, `n` pellet
+flam), `BODY_VOICE`/`CREATURE_TONE` + `creatureSound(k)`, `AMBIENCE` (per theme *name*: noise
+bed, drone Hz, one-shot `ev` rates) and `AMB_EVENTS`. Shots know their spell via `sid` in
+`blankShot`. The engine is the `SFX` IIFE: lazy `AudioContext` made in `SFX.unlock()` (App's
+`grab` on pointerdown + keydown), master compressor, two buses (sfx `DEV.vol`, ambience
+`DEV.vol*DEV.amb`, both Dev-panel rows in the **Sound** group). `out(x,y)` does distance
+attenuation, pan and far-muffle relative to `SFX.ear` (set each step), drops sounds past `HEAR`
+or over `MAX_VOICES` (your own cast and UI sounds are priority). Every public call is wrapped by
+`safe()`: an error is pushed to `SFX.stats.errors` and swallowed — sound must never break the
+game; the tests assert that list stays empty. Loops (`SFX.loop('jet'|'void')`) must be `set()`
+every frame or `SFX.tick()` (called every frame, even paused) fades them — that's how pause and
+dead Black Holes go quiet; Game keeps `jetLoop` and `bhLoops` (Map bullet→loop, max 3). Ambience
+is `setAmbience(themeName)` in `enterLevel`; `tick()` starts it once unlock finishes (resume is
+async). Hooks are one-liners at the events (`SFX.cast` in `cast()`/`releaseAt`, `SFX.boom` in
+`explode`, `hit`/`rock`/`bounce` in the bullet loop, `SFX.creature(k, 'alert'|'idle'|'fire'|
+'charge'|'hurt'|'die'|'bite'|'fuse')` in the enemy code, `SFX.ui(...)` for pickups/shop/hurt/portal).
+**To add a spell:** give it a `SPELL_VOICE` entry (the logic test fails otherwise). New creature:
+it falls back to its body's voice. New theme: add an `AMBIENCE` entry (tested). Tests:
+`tests/logic/sound.test.js`, `tests/browser/sound.test.js` (plays every voice, BH loop lifecycle).
 
 **Autosave (v63).** `SAVE_KEY` (`caverunner-save`) in localStorage. `readSave`/`cleanLoadout`/
 `cleanGun` are pure, above `makeLevel`, and forgive old saves: unknown mod/perk ids are dropped,

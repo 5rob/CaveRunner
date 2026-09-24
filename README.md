@@ -24,6 +24,15 @@ bubble reaches, so a dark corner is a real risk.
 
 Open `index.html` in a browser. It is a single file with no build step; React loads from a CDN.
 
+**Sound.** Everything you hear is generated as you play, no sound files. Every spell has its
+own sound, and the mods on it change it: faster shots are higher, heavy ones deeper and
+louder, homing ones warble, explosive ones crunch. The Black Hole drones and crackles for as
+long as it lives. Creatures chatter, click, growl, gurgle or rattle depending on what they
+are, and you can hear them in the dark before you see them; a sniper whines as it winds up,
+and a bomber ticks faster as it closes in. Each floor has its own background sound (drips in
+the moss, embers in the halls, chimes in the crystal, whispers in the void). Sounds come from
+where they happen: left, right, near or far. Volume knobs are in the ⚙️ panel under Sound.
+
 **Your run saves itself.** Every couple of seconds, and whenever you put the app away, the
 run is saved: floor, guns, bag, perks, gold and health, and the cave itself — what you have
 killed, bought and picked up stays gone. Close the app and reopen it to carry on where you
