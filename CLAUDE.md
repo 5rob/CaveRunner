@@ -542,6 +542,31 @@ zoom 1.35 pushed its sample points off screen and its sampler waited for an on-s
 forever; it now pins `DEV.zoom = 1`. Any suite that measures in world units on the canvas
 should do the same.)
 
+### Test mechanics in a sandbox (the owner's rule, v61)
+
+**A test of one simple mechanic — a prop, a spell, a creature, a pickup — runs in a sandbox,
+not in a generated cave.** The owner asked for this after the mushroom and minecart tests kept
+failing on cave layout (an overhang, a slope, rock in the way) rather than on the mechanic.
+Random terrain round the thing under test is noise; take it out.
+
+- `__lvl.sandbox()` (in `tests/build.js`) carves a clean room into the live level: open air, a
+  flat brick floor, no enemies, props, loot or shots, fog lifted, the player standing on the
+  floor. It returns `{ x, y, l, r }` — centre x, the floor's top y, the room's edges.
+- Put the test object at a known spot in it: `__lvl.placeProp(proto, x, room.y)` copies a real
+  prop (take `proto` off a real floor so its shape is honest) and anchors it to the floor. For
+  enemies, pickups or fields, push them into the live arrays at known coordinates the same way.
+- Set the player (and gun) up exactly — a known gun (`g.slots = ['bolt']`), a known position —
+  then act and measure the outcome. `decor.test.js`'s mushroom and minecart checks are the
+  pattern to copy.
+- If a sandbox needs something new (a wall, a ceiling, a pit), add an option to `sandbox()` in
+  `build.js` rather than digging terrain by hand in the test.
+- Still pin `DEV.zoom = 1` if the test reads the canvas, and still cap every wait.
+
+**Keep generated-level tests for what is about generation** — tunnels connecting, a floor's
+palette and roster, where decoration lands, fog on a fresh floor, the smoke run. Those are
+meant to see real levels. Everything else: sandbox. When an existing test is flaky because of
+the cave round it, move it onto the sandbox rather than loosening its numbers.
+
 **Measure, don't assert.** This project has a habit of proving things rather than
 claiming them — flood-fill the cave to prove tunnels connect, count buried bullets before
 and after a bounce fix, screenshot the build screen to check a card fits. It has caught

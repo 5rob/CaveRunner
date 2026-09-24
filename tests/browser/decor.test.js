@@ -89,16 +89,18 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   // ---- floor 14 (coal seams): shooting a minecart sets it off ----
   await hop();
   const cart = await page.evaluate(async () => {
-    const L = window.__lvl, pr = L.props.find(q => q.id === 'carts');
-    if (!pr) return null;
-    L.enemies.length = 0;
+    // in a sandbox: one cart on a flat floor, a plain bolt gun, a clear shot at it
+    const L = window.__lvl, proto = L.props.find(q => q.id === 'carts');
+    if (!proto) return null;
+    const room = L.sandbox();
+    const pr = L.placeProp(proto, room.x + 50, room.y);
     const LO = window.__in.current.loadout, g = LO.guns[0];
-    LO.sel = 0; g.manaMax = g.mana = 9999; resetGun(g);
-    L.p.x = pr.x - 44; L.p.y = pr.y - 22; L.p.vx = L.p.vy = 0; L.p.hp = 9999;
-    L.dig(pr.x - 30, pr.y - 12, 9);                      // a clear line to it
+    LO.sel = 0; g.slots = ['bolt']; g.cap = 1; g.shuffle = false; g.manaMax = g.mana = 9999;
+    g.castDelay = 0.1; g.recharge = 0.1; resetGun(g);
+    L.p.x = room.x - 40; L.p.vx = L.p.vy = 0;
     const fl = L.flashes.length;
     await new Promise(r => setTimeout(r, 100));
-    const gx = L.p.x + 6, gy = L.p.y + 22 * 0.4, dx = pr.x - gx, dy = pr.y - 6 - gy, d = Math.hypot(dx, dy);
+    const gx = L.p.x + 6, gy = L.p.y + 22 * 0.4, dx = pr.x - gx, dy = pr.y + (pr.t0 + pr.b) / 2 - gy, d = Math.hypot(dx, dy);
     window.__in.current.right = { active: true, nx: dx / d, ny: dy / d, mag: 1, dy: 0, on: true };
     await new Promise(r => setTimeout(r, 900));
     window.__in.current.right = { active: false, nx: 1, ny: 0, mag: 0, dy: 0, on: false };
@@ -108,11 +110,14 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
   // ---- floor 17 (fungal grotto): a mushroom throws you up ----
   for (let i = 0; i < 3; i++) await hop();
+  // in a sandbox: one mushroom on a flat floor, the player dropped straight onto it, so the
+  // cave round a real mushroom (an overhang, a slope) can't make this pass or fail
   const pad = await page.evaluate(async () => {
-    const L = window.__lvl, pr = L.props.find(q => q.id === 'shrooms');
-    if (!pr) return null;
-    L.enemies.length = 0;
-    L.p.x = pr.x - 6; L.p.y = pr.y - 22 - 30; L.p.vy = 50; L.p.hp = 9999;
+    const L = window.__lvl, proto = L.props.find(q => q.id === 'shrooms');
+    if (!proto) return null;
+    const room = L.sandbox();
+    const pr = L.placeProp(proto, room.x + 60, room.y);
+    L.p.x = pr.x - 6; L.p.y = pr.y - 22 - 30; L.p.vy = 50;
     let minVy = 0;
     for (let i = 0; i < 30; i++) { await new Promise(r => setTimeout(r, 16)); minVy = Math.min(minVy, L.p.vy); }
     return { minVy, sq: pr.sq };
