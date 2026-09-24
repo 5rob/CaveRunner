@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v61</title>
+<title>CaveRunner v62</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -420,7 +420,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v61';
+const VERSION = 'v62';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -784,8 +784,8 @@ const MODS = {
              info: 'Fast, and arcs as it goes',
              dmg: 1.4, speed: 520, spread: 2, delay: 0.1, size: 2, life: 1.4, grav: 240, recoil: 8 },
   zap:     { name: 'Lightning Bolt', kind: 'shot', glyph: '⌁', col: '#a8e4ff', mana: 34,
-             info: 'The primordial force of nature. Punches through a crowd',
-             dmg: 2.2, speed: 1400, spread: 0.5, delay: 0.3, size: 2, life: 0.5, pierce: 4, recoil: 8 },
+             info: 'The primordial force of nature. Punches through a crowd, and throws off arcs at nearby creatures and rock',
+             dmg: 2.2, speed: 1400, spread: 0.5, delay: 0.3, size: 2, life: 0.5, pierce: 4, recoil: 8, arc: 1 },
   chain:   { name: 'Chain Bolt', kind: 'shot', glyph: '⋈', col: '#7ad7ff', mana: 28,
              info: 'Jumps from enemy to enemy, three times',
              dmg: 2, speed: 560, spread: 1.5, delay: 0.26, size: 2.5, life: 1.2, chain: 3, recoil: 10 },
@@ -1389,6 +1389,7 @@ function blankShot(sm, spread) {
     trig: sm.trig || null, timer: sm.timer != null ? sm.timer : TIMER_ADD,
     reach: sm.reach != null ? sm.reach : 10,     // how far ahead of the muzzle it spawns
     hidden: sm.hidden || 0,                       // don't draw it (Buzzsaw cuts unseen)
+    arc: sm.arc || 0,                             // Lightning: jagged bolt that throws side arcs
     still: sm.kind === 'static' ? 1 : 0, field: sm.field || null, r: sm.r || 0 };
 }
 
@@ -3637,6 +3638,7 @@ function Game({ input }) {
       jx: 0, jy: 0, aim: { on: false, show: false, nx: 1, ny: 0 } };
     const bullets = [], enemyShots = [], smoke = [], sparks = [], flashes = [], toasts = [], coins = [];
     const fields = [], beams = [];                   // static projectiles, and instant beam streaks
+    const arcs = [];                                 // lightning forks: jagged lines that flash and fade
     const torchP = [];                               // the embers the torch throws off
     // soft magic particles: the Black Hole's trail ('drift'), motes sucked into the exit
     // portal ('in') and motes wafting out of the arrival portal ('out')
@@ -3728,7 +3730,7 @@ function Game({ input }) {
       p.x = start.x; p.y = start.y; p.vx = 0; p.vy = 0;
       p.fuel = 1; p.empty = false; p.kick = 0;
       bullets.length = enemyShots.length = smoke.length = 0;
-      sparks.length = flashes.length = coins.length = 0;
+      sparks.length = flashes.length = coins.length = arcs.length = 0;
       torchP.length = 0; motes.length = 0;
       camReady = false; best = 0;
       levelT = 0;                             // the floor's name card gets its three seconds
@@ -4036,7 +4038,7 @@ function Game({ input }) {
           pong: sh.pong, orbit: sh.orbit, homeR: sh.homeR, eat: sh.eat, pull: sh.pull,
           split: sh.split, cluster: sh.cluster, bounceFx: sh.bounceFx,
           friendly: sh.friendly, chain: sh.chain, fuse: sh.fuse,
-          payload: sh.payload && sh.payload.length ? sh.payload : null, hidden: sh.hidden,
+          payload: sh.payload && sh.payload.length ? sh.payload : null, hidden: sh.hidden, arc: sh.arc,
           trig: sh.trig, timer: sh.trig === 'timer' ? sh.timer : null,
           ox: bx, oy: by, age: 0, born: sh.life });
       }
@@ -4060,6 +4062,67 @@ function Game({ input }) {
       const base = Math.atan2(ny, nx);
       for (const sh of list) spawnShot(sh, x, y, base, 0, false, 0);
       burst(x0, y0, 5, col);
+    }
+
+    // Lightning. A zig-zag between points: each leg is split into short kinks knocked
+    // sideways, so a straight line reads as a crackling bolt.
+    function jag(pts, amp) {
+      // thin the path to points ~12 apart first, so a slow bolt's crowded trail still kinks
+      const th = [pts[0]];
+      for (let k = 1; k < pts.length; k++) {
+        const q = th[th.length - 1];
+        if (k === pts.length - 1 || Math.hypot(pts[k].x - q.x, pts[k].y - q.y) >= 12) th.push(pts[k]);
+      }
+      pts = th;
+      const out = [pts[0]];
+      for (let k = 1; k < pts.length; k++) {
+        const a = pts[k - 1], c = pts[k], dx = c.x - a.x, dy = c.y - a.y, d = Math.hypot(dx, dy) || 1;
+        const n = Math.max(1, Math.round(d / 9)), px = -dy / d, py = dx / d;
+        for (let s = 1; s < n; s++) {
+          const f = s / n, o = (Math.random() - 0.5) * 2 * amp;
+          out.push({ x: a.x + dx * f + px * o, y: a.y + dy * f + py * o });
+        }
+        out.push(c);
+      }
+      return out;
+    }
+    function addArc(pts, col, w, max) { arcs.push({ pts: jag(pts, 4), col, w, t: 0, max }); }
+    // A lightning bolt remembers its last stretch of path (drawn as the bolt) and every
+    // few hundredths of a second throws a fork: at a creature in reach and in sight
+    // (a little damage), else at a nearby bit of rock (just the flash).
+    function lightningStep(b, dt) {
+      const tr = b.trail || (b.trail = [{ x: b.ox, y: b.oy }]);
+      tr.push({ x: b.x, y: b.y });
+      let len = 0;
+      for (let k = tr.length - 1; k > 0; k--) {
+        len += Math.hypot(tr[k].x - tr[k - 1].x, tr[k].y - tr[k - 1].y);
+        if (len > 110) { tr.splice(0, k - 1); break; }
+      }
+      if ((b.arcT = (b.arcT || 0) - dt) > 0) return;
+      b.arcT = 0.035 + Math.random() * 0.04;
+      const R = 90, near = [];
+      for (let j = 0; j < enemies.length; j++) {
+        const e = enemies[j];
+        if (Math.hypot(e.x - b.x, e.ty - b.y) < R && lineOfSight(b.x, b.y, e.x, e.ty)) near.push(j);
+      }
+      if (near.length && Math.random() < 0.75) {
+        const j = near[Math.floor(Math.random() * near.length)], e = enemies[j];
+        addArc([{ x: b.x, y: b.y }, { x: e.x, y: e.ty }], b.col, 1, 0.14);
+        burst(e.x, e.ty, 3, b.col);
+        damageEnemy(j, b.dmg * 0.3);
+        return;
+      }
+      // no creature: try a few random directions for rock close by
+      for (let k = 0; k < 4; k++) {
+        const a = Math.random() * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
+        const d = rayDist(b.x, b.y, dx, dy, 70, solidCell);
+        if (d < 70 && d > 6) {
+          const hx = b.x + dx * d, hy = b.y + dy * d;
+          addArc([{ x: b.x, y: b.y }, { x: hx, y: hy }], b.col, 0.8, 0.12);
+          burst(hx, hy, 2, b.col);
+          return;
+        }
+      }
     }
 
     // A beam is instant: it walks a line, damages what it touches and leaves a streak.
@@ -4658,6 +4721,7 @@ function Game({ input }) {
           turn(b, clamp(angDiff(want, Math.atan2(b.vy, b.vx)), -b.boomer * dt, b.boomer * dt));
         }
         if (b.eat) dig(b.x, b.y, b.eat);
+        if (b.arc) lightningStep(b, dt);
         // a timer lets its payload go in mid-air, and the carrier flies on
         if (b.payload && b.timer != null && (b.timer -= dt) <= 0) firePayload(b);
         if (b.pull) {
@@ -4778,8 +4842,13 @@ function Game({ input }) {
         if (boom) { explode(b.x, b.y, b.explode); dead = true; }
         // an expiration trigger goes off however it dies; a trigger stopped by a prop counts as a hit
         if (dead && b.payload && (b.trig === 'expire' || b.struck)) firePayload(b);
+        if (dead && b.arc && b.trail) {               // the bolt's path lingers for a blink
+          b.trail.push({ x: b.x, y: b.y });
+          addArc(b.trail, b.col, 1.4, 0.16);
+        }
         if (dead) bullets.splice(i, 1);
       }
+      for (let i = arcs.length - 1; i >= 0; i--) if ((arcs[i].t += dt) > arcs[i].max) arcs.splice(i, 1);
 
       // ---- static fields ----
       for (let i = fields.length - 1; i >= 0; i--) {
@@ -5433,6 +5502,19 @@ function Game({ input }) {
         ctx.fillRect(hx, hy, hw * Math.max(0, e.hp / e.hpMax), 3);
       }
 
+      // a lightning line: a wide soft glow, then a thin white-hot core
+      function drawBolt(pts, col, w, alpha) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.lineJoin = 'miter'; ctx.lineCap = 'round';
+        const path = () => { ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+          for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k].x, pts[k].y); ctx.stroke(); };
+        ctx.strokeStyle = col;
+        ctx.globalAlpha = alpha * 0.25; ctx.lineWidth = w * 5; path();
+        ctx.globalAlpha = alpha * 0.7; ctx.lineWidth = w * 1.8; path();
+        ctx.strokeStyle = '#ffffff'; ctx.globalAlpha = alpha; ctx.lineWidth = w * 0.7; path();
+        ctx.restore();
+      }
       // projectiles
       for (const b of enemyShots) {
         ctx.fillStyle = b.col;
@@ -5468,6 +5550,10 @@ function Game({ input }) {
           ctx.globalAlpha = 1;
           continue;
         }
+        if (b.arc && b.trail && b.trail.length > 1) {   // lightning: a fresh zig-zag every frame
+          drawBolt(jag(b.trail.concat([{ x: b.x, y: b.y }]), 5), b.col, 1.6, 1);
+          continue;
+        }
         const sp = Math.hypot(b.vx, b.vy) || 1;
         const len = Math.max(0.5, Math.min(46, sp * 0.022));   // length is speed alone
         const hx = b.vx / sp * len, hy = b.vy / sp * len;
@@ -5486,6 +5572,7 @@ function Game({ input }) {
           ctx.fillRect(b.x - 1, b.y - 1, 2, 2);
         }
       }
+      for (const a of arcs) drawBolt(a.pts, a.col, a.w, 1 - a.t / a.max);
       // instant beams, which fade over a few frames
       for (const bm of beams) {
         const fade = 1 - bm.t / 0.12;

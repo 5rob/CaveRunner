@@ -270,7 +270,7 @@ There are 116 mods, most of them lifted from Noita's spell list and rebuilt to f
 a cave shooter. They come in a few shapes:
 
 - **Shots** are the things that come out of the barrel — Bolt, Slug, Magic Missile,
-  Fireball, Lightning Bolt, Chain Bolt (which hops from enemy to enemy), Black Hole
+  Fireball, Lightning Bolt (a crackling bolt that forks off arcs at nearby creatures and rock as it flies), Chain Bolt (which hops from enemy to enemy), Black Hole
   (a slow starry sphere that eats rock, hauls creatures into it and grinds them, and swallows any enemy shot that comes near), Nuke, Meteor, and twenty-odd more. **Plasma Beam**
   and **Luminous Drill** are instant: they hit along a line with no travel time.
 - **Static fields** stay where you cast them and work over time. Unstable Crystal is a

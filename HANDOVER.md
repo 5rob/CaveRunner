@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v61.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v62.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -41,6 +41,8 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v62 — Lightning Bolt looks like lightning.** Jagged flickering bolt, and it forks side arcs at nearby creatures (small damage) and rock as it flies.
 
 - **v61 — torches no longer clear fog.** v59's torch fog-clearing gave away the prize rooms. Torches and lanterns now show only where the fog has lifted, by the same rule as items (`fogLit`).
 

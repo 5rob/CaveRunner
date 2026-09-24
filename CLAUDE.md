@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v61**. Branch: `main` (release channel is `main`).
+Current version: **v62**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 

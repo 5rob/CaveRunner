@@ -54,7 +54,7 @@ const HOOK_LVL = SANDBOX +
   "get rooms(){return rooms}, get pb(){return pb}, maxHp, " +
   "get roster(){return roster}, get theme(){return themeName}, " +
   "get arrival(){return arrival}, get start(){return start}, get portal(){return portal}, " +
-  "enemyShots, fields, beams, flashes, dig, motes, get sconces(){return sconces}, get props(){return props}, dparts, amb, clouds, rings, get zfx(){return zfx}, " +
+  "enemyShots, fields, beams, arcs, flashes, dig, motes, get sconces(){return sconces}, get props(){return props}, dparts, amb, clouds, rings, get zfx(){return zfx}, " +
   "world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y }, " +
   "fog: { get seen(){return seen}, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal, paint: paintFog }, " +
   "light: { get flick(){return flick}, get r(){return torchR}, " +
