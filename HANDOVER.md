@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v66.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v67.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -41,6 +41,8 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v67 — jetpack cough + live update check.** Near empty the jet cuts out in short random bursts (flame/smoke/roar off, grey puffs, a small drop — Dev "Jet sputter drop"); jet roar pitch climbs over 3s held. Dev → Sound now has a volume knob per kind of sound (jetpack, spells, explosions, hits, enemy fire, creatures, world, footsteps, UI). The Android shell now checks for updates on resume and every 2 min — **this needs the new APK installed once** (from the `app` release).
 
 - **v66 — sound pass 2: everything else.** Portal in/out + exit hum, footsteps/landings by surface, prop breaks by material, vents, mushrooms, tendrils, stones, eyes, dark matter, drips/lava/steam/sparks, crits, chain hops, splits, util spells, enemy shot fizzle/absorb, recharge-ready click, gun switch, UI open/close/place/prompt. All via `SFX.fx`, randomised per play.
 - **v65 — foliage rustle + prop explosion sounds.** Vines/mycelium/roots/kelp rustle on grab and when moving through (rate-limited by `rustleStep`), minecarts bang + debris clatter, pods pop; rustles, pops, debris and all explosions randomise per play.

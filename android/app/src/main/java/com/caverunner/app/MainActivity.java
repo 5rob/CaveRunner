@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -47,8 +49,20 @@ public class MainActivity extends Activity {
     static final String CDN_REACT = "https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js";
     static final String CDN_REACTDOM = "https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js";
 
+    // While the app is open it keeps asking, so an update shows up without a relaunch.
+    static final long CHECK_EVERY_MS = 2 * 60 * 1000;
+
     WebView web;
     File webRoot;
+    final Handler ticker = new Handler(Looper.getMainLooper());
+    AlertDialog prompt;          // the update dialog, if one is up (never stack two)
+    boolean checking;
+    final Runnable poll = new Runnable() {
+        @Override public void run() {
+            checkForUpdate();
+            ticker.postDelayed(this, CHECK_EVERY_MS);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,8 +92,21 @@ public class MainActivity extends Activity {
 
         immersive();
         web.loadUrl(LOCAL_URL);
+    }
 
-        checkForUpdate();
+    // Check on launch, every time the app comes back to the front, and every couple of
+    // minutes while it's open.
+    @Override
+    protected void onResume() {
+        super.onResume();
+        ticker.removeCallbacks(poll);
+        ticker.post(poll);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        ticker.removeCallbacks(poll);
     }
 
     @Override
@@ -137,9 +164,12 @@ public class MainActivity extends Activity {
     // ---- update flow -------------------------------------------------------
 
     void checkForUpdate() {
+        if (checking || (prompt != null && prompt.isShowing())) return;
+        checking = true;
         new Thread(() -> {
             try {
-                String remoteRaw = httpGet(PAGES_BASE + "version.txt").trim();
+                // the query string gets past any cached copy between here and Pages
+                String remoteRaw = httpGet(PAGES_BASE + "version.txt?t=" + System.currentTimeMillis()).trim();
                 int remote = verNum(remoteRaw);
                 int local = prefs().getInt("version", readLocalVersion());
                 int skipped = prefs().getInt("skip", -1);
@@ -148,13 +178,15 @@ public class MainActivity extends Activity {
                 }
             } catch (Exception e) {
                 // Offline or PC/Pages unreachable — keep the version we have.
+            } finally {
+                runOnUiThread(() -> checking = false);
             }
         }).start();
     }
 
     void promptUpdate(int remote, String label) {
-        if (isFinishing()) return;
-        new AlertDialog.Builder(this)
+        if (isFinishing() || (prompt != null && prompt.isShowing())) return;
+        prompt = new AlertDialog.Builder(this)
                 .setTitle("Update available")
                 .setMessage("A new version (" + label + ") is ready. Download and install it now?")
                 .setPositiveButton("Update", (d, w) -> doUpdate(remote))
@@ -167,7 +199,7 @@ public class MainActivity extends Activity {
         Toast.makeText(this, "Downloading update…", Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             try {
-                String html = localize(httpGet(PAGES_BASE + "index.html"));
+                String html = localize(httpGet(PAGES_BASE + "index.html?t=" + System.currentTimeMillis()));
                 if (verNum(html) < remote) throw new Exception("version mismatch");
                 writeFile(new File(webRoot, "index.html"), html);
                 prefs().edit().putInt("version", remote).remove("skip").apply();

@@ -41,7 +41,8 @@ puddles). Things break in their own material (icicles tinkle, geodes chime, stat
 bones clatter); vents hiss before they roar, mushrooms boing, tendrils whip, resonance stones
 gong, dark matter warbles, and the eyes in the dark whisper. Your gun clicks when it's
 recharged, critical hits ring, enemy shots fizzle on rock, and the bag, shop cards and gun
-swaps all have small UI sounds. Volume knobs are in the ⚙️ panel under Sound.
+swaps all have small UI sounds. Volume knobs are in the ⚙️ panel under Sound: overall, ambience, jetpack, your spells,
+explosions, bullet hits, enemy fire, creature voices, world/props, footsteps and UI.
 
 **Your run saves itself.** Every couple of seconds, and whenever you put the app away, the
 run is saved: floor, guns, bag, perks, gold and health, and the cave itself — what you have
@@ -82,7 +83,9 @@ The sticks are your dashboard too. There are no numbers up top any more: your he
 is the ring around the left stick, wiping away clockwise as you take hits — and it slides
 from green through amber to red as it drops, so the colour itself tells you how close you
 are to the end; and your fuel is the amber fill in the top half of the left stick, sinking
-towards the centre line as the jetpack burns it. The right stick carries three rings for the
+towards the centre line as the jetpack burns it. Near the bottom of the tank the jetpack
+starts to cough — the flame cuts out for a blink, it spits grey smoke and you dip a little —
+and the longer you hold it on, the higher its roar climbs. The right stick carries three rings for the
 gun you're holding — gold mana on the outside, then blue recharge and purple cast delay inset
 each — every one a readiness gauge that empties when it fires and fills back over its own
 time, so the ring that keeps lingering low is what's limiting your fire. Those same three

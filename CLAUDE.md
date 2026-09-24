@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v66**. Branch: `main` (release channel is `main`).
+Current version: **v67**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -92,7 +92,8 @@ WebView shell in `android/`; the game itself is still just `index.html`. Full de
   never touched** — the CDN tags stay, so the artifact / LAN / Pages-in-a-browser all keep
   working. If you ever pin a new React version, change both those rewrites *and* the two
   files in `android/app/src/main/assets/`.
-- **Updates come from GitHub Pages**, not the PC. On launch the app fetches
+- **Updates come from GitHub Pages**, not the PC. On launch, on every `onResume`, and every
+  2 minutes while open (v67 shell: a `Handler` `poll`, never stacks two dialogs) the app fetches
   `https://5rob.github.io/CaveRunner/version.txt`, compares it to its own `VERSION`, and if
   newer offers to download the new `index.html` and reload. Any network, no reinstall.
 - **CI does everything** (`.github/workflows/android.yml`, runs on push to `main`):
@@ -525,9 +526,23 @@ rock/snow/ice/slime/puddle/ash/glass/log/acid). Props: `shatter` by `MATERIAL[pr
 `saws`, `warp`), `fizzle`/`absorb` for enemy shots, `healtick`, `shieldUp`, `ghost`,
 `coinland`, `ready` (held gun finishes a recharge ≥0.45s, `g.rechLen`), `switch`, `ignite`,
 `whirl` (dust devils), UI `open`/`close` (Editor, GunSwap), `place`, `prompt` (card comes up).
-**To add a spell:** give it a `SPELL_VOICE` entry (the logic test fails otherwise). New creature:
+**v67 volume knobs:** besides `vol`/`amb`, the Sound group has `jetVol`, `vSpell`, `vBoom`, `vHit`,
+`vEnemyFire` (creature fire/charge/fuse + enemy-shot fizzle/absorb), `vEnemy`, `vWorld`, `vStep`, `vUi`.
+Each one-shot passes `knob(key)` as `out()`'s 6th arg (`vol`); loops pick theirs by kind in `set()`;
+`fxVolKey(name)` (pure, table `FX_VOL`) maps each `SFX.fx` name, default `vWorld`. A new fx sound
+that isn't world/props needs a `FX_VOL` entry. **To add a spell:** give it a `SPELL_VOICE` entry (the logic test fails otherwise). New creature:
 it falls back to its body's voice. New theme: add an `AMBIENCE` entry (tested). Tests:
 `tests/logic/sound.test.js`, `tests/browser/sound.test.js` (plays every voice, BH loop lifecycle).
+
+**Jetpack cough + pitch (v67).** `sputterStep(st, dt, fuel, on)` (pure, above `makeLevel`,
+`tests/logic/jetpack.test.js`) cuts the jet out for 0.04–0.17s at random below `SPUTTER_FUEL`
+(0.25), more often the drier it is, with a gap after each. `p.jet` is still the stick (physics,
+ignite sound); `p.flame` is `0` during a cut and is what the flame, smoke, nozzle glow,
+Levitation Trail and the jet loop's volume read. A cut: no lift (gravity), `vy += DEV.sputDip`
+(Dev → Player, "Jet sputter drop", default 45) and grey puffs (`smoke` entries with `c`/`a`);
+`p.cough` briefly stops the "rising beats a fall instantly" snap so the dip isn't erased. The
+jet loop's filter pitch is `× jetPitch(jetSt.onT)` — 1 → 1.7 over 3s held (`set(level,x,y,pitch)`).
+`tests/browser/jetpack.test.js` checks it in a sandbox.
 
 **Autosave (v63).** `SAVE_KEY` (`caverunner-save`) in localStorage. `readSave`/`cleanLoadout`/
 `cleanGun` are pure, above `makeLevel`, and forgive old saves: unknown mod/perk ids are dropped,

@@ -2,7 +2,8 @@
 
 A thin WebView app that installs the game on the phone so you don't need the
 artifact link or `serve.js` any more. The game plays **offline**; when you're
-online it checks for a newer version on launch and offers to update — from
+online it checks for a newer version on launch, whenever it comes back to the front, and
+every two minutes while open, and offers to update — from
 anywhere, not just your home WiFi.
 
 ## How it fits together
