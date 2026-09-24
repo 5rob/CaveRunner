@@ -7,9 +7,9 @@ const o = src.indexOf('<script>\n') + 9;
 const js = src.slice(o, src.indexOf('</script>', o));
 const G = new Function('React', js.slice(0, js.indexOf('function makeLevel')) +
   '\nreturn { MODS, CREATURES, THEMES, enemyFor, blankShot, shotSound, creatureSound, SPELL_VOICE, SPELL_VOICES,' +
-  ' CREATURE_VOICES, AMBIENCE, AMB_EVENTS, SFX, DEV_META, DEV };')({ createElement: () => {} });
+  ' CREATURE_VOICES, AMBIENCE, AMB_EVENTS, SFX, DEV_META, DEV, rustleStep };')({ createElement: () => {} });
 const { MODS, CREATURES, THEMES, enemyFor, blankShot, shotSound, creatureSound, SPELL_VOICE, SPELL_VOICES,
-  CREATURE_VOICES, AMBIENCE, AMB_EVENTS, SFX, DEV_META, DEV } = G;
+  CREATURE_VOICES, AMBIENCE, AMB_EVENTS, SFX, DEV_META, DEV, rustleStep } = G;
 
 let pass = 0, fail = 0;
 const check = (name, ok, got) => { ok ? pass++ : fail++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${ok ? '' : ' -> ' + JSON.stringify(got)}`); };
@@ -60,6 +60,22 @@ check('every floor theme has ambience', !am.length, am);
 const ev = [];
 for (const k in AMBIENCE) for (const e in AMBIENCE[k].ev) if (!AMB_EVENTS.includes(e)) ev.push(k + ':' + e);
 check('every ambient event is a known kind', !ev.length, ev);
+
+// foliage rustle limiter: two seconds at 60fps in each situation
+const sim = (touching, enterEvery, speed) => {
+  const st = { t: 0 }; let n = 0;
+  for (let f = 0; f < 120; f++) if (rustleStep(st, 1 / 60, touching, enterEvery && f % enterEvery === 0, speed)) n++;
+  return n;
+};
+check('no plants, no rustle', sim(false, 1, 200) === 0);
+check('grabbing a vine rustles at once', rustleStep({ t: 0 }, 1 / 60, true, true, 0) > 0);
+check('hanging still is silent', sim(true, 0, 0) === 0);
+const clump = sim(true, 1, 250);
+check('a new vine every frame still cannot spam (<= 13 in 2s)', clump >= 6 && clump <= 13, clump);
+const climbN = sim(true, 0, 90), fastN = sim(true, 0, 240);
+check('climbing through rustles every so often', climbN >= 3 && climbN <= 8, climbN);
+check('faster through them rustles more', fastN > climbN, [climbN, fastN]);
+check('a hard push rustles louder than a slow one', rustleStep({ t: 0 }, 0.016, true, false, 240) > rustleStep({ t: 0 }, 0.016, true, false, 60));
 
 // the engine is inert under Node (no audio): calls are harmless no-ops
 SFX.cast([blankShot(MODS.bolt, 0)], 0, 0); SFX.ui('coin'); SFX.tick();

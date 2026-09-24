@@ -28,7 +28,10 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
   // play every voice there is, from a sandbox with the player standing still
   const r = await page.evaluate(async () => {
-    const L = window.__lvl, room = L.sandbox();
+    const L = window.__lvl;
+    // keep a real vine (floor 1 has them) before the sandbox clears the props away
+    window.__vine = Object.assign({}, L.props.find(q => q.k === 'climb' && q.st === 'vine'));
+    const room = L.sandbox();
     const x = room.x, y = room.y - 30, p0 = SFX.stats.played;
     const wait = ms => new Promise(res => setTimeout(res, ms));
     // spells: every shot and static, one at a time so the voice cap doesn't drop any
@@ -76,6 +79,45 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('it drones while alive', bh.during === 1, bh);
   check('the drone stops when it dies', bh.after === 0, bh);
 
+  // vines: count rustles as the player climbs up through a clump of them
+  const vines = await page.evaluate(async () => {
+    const L = window.__lvl, proto = window.__vine;
+    if (!proto || !proto.k) return null;
+    const room = L.sandbox();
+    let n = 0; const orig = SFX.rustle;
+    SFX.rustle = function () { n++; return orig.apply(null, arguments); };
+    // a thick clump: eight vines side by side, hanging round head height
+    const top = room.y - 70;
+    for (let i = 0; i < 8; i++)
+      L.props.push(Object.assign({}, proto, { x: room.x + i * 7, y: top - proto.t0, anc: null, fall: false, gone: false }));
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    // stand clear of them, then step into the first one and let go of everything: a grab
+    L.p.x = room.x - 60; L.p.y = top + 4; L.p.vx = L.p.vy = 0;
+    await wait(300);
+    let n0 = n;
+    L.p.x = room.x - 4; L.p.y = top + 4; L.p.vx = L.p.vy = 0;
+    await wait(150);
+    const grab = n - n0;
+    await wait(250);
+    n0 = n;
+    await wait(1000);                                // hang still
+    const still = n - n0;
+    // then drag the runner sideways through the whole clump, frame by frame, for a second
+    n0 = n;
+    const t0 = performance.now();
+    while (performance.now() - t0 < 1000) {
+      const f = (performance.now() - t0) / 1000;
+      L.p.x = room.x - 4 + f * 56; L.p.y = top + 4; L.p.vx = 180; L.p.vy = 0;
+      await wait(16);
+    }
+    const climbed = n - n0;
+    SFX.rustle = orig;
+    return { grab, still, climbed, len: proto.b - proto.t0 };
+  });
+  check('grabbing the vines rustles', vines && vines.grab >= 1, vines);
+  check('hanging still in them is quiet', vines && vines.still <= 1, vines);
+  check('moving through a clump rustles, but not per vine per frame', vines && vines.climbed >= 1 && vines.climbed <= 14, vines);
+
   // a new floor switches the ambience
   const next = await page.evaluate(async () => {
     const L = window.__lvl, P = L.portal;
@@ -84,6 +126,30 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     return { floor: L.floor, amb: SFX.ambience, theme: L.theme };
   });
   check('floor 2 has its own ambience', next.floor === 2 && next.amb === next.theme, next);
+  // exploding props: hop floors until there is a minecart, then a spore pod, and set each off
+  const hop = () => page.evaluate(async () => { const L = window.__lvl, P = L.portal;
+    L.p.x = P.x + P.w / 2 - 4; L.p.y = P.y + P.h / 2 - 8; await new Promise(r => setTimeout(r, 300)); });
+  const blow = kind => page.evaluate(async kind => {
+    const L = window.__lvl, P = L.p, pr = L.props.find(q => q.k === kind && !q.gone);
+    if (!pr) return null;
+    const calls = {}; const keep = {};
+    for (const f of ['boom', 'debris', 'pop']) { keep[f] = SFX[f]; SFX[f] = function () { calls[f] = (calls[f] || 0) + 1; return keep[f].apply(null, arguments); }; }
+    P.x = pr.x - 60; P.y = pr.y - 30; P.hp = 9999;
+    await new Promise(r => setTimeout(r, 60));
+    pr.hurt = 1;
+    await new Promise(r => setTimeout(r, 200));
+    for (const f in keep) SFX[f] = keep[f];
+    return calls;
+  }, kind);
+  let cartR = null, podR = null;
+  for (let i = 0; i < 8 && !(cartR && podR); i++) {
+    if (!cartR) cartR = await blow('barrel');
+    if (!podR) podR = await blow('pod');
+    if (!(cartR && podR)) await hop();
+  }
+  check('a minecart goes up with a bang and clattering debris', cartR && cartR.boom >= 1 && cartR.debris === 1, cartR);
+  check('a spore pod bursts with a pop', podR && podR.pop === 1, podR);
+
   check('no sound errors during play', await page.evaluate(() => SFX.stats.errors.length) === 0,
     await page.evaluate(() => SFX.stats.errors));
 

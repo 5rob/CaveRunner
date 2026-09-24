@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v64**. Branch: `main` (release channel is `main`).
+Current version: **v65**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -502,6 +502,14 @@ is `setAmbience(themeName)` in `enterLevel`; `tick()` starts it once unlock fini
 async). Hooks are one-liners at the events (`SFX.cast` in `cast()`/`releaseAt`, `SFX.boom` in
 `explode`, `hit`/`rock`/`bounce` in the bullet loop, `SFX.creature(k, 'alert'|'idle'|'fire'|
 'charge'|'hurt'|'die'|'bite'|'fuse')` in the enemy code, `SFX.ui(...)` for pickups/shop/hurt/portal).
+**v65 foliage + prop sounds.** `rustleStep(st, dt, touching, entered, speed)` (pure, tested) is
+the anti-spam: entering a plant / grabbing rustles now, moving inside rustles every
+`(0.42-0.24*s)*rand` s, still = silent, and every rustle starts a random pause (≥0.16s), so a
+clump can't machine-gun. `decorStep` collects `plantsNow` (climb props whose `st` is in
+`PLANTS`) and compares with `plantsLast`. `SFX.rustle(x,y,str,style)` rolls count/timing/pitch/Q
+of its leaf crackles and swish each call (`RUSTLE` ranges per plant style). `blowProp`: minecart
+→ `explode` (boom) + `SFX.debris`, pod → `SFX.pop`. `boom` now rolls pitch/length/tail too.
+Rule the owner set: repeated sounds should be **randomised per play**, not one fixed recipe.
 **To add a spell:** give it a `SPELL_VOICE` entry (the logic test fails otherwise). New creature:
 it falls back to its body's voice. New theme: add an `AMBIENCE` entry (tested). Tests:
 `tests/logic/sound.test.js`, `tests/browser/sound.test.js` (plays every voice, BH loop lifecycle).

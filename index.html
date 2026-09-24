@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v64</title>
+<title>CaveRunner v65</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -420,7 +420,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v64';
+const VERSION = 'v65';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -3193,6 +3193,22 @@ const AMBIENCE = {
 const AMB_EVENTS = ['drip', 'critter', 'wind', 'trickle', 'rumble', 'creak', 'chime', 'crack',
   'crackle', 'hiss', 'puff', 'bloop', 'hum', 'clank', 'rattle', 'whisper'];
 
+// Brushing through hanging plants. Called once a frame with what you are touching; returns
+// how hard to rustle this frame (0 = stay quiet). Grabbing on or pushing into a new plant
+// rustles at once; moving about inside them rustles now and then, more often the faster you
+// go; hanging still is silent. After any rustle there is a short random pause, so a big clump
+// of vines is a run of rustles rather than one per vine per frame. `st` keeps the pause.
+function rustleStep(st, dt, touching, entered, speed, rnd) {
+  rnd = rnd || Math.random;
+  st.t = Math.max(0, (st.t || 0) - dt);
+  if (!touching || st.t > 0) return 0;
+  const s = clampS(speed / 220, 0, 1);
+  if (entered) { st.t = 0.16 + rnd() * 0.12; return Math.max(0.55, s); }
+  if (speed < 25) return 0;
+  st.t = (0.42 - 0.24 * s) * (0.8 + rnd() * 0.5);
+  return 0.3 + 0.5 * s;
+}
+
 // The engine. Nothing in here runs until the game calls it, and every call is wrapped so a
 // browser without Web Audio (or one that refuses it) just plays in silence.
 const SFX = (() => {
@@ -3454,16 +3470,60 @@ const SFX = (() => {
     const d = out(x, y, 0.1); if (!d) return;
     tone(d, 'triangle', 600, 950, ac.currentTime, 0.06, 0.18);
   }
+  // every blast is a little different: its pitch, length, brightness and crackle tail are
+  // rolled each time, so a chain of them doesn't sound like one sample on repeat
   function boom(x, y, R) {
     const big = R >= 40;
     if (!gate(big ? 'bigboom' : 'boom', big ? 60 : 30)) return;
-    const s = clampS(R / 30, 0.3, 3.2);
-    const d = out(x, y, 0.8 + 0.6 * s, big); if (!d) return;
+    const s = clampS(R / 30, 0.3, 3.2), P = rnd(0.82, 1.18), L = rnd(0.85, 1.2);
+    const d = out(x, y, 0.8 + 0.6 * s * L, big); if (!d) return;
     const t = ac.currentTime;
-    hiss(d, t, 0.25 + 0.45 * s, 0.9, 'lowpass', 2600 / Math.pow(s, 0.4), 150, 0.7);
-    tone(d, 'sine', 95 / Math.pow(s, 0.2), 30, t, 0.3 + 0.4 * s, 0.9, 0.003);
-    if (R >= 18) hiss(d, t + 0.05, 0.4 + 0.5 * s, 0.4, 'bandpass', 2500, 1200, 0.8, true);
-    if (R >= 60) hiss(d, t + 0.1, 1.6, 0.5, 'lowpass', 300, 80, 0.7, false, 0.2);
+    hiss(d, t, (0.25 + 0.45 * s) * L, rnd(0.8, 1), 'lowpass', 2600 / Math.pow(s, 0.4) * P, rnd(110, 200), rnd(0.5, 1));
+    tone(d, 'sine', 95 / Math.pow(s, 0.2) * P, rnd(26, 36), t, (0.3 + 0.4 * s) * L, 0.9, 0.003);
+    if (R >= 18 && Math.random() < 0.85) hiss(d, t + rnd(0.02, 0.08), (0.4 + 0.5 * s) * L, rnd(0.3, 0.5), 'bandpass', rnd(2000, 3000), rnd(900, 1500), 0.8, true);
+    if (R >= 60) hiss(d, t + 0.1, 1.6 * L, 0.5, 'lowpass', 300 * P, 80, 0.7, false, 0.2);
+  }
+  // what a minecart throws about when it goes up: wood and iron clattering down after the bang
+  function debris(x, y) {
+    const d = out(x, y, 1.2); if (!d) return;
+    const t = ac.currentTime, n = 4 + Math.floor(Math.random() * 5);
+    for (let i = 0; i < n; i++) {
+      const tt = t + rnd(0.12, 0.8), metal = Math.random() < 0.4;
+      if (metal) tone(d, 'square', rnd(600, 1400), rnd(500, 1200), tt, rnd(0.04, 0.12), rnd(0.03, 0.07));
+      hiss(d, tt, rnd(0.02, 0.07), rnd(0.15, 0.4), 'bandpass', rnd(1500, 5000), rnd(1000, 3000), rnd(1, 4), Math.random() < 0.6);
+    }
+  }
+  // a spore pod bursting: a wet pop and a breath of spores, rolled fresh each time
+  function pop(x, y) {
+    const d = out(x, y, 1.2); if (!d) return;
+    const t = ac.currentTime, P = rnd(0.8, 1.25);
+    tone(d, 'sine', 220 * P, 55 * P, t, rnd(0.12, 0.2), 0.7, 0.003);
+    hiss(d, t, rnd(0.06, 0.12), 0.6, 'bandpass', rnd(600, 1300), rnd(250, 500), rnd(1.5, 3));
+    hiss(d, t + rnd(0.03, 0.08), rnd(0.6, 1.1), rnd(0.12, 0.2), 'highpass', rnd(2500, 4000), rnd(5000, 7000), 0.7, false, rnd(0.08, 0.2));
+    for (let i = 0; i < 3; i++) tone(d, 'sine', rnd(250, 500), rnd(500, 1000), t + rnd(0.05, 0.3), 0.05, 0.1, 0.004);
+  }
+  // Foliage rustle, strength 0..1. Nothing is fixed: how many leaf-crackles, when they land,
+  // their pitch and sharpness, and the swish under them are all rolled every time, so
+  // climbing through a heap of vines never repeats itself. The plant sets the range: fungus
+  // is soft and low, roots are dry and woody, kelp is wet.
+  const RUSTLE = {
+    vine: { lo: 1800, hi: 4800, swish: [1400, 4200], wet: 0 },
+    myc:  { lo: 900, hi: 2600, swish: [800, 2200], wet: 0 },
+    root: { lo: 1200, hi: 3200, swish: [900, 2600], wet: 0, creak: 1 },
+    kelp: { lo: 500, hi: 1800, swish: [400, 1400], wet: 1 },
+  };
+  function rustle(x, y, str, style) {
+    if (!gate('rustle', 60)) return;
+    const R = RUSTLE[style] || RUSTLE.vine;
+    const d = out(x, y, 0.5); if (!d) return;
+    const t = ac.currentTime, v = clampS(str, 0.2, 1);
+    const up = Math.random() < 0.5, a = rnd(R.swish[0], R.swish[1]), b = rnd(R.swish[0], R.swish[1]) * (up ? 1.5 : 0.6);
+    hiss(d, t, rnd(0.1, 0.26) * (0.6 + v * 0.6), rnd(0.12, 0.22) * v, 'bandpass', a, b, rnd(0.6, 1.4), false, rnd(0.015, 0.05));
+    const n = 2 + Math.floor(Math.random() * (2 + v * 3));
+    for (let i = 0; i < n; i++)
+      hiss(d, t + rnd(0, 0.2), rnd(0.02, 0.07), rnd(0.1, 0.3) * v, 'bandpass', rnd(R.lo, R.hi), rnd(R.lo, R.hi), rnd(0.8, 2.5), Math.random() < 0.55);
+    if (R.wet) tone(d, 'sine', rnd(180, 300), rnd(400, 700), t + rnd(0, 0.1), 0.07, 0.08 * v, 0.004);
+    if (R.creak && Math.random() < 0.35) tone(lp(d, 800, 5), 'sawtooth', rnd(110, 160), rnd(90, 130), t, rnd(0.15, 0.3), 0.05 * v, 0.03);
   }
   function arc(x, y, big) {
     if (!gate('arc', big ? 90 : 45)) return;
@@ -3755,6 +3815,7 @@ const SFX = (() => {
   return {
     unlock, tick: safe(tick), ear: (x, y) => { ear.x = x; ear.y = y; },
     cast: safe(cast), hit: safe(hit), rock: safe(rock), bounce: safe(bounce), boom: safe(boom), arc: safe(arc),
+    debris: safe(debris), pop: safe(pop), rustle: safe(rustle),
     creature: safe(creature), ui: safe(ui), loop: safe(loop), setAmbience: safe(setAmbience),
     ambTick: safe(ambTick), env: safe(envSound), stats,
     get ready() { return !!live(); },
@@ -4356,6 +4417,8 @@ function Game({ input }) {
     // sound: the jetpack's roar, each live Black Hole's drone, the low-health heartbeat
     let jetLoop = null, beatT = 0, wasEmpty = false;
     const bhLoops = new Map();
+    const plantsNow = new Set(), rustle = { t: 0 };  // the plants you're brushing, and the rustle pause
+    let plantsLast = new Set();
     let rooms = [];                                  // the perk room and the heart room
     let sconces = [];                                // wall torches: by the portals and the prizes
     let roster = [], themeName = '';                 // this floor's creatures, and its palette
@@ -5049,8 +5112,9 @@ function Game({ input }) {
     function blowProp(pr) {
       if (pr.gone) return;
       pr.gone = true;                          // first, so a chain of blasts can't loop
-      if (pr.k === 'barrel') explode(pr.x, pr.y - 6, 30);
+      if (pr.k === 'barrel') { explode(pr.x, pr.y - 6, 30); SFX.debris(pr.x, pr.y - 6); }
       else if (pr.k === 'pod') {
+        SFX.pop(pr.x, pr.y - 6);
         clouds.push({ x: pr.x, y: pr.y - 8, r: 34, life: 4.5, max: 4.5, tick: 0 });
         burst(pr.x, pr.y - 6, 14, '#b6e36a');
       }
@@ -5083,6 +5147,7 @@ function Game({ input }) {
 
     function decorStep(dt, pcx, pcy) {
       decoFrame++;
+      plantsNow.clear();
       const z = { slow: 1, slick: 0, climb: null, rev: 0 };
       // the runtime anchor check, staggered: a thirtieth of the props each frame, so each one
       // finds out within half a second that the rock it hung off has been blown away
@@ -5144,6 +5209,7 @@ function Game({ input }) {
         switch (pr.k) {
           case 'climb':
             if (me && pOver(pr, 0)) z.climb = pr;
+            if (me && PLANTS[pr.st] && pOver(pr, 1)) plantsNow.add(pr);
             break;
           case 'drip':
             if (pr.st === 'sparks') {
@@ -5284,6 +5350,16 @@ function Game({ input }) {
       }
       if (dparts.length > 700) dparts.splice(0, dparts.length - 700);
       stepAmbience(dt);
+      // foliage: grabbing a vine, or pushing into a plant you weren't already in, rustles;
+      // moving through them rustles now and then; rustleStep keeps a big clump from spamming
+      let entered = !!(z.climb && PLANTS[z.climb.st] && z.climb !== zfx.climb), style = null;
+      for (const pr of plantsNow) if (!plantsLast.has(pr)) { entered = true; style = pr.st; }
+      const str = rustleStep(rustle, dt, plantsNow.size > 0, entered, Math.hypot(p.vx, p.vy));
+      if (str) {
+        const pr = style ? null : plantsNow.values().next().value;
+        SFX.rustle(pcx, pcy, str, style || (pr && pr.st) || 'vine');
+      }
+      plantsLast = new Set(plantsNow);
       zfx = z;
     }
 

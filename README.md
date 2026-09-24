@@ -31,7 +31,10 @@ long as it lives. Creatures chatter, click, growl, gurgle or rattle depending on
 are, and you can hear them in the dark before you see them; a sniper whines as it winds up,
 and a bomber ticks faster as it closes in. Each floor has its own background sound (drips in
 the moss, embers in the halls, chimes in the crystal, whispers in the void). Sounds come from
-where they happen: left, right, near or far. Volume knobs are in the ⚙️ panel under Sound.
+where they happen: left, right, near or far. Grabbing a vine or pushing through hanging plants
+rustles (softer for mycelium, woodier for roots, wetter for kelp), minecarts go up with a bang
+and clattering debris, and spore pods burst with a wet pop — and none of these, or the
+explosions, sound exactly the same twice. Volume knobs are in the ⚙️ panel under Sound.
 
 **Your run saves itself.** Every couple of seconds, and whenever you put the app away, the
 run is saved: floor, guns, bag, perks, gold and health, and the cave itself — what you have
