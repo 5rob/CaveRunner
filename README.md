@@ -140,10 +140,13 @@ but *changing* your setup — dragging mods, reordering guns — only works in t
 anywhere, with the Tinker perk); out in the cave the Bag is read-only. Enemies drop gold
 when they die, so a floor you clear pays for the next floor's shopping.
 
-Guns get better as you go. Height in the cave still matters — the ones lying
-around near the top of a floor beat the ones near the bottom — but every floor
-you clear lifts the whole range, so by floor five or six the scratch pistols have
-stopped turning up.
+Every gun has a **level from 1 to 10**, and a floor's guns are that floor's level (floor 10
+and deeper: level 10). Level 1 guns are wild — any stat can roll anywhere from awful to
+great. Each level narrows the roll toward perfect, so a level 10 gun is great across the
+board: lots of slots, mana and regen, fast cast and recharge, tight spread, quick shots,
+and it never shuffles. Now and then a cave gun is a **rare** one, a random level above the
+floor's. A gun's colour shows its level: grey, white, green, teal, blue, indigo, purple,
+pink, orange, gold (level 10). Its card reads `Lv N` too.
 
 ## Perks
 

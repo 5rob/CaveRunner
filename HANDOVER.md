@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v68.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v69.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -42,6 +42,8 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v69 — gun levels.** Gun quality comes from the floor only (level 1–10); level 1 wild, level 10 near-perfect with a little variance; ~20% of cave guns are rare (random higher level); guns coloured by level, card shows `Lv N`.
 
 - **v68 — minecart blast ×2, red Enemy Radar, Dev → Spawn gun (pick a level, drops that level's kind of gun in front of you), Trajectory Sight line fades in with the right stick's push.**
 

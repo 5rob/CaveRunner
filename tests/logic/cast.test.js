@@ -82,7 +82,7 @@ check('quick recharge', pas.rech, -0.33);
 let shooters = 0;
 let rs = 12345; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
 for (let i = 0; i < 200; i++) {
-  const g = makeGun(rnd, i / 200);
+  const g = makeGun(rnd, 1 + (i % 10));
   if (g.slots.some(id => id && MODS[id].kind === 'shot')) shooters++;
 }
 check('200 random guns can all shoot', shooters, 200);

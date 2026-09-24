@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v68</title>
+<title>CaveRunner v69</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -421,7 +421,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v68';
+const VERSION = 'v69';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -1357,43 +1357,58 @@ function resetGun(g) {
   return g;
 }
 
-// How good a gun should roll. Height in the cave still matters, but every floor
-// you clear lifts the whole range, so late floors stop handing out scratch pistols.
-const FLOOR_TIER = 0.16;
-function gunTier(cy, floor) {
-  const depth = (CH - 60 - cy) / (CH - 140);          // 0 at the bottom, 1 at the top
-  const run = Math.min(0.85, (floor - 1) * FLOOR_TIER);
-  return Math.min(1, Math.max(0, run + Math.max(0, depth) * (1 - run * 0.5)));
+// A gun's level (1-10) comes from the floor alone: floor 1 rolls level 1 guns, floor 10
+// and beyond roll level 10. Every stat has a worst and a best end. A level 1 gun rolls
+// anywhere between them (wild); each level squeezes the roll toward the best end, until a
+// level 10 gun lands in the best tenth of every range (a little variance, never junk).
+const GUN_LV_MAX = 10;
+const RARE_GUN = 0.2;                     // chance a cave gun rolls a random higher level
+const GUN_RANGE = {                       // [worst, best]
+  cap: [2, 8], castDelay: [0.6, 0.05], recharge: [1.8, 0.2], manaMax: [80, 500],
+  manaRegen: [20, 150], spread: [12, 0], speedMul: [0.7, 1.8] };
+// the colour a gun's level wears: grey through green, blue, purple to gold
+const GUN_LV_COL = ['#9a9a9a', '#d8d8d8', '#5fd35f', '#3fc9a8', '#4aa3ff',
+                    '#7a7aff', '#b565ff', '#ff5fcf', '#ff9a2a', '#ffd23c'];
+const gunLvTier = lvl => Math.min(1, Math.max(0, (lvl - 1) / (GUN_LV_MAX - 1)));
+function gunStat(rnd, k, t) {
+  const [w, b] = GUN_RANGE[k];
+  const f = rnd() * (1 - t) + rnd() * 0.1 * t;       // share of the way from best to worst
+  return b + (w - b) * f;
+}
+// the level of a gun found on this floor: the floor's own, or now and then a rare one
+// somewhere between the next level up and 10
+function gunLevel(floor, rnd) {
+  const base = Math.min(GUN_LV_MAX, Math.max(1, floor));
+  if (base < GUN_LV_MAX && rnd() < RARE_GUN) return base + 1 + Math.floor(rnd() * (GUN_LV_MAX - base));
+  return base;
 }
 
-// a gun the way floor `floor`'s cave rolls one: a random height, that height's tier
-// (the Dev panel's Spawn gun uses it to try deeper floors' guns on floor 1)
-function caveGun(floor, rnd) {
-  const cy = 30 + Math.floor(rnd() * (SHOP_TOP - 60));
-  return makeGun(rnd, gunTier(cy, floor));
+// a gun of level `lvl` (the Dev panel's Spawn gun uses it to try deeper floors' guns on floor 1)
+function caveGun(lvl, rnd) {
+  return makeGun(rnd, Math.min(GUN_LV_MAX, Math.max(1, Math.floor(lvl))));
 }
 
-// tier 0..1: guns found higher up the cave are better
-function makeGun(rnd, tier) {
-  const cap = Math.min(8, 2 + Math.floor(rnd() * 4 + tier * 3));
+function makeGun(rnd, lvl) {
+  const t = gunLvTier(lvl);
+  const cap = Math.max(2, Math.min(8, Math.round(gunStat(rnd, 'cap', t))));
   const g = {
     name: GUN_A[Math.floor(rnd() * GUN_A.length)] + ' ' + GUN_B[Math.floor(rnd() * GUN_B.length)],
-    cap,
-    castDelay: Math.max(0.04, 0.34 - tier * 0.14 + rnd() * 0.2),
-    recharge: Math.max(0.15, 1.2 - tier * 0.45 + rnd() * 0.6),
-    manaMax: Math.round(90 + tier * 260 + rnd() * 130),
-    manaRegen: Math.round(25 + tier * 75 + rnd() * 45),
-    spread: rnd() * 9 * (1 - tier * 0.5),
-    speedMul: 0.8 + rnd() * (0.5 + tier * 0.5),
-    multi: rnd() < 0.12 + tier * 0.22 ? 2 : 1,
-    shuffle: rnd() < 0.35 - tier * 0.18,
+    lvl, cap,
+    castDelay: gunStat(rnd, 'castDelay', t),
+    recharge: gunStat(rnd, 'recharge', t),
+    manaMax: Math.round(gunStat(rnd, 'manaMax', t)),
+    manaRegen: Math.round(gunStat(rnd, 'manaRegen', t)),
+    spread: gunStat(rnd, 'spread', t),
+    speedMul: gunStat(rnd, 'speedMul', t),
+    multi: rnd() < 0.1 + t * 0.4 ? 2 : 1,
+    shuffle: rnd() < 0.5 * (1 - t),
     slots: new Array(cap).fill(null),
     hue: Math.floor(rnd() * 360),
   };
   // seed it with something that already shoots
-  const used = 1 + Math.floor(rnd() * Math.min(cap, 2 + tier * 3));
+  const used = 1 + Math.floor(rnd() * Math.min(cap, 2 + t * 3));
   const spots = g.slots.map((_, i) => i).sort(() => rnd() - 0.5).slice(0, used);
-  const asFloor = 1 + tier * 5;               // a high-tier gun comes with better mods on it
+  const asFloor = 1 + t * 5;                  // a high-level gun comes with better mods on it
   spots.forEach((slot, n) => {
     g.slots[slot] = n === 0 ? SEED_SHOTS[Math.floor(rnd() * SEED_SHOTS.length)]
                             : rollMod(rnd, asFloor);
@@ -2235,8 +2250,11 @@ function drawEnemy(ctx, e, time) {
   }
 }
 
-// the colour a gun wears: whatever family its first shot belongs to
+// the colour a gun wears: its level's colour, or (starter guns, which have no level)
+// whatever family its first shot belongs to
+const gunLvCol = g => (g && g.lvl ? GUN_LV_COL[Math.min(GUN_LV_MAX, g.lvl) - 1] : null);
 function gunAccent(g) {
+  if (g && g.lvl) return gunLvCol(g);
   if (g) for (const id of g.slots) if (id && MODS[id].kind === 'shot') return famCol(id);
   return COL.bullet;
 }
@@ -4446,8 +4464,8 @@ function makeLevel(seed, floor, owned) {
   for (let i = 0; i < items; i++) {
     const x = WW / 2 + (i - (items - 1) / 2) * PLINTH_GAP;
     if (gunShop) {
-      // shop guns roll a touch above whatever the cave is dropping on this floor
-      const gun = makeGun(rnd, Math.min(1, gunTier(CH * 0.15, floor) + 0.1));
+      // shop guns are the floor's own level
+      const gun = makeGun(rnd, Math.min(GUN_LV_MAX, floor));
       stock.push({ kind: 'gun', gun, x, y: shelf, price: gunPrice(gun), sold: false });
     } else {
       const id = offer[i];
@@ -4501,10 +4519,9 @@ function makeLevel(seed, floor, owned) {
     const x = cx * CELL, y = (gy + 1) * CELL - 9;
     if (Math.hypot(x - start.x, y - start.y) < 200) continue;
     if (pickups.some(q => Math.hypot(q.x - x, q.y - y) < PICKUP_GAP)) continue;
-    const tier = gunTier(cy, floor);
     if (gunsLeft && (!modsLeft || rnd() < gunsLeft / (gunsLeft + modsLeft))) {
       gunsLeft--;
-      pickups.push({ kind: 'gun', x, y, gun: makeGun(rnd, tier), t: rnd() * 6.28 });
+      pickups.push({ kind: 'gun', x, y, gun: makeGun(rnd, gunLevel(floor, rnd)), t: rnd() * 6.28 });
     } else {
       modsLeft--;
       pickups.push({ kind: 'mod', x, y, id: rollMod(rnd, floor), t: rnd() * 6.28 });
@@ -7567,10 +7584,10 @@ function GunCard({ gun, label, onClose, ingame, flow, split, mark, compare, comp
   return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') + (flow ? ' flow' : '') +
       (split ? ' split' : '') + (mark ? ' ' + mark : '') },
     h('div', { className: 'phead' },
-      h('div', { className: 'pglyph', style: { borderColor: '#c9ccd4', color: '#c9ccd4' } }, '⌥'),
+      h('div', { className: 'pglyph', style: { borderColor: gunLvCol(gun) || '#c9ccd4', color: gunLvCol(gun) || '#c9ccd4' } }, '⌥'),
       h('div', { className: 'ptitle' },
         h('b', { style: { color: gunColor(gun) } }, gun.name),
-        h('span', null, (label || 'Gun') + ' · ' + gun.cap + ' slots')),
+        h('span', null, (label || 'Gun') + (gun.lvl ? ' · Lv ' + gun.lvl : '') + ' · ' + gun.cap + ' slots')),
       onClose ? h('button', { className: 'pclose',
         onPointerDown: e => { e.preventDefault(); onClose(); } }, '×') : null
     ),

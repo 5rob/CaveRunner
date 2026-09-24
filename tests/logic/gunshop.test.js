@@ -6,7 +6,7 @@ const js = src.slice(open, src.indexOf('</script>', open));
 const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
 const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
 const G = new Function('React', shim + upto +
-  'return { makeLevel, gunPrice, isGunShop, makeGun, gunTier, caveGun, CH };')({ createElement: () => {} });
+  'return { makeLevel, gunPrice, isGunShop, makeGun, caveGun, gunLevel, gunAccent, GUN_RANGE, GUN_LV_COL, CH };')({ createElement: () => {} });
 
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
@@ -49,21 +49,43 @@ const goodGun = { cap: 8, castDelay: 0.06, recharge: 0.2, manaMax: 340, manaRege
 check('a better gun costs more', G.gunPrice(goodGun) > G.gunPrice(cheapGun) * 3,
   { cheap: G.gunPrice(cheapGun), good: G.gunPrice(goodGun) });
 
-// tier rises with the floor. Sample three quarters of the way down the cave, as a
-// share of its height, so this still means "deep" when the map grows.
-const DEEP = Math.round(G.CH * 0.75);
-const low = [], high = [];
-for (let seed = 1; seed <= 200; seed++) {
-  let rs = seed % 2147483646 + 1;
-  const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
-  low.push(G.makeGun(rnd, G.gunTier(DEEP, 1)).cap);
-  high.push(G.makeGun(rnd, G.gunTier(DEEP, 6)).cap);
+// gun level comes from the floor alone, and each level closes in on perfect stats
+{
+  let rs = 99; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+  const K = ['cap', 'castDelay', 'recharge', 'manaMax', 'manaRegen', 'spread', 'speedMul'];
+  // "badness" per stat: 0 at the best end of its range, 1 at the worst
+  const bad = (g, k) => { const [w, b] = G.GUN_RANGE[k]; return (g[k] - b) / (w - b); };
+  const spreadOf = lvl => {
+    const out = {};
+    for (const k of K) {
+      const v = []; for (let i = 0; i < 400; i++) v.push(bad(G.makeGun(rnd, lvl), k));
+      v.sort((a, b) => a - b);
+      out[k] = { lo: v[0], hi: v[v.length - 1], mean: v.reduce((a, b) => a + b, 0) / v.length };
+    }
+    return out;
+  };
+  const s1 = spreadOf(1), s5 = spreadOf(5), s10 = spreadOf(10);
+  check('level 1 stats are wild: each covers most of its range',
+    K.every(k => s1[k].hi - s1[k].lo > 0.8), K.map(k => +(s1[k].hi - s1[k].lo).toFixed(2)));
+  check('level 10 stats all land in the best ~10% (cap rounds)',
+    K.every(k => s10[k].hi <= (k === 'cap' ? 0.17 : 0.1001)), K.map(k => +s10[k].hi.toFixed(3)));
+  check('every stat gets better on average level by level',
+    K.every(k => s1[k].mean > s5[k].mean && s5[k].mean > s10[k].mean),
+    K.map(k => [s1[k].mean, s5[k].mean, s10[k].mean].map(x => +x.toFixed(2))));
+  const sh = lvl => { let n = 0; for (let i = 0; i < 400; i++) n += G.makeGun(rnd, lvl).shuffle ? 1 : 0; return n; };
+  check('level 10 guns never shuffle', sh(10) === 0, sh(10));
+  // no cave height in it: the same floor gives the same level, bar the rare drops
+  const lv = f => { const c = {}; for (let i = 0; i < 2000; i++) { const l = G.gunLevel(f, rnd); c[l] = (c[l] || 0) + 1; } return c; };
+  const l3 = lv(3), rare3 = 2000 - l3[3];
+  check('floor 3 guns are level 3, with ~20% rare', rare3 > 300 && rare3 < 500, l3);
+  check('rare drops are above the floor and at most 10',
+    Object.keys(l3).every(l => +l >= 3 && +l <= 10) && Object.keys(l3).length === 8, Object.keys(l3));
+  check('floor 10 and past are always level 10', Object.keys(lv(10)).join() === '10' && Object.keys(lv(14)).join() === '10');
+  check('a gun wears its level colour', G.gunAccent(G.makeGun(rnd, 7)) === G.GUN_LV_COL[6]);
+  const L = G.makeLevel(777, 4);
+  check('a level\'s cave guns are its level or rarer', L.pickups.filter(q => q.kind === 'gun').every(q => q.gun.lvl >= 4),
+    L.pickups.filter(q => q.kind === 'gun').map(q => q.gun.lvl));
 }
-const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
-check('deep guns get better as floors go by', avg(high) > avg(low) + 1,
-  { floor1: +avg(low).toFixed(2), floor6: +avg(high).toFixed(2) });
-const t = [1, 2, 3, 4, 5, 6].map(f => +G.gunTier(DEEP, f).toFixed(2));
-check('tier climbs every floor', t.every((v, i) => i === 0 || v > t[i - 1]), t);
 
 console.log(fails ? `\n${fails} failed` : '\nall good');
 process.exit(fails ? 1 : 0);

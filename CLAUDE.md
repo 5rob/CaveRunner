@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v68**. Branch: `main` (release channel is `main`).
+Current version: **v69**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -567,9 +567,18 @@ tint (`PERKS.eradar.tint`), not `COL.enemy` purple. **Dev → Spawn gun** (`.dbg
 the Dev panel and opens `SpawnGun` (`.spawnpanel`, pauses via `spawnOpen`): a level box
 (`.spawnlvl`, defaults to the current floor via `input.current.floor`) and a Spawn button
 (`.spawngo`) that sets `input.current.spawnGun = level`; `step()` then drops `caveGun(level, rnd)`
-(pure, above `makeLevel`: a random cave height's `gunTier`, same as a floor's loot) just in front of
+(pure: `makeGun(rnd, lvl)` at the entered level, capped 10, no rare roll) just in front of
 you. **Trajectory line fades with the push:** `R.vis = min(1, TR.mag / AIM_DEAD)` (mouse/keys = 1),
 multiplied into the line's alpha. Tests: `gunshop` (logic), `tests/browser/spawngun.test.js`.
+
+**v69 gun levels (the owner's rule: no cave-height influence).** `gunTier`/`FLOOR_TIER` are gone.
+`makeGun(rnd, lvl)` takes a **level 1–10**; `gunLvTier(lvl)` = `(lvl-1)/9`. Each stat has a
+`[worst, best]` in `GUN_RANGE`, and `gunStat` rolls a fraction `u1*(1-t) + u2*0.1*t` of the way
+from best to worst: level 1 = anywhere in the range, level 10 = the best tenth. `multi` chance
+`0.1+0.4t`, `shuffle` chance `0.5(1-t)`. Cave guns: `gunLevel(floor, rnd)` = the floor's level
+(capped 10), or with `RARE_GUN` (0.2) a uniform level from floor+1 to 10. Shop guns are the floor's
+level. `g.lvl` is saved with the gun; `gunAccent` (sprite colour) and the GunCard glyph use
+`GUN_LV_COL[lvl-1]`; starter guns have no `lvl` and keep the family colour. Tests: `gunshop`.
 
 ## Testing
 
