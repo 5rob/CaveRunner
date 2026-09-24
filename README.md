@@ -144,7 +144,9 @@ Every gun has a **level from 1 to 10**, and a floor's guns are that floor's leve
 and deeper: level 10). Level 1 guns are wild — any stat can roll anywhere from awful to
 great. Each level narrows the roll toward perfect, so a level 10 gun is great across the
 board: lots of slots, mana and regen, fast cast and recharge, tight spread, quick shots,
-and it never shuffles. Now and then a cave gun is a **rare** one, a random level above the
+and it never shuffles. The ranges run from worst to best: 2–25 slots, 1.5s–0.01s cast
+delay and recharge, 50–1000 mana, 10–500 mana regen per second, 20°–0° spread, ×0.5–×2
+shot speed, a 10–50% chance of casting two at once, and a 50–0% chance of shuffling. Now and then a cave gun is a **rare** one, a random level above the
 floor's. A gun's colour shows its level: grey, white, green, teal, blue, indigo, purple,
 pink, orange, gold (level 10). Its card reads `Lv N` too.
 

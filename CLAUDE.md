@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v69**. Branch: `main` (release channel is `main`).
+Current version: **v70**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -579,6 +579,12 @@ from best to worst: level 1 = anywhere in the range, level 10 = the best tenth. 
 (capped 10), or with `RARE_GUN` (0.2) a uniform level from floor+1 to 10. Shop guns are the floor's
 level. `g.lvl` is saved with the gun; `gunAccent` (sprite colour) and the GunCard glyph use
 `GUN_LV_COL[lvl-1]`; starter guns have no `lvl` and keep the family colour. Tests: `gunshop`.
+
+**v70.** `GUN_RANGE` widened by the owner: slots 2–25 (makeGun's cap clamp is 25), delay and
+recharge 1.5–0.01s, mana 50–1000, regen 10–500, spread 20–0, speed 0.5–2. Prop drips no
+longer share one accumulator phase: each keeps `pr.dn` (countdown) / `pr.di` (a random
+interval, 0.3–1.7× the mean from `DRIP_RATE`); `pr.acc` is still written as the swell
+fraction the drip sprite reads. Drip sounds (`FX.drip`, ambience `drip`) about 1/3 and 1/2 as loud.
 
 ## Testing
 

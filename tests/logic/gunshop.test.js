@@ -40,7 +40,7 @@ for (let seed = 1; seed <= 40; seed++) {
   for (const s of L.stock) if (s.kind === 'gun') prices.push(s.price);
 }
 prices.sort((a, b) => a - b);
-check('gun prices land in a sane range', prices[0] >= 45 && prices[prices.length - 1] < 700,
+check('gun prices land in a sane range', prices[0] >= 45 && prices[prices.length - 1] < 1500,   // v70 widened stat ranges
   { min: prices[0], med: prices[prices.length >> 1], max: prices[prices.length - 1] });
 
 // better guns cost more
@@ -72,6 +72,12 @@ check('a better gun costs more', G.gunPrice(goodGun) > G.gunPrice(cheapGun) * 3,
   check('every stat gets better on average level by level',
     K.every(k => s1[k].mean > s5[k].mean && s5[k].mean > s10[k].mean),
     K.map(k => [s1[k].mean, s5[k].mean, s10[k].mean].map(x => +x.toFixed(2))));
+  // v70 ranges: slots 2-25, delay/recharge 1.5-0.01s, mana 50-1000, regen 10-500
+  const g10 = Array.from({ length: 200 }, () => G.makeGun(rnd, 10));
+  check('level 10 guns reach the v70 ranges', g10.every(g => g.cap >= 22 && g.cap <= 25 && g.castDelay <= 0.16 &&
+    g.recharge <= 0.16 && g.manaMax >= 900 && g.manaRegen >= 450 && g.spread <= 2 && g.speedMul >= 1.85));
+  const doubles = lvl => { let n = 0; for (let i = 0; i < 2000; i++) n += G.makeGun(rnd, lvl).multi > 1 ? 1 : 0; return n / 2000; };
+  check('double cast ~10% at level 1, ~50% at level 10', Math.abs(doubles(1) - 0.1) < 0.03 && Math.abs(doubles(10) - 0.5) < 0.05);
   const sh = lvl => { let n = 0; for (let i = 0; i < 400; i++) n += G.makeGun(rnd, lvl).shuffle ? 1 : 0; return n; };
   check('level 10 guns never shuffle', sh(10) === 0, sh(10));
   // no cave height in it: the same floor gives the same level, bar the rare drops
