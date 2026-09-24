@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v59</title>
+<title>CaveRunner v60</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -228,6 +228,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .tile.hole{border-style:dashed;opacity:.5;cursor:default}
 .tile.shot{box-shadow:inset 0 0 0 2px currentColor}
 .tg{font-size:17px;line-height:1}
+.tile{position:relative}
+.tmark{position:absolute;top:2px;right:4px;font:700 9px system-ui,sans-serif;line-height:1}
 .tn{font:500 8.5px system-ui,sans-serif;color:var(--muted);text-align:center;line-height:1.1;
   max-width:100%;padding:0 2px}
 .ghost{position:fixed;z-index:30;width:60px;height:56px;border-radius:9px;border:2px solid;
@@ -418,7 +420,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v59';
+const VERSION = 'v60';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -855,10 +857,6 @@ const MODS = {
              field: 'glitter', r: 64, life: 4, delay: 0.4 },
 
   // ---- utility ----
-  platform:{ name: 'Summon Platform', kind: 'util', glyph: '▁', col: '#c8a06a', mana: 14,
-             info: 'Lays a short ledge under your feet', act: 'platform', d: 0.1 },
-  wallup:  { name: 'Summon Wall', kind: 'util', glyph: '▐', col: '#c8a06a', mana: 18,
-             info: 'Drops a pillar in front of you', act: 'wall', d: 0.12 },
   refresh: { name: 'Wand Refresh', kind: 'util', glyph: '⟲', col: '#3fcf8e', mana: 20,
              info: 'Recharges the gun on the spot', act: 'refresh', d: 0.05 },
   blood:   { name: 'Blood Magic', kind: 'util', glyph: '☠', col: '#c2401f', mana: 0,
@@ -944,37 +942,34 @@ const MODS = {
              info: 'fires one ahead and one straight behind you', multi: 1, form: [0, 180] },
 
   // ---- the Greek letters: they copy other spells off the gun ----
-  alpha:   { name: 'Alpha', kind: 'mod', glyph: 'Α', col: '#f0f0f0', mana: 5, d: 0.02,
+  alpha:   { name: 'Alpha', kind: 'mod', off: 1, glyph: 'Α', col: '#f0f0f0', mana: 5, d: 0.02,
              info: 'also casts a copy of the first spell on the gun', copy: 'first' },
-  gamma:   { name: 'Gamma', kind: 'mod', glyph: 'Γ', col: '#f0f0f0', mana: 5, d: 0.02,
+  gamma:   { name: 'Gamma', kind: 'mod', off: 1, glyph: 'Γ', col: '#f0f0f0', mana: 5, d: 0.02,
              info: 'also casts a copy of the last spell on the gun', copy: 'last' },
-  tau:     { name: 'Tau', kind: 'mod', glyph: 'Τ', col: '#f0f0f0', mana: 8, d: 0.03,
+  tau:     { name: 'Tau', kind: 'mod', off: 1, glyph: 'Τ', col: '#f0f0f0', mana: 8, d: 0.03,
              info: 'casts the next two spells a second time', copy: 'next2' },
-  omega:   { name: 'Omega', kind: 'mod', glyph: 'Ω', col: '#f0f0f0', mana: 40, d: 0.1,
+  omega:   { name: 'Omega', kind: 'mod', off: 1, glyph: 'Ω', col: '#f0f0f0', mana: 40, d: 0.1,
              info: 'casts a copy of every single spell on the gun', copy: 'all' },
-  phi:     { name: 'Phi', kind: 'mod', glyph: 'Φ', col: '#f0f0f0', mana: 20, d: 0.06,
+  phi:     { name: 'Phi', kind: 'mod', off: 1, glyph: 'Φ', col: '#f0f0f0', mana: 20, d: 0.06,
              info: 'casts a copy of every shot on the gun', copy: 'shots' },
-  sigma:   { name: 'Sigma', kind: 'mod', glyph: 'Σ', col: '#f0f0f0', mana: 20, d: 0.06,
+  sigma:   { name: 'Sigma', kind: 'mod', off: 1, glyph: 'Σ', col: '#f0f0f0', mana: 20, d: 0.06,
              info: 'casts a copy of every static field on the gun', copy: 'statics' },
-  mu:      { name: 'Mu', kind: 'mod', glyph: 'Μ', col: '#f0f0f0', mana: 15, d: 0.05,
+  mu:      { name: 'Mu', kind: 'mod', off: 1, glyph: 'Μ', col: '#f0f0f0', mana: 15, d: 0.05,
              info: 'applies every modifier on the gun to this shot, wherever they sit', copy: 'mods' },
-  zeta:    { name: 'Zeta', kind: 'mod', glyph: 'Ζ', col: '#f0f0f0', mana: 12, d: 0.04,
+  zeta:    { name: 'Zeta', kind: 'mod', off: 1, glyph: 'Ζ', col: '#f0f0f0', mana: 12, d: 0.04,
              info: 'casts a random spell borrowed off one of your other guns', copy: 'other' },
 
-  // ---- triggers: a carrier that takes the spells after it along and casts them
-  // where it stops. A carried spell never carries anything itself, so they cannot chain.
-  trig:    { name: 'Spell With Trigger', kind: 'shot', glyph: '⊡', col: '#8fe0ff', mana: 15,
-             info: 'A light bolt. The next spell on the gun goes off wherever it stops',
-             dmg: 0.5, speed: 560, spread: 2, delay: 0.16, size: 2, life: 1.4, recoil: 4,
-             payload: 1 },
-  dtrig:   { name: 'Spell With Double Trigger', kind: 'shot', glyph: '⊠', col: '#8fe0ff', mana: 24,
-             info: 'The same, but it carries the next two spells',
-             dmg: 0.5, speed: 540, spread: 2, delay: 0.2, size: 2.5, life: 1.4, recoil: 5,
-             payload: 2 },
-  timer:   { name: 'Spell With Timer', kind: 'shot', glyph: '◔', col: '#8fe0ff', mana: 15,
-             info: 'Carries the next spell and lets it off in mid-air, a moment after firing',
-             dmg: 0.5, speed: 460, spread: 2, delay: 0.16, size: 2, life: 0.45, recoil: 4,
-             payload: 1 },
+  // ---- Add Trigger / Add Timer / Add Expiration Trigger: turn the next projectile
+  // into a carrier. See the trigger variants below MOD_TIER.
+  addtrig: { name: 'Add Trigger', kind: 'mod', glyph: '⊡', col: '#8fe0ff', mana: 10, d: 0.03,
+             info: 'The next projectile casts the spell after it where it hits something',
+             addTrig: 'hit' },
+  addtimer:{ name: 'Add Timer', kind: 'mod', glyph: '◔', col: '#8fe0ff', mana: 13, d: 0.03,
+             info: 'The next projectile casts the spell after it a moment after firing, or on a hit',
+             addTrig: 'timer' },
+  adddeath:{ name: 'Add Expiration Trigger', kind: 'mod', glyph: '✝', col: '#8fe0ff', mana: 12, d: 0.03,
+             info: 'The next projectile casts the spell after it when it dies, however it dies',
+             addTrig: 'expire' },
 };
 // Mods are coloured by what they are FOR, not one colour each: an amber shot
 // needs a blue mod to speed it up, a red one to hit harder, and so on. The
@@ -1004,7 +999,7 @@ const FAMILY_OF = {
   pollen: 'shots', disc: 'shots', nuke: 'shots', meteor: 'shots',
   boom: 'field', brim: 'field', crystal: 'field', dormant: 'field', stillc: 'field',
   shieldc: 'field', vigour: 'field', storm: 'field', vacfield: 'field', glitter: 'field',
-  platform: 'cast', wallup: 'cast', refresh: 'cast', farcast: 'cast', telecast: 'cast',
+  refresh: 'cast', farcast: 'cast', telecast: 'cast',
   warpcast: 'cast', sawstorm: 'cast', alpha: 'cast', gamma: 'cast', tau: 'cast',
   omega: 'cast', phi: 'cast', sigma: 'cast', mu: 'cast', zeta: 'cast',
   knock: 'dmg', kick: 'dmg', crit: 'dmg', flat: 'dmg', lust: 'dmg', manapow: 'dmg',
@@ -1015,7 +1010,7 @@ const FAMILY_OF = {
   split: 'pattern', cluster: 'pattern', oct: 'pattern', myriad: 'pattern', bifur: 'pattern',
   trifur: 'pattern', behind: 'pattern',
   damper: 'upkeep', hspread: 'upkeep', blood: 'upkeep',
-  trig: 'cast', dtrig: 'cast', timer: 'cast',
+  addtrig: 'cast', addtimer: 'cast', adddeath: 'cast',
 };
 const FIELD_WHAT = {
   explode: 'blows up on the spot',
@@ -1058,24 +1053,24 @@ const MOD_PRICE = {
   zap: 70, chain: 75, void: 110, digbolt: 20, glance: 55, plasma: 80, ldrill: 35,
   cross: 65, pollen: 20, disc: 40, nuke: 150, meteor: 120, boom: 55, brim: 20,
   crystal: 30, dormant: 25, stillc: 50, shieldc: 50, vigour: 60, storm: 85, vacfield: 60,
-  glitter: 80, platform: 20, wallup: 25, refresh: 55, blood: 90, bpower: 45, gpower: 50,
+  glitter: 80, refresh: 55, blood: 90, bpower: 45, gpower: 50,
   farcast: 25, telecast: 65, warpcast: 40, sawstorm: 85, knock: 25, kick: 15, damper: 25,
   crit: 50, gravmod: 15, float: 20, boomer: 40, spiral: 30, pong: 35, orbit: 50,
   autoaim: 45, nearhome: 35, flat: 35, eater: 60, lust: 55, manapow: 55, split: 50,
   cluster: 60, bboom: 50, hspread: 30, oct: 110, myriad: 130, bifur: 30, trifur: 45,
   behind: 25, alpha: 45, gamma: 45, tau: 70, omega: 160, phi: 95, sigma: 90, mu: 85,
-  zeta: 70, trig: 55, dtrig: 85, timer: 60,
+  zeta: 70, addtrig: 55, addtimer: 60, adddeath: 55,
 };
 
 // How rare a mod is, 1 common to 4 rare. Shops and the cave weight what they hand out by
 // this, so early floors offer workhorses and the Greek letters stay a find.
 const MOD_TIER = {
   bolt: 1, spark: 1, buck: 1, tight: 1, fast: 1, cheap: 1, spit: 1, bubble: 1, pollen: 1,
-  digbolt: 1, arrow: 1, brim: 1, platform: 1, hspread: 1, damper: 1, knock: 1, kick: 1,
+  digbolt: 1, arrow: 1, brim: 1, hspread: 1, damper: 1, knock: 1, kick: 1,
   gravmod: 1, float: 1, farcast: 1, bifur: 1, behind: 1, dmg_up: 1, speed: 1, brief: 1,
   slug: 2, lance: 2, orb: 2, blast: 2, heavy: 2, light: 2, accel: 2, bounce: 2, big: 2,
   range: 2, borer: 2, double: 2, over: 2, trigger: 2, esph: 2, fbolt: 2, eorb: 2,
-  disc: 2, glance: 2, ldrill: 2, crystal: 2, dormant: 2, wallup: 2, boomer: 2, spiral: 2,
+  disc: 2, glance: 2, ldrill: 2, crystal: 2, dormant: 2, boomer: 2, spiral: 2,
   pong: 2, autoaim: 2, nearhome: 2, flat: 2, crit: 2, split: 2, bboom: 2, refresh: 2,
   warpcast: 2, trifur: 2, alpha: 2, gamma: 2, scatter: 2, homing: 3, tip: 3, triple: 3,
   over_heat: 3, recharge: 3, battery: 3, saw: 3, missile: 3, fball: 3, zap: 3, chain: 3,
@@ -1083,9 +1078,54 @@ const MOD_TIER = {
   eater: 3, lust: 3, cluster: 3, manapow: 3, bpower: 3, gpower: 3, telecast: 3, tau: 3,
   mu: 3, phi: 3, sigma: 3, seeker: 4, pierce: 4, quad: 4, cold: 4, void: 4, nuke: 4,
   meteor: 4, storm: 4, glitter: 4, sawstorm: 4, blood: 4, oct: 4, myriad: 4, omega: 4,
-  zeta: 4, trig: 3, timer: 3, dtrig: 4,
+  zeta: 4, addtrig: 3, addtimer: 3, adddeath: 3,
 };
 const tierOf = id => MOD_TIER[id] || 2;
+
+// ---- trigger, timer and expiration variants (Noita's "... With Trigger" spells) ----
+// Not their own kind of thing: each is an existing spell that also carries a payload.
+// When drawn it draws `draw` more casts (plus any modifiers on the way) as its payload,
+// a little cast of its own, and lets it off: 'hit' on the first thing it touches, 'timer'
+// after `timer` seconds (or on a hit first), 'expire' when it dies, however it dies.
+// Outside modifiers don't reach the payload and payload modifiers don't leak out.
+const TRIG_KINDS = {
+  hit:    { tag: 'With Trigger', mark: 'T' },
+  timer:  { tag: 'With Timer', mark: '◔' },
+  expire: { tag: 'With Expiration Trigger', mark: '✝' },
+};
+const TRIG_VARIANTS = [
+  // id, base, trigger kind, extra
+  ['bolt_t',    'bolt',    'hit'],
+  ['bolt_tt',   'bolt',    'hit',    { name: 'Bolt With Double Trigger', draw: 2, mana: 12, mark: 'T²' }],
+  ['arrow_t',   'arrow',   'hit'],
+  ['fbolt_t',   'fbolt',   'hit'],
+  ['bubble_t',  'bubble',  'hit'],
+  ['eorb_t',    'eorb',    'hit'],
+  ['crystal_t', 'crystal', 'hit'],
+  ['dormant_t', 'dormant', 'hit'],
+  ['bolt_ti',   'bolt',    'timer',  { timer: 0.25 }],
+  ['arrow_ti',  'arrow',   'timer',  { timer: 0.3 }],
+  ['spit_ti',   'spit',    'timer',  { timer: 0.17 }],
+  ['esph_ti',   'esph',    'timer',  { timer: 0.5 }],
+  ['eorb_ti',   'eorb',    'timer',  { timer: 0.8 }],
+  ['ldrill_ti', 'ldrill',  'timer',  { timer: 0 }],
+  ['void_d',    'void',    'expire', { name: 'Black Hole With Death Trigger' }],
+];
+const TIMER_ADD = 0.33;                 // how long Add Timer waits
+for (const [id, base, trig, extra] of TRIG_VARIANTS) {
+  const m = MODS[base], k = TRIG_KINDS[trig];
+  MODS[id] = Object.assign({}, m, {
+    name: m.name + ' ' + k.tag, trig, draw: 1, base,
+    mana: Math.round(m.mana * 1.3 + 5), mark: k.mark,
+    info: m.info + '. ' + (trig === 'hit' ? 'Casts the next spell where it hits'
+      : trig === 'timer' ? 'Casts the next spell a moment after firing'
+      : 'Casts the next spell where it dies'),
+  }, extra || {});
+  if (extra && extra.mana) MODS[id].mana = m.mana + extra.mana;
+  FAMILY_OF[id] = FAMILY_OF[base];
+  MOD_PRICE[id] = Math.round((MOD_PRICE[base] || 30) * 1.4 + 15);
+  MOD_TIER[id] = Math.min(4, tierOf(base) + 1);
+}
 
 // What a floor is likely to hand you. Each floor reaches a little further up the
 // tiers, so the early cave is workhorses and the Greek letters stay a find.
@@ -1255,10 +1295,11 @@ function effRecharge(g) {
   return Math.max(MIN_RECH, (g.recharge + pas.rech) * pas.rechMul);
 }
 
-const SHOT_IDS = Object.keys(MODS).filter(k => MODS[k].kind === 'shot');
+// `off` mods (the Greek letters, for now) stay in MODS but are never handed out
+const SHOT_IDS = Object.keys(MODS).filter(k => MODS[k].kind === 'shot' && !MODS[k].off);
 // a found gun is seeded with something that hurts on its own, so never a bare trigger
-const SEED_SHOTS = SHOT_IDS.filter(k => !MODS[k].payload);
-const ALL_IDS = Object.keys(MODS);
+const SEED_SHOTS = SHOT_IDS.filter(k => !MODS[k].trig);
+const ALL_IDS = Object.keys(MODS).filter(k => !MODS[k].off);
 
 // ---- guns ----
 const GUN_A = ['Rusty', 'Bone', 'Cracked', 'Copper', 'Glass', 'Ivory', 'Molten', 'Static',
@@ -1346,6 +1387,7 @@ function blankShot(sm, spread) {
     autoaim: 0, homeR: 0, flat: 0, eat: sm.eat || 0, pull: sm.pull || 0,
     split: 0, cluster: 0, bounceFx: null, friendly: 0, chain: sm.chain || 0,
     fuse: sm.fuse || 0, beam: sm.beam || 0, payload: null,
+    trig: sm.trig || null, timer: sm.timer != null ? sm.timer : TIMER_ADD,
     reach: sm.reach != null ? sm.reach : 10,     // how far ahead of the muzzle it spawns
     hidden: sm.hidden || 0,                       // don't draw it (Buzzsaw cuts unseen)
     still: sm.kind === 'static' ? 1 : 0, field: sm.field || null, r: sm.r || 0 };
@@ -1358,9 +1400,9 @@ function blankShot(sm, spread) {
 function planCast(g, others) {
   const start = g.idx, mods = [], defs = [];
   // what each cast spell is carrying, by its index in defs: a trigger fills this
-  // with the spells drawn after it, and everything else leaves it empty
+  // with the payload it drew, and everything else leaves it empty
   const holds = [];
-  let need = 0, hold = null;
+  let addTrig = null;                   // an Add Trigger waiting for the next projectile
   let multi = g.multi, cost = 0, manaMul = 1, ran = false, wrapped = 0;
   // delay is walked in draw order: most mods nudge it, a few reset it outright,
   // and anything drawn after a reset adds its own delay back on top
@@ -1410,9 +1452,54 @@ function planCast(g, others) {
     return [];
   };
 
-  // a trigger still owed a payload keeps the draw going past the multicast limit,
-  // because the spells it carries are not casts of their own
-  for (let guard = 0; (defs.length < multi || need > 0) && guard < 96; guard++) {
+  const dress = (sm, list) => {
+    const sh = blankShot(sm, g.spread);
+    for (const m of list) if (m.f) m.f(sh);
+    sh.speed *= g.speedMul || 1;
+    if (sh.flat) sh.grav = 0;
+    return sh;
+  };
+  // A trigger's payload is a little cast of its own, drawn straight after the carrier:
+  // `n` casts, with its own modifiers, multicasts and triggers. Nothing outside it
+  // reaches in and nothing in it leaks out. It may wrap round the gun once (shared with
+  // the main draw), and the depth cap plus the one wrap keep it from running away.
+  // Like Noita, a wrap only brings back spells fired on earlier pulls: nothing drawn in
+  // this pull can be drawn again, so a lone trigger does not carry itself.
+  let drawn = 0;
+  const took = new Set();
+  const payloadOf = (n, depth) => {
+    const pm = [], out = [];
+    let want = n, pform = null, pAdd = null;
+    while (out.length < want && drawn++ < 96) {
+      if (g.idx >= g.order.length) { ran = true; if (wrapped++) break; g.idx = 0; }
+      if (took.has(g.idx)) { g.idx++; continue; }
+      took.add(g.idx);
+      const id = g.slots[g.order[g.idx++]];
+      if (!id) continue;
+      const m = MODS[id];
+      if (m.kind === 'passive') continue;
+      cost += m.mana || 0;
+      if (m.hp) hp += m.hp;
+      if (m.manaMul) manaMul *= m.manaMul;
+      timing(m);
+      if (m.kind === 'mod' || m.kind === 'util') {
+        if (m.f) pm.push(m);
+        if (m.multi) want += m.multi;
+        if (m.form) pform = m.form;
+        if (m.addTrig) pAdd = m.addTrig;
+        continue;
+      }
+      const sh = dress(m, pm);
+      if (pAdd && m.kind === 'shot' && !sh.trig) sh.trig = pAdd;
+      pAdd = null;
+      if (sh.trig) sh.payload = depth < 6 ? payloadOf(m.draw || 1, depth + 1) : [];
+      out.push(sh);
+    }
+    if (pform) out.forEach((sh, i) => { sh.ang = pform[i % pform.length]; });
+    return out;
+  };
+
+  for (let guard = 0; defs.length < multi && guard < 96; guard++) {
     let id, copied = false;
     if (queue.length) { id = queue.shift(); copied = true; }
     else {
@@ -1423,6 +1510,7 @@ function planCast(g, others) {
         g.idx = 0;
       }
       id = g.slots[g.order[g.idx]];
+      took.add(g.idx);
       g.idx++;
     }
     if (!id) continue;
@@ -1434,6 +1522,7 @@ function planCast(g, others) {
       if (m.act) acts.push(m.act);
       if (m.manaMul) manaMul *= m.manaMul;
       if (m.f) mods.push(m);
+      if (m.addTrig) addTrig = m.addTrig;
       // Copies and multicasts only open up on the first pass. Once the gun has
       // wrapped round to the front they are skipped, or a Myriad would widen the
       // cast every time it came round and never finish.
@@ -1459,39 +1548,18 @@ function planCast(g, others) {
       timing(m);
       continue;
     }
-    // a trigger is holding the barrel: this spell rides along with it instead of
-    // being cast now. It is paid for and timed here, but it goes off on impact.
-    if (need > 0) {
-      need--;
-      hold.push(m);
-      cost += m.mana;
-      timing(m);
-      if (!need) hold = null;
-      continue;
-    }
     defs.push(m);
     cost += m.mana;
     timing(m);
-    // a carrier takes the next spells with it. Nothing it carries is ever given a
-    // payload of its own, which is what stops a trigger chaining into another.
-    if (m.payload) { hold = []; need = m.payload; holds[defs.length - 1] = hold; }
+    // a carrier (a "with Trigger" spell, or any projectile after Add Trigger) draws its
+    // payload right now, so the spells it takes are not cast from the barrel as well
+    const kind = m.trig || (m.kind === 'shot' && addTrig) || null;
+    if (m.kind === 'shot') addTrig = null;
+    if (kind) holds[defs.length - 1] = { kind, list: payloadOf(m.draw || 1, 1) };
   }
-  const dress = sm => {
-    const sh = blankShot(sm, g.spread);
-    for (const m of mods) if (m.f) m.f(sh);
-    sh.speed *= g.speedMul || 1;
-    if (sh.flat) sh.grav = 0;
-    return sh;
-  };
   const shots = defs.map((sm, i) => {
-    const sh = dress(sm);
-    // the same modifiers reach what a trigger is carrying, and a carried spell
-    // carries nothing, so the payload is always exactly one level deep
-    if (holds[i] && holds[i].length) sh.payload = holds[i].map(pm => {
-      const ps = dress(pm);
-      ps.payload = null;
-      return ps;
-    });
+    const sh = dress(sm, mods);
+    if (holds[i]) { sh.trig = holds[i].kind; sh.payload = holds[i].list; }
     return sh;
   });
   if (form) shots.forEach((sh, i) => { sh.ang = form[i % form.length]; });
@@ -1567,8 +1635,10 @@ function modPreview(id) {
     const p = previewPlan([id]);
     const sh = p.shots[0];
     rows.push(['mana', num(p.cost)], ['cast delay', num(p.delay) + 's']);
-    if (m.payload) rows.push(['carries',
-      m.payload === 1 ? 'the next spell' : 'the next ' + m.payload + ' spells']);
+    if (m.trig) rows.push(['carries',
+      (m.draw === 1 ? 'the next spell' : 'the next ' + m.draw + ' spells')
+      + (m.trig === 'hit' ? ', on a hit' : m.trig === 'timer' ? ', after ' + num(m.timer) + 's'
+        : ', when it dies')]);
     if (m.rech || m.rechMul) rows.push(['recharge', num(effRecharge(ref([id]))) + 's']);
     for (const [key, label, unit] of PREVIEW_FIELDS) {
       if (!sh[key]) continue;
@@ -1596,9 +1666,10 @@ function modPreview(id) {
 const HP_BUDGET = PLAYER_HP / 25;
 
 // What one planned shot is worth: every pellet of it, plus anything a trigger is
-// carrying to the point of impact. Payloads are one level deep, so this ends.
+// carrying to the point of impact. Payloads nest, but are finite, so this ends.
 const shotPower = sh => (sh.dmg || 0) * Math.max(1, Math.round(sh.count || 1))
   + (sh.payload || []).reduce((t, ps) => t + shotPower(ps), 0);
+const shotCount = sh => 1 + (sh.payload || []).reduce((t, ps) => t + shotCount(ps), 0);
 const shotPellets = sh => Math.max(1, Math.round(sh.count || 1))
   + (sh.payload || []).reduce((t, ps) => t + shotPellets(ps), 0);
 
@@ -1612,7 +1683,7 @@ function gunRate(gun) {
     blood += p.hp || 0;
     for (const sh of p.shots) {
       // a trigger's mana is already counted; its payload's damage has to be too
-      shots += 1 + (sh.payload ? sh.payload.length : 0);
+      shots += shotCount(sh);
       dmg += shotPower(sh);
     }
     if (p.wrap) break;
@@ -1744,8 +1815,8 @@ function groupStats(gun, gr) {
   const sum = (p, f) => p.shots.reduce((t, sh) => t + (sh[f] || 0), 0);
   // damage is what the whole pull puts out, so a pellet spray counts every pellet
   const power = p => p.shots.reduce((t, sh) => t + shotPower(sh), 0);
-  const top = (p, f) => p.shots.reduce((t, sh) => Math.max(t,
-    (sh.payload || []).reduce((n, ps) => Math.max(n, ps[f] || 0), sh[f] || 0)), 0);
+  const topOf = (sh, f) => (sh.payload || []).reduce((n, ps) => Math.max(n, topOf(ps, f)), sh[f] || 0);
+  const top = (p, f) => p.shots.reduce((t, sh) => Math.max(t, topOf(sh, f)), 0);
   const pellets = p => p.shots.reduce((t, sh) => t + shotPellets(sh), 0);
   const avg = (p, f) => (p.shots.length ? sum(p, f) / p.shots.length : 0);
 
@@ -3879,8 +3950,6 @@ function Game({ input }) {
 
       if (plan.hp && !p.dead) hurt(plan.hp);
       if (acts.includes('refresh')) g.skipRech = true;
-      if (acts.includes('platform')) paint(gx + nx * 14, p.y + PH + 6, 26, 4);
-      if (acts.includes('wall')) paint(gx + nx * 26, p.y - 16, 5, 34);
       if (acts.includes('manapow')) {
         const spare = Math.max(0, g.mana - 50);
         g.mana -= spare; bonus += spare / 12;
@@ -3938,7 +4007,7 @@ function Game({ input }) {
     // wherever the carrier stopped. `fd` is how far ahead of the origin a static field
     // lands: a barrel's length out of the gun, and nothing at all off a trigger.
     function spawnShot(sh, ox, oy, base, bonus, warp, fd) {
-      if (sh.still) { castField(sh, ox + Math.cos(base) * fd, oy + Math.sin(base) * fd); return; }
+      if (sh.still) { castField(sh, ox + Math.cos(base) * fd, oy + Math.sin(base) * fd, base); return; }
       const n = Math.min(24, Math.max(1, Math.round(sh.count)));
       const off = (sh.ang || 0) * Math.PI / 180;
       // perk touches: Glass/Concentrated damage, Critical/Close-Call chance, Faster
@@ -3977,26 +4046,30 @@ function Game({ input }) {
           pong: sh.pong, orbit: sh.orbit, homeR: sh.homeR, eat: sh.eat, pull: sh.pull,
           split: sh.split, cluster: sh.cluster, bounceFx: sh.bounceFx,
           friendly: sh.friendly, chain: sh.chain, fuse: sh.fuse,
-          payload: sh.payload || null, hidden: sh.hidden,
+          payload: sh.payload && sh.payload.length ? sh.payload : null, hidden: sh.hidden,
+          trig: sh.trig, timer: sh.trig === 'timer' ? sh.timer : null,
           ox: bx, oy: by, age: 0, born: sh.life });
       }
     }
 
-    // Spell With Trigger: whatever the carrier was holding is cast where it stopped,
-    // however it stopped — rock, enemy, or simply running out of flight. A dud that
-    // swallowed two spells' worth of mana feels awful, so every ending counts.
+    // A carrier lets go of its payload: 'hit' on the first thing it touches, 'timer'
+    // when its timer runs out (or on a hit first), 'expire' when it dies. It fires once;
+    // anything in the payload that is itself a carrier takes its own payload along.
     function firePayload(b) {
       const list = b.payload;
-      b.payload = null;                        // fires once, and what it casts carries nothing
-      const sp = Math.hypot(b.vx, b.vy) || 1;
-      const nx = b.vx / sp, ny = b.vy / sp;
-      let x = b.x, y = b.y;
+      b.payload = null;
+      const sp = Math.hypot(b.vx, b.vy);
+      const nx = sp ? b.vx / sp : Math.cos(b.ang || 0), ny = sp ? b.vy / sp : Math.sin(b.ang || 0);
+      releaseAt(list, b.x, b.y, nx, ny, b.col);
+    }
+    function releaseAt(list, x, y, nx, ny, col) {
+      const x0 = x, y0 = y;
       // it may have stopped inside the rock, so back up along its own track until
       // there is open ground for the payload to come out into
       for (let k = 0; k < 6 && solidAt(x + nx * 10, y + ny * 10); k++) { x -= nx * 4; y -= ny * 4; }
       const base = Math.atan2(ny, nx);
       for (const sh of list) spawnShot(sh, x, y, base, 0, false, 0);
-      burst(b.x, b.y, 5, b.col);
+      burst(x0, y0, 5, col);
     }
 
     // A beam is instant: it walks a line, damages what it touches and leaves a streak.
@@ -4017,6 +4090,8 @@ function Game({ input }) {
       }
       beams.push({ x, y, nx, ny, len: hitAt, col: sh.col, w: sh.size, t: 0 });
       if (sh.explode) explode(x + nx * hitAt, y + ny * hitAt, sh.explode);
+      // a beam is instant, so whatever kind of carrier it is, the payload goes off at its end
+      if (sh.payload && sh.payload.length) releaseAt(sh.payload, x + nx * hitAt, y + ny * hitAt, nx, ny, sh.col);
     }
 
     // Clusterbolt: the shot bursts into a handful of small explosive bolts
@@ -4045,11 +4120,22 @@ function Game({ input }) {
     };
 
     // Static projectiles: they sit where you cast them and work over time.
-    function castField(sh, x, y) {
-      if (sh.field === 'explode') { explode(x, y, sh.r); return; }
+    function castField(sh, x, y, ang) {
+      const pay = sh.payload && sh.payload.length ? sh.payload : null;
+      if (sh.field === 'explode') {
+        explode(x, y, sh.r);
+        if (pay) releaseAt(pay, x, y, Math.cos(ang || 0), Math.sin(ang || 0), sh.col);
+        return;
+      }
       fields.push({ x, y, r: sh.r, field: sh.field, life: sh.life, max: sh.life,
-        col: sh.col, dmg: sh.dmg || 1, tick: 0 });
+        col: sh.col, dmg: sh.dmg || 1, tick: 0, payload: pay, ang: ang || 0, trig: sh.trig });
     }
+    // a crystal "with Trigger" casts what it carries when it goes off
+    const fieldPayload = f => {
+      if (!f.payload) return;
+      const list = f.payload; f.payload = null;
+      releaseAt(list, f.x, f.y, Math.cos(f.ang), Math.sin(f.ang), f.col);
+    };
 
     function explode(x, y, R) {
       const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL, ring = rc + 2.5;
@@ -4200,7 +4286,7 @@ function Game({ input }) {
             if (b.pull || b.eat || b.bore) {          // rolls on through, but only counts once
               const seen = b.propHit || (b.propHit = new Set());
               if (!seen.has(pr)) { seen.add(pr); pr.hurt = (pr.hurt || 0) + 1; }
-            } else { pr.hurt = (pr.hurt || 0) + 1; burst(b.x, b.y, 3, b.col); b.life = 0; b.vx = b.vy = 0; }
+            } else { pr.hurt = (pr.hurt || 0) + 1; burst(b.x, b.y, 3, b.col); b.life = 0; b.struck = 1; }
           }
           if (tough) for (let k = enemyShots.length - 1; k >= 0; k--) {
             const es = enemyShots[k];
@@ -4582,6 +4668,8 @@ function Game({ input }) {
           turn(b, clamp(angDiff(want, Math.atan2(b.vy, b.vx)), -b.boomer * dt, b.boomer * dt));
         }
         if (b.eat) dig(b.x, b.y, b.eat);
+        // a timer lets its payload go in mid-air, and the carrier flies on
+        if (b.payload && b.timer != null && (b.timer -= dt) <= 0) firePayload(b);
         if (b.pull) {
           // Black Hole: heavy gravity. It reaches ~2.2x its pull stat and drags harder the
           // closer you are, so creatures get hauled in and held in the middle of it. It
@@ -4646,6 +4734,7 @@ function Game({ input }) {
             burst(nx, ny, 4, b.col);
             if (b.knock) shove(e, b.vx / sp, b.vy / sp, b.knock);
             b.x = nx; b.y = ny;
+            if (b.payload && b.trig !== 'expire') firePayload(b);   // a trigger goes off on a hit
             if (b.chain > 0) {                            // hop to the next one along
               (b.hit || (b.hit = new Set())).add(e);
               let best = null, bd = 150;
@@ -4673,6 +4762,7 @@ function Game({ input }) {
             burst(nx, ny, 5, b.col); hurt(Math.round(b.dmg * 2)); dead = true; break;
           }
           if (solidAt(nx, ny)) {
+            if (b.payload && b.trig !== 'expire') firePayload(b);   // so does touching rock
             if (b.bounce > 0 && !b.bore && !b.eat) {
               b.bounce--;
               const hx = solidAt(nx, b.y), hy = solidAt(b.x, ny);
@@ -4696,7 +4786,8 @@ function Game({ input }) {
           b.x = nx; b.y = ny;
         }
         if (boom) { explode(b.x, b.y, b.explode); dead = true; }
-        if (dead && b.payload) firePayload(b);   // a trigger lets go of what it carried
+        // an expiration trigger goes off however it dies; a trigger stopped by a prop counts as a hit
+        if (dead && b.payload && (b.trig === 'expire' || b.struck)) firePayload(b);
         if (dead) bullets.splice(i, 1);
       }
 
@@ -4708,12 +4799,12 @@ function Game({ input }) {
         if (f.field === 'mine') {
           let trip = f.life <= 0;
           for (let j = 0; j < enemies.length && !trip; j++) if (near(j)) trip = true;
-          if (trip) { explode(f.x, f.y, f.r); fields.splice(i, 1); continue; }
+          if (trip) { explode(f.x, f.y, f.r); fieldPayload(f); fields.splice(i, 1); continue; }
         } else if (f.field === 'dormant') {
           // set off by any blast of yours, which is the whole point of it
           for (const fl of flashes) {
             if (Math.hypot(fl.x - f.x, fl.y - f.y) < fl.r + f.r * 0.5) {
-              explode(f.x, f.y, f.r * 1.6); fields.splice(i, 1); f.life = -1; break;
+              explode(f.x, f.y, f.r * 1.6); fieldPayload(f); fields.splice(i, 1); f.life = -1; break;
             }
           }
           if (f.life < 0) continue;
@@ -6509,7 +6600,8 @@ function Editor({ input, close, refresh, canEdit }) {
         onPointerDown: m ? startDrag(id, from) : undefined,
       },
       m ? h('span', { className: 'tg' }, m.glyph) : h('span', { className: 'tg' }, '+'),
-      m ? h('span', { className: 'tn' }, m.name) : null
+      m ? h('span', { className: 'tn' }, m.name) : null,
+      m && m.mark ? h('span', { className: 'tmark' }, m.mark) : null
     );
   };
 

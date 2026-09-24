@@ -160,7 +160,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.tap('.weapon');
   await page.waitForTimeout(400);
   const nDbg = await page.$$eval('.bag .tile', t => t.length);
-  const allMods = await page.evaluate(() => Object.keys(MODS).length);
+  const allMods = await page.evaluate(() => ALL_IDS.length);   // `off` mods are never shown
   check('All mods shows one of every mod', nDbg === allMods, { nDbg, allMods });
   check('and marks the shelf', await page.$$eval('.bag', b => b[0].className.includes('debug')));
 

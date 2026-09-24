@@ -91,8 +91,7 @@ ok('Myriad fires everything left', shotsOf(mk(['myriad', 'bolt', 'bolt', 'slug',
 
 // ---- utility acts reach the caller ----
 for (const [id, act] of [['refresh', 'refresh'], ['farcast', 'far'], ['telecast', 'tele'],
-  ['warpcast', 'warp'], ['sawstorm', 'saws'], ['gpower', 'gpower'], ['manapow', 'manapow'],
-  ['platform', 'platform'], ['wallup', 'wall']]) {
+  ['warpcast', 'warp'], ['sawstorm', 'saws'], ['gpower', 'gpower'], ['manapow', 'manapow']]) {
   const p = G.planCast(mk([id, 'bolt', null, null]));
   ok(id + ' passes its action to the game', (p.acts || []).includes(act), p.acts);
 }

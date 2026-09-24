@@ -266,7 +266,7 @@ gun.
 
 ## The spell book
 
-There are 111 mods, most of them lifted from Noita's spell list and rebuilt to fit
+There are 116 mods, most of them lifted from Noita's spell list and rebuilt to fit
 a cave shooter. They come in a few shapes:
 
 - **Shots** are the things that come out of the barrel — Bolt, Slug, Magic Missile,
@@ -282,23 +282,25 @@ a cave shooter. They come in a few shapes:
   the flight path — Boomerang, Spiral Arc, Ping-Pong, Orbiting Arc, Gravity, Anti-Gravity,
   Horizontal Path, Auto-Aim, Short-range Homing — and the aim line draws every one of
   them properly, so you can see what a path mod will do before you fire it.
-- **Utility** does something to the world or to you. Summon Platform and Summon Wall
-  build terrain. Wand Refresh skips the next recharge. Long-Distance Cast, Teleporting
+- **Utility** does something to the world or to you. Wand Refresh skips the next recharge. Long-Distance Cast, Teleporting
   Cast and Warp Cast move where the shot starts. Blood Magic, Blood To Power and Gold
   To Power buy power with health or gold.
-- **Trigger spells** carry another spell and cast it where they land. **Spell With
-  Trigger** takes the next spell on the gun, **Spell With Double Trigger** takes two,
-  and **Spell With Timer** lets go in mid-air instead of on impact. The payload is
-  cast however the carrier's flight ends, so it is never wasted, and a carried spell
-  never carries one of its own.
-- **The Greek letters** copy other spells off the gun. Alpha copies the first, Gamma the
-  last, Tau repeats the next two, Phi copies every shot, Sigma every field, Omega
-  everything. Mu applies every modifier on the gun to one shot no matter where they sit.
-  Zeta borrows a random spell off one of your other three guns.
+- **Trigger spells** work like Noita's: they are ordinary spells with a payload bolted
+  on — Bolt, Magic Arrow, Firebolt, Bubble Spark, Energy Orb and both crystals **With
+  Trigger**, and **Bolt With Double Trigger**. A trigger casts the next spell on the gun
+  where it hits something (rock, a creature, a prop); if it just runs out of flight, the
+  payload is lost. **With Timer** versions (Bolt, Magic Arrow, Spitter Bolt, Energy
+  Sphere, Energy Orb, Luminous Drill) let go a moment after firing — or on a hit, if
+  that comes first — and the carrier flies on. **Black Hole With Death Trigger** lets go
+  when it dies, however it dies. **Add Trigger**, **Add Timer** and **Add Expiration
+  Trigger** turn the next projectile on the gun into a carrier. The payload is its own
+  little cast: modifiers before the trigger don't reach it, modifiers and multicasts
+  inside it only affect it, and a trigger in the payload carries a payload of its own.
+  A corner mark on the tile (T, T², ◔, ✝) tells a variant from its base spell.
 
 What the cave and the shops hand out is weighted by rarity, and each floor reaches a
-little further up the scale, so the early game is workhorses and the Greek letters
-stay a find.
+little further up the scale, so the early game is workhorses and the rare spells
+stay a find. (The Greek letter copy spells are switched off for now.)
 
 ## Build advice
 
@@ -350,7 +352,7 @@ them if it cannot find either.
 - The map only keeps what you had a line on: a wall hides its far side from the fog of war for good
 - Destructible pixel terrain: explosions and drilling shots eat everything except the outer border
 - Guns and mods to find, with a drag-and-drop screen for building them
-- 111 mods: shots, static fields, path modifiers, trigger spells, utility casts and the Greek letter copy spells
+- 116 mods: shots, static fields, path modifiers, trigger and timer spells, and utility casts
 - A build advisor that measures your damage per second, names the limiting factor and offers one-tap fixes
 - A trajectory aim line — unlocked by the Trajectory Sight perk — that simulates the next shot for real: gravity, acceleration, homing, ricochets, drilling and spread
 - A minimap in the bottom-left: the revealed cave drawn as white outlines over the gameplay, a third of the screen wide, with a yellow dot for your position

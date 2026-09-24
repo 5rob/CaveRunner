@@ -48,26 +48,30 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   const plain = await onePull(['bolt']);
   check('a plain bolt is born at the muzzle', plain.far < 40, plain);
 
-  const empty = await onePull(['timer']);
+  const empty = await onePull(['bolt_ti']);
   check('a timer carrying nothing puts nothing out there', empty.born === 0, empty);
 
-  const loaded = await onePull(['timer', 'bolt']);
+  const loaded = await onePull(['bolt_ti', 'bolt']);
   check('a loaded timer drops its bolt well away from the player', loaded.far > 100, loaded);
   check('and drops exactly one of them', loaded.born === 1, loaded);
 
   // Short Fuse first, so the carrier runs out of flight inside the pocket we dug
-  // instead of burying itself in rock a long way off
-  const dbl = await onePull(['brief', 'dtrig', 'bolt', 'bolt']);
-  check('a double trigger drops both of its bolts out there', dbl.born === 2, dbl);
+  const fizzle = await onePull(['brief', 'bolt_t', 'bolt']);
+  check('a plain trigger that runs out of flight without touching anything lets nothing go',
+    fizzle.born === 0, fizzle);
+  const death = await onePull(['adddeath', 'brief', 'bolt', 'bolt', 'bolt']);
+  check('an expiration trigger lets its payload go when it dies in mid-air', death.born === 1, death);
+  const dbl = await onePull(['adddeath', 'brief', 'bolt', 'double', 'bolt', 'bolt']);
+  check('a multicast in the payload drops both bolts out there', dbl.born === 2, dbl);
 
-  const boom = await onePull(['trig', 'boom']);
-  check('a trigger carrying an explosion blows it up at the impact point, not at your feet',
+  const boom = await onePull(['bolt_t', 'boom']);
+  check('a trigger carrying an explosion blows it up where it hits, not at your feet',
     boom.flash > 60, boom);
 
   // the runaway check, in the real game: nothing but triggers, firing flat out
   const stress = await page.evaluate(async () => {
     const g = window.__in.current.loadout.guns[0], L = window.__lvl;
-    g.cap = 8; g.slots = ['myriad', 'trig', 'dtrig', 'timer', 'trig', 'bolt', 'trig', 'bolt'];
+    g.cap = 8; g.slots = ['myriad', 'bolt_t', 'bolt_tt', 'bolt_ti', 'bolt_t', 'bolt', 'bolt_tt', 'bolt'];
     g.manaMax = 999999; g.mana = 999999; g.recharge = 0.05; g.castDelay = 0.05;
     resetGun(g);
     window.__in.current.right = { active: true, nx: 1, ny: -0.2, mag: 1, dy: -1, on: true };

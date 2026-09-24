@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v59**. Branch: `main` (release channel is `main`).
+Current version: **v60**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -120,7 +120,7 @@ Roughly top to bottom:
 | `THEMES` / `themeFor` | the 12 level palettes; the floor number picks one |
 | `CREATURES` / `ROSTERS` | the 16 creature types, and which live on floors 1–10 |
 | `rosterFor` / `enemyFor` | a floor's creatures, and one creature's floor-scaled stats |
-| `MODS` | the 111 spells, each a plain object |
+| `MODS` | the spells, each a plain object (`off: 1` = kept but never handed out) |
 | `FAMILIES` / `FAMILY_OF` | the 8 colour families the UI groups mods by |
 | `MOD_PRICE` / `MOD_TIER` | shop price and rarity 1–4 for every mod |
 | `PERKS` / `perkBag` | the 31 perks, and folding an owned list into one effective bag |
@@ -468,6 +468,19 @@ capped so none hangs into the shop. **Torches clear fog:** `torchFog()` in `ente
 each `DEV_META` row has a `g`; `DEV_GROUPS` gives the collapsible sections (`.devghead[data-g]`),
 all shut by default, open state kept in localStorage `caverunner-devgroups`.
 
+**v60 triggers are Noita-style variants.** No stand-alone trigger spells: `TRIG_VARIANTS`
+(below `MOD_TIER`) builds `bolt_t`, `arrow_ti`, `void_d` etc. from a base spell, adding
+`trig` ('hit' | 'timer' | 'expire'), `draw`, `timer`, `mark` (the tile's corner badge). Add
+Trigger/Timer/Expiration (`addTrig` mods) make the next *shot* a carrier. In `planCast` a
+carrier calls `payloadOf(draw)` on the spot: a mini-cast with its own mods/multicasts/nested
+triggers, isolated both ways from the main pull (depth cap 6, one shared wrap, and `took` stops
+a wrap redrawing anything drawn this pull). In the game: 'hit' fires on first enemy/rock/prop
+contact (`b.struck`) and is **lost on plain expiry**; 'timer' fires when `b.timer` runs out
+and the carrier flies on; 'expire' fires on any death; beams release at their end, crystals when
+they go off (`fieldPayload`). **Greek letters are `off: 1`** — `ALL_IDS`/`SHOT_IDS` skip them;
+their planCast code and `spells.test.js` checks are kept for bringing them back. Summon
+Platform/Wall were deleted (v60).
+
 ## Testing
 
 ### Write tests into the repo, never the scratchpad
@@ -553,4 +566,4 @@ actually wrong; it's been both.
   The trigger/timer machinery now exists (`payload` on a shot, `firePayload` in the bullet
   loop, v31), so this is a much smaller job than it was.
 - Noita spell categories we only partly mined: Material spells (none), and the rest of
-  Other (Add Trigger / Add Timer, Divide By N, the Requirement spells).
+  Other (Divide By N, the Requirement spells).
