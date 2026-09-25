@@ -15,6 +15,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   // Enemies are creatures now, and they do not all move the same way. The ones with
   // a gun patrol their patch; the ones that come at you are allowed to leave it.
   const spread = await page.evaluate(() => new Promise(res => {
+    // floor 1 has no gun-toting patrollers since v81 (the jellyfish replaced Heikkohiisi),
+    // so make a few of its creatures Hiisi, where they stand, to measure the patrol on
+    for (const e of window.__lvl.enemies.slice(0, 8)) { e.k = enemyFor('hiisi', 1); e.r = e.k.r; e.hx = e.x; e.hy = e.y; e.tgt = null; }
     const es = window.__lvl.enemies.slice(0, 24).map(e => ({ e, act: e.k.act, hx: e.hx, hy: e.hy, far: 0, moved: 0, px: e.x, py: e.y }));
     let n = 0;
     const tick = () => {

@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v80**. Branch: `main` (release channel is `main`).
+Current version: **v81**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -663,6 +663,33 @@ burst, grab/reach per decision, line speed + web cooldown per shot, max lines pe
 the roam spot turns back, aggro reach once a second per spider, silk range/speed/cooldown per string shot, bite
 damage/cooldown per bite, slow + snap length per string stuck on you, and slow/grab/climb once per web line (stored
 on it, so a line doesn't flicker). Adding a spider knob: add a row to `SP_KNOBS` and read it with `spr`.
+**v81: the jellyfish (Myrkkymeduusa, `meduusa`, `act: 'jelly'`, `body: 'jelly'` → `drawJelly`) replaced
+Heikkohiisi on floors 1–2, and the reusable creature pieces.** Owner is reworking every enemy one at a time, so
+the shared parts are now modules — **reach for these first when reworking the next creature:**
+- `rangeKnobs(group, rows)` registers a creature's min/max Dev knobs (`SP_KNOBS`, `JE_KNOBS` use it; add a
+  `DEV_GROUPS` entry too). `kr(k, rnd)` rolls one (`spr` is the same function, kept for the spider's code);
+  `kru(k, u)` is the value at fraction u — for looks rolled once per creature (`S.u.*`) that still update live.
+- `roamStep(R, e, dt, rnd, pre)` — the roam spot drifting round home (spider and jelly both use it).
+- `turnToward(a, to, max)` — turn-rate limit. `flyMove(e, V, dt, r, solidCell, bounce)` — free flyer moved by
+  its velocity in sub-steps, pushed out of / bounced off rock via `surfNormal`.
+- **`kp` on a creature** (`'sp'`, `'je'`) = "reworked, runs its own step". The enemy loop then: rolls its aggro
+  reach from `kp+'Aggro'` once a second, uses `kp+'Bite'`/`kp+'BiteCd'` for contact damage, skips the hover
+  bob (`e.ty = e.y`), and `damageEnemy` sets aggro. `HUNTERS` (act → 1) is who uses the aggro system (was a
+  hardcoded `chase||bomb||spider` in three places). `k.glow` (rgb string) + `kp+'Glow'/'GlowR'/'Flare'` knobs
+  = an additive glow after the fog, gated by `fogLit`, flaring with `e.je.shape`.
+- **Enemy shots take optional `goo`, `drip`/`dripG` and `splat`/`splatV`** (any creature can use them):
+  `goo` draws a glob, `drip` sheds falling particles per second, `splat` bursts on rock/player (`splat()`,
+  `goo()` in the Game; the particles are `sparks` with their own gravity `g`).
+**The jelly** (`jellyStep`, pure, state on `e.je`): heading `hd` = its head, turned by `turnToward`. A pulse is a
+thrust along the head over `jePushT` adding up to the rolled push speed, only when the head is within
+`jePushTol` of where it's going; then `exp(-drag·dt)` damping + a small sink. Roaming goal = roam spot (idle
+near it, it rights itself head-up); hunting goal = you, no pulses once within `jeRange × sees`, and the Game
+spits from the head when `S.inRange && S.aimed` and it has line of sight. `S.shape = 1 - (1 - v/vref)^jeThin`
+(thin at speed, flat at rest, weighted thin). `jellyBell(r, shape, squash)` is the outline both the tentacle
+roots and the sprite use. Tentacles: `jeTents` × `jeVerts` world points, follow-the-leader at a fixed spacing
+with sway + droop, drawn as one tapered ribbon each (owner liked the tips folding back freely — no stiffness).
+~36 knobs in Dev → Jellyfish. Tests: `tests/logic/jelly.test.js` (pulses, drag, turn limit, shape, hunting,
+walls, tentacles, real floor-1 caves), `tests/browser/jelly.test.js` (sandbox: spit, drips, splat, damage, glow).
 **v80: Noita spawn table, teleport bolts, vacuum, gold seams, glow, map marks.**
 `modWeight(id, floor)` is Noita's own spawn data now: `NOITA_SPAWN` (Noita action id →
 [spawn_level, spawn_probability] strings, copied from `gun_actions.lua`) and `NOITA_OF` (our id →

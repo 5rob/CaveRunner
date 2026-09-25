@@ -201,8 +201,8 @@ the run keeps moving rather than settling into a pattern.
 
 | Floor | Cave | Who is in it |
 |---|---|---|
-| 1 | Mossy caves | Heikkohiisi, Hämähäkki |
-| 2 | Coal seams | Heikkohiisi, Hämähäkki, Hiisi |
+| 1 | Mossy caves | Myrkkymeduusa, Hämähäkki |
+| 2 | Coal seams | Myrkkymeduusa, Hämähäkki, Hiisi |
 | 3 | Frozen deep | Hiisi, Konna, Hämähäkki |
 | 4 | Ember halls | Hiisi, Mato, Limanuljaska, Kobold |
 | 5 | Fungal grotto | Hiisi, Kärpässieni, Hurtta, Limanuljaska |
@@ -238,7 +238,7 @@ even before you reach them.
 
 Sixteen of them, named after Noita's, and they do not all behave the same way:
 
-- **Shooters** (Hiisi, Heikkohiisi, Tappurahiisi, Chaingunner) hover around their
+- **Shooters** (Hiisi, Tappurahiisi, Chaingunner) hover around their
   patch and fire when they have a line on you. The Tappurahiisi throws a cone of
   pellets, the Chaingunner fires in short bursts.
 - **Turrets** (Snipuhiisi, Kärpässieni, Jäätiö, Elävät luut) never move. They have
@@ -252,6 +252,13 @@ Sixteen of them, named after Noita's, and they do not all behave the same way:
   vine, hang there getting your fuel back, climb along it with the stick, and push
   down to let go. Pushing through web slows you (×0.8 for each line you touch). Up close it bites; from range it shoots a string that sticks to
   you — each one stuck on slows you (×0.8), until you pull far enough away to snap it.
+- **The jellyfish** (Myrkkymeduusa) drifts through the open cave, glowing a poison
+  green that lights the rock round it. It swims in pulses: a push along wherever its
+  head points, then a long glide as it slows — tall and thin when it has just pushed,
+  flattening out as it comes to a stop — with its tentacles streaming behind. It
+  can't turn sharply. Once it sees you it turns its head onto you, swims in to
+  spitting range and spits a glob of poison that drips as it flies and splats when it
+  lands. It stings if it touches you.
 - **Chasers** (Lohkare, Mato, Hurtta, Kobold, Konna) come at you and
   hurt you by reaching you. The Lohkare is slow and armoured; the Hurtta is not.
 - **Bombers** (Limanuljaska, Stendari) run at you and burst on contact, taking

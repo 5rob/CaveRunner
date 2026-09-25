@@ -13,9 +13,9 @@ const js = src.slice(open, src.indexOf('</script>', open));
 const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
 const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
 const game = new Function('React', shim + upto +
-  'return { makeLevel, themeFor, THEMES, rosterFor, ROSTERS, CREATURES, CREATURE_IDS, enemyFor, ENEMY_COUNT };')(
+  'return { makeLevel, themeFor, THEMES, rosterFor, ROSTERS, CREATURES, CREATURE_IDS, enemyFor, ENEMY_COUNT, HUNTERS, DEV_DEFAULTS };')(
   { createElement: () => {} });
-const { makeLevel, themeFor, THEMES, rosterFor, ROSTERS, CREATURES, CREATURE_IDS, enemyFor, ENEMY_COUNT } = game;
+const { makeLevel, themeFor, THEMES, rosterFor, ROSTERS, CREATURES, CREATURE_IDS, enemyFor, ENEMY_COUNT, HUNTERS, DEV_DEFAULTS } = game;
 
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
@@ -118,11 +118,23 @@ check('only shooters and turrets are given a gun',
     return (c.act === 'shoot' || c.act === 'turret') ? c.bspd > 0 && c.range > 0 && c.cd > 0
                                                      : !c.bspd && !c.range;
   }));
-check('only chasers, bombers and spiders are given an aggro range',
+check('only hunters (chasers, bombers, spiders, jellies) are given an aggro range',
   CREATURE_IDS.every(id => {
     const c = CREATURES[id];
-    return (c.act === 'chase' || c.act === 'bomb' || c.act === 'spider') ? c.aggro > 0 && c.spd > 0 : !c.aggro;
+    return HUNTERS[c.act] ? c.aggro > 0 && c.spd > 0 : !c.aggro;
   }));
+// a creature with its own knob prefix reads its aggro reach and bite off those knobs
+check('every kp creature has its Aggro, Bite and BiteCd knobs',
+  CREATURE_IDS.every(id => {
+    const kp = CREATURES[id].kp;
+    return !kp || ['Aggro', 'Bite', 'BiteCd'].every(k => typeof DEV_DEFAULTS[kp + k + 'Lo'] === 'number' &&
+      typeof DEV_DEFAULTS[kp + k + 'Hi'] === 'number');
+  }));
+check('a glowing creature has its glow knobs', CREATURE_IDS.every(id => {
+  const c = CREATURES[id];
+  return !c.glow || (c.kp && ['Glow', 'GlowR', 'Flare'].every(k => typeof DEV_DEFAULTS[c.kp + k + 'Lo'] === 'number'));
+}));
+check('the jellyfish lives on floor 1', rosterFor(1).includes('meduusa') && CREATURES.meduusa.act === 'jelly');
 check('a wind-up is only on a turret', CREATURE_IDS.every(id =>
   !CREATURES[id].tele || CREATURES[id].act === 'turret'));
 

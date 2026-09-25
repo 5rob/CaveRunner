@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v80.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v81.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -42,6 +42,12 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v81 — the jellyfish (Myrkkymeduusa) replaces Heikkohiisi on floors 1–2.** Pulse-and-glide swimming with a turn
+  limit, bell thin when fast / flat when stopped, trailing tentacles, green glow on the cave, dripping poison spit that
+  splats. ~36 Dev knobs (Dev → Jellyfish), all min/max ranges. Also pulled the shared creature pieces into modules
+  (`rangeKnobs`, `kr`/`kru`, `roamStep`, `turnToward`, `flyMove`, `kp`, `HUNTERS`, goo shots) — see the v81 note in
+  CLAUDE.md. Owner is doing every enemy in turn; expect tuning of this one next, then the next creature.
 
 - **v80 — Noita spawn table for mod drops, Teleport Bolt + Small Teleport Bolt, Vacuum Field made Noita-accurate (instant warp), gold seams in the rock, glow + streaks on never-held ground guns, map marks (loot dots, found prize rooms, X when taken, 80% see-through), minecart blast ×1.75.**
   Sources: [Wand and Spell Tiers](https://noita.wiki.gg/wiki/Wand_and_Spell_Tiers), [Teleport Bolt](https://noita.wiki.gg/wiki/Teleport_Bolt), [Vacuum Field](https://noita.wiki.gg/wiki/Vacuum_Field); spawn numbers from `gun_actions.lua` in [noita-data-parsing](https://github.com/Jazzer360/noita-data-parsing) (wiki.gg blocks curl — use WebFetch, or the GitHub file for exact data).
