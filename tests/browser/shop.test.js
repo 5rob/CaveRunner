@@ -24,7 +24,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.screenshot({ path: path.join(__dirname, '..', 'build', 'shop_room.png') });
 
   // the Bag button is always there; editing is what the shop gates, not opening it
-  const modsLabel = () => page.evaluate(() => document.querySelector('.weapon').textContent);
+  const modsLabel = () => page.evaluate(() => document.querySelector('.weapon').getAttribute('aria-label'));
   check('the Bag button is present in the shop', (await modsLabel()).indexOf('Bag') >= 0, await modsLabel());
 
   // walk onto the free heal: prompt appears, interacting heals

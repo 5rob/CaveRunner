@@ -43,9 +43,6 @@ async function run(scheme) {
 
   // --- same gun, same colour in all three places ---
   await page.evaluate(() => { window.__in.current.loadout.guns[0].hue = 210; window.__in.current.notify(); });
-  const toolbarCol = await page.evaluate(() =>
-    getComputedStyle(document.querySelectorAll('.slots .gname')[0]).color);
-
   await page.tap('.weapon');
   await page.waitForTimeout(280);
   const tabCol = await page.evaluate(() =>
@@ -64,19 +61,25 @@ async function run(scheme) {
   const cardCol = await page.evaluate(() =>
     getComputedStyle(document.querySelector('.pop:not(.ingame) .ptitle b')).color);
 
-  check(`[${scheme}] toolbar and build-screen tab match`, toolbarCol === tabCol, { toolbarCol, tabCol });
   check(`[${scheme}] build-screen tab and detail card match`, tabCol === cardCol, { tabCol, cardCol });
 
   // --- contrast floor across many hues, against every real background ---
   const bg = scheme === 'dark'
     ? { bg: 'rgb(16,25,35)', btn: 'rgb(26,38,51)' }      // --bg / --btn, dark theme
     : { bg: 'rgb(207,219,228)', btn: 'rgb(227,235,241)' }; // --bg / --btn, light theme
+  // the gun names live in the bag screen's tabs now (the deck buttons are icons);
+  // shut the detail card first
+  await page.evaluate(() => document.querySelector('.shade').dispatchEvent(
+    new PointerEvent('pointerdown', { bubbles: true, cancelable: true })));
+  await page.waitForTimeout(200);
+  await page.tap('.weapon');
+  await page.waitForTimeout(280);
   const worst = await page.evaluate(({ bg, btn }) => {
     let min = 99, minHue = -1;
     for (let h = 0; h < 360; h += 5) {
       window.__in.current.loadout.guns[0].hue = h;
       window.__in.current.notify();
-      const el = document.querySelectorAll('.slots .gname')[0];
+      const el = document.querySelectorAll('.gtabs .gname')[0];
       const col = getComputedStyle(el).color;
       const c1 = contrastRatio(col, bg), c2 = contrastRatio(col, btn);
       const c = Math.min(c1, c2);
@@ -86,6 +89,8 @@ async function run(scheme) {
   }, bg);
   check(`[${scheme}] every hue clears a 4.5:1 contrast floor`, worst.min >= 4.5, worst);
   console.log(`  [${scheme}] worst-case contrast measured: ${worst.min.toFixed(2)}:1 at hue ${worst.minHue}`);
+  await page.tap('.done');
+  await page.waitForTimeout(250);
 
   // --- the always-dark in-game card forces the dark-theme variant ---
   await page.evaluate(() => {
@@ -106,7 +111,7 @@ async function run(scheme) {
     // it must NOT be the light-theme (dark-text) variant, which would be
     // unreadable on this backdrop no matter the site's own theme
     check('[light] the in-game card overrides the site theme (uses the dark-bg variant)',
-      ingameContrast >= 4.5 && toolbarCol !== ingameCol, { toolbarCol, ingameCol });
+      ingameContrast >= 4.5 && tabCol !== ingameCol, { tabCol, ingameCol });
   }
 
   await browser.close();

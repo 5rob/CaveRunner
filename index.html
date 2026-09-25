@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v74</title>
+<title>CaveRunner v75</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -47,21 +47,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 #root{height:100%}
 .app{position:fixed;inset:0;display:flex;flex-direction:column}
-.view{position:relative;flex:1 1 0;min-height:0;overflow:hidden;background:#12141a}
+/* the view fills the screen; the controls float over its bottom, see-through */
+.view{position:absolute;inset:0;overflow:hidden;background:#12141a}
 .game{position:absolute;left:0;top:0;width:100%;height:100%;display:block;cursor:none}
-.controls{flex:0 0 auto;display:flex;flex-direction:column;gap:6px;position:relative;
-  padding:5px 0 calc(10px + env(safe-area-inset-bottom));background:var(--ctl-bg);
-  color:var(--ctl-fg);border-top:2px solid var(--ctl-edge);
-  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.06)}
-/* a scanline wash over the panel, the way a cabinet bezel reads up close */
-.controls::after{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;
-  background:repeating-linear-gradient(180deg,rgba(255,255,255,0.04) 0 1px,rgba(0,0,0,0) 1px 3px)}
+.controls{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;gap:6px;
+  padding:5px 0 calc(10px + env(safe-area-inset-bottom));background:none;
+  color:var(--ctl-fg);pointer-events:none;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace}
+.controls .stick,.controls .dbtn{pointer-events:auto}
+/* the round deck buttons: guns on an arc round the right stick, bag + map on the left.
+   Outlines only, so the cave shows through; the icons inside are full strength. */
+.dbtn{position:absolute;box-sizing:border-box;border-radius:50%;padding:0;margin:0;
+  background:none;border:1.5px solid rgba(255,255,255,0.55);color:#fff;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;touch-action:none;z-index:4;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,0.7))}
+.dbtn.on{border:2.5px solid var(--ctl-hot)}
+.dbtn.empty{border-style:dotted;opacity:.45;cursor:default}
+.dbtn .gicon{width:92%;height:auto;pointer-events:none}
+.dbtn .emo{font-size:20px;line-height:1;pointer-events:none}
+.dbtn .badge{position:absolute;right:-4px;top:-4px;margin:0;font:700 10px ui-monospace,monospace;
+  color:#fff;opacity:1;text-shadow:0 1px 2px #000}
 .toolbar{display:flex;align-items:center;justify-content:space-between;padding:0 8px;height:36px}
 .sticks{display:flex;justify-content:space-evenly;position:relative;z-index:3}
 /* gold readout in the gap between the sticks, level with their top halves. Sits on top
    of the deck (pointer-events:none so a tap still falls to a stick) and reads amber. */
-.gold{position:absolute;left:50%;top:5%;transform:translateX(-50%);pointer-events:none;z-index:4;
+.gold{position:absolute;left:50%;bottom:5%;transform:translateX(-50%);pointer-events:none;z-index:4;
   display:flex;align-items:baseline;gap:1px;line-height:1;
   font:800 19px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffc93c;
   text-shadow:0 1px 3px rgba(0,0,0,0.85),0 0 6px rgba(0,0,0,0.6)}
@@ -72,12 +82,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .perkpip{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;
   justify-content:center;font-size:14px;line-height:1;box-sizing:border-box;
   border:1.5px solid currentColor;background:rgba(255,255,255,0.05)}
-.slots{display:flex;gap:6px}
-.slot{position:relative;box-sizing:border-box;width:46px;height:36px;border-radius:3px;
-  border:2px solid var(--ctl-line);background:var(--ctl-face);color:var(--ctl-fg);
-  padding:0;touch-action:none;cursor:pointer}
-.slot.on{border-color:var(--ctl-hot);box-shadow:0 0 0 1px var(--ctl-hot),0 0 14px rgba(255,176,46,0.3)}
-.slot.empty{opacity:.35;cursor:default}
 .num{position:absolute;top:2px;left:5px;font:600 10px ui-monospace,monospace;color:var(--ctl-dim)}
 .ico{position:absolute;left:50%;top:56%;transform:translate(-50%,-50%)}
 .ico.gun{width:18px;height:5px;border-radius:1px;background:var(--ctl-hot)}
@@ -88,8 +92,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
    so the wash and the centre line still stop at the circle. */
 .stick{position:relative;flex:none;box-sizing:border-box;border-radius:50%;
   touch-action:none;
-  background:radial-gradient(circle at 50% 40%,#1d1d23 0%,#0c0c0f 74%);
-  border:3px solid var(--ctl-edge);box-shadow:0 0 0 2px var(--ctl-line),inset 0 0 16px rgba(0,0,0,0.9)}
+  background:none;border:1.5px solid rgba(255,255,255,0.35)}
 .stickclip{position:absolute;inset:0;border-radius:50%;overflow:hidden;pointer-events:none}
 .hline{position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,0.09)}
 /* the fuel gauge lives in the left stick's top half. It is anchored to the centre line
@@ -113,22 +116,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* a white ring with a black fill. Its stroke is 1.5x the deadzone ring's 1.5px line,
    so the knob reads as the boldest circle on the stick. */
 .knob{position:absolute;left:50%;top:50%;box-sizing:border-box;border-radius:50%;
-  background:#000;
+  background:none;
   border:2.25px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,0.75);
   opacity:.95;pointer-events:none}
 .lbl{position:absolute;left:50%;transform:translateX(-50%);pointer-events:none;
   font:700 10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;
-  text-transform:uppercase;color:var(--ctl-dim)}
+  text-transform:uppercase;color:var(--ctl-dim);text-shadow:0 1px 2px #000}
 .lbl.top{top:12%}
 .lbl.bot{bottom:12%}
-.weapon{box-sizing:border-box;height:36px;padding:0 14px;border-radius:3px;cursor:pointer;
-  border:2px solid var(--ctl-line);background:var(--ctl-face);color:var(--ctl-fg);
-  font:700 13px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;
-  text-transform:uppercase;display:flex;align-items:center;gap:8px;touch-action:none}
-.wicon{width:10px;height:10px;border-radius:1px;background:var(--ctl-hot)}
-.slots{flex:1 1 auto;min-width:0}
-.slot{flex:1 1 0;width:auto;min-width:0;display:flex;flex-direction:column;justify-content:center;
-  align-items:center;gap:1px;overflow:hidden}
+.controls .slots{position:absolute;inset:0;pointer-events:none}
 .gname{font:700 10px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ctl-fg);max-width:100%;
   padding:0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gsub{font:600 9px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ctl-dim)}
@@ -444,7 +440,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v74';
+const VERSION = 'v75';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -2501,6 +2497,32 @@ function fmtGold(g) {
   g = Math.max(0, Math.floor(g || 0));
   if (g < 1000) return String(g);
   return (Math.floor(g / 100) / 10).toString() + 'k';
+}
+
+// Where the round deck buttons sit, in css px relative to the sticks row's top-left (the
+// row is W wide, the two sticks `size` across, spaced evenly). The gun buttons ride an arc
+// centred on the right stick: from the top of the gap between the sticks, clockwise over
+// the top, to near the right edge. The bag mirrors the last gun on the left, and the map
+// button sits straight above the bag. Returns centres plus the button diameter.
+function deckLayout(W, size, n) {
+  n = n || 4;
+  const g = (W - 2 * size) / 3;
+  const rc = { x: 2 * g + 1.5 * size, y: size / 2 };
+  const btn = Math.round(Math.max(34, Math.min(46, size * 0.24)));
+  const sx = W / 2, sy = size * 0.05 + 10;             // the old gold spot
+  const R = Math.max(Math.hypot(sx - rc.x, sy - rc.y), size / 2 + btn / 2 + 4);
+  const a0 = Math.atan2(sy - rc.y, sx - rc.x);
+  const xmax = W - btn / 2 - 4;
+  const a1 = Math.max(a0 + 0.3, -Math.acos(Math.max(-1, Math.min(1, (xmax - rc.x) / R))));
+  const guns = [];
+  for (let i = 0; i < n; i++) {
+    const a = a0 + (a1 - a0) * (n > 1 ? i / (n - 1) : 0);
+    guns.push({ x: rc.x + Math.cos(a) * R, y: rc.y + Math.sin(a) * R });
+  }
+  const last = guns[n - 1];
+  const bag = { x: W - last.x, y: last.y };
+  const map = { x: bag.x, y: bag.y - btn - 8 };
+  return { btn, R, rc, guns, bag, map };
 }
 
 // ---- level decoration: pass 2 (baked pixels) and pass 3 (props) ----
@@ -6723,13 +6745,18 @@ function Game({ input }) {
 
     function draw() {
       const dpr = window.devicePixelRatio || 1;
-      const s = Math.min(c.width / VIEW_W, c.height / VIEW_MIN_H) * DEV.zoom, vw = c.width / s, vh = c.height / s;
+      // the controls overlay the bottom of the canvas (see-through), so the play area is the
+      // part above them: scale and frame to that, but still draw (and cull) the full canvas
+      const ctlPx = Math.min(c.height * 0.8, (input.current.ctlH || 0) * dpr);
+      const playPx = c.height - ctlPx;
+      const s = Math.min(c.width / VIEW_W, playPx / VIEW_MIN_H) * DEV.zoom, vw = c.width / s, vh = c.height / s;
+      const vhp = playPx / s;
       unitPx = s / dpr;
       const pcx = p.x + PW / 2, pcy = p.y + PH / 2;
 
       // camera
       const tx = vw >= WW ? (WW - vw) / 2 : clamp(pcx - vw / 2, 0, WW - vw);
-      const ty = clamp(pcy - vh * 0.55, 0, Math.max(0, WH - vh));
+      const ty = clamp(pcy - vhp * 0.55, 0, Math.max(0, WH - vhp));
       if (!camReady) { camX = tx; camY = ty; camReady = true; }
       camX += (tx - camX) * 0.15;
       camY += (ty - camY) * 0.15;
@@ -7389,34 +7416,6 @@ function Game({ input }) {
       ctx.fillText(VERSION, 12, 22);
       ctx.shadowBlur = 0;
 
-      // ---- minimap: revealed cave as white outlines, bottom-left, ~1/3 the width ----
-      // Everything else is transparent, so it reads as an overlay over the gameplay. Only
-      // the outline cells the fog has revealed are painted; the source is finer than the
-      // display and smooth-scaled down, so the walls read as continuous lines, not a scatter.
-      {
-        mini32.fill(0);
-        for (let k = 0; k < miniEdgeIdx.length; k++) {
-          const i = miniEdgeIdx[k];
-          const tx = (i % MMW) * MINI_D, ty = ((i / MMW) | 0) * MINI_D;
-          const fi = ((ty / FOG) | 0) * FW + ((tx / FOG) | 0);
-          if (seen[fi]) mini32[i] = 0xc8ffffff;            // white, ~0.78 alpha
-        }
-        mctx.putImageData(miniImg, 0, 0);
-        const chh = c.height / dpr;
-        let mw = cw / 3, mh = mw * MMH / MMW;
-        const cap = chh - 16;
-        if (mh > cap) { mw *= cap / mh; mh = cap; }        // keep it inside the view on short screens
-        const mx0 = 6, my0 = chh - mh - 6;
-        ctx.imageSmoothingEnabled = true;                  // smooth downscale keeps thin walls continuous
-        ctx.drawImage(miniC, 0, 0, MMW, MMH, mx0, my0, mw, mh);
-        // a yellow dot for where you are
-        const wW = CW * CELL, wH = CH * CELL;
-        ctx.fillStyle = '#ffd23c';
-        ctx.beginPath();
-        ctx.arc(mx0 + ((p.x + PW / 2) / wW) * mw, my0 + ((p.y + PH / 2) / wH) * mh, 2.6, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
       // hand the sticks the live health / fuel / mana so they can draw their gauges:
       // the green ring round the left stick, the amber fuel wipe in its top half, and
       // the gold ring round the right stick. Written every frame the loop draws.
@@ -7440,7 +7439,7 @@ function Game({ input }) {
 
       // ---- radar perks: point at the nearest enemy / mod / gun still out there ----
       if (pb.radarEnemy || pb.radarItem || pb.radarWand) {
-        const cwv = c.width / dpr, chv = c.height / dpr, m = 18;
+        const cwv = c.width / dpr, chv = playPx / dpr, m = 18;
         const nearest = list => {
           let best = null, bd = 1e18;
           for (const t of list) { const d = (t.x - pcx) * (t.x - pcx) + ((t.ty || t.y) - pcy) * ((t.ty || t.y) - pcy); if (d < bd) { bd = d; best = t; } }
@@ -7468,7 +7467,7 @@ function Game({ input }) {
 
       // pickup messages
       ctx.textAlign = 'center';
-      const ch = c.height / dpr;
+      const ch = playPx / dpr;
       for (let i = 0; i < toasts.length; i++) {
         const tm = toasts[i];
         ctx.globalAlpha = Math.min(1, tm.t * 1.5);
@@ -7518,6 +7517,36 @@ function Game({ input }) {
           ctx.stroke();
         }
       }
+
+      // ---- the map (toggled by the map button; the run is paused while it is up) ----
+      // Covers the whole play area above the controls on solid black: the revealed cave as
+      // white outlines, fitted and centred, with a yellow dot for you. Only outline cells the
+      // fog has revealed are painted; the source is finer than the display and smooth-scaled,
+      // so the walls read as continuous lines, not a scatter.
+      if (input.current.mapOpen) {
+        mini32.fill(0);
+        for (let k = 0; k < miniEdgeIdx.length; k++) {
+          const i = miniEdgeIdx[k];
+          const tx = (i % MMW) * MINI_D, ty = ((i / MMW) | 0) * MINI_D;
+          const fi = ((ty / FOG) | 0) * FW + ((tx / FOG) | 0);
+          if (seen[fi]) mini32[i] = 0xe6ffffff;            // white, ~0.9 alpha
+        }
+        mctx.putImageData(miniImg, 0, 0);
+        const pw = c.width / dpr, ph = playPx / dpr, pad = 10;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, pw, ph);
+        const k = Math.min((pw - 2 * pad) / MMW, (ph - 2 * pad) / MMH);
+        const mw = MMW * k, mh = MMH * k, mx0 = (pw - mw) / 2, my0 = (ph - mh) / 2;
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(miniC, 0, 0, MMW, MMH, mx0, my0, mw, mh);
+        const wW = CW * CELL, wH = CH * CELL;
+        ctx.fillStyle = '#ffd23c';
+        ctx.beginPath();
+        ctx.arc(mx0 + ((p.x + PW / 2) / wW) * mw, my0 + ((p.y + PH / 2) / wH) * mh, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.imageSmoothingEnabled = false;
+      }
     }
 
     const loop = t => {
@@ -7554,7 +7583,7 @@ function Game({ input }) {
 const GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
 // the three gun stats shown as rings on the right stick and colour-coded in the bag, so a
 // ring and its stat read as the same thing: mana gold, recharge blue, cast delay purple
-const GAUGE_COL = { mana: '#ffc93c', rech: '#7ad7ff', cast: '#c58cff' };
+const GAUGE_COL = { mana: '#ffc93c', rech: '#7ad7ff', cast: '#c58cff', fuel: '#ff9a2e' };
 // blend two "#rrggbb" colours; t=0 is a, t=1 is b. Used for the health ring, which
 // slides from green at full down through amber to red as it empties.
 function mixHex(a, b, t) {
@@ -7651,18 +7680,22 @@ function Stick({ size, kind, input, refresh }) {
     setKnob({ x: 0, y: 0, jet: false });
   };
 
-  // the circular gauge, wiped clockwise from the top as its stat falls. Left: one green
-  // health ring. Right: three rings — gold mana at the very edge, then recharge and cast
-  // delay stacked flush inside it (no gap), so you can see which one is gating your fire.
-  const rw = left ? 4.5 : 3.2;
-  const wipe = (r, frac, col) => [
-    h('circle', { key: 't' + r, cx: 50, cy: 50, r, fill: 'none', stroke: 'rgba(0,0,0,0.35)', strokeWidth: rw }),
-    h('circle', { key: 'w' + r, cx: 50, cy: 50, r, fill: 'none', stroke: col, strokeWidth: rw,
+  // the circular gauges, each a thin ring wiped clockwise from the top as its stat falls.
+  // Left: health at the edge, jet fuel just inside it (red track when the tank is dry).
+  // Right: gold mana at the edge, then recharge and cast delay inside it, so you can see
+  // which one is gating your fire.
+  const rw = 3.2, sw = 1.6;
+  const wipe = (r, frac, col, track) => [
+    h('circle', { key: 't' + r, cx: 50, cy: 50, r, fill: 'none', stroke: track || 'rgba(0,0,0,0.35)', strokeWidth: sw }),
+    h('circle', { key: 'w' + r, cx: 50, cy: 50, r, fill: 'none', stroke: col, strokeWidth: sw,
       strokeLinecap: 'round',
       strokeDasharray: (Math.max(0, Math.min(1, frac)) * 2 * Math.PI * r) + ' ' + (2 * Math.PI * r),
       transform: 'rotate(-90 50 50)' })];
   const ring = left
-    ? h('svg', { className: 'gauge', viewBox: '0 0 100 100' }, wipe(GAUGE_R, gauge.ring, healthCol(gauge.ring)))
+    ? h('svg', { className: 'gauge', viewBox: '0 0 100 100' },
+        wipe(GAUGE_R, gauge.ring, healthCol(gauge.ring)),
+        wipe(GAUGE_R - rw, gauge.fuel, knob.jet ? '#ffc35a' : GAUGE_COL.fuel,
+          gauge.empty ? 'rgba(226,74,44,0.7)' : null))
     : h('svg', { className: 'gauge', viewBox: '0 0 100 100' },
         wipe(GAUGE_R, gauge.ring, gauge.dry ? 'rgba(255,201,60,0.28)' : GAUGE_COL.mana),
         wipe(GAUGE_R - rw, gauge.rech, gauge.has ? GAUGE_COL.rech : 'rgba(122,215,255,0.22)'),
@@ -7673,12 +7706,8 @@ function Stick({ size, kind, input, refresh }) {
       onPointerDown: down, onPointerMove: move, onPointerUp: end,
       onPointerCancel: end, onLostPointerCapture: end,
     },
-    // the fuel wipe rides inside the clip so it keeps the circle's shape; its height is
-    // the fuel fraction, anchored to the centre line, so it drains downward as fuel burns
-    left && h('div', { className: 'stickclip' },
-      h('div', { className: 'jetzone' + (gauge.empty ? ' dry' : ''),
-        style: { height: (gauge.fuel * 50) + '%' } }),
-      h('div', { className: 'hline' })),
+    // the centre line splits jet (top half) from walk
+    left && h('div', { className: 'stickclip' }, h('div', { className: 'hline' })),
     ring,
     // the right stick's amber ring: the line the knob's edge crosses when the drag starts
     // counting as aiming rather than as a tap on the dead zone
@@ -8425,6 +8454,9 @@ function App() {
     mouse: { x: 0, y: 0, inside: false, down: false },
   });
   const [size, setSize] = useState(150);
+  const [vw, setVw] = useState(window.innerWidth);
+  const [mapOpen, setMapOpen] = useState(false);
+  const ctlRef = useRef(null);
   const [run, setRun] = useState(0);
   const [edit, setEdit] = useState(false);
   const [devOpen, setDevOpen] = useState(false);
@@ -8439,7 +8471,8 @@ function App() {
   const refresh = () => bump(n => n + 1);
   input.current.notify = refresh;
   const found = input.current.found;
-  input.current.paused = edit || !!found || devOpen || spawnOpen;
+  input.current.mapOpen = mapOpen;
+  input.current.paused = edit || !!found || devOpen || spawnOpen || mapOpen;
 
   const LO = input.current.loadout;
   // read through the ref: after a Restart the loadout object is replaced, and a
@@ -8470,10 +8503,16 @@ function App() {
       // the pad. The -28 rather than -36 is because they are border-box now, which buys
       // the toolbar its 4px back and then some.
       setSize(Math.max(80, Math.floor(Math.min((window.innerWidth - 28) / 2, window.innerHeight * 0.28))));
+      setVw(window.innerWidth);
     };
     fit();
     window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
+    // the game frames itself to the area above the controls, so tell it how tall they are
+    const ro = new ResizeObserver(() => {
+      if (ctlRef.current) input.current.ctlH = ctlRef.current.getBoundingClientRect().height;
+    });
+    if (ctlRef.current) { ro.observe(ctlRef.current); input.current.ctlH = ctlRef.current.getBoundingClientRect().height; }
+    return () => { window.removeEventListener('resize', fit); ro.disconnect(); };
   }, []);
 
   useEffect(() => {
@@ -8499,6 +8538,7 @@ function App() {
       if (k === 'e' || k === 'tab') { e.preventDefault();
         if (input.current.inShop || perkBag(input.current.loadout.perks || []).tinker) setEdit(v => !v); }
       if (k === 'f') input.current.interact = true;
+      if (k === 'm') setMapOpen(v => !v);
       if (k === 'escape') setEdit(false);
     };
     const kd = key(true), ku = key(false);
@@ -8524,6 +8564,9 @@ function App() {
   const perkB = perkBag(LO.perks || []);
   const canEdit = inShop || perkB.tinker;      // Tinker with Wands Everywhere frees the editor
   const heldGun = input.current.loadout.guns[input.current.loadout.sel];
+  const deck = deckLayout(vw, size, LO.guns.length);
+  const btnAt = pt => ({ width: deck.btn, height: deck.btn,
+    left: Math.round(pt.x - deck.btn / 2), top: Math.round(pt.y - deck.btn / 2) });
 
   return h('div', { className: 'app' },
     h('div', { className: 'view' },
@@ -8569,31 +8612,7 @@ function App() {
                 restart();
               } }, 'Yes, restart')))) : null
     ),
-    h('div', { className: 'controls' },
-      h('div', { className: 'toolbar' },
-        h('div', { className: 'slots' },
-          LO.guns.map((g, i) => h('button', {
-              key: i,
-              className: 'slot' + (g ? '' : ' empty') + (i === LO.sel ? ' on' : '') +
-                (held === i ? ' holding' : ''),
-              title: g ? g.name + ' — hold for details' : 'Empty slot',
-              onPointerDown: holdPress(
-                () => select(i),
-                () => { if (input.current.loadout.guns[i]) setGunInfo(i); },
-                on => setHeld(on ? i : -1)),
-            },
-            h('span', { className: 'num' }, i + 1),
-            h('span', { className: 'gname', style: g ? { color: gunColor(g) } : null }, g ? g.name : '—'),
-            g ? h('span', { className: 'gsub' }, g.slots.filter(Boolean).length + '/' + g.cap) : null
-          ))
-        ),
-        h('button', {
-            className: 'weapon' + (canEdit ? '' : ' locked'),
-            title: canEdit ? 'Guns & mods' : 'Guns & mods (edit in the shop or with Tinker)',
-            onPointerDown: e => { e.preventDefault(); setEdit(true); } },
-          h('span', { className: 'wicon' }), 'Bag',
-          LO.bag.length ? h('b', { className: 'badge' }, LO.bag.length) : null)
-      ),
+    h('div', { className: 'controls', ref: ctlRef },
       (LO.perks && LO.perks.length)
         ? h('div', { className: 'perkrow' },
             LO.perks.map((id, i) => PERKS[id] ? h('span', {
@@ -8603,9 +8622,35 @@ function App() {
       h('div', { className: 'sticks' },
         h(Stick, { size, kind: 'left', input, refresh }),
         h(Stick, { size, kind: 'right', input, refresh }),
-        // gold sits in the gap between the two sticks, up level with their top halves.
+        // gold sits in the gap between the two sticks, down level with their bottom halves.
         // "g" not "gold", and thousands truncate to a "k" (1234 -> 1.2k, 2000 -> 2k).
-        h('div', { className: 'gold' }, fmtGold(LO.gold), h('span', null, 'g'))
+        h('div', { className: 'gold' }, fmtGold(LO.gold), h('span', null, 'g')),
+        // the gun buttons ride an arc round the right stick; tap to hold it, hold for its card
+        h('div', { className: 'slots' },
+          LO.guns.map((g, i) => h('button', {
+              key: i,
+              className: 'dbtn slot' + (g ? '' : ' empty') + (i === LO.sel ? ' on' : '') +
+                (held === i ? ' holding' : ''),
+              style: btnAt(deck.guns[i]),
+              title: g ? g.name + ' — hold for details' : 'Empty slot',
+              onPointerDown: holdPress(
+                () => select(i),
+                () => { if (input.current.loadout.guns[i]) setGunInfo(i); },
+                on => setHeld(on ? i : -1)),
+            }, g ? h(GunIcon, { gun: g }) : null))),
+        // the bag mirrors the last gun on the left, and the map toggle sits right above it
+        h('button', {
+            className: 'dbtn weapon' + (canEdit ? '' : ' locked'), style: btnAt(deck.bag),
+            title: canEdit ? 'Bag: guns & mods' : 'Bag: guns & mods (edit in the shop or with Tinker)',
+            'aria-label': 'Bag',
+            onPointerDown: e => { e.preventDefault(); setMapOpen(false); setEdit(true); } },
+          h('span', { className: 'emo' }, '🎒'),
+          LO.bag.length ? h('b', { className: 'badge' }, LO.bag.length) : null),
+        h('button', {
+            className: 'dbtn mapbtn' + (mapOpen ? ' on' : ''), style: btnAt(deck.map),
+            title: 'Map', 'aria-label': 'Map',
+            onPointerDown: e => { e.preventDefault(); setMapOpen(v => !v); } },
+          h('span', { className: 'emo' }, '🗺️'))
       )
     ),
     edit ? h(Editor, { input, refresh, canEdit, close: () => setEdit(false) }) : null,

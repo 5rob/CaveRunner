@@ -33,8 +33,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       // knob's travel) plus one knob radius, so the knob's EDGE crosses it exactly as
       // the trigger goes live
       want: 2 * (AIM_DEAD * 0.72 * half + w(s[1].querySelector('.knob')) / 2),
-      // how dark the panel actually is, 0 black to 255 white
-      lum: bg.length >= 3 ? Math.round((+bg[0] + +bg[1] + +bg[2]) / 3) : 999,
+      // the panel is see-through now: its background alpha
+      alpha: bg.length >= 4 ? +bg[3] : 1,
     };
   });
   check('there are two thumb circles', deck.n === 2, deck);
@@ -49,7 +49,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the amber ring is dotted', deck.deadStyle === 'dotted', deck.deadStyle);
   check('the old dashed throw ring is gone', deck.thr === 0, deck.thr);
   check('the left one has no ring', deck.leftRings === 0, deck.leftRings);
-  check('the deck is black rather than blue', deck.lum < 40, deck.lum);
+  check('the deck is see-through, so the cave shows under it', deck.alpha === 0, deck.alpha);
 
   // Drive the right stick with real PointerEvents, the same way a finger would:
   // down at points[0], a move to each later point, then up at the last one. `mag` on

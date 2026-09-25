@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v74**. Branch: `main` (release channel is `main`).
+Current version: **v75**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -247,7 +247,11 @@ a bare ⚙️ in the top-right (`.devbtn`, class unchanged so the browser tests 
 stick to restart", and the loop's interact block calls `input.current.requestRestart` (set
 by `App` to its `restart`) when `p.dead && interact`, before the near/pickup handling.
 
-**The minimap is drawn on the canvas, bottom-left, ~1/3 the view width.** It is an
+**v75: the map is a toggle, not a corner minimap.** Everything below about `miniC`/`miniEdgeIdx`
+still holds, but it is drawn only while `input.current.mapOpen` (the `.mapbtn` / `M` key, which
+also pauses), at the very end of `draw()`, over the play area on solid black, fitted and centred.
+Suite: `tests/browser/map.test.js` (replaced `minimap.test.js`).
+**(Old, pre-v75:) The minimap is drawn on the canvas, bottom-left, ~1/3 the view width.** It is an
 `MMW×MMH` offscreen canvas (`miniC`/`mini32`) drawn in the HUD (screen-space) part of
 `draw()`. **Rebuilt in v52 for accuracy:** it samples the real `mat` in `MINI_D`×`MINI_D`
 (4px) blocks — much finer than the fog grid — and a block is an *outline* cell if a wall
@@ -613,6 +617,17 @@ pull just fired (trailing non-casting modifiers trimmed). Editor keeps one sim i
 re-renders only when `S.lit` changes; `GunStats` has its own rAF writing the three `.gsbar i[data-live]`
 widths (cast delay / recharge / mana, `LIVE_BAR`) straight to the DOM. Only those three rows have
 bars (owner: none on stats that aren't firing resources/timers).
+**v75 see-through deck.** `.view` is `position:absolute;inset:0` and `.controls` floats over its
+bottom with no background (pointer-events only on `.stick`/`.dbtn`). App measures the controls'
+height into `input.current.ctlH`; `draw()` scales and frames the camera to `playPx = c.height -
+ctlH*dpr` (the area above them) but still draws/culls the full canvas; toasts and radar markers
+use `playPx` too. The toolbar is gone: `deckLayout(W, size, n)` (pure, above `makeLevel`) places
+round `.dbtn` buttons — the four guns (`.slot`, `GunIcon` inside, `.on` = held, hold for card) on
+an arc centred on the right stick from the gap between the sticks, clockwise over the top to near
+the right edge; the bag (`.weapon`, 🎒, `aria-label="Bag"`) mirrors the last gun on the left; the
+map (`.mapbtn`, 🗺️) sits above it. All gauge rings are thin (`sw` 1.6, spacing `rw` 3.2). Left
+stick: health ring outside, fuel ring (`GAUGE_COL.fuel`) inside it, red track when dry — the
+`.jetzone` fill is gone. Sticks/knob have no fill. Gold sits at the bottom of the gap (`bottom:5%`).
 **v74 Pollen nerf.** Pollen has `drift: 1`, `homeR: 80`, `pop: 6` (no `eat`). `driftStep` (pure, above
 `tracePath`, consts `DRIFT_*`) damps its speed and, once slow, floats it up. It only homes after
 locking (`b.lock`: nearest creature within `homeR` with `lineOfSight`), then speeds back to

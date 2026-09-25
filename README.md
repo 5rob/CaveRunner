@@ -60,15 +60,22 @@ all your gear, in a freshly generated cave. Dying or Restart wipes it.
 | Shoot | Drag the right stick out past the dead zone | Left mouse button |
 | Interact: buy, take a gun, mod or perk | Tap the middle of the right stick | F |
 | Restart after dying | Tap the right stick | — |
-| Pick gun | Tap a gun slot | 1 to 4 |
-| Gun details | Hold a gun slot | — |
+| Pick gun | Tap a gun button (the arc round the right stick) | 1 to 4 |
+| Gun details | Hold a gun button | — |
 | Reorder guns | Hold and drag a gun button in the build screen | — |
-| Bag: guns & mods screen (open anywhere) | Tap Bag | E |
+| Bag: guns & mods screen (open anywhere) | Tap the backpack button | E |
+| Map (pauses the run) | Tap the map button, again to close | M |
 
-The controls sit on a black arcade panel with a scanline wash over it. The knob
-that follows your thumb is a white ring with a black fill — the boldest circle on
-the stick — sized to still show an edge around a thumbprint rather than vanishing
-underneath one, so you can see where your thumb is pointing without lifting it.
+The controls float over the bottom of the screen and are see-through — outlines only, no
+fills — so the cave carries on underneath them. The game frames itself to the area above
+them. The knob that follows your thumb is a white ring, sized to still show an edge around
+a thumbprint rather than vanishing underneath one, so you can see where your thumb is
+pointing without lifting it.
+
+Your four guns are round buttons on an arc around the right stick, from the gap between the
+sticks, over the top, to near the right edge; each shows its gun's picture and the one you
+hold has an amber ring. On the left, mirroring the last gun, is the backpack (the Bag), and
+straight above it the map button.
 
 A small white crosshair (a "+" with the centre cut out) marks where you are aiming — it
 circles the character at a fixed distance as you swing the aim stick (its distance is a
@@ -82,8 +89,8 @@ circle, so at full deflection the knob is still a whole knob.
 The sticks are your dashboard too. There are no numbers up top any more: your health
 is the ring around the left stick, wiping away clockwise as you take hits — and it slides
 from green through amber to red as it drops, so the colour itself tells you how close you
-are to the end; and your fuel is the amber fill in the top half of the left stick, sinking
-towards the centre line as the jetpack burns it. Near the bottom of the tank the jetpack
+are to the end; and your fuel is the orange ring just inside it, wiping away as the jetpack
+burns it (its track turns red when the tank is dry). All the rings are thin lines. Near the bottom of the tank the jetpack
 starts to cough — the flame cuts out for a blink, it spits grey smoke and you dip a little —
 and the longer you hold it on, the higher its roar climbs. The right stick carries three rings for the
 gun you're holding — gold mana on the outside, then blue recharge and purple cast delay inset
@@ -91,13 +98,14 @@ each — every one a readiness gauge that empties when it fires and fills back o
 time, so the ring that keeps lingering low is what's limiting your fire. Those same three
 colours tint the cast-delay, recharge and mana numbers in the Bag screen, to tie them
 together. The floor number is painted big
-across the shop's back wall, the version sits top-left, and your gold reads in the gap
-between the two sticks — a `g`, with thousands shortened to a `k` (so `1234` shows as
+across the shop's back wall, the version sits top-left, and your gold reads at the bottom of
+the gap between the two sticks — a `g`, with thousands shortened to a `k` (so `1234` shows as
 `1.2kg`).
 
-A minimap sits in the bottom-left corner: the cave you have uncovered, drawn as thin white
-outlines over the gameplay, about a third of the screen wide, with a yellow dot for where you
-are. It only shows ground the fog of war has lifted, so it fills in as you explore.
+The map button opens the map over the whole play area (the run pauses while it's up): the
+cave you have uncovered, drawn as white outlines on black, with a yellow dot for where you
+are. It only shows ground the fog of war has lifted, so it fills in as you explore. Tap the
+button again to close it.
 
 ## Picking things up
 
@@ -259,7 +267,7 @@ held gun to start with), green for better and red for worse, counting a smaller 
 recharge or spread as better.
 
 Every gun is given its own colour when it is made, and keeps it for the run, so
-the name reads the same in the toolbar, the build screen and on its card — handy
+the name reads the same in the build screen and on its card — handy
 once you are carrying four guns with similar names.
 
 Mods are coloured by what they are for, not one colour each, so you can tell a
@@ -397,7 +405,7 @@ them if it cannot find either.
 - 116 mods: shots, static fields, path modifiers, trigger and timer spells, and utility casts
 - A build advisor that measures your damage per second, names the limiting factor and offers one-tap fixes
 - A trajectory aim line — unlocked by the Trajectory Sight perk — that simulates the next shot for real: gravity, acceleration, homing, ricochets, drilling and spread
-- A minimap in the bottom-left: the revealed cave drawn as white outlines over the gameplay, a third of the screen wide, with a yellow dot for your position
+- A full-screen map (map button, pauses the run): the revealed cave drawn as white outlines, with a yellow dot for your position
 - Recoil that shoves you around, which the jetpack can work with
 - Gold that flies to you once you are close enough (a short range for now)
 - A black arcade control deck: mono type, scanlines, and two rings on the right stick — the dead zone and the full throw
