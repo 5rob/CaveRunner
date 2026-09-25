@@ -283,8 +283,11 @@ Under that is the gun's slots: a fixed grid, one box per slot. A mod stays in wh
 you drop it in, and empty boxes are skipped. The gun fires the grid left to right, a row at
 a time. A coloured light walks the boxes in firing order, a new colour for each pull of the
 trigger, so you can see which mods come out together; a mod the gun never reaches is dimmed.
-Its speed is a Dev-panel knob (Bag screen → Bag cast animation). At the bottom is your
-collection of mods, which scrolls.
+The light is a live preview of holding the trigger down: it fires at the gun's real pace
+(cast delay between pulls, recharge after the last one, a pause when mana runs dry), and the
+thin bars under Cast delay, Recharge and Mana drain and refill with it, like the rings on the
+right stick. Its speed is a Dev-panel knob (Bag screen → Bag fire preview speed, 1 = real
+time). At the bottom is your collection of mods, which scrolls.
 
 Cast delay is accumulated in that same order, which makes **Buzzsaw** special: it
 does not subtract from the delay, it resets it to zero at the moment it is cast. Anything

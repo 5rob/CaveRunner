@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v72**. Branch: `main` (release channel is `main`).
+Current version: **v73**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -603,6 +603,16 @@ Tests: `tests/logic/bagui.test.js`, `tests/browser/grouping.test.js` (rewritten 
 **v72:** advisor tips parked — `SHOW_TIPS = false` (above `GunStats`) hides the `.tip` buttons; the
 `.diag` dmg/s line still shows. The bag gets the freed height (`.bag` flex 1.5 vs `.slotRow` 1).
 `advice.test.js` checks the diag and that no tips show; restore its tip checks from git (v71) when un-parking.
+**v73 fire preview.** The walking light is replaced by a live "trigger held" sim: `fireSimNew(gun)` /
+`fireSimStep(S, dt)` / `fireSimGauges(S)` (pure, above `makeLevel`) replay the Game's `cast()` +
+per-frame gun tick on a *copy* (planCast, cast delay, `effRecharge` after a wrap — both count down
+together, mana drain/regen, 0.12s retry when starved; no perks). `S.lit = {slots, pull, t}` is the
+pull just fired (trailing non-casting modifiers trimmed). Editor keeps one sim in a ref, rebuilt when
+`gsig` (sel + slots + multi/shuffle/delay/recharge) changes; `SlotGrid` steps it in rAF at
+`DEV.bagSpeed` × real time (Dev → Bag screen, key renamed from `bagAnim`) in 0.01s sub-steps and
+re-renders only when `S.lit` changes; `GunStats` has its own rAF writing the three `.gsbar i[data-live]`
+widths (cast delay / recharge / mana, `LIVE_BAR`) straight to the DOM. Only those three rows have
+bars (owner: none on stats that aren't firing resources/timers).
 
 ## Testing
 

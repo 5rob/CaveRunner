@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v72</title>
+<title>CaveRunner v73</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -168,13 +168,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .done{height:36px;padding:0 16px;border-radius:18px;border:1px solid var(--ring);
   background:var(--btn);color:var(--text);font:600 14px system-ui,sans-serif}
 .btop{display:flex;gap:8px;margin-bottom:8px;align-items:flex-start}
-.gstats{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:1px;background:var(--pad);
-  border-radius:9px;padding:5px 8px}
-.gsrow{display:flex;align-items:baseline;gap:5px;font:500 11.5px system-ui,sans-serif;
-  color:var(--muted);line-height:1.45}
+.gstats{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:0;background:var(--pad);
+  border-radius:9px;padding:5px 8px 3px}
+.gsrow{display:flex;align-items:baseline;gap:0 5px;font:500 11px system-ui,sans-serif;
+  color:var(--muted);line-height:1.15}
 .gsrow span{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gsrow b{font:700 12px system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.gsrow b{font:700 11.5px system-ui,sans-serif;font-variant-numeric:tabular-nums}
 .gsrow u{text-decoration:none;font:700 10px system-ui,sans-serif;min-width:34px;text-align:right}
+.gsrow{flex-wrap:wrap;row-gap:1px}
+.gsbar{flex:0 0 100%;height:2.5px;border-radius:2px;background:rgba(127,127,127,.18);overflow:hidden;margin:1px 0 2px}
+.gsbar i{display:block;height:100%;border-radius:2px}
 .gsrow u.up{color:var(--good)}
 .gsrow u.down{color:var(--bad)}
 .gtabs{flex:1 1 0;min-width:0;display:grid;grid-template-columns:1fr 1fr;gap:6px}
@@ -441,7 +444,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v72';
+const VERSION = 'v73';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -498,7 +501,7 @@ const START_GOLD = 40;
 // localStorage touch is wrapped: it throws in a private window and does not exist at all
 // under Node (the logic tests eval this file), and a missing store just means "defaults".
 const DEV_DEFAULTS = { zoom: 1.35, torch: 1, fogDark: 0.99, fogDim: 0.85, move: 1, sputDip: 45, aggro: 0.8, loseAggro: 2, aimDist: 44, bhPull: 50, bhSpeed: 65, vol: 0.8, amb: 1, jetVol: 1,
-  vSpell: 1, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vStep: 1, vUi: 1, bagAnim: 3 };
+  vSpell: 1, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vStep: 1, vUi: 1, bagSpeed: 1 };
 // g: the collapsible group the knob sits in on the Dev panel (DEV_GROUPS gives the order)
 const DEV_META = [
   { k: 'zoom',      g: 'view',  label: 'Camera zoom',                 min: 0.3, max: 3,  step: 0.05 },
@@ -523,7 +526,7 @@ const DEV_META = [
   { k: 'vWorld',    g: 'sound', label: 'World, props, portals (×sound)', min: 0, max: 3, step: 0.05 },
   { k: 'vStep',     g: 'sound', label: 'Footsteps (×sound)',          min: 0,   max: 3,  step: 0.05 },
   { k: 'vUi',       g: 'sound', label: 'UI & pickups (×sound)',       min: 0,   max: 3,  step: 0.05 },
-  { k: 'bagAnim',   g: 'ui',    label: 'Bag cast animation (slots/s)', min: 0.2, max: 30, step: 0.5 },
+  { k: 'bagSpeed',  g: 'ui',    label: 'Bag fire preview speed (×real time)', min: 0.05, max: 5, step: 0.05 },
 ];
 const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['player', 'Player'],
   ['enemy', 'Enemies'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen']];
@@ -1960,6 +1963,46 @@ function pullSteps(g) {
       if (g.slots[i] && !seen.has(i)) { seen.add(i); steps.push({ slot: i, pull: n }); }
   });
   return steps;
+}
+
+// The bag screen's "trigger held down" preview: the Game's own cast loop (cast() and the
+// per-frame gun tick) run on a copy of the gun, so the slot lights and the stat bars move at
+// the gun's real pace — cast delay between pulls, recharge after the last, mana drained per
+// pull and regenerating, a pause when it runs dry. No perks: the gun as it is.
+function fireSimNew(gun) {
+  const g = resetGun(Object.assign({}, gun, { slots: gun.slots.slice() }));
+  const max = gun.manaMax + gunPassives(gun).manaMax;
+  return { g, max, mana: max, delayT: 0, delayMax: 0, rechT: 0, rechLen: 0, pull: 0, lit: null, fired: 0 };
+}
+function fireSimStep(S, dt) {
+  const g = S.g, pas = gunPassives(g);
+  S.delayT -= dt; S.rechT -= dt;
+  S.mana = Math.min(S.max, S.mana + (g.manaRegen + pas.manaRegen) * dt);
+  if (S.lit && (S.lit.t -= dt) <= 0) S.lit = null;
+  if (S.delayT > 0 || S.rechT > 0) return;
+  const wrap = () => { g.idx = 0; S.rechT = S.rechLen = effRecharge(g); S.pull = 0; shuffleOrder(g); };
+  const start = g.idx;
+  const plan = planCast(g);
+  if (!plan.shots.length) { wrap(); return; }
+  if (S.mana < plan.cost) { g.idx = plan.start; S.delayT = S.delayMax = 0.12; return; }
+  S.mana -= plan.cost;
+  const end = plan.wrap || g.idx <= start ? g.order.length : g.idx;
+  const slots = [];
+  for (let i = start; i < end; i++) if (g.slots[g.order[i]]) slots.push(g.order[i]);
+  // modifiers the pull ran past at the end of the list modify nothing, so they don't light
+  const casts = id => MODS[id].kind === 'shot' || MODS[id].kind === 'static';
+  while (slots.length && !casts(g.slots[slots[slots.length - 1]])) slots.pop();
+  // the light holds for the pull's cast delay, but never so briefly you can't see it
+  S.lit = { slots, pull: S.pull, t: Math.max(0.1, Math.min(plan.delay, 0.45)) };
+  S.pull++; S.fired++;
+  S.delayT = S.delayMax = plan.delay;
+  if (plan.wrap) wrap();
+}
+// the live gauges, 0-1, the same readiness the right stick's rings show
+function fireSimGauges(S) {
+  return { mana: S.max > 0 ? Math.max(0, S.mana / S.max) : 0,
+    castDelay: S.delayT > 0 && S.delayMax ? Math.max(0, 1 - S.delayT / S.delayMax) : 1,
+    recharge: S.rechT > 0 && S.rechLen ? Math.max(0, 1 - S.rechT / S.rechLen) : 1 };
 }
 
 // How close a gun stat is to perfect: 0 at the worst end of its GUN_RANGE, 1 at the best.
@@ -7862,19 +7905,42 @@ const GS_ROWS = [
   { k: 'multi', label: 'Per cast', fmt: v => String(v) },
   { k: 'shuffle', label: 'Order', fmt: v => (v ? 'shuffle' : 'in order') },
 ];
-function GunStats({ gun }) {
-  const d = gunModDeltas(gun);
+// Cast delay, recharge and mana get a thin bar under them showing the fire preview live,
+// draining and refilling like the right stick's rings (the other stats have none). The
+// bars are written straight to the DOM each frame, not re-rendered.
+const LIVE_BAR = { castDelay: GAUGE_COL.cast, recharge: GAUGE_COL.rech, manaMax: GAUGE_COL.mana };
+function GunStats({ gun, sim, sig }) {
+  const d = useMemo(() => gunModDeltas(gun), [sig]);
+  const bars = useRef({});
+  useEffect(() => {
+    let raf;
+    const loop = () => {
+      const S = sim.current;
+      if (S) {
+        const gg = fireSimGauges(S);
+        for (const k in LIVE_BAR) if (bars.current[k]) bars.current[k].style.width = (gg[k] * 100).toFixed(1) + '%';
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  const bar = (k, frac, col) => h('div', { className: 'gsbar' },
+    h('i', { ref: LIVE_BAR[k] ? el => { bars.current[k] = el; } : undefined, 'data-live': LIVE_BAR[k] ? k : undefined,
+      style: { width: (frac * 100).toFixed(1) + '%', background: col } }));
   return h('div', { className: 'gstats' },
     gun.lvl ? h('div', { className: 'gsrow' }, h('span', null, 'Level'),
       h('b', { style: { color: gunLvCol(gun) } }, 'Lv ' + gun.lvl)) : null,
     GS_ROWS.map(r => {
       const v = r.k === 'speedMul' ? (gun.speedMul || 1) : gun[r.k];
       const dv = d[r.k] || 0, show = r.dfmt && Math.abs(dv) > 0.005;
+      const q = statQual(r.k, v);
       return h('div', { key: r.k, className: 'gsrow', 'data-stat': r.k },
         h('span', r.col ? { style: { color: r.col } } : null, r.label),
-        h('b', { style: { color: healthCol(statQual(r.k, v)) } }, r.fmt(v)),
+        h('b', { style: { color: healthCol(q) } }, r.fmt(v)),
         show ? h('u', { className: (dv > 0) === (r.better > 0) ? 'up' : 'down' },
-          (dv > 0 ? '+' : '−') + r.dfmt(Math.abs(dv))) : null);
+          (dv > 0 ? '+' : '\u2212') + r.dfmt(Math.abs(dv))) : null,
+        LIVE_BAR[r.k] ? bar(r.k, 1, LIVE_BAR[r.k]) : null);
     }));
 }
 
@@ -7894,35 +7960,40 @@ function GunIcon({ gun }) {
   return h('canvas', { ref, className: 'gicon' });
 }
 
-// The gun's slots as a fixed grid: a mod stays exactly where you drop it. A coloured
-// light walks the filled slots in firing order, one colour per pull of the trigger, at
-// DEV.bagAnim slots a second. Owns its own clock so the Editor (and the advisor) don't
-// re-render on every step.
-function SlotGrid({ gun, tile, sig }) {
-  const [tick, setTick] = useState(0);
+// The gun's slots as a fixed grid: a mod stays exactly where you drop it. The fire preview
+// (fireSimStep, trigger held) runs here at DEV.bagSpeed × real time; each pull lights the
+// slots it fired in that pull's colour. Only re-renders when the lit set changes, so the
+// Editor (and the advisor) never re-render per frame.
+function SlotGrid({ gun, tile, sig, sim }) {
+  const [lit, setLit] = useState(null);
   const steps = useMemo(() => pullSteps(gun), [sig]);
   useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 1000 / Math.max(0.2, DEV.bagAnim));
-    return () => clearInterval(id);
+    let raf, last = performance.now(), prev = null;
+    const loop = now => {
+      const S = sim.current;
+      const dt = Math.min(0.1, (now - last) / 1000) * DEV.bagSpeed;
+      last = now;
+      if (S) {
+        // small sub-steps so a very fast gun still fires every pull it should
+        for (let t = dt; t > 0; t -= 0.01) fireSimStep(S, Math.min(0.01, t));
+        if (S.lit !== prev) { prev = S.lit; setLit(S.lit); }
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
   }, []);
   const pullOf = new Array(gun.slots.length).fill(-1);
   if (steps) for (const st of steps) pullOf[st.slot] = st.pull;
-  const lit = new Map();                     // slot -> 'on' (the step now) | 'trail' (earlier in this pull)
-  if (steps && steps.length) {
-    const pos = tick % (steps.length + 2);   // two idle beats before it loops
-    if (pos < steps.length) {
-      const cur = steps[pos];
-      for (let k = 0; k <= pos; k++) if (steps[k].pull === cur.pull) lit.set(steps[k].slot, k === pos ? 'on' : 'trail');
-    }
-  }
+  const on = new Set(lit ? lit.slots : []);
+  const col = lit ? PULL_COL[lit.pull % PULL_COL.length] : null;
   return h('div', { className: 'slotRow scroll' }, h('div', { className: 'mgrid' },
     gun.slots.map((id, i) => {
       const el = tile(id, { type: 'slot', i }, i);
-      const l = lit.get(i), col = PULL_COL[Math.max(0, pullOf[i]) % PULL_COL.length];
       return React.cloneElement(el, { 'data-pull': pullOf[i],
           className: el.props.className + (id && steps && pullOf[i] < 0 ? ' cold' : '') },
         ...[].concat(el.props.children),
-        l ? h('i', { className: 'pulse ' + l, style: { background: col, borderColor: col, color: col } }) : null);
+        on.has(i) ? h('i', { className: 'pulse on', style: { background: col, borderColor: col, color: col } }) : null);
     })));
 }
 
@@ -7934,6 +8005,7 @@ function Editor({ input, close, refresh, canEdit }) {
   const LO = input.current.loadout;
   useEffect(() => { SFX.fx('open'); return () => SFX.fx('close'); }, []);
   const [sel, setSel] = useState(LO.sel);
+  const sim = useRef(null);
   const [drag, setDrag] = useState(null);
   const [info, setInfo] = useState(null);
   const [gdrag, setGdrag] = useState(null);
@@ -8085,6 +8157,10 @@ function Editor({ input, close, refresh, canEdit }) {
     setInfo(next && next !== info ? next : null);
   };
 
+  // restart the fire preview whenever the gun or its build changes
+  const gsig = gun ? sel + '|' + gun.slots.join() + '|' + gun.multi + '|' + gun.shuffle + '|' + gun.castDelay + '|' + gun.recharge : '';
+  if (!sim.current || sim.current.sig !== gsig) sim.current = gun ? Object.assign(fireSimNew(gun), { sig: gsig }) : null;
+
   const card = shown
     ? h('div', { key: 'card' },
         h('div', { className: 'shade', onPointerDown: behind }),
@@ -8098,7 +8174,7 @@ function Editor({ input, close, refresh, canEdit }) {
       h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Done')
     ),
     h('div', { className: 'btop' },
-      gun ? h(GunStats, { gun }) : h('div', { className: 'gstats' }, h('p', { className: 'lab' }, 'No gun in this slot')),
+      gun ? h(GunStats, { gun, sim, sig: gsig }) : h('div', { className: 'gstats' }, h('p', { className: 'lab' }, 'No gun in this slot')),
       h('div', { className: 'gtabs' },
         LO.guns.map((g, i) => h('button', {
             key: i,
@@ -8115,7 +8191,7 @@ function Editor({ input, close, refresh, canEdit }) {
     gun ? h('p', { className: 'lab' }, gun.shuffle
       ? 'On the gun — order is shuffled every recharge'
       : 'On the gun — fires left to right, row by row') : null,
-    gun ? h(SlotGrid, { gun, tile, sig: gun.slots.join() + '|' + gun.multi + '|' + gun.shuffle }) : null,
+    gun ? h(SlotGrid, { gun, tile, sig: gsig, sim }) : null,
     gun ? (() => {
       const adv = buildAdvice(gun, bagIds);
       const apply = t => e => {

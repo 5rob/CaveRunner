@@ -13,7 +13,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     page.on('pageerror', e => { fails++; console.log('PAGEERROR', e.message); });
     await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
     await page.waitForTimeout(1200);
-    await page.evaluate(() => { window.__lvl.p.x = 30; DEV.bagAnim = 12; });
+    await page.evaluate(() => { window.__lvl.p.x = 30; DEV.bagSpeed = 3; });
     const tag = vp.width + 'x' + vp.height;
     const setSlots = (slots, shuffle) => page.evaluate(([sl, sh]) => {
       const g = window.__in.current.loadout.guns[0];
@@ -35,18 +35,18 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     check(`${tag}: empty slots are no pull`, T[3].pull === -1 && T[6].pull === -1);
     check(`${tag}: a trailing modifier is dimmed as never cast`, T[7].pull === -1 && T[7].cold, T[7]);
 
-    // the light walks the filled slots, one colour per pull
-    const seen = new Map();
-    for (let k = 0; k < 40; k++) {
+    // the fire preview (trigger held) lights each pull's slots together, one colour per pull
+    const seen = new Map(), together = new Set();
+    for (let k = 0; k < 60; k++) {
       const on = await page.evaluate(() => {
-        const p = document.querySelector('.slotRow .pulse.on');
-        if (!p) return null;
-        const t = p.closest('.tile');
-        return { slot: [...document.querySelectorAll('.slotRow .tile')].indexOf(t), col: p.style.background };
+        const all = [...document.querySelectorAll('.slotRow .tile')];
+        return [...document.querySelectorAll('.slotRow .pulse.on')].map(p => ({ slot: all.indexOf(p.closest('.tile')), col: p.style.background }));
       });
-      if (on) seen.set(on.slot, on.col);
+      for (const o of on) seen.set(o.slot, o.col);
+      if (on.length) together.add(on.map(o => o.slot).sort().join());
       await page.waitForTimeout(30);
     }
+    check(`${tag}: a multicast pull lights all its slots at once`, together.has('0,1,2,4'), [...together]);
     check(`${tag}: the light visits every slot that fires, and no others`,
       [...seen.keys()].sort().join() === '0,1,2,4,5', [...seen.keys()]);
     check(`${tag}: a different colour for each pull`, seen.get(0) === seen.get(4) && seen.get(5) !== seen.get(0),
@@ -54,6 +54,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
     // drop into an empty slot: it lands exactly there, nothing else moves
     const ts = await page.$$('.slotRow .tile');
+    await ts[6].scrollIntoViewIfNeeded();
     const a = await ts[5].boundingBox(), b = await ts[6].boundingBox();
     await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
     await page.mouse.down();
@@ -71,7 +72,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     await page.waitForTimeout(250);
     const lab = await page.evaluate(() => [...document.querySelectorAll('.lab')].map(e => e.textContent).join(' | '));
     check(`${tag}: a shuffled gun says so`, /shuffled every recharge/i.test(lab), lab);
-    check(`${tag}: and shows no light`, !(await page.$('.slotRow .pulse')));
+    let shufLit = false;
+    for (let k = 0; k < 40 && !shufLit; k++) { shufLit = !!(await page.$('.slotRow .pulse')); await page.waitForTimeout(30); }
+    check(`${tag}: but the preview still fires it`, shufLit);
 
     // a full 25-slot gun fits the width and scrolls instead of growing the sheet
     await setSlots(new Array(25).fill('bolt'));
