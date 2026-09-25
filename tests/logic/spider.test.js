@@ -10,8 +10,8 @@ const js = src.slice(open, src.indexOf('</script>', open));
 const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
 const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
 const G = new Function('React', shim + upto +
-  'return { spiderStep, surfNormal, SPIDER, CELL, CW, CH, CREATURES, enemyFor, rayDist, DEV, DEV_META, makeLevel };')({ createElement: () => {} });
-const { spiderStep, surfNormal, SPIDER, CELL, CW, CH, CREATURES, enemyFor, DEV, DEV_META, makeLevel } = G;
+  'return { spiderStep, surfNormal, SPIDER, CELL, CW, CH, CREATURES, enemyFor, rayDist, DEV, DEV_META, makeLevel, SP_KNOBS, spr };')({ createElement: () => {} });
+const { spiderStep, surfNormal, SPIDER, CELL, CW, CH, CREATURES, enemyFor, DEV, DEV_META, makeLevel, SP_KNOBS, spr } = G;
 
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
@@ -42,7 +42,19 @@ function run(g, e, secs, env, watch) {
 // ---- the table ----
 check('Hämähäkki is a spider now', CREATURES.hamahakki.act === 'spider');
 const knobs = DEV_META.filter(m => m.g === 'spider');
-check('its behaviour is tweakable from the Dev panel', knobs.length >= 20 && knobs.every(m => typeof DEV[m.k] === 'number'), knobs.map(m => m.k));
+check('its behaviour is tweakable from the Dev panel', knobs.length >= 40 && knobs.every(m => typeof DEV[m.k] === 'number'), knobs.map(m => m.k));
+check('every spider knob is a min/max pair', SP_KNOBS.every(([k]) => knobs.some(m => m.k === k + 'Lo') && knobs.some(m => m.k === k + 'Hi')) &&
+  knobs.length === SP_KNOBS.length * 2);
+{
+  const rolls = Array.from({ length: 400 }, () => spr('spSpeed'));
+  const lo = DEV.spSpeedLo, hi = DEV.spSpeedHi;
+  check('each use rolls a fresh number between its min and max', rolls.every(v => v >= lo && v <= hi) &&
+    new Set(rolls.map(v => Math.round(v))).size > 20 && Math.min(...rolls) < lo + (hi - lo) * 0.1 && Math.max(...rolls) > hi - (hi - lo) * 0.1,
+    { lo, hi, min: Math.round(Math.min(...rolls)), max: Math.round(Math.max(...rolls)) });
+  const a = DEV.spSlowLo, b = DEV.spSlowHi; DEV.spSlowLo = DEV.spSlowHi = 0.5;
+  check('min = max gives a fixed number', spr('spSlow') === 0.5);
+  DEV.spSlowLo = a; DEV.spSlowHi = b;
+}
 
 // ---- the surface normal ----
 {
@@ -198,7 +210,7 @@ check('its behaviour is tweakable from the Dev panel', knobs.length >= 20 && kno
     const path = sp.map(() => 0);
     for (let t = 0; t < 40 * 60; t++) sp.forEach((e, i) => {
       const x = e.x, y = e.y;
-      spiderStep(e, { solidCell, webs, hunting: false, goal: null, rnd, speed: DEV.spSpeed, reach: DEV.spWeb }, 1 / 60);
+      spiderStep(e, { solidCell, webs, hunting: false, goal: null, rnd }, 1 / 60);
       if (t > 5 * 60) path[i] += Math.hypot(e.x - x, e.y - y);
     });
     total += sp.length; still += path.filter(p => p < 40).length;

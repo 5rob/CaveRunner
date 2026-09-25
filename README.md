@@ -239,7 +239,9 @@ Sixteen of them, named after Noita's, and they do not all behave the same way:
   along walls, floors and ceilings in quick darting bursts — lazy when it's alone,
   frantic once it has seen you — and crosses gaps by shooting a white line to the rock
   on the other side and running over it. The lines stay, so a spider's corner of the
-  cave fills with web. Up close it bites; from range it shoots a string that sticks to
+  cave fills with web — and you can use them too: brush one and you grab it like a
+  vine, hang there getting your fuel back, climb along it with the stick, and push
+  down to let go. Pushing through web slows you (×0.8 for each line you touch). Up close it bites; from range it shoots a string that sticks to
   you — each one stuck on slows you (×0.8), until you pull far enough away to snap it.
 - **Chasers** (Lohkare, Mato, Hurtta, Kobold, Konna) come at you and
   hurt you by reaching you. The Lohkare is slow and armoured; the Hurtta is not.

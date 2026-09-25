@@ -42,7 +42,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
     // 1: dropped in the air, it lands on the floor and never enters rock
     const e = put(room.x + 60, room.y - 60);
-    const cd0 = DEV.spSilkCd; DEV.spSilkCd = 0.5;
+    const cd0 = [DEV.spSilkCdLo, DEV.spSilkCdHi]; DEV.spSilkCdLo = DEV.spSilkCdHi = 0.5;
     let inside = 0, landed = false;
     for (let i = 0; i < 90; i++) {
       await frame();
@@ -61,15 +61,15 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     p.x = L.strings[0] ? L.strings[0].ax - 60 : p.x;
     out.tied = n ? await stride() : 0;
     out.n = n;
-    out.slow = DEV.spSlow;
+    out.slow = L.strings[0] ? L.strings[0].slow : 0; out.slowRange = [DEV.spSlowLo, DEV.spSlowHi];
     // 3: pull too far and it snaps
     if (L.strings.length) {
       const s = L.strings[0];
-      p.x = s.ax - DEV.spSilkMax - 40;
+      p.x = s.ax - s.max - 40;
       for (let i = 0; i < 5; i++) await frame();
     }
     out.snapped = L.strings.length === 0;
-    DEV.spSilkCd = cd0;
+    [DEV.spSilkCdLo, DEV.spSilkCdHi] = cd0;
 
     // 4: it bites when it reaches you
     L.strings.length = 0;
@@ -77,10 +77,47 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     const b = put(room.x + 30, room.y - 6);
     b.silkT = 999; b.aggro = true;
     for (let i = 0; i < 240 && p.hp >= 100; i++) { await frame(); p.x = room.x - 6; if (inRock(b.x, b.y)) inside++; }
-    out.bit = 100 - p.hp; out.dmg = DEV.spBite;
+    out.bit = 100 - p.hp; out.dmg = [DEV.spBiteLo, DEV.spBiteHi];
     out.insideAll = inside;
     L.enemies.splice(L.enemies.indexOf(b), 1);
     out.webs = L.webs.length;
+
+    // 5: web lines are vines: touch one and you hang from it, the stick runs you along it,
+    // pushing down lets go, and each line you push through slows you
+    L.webs.length = 0; L.strings.length = 0;
+    const wy = room.y - 70, web = { ax: room.l + 20, ay: wy, bx: room.r - 20, by: wy,
+      a0x: room.l + 20, a0y: wy, b0x: room.r - 20, b0y: wy, ain: null, bin: null, owner: null };
+    L.webs.push(web);
+    const stick = (nx, ny) => { window.__in.current.left = nx || ny ? { active: true, nx, ny, mag: 1, dy: ny } : { active: false, nx: 0, ny: 0, mag: 0, dy: 0 }; };
+    stick(0, 0);
+    p.x = room.x - 6; p.y = wy - 3 + 4; p.vx = 0; p.vy = 0;
+    for (let i = 0; i < 60; i++) await frame();
+    out.latched = !!L.zfx.web;
+    out.hangY = Math.round(p.y - wy);
+    out.hangFell = p.y > wy + 10;
+    const hx0 = p.x;
+    stick(1, 0);
+    const t0 = performance.now(); while (performance.now() - t0 < 500) await frame();
+    out.along = Math.round(p.x - hx0); out.alongDy = Math.round(p.y - wy);
+    stick(0, 1);
+    for (let i = 0; i < 40; i++) await frame();
+    stick(0, 0);
+    for (let i = 0; i < 30; i++) await frame();
+    out.letGo = !L.zfx.web && p.y > wy + 20;
+    // slowed pushing through: jet sideways, held in place inside vertical lines, and read
+    // the speed you're allowed to reach
+    const through = async lines => {
+      L.webs.length = 0;
+      const x = room.l + 60;
+      for (let i = 0; i < lines; i++) L.webs.push({ ax: 0, ay: 0, bx: 0, by: 0, a0x: x + i, a0y: room.y - 200, b0x: x + i, b0y: room.y, owner: null });
+      window.__in.current.left = { active: true, nx: 0.8, ny: -0.6, mag: 1, dy: -0.6 };
+      let n = 0, vx = 0;
+      for (let i = 0; i < 40; i++) { p.x = x - PW / 2; p.y = room.y - 90; p.fuel = 1; await frame(); n = L.zfx.webs; vx = p.vx; }
+      window.__in.current.left = { active: false, nx: 0, ny: 0, mag: 0, dy: 0 };
+      return { n, vx: Math.round(vx) };
+    };
+    out.w0 = await through(0); out.w2 = await through(2);
+    L.webs.length = 0;
     return out;
   });
 
@@ -89,7 +126,13 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('it shoots a string that sticks to you', r.strung > 0, r.strung);
   check('each string slows you (×' + r.slow + ' each)', r.tied > 0 && r.tied < r.free * (Math.pow(r.slow, r.n) + 0.08), { free: Math.round(r.free), tied: Math.round(r.tied), n: r.n });
   check('pull it past its length and it snaps', r.snapped);
-  check('it bites when it reaches you, for the Dev bite damage', r.bit >= r.dmg, { bit: r.bit, dmg: r.dmg });
+  check('it bites when it reaches you, for a bite damage rolled in the Dev range', r.bit >= Math.round(r.dmg[0]) && r.bit <= Math.round(r.dmg[1]), { bit: r.bit, dmg: r.dmg });
+  check('each string rolls its slow from the Dev range', r.slow >= r.slowRange[0] && r.slow <= r.slowRange[1], { slow: r.slow, range: r.slowRange });
+
+  check('touch a web line and you hang from it like a vine', r.latched && !r.hangFell, { latched: r.latched, hangY: r.hangY });
+  check('the stick runs you along it, staying on the line', r.along > 25 && Math.abs(r.alongDy) < 8, { along: r.along, dy: r.alongDy });
+  check('pushing down lets go', r.letGo);
+  check('each line you push through slows you (×' + 0.8 + ' each)', r.w2.n === 2 && Math.abs(r.w2.vx / r.w0.vx - 0.64) < 0.08, { w0: r.w0, w2: r.w2 });
 
   await browser.close();
   if (fails) { console.log(`\n${fails} failed`); process.exit(1); }

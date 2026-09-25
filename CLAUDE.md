@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v77**. Branch: `main` (release channel is `main`).
+Current version: **v78**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -642,6 +642,18 @@ anchor + offset on the player); `tied = DEV.spSlow ^ strings.length` multiplies 
 `spSilkMax` snaps. **Every tunable is a Dev knob in the Spider group (`DEV.sp*`)** — the owner asked for that;
 `SPIDER` keeps only body geometry. Tests: `tests/logic/spider.test.js` (hand-made grids: bumps, ledge, gap,
 dig-out), `tests/browser/spider.test.js` (sandbox: land, string, slow, snap, bite). Hooks: `__lvl.webs/silk/strings`. **v77 fix:** a spider must always have a clock running — if `decide()` finds nothing to do it gets a 0.1–0.3s retry rest; before, arriving left `on` and `rest` both ≤0 and it froze for good (~40% of floor-1 spiders). The logic suite now runs every spider on three real floor-1 caves for 40s and fails if any sits still.
+**v78: web lines are vines, and every spider knob is a range.** `decorStep` checks the player against `webs` (`webDist`
+from the hands, `p.y + WEB_HAND`, and the centre): each line touched multiplies `zfx.webMul` (its own rolled
+`L.slow`), and the nearest within `L.grab` becomes `zfx.web` + `zfx.climb`, so `climbing` latches it like a vine
+(hang, fuel back). The steering branch for `zfx.web` runs you *along* the line (stick · line direction ×
+`L.climb`) and springs your hands onto it; pushing down (not along) sets `webLetGo` 0.35s and drops you.
+`tied` = product of each string's `s.slow` × `zfx.webMul`. **Owner's rule: every spider Dev control is a min/max
+pair and each use rolls a fresh number between them** — `SP_KNOBS` (above `DEV_KEY`) generates `k+'Lo'`/`k+'Hi'`
+defaults and two Dev rows each; `spr(k, rnd)` is the roll. Rolled per use: burst length/rest/speed/arrive/dot per
+burst, grab/reach per decision, line speed + web cooldown per shot, max lines per new line, roam radius/drift when
+the roam spot turns back, aggro reach once a second per spider, silk range/speed/cooldown per string shot, bite
+damage/cooldown per bite, slow + snap length per string stuck on you, and slow/grab/climb once per web line (stored
+on it, so a line doesn't flicker). Adding a spider knob: add a row to `SP_KNOBS` and read it with `spr`.
 **v74 Pollen nerf.** Pollen has `drift: 1`, `homeR: 80`, `pop: 6` (no `eat`). `driftStep` (pure, above
 `tracePath`, consts `DRIFT_*`) damps its speed and, once slow, floats it up. It only homes after
 locking (`b.lock`: nearest creature within `homeR` with `lineOfSight`), then speeds back to

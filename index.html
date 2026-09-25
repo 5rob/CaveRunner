@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v77</title>
+<title>CaveRunner v78</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -440,13 +440,14 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v77';
+const VERSION = 'v78';
 
 // ---- tuning ----
 const GRAVITY = 1400;
 const WALK = 150, GROUND_ACC = 1400, AIR_ACC = 600;
 const JET = 240, JET_ACC = 900;
 const CLIMB = 90;                 // how fast you climb a vine, chain or frozen fall
+const WEB_HAND = 3;               // hanging from a web line: where your hands are, down from your top
 const DEAD = 0.12;
 // the right stick's own dead zone: drag past this fraction of its throw to aim/fire.
 // A tap that never leaves it is an interact instead — see Stick() and the pickup/shop
@@ -496,7 +497,7 @@ const START_GOLD = 40;
 // Each has a default; clearing a field in the dev panel puts the default back. Every
 // localStorage touch is wrapped: it throws in a private window and does not exist at all
 // under Node (the logic tests eval this file), and a missing store just means "defaults".
-const DEV_DEFAULTS = { zoom: 1.35, torch: 1, fogDark: 0.99, fogDim: 0.85, move: 1, sputDip: 45, aggro: 0.8, loseAggro: 2, aimDist: 44, bhPull: 50, bhSpeed: 65, spSpeed: 260, spRoamOn: 0.17, spRoamOff: 1.4, spHuntOn: 0.42, spHuntOff: 0.12, spRoamR: 110, spRoamSpd: 25, spArrive: 18, spDot: 0.6, spGrab: 10, spWeb: 170, spLineSpd: 900, spRoamWeb: 6, spHuntWeb: 0.5, spMaxLines: 8, spAggro: 1, spBite: 12, spBiteCd: 0.9, spSilk: 160, spSilkSpd: 520, spSilkCd: 3.2, spSilkMax: 190, spSlow: 0.8, vol: 0.8, amb: 1, jetVol: 1,
+const DEV_DEFAULTS = { zoom: 1.35, torch: 1, fogDark: 0.99, fogDim: 0.85, move: 1, sputDip: 45, aggro: 0.8, loseAggro: 2, aimDist: 44, bhPull: 50, bhSpeed: 65, vol: 0.8, amb: 1, jetVol: 1,
   vSpell: 1, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vStep: 1, vUi: 1, bagSpeed: 1 };
 // g: the collapsible group the knob sits in on the Dev panel (DEV_GROUPS gives the order)
 const DEV_META = [
@@ -509,29 +510,6 @@ const DEV_META = [
   { k: 'sputDip',   g: 'player', label: 'Jet sputter drop',           min: 0,   max: 300, step: 5 },
   { k: 'aggro',    g: 'enemy', label: 'Enemy aggro distance',        min: 0.2, max: 5,  step: 0.05 },
   { k: 'loseAggro', g: 'enemy', label: 'Lose aggro distance (×aggro)', min: 1,  max: 10, step: 0.1 },
-  { k: 'spSpeed',   g: 'spider', label: 'Burst speed',                     min: 20,  max: 800, step: 10 },
-  { k: 'spRoamOn',  g: 'spider', label: 'Roaming: burst length (s)',       min: 0.02, max: 2, step: 0.01 },
-  { k: 'spRoamOff', g: 'spider', label: 'Roaming: rest between (s)',       min: 0,   max: 6,  step: 0.05 },
-  { k: 'spHuntOn',  g: 'spider', label: 'Hunting: burst length (s)',       min: 0.02, max: 2, step: 0.01 },
-  { k: 'spHuntOff', g: 'spider', label: 'Hunting: rest between (s)',       min: 0,   max: 3,  step: 0.01 },
-  { k: 'spRoamR',   g: 'spider', label: 'Roam distance from home',         min: 0,   max: 600, step: 5 },
-  { k: 'spRoamSpd', g: 'spider', label: 'Roam spot drift speed',           min: 0,   max: 200, step: 1 },
-  { k: 'spAggro',   g: 'spider', label: 'Aggro distance (×enemy aggro)',   min: 0.1, max: 5,  step: 0.05 },
-  { k: 'spArrive',  g: 'spider', label: 'Stops this close to you',         min: 2,   max: 60, step: 1 },
-  { k: 'spDot',     g: 'spider', label: 'Web instead of walk above dot',   min: -1,  max: 1,  step: 0.05 },
-  { k: 'spGrab',    g: 'spider', label: 'Grabs a line within',             min: 0,   max: 60, step: 1 },
-  { k: 'spWeb',     g: 'spider', label: 'Web line max reach',              min: 20,  max: 400, step: 5 },
-  { k: 'spLineSpd', g: 'spider', label: 'Web line shot speed',             min: 50,  max: 3000, step: 25 },
-  { k: 'spRoamWeb', g: 'spider', label: 'Roaming: secs between new lines', min: 0,   max: 30, step: 0.5 },
-  { k: 'spHuntWeb', g: 'spider', label: 'Hunting: secs between new lines', min: 0,   max: 10, step: 0.1 },
-  { k: 'spMaxLines', g: 'spider', label: 'Lines kept per spider',          min: 1,   max: 40, step: 1 },
-  { k: 'spBite',    g: 'spider', label: 'Bite damage',                     min: 0,   max: 100, step: 1 },
-  { k: 'spBiteCd',  g: 'spider', label: 'Secs between bites',              min: 0.1, max: 5,  step: 0.05 },
-  { k: 'spSilk',    g: 'spider', label: 'String shot range',               min: 0,   max: 400, step: 5 },
-  { k: 'spSilkSpd', g: 'spider', label: 'String shot speed',               min: 50,  max: 2000, step: 10 },
-  { k: 'spSilkCd',  g: 'spider', label: 'Secs between string shots',       min: 0.2, max: 20, step: 0.1 },
-  { k: 'spSilkMax', g: 'spider', label: 'String snaps past (length)',      min: 20,  max: 600, step: 5 },
-  { k: 'spSlow',    g: 'spider', label: 'Your speed ×, per string on you', min: 0.1, max: 1,  step: 0.05 },
   { k: 'bhPull',    g: 'bh',    label: 'Black Hole max pull range',   min: 0,   max: 600, step: 5 },
   { k: 'bhSpeed',   g: 'bh',    label: 'Black Hole travel speed',     min: 0,   max: 1000, step: 5 },
   { k: 'vol',       g: 'sound', label: 'Sound volume',                min: 0,   max: 2,  step: 0.05 },
@@ -561,6 +539,45 @@ function devReport() {
     .map(m => m.k).join(', ') || 'none'));
   return lines.join('\n');
 }
+// The spider's knobs are ranges: every one has a min and a max, and each time the spider
+// (or its silk) uses one it rolls a fresh number between them — spr(k). The owner's rule:
+// no two bursts, bites or lines quite alike. Set min = max for a fixed number.
+//   [key, label, lowest, highest, step, default min, default max]
+const SP_KNOBS = [
+  ['spSpeed',    'Burst speed',                       20, 800, 10,   220, 300],
+  ['spRoamOn',   'Roaming: burst length (s)',         0.02, 2, 0.01, 0.1, 0.25],
+  ['spRoamOff',  'Roaming: rest between (s)',         0, 6, 0.05,    0.8, 2],
+  ['spHuntOn',   'Hunting: burst length (s)',         0.02, 2, 0.01, 0.3, 0.55],
+  ['spHuntOff',  'Hunting: rest between (s)',         0, 3, 0.01,    0.05, 0.18],
+  ['spRoamR',    'Roam distance from home',           0, 600, 5,     80, 140],
+  ['spRoamSpd',  'Roam spot drift speed',             0, 200, 1,     15, 35],
+  ['spAggro',    'Aggro distance (×enemy aggro)',     0.1, 5, 0.05,  0.9, 1.1],
+  ['spArrive',   'Stops this close to you',           2, 60, 1,      14, 22],
+  ['spDot',      'Web instead of walk above dot',     -1, 1, 0.05,   0.55, 0.65],
+  ['spGrab',     'Grabs a line within',               0, 60, 1,      8, 12],
+  ['spWeb',      'Web line max reach',                20, 400, 5,    140, 200],
+  ['spLineSpd',  'Web line shot speed',               50, 3000, 25,  700, 1100],
+  ['spRoamWeb',  'Roaming: secs between new lines',   0, 30, 0.5,    4, 8],
+  ['spHuntWeb',  'Hunting: secs between new lines',   0, 10, 0.1,    0.3, 0.7],
+  ['spMaxLines', 'Lines kept per spider',             1, 40, 1,      6, 10],
+  ['spBite',     'Bite damage',                       0, 100, 1,     10, 14],
+  ['spBiteCd',   'Secs between bites',                0.1, 5, 0.05,  0.7, 1.1],
+  ['spSilk',     'String shot range',                 0, 400, 5,     140, 180],
+  ['spSilkSpd',  'String shot speed',                 50, 2000, 10,  450, 600],
+  ['spSilkCd',   'Secs between string shots',         0.2, 20, 0.1,  2.5, 4],
+  ['spSilkMax',  'String snaps past (length)',        20, 600, 5,    170, 210],
+  ['spSlow',     'Your speed ×, per string on you',   0.1, 1, 0.05,  0.8, 0.8],
+  ['webSlow',    'Your speed ×, per web line you touch', 0.1, 1, 0.05, 0.8, 0.8],
+  ['webGrab',    'Web line touch/latch distance',     0, 40, 1,      8, 10],
+  ['webClimb',   'Climb speed along a web line',      0, 400, 5,     80, 100],
+];
+for (const [k, label, min, max, step, lo, hi] of SP_KNOBS) {
+  DEV_DEFAULTS[k + 'Lo'] = lo; DEV_DEFAULTS[k + 'Hi'] = hi;
+  DEV_META.push({ k: k + 'Lo', g: 'spider', label: label + ' — min', min, max, step },
+                { k: k + 'Hi', g: 'spider', label: label + ' — max', min, max, step });
+}
+// one roll of a spider knob: anywhere from its min to its max (either way round)
+const spr = (k, rnd) => { const a = DEV[k + 'Lo'], b = DEV[k + 'Hi']; return a + (rnd || Math.random)() * (b - a); };
 const DEV_KEY = 'caverunner-dev';
 const DEV = Object.assign({}, DEV_DEFAULTS);
 (() => { try {
@@ -1363,9 +1380,9 @@ function losClear(x0, y0, x1, y1, solidCell) {
 // corners instead of snagging on single pixels. It moves in short fast bursts with rests
 // between (rests long when roaming, short when it has you). At the start of each burst
 // it looks at where it wants to be: if that's off the surface (dot with the normal ≥
-// DEV.spDot) it rides a nearby line that heads that way, or else shoots a new line at
+// the Dev 'Web instead of walk above dot' knob) it rides a nearby line that heads that way, or else shoots a new line at
 // the rock over there and crosses on it. Lines stay. Pure, so the logic tests can run it
-// on a hand-made grid. Nearly every number is a Dev-panel knob (DEV.sp*, group Spider);
+// on a hand-made grid. Nearly every number is a Dev-panel range (SP_KNOBS, rolled by spr);
 // SPIDER holds only the body's own geometry.
 const SPIDER = { hold: 6, feel: 14, step: 1.5, fall: 900 };
 
@@ -1407,8 +1424,6 @@ function spiderSeat(e, S, solidCell, maxMove) {
   return true;
 }
 
-// a timing knob is the average; each burst or rest is 60-140% of it
-const spRange = (rnd, mean) => mean * (0.6 + 0.8 * rnd());
 const segNear = (L, x, y) => {
   const vx = L.bx - L.ax, vy = L.by - L.ay, ll = vx * vx + vy * vy || 1;
   const u = Math.max(0, Math.min(1, ((x - L.ax) * vx + (y - L.ay) * vy) / ll));
@@ -1437,8 +1452,9 @@ function spiderStep(e, env, dt) {
   S.webT = (S.webT || 0) - dt;
   S.ra += (rnd() - 0.5) * 3 * dt;
   const hd = Math.hypot(S.rx - e.hx, S.ry - e.hy);
-  if (hd > DEV.spRoamR) S.ra = Math.atan2(e.hy - S.ry, e.hx - S.rx);
-  S.rx += Math.cos(S.ra) * DEV.spRoamSpd * dt; S.ry += Math.sin(S.ra) * DEV.spRoamSpd * dt;
+  if (!S.roamR) { S.roamR = spr('spRoamR', rnd); S.roamSpd = spr('spRoamSpd', rnd); }
+  if (hd > S.roamR) { S.ra = Math.atan2(e.hy - S.ry, e.hx - S.rx); S.roamR = spr('spRoamR', rnd); S.roamSpd = spr('spRoamSpd', rnd); }
+  S.rx += Math.cos(S.ra) * S.roamSpd * dt; S.ry += Math.sin(S.ra) * S.roamSpd * dt;
   const goal = env.hunting ? env.goal : { x: S.rx, y: S.ry };
   let out = null;
 
@@ -1459,7 +1475,7 @@ function spiderStep(e, env, dt) {
 
   if (S.mode === 'shoot') {
     const sh = S.shot;
-    sh.t += DEV.spLineSpd * dt;
+    sh.t += sh.spd * dt;
     if (sh.t < sh.len) return null;
     // the line lands: it only holds if the rock is still there
     const hx = sh.x + sh.dx * sh.len, hy = sh.y + sh.dy * sh.len;
@@ -1471,7 +1487,7 @@ function spiderStep(e, env, dt) {
     webs.push(L);
     // an old line of this spider's goes, unless something is riding it
     const mine = webs.filter(w => w.owner === e);
-    if (mine.length > DEV.spMaxLines) {
+    if (mine.length > Math.round(spr('spMaxLines', rnd))) {
       const old = mine.find(w => w !== S.line);
       if (old) webs.splice(webs.indexOf(old), 1);
     }
@@ -1483,20 +1499,22 @@ function spiderStep(e, env, dt) {
   if (S.mode === 'line' && webs.indexOf(S.line) < 0) { S.mode = 'fall'; S.line = null; S.vy = 0; return null; }
   // on rock that has been dug away from under it: drop
   if (S.mode === 'surf' && !surfNormal(e.x, e.y, SPIDER.hold + 2, solidCell)) { S.mode = 'fall'; S.vy = 0; return null; }
-  const arrive = env.hunting ? DEV.spArrive : 3;
 
   // resting: count down, then start a burst and decide where it goes. Nothing worth doing
   // (already there, right under it): look again shortly — never sit with no clock running
   if (S.on <= 0) {
     if ((S.rest -= dt) > 0) return null;
-    S.on = spRange(rnd, env.hunting ? DEV.spHuntOn : DEV.spRoamOn);
+    S.on = spr(env.hunting ? 'spHuntOn' : 'spRoamOn', rnd);
+    // this burst's own numbers
+    S.spd = env.speed || spr('spSpeed', rnd); S.arrive = env.hunting ? spr('spArrive', rnd) : 3;
+    S.dot = spr('spDot', rnd);
     decide();
     if (S.mode === 'shoot') return null;
     if (S.on <= 0) { S.rest = 0.1 + rnd() * 0.2; return null; }
   }
   if (S.mode === 'shoot') return null;
 
-  const speed = env.speed;
+  const speed = (S.spd || spr('spSpeed', rnd)) * (env.speedMul || 1);
   const dist = speed * Math.min(dt, S.on);
   S.on -= dt;
   const n = Math.max(1, Math.ceil(dist / SPIDER.step));
@@ -1512,11 +1530,11 @@ function spiderStep(e, env, dt) {
       }
       // came round a corner and now faces the goal off the surface: look again
       const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy) || 1;
-      const high = (gx * S.nx + gy * S.ny) / gd >= DEV.spDot;
+      const high = (gx * S.nx + gy * S.ny) / gd >= S.dot;
       if (high && !S.high) { S.high = true; decide(); }
       else if (!high) S.high = false;
       // there, or just walked past the closest it gets on this surface: stop
-      if (gd < arrive || (-S.ny * gx + S.nx * gy) * S.side < 0) { S.on = 0; break; }
+      if (gd < (S.arrive || 3) || (-S.ny * gx + S.nx * gy) * S.side < 0) { S.on = 0; break; }
     } else if (S.mode === 'line') {
       const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
       const ux = (L.bx - L.ax) / len * S.dir, uy = (L.by - L.ay) / len * S.dir;
@@ -1534,16 +1552,16 @@ function spiderStep(e, env, dt) {
       e.x = L.ax + (L.bx - L.ax) * S.u; e.y = L.ay + (L.by - L.ay) * S.u;
     }
   }
-  if (S.on <= 0 && S.rest <= 0) S.rest = spRange(rnd, env.hunting ? DEV.spHuntOff : DEV.spRoamOff);
+  if (S.on <= 0 && S.rest <= 0) S.rest = spr(env.hunting ? 'spHuntOff' : 'spRoamOff', rnd);
   return out;
 
   // where to go this burst: along the rock, onto a line, or shoot a new one
   function decide() {
     const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
-    if (gd < arrive) { S.on = 0; return; }
+    if (gd < (S.arrive || 3)) { S.on = 0; return; }
     const dx = gx / gd, dy = gy / gd;
     const tryLine = () => {
-      let best = null, bd = DEV.spGrab;
+      let best = null, bd = spr('spGrab', rnd);
       for (const L of webs) {
         if (L === S.line) continue;
         const q = segNear(L, e.x, e.y);
@@ -1562,7 +1580,7 @@ function spiderStep(e, env, dt) {
     const tryShoot = from => {
       // a roaming spider spins a new line now and then, not every hop; hunting, much more often
       if (S.webT > 0 || (!env.hunting && gd < 40)) return false;
-      const a = spiderAim(e.x, e.y, dx, dy, env.reach, solidCell);
+      const a = spiderAim(e.x, e.y, dx, dy, env.reach || spr('spWeb', rnd), solidCell);
       if (!a) return false;
       let ax0 = e.x, ay0 = e.y, ain = null;
       if (from === 'surf') {
@@ -1570,14 +1588,14 @@ function spiderStep(e, env, dt) {
         ax0 = e.x - S.nx * d; ay0 = e.y - S.ny * d;
         ain = { x: e.x - S.nx * (d + 1.2), y: e.y - S.ny * (d + 1.2) };
       }
-      S.webT = env.hunting ? DEV.spHuntWeb : DEV.spRoamWeb;
-      S.shot = { x: e.x, y: e.y, dx: a.dx, dy: a.dy, len: a.len, t: 0, from, ax0, ay0, ain };
+      S.webT = spr(env.hunting ? 'spHuntWeb' : 'spRoamWeb', rnd);
+      S.shot = { spd: spr('spLineSpd', rnd), x: e.x, y: e.y, dx: a.dx, dy: a.dy, len: a.len, t: 0, from, ax0, ay0, ain };
       S.mode = 'shoot';
       return true;
     };
     if (S.mode === 'surf') {
       const dot = dx * S.nx + dy * S.ny;
-      S.high = dot >= DEV.spDot;
+      S.high = dot >= (S.dot || 0.6);
       if (S.high && (tryLine() || tryShoot('surf'))) return;
       const t = -S.ny * dx + S.nx * dy;
       if (Math.abs(t) * gd < 4) { S.on = 0; return; }   // right under it already
@@ -5158,7 +5176,7 @@ function Game({ input }) {
     const dctx = decoC.getContext('2d');
     const dparts = [], amb = [], clouds = [], rings = [], devils = [];
     let decoFrame = 0, viewW = VIEW_W, viewH = VIEW_MIN_H, dripHurt = 0;
-    let zfx = { slow: 1, slick: 0, climb: null, rev: 0 };
+    let zfx = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
     // the hand torch's flame lean: a sprung offset dragged opposite to how you move,
     // the same way the jet flame swings, so the fire trails behind you
     let leanX = 0, leanY = 0, leanVX = 0, leanVY = 0, glowN = 0;
@@ -5188,7 +5206,14 @@ function Game({ input }) {
     // the spiders' silk: webs are the lines they travel on (they stay), silk the strings in
     // flight at you, strings the ones stuck to you (each slows you; pull one too long, it snaps)
     const webs = [], silk = [], strings = [];
-    let webCheck = 0;
+    let webCheck = 0, webLetGo = 0;
+    // how far a point is from a web line (anchor to anchor, as drawn), and where on it is closest
+    const webNear = (L, x, y) => {
+      const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, ll = vx * vx + vy * vy || 1;
+      const u = Math.max(0, Math.min(1, ((x - L.a0x) * vx + (y - L.a0y) * vy) / ll));
+      return { x: L.a0x + vx * u, y: L.a0y + vy * u };
+    };
+    const webDist = (L, x, y) => { const q = webNear(L, x, y); return Math.hypot(q.x - x, q.y - y); };
 
     const toast = text => { toasts.push({ text, t: 2.2 }); if (toasts.length > 3) toasts.shift(); };
     let best = 0, raf, last = performance.now();
@@ -5232,7 +5257,7 @@ function Game({ input }) {
       props = level.props || []; ambKinds = level.amb || []; dimg = level.dimg;
       dctx.putImageData(dimg, 0, 0);
       dparts.length = amb.length = clouds.length = rings.length = devils.length = 0;
-      zfx = { slow: 1, slick: 0, climb: null, rev: 0 };
+      zfx = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
       {
         const pcx0 = portal.x + portal.w / 2, pcy0 = portal.y + portal.h / 2;
         sconces = [[pcx0 - 26, pcy0 - 2], [pcx0 + 26, pcy0 - 2],
@@ -5884,7 +5909,7 @@ function Game({ input }) {
     function decorStep(dt, pcx, pcy) {
       decoFrame++;
       plantsNow.clear();
-      const z = { slow: 1, slick: 0, climb: null, rev: 0 };
+      const z = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
       // the runtime anchor check, staggered: a thirtieth of the props each frame, so each one
       // finds out within half a second that the rock it hung off has been blown away
       for (let i = decoFrame % 30; i < props.length; i += 30) {
@@ -6114,6 +6139,25 @@ function Game({ input }) {
         SFX.rustle(pcx, pcy, str, style || (pr && pr.st) || 'vine');
       }
       plantsLast = new Set(plantsNow);
+      // spider web lines: each one you're touching slows you, and like a vine you latch on
+      // to the nearest (unless you've just let go of one)
+      if (!p.dead) {
+        let wd = Infinity;
+        for (const L of webs) {
+          const R = L.grab || (L.grab = spr('webGrab'));
+          if (pcx < Math.min(L.a0x, L.b0x) - R || pcx > Math.max(L.a0x, L.b0x) + R ||
+              pcy < Math.min(L.a0y, L.b0y) - R - PH / 2 || pcy > Math.max(L.a0y, L.b0y) + R + PH / 2) continue;
+          const d = webDist(L, pcx, p.y + WEB_HAND);
+          const d2 = webDist(L, pcx, pcy);
+          if (Math.min(d, d2) > R) continue;
+          z.webs++;
+          z.webMul *= L.slow || (L.slow = spr('webSlow'));
+          if (d <= R && d < wd) { wd = d; z.web = L; }
+        }
+        if (webLetGo > 0) z.web = null;
+        if (z.web && !z.climb) z.climb = z.web;
+        else if (z.climb !== z.web) z.web = null;
+      }
       zfx = z;
     }
 
@@ -6230,9 +6274,12 @@ function Game({ input }) {
       }
 
       // ---- steering ----
+      const pcx0 = p.x + PW / 2;
       p.kick -= dt;
       const k = p.kick > 0 ? 0.15 : 1;   // let explosions push you around briefly
-      const tied = Math.pow(DEV.spSlow, strings.length);   // each spider string on you slows you
+      // each spider string on you slows you, and so does each web line you're pushing through
+      const tied = strings.reduce((m, s) => m * s.slow, 1) * zfx.webMul;
+      webLetGo -= dt;
       if (jet && p.sput) {
         // coughing: steer on, but no lift for the blink
         p.vx = approach(p.vx, L.nx * mag * JET * pb.walk * DEV.move * tied, JET_ACC * dt * k);
@@ -6245,6 +6292,18 @@ function Game({ input }) {
         if (ty < p.vy && p.kick <= 0 && p.cough <= 0) p.vy = ty;
         else p.vy = approach(p.vy, ty, JET_ACC * dt * k);
         if (zfx.rev) p.vy -= GRAVITY * zfx.rev * dt;          // dark matter lifts you
+      } else if (climbing && zfx.web && p.kick <= 0) {
+        // hanging from a spider's web line: the stick runs you along it, hands on the line.
+        // Push down (not along it) to let go.
+        const W = zfx.web, wl = Math.hypot(W.b0x - W.a0x, W.b0y - W.a0y) || 1;
+        let ux = (W.b0x - W.a0x) / wl, uy = (W.b0y - W.a0y) / wl;
+        const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
+        if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) { webLetGo = 0.35; p.vy = 40; }
+        else {
+          const v = along * (W.climb || (W.climb = spr('webClimb'))) * tied, hy = p.y + WEB_HAND, q = webNear(W, pcx0, hy);
+          p.vx = approach(p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
+          p.vy = approach(p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
+        }
       } else {
         // decoration underfoot: snow, slime and puddles slow you, ice takes your grip away
         const target = mag > 0 ? L.nx * mag * WALK * pb.walk * DEV.move * zfx.slow * tied : 0;
@@ -6809,7 +6868,8 @@ function Game({ input }) {
         // initial reach and even round a wall), and only drops back to patrol once you've
         // put DEV.loseAggro times the aggro reach between you — so you can outrun it.
         const chaser = (k.act === 'chase' || k.act === 'bomb' || k.act === 'spider') && !p.dead;
-        const reach = k.aggro * sees * DEV.aggro * (k.act === 'spider' ? DEV.spAggro : 1);
+        if (k.act === 'spider' && ((e.aggroT = (e.aggroT || 0) - dt) <= 0)) { e.aggroM = spr('spAggro'); e.aggroT = 1; }
+        const reach = k.aggro * sees * DEV.aggro * (k.act === 'spider' ? e.aggroM : 1);
         if (chaser) {
           if (!e.aggro) { if (dist < reach && lineOfSight(e.x, e.ty, pcx, pcy)) { e.aggro = true; SFX.creature(k, 'alert', e.x, e.ty); } }
           else if (dist > reach * DEV.loseAggro) e.aggro = false;
@@ -6825,17 +6885,17 @@ function Game({ input }) {
           // only on rock and its own lines (spiderStep); strings you when it has a clear line
           const cold = e.chill && e.chill < 1 ? e.chill : 1;
           if (spiderStep(e, { solidCell, webs, hunting, goal: { x: pcx, y: pcy }, rnd: Math.random,
-            speed: DEV.spSpeed * cold, reach: DEV.spWeb }, dt) === 'web') SFX.fx('lash', e.x, e.y);
+            speedMul: cold }, dt) === 'web') SFX.fx('lash', e.x, e.y);
           e.silkT = (e.silkT || 0) - dt;
           const S = e.sp;
           if (hunting && e.silkT <= 0 && S && (S.mode === 'surf' || S.mode === 'line') &&
-              dist < DEV.spSilk * sees && dist > e.r + 24) {
+              dist < (e.silkR || (e.silkR = spr('spSilk'))) * sees && dist > e.r + 24) {
             e.silkT = 0.4;
             if (lineOfSight(e.x, e.y, pcx, pcy)) {
-              e.silkT = DEV.spSilkCd * (0.8 + Math.random() * 0.4);
-              const v = DEV.spSilkSpd;
+              e.silkT = spr('spSilkCd'); e.silkR = spr('spSilk');
+              const v = spr('spSilkSpd');
               silk.push({ x: e.x, y: e.y, ax: e.x, ay: e.y, vx: dx / dist * v, vy: dy / dist * v,
-                life: DEV.spSilk / v * 1.3 + 0.1 });
+                life: 400 / v * 1.3 + 0.1 });
               SFX.creature(k, 'fire', e.x, e.y);
             }
           }
@@ -6878,8 +6938,8 @@ function Game({ input }) {
             continue;
           }
           SFX.creature(k, 'bite', e.x, e.ty);
-          hurt(k.act === 'spider' ? DEV.spBite : k.dmg);
-          e.touch = k.act === 'spider' ? DEV.spBiteCd : 0.9;
+          hurt(k.act === 'spider' ? Math.round(spr('spBite')) : k.dmg);
+          e.touch = k.act === 'spider' ? spr('spBiteCd') : 0.9;
         }
 
         // firing. A turret with a wind-up shows the ring first and only shoots if it
@@ -6938,7 +6998,7 @@ function Game({ input }) {
           if (solidAt(b.x, b.y)) { gone = true; break; }
           if (!p.dead && b.x > p.x - 3 && b.x < p.x + PW + 3 && b.y > p.y - 3 && b.y < p.y + PH + 3) {
             gone = true;
-            strings.push({ ax: b.ax, ay: b.ay, ox: b.x - p.x, oy: b.y - p.y });
+            strings.push({ ax: b.ax, ay: b.ay, ox: b.x - p.x, oy: b.y - p.y, slow: spr('spSlow'), max: spr('spSilkMax') });
             SFX.fx('lash', b.x, b.y);
           }
         }
@@ -6947,7 +7007,7 @@ function Game({ input }) {
       // strings on you: pulled past their length, they snap
       for (let i = strings.length - 1; i >= 0; i--) {
         const s = strings[i];
-        if (Math.hypot(p.x + s.ox - s.ax, p.y + s.oy - s.ay) > DEV.spSilkMax) {
+        if (Math.hypot(p.x + s.ox - s.ax, p.y + s.oy - s.ay) > s.max) {
           strings.splice(i, 1);
           burst(p.x + s.ox, p.y + s.oy, 4, '#e8e8f0');
           SFX.fx('lash', p.x + s.ox, p.y + s.oy);
