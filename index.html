@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v70</title>
+<title>CaveRunner v71</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -167,10 +167,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .shead h2{margin:0;font-size:17px}
 .done{height:36px;padding:0 16px;border-radius:18px;border:1px solid var(--ring);
   background:var(--btn);color:var(--text);font:600 14px system-ui,sans-serif}
-.gtabs{display:flex;gap:6px;margin-bottom:8px}
-.gtab{flex:1 1 0;min-width:0;height:44px;border-radius:9px;border:1px solid var(--ring);
-  background:var(--btn);color:var(--text);padding:0 4px;display:flex;flex-direction:column;
-  justify-content:center;align-items:center;gap:1px;overflow:hidden}
+.btop{display:flex;gap:8px;margin-bottom:8px;align-items:flex-start}
+.gstats{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:1px;background:var(--pad);
+  border-radius:9px;padding:5px 8px}
+.gsrow{display:flex;align-items:baseline;gap:5px;font:500 11.5px system-ui,sans-serif;
+  color:var(--muted);line-height:1.45}
+.gsrow span{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gsrow b{font:700 12px system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.gsrow u{text-decoration:none;font:700 10px system-ui,sans-serif;min-width:34px;text-align:right}
+.gsrow u.up{color:var(--good)}
+.gsrow u.down{color:var(--bad)}
+.gtabs{flex:1 1 0;min-width:0;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.gtab{aspect-ratio:1;min-width:0;border-radius:9px;border:1px solid var(--ring);
+  background:var(--btn);color:var(--text);padding:4px;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;gap:4px;overflow:hidden}
+.gtab .gname{font:600 10.5px system-ui,sans-serif;text-align:center;line-height:1.15;max-width:100%;
+  white-space:normal;overflow:visible}
+.gicon{width:64px;height:32px;max-width:100%;pointer-events:none}
 .gtab.on{border:2px solid #ff8a1f}
 .gtab.lifted{opacity:.35}
 .gtab.target{border:2px dashed #ff8a1f}
@@ -192,7 +205,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .diag.blood{border-left-color:#c2401f}
 .diag.cast{border-left-color:#ff9e3d}
 .diag.none{border-left-color:var(--muted)}
-.tips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.tips{display:flex;gap:5px;margin-top:6px;overflow-x:auto;scrollbar-width:none}
+.tip{flex:0 0 auto;white-space:nowrap}
 .tip{display:flex;align-items:center;gap:6px;border:1px solid var(--ring);background:var(--pad);
   color:var(--text);border-radius:8px;padding:5px 9px;font:500 11px system-ui,sans-serif;
   touch-action:none}
@@ -200,7 +214,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .legend{display:flex;flex-wrap:wrap;gap:3px 8px;margin:0 0 7px}
 .lg{display:flex;align-items:center;gap:4px;font:500 9.5px system-ui,sans-serif;color:var(--muted)}
 .lg i{width:8px;height:8px;border-radius:2px;display:block}
-.slotRow{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:flex-start}
+.slotRow{overflow-y:auto;flex:1.2 1 0;min-height:64px;border-radius:9px;
+  background:var(--pad);padding:6px;margin-bottom:8px}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:6px}
+.mgrid .tile{width:auto;height:auto;aspect-ratio:1}
+.mgrid .tile.cold{opacity:.45}
+.pulse{position:absolute;inset:0;border-radius:8px;border:2px solid;opacity:.22;pointer-events:none}
+.pulse.on{opacity:.42;box-shadow:0 0 10px currentColor}
 .grp{display:flex;flex-direction:column;gap:2px;min-width:0;max-width:100%}
 .gtiles{display:flex;flex-wrap:wrap;gap:6px;padding:5px;border:1.5px solid var(--ring);border-radius:12px;
   background:var(--pad);min-width:0;max-width:100%;box-sizing:border-box}
@@ -219,7 +239,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .bagHead .lab{margin:0}
 .sortBag{flex:0 0 auto;height:22px;padding:0 10px;border-radius:11px;border:1px solid var(--ring);
   background:var(--pad);color:var(--muted);font:700 10px system-ui,sans-serif;letter-spacing:.06em}
-.bag{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;overflow-y:auto;
+.bag{overflow-y:auto;
   flex:1 1 0;min-height:70px;border-radius:9px;background:var(--pad);padding:6px;
   scroll-padding-bottom:12px;margin-top:5px}
 .tile{width:60px;height:56px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);
@@ -409,7 +429,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script>
-const { useRef, useEffect, useState } = React;
+const { useRef, useEffect, useState, useMemo } = React;
 const h = React.createElement;
 
 // ---- world ----
@@ -421,7 +441,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v70';
+const VERSION = 'v71';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -478,7 +498,7 @@ const START_GOLD = 40;
 // localStorage touch is wrapped: it throws in a private window and does not exist at all
 // under Node (the logic tests eval this file), and a missing store just means "defaults".
 const DEV_DEFAULTS = { zoom: 1.35, torch: 1, fogDark: 0.99, fogDim: 0.85, move: 1, sputDip: 45, aggro: 0.8, loseAggro: 2, aimDist: 44, bhPull: 50, bhSpeed: 65, vol: 0.8, amb: 1, jetVol: 1,
-  vSpell: 1, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vStep: 1, vUi: 1 };
+  vSpell: 1, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vStep: 1, vUi: 1, bagAnim: 3 };
 // g: the collapsible group the knob sits in on the Dev panel (DEV_GROUPS gives the order)
 const DEV_META = [
   { k: 'zoom',      g: 'view',  label: 'Camera zoom',                 min: 0.3, max: 3,  step: 0.05 },
@@ -503,9 +523,10 @@ const DEV_META = [
   { k: 'vWorld',    g: 'sound', label: 'World, props, portals (×sound)', min: 0, max: 3, step: 0.05 },
   { k: 'vStep',     g: 'sound', label: 'Footsteps (×sound)',          min: 0,   max: 3,  step: 0.05 },
   { k: 'vUi',       g: 'sound', label: 'UI & pickups (×sound)',       min: 0,   max: 3,  step: 0.05 },
+  { k: 'bagAnim',   g: 'ui',    label: 'Bag cast animation (slots/s)', min: 0.2, max: 30, step: 0.5 },
 ];
 const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['player', 'Player'],
-  ['enemy', 'Enemies'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound']];
+  ['enemy', 'Enemies'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen']];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults.
 function devReport() {
@@ -1852,7 +1873,7 @@ function castGroups(gun) {
   if (gun.shuffle) return null;
   const sim = resetGun(Object.assign({}, gun, { slots: gun.slots.slice() }));
   const groups = [];
-  for (let guard = 0; guard < 16; guard++) {
+  for (let guard = 0; guard < 64; guard++) {
     const from = sim.idx;
     if (from >= sim.order.length) break;
     const plan = planCast(sim);
@@ -1925,6 +1946,61 @@ function gunPassives(g) {
     if (m.manaRegen) manaRegen += m.manaRegen;
   }
   return { rech, rechMul, manaMax, manaRegen };
+}
+
+// The bag screen's slot animation: the filled slots in the order one full cycle fires
+// them, each tagged with the pull it comes out on. Empty slots are skipped. Null for a
+// shuffled gun, whose order changes every recharge.
+function pullSteps(g) {
+  const groups = castGroups(g);
+  if (!groups) return null;
+  const steps = [], seen = new Set();
+  groups.forEach((gr, n) => {
+    for (let i = gr.from; i < gr.to && i < g.slots.length; i++)
+      if (g.slots[i] && !seen.has(i)) { seen.add(i); steps.push({ slot: i, pull: n }); }
+  });
+  return steps;
+}
+
+// How close a gun stat is to perfect: 0 at the worst end of its GUN_RANGE, 1 at the best.
+// Double cast and cast order are yes/no, so they are 0 or 1.
+function statQual(k, v) {
+  if (k === 'multi') return v > 1 ? 1 : 0;
+  if (k === 'shuffle') return v ? 0 : 1;
+  const [w, b] = GUN_RANGE[k];
+  return Math.max(0, Math.min(1, (v - w) / (b - w)));
+}
+
+// What the mods on a gun do to its own stats, as a change from the gun's bare number.
+// Cast delay, spread and shot speed are averaged over every pull of one full cycle
+// (spread and speed against the same pull with its modifiers stripped out).
+function gunModDeltas(g) {
+  const pas = gunPassives(g);
+  const out = { cap: 0, castDelay: 0, recharge: effRecharge(g) - g.recharge,
+    manaMax: pas.manaMax, manaRegen: pas.manaRegen, spread: 0, speedMul: 0, multi: 0, shuffle: 0 };
+  const sim = resetGun(Object.assign({}, g, { slots: g.slots.slice(), shuffle: false }));
+  const plans = [];
+  for (let guard = 0; guard < 64 && sim.idx < sim.order.length; guard++) {
+    const p = planCast(sim);
+    if (p.shots.length) plans.push(p);
+    if (p.wrap) break;
+  }
+  if (!plans.length) return out;
+  const avg = (sh, f) => sh.reduce((t, x) => t + (x[f] || 0), 0) / sh.length;
+  let d = 0, sp = 0, spd = 0;
+  for (const p of plans) {
+    const ids = p.defs.map(x => x.id);
+    const bare = planCast(resetGun(Object.assign({}, g, { cap: Math.max(1, ids.length), slots: ids.slice(),
+      multi: Math.max(1, ids.length), shuffle: false })));
+    d += p.delay;
+    sp += avg(p.shots, 'spread') - (bare.shots.length ? avg(bare.shots, 'spread') : g.spread);
+    const bs = bare.shots.length ? avg(bare.shots, 'speed') : 0;
+    spd += bs > 0 ? avg(p.shots, 'speed') / bs - 1 : 0;
+  }
+  out.castDelay = d / plans.length - g.castDelay;
+  out.spread = sp / plans.length;
+  out.speedMul = (g.speedMul || 1) * spd / plans.length;
+  return out;
 }
 
 // ---- sprites ----
@@ -7772,6 +7848,84 @@ function ModCard({ id, onClose, ingame, top, flow }) {
   );
 }
 
+// A gun's stats, one per line: name in its gauge colour, value red->green by how near
+// perfect it is, and what the fitted mods add or take away.
+const PULL_COL = ['#ff8a1f', '#3fc9ff', '#b565ff', '#57d267', '#ff5fa2', '#ffd23c'];
+const GS_ROWS = [
+  { k: 'cap', label: 'Slots', fmt: v => String(v) },
+  { k: 'castDelay', label: 'Cast delay', col: GAUGE_COL.cast, fmt: v => v.toFixed(2) + 's', better: -1, dfmt: v => v.toFixed(2) + 's' },
+  { k: 'recharge', label: 'Recharge', col: GAUGE_COL.rech, fmt: v => v.toFixed(2) + 's', better: -1, dfmt: v => v.toFixed(2) + 's' },
+  { k: 'manaMax', label: 'Mana', col: GAUGE_COL.mana, fmt: v => String(Math.round(v)), better: 1, dfmt: v => String(Math.round(v)) },
+  { k: 'manaRegen', label: 'Mana regen', col: GAUGE_COL.mana, fmt: v => Math.round(v) + '/s', better: 1, dfmt: v => String(Math.round(v)) },
+  { k: 'spread', label: 'Spread', fmt: v => v.toFixed(1) + '°', better: -1, dfmt: v => v.toFixed(1) + '°' },
+  { k: 'speedMul', label: 'Shot speed', fmt: v => '×' + v.toFixed(2), better: 1, dfmt: v => v.toFixed(2) },
+  { k: 'multi', label: 'Per cast', fmt: v => String(v) },
+  { k: 'shuffle', label: 'Order', fmt: v => (v ? 'shuffle' : 'in order') },
+];
+function GunStats({ gun }) {
+  const d = gunModDeltas(gun);
+  return h('div', { className: 'gstats' },
+    gun.lvl ? h('div', { className: 'gsrow' }, h('span', null, 'Level'),
+      h('b', { style: { color: gunLvCol(gun) } }, 'Lv ' + gun.lvl)) : null,
+    GS_ROWS.map(r => {
+      const v = r.k === 'speedMul' ? (gun.speedMul || 1) : gun[r.k];
+      const dv = d[r.k] || 0, show = r.dfmt && Math.abs(dv) > 0.005;
+      return h('div', { key: r.k, className: 'gsrow', 'data-stat': r.k },
+        h('span', r.col ? { style: { color: r.col } } : null, r.label),
+        h('b', { style: { color: healthCol(statQual(r.k, v)) } }, r.fmt(v)),
+        show ? h('u', { className: (dv > 0) === (r.better > 0) ? 'up' : 'down' },
+          (dv > 0 ? '+' : '−') + r.dfmt(Math.abs(dv))) : null);
+    }));
+}
+
+// the gun's picture on its button, drawn with the same sprite as the one in your hands
+function GunIcon({ gun }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const c = ref.current; if (!c) return;
+    const dpr = window.devicePixelRatio || 1, W = 64, H = 32;
+    c.width = W * dpr; c.height = H * dpr;
+    const ctx = c.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const sc = 2.7;
+    drawGun(ctx, W / 2 - 3.85 * sc, H / 2 + 1 * sc, 0, sc, gunAccent(gun));
+  });
+  return h('canvas', { ref, className: 'gicon' });
+}
+
+// The gun's slots as a fixed grid: a mod stays exactly where you drop it. A coloured
+// light walks the filled slots in firing order, one colour per pull of the trigger, at
+// DEV.bagAnim slots a second. Owns its own clock so the Editor (and the advisor) don't
+// re-render on every step.
+function SlotGrid({ gun, tile, sig }) {
+  const [tick, setTick] = useState(0);
+  const steps = useMemo(() => pullSteps(gun), [sig]);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 1000 / Math.max(0.2, DEV.bagAnim));
+    return () => clearInterval(id);
+  }, []);
+  const pullOf = new Array(gun.slots.length).fill(-1);
+  if (steps) for (const st of steps) pullOf[st.slot] = st.pull;
+  const lit = new Map();                     // slot -> 'on' (the step now) | 'trail' (earlier in this pull)
+  if (steps && steps.length) {
+    const pos = tick % (steps.length + 2);   // two idle beats before it loops
+    if (pos < steps.length) {
+      const cur = steps[pos];
+      for (let k = 0; k <= pos; k++) if (steps[k].pull === cur.pull) lit.set(steps[k].slot, k === pos ? 'on' : 'trail');
+    }
+  }
+  return h('div', { className: 'slotRow scroll' }, h('div', { className: 'mgrid' },
+    gun.slots.map((id, i) => {
+      const el = tile(id, { type: 'slot', i }, i);
+      const l = lit.get(i), col = PULL_COL[Math.max(0, pullOf[i]) % PULL_COL.length];
+      return React.cloneElement(el, { 'data-pull': pullOf[i],
+          className: el.props.className + (id && steps && pullOf[i] < 0 ? ' cold' : '') },
+        ...[].concat(el.props.children),
+        l ? h('i', { className: 'pulse ' + l, style: { background: col, borderColor: col, color: col } }) : null);
+    })));
+}
+
 function Editor({ input, close, refresh, canEdit }) {
   const LO = input.current.loadout;
   useEffect(() => { SFX.fx('open'); return () => SFX.fx('close'); }, []);
@@ -7913,43 +8067,6 @@ function Editor({ input, close, refresh, canEdit }) {
     );
   };
 
-  // draw the slots grouped by the pull they come out on
-  const slotRow = (g, mk) => {
-    const groups = castGroups(g);
-    if (!groups) return g.slots.map((id, i) => mk(id, { type: 'slot', i }, i));
-    const owner = new Array(g.slots.length).fill(-1);
-    groups.forEach((gr, n) => {
-      for (let i = gr.from; i < gr.to && i < owner.length; i++) owner[i] = n;
-    });
-    const ordinal = n => ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'][n] || (n + 1) + 'th';
-    const out = [];
-    for (let i = 0; i < g.slots.length;) {
-      const n = owner[i];
-      let j = i;
-      while (j < g.slots.length && owner[j] === n) j++;
-      const tiles = [];
-      for (let k = i; k < j; k++) tiles.push(mk(g.slots[k], { type: 'slot', i: k }, k));
-      const gr = n >= 0 ? groups[n] : null;
-      out.push(h('div', { className: 'grp' + (gr ? '' : ' cold'), key: 'g' + i },
-        h('div', { className: 'gtiles' }, tiles),
-        h('span', { className: 'glab' }, gr
-          ? ordinal(n) + ' pull · ' + gr.shots + (gr.shots > 1 ? ' shots' : ' shot') +
-            (gr.wrapped ? ' ↩' : '')
-          : 'never cast'),
-        gr ? h('div', { className: 'gfx' },
-          groupStats(g, gr).map((r, k) => h('span', {
-              key: k, className: 'fx' + (r.dir ? ' ' + r.dir : '') },
-            h('i', null, r.label), h('b', null, r.value),
-            r.delta ? h('u', null, r.delta) : null))) : null));
-      i = j;
-    }
-    return out;
-  };
-
-  // col ties a stat to its ring on the right stick (recharge blue, cast delay purple, mana gold)
-  const stat = (k, v, col) => h('div', { className: 'st' },
-    h('b', col ? { style: { color: col } } : null, String(v)),
-    h('span', col ? { style: { color: col } } : null, k));
   const shown = info && MODS[info];
 
   // the backdrop closes the card, but a tap that lands on another mod switches to it
@@ -7976,33 +8093,25 @@ function Editor({ input, close, refresh, canEdit }) {
       h('span', { className: 'purse' }, LO.gold + 'g'),
       h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Done')
     ),
-    h('div', { className: 'gtabs' },
-      LO.guns.map((g, i) => h('button', {
-          key: i,
-          'data-gun': i,
-          className: 'gtab' + (g ? '' : ' empty') + (i === sel ? ' on' : '') +
-            (gdrag && gdrag.from === i ? ' lifted' : '') +
-            (gdrag && gdrag.over === i && gdrag.from !== i ? ' target' : ''),
-          onPointerDown: gunPress(i),
-        },
-        h('span', { className: 'gname', style: g ? { color: gunColor(g) } : null }, g ? g.name : 'Empty'),
-        h('span', { className: 'gsub' }, g ? g.cap + ' slots' : '—')
-      ))
+    h('div', { className: 'btop' },
+      gun ? h(GunStats, { gun }) : h('div', { className: 'gstats' }, h('p', { className: 'lab' }, 'No gun in this slot')),
+      h('div', { className: 'gtabs' },
+        LO.guns.map((g, i) => h('button', {
+            key: i,
+            'data-gun': i,
+            className: 'gtab' + (g ? '' : ' empty') + (i === sel ? ' on' : '') +
+              (gdrag && gdrag.from === i ? ' lifted' : '') +
+              (gdrag && gdrag.over === i && gdrag.from !== i ? ' target' : ''),
+            onPointerDown: gunPress(i),
+          },
+          h('span', { className: 'gname', style: g ? { color: gunColor(g) } : null }, g ? g.name : 'Empty'),
+          g ? h(GunIcon, { gun: g }) : h('span', { className: 'gsub' }, '—')
+        )))
     ),
-    gun ? h('div', { className: 'stats' },
-      stat('cast delay', gun.castDelay.toFixed(2) + 's', GAUGE_COL.cast),
-      stat('recharge', gun.recharge.toFixed(2) + 's', GAUGE_COL.rech),
-      stat('mana', Math.round(gun.manaMax) + ' +' + Math.round(gun.manaRegen) + '/s', GAUGE_COL.mana),
-      stat('spread', gun.spread.toFixed(1) + '\u00b0'),
-      stat('per cast', gun.multi),
-      stat('shot speed', 'x' + (gun.speedMul || 1).toFixed(2)),
-      stat('order', gun.shuffle ? 'shuffle' : 'in order')
-    ) : null,
-    h('p', { className: 'lab' }, gun
-      ? (gun.shuffle ? 'On the gun — order is shuffled every recharge'
-                     : 'On the gun — each outline is one pull of the trigger')
-      : 'No gun in this slot'),
-    gun ? h('div', { className: 'slotRow' }, slotRow(gun, tile)) : null,
+    gun ? h('p', { className: 'lab' }, gun.shuffle
+      ? 'On the gun — order is shuffled every recharge'
+      : 'On the gun — fires left to right, row by row') : null,
+    gun ? h(SlotGrid, { gun, tile, sig: gun.slots.join() + '|' + gun.multi + '|' + gun.shuffle }) : null,
     gun ? (() => {
       const adv = buildAdvice(gun, bagIds);
       const apply = t => e => {
@@ -8032,9 +8141,6 @@ function Editor({ input, close, refresh, canEdit }) {
                   (t.slot + 1) + ': ') + MODS[t.id].name,
             h('b', null, '\u00d7' + t.gain.toFixed(1) + ' dmg')))) : null);
     })() : null,
-    h('div', { className: 'legend' },
-      Object.keys(FAMILIES).map(k => h('span', { key: k, className: 'lg' },
-        h('i', { style: { background: FAMILIES[k].col } }), FAMILIES[k].name))),
     h('div', { className: 'bagHead' },
       h('p', { className: 'lab' }, LO.debug
         ? 'Debug shelf — one of every mod, never used up'
@@ -8042,11 +8148,11 @@ function Editor({ input, close, refresh, canEdit }) {
       canEdit && !LO.debug && LO.bag.length > 1 ? h('button', { className: 'sortBag',
           onPointerDown: e => { e.preventDefault(); sortBag(); } }, 'Sort') : null),
     h('div', { className: 'bag scroll' + (LO.debug ? ' debug' : ''), 'data-drop': 'bag' },
-      bagIds.map((id, i) => tile(id, { type: 'bag', i }, 'b' + i))
+      h('div', { className: 'mgrid' }, bagIds.map((id, i) => tile(id, { type: 'bag', i }, 'b' + i)))
     ),
     h('div', { className: 'info' },
       canEdit
-        ? 'Drag a mod to move it. Tap one to see what it does. Hold a gun to reorder it.'
+        ? 'Drag a mod to any slot. Tap one to see what it does. Hold a gun to reorder it.'
         : 'Viewing only — reach a shop, or take the Tinker perk, to change your setup. Tap a mod to see what it does.'),
     gdrag && LO.guns[gdrag.from] ? h('div', { className: 'gghost',
       style: { left: gdrag.x, top: gdrag.y } }, LO.guns[gdrag.from].name) : null,

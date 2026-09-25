@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v70**. Branch: `main` (release channel is `main`).
+Current version: **v71**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -585,6 +585,21 @@ recharge 1.5–0.01s, mana 50–1000, regen 10–500, spread 20–0, speed 0.5�
 longer share one accumulator phase: each keeps `pr.dn` (countdown) / `pr.di` (a random
 interval, 0.3–1.7× the mean from `DRIP_RATE`); `pr.acc` is still written as the swell
 fraction the drip sprite reads. Drip sounds (`FX.drip`, ambience `drip`) about 1/3 and 1/2 as loud.
+
+**v71 bag screen rebuild (owner's layout).** Top row `.btop`: `GunStats` (`.gstats`, one
+`.gsrow[data-stat]` per `GS_ROWS` entry — label in `GAUGE_COL`, value coloured
+`healthCol(statQual(k, v))`, a `<u class=up|down>` delta from `gunModDeltas(g)`) beside a 2×2
+`.gtabs` grid of square `.gtab` buttons (name + `GunIcon`, a small canvas using `drawGun`).
+Then `SlotGrid`: `.slotRow` (the scroll box) > `.mgrid` (CSS grid, square tiles). Slots never
+regroup; each tile carries `data-pull` from `pullSteps(g)` (pure: filled slots in cast order,
+tagged with their pull, built on `castGroups`; null when shuffled), never-cast mods get
+`.cold`. A `.pulse` overlay walks the steps at `DEV.bagAnim` slots/s (Dev → Bag screen),
+colour `PULL_COL[pull]`; earlier steps of the same pull stay lit (`trail`). SlotGrid owns its
+own interval so the Editor/`buildAdvice` don't re-render per tick. The bag is `.bag` > `.mgrid`.
+The per-pull outlines/stat lines (`.grp`, `.glab`, `.fx`) and the family legend are gone
+(`groupStats` is still pure and tested; `bulletgfx.test.js` was dropped). The advisor stays,
+tips on one side-scrolling line. `castGroups` now allows 64 pulls (was 16 — 25-slot guns).
+Tests: `tests/logic/bagui.test.js`, `tests/browser/grouping.test.js` (rewritten for the grid).
 
 ## Testing
 

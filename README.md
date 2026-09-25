@@ -62,7 +62,7 @@ all your gear, in a freshly generated cave. Dying or Restart wipes it.
 | Restart after dying | Tap the right stick | — |
 | Pick gun | Tap a gun slot | 1 to 4 |
 | Gun details | Hold a gun slot | — |
-| Reorder guns | Hold and drag a gun tab in the build screen | — |
+| Reorder guns | Hold and drag a gun button in the build screen | — |
 | Bag: guns & mods screen (open anywhere) | Tap Bag | E |
 
 The controls sit on a black arcade panel with a scanline wash over it. The knob
@@ -265,8 +265,7 @@ once you are carrying four guns with similar names.
 Mods are coloured by what they are for, not one colour each, so you can tell a
 bullet from the things that change it at a glance: amber shots, red damage, blue
 speed and range, purple flight path, pink shot pattern, green gun upkeep. A
-legend sits above your collected mods, and a Sort button next to them reorders
-your collection into those same groups.
+Sort button above your collected mods reorders your collection into those same groups.
 
 Mods are the spells. Some are shots (Bolt, Buckshot, Slug, Blast, Bounce Orb...)
 and the rest are modifiers (Homing, Heavy Shot, Scatter, Double Cast, Borer...).
@@ -274,20 +273,24 @@ A modifier only affects the shots to its **right** on the gun, so the order you
 drag them into matters. Firing walks the list left to right; run off the end and
 the gun recharges before starting over.
 
-In the build screen each pull of the trigger is drawn as its own outline with a
-line of stats under it — what that pull does, and what its modifiers added or
-cost, green for better and red for worse. So you can see which mods come out together — a modifier sits inside the outline of the
-shots it affects, and anything the gun never reaches is marked "never cast".
+The build screen (the **Bag**) has four parts. Top left, the selected gun's stats, one
+per line: the name in its colour (cast delay purple, recharge blue, mana gold), the value
+coloured from red to green by how close it is to perfect, and next to it what the mods on
+the gun add or take away (green if it helps, red if it hurts). Top right, your four guns
+as square buttons with their picture and name — tap to select, hold and drag to reorder.
+
+Under that is the gun's slots: a fixed grid, one box per slot. A mod stays in whichever box
+you drop it in, and empty boxes are skipped. The gun fires the grid left to right, a row at
+a time. A coloured light walks the boxes in firing order, a new colour for each pull of the
+trigger, so you can see which mods come out together; a mod the gun never reaches is dimmed.
+Its speed is a Dev-panel knob (Bag screen → Bag cast animation). At the bottom is your
+collection of mods, which scrolls.
 
 Cast delay is accumulated in that same order, which makes **Buzzsaw** special: it
 does not subtract from the delay, it resets it to zero at the moment it is cast. Anything
 cast after it adds its delay back, so it belongs at the tail of a multicast group —
 `Double Cast, Bolt, Buzzsaw` fires the bolt and leaves the gun ready immediately.
 Recharge, by contrast, counts from any slot.
-
-Any mod in a group that changes the recharge time shows it in that group's stat
-line too, even though recharge itself is paid once per full cycle rather than
-per pull — so a Buzzsaw or a Cold Start reads as the saving it actually makes.
 
 ## DEBUG mode
 
@@ -338,7 +341,7 @@ stay a find. (The Greek letter copy spells are switched off for now.)
 
 ## Build advice
 
-Under the outlines the build screen works out your sustained damage per second
+Under the slots the build screen works out your sustained damage per second
 and names whatever is holding it back: recharge, cast delay, or mana running out
 faster than it comes back. It then looks for changes that measurably beat what you
 have: bringing a mod in from your bag, or swapping two you already have on. With a

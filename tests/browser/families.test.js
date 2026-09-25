@@ -43,16 +43,6 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('pattern is not the same as shots', differ('scatter', 'bolt'));
   check('exactly six families on screen', Object.keys(by).length === 6, Object.keys(by).length);
 
-  const legend = await page.evaluate(() => [...document.querySelectorAll('.lg')]
-    .map(l => ({ name: l.textContent, col: getComputedStyle(l.querySelector('i')).backgroundColor })));
-  // the legend covers every family the game has, not just the ones in this bag
-  const families = await page.evaluate(() => Object.keys(FAMILIES).length);
-  check('a legend explains every family', legend.length === families,
-    { legend: legend.map(l => l.name), families });
-  check('and every tile colour is in it',
-    Object.keys(by).every(col => legend.some(l => l.col === col)),
-    { legend: legend.map(l => l.col), tiles: Object.keys(by) });
-
   // the card names the family
   const b = await (await page.$$('.bag .tile'))[5].boundingBox();
   await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
