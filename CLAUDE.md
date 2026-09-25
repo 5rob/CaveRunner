@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v73**. Branch: `main` (release channel is `main`).
+Current version: **v74**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -613,6 +613,13 @@ pull just fired (trailing non-casting modifiers trimmed). Editor keeps one sim i
 re-renders only when `S.lit` changes; `GunStats` has its own rAF writing the three `.gsbar i[data-live]`
 widths (cast delay / recharge / mana, `LIVE_BAR`) straight to the DOM. Only those three rows have
 bars (owner: none on stats that aren't firing resources/timers).
+**v74 Pollen nerf.** Pollen has `drift: 1`, `homeR: 80`, `pop: 6` (no `eat`). `driftStep` (pure, above
+`tracePath`, consts `DRIFT_*`) damps its speed and, once slow, floats it up. It only homes after
+locking (`b.lock`: nearest creature within `homeR` with `lineOfSight`), then speeds back to
+`DRIFT_CHASE`. Generic homing is skipped for drift shots; `tracePath` mirrors it. `pop` =
+`explode(x, y, pop, splash)` on rock/enemy contact — with `splash` set, enemies take that damage
+and it never hurts you. A Borer/Eater mod still tunnels (checked before the pop).
+Tests: `projectiles` (logic), `tests/browser/pollen.test.js`.
 
 ## Testing
 

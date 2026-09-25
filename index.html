@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v73</title>
+<title>CaveRunner v74</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -444,7 +444,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v73';
+const VERSION = 'v74';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -871,9 +871,9 @@ const MODS = {
              dmg: 2, speed: 260, spread: 1.5, delay: 0.36, size: 3, life: 2,
              fuse: 0.55, explode: 22, recoil: 12 },
   pollen:  { name: 'Pollen', kind: 'shot', glyph: '❁', col: '#d8ff6a', mana: 6,
-             info: 'Drifts slowly, chews rock, and homes hard on enemies',
-             dmg: 0.8, speed: 60, spread: 20, delay: 0.06, size: 2, life: 6,
-             homing: 6, eat: 2, count: 2, recoil: 1 },
+             info: 'Puffs out, slows and floats up, then homes on a creature that comes close. Pops on contact',
+             dmg: 0.8, speed: 150, spread: 20, delay: 0.06, size: 2, life: 6,
+             homing: 6, drift: 1, homeR: 80, pop: 6, count: 2, recoil: 1 },
   disc:    { name: 'Disc Projectile', kind: 'shot', glyph: '⊘', col: '#d9dde4', mana: 20,
              info: 'A sawblade that skips along the floor',
              dmg: 2.6, speed: 340, spread: 1, delay: 0.22, size: 4, life: 3,
@@ -1467,12 +1467,13 @@ function blankShot(sm, spread) {
     bounce: sm.bounce || 0, pierce: sm.pierce || 0, explode: sm.explode || 0,
     grav: sm.grav || 0, homing: sm.homing || 0, accel: 0, bore: sm.bore || 0, recoil: sm.recoil || 0,
     col: sm.col, knock: 0, crit: 0, boomer: 0, spiral: 0, pong: 0, orbit: 0,
-    autoaim: 0, homeR: 0, flat: 0, eat: sm.eat || 0, pull: sm.pull || 0,
+    autoaim: 0, homeR: sm.homeR || 0, flat: 0, eat: sm.eat || 0, pull: sm.pull || 0,
     split: 0, cluster: 0, bounceFx: null, friendly: 0, chain: sm.chain || 0,
     fuse: sm.fuse || 0, beam: sm.beam || 0, payload: null,
     trig: sm.trig || null, timer: sm.timer != null ? sm.timer : TIMER_ADD,
     reach: sm.reach != null ? sm.reach : 10,     // how far ahead of the muzzle it spawns
     hidden: sm.hidden || 0,                       // don't draw it (Buzzsaw cuts unseen)
+    drift: sm.drift || 0, pop: sm.pop || 0,       // Pollen: slows, floats, locks on; small pop on contact
     arc: sm.arc || 0,                             // Lightning: jagged bolt that throws side arcs
     sid: sm.id,                                   // which spell it is, for its sound
     still: sm.kind === 'static' ? 1 : 0, field: sm.field || null, r: sm.r || 0 };
@@ -4661,6 +4662,18 @@ function makeLevel(seed, floor, owned) {
 // Fly a shot forward with the same rules the live bullets use, so the aim line
 // shows what this gun with these mods will actually do: gravity, acceleration,
 // homing, ricochets and drilling all included.
+// Pollen's flight: its launch speed drags away, and once it's nearly still it floats
+// upward. It only homes once a creature comes within its lock radius; then it speeds
+// back up to DRIFT_CHASE and steers in.
+const DRIFT_DRAG = 2.4, DRIFT_SLOW = 30, DRIFT_FLOAT = 40, DRIFT_RISE = 22;
+const DRIFT_R = 80, DRIFT_CHASE = 130, DRIFT_ACC = 260;
+function driftStep(vx, vy, dt) {
+  const k = Math.exp(-DRIFT_DRAG * dt);
+  vx *= k; vy *= k;
+  if (Math.hypot(vx, vy) < DRIFT_SLOW) vy = Math.max(-DRIFT_RISE, vy - DRIFT_FLOAT * dt);
+  return [vx, vy];
+}
+
 function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
   const dt = 1 / 60;
   if (sh.flat) { nx = nx >= 0 ? 1 : -1; ny = 0; }
@@ -4679,7 +4692,7 @@ function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
   const ox = x, oy = y;
   let vx = nx * sh.speed, vy = ny * sh.speed;
   let life = Math.min(sh.life, 2.5), bounce = sh.bounce || 0;
-  let age = 0;
+  let age = 0, lock = false;
   out.length = 0;
   out.push(x, y);
   for (let i = 0; i < 110 && life > 0; i++) {
@@ -4694,7 +4707,14 @@ function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
     if (sh.pong && Math.floor(age / 0.45) % 2 === 1) { vx = -vx; vy = -vy; age += dt; }
     if (sh.boomer && home) swing(Math.max(-sh.boomer * dt, Math.min(sh.boomer * dt,
       angDiff(Math.atan2(home.y - y, home.x - x), Math.atan2(vy, vx)))));
-    if (sh.homing && enemies && enemies.length) {
+    if (sh.drift && !lock) {             // Pollen: drags to a stop, then floats up
+      const d = driftStep(vx, vy, dt); vx = d[0]; vy = d[1];
+      if (enemies) for (const e of enemies) if (Math.hypot(e.x - x, e.ty - y) < (sh.homeR || DRIFT_R)) lock = true;
+    }
+    if (sh.drift && lock) { const sp = Math.hypot(vx, vy);
+      if (sp < DRIFT_CHASE) { const f = Math.min(DRIFT_CHASE, sp + DRIFT_ACC * dt) / (sp || 1);
+        vx = sp ? vx * f : 0; vy = sp ? vy * f : -DRIFT_ACC * dt; } }
+    if (sh.homing && enemies && enemies.length && (!sh.drift || lock)) {
       let best = null, bd = sh.homeR || 260;
       for (const e of enemies) {
         const d = Math.hypot(e.x - x, e.ty - y);
@@ -5247,6 +5267,7 @@ function Game({ input }) {
           split: sh.split, cluster: sh.cluster, bounceFx: sh.bounceFx,
           friendly: sh.friendly, chain: sh.chain, fuse: sh.fuse,
           payload: sh.payload && sh.payload.length ? sh.payload : null, hidden: sh.hidden, arc: sh.arc,
+          drift: sh.drift, pop: sh.pop,
           trig: sh.trig, timer: sh.trig === 'timer' ? sh.timer : null,
           ox: bx, oy: by, age: 0, born: sh.life });
       }
@@ -5402,7 +5423,8 @@ function Game({ input }) {
       releaseAt(list, f.x, f.y, Math.cos(f.ang), Math.sin(f.ang), f.col);
     };
 
-    function explode(x, y, R) {
+    // `splash` set = a small pop (Pollen): enemies take that instead, and it never hurts you
+    function explode(x, y, R, splash) {
       SFX.boom(x, y, R);
       const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL, ring = rc + 2.5;
       const minX = Math.max(0, Math.floor(cx0 - ring)), maxX = Math.min(CW - 1, Math.ceil(cx0 + ring));
@@ -5440,15 +5462,16 @@ function Game({ input }) {
       }
 
       flashes.push({ x, y, r: R, t: 0 });
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < (splash != null ? 2 : 10); i++) {
         smoke.push({ x: x + (Math.random() - 0.5) * R, y: y + (Math.random() - 0.5) * R,
           vx: (Math.random() - 0.5) * 40, vy: (Math.random() - 0.5) * 40 - 20,
           r: 4 + Math.random() * 5, life: 1.2, max: 1.2 });
       }
       for (let j = enemies.length - 1; j >= 0; j--) {
         const e = enemies[j], dist = Math.hypot(e.x - x, e.ty - y);
-        if (dist < R + e.r) damageEnemy(j, dist < R * 0.5 ? 3 : 2);
+        if (dist < R + e.r) damageEnemy(j, splash != null ? splash : dist < R * 0.5 ? 3 : 2);
       }
+      if (splash != null) return;
       const pcx = p.x + PW / 2, pcy = p.y + PH / 2;
       const dist = Math.hypot(pcx - x, pcy - y), reach = R + 10;
       if (dist < reach && !p.dead) {
@@ -6048,7 +6071,27 @@ function Game({ input }) {
             bullets.push(c);
           }
         }
-        if (b.homing) {
+        if (b.drift) {
+          // Pollen: drags to a stop and floats; locks onto the first creature in range
+          // it can see, then speeds back up and homes. Loses the lock if that one dies.
+          if (b.lock && enemies.indexOf(b.lock) < 0) b.lock = null;
+          if (!b.lock) {
+            const d = driftStep(b.vx, b.vy, dt); b.vx = d[0]; b.vy = d[1];
+            let bd = b.homeR || DRIFT_R;
+            for (const e of enemies) {
+              const dd = Math.hypot(e.x - b.x, e.ty - b.y);
+              if (dd < bd && lineOfSight(b.x, b.y, e.x, e.ty)) { bd = dd; b.lock = e; }
+            }
+          }
+          if (b.lock) {
+            const e = b.lock, sp = Math.min(DRIFT_CHASE, Math.hypot(b.vx, b.vy) + DRIFT_ACC * dt);
+            const want = Math.atan2(e.ty - b.y, e.x - b.x);
+            const ang = Math.hypot(b.vx, b.vy) < 5 ? want
+              : Math.atan2(b.vy, b.vx) + clamp(angDiff(want, Math.atan2(b.vy, b.vx)), -b.homing * dt, b.homing * dt);
+            b.vx = Math.cos(ang) * sp; b.vy = Math.sin(ang) * sp;
+          }
+        }
+        if (b.homing && !b.drift) {
           let best = null, bd = b.homeR || 260;
           for (const e of enemies) {
             const d = Math.hypot(e.x - b.x, e.ty - b.y);
@@ -6096,6 +6139,7 @@ function Game({ input }) {
             }
             if (b.cluster) { spray(b); dead = true; break; }
             if (b.explode) { boom = true; break; }
+            if (b.pop) { explode(nx, ny, b.pop, b.dmg * 0.5); dead = true; break; }
             if (b.pull) { (b.hit || (b.hit = new Set())).add(e); continue; }   // a black hole rolls on
             if (b.pierce > 0) { b.pierce--; (b.hit || (b.hit = new Set())).add(e); }
             else { dead = true; break; }
@@ -6123,6 +6167,7 @@ function Game({ input }) {
             if (b.eat > 0) { dig(nx, ny, b.eat); continue; }
             if (b.cluster) { spray(b); dead = true; break; }
             if (b.explode) { boom = true; break; }
+            if (b.pop) { explode(b.x, b.y, b.pop, b.dmg * 0.5); dead = true; break; }
             burst(b.x, b.y, 3, b.col);
             SFX.rock(b.x, b.y);
             dead = true;

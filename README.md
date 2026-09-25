@@ -311,7 +311,7 @@ a cave shooter. They come in a few shapes:
 
 - **Shots** are the things that come out of the barrel — Bolt, Slug, Magic Missile,
   Fireball, Lightning Bolt (a crackling bolt that forks off arcs at nearby creatures and rock as it flies), Chain Bolt (which hops from enemy to enemy), Black Hole
-  (a slow starry sphere that eats rock, hauls creatures into it and grinds them, and swallows any enemy shot that comes near), Nuke, Meteor, and twenty-odd more. **Plasma Beam**
+  (a slow starry sphere that eats rock, hauls creatures into it and grinds them, and swallows any enemy shot that comes near), Pollen (puffs out, drifts to a stop and floats up, then homes on any creature that comes close, popping a tiny crater on whatever it touches), Nuke, Meteor, and twenty-odd more. **Plasma Beam**
   and **Luminous Drill** are instant: they hit along a line with no travel time.
 - **Static fields** stay where you cast them and work over time. Unstable Crystal is a
   proximity mine; Dormant Crystal sits harmless until another blast reaches it; Circle
