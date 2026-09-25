@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v78</title>
+<title>CaveRunner v79</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -213,8 +213,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .legend{display:flex;flex-wrap:wrap;gap:3px 8px;margin:0 0 7px}
 .lg{display:flex;align-items:center;gap:4px;font:500 9.5px system-ui,sans-serif;color:var(--muted)}
 .lg i{width:8px;height:8px;border-radius:2px;display:block}
-.slotRow{overflow-y:auto;flex:1 1 0;min-height:64px;border-radius:9px;
-  background:var(--pad);padding:6px;margin-bottom:8px}
+/* a scroll box with its own grab bar down the right side (ScrollBox): the wrapper takes the
+   box's place in the sheet, the box fills it, and the bar sits in the strip it leaves */
+.sbwrap{position:relative;display:flex;min-height:0}
+.sbwrap > .scroll{flex:1 1 auto;min-height:0;scrollbar-width:none;padding-right:26px !important}
+.sbwrap > .scroll::-webkit-scrollbar{display:none}
+.sbar{position:absolute;top:4px;bottom:4px;right:3px;width:18px;border-radius:9px;
+  background:rgba(127,127,140,0.14);touch-action:none;cursor:pointer}
+.sbar i{position:absolute;left:3px;right:3px;border-radius:6px;background:var(--muted);opacity:.75}
+.sbar.on i{opacity:1;background:var(--text)}
+.slotRowW{flex:1 1 0;min-height:64px;margin-bottom:8px}
+.slotRow{overflow-y:auto;border-radius:9px;
+  background:var(--pad);padding:6px}
 .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:6px}
 .mgrid .tile{width:auto;height:auto;aspect-ratio:1}
 .mgrid .tile.cold{opacity:.45}
@@ -238,13 +248,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .bagHead .lab{margin:0}
 .sortBag{flex:0 0 auto;height:22px;padding:0 10px;border-radius:11px;border:1px solid var(--ring);
   background:var(--pad);color:var(--muted);font:700 10px system-ui,sans-serif;letter-spacing:.06em}
-.bag{overflow-y:auto;
-  flex:1.5 1 0;min-height:70px;border-radius:9px;background:var(--pad);padding:6px;
-  scroll-padding-bottom:12px;margin-top:5px}
+.bagW{flex:1.5 1 0;min-height:70px;margin-top:5px}
+.bag{overflow-y:auto;border-radius:9px;background:var(--pad);padding:6px;
+  scroll-padding-bottom:12px}
 .tile{width:60px;height:56px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
   touch-action:none;cursor:grab;overflow:hidden;flex:0 0 auto}
-.tile.hole{border-style:dashed;opacity:.5;cursor:default}
+.tile.hole{border-style:dashed;opacity:.5;cursor:default;touch-action:pan-y}
 .tile.shot{box-shadow:inset 0 0 0 2px currentColor}
 .tg{font-size:17px;line-height:1}
 .tile{position:relative}
@@ -440,7 +450,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v78';
+const VERSION = 'v79';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -8513,7 +8523,7 @@ function SlotGrid({ gun, tile, sig, sim }) {
   if (steps) for (const st of steps) pullOf[st.slot] = st.pull;
   const on = new Set(lit ? lit.slots : []);
   const col = lit ? PULL_COL[lit.pull % PULL_COL.length] : null;
-  return h('div', { className: 'slotRow scroll' }, h('div', { className: 'mgrid' },
+  return h(ScrollBox, { cls: 'slotRow' }, h('div', { className: 'mgrid' },
     gun.slots.map((id, i) => {
       const el = tile(id, { type: 'slot', i }, i);
       return React.cloneElement(el, { 'data-pull': pullOf[i],
@@ -8521,6 +8531,56 @@ function SlotGrid({ gun, tile, sig, sim }) {
         ...[].concat(el.props.children),
         on.has(i) ? h('i', { className: 'pulse on', style: { background: col, borderColor: col, color: col } }) : null);
     })));
+}
+
+// A scroll box with a bar down its right side you can grab: the mod tiles take a touch for
+// dragging, so with a full grid there was nothing left to scroll by. Tap the bar to jump
+// there, or drag the thumb. The thumb follows the box however it scrolled.
+function ScrollBox({ cls, drop, children }) {
+  const ref = useRef(null);
+  const [t, setT] = useState({ top: 0, size: 1, show: false, on: false });
+  useEffect(() => {
+    const el = ref.current;
+    const measure = () => {
+      const H = el.scrollHeight, c = el.clientHeight, show = H > c + 1;
+      const size = show ? Math.max(0.14, c / H) : 1;
+      const top = show ? el.scrollTop / (H - c) * (1 - size) : 0;
+      setT(o => o.show === show && Math.abs(o.size - size) < 0.002 && Math.abs(o.top - top) < 0.002 ? o
+        : Object.assign({}, o, { top, size, show }));
+    };
+    measure();
+    el.addEventListener('scroll', measure, { passive: true });
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    if (ro) { ro.observe(el); if (el.firstChild) ro.observe(el.firstChild); }
+    return () => { el.removeEventListener('scroll', measure); if (ro) ro.disconnect(); };
+  }, []);
+  const grab = e => {
+    e.preventDefault(); e.stopPropagation();
+    const el = ref.current, bar = e.currentTarget.getBoundingClientRect();
+    const size = t.size, thumb = size * bar.height, at = bar.top + t.top * bar.height;
+    // held on the thumb: keep that grip; on the track: the thumb centres under the finger
+    const off = e.clientY >= at && e.clientY <= at + thumb ? e.clientY - at : thumb / 2;
+    const to = y => {
+      const f = (y - off - bar.top) / Math.max(1, bar.height - thumb);
+      el.scrollTop = Math.max(0, Math.min(1, f)) * (el.scrollHeight - el.clientHeight);
+    };
+    to(e.clientY);
+    setT(o => Object.assign({}, o, { on: true }));
+    const move = ev => to(ev.clientY);
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      setT(o => Object.assign({}, o, { on: false }));
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  };
+  return h('div', { className: 'sbwrap ' + cls.split(' ')[0] + 'W', 'data-drop': drop },
+    h('div', { ref, className: cls + ' scroll', 'data-drop': drop }, children),
+    t.show ? h('div', { className: 'sbar' + (t.on ? ' on' : ''), onPointerDown: grab },
+      h('i', { style: { top: t.top * 100 + '%', height: t.size * 100 + '%' } })) : null);
 }
 
 // the build advisor's suggested swaps are parked (v72): the dmg/s line still shows, the
@@ -8753,7 +8813,7 @@ function Editor({ input, close, refresh, canEdit }) {
         : 'Collected mods' + (LO.bag.length ? '' : ' — none yet, find them in the cave')),
       canEdit && !LO.debug && LO.bag.length > 1 ? h('button', { className: 'sortBag',
           onPointerDown: e => { e.preventDefault(); sortBag(); } }, 'Sort') : null),
-    h('div', { className: 'bag scroll' + (LO.debug ? ' debug' : ''), 'data-drop': 'bag' },
+    h(ScrollBox, { cls: 'bag' + (LO.debug ? ' debug' : ''), drop: 'bag' },
       h('div', { className: 'mgrid' }, bagIds.map((id, i) => tile(id, { type: 'bag', i }, 'b' + i)))
     ),
     h('div', { className: 'info' },

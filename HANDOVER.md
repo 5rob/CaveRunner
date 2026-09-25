@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v78.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v79.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -43,6 +43,7 @@ it's stale.
 
 ## What shipped recently (most recent first)
 
+- **v79 — grab bars down the side of the gun's slot grid and the mod bag** (tap to jump, drag to scroll), and a swipe on an empty slot scrolls the grid.
 - **v78 — web lines work like vines** (touch = latch, hang, climb along, push down to drop; each line you pass through slows you ×0.8) and **every spider Dev control is a min/max range**, rolled fresh at each use (owner's rule).
 - **v77 — spiders no longer freeze** after reaching where they were going (owner: "all the spawned spiders seem to be stuck in place").
 - **v76 — the spider rebuilt.** Hämähäkki crawls rock surfaces and its own web lines only, darting bursts, shoots lines across gaps (they stay), bites up close, strings you from range (×0.8 speed per string, snaps when pulled too far). ~23 Dev knobs in Dev → Spider. Owner is improving enemies one at a time — expect the next creature after tuning this one.
@@ -232,7 +233,7 @@ Talk briefly, iterate fast, don't over-plan. Every change works at phone width w
   re-run the single suite to confirm; all are enemy-geometry / random-seed sensitive, not
   regressions): `everymod` (telecast), `trigger` (double trigger), and `compare` (a
   found gun that happens not to differ in regen, so "less regen is red" finds nothing —
-  seen once during the v47 run, green on its own), and `fog` "the next floor is dark again" (~1 in 4-5 runs a new floor spawns with a few cave cells already visible up the shaft; also fails on v56 code, seed-dependent). See `memory/cardfit-known-failure.md`.
+  seen once during the v47 run, green on its own), and `fog` "the next floor is dark again" (~1 in 4-5 runs a new floor spawns with a few cave cells already visible up the shaft; also fails on v56 code, seed-dependent), and `lightning` "a fork hits a creature off to the side" (~1 in 5-8: the fork roll is random and the target bobs near the edge of its 90 reach; seen v78/v79, fails with any creature, not a spider bug). See `memory/cardfit-known-failure.md`.
 
 ## Testing on the phone over WiFi
 

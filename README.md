@@ -303,7 +303,9 @@ The light is a live preview of holding the trigger down: it fires at the gun's r
 (cast delay between pulls, recharge after the last one, a pause when mana runs dry), and the
 thin bars under Cast delay, Recharge and Mana drain and refill with it, like the rings on the
 right stick. Its speed is a Dev-panel knob (Bag screen → Bag fire preview speed, 1 = real
-time). At the bottom is your collection of mods, which scrolls.
+time). At the bottom is your collection of mods, which scrolls. Both the gun's slots and the
+collection have a grab bar down the right side: drag it to scroll, or tap it to jump. A swipe
+that starts on an empty slot scrolls too (one that starts on a mod picks the mod up).
 
 Cast delay is accumulated in that same order, which makes **Buzzsaw** special: it
 does not subtract from the delay, it resets it to zero at the moment it is cast. Anything

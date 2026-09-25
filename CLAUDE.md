@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v78**. Branch: `main` (release channel is `main`).
+Current version: **v79**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -628,6 +628,15 @@ the right edge; the bag (`.weapon`, 🎒, `aria-label="Bag"`) mirrors the last g
 map (`.mapbtn`, 🗺️) sits above it. All gauge rings are thin (`sw` 1.6, spacing `rw` 3.2). Left
 stick: health ring outside, fuel ring (`GAUGE_COL.fuel`) inside it, red track when dry — the
 `.jetzone` fill is gone. Sticks/knob have no fill. Gold sits at the bottom of the gap (`bottom:5%`).
+**v79 grab bars on the bag screen grids.** `ScrollBox({ cls, drop })` (above `SHOW_TIPS`) wraps the slot grid
+(`.slotRow`) and the mod bag (`.bag`): a `.sbwrap .<cls>W` wrapper takes the sheet sizing (`.slotRowW`/`.bagW` hold
+the flex/min-height/margins now), the scroll box fills it with 26px right padding, native scrollbar hidden, and a
+`.sbar` strip down the right edge you tap (jump) or drag (thumb keeps your grip) — pointer events, so touch
+and mouse both work; the thumb tracks `scroll` + a ResizeObserver. Empty slots (`.tile.hole`) are
+`touch-action:pan-y` so a swipe that starts on one scrolls natively; mods stay `none` (they drag). The inner
+boxes keep the `.slotRow`/`.bag` classes, so every `.bag .tile` / `.slotRow .tile` selector still works.
+Suite: `tests/browser/scrollbar.test.js` (real touch via CDP `Input.dispatchTouchEvent` —
+`synthesizeScrollGesture` with touch doesn't scroll in this headless Chrome, don't trust it).
 **v76 the spider (Hämähäkki, `act: 'spider'`, `body: 'spider'` → `drawSpider`).** Pure part above
 `makeLevel` (after `losClear`): `surfNormal(x,y,R,solidCell)` (average direction from the rock cells in a
 disc to the centre = smoothed normal, plus `d`/`px,py` = nearest rock and the way out), `spiderSeat` (push
