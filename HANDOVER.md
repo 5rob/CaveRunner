@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v81.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v82.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -42,6 +42,9 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v82 — jellyfish tentacles sting on touch (even when it hasn't noticed you); Dev → Jellyfish colours:** a colour
+  picker A and B for each of 14 parts (each jelly a blend between A and B; ↺ resets). `colourKnobs` works for any creature.
 
 - **v81 — the jellyfish (Myrkkymeduusa) replaces Heikkohiisi on floors 1–2.** Pulse-and-glide swimming with a turn
   limit, bell thin when fast / flat when stopped, trailing tentacles, green glow on the cave, dripping poison spit that

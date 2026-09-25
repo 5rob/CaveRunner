@@ -10,8 +10,8 @@ const js = src.slice(open, src.indexOf('</script>', open));
 const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
 const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
 const G = new Function('React', shim + upto +
-  'return { jellyStep, jellyBell, roamStep, turnToward, flyMove, JELLY, CELL, CW, CH, CREATURES, enemyFor, DEV, DEV_META, DEV_GROUPS, JE_KNOBS, kr, kru, makeLevel, rosterFor };')({ createElement: () => {} });
-const { jellyStep, jellyBell, roamStep, turnToward, flyMove, JELLY, CELL, CW, CH, CREATURES, enemyFor, DEV, DEV_META, DEV_GROUPS, JE_KNOBS, kr, kru, makeLevel } = G;
+  'return { jellyStep, jellyBell, roamStep, turnToward, flyMove, JELLY, CELL, CW, CH, CREATURES, enemyFor, DEV, DEV_META, DEV_GROUPS, JE_KNOBS, kr, kru, makeLevel, rosterFor, segHitsBox, tentacleTouch, JE_COLS, jellyPal, hexMix, hexRgb, kcol, DEV_DEFAULTS };')({ createElement: () => {} });
+const { jellyStep, jellyBell, roamStep, turnToward, flyMove, JELLY, CELL, CW, CH, CREATURES, enemyFor, DEV, DEV_META, DEV_GROUPS, JE_KNOBS, kr, kru, makeLevel, segHitsBox, tentacleTouch, JE_COLS, jellyPal, hexMix, hexRgb, kcol, DEV_DEFAULTS } = G;
 
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
@@ -186,6 +186,50 @@ check('and the group is on the Dev panel', DEV_GROUPS.some(g => g[0] === 'jelly'
   const flat = jellyBell(9, 0, 1), thin = jellyBell(9, 1, 1);
   check('the bell is wide and short when flat, narrow and tall when thin', flat.w > thin.w && flat.h < thin.h, { flat, thin });
   check('squash 0 means no change at all', JSON.stringify(jellyBell(9, 1, 0)) === JSON.stringify(jellyBell(9, 0, 1)));
+}
+
+// ---- the tentacles sting: an exact line-through-box test ----
+{
+  const B = [0, 0, 12, 22];                     // a player-sized box
+  check('a line straight through the box hits', segHitsBox(-5, 10, 20, 10, ...B));
+  check('a line that ends inside hits', segHitsBox(-5, 10, 3, 11, ...B));
+  check('a line wholly inside hits', segHitsBox(2, 2, 5, 5, ...B));
+  check('a line clipping a corner hits', segHitsBox(-2, 3, 3, -2, ...B));
+  check('a line passing just by misses', !segHitsBox(-2, -1, 14, -1, ...B) && !segHitsBox(13, -5, 13, 30, ...B));
+  check('a line stopping short misses', !segHitsBox(-10, 10, -0.5, 10, ...B));
+  check('a line skimming past a corner misses', !segHitsBox(-3, 1, 1, -3, ...B));
+  // a real jelly hanging over the box: tentacles down into it sting, pulled up they don't
+  const e = jelly(300, 300), rnd = mkRnd(21);
+  jellyStep(e, { solidCell: box.solidCell, hunting: false, goal: null, rnd }, DT);
+  const S = e.je; S.hd = -Math.PI / 2; S.turn = 0; S.sink = 0;
+  for (let i = 0; i < 4 * 60; i++) { S.rest = 99; S.vx = S.vy = 0; e.x = 300; e.y = 300; jellyStep(e, { solidCell: box.solidCell, hunting: false, goal: null, rnd }, DT); }
+  const tipY = Math.max(...S.tent.map(T => T[T.length - 1].y));
+  const under = tentacleTouch(S, 294, tipY - 10, 306, tipY + 12);
+  check('a box among the hanging tentacles is stung', !!under, { tipY });
+  check('and the sting is placed on a tentacle', under && under.y > 300 && under.y <= tipY + 0.01, under);
+  check('a box beside them is not', !tentacleTouch(S, 330, tipY - 10, 342, tipY + 12));
+  check('nor one above the bell (the bell is not a tentacle)', !tentacleTouch(S, 294, 270, 306, 292));
+}
+
+// ---- colour knobs: each part an A and a B, a jelly a blend between ----
+{
+  check('every part has a colour A and B in the Jellyfish colours group', JE_COLS.every(([k]) =>
+    ['Lo', 'Hi'].every(x => DEV_META.some(m => m.k === k + x && m.g === 'jellycol' && m.type === 'color') &&
+      /^#[0-9a-f]{6}$/.test(DEV_DEFAULTS[k + x]))));
+  check('and the group is on the Dev panel', DEV_GROUPS.some(g => g[0] === 'jellycol'));
+  check('hexMix blends', hexMix('#000000', '#ff8040', 0.5) === '#804020' && hexMix('#123456', '#abcdef', 0) === '#123456' &&
+    hexMix('#123456', '#abcdef', 1) === '#abcdef', hexMix('#000000', '#ff8040', 0.5));
+  check('hexRgb gives the glow its r,g,b', hexRgb('#6eff5a') === '110,255,90');
+  const P = jellyPal(0);
+  check('the palette has every part', JE_COLS.every(r => /^#[0-9a-f]{6}$/.test(P[r[4]])), P);
+  const k0 = [DEV.jeColBodyLo, DEV.jeColBodyHi];
+  DEV.jeColBodyLo = '#ff0000'; DEV.jeColBodyHi = '#0000ff';
+  check('a jelly at u = 0 wears colour A, at 1 colour B, between in between',
+    jellyPal(0).body === '#ff0000' && jellyPal(1).body === '#0000ff' && jellyPal(0.5).body === '#800080', jellyPal(0.5).body);
+  [DEV.jeColBodyLo, DEV.jeColBodyHi] = k0;
+  const e = jelly(300, 300);
+  jellyStep(e, { solidCell: box.solidCell, hunting: false, goal: null, rnd: mkRnd(4) }, DT);
+  check('each jelly rolls its own colour fraction', e.je.u.col >= 0 && e.je.u.col <= 1);
 }
 
 // ---- the real floor 1: every jelly on it gets about, none stuck in rock ----

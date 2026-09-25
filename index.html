@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v81</title>
+<title>CaveRunner v82</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -418,6 +418,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .spawnpanel .spawngo{margin-top:12px;width:100%}
 .devrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .devrow label{font-size:13px;color:var(--text);flex:1 1 auto}
+.devrow input[type=color]{width:56px;padding:2px 4px}
+.devreset{flex:0 0 auto;width:34px;height:36px;border-radius:8px;border:1px solid var(--ring);
+  background:var(--pad);color:var(--text);font-size:16px}
 .devrow input{width:92px;flex:0 0 auto;box-sizing:border-box;height:36px;border-radius:8px;
   border:1px solid var(--ring);background:var(--pad);color:var(--text);
   font:600 14px system-ui,sans-serif;padding:0 9px;text-align:right;
@@ -450,7 +453,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v81';
+const VERSION = 'v82';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -536,7 +539,7 @@ const DEV_META = [
   { k: 'bagSpeed',  g: 'ui',    label: 'Bag fire preview speed (×real time)', min: 0.05, max: 5, step: 0.05 },
 ];
 const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['player', 'Player'],
-  ['enemy', 'Enemies'], ['spider', 'Spider'], ['jelly', 'Jellyfish'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen']];
+  ['enemy', 'Enemies'], ['spider', 'Spider'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen']];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults.
 function devReport() {
@@ -638,12 +641,61 @@ const JE_KNOBS = rangeKnobs('jelly', [
 const kru = (k, u) => { const a = DEV[k + 'Lo'], b = DEV[k + 'Hi']; return a + u * (b - a); };
 const kr = (k, rnd) => kru(k, (rnd || Math.random)());
 const spr = kr;                                  // the spider's code calls it this
+
+// Colour knobs: the same idea as a range, for colours. Each part has a colour A and a
+// colour B, and each creature wears a blend somewhere between them, picked once when it
+// is born (kcol at its own fraction u) — set both the same for one fixed colour. The Dev
+// panel shows a colour picker for these (type 'color').
+//   [key, label, default A, default B, field name in the creature's palette]
+function colourKnobs(g, rows) {
+  for (const [k, label, a, b] of rows) {
+    DEV_DEFAULTS[k + 'Lo'] = a; DEV_DEFAULTS[k + 'Hi'] = b;
+    DEV_META.push({ k: k + 'Lo', g, label: label + ' — A', type: 'color' },
+                  { k: k + 'Hi', g, label: label + ' — B', type: 'color' });
+  }
+  return rows;
+}
+const HEX_RE = /^#[0-9a-f]{6}$/i;
+// a to b by t, as '#rrggbb'
+function hexMix(a, b, t) {
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16), c = s => {
+    const x = pa >> s & 255, y = pb >> s & 255; return Math.round(x + (y - x) * t);
+  };
+  return '#' + ((1 << 24) | (c(16) << 16) | (c(8) << 8) | c(0)).toString(16).slice(1);
+}
+const hexRgb = h => { const n = parseInt(h.slice(1), 16); return (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255); };
+const kcol = (k, u) => hexMix(DEV[k + 'Lo'], DEV[k + 'Hi'], u);
+// the jellyfish's colours, part by part (drawJelly, its spit, its glow)
+const JE_COLS = colourKnobs('jellycol', [
+  ['jeColTop',     'Bell top',                '#a6ff7c', '#b4ff9a', 'top'],
+  ['jeColBody',    'Bell middle',             '#46c94f', '#3fbf6e', 'body'],
+  ['jeColRim',     'Bell bottom (dark)',      '#133d1a', '#123a28', 'rim'],
+  ['jeColEdge',    'Bell outline',            '#a6ff7c', '#a6ffb0', 'edge'],
+  ['jeColInner',   'Inner bell',              '#a6ff7c', '#a6ff7c', 'inner'],
+  ['jeColLoops',   'Poison loops',            '#e4ff4a', '#f0ff6a', 'loops'],
+  ['jeColShine',   'Shine',                   '#ffffff', '#ffffff', 'shine'],
+  ['jeColTent',    'Tentacles',               '#a6ff7c', '#9cffb4', 'tent'],
+  ['jeColGlow',    'Glow',                    '#6eff5a', '#5affa0', 'glow'],
+  ['jeColSpit',    'Spit',                    '#46c94f', '#46c94f', 'spit'],
+  ['jeColSpitEdge', 'Spit edge',              '#123d18', '#123d18', 'spitEdge'],
+  ['jeColSpitShine', 'Spit shine',            '#e6ffb8', '#e6ffb8', 'spitShine'],
+  ['jeColDrip',    'Drips & splat',           '#46c94f', '#46c94f', 'drip'],
+  ['jeColDrip2',   'Drips & splat (light)',   '#c8ff8a', '#c8ff8a', 'drip2'],
+]);
+// one jelly's palette at its colour fraction u
+function jellyPal(u) {
+  const P = {};
+  for (const [k, , , , f] of JE_COLS) P[f] = kcol(k, u);
+  return P;
+}
 const DEV_KEY = 'caverunner-dev';
 const DEV = Object.assign({}, DEV_DEFAULTS);
 (() => { try {
   const raw = localStorage.getItem(DEV_KEY);
-  if (raw) { const o = JSON.parse(raw); for (const k in DEV_DEFAULTS)
-    if (typeof o[k] === 'number' && isFinite(o[k])) DEV[k] = o[k]; }
+  if (raw) { const o = JSON.parse(raw); for (const k in DEV_DEFAULTS) {
+    const d = DEV_DEFAULTS[k], v = o[k];                      // numbers, or '#rrggbb' colours
+    if (typeof d === 'number' ? typeof v === 'number' && isFinite(v) : typeof v === 'string' && HEX_RE.test(v)) DEV[k] = v;
+  } }
 } catch (_) {} })();
 function devSet(k, v) {
   DEV[k] = v;
@@ -1882,7 +1934,7 @@ function jellyStep(e, env, dt) {
     // own but a Dev-panel change still shows on every one at once
     S = e.je = { hd: -Math.PI / 2 + (rnd() - 0.5) * 0.6, vx: 0, vy: 0, push: 0, pushA: 0,
       rest: rnd() * 1.5, shape: 0, vref: Math.max(1, kr('jeRoamPush', rnd)), t: rnd() * 10, tent: [],
-      u: { thin: rnd(), sq: rnd(), len: rnd(), wave: rnd(), sag: rnd(), glow: rnd(), glowR: rnd(), flare: rnd() } };
+      u: { thin: rnd(), sq: rnd(), len: rnd(), wave: rnd(), sag: rnd(), glow: rnd(), glowR: rnd(), flare: rnd(), col: rnd() } };
     feel(false);
     const nt = Math.round(kr('jeTents', rnd));
     for (let i = 0; i < nt; i++) {
@@ -1954,6 +2006,31 @@ function jellyStep(e, env, dt) {
     S.sink = kr('jeSink', rnd); S.bounce = kr('jeBounce', rnd); S.aimTol = kr('jeAimTol', rnd);
     S.range = h ? kr('jeRange', rnd) : 0;
   }
+}
+
+// Does the line from (ax, ay) to (bx, by) pass through the box x0..x1, y0..y1? Clips the
+// line to the box one edge at a time (Liang–Barsky) — exact, so a thin tentacle crossing
+// a corner of you counts, and one passing close by doesn't.
+function segHitsBox(ax, ay, bx, by, x0, y0, x1, y1) {
+  const dx = bx - ax, dy = by - ay;
+  let t0 = 0, t1 = 1;
+  const clip = (p, q) => {
+    if (p === 0) return q >= 0;
+    const t = q / p;
+    if (p < 0) { if (t > t1) return false; if (t > t0) t0 = t; }
+    else { if (t < t0) return false; if (t < t1) t1 = t; }
+    return true;
+  };
+  return clip(-dx, ax - x0) && clip(dx, x1 - ax) && clip(-dy, ay - y0) && clip(dy, y1 - ay);
+}
+// where a jelly's tentacles cross the box (the middle of the first segment that does), or null
+function tentacleTouch(S, x0, y0, x1, y1) {
+  if (!S || !S.tent) return null;
+  for (const T of S.tent) for (let j = 1; j < T.length; j++) {
+    const a = T[j - 1], b = T[j];
+    if (!isNaN(a.x) && segHitsBox(a.x, a.y, b.x, b.y, x0, y0, x1, y1)) return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  }
+  return null;
 }
 
 // The fan of points that bound what can be seen from (cx, cy) out to r. The lamp is
@@ -2931,12 +3008,13 @@ function drawSpider(ctx, x, y, r, time, phase, flash, col, S) {
 // (S.tent, world points from jellyStep). The glow it throws on the cave is added after the
 // fog, in the Game's draw.
 function drawJelly(ctx, x, y, r, time, phase, flash, col, S) {
+  const P = jellyPal(S ? S.u.col : 0.5);                  // Dev → Jellyfish colours
   const sh = Math.max(0, Math.min(1, (S ? S.shape : 0) + 0.05 * Math.sin(time * 2.2 + phase)));
   const B = jellyBell(r, sh, S ? kru('jeSquash', S.u.sq) : 1);
   // tentacles behind the bell: each one a single smooth ribbon, thick at the rim and
   // tapering to a point, so there are no beads where the segments meet
   if (S) {
-    ctx.fillStyle = flash ? '#ffffff' : col.c;
+    ctx.fillStyle = flash ? '#ffffff' : P.tent;
     ctx.globalAlpha = 0.6;
     for (const T of S.tent) {
       const n = T.length, L = [], R = [];
@@ -2976,21 +3054,21 @@ function drawJelly(ctx, x, y, r, time, phase, flash, col, S) {
     ctx.closePath();
   };
   const g = ctx.createLinearGradient(0, B.top, 0, B.rim);
-  g.addColorStop(0, flash ? '#ffffff' : col.c);
-  g.addColorStop(0.55, flash ? '#ffffff' : col.a);
-  g.addColorStop(1, flash ? '#f4f0ff' : col.b);
+  g.addColorStop(0, flash ? '#ffffff' : P.top);
+  g.addColorStop(0.55, flash ? '#ffffff' : P.body);
+  g.addColorStop(1, flash ? '#f4f0ff' : P.rim);
   ctx.globalAlpha = 0.8;
   ctx.fillStyle = g;
   bell(1, 0, r * 0.2 * (1 - 0.5 * sh)); ctx.fill();
   ctx.globalAlpha = 0.85;
-  ctx.strokeStyle = flash ? '#ffffff' : col.c; ctx.lineWidth = r * 0.08; ctx.stroke();
+  ctx.strokeStyle = flash ? '#ffffff' : P.edge; ctx.lineWidth = r * 0.08; ctx.stroke();
   // the inner bell, paler
   ctx.globalAlpha = 0.28;
-  ctx.fillStyle = flash ? '#ffffff' : col.c;
+  ctx.fillStyle = flash ? '#ffffff' : P.inner;
   bell(0.6, -B.h * 0.06, 0); ctx.fill();
   // four poison loops, brightest mid-pulse
   ctx.globalAlpha = 0.55 + 0.45 * sh;
-  ctx.strokeStyle = flash ? '#ffffff' : col.eye; ctx.lineWidth = r * 0.08;
+  ctx.strokeStyle = flash ? '#ffffff' : P.loops; ctx.lineWidth = r * 0.08;
   const gy = (B.top + B.rim) / 2 + B.h * 0.12;
   for (let i = 0; i < 4; i++) {
     const gx = (i - 1.5) * B.w * 0.34;
@@ -2998,7 +3076,7 @@ function drawJelly(ctx, x, y, r, time, phase, flash, col, S) {
   }
   // a wet highlight on the crown
   ctx.globalAlpha = 0.3;
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = P.shine;
   ctx.beginPath(); ctx.ellipse(-B.w * 0.32, B.top + B.h * 0.24, B.w * 0.16, B.h * 0.09, -0.5, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
@@ -5888,10 +5966,10 @@ function Game({ input }) {
     };
 
     // one drop of goo: falls under its own gravity g, lands and sits a moment on rock
-    function goo(x, y, vx, vy, g, c, size) {
+    function goo(x, y, vx, vy, g, c, size, c2) {
       if (sparks.length > 800) return;
       const life = 0.5 + Math.random() * 0.5;
-      sparks.push({ x, y, vx, vy, life, max: life, c: Math.random() < 0.35 ? '#c8ff8a' : c,
+      sparks.push({ x, y, vx, vy, life, max: life, c: Math.random() < 0.35 ? (c2 || '#c8ff8a') : c,
         size: size || 1.1 + Math.random() * 0.8, heavy: 1, g });
     }
     // a poison spit bursting: a little ring of goo thrown out, a bit back the way it came
@@ -5900,7 +5978,7 @@ function Game({ input }) {
       for (let i = 0; i < b.splat; i++) {
         const a = Math.random() * 6.28, v = b.splatV * (0.4 + Math.random() * 0.6);
         goo(x, y, Math.cos(a) * v - b.vx / sp * v * 0.5, Math.sin(a) * v - b.vy / sp * v * 0.5 - v * 0.3,
-          b.dripG, b.col, 1.3 + Math.random());
+          b.dripG, b.dripCol || b.col, 1.3 + Math.random(), b.dripCol2);
       }
       SFX.fx('splash', x, y);
     }
@@ -5962,7 +6040,7 @@ function Game({ input }) {
       e.hp -= dmg; e.flash = 0.08;
       if (e.k.kp) e.aggro = true;          // hurt a spider or a jelly and it comes for you
       if (e.hp > 0) { if (dmg >= 0.5) SFX.creature(e.k, 'hurt', e.x, e.ty); return; }
-      burst(e.x, e.ty, 16, e.k.col.a);
+      burst(e.x, e.ty, 16, e.je ? kcol('jeColBody', e.je.u.col) : e.k.col.a);
       SFX.creature(e.k, 'die', e.x, e.ty);
       enemies.splice(j, 1);
       coins.push({ x: e.x, y: e.ty,
@@ -7459,15 +7537,25 @@ function Game({ input }) {
           jellyStep(e, { solidCell, hunting, goal: { x: pcx, y: pcy }, rnd: Math.random,
             speedMul: cold, rangeMul: sees }, dt);
           const S = e.je;
+          // brush its tentacles and you're stung, hunting or not (same sting knobs as the bell)
+          if (!p.dead && e.touch <= 0 && dist < 180) {
+            const t = tentacleTouch(S, p.x, p.y, p.x + PW, p.y + PH);
+            if (t) {
+              hurt(Math.round(kr('jeBite'))); e.touch = kr('jeBiteCd');
+              burst(t.x, t.y, 5, jellyPal(S.u.col).tent);
+              SFX.creature(k, 'bite', t.x, t.y);
+            }
+          }
           if (hunting && S.inRange && S.aimed && e.cd <= 0) {
             e.cd = 0.25;                                // no clear line: look again shortly
             const hx = e.x + Math.cos(S.hd) * e.r * 0.9, hy = e.y + Math.sin(S.hd) * e.r * 0.9;
             if (lineOfSight(hx, hy, pcx, pcy)) {
               e.cd = kr('jeShotCd');
               const a = Math.atan2(pcy - hy, pcx - hx) + (Math.random() * 2 - 1) * kr('jeSpread') * Math.PI / 180;
-              const v = kr('jeShotSpd');
+              const v = kr('jeShotSpd'), P = jellyPal(S.u.col);
               enemyShots.push({ x: hx, y: hy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 3,
-                col: k.col.a, dmg: Math.round(kr('jeShotDmg')), size: kr('jeShotSize'), goo: 1, glow: k.glow,
+                col: P.spit, edge: P.spitEdge, shine: P.spitShine, dripCol: P.drip, dripCol2: P.drip2, glow: hexRgb(P.glow),
+                dmg: Math.round(kr('jeShotDmg')), size: kr('jeShotSize'), goo: 1,
                 drip: kr('jeDrip'), da: 0, dripG: kr('jeDripG'), splat: Math.round(kr('jeSplat')), splatV: kr('jeSplatSpd') });
               SFX.creature(k, 'fire', e.x, e.y);
             }
@@ -7549,7 +7637,7 @@ function Game({ input }) {
         }
         // poison spit drips as it flies
         if (b.drip) for (b.da += b.drip * dt; b.da >= 1; b.da--)
-          goo(b.x + (Math.random() - 0.5) * b.size, b.y + b.size * 0.5, b.vx * 0.08, 8 + Math.random() * 18, b.dripG, b.col);
+          goo(b.x + (Math.random() - 0.5) * b.size, b.y + b.size * 0.5, b.vx * 0.08, 8 + Math.random() * 18, b.dripG, b.dripCol || b.col, 0, b.dripCol2);
         let gone = b.life <= 0;
         const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
         for (let s = 0; s < sn && !gone; s++) {
@@ -7941,7 +8029,7 @@ function Game({ input }) {
         drawEnemy(ctx, e, time);
         const hw = 20, hx = e.x - hw / 2, hy = ey - e.r - 9;
         ctx.fillStyle = COL.barBg; ctx.fillRect(hx, hy, hw, 3);
-        ctx.fillStyle = e.k.col.a;
+        ctx.fillStyle = e.je ? kcol('jeColBody', e.je.u.col) : e.k.col.a;
         ctx.fillRect(hx, hy, hw * Math.max(0, e.hp / e.hpMax), 3);
       }
 
@@ -7963,11 +8051,11 @@ function Game({ input }) {
         if (b.goo) {                           // poison spit: a wobbling glob with a wet highlight
           const s = b.size, wob = 1 + 0.12 * Math.sin(time * 30 + b.x * 0.1);
           ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy, b.vx));
-          ctx.fillStyle = '#123d18';
+          ctx.fillStyle = b.edge || '#123d18';
           ctx.beginPath(); ctx.ellipse(0, 0, s * 1.45 * wob, s * 1.05 / wob, 0, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = b.col;
           ctx.beginPath(); ctx.ellipse(-s * 0.08, 0, s * 1.2 * wob, s * 0.82 / wob, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#e6ffb8';
+          ctx.fillStyle = b.shine || '#e6ffb8';
           ctx.beginPath(); ctx.arc(s * 0.3, -s * 0.28, s * 0.32, 0, Math.PI * 2); ctx.fill();
           ctx.restore();
           continue;
@@ -8441,8 +8529,9 @@ function Game({ input }) {
         if (!k.glow || !k.kp || !onView(e.x, e.ty, 120) || !fogLit(e.x, e.ty)) continue;
         const u = (e.je && e.je.u) || { glowR: 0.5, glow: 0.5, flare: 0.5 }, sh = e.je ? e.je.shape : 0;
         const a = kru(k.kp + 'Glow', u.glow) * (1 + kru(k.kp + 'Flare', u.flare) * sh);
-        glowAt(ctx, e.x, e.ty, kru(k.kp + 'GlowR', u.glowR), a, k.glow);
-        glowAt(ctx, e.x, e.ty, e.r * 1.6, a * 1.4, k.glow);
+        const rgb = e.je ? hexRgb(kcol('jeColGlow', e.je.u.col)) : k.glow;
+        glowAt(ctx, e.x, e.ty, kru(k.kp + 'GlowR', u.glowR), a, rgb);
+        glowAt(ctx, e.x, e.ty, e.r * 1.6, a * 1.4, rgb);
       }
       for (const b of enemyShots) if (b.glow && onView(b.x, b.y, 30) && fogLit(b.x, b.y)) glowAt(ctx, b.x, b.y, b.size * 6, 0.3, b.glow);
       for (const list of [dparts, amb]) for (const q of list) {
@@ -9498,6 +9587,14 @@ function PerkCard({ id, ingame, flow }) {
 // default; anything else is parsed, clamped to the knob's range and saved at once.
 function DevRow({ meta }) {
   const [val, setVal] = useState(String(DEV[meta.k]));
+  if (meta.type === 'color') {
+    // a colour: changes live as you pick; ↺ puts the default back
+    const set = v => { devSet(meta.k, v); setVal(v); };
+    return h('div', { className: 'devrow' },
+      h('label', null, meta.label),
+      h('input', { type: 'color', value: DEV[meta.k], onChange: e => set(e.target.value) }),
+      h('button', { className: 'devreset', 'aria-label': 'Default', onPointerDown: () => set(DEV_DEFAULTS[meta.k]) }, '↺'));
+  }
   const commit = () => {
     const s = val.trim();
     let v;

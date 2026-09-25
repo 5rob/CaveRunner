@@ -94,6 +94,42 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     DEV.jeGlowLo = DEV.jeGlowHi = 0.6;
     out.lit = await steady();
     knobs.forEach((k, i) => { DEV[k] = saved[i]; });
+    L.enemies.splice(L.enemies.indexOf(g), 1);
+
+    // 5: its tentacles sting, even when it hasn't noticed you. Held just over your head
+    // so they hang down through you; aggro reach at nothing so it can't hunt.
+    const ag = [DEV.jeAggroLo, DEV.jeAggroHi]; DEV.jeAggroLo = DEV.jeAggroHi = 0.001;
+    stand(); p.hp = 100;
+    const t = put(p.x + 6, p.y - 16);
+    const pin = () => { t.x = p.x + 6; t.y = p.y - 16; t.aggro = false; if (t.je) { t.je.vx = t.je.vy = 0; t.je.rest = 9; t.je.hd = -Math.PI / 2; } };
+    let stung = 0, hunted = false;
+    for (let i = 0; i < 240 && p.hp >= 100; i++) { await frame(); stand(); pin(); if (t.aggro) hunted = true; }
+    out.stung = 100 - p.hp; out.hunted = hunted; out.biteRange = [DEV.jeBiteLo, DEV.jeBiteHi];
+    // and moved off to the side, clear of them, it doesn't
+    p.hp = 100;
+    t.x = p.x + 80; t.y = p.y - 16; t.hx = t.x; t.hy = t.y;
+    for (let i = 0; i < 90; i++) { await frame(); stand(); t.x = p.x + 80; t.y = p.y - 16; t.aggro = false; if (t.je) { t.je.vx = t.je.vy = 0; t.je.rest = 9; } }
+    out.clear = 100 - p.hp;
+    L.enemies.splice(L.enemies.indexOf(t), 1);
+    [DEV.jeAggroLo, DEV.jeAggroHi] = ag;
+
+    // 6: the colour knobs repaint it: a red bell reads red on the canvas
+    const cols = ['jeColTopLo', 'jeColTopHi', 'jeColBodyLo', 'jeColBodyHi', 'jeColRimLo', 'jeColRimHi'];
+    const cs = cols.map(k => DEV[k]);
+    const q = put(room.x + 60, room.y - 60);
+    const rgbAt = () => {
+      const { cam, s } = L.light, cv = document.querySelector('canvas.game');
+      const px = Math.round((q.x - cam.x) * s), py = Math.round((q.y - cam.y) * s);
+      const d = cv.getContext('2d').getImageData(px - 2, py - 2, 4, 4).data;
+      let r = 0, gg = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; }
+      return { r: r / 16, g: gg / 16 };
+    };
+    const hold = async () => { for (let i = 0; i < 6; i++) { await frame(); stand(); q.x = room.x + 60; q.y = room.y - 60; if (q.je) { q.je.vx = q.je.vy = 0; q.je.rest = 9; } } return rgbAt(); };
+    out.green = await hold();
+    cols.forEach(k => { DEV[k] = '#ff2020'; });
+    out.red = await hold();
+    cols.forEach((k, i) => { DEV[k] = cs[i]; });
+    L.enemies.splice(L.enemies.indexOf(q), 1);
     out.errors = (window.SFX && SFX.stats && SFX.stats.errors || []).slice();
     return out;
   });
@@ -110,7 +146,29 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('its bell changed shape as it swam (thin and flat)', r.shapeHi > 0.6 && r.shapeLo < 0.3, [r.shapeLo, r.shapeHi]);
   check('it has tentacles', r.tents >= 1, r.tents);
   check('it glows green on the cave round it', r.dark !== null && r.lit !== null && r.lit > r.dark + 3, { dark: r.dark, lit: r.lit });
+  check('its tentacles sting you when you touch them, by the sting knob', r.stung >= r.biteRange[0] && r.stung <= r.biteRange[1] + 0.5,
+    { stung: r.stung, range: r.biteRange });
+  check('even though it never noticed you', !r.hunted);
+  check('and clear of them, no sting', r.clear === 0, r.clear);
+  check('the default jelly is green', r.green.g > r.green.r, r.green);
+  check('the colour knobs repaint it (a red bell reads red)', r.red.r > r.red.g + 40, r.red);
   check('no sound errors', r.errors.length === 0, r.errors);
+
+  // the Dev panel: a colour picker per part, A and B, that sets the knob and resets
+  await page.tap('.devbtn');
+  await page.waitForTimeout(250);
+  await page.tap('.devghead[data-g=jellycol]');
+  await page.waitForTimeout(150);
+  const pickers = await page.$$('.devrow input[type=color]');
+  const want = await page.evaluate(() => DEV_META.filter(m => m.g === 'jellycol').length);
+  check('Dev → Jellyfish colours has a colour picker for every part, A and B', pickers.length === want && want >= 20, [pickers.length, want]);
+  await pickers[0].fill('#ff00aa');
+  const set = await page.evaluate(() => DEV.jeColTopLo);
+  check('picking a colour sets the knob', set === '#ff00aa', set);
+  await page.tap('.devrow .devreset');
+  const back = await page.evaluate(() => DEV.jeColTopLo === DEV_DEFAULTS.jeColTopLo);
+  check('and ↺ puts the default back', back);
+  await page.evaluate(() => { try { localStorage.removeItem('caverunner-dev'); } catch (_) {} });
 
   await browser.close();
   if (fails) { console.log(`\n${fails} failed`); process.exit(1); }

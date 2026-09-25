@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v81**. Branch: `main` (release channel is `main`).
+Current version: **v82**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -688,7 +688,15 @@ spits from the head when `S.inRange && S.aimed` and it has line of sight. `S.sha
 (thin at speed, flat at rest, weighted thin). `jellyBell(r, shape, squash)` is the outline both the tentacle
 roots and the sprite use. Tentacles: `jeTents` × `jeVerts` world points, follow-the-leader at a fixed spacing
 with sway + droop, drawn as one tapered ribbon each (owner liked the tips folding back freely — no stiffness).
-~36 knobs in Dev → Jellyfish. Tests: `tests/logic/jelly.test.js` (pulses, drag, turn limit, shape, hunting,
+~36 knobs in Dev → Jellyfish.
+**v82: tentacles sting, and colour knobs.** `segHitsBox` (exact line-through-box, Liang–Barsky) + `tentacleTouch(S,
+box)` (pure): in the jelly branch, any tentacle segment crossing your box stings (`jeBite`/`jeBiteCd`, shared `e.touch`
+cooldown with the bell), hunting or not. **Colour knobs:** `colourKnobs(group, rows)` is `rangeKnobs` for colours —
+each part a colour A (`k+'Lo'`) and B (`k+'Hi'`) as `'#rrggbb'` strings, `type: 'color'` in `DEV_META` (DevRow shows a
+colour picker + ↺ reset; the DEV loader accepts hex strings for string defaults). `kcol(k, u)` = `hexMix` of A and B;
+each jelly is at its own `S.u.col`. `JE_COLS` (Dev → Jellyfish colours) → `jellyPal(u)` = { top, body, rim, edge, inner,
+loops, shine, tent, glow, spit, spitEdge, spitShine, drip, drip2 }, read by `drawJelly`, the spit (colours copied onto
+the shot: `col/edge/shine/dripCol/dripCol2/glow`), the glow, its health bar and death burst. Tests: `tests/logic/jelly.test.js` (pulses, drag, turn limit, shape, hunting,
 walls, tentacles, real floor-1 caves), `tests/browser/jelly.test.js` (sandbox: spit, drips, splat, damage, glow).
 **v80: Noita spawn table, teleport bolts, vacuum, gold seams, glow, map marks.**
 `modWeight(id, floor)` is Noita's own spawn data now: `NOITA_SPAWN` (Noita action id →

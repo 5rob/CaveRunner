@@ -14,6 +14,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   page.on('pageerror', e => { fails++; console.log('PAGEERROR', e.message); });
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   await page.waitForTimeout(800);
+  // reaches scale with 1/zoom; at the default 1.35 the string range (140-180 x 0.74) rolls
+  // either side of the 120 this suite stands you at, so it failed about half the time
+  await page.evaluate(() => { DEV.zoom = 1; });
 
   const r = await page.evaluate(async () => {
     const L = window.__lvl, W = L.world, p = L.p;
@@ -64,8 +67,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     out.slow = L.strings[0] ? L.strings[0].slow : 0; out.slowRange = [DEV.spSlowLo, DEV.spSlowHi];
     // 3: pull too far and it snaps
     if (L.strings.length) {
-      const s = L.strings[0];
-      p.x = s.ax - s.max - 40;
+      // past the longest reach of every string on you (there can be more than one)
+      p.x = Math.min(...L.strings.map(s => s.ax - s.max)) - 40;
       for (let i = 0; i < 5; i++) await frame();
     }
     out.snapped = L.strings.length === 0;

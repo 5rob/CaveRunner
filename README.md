@@ -258,7 +258,8 @@ Sixteen of them, named after Noita's, and they do not all behave the same way:
   flattening out as it comes to a stop — with its tentacles streaming behind. It
   can't turn sharply. Once it sees you it turns its head onto you, swims in to
   spitting range and spits a glob of poison that drips as it flies and splats when it
-  lands. It stings if it touches you.
+  lands. It stings if it touches you, and brushing its tentacles stings too — even
+  when it hasn't noticed you.
 - **Chasers** (Lohkare, Mato, Hurtta, Kobold, Konna) come at you and
   hurt you by reaching you. The Lohkare is slow and armoured; the Hurtta is not.
 - **Bombers** (Limanuljaska, Stendari) run at you and burst on contact, taking
