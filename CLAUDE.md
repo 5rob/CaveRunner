@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v76**. Branch: `main` (release channel is `main`).
+Current version: **v77**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -641,7 +641,7 @@ one out and the line drops, riders fall). `silk` = strings in flight, `strings` 
 anchor + offset on the player); `tied = DEV.spSlow ^ strings.length` multiplies all steering; a string past
 `spSilkMax` snaps. **Every tunable is a Dev knob in the Spider group (`DEV.sp*`)** — the owner asked for that;
 `SPIDER` keeps only body geometry. Tests: `tests/logic/spider.test.js` (hand-made grids: bumps, ledge, gap,
-dig-out), `tests/browser/spider.test.js` (sandbox: land, string, slow, snap, bite). Hooks: `__lvl.webs/silk/strings`.
+dig-out), `tests/browser/spider.test.js` (sandbox: land, string, slow, snap, bite). Hooks: `__lvl.webs/silk/strings`. **v77 fix:** a spider must always have a clock running — if `decide()` finds nothing to do it gets a 0.1–0.3s retry rest; before, arriving left `on` and `rest` both ≤0 and it froze for good (~40% of floor-1 spiders). The logic suite now runs every spider on three real floor-1 caves for 40s and fails if any sits still.
 **v74 Pollen nerf.** Pollen has `drift: 1`, `homeR: 80`, `pop: 6` (no `eat`). `driftStep` (pure, above
 `tracePath`, consts `DRIFT_*`) damps its speed and, once slow, floats it up. It only homes after
 locking (`b.lock`: nearest creature within `homeR` with `lineOfSight`), then speeds back to

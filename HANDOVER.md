@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v76.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v77.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -43,6 +43,7 @@ it's stale.
 
 ## What shipped recently (most recent first)
 
+- **v77 — spiders no longer freeze** after reaching where they were going (owner: "all the spawned spiders seem to be stuck in place").
 - **v76 — the spider rebuilt.** Hämähäkki crawls rock surfaces and its own web lines only, darting bursts, shoots lines across gaps (they stay), bites up close, strings you from range (×0.8 speed per string, snaps when pulled too far). ~23 Dev knobs in Dev → Spider. Owner is improving enemies one at a time — expect the next creature after tuning this one.
 
 - **v75 — see-through controls:** thin rings, fuel is a ring inside health, guns are round

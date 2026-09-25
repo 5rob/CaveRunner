@@ -10,8 +10,8 @@ const js = src.slice(open, src.indexOf('</script>', open));
 const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
 const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
 const G = new Function('React', shim + upto +
-  'return { spiderStep, surfNormal, SPIDER, CELL, CREATURES, enemyFor, rayDist, DEV, DEV_META };')({ createElement: () => {} });
-const { spiderStep, surfNormal, SPIDER, CELL, CREATURES, enemyFor, DEV, DEV_META } = G;
+  'return { spiderStep, surfNormal, SPIDER, CELL, CW, CH, CREATURES, enemyFor, rayDist, DEV, DEV_META, makeLevel };')({ createElement: () => {} });
+const { spiderStep, surfNormal, SPIDER, CELL, CW, CH, CREATURES, enemyFor, DEV, DEV_META, makeLevel } = G;
 
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
@@ -174,6 +174,36 @@ check('its behaviour is tweakable from the Dev panel', knobs.length >= 20 && kno
   let low = 0;
   run(g, e, 2, { reach: 10 }, e => { low = Math.max(low, e.y); });
   check('dig the shelf out from under it and it falls to the floor', onShelf && low > 165, { onShelf, low: Math.round(low) });
+}
+
+// ---- it never goes to sleep: reach the goal, wait there, then the goal moves on ----
+// (v76 bug: arriving left it with no burst and no rest clock, so it never moved again)
+{
+  const g = grid(200, 60, (x, y) => y >= 45 || x < 2 || x >= 198);
+  const e = spider(100, 80);
+  run(g, e, 3, { hunting: true, goal: { x: 100, y: 80 }, reach: 20 });
+  const x0 = e.x;
+  run(g, e, 3, { hunting: true, goal: { x: 330, y: 80 }, reach: 20 });
+  check('after sitting at its goal, it still goes after a new one', e.x - x0 > 150, { x0: Math.round(x0), x: Math.round(e.x) });
+}
+
+// ---- the real floor 1: every spider on it gets about, roaming on its own ----
+{
+  let still = 0, total = 0;
+  for (const seed of [11, 222, 3333]) {
+    const lv = makeLevel(seed, 1, []);
+    const solidCell = (cx, cy) => cx < 0 || cy < 0 || cx >= CW || cy >= CH || lv.mat[cy * CW + cx] !== 0;
+    const sp = lv.enemies.filter(e => e.k.act === 'spider');
+    const webs = [], rnd = mkRnd(seed);
+    const path = sp.map(() => 0);
+    for (let t = 0; t < 40 * 60; t++) sp.forEach((e, i) => {
+      const x = e.x, y = e.y;
+      spiderStep(e, { solidCell, webs, hunting: false, goal: null, rnd, speed: DEV.spSpeed, reach: DEV.spWeb }, 1 / 60);
+      if (t > 5 * 60) path[i] += Math.hypot(e.x - x, e.y - y);
+    });
+    total += sp.length; still += path.filter(p => p < 40).length;
+  }
+  check('on real floor-1 caves, every roaming spider moves about (40s each)', still === 0 && total > 10, { still, total });
 }
 
 if (fails) { console.log(`\n${fails} failed`); process.exit(1); }

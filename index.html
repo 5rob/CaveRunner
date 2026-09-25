@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v76</title>
+<title>CaveRunner v77</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -440,7 +440,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v76';
+const VERSION = 'v77';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -1485,8 +1485,16 @@ function spiderStep(e, env, dt) {
   if (S.mode === 'surf' && !surfNormal(e.x, e.y, SPIDER.hold + 2, solidCell)) { S.mode = 'fall'; S.vy = 0; return null; }
   const arrive = env.hunting ? DEV.spArrive : 3;
 
-  if (S.rest > 0) { S.rest -= dt; if (S.rest > 0) return null; S.on = spRange(rnd, env.hunting ? DEV.spHuntOn : DEV.spRoamOn); decide(); }
-  if (S.mode === 'shoot' || S.on <= 0) return out;
+  // resting: count down, then start a burst and decide where it goes. Nothing worth doing
+  // (already there, right under it): look again shortly — never sit with no clock running
+  if (S.on <= 0) {
+    if ((S.rest -= dt) > 0) return null;
+    S.on = spRange(rnd, env.hunting ? DEV.spHuntOn : DEV.spRoamOn);
+    decide();
+    if (S.mode === 'shoot') return null;
+    if (S.on <= 0) { S.rest = 0.1 + rnd() * 0.2; return null; }
+  }
+  if (S.mode === 'shoot') return null;
 
   const speed = env.speed;
   const dist = speed * Math.min(dt, S.on);
