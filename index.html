@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v82</title>
+<title>CaveRunner v83</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -419,6 +419,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .devrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .devrow label{font-size:13px;color:var(--text);flex:1 1 auto}
 .devrow input[type=color]{width:56px;padding:2px 4px}
+.devrow input[type=range]{width:118px;padding:0;border:0;background:none;accent-color:#5ad65a}
+.devval{display:block;font:600 12px system-ui,sans-serif;color:var(--muted)}
+/* the live jellyfish above its colour knobs: stuck to the top of the panel while you
+   scroll through them, so every change shows as you make it */
+.jellyprev{position:sticky;top:-14px;z-index:2;display:block;width:100%;height:200px;margin:4px 0 6px;
+  border-radius:10px;border:1px solid var(--ring);background:#0d0f14;box-shadow:0 6px 14px rgba(0,0,0,0.35)}
 .devreset{flex:0 0 auto;width:34px;height:36px;border-radius:8px;border:1px solid var(--ring);
   background:var(--pad);color:var(--text);font-size:16px}
 .devrow input{width:92px;flex:0 0 auto;box-sizing:border-box;height:36px;border-radius:8px;
@@ -453,7 +459,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v82';
+const VERSION = 'v83';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -665,6 +671,31 @@ function hexMix(a, b, t) {
 }
 const hexRgb = h => { const n = parseInt(h.slice(1), 16); return (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255); };
 const kcol = (k, u) => hexMix(DEV[k + 'Lo'], DEV[k + 'Hi'], u);
+// a colour turned round the colour wheel by `hue` degrees, its saturation and brightness
+// (HSV value) scaled — what the master sliders do to every part at once
+function hsvAdjust(hex, hue, sat, bri) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), d = mx - Math.min(r, g, b);
+  let h = !d ? 0 : mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  h = ((h * 60 + hue) % 360 + 360) % 360;
+  const S = Math.min(1, (mx ? d / mx : 0) * sat), V = Math.min(1, mx * bri);
+  const c = V * S, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = V - c;
+  const [R, G, B] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  const to = q => Math.round((q + m) * 255);
+  return '#' + ((1 << 24) | (to(R) << 16) | (to(G) << 8) | to(B)).toString(16).slice(1);
+}
+// the jellyfish's master sliders, at the top of its colour group: they act on every part
+Object.assign(DEV_DEFAULTS, { jeHue: 0, jeSat: 1, jeBri: 1 });
+DEV_META.push(
+  { k: 'jeHue', g: 'jellycol', label: 'All colours: hue shift (°)',  min: -180, max: 180, step: 1,    type: 'slider' },
+  { k: 'jeSat', g: 'jellycol', label: 'All colours: saturation (×)', min: 0,    max: 3,   step: 0.05, type: 'slider' },
+  { k: 'jeBri', g: 'jellycol', label: 'All colours: brightness (×)', min: 0,    max: 3,   step: 0.05, type: 'slider' });
+// one jellyfish colour: its part's A-to-B blend at u, then the master sliders
+const jcol = (k, u) => {
+  const c = kcol(k, u);
+  return DEV.jeHue || DEV.jeSat !== 1 || DEV.jeBri !== 1 ? hsvAdjust(c, DEV.jeHue, DEV.jeSat, DEV.jeBri) : c;
+};
 // the jellyfish's colours, part by part (drawJelly, its spit, its glow)
 const JE_COLS = colourKnobs('jellycol', [
   ['jeColTop',     'Bell top',                '#a6ff7c', '#b4ff9a', 'top'],
@@ -685,7 +716,7 @@ const JE_COLS = colourKnobs('jellycol', [
 // one jelly's palette at its colour fraction u
 function jellyPal(u) {
   const P = {};
-  for (const [k, , , , f] of JE_COLS) P[f] = kcol(k, u);
+  for (const [k, , , , f] of JE_COLS) P[f] = jcol(k, u);
   return P;
 }
 const DEV_KEY = 'caverunner-dev';
@@ -6040,7 +6071,7 @@ function Game({ input }) {
       e.hp -= dmg; e.flash = 0.08;
       if (e.k.kp) e.aggro = true;          // hurt a spider or a jelly and it comes for you
       if (e.hp > 0) { if (dmg >= 0.5) SFX.creature(e.k, 'hurt', e.x, e.ty); return; }
-      burst(e.x, e.ty, 16, e.je ? kcol('jeColBody', e.je.u.col) : e.k.col.a);
+      burst(e.x, e.ty, 16, e.je ? jcol('jeColBody', e.je.u.col) : e.k.col.a);
       SFX.creature(e.k, 'die', e.x, e.ty);
       enemies.splice(j, 1);
       coins.push({ x: e.x, y: e.ty,
@@ -8029,7 +8060,7 @@ function Game({ input }) {
         drawEnemy(ctx, e, time);
         const hw = 20, hx = e.x - hw / 2, hy = ey - e.r - 9;
         ctx.fillStyle = COL.barBg; ctx.fillRect(hx, hy, hw, 3);
-        ctx.fillStyle = e.je ? kcol('jeColBody', e.je.u.col) : e.k.col.a;
+        ctx.fillStyle = e.je ? jcol('jeColBody', e.je.u.col) : e.k.col.a;
         ctx.fillRect(hx, hy, hw * Math.max(0, e.hp / e.hpMax), 3);
       }
 
@@ -8529,7 +8560,7 @@ function Game({ input }) {
         if (!k.glow || !k.kp || !onView(e.x, e.ty, 120) || !fogLit(e.x, e.ty)) continue;
         const u = (e.je && e.je.u) || { glowR: 0.5, glow: 0.5, flare: 0.5 }, sh = e.je ? e.je.shape : 0;
         const a = kru(k.kp + 'Glow', u.glow) * (1 + kru(k.kp + 'Flare', u.flare) * sh);
-        const rgb = e.je ? hexRgb(kcol('jeColGlow', e.je.u.col)) : k.glow;
+        const rgb = e.je ? hexRgb(jcol('jeColGlow', e.je.u.col)) : k.glow;
         glowAt(ctx, e.x, e.ty, kru(k.kp + 'GlowR', u.glowR), a, rgb);
         glowAt(ctx, e.x, e.ty, e.r * 1.6, a * 1.4, rgb);
       }
@@ -9585,8 +9616,103 @@ function PerkCard({ id, ingame, flow }) {
 // One tweakable value in the dev panel: a labelled number box prefilled with the live
 // value, its default shown as the placeholder. Committing an empty box restores the
 // default; anything else is parsed, clamped to the knob's range and saved at once.
+// A live jellyfish for Dev → Jellyfish colours: the real jellyStep and drawJelly in a
+// little walled box with a ledge of floor-1 rock for its glow to light, a roam spot
+// circling the middle so it keeps pulsing, turning and trailing, and a spit now and then
+// so the spit and drip colours show too. Every frame reads DEV, so a change shows at once.
+function JellyPreview() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const c = ref.current;
+    if (!c || !c.getContext) return;
+    const ctx = c.getContext('2d');
+    const WU = 110, LEDGE = 8;                          // world units across; rock at the bottom
+    const k = enemyFor('meduusa', 1);
+    let HU = 60;
+    const e = { x: WU / 2, y: 26, hx: WU / 2, hy: 26, r: k.r, phase: 0 };
+    const solid = (cx, cy) => cx < 0 || cy < 0 || cx * CELL >= WU || (cy + 1) * CELL > HU - LEDGE;
+    let raf, last = performance.now(), t = 0, spitT = 1.2, glob = null;
+    const drops = [];
+    const drop = (x, y, vx, vy, P, g) => { if (drops.length < 120) { const l = 0.5 + Math.random() * 0.5;
+      drops.push({ x, y, vx, vy, g, life: l, max: l, c: Math.random() < 0.35 ? P.drip2 : P.drip, s: 1.1 + Math.random() * 0.8 }); } };
+    const tick = now => {
+      raf = requestAnimationFrame(tick);
+      const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt;
+      const dpr = window.devicePixelRatio || 1, cw = Math.round(c.clientWidth * dpr), ch = Math.round(c.clientHeight * dpr);
+      if (!cw || !ch) return;
+      if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch; }
+      const sc = cw / WU; HU = ch / sc;
+      const S = e.je;
+      if (S) { S.rx = WU / 2 + Math.cos(t * 0.55) * WU * 0.24; S.ry = (HU - LEDGE) * 0.36 + Math.sin(t * 0.8) * 5; S.roamR = 1e9; S.roamSpd = 0; }
+      jellyStep(e, { solidCell: solid, hunting: false, goal: null, rnd: Math.random }, dt);
+      const P = jellyPal(e.je.u.col);
+      // a spit from its head across the box, dripping, splatting on whatever it meets
+      if ((spitT -= dt) <= 0 && !glob) {
+        spitT = 2.2;
+        const a = e.je.hd, v = 70;
+        glob = { x: e.x + Math.cos(a) * e.r, y: e.y + Math.sin(a) * e.r, vx: Math.cos(a) * v, vy: Math.sin(a) * v, da: 0,
+          size: kr('jeShotSize'), drip: kr('jeDrip'), g: kr('jeDripG'), n: Math.round(kr('jeSplat')), sv: kr('jeSplatSpd') };
+      }
+      if (glob) {
+        glob.x += glob.vx * dt; glob.y += glob.vy * dt;
+        for (glob.da += glob.drip * dt; glob.da >= 1; glob.da--) drop(glob.x, glob.y + glob.size * 0.5, glob.vx * 0.08, 8 + Math.random() * 18, P, glob.g);
+        if (solid(Math.floor(glob.x / CELL), Math.floor(glob.y / CELL))) {
+          const sp = Math.hypot(glob.vx, glob.vy) || 1;
+          for (let i = 0; i < glob.n; i++) {
+            const a = Math.random() * 6.28, v = glob.sv * (0.4 + Math.random() * 0.6);
+            drop(glob.x - glob.vx * dt, glob.y - glob.vy * dt, Math.cos(a) * v - glob.vx / sp * v * 0.5, Math.sin(a) * v - glob.vy / sp * v * 0.5 - v * 0.3, P, glob.g);
+          }
+          glob = null;
+        }
+      }
+      for (let i = drops.length - 1; i >= 0; i--) {
+        const q = drops[i];
+        q.vy += q.g * dt;
+        const nx = q.x + q.vx * dt, ny = q.y + q.vy * dt;
+        if (solid(Math.floor(nx / CELL), Math.floor(ny / CELL))) { q.vx *= 0.3; q.vy = 0; } else { q.x = nx; q.y = ny; }
+        if ((q.life -= dt) <= 0) drops.splice(i, 1);
+      }
+      // the box: dark water-cave, a ledge of rock, the jelly, its spit, and the glow on top
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = '#0d0f14'; ctx.fillRect(0, 0, cw, ch);
+      ctx.setTransform(sc, 0, 0, sc, 0, 0);
+      ctx.fillStyle = 'rgb(62,56,54)'; ctx.fillRect(0, HU - LEDGE, WU, LEDGE);
+      ctx.fillStyle = 'rgb(96,84,74)'; ctx.fillRect(0, HU - LEDGE, WU, 1.2);
+      drawJelly(ctx, e.x, e.y, e.r, t, 0, false, k.col, e.je);
+      if (glob) {
+        const z = glob.size;
+        ctx.save(); ctx.translate(glob.x, glob.y); ctx.rotate(Math.atan2(glob.vy, glob.vx));
+        ctx.fillStyle = P.spitEdge; ctx.beginPath(); ctx.ellipse(0, 0, z * 1.45, z * 1.05, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = P.spit; ctx.beginPath(); ctx.ellipse(-z * 0.08, 0, z * 1.2, z * 0.82, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = P.spitShine; ctx.beginPath(); ctx.arc(z * 0.3, -z * 0.28, z * 0.32, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+      for (const q of drops) { ctx.globalAlpha = Math.max(0, q.life / q.max); ctx.fillStyle = q.c; ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s); }
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'lighter';
+      const u = e.je.u, a = kru('jeGlow', u.glow) * (1 + kru('jeFlare', u.flare) * e.je.shape), rgb = hexRgb(P.glow);
+      glowAt(ctx, e.x, e.y, kru('jeGlowR', u.glowR), a, rgb);
+      glowAt(ctx, e.x, e.y, e.r * 1.6, a * 1.4, rgb);
+      if (glob) glowAt(ctx, glob.x, glob.y, glob.size * 6, 0.3, rgb);
+      ctx.globalCompositeOperation = 'source-over';
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return h('canvas', { ref, className: 'jellyprev' });
+}
+
 function DevRow({ meta }) {
   const [val, setVal] = useState(String(DEV[meta.k]));
+  if (meta.type === 'slider') {
+    // a slider: changes live as you drag, the number beside the label; ↺ puts the default back
+    const set = v => { devSet(meta.k, v); setVal(String(v)); };
+    return h('div', { className: 'devrow' },
+      h('label', null, meta.label, h('span', { className: 'devval' }, String(DEV[meta.k]))),
+      h('input', { type: 'range', min: meta.min, max: meta.max, step: meta.step, value: DEV[meta.k],
+        onChange: e => set(parseFloat(e.target.value)) }),
+      h('button', { className: 'devreset', 'aria-label': 'Default', onPointerDown: () => set(DEV_DEFAULTS[meta.k]) }, '↺'));
+  }
   if (meta.type === 'color') {
     // a colour: changes live as you pick; ↺ puts the default back
     const set = v => { devSet(meta.k, v); setVal(v); };
@@ -9662,6 +9788,7 @@ function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
       DEV_GROUPS.map(([g, name]) => {
         const shut = !openG[g];
         return h('div', { key: g, className: 'devgroup' },
+          g === 'jellycol' ? h(JellyPreview) : null,          // the live jelly its colours paint
           h('button', { className: 'devghead' + (shut ? '' : ' open'), 'data-g': g,
             onPointerDown: e => { e.preventDefault(); toggleG(g); } },
             h('span', { className: 'devcaret' }, shut ? '▸' : '▾'), name),

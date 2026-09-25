@@ -10,8 +10,8 @@ const js = src.slice(open, src.indexOf('</script>', open));
 const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
 const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
 const G = new Function('React', shim + upto +
-  'return { jellyStep, jellyBell, roamStep, turnToward, flyMove, JELLY, CELL, CW, CH, CREATURES, enemyFor, DEV, DEV_META, DEV_GROUPS, JE_KNOBS, kr, kru, makeLevel, rosterFor, segHitsBox, tentacleTouch, JE_COLS, jellyPal, hexMix, hexRgb, kcol, DEV_DEFAULTS };')({ createElement: () => {} });
-const { jellyStep, jellyBell, roamStep, turnToward, flyMove, JELLY, CELL, CW, CH, CREATURES, enemyFor, DEV, DEV_META, DEV_GROUPS, JE_KNOBS, kr, kru, makeLevel, segHitsBox, tentacleTouch, JE_COLS, jellyPal, hexMix, hexRgb, kcol, DEV_DEFAULTS } = G;
+  'return { jellyStep, jellyBell, roamStep, turnToward, flyMove, JELLY, CELL, CW, CH, CREATURES, enemyFor, DEV, DEV_META, DEV_GROUPS, JE_KNOBS, kr, kru, makeLevel, rosterFor, segHitsBox, tentacleTouch, JE_COLS, jellyPal, hexMix, hexRgb, kcol, DEV_DEFAULTS, hsvAdjust, jcol };')({ createElement: () => {} });
+const { jellyStep, jellyBell, roamStep, turnToward, flyMove, JELLY, CELL, CW, CH, CREATURES, enemyFor, DEV, DEV_META, DEV_GROUPS, JE_KNOBS, kr, kru, makeLevel, segHitsBox, tentacleTouch, JE_COLS, jellyPal, hexMix, hexRgb, kcol, DEV_DEFAULTS, hsvAdjust, jcol } = G;
 
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
@@ -230,6 +230,28 @@ check('and the group is on the Dev panel', DEV_GROUPS.some(g => g[0] === 'jelly'
   const e = jelly(300, 300);
   jellyStep(e, { solidCell: box.solidCell, hunting: false, goal: null, rnd: mkRnd(4) }, DT);
   check('each jelly rolls its own colour fraction', e.je.u.col >= 0 && e.je.u.col <= 1);
+}
+{
+  const ch = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const near = (a, b) => ch(a).every((v, i) => Math.abs(v - ch(b)[i]) <= 1);
+  check('hsvAdjust with nothing moved leaves a colour be', ['#46c94f', '#133d1a', '#e4ff4a', '#ffffff', '#000000', '#808080']
+    .every(c => near(hsvAdjust(c, 0, 1, 1), c)));
+  check('a hue shift turns the wheel (red +120° is green, +240° blue)',
+    hsvAdjust('#ff0000', 120, 1, 1) === '#00ff00' && hsvAdjust('#ff0000', 240, 1, 1) === '#0000ff' && hsvAdjust('#ff0000', -120, 1, 1) === '#0000ff');
+  check('saturation 0 makes it grey', (([r, g, b]) => r === g && g === b)(ch(hsvAdjust('#46c94f', 0, 0, 1))), hsvAdjust('#46c94f', 0, 0, 1));
+  check('brightness 0 makes it black, 0.5 halves it', hsvAdjust('#46c94f', 0, 1, 0) === '#000000' &&
+    near(hsvAdjust('#46c94f', 0, 1, 0.5), '#23652' + '8'), hsvAdjust('#46c94f', 0, 1, 0.5));
+  check('the master sliders are in the colour group and default to no change',
+    ['jeHue', 'jeSat', 'jeBri'].every(k => DEV_META.some(m => m.k === k && m.g === 'jellycol' && m.type === 'slider')) &&
+    DEV_DEFAULTS.jeHue === 0 && DEV_DEFAULTS.jeSat === 1 && DEV_DEFAULTS.jeBri === 1);
+  const before = jellyPal(0.3);
+  DEV.jeHue = 180;
+  const after = jellyPal(0.3);
+  check('they move every part of the palette at once', Object.keys(before).filter(k => before[k] !== after[k]).length >= 12,
+    Object.keys(before).filter(k => before[k] === after[k]));
+  check('and jcol (glow, health bar, death burst) follows them', jcol('jeColGlow', 0.3) === after.glow);
+  DEV.jeHue = 0;
+  check('back at 0 it is the plain blend again', jellyPal(0.3).body === kcol('jeColBody', 0.3));
 }
 
 // ---- the real floor 1: every jelly on it gets about, none stuck in rock ----

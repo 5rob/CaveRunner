@@ -160,14 +160,52 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.tap('.devghead[data-g=jellycol]');
   await page.waitForTimeout(150);
   const pickers = await page.$$('.devrow input[type=color]');
-  const want = await page.evaluate(() => DEV_META.filter(m => m.g === 'jellycol').length);
+  const want = await page.evaluate(() => DEV_META.filter(m => m.g === 'jellycol' && m.type === 'color').length);
   check('Dev → Jellyfish colours has a colour picker for every part, A and B', pickers.length === want && want >= 20, [pickers.length, want]);
   await pickers[0].fill('#ff00aa');
   const set = await page.evaluate(() => DEV.jeColTopLo);
   check('picking a colour sets the knob', set === '#ff00aa', set);
-  await page.tap('.devrow .devreset');
+  await page.evaluate(() => { const el = document.querySelector('.devrow input[type=color]');
+    el.parentNode.querySelector('.devreset').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); });
   const back = await page.evaluate(() => DEV.jeColTopLo === DEV_DEFAULTS.jeColTopLo);
   check('and ↺ puts the default back', back);
+  // the live jellyfish above the colour group, and the master sliders repainting it
+  const prev = () => page.evaluate(() => {
+    const c = document.querySelector('.jellyprev');
+    if (!c || !c.width) return null;
+    // above the rock ledge, and only the brighter pixels (the jelly, not the dark water)
+    const d = c.getContext('2d').getImageData(0, 0, c.width, Math.floor(c.height * 0.8)).data;
+    let gx = 0, lit = 0;
+    for (let i = 0; i < d.length; i += 4) { const v = d[i + 1] - (d[i] + d[i + 2]) / 2; if (d[i] + d[i + 1] + d[i + 2] > 200) { lit++; gx += v; } }
+    return { lit, green: gx / Math.max(1, lit) };
+  });
+  const order = await page.evaluate(() => {
+    const pv = document.querySelector('.jellyprev'), hd = document.querySelector('.devghead[data-g=jellycol]');
+    return !!pv && !!hd && !!(pv.compareDocumentPosition(hd) & Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+  check('a live jellyfish box sits above the Jellyfish colours section', order);
+  await page.waitForTimeout(600);
+  const p0 = await prev();
+  check('it draws a green jellyfish', p0 && p0.lit > 200 && p0.green > 40, p0);
+  const slide = (i, v) => page.evaluate(([i, v]) => {
+    const el = document.querySelectorAll('.devrow input[type=range]')[i];
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, String(v));
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }, [i, v]);
+  const sliders = await page.$$('.devrow input[type=range]');
+  check('three master sliders: hue, saturation, brightness', sliders.length === 3, sliders.length);
+  await slide(0, 180);
+  await page.waitForTimeout(400);
+  const p1 = await prev();
+  const hue = await page.evaluate(() => DEV.jeHue);
+  check('dragging hue sets the knob', hue === 180, hue);
+  check('and the preview turns (green goes to magenta)', p1 && p1.green < -40, p1);
+  await slide(0, 0); await slide(1, 0);
+  await page.waitForTimeout(400);
+  const p2 = await prev();
+  check('saturation 0 greys it out', p2 && Math.abs(p2.green) < 12, p2);
+  const rs = await page.evaluate(() => { const b = document.querySelectorAll('.devrow .devreset'); b[0].dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); b[1].dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); return [DEV.jeHue, DEV.jeSat]; });
+  check('↺ puts the sliders back', rs[0] === 0 && rs[1] === 1, rs);
   await page.evaluate(() => { try { localStorage.removeItem('caverunner-dev'); } catch (_) {} });
 
   await browser.close();

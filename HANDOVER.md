@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v82.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v83.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -42,6 +42,9 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v83 — a live jellyfish box above Dev → Jellyfish colours** (sticks to the top while you scroll the colour rows, shows
+  the spit and glow too) and **master hue / saturation / brightness sliders** that shift every jelly colour at once.
 
 - **v82 — jellyfish tentacles sting on touch (even when it hasn't noticed you); Dev → Jellyfish colours:** a colour
   picker A and B for each of 14 parts (each jelly a blend between A and B; ↺ resets). `colourKnobs` works for any creature.

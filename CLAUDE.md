@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v82**. Branch: `main` (release channel is `main`).
+Current version: **v83**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -696,7 +696,13 @@ each part a colour A (`k+'Lo'`) and B (`k+'Hi'`) as `'#rrggbb'` strings, `type: 
 colour picker + ↺ reset; the DEV loader accepts hex strings for string defaults). `kcol(k, u)` = `hexMix` of A and B;
 each jelly is at its own `S.u.col`. `JE_COLS` (Dev → Jellyfish colours) → `jellyPal(u)` = { top, body, rim, edge, inner,
 loops, shine, tent, glow, spit, spitEdge, spitShine, drip, drip2 }, read by `drawJelly`, the spit (colours copied onto
-the shot: `col/edge/shine/dripCol/dripCol2/glow`), the glow, its health bar and death burst. Tests: `tests/logic/jelly.test.js` (pulses, drag, turn limit, shape, hunting,
+the shot: `col/edge/shine/dripCol/dripCol2/glow`), the glow, its health bar and death burst.
+**v83: jelly colour preview + master sliders.** `JellyPreview` (a canvas component, its own rAF while the Dev panel is
+open) sits above the Jellyfish colours header, `position:sticky` so it stays in view while you scroll the colour rows.
+It runs the real `jellyStep`/`drawJelly` in a walled box (roam spot forced round the middle), with a mini spit/drip/
+splat and the glow, all read from DEV each frame. Master sliders `jeHue` (°), `jeSat`, `jeBri` (×) — `type: 'slider'`
+rows (range input + value + ↺) — act after the A/B blend through `hsvAdjust`; `jcol(k, u)` is blend-then-adjust and is
+what `jellyPal`, the glow, health bar and death burst read (use `jcol`, not `kcol`, for any new jelly colour). Tests: `tests/logic/jelly.test.js` (pulses, drag, turn limit, shape, hunting,
 walls, tentacles, real floor-1 caves), `tests/browser/jelly.test.js` (sandbox: spit, drips, splat, damage, glow).
 **v80: Noita spawn table, teleport bolts, vacuum, gold seams, glow, map marks.**
 `modWeight(id, floor)` is Noita's own spawn data now: `NOITA_SPAWN` (Noita action id →
