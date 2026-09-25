@@ -7,7 +7,7 @@ const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
 const shim = 'class ImageData { constructor(w,h){this.width=w;this.height=h;this.data=new Uint8ClampedArray(w*h*4);} }\n';
 const G = new Function('React', shim + upto +
   'return { MODS, ALL_IDS, SHOT_IDS, planCast, resetGun, modPreview, castGroups, groupStats, ' +
-  'tracePath, buildAdvice, gunRate, tierOf, modWeight, rollMod, effRecharge };')({ createElement: () => {} });
+  'tracePath, buildAdvice, gunRate, tierOf, modWeight, rollMod, effRecharge, NOITA_SPAWN, NOITA_OF };')({ createElement: () => {} });
 
 let pass = 0, fail = 0;
 const ok = (n, c, x) => { if (c) { pass++; } else { fail++; console.log(`FAIL ${n}` + (x !== undefined ? ' -> ' + JSON.stringify(x) : '')); } };
@@ -129,21 +129,29 @@ for (const [id, act] of [['refresh', 'refresh'], ['farcast', 'far'], ['telecast'
   ok('the aim line stops a beam at the wall', out[out.length - 2] <= 155, out[out.length - 2]);
 }
 
-// ---- drops are weighted by floor ----
+// ---- drops follow Noita's spawn table (v80) ----
 {
-  const rare = 'omega', common = 'spit';
-  ok('rare mods are rare on floor 1', G.modWeight(rare, 1) < G.modWeight(common, 1) / 4,
-    { rare: G.modWeight(rare, 1), common: G.modWeight(common, 1) });
-  ok('and much more likely deep in a run', G.modWeight(rare, 6) > G.modWeight(rare, 1) * 3,
-    { f1: G.modWeight(rare, 1), f6: G.modWeight(rare, 6) });
+  const missing = G.ALL_IDS.filter(id => !G.NOITA_SPAWN[G.NOITA_OF[id]]);
+  ok('every spell that can drop has a Noita spawn row', missing.length === 0, missing);
+  ok('floor 1 is tier 0: Spark Bolt at its full 2', G.modWeight('bolt', 1) === 2, G.modWeight('bolt', 1));
+  ok('Myriad (tiers 5,6,10) never drops early', G.modWeight('myriad', 1) === 0 && G.modWeight('myriad', 5) === 0,
+    [G.modWeight('myriad', 1), G.modWeight('myriad', 5)]);
+  ok('and does deep down', G.modWeight('myriad', 10) > 0 && G.modWeight('myriad', 11) > 0,
+    [G.modWeight('myriad', 10), G.modWeight('myriad', 11)]);
+  ok('Spark Bolt (tiers 0-2) is gone by floor 6', G.modWeight('bolt', 6) === 0, G.modWeight('bolt', 6));
+  ok('between tiers it slides', G.modWeight('bolt', 2) < 2 && G.modWeight('bolt', 2) > 1, G.modWeight('bolt', 2));
+  ok('both Teleport Bolts drop from floor 1', G.modWeight('tele', 1) > 0 && G.modWeight('teleshort', 1) > 0);
+  ok('Vacuum Field waits for tier 2', G.modWeight('vacfield', 1) === 0 && G.modWeight('vacfield', 5) > 0,
+    [G.modWeight('vacfield', 1), G.modWeight('vacfield', 5)]);
   let rs = 7;
   const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
-  const tiers = { 1: 0, 2: 0, 3: 0, 4: 0 };
-  for (let i = 0; i < 4000; i++) tiers[G.tierOf(G.rollMod(rnd, 1))]++;
-  ok('floor 1 mostly hands out tier 1 and 2', (tiers[1] + tiers[2]) / 4000 > 0.7, tiers);
-  const late = { 1: 0, 2: 0, 3: 0, 4: 0 };
-  for (let i = 0; i < 4000; i++) late[G.tierOf(G.rollMod(rnd, 6))]++;
-  ok('by floor 6 the rare ones show up properly', late[4] > tiers[4] * 4, { floor1: tiers, floor6: late });
+  const got = {};
+  for (let i = 0; i < 4000; i++) { const id = G.rollMod(rnd, 1); got[id] = (got[id] || 0) + 1; }
+  const bad = Object.keys(got).filter(id => G.modWeight(id, 1) === 0);
+  ok('floor 1 only hands out what tier 0 lists', bad.length === 0, bad);
+  ok('and Spark Bolt is the most common thing on it', Object.keys(got).every(id => got[id] <= got.bolt), got.bolt);
+  ok('every floor has something to hand out', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 20]
+    .every(f => G.ALL_IDS.some(id => G.modWeight(id, f) > 0)));
 }
 
 // ---- new modifiers do what they say ----

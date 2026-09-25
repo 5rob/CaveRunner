@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v79.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v80.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -43,6 +43,7 @@ it's stale.
 
 ## What shipped recently (most recent first)
 
+- **v80 — Noita spawn table for mod drops, Teleport Bolt + Small Teleport Bolt, Vacuum Field made Noita-accurate (instant warp), gold seams in the rock, glow + streaks on never-held ground guns, map marks (loot dots, found prize rooms, X when taken, 80% see-through), minecart blast ×1.75.**
 - **v79 — grab bars down the side of the gun's slot grid and the mod bag** (tap to jump, drag to scroll), and a swipe on an empty slot scrolls the grid.
 - **v78 — web lines work like vines** (touch = latch, hang, climb along, push down to drop; each line you pass through slows you ×0.8) and **every spider Dev control is a min/max range**, rolled fresh at each use (owner's rule).
 - **v77 — spiders no longer freeze** after reaching where they were going (owner: "all the spawned spiders seem to be stuck in place").

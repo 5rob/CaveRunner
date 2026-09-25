@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v79</title>
+<title>CaveRunner v80</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -450,7 +450,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v79';
+const VERSION = 'v80';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -936,6 +936,13 @@ const MODS = {
              info: 'Falls hard, digs deep and explodes',
              dmg: 5, speed: 420, spread: 2, delay: 0.55, size: 5, life: 3,
              explode: 40, grav: 700, bore: 4, recoil: 50 },
+  // Noita's Teleport Bolts: harmless, and wherever the bolt stops you go
+  tele:    { name: 'Teleport Bolt', kind: 'shot', glyph: '⤳', col: '#8fe8ff', mana: 40,
+             info: 'Harmless. Wherever it lands or runs out, you appear there',
+             dmg: 0, speed: 700, spread: 0, delay: 0.05, size: 2, life: 0.5, grav: 200, tele: 1, recoil: 0 },
+  teleshort:{ name: 'Small Teleport Bolt', kind: 'shot', glyph: '↝', col: '#8fe8ff', mana: 20,
+             info: 'A short hop. Harmless; you appear wherever it stops',
+             dmg: 0, speed: 1100, spread: 0, delay: 0.05, size: 1.6, life: 0.13, grav: 200, tele: 1, recoil: 0 },
 
   // ---- static projectiles: they stay where you put them and do their work over time ----
   boom:    { name: 'Explosion', kind: 'static', glyph: '✺', col: '#ff8a1f', mana: 40,
@@ -962,9 +969,9 @@ const MODS = {
   storm:   { name: 'Thundercloud', kind: 'static', glyph: '⛈', col: '#a8e4ff', mana: 34,
              info: 'Rains lightning over everything under it',
              field: 'storm', r: 50, life: 6, delay: 0.4 },
-  vacfield:{ name: 'Vacuum Field', kind: 'static', glyph: '⊗', col: '#b57cff', mana: 26,
-             info: 'Drags enemies and loose shots into the middle',
-             field: 'vacuum', r: 60, life: 4, delay: 0.35 },
+  vacfield:{ name: 'Vacuum Field', kind: 'static', glyph: '⊗', col: '#b57cff', mana: 50,
+             info: 'A blink after it appears, everything close by (creatures, shots, gold, loot) snaps into its middle. Walls don\'t stop it',
+             field: 'vacuum', r: 64, life: 0.33, delay: 0.17 },
   glitter: { name: 'Glittering Field', kind: 'static', glyph: '❃', col: '#ffe066', mana: 36,
              info: 'Small blasts going off all over a wide patch',
              field: 'glitter', r: 64, life: 4, delay: 0.4 },
@@ -1109,7 +1116,7 @@ const FAMILY_OF = {
   arrow: 'shots', missile: 'shots', fball: 'shots', fbolt: 'shots', bubble: 'shots',
   spit: 'shots', eorb: 'shots', esph: 'shots', zap: 'shots', chain: 'shots', void: 'shots',
   digbolt: 'shots', glance: 'shots', plasma: 'shots', ldrill: 'shots', cross: 'shots',
-  pollen: 'shots', disc: 'shots', nuke: 'shots', meteor: 'shots',
+  pollen: 'shots', disc: 'shots', nuke: 'shots', meteor: 'shots', tele: 'shots', teleshort: 'shots',
   boom: 'field', brim: 'field', crystal: 'field', dormant: 'field', stillc: 'field',
   shieldc: 'field', vigour: 'field', storm: 'field', vacfield: 'field', glitter: 'field',
   refresh: 'cast', farcast: 'cast', telecast: 'cast',
@@ -1133,7 +1140,7 @@ const FIELD_WHAT = {
   shield: 'swallows enemy fire crossing it',
   heal: 'heals you while you stand in it',
   storm: 'strikes random spots inside with lightning',
-  vacuum: 'drags enemies and loose shots to the middle',
+  vacuum: 'snaps everything close by into the middle',
   glitter: 'small blasts going off all over it',
 };
 const famOf = id => FAMILIES[FAMILY_OF[id]] || FAMILIES.shots;
@@ -1164,7 +1171,7 @@ const MOD_PRICE = {
   saw: 80, trigger: 35, over_heat: 45, cold: 60, recharge: 50, battery: 50,
   arrow: 25, missile: 60, fball: 55, fbolt: 40, bubble: 15, spit: 15, eorb: 45, esph: 30,
   zap: 70, chain: 75, void: 110, digbolt: 20, glance: 55, plasma: 80, ldrill: 35,
-  cross: 65, pollen: 20, disc: 40, nuke: 150, meteor: 120, boom: 55, brim: 20,
+  cross: 65, pollen: 20, disc: 40, nuke: 150, meteor: 120, tele: 45, teleshort: 30, boom: 55, brim: 20,
   crystal: 30, dormant: 25, stillc: 50, shieldc: 50, vigour: 60, storm: 85, vacfield: 60,
   glitter: 80, refresh: 55, blood: 90, bpower: 45, gpower: 50,
   farcast: 25, telecast: 65, warpcast: 40, sawstorm: 85, knock: 25, kick: 15, damper: 25,
@@ -1191,7 +1198,7 @@ const MOD_TIER = {
   eater: 3, lust: 3, cluster: 3, manapow: 3, bpower: 3, gpower: 3, telecast: 3, tau: 3,
   mu: 3, phi: 3, sigma: 3, seeker: 4, pierce: 4, quad: 4, cold: 4, void: 4, nuke: 4,
   meteor: 4, storm: 4, glitter: 4, sawstorm: 4, blood: 4, oct: 4, myriad: 4, omega: 4,
-  zeta: 4, addtrig: 3, addtimer: 3, adddeath: 3,
+  zeta: 4, addtrig: 3, addtimer: 3, adddeath: 3, tele: 2, teleshort: 1,
 };
 const tierOf = id => MOD_TIER[id] || 2;
 
@@ -1225,6 +1232,7 @@ const TRIG_VARIANTS = [
   ['void_d',    'void',    'expire', { name: 'Black Hole With Death Trigger' }],
 ];
 const TIMER_ADD = 0.33;                 // how long Add Timer waits
+const VACUUM_WAIT = 0.13;               // Vacuum Field: 8 frames, then everything snaps in
 for (const [id, base, trig, extra] of TRIG_VARIANTS) {
   const m = MODS[base], k = TRIG_KINDS[trig];
   MODS[id] = Object.assign({}, m, {
@@ -1240,11 +1248,123 @@ for (const [id, base, trig, extra] of TRIG_VARIANTS) {
   MOD_TIER[id] = Math.min(4, tierOf(base) + 1);
 }
 
-// What a floor is likely to hand you. Each floor reaches a little further up the
-// tiers, so the early cave is workhorses and the Greek letters stay a find.
+// What a floor is likely to hand you: Noita's own spawn table (gun_actions.lua's
+// spawn_level / spawn_probability — https://noita.wiki.gg/wiki/Wand_and_Spell_Tiers).
+// Each spell lists the Noita tiers it turns up at and how likely it is there.
+// Tiers 0-6 run down the main world; 10 is the end-game. Our spells point at their
+// Noita twin in NOITA_OF; the few we made up borrow the nearest twin, or a row of their own.
+const NOITA_SPAWN = {
+  LIGHT_BULLET: ['0,1,2', '2,1,0.5'], LIGHT_BULLET_TRIGGER: ['0,1,2,3', '1,0.5,0.5,0.5'],
+  LIGHT_BULLET_TRIGGER_2: ['2,3,5,6,10', '1,0.5,1,1,0.2'], LIGHT_BULLET_TIMER: ['1,2,3', '0.5,0.5,0.75'],
+  BULLET: ['1,2,3,4,5', '1,1,1,0.8,0.5'], BULLET_TRIGGER: ['1,2,3,4,5', '0.5,0.5,0.5,0.6,0.5'],
+  BULLET_TIMER: ['2,3,4,5,6', '0.5,0.5,0.5,0.5,0.6'], HEAVY_BULLET: ['1,2,3,4,5,6', '0.5,1,1,1,1,1'],
+  SLOW_BULLET: ['1,2,3,4', '1,1,1,1'], SLOW_BULLET_TRIGGER: ['1,2,3,4,5', '0.5,0.5,0.5,0.5,1'],
+  SLOW_BULLET_TIMER: ['1,2,3,4,5,6', '0.5,0.5,0.5,0.5,1,1'],
+  BLACK_HOLE: ['0,2,4,5', '0.8,0.8,0.8,0.8'], BLACK_HOLE_DEATH_TRIGGER: ['2,4,5,6', '0.5,0.5,0.5,0.5'],
+  SPITTER: ['0,1,2,3', '1,1,1,0.5'], SPITTER_TIMER: ['0,1,2,3', '0.5,0.5,0.5,1'],
+  BUBBLESHOT: ['0,1,2,3', '1,0.6,1,0.5'], BUBBLESHOT_TRIGGER: ['1,2,3', '0.5,0.5,1'],
+  DISC_BULLET: ['0,2,4', '1,1,0.6'], BOUNCY_ORB: ['0,2,4', '1,1,1'], BOUNCY_ORB_TIMER: ['0,2,4', '0.5,0.5,0.5'],
+  RUBBER_BALL: ['0,1,6', '1,1,0.2'], POLLEN: ['0,1,3,4', '0.6,1,1,0.6'], LANCE: ['1,2,5,6', '0.9,1,0.8,1'],
+  ROCKET: ['1,2,3,4,5', '1,1,1,0.5,0.3'], GRENADE: ['0,1,2,3,4', '1,1,0.5,0.25,0.2'],
+  GRENADE_TRIGGER: ['0,1,2,3,4,5', '0.5,0.5,0.2,0.5,0.5,1'], MINE: ['1,3,4,6', '1,0.75,1,0.5'],
+  MINE_DEATH_TRIGGER: ['2,6', '1,1'], PIPE_BOMB: ['2,3,4', '1,1,0.6'],
+  PIPE_BOMB_DEATH_TRIGGER: ['2,3,4,5', '0.6,0.8,1,0.8'], LIGHTNING: ['1,2,5,6', '1,0.9,0.7,1'],
+  LASER_EMITTER: ['1,2,3,4', '0.2,0.8,1,0.5'], DIGGER: ['1,2', '1,0.5'], CHAINSAW: ['0,2', '1,1'],
+  LUMINOUS_DRILL: ['0,2,10', '1,1,0.1'], LASER_LUMINOUS_DRILL: ['0,2,6,10', '1,1,0.2,0.1'],
+  CHAIN_BOLT: ['0,4,5,6', '0.75,1,0.8,0.6'], FIREBALL: ['0,3,4,6', '1,0.7,1,0.5'],
+  METEOR: ['4,5,6,10', '0.6,0.6,0.7,0.5'], BUCKSHOT: ['0,1,2,3,4', '1,1,0.9,0.9,0.6'],
+  BOMB: ['0,1,2,3,4,5,6', '1,1,1,1,0.5,0.5,0.1'], DEATH_CROSS: ['1,2,3,4,5,6', '1,0.8,0.6,0.5,0.5,0.3'],
+  NUKE: ['1,5,6,10', '0.3,1,1,0.2'],
+  TELEPORT_PROJECTILE: ['0,1,2,4,5,6', '0.6,0.6,0.6,0.4,0.4,0.4'],
+  TELEPORT_PROJECTILE_SHORT: ['0,1,2,4,5,6', '0.6,0.6,0.6,0.4,0.4,0.4'],
+  PURPLE_EXPLOSION_FIELD: ['0,1,2,4,5,6', '0.7,1,0.7,0.5,0.5,0.3'],
+  LONG_DISTANCE_CAST: ['0,1,2,4,5,6', '0.6,0.7,0.8,0.6,0.3,0.4'],
+  TELEPORT_CAST: ['1,2,4,5,6', '0.6,0.6,0.6,0.8,1'], SUPER_TELEPORT_CAST: ['2,4,5,6', '0.2,0.6,0.8,0.8'],
+  BURST_2: ['0,1,2,3,4,5,6', '0.8,0.8,0.8,0.8,0.8,0.8,0.8'], BURST_3: ['1,2,3,4,5,6', '0.7,0.7,0.7,0.7,0.7,0.7'],
+  BURST_4: ['2,3,4,5,6', '0.4,0.5,0.6,0.6,0.6'], BURST_8: ['5,6,10', '0.1,0.1,0.5'], BURST_X: ['5,6,10', '0.1,0.1,0.5'],
+  SCATTER_3: ['0,1,2,3', '0.6,0.7,0.7,0.8'], I_SHAPE: ['1,2,3', '0.4,0.5,0.3'], Y_SHAPE: ['0,1,2,3', '0.8,0.5,0.4,0.3'],
+  W_SHAPE: ['2,3,4,5,6', '0.4,0.3,0.5,0.3,0.3'],
+  SPREAD_REDUCE: ['1,2,3,4,5,6', '0.8,0.8,0.8,0.8,0.7,0.6'], HEAVY_SPREAD: ['0,1,2,4,5,6', '0.6,0.7,0.8,0.8,0.8,0.6'],
+  RECHARGE: ['1,2,3,4,5,6', '0.8,0.9,1,0.8,0.9,1'], LIFETIME: ['3,4,5,6,10', '0.5,0.5,0.5,0.75,0.1'],
+  LIFETIME_DOWN: ['3,4,5,6,10', '0.5,0.5,0.75,0.5,0.1'], MANA_REDUCE: ['1,2,3,4,5,6', '0.7,0.9,1,1,1,1'],
+  BLOOD_MAGIC: ['5,6,10', '0.3,0.7,0.5'], MONEY_MAGIC: ['3,5,6,10', '0.2,0.8,0.3,0.5'],
+  BLOOD_TO_POWER: ['2,5,6,10', '0.2,0.8,0.2,0.5'], QUANTUM_SPLIT: ['2,3,4,5,6', '0.5,0.6,0.5,0.5,1'],
+  GRAVITY: ['2,3,4,5,6', '0.5,0.4,0.4,0.3,0.3'], GRAVITY_ANTI: ['2,3,4,5,6', '0.5,0.4,0.4,0.3,0.3'],
+  PINGPONG_PATH: ['1,3,5', '0.4,0.5,0.4'], HORIZONTAL_ARC: ['1,3,5', '0.4,0.4,0.4'],
+  ORBIT_SHOT: ['1,2,3,4', '0.2,0.4,0.4,0.3'], SPIRALING_SHOT: ['1,2,3,4', '0.2,0.3,0.4,0.5'],
+  BOUNCE: ['2,3,4,6', '1,1,0.4,0.2'], HOMING: ['1,2,3,4,5,6', '0.1,0.4,0.4,0.4,0.4,0.4'],
+  HOMING_SHORT: ['1,2,3,4,5,6', '0.4,0.8,1,0.4,0.3,0.1'], HOMING_SHOOTER: ['2,3,4,6', '0.2,0.3,0.2,0.2'],
+  AUTOAIM: ['2,3,4,5,6', '0.4,0.4,0.4,0.4,0.4'], HOMING_ACCELERATING: ['1,2,3,4', '0.1,0.3,0.3,0.5'],
+  PIERCING_SHOT: ['2,3,4,5,6', '0.4,0.5,0.6,0.6,0.4'], CLIPPING_SHOT: ['2,3,4,5,6', '0.2,0.3,0.6,0.4,0.6'],
+  DAMAGE: ['1,2,3,4,5', '0.6,0.6,0.8,0.6,0.6'], DAMAGE_RANDOM: ['3,4,5', '0.7,0.6,0.6'],
+  BLOODLUST: ['1,3,4,5,6', '0.2,0.3,0.6,0.7,0.3'], DAMAGE_FOREVER: ['2,3,4,5,6,10', '0.2,0.3,0.6,0.5,0.2,0.2'],
+  CRITICAL_HIT: ['1,2,3,4,5', '0.5,0.6,0.6,0.7,0.6'], HEAVY_SHOT: ['2,3,4', '0.4,0.4,0.5'],
+  LIGHT_SHOT: ['2,3,4', '0.3,0.5,0.4'], KNOCKBACK: ['3,5', '0.7,0.6'], RECOIL: ['2,4', '0.6,0.7'],
+  RECOIL_DAMPER: ['3,6', '0.6,0.7'], SPEED: ['1,2,3', '1,0.5,0.5'], ACCELERATING_SHOT: ['2,3,4', '0.5,0.4,1'],
+  EXPLOSIVE_PROJECTILE: ['2,3,4', '1,1,0.8'], CLUSTERMOD: ['1,2,3', '0.5,1,0.6'],
+  EXPLOSION: ['0,2,4,5', '0.5,1,1,0.7'], FIRE_BLAST: ['0,1,3,5', '0.5,0.7,0.6,0.4'],
+  FREEZE_FIELD: ['0,2,4,5', '0.3,0.6,0.7,0.3'], REGENERATION_FIELD: ['1,2,3,4', '0.3,0.3,0.4,0.3'],
+  SHIELD_FIELD: ['2,3,4,5,6', '0.3,0.3,0.4,0.5,0.3'], VACUUM_ENTITIES: ['2,3,5,6', '0.3,0.7,0.3,0.4'],
+  CLOUD_THUNDER: ['0,1,2,3,4,5', '0.3,0.3,0.2,0.3,0.4,0.5'],
+  MATTER_EATER: ['1,2,4,5,10', '0.1,0.9,0.1,0.2,0.2'], BOUNCE_EXPLOSION: ['2,3,4,5', '0.2,0.6,0.8,0.8'],
+  ALL_DISCS: ['0,6,10', '0.1,0.05,1'], RESET: ['10', '1'],
+  ADD_TRIGGER: ['3,4,5,10', '0.3,0.6,0.6,1'], ADD_TIMER: ['3,4,5,10', '0.3,0.6,0.6,1'],
+  ADD_DEATH_TRIGGER: ['3,4,5,10', '0.3,0.6,0.6,1'],
+  ALPHA: ['5,6,10', '0.1,0.2,1'], GAMMA: ['5,6,10', '0.1,0.2,1'], TAU: ['5,6,10', '0.1,0.2,1'],
+  OMEGA: ['5,6,10', '0.1,0.1,1'], MU: ['5,6,10', '0.1,0.2,1'], PHI: ['5,6,10', '0.1,0.2,1'],
+  SIGMA: ['4,5,10', '0.1,0.2,1'], ZETA: ['2,5,10', '0.2,0.4,0.5'],
+  // ours alone: no Noita twin
+  OURS_COLD: ['3,4,5,6', '0.2,0.3,0.4,0.5'], OURS_BATTERY: ['2,3,4,5,6', '0.3,0.4,0.5,0.5,0.5'],
+};
+const NOITA_OF = {
+  bolt: 'LIGHT_BULLET', spark: 'LIGHT_BULLET', slug: 'HEAVY_BULLET', buck: 'BUCKSHOT', lance: 'LANCE',
+  orb: 'RUBBER_BALL', saw: 'CHAINSAW', blast: 'BOMB', dmg_up: 'DAMAGE', heavy: 'HEAVY_SHOT',
+  light: 'LIGHT_SHOT', speed: 'SPEED', accel: 'ACCELERATING_SHOT', homing: 'HOMING',
+  seeker: 'HOMING_ACCELERATING', bounce: 'BOUNCE', pierce: 'PIERCING_SHOT', tight: 'SPREAD_REDUCE',
+  scatter: 'SCATTER_3', big: 'DAMAGE', range: 'LIFETIME', brief: 'LIFETIME_DOWN',
+  tip: 'EXPLOSIVE_PROJECTILE', borer: 'CLIPPING_SHOT', fast: 'RECHARGE', over: 'HEAVY_SHOT',
+  double: 'BURST_2', triple: 'BURST_3', quad: 'BURST_4', cheap: 'MANA_REDUCE', trigger: 'RECHARGE',
+  over_heat: 'DAMAGE_RANDOM', cold: 'OURS_COLD', recharge: 'RECHARGE', battery: 'OURS_BATTERY',
+  arrow: 'BULLET', missile: 'ROCKET', fball: 'FIREBALL', fbolt: 'GRENADE', bubble: 'BUBBLESHOT',
+  spit: 'SPITTER', eorb: 'SLOW_BULLET', esph: 'BOUNCY_ORB', zap: 'LIGHTNING', chain: 'CHAIN_BOLT',
+  void: 'BLACK_HOLE', digbolt: 'DIGGER', glance: 'LANCE', plasma: 'LASER_EMITTER',
+  ldrill: 'LUMINOUS_DRILL', cross: 'DEATH_CROSS', pollen: 'POLLEN', disc: 'DISC_BULLET', nuke: 'NUKE',
+  meteor: 'METEOR', tele: 'TELEPORT_PROJECTILE', teleshort: 'TELEPORT_PROJECTILE_SHORT',
+  boom: 'EXPLOSION', brim: 'FIRE_BLAST', crystal: 'MINE', dormant: 'PIPE_BOMB', stillc: 'FREEZE_FIELD',
+  shieldc: 'SHIELD_FIELD', vigour: 'REGENERATION_FIELD', storm: 'CLOUD_THUNDER',
+  vacfield: 'VACUUM_ENTITIES', glitter: 'PURPLE_EXPLOSION_FIELD', refresh: 'RESET',
+  blood: 'BLOOD_MAGIC', bpower: 'BLOOD_TO_POWER', gpower: 'MONEY_MAGIC', farcast: 'LONG_DISTANCE_CAST',
+  telecast: 'TELEPORT_CAST', warpcast: 'SUPER_TELEPORT_CAST', sawstorm: 'ALL_DISCS',
+  knock: 'KNOCKBACK', kick: 'RECOIL', damper: 'RECOIL_DAMPER', crit: 'CRITICAL_HIT', gravmod: 'GRAVITY',
+  float: 'GRAVITY_ANTI', boomer: 'HOMING_SHOOTER', spiral: 'SPIRALING_SHOT', pong: 'PINGPONG_PATH',
+  orbit: 'ORBIT_SHOT', autoaim: 'AUTOAIM', nearhome: 'HOMING_SHORT', flat: 'HORIZONTAL_ARC',
+  eater: 'MATTER_EATER', lust: 'BLOODLUST', manapow: 'DAMAGE_FOREVER', split: 'QUANTUM_SPLIT',
+  cluster: 'CLUSTERMOD', bboom: 'BOUNCE_EXPLOSION', hspread: 'HEAVY_SPREAD', oct: 'BURST_8',
+  myriad: 'BURST_X', bifur: 'Y_SHAPE', trifur: 'W_SHAPE', behind: 'I_SHAPE',
+  alpha: 'ALPHA', gamma: 'GAMMA', tau: 'TAU', omega: 'OMEGA', phi: 'PHI', sigma: 'SIGMA', mu: 'MU', zeta: 'ZETA',
+  addtrig: 'ADD_TRIGGER', addtimer: 'ADD_TIMER', adddeath: 'ADD_DEATH_TRIGGER',
+  bolt_t: 'LIGHT_BULLET_TRIGGER', bolt_tt: 'LIGHT_BULLET_TRIGGER_2', arrow_t: 'BULLET_TRIGGER',
+  fbolt_t: 'GRENADE_TRIGGER', bubble_t: 'BUBBLESHOT_TRIGGER', eorb_t: 'SLOW_BULLET_TRIGGER',
+  crystal_t: 'MINE_DEATH_TRIGGER', dormant_t: 'PIPE_BOMB_DEATH_TRIGGER', bolt_ti: 'LIGHT_BULLET_TIMER',
+  arrow_ti: 'BULLET_TIMER', spit_ti: 'SPITTER_TIMER', esph_ti: 'BOUNCY_ORB_TIMER',
+  eorb_ti: 'SLOW_BULLET_TIMER', ldrill_ti: 'LASER_LUMINOUS_DRILL', void_d: 'BLACK_HOLE_DEATH_TRIGGER',
+};
+// Our floors onto Noita's tiers: floor 1 is tier 0, floor 10 is tier 6, past that the
+// end-game tier 10. In between it slides, so a spell fades in and out over a floor or two.
+const floorTier = floor => floor > 10 ? 10 : Math.max(0, (floor - 1) * 6 / 9);
+// a spell's chance at one Noita tier (0 if it isn't listed there)
+function noitaP(id, tier) {
+  const row = NOITA_SPAWN[NOITA_OF[id]];
+  if (!row) return 0;
+  const lv = row[0].split(',').map(Number), pr = row[1].split(',').map(Number);
+  const k = lv.indexOf(tier);
+  return k < 0 ? 0 : pr[k];
+}
 function modWeight(id, floor) {
-  const over = Math.max(0, tierOf(id) - (1 + (floor - 1) * 0.55));
-  return 1 / (1 + over * over);
+  const t = floorTier(floor);
+  if (t >= 10) return Math.max(noitaP(id, 10), noitaP(id, 6));
+  const a = Math.floor(t), f = t - a;
+  return noitaP(id, a) * (1 - f) + noitaP(id, a + 1) * f;
 }
 function rollMod(rnd, floor, skip) {
   let total = 0;
@@ -1767,6 +1887,7 @@ function blankShot(sm, spread) {
     hidden: sm.hidden || 0,                       // don't draw it (Buzzsaw cuts unseen)
     drift: sm.drift || 0, pop: sm.pop || 0,       // Pollen: slows, floats, locks on; small pop on contact
     arc: sm.arc || 0,                             // Lightning: jagged bolt that throws side arcs
+    tele: sm.tele || 0,                           // Teleport Bolt: you go where it stops
     sid: sm.id,                                   // which spell it is, for its sound
     still: sm.kind === 'static' ? 1 : 0, field: sm.field || null, r: sm.r || 0 };
 }
@@ -3669,6 +3790,7 @@ const SPELL_VOICE = {
   missile: 'fire', fball: 'fire', fbolt: 'fire', meteor: 'fire',
   zap: 'thunder', chain: 'thunder',
   void: 'void', digbolt: 'dig', plasma: 'beam', ldrill: 'beam', pollen: 'spore',
+  tele: 'energy', teleshort: 'energy',
   // statics: the explosions make their bang when they go off, so casting one is silent
   boom: 'none', brim: 'none', crystal: 'crystal', dormant: 'crystal', glitter: 'crystal',
   stillc: 'aura', shieldc: 'aura', vigour: 'aura', storm: 'thunder', vacfield: 'void',
@@ -4612,6 +4734,57 @@ function readSave(raw) {
 const loadSave = () => { try { return readSave(localStorage.getItem(SAVE_KEY)); } catch (_) { return null; } };
 const clearSave = () => { try { localStorage.removeItem(SAVE_KEY); } catch (_) {} };
 
+// ---- gold veins ----
+// Thin wandering seams of gold through the rock, near enough to open cave that you can
+// see them and dig in. Returns a CW*CH array, 1 where a rock pixel is gold. Pure, on its
+// own random stream so the rest of the cave stays exactly as the seed makes it.
+// Only ever marks ROCK, never brick or bedrock, and never down in the shop.
+const ORE_GOLD = 0.25;
+// a prize room's half-size in world units, shell included (makeLevel's rx/ry + sh, in pixels)
+const ROOM_HW = 23 * CELL, ROOM_HH = 15 * CELL;                   // gold per vein pixel dug out (before the floor's lift)
+function goldVeins(mat, seed, floor) {
+  let rs = (seed * 7919 + 12345) % 2147483647 || 1;
+  const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+  const ore = new Uint8Array(CW * CH);
+  const n = Math.min(18, 7 + floor);
+  const maxY = SHOP_TOP - SHOP_ROOF - 6;
+  const rockAt = (x, y) => x >= 4 && y >= 4 && x < CW - 4 && y < maxY && mat[y * CW + x] === ROCK;
+  // the nearest open pixel within `r`, looking along 8 directions — close enough to find
+  const nearOpen = (x, y, r) => {
+    for (let d = 2; d <= r; d += 2)
+      for (let k = 0; k < 8; k++) {
+        const a = k * Math.PI / 4, px = Math.round(x + Math.cos(a) * d), py = Math.round(y + Math.sin(a) * d);
+        if (px >= 0 && py >= 0 && px < CW && py < CH && !mat[py * CW + px]) return true;
+      }
+    return false;
+  };
+  for (let v = 0; v < n; v++) {
+    let x = 0, y = 0, ok = false;
+    for (let tries = 0; tries < 200 && !ok; tries++) {
+      x = 6 + Math.floor(rnd() * (CW - 12)); y = 6 + Math.floor(rnd() * (maxY - 12));
+      // embedded: solid for a few pixels all round, but open cave within reach
+      ok = rockAt(x, y) && rockAt(x + 3, y) && rockAt(x - 3, y) && rockAt(x, y + 3) && rockAt(x, y - 3)
+        && nearOpen(x, y, 16);
+    }
+    if (!ok) continue;
+    let a = rnd() * Math.PI * 2;
+    const len = 18 + Math.floor(rnd() * 40);
+    for (let st = 0; st < len; st++) {
+      const r = rnd() < 0.2 ? 2 : 1;                   // mostly a thin seam, the odd nugget
+      for (let dy = -r; dy <= r; dy++)
+        for (let dx = -r; dx <= r; dx++) {
+          if (dx * dx + dy * dy > r * r + 0.5) continue;
+          const px = Math.round(x) + dx, py = Math.round(y) + dy;
+          if (rockAt(px, py)) ore[py * CW + px] = 1;
+        }
+      a += (rnd() - 0.5) * 0.9;
+      x += Math.cos(a) * 1.2; y += Math.sin(a) * 1.2;
+      if (!rockAt(Math.round(x), Math.round(y))) break;   // a seam stops where the rock does
+    }
+  }
+  return ore;
+}
+
 function makeLevel(seed, floor, owned) {
   floor = floor || 1;
   const have = new Set(owned || []);     // perks you are already carrying, so a room is
@@ -5016,8 +5189,16 @@ function makeLevel(seed, floor, owned) {
     { x: portal.x + portal.w / 2, y: portal.y + portal.h / 2, r: 50 },
     ...rooms.map(r => ({ x: r.x, y: r.y, r: 70 })), ...pickups.map(q => ({ x: q.x, y: q.y, r: 22 }))];
   const deco = decorate(mat, img, dimg, bgImg, floor, seed, keep);
+  // gold seams, painted over whatever the decoration left on the rock
+  const ore = goldVeins(mat, seed, floor);
+  for (let i = 0; i < ore.length; i++) {
+    if (!ore[i] || mat[i] !== ROCK) { ore[i] = 0; continue; }
+    const r1 = hash(i % CW * 5 + 11, ((i / CW) | 0) * 3 + 7), k = i * 4;
+    const glint = r1 > 0.9 ? 1.25 : 0.8 + r1 * 0.3;
+    d[k] = Math.min(255, 222 * glint); d[k + 1] = Math.min(255, 168 * glint); d[k + 2] = 48 * glint; d[k + 3] = 255;
+  }
 
-  return { mat, img, bgImg, dimg, props: deco.props, amb: deco.amb, start, portal, enemies, pickups, stock, shopExit, arrival,
+  return { mat, img, bgImg, dimg, ore, props: deco.props, amb: deco.amb, start, portal, enemies, pickups, stock, shopExit, arrival,
     rooms, roster, theme: T.name };
 }
 
@@ -5153,6 +5334,7 @@ function Game({ input }) {
     let miniEdgeIdx = [];
 
     let mat, img, start, portal, enemies, pickups, stock, arrival, total, floor = 1;
+    let ore = null, oreBank = 0;                     // gold seams in the rock, and the loose change
     let levelSeed = 0, levelOwned = [];              // what made this cave, for the autosave
     // sound: the jetpack's roar, each live Black Hole's drone, the low-health heartbeat
     let jetLoop = null, beatT = 0, wasEmpty = false;
@@ -5243,7 +5425,7 @@ function Game({ input }) {
         back.rooms.forEach(i => { if (level.rooms && level.rooms[i]) level.rooms[i].taken = true; });
         if (back.pickups) level.pickups = back.pickups;
       }
-      mat = level.mat; img = level.img;
+      mat = level.mat; img = level.img; ore = level.ore || null;
       // minimap outlines for this floor: scan the real terrain in MINI_D x MINI_D blocks;
       // a block is an outline if a wall runs through it (it holds both rock and open), which
       // traces the cave walls continuously at a much finer grain than the fog grid.
@@ -5306,7 +5488,7 @@ function Game({ input }) {
       if (p.dead) return;
       const pk = pickups.filter(q => !q.taken && (q.kind === 'mod' || q.kind === 'gun'))
         .map(q => (q.kind === 'mod' ? { kind: 'mod', id: q.id, x: q.x, y: q.y, t: q.t }
-          : { kind: 'gun', gun: q.gun, x: q.x, y: q.y, t: q.t }));
+          : { kind: 'gun', gun: q.gun, x: q.x, y: q.y, t: q.t, old: !!q.old }));
       const data = { ver: VERSION, floor, hp: p.hp, loadout: input.current.loadout,
         level: { seed: levelSeed, owned: levelOwned, alive: enemies.map(e => e.sid),
           sold: stock.map((it, i) => (it.sold ? i : -1)).filter(i => i >= 0),
@@ -5325,6 +5507,15 @@ function Game({ input }) {
         const nx = cx + dx, ny = cy + dy;
         if (nx >= 0 && ny >= 0 && nx < FW && ny < FH && seen[ny * FW + nx]) return true;
       }
+      return false;
+    };
+    // a prize room counts as found once any of it has been in your line of sight
+    const roomSeen = r => {
+      for (let y = r.y - ROOM_HH; y <= r.y + ROOM_HH; y += FOG_U)
+        for (let x = r.x - ROOM_HW; x <= r.x + ROOM_HW; x += FOG_U) {
+          const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
+          if (seen[cy * FW + cx]) return true;
+        }
       return false;
     };
     // Repaint the whole overlay mask from the reveal grid. FW x FH is a few thousand
@@ -5477,16 +5668,31 @@ function Game({ input }) {
       const minX = Math.max(0, Math.floor(cx0 - rc)), maxX = Math.min(CW - 1, Math.ceil(cx0 + rc));
       const minY = Math.max(0, Math.floor(cy0 - rc)), maxY = Math.min(CH - 1, Math.ceil(cy0 + rc));
       const d = img.data;
-      let changed = false;
+      let changed = false, nOre = 0;
       for (let cy = minY; cy <= maxY; cy++)
         for (let cx = minX; cx <= maxX; cx++) {
           const i = cy * CW + cx;
           if (!mat[i] || mat[i] === BED) continue;
           if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
+          if (ore && ore[i]) { ore[i] = 0; nOre++; }
           mat[i] = 0; d[i * 4 + 3] = 0; changed = true;
         }
       if (changed) tctx.putImageData(img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
       unDeco(cx0, cy0, rc, minX, minY, maxX, maxY);
+      if (nOre) dropOre(x, y, nOre);
+    }
+    // a gold seam cut or blown open: bits of gold tumble out, as much as the rock you took.
+    // Fractions carry over in oreBank, so nibbling a seam with a drill pays the same as a blast.
+    function dropOre(x, y, n) {
+      oreBank += n * ORE_GOLD * (1 + (floor - 1) * 0.3) * pb.gold;
+      let bits = Math.min(12, Math.floor(oreBank / 2));
+      if (!bits) return;
+      const each = Math.floor(oreBank / bits);
+      oreBank -= each * bits;
+      for (let k = 0; k < bits; k++)
+        coins.push({ x: x + (Math.random() - 0.5) * 6, y, amount: each, t: Math.random() * 6.28,
+          vx: (Math.random() - 0.5) * 120, vy: -60 - Math.random() * 80 });
+      SFX.fx('coinland', x, y);
     }
     // wipe the decoration layer inside a cleared circle, so baked rubble, beams and pillars
     // go with the rock round them
@@ -5643,7 +5849,7 @@ function Game({ input }) {
           split: sh.split, cluster: sh.cluster, bounceFx: sh.bounceFx,
           friendly: sh.friendly, chain: sh.chain, fuse: sh.fuse,
           payload: sh.payload && sh.payload.length ? sh.payload : null, hidden: sh.hidden, arc: sh.arc,
-          drift: sh.drift, pop: sh.pop,
+          drift: sh.drift, pop: sh.pop, tele: sh.tele,
           trig: sh.trig, timer: sh.trig === 'timer' ? sh.timer : null,
           ox: bx, oy: by, age: 0, born: sh.life });
       }
@@ -5792,6 +5998,26 @@ function Game({ input }) {
       fields.push({ x, y, r: sh.r, field: sh.field, life: sh.life, max: sh.life,
         col: sh.col, dmg: sh.dmg || 1, tick: 0, payload: pay, ang: ang || 0, trig: sh.trig });
     }
+    // Teleport Bolt: put you where the bolt stopped. It may have stopped against rock, so
+    // back up along its own track (and nudge up/down) until your whole body fits; if
+    // nowhere near fits, it fizzles and you stay put.
+    function teleportTo(b) {
+      if (p.dead) return;
+      const sp = Math.hypot(b.vx, b.vy), nx = sp ? b.vx / sp : 0, ny = sp ? b.vy / sp : 0;
+      for (let back = 0; back <= 40; back += 3)
+        for (const dy of [0, -4, 4, -8, 8, -12, 12, -16, 16]) {
+          const x = b.x - nx * back - PW / 2, y = b.y - ny * back - PH / 2 + dy;
+          if (x < CELL * 3 || y < CELL * 3 || x + PW > WW - CELL * 3 || y + PH > WH - CELL * 3) continue;
+          if (boxHit(x, y)) continue;
+          burst(p.x + PW / 2, p.y + PH / 2, 10, b.col);
+          p.x = x; p.y = y; p.vx = 0; p.vy = 0;
+          burst(p.x + PW / 2, p.y + PH / 2, 12, b.col);
+          SFX.fx('warp', p.x + PW / 2, p.y + PH / 2);
+          return;
+        }
+      burst(b.x, b.y, 4, b.col);
+      SFX.fx('fizzle', b.x, b.y);
+    }
     // a crystal "with Trigger" casts what it carries when it goes off
     const fieldPayload = f => {
       if (!f.payload) return;
@@ -5806,7 +6032,7 @@ function Game({ input }) {
       const minX = Math.max(0, Math.floor(cx0 - ring)), maxX = Math.min(CW - 1, Math.ceil(cx0 + ring));
       const minY = Math.max(0, Math.floor(cy0 - ring)), maxY = Math.min(CH - 1, Math.ceil(cy0 + ring));
       const d = img.data;
-      let debris = 0;
+      let debris = 0, nOre = 0;
       for (let cy = minY; cy <= maxY; cy++) {
         for (let cx = minX; cx <= maxX; cx++) {
           const i = cy * CW + cx, m = mat[i];
@@ -5821,6 +6047,7 @@ function Game({ input }) {
                 vx: (cx - cx0) / rc * 220 * f, vy: ((cy - cy0) / rc * 220 - 140) * f,
                 life: 0.8 + Math.random() * 0.4, max: 1.2, c: `rgb(${d[k]},${d[k + 1]},${d[k + 2]})`, size: 2, heavy: true });
             }
+            if (ore && ore[i]) { ore[i] = 0; nOre++; }
             mat[i] = 0;
             d[k + 3] = 0;
           } else if (dist <= ring) {
@@ -5830,6 +6057,7 @@ function Game({ input }) {
       }
       tctx.putImageData(img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
       unDeco(cx0, cy0, rc, minX, minY, maxX, maxY);
+      if (nOre) dropOre(x, y, nOre);
       // a blast knocks the props about: carts and pods go off, pillars crack, icicles let go
       for (const pr of props) {
         if (pr.gone || Math.abs(pr.x - x) > R + 40 || Math.abs(pr.y - y) > R + 40) continue;
@@ -5882,7 +6110,7 @@ function Game({ input }) {
     function blowProp(pr) {
       if (pr.gone) return;
       pr.gone = true;                          // first, so a chain of blasts can't loop
-      if (pr.k === 'barrel') { explode(pr.x, pr.y - 6, 60); SFX.debris(pr.x, pr.y - 6); }
+      if (pr.k === 'barrel') { explode(pr.x, pr.y - 6, 105); SFX.debris(pr.x, pr.y - 6); }
       else if (pr.k === 'pod') {
         SFX.pop(pr.x, pr.y - 6);
         clouds.push({ x: pr.x, y: pr.y - 8, r: 34, life: 4.5, max: 4.5, tick: 0 });
@@ -6589,6 +6817,7 @@ function Game({ input }) {
         if (boom) { explode(b.x, b.y, b.explode); dead = true; }
         // an expiration trigger goes off however it dies; a trigger stopped by a prop counts as a hit
         if (dead && b.payload && (b.trig === 'expire' || b.struck)) firePayload(b);
+        if (dead && b.tele) teleportTo(b);            // Teleport Bolt: you go where it stopped
         if (dead && b.arc && b.trail) {               // the bolt's path lingers for a blink
           b.trail.push({ x: b.x, y: b.y });
           addArc(b.trail, b.col, 1.4, 0.16);
@@ -6664,13 +6893,19 @@ function Game({ input }) {
             SFX.arc(sx, sy, true);
           }
         } else if (f.field === 'vacuum') {
-          for (const e of enemies) {
-            const dx = f.x - e.x, dy = f.y - e.ty, d = Math.hypot(dx, dy) || 1;
-            if (d < f.r) { e.x += dx / d * 90 * dt; e.y += dy / d * 90 * dt; e.tgt = null; }
-          }
-          for (const b of bullets) {
-            const dx = f.x - b.x, dy = f.y - b.y, d = Math.hypot(dx, dy) || 1;
-            if (d < f.r) { b.vx += dx / d * 500 * dt; b.vy += dy / d * 500 * dt; }
+          // Noita's Vacuum Field: a blink after it appears, everything in reach is warped
+          // straight to the middle, through walls — creatures, shots (theirs and yours),
+          // gold and loot. Once, then it's gone.
+          if (!f.done && f.max - f.life >= VACUUM_WAIT) {
+            f.done = true;
+            const inR = (x, y) => Math.hypot(x - f.x, y - f.y) < f.r;
+            for (const e of enemies) if (inR(e.x, e.ty)) { e.y += f.y - e.ty; e.x = f.x; e.tgt = null; }
+            for (const b of bullets) if (inR(b.x, b.y)) { b.x = f.x; b.y = f.y; }
+            for (const b of enemyShots) if (inR(b.x, b.y)) { b.x = f.x; b.y = f.y; }
+            for (const g of coins) if (inR(g.x, g.y)) { g.x = f.x; g.y = f.y; }
+            for (const q of pickups) if (!q.taken && inR(q.x, q.y)) { q.x = f.x; q.y = f.y; }
+            burst(f.x, f.y, 14, f.col);
+            SFX.fx('warp', f.x, f.y);
           }
         } else if (f.field === 'glitter') {
           if (f.tick <= 0) {
@@ -7552,9 +7787,9 @@ function Game({ input }) {
         const qy = q.y + Math.sin(time * 2 + q.t) * 3;
         if (qy > camY + vh + 30 || qy < camY - 30 || q.x < camX - 30 || q.x > camX + vw + 30) continue;
         if (q.kind === 'gun') {
-          ctx.globalAlpha = 0.25; ctx.fillStyle = COL.bullet;
-          ctx.beginPath(); ctx.arc(q.x, qy, 13, 0, Math.PI * 2); ctx.fill();
-          ctx.globalAlpha = 1;
+          // a gun you've never held glows, with sparks streaking out of it; one you swapped
+          // out and left on the ground doesn't, so you can tell new from discarded at a glance
+          if (!q.old) drawGunGlow(ctx, q.x, qy, time, q.t);
           drawGun(ctx, q.x - 5, qy + 1, -0.22, 0.85, gunAccent(q.gun));
         } else {
           const m = MODS[q.id];
@@ -7996,17 +8231,41 @@ function Game({ input }) {
         mctx.putImageData(miniImg, 0, 0);
         const pw = c.width / dpr, ph = playPx / dpr, pad = 10;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx.fillStyle = '#000';
+        ctx.fillStyle = 'rgba(0,0,0,0.8)';            // a touch see-through, so the cave shows behind
         ctx.fillRect(0, 0, pw, ph);
         const k = Math.min((pw - 2 * pad) / MMW, (ph - 2 * pad) / MMH);
         const mw = MMW * k, mh = MMH * k, mx0 = (pw - mw) / 2, my0 = (ph - mh) / 2;
         ctx.imageSmoothingEnabled = true;
         ctx.drawImage(miniC, 0, 0, MMW, MMH, mx0, my0, mw, mh);
         const wW = CW * CELL, wH = CH * CELL;
-        ctx.fillStyle = '#ffd23c';
+        const mX = x => mx0 + (x / wW) * mw, mY = y => my0 + (y / wH) * mh;
+        // the prize rooms you've found: a yellow outline, crossed out once you've had the prize
+        ctx.strokeStyle = '#ffd23c'; ctx.lineWidth = 1.5;
+        for (const r of rooms) {
+          if (!roomSeen(r)) continue;
+          const x0 = mX(r.x - ROOM_HW), y0 = mY(r.y - ROOM_HH), x1 = mX(r.x + ROOM_HW), y1 = mY(r.y + ROOM_HH);
+          ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+          if (r.taken) {
+            const ix = (x1 - x0) * 0.25, iy = (y1 - y0) * 0.2;
+            ctx.beginPath();
+            ctx.moveTo(x0 + ix, y0 + iy); ctx.lineTo(x1 - ix, y1 - iy);
+            ctx.moveTo(x1 - ix, y0 + iy); ctx.lineTo(x0 + ix, y1 - iy);
+            ctx.stroke();
+          }
+        }
+        // loot you've seen and left: green for mods, yellow for guns (a ring if you threw it back)
+        for (const q of pickups) {
+          if (q.taken || !fogLit(q.x, q.y)) continue;
+          const col = q.kind === 'gun' ? '#ffd23c' : '#46e07a';
+          ctx.beginPath(); ctx.arc(mX(q.x), mY(q.y), 2.6, 0, Math.PI * 2);
+          if (q.old) { ctx.strokeStyle = col; ctx.lineWidth = 1.2; ctx.stroke(); }
+          else { ctx.fillStyle = col; ctx.fill(); }
+        }
+        // you: a bigger dot with a white rim, so it can't be mistaken for a gun
+        ctx.fillStyle = '#ffd23c'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(mx0 + ((p.x + PW / 2) / wW) * mw, my0 + ((p.y + PH / 2) / wH) * mh, 4, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.arc(mX(p.x + PW / 2), mY(p.y + PH / 2), 4, 0, Math.PI * 2);
+        ctx.fill(); ctx.stroke();
         ctx.imageSmoothingEnabled = false;
       }
     }
@@ -8038,6 +8297,38 @@ function Game({ input }) {
     };
   }, []);
   return h('canvas', { ref: cv, className: 'game' });
+}
+
+// A new gun on the ground: a soft amber glow, breathing, with sparks streaking out of it
+// (drawn before the gun, so they come from behind it). Each streak rides its own clock:
+// born at the middle, flying out and fading, then round again at a fresh angle.
+const GLOW_STREAKS = 9;
+function drawGunGlow(ctx, x, y, time, seed) {
+  const breathe = 0.85 + 0.15 * Math.sin(time * 2.6 + seed);
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const R = 20 * breathe;
+  const g = ctx.createRadialGradient(x, y, 0, x, y, R);
+  g.addColorStop(0, 'rgba(255,201,60,0.55)');
+  g.addColorStop(0.45, 'rgba(255,170,40,0.22)');
+  g.addColorStop(1, 'rgba(255,140,20,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
+  ctx.lineCap = 'round';
+  for (let k = 0; k < GLOW_STREAKS; k++) {
+    const ph = (time * 0.7 + k / GLOW_STREAKS + seed) % 1;
+    const lap = Math.floor(time * 0.7 + k / GLOW_STREAKS + seed);
+    const a = seed * 3.1 + k * 2.39996 + lap * 1.7;      // golden-angle spread, new angle each lap
+    const r0 = 4 + ph * 18, len = 3 + 5 * (1 - ph);
+    ctx.globalAlpha = Math.sin(ph * Math.PI) * 0.9;
+    ctx.strokeStyle = k % 3 ? '#ffc93c' : '#fff1b8';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0);
+    ctx.lineTo(x + Math.cos(a) * (r0 + len), y + Math.sin(a) * (r0 + len));
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 // the circumference of the gauge ring (r=46 in a 0..100 viewBox), used to turn a 0..1
@@ -8287,7 +8578,7 @@ function GunSwap({ input, refresh, onDone }) {
     const old = LO.guns[i];
     LO.guns[i] = resetGun(found.gun);   // taking a gun never changes which one you hold
     SFX.ui('gun');
-    if (old) { found.gun = old; }       // your old gun stays here on the ground
+    if (old) { found.gun = old; found.old = true; }   // your old gun stays here, no glow: you've had it
     else found.taken = true;
     found.cool = PICKUP_COOL;           // don't reopen the moment you step past it
     input.current.found = null;

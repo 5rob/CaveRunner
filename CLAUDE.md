@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v79**. Branch: `main` (release channel is `main`).
+Current version: **v80**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -663,6 +663,28 @@ burst, grab/reach per decision, line speed + web cooldown per shot, max lines pe
 the roam spot turns back, aggro reach once a second per spider, silk range/speed/cooldown per string shot, bite
 damage/cooldown per bite, slow + snap length per string stuck on you, and slow/grab/climb once per web line (stored
 on it, so a line doesn't flicker). Adding a spider knob: add a row to `SP_KNOBS` and read it with `spr`.
+**v80: Noita spawn table, teleport bolts, vacuum, gold seams, glow, map marks.**
+`modWeight(id, floor)` is Noita's own spawn data now: `NOITA_SPAWN` (Noita action id →
+[spawn_level, spawn_probability] strings, copied from `gun_actions.lua`) and `NOITA_OF` (our id →
+its Noita twin; made-up spells borrow the nearest twin, `cold`/`battery` have `OURS_*` rows).
+`floorTier(floor)`: floor 1 = tier 0, floor 10 = tier 6, linear between (weights interpolate),
+>10 = tier 10 (max of the 10 and 6 odds). **A new spell needs a `NOITA_OF` entry** or it never
+drops (`spells.test.js` checks every `ALL_IDS`). `MOD_TIER` is still the 1–4 rarity used for
+trigger-variant pricing, not for drops. **Teleport Bolt / Small Teleport Bolt** (`tele`,
+`teleshort`): shots with `tele: 1` (through `blankShot`/`spawnShot`); when the bullet dies (rock,
+creature, expiry) `teleportTo(b)` backs up its track and nudges ±16 until `!boxHit`, else fizzles.
+**Vacuum Field** reworked to Noita's: `life 0.33`, `r 64`, at `VACUUM_WAIT` (0.13s) it warps
+enemies, bullets, enemy shots, coins and pickups within `r` to its centre once (`f.done`), walls
+ignored. **Gold seams:** `goldVeins(mat, seed, floor)` (pure, own RNG) marks ROCK only, above the
+shop, near open cave; `makeLevel` paints them after `decorate` and returns `ore`. `dig`/`explode`
+count ore pixels cleared and call `dropOre` → coins worth `ORE_GOLD` × floor lift × `pb.gold` per
+pixel, fractions carried in `oreBank`. **Gun glow:** `drawGunGlow` (radial glow + streaks, before
+the gun sprite) on ground guns without `q.old`; `GunSwap.take` sets `found.old = true` on the gun
+you swap out; the save keeps `old`. **Map:** background `rgba(0,0,0,0.8)`; `fogLit` pickups as
+dots (mods green, guns yellow, `old` guns a hollow ring); rooms with any `seen` cell (`roomSeen`,
+`ROOM_HW/HH`) outlined yellow, X when `taken`; the player dot has a white rim. Minecart blast 105.
+Tests: `goldveins` (logic), `spells` (spawn table), `tests/browser/teleport.test.js` (bolts,
+vacuum, ore, swap flag), `map.test.js` (dots, rooms, see-through).
 **v74 Pollen nerf.** Pollen has `drift: 1`, `homeR: 80`, `pop: 6` (no `eat`). `driftStep` (pure, above
 `tracePath`, consts `DRIFT_*`) damps its speed and, once slow, floats it up. It only homes after
 locking (`b.lock`: nearest creature within `homeR` with `lineOfSight`), then speeds back to

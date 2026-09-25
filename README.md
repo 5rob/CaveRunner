@@ -103,9 +103,12 @@ the gap between the two sticks — a `g`, with thousands shortened to a `k` (so 
 `1.2kg`).
 
 The map button opens the map over the whole play area (the run pauses while it's up): the
-cave you have uncovered, drawn as white outlines on black, with a yellow dot for where you
-are. It only shows ground the fog of war has lifted, so it fills in as you explore. Tap the
-button again to close it.
+cave you have uncovered, drawn as white outlines over a see-through black (the cave shows
+faintly behind it), with a white-rimmed yellow dot for where you are. Loot you have seen and
+not picked up is marked: **green dots for mods, yellow dots for guns** (a hollow yellow ring for
+a gun you swapped out and left). A perk room or +25 health room you have found is **outlined
+in yellow**, with an **X** through it once you've taken its prize. It only shows what the fog
+of war has lifted, so it fills in as you explore. Tap the button again to close it.
 
 ## Picking things up
 
@@ -146,7 +149,13 @@ effect and stats, or a gun's stat sheet compared against the one you are holding
 so you can read what you are buying before paying for it. Your **Bag** opens anywhere,
 but *changing* your setup — dragging mods, reordering guns — only works in the shop (or
 anywhere, with the Tinker perk); out in the cave the Bag is read-only. Enemies drop gold
-when they die, so a floor you clear pays for the next floor's shopping.
+when they die, so a floor you clear pays for the next floor's shopping. **Gold seams** run
+through the rock here and there — dig or blast one open and bits of gold tumble out, more the
+more of the seam you take.
+
+A gun lying in the cave that you have never held **glows**, with sparks streaking out of it.
+One you swapped out and left on the ground doesn't, so you can tell new from discarded at a
+glance.
 
 Every gun has a **level from 1 to 10**, and a floor's guns are that floor's level (floor 10
 and deeper: level 10). Level 1 guns are wild — any stat can roll anywhere from awful to
@@ -213,7 +222,7 @@ even before you reach them.
 | Cave | Scenery |
 |---|---|
 | Mossy caves | Overgrown groves thick with **vines** you can hang on (no jetting = you hold on and your fuel refills; push the stick to climb), dripping water, moss and rubble, glowing spores |
-| Coal seams | **Minecarts that explode when shot** (a big blast), rusty lanterns, soot falling, pit props, old pickaxes |
+| Coal seams | **Minecarts that explode when shot** (a very big blast), rusty lanterns, soot falling, pit props, old pickaxes |
 | Frozen deep | **Icicles that drop when you walk under them**, **slippery ice**, **snow drifts that slow you**, frozen waterfalls to hang on, icy wind |
 | Ember halls | **Lava drips** and **fire vents** that burn, **obsidian spikes**, ash piles, drifting embers |
 | Fungal grotto | **Bouncy mushrooms** that throw you up, **spore pods** that burst into a poison cloud when shot, **slime that slows you**, glowing caps, mycelium to hang on |
@@ -324,18 +333,20 @@ gun.
 
 ## The spell book
 
-There are 116 mods, most of them lifted from Noita's spell list and rebuilt to fit
+There are 118 mods, most of them lifted from Noita's spell list and rebuilt to fit
 a cave shooter. They come in a few shapes:
 
 - **Shots** are the things that come out of the barrel — Bolt, Slug, Magic Missile,
   Fireball, Lightning Bolt (a crackling bolt that forks off arcs at nearby creatures and rock as it flies), Chain Bolt (which hops from enemy to enemy), Black Hole
-  (a slow starry sphere that eats rock, hauls creatures into it and grinds them, and swallows any enemy shot that comes near), Pollen (puffs out, drifts to a stop and floats up, then homes on any creature that comes close, popping a tiny crater on whatever it touches), Nuke, Meteor, and twenty-odd more. **Plasma Beam**
+  (a slow starry sphere that eats rock, hauls creatures into it and grinds them, and swallows any enemy shot that comes near), **Teleport Bolt** and
+  **Small Teleport Bolt** (harmless; wherever the bolt hits or runs out, you appear there — the small one is a short hop, and neither ever puts you inside rock), Pollen (puffs out, drifts to a stop and floats up, then homes on any creature that comes close, popping a tiny crater on whatever it touches), Nuke, Meteor, and twenty-odd more. **Plasma Beam**
   and **Luminous Drill** are instant: they hit along a line with no travel time.
 - **Static fields** stay where you cast them and work over time. Unstable Crystal is a
   proximity mine; Dormant Crystal sits harmless until another blast reaches it; Circle
   of Stillness leaves enemies crawling; Circle of Shielding swallows their fire; Circle
-  of Vigour heals you while you stand in it; Thundercloud, Vacuum Field and Glittering
-  Field cover an area. They take a cast slot like a shot does.
+  of Vigour heals you while you stand in it; Thundercloud and Glittering Field cover an area.
+  **Vacuum Field** is over in a blink: a moment after it appears, every creature, shot, coin
+  and loose item within reach snaps into its middle, straight through walls. They take a cast slot like a shot does.
 - **Modifiers** change the shots drawn after them, as always. Nine of the new ones bend
   the flight path — Boomerang, Spiral Arc, Ping-Pong, Orbiting Arc, Gravity, Anti-Gravity,
   Horizontal Path, Auto-Aim, Short-range Homing — and the aim line draws every one of
@@ -356,9 +367,12 @@ a cave shooter. They come in a few shapes:
   inside it only affect it, and a trigger in the payload carries a payload of its own.
   A corner mark on the tile (T, T², ◔, ✝) tells a variant from its base spell.
 
-What the cave and the shops hand out is weighted by rarity, and each floor reaches a
-little further up the scale, so the early game is workhorses and the rare spells
-stay a find. (The Greek letter copy spells are switched off for now.)
+What the cave and the shops hand out follows **Noita's own spawn table** (its spell tiers):
+each spell turns up only at the tiers Noita lists it for, as often as Noita makes it. Floor 1
+is tier 0 and floor 10 is tier 6, sliding in between; past floor 10 is the end-game tier. So
+Spark Bolt is everywhere early and gone by floor 6, Add Trigger waits for the middle floors,
+Octuple and Myriad are deep-cave finds, and Wand Refresh only shows up past floor 10. (The
+Greek letter copy spells are switched off for now.)
 
 ## Build advice
 
@@ -412,7 +426,7 @@ them if it cannot find either.
 - The map only keeps what you had a line on: a wall hides its far side from the fog of war for good
 - Destructible pixel terrain: explosions and drilling shots eat everything except the outer border
 - Guns and mods to find, with a drag-and-drop screen for building them
-- 116 mods: shots, static fields, path modifiers, trigger and timer spells, and utility casts
+- 118 mods: shots, static fields, path modifiers, trigger and timer spells, and utility casts
 - A build advisor that measures your damage per second, names the limiting factor and offers one-tap fixes
 - A trajectory aim line — unlocked by the Trajectory Sight perk — that simulates the next shot for real: gravity, acceleration, homing, ricochets, drilling and spread
 - A full-screen map (map button, pauses the run): the revealed cave drawn as white outlines, with a yellow dot for your position

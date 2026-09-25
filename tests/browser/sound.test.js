@@ -187,7 +187,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     if (!podR) podR = await blow('pod');
     if (!(cartR && podR)) await hop();
   }
-  check('a minecart goes up with a bang and clattering debris', cartR && cartR.boom >= 1 && cartR.debris === 1, cartR);
+  check('a minecart goes up with a bang and clattering debris', cartR && cartR.boom >= 1 && cartR.debris >= 1, cartR);   // a big blast can set off a neighbour too
   check('a spore pod bursts with a pop', podR && podR.pop === 1, podR);
 
   check('no sound errors during play', await page.evaluate(() => SFX.stats.errors.length) === 0,
