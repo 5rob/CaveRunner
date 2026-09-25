@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v71.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v72.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -42,6 +42,8 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v72 — build-advice swap suggestions parked** (dmg/s line kept); the bag gets the space.
 
 - **v71 — Bag screen rebuilt:** stats list (red→green quality, +/- from mods), 2×2 gun buttons with pictures, fixed slot grid with a pull-coloured firing light (Dev → Bag screen speed), scrolling mod bag.
 

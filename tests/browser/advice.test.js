@@ -39,36 +39,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the diagnosis shows', /recharge is the limit/i.test(r.diag || ''), r.diag);
   check('with the damage rate', /dmg\/s/.test(r.diag || ''), r.diag);
   check('and is colour-coded by bottleneck', /rech/.test(r.cls || ''), r.cls);
-  check('tips are offered', r.tips.length > 0 && r.tips.length <= 3, r.tips.length);
-  check('each tip states its gain', r.tips.every(t => /×[\d.]+ dmg/.test(t)), r.tips);
+  // v72: the suggested swaps are parked (SHOW_TIPS = false); only the dmg/s line shows
+  check('tips are parked', r.tips.length === 0, r.tips);
   await page.screenshot({ path: path.join(__dirname, '..', 'build', 'advice.png') });
-
-  // tapping a tip applies it and the advice updates
-  const before = await page.evaluate(() => window.__in.current.loadout.guns[0].slots.slice());
-  await page.tap('.tip');
-  await page.waitForTimeout(300);
-  const after = await page.evaluate(() => window.__in.current.loadout.guns[0].slots.slice());
-  check('tapping a tip applies it', JSON.stringify(before) !== JSON.stringify(after), { before, after });
-  const r2 = await read();
-  check('and the advice recalculates', r2.diag !== r.diag || JSON.stringify(r2.tips) !== JSON.stringify(r.tips),
-    { was: r.diag, now: r2.diag });
-  const dpsOf = t => parseFloat(t.match(/([\d.]+) dmg\/s/)[1]);
-  check('the damage rate actually went up', dpsOf(r2.diag) > dpsOf(r.diag),
-    { was: dpsOf(r.diag), now: dpsOf(r2.diag) });
-  check('the mod it displaced went back to the bag',
-    (await page.evaluate(() => window.__in.current.loadout.bag.length)) >= 18);
-
-  // the ordering mistake
-  await setup(['bolt', 'dmg_up'], []);
-  await page.waitForTimeout(280);
-  r = await read();
-  check('it suggests moving a modifier in front of its shot',
-    r.tips.length && /swap slots 1 and 2/i.test(r.tips[0]), r.tips);
-  await page.tap('.tip');
-  await page.waitForTimeout(280);
-  check('and the swap happens',
-    JSON.stringify(await page.evaluate(() => window.__in.current.loadout.guns[0].slots.slice())) === '["dmg_up","bolt"]',
-    await page.evaluate(() => window.__in.current.loadout.guns[0].slots.slice()));
 
   // other diagnoses
   await setup(['dmg_up', 'homing'], []);

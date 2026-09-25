@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v71</title>
+<title>CaveRunner v72</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -214,7 +214,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .legend{display:flex;flex-wrap:wrap;gap:3px 8px;margin:0 0 7px}
 .lg{display:flex;align-items:center;gap:4px;font:500 9.5px system-ui,sans-serif;color:var(--muted)}
 .lg i{width:8px;height:8px;border-radius:2px;display:block}
-.slotRow{overflow-y:auto;flex:1.2 1 0;min-height:64px;border-radius:9px;
+.slotRow{overflow-y:auto;flex:1 1 0;min-height:64px;border-radius:9px;
   background:var(--pad);padding:6px;margin-bottom:8px}
 .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:6px}
 .mgrid .tile{width:auto;height:auto;aspect-ratio:1}
@@ -240,7 +240,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .sortBag{flex:0 0 auto;height:22px;padding:0 10px;border-radius:11px;border:1px solid var(--ring);
   background:var(--pad);color:var(--muted);font:700 10px system-ui,sans-serif;letter-spacing:.06em}
 .bag{overflow-y:auto;
-  flex:1 1 0;min-height:70px;border-radius:9px;background:var(--pad);padding:6px;
+  flex:1.5 1 0;min-height:70px;border-radius:9px;background:var(--pad);padding:6px;
   scroll-padding-bottom:12px;margin-top:5px}
 .tile{width:60px;height:56px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
@@ -441,7 +441,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v71';
+const VERSION = 'v72';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -7926,6 +7926,10 @@ function SlotGrid({ gun, tile, sig }) {
     })));
 }
 
+// the build advisor's suggested swaps are parked (v72): the dmg/s line still shows, the
+// tip buttons don't. buildAdvice and the tip code are kept; flip this to bring them back.
+const SHOW_TIPS = false;
+
 function Editor({ input, close, refresh, canEdit }) {
   const LO = input.current.loadout;
   useEffect(() => { SFX.fx('open'); return () => SFX.fx('close'); }, []);
@@ -8133,7 +8137,7 @@ function Editor({ input, close, refresh, canEdit }) {
       return h('div', { className: 'advice' },
         h('div', { className: 'diag ' + adv.limit.key },
           h('b', null, adv.now.dps.toFixed(1) + ' dmg/s'), adv.limit.text),
-        canEdit && adv.tips.length ? h('div', { className: 'tips' },
+        SHOW_TIPS && canEdit && adv.tips.length ? h('div', { className: 'tips' },
           adv.tips.map((t, k) => h('button', { key: k, className: 'tip', onPointerDown: apply(t) },
             t.kind === 'move'
               ? 'Swap slots ' + (t.slot + 1) + ' and ' + (t.other + 1)

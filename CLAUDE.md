@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v71**. Branch: `main` (release channel is `main`).
+Current version: **v72**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -600,6 +600,9 @@ The per-pull outlines/stat lines (`.grp`, `.glab`, `.fx`) and the family legend 
 (`groupStats` is still pure and tested; `bulletgfx.test.js` was dropped). The advisor stays,
 tips on one side-scrolling line. `castGroups` now allows 64 pulls (was 16 — 25-slot guns).
 Tests: `tests/logic/bagui.test.js`, `tests/browser/grouping.test.js` (rewritten for the grid).
+**v72:** advisor tips parked — `SHOW_TIPS = false` (above `GunStats`) hides the `.tip` buttons; the
+`.diag` dmg/s line still shows. The bag gets the freed height (`.bag` flex 1.5 vs `.slotRow` 1).
+`advice.test.js` checks the diag and that no tips show; restore its tip checks from git (v71) when un-parking.
 
 ## Testing
 

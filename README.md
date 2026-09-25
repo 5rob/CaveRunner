@@ -341,6 +341,8 @@ stay a find. (The Greek letter copy spells are switched off for now.)
 
 ## Build advice
 
+*(The suggested-change buttons are switched off for now; the damage-per-second line and what's holding it back still show under the slots.)*
+
 Under the slots the build screen works out your sustained damage per second
 and names whatever is holding it back: recharge, cast delay, or mana running out
 faster than it comes back. It then looks for changes that measurably beat what you
