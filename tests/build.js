@@ -39,7 +39,7 @@ const SANDBOX =
   "      tctx.putImageData(img, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);" +
   "      dctx.putImageData(dimg, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);" +
   "      enemies.length = 0; props.length = 0; pickups.length = 0; bullets.length = 0;" +
-  "      enemyShots.length = 0; fields.length = 0; dparts.length = 0; amb.length = 0;" +
+  "      enemyShots.length = 0; webs.length = 0; silk.length = 0; strings.length = 0; fields.length = 0; dparts.length = 0; amb.length = 0;" +
   "      for (let y = Math.floor(y0 * CELL / FOG_U); y <= Math.floor(y1 * CELL / FOG_U); y++)" +
   "        for (let x = Math.floor(x0 * CELL / FOG_U); x <= Math.floor(x1 * CELL / FOG_U); x++) seen[y * FW + x] = 2;" +
   "      paintFog();" +
@@ -54,7 +54,7 @@ const HOOK_LVL = SANDBOX +
   "get rooms(){return rooms}, get pb(){return pb}, maxHp, " +
   "get roster(){return roster}, get theme(){return themeName}, " +
   "get arrival(){return arrival}, get start(){return start}, get portal(){return portal}, " +
-  "enemyShots, fields, beams, arcs, flashes, dig, motes, smoke, get sconces(){return sconces}, get props(){return props}, dparts, amb, clouds, rings, get zfx(){return zfx}, " +
+  "enemyShots, webs, silk, strings, fields, beams, arcs, flashes, dig, motes, smoke, get sconces(){return sconces}, get props(){return props}, dparts, amb, clouds, rings, get zfx(){return zfx}, " +
   "world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y }, " +
   "fog: { get seen(){return seen}, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal, paint: paintFog }, " +
   "light: { get flick(){return flick}, get r(){return torchR}, " +

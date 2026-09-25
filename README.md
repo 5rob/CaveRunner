@@ -235,7 +235,13 @@ Sixteen of them, named after Noita's, and they do not all behave the same way:
 - **Turrets** (Snipuhiisi, Kärpässieni, Jäätiö, Elävät luut) never move. They have
   longer reach and more punch, and the ones worth worrying about show a ring that
   closes before they fire — break the line and the shot never comes.
-- **Chasers** (Hämähäkki, Lohkare, Mato, Hurtta, Kobold, Konna) come at you and
+- **The spider** (Hämähäkki) lives on the rock and on its own silk. It scuttles
+  along walls, floors and ceilings in quick darting bursts — lazy when it's alone,
+  frantic once it has seen you — and crosses gaps by shooting a white line to the rock
+  on the other side and running over it. The lines stay, so a spider's corner of the
+  cave fills with web. Up close it bites; from range it shoots a string that sticks to
+  you — each one stuck on slows you (×0.8), until you pull far enough away to snap it.
+- **Chasers** (Lohkare, Mato, Hurtta, Kobold, Konna) come at you and
   hurt you by reaching you. The Lohkare is slow and armoured; the Hurtta is not.
 - **Bombers** (Limanuljaska, Stendari) run at you and burst on contact, taking
   themselves out with you. The Stendari hurts more.

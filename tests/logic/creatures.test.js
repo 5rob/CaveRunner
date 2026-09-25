@@ -118,10 +118,10 @@ check('only shooters and turrets are given a gun',
     return (c.act === 'shoot' || c.act === 'turret') ? c.bspd > 0 && c.range > 0 && c.cd > 0
                                                      : !c.bspd && !c.range;
   }));
-check('only chasers and bombers are given an aggro range',
+check('only chasers, bombers and spiders are given an aggro range',
   CREATURE_IDS.every(id => {
     const c = CREATURES[id];
-    return (c.act === 'chase' || c.act === 'bomb') ? c.aggro > 0 && c.spd > 0 : !c.aggro;
+    return (c.act === 'chase' || c.act === 'bomb' || c.act === 'spider') ? c.aggro > 0 && c.spd > 0 : !c.aggro;
   }));
 check('a wind-up is only on a turret', CREATURE_IDS.every(id =>
   !CREATURES[id].tele || CREATURES[id].act === 'turret'));

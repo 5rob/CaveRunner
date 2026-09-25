@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v75**. Branch: `main` (release channel is `main`).
+Current version: **v76**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -628,6 +628,20 @@ the right edge; the bag (`.weapon`, 🎒, `aria-label="Bag"`) mirrors the last g
 map (`.mapbtn`, 🗺️) sits above it. All gauge rings are thin (`sw` 1.6, spacing `rw` 3.2). Left
 stick: health ring outside, fuel ring (`GAUGE_COL.fuel`) inside it, red track when dry — the
 `.jetzone` fill is gone. Sticks/knob have no fill. Gold sits at the bottom of the gap (`bottom:5%`).
+**v76 the spider (Hämähäkki, `act: 'spider'`, `body: 'spider'` → `drawSpider`).** Pure part above
+`makeLevel` (after `losClear`): `surfNormal(x,y,R,solidCell)` (average direction from the rock cells in a
+disc to the centre = smoothed normal, plus `d`/`px,py` = nearest rock and the way out), `spiderSeat` (push
+straight out of rock nearer than `SPIDER.hold`, else pull in along the normal — this is what stops pixel
+snagging), `spiderAim`, `spiderStep(e, env, dt)` (state on `e.sp`: mode `fall|surf|line|shoot`). Bursts
+(`S.on`) and rests (`S.rest`); `decide()` at each burst start: goal = player when hunting, else a roam spot
+drifting round home. On rock: goal·normal ≥ `DEV.spDot` → ride a line within `spGrab` heading that way, else
+shoot a line (`spiderAim`, ≤ `spWeb`, rate-limited by `spRoamWeb`/`spHuntWeb`), else walk the tangent. Lines
+live in the Game's `webs` (anchors `a0/b0` drawn, `ain/bin` points inside rock checked a few per frame — dig
+one out and the line drops, riders fall). `silk` = strings in flight, `strings` = stuck to you (`ax,ay`
+anchor + offset on the player); `tied = DEV.spSlow ^ strings.length` multiplies all steering; a string past
+`spSilkMax` snaps. **Every tunable is a Dev knob in the Spider group (`DEV.sp*`)** — the owner asked for that;
+`SPIDER` keeps only body geometry. Tests: `tests/logic/spider.test.js` (hand-made grids: bumps, ledge, gap,
+dig-out), `tests/browser/spider.test.js` (sandbox: land, string, slow, snap, bite). Hooks: `__lvl.webs/silk/strings`.
 **v74 Pollen nerf.** Pollen has `drift: 1`, `homeR: 80`, `pop: 6` (no `eat`). `driftStep` (pure, above
 `tracePath`, consts `DRIFT_*`) damps its speed and, once slow, floats it up. It only homes after
 locking (`b.lock`: nearest creature within `homeR` with `lineOfSight`), then speeds back to
