@@ -44,6 +44,7 @@ it's stale.
 ## What shipped recently (most recent first)
 
 - **v80 — Noita spawn table for mod drops, Teleport Bolt + Small Teleport Bolt, Vacuum Field made Noita-accurate (instant warp), gold seams in the rock, glow + streaks on never-held ground guns, map marks (loot dots, found prize rooms, X when taken, 80% see-through), minecart blast ×1.75.**
+  Sources: [Wand and Spell Tiers](https://noita.wiki.gg/wiki/Wand_and_Spell_Tiers), [Teleport Bolt](https://noita.wiki.gg/wiki/Teleport_Bolt), [Vacuum Field](https://noita.wiki.gg/wiki/Vacuum_Field); spawn numbers from `gun_actions.lua` in [noita-data-parsing](https://github.com/Jazzer360/noita-data-parsing) (wiki.gg blocks curl — use WebFetch, or the GitHub file for exact data).
 - **v79 — grab bars down the side of the gun's slot grid and the mod bag** (tap to jump, drag to scroll), and a swipe on an empty slot scrolls the grid.
 - **v78 — web lines work like vines** (touch = latch, hang, climb along, push down to drop; each line you pass through slows you ×0.8) and **every spider Dev control is a min/max range**, rolled fresh at each use (owner's rule).
 - **v77 — spiders no longer freeze** after reaching where they were going (owner: "all the spawned spiders seem to be stuck in place").

@@ -685,6 +685,12 @@ dots (mods green, guns yellow, `old` guns a hollow ring); rooms with any `seen` 
 `ROOM_HW/HH`) outlined yellow, X when `taken`; the player dot has a white rim. Minecart blast 105.
 Tests: `goldveins` (logic), `spells` (spawn table), `tests/browser/teleport.test.js` (bolts,
 vacuum, ore, swap flag), `map.test.js` (dots, rooms, see-through).
+Sources: tier list https://noita.wiki.gg/wiki/Wand_and_Spell_Tiers, spells
+https://noita.wiki.gg/wiki/Teleport_Bolt and https://noita.wiki.gg/wiki/Vacuum_Field. The spawn
+numbers came from `data/scripts/gun/gun_actions.lua` in https://github.com/Jazzer360/noita-data-parsing
+(raw: `raw.githubusercontent.com/Jazzer360/noita-data-parsing/HEAD/data/scripts/gun/gun_actions.lua`).
+wiki.gg blocks curl/raw page fetches ("Blocked - wiki.gg"), so read it with WebFetch; for exact
+numbers, go to the GitHub copy of the Lua file.
 **v74 Pollen nerf.** Pollen has `drift: 1`, `homeR: 80`, `pop: 6` (no `eat`). `driftStep` (pure, above
 `tracePath`, consts `DRIFT_*`) damps its speed and, once slow, floats it up. It only homes after
 locking (`b.lock`: nearest creature within `homeR` with `lineOfSight`), then speeds back to
