@@ -97,14 +97,16 @@ for (let s = 0; s < 200; s++) {
   if (r.length < 2 || r.length > 6 || new Set(r).size !== r.length || !r.every(id => CREATURES[id])) lateOk = false;
 }
 check('and still a legal 2-6 of real creatures', lateOk);
+check('rats and nests are never rolled onto a roster', Array.from({ length: 300 }, () => rosterFor(11, Math.random)).every(r => !r.includes('rotta') && !r.includes('pesa')));
 
 // ---- creatures differ from one another ----
 check('there are enough creatures to keep floors apart', CREATURE_IDS.length >= 12, CREATURE_IDS.length);
 check('every creature has a name, a body and a colour set',
   CREATURE_IDS.every(id => {
     const c = CREATURES[id];
+    // a rat nest never hurts you and pays out its own gold (raNestGold), so it's let off those two
     return c.name && c.body && c.col && c.col.a && c.col.b && c.col.c && c.col.eye &&
-      c.hp > 0 && c.dmg > 0 && c.gold > 0 && c.r > 0;
+      c.hp > 0 && (c.act === 'nest' || c.dmg > 0 && c.gold > 0) && c.r > 0;
   }));
 const acts = new Set(CREATURE_IDS.map(id => CREATURES[id].act));
 check('they do not all behave the same way', acts.size >= 3, [...acts]);
@@ -170,7 +172,8 @@ for (let seed = 1; seed <= 12; seed++) {
   for (const f of [1, 4, 6, 9, 12]) {
     const lv = makeLevel(seed * 31 + f, f);
     counted++;
-    const ids = lv.enemies.map(e => e.k.id);
+    // rat nests (floor 1) come from the level, not the roster, and let their rats out later
+    const ids = lv.enemies.filter(e => !e.nest).map(e => e.k.id);
     if (ids.every(id => lv.roster.includes(id))) spawnOk++;
     if (new Set(ids).size === lv.roster.length || lv.roster.length === 1) mixed++;
     if (lv.enemies.every(e => e.hp === e.hpMax && e.hpMax === enemyFor(e.k.id, f).hp)) seeded++;

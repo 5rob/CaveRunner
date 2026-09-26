@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v87**. Branch: `main` (release channel is `main`).
+Current version: **v88**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -815,6 +815,31 @@ along) = `webLetGo`. `drawArch` in `drawProp`. Fire: `fireArches` (listed by `fi
 same-length swap and runs from `ignite` too), `catchArch(pr, u)`, burns both ways at `fireArch` px/s, lighting strands
 as `u0..u1` passes them. Tests: `tests/logic/zones.test.js`, `tests/browser/archvine.test.js` (sandbox with the new
 `sandbox({ roof: true })`), strata/decor updated.
+**v88 rats, nests, lanterns, split rooms.** `RA_KNOBS` (Dev → Rats & nests, all ranges). **Nests:** `ratNests(mat, rnd,
+zone, keep, nb, nw)` (pure, own RNG from the seed, floor 1 only, run in `makeLevel` after the rooms/roof) finds an up- or
+side-facing surface with 22px open in front, a room (`r` 5-7px) 20-34px into solid ROCK, a tunnel back with a sine bend
+(so no sightline; `cut` r1.6 — thinner than the runner), a mound of earth at the mouth (`mound`, tinted after colouring).
+Returns `nests` (on the level); each becomes an enemy `k.act === 'nest'` (`CREATURES.pesa`) with `e.nest = { path (world,
+room → mouth), mouth, t, stash, max }`. **The burrow is hidden behind paint:** after `decorate`, every open pixel of room +
+tunnel (bar the last 4px) is painted on `dimg` in the neighbouring rock's colour, so it reads as rock through the fog's soft
+edge; dig/explode wipe `dimg`, and the Game draws a nest or a tunnel-mode rat only where that paint is gone (`burrowShut`).
+Built-up layers are too thin to bury a room deep, which is why it's paint and not depth. **Rats** (`CREATURES.rotta`, act
+`rat`, kp `ra`, never on a roster): `ratStep(e, env, dt)` (pure, state `e.ra`, modes `surf|air|tunnel`) — surface crawl
+like the spider via the shared `surfSeat` (spiderSeat now calls it), bursts/rests, falls off ceilings (`RAT.ceil`), jumps at
+a goal that's up off the surface and within `raJumpR` trying higher arcs until one clears the rock (`env.jump === false`
+while roaming), tunnel mode follows the nest path (`pathAt`/`pathLen`); returns `'home'|'out'|'jump'|'land'`. Game:
+`spawnRat(nest)` (nest branch in the enemy loop, when `dist < N.wake`, timer up and fewer than `N.max` alive with
+`home === nest`), `ratFrame` picks the goal in order: carrying → home; loose coin within `raSmell` → coin; hunting → your
+feet; else `roamStep` round the mouth. Bite (hunting, nothing to fetch): `raBite` (× `raBroke` if gold is 0), and unless
+broke a coin of `raSteal` pops out (`pop: 1` bouncy physics, `nopull` so it doesn't fly straight back to you). Reaching
+a coin → `e.carry`; `'home'` → `stash += carry`. `damageEnemy`: every dead enemy gets `e.dead` (rats check `home.dead`),
+a nest drops `raNestGold` + stash, a rat drops its carry. Far rats (`dist > wake×1.3`) sleep. **Lanterns:** `decorate`
+(zone given) places `lvLamps` of them in built-up zones: wall `lantern` and new ceiling `hanglamp` (`len`, chain). Lamps
+(not caps) are shootable (`feels`); hurt / falling → `popLamp`: glass, and 16 `ember` dparts that `ignite` fuel they pass
+and where they land (and set you alight). **Rooms:** on zoned floors `makeRoom(want)`; `heartBuilt` is a coin toss, perk
+takes the other; rooms carry `built`. **Route fix:** after the spine cut, if `boxReach` still can't reach the top, a BFS
+from the reached region to the exit room's reach digs the shortest link (seed 7 had only been reachable through a hidden
+room's tunnel). Tests: `tests/logic/rats.test.js`, `tests/browser/rats.test.js` (sandbox).
 **v74 Pollen nerf.** Pollen has `drift: 1`, `homeR: 80`, `pop: 6` (no `eat`). `driftStep` (pure, above
 `tracePath`, consts `DRIFT_*`) damps its speed and, once slow, floats it up. It only homes after
 locking (`b.lock`: nearest creature within `homeR` with `lineOfSight`), then speeds back to

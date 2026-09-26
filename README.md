@@ -182,7 +182,9 @@ Restart. A perk room never offers one you already hold. What you've collected sh
 row of small icons along the bottom of the screen, just above the thumbsticks.
 
 The other room holds a heart that raises your maximum health by 25. It does not heal
-you — it only raises the ceiling.
+you — it only raises the ceiling. On floor 1 the two rooms are split between the two kinds
+of cave: one is somewhere in the built-up parts and the other in the natural parts, and
+which is which is a coin toss each cave.
 
 A couple of perks reach into other systems: Extra Item in Holy Mountain makes the shop
 offer five things instead of four, and Tinker with Wands Everywhere lets you *edit* your
@@ -214,12 +216,16 @@ come in patches: some parts of the cave are shored up, others are bare rock. Eve
 prop stands on the floor and meets the roof. Some pockets can only be reached by
 digging. The jellyfish live only in the natural parts — the built-up corridors are too
 tight for them to swim — and won't follow you into the layers; they hang at the edge and
-spit from there. The other floors are all natural cave for now; each one gets its own
-treatment later.
+spit from there. The built-up parts are **rat country**: rat nests are scattered all
+through them (and a few turn up in the natural caves too), and old **lanterns** hang off
+the roof and the walls, giving off a little light. Shoot a lantern and it pops, throwing
+burning oil that sets fire to any grass, moss, vines or timber it lands on — so mind where
+you aim when the rats come, because parts of it are overgrown. The other floors are all
+natural cave for now; each one gets its own treatment later.
 
 | Floor | Cave | Who is in it |
 |---|---|---|
-| 1 | Mossy caves | Myrkkymeduusa, Hämähäkki |
+| 1 | Mossy caves | Myrkkymeduusa, Hämähäkki, Rotta (from nests) |
 | 2 | Coal seams | Myrkkymeduusa, Hämähäkki, Hiisi |
 | 3 | Frozen deep | Hiisi, Konna, Hämähäkki |
 | 4 | Ember halls | Hiisi, Mato, Limanuljaska, Kobold |
@@ -297,6 +303,18 @@ Sixteen of them, named after Noita's, and they do not all behave the same way:
   lands. It stings if it touches you, and brushing its tentacles stings too — even
   when it hasn't noticed you. Every push blows a puff of glowing spores out of its
   rim, and the moss and vines near it glow and twinkle in its colour.
+- **Rats** (Rotta) are thieves, and they live in **rat nests**. A nest is a hole in the
+  ground (or a wall) with a little mound of earth round it; down a winding tunnel far too
+  thin for you is the nest itself, out of sight — you can't see into it, only dig to it.
+  Every so often it lets another rat out, up to three to seven of them. A rat that sees you
+  runs at you and bites: a little damage, and a coin pops out of you, over the rat's head,
+  bouncing to a stop a little way off. The rat runs after it, picks it up in its mouth and
+  carries it home to the nest — grab it first to keep it. Rats go for any loose gold near
+  them before anything else, so kill something (even another rat) near them and they all
+  dive for the drop. If you're broke, a bite does triple damage instead. Kill a rat and it
+  drops its own gold plus anything it was carrying; kill a nest (dig down to it, or blast
+  it) and it drops 60 gold plus everything its rats brought home. Left alone, rats scurry
+  about near their nest, and they jump for things above them.
 - **Chasers** (Lohkare, Mato, Hurtta, Kobold, Konna) come at you and
   hurt you by reaching you. The Lohkare is slow and armoured; the Hurtta is not.
 - **Bombers** (Limanuljaska, Stendari) run at you and burst on contact, taking

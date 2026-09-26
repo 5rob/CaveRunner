@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v87</title>
+<title>CaveRunner v88</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -459,7 +459,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v87';
+const VERSION = 'v88';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -545,7 +545,7 @@ const DEV_META = [
   { k: 'bagSpeed',  g: 'ui',    label: 'Bag fire preview speed (×real time)', min: 0.05, max: 5, step: 0.05 },
 ];
 const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['player', 'Player'],
-  ['enemy', 'Enemies'], ['spider', 'Spider'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['level', 'Level layout (floor 1)'], ['arch', 'Arched vines'], ['fire', 'Fire']];
+  ['enemy', 'Enemies'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['level', 'Level layout (floor 1)'], ['arch', 'Arched vines'], ['fire', 'Fire']];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults.
 function devReport() {
@@ -650,6 +650,37 @@ const JE_KNOBS = rangeKnobs('jelly', [
   ['jePlantGlow', 'Plant glow strength',              0, 4, 0.05,    1.5, 2],
   ['jePlantTwinkle', 'Plant twinkle speed',           0, 10, 0.1,    1.2, 2],
   ['jePlantSize', 'Plant twinkle size',               1, 60, 1,      5, 8],
+]);
+// The rats and their nests (v88, ratStep / ratNests). Nests are holes in the built-up
+// zones of floor 1 (and a few in the natural caves) with a thin winding tunnel down to a
+// room in the rock; rats come out, bite you, knock gold out of you and carry it home.
+const RA_KNOBS = rangeKnobs('rat', [
+  ['raSpeed',    'Run speed',                         20, 600, 5,    150, 200],
+  ['raRoamOn',   'Roaming: burst length (s)',         0.02, 3, 0.01, 0.15, 0.4],
+  ['raRoamOff',  'Roaming: rest between (s)',         0, 6, 0.05,    0.5, 1.6],
+  ['raHuntOn',   'Chasing: burst length (s)',         0.02, 3, 0.01, 0.35, 0.7],
+  ['raHuntOff',  'Chasing: rest between (s)',         0, 3, 0.01,    0.04, 0.14],
+  ['raRoamR',    'Roam distance from its nest',       0, 600, 5,     50, 110],
+  ['raRoamSpd',  'Roam spot drift speed',             0, 200, 1,     15, 30],
+  ['raAggro',    'Aggro distance (×enemy aggro)',     0.1, 5, 0.05,  0.9, 1.1],
+  ['raArrive',   'Stops this close to you',           0, 40, 1,      4, 8],
+  ['raDot',      'Jumps instead of runs above dot',   -1, 1, 0.05,   0.5, 0.65],
+  ['raJump',     'Jump speed',                        50, 800, 10,   260, 330],
+  ['raJumpR',    'Jumps at things within',            10, 300, 5,    70, 110],
+  ['raBite',     'Bite damage',                       0, 100, 1,     3, 5],
+  ['raBiteCd',   'Secs between bites',                0.1, 5, 0.05,  0.8, 1.2],
+  ['raBroke',    'Bite × when you have no gold',      1, 10, 0.5,    3, 3],
+  ['raSteal',    'Gold knocked out per bite',         0, 100, 1,     3, 6],
+  ['raPopX',     'Stolen gold: sideways throw',       0, 400, 5,     70, 100],
+  ['raPopY',     'Stolen gold: upward throw',         0, 600, 5,     200, 250],
+  ['raSmell',    'Goes for loose gold within',        0, 600, 5,     150, 220],
+  ['raMax',      'Rats per nest',                     1, 20, 1,      3, 7],
+  ['raSpawn',    'Secs between rats from a nest',     0.5, 60, 0.5,  6, 12],
+  ['raWake',     'Nests and rats wake within',        100, 2000, 10, 480, 560],
+  ['raNestRest', 'Secs a rat stays in the nest',      0, 20, 0.5,    2, 6],
+  ['raNests',    'Nests in the built-up zones',       0, 60, 1,      14, 18],
+  ['raNestsWild', 'Nests in the natural caves',       0, 30, 1,      2, 4],
+  ['raNestGold', 'Gold in a nest when it dies',       0, 500, 5,     60, 60],
 ]);
 // one roll of a creature knob: anywhere from its min to its max (either way round).
 // kru is the same at a given fraction u (0..1) — for a jelly's looks, rolled once at birth.
@@ -757,6 +788,7 @@ const LV_KNOBS = rangeKnobs('level', [
   ['lvZoneSize', 'Zone size (px)',                     60, 900, 10,  220, 320],
   ['lvZoneShare', 'Built-up share of the map (0-1)',   0, 1, 0.05,   0.4, 0.55],
   ['lvZoneRag', 'Zone edge raggedness (px)',           0, 60, 1,     8, 18],
+  ['lvLamps',   'Lanterns in the built-up zones',      0, 150, 1,    40, 55],
 ]);
 // Arched vines (v87): a long vine hung between two ceiling spots over an open pocket, sagging
 // between them, thick with leaves and dangling strands. Rolled per floor / per arch with the
@@ -905,6 +937,17 @@ const CREATURES = {
   hamahakki: { name: 'Hämähäkki', body: 'spider', act: 'spider', kp: 'sp', aggro: 300,
     col: { a: '#6a4a86', b: '#2b1d38', c: '#a077c4', eye: '#ffd98a' },
     hp: 4, dmg: 12, bspd: 0, range: 0, cd: 0, gold: 6, r: 9, spd: 260 },
+  // rat: runs the rock surfaces round its nest (ratStep), bites you and knocks gold out of
+  // you, grabs any loose gold near it and carries it home. Its numbers are Dev knobs (DEV.ra*).
+  // It is never rolled off a roster: rats only come out of nests.
+  rotta: { name: 'Rotta', body: 'rat', act: 'rat', kp: 'ra', aggro: 260, noRoster: 1,
+    col: { a: '#7a6a5e', b: '#3a302a', c: '#b3a291', eye: '#ff5a5a' },
+    hp: 2, dmg: 4, bspd: 0, range: 0, cd: 0, gold: 2, r: 4, spd: 170 },
+  // rat nest: a room in the rock at the end of a thin tunnel. Doesn't move; lets a rat out
+  // now and then while it has fewer than its max out; dies to digging or blasting.
+  pesa: { name: 'Rotanpesä', body: 'nest', act: 'nest', noRoster: 1,
+    col: { a: '#8a6a3a', b: '#3d2c18', c: '#c49a5a', eye: '#ffd23c' },
+    hp: 12, dmg: 0, bspd: 0, range: 0, cd: 0, gold: 0, r: 10, spd: 0 },
   lohkare: { name: 'Lohkare', body: 'crawler', act: 'chase', aggro: 260,
     col: { a: '#6a625a', b: '#2c2823', c: '#9d948a', eye: '#ffb347' },
     hp: 16, dmg: 18, bspd: 0, range: 0, cd: 0, gold: 20, r: 13, spd: 26 },
@@ -957,7 +1000,7 @@ const ROSTERS = [
 // using the level's own seeded rnd so a floor stays consistent while you are on it.
 function rosterFor(floor, rnd) {
   if (floor >= 1 && floor <= ROSTERS.length) return ROSTERS[floor - 1].slice();
-  const r = rnd || Math.random, pool = CREATURE_IDS.slice(), out = [];
+  const r = rnd || Math.random, pool = CREATURE_IDS.filter(id => !CREATURES[id].noRoster), out = [];
   const n = 2 + Math.floor(r() * 5);
   while (out.length < n && pool.length) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
   return out;
@@ -980,7 +1023,7 @@ function enemyFor(id, floor) {
 }
 // the acts that hunt you: they notice you on a sightline within their aggro reach, keep
 // coming, and only lose you far away (see the enemy loop)
-const HUNTERS = { chase: 1, bomb: 1, spider: 1, jelly: 1 };
+const HUNTERS = { chase: 1, bomb: 1, spider: 1, jelly: 1, rat: 1 };
 
 const COL = {
   text: '#e9ecf2', muted: 'rgba(233,236,242,0.55)', barBg: 'rgba(255,255,255,0.12)',
@@ -1803,15 +1846,17 @@ function surfNormal(x, y, R, solidCell) {
 // sit the spider at `hold` off the nearest rock: pushed straight out of anything closer
 // (so a spike or a step just lifts it over, like a ball rolling on it), pulled in along
 // the smoothed normal if it has drifted off. false if there's no rock to sit on.
-function spiderSeat(e, S, solidCell, maxMove) {
-  let n = surfNormal(e.x, e.y, SPIDER.feel, solidCell);
+function spiderSeat(e, S, solidCell, maxMove) { return surfSeat(e, S, solidCell, maxMove, SPIDER.hold, SPIDER.feel); }
+// the same for any surface crawler: hold is how far off the rock it sits, feel how far it feels
+function surfSeat(e, S, solidCell, maxMove, hold, feel) {
+  let n = surfNormal(e.x, e.y, feel, solidCell);
   if (!n) return false;
-  if (n.d < SPIDER.hold) {
-    const m = SPIDER.hold - n.d;
+  if (n.d < hold) {
+    const m = hold - n.d;
     e.x += n.px * m; e.y += n.py * m;
-    n = surfNormal(e.x, e.y, SPIDER.feel, solidCell) || n;
+    n = surfNormal(e.x, e.y, feel, solidCell) || n;
   } else {
-    const m = Math.min(maxMove, n.d - SPIDER.hold);
+    const m = Math.min(maxMove, n.d - hold);
     e.x -= n.x * m; e.y -= n.y * m;
   }
   S.nx = n.x; S.ny = n.y;
@@ -2002,6 +2047,251 @@ function spiderStep(e, env, dt) {
       S.go = true;
     }
   }
+}
+
+// ---- the rat (Rotta) and its nest (Rotanpesä) ----
+// A rat runs the rock surfaces the way the spider does (surfSeat keeps it sat on the rock,
+// sliding round bumps), in short bursts with rests between, but it has no silk: when where it
+// wants to be is up off the surface and near enough, it jumps there, and it drops off
+// anything it finds itself hanging under. Its nest is a room in the rock at the end of a
+// tunnel too thin for you (path, room first, mouth last); in there it just follows the path.
+// What it wants (you, loose gold, home, or its roam spot) is the Game's call: env.goal.
+// env.home: wants to go in, so reaching the mouth takes it down the tunnel. Returns 'home'
+// the moment it reaches the nest room, 'out' as it comes out of the hole, 'jump' on a jump.
+// Pure; the numbers are Dev ranges (RA_KNOBS).
+const RAT = { hold: 3.5, feel: 9, step: 1, fall: 900, ceil: 0.55, tunnel: 0.6 };
+// the point `d` along a path of points, and which way it's heading there
+function pathAt(P, d) {
+  for (let i = 1; i < P.length; i++) {
+    const a = P[i - 1], b = P[i], l = Math.hypot(b.x - a.x, b.y - a.y);
+    if (d <= l || i === P.length - 1) {
+      const u = l ? Math.max(0, Math.min(1, d / l)) : 0;
+      return { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u, dx: (b.x - a.x) / (l || 1), dy: (b.y - a.y) / (l || 1) };
+    }
+    d -= l;
+  }
+  return { x: P[0].x, y: P[0].y, dx: 0, dy: -1 };
+}
+const pathLen = P => { let l = 0; for (let i = 1; i < P.length; i++) l += Math.hypot(P[i].x - P[i - 1].x, P[i].y - P[i - 1].y); return l; };
+
+function ratStep(e, env, dt) {
+  const { solidCell, rnd } = env;
+  const S = e.ra || (e.ra = { mode: 'air', vx: 0, vy: 0, nx: 0, ny: -1, on: 0, rest: rnd() * 0.3, side: 1, face: 1, s: 0, dir: 1, wait: 0 });
+  const goal = env.goal;
+  const P = env.path, speed = (env.speed || kr('raSpeed', rnd)) * (env.speedMul || 1);
+
+  if (S.mode === 'tunnel') {
+    if (!P) { S.mode = 'air'; S.vx = S.vy = 0; return null; }
+    if (S.wait > 0) { S.wait -= dt; return null; }
+    const L = S.len || (S.len = pathLen(P));
+    S.s += S.dir * speed * RAT.tunnel * dt;
+    if (S.s <= 0) {                       // down in the nest
+      S.s = 0; S.dir = 1; S.wait = kr('raNestRest', rnd);
+      e.x = P[0].x; e.y = P[0].y;
+      return 'home';
+    }
+    if (S.s >= L) {                       // out of the hole
+      const m = P[P.length - 1];
+      e.x = m.x; e.y = m.y;
+      S.mode = 'surf'; S.on = 0; S.rest = 0.05 + rnd() * 0.2;
+      if (!surfSeat(e, S, solidCell, RAT.hold, RAT.hold, RAT.feel)) { S.mode = 'air'; S.vx = S.vy = 0; }
+      return 'out';
+    }
+    const q = pathAt(P, S.s);
+    e.x = q.x; e.y = q.y; S.face = q.dx * S.dir >= 0 ? 1 : -1;
+    S.nx = 0; S.ny = -1;
+    return null;
+  }
+
+  if (S.mode === 'air') {
+    S.vy = Math.min(S.vy + RAT.fall * dt, 600);
+    const n = Math.max(1, Math.ceil(Math.hypot(S.vx, S.vy) * dt / RAT.step));
+    for (let i = 0; i < n; i++) {
+      e.x += S.vx * dt / n; e.y += S.vy * dt / n;
+      if (e.y > CH * CELL) { e.y = CH * CELL; break; }
+      const s = surfNormal(e.x, e.y, RAT.hold + 0.5, solidCell);
+      if (!s) continue;
+      if (s.y > RAT.ceil) {               // bumped its head: out of the rock, and on down
+        e.x += s.px * (RAT.hold + 0.5 - s.d); e.y += s.py * (RAT.hold + 0.5 - s.d);
+        S.vy = Math.max(S.vy, 0); S.vx *= 0.5;
+        continue;
+      }
+      surfSeat(e, S, solidCell, RAT.hold, RAT.hold, RAT.feel);
+      S.mode = 'surf'; S.vx = S.vy = 0; S.on = 0; S.rest = Math.min(S.rest, 0.05);
+      return 'land';
+    }
+    return null;
+  }
+
+  // on rock that has been dug out from under it, or hanging off a ceiling: drop
+  if (!surfNormal(e.x, e.y, RAT.hold + 2, solidCell) || S.ny > RAT.ceil) { S.mode = 'air'; S.vx = S.vy = 0; return null; }
+  // at the hole, wanting in: down the tunnel
+  if (env.home && P) {
+    const m = P[P.length - 1];
+    if (Math.hypot(m.x - e.x, m.y - e.y) < 7) { S.mode = 'tunnel'; S.len = pathLen(P); S.s = S.len; S.dir = -1; S.wait = 0; return null; }
+  }
+
+  if (S.on <= 0) {
+    if ((S.rest -= dt) > 0) return null;
+    S.on = kr(env.hunting ? 'raHuntOn' : 'raRoamOn', rnd);
+    S.spd = speed; S.arrive = env.arrive != null ? env.arrive : 3;
+    S.dot = kr('raDot', rnd);
+    const j = decide();
+    if (j) return j;
+    if (S.on <= 0) { S.rest = 0.1 + rnd() * 0.2; return null; }
+  }
+  const dist = S.spd * Math.min(dt, S.on);
+  S.on -= dt;
+  const n = Math.max(1, Math.ceil(dist / RAT.step));
+  for (let i = 0; i < n; i++) {
+    const st = dist / n, tx = -S.ny * S.side, ty = S.nx * S.side;
+    e.x += tx * st; e.y += ty * st;
+    if (!surfSeat(e, S, solidCell, st * 2, RAT.hold, RAT.feel)) {
+      e.x -= S.nx * st * 2; e.y -= S.ny * st * 2;
+      if (!surfSeat(e, S, solidCell, st * 2, RAT.hold, RAT.feel)) { S.mode = 'air'; S.vx = tx * S.spd * 0.5; S.vy = 0; break; }
+    }
+    if (S.ny > RAT.ceil) { S.mode = 'air'; S.vx = tx * S.spd * 0.3; S.vy = 0; break; }
+    if (Math.abs(tx) > 0.2) S.face = tx > 0 ? 1 : -1;
+    if (!goal) continue;
+    const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy) || 1;
+    if (gd < S.arrive || (-S.ny * gx + S.nx * gy) * S.side < 0) { S.on = 0; break; }
+  }
+  if (S.on <= 0 && S.rest <= 0) S.rest = kr(env.hunting ? 'raHuntOff' : 'raRoamOff', rnd);
+  return null;
+
+  // this burst: run along the rock toward the goal, or jump at it if it's up off the rock
+  function decide() {
+    if (!goal) { S.on = 0; return null; }
+    const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
+    if (gd < S.arrive) { S.on = 0; return null; }
+    const dx = gx / gd, dy = gy / gd, t = -S.ny * dx + S.nx * dy;
+    if (env.jump !== false && dx * S.nx + dy * S.ny >= S.dot && gd < kr('raJumpR', rnd)) {
+      // a hop that lands on it: time of flight from how far, the lift to make up the drop.
+      // Higher and higher arcs until one clears the rock (round the edge of a slab, not into it)
+      const v = kr('raJump', rnd), cap = v * 1.4, x0 = e.x + S.nx * 1.5, y0 = e.y + S.ny * 1.5;
+      for (const T of [Math.max(0.18, Math.min(0.6, gd / v)), 0.4, 0.55, 0.7]) {
+        let vx = gx / T, vy = gy / T - 0.5 * RAT.fall * T;
+        const sp = Math.hypot(vx, vy);
+        if (sp > cap) { vx *= cap / sp; vy *= cap / sp; }
+        let ok = true;
+        for (let k = 1; k <= 16 && ok; k++) {
+          const t = T * k / 16, px = x0 + vx * t, py = y0 + vy * t + 0.5 * RAT.fall * t * t;
+          if (Math.hypot(px - goal.x, py - goal.y) < RAT.hold + 3) break;
+          for (const [ox, oy] of [[0, 0], [2.5, 0], [-2.5, 0], [0, 2.5], [0, -2.5]])
+            if (solidCell(Math.floor((px + ox) / CELL), Math.floor((py + oy) / CELL))) { ok = false; break; }
+        }
+        if (!ok) continue;
+        S.vx = vx; S.vy = vy; e.x = x0; e.y = y0;
+        S.mode = 'air'; S.on = 0; S.rest = 0.05;
+        if (Math.abs(S.vx) > 1) S.face = S.vx > 0 ? 1 : -1;
+        return 'jump';
+      }
+    }
+    if (Math.abs(t) * gd < 2) { S.on = 0; return null; }
+    S.side = t > 0 ? 1 : -1;
+    return null;
+  }
+}
+
+// Rat nests, carved into a level's rock (floor 1: `nb` in the built-up zones, `nw` in the
+// natural ones). Each is a spot on an up- or side-facing surface with room to stand in
+// front of it; a room (a small blob) found a little way into solid rock behind it; and a
+// tunnel from the room back out to the spot that bends as it goes, so no sightline runs
+// down it and the fog over the room never lifts — you find a nest by digging. The mouth
+// gets a little mound of earth. Everything in terrain pixels. `zone` is the level's zone
+// map (null: everything is natural); `keep` spots {x, y, r} (px) no nest goes near.
+// Returns [{ x, y, r (room), path: [{x, y}] room → mouth, mouth, built, mound: [i...] }].
+function ratNests(mat, rnd, zone, keep, nb, nw) {
+  const inb = (x, y) => x >= 4 && y >= 4 && x < CW - 4 && y < CH - 4;
+  const rock = (x, y) => { x = Math.round(x); y = Math.round(y); return inb(x, y) && mat[y * CW + x] === ROCK; };
+  const open = (x, y) => { x = Math.round(x); y = Math.round(y); return inb(x, y) && !mat[y * CW + x]; };
+  const isBuilt = (x, y) => !!zone && zone[Math.round(y) * CW + Math.round(x)] === 1;
+  const allRock = (x, y, r) => {
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++)
+      if (dx * dx + dy * dy <= r * r && !rock(x + dx, y + dy)) return false;
+    return true;
+  };
+  const nests = [];
+  const make = wantBuilt => {
+    for (let a = 0; a < 400; a++) {
+      const x = 8 + Math.floor(rnd() * (CW - 16)), y = 60 + Math.floor(rnd() * (SHOP_TOP - SHOP_ROOF - 110));
+      if (!open(x, y) || isBuilt(x, y) !== wantBuilt) continue;
+      // the surface: down to a floor, or (a third of the time) across to a wall
+      let sx = x, sy = y, found = false;
+      const dir = rnd() < 0.33 ? (rnd() < 0.5 ? -1 : 1) : 0;
+      for (let k = 0; k < 30; k++) {
+        const nx = dir ? sx + dir : sx, ny = dir ? sy : sy + 1;
+        if (!inb(nx, ny)) break;
+        if (mat[ny * CW + nx]) { found = rock(nx, ny); break; }
+        sx = nx; sy = ny;
+      }
+      if (!found) continue;
+      // its normal, from the rock round it; up or sideways only
+      let nx = 0, ny = 0;
+      for (let dy = -5; dy <= 5; dy++) for (let dx = -5; dx <= 5; dx++)
+        if (dx * dx + dy * dy <= 25 && inb(sx + dx, sy + dy) && mat[(sy + dy) * CW + sx + dx]) { nx -= dx; ny -= dy; }
+      const nl = Math.hypot(nx, ny);
+      if (nl < 1e-6) continue;
+      nx /= nl; ny /= nl;
+      if (ny > 0.35) continue;
+      // room to stand in front of it (the mound mustn't pinch a squeeze shut)
+      let clear = true;
+      for (let k = 2; k <= 22 && clear; k += 2) if (!open(sx + nx * k, sy + ny * k)) clear = false;
+      if (!clear) continue;
+      // the room, a little way back into solid rock, angled off the way in
+      const ang = Math.atan2(-ny, -nx) + (rnd() - 0.5) * 1.3, D = 20 + rnd() * 14, rr = 5 + Math.floor(rnd() * 3);
+      const cx = Math.round(sx + Math.cos(ang) * D), cy = Math.round(sy + Math.sin(ang) * D);
+      if (cy > SHOP_TOP - SHOP_ROOF - 14 || !allRock(cx, cy, rr + 5)) continue;
+      if (keep.some(k => Math.hypot(k.x - cx, k.y - cy) < k.r + rr || Math.hypot(k.x - sx, k.y - sy) < k.r)) continue;
+      if (nests.some(n => Math.hypot(n.x - cx, n.y - cy) < 50 || Math.hypot(n.mouth.x - sx, n.mouth.y - sy) < 40)) continue;
+      // the tunnel: room to surface with a sideways wave that's zero at both ends
+      const M = 4 + rnd() * 1.5;                           // the mound's radius
+      const tx = sx + nx * (M - 0.5), ty = sy + ny * (M - 0.5);   // up through the mound
+      const L = Math.hypot(tx - cx, ty - cy), px = -(ty - cy) / L, py = (tx - cx) / L;
+      const amp = (4 + rnd() * 4) * (rnd() < 0.5 ? -1 : 1), waves = 1 + rnd() * 0.8, steps = Math.ceil(L * 2);
+      const path = [];
+      let buried = true;
+      for (let k = 0; k <= steps; k++) {
+        const t = k / steps, w = amp * Math.sin(t * Math.PI * waves) * Math.sin(t * Math.PI);
+        const qx = cx + (tx - cx) * t + px * w, qy = cy + (ty - cy) * t + py * w;
+        path.push({ x: qx, y: qy });
+        // buried in rock the whole way, bar the last bit up to the surface
+        if (Math.hypot(qx - sx, qy - sy) > 6 && Math.hypot(qx - cx, qy - cy) > rr && !allRock(qx, qy, 3)) { buried = false; break; }
+      }
+      if (!buried) continue;
+      // carve: the mound first (open ground only, a lens on the surface), then the room and tunnel
+      const mound = [];
+      const mx = sx - nx * 1.5, my = sy - ny * 1.5, Mr = Math.ceil(M + 2);
+      for (let dy = -Mr; dy <= Mr; dy++) for (let dx = -Mr; dx <= Mr; dx++) {
+        const X = Math.round(mx) + dx, Y = Math.round(my) + dy;
+        if (!inb(X, Y) || Math.hypot(X - mx, Y - my) > M) continue;
+        if (!mat[Y * CW + X]) mat[Y * CW + X] = ROCK;
+        if (mat[Y * CW + X] === ROCK) mound.push(Y * CW + X);
+      }
+      for (let dy = -rr - 2; dy <= rr + 2; dy++) for (let dx = -rr - 2; dx <= rr + 2; dx++) {
+        const a2 = Math.atan2(dy, dx), wob = rr * (0.8 + 0.25 * Math.sin(a2 * 3 + cx) + 0.12 * Math.sin(a2 * 5 + cy));
+        if (Math.hypot(dx, dy * 1.25) <= wob) mat[(cy + dy) * CW + cx + dx] = 0;
+      }
+      const cut = (qx, qy) => {
+        for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+          const X = Math.round(qx + dx), Y = Math.round(qy + dy);
+          if (inb(X, Y) && Math.hypot(X - qx, Y - qy) <= 1.6) mat[Y * CW + X] = 0;
+        }
+      };
+      for (const q of path) cut(q.x, q.y);
+      cut(tx + nx, ty + ny);
+      const mouth = { x: tx + nx * 2.5, y: ty + ny * 2.5 };
+      path.push(mouth);
+      // a rat walks the tunnel along its middle; thinned out so it's cheap to follow
+      const thin = path.filter((q, i) => i % 3 === 0 || i === path.length - 1);
+      nests.push({ x: cx, y: cy, r: rr, path: thin, mouth, built: wantBuilt, mound, nx, ny });
+      return true;
+    }
+    return false;
+  };
+  for (let i = 0; i < nb; i++) make(true);
+  for (let i = 0; i < nw; i++) make(false);
+  return nests;
 }
 
 // ---- the jellyfish (Myrkkymeduusa) ----
@@ -3193,6 +3483,73 @@ function drawSpider(ctx, x, y, r, time, phase, flash, col, S) {
 // scalloped rim, four bright poison loops inside and a pale crown, trailing its tentacles
 // (S.tent, world points from jellyStep). The glow it throws on the cave is added after the
 // fog, in the Game's draw.
+// a rat: a low grey-brown body along the rock (its "up" is the rock's normal), pointed snout,
+// round ear, long pink tail, legs scurrying while it runs; a coin in its mouth if it has one
+function drawRat(ctx, x, y, r, time, phase, flash, col, S, carry) {
+  const air = !S || S.mode === 'air', nx = air ? 0 : S.nx, ny = air ? -1 : S.ny, f = S ? S.face : 1;
+  const moving = S && (S.on > 0 || S.mode === 'air' || (S.mode === 'tunnel' && !(S.wait > 0)));
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(Math.atan2(nx, -ny));                  // local up = the surface normal
+  ctx.scale(f, 1);
+  const run = moving ? Math.sin(time * 38 + phase) : 0, bob = moving ? Math.abs(run) * 0.4 : 0;
+  ctx.translate(0, r * 0.35 - bob);
+  // tail
+  ctx.strokeStyle = flash ? '#fff' : '#d9a0a0'; ctx.lineWidth = 0.7; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-r * 1.1, 0);
+  ctx.quadraticCurveTo(-r * 2.1, -r * (0.2 + 0.4 * Math.sin(time * 6 + phase)), -r * 2.9, r * 0.3 * Math.sin(time * 4 + phase));
+  ctx.stroke();
+  // legs
+  ctx.strokeStyle = flash ? '#fff' : col.b; ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.6, r * 0.2); ctx.lineTo(-r * 0.6 - run * r * 0.4, r * 0.6 + bob);
+  ctx.moveTo(r * 0.5, r * 0.2); ctx.lineTo(r * 0.5 + run * r * 0.4, r * 0.6 + bob);
+  ctx.stroke();
+  // body and head
+  ctx.fillStyle = flash ? '#fff' : col.a;
+  ctx.beginPath(); ctx.ellipse(-r * 0.15, -r * 0.2, r * 1.15, r * 0.62, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(r * 0.6, -r * 0.65); ctx.quadraticCurveTo(r * 1.5, -r * 0.5, r * 1.75, -r * 0.05);
+  ctx.lineTo(r * 0.55, r * 0.25); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = flash ? '#fff' : col.c;
+  ctx.beginPath(); ctx.ellipse(-r * 0.3, -r * 0.5, r * 0.7, r * 0.2, -0.1, 0, Math.PI * 2); ctx.fill();
+  // ear, eye, nose
+  ctx.fillStyle = flash ? '#fff' : '#c98f8f';
+  ctx.beginPath(); ctx.arc(r * 0.55, -r * 0.8, r * 0.3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = col.eye; ctx.fillRect(r * 1.0, -r * 0.5, r * 0.25, r * 0.25);
+  ctx.fillStyle = '#e88a9a'; ctx.fillRect(r * 1.62, -r * 0.18, r * 0.25, r * 0.22);
+  if (carry > 0) {
+    ctx.fillStyle = '#ffd23c'; ctx.beginPath(); ctx.arc(r * 1.75, r * 0.1, r * 0.42, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff2a0'; ctx.fillRect(r * 1.62, -r * 0.1, r * 0.15, r * 0.15);
+  }
+  ctx.restore();
+}
+// a rat nest: a bowl of straw and twigs in its little room, with the gold the rats brought
+// home glinting in it
+function drawNest(ctx, x, y, r, time, flash, col, N) {
+  ctx.save();
+  ctx.translate(x, y + r * 0.35);
+  ctx.fillStyle = flash ? '#fff' : col.b;
+  ctx.beginPath(); ctx.ellipse(0, 0, r * 1.05, r * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+  const coins = N ? Math.min(12, Math.ceil(N.stash / 5)) : 0;
+  for (let k = 0; k < coins; k++) {
+    const a = k * 2.4, d = (k % 4) * r * 0.16;
+    ctx.fillStyle = (Math.sin(time * 3 + k) > 0.8) ? '#fff2a0' : '#ffd23c';
+    ctx.beginPath(); ctx.arc(Math.cos(a) * d * 1.6, -r * 0.2 + Math.sin(a) * d * 0.5, r * 0.16, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.strokeStyle = flash ? '#fff' : col.c; ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  for (let k = 0; k < 14; k++) {
+    const a = (k / 14) * Math.PI * 2, b = a + 0.9 + (k % 3) * 0.3;
+    ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r * 0.45 - r * 0.05);
+    ctx.lineTo(Math.cos(b) * r * 0.8, Math.sin(b) * r * 0.4 + r * 0.05);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = flash ? '#fff' : col.a; ctx.lineWidth = 0.9;
+  ctx.beginPath(); ctx.ellipse(0, -r * 0.1, r * 0.95, r * 0.35, 0, Math.PI * 0.05, Math.PI * 0.95); ctx.stroke();
+  ctx.fillStyle = '#e8e0cc';                        // a bone or two
+  ctx.fillRect(-r * 0.9, -r * 0.3, r * 0.6, r * 0.12); ctx.fillRect(r * 0.4, -r * 0.45, r * 0.12, r * 0.5);
+  ctx.restore();
+}
 function drawJelly(ctx, x, y, r, time, phase, flash, col, S) {
   const P = jellyPal(S ? S.u.col : 0.5);                  // Dev → Jellyfish colours
   const sh = Math.max(0, Math.min(1, (S ? S.shape : 0) + 0.05 * Math.sin(time * 2.2 + phase)));
@@ -3365,6 +3722,8 @@ function drawEnemy(ctx, e, time) {
   const k = e.k, flash = e.flash > 0;
   const x = e.x, y = e.ty, r = e.r, lx = e.lx, ly = e.ly;
   if (k.body === 'spider') drawSpider(ctx, x, y, r, time, e.phase, flash, k.col, e.sp);
+  else if (k.body === 'rat') drawRat(ctx, x, y, r, time, e.phase, flash, k.col, e.ra, e.carry);
+  else if (k.body === 'nest') drawNest(ctx, x, y, r, time, flash, k.col, e.nest);
   else if (k.body === 'jelly') drawJelly(ctx, x, y, r, time, e.phase, flash, k.col, e.je);
   else if (k.body === 'crawler') drawCrawler(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
   else if (k.body === 'blob') drawBlob(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
@@ -3643,7 +4002,7 @@ const PROP_BOX = {
   drop:   { icicle: [-4, 0, 4, 16], geode: [-7, 0, 7, 12] },
   spike:  [-6, -10, 6, 0],
   barrel: [-9, -12, 9, 0],
-  lamp:   { lantern: [-5, -7, 5, 7], cap: [-6, -10, 6, 0] },
+  lamp:   { lantern: [-5, -7, 5, 7], cap: [-6, -10, 6, 0], hanglamp: [-4, 0, 4, 16] },
   vent:   [-5, -3, 5, 0],
   pad:    [-10, -11, 10, 0],
   pod:    [-5, -11, 5, 0],
@@ -4183,6 +4542,32 @@ function decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel, zone) {
         FU = 0;
       }
   }
+  // lanterns all through the built-up zones (v88): on the walls, and hung off the roof on a
+  // chain. Shoot one and it pops, throwing burning oil (see popLamp in the Game).
+  baked.lanterns = 0;
+  if (zone && (sites.ceil.length || sites.wall.length)) {
+    const want = Math.round(kr('lvLamps', R)), got = [];
+    const isB = (cx, cy) => zone[cy * CW + cx] === 1;
+    for (let a = 0; a < want * 40 && got.length < want; a++) {
+      const wall = sites.wall.length && (R() < 0.35 || !sites.ceil.length);
+      let i = wall ? sites.wall[Math.floor(R() * sites.wall.length)] : sites.ceil[Math.floor(R() * sites.ceil.length)], side = 0;
+      if (wall) { side = i & 1 ? 1 : -1; i >>= 1; }
+      const cx = i % CW, cy = (i / CW) | 0;
+      if (!isB(cx, cy) || got.some(g => Math.hypot(g.x - cx, g.y - cy) < 36)) continue;
+      let pr;
+      if (wall) pr = makeProp({ id: 'lanterns', kind: 'lamp', style: 'lantern', at: 'wall' }, cx, cy, 'wall', side);
+      else {
+        const room = downTo(cx, cy, 60);
+        if (room < 18) continue;
+        pr = makeProp({ id: 'hanglamps', kind: 'lamp', style: 'hanglamp', at: 'ceil' }, cx, cy, 'ceil', 0);
+        if (pr) { pr.len = Math.round((2 + R() * Math.min(7, room * 0.3)) * CELL); pr.b = pr.len + 9; }
+      }
+      if (!pr) continue;
+      got.push({ x: cx, y: cy });
+      props.push(pr);
+    }
+    baked.lanterns = got.length;
+  }
   return { props: cullDecor(props, keep || []), amb, baked };
 }
 // Load-time cleanup: drop any prop whose box overlaps one already kept (first placed wins),
@@ -4391,6 +4776,16 @@ function drawProp(ctx, pr, time, T) {
         ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(x - 2.5, y - 8, 1, 1); ctx.fillRect(x + 1.5, y - 7.5, 1, 1);
         break;
       }
+      if (st === 'hanglamp') {                 // on a chain from the roof, swinging a touch
+        const sw = Math.sin(time * 1.3 + pr.seed * 30) * 0.06, bx = x + Math.sin(sw) * pr.len, by = y + Math.cos(sw) * pr.len;
+        ctx.strokeStyle = '#5a5048'; ctx.lineWidth = 0.8; ctx.setLineDash([1.2, 0.8]);
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = '#4a3a2a'; ctx.fillRect(bx - 3, by, 6, 1.5); ctx.fillRect(bx - 2.5, by + 7.5, 5, 1.5);
+        ctx.fillStyle = '#ffcc70'; ctx.fillRect(bx - 2, by + 1.5, 4, 6);
+        ctx.fillStyle = '#fff2c0'; ctx.fillRect(bx - 0.7, by + 3, 1.4, 3);
+        ctx.fillStyle = '#4a3a2a'; ctx.fillRect(bx - 2.6, by + 1.5, 0.8, 6); ctx.fillRect(bx + 1.8, by + 1.5, 0.8, 6);
+        break;
+      }
       const s = -pr.side, lx = x + s * 5;
       ctx.strokeStyle = '#4a3e36'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y - 5); ctx.lineTo(lx, y - 5); ctx.lineTo(lx, y - 3); ctx.stroke();
       ctx.fillStyle = '#5c4632'; ctx.fillRect(lx - 2.5, y - 3, 5, 7);
@@ -4521,6 +4916,10 @@ function propGlow(ctx, pr, time, T, pdist, torchR) {
   if (pr.k === 'lamp') {
     const f = 0.85 + 0.15 * Math.sin(time * 9 + pr.seed * 20) * Math.sin(time * 4.3 + pr.seed * 7);
     if (pr.st === 'cap') glowAt(ctx, x, y - 7, 30, 0.2 * f, rgbS(T.moss[1]));
+    else if (pr.st === 'hanglamp') {
+      const sw = Math.sin(time * 1.3 + pr.seed * 30) * 0.06, bx = x + Math.sin(sw) * pr.len, by = y + Math.cos(sw) * pr.len + 4.5;
+      glowAt(ctx, bx, by, 52, 0.17 * f, '255,160,70'); glowAt(ctx, bx, by, 9, 0.4 * f, '255,210,130');
+    }
     else { const lx = x - pr.side * 5; glowAt(ctx, lx, y, 46, 0.16 * f, '255,160,70'); glowAt(ctx, lx, y, 8, 0.4 * f, '255,210,130'); }
   } else if (pr.k === 'vent' && (pr.on || pr.warn)) {
     glowAt(ctx, x, y - (pr.on ? 28 : 3), pr.on ? 44 : 12, pr.on ? 0.35 : 0.25, '255,120,40');
@@ -4613,7 +5012,8 @@ function shotSound(sh) {
 }
 
 // Creatures speak by body, with a few overrides where the body alone would be wrong.
-const BODY_VOICE = { drone: 'gibber', crawler: 'chitter', spider: 'chitter', worm: 'slither', blob: 'gurgle', jelly: 'gurgle', skull: 'rattle' };
+const BODY_VOICE = { drone: 'gibber', crawler: 'chitter', spider: 'chitter', worm: 'slither', blob: 'gurgle', jelly: 'gurgle', skull: 'rattle',
+  rat: 'chitter', nest: 'chitter' };
 const CREATURE_TONE = { lohkare: 'growl', hurtta: 'growl', jaatio: 'icy', tuli: 'ember', karpas: 'spore' };
 const CREATURE_VOICES = ['gibber', 'chitter', 'slither', 'gurgle', 'rattle', 'growl', 'icy', 'ember', 'spore'];
 function creatureSound(k) {
@@ -6351,16 +6751,23 @@ function makeLevel(seed, floor, owned) {
     const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0)));
     for (let i = 0; i <= n; i++) disc(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, r, 0);
   };
-  const makeRoom = () => {
+  // On a zoned floor (v88) the two rooms are one in each kind of zone, which one is a coin
+  // toss: want = true puts it in a built-up zone (a vault if one's left), false in a natural
+  // one. On other floors `want` is ignored.
+  const makeRoom = want => {
     for (let tries = 0; tries < 80; tries++) {
       // a built-up zone keeps a thick bit of layer for a room (a vault), and a spot in the
       // corridor under it for the tunnel to come out; with no vault left, the old way
-      const v = vaults.shift();
+      const v = !layered || want ? vaults.shift() : null;
       const p0 = v ? { x: v.px, y: v.py } : points[1 + Math.floor(rnd() * (points.length - 2))];
       const a = rnd() * Math.PI * 2, d = 50 + rnd() * 100;
       const ex = v ? v.x : Math.round(Math.max(40, Math.min(CW - 40, p0.x + Math.cos(a) * d)));
       const ey = v ? v.y : Math.round(Math.max(70, Math.min(SHOP_TOP - 70, p0.y + Math.sin(a) * d)));
       const rx = 20, ry = 12, sh = 3;
+      // the wrong kind of zone (all four corners and the middle must match): try again,
+      // unless it's the last go
+      if (layered && !v && tries < 79 &&
+          [[0, 0], [-rx, -ry], [rx, -ry], [-rx, ry], [rx, ry]].some(([dx, dy]) => built(ex + dx, ey + dy) !== !!want)) continue;
       rect(ex - rx - sh, ey - ry - sh, (rx + sh) * 2, (ry + sh) * 2, BRICK);   // the shell
       rect(ex - rx, ey - ry, rx * 2, ry * 2, 0);                               // and the room
       const back = Math.atan2(p0.y - ey, p0.x - ex);
@@ -6370,8 +6777,9 @@ function makeLevel(seed, floor, owned) {
     }
     return null;
   };
-  const perkRoom = makeRoom();
-  const heartRoom = makeRoom();
+  const heartBuilt = layered ? rnd() < 0.5 : false;
+  const perkRoom = makeRoom(!heartBuilt);
+  const heartRoom = makeRoom(heartBuilt);
   // and clear the route again: a room's shell is solid brick and can land straight across
   // the one tunnel the whole level hangs off. Above the shop only, or the same pass would
   // punch extra holes in the shop roof, which is laid down after the first one.
@@ -6387,6 +6795,23 @@ function makeLevel(seed, floor, owned) {
     let R = boxReach(mat, sx, sy);
     if (!R.top && spineBuilt.length) {
       for (const c of spineBuilt) { disc(c.x, c.y, c.r + 1, 0); routePath.push(c); }
+      R = boxReach(mat, sx, sy);
+    }
+    // still cut off (it happens: a layer that closed over after smoothing): dig the shortest
+    // way from anywhere you can get to, to anywhere the exit room can get to
+    if (!R.top) {
+      const E = boxReach(mat, CW / 2 - 3, 20);
+      const prev = new Int32Array(CW * CH).fill(-1), q = new Int32Array(CW * CH);
+      let h = 0, t = 0, hit = -1;
+      for (let i = 0; i < CW * CH; i++) if (R.ok[i] === 2) { prev[i] = i; q[t++] = i; }
+      while (h < t && hit < 0) {
+        const i = q[h++], x = i % CW, y = (i / CW) | 0;
+        if (E.ok[i] === 2) { hit = i; break; }
+        for (const j of [x > 4 ? i - 1 : -1, x < CW - 11 ? i + 1 : -1, y > 4 ? i - CW : -1, y < SHOP_TOP - SHOP_ROOF - 16 ? i + CW : -1])
+          if (j >= 0 && prev[j] < 0) { prev[j] = i; q[t++] = j; }
+      }
+      for (let i = hit, k = 0; i >= 0 && prev[i] !== i; i = prev[i], k++)
+        if (k % 3 === 0) { const x = i % CW, y = (i / CW) | 0; disc(x + 3, y + 5, 7, 0); routePath.push({ x: x + 3, y: y + 5, r: 6 }); }
       R = boxReach(mat, sx, sy);
     }
     for (const r of [perkRoom, heartRoom]) {
@@ -6412,6 +6837,19 @@ function makeLevel(seed, floor, owned) {
   for (let cy = SHOP_TOP - SHOP_ROOF - 26; cy < SHOP_TOP; cy++)
     for (let cx = shopExit - 9; cx <= shopExit + 9; cx++)
       if (inside(cx, cy)) mat[cy * CW + cx] = 0;
+  // rat nests (v88): floor 1 only, most in the built-up zones. Their own random stream, so
+  // the rest of the level is what the seed always made. Away from the rooms and the portals.
+  let nests = [];
+  if (layered) {
+    let ns = (Math.imul(seed | 0, 48271) + 7) >>> 0;
+    ns = ns % 2147483646 + 1;
+    const nr = () => (ns = (ns * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 8; i++) nr();
+    const nk = [{ x: CW / 2, y: 22, r: 70 }, { x: shopExit, y: SHOP_TOP - 30, r: 50 },
+      ...[perkRoom, heartRoom].filter(Boolean).map(r => ({ x: r.x / CELL, y: r.y / CELL, r: 45 }))];
+    nests = ratNests(mat, nr, zone, nk, Math.round(kr('raNests', nr)), Math.round(kr('raNestsWild', nr)));
+  }
+  const nearNest = (cx, cy) => nests.some(n => Math.hypot(n.x - cx, n.y - cy) < 20 || Math.hypot(n.mouth.x - cx, n.mouth.y - cy) < 10);
   // which perk is in it: anything you have not got, if the run of the pool allows
   let perkId = null;
   if (perkRoom) {
@@ -6420,8 +6858,8 @@ function makeLevel(seed, floor, owned) {
     perkId = pool[Math.floor(rnd() * pool.length)];
   }
   const rooms = [];
-  if (perkRoom) rooms.push({ kind: 'perk', id: perkId, x: perkRoom.x, y: perkRoom.y, taken: false });
-  if (heartRoom) rooms.push({ kind: 'heart', x: heartRoom.x, y: heartRoom.y, taken: false });
+  if (perkRoom) rooms.push({ kind: 'perk', id: perkId, x: perkRoom.x, y: perkRoom.y, taken: false, built: built(perkRoom.x / CELL, perkRoom.y / CELL) });
+  if (heartRoom) rooms.push({ kind: 'heart', x: heartRoom.x, y: heartRoom.y, taken: false, built: built(heartRoom.x / CELL, heartRoom.y / CELL) });
 
   // unbreakable border
   for (let cy = 0; cy < CH; cy++)
@@ -6458,6 +6896,12 @@ function makeLevel(seed, floor, owned) {
     }
   }
 
+  // the rat nests' mounds: fresh-dug earth, not moss
+  for (const n of nests) for (const i of n.mound) {
+    if (mat[i] !== ROCK) continue;
+    const r1 = hash(i % CW * 3 + 5, ((i / CW) | 0) * 7 + 1), c = mix([92, 70, 48], [128, 98, 66], r1);
+    d[i * 4] = c[0]; d[i * 4 + 1] = c[1]; d[i * 4 + 2] = c[2];
+  }
   // background
   const bgImg = new ImageData(BW, BH);
   for (let y = 0; y < BH; y++)
@@ -6526,7 +6970,7 @@ function makeLevel(seed, floor, owned) {
   let waiting = null, waits = 0;
   for (let a = 0; a < 20000 && enemies.length < wanted; a++) {
     const cx = 8 + Math.floor(rnd() * (CW - 16)), cy = 50 + Math.floor(rnd() * (SHOP_TOP - 70));
-    if (!clear(cx, cy, 8)) continue;
+    if (!clear(cx, cy, 8) || nearNest(cx, cy)) continue;
     const x = cx * CELL, y = cy * CELL;
     if (Math.hypot(x - start.x, y - start.y) < 200) continue;
     if (enemies.some(e => Math.hypot(e.x - x, e.y - y) < 90)) continue;
@@ -6538,6 +6982,15 @@ function makeLevel(seed, floor, owned) {
       cd: 1 + rnd() * 2, flash: 0, lx: 0, ly: 1, hx: x, hy: y, tgt: null, rest: rnd() * 3,
       k, touch: 0, charge: 0 });
   }
+  // the nests, as creatures that never move: in world units, the path room → mouth
+  for (const n of nests) {
+    const k = enemyFor('pesa', floor), x = n.x * CELL, y = n.y * CELL;
+    enemies.push({ x, y, ty: y, r: k.r, phase: 0, hp: k.hp, hpMax: k.hp, cd: 0, flash: 0, lx: 0, ly: 1,
+      hx: x, hy: y, tgt: null, rest: 0, k, touch: 0, charge: 0,
+      nest: { path: n.path.map(q => ({ x: (q.x + 0.5) * CELL, y: (q.y + 0.5) * CELL })),
+        mouth: { x: (n.mouth.x + 0.5) * CELL, y: (n.mouth.y + 0.5) * CELL }, built: n.built,
+        t: 0.5 + (n.x % 7) * 0.4, stash: 0, max: 0 } });
+  }
 
   // guns and mods to find: the higher up the cave, the better the roll.
   // Half the mods there used to be, and they have to sit far enough apart that the
@@ -6548,7 +7001,7 @@ function makeLevel(seed, floor, owned) {
   let gunsLeft = GUN_DROPS, modsLeft = MOD_DROPS;
   for (let a = 0; a < 20000 && gunsLeft + modsLeft > 0; a++) {
     const cx = 8 + Math.floor(rnd() * (CW - 16)), cy = 30 + Math.floor(rnd() * (SHOP_TOP - 60));
-    if (!clear(cx, cy, 6)) continue;
+    if (!clear(cx, cy, 6) || nearNest(cx, cy)) continue;
     // and drop it onto the first floor below, but only as far as the open box it was
     // picked for — further than that and it lands in a crack you cannot stand next to.
     // Nothing to land on inside the box means this spot is no good and another is tried.
@@ -6573,7 +7026,8 @@ function makeLevel(seed, floor, owned) {
   if (strata) timberWorks(mat, dimg, works, T, rnd, fuel, built);
   const keep = [{ x: start.x, y: start.y, r: 40 }, { x: arrival.x, y: arrival.y, r: 50 },
     { x: portal.x + portal.w / 2, y: portal.y + portal.h / 2, r: 50 },
-    ...rooms.map(r => ({ x: r.x, y: r.y, r: 70 })), ...pickups.map(q => ({ x: q.x, y: q.y, r: 22 }))];
+    ...rooms.map(r => ({ x: r.x, y: r.y, r: 70 })), ...pickups.map(q => ({ x: q.x, y: q.y, r: 22 })),
+    ...nests.map(n => ({ x: n.mouth.x * CELL, y: n.mouth.y * CELL, r: 18 }))];
   const deco = decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel, zone);
   // gold seams, painted over whatever the decoration left on the rock
   const ore = goldVeins(mat, seed, floor);
@@ -6585,8 +7039,35 @@ function makeLevel(seed, floor, owned) {
     d[k] = Math.min(255, 222 * glint); d[k + 1] = Math.min(255, 168 * glint); d[k + 2] = 48 * glint; d[k + 3] = 255;
   }
 
+  // the burrows are hidden behind earth: every open pixel of a nest's room and tunnel (bar the
+  // hole itself) is painted on the decoration layer in the colour of the rock beside it, so
+  // it reads as solid rock — through the fog's soft edge too — until you dig it open (dig
+  // and blasts wipe the decoration layer). The Game only draws a nest, or a rat down its
+  // tunnel, where that paint has gone.
+  const dd = dimg.data;
+  for (const n of nests) {
+    const pts = n.path.filter(q => Math.hypot(q.x - n.mouth.x, q.y - n.mouth.y) > 4);
+    const R = n.r + 3;
+    let x0 = n.x - R, x1 = n.x + R, y0 = n.y - R, y1 = n.y + R;
+    for (const q of pts) { x0 = Math.min(x0, q.x - 3); x1 = Math.max(x1, q.x + 3); y0 = Math.min(y0, q.y - 3); y1 = Math.max(y1, q.y + 3); }
+    for (let y = Math.floor(y0); y <= y1; y++) for (let x = Math.floor(x0); x <= x1; x++) {
+      const i = y * CW + x;
+      if (x < 0 || y < 0 || x >= CW || y >= CH || mat[i]) continue;
+      if (Math.hypot(x - n.x, y - n.y) > R && !pts.some(q => Math.hypot(q.x - x, q.y - y) < 3)) continue;
+      let src = -1;
+      for (let k = 1; k <= 5 && src < 0; k++)
+        for (const [dx, dy] of [[0, -k], [0, k], [-k, 0], [k, 0], [-k, -k], [k, k], [k, -k], [-k, k]]) {
+          const j = (y + dy) * CW + x + dx;
+          if (mat[j] === ROCK && !n.mound.includes(j)) { src = j; break; }
+        }
+      const c = src >= 0 ? [d[src * 4], d[src * 4 + 1], d[src * 4 + 2]] : T.rock[0];
+      dd[i * 4] = c[0]; dd[i * 4 + 1] = c[1]; dd[i * 4 + 2] = c[2]; dd[i * 4 + 3] = 255;
+      fuel[i] = 0;
+    }
+  }
+
   return { mat, img, bgImg, dimg, ore, fuel, props: deco.props, amb: deco.amb, start, portal, enemies, pickups, stock, shopExit, arrival,
-    rooms, roster, theme: T.name, works, zone };
+    rooms, roster, theme: T.name, works, zone, nests };
 }
 
 // Fly a shot forward with the same rules the live bullets use, so the aim line
@@ -6985,6 +7466,11 @@ function Game({ input }) {
       return false;
     };
     const lineOfSight = (x0, y0, x1, y1) => losClear(x0, y0, x1, y1, solidCell);
+    // a rat burrow not dug open yet: the earth painted over it is still there (see makeLevel)
+    const burrowShut = (x, y) => {
+      const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+      return cx >= 0 && cy >= 0 && cx < CW && cy < CH && dimg.data[(cy * CW + cx) * 4 + 3] > 0;
+    };
     const enemyAt = (x, y, pad) => {
       for (let j = 0; j < enemies.length; j++) {
         const e = enemies[j];
@@ -7071,9 +7557,92 @@ function Game({ input }) {
       burst(e.x, e.ty, 16, e.je ? jcol('jeColBody', e.je.u.col) : e.k.col.a);
       SFX.creature(e.k, 'die', e.x, e.ty);
       enemies.splice(j, 1);
+      e.dead = true;                        // its rats find out they've no home to go to
+      if (e.nest) {
+        // a nest: its own gold and everything its rats brought home, in a little shower
+        const all = Math.round(kr('raNestGold') * pb.gold) + e.nest.stash;
+        const n = Math.max(1, Math.min(14, Math.ceil(all / 8)));
+        for (let k = 0; k < n; k++)
+          coins.push({ x: e.x + (Math.random() - 0.5) * 8, y: e.y, amount: Math.floor(all / n) + (k < all % n ? 1 : 0),
+            t: Math.random() * 6.28, vx: (Math.random() - 0.5) * 100, vy: -80 - Math.random() * 80 });
+        SFX.fx('coinland', e.x, e.y);
+        return;
+      }
       coins.push({ x: e.x, y: e.ty,
         amount: Math.round((e.k.gold + Math.floor(Math.random() * 3)) * pb.gold),
         t: Math.random() * 6.28, vy: -60 - Math.random() * 40 });
+      // a rat drops what it was carrying home
+      if (e.carry > 0) coins.push({ x: e.x, y: e.ty, amount: e.carry, t: Math.random() * 6.28,
+        vx: (Math.random() - 0.5) * 60, vy: -90 - Math.random() * 40 });
+    }
+    // ---- rats ----
+    // a new rat, down in nest `n`'s room, on its way out up the tunnel
+    function spawnRat(n) {
+      const k = enemyFor('rotta', floor), P = n.nest.path, m = n.nest.mouth;
+      const e = { x: P[0].x, y: P[0].y, ty: P[0].y, r: k.r, phase: Math.random() * 6.28, hp: k.hp, hpMax: k.hp,
+        cd: 0, flash: 0, lx: 0, ly: 1, hx: m.x, hy: m.y, tgt: null, rest: 0, k, touch: 0, charge: 0,
+        home: n, path: P, carry: 0 };
+      e.ra = { mode: 'tunnel', vx: 0, vy: 0, nx: 0, ny: -1, on: 0, rest: 0, side: 1, face: 1, s: 0, dir: 1, wait: 0 };
+      enemies.push(e);
+      return e;
+    }
+    // One rat's frame. What it wants, in order: home, if it has gold in its mouth; any loose
+    // gold it can smell; you, if it has noticed you; else its roam spot round the nest.
+    // Reaching you it bites, and knocks gold out of you over its head (triple bite if you've
+    // none); reaching gold it picks it up; reaching the nest room it drops it off.
+    function ratFrame(e, dt, dist, hunting, pcx, pcy) {
+      const N = e.home && !e.home.dead ? e.home : null, k = e.k;
+      const wake = N ? N.nest.wake || 520 : 520;
+      const S = e.ra;
+      // far off and not falling: asleep, so a floor full of rats costs nothing
+      if (dist > wake * 1.3 && S && S.mode !== 'air') return;
+      let goal = null, home = false, fast = false, jump = true, want = null;
+      if (e.carry > 0 && N) { goal = N.nest.mouth; home = true; fast = true; }
+      else {
+        let bd = e.smell || (e.smell = kr('raSmell'));
+        for (const g of coins) {
+          if (g.nopull > 0 && g.vy < 0) continue;            // still on its way up
+          const d = Math.hypot(g.x - e.x, g.y - e.y);
+          if (d < bd) { bd = d; want = g; }
+        }
+        if (want) { goal = want; fast = true; }
+        else if (hunting) { goal = { x: pcx, y: p.y + PH - 2 }; fast = true; }
+        else {
+          const R = e.roam || (e.roam = {});
+          roamStep(R, e, dt, Math.random, 'ra');
+          goal = { x: R.rx, y: R.ry }; jump = false;
+        }
+      }
+      if (!e.arrive || Math.random() < dt) e.arrive = kr('raArrive');
+      const cold = e.chill && e.chill < 1 ? e.chill : 1;
+      const ev = ratStep(e, { solidCell, rnd: Math.random, goal, hunting: fast, home, path: e.path,
+        speedMul: cold, arrive: goal && !want && hunting ? e.arrive : 3, jump }, dt);
+      if (ev === 'home') {
+        if (N && e.carry > 0) { N.nest.stash += e.carry; SFX.fx('coinland', e.x, e.y); }
+        if (N) e.carry = 0;
+      } else if (ev === 'jump') SFX.creature(k, 'alert', e.x, e.y);
+      if (e.ra.mode === 'tunnel') return;
+      // a coin in reach: in its mouth
+      if (want && Math.hypot(want.x - e.x, want.y - e.y) < e.r + 5) {
+        const i = coins.indexOf(want);
+        if (i >= 0) { coins.splice(i, 1); e.carry = (e.carry || 0) + want.amount; SFX.fx('coinland', e.x, e.y); }
+      }
+      // you, in reach: a bite, and a coin knocked out of you over its head
+      if (hunting && !want && !(e.carry > 0 && N) && dist < e.r + 12 && e.touch <= 0 && !p.dead) {
+        const LO = input.current.loadout, broke = !(LO.gold > 0);
+        hurt(Math.round(kr('raBite') * (broke ? kr('raBroke') : 1)));
+        e.touch = kr('raBiteCd');
+        SFX.creature(k, 'bite', e.x, e.y);
+        if (!broke) {
+          const amt = Math.min(LO.gold, Math.max(1, Math.round(kr('raSteal'))));
+          LO.gold -= amt;
+          input.current.notify();
+          const side = e.x >= pcx ? 1 : -1;
+          coins.push({ x: pcx, y: p.y + 4, amount: amt, t: Math.random() * 6.28,
+            vx: side * kr('raPopX'), vy: -kr('raPopY'), pop: 1, nopull: 0.7 });
+          SFX.ui('coin');
+        }
+      }
     }
 
     // clear rock without the bang, for drilling shots
@@ -7743,10 +8312,29 @@ function Game({ input }) {
         burst(pr.x, pr.y - 6, 14, '#b6e36a');
       }
     }
+    // a lantern shot (or dropped, or blasted): the glass goes and its burning oil is thrown
+    // out in blobs that light whatever burnable they fall through or land on
+    function popLamp(pr) {
+      if (pr.gone) return;
+      pr.gone = true;
+      let x = pr.x, y = pr.y;
+      if (pr.st === 'hanglamp') y += pr.len + 4.5; else x -= pr.side * 5;
+      SFX.fx('shatter', x, y, 'glass');
+      SFX.fx('whoosh', x, y);
+      burst(x, y, 6, '#fff2c0');
+      for (let k = 0; k < 16; k++) {
+        const a = -Math.PI / 2 + (Math.random() - 0.5) * 3.4, v = 50 + Math.random() * 120;
+        dparts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 20, g: 0.45,
+          c: FIRE_COLS[Math.floor(Math.random() * 3)], s: 1.2 + Math.random() * 0.9, life: 1.2 + Math.random() * 0.8, max: 2,
+          glow: 1, ember: 1 });
+      }
+      ignite(x, y, 6, 0.8);
+    }
     // a prop whose rock has gone hits the ground: it breaks, blows, or settles there
     function landProp(pr) {
       pr.fall = false; pr.vy = 0;
       if (pr.k === 'barrel' || pr.k === 'pod') { blowProp(pr); return; }
+      if (pr.k === 'lamp' && pr.st !== 'cap') { popLamp(pr); return; }
       const stands = !pr.hang && !pr.side && (pr.k === 'cover' || pr.k === 'pad' || pr.k === 'noise' ||
         pr.k === 'spike' || pr.k === 'lamp' || pr.k === 'tendril' || pr.k === 'vent');
       if (!stands) { shatter(pr); return; }
@@ -7803,7 +8391,7 @@ function Game({ input }) {
         if (pr.hitT > 0) pr.hitT -= dt;
         // shots: cover eats them, and carts, pods, stones, salt spikes and pillars feel them
         const tough = pr.k === 'cover', feels = tough || pr.k === 'barrel' || pr.k === 'pod' ||
-          (pr.k === 'noise' && pr.st === 'stone') || (pr.k === 'spike' && pr.st === 'salt');
+          (pr.k === 'noise' && pr.st === 'stone') || (pr.k === 'spike' && pr.st === 'salt') || (pr.k === 'lamp' && pr.st !== 'cap');
         if (feels) {
           const x0 = pr.x + pr.l, x1 = pr.x + pr.r, y0 = pr.y + pr.t0, y1 = pr.y + pr.b;
           for (const b of bullets) {
@@ -7821,6 +8409,7 @@ function Game({ input }) {
         if (pr.hurt) {
           const n = pr.hurt; pr.hurt = 0;
           if (pr.k === 'barrel' || pr.k === 'pod') { blowProp(pr); continue; }
+          if (pr.k === 'lamp') { popLamp(pr); continue; }
           if (pr.k === 'noise' && pr.st === 'stone') { alertAt(pr.x, pr.y); pr.ring = 1; SFX.fx('resonate', pr.x, pr.y); }
           if (pr.k === 'spike' && pr.st === 'salt') { shatter(pr, 10); continue; }
           if (pr.k === 'drop') { pr.fall = true; pr.vy = 0; pr.anc = null; continue; }
@@ -7988,6 +8577,13 @@ function Game({ input }) {
         if (q.grow) q.s += dt * 3;
         q.x += q.vx * dt; q.y += q.vy * dt;
         let dead = q.life <= 0;
+        // burning oil from a lantern: lights what it passes through, and where it lands
+        if (q.ember) {
+          const ex = Math.floor(q.x / CELL), ey = Math.floor(q.y / CELL);
+          if (ex >= 0 && ey >= 0 && ex < CW && ey < CH && fire.fuel[ey * CW + ex]) ignite(q.x, q.y, 2, 0.6);
+          if (!p.dead && q.x > p.x && q.x < p.x + PW && q.y > p.y && q.y < p.y + PH) { youAlight(); dead = true; }
+          if (!dead && solidAt(q.x, q.y)) ignite(q.x - q.vx * dt, q.y - q.vy * dt, 4, 0.85);
+        }
         if (!dead && solidAt(q.x, q.y)) {
           dead = true;
           if (q.snd) SFX.fx(q.snd, q.x, q.y);
@@ -8667,7 +9263,8 @@ function Game({ input }) {
         const g = coins[i];
         const dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;
         const pull = COIN_PULL * pb.goldPull;    // Attract Gold reaches further
-        if (d < pull && !p.dead) {
+        if (g.nopull > 0) g.nopull -= dt;        // gold a rat just knocked out of you flies clear first
+        if (d < pull && !p.dead && !(g.nopull > 0)) {
           // inside the pull radius it flies to you, straight through rock
           const grab = 180 + 900 * (1 - d / pull);
           g.vx = (g.vx || 0) + (dx / d) * grab * dt * 6;
@@ -8680,6 +9277,19 @@ function Game({ input }) {
             SFX.ui('coin');
             input.current.notify();
           }
+          continue;
+        }
+        if (g.pop) {
+          // knocked out of you: flies in an arc, bounces a few times and skids to a stop
+          g.vx *= Math.exp(-0.6 * dt);
+          g.vy += 420 * dt;
+          const nx = g.x + g.vx * dt, ny = g.y + g.vy * dt;
+          if (solidAt(nx, g.y)) g.vx *= -0.4; else g.x = nx;
+          if (solidAt(g.x, ny + 3)) {
+            if (g.vy > 70) { g.vy = -g.vy * 0.42; g.vx *= 0.7; SFX.fx('coinland', g.x, g.y); }
+            else { g.vy = 0; g.vx *= Math.exp(-8 * dt); if (Math.abs(g.vx) < 4) { g.vx = 0; g.pop = 0; } }
+          } else if (solidAt(g.x, ny - 3) && g.vy < 0) g.vy = 0;
+          else g.y = ny;
           continue;
         }
         g.vx = (g.vx || 0) * 0.9;
@@ -8862,6 +9472,25 @@ function Game({ input }) {
         // a bomber closing in ticks like a fuse, faster the nearer it gets
         if (hunting && k.act === 'bomb' && dist < 160 && (e.fuseT = (e.fuseT || 0) - dt) <= 0) {
           e.fuseT = 0.12 + dist / 400; SFX.creature(k, 'fuse', e.x, e.ty);
+        }
+        if (k.act === 'nest') {
+          // lets a rat out now and then, while it has fewer than its max alive; only while
+          // you're near enough for it to matter
+          const N = e.nest;
+          if (!N.max) { N.max = Math.round(kr('raMax')); N.wake = kr('raWake'); }
+          if (dist < N.wake && (N.t -= dt) <= 0) {
+            N.t = kr('raSpawn');
+            let out = 0;
+            for (const r of enemies) if (r.home === e) out++;
+            if (out < N.max) spawnRat(e);
+          }
+          e.chill = 1; e.ty = e.y;
+          continue;
+        }
+        if (k.act === 'rat') {
+          ratFrame(e, dt, dist, hunting, pcx, pcy);
+          e.chill = 1; e.ty = e.y;
+          continue;
         }
         if (k.act === 'spider') {
           // only on rock and its own lines (spiderStep); strings you when it has a clear line
@@ -9406,7 +10035,9 @@ function Game({ input }) {
       for (const e of enemies) {
         const ey = e.ty;
         if (ey > camY + vh + 20 || ey < camY - 20 || e.x < camX - 20 || e.x > camX + vw + 20) continue;
+        if ((e.nest || (e.ra && e.ra.mode === 'tunnel')) && burrowShut(e.x, e.y)) continue;   // still behind the earth
         drawEnemy(ctx, e, time);
+        if ((e.home || e.nest) && e.hp >= e.hpMax) continue;   // rats and nests: a bar only once hurt
         const hw = 20, hx = e.x - hw / 2, hy = ey - e.r - 9;
         ctx.fillStyle = COL.barBg; ctx.fillRect(hx, hy, hw, 3);
         ctx.fillStyle = e.je ? jcol('jeColBody', e.je.u.col) : e.k.col.a;

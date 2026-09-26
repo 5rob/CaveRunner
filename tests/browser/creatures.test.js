@@ -47,7 +47,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   // ---- the live level is populated off the floor's roster ----
   const live = await page.evaluate(() => ({
     floor: window.__lvl.floor, roster: window.__lvl.roster.slice(),
-    ids: [...new Set(window.__lvl.enemies.map(e => e.k.id))],
+    // rat nests and their rats (floor 1) come from the level, not the roster
+    ids: [...new Set(window.__lvl.enemies.filter(e => !CREATURES[e.k.id].noRoster).map(e => e.k.id))],
     expected: rosterFor(1).slice(),
     hp: window.__lvl.enemies.map(e => e.hp),
     hpMax: window.__lvl.enemies.map(e => e.hpMax),

@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v87.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v88.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -42,6 +42,13 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v88 — rats and rat nests; lanterns; heart/perk rooms split by zone.** Nests (holes with a mound, a thin winding
+  tunnel to a hidden room painted over as rock until dug) all through floor 1's built-up zones, a few in the natural ones.
+  Rats bite, knock gold out of you, fetch it home; any loose gold is their first priority; triple bite when broke; dead
+  nest = 60 + stash. Lanterns (wall + hanging) through the built-up zones pop into burning oil when shot. Heart room in one
+  zone type, perk room in the other (coin toss). Knobs: Dev → Rats & nests, Dev → Level layout → Lanterns. Expect tuning
+  (rat aggression/steal amounts, nest count, lantern count).
 
 - **v87 — floor 1 mixes natural and built-up zones; jellies keep to the natural ones; arched vines.** A big noise over
   the map picks each patch: old natural cave or the v85 layered cave, blended at the seams (Dev → Level layout: zone
@@ -262,7 +269,7 @@ Talk briefly, iterate fast, don't over-plan. Every change works at phone width w
   re-run the single suite to confirm; all are enemy-geometry / random-seed sensitive, not
   regressions): `everymod` (telecast), `trigger` (double trigger), and `compare` (a
   found gun that happens not to differ in regen, so "less regen is red" finds nothing —
-  seen once during the v47 run, green on its own), and `fog` "the next floor is dark again" (~1 in 4-5 runs a new floor spawns with a few cave cells already visible up the shaft; also fails on v56 code, seed-dependent), and `lightning` "a fork hits a creature off to the side" (~1 in 5-8: the fork roll is random and the target bobs near the edge of its 90 reach; seen v78/v79, fails with any creature, not a spider bug). See `memory/cardfit-known-failure.md`.
+  seen once during the v47 run, green on its own), and `fog` "the next floor is dark again" (~1 in 4-5 runs a new floor spawns with a few cave cells already visible up the shaft; also fails on v56 code, seed-dependent), and `lightning` "a fork hits a creature off to the side" (~1 in 5-8: the fork roll is random and the target bobs near the edge of its 90 reach; seen v78/v79, fails with any creature, not a spider bug). And `jelly` (browser) "hunting with a clear line, it spits at you" (~1 in 3, same on v87 code — the sandbox jelly sometimes never lines up a shot). See `memory/cardfit-known-failure.md`.
 
 ## Testing on the phone over WiFi
 
