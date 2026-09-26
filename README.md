@@ -199,7 +199,12 @@ this run is the floor you meet on the next one. The palette wraps around after
 twelve floors, and from floor 11 up the creatures are rolled fresh each floor, so
 the run keeps moving rather than settling into a pattern.
 
-**Floor 1 is built in layers**, like Noita's Mines: wavy bands of rock stacked up the
+**Floor 1 mixes two kinds of cave in big patches.** Some stretches are wild, natural
+cave — rounded pockets and winding tunnels, with the odd brick ledge or old frame — and
+some are **built-up**, in layers like Noita's Mines. Where one kind meets the other the
+rock blends into itself. The patches are different every cave (their size and how much of
+the cave is built-up are in the ⚙️ panel under Level layout). The built-up parts are wavy
+bands of rock stacked up the
 cave with walkable corridors between them, holes to fly up through, the odd wall that
 makes a dead end, and loops where two holes lead to the same place. A few big caverns
 cut through several layers, with broken bits of rock left hanging in them and
@@ -207,8 +212,10 @@ stalactites overhead. Here and there are **old workings** — stretches people l
 long ago, with worn paving on the floor and timber props holding up the roof. The props
 come in patches: some parts of the cave are shored up, others are bare rock. Every
 prop stands on the floor and meets the roof. Some pockets can only be reached by
-digging. The other floors still use the older, blobbier caves for now; each one gets
-its own treatment later.
+digging. The jellyfish live only in the natural parts — the built-up corridors are too
+tight for them to swim — and won't follow you into the layers; they hang at the edge and
+spit from there. The other floors are all natural cave for now; each one gets its own
+treatment later.
 
 | Floor | Cave | Who is in it |
 |---|---|---|
@@ -232,7 +239,7 @@ dies out once there's nothing left. Grass goes up in a flash, moss smoulders, ti
 long. It's lit by the fire spells (Fireball, Firebolt, Meteor, Magic Missile) wherever they
 fly, hit or blow up, by other explosions now and then, by exploding minecarts, fire vents,
 the Levitation Trail perk, and by Stendari when it blows itself up. Burning vines burn up to
-the rock and drop, burning web lines snap, and a fire that reaches a minecart sets it off.
+the rock and drop, fire races along an arched vine both ways and lights its strands, burning web lines snap, and a fire that reaches a minecart sets it off.
 
 Creatures that touch fire catch it: they burn for a few seconds, take damage and spread
 the fire wherever they go (a burning spider burns its own web). So can you. Standing in a
@@ -245,11 +252,12 @@ a min/max pair in the ⚙️ panel under Fire.
 Every cave has its own scenery. Some of it is just to look at; the rest does
 something. Anything hanging off rock falls when you blast that rock away, and
 it hurts if it lands on you. Wall torches and lanterns glow through the dark
-even before you reach them.
+even before you reach them. Every floor with hanging plants (vines, mycelium, roots, kelp)
+also gets **arched vines** of that plant across its open pockets.
 
 | Cave | Scenery |
 |---|---|
-| Mossy caves | Overgrown groves thick with **vines** you can hang on (no jetting = you hold on and your fuel refills; push the stick to climb), dripping water, moss and rubble, glowing spores |
+| Mossy caves | Overgrown groves thick with **vines** you can hang on (no jetting = you hold on and your fuel refills; push the stick to climb), **long arched vines** slung across the open pockets, thick with leaves and trailing strands (hang on and the stick runs you along the arch; push down to drop), dripping water, moss and rubble, glowing spores |
 | Coal seams | **Minecarts that explode when shot** (a very big blast), rusty lanterns, soot falling, pit props, old pickaxes |
 | Frozen deep | **Icicles that drop when you walk under them**, **slippery ice**, **snow drifts that slow you**, frozen waterfalls to hang on, icy wind |
 | Ember halls | **Lava drips** and **fire vents** that burn, **obsidian spikes**, ash piles, drifting embers |

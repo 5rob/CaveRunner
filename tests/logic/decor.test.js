@@ -20,7 +20,11 @@ const check = (n, ok, x) => { if (ok) pass++; else { fail++; console.log('FAIL '
 check('twelve themes, five decorations each', DECOR.length === 12 && DECOR.every(t => t.length === 5), DECOR.map(t => t.length));
 check('floor 13 dresses like floor 1', decorFor(13) === decorFor(1));
 
-const overlap = (a, b) => !(a.k === 'climb' && b.k === 'climb') && a.x + a.l < b.x + b.r && a.x + a.r > b.x + b.l && a.y + a.t0 < b.y + b.b && a.y + a.b > b.y + b.t0;
+// an arched vine (v87) is a curve over a big box, so it's the curve that mustn't cross a prop
+const inBox = (x, y, b) => x > b.x + b.l && x < b.x + b.r && y > b.y + b.t0 && y < b.y + b.b;
+const overlap = (a, b) => !(a.k === 'climb' && b.k === 'climb') && (a.arc ? a.arc.some(([x, y]) => inBox(a.x + x, a.y + y, b)) :
+  b.arc ? b.arc.some(([x, y]) => inBox(b.x + x, b.y + y, a)) :
+  a.x + a.l < b.x + b.r && a.x + a.r > b.x + b.l && a.y + a.t0 < b.y + b.b && a.y + a.b > b.y + b.t0);
 for (let floor = 1; floor <= 12; floor++) {
   for (const seed of [3, 71]) {
     const lv = makeLevel(seed, floor);

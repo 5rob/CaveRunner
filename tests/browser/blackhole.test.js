@@ -41,7 +41,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     if (!bh) return { fired: false };
     bh.vx = 0; bh.vy = 0; bh.life = 5;
     bh.x = L.p.x + 80; bh.y = L.p.y - 30;
-    const e = L.enemies[0];
+    // not a spider: one riding its web line snaps back onto it, whatever the test sets
+    const e = L.enemies.find(q => q.k.act !== 'spider') || L.enemies[0];
     e.hp = e.hpMax = 9999;
     e.x = bh.x + 70; e.y = e.ty = bh.y;
     const d0 = Math.hypot(e.x - bh.x, e.ty - bh.y);

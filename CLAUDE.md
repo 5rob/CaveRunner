@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v86**. Branch: `main` (release channel is `main`).
+Current version: **v87**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -787,6 +787,34 @@ minecarts (`blowProp` → hot explode), Levitation Trail. Draw: burning pixels d
 stays hidden) and brightened + glows after it only on `seen` cells — **owner: fire must not reveal fog.** Knobs:
 Dev → Fire (`FIRE_KNOBS`, ranges). Tests: `tests/logic/fire.test.js`, `tests/browser/fire.test.js` (sandbox; hooks
 `__lvl.fire`, `ignite`, `setAlight`, `youAlight`, `dimg`; `sandbox()` clears fuel).
+**v87 floor 1 is zoned: built-up and natural, and arched vines.** `makeLevel` builds **both** caves on floor 1:
+the natural noise cave into `mat`, `strataCave` into its own buffer `lay`, then stitches — `zone[i] = 1` (built-up)
+takes `lay`. `zone` is a big fbm (`lvZoneSize`) thresholded at the `lvZoneShare` quantile (so the share is what's
+asked), its edge warped by `lvZoneRag` px (Dev → Level layout); the 4 smoothing passes melt the seam. `built(x, y)`
+(terrain px) inside `makeLevel`, `builtAt(zone, wx, wy)` (world units, pure) outside; `level.zone` is returned
+(null on other floors). `strataCave` takes `N.ok` and puts workings and vaults only where it's true, so they survive
+whole; `works`/`vaults` are then filtered again. Natural zones get the old blobs, side worms, ledges, frames and floats
+(gated per position by `!built`); built-up zones keep strata's own `routePath`. **The main route (spine) worms are cut
+only in natural zones** — their built-up stretches go to `spineBuilt` and are cut (as a narrow r≤7 shaft) only if
+`boxReach` (pure: runner-box flood, `.top` = reached y ≤ 40) says the shop can't reach the top without them. The same
+pass digs any hidden room the flood doesn't reach to the nearest reached cell. Timber's tunnel patches take `ok` too.
+**Jellies are natural-only** (`NATURAL_ONLY` by act): spawn re-rolls a built-up spot but keeps the rolled kind for the
+next spot (cap 300 waits), so the floor's mix holds. `jellyStep` takes `env.stay(x, y)` (the Game passes `natural`
+when `zone`): `roamStep(..., ok)` turns the roam spot back at the edge; from inside it won't pulse if the glide end
+(`min(gd, 160, v/drag)` + current drift `v/drag`) is outside; if it's outside (`lost`) it forgets you and heads home.
+**Arched vines** (`ARCH_KNOBS`, Dev → Arched vines, all ranges): in `decorate` (after groves, green floors only,
+natural zones only via its new `zone` arg) clusters of arches between two `ceilNear` spots; `archCurve` (pure, parabola
+sag so length ≈ `arSlack` × chord) walked at half-pixel steps must be open + natural, with `arClear` px open below its
+lowest point. An arch is a `k: 'climb'` prop with `arc` (points relative to x, y), `anc` + `anc2` (both must hold —
+`propAnchored`), `alen`, `thick`; its strands are ordinary vine props with `on` (the arch) and `u` (where on it) and no
+`anc` (`propAnchored` → the arch's state; the staggered anchor check now runs on `anc || on`). `cullDecor` checks an
+arch's *curve* (not its big box) against keep-outs and non-climb props, and drops strands of dropped arches.
+`archNear`/`archAt` are pure. In the Game: `decorStep` latches `z.arch` within `arGrab` (it beats a strand's
+`z.climb`), the steering branch `climbing && zfx.arch` runs you along the local tangent (`arClimb`), push down (not
+along) = `webLetGo`. `drawArch` in `drawProp`. Fire: `fireArches` (listed by `fireList()`, which now also notices a
+same-length swap and runs from `ignite` too), `catchArch(pr, u)`, burns both ways at `fireArch` px/s, lighting strands
+as `u0..u1` passes them. Tests: `tests/logic/zones.test.js`, `tests/browser/archvine.test.js` (sandbox with the new
+`sandbox({ roof: true })`), strata/decor updated.
 **v74 Pollen nerf.** Pollen has `drift: 1`, `homeR: 80`, `pop: 6` (no `eat`). `driftStep` (pure, above
 `tracePath`, consts `DRIFT_*`) damps its speed and, once slow, floats it up. It only homes after
 locking (`b.lock`: nearest creature within `homeR` with `lineOfSight`), then speeds back to

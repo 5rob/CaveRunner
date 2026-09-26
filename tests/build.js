@@ -9,7 +9,8 @@
 //                        flat floor, nothing else (no enemies, props, loot, shots), fog
 //                        lifted, the player standing on the floor. Returns { x, y, l, r }:
 //                        the centre x, the floor's top y, and the room's left/right edges.
-//                        o: { w, h } room size in world units (default 300 x 200).
+//                        o: { w, h } room size in world units (default 300 x 200);
+//                        o.roof: a solid brick roof over the room (something to hang things off).
 //   __lvl.placeProp(pr, x, y)  a copy of prop `pr` (take one off a real floor so its shape
 //                        is honest) set down at (x, y), anchored to the cell below; returns it.
 //   See "Test mechanics in a sandbox" in CLAUDE.md for when to use these.
@@ -36,7 +37,9 @@ const SANDBOX =
   "        dd[k + 3] = 0; if (ore) ore[i] = 0; fire.fuel[i] = 0; fire.t[i] = 0;" +
   "        if (y < fr) { mat[i] = 0; d[k + 3] = 0; }" +
   "        else { mat[i] = BRICK; d[k] = 132; d[k + 1] = 99; d[k + 2] = 71; d[k + 3] = 255; } }" +
-  "      tctx.putImageData(img, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);" +
+  "      if (o.roof) for (let y = Math.max(0, y0 - 6); y < y0; y++) for (let x = x0; x <= x1; x++) {" +
+  "        const i = y * CW + x, k = i * 4; mat[i] = BRICK; d[k] = 132; d[k + 1] = 99; d[k + 2] = 71; d[k + 3] = 255; dd[k + 3] = 0; }" +
+  "      tctx.putImageData(img, 0, 0, x0, Math.max(0, y0 - 6), x1 - x0 + 1, y1 - y0 + 7);" +
   "      dctx.putImageData(dimg, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);" +
   "      enemies.length = 0; props.length = 0; pickups.length = 0; bullets.length = 0;" +
   "      enemyShots.length = 0; webs.length = 0; silk.length = 0; strings.length = 0; fields.length = 0; dparts.length = 0; amb.length = 0;" +
@@ -55,7 +58,7 @@ const HOOK_LVL = SANDBOX +
   "get roster(){return roster}, get theme(){return themeName}, " +
   "get arrival(){return arrival}, get start(){return start}, get portal(){return portal}, " +
   "enemyShots, sparks, webs, silk, strings, fields, beams, arcs, flashes, dig, explode, get ore(){return ore}, motes, smoke, get sconces(){return sconces}, get props(){return props}, dparts, amb, clouds, rings, get zfx(){return zfx}, " +
-  "get fire(){return fire}, ignite, setAlight, youAlight, get dimg(){return dimg}, " +
+  "get fire(){return fire}, ignite, setAlight, youAlight, get dimg(){return dimg}, get zone(){return zone}, " +
   "world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y }, " +
   "fog: { get seen(){return seen}, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal, paint: paintFog }, " +
   "light: { get flick(){return flick}, get r(){return torchR}, " +

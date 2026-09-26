@@ -22,13 +22,14 @@ const bands = (mat, x) => {
   for (let y = 10; y < SHOP_TOP - SHOP_ROOF; y++) { const r = mat[y * CW + x] ? 1 : 0; if (r && !was) n++; was = r; }
   return n;
 };
-// level floor: open cell over solid, with the same floor row 24 cells running
-const flatRuns = mat => {
+// level floor: open cell over solid, with the same floor row 24 cells running (only in the
+// built-up zones, if a zone map is given)
+const flatRuns = (mat, zone) => {
   let n = 0;
   for (let y = 40; y < SHOP_TOP - 20; y++) {
     let run = 0;
     for (let x = 4; x < CW - 4; x++) {
-      const ok = !mat[y * CW + x] && mat[(y + 1) * CW + x] && !mat[(y - 8) * CW + x];
+      const ok = !mat[y * CW + x] && mat[(y + 1) * CW + x] && !mat[(y - 8) * CW + x] && (!zone || zone[y * CW + x]);
       run = ok ? run + 1 : 0;
       if (run === 24) n++;
     }
@@ -45,10 +46,13 @@ check('a floor-1 cave builds in well under a second', ms < 600, Math.round(ms));
 const bandN = lvl.map(L => [160, 320, 480].map(x => bands(L.mat, x)).reduce((a, b) => a + b) / 3);
 check('floor 1 is layered: 12+ rock bands down a column on average', bandN.every(n => n >= 12), bandN.map(n => n.toFixed(1)));
 const f2 = makeLevel(5, 2);
-const flat1 = lvl.map(L => flatRuns(L.mat)), flat2 = flatRuns(f2.mat);
+// (v87: floor 1 is zoned, so this is per cell of built-up zone against per cell of floor 2)
+const cave = (SHOP_TOP - 60) * (CW - 8);
+const share = L => { let b = 0; for (let y = 40; y < SHOP_TOP - 20; y++) for (let x = 4; x < CW - 4; x++) b += L.zone[y * CW + x]; return b / cave; };
+const flat1 = lvl.map(L => flatRuns(L.mat, L.zone) / share(L)), flat2 = flatRuns(f2.mat);
 const mean1 = flat1.reduce((a, b) => a + b) / flat1.length;
-check('floor 1 has far more long level floors than the old noise cave (floor 2)',
-  mean1 > flat2 * 2 && flat1.every(n => n > flat2 * 1.5), { floor1: flat1, floor2: flat2 });
+check('floor 1 built-up zones have far more long level floors than the old noise cave (floor 2)',
+  mean1 > flat2 * 2 && flat1.every(n => n > flat2 * 1.5), { floor1: flat1.map(Math.round), floor2: flat2 });
 check('floor 2 still uses the old cave (no workings)', f2.works.length === 0);
 
 // the hidden rooms land in their vaults

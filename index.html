@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v86</title>
+<title>CaveRunner v87</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -459,7 +459,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v86';
+const VERSION = 'v87';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -545,7 +545,7 @@ const DEV_META = [
   { k: 'bagSpeed',  g: 'ui',    label: 'Bag fire preview speed (×real time)', min: 0.05, max: 5, step: 0.05 },
 ];
 const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['player', 'Player'],
-  ['enemy', 'Enemies'], ['spider', 'Spider'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['level', 'Level layout (floor 1)'], ['fire', 'Fire']];
+  ['enemy', 'Enemies'], ['spider', 'Spider'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['level', 'Level layout (floor 1)'], ['arch', 'Arched vines'], ['fire', 'Fire']];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults.
 function devReport() {
@@ -752,6 +752,27 @@ const LV_KNOBS = rangeKnobs('level', [
   ['lvPropR',   'Propped patch radius (px)',          20, 400, 5,   70, 140],
   ['lvPropDense', 'Timber density in a patch (×)',    0.5, 4, 0.05, 0.9, 1.15],
   ['lvPropRot', 'Bays rotted away outside patches (0-1)', 0, 1, 0.05, 0.3, 0.6],
+  // v87: floor 1 is two styles in zones. A big slow noise over the map says which: built-up
+  // (the layered cave above) or natural (the old noise cave). See makeLevel.
+  ['lvZoneSize', 'Zone size (px)',                     60, 900, 10,  220, 320],
+  ['lvZoneShare', 'Built-up share of the map (0-1)',   0, 1, 0.05,   0.4, 0.55],
+  ['lvZoneRag', 'Zone edge raggedness (px)',           0, 60, 1,     8, 18],
+]);
+// Arched vines (v87): a long vine hung between two ceiling spots over an open pocket, sagging
+// between them, thick with leaves and dangling strands. Rolled per floor / per arch with the
+// decoration's own random stream. Sizes are terrain pixels (the runner is 6 wide, 11 tall).
+const ARCH_KNOBS = rangeKnobs('arch', [
+  ['arVines',   'Arched vine clusters per floor',      0, 40, 0.5,   9, 13],
+  ['arCluster', 'Arches per cluster',                  1, 8, 0.1,    1.5, 3.5],
+  ['arSpan',    'Span between the two ends (px)',      20, 300, 5,   50, 150],
+  ['arRise',    'Height difference of the ends (× span)', 0, 1, 0.05, 0, 0.35],
+  ['arSlack',   'Vine length (× span)',                1, 3, 0.05,   1.1, 1.6],
+  ['arClear',   'Open air under its lowest point (px)', 0, 150, 2,   18, 40],
+  ['arThick',   'Twisted stems',                       1, 5, 1,      2, 3],
+  ['arStrands', 'Hanging strands per 10px',            0, 6, 0.1,    0.8, 1.8],
+  ['arStrandLen', 'Hanging strand length (px)',        2, 80, 1,     5, 28],
+  ['arGrab',    'Grab distance (world units)',         0, 30, 1,     7, 9],
+  ['arClimb',   'Climb speed along it',                0, 400, 5,    80, 100],
 ]);
 // Fire (v86): see fireStep. Every knob a min/max range like the creatures'.
 const FIRE_KNOBS = rangeKnobs('fire', [
@@ -765,6 +786,7 @@ const FIRE_KNOBS = rangeKnobs('fire', [
   ['fireYou',    'You burn for (s)',                  0, 10, 0.1,    1.2, 2],
   ['fireYouDps', 'Your burn damage per s',            0, 40, 0.5,    5, 8],
   ['firePlant',  'Vines burn up at (px/s)',           1, 200, 1,     18, 34],
+  ['fireArch',   'Arched vines burn along at (px/s)', 1, 400, 1,     60, 100],
 ]);
 const DEV_KEY = 'caverunner-dev';
 const DEV = Object.assign({}, DEV_DEFAULTS);
@@ -1700,8 +1722,9 @@ function losClear(x0, y0, x1, y1, solidCell) {
 // The roam spot: a point that wanders slowly round home (e.hx, e.hy) and turns back
 // whenever it strays past the roam radius. A roaming creature heads for it. Keeps rx, ry,
 // ra, roamR, roamSpd on the creature's state R; radius and drift speed are the creature's
-// knobs pre+'RoamR' / pre+'RoamSpd', rolled again each time it turns back.
-function roamStep(R, e, dt, rnd, pre) {
+// knobs pre+'RoamR' / pre+'RoamSpd', rolled again each time it turns back. ok(x, y), if
+// given, is where the spot may go: it turns back toward home at the edge of that too.
+function roamStep(R, e, dt, rnd, pre, ok) {
   if (R.rx === undefined) { R.rx = e.hx; R.ry = e.hy; R.ra = rnd() * 6.28; }
   R.ra += (rnd() - 0.5) * 3 * dt;
   if (!R.roamR) { R.roamR = kr(pre + 'RoamR', rnd); R.roamSpd = kr(pre + 'RoamSpd', rnd); }
@@ -1709,7 +1732,9 @@ function roamStep(R, e, dt, rnd, pre) {
     R.ra = Math.atan2(e.hy - R.ry, e.hx - R.rx);
     R.roamR = kr(pre + 'RoamR', rnd); R.roamSpd = kr(pre + 'RoamSpd', rnd);
   }
-  R.rx += Math.cos(R.ra) * R.roamSpd * dt; R.ry += Math.sin(R.ra) * R.roamSpd * dt;
+  const nx = R.rx + Math.cos(R.ra) * R.roamSpd * dt, ny = R.ry + Math.sin(R.ra) * R.roamSpd * dt;
+  if (ok && !ok(nx, ny) && ok(R.rx, R.ry)) { R.ra = Math.atan2(e.hy - R.ry, e.hx - R.rx); return; }
+  R.rx = nx; R.ry = ny;
 }
 
 // a heading `a` turned toward `to` by at most `max` radians: a turn-rate limit. Kept
@@ -2002,7 +2027,10 @@ function jellyBell(r, s, q) {
   return { w, h, rw: w * (0.96 - 0.24 * t), top: -h * 0.62, rim: h * 0.38 };
 }
 
-// One frame of one jelly. env: { solidCell, goal: {x,y}, hunting, rnd, speedMul, rangeMul }.
+// One frame of one jelly. env: { solidCell, goal: {x,y}, hunting, rnd, speedMul, rangeMul,
+// stay }. stay(x, y), if given, is where it may swim (the natural zones): its roam spot keeps
+// inside, and from inside it never pulses toward a spot its glide would carry it out of —
+// hunting you into a built-up corridor, it hangs at the edge and spits from there.
 // Returns 'pulse' on the frame a pulse starts, else null.
 function jellyStep(e, env, dt) {
   const { solidCell, rnd } = env;
@@ -2021,12 +2049,16 @@ function jellyStep(e, env, dt) {
       S.tent.push(T);
     }
   }
-  const mul = env.speedMul || 1, hunt = !!(env.hunting && env.goal);
+  const mul = env.speedMul || 1;
+  let hunt = !!(env.hunting && env.goal);
   S.t += dt;
-  roamStep(S, e, dt, rnd, 'je');
+  roamStep(S, e, dt, rnd, 'je', env.stay);
+  // strayed into a built-up zone: it forgets you and heads home
+  const lost = !!(env.stay && !env.stay(e.x, e.y));
+  if (lost) hunt = false;
   if (hunt && !S.range) S.range = kr('jeRange', rnd);
   if (!hunt) S.range = 0;
-  const goal = hunt ? env.goal : { x: S.rx, y: S.ry };
+  const goal = hunt ? env.goal : lost ? { x: e.hx, y: e.hy } : { x: S.rx, y: S.ry };
   const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
   const range = S.range * (env.rangeMul || 1);
   // turn, no faster than the limit. Idle with nowhere to be, it rights itself, head up
@@ -2043,8 +2075,14 @@ function jellyStep(e, env, dt) {
     S.push -= dt;
   } else if ((S.rest -= dt) <= 0) {
     // ready: pulse only if there's somewhere to go and the head is (nearly) on it
-    if ((hunt ? gd > range : gd > 10) && off < S.tol) {
-      const v = kr(hunt ? 'jeHuntPush' : 'jeRoamPush', rnd), pt = kr('jePushT', rnd);
+    const v = (hunt ? gd > range : gd > 10) && off < S.tol ? kr(hunt ? 'jeHuntPush' : 'jeRoamPush', rnd) : 0;
+    // where this pulse would glide it to (drag bleeds speed exponentially, so a speed v
+    // carries it v / drag), no further than where it's going, plus the drift it already has
+    const dg = Math.max(0.1, S.drag), glide = Math.min(gd, 160, Math.max(20, v / dg));
+    const stay = env.stay, out0 = stay && !lost &&
+      !stay(e.x + Math.cos(S.hd) * glide + S.vx / dg, e.y + Math.sin(S.hd) * glide + S.vy / dg);
+    if (v > 0 && !out0) {
+      const pt = kr('jePushT', rnd);
       S.push = pt; S.pushA = v / Math.max(pt, 0.001); S.vref = Math.max(v, 1);
       S.rest = kr(hunt ? 'jeHuntRest' : 'jeRoamRest', rnd);
       feel(hunt);
@@ -3691,7 +3729,39 @@ function timberFrame(mat, set, R, T, xa, xb, y, old, fy, maxH) {
 
 // `fuel` (optional) gets the fuel kind of every pixel painted: whatever FU is at the time
 // (see the fire section) — grass, moss and timber burn, everything else paints a 0.
-function decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel) {
+// An arched vine's curve (v87): hung from (ax, ay) to (bx, by), `slack` times as long as the
+// straight line between them, so it sags. A parabola under the chord, its depth set so the
+// curve's length comes out near slack × chord (for a shallow sag, length ≈ c(1 + 8/3 (s/c)²)).
+// n + 1 points, world units.
+function archCurve(ax, ay, bx, by, slack, n) {
+  const c = Math.hypot(bx - ax, by - ay), s = c * Math.sqrt(3 * Math.max(0, slack - 1) / 8);
+  const pts = [];
+  for (let k = 0; k <= n; k++) {
+    const t = k / n;
+    pts.push({ x: ax + (bx - ax) * t, y: ay + (by - ay) * t + 4 * s * t * (1 - t) });
+  }
+  return pts;
+}
+// the nearest point on arched vine pr to (x, y): { x, y, d, k } (k = the segment it's on)
+function archNear(pr, x, y) {
+  const A = pr.arc;
+  let best = null;
+  for (let k = 0; k + 1 < A.length; k++) {
+    const ax = pr.x + A[k][0], ay = pr.y + A[k][1], bx = pr.x + A[k + 1][0], by = pr.y + A[k + 1][1];
+    const vx = bx - ax, vy = by - ay, ll = vx * vx + vy * vy || 1;
+    const u = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / ll));
+    const qx = ax + vx * u, qy = ay + vy * u, d = Math.hypot(qx - x, qy - y);
+    if (!best || d < best.d) best = { x: qx, y: qy, d, k };
+  }
+  return best;
+}
+// a point on arched vine pr (world units) at fraction u of the way along its points
+function archAt(pr, u) {
+  const A = pr.arc, f = Math.max(0, Math.min(1, u)) * (A.length - 1), k = Math.min(A.length - 2, Math.floor(f)), t = f - k;
+  return { x: pr.x + A[k][0] + (A[k + 1][0] - A[k][0]) * t, y: pr.y + A[k][1] + (A[k + 1][1] - A[k][1]) * t };
+}
+
+function decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel, zone) {
   let rs = (Math.imul(seed | 0, 7919) + floor * 104729 >>> 0) % 2147483646 + 1;
   const R = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
   const T = themeFor(floor), list = decorFor(floor);
@@ -4013,6 +4083,74 @@ function decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel) {
     }
     baked.groves = groves.length;
   }
+
+  // ---- arched vines (v87): a long vine slung between two ceiling spots over an open pocket,
+  // thick with leaves, with strands hanging off it. They come in clusters, and on a zoned
+  // floor only in the natural zones (the built-up corridors are too low for them).
+  baked.arches = 0;
+  if (green && sites.ceil.length) {
+    const K = k => kr(k, R), cnt = v => Math.floor(v) + (R() < v % 1 ? 1 : 0);
+    const nat = (cx, cy) => !zone || !zone[cy * CW + cx];
+    const spots = [], nC = cnt(Math.max(0, K('arVines')));
+    for (let tries = 0; spots.length < nC && tries < nC * 80 + 80; tries++) {
+      const i = sites.ceil[Math.floor(R() * sites.ceil.length)];
+      const cx = i % CW, cy = (i / CW) | 0;
+      if (!nat(cx, cy) || spots.some(g => Math.hypot(g.cx - cx, g.cy - cy) < 80)) continue;
+      const want = Math.max(1, cnt(K('arCluster')));
+      let got = 0;
+      for (let t = 0; t < want * 30 && got < want; t++) {
+        const ax = got ? cx + Math.round((R() - 0.5) * 50) : cx, ay = got ? ceilNear(ax, cy, 24) : cy;
+        if (ay < 0 || !nat(ax, ay)) continue;
+        const span = K('arSpan'), bx = Math.round(ax + (R() < 0.5 ? -1 : 1) * span);
+        const by = ceilNear(bx, Math.round(ay + K('arRise') * span * (R() < 0.5 ? -1 : 1)), Math.round(span * 0.25) + 4);
+        if (by < 0 || !nat(bx, by)) continue;
+        if (archProp(ax, ay, bx, by, K, cnt, nat)) { got++; baked.arches++; }
+      }
+      if (got) spots.push({ cx, cy });
+    }
+  }
+  // one arch from ceiling spot (ax, ay) to (bx, by), terrain pixels, and its strands; null if
+  // it would pass through rock or doesn't hang over enough open air
+  function archProp(ax, ay, bx, by, K, cnt, nat) {
+    const A = { x: (ax + 0.5) * CELL, y: ay * CELL }, B = { x: (bx + 0.5) * CELL, y: by * CELL };
+    const slack = K('arSlack'), chord = Math.hypot(B.x - A.x, B.y - A.y);
+    const n = Math.max(8, Math.min(40, Math.round(chord / 6)));
+    const pts = archCurve(A.x, A.y, B.x, B.y, slack, n);
+    // walk it half a pixel at a time: all of it in open air, in a natural zone
+    let low = pts[0], alen = 0;
+    for (let k = 0; k < n; k++) {
+      const p = pts[k], q = pts[k + 1], l = Math.hypot(q.x - p.x, q.y - p.y), m = Math.max(1, Math.ceil(l * 2 / CELL));
+      alen += l;
+      for (let j = 0; j <= m; j++) {
+        const x = p.x + (q.x - p.x) * j / m, y = p.y + (q.y - p.y) * j / m;
+        const cx = Math.floor(x / CELL);
+        if (!openC(cx, Math.floor(y / CELL)) || !openC(cx, Math.floor((y + 1) / CELL)) || !nat(cx, Math.floor(y / CELL))) return null;
+      }
+      if (q.y > low.y) low = q;
+    }
+    const lx = Math.floor(low.x / CELL), ly = Math.floor(low.y / CELL);
+    if (downTo(lx, ly, 150) < K('arClear') || ly >= SHOP_TOP - 24) return null;
+    const pr = { id: 'arch', k: 'climb', st: green.style, x: A.x, y: A.y, t: R() * 10, seed: R(), hang: 1,
+      anc: [ax, ay - 1], anc2: [bx, by - 1], arc: pts.map(p => [p.x - A.x, p.y - A.y]),
+      thick: Math.max(1, Math.round(K('arThick'))), alen };
+    let l = 0, r = 0, t0 = 0, b = 0;
+    for (const [x, y] of pr.arc) { l = Math.min(l, x); r = Math.max(r, x); t0 = Math.min(t0, y); b = Math.max(b, y); }
+    props.push(pr);
+    // strands hanging off it, spaced at random along it
+    const ns = cnt(K('arStrands') * alen / (10 * CELL));
+    for (let s = 0; s < ns; s++) {
+      const u = R(), q = archAt(pr, u);
+      q.u = u;
+      const room = downTo(Math.floor(q.x / CELL), Math.floor(q.y / CELL), 90);
+      const len = Math.round(Math.min(K('arStrandLen'), room * 0.7, SHOP_TOP - 20 - q.y / CELL) * CELL);
+      if (len < 4) continue;
+      props.push({ id: 'archStrand', k: 'climb', st: green.style, x: q.x, y: q.y, t: R() * 10, seed: R(), hang: 1,
+        len, on: pr, u: q.u, l: -5, t0: 0, r: 5, b: len });
+      b = Math.max(b, q.y - A.y + len);
+    }
+    pr.l = l - 4; pr.r = r + 4; pr.t0 = t0 - 3; pr.b = b + 3;
+    return pr;
+  }
   // thick growth round (gx, gy) out to radius rr, fading with distance
   function overgrow(gx, gy, rr) {
     const leaf = T.moss[1], dark = shade(T.moss[0], 0.8);
@@ -4052,11 +4190,20 @@ function decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel) {
 function cullDecor(props, keep) {
   const out = [];
   const pad = 3;
+  const dropped = new Set();
   for (const pr of props) {
+    if (pr.arc) {                          // an arched vine: its curve, not its big box
+      if (pr.arc.some(([x, y]) => keep.some(k => Math.hypot(pr.x + x - k.x, pr.y + y - k.y) < k.r) ||
+        out.some(o => o.k !== 'climb' && pr.x + x > o.x + o.l - pad && pr.x + x < o.x + o.r + pad &&
+          pr.y + y > o.y + o.t0 - pad && pr.y + y < o.y + o.b + pad))) { dropped.add(pr); continue; }
+      out.push(pr);
+      continue;
+    }
+    if (pr.on && dropped.has(pr.on)) continue;
     const x0 = pr.x + pr.l - pad, x1 = pr.x + pr.r + pad, y0 = pr.y + pr.t0 - pad, y1 = pr.y + pr.b + pad;
     if (keep.some(k => k.x + k.r > x0 && k.x - k.r < x1 && k.y + k.r > y0 && k.y - k.r < y1)) continue;
     // plants may hang through each other (that's what a clump is); nothing else may overlap
-    if (out.some(o => !(o.k === 'climb' && pr.k === 'climb') &&
+    if (out.some(o => !(o.k === 'climb' && pr.k === 'climb') && !o.arc &&
       o.x + o.l < x1 && o.x + o.r > x0 && o.y + o.t0 < y1 && o.y + o.b > y0)) continue;
     out.push(pr);
   }
@@ -4065,6 +4212,8 @@ function cullDecor(props, keep) {
 // is a prop's anchoring rock still there? The cell it hangs off, or either neighbour, so a
 // one-pixel nick doesn't drop it — you have to really cut it loose.
 function propAnchored(pr, mat) {
+  if (pr.on) return !pr.on.fall && !pr.on.gone;          // a strand hangs off its arched vine
+  if (pr.anc2 && !propAnchored({ anc: pr.anc2 }, mat)) return false;   // an arch needs both ends
   if (!pr.anc) return true;
   const [cx, cy] = pr.anc;
   for (let dx = -1; dx <= 1; dx++) {
@@ -4084,6 +4233,43 @@ function propCol(pr, T) {
     monolith: rgbA(T.bg2), skulls: '#e6dcc4', stone: '#c58cff', shard: rgbA(T.moss[1]),
     chain: '#8a7a6a', lantern: '#ffb050', crystal: '#d6a0ff', lava: '#ff7a2a' }[pr.st] || rgbA(T.moss[1]);
 }
+// An arched vine (v87): a few twisted stems along the curve, swaying a little in the middle
+// (never at the ends, which are held), thick with leaves. The strands hanging off it are
+// ordinary vine props. While it burns, the burnt stretch (u0..u1) is gone.
+function drawArch(ctx, pr, time, T) {
+  const A = pr.arc, n = A.length - 1, x = pr.x, y = pr.y;
+  const col = pr.st === 'root' ? mix(T.moss[0], [200, 190, 160], 0.4) : T.moss[0];
+  const sway = k => Math.sin(time * 0.9 + pr.seed * 6 + k * 0.35) * 0.8 * Math.sin(Math.PI * k / n);
+  const gone = k => pr.burn && k / n > pr.u0 && k / n < pr.u1;
+  const fr = v => v - Math.floor(v);
+  for (let s = 0; s < pr.thick; s++) {
+    ctx.strokeStyle = rgbA(mix(col, [0, 0, 0], 0.18 * s));
+    ctx.lineWidth = pr.st === 'root' ? 1.8 : 1.2;
+    ctx.beginPath();
+    let pen = false;
+    for (let k = 0; k <= n; k++) {
+      if (gone(k)) { pen = false; continue; }
+      const tw = pr.thick > 1 ? Math.sin(k * 1.3 + s * 2.1 + pr.seed * 9) * 0.9 : 0;
+      const px = x + A[k][0], py = y + A[k][1] + sway(k) + tw;
+      if (pen) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+      pen = true;
+    }
+    ctx.stroke();
+  }
+  // leaves: several per segment, either side of the stems, hanging down a little
+  ctx.fillStyle = rgbA(T.moss[1]);
+  for (let k = 0; k < n; k++) {
+    if (gone(k) || gone(k + 1)) continue;
+    for (let j = 0; j < 3; j++) {
+      const h = fr(Math.sin(k * 12.9898 + j * 78.233 + pr.seed * 437) * 43758.5);
+      const t = (j + h) / 3, s = (k + j) % 2 ? 1 : -1;
+      const lx = x + A[k][0] + (A[k + 1][0] - A[k][0]) * t;
+      const ly = y + A[k][1] + (A[k + 1][1] - A[k][1]) * t + sway(k + t) + 1 + h * 1.5;
+      ctx.beginPath();
+      ctx.ellipse(lx + s * (1 + h), ly, 1.9, 0.9, s * (0.5 + h * 0.6), 0, 6.29); ctx.fill();
+    }
+  }
+}
 // One prop, in world units, before the fog. Anything that glows gets its light added after
 // the fog in propGlow, so the light shows in the dark but the prop itself stays hidden.
 function drawProp(ctx, pr, time, T) {
@@ -4094,6 +4280,7 @@ function drawProp(ctx, pr, time, T) {
   const tri = (ax, ay, bx, by, cx, cy) => { ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(cx, cy); ctx.closePath(); ctx.fill(); };
   switch (pr.k) {
     case 'climb': {
+      if (pr.arc) { drawArch(ctx, pr, time, T); break; }
       const len = pr.len, sw = st === 'kelp' ? 5 : st === 'chain' ? 0.8 : 1.6;
       const off = k => Math.sin(time * (st === 'kelp' ? 1.6 : 1.1) + pr.seed * 6 + k * 0.08) * sw * (k / len);
       if (st === 'icefall') {
@@ -5409,9 +5596,10 @@ function goldVeins(mat, seed, floor) {
 //   4. rasterised, then caverns cut through several layers (broken bits of strata left
 //      floating, stalactites and stalagmites), then small bubbles in the rock.
 // Returns what makeLevel needs: route points for re-clearing, vaults for the rooms, works.
-// N = { vn, fbm } (the level's seeded noise), rnd its seeded random.
+// N = { vn, fbm, ok } (the level's seeded noise; ok(x, y), if given, is where built-up
+// features may go — makeLevel's zones — so workings and vaults land whole inside one).
 function strataCave(mat, rnd, N, shopExit) {
-  const { vn, fbm } = N;
+  const { vn, fbm } = N, ok = N.ok || (() => true);
   const K = k => kr(k, rnd);
   const cnt = k => { const v = Math.max(0, K(k)); return Math.floor(v) + (rnd() < v % 1 ? 1 : 0); };
   const X0 = 4, X1 = CW - 5;
@@ -5463,7 +5651,9 @@ function strataCave(mat, rnd, N, shopExit) {
     const want = vaultAt.find(v => !v.done && cSum / (X1 - X0 + 1) - T < v.y);
     if (want && i > 0) {
       want.done = true;
-      const vx = Math.round(60 + rnd() * (CW - 120));
+      let vx = Math.round(60 + rnd() * (CW - 120));
+      for (let t = 0; t < 30 && !(ok(vx - 50, ceil[vx] - 19) && ok(vx + 50, ceil[vx] - 19) && ok(vx, ceil[vx] + 8)); t++)
+        vx = Math.round(60 + rnd() * (CW - 120));
       let cm = 1e9;
       for (let x = vx - 34; x <= vx + 34; x++) cm = Math.min(cm, ceil[x]);
       cm = Math.floor(cm);
@@ -5531,7 +5721,7 @@ function strataCave(mat, rnd, N, shopExit) {
 
   // 3. old workings: a stretch of corridor levelled, floor and roof, blending out at the ends
   const works = [];
-  for (let n = cnt('lvWorks'), tries = 0; n > 0 && tries < 80; tries++) {
+  for (let n = cnt('lvWorks'), tries = 0; n > 0 && tries < 400; tries++) {
     const ci = Math.floor(rnd() * cors.length), c = cors[ci];
     if (c.top) continue;
     const ss = segs(c), s = ss[Math.floor(rnd() * ss.length)];
@@ -5540,7 +5730,7 @@ function strataCave(mat, rnd, N, shopExit) {
     const x0 = Math.round(s.a + 4 + rnd() * (s.b - s.a - 8 - len)), x1 = Math.round(x0 + len);
     if (works.some(w => w.ci === ci && x0 < w.x1 + 40 && x1 > w.x0 - 40)) continue;
     if (vaults.some(v => (v.below === ci || v.below === ci - 1) && x0 < v.b + 24 && x1 > v.a - 24)) continue;
-    if (tries < 50 && hits(layers[ci].holes, x0, x1, 4)) continue;   // a gallery floor with no hole in it, if it can
+    if (tries < 250 && hits(layers[ci].holes, x0, x1, 4)) continue;   // a gallery floor with no hole in it, if it can
     const fs = Array.from(c.floor.slice(x0, x1 + 1)).sort((p, q) => p - q);
     let Lf = Math.round(fs[fs.length >> 1]);
     const under = layers[ci].bot, over = layers[ci + 1].top;
@@ -5552,6 +5742,7 @@ function strataCave(mat, rnd, N, shopExit) {
     const Hw = Math.round(Math.min(K('lvWorkH'), Lf - 1 - (maxOver + 6)));
     if (Hw < Math.max(16, hFloor)) continue;
     const Lc = Lf - Hw - 1;
+    if (!(ok(x0, Lf - 4) && ok(x1, Lf - 4) && ok((x0 + x1) / 2, Lc + 2) && ok(x0 - 28, Lf - 4) && ok(x1 + 28, Lf - 4))) continue;
     for (let x = Math.max(s.a, x0 - 28); x <= Math.min(s.b, x1 + 28); x++) {
       const t = x < x0 ? sm((x - (x0 - 28)) / 28) : x > x1 ? sm((x1 + 28 - x) / 28) : 1;
       c.floor[x] += (Lf - c.floor[x]) * t;
@@ -5682,7 +5873,7 @@ function strataCave(mat, rnd, N, shopExit) {
     const c = cors[v.below];
     for (let t = 0; t < 20; t++) {
       const px = Math.round(Math.max(X0 + 10, Math.min(X1 - 10, v.x + (rnd() < 0.5 ? -1 : 1) * (48 + rnd() * 24))));
-      if (hits(c.walls, px, px, 6)) continue;
+      if (hits(c.walls, px, px, 6) || !ok(px, mid(c, px))) continue;
       v.px = px; v.py = mid(c, px);
       break;
     }
@@ -5708,7 +5899,7 @@ function paveWorks(mat, works, vn) {
 // most round a working, where the galleries keep every bay and the natural tunnels get
 // timber sets too wherever the rock will take one, spaced at the post spacing. Outside them
 // the galleries keep a sparse, half-rotted run of sets and the natural cave has none.
-function timberWorks(mat, dimg, works, T, R, fuel) {
+function timberWorks(mat, dimg, works, T, R, fuel, ok) {
   const dd = dimg.data;
   const set = (x, y, c) => {
     if (x < 0 || y < 0 || x >= CW || y >= CH || mat[y * CW + x]) return;
@@ -5752,6 +5943,7 @@ function timberWorks(mat, dimg, works, T, R, fuel) {
       for (let x = Math.max(6, Math.floor(z.x - z.r)); x < Math.min(CW - 30, z.x + z.r); x++) {
         if (mat[y * CW + x] || !mat[(y + 1) * CW + x] || Math.hypot(x - z.x, y - z.y) > z.r) continue;
         if (works.some(w => x > w.x0 - 34 && x < w.x1 + 30 && y > w.cy && y <= w.fy)) continue;   // galleries have their own
+        if (ok && !(ok(x, y) && ok(x + 20, y))) continue;                       // built-up zones only
         const wd = 12 + Math.floor(R() * 8), gap = Math.max(4, kr('lvPost', R) / z.d - wd);
         if (used.some(u => Math.abs(u.y - y) < 10 && x < u.b + gap && x + wd > u.a - gap)) continue;
         if (timberFrame(mat, set, R, T, x, x + wd, y - 4, true, y + 1, 36)) { used.push({ a: x, b: x + wd, y }); sets++; x += wd; }
@@ -5842,6 +6034,47 @@ function fireStep(F, dt, out, rnd) {
   return ticks;
 }
 
+// creatures (by act) that live only in the natural zones: spawned there, and they won't swim
+// out into a built-up zone (jellyStep's env.stay)
+const NATURAL_ONLY = { jelly: 1 };
+// Where can a runner-sized box (6 x 11 terrain pixels) get to from (x, y) (its top-left,
+// in the open), walking and flying through open pixels? ok[i] = 2 where its top-left can
+// be; top: it got to the top of the map (y <= 40), where the exit is.
+function boxReach(mat, x, y) {
+  const PWc = 6, PHc = 11;
+  const free = new Uint8Array(CW * CH), ok = new Uint8Array(CW * CH);
+  for (let cx = 0; cx < CW; cx++) {
+    let run = 0;
+    for (let cy = CH - 1; cy >= 0; cy--) { run = mat[cy * CW + cx] ? 0 : run + 1; if (run >= PHc) free[cy * CW + cx] = 1; }
+  }
+  for (let cy = 0; cy < CH; cy++) {
+    let run = 0;
+    for (let cx = CW - 1; cx >= 0; cx--) { run = free[cy * CW + cx] ? run + 1 : 0; if (run >= PWc) ok[cy * CW + cx] = 1; }
+  }
+  const s0 = y * CW + x;
+  let top = false;
+  if (!ok[s0]) return { ok, top };
+  const st = new Int32Array(CW * CH);
+  let n = 0;
+  ok[s0] = 2; st[n++] = s0;
+  while (n) {
+    const i = st[--n];
+    if (i < 40 * CW) top = true;
+    const x0 = i % CW;
+    if (x0 > 0 && ok[i - 1] === 1) { ok[i - 1] = 2; st[n++] = i - 1; }
+    if (x0 < CW - 1 && ok[i + 1] === 1) { ok[i + 1] = 2; st[n++] = i + 1; }
+    if (i >= CW && ok[i - CW] === 1) { ok[i - CW] = 2; st[n++] = i - CW; }
+    if (i < CW * (CH - 1) && ok[i + CW] === 1) { ok[i + CW] = 2; st[n++] = i + CW; }
+  }
+  return { ok, top };
+}
+// is world point (wx, wy) in a built-up zone? (level.zone; null on floors without zones)
+function builtAt(zone, wx, wy) {
+  if (!zone) return false;
+  const x = Math.floor(wx / CELL), y = Math.floor(wy / CELL);
+  return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
+}
+
 function makeLevel(seed, floor, owned) {
   floor = floor || 1;
   const have = new Set(owned || []);     // perks you are already carrying, so a room is
@@ -5890,13 +6123,16 @@ function makeLevel(seed, floor, owned) {
     const a = L.g[i], b = L.g[i + 1], c = L.g[i + L.gw], d2 = L.g[i + L.gw + 1];
     return a + (b - a) * u + (c - a) * v + (a - b - c + d2) * u * v;
   };
-  // Floor 1 is the layered cave (strataCave), with its own route, vaults and old workings.
-  // Every other floor is still the noise cave below, until it gets its own treatment.
+  // Floor 1 mixes two caves in zones (v87). A big, slow noise over the whole map picks, pixel
+  // by pixel, built-up (strataCave: layers, old workings, timber, vaults) or natural (the
+  // noise cave below, with its ledges, frames and platforms). Both are built whole and
+  // stitched along the zone edge, which a small warp roughs up and the smoothing pass melts.
+  // Every other floor is the natural cave alone, until it gets its own treatment.
   const layered = floor === 1;
-  const openL = layered ? null : lattice(8, (x, y) => fbm(x / 160 + 500, y / 160 + 500));
-  const pocketL = layered ? null : lattice(4, (x, y) => fbm(x / 60, y / 60));
-  const tunnelL = layered ? null : lattice(4, (x, y) => fbm(x / 90 + 200, y / 90 + 200));
-  if (!layered) for (let cy = 0; cy < CH; cy++) {
+  const openL = lattice(8, (x, y) => fbm(x / 160 + 500, y / 160 + 500));
+  const pocketL = lattice(4, (x, y) => fbm(x / 60, y / 60));
+  const tunnelL = lattice(4, (x, y) => fbm(x / 90 + 200, y / 90 + 200));
+  for (let cy = 0; cy < CH; cy++) {
     for (let cx = 0; cx < CW; cx++) {
       const open = Math.min(1, Math.max(0, (at(openL, cx, cy) - 0.42) / 0.16));
       const pocket = at(pocketL, cx, cy) < 0.34 + 0.24 * open;
@@ -5905,16 +6141,43 @@ function makeLevel(seed, floor, owned) {
     }
   }
 
+  // the zones: zone[i] = 1 where the map is built-up. The threshold is the share asked for,
+  // measured over the cave, so "half" really is about half.
+  let zone = null;
+  if (layered) {
+    const zs = kr('lvZoneSize', rnd), share = kr('lvZoneShare', rnd), rag = kr('lvZoneRag', rnd), ph = rnd() * 100;
+    const zoneL = lattice(8, (x, y) => fbm(x / zs + 1300 + ph, y / zs + 1300));
+    const warpX = lattice(4, (x, y) => vn(x / 14 + 1700, y / 14 + 1700));
+    const warpY = lattice(4, (x, y) => vn(x / 14 + 1900, y / 14 + 1900));
+    const vals = [];
+    for (let y = 0; y < SHOP_TOP - SHOP_ROOF; y += 8) for (let x = 0; x < CW; x += 8) vals.push(at(zoneL, x, y));
+    vals.sort((a, b) => a - b);
+    const thr = share <= 0 ? Infinity : share >= 1 ? -Infinity : vals[Math.min(vals.length - 1, Math.floor((1 - share) * vals.length))];
+    zone = new Uint8Array(CW * CH);
+    for (let y = 0; y < SHOP_FLOOR; y++) for (let x = 0; x < CW; x++) {
+      const wx = Math.max(0, Math.min(CW - 1, x + rag * (2 * at(warpX, x, y) - 1)));
+      const wy = Math.max(0, Math.min(CH - 1, y + rag * (2 * at(warpY, x, y) - 1)));
+      if (at(zoneL, wx, wy) > thr) zone[y * CW + x] = 1;
+    }
+  }
+  const built = (x, y) => {
+    if (!zone) return false;
+    x = Math.round(x); y = Math.round(y);
+    return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
+  };
+
   // 2. main route from bottom to top: chambers linked by winding tunnels
   //    that are always wide enough to fly through (side pockets still need blasting)
   const shopExit = 40 + Math.floor(rnd() * (CW - 80));   // the one way out of the shop
-  const strata = layered ? strataCave(mat, rnd, { vn, fbm }, shopExit) : null;
-  const points = strata ? strata.points : [{ x: shopExit, y: SHOP_TOP - 30 }];
-  const hops = strata ? 0 : 12;                          // the cave is twice as tall now
+  // the built-up cave is built whole in its own buffer, and stitched in below
+  const lay = layered ? new Uint8Array(CW * CH) : null;
+  const strata = layered ? strataCave(lay, rnd, { vn, fbm, ok: built }, shopExit) : null;
+  const points = [{ x: shopExit, y: SHOP_TOP - 30 }];
+  const hops = 12;                                       // the cave is twice as tall now
   for (let i = 1; i <= hops; i++) {
     points.push({ x: 40 + rnd() * (CW - 80), y: CH - 26 - (CH - 60) * i / (hops + 1) + (rnd() - 0.5) * 40 });
   }
-  if (!strata) points.push({ x: CW / 2, y: 22 });
+  points.push({ x: CW / 2, y: 22 });
 
   const blob = (ex, ey, r) => {
     const r2 = r * 1.3;
@@ -5926,12 +6189,19 @@ function makeLevel(seed, floor, owned) {
         if (Math.hypot(x - ex, (y - ey) * 1.4) <= wob) mat[y * CW + x] = 0;
       }
   };
-  const routePath = strata ? strata.routePath : [];   // remembered so smoothing can't pinch the links shut
-  const worm = (x, y, tx, ty, r, maxSteps, keep) => {
+  const routePath = [];   // remembered so smoothing can't pinch the links shut
+  // keep: the list its path is remembered in. The main route (spine) is only cut through
+  // natural zones at first; its built-up stretches go in spineBuilt, cut later only if the
+  // layered corridors don't already carry you across (see "the way through" below).
+  const spineBuilt = [];
+  const worm = (x, y, tx, ty, r, maxSteps, keep, spine) => {
     let ang = tx !== null ? Math.atan2(ty - y, tx - x) : rnd() * Math.PI * 2;
     for (let s = 0; s < maxSteps; s++) {
-      disc(x, y, r, 0);
-      if (keep) routePath.push({ x, y, r: r - 1 });
+      if (spine && built(x, y)) spineBuilt.push({ x, y, r: Math.min(r, 7) - 1 });
+      else {
+        disc(x, y, r, 0);
+        if (keep) keep.push({ x, y, r: r - 1 });
+      }
       if (tx !== null && Math.hypot(tx - x, ty - y) < 3) break;
       const want = tx !== null ? Math.atan2(ty - y, tx - x) : ang;
       let diff = want - ang;
@@ -5942,18 +6212,29 @@ function makeLevel(seed, floor, owned) {
       x = Math.max(6, Math.min(CW - 7, x)); y = Math.max(6, Math.min(CH - 12, y));
     }
   };
-  if (!strata) for (let i = 1; i < points.length - 1; i++) {
+  for (let i = 1; i < points.length - 1; i++) {
     if (rnd() < 0.7) blob(points[i].x, points[i].y, 16 + rnd() * 30);
   }
-  if (!strata) for (let i = 0; i < points.length - 1; i++) {
+  // side branches and dead ends (natural zones only: they're cut before the stitch)
+  const side = [];
+  for (let i = 0; i < 48; i++) {
+    worm(10 + rnd() * (CW - 20), 20 + rnd() * (CH - 60), null, null, 5 + rnd() * 6, 40 + rnd() * 150, side);
+  }
+  for (const c of side) if (!built(c.x, c.y)) routePath.push(c);
+  // the stitch: built-up zones take the layered cave, with its own links through them
+  if (layered) {
+    for (let i = 0; i < SHOP_FLOOR * CW; i++) if (zone[i]) mat[i] = lay[i];
+    for (const c of strata.routePath) if (built(c.x, c.y)) routePath.push(c);
+  }
+  for (let i = 0; i < points.length - 1; i++) {
     const a = points[i], b = points[i + 1];
     const r = rnd() < 0.4 ? 7 + rnd() * 2 : 11 + rnd() * 6;   // tight ones are still snug, but you fit
-    worm(a.x, a.y, b.x, b.y, r, 2000, true);
+    worm(a.x, a.y, b.x, b.y, r, 2000, routePath, true);
   }
-  // side branches and dead ends
-  if (!strata) for (let i = 0; i < 48; i++) {
-    worm(10 + rnd() * (CW - 20), 20 + rnd() * (CH - 60), null, null, 5 + rnd() * 6, 40 + rnd() * 150, true);
-  }
+  // the built-up bits that survived the stitch whole: old workings and the vaults
+  const works = strata ? strata.works.filter(w => built(w.x0, w.fy - 4) && built(w.x1, w.fy - 4) &&
+    built((w.x0 + w.x1) / 2, w.cy + 2)) : [];
+  const vaults = strata ? strata.vaults.filter(v => built(v.a, v.y) && built(v.b, v.y) && built(v.px, v.py)) : [];
 
   // 3. smooth everything into natural shapes. Same 3x3 majority as always, but the
   //    column sums are shared along the row instead of re-read nine times a pixel.
@@ -5969,7 +6250,7 @@ function makeLevel(seed, floor, owned) {
     }
   }
   for (const c of routePath) disc(c.x, c.y, c.r, 0);
-  if (strata) paveWorks(mat, strata.works, vn);
+  paveWorks(mat, works, vn);
 
   // solid floor and the exit room at the top
   for (let cy = SHOP_FLOOR; cy < CH; cy++) for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = ROCK;
@@ -5994,11 +6275,11 @@ function makeLevel(seed, floor, owned) {
   };
 
   // 4. built ledges sticking out of cave walls
-  // (not on the layered floor: its ledges are the layers, and these read as hovering there)
+  // (natural zones only: in a built-up zone the ledges are the layers, and these read as hovering)
   let ledges = 0;
-  for (let a = 0; a < 2400 && ledges < 120 && !strata; a++) {
+  for (let a = 0; a < 2400 && ledges < 120; a++) {
     const x = 10 + Math.floor(rnd() * (CW - 20)), y = 20 + Math.floor(rnd() * (SHOP_TOP - 50));
-    if (mat[y * CW + x]) continue;
+    if (mat[y * CW + x] || built(x, y)) continue;
     const dir = rnd() < 0.5 ? -1 : 1;
     let wx = x, dist = 0;
     while (dist < 50 && inside(wx, y) && !mat[y * CW + wx]) { wx += dir; dist++; }
@@ -6006,14 +6287,16 @@ function makeLevel(seed, floor, owned) {
     const len = Math.min(dist + 4, 14 + Math.floor(rnd() * 26));
     const x0 = dir < 0 ? wx - 3 : wx - len + 4;
     if (emptyRatio(dir < 0 ? wx + 1 : x0, y - 12, len - 4, 12) < 0.9) continue;
+    if (built(x0, y) || built(x0 + len, y)) continue;
     slab(x0, y, len, 4);
     ledges++;
   }
 
   // 5. old brick frames half buried in the rock
-  for (let i = 0; i < (strata ? 0 : 36); i++) {
+  for (let i = 0; i < 36; i++) {
     const fw = 30 + Math.floor(rnd() * 40), fh = 20 + Math.floor(rnd() * 20);
     const fx = 8 + Math.floor(rnd() * (CW - 16 - fw)), fy = 60 + Math.floor(rnd() * (SHOP_TOP - 120));
+    if (built(fx, fy) || built(fx + fw, fy) || built(fx, fy + fh) || built(fx + fw, fy + fh)) continue;
     const rockRatio = 1 - emptyRatio(fx, fy, fw, fh);
     if (rockRatio < 0.25 || rockRatio > 0.85) continue;
     const gap = Math.floor(rnd() * 4);   // which side gets a doorway
@@ -6028,9 +6311,10 @@ function makeLevel(seed, floor, owned) {
 
   // 6. a few floating platforms in the big open spaces
   let floats = 0;
-  for (let a = 0; a < 1600 && floats < 40 && !strata; a++) {
+  for (let a = 0; a < 1600 && floats < 40; a++) {
     const len = 18 + Math.floor(rnd() * 22);
     const x0 = 8 + Math.floor(rnd() * (CW - 16 - len)), y0 = 40 + Math.floor(rnd() * (SHOP_TOP - 80));
+    if (built(x0 - 12, y0) || built(x0 + len + 12, y0)) continue;
     if (emptyRatio(x0 - 12, y0 - 18, len + 24, 34) < 0.98) continue;
     slab(x0, y0, len, 4);
     floats++;
@@ -6069,10 +6353,9 @@ function makeLevel(seed, floor, owned) {
   };
   const makeRoom = () => {
     for (let tries = 0; tries < 80; tries++) {
-      // the layered cave keeps a thick bit of layer for each room (a vault), and a spot in
-      // the corridor under it for the tunnel to come out
-      const v = strata ? strata.vaults.shift() : null;
-      if (strata && !v) return null;
+      // a built-up zone keeps a thick bit of layer for a room (a vault), and a spot in the
+      // corridor under it for the tunnel to come out; with no vault left, the old way
+      const v = vaults.shift();
       const p0 = v ? { x: v.px, y: v.py } : points[1 + Math.floor(rnd() * (points.length - 2))];
       const a = rnd() * Math.PI * 2, d = 50 + rnd() * 100;
       const ex = v ? v.x : Math.round(Math.max(40, Math.min(CW - 40, p0.x + Math.cos(a) * d)));
@@ -6094,6 +6377,33 @@ function makeLevel(seed, floor, owned) {
   // punch extra holes in the shop roof, which is laid down after the first one.
   for (const c of routePath)
     if (c.y < SHOP_TOP - SHOP_ROOF - 9) disc(c.x, c.y, Math.min(c.r, 7), 0);
+  // the way through (zoned floors): can the runner get from the shop to the exit room? If
+  // the built-up zones' own corridors don't join up the natural stretches of the main route,
+  // the route is cut through them too, as a narrow natural shaft down through the layers.
+  // Then each hidden room: one whose tunnel ends in a stretch the stitch cut off gets dug on
+  // to the nearest place you can reach.
+  if (layered) {
+    const sx = 17, sy = SHOP_FLOOR - 12;
+    let R = boxReach(mat, sx, sy);
+    if (!R.top && spineBuilt.length) {
+      for (const c of spineBuilt) { disc(c.x, c.y, c.r + 1, 0); routePath.push(c); }
+      R = boxReach(mat, sx, sy);
+    }
+    for (const r of [perkRoom, heartRoom]) {
+      if (!r) continue;
+      const cx = Math.round(r.x / CELL), cy = Math.round(r.y / CELL);
+      let got = false;
+      for (let dy = -5; dy <= 5 && !got; dy++) for (let dx = -5; dx <= 5; dx++) if (R.ok[(cy + dy) * CW + cx + dx] === 2) { got = true; break; }
+      if (got) continue;
+      let bi = -1, bd = Infinity;
+      for (let i = 0; i < (SHOP_TOP - SHOP_ROOF - 14) * CW; i++) {
+        if (R.ok[i] !== 2) continue;
+        const d = (i % CW - cx) ** 2 + (((i / CW) | 0) - cy) ** 2;
+        if (d < bd) { bd = d; bi = i; }
+      }
+      if (bi >= 0) tunnelTo(cx, cy, bi % CW + 3, ((bi / CW) | 0) + 5, 7);
+    }
+  }
   // and lay the roof back down. A disc is round, so clearing the route anywhere near the
   // roof opens a few columns of it, and a shell across the shaft plugs it: either way the
   // roof stops being a roof. Whatever happened up here, the shop has one hole in it.
@@ -6210,13 +6520,20 @@ function makeLevel(seed, floor, owned) {
   const enemies = [];
   const roster = rosterFor(floor, rnd);
   const wanted = Math.min(136, ENEMY_COUNT + (floor - 1) * 12);
+  // a creature that only lives in the natural zones (the jellies: the built-up corridors are
+  // too tight to swim) and was rolled for a built-up spot keeps its turn for the next spot,
+  // so the floor's mix stays the same
+  let waiting = null, waits = 0;
   for (let a = 0; a < 20000 && enemies.length < wanted; a++) {
     const cx = 8 + Math.floor(rnd() * (CW - 16)), cy = 50 + Math.floor(rnd() * (SHOP_TOP - 70));
     if (!clear(cx, cy, 8)) continue;
     const x = cx * CELL, y = cy * CELL;
     if (Math.hypot(x - start.x, y - start.y) < 200) continue;
     if (enemies.some(e => Math.hypot(e.x - x, e.y - y) < 90)) continue;
-    const k = enemyFor(roster[Math.floor(rnd() * roster.length)], floor);
+    const k = waiting || enemyFor(roster[Math.floor(rnd() * roster.length)], floor);
+    waiting = null;
+    if (NATURAL_ONLY[k.act] && built(cx, cy)) { if (++waits < 300) waiting = k; continue; }
+    waits = 0;
     enemies.push({ x, y, ty: y, r: k.r, phase: rnd() * 6.28, hp: k.hp, hpMax: k.hp,
       cd: 1 + rnd() * 2, flash: 0, lx: 0, ly: 1, hx: x, hy: y, tgt: null, rest: rnd() * 3,
       k, touch: 0, charge: 0 });
@@ -6253,11 +6570,11 @@ function makeLevel(seed, floor, owned) {
   // pass 2 and 3: decoration, on its own random stream so the cave above is untouched
   const dimg = new ImageData(CW, CH);
   const fuel = new Uint8Array(CW * CH);                 // what burns, and how (see fireStep)
-  if (strata) timberWorks(mat, dimg, strata.works, T, rnd, fuel);
+  if (strata) timberWorks(mat, dimg, works, T, rnd, fuel, built);
   const keep = [{ x: start.x, y: start.y, r: 40 }, { x: arrival.x, y: arrival.y, r: 50 },
     { x: portal.x + portal.w / 2, y: portal.y + portal.h / 2, r: 50 },
     ...rooms.map(r => ({ x: r.x, y: r.y, r: 70 })), ...pickups.map(q => ({ x: q.x, y: q.y, r: 22 }))];
-  const deco = decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel);
+  const deco = decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel, zone);
   // gold seams, painted over whatever the decoration left on the rock
   const ore = goldVeins(mat, seed, floor);
   for (let i = 0; i < ore.length; i++) {
@@ -6269,7 +6586,7 @@ function makeLevel(seed, floor, owned) {
   }
 
   return { mat, img, bgImg, dimg, ore, fuel, props: deco.props, amb: deco.amb, start, portal, enemies, pickups, stock, shopExit, arrival,
-    rooms, roster, theme: T.name, works: strata ? strata.works : [] };
+    rooms, roster, theme: T.name, works, zone };
 }
 
 // Fly a shot forward with the same rules the live bullets use, so the aim line
@@ -6403,7 +6720,8 @@ function Game({ input }) {
     const mini32 = new Uint32Array(miniImg.data.buffer);
     let miniEdgeIdx = [];
 
-    let mat, img, start, portal, enemies, pickups, stock, arrival, total, floor = 1;
+    let mat, img, start, portal, enemies, pickups, stock, arrival, total, floor = 1, zone = null;
+    const natural = (x, y) => !builtAt(zone, x, y);      // jellies keep to the natural zones
     let ore = null, oreBank = 0;                     // gold seams in the rock, and the loose change
     let levelSeed = 0, levelOwned = [];              // what made this cave, for the autosave
     // sound: the jetpack's roar, each live Black Hole's drone, the low-health heartbeat
@@ -6468,7 +6786,7 @@ function Game({ input }) {
     const burns = [];
     // fire (v86, see fireStep): what's alight in the cave, the plants and carts it can take,
     // the burning pixels on view this frame (for the glow after the fog), and its crackle
-    let fire = fireNew(new Uint8Array(CW * CH)), firePlants = [], fireCarts = [], firePropN = -1, fireLoop = null, fireN = 0;
+    let fire = fireNew(new Uint8Array(CW * CH)), firePlants = [], fireArches = [], fireCarts = [], firePropN = -1, firePropLast = null, fireLoop = null, fireN = 0;
     const fireVis = [];
     // the spiders' silk: webs are the lines they travel on (they stay), silk the strings in
     // flight at you, strings the ones stuck to you (each slows you; pull one too long, it snaps)
@@ -6520,7 +6838,7 @@ function Game({ input }) {
       }
       start = level.start; portal = level.portal; arrival = level.arrival;
       enemies = level.enemies; pickups = level.pickups; stock = level.stock;
-      rooms = level.rooms || [];
+      rooms = level.rooms || []; zone = level.zone || null;
       props = level.props || []; ambKinds = level.amb || []; dimg = level.dimg;
       plantW = plantWhite(img.data, dimg && dimg.data);    // the jellies' plant glow keys off this
       dctx.putImageData(dimg, 0, 0);
@@ -7154,6 +7472,13 @@ function Game({ input }) {
       pr.burn = 1;
       SFX.fx('whoosh', pr.x, pr.y + pr.len);
     }
+    // an arched vine catches at fraction u along it; the fire runs out both ways from there
+    function catchArch(pr, u) {
+      if (pr.burn || pr.gone) return;
+      pr.burn = 1; pr.u0 = pr.u1 = u;
+      const q = archAt(pr, u);
+      SFX.fx('whoosh', q.x, q.y);
+    }
     // a web line catches: it flares along its length and is gone
     function burnWeb(w) {
       const L = webs[w];
@@ -7166,11 +7491,17 @@ function Game({ input }) {
     // everything that burns within r of (x, y) catches at `chance`: grass, moss and timber
     // pixels, plants, web lines — and a minecart goes up
     function ignite(x, y, r, chance) {
+      fireList();
       const n = fireArea(fire, x, y, r, chance);
       for (const pr of firePlants)
         if (!pr.gone && !pr.burn && x > pr.x - 5 - r && x < pr.x + 5 + r && y > pr.y - r && y < pr.y + pr.len + r &&
           Math.random() < chance) catchPlant(pr);
       for (let w = webs.length - 1; w >= 0; w--) if (webDist(webs[w], x, y) < r + 2 && Math.random() < chance) burnWeb(w);
+      for (const pr of fireArches) {
+        if (pr.gone || pr.burn || x < pr.x + pr.l - r || x > pr.x + pr.r + r || y < pr.y + pr.t0 - r || y > pr.y + pr.b + r) continue;
+        const q = archNear(pr, x, y);
+        if (q.d < r + 3 && Math.random() < chance) catchArch(pr, q.k / (pr.arc.length - 1));
+      }
       for (const pr of fireCarts)
         if (!pr.gone && x > pr.x + pr.l - r && x < pr.x + pr.r + r && y > pr.y + pr.t0 - r && y < pr.y + pr.b + r &&
           Math.random() < chance) blowProp(pr);
@@ -7202,12 +7533,16 @@ function Game({ input }) {
     // One frame of fire: the cave's fire moves on, plants, webs and carts catch off it,
     // burning creatures (and you) take damage and spread it, flames and smoke come off
     // what's on view, and the crackle sits at the nearest blaze.
+    // the props that burn, relisted whenever props came or went (a test room, a drop)
+    function fireList() {
+      if (props.length === firePropN && props[props.length - 1] === firePropLast) return;
+      firePropN = props.length; firePropLast = props[props.length - 1];
+      firePlants = props.filter(pr => pr.k === 'climb' && FLAMMABLE[pr.st] && !pr.arc);
+      fireArches = props.filter(pr => pr.arc && FLAMMABLE[pr.st]);
+      fireCarts = props.filter(pr => pr.k === 'barrel');
+    }
     function fireFrame(dt, pcx, pcy) {
-      if (props.length !== firePropN) {              // props came or went (a test room, a drop): relist
-        firePropN = props.length;
-        firePlants = props.filter(pr => pr.k === 'climb' && FLAMMABLE[pr.st]);
-        fireCarts = props.filter(pr => pr.k === 'barrel');
-      }
+      fireList();
       const ticks = fireStep(fire, dt, fireOut);
       fireN += ticks;
       const L = fire.list, any = L.length > 0;
@@ -7216,6 +7551,11 @@ function Game({ input }) {
           const pr = firePlants[k];
           if (pr.gone || pr.burn) continue;
           for (let yy = pr.y + 2; yy < pr.y + pr.len; yy += 8) if (fireNear(fire, pr.x, yy, 2)) { catchPlant(pr); break; }
+        }
+        for (const pr of fireArches) {
+          if (pr.gone || pr.burn) continue;
+          const n = pr.arc.length - 1;
+          for (let k = 0; k <= n; k += 2) { const q = archAt(pr, k / n); if (fireNear(fire, q.x, q.y, 2)) { catchArch(pr, k / n); break; } }
         }
         for (let w = webs.length - 1; w >= 0; w--) {
           const W = webs[w];
@@ -7238,6 +7578,24 @@ function Game({ input }) {
           if (!p.dead && zfx.climb === pr) youAlight();
         }
         if (pr.len < 4) { pr.gone = true; fireArea(fire, pr.x, pr.y, 6, 1); }
+      }
+      // burning arched vines: the fire runs both ways along it from where it caught, lighting
+      // the strands as it reaches them, and the vine is gone when it meets both ends
+      for (const pr of fireArches) {
+        if (!pr.burn || pr.gone) continue;
+        const du = kr('fireArch') * dt / Math.max(1, pr.alen);
+        pr.u0 = Math.max(0, pr.u0 - du); pr.u1 = Math.min(1, pr.u1 + du);
+        for (const u of [pr.u0, pr.u1]) {
+          const q = archAt(pr, u);
+          if (Math.random() < dt * 30) flameAt(q.x + (Math.random() - 0.5) * 4, q.y);
+          if (Math.random() < dt * 4) fireSmoke(q.x, q.y);
+          if (ticks) fireArea(fire, q.x, q.y, 5, 0.3);
+        }
+        if (ticks) {
+          for (const o of firePlants) if (o.on === pr && !o.burn && !o.gone && o.u >= pr.u0 && o.u <= pr.u1) catchPlant(o);
+          if (!p.dead && zfx.climb === pr) youAlight();
+        }
+        if (pr.u0 <= 0 && pr.u1 >= 1) pr.gone = true;
       }
       // burning creatures: hurt in chunks (so they flash, not flicker), spread it where they go
       for (let j = enemies.length - 1; j >= 0; j--) {
@@ -7420,7 +7778,7 @@ function Game({ input }) {
       // finds out within half a second that the rock it hung off has been blown away
       for (let i = decoFrame % 30; i < props.length; i += 30) {
         const pr = props[i];
-        if (!pr.gone && !pr.fall && pr.anc && !propAnchored(pr, mat)) { pr.fall = true; pr.vy = 0; pr.anc = null; }
+        if (!pr.gone && !pr.fall && (pr.anc || pr.on) && !propAnchored(pr, mat)) { pr.fall = true; pr.vy = 0; pr.anc = null; pr.on = null; }
       }
       for (let i = props.length - 1; i >= 0; i--) {
         const pr = props[i];
@@ -7476,6 +7834,14 @@ function Game({ input }) {
         const me = !p.dead;
         switch (pr.k) {
           case 'climb':
+            if (pr.arc) {                          // an arched vine: latch on like a web line
+              if (!me || !pOver(pr, 0)) break;
+              const R = pr.grab || (pr.grab = kr('arGrab'));
+              const d = archNear(pr, pcx, p.y + WEB_HAND).d, d2 = archNear(pr, pcx, pcy).d;
+              if (Math.min(d, d2) < R + 3) plantsNow.add(pr);
+              if (d <= R && (!z.arch || d < z.archD)) { z.arch = pr; z.archD = d; }
+              break;
+            }
             if (me && pOver(pr, 0)) z.climb = pr;
             if (me && PLANTS[pr.st] && pOver(pr, 1)) plantsNow.add(pr);
             break;
@@ -7637,6 +8003,10 @@ function Game({ input }) {
       if (dparts.length > 700) dparts.splice(0, dparts.length - 700);
       stepAmbience(dt);
       // foliage: grabbing a vine, or pushing into a plant you weren't already in, rustles;
+      // an arched vine in reach beats the strands hanging off it (let go with a push down, and
+      // a strand under you catches you instead)
+      if (webLetGo > 0) z.arch = null;
+      if (z.arch) z.climb = z.arch;
       // moving through them rustles now and then; rustleStep keeps a big clump from spamming
       let entered = !!(z.climb && PLANTS[z.climb.st] && z.climb !== zfx.climb), style = null;
       for (const pr of plantsNow) if (!plantsLast.has(pr)) { entered = true; style = pr.st; }
@@ -7880,6 +8250,19 @@ function Game({ input }) {
         if (ty < p.vy && p.kick <= 0 && p.cough <= 0) p.vy = ty;
         else p.vy = approach(p.vy, ty, JET_ACC * dt * k);
         if (zfx.rev) p.vy -= GRAVITY * zfx.rev * dt;          // dark matter lifts you
+      } else if (climbing && zfx.arch && p.kick <= 0) {
+        // hanging from an arched vine: the stick runs you along its curve, hands on it. Push
+        // down (not along it) to let go.
+        const W = zfx.arch, hy = p.y + WEB_HAND, q = archNear(W, pcx0, hy);
+        const a = W.arc[q.k], b = W.arc[q.k + 1], ul = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        const ux = (b[0] - a[0]) / ul, uy = (b[1] - a[1]) / ul;
+        const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
+        if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) { webLetGo = 0.35; p.vy = 40; }
+        else {
+          const v = along * (W.climb || (W.climb = kr('arClimb'))) * tied;
+          p.vx = approach(p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
+          p.vy = approach(p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
+        }
       } else if (climbing && zfx.web && p.kick <= 0) {
         // hanging from a spider's web line: the stick runs you along it, hands on the line.
         // Push down (not along it) to let go.
@@ -8502,7 +8885,7 @@ function Game({ input }) {
           // swims in pulses (jellyStep); spits when its head is lined up on you, in range
           const cold = e.chill && e.chill < 1 ? e.chill : 1;
           if (jellyStep(e, { solidCell, hunting, goal: { x: pcx, y: pcy }, rnd: Math.random,
-            speedMul: cold, rangeMul: sees }, dt) === 'pulse') puffSpores(e);
+            speedMul: cold, rangeMul: sees, stay: zone ? natural : null }, dt) === 'pulse') puffSpores(e);
           const S = e.je;
           // brush its tentacles and you're stung, hunting or not (same sting knobs as the bell)
           if (!p.dead && e.touch <= 0 && dist < 180) {

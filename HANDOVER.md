@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v86.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v87.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -42,6 +42,12 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v87 — floor 1 mixes natural and built-up zones; jellies keep to the natural ones; arched vines.** A big noise over
+  the map picks each patch: old natural cave or the v85 layered cave, blended at the seams (Dev → Level layout: zone
+  size, built-up share, edge raggedness). Jellies spawn and roam only in natural zones and hang at the edge when you're in
+  a built-up bit. Long leafy vines arch between ceiling spots in open pockets, with strands hanging off; hang on, climb
+  along, push down to drop; they burn (Dev → Arched vines, Dev → Fire). Expect tuning of the share/size and vine density.
 
 - **v86 — fire.** Grass, moss, vines, mycelium and timber burn and spread pixel by pixel until the fuel's gone.
   Lit by fire spells, explosions (sometimes), minecarts, vents, Levitation Trail, Stendari. Creatures and you catch
