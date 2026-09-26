@@ -199,6 +199,17 @@ this run is the floor you meet on the next one. The palette wraps around after
 twelve floors, and from floor 11 up the creatures are rolled fresh each floor, so
 the run keeps moving rather than settling into a pattern.
 
+**Floor 1 is built in layers**, like Noita's Mines: wavy bands of rock stacked up the
+cave with walkable corridors between them, holes to fly up through, the odd wall that
+makes a dead end, and loops where two holes lead to the same place. A few big caverns
+cut through several layers, with broken bits of rock left hanging in them and
+stalactites overhead. Here and there are **old workings** — stretches people levelled
+long ago, with worn paving on the floor and timber props holding up the roof. The props
+come in patches: some parts of the cave are shored up, others are bare rock. Every
+prop stands on the floor and meets the roof. Some pockets can only be reached by
+digging. The other floors still use the older, blobbier caves for now; each one gets
+its own treatment later.
+
 | Floor | Cave | Who is in it |
 |---|---|---|
 | 1 | Mossy caves | Myrkkymeduusa, Hämähäkki |

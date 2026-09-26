@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v84**. Branch: `main` (release channel is `main`).
+Current version: **v85**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -745,6 +745,28 @@ numbers came from `data/scripts/gun/gun_actions.lua` in https://github.com/Jazze
 (raw: `raw.githubusercontent.com/Jazzer360/noita-data-parsing/HEAD/data/scripts/gun/gun_actions.lua`).
 wiki.gg blocks curl/raw page fetches ("Blocked - wiki.gg"), so read it with WebFetch; for exact
 numbers, go to the GitHub copy of the Lua file.
+**v85 floor 1 is a layered cave (`strataCave`), and timber is structural (`timberFrame`).** Only floor 1
+(`layered = floor === 1` in `makeLevel`); other floors keep the old noise cave until the owner tailors each one.
+`strataCave(mat, rnd, {vn, fbm}, shopExit)` (pure, above `makeLevel`) builds layers bottom-up: each corridor's roof
+is `floor - headroom` (never under the squeeze floor), the next layer's top is its own wavy `line()`, ≥5 rows thick.
+Walls (dead ends), then holes: every wall-bounded stretch gets a hole up (so all of it joins the top; a stretch that
+can't get one loses a wall), extras make loops. Two **vaults** (a layer made 38 rows thick, gentle 46px rise) hold the
+hidden rooms — `makeRoom` uses `strata.vaults` instead of random spots. **Old workings** level a stretch of corridor
+floor and roof (28px ramps), paved after smoothing (`paveWorks`). A slope pass lifts roofs where the corridor is steep
+(box needs height + rise); both the steep vault step and teeth-on-a-slope once sealed off half a cave. Then caverns
+(broken strata islands, stalactites), rock bubbles. Returns `routePath` (tube per corridor stretch + per hole) and
+`points` like the old route. Ledges/frames/floating platforms are skipped on floor 1 (they read as hovering).
+Knobs: Dev → **Level layout (floor 1)**, `LV_KNOBS` min/max ranges, rolled with the level's seeded `rnd` (so a seed +
+the same knobs = the same cave). Dev → **New cave** (`.dbg.newcave`, `input.current.newCave` → `enterLevel()`).
+**Owner's rule: unreachable pockets are fine — digging is for that.** The main route is still guaranteed.
+`timberFrame(mat, set, R, T, xa, xb, y, old, fy, maxH)` measures posts' floor and roof and refuses unless the posts
+stand on level ground and the roof bears on the cap (wedges fill small gaps). Floor 2's `beams` bake uses it too
+(that was the "hovering beams" bug: posts sized from one column's roof). `timberWorks` puts gallery sets at
+`lvPost` spacing and **propped patches** (`lvPropZones`, mostly round a working) where natural tunnels get sets too
+(max 36 tall); outside patches galleries lose `lvPropRot` of their bays and caves have none. Owner tuned density:
+"3x" was far too dense — keep patch density ~1× post spacing, more patches instead. Tests: `tests/logic/strata.test.js`
+(layers, rooms, level paved timbered galleries, no timber piece without rock above and below, patchiness, knobs,
+timberFrame on hand-made grids), `tests/browser/newcave.test.js`. `strataCave.last` / `timberWorks.zones` are test hooks.
 **v74 Pollen nerf.** Pollen has `drift: 1`, `homeR: 80`, `pop: 6` (no `eat`). `driftStep` (pure, above
 `tracePath`, consts `DRIFT_*`) damps its speed and, once slow, floats it up. It only homes after
 locking (`b.lock`: nearest creature within `homeR` with `lineOfSight`), then speeds back to
