@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v85</title>
+<title>CaveRunner v86</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -459,7 +459,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v85';
+const VERSION = 'v86';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -545,7 +545,7 @@ const DEV_META = [
   { k: 'bagSpeed',  g: 'ui',    label: 'Bag fire preview speed (×real time)', min: 0.05, max: 5, step: 0.05 },
 ];
 const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['player', 'Player'],
-  ['enemy', 'Enemies'], ['spider', 'Spider'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['level', 'Level layout (floor 1)']];
+  ['enemy', 'Enemies'], ['spider', 'Spider'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['level', 'Level layout (floor 1)'], ['fire', 'Fire']];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults.
 function devReport() {
@@ -753,6 +753,19 @@ const LV_KNOBS = rangeKnobs('level', [
   ['lvPropDense', 'Timber density in a patch (×)',    0.5, 4, 0.05, 0.9, 1.15],
   ['lvPropRot', 'Bays rotted away outside patches (0-1)', 0, 1, 0.05, 0.3, 0.6],
 ]);
+// Fire (v86): see fireStep. Every knob a min/max range like the creatures'.
+const FIRE_KNOBS = rangeKnobs('fire', [
+  ['fireSpread', 'Spread chance per tick',            0, 1, 0.01,    0.45, 0.6],
+  ['fireGrass',  'Grass burns for (s)',               0.05, 5, 0.05, 0.4, 1],
+  ['fireMoss',   'Moss burns for (s)',                0.05, 8, 0.05, 1, 2.2],
+  ['fireWood',   'Timber burns for (s)',              0.1, 20, 0.1,  3, 6],
+  ['fireBoom',   'Explosions light things (chance)',  0, 1, 0.05,    0.35, 0.6],
+  ['fireBurn',   'A creature burns for (s)',          0, 20, 0.1,    3, 5],
+  ['fireDps',    'Creature burn damage per s',        0, 20, 0.1,    1, 1.6],
+  ['fireYou',    'You burn for (s)',                  0, 10, 0.1,    1.2, 2],
+  ['fireYouDps', 'Your burn damage per s',            0, 40, 0.5,    5, 8],
+  ['firePlant',  'Vines burn up at (px/s)',           1, 200, 1,     18, 34],
+]);
 const DEV_KEY = 'caverunner-dev';
 const DEV = Object.assign({}, DEV_DEFAULTS);
 (() => { try {
@@ -888,7 +901,7 @@ const CREATURES = {
   lima:   { name: 'Limanuljaska', body: 'blob', act: 'bomb', aggro: 300,
     col: { a: '#6fa03a', b: '#2a3d14', c: '#a6d46a', eye: '#e6ff9a' },
     hp: 5, dmg: 20, bspd: 0, range: 0, cd: 0, gold: 11, r: 10, spd: 55 },
-  tuli:   { name: 'Stendari', body: 'blob', act: 'bomb', aggro: 330,
+  tuli:   { name: 'Stendari', body: 'blob', act: 'bomb', aggro: 330, fire: 1,
     col: { a: '#c05a2a', b: '#3f1c0e', c: '#ff9a5a', eye: '#ffe066' },
     hp: 6, dmg: 26, bspd: 0, range: 0, cd: 0, gold: 13, r: 10, spd: 60 },
   karpas: { name: 'Kärpässieni', body: 'blob', act: 'turret',
@@ -1051,16 +1064,16 @@ const MODS = {
              info: 'Straight, accurate, dependable',
              dmg: 1.8, speed: 620, spread: 0.8, delay: 0.13, size: 2, life: 1.4, recoil: 10 },
   missile: { name: 'Magic Missile', kind: 'shot', glyph: '✦', col: '#ff9e3d', mana: 30,
-             info: 'Fiery and explosive',
-             dmg: 3, speed: 420, spread: 2, delay: 0.3, size: 3, life: 2, explode: 18, recoil: 30 },
+             info: 'Fiery and explosive. Sets things alight',
+             dmg: 3, speed: 420, spread: 2, delay: 0.3, size: 3, life: 2, explode: 18, recoil: 30, fire: 1 },
   fball:   { name: 'Fireball', kind: 'shot', glyph: '✷', col: '#ff7a2f', mana: 26,
-             info: 'A big exploding ball that droops as it flies',
+             info: 'A big exploding ball that droops as it flies. Sets things alight',
              dmg: 2.5, speed: 360, spread: 2.5, delay: 0.34, size: 4, life: 2.2,
-             explode: 24, grav: 120, recoil: 26 },
+             explode: 24, grav: 120, recoil: 26, fire: 1 },
   fbolt:   { name: 'Firebolt', kind: 'shot', glyph: '❈', col: '#ff8a1f', mana: 16,
-             info: 'Bounces off rock, then explodes on whatever it hits',
+             info: 'Bounces off rock, then explodes on whatever it hits. Sets things alight',
              dmg: 1.6, speed: 400, spread: 3, delay: 0.2, size: 2.5, life: 1.6,
-             explode: 12, bounce: 2, recoil: 14 },
+             explode: 12, bounce: 2, recoil: 14, fire: 1 },
   bubble:  { name: 'Bubble Spark', kind: 'shot', glyph: '○', col: '#7fd7ff', mana: 5,
              info: 'Cheap, bouncy and hopeless at aiming',
              dmg: 1.2, speed: 300, spread: 14, delay: 0.1, size: 2.5, life: 1.5, bounce: 4, recoil: 3 },
@@ -1110,9 +1123,9 @@ const MODS = {
              info: 'Take cover',
              dmg: 8, speed: 300, spread: 1, delay: 0.9, size: 5, life: 2.5, explode: 90, recoil: 90 },
   meteor:  { name: 'Meteor', kind: 'shot', glyph: '☄', col: '#ff8a1f', mana: 70,
-             info: 'Falls hard, digs deep and explodes',
+             info: 'Falls hard, digs deep and explodes. Sets things alight',
              dmg: 5, speed: 420, spread: 2, delay: 0.55, size: 5, life: 3,
-             explode: 40, grav: 700, bore: 4, recoil: 50 },
+             explode: 40, grav: 700, bore: 4, recoil: 50, fire: 1 },
   // Noita's Teleport Bolts: harmless, and wherever the bolt stops you go
   tele:    { name: 'Teleport Bolt', kind: 'shot', glyph: '⤳', col: '#8fe8ff', mana: 40,
              info: 'Harmless. Wherever it lands or runs out, you appear there',
@@ -2310,6 +2323,7 @@ function blankShot(sm, spread) {
     hidden: sm.hidden || 0,                       // don't draw it (Buzzsaw cuts unseen)
     drift: sm.drift || 0, pop: sm.pop || 0,       // Pollen: slows, floats, locks on; small pop on contact
     arc: sm.arc || 0,                             // Lightning: jagged bolt that throws side arcs
+    fire: sm.fire || 0,                           // sets grass, moss, timber and creatures alight
     tele: sm.tele || 0,                           // Teleport Bolt: you go where it stops
     sid: sm.id,                                   // which spell it is, for its sound
     still: sm.kind === 'static' ? 1 : 0, field: sm.field || null, r: sm.r || 0 };
@@ -3580,6 +3594,10 @@ const DECOR = [
 const DECOR_DENSITY = 3;
 const GROVES = 14;                     // patches of thick growth per floor, on the green themes
 const PLANTS = { vine: 1, myc: 1, root: 1, kelp: 1 };   // the hanging plants (not chains, not ice)
+const FLAMMABLE = { vine: 1, myc: 1 };                  // the ones that burn (kelp's wet, the roots are fossil)
+const FIRE_WET = { puddle: 1, snow: 1, ice: 1, slime: 1 };   // standing in these puts you out
+const HEAR_FIRE = 320;                                  // how far off a blaze's crackle carries
+const FIRE_COLS = ['#ffe07a', '#ff9a2e', '#f0561c', '#8a2a14'];   // bright, flame, deep, dying ember
 const decorFor = floor => DECOR[(Math.max(1, floor) - 1) % DECOR.length];
 // the hit box of each prop kind about its attach point (x, y), in world units: [l, t, r, b].
 // Ceiling props hang down from y, floor props stand up from it, wall props sit beside it.
@@ -3671,7 +3689,9 @@ function timberFrame(mat, set, R, T, xa, xb, y, old, fy, maxH) {
   return true;
 }
 
-function decorate(mat, img, dimg, bgImg, floor, seed, keep) {
+// `fuel` (optional) gets the fuel kind of every pixel painted: whatever FU is at the time
+// (see the fire section) — grass, moss and timber burn, everything else paints a 0.
+function decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel) {
   let rs = (Math.imul(seed | 0, 7919) + floor * 104729 >>> 0) % 2147483646 + 1;
   const R = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
   const T = themeFor(floor), list = decorFor(floor);
@@ -3680,8 +3700,9 @@ function decorate(mat, img, dimg, bgImg, floor, seed, keep) {
   const solidC = (cx, cy) => inb(cx, cy) && (mat[cy * CW + cx] === ROCK || mat[cy * CW + cx] === BRICK);
   const openC = (cx, cy) => inb(cx, cy) && !mat[cy * CW + cx];
   const put = (arr, i, c, a) => { arr[i * 4] = c[0]; arr[i * 4 + 1] = c[1]; arr[i * 4 + 2] = c[2]; arr[i * 4 + 3] = a == null ? 255 : a; };
-  const tset = (cx, cy, c) => { if (solidC(cx, cy)) put(d, cy * CW + cx, c); };          // onto the rock
-  const dset = (cx, cy, c, a) => { if (openC(cx, cy)) put(dd, cy * CW + cx, c, a); };    // the decoration layer
+  let FU = 0;                                         // the fuel kind of what's being painted
+  const tset = (cx, cy, c) => { if (solidC(cx, cy)) { put(d, cy * CW + cx, c); if (fuel) fuel[cy * CW + cx] = FU; } };      // onto the rock
+  const dset = (cx, cy, c, a) => { if (openC(cx, cy)) { put(dd, cy * CW + cx, c, a); if (fuel) fuel[cy * CW + cx] = FU; } }; // the decoration layer
   const jit = (c, j) => [c[0] + (R() - 0.5) * j, c[1] + (R() - 0.5) * j, c[2] + (R() - 0.5) * j];
   const shade = (c, f) => [c[0] * f, c[1] * f, c[2] * f];
   const pick = (a, b) => mix(a, b, R());
@@ -3730,27 +3751,38 @@ function decorate(mat, img, dimg, bgImg, floor, seed, keep) {
       const w = 5 + Math.floor(R() * 8);
       for (let dx = -w; dx <= w; dx++) {
         const deep = Math.round((2 + R() * 3) * (1 - Math.abs(dx) / (w + 1)) + 1);
+        FU = FUEL_MOSS;
         for (let k = 1; k <= deep; k++) tset(cx + dx, cy + k, jit(pick(T.moss[0], T.moss[1]), 14));
+        FU = FUEL_GRASS;
         if (R() < 0.35) { const tall = 1 + (R() < 0.4); for (let k = 0; k < tall; k++) dset(cx + dx, cy - k, jit(T.moss[1], 20)); }
       }
+      FU = 0;
     },
     rubble(cx, cy) {                     // a mound of broken brick with moss grown over it
       const w = 3 + Math.floor(R() * 4), hh = 2 + R() * 2.5;
       for (let dx = -w; dx <= w; dx++) {
         const top = Math.round((1 - (dx / (w + 1)) ** 2) * hh);
         for (let k = 0; k < top; k++) {
-          const c = k === top - 1 && R() < 0.7 ? pick(T.moss[0], T.moss[1])
+          const mossy = k === top - 1 && R() < 0.7;
+          const c = mossy ? pick(T.moss[0], T.moss[1])
             : R() < 0.2 ? T.mortar : pick(T.brick[0], T.brick[1]);
+          FU = mossy ? FUEL_GRASS : 0;
           dset(cx + dx, cy - k, jit(c, 12));
         }
       }
+      FU = 0;
     },
     beams(cx, cy) {                      // pit props: a timber set, only where the roof will bear on it
-      if (!timberFrame(mat, dset, R, T, cx - 8, cx + 8, cy - 3, false, cy + 1)) return false;
+      FU = FUEL_WOOD;
+      const ok = timberFrame(mat, dset, R, T, cx - 8, cx + 8, cy - 3, false, cy + 1);
+      FU = 0;
+      if (!ok) return false;
     },
     pickaxe(cx, cy) {                    // head buried in the rock, the haft sticking out
       const s = R() < 0.5 ? -1 : 1, haft = [104, 74, 46], iron = [120, 124, 132];
+      FU = FUEL_WOOD;
       for (let k = 0; k < 7; k++) dset(cx + s * k, cy - k, jit(haft, 12));
+      FU = 0;
       for (let k = -2; k <= 2; k++) tset(cx + k, cy + 1 + (Math.abs(k) === 2), jit(iron, 16));
       tset(cx, cy + 2, iron);
     },
@@ -3990,8 +4022,10 @@ function decorate(mat, img, dimg, bgImg, floor, seed, keep) {
         const f = 1 - Math.hypot(x - gx, (y - gy) * 1.3) / rr;
         if (f <= 0 || !openC(x, y)) continue;
         const p = Math.pow(f, 1.2);
+        FU = FUEL_MOSS;
         if (solidC(x, y + 1)) {                    // floor: moss into the rock, grass on top
           if (R() < p) { tset(x, y + 1, jit(pick(T.moss[0], T.moss[1]), 16)); if (R() < p) tset(x, y + 2, jit(dark, 12)); }
+          FU = FUEL_GRASS;
           if (R() < p * 0.85) {
             const tall = 1 + Math.floor(R() * (1 + 4 * f));
             for (let k = 0; k < tall; k++) dset(x, y - k, jit(k === tall - 1 ? leaf : pick(T.moss[0], leaf), 18));
@@ -3999,13 +4033,16 @@ function decorate(mat, img, dimg, bgImg, floor, seed, keep) {
           }
         } else if (solidC(x, y - 1)) {             // ceiling: moss drapes hanging down
           if (R() < p) tset(x, y - 1, jit(pick(T.moss[0], T.moss[1]), 16));
+          FU = FUEL_GRASS;
           if (R() < p * 0.75) {
             const len = 1 + Math.floor(R() * (2 + 9 * f));
             for (let k = 0; k < len; k++) dset(x, y + k, jit(k > len - 2 ? leaf : dark, 14));
           }
         } else if ((solidC(x - 1, y) || solidC(x + 1, y)) && R() < p * 0.5) {
+          FU = FUEL_GRASS;
           dset(x, y, jit(pick(T.moss[0], leaf), 16));   // wall: creeping leaves
         }
+        FU = 0;
       }
   }
   return { props: cullDecor(props, keep || []), amb, baked };
@@ -4925,7 +4962,7 @@ const SFX = (() => {
   // ---- everything else: one table of small sounds, each rolled fresh every time it plays.
   // fx(name, x, y, a): x == null plays it at you; `a` is whatever that sound needs (a surface,
   // a material, a strength). Each has its own minimum gap so a burst of them can't pile up.
-  const FX_GAP = { step: 60, land: 90, fizzle: 70, absorb: 80, crit: 60, chainhop: 50, coverHit: 60,
+  const FX_GAP = { whoosh: 140, step: 60, land: 90, fizzle: 70, absorb: 80, crit: 60, chainhop: 50, coverHit: 60,
     coinland: 60, healtick: 350, drip: 90, sizzle: 90, splash: 110, sparks: 120, steam: 200, whirl: 400,
     prompt: 150, place: 60, switch: 80, ready: 150, shatter: 40, ignite: 300, open: 150, close: 150 };
   // a footstep or landing, by what you're standing on
@@ -5071,6 +5108,10 @@ const SFX = (() => {
     healtick(d, t) { tone(d, 'sine', 880 * rnd(0.98, 1.02), 880, t, 0.15, 0.08, 0.01); tone(d, 'sine', 1320, 1320, t + 0.05, 0.15, 0.05, 0.01); },
     ghost(d, t) { tone(d, 'sine', rnd(1300, 1500), rnd(650, 750), t, 0.14, 0.12, 0.01, [20, 30]); hiss(d, t, 0.1, 0.08, 'bandpass', 2000, 1200, 3, false, 0.02); },
     shieldUp(d, t) { bell(d, 1760, t, 0.5, 0.1); hiss(d, t, 0.25, 0.07, 'highpass', 6000, 9000, 0.7, false, 0.1); },
+    whoosh(d, t) {                                             // something catching fire
+      hiss(d, t, rnd(0.3, 0.5), rnd(0.35, 0.5), 'bandpass', rnd(280, 450), rnd(1300, 2200), 0.7, false, rnd(0.03, 0.08));
+      hiss(d, t + rnd(0.03, 0.08), rnd(0.2, 0.35), 0.25, 'highpass', rnd(2200, 3000), 3600, 0.7, true);
+    },
     coinland(d, t) { tone(d, 'sine', rnd(2600, 3600), rnd(2600, 3600), t, 0.04, 0.08, 0.002); },
   };
   function fx(name, x, y, a) {
@@ -5110,6 +5151,10 @@ const SFX = (() => {
       l.connect(lg); lg.connect(trem.gain); l.start(); srcs.push(l);
       osc('sine', 110, 0.35, trem); osc('sine', 165.7, 0.25, trem); osc('triangle', 220.4, 0.06, trem);
       noise(false, 'bandpass', 1600, 7, 0.5);
+    } else if (kind === 'fire') {                              // a blaze: crackle over a low roar
+      noise(true, 'highpass', 1500, 0.7, 0.8);
+      noise(true, 'bandpass', 650, 0.8, 0.55);
+      noise(false, 'lowpass', 260, 0.7, 0.9);
     } else if (kind === 'matter') {                            // dark matter: a low, uneasy warble
       osc('sine', 68, 0.5); osc('sine', 71.5, 0.5);
       const f = noise(false, 'bandpass', 300, 3, 0.6);
@@ -5663,12 +5708,13 @@ function paveWorks(mat, works, vn) {
 // most round a working, where the galleries keep every bay and the natural tunnels get
 // timber sets too wherever the rock will take one, spaced at the post spacing. Outside them
 // the galleries keep a sparse, half-rotted run of sets and the natural cave has none.
-function timberWorks(mat, dimg, works, T, R) {
+function timberWorks(mat, dimg, works, T, R, fuel) {
   const dd = dimg.data;
   const set = (x, y, c) => {
     if (x < 0 || y < 0 || x >= CW || y >= CH || mat[y * CW + x]) return;
     const k = (y * CW + x) * 4;
     dd[k] = c[0]; dd[k + 1] = c[1]; dd[k + 2] = c[2]; dd[k + 3] = 255;
+    if (fuel) fuel[y * CW + x] = FUEL_WOOD;
   };
   let sets = 0;
   const zones = [];
@@ -5714,6 +5760,86 @@ function timberWorks(mat, dimg, works, T, R) {
   }
   timberWorks.zones = zones;                       // for the tests
   return sets;
+}
+
+// ---- fire (v86) ----
+// Grass, moss and timber burn. makeLevel hands back `fuel`, one byte per terrain pixel: the
+// kind of fuel painted there (0 = none). Timber and grass live in the decoration layer, so
+// you walk through them and still burn them; moss is painted on the rock, and burning it
+// leaves the rock scorched. The Game keeps one fire state F = fireNew(fuel).
+const FUEL_GRASS = 1, FUEL_MOSS = 2, FUEL_WOOD = 3;
+const FIRE_TICK = 0.05;                 // the fire moves on 20 times a second, not every frame
+const FIRE_MAX = 5000;                  // most pixels alight at once, so a blaze can't stall a phone
+const FIRE_CATCH = [0, 1, 0.6, 0.45];   // how readily each kind catches: grass, moss, timber
+const FIRE_KNOB = [null, 'fireGrass', 'fireMoss', 'fireWood'];
+// Fire climbs: a pixel above catches about three times as readily as one below, one beside
+// nearly as readily as above. FIRE_NB is every spot within two pixels as [pixel-index offset,
+// weight]; the ring two out is at 0.3 of that, so fire crosses a hairline gap but not open air.
+const FIRE_UPW = dy => dy < 0 ? 1 : dy === 0 ? 0.9 : 0.35;
+const FIRE_NB = [];
+for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++)
+  if (dx || dy) FIRE_NB.push([dy * CW + dx, FIRE_UPW(dy) * (Math.max(Math.abs(dx), Math.abs(dy)) === 2 ? 0.3 : 1)]);
+// t: ticks of burning left per pixel (0 = not alight); list: the pixels alight
+function fireNew(fuel) { return { fuel, t: new Uint16Array(fuel.length), list: [], acc: 0 }; }
+// set pixel i alight if it has fuel and isn't already burning; true if it caught
+function fireLight(F, i, rnd) {
+  const kind = F.fuel[i];
+  if (!kind || F.t[i] || F.list.length >= FIRE_MAX) return false;
+  F.t[i] = Math.max(1, Math.round(kr(FIRE_KNOB[kind], rnd) / FIRE_TICK));
+  F.list.push(i);
+  return true;
+}
+// everything with fuel within r world units of (x, y) catches, each at `chance`; how many did
+function fireArea(F, x, y, r, chance, rnd) {
+  rnd = rnd || Math.random;
+  const cx0 = x / CELL, cy0 = y / CELL, rc = r / CELL;
+  const x0 = Math.max(0, Math.floor(cx0 - rc)), x1 = Math.min(CW - 1, Math.ceil(cx0 + rc));
+  const y0 = Math.max(0, Math.floor(cy0 - rc)), y1 = Math.min(CH - 1, Math.ceil(cy0 + rc));
+  let n = 0;
+  for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
+    const i = cy * CW + cx;
+    if (!F.fuel[i] || F.t[i] || Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc || rnd() >= chance) continue;
+    if (fireLight(F, i, rnd)) n++;
+  }
+  return n;
+}
+// is anything burning within r world units of (x, y)? (a square test — cheap, and fire is ragged)
+function fireNear(F, x, y, r) {
+  const cx0 = Math.floor(x / CELL), cy0 = Math.floor(y / CELL), rc = Math.ceil(r / CELL);
+  for (let cy = Math.max(0, cy0 - rc); cy <= Math.min(CH - 1, cy0 + rc); cy++)
+    for (let cx = Math.max(0, cx0 - rc); cx <= Math.min(CW - 1, cx0 + rc); cx++)
+      if (F.t[cy * CW + cx]) return true;
+  return false;
+}
+// Run the fire on by dt, in FIRE_TICK steps. Each tick every burning pixel burns a tick of
+// its fuel and tries every spot within two pixels (FIRE_NB); a spot with fuel catches at the
+// spread chance × how readily its kind lights × which way it lies (up beats sideways beats
+// down, two out is a long shot). A pixel whose fuel is spent goes to
+// out(i, kind) — the Game erases it (grass, timber) or chars it (moss on rock) — and its fuel
+// is gone for good, so the fire dies once it runs out. A pixel whose t was zeroed from outside
+// (dug or blasted away) just drops off the list. Returns the ticks run.
+function fireStep(F, dt, out, rnd) {
+  rnd = rnd || Math.random;
+  F.acc = Math.min(F.acc + dt, FIRE_TICK * 4);
+  let ticks = 0;
+  while (F.acc >= FIRE_TICK) {
+    F.acc -= FIRE_TICK; ticks++;
+    const L = F.list, n0 = L.length, sp = kr('fireSpread', rnd), N = F.fuel.length;
+    let w = 0;
+    for (let k = 0; k < n0; k++) {
+      const i = L[k];
+      if (!F.t[i]) continue;
+      for (const [o, w] of FIRE_NB) {
+        const j = i + o;
+        if (j >= 0 && j < N && F.fuel[j] && !F.t[j] && rnd() < sp * w * FIRE_CATCH[F.fuel[j]]) fireLight(F, j, rnd);
+      }
+      if (--F.t[i] === 0) { const kind = F.fuel[i]; F.fuel[i] = 0; if (out) out(i, kind); }
+      else L[w++] = i;
+    }
+    for (let k = n0; k < L.length; k++) L[w++] = L[k];   // the ones lit this tick
+    L.length = w;
+  }
+  return ticks;
 }
 
 function makeLevel(seed, floor, owned) {
@@ -6126,21 +6252,23 @@ function makeLevel(seed, floor, owned) {
 
   // pass 2 and 3: decoration, on its own random stream so the cave above is untouched
   const dimg = new ImageData(CW, CH);
-  if (strata) timberWorks(mat, dimg, strata.works, T, rnd);
+  const fuel = new Uint8Array(CW * CH);                 // what burns, and how (see fireStep)
+  if (strata) timberWorks(mat, dimg, strata.works, T, rnd, fuel);
   const keep = [{ x: start.x, y: start.y, r: 40 }, { x: arrival.x, y: arrival.y, r: 50 },
     { x: portal.x + portal.w / 2, y: portal.y + portal.h / 2, r: 50 },
     ...rooms.map(r => ({ x: r.x, y: r.y, r: 70 })), ...pickups.map(q => ({ x: q.x, y: q.y, r: 22 }))];
-  const deco = decorate(mat, img, dimg, bgImg, floor, seed, keep);
+  const deco = decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel);
   // gold seams, painted over whatever the decoration left on the rock
   const ore = goldVeins(mat, seed, floor);
   for (let i = 0; i < ore.length; i++) {
     if (!ore[i] || mat[i] !== ROCK) { ore[i] = 0; continue; }
+    fuel[i] = 0;                                          // a seam painted over moss
     const r1 = hash(i % CW * 5 + 11, ((i / CW) | 0) * 3 + 7), k = i * 4;
     const glint = r1 > 0.9 ? 1.25 : 0.8 + r1 * 0.3;
     d[k] = Math.min(255, 222 * glint); d[k + 1] = Math.min(255, 168 * glint); d[k + 2] = 48 * glint; d[k + 3] = 255;
   }
 
-  return { mat, img, bgImg, dimg, ore, props: deco.props, amb: deco.amb, start, portal, enemies, pickups, stock, shopExit, arrival,
+  return { mat, img, bgImg, dimg, ore, fuel, props: deco.props, amb: deco.amb, start, portal, enemies, pickups, stock, shopExit, arrival,
     rooms, roster, theme: T.name, works: strata ? strata.works : [] };
 }
 
@@ -6338,6 +6466,10 @@ function Game({ input }) {
     // the ghost companion (Angry Ghost) and the fire trail (Levitation Trail), if owned
     let ghost = null;
     const burns = [];
+    // fire (v86, see fireStep): what's alight in the cave, the plants and carts it can take,
+    // the burning pixels on view this frame (for the glow after the fog), and its crackle
+    let fire = fireNew(new Uint8Array(CW * CH)), firePlants = [], fireCarts = [], firePropN = -1, fireLoop = null, fireN = 0;
+    const fireVis = [];
     // the spiders' silk: webs are the lines they travel on (they stay), silk the strings in
     // flight at you, strings the ones stuck to you (each slows you; pull one too long, it snaps)
     const webs = [], silk = [], strings = [];
@@ -6409,6 +6541,9 @@ function Game({ input }) {
       ghost = pb.ghost ? { x: level.start.x, y: level.start.y, cd: 0 } : null;
       burns.length = 0;
       webs.length = silk.length = strings.length = 0;
+      fire = fireNew(level.fuel || new Uint8Array(CW * CH));
+      firePropN = -1;                         // fireFrame lists the plants and carts that burn
+      p.burn = 0; p.burnAcc = 0;
       tctx.putImageData(img, 0, 0);
       bgctx.putImageData(level.bgImg, 0, 0);
       p.x = start.x; p.y = start.y; p.vx = 0; p.vy = 0;
@@ -6607,7 +6742,7 @@ function Game({ input }) {
         const a = base + cone + (Math.random() - 0.5) * 0.22;
         enemyShots.push({ x: e.x + Math.cos(a) * (e.r + 4), y: e.ty + Math.sin(a) * (e.r + 4),
           vx: Math.cos(a) * k.bspd, vy: Math.sin(a) * k.bspd, life: 2.5,
-          col: k.col.a, dmg: k.dmg, size: k.body === 'blob' ? 4 : 3 });
+          col: k.col.a, dmg: k.dmg, size: k.body === 'blob' ? 4 : 3, fire: k.fire });
       }
     }
     function damageEnemy(j, dmg) {
@@ -6636,6 +6771,7 @@ function Game({ input }) {
           if (!mat[i] || mat[i] === BED) continue;
           if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
           if (ore && ore[i]) { ore[i] = 0; nOre++; }
+          fire.fuel[i] = 0; fire.t[i] = 0;
           mat[i] = 0; d[i * 4 + 3] = 0; changed = true;
         }
       if (changed) tctx.putImageData(img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
@@ -6665,6 +6801,7 @@ function Game({ input }) {
           const k = (cy * CW + cx) * 4;
           if (!dd[k + 3] || Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
           dd[k + 3] = 0; changed = true;
+          fire.fuel[k >> 2] = 0; fire.t[k >> 2] = 0;
         }
       if (changed) dctx.putImageData(dimg, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
     }
@@ -6810,7 +6947,7 @@ function Game({ input }) {
           split: sh.split, cluster: sh.cluster, bounceFx: sh.bounceFx,
           friendly: sh.friendly, chain: sh.chain, fuse: sh.fuse,
           payload: sh.payload && sh.payload.length ? sh.payload : null, hidden: sh.hidden, arc: sh.arc,
-          drift: sh.drift, pop: sh.pop, tele: sh.tele,
+          drift: sh.drift, pop: sh.pop, tele: sh.tele, fire: sh.fire,
           trig: sh.trig, timer: sh.trig === 'timer' ? sh.timer : null,
           ox: bx, oy: by, age: 0, born: sh.life });
       }
@@ -6986,8 +7123,176 @@ function Game({ input }) {
       releaseAt(list, f.x, f.y, Math.cos(f.ang), Math.sin(f.ang), f.col);
     };
 
-    // `splash` set = a small pop (Pollen): enemies take that instead, and it never hurts you
-    function explode(x, y, R, splash) {
+    // ---- fire (v86): the cave's fire runs in fireStep; this is what it does to the level ----
+    // A pixel whose fuel is spent: grass and timber go (a fleck of ash now and then stays),
+    // moss leaves the rock under it scorched. Changed areas are put back once a frame.
+    const fireBox = { t: [CW, CH, -1, -1], d: [CW, CH, -1, -1] };
+    const growBox = (b, x, y) => { if (x < b[0]) b[0] = x; if (y < b[1]) b[1] = y; if (x > b[2]) b[2] = x; if (y > b[3]) b[3] = y; };
+    function fireOut(i) {
+      const x = i % CW, y = (i / CW) | 0, k = i * 4, r = Math.random();
+      if (mat[i]) {
+        const d = img.data;
+        d[k] = 34 + r * 16; d[k + 1] = 28 + r * 12; d[k + 2] = 24 + r * 10;
+        growBox(fireBox.t, x, y);
+      } else if (dimg) {
+        const dd = dimg.data;
+        if (r < 0.16) { const a = 30 + r * 120; dd[k] = a; dd[k + 1] = a * 0.9; dd[k + 2] = a * 0.85; }
+        else dd[k + 3] = 0;
+        growBox(fireBox.d, x, y);
+      }
+    }
+    function flushFire() {
+      for (const [b, c, im] of [[fireBox.t, tctx, img], [fireBox.d, dctx, dimg]]) {
+        if (b[2] < b[0] || !im) continue;
+        c.putImageData(im, 0, 0, b[0], b[1], b[2] - b[0] + 1, b[3] - b[1] + 1);
+        b[0] = CW; b[1] = CH; b[2] = -1; b[3] = -1;
+      }
+    }
+    // a plant catches: it burns up from its tip toward the rock it hangs from
+    function catchPlant(pr) {
+      if (pr.burn || pr.gone) return;
+      pr.burn = 1;
+      SFX.fx('whoosh', pr.x, pr.y + pr.len);
+    }
+    // a web line catches: it flares along its length and is gone
+    function burnWeb(w) {
+      const L = webs[w];
+      for (let u = 0; u <= 1; u += 0.1)
+        dparts.push({ x: L.a0x + (L.b0x - L.a0x) * u, y: L.a0y + (L.b0y - L.a0y) * u, vx: (Math.random() - 0.5) * 20,
+          vy: -20 - Math.random() * 30, g: -0.02, c: Math.random() < 0.5 ? '#ffd35a' : '#ff8a2a', s: 1.4, life: 0.4, max: 0.4, glow: 1 });
+      webs.splice(w, 1);
+      SFX.fx('whoosh', (L.a0x + L.b0x) / 2, (L.a0y + L.b0y) / 2);
+    }
+    // everything that burns within r of (x, y) catches at `chance`: grass, moss and timber
+    // pixels, plants, web lines — and a minecart goes up
+    function ignite(x, y, r, chance) {
+      const n = fireArea(fire, x, y, r, chance);
+      for (const pr of firePlants)
+        if (!pr.gone && !pr.burn && x > pr.x - 5 - r && x < pr.x + 5 + r && y > pr.y - r && y < pr.y + pr.len + r &&
+          Math.random() < chance) catchPlant(pr);
+      for (let w = webs.length - 1; w >= 0; w--) if (webDist(webs[w], x, y) < r + 2 && Math.random() < chance) burnWeb(w);
+      for (const pr of fireCarts)
+        if (!pr.gone && x > pr.x + pr.l - r && x < pr.x + pr.r + r && y > pr.y + pr.t0 - r && y < pr.y + pr.b + r &&
+          Math.random() < chance) blowProp(pr);
+      if (n > 4) SFX.fx('whoosh', x, y);
+      return n;
+    }
+    function setAlight(e) {
+      if (!(e.burn > 0)) SFX.fx('whoosh', e.x, e.ty);
+      e.burn = Math.max(e.burn || 0, kr('fireBurn'));
+    }
+    function youAlight() {
+      if (p.dead) return;
+      if (!(p.burn > 0)) { SFX.fx('whoosh', p.x + PW / 2, p.y + PH / 2); strings.length = 0; }   // spider silk burns off
+      p.burn = Math.max(p.burn || 0, kr('fireYou'));
+    }
+    // a blast's heat: fuel round it catches, and creatures (and you) in it may go up
+    function fireBlast(x, y, R, hot) {
+      const ch = hot ? 0.9 : kr('fireBoom');
+      ignite(x, y, R * 1.3, ch);
+      for (const e of enemies) if (Math.hypot(e.x - x, e.ty - y) < R + e.r && Math.random() < ch) setAlight(e);
+      if (!p.dead && Math.hypot(p.x + PW / 2 - x, p.y + PH / 2 - y) < R + 6 && Math.random() < ch * 0.5) youAlight();
+    }
+    // a flame licking up off a burning spot
+    const flameAt = (x, y, sp) => dparts.push({ x, y, vx: (Math.random() - 0.5) * 16, vy: -30 - Math.random() * (sp || 40),
+      g: -0.03, c: Math.random() < 0.4 ? '#ffd35a' : Math.random() < 0.6 ? '#ff8a2a' : '#e8461c', s: 1 + Math.random() * 1.2,
+      life: 0.25 + Math.random() * 0.3, max: 0.55, glow: 1 });
+    const fireSmoke = (x, y) => smoke.push({ x, y, vx: (Math.random() - 0.5) * 12, vy: -25 - Math.random() * 20,
+      r: 2 + Math.random() * 2.5, life: 1.4, max: 1.4, c: '#2a2624', a: 0.35 });
+    // One frame of fire: the cave's fire moves on, plants, webs and carts catch off it,
+    // burning creatures (and you) take damage and spread it, flames and smoke come off
+    // what's on view, and the crackle sits at the nearest blaze.
+    function fireFrame(dt, pcx, pcy) {
+      if (props.length !== firePropN) {              // props came or went (a test room, a drop): relist
+        firePropN = props.length;
+        firePlants = props.filter(pr => pr.k === 'climb' && FLAMMABLE[pr.st]);
+        fireCarts = props.filter(pr => pr.k === 'barrel');
+      }
+      const ticks = fireStep(fire, dt, fireOut);
+      fireN += ticks;
+      const L = fire.list, any = L.length > 0;
+      if (ticks && any) {
+        for (let k = fireN & 3; k < firePlants.length; k += 4) {       // a quarter of the plants a tick
+          const pr = firePlants[k];
+          if (pr.gone || pr.burn) continue;
+          for (let yy = pr.y + 2; yy < pr.y + pr.len; yy += 8) if (fireNear(fire, pr.x, yy, 2)) { catchPlant(pr); break; }
+        }
+        for (let w = webs.length - 1; w >= 0; w--) {
+          const W = webs[w];
+          for (let u = 0; u <= 1; u += 0.25)
+            if (fireNear(fire, W.a0x + (W.b0x - W.a0x) * u, W.a0y + (W.b0y - W.a0y) * u, 2)) { burnWeb(w); break; }
+        }
+        for (const pr of fireCarts) if (!pr.gone && fireNear(fire, pr.x, pr.y - 4, 8)) blowProp(pr);
+      }
+      // burning plants: the fire climbs from the tip to the rock, lighting what's round it
+      for (const pr of firePlants) {
+        if (!pr.burn || pr.gone) continue;
+        pr.len -= kr('firePlant') * dt; pr.b = Math.max(0, pr.len);
+        const ty = pr.y + Math.max(0, pr.len);
+        if (Math.random() < dt * 30) flameAt(pr.x + (Math.random() - 0.5) * 4, ty);
+        if (Math.random() < dt * 4) fireSmoke(pr.x, ty);
+        if (ticks) {
+          fireArea(fire, pr.x, ty, 5, 0.3);
+          for (const o of firePlants)
+            if (!o.burn && !o.gone && Math.abs(o.x - pr.x) < 10 && ty > o.y - 4 && ty < o.y + o.len + 4 && Math.random() < 0.25) catchPlant(o);
+          if (!p.dead && zfx.climb === pr) youAlight();
+        }
+        if (pr.len < 4) { pr.gone = true; fireArea(fire, pr.x, pr.y, 6, 1); }
+      }
+      // burning creatures: hurt in chunks (so they flash, not flicker), spread it where they go
+      for (let j = enemies.length - 1; j >= 0; j--) {
+        const e = enemies[j];
+        if (ticks && any && !(e.burn > 0) && fireNear(fire, e.x, e.ty, e.r * 0.7)) setAlight(e);
+        if (!(e.burn > 0)) continue;
+        e.burn -= dt;
+        e.burnAcc = (e.burnAcc || 0) + kr('fireDps') * dt;
+        if (Math.random() < dt * 40) flameAt(e.x + (Math.random() - 0.5) * e.r * 1.4, e.ty + (Math.random() - 0.3) * e.r);
+        if (Math.random() < dt * 6) fireSmoke(e.x, e.ty - e.r);
+        if (ticks) ignite(e.x, e.ty + e.r * 0.4, e.r * 0.8, 0.35);
+        if (!p.dead && Math.hypot(e.x - pcx, e.ty - pcy) < e.r + 8 && Math.random() < dt * 2) youAlight();
+        if (e.burnAcc >= 0.5 || e.burn <= 0) { const d = e.burnAcc; e.burnAcc = 0; if (d > 0 && enemies[j] === e) damageEnemy(j, d); }
+      }
+      // you: fire underfoot or round you lights you; water, snow or slime puts you out
+      if (!p.dead) {
+        if (ticks && any && !(p.burn > 0) && (fireNear(fire, pcx, p.y + PH - 3, 3) || fireNear(fire, pcx, pcy, 3))) youAlight();
+        if (p.burn > 0 && FIRE_WET[zfx.surface]) { p.burn = 0; p.burnAcc = 0; SFX.fx('sizzle', pcx, p.y + PH); }
+        if (p.burn > 0) {
+          p.burn -= dt;
+          p.burnAcc = (p.burnAcc || 0) + kr('fireYouDps') * dt;
+          if (Math.random() < dt * 40) flameAt(p.x + Math.random() * PW, p.y + PH * (0.2 + Math.random() * 0.8));
+          if (Math.random() < dt * 6) fireSmoke(pcx, p.y);
+          if (ticks) fireArea(fire, pcx, p.y + PH - 2, 5, 0.3);
+          if (p.burnAcc >= 2 || p.burn <= 0) { const d = Math.round(p.burnAcc); p.burnAcc -= d; if (d > 0) hurt(d); }
+        }
+      } else p.burn = 0;
+      // flames and smoke off the burning pixels you can see, and the crackle at the nearest blaze
+      if (any) {
+        const x0 = camX / CELL - 4, x1 = (camX + viewW) / CELL + 4, y0 = camY / CELL - 4, y1 = (camY + viewH) / CELL + 4;
+        const want = Math.min(20, Math.ceil(L.length * dt * 2.5));
+        for (let a = 0, got = 0; a < want * 3 && got < want && dparts.length < 700; a++) {
+          const i = L[(Math.random() * L.length) | 0], x = i % CW, y = (i / CW) | 0;
+          if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+          got++;
+          flameAt((x + Math.random()) * CELL, y * CELL);
+          if (Math.random() < 0.12) fireSmoke(x * CELL, y * CELL - 3);
+        }
+        const st = Math.max(1, Math.floor(L.length / 300));
+        let bd = HEAR_FIRE, bx = 0, by = 0, near = 0;
+        for (let k = 0; k < L.length; k += st) {
+          const x = (L[k] % CW) * CELL, y = ((L[k] / CW) | 0) * CELL, d = Math.hypot(x - pcx, y - pcy);
+          if (d < 220) near += st;
+          if (d < bd) { bd = d; bx = x; by = y; }
+        }
+        if (bd < HEAR_FIRE) {
+          if (!fireLoop && SFX.ready) fireLoop = SFX.loop('fire');
+          if (fireLoop) fireLoop.set(Math.min(1, 0.35 + near / 300) * 0.7, bx, by);
+        }
+      }
+      flushFire();
+    }
+    // `splash` set = a small pop (Pollen): enemies take that instead, and it never hurts you.
+    // Any other blast can set things alight (fireBoom); `hot` (fire spells, minecarts) nearly always does.
+    function explode(x, y, R, splash, hot) {
       SFX.boom(x, y, R);
       const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL, ring = rc + 2.5;
       const minX = Math.max(0, Math.floor(cx0 - ring)), maxX = Math.min(CW - 1, Math.ceil(cx0 + ring));
@@ -7009,6 +7314,7 @@ function Game({ input }) {
                 life: 0.8 + Math.random() * 0.4, max: 1.2, c: `rgb(${d[k]},${d[k + 1]},${d[k + 2]})`, size: 2, heavy: true });
             }
             if (ore && ore[i]) { ore[i] = 0; nOre++; }
+            fire.fuel[i] = 0; fire.t[i] = 0;
             mat[i] = 0;
             d[k + 3] = 0;
           } else if (dist <= ring) {
@@ -7037,6 +7343,7 @@ function Game({ input }) {
         if (dist < R + e.r) damageEnemy(j, splash != null ? splash : dist < R * 0.5 ? 3 : 2);
       }
       if (splash != null) return;
+      fireBlast(x, y, R, hot);
       const pcx = p.x + PW / 2, pcy = p.y + PH / 2;
       const dist = Math.hypot(pcx - x, pcy - y), reach = R + 10;
       if (dist < reach && !p.dead) {
@@ -7071,7 +7378,7 @@ function Game({ input }) {
     function blowProp(pr) {
       if (pr.gone) return;
       pr.gone = true;                          // first, so a chain of blasts can't loop
-      if (pr.k === 'barrel') { explode(pr.x, pr.y - 6, 105); SFX.debris(pr.x, pr.y - 6); }
+      if (pr.k === 'barrel') { explode(pr.x, pr.y - 6, 105, undefined, 1); SFX.debris(pr.x, pr.y - 6); }
       else if (pr.k === 'pod') {
         SFX.pop(pr.x, pr.y - 6);
         clouds.push({ x: pr.x, y: pr.y - 8, r: 34, life: 4.5, max: 4.5, tick: 0 });
@@ -7213,12 +7520,13 @@ function Game({ input }) {
             if (pr.on) {
               if (Math.random() < dt * 40) dparts.push({ x: pr.x + (Math.random() - 0.5) * 6, y: pr.y - 4, vx: (Math.random() - 0.5) * 20,
                 vy: -140 - Math.random() * 80, g: 0, c: Math.random() < 0.5 ? '#ffb050' : '#ff7a2a', s: 1.6, life: 0.4, max: 0.4, glow: 1 });
-              if (me && pr.cd <= 0 && p.x + PW > pr.x - 6 && p.x < pr.x + 6 && p.y < pr.y && p.y + PH > pr.y - VENT_H) { hurt(PROP_DMG.vent); pr.cd = 0.4; }
+              if (me && pr.cd <= 0 && p.x + PW > pr.x - 6 && p.x < pr.x + 6 && p.y < pr.y && p.y + PH > pr.y - VENT_H) { hurt(PROP_DMG.vent); youAlight(); pr.cd = 0.4; }
               if ((pr.ecd = (pr.ecd || 0) - dt) <= 0) {
                 pr.ecd = 0.4;
+                for (let yy = 4; yy < VENT_H; yy += 12) ignite(pr.x, pr.y - yy, 6, 0.5);   // and it lights what hangs over it
                 for (let j = enemies.length - 1; j >= 0; j--) {
                   const e = enemies[j];
-                  if (Math.abs(e.x - pr.x) < e.r + 6 && e.ty < pr.y && e.ty > pr.y - VENT_H) damageEnemy(j, 1);
+                  if (Math.abs(e.x - pr.x) < e.r + 6 && e.ty < pr.y && e.ty > pr.y - VENT_H) { setAlight(e); damageEnemy(j, 1); }
                 }
               }
             }
@@ -7711,6 +8019,7 @@ function Game({ input }) {
           turn(b, clamp(angDiff(want, Math.atan2(b.vy, b.vx)), -b.boomer * dt, b.boomer * dt));
         }
         if (b.eat) dig(b.x, b.y, b.eat);
+        if (b.fire) ignite(b.x, b.y, b.size + 2, 0.5);     // a fire spell lights what it flies through
         if (b.arc) lightningStep(b, dt);
         // a timer lets its payload go in mid-air, and the carrier flies on
         if (b.payload && b.timer != null && (b.timer -= dt) <= 0) firePayload(b);
@@ -7796,6 +8105,7 @@ function Game({ input }) {
             const e = enemies[j];
             const sp = Math.hypot(b.vx, b.vy) || 1;
             damageEnemy(j, critRoll(b.dmg, b.crit));
+            if (b.fire) setAlight(e);
             burst(nx, ny, 4, b.col);
             SFX.hit(nx, ny);
             if (b.knock) shove(e, b.vx / sp, b.vy / sp, b.knock);
@@ -7856,7 +8166,8 @@ function Game({ input }) {
           }
           b.x = nx; b.y = ny;
         }
-        if (boom) { explode(b.x, b.y, b.explode); dead = true; }
+        if (boom) { explode(b.x, b.y, b.explode, undefined, b.fire); dead = true; }
+        if (dead && b.fire) ignite(b.x, b.y, b.size + 6, 0.9);
         // an expiration trigger goes off however it dies; a trigger stopped by a prop counts as a hit
         if (dead && b.payload && (b.trig === 'expire' || b.struck)) firePayload(b);
         if (dead && b.tele) teleportTo(b);            // Teleport Bolt: you go where it stopped
@@ -8252,6 +8563,7 @@ function Game({ input }) {
             SFX.boom(e.x, e.ty, 26);
             hurt(k.dmg);
             enemies.splice(i, 1);
+            if (k.fire) fireBlast(e.x, e.ty, 26, 1);
             continue;
           }
           SFX.creature(k, 'bite', e.x, e.ty);
@@ -8295,6 +8607,7 @@ function Game({ input }) {
         if (b.drip) for (b.da += b.drip * dt; b.da >= 1; b.da--)
           goo(b.x + (Math.random() - 0.5) * b.size, b.y + b.size * 0.5, b.vx * 0.08, 8 + Math.random() * 18, b.dripG, b.dripCol || b.col, 0, b.dripCol2);
         let gone = b.life <= 0;
+        if (b.fire) fireArea(fire, b.x, b.y, 4, 0.5);
         const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
         for (let s = 0; s < sn && !gone; s++) {
           b.x += b.vx * dt / sn; b.y += b.vy * dt / sn;
@@ -8302,12 +8615,14 @@ function Game({ input }) {
             gone = true;
             if (b.splat != null) splat(b, b.x - b.vx * dt / sn, b.y - b.vy * dt / sn);
             else SFX.fx('fizzle', b.x, b.y);
+            if (b.fire) ignite(b.x - b.vx * dt / sn, b.y - b.vy * dt / sn, 8, 0.9);
             break;
           }
           if (!p.dead && b.x > p.x - 2 && b.x < p.x + PW + 2 && b.y > p.y - 2 && b.y < p.y + PH + 2) {
             gone = true;
             if (b.splat != null) splat(b, b.x, b.y); else burst(b.x, b.y, 5, COL.player);
             hurt(b.dmg);
+            if (b.fire) youAlight();
           }
         }
         if (gone) enemyShots.splice(i, 1);
@@ -8371,15 +8686,20 @@ function Game({ input }) {
         }
       } else ghost = null;
 
+      // ---- fire: the cave's, the creatures', yours ----
+      fireFrame(dt, pcx, pcy);
+
       // ---- Levitation Trail: flying lays down fire that burns what it touches ----
       if (pb.trail && p.flame > 0 && !p.dead) {
-        burns.push({ x: pcx + (Math.random() - 0.5) * 6, y: p.y + PH, life: 0.7, max: 0.7 });
+        const bn = { x: pcx + (Math.random() - 0.5) * 6, y: p.y + PH, life: 0.7, max: 0.7 };
+        burns.push(bn);
         if (burns.length > 48) burns.shift();
+        fireArea(fire, bn.x, bn.y + 2, 4, 0.4);
       }
       for (let i = burns.length - 1; i >= 0; i--) {
         const bn = burns[i]; bn.life -= dt;
         for (let j = enemies.length - 1; j >= 0; j--)
-          if (Math.hypot(enemies[j].x - bn.x, enemies[j].ty - bn.y) < 15) damageEnemy(j, 22 * dt);
+          if (Math.hypot(enemies[j].x - bn.x, enemies[j].ty - bn.y) < 15) { setAlight(enemies[j]); damageEnemy(j, 22 * dt); }
         if (bn.life <= 0) burns.splice(i, 1);
       }
 
@@ -8569,6 +8889,27 @@ function Game({ input }) {
       // the decoration layer (pass 2): behind the rock, in front of the back wall
       ctx.drawImage(decoC, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
       ctx.drawImage(terrain, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
+      // the burning pixels, over the art they're eating: colour by how much fuel is left, and a
+      // new flicker each fire tick. Drawn under the fog, so fire you haven't seen stays hidden;
+      // the glow on top comes after the fog, only on ground you have seen (fireVis).
+      fireVis.length = 0;
+      if (fire.list.length) {
+        const buckets = [[], [], [], []];
+        for (const i of fire.list) {
+          const x = i % CW, y = (i / CW) | 0;
+          if (x < tx0 || x >= tx1 || y < ty0 || y >= ty1) continue;
+          fireVis.push(i);
+          const t = fire.t[i], h = (Math.imul(i, 2654435761) + fireN * 40503) >>> 30;
+          buckets[t <= 3 ? 3 : h === 0 ? 0 : h === 3 ? 2 : 1].push(i);
+        }
+        for (let c = 0; c < 4; c++) {
+          if (!buckets[c].length) continue;
+          ctx.fillStyle = FIRE_COLS[c];
+          ctx.beginPath();
+          for (const i of buckets[c]) ctx.rect((i % CW) * CELL, ((i / CW) | 0) * CELL, CELL, CELL);
+          ctx.fill();
+        }
+      }
 
       // the props (pass 3), their drips and the theme's ambience
       const TH = themeFor(floor);
@@ -9193,6 +9534,27 @@ function Game({ input }) {
         glowAt(ctx, e.x, e.ty, e.r * 1.6, a * 1.4, rgb);
       }
       for (const b of enemyShots) if (b.glow && onView(b.x, b.y, 30) && fogLit(b.x, b.y)) glowAt(ctx, b.x, b.y, b.size * 6, 0.3, b.glow);
+      // fire: the burning pixels brighten and throw a warm glow — only on ground you have seen
+      if (fireVis.length) {
+        ctx.fillStyle = 'rgba(255,140,50,0.32)';
+        ctx.beginPath();
+        for (const i of fireVis) {
+          const x = (i % CW) * CELL, y = ((i / CW) | 0) * CELL;
+          if (seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)]) ctx.rect(x, y, CELL, CELL);
+        }
+        ctx.fill();
+        const st = Math.max(1, Math.ceil(fireVis.length / 24));
+        for (let k = fireN % st; k < fireVis.length; k += st) {
+          const i = fireVis[k], x = (i % CW + 0.5) * CELL, y = (((i / CW) | 0) + 0.5) * CELL;
+          if (fogLit(x, y)) glowAt(ctx, x, y, 20, Math.min(0.14, 0.03 + fireVis.length / 3000) * flick, '255,120,40');
+        }
+      }
+      for (const e of enemies)
+        if (e.burn > 0 && onView(e.x, e.ty, 40) && fogLit(e.x, e.ty)) glowAt(ctx, e.x, e.ty, e.r * 2.4, 0.22 * flick, '255,130,50');
+      for (const pr of firePlants)
+        if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(pr.x, pr.y + pr.len))
+          glowAt(ctx, pr.x, pr.y + pr.len, 16, 0.2 * flick, '255,130,50');
+      if (p.burn > 0 && !p.dead) glowAt(ctx, p.x + PW / 2, p.y + PH / 2, 22, 0.25 * flick, '255,130,50');
       for (const list of [dparts, amb]) for (const q of list) {
         if (!q.glow || !onView(q.x, q.y, 10) || !fogLit(q.x, q.y)) continue;
         ctx.globalAlpha = Math.min(1, q.life / (q.max * 0.3));

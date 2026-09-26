@@ -223,6 +223,23 @@ its own treatment later.
 | 9 | Bone garden | Jäätiö, Chaingunner, Snipuhiisi, Stendari, Lohkare, Elävät luut |
 | 10 | Drowned halls | Chaingunner, Snipuhiisi, Lohkare, Elävät luut, Jäätiö, Tappurahiisi |
 
+### Fire
+
+Grass, moss, hanging vines and mycelium, and old timber (pit props, the mine's supports)
+all burn. Fire spreads through them a pixel at a time, climbs faster than it creeps down or
+sideways, eats what it burns (grass and wood are gone, moss leaves the rock scorched), and
+dies out once there's nothing left. Grass goes up in a flash, moss smoulders, timber burns
+long. It's lit by the fire spells (Fireball, Firebolt, Meteor, Magic Missile) wherever they
+fly, hit or blow up, by other explosions now and then, by exploding minecarts, fire vents,
+the Levitation Trail perk, and by Stendari when it blows itself up. Burning vines burn up to
+the rock and drop, burning web lines snap, and a fire that reaches a minecart sets it off.
+
+Creatures that touch fire catch it: they burn for a few seconds, take damage and spread
+the fire wherever they go (a burning spider burns its own web). So can you. Standing in a
+puddle, snow, ice or slime puts you out, and burning also frees you from spider silk. Fire
+you haven't seen stays hidden in the dark; it doesn't light up the map. Every fire number is
+a min/max pair in the ⚙️ panel under Fire.
+
 ### What each cave is dressed with
 
 Every cave has its own scenery. Some of it is just to look at; the rest does

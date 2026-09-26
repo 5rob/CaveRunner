@@ -33,7 +33,7 @@ const SANDBOX =
   "      const d = img.data, dd = dimg.data;" +
   "      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {" +
   "        const i = y * CW + x, k = i * 4;" +
-  "        dd[k + 3] = 0; if (ore) ore[i] = 0;" +
+  "        dd[k + 3] = 0; if (ore) ore[i] = 0; fire.fuel[i] = 0; fire.t[i] = 0;" +
   "        if (y < fr) { mat[i] = 0; d[k + 3] = 0; }" +
   "        else { mat[i] = BRICK; d[k] = 132; d[k + 1] = 99; d[k + 2] = 71; d[k + 3] = 255; } }" +
   "      tctx.putImageData(img, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);" +
@@ -55,6 +55,7 @@ const HOOK_LVL = SANDBOX +
   "get roster(){return roster}, get theme(){return themeName}, " +
   "get arrival(){return arrival}, get start(){return start}, get portal(){return portal}, " +
   "enemyShots, sparks, webs, silk, strings, fields, beams, arcs, flashes, dig, explode, get ore(){return ore}, motes, smoke, get sconces(){return sconces}, get props(){return props}, dparts, amb, clouds, rings, get zfx(){return zfx}, " +
+  "get fire(){return fire}, ignite, setAlight, youAlight, get dimg(){return dimg}, " +
   "world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y }, " +
   "fog: { get seen(){return seen}, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal, paint: paintFog }, " +
   "light: { get flick(){return flick}, get r(){return torchR}, " +

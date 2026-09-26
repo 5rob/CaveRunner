@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v85**. Branch: `main` (release channel is `main`).
+Current version: **v86**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -767,6 +767,26 @@ stand on level ground and the roof bears on the cap (wedges fill small gaps). Fl
 "3x" was far too dense — keep patch density ~1× post spacing, more patches instead. Tests: `tests/logic/strata.test.js`
 (layers, rooms, level paved timbered galleries, no timber piece without rock above and below, patchiness, knobs,
 timberFrame on hand-made grids), `tests/browser/newcave.test.js`. `strataCave.last` / `timberWorks.zones` are test hooks.
+**v86 fire (burnable vegetation and timber).** `makeLevel` returns `fuel` (Uint8Array per terrain pixel:
+`FUEL_GRASS`/`FUEL_MOSS`/`FUEL_WOOD`, 0 = none). It's written as things are painted: `decorate(..., fuel)`'s
+`tset`/`dset` stamp the current `FU` (set around the moss/rubble-moss/beams/pickaxe-haft/overgrow bakes, 0 for all
+else), and `timberWorks(..., fuel)` marks all its timber. Moss is on rock pixels (`img`), grass/timber on open ones
+(`dimg`, walk-through). Pure engine above `makeLevel`: `fireNew(fuel)` → `{fuel, t (Uint16 ticks left), list}`,
+`fireLight`, `fireArea(F,x,y,r,chance)`, `fireNear(F,x,y,r)`, `fireStep(F,dt,out)` at `FIRE_TICK` (20Hz): each
+burning pixel tries every spot within 2px (`FIRE_NB`: up 1, side 0.9, down 0.35, ring two out ×0.3) at
+`fireSpread × FIRE_CATCH[kind] × weight`; spent fuel → `out(i)`; capped at `FIRE_MAX`. Game: `fire` state,
+`fireOut` (erases `dimg` / chars `img`, dirty boxes flushed once a frame), `ignite(x,y,r,chance)` (pixels + plants
+in `FLAMMABLE` (vine, myc) + web lines + carts), `setAlight(e)`/`youAlight()` (`e.burn`/`p.burn` secs, damage in
+chunks via `burnAcc`), `fireBlast` (in `explode()` unless `splash`; `hot` 5th arg = 0.9 chance, else `fireBoom`),
+`fireFrame(dt)` in `step()` (plants catch/burn up by `firePlant` px/s and drop, webs/carts catch, creatures and you
+catch off burning pixels and spread it, `FIRE_WET` surfaces put you out, flames = glow `dparts`, smoke, `'fire'`
+crackle loop at the nearest blaze, `whoosh` fx). **dig/unDeco/explode zero `fuel`/`t`** for what they clear.
+Sources: shots with `fire: 1` (`blankShot`/`spawnShot` carry it — fball, fbolt, meteor, missile + variants),
+creature `fire: 1` (Stendari's bomb blast; `fireEnemyShot` copies `k.fire`, so a shooter can spit fire), vents,
+minecarts (`blowProp` → hot explode), Levitation Trail. Draw: burning pixels drawn **before** the fog (so unseen fire
+stays hidden) and brightened + glows after it only on `seen` cells — **owner: fire must not reveal fog.** Knobs:
+Dev → Fire (`FIRE_KNOBS`, ranges). Tests: `tests/logic/fire.test.js`, `tests/browser/fire.test.js` (sandbox; hooks
+`__lvl.fire`, `ignite`, `setAlight`, `youAlight`, `dimg`; `sandbox()` clears fuel).
 **v74 Pollen nerf.** Pollen has `drift: 1`, `homeR: 80`, `pop: 6` (no `eat`). `driftStep` (pure, above
 `tracePath`, consts `DRIFT_*`) damps its speed and, once slow, floats it up. It only homes after
 locking (`b.lock`: nearest creature within `homeR` with `lineOfSight`), then speeds back to

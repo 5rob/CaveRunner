@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v84.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v86.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -42,6 +42,10 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v86 — fire.** Grass, moss, vines, mycelium and timber burn and spread pixel by pixel until the fuel's gone.
+  Lit by fire spells, explosions (sometimes), minecarts, vents, Levitation Trail, Stendari. Creatures and you catch
+  fire (puddles/snow/ice/slime put you out). Doesn't reveal fog. Knobs in Dev → Fire. Expect tuning next.
 
 - **v84 — jellyfish puff glowing spores out of their rims on every push** (kicked back, drag settles them, then they drift
   like the cave's own), and **green vegetation near a jelly glows and twinkles** in its colour (the owner's comp recipe:
