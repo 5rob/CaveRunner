@@ -11,8 +11,8 @@ const js = src.slice(open, src.indexOf('</script>', open));
 const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
 const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
 const G = new Function('React', shim + upto +
-  'return { ratStep, ratNests, pathAt, pathLen, navField, navWay, RAT, CELL, CW, CH, CREATURES, HUNTERS, enemyFor, DEV, DEV_META, RA_KNOBS, makeLevel, boxReach, losClear, builtAt };')({ createElement: () => {} });
-const { ratStep, navField, navWay, pathAt, pathLen, RAT, CELL, CW, CREATURES, HUNTERS, enemyFor, DEV, DEV_META, RA_KNOBS, makeLevel, boxReach, losClear, builtAt } = G;
+  'return { ratStep, ratNests, pathAt, pathLen, navField, navWay, RAT, CELL, CW, CH, CREATURES, HUNTERS, enemyFor, DEV, DEV_META, RA_KNOBS, makeLevel, boxReach, losClear, builtAt, FW, FH, FOG, SIGHT, VIS_RAYS, fogReveal, visPoly, nestFog };')({ createElement: () => {} });
+const { ratStep, navField, navWay, pathAt, pathLen, RAT, CELL, CW, CREATURES, HUNTERS, enemyFor, DEV, DEV_META, RA_KNOBS, makeLevel, boxReach, losClear, builtAt, FW, FH, FOG, SIGHT, VIS_RAYS, fogReveal, visPoly, nestFog } = G;
 
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
@@ -31,7 +31,7 @@ check('the rat and the nest each have a sprite', /function drawRat\(ctx/.test(sr
 
 // ---- nests on real floor-1 caves ----
 let nb = 0, nw = 0, levels = 0, hidden = 0, total = 0, walled = 0, thin = 0, mounded = 0, enemies = 0, reach = 0;
-let painted = 0, roomsSplit = 0, heartBuilt = 0, lanterns = 0, lampBuilt = 0, apart = 0;
+let fogged = 0, unpainted = 0, roomsSplit = 0, heartBuilt = 0, lanterns = 0, lampBuilt = 0, apart = 0;
 for (let seed = 1; seed <= 8; seed++) {
   const lv = makeLevel(seed * 97 + 3, 1);
   levels++;
@@ -64,10 +64,23 @@ for (let seed = 1; seed <= 8; seed++) {
     let w = 0;
     for (let s = -6; s <= 6; s += 0.5) if (!mat[Math.round(q.y + q.dx * s) * CW + Math.round(q.x - q.dy * s)]) w += 0.5;
     if (w <= 5) thin++;
-    // painted over with earth on the decoration layer, room and tunnel, all but the hole
-    const dd = lv.dimg.data, covered = [[n.x, n.y], ...n.path.filter(q => Math.hypot(q.x - n.mouth.x, q.y - n.mouth.y) > 5).map(q => [q.x, q.y])]
-      .every(([x, y]) => mat[Math.round(y) * CW + Math.round(x)] || dd[(Math.round(y) * CW + Math.round(x)) * 4 + 3] === 255);
-    if (covered) painted++;
+    // the fog: stand anywhere in the open in front of the mouth and look — the torch's
+    // reveal (plus the one-cell soft edge the fog bake adds) never reaches the room
+    const seenF = new Uint8Array(FW * FH);
+    for (let k = 3; k <= 60; k += 3) for (let s = -20; s <= 20; s += 4) {
+      const ox = (n.mouth.x + n.nx * k - n.ny * s) * CELL, oy = (n.mouth.y + n.ny * k + n.nx * s) * CELL;
+      if (solidCell(Math.floor(ox / CELL), Math.floor(oy / CELL))) continue;
+      fogReveal(seenF, ox, oy, SIGHT, visPoly(ox, oy, SIGHT, solidCell, VIS_RAYS), VIS_RAYS);
+    }
+    const deep = nestFog(nests);
+    const lit = (fx, fy) => { if (deep[fy * FW + fx]) return !!seenF[fy * FW + fx]; for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) if (seenF[(fy + a) * FW + fx + b]) return true; return false; };
+    let roomLit = false;
+    for (let dy = -n.r; dy <= n.r && !roomLit; dy++) for (let dx = -n.r; dx <= n.r; dx++)
+      if (dx * dx + dy * dy <= n.r * n.r && !mat[(n.y + dy) * CW + n.x + dx] && lit(Math.floor((n.x + dx) / FOG), Math.floor((n.y + dy) / FOG))) { roomLit = true; break; }
+    if (!roomLit) fogged++;
+    // no rock paint over the burrow: it's a real hole, hidden only by the fog
+    const dd = lv.dimg.data;
+    if (!n.path.some(q => !mat[Math.round(q.y) * CW + Math.round(q.x)] && dd[(Math.round(q.y) * CW + Math.round(q.x)) * 4 + 3] > 0)) unpainted++;
     // a mound: rock just out in front of the surface, round the hole
     if (n.mound.length >= 10) mounded++;
   }
@@ -88,7 +101,8 @@ check('you can still get from the shop to the exit', reach === levels, { reach, 
 check('no runner can get into a nest room', walled === total, { walled, total });
 check('no sightline runs down a nest tunnel to the room', hidden >= total * 0.95, { hidden, total });
 check('the tunnel is thinner than you', thin >= total * 0.95, { thin, total });
-check('every burrow is hidden behind painted earth until dug', painted === total, { painted, total });
+check('the fog never lifts off a nest room from outside', fogged === total, { fogged, total });
+check('the burrow is a real open tunnel, not painted over', unpainted === total, { unpainted, total });
 check('every nest has a mound at its mouth', mounded === total, { mounded, total });
 check('the heart and perk rooms are in different kinds of zone', roomsSplit === levels, { roomsSplit, levels });
 check('and which one gets the built-up zone is a coin toss', heartBuilt > 0 && heartBuilt < levels, heartBuilt);

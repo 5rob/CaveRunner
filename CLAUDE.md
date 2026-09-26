@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v92**. Branch: `main` (release channel is `main`).
+Current version: **v93**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -821,10 +821,12 @@ zone, keep, nb, nw)` (pure, own RNG from the seed, floor 1 only, run in `makeLev
 side-facing surface with 22px open in front, a room (`r` 5-7px) 20-34px into solid ROCK, a tunnel back with a sine bend
 (so no sightline; `cut` r1.6 — thinner than the runner), a mound of earth at the mouth (`mound`, tinted after colouring).
 Returns `nests` (on the level); each becomes an enemy `k.act === 'nest'` (`CREATURES.pesa`) with `e.nest = { path (world,
-room → mouth), mouth, t, stash, max }`. **The burrow is hidden behind paint:** after `decorate`, every open pixel of room +
-tunnel (bar the last 4px) is painted on `dimg` in the neighbouring rock's colour, so it reads as rock through the fog's soft
-edge; dig/explode wipe `dimg`, and the Game draws a nest or a tunnel-mode rat only where that paint is gone (`burrowShut`).
-Built-up layers are too thin to bury a room deep, which is why it's paint and not depth. **Rats** (`CREATURES.rotta`, act
+room → mouth), mouth, t, stash, max }`. **The burrow is a real open hole (v93)**, hidden only by the fog: the tunnel bends, so no sightline runs
+down it, and `nestFog(nests)` (pure) marks the fog cells over each room so the fog bake's one-cell soft edge (and
+`fogLit`) never spreads into them — the room shows only once a real line of sight reaches it, i.e. you dig. `makeLevel`
+clears any decoration the bakes left in room + tunnel. (v88–v92 painted it over with rock colour on `dimg` and gated
+drawing on `burrowShut`; the owner saw solid rock with a squiggle, so that's gone.) A carried coin is drawn at the
+ground coin's size, kept upright. **Rats** (`CREATURES.rotta`, act
 `rat`, kp `ra`, never on a roster): `ratStep(e, env, dt)` (pure, state `e.ra`, modes `surf|air|tunnel`) — surface crawl
 like the spider via the shared `surfSeat` (spiderSeat now calls it), bursts/rests, falls off ceilings (`RAT.ceil`), jumps at
 a goal that's up off the surface and within `raJumpR` trying higher arcs until one clears the rock (`env.jump === false`

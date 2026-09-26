@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v92</title>
+<title>CaveRunner v93</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -485,7 +485,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v92';
+const VERSION = 'v93';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -1753,6 +1753,20 @@ function fogStart() {
   for (let y = Math.floor((SHOP_TOP - SHOP_ROOF) / FOG); y < FH; y++)
     for (let x = 0; x < FW; x++) seen[y * FW + x] = 2;
   return seen;
+}
+
+// The fog cells over each rat nest's room (nests in terrain px). The fog bake's soft edge
+// never spreads into these, so a room only shows once a real line of sight reaches it —
+// down the bent tunnel it can't, so you have to dig to see in.
+function nestFog(nests) {
+  const m = new Uint8Array(FW * FH);
+  for (const n of nests || []) {
+    const R = n.r + 2;
+    for (let y = Math.floor((n.y - R) / FOG); y <= Math.floor((n.y + R) / FOG); y++)
+      for (let x = Math.floor((n.x - R) / FOG); x <= Math.floor((n.x + R) / FOG); x++)
+        if (x >= 0 && y >= 0 && x < FW && y < FH) m[y * FW + x] = 1;
+  }
+  return m;
 }
 
 // How far a ray from (x, y) heading (dx, dy) gets before it walks into a solid cell,
@@ -3700,8 +3714,13 @@ function drawRat(ctx, x, y, r, time, phase, flash, col, S, carry) {
   ctx.fillStyle = col.eye; ctx.fillRect(r * 1.0, -r * 0.5, r * 0.25, r * 0.25);
   ctx.fillStyle = '#e88a9a'; ctx.fillRect(r * 1.62, -r * 0.18, r * 0.25, r * 0.22);
   if (carry > 0) {
-    ctx.fillStyle = '#ffd23c'; ctx.beginPath(); ctx.arc(r * 1.75, r * 0.1, r * 0.42, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#fff2a0'; ctx.fillRect(r * 1.62, -r * 0.1, r * 0.15, r * 0.15);
+    // the coin in its teeth: the same size and look as gold on the ground, kept upright
+    ctx.translate(r * 2.1, r * 0.1);
+    ctx.scale(f, 1); ctx.rotate(-Math.atan2(nx, -ny));
+    ctx.fillStyle = '#d8a52a';
+    ctx.beginPath(); ctx.ellipse(0, 0, 3.2, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = COL.flame2;
+    ctx.beginPath(); ctx.ellipse(-0.8, -0.8, 1.2, 1.8, 0, 0, Math.PI * 2); ctx.fill();
   }
   ctx.restore();
 }
@@ -7342,31 +7361,16 @@ function makeLevel(seed, floor, owned) {
     d[k] = Math.min(255, 222 * glint); d[k + 1] = Math.min(255, 168 * glint); d[k + 2] = 48 * glint; d[k + 3] = 255;
   }
 
-  // the burrows are hidden behind earth: every open pixel of a nest's room and tunnel (bar the
-  // hole itself) is painted on the decoration layer in the colour of the rock beside it, so
-  // it reads as solid rock — through the fog's soft edge too — until you dig it open (dig
-  // and blasts wipe the decoration layer). The Game only draws a nest, or a rat down its
-  // tunnel, where that paint has gone.
-  const dd = dimg.data;
+  // the burrows are real holes, hidden only by the fog (the tunnel bends, so no sightline
+  // runs down it): clear any decoration the bakes put in them so they read as open
   for (const n of nests) {
-    const pts = n.path.filter(q => Math.hypot(q.x - n.mouth.x, q.y - n.mouth.y) > 4);
-    const R = n.r + 3;
-    let x0 = n.x - R, x1 = n.x + R, y0 = n.y - R, y1 = n.y + R;
-    for (const q of pts) { x0 = Math.min(x0, q.x - 3); x1 = Math.max(x1, q.x + 3); y0 = Math.min(y0, q.y - 3); y1 = Math.max(y1, q.y + 3); }
-    for (let y = Math.floor(y0); y <= y1; y++) for (let x = Math.floor(x0); x <= x1; x++) {
+    const R = n.r + 3, clear = (x, y) => {
       const i = y * CW + x;
-      if (x < 0 || y < 0 || x >= CW || y >= CH || mat[i]) continue;
-      if (Math.hypot(x - n.x, y - n.y) > R && !pts.some(q => Math.hypot(q.x - x, q.y - y) < 3)) continue;
-      let src = -1;
-      for (let k = 1; k <= 5 && src < 0; k++)
-        for (const [dx, dy] of [[0, -k], [0, k], [-k, 0], [k, 0], [-k, -k], [k, k], [k, -k], [-k, k]]) {
-          const j = (y + dy) * CW + x + dx;
-          if (mat[j] === ROCK && !n.mound.includes(j)) { src = j; break; }
-        }
-      const c = src >= 0 ? [d[src * 4], d[src * 4 + 1], d[src * 4 + 2]] : T.rock[0];
-      dd[i * 4] = c[0]; dd[i * 4 + 1] = c[1]; dd[i * 4 + 2] = c[2]; dd[i * 4 + 3] = 255;
-      fuel[i] = 0;
-    }
+      if (x < 0 || y < 0 || x >= CW || y >= CH || mat[i]) return;
+      dimg.data[i * 4 + 3] = 0; fuel[i] = 0;
+    };
+    for (let y = n.y - R; y <= n.y + R; y++) for (let x = n.x - R; x <= n.x + R; x++) clear(x, y);
+    for (const q of n.path) for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) clear(Math.round(q.x) + dx, Math.round(q.y) + dy);
   }
 
   return { mat, img, bgImg, dimg, ore, fuel, props: deco.props, amb: deco.amb, start, portal, enemies, pickups, stock, shopExit, arrival,
@@ -7493,7 +7497,7 @@ function Game({ input }) {
     const fogBlurC = document.createElement('canvas');
     fogBlurC.width = FW; fogBlurC.height = FH;
     const fbctx = fogBlurC.getContext('2d');
-    let seen = fogStart();
+    let seen = fogStart(), deepFog = null;
     // the minimap: an MMW x MMH canvas of white cave outlines, smooth-scaled into the
     // bottom-left of the view. miniEdgeIdx lists the wall-outline cells (static per floor);
     // each frame only the ones the fog has revealed are painted white, the rest cleared.
@@ -7824,7 +7828,7 @@ function Game({ input }) {
       torchP.length = 0; motes.length = 0;
       camReady = false; best = 0;
       levelT = 0;                             // the floor's name card gets its three seconds
-      seen = fogStart();
+      seen = fogStart(); deepFog = nestFog(level.nests);
       if (pb.seeAll) seen.fill(2);            // All-Seeing Eye lights the whole floor
       paintFog();                             // otherwise every floor starts dark again
       recReset();                             // the death replay starts afresh each floor
@@ -7853,6 +7857,7 @@ function Game({ input }) {
     // a circle round themselves, which lit up every prize room on the map from the start.
     const fogLit = (x, y) => {
       const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
+      if (deepFog && deepFog[cy * FW + cx]) return seen[cy * FW + cx] > 0;   // a nest room: no soft edge
       // the fog bake's one-cell soft edge counts, so a torch shows exactly when an item there would
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
         const nx = cx + dx, ny = cy + dy;
@@ -7939,11 +7944,6 @@ function Game({ input }) {
       return false;
     };
     const lineOfSight = (x0, y0, x1, y1) => losClear(x0, y0, x1, y1, solidCell);
-    // a rat burrow not dug open yet: the earth painted over it is still there (see makeLevel)
-    const burrowShut = (x, y) => {
-      const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
-      return cx >= 0 && cy >= 0 && cx < CW && cy < CH && dimg.data[(cy * CW + cx) * 4 + 3] > 0;
-    };
     const enemyAt = (x, y, pad) => {
       for (let j = 0; j < enemies.length; j++) {
         const e = enemies[j];
@@ -10575,7 +10575,6 @@ function Game({ input }) {
       for (const e of enemies) {
         const ey = e.ty;
         if (ey > camY + vh + 20 || ey < camY - 20 || e.x < camX - 20 || e.x > camX + vw + 20) continue;
-        if ((e.nest || (e.ra && e.ra.mode === 'tunnel')) && burrowShut(e.x, e.y)) continue;   // still behind the earth
         drawEnemy(ctx, e, time);
         if ((e.home || e.nest) && e.hp >= e.hpMax) continue;   // rats and nests: a bar only once hurt
         const hw = 20, hx = e.x - hw / 2, hy = ey - e.r - 9;
@@ -11022,7 +11021,7 @@ function Game({ input }) {
             // push the dark off ground you have seen: an unseen cell that borders a seen one
             // is treated as remembered (dim + lamp), so a bit more of the uncovered surface
             // shows instead of the darkness sitting right on its edge
-            if (!s && ((cx > 0 && seen[i - 1]) || (cx < FW - 1 && seen[i + 1]) ||
+            if (!s && !(deepFog && deepFog[i]) && ((cx > 0 && seen[i - 1]) || (cx < FW - 1 && seen[i + 1]) ||
                 (cy > 0 && seen[i - FW]) || (cy < FH - 1 && seen[i + FW]) ||
                 (cx > 0 && cy > 0 && seen[i - FW - 1]) || (cx < FW - 1 && cy > 0 && seen[i - FW + 1]) ||
                 (cx > 0 && cy < FH - 1 && seen[i + FW - 1]) || (cx < FW - 1 && cy < FH - 1 && seen[i + FW + 1]))) s = 1;
