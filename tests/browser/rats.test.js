@@ -57,17 +57,20 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     const bit = await frames(400, () => LO.gold < 100);
     out.bit = bit; out.hp = p.hp; out.gold = LO.gold;
     const coin = L.coins.find(c => c.pop || c.nopull != null);
+    const biteX = rat.x;
     out.coinSide = coin ? Math.sign(coin.vx) === Math.sign(rat.x - (p.x + 6)) : null;
-    // stand well back so you don't pull it in, and watch where it lands
+    // stand well back so you don't pull it in, and watch: where it lands (measured from where
+    // the rat bit you), the rat picking it up, and it taking it home
     p.x = room.l + 20;
-    await frames(120, () => coin && coin.vy === 0 && !coin.pop);
-    out.coinAway = coin ? Math.abs(coin.x - (rat.x)) : null;
-    // 3: the rat grabs it and takes it home
     rat.aggro = false;
-    const got = await frames(400, () => rat.carry > 0);
-    out.carried = rat.carry;
+    let landed = null, peak = 0;
+    await frames(900, () => {
+      if (coin && landed === null && (!coin.pop || !L.coins.includes(coin))) landed = Math.abs(coin.x - biteX);
+      peak = Math.max(peak, rat.carry || 0);
+      return nest.nest.stash > 0;
+    });
+    out.coinAway = landed; out.carried = peak;
     out.coinGone = coin ? !L.coins.includes(coin) : null;
-    await frames(600, () => nest.nest.stash > 0);
     out.stash = nest.nest.stash; out.carryAfter = rat.carry;
     // 4: a dead rat drops what it was carrying (and its own)
     rat.carry = 7; const c0 = L.coins.length;

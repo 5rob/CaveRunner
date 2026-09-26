@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v88**. Branch: `main` (release channel is `main`).
+Current version: **v89**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -309,7 +309,8 @@ position from the last frame's `camY`/`unitPx`, stores it as `input.current.prom
 (css px up from the view's bottom, item world y minus 16), buckets it into `sig` so the
 panel re-lays-out as the camera settles, and `App` applies it as the panel's inline `bottom`
 plus a matching `maxHeight`. It holds the item's card (`ModCard`/`GunCard`/`PerkCard`, all
-`ingame`) followed by one `.pbuy` line — `Buy <price>` for shop stock, `Take`/`free` for
+`ingame`) followed by one `.pbuy` line — since v89 an `RKey` (thin white circle with a thin R: "tap the right
+stick", owner's design) then `<price>g` for shop stock, `free` for
 anything you pick up. **The stat list (`.prows`) inside the panel gets its own `max-height`
 + scroll (v44, tightened to ~3 rows / 60px in v45)** so a loaded gun or a busy mod can't
 make the panel fill the screen; that
@@ -840,6 +841,19 @@ and where they land (and set you alight). **Rooms:** on zoned floors `makeRoom(w
 takes the other; rooms carry `built`. **Route fix:** after the spine cut, if `boxReach` still can't reach the top, a BFS
 from the reached region to the exit room's reach digs the shortest link (seed 7 had only been reachable through a hidden
 room's tunnel). Tests: `tests/logic/rats.test.js`, `tests/browser/rats.test.js` (sandbox).
+**v89 rats find their way.** Rats were wedging at their holes and on overhangs. Now: (1) `ratSolid` = rock + `burrow`
+(a per-floor mask of every nest room/tunnel, built in `enterLevel` from `level.nests`, cleared by dig/explode) — rats run
+over holes and only go in via tunnel mode (entry within 12 of the mouth, from surf or air). (2) Pathfinding: `navField(solid,
+tx, ty, R)` (pure; Dijkstra from the goal over `NAV`=4px cells that fit a rat — central 2x2 px clear; costs 1 along rock,
+8 up through air, 3 across air, 1 down) + `navWay(F, x, y, steps)` (the next cell down the field; extends through air to a
+landing). Fields cached by `navFor(o, goal, R)`: per nest (`R` 100), per coin (36), `navYou` (56, every 0.4s); rock changes
+(`terrainV`) rebuild them at most once a second. (3) With a way found, `ratStep` runs **path mode** (`env.follow`,
+`S.mode === 'path'`): kinematic along the waypoints in ≤0.8-unit steps, never into rock, pushed out / settled onto floors.
+No way (off the field): the old surface-crawl physics. Ceilings are judged by the *nearest* rock (`S.py`, stored by
+`surfSeat`), not the averaged normal (cracks misread). Falling off an overhang bars that side 1.5s (`S.noSide`). Job rats
+don't rest (`raHuntOff` 0–0.03). Safety nets in `ratFrame`: stuck 1.2s → hop; 3 hops → carrier slips home underground
+(tunnel mode, dust), others give up 4s (`e.giveUp`); in rock/off-map 0.5s → back out of its hole. Probe on real floors:
+~95–100% of carriers home within 20s (was ~65%). Tests: rats logic (nav over a wall, hairline crack isn't a way).
 **v74 Pollen nerf.** Pollen has `drift: 1`, `homeR: 80`, `pop: 6` (no `eat`). `driftStep` (pure, above
 `tracePath`, consts `DRIFT_*`) damps its speed and, once slow, floats it up. It only homes after
 locking (`b.lock`: nearest creature within `homeR` with `lineOfSight`), then speeds back to

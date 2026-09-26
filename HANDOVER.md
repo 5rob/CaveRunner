@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v88.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v89.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -42,6 +42,11 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v89 — rats find their way; buy/take prompt is an R circle.** Rats had been stuck at their holes and on overhangs
+  (owner report). Rats with a job now pathfind (navField) and run the path; holes are solid to walk over; fallbacks for
+  the rare wedge. Buy/Take text replaced by a thin white circle with an R (owner's spec). Known flakes also seen:
+  `sound` portalOut (setTimeout timing, passes alone).
 
 - **v88 — rats and rat nests; lanterns; heart/perk rooms split by zone.** Nests (holes with a mound, a thin winding
   tunnel to a hidden room painted over as rock until dug) all through floor 1's built-up zones, a few in the natural ones.

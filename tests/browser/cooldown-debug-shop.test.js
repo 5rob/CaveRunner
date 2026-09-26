@@ -112,7 +112,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   });
   await page.waitForTimeout(400);
   const buyTxt = await page.evaluate(() => { const e = document.querySelector('.pbuy'); return e && e.textContent; });
-  check('a gun plinth offers a buy price', /Buy.*120g/.test(buyTxt || ''), buyTxt);
+  check('a gun plinth offers a buy price', /120g/.test(buyTxt || ''), buyTxt);
   const card = await page.evaluate(() => { const e = document.querySelector('.pop.ingame .ptitle'); return e && e.textContent; });
   check('and shows its stats while you stand there', /For sale/.test(card || ''), card);
   await interact();

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v88</title>
+<title>CaveRunner v89</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -346,12 +346,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
    stays short — about three rows, then it scrolls. pointer-events back on just here so you
    can flick through it; the rest of the panel stays click-through */
 .buypanel .prows{max-height:60px;overflow-y:auto;-webkit-overflow-scrolling:touch;pointer-events:auto}
-/* the buy/take line: the amber price is the thing your eye goes to */
-.pbuy{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:9px;
-  height:40px;border-radius:20px;border:2px solid #ffc93c;background:rgba(255,201,60,0.1);
-  color:#fff;font:700 14px system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase}
-.pbuy b{color:#ffc93c;font-size:15px;text-transform:none}
-.pbuy.cant{border-color:rgba(255,255,255,0.25);background:none;opacity:.55}
+/* the buy/take line (v89): a thin white circle with an R in it — "tap the right stick" —
+   and beside it the amber price (or "free", or a nameless item's name) */
+.pbuy{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:8px;
+  height:40px;color:#fff;font:700 14px system-ui,sans-serif;letter-spacing:.03em}
+.pbuy b{color:#ffc93c;font-size:15px}
+.pbuy .rkey{flex:0 0 auto;display:block}
+.pbuy.cant{opacity:.45}
+.pbuy.cant b{color:#fff}
 .weapon.locked{opacity:.45}
 .pop.flow{position:static;max-height:none;box-shadow:none;margin-bottom:2px}
 .spacer{flex:1 1 auto;min-height:6px}
@@ -459,7 +461,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v88';
+const VERSION = 'v89';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -659,7 +661,7 @@ const RA_KNOBS = rangeKnobs('rat', [
   ['raRoamOn',   'Roaming: burst length (s)',         0.02, 3, 0.01, 0.15, 0.4],
   ['raRoamOff',  'Roaming: rest between (s)',         0, 6, 0.05,    0.5, 1.6],
   ['raHuntOn',   'Chasing: burst length (s)',         0.02, 3, 0.01, 0.35, 0.7],
-  ['raHuntOff',  'Chasing: rest between (s)',         0, 3, 0.01,    0.04, 0.14],
+  ['raHuntOff',  'Chasing: rest between (s)',         0, 3, 0.01,    0, 0.03],
   ['raRoamR',    'Roam distance from its nest',       0, 600, 5,     50, 110],
   ['raRoamSpd',  'Roam spot drift speed',             0, 200, 1,     15, 30],
   ['raAggro',    'Aggro distance (×enemy aggro)',     0.1, 5, 0.05,  0.9, 1.1],
@@ -1859,7 +1861,7 @@ function surfSeat(e, S, solidCell, maxMove, hold, feel) {
     const m = Math.min(maxMove, n.d - hold);
     e.x -= n.x * m; e.y -= n.y * m;
   }
-  S.nx = n.x; S.ny = n.y;
+  S.nx = n.x; S.ny = n.y; S.py = n.py;          // py: straight out from the nearest rock
   return true;
 }
 
@@ -2080,6 +2082,7 @@ function ratStep(e, env, dt) {
   const goal = env.goal;
   const P = env.path, speed = (env.speed || kr('raSpeed', rnd)) * (env.speedMul || 1);
 
+  if (S.noT > 0) S.noT -= dt;
   if (S.mode === 'tunnel') {
     if (!P) { S.mode = 'air'; S.vx = S.vy = 0; return null; }
     if (S.wait > 0) { S.wait -= dt; return null; }
@@ -2103,6 +2106,46 @@ function ratStep(e, env, dt) {
     return null;
   }
 
+  // at the hole, wanting in: down the tunnel (landing on it counts too)
+  if (env.home && P) {
+    const m = P[P.length - 1];
+    if (Math.hypot(m.x - e.x, m.y - e.y) < 12) { S.mode = 'tunnel'; S.len = pathLen(P); S.s = S.len; S.dir = -1; S.wait = 0; S.vx = S.vy = 0; return null; }
+  }
+
+  // with a way found (env.follow: goal is a waypoint off navField), it just runs the way,
+  // pushed out of the rock and settled onto floors as it goes, so it can't wedge or fall
+  // off anything: the path already knows what a rat can climb
+  if (env.follow && goal) {
+    if (S.mode !== 'path') { S.mode = 'path'; S.vx = S.vy = 0; }
+    const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy), go = Math.min(gd, speed * dt);
+    const rock = (x, y) => solidCell(Math.floor(x / CELL), Math.floor(y / CELL));
+    if (gd > 0.01) {                       // never a step into the rock (small steps, so not over a thin wall either)
+      const k = Math.max(1, Math.ceil(go / 0.8)), mx = gx / gd * go / k, my = gy / gd * go / k;
+      let moved = false;
+      for (let q = 0; q < k; q++) {
+        if (!rock(e.x + mx, e.y + my)) { e.x += mx; e.y += my; moved = true; }
+        else if (!rock(e.x + mx, e.y)) { e.x += mx; moved = true; }
+        else if (!rock(e.x, e.y + my)) { e.y += my; moved = true; }
+        else break;
+      }
+      if (Math.abs(gx) > 0.5) S.face = gx > 0 ? 1 : -1;
+      // boxed in on that line: a little hop to come at it again
+      S.blockT = moved ? 0 : (S.blockT || 0) + dt;
+      if (S.blockT > 0.3) { S.blockT = 0; S.mode = 'air'; S.vx = (rnd() - 0.5) * 120; S.vy = -160; return null; }
+    }
+    const n = surfNormal(e.x, e.y, RAT.feel, solidCell);
+    if (n) {
+      if (n.d < RAT.hold && n.d > 0.01 && !rock(e.x + n.px * (RAT.hold - n.d), e.y + n.py * (RAT.hold - n.d))) {
+        e.x += n.px * (RAT.hold - n.d); e.y += n.py * (RAT.hold - n.d);
+      } else if (n.d >= RAT.hold && n.py < -0.5 && n.d < RAT.hold + 7 && gy > -2) {   // not climbing: down onto the floor
+        const m = Math.min(n.d - RAT.hold, 80 * dt); e.x -= n.px * m; e.y -= n.py * m;
+      }
+      S.nx = n.x; S.ny = n.y; S.py = n.py;
+    } else { S.nx = 0; S.ny = -1; S.py = -1; }
+    return null;
+  }
+  if (S.mode === 'path') { S.mode = 'air'; S.vx = S.vy = 0; }   // lost the way: plain physics again
+
   if (S.mode === 'air') {
     S.vy = Math.min(S.vy + RAT.fall * dt, 600);
     const n = Math.max(1, Math.ceil(Math.hypot(S.vx, S.vy) * dt / RAT.step));
@@ -2111,7 +2154,7 @@ function ratStep(e, env, dt) {
       if (e.y > CH * CELL) { e.y = CH * CELL; break; }
       const s = surfNormal(e.x, e.y, RAT.hold + 0.5, solidCell);
       if (!s) continue;
-      if (s.y > RAT.ceil) {               // bumped its head: out of the rock, and on down
+      if (s.py > RAT.ceil) {              // bumped its head (the nearest rock is above): out, and on down
         e.x += s.px * (RAT.hold + 0.5 - s.d); e.y += s.py * (RAT.hold + 0.5 - s.d);
         S.vy = Math.max(S.vy, 0); S.vx *= 0.5;
         continue;
@@ -2124,13 +2167,11 @@ function ratStep(e, env, dt) {
   }
 
   // on rock that has been dug out from under it, or hanging off a ceiling: drop
-  if (!surfNormal(e.x, e.y, RAT.hold + 2, solidCell) || S.ny > RAT.ceil) { S.mode = 'air'; S.vx = S.vy = 0; return null; }
-  // at the hole, wanting in: down the tunnel
-  if (env.home && P) {
-    const m = P[P.length - 1];
-    if (Math.hypot(m.x - e.x, m.y - e.y) < 7) { S.mode = 'tunnel'; S.len = pathLen(P); S.s = S.len; S.dir = -1; S.wait = 0; return null; }
-  }
+  // (a ceiling is where the nearest rock is overhead: the averaged normal misreads a crack)
+  if (!surfNormal(e.x, e.y, RAT.hold + 2, solidCell) || S.py > RAT.ceil) { S.mode = 'air'; S.vx = S.vy = 0; return null; }
 
+  // Roaming it scurries in bursts with rests between; with a job on (you, gold, home) it
+  // runs flat out and only stops to pick a new way (raHuntOff is 0 by default)
   if (S.on <= 0) {
     if ((S.rest -= dt) > 0) return null;
     S.on = kr(env.hunting ? 'raHuntOn' : 'raRoamOn', rnd);
@@ -2138,7 +2179,7 @@ function ratStep(e, env, dt) {
     S.dot = kr('raDot', rnd);
     const j = decide();
     if (j) return j;
-    if (S.on <= 0) { S.rest = 0.1 + rnd() * 0.2; return null; }
+    if (S.on <= 0) { S.rest = env.hunting ? 0.03 : 0.1 + rnd() * 0.2; return null; }
   }
   const dist = S.spd * Math.min(dt, S.on);
   S.on -= dt;
@@ -2150,11 +2191,16 @@ function ratStep(e, env, dt) {
       e.x -= S.nx * st * 2; e.y -= S.ny * st * 2;
       if (!surfSeat(e, S, solidCell, st * 2, RAT.hold, RAT.feel)) { S.mode = 'air'; S.vx = tx * S.spd * 0.5; S.vy = 0; break; }
     }
-    if (S.ny > RAT.ceil) { S.mode = 'air'; S.vx = tx * S.spd * 0.3; S.vy = 0; break; }
+    // walked up under an overhang: it drops, and won't try that way again for a bit
+    if (S.py > RAT.ceil) { S.mode = 'air'; S.vx = tx * S.spd * 0.3; S.vy = 0; S.noSide = S.side; S.noT = 1.5; break; }
     if (Math.abs(tx) > 0.2) S.face = tx > 0 ? 1 : -1;
     if (!goal) continue;
     const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy) || 1;
     if (gd < S.arrive || (-S.ny * gx + S.nx * gy) * S.side < 0) { S.on = 0; break; }
+    // came round onto a surface where it's now up off the rock: look again (maybe jump)
+    const high = (gx * S.nx + gy * S.ny) / gd >= S.dot;
+    if (high && !S.high) { S.high = true; const j = decide(); if (j) return j; if (S.on <= 0) break; }
+    else if (!high) S.high = false;
   }
   if (S.on <= 0 && S.rest <= 0) S.rest = kr(env.hunting ? 'raHuntOff' : 'raRoamOff', rnd);
   return null;
@@ -2165,7 +2211,9 @@ function ratStep(e, env, dt) {
     const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
     if (gd < S.arrive) { S.on = 0; return null; }
     const dx = gx / gd, dy = gy / gd, t = -S.ny * dx + S.nx * dy;
-    if (env.jump !== false && dx * S.nx + dy * S.ny >= S.dot && gd < kr('raJumpR', rnd)) {
+    // the way it wants to run is the way it just fell off an overhang: jump for it if it can, else turn back
+    const barred = S.noT > 0 && (t > 0 ? 1 : -1) === S.noSide;
+    if ((barred || (env.jump !== false && dx * S.nx + dy * S.ny >= S.dot)) && gd < kr('raJumpR', rnd)) {
       // a hop that lands on it: time of flight from how far, the lift to make up the drop.
       // Higher and higher arcs until one clears the rock (round the edge of a slab, not into it)
       const v = kr('raJump', rnd), cap = v * 1.4, x0 = e.x + S.nx * 1.5, y0 = e.y + S.ny * 1.5;
@@ -2187,10 +2235,120 @@ function ratStep(e, env, dt) {
         return 'jump';
       }
     }
+    if (barred) { S.side = -S.noSide; return null; }
     if (Math.abs(t) * gd < 2) { S.on = 0; return null; }
     S.side = t > 0 ? 1 : -1;
     return null;
   }
+}
+
+// ---- rat pathfinding ----
+// A rat with somewhere to be (you, a coin, its nest) follows a distance field: a Dijkstra
+// out from the goal over a grid of NAV-pixel cells, costed for a rat — cheap along rock
+// (floors, walls), dear to go up through open air (it can only jump so high), free to drop.
+// navWay walks a few cells down the field from the rat to give it a waypoint just ahead,
+// which it runs (or jumps) to with ratStep. solid(px, py) is the rat's view of the
+// terrain, in pixels. R is the field's half-size in cells.
+const NAV = 4;                               // terrain pixels per nav cell
+function navField(solid, tx, ty, R) {
+  const gi = Math.floor(tx / CELL / NAV), gj = Math.floor(ty / CELL / NAV);
+  const x0 = gi - R, y0 = gj - R, w = 2 * R + 1, n = w * w;
+  const open = new Uint8Array(n), surf = new Uint8Array(n);
+  const sol = (i, j) => solid((x0 + i) * NAV + 2, (y0 + j) * NAV + 2);
+  // open: a rat fits — the middle 2x2 pixels of the cell are all clear, not just one
+  // (a hairline crack the centre happened to land in is not a way through)
+  const fits = (i, j) => {
+    const px = (x0 + i) * NAV, py = (y0 + j) * NAV;
+    for (let b = 1; b <= 2; b++) for (let a = 1; a <= 2; a++) if (solid(px + a, py + b)) return false;
+    return true;
+  };
+  for (let j = 0; j < w; j++) for (let i = 0; i < w; i++) open[j * w + i] = fits(i, j) ? 1 : 0;
+  for (let j = 0; j < w; j++) for (let i = 0; i < w; i++) {
+    const k = j * w + i;
+    if (open[k]) surf[k] = sol(i, j + 1) || sol(i - 1, j) || sol(i + 1, j) || sol(i - 1, j + 1) || sol(i + 1, j + 1) ? 1 : 0;
+  }
+  const d = new Float32Array(n).fill(Infinity), done = new Uint8Array(n);
+  // a binary heap of cell indices keyed on d (a cell can be in it more than once)
+  const cap = n * 8, hp = new Int32Array(cap);
+  let hn = 0;
+  const push = k => {
+    let c = hn++; hp[c] = k;
+    while (c) { const p = (c - 1) >> 1; if (d[hp[p]] <= d[k]) break; hp[c] = hp[p]; hp[p] = k; c = p; }
+  };
+  const pop = () => {
+    const top = hp[0], last = hp[--hn];
+    let c = 0;
+    if (hn) {
+      hp[0] = last;
+      while (true) {
+        const l = 2 * c + 1, r = l + 1;
+        let m = c;
+        if (l < hn && d[hp[l]] < d[hp[m]]) m = l;
+        if (r < hn && d[hp[r]] < d[hp[m]]) m = r;
+        if (m === c) break;
+        hp[c] = hp[m]; hp[m] = last; c = m;
+      }
+    }
+    return top;
+  };
+  // start at the goal's cell, or the nearest open one to it
+  let s = -1;
+  for (let r = 0; r <= 2 && s < 0; r++) for (let dj = -r; dj <= r && s < 0; dj++) for (let di = -r; di <= r; di++) {
+    const q = (R + dj) * w + R + di;
+    if (open[q]) { s = q; break; }
+  }
+  if (s >= 0) { d[s] = 0; push(s); }
+  while (hn && hn < cap - 8) {
+    const k = pop();
+    if (done[k]) continue;
+    done[k] = 1;
+    const i = k % w, j = (k / w) | 0;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      if (!di && !dj) continue;
+      const a = i + di, b = j + dj;
+      if (a < 0 || b < 0 || a >= w || b >= w) continue;
+      const q = b * w + a;
+      if (!open[q] || done[q]) continue;
+      if (di && dj && !open[j * w + a] && !open[b * w + i]) continue;    // no squeezing between two corners
+      // the rat goes q -> k: dear up through open air, free to drop, cheap along rock
+      const up = -dj, step = di && dj ? 1.414 : 1;
+      const c = step * (surf[k] ? 1 : up < 0 ? 8 : up > 0 ? 1 : 3);
+      if (d[k] + c < d[q]) { d[q] = d[k] + c; push(q); }
+    }
+  }
+  return { x0, y0, w, d, surf };
+}
+// a point `steps` cells down the field from (x, y) (world units), or null if the rat is off
+// the field or can't get to the goal from here. dist: the field's value where it stands.
+function navWay(F, x, y, steps) {
+  let i = Math.floor(x / CELL / NAV) - F.x0, j = Math.floor(y / CELL / NAV) - F.y0;
+  const w = F.w, d = F.d;
+  if (i < 1 || j < 1 || i >= w - 1 || j >= w - 1) return null;
+  if (!isFinite(d[j * w + i])) {                     // sat on a cell edge: the best one round it
+    let b = -1;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      const q = (j + dj) * w + i + di;
+      if (isFinite(d[q]) && (b < 0 || d[q] < d[b])) b = q;
+    }
+    if (b < 0) return null;
+    i = b % w; j = (b / w) | 0;
+  }
+  const dist = d[j * w + i];
+  let air = false;                                  // the way climbs through open air: a jump
+  for (let s = 0; s < steps; s++) {
+    let b = j * w + i;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      const a = i + di, c = j + dj;
+      if (a < 0 || c < 0 || a >= w || c >= w) continue;
+      if (d[c * w + a] < d[b]) b = c * w + a;
+    }
+    if (b === j * w + i) break;
+    if ((b / w | 0) < j && !F.surf[b]) air = true;
+    i = b % w; j = (b / w) | 0;
+    // going up through open air: a jump, so aim for where it lands again (up to 12 cells on)
+    if (air && s === steps - 1 && !F.surf[b] && steps < 12) steps++;
+  }
+  return { x: (F.x0 + i + 0.5) * NAV * CELL, y: (F.y0 + j + 0.5) * NAV * CELL, dist, air };
 }
 
 // Rat nests, carved into a level's rock (floor 1: `nb` in the built-up zones, `nw` in the
@@ -3487,7 +3645,7 @@ function drawSpider(ctx, x, y, r, time, phase, flash, col, S) {
 // round ear, long pink tail, legs scurrying while it runs; a coin in its mouth if it has one
 function drawRat(ctx, x, y, r, time, phase, flash, col, S, carry) {
   const air = !S || S.mode === 'air', nx = air ? 0 : S.nx, ny = air ? -1 : S.ny, f = S ? S.face : 1;
-  const moving = S && (S.on > 0 || S.mode === 'air' || (S.mode === 'tunnel' && !(S.wait > 0)));
+  const moving = S && (S.on > 0 || S.mode === 'air' || S.mode === 'path' || (S.mode === 'tunnel' && !(S.wait > 0)));
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(Math.atan2(nx, -ny));                  // local up = the surface normal
@@ -7272,6 +7430,10 @@ function Game({ input }) {
     // the spiders' silk: webs are the lines they travel on (they stay), silk the strings in
     // flight at you, strings the ones stuck to you (each slows you; pull one too long, it snaps)
     const webs = [], silk = [], strings = [];
+    // rat burrows (a mask over each nest's room and tunnel), the rock's change count, and the
+    // shared way-to-you field the hunting rats follow (see ratSolid / navFor)
+    let burrow = null, terrainV = 0;
+    const navYou = {};
     let webCheck = 0, webLetGo = 0;
     // how far a point is from a web line (anchor to anchor, as drawn), and where on it is closest
     const webNear = (L, x, y) => {
@@ -7340,6 +7502,19 @@ function Game({ input }) {
       ghost = pb.ghost ? { x: level.start.x, y: level.start.y, cd: 0 } : null;
       burns.length = 0;
       webs.length = silk.length = strings.length = 0;
+      // the rat burrows (see ratSolid): each room and tunnel, bar nothing — the hole too
+      burrow = null; navYou.F = null;
+      if (level.nests && level.nests.length) {
+        burrow = new Uint8Array(CW * CH);
+        for (const n of level.nests) {
+          const mark = (x, y, r) => {
+            for (let yy = Math.floor(y - r); yy <= y + r; yy++) for (let xx = Math.floor(x - r); xx <= x + r; xx++)
+              if (xx >= 0 && yy >= 0 && xx < CW && yy < CH && Math.hypot(xx + 0.5 - x, yy + 0.5 - y) <= r && !mat[yy * CW + xx]) burrow[yy * CW + xx] = 1;
+          };
+          mark(n.x + 0.5, n.y + 0.5, n.r + 3);
+          for (const q of n.path) mark(q.x + 0.5, q.y + 0.5, 2.6);
+        }
+      }
       fire = fireNew(level.fuel || new Uint8Array(CW * CH));
       firePropN = -1;                         // fireFrame lists the plants and carts that burn
       p.burn = 0; p.burnAcc = 0;
@@ -7576,6 +7751,18 @@ function Game({ input }) {
         vx: (Math.random() - 0.5) * 60, vy: -90 - Math.random() * 40 });
     }
     // ---- rats ----
+    // A rat's view of the terrain: rock, plus the burrows (so it runs over a hole rather than
+    // falling in and wedging in a tunnel it only ever walks as a path). burrow is per floor.
+    const ratSolid = (cx, cy) => solidCell(cx, cy) || (burrow !== null && burrow[cy * CW + cx] === 1);
+    // a goal's distance field, kept on `o` and made again when the goal moves or the rock changes
+    function navFor(o, goal, R) {
+      // (the rock changing only counts once a second, or a drill would rebuild them every frame)
+      if (!o.F || (o.v !== terrainV && time - o.t > 1) || Math.hypot(goal.x - o.fx, goal.y - o.fy) > (o === navYou ? 12 : 6) ||
+          (o === navYou && time - o.t > 0.4)) {
+        o.F = navField(ratSolid, goal.x, goal.y, R); o.v = terrainV; o.fx = goal.x; o.fy = goal.y; o.t = time;
+      }
+      return o.F;
+    }
     // a new rat, down in nest `n`'s room, on its way out up the tunnel
     function spawnRat(n) {
       const k = enemyFor('rotta', floor), P = n.nest.path, m = n.nest.mouth;
@@ -7597,8 +7784,13 @@ function Game({ input }) {
       // far off and not falling: asleep, so a floor full of rats costs nothing
       if (dist > wake * 1.3 && S && S.mode !== 'air') return;
       let goal = null, home = false, fast = false, jump = true, want = null;
+      if (e.giveUp > 0) e.giveUp -= dt;
       if (e.carry > 0 && N) { goal = N.nest.mouth; home = true; fast = true; }
-      else {
+      else if (e.giveUp > 0) {
+        const R = e.roam || (e.roam = {});
+        roamStep(R, e, dt, Math.random, 'ra');
+        goal = { x: R.rx, y: R.ry }; jump = false;
+      } else {
         let bd = e.smell || (e.smell = kr('raSmell'));
         for (const g of coins) {
           if (g.nopull > 0 && g.vy < 0) continue;            // still on its way up
@@ -7614,21 +7806,57 @@ function Game({ input }) {
         }
       }
       if (!e.arrive || Math.random() < dt) e.arrive = kr('raArrive');
+      // with a job on, it follows the way there (navField) rather than a straight line
+      let way = goal, follow = false;
+      if (fast && S && S.mode !== 'tunnel') {
+        const F = home ? navFor(N.nest, goal, 100) : want ? navFor(want, goal, 36) : navFor(navYou, goal, 56);
+        const w = F && navWay(F, e.x, e.y, 1);
+        if (w) { way = w.dist > 2 ? w : goal; follow = true; }
+      }
       const cold = e.chill && e.chill < 1 ? e.chill : 1;
-      const ev = ratStep(e, { solidCell, rnd: Math.random, goal, hunting: fast, home, path: e.path,
-        speedMul: cold, arrive: goal && !want && hunting ? e.arrive : 3, jump }, dt);
+      const ev = ratStep(e, { solidCell: ratSolid, rnd: Math.random, goal: way, hunting: fast, home, path: e.path, follow,
+        speedMul: cold, arrive: way === goal && !want && hunting ? e.arrive : 3, jump }, dt);
+      // stuck (wedged, or running on the spot) with a job on: a hop in some direction
+      if (fast && (S.mode === 'surf' || S.mode === 'path')) {
+        e.stT = (e.stT || 0) + dt;
+        if (e.stT > 1.2) {
+          if (Math.hypot(e.x - (e.stX || 0), e.y - (e.stY || 0)) < 6 && Math.hypot(goal.x - e.x, goal.y - e.y) > 14) {
+            e.stN = (e.stN || 0) + 1;
+            if (e.stN >= 3 && home) {
+              // hopping hasn't got it anywhere: it slips into a crack and goes home underground
+              burst(e.x, e.y, 6, '#6a5a48');
+              S.mode = 'tunnel'; S.len = pathLen(e.path); S.s = S.len * 0.7; S.dir = -1; S.wait = 0;
+              e.stN = 0;
+            } else if (e.stN >= 3) { e.giveUp = 4; e.aggro = false; e.stN = 0; }   // it can't get there: forget it a while
+            else {
+              S.mode = 'air'; S.vx = (Math.random() < 0.5 ? -1 : 1) * (60 + Math.random() * 80); S.vy = -150 - Math.random() * 120;
+              e.x += S.nx * 1.5; e.y += S.ny * 1.5;
+            }
+          } else e.stN = 0;
+          e.stT = 0; e.stX = e.x; e.stY = e.y;
+        }
+      }
       if (ev === 'home') {
         if (N && e.carry > 0) { N.nest.stash += e.carry; SFX.fx('coinland', e.x, e.y); }
         if (N) e.carry = 0;
       } else if (ev === 'jump') SFX.creature(k, 'alert', e.x, e.y);
       if (e.ra.mode === 'tunnel') return;
+      // wedged in the rock or pushed off the map somehow: back out of its hole (or gone)
+      const inRock = e.x < 0 || e.x >= WW || e.y < 0 || e.y >= WH || ratSolid(Math.floor(e.x / CELL), Math.floor(e.y / CELL));
+      e.rockT = inRock ? (e.rockT || 0) + dt : 0;
+      if (e.rockT > 0.5) {
+        e.rockT = 0;
+        if (N) { e.ra.mode = 'tunnel'; e.ra.len = pathLen(e.path); e.ra.s = e.ra.len * 0.8; e.ra.dir = 1; e.ra.wait = 0; }
+        else { const j = enemies.indexOf(e); if (j >= 0) enemies.splice(j, 1); }
+        return;
+      }
       // a coin in reach: in its mouth
       if (want && Math.hypot(want.x - e.x, want.y - e.y) < e.r + 5) {
         const i = coins.indexOf(want);
         if (i >= 0) { coins.splice(i, 1); e.carry = (e.carry || 0) + want.amount; SFX.fx('coinland', e.x, e.y); }
       }
       // you, in reach: a bite, and a coin knocked out of you over its head
-      if (hunting && !want && !(e.carry > 0 && N) && dist < e.r + 12 && e.touch <= 0 && !p.dead) {
+      if (hunting && !want && !(e.giveUp > 0) && !(e.carry > 0 && N) && dist < e.r + 12 && e.touch <= 0 && !p.dead) {
         const LO = input.current.loadout, broke = !(LO.gold > 0);
         hurt(Math.round(kr('raBite') * (broke ? kr('raBroke') : 1)));
         e.touch = kr('raBiteCd');
@@ -7661,6 +7889,9 @@ function Game({ input }) {
           fire.fuel[i] = 0; fire.t[i] = 0;
           mat[i] = 0; d[i * 4 + 3] = 0; changed = true;
         }
+      if (burrow) for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
+        if (burrow[cy * CW + cx] && Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) { burrow[cy * CW + cx] = 0; changed = true; }
+      if (changed) terrainV++;
       if (changed) tctx.putImageData(img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
       unDeco(cx0, cy0, rc, minX, minY, maxX, maxY);
       if (nOre) dropOre(x, y, nOre);
@@ -8252,6 +8483,9 @@ function Game({ input }) {
       tctx.putImageData(img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
       unDeco(cx0, cy0, rc, minX, minY, maxX, maxY);
       if (nOre) dropOre(x, y, nOre);
+      if (burrow) for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
+        if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) burrow[cy * CW + cx] = 0;
+      terrainV++;
       // a blast knocks the props about: carts and pods go off, pillars crack, icicles let go
       for (const pr of props) {
         if (pr.gone || Math.abs(pr.x - x) > R + 40 || Math.abs(pr.y - y) > R + 40) continue;
@@ -10836,6 +11070,13 @@ function healthCol(frac) {
   return frac > 0.5 ? mixHex('#e6a52c', '#57d267', (frac - 0.5) * 2)
                     : mixHex('#e24a2c', '#e6a52c', frac * 2);
 }
+// "Tap the right stick", for the buy/take line: a thin white circle with a thin R in it.
+function RKey() {
+  return h('svg', { className: 'rkey', viewBox: '0 0 30 30', width: 28, height: 28, 'aria-hidden': true },
+    h('circle', { cx: 15, cy: 15, r: 13.5, fill: 'none', stroke: '#fff', strokeWidth: 1 }),
+    h('text', { x: 15, y: 15, textAnchor: 'middle', dominantBaseline: 'central', fill: '#fff',
+      fontSize: 14, fontWeight: 300, fontFamily: 'system-ui, sans-serif' }, 'R'));
+}
 function Stick({ size, kind, input, refresh }) {
   const [knob, setKnob] = useState({ x: 0, y: 0, jet: false });
   // the live stat this stick shows: hp+fuel on the left, mana on the right. Read off
@@ -12027,11 +12268,11 @@ function App() {
           ingame: true, compare: heldGun, compareName: heldGun ? heldGun.name : '' }) : null,
         // shop stock is "Buy <price>"; anything you pick up for free is just "Take" —
         // the card above already names it, so a nameless item (the heal) shows its name here.
-        h('div', { className: 'pbuy' + (prompt.can ? '' : ' cant') },
-          prompt.price
-            ? [ h('span', { key: 't' }, 'Buy'), h('b', { key: 'p' }, prompt.price + 'g') ]
-            : [ h('span', { key: 't' }, (prompt.id || prompt.gun || prompt.perk) ? 'Take' : 'Take ' + prompt.text),
-                h('b', { key: 'p' }, 'free') ])) : null,
+        h('div', { className: 'pbuy' + (prompt.can ? '' : ' cant'),
+            'aria-label': 'Tap the right stick to ' + (prompt.price ? 'buy for ' + prompt.price + 'g' : 'take') },
+          h(RKey),
+          h('b', null, prompt.price ? prompt.price + 'g'
+            : (prompt.id || prompt.gun || prompt.perk || prompt.heart) ? 'free' : prompt.text))) : null,
       // one gear in the top-right opens the Dev panel; Restart now lives inside it.
       h('button', { className: 'devbtn', title: 'Dev tools',
         onPointerDown: e => { e.preventDefault(); setDevOpen(true); } }, '⚙️'),

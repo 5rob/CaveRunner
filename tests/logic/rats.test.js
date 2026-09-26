@@ -11,8 +11,8 @@ const js = src.slice(open, src.indexOf('</script>', open));
 const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
 const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
 const G = new Function('React', shim + upto +
-  'return { ratStep, ratNests, pathAt, pathLen, RAT, CELL, CW, CH, CREATURES, HUNTERS, enemyFor, DEV, DEV_META, RA_KNOBS, makeLevel, boxReach, losClear, builtAt };')({ createElement: () => {} });
-const { ratStep, pathAt, pathLen, RAT, CELL, CW, CREATURES, HUNTERS, enemyFor, DEV, DEV_META, RA_KNOBS, makeLevel, boxReach, losClear, builtAt } = G;
+  'return { ratStep, ratNests, pathAt, pathLen, navField, navWay, RAT, CELL, CW, CH, CREATURES, HUNTERS, enemyFor, DEV, DEV_META, RA_KNOBS, makeLevel, boxReach, losClear, builtAt };')({ createElement: () => {} });
+const { ratStep, navField, navWay, pathAt, pathLen, RAT, CELL, CW, CREATURES, HUNTERS, enemyFor, DEV, DEV_META, RA_KNOBS, makeLevel, boxReach, losClear, builtAt } = G;
 
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
@@ -165,6 +165,44 @@ function run(g, e, secs, env, watch) {
   const e = rat(100, 42);
   run(g, e, 0.1, { goal: { x: 100, y: 30 } });
   check('it falls off a ceiling rather than hang there', e.ra.mode === 'air' || e.y > 60, { y: e.y, mode: e.ra.mode });
+}
+
+// ---- pathfinding (v89) ----
+{
+  // a floor at row 80 with a wall at x 100-104 up to row 30: the way over is up the wall and down
+  const g = grid(200, 100, (x, y) => y >= 80 || x < 2 || x > 197 || (x >= 100 && x <= 104 && y >= 30));
+  const px = (x, y) => g.solidCell(x, y);
+  const F = navField(px, 300, 155, 40);
+  const w = navWay(F, 120, 155, 1);
+  check('the way to the far side of a wall heads for the wall', w && w.x > 120 && w.dist > 0, w);
+  // follow it all the way with ratStep's path mode
+  const e = rat(120, 156.5);
+  let inside = 0, got = false;
+  for (let t = 0; t < 8 && !got; t += 1 / 60) {
+    const way = navWay(F, e.x, e.y, 1);
+    ratStep(e, { solidCell: g.solidCell, rnd: mkRnd(3), goal: way && way.dist > 2 ? way : { x: 300, y: 156 }, hunting: true, follow: !!way }, 1 / 60);
+    if (inRock(g, e.x, e.y)) inside++;
+    if (Math.hypot(e.x - 300, e.y - 156) < 10) got = true;
+  }
+  check('a rat following the way gets over the wall to the other side', got, { x: e.x, y: e.y });
+  check('and never goes through the rock', inside === 0, inside);
+  // a hairline crack (1px) through a thick wall is not a way through
+  const c = grid(200, 100, (x, y) => y >= 80 || y < 2 || x < 2 || x > 197 || (x >= 90 && x <= 110 && y !== 70));
+  const Fc = navField((x, y) => c.solidCell(x, y), 300, 155, 40);
+  check('a crack thinner than a rat is not a way', navWay(Fc, 120, 155, 1) === null);
+}
+{
+  // it runs flat out with a job on: no rests on a long stretch of floor
+  const g = grid(400, 100, (x, y) => y >= 80);
+  const e = rat(40, 156.5);
+  ratStep(e, { solidCell: g.solidCell, rnd: mkRnd(5), goal: { x: 700, y: 156 }, hunting: true }, 1 / 60);
+  let still = 0;
+  for (let t = 0; t < 2; t += 1 / 60) {
+    const x0 = e.x;
+    ratStep(e, { solidCell: g.solidCell, rnd: mkRnd(5), goal: { x: 700, y: 156 }, hunting: true }, 1 / 60);
+    if (Math.abs(e.x - x0) < 0.01) still++;
+  }
+  check('with a job on it barely stops (a frame to pick its way, no rests)', still <= 6, still);
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall rat checks passed');

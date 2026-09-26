@@ -122,8 +122,8 @@ Walking over something no longer takes it. You get its card instead — a slim p
 that floats just above the item with the price built into it — so you can read a mod
 or compare a gun against the one you are holding, and see what it costs, in one panel.
 A long stat list (a loaded gun, a busy mod) scrolls inside the panel so it never grows
-tall enough to fill the screen. Shop stock reads **Buy** and its price; anything free
-just reads **Take**.
+tall enough to fill the screen. At the bottom of the card is a small circle with an **R**
+in it — tap the right stick — next to the price (or "free").
 
 Once you have read the card, a tap on the right stick takes it. A **mod** goes straight
 into your bag — no second screen, since a mod has no slot to choose. A **gun** opens the
@@ -314,7 +314,8 @@ Sixteen of them, named after Noita's, and they do not all behave the same way:
   dive for the drop. If you're broke, a bite does triple damage instead. Kill a rat and it
   drops its own gold plus anything it was carrying; kill a nest (dig down to it, or blast
   it) and it drops 60 gold plus everything its rats brought home. Left alone, rats scurry
-  about near their nest, and they jump for things above them.
+  about near their nest in little bursts; once they're after something they run flat out,
+  finding their way round walls, up rock faces and over gaps.
 - **Chasers** (Lohkare, Mato, Hurtta, Kobold, Konna) come at you and
   hurt you by reaching you. The Lohkare is slow and armoured; the Hurtta is not.
 - **Bombers** (Limanuljaska, Stendari) run at you and burst on contact, taking

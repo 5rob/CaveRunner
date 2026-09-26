@@ -51,8 +51,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the card carries the effect rows', c && c.rows.length > 0, c && c.rows);
   check('the shop preview drops the placement demo', c && c.demo === 0, c && c.demo);
   check('the card never eats a tap', c && c.clickThrough === true);
-  const buy = await page.evaluate(() => { const b = document.querySelector('.buypanel .pbuy'); return b && b.textContent; });
-  check('the buy line lives in the same panel as the card', !!buy && /Buy/.test(buy), buy);
+  const buy = await page.evaluate(() => { const b = document.querySelector('.buypanel .pbuy'); return b && b.querySelector('.rkey') && b.textContent; });
+  check('the buy line (a mini right stick and the price) lives in the same panel as the card', !!buy && /\d+g/.test(buy), buy);
   await page.screenshot({ path: path.join(__dirname, '..', 'build', 'shop_card.png') });
 
   await stand(2);
@@ -63,7 +63,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await stand(0);
   check('the free heal shows no mod card', (await card()) === null);
   const healBtn = await page.evaluate(() => document.querySelector('.pbuy').textContent);
-  check('but still offers the heal', /Take/.test(healBtn), healBtn);
+  check('but still offers the heal', /Full heal/.test(healBtn), healBtn);
 
   // step away
   await page.evaluate(async () => {

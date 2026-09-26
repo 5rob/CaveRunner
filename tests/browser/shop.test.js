@@ -40,7 +40,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.evaluate(() => { window.__lvl.p.hp = 40; });
   await goTo(0);
   let btn = await page.evaluate(() => { const b = document.querySelector('.pbuy'); return b && b.textContent; });
-  check('standing on the heal shows a prompt', !!btn && /Take/.test(btn), btn);
+  check('standing on the heal shows a prompt', !!btn && /Full heal/.test(btn), btn);
   await interact();
   st = await page.evaluate(() => ({ hp: window.__lvl.p.hp, sold: window.__lvl.stock[0].sold }));
   check('the heal restores full health and is used up', st.hp === 100 && st.sold === true, st);
