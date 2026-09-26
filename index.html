@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v89</title>
+<title>CaveRunner v90</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -434,6 +434,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   font:600 14px system-ui,sans-serif;padding:0 9px;text-align:right;
   user-select:text;-webkit-user-select:text}
 .devnote{margin:14px 0 0;font-size:11px;color:var(--muted);line-height:1.45}
+/* the death replay: a button on the death screen, then the replay's own screen over everything */
+.witnessbtn{position:absolute;left:50%;top:238px;transform:translateX(-50%);z-index:7;white-space:nowrap;
+  background:rgba(20,6,6,0.78);border:1.5px solid #ff4a3a;color:#ffd9d4;border-radius:24px;padding:12px 20px;
+  font:800 14px system-ui,sans-serif;letter-spacing:0.18em;box-shadow:0 0 18px rgba(255,74,58,0.35)}
+.app.witnessing .controls,.app.witnessing .devbtn,.app.witnessing .buypanel{visibility:hidden}
+.witness{position:fixed;inset:0;z-index:28;display:flex;flex-direction:column}
+.wscene{flex:1 1 auto;position:relative;touch-action:none}
+.wtitle{position:absolute;top:14px;left:0;right:0;text-align:center;pointer-events:none;
+  font:800 13px system-ui,sans-serif;letter-spacing:0.3em;color:rgba(255,255,255,0.72);text-shadow:0 1px 3px #000}
+.wpanel{flex:0 0 auto;background:rgba(10,12,16,0.92);border-top:1px solid rgba(255,255,255,0.12);color:#e9ecf2;
+  padding:6px 16px calc(12px + env(safe-area-inset-bottom))}
+.wscrub{position:relative;height:36px;touch-action:none}
+.wtrack,.wfill{position:absolute;left:0;top:16px;height:4px;border-radius:2px}
+.wtrack{right:0;background:rgba(255,255,255,0.18)}
+.wfill{background:#ff8a1f}
+.wdeath{position:absolute;top:9px;width:3px;height:18px;margin-left:-1.5px;border-radius:1px;background:#ff4a3a}
+.wthumb{position:absolute;top:9px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 4px rgba(0,0,0,0.5)}
+.wrow{display:flex;gap:6px;align-items:center;margin-top:8px}
+.wrow button{height:38px;min-width:38px;padding:0 10px;border-radius:19px;border:1px solid rgba(255,255,255,0.22);
+  background:rgba(255,255,255,0.06);color:#e9ecf2;font:600 13px system-ui,sans-serif}
+.wrow button.on{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}
+.wrow .wclose{margin-left:auto}
+.wtime{margin-left:auto;font:600 13px ui-monospace,monospace;font-variant-numeric:tabular-nums}
 .confirm{position:fixed;inset:0;z-index:29;display:flex;align-items:center;justify-content:center;padding:24px}
 .confirmCard{position:relative;z-index:30;background:var(--btn);border:1px solid var(--ring);border-radius:14px;
   padding:18px 20px;max-width:260px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.4)}
@@ -461,7 +485,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v89';
+const VERSION = 'v90';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -6633,6 +6657,127 @@ function builtAt(zone, wx, wy) {
   return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
 }
 
+// ---- the death replay ("Witness yourself", v90) ----
+// The Game keeps the last few seconds as snapshots, RP_HZ a second: a copy of everything draw()
+// reads in a box round you. On the death screen the replay feeds them back through draw(),
+// blended between snapshots so slow motion stays smooth. Terrain isn't in the snapshots: it's a
+// base picture from the start of the window plus the patches dug or burnt since (rpCut/rpPaste),
+// and the fog is a base plus a log of the cells that changed.
+const RP_HZ = 20;                  // snapshots a second
+const RP_BEFORE = 10;              // seconds shown before the death
+const RP_AFTER = 3;                // and after it: the recording runs on this long
+const RP_KEEP = RP_BEFORE + 0.5;   // seconds kept while you're alive
+const RP_W = 320, RP_H = 440;      // half-size of the box round you that gets recorded (world units)
+// the lists draw() reads that go into a snapshot (enemies, pickups and props are handled the same)
+const RP_LISTS = ['bullets', 'enemyShots', 'smoke', 'sparks', 'flashes', 'coins', 'fields', 'beams', 'arcs',
+  'torchP', 'motes', 'burns', 'webs', 'silk', 'strings', 'dparts', 'amb', 'clouds', 'rings', 'devils',
+  'enemies', 'pickups', 'props'];
+// single numbers draw() reads, blended between snapshots
+const RP_NUMS = ['time', 'flick', 'leanX', 'leanY', 'glowN'];
+// nested state worth copying (creature brains the sprites read, tentacles, lightning trails, the
+// aim); any other object inside an entity is shared, not copied
+const RP_DEEP = { sp: 1, ra: 1, je: 1, nest: 1, shot: 1, tent: 1, trail: 1, aim: 1 };
+// fields that slide between snapshots; everything else jumps at the halfway point
+const RP_LERP = { x: 1, y: 1, ty: 1, lx: 1, ly: 1, vx: 1, vy: 1, nx: 1, ny: 1, jx: 1, jy: 1, ox: 1, oy: 1,
+  life: 1, t: 1, age: 1, r: 1, size: 1, shape: 1, flame: 1, fuel: 1, hp: 1, charge: 1, len: 1, hitT: 1 };
+const RP_ANGLE = { hd: 1 };        // angles blend the short way round
+const rpPlain = v => v !== null && typeof v === 'object' &&
+  (Array.isArray(v) || Object.getPrototypeOf(v) === Object.prototype);
+// a snapshot copy of one entity: its own fields, plus copies of the RP_DEEP parts; `id` ties
+// the copies of one entity together across snapshots
+function rpClone(o, id) {
+  const c = {};
+  for (const k in o) {
+    const v = o[k];
+    c[k] = RP_DEEP[k] && rpPlain(v) ? rpCopy(v) : v;
+  }
+  if (id !== undefined) c._r = id;
+  return c;
+}
+function rpCopy(v) {
+  return Array.isArray(v) ? v.map(rpCopy) : rpPlain(v) ? rpClone(v) : v;
+}
+// one entity at fraction u of the way from snapshot copy a to b
+function rpLerp(a, b, u) {
+  if (!b || a === b) return a;
+  if (Array.isArray(a)) {
+    if (!Array.isArray(b) || a.length !== b.length) return u < 0.5 ? a : b;
+    return a.map((x, i) => rpLerp(x, b[i], u));
+  }
+  if (!rpPlain(a) || !rpPlain(b)) return u < 0.5 ? a : b;
+  const c = Object.assign({}, u < 0.5 ? a : b);
+  for (const k in c) {
+    const va = a[k], vb = b[k];
+    if (typeof va === 'number' && typeof vb === 'number') {
+      if (RP_LERP[k]) c[k] = va + (vb - va) * u;
+      else if (RP_ANGLE[k]) c[k] = va + angDiff(vb, va) * u;
+    } else if (RP_DEEP[k] && va && vb && typeof va === 'object') c[k] = rpLerp(va, vb, u);
+  }
+  return c;
+}
+// a whole list at fraction u: matched entities blend; one that only exists in the earlier
+// snapshot shows until halfway, one born in the later shows from halfway
+function rpList(A, B, u) {
+  const out = [], mb = new Map();
+  for (const o of B) mb.set(o._r, o);
+  for (const a of A) {
+    const b = mb.get(a._r);
+    if (b) { out.push(rpLerp(a, b, u)); mb.delete(a._r); }
+    else if (u < 0.5) out.push(a);
+  }
+  if (u >= 0.5) for (const b of mb.values()) out.push(b);
+  return out;
+}
+// the two snapshots either side of time t, and how far between them
+function rpAt(snaps, t) {
+  let lo = 0, hi = snaps.length - 1;
+  if (t <= snaps[0].t) return { a: snaps[0], b: snaps[0], u: 0 };
+  if (t >= snaps[hi].t) return { a: snaps[hi], b: snaps[hi], u: 0 };
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (snaps[m].t <= t) lo = m; else hi = m; }
+  const a = snaps[lo], b = snaps[hi];
+  return { a, b, u: (t - a.t) / (b.t - a.t || 1) };
+}
+// the whole scene at time t, ready to swap in for the live one
+function rpFrame(snaps, t) {
+  const { a, b, u } = rpAt(snaps, t), F = { near: u < 0.5 ? a : b };
+  for (const k of RP_LISTS) F[k] = rpList(a[k], b[k], u);
+  for (const k of RP_NUMS) F[k] = a[k] + (b[k] - a[k]) * u;
+  F.p = rpLerp(a.p, b.p, u);
+  F.ghost = a.ghost && b.ghost ? rpLerp(a.ghost, b.ghost, u) : F.near.ghost;
+  return F;
+}
+// terrain patches: copy a rectangle out of (and back into) a W-wide RGBA pixel array
+function rpCut(data, W, x, y, w, h) {
+  const out = new Uint8ClampedArray(w * h * 4);
+  for (let r = 0; r < h; r++) out.set(data.subarray(((y + r) * W + x) * 4, ((y + r) * W + x + w) * 4), r * w * 4);
+  return out;
+}
+function rpPaste(data, W, P) {
+  for (let r = 0; r < P.h; r++) data.set(P.px.subarray(r * P.w * 4, (r + 1) * P.w * 4), ((P.y + r) * W + P.x) * 4);
+}
+// the dirty rectangles of one snapshot ([which, x, y, w, h]), clipped to the W x H map and
+// merged per layer into one box when that box isn't much bigger than the pieces
+function rpMerge(rects, W, H) {
+  const out = [];
+  for (const which of ['t', 'd']) {
+    const rs = [];
+    for (const [c, x, y, w, h] of rects) {
+      if (c !== which) continue;
+      const x0 = Math.max(0, x), y0 = Math.max(0, y), x1 = Math.min(W, x + w), y1 = Math.min(H, y + h);
+      if (x1 > x0 && y1 > y0) rs.push([x0, y0, x1, y1]);
+    }
+    if (!rs.length) continue;
+    let area = 0, X0 = W, Y0 = H, X1 = 0, Y1 = 0;
+    for (const [x0, y0, x1, y1] of rs) {
+      area += (x1 - x0) * (y1 - y0);
+      X0 = Math.min(X0, x0); Y0 = Math.min(Y0, y0); X1 = Math.max(X1, x1); Y1 = Math.max(Y1, y1);
+    }
+    if ((X1 - X0) * (Y1 - Y0) <= Math.max(4096, area * 3)) out.push([which, X0, Y0, X1 - X0, Y1 - Y0]);
+    else for (const [x0, y0, x1, y1] of rs) out.push([which, x0, y0, x1 - x0, y1 - y0]);
+  }
+  return out;
+}
+
 function makeLevel(seed, floor, owned) {
   floor = floor || 1;
   const have = new Set(owned || []);     // perks you are already carrying, so a room is
@@ -7446,6 +7591,158 @@ function Game({ input }) {
     const toast = text => { toasts.push({ text, t: 2.2 }); if (toasts.length > 3) toasts.shift(); };
     let best = 0, raf, last = performance.now();
 
+    // ---- the death replay's recorder (see RP_HZ) ----
+    // REC.snaps: what draw() reads round you, RP_HZ a second. Terrain: tBase/dBase are the rock
+    // and decoration pixels as of the oldest snapshot, patches the rectangles changed since
+    // (caught by wrapping the two canvases' putImageData, which every dig/blast/burn goes
+    // through). Fog: fogBase + fogLog (time, cell, value). While you're alive only the last
+    // RP_KEEP seconds are kept (older patches fold into the base); from the death it runs
+    // RP_AFTER more seconds and stops.
+    const RP_ARR = { bullets, enemyShots, smoke, sparks, flashes, coins, fields, beams, arcs, torchP, motes,
+      burns, webs, silk, strings, dparts, amb, clouds, rings, devils };
+    const rid = new WeakMap();
+    let ridN = 0;
+    const idOf = o => { let i = rid.get(o); if (i === undefined) rid.set(o, i = ++ridN); return i; };
+    const REC = { t: 0, acc: 0, snaps: [], patches: [], dirty: [], fogLog: [], tBase: null, dBase: null,
+      fogBase: null, fogPrev: null, deathT: -1, done: false };
+    for (const [cx, which] of [[tctx, 't'], [dctx, 'd']]) {
+      const put = cx.putImageData.bind(cx);
+      cx.putImageData = (im, dx, dy, x, y, w, h) => {
+        if (w === undefined) return put(im, dx, dy);
+        put(im, dx, dy, x, y, w, h);
+        if (REC.tBase && !REC.done) REC.dirty.push([which, x, y, w, h]);
+      };
+    }
+    function recReset() {
+      REC.t = 0; REC.acc = 0; REC.snaps = []; REC.patches = []; REC.dirty = []; REC.fogLog = [];
+      REC.tBase = img.data.slice(); REC.dBase = dimg ? dimg.data.slice() : null;
+      REC.fogBase = seen.slice(); REC.fogPrev = seen.slice();
+      REC.deathT = -1; REC.done = false;
+      RT.n = 0; RT.at = -1;
+      input.current.witness = null;
+    }
+    function recSample() {
+      const pcx = p.x + PW / 2, pcy = p.y + PH / 2;
+      const grab = (list, m, ty) => {
+        const out = [];
+        for (const o of list) {
+          const x = o.x !== undefined ? o.x : o.a0x !== undefined ? o.a0x : o.ax;
+          const y = ty && o[ty] !== undefined ? o[ty] : o.y !== undefined ? o.y : o.a0y !== undefined ? o.a0y : o.ay;
+          if (x === undefined || (Math.abs(x - pcx) < RP_W + m && Math.abs(y - pcy) < RP_H + m)) out.push(rpClone(o, idOf(o)));
+        }
+        return out;
+      };
+      const S = { t: REC.t, time, flick, leanX, leanY, glowN, fireN, p: rpClone(p),
+        ghost: ghost ? rpClone(ghost) : null };
+      for (const k in RP_ARR) S[k] = grab(RP_ARR[k], 40);
+      S.enemies = grab(enemies, 40, 'ty'); S.pickups = grab(pickups, 40); S.props = grab(props, 120);
+      // the burning pixels in the box, and how much fuel each has left
+      const fi = [];
+      for (const i of fire.list) {
+        const x = (i % CW) * CELL, y = ((i / CW) | 0) * CELL;
+        if (Math.abs(x - pcx) < RP_W && Math.abs(y - pcy) < RP_H) fi.push(i);
+      }
+      S.fire = Int32Array.from(fi);
+      S.fireT = Uint16Array.from(fi, i => fire.t[i]);
+      REC.snaps.push(S);
+      // terrain changed since the last snapshot, as it stands now
+      if (REC.dirty.length) {
+        for (const [w, x, y, ww, hh] of rpMerge(REC.dirty, CW, CH)) {
+          const src = w === 't' ? img : dimg;
+          if (src) REC.patches.push({ t: REC.t, c: w, x, y, w: ww, h: hh, px: rpCut(src.data, CW, x, y, ww, hh) });
+        }
+        REC.dirty.length = 0;
+      }
+      for (let i = 0; i < seen.length; i++)
+        if (seen[i] !== REC.fogPrev[i]) { REC.fogLog.push(REC.t, i, seen[i]); REC.fogPrev[i] = seen[i]; }
+      if (REC.deathT >= 0) return;
+      // alive: drop what's older than RP_KEEP, folding its terrain and fog into the base
+      const cut = REC.t - RP_KEEP;
+      let n = 0;
+      while (n < REC.snaps.length && REC.snaps[n].t < cut) n++;
+      if (n) REC.snaps.splice(0, n);
+      n = 0;
+      while (n < REC.patches.length && REC.patches[n].t < cut) {
+        const P = REC.patches[n++], base = P.c === 't' ? REC.tBase : REC.dBase;
+        if (base) rpPaste(base, CW, P);
+      }
+      if (n) REC.patches.splice(0, n);
+      n = 0;
+      while (n < REC.fogLog.length && REC.fogLog[n] < cut) { REC.fogBase[REC.fogLog[n + 1]] = REC.fogLog[n + 2]; n += 3; }
+      if (n) REC.fogLog.splice(0, n);
+    }
+    // every stepped frame: keep the clock, snapshot RP_HZ a second, and stop RP_AFTER after a death
+    function recFrame(dt) {
+      if (REC.done || !REC.tBase) return;
+      REC.t += dt;
+      if (p.dead && REC.deathT < 0) REC.deathT = REC.t;
+      if ((REC.acc -= dt) > 0) return;
+      REC.acc = Math.max(0, REC.acc + 1 / RP_HZ);
+      recSample();
+      if (REC.deathT >= 0 && REC.t >= REC.deathT + RP_AFTER) {
+        REC.done = true;
+        input.current.witness = { t0: Math.max(REC.snaps[0].t, REC.deathT - RP_BEFORE), t1: REC.t, death: REC.deathT };
+        input.current.notify();
+      }
+    }
+
+    // ---- the replay's player: rebuilds the terrain and fog for time T and draws the recorded
+    // scene through draw() itself, swapped in for the live world and swapped back after ----
+    let RPV = null;                       // while draw() is drawing a replay frame: the view
+    const RT = { tC: null, dC: null, n: 0, at: -1, fog: null, fireT: null };
+    function rpTerrain(T) {
+      if (!RT.tC) {
+        RT.tC = document.createElement('canvas'); RT.tC.width = CW; RT.tC.height = CH;
+        RT.dC = document.createElement('canvas'); RT.dC.width = CW; RT.dC.height = CH;
+        RT.fireT = new Uint16Array(CW * CH);
+      }
+      const tc = RT.tC.getContext('2d'), dc = RT.dC.getContext('2d');
+      if (RT.at < 0 || (RT.n > 0 && REC.patches[RT.n - 1].t > T)) {     // first look, or scrubbed back
+        tc.putImageData(new ImageData(REC.tBase, CW, CH), 0, 0);
+        dc.clearRect(0, 0, CW, CH);
+        if (REC.dBase) dc.putImageData(new ImageData(REC.dBase, CW, CH), 0, 0);
+        RT.n = 0;
+      }
+      while (RT.n < REC.patches.length && REC.patches[RT.n].t <= T) {
+        const P = REC.patches[RT.n++];
+        (P.c === 't' ? tc : dc).putImageData(new ImageData(P.px, P.w, P.h), P.x, P.y);
+      }
+      RT.at = T;
+      if (!RT.fog || RT.fog.length !== REC.fogBase.length) RT.fog = new Uint8Array(REC.fogBase.length);
+      RT.fog.set(REC.fogBase);
+      const L = REC.fogLog;
+      for (let n = 0; n < L.length && L[n] <= T; n += 3) RT.fog[L[n + 1]] = L[n + 2];
+    }
+    function drawReplay(V) {
+      const W = input.current.witness;
+      V.t = clamp(V.t, W.t0, W.t1);
+      const F = rpFrame(REC.snaps, V.t);
+      rpTerrain(V.t);
+      if (!V.fog) RT.fog.fill(1);          // fog off: everything counts as seen, and no overlay
+      if (V.follow) { V.cx = F.p.x + PW / 2; V.cy = F.p.y + PH / 2; }
+      const near = F.near;
+      for (let k = 0; k < near.fire.length; k++) RT.fireT[near.fire[k]] = near.fireT[k];
+      // swap the recording in
+      const keepL = {};
+      for (const k in RP_ARR) { const L = RP_ARR[k]; keepL[k] = L.splice(0, L.length, ...F[k]); }
+      const keep = { enemies, pickups, props, fire, firePlants, seen, ghost, time, flick, leanX, leanY, glowN,
+        fireN, camX, camY, unitPx, torchR, visPts, viewW, viewH, p: Object.assign({}, p) };
+      enemies = F.enemies; pickups = F.pickups; props = F.props; firePlants = [];
+      fire = { list: near.fire, t: RT.fireT }; seen = RT.fog;
+      ghost = F.ghost; time = F.time; flick = F.flick; leanX = F.leanX; leanY = F.leanY; glowN = F.glowN; fireN = near.fireN;
+      Object.assign(p, F.p);
+      RPV = V;
+      try { draw(); } finally {
+        // and the live world back, exactly as it was
+        RPV = null;
+        for (const k in RP_ARR) { const L = RP_ARR[k]; L.splice(0, L.length, ...keepL[k]); }
+        ({ enemies, pickups, props, fire, firePlants, seen, ghost, time, flick, leanX, leanY, glowN,
+          fireN, camX, camY, unitPx, torchR, visPts, viewW, viewH } = keep);
+        Object.assign(p, keep.p);
+        for (let k = 0; k < near.fire.length; k++) RT.fireT[near.fire[k]] = 0;
+      }
+    }
+
     // a floor is a fresh cave with its own shop at the bottom; you keep everything else
     // `back` is a saved cave to rebuild (same seed, same perks owned on the way in), with
     // what was already taken, sold and killed stripped back out of it
@@ -7530,6 +7827,7 @@ function Game({ input }) {
       seen = fogStart();
       if (pb.seeAll) seen.fill(2);            // All-Seeing Eye lights the whole floor
       paintFog();                             // otherwise every floor starts dark again
+      recReset();                             // the death replay starts afresh each floor
       matterProps = props.filter(pr => pr.k === 'matter');
       // out of the way-in, a moment after the way-out's whump
       setTimeout(() => SFX.fx('portalOut', arrival.x, arrival.y), 260);
@@ -10071,19 +10369,27 @@ function Game({ input }) {
       const dpr = window.devicePixelRatio || 1;
       // the controls overlay the bottom of the canvas (see-through), so the play area is the
       // part above them: scale and frame to that, but still draw (and cull) the full canvas
-      const ctlPx = Math.min(c.height * 0.8, (input.current.ctlH || 0) * dpr);
+      const ctlPx = Math.min(c.height * 0.8, (RPV ? RPV.panelH || 0 : input.current.ctlH || 0) * dpr);   // a replay: its panel
       const playPx = c.height - ctlPx;
-      const s = Math.min(c.width / VIEW_W, playPx / VIEW_MIN_H) * DEV.zoom, vw = c.width / s, vh = c.height / s;
+      const s = Math.min(c.width / VIEW_W, playPx / VIEW_MIN_H) * DEV.zoom * (RPV ? RPV.zoom : 1), vw = c.width / s, vh = c.height / s;
       const vhp = playPx / s;
       unitPx = s / dpr;
       const pcx = p.x + PW / 2, pcy = p.y + PH / 2;
 
-      // camera
-      const tx = vw >= WW ? (WW - vw) / 2 : clamp(pcx - vw / 2, 0, WW - vw);
-      const ty = clamp(pcy - vhp * 0.55, 0, Math.max(0, WH - vhp));
-      if (!camReady) { camX = tx; camY = ty; camReady = true; }
-      camX += (tx - camX) * 0.15;
-      camY += (ty - camY) * 0.15;
+      // camera (a replay's is wherever the viewer has dragged it, or on you)
+      if (RPV) {
+        if (RPV.follow) {                     // framed on you like the live camera, then kept as the centre
+          RPV.cx = vw >= WW ? WW / 2 : clamp(RPV.cx - vw / 2, 0, WW - vw) + vw / 2;
+          RPV.cy = clamp(RPV.cy - vhp * 0.55, 0, Math.max(0, WH - vhp)) + vhp / 2;
+        }
+        camX = RPV.cx - vw / 2; camY = RPV.cy - vhp / 2; RPV.unit = unitPx;
+      } else {
+        const tx = vw >= WW ? (WW - vw) / 2 : clamp(pcx - vw / 2, 0, WW - vw);
+        const ty = clamp(pcy - vhp * 0.55, 0, Math.max(0, WH - vhp));
+        if (!camReady) { camX = tx; camY = ty; camReady = true; }
+        camX += (tx - camX) * 0.15;
+        camY += (ty - camY) * 0.15;
+      }
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.imageSmoothingEnabled = false;
@@ -10133,8 +10439,8 @@ function Game({ input }) {
       const tx1 = clamp(Math.ceil((camX + vw) / CELL) + 1, 1, CW), ty1 = clamp(Math.ceil((camY + vh) / CELL) + 1, 1, CH);
       viewW = vw; viewH = vh;
       // the decoration layer (pass 2): behind the rock, in front of the back wall
-      ctx.drawImage(decoC, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
-      ctx.drawImage(terrain, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
+      ctx.drawImage(RPV ? RT.dC : decoC, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
+      ctx.drawImage(RPV ? RT.tC : terrain, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
       // the burning pixels, over the art they're eating: colour by how much fuel is left, and a
       // new flicker each fire tick. Drawn under the fog, so fire you haven't seen stays hidden;
       // the glow on top comes after the fog, only on ground you have seen (fireVis).
@@ -10591,7 +10897,7 @@ function Game({ input }) {
 
       // where the next pull actually goes, mods and all — only with the Trajectory Sight perk
       const tvis = R.vis == null ? 1 : R.vis;
-      if (!p.dead && R.show && held && pb.trajectory && tvis > 0) {
+      if (!RPV && !p.dead && R.show && held && pb.trajectory && tvis > 0) {
         const sim = Object.assign({}, held, { slots: held.slots.slice(),
           order: held.order.slice(), idx: held.idx });
         const plan = planCast(sim);                 // a copy, so the real gun is untouched
@@ -10699,50 +11005,52 @@ function Game({ input }) {
       torchR = clamp(sight * LAMP_REACH * (0.5 + 0.55 * flick), 120, 1400);
       visPts = visPoly(pcx, pcy, sight, solidCell, VIS_RAYS);
       fogReveal(seen, pcx, pcy, sight, visPts, VIS_RAYS);   // line of sight lifts the fog
-      // bake the visible slab of the overlay every frame: the base darkness is the fog
-      // state, then the lamp brightens the cells the fog has already been lifted from
-      const fdat = fogImg.data;
-      const dim = Math.round(255 * DEV.fogDim), dark = Math.round(255 * DEV.fogDark);
-      const lr2 = torchR * torchR;
-      const fx0 = clamp(Math.floor(camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(camY / FOG_U) - 1, 0, FH - 1);
-      const fx1 = clamp(Math.ceil((camX + vw) / FOG_U) + 2, 1, FW), fy1 = clamp(Math.ceil((camY + vh) / FOG_U) + 2, 1, FH);
-      for (let cy = fy0; cy < fy1; cy++) {
-        const ddy = (cy + 0.5) * FOG_U - pcy;
-        for (let cx = fx0; cx < fx1; cx++) {
-          const i = cy * FW + cx, k = i * 4;
-          fdat[k] = 9; fdat[k + 1] = 10; fdat[k + 2] = 14;
-          let s = seen[i];
-          // push the dark off ground you have seen: an unseen cell that borders a seen one
-          // is treated as remembered (dim + lamp), so a bit more of the uncovered surface
-          // shows instead of the darkness sitting right on its edge
-          if (!s && ((cx > 0 && seen[i - 1]) || (cx < FW - 1 && seen[i + 1]) ||
-              (cy > 0 && seen[i - FW]) || (cy < FH - 1 && seen[i + FW]) ||
-              (cx > 0 && cy > 0 && seen[i - FW - 1]) || (cx < FW - 1 && cy > 0 && seen[i - FW + 1]) ||
-              (cx > 0 && cy < FH - 1 && seen[i + FW - 1]) || (cx < FW - 1 && cy < FH - 1 && seen[i + FW + 1]))) s = 1;
-          let a = s === 2 ? 0 : s ? dim : dark;
-          if (s && a) {                        // the lamp only reaches ground the fog has lifted
-            const ddx = (cx + 0.5) * FOG_U - pcx, dd2 = ddx * ddx + ddy * ddy;
-            if (dd2 < lr2) {
-              const t = Math.sqrt(dd2) / torchR;               // 0 at your feet, 1 at the edge
-              const lift = t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45;
-              a = a * (1 - lift);
+      if (!RPV || RPV.fog) {                                 // a replay can turn the fog off
+        // bake the visible slab of the overlay every frame: the base darkness is the fog
+        // state, then the lamp brightens the cells the fog has already been lifted from
+        const fdat = fogImg.data;
+        const dim = Math.round(255 * DEV.fogDim), dark = Math.round(255 * DEV.fogDark);
+        const lr2 = torchR * torchR;
+        const fx0 = clamp(Math.floor(camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(camY / FOG_U) - 1, 0, FH - 1);
+        const fx1 = clamp(Math.ceil((camX + vw) / FOG_U) + 2, 1, FW), fy1 = clamp(Math.ceil((camY + vh) / FOG_U) + 2, 1, FH);
+        for (let cy = fy0; cy < fy1; cy++) {
+          const ddy = (cy + 0.5) * FOG_U - pcy;
+          for (let cx = fx0; cx < fx1; cx++) {
+            const i = cy * FW + cx, k = i * 4;
+            fdat[k] = 9; fdat[k + 1] = 10; fdat[k + 2] = 14;
+            let s = seen[i];
+            // push the dark off ground you have seen: an unseen cell that borders a seen one
+            // is treated as remembered (dim + lamp), so a bit more of the uncovered surface
+            // shows instead of the darkness sitting right on its edge
+            if (!s && ((cx > 0 && seen[i - 1]) || (cx < FW - 1 && seen[i + 1]) ||
+                (cy > 0 && seen[i - FW]) || (cy < FH - 1 && seen[i + FW]) ||
+                (cx > 0 && cy > 0 && seen[i - FW - 1]) || (cx < FW - 1 && cy > 0 && seen[i - FW + 1]) ||
+                (cx > 0 && cy < FH - 1 && seen[i + FW - 1]) || (cx < FW - 1 && cy < FH - 1 && seen[i + FW + 1]))) s = 1;
+            let a = s === 2 ? 0 : s ? dim : dark;
+            if (s && a) {                        // the lamp only reaches ground the fog has lifted
+              const ddx = (cx + 0.5) * FOG_U - pcx, dd2 = ddx * ddx + ddy * ddy;
+              if (dd2 < lr2) {
+                const t = Math.sqrt(dd2) / torchR;               // 0 at your feet, 1 at the edge
+                const lift = t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45;
+                a = a * (1 - lift);
+              }
             }
+            fdat[k + 3] = a;
           }
-          fdat[k + 3] = a;
         }
+        fctx.putImageData(fogImg, 0, 0, fx0, fy0, fx1 - fx0, fy1 - fy0);
+        // blur the slab at source resolution (cheap: an 80x200 canvas), then upscale the soft
+        // copy — a source-px of blur becomes ~a fog cell of blur on screen, so the fog edge
+        // reads as a gradient rather than a hard line
+        fbctx.clearRect(fx0, fy0, fx1 - fx0, fy1 - fy0);
+        fbctx.filter = 'blur(0.9px)';
+        fbctx.drawImage(fogC, fx0, fy0, fx1 - fx0, fy1 - fy0, fx0, fy0, fx1 - fx0, fy1 - fy0);
+        fbctx.filter = 'none';
+        ctx.imageSmoothingEnabled = true;     // the upscale further softens the edge
+        ctx.drawImage(fogBlurC, fx0, fy0, fx1 - fx0, fy1 - fy0,
+          fx0 * FOG_U, fy0 * FOG_U, (fx1 - fx0) * FOG_U, (fy1 - fy0) * FOG_U);
+        ctx.imageSmoothingEnabled = false;
       }
-      fctx.putImageData(fogImg, 0, 0, fx0, fy0, fx1 - fx0, fy1 - fy0);
-      // blur the slab at source resolution (cheap: an 80x200 canvas), then upscale the soft
-      // copy — a source-px of blur becomes ~a fog cell of blur on screen, so the fog edge
-      // reads as a gradient rather than a hard line
-      fbctx.clearRect(fx0, fy0, fx1 - fx0, fy1 - fy0);
-      fbctx.filter = 'blur(0.9px)';
-      fbctx.drawImage(fogC, fx0, fy0, fx1 - fx0, fy1 - fy0, fx0, fy0, fx1 - fx0, fy1 - fy0);
-      fbctx.filter = 'none';
-      ctx.imageSmoothingEnabled = true;     // the upscale further softens the edge
-      ctx.drawImage(fogBlurC, fx0, fy0, fx1 - fx0, fy1 - fy0,
-        fx0 * FOG_U, fy0 * FOG_U, (fx1 - fx0) * FOG_U, (fy1 - fy0) * FOG_U);
-      ctx.imageSmoothingEnabled = false;
 
       // ---- firelight on top of the fog: the wall torches (where you have been) and the hand
       // torch's glow plus its small, warm second light round you. Additive, so it only ever
@@ -10816,6 +11124,7 @@ function Game({ input }) {
       }
       ctx.globalCompositeOperation = 'source-over';
       for (const sc of sconces) if (scOn(sc)) drawSconce(ctx, sc.x, sc.y, time, sc.ph);
+      if (RPV) return;                        // a replay frame has no HUD
 
       // ---- HUD ----
       // The old top-left stack (floor / enemies / health / fuel / mana / gun) is gone:
@@ -10991,9 +11300,19 @@ function Game({ input }) {
     const loop = t => {
       const dt = Math.max(0, Math.min(0.033, (t - last) / 1000));
       last = t;
-      if (!input.current.paused) step(dt);
-      SFX.tick();
-      draw();
+      const rv = input.current.replay;
+      if (rv && REC.done) {                   // the death replay: its own clock, the world stays put
+        if (rv.playing) {
+          rv.t += dt * rv.speed;
+          if (rv.t >= input.current.witness.t1) { rv.t = input.current.witness.t1; rv.playing = false; }
+        }
+        SFX.tick();
+        drawReplay(rv);
+      } else {
+        if (!input.current.paused) { step(dt); recFrame(dt); }
+        SFX.tick();
+        draw();
+      }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -12120,6 +12439,90 @@ function SpawnGun({ input, close }) {
       h('button', { className: 'dbg spawngo', onPointerDown: e => { e.preventDefault(); spawn(); } }, 'Spawn')));
 }
 
+// ---- the death replay's screen ("Witness yourself"): the recorded scene fills the view — drag
+// to pan, pinch (or the wheel) to zoom — with a scrub bar and the controls along the bottom.
+// The Game draws it (drawReplay); this only moves input.current.replay's clock and camera.
+const RP_SPEEDS = [0.25, 0.5, 1, 2];
+function Witness({ input, close }) {
+  const V = input.current.replay, W = input.current.witness;
+  const [, bump] = useState(0);
+  const redo = () => bump(n => n + 1);
+  const scrub = useRef(null), pts = useRef(new Map()), pinch = useRef(null), dragging = useRef(false);
+  useEffect(() => {                  // the clock and the scrub bar follow the playback
+    let raf, last = '';
+    const tick = () => {
+      const sig = Math.round(V.t * 20) + (V.playing ? 'p' : '');
+      if (sig !== last) { last = sig; redo(); }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  const span = Math.max(0.01, W.t1 - W.t0);
+  const seek = e => {
+    const r = scrub.current.getBoundingClientRect();
+    V.t = W.t0 + clamp((e.clientX - r.left) / r.width, 0, 1) * span;
+    V.playing = false; redo();
+  };
+  // the scene: one finger (or the mouse) drags the camera, two pinch-zoom and drag
+  const down = e => {
+    e.preventDefault();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+    pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    pinch.current = null;
+  };
+  const move = e => {
+    const P = pts.current, q = P.get(e.pointerId);
+    if (!q) return;
+    const u = V.unit || 1;
+    if (P.size === 1) { V.cx -= (e.clientX - q.x) / u; V.cy -= (e.clientY - q.y) / u; V.follow = false; }
+    q.x = e.clientX; q.y = e.clientY;
+    if (P.size >= 2) {
+      const [a, b] = [...P.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y) || 1, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, L = pinch.current;
+      if (L) {
+        V.zoom = clamp(V.zoom * d / L.d, 0.4, 4);
+        V.cx -= (mx - L.mx) / u; V.cy -= (my - L.my) / u; V.follow = false;
+      }
+      pinch.current = { d, mx, my };
+    }
+    if (!V.follow) redo();
+  };
+  const up = e => { pts.current.delete(e.pointerId); pinch.current = null; };
+  const tap = f => e => { e.preventDefault(); f(); redo(); };
+  const rel = V.t - W.death, frac = (V.t - W.t0) / span;
+  const atEnd = V.t >= W.t1 - 1e-6;
+  return h('div', { className: 'witness' },
+    h('div', { className: 'wscene', onPointerDown: down, onPointerMove: move, onPointerUp: up, onPointerCancel: up,
+        onWheel: e => { V.zoom = clamp(V.zoom * Math.exp(-e.deltaY * 0.0015), 0.4, 4); } },
+      h('div', { className: 'wtitle' }, 'WITNESS YOURSELF')),
+    h('div', { className: 'wpanel', ref: el => { if (el) V.panelH = el.getBoundingClientRect().height; } },
+      h('div', { className: 'wscrub', ref: scrub,
+          onPointerDown: e => { e.preventDefault(); dragging.current = true;
+            try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {} seek(e); },
+          onPointerMove: e => { if (dragging.current) seek(e); },
+          onPointerUp: () => { dragging.current = false; }, onPointerCancel: () => { dragging.current = false; } },
+        h('div', { className: 'wtrack' }),
+        h('div', { className: 'wfill', style: { width: (frac * 100) + '%' } }),
+        h('div', { className: 'wdeath', title: 'The moment you died',
+          style: { left: ((W.death - W.t0) / span * 100) + '%' } }),
+        h('div', { className: 'wthumb', style: { left: (frac * 100) + '%' } })),
+      h('div', { className: 'wrow' },
+        h('button', { className: 'wfirst', 'aria-label': 'Back to the start',
+          onPointerDown: tap(() => { V.t = W.t0; V.playing = true; }) }, '⏮'),
+        h('button', { className: 'wplay', 'aria-label': V.playing ? 'Pause' : 'Play',
+          onPointerDown: tap(() => { if (!V.playing && atEnd) V.t = W.t0; V.playing = !V.playing; }) },
+          V.playing ? '⏸' : '▶'),
+        RP_SPEEDS.map(sp => h('button', { key: sp, className: 'wspeed' + (V.speed === sp ? ' on' : ''),
+          onPointerDown: tap(() => { V.speed = sp; }) }, (sp < 1 ? String(sp).slice(1) : sp) + '×')),
+        h('span', { className: 'wtime' }, (rel < 0 ? '−' : '+') + Math.abs(rel).toFixed(1) + 's')),
+      h('div', { className: 'wrow' },
+        h('button', { className: 'wfog' + (V.fog ? ' on' : ''), onPointerDown: tap(() => { V.fog = !V.fog; }) }, 'Fog'),
+        h('button', { className: 'wfollow' + (V.follow ? ' on' : ''), onPointerDown: tap(() => { V.follow = true; V.zoom = 1; }) },
+          'Follow'),
+        h('button', { className: 'wclose', onPointerDown: e => { e.preventDefault(); close(); } }, 'Close'))));
+}
+
 function App() {
   const blank = () => ({ active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false });
   const [saved] = useState(loadSave);      // last session's run, if there is one
@@ -12143,6 +12546,7 @@ function App() {
   const [edit, setEdit] = useState(false);
   const [devOpen, setDevOpen] = useState(false);
   const [spawnOpen, setSpawnOpen] = useState(false);
+  const [witnessOpen, setWitnessOpen] = useState(false);
   const [gunInfo, setGunInfo] = useState(-1);
   const [held, setHeld] = useState(-1);
   // null when closed; a timestamp (from the tap that opened it) while open, so
@@ -12154,7 +12558,7 @@ function App() {
   input.current.notify = refresh;
   const found = input.current.found;
   input.current.mapOpen = mapOpen;
-  input.current.paused = edit || !!found || devOpen || spawnOpen || mapOpen;
+  input.current.paused = edit || !!found || devOpen || spawnOpen || mapOpen || witnessOpen;
 
   const LO = input.current.loadout;
   // read through the ref: after a Restart the loadout object is replaced, and a
@@ -12170,6 +12574,8 @@ function App() {
       perks: [], maxBonus: 0, usedLives: 0 };
     input.current.sig = '';
     input.current.found = null;
+    input.current.witness = null; input.current.replay = null;
+    setWitnessOpen(false);
     setGunInfo(-1);
     setEdit(false);
     setRun(r => r + 1);
@@ -12250,9 +12656,20 @@ function App() {
   const btnAt = pt => ({ width: deck.btn, height: deck.btn,
     left: Math.round(pt.x - deck.btn / 2), top: Math.round(pt.y - deck.btn / 2) });
 
-  return h('div', { className: 'app' },
+  // the death replay: offered once the recording has run on past the death (input.current.witness)
+  const witness = input.current.witness;
+  const openWitness = () => {
+    input.current.replay = { t: witness.t0, speed: 1, playing: true, fog: true, follow: true, zoom: 1, cx: 0, cy: 0, unit: 1 };
+    setWitnessOpen(true);
+  };
+  const closeWitness = () => { input.current.replay = null; setWitnessOpen(false); };
+
+  return h('div', { className: 'app' + (witnessOpen ? ' witnessing' : '') },
     h('div', { className: 'view' },
       h(Game, { key: run, input }),
+      witness && !witnessOpen ? h('button', { className: 'witnessbtn',
+        onPointerDown: e => { e.preventDefault(); openWitness(); } }, 'WITNESS YOURSELF') : null,
+      witnessOpen && witness ? h(Witness, { input, close: closeWitness }) : null,
       // The item's card and its buy/take line are one panel now, grown up from the
       // bottom: the info you're reading and the price you're paying sit together.
       // The panel is pointer-events:none so a tap still reaches the sticks underneath;

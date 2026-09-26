@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v89**. Branch: `main` (release channel is `main`).
+Current version: **v90**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -854,6 +854,34 @@ No way (off the field): the old surface-crawl physics. Ceilings are judged by th
 don't rest (`raHuntOff` 0–0.03). Safety nets in `ratFrame`: stuck 1.2s → hop; 3 hops → carrier slips home underground
 (tunnel mode, dust), others give up 4s (`e.giveUp`); in rock/off-map 0.5s → back out of its hole. Probe on real floors:
 ~95–100% of carriers home within 20s (was ~65%). Tests: rats logic (nav over a wall, hairline crack isn't a way).
+**v90 death replay ("Witness yourself").** Owner's spec: 10s before the death + 3s after, offered only on the
+death screen as a **WITNESS YOURSELF** button (`.witnessbtn`), fog toggle, free drag/pinch camera. Pure part above
+`makeLevel` (`RP_*`, `rpClone`/`rpCopy`/`rpLerp`/`rpList`/`rpAt`/`rpFrame`, `rpCut`/`rpPaste`/`rpMerge`). **Recorder**
+(Game, before `enterLevel`): `recFrame(dt)` runs after every stepped `step()`; `recSample()` RP_HZ (20) a second
+pushes a snapshot to `REC.snaps` — `rpClone` of every entity within `RP_W`×`RP_H` of you in each list of
+`RP_LISTS` (the `RP_ARR` const arrays + `enemies`/`pickups`/`props`), `p`, `ghost`, `RP_NUMS` (time, flick, lean,
+glow), and the burning pixels (`fire`/`fireT`). Each entity gets a stable `_r` id (WeakMap) so frames blend.
+`rpClone` copies own fields, and deep-copies only `RP_DEEP` keys (creature brains `sp`/`ra`/`je`/`nest`, `tent`,
+`trail`, `aim`) — everything else inside is shared. **If a new creature's sprite reads nested state that changes,
+add its key to `RP_DEEP`**, or the replay shows today's value for it; a field that should slide rather than jump
+goes in `RP_LERP` (angles: `RP_ANGLE`). **Terrain:** `tctx`/`dctx.putImageData` are wrapped so every partial put
+(dig, explode, unDeco, paint, fire flush) lands in `REC.dirty`; each sample turns those into `REC.patches` (the
+rect's pixels *after*, via `rpMerge` + `rpCut`). `REC.tBase`/`dBase` are the pixels as of the oldest snapshot;
+while alive, anything older than `RP_KEEP` (10.5s) is dropped and its patches folded into the base. Fog the same
+way: `fogBase` + `fogLog` (flat t, cell, value). A new way of changing terrain that doesn't go through those two
+`putImageData`s would be missed. At death `REC.deathT`; it samples on to `+RP_AFTER`, then `REC.done` and
+`input.current.witness = { t0, t1, death }` (+ notify). `recReset()` in `enterLevel` (and clears `witness`).
+**Player:** `App` opens `Witness` (sets `input.current.replay = { t, speed, playing, fog, follow, zoom, cx, cy,
+unit, panelH }`); while it's set the loop skips `step()` and calls `drawReplay(V)`, which rebuilds the terrain on
+its own canvases (`RT.tC`/`RT.dC`, from the base + patches ≤ t, rebuilt from the base on a scrub backwards) and the
+fog (`RT.fog`), builds `rpFrame`, **swaps it into the live variables, calls the real `draw()`, and swaps the live
+world back** in a `finally`. `draw()` checks `RPV`: camera from `V.cx/cy` (follow mode frames you like the live cam
+and writes the centre back), `V.zoom`, the play area above the replay panel (`V.panelH`), terrain from `RT`, no aim
+line, fog overlay skipped when `!V.fog` (and `RT.fog` all 1), and it returns before the HUD. `.app.witnessing`
+hides the controls. Cost measured on a real floor: ~0.1ms per sample, ~8MB for the full 13s with 13 creatures
+near. Not built yet: saving replays, and "killed by" (needs the source plumbed through `hurt`). Saving note:
+snapshots share references (`sp.line` → a web with `owner`), so they don't `JSON.stringify` as-is.
+Tests: `tests/logic/replay.test.js`, `tests/browser/replay.test.js` (sandbox; hooks `__lvl.rec`, `rt`, `recSample`).
 **v74 Pollen nerf.** Pollen has `drift: 1`, `homeR: 80`, `pop: 6` (no `eat`). `driftStep` (pure, above
 `tracePath`, consts `DRIFT_*`) damps its speed and, once slow, floats it up. It only homes after
 locking (`b.lock`: nearest creature within `homeR` with `lineOfSight`), then speeds back to

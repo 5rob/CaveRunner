@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v89.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v90.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -25,7 +25,7 @@ it's stale.
 ## The Android app (new this session)
 
 - Everything is live: APK at `https://github.com/5rob/CaveRunner/releases/tag/app`, game at
-  `https://5rob.github.io/CaveRunner/`, `version.txt` = `v89`. Last CI run on `main` was
+  `https://5rob.github.io/CaveRunner/`, `version.txt` = `v90`. Last CI run on `main` was
   green (both `build-apk` and `deploy-pages`).
 - **What it is:** a thin WebView shell (`android/`) that bundles `index.html` + React so it
   plays offline, then checks Pages' `version.txt` (on launch, on resume, and every 2 min
@@ -42,6 +42,11 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v90 — death replay, "WITNESS YOURSELF".** 3s after you die a button on the death screen replays the last 10s
+  before the death and 3s after, through the real renderer: scrub bar (red tick = death), play/pause, .25/.5/1/2×,
+  fog toggle, drag to pan, pinch/wheel zoom, Follow, Close. Only a box round you is recorded. Next steps discussed with
+  the owner: saving replays to watch later, and a "killed by …" caption. See CLAUDE.md "v90".
 
 - **v89 — rats find their way; buy/take prompt is an R circle.** Rats had been stuck at their holes and on overhangs
   (owner report). Rats with a job now pathfind (navField) and run the path; holes are solid to walk over; fallbacks for

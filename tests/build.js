@@ -3,7 +3,7 @@
 //
 //   window.__in   the App's input ref: loadout, guns, bag, prompt, found, keys, sticks
 //   window.__lvl  the live level: player, enemies, bullets, fields, beams, pickups,
-//                 stock, roster, theme
+//                 stock, roster, theme; rec / rt: the death replay's recorder and player
 //
 //   __lvl.sandbox(o)     wipes a box of the live level into a clean test room: open air, a
 //                        flat floor, nothing else (no enemies, props, loot, shots), fog
@@ -58,6 +58,7 @@ const HOOK_LVL = SANDBOX +
   "get roster(){return roster}, get theme(){return themeName}, " +
   "get arrival(){return arrival}, get start(){return start}, get portal(){return portal}, " +
   "enemyShots, sparks, webs, silk, strings, fields, beams, arcs, flashes, dig, explode, get ore(){return ore}, motes, smoke, get sconces(){return sconces}, get props(){return props}, dparts, amb, clouds, rings, get zfx(){return zfx}, " +
+  "get rec(){return REC}, get rt(){return RT}, recSample, " +
   "get fire(){return fire}, get burrow(){return burrow}, ignite, setAlight, youAlight, get dimg(){return dimg}, get zone(){return zone}, " +
   "world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y }, " +
   "fog: { get seen(){return seen}, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal, paint: paintFog }, " +

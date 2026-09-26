@@ -110,6 +110,22 @@ a gun you swapped out and left). A perk room or +25 health room you have found i
 in yellow**, with an **X** through it once you've taken its prize. It only shows what the fog
 of war has lifted, so it fills in as you explore. Tap the button again to close it.
 
+## Witness yourself
+
+When you die, the game keeps running for three more seconds, then a **WITNESS YOURSELF**
+button comes up on the death screen. It replays the last **10 seconds before your death and
+the 3 after it**, drawn exactly as the game draws it: creatures, shots, fire, digging and all.
+
+- The bar along the bottom scrubs through it; the red tick is the moment you died, and the
+  clock counts in seconds from it (`−4.2s`, `+1.0s`).
+- ⏮ back to the start, ▶/⏸ play and pause, and **.25× .5× 1× 2×** for the speed.
+- **Fog** turns the fog of war on or off, so you can see what was coming at you in the dark.
+- Drag to move the camera, pinch (or the mouse wheel) to zoom. **Follow** puts it back on you.
+- **Close** goes back to the death screen, where a tap on the right stick restarts as usual.
+
+Only the area round you is recorded (about a screen and a half each way), so if you pan far
+off, the cave is there but the creatures aren't.
+
 ## Picking things up
 
 Mods and guns in the cave sit on a floor of their own now, not floating in place.
@@ -505,6 +521,7 @@ them if it cannot find either.
 - A gun you just swapped out and dropped stays quiet for two seconds, so you can squeeze past it in a tunnel
 - Mods in the wild are rare, so the shop is the reliable place to stock up
 - Restart asks before it wipes the run
+- A death replay: the last 10 seconds before you died and 3 after, with scrubbing, slow motion, a fog toggle, pan and pinch-zoom
 - A DEBUG shelf with one of every mod, for trying builds out
 - 31 perks, hidden one to a brick-lined room on every floor, permanent for the run and shown as icons above the sticks
 - A second hidden room per floor holding a +25 max health heart (it raises the ceiling, doesn't heal)
