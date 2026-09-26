@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v83**. Branch: `main` (release channel is `main`).
+Current version: **v84**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -702,7 +702,20 @@ open) sits above the Jellyfish colours header, `position:sticky` so it stays in 
 It runs the real `jellyStep`/`drawJelly` in a walled box (roam spot forced round the middle), with a mini spit/drip/
 splat and the glow, all read from DEV each frame. Master sliders `jeHue` (°), `jeSat`, `jeBri` (×) — `type: 'slider'`
 rows (range input + value + ↺) — act after the A/B blend through `hsvAdjust`; `jcol(k, u)` is blend-then-adjust and is
-what `jellyPal`, the glow, health bar and death burst read (use `jcol`, not `kcol`, for any new jelly colour). Tests: `tests/logic/jelly.test.js` (pulses, drag, turn limit, shape, hunting,
+what `jellyPal`, the glow, health bar and death burst read (use `jcol`, not `kcol`, for any new jelly colour).
+**v84: spore puffs + plant glow.** On a `'pulse'` the Game calls `puffSpores(e)`: `jeSpores` spores (made by `spore(x,
+y, r)`, the one maker the ambience also uses) from across the rim, kicked back along `hd + π` ± `jeSporeSpread` at
+`jeSporeSpd`; the kick is `q.kx/ky`, fading by `exp(-q.kd·dt)` in `stepAmbience`, after which they drift like any spore.
+Only near the camera (amb particles die off-view). **Plant glow** is the owner's comp (they're a VFX compositor):
+`plantGlowFill(out, art, w, h, o)` (pure) = green channel, levels with black point `white × (1 − top%)`, **held out where
+green isn't the strongest channel** (else the gold seams (255,210,60) and pale flowers set the white point and the moss gets
+nothing), × linear ramp to `reach` (glow radius × `jePlantReach`), × `twinkle(x,y,t,size)` (two drifting layers of
+`twNoise`, contrast-pushed), × strength × art alpha, in `jcol('jeColGlow')`; added with `lighter` after the fog, only on
+`seen` ground. White point: `plantWhite(...)` = 99.9th percentile of green over green-led pixels with **alpha ≥ 128** (faint
+anti-aliased edges come back as junk like 0,255,0 and once pinned it to 255), measured per floor in `enterLevel` from
+`img`+`dimg` (`plantW`). In the Game, `plantGlow(e, TH)` composes the art per jelly: rock (`img`) over the decoration
+layer (`dimg`), plus the `PLANTS` props in reach drawn at terrain resolution into `pgC` and read back. The Dev preview runs
+the same comp on its own mossy ledge + two vines, and puffs spores too. Knobs: Dev → Jellyfish (`jeSpore*`, `jePlant*`). Tests: `tests/logic/jelly.test.js` (pulses, drag, turn limit, shape, hunting,
 walls, tentacles, real floor-1 caves), `tests/browser/jelly.test.js` (sandbox: spit, drips, splat, damage, glow).
 **v80: Noita spawn table, teleport bolts, vacuum, gold seams, glow, map marks.**
 `modWeight(id, floor)` is Noita's own spawn data now: `NOITA_SPAWN` (Noita action id →

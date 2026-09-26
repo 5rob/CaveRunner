@@ -23,8 +23,11 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     g.manaMax = 9999; g.mana = 9999; g.recharge = 4; g.castDelay = 4;
     resetGun(g);
     L.bullets.length = 0; L.fields.length = 0; L.flashes.length = 0;
-    L.dig(L.p.x + 150, L.p.y - 30, 150);        // a big pocket so nothing hits rock early
-    L.dig(L.p.x + 300, L.p.y - 60, 150);
+    // a sandbox room, you at its left end: open air to fly through, and always a far wall
+    // to hit (in the real cave the shot sometimes ran out of flight in open air past the
+    // pockets this used to dig, and the explosion check failed about 1 run in 5)
+    const room = window.__room || (window.__room = L.sandbox({ w: 450, h: 220 }));
+    L.p.x = room.l + 14; L.p.y = room.y - 22.5; L.p.vx = 0; L.p.vy = 0;
     window.__in.current.right = { active: true, nx: 1, ny: -0.2, mag: 1, dy: -1, on: true };
     await new Promise(r => setTimeout(r, 60));
     window.__in.current.right = { active: false, nx: 1, ny: 0, mag: 0, dy: 0, on: false };

@@ -10,8 +10,8 @@ const js = src.slice(open, src.indexOf('</script>', open));
 const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
 const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
 const G = new Function('React', shim + upto +
-  'return { jellyStep, jellyBell, roamStep, turnToward, flyMove, JELLY, CELL, CW, CH, CREATURES, enemyFor, DEV, DEV_META, DEV_GROUPS, JE_KNOBS, kr, kru, makeLevel, rosterFor, segHitsBox, tentacleTouch, JE_COLS, jellyPal, hexMix, hexRgb, kcol, DEV_DEFAULTS, hsvAdjust, jcol };')({ createElement: () => {} });
-const { jellyStep, jellyBell, roamStep, turnToward, flyMove, JELLY, CELL, CW, CH, CREATURES, enemyFor, DEV, DEV_META, DEV_GROUPS, JE_KNOBS, kr, kru, makeLevel, segHitsBox, tentacleTouch, JE_COLS, jellyPal, hexMix, hexRgb, kcol, DEV_DEFAULTS, hsvAdjust, jcol } = G;
+  'return { jellyStep, jellyBell, roamStep, turnToward, flyMove, JELLY, CELL, CW, CH, CREATURES, enemyFor, DEV, DEV_META, DEV_GROUPS, JE_KNOBS, kr, kru, makeLevel, rosterFor, segHitsBox, tentacleTouch, JE_COLS, jellyPal, hexMix, hexRgb, kcol, DEV_DEFAULTS, hsvAdjust, jcol, twinkle, plantWhite, plantGlowFill };')({ createElement: () => {} });
+const { jellyStep, jellyBell, roamStep, turnToward, flyMove, JELLY, CELL, CW, CH, CREATURES, enemyFor, DEV, DEV_META, DEV_GROUPS, JE_KNOBS, kr, kru, makeLevel, segHitsBox, tentacleTouch, JE_COLS, jellyPal, hexMix, hexRgb, kcol, DEV_DEFAULTS, hsvAdjust, jcol, twinkle, plantWhite, plantGlowFill } = G;
 
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
@@ -252,6 +252,51 @@ check('and the group is on the Dev panel', DEV_GROUPS.some(g => g[0] === 'jelly'
   check('and jcol (glow, health bar, death burst) follows them', jcol('jeColGlow', 0.3) === after.glow);
   DEV.jeHue = 0;
   check('back at 0 it is the plain blend again', jellyPal(0.3).body === kcol('jeColBody', 0.3));
+}
+
+// ---- the plant glow comp: green key, levels, ramp, twinkle ----
+{
+  // the twinkle: 0..1, soft (neighbours close), animated, and with real highs and lows
+  let lo = 1, hi = 0, jump = 0, moved = 0;
+  for (let i = 0; i < 4000; i++) {
+    const x = (i * 7.31) % 400, y = (i * 3.17) % 300, t = i * 0.01, v = twinkle(x, y, t, 6);
+    lo = Math.min(lo, v); hi = Math.max(hi, v);
+    jump = Math.max(jump, Math.abs(twinkle(x + 0.25, y, t, 6) - v));
+    moved += Math.abs(twinkle(x, y, t + 0.5, 6) - v);
+  }
+  check('the twinkle stays in 0..1 and goes fully dark and fully bright', lo >= 0 && hi <= 1 && lo === 0 && hi > 0.95, [lo, hi]);
+  check('it is soft (a quarter unit over, barely different)', jump < 0.25, jump);
+  check('and it moves with time', moved / 4000 > 0.05, moved / 4000);
+
+  // the white point: the brightest green where green leads, ignoring gold and faint edges
+  const px = (...cs) => { const a = new Uint8ClampedArray(cs.length * 4); cs.forEach((c, i) => a.set(c, i * 4)); return a; };
+  const moss = [108, 150, 64, 255], gold = [255, 210, 60, 255], rock = [96, 84, 74, 255], faint = [0, 255, 0, 1];
+  const art1 = px(...Array(500).fill(moss), ...Array(50).fill(gold), ...Array(500).fill(rock), ...Array(20).fill(faint));
+  check('the white point is the moss, not the gold seams or a faint edge', plantWhite(art1) === 150, plantWhite(art1));
+  check('nothing green at all: white point 255 (nothing will key)', plantWhite(px(rock, gold)) === 255);
+
+  // the comp on a strip: moss, darker moss, gold, rock, all at the jelly's own spot
+  const o = { ox: 0, oy: 0, px: 1, cx: 0.5, cy: 0.5, reach: 50, white: 150, top: 0.25, strength: 4, t: 0, size: 6, rgb: [10, 20, 30] };
+  const key = c => { const out = new Uint8ClampedArray(4); plantGlowFill(out, px(c), 1, 1, o); return out; };
+  // find a moment the twinkle is bright at the spot, so the key shows
+  for (let t = 0; t < 40; t += 0.05) if (twinkle(0.5, 0.5, t, 6) > 0.9) { o.t = t; break; }
+  const m = key(moss);
+  check('bright moss glows, in the jelly\'s colour', m[3] > 200 && m[0] === 10 && m[1] === 20 && m[2] === 30, [...m]);
+  check('moss below the top 25% does not', key([62, 104, 40, 255])[3] === 0);
+  check('gold is held out (green is not its strongest channel)', key(gold)[3] === 0);
+  check('grey rock does not glow', key(rock)[3] === 0);
+  check('the top-% knob widens it', (() => { const s = o.top; o.top = 0.5; const v = key([62, 104, 40, 255])[3]; o.top = s; return v > 0; })());
+  // the ramp: full at the jelly, nothing past its reach
+  const strip = px(...Array(60).fill(moss)), out = new Uint8ClampedArray(60 * 4);
+  plantGlowFill(out, strip, 60, 1, Object.assign({}, o, { strength: 1, cx: 0, cy: 0.5, reach: 40, size: 1e6 }));   // size huge: a flat twinkle
+  const al = i => out[i * 4 + 3];
+  check('the ramp fades it out from the jelly', al(2) > al(20) && al(20) > al(35), [al(2), al(20), al(35)]);
+  check('and nothing past the reach', al(41) === 0 && al(59) === 0);
+  const held = new Uint8ClampedArray(4);
+  plantGlowFill(held, px(moss), 1, 1, Object.assign({}, o, { lit: () => false }));
+  check('ground you have not seen is held out', held[3] === 0);
+  const none = new Uint8ClampedArray(4);
+  check('strength 0 means no glow', plantGlowFill(none, px(moss), 1, 1, Object.assign({}, o, { strength: 0 })) === 0);
 }
 
 // ---- the real floor 1: every jelly on it gets about, none stuck in rock ----

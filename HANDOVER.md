@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v83.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v84.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -42,6 +42,11 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v84 — jellyfish puff glowing spores out of their rims on every push** (kicked back, drag settles them, then they drift
+  like the cave's own), and **green vegetation near a jelly glows and twinkles** in its colour (the owner's comp recipe:
+  green key → levels to the top 25% → radial ramp → twinkle noise → × colour → add). Knobs in Dev → Jellyfish; the Dev
+  preview box shows both.
 
 - **v83 — a live jellyfish box above Dev → Jellyfish colours** (sticks to the top while you scroll the colour rows, shows
   the spit and glow too) and **master hue / saturation / brightness sliders** that shift every jelly colour at once.

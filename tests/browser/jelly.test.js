@@ -19,6 +19,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   const r = await page.evaluate(async () => {
     const L = window.__lvl, W = L.world, p = L.p;
     const frame = () => new Promise(requestAnimationFrame);
+    window.__vine = L.props.find(q => q.k === 'climb' && q.st === 'vine');   // a real vine, before the sandbox clears props
     const room = L.sandbox({ w: 400, h: 200 });
     const inRock = (x, y) => L.mat[Math.floor(y / W.CELL) * W.CW + Math.floor(x / W.CELL)] !== 0;
     const k = enemyFor('meduusa', 1);
@@ -130,6 +131,52 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     out.red = await hold();
     cols.forEach((k, i) => { DEV[k] = cs[i]; });
     L.enemies.splice(L.enemies.indexOf(q), 1);
+    // 7: a pulse puffs spores out of its rim, back the way it pushes; drag settles them and
+    // they drift on like the cave's own
+    const ag7 = [DEV.jeAggroLo, DEV.jeAggroHi]; DEV.jeAggroLo = DEV.jeAggroHi = 0.001;   // it mustn't hunt you here
+    const sp = put(room.x, room.y - 90);
+    for (let i = 0; i < 3; i++) { await frame(); stand(); }
+    L.amb.length = 0;
+    const S7 = sp.je;
+    S7.hd = 0; S7.turn = 0; S7.vx = S7.vy = 0; S7.rest = 0; S7.push = 0; S7.tol = 180;
+    S7.rx = sp.x + 200; S7.ry = sp.y; S7.roamR = 1e9; S7.roamSpd = 0;
+    let puff = [];
+    for (let i = 0; i < 30 && !puff.length; i++) { await frame(); stand(); puff = L.amb.filter(q => q.kx); }
+    out.puffN = puff.length; out.puffRange = [DEV.jeSporesLo, DEV.jeSporesHi];
+    out.puffBack = puff.length > 0 && puff.every(q => q.kx < 0);            // heading right: they go left
+    out.puffBehind = puff.length > 0 && puff.every(q => q.x < sp.x + 2);
+    out.puffKind = puff.length > 0 && puff.every(q => q.kind === 'spores' && q.glow);
+    const k0 = puff.map(q => Math.hypot(q.kx, q.ky));
+    for (let i = 0; i < 90; i++) { await frame(); stand(); }
+    const k1 = puff.map(q => Math.hypot(q.kx, q.ky));
+    out.settled = puff.length > 0 && k1.every((v, i) => v < k0[i] * 0.25);
+    out.alive = puff.filter(q => L.amb.includes(q)).length;
+    L.enemies.splice(L.enemies.indexOf(sp), 1);
+
+    // 8: the plant glow: a real vine hung beside a jelly lights up and twinkles
+    const lv = window.__vine;
+    if (lv) {
+      const pj = put(room.x + 60, room.y - 70);
+      const vine = L.placeProp(lv, room.x + 75, room.y - 110);
+      vine.len = 60; vine.b = 60; vine.anc = [Math.floor(vine.x / W.CELL), Math.floor(room.y / W.CELL) + 1];   // held by the floor, so it can't drop
+      const vineGreen = () => {
+        const { cam, s } = L.light, cv = document.querySelector('canvas.game');
+        const x0 = Math.round((vine.x - 6 - cam.x) * s), y0 = Math.round((vine.y + 5 - cam.y) * s);
+        const w = Math.round(12 * s), h = Math.round(45 * s);
+        const d = cv.getContext('2d').getImageData(x0, y0, w, h).data;
+        let g = 0; for (let i = 0; i < d.length; i += 4) g += d[i + 1]; return g / (d.length / 4);
+      };
+      const hold = () => { stand(); pj.x = room.x + 60; pj.y = room.y - 70; if (pj.je) { pj.je.vx = pj.je.vy = 0; pj.je.rest = 9; } };
+      const avg = async () => { let s = 0; for (let i = 0; i < 40; i++) { await frame(); hold(); s += vineGreen(); } return s / 40; };
+      const pg = [DEV.jePlantGlowLo, DEV.jePlantGlowHi];
+      DEV.jePlantGlowLo = DEV.jePlantGlowHi = 0;
+      out.vineOff = await avg();
+      DEV.jePlantGlowLo = DEV.jePlantGlowHi = 4;
+      out.vineOn = await avg();
+      [DEV.jePlantGlowLo, DEV.jePlantGlowHi] = pg;
+      L.enemies.splice(L.enemies.indexOf(pj), 1);
+    }
+    [DEV.jeAggroLo, DEV.jeAggroHi] = ag7;
     out.errors = (window.SFX && SFX.stats && SFX.stats.errors || []).slice();
     return out;
   });
@@ -152,6 +199,12 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('and clear of them, no sting', r.clear === 0, r.clear);
   check('the default jelly is green', r.green.g > r.green.r, r.green);
   check('the colour knobs repaint it (a red bell reads red)', r.red.r > r.red.g + 40, r.red);
+  check('a pulse puffs spores out of it, by the knob', r.puffN >= r.puffRange[0] && r.puffN <= r.puffRange[1] + 0.5, { n: r.puffN, range: r.puffRange });
+  check('the cave\'s own glowing spores', r.puffKind);
+  check('out of its rim, back the way it pushes', r.puffBack && r.puffBehind, { back: r.puffBack, behind: r.puffBehind });
+  check('drag settles them', r.settled);
+  check('and they drift on afterwards', r.alive > 0, r.alive);
+  check('the plant glow lights up a vine beside a jelly', r.vineOn > r.vineOff + 2, { off: r.vineOff, on: r.vineOn });
   check('no sound errors', r.errors.length === 0, r.errors);
 
   // the Dev panel: a colour picker per part, A and B, that sets the knob and resets
