@@ -25,7 +25,7 @@ it's stale.
 ## The Android app (new this session)
 
 - Everything is live: APK at `https://github.com/5rob/CaveRunner/releases/tag/app`, game at
-  `https://5rob.github.io/CaveRunner/`, `version.txt` = `v67`. Last CI run on `main` was
+  `https://5rob.github.io/CaveRunner/`, `version.txt` = `v89`. Last CI run on `main` was
   green (both `build-apk` and `deploy-pages`).
 - **What it is:** a thin WebView shell (`android/`) that bundles `index.html` + React so it
   plays offline, then checks Pages' `version.txt` (on launch, on resume, and every 2 min
