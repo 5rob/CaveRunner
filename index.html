@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v93</title>
+<title>CaveRunner v94</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -485,7 +485,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v93';
+const VERSION = 'v94';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -1641,8 +1641,12 @@ function noitaP(id, tier) {
   const k = lv.indexOf(tier);
   return k < 0 ? 0 : pr[k];
 }
+// our own rarity overrides Noita where our spell is far stronger than its twin
+// (Black Hole is a tier-0 spell in Noita): a rarity-4 spell waits for floor 4
+const TIER_FLOOR = { 4: 4 };
 function modWeight(id, floor) {
   const t = floorTier(floor);
+  if (floor < (TIER_FLOOR[tierOf(id)] || 0)) return 0;
   if (t >= 10) return Math.max(noitaP(id, 10), noitaP(id, 6));
   const a = Math.floor(t), f = t - a;
   return noitaP(id, a) * (1 - f) + noitaP(id, a + 1) * f;

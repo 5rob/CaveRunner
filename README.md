@@ -163,7 +163,7 @@ plinth so you can grab it back if you change your mind.
 
 Stand on any plinth and its card appears with the **Buy** price built in — a mod's
 effect and stats, or a gun's stat sheet compared against the one you are holding —
-so you can read what you are buying before paying for it. Your **Bag** opens anywhere,
+so you can read what you are buying before paying for it. Which spells turn up follows Noita's own spawn table, deeper floors handing out rarer ones — and the very strongest (Black Hole and friends) never appear before floor 4. Your **Bag** opens anywhere,
 but *changing* your setup — dragging mods, reordering guns — only works in the shop (or
 anywhere, with the Tinker perk); out in the cave the Bag is read-only. Enemies drop gold
 when they die, so a floor you clear pays for the next floor's shopping. **Gold seams** run

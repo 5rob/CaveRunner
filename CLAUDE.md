@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v93**. Branch: `main` (release channel is `main`).
+Current version: **v94**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -885,6 +885,7 @@ near. Not built yet: saving replays, and "killed by" (needs the source plumbed t
 snapshots share references (`sp.line` → a web with `owner`), so they don't `JSON.stringify` as-is.
 Tests: `tests/logic/replay.test.js`, `tests/browser/replay.test.js` (sandbox; hooks `__lvl.rec`, `rt`, `recSample`).
 **v91:** the replay loops (`V.loop`, on by default; the loop wraps `t` to `t0` at `t1`), with a **Loop** toggle (`.wloop`).
+**v94 rarity gate on drops.** `TIER_FLOOR` (above `modWeight`, `{ 4: 4 }`): a spell whose `MOD_TIER` is 4 has weight 0 before floor 4, whatever Noita's table says — Black Hole, Glitter, Storm, Saw Storm are tier-0 in Noita but far stronger here (owner saw a Black Hole in the floor-1 shop). Tested in `spells`.
 **v74 Pollen nerf.** Pollen has `drift: 1`, `homeR: 80`, `pop: 6` (no `eat`). `driftStep` (pure, above
 `tracePath`, consts `DRIFT_*`) damps its speed and, once slow, floats it up. It only homes after
 locking (`b.lock`: nearest creature within `homeR` with `lineOfSight`), then speeds back to

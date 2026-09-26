@@ -140,6 +140,8 @@ for (const [id, act] of [['refresh', 'refresh'], ['farcast', 'far'], ['telecast'
     [G.modWeight('myriad', 10), G.modWeight('myriad', 11)]);
   ok('Spark Bolt (tiers 0-2) is gone by floor 6', G.modWeight('bolt', 6) === 0, G.modWeight('bolt', 6));
   ok('between tiers it slides', G.modWeight('bolt', 2) < 2 && G.modWeight('bolt', 2) > 1, G.modWeight('bolt', 2));
+  ok('rarity-4 spells (Black Hole) never drop before floor 4', G.ALL_IDS.every(id => G.tierOf(id) < 4 || [1, 2, 3].every(f => G.modWeight(id, f) === 0)));
+  ok('Black Hole drops from floor 4', G.modWeight('void', 4) > 0, G.modWeight('void', 4));
   ok('both Teleport Bolts drop from floor 1', G.modWeight('tele', 1) > 0 && G.modWeight('teleshort', 1) > 0);
   ok('Vacuum Field waits for tier 2', G.modWeight('vacfield', 1) === 0 && G.modWeight('vacfield', 5) > 0,
     [G.modWeight('vacfield', 1), G.modWeight('vacfield', 5)]);
