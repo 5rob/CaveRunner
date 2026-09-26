@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v90</title>
+<title>CaveRunner v91</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -485,7 +485,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v90';
+const VERSION = 'v91';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -11304,7 +11304,10 @@ function Game({ input }) {
       if (rv && REC.done) {                   // the death replay: its own clock, the world stays put
         if (rv.playing) {
           rv.t += dt * rv.speed;
-          if (rv.t >= input.current.witness.t1) { rv.t = input.current.witness.t1; rv.playing = false; }
+          const W = input.current.witness;
+          if (rv.t >= W.t1) {                  // the end: round again, or stop there
+            if (rv.loop) rv.t = W.t0; else { rv.t = W.t1; rv.playing = false; }
+          }
         }
         SFX.tick();
         drawReplay(rv);
@@ -12517,6 +12520,7 @@ function Witness({ input, close }) {
           onPointerDown: tap(() => { V.speed = sp; }) }, (sp < 1 ? String(sp).slice(1) : sp) + '×')),
         h('span', { className: 'wtime' }, (rel < 0 ? '−' : '+') + Math.abs(rel).toFixed(1) + 's')),
       h('div', { className: 'wrow' },
+        h('button', { className: 'wloop' + (V.loop ? ' on' : ''), onPointerDown: tap(() => { V.loop = !V.loop; }) }, 'Loop'),
         h('button', { className: 'wfog' + (V.fog ? ' on' : ''), onPointerDown: tap(() => { V.fog = !V.fog; }) }, 'Fog'),
         h('button', { className: 'wfollow' + (V.follow ? ' on' : ''), onPointerDown: tap(() => { V.follow = true; V.zoom = 1; }) },
           'Follow'),
@@ -12659,7 +12663,7 @@ function App() {
   // the death replay: offered once the recording has run on past the death (input.current.witness)
   const witness = input.current.witness;
   const openWitness = () => {
-    input.current.replay = { t: witness.t0, speed: 1, playing: true, fog: true, follow: true, zoom: 1, cx: 0, cy: 0, unit: 1 };
+    input.current.replay = { t: witness.t0, speed: 1, playing: true, loop: true, fog: true, follow: true, zoom: 1, cx: 0, cy: 0, unit: 1 };
     setWitnessOpen(true);
   };
   const closeWitness = () => { input.current.replay = null; setWitnessOpen(false); };

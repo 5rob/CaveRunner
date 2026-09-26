@@ -119,6 +119,7 @@ the 3 after it**, drawn exactly as the game draws it: creatures, shots, fire, di
 - The bar along the bottom scrubs through it; the red tick is the moment you died, and the
   clock counts in seconds from it (`−4.2s`, `+1.0s`).
 - ⏮ back to the start, ▶/⏸ play and pause, and **.25× .5× 1× 2×** for the speed.
+- It loops round by default; **Loop** turns that off so it stops at the end.
 - **Fog** turns the fog of war on or off, so you can see what was coming at you in the dark.
 - Drag to move the camera, pinch (or the mouse wheel) to zoom. **Follow** puts it back on you.
 - **Close** goes back to the death screen, where a tap on the right stick restarts as usual.

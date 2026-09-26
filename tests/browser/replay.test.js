@@ -127,6 +127,32 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await speeds[0].tap();
   c = await page.evaluate(() => window.__in.current.replay.speed);
   check('0.25x', c === 0.25, c);
+  // looping: on by default, it goes round from the end to the start; off, it stops at the end
+  c = await page.evaluate(async () => {
+    const V = window.__in.current.replay, W = window.__in.current.witness;
+    const frame = () => new Promise(requestAnimationFrame);
+    const out = { loopOn: V.loop };
+    V.speed = 1; V.t = W.t1 - 0.05; V.playing = true;
+    for (let i = 0; i < 20; i++) await frame();
+    out.wrapped = V.playing && V.t < W.t0 + 1;
+    V.playing = false;
+    return out;
+  });
+  check('loop is on by default', c.loopOn === true, c);
+  check('looping goes round to the start and keeps playing', c.wrapped, c);
+  await page.tap('.wloop');
+  c = await page.evaluate(async () => {
+    const V = window.__in.current.replay, W = window.__in.current.witness;
+    const frame = () => new Promise(requestAnimationFrame);
+    const out = { loop: V.loop };
+    V.t = W.t1 - 0.05; V.playing = true;
+    for (let i = 0; i < 20; i++) await frame();
+    out.stopped = !V.playing && V.t === W.t1;
+    V.speed = 0.25;
+    return out;
+  });
+  check('Loop toggles off', c.loop === false, c);
+  check('not looping, it stops at the end', c.stopped, c);
   await page.tap('.wfog');
   c = await page.evaluate(() => window.__in.current.replay.fog);
   check('fog toggles off', c === false, c);
