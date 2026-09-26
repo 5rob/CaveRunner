@@ -234,7 +234,7 @@ prop stands on the floor and meets the roof. Some pockets can only be reached by
 digging. The jellyfish live only in the natural parts — the built-up corridors are too
 tight for them to swim — and won't follow you into the layers; they hang at the edge and
 spit from there. The built-up parts are **rat country**: rat nests are scattered all
-through them (and a few turn up in the natural caves too), and old **lanterns** hang off
+through them (and a few turn up in the natural caves too) — rats are quick but die to a single hit — and old **lanterns** hang off
 the roof and the walls, giving off a little light. Shoot a lantern and it pops, throwing
 burning oil that sets fire to any grass, moss, vines or timber it lands on — so mind where
 you aim when the rats come, because parts of it are overgrown. The other floors are all

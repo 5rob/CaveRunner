@@ -7,7 +7,7 @@ it's stale.
 
 ## Where things stand
 
-- **On-disk version: v91.** Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v92.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -25,7 +25,7 @@ it's stale.
 ## The Android app (new this session)
 
 - Everything is live: APK at `https://github.com/5rob/CaveRunner/releases/tag/app`, game at
-  `https://5rob.github.io/CaveRunner/`, `version.txt` = `v91`. Last CI run on `main` was
+  `https://5rob.github.io/CaveRunner/`, `version.txt` = `v92`. Last CI run on `main` was
   green (both `build-apk` and `deploy-pages`).
 - **What it is:** a thin WebView shell (`android/`) that bundles `index.html` + React so it
   plays offline, then checks Pages' `version.txt` (on launch, on resume, and every 2 min
@@ -42,6 +42,8 @@ it's stale.
   those to diagnose a failed CI run without a token.
 
 ## What shipped recently (most recent first)
+
+- **v92 — rats have 1 health** (die to any hit, on any floor).
 
 - **v91 — the death replay loops** (on by default), with a Loop toggle beside Fog.
 

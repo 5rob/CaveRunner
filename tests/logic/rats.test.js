@@ -20,6 +20,7 @@ const mkRnd = s => () => ((s = (s * 16807) % 2147483647) / 2147483647);
 
 // ---- the table ----
 check('Rotta is a rat, and a hunter', CREATURES.rotta.act === 'rat' && CREATURES.rotta.kp === 'ra' && HUNTERS.rat === 1);
+check('rats have 1 health on any floor', CREATURES.rotta.hp === 1 && enemyFor('rotta', 1).hp === 1);
 check('the nest is a creature that never moves', CREATURES.pesa.act === 'nest' && !CREATURES.pesa.spd && !HUNTERS.nest);
 const knobs = DEV_META.filter(m => m.g === 'rat');
 check('every rat knob is a min/max pair on the Dev panel', RA_KNOBS.every(([k]) => knobs.some(m => m.k === k + 'Lo') && knobs.some(m => m.k === k + 'Hi')) &&

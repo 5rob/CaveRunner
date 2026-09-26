@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v91</title>
+<title>CaveRunner v92</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -485,7 +485,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v91';
+const VERSION = 'v92';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -968,7 +968,7 @@ const CREATURES = {
   // It is never rolled off a roster: rats only come out of nests.
   rotta: { name: 'Rotta', body: 'rat', act: 'rat', kp: 'ra', aggro: 260, noRoster: 1,
     col: { a: '#7a6a5e', b: '#3a302a', c: '#b3a291', eye: '#ff5a5a' },
-    hp: 2, dmg: 4, bspd: 0, range: 0, cd: 0, gold: 2, r: 4, spd: 170 },
+    hp: 1, dmg: 4, bspd: 0, range: 0, cd: 0, gold: 2, r: 4, spd: 170 },
   // rat nest: a room in the rock at the end of a thin tunnel. Doesn't move; lets a rat out
   // now and then while it has fewer than its max out; dies to digging or blasting.
   pesa: { name: 'Rotanpesä', body: 'nest', act: 'nest', noRoster: 1,
@@ -8064,7 +8064,7 @@ function Game({ input }) {
     // a new rat, down in nest `n`'s room, on its way out up the tunnel
     function spawnRat(n) {
       const k = enemyFor('rotta', floor), P = n.nest.path, m = n.nest.mouth;
-      const e = { x: P[0].x, y: P[0].y, ty: P[0].y, r: k.r, phase: Math.random() * 6.28, hp: k.hp, hpMax: k.hp,
+      const e = { x: P[0].x, y: P[0].y, ty: P[0].y, r: k.r, phase: Math.random() * 6.28, hp: 1, hpMax: 1,
         cd: 0, flash: 0, lx: 0, ly: 1, hx: m.x, hy: m.y, tgt: null, rest: 0, k, touch: 0, charge: 0,
         home: n, path: P, carry: 0 };
       e.ra = { mode: 'tunnel', vx: 0, vy: 0, nx: 0, ny: -1, on: 0, rest: 0, side: 1, face: 1, s: 0, dir: 1, wait: 0 };
