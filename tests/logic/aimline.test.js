@@ -22,8 +22,8 @@ const pts = out => { const p = []; for (let i = 0; i < out.length; i += 2) p.pus
 const trace = (sh, nx, ny, solid, enemies) => pts(tracePath(sh, 0, 0, nx, ny, solid || open, enemies || [], []));
 
 // --- a plain bolt flies straight ---
-let pth = trace(shotOf(['bolt']), 1, 0);
-check('a bolt goes straight', pth.every(q => Math.abs(q[1]) < 0.001), pth[pth.length - 1]);
+let pth = trace(shotOf(['slug']), 1, 0);
+check('a slug goes straight', pth.every(q => Math.abs(q[1]) < 0.001), pth[pth.length - 1]);
 check('and covers its range', pth[pth.length - 1][0] > 500, pth[pth.length - 1][0]);
 
 // --- Speed Up makes the same shot reach further ---
@@ -75,7 +75,7 @@ check('homing bends toward the enemy', nearest(pth) < nearest(straight) - 40,
 check('a Seeker reaches it too', nearest(trace(shotOf(['seeker', 'bolt']), 1, 0, open, [foe])) < 10,
   Math.round(nearest(trace(shotOf(['seeker', 'bolt']), 1, 0, open, [foe]))));
 check('with no enemy about, homing flies straight',
-  Math.abs(trace(shotOf(['homing', 'bolt']), 1, 0, open, [])[20][1]) < 0.001, true);
+  Math.abs(trace(shotOf(['homing', 'slug']), 1, 0, open, [])[20][1]) < 0.001, true);
 
 // --- Short Fuse cuts the line short, Long Range extends it ---
 const brief = trace(shotOf(['brief', 'bolt']), 1, 0);

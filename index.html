@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v94</title>
+<title>CaveRunner v95</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -485,7 +485,7 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v94';
+const VERSION = 'v95';
 
 // ---- tuning ----
 const GRAVITY = 1400;
@@ -543,7 +543,7 @@ const START_GOLD = 40;
 // localStorage touch is wrapped: it throws in a private window and does not exist at all
 // under Node (the logic tests eval this file), and a missing store just means "defaults".
 const DEV_DEFAULTS = { zoom: 1.35, torch: 1, fogDark: 0.99, fogDim: 0.85, move: 1, sputDip: 45, aggro: 0.8, loseAggro: 2, aimDist: 44, bhPull: 50, bhSpeed: 65, vol: 0.8, amb: 1, jetVol: 1,
-  vSpell: 1, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vStep: 1, vUi: 1, bagSpeed: 1 };
+  vSpell: 1, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vDrip: 1, vStep: 1, vUi: 1, bagSpeed: 1 };
 // g: the collapsible group the knob sits in on the Dev panel (DEV_GROUPS gives the order)
 const DEV_META = [
   { k: 'zoom',      g: 'view',  label: 'Camera zoom',                 min: 0.3, max: 3,  step: 0.05 },
@@ -566,6 +566,7 @@ const DEV_META = [
   { k: 'vEnemyFire', g: 'sound', label: 'Enemy fire (×sound)',        min: 0,   max: 3,  step: 0.05 },
   { k: 'vEnemy',    g: 'sound', label: 'Creature voices (×sound)',    min: 0,   max: 3,  step: 0.05 },
   { k: 'vWorld',    g: 'sound', label: 'World, props, portals (×sound)', min: 0, max: 3, step: 0.05 },
+  { k: 'vDrip',     g: 'sound', label: 'Drips & trickles (×sound)',   min: 0,   max: 3,  step: 0.05 },
   { k: 'vStep',     g: 'sound', label: 'Footsteps (×sound)',          min: 0,   max: 3,  step: 0.05 },
   { k: 'vUi',       g: 'sound', label: 'UI & pickups (×sound)',       min: 0,   max: 3,  step: 0.05 },
   { k: 'bagSpeed',  g: 'ui',    label: 'Bag fire preview speed (×real time)', min: 0.05, max: 5, step: 0.05 },
@@ -707,6 +708,7 @@ const RA_KNOBS = rangeKnobs('rat', [
   ['raNests',    'Nests in the built-up zones',       0, 60, 1,      14, 18],
   ['raNestsWild', 'Nests in the natural caves',       0, 30, 1,      2, 4],
   ['raNestGold', 'Gold in a nest when it dies',       0, 500, 5,     60, 60],
+  ['raSpread',   'Roaming rats keep this far apart',  0, 200, 1,     22, 40],
 ]);
 // one roll of a creature knob: anywhere from its min to its max (either way round).
 // kru is the same at a given fraction u (0..1) — for a jelly's looks, rolled once at birth.
@@ -1062,18 +1064,25 @@ const COL = {
 // the list, so the order you arrange them in is the whole game. 'passive' mods
 // work from anywhere on the gun.
 const MODS = {
-  bolt:    { name: 'Bolt', kind: 'shot', glyph: '•', col: '#ffc93c', mana: 5,
-             info: 'Cheap all-rounder',
-             dmg: 1, speed: 540, spread: 2, delay: 0.10, size: 2, life: 1.2, recoil: 6 },
-  spark:   { name: 'Spark', kind: 'shot', glyph: '·', col: '#ffe066', mana: 3,
-             info: 'Fast, weak and nearly free', rech: -0.05,
-             dmg: 0.5, speed: 720, spread: 5, delay: 0.05, size: 1.5, life: 0.8, recoil: 2 },
+  // Noita's Spark Bolt: a pink sparkle on a slight arc, trailing fading pink plasma,
+  // nicking a speck out of the rock where it lands
+  bolt:    { name: 'Bolt', kind: 'shot', glyph: '✧', col: '#ff9cf5', mana: 5,
+             info: 'Cheap all-rounder. A pink sparkle on a slight arc that nicks the rock where it lands',
+             dmg: 1, speed: 560, spread: 2, delay: 0.10, size: 2, life: 1.2, recoil: 6,
+             grav: 110, drag: 0.35, pit: 2.5, look: 'spark', light: '255,140,245', lightR: 26 },
+  spark:   { name: 'Spark', kind: 'shot', glyph: 'ϟ', col: '#ffe066', mana: 3,
+             info: 'Fast, weak and nearly free. Crackles along in a zig-zag, shedding hot sparks', rech: -0.05,
+             dmg: 0.5, speed: 720, spread: 5, delay: 0.05, size: 1.5, life: 0.8, recoil: 2,
+             wig: 16, look: 'crackle', light: '255,230,120', lightR: 18 },
   slug:    { name: 'Slug', kind: 'shot', glyph: '⬤', col: '#e88a3c', mana: 20,
              info: 'Slow and very heavy',
              dmg: 4, speed: 320, spread: 1, delay: 0.26, size: 4, life: 1.6, recoil: 45 },
-  buck:    { name: 'Buckshot', kind: 'shot', glyph: '⁙', col: '#ffb347', mana: 12,
-             info: 'Five pellets in a cone',
-             dmg: 0.7, speed: 460, spread: 15, delay: 0.32, size: 2, life: 0.7, count: 5, recoil: 32 },
+  // Noita's Buckshot: little green magic fireballs, lobbed, skipping once off rock and
+  // popping a small hole where they finish
+  buck:    { name: 'Buckshot', kind: 'shot', glyph: '⁙', col: '#8dff5a', mana: 12,
+             info: 'Five lobbed green pellets in a cone. Each skips once off rock and pops a small hole',
+             dmg: 0.7, speed: 460, spread: 15, delay: 0.32, size: 2, life: 0.7, count: 5, recoil: 32,
+             grav: 160, bounce: 1, bounceE: 0.55, pit: 3.5, look: 'ember', light: '120,255,90', lightR: 16 },
   lance:   { name: 'Lance', kind: 'shot', glyph: '➤', col: '#7ad7ff', mana: 20,
              info: 'Very fast, punches through two',
              dmg: 2, speed: 900, spread: 0.6, delay: 0.28, size: 2, life: 1.2, pierce: 2, recoil: 22 },
@@ -1151,9 +1160,12 @@ const MODS = {
               info: '+60 mana, +30 regen', manaMax: 60, manaRegen: 30 },
 
   // ---- shots (Noita "Projectile" spells) ----
-  arrow:   { name: 'Magic Arrow', kind: 'shot', glyph: '➣', col: '#ffd77a', mana: 12,
-             info: 'Straight, accurate, dependable',
-             dmg: 1.8, speed: 620, spread: 0.8, delay: 0.13, size: 2, life: 1.4, recoil: 10 },
+  // Noita's Magic Arrow: a green glowing arrow on a long shallow arc, shedding green
+  // sparks, and it shoves what it hits
+  arrow:   { name: 'Magic Arrow', kind: 'shot', glyph: '➣', col: '#78ff50', mana: 12,
+             info: 'A green arrow on a long shallow arc. Accurate, dependable, and it knocks creatures back',
+             dmg: 1.8, speed: 640, spread: 0.8, delay: 0.13, size: 2, life: 1.4, recoil: 14,
+             grav: 90, knock: 120, pit: 2, look: 'arrow', light: '120,255,80', lightR: 24 },
   missile: { name: 'Magic Missile', kind: 'shot', glyph: '✦', col: '#ff9e3d', mana: 30,
              info: 'Fiery and explosive. Sets things alight',
              dmg: 3, speed: 420, spread: 2, delay: 0.3, size: 3, life: 2, explode: 18, recoil: 30, fire: 1 },
@@ -1165,12 +1177,18 @@ const MODS = {
              info: 'Bounces off rock, then explodes on whatever it hits. Sets things alight',
              dmg: 1.6, speed: 400, spread: 3, delay: 0.2, size: 2.5, life: 1.6,
              explode: 12, bounce: 2, recoil: 14, fire: 1 },
-  bubble:  { name: 'Bubble Spark', kind: 'shot', glyph: '○', col: '#7fd7ff', mana: 5,
-             info: 'Cheap, bouncy and hopeless at aiming',
-             dmg: 1.2, speed: 300, spread: 14, delay: 0.1, size: 2.5, life: 1.5, bounce: 4, recoil: 3 },
-  spit:    { name: 'Spitter Bolt', kind: 'shot', glyph: '▪', col: '#ffe066', mana: 5,
-             info: 'A quick short-lived bolt',
-             dmg: 1.5, speed: 660, spread: 3, delay: 0.07, size: 1.8, life: 0.55, recoil: 4 },
+  // Noita's Bubble Spark: a slow glowing blue bubble, 20 soft bounces, lights the cave
+  // round it, and pops a little hole when it bursts
+  bubble:  { name: 'Bubble Spark', kind: 'shot', glyph: '○', col: '#46beff', mana: 5,
+             info: 'A slow glowing bubble that lights the cave, bobs upward and bounces about twenty times. Hopeless at aiming',
+             dmg: 1.2, speed: 260, spread: 23, delay: 0.1, size: 2.5, life: 1.7, bounce: 20, bounceE: 0.8,
+             grav: -30, pit: 3.5, look: 'bubble', light: '70,190,255', lightR: 46, recoil: 3 },
+  // Noita's Spitter Bolt: a pink glob spat hard that drags to a stop, droops, and
+  // skitters off rock — ten little bounces, each one losing half its speed
+  spit:    { name: 'Spitter Bolt', kind: 'shot', glyph: '⋄', col: '#f578dc', mana: 5,
+             info: 'A quick pink glob. Slows fast, droops, and skitters off rock',
+             dmg: 1.5, speed: 660, spread: 3, delay: 0.07, size: 1.8, life: 0.55, recoil: 4,
+             grav: 200, drag: 2.2, bounce: 10, bounceE: 0.5, look: 'glob', light: '245,120,220', lightR: 18 },
   eorb:    { name: 'Energy Orb', kind: 'shot', glyph: '◉', col: '#b0ff6a', mana: 22,
              info: 'Slow, fat and heavy-hitting',
              dmg: 3.5, speed: 230, spread: 1, delay: 0.32, size: 5, life: 2.4, recoil: 30 },
@@ -1186,9 +1204,12 @@ const MODS = {
   void:    { name: 'Black Hole', kind: 'shot', glyph: '◯', col: '#9a6ad6', mana: 60,
              info: 'Rolls forward eating rock, hauls creatures in and swallows their shots',
              dmg: 1, speed: 140, spread: 0, delay: 0.5, size: 24, life: 3.5, eat: 19, pull: 70, recoil: 0 },
-  digbolt: { name: 'Digging Bolt', kind: 'shot', glyph: '▤', col: '#c8a06a', mana: 0,
-             info: 'Free, harmless, and very good at mining',
-             dmg: 0, speed: 520, spread: 2, delay: 0.1, size: 2, life: 0.9, bore: 5, recoil: 2 },
+  // Noita's Digging Bolt: a short-range grinder in a puff of blue smoke that throws the
+  // rock it chews back out as chips. Barely scratches a creature
+  digbolt: { name: 'Digging Bolt', kind: 'shot', glyph: '▤', col: '#7ab8ff', mana: 0,
+             info: 'Free, short-range, and very good at mining. Grinds rock to chips in a puff of blue smoke; only scratches creatures',
+             dmg: 0.2, speed: 460, spread: 2, delay: 0.1, size: 2, life: 0.55, bore: 6, recoil: 2,
+             look: 'drill', light: '90,170,255', lightR: 14 },
   glance:  { name: 'Glowing Lance', kind: 'shot', glyph: '▬', col: '#fff0a8', mana: 26,
              info: 'Cuts straight through a line of enemies',
              dmg: 3.2, speed: 780, spread: 0.4, delay: 0.3, size: 2.5, life: 1.3, pierce: 3, recoil: 20 },
@@ -1205,7 +1226,8 @@ const MODS = {
   pollen:  { name: 'Pollen', kind: 'shot', glyph: '❁', col: '#d8ff6a', mana: 6,
              info: 'Puffs out, slows and floats up, then homes on a creature that comes close. Pops on contact',
              dmg: 0.8, speed: 150, spread: 20, delay: 0.06, size: 2, life: 6,
-             homing: 6, drift: 1, homeR: 80, pop: 6, count: 2, recoil: 1 },
+             homing: 6, drift: 1, homeR: 80, pop: 6, count: 2, recoil: 1,
+             look: 'pollen', light: '216,255,106', lightR: 12 },
   disc:    { name: 'Disc Projectile', kind: 'shot', glyph: '⊘', col: '#d9dde4', mana: 20,
              info: 'A sawblade that skips along the floor',
              dmg: 2.6, speed: 340, spread: 1, delay: 0.22, size: 4, life: 3,
@@ -1222,16 +1244,18 @@ const MODS = {
              info: 'Harmless. Wherever it lands or runs out, you appear there',
              dmg: 0, speed: 700, spread: 0, delay: 0.05, size: 2, life: 0.5, grav: 200, tele: 1, recoil: 0 },
   teleshort:{ name: 'Small Teleport Bolt', kind: 'shot', glyph: '↝', col: '#8fe8ff', mana: 20,
-             info: 'A short hop. Harmless; you appear wherever it stops',
-             dmg: 0, speed: 1100, spread: 0, delay: 0.05, size: 1.6, life: 0.13, grav: 200, tele: 1, recoil: 0 },
+             info: 'A short hop. Harmless; nothing but a streak of blue sparks, and you appear wherever it stops',
+             dmg: 0, speed: 1100, spread: 0, delay: 0.05, size: 1.6, life: 0.13, grav: 200, tele: 1, recoil: 0,
+             look: 'sparks', light: '140,210,255', lightR: 30 },
 
   // ---- static projectiles: they stay where you put them and do their work over time ----
   boom:    { name: 'Explosion', kind: 'static', glyph: '✺', col: '#ff8a1f', mana: 40,
              info: 'A powerful blast, right where you aimed',
              field: 'explode', r: 34, life: 0.1, delay: 0.4, recoil: 20 },
+  // Noita's Explosion of Brimstone: the blast leaves fire behind and throws burning sparks
   brim:    { name: 'Explosion of Brimstone', kind: 'static', glyph: '✶', col: '#ff7a2f', mana: 10,
-             info: 'A small, cheap, fiery blast',
-             field: 'explode', r: 20, life: 0.1, delay: 0.25, recoil: 10 },
+             info: 'A small, cheap blast that sets things alight and throws burning sparks. Mind your own feet',
+             field: 'explode', r: 22, life: 0.1, delay: 0.25, recoil: 10, fire: 1, embers: 14 },
   crystal: { name: 'Unstable Crystal', kind: 'static', glyph: '◈', col: '#ff5a52', mana: 14,
              info: 'A mine. It waits, then goes off when something walks near',
              field: 'mine', r: 26, life: 12, delay: 0.2 },
@@ -2104,6 +2128,54 @@ function spiderStep(e, env, dt) {
 // the moment it reaches the nest room, 'out' as it comes out of the hole, 'jump' on a jump.
 // Pure; the numbers are Dev ranges (RA_KNOBS).
 const RAT = { hold: 3.5, feel: 9, step: 1, fall: 900, ceil: 0.55, tunnel: 0.6 };
+// v95: can a rat stand here? Rock under it or beside it (the nearest rock not overhead —
+// that's a ceiling, and it drops off those), or a web line under its feet.
+// (The reach is generous: a rat running a path rides a little off bumpy rock, and a dip in
+// the floor isn't a cliff. Open air means nothing within a rat-and-a-half.)
+function ratFooting(x, y, solidCell, onWeb) {
+  const n = surfNormal(x, y, RAT.hold + 5, solidCell);
+  return (n && n.py <= RAT.ceil) || !!(onWeb && onWeb(x, y));
+}
+// a hop that lands on `goal`: time of flight from how far, the lift to make up the drop.
+// Higher and higher arcs until one clears the rock (round the edge of a slab, not into it).
+// Sets the rat flying and returns 'jump', or null if no arc gets there.
+function ratJump(e, S, goal, env, rnd) {
+  const solidCell = env.solidCell, gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
+  const v = kr('raJump', rnd), cap = v * 1.4, x0 = e.x + S.nx * 1.5, y0 = e.y + S.ny * 1.5;
+  for (const T of [Math.max(0.18, Math.min(0.6, gd / v)), 0.4, 0.55, 0.7]) {
+    let vx = gx / T, vy = gy / T - 0.5 * RAT.fall * T;
+    const sp = Math.hypot(vx, vy);
+    if (sp > cap) { vx *= cap / sp; vy *= cap / sp; }
+    let ok = true;
+    for (let k = 1; k <= 16 && ok; k++) {
+      const t = T * k / 16, px = x0 + vx * t, py = y0 + vy * t + 0.5 * RAT.fall * t * t;
+      if (Math.hypot(px - goal.x, py - goal.y) < RAT.hold + 3) break;
+      for (const [ox, oy] of [[0, 0], [2.5, 0], [-2.5, 0], [0, 2.5], [0, -2.5]])
+        if (solidCell(Math.floor((px + ox) / CELL), Math.floor((py + oy) / CELL))) { ok = false; break; }
+    }
+    if (!ok) continue;
+    S.vx = vx; S.vy = vy; e.x = x0; e.y = y0;
+    S.mode = 'air'; S.on = 0; S.rest = 0.05;
+    if (Math.abs(S.vx) > 1) S.face = S.vx > 0 ? 1 : -1;
+    return 'jump';
+  }
+  return null;
+}
+// v95: roaming rats spread out. A push away from every other loose rat nearer than `D`,
+// harder the closer it is (0 at D, 1 on top of it, summed). Pure; the Game adds it to the
+// rat's roam spot, so the pack fans out round the nest instead of moving as one lump.
+function ratSpread(e, others, D) {
+  let x = 0, y = 0;
+  for (const o of others) {
+    if (o === e) continue;
+    const dx = e.x - o.x, dy = e.y - o.y, d = Math.hypot(dx, dy);
+    if (d >= D) continue;
+    const f = 1 - d / D;
+    if (d > 0.01) { x += dx / d * f; y += dy / d * f; }
+    else { const a = e.phase != null ? e.phase : 1; x += Math.cos(a) * f; y += Math.sin(a) * f; }
+  }
+  return { x, y };
+}
 // the point `d` along a path of points, and which way it's heading there
 function pathAt(P, d) {
   for (let i = 1; i < P.length; i++) {
@@ -2157,10 +2229,18 @@ function ratStep(e, env, dt) {
   // with a way found (env.follow: goal is a waypoint off navField), it just runs the way,
   // pushed out of the rock and settled onto floors as it goes, so it can't wedge or fall
   // off anything: the path already knows what a rat can climb
-  if (env.follow && goal) {
+  if (env.follow && goal && S.mode !== 'air') {             // (mid-jump or falling: physics first)
     if (S.mode !== 'path') { S.mode = 'path'; S.vx = S.vy = 0; }
     const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy), go = Math.min(gd, speed * dt);
     const rock = (x, y) => solidCell(Math.floor(x / CELL), Math.floor(y / CELL));
+    // v95: no walking on thin air. It needs rock under or beside it (not just overhead) or a
+    // web line to stand on; the way across or up through open air is a jump, and off an edge
+    // it falls. (Before, a path through air was run like floor, so rats floated.)
+    if (!ratFooting(e.x, e.y, solidCell, env.onWeb)) { S.mode = 'air'; S.vx = gd ? gx / gd * speed * 0.4 : 0; S.vy = 0; return null; }
+    if (env.air && gd > RAT.hold + 2) {                  // only when the next step really has nothing under it
+      const f = Math.min(gd, 6) / gd;
+      if (!ratFooting(e.x + gx * f, e.y + gy * f, solidCell, env.onWeb)) { const j = ratJump(e, S, goal, env, rnd); if (j) return j; }
+    }
     if (gd > 0.01) {                       // never a step into the rock (small steps, so not over a thin wall either)
       const k = Math.max(1, Math.ceil(go / 0.8)), mx = gx / gd * go / k, my = gy / gd * go / k;
       let moved = false;
@@ -2169,6 +2249,8 @@ function ratStep(e, env, dt) {
         else if (!rock(e.x + mx, e.y)) { e.x += mx; moved = true; }
         else if (!rock(e.x, e.y + my)) { e.y += my; moved = true; }
         else break;
+        // walked off the edge of its footing: it falls from here, carried on by its run
+        if (!ratFooting(e.x, e.y, solidCell, env.onWeb)) { S.mode = 'air'; S.vx = gx / gd * speed * 0.6; S.vy = 0; return null; }
       }
       if (Math.abs(gx) > 0.5) S.face = gx > 0 ? 1 : -1;
       // boxed in on that line: a little hop to come at it again
@@ -2194,6 +2276,8 @@ function ratStep(e, env, dt) {
     for (let i = 0; i < n; i++) {
       e.x += S.vx * dt / n; e.y += S.vy * dt / n;
       if (e.y > CH * CELL) { e.y = CH * CELL; break; }
+      // falling onto a web line with somewhere to be: it catches hold and runs on along it
+      if (S.vy > 0 && env.follow && env.onWeb && env.onWeb(e.x, e.y)) { S.mode = 'path'; S.vx = S.vy = 0; return 'land'; }
       const s = surfNormal(e.x, e.y, RAT.hold + 0.5, solidCell);
       if (!s) continue;
       if (s.py > RAT.ceil) {              // bumped its head (the nearest rock is above): out, and on down
@@ -2256,26 +2340,8 @@ function ratStep(e, env, dt) {
     // the way it wants to run is the way it just fell off an overhang: jump for it if it can, else turn back
     const barred = S.noT > 0 && (t > 0 ? 1 : -1) === S.noSide;
     if ((barred || (env.jump !== false && dx * S.nx + dy * S.ny >= S.dot)) && gd < kr('raJumpR', rnd)) {
-      // a hop that lands on it: time of flight from how far, the lift to make up the drop.
-      // Higher and higher arcs until one clears the rock (round the edge of a slab, not into it)
-      const v = kr('raJump', rnd), cap = v * 1.4, x0 = e.x + S.nx * 1.5, y0 = e.y + S.ny * 1.5;
-      for (const T of [Math.max(0.18, Math.min(0.6, gd / v)), 0.4, 0.55, 0.7]) {
-        let vx = gx / T, vy = gy / T - 0.5 * RAT.fall * T;
-        const sp = Math.hypot(vx, vy);
-        if (sp > cap) { vx *= cap / sp; vy *= cap / sp; }
-        let ok = true;
-        for (let k = 1; k <= 16 && ok; k++) {
-          const t = T * k / 16, px = x0 + vx * t, py = y0 + vy * t + 0.5 * RAT.fall * t * t;
-          if (Math.hypot(px - goal.x, py - goal.y) < RAT.hold + 3) break;
-          for (const [ox, oy] of [[0, 0], [2.5, 0], [-2.5, 0], [0, 2.5], [0, -2.5]])
-            if (solidCell(Math.floor((px + ox) / CELL), Math.floor((py + oy) / CELL))) { ok = false; break; }
-        }
-        if (!ok) continue;
-        S.vx = vx; S.vy = vy; e.x = x0; e.y = y0;
-        S.mode = 'air'; S.on = 0; S.rest = 0.05;
-        if (Math.abs(S.vx) > 1) S.face = S.vx > 0 ? 1 : -1;
-        return 'jump';
-      }
+      const j = ratJump(e, S, goal, env, rnd);
+      if (j) return j;
     }
     if (barred) { S.side = -S.noSide; return null; }
     if (Math.abs(t) * gd < 2) { S.on = 0; return null; }
@@ -2292,7 +2358,7 @@ function ratStep(e, env, dt) {
 // which it runs (or jumps) to with ratStep. solid(px, py) is the rat's view of the
 // terrain, in pixels. R is the field's half-size in cells.
 const NAV = 4;                               // terrain pixels per nav cell
-function navField(solid, tx, ty, R) {
+function navField(solid, tx, ty, R, onWeb) {
   const gi = Math.floor(tx / CELL / NAV), gj = Math.floor(ty / CELL / NAV);
   const x0 = gi - R, y0 = gj - R, w = 2 * R + 1, n = w * w;
   const open = new Uint8Array(n), surf = new Uint8Array(n);
@@ -2307,7 +2373,8 @@ function navField(solid, tx, ty, R) {
   for (let j = 0; j < w; j++) for (let i = 0; i < w; i++) open[j * w + i] = fits(i, j) ? 1 : 0;
   for (let j = 0; j < w; j++) for (let i = 0; i < w; i++) {
     const k = j * w + i;
-    if (open[k]) surf[k] = sol(i, j + 1) || sol(i - 1, j) || sol(i + 1, j) || sol(i - 1, j + 1) || sol(i + 1, j + 1) ? 1 : 0;
+    if (open[k]) surf[k] = sol(i, j + 1) || sol(i - 1, j) || sol(i + 1, j) || sol(i - 1, j + 1) || sol(i + 1, j + 1) ||
+      (onWeb && onWeb(((x0 + i) * NAV + 2) * CELL, ((y0 + j) * NAV + 2) * CELL)) ? 1 : 0;
   }
   const d = new Float32Array(n).fill(Infinity), done = new Uint8Array(n);
   // a binary heap of cell indices keyed on d (a cell can be in it more than once)
@@ -2385,7 +2452,7 @@ function navWay(F, x, y, steps) {
       if (d[c * w + a] < d[b]) b = c * w + a;
     }
     if (b === j * w + i) break;
-    if ((b / w | 0) < j && !F.surf[b]) air = true;
+    if ((b / w | 0) <= j && !F.surf[b]) air = true;      // up or across with nothing under it
     i = b % w; j = (b / w) | 0;
     // going up through open air: a jump, so aim for where it lands again (up to 12 cells on)
     if (air && s === steps - 1 && !F.surf[b] && steps < 12) steps++;
@@ -2842,7 +2909,7 @@ function blankShot(sm, spread) {
     size: sm.size || 2, life: sm.life || 1, count: sm.count || 1,
     bounce: sm.bounce || 0, pierce: sm.pierce || 0, explode: sm.explode || 0,
     grav: sm.grav || 0, homing: sm.homing || 0, accel: 0, bore: sm.bore || 0, recoil: sm.recoil || 0,
-    col: sm.col, knock: 0, crit: 0, boomer: 0, spiral: 0, pong: 0, orbit: 0,
+    col: sm.col, knock: sm.knock || 0, crit: 0, boomer: 0, spiral: 0, pong: 0, orbit: 0,
     autoaim: 0, homeR: sm.homeR || 0, flat: 0, eat: sm.eat || 0, pull: sm.pull || 0,
     split: 0, cluster: 0, bounceFx: null, friendly: 0, chain: sm.chain || 0,
     fuse: sm.fuse || 0, beam: sm.beam || 0, payload: null,
@@ -2853,6 +2920,11 @@ function blankShot(sm, spread) {
     arc: sm.arc || 0,                             // Lightning: jagged bolt that throws side arcs
     fire: sm.fire || 0,                           // sets grass, moss, timber and creatures alight
     tele: sm.tele || 0,                           // Teleport Bolt: you go where it stops
+    // v95 Noita flight and looks: air drag (per s), speed kept per bounce, a hole dug where
+    // it stops on rock, a zig-zag swing (rad/s), how it's drawn and trails, and its glow
+    drag: sm.drag || 0, bounceE: sm.bounceE || 0.92, pit: sm.pit || 0, wig: sm.wig || 0,
+    look: sm.look || null, light: sm.light || null, lightR: sm.lightR || 0,
+    embers: sm.embers || 0,                       // Brimstone: burning sparks thrown out of the blast
     sid: sm.id,                                   // which spell it is, for its sound
     still: sm.kind === 'static' ? 1 : 0, field: sm.field || null, r: sm.r || 0 };
 }
@@ -5254,7 +5326,7 @@ const FX_VOL = { step: 'vStep', land: 'vStep', ignite: 'jetVol',
   open: 'vUi', close: 'vUi', switch: 'vUi', ready: 'vUi', prompt: 'vUi', place: 'vUi', coinland: 'vUi',
   crit: 'vSpell', chainhop: 'vSpell', split: 'vSpell', cluster: 'vSpell', refresh: 'vSpell', drain: 'vSpell',
   gspend: 'vSpell', saws: 'vSpell', warp: 'vSpell', healtick: 'vSpell', shieldUp: 'vSpell', ghost: 'vSpell',
-  absorb: 'vEnemyFire', fizzle: 'vEnemyFire' };
+  absorb: 'vEnemyFire', fizzle: 'vEnemyFire', drip: 'vDrip', sizzle: 'vDrip', splash: 'vDrip' };
 function fxVolKey(name) { return FX_VOL[name] || 'vWorld'; }
 const knob = k => (DEV[k] == null ? 1 : DEV[k]);
 
@@ -6012,7 +6084,8 @@ const SFX = (() => {
     amb = { g, srcs, A, name };
   }
   function envSound(kind, x, y) {
-    const d = out(x, y, 2.5, false, ambBus); if (!d) return;
+    // the ambience's drips and trickles also answer to the Drips knob
+    const d = out(x, y, 2.5, false, ambBus, kind === 'drip' || kind === 'trickle' ? knob('vDrip') : 1); if (!d) return;
     const t = ac.currentTime;
     switch (kind) {
       case 'drip': { const f = rnd(1300, 2200); tone(d, 'sine', f, f * 1.6, t, 0.05, 0.15, 0.002); tone(d, 'sine', f, f * 1.6, t + 0.2, 0.05, 0.035, 0.002); break; }
@@ -7396,6 +7469,13 @@ function driftStep(vx, vy, dt) {
   return [vx, vy];
 }
 
+// Spark's crackle: a fast side-to-side swing of the heading, amp/WIG_HZ radians either way,
+// centred on where you aimed. wigTurn is how far to turn this step (from age - dt to age);
+// it's pure in the shot's age, so the aim line and the live shot swing the same way.
+const WIG_HZ = 45;
+const wigAng = (amp, t) => amp / WIG_HZ * Math.cos(t * WIG_HZ);
+const wigTurn = (amp, age, dt) => wigAng(amp, age) - (age - dt > 1e-9 ? wigAng(amp, age - dt) : 0);
+
 function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
   const dt = 1 / 60;
   if (sh.flat) { nx = nx >= 0 ? 1 : -1; ny = 0; }
@@ -7420,11 +7500,13 @@ function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
   for (let i = 0; i < 110 && life > 0; i++) {
     life -= dt; age += dt;
     if (sh.grav) vy += sh.grav * dt;
+    if (sh.drag) { const k = Math.exp(-sh.drag * dt); vx *= k; vy *= k; }
     if (sh.accel) { const f = 1 + sh.accel * dt; vx *= f; vy *= f; }
     // the same bends the live bullets get, so the line stays honest
     const swing = by => { const sp = Math.hypot(vx, vy), a = Math.atan2(vy, vx) + by;
       vx = Math.cos(a) * sp; vy = Math.sin(a) * sp; };
     if (sh.spiral) swing(sh.spiral * dt);
+    if (sh.wig) swing(wigTurn(sh.wig, age, dt));
     if (sh.orbit) swing(sh.orbit * dt);
     if (sh.pong && Math.floor(age / 0.45) % 2 === 1) { vx = -vx; vy = -vy; age += dt; }
     if (sh.boomer && home) swing(Math.max(-sh.boomer * dt, Math.min(sh.boomer * dt,
@@ -7464,7 +7546,8 @@ function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
           const hx = solid(ax, y), hy = solid(x, ay);
           if (hx || !hy) vx = -vx;
           if (hy || !hx) vy = -vy;
-          vx *= 0.92; vy *= 0.92;
+          const e = sh.bounceE || 0.92;
+          vx *= e; vy *= e;
           break;
         }
         stop = true;
@@ -8057,11 +8140,19 @@ function Game({ input }) {
     // falling in and wedging in a tunnel it only ever walks as a path). burrow is per floor.
     const ratSolid = (cx, cy) => solidCell(cx, cy) || (burrow !== null && burrow[cy * CW + cx] === 1);
     // a goal's distance field, kept on `o` and made again when the goal moves or the rock changes
+    // a spider's web line under a rat's feet counts as ground: rats run along webs
+    const onWebIn = list => (x, y) => { for (const L of list) if (webDist(L, x, y) < 3) return true; return false; };
+    const ratOnWeb = onWebIn(webs);
     function navFor(o, goal, R) {
       // (the rock changing only counts once a second, or a drill would rebuild them every frame)
       if (!o.F || (o.v !== terrainV && time - o.t > 1) || Math.hypot(goal.x - o.fx, goal.y - o.fy) > (o === navYou ? 12 : 6) ||
-          (o === navYou && time - o.t > 0.4)) {
-        o.F = navField(ratSolid, goal.x, goal.y, R); o.v = terrainV; o.fx = goal.x; o.fy = goal.y; o.t = time;
+          (o === navYou && time - o.t > 0.4) || (o.wn !== webs.length && time - o.t > 1)) {
+        // only the web lines that cross the field's square, so a floor of webs costs nothing
+        const half = (R + 1) * NAV * CELL, near = webs.filter(L =>
+          Math.max(L.a0x, L.b0x) > goal.x - half && Math.min(L.a0x, L.b0x) < goal.x + half &&
+          Math.max(L.a0y, L.b0y) > goal.y - half && Math.min(L.a0y, L.b0y) < goal.y + half);
+        o.F = navField(ratSolid, goal.x, goal.y, R, near.length ? onWebIn(near) : null);
+        o.v = terrainV; o.fx = goal.x; o.fy = goal.y; o.t = time; o.wn = webs.length;
       }
       return o.F;
     }
@@ -8074,6 +8165,20 @@ function Game({ input }) {
       e.ra = { mode: 'tunnel', vx: 0, vy: 0, nx: 0, ny: -1, on: 0, rest: 0, side: 1, face: 1, s: 0, dir: 1, wait: 0 };
       enemies.push(e);
       return e;
+    }
+    // a rat that's stuck with a job on: a hop in some direction; the third time, a carrier
+    // slips into a crack and goes home underground, anyone else forgets it for a while
+    function unstick(e, S, home) {
+      e.stN = (e.stN || 0) + 1;
+      if (e.stN >= 3 && home) {
+        burst(e.x, e.y, 6, '#6a5a48');
+        S.mode = 'tunnel'; S.len = pathLen(e.path); S.s = S.len * 0.7; S.dir = -1; S.wait = 0;
+        e.stN = 0;
+      } else if (e.stN >= 3) { e.giveUp = 4; e.aggro = false; e.stN = 0; }
+      else {
+        S.mode = 'air'; S.vx = (Math.random() < 0.5 ? -1 : 1) * (60 + Math.random() * 80); S.vy = -150 - Math.random() * 120;
+        e.x += S.nx * 1.5; e.y += S.ny * 1.5;
+      }
     }
     // One rat's frame. What it wants, in order: home, if it has gold in its mouth; any loose
     // gold it can smell; you, if it has noticed you; else its roam spot round the nest.
@@ -8104,37 +8209,36 @@ function Game({ input }) {
         else {
           const R = e.roam || (e.roam = {});
           roamStep(R, e, dt, Math.random, 'ra');
-          goal = { x: R.rx, y: R.ry }; jump = false;
+          // keep apart from the other loose rats: the push walks this rat's roam spot away
+          // from the crowd, so the pack fans out round the nest
+          const D = e.spread || (e.spread = kr('raSpread')), sp = ratSpread(e, enemies.filter(o => o.ra && o.ra.mode !== 'tunnel' &&
+            Math.abs(o.x - e.x) < D && Math.abs(o.y - e.y) < D), D);
+          R.rx += sp.x * D * 1.5 * dt; R.ry += sp.y * D * 1.5 * dt;
+          goal = { x: R.rx + sp.x * D, y: R.ry + sp.y * D }; jump = false;
         }
       }
       if (!e.arrive || Math.random() < dt) e.arrive = kr('raArrive');
       // with a job on, it follows the way there (navField) rather than a straight line
-      let way = goal, follow = false;
+      let way = goal, follow = false, air = false;
       if (fast && S && S.mode !== 'tunnel') {
         const F = home ? navFor(N.nest, goal, 100) : want ? navFor(want, goal, 36) : navFor(navYou, goal, 56);
         const w = F && navWay(F, e.x, e.y, 1);
-        if (w) { way = w.dist > 2 ? w : goal; follow = true; }
+        if (w) { way = w.dist > 2 ? w : goal; follow = true; air = w.air && w.dist > 2; }
+        // v95: getting no nearer along the way for 4s (hopping back and forth over a gap it
+        // can't clear) counts as stuck, the same as standing still
+        const job = home ? N : want || navYou;
+        if (w && (e.jobO !== job || w.dist < e.bestD - 3)) { e.jobO = job; e.bestD = w.dist; e.bestT = 0; }
+        else if (w && (e.bestT += dt) > 4) { e.bestT = 0; e.bestD = w.dist; unstick(e, S, home); }
       }
       const cold = e.chill && e.chill < 1 ? e.chill : 1;
-      const ev = ratStep(e, { solidCell: ratSolid, rnd: Math.random, goal: way, hunting: fast, home, path: e.path, follow,
+      const ev = ratStep(e, { solidCell: ratSolid, rnd: Math.random, goal: way, hunting: fast, home, path: e.path, follow, air, onWeb: ratOnWeb,
         speedMul: cold, arrive: way === goal && !want && hunting ? e.arrive : 3, jump }, dt);
       // stuck (wedged, or running on the spot) with a job on: a hop in some direction
       if (fast && (S.mode === 'surf' || S.mode === 'path')) {
         e.stT = (e.stT || 0) + dt;
         if (e.stT > 1.2) {
-          if (Math.hypot(e.x - (e.stX || 0), e.y - (e.stY || 0)) < 6 && Math.hypot(goal.x - e.x, goal.y - e.y) > 14) {
-            e.stN = (e.stN || 0) + 1;
-            if (e.stN >= 3 && home) {
-              // hopping hasn't got it anywhere: it slips into a crack and goes home underground
-              burst(e.x, e.y, 6, '#6a5a48');
-              S.mode = 'tunnel'; S.len = pathLen(e.path); S.s = S.len * 0.7; S.dir = -1; S.wait = 0;
-              e.stN = 0;
-            } else if (e.stN >= 3) { e.giveUp = 4; e.aggro = false; e.stN = 0; }   // it can't get there: forget it a while
-            else {
-              S.mode = 'air'; S.vx = (Math.random() < 0.5 ? -1 : 1) * (60 + Math.random() * 80); S.vy = -150 - Math.random() * 120;
-              e.x += S.nx * 1.5; e.y += S.ny * 1.5;
-            }
-          } else e.stN = 0;
+          if (Math.hypot(e.x - (e.stX || 0), e.y - (e.stY || 0)) < 6 && Math.hypot(goal.x - e.x, goal.y - e.y) > 14) unstick(e, S, home);
+          else if (!(e.bestT > 0)) e.stN = 0;
           e.stT = 0; e.stX = e.x; e.stY = e.y;
         }
       }
@@ -8368,6 +8472,8 @@ function Game({ input }) {
           friendly: sh.friendly, chain: sh.chain, fuse: sh.fuse,
           payload: sh.payload && sh.payload.length ? sh.payload : null, hidden: sh.hidden, arc: sh.arc,
           drift: sh.drift, pop: sh.pop, tele: sh.tele, fire: sh.fire,
+          drag: sh.drag, bounceE: sh.bounceE, pit: sh.pit, wig: sh.wig, look: sh.look,
+          light: sh.light, lightR: sh.lightR,
           trig: sh.trig, timer: sh.trig === 'timer' ? sh.timer : null,
           ox: bx, oy: by, age: 0, born: sh.life });
       }
@@ -8492,6 +8598,87 @@ function Game({ input }) {
       }
       burst(b.x, b.y, 8, b.col);
     }
+    // ---- v95 spell looks: what each Noita-style shot sheds as it flies, bounces and dies.
+    // Trails are glowing dparts (drawn after the fog, only where it has lifted), chips are
+    // sparks, puffs are smoke. `look` is set on the spell in MODS.
+    const glowDot = (x, y, vx, vy, c, s, life, g) =>
+      dparts.push({ x, y, vx, vy, g: g || 0, c, s, life, max: life, glow: 1 });
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    function shotTrail(b, dt) {
+      const L = b.look, sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp;
+      const chance = n => Math.random() < n * dt;
+      if (L === 'spark') {                    // fading pink plasma, a few specks a frame
+        if (chance(70)) glowDot(b.x + rnd(-1, 1), b.y + rnd(-1, 1), rnd(-8, 8), rnd(-8, 8),
+          Math.random() < 0.3 ? '#ffffff' : Math.random() < 0.6 ? '#ff9cf5' : '#d86ad0', rnd(0.8, 1.5), rnd(0.12, 0.5));
+      } else if (L === 'crackle') {           // hot yellow sparks that drop away
+        if (chance(22)) glowDot(b.x, b.y, -ux * 40 + rnd(-50, 50), -uy * 40 + rnd(-60, 20),
+          Math.random() < 0.5 ? '#fff6c0' : '#ffd23c', rnd(0.7, 1.1), rnd(0.15, 0.35), 0.5);
+      } else if (L === 'ember') {             // green flames licking off the pellet
+        if (chance(40)) glowDot(b.x + rnd(-1, 1), b.y + rnd(-1, 1), -ux * 20 + rnd(-10, 10), -uy * 20 - rnd(5, 25),
+          Math.random() < 0.4 ? '#e6ffc8' : '#8dff5a', rnd(0.7, 1.3), rnd(0.1, 0.25), -0.02);
+      } else if (L === 'glob') {              // the odd pink drip
+        if (chance(10)) glowDot(b.x, b.y, b.vx * 0.2, b.vy * 0.2, '#f578dc', rnd(0.8, 1.2), rnd(0.3, 0.6), 0.6);
+      } else if (L === 'bubble') {            // tiny fizz off the skin
+        if (chance(6)) glowDot(b.x + rnd(-3, 3), b.y + rnd(-3, 3), rnd(-6, 6), rnd(-20, -8),
+          '#bfe8ff', rnd(0.6, 1), rnd(0.3, 0.6));
+      } else if (L === 'arrow') {             // green sparks hanging in the air behind it
+        if (chance(35)) glowDot(b.x - ux * 3, b.y - uy * 3, rnd(-6, 6), rnd(-6, 6),
+          Math.random() < 0.3 ? '#e8ffd8' : '#78ff50', rnd(0.7, 1.2), rnd(0.5, 1.1), 0.03);
+      } else if (L === 'drill') {             // a puff of blue smoke
+        if (chance(18)) smoke.push({ x: b.x, y: b.y, vx: rnd(-10, 10), vy: rnd(-12, 4), r: rnd(1.2, 2.2),
+          life: 0.5, max: 0.5, c: '#4e7fc8', a: 0.4 });
+      } else if (L === 'sparks') {            // it IS its trail: a streak of blue sparks
+        const n = Math.min(8, Math.max(1, Math.round(sp * dt / 3)));
+        for (let k = 0; k < n; k++) {
+          const f = k / n;
+          glowDot(b.x - b.vx * dt * f + rnd(-1, 1), b.y - b.vy * dt * f + rnd(-1, 1), rnd(-15, 15), rnd(-15, 15),
+            Math.random() < 0.3 ? '#ffffff' : '#8fe8ff', rnd(0.8, 1.4), rnd(0.3, 0.6));
+        }
+      } else if (L === 'pollen') {            // yellow dust drifting off it
+        if (chance(8)) glowDot(b.x + rnd(-2, 2), b.y + rnd(-2, 2), rnd(-5, 5), rnd(-8, 2),
+          '#e8ff9a', rnd(0.6, 0.9), rnd(0.4, 0.8), -0.01);
+      }
+    }
+    function shotBounce(b) {
+      const L = b.look;
+      if (L === 'glob') for (let k = 0; k < 2; k++)
+        glowDot(b.x, b.y, rnd(-40, 40), rnd(-50, -10), '#f578dc', 1, rnd(0.15, 0.3), 0.6);
+      else if (L === 'bubble') glowDot(b.x, b.y, 0, 0, '#bfe8ff', 1.4, 0.12);
+      else if (L === 'ember') for (let k = 0; k < 3; k++)
+        glowDot(b.x, b.y, rnd(-60, 60), rnd(-60, -10), '#8dff5a', 1, rnd(0.1, 0.25), 0.4);
+    }
+    function shotDeath(b) {
+      const L = b.look;
+      if (L === 'bubble') {                   // it pops: a ring of droplets
+        SFX.pop(b.x, b.y);
+        for (let k = 0; k < 8; k++) { const a = k / 8 * 6.283;
+          glowDot(b.x + Math.cos(a) * b.size, b.y + Math.sin(a) * b.size, Math.cos(a) * 45, Math.sin(a) * 45,
+            '#bfe8ff', 1, rnd(0.15, 0.3), 0.3); }
+      } else if (L === 'spark' || L === 'arrow' || L === 'crackle') {
+        const c = L === 'spark' ? '#ff9cf5' : L === 'arrow' ? '#78ff50' : '#ffe066';
+        for (let k = 0; k < 5; k++) glowDot(b.x, b.y, rnd(-70, 70), rnd(-70, 40), k ? c : '#ffffff', 1, rnd(0.12, 0.3), 0.3);
+      } else if (L === 'glob') {
+        for (let k = 0; k < 4; k++) glowDot(b.x, b.y, rnd(-50, 50), rnd(-60, 0), '#f578dc', 1.1, rnd(0.2, 0.4), 0.6);
+      }
+    }
+    // a digging bolt chewing rock: chips of whatever it's chewing thrown back out
+    function shotGrind(b, x, y) {
+      if (b.look !== 'drill' || Math.random() < 0.5) return;
+      const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+      if (cx < 0 || cy < 0 || cx >= CW || cy >= CH || !mat[cy * CW + cx]) return;
+      const k = (cy * CW + cx) * 4, d = img.data, sp = Math.hypot(b.vx, b.vy) || 1;
+      sparks.push({ x, y, vx: -b.vx / sp * rnd(40, 110) + rnd(-50, 50), vy: -b.vy / sp * rnd(40, 110) - rnd(20, 70),
+        life: rnd(0.4, 0.8), max: 0.8, c: 'rgb(' + d[k] + ',' + d[k + 1] + ',' + d[k + 2] + ')', size: rnd(1, 1.8), heavy: true });
+    }
+    // Brimstone: burning sparks thrown out of the blast, lighting what they land on
+    function throwEmbers(x, y, n) {
+      for (let k = 0; k < n; k++) {
+        const a = -Math.PI / 2 + (Math.random() - 0.5) * 4.2, v = 60 + Math.random() * 150;
+        dparts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 20, g: 0.45,
+          c: FIRE_COLS[Math.floor(Math.random() * 3)], s: 1 + Math.random() * 0.8, life: 0.7 + Math.random() * 0.6, max: 1.3,
+          glow: 1, ember: 1 });
+      }
+    }
     // Death Cross: four arms of blast rather than one round crater
     function explodeCross(b) {
       const R = b.explode || 20;
@@ -8509,7 +8696,8 @@ function Game({ input }) {
     function castField(sh, x, y, ang) {
       const pay = sh.payload && sh.payload.length ? sh.payload : null;
       if (sh.field === 'explode') {
-        explode(x, y, sh.r);
+        explode(x, y, sh.r, undefined, sh.fire);
+        if (sh.embers) throwEmbers(x, y, sh.embers);
         if (pay) releaseAt(pay, x, y, Math.cos(ang || 0), Math.sin(ang || 0), sh.col);
         return;
       }
@@ -9524,7 +9712,10 @@ function Game({ input }) {
         if (b.fuse && b.age >= b.fuse) { boom = b.explode ? true : false; if (!b.explode) dead = true;
           else { explodeCross(b); dead = true; boom = false; } }
         if (b.grav) b.vy += b.grav * dt;
+        if (b.drag) { const k = Math.exp(-b.drag * dt); b.vx *= k; b.vy *= k; }
         if (b.accel) { const f = 1 + b.accel * dt; b.vx *= f; b.vy *= f; }
+        if (b.wig) turn(b, wigTurn(b.wig, b.age, dt));
+        if (b.look) shotTrail(b, dt);
         // paths: each one bends the velocity, and tracePath draws the same bends
         if (b.spiral) turn(b, b.spiral * dt);
         if (b.pong && Math.floor(b.age / 0.45) % 2 === 1) { b.vx = -b.vx; b.vy = -b.vy; b.age += dt; }
@@ -9661,19 +9852,22 @@ function Game({ input }) {
               const hx = solidAt(nx, b.y), hy = solidAt(b.x, ny);
               if (hx || !hy) b.vx = -b.vx;
               if (hy || !hx) b.vy = -b.vy;
-              b.vx *= 0.92; b.vy *= 0.92;
+              const be = b.bounceE || 0.92;
+              b.vx *= be; b.vy *= be;
               SFX.bounce(b.x, b.y);
+              if (b.look) shotBounce(b);
               if (b.bounceFx === 'explode') explode(b.x, b.y, Math.max(10, b.explode || 12));
               break;                      // stay put: b.x/b.y are still outside the rock
             }
             b.x = nx; b.y = ny;
-            if (b.bore > 0) { dig(nx, ny, b.bore); continue; }
+            if (b.bore > 0) { if (b.look) shotGrind(b, nx, ny); dig(nx, ny, b.bore); continue; }
             // Matter Eater / Black Hole: eat straight through the rock, digging as it goes,
             // so a fast shot can't outrun the small hole its per-frame eat carves ahead
             if (b.eat > 0) { dig(nx, ny, b.eat); continue; }
             if (b.cluster) { spray(b); dead = true; break; }
             if (b.explode) { boom = true; break; }
             if (b.pop) { explode(b.x, b.y, b.pop, b.dmg * 0.5); dead = true; break; }
+            if (b.pit) dig(nx, ny, b.pit);                // Noita's small hole where a shot lands
             burst(b.x, b.y, 3, b.col);
             SFX.rock(b.x, b.y);
             dead = true;
@@ -9690,6 +9884,7 @@ function Game({ input }) {
           b.trail.push({ x: b.x, y: b.y });
           addArc(b.trail, b.col, 1.4, 0.16);
         }
+        if (dead && b.look) shotDeath(b);
         if (dead) bullets.splice(i, 1);
       }
       for (let i = arcs.length - 1; i >= 0; i--) if ((arcs[i].t += dt) > arcs[i].max) arcs.splice(i, 1);
@@ -10587,6 +10782,82 @@ function Game({ input }) {
         ctx.fillRect(hx, hy, hw * Math.max(0, e.hp / e.hpMax), 3);
       }
 
+      // v95: the Noita-style shots' own sprites. Returns false to fall back to the streak.
+      function drawLook(b) {
+        const L = b.look, sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp, s = b.size;
+        const dot = (x, y, r, c, a) => { ctx.globalAlpha = a; ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill(); };
+        if (L === 'spark') {                  // pink halo, white four-point twinkle
+          const tw = 0.8 + 0.2 * Math.sin(b.spin * 3);
+          dot(b.x, b.y, s * 1.9, b.col, 0.35);
+          ctx.globalAlpha = 1; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.7;
+          const r = s * 2.2 * tw, a = b.spin * 0.6;
+          ctx.beginPath();
+          for (let k = 0; k < 2; k++) { const c = Math.cos(a + k * 1.571) * r, d = Math.sin(a + k * 1.571) * r;
+            ctx.moveTo(b.x - c, b.y - d); ctx.lineTo(b.x + c, b.y + d); }
+          ctx.stroke();
+          dot(b.x, b.y, s * 0.8, '#ffffff', 1);
+        } else if (L === 'crackle') {         // a jittering zig-zag tail, white-hot tip
+          ctx.globalAlpha = 1; ctx.strokeStyle = b.col; ctx.lineWidth = 1;
+          const px = -uy, py = ux; let x = b.x, y = b.y;
+          ctx.beginPath(); ctx.moveTo(x, y);
+          for (let k = 1; k <= 4; k++) { x = b.x - ux * k * 3.2 + px * (Math.random() - 0.5) * 4;
+            y = b.y - uy * k * 3.2 + py * (Math.random() - 0.5) * 4; ctx.lineTo(x, y); }
+          ctx.stroke();
+          dot(b.x, b.y, s * 0.9, '#fffbe0', 1);
+        } else if (L === 'ember') {           // a small magic fireball: a tail of shrinking blobs
+          for (let k = 3; k >= 0; k--) dot(b.x - ux * k * 1.6, b.y - uy * k * 1.6, s * (1 - k * 0.18),
+            k ? b.col : '#eaffd8', k ? 0.5 - k * 0.1 : 1);
+        } else if (L === 'glob') {            // stretched by its own speed, like Noita's
+          const st = 1 + Math.min(1.6, sp / 300);
+          ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy, b.vx));
+          ctx.globalAlpha = 0.45; ctx.fillStyle = b.col;
+          ctx.beginPath(); ctx.ellipse(-s * st * 0.4, 0, s * st * 1.5, s * 1.3, 0, 0, 6.283); ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.beginPath(); ctx.ellipse(-s * st * 0.25, 0, s * st, s * 0.85, 0, 0, 6.283); ctx.fill();
+          ctx.fillStyle = '#ffe0f6';
+          ctx.beginPath(); ctx.arc(s * 0.2, -s * 0.25, s * 0.35, 0, 6.283); ctx.fill();
+          ctx.restore();
+        } else if (L === 'bubble') {          // a see-through bubble, wobbling, with a shine
+          const r = s * 1.6, w = 1 + 0.1 * Math.sin(b.spin * 1.7);
+          ctx.save(); ctx.translate(b.x, b.y);
+          ctx.globalAlpha = 0.18; ctx.fillStyle = b.col;
+          ctx.beginPath(); ctx.ellipse(0, 0, r * w, r / w, 0, 0, 6.283); ctx.fill();
+          ctx.globalAlpha = 0.9; ctx.strokeStyle = b.col; ctx.lineWidth = 0.7; ctx.stroke();
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.8;
+          ctx.beginPath(); ctx.arc(0, 0, r * 0.68, 3.6, 4.5); ctx.stroke();
+          ctx.restore();
+        } else if (L === 'arrow') {           // a glowing green arrow along its flight
+          const len = 7 + s, hx = b.x - ux * len, hy = b.y - uy * len, px = -uy, py = ux;
+          ctx.globalAlpha = 0.35; ctx.strokeStyle = b.col; ctx.lineWidth = s * 2.2;
+          ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(b.x, b.y); ctx.stroke();
+          ctx.globalAlpha = 1; ctx.strokeStyle = '#d8ffc8'; ctx.lineWidth = 0.9;
+          ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(b.x, b.y); ctx.stroke();
+          ctx.fillStyle = b.col;
+          ctx.beginPath(); ctx.moveTo(b.x + ux * 2.5, b.y + uy * 2.5);
+          ctx.lineTo(b.x - ux * 2 + px * 2, b.y - uy * 2 + py * 2);
+          ctx.lineTo(b.x - ux * 2 - px * 2, b.y - uy * 2 - py * 2); ctx.fill();
+          ctx.strokeStyle = b.col; ctx.lineWidth = 0.8;       // fletching
+          ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx - ux * 2 + px * 1.8, hy - uy * 2 + py * 1.8);
+          ctx.moveTo(hx, hy); ctx.lineTo(hx - ux * 2 - px * 1.8, hy - uy * 2 - py * 1.8); ctx.stroke();
+        } else if (L === 'drill') {           // a spinning bit
+          ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy, b.vx));
+          const sq = Math.cos(b.spin * 2.5);
+          ctx.globalAlpha = 1; ctx.fillStyle = '#3d5f9a';
+          ctx.beginPath(); ctx.moveTo(4, 0); ctx.lineTo(-2, 2.2); ctx.lineTo(-2, -2.2); ctx.fill();
+          ctx.strokeStyle = b.col; ctx.lineWidth = 0.7;
+          ctx.beginPath(); ctx.moveTo(-1 + sq, -1.8); ctx.lineTo(1 + sq, 1.2); ctx.moveTo(1.5 - sq * 0.5, -1); ctx.lineTo(2.8 - sq * 0.5, 0.6);
+          ctx.stroke();
+          ctx.restore();
+        } else if (L === 'sparks') {          // no body at all, just its blue streak
+          dot(b.x, b.y, s * 0.8, '#ffffff', 1);
+        } else if (L === 'pollen') {          // a fuzzy puff
+          for (let k = 0; k < 7; k++) { const a = k * 0.9 + b.spin * 0.3, r = s * (0.9 + 0.3 * Math.sin(k * 2.1 + b.spin));
+            dot(b.x + Math.cos(a) * r, b.y + Math.sin(a) * r, 0.7, k % 2 ? b.col : '#f4ffb0', 0.9); }
+          dot(b.x, b.y, s * 0.7, '#ffe98a', 1);
+        } else return false;
+        ctx.globalAlpha = 1;
+        return true;
+      }
       // a lightning line: a wide soft glow, then a thin white-hot core
       function drawBolt(pts, col, w, alpha) {
         ctx.save();
@@ -10647,6 +10918,7 @@ function Game({ input }) {
           ctx.globalAlpha = 1;
           continue;
         }
+        if (b.look && drawLook(b)) continue;
         if (b.arc && b.trail && b.trail.length > 1) {   // lightning: a fresh zig-zag every frame
           drawBolt(jag(b.trail.concat([{ x: b.x, y: b.y }]), 5), b.col, 1.6, 1);
           continue;
@@ -11093,6 +11365,9 @@ function Game({ input }) {
         glowAt(ctx, e.x, e.ty, e.r * 1.6, a * 1.4, rgb);
       }
       for (const b of enemyShots) if (b.glow && onView(b.x, b.y, 30) && fogLit(b.x, b.y)) glowAt(ctx, b.x, b.y, b.size * 6, 0.3, b.glow);
+      // v95: your glowing shots light the cave round them (the Bubble Spark most of all)
+      for (const b of bullets) if (b.light && !b.hidden && onView(b.x, b.y, 50) && fogLit(b.x, b.y))
+        glowAt(ctx, b.x, b.y, b.lightR || 20, 0.28, b.light);
       // fire: the burning pixels brighten and throw a warm glow — only on ground you have seen
       if (fireVis.length) {
         ctx.fillStyle = 'rgba(255,140,50,0.32)';

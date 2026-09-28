@@ -37,7 +37,7 @@ check('bolt then dmg_up -> 1 dmg', p.shots[0].dmg, 1);
 
 // order changes the result with multiplicative mods
 check('heavy then big', planCast(gun(['heavy', 'big', 'bolt'])).shots[0].dmg, 1 * 2.5 * 1.3);
-check('two speed mods stack', planCast(gun(['speed', 'light', 'bolt'])).shots[0].speed, 540 * 2.5 * 4);
+check('two speed mods stack', planCast(gun(['speed', 'light', 'bolt'])).shots[0].speed, MODS.bolt.speed * 2.5 * 4);
 
 // multicast pulls the next N shots into one trigger pull
 p = planCast(gun(['double', 'bolt', 'bolt']));
@@ -103,7 +103,7 @@ p = planCast(gun(['heavy', 'slug']));
 check('recoil adds up', p.shots[0].recoil, 45 + 50);
 check('light shot softens recoil', planCast(gun(['light', 'slug'])).shots[0].recoil, 45 * 0.5);
 
-check('wand speed multiplier applies', planCast(gun(['bolt'], { speedMul: 1.5 })).shots[0].speed, 540 * 1.5);
+check('wand speed multiplier applies', planCast(gun(['bolt'], { speedMul: 1.5 })).shots[0].speed, MODS.bolt.speed * 1.5);
 check('quad cast fires 4', planCast(gun(['quad', 'bolt', 'bolt', 'spark', 'spark'])).shots.length, 4);
 
 // homing and piercing are now the expensive investments they are in Noita

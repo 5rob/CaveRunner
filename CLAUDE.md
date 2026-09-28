@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v94**. Branch: `main` (release channel is `main`).
+Current version: **v95**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -886,6 +886,28 @@ snapshots share references (`sp.line` → a web with `owner`), so they don't `JS
 Tests: `tests/logic/replay.test.js`, `tests/browser/replay.test.js` (sandbox; hooks `__lvl.rec`, `rt`, `recSample`).
 **v91:** the replay loops (`V.loop`, on by default; the loop wraps `t` to `t0` at `t1`), with a **Loop** toggle (`.wloop`).
 **v94 rarity gate on drops.** `TIER_FLOOR` (above `modWeight`, `{ 4: 4 }`): a spell whose `MOD_TIER` is 4 has weight 0 before floor 4, whatever Noita's table says — Black Hole, Glitter, Storm, Saw Storm are tier-0 in Noita but far stronger here (owner saw a Black Hole in the floor-1 shop). Tested in `spells`.
+**v95 tier-1 spells after Noita, drip knob, rats on the ground.** Each `MOD_TIER` 1 shot got
+its Noita twin's character (numbers from the projectile XMLs in `data/entities/projectiles/deck/` of
+noita-data-parsing, e.g. `light_bullet.xml`, `bubbleshot.xml`, `spitter.xml`, `bullet.xml`, `buckshot_player.xml`,
+`digger.xml`, `fireblast.xml`). New `blankShot` fields any spell can use: `drag` (air friction, per s, `exp(-drag·dt)`),
+`bounceE` (speed kept per bounce, default 0.92), `pit` (dig radius where it dies on rock), `wig` (zig-zag swing,
+`wigTurn(amp, age, dt)` — pure in age, centred), `look` (sprite + trail), `light`/`lightR` (glow after the fog, `fogLit`
+gated); statics take `fire` + `embers` (Brimstone). **All of drag/bounceE/wig are mirrored in `tracePath`.** Game side:
+`shotTrail`/`shotBounce`/`shotDeath`/`shotGrind` (drill chips) emit glowing `dparts`, smoke and chips; `drawLook(b)` in
+`draw()` draws each look (`spark`, `crackle`, `ember`, `glob`, `bubble`, `arrow`, `drill`, `sparks`, `pollen`) and returns
+false to fall back to the streak. Trigger variants inherit their base's look. Tests: `tests/logic/t1spells.test.js`,
+`tests/browser/t1spells.test.js`. **`vDrip`** (Dev → Sound, "Drips & trickles"): `FX_VOL` maps `drip`/`sizzle`/`splash`,
+and the ambience's `drip`/`trickle` events pass it to `out()`. **Rats:** path mode (`env.follow`) now needs footing —
+`ratFooting` (rock under/beside, not only overhead, or a web line via `env.onWeb`); off it they fall, and a way that
+goes up **or across** open air (`navWay`'s `air`) is a jump (`ratJump`, the old `decide()` solver). The follow branch
+is skipped while `S.mode === 'air'` so a jump isn't cancelled. **Webs are rat ground on purpose** (owner likes it):
+`navField(..., onWeb)` counts web cells as surface, and a falling rat with a job catches a web line. Roaming rats
+spread: `ratSpread(e, others, D)` (pure) pushes the roam spot away from loose rats within `raSpread` (new range knob).
+`ratFooting` reaches `RAT.hold + 5` (tighter made path-running rats drop off bumpy rock constantly). The follow-branch jump
+fires only when the next ~6 units truly lack footing. `unstick(e, S, home)` is the old stuck ladder (hop, hop, then a
+carrier slips home underground / others give up); it now also fires when the nav distance hasn't improved by 3 in 4s
+(`e.bestD`/`e.bestT`), for rats hopping back and forth at a gap. Real-floor probe: ~14/16 carriers home in 15s (v94 was
+17/17, partly by floating).
 **v74 Pollen nerf.** Pollen has `drift: 1`, `homeR: 80`, `pop: 6` (no `eat`). `driftStep` (pure, above
 `tracePath`, consts `DRIFT_*`) damps its speed and, once slow, floats it up. It only homes after
 locking (`b.lock`: nearest creature within `homeR` with `lineOfSight`), then speeds back to

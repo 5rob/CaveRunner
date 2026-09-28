@@ -11,8 +11,8 @@ const js = src.slice(open, src.indexOf('</script>', open));
 const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
 const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
 const G = new Function('React', shim + upto +
-  'return { ratStep, ratNests, pathAt, pathLen, navField, navWay, RAT, CELL, CW, CH, CREATURES, HUNTERS, enemyFor, DEV, DEV_META, RA_KNOBS, makeLevel, boxReach, losClear, builtAt, FW, FH, FOG, SIGHT, VIS_RAYS, fogReveal, visPoly, nestFog };')({ createElement: () => {} });
-const { ratStep, navField, navWay, pathAt, pathLen, RAT, CELL, CW, CREATURES, HUNTERS, enemyFor, DEV, DEV_META, RA_KNOBS, makeLevel, boxReach, losClear, builtAt, FW, FH, FOG, SIGHT, VIS_RAYS, fogReveal, visPoly, nestFog } = G;
+  'return { ratStep, ratFooting, ratSpread, ratNests, pathAt, pathLen, navField, navWay, RAT, CELL, CW, CH, CREATURES, HUNTERS, enemyFor, DEV, DEV_META, RA_KNOBS, makeLevel, boxReach, losClear, builtAt, FW, FH, FOG, SIGHT, VIS_RAYS, fogReveal, visPoly, nestFog };')({ createElement: () => {} });
+const { ratStep, ratFooting, ratSpread, navField, navWay, pathAt, pathLen, RAT, CELL, CW, CREATURES, HUNTERS, enemyFor, DEV, DEV_META, RA_KNOBS, makeLevel, boxReach, losClear, builtAt, FW, FH, FOG, SIGHT, VIS_RAYS, fogReveal, visPoly, nestFog } = G;
 
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
@@ -218,6 +218,53 @@ function run(g, e, secs, env, watch) {
     if (Math.abs(e.x - x0) < 0.01) still++;
   }
   check('with a job on it barely stops (a frame to pick its way, no rests)', still <= 6, still);
+}
+
+// ---- v95: no walking on air, webs are ground, and loose rats spread out ----
+{
+  // a floor with a pit 60 wide in the middle: the way to the far side goes over the pit.
+  // Following it, the rat must never be in path mode (walking) with nothing under it: it
+  // jumps, or it falls in and climbs out, but it never floats.
+  const g = grid(300, 100, (x, y) => (y >= 80 && !(x >= 120 && x < 180 && y < 96)) || x < 2 || x > 297);
+  const F = navField((x, y) => g.solidCell(x, y), 500, 155, 70);
+  const e = rat(160, 156.5);
+  let floating = 0, got = false, inside = 0;
+  for (let t = 0; t < 10 && !got; t += 1 / 60) {
+    const way = navWay(F, e.x, e.y, 1);
+    ratStep(e, { solidCell: g.solidCell, rnd: mkRnd(9), goal: way && way.dist > 2 ? way : { x: 500, y: 156 }, hunting: true,
+      follow: !!way, air: !!(way && way.air && way.dist > 2) }, 1 / 60);
+    if (e.ra.mode === 'path' && !ratFooting(e.x, e.y, g.solidCell)) floating++;
+    if (inRock(g, e.x, e.y)) inside++;
+    if (Math.hypot(e.x - 500, e.y - 156) < 12) got = true;
+  }
+  check('over a pit it never walks on thin air', floating === 0, floating);
+  check('and still gets to the far side', got, { x: e.x, y: e.y });
+  check('without going through rock', inside === 0, inside);
+  // the same pit with a web line across it at floor height: now the rat runs over on the web
+  const L = { a0x: 236, a0y: 157, b0x: 364, b0y: 157 };
+  const onWeb = (x, y) => { const vx = L.b0x - L.a0x, u = Math.max(0, Math.min(1, (x - L.a0x) / vx));
+    return Math.hypot(L.a0x + vx * u - x, L.a0y - y) < 3; };
+  const Fw = navField((x, y) => g.solidCell(x, y), 500, 155, 70, onWeb);
+  const r2 = rat(160, 156.5);
+  let low = 0, got2 = false;
+  for (let t = 0; t < 10 && !got2; t += 1 / 60) {
+    const way = navWay(Fw, r2.x, r2.y, 1);
+    ratStep(r2, { solidCell: g.solidCell, rnd: mkRnd(9), goal: way && way.dist > 2 ? way : { x: 500, y: 156 }, hunting: true,
+      follow: !!way, air: !!(way && way.air && way.dist > 2), onWeb }, 1 / 60);
+    if (r2.x > 250 && r2.x < 350 && r2.y > 166) low++;
+    if (Math.hypot(r2.x - 500, r2.y - 156) < 12) got2 = true;
+  }
+  check('with a web line across, it runs over on the web (never drops into the pit)', got2 && low === 0, { got2, low, x: r2.x, y: r2.y });
+  check('a web line is footing, open air is not', ratFooting(300, 157, g.solidCell, onWeb) && !ratFooting(300, 140, g.solidCell, onWeb));
+  // ratSpread: pushes away from close rats only, harder the closer
+  const a = { x: 0, y: 0 }, near = { x: 5, y: 0 }, mid = { x: 15, y: 0 }, far = { x: 50, y: 0 };
+  const s1 = ratSpread(a, [a, near], 30), s2 = ratSpread(a, [a, mid], 30), s3 = ratSpread(a, [a, far], 30);
+  check('a close rat pushes it away', s1.x < 0 && Math.abs(s1.y) < 1e-9, s1);
+  check('harder the closer', s1.x < s2.x && s2.x < 0, [s1.x, s2.x]);
+  check('a far rat does not', s3.x === 0 && s3.y === 0);
+  const on = ratSpread({ x: 0, y: 0, phase: 2 }, [{ x: 0, y: 0 }], 30);
+  check('two on the same spot still get pushed apart', Math.hypot(on.x, on.y) > 0.9, on);
+  check('the spread is a Dev range', DEV.raSpreadLo > 0 && DEV.raSpreadHi >= DEV.raSpreadLo);
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall rat checks passed');

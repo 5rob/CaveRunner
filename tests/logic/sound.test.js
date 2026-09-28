@@ -80,12 +80,13 @@ check('a hard push rustles louder than a slow one', rustleStep({ t: 0 }, 0.016, 
 // the engine is inert under Node (no audio): calls are harmless no-ops
 SFX.cast([blankShot(MODS.bolt, 0)], 0, 0); SFX.ui('coin'); SFX.tick();
 check('engine does nothing without audio', SFX.ready === false && SFX.stats.errors.length === 0, SFX.stats);
-const volKeys = ['vol', 'amb', 'jetVol', 'vSpell', 'vBoom', 'vHit', 'vEnemy', 'vEnemyFire', 'vWorld', 'vStep', 'vUi'];
+const volKeys = ['vol', 'amb', 'jetVol', 'vSpell', 'vBoom', 'vHit', 'vEnemy', 'vEnemyFire', 'vWorld', 'vDrip', 'vStep', 'vUi'];
 check('a volume knob for each kind of sound, in the Sound group', volKeys.every(k => DEV_META.some(m => m.k === k && m.g === 'sound') && DEV[k] > 0),
   volKeys.filter(k => !DEV_META.some(m => m.k === k)));
 const strayFx = SFX.FX_NAMES.filter(n => !volKeys.includes(fxVolKey(n)));
 check('every fx sound answers to a volume knob', SFX.FX_NAMES.length > 30 && !strayFx.length, strayFx);
 check('footsteps, UI and the jet ignition sit on their own knobs', fxVolKey('step') === 'vStep' && fxVolKey('open') === 'vUi' && fxVolKey('ignite') === 'jetVol' && fxVolKey('shatter') === 'vWorld');
+check('drips have their own knob', fxVolKey('drip') === 'vDrip' && fxVolKey('sizzle') === 'vDrip' && fxVolKey('splash') === 'vDrip' && DEV_META.some(m => m.k === 'vDrip'));
 check('volume knobs in the Dev panel', DEV_META.some(m => m.k === 'vol') && DEV_META.some(m => m.k === 'amb') && DEV.vol > 0);
 
 console.log(fail ? `\n${fail} failed` : `\n${pass} passed, 0 failed`);

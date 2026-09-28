@@ -24,7 +24,7 @@ check('a bare bolt shows no deltas', ['bolt'], 0, ['dmg 1', 'mana 5', 'delay 0.3
 check('damage plus is credited to the group', ['dmg_up', 'bolt'], 0,
   ['dmg 2.5 +1.5(up)', 'mana 10 +5(down)']);
 check('heavy shot shows the speed it costs', ['heavy', 'bolt'], 0,
-  ['dmg 2.5 +1.5(up)', 'speed 189 −351(down)']);
+  ['dmg 2.5 +1.5(up)', 'speed 196 −364(down)']);
 check('homing shows up as a gained trait', ['homing', 'bolt'], 0, ['homing 3.5 +3.5(up)']);
 check('scatter counts the extra pellets', ['scatter', 'bolt'], 0,
   ['shots 3 +2(up)', 'spread 18', 'dmg 1.65 +0.65(up)']);

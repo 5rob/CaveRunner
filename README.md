@@ -42,7 +42,7 @@ bones clatter); vents hiss before they roar, mushrooms boing, tendrils whip, res
 gong, dark matter warbles, and the eyes in the dark whisper. Your gun clicks when it's
 recharged, critical hits ring, enemy shots fizzle on rock, and the bag, shop cards and gun
 swaps all have small UI sounds. Volume knobs are in the ⚙️ panel under Sound: overall, ambience, jetpack, your spells,
-explosions, bullet hits, enemy fire, creature voices, world/props, footsteps and UI.
+explosions, bullet hits, enemy fire, creature voices, world/props, drips, footsteps and UI.
 
 **Your run saves itself.** Every couple of seconds, and whenever you put the app away, the
 run is saved: floor, guns, bag, perks, gold and health, and the cave itself — what you have
@@ -332,7 +332,9 @@ Sixteen of them, named after Noita's, and they do not all behave the same way:
   drops its own gold plus anything it was carrying; kill a nest (dig down to it, or blast
   it) and it drops 60 gold plus everything its rats brought home. Left alone, rats scurry
   about near their nest in little bursts; once they're after something they run flat out,
-  finding their way round walls, up rock faces and over gaps.
+  finding their way round walls, up rock faces and over gaps — they jump gaps and drop off
+  ledges (they can't walk on air), and they'll happily run along a spider's web line.
+  A pack out and about fans out round its nest rather than moving as one lump.
 - **Chasers** (Lohkare, Mato, Hurtta, Kobold, Konna) come at you and
   hurt you by reaching you. The Lohkare is slow and armoured; the Hurtta is not.
 - **Bombers** (Limanuljaska, Stendari) run at you and burst on contact, taking
@@ -422,6 +424,17 @@ a cave shooter. They come in a few shapes:
   (a slow starry sphere that eats rock, hauls creatures into it and grinds them, and swallows any enemy shot that comes near), **Teleport Bolt** and
   **Small Teleport Bolt** (harmless; wherever the bolt hits or runs out, you appear there — the small one is a short hop, and neither ever puts you inside rock), Pollen (puffs out, drifts to a stop and floats up, then homes on any creature that comes close, popping a tiny crater on whatever it touches), Nuke, Meteor, and twenty-odd more. **Plasma Beam**
   and **Luminous Drill** are instant: they hit along a line with no travel time.
+- **The cheap, common spells each have their own character**, after their Noita twins:
+  **Bolt** is a pink sparkle on a slight arc with a fading pink trail, nicking the rock
+  where it lands; **Spark** crackles along in a zig-zag shedding hot sparks; **Buckshot**
+  lobs five little green fireballs that skip once off rock and pop small holes;
+  **Spitter Bolt** is a pink glob that slows fast, droops and skitters off rock; **Bubble
+  Spark** is a slow glowing bubble that lights up the cave, bobs upward, bounces about
+  twenty times and pops; **Magic Arrow** is a green arrow on a long shallow arc trailing
+  green sparks, and it knocks creatures back; **Digging Bolt** is a short-range grinder in a
+  puff of blue smoke that throws out chips of the rock it chews; **Small Teleport Bolt** is
+  nothing but a streak of blue sparks; and **Explosion of Brimstone** sets things alight
+  and throws burning sparks (mind your feet).
 - **Static fields** stay where you cast them and work over time. Unstable Crystal is a
   proximity mine; Dormant Crystal sits harmless until another blast reaches it; Circle
   of Stillness leaves enemies crawling; Circle of Shielding swallows their fire; Circle
