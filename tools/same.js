@@ -9,7 +9,7 @@
 //
 // Exit code 1 if anything differs, is missing or is new. Needs a ref whose index.html was
 // built by esbuild (P1.2, eb44d37, or later); older ones are printed differently.
-// Delete it with tools/move.js once the refactor is done.
+// Delete it once the refactor is done.
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');

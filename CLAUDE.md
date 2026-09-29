@@ -73,7 +73,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v97**. Branch: `main` (release channel is `main`). The refactor works on
+Current version: **v98**. Branch: `main` (release channel is `main`). The refactor works on
 `refactor` and merges to `main` at the end of each phase (REFACTOR.md).
 
 ### The version number is not optional
