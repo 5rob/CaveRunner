@@ -350,6 +350,18 @@ What the code says about this phase (checked at the end of Phase 2):
       state (`mat`, `img`, `dimg`, `seen`, `enemies`, `bullets`, `fields`, `props`, `fire`,
       `p`, camera, timers…). In `Game`, replace the loose variables with `W.x` a few at a
       time. Reassigned `let`s become `W` properties. Commit per group.
+      How a step goes: `node tools/world.js <names>` rewrites every reference that resolves to
+      the closure variable (`x` → `W.x`, shorthand → `x: W.x`); move the declarations into
+      `makeWorld()` by hand; fix the same names in `tests/build.js`'s hook text; then
+      `node tests/determinism.js` (SAME), logic, smoke.
+  - [x] terrain: `mat`, `img`, `dimg`, `ore`, `burrow`, `terrainV` (first: the five inner `W` locals renamed, see the map)
+  - [ ] level layout: `start`, `portal`, `arrival`, `stock`, `rooms`, `zone`, `sconces`, `floor`, `levelSeed`, `levelOwned`, `roster`, `themeName`, `total`, `miniEdgeIdx`, `matterProps`, `ambKinds`, `plantW`
+  - [ ] the swapped lists: `enemies`, `pickups`, `props`
+  - [ ] fog: `seen`, `deepFog`
+  - [ ] fire: `fire`, `firePlants`, `fireArches`, `fireCarts`, `firePropN`, `firePropLast`, `fireLoop`, `fireN`, `fireVis`
+  - [ ] player, camera, clock: `p`, `pb`, `ghost`, `zfx`, `time`, `levelT`, `best`, `camX`, `camY`, `camReady`, `unitPx`, `viewW`, `viewH`, `flick`, `torchR`, `visPts`, `leanX`…
+  - [ ] the run's lists: `bullets`, `enemyShots`, `smoke`, `sparks`, … (never replaced)
+  - [ ] frame timers and loops private to `step`/`decorStep`/`plantGlow`/`dropOre`
 - [ ] **P3.3 Test hooks from the world object.** `window.__lvl` becomes `W` (plus the
       helper functions), set when a test-build flag is on, instead of `tests/build.js`
       string-swapping code into the closure. Keep every name the browser suites use today
@@ -669,3 +681,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | handover | Phase 3 notes written from the code (closure shape, landmarks, the test hook reads closure names so P3.2 must update it in step, why `move.js`/`same.js` don't fit, a determinism check to weigh in P3.1). HANDOVER flakes list + next steps; CLAUDE.md branch line. | — |
 | 2026-09-29 | Release v98 | Full suite on a snapshot of the v98 commit: only `jelly` spit failed (passed alone on the 3rd run, as on v96). `tools/move.js` deleted (D10). `src/version.js` → v98, merged `refactor` → `main`, pushed. CI run 36542142525 green, `version.txt` = v98; `main` merged back into `refactor`. | logic 33/33; browser 44/44 after re-runs |
 | 2026-09-29 | Phase 3, P3.1 | **Game map** written (from a scope-aware pass over the closure). Determinism probe built and kept: `tests/determinism.js` (D14), stable 5/5 and catches a one-number change. Where `W` stops is D15. No code changes. | probe SAME |
+| 2026-09-29 | Phase 3, P3.2 (1) | `game/world.js` `makeWorld()`; `const W = makeWorld()` first in the effect. Five inner locals named `W` renamed (`wit`, `ln`, `ar`). Terrain group to `W` with the new `tools/world.js` (65 references); hook text in `tests/build.js` follows. `W` keeps its name in the bundle. | probe SAME, logic 33/33, smoke ok |

@@ -31,16 +31,16 @@ const SANDBOX =
   "      const fy = (SHOP_TOP - SHOP_ROOF) * CELL - 160;   /* SHOP_* are cell rows */" +
   "      const x0 = Math.max(2, Math.floor((cx - w / 2) / CELL)), x1 = Math.min(CW - 3, Math.ceil((cx + w / 2) / CELL));" +
   "      const y0 = Math.max(2, Math.floor((fy - h) / CELL)), fr = fy / CELL, y1 = Math.min(CH - 3, fr + 6);" +
-  "      const d = img.data, dd = dimg.data;" +
+  "      const d = W.img.data, dd = W.dimg.data;" +
   "      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {" +
   "        const i = y * CW + x, k = i * 4;" +
-  "        dd[k + 3] = 0; if (ore) ore[i] = 0; fire.fuel[i] = 0; fire.t[i] = 0;" +
-  "        if (y < fr) { mat[i] = 0; d[k + 3] = 0; }" +
-  "        else { mat[i] = BRICK; d[k] = 132; d[k + 1] = 99; d[k + 2] = 71; d[k + 3] = 255; } }" +
+  "        dd[k + 3] = 0; if (W.ore) W.ore[i] = 0; fire.fuel[i] = 0; fire.t[i] = 0;" +
+  "        if (y < fr) { W.mat[i] = 0; d[k + 3] = 0; }" +
+  "        else { W.mat[i] = BRICK; d[k] = 132; d[k + 1] = 99; d[k + 2] = 71; d[k + 3] = 255; } }" +
   "      if (o.roof) for (let y = Math.max(0, y0 - 6); y < y0; y++) for (let x = x0; x <= x1; x++) {" +
-  "        const i = y * CW + x, k = i * 4; mat[i] = BRICK; d[k] = 132; d[k + 1] = 99; d[k + 2] = 71; d[k + 3] = 255; dd[k + 3] = 0; }" +
-  "      tctx.putImageData(img, 0, 0, x0, Math.max(0, y0 - 6), x1 - x0 + 1, y1 - y0 + 7);" +
-  "      dctx.putImageData(dimg, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);" +
+  "        const i = y * CW + x, k = i * 4; W.mat[i] = BRICK; d[k] = 132; d[k + 1] = 99; d[k + 2] = 71; d[k + 3] = 255; dd[k + 3] = 0; }" +
+  "      tctx.putImageData(W.img, 0, 0, x0, Math.max(0, y0 - 6), x1 - x0 + 1, y1 - y0 + 7);" +
+  "      dctx.putImageData(W.dimg, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);" +
   "      enemies.length = 0; props.length = 0; pickups.length = 0; bullets.length = 0;" +
   "      enemyShots.length = 0; webs.length = 0; silk.length = 0; strings.length = 0; fields.length = 0; dparts.length = 0; amb.length = 0;" +
   "      for (let y = Math.floor(y0 * CELL / FOG_U); y <= Math.floor(y1 * CELL / FOG_U); y++)" +
@@ -53,13 +53,13 @@ const SANDBOX =
 
 const HOOK_LVL = SANDBOX +
   "    window.__lvl = { sandbox: __sandbox, placeProp: __placeProp, get pickups(){return pickups}, get enemies(){return enemies}, " +
-  "bullets, p, get mat(){return mat}, get stock(){return stock}, coins, get floor(){return floor}, get seed(){return levelSeed}, hurt, get bhLoops(){return bhLoops}, " +
+  "bullets, p, get mat(){return W.mat}, get stock(){return stock}, coins, get floor(){return floor}, get seed(){return levelSeed}, hurt, get bhLoops(){return bhLoops}, " +
   "get rooms(){return rooms}, get pb(){return pb}, maxHp, " +
   "get roster(){return roster}, get theme(){return themeName}, " +
   "get arrival(){return arrival}, get start(){return start}, get portal(){return portal}, " +
-  "enemyShots, sparks, webs, silk, strings, fields, beams, arcs, flashes, dig, explode, get ore(){return ore}, motes, smoke, get sconces(){return sconces}, get props(){return props}, dparts, amb, clouds, rings, get zfx(){return zfx}, " +
+  "enemyShots, sparks, webs, silk, strings, fields, beams, arcs, flashes, dig, explode, get ore(){return W.ore}, motes, smoke, get sconces(){return sconces}, get props(){return props}, dparts, amb, clouds, rings, get zfx(){return zfx}, " +
   "get rec(){return REC}, get rt(){return RT}, recSample, " +
-  "get fire(){return fire}, get burrow(){return burrow}, ignite, setAlight, youAlight, get dimg(){return dimg}, get zone(){return zone}, " +
+  "get fire(){return fire}, get burrow(){return W.burrow}, ignite, setAlight, youAlight, get dimg(){return W.dimg}, get zone(){return zone}, " +
   "world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y }, " +
   "fog: { get seen(){return seen}, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal, paint: paintFog }, " +
   "light: { get flick(){return flick}, get r(){return torchR}, " +

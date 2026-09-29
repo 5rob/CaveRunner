@@ -45,6 +45,7 @@ import {
   VIS_RAYS, fogReveal, fogStart, losClear, nestFog, rayDist, visPoly
 } from '../world/vision.js';
 import { builtAt } from '../world/zones.js';
+import { makeWorld } from './world.js';
 
 // Game is layer 5 and may not import from ui/ (layer 6), so it takes its React helpers
 // straight off the global React, as ui/h.js does (REFACTOR.md, D13).
@@ -78,6 +79,7 @@ export const NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false 
 export function Game({ input }) {
   const cv = useRef(null);
   useEffect(() => {
+    const W = makeWorld();                           // the live level (game/world.js)
     const c = cv.current, ctx = c.getContext('2d');
     const terrain = document.createElement('canvas');
     terrain.width = CW; terrain.height = CH;
@@ -106,9 +108,9 @@ export function Game({ input }) {
     const mini32 = new Uint32Array(miniImg.data.buffer);
     let miniEdgeIdx = [];
 
-    let mat, img, start, portal, enemies, pickups, stock, arrival, total, floor = 1, zone = null;
+    let start, portal, enemies, pickups, stock, arrival, total, floor = 1, zone = null;
     const natural = (x, y) => !builtAt(zone, x, y);      // jellies keep to the natural zones
-    let ore = null, oreBank = 0;                     // gold seams in the rock, and the loose change
+    let oreBank = 0;                                 // the loose change from gold seams dug out
     let levelSeed = 0, levelOwned = [];              // what made this cave, for the autosave
     // sound: the jetpack's roar, each live Black Hole's drone, the low-health heartbeat
     let jetLoop = null, beatT = 0, wasEmpty = false;
@@ -136,7 +138,7 @@ export function Game({ input }) {
     // ---- level decoration (see DECOR): the props, the decoration layer, their particles,
     // the theme's ambience, spore clouds and noise rings. zfx is what the props did to you
     // this frame (slowed, slick, holding a vine, gravity flipped), read by next frame's steering.
-    let props = [], ambKinds = [], dimg = null;
+    let props = [], ambKinds = [];
     let plantW = 255, pgArt = null, pgC = null, pgCtx = null;   // the jellies' plant glow (plantGlow)
     const decoC = document.createElement('canvas');
     decoC.width = CW; decoC.height = CH;
@@ -177,9 +179,7 @@ export function Game({ input }) {
     // the spiders' silk: webs are the lines they travel on (they stay), silk the strings in
     // flight at you, strings the ones stuck to you (each slows you; pull one too long, it snaps)
     const webs = [], silk = [], strings = [];
-    // rat burrows (a mask over each nest's room and tunnel), the rock's change count, and the
-    // shared way-to-you field the hunting rats follow (see ratSolid / navFor)
-    let burrow = null, terrainV = 0;
+    // the shared way-to-you field the hunting rats follow (see ratSolid / navFor)
     const navYou = {};
     let webCheck = 0, webLetGo = 0;
     // how far a point is from a web line (anchor to anchor, as drawn), and where on it is closest
@@ -217,7 +217,7 @@ export function Game({ input }) {
     }
     function recReset() {
       REC.t = 0; REC.acc = 0; REC.snaps = []; REC.patches = []; REC.dirty = []; REC.fogLog = [];
-      REC.tBase = img.data.slice(); REC.dBase = dimg ? dimg.data.slice() : null;
+      REC.tBase = W.img.data.slice(); REC.dBase = W.dimg ? W.dimg.data.slice() : null;
       REC.fogBase = seen.slice(); REC.fogPrev = seen.slice();
       REC.deathT = -1; REC.done = false;
       RT.n = 0; RT.at = -1;
@@ -250,7 +250,7 @@ export function Game({ input }) {
       // terrain changed since the last snapshot, as it stands now
       if (REC.dirty.length) {
         for (const [w, x, y, ww, hh] of rpMerge(REC.dirty, CW, CH)) {
-          const src = w === 't' ? img : dimg;
+          const src = w === 't' ? W.img : W.dimg;
           if (src) REC.patches.push({ t: REC.t, c: w, x, y, w: ww, h: hh, px: rpCut(src.data, CW, x, y, ww, hh) });
         }
         REC.dirty.length = 0;
@@ -316,8 +316,8 @@ export function Game({ input }) {
       for (let n = 0; n < L.length && L[n] <= T; n += 3) RT.fog[L[n + 1]] = L[n + 2];
     }
     function drawReplay(V) {
-      const W = input.current.witness;
-      V.t = clamp(V.t, W.t0, W.t1);
+      const wit = input.current.witness;
+      V.t = clamp(V.t, wit.t0, wit.t1);
       const F = rpFrame(REC.snaps, V.t);
       rpTerrain(V.t);
       if (!V.fog) RT.fog.fill(1);          // fog off: everything counts as seen, and no overlay
@@ -360,7 +360,7 @@ export function Game({ input }) {
         back.rooms.forEach(i => { if (level.rooms && level.rooms[i]) level.rooms[i].taken = true; });
         if (back.pickups) level.pickups = back.pickups;
       }
-      mat = level.mat; img = level.img; ore = level.ore || null;
+      W.mat = level.mat; W.img = level.img; W.ore = level.ore || null;
       // minimap outlines for this floor: scan the real terrain in MINI_D x MINI_D blocks;
       // a block is an outline if a wall runs through it (it holds both rock and open), which
       // traces the cave walls continuously at a much finer grain than the fog grid.
@@ -373,7 +373,7 @@ export function Game({ input }) {
           for (let dx = 0; dx < MINI_D; dx++) {
             const tx = mx * MINI_D + dx;
             if (tx >= CW) break;
-            if (mat[ty * CW + tx]) solid++; else open++;
+            if (W.mat[ty * CW + tx]) solid++; else open++;
           }
         }
         if (solid && open) miniEdgeIdx.push(my * MMW + mx);
@@ -381,9 +381,9 @@ export function Game({ input }) {
       start = level.start; portal = level.portal; arrival = level.arrival;
       enemies = level.enemies; pickups = level.pickups; stock = level.stock;
       rooms = level.rooms || []; zone = level.zone || null;
-      props = level.props || []; ambKinds = level.amb || []; dimg = level.dimg;
-      plantW = plantWhite(img.data, dimg && dimg.data);    // the jellies' plant glow keys off this
-      dctx.putImageData(dimg, 0, 0);
+      props = level.props || []; ambKinds = level.amb || []; W.dimg = level.dimg;
+      plantW = plantWhite(W.img.data, W.dimg && W.dimg.data);    // the jellies' plant glow keys off this
+      dctx.putImageData(W.dimg, 0, 0);
       dparts.length = amb.length = clouds.length = rings.length = devils.length = 0;
       zfx = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
       {
@@ -402,13 +402,13 @@ export function Game({ input }) {
       burns.length = 0;
       webs.length = silk.length = strings.length = 0;
       // the rat burrows (see ratSolid): each room and tunnel, bar nothing — the hole too
-      burrow = null; navYou.F = null;
+      W.burrow = null; navYou.F = null;
       if (level.nests && level.nests.length) {
-        burrow = new Uint8Array(CW * CH);
+        W.burrow = new Uint8Array(CW * CH);
         for (const n of level.nests) {
           const mark = (x, y, r) => {
             for (let yy = Math.floor(y - r); yy <= y + r; yy++) for (let xx = Math.floor(x - r); xx <= x + r; xx++)
-              if (xx >= 0 && yy >= 0 && xx < CW && yy < CH && Math.hypot(xx + 0.5 - x, yy + 0.5 - y) <= r && !mat[yy * CW + xx]) burrow[yy * CW + xx] = 1;
+              if (xx >= 0 && yy >= 0 && xx < CW && yy < CH && Math.hypot(xx + 0.5 - x, yy + 0.5 - y) <= r && !W.mat[yy * CW + xx]) W.burrow[yy * CW + xx] = 1;
           };
           mark(n.x + 0.5, n.y + 0.5, n.r + 3);
           for (const q of n.path) mark(q.x + 0.5, q.y + 0.5, 2.6);
@@ -417,7 +417,7 @@ export function Game({ input }) {
       fire = fireNew(level.fuel || new Uint8Array(CW * CH));
       firePropN = -1;                         // fireFrame lists the plants and carts that burn
       p.burn = 0; p.burnAcc = 0;
-      tctx.putImageData(img, 0, 0);
+      tctx.putImageData(W.img, 0, 0);
       bgctx.putImageData(level.bgImg, 0, 0);
       p.x = start.x; p.y = start.y; p.vx = 0; p.vy = 0;
       p.fuel = 1; p.empty = false; p.kick = 0;
@@ -528,7 +528,7 @@ export function Game({ input }) {
 
     // ---- terrain queries ----
     const solidCell = (cx, cy) =>
-      cx < 0 || cy < 0 || cx >= CW || cy >= CH || mat[cy * CW + cx] !== 0;
+      cx < 0 || cy < 0 || cx >= CW || cy >= CH || W.mat[cy * CW + cx] !== 0;
     const solidAt = (x, y) => solidCell(Math.floor(x / CELL), Math.floor(y / CELL));
     const boxHit = (x, y) => {
       const x0 = Math.floor(x / CELL), x1 = Math.floor((x + PW - 0.001) / CELL);
@@ -536,7 +536,7 @@ export function Game({ input }) {
       for (let cy = y0; cy <= y1; cy++) {
         if (cy < 0 || cy >= CH) return true;
         for (let cx = x0; cx <= x1; cx++) {
-          if (cx < 0 || cx >= CW || mat[cy * CW + cx]) return true;
+          if (cx < 0 || cx >= CW || W.mat[cy * CW + cx]) return true;
         }
       }
       return false;
@@ -649,21 +649,21 @@ export function Game({ input }) {
     // ---- rats ----
     // A rat's view of the terrain: rock, plus the burrows (so it runs over a hole rather than
     // falling in and wedging in a tunnel it only ever walks as a path). burrow is per floor.
-    const ratSolid = (cx, cy) => solidCell(cx, cy) || (burrow !== null && burrow[cy * CW + cx] === 1);
+    const ratSolid = (cx, cy) => solidCell(cx, cy) || (W.burrow !== null && W.burrow[cy * CW + cx] === 1);
     // a goal's distance field, kept on `o` and made again when the goal moves or the rock changes
     // a spider's web line under a rat's feet counts as ground: rats run along webs
     const onWebIn = list => (x, y) => { for (const L of list) if (webDist(L, x, y) < 3) return true; return false; };
     const ratOnWeb = onWebIn(webs);
     function navFor(o, goal, R) {
       // (the rock changing only counts once a second, or a drill would rebuild them every frame)
-      if (!o.F || (o.v !== terrainV && time - o.t > 1) || Math.hypot(goal.x - o.fx, goal.y - o.fy) > (o === navYou ? 12 : 6) ||
+      if (!o.F || (o.v !== W.terrainV && time - o.t > 1) || Math.hypot(goal.x - o.fx, goal.y - o.fy) > (o === navYou ? 12 : 6) ||
           (o === navYou && time - o.t > 0.4) || (o.wn !== webs.length && time - o.t > 1)) {
         // only the web lines that cross the field's square, so a floor of webs costs nothing
         const half = (R + 1) * NAV * CELL, near = webs.filter(L =>
           Math.max(L.a0x, L.b0x) > goal.x - half && Math.min(L.a0x, L.b0x) < goal.x + half &&
           Math.max(L.a0y, L.b0y) > goal.y - half && Math.min(L.a0y, L.b0y) < goal.y + half);
         o.F = navField(ratSolid, goal.x, goal.y, R, near.length ? onWebIn(near) : null);
-        o.v = terrainV; o.fx = goal.x; o.fy = goal.y; o.t = time; o.wn = webs.length;
+        o.v = W.terrainV; o.fx = goal.x; o.fy = goal.y; o.t = time; o.wn = webs.length;
       }
       return o.F;
     }
@@ -795,21 +795,21 @@ export function Game({ input }) {
       const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL;
       const minX = Math.max(0, Math.floor(cx0 - rc)), maxX = Math.min(CW - 1, Math.ceil(cx0 + rc));
       const minY = Math.max(0, Math.floor(cy0 - rc)), maxY = Math.min(CH - 1, Math.ceil(cy0 + rc));
-      const d = img.data;
+      const d = W.img.data;
       let changed = false, nOre = 0;
       for (let cy = minY; cy <= maxY; cy++)
         for (let cx = minX; cx <= maxX; cx++) {
           const i = cy * CW + cx;
-          if (!mat[i] || mat[i] === BED) continue;
+          if (!W.mat[i] || W.mat[i] === BED) continue;
           if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
-          if (ore && ore[i]) { ore[i] = 0; nOre++; }
+          if (W.ore && W.ore[i]) { W.ore[i] = 0; nOre++; }
           fire.fuel[i] = 0; fire.t[i] = 0;
-          mat[i] = 0; d[i * 4 + 3] = 0; changed = true;
+          W.mat[i] = 0; d[i * 4 + 3] = 0; changed = true;
         }
-      if (burrow) for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
-        if (burrow[cy * CW + cx] && Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) { burrow[cy * CW + cx] = 0; changed = true; }
-      if (changed) terrainV++;
-      if (changed) tctx.putImageData(img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
+      if (W.burrow) for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
+        if (W.burrow[cy * CW + cx] && Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) { W.burrow[cy * CW + cx] = 0; changed = true; }
+      if (changed) W.terrainV++;
+      if (changed) tctx.putImageData(W.img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
       unDeco(cx0, cy0, rc, minX, minY, maxX, maxY);
       if (nOre) dropOre(x, y, nOre);
     }
@@ -829,7 +829,7 @@ export function Game({ input }) {
     // wipe the decoration layer inside a cleared circle, so baked rubble, beams and pillars
     // go with the rock round them
     function unDeco(cx0, cy0, rc, minX, minY, maxX, maxY) {
-      const dd = dimg.data;
+      const dd = W.dimg.data;
       let changed = false;
       for (let cy = minY; cy <= maxY; cy++)
         for (let cx = minX; cx <= maxX; cx++) {
@@ -838,23 +838,23 @@ export function Game({ input }) {
           dd[k + 3] = 0; changed = true;
           fire.fuel[k >> 2] = 0; fire.t[k >> 2] = 0;
         }
-      if (changed) dctx.putImageData(dimg, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
+      if (changed) dctx.putImageData(W.dimg, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
     }
 
     // lay solid brick down, the opposite of dig()
     function paint(x, y, w, hh) {
       const x0 = Math.max(1, Math.round(x / CELL - w / 2)), x1 = Math.min(CW - 2, x0 + w);
       const y0 = Math.max(1, Math.round(y / CELL)), y1 = Math.min(CH - 2, y0 + hh);
-      const d = img.data;
+      const d = W.img.data;
       for (let cy = y0; cy < y1; cy++)
         for (let cx = x0; cx < x1; cx++) {
           const i = cy * CW + cx;
-          if (mat[i]) continue;
-          mat[i] = BRICK;
+          if (W.mat[i]) continue;
+          W.mat[i] = BRICK;
           const k = i * 4;
           d[k] = 132; d[k + 1] = 99; d[k + 2] = 71; d[k + 3] = 255;
         }
-      if (x1 > x0 && y1 > y0) tctx.putImageData(img, 0, 0, x0, y0, x1 - x0, y1 - y0);
+      if (x1 > x0 && y1 > y0) tctx.putImageData(W.img, 0, 0, x0, y0, x1 - x0, y1 - y0);
     }
 
     // ---- casting ----
@@ -1221,8 +1221,8 @@ export function Game({ input }) {
     function shotGrind(b, x, y) {
       if (b.look !== 'drill' || Math.random() < 0.5) return;
       const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
-      if (cx < 0 || cy < 0 || cx >= CW || cy >= CH || !mat[cy * CW + cx]) return;
-      const k = (cy * CW + cx) * 4, d = img.data, sp = Math.hypot(b.vx, b.vy) || 1;
+      if (cx < 0 || cy < 0 || cx >= CW || cy >= CH || !W.mat[cy * CW + cx]) return;
+      const k = (cy * CW + cx) * 4, d = W.img.data, sp = Math.hypot(b.vx, b.vy) || 1;
       sparks.push({ x, y, vx: -b.vx / sp * rnd(40, 110) + rnd(-50, 50), vy: -b.vy / sp * rnd(40, 110) - rnd(20, 70),
         life: rnd(0.4, 0.8), max: 0.8, c: 'rgb(' + d[k] + ',' + d[k + 1] + ',' + d[k + 2] + ')', size: rnd(1, 1.8), heavy: true });
     }
@@ -1294,19 +1294,19 @@ export function Game({ input }) {
     const growBox = (b, x, y) => { if (x < b[0]) b[0] = x; if (y < b[1]) b[1] = y; if (x > b[2]) b[2] = x; if (y > b[3]) b[3] = y; };
     function fireOut(i) {
       const x = i % CW, y = (i / CW) | 0, k = i * 4, r = Math.random();
-      if (mat[i]) {
-        const d = img.data;
+      if (W.mat[i]) {
+        const d = W.img.data;
         d[k] = 34 + r * 16; d[k + 1] = 28 + r * 12; d[k + 2] = 24 + r * 10;
         growBox(fireBox.t, x, y);
-      } else if (dimg) {
-        const dd = dimg.data;
+      } else if (W.dimg) {
+        const dd = W.dimg.data;
         if (r < 0.16) { const a = 30 + r * 120; dd[k] = a; dd[k + 1] = a * 0.9; dd[k + 2] = a * 0.85; }
         else dd[k + 3] = 0;
         growBox(fireBox.d, x, y);
       }
     }
     function flushFire() {
-      for (const [b, c, im] of [[fireBox.t, tctx, img], [fireBox.d, dctx, dimg]]) {
+      for (const [b, c, im] of [[fireBox.t, tctx, W.img], [fireBox.d, dctx, W.dimg]]) {
         if (b[2] < b[0] || !im) continue;
         c.putImageData(im, 0, 0, b[0], b[1], b[2] - b[0] + 1, b[3] - b[1] + 1);
         b[0] = CW; b[1] = CH; b[2] = -1; b[3] = -1;
@@ -1404,9 +1404,9 @@ export function Game({ input }) {
           for (let k = 0; k <= n; k += 2) { const q = archAt(pr, k / n); if (fireNear(fire, q.x, q.y, 2)) { catchArch(pr, k / n); break; } }
         }
         for (let w = webs.length - 1; w >= 0; w--) {
-          const W = webs[w];
+          const ln = webs[w];
           for (let u = 0; u <= 1; u += 0.25)
-            if (fireNear(fire, W.a0x + (W.b0x - W.a0x) * u, W.a0y + (W.b0y - W.a0y) * u, 2)) { burnWeb(w); break; }
+            if (fireNear(fire, ln.a0x + (ln.b0x - ln.a0x) * u, ln.a0y + (ln.b0y - ln.a0y) * u, 2)) { burnWeb(w); break; }
         }
         for (const pr of fireCarts) if (!pr.gone && fireNear(fire, pr.x, pr.y - 4, 8)) blowProp(pr);
       }
@@ -1501,11 +1501,11 @@ export function Game({ input }) {
       const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL, ring = rc + 2.5;
       const minX = Math.max(0, Math.floor(cx0 - ring)), maxX = Math.min(CW - 1, Math.ceil(cx0 + ring));
       const minY = Math.max(0, Math.floor(cy0 - ring)), maxY = Math.min(CH - 1, Math.ceil(cy0 + ring));
-      const d = img.data;
+      const d = W.img.data;
       let debris = 0, nOre = 0;
       for (let cy = minY; cy <= maxY; cy++) {
         for (let cx = minX; cx <= maxX; cx++) {
-          const i = cy * CW + cx, m = mat[i];
+          const i = cy * CW + cx, m = W.mat[i];
           if (!m) continue;
           const dist = Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0);
           const k = i * 4;
@@ -1517,21 +1517,21 @@ export function Game({ input }) {
                 vx: (cx - cx0) / rc * 220 * f, vy: ((cy - cy0) / rc * 220 - 140) * f,
                 life: 0.8 + Math.random() * 0.4, max: 1.2, c: `rgb(${d[k]},${d[k + 1]},${d[k + 2]})`, size: 2, heavy: true });
             }
-            if (ore && ore[i]) { ore[i] = 0; nOre++; }
+            if (W.ore && W.ore[i]) { W.ore[i] = 0; nOre++; }
             fire.fuel[i] = 0; fire.t[i] = 0;
-            mat[i] = 0;
+            W.mat[i] = 0;
             d[k + 3] = 0;
           } else if (dist <= ring) {
             d[k] *= 0.72; d[k + 1] *= 0.72; d[k + 2] *= 0.72;   // scorch the crater edge
           }
         }
       }
-      tctx.putImageData(img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
+      tctx.putImageData(W.img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
       unDeco(cx0, cy0, rc, minX, minY, maxX, maxY);
       if (nOre) dropOre(x, y, nOre);
-      if (burrow) for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
-        if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) burrow[cy * CW + cx] = 0;
-      terrainV++;
+      if (W.burrow) for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
+        if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) W.burrow[cy * CW + cx] = 0;
+      W.terrainV++;
       // a blast knocks the props about: carts and pods go off, pillars crack, icicles let go
       for (const pr of props) {
         if (pr.gone || Math.abs(pr.x - x) > R + 40 || Math.abs(pr.y - y) > R + 40) continue;
@@ -1646,7 +1646,7 @@ export function Game({ input }) {
       // finds out within half a second that the rock it hung off has been blown away
       for (let i = decoFrame % 30; i < props.length; i += 30) {
         const pr = props[i];
-        if (!pr.gone && !pr.fall && (pr.anc || pr.on) && !propAnchored(pr, mat)) { pr.fall = true; pr.vy = 0; pr.anc = null; pr.on = null; }
+        if (!pr.gone && !pr.fall && (pr.anc || pr.on) && !propAnchored(pr, W.mat)) { pr.fall = true; pr.vy = 0; pr.anc = null; pr.on = null; }
       }
       for (let i = props.length - 1; i >= 0; i--) {
         const pr = props[i];
@@ -1964,7 +1964,7 @@ export function Game({ input }) {
         pd = pgCtx.getImageData(0, 0, w, h).data;
       }
       // compose the art: rock over the decoration layer, the plants over both
-      const T = img.data, D = dimg ? dimg.data : null, A = pgArt;
+      const T = W.img.data, D = W.dimg ? W.dimg.data : null, A = pgArt;
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
         const si = ((by0 + y) * CW + bx0 + x) * 4, o = (y * w + x) * 4;
         let r = 0, g = 0, b = 0, a = 0;
@@ -2129,25 +2129,25 @@ export function Game({ input }) {
       } else if (climbing && zfx.arch && p.kick <= 0) {
         // hanging from an arched vine: the stick runs you along its curve, hands on it. Push
         // down (not along it) to let go.
-        const W = zfx.arch, hy = p.y + WEB_HAND, q = archNear(W, pcx0, hy);
-        const a = W.arc[q.k], b = W.arc[q.k + 1], ul = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        const ar = zfx.arch, hy = p.y + WEB_HAND, q = archNear(ar, pcx0, hy);
+        const a = ar.arc[q.k], b = ar.arc[q.k + 1], ul = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
         const ux = (b[0] - a[0]) / ul, uy = (b[1] - a[1]) / ul;
         const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
         if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) { webLetGo = 0.35; p.vy = 40; }
         else {
-          const v = along * (W.climb || (W.climb = kr('arClimb'))) * tied;
+          const v = along * (ar.climb || (ar.climb = kr('arClimb'))) * tied;
           p.vx = approach(p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
           p.vy = approach(p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
         }
       } else if (climbing && zfx.web && p.kick <= 0) {
         // hanging from a spider's web line: the stick runs you along it, hands on the line.
         // Push down (not along it) to let go.
-        const W = zfx.web, wl = Math.hypot(W.b0x - W.a0x, W.b0y - W.a0y) || 1;
-        let ux = (W.b0x - W.a0x) / wl, uy = (W.b0y - W.a0y) / wl;
+        const ln = zfx.web, wl = Math.hypot(ln.b0x - ln.a0x, ln.b0y - ln.a0y) || 1;
+        let ux = (ln.b0x - ln.a0x) / wl, uy = (ln.b0y - ln.a0y) / wl;
         const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
         if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) { webLetGo = 0.35; p.vy = 40; }
         else {
-          const v = along * (W.climb || (W.climb = spr('webClimb'))) * tied, hy = p.y + WEB_HAND, q = webNear(W, pcx0, hy);
+          const v = along * (ln.climb || (ln.climb = spr('webClimb'))) * tied, hy = p.y + WEB_HAND, q = webNear(ln, pcx0, hy);
           p.vx = approach(p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
           p.vy = approach(p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
         }
@@ -4294,9 +4294,9 @@ export function Game({ input }) {
       if (rv && REC.done) {                   // the death replay: its own clock, the world stays put
         if (rv.playing) {
           rv.t += dt * rv.speed;
-          const W = input.current.witness;
-          if (rv.t >= W.t1) {                  // the end: round again, or stop there
-            if (rv.loop) rv.t = W.t0; else { rv.t = W.t1; rv.playing = false; }
+          const wit = input.current.witness;
+          if (rv.t >= wit.t1) {                  // the end: round again, or stop there
+            if (rv.loop) rv.t = wit.t0; else { rv.t = wit.t1; rv.playing = false; }
           }
         }
         SFX.tick();

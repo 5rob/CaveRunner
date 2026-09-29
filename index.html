@@ -10410,6 +10410,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { x: (F.x0 + i + 0.5) * NAV * CELL, y: (F.y0 + j + 0.5) * NAV * CELL, dist, air };
   }
 
+  // src/game/world.js
+  function makeWorld() {
+    return {
+      // ---- terrain ----
+      mat: null,
+      img: null,
+      // the rock: solid cells, and its pixels (drawn to the terrain canvas)
+      dimg: null,
+      // the decoration layer's pixels (walk-through: moss, beams, rubble)
+      ore: null,
+      // gold seams in the rock (per terrain pixel)
+      // rat burrows (a mask over each nest's room and tunnel), and the rock's change count
+      // (the rats' way-finding fields rebuild when it moves; see ratSolid / navFor)
+      burrow: null,
+      terrainV: 0
+    };
+  }
+
   // src/game/Game.js
   var { useRef: useRef2, useEffect: useEffect2 } = React;
   var h2 = React.createElement;
@@ -10440,6 +10458,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function Game({ input }) {
     const cv = useRef2(null);
     useEffect2(() => {
+      const W = makeWorld();
       const c = cv.current, ctx = c.getContext("2d");
       const terrain = document.createElement("canvas");
       terrain.width = CW;
@@ -10466,9 +10485,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const miniImg = new ImageData(MMW, MMH);
       const mini32 = new Uint32Array(miniImg.data.buffer);
       let miniEdgeIdx = [];
-      let mat, img, start, portal, enemies, pickups, stock, arrival, total, floor = 1, zone = null;
+      let start, portal, enemies, pickups, stock, arrival, total, floor = 1, zone = null;
       const natural = (x, y) => !builtAt(zone, x, y);
-      let ore = null, oreBank = 0;
+      let oreBank = 0;
       let levelSeed = 0, levelOwned = [];
       let jetLoop = null, beatT = 0, wasEmpty = false;
       const jetSt = { cut: 0, onT: 0, start: false };
@@ -10509,7 +10528,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const torchP = [];
       const motes = [];
       let portalAcc = 0;
-      let props = [], ambKinds = [], dimg = null;
+      let props = [], ambKinds = [];
       let plantW = 255, pgArt = null, pgC = null, pgCtx = null;
       const decoC = document.createElement("canvas");
       decoC.width = CW;
@@ -10536,7 +10555,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       let fire = fireNew(new Uint8Array(CW * CH)), firePlants = [], fireArches = [], fireCarts = [], firePropN = -1, firePropLast = null, fireLoop = null, fireN = 0;
       const fireVis = [];
       const webs = [], silk = [], strings = [];
-      let burrow = null, terrainV = 0;
       const navYou = {};
       let webCheck = 0, webLetGo = 0;
       const webNear = (L, x, y) => {
@@ -10611,8 +10629,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         REC.patches = [];
         REC.dirty = [];
         REC.fogLog = [];
-        REC.tBase = img.data.slice();
-        REC.dBase = dimg ? dimg.data.slice() : null;
+        REC.tBase = W.img.data.slice();
+        REC.dBase = W.dimg ? W.dimg.data.slice() : null;
         REC.fogBase = seen.slice();
         REC.fogPrev = seen.slice();
         REC.deathT = -1;
@@ -10657,7 +10675,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         REC.snaps.push(S);
         if (REC.dirty.length) {
           for (const [w, x, y, ww, hh] of rpMerge(REC.dirty, CW, CH)) {
-            const src = w === "t" ? img : dimg;
+            const src = w === "t" ? W.img : W.dimg;
             if (src) REC.patches.push({ t: REC.t, c: w, x, y, w: ww, h: hh, px: rpCut(src.data, CW, x, y, ww, hh) });
           }
           REC.dirty.length = 0;
@@ -10728,8 +10746,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         for (let n = 0; n < L.length && L[n] <= T; n += 3) RT.fog[L[n + 1]] = L[n + 2];
       }
       function drawReplay(V) {
-        const W = input.current.witness;
-        V.t = clamp(V.t, W.t0, W.t1);
+        const wit = input.current.witness;
+        V.t = clamp(V.t, wit.t0, wit.t1);
         const F = rpFrame(REC.snaps, V.t);
         rpTerrain(V.t);
         if (!V.fog) RT.fog.fill(1);
@@ -10837,9 +10855,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           });
           if (back.pickups) level.pickups = back.pickups;
         }
-        mat = level.mat;
-        img = level.img;
-        ore = level.ore || null;
+        W.mat = level.mat;
+        W.img = level.img;
+        W.ore = level.ore || null;
         miniEdgeIdx = [];
         for (let my = 0; my < MMH; my++) for (let mx = 0; mx < MMW; mx++) {
           let solid = 0, open = 0;
@@ -10849,7 +10867,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             for (let dx = 0; dx < MINI_D; dx++) {
               const tx = mx * MINI_D + dx;
               if (tx >= CW) break;
-              if (mat[ty * CW + tx]) solid++;
+              if (W.mat[ty * CW + tx]) solid++;
               else open++;
             }
           }
@@ -10865,9 +10883,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         zone = level.zone || null;
         props = level.props || [];
         ambKinds = level.amb || [];
-        dimg = level.dimg;
-        plantW = plantWhite(img.data, dimg && dimg.data);
-        dctx.putImageData(dimg, 0, 0);
+        W.dimg = level.dimg;
+        plantW = plantWhite(W.img.data, W.dimg && W.dimg.data);
+        dctx.putImageData(W.dimg, 0, 0);
         dparts.length = amb.length = clouds.length = rings.length = devils.length = 0;
         zfx = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
         {
@@ -10890,14 +10908,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ghost = pb.ghost ? { x: level.start.x, y: level.start.y, cd: 0 } : null;
         burns.length = 0;
         webs.length = silk.length = strings.length = 0;
-        burrow = null;
+        W.burrow = null;
         navYou.F = null;
         if (level.nests && level.nests.length) {
-          burrow = new Uint8Array(CW * CH);
+          W.burrow = new Uint8Array(CW * CH);
           for (const n of level.nests) {
             const mark = (x, y, r) => {
               for (let yy = Math.floor(y - r); yy <= y + r; yy++) for (let xx = Math.floor(x - r); xx <= x + r; xx++)
-                if (xx >= 0 && yy >= 0 && xx < CW && yy < CH && Math.hypot(xx + 0.5 - x, yy + 0.5 - y) <= r && !mat[yy * CW + xx]) burrow[yy * CW + xx] = 1;
+                if (xx >= 0 && yy >= 0 && xx < CW && yy < CH && Math.hypot(xx + 0.5 - x, yy + 0.5 - y) <= r && !W.mat[yy * CW + xx]) W.burrow[yy * CW + xx] = 1;
             };
             mark(n.x + 0.5, n.y + 0.5, n.r + 3);
             for (const q of n.path) mark(q.x + 0.5, q.y + 0.5, 2.6);
@@ -10907,7 +10925,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         firePropN = -1;
         p.burn = 0;
         p.burnAcc = 0;
-        tctx.putImageData(img, 0, 0);
+        tctx.putImageData(W.img, 0, 0);
         bgctx.putImageData(level.bgImg, 0, 0);
         p.x = start.x;
         p.y = start.y;
@@ -11033,7 +11051,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       c.addEventListener("pointerup", mUp);
       c.addEventListener("pointercancel", mUp);
       c.addEventListener("pointerleave", mLeave);
-      const solidCell = (cx, cy) => cx < 0 || cy < 0 || cx >= CW || cy >= CH || mat[cy * CW + cx] !== 0;
+      const solidCell = (cx, cy) => cx < 0 || cy < 0 || cx >= CW || cy >= CH || W.mat[cy * CW + cx] !== 0;
       const solidAt = (x, y) => solidCell(Math.floor(x / CELL), Math.floor(y / CELL));
       const boxHit = (x, y) => {
         const x0 = Math.floor(x / CELL), x1 = Math.floor((x + PW - 1e-3) / CELL);
@@ -11041,7 +11059,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         for (let cy = y0; cy <= y1; cy++) {
           if (cy < 0 || cy >= CH) return true;
           for (let cx = x0; cx <= x1; cx++) {
-            if (cx < 0 || cx >= CW || mat[cy * CW + cx]) return true;
+            if (cx < 0 || cx >= CW || W.mat[cy * CW + cx]) return true;
           }
         }
         return false;
@@ -11190,17 +11208,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           vy: -90 - Math.random() * 40
         });
       }
-      const ratSolid = (cx, cy) => solidCell(cx, cy) || burrow !== null && burrow[cy * CW + cx] === 1;
+      const ratSolid = (cx, cy) => solidCell(cx, cy) || W.burrow !== null && W.burrow[cy * CW + cx] === 1;
       const onWebIn = (list) => (x, y) => {
         for (const L of list) if (webDist(L, x, y) < 3) return true;
         return false;
       };
       const ratOnWeb = onWebIn(webs);
       function navFor(o, goal, R) {
-        if (!o.F || o.v !== terrainV && time - o.t > 1 || Math.hypot(goal.x - o.fx, goal.y - o.fy) > (o === navYou ? 12 : 6) || o === navYou && time - o.t > 0.4 || o.wn !== webs.length && time - o.t > 1) {
+        if (!o.F || o.v !== W.terrainV && time - o.t > 1 || Math.hypot(goal.x - o.fx, goal.y - o.fy) > (o === navYou ? 12 : 6) || o === navYou && time - o.t > 0.4 || o.wn !== webs.length && time - o.t > 1) {
           const half = (R + 1) * NAV * CELL, near = webs.filter((L) => Math.max(L.a0x, L.b0x) > goal.x - half && Math.min(L.a0x, L.b0x) < goal.x + half && Math.max(L.a0y, L.b0y) > goal.y - half && Math.min(L.a0y, L.b0y) < goal.y + half);
           o.F = navField(ratSolid, goal.x, goal.y, R, near.length ? onWebIn(near) : null);
-          o.v = terrainV;
+          o.v = W.terrainV;
           o.fx = goal.x;
           o.fy = goal.y;
           o.t = time;
@@ -11407,32 +11425,32 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL;
         const minX = Math.max(0, Math.floor(cx0 - rc)), maxX = Math.min(CW - 1, Math.ceil(cx0 + rc));
         const minY = Math.max(0, Math.floor(cy0 - rc)), maxY = Math.min(CH - 1, Math.ceil(cy0 + rc));
-        const d = img.data;
+        const d = W.img.data;
         let changed = false, nOre = 0;
         for (let cy = minY; cy <= maxY; cy++)
           for (let cx = minX; cx <= maxX; cx++) {
             const i = cy * CW + cx;
-            if (!mat[i] || mat[i] === BED) continue;
+            if (!W.mat[i] || W.mat[i] === BED) continue;
             if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
-            if (ore && ore[i]) {
-              ore[i] = 0;
+            if (W.ore && W.ore[i]) {
+              W.ore[i] = 0;
               nOre++;
             }
             fire.fuel[i] = 0;
             fire.t[i] = 0;
-            mat[i] = 0;
+            W.mat[i] = 0;
             d[i * 4 + 3] = 0;
             changed = true;
           }
-        if (burrow) {
+        if (W.burrow) {
           for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
-            if (burrow[cy * CW + cx] && Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) {
-              burrow[cy * CW + cx] = 0;
+            if (W.burrow[cy * CW + cx] && Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) {
+              W.burrow[cy * CW + cx] = 0;
               changed = true;
             }
         }
-        if (changed) terrainV++;
-        if (changed) tctx.putImageData(img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
+        if (changed) W.terrainV++;
+        if (changed) tctx.putImageData(W.img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
         unDeco(cx0, cy0, rc, minX, minY, maxX, maxY);
         if (nOre) dropOre(x, y, nOre);
       }
@@ -11454,7 +11472,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         SFX.fx("coinland", x, y);
       }
       function unDeco(cx0, cy0, rc, minX, minY, maxX, maxY) {
-        const dd = dimg.data;
+        const dd = W.dimg.data;
         let changed = false;
         for (let cy = minY; cy <= maxY; cy++)
           for (let cx = minX; cx <= maxX; cx++) {
@@ -11465,24 +11483,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             fire.fuel[k >> 2] = 0;
             fire.t[k >> 2] = 0;
           }
-        if (changed) dctx.putImageData(dimg, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
+        if (changed) dctx.putImageData(W.dimg, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
       }
       function paint(x, y, w, hh) {
         const x0 = Math.max(1, Math.round(x / CELL - w / 2)), x1 = Math.min(CW - 2, x0 + w);
         const y0 = Math.max(1, Math.round(y / CELL)), y1 = Math.min(CH - 2, y0 + hh);
-        const d = img.data;
+        const d = W.img.data;
         for (let cy = y0; cy < y1; cy++)
           for (let cx = x0; cx < x1; cx++) {
             const i = cy * CW + cx;
-            if (mat[i]) continue;
-            mat[i] = BRICK;
+            if (W.mat[i]) continue;
+            W.mat[i] = BRICK;
             const k = i * 4;
             d[k] = 132;
             d[k + 1] = 99;
             d[k + 2] = 71;
             d[k + 3] = 255;
           }
-        if (x1 > x0 && y1 > y0) tctx.putImageData(img, 0, 0, x0, y0, x1 - x0, y1 - y0);
+        if (x1 > x0 && y1 > y0) tctx.putImageData(W.img, 0, 0, x0, y0, x1 - x0, y1 - y0);
       }
       function cast(g, gx, gy, nx, ny) {
         const pas = gunPassives(g);
@@ -12060,8 +12078,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       function shotGrind(b, x, y) {
         if (b.look !== "drill" || Math.random() < 0.5) return;
         const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
-        if (cx < 0 || cy < 0 || cx >= CW || cy >= CH || !mat[cy * CW + cx]) return;
-        const k = (cy * CW + cx) * 4, d = img.data, sp = Math.hypot(b.vx, b.vy) || 1;
+        if (cx < 0 || cy < 0 || cx >= CW || cy >= CH || !W.mat[cy * CW + cx]) return;
+        const k = (cy * CW + cx) * 4, d = W.img.data, sp = Math.hypot(b.vx, b.vy) || 1;
         sparks.push({
           x,
           y,
@@ -12162,14 +12180,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       };
       function fireOut(i) {
         const x = i % CW, y = i / CW | 0, k = i * 4, r = Math.random();
-        if (mat[i]) {
-          const d = img.data;
+        if (W.mat[i]) {
+          const d = W.img.data;
           d[k] = 34 + r * 16;
           d[k + 1] = 28 + r * 12;
           d[k + 2] = 24 + r * 10;
           growBox(fireBox.t, x, y);
-        } else if (dimg) {
-          const dd = dimg.data;
+        } else if (W.dimg) {
+          const dd = W.dimg.data;
           if (r < 0.16) {
             const a = 30 + r * 120;
             dd[k] = a;
@@ -12180,7 +12198,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
       function flushFire() {
-        for (const [b, c2, im] of [[fireBox.t, tctx, img], [fireBox.d, dctx, dimg]]) {
+        for (const [b, c2, im] of [[fireBox.t, tctx, W.img], [fireBox.d, dctx, W.dimg]]) {
           if (b[2] < b[0] || !im) continue;
           c2.putImageData(im, 0, 0, b[0], b[1], b[2] - b[0] + 1, b[3] - b[1] + 1);
           b[0] = CW;
@@ -12310,9 +12328,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             }
           }
           for (let w = webs.length - 1; w >= 0; w--) {
-            const W = webs[w];
+            const ln = webs[w];
             for (let u = 0; u <= 1; u += 0.25)
-              if (fireNear(fire, W.a0x + (W.b0x - W.a0x) * u, W.a0y + (W.b0y - W.a0y) * u, 2)) {
+              if (fireNear(fire, ln.a0x + (ln.b0x - ln.a0x) * u, ln.a0y + (ln.b0y - ln.a0y) * u, 2)) {
                 burnWeb(w);
                 break;
               }
@@ -12423,11 +12441,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL, ring = rc + 2.5;
         const minX = Math.max(0, Math.floor(cx0 - ring)), maxX = Math.min(CW - 1, Math.ceil(cx0 + ring));
         const minY = Math.max(0, Math.floor(cy0 - ring)), maxY = Math.min(CH - 1, Math.ceil(cy0 + ring));
-        const d = img.data;
+        const d = W.img.data;
         let debris = 0, nOre = 0;
         for (let cy = minY; cy <= maxY; cy++) {
           for (let cx = minX; cx <= maxX; cx++) {
-            const i = cy * CW + cx, m = mat[i];
+            const i = cy * CW + cx, m = W.mat[i];
             if (!m) continue;
             const dist2 = Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0);
             const k = i * 4;
@@ -12447,13 +12465,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                   heavy: true
                 });
               }
-              if (ore && ore[i]) {
-                ore[i] = 0;
+              if (W.ore && W.ore[i]) {
+                W.ore[i] = 0;
                 nOre++;
               }
               fire.fuel[i] = 0;
               fire.t[i] = 0;
-              mat[i] = 0;
+              W.mat[i] = 0;
               d[k + 3] = 0;
             } else if (dist2 <= ring) {
               d[k] *= 0.72;
@@ -12462,14 +12480,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             }
           }
         }
-        tctx.putImageData(img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
+        tctx.putImageData(W.img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
         unDeco(cx0, cy0, rc, minX, minY, maxX, maxY);
         if (nOre) dropOre(x, y, nOre);
-        if (burrow) {
+        if (W.burrow) {
           for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
-            if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) burrow[cy * CW + cx] = 0;
+            if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) W.burrow[cy * CW + cx] = 0;
         }
-        terrainV++;
+        W.terrainV++;
         for (const pr of props) {
           if (pr.gone || Math.abs(pr.x - x) > R + 40 || Math.abs(pr.y - y) > R + 40) continue;
           const bx = clamp(x, pr.x + pr.l, pr.x + pr.r), by = clamp(y, pr.y + pr.t0, pr.y + pr.b);
@@ -12598,7 +12616,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const z = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
         for (let i = decoFrame % 30; i < props.length; i += 30) {
           const pr = props[i];
-          if (!pr.gone && !pr.fall && (pr.anc || pr.on) && !propAnchored(pr, mat)) {
+          if (!pr.gone && !pr.fall && (pr.anc || pr.on) && !propAnchored(pr, W.mat)) {
             pr.fall = true;
             pr.vy = 0;
             pr.anc = null;
@@ -13089,7 +13107,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           for (const pr of plants) drawProp(pgCtx, pr, time, TH);
           pd = pgCtx.getImageData(0, 0, w, h3).data;
         }
-        const T = img.data, D = dimg ? dimg.data : null, A = pgArt;
+        const T = W.img.data, D = W.dimg ? W.dimg.data : null, A = pgArt;
         for (let y = 0; y < h3; y++) for (let x = 0; x < w; x++) {
           const si = ((by0 + y) * CW + bx0 + x) * 4, o = (y * w + x) * 4;
           let r = 0, g = 0, b = 0, a = 0;
@@ -13296,27 +13314,27 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           else p.vy = approach(p.vy, ty, JET_ACC * dt * k);
           if (zfx.rev) p.vy -= GRAVITY * zfx.rev * dt;
         } else if (climbing && zfx.arch && p.kick <= 0) {
-          const W = zfx.arch, hy = p.y + WEB_HAND, q = archNear(W, pcx0, hy);
-          const a = W.arc[q.k], b = W.arc[q.k + 1], ul = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+          const ar = zfx.arch, hy = p.y + WEB_HAND, q = archNear(ar, pcx0, hy);
+          const a = ar.arc[q.k], b = ar.arc[q.k + 1], ul = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
           const ux = (b[0] - a[0]) / ul, uy = (b[1] - a[1]) / ul;
           const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
           if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) {
             webLetGo = 0.35;
             p.vy = 40;
           } else {
-            const v = along * (W.climb || (W.climb = kr("arClimb"))) * tied;
+            const v = along * (ar.climb || (ar.climb = kr("arClimb"))) * tied;
             p.vx = approach(p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
             p.vy = approach(p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
           }
         } else if (climbing && zfx.web && p.kick <= 0) {
-          const W = zfx.web, wl = Math.hypot(W.b0x - W.a0x, W.b0y - W.a0y) || 1;
-          let ux = (W.b0x - W.a0x) / wl, uy = (W.b0y - W.a0y) / wl;
+          const ln = zfx.web, wl = Math.hypot(ln.b0x - ln.a0x, ln.b0y - ln.a0y) || 1;
+          let ux = (ln.b0x - ln.a0x) / wl, uy = (ln.b0y - ln.a0y) / wl;
           const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
           if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) {
             webLetGo = 0.35;
             p.vy = 40;
           } else {
-            const v = along * (W.climb || (W.climb = spr("webClimb"))) * tied, hy = p.y + WEB_HAND, q = webNear(W, pcx0, hy);
+            const v = along * (ln.climb || (ln.climb = spr("webClimb"))) * tied, hy = p.y + WEB_HAND, q = webNear(ln, pcx0, hy);
             p.vx = approach(p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
             p.vy = approach(p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
           }
@@ -16048,11 +16066,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (rv && REC.done) {
           if (rv.playing) {
             rv.t += dt * rv.speed;
-            const W = input.current.witness;
-            if (rv.t >= W.t1) {
-              if (rv.loop) rv.t = W.t0;
+            const wit = input.current.witness;
+            if (rv.t >= wit.t1) {
+              if (rv.loop) rv.t = wit.t0;
               else {
-                rv.t = W.t1;
+                rv.t = wit.t1;
                 rv.playing = false;
               }
             }
