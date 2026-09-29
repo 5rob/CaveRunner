@@ -130,32 +130,26 @@ WebView shell in `android/`; the game itself is still just `index.html`. Full de
 slots the build fills), `src/style.css` the one CSS block (light and dark via
 `prefers-color-scheme`). The code is being split into modules (REFACTOR.md, P1.5): the pure
 parts move into `src/<folder>/*.js`, and `src/main.js` (the entry the build bundles) keeps the
-rest and imports them. Where things are (`main.js` line numbers as of v96, they drift):
+rest and imports them. Where things are (`main.js` line numbers as of the end of refactor Phase 1, they drift):
 
 | What | Where |
 |---|---|
-| Small helpers | `src/core/util.js`: `rr` (rounded rect), `angDiff`/`turn`, `mix`/`mixHex`/`hexMix`/`hsvAdjust`, `approach`/`clamp` |
 | World constants | `src/core/consts.js`: `CELL`, `CW`/`CH`, `SHOP_*`, tuning consts (`GRAVITY`, `JET`, …); `VERSION` is in `src/version.js` |
+| Small helpers | `src/core/util.js`: `rr` (rounded rect), `angDiff`/`turn`, `mix`/`mixHex`/`hexMix`/`hsvAdjust`, `approach`/`clamp` |
 | `DEV` / `DEV_META` / `devSet` | `src/dev/knobs.js` (with every range/colour knob table): live dev-panel knobs, saved to localStorage (see note below) |
 | `THEMES` / `themeFor` | `src/data/themes.js` (with `DECOR`, `AMBIENCE`): the 12 level palettes; the floor number picks one |
 | `CREATURES` / `ROSTERS` | `src/data/creatures.js`: the 16 creature types, and which live on floors 1–10 |
 | `rosterFor` / `enemyFor` | `src/data/creatures.js`: a floor's creatures, and one creature's floor-scaled stats |
+| `PERKS` / `perkBag` | `src/data/perks.js`: the 31 perks, and folding an owned list into one effective bag |
 | `MODS` | `src/spells/mods.js`: the spells, each a plain object (`off: 1` = kept but never handed out) |
 | `FAMILIES` / `FAMILY_OF` | `src/spells/mods.js`: the 8 colour families the UI groups mods by |
 | `MOD_PRICE` / `MOD_TIER` | `src/spells/mods.js` (with `TRIG_VARIANTS`): shop price and rarity 1–4 for every mod |
 | `modWeight` / `rollMod` | `src/spells/spawn.js`: Noita's spawn table (`NOITA_SPAWN`, `NOITA_OF`, `TIER_FLOOR`) |
 | guns | `src/spells/guns.js`: `makeGun`, `caveGun`, `startingGuns`, `GUN_RANGE`, `resetGun`, `gunPrice`, gun colours |
 | `planCast` | `src/spells/cast.js` (with `blankShot`, `effRecharge`, `gunPassives`): **the heart of it** — works out what one pull of the trigger fires |
+| `tracePath` | `src/spells/trace.js` (with `driftStep`, `wigTurn`, `bhSp`): simulates a shot for the aim line |
 | `gunRate` / `buildAdvice` | `src/spells/advisor.js` (with `modPreview`): the build advisor |
 | `castGroups` / `groupStats` | `src/spells/bagsim.js` (with `pullSteps`, the `fireSim*` preview): the outlines and stat lines in the build screen |
-| creature movement pieces | `src/creatures/common.js`: `roamStep`, `turnToward`, `flyMove`, `surfNormal`, `surfSeat` |
-| creatures | `src/creatures/`: `spider.js`, `rat.js`, `jelly.js` (brain + sprite each), `classic.js` (older bodies' sprites), `draw.js` (`drawEnemy`) |
-| sprites | `src/art/sprites.js`: `drawGun`, `drawRunner`, `drawFlame`, `drawTorch`, `drawSconce`, `drawGunGlow`; creature sprites live with their creature |
-| prop drawing | `src/art/props.js`: `drawProp`, `drawArch`, `propGlow`, `propCol` |
-| sound | `src/audio/recipes.js` (pure: `SPELL_VOICE`, `shotSound`, `creatureSound`, `FX_VOL`, `rustleStep`), `src/audio/sfx.js` (the `SFX` engine) |
-| autosave | `src/save/save.js`: `readSave`, `cleanLoadout`, `cleanGun`, `loadSave`, `clearSave` |
-| death replay (pure part) | `src/replay/replay.js`: `RP_*`, `rpClone`, `rpLerp`, `rpFrame`, `rpCut`/`rpPaste`/`rpMerge` |
-| `PERKS` / `perkBag` | `src/data/perks.js`: the 31 perks, and folding an owned list into one effective bag |
 | vision / fog memory | `src/world/vision.js`: `rayDist`, `losClear`, `visPoly`, `fogReveal`, `nestFog` |
 | fire | `src/world/fire.js`: `fireNew`, `fireStep`, `fireArea`, `fireDouse`, `FIRE_*`, `FLAMMABLE` |
 | pathfinding | `src/world/nav.js`: `navField`, `navWay` |
@@ -163,15 +157,22 @@ rest and imports them. Where things are (`main.js` line numbers as of v96, they 
 | floor 1 strata + timber | `src/world/strata.js`: `strataCave`, `paveWorks`, `timberWorks`, `timberFrame` |
 | decoration | `src/world/decorate.js`: `decorate`, `cullDecor`, `propAnchored`, `archCurve`, `PROP_BOX` |
 | `makeLevel` | `src/world/level.js`: terrain, shop, enemies, pickups |
-| `tracePath` | `src/spells/trace.js` (with `driftStep`, `wigTurn`, `bhSp`): simulates a shot for the aim line |
-| `Game` | ~7130–11390: the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields |
-| React UI | ~11400–end: `GunCard`, `GunSwap`, `ModCard`, `Editor`, `PerkCard`, `DevPanel`, `App` |
+| creature movement pieces | `src/creatures/common.js`: `roamStep`, `turnToward`, `flyMove`, `surfNormal`, `surfSeat` |
+| creatures | `src/creatures/`: `spider.js`, `rat.js`, `jelly.js` (brain + sprite each), `classic.js` (older bodies' sprites), `draw.js` (`drawEnemy`) |
+| sprites | `src/art/sprites.js`: `drawGun`, `drawRunner`, `drawFlame`, `drawTorch`, `drawSconce`, `drawGunGlow`; creature sprites live with their creature |
+| prop drawing | `src/art/props.js`: `drawProp`, `drawArch`, `propGlow`, `propCol` |
+| sound | `src/audio/recipes.js` (pure: `SPELL_VOICE`, `shotSound`, `creatureSound`, `FX_VOL`, `rustleStep`), `src/audio/sfx.js` (the `SFX` engine) |
+| autosave | `src/save/save.js`: `readSave`, `cleanLoadout`, `cleanGun`, `loadSave`, `clearSave` |
+| death replay (pure part) | `src/replay/replay.js`: `RP_*`, `rpClone`, `rpLerp`, `rpFrame`, `rpCut`/`rpPaste`/`rpMerge` |
+| `Game` | `src/main.js` ~123–4370: the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields |
+| React UI | `src/main.js` ~4380–end: `GunCard`, `GunSwap`, `ModCard`, `Editor`, `PerkCard`, `DevPanel`, `App` |
 
 Everything in the modules, and everything above `function Game(` in `main.js`, is pure and
 top-level, which is why the logic tests can load it and call it directly (`tests/load.js`).
 **Layer rule:** a module imports only from its own layer or the layers above it in REFACTOR.md
 section 4 (core → dev → data → spells/world → creatures/art/audio…), never from `main.js`. **Keep it that way** — if a new mechanic can be a pure
-function, make it one.
+function, make it one. (The version notes below were written when everything was one file:
+"pure, above `makeLevel`" there now means "in its module under `src/`" — the table says which.)
 
 ## Things worth knowing before you change anything
 

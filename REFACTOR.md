@@ -13,10 +13,10 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 1 — in progress (on `refactor`, not merged) |
+| **Current phase** | Phase 1 — P1.1–P1.5 done (on `refactor`, not merged). Next: P1.6, after the owner play-tests the branch |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | From the start of Phase 0 until Phase 1 merges to `main` |
-| **Last green full suite** | 2026-09-29, end of Phase 0 (bar the two known flakes: `sound` portalOut, `jelly` browser) |
+| **Last green full suite** | 2026-09-29, end of P1.5 (bar known flakes: `sound` portalOut fails every run, as on v96; `everymod` telecast and `rats` passed on re-run) |
 | **Last merged to main** | — |
 
 ---
@@ -370,6 +370,7 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
 | D9 | The browser test page copies every top-level name of the bundle onto `window` (`tests/build.js`, names found by parsing with espree, which ships with ESLint) | Browser suites call `MODS`, `DEV`, `resetGun`… from `page.evaluate`; inside the iife those aren't globals any more. Suites stay unchanged |
 | D10 | `tools/move.js` does the P1.5 moves: cuts named top-level statements (with the comments above them) out of `main.js`, puts `export` on them, and recomputes the imports on both sides from what each file actually uses; refuses a move whose code still needs something in `main.js` | Each move is mechanical and the same shape; a cycle back into `main.js` can't slip in. Delete it after Phase 2 |
 | D11 | In Phase 1 every knob table (`SP_KNOBS`, `JE_KNOBS`, `RA_KNOBS`, `JE_COLS`, `LV_KNOBS`, `ARCH_KNOBS`, `FIRE_KNOBS`) stays in `dev/knobs.js`, not in its creature's file | `DEV` is copied from `DEV_DEFAULTS` once, right after the tables register. A table in `creatures/spider.js` would register *after* that (knobs.js loads first), so `DEV` would miss its keys and the Dev rows would reorder: a behaviour change. Moving them needs `DEV` built after all tables (Phase 3) |
+| D12 | Proof a move changed nothing: parse the built bundle before and after, and compare every top-level statement's text (indentation aside). After P1.5 all 359 matched the P1.2 bundle exactly; only the order differs (modules first) | Stronger than the suites for a move-only phase: same text in, same behaviour out. The only thing a move can change is load order, and nothing at the top level reads a later module's state (checked for `MODS` in P1.5) |
 | D6 | The dev `package.json` also carries `playwright-core` (and `globals`, the browser-globals list ESLint needs); `tests/chromium.js` finds an installed Windows Chrome | Browser suites run after one `npm install`, with no per-session scratchpad setup or env vars |
 
 ## Found along the way
@@ -381,11 +382,12 @@ commit. List them here for after.
   `makeLevel` and `Game`, and `drawGunGlow` (~11388) sits *after* `Game`, among the UI.
   CLAUDE.md used to say "everything above `makeLevel` is pure"; the loader cuts at
   `function Game(` so tracePath is covered, but drawGunGlow isn't reachable from logic
-  suites. Mind both when cutting modules in P1.5.
+  suites. Mind both when cutting modules in P1.5. **Resolved in P1.5:** tracePath is in
+  `spells/trace.js`, drawGunGlow in `art/sprites.js`, both reachable by the suites now.
 - **Two logic suites read the code as text** (`creatures`: every body has a
   `draw<Body>(ctx`; `rats`: `drawRat`/`drawNest` exist). They now get it from
   `require('../load').source`. Once the code is split, `.source` must be *all* of
-  `src/` concatenated, or those checks go false.
+  `src/` concatenated, or those checks go false. **Done in P1.4** (`.source` walks `src/`).
 - **Browser suites need Playwright on this PC.** None is installed globally; this session
   put `playwright-core` in the scratchpad and set `CAVERUNNER_PLAYWRIGHT` +
   `CAVERUNNER_CHROME` (system Chrome at `C:Program FilesGoogleChromeApplication`).
@@ -396,11 +398,32 @@ commit. List them here for after.
   untouched v96 `index.html` it failed 11 checks, then 1 (the spit / drip / spore-puff
   group: the jelly never gets to spit). Same pattern on the built file. Probably timing in
   the sandbox hunt. Treat like the `sound` flake: re-run before calling it a failure, and
-  worth fixing after the refactor.
-
+  worth fixing after the refactor. Also fails the same way on v96 from `main`, run in a
+  worktree with this PC's Chrome (P1.2), and passed once in a full run (P1.5 spells).
 - **`no-undef` can't see a missing import of a name that is also a browser global** (`name`,
   `close`, `status`…): it would quietly resolve to `window's`. No top-level game name clashes
   with one today (checked in P1.3). `tools/move.js` lints with no globals at all, so moves are safe.
+- **More load-sensitive browser checks.** Seen failing in full runs while other work was
+  loading the PC, passing alone every time: `torch` ("falls off into the dark…", "the brighter
+  frames are the ones with the taller flame"), `lightning` ("a fork hits a creature off to the
+  side", already a known flake), `trigger` ("a trigger carrying an explosion blows it up where
+  it hits"), `save` ("killed creatures stay dead"), `archvine` ("no jelly swims deep into a
+  built-up zone"). Worth a look after the refactor: they measure timing or random outcomes.
+  `rats` (browser) failed 3 times in ~23 runs of the P1.5 build ("a rat bites you", "they come
+  out of the hole onto the floor") and 0 in 26 runs of v96. Not the split: every top-level
+  statement of the P1.5 bundle is identical to the P1.2 bundle's (see D12). Most likely chance
+  (random rat moves over a fixed frame count); if it keeps showing, bisect P1.2 (esbuild's
+  reprint) against v96.
+- **Misplaced comments (left as they were, moved with their code).** A second copy of
+  planCast's opening comment sits above `blankShot` (`spells/cast.js`); tracePath's opening
+  comment sits above `DRIFT_DRAG` (`spells/trace.js`); `ROOM_HW`'s line carries the trailing
+  comment "gold per vein pixel dug out", which belongs to `ORE_GOLD` (`world/level.js`).
+  Two were fixed because a move would otherwise have carried them to the wrong file: the
+  jellyfish sprite comment (was above `drawRat`, now above `drawJelly`) and the `---- sprites ----`
+  header (was above `rr`, now above the sprites).
+- **Pure code still in `main.js`** after P1.5: `sputterStep`/`SPUTTER_FUEL` (the jetpack,
+  Phase 3 player), `NO_INPUT`, `fmtGold`, `deckLayout` (the HUD, Phase 2). They stay in its
+  `export { … }` list until they move.
 
 ## Game map
 
@@ -416,3 +439,4 @@ commit. List them here for after.
 | 2026-09-29 | Phase 1, P1.2 | Build is esbuild (iife, utf8, no minify, no tree shaking). `VERSION` → `src/version.js` + an un-bundled `<script>` line. `tests/build.js` anchors now match esbuild's print (`const toast = (text) => {`) and it exposes the bundle's names on `window`; `tests/load.js` unwraps the iife. `sound`/`jelly` fail the same on v96 from `main` (checked in a worktree); `save`/`archvine` failed once under load, pass alone. | logic 33/33; browser 42/44 (the two known) |
 | 2026-09-29 | Phase 1, P1.3 | `eslint.config.js` (flat, only `no-undef`, browser globals + React/ReactDOM/VERSION); `tests/run.js` runs it over `src/` first and counts a report as a failure. Checked it catches a planted undefined name. | logic 33/33 |
 | 2026-09-29 | Phase 1, P1.4 | `src/pure.js` (VERSION + `export * from main.js`); main.js got an `export { … }` list of the 346 names the old loader found above `Game`. `tests/load.js` bundles pure.js to CJS in memory and runs it with stubs for React/ReactDOM/document (main.js now runs to its mount line); `.source` = all of `src/`. Same 348 names, same types, before and after; `index.html` unchanged (iife drops exports). | logic 33/33 |
+| 2026-09-29 | Phase 1, P1.5 | All 31 moves, one commit each via `tools/move.js`, logic suites + names check + `smoke` before every commit. Extra: `COL` joined `core/consts.js` (guns and sprites need it). Knob tables stay in `dev/knobs.js` (D11). `main.js` 12,816 → 5,767 lines (Game, UI, and 5 pure leftovers). Full runs on snapshots at the end of spells and world, and at the end: only known/load flakes, each passing alone. Bundle statements identical to P1.2's (D12). | logic 33/33; browser 43/44 (`sound`, as v96) after re-runs |
