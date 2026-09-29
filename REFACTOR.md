@@ -315,6 +315,32 @@ What the code says about this phase (checked at the end of Phase 1):
 
 ~4,260 lines in one function, sharing ~hundreds of local variables. Do it in this order:
 
+What the code says about this phase (checked at the end of Phase 2):
+- `Game` is in `src/game/Game.js` (4,330 lines). Above it: `sputterStep`, `SPUTTER_FUEL`,
+  `NO_INPUT` and its own React lines (D13). Everything else is one `useEffect` closure: ~28
+  `let` lines (most declare several names: `mat, img, start, portal, enemies, …`), ~81 `const`s
+  and ~63 inner functions at its top level. Landmarks (Game.js lines, they drift): `toast` ~193,
+  `drawReplay` ~318, `enterLevel` ~351, `cast` ~863, `step` ~2042 (~1,100 lines), `draw` ~3140
+  (~1,150 lines), the rAF `loop` at the end.
+- **The Phase 1–2 tools don't fit here.** `tools/move.js` only cuts top-level statements out of
+  `main.js`, and `main.js` has nothing left to move (delete it when Phase 2 merges, per D10).
+  `tools/same.js` compares top-level statements, and `Game` is *one* statement, so every Phase 3
+  step shows "differs Game" by nature (`x` → `W.x` changes the text). Proof has to come from
+  somewhere else: the suites, plus whatever P3.1 decides (see the next point).
+- **Worth considering before P3.2: a determinism check** (not decided, the session doing P3.1
+  should weigh it): a browser probe that seeds `Math.random`, fixes `performance.now`/the frame
+  `dt`, feeds a scripted input, runs N frames on a fixed seed and hashes the world (player,
+  enemies, bullets, `mat`) every frame. Same hashes before and after a step ⇒ no behaviour change,
+  which is the proof `same.js` gave for moves. Only worth it if it's cheap to make stable.
+- **The browser test hook reaches into the closure by name.** `tests/build.js` string-inserts
+  `HOOK_LVL` (plus `SANDBOX`) in front of `const toast = (text) => {` inside `Game`, and it reads
+  ~60 closure names directly (`get seen(){return seen}`, `mat`, `img`, `dimg`, `portal`, `fire`,
+  `ore`, `enemies`…). So when P3.2 turns a loose variable into `W.x`, the same commit must update
+  that hook text (rule 3: fix *how it reaches*, not what it checks), or the test page throws on
+  load. P3.3 then replaces the string-insert with `window.__lvl = W` behind a test flag.
+- The anchor `const toast = (text) => {` must stay unique in the bundle until P3.3 retires it,
+  and `const [size, setSize] = useState(150);` (in `ui/app.js`) stays as is.
+
 - [ ] **P3.1 Map it first, change nothing.** Write a map of `Game` into this doc (new
       section **Game map**): every closure-level variable and inner function, which system
       it belongs to, and who reads/writes it. Look especially for variables reassigned
@@ -414,7 +440,7 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
 | D7 | `VERSION` is not imported: `src/version.js` is read by the build (and by `tests/load.js`), and the game code uses the global the page's own `<script>const VERSION = 'vNN';</script>` declares (ESLint knows it as a global) | The bundle never declares it, so there is exactly one `VERSION = 'vNN'` in `index.html` for CI and the app to find |
 | D8 | esbuild runs with `treeShaking: false` | Otherwise it drops code nothing calls yet (`groupStats`, still tested) |
 | D9 | The browser test page copies every top-level name of the bundle onto `window` (`tests/build.js`, names found by parsing with espree, which ships with ESLint) | Browser suites call `MODS`, `DEV`, `resetGun`… from `page.evaluate`; inside the iife those aren't globals any more. Suites stay unchanged |
-| D10 | `tools/move.js` does the P1.5 moves: cuts named top-level statements (with the comments above them) out of `main.js`, puts `export` on them, and recomputes the imports on both sides from what each file actually uses; refuses a move whose code still needs something in `main.js` | Each move is mechanical and the same shape; a cycle back into `main.js` can't slip in. Delete it after Phase 2 |
+| D10 | `tools/move.js` does the P1.5 moves: cuts named top-level statements (with the comments above them) out of `main.js`, puts `export` on them, and recomputes the imports on both sides from what each file actually uses; refuses a move whose code still needs something in `main.js` | Each move is mechanical and the same shape; a cycle back into `main.js` can't slip in. Delete it after Phase 2 (used for P1.5 and all of Phase 2; `main.js` is now only the mount, so nothing is left for it) |
 | D11 | In Phase 1 every knob table (`SP_KNOBS`, `JE_KNOBS`, `RA_KNOBS`, `JE_COLS`, `LV_KNOBS`, `ARCH_KNOBS`, `FIRE_KNOBS`) stays in `dev/knobs.js`, not in its creature's file | `DEV` is copied from `DEV_DEFAULTS` once, right after the tables register. A table in `creatures/spider.js` would register *after* that (knobs.js loads first), so `DEV` would miss its keys and the Dev rows would reorder: a behaviour change. Moving them needs `DEV` built after all tables (Phase 3) |
 | D12 | Proof a move changed nothing: parse the built bundle before and after, and compare every top-level statement's text (indentation aside): `node tools/same.js [ref]`. After P1.5 all 359 matched the P1.2 bundle exactly; only the order differs (modules first) | Stronger than the suites for a move-only phase: same text in, same behaviour out. The only thing a move can change is load order, and nothing at the top level reads a later module's state (checked for `MODS` in P1.5) |
 
@@ -509,3 +535,4 @@ commit. List them here for after.
 | 2026-09-29 | Phase 2, P2.7 (1/2) | `game/Game.js` (Game as-is, with SPUTTER_FUEL, sputterStep, NO_INPUT). Its `ui/h.js` import swapped by hand for its own two React lines (D13). `same.js` then reports 343/359 identical, the other 16 renames only (`h2->h3` in 15 of them, and in Game also `h->h2`, `useRef->useRef2`, `useEffect->useEffect2`), plus the two new lines: shown with the new `node tools/same.js --renames`. `main.js`'s `export { … }` list is gone (nothing pure left in it), so its "pure part of this file" comment went too. | same: renames only (D13), logic 33/33, smoke ok |
 | 2026-09-29 | Phase 2, P2.7 (2/2) | `ui/app.js` (App). `main.js` is now the two imports and the mount line, plus a two-line header comment. CLAUDE.md's "code is `src/main.js`" lines and the layout table updated. | same 361/361, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 2 done | Full suite at the end of P2.7: `decor`, `torch` failed in the run and passed alone; `jelly` spit passed 1 of 3 alone (as at P1.6 and on v96). Not merged: the owner play-tests Phase 2 first. `main.js` 5,767 → 6 lines; `game/Game.js` 4,330, `ui/` 8 files, 5–418 lines. | logic 33/33; browser 44/44 after re-runs (`jelly` flaky, as v96) |
+| 2026-09-29 | handover | Phase 3 notes written from the code (closure shape, landmarks, the test hook reads closure names so P3.2 must update it in step, why `move.js`/`same.js` don't fit, a determinism check to weigh in P3.1). HANDOVER flakes list + next steps; CLAUDE.md branch line. | — |

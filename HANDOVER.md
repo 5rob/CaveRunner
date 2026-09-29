@@ -11,7 +11,9 @@ it's stale.
   `src/`, bundled by esbuild into the same `index.html`. Phase 0 and Phase 1 are done and
   released as v97 (merged to `main`). Phase 2 (the UI into `src/ui/`, `Game` into
   `src/game/Game.js`) is done on `refactor`, **not merged** — the owner play-tests it first
-  (`node tools/build.js --watch` + `node serve.js`), then it goes to `main` with a version bump.
+  (`node tools/build.js --watch` + `node serve.js`), then it goes to `main` with a version bump
+  (v98). Next after that: Phase 3 (taking `Game` apart); REFACTOR.md has notes on what the
+  code looks like for it and why the Phase 1–2 tools (`move.js`, `same.js`) don't fit it.
   **`REFACTOR.md` is the tracker** — its Status table, **How a move goes** recipe and session
   log say exactly where things are. The feature freeze lifted with v97.
 - **On-disk version: v97** (v97 = the refactor's Phase 1; plays the same as v96). Working on `main` (**release channel is `main`** — CI there
@@ -306,7 +308,7 @@ Talk briefly, iterate fast, don't over-plan. Every change works at phone width w
   re-run the single suite to confirm; all are enemy-geometry / random-seed sensitive, not
   regressions): `everymod` (telecast), `trigger` (double trigger), and `compare` (a
   found gun that happens not to differ in regen, so "less regen is red" finds nothing —
-  seen once during the v47 run, green on its own), and `fog` "the next floor is dark again" (~1 in 4-5 runs a new floor spawns with a few cave cells already visible up the shaft; also fails on v56 code, seed-dependent), and `lightning` "a fork hits a creature off to the side" (~1 in 5-8: the fork roll is random and the target bobs near the edge of its 90 reach; seen v78/v79, fails with any creature, not a spider bug). And `jelly` (browser) "hunting with a clear line, it spits at you" (~1 in 3, same on v87 code — the sandbox jelly sometimes never lines up a shot). See `memory/cardfit-known-failure.md`.
+  seen once during the v47 run, green on its own), and `fog` "the next floor is dark again" (~1 in 4-5 runs a new floor spawns with a few cave cells already visible up the shaft; also fails on v56 code, seed-dependent), and `lightning` "a fork hits a creature off to the side" (~1 in 5-8: the fork roll is random and the target bobs near the edge of its 90 reach; seen v78/v79, fails with any creature, not a spider bug). And `jelly` (browser) "hunting with a clear line, it spits at you" (~1 in 3, same on v87 code — the sandbox jelly sometimes never lines up a shot; in the refactor sessions it passed only ~1 in 3 even alone, on v96 as well). Also seen during the refactor, each passing alone: `sound` portalOut, `torch` ("falls off into the dark", "brighter frames… taller flame"), `fog` "flying on reveals more", `decor` "a vine holds you where you grabbed it", `rats`, `save`, `archvine` — REFACTOR.md "Found along the way" has the list.
 
 ## Testing on the phone over WiFi
 
