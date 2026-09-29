@@ -6,10 +6,11 @@ import {
   SHOP_Y, SIGHT, START_GOLD, VIEW_MIN_H, VIEW_W, WALK, WEB_HAND, WH, WW
 } from './core/consts.js';
 import { angDiff, approach, clamp, hexArr, hexRgb, mix, mixHex, rr, turn } from './core/util.js';
+import { AMBIENCE, decorFor, themeFor } from './data/themes.js';
 import {
   DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_META, JE_COLS, devReport, devSet, jcol, kr, kru, spr
 } from './dev/knobs.js';
-import { AMBIENCE, decorFor, themeFor } from './data/themes.js';
+import { HUNTERS, NATURAL_ONLY, enemyFor, rosterFor } from './data/creatures.js';
 
 const { useRef, useEffect, useState, useMemo } = React;
 const h = React.createElement;
@@ -47,136 +48,6 @@ function jellyPal(u) {
 // Black Hole travel speed from the Dev knob, as a multiplier so speed mods still stack
 const bhSp = sh => sh.pull ? DEV.bhSpeed / MODS.void.speed : 1;
 const NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
-
-// ---- creatures ----
-// Who lives on a floor. Floors 1-10 each own a fixed roster of 2-6 of these, and the
-// roster is the same on every run, so the thing that killed you on floor 6 is the
-// thing you meet on floor 6 next time. Stats and gold scale with the floor a creature
-// belongs to, so a floor 9 Hiisi is worth more and takes more killing than a floor 2
-// one. Past floor 10 the roster is drawn at random instead, so the run keeps moving.
-//
-// act:  shoot   hovers, patrols, fires when it has a line on you
-//       turret  holds station, longer reach, winds up before it fires
-//       chase   comes at you and hurts on contact
-//       bomb    comes at you and bursts on contact
-//       spider  crawls rock and its own lines, bites, and strings you (see spiderStep)
-//       jelly   swims in pulses, turns slowly, spits poison when its head is on you (jellyStep)
-// body: which sprite draws it
-// kp:   a reworked creature's Dev-knob prefix. A creature with one runs its own step
-//       function, rolls its aggro reach (kp+'Aggro') and bite (kp+'Bite'/'BiteCd') off its
-//       own knobs, owns its motion (no generic hover bob), and comes for you when hurt.
-const CREATURES = {
-  // jellyfish: pulses along wherever its head points, drag slows it, then it pulses again;
-  // hunting, it lines its head up on you and spits dripping poison. Its numbers are
-  // Dev-panel knobs (DEV.je*); dmg and spd here are only its defaults, for show.
-  meduusa: { name: 'Myrkkymeduusa', body: 'jelly', act: 'jelly', kp: 'je', aggro: 300,
-    col: { a: '#46c94f', b: '#133d1a', c: '#a6ff7c', eye: '#e4ff4a' }, glow: '110,255,90',
-    hp: 2, dmg: 7, bspd: 0, range: 0, cd: 0, gold: 4, r: 9, spd: 140 },
-  hiisi:  { name: 'Hiisi', body: 'drone', act: 'shoot',
-    col: { a: '#4f7a52', b: '#22331f', c: '#7fb383', eye: '#ffd98a' },
-    hp: 5, dmg: 10, bspd: 190, range: 230, cd: 1.5, gold: 8, r: 9, spd: 34 },
-  tappura: { name: 'Tappurahiisi', body: 'drone', act: 'shoot', shots: 4,
-    col: { a: '#7a5a3a', b: '#33241a', c: '#b08a5c', eye: '#ffb347' },
-    hp: 6, dmg: 7, bspd: 200, range: 180, cd: 2.3, gold: 10, r: 10, spd: 30 },
-  chain:  { name: 'Chaingunner', body: 'drone', act: 'shoot',
-    col: { a: '#8a3f3f', b: '#3a1c1c', c: '#c06a6a', eye: '#ff8a8a' },
-    hp: 7, dmg: 5, bspd: 230, range: 250, cd: 0.6, gold: 12, r: 10, spd: 32 },
-  snipu:  { name: 'Snipuhiisi', body: 'drone', act: 'turret', tele: 0.55,
-    col: { a: '#5a5f8a', b: '#252a44', c: '#8f95c4', eye: '#9ad4ff' },
-    hp: 4, dmg: 22, bspd: 420, range: 460, cd: 3.0, gold: 14, r: 9, spd: 0 },
-  // spider: lives on rock and its own silk (spiderStep); bites up close, and shoots a
-  // string at you that slows you until you pull it too long and it snaps. Its speeds and
-  // reaches are Dev-panel knobs (DEV.sp*); spd is the burst speed's default, for show.
-  hamahakki: { name: 'Hämähäkki', body: 'spider', act: 'spider', kp: 'sp', aggro: 300,
-    col: { a: '#6a4a86', b: '#2b1d38', c: '#a077c4', eye: '#ffd98a' },
-    hp: 4, dmg: 12, bspd: 0, range: 0, cd: 0, gold: 6, r: 9, spd: 260 },
-  // rat: runs the rock surfaces round its nest (ratStep), bites you and knocks gold out of
-  // you, grabs any loose gold near it and carries it home. Its numbers are Dev knobs (DEV.ra*).
-  // It is never rolled off a roster: rats only come out of nests.
-  rotta: { name: 'Rotta', body: 'rat', act: 'rat', kp: 'ra', aggro: 260, noRoster: 1,
-    col: { a: '#7a6a5e', b: '#3a302a', c: '#b3a291', eye: '#ff5a5a' },
-    hp: 1, dmg: 4, bspd: 0, range: 0, cd: 0, gold: 2, r: 4, spd: 170 },
-  // rat nest: a room in the rock at the end of a thin tunnel. Doesn't move; lets a rat out
-  // now and then while it has fewer than its max out; dies to digging or blasting.
-  pesa: { name: 'Rotanpesä', body: 'nest', act: 'nest', noRoster: 1,
-    col: { a: '#8a6a3a', b: '#3d2c18', c: '#c49a5a', eye: '#ffd23c' },
-    hp: 12, dmg: 0, bspd: 0, range: 0, cd: 0, gold: 0, r: 10, spd: 0 },
-  lohkare: { name: 'Lohkare', body: 'crawler', act: 'chase', aggro: 260,
-    col: { a: '#6a625a', b: '#2c2823', c: '#9d948a', eye: '#ffb347' },
-    hp: 16, dmg: 18, bspd: 0, range: 0, cd: 0, gold: 20, r: 13, spd: 26 },
-  mato:   { name: 'Mato', body: 'worm', act: 'chase', aggro: 320,
-    col: { a: '#a2607a', b: '#40222e', c: '#d68fa8', eye: '#ffd98a' },
-    hp: 6, dmg: 14, bspd: 0, range: 0, cd: 0, gold: 9, r: 8, spd: 84 },
-  hurtta: { name: 'Hurtta', body: 'crawler', act: 'chase', aggro: 360,
-    col: { a: '#7a4a3a', b: '#2f1a14', c: '#b3765c', eye: '#ff9a5a' },
-    hp: 5, dmg: 15, bspd: 0, range: 0, cd: 0, gold: 10, r: 9, spd: 105 },
-  kobold: { name: 'Kobold', body: 'crawler', act: 'chase', aggro: 300,
-    col: { a: '#8a7a4a', b: '#332d18', c: '#c0ad74', eye: '#ffe066' },
-    hp: 3, dmg: 8, bspd: 0, range: 0, cd: 0, gold: 5, r: 7, spd: 92 },
-  konna:  { name: 'Konna', body: 'blob', act: 'chase', aggro: 260,
-    col: { a: '#4a7a6a', b: '#1c332c', c: '#79b3a0', eye: '#d8ff9a' },
-    hp: 6, dmg: 11, bspd: 0, range: 0, cd: 0, gold: 7, r: 10, spd: 48 },
-  lima:   { name: 'Limanuljaska', body: 'blob', act: 'bomb', aggro: 300,
-    col: { a: '#6fa03a', b: '#2a3d14', c: '#a6d46a', eye: '#e6ff9a' },
-    hp: 5, dmg: 20, bspd: 0, range: 0, cd: 0, gold: 11, r: 10, spd: 55 },
-  tuli:   { name: 'Stendari', body: 'blob', act: 'bomb', aggro: 330, fire: 1,
-    col: { a: '#c05a2a', b: '#3f1c0e', c: '#ff9a5a', eye: '#ffe066' },
-    hp: 6, dmg: 26, bspd: 0, range: 0, cd: 0, gold: 13, r: 10, spd: 60 },
-  karpas: { name: 'Kärpässieni', body: 'blob', act: 'turret',
-    col: { a: '#b04a4a', b: '#3d1616', c: '#e88a8a', eye: '#ffffff' },
-    hp: 5, dmg: 12, bspd: 150, range: 300, cd: 1.9, gold: 9, r: 10, spd: 0 },
-  jaatio: { name: 'Jäätiö', body: 'skull', act: 'turret', tele: 0.3,
-    col: { a: '#7ab8d8', b: '#22414f', c: '#b6e2f4', eye: '#d8f4ff' },
-    hp: 8, dmg: 12, bspd: 130, range: 240, cd: 1.7, gold: 15, r: 10, spd: 0 },
-  skull:  { name: 'Elävät luut', body: 'skull', act: 'turret', tele: 0.35,
-    col: { a: '#d8d2be', b: '#4a463c', c: '#f4f0e0', eye: '#5ee0a0' },
-    hp: 7, dmg: 14, bspd: 200, range: 320, cd: 2.1, gold: 16, r: 9, spd: 0 },
-};
-const CREATURE_IDS = Object.keys(CREATURES);
-
-// Floors 1-10, fixed for good — that is the familiarity. Order is roughly the order
-// you meet them: weak gunners and one crawler first, snipers and bombers in the
-// middle, the armoured and the wind-up shooters at the top.
-const ROSTERS = [
-  ['meduusa', 'hamahakki'],
-  ['meduusa', 'hamahakki', 'hiisi'],
-  ['hiisi', 'konna', 'hamahakki'],
-  ['hiisi', 'mato', 'lima', 'kobold'],
-  ['hiisi', 'karpas', 'hurtta', 'lima'],
-  ['snipu', 'hiisi', 'hurtta', 'tuli', 'karpas'],
-  ['snipu', 'lohkare', 'mato', 'tuli', 'kobold'],
-  ['jaatio', 'chain', 'lohkare', 'hamahakki', 'hurtta', 'karpas'],
-  ['jaatio', 'chain', 'snipu', 'tuli', 'lohkare', 'skull'],
-  ['chain', 'snipu', 'lohkare', 'skull', 'jaatio', 'tappura'],
-];
-// the roster for a floor. Past the fixed ten it rolls a fresh 2-6 off the whole list,
-// using the level's own seeded rnd so a floor stays consistent while you are on it.
-function rosterFor(floor, rnd) {
-  if (floor >= 1 && floor <= ROSTERS.length) return ROSTERS[floor - 1].slice();
-  const r = rnd || Math.random, pool = CREATURE_IDS.filter(id => !CREATURES[id].noRoster), out = [];
-  const n = 2 + Math.floor(r() * 5);
-  while (out.length < n && pool.length) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
-  return out;
-}
-
-// One floor's worth of one creature: the type's own numbers, lifted by the floor it
-// belongs to. Health climbs hardest, gold next, damage least — a floor 10 enemy is
-// worth a lot more than it hurts, or the shop heal would never keep up.
-function enemyFor(id, floor) {
-  const c = CREATURES[id];
-  const hp = 1 + (floor - 1) * 0.35, dmg = 1 + (floor - 1) * 0.16, gold = 1 + (floor - 1) * 0.30;
-  return { id, name: c.name, body: c.body, act: c.act, col: c.col,
-    hp: Math.max(1, Math.round(c.hp * hp)),
-    dmg: Math.max(1, Math.round(c.dmg * dmg)),
-    bspd: Math.round(c.bspd * (1 + (floor - 1) * 0.05)),
-    gold: Math.max(1, Math.round(c.gold * gold)),
-    range: c.range, cd: c.cd, tele: c.tele || 0, shots: c.shots || 1,
-    r: c.r, spd: c.spd, aggro: c.aggro || 300, kp: c.kp || null, glow: c.glow || null,
-  };
-}
-// the acts that hunt you: they notice you on a sightline within their aggro reach, keep
-// coming, and only lose you far away (see the enemy loop)
-const HUNTERS = { chase: 1, bomb: 1, spider: 1, jelly: 1, rat: 1 };
 
 const COL = {
   text: '#e9ecf2', muted: 'rgba(233,236,242,0.55)', barBg: 'rgba(255,255,255,0.12)',
@@ -5704,10 +5575,6 @@ function fireStep(F, dt, out, rnd) {
   }
   return ticks;
 }
-
-// creatures (by act) that live only in the natural zones: spawned there, and they won't swim
-// out into a built-up zone (jellyStep's env.stay)
-const NATURAL_ONLY = { jelly: 1 };
 // Where can a runner-sized box (6 x 11 terrain pixels) get to from (x, y) (its top-left,
 // in the open), walking and flying through open pixels? ok[i] = 2 where its top-left can
 // be; top: it got to the top of the map (y <= 40), where the exit is.
@@ -6560,31 +6427,30 @@ function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
 // (REFACTOR.md, P1.5); the browser build ignores it.
 export {
   useRef, useEffect, useState, useMemo, h, SPUTTER_FUEL, sputterStep, jetPitch, twinkle,
-  jellyPal, makeLevel, bhSp, MODS, NO_INPUT, CREATURES, spiderStep, ratStep, CREATURE_IDS,
-  ROSTERS, rosterFor, enemyFor, HUNTERS, COL, MOD_TIER, FAMILIES, FAMILY_OF, FIELD_WHAT, famOf,
-  famCol, hueFromName, gunHue, gunColor, MOD_PRICE, tierOf, TRIG_KINDS, TRIG_VARIANTS, TIMER_ADD,
-  VACUUM_WAIT, NOITA_SPAWN, NOITA_OF, floorTier, noitaP, TIER_FLOOR, modWeight, rollMod, ALL_IDS,
-  priceOf, gunPrice, isGunShop, VIS_RAYS, fogReveal, fogStart, nestFog, rayDist, losClear,
-  roamStep, turnToward, flyMove, surfNormal, SPIDER, spiderSeat, surfSeat, segNear, spiderAim,
-  RAT, ratFooting, ratJump, ratSpread, pathAt, pathLen, NAV, navField, navWay, ratNests, JELLY,
-  jellyBell, jellyStep, segHitsBox, tentacleTouch, TW_N, TW_TILE, twNoise, plantWhite,
-  plantGlowFill, visPoly, MIN_CAST, MIN_RECH, effRecharge, gunPassives, SHOT_IDS, SEED_SHOTS,
-  GUN_A, GUN_B, shuffleOrder, resetGun, GUN_LV_MAX, RARE_GUN, GUN_RANGE, GUN_LV_COL, gunLvTier,
-  gunStat, gunLevel, caveGun, makeGun, startingGuns, blankShot, planCast, PREVIEW_FIELDS, num,
-  previewGun, previewPlan, modPreview, HP_BUDGET, shotPower, shotCount, shotPellets, gunRate,
-  SHORTLIST, buildAdvice, castGroups, groupStats, pullSteps, fireSimNew, fireSimStep,
-  fireSimGauges, statQual, gunModDeltas, drawGun, drawRunner, flameDrop, drawFlame, glowAt,
-  drawTorch, drawSconce, drawDrone, drawSpider, drawRat, drawNest, drawJelly, drawCrawler,
-  drawBlob, drawSkull, drawWorm, drawEnemy, gunLvCol, gunAccent, PERKS, PERK_IDS, perkBag,
-  fmtGold, deckLayout, DECOR_DENSITY, GROVES, PLANTS, FLAMMABLE, FIRE_WET, HEAR_FIRE, FIRE_COLS,
-  PROP_BOX, PROP_DMG, timberFrame, archCurve, archNear, archAt, decorate, FUEL_MOSS, FUEL_GRASS,
-  FUEL_WOOD, cullDecor, propAnchored, rgbA, rgbS, propCol, drawArch, drawProp, propGlow, VENT_H,
-  eyesAlpha, SPELL_VOICE, SPELL_VOICES, clampS, shotSound, BODY_VOICE, CREATURE_TONE,
-  CREATURE_VOICES, creatureSound, AMB_EVENTS, FX_VOL, fxVolKey, knob, rustleStep, SFX, SAVE_KEY,
-  GUN_DEFAULTS, cleanGun, cleanLoadout, readSave, loadSave, clearSave, ORE_GOLD, ROOM_HW,
-  ROOM_HH, goldVeins, strataCave, paveWorks, timberWorks, FIRE_TICK, FIRE_MAX, FIRE_CATCH,
-  FIRE_KNOB, FIRE_UPW, FIRE_NB, fireNew, fireLight, fireDouse, fireArea, fireNear, fireStep,
-  NATURAL_ONLY, boxReach, builtAt, RP_HZ, RP_BEFORE, RP_AFTER, RP_KEEP, RP_W, RP_H, RP_LISTS,
+  jellyPal, makeLevel, bhSp, MODS, NO_INPUT, spiderStep, ratStep, COL, MOD_TIER, FAMILIES,
+  FAMILY_OF, FIELD_WHAT, famOf, famCol, hueFromName, gunHue, gunColor, MOD_PRICE, tierOf,
+  TRIG_KINDS, TRIG_VARIANTS, TIMER_ADD, VACUUM_WAIT, NOITA_SPAWN, NOITA_OF, floorTier, noitaP,
+  TIER_FLOOR, modWeight, rollMod, ALL_IDS, priceOf, gunPrice, isGunShop, VIS_RAYS, fogReveal,
+  fogStart, nestFog, rayDist, losClear, roamStep, turnToward, flyMove, surfNormal, SPIDER,
+  spiderSeat, surfSeat, segNear, spiderAim, RAT, ratFooting, ratJump, ratSpread, pathAt, pathLen,
+  NAV, navField, navWay, ratNests, JELLY, jellyBell, jellyStep, segHitsBox, tentacleTouch, TW_N,
+  TW_TILE, twNoise, plantWhite, plantGlowFill, visPoly, MIN_CAST, MIN_RECH, effRecharge,
+  gunPassives, SHOT_IDS, SEED_SHOTS, GUN_A, GUN_B, shuffleOrder, resetGun, GUN_LV_MAX, RARE_GUN,
+  GUN_RANGE, GUN_LV_COL, gunLvTier, gunStat, gunLevel, caveGun, makeGun, startingGuns, blankShot,
+  planCast, PREVIEW_FIELDS, num, previewGun, previewPlan, modPreview, HP_BUDGET, shotPower,
+  shotCount, shotPellets, gunRate, SHORTLIST, buildAdvice, castGroups, groupStats, pullSteps,
+  fireSimNew, fireSimStep, fireSimGauges, statQual, gunModDeltas, drawGun, drawRunner, flameDrop,
+  drawFlame, glowAt, drawTorch, drawSconce, drawDrone, drawSpider, drawRat, drawNest, drawJelly,
+  drawCrawler, drawBlob, drawSkull, drawWorm, drawEnemy, gunLvCol, gunAccent, PERKS, PERK_IDS,
+  perkBag, fmtGold, deckLayout, DECOR_DENSITY, GROVES, PLANTS, FLAMMABLE, FIRE_WET, HEAR_FIRE,
+  FIRE_COLS, PROP_BOX, PROP_DMG, timberFrame, archCurve, archNear, archAt, decorate, FUEL_MOSS,
+  FUEL_GRASS, FUEL_WOOD, cullDecor, propAnchored, rgbA, rgbS, propCol, drawArch, drawProp,
+  propGlow, VENT_H, eyesAlpha, SPELL_VOICE, SPELL_VOICES, clampS, shotSound, BODY_VOICE,
+  CREATURE_TONE, CREATURE_VOICES, creatureSound, AMB_EVENTS, FX_VOL, fxVolKey, knob, rustleStep,
+  SFX, SAVE_KEY, GUN_DEFAULTS, cleanGun, cleanLoadout, readSave, loadSave, clearSave, ORE_GOLD,
+  ROOM_HW, ROOM_HH, goldVeins, strataCave, paveWorks, timberWorks, FIRE_TICK, FIRE_MAX,
+  FIRE_CATCH, FIRE_KNOB, FIRE_UPW, FIRE_NB, fireNew, fireLight, fireDouse, fireArea, fireNear,
+  fireStep, boxReach, builtAt, RP_HZ, RP_BEFORE, RP_AFTER, RP_KEEP, RP_W, RP_H, RP_LISTS,
   RP_NUMS, RP_DEEP, RP_LERP, RP_ANGLE, rpPlain, rpClone, rpCopy, rpLerp, rpList, rpAt, rpFrame,
   rpCut, rpPaste, rpMerge, DRIFT_DRAG, DRIFT_SLOW, DRIFT_FLOAT, DRIFT_RISE, DRIFT_R, DRIFT_CHASE,
   DRIFT_ACC, driftStep, WIG_HZ, wigAng, wigTurn, tracePath

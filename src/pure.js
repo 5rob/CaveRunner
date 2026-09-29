@@ -10,3 +10,4 @@ export * from './core/consts.js';
 export * from './core/util.js';
 export * from './dev/knobs.js';
 export * from './data/themes.js';
+export * from './data/creatures.js';

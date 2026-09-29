@@ -138,8 +138,8 @@ rest and imports them. Where things are (`main.js` line numbers as of v96, they 
 | World constants | `src/core/consts.js`: `CELL`, `CW`/`CH`, `SHOP_*`, tuning consts (`GRAVITY`, `JET`, …); `VERSION` is in `src/version.js` |
 | `DEV` / `DEV_META` / `devSet` | `src/dev/knobs.js` (with every range/colour knob table): live dev-panel knobs, saved to localStorage (see note below) |
 | `THEMES` / `themeFor` | `src/data/themes.js` (with `DECOR`, `AMBIENCE`): the 12 level palettes; the floor number picks one |
-| `CREATURES` / `ROSTERS` | ~468: the 16 creature types, and which live on floors 1–10 |
-| `rosterFor` / `enemyFor` | ~554: a floor's creatures, and one creature's floor-scaled stats |
+| `CREATURES` / `ROSTERS` | `src/data/creatures.js`: the 16 creature types, and which live on floors 1–10 |
+| `rosterFor` / `enemyFor` | `src/data/creatures.js`: a floor's creatures, and one creature's floor-scaled stats |
 | `MODS` | ~591: the spells, each a plain object (`off: 1` = kept but never handed out) |
 | `FAMILIES` / `FAMILY_OF` | ~950: the 8 colour families the UI groups mods by |
 | `MOD_PRICE` / `MOD_TIER` | ~1019: shop price and rarity 1–4 for every mod |
