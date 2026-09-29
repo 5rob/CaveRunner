@@ -7,9 +7,14 @@
 //
 // Browser suites drive the real page in Chromium via playwright-core. They are slower
 // and a little flaky in parallel, so they run one at a time.
+//
+// index.html is built from src/ first (tools/build.js), so a green run always means the
+// committed index.html is fresh.
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+
+console.log(require('../tools/build')() ? 'index.html rebuilt from src/' : 'index.html up to date');
 
 const filter = process.argv[2] || '';
 const only = filter === 'logic' || filter === 'browser' ? filter : '';

@@ -172,7 +172,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
 - [x] **P0.4** Put a banner comment in `shell.html` (it ends up in `index.html`):
       "GENERATED from src/ by tools/build.js — edit src/, not this file". The acceptance
       check becomes "identical apart from the banner".
-- [ ] **P0.5** `tests/run.js` runs the build first, so a green test run always means
+- [x] **P0.5** `tests/run.js` runs the build first, so a green test run always means
       `index.html` is fresh. `index.html` stays committed (CI, Pages, the APK and `serve.js`
       read it and don't change).
 - [ ] **P0.6** `tests/load.js`: **one loader for all logic suites.** `require('../load')`
