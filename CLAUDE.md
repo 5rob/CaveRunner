@@ -1001,6 +1001,7 @@ node tests/run.js           # everything
 node tests/run.js logic     # the fast ones, ~2.5 minutes (level-generating suites are most of it)
 node tests/run.js browser   # Chromium, ~12 minutes on this PC, runs one at a time
 node tests/run.js advice    # anything matching "advice"
+node tests/determinism.js   # refactor proof: same scripted run on HEAD's build and this tree's, frame by frame
 ```
 
 Every run first builds `index.html` and runs the **undefined-name check** (`eslint.config.js`: ESLint

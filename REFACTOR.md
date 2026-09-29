@@ -13,11 +13,11 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 1 merged to `main` as v97. Phase 2 done on `refactor`, not merged: waiting for the owner's play-test. Then Phase 3 |
+| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1 done (map + determinism probe) |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
-| **Last green full suite** | 2026-09-29, end of Phase 2 (bar known flakes: `decor` vine and `torch` passed alone; `jelly` spit passed 1 of 3 alone, as on v96) |
-| **Last merged to main** | v97 (P1.6), 2026-09-29 |
+| **Last green full suite** | 2026-09-29, v98 release (bar `jelly` spit: passed alone on the 3rd try, as on v96) |
+| **Last merged to main** | v98 (Phase 2), 2026-09-29 |
 
 ---
 
@@ -341,7 +341,7 @@ What the code says about this phase (checked at the end of Phase 2):
 - The anchor `const toast = (text) => {` must stay unique in the bundle until P3.3 retires it,
   and `const [size, setSize] = useState(150);` (in `ui/app.js`) stays as is.
 
-- [ ] **P3.1 Map it first, change nothing.** Write a map of `Game` into this doc (new
+- [x] **P3.1 Map it first, change nothing.** Write a map of `Game` into this doc (new
       section **Game map**): every closure-level variable and inner function, which system
       it belongs to, and who reads/writes it. Look especially for variables reassigned
       (`let x = …; x = …`), since those can't simply be shared, and for things `draw()` and
@@ -440,11 +440,13 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
 | D7 | `VERSION` is not imported: `src/version.js` is read by the build (and by `tests/load.js`), and the game code uses the global the page's own `<script>const VERSION = 'vNN';</script>` declares (ESLint knows it as a global) | The bundle never declares it, so there is exactly one `VERSION = 'vNN'` in `index.html` for CI and the app to find |
 | D8 | esbuild runs with `treeShaking: false` | Otherwise it drops code nothing calls yet (`groupStats`, still tested) |
 | D9 | The browser test page copies every top-level name of the bundle onto `window` (`tests/build.js`, names found by parsing with espree, which ships with ESLint) | Browser suites call `MODS`, `DEV`, `resetGun`… from `page.evaluate`; inside the iife those aren't globals any more. Suites stay unchanged |
-| D10 | `tools/move.js` does the P1.5 moves: cuts named top-level statements (with the comments above them) out of `main.js`, puts `export` on them, and recomputes the imports on both sides from what each file actually uses; refuses a move whose code still needs something in `main.js` | Each move is mechanical and the same shape; a cycle back into `main.js` can't slip in. Delete it after Phase 2 (used for P1.5 and all of Phase 2; `main.js` is now only the mount, so nothing is left for it) |
+| D10 | `tools/move.js` does the P1.5 moves: cuts named top-level statements (with the comments above them) out of `main.js`, puts `export` on them, and recomputes the imports on both sides from what each file actually uses; refuses a move whose code still needs something in `main.js` | Each move is mechanical and the same shape; a cycle back into `main.js` can't slip in. Deleted with the v98 release (used for P1.5 and all of Phase 2; `main.js` is now only the mount, so nothing is left for it) |
 | D11 | In Phase 1 every knob table (`SP_KNOBS`, `JE_KNOBS`, `RA_KNOBS`, `JE_COLS`, `LV_KNOBS`, `ARCH_KNOBS`, `FIRE_KNOBS`) stays in `dev/knobs.js`, not in its creature's file | `DEV` is copied from `DEV_DEFAULTS` once, right after the tables register. A table in `creatures/spider.js` would register *after* that (knobs.js loads first), so `DEV` would miss its keys and the Dev rows would reorder: a behaviour change. Moving them needs `DEV` built after all tables (Phase 3) |
 | D12 | Proof a move changed nothing: parse the built bundle before and after, and compare every top-level statement's text (indentation aside): `node tools/same.js [ref]`. After P1.5 all 359 matched the P1.2 bundle exactly; only the order differs (modules first) | Stronger than the suites for a move-only phase: same text in, same behaviour out. The only thing a move can change is load order, and nothing at the top level reads a later module's state (checked for `MODS` in P1.5) |
 
 | D13 | `game/Game.js` declares its own `const { useRef, useEffect } = React; const h = React.createElement;` instead of importing them from `ui/h.js` | Layer rule: `game/` (5) may not import from `ui/` (6). Cost: two top-level `h`s in one bundle, so esbuild prints Game's as `h2`/`useRef2`/`useEffect2` and shifts inner locals already printed `h2` to `h3` (15 statements besides Game). `node tools/same.js --renames` shows every difference is such a rename (identifier tokens only, one consistent map); checked at P2.7 |
+| D14 | Phase 3's proof is `node tests/determinism.js [ref]` (default HEAD): the same scripted run on the ref's build (through the ref's own `tests/build.js`) and this tree's, every frame hashed (player, creatures, shots, pickups, particles, fire, random numbers drawn; rock + fog every 30 frames, canvas pixels every 60) | Cheap and stable: an init script seeds `Math.random`, freezes `performance.now` and takes over `requestAnimationFrame`, and the probe pumps 840 frames of exactly 1/60 s in one synchronous go (React can't re-render mid-run). ~6 s a run; `--self` gave identical hashes 5 times out of 5, and a one-number change (a spark speed) was caught at frame 153. It covers the shop, three floor-1 creatures (spider, jelly, nest), digging, fire, damage and the portal to floor 2. Not a suite, a before/after tool like `same.js` |
+| D15 | `W` (P3.2) holds the level's simulation state: the level-scoped `let`s, the run's lists, the player, camera and timers. Canvases/contexts, `REC`/`RT`/`RPV` (the recorder and replay), `raf`/`last` and `mouse` stay loose until P3.4 gives them homes (a render context, `recorder.js`) | The canvases are DOM resources, not world state, and `makeWorld()` stays plain data a logic test could make; the recorder is its own system with its own state |
 
 ## Found along the way
 
@@ -503,13 +505,142 @@ commit. List them here for after.
   Phase 3 player), `NO_INPUT`, `fmtGold`, `deckLayout` (the HUD, Phase 2). They stay in its
   `export { … }` list until they move (the Phase 2 notes say where each goes). **Resolved in
   Phase 2:** `fmtGold`/`deckLayout` are in `ui/hud.js`, the other three in `game/Game.js`.
+- **Found in P3.1 (the Game map):** `paint()` (Game.js ~845) has no callers. `total` is set by
+  `enterLevel` and read by nobody. `enterLevel` empties every list but `fields`, `beams` (and
+  `toasts`, on purpose), so a static field cast just before the portal carries on on the next
+  floor at the same coordinates. In a replay, `draw()`'s `visPoly`/`fogReveal` use the *live*
+  `mat` (today's rock), not the rock at the replay's time. `draw()` changes the world (fog
+  memory, camera, `Math.random` draws), see the map.
 - **The `shoplayout` logic suite takes ~26 s of its 30 s cap** (`LOGIC_CAP` in `tests/run.js`),
   and `perks` ~24 s. Not the refactor (the loader costs ~0.15 s), but on a busy PC they could
   time out. If one does, re-run it alone; worth making them lighter after the refactor.
 
 ## Game map
 
-(filled in by P3.1)
+Made in P3.1 from `src/game/Game.js` at v98 (4,330 lines; line numbers drift). The read/write
+lists come from a scope-aware pass (eslint-scope): "writes" means the variable itself is
+reassigned (`x = …`), not its contents; arrays and objects only mutated in place count as
+reads. `tools/world.js` (P3.2) uses the same analysis for the `x` → `W.x` rewrite.
+
+**Shape.** `Game({ input })` = `useRef` + one `useEffect(() => { … }, [])`. At the effect's top
+level: ~30 `let` lines, ~80 `const`s, ~95 inner functions, then the save-load block (484),
+listeners, and the rAF `loop` (4290); it returns only the cleanup. Every closure name is
+private: the only ways in are `input.current` (the React bridge) and `tests/build.js`'s
+string-inserted `window.__lvl` hook.
+
+### State (closure variables), by system
+
+**Canvases, made once, never reassigned** (render resources: they stay out of `W` in P3.2 and
+go to a render context in P3.4): `c`/`ctx` (the page canvas), `terrain`/`tctx` (rock),
+`decoC`/`dctx` (decoration layer), `bg`/`bgctx`, `fogC`/`fctx`/`fogImg`, `fogBlurC`/`fbctx`,
+`miniC`/`mctx`/`miniImg`/`mini32` (map), `pgGlow`/`pgGlowCtx` (1942). `tctx.putImageData` and
+`dctx.putImageData` are **wrapped by the recorder** (210) so every partial put lands in
+`REC.dirty`: whatever does terrain in P3.4 must keep going through those two.
+
+**Level-scoped, reassigned by `enterLevel`** (these `let`s must become `W.x`):
+
+| Names | Written by | Read by |
+|---|---|---|
+| `mat`, `img`, `ore`, `start`, `portal`, `arrival`, `stock`, `zone`, `rooms`, `sconces`, `miniEdgeIdx`, `matterProps`, `ambKinds`, `plantW`, `burrow`, `deepFog`, `levelSeed`, `levelOwned`, `roster`, `themeName`, `total` | `enterLevel` only | terrain fns, `step`, `draw`, `saveRun`, rats, fire, `plantGlow`; `roster`/`themeName` only by the test hook; `total` by nobody |
+| `enemies`, `pickups`, `props` | `enterLevel`, `drawReplay` (swap) | nearly everything (`enemies`: 20 functions) |
+| `dimg` | `enterLevel` | `unDeco`, `fireOut`, `flushFire`, `plantGlow`, recorder |
+| `seen` | `enterLevel`, `drawReplay` (swap) | fog fns, recorder, `step`, `draw` (and `draw` writes its *contents*: `fogReveal` runs there) |
+| `fire` | `enterLevel`, `drawReplay` (swap) | `dig`, `unDeco`, `ignite`, `fireFrame`, `explode`, `decorStep`, `step`, `draw` |
+| `zfx` | `enterLevel`, `decorStep` (a new object each frame) | `fireFrame`, `decorStep`, `step` (steering reads last frame's) |
+| `ghost` | `enterLevel`, `step`, `drawReplay` | `step`, `draw`, recorder |
+| `levelT`, `best` / `camReady` | `enterLevel` + `step` / `draw` | `step`, `draw` |
+| `floor` | the save-load block (484), `step` (the portal's `floor++`) | ~10 functions |
+| `firePropN` | `enterLevel`, `fireList` | `fireList` |
+
+**Run-scoped objects and arrays, never reassigned** (emptied in place with `.length = 0`):
+`p` (the player), `bullets`, `enemyShots`, `smoke`, `sparks`, `flashes`, `toasts`, `coins`,
+`fields`, `beams`, `arcs`, `torchP`, `motes`, `burns`, `webs`, `silk`, `strings`, `dparts`,
+`amb`, `clouds`, `rings`, `devils`, `fireVis`, `aimPath`, `navYou`, `jetSt`, `bhLoops`,
+`plantsNow`, `rustle`, `REC`, `RT`, `mouse` (= `input.current.mouse`). **Identity matters:**
+`RP_ARR` (203) holds twenty of these arrays by reference and `drawReplay` splices recorded
+contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They can move into
+`W` as the same objects, but must never be replaced by new ones.
+
+**Frame-to-frame state private to one function** (reassigned, but only by its user):
+- `step`: `jetLoop`, `beatT`, `wasEmpty`, `portalLoop`, `matterLoop`, `wasJet`, `stepT`,
+  `lastNear`, `portalAcc`, `leanVX`, `leanVY`, `smokeAcc`, `flickN`, `torchT`, `torchAcc`,
+  `webCheck` (and `webLetGo`, also read by `decorStep`). The loops are also stopped by the cleanup.
+- `decorStep`: `plantsLast`, `decoFrame`, `dripHurt`.
+- `fireList`/`fireFrame`: `firePlants` (also swapped by `drawReplay`, read by `draw`),
+  `fireArches`, `fireCarts`, `firePropLast`, `fireLoop`, `fireN` (read by `draw`, recorder).
+- `plantGlow`: `pgArt`, `pgC`, `pgCtx` (made lazily). `dropOre`: `oreBank`. `idOf`: `ridN`.
+- `dig`/`explode`: `terrainV` (the rock's change count; `navFor` reads it).
+- `refreshBag`: `pb` (the perk bag; read by 9 functions).
+- `loop`: `raf`, `last`. `drawReplay`: `RPV` (read by `draw`).
+
+**Shared between `step` and `draw`** (matters most for P3.4):
+- `step` writes, `draw` reads: `time`, `flick`, `leanX`, `leanY`, `glowN`, `levelT`, `ghost`.
+- **`draw` writes, `step` reads**: the camera `camX`/`camY` (eased toward you *in `draw`*,
+  0.15 a frame), `unitPx` (css px per world unit), `viewW`/`viewH` (read by `fireFrame`,
+  `stepAmbience`, `puffSpores`), `camReady`. `step` sees last frame's camera. `torchR` and
+  `visPts` are draw-only (plus the replay swap and the test hook).
+- **`draw` changes the world**: `fogReveal(seen, …)` runs in `draw` (the fog memory), and
+  `draw` calls `Math.random()` at 7 sites (bullet looks, flame, beams), from the same stream as
+  the sim. A render split must keep the draw order, or the rest of the run rolls differently
+  (the determinism probe shows it at once).
+- `drawReplay` swaps 20 of these (`enemies`, `pickups`, `props`, `fire`, `firePlants`, `seen`,
+  `ghost`, `time`, `flick`, `leanX`, `leanY`, `glowN`, `fireN`, `camX`, `camY`, `unitPx`,
+  `torchR`, `visPts`, `viewW`, `viewH`, plus `p`'s fields and the `RP_ARR` contents), calls
+  the real `draw()`, and swaps back in a `finally`. With `W` it's a save/restore of `W`
+  properties, same semantics.
+
+### Functions, by system (line: name, and who calls it)
+
+- **Level entry / save**: 351 `enterLevel` (load block, `step`'s portal and New cave), 440
+  `saveRun` (interval, `pagehide`, hidden, `step`), 167 `refreshBag`, 169 `maxHp`.
+- **Recorder / replay**: 207 `idOf`, 218 `recReset` (`enterLevel`), 226 `recSample`, 277
+  `recFrame` (`loop`), 295 `rpTerrain`, 318 `drawReplay` (`loop`).
+- **Fog**: 456 `fogLit` (`draw`), 467 `roomSeen` (`draw`), 477 `paintFog` (`enterLevel`, `step`),
+  1943 `seenAt` (`plantGlow`). The reveal itself is inline in `draw` (3994).
+- **Input / page**: 495 `saveHidden`, 500 `resize`, 511–522 `mMove`/`mDown`/`mUp`/`mLeave`.
+- **Terrain queries**: 530 `solidCell`, 532 `solidAt`, 533 `boxHit`, 544 `lineOfSight`, 545 `enemyAt`.
+- **Terrain changes**: 794 `dig`, 818 `dropOre`, 831 `unDeco`, 845 `paint` (no callers), 1499
+  `explode`. All go through the wrapped `putImageData`.
+- **Particles / feedback**: 554 `goo`, 561 `splat`, 570 `burst` (13 callers), 193 `toast`,
+  1016 `jag`, 1036 `addArc`, 1121 `glowDot`, 1123 `rnd`.
+- **Player**: 158 `torchHand`, 576 `hurt`, 1361 `youAlight`, 1567 `pOver`; steering, jetpack,
+  climbing and the torch are inline in `step` (2080–2220, 3057).
+- **Enemies**: 610 `fireEnemyShot`, 623 `damageEnemy`, 1357 `setAlight`, 1570 `alertAt`; the
+  enemy loop is inline in `step` (2738–2982), each creature's branch inside it.
+- **Rats**: 652 `ratSolid`, 655 `onWebIn`, 657 `navFor`, 671 `spawnRat`, 682 `unstick`, 698 `ratFrame`.
+- **Gun / casting**: 863 `cast`, 944 `spawnShot`, 996 `firePayload`, 1003 `releaseAt`, 1040
+  `lightningStep`, 1078 `fireBeam`, 1106 `spray`, 1230 `throwEmbers`, 1239 `explodeCross`, 1246
+  `critRoll`, 1247 `shove`, 1252 `castField`, 1266 `teleportTo`, 1284 `fieldPayload`. The bullet
+  loop is inline in `step` (2263–2451), fields 2480–2556.
+- **Shot looks (v95)**: 1124 `shotTrail`, 1192 `shotBounce`, 1204 `shotDeath`, 1221 `shotGrind`;
+  `drawLook` is inline in `draw`.
+- **Fire**: 1294 `growBox`, 1295 `fireOut`, 1308 `flushFire`, 1316 `catchPlant`, 1322
+  `catchArch`, 1329 `burnWeb`, 1339 `ignite`, 1367 `fireBlast`, 1374 `flameAt`, 1377 `fireSmoke`,
+  1383 `fireList`, 1390 `fireFrame` (`step`).
+- **Props / decoration**: 1580 `shatter`, 1585 `blowProp`, 1597 `popLamp`, 1614 `landProp`, 1626
+  `spawnDrip`, 1641 `decorStep` (`step`; ~280 lines: props, plants, webs, `zfx`).
+- **Ambience**: 1922 `spore`, 1926 `puffSpores`, 1991 `stepAmbience` (`decorStep`).
+- **Webs**: 186 `webNear`, 191 `webDist`. **Plant glow**: 1944 `plantGlow` (`draw`). **Zones**: 110 `natural`.
+- **The frame**: 2042 `step(dt)` (~1,100 lines), 3140 `draw()` (~1,150 lines: camera, bg,
+  terrain, props, entities, looks, fog 3982, post-fog glows 4042, HUD 4119, radar 4154, map
+  4235), 4290 `loop`.
+
+### Hazards for P3.2
+
+- **Five inner variables are already called `W`**: `drawReplay` (319) and `loop` (4296) call
+  `input.current.witness` `W`; `fireFrame` (1407) a web line; the steering branch an arch
+  (2132) and a web line (2145). The 1407 one sits next to a `fire` reference, so `fire` →
+  `W.fire` there would silently read the web. Rename those locals first, in their own commit.
+  `tools/world.js` refuses any reference an inner `W` would capture.
+- **Inner names shadow closure names** all over (`best` ×8, `k`, `e`, `L`…). A text replace
+  would hit the wrong ones; `tools/world.js` resolves each reference to its declaration.
+- The hook text in `tests/build.js` goes in front of `const toast` (193), above most of the
+  closure: it names functions declared later (`hurt`, `dig`, `recSample`…: hoisted `function`s,
+  fine) and reads `let`s through getters. `W` has to exist before line 193.
+- Shorthand properties (`RP_ARR = { bullets, … }`, `drawReplay`'s `keep = { enemies, … }` and
+  its destructuring restore) need `name: W.name`; the tool writes that.
+- No `src/` module has a top-level `W`, so esbuild keeps Game's `W` as `W` in the bundle (the
+  hook text depends on that).
 
 ## Session log
 
@@ -536,3 +667,5 @@ commit. List them here for after.
 | 2026-09-29 | Phase 2, P2.7 (2/2) | `ui/app.js` (App). `main.js` is now the two imports and the mount line, plus a two-line header comment. CLAUDE.md's "code is `src/main.js`" lines and the layout table updated. | same 361/361, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 2 done | Full suite at the end of P2.7: `decor`, `torch` failed in the run and passed alone; `jelly` spit passed 1 of 3 alone (as at P1.6 and on v96). Not merged: the owner play-tests Phase 2 first. `main.js` 5,767 → 6 lines; `game/Game.js` 4,330, `ui/` 8 files, 5–418 lines. | logic 33/33; browser 44/44 after re-runs (`jelly` flaky, as v96) |
 | 2026-09-29 | handover | Phase 3 notes written from the code (closure shape, landmarks, the test hook reads closure names so P3.2 must update it in step, why `move.js`/`same.js` don't fit, a determinism check to weigh in P3.1). HANDOVER flakes list + next steps; CLAUDE.md branch line. | — |
+| 2026-09-29 | Release v98 | Full suite on a snapshot of the v98 commit: only `jelly` spit failed (passed alone on the 3rd run, as on v96). `tools/move.js` deleted (D10). `src/version.js` → v98, merged `refactor` → `main`, pushed. CI run 36542142525 green, `version.txt` = v98; `main` merged back into `refactor`. | logic 33/33; browser 44/44 after re-runs |
+| 2026-09-29 | Phase 3, P3.1 | **Game map** written (from a scope-aware pass over the closure). Determinism probe built and kept: `tests/determinism.js` (D14), stable 5/5 and catches a one-number change. Where `W` stops is D15. No code changes. | probe SAME |
