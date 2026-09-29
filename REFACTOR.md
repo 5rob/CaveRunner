@@ -238,7 +238,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
   - [x] world/zones.js, veins.js, nests.js
   - [x] world/strata.js
   - [x] world/decorate.js
-  - [ ] world/level.js
+  - [x] world/level.js
   - [ ] creatures/common.js
   - [ ] creatures/spider.js (knobs + spiderStep/Seat/Aim + drawSpider)
   - [ ] creatures/rat.js
