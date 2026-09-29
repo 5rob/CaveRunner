@@ -45,8 +45,8 @@ replace it with a general static server.
 
 1. Make the change in `index.html`.
 2. Test it. `node tests/run.js` — see **Testing** below. Add a suite for anything new.
-3. Bump the version: `<title>` on line 7 and `const VERSION` near the top of the script.
-   This is what the phone's update prompt keys off — see **The version number is not
+3. Bump the version: `const VERSION` near the top of `src/main.js` (the build copies it
+   into the `<title>`). This is what the phone's update prompt keys off — see **The version number is not
    optional** below.
 4. Update `README.md` — it describes the game for a player, and stays current.
 5. Commit, then **get it onto `main`** — that is the release. Pushing/merging to `main`
@@ -72,11 +72,12 @@ The app decides whether to offer an update by comparing its own `VERSION` to a
 `version.txt` that CI generates from `index.html`'s `const VERSION`. If you don't bump the
 number, `version.txt` doesn't change, and **the phone never prompts** — the owner is stuck
 on the old build debugging a bug that's already fixed. So **every release gets a new
-number**, in both places:
+number**, in one place:
 
-- `<title>CaveRunner vNN</title>` — line 7
-- `const VERSION = 'vNN';` — near the top of the script, drawn on screen in-game, and the
-  string the update check parses (`VERSION = 'v(\d+)'`, so keep the `vNN` shape)
+- `const VERSION = 'vNN';` — near the top of `src/main.js`, drawn on screen in-game, and the
+  string the update check parses (`VERSION = 'v(\d+)'`, so keep the `vNN` shape).
+  `tools/build.js` fills `<title>CaveRunner vNN</title>` from it (`{{VERSION}}` in
+  `src/shell.html`), so the title can't drift.
 
 The number on screen is how they tell you which build they're looking at. Bump it before
 you push to `main`, never after.
