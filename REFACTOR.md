@@ -284,7 +284,7 @@ What the code says about this phase (checked at the end of Phase 1):
 - [x] **P2.4** ui/editor.js (Editor, GunStats, SlotGrid, ScrollBox, GunIcon, PULL_COL, GS_ROWS)
 - [x] **P2.5** ui/swap.js, ui/witness.js
 - [x] **P2.6** ui/devpanel.js (DevRow, DevPanel, SpawnGun; JellyPreview goes with the jelly or here)
-- [ ] **P2.7** game/Game.js (Game as-is, with `sputterStep`, `SPUTTER_FUEL`, `NO_INPUT`),
+- [x] **P2.7** game/Game.js (Game as-is, with `sputterStep`, `SPUTTER_FUEL`, `NO_INPUT`),
       then ui/app.js (App); `main.js` is now just the mount. Full suite green.
 
 ### How a move goes (the recipe Phase 1 used; keep using it)
@@ -473,7 +473,8 @@ commit. List them here for after.
   header (was above `rr`, now above the sprites).
 - **Pure code still in `main.js`** after P1.5: `sputterStep`/`SPUTTER_FUEL` (the jetpack,
   Phase 3 player), `NO_INPUT`, `fmtGold`, `deckLayout` (the HUD, Phase 2). They stay in its
-  `export { … }` list until they move (the Phase 2 notes say where each goes).
+  `export { … }` list until they move (the Phase 2 notes say where each goes). **Resolved in
+  Phase 2:** `fmtGold`/`deckLayout` are in `ui/hud.js`, the other three in `game/Game.js`.
 - **The `shoplayout` logic suite takes ~26 s of its 30 s cap** (`LOGIC_CAP` in `tests/run.js`),
   and `perks` ~24 s. Not the refactor (the loader costs ~0.15 s), but on a busy PC they could
   time out. If one does, re-run it alone; worth making them lighter after the refactor.
@@ -504,3 +505,4 @@ commit. List them here for after.
 | 2026-09-29 | Phase 2, P2.5 (2/2) | `ui/witness.js` (Witness, RP_SPEEDS). Clean move. | same 359/359, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 2, P2.6 | `ui/devpanel.js` (JellyPreview, DevRow, DevPanel, SpawnGun). JellyPreview went here, not with the jelly: it's a React component (needs `h`, layer 6). DevRow's comment sat above JellyPreview's; moved down to DevRow by hand. | same 359/359, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 2, P2.7 (1/2) | `game/Game.js` (Game as-is, with SPUTTER_FUEL, sputterStep, NO_INPUT). Its `ui/h.js` import swapped by hand for its own two React lines (D13). `same.js` then reports 343/359 identical, the other 16 renames only (`h2->h3` in 15 of them, and in Game also `h->h2`, `useRef->useRef2`, `useEffect->useEffect2`), plus the two new lines: shown with the new `node tools/same.js --renames`. `main.js`'s `export { … }` list is gone (nothing pure left in it), so its "pure part of this file" comment went too. | same: renames only (D13), logic 33/33, smoke ok |
+| 2026-09-29 | Phase 2, P2.7 (2/2) | `ui/app.js` (App). `main.js` is now the two imports and the mount line, plus a two-line header comment. CLAUDE.md's "code is `src/main.js`" lines and the layout table updated. | same 361/361, logic 33/33, smoke ok |

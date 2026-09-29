@@ -48,3 +48,4 @@ export * from './ui/swap.js';
 export * from './ui/witness.js';
 export * from './ui/devpanel.js';
 export * from './game/Game.js';
+export * from './ui/app.js';
