@@ -185,6 +185,10 @@ function, make it one. (The version notes below were written when everything was
 
 ## Things worth knowing before you change anything
 
+**The notes below name Game's state by its old loose names** (`mat`, `seen`, `zfx`, `enemies`,
+`p`, `camY`, `fire`…). Since P3.2 each one is a property of the world object: `W.mat`, `W.seen`,
+`W.zfx`… (`src/game/world.js` lists them all). The notes move next to the code in Phase 5.
+
 **`planCast(g, others)` mutates `g.idx`.** It walks the slot list from wherever the gun
 left off. Callers that only want to look (previews, the advisor, `castGroups`) pass a
 copy. It returns `{ shots, defs, start, cost, delay, acts, hp, wrap }`.

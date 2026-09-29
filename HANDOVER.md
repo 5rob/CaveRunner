@@ -14,8 +14,10 @@ it's stale.
   `src/game/world.js`) and P3.3 (`window.__lvl` = `W` via `src/game/testhook.js`) are done; next is
   P3.4, pulling systems out of `Game`. The proof for each Phase 3 step is
   `node tests/determinism.js` (same scripted run on HEAD and this tree, frame by frame), and
-  `tools/world.js` did the `x` → `W.x` rewrites. **`REFACTOR.md` is the tracker** — its Status
-  table, Game map and session log say exactly where things are.
+  `tools/world.js` did the `x` → `W.x` rewrites. For P3.4, REFACTOR.md has notes on what a
+  function needs when it moves out, and `node tools/gamemap.js fn…` lists it for any function.
+  **`REFACTOR.md` is the tracker** — its Status table, Game map and session log say exactly
+  where things are.
 - **On-disk version: v98** (v97/v98 = the refactor's Phases 1/2; play the same as v96). Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
