@@ -1,11 +1,14 @@
 // Static fields and beams: a field cast into the world (castField, Brimstone's embers), a
-// crystal's payload, and a beam walked out instantly (fireBeam). The fields' per-frame work is
-// still in step().
+// crystal's payload, and a beam walked out instantly (fireBeam); and every field at work each
+// frame (stepFields, a part of step()).
 
-import { FIRE_COLS } from '../../world/fire.js';
+import { SFX } from '../../audio/sfx.js';
+import { VACUUM_WAIT } from '../../spells/mods.js';
+import { FIRE_COLS, fireDouse } from '../../world/fire.js';
 import { critRoll, shove } from './bullets.js';
 import { damageEnemy } from './enemies.js';
 import { releaseAt } from './gun.js';
+import { addArc } from './lightning.js';
 import { burst } from './particles.js';
 import { glowDot, rnd } from './shotlooks.js';
 import { dig, enemyAt, explode, solidAt } from './terrain.js';
@@ -67,3 +70,86 @@ export const fieldPayload = (W, G, f) => {
   const list = f.payload; f.payload = null;
   releaseAt(W, G, list, f.x, f.y, Math.cos(f.ang), Math.sin(f.ang), f.col);
 };
+
+// ---- static fields (a part of step) ----
+// Every field of yours at work, one frame (each kind by its field: Stillness and the storm
+// put fire out, mines and dormant crystals go off, shields eat shots, heal, lightning,
+// Vacuum Field's warp, glitter), then the beams fading.
+export function stepFields(W, G, F) {
+  const { dt, MHP, pcx, pcy } = F;
+  for (let i = W.fields.length - 1; i >= 0; i--) {
+    const f = W.fields[i];
+    f.life -= dt; f.tick -= dt;
+    const near = j => Math.hypot(W.enemies[j].x - f.x, W.enemies[j].ty - f.y) < f.r;
+    if (f.field === 'slow' || f.field === 'storm') {
+      // Stillness frosts and the thundercloud's rain soaks: any fire under them goes out
+      if ((f.dT = (f.dT || 0) - dt) <= 0) { f.dT = 0.15;
+        if (fireDouse(W.fire, f.x, f.y, f.r) && Math.random() < 0.5) SFX.fx('steam', f.x, f.y);
+        for (const e of W.enemies) if (e.burn > 0 && Math.hypot(e.x - f.x, e.ty - f.y) < f.r) e.burn = 0;
+        if (W.p.burn > 0 && Math.hypot(pcx - f.x, pcy - f.y) < f.r) W.p.burn = 0; }
+      if (f.field === 'slow' && Math.random() < dt * 14) { const a = Math.random() * 6.283, r = Math.random() * f.r;
+        glowDot(W, f.x + Math.cos(a) * r, f.y + Math.sin(a) * r, rnd(-4, 4), rnd(4, 12), Math.random() < 0.5 ? '#ffffff' : '#bfe8ff', rnd(0.7, 1.1), rnd(0.4, 0.9)); }
+    }
+    if (f.field === 'heal' && Math.random() < dt * 10) { const a = Math.random() * 6.283, r = Math.random() * f.r;
+      glowDot(W, f.x + Math.cos(a) * r, f.y + Math.sin(a) * r, 0, rnd(-18, -8), Math.random() < 0.5 ? '#9dff9a' : '#46c48c', rnd(0.8, 1.2), rnd(0.4, 0.8)); }
+    if (f.field === 'mine') {
+      f.near = W.enemies.some(e => Math.hypot(e.x - f.x, e.ty - f.y) < f.r * 2.2);
+      let trip = f.life <= 0;
+      for (let j = 0; j < W.enemies.length && !trip; j++) if (near(j)) trip = true;
+      if (trip) { explode(W, G, f.x, f.y, f.r); fieldPayload(W, G, f); W.fields.splice(i, 1); continue; }
+    } else if (f.field === 'dormant') {
+      // set off by any blast of yours, which is the whole point of it
+      for (const fl of W.flashes) {
+        if (Math.hypot(fl.x - f.x, fl.y - f.y) < fl.r + f.r * 0.5) {
+          explode(W, G, f.x, f.y, f.r * 1.6); fieldPayload(W, G, f); W.fields.splice(i, 1); f.life = -1; break;
+        }
+      }
+      if (f.life < 0) continue;
+    } else if (f.field === 'slow') {
+      for (const e of W.enemies) if (Math.hypot(e.x - f.x, e.ty - f.y) < f.r) e.chill = 0.2;
+    } else if (f.field === 'shield') {
+      for (let k = W.enemyShots.length - 1; k >= 0; k--) {
+        const b = W.enemyShots[k];
+        if (Math.hypot(b.x - f.x, b.y - f.y) < f.r) { burst(W, b.x, b.y, 3, f.col); SFX.fx('absorb', b.x, b.y); W.enemyShots.splice(k, 1); }
+      }
+    } else if (f.field === 'heal') {
+      if (Math.hypot(pcx - f.x, pcy - f.y) < f.r && W.p.hp < MHP && f.tick <= 0) {
+        f.tick = 0.4; W.p.hp = Math.min(MHP, W.p.hp + 4 * W.pb.heal); G.input.current.notify(); SFX.fx('healtick');
+      }
+    } else if (f.field === 'storm') {
+      if (f.tick <= 0) {
+        f.tick = 0.22;
+        const a = Math.random() * Math.PI * 2, rr = Math.random() * f.r;
+        const sx = f.x + Math.cos(a) * rr, sy = f.y + Math.sin(a) * rr;
+        for (let j = W.enemies.length - 1; j >= 0; j--)
+          if (Math.hypot(W.enemies[j].x - sx, W.enemies[j].ty - sy) < 22) damageEnemy(W, j, 2);
+        burst(W, sx, sy, 6, '#a8e4ff');
+        addArc(W, [{ x: sx + rnd(-8, 8), y: f.y - f.r * 0.85 }, { x: sx, y: sy }], '#a8e4ff', 1.2, 0.14);   // down from the cloud
+        SFX.arc(sx, sy, true);
+      }
+    } else if (f.field === 'vacuum') {
+      // Noita's Vacuum Field: a blink after it appears, everything in reach is warped
+      // straight to the middle, through walls — creatures, shots (theirs and yours),
+      // gold and loot. Once, then it's gone.
+      if (!f.done && f.max - f.life >= VACUUM_WAIT) {
+        f.done = true;
+        const inR = (x, y) => Math.hypot(x - f.x, y - f.y) < f.r;
+        for (const e of W.enemies) if (inR(e.x, e.ty)) { e.y += f.y - e.ty; e.x = f.x; e.tgt = null; }
+        for (const b of W.bullets) if (inR(b.x, b.y)) { b.x = f.x; b.y = f.y; }
+        for (const b of W.enemyShots) if (inR(b.x, b.y)) { b.x = f.x; b.y = f.y; }
+        for (const g of W.coins) if (inR(g.x, g.y)) { g.x = f.x; g.y = f.y; }
+        for (const q of W.pickups) if (!q.taken && inR(q.x, q.y)) { q.x = f.x; q.y = f.y; }
+        burst(W, f.x, f.y, 14, f.col);
+        SFX.fx('warp', f.x, f.y);
+      }
+    } else if (f.field === 'glitter') {
+      if (f.tick <= 0) {
+        f.tick = 0.16;
+        const a = Math.random() * Math.PI * 2, rr = Math.random() * f.r;
+        explode(W, G, f.x + Math.cos(a) * rr, f.y + Math.sin(a) * rr, 9);
+      }
+    }
+    if (f.life <= 0) W.fields.splice(i, 1);
+  }
+  for (let i = W.beams.length - 1; i >= 0; i--) if ((W.beams[i].t += dt) > 0.12) W.beams.splice(i, 1);
+}

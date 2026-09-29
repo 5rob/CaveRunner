@@ -14,24 +14,22 @@ import { HUNTERS } from '../../data/creatures.js';
 import { PERKS } from '../../data/perks.js';
 import { DEV, kr, spr } from '../../dev/knobs.js';
 import { caveGun } from '../../spells/guns.js';
-import { MODS, VACUUM_WAIT } from '../../spells/mods.js';
-import { fireArea, fireDouse } from '../../world/fire.js';
+import { MODS } from '../../spells/mods.js';
+import { fireArea } from '../../world/fire.js';
 import { puffSpores } from './ambience.js';
 import { stepBullets } from './bullets.js';
 import { damageEnemy, fireEnemyShot, natural } from './enemies.js';
-import { fieldPayload } from './fields.js';
+import { stepFields } from './fields.js';
 import { fireBlast, fireFrame, ignite, setAlight, youAlight } from './fire.js';
 import { paintFog } from './fog.js';
 import { aimAndCast } from './gun.js';
 import { enterLevel } from './level-entry.js';
-import { addArc } from './lightning.js';
 import { burst, goo, splat, toast } from './particles.js';
 import { hurt, maxHp, movePlayer, refreshBag, torchHand } from './player.js';
 import { decorStep } from './props.js';
 import { ratFrame, spawnRat } from './rats.js';
 import { saveRun } from './save-run.js';
-import { glowDot, rnd } from './shotlooks.js';
-import { explode, lineOfSight, solidAt, solidCell } from './terrain.js';
+import { lineOfSight, solidAt, solidCell } from './terrain.js';
 
 export function step(W, G, dt) {
   // the frame: what step's parts hand on to each other. LO (the loadout) and MHP (your
@@ -49,110 +47,9 @@ export function step(W, G, dt) {
 
   stepBullets(W, G, F);
 
-  // ---- sound, once a frame: where you are listening from, the jetpack, each live
-  // Black Hole's drone, the floor's ambience, and a heartbeat when you're nearly dead ----
-  SFX.ear(pcx, pcy);
-  if (!W.jetLoop && SFX.ready) W.jetLoop = SFX.loop('jet');
-  if (W.jetLoop) W.jetLoop.set(W.p.dead ? 0 : Math.min(1, W.p.flame) * 0.35, null, null,
-    (1 + 0.49 * Math.min(1, W.p.flame)) * jetPitch(W.jetSt.onT));   // tone: thrust, then how long it's held
-  if (W.p.empty && !W.wasEmpty) SFX.ui('sputter');
-  W.wasEmpty = W.p.empty;
-  for (const b of W.bullets) if (b.pull) {
-    let h = W.bhLoops.get(b);
-    if (!h && W.bhLoops.size < 3 && SFX.ready) { h = SFX.loop('void'); if (h) W.bhLoops.set(b, h); }
-    if (h) h.set(0.5, b.x, b.y);
-  }
-  for (const [b, h] of W.bhLoops) if (!W.bullets.includes(b)) { h.stop(); W.bhLoops.delete(b); }
-  SFX.ambTick(dt);
-  if (!W.portalLoop && SFX.ready) W.portalLoop = SFX.loop('portal');
-  if (W.portalLoop) W.portalLoop.set(0.55, W.portal.x + W.portal.w / 2, W.portal.y + W.portal.h / 2);
-  if (W.matterProps.length) {
-    let best = null, bd = 300;
-    for (const pr of W.matterProps) { const d = Math.hypot(pr.x - pcx, pr.y - pcy); if (!pr.gone && d < bd) { bd = d; best = pr; } }
-    if (best && !W.matterLoop && SFX.ready) W.matterLoop = SFX.loop('matter');
-    if (W.matterLoop && best) W.matterLoop.set(0.6, best.x, best.y);
-  }
-  if (W.p.jet > 0 && !W.wasJet) SFX.fx('ignite');
-  W.wasJet = W.p.jet > 0;
-  for (const dv of W.devils) if ((dv.snd = (dv.snd || 0) - dt) <= 0) { dv.snd = 0.9 + Math.random() * 0.8; SFX.fx('whirl', dv.x, dv.y - 14); }
-  if (!W.p.dead && W.p.hp / MHP < 0.3 && (W.beatT -= dt) <= 0) { W.beatT = 0.55 + 1.5 * W.p.hp / MHP; SFX.ui('beat'); }
+  stepSound(W, F);
 
-  // ---- static fields ----
-  for (let i = W.fields.length - 1; i >= 0; i--) {
-    const f = W.fields[i];
-    f.life -= dt; f.tick -= dt;
-    const near = j => Math.hypot(W.enemies[j].x - f.x, W.enemies[j].ty - f.y) < f.r;
-    if (f.field === 'slow' || f.field === 'storm') {
-      // Stillness frosts and the thundercloud's rain soaks: any fire under them goes out
-      if ((f.dT = (f.dT || 0) - dt) <= 0) { f.dT = 0.15;
-        if (fireDouse(W.fire, f.x, f.y, f.r) && Math.random() < 0.5) SFX.fx('steam', f.x, f.y);
-        for (const e of W.enemies) if (e.burn > 0 && Math.hypot(e.x - f.x, e.ty - f.y) < f.r) e.burn = 0;
-        if (W.p.burn > 0 && Math.hypot(pcx - f.x, pcy - f.y) < f.r) W.p.burn = 0; }
-      if (f.field === 'slow' && Math.random() < dt * 14) { const a = Math.random() * 6.283, r = Math.random() * f.r;
-        glowDot(W, f.x + Math.cos(a) * r, f.y + Math.sin(a) * r, rnd(-4, 4), rnd(4, 12), Math.random() < 0.5 ? '#ffffff' : '#bfe8ff', rnd(0.7, 1.1), rnd(0.4, 0.9)); }
-    }
-    if (f.field === 'heal' && Math.random() < dt * 10) { const a = Math.random() * 6.283, r = Math.random() * f.r;
-      glowDot(W, f.x + Math.cos(a) * r, f.y + Math.sin(a) * r, 0, rnd(-18, -8), Math.random() < 0.5 ? '#9dff9a' : '#46c48c', rnd(0.8, 1.2), rnd(0.4, 0.8)); }
-    if (f.field === 'mine') {
-      f.near = W.enemies.some(e => Math.hypot(e.x - f.x, e.ty - f.y) < f.r * 2.2);
-      let trip = f.life <= 0;
-      for (let j = 0; j < W.enemies.length && !trip; j++) if (near(j)) trip = true;
-      if (trip) { explode(W, G, f.x, f.y, f.r); fieldPayload(W, G, f); W.fields.splice(i, 1); continue; }
-    } else if (f.field === 'dormant') {
-      // set off by any blast of yours, which is the whole point of it
-      for (const fl of W.flashes) {
-        if (Math.hypot(fl.x - f.x, fl.y - f.y) < fl.r + f.r * 0.5) {
-          explode(W, G, f.x, f.y, f.r * 1.6); fieldPayload(W, G, f); W.fields.splice(i, 1); f.life = -1; break;
-        }
-      }
-      if (f.life < 0) continue;
-    } else if (f.field === 'slow') {
-      for (const e of W.enemies) if (Math.hypot(e.x - f.x, e.ty - f.y) < f.r) e.chill = 0.2;
-    } else if (f.field === 'shield') {
-      for (let k = W.enemyShots.length - 1; k >= 0; k--) {
-        const b = W.enemyShots[k];
-        if (Math.hypot(b.x - f.x, b.y - f.y) < f.r) { burst(W, b.x, b.y, 3, f.col); SFX.fx('absorb', b.x, b.y); W.enemyShots.splice(k, 1); }
-      }
-    } else if (f.field === 'heal') {
-      if (Math.hypot(pcx - f.x, pcy - f.y) < f.r && W.p.hp < MHP && f.tick <= 0) {
-        f.tick = 0.4; W.p.hp = Math.min(MHP, W.p.hp + 4 * W.pb.heal); G.input.current.notify(); SFX.fx('healtick');
-      }
-    } else if (f.field === 'storm') {
-      if (f.tick <= 0) {
-        f.tick = 0.22;
-        const a = Math.random() * Math.PI * 2, rr = Math.random() * f.r;
-        const sx = f.x + Math.cos(a) * rr, sy = f.y + Math.sin(a) * rr;
-        for (let j = W.enemies.length - 1; j >= 0; j--)
-          if (Math.hypot(W.enemies[j].x - sx, W.enemies[j].ty - sy) < 22) damageEnemy(W, j, 2);
-        burst(W, sx, sy, 6, '#a8e4ff');
-        addArc(W, [{ x: sx + rnd(-8, 8), y: f.y - f.r * 0.85 }, { x: sx, y: sy }], '#a8e4ff', 1.2, 0.14);   // down from the cloud
-        SFX.arc(sx, sy, true);
-      }
-    } else if (f.field === 'vacuum') {
-      // Noita's Vacuum Field: a blink after it appears, everything in reach is warped
-      // straight to the middle, through walls — creatures, shots (theirs and yours),
-      // gold and loot. Once, then it's gone.
-      if (!f.done && f.max - f.life >= VACUUM_WAIT) {
-        f.done = true;
-        const inR = (x, y) => Math.hypot(x - f.x, y - f.y) < f.r;
-        for (const e of W.enemies) if (inR(e.x, e.ty)) { e.y += f.y - e.ty; e.x = f.x; e.tgt = null; }
-        for (const b of W.bullets) if (inR(b.x, b.y)) { b.x = f.x; b.y = f.y; }
-        for (const b of W.enemyShots) if (inR(b.x, b.y)) { b.x = f.x; b.y = f.y; }
-        for (const g of W.coins) if (inR(g.x, g.y)) { g.x = f.x; g.y = f.y; }
-        for (const q of W.pickups) if (!q.taken && inR(q.x, q.y)) { q.x = f.x; q.y = f.y; }
-        burst(W, f.x, f.y, 14, f.col);
-        SFX.fx('warp', f.x, f.y);
-      }
-    } else if (f.field === 'glitter') {
-      if (f.tick <= 0) {
-        f.tick = 0.16;
-        const a = Math.random() * Math.PI * 2, rr = Math.random() * f.r;
-        explode(W, G, f.x + Math.cos(a) * rr, f.y + Math.sin(a) * rr, 9);
-      }
-    }
-    if (f.life <= 0) W.fields.splice(i, 1);
-  }
-  for (let i = W.beams.length - 1; i >= 0; i--) if ((W.beams[i].t += dt) > 0.12) W.beams.splice(i, 1);
+  stepFields(W, G, F);
 
   // ---- pickups: just cooldown upkeep and clearing what was taken. Whether one is
   // near enough to show its card, and whether you actually take it, is decided
@@ -787,4 +684,35 @@ export function atPortal(W, G, F) {
     G.input.current.notify();
     return true;
   }
+}
+
+// Sound, once a frame: where you are listening from, the jetpack, each live Black Hole's
+// drone, the floor's ambience, and a heartbeat when you're nearly dead
+export function stepSound(W, F) {
+  const { dt, MHP, pcx, pcy } = F;
+  SFX.ear(pcx, pcy);
+  if (!W.jetLoop && SFX.ready) W.jetLoop = SFX.loop('jet');
+  if (W.jetLoop) W.jetLoop.set(W.p.dead ? 0 : Math.min(1, W.p.flame) * 0.35, null, null,
+    (1 + 0.49 * Math.min(1, W.p.flame)) * jetPitch(W.jetSt.onT));   // tone: thrust, then how long it's held
+  if (W.p.empty && !W.wasEmpty) SFX.ui('sputter');
+  W.wasEmpty = W.p.empty;
+  for (const b of W.bullets) if (b.pull) {
+    let h = W.bhLoops.get(b);
+    if (!h && W.bhLoops.size < 3 && SFX.ready) { h = SFX.loop('void'); if (h) W.bhLoops.set(b, h); }
+    if (h) h.set(0.5, b.x, b.y);
+  }
+  for (const [b, h] of W.bhLoops) if (!W.bullets.includes(b)) { h.stop(); W.bhLoops.delete(b); }
+  SFX.ambTick(dt);
+  if (!W.portalLoop && SFX.ready) W.portalLoop = SFX.loop('portal');
+  if (W.portalLoop) W.portalLoop.set(0.55, W.portal.x + W.portal.w / 2, W.portal.y + W.portal.h / 2);
+  if (W.matterProps.length) {
+    let best = null, bd = 300;
+    for (const pr of W.matterProps) { const d = Math.hypot(pr.x - pcx, pr.y - pcy); if (!pr.gone && d < bd) { bd = d; best = pr; } }
+    if (best && !W.matterLoop && SFX.ready) W.matterLoop = SFX.loop('matter');
+    if (W.matterLoop && best) W.matterLoop.set(0.6, best.x, best.y);
+  }
+  if (W.p.jet > 0 && !W.wasJet) SFX.fx('ignite');
+  W.wasJet = W.p.jet > 0;
+  for (const dv of W.devils) if ((dv.snd = (dv.snd || 0) - dt) <= 0) { dv.snd = 0.9 + Math.random() * 0.8; SFX.fx('whirl', dv.x, dv.y - 14); }
+  if (!W.p.dead && W.p.hp / MHP < 0.3 && (W.beatT -= dt) <= 0) { W.beatT = 0.55 + 1.5 * W.p.hp / MHP; SFX.ui('beat'); }
 }
