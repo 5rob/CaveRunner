@@ -234,7 +234,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
   - [x] spells/bagsim.js
   - [x] world/vision.js
   - [x] world/fire.js
-  - [ ] world/nav.js
+  - [x] world/nav.js
   - [ ] world/zones.js, veins.js, nests.js
   - [ ] world/strata.js
   - [ ] world/decorate.js

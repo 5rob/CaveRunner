@@ -152,6 +152,7 @@ rest and imports them. Where things are (`main.js` line numbers as of v96, they 
 | `PERKS` / `perkBag` | `src/data/perks.js`: the 31 perks, and folding an owned list into one effective bag |
 | vision / fog memory | `src/world/vision.js`: `rayDist`, `losClear`, `visPoly`, `fogReveal`, `nestFog` |
 | fire | `src/world/fire.js`: `fireNew`, `fireStep`, `fireArea`, `fireDouse`, `FIRE_*`, `FLAMMABLE` |
+| pathfinding | `src/world/nav.js`: `navField`, `navWay` |
 | `makeLevel` | ~6439: terrain, shop, enemies, pickups |
 | `tracePath` | `src/spells/trace.js` (with `driftStep`, `wigTurn`, `bhSp`): simulates a shot for the aim line |
 | `Game` | ~7130–11390: the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields |
