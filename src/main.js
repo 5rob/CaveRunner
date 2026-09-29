@@ -10,8 +10,8 @@ import { roamStep } from './creatures/common.js';
 import {
   drawJelly, jellyBell, jellyPal, jellyStep, plantGlowFill, plantWhite, tentacleTouch
 } from './creatures/jelly.js';
-import { drawNest, drawRat, pathLen, ratSpread, ratStep } from './creatures/rat.js';
-import { drawSpider, spiderStep } from './creatures/spider.js';
+import { pathLen, ratSpread, ratStep } from './creatures/rat.js';
+import { spiderStep } from './creatures/spider.js';
 import { HUNTERS, enemyFor } from './data/creatures.js';
 import { PERKS, perkBag } from './data/perks.js';
 import { AMBIENCE, themeFor } from './data/themes.js';
@@ -41,7 +41,7 @@ import {
   VIS_RAYS, fogReveal, fogStart, losClear, nestFog, rayDist, visPoly
 } from './world/vision.js';
 import { builtAt } from './world/zones.js';
-import { drawBlob, drawCrawler, drawDrone, drawSkull, drawWorm } from './creatures/classic.js';
+import { drawEnemy } from './creatures/draw.js';
 
 const { useRef, useEffect, useState, useMemo } = React;
 const h = React.createElement;
@@ -224,30 +224,6 @@ function drawSconce(ctx, x, y, time, ph) {
   ctx.fillRect(x - 2.2, y - 3.5, 4.4, 2);           // the cup
   drawFlame(ctx, x, y - 4, Math.sin(time * 1.9 + ph) * 1.2, 0, s, fl, time + ph);
   ctx.restore();
-}
-
-// Whatever this enemy is, plus the ring that warns you a charged shot is coming.
-function drawEnemy(ctx, e, time) {
-  const k = e.k, flash = e.flash > 0;
-  const x = e.x, y = e.ty, r = e.r, lx = e.lx, ly = e.ly;
-  if (k.body === 'spider') drawSpider(ctx, x, y, r, time, e.phase, flash, k.col, e.sp);
-  else if (k.body === 'rat') drawRat(ctx, x, y, r, time, e.phase, flash, k.col, e.ra, e.carry);
-  else if (k.body === 'nest') drawNest(ctx, x, y, r, time, flash, k.col, e.nest);
-  else if (k.body === 'jelly') drawJelly(ctx, x, y, r, time, e.phase, flash, k.col, e.je);
-  else if (k.body === 'crawler') drawCrawler(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-  else if (k.body === 'blob') drawBlob(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-  else if (k.body === 'skull') drawSkull(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-  else if (k.body === 'worm') drawWorm(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-  else drawDrone(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-  if (e.charge > 0 && k.tele) {
-    ctx.globalAlpha = 0.65;
-    ctx.strokeStyle = k.col.eye;
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.arc(x, y, e.r + 4 + e.charge * 10, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-  }
 }
 
 // Gold for the deck readout: a bare number under 1000, and thousands truncated (not
@@ -1715,13 +1691,13 @@ function rpMerge(rects, W, H) {
 // (REFACTOR.md, P1.5); the browser build ignores it.
 export {
   useRef, useEffect, useState, useMemo, h, SPUTTER_FUEL, sputterStep, jetPitch, NO_INPUT,
-  drawGun, drawRunner, flameDrop, drawFlame, glowAt, drawTorch, drawSconce, drawEnemy, fmtGold,
-  deckLayout, HEAR_FIRE, rgbA, rgbS, propCol, drawArch, drawProp, propGlow, VENT_H, eyesAlpha,
-  SPELL_VOICE, SPELL_VOICES, clampS, shotSound, BODY_VOICE, CREATURE_TONE, CREATURE_VOICES,
-  creatureSound, AMB_EVENTS, FX_VOL, fxVolKey, knob, rustleStep, SFX, SAVE_KEY, GUN_DEFAULTS,
-  cleanGun, cleanLoadout, readSave, loadSave, clearSave, RP_HZ, RP_BEFORE, RP_AFTER, RP_KEEP,
-  RP_W, RP_H, RP_LISTS, RP_NUMS, RP_DEEP, RP_LERP, RP_ANGLE, rpPlain, rpClone, rpCopy, rpLerp,
-  rpList, rpAt, rpFrame, rpCut, rpPaste, rpMerge
+  drawGun, drawRunner, flameDrop, drawFlame, glowAt, drawTorch, drawSconce, fmtGold, deckLayout,
+  HEAR_FIRE, rgbA, rgbS, propCol, drawArch, drawProp, propGlow, VENT_H, eyesAlpha, SPELL_VOICE,
+  SPELL_VOICES, clampS, shotSound, BODY_VOICE, CREATURE_TONE, CREATURE_VOICES, creatureSound,
+  AMB_EVENTS, FX_VOL, fxVolKey, knob, rustleStep, SFX, SAVE_KEY, GUN_DEFAULTS, cleanGun,
+  cleanLoadout, readSave, loadSave, clearSave, RP_HZ, RP_BEFORE, RP_AFTER, RP_KEEP, RP_W, RP_H,
+  RP_LISTS, RP_NUMS, RP_DEEP, RP_LERP, RP_ANGLE, rpPlain, rpClone, rpCopy, rpLerp, rpList, rpAt,
+  rpFrame, rpCut, rpPaste, rpMerge
 };
 
 function Game({ input }) {

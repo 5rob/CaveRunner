@@ -33,3 +33,4 @@ export * from './creatures/spider.js';
 export * from './creatures/rat.js';
 export * from './creatures/jelly.js';
 export * from './creatures/classic.js';
+export * from './creatures/draw.js';

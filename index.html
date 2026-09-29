@@ -8429,6 +8429,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.restore();
   }
 
+  // src/creatures/draw.js
+  function drawEnemy(ctx, e, time) {
+    const k = e.k, flash = e.flash > 0;
+    const x = e.x, y = e.ty, r = e.r, lx = e.lx, ly = e.ly;
+    if (k.body === "spider") drawSpider(ctx, x, y, r, time, e.phase, flash, k.col, e.sp);
+    else if (k.body === "rat") drawRat(ctx, x, y, r, time, e.phase, flash, k.col, e.ra, e.carry);
+    else if (k.body === "nest") drawNest(ctx, x, y, r, time, flash, k.col, e.nest);
+    else if (k.body === "jelly") drawJelly(ctx, x, y, r, time, e.phase, flash, k.col, e.je);
+    else if (k.body === "crawler") drawCrawler(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+    else if (k.body === "blob") drawBlob(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+    else if (k.body === "skull") drawSkull(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+    else if (k.body === "worm") drawWorm(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+    else drawDrone(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+    if (e.charge > 0 && k.tele) {
+      ctx.globalAlpha = 0.65;
+      ctx.strokeStyle = k.col.eye;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(x, y, e.r + 4 + e.charge * 10, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+
   // src/main.js
   var { useRef, useEffect, useState, useMemo } = React;
   var h = React.createElement;
@@ -8624,28 +8648,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.fillRect(x - 2.2, y - 3.5, 4.4, 2);
     drawFlame(ctx, x, y - 4, Math.sin(time * 1.9 + ph) * 1.2, 0, s, fl, time + ph);
     ctx.restore();
-  }
-  function drawEnemy(ctx, e, time) {
-    const k = e.k, flash = e.flash > 0;
-    const x = e.x, y = e.ty, r = e.r, lx = e.lx, ly = e.ly;
-    if (k.body === "spider") drawSpider(ctx, x, y, r, time, e.phase, flash, k.col, e.sp);
-    else if (k.body === "rat") drawRat(ctx, x, y, r, time, e.phase, flash, k.col, e.ra, e.carry);
-    else if (k.body === "nest") drawNest(ctx, x, y, r, time, flash, k.col, e.nest);
-    else if (k.body === "jelly") drawJelly(ctx, x, y, r, time, e.phase, flash, k.col, e.je);
-    else if (k.body === "crawler") drawCrawler(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-    else if (k.body === "blob") drawBlob(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-    else if (k.body === "skull") drawSkull(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-    else if (k.body === "worm") drawWorm(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-    else drawDrone(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-    if (e.charge > 0 && k.tele) {
-      ctx.globalAlpha = 0.65;
-      ctx.strokeStyle = k.col.eye;
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.arc(x, y, e.r + 4 + e.charge * 10, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
   }
   function fmtGold(g) {
     g = Math.max(0, Math.floor(g || 0));
