@@ -5369,182 +5369,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return nests;
   }
 
-  // src/world/veins.js
-  var ORE_GOLD = 0.25;
-  function goldVeins(mat, seed, floor) {
-    let rs = (seed * 7919 + 12345) % 2147483647 || 1;
-    const rnd = () => (rs = rs * 16807 % 2147483647) / 2147483647;
-    const ore = new Uint8Array(CW * CH);
-    const n = Math.min(18, 7 + floor);
-    const maxY = SHOP_TOP - SHOP_ROOF - 6;
-    const rockAt = (x, y) => x >= 4 && y >= 4 && x < CW - 4 && y < maxY && mat[y * CW + x] === ROCK;
-    const nearOpen = (x, y, r) => {
-      for (let d = 2; d <= r; d += 2)
-        for (let k = 0; k < 8; k++) {
-          const a = k * Math.PI / 4, px = Math.round(x + Math.cos(a) * d), py = Math.round(y + Math.sin(a) * d);
-          if (px >= 0 && py >= 0 && px < CW && py < CH && !mat[py * CW + px]) return true;
-        }
-      return false;
-    };
-    for (let v = 0; v < n; v++) {
-      let x = 0, y = 0, ok = false;
-      for (let tries = 0; tries < 200 && !ok; tries++) {
-        x = 6 + Math.floor(rnd() * (CW - 12));
-        y = 6 + Math.floor(rnd() * (maxY - 12));
-        ok = rockAt(x, y) && rockAt(x + 3, y) && rockAt(x - 3, y) && rockAt(x, y + 3) && rockAt(x, y - 3) && nearOpen(x, y, 16);
-      }
-      if (!ok) continue;
-      let a = rnd() * Math.PI * 2;
-      const len = 18 + Math.floor(rnd() * 40);
-      for (let st = 0; st < len; st++) {
-        const r = rnd() < 0.2 ? 2 : 1;
-        for (let dy = -r; dy <= r; dy++)
-          for (let dx = -r; dx <= r; dx++) {
-            if (dx * dx + dy * dy > r * r + 0.5) continue;
-            const px = Math.round(x) + dx, py = Math.round(y) + dy;
-            if (rockAt(px, py)) ore[py * CW + px] = 1;
-          }
-        a += (rnd() - 0.5) * 0.9;
-        x += Math.cos(a) * 1.2;
-        y += Math.sin(a) * 1.2;
-        if (!rockAt(Math.round(x), Math.round(y))) break;
-      }
-    }
-    return ore;
-  }
-
-  // src/world/vision.js
-  var VIS_RAYS = 160;
-  function fogReveal(seen, wx, wy, r, pts, rays) {
-    const cx = wx / FOG_U, cy = wy / FOG_U, cr = r / FOG_U, r2 = cr * cr;
-    const x0 = Math.max(0, Math.floor(cx - cr)), x1 = Math.min(FW - 1, Math.ceil(cx + cr));
-    const y0 = Math.max(0, Math.floor(cy - cr)), y1 = Math.min(FH - 1, Math.ceil(cy + cr));
-    let n = 0;
-    for (let y = y0; y <= y1; y++) {
-      const row = y * FW, dy = y + 0.5 - cy, dy2 = dy * dy;
-      for (let x = x0; x <= x1; x++) {
-        if (seen[row + x]) continue;
-        const dx = x + 0.5 - cx;
-        if (dx * dx + dy2 > r2) continue;
-        const d = Math.sqrt(dx * dx + dy2) * FOG_U;
-        const t = (Math.atan2(dy, dx) / (Math.PI * 2) + 1) % 1 * rays;
-        const i0 = Math.floor(t), i1 = (i0 + 1) % rays;
-        const a = Math.hypot(pts[i0 * 2] - wx, pts[i0 * 2 + 1] - wy);
-        const b = Math.hypot(pts[i1 * 2] - wx, pts[i1 * 2 + 1] - wy);
-        if (d > Math.min(a, b)) continue;
-        seen[row + x] = 1;
-        n++;
-      }
-    }
-    return n;
-  }
-  function fogStart() {
-    const seen = new Uint8Array(FW * FH);
-    for (let y = Math.floor((SHOP_TOP - SHOP_ROOF) / FOG); y < FH; y++)
-      for (let x = 0; x < FW; x++) seen[y * FW + x] = 2;
-    return seen;
-  }
-  function nestFog(nests) {
-    const m = new Uint8Array(FW * FH);
-    for (const n of nests || []) {
-      const R = n.r + 2;
-      for (let y = Math.floor((n.y - R) / FOG); y <= Math.floor((n.y + R) / FOG); y++)
-        for (let x = Math.floor((n.x - R) / FOG); x <= Math.floor((n.x + R) / FOG); x++)
-          if (x >= 0 && y >= 0 && x < FW && y < FH) m[y * FW + x] = 1;
-    }
-    return m;
-  }
-  function rayDist(x, y, dx, dy, r, solidCell) {
-    let cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
-    const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1;
-    const dtx = dx ? Math.abs(CELL / dx) : Infinity;
-    const dty = dy ? Math.abs(CELL / dy) : Infinity;
-    let tx = dx ? dx > 0 ? ((cx + 1) * CELL - x) / dx : (cx * CELL - x) / dx : Infinity;
-    let ty = dy ? dy > 0 ? ((cy + 1) * CELL - y) / dy : (cy * CELL - y) / dy : Infinity;
-    let t = 0;
-    for (; ; ) {
-      if (tx < ty) {
-        t = tx;
-        tx += dtx;
-        cx += sx;
-      } else {
-        t = ty;
-        ty += dty;
-        cy += sy;
-      }
-      if (t >= r) return r;
-      if (solidCell(cx, cy)) return t;
-    }
-  }
-  function losClear(x0, y0, x1, y1, solidCell) {
-    const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy);
-    if (d < 1e-3) return true;
-    return rayDist(x0, y0, dx / d, dy / d, d, solidCell) >= d - 1e-3;
-  }
-  function visPoly(cx, cy, r, solidCell, rays) {
-    const pts = [];
-    for (let i = 0; i < rays; i++) {
-      const a = i / rays * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
-      const d = rayDist(cx, cy, dx, dy, r, solidCell);
-      pts.push(cx + dx * d, cy + dy * d);
-    }
-    return pts;
-  }
-
-  // src/world/zones.js
-  function boxReach(mat, x, y) {
-    const PWc = 6, PHc = 11;
-    const free = new Uint8Array(CW * CH), ok = new Uint8Array(CW * CH);
-    for (let cx = 0; cx < CW; cx++) {
-      let run = 0;
-      for (let cy = CH - 1; cy >= 0; cy--) {
-        run = mat[cy * CW + cx] ? 0 : run + 1;
-        if (run >= PHc) free[cy * CW + cx] = 1;
-      }
-    }
-    for (let cy = 0; cy < CH; cy++) {
-      let run = 0;
-      for (let cx = CW - 1; cx >= 0; cx--) {
-        run = free[cy * CW + cx] ? run + 1 : 0;
-        if (run >= PWc) ok[cy * CW + cx] = 1;
-      }
-    }
-    const s0 = y * CW + x;
-    let top = false;
-    if (!ok[s0]) return { ok, top };
-    const st = new Int32Array(CW * CH);
-    let n = 0;
-    ok[s0] = 2;
-    st[n++] = s0;
-    while (n) {
-      const i = st[--n];
-      if (i < 40 * CW) top = true;
-      const x0 = i % CW;
-      if (x0 > 0 && ok[i - 1] === 1) {
-        ok[i - 1] = 2;
-        st[n++] = i - 1;
-      }
-      if (x0 < CW - 1 && ok[i + 1] === 1) {
-        ok[i + 1] = 2;
-        st[n++] = i + 1;
-      }
-      if (i >= CW && ok[i - CW] === 1) {
-        ok[i - CW] = 2;
-        st[n++] = i - CW;
-      }
-      if (i < CW * (CH - 1) && ok[i + CW] === 1) {
-        ok[i + CW] = 2;
-        st[n++] = i + CW;
-      }
-    }
-    return { ok, top };
-  }
-  function builtAt(zone, wx, wy) {
-    if (!zone) return false;
-    const x = Math.floor(wx / CELL), y = Math.floor(wy / CELL);
-    return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
-  }
-
   // src/world/strata.js
   function timberFrame(mat, set, R, T, xa, xb, y, old, fy, maxH) {
     const solid = (x, yy) => x < 0 || yy < 0 || x >= CW || yy >= CH || mat[yy * CW + x] !== 0;
@@ -5961,6 +5785,797 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     timberWorks.zones = zones;
     return sets;
+  }
+
+  // src/world/veins.js
+  var ORE_GOLD = 0.25;
+  function goldVeins(mat, seed, floor) {
+    let rs = (seed * 7919 + 12345) % 2147483647 || 1;
+    const rnd = () => (rs = rs * 16807 % 2147483647) / 2147483647;
+    const ore = new Uint8Array(CW * CH);
+    const n = Math.min(18, 7 + floor);
+    const maxY = SHOP_TOP - SHOP_ROOF - 6;
+    const rockAt = (x, y) => x >= 4 && y >= 4 && x < CW - 4 && y < maxY && mat[y * CW + x] === ROCK;
+    const nearOpen = (x, y, r) => {
+      for (let d = 2; d <= r; d += 2)
+        for (let k = 0; k < 8; k++) {
+          const a = k * Math.PI / 4, px = Math.round(x + Math.cos(a) * d), py = Math.round(y + Math.sin(a) * d);
+          if (px >= 0 && py >= 0 && px < CW && py < CH && !mat[py * CW + px]) return true;
+        }
+      return false;
+    };
+    for (let v = 0; v < n; v++) {
+      let x = 0, y = 0, ok = false;
+      for (let tries = 0; tries < 200 && !ok; tries++) {
+        x = 6 + Math.floor(rnd() * (CW - 12));
+        y = 6 + Math.floor(rnd() * (maxY - 12));
+        ok = rockAt(x, y) && rockAt(x + 3, y) && rockAt(x - 3, y) && rockAt(x, y + 3) && rockAt(x, y - 3) && nearOpen(x, y, 16);
+      }
+      if (!ok) continue;
+      let a = rnd() * Math.PI * 2;
+      const len = 18 + Math.floor(rnd() * 40);
+      for (let st = 0; st < len; st++) {
+        const r = rnd() < 0.2 ? 2 : 1;
+        for (let dy = -r; dy <= r; dy++)
+          for (let dx = -r; dx <= r; dx++) {
+            if (dx * dx + dy * dy > r * r + 0.5) continue;
+            const px = Math.round(x) + dx, py = Math.round(y) + dy;
+            if (rockAt(px, py)) ore[py * CW + px] = 1;
+          }
+        a += (rnd() - 0.5) * 0.9;
+        x += Math.cos(a) * 1.2;
+        y += Math.sin(a) * 1.2;
+        if (!rockAt(Math.round(x), Math.round(y))) break;
+      }
+    }
+    return ore;
+  }
+
+  // src/world/vision.js
+  var VIS_RAYS = 160;
+  function fogReveal(seen, wx, wy, r, pts, rays) {
+    const cx = wx / FOG_U, cy = wy / FOG_U, cr = r / FOG_U, r2 = cr * cr;
+    const x0 = Math.max(0, Math.floor(cx - cr)), x1 = Math.min(FW - 1, Math.ceil(cx + cr));
+    const y0 = Math.max(0, Math.floor(cy - cr)), y1 = Math.min(FH - 1, Math.ceil(cy + cr));
+    let n = 0;
+    for (let y = y0; y <= y1; y++) {
+      const row = y * FW, dy = y + 0.5 - cy, dy2 = dy * dy;
+      for (let x = x0; x <= x1; x++) {
+        if (seen[row + x]) continue;
+        const dx = x + 0.5 - cx;
+        if (dx * dx + dy2 > r2) continue;
+        const d = Math.sqrt(dx * dx + dy2) * FOG_U;
+        const t = (Math.atan2(dy, dx) / (Math.PI * 2) + 1) % 1 * rays;
+        const i0 = Math.floor(t), i1 = (i0 + 1) % rays;
+        const a = Math.hypot(pts[i0 * 2] - wx, pts[i0 * 2 + 1] - wy);
+        const b = Math.hypot(pts[i1 * 2] - wx, pts[i1 * 2 + 1] - wy);
+        if (d > Math.min(a, b)) continue;
+        seen[row + x] = 1;
+        n++;
+      }
+    }
+    return n;
+  }
+  function fogStart() {
+    const seen = new Uint8Array(FW * FH);
+    for (let y = Math.floor((SHOP_TOP - SHOP_ROOF) / FOG); y < FH; y++)
+      for (let x = 0; x < FW; x++) seen[y * FW + x] = 2;
+    return seen;
+  }
+  function nestFog(nests) {
+    const m = new Uint8Array(FW * FH);
+    for (const n of nests || []) {
+      const R = n.r + 2;
+      for (let y = Math.floor((n.y - R) / FOG); y <= Math.floor((n.y + R) / FOG); y++)
+        for (let x = Math.floor((n.x - R) / FOG); x <= Math.floor((n.x + R) / FOG); x++)
+          if (x >= 0 && y >= 0 && x < FW && y < FH) m[y * FW + x] = 1;
+    }
+    return m;
+  }
+  function rayDist(x, y, dx, dy, r, solidCell) {
+    let cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+    const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1;
+    const dtx = dx ? Math.abs(CELL / dx) : Infinity;
+    const dty = dy ? Math.abs(CELL / dy) : Infinity;
+    let tx = dx ? dx > 0 ? ((cx + 1) * CELL - x) / dx : (cx * CELL - x) / dx : Infinity;
+    let ty = dy ? dy > 0 ? ((cy + 1) * CELL - y) / dy : (cy * CELL - y) / dy : Infinity;
+    let t = 0;
+    for (; ; ) {
+      if (tx < ty) {
+        t = tx;
+        tx += dtx;
+        cx += sx;
+      } else {
+        t = ty;
+        ty += dty;
+        cy += sy;
+      }
+      if (t >= r) return r;
+      if (solidCell(cx, cy)) return t;
+    }
+  }
+  function losClear(x0, y0, x1, y1, solidCell) {
+    const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy);
+    if (d < 1e-3) return true;
+    return rayDist(x0, y0, dx / d, dy / d, d, solidCell) >= d - 1e-3;
+  }
+  function visPoly(cx, cy, r, solidCell, rays) {
+    const pts = [];
+    for (let i = 0; i < rays; i++) {
+      const a = i / rays * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
+      const d = rayDist(cx, cy, dx, dy, r, solidCell);
+      pts.push(cx + dx * d, cy + dy * d);
+    }
+    return pts;
+  }
+
+  // src/world/zones.js
+  function boxReach(mat, x, y) {
+    const PWc = 6, PHc = 11;
+    const free = new Uint8Array(CW * CH), ok = new Uint8Array(CW * CH);
+    for (let cx = 0; cx < CW; cx++) {
+      let run = 0;
+      for (let cy = CH - 1; cy >= 0; cy--) {
+        run = mat[cy * CW + cx] ? 0 : run + 1;
+        if (run >= PHc) free[cy * CW + cx] = 1;
+      }
+    }
+    for (let cy = 0; cy < CH; cy++) {
+      let run = 0;
+      for (let cx = CW - 1; cx >= 0; cx--) {
+        run = free[cy * CW + cx] ? run + 1 : 0;
+        if (run >= PWc) ok[cy * CW + cx] = 1;
+      }
+    }
+    const s0 = y * CW + x;
+    let top = false;
+    if (!ok[s0]) return { ok, top };
+    const st = new Int32Array(CW * CH);
+    let n = 0;
+    ok[s0] = 2;
+    st[n++] = s0;
+    while (n) {
+      const i = st[--n];
+      if (i < 40 * CW) top = true;
+      const x0 = i % CW;
+      if (x0 > 0 && ok[i - 1] === 1) {
+        ok[i - 1] = 2;
+        st[n++] = i - 1;
+      }
+      if (x0 < CW - 1 && ok[i + 1] === 1) {
+        ok[i + 1] = 2;
+        st[n++] = i + 1;
+      }
+      if (i >= CW && ok[i - CW] === 1) {
+        ok[i - CW] = 2;
+        st[n++] = i - CW;
+      }
+      if (i < CW * (CH - 1) && ok[i + CW] === 1) {
+        ok[i + CW] = 2;
+        st[n++] = i + CW;
+      }
+    }
+    return { ok, top };
+  }
+  function builtAt(zone, wx, wy) {
+    if (!zone) return false;
+    const x = Math.floor(wx / CELL), y = Math.floor(wy / CELL);
+    return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
+  }
+
+  // src/world/decorate.js
+  var DECOR_DENSITY = 3;
+  var GROVES = 14;
+  var PLANTS = { vine: 1, myc: 1, root: 1, kelp: 1 };
+  var PROP_BOX = {
+    drop: { icicle: [-4, 0, 4, 16], geode: [-7, 0, 7, 12] },
+    spike: [-6, -10, 6, 0],
+    barrel: [-9, -12, 9, 0],
+    lamp: { lantern: [-5, -7, 5, 7], cap: [-6, -10, 6, 0], hanglamp: [-4, 0, 4, 16] },
+    vent: [-5, -3, 5, 0],
+    pad: [-10, -11, 10, 0],
+    pod: [-5, -11, 5, 0],
+    noise: { skulls: [-8, -7, 8, 0], stone: [-5, -10, 5, 10] },
+    shard: [-3, -5, 3, 5],
+    eyes: [-7, -4, 7, 4],
+    cover: { statue: [-8, -28, 8, 0], pillar: [-7, -30, 7, 0], monolith: [-7, -34, 7, 0] },
+    matter: [-12, -12, 12, 12],
+    tendril: [-4, -8, 4, 0],
+    drip: [-3, 0, 3, 4]
+  };
+  var PROP_DMG = { spike: 8, drop: 12, vent: 7, tendril: 8, matter: 4, lava: 5, cloud: 3 };
+  function archCurve(ax, ay, bx, by, slack, n) {
+    const c = Math.hypot(bx - ax, by - ay), s = c * Math.sqrt(3 * Math.max(0, slack - 1) / 8);
+    const pts = [];
+    for (let k = 0; k <= n; k++) {
+      const t = k / n;
+      pts.push({ x: ax + (bx - ax) * t, y: ay + (by - ay) * t + 4 * s * t * (1 - t) });
+    }
+    return pts;
+  }
+  function archNear(pr, x, y) {
+    const A = pr.arc;
+    let best = null;
+    for (let k = 0; k + 1 < A.length; k++) {
+      const ax = pr.x + A[k][0], ay = pr.y + A[k][1], bx = pr.x + A[k + 1][0], by = pr.y + A[k + 1][1];
+      const vx = bx - ax, vy = by - ay, ll = vx * vx + vy * vy || 1;
+      const u = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / ll));
+      const qx = ax + vx * u, qy = ay + vy * u, d = Math.hypot(qx - x, qy - y);
+      if (!best || d < best.d) best = { x: qx, y: qy, d, k };
+    }
+    return best;
+  }
+  function archAt(pr, u) {
+    const A = pr.arc, f = Math.max(0, Math.min(1, u)) * (A.length - 1), k = Math.min(A.length - 2, Math.floor(f)), t = f - k;
+    return { x: pr.x + A[k][0] + (A[k + 1][0] - A[k][0]) * t, y: pr.y + A[k][1] + (A[k + 1][1] - A[k][1]) * t };
+  }
+  function decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel, zone) {
+    let rs = (Math.imul(seed | 0, 7919) + floor * 104729 >>> 0) % 2147483646 + 1;
+    const R = () => (rs = rs * 16807 % 2147483647) / 2147483647;
+    const T = themeFor(floor), list = decorFor(floor);
+    const d = img.data, dd = dimg.data, bd = bgImg.data;
+    const inb = (cx, cy) => cx >= 0 && cy >= 0 && cx < CW && cy < CH;
+    const solidC = (cx, cy) => inb(cx, cy) && (mat[cy * CW + cx] === ROCK || mat[cy * CW + cx] === BRICK);
+    const openC = (cx, cy) => inb(cx, cy) && !mat[cy * CW + cx];
+    const put = (arr, i, c, a) => {
+      arr[i * 4] = c[0];
+      arr[i * 4 + 1] = c[1];
+      arr[i * 4 + 2] = c[2];
+      arr[i * 4 + 3] = a == null ? 255 : a;
+    };
+    let FU = 0;
+    const tset = (cx, cy, c) => {
+      if (solidC(cx, cy)) {
+        put(d, cy * CW + cx, c);
+        if (fuel) fuel[cy * CW + cx] = FU;
+      }
+    };
+    const dset = (cx, cy, c, a) => {
+      if (openC(cx, cy)) {
+        put(dd, cy * CW + cx, c, a);
+        if (fuel) fuel[cy * CW + cx] = FU;
+      }
+    };
+    const jit = (c, j) => [c[0] + (R() - 0.5) * j, c[1] + (R() - 0.5) * j, c[2] + (R() - 0.5) * j];
+    const shade = (c, f) => [c[0] * f, c[1] * f, c[2] * f];
+    const pick = (a, b) => mix(a, b, R());
+    const Y0 = 40, Y1 = SHOP_TOP - 14;
+    const sites = { floor: [], ceil: [], wall: [], air: [] };
+    const openRun = (cx, cy, dir, n) => {
+      for (let k = 1; k <= n; k++) if (!openC(cx, cy + dir * k)) return false;
+      return true;
+    };
+    for (let cy = Y0; cy < Y1; cy++) for (let cx = 8; cx < CW - 8; cx++) {
+      const i = cy * CW + cx;
+      if (mat[i]) continue;
+      if (solidC(cx, cy + 1) && openRun(cx, cy, -1, 12)) sites.floor.push(i);
+      if (solidC(cx, cy - 1) && openRun(cx, cy, 1, 12)) sites.ceil.push(i);
+      if (!(cy & 1)) {
+        const s = solidC(cx - 1, cy) ? -1 : solidC(cx + 1, cy) ? 1 : 0;
+        if (s && solidC(cx + s, cy - 3) && solidC(cx + s, cy + 3) && openC(cx - s * 6, cy) && openC(cx - s * 3, cy))
+          sites.wall.push(i * 2 + (s > 0 ? 1 : 0));
+      }
+      if (cx % 5 === 0 && cy % 5 === 0 && openC(cx - 12, cy) && openC(cx + 12, cy) && openC(cx, cy - 12) && openC(cx, cy + 12) && openC(cx - 8, cy - 8) && openC(cx + 8, cy + 8) && openC(cx + 8, cy - 8) && openC(cx - 8, cy + 8))
+        sites.air.push(i);
+    }
+    const flatAt = (cx, cy, w) => {
+      for (let dx = -w; dx <= w; dx++)
+        if (!solidC(cx + dx, cy + 1) || !openC(cx + dx, cy) || !openC(cx + dx, cy - 3)) return false;
+      return true;
+    };
+    const pitAt = (cx, cy) => {
+      const side = (s) => {
+        for (let k = 3; k <= 14; k++) if (solidC(cx + s * k, cy - 2)) return true;
+        return false;
+      };
+      return side(-1) && side(1);
+    };
+    const runOf = (cx, cy, s, cap) => {
+      let k = 0;
+      while (k < cap && solidC(cx + s * (k + 1), cy + 1) && openC(cx + s * (k + 1), cy)) k++;
+      return k;
+    };
+    const upTo = (cx, cy, cap) => {
+      let k = 0;
+      while (k < cap && openC(cx, cy - k - 1)) k++;
+      return k;
+    };
+    const downTo = (cx, cy, cap) => {
+      let k = 0;
+      while (k < cap && openC(cx, cy + k + 1)) k++;
+      return k;
+    };
+    const bake = {
+      moss(cx, cy) {
+        const w = 5 + Math.floor(R() * 8);
+        for (let dx = -w; dx <= w; dx++) {
+          const deep = Math.round((2 + R() * 3) * (1 - Math.abs(dx) / (w + 1)) + 1);
+          FU = FUEL_MOSS;
+          for (let k = 1; k <= deep; k++) tset(cx + dx, cy + k, jit(pick(T.moss[0], T.moss[1]), 14));
+          FU = FUEL_GRASS;
+          if (R() < 0.35) {
+            const tall = 1 + (R() < 0.4);
+            for (let k = 0; k < tall; k++) dset(cx + dx, cy - k, jit(T.moss[1], 20));
+          }
+        }
+        FU = 0;
+      },
+      rubble(cx, cy) {
+        const w = 3 + Math.floor(R() * 4), hh = 2 + R() * 2.5;
+        for (let dx = -w; dx <= w; dx++) {
+          const top = Math.round((1 - (dx / (w + 1)) ** 2) * hh);
+          for (let k = 0; k < top; k++) {
+            const mossy = k === top - 1 && R() < 0.7;
+            const c = mossy ? pick(T.moss[0], T.moss[1]) : R() < 0.2 ? T.mortar : pick(T.brick[0], T.brick[1]);
+            FU = mossy ? FUEL_GRASS : 0;
+            dset(cx + dx, cy - k, jit(c, 12));
+          }
+        }
+        FU = 0;
+      },
+      beams(cx, cy) {
+        FU = FUEL_WOOD;
+        const ok = timberFrame(mat, dset, R, T, cx - 8, cx + 8, cy - 3, false, cy + 1);
+        FU = 0;
+        if (!ok) return false;
+      },
+      pickaxe(cx, cy) {
+        const s = R() < 0.5 ? -1 : 1, haft = [104, 74, 46], iron = [120, 124, 132];
+        FU = FUEL_WOOD;
+        for (let k = 0; k < 7; k++) dset(cx + s * k, cy - k, jit(haft, 12));
+        FU = 0;
+        for (let k = -2; k <= 2; k++) tset(cx + k, cy + 1 + (Math.abs(k) === 2), jit(iron, 16));
+        tset(cx, cy + 2, iron);
+      },
+      cracks(cx, cy, c) {
+        c = c || shade(T.mortar, 0.8);
+        let x = cx, y = cy + 1;
+        for (let k = 0; k < 8 + R() * 8; k++) {
+          tset(x, y, jit(c, 8));
+          if (R() < 0.15) {
+            let bx = x, by = y;
+            for (let j = 0; j < 4; j++) {
+              bx += R() < 0.5 ? -1 : 1;
+              by++;
+              tset(bx, by, jit(c, 8));
+            }
+          }
+          y++;
+          x += Math.floor(R() * 3) - 1;
+        }
+      },
+      fissure(cx, cy, side) {
+        const glow = T.moss[1], halo = T.moss[0];
+        let x = side ? cx + side : cx, y = side ? cy : cy + 1;
+        for (let k = 0; k < 10 + R() * 10; k++) {
+          tset(x, y, glow);
+          if (side) {
+            tset(x, y - 1, halo);
+            tset(x, y + 1, halo);
+            x += side;
+            y += Math.floor(R() * 3) - 1;
+          } else {
+            tset(x - 1, y, halo);
+            tset(x + 1, y, halo);
+            y++;
+            x += Math.floor(R() * 3) - 1;
+          }
+        }
+      },
+      bones(cx, cy) {
+        const len = 4 + Math.floor(R() * 4), bone = [222, 214, 192];
+        for (let k = 0; k < len; k++) {
+          dset(cx + k, cy, jit(bone, 12));
+          tset(cx + k, cy + 1, jit(shade(bone, 0.85), 12));
+        }
+        dset(cx - 1, cy - 1, bone);
+        dset(cx + len, cy - 1, bone);
+      },
+      pillar(cx, cy) {
+        const hgt = upTo(cx, cy, 90);
+        if (hgt < 20 || hgt >= 90) return false;
+        const w = 2 + Math.floor(R() * 3), top = cy - hgt;
+        for (let y = top; y <= cy; y++) {
+          const flare = Math.max(0, 3 - Math.min(y - top, cy - y));
+          for (let dx = -w - flare; dx <= w + flare; dx++) {
+            const c = dx < 0 ? T.moss[1] : dx === 0 ? [236, 232, 214] : T.moss[0];
+            dset(cx + dx, y, jit(shade(c, 0.72), 8));
+          }
+        }
+      },
+      gear(cx, cy) {
+        const r = 5 + Math.floor(R() * 9), teeth = 8 + Math.floor(R() * 5), rust = shade(T.rock[1], 0.7);
+        const ph = R() * 6.28;
+        for (let dy = -r - 2; dy <= r + 2; dy++) for (let dx = -r - 2; dx <= r + 2; dx++) {
+          const dist = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
+          const tooth = Math.cos((a + ph) * teeth) > 0.3 ? 2 : 0;
+          const rim = dist <= r + tooth && dist >= r - 2;
+          const spoke = dist < r - 2 && (Math.abs(Math.sin((a + ph) * 2)) < 0.18 || dist < 2.5);
+          if (rim || spoke) dset(cx + dx, cy + dy, jit(shade(rust, rim && tooth ? 0.85 : 1), 12));
+        }
+      },
+      ribs(cx, cy) {
+        const hgt = upTo(cx, cy, 80);
+        if (hgt < 24) return false;
+        const bone = [214, 206, 184], H = Math.min(hgt - 2, 36);
+        for (let k = 0; k < 4; k++) {
+          const a = 16 - k * 3, b = H - k * 5, ox = cx + k * 4 - 6, f = 0.78 - k * 0.1;
+          for (let t = 0; t <= 60; t++) {
+            const th = Math.PI * t / 60, x = ox + Math.cos(th) * a, y = cy - Math.sin(th) * b;
+            dset(Math.round(x), Math.round(y), jit(shade(bone, f), 8));
+            dset(Math.round(x) + 1, Math.round(y), jit(shade(bone, f * 0.85), 8));
+          }
+        }
+      },
+      charred(cx, cy) {
+        const len = 3 + Math.floor(R() * 5);
+        for (let k = 0; k < len; k++) {
+          dset(cx + k, cy, R() < 0.12 ? [190, 84, 30] : jit([34, 28, 26], 10));
+          if (R() < 0.5) dset(cx + k, cy - 1, jit([48, 42, 40], 10));
+        }
+      },
+      soot(bx, by) {
+        const r = 5 + R() * 10;
+        for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+          const x = Math.round(bx + dx), y = Math.round(by + dy), f = 1 - Math.hypot(dx, dy) / r;
+          if (f <= 0 || x < 0 || y < 0 || x >= BW || y >= BH) continue;
+          const k = (y * BW + x) * 4, m = 1 - 0.55 * f;
+          bd[k] *= m;
+          bd[k + 1] *= m;
+          bd[k + 2] *= m;
+        }
+      },
+      algae(cx, cy) {
+        const w = 6 + Math.floor(R() * 9);
+        for (let dx = -w; dx <= w; dx++) for (let k = 1; k <= 7; k++) {
+          const x = cx + dx, y = cy + k;
+          if (!inb(x, y) || mat[y * CW + x] !== ROCK) continue;
+          mat[y * CW + x] = BRICK;
+          const kk = x + y % 2 * 3;
+          const top = !mat[(y - 1) * CW + x] || y > 1 && !mat[(y - 2) * CW + x];
+          put(d, y * CW + x, top ? jit(pick(T.moss[0], T.moss[1]), 16) : kk % 6 === 0 ? T.mortar : jit(pick(T.brick[0], T.brick[1]), 8));
+        }
+      }
+    };
+    const props = [], baked = {}, amb = [];
+    const boxOf = (kind, style, side) => {
+      let b = PROP_BOX[kind];
+      if (b && !Array.isArray(b)) b = b[style];
+      b = b ? b.slice() : [-4, -4, 4, 4];
+      if (side === "ceil" && kind === "spike") b = [b[0], 0, b[2], -b[1]];
+      return b;
+    };
+    const ceilNear = (cx, cy, span) => {
+      for (let k = 0; k <= span; k++) for (const y of k ? [cy - k, cy + k] : [cy]) {
+        if (y < Y0 || y >= Y1 || cx < 8 || cx >= CW - 8) continue;
+        if (openC(cx, y) && solidC(cx, y - 1) && openRun(cx, y, 1, 12)) return y;
+      }
+      return -1;
+    };
+    function makeProp(it, cx, cy, at, side) {
+      const x = at === "wall" ? (side < 0 ? cx : cx + 1) * CELL : (cx + 0.5) * CELL;
+      const y = at === "floor" || it.at === "flat" || it.at === "pit" ? (cy + 1) * CELL : at === "ceil" ? cy * CELL : (cy + 0.5) * CELL;
+      const pr = { id: it.id, k: it.kind, st: it.style, x, y, t: R() * 10, seed: R() };
+      if (at === "ceil") pr.anc = [cx, cy - 1];
+      else if (at === "wall") {
+        pr.anc = [cx + side, cy];
+        pr.side = side;
+      } else if (at === "floor" || it.at === "flat" || it.at === "pit") pr.anc = [cx, cy + 1];
+      pr.hang = at === "ceil" ? 1 : 0;
+      let box = boxOf(it.kind, it.style, at);
+      if (it.kind === "climb") {
+        if (at === "wall") {
+          let k = 0;
+          while (k < 50 && solidC(cx + side, cy + k + 1) && openC(cx, cy + k + 1)) k++;
+          if (k < 10) return null;
+          pr.len = k * CELL;
+          box = side < 0 ? [0, -4, 7, pr.len] : [-7, -4, 0, pr.len];
+        } else {
+          const room = downTo(cx, cy, 90);
+          if (room < 12) return null;
+          const most = Math.min(64, SHOP_TOP - 16 - cy);
+          if (most < 8) return null;
+          pr.len = Math.round(Math.max(8, Math.min(room * (0.25 + R() * 0.55), most)) * CELL);
+          box = [-5, 0, 5, pr.len];
+        }
+      } else if (it.kind === "zone") {
+        const cap = it.at === "pit" ? 10 : 16;
+        const lft = runOf(cx, cy, -1, cap), rgt = runOf(cx, cy, 1, cap);
+        if (lft + rgt < 6) return null;
+        box = [-lft * CELL, -5, (rgt + 1) * CELL, 1];
+        pr.x = cx * CELL;
+        pr.anc = [cx, cy + 1];
+      } else if (it.kind === "drip" && at === "wall") {
+        box = side < 0 ? [0, -4, 8, 4] : [-8, -4, 0, 4];
+      } else if (it.kind === "lamp" && at === "wall") {
+        box = side < 0 ? [0, -7, 9, 7] : [-9, -7, 0, 7];
+      } else if (it.kind === "noise" && at === "wall") {
+        box = side < 0 ? [0, -10, 10, 10] : [-10, -10, 0, 10];
+      } else if (it.kind === "shard" && at === "wall") {
+        box = side < 0 ? [0, -4, 6, 4] : [-6, -4, 0, 4];
+      }
+      if (it.kind === "cover") pr.hp = it.hp || 0;
+      if (it.kind === "tendril") pr.ang = -Math.PI / 2 + (R() - 0.5) * 1.2;
+      pr.l = box[0];
+      pr.t0 = box[1];
+      pr.r = box[2];
+      pr.b = box[3];
+      return pr;
+    }
+    const plant = (it) => it.kind === "climb" && PLANTS[it.style];
+    const clump = (it, cx, cy, n) => {
+      for (let k = 0; k < n; k++) {
+        const sx = cx + Math.round((R() - 0.5) * 18), sy = ceilNear(sx, cy, 6);
+        const pr = sy >= 0 && makeProp(it, sx, sy, "ceil", 0);
+        if (pr) props.push(pr);
+      }
+    };
+    function place(it) {
+      const want = it.n * DECOR_DENSITY, got = [];
+      const pool = it.at === "surf" ? null : it.at === "flat" || it.at === "pit" ? sites.floor : sites[it.at];
+      for (let a = 0; a < want * 40 && got.length < want; a++) {
+        let at = it.at, i, side = 0;
+        if (at === "bg") {
+          const bx = R() * BW, by = R() * (SHOP_TOP / 4 - 10);
+          if (bake[it.style](bx, by) !== false) got.push(1);
+          continue;
+        }
+        if (at === "surf") at = R() < 0.5 ? "floor" : "wall";
+        if (it.both && R() < 0.4) at = "ceil";
+        const src = at === "floor" || at === "ceil" || at === "wall" || at === "air" ? sites[at] : pool;
+        if (!src.length) break;
+        i = src[Math.floor(R() * src.length)];
+        if (at === "wall") {
+          side = i & 1 ? 1 : -1;
+          i >>= 1;
+        }
+        const cx = i % CW, cy = i / CW | 0;
+        if (it.at === "flat" && !flatAt(cx, cy, it.w || 3)) continue;
+        if (it.at === "pit" && !pitAt(cx, cy)) continue;
+        const x = (cx + 0.5) * CELL, y = cy * CELL;
+        const gap = it.kind === "bake" ? 14 : 40;
+        if (got.some((g) => Math.abs(g.x - x) < gap && Math.abs(g.y - y) < gap)) continue;
+        if (it.kind === "bake") {
+          if (bake[it.style](cx, cy, it.style === "fissure" && at === "wall" ? side : void 0) === false) continue;
+          got.push({ x, y });
+          continue;
+        }
+        const pr = makeProp(it, cx, cy, at, side);
+        if (!pr) continue;
+        got.push({ x, y });
+        props.push(pr);
+        if (plant(it)) clump(it, cx, cy, 1 + Math.floor(R() * 3));
+      }
+      baked[it.id] = it.kind === "bake" ? got.length : 0;
+    }
+    for (const it of list) {
+      if (it.kind === "amb") {
+        amb.push(it.style);
+        baked[it.id] = 0;
+        continue;
+      }
+      place(it);
+    }
+    const green = list.find(plant);
+    baked.groves = 0;
+    if (green && sites.ceil.length) {
+      const groves = [];
+      for (let a = 0; a < 600 && groves.length < GROVES; a++) {
+        const i = sites.ceil[Math.floor(R() * sites.ceil.length)];
+        const cx = i % CW, cy = i / CW | 0;
+        if (groves.some((g) => Math.hypot(g.cx - cx, g.cy - cy) < 100)) continue;
+        groves.push({ cx, cy, r: 32 + R() * 34 });
+      }
+      for (const g of groves) {
+        overgrow(g.cx, g.cy, g.r * 1.5);
+        const n = 14 + Math.floor(R() * 12);
+        for (let k = 0, got = 0; k < n * 4 && got < n; k++) {
+          const d2 = g.r * R(), a = R() * 6.283;
+          const sx = Math.round(g.cx + Math.cos(a) * d2), sy = ceilNear(sx, Math.round(g.cy + Math.sin(a) * d2 * 0.6), 24);
+          const pr = sy >= 0 && makeProp(green, sx, sy, "ceil", 0);
+          if (pr) {
+            props.push(pr);
+            got++;
+          }
+        }
+      }
+      baked.groves = groves.length;
+    }
+    baked.arches = 0;
+    if (green && sites.ceil.length) {
+      const K = (k) => kr(k, R), cnt = (v) => Math.floor(v) + (R() < v % 1 ? 1 : 0);
+      const nat = (cx, cy) => !zone || !zone[cy * CW + cx];
+      const spots = [], nC = cnt(Math.max(0, K("arVines")));
+      for (let tries = 0; spots.length < nC && tries < nC * 80 + 80; tries++) {
+        const i = sites.ceil[Math.floor(R() * sites.ceil.length)];
+        const cx = i % CW, cy = i / CW | 0;
+        if (!nat(cx, cy) || spots.some((g) => Math.hypot(g.cx - cx, g.cy - cy) < 80)) continue;
+        const want = Math.max(1, cnt(K("arCluster")));
+        let got = 0;
+        for (let t = 0; t < want * 30 && got < want; t++) {
+          const ax = got ? cx + Math.round((R() - 0.5) * 50) : cx, ay = got ? ceilNear(ax, cy, 24) : cy;
+          if (ay < 0 || !nat(ax, ay)) continue;
+          const span = K("arSpan"), bx = Math.round(ax + (R() < 0.5 ? -1 : 1) * span);
+          const by = ceilNear(bx, Math.round(ay + K("arRise") * span * (R() < 0.5 ? -1 : 1)), Math.round(span * 0.25) + 4);
+          if (by < 0 || !nat(bx, by)) continue;
+          if (archProp(ax, ay, bx, by, K, cnt, nat)) {
+            got++;
+            baked.arches++;
+          }
+        }
+        if (got) spots.push({ cx, cy });
+      }
+    }
+    function archProp(ax, ay, bx, by, K, cnt, nat) {
+      const A = { x: (ax + 0.5) * CELL, y: ay * CELL }, B = { x: (bx + 0.5) * CELL, y: by * CELL };
+      const slack = K("arSlack"), chord = Math.hypot(B.x - A.x, B.y - A.y);
+      const n = Math.max(8, Math.min(40, Math.round(chord / 6)));
+      const pts = archCurve(A.x, A.y, B.x, B.y, slack, n);
+      let low = pts[0], alen = 0;
+      for (let k = 0; k < n; k++) {
+        const p = pts[k], q = pts[k + 1], l2 = Math.hypot(q.x - p.x, q.y - p.y), m = Math.max(1, Math.ceil(l2 * 2 / CELL));
+        alen += l2;
+        for (let j = 0; j <= m; j++) {
+          const x = p.x + (q.x - p.x) * j / m, y = p.y + (q.y - p.y) * j / m;
+          const cx = Math.floor(x / CELL);
+          if (!openC(cx, Math.floor(y / CELL)) || !openC(cx, Math.floor((y + 1) / CELL)) || !nat(cx, Math.floor(y / CELL))) return null;
+        }
+        if (q.y > low.y) low = q;
+      }
+      const lx = Math.floor(low.x / CELL), ly = Math.floor(low.y / CELL);
+      if (downTo(lx, ly, 150) < K("arClear") || ly >= SHOP_TOP - 24) return null;
+      const pr = {
+        id: "arch",
+        k: "climb",
+        st: green.style,
+        x: A.x,
+        y: A.y,
+        t: R() * 10,
+        seed: R(),
+        hang: 1,
+        anc: [ax, ay - 1],
+        anc2: [bx, by - 1],
+        arc: pts.map((p) => [p.x - A.x, p.y - A.y]),
+        thick: Math.max(1, Math.round(K("arThick"))),
+        alen
+      };
+      let l = 0, r = 0, t0 = 0, b = 0;
+      for (const [x, y] of pr.arc) {
+        l = Math.min(l, x);
+        r = Math.max(r, x);
+        t0 = Math.min(t0, y);
+        b = Math.max(b, y);
+      }
+      props.push(pr);
+      const ns = cnt(K("arStrands") * alen / (10 * CELL));
+      for (let s = 0; s < ns; s++) {
+        const u = R(), q = archAt(pr, u);
+        q.u = u;
+        const room = downTo(Math.floor(q.x / CELL), Math.floor(q.y / CELL), 90);
+        const len = Math.round(Math.min(K("arStrandLen"), room * 0.7, SHOP_TOP - 20 - q.y / CELL) * CELL);
+        if (len < 4) continue;
+        props.push({
+          id: "archStrand",
+          k: "climb",
+          st: green.style,
+          x: q.x,
+          y: q.y,
+          t: R() * 10,
+          seed: R(),
+          hang: 1,
+          len,
+          on: pr,
+          u: q.u,
+          l: -5,
+          t0: 0,
+          r: 5,
+          b: len
+        });
+        b = Math.max(b, q.y - A.y + len);
+      }
+      pr.l = l - 4;
+      pr.r = r + 4;
+      pr.t0 = t0 - 3;
+      pr.b = b + 3;
+      return pr;
+    }
+    function overgrow(gx, gy, rr2) {
+      const leaf = T.moss[1], dark = shade(T.moss[0], 0.8);
+      const bloom = [[236, 214, 120], [226, 140, 170], [240, 240, 230]];
+      for (let y = Math.max(Y0, Math.round(gy - rr2)); y <= Math.min(Y1, Math.round(gy + rr2)); y++)
+        for (let x = Math.max(4, Math.round(gx - rr2)); x <= Math.min(CW - 5, Math.round(gx + rr2)); x++) {
+          const f = 1 - Math.hypot(x - gx, (y - gy) * 1.3) / rr2;
+          if (f <= 0 || !openC(x, y)) continue;
+          const p = Math.pow(f, 1.2);
+          FU = FUEL_MOSS;
+          if (solidC(x, y + 1)) {
+            if (R() < p) {
+              tset(x, y + 1, jit(pick(T.moss[0], T.moss[1]), 16));
+              if (R() < p) tset(x, y + 2, jit(dark, 12));
+            }
+            FU = FUEL_GRASS;
+            if (R() < p * 0.85) {
+              const tall = 1 + Math.floor(R() * (1 + 4 * f));
+              for (let k = 0; k < tall; k++) dset(x, y - k, jit(k === tall - 1 ? leaf : pick(T.moss[0], leaf), 18));
+              if (R() < 0.06 * f) dset(x, y - tall, bloom[Math.floor(R() * bloom.length)]);
+            }
+          } else if (solidC(x, y - 1)) {
+            if (R() < p) tset(x, y - 1, jit(pick(T.moss[0], T.moss[1]), 16));
+            FU = FUEL_GRASS;
+            if (R() < p * 0.75) {
+              const len = 1 + Math.floor(R() * (2 + 9 * f));
+              for (let k = 0; k < len; k++) dset(x, y + k, jit(k > len - 2 ? leaf : dark, 14));
+            }
+          } else if ((solidC(x - 1, y) || solidC(x + 1, y)) && R() < p * 0.5) {
+            FU = FUEL_GRASS;
+            dset(x, y, jit(pick(T.moss[0], leaf), 16));
+          }
+          FU = 0;
+        }
+    }
+    baked.lanterns = 0;
+    if (zone && (sites.ceil.length || sites.wall.length)) {
+      const want = Math.round(kr("lvLamps", R)), got = [];
+      const isB = (cx, cy) => zone[cy * CW + cx] === 1;
+      for (let a = 0; a < want * 40 && got.length < want; a++) {
+        const wall = sites.wall.length && (R() < 0.35 || !sites.ceil.length);
+        let i = wall ? sites.wall[Math.floor(R() * sites.wall.length)] : sites.ceil[Math.floor(R() * sites.ceil.length)], side = 0;
+        if (wall) {
+          side = i & 1 ? 1 : -1;
+          i >>= 1;
+        }
+        const cx = i % CW, cy = i / CW | 0;
+        if (!isB(cx, cy) || got.some((g) => Math.hypot(g.x - cx, g.y - cy) < 36)) continue;
+        let pr;
+        if (wall) pr = makeProp({ id: "lanterns", kind: "lamp", style: "lantern", at: "wall" }, cx, cy, "wall", side);
+        else {
+          const room = downTo(cx, cy, 60);
+          if (room < 18) continue;
+          pr = makeProp({ id: "hanglamps", kind: "lamp", style: "hanglamp", at: "ceil" }, cx, cy, "ceil", 0);
+          if (pr) {
+            pr.len = Math.round((2 + R() * Math.min(7, room * 0.3)) * CELL);
+            pr.b = pr.len + 9;
+          }
+        }
+        if (!pr) continue;
+        got.push({ x: cx, y: cy });
+        props.push(pr);
+      }
+      baked.lanterns = got.length;
+    }
+    return { props: cullDecor(props, keep || []), amb, baked };
+  }
+  function cullDecor(props, keep) {
+    const out = [];
+    const pad = 3;
+    const dropped = /* @__PURE__ */ new Set();
+    for (const pr of props) {
+      if (pr.arc) {
+        if (pr.arc.some(([x, y]) => keep.some((k) => Math.hypot(pr.x + x - k.x, pr.y + y - k.y) < k.r) || out.some((o) => o.k !== "climb" && pr.x + x > o.x + o.l - pad && pr.x + x < o.x + o.r + pad && pr.y + y > o.y + o.t0 - pad && pr.y + y < o.y + o.b + pad))) {
+          dropped.add(pr);
+          continue;
+        }
+        out.push(pr);
+        continue;
+      }
+      if (pr.on && dropped.has(pr.on)) continue;
+      const x0 = pr.x + pr.l - pad, x1 = pr.x + pr.r + pad, y0 = pr.y + pr.t0 - pad, y1 = pr.y + pr.b + pad;
+      if (keep.some((k) => k.x + k.r > x0 && k.x - k.r < x1 && k.y + k.r > y0 && k.y - k.r < y1)) continue;
+      if (out.some((o) => !(o.k === "climb" && pr.k === "climb") && !o.arc && o.x + o.l < x1 && o.x + o.r > x0 && o.y + o.t0 < y1 && o.y + o.b > y0)) continue;
+      out.push(pr);
+    }
+    return out;
+  }
+  function propAnchored(pr, mat) {
+    if (pr.on) return !pr.on.fall && !pr.on.gone;
+    if (pr.anc2 && !propAnchored({ anc: pr.anc2 }, mat)) return false;
+    if (!pr.anc) return true;
+    const [cx, cy] = pr.anc;
+    for (let dx = -1; dx <= 1; dx++) {
+      const x = cx + dx;
+      if (x >= 0 && x < CW && cy >= 0 && cy < CH && mat[cy * CW + x]) return true;
+    }
+    return false;
   }
 
   // src/main.js
@@ -7467,620 +8082,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const map = { x: bag.x, y: bag.y - btn - 8 };
     return { btn, R, rc, guns, bag, map };
   }
-  var DECOR_DENSITY = 3;
-  var GROVES = 14;
-  var PLANTS = { vine: 1, myc: 1, root: 1, kelp: 1 };
   var HEAR_FIRE = 320;
-  var PROP_BOX = {
-    drop: { icicle: [-4, 0, 4, 16], geode: [-7, 0, 7, 12] },
-    spike: [-6, -10, 6, 0],
-    barrel: [-9, -12, 9, 0],
-    lamp: { lantern: [-5, -7, 5, 7], cap: [-6, -10, 6, 0], hanglamp: [-4, 0, 4, 16] },
-    vent: [-5, -3, 5, 0],
-    pad: [-10, -11, 10, 0],
-    pod: [-5, -11, 5, 0],
-    noise: { skulls: [-8, -7, 8, 0], stone: [-5, -10, 5, 10] },
-    shard: [-3, -5, 3, 5],
-    eyes: [-7, -4, 7, 4],
-    cover: { statue: [-8, -28, 8, 0], pillar: [-7, -30, 7, 0], monolith: [-7, -34, 7, 0] },
-    matter: [-12, -12, 12, 12],
-    tendril: [-4, -8, 4, 0],
-    drip: [-3, 0, 3, 4]
-  };
-  var PROP_DMG = { spike: 8, drop: 12, vent: 7, tendril: 8, matter: 4, lava: 5, cloud: 3 };
-  function archCurve(ax, ay, bx, by, slack, n) {
-    const c = Math.hypot(bx - ax, by - ay), s = c * Math.sqrt(3 * Math.max(0, slack - 1) / 8);
-    const pts = [];
-    for (let k = 0; k <= n; k++) {
-      const t = k / n;
-      pts.push({ x: ax + (bx - ax) * t, y: ay + (by - ay) * t + 4 * s * t * (1 - t) });
-    }
-    return pts;
-  }
-  function archNear(pr, x, y) {
-    const A = pr.arc;
-    let best = null;
-    for (let k = 0; k + 1 < A.length; k++) {
-      const ax = pr.x + A[k][0], ay = pr.y + A[k][1], bx = pr.x + A[k + 1][0], by = pr.y + A[k + 1][1];
-      const vx = bx - ax, vy = by - ay, ll = vx * vx + vy * vy || 1;
-      const u = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / ll));
-      const qx = ax + vx * u, qy = ay + vy * u, d = Math.hypot(qx - x, qy - y);
-      if (!best || d < best.d) best = { x: qx, y: qy, d, k };
-    }
-    return best;
-  }
-  function archAt(pr, u) {
-    const A = pr.arc, f = Math.max(0, Math.min(1, u)) * (A.length - 1), k = Math.min(A.length - 2, Math.floor(f)), t = f - k;
-    return { x: pr.x + A[k][0] + (A[k + 1][0] - A[k][0]) * t, y: pr.y + A[k][1] + (A[k + 1][1] - A[k][1]) * t };
-  }
-  function decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel, zone) {
-    let rs = (Math.imul(seed | 0, 7919) + floor * 104729 >>> 0) % 2147483646 + 1;
-    const R = () => (rs = rs * 16807 % 2147483647) / 2147483647;
-    const T = themeFor(floor), list = decorFor(floor);
-    const d = img.data, dd = dimg.data, bd = bgImg.data;
-    const inb = (cx, cy) => cx >= 0 && cy >= 0 && cx < CW && cy < CH;
-    const solidC = (cx, cy) => inb(cx, cy) && (mat[cy * CW + cx] === ROCK || mat[cy * CW + cx] === BRICK);
-    const openC = (cx, cy) => inb(cx, cy) && !mat[cy * CW + cx];
-    const put = (arr, i, c, a) => {
-      arr[i * 4] = c[0];
-      arr[i * 4 + 1] = c[1];
-      arr[i * 4 + 2] = c[2];
-      arr[i * 4 + 3] = a == null ? 255 : a;
-    };
-    let FU = 0;
-    const tset = (cx, cy, c) => {
-      if (solidC(cx, cy)) {
-        put(d, cy * CW + cx, c);
-        if (fuel) fuel[cy * CW + cx] = FU;
-      }
-    };
-    const dset = (cx, cy, c, a) => {
-      if (openC(cx, cy)) {
-        put(dd, cy * CW + cx, c, a);
-        if (fuel) fuel[cy * CW + cx] = FU;
-      }
-    };
-    const jit = (c, j) => [c[0] + (R() - 0.5) * j, c[1] + (R() - 0.5) * j, c[2] + (R() - 0.5) * j];
-    const shade = (c, f) => [c[0] * f, c[1] * f, c[2] * f];
-    const pick = (a, b) => mix(a, b, R());
-    const Y0 = 40, Y1 = SHOP_TOP - 14;
-    const sites = { floor: [], ceil: [], wall: [], air: [] };
-    const openRun = (cx, cy, dir, n) => {
-      for (let k = 1; k <= n; k++) if (!openC(cx, cy + dir * k)) return false;
-      return true;
-    };
-    for (let cy = Y0; cy < Y1; cy++) for (let cx = 8; cx < CW - 8; cx++) {
-      const i = cy * CW + cx;
-      if (mat[i]) continue;
-      if (solidC(cx, cy + 1) && openRun(cx, cy, -1, 12)) sites.floor.push(i);
-      if (solidC(cx, cy - 1) && openRun(cx, cy, 1, 12)) sites.ceil.push(i);
-      if (!(cy & 1)) {
-        const s = solidC(cx - 1, cy) ? -1 : solidC(cx + 1, cy) ? 1 : 0;
-        if (s && solidC(cx + s, cy - 3) && solidC(cx + s, cy + 3) && openC(cx - s * 6, cy) && openC(cx - s * 3, cy))
-          sites.wall.push(i * 2 + (s > 0 ? 1 : 0));
-      }
-      if (cx % 5 === 0 && cy % 5 === 0 && openC(cx - 12, cy) && openC(cx + 12, cy) && openC(cx, cy - 12) && openC(cx, cy + 12) && openC(cx - 8, cy - 8) && openC(cx + 8, cy + 8) && openC(cx + 8, cy - 8) && openC(cx - 8, cy + 8))
-        sites.air.push(i);
-    }
-    const flatAt = (cx, cy, w) => {
-      for (let dx = -w; dx <= w; dx++)
-        if (!solidC(cx + dx, cy + 1) || !openC(cx + dx, cy) || !openC(cx + dx, cy - 3)) return false;
-      return true;
-    };
-    const pitAt = (cx, cy) => {
-      const side = (s) => {
-        for (let k = 3; k <= 14; k++) if (solidC(cx + s * k, cy - 2)) return true;
-        return false;
-      };
-      return side(-1) && side(1);
-    };
-    const runOf = (cx, cy, s, cap) => {
-      let k = 0;
-      while (k < cap && solidC(cx + s * (k + 1), cy + 1) && openC(cx + s * (k + 1), cy)) k++;
-      return k;
-    };
-    const upTo = (cx, cy, cap) => {
-      let k = 0;
-      while (k < cap && openC(cx, cy - k - 1)) k++;
-      return k;
-    };
-    const downTo = (cx, cy, cap) => {
-      let k = 0;
-      while (k < cap && openC(cx, cy + k + 1)) k++;
-      return k;
-    };
-    const bake = {
-      moss(cx, cy) {
-        const w = 5 + Math.floor(R() * 8);
-        for (let dx = -w; dx <= w; dx++) {
-          const deep = Math.round((2 + R() * 3) * (1 - Math.abs(dx) / (w + 1)) + 1);
-          FU = FUEL_MOSS;
-          for (let k = 1; k <= deep; k++) tset(cx + dx, cy + k, jit(pick(T.moss[0], T.moss[1]), 14));
-          FU = FUEL_GRASS;
-          if (R() < 0.35) {
-            const tall = 1 + (R() < 0.4);
-            for (let k = 0; k < tall; k++) dset(cx + dx, cy - k, jit(T.moss[1], 20));
-          }
-        }
-        FU = 0;
-      },
-      rubble(cx, cy) {
-        const w = 3 + Math.floor(R() * 4), hh = 2 + R() * 2.5;
-        for (let dx = -w; dx <= w; dx++) {
-          const top = Math.round((1 - (dx / (w + 1)) ** 2) * hh);
-          for (let k = 0; k < top; k++) {
-            const mossy = k === top - 1 && R() < 0.7;
-            const c = mossy ? pick(T.moss[0], T.moss[1]) : R() < 0.2 ? T.mortar : pick(T.brick[0], T.brick[1]);
-            FU = mossy ? FUEL_GRASS : 0;
-            dset(cx + dx, cy - k, jit(c, 12));
-          }
-        }
-        FU = 0;
-      },
-      beams(cx, cy) {
-        FU = FUEL_WOOD;
-        const ok = timberFrame(mat, dset, R, T, cx - 8, cx + 8, cy - 3, false, cy + 1);
-        FU = 0;
-        if (!ok) return false;
-      },
-      pickaxe(cx, cy) {
-        const s = R() < 0.5 ? -1 : 1, haft = [104, 74, 46], iron = [120, 124, 132];
-        FU = FUEL_WOOD;
-        for (let k = 0; k < 7; k++) dset(cx + s * k, cy - k, jit(haft, 12));
-        FU = 0;
-        for (let k = -2; k <= 2; k++) tset(cx + k, cy + 1 + (Math.abs(k) === 2), jit(iron, 16));
-        tset(cx, cy + 2, iron);
-      },
-      cracks(cx, cy, c) {
-        c = c || shade(T.mortar, 0.8);
-        let x = cx, y = cy + 1;
-        for (let k = 0; k < 8 + R() * 8; k++) {
-          tset(x, y, jit(c, 8));
-          if (R() < 0.15) {
-            let bx = x, by = y;
-            for (let j = 0; j < 4; j++) {
-              bx += R() < 0.5 ? -1 : 1;
-              by++;
-              tset(bx, by, jit(c, 8));
-            }
-          }
-          y++;
-          x += Math.floor(R() * 3) - 1;
-        }
-      },
-      fissure(cx, cy, side) {
-        const glow = T.moss[1], halo = T.moss[0];
-        let x = side ? cx + side : cx, y = side ? cy : cy + 1;
-        for (let k = 0; k < 10 + R() * 10; k++) {
-          tset(x, y, glow);
-          if (side) {
-            tset(x, y - 1, halo);
-            tset(x, y + 1, halo);
-            x += side;
-            y += Math.floor(R() * 3) - 1;
-          } else {
-            tset(x - 1, y, halo);
-            tset(x + 1, y, halo);
-            y++;
-            x += Math.floor(R() * 3) - 1;
-          }
-        }
-      },
-      bones(cx, cy) {
-        const len = 4 + Math.floor(R() * 4), bone = [222, 214, 192];
-        for (let k = 0; k < len; k++) {
-          dset(cx + k, cy, jit(bone, 12));
-          tset(cx + k, cy + 1, jit(shade(bone, 0.85), 12));
-        }
-        dset(cx - 1, cy - 1, bone);
-        dset(cx + len, cy - 1, bone);
-      },
-      pillar(cx, cy) {
-        const hgt = upTo(cx, cy, 90);
-        if (hgt < 20 || hgt >= 90) return false;
-        const w = 2 + Math.floor(R() * 3), top = cy - hgt;
-        for (let y = top; y <= cy; y++) {
-          const flare = Math.max(0, 3 - Math.min(y - top, cy - y));
-          for (let dx = -w - flare; dx <= w + flare; dx++) {
-            const c = dx < 0 ? T.moss[1] : dx === 0 ? [236, 232, 214] : T.moss[0];
-            dset(cx + dx, y, jit(shade(c, 0.72), 8));
-          }
-        }
-      },
-      gear(cx, cy) {
-        const r = 5 + Math.floor(R() * 9), teeth = 8 + Math.floor(R() * 5), rust = shade(T.rock[1], 0.7);
-        const ph = R() * 6.28;
-        for (let dy = -r - 2; dy <= r + 2; dy++) for (let dx = -r - 2; dx <= r + 2; dx++) {
-          const dist = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
-          const tooth = Math.cos((a + ph) * teeth) > 0.3 ? 2 : 0;
-          const rim = dist <= r + tooth && dist >= r - 2;
-          const spoke = dist < r - 2 && (Math.abs(Math.sin((a + ph) * 2)) < 0.18 || dist < 2.5);
-          if (rim || spoke) dset(cx + dx, cy + dy, jit(shade(rust, rim && tooth ? 0.85 : 1), 12));
-        }
-      },
-      ribs(cx, cy) {
-        const hgt = upTo(cx, cy, 80);
-        if (hgt < 24) return false;
-        const bone = [214, 206, 184], H = Math.min(hgt - 2, 36);
-        for (let k = 0; k < 4; k++) {
-          const a = 16 - k * 3, b = H - k * 5, ox = cx + k * 4 - 6, f = 0.78 - k * 0.1;
-          for (let t = 0; t <= 60; t++) {
-            const th = Math.PI * t / 60, x = ox + Math.cos(th) * a, y = cy - Math.sin(th) * b;
-            dset(Math.round(x), Math.round(y), jit(shade(bone, f), 8));
-            dset(Math.round(x) + 1, Math.round(y), jit(shade(bone, f * 0.85), 8));
-          }
-        }
-      },
-      charred(cx, cy) {
-        const len = 3 + Math.floor(R() * 5);
-        for (let k = 0; k < len; k++) {
-          dset(cx + k, cy, R() < 0.12 ? [190, 84, 30] : jit([34, 28, 26], 10));
-          if (R() < 0.5) dset(cx + k, cy - 1, jit([48, 42, 40], 10));
-        }
-      },
-      soot(bx, by) {
-        const r = 5 + R() * 10;
-        for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
-          const x = Math.round(bx + dx), y = Math.round(by + dy), f = 1 - Math.hypot(dx, dy) / r;
-          if (f <= 0 || x < 0 || y < 0 || x >= BW || y >= BH) continue;
-          const k = (y * BW + x) * 4, m = 1 - 0.55 * f;
-          bd[k] *= m;
-          bd[k + 1] *= m;
-          bd[k + 2] *= m;
-        }
-      },
-      algae(cx, cy) {
-        const w = 6 + Math.floor(R() * 9);
-        for (let dx = -w; dx <= w; dx++) for (let k = 1; k <= 7; k++) {
-          const x = cx + dx, y = cy + k;
-          if (!inb(x, y) || mat[y * CW + x] !== ROCK) continue;
-          mat[y * CW + x] = BRICK;
-          const kk = x + y % 2 * 3;
-          const top = !mat[(y - 1) * CW + x] || y > 1 && !mat[(y - 2) * CW + x];
-          put(d, y * CW + x, top ? jit(pick(T.moss[0], T.moss[1]), 16) : kk % 6 === 0 ? T.mortar : jit(pick(T.brick[0], T.brick[1]), 8));
-        }
-      }
-    };
-    const props = [], baked = {}, amb = [];
-    const boxOf = (kind, style, side) => {
-      let b = PROP_BOX[kind];
-      if (b && !Array.isArray(b)) b = b[style];
-      b = b ? b.slice() : [-4, -4, 4, 4];
-      if (side === "ceil" && kind === "spike") b = [b[0], 0, b[2], -b[1]];
-      return b;
-    };
-    const ceilNear = (cx, cy, span) => {
-      for (let k = 0; k <= span; k++) for (const y of k ? [cy - k, cy + k] : [cy]) {
-        if (y < Y0 || y >= Y1 || cx < 8 || cx >= CW - 8) continue;
-        if (openC(cx, y) && solidC(cx, y - 1) && openRun(cx, y, 1, 12)) return y;
-      }
-      return -1;
-    };
-    function makeProp(it, cx, cy, at, side) {
-      const x = at === "wall" ? (side < 0 ? cx : cx + 1) * CELL : (cx + 0.5) * CELL;
-      const y = at === "floor" || it.at === "flat" || it.at === "pit" ? (cy + 1) * CELL : at === "ceil" ? cy * CELL : (cy + 0.5) * CELL;
-      const pr = { id: it.id, k: it.kind, st: it.style, x, y, t: R() * 10, seed: R() };
-      if (at === "ceil") pr.anc = [cx, cy - 1];
-      else if (at === "wall") {
-        pr.anc = [cx + side, cy];
-        pr.side = side;
-      } else if (at === "floor" || it.at === "flat" || it.at === "pit") pr.anc = [cx, cy + 1];
-      pr.hang = at === "ceil" ? 1 : 0;
-      let box = boxOf(it.kind, it.style, at);
-      if (it.kind === "climb") {
-        if (at === "wall") {
-          let k = 0;
-          while (k < 50 && solidC(cx + side, cy + k + 1) && openC(cx, cy + k + 1)) k++;
-          if (k < 10) return null;
-          pr.len = k * CELL;
-          box = side < 0 ? [0, -4, 7, pr.len] : [-7, -4, 0, pr.len];
-        } else {
-          const room = downTo(cx, cy, 90);
-          if (room < 12) return null;
-          const most = Math.min(64, SHOP_TOP - 16 - cy);
-          if (most < 8) return null;
-          pr.len = Math.round(Math.max(8, Math.min(room * (0.25 + R() * 0.55), most)) * CELL);
-          box = [-5, 0, 5, pr.len];
-        }
-      } else if (it.kind === "zone") {
-        const cap = it.at === "pit" ? 10 : 16;
-        const lft = runOf(cx, cy, -1, cap), rgt = runOf(cx, cy, 1, cap);
-        if (lft + rgt < 6) return null;
-        box = [-lft * CELL, -5, (rgt + 1) * CELL, 1];
-        pr.x = cx * CELL;
-        pr.anc = [cx, cy + 1];
-      } else if (it.kind === "drip" && at === "wall") {
-        box = side < 0 ? [0, -4, 8, 4] : [-8, -4, 0, 4];
-      } else if (it.kind === "lamp" && at === "wall") {
-        box = side < 0 ? [0, -7, 9, 7] : [-9, -7, 0, 7];
-      } else if (it.kind === "noise" && at === "wall") {
-        box = side < 0 ? [0, -10, 10, 10] : [-10, -10, 0, 10];
-      } else if (it.kind === "shard" && at === "wall") {
-        box = side < 0 ? [0, -4, 6, 4] : [-6, -4, 0, 4];
-      }
-      if (it.kind === "cover") pr.hp = it.hp || 0;
-      if (it.kind === "tendril") pr.ang = -Math.PI / 2 + (R() - 0.5) * 1.2;
-      pr.l = box[0];
-      pr.t0 = box[1];
-      pr.r = box[2];
-      pr.b = box[3];
-      return pr;
-    }
-    const plant = (it) => it.kind === "climb" && PLANTS[it.style];
-    const clump = (it, cx, cy, n) => {
-      for (let k = 0; k < n; k++) {
-        const sx = cx + Math.round((R() - 0.5) * 18), sy = ceilNear(sx, cy, 6);
-        const pr = sy >= 0 && makeProp(it, sx, sy, "ceil", 0);
-        if (pr) props.push(pr);
-      }
-    };
-    function place(it) {
-      const want = it.n * DECOR_DENSITY, got = [];
-      const pool = it.at === "surf" ? null : it.at === "flat" || it.at === "pit" ? sites.floor : sites[it.at];
-      for (let a = 0; a < want * 40 && got.length < want; a++) {
-        let at = it.at, i, side = 0;
-        if (at === "bg") {
-          const bx = R() * BW, by = R() * (SHOP_TOP / 4 - 10);
-          if (bake[it.style](bx, by) !== false) got.push(1);
-          continue;
-        }
-        if (at === "surf") at = R() < 0.5 ? "floor" : "wall";
-        if (it.both && R() < 0.4) at = "ceil";
-        const src = at === "floor" || at === "ceil" || at === "wall" || at === "air" ? sites[at] : pool;
-        if (!src.length) break;
-        i = src[Math.floor(R() * src.length)];
-        if (at === "wall") {
-          side = i & 1 ? 1 : -1;
-          i >>= 1;
-        }
-        const cx = i % CW, cy = i / CW | 0;
-        if (it.at === "flat" && !flatAt(cx, cy, it.w || 3)) continue;
-        if (it.at === "pit" && !pitAt(cx, cy)) continue;
-        const x = (cx + 0.5) * CELL, y = cy * CELL;
-        const gap = it.kind === "bake" ? 14 : 40;
-        if (got.some((g) => Math.abs(g.x - x) < gap && Math.abs(g.y - y) < gap)) continue;
-        if (it.kind === "bake") {
-          if (bake[it.style](cx, cy, it.style === "fissure" && at === "wall" ? side : void 0) === false) continue;
-          got.push({ x, y });
-          continue;
-        }
-        const pr = makeProp(it, cx, cy, at, side);
-        if (!pr) continue;
-        got.push({ x, y });
-        props.push(pr);
-        if (plant(it)) clump(it, cx, cy, 1 + Math.floor(R() * 3));
-      }
-      baked[it.id] = it.kind === "bake" ? got.length : 0;
-    }
-    for (const it of list) {
-      if (it.kind === "amb") {
-        amb.push(it.style);
-        baked[it.id] = 0;
-        continue;
-      }
-      place(it);
-    }
-    const green = list.find(plant);
-    baked.groves = 0;
-    if (green && sites.ceil.length) {
-      const groves = [];
-      for (let a = 0; a < 600 && groves.length < GROVES; a++) {
-        const i = sites.ceil[Math.floor(R() * sites.ceil.length)];
-        const cx = i % CW, cy = i / CW | 0;
-        if (groves.some((g) => Math.hypot(g.cx - cx, g.cy - cy) < 100)) continue;
-        groves.push({ cx, cy, r: 32 + R() * 34 });
-      }
-      for (const g of groves) {
-        overgrow(g.cx, g.cy, g.r * 1.5);
-        const n = 14 + Math.floor(R() * 12);
-        for (let k = 0, got = 0; k < n * 4 && got < n; k++) {
-          const d2 = g.r * R(), a = R() * 6.283;
-          const sx = Math.round(g.cx + Math.cos(a) * d2), sy = ceilNear(sx, Math.round(g.cy + Math.sin(a) * d2 * 0.6), 24);
-          const pr = sy >= 0 && makeProp(green, sx, sy, "ceil", 0);
-          if (pr) {
-            props.push(pr);
-            got++;
-          }
-        }
-      }
-      baked.groves = groves.length;
-    }
-    baked.arches = 0;
-    if (green && sites.ceil.length) {
-      const K = (k) => kr(k, R), cnt = (v) => Math.floor(v) + (R() < v % 1 ? 1 : 0);
-      const nat = (cx, cy) => !zone || !zone[cy * CW + cx];
-      const spots = [], nC = cnt(Math.max(0, K("arVines")));
-      for (let tries = 0; spots.length < nC && tries < nC * 80 + 80; tries++) {
-        const i = sites.ceil[Math.floor(R() * sites.ceil.length)];
-        const cx = i % CW, cy = i / CW | 0;
-        if (!nat(cx, cy) || spots.some((g) => Math.hypot(g.cx - cx, g.cy - cy) < 80)) continue;
-        const want = Math.max(1, cnt(K("arCluster")));
-        let got = 0;
-        for (let t = 0; t < want * 30 && got < want; t++) {
-          const ax = got ? cx + Math.round((R() - 0.5) * 50) : cx, ay = got ? ceilNear(ax, cy, 24) : cy;
-          if (ay < 0 || !nat(ax, ay)) continue;
-          const span = K("arSpan"), bx = Math.round(ax + (R() < 0.5 ? -1 : 1) * span);
-          const by = ceilNear(bx, Math.round(ay + K("arRise") * span * (R() < 0.5 ? -1 : 1)), Math.round(span * 0.25) + 4);
-          if (by < 0 || !nat(bx, by)) continue;
-          if (archProp(ax, ay, bx, by, K, cnt, nat)) {
-            got++;
-            baked.arches++;
-          }
-        }
-        if (got) spots.push({ cx, cy });
-      }
-    }
-    function archProp(ax, ay, bx, by, K, cnt, nat) {
-      const A = { x: (ax + 0.5) * CELL, y: ay * CELL }, B = { x: (bx + 0.5) * CELL, y: by * CELL };
-      const slack = K("arSlack"), chord = Math.hypot(B.x - A.x, B.y - A.y);
-      const n = Math.max(8, Math.min(40, Math.round(chord / 6)));
-      const pts = archCurve(A.x, A.y, B.x, B.y, slack, n);
-      let low = pts[0], alen = 0;
-      for (let k = 0; k < n; k++) {
-        const p = pts[k], q = pts[k + 1], l2 = Math.hypot(q.x - p.x, q.y - p.y), m = Math.max(1, Math.ceil(l2 * 2 / CELL));
-        alen += l2;
-        for (let j = 0; j <= m; j++) {
-          const x = p.x + (q.x - p.x) * j / m, y = p.y + (q.y - p.y) * j / m;
-          const cx = Math.floor(x / CELL);
-          if (!openC(cx, Math.floor(y / CELL)) || !openC(cx, Math.floor((y + 1) / CELL)) || !nat(cx, Math.floor(y / CELL))) return null;
-        }
-        if (q.y > low.y) low = q;
-      }
-      const lx = Math.floor(low.x / CELL), ly = Math.floor(low.y / CELL);
-      if (downTo(lx, ly, 150) < K("arClear") || ly >= SHOP_TOP - 24) return null;
-      const pr = {
-        id: "arch",
-        k: "climb",
-        st: green.style,
-        x: A.x,
-        y: A.y,
-        t: R() * 10,
-        seed: R(),
-        hang: 1,
-        anc: [ax, ay - 1],
-        anc2: [bx, by - 1],
-        arc: pts.map((p) => [p.x - A.x, p.y - A.y]),
-        thick: Math.max(1, Math.round(K("arThick"))),
-        alen
-      };
-      let l = 0, r = 0, t0 = 0, b = 0;
-      for (const [x, y] of pr.arc) {
-        l = Math.min(l, x);
-        r = Math.max(r, x);
-        t0 = Math.min(t0, y);
-        b = Math.max(b, y);
-      }
-      props.push(pr);
-      const ns = cnt(K("arStrands") * alen / (10 * CELL));
-      for (let s = 0; s < ns; s++) {
-        const u = R(), q = archAt(pr, u);
-        q.u = u;
-        const room = downTo(Math.floor(q.x / CELL), Math.floor(q.y / CELL), 90);
-        const len = Math.round(Math.min(K("arStrandLen"), room * 0.7, SHOP_TOP - 20 - q.y / CELL) * CELL);
-        if (len < 4) continue;
-        props.push({
-          id: "archStrand",
-          k: "climb",
-          st: green.style,
-          x: q.x,
-          y: q.y,
-          t: R() * 10,
-          seed: R(),
-          hang: 1,
-          len,
-          on: pr,
-          u: q.u,
-          l: -5,
-          t0: 0,
-          r: 5,
-          b: len
-        });
-        b = Math.max(b, q.y - A.y + len);
-      }
-      pr.l = l - 4;
-      pr.r = r + 4;
-      pr.t0 = t0 - 3;
-      pr.b = b + 3;
-      return pr;
-    }
-    function overgrow(gx, gy, rr2) {
-      const leaf = T.moss[1], dark = shade(T.moss[0], 0.8);
-      const bloom = [[236, 214, 120], [226, 140, 170], [240, 240, 230]];
-      for (let y = Math.max(Y0, Math.round(gy - rr2)); y <= Math.min(Y1, Math.round(gy + rr2)); y++)
-        for (let x = Math.max(4, Math.round(gx - rr2)); x <= Math.min(CW - 5, Math.round(gx + rr2)); x++) {
-          const f = 1 - Math.hypot(x - gx, (y - gy) * 1.3) / rr2;
-          if (f <= 0 || !openC(x, y)) continue;
-          const p = Math.pow(f, 1.2);
-          FU = FUEL_MOSS;
-          if (solidC(x, y + 1)) {
-            if (R() < p) {
-              tset(x, y + 1, jit(pick(T.moss[0], T.moss[1]), 16));
-              if (R() < p) tset(x, y + 2, jit(dark, 12));
-            }
-            FU = FUEL_GRASS;
-            if (R() < p * 0.85) {
-              const tall = 1 + Math.floor(R() * (1 + 4 * f));
-              for (let k = 0; k < tall; k++) dset(x, y - k, jit(k === tall - 1 ? leaf : pick(T.moss[0], leaf), 18));
-              if (R() < 0.06 * f) dset(x, y - tall, bloom[Math.floor(R() * bloom.length)]);
-            }
-          } else if (solidC(x, y - 1)) {
-            if (R() < p) tset(x, y - 1, jit(pick(T.moss[0], T.moss[1]), 16));
-            FU = FUEL_GRASS;
-            if (R() < p * 0.75) {
-              const len = 1 + Math.floor(R() * (2 + 9 * f));
-              for (let k = 0; k < len; k++) dset(x, y + k, jit(k > len - 2 ? leaf : dark, 14));
-            }
-          } else if ((solidC(x - 1, y) || solidC(x + 1, y)) && R() < p * 0.5) {
-            FU = FUEL_GRASS;
-            dset(x, y, jit(pick(T.moss[0], leaf), 16));
-          }
-          FU = 0;
-        }
-    }
-    baked.lanterns = 0;
-    if (zone && (sites.ceil.length || sites.wall.length)) {
-      const want = Math.round(kr("lvLamps", R)), got = [];
-      const isB = (cx, cy) => zone[cy * CW + cx] === 1;
-      for (let a = 0; a < want * 40 && got.length < want; a++) {
-        const wall = sites.wall.length && (R() < 0.35 || !sites.ceil.length);
-        let i = wall ? sites.wall[Math.floor(R() * sites.wall.length)] : sites.ceil[Math.floor(R() * sites.ceil.length)], side = 0;
-        if (wall) {
-          side = i & 1 ? 1 : -1;
-          i >>= 1;
-        }
-        const cx = i % CW, cy = i / CW | 0;
-        if (!isB(cx, cy) || got.some((g) => Math.hypot(g.x - cx, g.y - cy) < 36)) continue;
-        let pr;
-        if (wall) pr = makeProp({ id: "lanterns", kind: "lamp", style: "lantern", at: "wall" }, cx, cy, "wall", side);
-        else {
-          const room = downTo(cx, cy, 60);
-          if (room < 18) continue;
-          pr = makeProp({ id: "hanglamps", kind: "lamp", style: "hanglamp", at: "ceil" }, cx, cy, "ceil", 0);
-          if (pr) {
-            pr.len = Math.round((2 + R() * Math.min(7, room * 0.3)) * CELL);
-            pr.b = pr.len + 9;
-          }
-        }
-        if (!pr) continue;
-        got.push({ x: cx, y: cy });
-        props.push(pr);
-      }
-      baked.lanterns = got.length;
-    }
-    return { props: cullDecor(props, keep || []), amb, baked };
-  }
-  function cullDecor(props, keep) {
-    const out = [];
-    const pad = 3;
-    const dropped = /* @__PURE__ */ new Set();
-    for (const pr of props) {
-      if (pr.arc) {
-        if (pr.arc.some(([x, y]) => keep.some((k) => Math.hypot(pr.x + x - k.x, pr.y + y - k.y) < k.r) || out.some((o) => o.k !== "climb" && pr.x + x > o.x + o.l - pad && pr.x + x < o.x + o.r + pad && pr.y + y > o.y + o.t0 - pad && pr.y + y < o.y + o.b + pad))) {
-          dropped.add(pr);
-          continue;
-        }
-        out.push(pr);
-        continue;
-      }
-      if (pr.on && dropped.has(pr.on)) continue;
-      const x0 = pr.x + pr.l - pad, x1 = pr.x + pr.r + pad, y0 = pr.y + pr.t0 - pad, y1 = pr.y + pr.b + pad;
-      if (keep.some((k) => k.x + k.r > x0 && k.x - k.r < x1 && k.y + k.r > y0 && k.y - k.r < y1)) continue;
-      if (out.some((o) => !(o.k === "climb" && pr.k === "climb") && !o.arc && o.x + o.l < x1 && o.x + o.r > x0 && o.y + o.t0 < y1 && o.y + o.b > y0)) continue;
-      out.push(pr);
-    }
-    return out;
-  }
-  function propAnchored(pr, mat) {
-    if (pr.on) return !pr.on.fall && !pr.on.gone;
-    if (pr.anc2 && !propAnchored({ anc: pr.anc2 }, mat)) return false;
-    if (!pr.anc) return true;
-    const [cx, cy] = pr.anc;
-    for (let dx = -1; dx <= 1; dx++) {
-      const x = cx + dx;
-      if (x >= 0 && x < CW && cy >= 0 && cy < CH && mat[cy * CW + x]) return true;
-    }
-    return false;
-  }
   var rgbA = (c, a) => "rgba(" + (c[0] | 0) + "," + (c[1] | 0) + "," + (c[2] | 0) + "," + (a == null ? 1 : a) + ")";
   var rgbS = (c) => (c[0] | 0) + "," + (c[1] | 0) + "," + (c[2] | 0);
   function propCol(pr, T) {
