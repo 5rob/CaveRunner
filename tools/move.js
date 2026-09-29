@@ -218,13 +218,15 @@ function main() {
     return 'export {\n  ' + rows.join('\n  ') + '\n};\n\n';
   });
 
-  const exportsMap = moduleExports(target);
+  const exportsMap = moduleExports(null);
+  const oldOwn = exportsMap.get(target) || [];
+  exportsMap.delete(target);   // the module doesn't import from itself
   const mainDecl = new Set(parse(left).body.flatMap(declared));
   const modImp = importsFor(target, modBody, mainDecl, exportsMap);
   if (modImp.problems.length) throw new Error(rest[0] + ' needs:\n  ' + modImp.problems.join('\n  '));
   const modText = header + (modImp.lines.length ? (header ? '\n' : '') + modImp.lines.join('\n') + '\n' : '') + '\n' + modBody;
 
-  exportsMap.set(target, names.concat(fs.existsSync(target) ? (exportsMap.get(target) || []) : []));
+  exportsMap.set(target, oldOwn.concat(names));
   // a module's own export line (its re-export in pure.js) is not a use of it
   const noImp = stripImports(left);
   const mainImp = importsFor(MAIN, noImp, null, exportsMap);

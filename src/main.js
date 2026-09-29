@@ -1,10 +1,3 @@
-import {
-  AIM_DEAD, AIM_RING, AIR_ACC, BCELL, BED, BH, BRICK, BW, CELL, CH, CLIMB, COIN_PULL, CW, DEAD,
-  ENEMY_COUNT, FH, FOG, FOG_DARK, FOG_DIM, FOG_U, FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART, FW,
-  GRAVITY, GROUND_ACC, GUN_DROPS, JET, JET_ACC, KNOB, LAMP_REACH, MINI_D, MMH, MMW, MOD_DROPS,
-  PATROL_R, PH, PICKUP_COOL, PICKUP_GAP, PLAYER_HP, PW, ROCK, SHOP_FLOOR, SHOP_ROOF, SHOP_TOP,
-  SHOP_Y, SIGHT, START_GOLD, VIEW_MIN_H, VIEW_W, WALK, WEB_HAND, WH, WW
-} from './core/consts.js';
 import { angDiff, approach, clamp, hexArr, hexRgb, mix, mixHex, rr, turn } from './core/util.js';
 import { HUNTERS, NATURAL_ONLY, enemyFor, rosterFor } from './data/creatures.js';
 import { PERKS, PERK_IDS, perkBag } from './data/perks.js';
@@ -17,6 +10,13 @@ import {
   famOf, priceOf
 } from './spells/mods.js';
 import { rollMod } from './spells/spawn.js';
+import {
+  AIM_DEAD, AIM_RING, AIR_ACC, BCELL, BED, BH, BRICK, BW, CELL, CH, CLIMB, COIN_PULL, COL, CW,
+  DEAD, ENEMY_COUNT, FH, FOG, FOG_DARK, FOG_DIM, FOG_U, FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART, FW,
+  GRAVITY, GROUND_ACC, GUN_DROPS, JET, JET_ACC, KNOB, LAMP_REACH, MINI_D, MMH, MMW, MOD_DROPS,
+  PATROL_R, PH, PICKUP_COOL, PICKUP_GAP, PLAYER_HP, PW, ROCK, SHOP_FLOOR, SHOP_ROOF, SHOP_TOP,
+  SHOP_Y, SIGHT, START_GOLD, VIEW_MIN_H, VIEW_W, WALK, WEB_HAND, WH, WW
+} from './core/consts.js';
 
 const { useRef, useEffect, useState, useMemo } = React;
 const h = React.createElement;
@@ -54,12 +54,6 @@ function jellyPal(u) {
 // Black Hole travel speed from the Dev knob, as a multiplier so speed mods still stack
 const bhSp = sh => sh.pull ? DEV.bhSpeed / MODS.void.speed : 1;
 const NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
-
-const COL = {
-  text: '#e9ecf2', muted: 'rgba(233,236,242,0.55)', barBg: 'rgba(255,255,255,0.12)',
-  player: '#ff5a36', visor: '#17222e', bullet: '#ffc93c', flame: '#ff8a1f', flame2: '#ffe066',
-  enemy: '#b57cff', eye: '#f4f0ff', smoke: '#9aa3ad', hp: '#46c48c', grenade: '#7cc04f', portal: '#5ee0a0',
-};
 
 // Every gun gets its own hue, fixed for the run so it works as an identifier.
 // Saturation and lightness come from the --gun-s/--gun-l CSS vars (see :root),
@@ -5688,7 +5682,7 @@ function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
 // (REFACTOR.md, P1.5); the browser build ignores it.
 export {
   useRef, useEffect, useState, useMemo, h, SPUTTER_FUEL, sputterStep, jetPitch, twinkle,
-  jellyPal, makeLevel, bhSp, NO_INPUT, spiderStep, ratStep, COL, hueFromName, gunHue, gunColor,
+  jellyPal, makeLevel, bhSp, NO_INPUT, spiderStep, ratStep, hueFromName, gunHue, gunColor,
   gunPrice, isGunShop, VIS_RAYS, fogReveal, fogStart, nestFog, rayDist, losClear, roamStep,
   turnToward, flyMove, surfNormal, SPIDER, spiderSeat, surfSeat, segNear, spiderAim, RAT,
   ratFooting, ratJump, ratSpread, pathAt, pathLen, NAV, navField, navWay, ratNests, JELLY,

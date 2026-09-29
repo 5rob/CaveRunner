@@ -1,6 +1,7 @@
 // Plain numbers every layer can use: world size, physics tuning, the shop room, the fog grid
 // and how far you see. No imports: this is the bottom layer (REFACTOR.md, section 4).
 
+
 // ---- world ----
 export const CELL = 2;                   // world units per terrain pixel
 export const CW = 640, CH = 1600;        // terrain size in pixels
@@ -80,3 +81,9 @@ export const LAMP_REACH = 1.15;               // the lamp's pool is this many ti
 export const FOG_DIM = 0.85;                  // how dark somewhere you have been but cannot see
 export const FOG_DARK = 0.99;                 // how dark somewhere you have never been — near black,
                                        // because that darkness is the fog of war now
+
+export const COL = {
+  text: '#e9ecf2', muted: 'rgba(233,236,242,0.55)', barBg: 'rgba(255,255,255,0.12)',
+  player: '#ff5a36', visor: '#17222e', bullet: '#ffc93c', flame: '#ff8a1f', flame2: '#ffe066',
+  enemy: '#b57cff', eye: '#f4f0ff', smoke: '#9aa3ad', hp: '#46c48c', grenade: '#7cc04f', portal: '#5ee0a0',
+};

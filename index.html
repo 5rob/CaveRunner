@@ -476,50 +476,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <script>const VERSION = 'v96';</script>
 <script>
 (() => {
-  // src/core/consts.js
-  var CELL = 2;
-  var CW = 640, CH = 1600;
-  var WW = CW * CELL, WH = CH * CELL;
-  var BW = CW / 4, BH = CH / 4;
-  var BCELL = WW / BW;
-  var VIEW_W = 360;
-  var VIEW_MIN_H = 340;
-  var ROCK = 1, BRICK = 2, BED = 3;
-  var GRAVITY = 1400;
-  var WALK = 150, GROUND_ACC = 1400, AIR_ACC = 600;
-  var JET = 240, JET_ACC = 900;
-  var CLIMB = 90;
-  var WEB_HAND = 3;
-  var DEAD = 0.12;
-  var AIM_DEAD = 0.35;
-  var KNOB = 0.38;
-  var AIM_RING = AIM_DEAD * 0.72 + KNOB;
-  var PW = 12, PH = 22;
-  var FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
-  var PLAYER_HP = 100;
-  var START_GOLD = 40;
-  var COIN_PULL = 36;
-  var ENEMY_COUNT = 80;
-  var MOD_DROPS = 7;
-  var GUN_DROPS = 5;
-  var PICKUP_GAP = 260;
-  var PATROL_R = 70;
-  var PICKUP_COOL = 2;
-  var SHOP_FLOOR = CH - 10;
-  var SHOP_H = 48;
-  var SHOP_TOP = SHOP_FLOOR - SHOP_H;
-  var SHOP_ROOF = 6;
-  var SHOP_Y = SHOP_TOP * CELL;
-  var FOG = 8;
-  var FOG_U = FOG * CELL;
-  var FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
-  var MINI_D = 4;
-  var MMW = Math.ceil(CW / MINI_D), MMH = Math.ceil(CH / MINI_D);
-  var SIGHT = 200;
-  var LAMP_REACH = 1.15;
-  var FOG_DIM = 0.85;
-  var FOG_DARK = 0.99;
-
   // src/core/util.js
   var HEX_RE = /^#[0-9a-f]{6}$/i;
   function hexMix(a, b, t) {
@@ -918,6 +874,66 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var HUNTERS = { chase: 1, bomb: 1, spider: 1, jelly: 1, rat: 1 };
   var NATURAL_ONLY = { jelly: 1 };
+
+  // src/core/consts.js
+  var CELL = 2;
+  var CW = 640, CH = 1600;
+  var WW = CW * CELL, WH = CH * CELL;
+  var BW = CW / 4, BH = CH / 4;
+  var BCELL = WW / BW;
+  var VIEW_W = 360;
+  var VIEW_MIN_H = 340;
+  var ROCK = 1, BRICK = 2, BED = 3;
+  var GRAVITY = 1400;
+  var WALK = 150, GROUND_ACC = 1400, AIR_ACC = 600;
+  var JET = 240, JET_ACC = 900;
+  var CLIMB = 90;
+  var WEB_HAND = 3;
+  var DEAD = 0.12;
+  var AIM_DEAD = 0.35;
+  var KNOB = 0.38;
+  var AIM_RING = AIM_DEAD * 0.72 + KNOB;
+  var PW = 12, PH = 22;
+  var FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
+  var PLAYER_HP = 100;
+  var START_GOLD = 40;
+  var COIN_PULL = 36;
+  var ENEMY_COUNT = 80;
+  var MOD_DROPS = 7;
+  var GUN_DROPS = 5;
+  var PICKUP_GAP = 260;
+  var PATROL_R = 70;
+  var PICKUP_COOL = 2;
+  var SHOP_FLOOR = CH - 10;
+  var SHOP_H = 48;
+  var SHOP_TOP = SHOP_FLOOR - SHOP_H;
+  var SHOP_ROOF = 6;
+  var SHOP_Y = SHOP_TOP * CELL;
+  var FOG = 8;
+  var FOG_U = FOG * CELL;
+  var FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
+  var MINI_D = 4;
+  var MMW = Math.ceil(CW / MINI_D), MMH = Math.ceil(CH / MINI_D);
+  var SIGHT = 200;
+  var LAMP_REACH = 1.15;
+  var FOG_DIM = 0.85;
+  var FOG_DARK = 0.99;
+  var COL = {
+    text: "#e9ecf2",
+    muted: "rgba(233,236,242,0.55)",
+    barBg: "rgba(255,255,255,0.12)",
+    player: "#ff5a36",
+    visor: "#17222e",
+    bullet: "#ffc93c",
+    flame: "#ff8a1f",
+    flame2: "#ffe066",
+    enemy: "#b57cff",
+    eye: "#f4f0ff",
+    smoke: "#9aa3ad",
+    hp: "#46c48c",
+    grenade: "#7cc04f",
+    portal: "#5ee0a0"
+  };
 
   // src/data/perks.js
   var PERKS = {
@@ -4105,22 +4121,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var bhSp = (sh) => sh.pull ? DEV.bhSpeed / MODS.void.speed : 1;
   var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
-  var COL = {
-    text: "#e9ecf2",
-    muted: "rgba(233,236,242,0.55)",
-    barBg: "rgba(255,255,255,0.12)",
-    player: "#ff5a36",
-    visor: "#17222e",
-    bullet: "#ffc93c",
-    flame: "#ff8a1f",
-    flame2: "#ffe066",
-    enemy: "#b57cff",
-    eye: "#f4f0ff",
-    smoke: "#9aa3ad",
-    hp: "#46c48c",
-    grenade: "#7cc04f",
-    portal: "#5ee0a0"
-  };
   var hueFromName = (name) => {
     let h2 = 0;
     for (let i = 0; i < name.length; i++) h2 = h2 * 31 + name.charCodeAt(i) >>> 0;
