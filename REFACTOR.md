@@ -459,6 +459,9 @@ What the code says about P3.4 (checked at the end of P3.3):
        closure isn't.
        **step done, P3.4 (22)**: `system.js` moved it clean (no value uses, no comment travelled); the moved body is
        line for line the old one with `G.` in front of `input`, `c`, `mouse`.
+       **draw done, P3.4 (23)**: `system.js` into `systems/draw.js`, then moved by hand to `render/draw.js` (its
+       `./x.js` imports became `../systems/x.js`, Game.js's and `pure.js`'s lines follow). Body line for line the old one
+       with `G.` in front of the canvases, `input`, `RT`, `mouse`, `aimPath`. The loop hands `drawReplay` an arrow for now.
     3. **Then split in the module, in the same order**, into part functions the top-level `step`/`draw` call one after
        another. Few locals live across parts: in step `dt`, `LO` (loadout), `MHP`, `pcx`/`pcy` (from the portal check on);
        in draw `dpr`, `playPx`, `vw`/`vh`, `pcx`/`pcy`, `TH`, `onView`, and `held`/`ax` (aim → HUD). Hand them in a small
@@ -847,3 +850,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.4 (20) | step()/draw() prep: `mouse` (its `const` moved up above `G`) and `aimPath` join `G`. `node tools/gamemap.js step draw` now lists only `W`, `G` and `G`'s keys. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (21) | `SPUTTER_FUEL`, `sputterStep`, `NO_INPUT` (Game.js top-levels only step() uses; `system.js` can't take them) moved by hand to `systems/player.js`, under a "the jetpack" header. | probe SAME, logic 33/33, smoke ok, jetpack ok |
 | 2026-09-30 | Phase 3, P3.4 (22) | `step.js`: `step(W, G, dt)`, whole (1,097 lines). Clean move; a scratch diff (`G.input`/`G.c`/`G.mouse` back to bare names) found the body identical to the old one. Game.js 2,473 → 1,355 lines. `replay`, `map`, `shop`, `perks`, `torch`, `fog`, `jetpack`, `spider`, `blackhole`, `rats`, `interact` run too, all first time. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 3, P3.4 (23) | `render/draw.js`: `draw(W, G)`, whole (1,149 lines), by `system.js` into `systems/` and then moved to `render/` by hand (imports re-pointed). A scratch diff (the `G.` taken off the old closure names) found the body identical. The loop's `drawReplay(W, G, rv, () => draw(W, G))` is the tool's arrow. Game.js 1,355 → 186 lines. `replay`, `map`, `shop`, `perks`, `torch`, `fog`, `spelllooks`, `blackhole`, `fire`, `jelly`, `creatures`, `lightning` run too, all first time. | probe SAME, logic 33/33, smoke ok |
