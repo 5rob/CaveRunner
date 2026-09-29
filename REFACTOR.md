@@ -16,7 +16,7 @@ before this.
 | **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4 part done: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). step() split into parts, P3.4 (25)–(33): a frame object `F` (D18) and 21 calls, the parts in their systems (`pickups.js` new). Next: split draw() (step 3 of the plan under P3.4, the draw half). Not merged |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
-| **Last green full suite** | 2026-09-29, P3.4 after `enterLevel` (cdb5c90), bar flakes: `jelly` spit (known) and `fog` "the next floor is dark again" (passed alone 3 of 3) |
+| **Last green full suite** | 2026-09-30, P3.4 after step()'s split (e5b7c1b), bar `jelly` "saturation 0 greys it out" (known; passed alone, then the spit flake twice) |
 | **Last merged to main** | v98 (Phase 2), 2026-09-29 |
 
 ---
@@ -495,7 +495,7 @@ What the code says about P3.4 (checked at the end of P3.3):
          was a function already
        - [x] P3.4 (33): `stepParticles` (jetpack smoke, smoke, sparks, flashes) and `stepMotes` → particles.js, `stepTorch`
          → player.js; `W.best` stays a line in step between them (nothing else there to go with). **step() is split**: its
-         top level is `F` and 21 calls (step.js 155 lines, `node tools/locals.js` shows only `W`, `G`, `dt`, `F`)
+         top level is `F` and 21 calls (step.js 156 lines, `node tools/locals.js` shows only `W`, `G`, `dt`, `F`)
        - draw's inner functions `drawLook`, `drawFieldLook`, `drawBolt` go out first (they use only their arguments and
          `W`/`G`), then the layers in their current order: camera, background + terrain, props, portal, smoke, fields, silk,
          enemies, projectiles, beams, arrival, shop, gold, pickups, rooms, trail, sparks, motes, flashes, flame, aim + gun,
@@ -899,4 +899,5 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.4 (30) | `stepPickups` (176 lines) → new `pickups.js` with `tools/part.js` (its `pure.js` line too); `stepToasts` (one line) → particles.js. Watch out in Git Bash: a one-line argument starting with `//` gets a slash eaten or added (MSYS path conversion), which put a `///` in particles.js' header for a moment: `MSYS_NO_PATHCONV=1`. `shop`, `interact`, `gunpickup`, `perks`, `teleport`, `restart-confirm`, `rats`, `shopcard`, `compare` run too, all first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (31) | `stepEnemies` (243 lines: the enemy loop whole, Contact Damage, enemy shots, silk, strings, web lines, `hitT`) → enemies.js with `tools/part.js`; header. `creatures`, `spider`, `rats`, `lightning`, `perks` run too, first time; `jelly` spit failed 3 of 4 here and 3 of 4 on the commit before (the known flake). | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (32) | `stepGhost` (20 lines, in step.js) and `stepTrail` (12 lines) → fire.js with `tools/part.js`; fire.js header. `perks`, `fire`, `replay` run too, all first time. | probe SAME, logic 33/33, smoke ok |
-| 2026-09-30 | Phase 3, P3.4 (33) | `stepParticles` (31 lines) and `stepMotes` (45) → particles.js, `stepTorch` (33) → player.js, with `tools/part.js`; the top-level step tidied (the leftover `LO`/`MHP`/`pcx`/`pcy` locals gone, one comment per call). **step() is split**: step.js 1,137 → 155 lines. `jetpack`, `blackhole`, `replay` run too, first time; `torch` failed 4 of 10 here ("falls off into the dark", "brighter frames… taller flame", "only falls away with distance") and 3 of 12 on the commit before (same names): the known flake. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 3, P3.4 (33) | `stepParticles` (31 lines) and `stepMotes` (45) → particles.js, `stepTorch` (33) → player.js, with `tools/part.js`; the top-level step tidied (the leftover `LO`/`MHP`/`pcx`/`pcy` locals gone, one comment per call). **step() is split**: step.js 1,137 → 156 lines. `jetpack`, `blackhole`, `replay` run too, first time; `torch` failed 4 of 10 here ("falls off into the dark", "brighter frames… taller flame", "only falls away with distance") and 3 of 12 on the commit before (same names): the known flake. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 3, P3.4 checkpoint | Full suite on e5b7c1b (step() split): only `jelly` failed, "saturation 0 greys it out"; alone it passed once, then failed twice on the spit group (known). The probe against 630e6e9, the commit before the split, is SAME too. Stopped here: draw()'s split is next. Not merged. | logic 33/33; browser 44/44 after re-runs |
