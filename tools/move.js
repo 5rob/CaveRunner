@@ -195,7 +195,7 @@ function main() {
   if (fs.existsSync(target)) {
     const old = stripImports(readN(target));
     const hm = /^(\/\/.*\n)+\n?/.exec(old);
-    header = hm ? hm[0].replace(/\n?$/, '\n') : '';
+    header = hm ? hm[0].replace(/\n+$/, '\n') : '';
     modBody = old.slice(hm ? hm[0].length : 0).replace(/\s+$/, '') + '\n\n';
   } else {
     header = about ? about.split('\\n').map(l => '// ' + l).join('\n') + '\n' : '';

@@ -1,7 +1,6 @@
 // Plain numbers every layer can use: world size, physics tuning, the shop room, the fog grid
 // and how far you see. No imports: this is the bottom layer (REFACTOR.md, section 4).
 
-
 // ---- world ----
 export const CELL = 2;                   // world units per terrain pixel
 export const CW = 640, CH = 1600;        // terrain size in pixels
