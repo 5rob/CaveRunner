@@ -12,11 +12,9 @@ import {
   MMH, MMW, PATROL_R, PH, PICKUP_COOL, PW, SHOP_FLOOR, SHOP_Y, SIGHT, VIEW_MIN_H, VIEW_W, WALK,
   WEB_HAND, WH, WW
 } from '../core/consts.js';
-import { angDiff, approach, clamp, hexArr, hexRgb, mix, turn } from '../core/util.js';
+import { angDiff, approach, clamp, hexRgb, mix, turn } from '../core/util.js';
 import { drawEnemy } from '../creatures/draw.js';
-import {
-  jellyPal, jellyStep, plantGlowFill, plantWhite, tentacleTouch
-} from '../creatures/jelly.js';
+import { jellyPal, jellyStep, plantWhite, tentacleTouch } from '../creatures/jelly.js';
 import { spiderStep } from '../creatures/spider.js';
 import { HUNTERS } from '../data/creatures.js';
 import { PERKS } from '../data/perks.js';
@@ -31,7 +29,7 @@ import { MODS, VACUUM_WAIT, famCol } from '../spells/mods.js';
 import {
   DRIFT_ACC, DRIFT_CHASE, DRIFT_R, bhSp, driftStep, tracePath, wigTurn
 } from '../spells/trace.js';
-import { PLANTS, archNear } from '../world/decorate.js';
+import { archNear } from '../world/decorate.js';
 import { FIRE_COLS, fireArea, fireDouse, fireNew } from '../world/fire.js';
 import { ROOM_HH, ROOM_HW, makeLevel } from '../world/level.js';
 import { VIS_RAYS, fogReveal, fogStart, nestFog, visPoly } from '../world/vision.js';
@@ -40,10 +38,11 @@ import { critRoll, explodeCross, shove, spray, teleportTo } from './systems/bull
 import { damageEnemy, fireEnemyShot, natural } from './systems/enemies.js';
 import { fieldPayload } from './systems/fields.js';
 import { fireBlast, fireFrame, ignite, setAlight, youAlight } from './systems/fire.js';
-import { fogLit, paintFog, roomSeen, seenAt } from './systems/fog.js';
+import { fogLit, paintFog, roomSeen } from './systems/fog.js';
 import { cast, firePayload } from './systems/gun.js';
 import { addArc, jag, lightningStep } from './systems/lightning.js';
 import { burst, goo, splat, toast } from './systems/particles.js';
+import { plantGlow } from './systems/plantglow.js';
 import { hurt, maxHp, refreshBag, torchHand } from './systems/player.js';
 import { decorStep } from './systems/props.js';
 import { onWebIn, ratFrame, spawnRat } from './systems/rats.js';
@@ -117,7 +116,9 @@ export function Game({ input }) {
 
     // ---- level decoration (see DECOR): the decoration layer's canvas and the plant glow's
     // scratch. The props, their particles, decorStep's counters and what they did to you are in W.
-    let pgArt = null, pgC = null, pgCtx = null;   // the jellies' plant glow (plantGlow)
+    // the jellies' plant glow (plantGlow): the canvas its glow is drawn through; its scratch
+    // (pgArt, pgC, pgCtx, made on first use) is on G
+    const pgGlow = document.createElement('canvas'), pgGlowCtx = pgGlow.getContext('2d');
     const decoC = document.createElement('canvas');
     decoC.width = CW; decoC.height = CH;
     const dctx = decoC.getContext('2d');
@@ -230,9 +231,10 @@ export function Game({ input }) {
     const ratOnWeb = onWebIn(W.webs);
     // what the systems (game/systems/) need that isn't world state (REFACTOR.md, D16): the
     // React bridge, the canvases (tctx and dctx are the recorder's wrapped ones), the recorder,
-    // the fire's dirty boxes and the rats' web test
+    // the fire's dirty boxes, the rats' web test and the plant glow's scratch
     const G = { input, c, ctx, terrain, tctx, bg, bgctx, fogC, fctx, fogImg, fogBlurC, fbctx,
-      miniC, mctx, miniImg, mini32, decoC, dctx, REC, RT, fireBox, ratOnWeb };
+      miniC, mctx, miniImg, mini32, decoC, dctx, REC, RT, fireBox, ratOnWeb,
+      pgArt: null, pgC: null, pgCtx: null, pgGlow, pgGlowCtx };
     function rpTerrain(T) {
       if (!RT.tC) {
         RT.tC = document.createElement('canvas'); RT.tC.width = CW; RT.tC.height = CH;
@@ -423,59 +425,6 @@ export function Game({ input }) {
     c.addEventListener('pointerup', mUp);
     c.addEventListener('pointercancel', mUp);
     c.addEventListener('pointerleave', mLeave);
-
-    // The jellyfish's plant glow in the game (the comp is plantGlowFill): the art round a
-    // jelly — the rock with its baked moss over the decoration layer, and the hanging plants
-    // drawn over both at terrain resolution and read back — keyed, ramped, twinkled and
-    // added on top in its colour. Only on ground you've seen.
-    const pgGlow = document.createElement('canvas'), pgGlowCtx = pgGlow.getContext('2d');
-    function plantGlow(e, TH) {
-      const u = e.je.u, reach = kru('jeGlowR', u.glowR) * kru('jePlantReach', u.plant);
-      const strength = kru('jePlantGlow', u.plant);
-      if (reach < 2 || strength <= 0) return;
-      const bx0 = clamp(Math.floor((e.x - reach) / CELL), 0, CW - 1), by0 = clamp(Math.floor((e.y - reach) / CELL), 0, CH - 1);
-      const bx1 = clamp(Math.ceil((e.x + reach) / CELL), 1, CW), by1 = clamp(Math.ceil((e.y + reach) / CELL), 1, CH);
-      const w = bx1 - bx0, h = by1 - by0;
-      if (w <= 0 || h <= 0) return;
-      if (!pgArt || pgArt.length < w * h * 4) pgArt = new Uint8ClampedArray(w * h * 4);
-      const x0w = bx0 * CELL, y0w = by0 * CELL, x1w = bx1 * CELL, y1w = by1 * CELL;
-      // the hanging plants in reach, drawn at terrain resolution and read back
-      let pd = null;
-      const plants = W.props.filter(pr => pr.k === 'climb' && PLANTS[pr.st] &&
-        pr.x + pr.r > x0w && pr.x + pr.l < x1w && pr.y + pr.b > y0w && pr.y + pr.t0 < y1w);
-      if (plants.length) {
-        if (!pgC) { pgC = document.createElement('canvas'); pgCtx = pgC.getContext('2d', { willReadFrequently: true }); }
-        if (pgC.width < w || pgC.height < h) { pgC.width = Math.max(pgC.width, w); pgC.height = Math.max(pgC.height, h); }
-        pgCtx.setTransform(1, 0, 0, 1, 0, 0); pgCtx.clearRect(0, 0, w, h);
-        pgCtx.setTransform(1 / CELL, 0, 0, 1 / CELL, -bx0, -by0);
-        for (const pr of plants) drawProp(pgCtx, pr, W.time, TH);
-        pd = pgCtx.getImageData(0, 0, w, h).data;
-      }
-      // compose the art: rock over the decoration layer, the plants over both
-      const T = W.img.data, D = W.dimg ? W.dimg.data : null, A = pgArt;
-      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-        const si = ((by0 + y) * CW + bx0 + x) * 4, o = (y * w + x) * 4;
-        let r = 0, g = 0, b = 0, a = 0;
-        if (T[si + 3]) { r = T[si]; g = T[si + 1]; b = T[si + 2]; a = 255; }
-        else if (D && D[si + 3]) { r = D[si]; g = D[si + 1]; b = D[si + 2]; a = D[si + 3]; }
-        if (pd && pd[o + 3]) {
-          const pa = pd[o + 3] / 255;
-          if (a) { r += (pd[o] - r) * pa; g += (pd[o + 1] - g) * pa; b += (pd[o + 2] - b) * pa; a = Math.max(a, pd[o + 3]); }
-          else { r = pd[o]; g = pd[o + 1]; b = pd[o + 2]; a = pd[o + 3]; }
-        }
-        A[o] = r; A[o + 1] = g; A[o + 2] = b; A[o + 3] = a;
-      }
-      const out = new ImageData(w, h);
-      if (!plantGlowFill(out.data, A, w, h, { ox: x0w, oy: y0w, px: CELL, cx: e.x, cy: e.y, reach, white: W.plantW,
-        top: kru('jePlantTop', u.plant) / 100, strength, t: W.time * kru('jePlantTwinkle', u.plant),
-        size: kru('jePlantSize', u.plant), rgb: hexArr(jcol('jeColGlow', u.col)), lit: (x, y) => seenAt(W, x, y) })) return;
-      if (pgGlow.width < w || pgGlow.height < h) { pgGlow.width = Math.max(pgGlow.width, w); pgGlow.height = Math.max(pgGlow.height, h); }
-      pgGlowCtx.putImageData(out, 0, 0);
-      const sm = ctx.imageSmoothingEnabled;
-      ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(pgGlow, 0, 0, w, h, x0w, y0w, w * CELL, h * CELL);
-      ctx.imageSmoothingEnabled = sm;
-    }
 
     function step(dt) {
       W.time += dt;
@@ -2501,7 +2450,7 @@ export function Game({ input }) {
       }
       // and the green round each jelly glows and twinkles in its colour (plantGlow)
       for (const e of W.enemies)
-        if (e.je && onView(e.x, e.ty, 160) && fogLit(W, e.x, e.ty)) plantGlow(e, TH);
+        if (e.je && onView(e.x, e.ty, 160) && fogLit(W, e.x, e.ty)) plantGlow(W, G, e, TH);
       // glowing creatures (the jellyfish) light the cave round them, flaring as they pulse.
       // Radius, brightness and flare are its kp+'GlowR' / 'Glow' / 'Flare' knobs, and like
       // every other light out here it shows only where the fog has lifted

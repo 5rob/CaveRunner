@@ -62,5 +62,6 @@ export * from './game/systems/gun.js';
 export * from './game/systems/fields.js';
 export * from './game/systems/bullets.js';
 export * from './game/systems/save-run.js';
+export * from './game/systems/plantglow.js';
 export * from './game/Game.js';
 export * from './ui/app.js';

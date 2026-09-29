@@ -12256,6 +12256,95 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/game/systems/plantglow.js
+  function plantGlow(W, G, e, TH) {
+    const u = e.je.u, reach = kru("jeGlowR", u.glowR) * kru("jePlantReach", u.plant);
+    const strength = kru("jePlantGlow", u.plant);
+    if (reach < 2 || strength <= 0) return;
+    const bx0 = clamp(Math.floor((e.x - reach) / CELL), 0, CW - 1), by0 = clamp(Math.floor((e.y - reach) / CELL), 0, CH - 1);
+    const bx1 = clamp(Math.ceil((e.x + reach) / CELL), 1, CW), by1 = clamp(Math.ceil((e.y + reach) / CELL), 1, CH);
+    const w = bx1 - bx0, h3 = by1 - by0;
+    if (w <= 0 || h3 <= 0) return;
+    if (!G.pgArt || G.pgArt.length < w * h3 * 4) G.pgArt = new Uint8ClampedArray(w * h3 * 4);
+    const x0w = bx0 * CELL, y0w = by0 * CELL, x1w = bx1 * CELL, y1w = by1 * CELL;
+    let pd = null;
+    const plants = W.props.filter((pr) => pr.k === "climb" && PLANTS[pr.st] && pr.x + pr.r > x0w && pr.x + pr.l < x1w && pr.y + pr.b > y0w && pr.y + pr.t0 < y1w);
+    if (plants.length) {
+      if (!G.pgC) {
+        G.pgC = document.createElement("canvas");
+        G.pgCtx = G.pgC.getContext("2d", { willReadFrequently: true });
+      }
+      if (G.pgC.width < w || G.pgC.height < h3) {
+        G.pgC.width = Math.max(G.pgC.width, w);
+        G.pgC.height = Math.max(G.pgC.height, h3);
+      }
+      G.pgCtx.setTransform(1, 0, 0, 1, 0, 0);
+      G.pgCtx.clearRect(0, 0, w, h3);
+      G.pgCtx.setTransform(1 / CELL, 0, 0, 1 / CELL, -bx0, -by0);
+      for (const pr of plants) drawProp(G.pgCtx, pr, W.time, TH);
+      pd = G.pgCtx.getImageData(0, 0, w, h3).data;
+    }
+    const T = W.img.data, D = W.dimg ? W.dimg.data : null, A = G.pgArt;
+    for (let y = 0; y < h3; y++) for (let x = 0; x < w; x++) {
+      const si = ((by0 + y) * CW + bx0 + x) * 4, o = (y * w + x) * 4;
+      let r = 0, g = 0, b = 0, a = 0;
+      if (T[si + 3]) {
+        r = T[si];
+        g = T[si + 1];
+        b = T[si + 2];
+        a = 255;
+      } else if (D && D[si + 3]) {
+        r = D[si];
+        g = D[si + 1];
+        b = D[si + 2];
+        a = D[si + 3];
+      }
+      if (pd && pd[o + 3]) {
+        const pa = pd[o + 3] / 255;
+        if (a) {
+          r += (pd[o] - r) * pa;
+          g += (pd[o + 1] - g) * pa;
+          b += (pd[o + 2] - b) * pa;
+          a = Math.max(a, pd[o + 3]);
+        } else {
+          r = pd[o];
+          g = pd[o + 1];
+          b = pd[o + 2];
+          a = pd[o + 3];
+        }
+      }
+      A[o] = r;
+      A[o + 1] = g;
+      A[o + 2] = b;
+      A[o + 3] = a;
+    }
+    const out = new ImageData(w, h3);
+    if (!plantGlowFill(out.data, A, w, h3, {
+      ox: x0w,
+      oy: y0w,
+      px: CELL,
+      cx: e.x,
+      cy: e.y,
+      reach,
+      white: W.plantW,
+      top: kru("jePlantTop", u.plant) / 100,
+      strength,
+      t: W.time * kru("jePlantTwinkle", u.plant),
+      size: kru("jePlantSize", u.plant),
+      rgb: hexArr(jcol("jeColGlow", u.col)),
+      lit: (x, y) => seenAt(W, x, y)
+    })) return;
+    if (G.pgGlow.width < w || G.pgGlow.height < h3) {
+      G.pgGlow.width = Math.max(G.pgGlow.width, w);
+      G.pgGlow.height = Math.max(G.pgGlow.height, h3);
+    }
+    G.pgGlowCtx.putImageData(out, 0, 0);
+    const sm = G.ctx.imageSmoothingEnabled;
+    G.ctx.imageSmoothingEnabled = true;
+    G.ctx.drawImage(G.pgGlow, 0, 0, w, h3, x0w, y0w, w * CELL, h3 * CELL);
+    G.ctx.imageSmoothingEnabled = sm;
+  }
+
   // src/world/nav.js
   var NAV = 4;
   function navField(solid, tx, ty, R, onWeb) {
@@ -12997,7 +13086,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const mctx = miniC.getContext("2d");
       const miniImg = new ImageData(MMW, MMH);
       const mini32 = new Uint32Array(miniImg.data.buffer);
-      let pgArt = null, pgC = null, pgCtx = null;
+      const pgGlow = document.createElement("canvas"), pgGlowCtx = pgGlow.getContext("2d");
       const decoC = document.createElement("canvas");
       decoC.width = CW;
       decoC.height = CH;
@@ -13175,7 +13264,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         REC,
         RT,
         fireBox,
-        ratOnWeb
+        ratOnWeb,
+        pgArt: null,
+        pgC: null,
+        pgCtx: null,
+        pgGlow,
+        pgGlowCtx
       };
       function rpTerrain(T) {
         if (!RT.tC) {
@@ -13477,94 +13571,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       c.addEventListener("pointerup", mUp);
       c.addEventListener("pointercancel", mUp);
       c.addEventListener("pointerleave", mLeave);
-      const pgGlow = document.createElement("canvas"), pgGlowCtx = pgGlow.getContext("2d");
-      function plantGlow(e, TH) {
-        const u = e.je.u, reach = kru("jeGlowR", u.glowR) * kru("jePlantReach", u.plant);
-        const strength = kru("jePlantGlow", u.plant);
-        if (reach < 2 || strength <= 0) return;
-        const bx0 = clamp(Math.floor((e.x - reach) / CELL), 0, CW - 1), by0 = clamp(Math.floor((e.y - reach) / CELL), 0, CH - 1);
-        const bx1 = clamp(Math.ceil((e.x + reach) / CELL), 1, CW), by1 = clamp(Math.ceil((e.y + reach) / CELL), 1, CH);
-        const w = bx1 - bx0, h3 = by1 - by0;
-        if (w <= 0 || h3 <= 0) return;
-        if (!pgArt || pgArt.length < w * h3 * 4) pgArt = new Uint8ClampedArray(w * h3 * 4);
-        const x0w = bx0 * CELL, y0w = by0 * CELL, x1w = bx1 * CELL, y1w = by1 * CELL;
-        let pd = null;
-        const plants = W.props.filter((pr) => pr.k === "climb" && PLANTS[pr.st] && pr.x + pr.r > x0w && pr.x + pr.l < x1w && pr.y + pr.b > y0w && pr.y + pr.t0 < y1w);
-        if (plants.length) {
-          if (!pgC) {
-            pgC = document.createElement("canvas");
-            pgCtx = pgC.getContext("2d", { willReadFrequently: true });
-          }
-          if (pgC.width < w || pgC.height < h3) {
-            pgC.width = Math.max(pgC.width, w);
-            pgC.height = Math.max(pgC.height, h3);
-          }
-          pgCtx.setTransform(1, 0, 0, 1, 0, 0);
-          pgCtx.clearRect(0, 0, w, h3);
-          pgCtx.setTransform(1 / CELL, 0, 0, 1 / CELL, -bx0, -by0);
-          for (const pr of plants) drawProp(pgCtx, pr, W.time, TH);
-          pd = pgCtx.getImageData(0, 0, w, h3).data;
-        }
-        const T = W.img.data, D = W.dimg ? W.dimg.data : null, A = pgArt;
-        for (let y = 0; y < h3; y++) for (let x = 0; x < w; x++) {
-          const si = ((by0 + y) * CW + bx0 + x) * 4, o = (y * w + x) * 4;
-          let r = 0, g = 0, b = 0, a = 0;
-          if (T[si + 3]) {
-            r = T[si];
-            g = T[si + 1];
-            b = T[si + 2];
-            a = 255;
-          } else if (D && D[si + 3]) {
-            r = D[si];
-            g = D[si + 1];
-            b = D[si + 2];
-            a = D[si + 3];
-          }
-          if (pd && pd[o + 3]) {
-            const pa = pd[o + 3] / 255;
-            if (a) {
-              r += (pd[o] - r) * pa;
-              g += (pd[o + 1] - g) * pa;
-              b += (pd[o + 2] - b) * pa;
-              a = Math.max(a, pd[o + 3]);
-            } else {
-              r = pd[o];
-              g = pd[o + 1];
-              b = pd[o + 2];
-              a = pd[o + 3];
-            }
-          }
-          A[o] = r;
-          A[o + 1] = g;
-          A[o + 2] = b;
-          A[o + 3] = a;
-        }
-        const out = new ImageData(w, h3);
-        if (!plantGlowFill(out.data, A, w, h3, {
-          ox: x0w,
-          oy: y0w,
-          px: CELL,
-          cx: e.x,
-          cy: e.y,
-          reach,
-          white: W.plantW,
-          top: kru("jePlantTop", u.plant) / 100,
-          strength,
-          t: W.time * kru("jePlantTwinkle", u.plant),
-          size: kru("jePlantSize", u.plant),
-          rgb: hexArr(jcol("jeColGlow", u.col)),
-          lit: (x, y) => seenAt(W, x, y)
-        })) return;
-        if (pgGlow.width < w || pgGlow.height < h3) {
-          pgGlow.width = Math.max(pgGlow.width, w);
-          pgGlow.height = Math.max(pgGlow.height, h3);
-        }
-        pgGlowCtx.putImageData(out, 0, 0);
-        const sm = ctx.imageSmoothingEnabled;
-        ctx.imageSmoothingEnabled = true;
-        ctx.drawImage(pgGlow, 0, 0, w, h3, x0w, y0w, w * CELL, h3 * CELL);
-        ctx.imageSmoothingEnabled = sm;
-      }
       function step(dt) {
         W.time += dt;
         W.levelT += dt;
@@ -16171,7 +16177,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           propGlow(ctx, pr, W.time, TH, Math.hypot(pr.x - pcx, pr.y - pcy), W.torchR);
         }
         for (const e of W.enemies)
-          if (e.je && onView(e.x, e.ty, 160) && fogLit(W, e.x, e.ty)) plantGlow(e, TH);
+          if (e.je && onView(e.x, e.ty, 160) && fogLit(W, e.x, e.ty)) plantGlow(W, G, e, TH);
         for (const e of W.enemies) {
           const k = e.k;
           if (!k.glow || !k.kp || !onView(e.x, e.ty, 120) || !fogLit(W, e.x, e.ty)) continue;

@@ -437,6 +437,8 @@ What the code says about P3.4 (checked at the end of P3.3):
         `pagehide`'s `removeEventListener` still gets the function it was given
   - [x] enemies.js: `natural` (`(W, …)`; only the jelly's `env.stay` uses it, as an arrow)
   - [x] player.js: `torchHand` (`(W)`)
+  - [x] plantglow.js: `plantGlow` (`(W, G, …)`). First, by hand: its scratch `let`s became `G.pgArt`/`G.pgC`/`G.pgCtx`
+        (null in `G`, made on first use as before; only plantGlow touched them), and `pgGlow`/`pgGlowCtx` moved up and joined `G`
   - Learned so far: `G`'s keys must be declared above `G` (a closure `const` further down moves up
     first, as `fireBox` did). A function passed as a callback gets an arrow at each site; for the
     per-frame ones (`visPoly`, `fireStep`, a spider's or jelly's `env`) that is one small allocation
@@ -798,3 +800,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.4 (14) | `save-run.js`: `saveRun` (`(W, G)`). The tool made a separate arrow at each value use, which would have left `removeEventListener('pagehide', …)` removing nothing: one `saveNow` arrow in Game now serves all four (noted under Learned so far). `save` run too. | probe SAME, logic 33/33, smoke ok, save ok |
 | 2026-09-29 | Phase 3, P3.4 (15) | `natural` to `enemies.js` (`(W, …)`), header extended. `archvine`, `jelly` run too: `jelly` spit failed 3 of 5 alone here and 3 of 4 on the commit before (the known flake). | probe SAME, logic 33/33, smoke ok, archvine ok |
 | 2026-09-29 | Phase 3, P3.4 (16) | `torchHand` to `player.js` (`(W)`), header extended. `torch` (failed once, passed alone twice: known flake), `replay` run too. | probe SAME, logic 33/33, smoke ok, torch ok, replay ok |
+| 2026-09-29 | Phase 3, P3.4 (17) | `plantglow.js`: `plantGlow`. Its `pgArt`/`pgC`/`pgCtx` `let`s became `G` properties by hand first (a scripted rewrite of the 19 references inside it, the only place they were used), `pgGlow`/`pgGlowCtx` joined `G`. `jelly` run too: every glow check passed; spit flaked (known). | probe SAME, logic 33/33, smoke ok |
