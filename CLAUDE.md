@@ -140,9 +140,9 @@ rest and imports them. Where things are (`main.js` line numbers as of v96, they 
 | `THEMES` / `themeFor` | `src/data/themes.js` (with `DECOR`, `AMBIENCE`): the 12 level palettes; the floor number picks one |
 | `CREATURES` / `ROSTERS` | `src/data/creatures.js`: the 16 creature types, and which live on floors 1–10 |
 | `rosterFor` / `enemyFor` | `src/data/creatures.js`: a floor's creatures, and one creature's floor-scaled stats |
-| `MODS` | ~591: the spells, each a plain object (`off: 1` = kept but never handed out) |
-| `FAMILIES` / `FAMILY_OF` | ~950: the 8 colour families the UI groups mods by |
-| `MOD_PRICE` / `MOD_TIER` | ~1019: shop price and rarity 1–4 for every mod |
+| `MODS` | `src/spells/mods.js`: the spells, each a plain object (`off: 1` = kept but never handed out) |
+| `FAMILIES` / `FAMILY_OF` | `src/spells/mods.js`: the 8 colour families the UI groups mods by |
+| `MOD_PRICE` / `MOD_TIER` | `src/spells/mods.js` (with `TRIG_VARIANTS`): shop price and rarity 1–4 for every mod |
 | `planCast` | ~2485: **the heart of it** — works out what one pull of the trigger fires |
 | `gunRate` / `buildAdvice` | ~2761: the build advisor |
 | `castGroups` / `groupStats` | ~2875: the outlines and stat lines in the build screen |
