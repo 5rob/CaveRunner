@@ -3559,7 +3559,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (r.bright) tone(d, "square", 3200, 3e3, t0, 0.03, 0.1 * V);
       if (r.boing) tone(d, "triangle", 500 * P, 1100 * P, t0 + 0.08 * D, 0.07, 0.16 * V);
     }
-    function cast(shots, x, y) {
+    function cast2(shots, x, y) {
       const seen = {};
       let k = 0;
       for (const sh of shots) {
@@ -4416,7 +4416,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ear.x = x;
         ear.y = y;
       },
-      cast: safe(cast),
+      cast: safe(cast2),
       hit: safe(hit),
       rock: safe(rock),
       bounce: safe(bounce),
@@ -11528,6 +11528,638 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/game/systems/bullets.js
+  function spray(W, b) {
+    SFX.fx("cluster", b.x, b.y);
+    const n = Math.min(8, b.cluster);
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 140 + Math.random() * 120;
+      W.bullets.push({
+        x: b.x,
+        y: b.y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp,
+        life: 0.5 + Math.random() * 0.3,
+        dmg: Math.max(0.6, b.dmg * 0.3),
+        size: 2,
+        col: b.col,
+        spin: 0,
+        homing: 0,
+        bounce: 0,
+        pierce: 0,
+        explode: 9,
+        grav: 300,
+        accel: 0,
+        bore: 0,
+        hit: null,
+        age: 0
+      });
+    }
+    burst(W, b.x, b.y, 8, b.col);
+  }
+  function explodeCross(W, G, b) {
+    const R = b.explode || 20;
+    explode(W, G, b.x, b.y, R * 0.6);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]])
+      explode(W, G, b.x + dx * R * 0.9, b.y + dy * R * 0.9, R * 0.55);
+  }
+  var critRoll = (dmg, chance) => chance && Math.random() < chance ? (SFX.fx("crit"), dmg * 3) : dmg;
+  var shove = (e, nx, ny, force) => {
+    e.x += nx * force * 0.03;
+    e.y += ny * force * 0.03;
+    e.tgt = null;
+  };
+  function teleportTo(W, b) {
+    if (W.p.dead) return;
+    const sp = Math.hypot(b.vx, b.vy), nx = sp ? b.vx / sp : 0, ny = sp ? b.vy / sp : 0;
+    for (let back = 0; back <= 40; back += 3)
+      for (const dy of [0, -4, 4, -8, 8, -12, 12, -16, 16]) {
+        const x = b.x - nx * back - PW / 2, y = b.y - ny * back - PH / 2 + dy;
+        if (x < CELL * 3 || y < CELL * 3 || x + PW > WW - CELL * 3 || y + PH > WH - CELL * 3) continue;
+        if (boxHit(W, x, y)) continue;
+        burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 10, b.col);
+        W.p.x = x;
+        W.p.y = y;
+        W.p.vx = 0;
+        W.p.vy = 0;
+        burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 12, b.col);
+        SFX.fx("warp", W.p.x + PW / 2, W.p.y + PH / 2);
+        return;
+      }
+    burst(W, b.x, b.y, 4, b.col);
+    SFX.fx("fizzle", b.x, b.y);
+  }
+
+  // src/game/systems/gun.js
+  function cast(W, G, g, gx, gy, nx, ny) {
+    const pas = gunPassives(g);
+    const wrap = () => {
+      g.idx = 0;
+      g.rechT = g.skipRech ? 0 : effRecharge(g) * W.pb.rech;
+      g.rechLen = g.rechT;
+      g.skipRech = false;
+      shuffleOrder(g);
+    };
+    const plan = planCast(g, G.input.current.loadout.guns);
+    if (!plan.shots.length) {
+      wrap();
+      return;
+    }
+    const cost = W.pb.mana === 0 ? 0 : plan.cost;
+    if (g.mana < cost) {
+      g.idx = plan.start;
+      g.delayT = 0.12;
+      g.delayMax = 0.12;
+      SFX.ui("empty");
+      return;
+    }
+    g.mana -= cost;
+    const base = Math.atan2(ny, nx);
+    const acts = plan.acts || [];
+    let bonus = 0;
+    if (plan.hp && !W.p.dead) hurt(W, G, plan.hp);
+    if (acts.includes("refresh")) {
+      g.skipRech = true;
+      SFX.fx("refresh");
+    }
+    if (acts.includes("manapow")) {
+      SFX.fx("drain");
+      const spare = Math.max(0, g.mana - 50);
+      g.mana -= spare;
+      bonus += spare / 12;
+    }
+    if (acts.includes("gpower")) {
+      const LO2 = G.input.current.loadout;
+      const spend = Math.floor(LO2.gold * 0.05);
+      LO2.gold -= spend;
+      bonus += spend / 8;
+      if (spend) {
+        G.input.current.notify();
+        SFX.fx("gspend");
+      }
+    }
+    if (acts.includes("saws")) {
+      SFX.fx("saws");
+      for (const b of W.bullets) {
+        b.dmg = Math.max(b.dmg, 3);
+        b.size = 5;
+        b.bore = 4;
+        b.col = "#d9dde4";
+        b.life = Math.max(b.life, 1.2);
+        b.bounce = Math.max(b.bounce, 4);
+        b.explode = 0;
+      }
+    }
+    let ox = gx, oy = gy;
+    const clearSpot = (tx, ty) => {
+      for (let k = 0; k <= 10; k++) {
+        const t = k / 10;
+        const cx = tx + (gx - tx) * t, cy = ty + (gy - ty) * t;
+        if (!solidAt(W, cx, cy)) return [cx, cy];
+      }
+      return [gx, gy];
+    };
+    if (acts.includes("far")) [ox, oy] = clearSpot(gx + nx * 95, gy + ny * 95);
+    if (acts.includes("tele")) {
+      let best = null, bd = 420;
+      for (const e of W.enemies) {
+        const d = Math.hypot(e.x - gx, e.ty - gy);
+        if (d < bd) {
+          bd = d;
+          best = e;
+        }
+      }
+      if (best) [ox, oy] = clearSpot(best.x - nx * 14, best.ty - ny * 14);
+    }
+    const warp = acts.includes("warp");
+    if (warp || acts.includes("far") || acts.includes("tele")) SFX.fx("warp", ox, oy);
+    for (const sh of plan.shots) spawnShot(W, G, sh, ox, oy, base, bonus, warp, 30);
+    SFX.cast(plan.shots, ox === gx && oy === gy ? null : ox, oy);
+    let kick = 0;
+    for (const sh of plan.shots) kick += sh.recoil;
+    if (kick && !W.p.dead) {
+      kick = Math.min(220, kick * 1.4 * W.pb.recoil);
+      W.p.vx -= Math.cos(base) * kick;
+      W.p.vy -= Math.sin(base) * kick;
+    }
+    g.delayT = plan.delay * W.pb.delay;
+    g.delayMax = Math.max(g.delayT, 1e-3);
+    if (plan.wrap) wrap();
+  }
+  function spawnShot(W, G, sh, ox, oy, base, bonus, warp, fd) {
+    if (sh.still) {
+      castField(W, G, sh, ox + Math.cos(base) * fd, oy + Math.sin(base) * fd, base);
+      return;
+    }
+    const n = Math.min(24, Math.max(1, Math.round(sh.count)));
+    const off = (sh.ang || 0) * Math.PI / 180;
+    const pd = W.pb.dmg;
+    let pc = W.pb.crit;
+    if (W.pb.close && W.enemies.some((e) => Math.hypot(e.x - ox, e.ty - oy) < 56)) pc += 0.4;
+    for (let i = 0; i < n; i++) {
+      let a = base + off + (Math.random() - 0.5) * sh.spread * W.pb.spread * Math.PI / 180;
+      if (sh.autoaim) {
+        let best = null, bd = 320;
+        for (const e of W.enemies) {
+          const d = Math.hypot(e.x - ox, e.ty - oy);
+          if (d < bd) {
+            bd = d;
+            best = e;
+          }
+        }
+        if (best) a = Math.atan2(best.ty - oy, best.x - ox);
+      }
+      if (sh.flat) a = Math.cos(a) >= 0 ? 0 : Math.PI;
+      if (sh.beam) {
+        fireBeam(W, G, sh, ox, oy, Math.cos(a), Math.sin(a), bonus, pd, pc);
+        continue;
+      }
+      const reach = sh.reach != null ? sh.reach : 10;
+      let bx = ox + Math.cos(a) * reach, by = oy + Math.sin(a) * reach;
+      if (warp) {
+        for (let step = 0; step < 14; step++) {
+          const tx = bx + Math.cos(a) * 10, ty = by + Math.sin(a) * 10;
+          if (solidAt(W, tx, ty)) break;
+          bx = tx;
+          by = ty;
+        }
+      }
+      W.bullets.push({
+        x: bx,
+        y: by,
+        vx: Math.cos(a) * sh.speed * W.pb.speed * bhSp(sh),
+        vy: Math.sin(a) * sh.speed * W.pb.speed * bhSp(sh),
+        life: sh.life,
+        dmg: (sh.dmg + bonus) * pd,
+        size: sh.size,
+        col: sh.col,
+        spin: 0,
+        homing: Math.max(sh.homing, W.pb.homing),
+        bounce: sh.bounce + W.pb.bounce,
+        pierce: sh.pierce,
+        explode: sh.explode,
+        grav: sh.grav,
+        accel: sh.accel,
+        bore: sh.bore,
+        hit: null,
+        knock: sh.knock,
+        crit: sh.crit + pc,
+        boomer: sh.boomer,
+        spiral: sh.spiral,
+        pong: sh.pong,
+        orbit: sh.orbit,
+        homeR: sh.homeR,
+        eat: sh.eat,
+        pull: sh.pull,
+        split: sh.split,
+        cluster: sh.cluster,
+        bounceFx: sh.bounceFx,
+        friendly: sh.friendly,
+        chain: sh.chain,
+        fuse: sh.fuse,
+        payload: sh.payload && sh.payload.length ? sh.payload : null,
+        hidden: sh.hidden,
+        arc: sh.arc,
+        drift: sh.drift,
+        pop: sh.pop,
+        tele: sh.tele,
+        fire: sh.fire,
+        drag: sh.drag,
+        bounceE: sh.bounceE,
+        pit: sh.pit,
+        wig: sh.wig,
+        look: sh.look,
+        light: sh.light,
+        lightR: sh.lightR,
+        vmax: sh.vmax,
+        lifeBoom: sh.lifeBoom,
+        trig: sh.trig,
+        timer: sh.trig === "timer" ? sh.timer : null,
+        ox: bx,
+        oy: by,
+        age: 0,
+        born: sh.life
+      });
+    }
+  }
+  function firePayload(W, G, b) {
+    const list = b.payload;
+    b.payload = null;
+    const sp = Math.hypot(b.vx, b.vy);
+    const nx = sp ? b.vx / sp : Math.cos(b.ang || 0), ny = sp ? b.vy / sp : Math.sin(b.ang || 0);
+    releaseAt(W, G, list, b.x, b.y, nx, ny, b.col);
+  }
+  function releaseAt(W, G, list, x, y, nx, ny, col) {
+    const x0 = x, y0 = y;
+    for (let k = 0; k < 6 && solidAt(W, x + nx * 10, y + ny * 10); k++) {
+      x -= nx * 4;
+      y -= ny * 4;
+    }
+    const base = Math.atan2(ny, nx);
+    for (const sh of list) spawnShot(W, G, sh, x, y, base, 0, false, 0);
+    SFX.cast(list, x0, y0);
+    burst(W, x0, y0, 5, col);
+  }
+
+  // src/game/systems/shotlooks.js
+  var glowDot = (W, x, y, vx, vy, c, s, life, g) => W.dparts.push({ x, y, vx, vy, g: g || 0, c, s, life, max: life, glow: 1 });
+  var rnd = (a, b) => a + Math.random() * (b - a);
+  function shotTrail(W, b, dt) {
+    const L = b.look, sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp;
+    const chance = (n) => Math.random() < n * dt;
+    if (L === "spark") {
+      if (chance(70)) glowDot(
+        W,
+        b.x + rnd(-1, 1),
+        b.y + rnd(-1, 1),
+        rnd(-8, 8),
+        rnd(-8, 8),
+        Math.random() < 0.3 ? "#ffffff" : Math.random() < 0.6 ? "#ff9cf5" : "#d86ad0",
+        rnd(0.8, 1.5),
+        rnd(0.12, 0.5)
+      );
+    } else if (L === "crackle") {
+      if (chance(22)) glowDot(
+        W,
+        b.x,
+        b.y,
+        -ux * 40 + rnd(-50, 50),
+        -uy * 40 + rnd(-60, 20),
+        Math.random() < 0.5 ? "#fff6c0" : "#ffd23c",
+        rnd(0.7, 1.1),
+        rnd(0.15, 0.35),
+        0.5
+      );
+    } else if (L === "ember") {
+      if (chance(40)) glowDot(
+        W,
+        b.x + rnd(-1, 1),
+        b.y + rnd(-1, 1),
+        -ux * 20 + rnd(-10, 10),
+        -uy * 20 - rnd(5, 25),
+        Math.random() < 0.4 ? "#e6ffc8" : "#8dff5a",
+        rnd(0.7, 1.3),
+        rnd(0.1, 0.25),
+        -0.02
+      );
+    } else if (L === "glob") {
+      if (chance(10)) glowDot(W, b.x, b.y, b.vx * 0.2, b.vy * 0.2, "#f578dc", rnd(0.8, 1.2), rnd(0.3, 0.6), 0.6);
+    } else if (L === "bubble") {
+      if (chance(6)) glowDot(
+        W,
+        b.x + rnd(-3, 3),
+        b.y + rnd(-3, 3),
+        rnd(-6, 6),
+        rnd(-20, -8),
+        "#bfe8ff",
+        rnd(0.6, 1),
+        rnd(0.3, 0.6)
+      );
+    } else if (L === "arrow") {
+      if (chance(35)) glowDot(
+        W,
+        b.x - ux * 3,
+        b.y - uy * 3,
+        rnd(-6, 6),
+        rnd(-6, 6),
+        Math.random() < 0.3 ? "#e8ffd8" : "#78ff50",
+        rnd(0.7, 1.2),
+        rnd(0.5, 1.1),
+        0.03
+      );
+    } else if (L === "drill") {
+      if (chance(18)) W.smoke.push({
+        x: b.x,
+        y: b.y,
+        vx: rnd(-10, 10),
+        vy: rnd(-12, 4),
+        r: rnd(1.2, 2.2),
+        life: 0.5,
+        max: 0.5,
+        c: "#4e7fc8",
+        a: 0.4
+      });
+    } else if (L === "sparks") {
+      const n = Math.min(8, Math.max(1, Math.round(sp * dt / 3)));
+      for (let k = 0; k < n; k++) {
+        const f = k / n;
+        glowDot(
+          W,
+          b.x - b.vx * dt * f + rnd(-1, 1),
+          b.y - b.vy * dt * f + rnd(-1, 1),
+          rnd(-15, 15),
+          rnd(-15, 15),
+          Math.random() < 0.3 ? "#ffffff" : "#8fe8ff",
+          rnd(0.8, 1.4),
+          rnd(0.3, 0.6)
+        );
+      }
+    } else if (L === "heavy") {
+      if (chance(45)) glowDot(
+        W,
+        b.x,
+        b.y,
+        -ux * rnd(20, 60) + rnd(-25, 25),
+        -uy * rnd(20, 60) + rnd(-25, 25),
+        Math.random() < 0.5 ? "#c8ff5a" : "#ffe84a",
+        rnd(0.8, 1.3),
+        rnd(0.2, 0.45),
+        0.3
+      );
+    } else if (L === "lance") {
+      if (chance(40)) glowDot(
+        W,
+        b.x - ux * rnd(0, 8),
+        b.y - uy * rnd(0, 8),
+        rnd(-12, 12),
+        rnd(-12, 12),
+        Math.random() < 0.3 ? "#ffffff" : b.col,
+        rnd(0.7, 1.1),
+        rnd(0.2, 0.5),
+        0.05
+      );
+    } else if (L === "rubber") {
+      if (chance(30)) glowDot(W, b.x, b.y, rnd(-5, 5), rnd(-5, 5), Math.random() < 0.5 ? "#9ef07a" : "#5ad05a", rnd(0.8, 1.3), rnd(0.2, 0.45));
+    } else if (L === "bomb") {
+      const fx = b.x + Math.cos(b.spin * 0.5 - 1.2) * b.size, fy = b.y + Math.sin(b.spin * 0.5 - 1.2) * b.size;
+      if (chance(40)) glowDot(W, fx, fy, rnd(-30, 30), rnd(-50, 0), Math.random() < 0.4 ? "#ffffff" : "#ffb347", rnd(0.6, 1), rnd(0.1, 0.25), 0.4);
+    } else if (L === "rocket") {
+      if (chance(50)) glowDot(
+        W,
+        b.x - ux * 4,
+        b.y - uy * 4,
+        -ux * rnd(30, 90) + rnd(-15, 15),
+        -uy * rnd(30, 90) + rnd(-15, 15),
+        FIRE_COLS[Math.floor(Math.random() * 3)],
+        rnd(0.8, 1.3),
+        rnd(0.08, 0.2)
+      );
+      if (chance(25)) W.smoke.push({
+        x: b.x - ux * 5,
+        y: b.y - uy * 5,
+        vx: rnd(-6, 6),
+        vy: rnd(-8, 2),
+        r: rnd(1.2, 2.4),
+        life: 0.9,
+        max: 0.9,
+        c: "#5a5652",
+        a: 0.4
+      });
+    } else if (L === "flame") {
+      const big = b.size >= 4;
+      if (chance(big ? 70 : 40)) glowDot(
+        W,
+        b.x + rnd(-b.size, b.size),
+        b.y + rnd(-b.size, b.size),
+        -ux * 20 + rnd(-15, 15),
+        -uy * 20 - rnd(10, 40),
+        FIRE_COLS[Math.floor(Math.random() * 3)],
+        rnd(0.8, 1.2 + b.size * 0.2),
+        rnd(0.12, 0.35),
+        -0.03
+      );
+      if (chance(big ? 14 : 5)) W.smoke.push({
+        x: b.x,
+        y: b.y,
+        vx: rnd(-6, 6),
+        vy: rnd(-14, -4),
+        r: rnd(1.5, 1 + b.size * 0.6),
+        life: 1,
+        max: 1,
+        c: "#3a3430",
+        a: 0.35
+      });
+    } else if (L === "orb") {
+      if (chance(35)) glowDot(
+        W,
+        b.x + rnd(-b.size, b.size) * 0.6,
+        b.y + rnd(-b.size, b.size) * 0.6,
+        rnd(-6, 6),
+        rnd(-6, 6),
+        Math.random() < 0.3 ? "#e8f4ff" : b.col,
+        rnd(0.8, 1.4),
+        rnd(0.2, 0.5)
+      );
+    } else if (L === "chain") {
+      if (chance(35)) glowDot(W, b.x, b.y, rnd(-60, 60), rnd(-60, 60), Math.random() < 0.3 ? "#ffffff" : "#e0a0ff", rnd(0.7, 1.1), rnd(0.08, 0.2));
+    } else if (L === "cross") {
+      if (chance(25)) {
+        const a = b.spin * 0.8 + Math.floor(Math.random() * 4) * 1.571;
+        glowDot(W, b.x + Math.cos(a) * b.size * 1.6, b.y + Math.sin(a) * b.size * 1.6, rnd(-6, 6), rnd(-6, 6), b.col, rnd(0.8, 1.2), rnd(0.2, 0.4));
+      }
+    } else if (L === "nuke") {
+      if (chance(20)) glowDot(W, b.x, b.y + b.size * 0.6, b.vx * 0.1, b.vy * 0.1, Math.random() < 0.5 ? "#b4ff5a" : "#6adf3a", rnd(1, 1.6), rnd(0.5, 0.9), 0.6);
+      if (chance(10)) W.smoke.push({ x: b.x - ux * 6, y: b.y - uy * 6, vx: rnd(-5, 5), vy: rnd(-10, 0), r: rnd(2, 3), life: 1, max: 1, c: "#4a4a40", a: 0.35 });
+    } else if (L === "pollen") {
+      if (chance(8)) glowDot(
+        W,
+        b.x + rnd(-2, 2),
+        b.y + rnd(-2, 2),
+        rnd(-5, 5),
+        rnd(-8, 2),
+        "#e8ff9a",
+        rnd(0.6, 0.9),
+        rnd(0.4, 0.8),
+        -0.01
+      );
+    }
+  }
+  function shotBounce(W, b) {
+    const L = b.look;
+    if (L === "glob") for (let k = 0; k < 2; k++)
+      glowDot(W, b.x, b.y, rnd(-40, 40), rnd(-50, -10), "#f578dc", 1, rnd(0.15, 0.3), 0.6);
+    else if (L === "bubble") glowDot(W, b.x, b.y, 0, 0, "#bfe8ff", 1.4, 0.12);
+    else if (L === "ember") for (let k = 0; k < 3; k++)
+      glowDot(W, b.x, b.y, rnd(-60, 60), rnd(-60, -10), "#8dff5a", 1, rnd(0.1, 0.25), 0.4);
+    else if ((L === "disc" || L === "flame" || L === "rubber" || L === "orb") && Math.hypot(b.vx, b.vy) > 60)
+      for (let k = 0; k < (L === "disc" ? 5 : 2); k++)
+        glowDot(
+          W,
+          b.x,
+          b.y,
+          rnd(-70, 70),
+          rnd(-80, -10),
+          L === "disc" ? Math.random() < 0.5 ? "#ffe7a0" : "#ffb347" : L === "flame" ? "#ffb347" : b.col,
+          rnd(0.7, 1.1),
+          rnd(0.1, 0.25),
+          0.5
+        );
+  }
+  function shotDeath(W, b) {
+    const L = b.look;
+    if (L === "bubble") {
+      SFX.pop(b.x, b.y);
+      for (let k = 0; k < 8; k++) {
+        const a = k / 8 * 6.283;
+        glowDot(
+          W,
+          b.x + Math.cos(a) * b.size,
+          b.y + Math.sin(a) * b.size,
+          Math.cos(a) * 45,
+          Math.sin(a) * 45,
+          "#bfe8ff",
+          1,
+          rnd(0.15, 0.3),
+          0.3
+        );
+      }
+    } else if (L === "spark" || L === "arrow" || L === "crackle") {
+      const c = L === "spark" ? "#ff9cf5" : L === "arrow" ? "#78ff50" : "#ffe066";
+      for (let k = 0; k < 5; k++) glowDot(W, b.x, b.y, rnd(-70, 70), rnd(-70, 40), k ? c : "#ffffff", 1, rnd(0.12, 0.3), 0.3);
+    } else if (L === "glob") {
+      for (let k = 0; k < 4; k++) glowDot(W, b.x, b.y, rnd(-50, 50), rnd(-60, 0), "#f578dc", 1.1, rnd(0.2, 0.4), 0.6);
+    } else if (L === "orb" || L === "chain" || L === "rubber" || L === "heavy") {
+      for (let k = 0; k < 7; k++) glowDot(W, b.x, b.y, rnd(-80, 80), rnd(-80, 60), k ? b.col : "#ffffff", rnd(0.8, 1.3), rnd(0.15, 0.35), 0.3);
+    }
+  }
+  function shotGrind(W, b, x, y) {
+    if (b.look !== "drill" || Math.random() < 0.5) return;
+    const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+    if (cx < 0 || cy < 0 || cx >= CW || cy >= CH || !W.mat[cy * CW + cx]) return;
+    const k = (cy * CW + cx) * 4, d = W.img.data, sp = Math.hypot(b.vx, b.vy) || 1;
+    W.sparks.push({
+      x,
+      y,
+      vx: -b.vx / sp * rnd(40, 110) + rnd(-50, 50),
+      vy: -b.vy / sp * rnd(40, 110) - rnd(20, 70),
+      life: rnd(0.4, 0.8),
+      max: 0.8,
+      c: "rgb(" + d[k] + "," + d[k + 1] + "," + d[k + 2] + ")",
+      size: rnd(1, 1.8),
+      heavy: true
+    });
+  }
+
+  // src/game/systems/fields.js
+  function fireBeam(W, G, sh, x, y, nx, ny, bonus, pd, pc) {
+    pd = pd || 1;
+    pc = pc || 0;
+    let hitAt = sh.beam;
+    for (let d = 6; d <= sh.beam; d += 4) {
+      const bx = x + nx * d, by = y + ny * d;
+      if (sh.bore) dig(W, G, bx, by, sh.bore);
+      else if (solidAt(W, bx, by)) {
+        hitAt = d;
+        break;
+      }
+      const j = enemyAt(W, bx, by, sh.size + 3);
+      if (j >= 0) {
+        damageEnemy(W, j, critRoll((sh.dmg + bonus) * pd, sh.crit + pc));
+        burst(W, bx, by, 4, sh.col);
+        if (sh.knock) shove(W.enemies[j], nx, ny, sh.knock);
+        if (!sh.pierce) {
+          hitAt = d;
+          break;
+        }
+      }
+    }
+    W.beams.push({ x, y, nx, ny, len: hitAt, col: sh.col, w: sh.size, t: 0, look: sh.look });
+    if (sh.look) {
+      const ex = x + nx * hitAt, ey = y + ny * hitAt;
+      for (let k = 0; k < 5; k++) glowDot(
+        W,
+        ex,
+        ey,
+        -nx * rnd(20, 80) + rnd(-50, 50),
+        -ny * rnd(20, 80) + rnd(-50, 30),
+        k ? sh.col : "#ffffff",
+        rnd(0.8, 1.3),
+        rnd(0.12, 0.3),
+        0.3
+      );
+      if (sh.pit && hitAt < sh.beam) dig(W, G, ex + nx * 2, ey + ny * 2, sh.pit);
+    }
+    if (sh.explode) explode(W, G, x + nx * hitAt, y + ny * hitAt, sh.explode);
+    if (sh.payload && sh.payload.length) releaseAt(W, G, sh.payload, x + nx * hitAt, y + ny * hitAt, nx, ny, sh.col);
+  }
+  function throwEmbers(W, x, y, n) {
+    for (let k = 0; k < n; k++) {
+      const a = -Math.PI / 2 + (Math.random() - 0.5) * 4.2, v = 60 + Math.random() * 150;
+      W.dparts.push({
+        x,
+        y,
+        vx: Math.cos(a) * v,
+        vy: Math.sin(a) * v - 20,
+        g: 0.45,
+        c: FIRE_COLS[Math.floor(Math.random() * 3)],
+        s: 1 + Math.random() * 0.8,
+        life: 0.7 + Math.random() * 0.6,
+        max: 1.3,
+        glow: 1,
+        ember: 1
+      });
+    }
+  }
+  function castField(W, G, sh, x, y, ang) {
+    const pay = sh.payload && sh.payload.length ? sh.payload : null;
+    if (sh.field === "explode") {
+      explode(W, G, x, y, sh.r, void 0, sh.fire);
+      if (sh.embers) throwEmbers(W, x, y, sh.embers);
+      if (pay) releaseAt(W, G, pay, x, y, Math.cos(ang || 0), Math.sin(ang || 0), sh.col);
+      return;
+    }
+    W.fields.push({
+      x,
+      y,
+      r: sh.r,
+      field: sh.field,
+      life: sh.life,
+      max: sh.life,
+      col: sh.col,
+      dmg: sh.dmg || 1,
+      tick: 0,
+      payload: pay,
+      ang: ang || 0,
+      trig: sh.trig
+    });
+  }
+  var fieldPayload = (W, G, f) => {
+    if (!f.payload) return;
+    const list = f.payload;
+    f.payload = null;
+    releaseAt(W, G, list, f.x, f.y, Math.cos(f.ang), Math.sin(f.ang), f.col);
+  };
+
   // src/game/systems/fog.js
   var fogLit = (W, x, y) => {
     const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
@@ -11946,275 +12578,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         SFX.ui("coin");
       }
     }
-  }
-
-  // src/game/systems/shotlooks.js
-  var glowDot = (W, x, y, vx, vy, c, s, life, g) => W.dparts.push({ x, y, vx, vy, g: g || 0, c, s, life, max: life, glow: 1 });
-  var rnd = (a, b) => a + Math.random() * (b - a);
-  function shotTrail(W, b, dt) {
-    const L = b.look, sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp;
-    const chance = (n) => Math.random() < n * dt;
-    if (L === "spark") {
-      if (chance(70)) glowDot(
-        W,
-        b.x + rnd(-1, 1),
-        b.y + rnd(-1, 1),
-        rnd(-8, 8),
-        rnd(-8, 8),
-        Math.random() < 0.3 ? "#ffffff" : Math.random() < 0.6 ? "#ff9cf5" : "#d86ad0",
-        rnd(0.8, 1.5),
-        rnd(0.12, 0.5)
-      );
-    } else if (L === "crackle") {
-      if (chance(22)) glowDot(
-        W,
-        b.x,
-        b.y,
-        -ux * 40 + rnd(-50, 50),
-        -uy * 40 + rnd(-60, 20),
-        Math.random() < 0.5 ? "#fff6c0" : "#ffd23c",
-        rnd(0.7, 1.1),
-        rnd(0.15, 0.35),
-        0.5
-      );
-    } else if (L === "ember") {
-      if (chance(40)) glowDot(
-        W,
-        b.x + rnd(-1, 1),
-        b.y + rnd(-1, 1),
-        -ux * 20 + rnd(-10, 10),
-        -uy * 20 - rnd(5, 25),
-        Math.random() < 0.4 ? "#e6ffc8" : "#8dff5a",
-        rnd(0.7, 1.3),
-        rnd(0.1, 0.25),
-        -0.02
-      );
-    } else if (L === "glob") {
-      if (chance(10)) glowDot(W, b.x, b.y, b.vx * 0.2, b.vy * 0.2, "#f578dc", rnd(0.8, 1.2), rnd(0.3, 0.6), 0.6);
-    } else if (L === "bubble") {
-      if (chance(6)) glowDot(
-        W,
-        b.x + rnd(-3, 3),
-        b.y + rnd(-3, 3),
-        rnd(-6, 6),
-        rnd(-20, -8),
-        "#bfe8ff",
-        rnd(0.6, 1),
-        rnd(0.3, 0.6)
-      );
-    } else if (L === "arrow") {
-      if (chance(35)) glowDot(
-        W,
-        b.x - ux * 3,
-        b.y - uy * 3,
-        rnd(-6, 6),
-        rnd(-6, 6),
-        Math.random() < 0.3 ? "#e8ffd8" : "#78ff50",
-        rnd(0.7, 1.2),
-        rnd(0.5, 1.1),
-        0.03
-      );
-    } else if (L === "drill") {
-      if (chance(18)) W.smoke.push({
-        x: b.x,
-        y: b.y,
-        vx: rnd(-10, 10),
-        vy: rnd(-12, 4),
-        r: rnd(1.2, 2.2),
-        life: 0.5,
-        max: 0.5,
-        c: "#4e7fc8",
-        a: 0.4
-      });
-    } else if (L === "sparks") {
-      const n = Math.min(8, Math.max(1, Math.round(sp * dt / 3)));
-      for (let k = 0; k < n; k++) {
-        const f = k / n;
-        glowDot(
-          W,
-          b.x - b.vx * dt * f + rnd(-1, 1),
-          b.y - b.vy * dt * f + rnd(-1, 1),
-          rnd(-15, 15),
-          rnd(-15, 15),
-          Math.random() < 0.3 ? "#ffffff" : "#8fe8ff",
-          rnd(0.8, 1.4),
-          rnd(0.3, 0.6)
-        );
-      }
-    } else if (L === "heavy") {
-      if (chance(45)) glowDot(
-        W,
-        b.x,
-        b.y,
-        -ux * rnd(20, 60) + rnd(-25, 25),
-        -uy * rnd(20, 60) + rnd(-25, 25),
-        Math.random() < 0.5 ? "#c8ff5a" : "#ffe84a",
-        rnd(0.8, 1.3),
-        rnd(0.2, 0.45),
-        0.3
-      );
-    } else if (L === "lance") {
-      if (chance(40)) glowDot(
-        W,
-        b.x - ux * rnd(0, 8),
-        b.y - uy * rnd(0, 8),
-        rnd(-12, 12),
-        rnd(-12, 12),
-        Math.random() < 0.3 ? "#ffffff" : b.col,
-        rnd(0.7, 1.1),
-        rnd(0.2, 0.5),
-        0.05
-      );
-    } else if (L === "rubber") {
-      if (chance(30)) glowDot(W, b.x, b.y, rnd(-5, 5), rnd(-5, 5), Math.random() < 0.5 ? "#9ef07a" : "#5ad05a", rnd(0.8, 1.3), rnd(0.2, 0.45));
-    } else if (L === "bomb") {
-      const fx = b.x + Math.cos(b.spin * 0.5 - 1.2) * b.size, fy = b.y + Math.sin(b.spin * 0.5 - 1.2) * b.size;
-      if (chance(40)) glowDot(W, fx, fy, rnd(-30, 30), rnd(-50, 0), Math.random() < 0.4 ? "#ffffff" : "#ffb347", rnd(0.6, 1), rnd(0.1, 0.25), 0.4);
-    } else if (L === "rocket") {
-      if (chance(50)) glowDot(
-        W,
-        b.x - ux * 4,
-        b.y - uy * 4,
-        -ux * rnd(30, 90) + rnd(-15, 15),
-        -uy * rnd(30, 90) + rnd(-15, 15),
-        FIRE_COLS[Math.floor(Math.random() * 3)],
-        rnd(0.8, 1.3),
-        rnd(0.08, 0.2)
-      );
-      if (chance(25)) W.smoke.push({
-        x: b.x - ux * 5,
-        y: b.y - uy * 5,
-        vx: rnd(-6, 6),
-        vy: rnd(-8, 2),
-        r: rnd(1.2, 2.4),
-        life: 0.9,
-        max: 0.9,
-        c: "#5a5652",
-        a: 0.4
-      });
-    } else if (L === "flame") {
-      const big = b.size >= 4;
-      if (chance(big ? 70 : 40)) glowDot(
-        W,
-        b.x + rnd(-b.size, b.size),
-        b.y + rnd(-b.size, b.size),
-        -ux * 20 + rnd(-15, 15),
-        -uy * 20 - rnd(10, 40),
-        FIRE_COLS[Math.floor(Math.random() * 3)],
-        rnd(0.8, 1.2 + b.size * 0.2),
-        rnd(0.12, 0.35),
-        -0.03
-      );
-      if (chance(big ? 14 : 5)) W.smoke.push({
-        x: b.x,
-        y: b.y,
-        vx: rnd(-6, 6),
-        vy: rnd(-14, -4),
-        r: rnd(1.5, 1 + b.size * 0.6),
-        life: 1,
-        max: 1,
-        c: "#3a3430",
-        a: 0.35
-      });
-    } else if (L === "orb") {
-      if (chance(35)) glowDot(
-        W,
-        b.x + rnd(-b.size, b.size) * 0.6,
-        b.y + rnd(-b.size, b.size) * 0.6,
-        rnd(-6, 6),
-        rnd(-6, 6),
-        Math.random() < 0.3 ? "#e8f4ff" : b.col,
-        rnd(0.8, 1.4),
-        rnd(0.2, 0.5)
-      );
-    } else if (L === "chain") {
-      if (chance(35)) glowDot(W, b.x, b.y, rnd(-60, 60), rnd(-60, 60), Math.random() < 0.3 ? "#ffffff" : "#e0a0ff", rnd(0.7, 1.1), rnd(0.08, 0.2));
-    } else if (L === "cross") {
-      if (chance(25)) {
-        const a = b.spin * 0.8 + Math.floor(Math.random() * 4) * 1.571;
-        glowDot(W, b.x + Math.cos(a) * b.size * 1.6, b.y + Math.sin(a) * b.size * 1.6, rnd(-6, 6), rnd(-6, 6), b.col, rnd(0.8, 1.2), rnd(0.2, 0.4));
-      }
-    } else if (L === "nuke") {
-      if (chance(20)) glowDot(W, b.x, b.y + b.size * 0.6, b.vx * 0.1, b.vy * 0.1, Math.random() < 0.5 ? "#b4ff5a" : "#6adf3a", rnd(1, 1.6), rnd(0.5, 0.9), 0.6);
-      if (chance(10)) W.smoke.push({ x: b.x - ux * 6, y: b.y - uy * 6, vx: rnd(-5, 5), vy: rnd(-10, 0), r: rnd(2, 3), life: 1, max: 1, c: "#4a4a40", a: 0.35 });
-    } else if (L === "pollen") {
-      if (chance(8)) glowDot(
-        W,
-        b.x + rnd(-2, 2),
-        b.y + rnd(-2, 2),
-        rnd(-5, 5),
-        rnd(-8, 2),
-        "#e8ff9a",
-        rnd(0.6, 0.9),
-        rnd(0.4, 0.8),
-        -0.01
-      );
-    }
-  }
-  function shotBounce(W, b) {
-    const L = b.look;
-    if (L === "glob") for (let k = 0; k < 2; k++)
-      glowDot(W, b.x, b.y, rnd(-40, 40), rnd(-50, -10), "#f578dc", 1, rnd(0.15, 0.3), 0.6);
-    else if (L === "bubble") glowDot(W, b.x, b.y, 0, 0, "#bfe8ff", 1.4, 0.12);
-    else if (L === "ember") for (let k = 0; k < 3; k++)
-      glowDot(W, b.x, b.y, rnd(-60, 60), rnd(-60, -10), "#8dff5a", 1, rnd(0.1, 0.25), 0.4);
-    else if ((L === "disc" || L === "flame" || L === "rubber" || L === "orb") && Math.hypot(b.vx, b.vy) > 60)
-      for (let k = 0; k < (L === "disc" ? 5 : 2); k++)
-        glowDot(
-          W,
-          b.x,
-          b.y,
-          rnd(-70, 70),
-          rnd(-80, -10),
-          L === "disc" ? Math.random() < 0.5 ? "#ffe7a0" : "#ffb347" : L === "flame" ? "#ffb347" : b.col,
-          rnd(0.7, 1.1),
-          rnd(0.1, 0.25),
-          0.5
-        );
-  }
-  function shotDeath(W, b) {
-    const L = b.look;
-    if (L === "bubble") {
-      SFX.pop(b.x, b.y);
-      for (let k = 0; k < 8; k++) {
-        const a = k / 8 * 6.283;
-        glowDot(
-          W,
-          b.x + Math.cos(a) * b.size,
-          b.y + Math.sin(a) * b.size,
-          Math.cos(a) * 45,
-          Math.sin(a) * 45,
-          "#bfe8ff",
-          1,
-          rnd(0.15, 0.3),
-          0.3
-        );
-      }
-    } else if (L === "spark" || L === "arrow" || L === "crackle") {
-      const c = L === "spark" ? "#ff9cf5" : L === "arrow" ? "#78ff50" : "#ffe066";
-      for (let k = 0; k < 5; k++) glowDot(W, b.x, b.y, rnd(-70, 70), rnd(-70, 40), k ? c : "#ffffff", 1, rnd(0.12, 0.3), 0.3);
-    } else if (L === "glob") {
-      for (let k = 0; k < 4; k++) glowDot(W, b.x, b.y, rnd(-50, 50), rnd(-60, 0), "#f578dc", 1.1, rnd(0.2, 0.4), 0.6);
-    } else if (L === "orb" || L === "chain" || L === "rubber" || L === "heavy") {
-      for (let k = 0; k < 7; k++) glowDot(W, b.x, b.y, rnd(-80, 80), rnd(-80, 60), k ? b.col : "#ffffff", rnd(0.8, 1.3), rnd(0.15, 0.35), 0.3);
-    }
-  }
-  function shotGrind(W, b, x, y) {
-    if (b.look !== "drill" || Math.random() < 0.5) return;
-    const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
-    if (cx < 0 || cy < 0 || cx >= CW || cy >= CH || !W.mat[cy * CW + cx]) return;
-    const k = (cy * CW + cx) * 4, d = W.img.data, sp = Math.hypot(b.vx, b.vy) || 1;
-    W.sparks.push({
-      x,
-      y,
-      vx: -b.vx / sp * rnd(40, 110) + rnd(-50, 50),
-      vy: -b.vy / sp * rnd(40, 110) - rnd(20, 70),
-      life: rnd(0.4, 0.8),
-      max: 0.8,
-      c: "rgb(" + d[k] + "," + d[k + 1] + "," + d[k + 2] + ")",
-      size: rnd(1, 1.8),
-      heavy: true
-    });
   }
 
   // src/game/testhook.js
@@ -13111,363 +13474,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       c.addEventListener("pointerup", mUp);
       c.addEventListener("pointercancel", mUp);
       c.addEventListener("pointerleave", mLeave);
-      function cast(g, gx, gy, nx, ny) {
-        const pas = gunPassives(g);
-        const wrap = () => {
-          g.idx = 0;
-          g.rechT = g.skipRech ? 0 : effRecharge(g) * W.pb.rech;
-          g.rechLen = g.rechT;
-          g.skipRech = false;
-          shuffleOrder(g);
-        };
-        const plan = planCast(g, input.current.loadout.guns);
-        if (!plan.shots.length) {
-          wrap();
-          return;
-        }
-        const cost = W.pb.mana === 0 ? 0 : plan.cost;
-        if (g.mana < cost) {
-          g.idx = plan.start;
-          g.delayT = 0.12;
-          g.delayMax = 0.12;
-          SFX.ui("empty");
-          return;
-        }
-        g.mana -= cost;
-        const base = Math.atan2(ny, nx);
-        const acts = plan.acts || [];
-        let bonus = 0;
-        if (plan.hp && !W.p.dead) hurt(W, G, plan.hp);
-        if (acts.includes("refresh")) {
-          g.skipRech = true;
-          SFX.fx("refresh");
-        }
-        if (acts.includes("manapow")) {
-          SFX.fx("drain");
-          const spare = Math.max(0, g.mana - 50);
-          g.mana -= spare;
-          bonus += spare / 12;
-        }
-        if (acts.includes("gpower")) {
-          const LO2 = input.current.loadout;
-          const spend = Math.floor(LO2.gold * 0.05);
-          LO2.gold -= spend;
-          bonus += spend / 8;
-          if (spend) {
-            input.current.notify();
-            SFX.fx("gspend");
-          }
-        }
-        if (acts.includes("saws")) {
-          SFX.fx("saws");
-          for (const b of W.bullets) {
-            b.dmg = Math.max(b.dmg, 3);
-            b.size = 5;
-            b.bore = 4;
-            b.col = "#d9dde4";
-            b.life = Math.max(b.life, 1.2);
-            b.bounce = Math.max(b.bounce, 4);
-            b.explode = 0;
-          }
-        }
-        let ox = gx, oy = gy;
-        const clearSpot = (tx, ty) => {
-          for (let k = 0; k <= 10; k++) {
-            const t = k / 10;
-            const cx = tx + (gx - tx) * t, cy = ty + (gy - ty) * t;
-            if (!solidAt(W, cx, cy)) return [cx, cy];
-          }
-          return [gx, gy];
-        };
-        if (acts.includes("far")) [ox, oy] = clearSpot(gx + nx * 95, gy + ny * 95);
-        if (acts.includes("tele")) {
-          let best = null, bd = 420;
-          for (const e of W.enemies) {
-            const d = Math.hypot(e.x - gx, e.ty - gy);
-            if (d < bd) {
-              bd = d;
-              best = e;
-            }
-          }
-          if (best) [ox, oy] = clearSpot(best.x - nx * 14, best.ty - ny * 14);
-        }
-        const warp = acts.includes("warp");
-        if (warp || acts.includes("far") || acts.includes("tele")) SFX.fx("warp", ox, oy);
-        for (const sh of plan.shots) spawnShot(sh, ox, oy, base, bonus, warp, 30);
-        SFX.cast(plan.shots, ox === gx && oy === gy ? null : ox, oy);
-        let kick = 0;
-        for (const sh of plan.shots) kick += sh.recoil;
-        if (kick && !W.p.dead) {
-          kick = Math.min(220, kick * 1.4 * W.pb.recoil);
-          W.p.vx -= Math.cos(base) * kick;
-          W.p.vy -= Math.sin(base) * kick;
-        }
-        g.delayT = plan.delay * W.pb.delay;
-        g.delayMax = Math.max(g.delayT, 1e-3);
-        if (plan.wrap) wrap();
-      }
-      function spawnShot(sh, ox, oy, base, bonus, warp, fd) {
-        if (sh.still) {
-          castField(sh, ox + Math.cos(base) * fd, oy + Math.sin(base) * fd, base);
-          return;
-        }
-        const n = Math.min(24, Math.max(1, Math.round(sh.count)));
-        const off = (sh.ang || 0) * Math.PI / 180;
-        const pd = W.pb.dmg;
-        let pc = W.pb.crit;
-        if (W.pb.close && W.enemies.some((e) => Math.hypot(e.x - ox, e.ty - oy) < 56)) pc += 0.4;
-        for (let i = 0; i < n; i++) {
-          let a = base + off + (Math.random() - 0.5) * sh.spread * W.pb.spread * Math.PI / 180;
-          if (sh.autoaim) {
-            let best = null, bd = 320;
-            for (const e of W.enemies) {
-              const d = Math.hypot(e.x - ox, e.ty - oy);
-              if (d < bd) {
-                bd = d;
-                best = e;
-              }
-            }
-            if (best) a = Math.atan2(best.ty - oy, best.x - ox);
-          }
-          if (sh.flat) a = Math.cos(a) >= 0 ? 0 : Math.PI;
-          if (sh.beam) {
-            fireBeam(sh, ox, oy, Math.cos(a), Math.sin(a), bonus, pd, pc);
-            continue;
-          }
-          const reach = sh.reach != null ? sh.reach : 10;
-          let bx = ox + Math.cos(a) * reach, by = oy + Math.sin(a) * reach;
-          if (warp) {
-            for (let step2 = 0; step2 < 14; step2++) {
-              const tx = bx + Math.cos(a) * 10, ty = by + Math.sin(a) * 10;
-              if (solidAt(W, tx, ty)) break;
-              bx = tx;
-              by = ty;
-            }
-          }
-          W.bullets.push({
-            x: bx,
-            y: by,
-            vx: Math.cos(a) * sh.speed * W.pb.speed * bhSp(sh),
-            vy: Math.sin(a) * sh.speed * W.pb.speed * bhSp(sh),
-            life: sh.life,
-            dmg: (sh.dmg + bonus) * pd,
-            size: sh.size,
-            col: sh.col,
-            spin: 0,
-            homing: Math.max(sh.homing, W.pb.homing),
-            bounce: sh.bounce + W.pb.bounce,
-            pierce: sh.pierce,
-            explode: sh.explode,
-            grav: sh.grav,
-            accel: sh.accel,
-            bore: sh.bore,
-            hit: null,
-            knock: sh.knock,
-            crit: sh.crit + pc,
-            boomer: sh.boomer,
-            spiral: sh.spiral,
-            pong: sh.pong,
-            orbit: sh.orbit,
-            homeR: sh.homeR,
-            eat: sh.eat,
-            pull: sh.pull,
-            split: sh.split,
-            cluster: sh.cluster,
-            bounceFx: sh.bounceFx,
-            friendly: sh.friendly,
-            chain: sh.chain,
-            fuse: sh.fuse,
-            payload: sh.payload && sh.payload.length ? sh.payload : null,
-            hidden: sh.hidden,
-            arc: sh.arc,
-            drift: sh.drift,
-            pop: sh.pop,
-            tele: sh.tele,
-            fire: sh.fire,
-            drag: sh.drag,
-            bounceE: sh.bounceE,
-            pit: sh.pit,
-            wig: sh.wig,
-            look: sh.look,
-            light: sh.light,
-            lightR: sh.lightR,
-            vmax: sh.vmax,
-            lifeBoom: sh.lifeBoom,
-            trig: sh.trig,
-            timer: sh.trig === "timer" ? sh.timer : null,
-            ox: bx,
-            oy: by,
-            age: 0,
-            born: sh.life
-          });
-        }
-      }
-      function firePayload(b) {
-        const list = b.payload;
-        b.payload = null;
-        const sp = Math.hypot(b.vx, b.vy);
-        const nx = sp ? b.vx / sp : Math.cos(b.ang || 0), ny = sp ? b.vy / sp : Math.sin(b.ang || 0);
-        releaseAt(list, b.x, b.y, nx, ny, b.col);
-      }
-      function releaseAt(list, x, y, nx, ny, col) {
-        const x0 = x, y0 = y;
-        for (let k = 0; k < 6 && solidAt(W, x + nx * 10, y + ny * 10); k++) {
-          x -= nx * 4;
-          y -= ny * 4;
-        }
-        const base = Math.atan2(ny, nx);
-        for (const sh of list) spawnShot(sh, x, y, base, 0, false, 0);
-        SFX.cast(list, x0, y0);
-        burst(W, x0, y0, 5, col);
-      }
-      function fireBeam(sh, x, y, nx, ny, bonus, pd, pc) {
-        pd = pd || 1;
-        pc = pc || 0;
-        let hitAt = sh.beam;
-        for (let d = 6; d <= sh.beam; d += 4) {
-          const bx = x + nx * d, by = y + ny * d;
-          if (sh.bore) dig(W, G, bx, by, sh.bore);
-          else if (solidAt(W, bx, by)) {
-            hitAt = d;
-            break;
-          }
-          const j = enemyAt(W, bx, by, sh.size + 3);
-          if (j >= 0) {
-            damageEnemy(W, j, critRoll((sh.dmg + bonus) * pd, sh.crit + pc));
-            burst(W, bx, by, 4, sh.col);
-            if (sh.knock) shove(W.enemies[j], nx, ny, sh.knock);
-            if (!sh.pierce) {
-              hitAt = d;
-              break;
-            }
-          }
-        }
-        W.beams.push({ x, y, nx, ny, len: hitAt, col: sh.col, w: sh.size, t: 0, look: sh.look });
-        if (sh.look) {
-          const ex = x + nx * hitAt, ey = y + ny * hitAt;
-          for (let k = 0; k < 5; k++) glowDot(
-            W,
-            ex,
-            ey,
-            -nx * rnd(20, 80) + rnd(-50, 50),
-            -ny * rnd(20, 80) + rnd(-50, 30),
-            k ? sh.col : "#ffffff",
-            rnd(0.8, 1.3),
-            rnd(0.12, 0.3),
-            0.3
-          );
-          if (sh.pit && hitAt < sh.beam) dig(W, G, ex + nx * 2, ey + ny * 2, sh.pit);
-        }
-        if (sh.explode) explode(W, G, x + nx * hitAt, y + ny * hitAt, sh.explode);
-        if (sh.payload && sh.payload.length) releaseAt(sh.payload, x + nx * hitAt, y + ny * hitAt, nx, ny, sh.col);
-      }
-      function spray(b) {
-        SFX.fx("cluster", b.x, b.y);
-        const n = Math.min(8, b.cluster);
-        for (let i = 0; i < n; i++) {
-          const a = Math.random() * Math.PI * 2, sp = 140 + Math.random() * 120;
-          W.bullets.push({
-            x: b.x,
-            y: b.y,
-            vx: Math.cos(a) * sp,
-            vy: Math.sin(a) * sp,
-            life: 0.5 + Math.random() * 0.3,
-            dmg: Math.max(0.6, b.dmg * 0.3),
-            size: 2,
-            col: b.col,
-            spin: 0,
-            homing: 0,
-            bounce: 0,
-            pierce: 0,
-            explode: 9,
-            grav: 300,
-            accel: 0,
-            bore: 0,
-            hit: null,
-            age: 0
-          });
-        }
-        burst(W, b.x, b.y, 8, b.col);
-      }
-      function throwEmbers(x, y, n) {
-        for (let k = 0; k < n; k++) {
-          const a = -Math.PI / 2 + (Math.random() - 0.5) * 4.2, v = 60 + Math.random() * 150;
-          W.dparts.push({
-            x,
-            y,
-            vx: Math.cos(a) * v,
-            vy: Math.sin(a) * v - 20,
-            g: 0.45,
-            c: FIRE_COLS[Math.floor(Math.random() * 3)],
-            s: 1 + Math.random() * 0.8,
-            life: 0.7 + Math.random() * 0.6,
-            max: 1.3,
-            glow: 1,
-            ember: 1
-          });
-        }
-      }
-      function explodeCross(b) {
-        const R = b.explode || 20;
-        explode(W, G, b.x, b.y, R * 0.6);
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]])
-          explode(W, G, b.x + dx * R * 0.9, b.y + dy * R * 0.9, R * 0.55);
-      }
-      const critRoll = (dmg, chance) => chance && Math.random() < chance ? (SFX.fx("crit"), dmg * 3) : dmg;
-      const shove = (e, nx, ny, force) => {
-        e.x += nx * force * 0.03;
-        e.y += ny * force * 0.03;
-        e.tgt = null;
-      };
-      function castField(sh, x, y, ang) {
-        const pay = sh.payload && sh.payload.length ? sh.payload : null;
-        if (sh.field === "explode") {
-          explode(W, G, x, y, sh.r, void 0, sh.fire);
-          if (sh.embers) throwEmbers(x, y, sh.embers);
-          if (pay) releaseAt(pay, x, y, Math.cos(ang || 0), Math.sin(ang || 0), sh.col);
-          return;
-        }
-        W.fields.push({
-          x,
-          y,
-          r: sh.r,
-          field: sh.field,
-          life: sh.life,
-          max: sh.life,
-          col: sh.col,
-          dmg: sh.dmg || 1,
-          tick: 0,
-          payload: pay,
-          ang: ang || 0,
-          trig: sh.trig
-        });
-      }
-      function teleportTo(b) {
-        if (W.p.dead) return;
-        const sp = Math.hypot(b.vx, b.vy), nx = sp ? b.vx / sp : 0, ny = sp ? b.vy / sp : 0;
-        for (let back = 0; back <= 40; back += 3)
-          for (const dy of [0, -4, 4, -8, 8, -12, 12, -16, 16]) {
-            const x = b.x - nx * back - PW / 2, y = b.y - ny * back - PH / 2 + dy;
-            if (x < CELL * 3 || y < CELL * 3 || x + PW > WW - CELL * 3 || y + PH > WH - CELL * 3) continue;
-            if (boxHit(W, x, y)) continue;
-            burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 10, b.col);
-            W.p.x = x;
-            W.p.y = y;
-            W.p.vx = 0;
-            W.p.vy = 0;
-            burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 12, b.col);
-            SFX.fx("warp", W.p.x + PW / 2, W.p.y + PH / 2);
-            return;
-          }
-        burst(W, b.x, b.y, 4, b.col);
-        SFX.fx("fizzle", b.x, b.y);
-      }
-      const fieldPayload = (f) => {
-        if (!f.payload) return;
-        const list = f.payload;
-        f.payload = null;
-        releaseAt(list, f.x, f.y, Math.cos(f.ang), Math.sin(f.ang), f.col);
-      };
       const pgGlow = document.createElement("canvas"), pgGlowCtx = pgGlow.getContext("2d");
       function plantGlow(e, TH) {
         const u = e.je.u, reach = kru("jeGlowR", u.glowR) * kru("jePlantReach", u.plant);
@@ -13795,7 +13801,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           g.mana = Math.min(g.manaMax + pas.manaMax, g.mana + (g.manaRegen + pas.manaRegen) * dt);
         }
         const gun = LO.guns[LO.sel];
-        if (R.on && gun && gun.delayT <= 0 && gun.rechT <= 0) cast(gun, gx, gy, R.nx, R.ny);
+        if (R.on && gun && gun.delayT <= 0 && gun.rechT <= 0) cast(W, G, gun, gx, gy, R.nx, R.ny);
         for (let i = W.bullets.length - 1; i >= 0; i--) {
           const b = W.bullets[i];
           b.life -= dt;
@@ -13810,7 +13816,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             boom = b.explode ? true : false;
             if (!b.explode) dead = true;
             else {
-              explodeCross(b);
+              explodeCross(W, G, b);
               dead = true;
               boom = false;
             }
@@ -13849,7 +13855,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (b.eat) dig(W, G, b.x, b.y, b.eat);
           if (b.fire) ignite(W, G, b.x, b.y, b.size + 2, 0.5);
           if (b.arc) lightningStep(W, b, dt);
-          if (b.payload && b.timer != null && (b.timer -= dt) <= 0) firePayload(b);
+          if (b.payload && b.timer != null && (b.timer -= dt) <= 0) firePayload(W, G, b);
           if (b.pull) {
             const reach = DEV.bhPull * b.pull / 70;
             for (const e of W.enemies) {
@@ -13963,7 +13969,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               if (b.knock) shove(e, b.vx / sp, b.vy / sp, b.knock);
               b.x = nx;
               b.y = ny;
-              if (b.payload && b.trig !== "expire") firePayload(b);
+              if (b.payload && b.trig !== "expire") firePayload(W, G, b);
               if (b.chain > 0) {
                 (b.hit || (b.hit = /* @__PURE__ */ new Set())).add(e);
                 let best = null, bd = 150;
@@ -13986,7 +13992,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 }
               }
               if (b.cluster) {
-                spray(b);
+                spray(W, b);
                 dead = true;
                 break;
               }
@@ -14018,7 +14024,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               break;
             }
             if (solidAt(W, nx, ny)) {
-              if (b.payload && b.trig !== "expire") firePayload(b);
+              if (b.payload && b.trig !== "expire") firePayload(W, G, b);
               if (b.bounce > 0 && !b.bore && !b.eat) {
                 b.bounce--;
                 const hx = solidAt(W, nx, b.y), hy = solidAt(W, b.x, ny);
@@ -14046,7 +14052,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 continue;
               }
               if (b.cluster) {
-                spray(b);
+                spray(W, b);
                 dead = true;
                 break;
               }
@@ -14073,8 +14079,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             dead = true;
           }
           if (dead && b.fire) ignite(W, G, b.x, b.y, b.size + 6, 0.9);
-          if (dead && b.payload && (b.trig === "expire" || b.struck)) firePayload(b);
-          if (dead && b.tele) teleportTo(b);
+          if (dead && b.payload && (b.trig === "expire" || b.struck)) firePayload(W, G, b);
+          if (dead && b.tele) teleportTo(W, b);
           if (dead && b.arc && b.trail) {
             b.trail.push({ x: b.x, y: b.y });
             addArc(W, b.trail, b.col, 1.4, 0.16);
@@ -14157,7 +14163,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             for (let j = 0; j < W.enemies.length && !trip; j++) if (near2(j)) trip = true;
             if (trip) {
               explode(W, G, f.x, f.y, f.r);
-              fieldPayload(f);
+              fieldPayload(W, G, f);
               W.fields.splice(i, 1);
               continue;
             }
@@ -14165,7 +14171,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             for (const fl of W.flashes) {
               if (Math.hypot(fl.x - f.x, fl.y - f.y) < fl.r + f.r * 0.5) {
                 explode(W, G, f.x, f.y, f.r * 1.6);
-                fieldPayload(f);
+                fieldPayload(W, G, f);
                 W.fields.splice(i, 1);
                 f.life = -1;
                 break;
@@ -16558,10 +16564,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var shotPellets = (sh) => Math.max(1, Math.round(sh.count || 1)) + (sh.payload || []).reduce((t, ps) => t + shotPellets(ps), 0);
   function gunRate(gun) {
     const g = resetGun(Object.assign({}, gun, { slots: gun.slots.slice() }));
-    let cast = 0, dmg = 0, cost = 0, shots = 0, blood = 0;
+    let cast2 = 0, dmg = 0, cost = 0, shots = 0, blood = 0;
     for (let guard = 0; guard < 16; guard++) {
       const p = planCast(g);
-      cast += p.delay;
+      cast2 += p.delay;
       cost += p.cost;
       blood += p.hp || 0;
       for (const sh of p.shots) {
@@ -16571,7 +16577,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (p.wrap) break;
     }
     const rech = effRecharge(g);
-    const cycle = Math.max(1e-3, cast + rech);
+    const cycle = Math.max(1e-3, cast2 + rech);
     const pas = gunPassives(gun);
     const regen = gun.manaRegen + pas.manaRegen;
     const manaPerSec = cost / cycle;
@@ -16581,7 +16587,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return {
       dps: dmg / cycle * sustain * bleed,
       cycle,
-      cast,
+      cast: cast2,
       rech,
       manaPerSec,
       regen,

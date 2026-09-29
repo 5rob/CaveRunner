@@ -430,6 +430,9 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] lightning.js: `jag`, `addArc`, `lightningStep`
   - [x] rats.js: `onWebIn`, `ratSolid`, `navFor`, `spawnRat`, `unstick`, `ratFrame` (`ratOnWeb` joins `G`)
   - [x] fog.js: `fogLit`, `roomSeen`, `seenAt`, `paintFog` (the reveal, bake and blur stay in draw())
+  - [x] gun.js (`cast`, `spawnShot`, `releaseAt`, `firePayload`), fields.js (`castField`, `fireBeam`, `throwEmbers`,
+        `fieldPayload`), bullets.js (`critRoll`, `shove`, `spray`, `explodeCross`, `teleportTo`): one move, a cycle
+        (`spawnShot` → `fireBeam` → `releaseAt` → `spawnShot`). The bullet loop and fields' per-frame work stay in step()
   - Learned so far: `G`'s keys must be declared above `G` (a closure `const` further down moves up
     first, as `fireBox` did). A function passed as a callback gets an arrow at each site; for the
     per-frame ones (`visPoly`, `fireStep`, a spider's or jelly's `env`) that is one small allocation
@@ -576,6 +579,11 @@ commit. List them here for after.
   in the full run, passed alone; a new name on the list. `torch` "brighter frames…" again.
   P3.4 (after the fire): `jelly` (browser) "saturation 0 greys it out" failed once in the full run, passed 3 of 3
   alone. A new name: it reads the Dev panel's jelly preview canvas, which no P3.4 move touches.
+- **`trigger` "a trigger carrying an explosion blows it up where it hits" is flakier than the list says.** P3.4 (13):
+  failed 6 of 13 runs alone on that step's tree, 1 of 4 on the commit before it (code checked identical, probe SAME).
+  The test waits in real time (50 × 25 ms) for the bolt to cross a 450-wide sandbox and hit the far wall; when it
+  fails the carrier was born (`peak` 1) and never let go (`flash` 0), i.e. it hadn't hit anything in time or expired
+  first. Worth making frame-counted rather than wall-clock after the refactor.
 - **Misplaced comments (left as they were, moved with their code).** A second copy of
   planCast's opening comment sits above `blankShot` (`spells/cast.js`); tracePath's opening
   comment sits above `DRIFT_DRAG` (`spells/trace.js`); `ROOM_HW`'s line carries the trailing
@@ -778,3 +786,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.4 (10) | `lightning.js`: `jag`, `addArc`, `lightningStep`. Clean move. `lightning`, `spelllooks` run too. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 (11) | `rats.js`: `onWebIn` first (pure), then `ratOnWeb` (made once from `W.webs`, same as before) moved up above `G` and into it by hand, then `ratSolid`, `navFor`, `spawnRat`, `unstick`, `ratFrame`. `navFor`'s comment had travelled with `onWebIn`: put back. `ratSolid` as a callback is an arrow at its two sites. `rats`, `spider` run too. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 (12) | `fog.js`: `fogLit`, `roomSeen`, `seenAt` (`(W, …)`), `paintFog` (`(W, G)`: `fogImg`). `fog`, `map`, `torch`, `replay`, `jelly` (plant glow) run too; `jelly` spit flaked 2 of 4, glow checks passed every time. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 3, P3.4 (13) | Casting in one move (13 functions, a cycle): `gun.js`, `fields.js`, `bullets.js`. A scratch check stripped the `W, G` plumbing and found every moved line verbatim in the old closure. `everymod`, `trigger`, `blackhole`, `teleport`, `t1spells`, `spelllooks`, `pollen`, `lightning`, `buzzsaw`, `perks` run too. `trigger` "a trigger carrying an explosion…" flaked: 6 of 13 runs alone here, 1 of 4 on the commit before (see Found along the way). | probe SAME, logic 33/33, smoke ok |

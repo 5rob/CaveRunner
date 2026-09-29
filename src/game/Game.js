@@ -27,7 +27,7 @@ import {
 } from '../replay/replay.js';
 import { SAVE_KEY } from '../save/save.js';
 import { effRecharge, gunPassives, planCast } from '../spells/cast.js';
-import { caveGun, gunAccent, shuffleOrder } from '../spells/guns.js';
+import { caveGun, gunAccent } from '../spells/guns.js';
 import { MODS, VACUUM_WAIT, famCol } from '../spells/mods.js';
 import {
   DRIFT_ACC, DRIFT_CHASE, DRIFT_R, bhSp, driftStep, tracePath, wigTurn
@@ -38,9 +38,12 @@ import { ROOM_HH, ROOM_HW, makeLevel } from '../world/level.js';
 import { VIS_RAYS, fogReveal, fogStart, nestFog, visPoly } from '../world/vision.js';
 import { builtAt } from '../world/zones.js';
 import { puffSpores } from './systems/ambience.js';
+import { critRoll, explodeCross, shove, spray, teleportTo } from './systems/bullets.js';
 import { damageEnemy, fireEnemyShot } from './systems/enemies.js';
+import { fieldPayload } from './systems/fields.js';
 import { fireBlast, fireFrame, ignite, setAlight, youAlight } from './systems/fire.js';
 import { fogLit, paintFog, roomSeen, seenAt } from './systems/fog.js';
+import { cast, firePayload } from './systems/gun.js';
 import { addArc, jag, lightningStep } from './systems/lightning.js';
 import { burst, goo, splat, toast } from './systems/particles.js';
 import { hurt, maxHp, refreshBag } from './systems/player.js';
@@ -445,262 +448,6 @@ export function Game({ input }) {
     c.addEventListener('pointercancel', mUp);
     c.addEventListener('pointerleave', mLeave);
 
-    // ---- casting ----
-    // Walk the gun's slot list from where it left off. Modifiers pile up and apply
-    // to the shots that come after them; running off the end triggers the recharge.
-    function cast(g, gx, gy, nx, ny) {
-      const pas = gunPassives(g);
-      const wrap = () => {
-        g.idx = 0;
-        g.rechT = g.skipRech ? 0 : effRecharge(g) * W.pb.rech;   // Faster Wands shortens it
-        g.rechLen = g.rechT;
-        g.skipRech = false;
-        shuffleOrder(g);
-      };
-      const plan = planCast(g, input.current.loadout.guns);
-      if (!plan.shots.length) { wrap(); return; }        // modifiers with nothing to modify
-      const cost = W.pb.mana === 0 ? 0 : plan.cost;        // Unlimited Spells: nothing costs mana
-      if (g.mana < cost) { g.idx = plan.start; g.delayT = 0.12; g.delayMax = 0.12; SFX.ui('empty'); return; }
-      g.mana -= cost;
-
-      const base = Math.atan2(ny, nx);
-      const acts = plan.acts || [];
-      let bonus = 0;                                   // damage bought with something else
-
-      if (plan.hp && !W.p.dead) hurt(W, G, plan.hp);
-      if (acts.includes('refresh')) { g.skipRech = true; SFX.fx('refresh'); }
-      if (acts.includes('manapow')) {
-        SFX.fx('drain');
-        const spare = Math.max(0, g.mana - 50);
-        g.mana -= spare; bonus += spare / 12;
-      }
-      if (acts.includes('gpower')) {
-        const LO2 = input.current.loadout;
-        const spend = Math.floor(LO2.gold * 0.05);
-        LO2.gold -= spend; bonus += spend / 8;
-        if (spend) { input.current.notify(); SFX.fx('gspend'); }
-      }
-      if (acts.includes('saws')) {
-        SFX.fx('saws');
-        for (const b of W.bullets) {
-          b.dmg = Math.max(b.dmg, 3); b.size = 5; b.bore = 4; b.col = '#d9dde4';
-          b.life = Math.max(b.life, 1.2); b.bounce = Math.max(b.bounce, 4); b.explode = 0;
-        }
-      }
-
-      // where the shots come into the world. A spot buried in rock would eat the
-      // whole cast, so anything that moves the origin backs off to clear ground.
-      let ox = gx, oy = gy;
-      const clearSpot = (tx, ty) => {
-        for (let k = 0; k <= 10; k++) {
-          const t = k / 10;
-          const cx = tx + (gx - tx) * t, cy = ty + (gy - ty) * t;
-          if (!solidAt(W, cx, cy)) return [cx, cy];
-        }
-        return [gx, gy];
-      };
-      if (acts.includes('far')) [ox, oy] = clearSpot(gx + nx * 95, gy + ny * 95);
-      if (acts.includes('tele')) {
-        let best = null, bd = 420;
-        for (const e of W.enemies) {
-          const d = Math.hypot(e.x - gx, e.ty - gy);
-          if (d < bd) { bd = d; best = e; }
-        }
-        if (best) [ox, oy] = clearSpot(best.x - nx * 14, best.ty - ny * 14);
-      }
-      const warp = acts.includes('warp');
-      if (warp || acts.includes('far') || acts.includes('tele')) SFX.fx('warp', ox, oy);
-
-      for (const sh of plan.shots) spawnShot(sh, ox, oy, base, bonus, warp, 30);
-      SFX.cast(plan.shots, ox === gx && oy === gy ? null : ox, oy);
-      let kick = 0;
-      for (const sh of plan.shots) kick += sh.recoil;
-      if (kick && !W.p.dead) {
-        kick = Math.min(220, kick * 1.4 * W.pb.recoil);   // Knockback / Concentrated add kick
-        W.p.vx -= Math.cos(base) * kick;
-        W.p.vy -= Math.sin(base) * kick;
-      }
-      g.delayT = plan.delay * W.pb.delay;                 // Concentrated slows, Faster Wands quickens
-      g.delayMax = Math.max(g.delayT, 0.001);           // for the cast-delay ring on the stick
-      if (plan.wrap) wrap();
-    }
-
-    // One planned shot into the world: pellets, spread, auto-aim, beams and all. It is
-    // its own function because a trigger's payload comes through here too, from
-    // wherever the carrier stopped. `fd` is how far ahead of the origin a static field
-    // lands: a barrel's length out of the gun, and nothing at all off a trigger.
-    function spawnShot(sh, ox, oy, base, bonus, warp, fd) {
-      if (sh.still) { castField(sh, ox + Math.cos(base) * fd, oy + Math.sin(base) * fd, base); return; }
-      const n = Math.min(24, Math.max(1, Math.round(sh.count)));
-      const off = (sh.ang || 0) * Math.PI / 180;
-      // perk touches: Glass/Concentrated damage, Critical/Close-Call chance, Faster
-      // Projectiles speed, Bouncing/Homing paths. Close Call only counts if something is
-      // right on top of you, so it is worked out once per cast, not once per pellet.
-      const pd = W.pb.dmg;
-      let pc = W.pb.crit;
-      if (W.pb.close && W.enemies.some(e => Math.hypot(e.x - ox, e.ty - oy) < 56)) pc += 0.4;
-      for (let i = 0; i < n; i++) {
-        let a = base + off + (Math.random() - 0.5) * sh.spread * W.pb.spread * Math.PI / 180;
-        if (sh.autoaim) {
-          let best = null, bd = 320;
-          for (const e of W.enemies) {
-            const d = Math.hypot(e.x - ox, e.ty - oy);
-            if (d < bd) { bd = d; best = e; }
-          }
-          if (best) a = Math.atan2(best.ty - oy, best.x - ox);
-        }
-        if (sh.flat) a = Math.cos(a) >= 0 ? 0 : Math.PI;
-        if (sh.beam) { fireBeam(sh, ox, oy, Math.cos(a), Math.sin(a), bonus, pd, pc); continue; }
-        const reach = sh.reach != null ? sh.reach : 10;
-        let bx = ox + Math.cos(a) * reach, by = oy + Math.sin(a) * reach;
-        if (warp) {                                   // jump forward, but not into rock
-          for (let step = 0; step < 14; step++) {
-            const tx = bx + Math.cos(a) * 10, ty = by + Math.sin(a) * 10;
-            if (solidAt(W, tx, ty)) break;
-            bx = tx; by = ty;
-          }
-        }
-        W.bullets.push({ x: bx, y: by,
-          vx: Math.cos(a) * sh.speed * W.pb.speed * bhSp(sh), vy: Math.sin(a) * sh.speed * W.pb.speed * bhSp(sh),
-          life: sh.life, dmg: (sh.dmg + bonus) * pd, size: sh.size, col: sh.col, spin: 0,
-          homing: Math.max(sh.homing, W.pb.homing), bounce: sh.bounce + W.pb.bounce, pierce: sh.pierce,
-          explode: sh.explode, grav: sh.grav, accel: sh.accel, bore: sh.bore, hit: null,
-          knock: sh.knock, crit: sh.crit + pc, boomer: sh.boomer, spiral: sh.spiral,
-          pong: sh.pong, orbit: sh.orbit, homeR: sh.homeR, eat: sh.eat, pull: sh.pull,
-          split: sh.split, cluster: sh.cluster, bounceFx: sh.bounceFx,
-          friendly: sh.friendly, chain: sh.chain, fuse: sh.fuse,
-          payload: sh.payload && sh.payload.length ? sh.payload : null, hidden: sh.hidden, arc: sh.arc,
-          drift: sh.drift, pop: sh.pop, tele: sh.tele, fire: sh.fire,
-          drag: sh.drag, bounceE: sh.bounceE, pit: sh.pit, wig: sh.wig, look: sh.look,
-          light: sh.light, lightR: sh.lightR, vmax: sh.vmax, lifeBoom: sh.lifeBoom,
-          trig: sh.trig, timer: sh.trig === 'timer' ? sh.timer : null,
-          ox: bx, oy: by, age: 0, born: sh.life });
-      }
-    }
-
-    // A carrier lets go of its payload: 'hit' on the first thing it touches, 'timer'
-    // when its timer runs out (or on a hit first), 'expire' when it dies. It fires once;
-    // anything in the payload that is itself a carrier takes its own payload along.
-    function firePayload(b) {
-      const list = b.payload;
-      b.payload = null;
-      const sp = Math.hypot(b.vx, b.vy);
-      const nx = sp ? b.vx / sp : Math.cos(b.ang || 0), ny = sp ? b.vy / sp : Math.sin(b.ang || 0);
-      releaseAt(list, b.x, b.y, nx, ny, b.col);
-    }
-    function releaseAt(list, x, y, nx, ny, col) {
-      const x0 = x, y0 = y;
-      // it may have stopped inside the rock, so back up along its own track until
-      // there is open ground for the payload to come out into
-      for (let k = 0; k < 6 && solidAt(W, x + nx * 10, y + ny * 10); k++) { x -= nx * 4; y -= ny * 4; }
-      const base = Math.atan2(ny, nx);
-      for (const sh of list) spawnShot(sh, x, y, base, 0, false, 0);
-      SFX.cast(list, x0, y0);
-      burst(W, x0, y0, 5, col);
-    }
-
-    // A beam is instant: it walks a line, damages what it touches and leaves a streak.
-    function fireBeam(sh, x, y, nx, ny, bonus, pd, pc) {
-      pd = pd || 1; pc = pc || 0;
-      let hitAt = sh.beam;
-      for (let d = 6; d <= sh.beam; d += 4) {
-        const bx = x + nx * d, by = y + ny * d;
-        if (sh.bore) dig(W, G, bx, by, sh.bore);
-        else if (solidAt(W, bx, by)) { hitAt = d; break; }
-        const j = enemyAt(W, bx, by, sh.size + 3);
-        if (j >= 0) {
-          damageEnemy(W, j, critRoll((sh.dmg + bonus) * pd, sh.crit + pc));
-          burst(W, bx, by, 4, sh.col);
-          if (sh.knock) shove(W.enemies[j], nx, ny, sh.knock);
-          if (!sh.pierce) { hitAt = d; break; }
-        }
-      }
-      W.beams.push({ x, y, nx, ny, len: hitAt, col: sh.col, w: sh.size, t: 0, look: sh.look });
-      if (sh.look) {                                   // sparks off the end, and a scorched hole where it meets rock
-        const ex = x + nx * hitAt, ey = y + ny * hitAt;
-        for (let k = 0; k < 5; k++) glowDot(W, ex, ey, -nx * rnd(20, 80) + rnd(-50, 50), -ny * rnd(20, 80) + rnd(-50, 30),
-          k ? sh.col : '#ffffff', rnd(0.8, 1.3), rnd(0.12, 0.3), 0.3);
-        if (sh.pit && hitAt < sh.beam) dig(W, G, ex + nx * 2, ey + ny * 2, sh.pit);
-      }
-      if (sh.explode) explode(W, G, x + nx * hitAt, y + ny * hitAt, sh.explode);
-      // a beam is instant, so whatever kind of carrier it is, the payload goes off at its end
-      if (sh.payload && sh.payload.length) releaseAt(sh.payload, x + nx * hitAt, y + ny * hitAt, nx, ny, sh.col);
-    }
-
-    // Clusterbolt: the shot bursts into a handful of small explosive bolts
-    function spray(b) {
-      SFX.fx('cluster', b.x, b.y);
-      const n = Math.min(8, b.cluster);
-      for (let i = 0; i < n; i++) {
-        const a = Math.random() * Math.PI * 2, sp = 140 + Math.random() * 120;
-        W.bullets.push({ x: b.x, y: b.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
-          life: 0.5 + Math.random() * 0.3, dmg: Math.max(0.6, b.dmg * 0.3), size: 2,
-          col: b.col, spin: 0, homing: 0, bounce: 0, pierce: 0, explode: 9,
-          grav: 300, accel: 0, bore: 0, hit: null, age: 0 });
-      }
-      burst(W, b.x, b.y, 8, b.col);
-    }
-    // Brimstone: burning sparks thrown out of the blast, lighting what they land on
-    function throwEmbers(x, y, n) {
-      for (let k = 0; k < n; k++) {
-        const a = -Math.PI / 2 + (Math.random() - 0.5) * 4.2, v = 60 + Math.random() * 150;
-        W.dparts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 20, g: 0.45,
-          c: FIRE_COLS[Math.floor(Math.random() * 3)], s: 1 + Math.random() * 0.8, life: 0.7 + Math.random() * 0.6, max: 1.3,
-          glow: 1, ember: 1 });
-      }
-    }
-    // Death Cross: four arms of blast rather than one round crater
-    function explodeCross(b) {
-      const R = b.explode || 20;
-      explode(W, G, b.x, b.y, R * 0.6);
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]])
-        explode(W, G, b.x + dx * R * 0.9, b.y + dy * R * 0.9, R * 0.55);
-    }
-
-    const critRoll = (dmg, chance) => (chance && Math.random() < chance ? (SFX.fx('crit'), dmg * 3) : dmg);
-    const shove = (e, nx, ny, force) => {
-      e.x += nx * force * 0.03; e.y += ny * force * 0.03; e.tgt = null;
-    };
-
-    // Static projectiles: they sit where you cast them and work over time.
-    function castField(sh, x, y, ang) {
-      const pay = sh.payload && sh.payload.length ? sh.payload : null;
-      if (sh.field === 'explode') {
-        explode(W, G, x, y, sh.r, undefined, sh.fire);
-        if (sh.embers) throwEmbers(x, y, sh.embers);
-        if (pay) releaseAt(pay, x, y, Math.cos(ang || 0), Math.sin(ang || 0), sh.col);
-        return;
-      }
-      W.fields.push({ x, y, r: sh.r, field: sh.field, life: sh.life, max: sh.life,
-        col: sh.col, dmg: sh.dmg || 1, tick: 0, payload: pay, ang: ang || 0, trig: sh.trig });
-    }
-    // Teleport Bolt: put you where the bolt stopped. It may have stopped against rock, so
-    // back up along its own track (and nudge up/down) until your whole body fits; if
-    // nowhere near fits, it fizzles and you stay put.
-    function teleportTo(b) {
-      if (W.p.dead) return;
-      const sp = Math.hypot(b.vx, b.vy), nx = sp ? b.vx / sp : 0, ny = sp ? b.vy / sp : 0;
-      for (let back = 0; back <= 40; back += 3)
-        for (const dy of [0, -4, 4, -8, 8, -12, 12, -16, 16]) {
-          const x = b.x - nx * back - PW / 2, y = b.y - ny * back - PH / 2 + dy;
-          if (x < CELL * 3 || y < CELL * 3 || x + PW > WW - CELL * 3 || y + PH > WH - CELL * 3) continue;
-          if (boxHit(W, x, y)) continue;
-          burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 10, b.col);
-          W.p.x = x; W.p.y = y; W.p.vx = 0; W.p.vy = 0;
-          burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 12, b.col);
-          SFX.fx('warp', W.p.x + PW / 2, W.p.y + PH / 2);
-          return;
-        }
-      burst(W, b.x, b.y, 4, b.col);
-      SFX.fx('fizzle', b.x, b.y);
-    }
-    // a crystal "with Trigger" casts what it carries when it goes off
-    const fieldPayload = f => {
-      if (!f.payload) return;
-      const list = f.payload; f.payload = null;
-      releaseAt(list, f.x, f.y, Math.cos(f.ang), Math.sin(f.ang), f.col);
-    };
-
     // The jellyfish's plant glow in the game (the comp is plantGlowFill): the art round a
     // jelly — the rock with its baked moss over the decoration layer, and the hanging plants
     // drawn over both at terrain resolution and read back — keyed, ramped, twinkled and
@@ -973,7 +720,7 @@ export function Game({ input }) {
         g.mana = Math.min(g.manaMax + pas.manaMax, g.mana + (g.manaRegen + pas.manaRegen) * dt);
       }
       const gun = LO.guns[LO.sel];
-      if (R.on && gun && gun.delayT <= 0 && gun.rechT <= 0) cast(gun, gx, gy, R.nx, R.ny);
+      if (R.on && gun && gun.delayT <= 0 && gun.rechT <= 0) cast(W, G, gun, gx, gy, R.nx, R.ny);
 
       // ---- shots ----
       for (let i = W.bullets.length - 1; i >= 0; i--) {
@@ -982,7 +729,7 @@ export function Game({ input }) {
         let dead = b.life <= 0, boom = false;
         if (dead && b.lifeBoom && b.explode) { dead = false; boom = true; }   // a bomb's fuse burns down
         if (b.fuse && b.age >= b.fuse) { boom = b.explode ? true : false; if (!b.explode) dead = true;
-          else { explodeCross(b); dead = true; boom = false; } }
+          else { explodeCross(W, G, b); dead = true; boom = false; } }
         if (b.grav) b.vy += b.grav * dt;
         if (b.drag) { const k = Math.exp(-b.drag * dt); b.vx *= k; b.vy *= k; }
         if (b.accel) { const f = 1 + b.accel * dt; b.vx *= f; b.vy *= f; }
@@ -1001,7 +748,7 @@ export function Game({ input }) {
         if (b.fire) ignite(W, G, b.x, b.y, b.size + 2, 0.5);     // a fire spell lights what it flies through
         if (b.arc) lightningStep(W, b, dt);
         // a timer lets its payload go in mid-air, and the carrier flies on
-        if (b.payload && b.timer != null && (b.timer -= dt) <= 0) firePayload(b);
+        if (b.payload && b.timer != null && (b.timer -= dt) <= 0) firePayload(W, G, b);
         if (b.pull) {
           // Black Hole: heavy gravity. It reaches ~2.2x its pull stat and drags harder the
           // closer you are, so creatures get hauled in and held in the middle of it. It
@@ -1089,7 +836,7 @@ export function Game({ input }) {
             SFX.hit(nx, ny);
             if (b.knock) shove(e, b.vx / sp, b.vy / sp, b.knock);
             b.x = nx; b.y = ny;
-            if (b.payload && b.trig !== 'expire') firePayload(b);   // a trigger goes off on a hit
+            if (b.payload && b.trig !== 'expire') firePayload(W, G, b);   // a trigger goes off on a hit
             if (b.chain > 0) {                            // hop to the next one along
               (b.hit || (b.hit = new Set())).add(e);
               let best = null, bd = 150;
@@ -1107,7 +854,7 @@ export function Game({ input }) {
                 continue;
               }
             }
-            if (b.cluster) { spray(b); dead = true; break; }
+            if (b.cluster) { spray(W, b); dead = true; break; }
             if (b.explode) { boom = true; break; }
             if (b.pop) { explode(W, G, nx, ny, b.pop, b.dmg * 0.5); dead = true; break; }
             if (b.pull) { (b.hit || (b.hit = new Set())).add(e); continue; }   // a black hole rolls on
@@ -1119,7 +866,7 @@ export function Game({ input }) {
             burst(W, nx, ny, 5, b.col); hurt(W, G, Math.round(b.dmg * 2)); dead = true; break;
           }
           if (solidAt(W, nx, ny)) {
-            if (b.payload && b.trig !== 'expire') firePayload(b);   // so does touching rock
+            if (b.payload && b.trig !== 'expire') firePayload(W, G, b);   // so does touching rock
             if (b.bounce > 0 && !b.bore && !b.eat) {
               b.bounce--;
               const hx = solidAt(W, nx, b.y), hy = solidAt(W, b.x, ny);
@@ -1139,7 +886,7 @@ export function Game({ input }) {
             // Matter Eater / Black Hole: eat straight through the rock, digging as it goes,
             // so a fast shot can't outrun the small hole its per-frame eat carves ahead
             if (b.eat > 0) { dig(W, G, nx, ny, b.eat); continue; }
-            if (b.cluster) { spray(b); dead = true; break; }
+            if (b.cluster) { spray(W, b); dead = true; break; }
             if (b.explode) { boom = true; break; }
             if (b.pop) { explode(W, G, b.x, b.y, b.pop, b.dmg * 0.5); dead = true; break; }
             if (b.pit) dig(W, G, nx, ny, b.pit);                // Noita's small hole where a shot lands
@@ -1153,8 +900,8 @@ export function Game({ input }) {
         if (boom) { explode(W, G, b.x, b.y, b.explode, undefined, b.fire); dead = true; }
         if (dead && b.fire) ignite(W, G, b.x, b.y, b.size + 6, 0.9);
         // an expiration trigger goes off however it dies; a trigger stopped by a prop counts as a hit
-        if (dead && b.payload && (b.trig === 'expire' || b.struck)) firePayload(b);
-        if (dead && b.tele) teleportTo(b);            // Teleport Bolt: you go where it stopped
+        if (dead && b.payload && (b.trig === 'expire' || b.struck)) firePayload(W, G, b);
+        if (dead && b.tele) teleportTo(W, b);            // Teleport Bolt: you go where it stopped
         if (dead && b.arc && b.trail) {               // the bolt's path lingers for a blink
           b.trail.push({ x: b.x, y: b.y });
           addArc(W, b.trail, b.col, 1.4, 0.16);
@@ -1212,12 +959,12 @@ export function Game({ input }) {
           f.near = W.enemies.some(e => Math.hypot(e.x - f.x, e.ty - f.y) < f.r * 2.2);
           let trip = f.life <= 0;
           for (let j = 0; j < W.enemies.length && !trip; j++) if (near(j)) trip = true;
-          if (trip) { explode(W, G, f.x, f.y, f.r); fieldPayload(f); W.fields.splice(i, 1); continue; }
+          if (trip) { explode(W, G, f.x, f.y, f.r); fieldPayload(W, G, f); W.fields.splice(i, 1); continue; }
         } else if (f.field === 'dormant') {
           // set off by any blast of yours, which is the whole point of it
           for (const fl of W.flashes) {
             if (Math.hypot(fl.x - f.x, fl.y - f.y) < fl.r + f.r * 0.5) {
-              explode(W, G, f.x, f.y, f.r * 1.6); fieldPayload(f); W.fields.splice(i, 1); f.life = -1; break;
+              explode(W, G, f.x, f.y, f.r * 1.6); fieldPayload(W, G, f); W.fields.splice(i, 1); f.life = -1; break;
             }
           }
           if (f.life < 0) continue;
