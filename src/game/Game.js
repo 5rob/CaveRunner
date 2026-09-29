@@ -107,31 +107,14 @@ export function Game({ input }) {
     const mini32 = new Uint32Array(miniImg.data.buffer);
 
     const natural = (x, y) => !builtAt(W.zone, x, y);      // jellies keep to the natural zones
-    let oreBank = 0;                                 // the loose change from gold seams dug out
-    // sound: the jetpack's roar, each live Black Hole's drone, the low-health heartbeat
-    let jetLoop = null, beatT = 0, wasEmpty = false;
-    const jetSt = { cut: 0, onT: 0, start: false };   // the jet's cough clock and how long it's been held
-    const bhLoops = new Map();
-    const plantsNow = new Set(), rustle = { t: 0 };  // the plants you're brushing, and the rustle pause
-    let portalLoop = null, matterLoop = null, wasJet = false, stepT = 0, lastNear = '';
-    let plantsLast = new Set();
 
-    let portalAcc = 0;                               // the exit portal's motes, spawned by the clock
-    // ---- level decoration (see DECOR): the decoration layer's canvas, the plant glow's scratch
-    // and decorStep's counters. The props, their particles and what they did to you are in W.
+    // ---- level decoration (see DECOR): the decoration layer's canvas and the plant glow's
+    // scratch. The props, their particles, decorStep's counters and what they did to you are in W.
     let pgArt = null, pgC = null, pgCtx = null;   // the jellies' plant glow (plantGlow)
     const decoC = document.createElement('canvas');
     decoC.width = CW; decoC.height = CH;
     const dctx = decoC.getContext('2d');
-    let decoFrame = 0, dripHurt = 0;
-    // the hand torch's flame lean: a sprung offset dragged opposite to how you move,
-    // the same way the jet flame swings, so the fire trails behind you
-    let leanVX = 0, leanVY = 0;
     const aimPath = [];                              // scratch buffer for the aim line
-    let smokeAcc = 0;
-    // the torch: one flicker number drives both the flame and the lamp, so the light
-    // in the cave breathes exactly as much as the fire does
-    let flickN = 0, torchT = 0, torchAcc = 0;
 
     // The torch hand: whichever one the gun is not in, so the two never sit on top of
     // each other. Aiming behind you swaps hands, the same way the gun does.
@@ -146,9 +129,6 @@ export function Game({ input }) {
     const refreshBag = () => { W.pb = perkBag(input.current.loadout.perks || []); };
     // the true maximum health: the perk bag's answer plus the running +25 per heart room.
     const maxHp = () => W.pb.maxHp + (input.current.loadout.maxBonus || 0);
-    // the shared way-to-you field the hunting rats follow (see ratSolid / navFor)
-    const navYou = {};
-    let webCheck = 0, webLetGo = 0;
     // how far a point is from a web line (anchor to anchor, as drawn), and where on it is closest
     const webNear = (L, x, y) => {
       const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, ll = vx * vx + vy * vy || 1;
@@ -362,14 +342,14 @@ export function Game({ input }) {
       }
       W.roster = level.roster; W.themeName = level.theme;
       SFX.setAmbience(W.themeName);
-      for (const h of bhLoops.values()) h.stop();
-      bhLoops.clear();
+      for (const h of W.bhLoops.values()) h.stop();
+      W.bhLoops.clear();
       W.total = W.enemies.length;
       W.ghost = W.pb.ghost ? { x: level.start.x, y: level.start.y, cd: 0 } : null;
       W.burns.length = 0;
       W.webs.length = W.silk.length = W.strings.length = 0;
       // the rat burrows (see ratSolid): each room and tunnel, bar nothing — the hole too
-      W.burrow = null; navYou.F = null;
+      W.burrow = null; W.navYou.F = null;
       if (level.nests && level.nests.length) {
         W.burrow = new Uint8Array(CW * CH);
         for (const n of level.nests) {
@@ -622,8 +602,8 @@ export function Game({ input }) {
     const ratOnWeb = onWebIn(W.webs);
     function navFor(o, goal, R) {
       // (the rock changing only counts once a second, or a drill would rebuild them every frame)
-      if (!o.F || (o.v !== W.terrainV && W.time - o.t > 1) || Math.hypot(goal.x - o.fx, goal.y - o.fy) > (o === navYou ? 12 : 6) ||
-          (o === navYou && W.time - o.t > 0.4) || (o.wn !== W.webs.length && W.time - o.t > 1)) {
+      if (!o.F || (o.v !== W.terrainV && W.time - o.t > 1) || Math.hypot(goal.x - o.fx, goal.y - o.fy) > (o === W.navYou ? 12 : 6) ||
+          (o === W.navYou && W.time - o.t > 0.4) || (o.wn !== W.webs.length && W.time - o.t > 1)) {
         // only the web lines that cross the field's square, so a floor of webs costs nothing
         const half = (R + 1) * NAV * CELL, near = W.webs.filter(L =>
           Math.max(L.a0x, L.b0x) > goal.x - half && Math.min(L.a0x, L.b0x) < goal.x + half &&
@@ -698,12 +678,12 @@ export function Game({ input }) {
       // with a job on, it follows the way there (navField) rather than a straight line
       let way = goal, follow = false, air = false;
       if (fast && S && S.mode !== 'tunnel') {
-        const F = home ? navFor(N.nest, goal, 100) : want ? navFor(want, goal, 36) : navFor(navYou, goal, 56);
+        const F = home ? navFor(N.nest, goal, 100) : want ? navFor(want, goal, 36) : navFor(W.navYou, goal, 56);
         const w = F && navWay(F, e.x, e.y, 1);
         if (w) { way = w.dist > 2 ? w : goal; follow = true; air = w.air && w.dist > 2; }
         // v95: getting no nearer along the way for 4s (hopping back and forth over a gap it
         // can't clear) counts as stuck, the same as standing still
-        const job = home ? N : want || navYou;
+        const job = home ? N : want || W.navYou;
         if (w && (e.jobO !== job || w.dist < e.bestD - 3)) { e.jobO = job; e.bestD = w.dist; e.bestT = 0; }
         else if (w && (e.bestT += dt) > 4) { e.bestT = 0; e.bestD = w.dist; unstick(e, S, home); }
       }
@@ -782,11 +762,11 @@ export function Game({ input }) {
     // a gold seam cut or blown open: bits of gold tumble out, as much as the rock you took.
     // Fractions carry over in oreBank, so nibbling a seam with a drill pays the same as a blast.
     function dropOre(x, y, n) {
-      oreBank += n * ORE_GOLD * (1 + (W.floor - 1) * 0.3) * W.pb.gold;
-      let bits = Math.min(12, Math.floor(oreBank / 2));
+      W.oreBank += n * ORE_GOLD * (1 + (W.floor - 1) * 0.3) * W.pb.gold;
+      let bits = Math.min(12, Math.floor(W.oreBank / 2));
       if (!bits) return;
-      const each = Math.floor(oreBank / bits);
-      oreBank -= each * bits;
+      const each = Math.floor(W.oreBank / bits);
+      W.oreBank -= each * bits;
       for (let k = 0; k < bits; k++)
         W.coins.push({ x: x + (Math.random() - 0.5) * 6, y, amount: each, t: Math.random() * 6.28,
           vx: (Math.random() - 0.5) * 120, vy: -60 - Math.random() * 80 });
@@ -1605,12 +1585,12 @@ export function Game({ input }) {
     const DRIP_RATE = { water: 0.7, lava: 1.1, soot: 6, crystal: 3, cascade: 45, steam: 10 };
 
     function decorStep(dt, pcx, pcy) {
-      decoFrame++;
-      plantsNow.clear();
+      W.decoFrame++;
+      W.plantsNow.clear();
       const z = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
       // the runtime anchor check, staggered: a thirtieth of the props each frame, so each one
       // finds out within half a second that the rock it hung off has been blown away
-      for (let i = decoFrame % 30; i < W.props.length; i += 30) {
+      for (let i = W.decoFrame % 30; i < W.props.length; i += 30) {
         const pr = W.props[i];
         if (!pr.gone && !pr.fall && (pr.anc || pr.on) && !propAnchored(pr, W.mat)) { pr.fall = true; pr.vy = 0; pr.anc = null; pr.on = null; }
       }
@@ -1673,12 +1653,12 @@ export function Game({ input }) {
               if (!me || !pOver(pr, 0)) break;
               const R = pr.grab || (pr.grab = kr('arGrab'));
               const d = archNear(pr, pcx, W.p.y + WEB_HAND).d, d2 = archNear(pr, pcx, pcy).d;
-              if (Math.min(d, d2) < R + 3) plantsNow.add(pr);
+              if (Math.min(d, d2) < R + 3) W.plantsNow.add(pr);
               if (d <= R && (!z.arch || d < z.archD)) { z.arch = pr; z.archD = d; }
               break;
             }
             if (me && pOver(pr, 0)) z.climb = pr;
-            if (me && PLANTS[pr.st] && pOver(pr, 1)) plantsNow.add(pr);
+            if (me && PLANTS[pr.st] && pOver(pr, 1)) W.plantsNow.add(pr);
             break;
           case 'drip':
             if (pr.st === 'sparks') {
@@ -1814,7 +1794,7 @@ export function Game({ input }) {
       }
       for (let i = W.rings.length - 1; i >= 0; i--) if ((W.rings[i].t += dt) > 0.9) W.rings.splice(i, 1);
       // drips, sparks, steam and splashes
-      dripHurt -= dt;
+      W.dripHurt -= dt;
       for (let i = W.dparts.length - 1; i >= 0; i--) {
         const q = W.dparts[i];
         q.life -= dt;
@@ -1837,7 +1817,7 @@ export function Game({ input }) {
             vy: -30 - Math.random() * 40, g: 0.8, c: q.c, s: 1, life: 0.35, max: 0.35, glow: q.glow });
         }
         if (!dead && q.dmg && !W.p.dead && q.x > W.p.x && q.x < W.p.x + PW && q.y > W.p.y && q.y < W.p.y + PH) {
-          if (dripHurt <= 0) { hurt(q.dmg); dripHurt = 0.4; }
+          if (W.dripHurt <= 0) { hurt(q.dmg); W.dripHurt = 0.4; }
           dead = true;
         }
         if (dead) W.dparts.splice(i, 1);
@@ -1847,17 +1827,17 @@ export function Game({ input }) {
       // foliage: grabbing a vine, or pushing into a plant you weren't already in, rustles;
       // an arched vine in reach beats the strands hanging off it (let go with a push down, and
       // a strand under you catches you instead)
-      if (webLetGo > 0) z.arch = null;
+      if (W.webLetGo > 0) z.arch = null;
       if (z.arch) z.climb = z.arch;
       // moving through them rustles now and then; rustleStep keeps a big clump from spamming
       let entered = !!(z.climb && PLANTS[z.climb.st] && z.climb !== W.zfx.climb), style = null;
-      for (const pr of plantsNow) if (!plantsLast.has(pr)) { entered = true; style = pr.st; }
-      const str = rustleStep(rustle, dt, plantsNow.size > 0, entered, Math.hypot(W.p.vx, W.p.vy));
+      for (const pr of W.plantsNow) if (!W.plantsLast.has(pr)) { entered = true; style = pr.st; }
+      const str = rustleStep(W.rustle, dt, W.plantsNow.size > 0, entered, Math.hypot(W.p.vx, W.p.vy));
       if (str) {
-        const pr = style ? null : plantsNow.values().next().value;
+        const pr = style ? null : W.plantsNow.values().next().value;
         SFX.rustle(pcx, pcy, str, style || (pr && pr.st) || 'vine');
       }
-      plantsLast = new Set(plantsNow);
+      W.plantsLast = new Set(W.plantsNow);
       // spider web lines: each one you're touching slows you, and like a vine you latch on
       // to the nearest (unless you've just let go of one)
       if (!W.p.dead) {
@@ -1873,7 +1853,7 @@ export function Game({ input }) {
           z.webMul *= L.slow || (L.slow = spr('webSlow'));
           if (d <= R && d < wd) { wd = d; z.web = L; }
         }
-        if (webLetGo > 0) z.web = null;
+        if (W.webLetGo > 0) z.web = null;
         if (z.web && !z.climb) z.climb = z.web;
         else if (z.climb !== z.web) z.web = null;
       }
@@ -2055,11 +2035,11 @@ export function Game({ input }) {
       W.p.jet = jet ? mag : 0;
       // low on fuel it coughs: the flame, smoke and roar cut out for a blink, you drop a
       // little, and it spits a grey puff
-      W.p.sput = sputterStep(jetSt, dt, W.p.fuel, jet);
+      W.p.sput = sputterStep(W.jetSt, dt, W.p.fuel, jet);
       W.p.flame = W.p.sput ? 0 : W.p.jet;
       if (W.p.sput) W.p.cough = 0.15;
       else W.p.cough = Math.max(0, W.p.cough - dt);
-      if (jetSt.start) {
+      if (W.jetSt.start) {
         W.p.vy += DEV.sputDip;
         for (let i = 0; i < 3; i++)
           W.smoke.push({ x: W.p.x + PW / 2 + (Math.random() - 0.5) * 6, y: W.p.y + PH + 2,
@@ -2079,7 +2059,7 @@ export function Game({ input }) {
       const k = W.p.kick > 0 ? 0.15 : 1;   // let explosions push you around briefly
       // each spider string on you slows you, and so does each web line you're pushing through
       const tied = W.strings.reduce((m, s) => m * s.slow, 1) * W.zfx.webMul;
-      webLetGo -= dt;
+      W.webLetGo -= dt;
       if (jet && W.p.sput) {
         // coughing: steer on, but no lift for the blink
         W.p.vx = approach(W.p.vx, L.nx * mag * JET * W.pb.walk * DEV.move * tied, JET_ACC * dt * k);
@@ -2099,7 +2079,7 @@ export function Game({ input }) {
         const a = ar.arc[q.k], b = ar.arc[q.k + 1], ul = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
         const ux = (b[0] - a[0]) / ul, uy = (b[1] - a[1]) / ul;
         const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
-        if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) { webLetGo = 0.35; W.p.vy = 40; }
+        if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) { W.webLetGo = 0.35; W.p.vy = 40; }
         else {
           const v = along * (ar.climb || (ar.climb = kr('arClimb'))) * tied;
           W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
@@ -2111,7 +2091,7 @@ export function Game({ input }) {
         const ln = W.zfx.web, wl = Math.hypot(ln.b0x - ln.a0x, ln.b0y - ln.a0y) || 1;
         let ux = (ln.b0x - ln.a0x) / wl, uy = (ln.b0y - ln.a0y) / wl;
         const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
-        if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) { webLetGo = 0.35; W.p.vy = 40; }
+        if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) { W.webLetGo = 0.35; W.p.vy = 40; }
         else {
           const v = along * (ln.climb || (ln.climb = spr('webClimb'))) * tied, hy = W.p.y + WEB_HAND, q = webNear(ln, pcx0, hy);
           W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
@@ -2168,8 +2148,8 @@ export function Game({ input }) {
       if (!W.p.dead) {
         if (W.p.onGround && !wasGround && fallV > 200) SFX.fx('land', null, null, { v: fallV, s: W.zfx.surface });
         if (W.p.onGround && Math.abs(W.p.vx) > 40) {
-          if ((stepT -= dt * Math.abs(W.p.vx) / 40) <= 0) { stepT = 1; SFX.fx('step', null, null, W.zfx.surface); }
-        } else stepT = Math.min(stepT, 0.35);
+          if ((W.stepT -= dt * Math.abs(W.p.vx) / 40) <= 0) { W.stepT = 1; SFX.fx('step', null, null, W.zfx.surface); }
+        } else W.stepT = Math.min(W.stepT, 0.35);
       }
 
       const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
@@ -2418,30 +2398,30 @@ export function Game({ input }) {
       // ---- sound, once a frame: where you are listening from, the jetpack, each live
       // Black Hole's drone, the floor's ambience, and a heartbeat when you're nearly dead ----
       SFX.ear(pcx, pcy);
-      if (!jetLoop && SFX.ready) jetLoop = SFX.loop('jet');
-      if (jetLoop) jetLoop.set(W.p.dead ? 0 : Math.min(1, W.p.flame) * 0.35, null, null,
-        (1 + 0.49 * Math.min(1, W.p.flame)) * jetPitch(jetSt.onT));   // tone: thrust, then how long it's held
-      if (W.p.empty && !wasEmpty) SFX.ui('sputter');
-      wasEmpty = W.p.empty;
+      if (!W.jetLoop && SFX.ready) W.jetLoop = SFX.loop('jet');
+      if (W.jetLoop) W.jetLoop.set(W.p.dead ? 0 : Math.min(1, W.p.flame) * 0.35, null, null,
+        (1 + 0.49 * Math.min(1, W.p.flame)) * jetPitch(W.jetSt.onT));   // tone: thrust, then how long it's held
+      if (W.p.empty && !W.wasEmpty) SFX.ui('sputter');
+      W.wasEmpty = W.p.empty;
       for (const b of W.bullets) if (b.pull) {
-        let h = bhLoops.get(b);
-        if (!h && bhLoops.size < 3 && SFX.ready) { h = SFX.loop('void'); if (h) bhLoops.set(b, h); }
+        let h = W.bhLoops.get(b);
+        if (!h && W.bhLoops.size < 3 && SFX.ready) { h = SFX.loop('void'); if (h) W.bhLoops.set(b, h); }
         if (h) h.set(0.5, b.x, b.y);
       }
-      for (const [b, h] of bhLoops) if (!W.bullets.includes(b)) { h.stop(); bhLoops.delete(b); }
+      for (const [b, h] of W.bhLoops) if (!W.bullets.includes(b)) { h.stop(); W.bhLoops.delete(b); }
       SFX.ambTick(dt);
-      if (!portalLoop && SFX.ready) portalLoop = SFX.loop('portal');
-      if (portalLoop) portalLoop.set(0.55, W.portal.x + W.portal.w / 2, W.portal.y + W.portal.h / 2);
+      if (!W.portalLoop && SFX.ready) W.portalLoop = SFX.loop('portal');
+      if (W.portalLoop) W.portalLoop.set(0.55, W.portal.x + W.portal.w / 2, W.portal.y + W.portal.h / 2);
       if (W.matterProps.length) {
         let best = null, bd = 300;
         for (const pr of W.matterProps) { const d = Math.hypot(pr.x - pcx, pr.y - pcy); if (!pr.gone && d < bd) { bd = d; best = pr; } }
-        if (best && !matterLoop && SFX.ready) matterLoop = SFX.loop('matter');
-        if (matterLoop && best) matterLoop.set(0.6, best.x, best.y);
+        if (best && !W.matterLoop && SFX.ready) W.matterLoop = SFX.loop('matter');
+        if (W.matterLoop && best) W.matterLoop.set(0.6, best.x, best.y);
       }
-      if (W.p.jet > 0 && !wasJet) SFX.fx('ignite');
-      wasJet = W.p.jet > 0;
+      if (W.p.jet > 0 && !W.wasJet) SFX.fx('ignite');
+      W.wasJet = W.p.jet > 0;
       for (const dv of W.devils) if ((dv.snd = (dv.snd || 0) - dt) <= 0) { dv.snd = 0.9 + Math.random() * 0.8; SFX.fx('whirl', dv.x, dv.y - 14); }
-      if (!W.p.dead && W.p.hp / MHP < 0.3 && (beatT -= dt) <= 0) { beatT = 0.55 + 1.5 * W.p.hp / MHP; SFX.ui('beat'); }
+      if (!W.p.dead && W.p.hp / MHP < 0.3 && (W.beatT -= dt) <= 0) { W.beatT = 0.55 + 1.5 * W.p.hp / MHP; SFX.ui('beat'); }
 
       // ---- static fields ----
       for (let i = W.fields.length - 1; i >= 0; i--) {
@@ -2621,8 +2601,8 @@ export function Game({ input }) {
         pbottom = Math.round(Math.max(10, c.height / dprc - (iy - 16 - W.camY) * W.unitPx));
       }
       const sig = nearKey + ':' + (label && label.can ? 1 : 0) + ':' + inShop + ':' + Math.round(pbottom / 16);
-      if (nearKey !== -1 && nearKey !== lastNear) SFX.fx('prompt');   // a soft blip as a card comes up
-      lastNear = nearKey;
+      if (nearKey !== -1 && nearKey !== W.lastNear) SFX.fx('prompt');   // a soft blip as a card comes up
+      W.lastNear = nearKey;
       if (sig !== input.current.sig) {
         input.current.sig = sig;
         input.current.prompt = label;
@@ -2937,10 +2917,10 @@ export function Game({ input }) {
       }
       // a web line whose rock has been blasted away comes down (a few checked a frame)
       for (let n = Math.min(W.webs.length, 6); n > 0; n--) {
-        webCheck = (webCheck + 1) % W.webs.length;
-        const L = W.webs[webCheck];
+        W.webCheck = (W.webCheck + 1) % W.webs.length;
+        const L = W.webs[W.webCheck];
         if ((L.bin && !solidAt(L.bin.x, L.bin.y)) || (L.ain && !solidAt(L.ain.x, L.ain.y))) {
-          W.webs.splice(webCheck, 1);
+          W.webs.splice(W.webCheck, 1);
           if (!W.webs.length) break;
         }
       }
@@ -2989,9 +2969,9 @@ export function Game({ input }) {
       if (W.p.flame > 0) {
         let fx = -W.p.jx, fy = -W.p.jy + 0.8;
         const fl = Math.hypot(fx, fy) || 1; fx /= fl; fy /= fl;
-        smokeAcc += dt * (25 + 35 * W.p.flame);
-        while (smokeAcc >= 1) {
-          smokeAcc--;
+        W.smokeAcc += dt * (25 + 35 * W.p.flame);
+        while (W.smokeAcc >= 1) {
+          W.smokeAcc--;
           W.smoke.push({ x: pcx + (Math.random() - 0.5) * 5, y: W.p.y + PH + 3,
             vx: fx * 50 + (Math.random() - 0.5) * 20, vy: fy * 50 + (Math.random() - 0.5) * 20,
             r: 1.5 + Math.random(), life: 0.9, max: 0.9 });
@@ -3024,14 +3004,14 @@ export function Game({ input }) {
       // A random walk with two sines on top, which is what makes a flame gutter rather
       // than pulse. It never goes above 1: flicker means the light dipping, and a canvas
       // globalAlpha over 1 is simply ignored.
-      torchT += dt;
-      flickN += (Math.random() - 0.5) * 2.6 * dt;
-      flickN *= 0.94;
-      W.flick = clamp(0.94 + flickN + 0.04 * Math.sin(torchT * 11.3) + 0.025 * Math.sin(torchT * 19.7),
+      W.torchT += dt;
+      W.flickN += (Math.random() - 0.5) * 2.6 * dt;
+      W.flickN *= 0.94;
+      W.flick = clamp(0.94 + W.flickN + 0.04 * Math.sin(W.torchT * 11.3) + 0.025 * Math.sin(W.torchT * 19.7),
         0.84, 1);
-      torchAcc += dt;
-      while (torchAcc > 0.04) {
-        torchAcc -= 0.04;
+      W.torchAcc += dt;
+      while (W.torchAcc > 0.04) {
+        W.torchAcc -= 0.04;
         const th = torchHand();
         const life = 0.3 + Math.random() * 0.35;
         W.torchP.push({ x: th.x + (Math.random() - 0.5) * 2, y: th.y - 7,
@@ -3049,16 +3029,16 @@ export function Game({ input }) {
       // the flame's lean: spring toward "opposite your velocity", so a sudden move flings
       // it back and it wobbles upright again when you stop
       const wantX = clamp(-W.p.vx * 0.055, -11, 11), wantY = clamp(-W.p.vy * 0.03, -5, 7);
-      leanVX += ((wantX - W.leanX) * 90 - leanVX * 9) * dt;
-      leanVY += ((wantY - W.leanY) * 90 - leanVY * 9) * dt;
-      W.leanX += leanVX * dt; W.leanY += leanVY * dt;
+      W.leanVX += ((wantX - W.leanX) * 90 - W.leanVX * 9) * dt;
+      W.leanVY += ((wantY - W.leanY) * 90 - W.leanVY * 9) * dt;
+      W.leanX += W.leanVX * dt; W.leanY += W.leanVY * dt;
       // the glow gets its own quicker, deeper flicker on top of flick (the map light is untouched)
       W.glowN += (Math.random() - 0.5) * 6 * dt; W.glowN *= 0.9;
 
       // ---- portal motes ----
-      portalAcc += dt;
-      while (portalAcc > 0.05) {
-        portalAcc -= 0.05;
+      W.portalAcc += dt;
+      while (W.portalAcc > 0.05) {
+        W.portalAcc -= 0.05;
         const ex = W.portal.x + W.portal.w / 2, ey = W.portal.y + W.portal.h / 2;
         if (Math.abs(ey - W.p.y) < 500) {        // the exit: scattered round it, drawn in
           const a = Math.random() * 6.28, rr = 30 + Math.random() * 38;
@@ -4278,10 +4258,10 @@ export function Game({ input }) {
     return () => {
       cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('resize', resize);
       clearInterval(saveTick);
-      if (jetLoop) jetLoop.stop();
-      if (portalLoop) portalLoop.stop();
-      if (matterLoop) matterLoop.stop();
-      for (const h of bhLoops.values()) h.stop();
+      if (W.jetLoop) W.jetLoop.stop();
+      if (W.portalLoop) W.portalLoop.stop();
+      if (W.matterLoop) W.matterLoop.stop();
+      for (const h of W.bhLoops.values()) h.stop();
       document.removeEventListener('visibilitychange', saveHidden);
       window.removeEventListener('pagehide', saveRun);
       c.removeEventListener('pointermove', mMove);

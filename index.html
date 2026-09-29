@@ -10577,7 +10577,49 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       amb: [],
       clouds: [],
       rings: [],
-      devils: []
+      devils: [],
+      // ---- frame-to-frame counters and sound loops (each kept by the one part of step() that
+      // uses it) ----
+      // sound: the jetpack's roar, each live Black Hole's drone, the low-health heartbeat,
+      // the exit portal's hum and the dark matter's
+      jetLoop: null,
+      beatT: 0,
+      wasEmpty: false,
+      jetSt: { cut: 0, onT: 0, start: false },
+      // the jet's cough clock and how long it's been held
+      bhLoops: /* @__PURE__ */ new Map(),
+      portalLoop: null,
+      matterLoop: null,
+      wasJet: false,
+      stepT: 0,
+      lastNear: "",
+      // the footstep clock; what you were last standing by
+      portalAcc: 0,
+      // the exit portal's motes, spawned by the clock
+      // the hand torch's flame lean velocity (a sprung offset dragged opposite to how you move,
+      // the same way the jet flame swings), and the torch's flicker and ember clocks
+      leanVX: 0,
+      leanVY: 0,
+      flickN: 0,
+      torchT: 0,
+      torchAcc: 0,
+      smokeAcc: 0,
+      // the jetpack's smoke
+      webCheck: 0,
+      // which web line step() checks this frame (a few per frame)
+      webLetGo: 0,
+      // pushed off a web or arch: don't grab one again yet
+      // decorStep: the plants you're brushing (and last frame's), the rustle pause, its frame
+      // count, the drip-damage clock
+      plantsNow: /* @__PURE__ */ new Set(),
+      plantsLast: /* @__PURE__ */ new Set(),
+      rustle: { t: 0 },
+      decoFrame: 0,
+      dripHurt: 0,
+      oreBank: 0,
+      // the loose change from gold seams dug out
+      navYou: {}
+      // the shared way-to-you field the hunting rats follow (see navFor)
     };
   }
 
@@ -10637,24 +10679,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const miniImg = new ImageData(MMW, MMH);
       const mini32 = new Uint32Array(miniImg.data.buffer);
       const natural = (x, y) => !builtAt(W.zone, x, y);
-      let oreBank = 0;
-      let jetLoop = null, beatT = 0, wasEmpty = false;
-      const jetSt = { cut: 0, onT: 0, start: false };
-      const bhLoops = /* @__PURE__ */ new Map();
-      const plantsNow = /* @__PURE__ */ new Set(), rustle = { t: 0 };
-      let portalLoop = null, matterLoop = null, wasJet = false, stepT = 0, lastNear = "";
-      let plantsLast = /* @__PURE__ */ new Set();
-      let portalAcc = 0;
       let pgArt = null, pgC = null, pgCtx = null;
       const decoC = document.createElement("canvas");
       decoC.width = CW;
       decoC.height = CH;
       const dctx = decoC.getContext("2d");
-      let decoFrame = 0, dripHurt = 0;
-      let leanVX = 0, leanVY = 0;
       const aimPath = [];
-      let smokeAcc = 0;
-      let flickN = 0, torchT = 0, torchAcc = 0;
       const torchHand = () => {
         const a = W.p.aim.show ? W.p.aim.nx : W.p.face;
         return { x: W.p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: W.p.y + 9 };
@@ -10663,8 +10693,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         W.pb = perkBag(input.current.loadout.perks || []);
       };
       const maxHp = () => W.pb.maxHp + (input.current.loadout.maxBonus || 0);
-      const navYou = {};
-      let webCheck = 0, webLetGo = 0;
       const webNear = (L, x, y) => {
         const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, ll = vx * vx + vy * vy || 1;
         const u = Math.max(0, Math.min(1, ((x - L.a0x) * vx + (y - L.a0y) * vy) / ll));
@@ -11010,14 +11038,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         W.roster = level.roster;
         W.themeName = level.theme;
         SFX.setAmbience(W.themeName);
-        for (const h3 of bhLoops.values()) h3.stop();
-        bhLoops.clear();
+        for (const h3 of W.bhLoops.values()) h3.stop();
+        W.bhLoops.clear();
         W.total = W.enemies.length;
         W.ghost = W.pb.ghost ? { x: level.start.x, y: level.start.y, cd: 0 } : null;
         W.burns.length = 0;
         W.webs.length = W.silk.length = W.strings.length = 0;
         W.burrow = null;
-        navYou.F = null;
+        W.navYou.F = null;
         if (level.nests && level.nests.length) {
           W.burrow = new Uint8Array(CW * CH);
           for (const n of level.nests) {
@@ -11322,7 +11350,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       };
       const ratOnWeb = onWebIn(W.webs);
       function navFor(o, goal, R) {
-        if (!o.F || o.v !== W.terrainV && W.time - o.t > 1 || Math.hypot(goal.x - o.fx, goal.y - o.fy) > (o === navYou ? 12 : 6) || o === navYou && W.time - o.t > 0.4 || o.wn !== W.webs.length && W.time - o.t > 1) {
+        if (!o.F || o.v !== W.terrainV && W.time - o.t > 1 || Math.hypot(goal.x - o.fx, goal.y - o.fy) > (o === W.navYou ? 12 : 6) || o === W.navYou && W.time - o.t > 0.4 || o.wn !== W.webs.length && W.time - o.t > 1) {
           const half = (R + 1) * NAV * CELL, near = W.webs.filter((L) => Math.max(L.a0x, L.b0x) > goal.x - half && Math.min(L.a0x, L.b0x) < goal.x + half && Math.max(L.a0y, L.b0y) > goal.y - half && Math.min(L.a0y, L.b0y) < goal.y + half);
           o.F = navField(ratSolid, goal.x, goal.y, R, near.length ? onWebIn(near) : null);
           o.v = W.terrainV;
@@ -11429,14 +11457,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (!e.arrive || Math.random() < dt) e.arrive = kr("raArrive");
         let way = goal, follow = false, air = false;
         if (fast && S && S.mode !== "tunnel") {
-          const F = home ? navFor(N.nest, goal, 100) : want ? navFor(want, goal, 36) : navFor(navYou, goal, 56);
+          const F = home ? navFor(N.nest, goal, 100) : want ? navFor(want, goal, 36) : navFor(W.navYou, goal, 56);
           const w = F && navWay(F, e.x, e.y, 1);
           if (w) {
             way = w.dist > 2 ? w : goal;
             follow = true;
             air = w.air && w.dist > 2;
           }
-          const job = home ? N : want || navYou;
+          const job = home ? N : want || W.navYou;
           if (w && (e.jobO !== job || w.dist < e.bestD - 3)) {
             e.jobO = job;
             e.bestD = w.dist;
@@ -11562,11 +11590,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (nOre) dropOre(x, y, nOre);
       }
       function dropOre(x, y, n) {
-        oreBank += n * ORE_GOLD * (1 + (W.floor - 1) * 0.3) * W.pb.gold;
-        let bits = Math.min(12, Math.floor(oreBank / 2));
+        W.oreBank += n * ORE_GOLD * (1 + (W.floor - 1) * 0.3) * W.pb.gold;
+        let bits = Math.min(12, Math.floor(W.oreBank / 2));
         if (!bits) return;
-        const each = Math.floor(oreBank / bits);
-        oreBank -= each * bits;
+        const each = Math.floor(W.oreBank / bits);
+        W.oreBank -= each * bits;
         for (let k = 0; k < bits; k++)
           W.coins.push({
             x: x + (Math.random() - 0.5) * 6,
@@ -12718,10 +12746,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       const DRIP_RATE = { water: 0.7, lava: 1.1, soot: 6, crystal: 3, cascade: 45, steam: 10 };
       function decorStep(dt, pcx, pcy) {
-        decoFrame++;
-        plantsNow.clear();
+        W.decoFrame++;
+        W.plantsNow.clear();
         const z = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
-        for (let i = decoFrame % 30; i < W.props.length; i += 30) {
+        for (let i = W.decoFrame % 30; i < W.props.length; i += 30) {
           const pr = W.props[i];
           if (!pr.gone && !pr.fall && (pr.anc || pr.on) && !propAnchored(pr, W.mat)) {
             pr.fall = true;
@@ -12836,7 +12864,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 if (!me || !pOver(pr, 0)) break;
                 const R = pr.grab || (pr.grab = kr("arGrab"));
                 const d = archNear(pr, pcx, W.p.y + WEB_HAND).d, d2 = archNear(pr, pcx, pcy).d;
-                if (Math.min(d, d2) < R + 3) plantsNow.add(pr);
+                if (Math.min(d, d2) < R + 3) W.plantsNow.add(pr);
                 if (d <= R && (!z.arch || d < z.archD)) {
                   z.arch = pr;
                   z.archD = d;
@@ -12844,7 +12872,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 break;
               }
               if (me && pOver(pr, 0)) z.climb = pr;
-              if (me && PLANTS[pr.st] && pOver(pr, 1)) plantsNow.add(pr);
+              if (me && PLANTS[pr.st] && pOver(pr, 1)) W.plantsNow.add(pr);
               break;
             case "drip":
               if (pr.st === "sparks") {
@@ -13076,7 +13104,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (cl.life <= 0) W.clouds.splice(i, 1);
         }
         for (let i = W.rings.length - 1; i >= 0; i--) if ((W.rings[i].t += dt) > 0.9) W.rings.splice(i, 1);
-        dripHurt -= dt;
+        W.dripHurt -= dt;
         for (let i = W.dparts.length - 1; i >= 0; i--) {
           const q = W.dparts[i];
           q.life -= dt;
@@ -13112,9 +13140,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             });
           }
           if (!dead && q.dmg && !W.p.dead && q.x > W.p.x && q.x < W.p.x + PW && q.y > W.p.y && q.y < W.p.y + PH) {
-            if (dripHurt <= 0) {
+            if (W.dripHurt <= 0) {
               hurt(q.dmg);
-              dripHurt = 0.4;
+              W.dripHurt = 0.4;
             }
             dead = true;
           }
@@ -13122,19 +13150,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         if (W.dparts.length > 700) W.dparts.splice(0, W.dparts.length - 700);
         stepAmbience(dt);
-        if (webLetGo > 0) z.arch = null;
+        if (W.webLetGo > 0) z.arch = null;
         if (z.arch) z.climb = z.arch;
         let entered = !!(z.climb && PLANTS[z.climb.st] && z.climb !== W.zfx.climb), style = null;
-        for (const pr of plantsNow) if (!plantsLast.has(pr)) {
+        for (const pr of W.plantsNow) if (!W.plantsLast.has(pr)) {
           entered = true;
           style = pr.st;
         }
-        const str = rustleStep(rustle, dt, plantsNow.size > 0, entered, Math.hypot(W.p.vx, W.p.vy));
+        const str = rustleStep(W.rustle, dt, W.plantsNow.size > 0, entered, Math.hypot(W.p.vx, W.p.vy));
         if (str) {
-          const pr = style ? null : plantsNow.values().next().value;
+          const pr = style ? null : W.plantsNow.values().next().value;
           SFX.rustle(pcx, pcy, str, style || pr && pr.st || "vine");
         }
-        plantsLast = new Set(plantsNow);
+        W.plantsLast = new Set(W.plantsNow);
         if (!W.p.dead) {
           let wd = Infinity;
           for (const L of W.webs) {
@@ -13150,7 +13178,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               z.web = L;
             }
           }
-          if (webLetGo > 0) z.web = null;
+          if (W.webLetGo > 0) z.web = null;
           if (z.web && !z.climb) z.climb = z.web;
           else if (z.climb !== z.web) z.web = null;
         }
@@ -13378,11 +13406,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const jet = wantJet && !W.p.empty;
         const climbing = W.zfx.climb && !jet && !W.p.dead;
         W.p.jet = jet ? mag : 0;
-        W.p.sput = sputterStep(jetSt, dt, W.p.fuel, jet);
+        W.p.sput = sputterStep(W.jetSt, dt, W.p.fuel, jet);
         W.p.flame = W.p.sput ? 0 : W.p.jet;
         if (W.p.sput) W.p.cough = 0.15;
         else W.p.cough = Math.max(0, W.p.cough - dt);
-        if (jetSt.start) {
+        if (W.jetSt.start) {
           W.p.vy += DEV.sputDip;
           for (let i = 0; i < 3; i++)
             W.smoke.push({
@@ -13410,7 +13438,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         W.p.kick -= dt;
         const k = W.p.kick > 0 ? 0.15 : 1;
         const tied = W.strings.reduce((m, s) => m * s.slow, 1) * W.zfx.webMul;
-        webLetGo -= dt;
+        W.webLetGo -= dt;
         if (jet && W.p.sput) {
           W.p.vx = approach(W.p.vx, L.nx * mag * JET * W.pb.walk * DEV.move * tied, JET_ACC * dt * k);
           W.p.vy = Math.min(W.p.vy + GRAVITY * dt, 900);
@@ -13426,7 +13454,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           const ux = (b[0] - a[0]) / ul, uy = (b[1] - a[1]) / ul;
           const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
           if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) {
-            webLetGo = 0.35;
+            W.webLetGo = 0.35;
             W.p.vy = 40;
           } else {
             const v = along * (ar.climb || (ar.climb = kr("arClimb"))) * tied;
@@ -13438,7 +13466,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           let ux = (ln.b0x - ln.a0x) / wl, uy = (ln.b0y - ln.a0y) / wl;
           const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
           if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) {
-            webLetGo = 0.35;
+            W.webLetGo = 0.35;
             W.p.vy = 40;
           } else {
             const v = along * (ln.climb || (ln.climb = spr("webClimb"))) * tied, hy = W.p.y + WEB_HAND, q = webNear(ln, pcx0, hy);
@@ -13516,11 +13544,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (!W.p.dead) {
           if (W.p.onGround && !wasGround && fallV > 200) SFX.fx("land", null, null, { v: fallV, s: W.zfx.surface });
           if (W.p.onGround && Math.abs(W.p.vx) > 40) {
-            if ((stepT -= dt * Math.abs(W.p.vx) / 40) <= 0) {
-              stepT = 1;
+            if ((W.stepT -= dt * Math.abs(W.p.vx) / 40) <= 0) {
+              W.stepT = 1;
               SFX.fx("step", null, null, W.zfx.surface);
             }
-          } else stepT = Math.min(stepT, 0.35);
+          } else W.stepT = Math.min(W.stepT, 0.35);
         }
         const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
         if (!W.p.dead && pcx > W.portal.x && pcx < W.portal.x + W.portal.w && pcy > W.portal.y && pcy < W.portal.y + W.portal.h) {
@@ -13857,30 +13885,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         for (let i = W.arcs.length - 1; i >= 0; i--) if ((W.arcs[i].t += dt) > W.arcs[i].max) W.arcs.splice(i, 1);
         SFX.ear(pcx, pcy);
-        if (!jetLoop && SFX.ready) jetLoop = SFX.loop("jet");
-        if (jetLoop) jetLoop.set(
+        if (!W.jetLoop && SFX.ready) W.jetLoop = SFX.loop("jet");
+        if (W.jetLoop) W.jetLoop.set(
           W.p.dead ? 0 : Math.min(1, W.p.flame) * 0.35,
           null,
           null,
-          (1 + 0.49 * Math.min(1, W.p.flame)) * jetPitch(jetSt.onT)
+          (1 + 0.49 * Math.min(1, W.p.flame)) * jetPitch(W.jetSt.onT)
         );
-        if (W.p.empty && !wasEmpty) SFX.ui("sputter");
-        wasEmpty = W.p.empty;
+        if (W.p.empty && !W.wasEmpty) SFX.ui("sputter");
+        W.wasEmpty = W.p.empty;
         for (const b of W.bullets) if (b.pull) {
-          let h3 = bhLoops.get(b);
-          if (!h3 && bhLoops.size < 3 && SFX.ready) {
+          let h3 = W.bhLoops.get(b);
+          if (!h3 && W.bhLoops.size < 3 && SFX.ready) {
             h3 = SFX.loop("void");
-            if (h3) bhLoops.set(b, h3);
+            if (h3) W.bhLoops.set(b, h3);
           }
           if (h3) h3.set(0.5, b.x, b.y);
         }
-        for (const [b, h3] of bhLoops) if (!W.bullets.includes(b)) {
+        for (const [b, h3] of W.bhLoops) if (!W.bullets.includes(b)) {
           h3.stop();
-          bhLoops.delete(b);
+          W.bhLoops.delete(b);
         }
         SFX.ambTick(dt);
-        if (!portalLoop && SFX.ready) portalLoop = SFX.loop("portal");
-        if (portalLoop) portalLoop.set(0.55, W.portal.x + W.portal.w / 2, W.portal.y + W.portal.h / 2);
+        if (!W.portalLoop && SFX.ready) W.portalLoop = SFX.loop("portal");
+        if (W.portalLoop) W.portalLoop.set(0.55, W.portal.x + W.portal.w / 2, W.portal.y + W.portal.h / 2);
         if (W.matterProps.length) {
           let best = null, bd = 300;
           for (const pr of W.matterProps) {
@@ -13890,17 +13918,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               best = pr;
             }
           }
-          if (best && !matterLoop && SFX.ready) matterLoop = SFX.loop("matter");
-          if (matterLoop && best) matterLoop.set(0.6, best.x, best.y);
+          if (best && !W.matterLoop && SFX.ready) W.matterLoop = SFX.loop("matter");
+          if (W.matterLoop && best) W.matterLoop.set(0.6, best.x, best.y);
         }
-        if (W.p.jet > 0 && !wasJet) SFX.fx("ignite");
-        wasJet = W.p.jet > 0;
+        if (W.p.jet > 0 && !W.wasJet) SFX.fx("ignite");
+        W.wasJet = W.p.jet > 0;
         for (const dv of W.devils) if ((dv.snd = (dv.snd || 0) - dt) <= 0) {
           dv.snd = 0.9 + Math.random() * 0.8;
           SFX.fx("whirl", dv.x, dv.y - 14);
         }
-        if (!W.p.dead && W.p.hp / MHP < 0.3 && (beatT -= dt) <= 0) {
-          beatT = 0.55 + 1.5 * W.p.hp / MHP;
+        if (!W.p.dead && W.p.hp / MHP < 0.3 && (W.beatT -= dt) <= 0) {
+          W.beatT = 0.55 + 1.5 * W.p.hp / MHP;
           SFX.ui("beat");
         }
         for (let i = W.fields.length - 1; i >= 0; i--) {
@@ -14112,8 +14140,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           pbottom = Math.round(Math.max(10, c.height / dprc - (iy - 16 - W.camY) * W.unitPx));
         }
         const sig = nearKey + ":" + (label && label.can ? 1 : 0) + ":" + inShop + ":" + Math.round(pbottom / 16);
-        if (nearKey !== -1 && nearKey !== lastNear) SFX.fx("prompt");
-        lastNear = nearKey;
+        if (nearKey !== -1 && nearKey !== W.lastNear) SFX.fx("prompt");
+        W.lastNear = nearKey;
         if (sig !== input.current.sig) {
           input.current.sig = sig;
           input.current.prompt = label;
@@ -14461,10 +14489,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
         }
         for (let n2 = Math.min(W.webs.length, 6); n2 > 0; n2--) {
-          webCheck = (webCheck + 1) % W.webs.length;
-          const L2 = W.webs[webCheck];
+          W.webCheck = (W.webCheck + 1) % W.webs.length;
+          const L2 = W.webs[W.webCheck];
           if (L2.bin && !solidAt(L2.bin.x, L2.bin.y) || L2.ain && !solidAt(L2.ain.x, L2.ain.y)) {
-            W.webs.splice(webCheck, 1);
+            W.webs.splice(W.webCheck, 1);
             if (!W.webs.length) break;
           }
         }
@@ -14537,9 +14565,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           const fl = Math.hypot(fx, fy) || 1;
           fx /= fl;
           fy /= fl;
-          smokeAcc += dt * (25 + 35 * W.p.flame);
-          while (smokeAcc >= 1) {
-            smokeAcc--;
+          W.smokeAcc += dt * (25 + 35 * W.p.flame);
+          while (W.smokeAcc >= 1) {
+            W.smokeAcc--;
             W.smoke.push({
               x: pcx + (Math.random() - 0.5) * 5,
               y: W.p.y + PH + 3,
@@ -14580,17 +14608,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (W.flashes[i].t > 0.25) W.flashes.splice(i, 1);
         }
         W.best = Math.max(W.best, Math.round((W.start.y - W.p.y) / 10));
-        torchT += dt;
-        flickN += (Math.random() - 0.5) * 2.6 * dt;
-        flickN *= 0.94;
+        W.torchT += dt;
+        W.flickN += (Math.random() - 0.5) * 2.6 * dt;
+        W.flickN *= 0.94;
         W.flick = clamp(
-          0.94 + flickN + 0.04 * Math.sin(torchT * 11.3) + 0.025 * Math.sin(torchT * 19.7),
+          0.94 + W.flickN + 0.04 * Math.sin(W.torchT * 11.3) + 0.025 * Math.sin(W.torchT * 19.7),
           0.84,
           1
         );
-        torchAcc += dt;
-        while (torchAcc > 0.04) {
-          torchAcc -= 0.04;
+        W.torchAcc += dt;
+        while (W.torchAcc > 0.04) {
+          W.torchAcc -= 0.04;
           const th = torchHand();
           const life = 0.3 + Math.random() * 0.35;
           W.torchP.push({
@@ -14614,15 +14642,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if ((q.life -= dt) <= 0) W.torchP.splice(i, 1);
         }
         const wantX = clamp(-W.p.vx * 0.055, -11, 11), wantY = clamp(-W.p.vy * 0.03, -5, 7);
-        leanVX += ((wantX - W.leanX) * 90 - leanVX * 9) * dt;
-        leanVY += ((wantY - W.leanY) * 90 - leanVY * 9) * dt;
-        W.leanX += leanVX * dt;
-        W.leanY += leanVY * dt;
+        W.leanVX += ((wantX - W.leanX) * 90 - W.leanVX * 9) * dt;
+        W.leanVY += ((wantY - W.leanY) * 90 - W.leanVY * 9) * dt;
+        W.leanX += W.leanVX * dt;
+        W.leanY += W.leanVY * dt;
         W.glowN += (Math.random() - 0.5) * 6 * dt;
         W.glowN *= 0.9;
-        portalAcc += dt;
-        while (portalAcc > 0.05) {
-          portalAcc -= 0.05;
+        W.portalAcc += dt;
+        while (W.portalAcc > 0.05) {
+          W.portalAcc -= 0.05;
           const ex = W.portal.x + W.portal.w / 2, ey = W.portal.y + W.portal.h / 2;
           if (Math.abs(ey - W.p.y) < 500) {
             const a = Math.random() * 6.28, rr2 = 30 + Math.random() * 38;
@@ -16200,10 +16228,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ro.disconnect();
         window.removeEventListener("resize", resize);
         clearInterval(saveTick);
-        if (jetLoop) jetLoop.stop();
-        if (portalLoop) portalLoop.stop();
-        if (matterLoop) matterLoop.stop();
-        for (const h3 of bhLoops.values()) h3.stop();
+        if (W.jetLoop) W.jetLoop.stop();
+        if (W.portalLoop) W.portalLoop.stop();
+        if (W.matterLoop) W.matterLoop.stop();
+        for (const h3 of W.bhLoops.values()) h3.stop();
         document.removeEventListener("visibilitychange", saveHidden);
         window.removeEventListener("pagehide", saveRun);
         c.removeEventListener("pointermove", mMove);

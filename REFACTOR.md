@@ -361,7 +361,11 @@ What the code says about this phase (checked at the end of Phase 2):
   - [x] fire: `fire`, `firePlants`, `fireArches`, `fireCarts`, `firePropN`, `firePropLast`, `fireLoop`, `fireN`, `fireVis`
   - [x] player, camera, clock: `p`, `pb`, `ghost`, `zfx`, `time`, `levelT`, `best`, `camX`, `camY`, `camReady`, `unitPx`, `viewW`, `viewH`, `flick`, `torchR`, `visPts`, `leanX`…
   - [x] the run's lists: `bullets`, `enemyShots`, `smoke`, `sparks`, … (never replaced)
-  - [ ] frame timers and loops private to `step`/`decorStep`/`plantGlow`/`dropOre`
+  - [x] frame timers and loops private to `step`/`decorStep`/`dropOre`, and the rats' `navYou`
+  - Left loose on purpose (D15), for P3.4 to give homes: the canvases and contexts, `pgArt`/`pgC`/`pgCtx` and
+    `aimPath` (render scratch), `fireBox` (the fire's dirty rects on the two canvases), `REC`/`RT`/`RPV`/`RP_ARR`/`rid`/`ridN`
+    (recorder and replay), `raf`/`last`, `mouse`, `saveTick`/`ro`, `ratOnWeb`, and the constant tables `MATERIAL`,
+    `DRIP_RATE`, `AMB_RATE`, `AMB_MAX`.
 - [ ] **P3.3 Test hooks from the world object.** `window.__lvl` becomes `W` (plus the
       helper functions), set when a test-build flag is on, instead of `tests/build.js`
       string-swapping code into the closure. Keep every name the browser suites use today
@@ -689,3 +693,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.2 (6a) | The player group: `p`, `pb`, `ghost`, `zfx` to `W` (511 references, `p` is most of them). Two stale closure comments trimmed to point at `W`. `replay`, `perks` run too. | probe SAME, logic 33/33, smoke ok, replay ok, perks ok |
 | 2026-09-29 | Phase 3, P3.2 (6b) | Clock, camera and torch to `W`: `time`, `levelT`, `best`, `camX`/`camY`/`camReady`, `unitPx`, `viewW`/`viewH`, `flick`, `torchR`, `visPts`, `leanX`/`leanY`, `glowN` (216 references). Their step-private helpers (`leanVX`, `flickN`, `torchT`…) wait for the timers group. `replay`, `torch` run too. | probe SAME, logic 33/33, smoke ok, replay ok, torch ok |
 | 2026-09-29 | Phase 3, P3.2 (7) | The run's 21 lists to `W` (same arrays; `RP_ARR` and `ratOnWeb` now take them from `W`). Their comments moved to `world.js`. `replay`, `spider`, `blackhole` run too. | probe SAME, logic 33/33, smoke ok, replay ok |
+| 2026-09-29 | Phase 3, P3.2 (8) | The last group: step's timers and sound loops, `decorStep`'s counters, `oreBank`, `navYou` (26 names) to `W`. What stays loose is listed under P3.2 (D15). `sound`, `jetpack`, `rats` run too. | probe SAME, logic 33/33, smoke ok |

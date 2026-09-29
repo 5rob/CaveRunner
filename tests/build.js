@@ -53,7 +53,7 @@ const SANDBOX =
 
 const HOOK_LVL = SANDBOX +
   "    window.__lvl = { sandbox: __sandbox, placeProp: __placeProp, get pickups(){return W.pickups}, get enemies(){return W.enemies}, " +
-  "bullets: W.bullets, p: W.p, get mat(){return W.mat}, get stock(){return W.stock}, coins: W.coins, get floor(){return W.floor}, get seed(){return W.levelSeed}, hurt, get bhLoops(){return bhLoops}, " +
+  "bullets: W.bullets, p: W.p, get mat(){return W.mat}, get stock(){return W.stock}, coins: W.coins, get floor(){return W.floor}, get seed(){return W.levelSeed}, hurt, get bhLoops(){return W.bhLoops}, " +
   "get rooms(){return W.rooms}, get pb(){return W.pb}, maxHp, " +
   "get roster(){return W.roster}, get theme(){return W.themeName}, " +
   "get arrival(){return W.arrival}, get start(){return W.start}, get portal(){return W.portal}, " +

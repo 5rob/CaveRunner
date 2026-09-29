@@ -97,5 +97,29 @@ export function makeWorld() {
     // the decoration's particles (glow dots, drips, embers), the theme's ambience, spore
     // clouds, noise rings and dust devils
     dparts: [], amb: [], clouds: [], rings: [], devils: [],
+
+    // ---- frame-to-frame counters and sound loops (each kept by the one part of step() that
+    // uses it) ----
+    // sound: the jetpack's roar, each live Black Hole's drone, the low-health heartbeat,
+    // the exit portal's hum and the dark matter's
+    jetLoop: null, beatT: 0, wasEmpty: false,
+    jetSt: { cut: 0, onT: 0, start: false },   // the jet's cough clock and how long it's been held
+    bhLoops: new Map(),
+    portalLoop: null, matterLoop: null, wasJet: false,
+    stepT: 0, lastNear: '',         // the footstep clock; what you were last standing by
+    portalAcc: 0,                   // the exit portal's motes, spawned by the clock
+    // the hand torch's flame lean velocity (a sprung offset dragged opposite to how you move,
+    // the same way the jet flame swings), and the torch's flicker and ember clocks
+    leanVX: 0, leanVY: 0,
+    flickN: 0, torchT: 0, torchAcc: 0,
+    smokeAcc: 0,                    // the jetpack's smoke
+    webCheck: 0,                    // which web line step() checks this frame (a few per frame)
+    webLetGo: 0,                    // pushed off a web or arch: don't grab one again yet
+    // decorStep: the plants you're brushing (and last frame's), the rustle pause, its frame
+    // count, the drip-damage clock
+    plantsNow: new Set(), plantsLast: new Set(), rustle: { t: 0 },
+    decoFrame: 0, dripHurt: 0,
+    oreBank: 0,                     // the loose change from gold seams dug out
+    navYou: {},                     // the shared way-to-you field the hunting rats follow (see navFor)
   };
 }
