@@ -5,8 +5,12 @@
 
 import { SFX } from '../../audio/sfx.js';
 import { BED, BRICK, CELL, CH, CW, PH, PW } from '../../core/consts.js';
+import { clamp } from '../../core/util.js';
 import { ORE_GOLD } from '../../world/veins.js';
 import { losClear } from '../../world/vision.js';
+import { damageEnemy } from './enemies.js';
+import { fireBlast } from './fire.js';
+import { hurt } from './player.js';
 
 // ---- terrain queries ----
 export const solidCell = (W, cx, cy) =>
@@ -97,4 +101,73 @@ export function paint(W, G, x, y, w, hh) {
       d[k] = 132; d[k + 1] = 99; d[k + 2] = 71; d[k + 3] = 255;
     }
   if (x1 > x0 && y1 > y0) G.tctx.putImageData(W.img, 0, 0, x0, y0, x1 - x0, y1 - y0);
+}
+
+// `splash` set = a small pop (Pollen): enemies take that instead, and it never hurts you.
+// Any other blast can set things alight (fireBoom); `hot` (fire spells, minecarts) nearly always does.
+export function explode(W, G, x, y, R, splash, hot) {
+  SFX.boom(x, y, R);
+  const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL, ring = rc + 2.5;
+  const minX = Math.max(0, Math.floor(cx0 - ring)), maxX = Math.min(CW - 1, Math.ceil(cx0 + ring));
+  const minY = Math.max(0, Math.floor(cy0 - ring)), maxY = Math.min(CH - 1, Math.ceil(cy0 + ring));
+  const d = W.img.data;
+  let debris = 0, nOre = 0;
+  for (let cy = minY; cy <= maxY; cy++) {
+    for (let cx = minX; cx <= maxX; cx++) {
+      const i = cy * CW + cx, m = W.mat[i];
+      if (!m) continue;
+      const dist = Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0);
+      const k = i * 4;
+      if (dist <= rc && m !== BED) {
+        if (debris < 40 && Math.random() < 0.08) {
+          debris++;
+          const f = 0.5 + Math.random();
+          W.sparks.push({ x: cx * CELL, y: cy * CELL,
+            vx: (cx - cx0) / rc * 220 * f, vy: ((cy - cy0) / rc * 220 - 140) * f,
+            life: 0.8 + Math.random() * 0.4, max: 1.2, c: `rgb(${d[k]},${d[k + 1]},${d[k + 2]})`, size: 2, heavy: true });
+        }
+        if (W.ore && W.ore[i]) { W.ore[i] = 0; nOre++; }
+        W.fire.fuel[i] = 0; W.fire.t[i] = 0;
+        W.mat[i] = 0;
+        d[k + 3] = 0;
+      } else if (dist <= ring) {
+        d[k] *= 0.72; d[k + 1] *= 0.72; d[k + 2] *= 0.72;   // scorch the crater edge
+      }
+    }
+  }
+  G.tctx.putImageData(W.img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
+  unDeco(W, G, cx0, cy0, rc, minX, minY, maxX, maxY);
+  if (nOre) dropOre(W, x, y, nOre);
+  if (W.burrow) for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
+    if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) W.burrow[cy * CW + cx] = 0;
+  W.terrainV++;
+  // a blast knocks the props about: carts and pods go off, pillars crack, icicles let go
+  for (const pr of W.props) {
+    if (pr.gone || Math.abs(pr.x - x) > R + 40 || Math.abs(pr.y - y) > R + 40) continue;
+    const bx = clamp(x, pr.x + pr.l, pr.x + pr.r), by = clamp(y, pr.y + pr.t0, pr.y + pr.b);
+    if (Math.hypot(bx - x, by - y) < R + 6) pr.hurt = (pr.hurt || 0) + 2;
+  }
+
+  W.flashes.push({ x, y, r: R, t: 0 });
+  for (let i = 0; i < (splash != null ? 2 : 10); i++) {
+    W.smoke.push({ x: x + (Math.random() - 0.5) * R, y: y + (Math.random() - 0.5) * R,
+      vx: (Math.random() - 0.5) * 40, vy: (Math.random() - 0.5) * 40 - 20,
+      r: 4 + Math.random() * 5, life: 1.2, max: 1.2 });
+  }
+  for (let j = W.enemies.length - 1; j >= 0; j--) {
+    const e = W.enemies[j], dist = Math.hypot(e.x - x, e.ty - y);
+    if (dist < R + e.r) damageEnemy(W, j, splash != null ? splash : dist < R * 0.5 ? 3 : 2);
+  }
+  if (splash != null) return;
+  fireBlast(W, G, x, y, R, hot);
+  const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
+  const dist = Math.hypot(pcx - x, pcy - y), reach = R + 10;
+  if (dist < reach && !W.p.dead) {
+    const f = 1 - dist / reach;
+    hurt(W, G, Math.round(25 * f));
+    const nx = (pcx - x) / (dist || 1), ny = (pcy - y) / (dist || 1);
+    W.p.vx += nx * 500 * f;
+    W.p.vy += ny * 500 * f - 150 * f;
+    W.p.kick = 0.25;
+  }
 }

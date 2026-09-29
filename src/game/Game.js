@@ -4,12 +4,12 @@
 
 import { VENT_H, drawProp, propCol, propGlow, rgbA } from '../art/props.js';
 import { drawGun, drawGunGlow, drawRunner, drawSconce, drawTorch, glowAt } from '../art/sprites.js';
-import { HEAR_FIRE, jetPitch, rustleStep } from '../audio/recipes.js';
+import { jetPitch, rustleStep } from '../audio/recipes.js';
 import { SFX } from '../audio/sfx.js';
 import {
-  AIM_DEAD, AIR_ACC, BCELL, BED, BH, BW, CELL, CH, CLIMB, COIN_PULL, COL, CW, DEAD, FH, FOG,
-  FOG_DARK, FOG_DIM, FOG_U, FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART, FW, GRAVITY, GROUND_ACC, JET,
-  JET_ACC, LAMP_REACH, MINI_D, MMH, MMW, PATROL_R, PH, PICKUP_COOL, PW, SHOP_FLOOR, SHOP_Y, SIGHT,
+  AIM_DEAD, AIR_ACC, BCELL, BH, BW, CELL, CH, CLIMB, COIN_PULL, COL, CW, DEAD, FH, FOG, FOG_DARK,
+  FOG_DIM, FOG_U, FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART, FW, GRAVITY, GROUND_ACC, JET, JET_ACC,
+  LAMP_REACH, MINI_D, MMH, MMW, PATROL_R, PH, PICKUP_COOL, PW, SHOP_FLOOR, SHOP_Y, SIGHT,
   VIEW_MIN_H, VIEW_W, WALK, WEB_HAND, WH, WW
 } from '../core/consts.js';
 import { angDiff, approach, clamp, hexArr, hexRgb, mix, turn } from '../core/util.js';
@@ -34,20 +34,21 @@ import { MODS, VACUUM_WAIT, famCol } from '../spells/mods.js';
 import {
   DRIFT_ACC, DRIFT_CHASE, DRIFT_R, bhSp, driftStep, tracePath, wigTurn
 } from '../spells/trace.js';
-import { PLANTS, PROP_DMG, archAt, archNear, propAnchored } from '../world/decorate.js';
-import {
-  FIRE_COLS, FIRE_WET, FLAMMABLE, fireArea, fireDouse, fireNear, fireNew, fireStep
-} from '../world/fire.js';
+import { PLANTS, PROP_DMG, archNear, propAnchored } from '../world/decorate.js';
+import { FIRE_COLS, fireArea, fireDouse, fireNew } from '../world/fire.js';
 import { ROOM_HH, ROOM_HW, makeLevel } from '../world/level.js';
 import { NAV, navField, navWay } from '../world/nav.js';
 import { VIS_RAYS, fogReveal, fogStart, nestFog, rayDist, visPoly } from '../world/vision.js';
 import { builtAt } from '../world/zones.js';
 import { damageEnemy, fireEnemyShot } from './systems/enemies.js';
+import { fireBlast, fireFrame, ignite, setAlight, youAlight } from './systems/fire.js';
 import { burst, goo, splat, toast } from './systems/particles.js';
 import { hurt, maxHp, refreshBag } from './systems/player.js';
+import { blowProp } from './systems/props.js';
 import {
-  boxHit, dig, dropOre, enemyAt, lineOfSight, solidAt, solidCell, unDeco
+  boxHit, dig, enemyAt, explode, lineOfSight, solidAt, solidCell
 } from './systems/terrain.js';
+import { webDist, webNear } from './systems/webs.js';
 import { testHook } from './testhook.js';
 import { makeWorld } from './world.js';
 
@@ -126,13 +127,6 @@ export function Game({ input }) {
       const a = W.p.aim.show ? W.p.aim.nx : W.p.face;
       return { x: W.p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: W.p.y + 9 };
     };
-    // how far a point is from a web line (anchor to anchor, as drawn), and where on it is closest
-    const webNear = (L, x, y) => {
-      const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, ll = vx * vx + vy * vy || 1;
-      const u = Math.max(0, Math.min(1, ((x - L.a0x) * vx + (y - L.a0y) * vy) / ll));
-      return { x: L.a0x + vx * u, y: L.a0y + vy * u };
-    };
-    const webDist = (L, x, y) => { const q = webNear(L, x, y); return Math.hypot(q.x - x, q.y - y); };
 
     let raf, last = performance.now();
 
@@ -235,10 +229,13 @@ export function Game({ input }) {
     // scene through draw() itself, swapped in for the live world and swapped back after ----
     let RPV = null;                       // while draw() is drawing a replay frame: the view
     const RT = { tC: null, dC: null, n: 0, at: -1, fog: null, fireT: null };
+    // the fire's dirty boxes on the two terrain canvases (put back once a frame, see flushFire)
+    const fireBox = { t: [CW, CH, -1, -1], d: [CW, CH, -1, -1] };
     // what the systems (game/systems/) need that isn't world state (REFACTOR.md, D16): the
-    // React bridge, the canvases (tctx and dctx are the recorder's wrapped ones) and the recorder
+    // React bridge, the canvases (tctx and dctx are the recorder's wrapped ones), the recorder
+    // and the fire's dirty boxes
     const G = { input, c, ctx, terrain, tctx, bg, bgctx, fogC, fctx, fogImg, fogBlurC, fbctx,
-      miniC, mctx, miniImg, mini32, decoC, dctx, REC, RT };
+      miniC, mctx, miniImg, mini32, decoC, dctx, REC, RT, fireBox };
     function rpTerrain(T) {
       if (!RT.tC) {
         RT.tC = document.createElement('canvas'); RT.tC.width = CW; RT.tC.height = CH;
@@ -429,8 +426,8 @@ export function Game({ input }) {
       }
     }
     // the browser tests' way in (game/testhook.js): only on the test page, which sets the flag
-    if (window.__TEST) window.__lvl = testHook(W, { tctx, dctx, paintFog, hurt: (n) => hurt(W, G, n), maxHp: () => maxHp(W, G), dig: (x, y, R) => dig(W, G, x, y, R), explode, recSample,
-      ignite, setAlight, youAlight, REC, RT });
+    if (window.__TEST) window.__lvl = testHook(W, { tctx, dctx, paintFog, hurt: (n) => hurt(W, G, n), maxHp: () => maxHp(W, G), dig: (x, y, R) => dig(W, G, x, y, R), explode: (x, y, R, splash, hot) => explode(W, G, x, y, R, splash, hot), recSample,
+      ignite: (x, y, r, chance) => ignite(W, G, x, y, r, chance), setAlight, youAlight: () => youAlight(W), REC, RT });
     {
       // picking up where the last session left off, if App found a save
       const sv = input.current.saved;
@@ -859,7 +856,7 @@ export function Game({ input }) {
           k ? sh.col : '#ffffff', rnd(0.8, 1.3), rnd(0.12, 0.3), 0.3);
         if (sh.pit && hitAt < sh.beam) dig(W, G, ex + nx * 2, ey + ny * 2, sh.pit);
       }
-      if (sh.explode) explode(x + nx * hitAt, y + ny * hitAt, sh.explode);
+      if (sh.explode) explode(W, G, x + nx * hitAt, y + ny * hitAt, sh.explode);
       // a beam is instant, so whatever kind of carrier it is, the payload goes off at its end
       if (sh.payload && sh.payload.length) releaseAt(sh.payload, x + nx * hitAt, y + ny * hitAt, nx, ny, sh.col);
     }
@@ -1000,9 +997,9 @@ export function Game({ input }) {
     // Death Cross: four arms of blast rather than one round crater
     function explodeCross(b) {
       const R = b.explode || 20;
-      explode(b.x, b.y, R * 0.6);
+      explode(W, G, b.x, b.y, R * 0.6);
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]])
-        explode(b.x + dx * R * 0.9, b.y + dy * R * 0.9, R * 0.55);
+        explode(W, G, b.x + dx * R * 0.9, b.y + dy * R * 0.9, R * 0.55);
     }
 
     const critRoll = (dmg, chance) => (chance && Math.random() < chance ? (SFX.fx('crit'), dmg * 3) : dmg);
@@ -1014,7 +1011,7 @@ export function Game({ input }) {
     function castField(sh, x, y, ang) {
       const pay = sh.payload && sh.payload.length ? sh.payload : null;
       if (sh.field === 'explode') {
-        explode(x, y, sh.r, undefined, sh.fire);
+        explode(W, G, x, y, sh.r, undefined, sh.fire);
         if (sh.embers) throwEmbers(x, y, sh.embers);
         if (pay) releaseAt(pay, x, y, Math.cos(ang || 0), Math.sin(ang || 0), sh.col);
         return;
@@ -1049,282 +1046,6 @@ export function Game({ input }) {
       releaseAt(list, f.x, f.y, Math.cos(f.ang), Math.sin(f.ang), f.col);
     };
 
-    // ---- fire (v86): the cave's fire runs in fireStep; this is what it does to the level ----
-    // A pixel whose fuel is spent: grass and timber go (a fleck of ash now and then stays),
-    // moss leaves the rock under it scorched. Changed areas are put back once a frame.
-    const fireBox = { t: [CW, CH, -1, -1], d: [CW, CH, -1, -1] };
-    const growBox = (b, x, y) => { if (x < b[0]) b[0] = x; if (y < b[1]) b[1] = y; if (x > b[2]) b[2] = x; if (y > b[3]) b[3] = y; };
-    function fireOut(i) {
-      const x = i % CW, y = (i / CW) | 0, k = i * 4, r = Math.random();
-      if (W.mat[i]) {
-        const d = W.img.data;
-        d[k] = 34 + r * 16; d[k + 1] = 28 + r * 12; d[k + 2] = 24 + r * 10;
-        growBox(fireBox.t, x, y);
-      } else if (W.dimg) {
-        const dd = W.dimg.data;
-        if (r < 0.16) { const a = 30 + r * 120; dd[k] = a; dd[k + 1] = a * 0.9; dd[k + 2] = a * 0.85; }
-        else dd[k + 3] = 0;
-        growBox(fireBox.d, x, y);
-      }
-    }
-    function flushFire() {
-      for (const [b, c, im] of [[fireBox.t, tctx, W.img], [fireBox.d, dctx, W.dimg]]) {
-        if (b[2] < b[0] || !im) continue;
-        c.putImageData(im, 0, 0, b[0], b[1], b[2] - b[0] + 1, b[3] - b[1] + 1);
-        b[0] = CW; b[1] = CH; b[2] = -1; b[3] = -1;
-      }
-    }
-    // a plant catches: it burns up from its tip toward the rock it hangs from
-    function catchPlant(pr) {
-      if (pr.burn || pr.gone) return;
-      pr.burn = 1;
-      SFX.fx('whoosh', pr.x, pr.y + pr.len);
-    }
-    // an arched vine catches at fraction u along it; the fire runs out both ways from there
-    function catchArch(pr, u) {
-      if (pr.burn || pr.gone) return;
-      pr.burn = 1; pr.u0 = pr.u1 = u;
-      const q = archAt(pr, u);
-      SFX.fx('whoosh', q.x, q.y);
-    }
-    // a web line catches: it flares along its length and is gone
-    function burnWeb(w) {
-      const L = W.webs[w];
-      for (let u = 0; u <= 1; u += 0.1)
-        W.dparts.push({ x: L.a0x + (L.b0x - L.a0x) * u, y: L.a0y + (L.b0y - L.a0y) * u, vx: (Math.random() - 0.5) * 20,
-          vy: -20 - Math.random() * 30, g: -0.02, c: Math.random() < 0.5 ? '#ffd35a' : '#ff8a2a', s: 1.4, life: 0.4, max: 0.4, glow: 1 });
-      W.webs.splice(w, 1);
-      SFX.fx('whoosh', (L.a0x + L.b0x) / 2, (L.a0y + L.b0y) / 2);
-    }
-    // everything that burns within r of (x, y) catches at `chance`: grass, moss and timber
-    // pixels, plants, web lines — and a minecart goes up
-    function ignite(x, y, r, chance) {
-      fireList();
-      const n = fireArea(W.fire, x, y, r, chance);
-      for (const pr of W.firePlants)
-        if (!pr.gone && !pr.burn && x > pr.x - 5 - r && x < pr.x + 5 + r && y > pr.y - r && y < pr.y + pr.len + r &&
-          Math.random() < chance) catchPlant(pr);
-      for (let w = W.webs.length - 1; w >= 0; w--) if (webDist(W.webs[w], x, y) < r + 2 && Math.random() < chance) burnWeb(w);
-      for (const pr of W.fireArches) {
-        if (pr.gone || pr.burn || x < pr.x + pr.l - r || x > pr.x + pr.r + r || y < pr.y + pr.t0 - r || y > pr.y + pr.b + r) continue;
-        const q = archNear(pr, x, y);
-        if (q.d < r + 3 && Math.random() < chance) catchArch(pr, q.k / (pr.arc.length - 1));
-      }
-      for (const pr of W.fireCarts)
-        if (!pr.gone && x > pr.x + pr.l - r && x < pr.x + pr.r + r && y > pr.y + pr.t0 - r && y < pr.y + pr.b + r &&
-          Math.random() < chance) blowProp(pr);
-      if (n > 4) SFX.fx('whoosh', x, y);
-      return n;
-    }
-    function setAlight(e) {
-      if (!(e.burn > 0)) SFX.fx('whoosh', e.x, e.ty);
-      e.burn = Math.max(e.burn || 0, kr('fireBurn'));
-    }
-    function youAlight() {
-      if (W.p.dead) return;
-      if (!(W.p.burn > 0)) { SFX.fx('whoosh', W.p.x + PW / 2, W.p.y + PH / 2); W.strings.length = 0; }   // spider silk burns off
-      W.p.burn = Math.max(W.p.burn || 0, kr('fireYou'));
-    }
-    // a blast's heat: fuel round it catches, and creatures (and you) in it may go up
-    function fireBlast(x, y, R, hot) {
-      const ch = hot ? 0.9 : kr('fireBoom');
-      ignite(x, y, R * 1.3, ch);
-      for (const e of W.enemies) if (Math.hypot(e.x - x, e.ty - y) < R + e.r && Math.random() < ch) setAlight(e);
-      if (!W.p.dead && Math.hypot(W.p.x + PW / 2 - x, W.p.y + PH / 2 - y) < R + 6 && Math.random() < ch * 0.5) youAlight();
-    }
-    // a flame licking up off a burning spot
-    const flameAt = (x, y, sp) => W.dparts.push({ x, y, vx: (Math.random() - 0.5) * 16, vy: -30 - Math.random() * (sp || 40),
-      g: -0.03, c: Math.random() < 0.4 ? '#ffd35a' : Math.random() < 0.6 ? '#ff8a2a' : '#e8461c', s: 1 + Math.random() * 1.2,
-      life: 0.25 + Math.random() * 0.3, max: 0.55, glow: 1 });
-    const fireSmoke = (x, y) => W.smoke.push({ x, y, vx: (Math.random() - 0.5) * 12, vy: -25 - Math.random() * 20,
-      r: 2 + Math.random() * 2.5, life: 1.4, max: 1.4, c: '#2a2624', a: 0.35 });
-    // One frame of fire: the cave's fire moves on, plants, webs and carts catch off it,
-    // burning creatures (and you) take damage and spread it, flames and smoke come off
-    // what's on view, and the crackle sits at the nearest blaze.
-    // the props that burn, relisted whenever props came or went (a test room, a drop)
-    function fireList() {
-      if (W.props.length === W.firePropN && W.props[W.props.length - 1] === W.firePropLast) return;
-      W.firePropN = W.props.length; W.firePropLast = W.props[W.props.length - 1];
-      W.firePlants = W.props.filter(pr => pr.k === 'climb' && FLAMMABLE[pr.st] && !pr.arc);
-      W.fireArches = W.props.filter(pr => pr.arc && FLAMMABLE[pr.st]);
-      W.fireCarts = W.props.filter(pr => pr.k === 'barrel');
-    }
-    function fireFrame(dt, pcx, pcy) {
-      fireList();
-      const ticks = fireStep(W.fire, dt, fireOut);
-      W.fireN += ticks;
-      const L = W.fire.list, any = L.length > 0;
-      if (ticks && any) {
-        for (let k = W.fireN & 3; k < W.firePlants.length; k += 4) {       // a quarter of the plants a tick
-          const pr = W.firePlants[k];
-          if (pr.gone || pr.burn) continue;
-          for (let yy = pr.y + 2; yy < pr.y + pr.len; yy += 8) if (fireNear(W.fire, pr.x, yy, 2)) { catchPlant(pr); break; }
-        }
-        for (const pr of W.fireArches) {
-          if (pr.gone || pr.burn) continue;
-          const n = pr.arc.length - 1;
-          for (let k = 0; k <= n; k += 2) { const q = archAt(pr, k / n); if (fireNear(W.fire, q.x, q.y, 2)) { catchArch(pr, k / n); break; } }
-        }
-        for (let w = W.webs.length - 1; w >= 0; w--) {
-          const ln = W.webs[w];
-          for (let u = 0; u <= 1; u += 0.25)
-            if (fireNear(W.fire, ln.a0x + (ln.b0x - ln.a0x) * u, ln.a0y + (ln.b0y - ln.a0y) * u, 2)) { burnWeb(w); break; }
-        }
-        for (const pr of W.fireCarts) if (!pr.gone && fireNear(W.fire, pr.x, pr.y - 4, 8)) blowProp(pr);
-      }
-      // burning plants: the fire climbs from the tip to the rock, lighting what's round it
-      for (const pr of W.firePlants) {
-        if (!pr.burn || pr.gone) continue;
-        pr.len -= kr('firePlant') * dt; pr.b = Math.max(0, pr.len);
-        const ty = pr.y + Math.max(0, pr.len);
-        if (Math.random() < dt * 30) flameAt(pr.x + (Math.random() - 0.5) * 4, ty);
-        if (Math.random() < dt * 4) fireSmoke(pr.x, ty);
-        if (ticks) {
-          fireArea(W.fire, pr.x, ty, 5, 0.3);
-          for (const o of W.firePlants)
-            if (!o.burn && !o.gone && Math.abs(o.x - pr.x) < 10 && ty > o.y - 4 && ty < o.y + o.len + 4 && Math.random() < 0.25) catchPlant(o);
-          if (!W.p.dead && W.zfx.climb === pr) youAlight();
-        }
-        if (pr.len < 4) { pr.gone = true; fireArea(W.fire, pr.x, pr.y, 6, 1); }
-      }
-      // burning arched vines: the fire runs both ways along it from where it caught, lighting
-      // the strands as it reaches them, and the vine is gone when it meets both ends
-      for (const pr of W.fireArches) {
-        if (!pr.burn || pr.gone) continue;
-        const du = kr('fireArch') * dt / Math.max(1, pr.alen);
-        pr.u0 = Math.max(0, pr.u0 - du); pr.u1 = Math.min(1, pr.u1 + du);
-        for (const u of [pr.u0, pr.u1]) {
-          const q = archAt(pr, u);
-          if (Math.random() < dt * 30) flameAt(q.x + (Math.random() - 0.5) * 4, q.y);
-          if (Math.random() < dt * 4) fireSmoke(q.x, q.y);
-          if (ticks) fireArea(W.fire, q.x, q.y, 5, 0.3);
-        }
-        if (ticks) {
-          for (const o of W.firePlants) if (o.on === pr && !o.burn && !o.gone && o.u >= pr.u0 && o.u <= pr.u1) catchPlant(o);
-          if (!W.p.dead && W.zfx.climb === pr) youAlight();
-        }
-        if (pr.u0 <= 0 && pr.u1 >= 1) pr.gone = true;
-      }
-      // burning creatures: hurt in chunks (so they flash, not flicker), spread it where they go
-      for (let j = W.enemies.length - 1; j >= 0; j--) {
-        const e = W.enemies[j];
-        if (ticks && any && !(e.burn > 0) && fireNear(W.fire, e.x, e.ty, e.r * 0.7)) setAlight(e);
-        if (!(e.burn > 0)) continue;
-        e.burn -= dt;
-        e.burnAcc = (e.burnAcc || 0) + kr('fireDps') * dt;
-        if (Math.random() < dt * 40) flameAt(e.x + (Math.random() - 0.5) * e.r * 1.4, e.ty + (Math.random() - 0.3) * e.r);
-        if (Math.random() < dt * 6) fireSmoke(e.x, e.ty - e.r);
-        if (ticks) ignite(e.x, e.ty + e.r * 0.4, e.r * 0.8, 0.35);
-        if (!W.p.dead && Math.hypot(e.x - pcx, e.ty - pcy) < e.r + 8 && Math.random() < dt * 2) youAlight();
-        if (e.burnAcc >= 0.5 || e.burn <= 0) { const d = e.burnAcc; e.burnAcc = 0; if (d > 0 && W.enemies[j] === e) damageEnemy(W, j, d); }
-      }
-      // you: fire underfoot or round you lights you; water, snow or slime puts you out
-      if (!W.p.dead) {
-        if (ticks && any && !(W.p.burn > 0) && (fireNear(W.fire, pcx, W.p.y + PH - 3, 3) || fireNear(W.fire, pcx, pcy, 3))) youAlight();
-        if (W.p.burn > 0 && FIRE_WET[W.zfx.surface]) { W.p.burn = 0; W.p.burnAcc = 0; SFX.fx('sizzle', pcx, W.p.y + PH); }
-        if (W.p.burn > 0) {
-          W.p.burn -= dt;
-          W.p.burnAcc = (W.p.burnAcc || 0) + kr('fireYouDps') * dt;
-          if (Math.random() < dt * 40) flameAt(W.p.x + Math.random() * PW, W.p.y + PH * (0.2 + Math.random() * 0.8));
-          if (Math.random() < dt * 6) fireSmoke(pcx, W.p.y);
-          if (ticks) fireArea(W.fire, pcx, W.p.y + PH - 2, 5, 0.3);
-          if (W.p.burnAcc >= 2 || W.p.burn <= 0) { const d = Math.round(W.p.burnAcc); W.p.burnAcc -= d; if (d > 0) hurt(W, G, d); }
-        }
-      } else W.p.burn = 0;
-      // flames and smoke off the burning pixels you can see, and the crackle at the nearest blaze
-      if (any) {
-        const x0 = W.camX / CELL - 4, x1 = (W.camX + W.viewW) / CELL + 4, y0 = W.camY / CELL - 4, y1 = (W.camY + W.viewH) / CELL + 4;
-        const want = Math.min(20, Math.ceil(L.length * dt * 2.5));
-        for (let a = 0, got = 0; a < want * 3 && got < want && W.dparts.length < 700; a++) {
-          const i = L[(Math.random() * L.length) | 0], x = i % CW, y = (i / CW) | 0;
-          if (x < x0 || x > x1 || y < y0 || y > y1) continue;
-          got++;
-          flameAt((x + Math.random()) * CELL, y * CELL);
-          if (Math.random() < 0.12) fireSmoke(x * CELL, y * CELL - 3);
-        }
-        const st = Math.max(1, Math.floor(L.length / 300));
-        let bd = HEAR_FIRE, bx = 0, by = 0, near = 0;
-        for (let k = 0; k < L.length; k += st) {
-          const x = (L[k] % CW) * CELL, y = ((L[k] / CW) | 0) * CELL, d = Math.hypot(x - pcx, y - pcy);
-          if (d < 220) near += st;
-          if (d < bd) { bd = d; bx = x; by = y; }
-        }
-        if (bd < HEAR_FIRE) {
-          if (!W.fireLoop && SFX.ready) W.fireLoop = SFX.loop('fire');
-          if (W.fireLoop) W.fireLoop.set(Math.min(1, 0.35 + near / 300) * 0.7, bx, by);
-        }
-      }
-      flushFire();
-    }
-    // `splash` set = a small pop (Pollen): enemies take that instead, and it never hurts you.
-    // Any other blast can set things alight (fireBoom); `hot` (fire spells, minecarts) nearly always does.
-    function explode(x, y, R, splash, hot) {
-      SFX.boom(x, y, R);
-      const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL, ring = rc + 2.5;
-      const minX = Math.max(0, Math.floor(cx0 - ring)), maxX = Math.min(CW - 1, Math.ceil(cx0 + ring));
-      const minY = Math.max(0, Math.floor(cy0 - ring)), maxY = Math.min(CH - 1, Math.ceil(cy0 + ring));
-      const d = W.img.data;
-      let debris = 0, nOre = 0;
-      for (let cy = minY; cy <= maxY; cy++) {
-        for (let cx = minX; cx <= maxX; cx++) {
-          const i = cy * CW + cx, m = W.mat[i];
-          if (!m) continue;
-          const dist = Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0);
-          const k = i * 4;
-          if (dist <= rc && m !== BED) {
-            if (debris < 40 && Math.random() < 0.08) {
-              debris++;
-              const f = 0.5 + Math.random();
-              W.sparks.push({ x: cx * CELL, y: cy * CELL,
-                vx: (cx - cx0) / rc * 220 * f, vy: ((cy - cy0) / rc * 220 - 140) * f,
-                life: 0.8 + Math.random() * 0.4, max: 1.2, c: `rgb(${d[k]},${d[k + 1]},${d[k + 2]})`, size: 2, heavy: true });
-            }
-            if (W.ore && W.ore[i]) { W.ore[i] = 0; nOre++; }
-            W.fire.fuel[i] = 0; W.fire.t[i] = 0;
-            W.mat[i] = 0;
-            d[k + 3] = 0;
-          } else if (dist <= ring) {
-            d[k] *= 0.72; d[k + 1] *= 0.72; d[k + 2] *= 0.72;   // scorch the crater edge
-          }
-        }
-      }
-      tctx.putImageData(W.img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
-      unDeco(W, G, cx0, cy0, rc, minX, minY, maxX, maxY);
-      if (nOre) dropOre(W, x, y, nOre);
-      if (W.burrow) for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
-        if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) W.burrow[cy * CW + cx] = 0;
-      W.terrainV++;
-      // a blast knocks the props about: carts and pods go off, pillars crack, icicles let go
-      for (const pr of W.props) {
-        if (pr.gone || Math.abs(pr.x - x) > R + 40 || Math.abs(pr.y - y) > R + 40) continue;
-        const bx = clamp(x, pr.x + pr.l, pr.x + pr.r), by = clamp(y, pr.y + pr.t0, pr.y + pr.b);
-        if (Math.hypot(bx - x, by - y) < R + 6) pr.hurt = (pr.hurt || 0) + 2;
-      }
-
-      W.flashes.push({ x, y, r: R, t: 0 });
-      for (let i = 0; i < (splash != null ? 2 : 10); i++) {
-        W.smoke.push({ x: x + (Math.random() - 0.5) * R, y: y + (Math.random() - 0.5) * R,
-          vx: (Math.random() - 0.5) * 40, vy: (Math.random() - 0.5) * 40 - 20,
-          r: 4 + Math.random() * 5, life: 1.2, max: 1.2 });
-      }
-      for (let j = W.enemies.length - 1; j >= 0; j--) {
-        const e = W.enemies[j], dist = Math.hypot(e.x - x, e.ty - y);
-        if (dist < R + e.r) damageEnemy(W, j, splash != null ? splash : dist < R * 0.5 ? 3 : 2);
-      }
-      if (splash != null) return;
-      fireBlast(x, y, R, hot);
-      const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
-      const dist = Math.hypot(pcx - x, pcy - y), reach = R + 10;
-      if (dist < reach && !W.p.dead) {
-        const f = 1 - dist / reach;
-        hurt(W, G, Math.round(25 * f));
-        const nx = (pcx - x) / (dist || 1), ny = (pcy - y) / (dist || 1);
-        W.p.vx += nx * 500 * f;
-        W.p.vy += ny * 500 * f - 150 * f;
-        W.p.kick = 0.25;
-      }
-    }
-
     // ---- decoration, pass 3: the props at work ----
     const pOver = (pr, pad) => W.p.x + PW > pr.x + pr.l - pad && W.p.x < pr.x + pr.r + pad &&
       W.p.y + PH > pr.y + pr.t0 - pad && W.p.y < pr.y + pr.b + pad;
@@ -1344,16 +1065,6 @@ export function Game({ input }) {
       burst(W, pr.x, pr.y + (pr.t0 + pr.b) / 2, n || 10, propCol(pr, themeFor(W.floor)));
       pr.gone = true;
     }
-    function blowProp(pr) {
-      if (pr.gone) return;
-      pr.gone = true;                          // first, so a chain of blasts can't loop
-      if (pr.k === 'barrel') { explode(pr.x, pr.y - 6, 105, undefined, 1); SFX.debris(pr.x, pr.y - 6); }
-      else if (pr.k === 'pod') {
-        SFX.pop(pr.x, pr.y - 6);
-        W.clouds.push({ x: pr.x, y: pr.y - 8, r: 34, life: 4.5, max: 4.5, tick: 0 });
-        burst(W, pr.x, pr.y - 6, 14, '#b6e36a');
-      }
-    }
     // a lantern shot (or dropped, or blasted): the glass goes and its burning oil is thrown
     // out in blobs that light whatever burnable they fall through or land on
     function popLamp(pr) {
@@ -1370,12 +1081,12 @@ export function Game({ input }) {
           c: FIRE_COLS[Math.floor(Math.random() * 3)], s: 1.2 + Math.random() * 0.9, life: 1.2 + Math.random() * 0.8, max: 2,
           glow: 1, ember: 1 });
       }
-      ignite(x, y, 6, 0.8);
+      ignite(W, G, x, y, 6, 0.8);
     }
     // a prop whose rock has gone hits the ground: it breaks, blows, or settles there
     function landProp(pr) {
       pr.fall = false; pr.vy = 0;
-      if (pr.k === 'barrel' || pr.k === 'pod') { blowProp(pr); return; }
+      if (pr.k === 'barrel' || pr.k === 'pod') { blowProp(W, G, pr); return; }
       if (pr.k === 'lamp' && pr.st !== 'cap') { popLamp(pr); return; }
       const stands = !pr.hang && !pr.side && (pr.k === 'cover' || pr.k === 'pad' || pr.k === 'noise' ||
         pr.k === 'spike' || pr.k === 'lamp' || pr.k === 'tendril' || pr.k === 'vent');
@@ -1450,7 +1161,7 @@ export function Game({ input }) {
         }
         if (pr.hurt) {
           const n = pr.hurt; pr.hurt = 0;
-          if (pr.k === 'barrel' || pr.k === 'pod') { blowProp(pr); continue; }
+          if (pr.k === 'barrel' || pr.k === 'pod') { blowProp(W, G, pr); continue; }
           if (pr.k === 'lamp') { popLamp(pr); continue; }
           if (pr.k === 'noise' && pr.st === 'stone') { alertAt(pr.x, pr.y); pr.ring = 1; SFX.fx('resonate', pr.x, pr.y); }
           if (pr.k === 'spike' && pr.st === 'salt') { shatter(pr, 10); continue; }
@@ -1517,10 +1228,10 @@ export function Game({ input }) {
             if (pr.on) {
               if (Math.random() < dt * 40) W.dparts.push({ x: pr.x + (Math.random() - 0.5) * 6, y: pr.y - 4, vx: (Math.random() - 0.5) * 20,
                 vy: -140 - Math.random() * 80, g: 0, c: Math.random() < 0.5 ? '#ffb050' : '#ff7a2a', s: 1.6, life: 0.4, max: 0.4, glow: 1 });
-              if (me && pr.cd <= 0 && W.p.x + PW > pr.x - 6 && W.p.x < pr.x + 6 && W.p.y < pr.y && W.p.y + PH > pr.y - VENT_H) { hurt(W, G, PROP_DMG.vent); youAlight(); pr.cd = 0.4; }
+              if (me && pr.cd <= 0 && W.p.x + PW > pr.x - 6 && W.p.x < pr.x + 6 && W.p.y < pr.y && W.p.y + PH > pr.y - VENT_H) { hurt(W, G, PROP_DMG.vent); youAlight(W); pr.cd = 0.4; }
               if ((pr.ecd = (pr.ecd || 0) - dt) <= 0) {
                 pr.ecd = 0.4;
-                for (let yy = 4; yy < VENT_H; yy += 12) ignite(pr.x, pr.y - yy, 6, 0.5);   // and it lights what hangs over it
+                for (let yy = 4; yy < VENT_H; yy += 12) ignite(W, G, pr.x, pr.y - yy, 6, 0.5);   // and it lights what hangs over it
                 for (let j = W.enemies.length - 1; j >= 0; j--) {
                   const e = W.enemies[j];
                   if (Math.abs(e.x - pr.x) < e.r + 6 && e.ty < pr.y && e.ty > pr.y - VENT_H) { setAlight(e); damageEnemy(W, j, 1); }
@@ -1622,9 +1333,9 @@ export function Game({ input }) {
         // burning oil from a lantern: lights what it passes through, and where it lands
         if (q.ember) {
           const ex = Math.floor(q.x / CELL), ey = Math.floor(q.y / CELL);
-          if (ex >= 0 && ey >= 0 && ex < CW && ey < CH && W.fire.fuel[ey * CW + ex]) ignite(q.x, q.y, 2, 0.6);
-          if (!W.p.dead && q.x > W.p.x && q.x < W.p.x + PW && q.y > W.p.y && q.y < W.p.y + PH) { youAlight(); dead = true; }
-          if (!dead && solidAt(W, q.x, q.y)) ignite(q.x - q.vx * dt, q.y - q.vy * dt, 4, 0.85);
+          if (ex >= 0 && ey >= 0 && ex < CW && ey < CH && W.fire.fuel[ey * CW + ex]) ignite(W, G, q.x, q.y, 2, 0.6);
+          if (!W.p.dead && q.x > W.p.x && q.x < W.p.x + PW && q.y > W.p.y && q.y < W.p.y + PH) { youAlight(W); dead = true; }
+          if (!dead && solidAt(W, q.x, q.y)) ignite(W, G, q.x - q.vx * dt, q.y - q.vy * dt, 4, 0.85);
         }
         if (!dead && solidAt(W, q.x, q.y)) {
           dead = true;
@@ -2045,7 +1756,7 @@ export function Game({ input }) {
           turn(b, clamp(angDiff(want, Math.atan2(b.vy, b.vx)), -b.boomer * dt, b.boomer * dt));
         }
         if (b.eat) dig(W, G, b.x, b.y, b.eat);
-        if (b.fire) ignite(b.x, b.y, b.size + 2, 0.5);     // a fire spell lights what it flies through
+        if (b.fire) ignite(W, G, b.x, b.y, b.size + 2, 0.5);     // a fire spell lights what it flies through
         if (b.arc) lightningStep(b, dt);
         // a timer lets its payload go in mid-air, and the carrier flies on
         if (b.payload && b.timer != null && (b.timer -= dt) <= 0) firePayload(b);
@@ -2156,7 +1867,7 @@ export function Game({ input }) {
             }
             if (b.cluster) { spray(b); dead = true; break; }
             if (b.explode) { boom = true; break; }
-            if (b.pop) { explode(nx, ny, b.pop, b.dmg * 0.5); dead = true; break; }
+            if (b.pop) { explode(W, G, nx, ny, b.pop, b.dmg * 0.5); dead = true; break; }
             if (b.pull) { (b.hit || (b.hit = new Set())).add(e); continue; }   // a black hole rolls on
             if (b.pierce > 0) { b.pierce--; (b.hit || (b.hit = new Set())).add(e); }
             else { dead = true; break; }
@@ -2178,7 +1889,7 @@ export function Game({ input }) {
               if (slow && b.lifeBoom) b.bounce++;         // a bomb at rest doesn't use up its bounces
               if (!slow) SFX.bounce(b.x, b.y);
               if (b.look) shotBounce(b);
-              if (b.bounceFx === 'explode') explode(b.x, b.y, Math.max(10, b.explode || 12));
+              if (b.bounceFx === 'explode') explode(W, G, b.x, b.y, Math.max(10, b.explode || 12));
               break;                      // stay put: b.x/b.y are still outside the rock
             }
             b.x = nx; b.y = ny;
@@ -2188,7 +1899,7 @@ export function Game({ input }) {
             if (b.eat > 0) { dig(W, G, nx, ny, b.eat); continue; }
             if (b.cluster) { spray(b); dead = true; break; }
             if (b.explode) { boom = true; break; }
-            if (b.pop) { explode(b.x, b.y, b.pop, b.dmg * 0.5); dead = true; break; }
+            if (b.pop) { explode(W, G, b.x, b.y, b.pop, b.dmg * 0.5); dead = true; break; }
             if (b.pit) dig(W, G, nx, ny, b.pit);                // Noita's small hole where a shot lands
             burst(W, b.x, b.y, 3, b.col);
             SFX.rock(b.x, b.y);
@@ -2197,8 +1908,8 @@ export function Game({ input }) {
           }
           b.x = nx; b.y = ny;
         }
-        if (boom) { explode(b.x, b.y, b.explode, undefined, b.fire); dead = true; }
-        if (dead && b.fire) ignite(b.x, b.y, b.size + 6, 0.9);
+        if (boom) { explode(W, G, b.x, b.y, b.explode, undefined, b.fire); dead = true; }
+        if (dead && b.fire) ignite(W, G, b.x, b.y, b.size + 6, 0.9);
         // an expiration trigger goes off however it dies; a trigger stopped by a prop counts as a hit
         if (dead && b.payload && (b.trig === 'expire' || b.struck)) firePayload(b);
         if (dead && b.tele) teleportTo(b);            // Teleport Bolt: you go where it stopped
@@ -2259,12 +1970,12 @@ export function Game({ input }) {
           f.near = W.enemies.some(e => Math.hypot(e.x - f.x, e.ty - f.y) < f.r * 2.2);
           let trip = f.life <= 0;
           for (let j = 0; j < W.enemies.length && !trip; j++) if (near(j)) trip = true;
-          if (trip) { explode(f.x, f.y, f.r); fieldPayload(f); W.fields.splice(i, 1); continue; }
+          if (trip) { explode(W, G, f.x, f.y, f.r); fieldPayload(f); W.fields.splice(i, 1); continue; }
         } else if (f.field === 'dormant') {
           // set off by any blast of yours, which is the whole point of it
           for (const fl of W.flashes) {
             if (Math.hypot(fl.x - f.x, fl.y - f.y) < fl.r + f.r * 0.5) {
-              explode(f.x, f.y, f.r * 1.6); fieldPayload(f); W.fields.splice(i, 1); f.life = -1; break;
+              explode(W, G, f.x, f.y, f.r * 1.6); fieldPayload(f); W.fields.splice(i, 1); f.life = -1; break;
             }
           }
           if (f.life < 0) continue;
@@ -2309,7 +2020,7 @@ export function Game({ input }) {
           if (f.tick <= 0) {
             f.tick = 0.16;
             const a = Math.random() * Math.PI * 2, rr = Math.random() * f.r;
-            explode(f.x + Math.cos(a) * rr, f.y + Math.sin(a) * rr, 9);
+            explode(W, G, f.x + Math.cos(a) * rr, f.y + Math.sin(a) * rr, 9);
           }
         }
         if (f.life <= 0) W.fields.splice(i, 1);
@@ -2641,7 +2352,7 @@ export function Game({ input }) {
             SFX.boom(e.x, e.ty, 26);
             hurt(W, G, k.dmg);
             W.enemies.splice(i, 1);
-            if (k.fire) fireBlast(e.x, e.ty, 26, 1);
+            if (k.fire) fireBlast(W, G, e.x, e.ty, 26, 1);
             continue;
           }
           SFX.creature(k, 'bite', e.x, e.ty);
@@ -2693,14 +2404,14 @@ export function Game({ input }) {
             gone = true;
             if (b.splat != null) splat(W, b, b.x - b.vx * dt / sn, b.y - b.vy * dt / sn);
             else SFX.fx('fizzle', b.x, b.y);
-            if (b.fire) ignite(b.x - b.vx * dt / sn, b.y - b.vy * dt / sn, 8, 0.9);
+            if (b.fire) ignite(W, G, b.x - b.vx * dt / sn, b.y - b.vy * dt / sn, 8, 0.9);
             break;
           }
           if (!W.p.dead && b.x > W.p.x - 2 && b.x < W.p.x + PW + 2 && b.y > W.p.y - 2 && b.y < W.p.y + PH + 2) {
             gone = true;
             if (b.splat != null) splat(W, b, b.x, b.y); else burst(W, b.x, b.y, 5, COL.player);
             hurt(W, G, b.dmg);
-            if (b.fire) youAlight();
+            if (b.fire) youAlight(W);
           }
         }
         if (gone) W.enemyShots.splice(i, 1);
@@ -2765,7 +2476,7 @@ export function Game({ input }) {
       } else W.ghost = null;
 
       // ---- fire: the cave's, the creatures', yours ----
-      fireFrame(dt, pcx, pcy);
+      fireFrame(W, G, dt, pcx, pcy);
 
       // ---- Levitation Trail: flying lays down fire that burns what it touches ----
       if (W.pb.trail && W.p.flame > 0 && !W.p.dead) {

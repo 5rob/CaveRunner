@@ -408,7 +408,7 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] `G` made; player.js, first part: `refreshBag`, `maxHp`, `hurt` (all `(W, G, …)`: they read `input`)
   - [x] enemies.js, first part: `damageEnemy`, `fireEnemyShot` (`(W, …)`)
   - [x] terrain.js, the changes: `dig`, `dropOre`, `unDeco`, `paint` (through `G.tctx`/`G.dctx`, the wrapped ones)
-  - [ ] fire.js and its cycle (D17): the fire's functions, `explode` → terrain.js, `blowProp` → props.js,
+  - [x] fire.js and its cycle (D17): the fire's functions, `explode` → terrain.js, `blowProp` → props.js,
         `webNear`/`webDist` → webs.js
   - The old rough list, still to do:
   - [ ] terrain.js: dirty rects, putImageData wrappers (replay needs these!)
@@ -743,3 +743,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.4 (3) | `const G = { input, canvases and contexts, REC, RT }` right after the recorder (D16). `player.js`: `refreshBag`, `maxHp`, `hurt`. `perks`, `shop`, `save` run too. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 (4) | `enemies.js`: `damageEnemy`, `fireEnemyShot`. `rats`, `creatures`, `lightning` run too. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 (5) | `terrain.js` gets the changes: `dig`, `unDeco`, `paint` (`(W, G, …)`, drawing through `G.tctx`/`G.dctx`, the wrapped ones) and `dropOre` (`(W, …)`). `system.js` now also reads an existing module's own imports. `replay`, `buzzsaw`, `teleport` (ore) run too. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 3, P3.4 (6) | The fire in one move (18 functions): `fire.js` (`fireFrame`, `ignite`, `fireBlast`, `fireOut`, `flushFire`, `setAlight`, `youAlight`, catching plants/arches/webs, `fireList`…), `explode` → `terrain.js`, `blowProp` → `props.js`, `webNear`/`webDist` → `webs.js` (the cycle, D17). `fireBox` joins `G` (its `const` moved up above `G`). `fire`, `archvine`, `decor`, `spider`, `replay`, `blackhole`, `pollen`, `trigger`, `rats` run too (`rats` "they come out of the hole" failed once, passed alone twice: a known flake). Game.js 4,280 → 3,803 lines. | probe SAME, logic 33/33, smoke ok |
