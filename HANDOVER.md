@@ -14,8 +14,9 @@ it's stale.
   `src/game/world.js`) and P3.3 (`window.__lvl` = `W` via `src/game/testhook.js`) are done, and
   P3.4 (systems out of `Game` into `src/game/systems/`) is part done: terrain (queries and
   changes, `explode`), particles, `hurt`, `damageEnemy`, and the whole fire system are out
-  (shape: REFACTOR.md D16, the `G` context; cycles: D17). Next: the props (`decorStep`), then
-  gun/bullets/fields, rats, ambience, and last `step`/`draw`. The proof for each Phase 3 step
+  (shape: REFACTOR.md D16, the `G` context; cycles: D17). Next: ambience (`spore`, `puffSpores`,
+  `stepAmbience`), then the props (`decorStep`), then gun/bullets/fields, rats, the recorder,
+  and last `step`/`draw`. Last green full suite: the P3.4 checkpoint (efaeb42). The proof for each Phase 3 step
   is `node tests/determinism.js` (same scripted run on HEAD and this tree, frame by frame).
   `node tools/system.js <file> name…` does a P3.4 move (`--dry` first), and
   `node tools/gamemap.js fn…` says what a function still in `Game` needs.
@@ -313,7 +314,7 @@ Talk briefly, iterate fast, don't over-plan. Every change works at phone width w
   re-run the single suite to confirm; all are enemy-geometry / random-seed sensitive, not
   regressions): `everymod` (telecast), `trigger` (double trigger), and `compare` (a
   found gun that happens not to differ in regen, so "less regen is red" finds nothing —
-  seen once during the v47 run, green on its own), and `fog` "the next floor is dark again" (~1 in 4-5 runs a new floor spawns with a few cave cells already visible up the shaft; also fails on v56 code, seed-dependent), and `lightning` "a fork hits a creature off to the side" (~1 in 5-8: the fork roll is random and the target bobs near the edge of its 90 reach; seen v78/v79, fails with any creature, not a spider bug). And `jelly` (browser) "hunting with a clear line, it spits at you" (~1 in 3, same on v87 code — the sandbox jelly sometimes never lines up a shot; in the refactor sessions it passed only ~1 in 3 even alone, on v96 as well). Also seen during the refactor, each passing alone: `sound` portalOut, `torch` ("falls off into the dark", "brighter frames… taller flame"), `fog` "flying on reveals more", `decor` "a vine holds you where you grabbed it", `rats`, `save`, `archvine` — REFACTOR.md "Found along the way" has the list.
+  seen once during the v47 run, green on its own), and `fog` "the next floor is dark again" (~1 in 4-5 runs a new floor spawns with a few cave cells already visible up the shaft; also fails on v56 code, seed-dependent), and `lightning` "a fork hits a creature off to the side" (~1 in 5-8: the fork roll is random and the target bobs near the edge of its 90 reach; seen v78/v79, fails with any creature, not a spider bug). And `jelly` (browser) "hunting with a clear line, it spits at you" (~1 in 3, same on v87 code — the sandbox jelly sometimes never lines up a shot; in the refactor sessions it passed only ~1 in 3 even alone, on v96 as well). Also seen during the refactor, each passing alone: `sound` portalOut, `torch` ("falls off into the dark", "brighter frames… taller flame"), `fog` "flying on reveals more", `decor` "a vine holds you where you grabbed it", `rats`, `save`, `archvine`, `jelly` "saturation 0 greys it out" (the Dev panel preview; once, at the P3.4 checkpoint) — REFACTOR.md "Found along the way" has the list.
 
 ## Testing on the phone over WiFi
 

@@ -396,9 +396,22 @@ What the code says about P3.4 (checked at the end of P3.3):
 - `tests/determinism.js` doesn't play a death replay, the map, the shop, the Bag screen or perks.
   When a step touches those, also run the matching browser suites (`replay`, `map`, `shop`,
   `perks`, …), as P3.2 did.
-- How a step goes: move the functions (by hand or a small script; `tools/world.js` can be
-  adapted), `node tests/determinism.js` (SAME), `node tests/run.js logic` + `smoke`, the
-  related browser suites, tick, log, commit. Full suite at the end of the task.
+- How a step goes (as done for steps 1–6):
+  1. `node tools/gamemap.js fn…`: what each function calls and uses. Everything it calls must
+     already be out, or go in the same move. A cycle goes in one move, split across modules with
+     `other.js:name` (D17).
+  2. Anything it uses that's neither `W` nor a key of `G` (a closure `const` like `fireBox`):
+     declare it above `G` and add it to `G` by hand first. A reassigned `let` (`RPV`, `pgArt`…)
+     needs a `G.x` rewrite of all its references (`tools/world.js` could do it with `G` for `W`).
+  3. `node tools/system.js <file> --dry [--about "header"] name…`, read what it prints (each
+     function's `(W, G)`, every place it's used as a value), then without `--dry`. Read the new
+     module: fix the header, and any comment that travelled with the wrong function.
+  4. `node tests/determinism.js` (SAME), `node tests/run.js logic` + `smoke`, the related browser
+     suites. Tick the box, a session-log line, the CLAUDE.md "game systems" row, commit (`index.html`
+     with it). Full suite (snapshot worktree, see **How a move goes** 6) at each checkpoint.
+  Watch in the tool: an arrow `const` keeps being an arrow (not hoisted, fine: nothing calls a
+  system at load). If `system.js` says "can't tell where X comes from", X is a Game.js top-level
+  (`SPUTTER_FUEL`, `NO_INPUT`…): move it into a module first.
 
 - [ ] **P3.4 Pull systems out**, one per commit, each a module in `game/systems/` (shape: D16,
       cycles: D17). `node tools/system.js <file> name…` does a move (`--dry` first). Leaves first;
@@ -418,19 +431,19 @@ What the code says about P3.4 (checked at the end of P3.3):
     per-frame ones (`visPoly`, `fireStep`, a spider's or jelly's `env`) that is one small allocation
     a call, no behaviour change. The tool takes `//` lines right above a function with it, so a
     section header can travel with the first function under it: read the module after each move.
-  - The old rough list, still to do:
-  - [ ] terrain.js: dirty rects, putImageData wrappers (replay needs these!)
+  - The old rough list (P3.1's guess), still to do; the parts already out are noted:
+  - [ ] recorder: the putImageData wrappers stay in Game until recorder.js (they wrap `tctx`/`dctx`, which the systems reach as `G.tctx`/`G.dctx`)
   - [ ] fog.js: paintFog, bake, blur, fogLit
   - [ ] level-entry.js: enterLevel, sconces, per-floor precompute
-  - [ ] player.js: walking, jetpack + sputter, climbing (vines, webs, arches), hurt, burn
+  - [ ] player.js: walking, jetpack + sputter, climbing (vines, webs, arches), the torch (hurt, maxHp, refreshBag are out)
   - [ ] gun.js: cast, spawnShot, releaseAt, payload/triggers, gun ticks
   - [ ] bullets.js: the bullet loop, homing/drift/wig, bounce, teleport, trails (shotTrail/Bounce/Death/Grind)
   - [ ] fields.js: fields and beams
-  - [ ] enemies.js: the enemy loop, aggro, contact damage, enemy shots, goo/splat, damageEnemy
+  - [ ] enemies.js: the enemy loop, aggro, contact damage, enemy shots (damageEnemy, fireEnemyShot are out; goo/splat are in particles.js); rats (`ratSolid`, `navFor`, `spawnRat`, `unstick`, `ratFrame`) likely a rats.js
   - [ ] pickups.js: pickups, shop stock, coins, ore, rooms, the interact tap
-  - [ ] props.js: decorStep, blowProp, landProp, rustle, zfx
-  - [ ] fire-frame.js: fireFrame, ignite, setAlight, catchArch
-  - [ ] ambience.js: motes, amb particles, spores, dparts, smoke, sparks
+  - [ ] props.js: decorStep, landProp, rustle, zfx (blowProp is out)
+  - [x] fire: done, as fire.js (step 6)
+  - [ ] ambience.js: spores and amb particles (see the ambience box above); motes, dparts, smoke, sparks are updated inline in step()
   - [ ] camera.js
   - [ ] recorder.js: recFrame, recSample, REC, and drawReplay's rebuild
   - [ ] save-run.js: saveRun

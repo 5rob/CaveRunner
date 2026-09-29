@@ -8,8 +8,10 @@ the code is in modules under `src/`) with esbuild (`npm install` once) and glues
 you. `index.html` stays committed: CI, Pages, the APK and `serve.js` all read it. Commit
 it together with the `src/` change.
 
-**Refactor planned / in progress:** splitting the file into modules under `src/`. The plan,
-rules and progress tracker are in **`REFACTOR.md`** — read it before touching code structure.
+**Refactor in progress** (Phase 3 on the `refactor` branch: taking `Game` apart into
+`src/game/systems/`). The plan, rules and progress tracker are in **`REFACTOR.md`** — read it
+before touching code structure. Its tools: `tools/system.js` (moves Game functions into a
+system), `tools/gamemap.js` (what a Game function needs), `tests/determinism.js` (the proof).
 
 ## How the owner likes to work
 
