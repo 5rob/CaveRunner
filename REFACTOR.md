@@ -487,6 +487,8 @@ What the code says about P3.4 (checked at the end of P3.3):
        - [x] P3.4 (29): `stepSound` in step.js (ear, jet/Black Hole/portal/matter loops, ambience, heartbeat), `stepFields` →
          fields.js (every field at work, the beams fading). Re-grep the lines after each cut: a cut redoes the imports, and a
          shorter import block moves every line under it (the first try at this one cut two lines too low; thrown away)
+       - [x] P3.4 (30): `stepPickups` → a new pickups.js (pickups' cooldowns, gold, the card, the interact tap), and the toasts
+         counting down → `stepToasts` in particles.js. `decorStep` was a function already: step calls it with `F.pcx`/`F.pcy`
        - draw's inner functions `drawLook`, `drawFieldLook`, `drawBolt` go out first (they use only their arguments and
          `W`/`G`), then the layers in their current order: camera, background + terrain, props, portal, smoke, fields, silk,
          enemies, projectiles, beams, arrival, shop, gold, pickups, rooms, trail, sparks, motes, flashes, flame, aim + gun,
@@ -515,7 +517,7 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] bullets.js: the bullet loop, homing/drift/wig, bounce, teleport, trails (shotTrail/Bounce/Death/Grind are in shotlooks.js; the loop is `stepBullets`, P3.4 (28))
   - [x] fields.js: fields and beams (the per-frame work is `stepFields`, P3.4 (29))
   - [ ] enemies.js: the enemy loop, aggro, contact damage, enemy shots (damageEnemy, fireEnemyShot are out; goo/splat are in particles.js); rats (`ratSolid`, `navFor`, `spawnRat`, `unstick`, `ratFrame`) likely a rats.js
-  - [ ] pickups.js: pickups, shop stock, coins, ore, rooms, the interact tap
+  - [x] pickups.js: pickups, shop stock, coins, ore, rooms, the interact tap (`stepPickups`, P3.4 (30); ore stays with `dropOre` in terrain.js)
   - [ ] props.js: decorStep, landProp, rustle, zfx (blowProp is out)
   - [x] fire: done, as fire.js (step 6)
   - [ ] ambience.js: spores and amb particles (see the ambience box above); motes, dparts, smoke, sparks are updated inline in step()
@@ -882,3 +884,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.4 (27) | `aimAndCast` (aim, Pinpointer, facing, the gun ticks, the trigger: 41 lines) → gun.js with `tools/part.js`. `perks`, `buzzsaw`, `everymod`, `cooldown-debug-shop` run too, all first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (28) | `stepBullets` (the bullet loop and the arcs fading: 187 lines) → bullets.js with `tools/part.js`; header rewritten. `everymod`, `trigger`, `blackhole`, `teleport`, `t1spells`, `spelllooks`, `pollen`, `buzzsaw`, `lightning` run too; `t1spells` "bubble … glowing trail" failed once, passed 3 of 3 alone (chance, see Found along the way), the rest first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (29) | `stepSound` (25 lines, in step.js) and `stepFields` (75 lines) → fields.js with `tools/part.js`; fields.js header. `sound`, `everymod`, `spelllooks`, `fire`, `teleport` run too, all first time. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 3, P3.4 (30) | `stepPickups` (176 lines) → new `pickups.js` with `tools/part.js` (its `pure.js` line too); `stepToasts` (one line) → particles.js. Watch out in Git Bash: a one-line argument starting with `//` gets a slash eaten or added (MSYS path conversion), which put a `///` in particles.js' header for a moment: `MSYS_NO_PATHCONV=1`. `shop`, `interact`, `gunpickup`, `perks`, `teleport`, `restart-confirm`, `rats`, `shopcard`, `compare` run too, all first time. | probe SAME, logic 33/33, smoke ok |

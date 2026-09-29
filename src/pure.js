@@ -65,6 +65,7 @@ export * from './game/systems/save-run.js';
 export * from './game/systems/plantglow.js';
 export * from './game/systems/recorder.js';
 export * from './game/systems/level-entry.js';
+export * from './game/systems/pickups.js';
 export * from './game/systems/step.js';
 export * from './game/render/draw.js';
 export * from './game/Game.js';

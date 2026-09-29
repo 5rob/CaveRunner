@@ -10126,6 +10126,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       W.sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.45, max: 0.45, c: color, size: 3 });
     }
   }
+  function stepToasts(W, F) {
+    const { dt } = F;
+    for (let i = W.toasts.length - 1; i >= 0; i--) if ((W.toasts[i].t -= dt) <= 0) W.toasts.splice(i, 1);
+  }
 
   // src/save/save.js
   var SAVE_KEY = "caverunner-save";
@@ -15146,19 +15150,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let i = W.arcs.length - 1; i >= 0; i--) if ((W.arcs[i].t += dt) > W.arcs[i].max) W.arcs.splice(i, 1);
   }
 
-  // src/game/systems/step.js
-  function step(W, G, dt) {
-    const F = { dt, LO: null, MHP: 0, pcx: 0, pcy: 0 };
-    if (stepRequests(W, G, F)) return;
-    stepPerks(W, G, F);
-    const LO = F.LO, MHP = F.MHP;
-    movePlayer(W, G, F);
-    if (atPortal(W, G, F)) return;
-    const pcx = F.pcx, pcy = F.pcy;
-    aimAndCast(W, G, F);
-    stepBullets(W, G, F);
-    stepSound(W, F);
-    stepFields(W, G, F);
+  // src/game/systems/pickups.js
+  function stepPickups(W, G, F) {
+    const { dt, LO, MHP, pcx, pcy } = F;
     for (let i = W.pickups.length - 1; i >= 0; i--) {
       const q = W.pickups[i];
       if (q.taken) {
@@ -15337,7 +15331,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       G.input.current.notify();
     }
     G.input.current.interact = false;
-    for (let i = W.toasts.length - 1; i >= 0; i--) if ((W.toasts[i].t -= dt) <= 0) W.toasts.splice(i, 1);
+  }
+
+  // src/game/systems/step.js
+  function step(W, G, dt) {
+    const F = { dt, LO: null, MHP: 0, pcx: 0, pcy: 0 };
+    if (stepRequests(W, G, F)) return;
+    stepPerks(W, G, F);
+    const LO = F.LO, MHP = F.MHP;
+    movePlayer(W, G, F);
+    if (atPortal(W, G, F)) return;
+    const pcx = F.pcx, pcy = F.pcy;
+    aimAndCast(W, G, F);
+    stepBullets(W, G, F);
+    stepSound(W, F);
+    stepFields(W, G, F);
+    stepPickups(W, G, F);
+    stepToasts(W, F);
     decorStep(W, G, dt, pcx, pcy);
     for (let i = W.enemies.length - 1; i >= 0; i--) {
       const e = W.enemies[i], k = e.k;

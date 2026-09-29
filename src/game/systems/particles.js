@@ -1,5 +1,6 @@
 // Particles and small feedback: sparks thrown out of a point (burst), drops of goo and a spit's
-// splat, and the messages at the bottom of the view (toast).
+// splat, and the messages at the bottom of the view (toast; stepToasts, a part of step(), counts
+// them down).
 
 import { SFX } from '../../audio/sfx.js';
 
@@ -27,4 +28,10 @@ export function burst(W, x, y, n, color) {
     const a = Math.random() * 6.28, sp = 60 + Math.random() * 160;
     W.sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.45, max: 0.45, c: color, size: 3 });
   }
+}
+
+// the messages count down and go (a part of step)
+export function stepToasts(W, F) {
+  const { dt } = F;
+  for (let i = W.toasts.length - 1; i >= 0; i--) if ((W.toasts[i].t -= dt) <= 0) W.toasts.splice(i, 1);
 }
