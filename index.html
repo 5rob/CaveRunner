@@ -9865,6 +9865,190 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
+  // src/ui/witness.js
+  var RP_SPEEDS = [0.25, 0.5, 1, 2];
+  function Witness({ input, close }) {
+    const V = input.current.replay, W = input.current.witness;
+    const [, bump] = useState(0);
+    const redo = () => bump((n) => n + 1);
+    const scrub = useRef(null), pts = useRef(/* @__PURE__ */ new Map()), pinch = useRef(null), dragging = useRef(false);
+    useEffect(() => {
+      let raf, last = "";
+      const tick = () => {
+        const sig = Math.round(V.t * 20) + (V.playing ? "p" : "");
+        if (sig !== last) {
+          last = sig;
+          redo();
+        }
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }, []);
+    const span = Math.max(0.01, W.t1 - W.t0);
+    const seek = (e) => {
+      const r = scrub.current.getBoundingClientRect();
+      V.t = W.t0 + clamp((e.clientX - r.left) / r.width, 0, 1) * span;
+      V.playing = false;
+      redo();
+    };
+    const down = (e) => {
+      e.preventDefault();
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch (_) {
+      }
+      pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      pinch.current = null;
+    };
+    const move = (e) => {
+      const P = pts.current, q = P.get(e.pointerId);
+      if (!q) return;
+      const u = V.unit || 1;
+      if (P.size === 1) {
+        V.cx -= (e.clientX - q.x) / u;
+        V.cy -= (e.clientY - q.y) / u;
+        V.follow = false;
+      }
+      q.x = e.clientX;
+      q.y = e.clientY;
+      if (P.size >= 2) {
+        const [a, b] = [...P.values()];
+        const d = Math.hypot(a.x - b.x, a.y - b.y) || 1, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, L = pinch.current;
+        if (L) {
+          V.zoom = clamp(V.zoom * d / L.d, 0.4, 4);
+          V.cx -= (mx - L.mx) / u;
+          V.cy -= (my - L.my) / u;
+          V.follow = false;
+        }
+        pinch.current = { d, mx, my };
+      }
+      if (!V.follow) redo();
+    };
+    const up = (e) => {
+      pts.current.delete(e.pointerId);
+      pinch.current = null;
+    };
+    const tap = (f) => (e) => {
+      e.preventDefault();
+      f();
+      redo();
+    };
+    const rel = V.t - W.death, frac = (V.t - W.t0) / span;
+    const atEnd = V.t >= W.t1 - 1e-6;
+    return h(
+      "div",
+      { className: "witness" },
+      h(
+        "div",
+        {
+          className: "wscene",
+          onPointerDown: down,
+          onPointerMove: move,
+          onPointerUp: up,
+          onPointerCancel: up,
+          onWheel: (e) => {
+            V.zoom = clamp(V.zoom * Math.exp(-e.deltaY * 15e-4), 0.4, 4);
+          }
+        },
+        h("div", { className: "wtitle" }, "WITNESS YOURSELF")
+      ),
+      h(
+        "div",
+        { className: "wpanel", ref: (el) => {
+          if (el) V.panelH = el.getBoundingClientRect().height;
+        } },
+        h(
+          "div",
+          {
+            className: "wscrub",
+            ref: scrub,
+            onPointerDown: (e) => {
+              e.preventDefault();
+              dragging.current = true;
+              try {
+                e.currentTarget.setPointerCapture(e.pointerId);
+              } catch (_) {
+              }
+              seek(e);
+            },
+            onPointerMove: (e) => {
+              if (dragging.current) seek(e);
+            },
+            onPointerUp: () => {
+              dragging.current = false;
+            },
+            onPointerCancel: () => {
+              dragging.current = false;
+            }
+          },
+          h("div", { className: "wtrack" }),
+          h("div", { className: "wfill", style: { width: frac * 100 + "%" } }),
+          h("div", {
+            className: "wdeath",
+            title: "The moment you died",
+            style: { left: (W.death - W.t0) / span * 100 + "%" }
+          }),
+          h("div", { className: "wthumb", style: { left: frac * 100 + "%" } })
+        ),
+        h(
+          "div",
+          { className: "wrow" },
+          h("button", {
+            className: "wfirst",
+            "aria-label": "Back to the start",
+            onPointerDown: tap(() => {
+              V.t = W.t0;
+              V.playing = true;
+            })
+          }, "⏮"),
+          h(
+            "button",
+            {
+              className: "wplay",
+              "aria-label": V.playing ? "Pause" : "Play",
+              onPointerDown: tap(() => {
+                if (!V.playing && atEnd) V.t = W.t0;
+                V.playing = !V.playing;
+              })
+            },
+            V.playing ? "⏸" : "▶"
+          ),
+          RP_SPEEDS.map((sp) => h("button", {
+            key: sp,
+            className: "wspeed" + (V.speed === sp ? " on" : ""),
+            onPointerDown: tap(() => {
+              V.speed = sp;
+            })
+          }, (sp < 1 ? String(sp).slice(1) : sp) + "×")),
+          h("span", { className: "wtime" }, (rel < 0 ? "−" : "+") + Math.abs(rel).toFixed(1) + "s")
+        ),
+        h(
+          "div",
+          { className: "wrow" },
+          h("button", { className: "wloop" + (V.loop ? " on" : ""), onPointerDown: tap(() => {
+            V.loop = !V.loop;
+          }) }, "Loop"),
+          h("button", { className: "wfog" + (V.fog ? " on" : ""), onPointerDown: tap(() => {
+            V.fog = !V.fog;
+          }) }, "Fog"),
+          h(
+            "button",
+            { className: "wfollow" + (V.follow ? " on" : ""), onPointerDown: tap(() => {
+              V.follow = true;
+              V.zoom = 1;
+            }) },
+            "Follow"
+          ),
+          h("button", { className: "wclose", onPointerDown: (e) => {
+            e.preventDefault();
+            close();
+          } }, "Close")
+        )
+      )
+    );
+  }
+
   // src/world/fire.js
   var FLAMMABLE = { vine: 1, myc: 1 };
   var FIRE_WET = { puddle: 1, snow: 1, ice: 1, slime: 1 };
@@ -11881,186 +12065,475 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { x: (F.x0 + i + 0.5) * NAV * CELL, y: (F.y0 + j + 0.5) * NAV * CELL, dist, air };
   }
 
-  // src/ui/witness.js
-  var RP_SPEEDS = [0.25, 0.5, 1, 2];
-  function Witness({ input, close }) {
-    const V = input.current.replay, W = input.current.witness;
-    const [, bump] = useState(0);
-    const redo = () => bump((n) => n + 1);
-    const scrub = useRef(null), pts = useRef(/* @__PURE__ */ new Map()), pinch = useRef(null), dragging = useRef(false);
+  // src/ui/devpanel.js
+  function JellyPreview() {
+    const ref = useRef(null);
     useEffect(() => {
-      let raf, last = "";
-      const tick = () => {
-        const sig = Math.round(V.t * 20) + (V.playing ? "p" : "");
-        if (sig !== last) {
-          last = sig;
-          redo();
+      const c = ref.current;
+      if (!c || !c.getContext) return;
+      const ctx = c.getContext("2d");
+      const WU = 110, LEDGE = 8;
+      const k = enemyFor("meduusa", 1);
+      let HU = 60;
+      const e = { x: WU / 2, y: 26, hx: WU / 2, hy: 26, r: k.r, phase: 0 };
+      const solid = (cx, cy) => cx < 0 || cy < 0 || cx * CELL >= WU || (cy + 1) * CELL > HU - LEDGE;
+      let raf, last = performance.now(), t = 0, spitT = 1.2, glob = null;
+      const drops = [], spores = [];
+      const TH = themeFor(1), sporeCol = rgbA(TH.moss[1]);
+      const artC = document.createElement("canvas"), artCtx = artC.getContext("2d", { willReadFrequently: true });
+      const glowC = document.createElement("canvas"), glowCtx = glowC.getContext("2d");
+      const tufts = Array.from({ length: WU }, () => ({ h: Math.random() < 0.15 ? 0 : 1 + Math.floor(Math.random() * 3), c: Math.random() }));
+      const vines = [{ k: "climb", st: "vine", x: 11, y: 0, len: 34, seed: 0.37 }, { k: "climb", st: "vine", x: WU - 13, y: 0, len: 27, seed: 0.81 }];
+      const drop = (x, y, vx, vy, P, g) => {
+        if (drops.length < 120) {
+          const l = 0.5 + Math.random() * 0.5;
+          drops.push({ x, y, vx, vy, g, life: l, max: l, c: Math.random() < 0.35 ? P.drip2 : P.drip, s: 1.1 + Math.random() * 0.8 });
         }
+      };
+      const tick = (now) => {
         raf = requestAnimationFrame(tick);
+        const dt = Math.min(0.05, (now - last) / 1e3);
+        last = now;
+        t += dt;
+        const dpr = window.devicePixelRatio || 1, cw = Math.round(c.clientWidth * dpr), ch = Math.round(c.clientHeight * dpr);
+        if (!cw || !ch) return;
+        if (c.width !== cw || c.height !== ch) {
+          c.width = cw;
+          c.height = ch;
+        }
+        const sc = cw / WU;
+        HU = ch / sc;
+        const S = e.je;
+        if (S) {
+          S.rx = WU / 2 + Math.cos(t * 0.55) * WU * 0.24;
+          S.ry = (HU - LEDGE) * 0.36 + Math.sin(t * 0.8) * 5;
+          S.roamR = 1e9;
+          S.roamSpd = 0;
+        }
+        const pulse = jellyStep(e, { solidCell: solid, hunting: false, goal: null, rnd: Math.random }, dt) === "pulse";
+        const P = jellyPal(e.je.u.col);
+        if (pulse) {
+          const S2 = e.je, B = jellyBell(e.r, S2.shape, kru("jeSquash", S2.u.sq)), c0 = Math.cos(S2.hd), s0 = Math.sin(S2.hd);
+          for (let i = 0, n = Math.round(kr("jeSpores")); i < n && spores.length < 80; i++) {
+            const lx = (Math.random() * 2 - 1) * B.rw * 0.7, r = Math.random();
+            const a2 = S2.hd + Math.PI + (Math.random() * 2 - 1) * kr("jeSporeSpread") * Math.PI / 180, v = kr("jeSporeSpd");
+            spores.push({
+              x: e.x - lx * s0 - B.rim * c0,
+              y: e.y + lx * c0 - B.rim * s0,
+              vx: (r - 0.5) * 8,
+              vy: 0,
+              wob: r * 9,
+              life: 5 + r * 3,
+              max: 8,
+              kx: Math.cos(a2) * v,
+              ky: Math.sin(a2) * v,
+              kd: kr("jeSporeDrag")
+            });
+          }
+        }
+        for (let i = spores.length - 1; i >= 0; i--) {
+          const q = spores[i];
+          q.x += Math.sin(t * 1.3 + q.wob) * 6 * dt + (q.vx + q.kx) * dt;
+          q.y += (q.vy + q.ky) * dt;
+          const kk = Math.exp(-q.kd * dt);
+          q.kx *= kk;
+          q.ky *= kk;
+          if ((q.life -= dt) <= 0 || q.x < 0 || q.x > WU || q.y < 0 || solid(Math.floor(q.x / CELL), Math.floor(q.y / CELL))) spores.splice(i, 1);
+        }
+        if ((spitT -= dt) <= 0 && !glob) {
+          spitT = 2.2;
+          const a2 = e.je.hd, v = 70;
+          glob = {
+            x: e.x + Math.cos(a2) * e.r,
+            y: e.y + Math.sin(a2) * e.r,
+            vx: Math.cos(a2) * v,
+            vy: Math.sin(a2) * v,
+            da: 0,
+            size: kr("jeShotSize"),
+            drip: kr("jeDrip"),
+            g: kr("jeDripG"),
+            n: Math.round(kr("jeSplat")),
+            sv: kr("jeSplatSpd")
+          };
+        }
+        if (glob) {
+          glob.x += glob.vx * dt;
+          glob.y += glob.vy * dt;
+          for (glob.da += glob.drip * dt; glob.da >= 1; glob.da--) drop(glob.x, glob.y + glob.size * 0.5, glob.vx * 0.08, 8 + Math.random() * 18, P, glob.g);
+          if (solid(Math.floor(glob.x / CELL), Math.floor(glob.y / CELL))) {
+            const sp = Math.hypot(glob.vx, glob.vy) || 1;
+            for (let i = 0; i < glob.n; i++) {
+              const a2 = Math.random() * 6.28, v = glob.sv * (0.4 + Math.random() * 0.6);
+              drop(glob.x - glob.vx * dt, glob.y - glob.vy * dt, Math.cos(a2) * v - glob.vx / sp * v * 0.5, Math.sin(a2) * v - glob.vy / sp * v * 0.5 - v * 0.3, P, glob.g);
+            }
+            glob = null;
+          }
+        }
+        for (let i = drops.length - 1; i >= 0; i--) {
+          const q = drops[i];
+          q.vy += q.g * dt;
+          const nx = q.x + q.vx * dt, ny = q.y + q.vy * dt;
+          if (solid(Math.floor(nx / CELL), Math.floor(ny / CELL))) {
+            q.vx *= 0.3;
+            q.vy = 0;
+          } else {
+            q.x = nx;
+            q.y = ny;
+          }
+          if ((q.life -= dt) <= 0) drops.splice(i, 1);
+        }
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = "#0d0f14";
+        ctx.fillRect(0, 0, cw, ch);
+        ctx.setTransform(sc, 0, 0, sc, 0, 0);
+        const aw = WU, ah = Math.ceil(HU), top = HU - LEDGE;
+        if (artC.width !== aw || artC.height !== ah) {
+          artC.width = aw;
+          artC.height = ah;
+          glowC.width = aw;
+          glowC.height = ah;
+        }
+        artCtx.setTransform(1, 0, 0, 1, 0, 0);
+        artCtx.clearRect(0, 0, aw, ah);
+        artCtx.fillStyle = "rgb(62,56,54)";
+        artCtx.fillRect(0, top, aw, LEDGE + 1);
+        artCtx.fillStyle = "rgb(96,84,74)";
+        artCtx.fillRect(0, top, aw, 1.2);
+        tufts.forEach((q, x) => {
+          if (!q.h) return;
+          artCtx.fillStyle = rgbA(mix(TH.moss[0], TH.moss[1], q.c));
+          artCtx.fillRect(x, top - q.h + 1, 1, q.h);
+          artCtx.fillStyle = rgbA(TH.moss[1]);
+          artCtx.fillRect(x, top - q.h + 1, 1, 1);
+        });
+        for (const v of vines) drawProp(artCtx, v, t, TH);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(artC, 0, 0);
+        drawJelly(ctx, e.x, e.y, e.r, t, 0, false, k.col, e.je);
+        if (glob) {
+          const z = glob.size;
+          ctx.save();
+          ctx.translate(glob.x, glob.y);
+          ctx.rotate(Math.atan2(glob.vy, glob.vx));
+          ctx.fillStyle = P.spitEdge;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, z * 1.45, z * 1.05, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = P.spit;
+          ctx.beginPath();
+          ctx.ellipse(-z * 0.08, 0, z * 1.2, z * 0.82, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = P.spitShine;
+          ctx.beginPath();
+          ctx.arc(z * 0.3, -z * 0.28, z * 0.32, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        for (const q of drops) {
+          ctx.globalAlpha = Math.max(0, q.life / q.max);
+          ctx.fillStyle = q.c;
+          ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
+        }
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = "lighter";
+        const u = e.je.u, a = kru("jeGlow", u.glow) * (1 + kru("jeFlare", u.flare) * e.je.shape), rgb = hexRgb(P.glow);
+        glowAt(ctx, e.x, e.y, kru("jeGlowR", u.glowR), a, rgb);
+        glowAt(ctx, e.x, e.y, e.r * 1.6, a * 1.4, rgb);
+        if (glob) glowAt(ctx, glob.x, glob.y, glob.size * 6, 0.3, rgb);
+        ctx.fillStyle = sporeCol;
+        for (const q of spores) {
+          ctx.globalAlpha = Math.min(1, q.life / (q.max * 0.3));
+          ctx.fillRect(q.x - 0.65, q.y - 0.65, 1.3, 1.3);
+        }
+        ctx.globalAlpha = 1;
+        const art = artCtx.getImageData(0, 0, aw, ah).data;
+        const white = plantWhite(art);
+        const reach = kru("jeGlowR", u.glowR) * kru("jePlantReach", u.plant), out = glowCtx.createImageData(aw, ah);
+        if (reach > 2 && plantGlowFill(out.data, art, aw, ah, {
+          ox: 0,
+          oy: 0,
+          px: 1,
+          cx: e.x,
+          cy: e.y,
+          reach,
+          white,
+          top: kru("jePlantTop", u.plant) / 100,
+          strength: kru("jePlantGlow", u.plant),
+          t: t * kru("jePlantTwinkle", u.plant),
+          size: kru("jePlantSize", u.plant),
+          rgb: hexArr(P.glow)
+        })) {
+          glowCtx.putImageData(out, 0, 0);
+          ctx.imageSmoothingEnabled = true;
+          ctx.drawImage(glowC, 0, 0);
+        }
+        ctx.globalCompositeOperation = "source-over";
       };
       raf = requestAnimationFrame(tick);
       return () => cancelAnimationFrame(raf);
     }, []);
-    const span = Math.max(0.01, W.t1 - W.t0);
-    const seek = (e) => {
-      const r = scrub.current.getBoundingClientRect();
-      V.t = W.t0 + clamp((e.clientX - r.left) / r.width, 0, 1) * span;
-      V.playing = false;
-      redo();
-    };
-    const down = (e) => {
-      e.preventDefault();
-      try {
-        e.currentTarget.setPointerCapture(e.pointerId);
-      } catch (_) {
-      }
-      pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      pinch.current = null;
-    };
-    const move = (e) => {
-      const P = pts.current, q = P.get(e.pointerId);
-      if (!q) return;
-      const u = V.unit || 1;
-      if (P.size === 1) {
-        V.cx -= (e.clientX - q.x) / u;
-        V.cy -= (e.clientY - q.y) / u;
-        V.follow = false;
-      }
-      q.x = e.clientX;
-      q.y = e.clientY;
-      if (P.size >= 2) {
-        const [a, b] = [...P.values()];
-        const d = Math.hypot(a.x - b.x, a.y - b.y) || 1, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, L = pinch.current;
-        if (L) {
-          V.zoom = clamp(V.zoom * d / L.d, 0.4, 4);
-          V.cx -= (mx - L.mx) / u;
-          V.cy -= (my - L.my) / u;
-          V.follow = false;
+    return h("canvas", { ref, className: "jellyprev" });
+  }
+  function DevRow({ meta }) {
+    const [val, setVal] = useState(String(DEV[meta.k]));
+    if (meta.type === "slider") {
+      const set = (v) => {
+        devSet(meta.k, v);
+        setVal(String(v));
+      };
+      return h(
+        "div",
+        { className: "devrow" },
+        h("label", null, meta.label, h("span", { className: "devval" }, String(DEV[meta.k]))),
+        h("input", {
+          type: "range",
+          min: meta.min,
+          max: meta.max,
+          step: meta.step,
+          value: DEV[meta.k],
+          onChange: (e) => set(parseFloat(e.target.value))
+        }),
+        h("button", { className: "devreset", "aria-label": "Default", onPointerDown: () => set(DEV_DEFAULTS[meta.k]) }, "↺")
+      );
+    }
+    if (meta.type === "color") {
+      const set = (v) => {
+        devSet(meta.k, v);
+        setVal(v);
+      };
+      return h(
+        "div",
+        { className: "devrow" },
+        h("label", null, meta.label),
+        h("input", { type: "color", value: DEV[meta.k], onChange: (e) => set(e.target.value) }),
+        h("button", { className: "devreset", "aria-label": "Default", onPointerDown: () => set(DEV_DEFAULTS[meta.k]) }, "↺")
+      );
+    }
+    const commit = () => {
+      const s = val.trim();
+      let v;
+      if (s === "") v = DEV_DEFAULTS[meta.k];
+      else {
+        v = parseFloat(s);
+        if (!isFinite(v)) {
+          setVal(String(DEV[meta.k]));
+          return;
         }
-        pinch.current = { d, mx, my };
       }
-      if (!V.follow) redo();
+      v = Math.max(meta.min, Math.min(meta.max, v));
+      devSet(meta.k, v);
+      setVal(String(v));
     };
-    const up = (e) => {
-      pts.current.delete(e.pointerId);
-      pinch.current = null;
-    };
-    const tap = (f) => (e) => {
-      e.preventDefault();
-      f();
-      redo();
-    };
-    const rel = V.t - W.death, frac = (V.t - W.t0) / span;
-    const atEnd = V.t >= W.t1 - 1e-6;
     return h(
       "div",
-      { className: "witness" },
-      h(
-        "div",
-        {
-          className: "wscene",
-          onPointerDown: down,
-          onPointerMove: move,
-          onPointerUp: up,
-          onPointerCancel: up,
-          onWheel: (e) => {
-            V.zoom = clamp(V.zoom * Math.exp(-e.deltaY * 15e-4), 0.4, 4);
+      { className: "devrow" },
+      h("label", null, meta.label),
+      h("input", {
+        type: "number",
+        inputMode: "decimal",
+        step: meta.step,
+        value: val,
+        placeholder: String(DEV_DEFAULTS[meta.k]),
+        onChange: (e) => setVal(e.target.value),
+        onBlur: commit,
+        onKeyDown: (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.target.blur();
           }
-        },
-        h("div", { className: "wtitle" }, "WITNESS YOURSELF")
-      ),
+        }
+      })
+    );
+  }
+  function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
+    const LO = input.current.loadout;
+    const [, bump] = useState(0);
+    const [copied, setCopied] = useState(null);
+    const [openG, setOpenG] = useState(() => {
+      try {
+        return JSON.parse(localStorage.getItem("caverunner-devgroups")) || {};
+      } catch (_) {
+        return {};
+      }
+    });
+    const toggleG = (g) => {
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      const o = Object.assign({}, openG, { [g]: !openG[g] });
+      setOpenG(o);
+      try {
+        localStorage.setItem("caverunner-devgroups", JSON.stringify(o));
+      } catch (_) {
+      }
+    };
+    const copyAll = () => {
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      const text = devReport();
+      const fallback = () => {
+        let ok = false;
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          ok = document.execCommand("copy");
+          ta.remove();
+        } catch (_) {
+        }
+        setCopied({ text, ok });
+      };
+      try {
+        navigator.clipboard.writeText(text).then(() => setCopied({ text, ok: true }), fallback);
+      } catch (_) {
+        fallback();
+      }
+    };
+    return h(
+      "div",
+      { className: "devwrap" },
+      h("div", { className: "devback", onPointerDown: (e) => {
+        e.preventDefault();
+        close();
+      } }),
       h(
         "div",
-        { className: "wpanel", ref: (el) => {
-          if (el) V.panelH = el.getBoundingClientRect().height;
-        } },
+        { className: "devpanel scroll" },
         h(
           "div",
-          {
-            className: "wscrub",
-            ref: scrub,
-            onPointerDown: (e) => {
-              e.preventDefault();
-              dragging.current = true;
-              try {
-                e.currentTarget.setPointerCapture(e.pointerId);
-              } catch (_) {
-              }
-              seek(e);
-            },
-            onPointerMove: (e) => {
-              if (dragging.current) seek(e);
-            },
-            onPointerUp: () => {
-              dragging.current = false;
-            },
-            onPointerCancel: () => {
-              dragging.current = false;
-            }
-          },
-          h("div", { className: "wtrack" }),
-          h("div", { className: "wfill", style: { width: frac * 100 + "%" } }),
-          h("div", {
-            className: "wdeath",
-            title: "The moment you died",
-            style: { left: (W.death - W.t0) / span * 100 + "%" }
-          }),
-          h("div", { className: "wthumb", style: { left: frac * 100 + "%" } })
+          { className: "devhead" },
+          h("h2", null, "Dev"),
+          h("button", { className: "done", onPointerDown: (e) => {
+            e.preventDefault();
+            close();
+          } }, "Done")
         ),
         h(
           "div",
-          { className: "wrow" },
-          h("button", {
-            className: "wfirst",
-            "aria-label": "Back to the start",
-            onPointerDown: tap(() => {
-              V.t = W.t0;
-              V.playing = true;
-            })
-          }, "⏮"),
+          { className: "devbtns" },
           h(
             "button",
             {
-              className: "wplay",
-              "aria-label": V.playing ? "Pause" : "Play",
-              onPointerDown: tap(() => {
-                if (!V.playing && atEnd) V.t = W.t0;
-                V.playing = !V.playing;
-              })
+              className: "dbg" + (LO.debug ? " on" : ""),
+              onPointerDown: (e) => {
+                e.preventDefault();
+                LO.debug = !LO.debug;
+                refresh();
+                bump((n) => n + 1);
+              }
             },
-            V.playing ? "⏸" : "▶"
+            "All mods"
           ),
-          RP_SPEEDS.map((sp) => h("button", {
-            key: sp,
-            className: "wspeed" + (V.speed === sp ? " on" : ""),
-            onPointerDown: tap(() => {
-              V.speed = sp;
-            })
-          }, (sp < 1 ? String(sp).slice(1) : sp) + "×")),
-          h("span", { className: "wtime" }, (rel < 0 ? "−" : "+") + Math.abs(rel).toFixed(1) + "s")
+          h("button", {
+            className: "dbg restart",
+            onPointerDown: (e) => {
+              e.preventDefault();
+              onRestart();
+            }
+          }, "Restart run"),
+          h("button", {
+            className: "dbg spawngun",
+            onPointerDown: (e) => {
+              e.preventDefault();
+              onSpawnGun();
+            }
+          }, "Spawn gun"),
+          h("button", {
+            className: "dbg newcave",
+            onPointerDown: (e) => {
+              e.preventDefault();
+              input.current.newCave = true;
+              close();
+            }
+          }, "New cave")
+        ),
+        DEV_GROUPS.map(([g, name]) => {
+          const shut = !openG[g];
+          return h(
+            "div",
+            { key: g, className: "devgroup" },
+            g === "jellycol" ? h(JellyPreview) : null,
+            // the live jelly its colours paint
+            h(
+              "button",
+              {
+                className: "devghead" + (shut ? "" : " open"),
+                "data-g": g,
+                onPointerDown: (e) => {
+                  e.preventDefault();
+                  toggleG(g);
+                }
+              },
+              h("span", { className: "devcaret" }, shut ? "▸" : "▾"),
+              name
+            ),
+            shut ? null : h(
+              "div",
+              { className: "devvars" },
+              DEV_META.filter((m) => m.g === g).map((m) => h(DevRow, { key: m.k, meta: m }))
+            )
+          );
+        }),
+        h(
+          "p",
+          { className: "devnote" },
+          "Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back."
+        ),
+        h(
+          "button",
+          { className: "dbg devcopy", onPointerDown: (e) => {
+            e.preventDefault();
+            copyAll();
+          } },
+          "Copy all dev settings to clipboard"
+        ),
+        copied ? h("p", { className: "devnote" }, copied.ok ? "Copied — paste it to Claude." : "Could not reach the clipboard — press and hold the text below to copy it.") : null,
+        copied && !copied.ok ? h("textarea", { className: "devcopytext", readOnly: true, value: copied.text }) : null
+      )
+    );
+  }
+  function SpawnGun({ input, close }) {
+    const [lvl, setLvl] = useState(String(input.current.floor || 1));
+    const spawn = () => {
+      input.current.spawnGun = Math.max(1, Math.floor(Number(lvl) || 1));
+      close();
+    };
+    return h(
+      "div",
+      { className: "devwrap" },
+      h("div", { className: "devback", onPointerDown: (e) => {
+        e.preventDefault();
+        close();
+      } }),
+      h(
+        "div",
+        { className: "devpanel spawnpanel" },
+        h(
+          "div",
+          { className: "devhead" },
+          h("h2", null, "Spawn gun"),
+          h("button", { className: "done", onPointerDown: (e) => {
+            e.preventDefault();
+            close();
+          } }, "Cancel")
         ),
         h(
           "div",
-          { className: "wrow" },
-          h("button", { className: "wloop" + (V.loop ? " on" : ""), onPointerDown: tap(() => {
-            V.loop = !V.loop;
-          }) }, "Loop"),
-          h("button", { className: "wfog" + (V.fog ? " on" : ""), onPointerDown: tap(() => {
-            V.fog = !V.fog;
-          }) }, "Fog"),
-          h(
-            "button",
-            { className: "wfollow" + (V.follow ? " on" : ""), onPointerDown: tap(() => {
-              V.follow = true;
-              V.zoom = 1;
-            }) },
-            "Follow"
-          ),
-          h("button", { className: "wclose", onPointerDown: (e) => {
-            e.preventDefault();
-            close();
-          } }, "Close")
-        )
+          { className: "devrow" },
+          h("label", null, "Level"),
+          h("input", {
+            className: "spawnlvl",
+            type: "number",
+            min: 1,
+            inputMode: "numeric",
+            value: lvl,
+            onChange: (e) => setLvl(e.target.value)
+          })
+        ),
+        h("button", { className: "dbg spawngo", onPointerDown: (e) => {
+          e.preventDefault();
+          spawn();
+        } }, "Spawn")
       )
     );
   }
@@ -17744,477 +18217,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       };
     }, []);
     return h("canvas", { ref: cv, className: "game" });
-  }
-  function JellyPreview() {
-    const ref = useRef(null);
-    useEffect(() => {
-      const c = ref.current;
-      if (!c || !c.getContext) return;
-      const ctx = c.getContext("2d");
-      const WU = 110, LEDGE = 8;
-      const k = enemyFor("meduusa", 1);
-      let HU = 60;
-      const e = { x: WU / 2, y: 26, hx: WU / 2, hy: 26, r: k.r, phase: 0 };
-      const solid = (cx, cy) => cx < 0 || cy < 0 || cx * CELL >= WU || (cy + 1) * CELL > HU - LEDGE;
-      let raf, last = performance.now(), t = 0, spitT = 1.2, glob = null;
-      const drops = [], spores = [];
-      const TH = themeFor(1), sporeCol = rgbA(TH.moss[1]);
-      const artC = document.createElement("canvas"), artCtx = artC.getContext("2d", { willReadFrequently: true });
-      const glowC = document.createElement("canvas"), glowCtx = glowC.getContext("2d");
-      const tufts = Array.from({ length: WU }, () => ({ h: Math.random() < 0.15 ? 0 : 1 + Math.floor(Math.random() * 3), c: Math.random() }));
-      const vines = [{ k: "climb", st: "vine", x: 11, y: 0, len: 34, seed: 0.37 }, { k: "climb", st: "vine", x: WU - 13, y: 0, len: 27, seed: 0.81 }];
-      const drop = (x, y, vx, vy, P, g) => {
-        if (drops.length < 120) {
-          const l = 0.5 + Math.random() * 0.5;
-          drops.push({ x, y, vx, vy, g, life: l, max: l, c: Math.random() < 0.35 ? P.drip2 : P.drip, s: 1.1 + Math.random() * 0.8 });
-        }
-      };
-      const tick = (now) => {
-        raf = requestAnimationFrame(tick);
-        const dt = Math.min(0.05, (now - last) / 1e3);
-        last = now;
-        t += dt;
-        const dpr = window.devicePixelRatio || 1, cw = Math.round(c.clientWidth * dpr), ch = Math.round(c.clientHeight * dpr);
-        if (!cw || !ch) return;
-        if (c.width !== cw || c.height !== ch) {
-          c.width = cw;
-          c.height = ch;
-        }
-        const sc = cw / WU;
-        HU = ch / sc;
-        const S = e.je;
-        if (S) {
-          S.rx = WU / 2 + Math.cos(t * 0.55) * WU * 0.24;
-          S.ry = (HU - LEDGE) * 0.36 + Math.sin(t * 0.8) * 5;
-          S.roamR = 1e9;
-          S.roamSpd = 0;
-        }
-        const pulse = jellyStep(e, { solidCell: solid, hunting: false, goal: null, rnd: Math.random }, dt) === "pulse";
-        const P = jellyPal(e.je.u.col);
-        if (pulse) {
-          const S2 = e.je, B = jellyBell(e.r, S2.shape, kru("jeSquash", S2.u.sq)), c0 = Math.cos(S2.hd), s0 = Math.sin(S2.hd);
-          for (let i = 0, n = Math.round(kr("jeSpores")); i < n && spores.length < 80; i++) {
-            const lx = (Math.random() * 2 - 1) * B.rw * 0.7, r = Math.random();
-            const a2 = S2.hd + Math.PI + (Math.random() * 2 - 1) * kr("jeSporeSpread") * Math.PI / 180, v = kr("jeSporeSpd");
-            spores.push({
-              x: e.x - lx * s0 - B.rim * c0,
-              y: e.y + lx * c0 - B.rim * s0,
-              vx: (r - 0.5) * 8,
-              vy: 0,
-              wob: r * 9,
-              life: 5 + r * 3,
-              max: 8,
-              kx: Math.cos(a2) * v,
-              ky: Math.sin(a2) * v,
-              kd: kr("jeSporeDrag")
-            });
-          }
-        }
-        for (let i = spores.length - 1; i >= 0; i--) {
-          const q = spores[i];
-          q.x += Math.sin(t * 1.3 + q.wob) * 6 * dt + (q.vx + q.kx) * dt;
-          q.y += (q.vy + q.ky) * dt;
-          const kk = Math.exp(-q.kd * dt);
-          q.kx *= kk;
-          q.ky *= kk;
-          if ((q.life -= dt) <= 0 || q.x < 0 || q.x > WU || q.y < 0 || solid(Math.floor(q.x / CELL), Math.floor(q.y / CELL))) spores.splice(i, 1);
-        }
-        if ((spitT -= dt) <= 0 && !glob) {
-          spitT = 2.2;
-          const a2 = e.je.hd, v = 70;
-          glob = {
-            x: e.x + Math.cos(a2) * e.r,
-            y: e.y + Math.sin(a2) * e.r,
-            vx: Math.cos(a2) * v,
-            vy: Math.sin(a2) * v,
-            da: 0,
-            size: kr("jeShotSize"),
-            drip: kr("jeDrip"),
-            g: kr("jeDripG"),
-            n: Math.round(kr("jeSplat")),
-            sv: kr("jeSplatSpd")
-          };
-        }
-        if (glob) {
-          glob.x += glob.vx * dt;
-          glob.y += glob.vy * dt;
-          for (glob.da += glob.drip * dt; glob.da >= 1; glob.da--) drop(glob.x, glob.y + glob.size * 0.5, glob.vx * 0.08, 8 + Math.random() * 18, P, glob.g);
-          if (solid(Math.floor(glob.x / CELL), Math.floor(glob.y / CELL))) {
-            const sp = Math.hypot(glob.vx, glob.vy) || 1;
-            for (let i = 0; i < glob.n; i++) {
-              const a2 = Math.random() * 6.28, v = glob.sv * (0.4 + Math.random() * 0.6);
-              drop(glob.x - glob.vx * dt, glob.y - glob.vy * dt, Math.cos(a2) * v - glob.vx / sp * v * 0.5, Math.sin(a2) * v - glob.vy / sp * v * 0.5 - v * 0.3, P, glob.g);
-            }
-            glob = null;
-          }
-        }
-        for (let i = drops.length - 1; i >= 0; i--) {
-          const q = drops[i];
-          q.vy += q.g * dt;
-          const nx = q.x + q.vx * dt, ny = q.y + q.vy * dt;
-          if (solid(Math.floor(nx / CELL), Math.floor(ny / CELL))) {
-            q.vx *= 0.3;
-            q.vy = 0;
-          } else {
-            q.x = nx;
-            q.y = ny;
-          }
-          if ((q.life -= dt) <= 0) drops.splice(i, 1);
-        }
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.fillStyle = "#0d0f14";
-        ctx.fillRect(0, 0, cw, ch);
-        ctx.setTransform(sc, 0, 0, sc, 0, 0);
-        const aw = WU, ah = Math.ceil(HU), top = HU - LEDGE;
-        if (artC.width !== aw || artC.height !== ah) {
-          artC.width = aw;
-          artC.height = ah;
-          glowC.width = aw;
-          glowC.height = ah;
-        }
-        artCtx.setTransform(1, 0, 0, 1, 0, 0);
-        artCtx.clearRect(0, 0, aw, ah);
-        artCtx.fillStyle = "rgb(62,56,54)";
-        artCtx.fillRect(0, top, aw, LEDGE + 1);
-        artCtx.fillStyle = "rgb(96,84,74)";
-        artCtx.fillRect(0, top, aw, 1.2);
-        tufts.forEach((q, x) => {
-          if (!q.h) return;
-          artCtx.fillStyle = rgbA(mix(TH.moss[0], TH.moss[1], q.c));
-          artCtx.fillRect(x, top - q.h + 1, 1, q.h);
-          artCtx.fillStyle = rgbA(TH.moss[1]);
-          artCtx.fillRect(x, top - q.h + 1, 1, 1);
-        });
-        for (const v of vines) drawProp(artCtx, v, t, TH);
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(artC, 0, 0);
-        drawJelly(ctx, e.x, e.y, e.r, t, 0, false, k.col, e.je);
-        if (glob) {
-          const z = glob.size;
-          ctx.save();
-          ctx.translate(glob.x, glob.y);
-          ctx.rotate(Math.atan2(glob.vy, glob.vx));
-          ctx.fillStyle = P.spitEdge;
-          ctx.beginPath();
-          ctx.ellipse(0, 0, z * 1.45, z * 1.05, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = P.spit;
-          ctx.beginPath();
-          ctx.ellipse(-z * 0.08, 0, z * 1.2, z * 0.82, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = P.spitShine;
-          ctx.beginPath();
-          ctx.arc(z * 0.3, -z * 0.28, z * 0.32, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        }
-        for (const q of drops) {
-          ctx.globalAlpha = Math.max(0, q.life / q.max);
-          ctx.fillStyle = q.c;
-          ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
-        }
-        ctx.globalAlpha = 1;
-        ctx.globalCompositeOperation = "lighter";
-        const u = e.je.u, a = kru("jeGlow", u.glow) * (1 + kru("jeFlare", u.flare) * e.je.shape), rgb = hexRgb(P.glow);
-        glowAt(ctx, e.x, e.y, kru("jeGlowR", u.glowR), a, rgb);
-        glowAt(ctx, e.x, e.y, e.r * 1.6, a * 1.4, rgb);
-        if (glob) glowAt(ctx, glob.x, glob.y, glob.size * 6, 0.3, rgb);
-        ctx.fillStyle = sporeCol;
-        for (const q of spores) {
-          ctx.globalAlpha = Math.min(1, q.life / (q.max * 0.3));
-          ctx.fillRect(q.x - 0.65, q.y - 0.65, 1.3, 1.3);
-        }
-        ctx.globalAlpha = 1;
-        const art = artCtx.getImageData(0, 0, aw, ah).data;
-        const white = plantWhite(art);
-        const reach = kru("jeGlowR", u.glowR) * kru("jePlantReach", u.plant), out = glowCtx.createImageData(aw, ah);
-        if (reach > 2 && plantGlowFill(out.data, art, aw, ah, {
-          ox: 0,
-          oy: 0,
-          px: 1,
-          cx: e.x,
-          cy: e.y,
-          reach,
-          white,
-          top: kru("jePlantTop", u.plant) / 100,
-          strength: kru("jePlantGlow", u.plant),
-          t: t * kru("jePlantTwinkle", u.plant),
-          size: kru("jePlantSize", u.plant),
-          rgb: hexArr(P.glow)
-        })) {
-          glowCtx.putImageData(out, 0, 0);
-          ctx.imageSmoothingEnabled = true;
-          ctx.drawImage(glowC, 0, 0);
-        }
-        ctx.globalCompositeOperation = "source-over";
-      };
-      raf = requestAnimationFrame(tick);
-      return () => cancelAnimationFrame(raf);
-    }, []);
-    return h("canvas", { ref, className: "jellyprev" });
-  }
-  function DevRow({ meta }) {
-    const [val, setVal] = useState(String(DEV[meta.k]));
-    if (meta.type === "slider") {
-      const set = (v) => {
-        devSet(meta.k, v);
-        setVal(String(v));
-      };
-      return h(
-        "div",
-        { className: "devrow" },
-        h("label", null, meta.label, h("span", { className: "devval" }, String(DEV[meta.k]))),
-        h("input", {
-          type: "range",
-          min: meta.min,
-          max: meta.max,
-          step: meta.step,
-          value: DEV[meta.k],
-          onChange: (e) => set(parseFloat(e.target.value))
-        }),
-        h("button", { className: "devreset", "aria-label": "Default", onPointerDown: () => set(DEV_DEFAULTS[meta.k]) }, "↺")
-      );
-    }
-    if (meta.type === "color") {
-      const set = (v) => {
-        devSet(meta.k, v);
-        setVal(v);
-      };
-      return h(
-        "div",
-        { className: "devrow" },
-        h("label", null, meta.label),
-        h("input", { type: "color", value: DEV[meta.k], onChange: (e) => set(e.target.value) }),
-        h("button", { className: "devreset", "aria-label": "Default", onPointerDown: () => set(DEV_DEFAULTS[meta.k]) }, "↺")
-      );
-    }
-    const commit = () => {
-      const s = val.trim();
-      let v;
-      if (s === "") v = DEV_DEFAULTS[meta.k];
-      else {
-        v = parseFloat(s);
-        if (!isFinite(v)) {
-          setVal(String(DEV[meta.k]));
-          return;
-        }
-      }
-      v = Math.max(meta.min, Math.min(meta.max, v));
-      devSet(meta.k, v);
-      setVal(String(v));
-    };
-    return h(
-      "div",
-      { className: "devrow" },
-      h("label", null, meta.label),
-      h("input", {
-        type: "number",
-        inputMode: "decimal",
-        step: meta.step,
-        value: val,
-        placeholder: String(DEV_DEFAULTS[meta.k]),
-        onChange: (e) => setVal(e.target.value),
-        onBlur: commit,
-        onKeyDown: (e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            e.target.blur();
-          }
-        }
-      })
-    );
-  }
-  function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
-    const LO = input.current.loadout;
-    const [, bump] = useState(0);
-    const [copied, setCopied] = useState(null);
-    const [openG, setOpenG] = useState(() => {
-      try {
-        return JSON.parse(localStorage.getItem("caverunner-devgroups")) || {};
-      } catch (_) {
-        return {};
-      }
-    });
-    const toggleG = (g) => {
-      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-      const o = Object.assign({}, openG, { [g]: !openG[g] });
-      setOpenG(o);
-      try {
-        localStorage.setItem("caverunner-devgroups", JSON.stringify(o));
-      } catch (_) {
-      }
-    };
-    const copyAll = () => {
-      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-      const text = devReport();
-      const fallback = () => {
-        let ok = false;
-        try {
-          const ta = document.createElement("textarea");
-          ta.value = text;
-          ta.style.position = "fixed";
-          ta.style.opacity = "0";
-          document.body.appendChild(ta);
-          ta.select();
-          ok = document.execCommand("copy");
-          ta.remove();
-        } catch (_) {
-        }
-        setCopied({ text, ok });
-      };
-      try {
-        navigator.clipboard.writeText(text).then(() => setCopied({ text, ok: true }), fallback);
-      } catch (_) {
-        fallback();
-      }
-    };
-    return h(
-      "div",
-      { className: "devwrap" },
-      h("div", { className: "devback", onPointerDown: (e) => {
-        e.preventDefault();
-        close();
-      } }),
-      h(
-        "div",
-        { className: "devpanel scroll" },
-        h(
-          "div",
-          { className: "devhead" },
-          h("h2", null, "Dev"),
-          h("button", { className: "done", onPointerDown: (e) => {
-            e.preventDefault();
-            close();
-          } }, "Done")
-        ),
-        h(
-          "div",
-          { className: "devbtns" },
-          h(
-            "button",
-            {
-              className: "dbg" + (LO.debug ? " on" : ""),
-              onPointerDown: (e) => {
-                e.preventDefault();
-                LO.debug = !LO.debug;
-                refresh();
-                bump((n) => n + 1);
-              }
-            },
-            "All mods"
-          ),
-          h("button", {
-            className: "dbg restart",
-            onPointerDown: (e) => {
-              e.preventDefault();
-              onRestart();
-            }
-          }, "Restart run"),
-          h("button", {
-            className: "dbg spawngun",
-            onPointerDown: (e) => {
-              e.preventDefault();
-              onSpawnGun();
-            }
-          }, "Spawn gun"),
-          h("button", {
-            className: "dbg newcave",
-            onPointerDown: (e) => {
-              e.preventDefault();
-              input.current.newCave = true;
-              close();
-            }
-          }, "New cave")
-        ),
-        DEV_GROUPS.map(([g, name]) => {
-          const shut = !openG[g];
-          return h(
-            "div",
-            { key: g, className: "devgroup" },
-            g === "jellycol" ? h(JellyPreview) : null,
-            // the live jelly its colours paint
-            h(
-              "button",
-              {
-                className: "devghead" + (shut ? "" : " open"),
-                "data-g": g,
-                onPointerDown: (e) => {
-                  e.preventDefault();
-                  toggleG(g);
-                }
-              },
-              h("span", { className: "devcaret" }, shut ? "▸" : "▾"),
-              name
-            ),
-            shut ? null : h(
-              "div",
-              { className: "devvars" },
-              DEV_META.filter((m) => m.g === g).map((m) => h(DevRow, { key: m.k, meta: m }))
-            )
-          );
-        }),
-        h(
-          "p",
-          { className: "devnote" },
-          "Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back."
-        ),
-        h(
-          "button",
-          { className: "dbg devcopy", onPointerDown: (e) => {
-            e.preventDefault();
-            copyAll();
-          } },
-          "Copy all dev settings to clipboard"
-        ),
-        copied ? h("p", { className: "devnote" }, copied.ok ? "Copied — paste it to Claude." : "Could not reach the clipboard — press and hold the text below to copy it.") : null,
-        copied && !copied.ok ? h("textarea", { className: "devcopytext", readOnly: true, value: copied.text }) : null
-      )
-    );
-  }
-  function SpawnGun({ input, close }) {
-    const [lvl, setLvl] = useState(String(input.current.floor || 1));
-    const spawn = () => {
-      input.current.spawnGun = Math.max(1, Math.floor(Number(lvl) || 1));
-      close();
-    };
-    return h(
-      "div",
-      { className: "devwrap" },
-      h("div", { className: "devback", onPointerDown: (e) => {
-        e.preventDefault();
-        close();
-      } }),
-      h(
-        "div",
-        { className: "devpanel spawnpanel" },
-        h(
-          "div",
-          { className: "devhead" },
-          h("h2", null, "Spawn gun"),
-          h("button", { className: "done", onPointerDown: (e) => {
-            e.preventDefault();
-            close();
-          } }, "Cancel")
-        ),
-        h(
-          "div",
-          { className: "devrow" },
-          h("label", null, "Level"),
-          h("input", {
-            className: "spawnlvl",
-            type: "number",
-            min: 1,
-            inputMode: "numeric",
-            value: lvl,
-            onChange: (e) => setLvl(e.target.value)
-          })
-        ),
-        h("button", { className: "dbg spawngo", onPointerDown: (e) => {
-          e.preventDefault();
-          spawn();
-        } }, "Spawn")
-      )
-    );
   }
   function App() {
     const blank = () => ({ active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false });

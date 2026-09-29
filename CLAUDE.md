@@ -171,6 +171,7 @@ rest and imports them. Where things are (`main.js` line numbers as of the end of
 | Build screen (Bag) | `src/ui/editor.js`: `Editor`, `GunStats`, `GunIcon`, `SlotGrid`, `ScrollBox`, `PULL_COL`, `GS_ROWS`, `LIVE_BAR`, `SHOW_TIPS` |
 | Gun chooser | `src/ui/swap.js`: `GunSwap` |
 | Death replay screen | `src/ui/witness.js`: `Witness`, `RP_SPEEDS` |
+| Dev panel | `src/ui/devpanel.js`: `DevPanel`, `DevRow`, `JellyPreview` (runs the real `jellyStep`/`drawJelly`), `SpawnGun` |
 | React UI | `src/main.js` ~4380–end: `GunCard`, `GunSwap`, `ModCard`, `Editor`, `PerkCard`, `DevPanel`, `App` |
 
 Everything in the modules, and everything above `function Game(` in `main.js`, is pure and
