@@ -13,10 +13,10 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). Next: P3.4. Not merged |
+| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4 part done: terrain, particles, `hurt`, `damageEnemy`, fire out in `game/systems/`. Next: the props (`decorStep`). Not merged |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
-| **Last green full suite** | 2026-09-29, end of P3.3 (bar known flakes: `jelly` spit and `lightning` fork, both passed alone) |
+| **Last green full suite** | 2026-09-29, P3.4 after the fire (efaeb42), bar a known flake: `jelly` ("saturation 0", passed alone; its spit group failed 2 of 3 alone, as on v96) |
 | **Last merged to main** | v98 (Phase 2), 2026-09-29 |
 
 ---
@@ -410,6 +410,14 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] terrain.js, the changes: `dig`, `dropOre`, `unDeco`, `paint` (through `G.tctx`/`G.dctx`, the wrapped ones)
   - [x] fire.js and its cycle (D17): the fire's functions, `explode` → terrain.js, `blowProp` → props.js,
         `webNear`/`webDist` → webs.js
+  - [ ] ambience.js: `spore`, `puffSpores`, `stepAmbience` (+ `AMB_RATE`, `AMB_MAX`): all need only `W`
+  - [ ] props.js: `decorStep` with `pOver`, `alertAt`, `shatter`, `popLamp`, `landProp`, `spawnDrip`
+        (+ `MATERIAL`, `DRIP_RATE`); needs ambience first
+  - Learned so far: `G`'s keys must be declared above `G` (a closure `const` further down moves up
+    first, as `fireBox` did). A function passed as a callback gets an arrow at each site; for the
+    per-frame ones (`visPoly`, `fireStep`, a spider's or jelly's `env`) that is one small allocation
+    a call, no behaviour change. The tool takes `//` lines right above a function with it, so a
+    section header can travel with the first function under it: read the module after each move.
   - The old rough list, still to do:
   - [ ] terrain.js: dirty rects, putImageData wrappers (replay needs these!)
   - [ ] fog.js: paintFog, bake, blur, fogLit
@@ -549,6 +557,8 @@ commit. List them here for after.
   run, passed alone. The P1.6 bundle is statement-identical to P1.5's, so chance/load again.
   End of Phase 2: `decor` "a vine holds you where you grabbed it" (y 1381 → 1356) failed once
   in the full run, passed alone; a new name on the list. `torch` "brighter frames…" again.
+  P3.4 (after the fire): `jelly` (browser) "saturation 0 greys it out" failed once in the full run, passed 3 of 3
+  alone. A new name: it reads the Dev panel's jelly preview canvas, which no P3.4 move touches.
 - **Misplaced comments (left as they were, moved with their code).** A second copy of
   planCast's opening comment sits above `blankShot` (`spells/cast.js`); tracePath's opening
   comment sits above `DRIFT_DRAG` (`spells/trace.js`); `ROOM_HW`'s line carries the trailing
@@ -744,3 +754,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.4 (4) | `enemies.js`: `damageEnemy`, `fireEnemyShot`. `rats`, `creatures`, `lightning` run too. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 (5) | `terrain.js` gets the changes: `dig`, `unDeco`, `paint` (`(W, G, …)`, drawing through `G.tctx`/`G.dctx`, the wrapped ones) and `dropOre` (`(W, …)`). `system.js` now also reads an existing module's own imports. `replay`, `buzzsaw`, `teleport` (ore) run too. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 (6) | The fire in one move (18 functions): `fire.js` (`fireFrame`, `ignite`, `fireBlast`, `fireOut`, `flushFire`, `setAlight`, `youAlight`, catching plants/arches/webs, `fireList`…), `explode` → `terrain.js`, `blowProp` → `props.js`, `webNear`/`webDist` → `webs.js` (the cycle, D17). `fireBox` joins `G` (its `const` moved up above `G`). `fire`, `archvine`, `decor`, `spider`, `replay`, `blackhole`, `pollen`, `trigger`, `rats` run too (`rats` "they come out of the hole" failed once, passed alone twice: a known flake). Game.js 4,280 → 3,803 lines. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 3, P3.4 checkpoint | Full suite on a snapshot of efaeb42: only `jelly` (browser) failed, "saturation 0 greys it out"; alone it passed 3 of 3 (the spit/spore group failed twice of those, the known flake). Stopped here as planned: terrain, particles and fire are out; next the ambience and props. Not merged. | logic 33/33; browser 44/44 after re-runs |

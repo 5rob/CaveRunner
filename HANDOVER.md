@@ -11,11 +11,14 @@ it's stale.
   bundled by esbuild into the same `index.html`. Phases 0–1 released as v97, Phase 2 (UI into
   `src/ui/`, `Game` into `src/game/Game.js`) as v98. Phase 3 is under way on `refactor`, **not
   merged**: P3.1 (the Game map), P3.2 (the level's state is one world object `W`,
-  `src/game/world.js`) and P3.3 (`window.__lvl` = `W` via `src/game/testhook.js`) are done; next is
-  P3.4, pulling systems out of `Game`. The proof for each Phase 3 step is
-  `node tests/determinism.js` (same scripted run on HEAD and this tree, frame by frame), and
-  `tools/world.js` did the `x` → `W.x` rewrites. For P3.4, REFACTOR.md has notes on what a
-  function needs when it moves out, and `node tools/gamemap.js fn…` lists it for any function.
+  `src/game/world.js`) and P3.3 (`window.__lvl` = `W` via `src/game/testhook.js`) are done, and
+  P3.4 (systems out of `Game` into `src/game/systems/`) is part done: terrain (queries and
+  changes, `explode`), particles, `hurt`, `damageEnemy`, and the whole fire system are out
+  (shape: REFACTOR.md D16, the `G` context; cycles: D17). Next: the props (`decorStep`), then
+  gun/bullets/fields, rats, ambience, and last `step`/`draw`. The proof for each Phase 3 step
+  is `node tests/determinism.js` (same scripted run on HEAD and this tree, frame by frame).
+  `node tools/system.js <file> name…` does a P3.4 move (`--dry` first), and
+  `node tools/gamemap.js fn…` says what a function still in `Game` needs.
   **`REFACTOR.md` is the tracker** — its Status table, Game map and session log say exactly
   where things are.
 - **On-disk version: v98** (v97/v98 = the refactor's Phases 1/2; play the same as v96). Working on `main` (**release channel is `main`** — CI there
