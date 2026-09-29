@@ -226,7 +226,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
   - [x] data/creatures.js
   - [x] data/perks.js
   - [x] spells/mods.js
-  - [ ] spells/spawn.js
+  - [x] spells/spawn.js
   - [ ] spells/guns.js
   - [ ] spells/cast.js
   - [ ] spells/trace.js
