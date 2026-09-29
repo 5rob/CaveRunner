@@ -150,7 +150,7 @@ rest and imports them. Where things are (`main.js` line numbers as of v96, they 
 | `castGroups` / `groupStats` | `src/spells/bagsim.js` (with `pullSteps`, the `fireSim*` preview): the outlines and stat lines in the build screen |
 | creature movement pieces | `src/creatures/common.js`: `roamStep`, `turnToward`, `flyMove`, `surfNormal`, `surfSeat` |
 | creatures | `src/creatures/`: `spider.js`, `rat.js`, `jelly.js` (brain + sprite each), `classic.js` (older bodies' sprites), `draw.js` (`drawEnemy`) |
-| sprites | ~3050–3600: `drawGun`, `drawRunner`, `drawEnemy` (one per creature body) |
+| sprites | `src/art/sprites.js`: `drawGun`, `drawRunner`, `drawFlame`, `drawTorch`, `drawSconce`, `drawGunGlow`; creature sprites live with their creature |
 | `PERKS` / `perkBag` | `src/data/perks.js`: the 31 perks, and folding an owned list into one effective bag |
 | vision / fog memory | `src/world/vision.js`: `rayDist`, `losClear`, `visPoly`, `fogReveal`, `nestFog` |
 | fire | `src/world/fire.js`: `fireNew`, `fireStep`, `fireArea`, `fireDouse`, `FIRE_*`, `FLAMMABLE` |

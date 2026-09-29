@@ -244,7 +244,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
   - [x] creatures/rat.js
   - [x] creatures/jelly.js
   - [x] creatures/classic.js + creatures/draw.js
-  - [ ] art/sprites.js
+  - [x] art/sprites.js
   - [ ] art/props.js
   - [ ] audio/recipes.js
   - [ ] audio/sfx.js

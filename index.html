@@ -1006,6 +1006,172 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return true;
   }
 
+  // src/creatures/classic.js
+  function drawDrone(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+    const shell = flash ? "#f4f0ff" : col.b;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(lx * 0.22);
+    const puff = 0.55 + 0.25 * Math.sin(time * 9 + phase);
+    ctx.globalAlpha = 0.3 * puff;
+    ctx.fillStyle = col.a;
+    ctx.beginPath();
+    ctx.ellipse(0, r * 0.9, r * 0.45, r * 0.8 * puff, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = flash ? "#e6e0f5" : col.b;
+    rr(ctx, -r * 1.52, -r * 0.4, r * 0.62, r * 0.9, r * 0.22);
+    ctx.fill();
+    rr(ctx, r * 0.9, -r * 0.4, r * 0.62, r * 0.9, r * 0.22);
+    ctx.fill();
+    rr(ctx, -r * 0.34, r * 0.5, r * 0.68, r * 0.5, r * 0.18);
+    ctx.fill();
+    ctx.fillStyle = shell;
+    rr(ctx, -r * 1.05, -r * 0.78, r * 2.1, r * 1.5, r * 0.62);
+    ctx.fill();
+    ctx.strokeStyle = flash ? "#ffffff" : col.a;
+    ctx.lineWidth = r * 0.14;
+    rr(ctx, -r * 1.05, -r * 0.78, r * 2.1, r * 1.5, r * 0.62);
+    ctx.stroke();
+    ctx.fillStyle = flash ? "#ffffff" : col.c;
+    rr(ctx, -r * 0.72, -r * 0.7, r * 1.44, r * 0.46, r * 0.22);
+    ctx.fill();
+    ctx.restore();
+    const ex = x + lx * r * 0.34, ey = y + ly * r * 0.26;
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = col.a;
+    ctx.beginPath();
+    ctx.arc(ex, ey, r * 0.62, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = flash ? "#ffffff" : col.eye;
+    ctx.beginPath();
+    ctx.arc(ex, ey, r * 0.36, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#1b1526";
+    ctx.beginPath();
+    ctx.arc(ex + lx * r * 0.15, ey + ly * r * 0.15, r * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  function drawCrawler(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+    const s = Math.sin(time * 7 + phase);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.strokeStyle = flash ? "#ffffff" : col.b;
+    ctx.lineWidth = r * 0.2;
+    ctx.lineCap = "round";
+    for (let i = 0; i < 3; i++) {
+      const o = (i - 1) * r * 0.5, sw = s * r * 0.26 * (i % 2 ? 1 : -1);
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(o * 0.6, 0);
+        ctx.lineTo(o * 0.6 + side * r * 0.8, side * r * 0.5 + sw);
+        ctx.lineTo(o * 0.6 + side * r * 1.3, side * r * 0.95 - sw * 0.5);
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 1.05, r * 0.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#ffffff" : col.a;
+    ctx.beginPath();
+    ctx.ellipse(0, -r * 0.12, r * 0.82, r * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    for (const side of [-1, 1]) {
+      ctx.fillStyle = flash ? "#ffffff" : col.eye;
+      ctx.beginPath();
+      ctx.arc(x + lx * r * 0.35 + side * r * 0.3, y + ly * r * 0.25, r * 0.16, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  function drawBlob(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+    const wob = 1 + 0.09 * Math.sin(time * 3.4 + phase);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.globalAlpha = 0.32;
+    ctx.fillStyle = col.a;
+    ctx.beginPath();
+    ctx.ellipse(0, r * 0.85, r * 0.72, r * 0.26, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
+    ctx.beginPath();
+    ctx.ellipse(0, r * 0.18, r * 1, r * 0.92 * wob, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#ffffff" : col.a;
+    ctx.beginPath();
+    ctx.ellipse(0, r * 0.3, r * 0.76, r * 0.66 * wob, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    for (const side of [-1, 1]) {
+      ctx.fillStyle = "#1b1526";
+      ctx.beginPath();
+      ctx.arc(
+        x + lx * r * 0.3 + side * r * 0.26,
+        y + r * 0.12 + ly * r * 0.18,
+        r * 0.15,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+  }
+  function drawSkull(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(lx * 0.18);
+    ctx.globalAlpha = 0.26 + 0.1 * Math.sin(time * 4 + phase);
+    ctx.fillStyle = col.a;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.55, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = flash ? "#ffffff" : col.a;
+    ctx.beginPath();
+    ctx.ellipse(0, -r * 0.15, r * 0.85, r * 0.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    rr(ctx, -r * 0.55, r * 0.4, r * 1.1, r * 0.55, r * 0.2);
+    ctx.fill();
+    ctx.fillStyle = "#1b1526";
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.ellipse(side * r * 0.34, -r * 0.18, r * 0.24, r * 0.28, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = col.eye;
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.arc(
+        side * r * 0.34 + lx * r * 0.1,
+        -r * 0.18 + ly * r * 0.1,
+        r * 0.11,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+  function drawWorm(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.atan2(ly, lx));
+    for (let i = 4; i >= 0; i--) {
+      const t = i / 4, off = -r * 1.5 * i * 0.62, w = r * (1 - t * 0.4);
+      ctx.fillStyle = flash ? "#ffffff" : i % 2 ? col.b : col.a;
+      ctx.beginPath();
+      ctx.ellipse(off, Math.sin(time * 6 + phase - i * 0.7) * r * 0.34, w * 0.62, w, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = "#1b1526";
+    ctx.beginPath();
+    ctx.arc(r * 0.55, 0, r * 0.26, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   // src/creatures/jelly.js
   function jellyPal(u) {
     const P = {};
@@ -2095,6 +2261,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.fill();
     }
     ctx.restore();
+  }
+
+  // src/creatures/draw.js
+  function drawEnemy(ctx, e, time) {
+    const k = e.k, flash = e.flash > 0;
+    const x = e.x, y = e.ty, r = e.r, lx = e.lx, ly = e.ly;
+    if (k.body === "spider") drawSpider(ctx, x, y, r, time, e.phase, flash, k.col, e.sp);
+    else if (k.body === "rat") drawRat(ctx, x, y, r, time, e.phase, flash, k.col, e.ra, e.carry);
+    else if (k.body === "nest") drawNest(ctx, x, y, r, time, flash, k.col, e.nest);
+    else if (k.body === "jelly") drawJelly(ctx, x, y, r, time, e.phase, flash, k.col, e.je);
+    else if (k.body === "crawler") drawCrawler(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+    else if (k.body === "blob") drawBlob(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+    else if (k.body === "skull") drawSkull(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+    else if (k.body === "worm") drawWorm(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+    else drawDrone(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+    if (e.charge > 0 && k.tele) {
+      ctx.globalAlpha = 0.65;
+      ctx.strokeStyle = k.col.eye;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(x, y, e.r + 4 + e.charge * 10, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
   }
 
   // src/data/creatures.js
@@ -8263,226 +8453,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { x: (F.x0 + i + 0.5) * NAV * CELL, y: (F.y0 + j + 0.5) * NAV * CELL, dist, air };
   }
 
-  // src/creatures/classic.js
-  function drawDrone(ctx, x, y, r, lx, ly, time, phase, flash, col) {
-    const shell = flash ? "#f4f0ff" : col.b;
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(lx * 0.22);
-    const puff = 0.55 + 0.25 * Math.sin(time * 9 + phase);
-    ctx.globalAlpha = 0.3 * puff;
-    ctx.fillStyle = col.a;
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.9, r * 0.45, r * 0.8 * puff, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = flash ? "#e6e0f5" : col.b;
-    rr(ctx, -r * 1.52, -r * 0.4, r * 0.62, r * 0.9, r * 0.22);
-    ctx.fill();
-    rr(ctx, r * 0.9, -r * 0.4, r * 0.62, r * 0.9, r * 0.22);
-    ctx.fill();
-    rr(ctx, -r * 0.34, r * 0.5, r * 0.68, r * 0.5, r * 0.18);
-    ctx.fill();
-    ctx.fillStyle = shell;
-    rr(ctx, -r * 1.05, -r * 0.78, r * 2.1, r * 1.5, r * 0.62);
-    ctx.fill();
-    ctx.strokeStyle = flash ? "#ffffff" : col.a;
-    ctx.lineWidth = r * 0.14;
-    rr(ctx, -r * 1.05, -r * 0.78, r * 2.1, r * 1.5, r * 0.62);
-    ctx.stroke();
-    ctx.fillStyle = flash ? "#ffffff" : col.c;
-    rr(ctx, -r * 0.72, -r * 0.7, r * 1.44, r * 0.46, r * 0.22);
-    ctx.fill();
-    ctx.restore();
-    const ex = x + lx * r * 0.34, ey = y + ly * r * 0.26;
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = col.a;
-    ctx.beginPath();
-    ctx.arc(ex, ey, r * 0.62, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = flash ? "#ffffff" : col.eye;
-    ctx.beginPath();
-    ctx.arc(ex, ey, r * 0.36, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#1b1526";
-    ctx.beginPath();
-    ctx.arc(ex + lx * r * 0.15, ey + ly * r * 0.15, r * 0.16, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  function drawCrawler(ctx, x, y, r, lx, ly, time, phase, flash, col) {
-    const s = Math.sin(time * 7 + phase);
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.strokeStyle = flash ? "#ffffff" : col.b;
-    ctx.lineWidth = r * 0.2;
-    ctx.lineCap = "round";
-    for (let i = 0; i < 3; i++) {
-      const o = (i - 1) * r * 0.5, sw = s * r * 0.26 * (i % 2 ? 1 : -1);
-      for (const side of [-1, 1]) {
-        ctx.beginPath();
-        ctx.moveTo(o * 0.6, 0);
-        ctx.lineTo(o * 0.6 + side * r * 0.8, side * r * 0.5 + sw);
-        ctx.lineTo(o * 0.6 + side * r * 1.3, side * r * 0.95 - sw * 0.5);
-        ctx.stroke();
-      }
-    }
-    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, r * 1.05, r * 0.8, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#ffffff" : col.a;
-    ctx.beginPath();
-    ctx.ellipse(0, -r * 0.12, r * 0.82, r * 0.6, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    for (const side of [-1, 1]) {
-      ctx.fillStyle = flash ? "#ffffff" : col.eye;
-      ctx.beginPath();
-      ctx.arc(x + lx * r * 0.35 + side * r * 0.3, y + ly * r * 0.25, r * 0.16, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-  function drawBlob(ctx, x, y, r, lx, ly, time, phase, flash, col) {
-    const wob = 1 + 0.09 * Math.sin(time * 3.4 + phase);
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.globalAlpha = 0.32;
-    ctx.fillStyle = col.a;
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.85, r * 0.72, r * 0.26, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.18, r * 1, r * 0.92 * wob, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#ffffff" : col.a;
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.3, r * 0.76, r * 0.66 * wob, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    for (const side of [-1, 1]) {
-      ctx.fillStyle = "#1b1526";
-      ctx.beginPath();
-      ctx.arc(
-        x + lx * r * 0.3 + side * r * 0.26,
-        y + r * 0.12 + ly * r * 0.18,
-        r * 0.15,
-        0,
-        Math.PI * 2
-      );
-      ctx.fill();
-    }
-  }
-  function drawSkull(ctx, x, y, r, lx, ly, time, phase, flash, col) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(lx * 0.18);
-    ctx.globalAlpha = 0.26 + 0.1 * Math.sin(time * 4 + phase);
-    ctx.fillStyle = col.a;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 1.55, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = flash ? "#ffffff" : col.a;
-    ctx.beginPath();
-    ctx.ellipse(0, -r * 0.15, r * 0.85, r * 0.8, 0, 0, Math.PI * 2);
-    ctx.fill();
-    rr(ctx, -r * 0.55, r * 0.4, r * 1.1, r * 0.55, r * 0.2);
-    ctx.fill();
-    ctx.fillStyle = "#1b1526";
-    for (const side of [-1, 1]) {
-      ctx.beginPath();
-      ctx.ellipse(side * r * 0.34, -r * 0.18, r * 0.24, r * 0.28, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillStyle = col.eye;
-    for (const side of [-1, 1]) {
-      ctx.beginPath();
-      ctx.arc(
-        side * r * 0.34 + lx * r * 0.1,
-        -r * 0.18 + ly * r * 0.1,
-        r * 0.11,
-        0,
-        Math.PI * 2
-      );
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-  function drawWorm(ctx, x, y, r, lx, ly, time, phase, flash, col) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(Math.atan2(ly, lx));
-    for (let i = 4; i >= 0; i--) {
-      const t = i / 4, off = -r * 1.5 * i * 0.62, w = r * (1 - t * 0.4);
-      ctx.fillStyle = flash ? "#ffffff" : i % 2 ? col.b : col.a;
-      ctx.beginPath();
-      ctx.ellipse(off, Math.sin(time * 6 + phase - i * 0.7) * r * 0.34, w * 0.62, w, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillStyle = "#1b1526";
-    ctx.beginPath();
-    ctx.arc(r * 0.55, 0, r * 0.26, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  // src/creatures/draw.js
-  function drawEnemy(ctx, e, time) {
-    const k = e.k, flash = e.flash > 0;
-    const x = e.x, y = e.ty, r = e.r, lx = e.lx, ly = e.ly;
-    if (k.body === "spider") drawSpider(ctx, x, y, r, time, e.phase, flash, k.col, e.sp);
-    else if (k.body === "rat") drawRat(ctx, x, y, r, time, e.phase, flash, k.col, e.ra, e.carry);
-    else if (k.body === "nest") drawNest(ctx, x, y, r, time, flash, k.col, e.nest);
-    else if (k.body === "jelly") drawJelly(ctx, x, y, r, time, e.phase, flash, k.col, e.je);
-    else if (k.body === "crawler") drawCrawler(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-    else if (k.body === "blob") drawBlob(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-    else if (k.body === "skull") drawSkull(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-    else if (k.body === "worm") drawWorm(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-    else drawDrone(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-    if (e.charge > 0 && k.tele) {
-      ctx.globalAlpha = 0.65;
-      ctx.strokeStyle = k.col.eye;
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.arc(x, y, e.r + 4 + e.charge * 10, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
-  }
-
-  // src/main.js
-  var { useRef, useEffect, useState, useMemo } = React;
-  var h = React.createElement;
-  var SPUTTER_FUEL = 0.25;
-  function sputterStep(st, dt, fuel, on, rnd) {
-    rnd = rnd || Math.random;
-    st.start = false;
-    if (!on) {
-      st.cut = 0;
-      st.gap = 0;
-      st.onT = 0;
-      return false;
-    }
-    st.onT = (st.onT || 0) + dt;
-    st.cut = Math.max(0, (st.cut || 0) - dt);
-    st.gap = Math.max(0, (st.gap || 0) - dt);
-    if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
-      const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;
-      if (rnd() < dt * (1 + 7 * w)) {
-        st.cut = 0.04 + rnd() * (0.05 + 0.08 * w);
-        st.gap = st.cut + 0.1 + rnd() * 0.2;
-        st.start = true;
-      }
-    }
-    return st.cut > 0;
-  }
-  function jetPitch(onT) {
-    return 1 + 0.7 * Math.min(Math.max(onT, 0), 3) / 3;
-  }
-  var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
+  // src/art/sprites.js
   function drawGun(ctx, x, y, ang, sc, accent) {
     ctx.save();
     ctx.translate(x, y);
@@ -8649,6 +8620,67 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     drawFlame(ctx, x, y - 4, Math.sin(time * 1.9 + ph) * 1.2, 0, s, fl, time + ph);
     ctx.restore();
   }
+  var GLOW_STREAKS = 9;
+  function drawGunGlow(ctx, x, y, time, seed) {
+    const breathe = 0.85 + 0.15 * Math.sin(time * 2.6 + seed);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const R = 20 * breathe;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, R);
+    g.addColorStop(0, "rgba(255,201,60,0.55)");
+    g.addColorStop(0.45, "rgba(255,170,40,0.22)");
+    g.addColorStop(1, "rgba(255,140,20,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineCap = "round";
+    for (let k = 0; k < GLOW_STREAKS; k++) {
+      const ph = (time * 0.7 + k / GLOW_STREAKS + seed) % 1;
+      const lap = Math.floor(time * 0.7 + k / GLOW_STREAKS + seed);
+      const a = seed * 3.1 + k * 2.39996 + lap * 1.7;
+      const r0 = 4 + ph * 18, len = 3 + 5 * (1 - ph);
+      ctx.globalAlpha = Math.sin(ph * Math.PI) * 0.9;
+      ctx.strokeStyle = k % 3 ? "#ffc93c" : "#fff1b8";
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0);
+      ctx.lineTo(x + Math.cos(a) * (r0 + len), y + Math.sin(a) * (r0 + len));
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // src/main.js
+  var { useRef, useEffect, useState, useMemo } = React;
+  var h = React.createElement;
+  var SPUTTER_FUEL = 0.25;
+  function sputterStep(st, dt, fuel, on, rnd) {
+    rnd = rnd || Math.random;
+    st.start = false;
+    if (!on) {
+      st.cut = 0;
+      st.gap = 0;
+      st.onT = 0;
+      return false;
+    }
+    st.onT = (st.onT || 0) + dt;
+    st.cut = Math.max(0, (st.cut || 0) - dt);
+    st.gap = Math.max(0, (st.gap || 0) - dt);
+    if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
+      const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;
+      if (rnd() < dt * (1 + 7 * w)) {
+        st.cut = 0.04 + rnd() * (0.05 + 0.08 * w);
+        st.gap = st.cut + 0.1 + rnd() * 0.2;
+        st.start = true;
+      }
+    }
+    return st.cut > 0;
+  }
+  function jetPitch(onT) {
+    return 1 + 0.7 * Math.min(Math.max(onT, 0), 3) / 3;
+  }
+  var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
   function fmtGold(g) {
     g = Math.max(0, Math.floor(g || 0));
     if (g < 1e3) return String(g);
@@ -16462,36 +16494,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       };
     }, []);
     return h("canvas", { ref: cv, className: "game" });
-  }
-  var GLOW_STREAKS = 9;
-  function drawGunGlow(ctx, x, y, time, seed) {
-    const breathe = 0.85 + 0.15 * Math.sin(time * 2.6 + seed);
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    const R = 20 * breathe;
-    const g = ctx.createRadialGradient(x, y, 0, x, y, R);
-    g.addColorStop(0, "rgba(255,201,60,0.55)");
-    g.addColorStop(0.45, "rgba(255,170,40,0.22)");
-    g.addColorStop(1, "rgba(255,140,20,0)");
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(x, y, R, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.lineCap = "round";
-    for (let k = 0; k < GLOW_STREAKS; k++) {
-      const ph = (time * 0.7 + k / GLOW_STREAKS + seed) % 1;
-      const lap = Math.floor(time * 0.7 + k / GLOW_STREAKS + seed);
-      const a = seed * 3.1 + k * 2.39996 + lap * 1.7;
-      const r0 = 4 + ph * 18, len = 3 + 5 * (1 - ph);
-      ctx.globalAlpha = Math.sin(ph * Math.PI) * 0.9;
-      ctx.strokeStyle = k % 3 ? "#ffc93c" : "#fff1b8";
-      ctx.lineWidth = 1.1;
-      ctx.beginPath();
-      ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0);
-      ctx.lineTo(x + Math.cos(a) * (r0 + len), y + Math.sin(a) * (r0 + len));
-      ctx.stroke();
-    }
-    ctx.restore();
   }
   var GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
   var GAUGE_COL = { mana: "#ffc93c", rech: "#7ad7ff", cast: "#c58cff", fuel: "#ff9a2e" };
