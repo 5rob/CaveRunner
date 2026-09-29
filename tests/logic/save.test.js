@@ -1,12 +1,6 @@
 // Autosave: readSave / cleanLoadout must turn any stored run — including one written by an
 // older version that names mods or perks since removed — into a usable run, or null.
-const fs = require('fs');
-const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
-const o = src.indexOf('<script>\n') + 9;
-const js = src.slice(o, src.indexOf('</script>', o));
-const { readSave, cleanLoadout, startingGuns, VERSION, MODS } = new Function('React', js.slice(0, js.indexOf('function makeLevel')) +
-  '\nreturn { readSave, cleanLoadout, startingGuns, VERSION, MODS };')({ createElement: () => {} });
+const { readSave, cleanLoadout, startingGuns, VERSION, MODS } = require('../load');
 
 let pass = 0, fail = 0;
 const check = (name, ok, got) => {

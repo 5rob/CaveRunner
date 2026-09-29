@@ -1,12 +1,6 @@
 // v57: the Black Hole dev knobs, the copy-to-clipboard report, and the Black Hole's dig
 // radius matching its drawn black core rather than its glow.
-const fs = require('fs');
-const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');   // a Windows checkout hands us CRLF
-const o = src.indexOf('<script>\n') + 9;
-const js = src.slice(o, src.indexOf('</script>', o));
-const { DEV, DEV_DEFAULTS, DEV_META, DEV_GROUPS, devReport, bhSp, MODS } = new Function('React', js.slice(0, js.indexOf('function makeLevel')) +
-  '\nreturn { DEV, DEV_DEFAULTS, DEV_META, DEV_GROUPS, devReport, bhSp, MODS };')({ createElement: () => {} });
+const { DEV, DEV_DEFAULTS, DEV_META, DEV_GROUPS, devReport, bhSp, MODS } = require('../load');
 
 let pass = 0, fail = 0;
 const check = (name, ok, x) => {

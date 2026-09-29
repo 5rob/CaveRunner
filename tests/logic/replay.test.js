@@ -1,12 +1,6 @@
 // The death replay's pure parts: snapshot copies (rpClone), blending between snapshots
 // (rpLerp / rpList / rpAt / rpFrame) and the terrain patches (rpCut / rpPaste / rpMerge).
-const fs = require('fs');
-const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
-const o = src.indexOf('<script>\n') + 9;
-const js = src.slice(o, src.indexOf('</script>', o));
-const R = new Function('React', js.slice(0, js.indexOf('function makeLevel')) +
-  '\nreturn { rpClone, rpLerp, rpList, rpAt, rpFrame, rpCut, rpPaste, rpMerge, RP_LISTS, RP_NUMS, RP_HZ, RP_BEFORE, RP_AFTER, RP_KEEP };')({ createElement: () => {} });
+const R = require('../load');
 
 let pass = 0, fail = 0;
 const check = (name, ok, got) => {

@@ -3,15 +3,8 @@
 // ratNests is pure and runs inside makeLevel, so real floor-1 caves are measured here: how
 // many nests land in each kind of zone, that the nest room can't be walked or seen into, and
 // that the tunnel is too thin for you. ratStep is pure too, so it runs on hand-made grids.
-const fs = require('fs');
-const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
-const open = src.indexOf('<script>\n') + 9;
-const js = src.slice(open, src.indexOf('</script>', open));
-const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
-const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
-const G = new Function('React', shim + upto +
-  'return { ratStep, ratFooting, ratSpread, ratNests, pathAt, pathLen, navField, navWay, RAT, CELL, CW, CH, CREATURES, HUNTERS, enemyFor, DEV, DEV_META, RA_KNOBS, makeLevel, boxReach, losClear, builtAt, FW, FH, FOG, SIGHT, VIS_RAYS, fogReveal, visPoly, nestFog };')({ createElement: () => {} });
+const G = require('../load');
+const src = require('../load').source;
 const { ratStep, ratFooting, ratSpread, navField, navWay, pathAt, pathLen, RAT, CELL, CW, CREATURES, HUNTERS, enemyFor, DEV, DEV_META, RA_KNOBS, makeLevel, boxReach, losClear, builtAt, FW, FH, FOG, SIGHT, VIS_RAYS, fogReveal, visPoly, nestFog } = G;
 
 let fails = 0;

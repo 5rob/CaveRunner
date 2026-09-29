@@ -2,15 +2,7 @@
 // speed off, a turn-rate limit on the head, and a bell that is thin at speed and flat at
 // rest. jellyStep is pure, so it runs here on hand-made grids and is measured, not trusted.
 // Also covers the shared movement pieces it is built from (roamStep, turnToward, flyMove).
-const fs = require('fs');
-const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
-const open = src.indexOf('<script>\n') + 9;
-const js = src.slice(open, src.indexOf('</script>', open));
-const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
-const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
-const G = new Function('React', shim + upto +
-  'return { jellyStep, jellyBell, roamStep, turnToward, flyMove, JELLY, CELL, CW, CH, CREATURES, enemyFor, DEV, DEV_META, DEV_GROUPS, JE_KNOBS, kr, kru, makeLevel, rosterFor, segHitsBox, tentacleTouch, JE_COLS, jellyPal, hexMix, hexRgb, kcol, DEV_DEFAULTS, hsvAdjust, jcol, twinkle, plantWhite, plantGlowFill };')({ createElement: () => {} });
+const G = require('../load');
 const { jellyStep, jellyBell, roamStep, turnToward, flyMove, JELLY, CELL, CW, CH, CREATURES, enemyFor, DEV, DEV_META, DEV_GROUPS, JE_KNOBS, kr, kru, makeLevel, segHitsBox, tentacleTouch, JE_COLS, jellyPal, hexMix, hexRgb, kcol, DEV_DEFAULTS, hsvAdjust, jcol, twinkle, plantWhite, plantGlowFill } = G;
 
 let fails = 0;

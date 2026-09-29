@@ -1,13 +1,7 @@
 // v95: the tier-1 spells reworked after their Noita twins — each carries its own flight
 // (drag, soft bounces, a zig-zag, a droop or a rise), a look, a glow, and some mark on the
 // world. These check the numbers made it through planCast and that the aim line follows.
-const fs = require('fs');
-const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
-const o = src.indexOf('<script>\n') + 9;
-const js = src.slice(o, src.indexOf('</script>', o));
-const api = new Function('React', js.slice(0, js.indexOf('function Game(')) +
-  '\nreturn { MODS, MOD_TIER, planCast, resetGun, tracePath, wigTurn, fireDouse, fireNew, fireLight, CW };')({ createElement: () => {} });
+const api = require('../load');
 const { MODS, MOD_TIER, planCast, resetGun, tracePath, wigTurn, fireDouse, fireNew, fireLight, CW } = api;
 let pass = 0, fail = 0;
 const check = (n, ok, x) => { ok ? pass++ : fail++;

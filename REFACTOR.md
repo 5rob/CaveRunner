@@ -175,7 +175,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
 - [x] **P0.5** `tests/run.js` runs the build first, so a green test run always means
       `index.html` is fresh. `index.html` stays committed (CI, Pages, the APK and `serve.js`
       read it and don't change).
-- [ ] **P0.6** `tests/load.js`: **one loader for all logic suites.** `require('../load')`
+- [x] **P0.6** `tests/load.js`: **one loader for all logic suites.** `require('../load')`
       returns an object holding every top-level name defined above `function Game(`
       (sliced from the built `index.html`, with the `ImageData` shim and the `React` stub
       the suites use today). Convert all 33 logic suite headers to use it; suite bodies

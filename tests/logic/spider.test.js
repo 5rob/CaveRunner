@@ -2,15 +2,7 @@
 //
 // spiderStep is pure, so it runs here on hand-made grids: a box room, a gap to cross, a
 // bumpy floor. Every check watches it for simulated seconds and measures where it went.
-const fs = require('fs');
-const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
-const open = src.indexOf('<script>\n') + 9;
-const js = src.slice(open, src.indexOf('</script>', open));
-const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
-const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
-const G = new Function('React', shim + upto +
-  'return { spiderStep, surfNormal, SPIDER, CELL, CW, CH, CREATURES, enemyFor, rayDist, DEV, DEV_META, makeLevel, SP_KNOBS, spr };')({ createElement: () => {} });
+const G = require('../load');
 const { spiderStep, surfNormal, SPIDER, CELL, CW, CH, CREATURES, enemyFor, DEV, DEV_META, makeLevel, SP_KNOBS, spr } = G;
 
 let fails = 0;

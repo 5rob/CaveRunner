@@ -1,15 +1,7 @@
 // v87: floor 1 is two caves in zones — a big slow noise picks built-up (the layered cave)
 // or natural (the old noise cave) — the jellies keep to the natural zones, and green floors
 // get arched vines slung between ceiling spots. Measured on real caves and hand-made grids.
-const fs = require('fs');
-const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
-const open = src.indexOf('<script>\n') + 9;
-const js = src.slice(open, src.indexOf('</script>', open));
-const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
-const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
-const G = new Function('React', shim + upto +
-  'return { makeLevel, boxReach, builtAt, jellyStep, archCurve, archNear, archAt, propAnchored, NATURAL_ONLY, ARCH_KNOBS, DEV, DEV_META, DEV_GROUPS, CW, CH, CELL, SHOP_TOP, SHOP_FLOOR, SHOP_ROOF, ROCK, BRICK };')({ createElement: () => {} });
+const G = require('../load');
 const { makeLevel, boxReach, builtAt, jellyStep, archCurve, archNear, archAt, propAnchored, ARCH_KNOBS, DEV, DEV_META, DEV_GROUPS, CW, CELL, SHOP_TOP, SHOP_FLOOR, SHOP_ROOF } = G;
 
 let fails = 0;

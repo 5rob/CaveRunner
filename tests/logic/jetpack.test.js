@@ -1,12 +1,6 @@
 // The jetpack coughs near empty (short random cut-outs, more often the drier it gets) and
 // its roar climbs in pitch the longer it's held, capped at 3 seconds.
-const fs = require('fs');
-const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
-const o = src.indexOf('<script>\n') + 9;
-const js = src.slice(o, src.indexOf('</script>', o));
-const G = new Function('React', js.slice(0, js.indexOf('function makeLevel')) +
-  '\nreturn { sputterStep, jetPitch, SPUTTER_FUEL, DEV, DEV_META };')({ createElement: () => {} });
+const G = require('../load');
 const { sputterStep, jetPitch, SPUTTER_FUEL, DEV, DEV_META } = G;
 
 let pass = 0, fail = 0;

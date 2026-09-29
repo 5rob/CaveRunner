@@ -1,12 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');   // a Windows checkout hands us CRLF
-const open = src.indexOf('<script>\n') + 9;
-const js = src.slice(open, src.indexOf('</script>', open));
-const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
-const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
-const G = new Function('React', shim + upto +
-  'return { makeLevel, gunPrice, isGunShop, makeGun, caveGun, gunLevel, gunAccent, GUN_RANGE, GUN_LV_COL, CH };')({ createElement: () => {} });
+const G = require('../load');
 
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };

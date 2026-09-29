@@ -1,15 +1,6 @@
 // v86 fire: fuel is painted with the decoration (grass, moss, timber), fire spreads through
 // it pixel by pixel, climbs, burns out, and dies once there's nothing left to eat.
-const fs = require('fs');
-const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');   // a Windows checkout hands us CRLF
-const open = src.indexOf('<script>\n') + 9;
-const js = src.slice(open, src.indexOf('</script>', open));
-const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
-const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
-const G = new Function('React', shim + upto +
-  'return { makeLevel, fireNew, fireLight, fireArea, fireNear, fireStep, FUEL_GRASS, FUEL_MOSS, FUEL_WOOD, ' +
-  'FIRE_TICK, FIRE_MAX, CW, CH, CELL, ROCK, DEV, DEV_DEFAULTS, DEV_META, MODS, CREATURES };')({ createElement: () => {} });
+const G = require('../load');
 const { CW, CH, CELL } = G;
 
 let pass = 0, fail = 0;

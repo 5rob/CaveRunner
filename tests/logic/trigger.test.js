@@ -4,16 +4,7 @@
 // nested triggers — isolated from the rest of the pull. The things that can really
 // break are runaway nesting and payload spells leaking into (or being fired by) the
 // main cast, so most of this suite measures those.
-const fs = require('fs');
-const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');   // a Windows checkout hands us CRLF
-const open = src.indexOf('<script>\n') + 9;
-const js = src.slice(open, src.indexOf('</script>', open));
-const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
-const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w*h*4); } }\n';
-const G = new Function('React', shim + upto +
-  'return { MODS, ALL_IDS, SHOT_IDS, SEED_SHOTS, MOD_TIER, MOD_PRICE, FAMILY_OF, TRIG_VARIANTS, planCast, resetGun, ' +
-  'castGroups, groupStats, gunRate, tracePath, modPreview, effRecharge };')({ createElement: () => {} });
+const G = require('../load');
 
 let pass = 0, fail = 0;
 const ok = (n, c, x) => { if (c) { pass++; } else { fail++; console.log(`FAIL ${n}` + (x !== undefined ? ' -> ' + JSON.stringify(x) : '')); } };

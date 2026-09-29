@@ -1,11 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');   // a Windows checkout hands us CRLF
-const open = src.indexOf('<script>\n') + 9;
-const js = src.slice(open, src.indexOf('</script>', open));
-const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
-const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w*h*4); } }\n';
-const G = new Function('React', shim + upto + 'return { MODS, FAMILY_OF, FAMILIES, MOD_PRICE, ALL_IDS, SHOT_IDS };')({ createElement: () => {} });
+const G = require('../load');
 const ids = Object.keys(G.MODS);
 let bad = 0;
 const say = (m) => { bad++; console.log('  ' + m); };

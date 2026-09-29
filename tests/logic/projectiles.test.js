@@ -1,15 +1,7 @@
 // Pollen (v74: drags to a stop, floats, locks on in range, pops on contact) and
 // Black Hole (4x size, 2x speed, eat radius scaled to match) — data plus the
 // things that actually make them behave differently in flight.
-const fs = require('fs');
-const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');   // a Windows checkout hands us CRLF
-const o = src.indexOf('<script>\n') + 9;
-const js = src.slice(o, src.indexOf('</script>', o));
-const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
-const shim = 'class ImageData { constructor(w,h){this.width=w;this.height=h;this.data=new Uint8ClampedArray(w*h*4);} }\n';
-const G = new Function('React', shim + upto +
-  'return { MODS, planCast, resetGun, tracePath, MOD_PRICE, MOD_TIER, tierOf };')({ createElement: () => {} });
+const G = require('../load');
 const { MODS, planCast, resetGun, tracePath, MOD_PRICE, MOD_TIER } = G;
 
 let pass = 0, fail = 0;

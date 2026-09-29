@@ -5,16 +5,8 @@
 // what makes floor 3 the frozen one with the snipers on every run, which is the whole
 // point of the change. Second, that the creatures actually differ from each other and
 // get harder as you climb, rather than being one drone in sixteen hats.
-const fs = require('fs');
-const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');   // a Windows checkout hands us CRLF
-const open = src.indexOf('<script>\n') + 9;
-const js = src.slice(open, src.indexOf('</script>', open));
-const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
-const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
-const game = new Function('React', shim + upto +
-  'return { makeLevel, themeFor, THEMES, rosterFor, ROSTERS, CREATURES, CREATURE_IDS, enemyFor, ENEMY_COUNT, HUNTERS, DEV_DEFAULTS };')(
-  { createElement: () => {} });
+const game = require('../load');
+const src = require('../load').source;
 const { makeLevel, themeFor, THEMES, rosterFor, ROSTERS, CREATURES, CREATURE_IDS, enemyFor, ENEMY_COUNT, HUNTERS, DEV_DEFAULTS } = game;
 
 let fails = 0;

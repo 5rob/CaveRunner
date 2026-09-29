@@ -2,16 +2,7 @@
 // every theme's five entries turn up, nothing lands in the shop or on a keep-out spot,
 // no two props overlap, every prop starts anchored, the cave's solid/open shape is untouched,
 // and a floor's decoration is the floor's own (floor 13 dresses like floor 1).
-const fs = require('fs');
-const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
-const open = src.indexOf('<script>\n') + 9;
-const js = src.slice(open, src.indexOf('</script>', open));
-const upto = js.slice(0, js.indexOf('const approach = (v, t, a)'));
-const shim = 'class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); } }\n';
-const G = new Function('React', shim + upto +
-  'return { PLANTS, makeLevel, decorate, decorFor, cullDecor, propAnchored, DECOR, CW, CH, BW, BH, CELL, SHOP_Y, ImageData };')(
-  { createElement: () => {} });
+const G = require('../load');
 const { makeLevel, decorate, decorFor, cullDecor, propAnchored, DECOR, CW, CH, BW, BH, SHOP_Y, ImageData } = G;
 
 let pass = 0, fail = 0;

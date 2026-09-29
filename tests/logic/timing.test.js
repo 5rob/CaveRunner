@@ -1,10 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');   // a Windows checkout hands us CRLF
-const o = src.indexOf('<script>\n') + 9;
-const js = src.slice(o, src.indexOf('</script>', o));
-const api = new Function('React', js.slice(0, js.indexOf('function makeLevel')) +
-  '\nreturn { MODS, planCast, resetGun, gunPassives, effRecharge, MIN_CAST, MIN_RECH };')({ createElement: () => {} });
+const api = require('../load');
 const { MODS, planCast, resetGun, effRecharge, MIN_CAST, MIN_RECH } = api;
 
 let pass = 0, fail = 0;

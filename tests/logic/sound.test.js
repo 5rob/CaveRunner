@@ -1,13 +1,6 @@
 // Sound recipes: every spell, creature and floor has a voice, and the stats bend a spell's
 // sound the way they should (faster = higher, bigger/heavier = lower and louder, homing warbles).
-const fs = require('fs');
-const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
-const o = src.indexOf('<script>\n') + 9;
-const js = src.slice(o, src.indexOf('</script>', o));
-const G = new Function('React', js.slice(0, js.indexOf('function makeLevel')) +
-  '\nreturn { MODS, CREATURES, THEMES, enemyFor, blankShot, shotSound, creatureSound, SPELL_VOICE, SPELL_VOICES,' +
-  ' CREATURE_VOICES, AMBIENCE, AMB_EVENTS, SFX, DEV_META, DEV, rustleStep, fxVolKey };')({ createElement: () => {} });
+const G = require('../load');
 const { MODS, CREATURES, THEMES, enemyFor, blankShot, shotSound, creatureSound, SPELL_VOICE, SPELL_VOICES,
   CREATURE_VOICES, AMBIENCE, AMB_EVENTS, SFX, DEV_META, DEV, rustleStep, fxVolKey } = G;
 
