@@ -5988,1720 +5988,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return ticks;
   }
 
-  // src/creatures/jelly.js
-  function jellyPal(u) {
-    const P = {};
-    for (const [k, , , , f] of JE_COLS) P[f] = jcol(k, u);
-    return P;
-  }
-  var JELLY = { hitR: 0.8 };
-  function jellyBell(r, s, q) {
-    const t = Math.max(0, Math.min(1.5, s * q));
-    const w = r * (1.15 - 0.36 * t), h3 = r * (0.95 + 0.6 * t);
-    return { w, h: h3, rw: w * (0.96 - 0.24 * t), top: -h3 * 0.62, rim: h3 * 0.38 };
-  }
-  function jellyStep(e, env, dt) {
-    const { solidCell: solidCell2, rnd: rnd2 } = env;
-    let S = e.je;
-    if (!S) {
-      S = e.je = {
-        hd: -Math.PI / 2 + (rnd2() - 0.5) * 0.6,
-        vx: 0,
-        vy: 0,
-        push: 0,
-        pushA: 0,
-        rest: rnd2() * 1.5,
-        shape: 0,
-        vref: Math.max(1, kr("jeRoamPush", rnd2)),
-        t: rnd2() * 10,
-        tent: [],
-        u: { thin: rnd2(), sq: rnd2(), len: rnd2(), wave: rnd2(), sag: rnd2(), glow: rnd2(), glowR: rnd2(), flare: rnd2(), col: rnd2(), plant: rnd2() }
-      };
-      feel(false);
-      const nt = Math.round(kr("jeTents", rnd2));
-      for (let i = 0; i < nt; i++) {
-        const T = [], nv = Math.max(2, Math.round(kr("jeVerts", rnd2)));
-        for (let j = 0; j < nv; j++) T.push({ x: NaN, y: NaN });
-        S.tent.push(T);
-      }
-    }
-    const mul = env.speedMul || 1;
-    let hunt = !!(env.hunting && env.goal);
-    S.t += dt;
-    roamStep(S, e, dt, rnd2, "je", env.stay);
-    const lost = !!(env.stay && !env.stay(e.x, e.y));
-    if (lost) hunt = false;
-    if (hunt && !S.range) S.range = kr("jeRange", rnd2);
-    if (!hunt) S.range = 0;
-    const goal = hunt ? env.goal : lost ? { x: e.hx, y: e.hy } : { x: S.rx, y: S.ry };
-    const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
-    const range = S.range * (env.rangeMul || 1);
-    const want = !hunt && gd < 12 ? -Math.PI / 2 : Math.atan2(gy, gx);
-    S.hd = turnToward(S.hd, want, S.turn * Math.PI / 180 * mul * dt);
-    const off = Math.abs(angDiff(want, S.hd)) * 180 / Math.PI;
-    S.inRange = hunt && gd < range;
-    S.aimed = hunt && off < S.aimTol;
-    let out = null;
-    if (S.push > 0) {
-      const a = S.pushA * mul * Math.min(dt, S.push);
-      S.vx += Math.cos(S.hd) * a;
-      S.vy += Math.sin(S.hd) * a;
-      S.push -= dt;
-    } else if ((S.rest -= dt) <= 0) {
-      const v = (hunt ? gd > range : gd > 10) && off < S.tol ? kr(hunt ? "jeHuntPush" : "jeRoamPush", rnd2) : 0;
-      const dg = Math.max(0.1, S.drag), glide = Math.min(gd, 160, Math.max(20, v / dg));
-      const stay = env.stay, out0 = stay && !lost && !stay(e.x + Math.cos(S.hd) * glide + S.vx / dg, e.y + Math.sin(S.hd) * glide + S.vy / dg);
-      if (v > 0 && !out0) {
-        const pt = kr("jePushT", rnd2);
-        S.push = pt;
-        S.pushA = v / Math.max(pt, 1e-3);
-        S.vref = Math.max(v, 1);
-        S.rest = kr(hunt ? "jeHuntRest" : "jeRoamRest", rnd2);
-        feel(hunt);
-        out = "pulse";
-      } else S.rest = 0.05 + rnd2() * 0.1;
-    }
-    const k = Math.exp(-S.drag * dt);
-    S.vx *= k;
-    S.vy = S.vy * k + S.sink * dt;
-    flyMove(e, S, dt, e.r * JELLY.hitR, solidCell2, S.bounce);
-    const f = Math.min(1, Math.hypot(S.vx, S.vy) / S.vref);
-    S.shape = 1 - Math.pow(1 - f, kru("jeThin", S.u.thin));
-    const B = jellyBell(e.r, S.shape, kru("jeSquash", S.u.sq));
-    const c = Math.cos(S.hd), s = Math.sin(S.hd), n = S.tent.length;
-    const len = kru("jeTentLen", S.u.len), wave = kru("jeWave", S.u.wave), sag = kru("jeSag", S.u.sag);
-    for (let i = 0; i < n; i++) {
-      const T = S.tent[i], seg = len / (T.length - 1);
-      const lx = n > 1 ? (i / (n - 1) - 0.5) * 1.4 * B.rw : 0;
-      T[0].x = e.x - lx * s - B.rim * c;
-      T[0].y = e.y + lx * c - B.rim * s;
-      if (isNaN(T[1].x)) for (let j = 1; j < T.length; j++) {
-        T[j].x = T[0].x - c * seg * j;
-        T[j].y = T[0].y - s * seg * j;
-      }
-      for (let j = 1; j < T.length; j++) {
-        const q = T[j], pq = T[j - 1];
-        const sw = Math.sin(S.t * 3.1 + i * 0.5 - j * 0.9) * wave * dt * j / (T.length - 1);
-        q.x -= s * sw;
-        q.y += c * sw + sag * dt;
-        const dx = q.x - pq.x, dy = q.y - pq.y, d = Math.hypot(dx, dy) || 1;
-        q.x = pq.x + dx / d * seg;
-        q.y = pq.y + dy / d * seg;
-      }
-    }
-    return out;
-    function feel(h3) {
-      S.turn = kr("jeTurn", rnd2);
-      S.tol = kr("jePushTol", rnd2);
-      S.drag = kr("jeDrag", rnd2);
-      S.sink = kr("jeSink", rnd2);
-      S.bounce = kr("jeBounce", rnd2);
-      S.aimTol = kr("jeAimTol", rnd2);
-      S.range = h3 ? kr("jeRange", rnd2) : 0;
-    }
-  }
-  function segHitsBox(ax, ay, bx, by, x0, y0, x1, y1) {
-    const dx = bx - ax, dy = by - ay;
-    let t0 = 0, t1 = 1;
-    const clip = (p, q) => {
-      if (p === 0) return q >= 0;
-      const t = q / p;
-      if (p < 0) {
-        if (t > t1) return false;
-        if (t > t0) t0 = t;
-      } else {
-        if (t < t0) return false;
-        if (t < t1) t1 = t;
-      }
-      return true;
-    };
-    return clip(-dx, ax - x0) && clip(dx, x1 - ax) && clip(-dy, ay - y0) && clip(dy, y1 - ay);
-  }
-  function tentacleTouch(S, x0, y0, x1, y1) {
-    if (!S || !S.tent) return null;
-    for (const T of S.tent) for (let j = 1; j < T.length; j++) {
-      const a = T[j - 1], b = T[j];
-      if (!isNaN(a.x) && segHitsBox(a.x, a.y, b.x, b.y, x0, y0, x1, y1)) return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-    }
-    return null;
-  }
-  var TW_N = 64;
-  var TW_TILE = (() => {
-    let q = 12345;
-    const a = new Float32Array(TW_N * TW_N);
-    for (let i = 0; i < a.length; i++) {
-      q = q * 16807 % 2147483647;
-      a[i] = q / 2147483647;
-    }
-    return a;
-  })();
-  function twNoise(x, y) {
-    const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
-    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
-    const x0 = (xi % TW_N + TW_N) % TW_N, y0 = (yi % TW_N + TW_N) % TW_N, x1 = (x0 + 1) % TW_N, y1 = (y0 + 1) % TW_N;
-    const a = TW_TILE[y0 * TW_N + x0], b = TW_TILE[y0 * TW_N + x1], c = TW_TILE[y1 * TW_N + x0], d = TW_TILE[y1 * TW_N + x1];
-    return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
-  }
-  function twinkle(x, y, t, size) {
-    const u = x / size, v = y / size;
-    const n = twNoise(u + t * 0.37, v - t * 0.23) * twNoise(u * 1.7 - t * 0.31 + 17, v * 1.7 + t * 0.29 + 5);
-    const k = Math.min(1, Math.max(0, (n - 0.12) / 0.45));
-    return k * k * (3 - 2 * k);
-  }
-  function plantWhite(...datas) {
-    const hist = new Uint32Array(256);
-    let n = 0;
-    for (const d of datas) if (d) {
-      for (let i = 0; i < d.length; i += 4)
-        if (d[i + 3] >= 128 && d[i + 1] >= d[i] && d[i + 1] >= d[i + 2]) {
-          hist[d[i + 1]]++;
-          n++;
-        }
-    }
-    if (!n) return 255;
-    for (let g = 0, c = 0; g < 256; g++) {
-      c += hist[g];
-      if (c >= n * 0.999) return Math.max(1, g);
-    }
-    return 255;
-  }
-  function plantGlowFill(out, art, w, h3, o) {
-    const black = o.white * (1 - o.top), span = Math.max(1, o.white - black);
-    const r = o.rgb[0], g = o.rgb[1], b = o.rgb[2];
-    let any = 0;
-    for (let y = 0; y < h3; y++) {
-      const wy = o.oy + (y + 0.5) * o.px, dy = wy - o.cy;
-      for (let x = 0; x < w; x++) {
-        const i = (y * w + x) * 4, G = art[i + 1];
-        out[i + 3] = 0;
-        if (!art[i + 3] || G <= black || G < art[i] || G < art[i + 2]) continue;
-        const wx = o.ox + (x + 0.5) * o.px, dx = wx - o.cx;
-        const ramp = 1 - Math.sqrt(dx * dx + dy * dy) / o.reach;
-        if (ramp <= 0 || o.lit && !o.lit(wx, wy)) continue;
-        const a = Math.min(1, (G - black) / span) * ramp * twinkle(wx, wy, o.t, o.size) * o.strength * art[i + 3] / 255;
-        if (a < 4e-3) continue;
-        out[i] = r;
-        out[i + 1] = g;
-        out[i + 2] = b;
-        out[i + 3] = Math.min(255, a * 255);
-        any++;
-      }
-    }
-    return any;
-  }
-  function drawJelly(ctx, x, y, r, time, phase, flash, col, S) {
-    const P = jellyPal(S ? S.u.col : 0.5);
-    const sh = Math.max(0, Math.min(1, (S ? S.shape : 0) + 0.05 * Math.sin(time * 2.2 + phase)));
-    const B = jellyBell(r, sh, S ? kru("jeSquash", S.u.sq) : 1);
-    if (S) {
-      ctx.fillStyle = flash ? "#ffffff" : P.tent;
-      ctx.globalAlpha = 0.6;
-      for (const T of S.tent) {
-        const n = T.length, L = [], R = [];
-        for (let j = 0; j < n; j++) {
-          const a = T[Math.max(0, j - 1)], b = T[Math.min(n - 1, j + 1)];
-          const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1;
-          const hw = r * 0.09 * (1 - j / (n - 1)) + 0.15;
-          L.push({ x: T[j].x - dy / d * hw, y: T[j].y + dx / d * hw });
-          R.push({ x: T[j].x + dy / d * hw, y: T[j].y - dx / d * hw });
-        }
-        const side = (P2, back) => {
-          const Q = back ? P2.slice().reverse() : P2;
-          ctx.lineTo(Q[0].x, Q[0].y);
-          for (let j = 1; j < n - 1; j++) ctx.quadraticCurveTo(Q[j].x, Q[j].y, (Q[j].x + Q[j + 1].x) / 2, (Q[j].y + Q[j + 1].y) / 2);
-          ctx.lineTo(Q[n - 1].x, Q[n - 1].y);
-        };
-        ctx.beginPath();
-        ctx.moveTo(L[0].x, L[0].y);
-        side(L, false);
-        side(R, true);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-    }
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate((S ? S.hd : -Math.PI / 2) + Math.PI / 2);
-    const bell = (k, oy, lap) => {
-      const w = B.w * k, h3 = B.h * k, rw = B.rw * k, top = B.top * k + oy, rim = B.rim * k + oy;
-      ctx.beginPath();
-      ctx.moveTo(-rw, rim);
-      ctx.bezierCurveTo(-w * 1.08, rim - h3 * 0.5, -w * 0.72, top, 0, top);
-      ctx.bezierCurveTo(w * 0.72, top, w * 1.08, rim - h3 * 0.5, rw, rim);
-      if (lap) for (let i = 0; i < 5; i++) {
-        const x0 = rw - 2 * rw * i / 5, x1 = rw - 2 * rw * (i + 1) / 5;
-        ctx.quadraticCurveTo((x0 + x1) / 2, rim + lap * (1 + 0.35 * Math.sin(time * 5 + i * 1.3 + phase)), x1, rim);
-      }
-      ctx.closePath();
-    };
-    const g = ctx.createLinearGradient(0, B.top, 0, B.rim);
-    g.addColorStop(0, flash ? "#ffffff" : P.top);
-    g.addColorStop(0.55, flash ? "#ffffff" : P.body);
-    g.addColorStop(1, flash ? "#f4f0ff" : P.rim);
-    ctx.globalAlpha = 0.8;
-    ctx.fillStyle = g;
-    bell(1, 0, r * 0.2 * (1 - 0.5 * sh));
-    ctx.fill();
-    ctx.globalAlpha = 0.85;
-    ctx.strokeStyle = flash ? "#ffffff" : P.edge;
-    ctx.lineWidth = r * 0.08;
-    ctx.stroke();
-    ctx.globalAlpha = 0.28;
-    ctx.fillStyle = flash ? "#ffffff" : P.inner;
-    bell(0.6, -B.h * 0.06, 0);
-    ctx.fill();
-    ctx.globalAlpha = 0.55 + 0.45 * sh;
-    ctx.strokeStyle = flash ? "#ffffff" : P.loops;
-    ctx.lineWidth = r * 0.08;
-    const gy = (B.top + B.rim) / 2 + B.h * 0.12;
-    for (let i = 0; i < 4; i++) {
-      const gx = (i - 1.5) * B.w * 0.34;
-      ctx.beginPath();
-      ctx.arc(gx, gy - Math.abs(i - 1.5) * r * 0.08, r * 0.09, Math.PI, 2 * Math.PI);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = P.shine;
-    ctx.beginPath();
-    ctx.ellipse(-B.w * 0.32, B.top + B.h * 0.24, B.w * 0.16, B.h * 0.09, -0.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  // src/world/zones.js
-  function boxReach(mat, x, y) {
-    const PWc = 6, PHc = 11;
-    const free = new Uint8Array(CW * CH), ok = new Uint8Array(CW * CH);
-    for (let cx = 0; cx < CW; cx++) {
-      let run = 0;
-      for (let cy = CH - 1; cy >= 0; cy--) {
-        run = mat[cy * CW + cx] ? 0 : run + 1;
-        if (run >= PHc) free[cy * CW + cx] = 1;
-      }
-    }
-    for (let cy = 0; cy < CH; cy++) {
-      let run = 0;
-      for (let cx = CW - 1; cx >= 0; cx--) {
-        run = free[cy * CW + cx] ? run + 1 : 0;
-        if (run >= PWc) ok[cy * CW + cx] = 1;
-      }
-    }
-    const s0 = y * CW + x;
-    let top = false;
-    if (!ok[s0]) return { ok, top };
-    const st = new Int32Array(CW * CH);
-    let n = 0;
-    ok[s0] = 2;
-    st[n++] = s0;
-    while (n) {
-      const i = st[--n];
-      if (i < 40 * CW) top = true;
-      const x0 = i % CW;
-      if (x0 > 0 && ok[i - 1] === 1) {
-        ok[i - 1] = 2;
-        st[n++] = i - 1;
-      }
-      if (x0 < CW - 1 && ok[i + 1] === 1) {
-        ok[i + 1] = 2;
-        st[n++] = i + 1;
-      }
-      if (i >= CW && ok[i - CW] === 1) {
-        ok[i - CW] = 2;
-        st[n++] = i - CW;
-      }
-      if (i < CW * (CH - 1) && ok[i + CW] === 1) {
-        ok[i + CW] = 2;
-        st[n++] = i + CW;
-      }
-    }
-    return { ok, top };
-  }
-  function builtAt(zone, wx, wy) {
-    if (!zone) return false;
-    const x = Math.floor(wx / CELL), y = Math.floor(wy / CELL);
-    return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
-  }
-
-  // src/art/sprites.js
-  function drawGun(ctx, x, y, ang, sc, accent) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(ang);
-    if (Math.cos(ang) < 0) ctx.scale(1, -1);
-    ctx.scale(sc, sc);
-    ctx.fillStyle = "#20242c";
-    rr(ctx, -6.5, -4.6, 4.5, 3.6, 1.2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(-1.4, -1.2);
-    ctx.lineTo(1.8, -1.2);
-    ctx.lineTo(0.9, 4.6);
-    ctx.lineTo(-2.2, 4.2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = "#3c424e";
-    ctx.beginPath();
-    ctx.moveTo(2.2, -1);
-    ctx.lineTo(5, -1);
-    ctx.lineTo(4.4, 3.4);
-    ctx.lineTo(1.8, 3.4);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = "#4a515f";
-    rr(ctx, -4.4, -5.2, 10.5, 4.4, 1.3);
-    ctx.fill();
-    ctx.fillStyle = "#5f6878";
-    rr(ctx, 5.5, -4.4, 7.5, 2.4, 1);
-    ctx.fill();
-    ctx.fillStyle = "#343a45";
-    rr(ctx, 0.5, -6.6, 2.4, 1.6, 0.6);
-    ctx.fill();
-    ctx.fillStyle = accent || COL.bullet;
-    rr(ctx, 12.4, -5, 1.8, 3.6, 0.7);
-    ctx.fill();
-    rr(ctx, -3.4, -4.4, 2.6, 2.6, 0.8);
-    ctx.fill();
-    ctx.restore();
-  }
-  function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash) {
-    const suit = flash ? "#ffffff" : "#ff5a36";
-    const dark = flash ? "#d8dde6" : "#c33a1f";
-    ctx.save();
-    ctx.translate(x + w / 2, y);
-    ctx.scale(face, 1);
-    ctx.fillStyle = "#2b3039";
-    rr(ctx, -6.2, 6.5, 4.4, 9, 1.6);
-    ctx.fill();
-    ctx.fillStyle = "#ff8a1f";
-    rr(ctx, -5.6, 8.4, 3.2, 1.4, 0.6);
-    ctx.fill();
-    ctx.fillStyle = "#1b1f26";
-    rr(ctx, -5.4, 15, 3, 2.2, 0.8);
-    ctx.fill();
-    if (jet > 0) {
-      ctx.fillStyle = COL.flame2;
-      rr(ctx, -5.2, 16.4, 2.6, 1.6, 0.8);
-      ctx.fill();
-    }
-    ctx.fillStyle = dark;
-    const swing = air ? -1.4 : gait * 2.6;
-    const lift = air ? 2 : 0;
-    rr(ctx, -3.4 + swing, 15.5 - lift * 0.5, 3, 6.5 - lift, 1.2);
-    ctx.fill();
-    rr(ctx, 0.4 - swing, 15.5 - lift, 3, 6.5 - lift * 0.6, 1.2);
-    ctx.fill();
-    ctx.fillStyle = "#24282f";
-    rr(ctx, -3.6 + swing, 20.2 - lift * 1.2, 3.6, 1.8, 0.7);
-    ctx.fill();
-    rr(ctx, 0.2 - swing, 20.2 - lift * 1.4, 3.6, 1.8, 0.7);
-    ctx.fill();
-    ctx.fillStyle = suit;
-    rr(ctx, -3.8, 6, 7.6, 10.5, 2.6);
-    ctx.fill();
-    ctx.fillStyle = dark;
-    rr(ctx, -3.8, 12.4, 7.6, 2.2, 1);
-    ctx.fill();
-    ctx.fillStyle = suit;
-    rr(ctx, 1, 8.4, 5, 2.8, 1.3);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#ffffff" : "#d7dbe3";
-    ctx.beginPath();
-    ctx.arc(0, 4.4, 4.6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#1d2733";
-    rr(ctx, -0.6, 1.9, 4.6, 4.2, 1.8);
-    ctx.fill();
-    ctx.fillStyle = "rgba(126,214,255,0.75)";
-    rr(ctx, 1.4, 2.7, 1.8, 1.4, 0.6);
-    ctx.fill();
-    ctx.restore();
-  }
-  function flameDrop(ctx, bx, by, tx, ty, r) {
-    const dx = tx - bx, dy = ty - by, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
-    const px = -uy, py = ux, a = Math.atan2(py, px);
-    ctx.beginPath();
-    ctx.moveTo(tx, ty);
-    ctx.quadraticCurveTo(bx + px * r * 1.15 + ux * L * 0.35, by + py * r * 1.15 + uy * L * 0.35, bx + px * r, by + py * r);
-    ctx.arc(bx, by, r, a, a + Math.PI);
-    ctx.quadraticCurveTo(bx - px * r * 1.15 + ux * L * 0.35, by - py * r * 1.15 + uy * L * 0.35, tx, ty);
-    ctx.fill();
-  }
-  function drawFlame(ctx, fx, fy, lx, ly, s, flick, time) {
-    const wob = Math.sin(time * 17) * 0.6 + Math.sin(time * 29) * 0.35;
-    const h3 = 9.5 * s * (0.85 + 0.2 * flick);
-    ctx.fillStyle = COL.flame;
-    ctx.globalAlpha = 0.9;
-    flameDrop(ctx, fx, fy, fx + lx * s + wob * s, fy - h3 + ly * s, 2.9 * s);
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = COL.flame2;
-    flameDrop(ctx, fx, fy + 0.3 * s, fx + (lx * 0.6 + wob * 0.5) * s, fy - h3 * 0.6 + ly * 0.6 * s, 1.7 * s);
-    ctx.fillStyle = "#fff6d8";
-    flameDrop(ctx, fx, fy + 0.6 * s, fx + lx * 0.3 * s, fy - h3 * 0.28 + ly * 0.3 * s, 0.8 * s);
-  }
-  function glowAt(ctx, x, y, r, a, rgb) {
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, "rgba(" + rgb + "," + a + ")");
-    g.addColorStop(0.45, "rgba(" + rgb + "," + a * 0.4 + ")");
-    g.addColorStop(1, "rgba(" + rgb + ",0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(x - r, y - r, r * 2, r * 2);
-  }
-  function drawTorch(ctx, x, y, face, flick, embers, lx, ly, time) {
-    const fx = x + face * 1.6, fy = y - 7;
-    ctx.save();
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "#5b4630";
-    ctx.lineWidth = 2.6;
-    ctx.beginPath();
-    ctx.moveTo(x, y + 2.5);
-    ctx.lineTo(fx, fy);
-    ctx.stroke();
-    ctx.strokeStyle = "#8a6b45";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x, y + 2.5);
-    ctx.lineTo(fx, fy);
-    ctx.stroke();
-    drawFlame(ctx, fx, fy - 1, lx, ly, 1, flick, time);
-    ctx.restore();
-    for (const q of embers) {
-      ctx.globalAlpha = Math.max(0, q.life / q.max) * 0.85;
-      ctx.fillStyle = q.c;
-      ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
-    }
-    ctx.globalAlpha = 1;
-  }
-  function drawSconce(ctx, x, y, time, ph) {
-    const s = 0.72, fl = 0.9 + 0.1 * Math.sin(time * 13 + ph) * Math.sin(time * 7.3 + ph * 2);
-    ctx.save();
-    ctx.fillStyle = "#2b2a30";
-    ctx.fillRect(x - 2.5, y + 5, 5, 2);
-    ctx.fillRect(x - 0.8, y + 1, 1.6, 5);
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "#5b4630";
-    ctx.lineWidth = 2.2;
-    ctx.beginPath();
-    ctx.moveTo(x, y + 4);
-    ctx.lineTo(x, y - 3);
-    ctx.stroke();
-    ctx.fillStyle = "#3a3840";
-    ctx.fillRect(x - 2.2, y - 3.5, 4.4, 2);
-    drawFlame(ctx, x, y - 4, Math.sin(time * 1.9 + ph) * 1.2, 0, s, fl, time + ph);
-    ctx.restore();
-  }
-  var GLOW_STREAKS = 9;
-  function drawGunGlow(ctx, x, y, time, seed) {
-    const breathe = 0.85 + 0.15 * Math.sin(time * 2.6 + seed);
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    const R = 20 * breathe;
-    const g = ctx.createRadialGradient(x, y, 0, x, y, R);
-    g.addColorStop(0, "rgba(255,201,60,0.55)");
-    g.addColorStop(0.45, "rgba(255,170,40,0.22)");
-    g.addColorStop(1, "rgba(255,140,20,0)");
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(x, y, R, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.lineCap = "round";
-    for (let k = 0; k < GLOW_STREAKS; k++) {
-      const ph = (time * 0.7 + k / GLOW_STREAKS + seed) % 1;
-      const lap = Math.floor(time * 0.7 + k / GLOW_STREAKS + seed);
-      const a = seed * 3.1 + k * 2.39996 + lap * 1.7;
-      const r0 = 4 + ph * 18, len = 3 + 5 * (1 - ph);
-      ctx.globalAlpha = Math.sin(ph * Math.PI) * 0.9;
-      ctx.strokeStyle = k % 3 ? "#ffc93c" : "#fff1b8";
-      ctx.lineWidth = 1.1;
-      ctx.beginPath();
-      ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0);
-      ctx.lineTo(x + Math.cos(a) * (r0 + len), y + Math.sin(a) * (r0 + len));
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  // src/art/props.js
-  var rgbA = (c, a) => "rgba(" + (c[0] | 0) + "," + (c[1] | 0) + "," + (c[2] | 0) + "," + (a == null ? 1 : a) + ")";
-  var rgbS = (c) => (c[0] | 0) + "," + (c[1] | 0) + "," + (c[2] | 0);
-  function propCol(pr, T) {
-    return {
-      icicle: "#bfe6ff",
-      icefall: "#bfe6ff",
-      geode: "#c58cff",
-      salt: "#e8e2cc",
-      bone: "#e6dcc4",
-      obsidian: "#4a3050",
-      cart: "#8a5a3a",
-      statue: rgbA(T.rock[1]),
-      pillar: rgbA(T.brick[1]),
-      monolith: rgbA(T.bg2),
-      skulls: "#e6dcc4",
-      stone: "#c58cff",
-      shard: rgbA(T.moss[1]),
-      chain: "#8a7a6a",
-      lantern: "#ffb050",
-      crystal: "#d6a0ff",
-      lava: "#ff7a2a"
-    }[pr.st] || rgbA(T.moss[1]);
-  }
-  function drawArch(ctx, pr, time, T) {
-    const A = pr.arc, n = A.length - 1, x = pr.x, y = pr.y;
-    const col = pr.st === "root" ? mix(T.moss[0], [200, 190, 160], 0.4) : T.moss[0];
-    const sway = (k) => Math.sin(time * 0.9 + pr.seed * 6 + k * 0.35) * 0.8 * Math.sin(Math.PI * k / n);
-    const gone = (k) => pr.burn && k / n > pr.u0 && k / n < pr.u1;
-    const fr = (v) => v - Math.floor(v);
-    for (let s = 0; s < pr.thick; s++) {
-      ctx.strokeStyle = rgbA(mix(col, [0, 0, 0], 0.18 * s));
-      ctx.lineWidth = pr.st === "root" ? 1.8 : 1.2;
-      ctx.beginPath();
-      let pen = false;
-      for (let k = 0; k <= n; k++) {
-        if (gone(k)) {
-          pen = false;
-          continue;
-        }
-        const tw = pr.thick > 1 ? Math.sin(k * 1.3 + s * 2.1 + pr.seed * 9) * 0.9 : 0;
-        const px = x + A[k][0], py = y + A[k][1] + sway(k) + tw;
-        if (pen) ctx.lineTo(px, py);
-        else ctx.moveTo(px, py);
-        pen = true;
-      }
-      ctx.stroke();
-    }
-    ctx.fillStyle = rgbA(T.moss[1]);
-    for (let k = 0; k < n; k++) {
-      if (gone(k) || gone(k + 1)) continue;
-      for (let j = 0; j < 3; j++) {
-        const h3 = fr(Math.sin(k * 12.9898 + j * 78.233 + pr.seed * 437) * 43758.5);
-        const t = (j + h3) / 3, s = (k + j) % 2 ? 1 : -1;
-        const lx = x + A[k][0] + (A[k + 1][0] - A[k][0]) * t;
-        const ly = y + A[k][1] + (A[k + 1][1] - A[k][1]) * t + sway(k + t) + 1 + h3 * 1.5;
-        ctx.beginPath();
-        ctx.ellipse(lx + s * (1 + h3), ly, 1.9, 0.9, s * (0.5 + h3 * 0.6), 0, 6.29);
-        ctx.fill();
-      }
-    }
-  }
-  function drawProp(ctx, pr, time, T) {
-    const x = pr.x, y = pr.y, st = pr.st;
-    ctx.save();
-    if (pr.shake > 0) ctx.translate(Math.sin(time * 90) * 0.8, 0);
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    const tri = (ax, ay, bx, by, cx, cy) => {
-      ctx.beginPath();
-      ctx.moveTo(ax, ay);
-      ctx.lineTo(bx, by);
-      ctx.lineTo(cx, cy);
-      ctx.closePath();
-      ctx.fill();
-    };
-    switch (pr.k) {
-      case "climb": {
-        if (pr.arc) {
-          drawArch(ctx, pr, time, T);
-          break;
-        }
-        const len = pr.len, sw = st === "kelp" ? 5 : st === "chain" ? 0.8 : 1.6;
-        const off = (k) => Math.sin(time * (st === "kelp" ? 1.6 : 1.1) + pr.seed * 6 + k * 0.08) * sw * (k / len);
-        if (st === "icefall") {
-          const x0 = pr.side < 0 ? x : x - 7;
-          ctx.fillStyle = "rgba(170,215,240,0.5)";
-          ctx.fillRect(x0, y - 4, 7, len + 4);
-          ctx.strokeStyle = "rgba(235,250,255,0.55)";
-          ctx.lineWidth = 0.8;
-          for (let k = 0; k < 3; k++) {
-            const lx = x0 + 1.5 + k * 2;
-            ctx.beginPath();
-            ctx.moveTo(lx, y - 2);
-            ctx.lineTo(lx + Math.sin(k + pr.seed * 9) * 0.8, y + len);
-            ctx.stroke();
-          }
-          ctx.fillStyle = "rgba(190,230,255,0.75)";
-          for (let k = 0; k < 3; k++) tri(x0 + k * 2.3, y + len, x0 + k * 2.3 + 2.3, y + len, x0 + k * 2.3 + 1.1, y + len + 3 + k % 2 * 2);
-          break;
-        }
-        if (st === "chain") {
-          ctx.strokeStyle = "#6f635a";
-          ctx.lineWidth = 0.9;
-          for (let k = 0; k < len; k += 3.2) {
-            const lx = x + off(k), vert = Math.round(k / 3.2) % 2 === 0;
-            ctx.beginPath();
-            ctx.ellipse(lx, y + k + 1.6, vert ? 1 : 1.8, vert ? 2 : 1.1, 0, 0, 6.29);
-            ctx.stroke();
-          }
-          break;
-        }
-        if (st === "myc") {
-          for (let s = -1; s <= 1; s++) {
-            ctx.strokeStyle = rgbA(T.moss[1], 0.45 + 0.15 * s);
-            ctx.lineWidth = 0.6;
-            const l = len * (0.75 + 0.2 * Math.sin(s * 3 + pr.seed * 9));
-            ctx.beginPath();
-            ctx.moveTo(x + s * 1.6, y);
-            for (let k = 0; k <= l; k += 4) ctx.lineTo(x + s * 1.6 + off(k) + Math.sin(k * 0.3 + s) * 0.6, y + k);
-            ctx.stroke();
-            ctx.fillStyle = rgbA(T.moss[1], 0.8);
-            ctx.beginPath();
-            ctx.arc(x + s * 1.6 + off(l), y + l, 1, 0, 6.29);
-            ctx.fill();
-          }
-          break;
-        }
-        const col = st === "root" ? mix(T.moss[0], [200, 190, 160], 0.4) : T.moss[0];
-        ctx.strokeStyle = rgbA(col);
-        ctx.lineWidth = st === "root" ? 2.2 : st === "kelp" ? 1.8 : 1.3;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        for (let k = 0; k <= len; k += 3) ctx.lineTo(x + off(k) + (st === "root" ? Math.sin(k * 0.4 + pr.seed * 5) * 0.8 : 0), y + k);
-        ctx.stroke();
-        ctx.fillStyle = rgbA(T.moss[1]);
-        for (let k = 4, s = 1; k < len; k += st === "kelp" ? 7 : 5, s = -s) {
-          const lx = x + off(k);
-          if (st === "root") {
-            ctx.fillRect(lx - 1.4, y + k, 2.8, 1.4);
-            continue;
-          }
-          ctx.beginPath();
-          ctx.ellipse(lx + s * 2, y + k, st === "kelp" ? 3 : 1.8, 0.9, s * 0.5, 0, 6.29);
-          ctx.fill();
-        }
-        break;
-      }
-      case "drip": {
-        if (st === "steam") {
-          const s = -pr.side, x0 = s > 0 ? x : x - 8;
-          ctx.fillStyle = "#5a4a3e";
-          ctx.fillRect(x0, y - 2, 8, 4);
-          ctx.fillStyle = "#7a6452";
-          ctx.fillRect(x0 + (s > 0 ? 6 : 0), y - 3, 2, 6);
-          break;
-        }
-        if (st === "sparks") {
-          ctx.fillStyle = "#35333a";
-          ctx.fillRect(x - 3, y, 6, 4);
-          ctx.strokeStyle = "#6a6a70";
-          ctx.lineWidth = 0.6;
-          ctx.beginPath();
-          ctx.moveTo(x + 1, y + 4);
-          ctx.quadraticCurveTo(x + 3, y + 8, x + 1.5, y + 10);
-          ctx.stroke();
-          break;
-        }
-        if (st === "crystal") {
-          ctx.fillStyle = rgbA(T.moss[1], 0.9);
-          tri(x - 2.5, y, x - 0.5, y, x - 1.5, y + 5);
-          tri(x, y, x + 2.5, y, x + 1.2, y + 4);
-          break;
-        }
-        const c = st === "lava" ? [255, 110, 40] : st === "soot" ? [22, 22, 26] : st === "cascade" ? [140, 200, 255] : [120, 190, 255];
-        ctx.fillStyle = rgbA(c, st === "cascade" ? 0.8 : 0.85);
-        if (st === "cascade") {
-          ctx.fillRect(x - 5, y, 10, 1.6);
-          break;
-        }
-        const g = st === "soot" ? 0 : (pr.acc || 0) % 1;
-        ctx.beginPath();
-        ctx.ellipse(x, y + 0.8 + g * 1.5, 1.2 + g * 0.5, 0.9 + g * 1.2, 0, 0, 6.29);
-        ctx.fill();
-        break;
-      }
-      case "drop": {
-        if (st === "icicle") {
-          ctx.fillStyle = "rgba(190,230,255,0.9)";
-          tri(x - 3.5, y, x + 3.5, y, x + 0.3, y + 16);
-          ctx.fillStyle = "rgba(255,255,255,0.7)";
-          tri(x - 1.8, y, x - 0.6, y, x - 0.2, y + 10);
-        } else {
-          ctx.fillStyle = rgbA(mix(T.rock[0], [0, 0, 0], 0.3));
-          ctx.beginPath();
-          ctx.ellipse(x, y + 1.5, 7, 3, 0, 0, 6.29);
-          ctx.fill();
-          const cs = [[-4.5, 8], [-1.5, 12], [1.8, 10], [4.6, 7]];
-          cs.forEach(([dx, l], k) => {
-            ctx.fillStyle = rgbA(k % 2 ? T.moss[1] : T.moss[0]);
-            tri(x + dx - 1.8, y + 2, x + dx + 1.8, y + 2, x + dx, y + l);
-          });
-        }
-        break;
-      }
-      case "spike": {
-        if (pr.hang) {
-          ctx.translate(0, 2 * y);
-          ctx.scale(1, -1);
-        }
-        const base = st === "obsidian" ? [44, 28, 48] : st === "salt" ? [226, 220, 198] : [222, 212, 188];
-        const hs = [[-4, 7], [0, 10], [4, 6]];
-        for (const [dx, hgt] of hs) {
-          ctx.fillStyle = rgbA(base);
-          tri(x + dx - 2.4, y, x + dx + 2.4, y, x + dx, y - hgt);
-          ctx.fillStyle = st === "obsidian" ? "rgba(200,110,255,0.55)" : "rgba(255,255,255,0.45)";
-          tri(x + dx - 0.6, y, x + dx + 0.4, y, x + dx, y - hgt + 1);
-          if (st === "bone") {
-            ctx.fillStyle = rgbA(base);
-            ctx.beginPath();
-            ctx.arc(x + dx, y - 0.5, 1.8, 0, 6.29);
-            ctx.fill();
-          }
-        }
-        break;
-      }
-      case "barrel": {
-        ctx.fillStyle = "#2a2a30";
-        ctx.beginPath();
-        ctx.arc(x - 5, y - 2.2, 2.2, 0, 6.29);
-        ctx.arc(x + 5, y - 2.2, 2.2, 0, 6.29);
-        ctx.fill();
-        ctx.fillStyle = "#b2362c";
-        for (let k = -1; k <= 1; k++) ctx.fillRect(x + k * 3.5 - 1, y - 13 + Math.abs(k), 2, 4);
-        ctx.fillStyle = "#6e4a32";
-        ctx.beginPath();
-        ctx.moveTo(x - 9, y - 10);
-        ctx.lineTo(x + 9, y - 10);
-        ctx.lineTo(x + 7.5, y - 3.5);
-        ctx.lineTo(x - 7.5, y - 3.5);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = "#8c8f96";
-        ctx.fillRect(x - 9, y - 10.5, 18, 1.3);
-        ctx.fillRect(x - 8, y - 6.5, 16, 1);
-        ctx.fillStyle = "#ffd23c";
-        ctx.font = "700 5px system-ui, sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("!", x, y - 4.6);
-        break;
-      }
-      case "lamp": {
-        if (st === "cap") {
-          ctx.fillStyle = rgbA(mix(T.moss[1], [240, 240, 240], 0.5));
-          ctx.fillRect(x - 1, y - 6, 2, 6);
-          ctx.fillStyle = rgbA(T.moss[1]);
-          ctx.beginPath();
-          ctx.ellipse(x, y - 6, 5, 3.4, 0, Math.PI, 0);
-          ctx.fill();
-          ctx.fillStyle = "rgba(255,255,255,0.6)";
-          ctx.fillRect(x - 2.5, y - 8, 1, 1);
-          ctx.fillRect(x + 1.5, y - 7.5, 1, 1);
-          break;
-        }
-        if (st === "hanglamp") {
-          const sw = Math.sin(time * 1.3 + pr.seed * 30) * 0.06, bx = x + Math.sin(sw) * pr.len, by = y + Math.cos(sw) * pr.len;
-          ctx.strokeStyle = "#5a5048";
-          ctx.lineWidth = 0.8;
-          ctx.setLineDash([1.2, 0.8]);
-          ctx.beginPath();
-          ctx.moveTo(x, y);
-          ctx.lineTo(bx, by);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.fillStyle = "#4a3a2a";
-          ctx.fillRect(bx - 3, by, 6, 1.5);
-          ctx.fillRect(bx - 2.5, by + 7.5, 5, 1.5);
-          ctx.fillStyle = "#ffcc70";
-          ctx.fillRect(bx - 2, by + 1.5, 4, 6);
-          ctx.fillStyle = "#fff2c0";
-          ctx.fillRect(bx - 0.7, by + 3, 1.4, 3);
-          ctx.fillStyle = "#4a3a2a";
-          ctx.fillRect(bx - 2.6, by + 1.5, 0.8, 6);
-          ctx.fillRect(bx + 1.8, by + 1.5, 0.8, 6);
-          break;
-        }
-        const s = -pr.side, lx = x + s * 5;
-        ctx.strokeStyle = "#4a3e36";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x, y - 5);
-        ctx.lineTo(lx, y - 5);
-        ctx.lineTo(lx, y - 3);
-        ctx.stroke();
-        ctx.fillStyle = "#5c4632";
-        ctx.fillRect(lx - 2.5, y - 3, 5, 7);
-        ctx.fillStyle = "#ffcc70";
-        ctx.fillRect(lx - 1.5, y - 2, 3, 4.5);
-        break;
-      }
-      case "vent": {
-        ctx.fillStyle = "#1a1010";
-        ctx.beginPath();
-        ctx.ellipse(x, y - 0.5, 5, 1.8, 0, 0, 6.29);
-        ctx.fill();
-        ctx.fillStyle = pr.warn || pr.on ? "#ff8a3a" : "rgba(255,110,40,0.5)";
-        ctx.fillRect(x - 2.5, y - 1, 1, 1);
-        ctx.fillRect(x + 1, y - 1.2, 1.2, 1);
-        break;
-      }
-      case "pad": {
-        const sq = Math.max(0, pr.sq || 0) / 0.3, hh = 8 * (1 - 0.4 * sq), ww = 10 * (1 + 0.25 * sq);
-        ctx.fillStyle = rgbA(mix(T.moss[1], [240, 230, 220], 0.6));
-        ctx.fillRect(x - 1.8, y - hh, 3.6, hh);
-        ctx.fillStyle = rgbA(T.moss[0]);
-        ctx.beginPath();
-        ctx.ellipse(x, y - hh, ww, 5, 0, Math.PI, 0);
-        ctx.fill();
-        ctx.fillStyle = "rgba(255,255,255,0.7)";
-        for (const [dx, dy] of [[-5, -2], [0, -3.8], [4.5, -1.8]]) {
-          ctx.beginPath();
-          ctx.arc(x + dx * ww / 10, y - hh + dy, 0.9, 0, 6.29);
-          ctx.fill();
-        }
-        break;
-      }
-      case "zone": {
-        const x0 = x + pr.l, w = pr.r - pr.l;
-        if (st === "ice") {
-          ctx.fillStyle = "rgba(190,230,255,0.6)";
-          ctx.fillRect(x0, y - 1.6, w, 1.6);
-          ctx.fillStyle = "rgba(255,255,255,0.7)";
-          ctx.fillRect(x0 + 2, y - 1.6, w - 4, 0.5);
-        } else if (st === "snow" || st === "ash") {
-          ctx.fillStyle = st === "snow" ? "rgba(236,244,255,0.95)" : rgbA(mix(T.rock[1], [90, 90, 90], 0.5));
-          ctx.beginPath();
-          ctx.moveTo(x0, y);
-          for (let k = 0; k <= w; k += 2) ctx.lineTo(x0 + k, y - 1 - 3.2 * Math.sin(Math.PI * k / w) - Math.sin(k * 0.7 + pr.seed * 9) * 0.5);
-          ctx.lineTo(x0 + w, y);
-          ctx.closePath();
-          ctx.fill();
-        } else if (st === "slime" || st === "puddle" || st === "acid") {
-          const c = st === "slime" ? [110, 200, 90] : st === "puddle" ? [70, 130, 190] : [150, 168, 60];
-          ctx.fillStyle = rgbA(c, st === "puddle" ? 0.6 : 0.7);
-          ctx.fillRect(x0, y - 2.5, w, 2.5);
-          ctx.fillStyle = rgbA(mix(c, [255, 255, 255], 0.4), 0.7);
-          const nb = Math.max(1, Math.floor(w / 8));
-          for (let k = 0; k < nb; k++) {
-            const ph = (time * (st === "acid" ? 0.9 : 0.4) + k * 0.37 + pr.seed) % 1;
-            ctx.beginPath();
-            ctx.arc(x0 + (k + 0.5) * w / nb, y - 2.5 - ph * 2, 0.6 + ph * 0.6, 0, 6.29);
-            ctx.fill();
-          }
-        } else if (st === "glass") {
-          for (let k = 0; k < w; k += 2.2) {
-            const s = Math.sin(k * 12.9 + pr.seed * 78) * 43758.5 % 1;
-            ctx.fillStyle = "rgba(200,240,255," + (0.35 + Math.abs(s) * 0.4) + ")";
-            tri(x0 + k, y, x0 + k + 1.6, y, x0 + k + 0.6 + s, y - 1.5 - Math.abs(s) * 2);
-          }
-        } else if (st === "log") {
-          ctx.fillStyle = "#2c2220";
-          ctx.fillRect(x0 + 1, y - 4, w - 2, 4);
-          ctx.fillStyle = "rgba(255," + Math.round(100 + 40 * Math.sin(time * 3 + pr.seed * 9)) + ",40,0.8)";
-          for (let k = 4; k < w - 3; k += 5) ctx.fillRect(x0 + k, y - 2.8 + k % 2, 1.6, 0.8);
-        }
-        break;
-      }
-      case "pod": {
-        const b = 1 + 0.06 * Math.sin(time * 3 + pr.seed * 9);
-        ctx.fillStyle = rgbA(T.moss[0]);
-        ctx.fillRect(x - 0.6, y - 3, 1.2, 3);
-        ctx.fillStyle = "#9cc44a";
-        ctx.beginPath();
-        ctx.ellipse(x, y - 6, 4.4 * b, 5 * b, 0, 0, 6.29);
-        ctx.fill();
-        ctx.fillStyle = "#d8f07a";
-        ctx.beginPath();
-        ctx.arc(x - 1.5, y - 7, 0.9, 0, 6.29);
-        ctx.arc(x + 1.6, y - 5, 0.8, 0, 6.29);
-        ctx.fill();
-        break;
-      }
-      case "noise": {
-        if (st === "skulls") {
-          for (const [dx, dy] of [[-4.5, -2.2], [0, -2.4], [4.5, -2.2], [-2.2, -5.8], [2.3, -5.6]]) {
-            ctx.fillStyle = "#ded4bc";
-            ctx.beginPath();
-            ctx.arc(x + dx, y + dy, 2.3, 0, 6.29);
-            ctx.fill();
-            ctx.fillStyle = "#2a2622";
-            ctx.fillRect(x + dx - 1.3, y + dy - 0.4, 0.9, 0.9);
-            ctx.fillRect(x + dx + 0.4, y + dy - 0.4, 0.9, 0.9);
-          }
-        } else {
-          const s = -pr.side, cx = x + s * 4;
-          ctx.fillStyle = rgbA(mix(T.rock[1], T.moss[0], 0.4));
-          ctx.beginPath();
-          ctx.ellipse(cx, y, 4, 9, 0, 0, 6.29);
-          ctx.fill();
-          ctx.strokeStyle = rgbA(T.moss[1], 0.5 + 0.5 * Math.max(0, pr.ring || 0));
-          ctx.lineWidth = 0.8;
-          ctx.beginPath();
-          ctx.moveTo(cx, y - 6);
-          ctx.lineTo(cx - 1.5, y - 1);
-          ctx.lineTo(cx + 1.2, y + 2);
-          ctx.lineTo(cx, y + 6);
-          ctx.stroke();
-        }
-        break;
-      }
-      case "shard": {
-        ctx.fillStyle = rgbA(T.moss[1], 0.85);
-        const dir = pr.side ? -pr.side : 0;
-        if (dir) {
-          tri(x, y - 2, x, y + 2, x + dir * 5, y - 0.5);
-          tri(x, y + 1, x, y + 3.5, x + dir * 3, y + 3);
-        } else {
-          tri(x - 2, y, x + 1, y, x - 1, y - 5);
-          tri(x, y, x + 3, y, x + 2.4, y - 3.5);
-        }
-        break;
-      }
-      case "cover": {
-        if (pr.hitT > 0) ctx.translate(Math.sin(time * 80) * 0.6, 0);
-        if (st === "statue") {
-          ctx.fillStyle = rgbA(T.rock[0]);
-          ctx.fillRect(x - 8, y - 6, 16, 6);
-          ctx.fillStyle = rgbA(T.rock[1]);
-          ctx.beginPath();
-          ctx.moveTo(x - 5, y - 6);
-          ctx.lineTo(x - 4, y - 20);
-          ctx.lineTo(x + 4, y - 20);
-          ctx.lineTo(x + 5, y - 6);
-          ctx.closePath();
-          ctx.fill();
-          ctx.beginPath();
-          ctx.arc(x, y - 23.5, 3.6, 0, 6.29);
-          ctx.fill();
-          ctx.fillStyle = rgbA(T.moss[0], 0.8);
-          ctx.fillRect(x - 3, y - 20, 1, 12);
-          ctx.fillRect(x + 1.5, y - 17, 1, 9);
-          ctx.fillRect(x - 1, y - 26, 2, 1.2);
-        } else if (st === "pillar") {
-          ctx.fillStyle = rgbA(T.brick[1]);
-          ctx.fillRect(x - 5, y - 27, 10, 27);
-          ctx.fillStyle = rgbA(T.brick[0]);
-          ctx.fillRect(x - 7, y - 30, 14, 3);
-          ctx.fillRect(x - 7, y - 3, 14, 3);
-          ctx.strokeStyle = "#1e1a1a";
-          ctx.lineWidth = 0.7;
-          const dmg = 4 - Math.max(0, pr.hp);
-          for (let k = 0; k < dmg; k++) {
-            const cy = y - 8 - k * 6;
-            ctx.beginPath();
-            ctx.moveTo(x - 5, cy);
-            ctx.lineTo(x - 1, cy - 2);
-            ctx.lineTo(x + 1, cy + 1);
-            ctx.lineTo(x + 5, cy - 1);
-            ctx.stroke();
-          }
-        } else {
-          const sk = Math.sin(time * 0.8 + pr.seed * 9) * 0.08;
-          ctx.transform(1, 0, sk, 1, -sk * y, 0);
-          ctx.fillStyle = rgbA(mix(T.bg2, [0, 0, 0], 0.2));
-          ctx.fillRect(x - 6, y - 34, 12, 34);
-          ctx.fillStyle = rgbA(T.moss[1], 0.5 + 0.3 * Math.sin(time * 2 + pr.seed * 7));
-          ctx.fillRect(x - 0.6, y - 28, 1.2, 8);
-          ctx.fillRect(x - 3, y - 24.6, 6, 1.2);
-        }
-        break;
-      }
-      case "matter": {
-        const by = y + Math.sin(time * 1.3 + pr.seed * 9) * 3;
-        ctx.fillStyle = "#050208";
-        ctx.beginPath();
-        ctx.arc(x, by, 6.5, 0, 6.29);
-        ctx.fill();
-        ctx.strokeStyle = "rgba(160,90,255,0.7)";
-        ctx.lineWidth = 1;
-        for (let k = 0; k < 3; k++) {
-          const a = time * 2.4 + k * 2.09;
-          ctx.beginPath();
-          ctx.arc(x, by, 8 + k, a, a + 1.4);
-          ctx.stroke();
-        }
-        break;
-      }
-      case "tendril": {
-        ctx.fillStyle = "#2a1640";
-        ctx.beginPath();
-        ctx.ellipse(x, y - 1.5, 4, 2.5, 0, 0, 6.29);
-        ctx.fill();
-        const ext = Math.max(4, pr.ext || 0), a = pr.aimA != null ? pr.aimA : pr.ang;
-        const tx = x + Math.cos(a) * ext, ty = y - 2 + Math.sin(a) * ext;
-        const wob = Math.sin(time * 5 + pr.seed * 9) * ext * 0.2;
-        const mx = (x + tx) / 2 + Math.cos(a + 1.57) * wob, my = (y + ty) / 2 + Math.sin(a + 1.57) * wob;
-        ctx.strokeStyle = "#3e2066";
-        ctx.lineWidth = 2.6;
-        ctx.beginPath();
-        ctx.moveTo(x, y - 2);
-        ctx.quadraticCurveTo(mx, my, tx, ty);
-        ctx.stroke();
-        ctx.strokeStyle = rgbA(T.moss[1], 0.8);
-        ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        ctx.moveTo((mx + tx) / 2, (my + ty) / 2);
-        ctx.lineTo(tx, ty);
-        ctx.stroke();
-        break;
-      }
-    }
-    ctx.restore();
-  }
-  function propGlow(ctx, pr, time, T, pdist, torchR) {
-    const x = pr.x, y = pr.y;
-    if (pr.k === "lamp") {
-      const f = 0.85 + 0.15 * Math.sin(time * 9 + pr.seed * 20) * Math.sin(time * 4.3 + pr.seed * 7);
-      if (pr.st === "cap") glowAt(ctx, x, y - 7, 30, 0.2 * f, rgbS(T.moss[1]));
-      else if (pr.st === "hanglamp") {
-        const sw = Math.sin(time * 1.3 + pr.seed * 30) * 0.06, bx = x + Math.sin(sw) * pr.len, by = y + Math.cos(sw) * pr.len + 4.5;
-        glowAt(ctx, bx, by, 52, 0.17 * f, "255,160,70");
-        glowAt(ctx, bx, by, 9, 0.4 * f, "255,210,130");
-      } else {
-        const lx = x - pr.side * 5;
-        glowAt(ctx, lx, y, 46, 0.16 * f, "255,160,70");
-        glowAt(ctx, lx, y, 8, 0.4 * f, "255,210,130");
-      }
-    } else if (pr.k === "vent" && (pr.on || pr.warn)) {
-      glowAt(ctx, x, y - (pr.on ? 28 : 3), pr.on ? 44 : 12, pr.on ? 0.35 : 0.25, "255,120,40");
-      if (pr.on) {
-        const g = ctx.createLinearGradient(0, y - VENT_H, 0, y);
-        g.addColorStop(0, "rgba(255,90,30,0)");
-        g.addColorStop(0.5, "rgba(255,140,50,0.55)");
-        g.addColorStop(1, "rgba(255,230,150,0.9)");
-        ctx.fillStyle = g;
-        const w = 4 + Math.sin(time * 40) * 0.8;
-        ctx.fillRect(x - w, y - VENT_H, w * 2, VENT_H);
-      }
-    } else if (pr.k === "shard" && pdist < torchR) {
-      const g = (1 - pdist / torchR) * Math.pow(0.5 + 0.5 * Math.sin(time * 5 + pr.seed * 40), 6);
-      if (g > 0.03) {
-        ctx.fillStyle = "rgba(255,255,255," + g + ")";
-        ctx.fillRect(x - 4, y - 0.4, 8, 0.8);
-        ctx.fillRect(x - 0.4, y - 4, 0.8, 8);
-        glowAt(ctx, x, y, 7, 0.5 * g, rgbS(T.moss[1]));
-      }
-    } else if (pr.k === "eyes") {
-      const a = eyesAlpha(pdist) * (Math.sin(time * 0.9 + pr.seed * 40) > 0.96 ? 0.1 : 1) * (0.55 + 0.25 * Math.sin(time * 1.7 + pr.seed * 9));
-      if (a > 0.02) {
-        const c = pr.seed < 0.5 ? "255,60,70" : rgbS(T.moss[1]);
-        ctx.fillStyle = "rgba(" + c + "," + a + ")";
-        ctx.fillRect(x - 4, y - 0.6, 2, 1.2);
-        ctx.fillRect(x + 2, y - 0.6, 2, 1.2);
-        glowAt(ctx, x, y, 9, 0.25 * a, c);
-      }
-    } else if (pr.k === "matter") {
-      glowAt(ctx, x, y + Math.sin(time * 1.3 + pr.seed * 9) * 3, 26, 0.12, "140,70,255");
-    } else if (pr.k === "drip" && pr.st === "lava") {
-      glowAt(ctx, x, y + 2, 10, 0.3, "255,110,40");
-    }
-  }
-  var eyesAlpha = (d) => Math.max(0, Math.min(1, (d - 60) / 120));
-  var VENT_H = 64;
-
-  // src/game/systems/ambience.js
-  var AMB_RATE = { spores: 5, frost: 3, embers: 8, motes: 4, ashfall: 55 };
-  var AMB_MAX = { spores: 40, frost: 20, embers: 60, motes: 50, ashfall: 280 };
-  var spore = (W, x, y, r) => ({
-    kind: "spores",
-    x,
-    y,
-    vx: (r - 0.5) * 8,
-    vy: 0,
-    wob: r * 9,
-    life: 5 + r * 3,
-    max: 8,
-    c: rgbA(themeFor(W.floor).moss[1]),
-    s: 1.3,
-    glow: 1
-  });
-  function puffSpores(W, e) {
-    if (e.x < W.camX - 150 || e.x > W.camX + W.viewW + 150 || e.y < W.camY - 150 || e.y > W.camY + W.viewH + 150) return;
-    const S = e.je, B = jellyBell(e.r, S.shape, kru("jeSquash", S.u.sq));
-    const c = Math.cos(S.hd), sn = Math.sin(S.hd), n = Math.round(kr("jeSpores"));
-    for (let i = 0; i < n && W.amb.length < 500; i++) {
-      const lx = (Math.random() * 2 - 1) * B.rw * 0.7;
-      const q = spore(W, e.x - lx * sn - B.rim * c, e.y + lx * c - B.rim * sn, Math.random());
-      const a = S.hd + Math.PI + (Math.random() * 2 - 1) * kr("jeSporeSpread") * Math.PI / 180, v = kr("jeSporeSpd");
-      q.kx = Math.cos(a) * v;
-      q.ky = Math.sin(a) * v;
-      q.kd = kr("jeSporeDrag");
-      W.amb.push(q);
-    }
-  }
-  function stepAmbience(W, dt) {
-    const x0 = W.camX - 30, y0 = W.camY - 30, w = W.viewW + 60, h3 = W.viewH + 60;
-    const T = themeFor(W.floor);
-    for (const kind of W.ambKinds) {
-      if (kind === "devils") {
-        if (W.devils.length < 2 && Math.random() < dt * 0.4) {
-          let x = x0 + Math.random() * w, y = y0 + Math.random() * h3, k = 0;
-          while (k++ < 120 && !solidAt(W, x, y + 1)) y += 2;
-          if (k < 120 && !solidAt(W, x, y - 30)) W.devils.push({ x, y, vx: (Math.random() < 0.5 ? -1 : 1) * (15 + Math.random() * 20), life: 6 + Math.random() * 3, max: 9 });
-        }
-        continue;
-      }
-      const n = W.amb.reduce((a, q) => a + (q.kind === kind), 0);
-      let want = AMB_RATE[kind] * dt;
-      while (want > 0 && n < AMB_MAX[kind]) {
-        if (Math.random() >= want) break;
-        want -= 1;
-        const x = x0 + Math.random() * w, y = y0 + Math.random() * h3;
-        if (solidAt(W, x, y)) continue;
-        const r = Math.random();
-        if (kind === "spores") W.amb.push(spore(W, x, y, r));
-        else if (kind === "frost") {
-          const dir = W.floor % 2 ? 1 : -1;
-          W.amb.push({ kind, x, y, vx: dir * (100 + r * 60), vy: (r - 0.5) * 10, life: 0.9 + r * 0.5, max: 1.4, c: "rgba(215,238,255,0.5)", s: 1, streak: 10 });
-        } else if (kind === "embers") W.amb.push({ kind, x, y, vx: 0, vy: -20 - r * 30, wob: r * 9, life: 3 + r * 2, max: 5, c: r < 0.5 ? "#ffb050" : "#ff7a2a", s: 1.2, glow: 1 });
-        else if (kind === "motes") W.amb.push({ kind, x, y, vx: (r - 0.5) * 6, vy: (Math.random() - 0.5) * 4, wob: r * 9, life: 6 + r * 3, max: 9, c: "rgba(235,225,200,0.8)", s: 1 });
-        else if (kind === "ashfall") W.amb.push({ kind, x, y, vx: 8, vy: 20 + r * 22, wob: r * 9, life: 4 + r * 3, max: 7, c: "rgba(150,146,142,0.75)", s: 1 + r });
-      }
-    }
-    for (let i = W.amb.length - 1; i >= 0; i--) {
-      const q = W.amb[i];
-      q.life -= dt;
-      if (q.wob != null) q.x += Math.sin(W.time * 1.3 + q.wob) * 6 * dt;
-      if (q.kx || q.ky) {
-        q.x += q.kx * dt;
-        q.y += q.ky * dt;
-        const k = Math.exp(-q.kd * dt);
-        q.kx *= k;
-        q.ky *= k;
-      }
-      q.x += q.vx * dt;
-      q.y += q.vy * dt;
-      if (q.life <= 0 || solidAt(W, q.x, q.y) || q.x < x0 - 200 || q.x > x0 + w + 200 || q.y < y0 - 200 || q.y > y0 + h3 + 200) W.amb.splice(i, 1);
-    }
-    for (let i = W.devils.length - 1; i >= 0; i--) {
-      const dv = W.devils[i];
-      dv.life -= dt;
-      const nx = dv.x + dv.vx * dt;
-      if (solidAt(W, nx + Math.sign(dv.vx) * 6, dv.y - 4)) dv.vx = -dv.vx;
-      else dv.x = nx;
-      if (!solidAt(W, dv.x, dv.y + 2)) dv.y += 40 * dt;
-      else if (solidAt(W, dv.x, dv.y)) dv.y -= 2;
-      if (dv.life <= 0) W.devils.splice(i, 1);
-    }
-  }
-
-  // src/spells/spawn.js
-  var NOITA_SPAWN = {
-    LIGHT_BULLET: ["0,1,2", "2,1,0.5"],
-    LIGHT_BULLET_TRIGGER: ["0,1,2,3", "1,0.5,0.5,0.5"],
-    LIGHT_BULLET_TRIGGER_2: ["2,3,5,6,10", "1,0.5,1,1,0.2"],
-    LIGHT_BULLET_TIMER: ["1,2,3", "0.5,0.5,0.75"],
-    BULLET: ["1,2,3,4,5", "1,1,1,0.8,0.5"],
-    BULLET_TRIGGER: ["1,2,3,4,5", "0.5,0.5,0.5,0.6,0.5"],
-    BULLET_TIMER: ["2,3,4,5,6", "0.5,0.5,0.5,0.5,0.6"],
-    HEAVY_BULLET: ["1,2,3,4,5,6", "0.5,1,1,1,1,1"],
-    SLOW_BULLET: ["1,2,3,4", "1,1,1,1"],
-    SLOW_BULLET_TRIGGER: ["1,2,3,4,5", "0.5,0.5,0.5,0.5,1"],
-    SLOW_BULLET_TIMER: ["1,2,3,4,5,6", "0.5,0.5,0.5,0.5,1,1"],
-    BLACK_HOLE: ["0,2,4,5", "0.8,0.8,0.8,0.8"],
-    BLACK_HOLE_DEATH_TRIGGER: ["2,4,5,6", "0.5,0.5,0.5,0.5"],
-    SPITTER: ["0,1,2,3", "1,1,1,0.5"],
-    SPITTER_TIMER: ["0,1,2,3", "0.5,0.5,0.5,1"],
-    BUBBLESHOT: ["0,1,2,3", "1,0.6,1,0.5"],
-    BUBBLESHOT_TRIGGER: ["1,2,3", "0.5,0.5,1"],
-    DISC_BULLET: ["0,2,4", "1,1,0.6"],
-    BOUNCY_ORB: ["0,2,4", "1,1,1"],
-    BOUNCY_ORB_TIMER: ["0,2,4", "0.5,0.5,0.5"],
-    RUBBER_BALL: ["0,1,6", "1,1,0.2"],
-    POLLEN: ["0,1,3,4", "0.6,1,1,0.6"],
-    LANCE: ["1,2,5,6", "0.9,1,0.8,1"],
-    ROCKET: ["1,2,3,4,5", "1,1,1,0.5,0.3"],
-    GRENADE: ["0,1,2,3,4", "1,1,0.5,0.25,0.2"],
-    GRENADE_TRIGGER: ["0,1,2,3,4,5", "0.5,0.5,0.2,0.5,0.5,1"],
-    MINE: ["1,3,4,6", "1,0.75,1,0.5"],
-    MINE_DEATH_TRIGGER: ["2,6", "1,1"],
-    PIPE_BOMB: ["2,3,4", "1,1,0.6"],
-    PIPE_BOMB_DEATH_TRIGGER: ["2,3,4,5", "0.6,0.8,1,0.8"],
-    LIGHTNING: ["1,2,5,6", "1,0.9,0.7,1"],
-    LASER_EMITTER: ["1,2,3,4", "0.2,0.8,1,0.5"],
-    DIGGER: ["1,2", "1,0.5"],
-    CHAINSAW: ["0,2", "1,1"],
-    LUMINOUS_DRILL: ["0,2,10", "1,1,0.1"],
-    LASER_LUMINOUS_DRILL: ["0,2,6,10", "1,1,0.2,0.1"],
-    CHAIN_BOLT: ["0,4,5,6", "0.75,1,0.8,0.6"],
-    FIREBALL: ["0,3,4,6", "1,0.7,1,0.5"],
-    METEOR: ["4,5,6,10", "0.6,0.6,0.7,0.5"],
-    BUCKSHOT: ["0,1,2,3,4", "1,1,0.9,0.9,0.6"],
-    BOMB: ["0,1,2,3,4,5,6", "1,1,1,1,0.5,0.5,0.1"],
-    DEATH_CROSS: ["1,2,3,4,5,6", "1,0.8,0.6,0.5,0.5,0.3"],
-    NUKE: ["1,5,6,10", "0.3,1,1,0.2"],
-    TELEPORT_PROJECTILE: ["0,1,2,4,5,6", "0.6,0.6,0.6,0.4,0.4,0.4"],
-    TELEPORT_PROJECTILE_SHORT: ["0,1,2,4,5,6", "0.6,0.6,0.6,0.4,0.4,0.4"],
-    PURPLE_EXPLOSION_FIELD: ["0,1,2,4,5,6", "0.7,1,0.7,0.5,0.5,0.3"],
-    LONG_DISTANCE_CAST: ["0,1,2,4,5,6", "0.6,0.7,0.8,0.6,0.3,0.4"],
-    TELEPORT_CAST: ["1,2,4,5,6", "0.6,0.6,0.6,0.8,1"],
-    SUPER_TELEPORT_CAST: ["2,4,5,6", "0.2,0.6,0.8,0.8"],
-    BURST_2: ["0,1,2,3,4,5,6", "0.8,0.8,0.8,0.8,0.8,0.8,0.8"],
-    BURST_3: ["1,2,3,4,5,6", "0.7,0.7,0.7,0.7,0.7,0.7"],
-    BURST_4: ["2,3,4,5,6", "0.4,0.5,0.6,0.6,0.6"],
-    BURST_8: ["5,6,10", "0.1,0.1,0.5"],
-    BURST_X: ["5,6,10", "0.1,0.1,0.5"],
-    SCATTER_3: ["0,1,2,3", "0.6,0.7,0.7,0.8"],
-    I_SHAPE: ["1,2,3", "0.4,0.5,0.3"],
-    Y_SHAPE: ["0,1,2,3", "0.8,0.5,0.4,0.3"],
-    W_SHAPE: ["2,3,4,5,6", "0.4,0.3,0.5,0.3,0.3"],
-    SPREAD_REDUCE: ["1,2,3,4,5,6", "0.8,0.8,0.8,0.8,0.7,0.6"],
-    HEAVY_SPREAD: ["0,1,2,4,5,6", "0.6,0.7,0.8,0.8,0.8,0.6"],
-    RECHARGE: ["1,2,3,4,5,6", "0.8,0.9,1,0.8,0.9,1"],
-    LIFETIME: ["3,4,5,6,10", "0.5,0.5,0.5,0.75,0.1"],
-    LIFETIME_DOWN: ["3,4,5,6,10", "0.5,0.5,0.75,0.5,0.1"],
-    MANA_REDUCE: ["1,2,3,4,5,6", "0.7,0.9,1,1,1,1"],
-    BLOOD_MAGIC: ["5,6,10", "0.3,0.7,0.5"],
-    MONEY_MAGIC: ["3,5,6,10", "0.2,0.8,0.3,0.5"],
-    BLOOD_TO_POWER: ["2,5,6,10", "0.2,0.8,0.2,0.5"],
-    QUANTUM_SPLIT: ["2,3,4,5,6", "0.5,0.6,0.5,0.5,1"],
-    GRAVITY: ["2,3,4,5,6", "0.5,0.4,0.4,0.3,0.3"],
-    GRAVITY_ANTI: ["2,3,4,5,6", "0.5,0.4,0.4,0.3,0.3"],
-    PINGPONG_PATH: ["1,3,5", "0.4,0.5,0.4"],
-    HORIZONTAL_ARC: ["1,3,5", "0.4,0.4,0.4"],
-    ORBIT_SHOT: ["1,2,3,4", "0.2,0.4,0.4,0.3"],
-    SPIRALING_SHOT: ["1,2,3,4", "0.2,0.3,0.4,0.5"],
-    BOUNCE: ["2,3,4,6", "1,1,0.4,0.2"],
-    HOMING: ["1,2,3,4,5,6", "0.1,0.4,0.4,0.4,0.4,0.4"],
-    HOMING_SHORT: ["1,2,3,4,5,6", "0.4,0.8,1,0.4,0.3,0.1"],
-    HOMING_SHOOTER: ["2,3,4,6", "0.2,0.3,0.2,0.2"],
-    AUTOAIM: ["2,3,4,5,6", "0.4,0.4,0.4,0.4,0.4"],
-    HOMING_ACCELERATING: ["1,2,3,4", "0.1,0.3,0.3,0.5"],
-    PIERCING_SHOT: ["2,3,4,5,6", "0.4,0.5,0.6,0.6,0.4"],
-    CLIPPING_SHOT: ["2,3,4,5,6", "0.2,0.3,0.6,0.4,0.6"],
-    DAMAGE: ["1,2,3,4,5", "0.6,0.6,0.8,0.6,0.6"],
-    DAMAGE_RANDOM: ["3,4,5", "0.7,0.6,0.6"],
-    BLOODLUST: ["1,3,4,5,6", "0.2,0.3,0.6,0.7,0.3"],
-    DAMAGE_FOREVER: ["2,3,4,5,6,10", "0.2,0.3,0.6,0.5,0.2,0.2"],
-    CRITICAL_HIT: ["1,2,3,4,5", "0.5,0.6,0.6,0.7,0.6"],
-    HEAVY_SHOT: ["2,3,4", "0.4,0.4,0.5"],
-    LIGHT_SHOT: ["2,3,4", "0.3,0.5,0.4"],
-    KNOCKBACK: ["3,5", "0.7,0.6"],
-    RECOIL: ["2,4", "0.6,0.7"],
-    RECOIL_DAMPER: ["3,6", "0.6,0.7"],
-    SPEED: ["1,2,3", "1,0.5,0.5"],
-    ACCELERATING_SHOT: ["2,3,4", "0.5,0.4,1"],
-    EXPLOSIVE_PROJECTILE: ["2,3,4", "1,1,0.8"],
-    CLUSTERMOD: ["1,2,3", "0.5,1,0.6"],
-    EXPLOSION: ["0,2,4,5", "0.5,1,1,0.7"],
-    FIRE_BLAST: ["0,1,3,5", "0.5,0.7,0.6,0.4"],
-    FREEZE_FIELD: ["0,2,4,5", "0.3,0.6,0.7,0.3"],
-    REGENERATION_FIELD: ["1,2,3,4", "0.3,0.3,0.4,0.3"],
-    SHIELD_FIELD: ["2,3,4,5,6", "0.3,0.3,0.4,0.5,0.3"],
-    VACUUM_ENTITIES: ["2,3,5,6", "0.3,0.7,0.3,0.4"],
-    CLOUD_THUNDER: ["0,1,2,3,4,5", "0.3,0.3,0.2,0.3,0.4,0.5"],
-    MATTER_EATER: ["1,2,4,5,10", "0.1,0.9,0.1,0.2,0.2"],
-    BOUNCE_EXPLOSION: ["2,3,4,5", "0.2,0.6,0.8,0.8"],
-    ALL_DISCS: ["0,6,10", "0.1,0.05,1"],
-    RESET: ["10", "1"],
-    ADD_TRIGGER: ["3,4,5,10", "0.3,0.6,0.6,1"],
-    ADD_TIMER: ["3,4,5,10", "0.3,0.6,0.6,1"],
-    ADD_DEATH_TRIGGER: ["3,4,5,10", "0.3,0.6,0.6,1"],
-    ALPHA: ["5,6,10", "0.1,0.2,1"],
-    GAMMA: ["5,6,10", "0.1,0.2,1"],
-    TAU: ["5,6,10", "0.1,0.2,1"],
-    OMEGA: ["5,6,10", "0.1,0.1,1"],
-    MU: ["5,6,10", "0.1,0.2,1"],
-    PHI: ["5,6,10", "0.1,0.2,1"],
-    SIGMA: ["4,5,10", "0.1,0.2,1"],
-    ZETA: ["2,5,10", "0.2,0.4,0.5"],
-    // ours alone: no Noita twin
-    OURS_COLD: ["3,4,5,6", "0.2,0.3,0.4,0.5"],
-    OURS_BATTERY: ["2,3,4,5,6", "0.3,0.4,0.5,0.5,0.5"]
-  };
-  var NOITA_OF = {
-    bolt: "LIGHT_BULLET",
-    spark: "LIGHT_BULLET",
-    slug: "HEAVY_BULLET",
-    buck: "BUCKSHOT",
-    lance: "LANCE",
-    orb: "RUBBER_BALL",
-    saw: "CHAINSAW",
-    blast: "BOMB",
-    dmg_up: "DAMAGE",
-    heavy: "HEAVY_SHOT",
-    light: "LIGHT_SHOT",
-    speed: "SPEED",
-    accel: "ACCELERATING_SHOT",
-    homing: "HOMING",
-    seeker: "HOMING_ACCELERATING",
-    bounce: "BOUNCE",
-    pierce: "PIERCING_SHOT",
-    tight: "SPREAD_REDUCE",
-    scatter: "SCATTER_3",
-    big: "DAMAGE",
-    range: "LIFETIME",
-    brief: "LIFETIME_DOWN",
-    tip: "EXPLOSIVE_PROJECTILE",
-    borer: "CLIPPING_SHOT",
-    fast: "RECHARGE",
-    over: "HEAVY_SHOT",
-    double: "BURST_2",
-    triple: "BURST_3",
-    quad: "BURST_4",
-    cheap: "MANA_REDUCE",
-    trigger: "RECHARGE",
-    over_heat: "DAMAGE_RANDOM",
-    cold: "OURS_COLD",
-    recharge: "RECHARGE",
-    battery: "OURS_BATTERY",
-    arrow: "BULLET",
-    missile: "ROCKET",
-    fball: "FIREBALL",
-    fbolt: "GRENADE",
-    bubble: "BUBBLESHOT",
-    spit: "SPITTER",
-    eorb: "SLOW_BULLET",
-    esph: "BOUNCY_ORB",
-    zap: "LIGHTNING",
-    chain: "CHAIN_BOLT",
-    void: "BLACK_HOLE",
-    digbolt: "DIGGER",
-    glance: "LANCE",
-    plasma: "LASER_EMITTER",
-    ldrill: "LUMINOUS_DRILL",
-    cross: "DEATH_CROSS",
-    pollen: "POLLEN",
-    disc: "DISC_BULLET",
-    nuke: "NUKE",
-    meteor: "METEOR",
-    tele: "TELEPORT_PROJECTILE",
-    teleshort: "TELEPORT_PROJECTILE_SHORT",
-    boom: "EXPLOSION",
-    brim: "FIRE_BLAST",
-    crystal: "MINE",
-    dormant: "PIPE_BOMB",
-    stillc: "FREEZE_FIELD",
-    shieldc: "SHIELD_FIELD",
-    vigour: "REGENERATION_FIELD",
-    storm: "CLOUD_THUNDER",
-    vacfield: "VACUUM_ENTITIES",
-    glitter: "PURPLE_EXPLOSION_FIELD",
-    refresh: "RESET",
-    blood: "BLOOD_MAGIC",
-    bpower: "BLOOD_TO_POWER",
-    gpower: "MONEY_MAGIC",
-    farcast: "LONG_DISTANCE_CAST",
-    telecast: "TELEPORT_CAST",
-    warpcast: "SUPER_TELEPORT_CAST",
-    sawstorm: "ALL_DISCS",
-    knock: "KNOCKBACK",
-    kick: "RECOIL",
-    damper: "RECOIL_DAMPER",
-    crit: "CRITICAL_HIT",
-    gravmod: "GRAVITY",
-    float: "GRAVITY_ANTI",
-    boomer: "HOMING_SHOOTER",
-    spiral: "SPIRALING_SHOT",
-    pong: "PINGPONG_PATH",
-    orbit: "ORBIT_SHOT",
-    autoaim: "AUTOAIM",
-    nearhome: "HOMING_SHORT",
-    flat: "HORIZONTAL_ARC",
-    eater: "MATTER_EATER",
-    lust: "BLOODLUST",
-    manapow: "DAMAGE_FOREVER",
-    split: "QUANTUM_SPLIT",
-    cluster: "CLUSTERMOD",
-    bboom: "BOUNCE_EXPLOSION",
-    hspread: "HEAVY_SPREAD",
-    oct: "BURST_8",
-    myriad: "BURST_X",
-    bifur: "Y_SHAPE",
-    trifur: "W_SHAPE",
-    behind: "I_SHAPE",
-    alpha: "ALPHA",
-    gamma: "GAMMA",
-    tau: "TAU",
-    omega: "OMEGA",
-    phi: "PHI",
-    sigma: "SIGMA",
-    mu: "MU",
-    zeta: "ZETA",
-    addtrig: "ADD_TRIGGER",
-    addtimer: "ADD_TIMER",
-    adddeath: "ADD_DEATH_TRIGGER",
-    bolt_t: "LIGHT_BULLET_TRIGGER",
-    bolt_tt: "LIGHT_BULLET_TRIGGER_2",
-    arrow_t: "BULLET_TRIGGER",
-    fbolt_t: "GRENADE_TRIGGER",
-    bubble_t: "BUBBLESHOT_TRIGGER",
-    eorb_t: "SLOW_BULLET_TRIGGER",
-    crystal_t: "MINE_DEATH_TRIGGER",
-    dormant_t: "PIPE_BOMB_DEATH_TRIGGER",
-    bolt_ti: "LIGHT_BULLET_TIMER",
-    arrow_ti: "BULLET_TIMER",
-    spit_ti: "SPITTER_TIMER",
-    esph_ti: "BOUNCY_ORB_TIMER",
-    eorb_ti: "SLOW_BULLET_TIMER",
-    ldrill_ti: "LASER_LUMINOUS_DRILL",
-    void_d: "BLACK_HOLE_DEATH_TRIGGER"
-  };
-  var floorTier = (floor) => floor > 10 ? 10 : Math.max(0, (floor - 1) * 6 / 9);
-  function noitaP(id, tier) {
-    const row = NOITA_SPAWN[NOITA_OF[id]];
-    if (!row) return 0;
-    const lv = row[0].split(",").map(Number), pr = row[1].split(",").map(Number);
-    const k = lv.indexOf(tier);
-    return k < 0 ? 0 : pr[k];
-  }
-  var TIER_FLOOR = { 4: 4 };
-  function modWeight(id, floor) {
-    const t = floorTier(floor);
-    if (floor < (TIER_FLOOR[tierOf(id)] || 0)) return 0;
-    if (t >= 10) return Math.max(noitaP(id, 10), noitaP(id, 6));
-    const a = Math.floor(t), f = t - a;
-    return noitaP(id, a) * (1 - f) + noitaP(id, a + 1) * f;
-  }
-  function rollMod(rnd2, floor, skip) {
-    let total = 0;
-    for (const id of ALL_IDS) if (!skip || !skip[id]) total += modWeight(id, floor);
-    let r = rnd2() * total;
-    for (const id of ALL_IDS) {
-      if (skip && skip[id]) continue;
-      r -= modWeight(id, floor);
-      if (r <= 0) return id;
-    }
-    return "bolt";
-  }
-
-  // src/spells/guns.js
-  var hueFromName = (name) => {
-    let h3 = 0;
-    for (let i = 0; i < name.length; i++) h3 = h3 * 31 + name.charCodeAt(i) >>> 0;
-    return h3 % 360;
-  };
-  var gunHue = (g) => g && g.hue != null ? g.hue : hueFromName(g ? g.name : "");
-  var gunColor = (g) => "hsl(" + gunHue(g) + ", var(--gun-s), var(--gun-l))";
-  function gunPrice(g) {
-    const rate = 1 / Math.max(0.05, g.castDelay) + 1 / Math.max(0.1, g.recharge);
-    const v = g.cap * 20 + rate * 7 + g.manaMax * 0.1 + g.manaRegen * 0.3 + (g.multi - 1) * 45 + ((g.speedMul || 1) - 1) * 40 - g.spread * 3 + (g.shuffle ? -30 : 20);
-    return Math.max(45, Math.round(v / 5) * 5);
-  }
-  var isGunShop = (floor) => floor % 2 === 0;
-  var GUN_A = [
-    "Rusty",
-    "Bone",
-    "Cracked",
-    "Copper",
-    "Glass",
-    "Ivory",
-    "Molten",
-    "Static",
-    "Hollow",
-    "Ember",
-    "Quartz",
-    "Iron",
-    "Pale",
-    "Gilded"
-  ];
-  var GUN_B = [
-    "Pistol",
-    "Repeater",
-    "Carbine",
-    "Scattergun",
-    "Lance",
-    "Sidearm",
-    "Blaster",
-    "Cannon",
-    "Spitter",
-    "Wand"
-  ];
-  function shuffleOrder(g) {
-    g.order = g.slots.map((_, i) => i);
-    if (g.shuffle) for (let i = g.order.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [g.order[i], g.order[j]] = [g.order[j], g.order[i]];
-    }
-  }
-  function resetGun(g) {
-    g.idx = 0;
-    g.delayT = 0;
-    g.rechT = 0;
-    shuffleOrder(g);
-    return g;
-  }
-  var GUN_LV_MAX = 10;
-  var RARE_GUN = 0.2;
-  var GUN_RANGE = {
-    // [worst, best]
-    cap: [2, 25],
-    castDelay: [1.5, 0.01],
-    recharge: [1.5, 0.01],
-    manaMax: [50, 1e3],
-    manaRegen: [10, 500],
-    spread: [20, 0],
-    speedMul: [0.5, 2]
-  };
-  var GUN_LV_COL = [
-    "#9a9a9a",
-    "#d8d8d8",
-    "#5fd35f",
-    "#3fc9a8",
-    "#4aa3ff",
-    "#7a7aff",
-    "#b565ff",
-    "#ff5fcf",
-    "#ff9a2a",
-    "#ffd23c"
-  ];
-  var gunLvTier = (lvl) => Math.min(1, Math.max(0, (lvl - 1) / (GUN_LV_MAX - 1)));
-  function gunStat(rnd2, k, t) {
-    const [w, b] = GUN_RANGE[k];
-    const f = rnd2() * (1 - t) + rnd2() * 0.1 * t;
-    return b + (w - b) * f;
-  }
-  function gunLevel(floor, rnd2) {
-    const base = Math.min(GUN_LV_MAX, Math.max(1, floor));
-    if (base < GUN_LV_MAX && rnd2() < RARE_GUN) return base + 1 + Math.floor(rnd2() * (GUN_LV_MAX - base));
-    return base;
-  }
-  function caveGun(lvl, rnd2) {
-    return makeGun(rnd2, Math.min(GUN_LV_MAX, Math.max(1, Math.floor(lvl))));
-  }
-  function makeGun(rnd2, lvl) {
-    const t = gunLvTier(lvl);
-    const cap = Math.max(2, Math.min(25, Math.round(gunStat(rnd2, "cap", t))));
-    const g = {
-      name: GUN_A[Math.floor(rnd2() * GUN_A.length)] + " " + GUN_B[Math.floor(rnd2() * GUN_B.length)],
-      lvl,
-      cap,
-      castDelay: gunStat(rnd2, "castDelay", t),
-      recharge: gunStat(rnd2, "recharge", t),
-      manaMax: Math.round(gunStat(rnd2, "manaMax", t)),
-      manaRegen: Math.round(gunStat(rnd2, "manaRegen", t)),
-      spread: gunStat(rnd2, "spread", t),
-      speedMul: gunStat(rnd2, "speedMul", t),
-      multi: rnd2() < 0.1 + t * 0.4 ? 2 : 1,
-      shuffle: rnd2() < 0.5 * (1 - t),
-      slots: new Array(cap).fill(null),
-      hue: Math.floor(rnd2() * 360)
-    };
-    const used = 1 + Math.floor(rnd2() * Math.min(cap, 2 + t * 3));
-    const spots = g.slots.map((_, i) => i).sort(() => rnd2() - 0.5).slice(0, used);
-    const asFloor = 1 + t * 5;
-    spots.forEach((slot, n) => {
-      g.slots[slot] = n === 0 ? SEED_SHOTS[Math.floor(rnd2() * SEED_SHOTS.length)] : rollMod(rnd2, asFloor);
-    });
-    if (!g.slots.some((id) => id && MODS[id].kind === "shot")) g.slots[spots[0]] = "bolt";
-    g.mana = g.manaMax;
-    return resetGun(g);
-  }
-  function startingGuns() {
-    const pistol = resetGun({
-      name: "Scratch Pistol",
-      cap: 3,
-      castDelay: 0.32,
-      recharge: 1.7,
-      manaMax: 90,
-      manaRegen: 22,
-      spread: 5,
-      multi: 1,
-      shuffle: false,
-      mana: 90,
-      speedMul: 1,
-      slots: ["bolt", null, null],
-      hue: Math.floor(Math.random() * 360)
-    });
-    const pickaxe = resetGun({
-      name: "Pick Axe",
-      cap: 1,
-      castDelay: 0.05,
-      recharge: 1,
-      manaMax: 120,
-      manaRegen: 60,
-      spread: 0,
-      multi: 1,
-      shuffle: false,
-      mana: 120,
-      speedMul: 1,
-      slots: ["saw"],
-      hue: 20
-    });
-    return [pistol, pickaxe, null, null];
-  }
-  var gunLvCol = (g) => g && g.lvl ? GUN_LV_COL[Math.min(GUN_LV_MAX, g.lvl) - 1] : null;
-  function gunAccent(g) {
-    if (g && g.lvl) return gunLvCol(g);
-    if (g) {
-      for (const id of g.slots) if (id && MODS[id].kind === "shot") return famCol(id);
-    }
-    return COL.bullet;
-  }
-
-  // src/save/save.js
-  var SAVE_KEY = "caverunner-save";
-  var GUN_DEFAULTS = {
-    name: "Gun",
-    castDelay: 0.2,
-    recharge: 0.5,
-    manaMax: 100,
-    manaRegen: 30,
-    spread: 0,
-    multi: 1,
-    shuffle: false,
-    speedMul: 1,
-    hue: 0
-  };
-  function cleanGun(g) {
-    if (!g || typeof g !== "object" || !Array.isArray(g.slots) || !g.slots.length) return null;
-    const out = Object.assign({}, GUN_DEFAULTS, g);
-    out.slots = g.slots.map((id) => id && MODS[id] ? id : null);
-    out.cap = out.slots.length;
-    out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
-    return resetGun(out);
-  }
-  function cleanLoadout(lo) {
-    lo = lo && typeof lo === "object" ? lo : {};
-    const guns = [0, 1, 2, 3].map((i) => cleanGun((lo.guns || [])[i]));
-    if (!guns.some(Boolean)) return null;
-    const num2 = (v, d) => Number.isFinite(v) ? v : d;
-    let sel = num2(lo.sel, 0);
-    if (!guns[sel]) sel = guns.findIndex(Boolean);
-    return {
-      guns,
-      sel,
-      bag: (Array.isArray(lo.bag) ? lo.bag : []).filter((id) => MODS[id]),
-      perks: (Array.isArray(lo.perks) ? lo.perks : []).filter((id) => PERKS[id]),
-      gold: Math.max(0, num2(lo.gold, START_GOLD)),
-      maxBonus: Math.max(0, num2(lo.maxBonus, 0)),
-      usedLives: Math.max(0, num2(lo.usedLives, 0)),
-      debug: !!lo.debug
-    };
-  }
-  function readSave(raw) {
-    let s;
-    try {
-      s = JSON.parse(raw);
-    } catch (_) {
-      return null;
-    }
-    if (!s || typeof s !== "object") return null;
-    const loadout = cleanLoadout(s.loadout);
-    if (!loadout) return null;
-    const floor = Math.max(1, Math.floor(Number(s.floor) || 1));
-    const out = { loadout, floor, hp: Number.isFinite(s.hp) && s.hp > 0 ? s.hp : null, level: null };
-    const L = s.level;
-    if (s.ver === VERSION && L && Number.isFinite(L.seed)) {
-      out.level = {
-        seed: L.seed,
-        owned: (Array.isArray(L.owned) ? L.owned : []).filter((id) => PERKS[id]),
-        alive: Array.isArray(L.alive) ? L.alive : null,
-        sold: Array.isArray(L.sold) ? L.sold : [],
-        rooms: Array.isArray(L.rooms) ? L.rooms : [],
-        pickups: Array.isArray(L.pickups) ? L.pickups.map((q) => {
-          if (!q || typeof q !== "object") return null;
-          if (q.kind === "mod") return MODS[q.id] ? q : null;
-          if (q.kind === "gun") {
-            const gun = cleanGun(q.gun);
-            return gun ? Object.assign({}, q, { gun }) : null;
-          }
-          return null;
-        }).filter(Boolean) : null
-      };
-    }
-    return out;
-  }
-  var loadSave = () => {
-    try {
-      return readSave(localStorage.getItem(SAVE_KEY));
-    } catch (_) {
-      return null;
-    }
-  };
-  var clearSave = () => {
-    try {
-      localStorage.removeItem(SAVE_KEY);
-    } catch (_) {
-    }
-  };
-
   // src/world/strata.js
   function timberFrame(mat, set, R, T, xa, xb, y, old, fy, maxH) {
     const solid = (x, yy) => x < 0 || yy < 0 || x >= CW || yy >= CH || mat[yy * CW + x] !== 0;
@@ -8735,6 +7021,537 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return false;
   }
 
+  // src/spells/spawn.js
+  var NOITA_SPAWN = {
+    LIGHT_BULLET: ["0,1,2", "2,1,0.5"],
+    LIGHT_BULLET_TRIGGER: ["0,1,2,3", "1,0.5,0.5,0.5"],
+    LIGHT_BULLET_TRIGGER_2: ["2,3,5,6,10", "1,0.5,1,1,0.2"],
+    LIGHT_BULLET_TIMER: ["1,2,3", "0.5,0.5,0.75"],
+    BULLET: ["1,2,3,4,5", "1,1,1,0.8,0.5"],
+    BULLET_TRIGGER: ["1,2,3,4,5", "0.5,0.5,0.5,0.6,0.5"],
+    BULLET_TIMER: ["2,3,4,5,6", "0.5,0.5,0.5,0.5,0.6"],
+    HEAVY_BULLET: ["1,2,3,4,5,6", "0.5,1,1,1,1,1"],
+    SLOW_BULLET: ["1,2,3,4", "1,1,1,1"],
+    SLOW_BULLET_TRIGGER: ["1,2,3,4,5", "0.5,0.5,0.5,0.5,1"],
+    SLOW_BULLET_TIMER: ["1,2,3,4,5,6", "0.5,0.5,0.5,0.5,1,1"],
+    BLACK_HOLE: ["0,2,4,5", "0.8,0.8,0.8,0.8"],
+    BLACK_HOLE_DEATH_TRIGGER: ["2,4,5,6", "0.5,0.5,0.5,0.5"],
+    SPITTER: ["0,1,2,3", "1,1,1,0.5"],
+    SPITTER_TIMER: ["0,1,2,3", "0.5,0.5,0.5,1"],
+    BUBBLESHOT: ["0,1,2,3", "1,0.6,1,0.5"],
+    BUBBLESHOT_TRIGGER: ["1,2,3", "0.5,0.5,1"],
+    DISC_BULLET: ["0,2,4", "1,1,0.6"],
+    BOUNCY_ORB: ["0,2,4", "1,1,1"],
+    BOUNCY_ORB_TIMER: ["0,2,4", "0.5,0.5,0.5"],
+    RUBBER_BALL: ["0,1,6", "1,1,0.2"],
+    POLLEN: ["0,1,3,4", "0.6,1,1,0.6"],
+    LANCE: ["1,2,5,6", "0.9,1,0.8,1"],
+    ROCKET: ["1,2,3,4,5", "1,1,1,0.5,0.3"],
+    GRENADE: ["0,1,2,3,4", "1,1,0.5,0.25,0.2"],
+    GRENADE_TRIGGER: ["0,1,2,3,4,5", "0.5,0.5,0.2,0.5,0.5,1"],
+    MINE: ["1,3,4,6", "1,0.75,1,0.5"],
+    MINE_DEATH_TRIGGER: ["2,6", "1,1"],
+    PIPE_BOMB: ["2,3,4", "1,1,0.6"],
+    PIPE_BOMB_DEATH_TRIGGER: ["2,3,4,5", "0.6,0.8,1,0.8"],
+    LIGHTNING: ["1,2,5,6", "1,0.9,0.7,1"],
+    LASER_EMITTER: ["1,2,3,4", "0.2,0.8,1,0.5"],
+    DIGGER: ["1,2", "1,0.5"],
+    CHAINSAW: ["0,2", "1,1"],
+    LUMINOUS_DRILL: ["0,2,10", "1,1,0.1"],
+    LASER_LUMINOUS_DRILL: ["0,2,6,10", "1,1,0.2,0.1"],
+    CHAIN_BOLT: ["0,4,5,6", "0.75,1,0.8,0.6"],
+    FIREBALL: ["0,3,4,6", "1,0.7,1,0.5"],
+    METEOR: ["4,5,6,10", "0.6,0.6,0.7,0.5"],
+    BUCKSHOT: ["0,1,2,3,4", "1,1,0.9,0.9,0.6"],
+    BOMB: ["0,1,2,3,4,5,6", "1,1,1,1,0.5,0.5,0.1"],
+    DEATH_CROSS: ["1,2,3,4,5,6", "1,0.8,0.6,0.5,0.5,0.3"],
+    NUKE: ["1,5,6,10", "0.3,1,1,0.2"],
+    TELEPORT_PROJECTILE: ["0,1,2,4,5,6", "0.6,0.6,0.6,0.4,0.4,0.4"],
+    TELEPORT_PROJECTILE_SHORT: ["0,1,2,4,5,6", "0.6,0.6,0.6,0.4,0.4,0.4"],
+    PURPLE_EXPLOSION_FIELD: ["0,1,2,4,5,6", "0.7,1,0.7,0.5,0.5,0.3"],
+    LONG_DISTANCE_CAST: ["0,1,2,4,5,6", "0.6,0.7,0.8,0.6,0.3,0.4"],
+    TELEPORT_CAST: ["1,2,4,5,6", "0.6,0.6,0.6,0.8,1"],
+    SUPER_TELEPORT_CAST: ["2,4,5,6", "0.2,0.6,0.8,0.8"],
+    BURST_2: ["0,1,2,3,4,5,6", "0.8,0.8,0.8,0.8,0.8,0.8,0.8"],
+    BURST_3: ["1,2,3,4,5,6", "0.7,0.7,0.7,0.7,0.7,0.7"],
+    BURST_4: ["2,3,4,5,6", "0.4,0.5,0.6,0.6,0.6"],
+    BURST_8: ["5,6,10", "0.1,0.1,0.5"],
+    BURST_X: ["5,6,10", "0.1,0.1,0.5"],
+    SCATTER_3: ["0,1,2,3", "0.6,0.7,0.7,0.8"],
+    I_SHAPE: ["1,2,3", "0.4,0.5,0.3"],
+    Y_SHAPE: ["0,1,2,3", "0.8,0.5,0.4,0.3"],
+    W_SHAPE: ["2,3,4,5,6", "0.4,0.3,0.5,0.3,0.3"],
+    SPREAD_REDUCE: ["1,2,3,4,5,6", "0.8,0.8,0.8,0.8,0.7,0.6"],
+    HEAVY_SPREAD: ["0,1,2,4,5,6", "0.6,0.7,0.8,0.8,0.8,0.6"],
+    RECHARGE: ["1,2,3,4,5,6", "0.8,0.9,1,0.8,0.9,1"],
+    LIFETIME: ["3,4,5,6,10", "0.5,0.5,0.5,0.75,0.1"],
+    LIFETIME_DOWN: ["3,4,5,6,10", "0.5,0.5,0.75,0.5,0.1"],
+    MANA_REDUCE: ["1,2,3,4,5,6", "0.7,0.9,1,1,1,1"],
+    BLOOD_MAGIC: ["5,6,10", "0.3,0.7,0.5"],
+    MONEY_MAGIC: ["3,5,6,10", "0.2,0.8,0.3,0.5"],
+    BLOOD_TO_POWER: ["2,5,6,10", "0.2,0.8,0.2,0.5"],
+    QUANTUM_SPLIT: ["2,3,4,5,6", "0.5,0.6,0.5,0.5,1"],
+    GRAVITY: ["2,3,4,5,6", "0.5,0.4,0.4,0.3,0.3"],
+    GRAVITY_ANTI: ["2,3,4,5,6", "0.5,0.4,0.4,0.3,0.3"],
+    PINGPONG_PATH: ["1,3,5", "0.4,0.5,0.4"],
+    HORIZONTAL_ARC: ["1,3,5", "0.4,0.4,0.4"],
+    ORBIT_SHOT: ["1,2,3,4", "0.2,0.4,0.4,0.3"],
+    SPIRALING_SHOT: ["1,2,3,4", "0.2,0.3,0.4,0.5"],
+    BOUNCE: ["2,3,4,6", "1,1,0.4,0.2"],
+    HOMING: ["1,2,3,4,5,6", "0.1,0.4,0.4,0.4,0.4,0.4"],
+    HOMING_SHORT: ["1,2,3,4,5,6", "0.4,0.8,1,0.4,0.3,0.1"],
+    HOMING_SHOOTER: ["2,3,4,6", "0.2,0.3,0.2,0.2"],
+    AUTOAIM: ["2,3,4,5,6", "0.4,0.4,0.4,0.4,0.4"],
+    HOMING_ACCELERATING: ["1,2,3,4", "0.1,0.3,0.3,0.5"],
+    PIERCING_SHOT: ["2,3,4,5,6", "0.4,0.5,0.6,0.6,0.4"],
+    CLIPPING_SHOT: ["2,3,4,5,6", "0.2,0.3,0.6,0.4,0.6"],
+    DAMAGE: ["1,2,3,4,5", "0.6,0.6,0.8,0.6,0.6"],
+    DAMAGE_RANDOM: ["3,4,5", "0.7,0.6,0.6"],
+    BLOODLUST: ["1,3,4,5,6", "0.2,0.3,0.6,0.7,0.3"],
+    DAMAGE_FOREVER: ["2,3,4,5,6,10", "0.2,0.3,0.6,0.5,0.2,0.2"],
+    CRITICAL_HIT: ["1,2,3,4,5", "0.5,0.6,0.6,0.7,0.6"],
+    HEAVY_SHOT: ["2,3,4", "0.4,0.4,0.5"],
+    LIGHT_SHOT: ["2,3,4", "0.3,0.5,0.4"],
+    KNOCKBACK: ["3,5", "0.7,0.6"],
+    RECOIL: ["2,4", "0.6,0.7"],
+    RECOIL_DAMPER: ["3,6", "0.6,0.7"],
+    SPEED: ["1,2,3", "1,0.5,0.5"],
+    ACCELERATING_SHOT: ["2,3,4", "0.5,0.4,1"],
+    EXPLOSIVE_PROJECTILE: ["2,3,4", "1,1,0.8"],
+    CLUSTERMOD: ["1,2,3", "0.5,1,0.6"],
+    EXPLOSION: ["0,2,4,5", "0.5,1,1,0.7"],
+    FIRE_BLAST: ["0,1,3,5", "0.5,0.7,0.6,0.4"],
+    FREEZE_FIELD: ["0,2,4,5", "0.3,0.6,0.7,0.3"],
+    REGENERATION_FIELD: ["1,2,3,4", "0.3,0.3,0.4,0.3"],
+    SHIELD_FIELD: ["2,3,4,5,6", "0.3,0.3,0.4,0.5,0.3"],
+    VACUUM_ENTITIES: ["2,3,5,6", "0.3,0.7,0.3,0.4"],
+    CLOUD_THUNDER: ["0,1,2,3,4,5", "0.3,0.3,0.2,0.3,0.4,0.5"],
+    MATTER_EATER: ["1,2,4,5,10", "0.1,0.9,0.1,0.2,0.2"],
+    BOUNCE_EXPLOSION: ["2,3,4,5", "0.2,0.6,0.8,0.8"],
+    ALL_DISCS: ["0,6,10", "0.1,0.05,1"],
+    RESET: ["10", "1"],
+    ADD_TRIGGER: ["3,4,5,10", "0.3,0.6,0.6,1"],
+    ADD_TIMER: ["3,4,5,10", "0.3,0.6,0.6,1"],
+    ADD_DEATH_TRIGGER: ["3,4,5,10", "0.3,0.6,0.6,1"],
+    ALPHA: ["5,6,10", "0.1,0.2,1"],
+    GAMMA: ["5,6,10", "0.1,0.2,1"],
+    TAU: ["5,6,10", "0.1,0.2,1"],
+    OMEGA: ["5,6,10", "0.1,0.1,1"],
+    MU: ["5,6,10", "0.1,0.2,1"],
+    PHI: ["5,6,10", "0.1,0.2,1"],
+    SIGMA: ["4,5,10", "0.1,0.2,1"],
+    ZETA: ["2,5,10", "0.2,0.4,0.5"],
+    // ours alone: no Noita twin
+    OURS_COLD: ["3,4,5,6", "0.2,0.3,0.4,0.5"],
+    OURS_BATTERY: ["2,3,4,5,6", "0.3,0.4,0.5,0.5,0.5"]
+  };
+  var NOITA_OF = {
+    bolt: "LIGHT_BULLET",
+    spark: "LIGHT_BULLET",
+    slug: "HEAVY_BULLET",
+    buck: "BUCKSHOT",
+    lance: "LANCE",
+    orb: "RUBBER_BALL",
+    saw: "CHAINSAW",
+    blast: "BOMB",
+    dmg_up: "DAMAGE",
+    heavy: "HEAVY_SHOT",
+    light: "LIGHT_SHOT",
+    speed: "SPEED",
+    accel: "ACCELERATING_SHOT",
+    homing: "HOMING",
+    seeker: "HOMING_ACCELERATING",
+    bounce: "BOUNCE",
+    pierce: "PIERCING_SHOT",
+    tight: "SPREAD_REDUCE",
+    scatter: "SCATTER_3",
+    big: "DAMAGE",
+    range: "LIFETIME",
+    brief: "LIFETIME_DOWN",
+    tip: "EXPLOSIVE_PROJECTILE",
+    borer: "CLIPPING_SHOT",
+    fast: "RECHARGE",
+    over: "HEAVY_SHOT",
+    double: "BURST_2",
+    triple: "BURST_3",
+    quad: "BURST_4",
+    cheap: "MANA_REDUCE",
+    trigger: "RECHARGE",
+    over_heat: "DAMAGE_RANDOM",
+    cold: "OURS_COLD",
+    recharge: "RECHARGE",
+    battery: "OURS_BATTERY",
+    arrow: "BULLET",
+    missile: "ROCKET",
+    fball: "FIREBALL",
+    fbolt: "GRENADE",
+    bubble: "BUBBLESHOT",
+    spit: "SPITTER",
+    eorb: "SLOW_BULLET",
+    esph: "BOUNCY_ORB",
+    zap: "LIGHTNING",
+    chain: "CHAIN_BOLT",
+    void: "BLACK_HOLE",
+    digbolt: "DIGGER",
+    glance: "LANCE",
+    plasma: "LASER_EMITTER",
+    ldrill: "LUMINOUS_DRILL",
+    cross: "DEATH_CROSS",
+    pollen: "POLLEN",
+    disc: "DISC_BULLET",
+    nuke: "NUKE",
+    meteor: "METEOR",
+    tele: "TELEPORT_PROJECTILE",
+    teleshort: "TELEPORT_PROJECTILE_SHORT",
+    boom: "EXPLOSION",
+    brim: "FIRE_BLAST",
+    crystal: "MINE",
+    dormant: "PIPE_BOMB",
+    stillc: "FREEZE_FIELD",
+    shieldc: "SHIELD_FIELD",
+    vigour: "REGENERATION_FIELD",
+    storm: "CLOUD_THUNDER",
+    vacfield: "VACUUM_ENTITIES",
+    glitter: "PURPLE_EXPLOSION_FIELD",
+    refresh: "RESET",
+    blood: "BLOOD_MAGIC",
+    bpower: "BLOOD_TO_POWER",
+    gpower: "MONEY_MAGIC",
+    farcast: "LONG_DISTANCE_CAST",
+    telecast: "TELEPORT_CAST",
+    warpcast: "SUPER_TELEPORT_CAST",
+    sawstorm: "ALL_DISCS",
+    knock: "KNOCKBACK",
+    kick: "RECOIL",
+    damper: "RECOIL_DAMPER",
+    crit: "CRITICAL_HIT",
+    gravmod: "GRAVITY",
+    float: "GRAVITY_ANTI",
+    boomer: "HOMING_SHOOTER",
+    spiral: "SPIRALING_SHOT",
+    pong: "PINGPONG_PATH",
+    orbit: "ORBIT_SHOT",
+    autoaim: "AUTOAIM",
+    nearhome: "HOMING_SHORT",
+    flat: "HORIZONTAL_ARC",
+    eater: "MATTER_EATER",
+    lust: "BLOODLUST",
+    manapow: "DAMAGE_FOREVER",
+    split: "QUANTUM_SPLIT",
+    cluster: "CLUSTERMOD",
+    bboom: "BOUNCE_EXPLOSION",
+    hspread: "HEAVY_SPREAD",
+    oct: "BURST_8",
+    myriad: "BURST_X",
+    bifur: "Y_SHAPE",
+    trifur: "W_SHAPE",
+    behind: "I_SHAPE",
+    alpha: "ALPHA",
+    gamma: "GAMMA",
+    tau: "TAU",
+    omega: "OMEGA",
+    phi: "PHI",
+    sigma: "SIGMA",
+    mu: "MU",
+    zeta: "ZETA",
+    addtrig: "ADD_TRIGGER",
+    addtimer: "ADD_TIMER",
+    adddeath: "ADD_DEATH_TRIGGER",
+    bolt_t: "LIGHT_BULLET_TRIGGER",
+    bolt_tt: "LIGHT_BULLET_TRIGGER_2",
+    arrow_t: "BULLET_TRIGGER",
+    fbolt_t: "GRENADE_TRIGGER",
+    bubble_t: "BUBBLESHOT_TRIGGER",
+    eorb_t: "SLOW_BULLET_TRIGGER",
+    crystal_t: "MINE_DEATH_TRIGGER",
+    dormant_t: "PIPE_BOMB_DEATH_TRIGGER",
+    bolt_ti: "LIGHT_BULLET_TIMER",
+    arrow_ti: "BULLET_TIMER",
+    spit_ti: "SPITTER_TIMER",
+    esph_ti: "BOUNCY_ORB_TIMER",
+    eorb_ti: "SLOW_BULLET_TIMER",
+    ldrill_ti: "LASER_LUMINOUS_DRILL",
+    void_d: "BLACK_HOLE_DEATH_TRIGGER"
+  };
+  var floorTier = (floor) => floor > 10 ? 10 : Math.max(0, (floor - 1) * 6 / 9);
+  function noitaP(id, tier) {
+    const row = NOITA_SPAWN[NOITA_OF[id]];
+    if (!row) return 0;
+    const lv = row[0].split(",").map(Number), pr = row[1].split(",").map(Number);
+    const k = lv.indexOf(tier);
+    return k < 0 ? 0 : pr[k];
+  }
+  var TIER_FLOOR = { 4: 4 };
+  function modWeight(id, floor) {
+    const t = floorTier(floor);
+    if (floor < (TIER_FLOOR[tierOf(id)] || 0)) return 0;
+    if (t >= 10) return Math.max(noitaP(id, 10), noitaP(id, 6));
+    const a = Math.floor(t), f = t - a;
+    return noitaP(id, a) * (1 - f) + noitaP(id, a + 1) * f;
+  }
+  function rollMod(rnd2, floor, skip) {
+    let total = 0;
+    for (const id of ALL_IDS) if (!skip || !skip[id]) total += modWeight(id, floor);
+    let r = rnd2() * total;
+    for (const id of ALL_IDS) {
+      if (skip && skip[id]) continue;
+      r -= modWeight(id, floor);
+      if (r <= 0) return id;
+    }
+    return "bolt";
+  }
+
+  // src/spells/guns.js
+  var hueFromName = (name) => {
+    let h3 = 0;
+    for (let i = 0; i < name.length; i++) h3 = h3 * 31 + name.charCodeAt(i) >>> 0;
+    return h3 % 360;
+  };
+  var gunHue = (g) => g && g.hue != null ? g.hue : hueFromName(g ? g.name : "");
+  var gunColor = (g) => "hsl(" + gunHue(g) + ", var(--gun-s), var(--gun-l))";
+  function gunPrice(g) {
+    const rate = 1 / Math.max(0.05, g.castDelay) + 1 / Math.max(0.1, g.recharge);
+    const v = g.cap * 20 + rate * 7 + g.manaMax * 0.1 + g.manaRegen * 0.3 + (g.multi - 1) * 45 + ((g.speedMul || 1) - 1) * 40 - g.spread * 3 + (g.shuffle ? -30 : 20);
+    return Math.max(45, Math.round(v / 5) * 5);
+  }
+  var isGunShop = (floor) => floor % 2 === 0;
+  var GUN_A = [
+    "Rusty",
+    "Bone",
+    "Cracked",
+    "Copper",
+    "Glass",
+    "Ivory",
+    "Molten",
+    "Static",
+    "Hollow",
+    "Ember",
+    "Quartz",
+    "Iron",
+    "Pale",
+    "Gilded"
+  ];
+  var GUN_B = [
+    "Pistol",
+    "Repeater",
+    "Carbine",
+    "Scattergun",
+    "Lance",
+    "Sidearm",
+    "Blaster",
+    "Cannon",
+    "Spitter",
+    "Wand"
+  ];
+  function shuffleOrder(g) {
+    g.order = g.slots.map((_, i) => i);
+    if (g.shuffle) for (let i = g.order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [g.order[i], g.order[j]] = [g.order[j], g.order[i]];
+    }
+  }
+  function resetGun(g) {
+    g.idx = 0;
+    g.delayT = 0;
+    g.rechT = 0;
+    shuffleOrder(g);
+    return g;
+  }
+  var GUN_LV_MAX = 10;
+  var RARE_GUN = 0.2;
+  var GUN_RANGE = {
+    // [worst, best]
+    cap: [2, 25],
+    castDelay: [1.5, 0.01],
+    recharge: [1.5, 0.01],
+    manaMax: [50, 1e3],
+    manaRegen: [10, 500],
+    spread: [20, 0],
+    speedMul: [0.5, 2]
+  };
+  var GUN_LV_COL = [
+    "#9a9a9a",
+    "#d8d8d8",
+    "#5fd35f",
+    "#3fc9a8",
+    "#4aa3ff",
+    "#7a7aff",
+    "#b565ff",
+    "#ff5fcf",
+    "#ff9a2a",
+    "#ffd23c"
+  ];
+  var gunLvTier = (lvl) => Math.min(1, Math.max(0, (lvl - 1) / (GUN_LV_MAX - 1)));
+  function gunStat(rnd2, k, t) {
+    const [w, b] = GUN_RANGE[k];
+    const f = rnd2() * (1 - t) + rnd2() * 0.1 * t;
+    return b + (w - b) * f;
+  }
+  function gunLevel(floor, rnd2) {
+    const base = Math.min(GUN_LV_MAX, Math.max(1, floor));
+    if (base < GUN_LV_MAX && rnd2() < RARE_GUN) return base + 1 + Math.floor(rnd2() * (GUN_LV_MAX - base));
+    return base;
+  }
+  function caveGun(lvl, rnd2) {
+    return makeGun(rnd2, Math.min(GUN_LV_MAX, Math.max(1, Math.floor(lvl))));
+  }
+  function makeGun(rnd2, lvl) {
+    const t = gunLvTier(lvl);
+    const cap = Math.max(2, Math.min(25, Math.round(gunStat(rnd2, "cap", t))));
+    const g = {
+      name: GUN_A[Math.floor(rnd2() * GUN_A.length)] + " " + GUN_B[Math.floor(rnd2() * GUN_B.length)],
+      lvl,
+      cap,
+      castDelay: gunStat(rnd2, "castDelay", t),
+      recharge: gunStat(rnd2, "recharge", t),
+      manaMax: Math.round(gunStat(rnd2, "manaMax", t)),
+      manaRegen: Math.round(gunStat(rnd2, "manaRegen", t)),
+      spread: gunStat(rnd2, "spread", t),
+      speedMul: gunStat(rnd2, "speedMul", t),
+      multi: rnd2() < 0.1 + t * 0.4 ? 2 : 1,
+      shuffle: rnd2() < 0.5 * (1 - t),
+      slots: new Array(cap).fill(null),
+      hue: Math.floor(rnd2() * 360)
+    };
+    const used = 1 + Math.floor(rnd2() * Math.min(cap, 2 + t * 3));
+    const spots = g.slots.map((_, i) => i).sort(() => rnd2() - 0.5).slice(0, used);
+    const asFloor = 1 + t * 5;
+    spots.forEach((slot, n) => {
+      g.slots[slot] = n === 0 ? SEED_SHOTS[Math.floor(rnd2() * SEED_SHOTS.length)] : rollMod(rnd2, asFloor);
+    });
+    if (!g.slots.some((id) => id && MODS[id].kind === "shot")) g.slots[spots[0]] = "bolt";
+    g.mana = g.manaMax;
+    return resetGun(g);
+  }
+  function startingGuns() {
+    const pistol = resetGun({
+      name: "Scratch Pistol",
+      cap: 3,
+      castDelay: 0.32,
+      recharge: 1.7,
+      manaMax: 90,
+      manaRegen: 22,
+      spread: 5,
+      multi: 1,
+      shuffle: false,
+      mana: 90,
+      speedMul: 1,
+      slots: ["bolt", null, null],
+      hue: Math.floor(Math.random() * 360)
+    });
+    const pickaxe = resetGun({
+      name: "Pick Axe",
+      cap: 1,
+      castDelay: 0.05,
+      recharge: 1,
+      manaMax: 120,
+      manaRegen: 60,
+      spread: 0,
+      multi: 1,
+      shuffle: false,
+      mana: 120,
+      speedMul: 1,
+      slots: ["saw"],
+      hue: 20
+    });
+    return [pistol, pickaxe, null, null];
+  }
+  var gunLvCol = (g) => g && g.lvl ? GUN_LV_COL[Math.min(GUN_LV_MAX, g.lvl) - 1] : null;
+  function gunAccent(g) {
+    if (g && g.lvl) return gunLvCol(g);
+    if (g) {
+      for (const id of g.slots) if (id && MODS[id].kind === "shot") return famCol(id);
+    }
+    return COL.bullet;
+  }
+
+  // src/save/save.js
+  var SAVE_KEY = "caverunner-save";
+  var GUN_DEFAULTS = {
+    name: "Gun",
+    castDelay: 0.2,
+    recharge: 0.5,
+    manaMax: 100,
+    manaRegen: 30,
+    spread: 0,
+    multi: 1,
+    shuffle: false,
+    speedMul: 1,
+    hue: 0
+  };
+  function cleanGun(g) {
+    if (!g || typeof g !== "object" || !Array.isArray(g.slots) || !g.slots.length) return null;
+    const out = Object.assign({}, GUN_DEFAULTS, g);
+    out.slots = g.slots.map((id) => id && MODS[id] ? id : null);
+    out.cap = out.slots.length;
+    out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
+    return resetGun(out);
+  }
+  function cleanLoadout(lo) {
+    lo = lo && typeof lo === "object" ? lo : {};
+    const guns = [0, 1, 2, 3].map((i) => cleanGun((lo.guns || [])[i]));
+    if (!guns.some(Boolean)) return null;
+    const num2 = (v, d) => Number.isFinite(v) ? v : d;
+    let sel = num2(lo.sel, 0);
+    if (!guns[sel]) sel = guns.findIndex(Boolean);
+    return {
+      guns,
+      sel,
+      bag: (Array.isArray(lo.bag) ? lo.bag : []).filter((id) => MODS[id]),
+      perks: (Array.isArray(lo.perks) ? lo.perks : []).filter((id) => PERKS[id]),
+      gold: Math.max(0, num2(lo.gold, START_GOLD)),
+      maxBonus: Math.max(0, num2(lo.maxBonus, 0)),
+      usedLives: Math.max(0, num2(lo.usedLives, 0)),
+      debug: !!lo.debug
+    };
+  }
+  function readSave(raw) {
+    let s;
+    try {
+      s = JSON.parse(raw);
+    } catch (_) {
+      return null;
+    }
+    if (!s || typeof s !== "object") return null;
+    const loadout = cleanLoadout(s.loadout);
+    if (!loadout) return null;
+    const floor = Math.max(1, Math.floor(Number(s.floor) || 1));
+    const out = { loadout, floor, hp: Number.isFinite(s.hp) && s.hp > 0 ? s.hp : null, level: null };
+    const L = s.level;
+    if (s.ver === VERSION && L && Number.isFinite(L.seed)) {
+      out.level = {
+        seed: L.seed,
+        owned: (Array.isArray(L.owned) ? L.owned : []).filter((id) => PERKS[id]),
+        alive: Array.isArray(L.alive) ? L.alive : null,
+        sold: Array.isArray(L.sold) ? L.sold : [],
+        rooms: Array.isArray(L.rooms) ? L.rooms : [],
+        pickups: Array.isArray(L.pickups) ? L.pickups.map((q) => {
+          if (!q || typeof q !== "object") return null;
+          if (q.kind === "mod") return MODS[q.id] ? q : null;
+          if (q.kind === "gun") {
+            const gun = cleanGun(q.gun);
+            return gun ? Object.assign({}, q, { gun }) : null;
+          }
+          return null;
+        }).filter(Boolean) : null
+      };
+    }
+    return out;
+  }
+  var loadSave = () => {
+    try {
+      return readSave(localStorage.getItem(SAVE_KEY));
+    } catch (_) {
+      return null;
+    }
+  };
+  var clearSave = () => {
+    try {
+      localStorage.removeItem(SAVE_KEY);
+    } catch (_) {
+    }
+  };
+
   // src/game/systems/webs.js
   var webNear = (L, x, y) => {
     const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, ll = vx * vx + vy * vy || 1;
@@ -9021,482 +7838,1134 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.glowN *= 0.9;
   }
 
-  // src/game/creatures/jelly.js
-  var natural = (W, x, y) => !builtAt(W.zone, x, y);
-  function jellyMove(W, G, e, C) {
-    const { dt, dist, sees, hunting, pcx, pcy } = C, k = e.k;
-    const cold = e.chill && e.chill < 1 ? e.chill : 1;
-    if (jellyStep(e, {
-      solidCell: (cx, cy) => solidCell(W, cx, cy),
-      hunting,
-      goal: { x: pcx, y: pcy },
-      rnd: Math.random,
-      speedMul: cold,
-      rangeMul: sees,
-      stay: W.zone ? ((x, y) => natural(W, x, y)) : null
-    }, dt) === "pulse") puffSpores(W, e);
-    const S = e.je;
-    if (!W.p.dead && e.touch <= 0 && dist < 180) {
-      const t = tentacleTouch(S, W.p.x, W.p.y, W.p.x + PW, W.p.y + PH);
-      if (t) {
-        hurt(W, G, Math.round(kr("jeBite")));
-        e.touch = kr("jeBiteCd");
-        burst(W, t.x, t.y, 5, jellyPal(S.u.col).tent);
-        SFX.creature(k, "bite", t.x, t.y);
-      }
-    }
-    if (hunting && S.inRange && S.aimed && e.cd <= 0) {
-      e.cd = 0.25;
-      const hx = e.x + Math.cos(S.hd) * e.r * 0.9, hy = e.y + Math.sin(S.hd) * e.r * 0.9;
-      if (lineOfSight(W, hx, hy, pcx, pcy)) {
-        e.cd = kr("jeShotCd");
-        const a = Math.atan2(pcy - hy, pcx - hx) + (Math.random() * 2 - 1) * kr("jeSpread") * Math.PI / 180;
-        const v = kr("jeShotSpd"), P = jellyPal(S.u.col);
-        W.enemyShots.push({
-          x: hx,
-          y: hy,
-          vx: Math.cos(a) * v,
-          vy: Math.sin(a) * v,
-          life: 3,
-          col: P.spit,
-          edge: P.spitEdge,
-          shine: P.spitShine,
-          dripCol: P.drip,
-          dripCol2: P.drip2,
-          glow: hexRgb(P.glow),
-          dmg: Math.round(kr("jeShotDmg")),
-          size: kr("jeShotSize"),
-          goo: 1,
-          drip: kr("jeDrip"),
-          da: 0,
-          dripG: kr("jeDripG"),
-          splat: Math.round(kr("jeSplat")),
-          splatV: kr("jeSplatSpd")
-        });
-        SFX.creature(k, "fire", e.x, e.y);
-      }
-    }
-  }
-
-  // src/creatures/spider.js
-  var SPIDER = { hold: 6, feel: 14, step: 1.5, fall: 900 };
-  function spiderSeat(e, S, solidCell2, maxMove) {
-    return surfSeat(e, S, solidCell2, maxMove, SPIDER.hold, SPIDER.feel);
-  }
-  var segNear = (L, x, y) => {
-    const vx = L.bx - L.ax, vy = L.by - L.ay, ll = vx * vx + vy * vy || 1;
-    const u = Math.max(0, Math.min(1, ((x - L.ax) * vx + (y - L.ay) * vy) / ll));
-    return { u, d: Math.hypot(L.ax + vx * u - x, L.ay + vy * u - y) };
-  };
-  function spiderAim(x, y, dx, dy, reach, solidCell2) {
-    for (const a of [0, 0.22, -0.22, 0.45, -0.45]) {
-      const c = Math.cos(a), s = Math.sin(a), ux = dx * c - dy * s, uy = dx * s + dy * c;
-      const d = rayDist(x, y, ux, uy, reach, solidCell2);
-      if (d < reach && d > SPIDER.hold * 2.5) return { dx: ux, dy: uy, len: d };
-    }
-    return null;
-  }
-  function spiderStep(e, env, dt) {
-    const { solidCell: solidCell2, webs, rnd: rnd2 } = env;
-    const S = e.sp || (e.sp = {
-      mode: "fall",
-      vy: 0,
-      nx: 0,
-      ny: -1,
-      on: 0,
-      rest: rnd2() * 0.5,
-      side: 1,
-      line: null,
-      u: 0,
-      dir: 1,
-      shot: null,
-      rx: e.hx,
-      ry: e.hy,
-      ra: rnd2() * 6.28,
-      high: false
-    });
-    S.webT = (S.webT || 0) - dt;
-    roamStep(S, e, dt, rnd2, "sp");
-    const goal = env.hunting ? env.goal : { x: S.rx, y: S.ry };
-    let out = null;
-    if (S.mode === "fall") {
-      S.vy = Math.min(S.vy + SPIDER.fall * dt, 600);
-      const n2 = Math.max(1, Math.ceil(S.vy * dt / SPIDER.step));
-      for (let i = 0; i < n2; i++) {
-        e.y += S.vy * dt / n2;
-        if (e.y > CH * CELL) {
-          e.y = CH * CELL;
-          break;
-        }
-        if (surfNormal(e.x, e.y, SPIDER.hold + 1, solidCell2)) {
-          spiderSeat(e, S, solidCell2, SPIDER.hold);
-          S.mode = "surf";
-          S.vy = 0;
-          S.on = 0;
-          S.rest = 0.1;
-          break;
-        }
-      }
-      return null;
-    }
-    if (S.mode === "shoot") {
-      const sh = S.shot;
-      sh.t += sh.spd * dt;
-      if (sh.t < sh.len) return null;
-      const hx = sh.x + sh.dx * sh.len, hy = sh.y + sh.dy * sh.len;
-      const inx = hx + sh.dx * 1.2, iny = hy + sh.dy * 1.2;
-      S.mode = sh.from;
-      S.shot = null;
-      if (!solidCell2(Math.floor(inx / CELL), Math.floor(iny / CELL))) return null;
-      const L = {
-        ax: sh.x,
-        ay: sh.y,
-        bx: hx - sh.dx * SPIDER.hold,
-        by: hy - sh.dy * SPIDER.hold,
-        a0x: sh.ax0,
-        a0y: sh.ay0,
-        b0x: hx,
-        b0y: hy,
-        ain: sh.ain,
-        bin: { x: inx, y: iny },
-        owner: e
-      };
-      webs.push(L);
-      const mine = webs.filter((w) => w.owner === e);
-      if (mine.length > Math.round(spr("spMaxLines", rnd2))) {
-        const old = mine.find((w) => w !== S.line);
-        if (old) webs.splice(webs.indexOf(old), 1);
-      }
-      S.mode = "line";
-      S.line = L;
-      S.u = 0;
-      S.dir = 1;
-      return "web";
-    }
-    if (S.mode === "line" && webs.indexOf(S.line) < 0) {
-      S.mode = "fall";
-      S.line = null;
-      S.vy = 0;
-      return null;
-    }
-    if (S.mode === "surf" && !surfNormal(e.x, e.y, SPIDER.hold + 2, solidCell2)) {
-      S.mode = "fall";
-      S.vy = 0;
-      return null;
-    }
-    if (S.on <= 0) {
-      if ((S.rest -= dt) > 0) return null;
-      S.on = spr(env.hunting ? "spHuntOn" : "spRoamOn", rnd2);
-      S.spd = env.speed || spr("spSpeed", rnd2);
-      S.arrive = env.hunting ? spr("spArrive", rnd2) : 3;
-      S.dot = spr("spDot", rnd2);
-      decide();
-      if (S.mode === "shoot") return null;
-      if (S.on <= 0) {
-        S.rest = 0.1 + rnd2() * 0.2;
-        return null;
-      }
-    }
-    if (S.mode === "shoot") return null;
-    const speed = (S.spd || spr("spSpeed", rnd2)) * (env.speedMul || 1);
-    const dist = speed * Math.min(dt, S.on);
-    S.on -= dt;
-    const n = Math.max(1, Math.ceil(dist / SPIDER.step));
-    for (let i = 0; i < n && S.mode !== "shoot"; i++) {
-      const st = dist / n;
-      if (S.mode === "surf") {
-        const tx = -S.ny * S.side, ty = S.nx * S.side;
-        e.x += tx * st;
-        e.y += ty * st;
-        if (!spiderSeat(e, S, solidCell2, st * 2)) {
-          e.x -= S.nx * st * 2;
-          e.y -= S.ny * st * 2;
-          if (!spiderSeat(e, S, solidCell2, st * 2)) {
-            S.mode = "fall";
-            S.vy = 0;
-            break;
-          }
-        }
-        const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy) || 1;
-        const high = (gx * S.nx + gy * S.ny) / gd >= S.dot;
-        if (high && !S.high) {
-          S.high = true;
-          decide();
-        } else if (!high) S.high = false;
-        if (gd < (S.arrive || 3) || (-S.ny * gx + S.nx * gy) * S.side < 0) {
-          S.on = 0;
-          break;
-        }
-      } else if (S.mode === "line") {
-        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
-        const ux = (L.bx - L.ax) / len * S.dir, uy = (L.by - L.ay) / len * S.dir;
-        if (!S.go && (goal.x - e.x) * ux + (goal.y - e.y) * uy <= 0) {
-          S.on = 0;
-          break;
-        }
-        S.u += S.dir * st / len;
-        if (S.u >= 1 || S.u <= 0) {
-          S.u = S.u >= 1 ? 1 : 0;
-          e.x = S.u ? L.bx : L.ax;
-          e.y = S.u ? L.by : L.ay;
-          S.mode = "surf";
-          S.line = null;
-          S.go = false;
-          if (!spiderSeat(e, S, solidCell2, SPIDER.hold)) {
-            S.mode = "fall";
-            S.vy = 0;
-            break;
-          }
-          decide();
-          continue;
-        }
-        e.x = L.ax + (L.bx - L.ax) * S.u;
-        e.y = L.ay + (L.by - L.ay) * S.u;
-      }
-    }
-    if (S.on <= 0 && S.rest <= 0) S.rest = spr(env.hunting ? "spHuntOff" : "spRoamOff", rnd2);
-    return out;
-    function decide() {
-      const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
-      if (gd < (S.arrive || 3)) {
-        S.on = 0;
-        return;
-      }
-      const dx = gx / gd, dy = gy / gd;
-      const tryLine = () => {
-        let best = null, bd = spr("spGrab", rnd2);
-        for (const L of webs) {
-          if (L === S.line) continue;
-          const q = segNear(L, e.x, e.y);
-          if (q.d > bd) continue;
-          const len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
-          const ux = (L.bx - L.ax) / len, uy = (L.by - L.ay) / len, al = ux * dx + uy * dy;
-          if (Math.abs(al) < 0.5) continue;
-          if (al > 0 && q.u > 0.97 || al < 0 && q.u < 0.03) continue;
-          best = { L, u: q.u, dir: al > 0 ? 1 : -1 };
-          bd = q.d;
-        }
-        if (!best) return false;
-        S.mode = "line";
-        S.line = best.L;
-        S.u = best.u;
-        S.dir = best.dir;
-        e.x = best.L.ax + (best.L.bx - best.L.ax) * best.u;
-        e.y = best.L.ay + (best.L.by - best.L.ay) * best.u;
-        return true;
-      };
-      const tryShoot = (from) => {
-        if (S.webT > 0 || !env.hunting && gd < 40) return false;
-        const a = spiderAim(e.x, e.y, dx, dy, env.reach || spr("spWeb", rnd2), solidCell2);
-        if (!a) return false;
-        let ax0 = e.x, ay0 = e.y, ain = null;
-        if (from === "surf") {
-          const d = rayDist(e.x, e.y, -S.nx, -S.ny, SPIDER.feel + 4, solidCell2);
-          ax0 = e.x - S.nx * d;
-          ay0 = e.y - S.ny * d;
-          ain = { x: e.x - S.nx * (d + 1.2), y: e.y - S.ny * (d + 1.2) };
-        }
-        S.webT = spr(env.hunting ? "spHuntWeb" : "spRoamWeb", rnd2);
-        S.shot = { spd: spr("spLineSpd", rnd2), x: e.x, y: e.y, dx: a.dx, dy: a.dy, len: a.len, t: 0, from, ax0, ay0, ain };
-        S.mode = "shoot";
-        return true;
-      };
-      if (S.mode === "surf") {
-        const dot = dx * S.nx + dy * S.ny;
-        S.high = dot >= (S.dot || 0.6);
-        if (S.high && (tryLine() || tryShoot("surf"))) return;
-        const t = -S.ny * dx + S.nx * dy;
-        if (Math.abs(t) * gd < 4) {
-          S.on = 0;
-          return;
-        }
-        S.side = t > 0 ? 1 : -1;
-      } else if (S.mode === "line") {
-        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
-        const al = ((L.bx - L.ax) * dx + (L.by - L.ay) * dy) / len;
-        S.go = false;
-        if (Math.abs(al) > 0.3) {
-          S.dir = al > 0 ? 1 : -1;
-          return;
-        }
-        if (tryLine() || tryShoot("line")) return;
-        const da = Math.hypot(goal.x - L.ax, goal.y - L.ay), db = Math.hypot(goal.x - L.bx, goal.y - L.by);
-        S.dir = db < da ? 1 : -1;
-        S.go = true;
-      }
-    }
-  }
-  function drawSpider(ctx, x, y, r, time, phase, flash, col, S) {
-    let nx = 0, ny = -1, side = 1, moving = false;
-    if (S) {
-      if (S.mode === "line" && S.line) {
-        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
-        nx = -(L.by - L.ay) / len;
-        ny = (L.bx - L.ax) / len;
-        if (ny > 0) {
-          nx = -nx;
-          ny = -ny;
-        }
-        side = S.dir * (L.bx - L.ax >= 0 ? 1 : -1);
-      } else if (S.mode === "surf" || S.mode === "shoot") {
-        nx = S.nx;
-        ny = S.ny;
-        side = S.side;
-      }
-      moving = S.on > 0 && S.mode !== "shoot";
-    }
+  // src/art/sprites.js
+  function drawGun(ctx, x, y, ang, sc, accent) {
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(Math.atan2(nx, -ny));
-    const t = moving ? time * 38 + phase : phase;
-    ctx.strokeStyle = flash ? "#ffffff" : col.b;
-    ctx.lineWidth = r * 0.16;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    for (let i = 0; i < 4; i++) {
-      const o = (i - 1.5) * r * 0.28, sw = Math.sin(t + i * 1.7) * r * 0.22;
-      for (const s of [-1, 1]) {
-        const fx = s * (r * (0.75 + Math.abs(i - 1.5) * 0.35)) + sw * s;
-        ctx.beginPath();
-        ctx.moveTo(o * 0.5, 0);
-        ctx.lineTo(o * 0.5 + fx * 0.55, -r * 0.55 - Math.abs(sw) * 0.3);
-        ctx.lineTo(o * 0.5 + fx, r * 0.62);
-        ctx.stroke();
-      }
-    }
-    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
-    ctx.beginPath();
-    ctx.ellipse(-side * r * 0.45, -r * 0.05, r * 0.62, r * 0.5, 0, 0, Math.PI * 2);
+    ctx.rotate(ang);
+    if (Math.cos(ang) < 0) ctx.scale(1, -1);
+    ctx.scale(sc, sc);
+    ctx.fillStyle = "#20242c";
+    rr(ctx, -6.5, -4.6, 4.5, 3.6, 1.2);
     ctx.fill();
-    ctx.fillStyle = flash ? "#ffffff" : col.a;
     ctx.beginPath();
-    ctx.ellipse(-side * r * 0.45, -r * 0.12, r * 0.48, r * 0.36, 0, 0, Math.PI * 2);
+    ctx.moveTo(-1.4, -1.2);
+    ctx.lineTo(1.8, -1.2);
+    ctx.lineTo(0.9, 4.6);
+    ctx.lineTo(-2.2, 4.2);
+    ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
+    ctx.fillStyle = "#3c424e";
     ctx.beginPath();
-    ctx.ellipse(side * r * 0.3, 0, r * 0.38, r * 0.32, 0, 0, Math.PI * 2);
+    ctx.moveTo(2.2, -1);
+    ctx.lineTo(5, -1);
+    ctx.lineTo(4.4, 3.4);
+    ctx.lineTo(1.8, 3.4);
+    ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = flash ? "#ffffff" : col.eye;
-    for (const [ex, ey, er] of [[0.5, -0.1, 0.1], [0.42, 0.06, 0.08], [0.58, 0.08, 0.07], [0.36, -0.14, 0.07]]) {
-      ctx.beginPath();
-      ctx.arc(side * r * ex, r * ey, r * er, 0, Math.PI * 2);
+    ctx.fillStyle = "#4a515f";
+    rr(ctx, -4.4, -5.2, 10.5, 4.4, 1.3);
+    ctx.fill();
+    ctx.fillStyle = "#5f6878";
+    rr(ctx, 5.5, -4.4, 7.5, 2.4, 1);
+    ctx.fill();
+    ctx.fillStyle = "#343a45";
+    rr(ctx, 0.5, -6.6, 2.4, 1.6, 0.6);
+    ctx.fill();
+    ctx.fillStyle = accent || COL.bullet;
+    rr(ctx, 12.4, -5, 1.8, 3.6, 0.7);
+    ctx.fill();
+    rr(ctx, -3.4, -4.4, 2.6, 2.6, 0.8);
+    ctx.fill();
+    ctx.restore();
+  }
+  function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash) {
+    const suit = flash ? "#ffffff" : "#ff5a36";
+    const dark = flash ? "#d8dde6" : "#c33a1f";
+    ctx.save();
+    ctx.translate(x + w / 2, y);
+    ctx.scale(face, 1);
+    ctx.fillStyle = "#2b3039";
+    rr(ctx, -6.2, 6.5, 4.4, 9, 1.6);
+    ctx.fill();
+    ctx.fillStyle = "#ff8a1f";
+    rr(ctx, -5.6, 8.4, 3.2, 1.4, 0.6);
+    ctx.fill();
+    ctx.fillStyle = "#1b1f26";
+    rr(ctx, -5.4, 15, 3, 2.2, 0.8);
+    ctx.fill();
+    if (jet > 0) {
+      ctx.fillStyle = COL.flame2;
+      rr(ctx, -5.2, 16.4, 2.6, 1.6, 0.8);
       ctx.fill();
+    }
+    ctx.fillStyle = dark;
+    const swing = air ? -1.4 : gait * 2.6;
+    const lift = air ? 2 : 0;
+    rr(ctx, -3.4 + swing, 15.5 - lift * 0.5, 3, 6.5 - lift, 1.2);
+    ctx.fill();
+    rr(ctx, 0.4 - swing, 15.5 - lift, 3, 6.5 - lift * 0.6, 1.2);
+    ctx.fill();
+    ctx.fillStyle = "#24282f";
+    rr(ctx, -3.6 + swing, 20.2 - lift * 1.2, 3.6, 1.8, 0.7);
+    ctx.fill();
+    rr(ctx, 0.2 - swing, 20.2 - lift * 1.4, 3.6, 1.8, 0.7);
+    ctx.fill();
+    ctx.fillStyle = suit;
+    rr(ctx, -3.8, 6, 7.6, 10.5, 2.6);
+    ctx.fill();
+    ctx.fillStyle = dark;
+    rr(ctx, -3.8, 12.4, 7.6, 2.2, 1);
+    ctx.fill();
+    ctx.fillStyle = suit;
+    rr(ctx, 1, 8.4, 5, 2.8, 1.3);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#ffffff" : "#d7dbe3";
+    ctx.beginPath();
+    ctx.arc(0, 4.4, 4.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#1d2733";
+    rr(ctx, -0.6, 1.9, 4.6, 4.2, 1.8);
+    ctx.fill();
+    ctx.fillStyle = "rgba(126,214,255,0.75)";
+    rr(ctx, 1.4, 2.7, 1.8, 1.4, 0.6);
+    ctx.fill();
+    ctx.restore();
+  }
+  function flameDrop(ctx, bx, by, tx, ty, r) {
+    const dx = tx - bx, dy = ty - by, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
+    const px = -uy, py = ux, a = Math.atan2(py, px);
+    ctx.beginPath();
+    ctx.moveTo(tx, ty);
+    ctx.quadraticCurveTo(bx + px * r * 1.15 + ux * L * 0.35, by + py * r * 1.15 + uy * L * 0.35, bx + px * r, by + py * r);
+    ctx.arc(bx, by, r, a, a + Math.PI);
+    ctx.quadraticCurveTo(bx - px * r * 1.15 + ux * L * 0.35, by - py * r * 1.15 + uy * L * 0.35, tx, ty);
+    ctx.fill();
+  }
+  function drawFlame(ctx, fx, fy, lx, ly, s, flick, time) {
+    const wob = Math.sin(time * 17) * 0.6 + Math.sin(time * 29) * 0.35;
+    const h3 = 9.5 * s * (0.85 + 0.2 * flick);
+    ctx.fillStyle = COL.flame;
+    ctx.globalAlpha = 0.9;
+    flameDrop(ctx, fx, fy, fx + lx * s + wob * s, fy - h3 + ly * s, 2.9 * s);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = COL.flame2;
+    flameDrop(ctx, fx, fy + 0.3 * s, fx + (lx * 0.6 + wob * 0.5) * s, fy - h3 * 0.6 + ly * 0.6 * s, 1.7 * s);
+    ctx.fillStyle = "#fff6d8";
+    flameDrop(ctx, fx, fy + 0.6 * s, fx + lx * 0.3 * s, fy - h3 * 0.28 + ly * 0.3 * s, 0.8 * s);
+  }
+  function glowAt(ctx, x, y, r, a, rgb) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, "rgba(" + rgb + "," + a + ")");
+    g.addColorStop(0.45, "rgba(" + rgb + "," + a * 0.4 + ")");
+    g.addColorStop(1, "rgba(" + rgb + ",0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  function drawTorch(ctx, x, y, face, flick, embers, lx, ly, time) {
+    const fx = x + face * 1.6, fy = y - 7;
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#5b4630";
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(x, y + 2.5);
+    ctx.lineTo(fx, fy);
+    ctx.stroke();
+    ctx.strokeStyle = "#8a6b45";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, y + 2.5);
+    ctx.lineTo(fx, fy);
+    ctx.stroke();
+    drawFlame(ctx, fx, fy - 1, lx, ly, 1, flick, time);
+    ctx.restore();
+    for (const q of embers) {
+      ctx.globalAlpha = Math.max(0, q.life / q.max) * 0.85;
+      ctx.fillStyle = q.c;
+      ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
+    }
+    ctx.globalAlpha = 1;
+  }
+  function drawSconce(ctx, x, y, time, ph) {
+    const s = 0.72, fl = 0.9 + 0.1 * Math.sin(time * 13 + ph) * Math.sin(time * 7.3 + ph * 2);
+    ctx.save();
+    ctx.fillStyle = "#2b2a30";
+    ctx.fillRect(x - 2.5, y + 5, 5, 2);
+    ctx.fillRect(x - 0.8, y + 1, 1.6, 5);
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#5b4630";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(x, y + 4);
+    ctx.lineTo(x, y - 3);
+    ctx.stroke();
+    ctx.fillStyle = "#3a3840";
+    ctx.fillRect(x - 2.2, y - 3.5, 4.4, 2);
+    drawFlame(ctx, x, y - 4, Math.sin(time * 1.9 + ph) * 1.2, 0, s, fl, time + ph);
+    ctx.restore();
+  }
+  var GLOW_STREAKS = 9;
+  function drawGunGlow(ctx, x, y, time, seed) {
+    const breathe = 0.85 + 0.15 * Math.sin(time * 2.6 + seed);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const R = 20 * breathe;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, R);
+    g.addColorStop(0, "rgba(255,201,60,0.55)");
+    g.addColorStop(0.45, "rgba(255,170,40,0.22)");
+    g.addColorStop(1, "rgba(255,140,20,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineCap = "round";
+    for (let k = 0; k < GLOW_STREAKS; k++) {
+      const ph = (time * 0.7 + k / GLOW_STREAKS + seed) % 1;
+      const lap = Math.floor(time * 0.7 + k / GLOW_STREAKS + seed);
+      const a = seed * 3.1 + k * 2.39996 + lap * 1.7;
+      const r0 = 4 + ph * 18, len = 3 + 5 * (1 - ph);
+      ctx.globalAlpha = Math.sin(ph * Math.PI) * 0.9;
+      ctx.strokeStyle = k % 3 ? "#ffc93c" : "#fff1b8";
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0);
+      ctx.lineTo(x + Math.cos(a) * (r0 + len), y + Math.sin(a) * (r0 + len));
+      ctx.stroke();
     }
     ctx.restore();
   }
 
-  // src/game/creatures/spider.js
-  function spiderMove(W, G, e, C) {
-    const { dt, dx, dy, dist, sees, hunting, pcx, pcy } = C, k = e.k;
-    const cold = e.chill && e.chill < 1 ? e.chill : 1;
-    if (spiderStep(e, {
-      solidCell: (cx, cy) => solidCell(W, cx, cy),
-      webs: W.webs,
-      hunting,
-      goal: { x: pcx, y: pcy },
-      rnd: Math.random,
-      speedMul: cold
-    }, dt) === "web") SFX.fx("lash", e.x, e.y);
-    e.silkT = (e.silkT || 0) - dt;
-    const S = e.sp;
-    if (hunting && e.silkT <= 0 && S && (S.mode === "surf" || S.mode === "line") && dist < (e.silkR || (e.silkR = spr("spSilk"))) * sees && dist > e.r + 24) {
-      e.silkT = 0.4;
-      if (lineOfSight(W, e.x, e.y, pcx, pcy)) {
-        e.silkT = spr("spSilkCd");
-        e.silkR = spr("spSilk");
-        const v = spr("spSilkSpd");
-        W.silk.push({
-          x: e.x,
-          y: e.y,
-          ax: e.x,
-          ay: e.y,
-          vx: dx / dist * v,
-          vy: dy / dist * v,
-          life: 400 / v * 1.3 + 0.1
-        });
-        SFX.creature(k, "fire", e.x, e.y);
+  // src/art/props.js
+  var rgbA = (c, a) => "rgba(" + (c[0] | 0) + "," + (c[1] | 0) + "," + (c[2] | 0) + "," + (a == null ? 1 : a) + ")";
+  var rgbS = (c) => (c[0] | 0) + "," + (c[1] | 0) + "," + (c[2] | 0);
+  function propCol(pr, T) {
+    return {
+      icicle: "#bfe6ff",
+      icefall: "#bfe6ff",
+      geode: "#c58cff",
+      salt: "#e8e2cc",
+      bone: "#e6dcc4",
+      obsidian: "#4a3050",
+      cart: "#8a5a3a",
+      statue: rgbA(T.rock[1]),
+      pillar: rgbA(T.brick[1]),
+      monolith: rgbA(T.bg2),
+      skulls: "#e6dcc4",
+      stone: "#c58cff",
+      shard: rgbA(T.moss[1]),
+      chain: "#8a7a6a",
+      lantern: "#ffb050",
+      crystal: "#d6a0ff",
+      lava: "#ff7a2a"
+    }[pr.st] || rgbA(T.moss[1]);
+  }
+  function drawArch(ctx, pr, time, T) {
+    const A = pr.arc, n = A.length - 1, x = pr.x, y = pr.y;
+    const col = pr.st === "root" ? mix(T.moss[0], [200, 190, 160], 0.4) : T.moss[0];
+    const sway = (k) => Math.sin(time * 0.9 + pr.seed * 6 + k * 0.35) * 0.8 * Math.sin(Math.PI * k / n);
+    const gone = (k) => pr.burn && k / n > pr.u0 && k / n < pr.u1;
+    const fr = (v) => v - Math.floor(v);
+    for (let s = 0; s < pr.thick; s++) {
+      ctx.strokeStyle = rgbA(mix(col, [0, 0, 0], 0.18 * s));
+      ctx.lineWidth = pr.st === "root" ? 1.8 : 1.2;
+      ctx.beginPath();
+      let pen = false;
+      for (let k = 0; k <= n; k++) {
+        if (gone(k)) {
+          pen = false;
+          continue;
+        }
+        const tw = pr.thick > 1 ? Math.sin(k * 1.3 + s * 2.1 + pr.seed * 9) * 0.9 : 0;
+        const px = x + A[k][0], py = y + A[k][1] + sway(k) + tw;
+        if (pen) ctx.lineTo(px, py);
+        else ctx.moveTo(px, py);
+        pen = true;
+      }
+      ctx.stroke();
+    }
+    ctx.fillStyle = rgbA(T.moss[1]);
+    for (let k = 0; k < n; k++) {
+      if (gone(k) || gone(k + 1)) continue;
+      for (let j = 0; j < 3; j++) {
+        const h3 = fr(Math.sin(k * 12.9898 + j * 78.233 + pr.seed * 437) * 43758.5);
+        const t = (j + h3) / 3, s = (k + j) % 2 ? 1 : -1;
+        const lx = x + A[k][0] + (A[k + 1][0] - A[k][0]) * t;
+        const ly = y + A[k][1] + (A[k + 1][1] - A[k][1]) * t + sway(k + t) + 1 + h3 * 1.5;
+        ctx.beginPath();
+        ctx.ellipse(lx + s * (1 + h3), ly, 1.9, 0.9, s * (0.5 + h3 * 0.6), 0, 6.29);
+        ctx.fill();
       }
     }
   }
-  function spiderFrame(W, G, F) {
-    const { dt } = F;
-    for (let i = W.silk.length - 1; i >= 0; i--) {
-      const b = W.silk[i];
-      b.life -= dt;
-      let gone = b.life <= 0;
-      const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
-      for (let s = 0; s < sn && !gone; s++) {
-        b.x += b.vx * dt / sn;
-        b.y += b.vy * dt / sn;
-        if (solidAt(W, b.x, b.y)) {
-          gone = true;
+  function drawProp(ctx, pr, time, T) {
+    const x = pr.x, y = pr.y, st = pr.st;
+    ctx.save();
+    if (pr.shake > 0) ctx.translate(Math.sin(time * 90) * 0.8, 0);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    const tri = (ax, ay, bx, by, cx, cy) => {
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.lineTo(cx, cy);
+      ctx.closePath();
+      ctx.fill();
+    };
+    switch (pr.k) {
+      case "climb": {
+        if (pr.arc) {
+          drawArch(ctx, pr, time, T);
           break;
         }
-        if (!W.p.dead && b.x > W.p.x - 3 && b.x < W.p.x + PW + 3 && b.y > W.p.y - 3 && b.y < W.p.y + PH + 3) {
-          gone = true;
-          W.strings.push({ ax: b.ax, ay: b.ay, ox: b.x - W.p.x, oy: b.y - W.p.y, slow: spr("spSlow"), max: spr("spSilkMax") });
-          SFX.fx("lash", b.x, b.y);
+        const len = pr.len, sw = st === "kelp" ? 5 : st === "chain" ? 0.8 : 1.6;
+        const off = (k) => Math.sin(time * (st === "kelp" ? 1.6 : 1.1) + pr.seed * 6 + k * 0.08) * sw * (k / len);
+        if (st === "icefall") {
+          const x0 = pr.side < 0 ? x : x - 7;
+          ctx.fillStyle = "rgba(170,215,240,0.5)";
+          ctx.fillRect(x0, y - 4, 7, len + 4);
+          ctx.strokeStyle = "rgba(235,250,255,0.55)";
+          ctx.lineWidth = 0.8;
+          for (let k = 0; k < 3; k++) {
+            const lx = x0 + 1.5 + k * 2;
+            ctx.beginPath();
+            ctx.moveTo(lx, y - 2);
+            ctx.lineTo(lx + Math.sin(k + pr.seed * 9) * 0.8, y + len);
+            ctx.stroke();
+          }
+          ctx.fillStyle = "rgba(190,230,255,0.75)";
+          for (let k = 0; k < 3; k++) tri(x0 + k * 2.3, y + len, x0 + k * 2.3 + 2.3, y + len, x0 + k * 2.3 + 1.1, y + len + 3 + k % 2 * 2);
+          break;
         }
+        if (st === "chain") {
+          ctx.strokeStyle = "#6f635a";
+          ctx.lineWidth = 0.9;
+          for (let k = 0; k < len; k += 3.2) {
+            const lx = x + off(k), vert = Math.round(k / 3.2) % 2 === 0;
+            ctx.beginPath();
+            ctx.ellipse(lx, y + k + 1.6, vert ? 1 : 1.8, vert ? 2 : 1.1, 0, 0, 6.29);
+            ctx.stroke();
+          }
+          break;
+        }
+        if (st === "myc") {
+          for (let s = -1; s <= 1; s++) {
+            ctx.strokeStyle = rgbA(T.moss[1], 0.45 + 0.15 * s);
+            ctx.lineWidth = 0.6;
+            const l = len * (0.75 + 0.2 * Math.sin(s * 3 + pr.seed * 9));
+            ctx.beginPath();
+            ctx.moveTo(x + s * 1.6, y);
+            for (let k = 0; k <= l; k += 4) ctx.lineTo(x + s * 1.6 + off(k) + Math.sin(k * 0.3 + s) * 0.6, y + k);
+            ctx.stroke();
+            ctx.fillStyle = rgbA(T.moss[1], 0.8);
+            ctx.beginPath();
+            ctx.arc(x + s * 1.6 + off(l), y + l, 1, 0, 6.29);
+            ctx.fill();
+          }
+          break;
+        }
+        const col = st === "root" ? mix(T.moss[0], [200, 190, 160], 0.4) : T.moss[0];
+        ctx.strokeStyle = rgbA(col);
+        ctx.lineWidth = st === "root" ? 2.2 : st === "kelp" ? 1.8 : 1.3;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        for (let k = 0; k <= len; k += 3) ctx.lineTo(x + off(k) + (st === "root" ? Math.sin(k * 0.4 + pr.seed * 5) * 0.8 : 0), y + k);
+        ctx.stroke();
+        ctx.fillStyle = rgbA(T.moss[1]);
+        for (let k = 4, s = 1; k < len; k += st === "kelp" ? 7 : 5, s = -s) {
+          const lx = x + off(k);
+          if (st === "root") {
+            ctx.fillRect(lx - 1.4, y + k, 2.8, 1.4);
+            continue;
+          }
+          ctx.beginPath();
+          ctx.ellipse(lx + s * 2, y + k, st === "kelp" ? 3 : 1.8, 0.9, s * 0.5, 0, 6.29);
+          ctx.fill();
+        }
+        break;
       }
-      if (gone) W.silk.splice(i, 1);
+      case "drip": {
+        if (st === "steam") {
+          const s = -pr.side, x0 = s > 0 ? x : x - 8;
+          ctx.fillStyle = "#5a4a3e";
+          ctx.fillRect(x0, y - 2, 8, 4);
+          ctx.fillStyle = "#7a6452";
+          ctx.fillRect(x0 + (s > 0 ? 6 : 0), y - 3, 2, 6);
+          break;
+        }
+        if (st === "sparks") {
+          ctx.fillStyle = "#35333a";
+          ctx.fillRect(x - 3, y, 6, 4);
+          ctx.strokeStyle = "#6a6a70";
+          ctx.lineWidth = 0.6;
+          ctx.beginPath();
+          ctx.moveTo(x + 1, y + 4);
+          ctx.quadraticCurveTo(x + 3, y + 8, x + 1.5, y + 10);
+          ctx.stroke();
+          break;
+        }
+        if (st === "crystal") {
+          ctx.fillStyle = rgbA(T.moss[1], 0.9);
+          tri(x - 2.5, y, x - 0.5, y, x - 1.5, y + 5);
+          tri(x, y, x + 2.5, y, x + 1.2, y + 4);
+          break;
+        }
+        const c = st === "lava" ? [255, 110, 40] : st === "soot" ? [22, 22, 26] : st === "cascade" ? [140, 200, 255] : [120, 190, 255];
+        ctx.fillStyle = rgbA(c, st === "cascade" ? 0.8 : 0.85);
+        if (st === "cascade") {
+          ctx.fillRect(x - 5, y, 10, 1.6);
+          break;
+        }
+        const g = st === "soot" ? 0 : (pr.acc || 0) % 1;
+        ctx.beginPath();
+        ctx.ellipse(x, y + 0.8 + g * 1.5, 1.2 + g * 0.5, 0.9 + g * 1.2, 0, 0, 6.29);
+        ctx.fill();
+        break;
+      }
+      case "drop": {
+        if (st === "icicle") {
+          ctx.fillStyle = "rgba(190,230,255,0.9)";
+          tri(x - 3.5, y, x + 3.5, y, x + 0.3, y + 16);
+          ctx.fillStyle = "rgba(255,255,255,0.7)";
+          tri(x - 1.8, y, x - 0.6, y, x - 0.2, y + 10);
+        } else {
+          ctx.fillStyle = rgbA(mix(T.rock[0], [0, 0, 0], 0.3));
+          ctx.beginPath();
+          ctx.ellipse(x, y + 1.5, 7, 3, 0, 0, 6.29);
+          ctx.fill();
+          const cs = [[-4.5, 8], [-1.5, 12], [1.8, 10], [4.6, 7]];
+          cs.forEach(([dx, l], k) => {
+            ctx.fillStyle = rgbA(k % 2 ? T.moss[1] : T.moss[0]);
+            tri(x + dx - 1.8, y + 2, x + dx + 1.8, y + 2, x + dx, y + l);
+          });
+        }
+        break;
+      }
+      case "spike": {
+        if (pr.hang) {
+          ctx.translate(0, 2 * y);
+          ctx.scale(1, -1);
+        }
+        const base = st === "obsidian" ? [44, 28, 48] : st === "salt" ? [226, 220, 198] : [222, 212, 188];
+        const hs = [[-4, 7], [0, 10], [4, 6]];
+        for (const [dx, hgt] of hs) {
+          ctx.fillStyle = rgbA(base);
+          tri(x + dx - 2.4, y, x + dx + 2.4, y, x + dx, y - hgt);
+          ctx.fillStyle = st === "obsidian" ? "rgba(200,110,255,0.55)" : "rgba(255,255,255,0.45)";
+          tri(x + dx - 0.6, y, x + dx + 0.4, y, x + dx, y - hgt + 1);
+          if (st === "bone") {
+            ctx.fillStyle = rgbA(base);
+            ctx.beginPath();
+            ctx.arc(x + dx, y - 0.5, 1.8, 0, 6.29);
+            ctx.fill();
+          }
+        }
+        break;
+      }
+      case "barrel": {
+        ctx.fillStyle = "#2a2a30";
+        ctx.beginPath();
+        ctx.arc(x - 5, y - 2.2, 2.2, 0, 6.29);
+        ctx.arc(x + 5, y - 2.2, 2.2, 0, 6.29);
+        ctx.fill();
+        ctx.fillStyle = "#b2362c";
+        for (let k = -1; k <= 1; k++) ctx.fillRect(x + k * 3.5 - 1, y - 13 + Math.abs(k), 2, 4);
+        ctx.fillStyle = "#6e4a32";
+        ctx.beginPath();
+        ctx.moveTo(x - 9, y - 10);
+        ctx.lineTo(x + 9, y - 10);
+        ctx.lineTo(x + 7.5, y - 3.5);
+        ctx.lineTo(x - 7.5, y - 3.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "#8c8f96";
+        ctx.fillRect(x - 9, y - 10.5, 18, 1.3);
+        ctx.fillRect(x - 8, y - 6.5, 16, 1);
+        ctx.fillStyle = "#ffd23c";
+        ctx.font = "700 5px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("!", x, y - 4.6);
+        break;
+      }
+      case "lamp": {
+        if (st === "cap") {
+          ctx.fillStyle = rgbA(mix(T.moss[1], [240, 240, 240], 0.5));
+          ctx.fillRect(x - 1, y - 6, 2, 6);
+          ctx.fillStyle = rgbA(T.moss[1]);
+          ctx.beginPath();
+          ctx.ellipse(x, y - 6, 5, 3.4, 0, Math.PI, 0);
+          ctx.fill();
+          ctx.fillStyle = "rgba(255,255,255,0.6)";
+          ctx.fillRect(x - 2.5, y - 8, 1, 1);
+          ctx.fillRect(x + 1.5, y - 7.5, 1, 1);
+          break;
+        }
+        if (st === "hanglamp") {
+          const sw = Math.sin(time * 1.3 + pr.seed * 30) * 0.06, bx = x + Math.sin(sw) * pr.len, by = y + Math.cos(sw) * pr.len;
+          ctx.strokeStyle = "#5a5048";
+          ctx.lineWidth = 0.8;
+          ctx.setLineDash([1.2, 0.8]);
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(bx, by);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = "#4a3a2a";
+          ctx.fillRect(bx - 3, by, 6, 1.5);
+          ctx.fillRect(bx - 2.5, by + 7.5, 5, 1.5);
+          ctx.fillStyle = "#ffcc70";
+          ctx.fillRect(bx - 2, by + 1.5, 4, 6);
+          ctx.fillStyle = "#fff2c0";
+          ctx.fillRect(bx - 0.7, by + 3, 1.4, 3);
+          ctx.fillStyle = "#4a3a2a";
+          ctx.fillRect(bx - 2.6, by + 1.5, 0.8, 6);
+          ctx.fillRect(bx + 1.8, by + 1.5, 0.8, 6);
+          break;
+        }
+        const s = -pr.side, lx = x + s * 5;
+        ctx.strokeStyle = "#4a3e36";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, y - 5);
+        ctx.lineTo(lx, y - 5);
+        ctx.lineTo(lx, y - 3);
+        ctx.stroke();
+        ctx.fillStyle = "#5c4632";
+        ctx.fillRect(lx - 2.5, y - 3, 5, 7);
+        ctx.fillStyle = "#ffcc70";
+        ctx.fillRect(lx - 1.5, y - 2, 3, 4.5);
+        break;
+      }
+      case "vent": {
+        ctx.fillStyle = "#1a1010";
+        ctx.beginPath();
+        ctx.ellipse(x, y - 0.5, 5, 1.8, 0, 0, 6.29);
+        ctx.fill();
+        ctx.fillStyle = pr.warn || pr.on ? "#ff8a3a" : "rgba(255,110,40,0.5)";
+        ctx.fillRect(x - 2.5, y - 1, 1, 1);
+        ctx.fillRect(x + 1, y - 1.2, 1.2, 1);
+        break;
+      }
+      case "pad": {
+        const sq = Math.max(0, pr.sq || 0) / 0.3, hh = 8 * (1 - 0.4 * sq), ww = 10 * (1 + 0.25 * sq);
+        ctx.fillStyle = rgbA(mix(T.moss[1], [240, 230, 220], 0.6));
+        ctx.fillRect(x - 1.8, y - hh, 3.6, hh);
+        ctx.fillStyle = rgbA(T.moss[0]);
+        ctx.beginPath();
+        ctx.ellipse(x, y - hh, ww, 5, 0, Math.PI, 0);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        for (const [dx, dy] of [[-5, -2], [0, -3.8], [4.5, -1.8]]) {
+          ctx.beginPath();
+          ctx.arc(x + dx * ww / 10, y - hh + dy, 0.9, 0, 6.29);
+          ctx.fill();
+        }
+        break;
+      }
+      case "zone": {
+        const x0 = x + pr.l, w = pr.r - pr.l;
+        if (st === "ice") {
+          ctx.fillStyle = "rgba(190,230,255,0.6)";
+          ctx.fillRect(x0, y - 1.6, w, 1.6);
+          ctx.fillStyle = "rgba(255,255,255,0.7)";
+          ctx.fillRect(x0 + 2, y - 1.6, w - 4, 0.5);
+        } else if (st === "snow" || st === "ash") {
+          ctx.fillStyle = st === "snow" ? "rgba(236,244,255,0.95)" : rgbA(mix(T.rock[1], [90, 90, 90], 0.5));
+          ctx.beginPath();
+          ctx.moveTo(x0, y);
+          for (let k = 0; k <= w; k += 2) ctx.lineTo(x0 + k, y - 1 - 3.2 * Math.sin(Math.PI * k / w) - Math.sin(k * 0.7 + pr.seed * 9) * 0.5);
+          ctx.lineTo(x0 + w, y);
+          ctx.closePath();
+          ctx.fill();
+        } else if (st === "slime" || st === "puddle" || st === "acid") {
+          const c = st === "slime" ? [110, 200, 90] : st === "puddle" ? [70, 130, 190] : [150, 168, 60];
+          ctx.fillStyle = rgbA(c, st === "puddle" ? 0.6 : 0.7);
+          ctx.fillRect(x0, y - 2.5, w, 2.5);
+          ctx.fillStyle = rgbA(mix(c, [255, 255, 255], 0.4), 0.7);
+          const nb = Math.max(1, Math.floor(w / 8));
+          for (let k = 0; k < nb; k++) {
+            const ph = (time * (st === "acid" ? 0.9 : 0.4) + k * 0.37 + pr.seed) % 1;
+            ctx.beginPath();
+            ctx.arc(x0 + (k + 0.5) * w / nb, y - 2.5 - ph * 2, 0.6 + ph * 0.6, 0, 6.29);
+            ctx.fill();
+          }
+        } else if (st === "glass") {
+          for (let k = 0; k < w; k += 2.2) {
+            const s = Math.sin(k * 12.9 + pr.seed * 78) * 43758.5 % 1;
+            ctx.fillStyle = "rgba(200,240,255," + (0.35 + Math.abs(s) * 0.4) + ")";
+            tri(x0 + k, y, x0 + k + 1.6, y, x0 + k + 0.6 + s, y - 1.5 - Math.abs(s) * 2);
+          }
+        } else if (st === "log") {
+          ctx.fillStyle = "#2c2220";
+          ctx.fillRect(x0 + 1, y - 4, w - 2, 4);
+          ctx.fillStyle = "rgba(255," + Math.round(100 + 40 * Math.sin(time * 3 + pr.seed * 9)) + ",40,0.8)";
+          for (let k = 4; k < w - 3; k += 5) ctx.fillRect(x0 + k, y - 2.8 + k % 2, 1.6, 0.8);
+        }
+        break;
+      }
+      case "pod": {
+        const b = 1 + 0.06 * Math.sin(time * 3 + pr.seed * 9);
+        ctx.fillStyle = rgbA(T.moss[0]);
+        ctx.fillRect(x - 0.6, y - 3, 1.2, 3);
+        ctx.fillStyle = "#9cc44a";
+        ctx.beginPath();
+        ctx.ellipse(x, y - 6, 4.4 * b, 5 * b, 0, 0, 6.29);
+        ctx.fill();
+        ctx.fillStyle = "#d8f07a";
+        ctx.beginPath();
+        ctx.arc(x - 1.5, y - 7, 0.9, 0, 6.29);
+        ctx.arc(x + 1.6, y - 5, 0.8, 0, 6.29);
+        ctx.fill();
+        break;
+      }
+      case "noise": {
+        if (st === "skulls") {
+          for (const [dx, dy] of [[-4.5, -2.2], [0, -2.4], [4.5, -2.2], [-2.2, -5.8], [2.3, -5.6]]) {
+            ctx.fillStyle = "#ded4bc";
+            ctx.beginPath();
+            ctx.arc(x + dx, y + dy, 2.3, 0, 6.29);
+            ctx.fill();
+            ctx.fillStyle = "#2a2622";
+            ctx.fillRect(x + dx - 1.3, y + dy - 0.4, 0.9, 0.9);
+            ctx.fillRect(x + dx + 0.4, y + dy - 0.4, 0.9, 0.9);
+          }
+        } else {
+          const s = -pr.side, cx = x + s * 4;
+          ctx.fillStyle = rgbA(mix(T.rock[1], T.moss[0], 0.4));
+          ctx.beginPath();
+          ctx.ellipse(cx, y, 4, 9, 0, 0, 6.29);
+          ctx.fill();
+          ctx.strokeStyle = rgbA(T.moss[1], 0.5 + 0.5 * Math.max(0, pr.ring || 0));
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.moveTo(cx, y - 6);
+          ctx.lineTo(cx - 1.5, y - 1);
+          ctx.lineTo(cx + 1.2, y + 2);
+          ctx.lineTo(cx, y + 6);
+          ctx.stroke();
+        }
+        break;
+      }
+      case "shard": {
+        ctx.fillStyle = rgbA(T.moss[1], 0.85);
+        const dir = pr.side ? -pr.side : 0;
+        if (dir) {
+          tri(x, y - 2, x, y + 2, x + dir * 5, y - 0.5);
+          tri(x, y + 1, x, y + 3.5, x + dir * 3, y + 3);
+        } else {
+          tri(x - 2, y, x + 1, y, x - 1, y - 5);
+          tri(x, y, x + 3, y, x + 2.4, y - 3.5);
+        }
+        break;
+      }
+      case "cover": {
+        if (pr.hitT > 0) ctx.translate(Math.sin(time * 80) * 0.6, 0);
+        if (st === "statue") {
+          ctx.fillStyle = rgbA(T.rock[0]);
+          ctx.fillRect(x - 8, y - 6, 16, 6);
+          ctx.fillStyle = rgbA(T.rock[1]);
+          ctx.beginPath();
+          ctx.moveTo(x - 5, y - 6);
+          ctx.lineTo(x - 4, y - 20);
+          ctx.lineTo(x + 4, y - 20);
+          ctx.lineTo(x + 5, y - 6);
+          ctx.closePath();
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(x, y - 23.5, 3.6, 0, 6.29);
+          ctx.fill();
+          ctx.fillStyle = rgbA(T.moss[0], 0.8);
+          ctx.fillRect(x - 3, y - 20, 1, 12);
+          ctx.fillRect(x + 1.5, y - 17, 1, 9);
+          ctx.fillRect(x - 1, y - 26, 2, 1.2);
+        } else if (st === "pillar") {
+          ctx.fillStyle = rgbA(T.brick[1]);
+          ctx.fillRect(x - 5, y - 27, 10, 27);
+          ctx.fillStyle = rgbA(T.brick[0]);
+          ctx.fillRect(x - 7, y - 30, 14, 3);
+          ctx.fillRect(x - 7, y - 3, 14, 3);
+          ctx.strokeStyle = "#1e1a1a";
+          ctx.lineWidth = 0.7;
+          const dmg = 4 - Math.max(0, pr.hp);
+          for (let k = 0; k < dmg; k++) {
+            const cy = y - 8 - k * 6;
+            ctx.beginPath();
+            ctx.moveTo(x - 5, cy);
+            ctx.lineTo(x - 1, cy - 2);
+            ctx.lineTo(x + 1, cy + 1);
+            ctx.lineTo(x + 5, cy - 1);
+            ctx.stroke();
+          }
+        } else {
+          const sk = Math.sin(time * 0.8 + pr.seed * 9) * 0.08;
+          ctx.transform(1, 0, sk, 1, -sk * y, 0);
+          ctx.fillStyle = rgbA(mix(T.bg2, [0, 0, 0], 0.2));
+          ctx.fillRect(x - 6, y - 34, 12, 34);
+          ctx.fillStyle = rgbA(T.moss[1], 0.5 + 0.3 * Math.sin(time * 2 + pr.seed * 7));
+          ctx.fillRect(x - 0.6, y - 28, 1.2, 8);
+          ctx.fillRect(x - 3, y - 24.6, 6, 1.2);
+        }
+        break;
+      }
+      case "matter": {
+        const by = y + Math.sin(time * 1.3 + pr.seed * 9) * 3;
+        ctx.fillStyle = "#050208";
+        ctx.beginPath();
+        ctx.arc(x, by, 6.5, 0, 6.29);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(160,90,255,0.7)";
+        ctx.lineWidth = 1;
+        for (let k = 0; k < 3; k++) {
+          const a = time * 2.4 + k * 2.09;
+          ctx.beginPath();
+          ctx.arc(x, by, 8 + k, a, a + 1.4);
+          ctx.stroke();
+        }
+        break;
+      }
+      case "tendril": {
+        ctx.fillStyle = "#2a1640";
+        ctx.beginPath();
+        ctx.ellipse(x, y - 1.5, 4, 2.5, 0, 0, 6.29);
+        ctx.fill();
+        const ext = Math.max(4, pr.ext || 0), a = pr.aimA != null ? pr.aimA : pr.ang;
+        const tx = x + Math.cos(a) * ext, ty = y - 2 + Math.sin(a) * ext;
+        const wob = Math.sin(time * 5 + pr.seed * 9) * ext * 0.2;
+        const mx = (x + tx) / 2 + Math.cos(a + 1.57) * wob, my = (y + ty) / 2 + Math.sin(a + 1.57) * wob;
+        ctx.strokeStyle = "#3e2066";
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.moveTo(x, y - 2);
+        ctx.quadraticCurveTo(mx, my, tx, ty);
+        ctx.stroke();
+        ctx.strokeStyle = rgbA(T.moss[1], 0.8);
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo((mx + tx) / 2, (my + ty) / 2);
+        ctx.lineTo(tx, ty);
+        ctx.stroke();
+        break;
+      }
     }
-    for (let i = W.strings.length - 1; i >= 0; i--) {
-      const s = W.strings[i];
-      if (Math.hypot(W.p.x + s.ox - s.ax, W.p.y + s.oy - s.ay) > s.max) {
-        W.strings.splice(i, 1);
-        burst(W, W.p.x + s.ox, W.p.y + s.oy, 4, "#e8e8f0");
-        SFX.fx("lash", W.p.x + s.ox, W.p.y + s.oy);
+    ctx.restore();
+  }
+  function propGlow(ctx, pr, time, T, pdist, torchR) {
+    const x = pr.x, y = pr.y;
+    if (pr.k === "lamp") {
+      const f = 0.85 + 0.15 * Math.sin(time * 9 + pr.seed * 20) * Math.sin(time * 4.3 + pr.seed * 7);
+      if (pr.st === "cap") glowAt(ctx, x, y - 7, 30, 0.2 * f, rgbS(T.moss[1]));
+      else if (pr.st === "hanglamp") {
+        const sw = Math.sin(time * 1.3 + pr.seed * 30) * 0.06, bx = x + Math.sin(sw) * pr.len, by = y + Math.cos(sw) * pr.len + 4.5;
+        glowAt(ctx, bx, by, 52, 0.17 * f, "255,160,70");
+        glowAt(ctx, bx, by, 9, 0.4 * f, "255,210,130");
+      } else {
+        const lx = x - pr.side * 5;
+        glowAt(ctx, lx, y, 46, 0.16 * f, "255,160,70");
+        glowAt(ctx, lx, y, 8, 0.4 * f, "255,210,130");
       }
-    }
-    for (let n = Math.min(W.webs.length, 6); n > 0; n--) {
-      W.webCheck = (W.webCheck + 1) % W.webs.length;
-      const L = W.webs[W.webCheck];
-      if (L.bin && !solidAt(W, L.bin.x, L.bin.y) || L.ain && !solidAt(W, L.ain.x, L.ain.y)) {
-        W.webs.splice(W.webCheck, 1);
-        if (!W.webs.length) break;
+    } else if (pr.k === "vent" && (pr.on || pr.warn)) {
+      glowAt(ctx, x, y - (pr.on ? 28 : 3), pr.on ? 44 : 12, pr.on ? 0.35 : 0.25, "255,120,40");
+      if (pr.on) {
+        const g = ctx.createLinearGradient(0, y - VENT_H, 0, y);
+        g.addColorStop(0, "rgba(255,90,30,0)");
+        g.addColorStop(0.5, "rgba(255,140,50,0.55)");
+        g.addColorStop(1, "rgba(255,230,150,0.9)");
+        ctx.fillStyle = g;
+        const w = 4 + Math.sin(time * 40) * 0.8;
+        ctx.fillRect(x - w, y - VENT_H, w * 2, VENT_H);
       }
+    } else if (pr.k === "shard" && pdist < torchR) {
+      const g = (1 - pdist / torchR) * Math.pow(0.5 + 0.5 * Math.sin(time * 5 + pr.seed * 40), 6);
+      if (g > 0.03) {
+        ctx.fillStyle = "rgba(255,255,255," + g + ")";
+        ctx.fillRect(x - 4, y - 0.4, 8, 0.8);
+        ctx.fillRect(x - 0.4, y - 4, 0.8, 8);
+        glowAt(ctx, x, y, 7, 0.5 * g, rgbS(T.moss[1]));
+      }
+    } else if (pr.k === "eyes") {
+      const a = eyesAlpha(pdist) * (Math.sin(time * 0.9 + pr.seed * 40) > 0.96 ? 0.1 : 1) * (0.55 + 0.25 * Math.sin(time * 1.7 + pr.seed * 9));
+      if (a > 0.02) {
+        const c = pr.seed < 0.5 ? "255,60,70" : rgbS(T.moss[1]);
+        ctx.fillStyle = "rgba(" + c + "," + a + ")";
+        ctx.fillRect(x - 4, y - 0.6, 2, 1.2);
+        ctx.fillRect(x + 2, y - 0.6, 2, 1.2);
+        glowAt(ctx, x, y, 9, 0.25 * a, c);
+      }
+    } else if (pr.k === "matter") {
+      glowAt(ctx, x, y + Math.sin(time * 1.3 + pr.seed * 9) * 3, 26, 0.12, "140,70,255");
+    } else if (pr.k === "drip" && pr.st === "lava") {
+      glowAt(ctx, x, y + 2, 10, 0.3, "255,110,40");
     }
   }
-  function drawSilk(W, G) {
-    G.ctx.lineCap = "round";
-    G.ctx.strokeStyle = "#eef0f6";
-    G.ctx.globalAlpha = 0.55;
-    G.ctx.lineWidth = 0.7;
-    G.ctx.beginPath();
-    for (const L of W.webs) {
-      G.ctx.moveTo(L.a0x, L.a0y);
-      G.ctx.lineTo(L.b0x, L.b0y);
-    }
-    for (const e of W.enemies) {
-      const sh = e.sp && e.sp.mode === "shoot" && e.sp.shot;
-      if (sh) {
-        G.ctx.moveTo(sh.ax0, sh.ay0);
-        G.ctx.lineTo(sh.x + sh.dx * Math.min(sh.t, sh.len), sh.y + sh.dy * Math.min(sh.t, sh.len));
+  var eyesAlpha = (d) => Math.max(0, Math.min(1, (d - 60) / 120));
+  var VENT_H = 64;
+
+  // src/creatures/jelly.js
+  function jellyPal(u) {
+    const P = {};
+    for (const [k, , , , f] of JE_COLS) P[f] = jcol(k, u);
+    return P;
+  }
+  var JELLY = { hitR: 0.8 };
+  function jellyBell(r, s, q) {
+    const t = Math.max(0, Math.min(1.5, s * q));
+    const w = r * (1.15 - 0.36 * t), h3 = r * (0.95 + 0.6 * t);
+    return { w, h: h3, rw: w * (0.96 - 0.24 * t), top: -h3 * 0.62, rim: h3 * 0.38 };
+  }
+  function jellyStep(e, env, dt) {
+    const { solidCell: solidCell2, rnd: rnd2 } = env;
+    let S = e.je;
+    if (!S) {
+      S = e.je = {
+        hd: -Math.PI / 2 + (rnd2() - 0.5) * 0.6,
+        vx: 0,
+        vy: 0,
+        push: 0,
+        pushA: 0,
+        rest: rnd2() * 1.5,
+        shape: 0,
+        vref: Math.max(1, kr("jeRoamPush", rnd2)),
+        t: rnd2() * 10,
+        tent: [],
+        u: { thin: rnd2(), sq: rnd2(), len: rnd2(), wave: rnd2(), sag: rnd2(), glow: rnd2(), glowR: rnd2(), flare: rnd2(), col: rnd2(), plant: rnd2() }
+      };
+      feel(false);
+      const nt = Math.round(kr("jeTents", rnd2));
+      for (let i = 0; i < nt; i++) {
+        const T = [], nv = Math.max(2, Math.round(kr("jeVerts", rnd2)));
+        for (let j = 0; j < nv; j++) T.push({ x: NaN, y: NaN });
+        S.tent.push(T);
       }
     }
-    G.ctx.stroke();
-    G.ctx.globalAlpha = 0.85;
-    G.ctx.lineWidth = 0.9;
-    G.ctx.beginPath();
-    for (const b of W.silk) {
-      G.ctx.moveTo(b.ax, b.ay);
-      G.ctx.lineTo(b.x, b.y);
+    const mul = env.speedMul || 1;
+    let hunt = !!(env.hunting && env.goal);
+    S.t += dt;
+    roamStep(S, e, dt, rnd2, "je", env.stay);
+    const lost = !!(env.stay && !env.stay(e.x, e.y));
+    if (lost) hunt = false;
+    if (hunt && !S.range) S.range = kr("jeRange", rnd2);
+    if (!hunt) S.range = 0;
+    const goal = hunt ? env.goal : lost ? { x: e.hx, y: e.hy } : { x: S.rx, y: S.ry };
+    const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
+    const range = S.range * (env.rangeMul || 1);
+    const want = !hunt && gd < 12 ? -Math.PI / 2 : Math.atan2(gy, gx);
+    S.hd = turnToward(S.hd, want, S.turn * Math.PI / 180 * mul * dt);
+    const off = Math.abs(angDiff(want, S.hd)) * 180 / Math.PI;
+    S.inRange = hunt && gd < range;
+    S.aimed = hunt && off < S.aimTol;
+    let out = null;
+    if (S.push > 0) {
+      const a = S.pushA * mul * Math.min(dt, S.push);
+      S.vx += Math.cos(S.hd) * a;
+      S.vy += Math.sin(S.hd) * a;
+      S.push -= dt;
+    } else if ((S.rest -= dt) <= 0) {
+      const v = (hunt ? gd > range : gd > 10) && off < S.tol ? kr(hunt ? "jeHuntPush" : "jeRoamPush", rnd2) : 0;
+      const dg = Math.max(0.1, S.drag), glide = Math.min(gd, 160, Math.max(20, v / dg));
+      const stay = env.stay, out0 = stay && !lost && !stay(e.x + Math.cos(S.hd) * glide + S.vx / dg, e.y + Math.sin(S.hd) * glide + S.vy / dg);
+      if (v > 0 && !out0) {
+        const pt = kr("jePushT", rnd2);
+        S.push = pt;
+        S.pushA = v / Math.max(pt, 1e-3);
+        S.vref = Math.max(v, 1);
+        S.rest = kr(hunt ? "jeHuntRest" : "jeRoamRest", rnd2);
+        feel(hunt);
+        out = "pulse";
+      } else S.rest = 0.05 + rnd2() * 0.1;
     }
-    for (const s of W.strings) {
-      G.ctx.moveTo(s.ax, s.ay);
-      G.ctx.lineTo(W.p.x + s.ox, W.p.y + s.oy);
+    const k = Math.exp(-S.drag * dt);
+    S.vx *= k;
+    S.vy = S.vy * k + S.sink * dt;
+    flyMove(e, S, dt, e.r * JELLY.hitR, solidCell2, S.bounce);
+    const f = Math.min(1, Math.hypot(S.vx, S.vy) / S.vref);
+    S.shape = 1 - Math.pow(1 - f, kru("jeThin", S.u.thin));
+    const B = jellyBell(e.r, S.shape, kru("jeSquash", S.u.sq));
+    const c = Math.cos(S.hd), s = Math.sin(S.hd), n = S.tent.length;
+    const len = kru("jeTentLen", S.u.len), wave = kru("jeWave", S.u.wave), sag = kru("jeSag", S.u.sag);
+    for (let i = 0; i < n; i++) {
+      const T = S.tent[i], seg = len / (T.length - 1);
+      const lx = n > 1 ? (i / (n - 1) - 0.5) * 1.4 * B.rw : 0;
+      T[0].x = e.x - lx * s - B.rim * c;
+      T[0].y = e.y + lx * c - B.rim * s;
+      if (isNaN(T[1].x)) for (let j = 1; j < T.length; j++) {
+        T[j].x = T[0].x - c * seg * j;
+        T[j].y = T[0].y - s * seg * j;
+      }
+      for (let j = 1; j < T.length; j++) {
+        const q = T[j], pq = T[j - 1];
+        const sw = Math.sin(S.t * 3.1 + i * 0.5 - j * 0.9) * wave * dt * j / (T.length - 1);
+        q.x -= s * sw;
+        q.y += c * sw + sag * dt;
+        const dx = q.x - pq.x, dy = q.y - pq.y, d = Math.hypot(dx, dy) || 1;
+        q.x = pq.x + dx / d * seg;
+        q.y = pq.y + dy / d * seg;
+      }
     }
-    G.ctx.stroke();
-    G.ctx.globalAlpha = 1;
+    return out;
+    function feel(h3) {
+      S.turn = kr("jeTurn", rnd2);
+      S.tol = kr("jePushTol", rnd2);
+      S.drag = kr("jeDrag", rnd2);
+      S.sink = kr("jeSink", rnd2);
+      S.bounce = kr("jeBounce", rnd2);
+      S.aimTol = kr("jeAimTol", rnd2);
+      S.range = h3 ? kr("jeRange", rnd2) : 0;
+    }
+  }
+  function segHitsBox(ax, ay, bx, by, x0, y0, x1, y1) {
+    const dx = bx - ax, dy = by - ay;
+    let t0 = 0, t1 = 1;
+    const clip = (p, q) => {
+      if (p === 0) return q >= 0;
+      const t = q / p;
+      if (p < 0) {
+        if (t > t1) return false;
+        if (t > t0) t0 = t;
+      } else {
+        if (t < t0) return false;
+        if (t < t1) t1 = t;
+      }
+      return true;
+    };
+    return clip(-dx, ax - x0) && clip(dx, x1 - ax) && clip(-dy, ay - y0) && clip(dy, y1 - ay);
+  }
+  function tentacleTouch(S, x0, y0, x1, y1) {
+    if (!S || !S.tent) return null;
+    for (const T of S.tent) for (let j = 1; j < T.length; j++) {
+      const a = T[j - 1], b = T[j];
+      if (!isNaN(a.x) && segHitsBox(a.x, a.y, b.x, b.y, x0, y0, x1, y1)) return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    }
+    return null;
+  }
+  var TW_N = 64;
+  var TW_TILE = (() => {
+    let q = 12345;
+    const a = new Float32Array(TW_N * TW_N);
+    for (let i = 0; i < a.length; i++) {
+      q = q * 16807 % 2147483647;
+      a[i] = q / 2147483647;
+    }
+    return a;
+  })();
+  function twNoise(x, y) {
+    const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
+    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    const x0 = (xi % TW_N + TW_N) % TW_N, y0 = (yi % TW_N + TW_N) % TW_N, x1 = (x0 + 1) % TW_N, y1 = (y0 + 1) % TW_N;
+    const a = TW_TILE[y0 * TW_N + x0], b = TW_TILE[y0 * TW_N + x1], c = TW_TILE[y1 * TW_N + x0], d = TW_TILE[y1 * TW_N + x1];
+    return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+  }
+  function twinkle(x, y, t, size) {
+    const u = x / size, v = y / size;
+    const n = twNoise(u + t * 0.37, v - t * 0.23) * twNoise(u * 1.7 - t * 0.31 + 17, v * 1.7 + t * 0.29 + 5);
+    const k = Math.min(1, Math.max(0, (n - 0.12) / 0.45));
+    return k * k * (3 - 2 * k);
+  }
+  function plantWhite(...datas) {
+    const hist = new Uint32Array(256);
+    let n = 0;
+    for (const d of datas) if (d) {
+      for (let i = 0; i < d.length; i += 4)
+        if (d[i + 3] >= 128 && d[i + 1] >= d[i] && d[i + 1] >= d[i + 2]) {
+          hist[d[i + 1]]++;
+          n++;
+        }
+    }
+    if (!n) return 255;
+    for (let g = 0, c = 0; g < 256; g++) {
+      c += hist[g];
+      if (c >= n * 0.999) return Math.max(1, g);
+    }
+    return 255;
+  }
+  function plantGlowFill(out, art, w, h3, o) {
+    const black = o.white * (1 - o.top), span = Math.max(1, o.white - black);
+    const r = o.rgb[0], g = o.rgb[1], b = o.rgb[2];
+    let any = 0;
+    for (let y = 0; y < h3; y++) {
+      const wy = o.oy + (y + 0.5) * o.px, dy = wy - o.cy;
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4, G = art[i + 1];
+        out[i + 3] = 0;
+        if (!art[i + 3] || G <= black || G < art[i] || G < art[i + 2]) continue;
+        const wx = o.ox + (x + 0.5) * o.px, dx = wx - o.cx;
+        const ramp = 1 - Math.sqrt(dx * dx + dy * dy) / o.reach;
+        if (ramp <= 0 || o.lit && !o.lit(wx, wy)) continue;
+        const a = Math.min(1, (G - black) / span) * ramp * twinkle(wx, wy, o.t, o.size) * o.strength * art[i + 3] / 255;
+        if (a < 4e-3) continue;
+        out[i] = r;
+        out[i + 1] = g;
+        out[i + 2] = b;
+        out[i + 3] = Math.min(255, a * 255);
+        any++;
+      }
+    }
+    return any;
+  }
+  function drawJelly(ctx, x, y, r, time, phase, flash, col, S) {
+    const P = jellyPal(S ? S.u.col : 0.5);
+    const sh = Math.max(0, Math.min(1, (S ? S.shape : 0) + 0.05 * Math.sin(time * 2.2 + phase)));
+    const B = jellyBell(r, sh, S ? kru("jeSquash", S.u.sq) : 1);
+    if (S) {
+      ctx.fillStyle = flash ? "#ffffff" : P.tent;
+      ctx.globalAlpha = 0.6;
+      for (const T of S.tent) {
+        const n = T.length, L = [], R = [];
+        for (let j = 0; j < n; j++) {
+          const a = T[Math.max(0, j - 1)], b = T[Math.min(n - 1, j + 1)];
+          const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1;
+          const hw = r * 0.09 * (1 - j / (n - 1)) + 0.15;
+          L.push({ x: T[j].x - dy / d * hw, y: T[j].y + dx / d * hw });
+          R.push({ x: T[j].x + dy / d * hw, y: T[j].y - dx / d * hw });
+        }
+        const side = (P2, back) => {
+          const Q = back ? P2.slice().reverse() : P2;
+          ctx.lineTo(Q[0].x, Q[0].y);
+          for (let j = 1; j < n - 1; j++) ctx.quadraticCurveTo(Q[j].x, Q[j].y, (Q[j].x + Q[j + 1].x) / 2, (Q[j].y + Q[j + 1].y) / 2);
+          ctx.lineTo(Q[n - 1].x, Q[n - 1].y);
+        };
+        ctx.beginPath();
+        ctx.moveTo(L[0].x, L[0].y);
+        side(L, false);
+        side(R, true);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate((S ? S.hd : -Math.PI / 2) + Math.PI / 2);
+    const bell = (k, oy, lap) => {
+      const w = B.w * k, h3 = B.h * k, rw = B.rw * k, top = B.top * k + oy, rim = B.rim * k + oy;
+      ctx.beginPath();
+      ctx.moveTo(-rw, rim);
+      ctx.bezierCurveTo(-w * 1.08, rim - h3 * 0.5, -w * 0.72, top, 0, top);
+      ctx.bezierCurveTo(w * 0.72, top, w * 1.08, rim - h3 * 0.5, rw, rim);
+      if (lap) for (let i = 0; i < 5; i++) {
+        const x0 = rw - 2 * rw * i / 5, x1 = rw - 2 * rw * (i + 1) / 5;
+        ctx.quadraticCurveTo((x0 + x1) / 2, rim + lap * (1 + 0.35 * Math.sin(time * 5 + i * 1.3 + phase)), x1, rim);
+      }
+      ctx.closePath();
+    };
+    const g = ctx.createLinearGradient(0, B.top, 0, B.rim);
+    g.addColorStop(0, flash ? "#ffffff" : P.top);
+    g.addColorStop(0.55, flash ? "#ffffff" : P.body);
+    g.addColorStop(1, flash ? "#f4f0ff" : P.rim);
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = g;
+    bell(1, 0, r * 0.2 * (1 - 0.5 * sh));
+    ctx.fill();
+    ctx.globalAlpha = 0.85;
+    ctx.strokeStyle = flash ? "#ffffff" : P.edge;
+    ctx.lineWidth = r * 0.08;
+    ctx.stroke();
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = flash ? "#ffffff" : P.inner;
+    bell(0.6, -B.h * 0.06, 0);
+    ctx.fill();
+    ctx.globalAlpha = 0.55 + 0.45 * sh;
+    ctx.strokeStyle = flash ? "#ffffff" : P.loops;
+    ctx.lineWidth = r * 0.08;
+    const gy = (B.top + B.rim) / 2 + B.h * 0.12;
+    for (let i = 0; i < 4; i++) {
+      const gx = (i - 1.5) * B.w * 0.34;
+      ctx.beginPath();
+      ctx.arc(gx, gy - Math.abs(i - 1.5) * r * 0.08, r * 0.09, Math.PI, 2 * Math.PI);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = P.shine;
+    ctx.beginPath();
+    ctx.ellipse(-B.w * 0.32, B.top + B.h * 0.24, B.w * 0.16, B.h * 0.09, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
-  // src/game/creatures/acts.js
-  var ACTS = {
-    nest: { move: nestMove, die: nestDie },
-    rat: { move: ratMove },
-    spider: { move: spiderMove, frame: spiderFrame },
-    jelly: { move: jellyMove }
-  };
+  // src/game/systems/ambience.js
+  var AMB_RATE = { spores: 5, frost: 3, embers: 8, motes: 4, ashfall: 55 };
+  var AMB_MAX = { spores: 40, frost: 20, embers: 60, motes: 50, ashfall: 280 };
+  var spore = (W, x, y, r) => ({
+    kind: "spores",
+    x,
+    y,
+    vx: (r - 0.5) * 8,
+    vy: 0,
+    wob: r * 9,
+    life: 5 + r * 3,
+    max: 8,
+    c: rgbA(themeFor(W.floor).moss[1]),
+    s: 1.3,
+    glow: 1
+  });
+  function puffSpores(W, e) {
+    if (e.x < W.camX - 150 || e.x > W.camX + W.viewW + 150 || e.y < W.camY - 150 || e.y > W.camY + W.viewH + 150) return;
+    const S = e.je, B = jellyBell(e.r, S.shape, kru("jeSquash", S.u.sq));
+    const c = Math.cos(S.hd), sn = Math.sin(S.hd), n = Math.round(kr("jeSpores"));
+    for (let i = 0; i < n && W.amb.length < 500; i++) {
+      const lx = (Math.random() * 2 - 1) * B.rw * 0.7;
+      const q = spore(W, e.x - lx * sn - B.rim * c, e.y + lx * c - B.rim * sn, Math.random());
+      const a = S.hd + Math.PI + (Math.random() * 2 - 1) * kr("jeSporeSpread") * Math.PI / 180, v = kr("jeSporeSpd");
+      q.kx = Math.cos(a) * v;
+      q.ky = Math.sin(a) * v;
+      q.kd = kr("jeSporeDrag");
+      W.amb.push(q);
+    }
+  }
+  function stepAmbience(W, dt) {
+    const x0 = W.camX - 30, y0 = W.camY - 30, w = W.viewW + 60, h3 = W.viewH + 60;
+    const T = themeFor(W.floor);
+    for (const kind of W.ambKinds) {
+      if (kind === "devils") {
+        if (W.devils.length < 2 && Math.random() < dt * 0.4) {
+          let x = x0 + Math.random() * w, y = y0 + Math.random() * h3, k = 0;
+          while (k++ < 120 && !solidAt(W, x, y + 1)) y += 2;
+          if (k < 120 && !solidAt(W, x, y - 30)) W.devils.push({ x, y, vx: (Math.random() < 0.5 ? -1 : 1) * (15 + Math.random() * 20), life: 6 + Math.random() * 3, max: 9 });
+        }
+        continue;
+      }
+      const n = W.amb.reduce((a, q) => a + (q.kind === kind), 0);
+      let want = AMB_RATE[kind] * dt;
+      while (want > 0 && n < AMB_MAX[kind]) {
+        if (Math.random() >= want) break;
+        want -= 1;
+        const x = x0 + Math.random() * w, y = y0 + Math.random() * h3;
+        if (solidAt(W, x, y)) continue;
+        const r = Math.random();
+        if (kind === "spores") W.amb.push(spore(W, x, y, r));
+        else if (kind === "frost") {
+          const dir = W.floor % 2 ? 1 : -1;
+          W.amb.push({ kind, x, y, vx: dir * (100 + r * 60), vy: (r - 0.5) * 10, life: 0.9 + r * 0.5, max: 1.4, c: "rgba(215,238,255,0.5)", s: 1, streak: 10 });
+        } else if (kind === "embers") W.amb.push({ kind, x, y, vx: 0, vy: -20 - r * 30, wob: r * 9, life: 3 + r * 2, max: 5, c: r < 0.5 ? "#ffb050" : "#ff7a2a", s: 1.2, glow: 1 });
+        else if (kind === "motes") W.amb.push({ kind, x, y, vx: (r - 0.5) * 6, vy: (Math.random() - 0.5) * 4, wob: r * 9, life: 6 + r * 3, max: 9, c: "rgba(235,225,200,0.8)", s: 1 });
+        else if (kind === "ashfall") W.amb.push({ kind, x, y, vx: 8, vy: 20 + r * 22, wob: r * 9, life: 4 + r * 3, max: 7, c: "rgba(150,146,142,0.75)", s: 1 + r });
+      }
+    }
+    for (let i = W.amb.length - 1; i >= 0; i--) {
+      const q = W.amb[i];
+      q.life -= dt;
+      if (q.wob != null) q.x += Math.sin(W.time * 1.3 + q.wob) * 6 * dt;
+      if (q.kx || q.ky) {
+        q.x += q.kx * dt;
+        q.y += q.ky * dt;
+        const k = Math.exp(-q.kd * dt);
+        q.kx *= k;
+        q.ky *= k;
+      }
+      q.x += q.vx * dt;
+      q.y += q.vy * dt;
+      if (q.life <= 0 || solidAt(W, q.x, q.y) || q.x < x0 - 200 || q.x > x0 + w + 200 || q.y < y0 - 200 || q.y > y0 + h3 + 200) W.amb.splice(i, 1);
+    }
+    for (let i = W.devils.length - 1; i >= 0; i--) {
+      const dv = W.devils[i];
+      dv.life -= dt;
+      const nx = dv.x + dv.vx * dt;
+      if (solidAt(W, nx + Math.sign(dv.vx) * 6, dv.y - 4)) dv.vx = -dv.vx;
+      else dv.x = nx;
+      if (!solidAt(W, dv.x, dv.y + 2)) dv.y += 40 * dt;
+      else if (solidAt(W, dv.x, dv.y)) dv.y -= 2;
+      if (dv.life <= 0) W.devils.splice(i, 1);
+    }
+  }
 
   // src/game/systems/props.js
   function blowProp(W, G, pr) {
@@ -10312,6 +9781,613 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/game/creatures/classic.js
+  function classicMove(W, G, e, C) {
+    const { dt, dx, dy, dist, hunting } = C, k = e.k;
+    if (hunting) {
+      const step2 = k.spd * (e.chill || 1) * dt;
+      const wx = e.x + dx / dist * step2, wy = e.y + dy / dist * step2;
+      if (!solidAt(W, wx - e.r, wy) && !solidAt(W, wx + e.r, wy) && !solidAt(W, wx, wy - e.r) && !solidAt(W, wx, wy + e.r)) {
+        e.x = wx;
+        e.y = wy;
+      } else if (!solidAt(W, wx, e.y)) e.x = wx;
+      else if (!solidAt(W, e.x, wy)) e.y = wy;
+      else {
+        e.tgt = null;
+        e.rest = 0;
+      }
+    } else {
+      e.rest -= dt;
+      if (!e.tgt || e.rest <= 0 || Math.hypot(e.tgt.x - e.x, e.tgt.y - e.y) < 6) {
+        const a = Math.random() * Math.PI * 2, r = 10 + Math.random() * PATROL_R;
+        e.tgt = { x: e.hx + Math.cos(a) * r, y: e.hy + Math.sin(a) * r };
+        e.rest = 2 + Math.random() * 3.5;
+      }
+      const tdx = e.tgt.x - e.x, tdy = e.tgt.y - e.y, td = Math.hypot(tdx, tdy) || 1;
+      const step2 = k.spd * (e.chill || 1) * dt;
+      const wx = e.x + tdx / td * step2, wy = e.y + tdy / td * step2;
+      if (solidAt(W, wx - e.r, wy) || solidAt(W, wx + e.r, wy) || solidAt(W, wx, wy - e.r) || solidAt(W, wx, wy + e.r)) {
+        e.tgt = null;
+        e.rest = 0;
+      } else {
+        e.x = wx;
+        e.y = wy;
+      }
+    }
+  }
+  function bombFuse(W, G, e, C) {
+    const { dt, dist, hunting } = C, k = e.k;
+    if (hunting && dist < 160 && (e.fuseT = (e.fuseT || 0) - dt) <= 0) {
+      e.fuseT = 0.12 + dist / 400;
+      SFX.creature(k, "fuse", e.x, e.ty);
+    }
+  }
+  function bombBurst(W, G, e, C) {
+    const { i } = C, k = e.k;
+    burst(W, e.x, e.ty, 22, k.col.a);
+    SFX.boom(e.x, e.ty, 26);
+    hurt(W, G, k.dmg);
+    W.enemies.splice(i, 1);
+    if (k.fire) fireBlast(W, G, e.x, e.ty, 26, 1);
+    return true;
+  }
+  function gunFire(W, G, e, C) {
+    const { dt, dist, sees, pcx, pcy } = C, k = e.k;
+    if (e.charge > 0) {
+      e.charge -= dt;
+      if (e.charge <= 0) fireEnemyShot(W, e, pcx, pcy);
+    } else if (!W.p.dead && dist < k.range * sees && e.cd <= 0) {
+      e.cd = 0.4;
+      if (lineOfSight(W, e.x, e.ty, pcx, pcy)) {
+        e.cd = k.cd * (0.85 + Math.random() * 0.3);
+        if (!e.spotted) {
+          e.spotted = true;
+          SFX.creature(k, "alert", e.x, e.ty);
+        }
+        if (k.tele) {
+          e.charge = k.tele;
+          SFX.creature(k, "charge", e.x, e.ty, k.tele);
+        } else fireEnemyShot(W, e, pcx, pcy);
+      }
+    }
+  }
+
+  // src/world/zones.js
+  function boxReach(mat, x, y) {
+    const PWc = 6, PHc = 11;
+    const free = new Uint8Array(CW * CH), ok = new Uint8Array(CW * CH);
+    for (let cx = 0; cx < CW; cx++) {
+      let run = 0;
+      for (let cy = CH - 1; cy >= 0; cy--) {
+        run = mat[cy * CW + cx] ? 0 : run + 1;
+        if (run >= PHc) free[cy * CW + cx] = 1;
+      }
+    }
+    for (let cy = 0; cy < CH; cy++) {
+      let run = 0;
+      for (let cx = CW - 1; cx >= 0; cx--) {
+        run = free[cy * CW + cx] ? run + 1 : 0;
+        if (run >= PWc) ok[cy * CW + cx] = 1;
+      }
+    }
+    const s0 = y * CW + x;
+    let top = false;
+    if (!ok[s0]) return { ok, top };
+    const st = new Int32Array(CW * CH);
+    let n = 0;
+    ok[s0] = 2;
+    st[n++] = s0;
+    while (n) {
+      const i = st[--n];
+      if (i < 40 * CW) top = true;
+      const x0 = i % CW;
+      if (x0 > 0 && ok[i - 1] === 1) {
+        ok[i - 1] = 2;
+        st[n++] = i - 1;
+      }
+      if (x0 < CW - 1 && ok[i + 1] === 1) {
+        ok[i + 1] = 2;
+        st[n++] = i + 1;
+      }
+      if (i >= CW && ok[i - CW] === 1) {
+        ok[i - CW] = 2;
+        st[n++] = i - CW;
+      }
+      if (i < CW * (CH - 1) && ok[i + CW] === 1) {
+        ok[i + CW] = 2;
+        st[n++] = i + CW;
+      }
+    }
+    return { ok, top };
+  }
+  function builtAt(zone, wx, wy) {
+    if (!zone) return false;
+    const x = Math.floor(wx / CELL), y = Math.floor(wy / CELL);
+    return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
+  }
+
+  // src/game/creatures/jelly.js
+  var natural = (W, x, y) => !builtAt(W.zone, x, y);
+  function jellyMove(W, G, e, C) {
+    const { dt, dist, sees, hunting, pcx, pcy } = C, k = e.k;
+    const cold = e.chill && e.chill < 1 ? e.chill : 1;
+    if (jellyStep(e, {
+      solidCell: (cx, cy) => solidCell(W, cx, cy),
+      hunting,
+      goal: { x: pcx, y: pcy },
+      rnd: Math.random,
+      speedMul: cold,
+      rangeMul: sees,
+      stay: W.zone ? ((x, y) => natural(W, x, y)) : null
+    }, dt) === "pulse") puffSpores(W, e);
+    const S = e.je;
+    if (!W.p.dead && e.touch <= 0 && dist < 180) {
+      const t = tentacleTouch(S, W.p.x, W.p.y, W.p.x + PW, W.p.y + PH);
+      if (t) {
+        hurt(W, G, Math.round(kr("jeBite")));
+        e.touch = kr("jeBiteCd");
+        burst(W, t.x, t.y, 5, jellyPal(S.u.col).tent);
+        SFX.creature(k, "bite", t.x, t.y);
+      }
+    }
+    if (hunting && S.inRange && S.aimed && e.cd <= 0) {
+      e.cd = 0.25;
+      const hx = e.x + Math.cos(S.hd) * e.r * 0.9, hy = e.y + Math.sin(S.hd) * e.r * 0.9;
+      if (lineOfSight(W, hx, hy, pcx, pcy)) {
+        e.cd = kr("jeShotCd");
+        const a = Math.atan2(pcy - hy, pcx - hx) + (Math.random() * 2 - 1) * kr("jeSpread") * Math.PI / 180;
+        const v = kr("jeShotSpd"), P = jellyPal(S.u.col);
+        W.enemyShots.push({
+          x: hx,
+          y: hy,
+          vx: Math.cos(a) * v,
+          vy: Math.sin(a) * v,
+          life: 3,
+          col: P.spit,
+          edge: P.spitEdge,
+          shine: P.spitShine,
+          dripCol: P.drip,
+          dripCol2: P.drip2,
+          glow: hexRgb(P.glow),
+          dmg: Math.round(kr("jeShotDmg")),
+          size: kr("jeShotSize"),
+          goo: 1,
+          drip: kr("jeDrip"),
+          da: 0,
+          dripG: kr("jeDripG"),
+          splat: Math.round(kr("jeSplat")),
+          splatV: kr("jeSplatSpd")
+        });
+        SFX.creature(k, "fire", e.x, e.y);
+      }
+    }
+  }
+
+  // src/creatures/spider.js
+  var SPIDER = { hold: 6, feel: 14, step: 1.5, fall: 900 };
+  function spiderSeat(e, S, solidCell2, maxMove) {
+    return surfSeat(e, S, solidCell2, maxMove, SPIDER.hold, SPIDER.feel);
+  }
+  var segNear = (L, x, y) => {
+    const vx = L.bx - L.ax, vy = L.by - L.ay, ll = vx * vx + vy * vy || 1;
+    const u = Math.max(0, Math.min(1, ((x - L.ax) * vx + (y - L.ay) * vy) / ll));
+    return { u, d: Math.hypot(L.ax + vx * u - x, L.ay + vy * u - y) };
+  };
+  function spiderAim(x, y, dx, dy, reach, solidCell2) {
+    for (const a of [0, 0.22, -0.22, 0.45, -0.45]) {
+      const c = Math.cos(a), s = Math.sin(a), ux = dx * c - dy * s, uy = dx * s + dy * c;
+      const d = rayDist(x, y, ux, uy, reach, solidCell2);
+      if (d < reach && d > SPIDER.hold * 2.5) return { dx: ux, dy: uy, len: d };
+    }
+    return null;
+  }
+  function spiderStep(e, env, dt) {
+    const { solidCell: solidCell2, webs, rnd: rnd2 } = env;
+    const S = e.sp || (e.sp = {
+      mode: "fall",
+      vy: 0,
+      nx: 0,
+      ny: -1,
+      on: 0,
+      rest: rnd2() * 0.5,
+      side: 1,
+      line: null,
+      u: 0,
+      dir: 1,
+      shot: null,
+      rx: e.hx,
+      ry: e.hy,
+      ra: rnd2() * 6.28,
+      high: false
+    });
+    S.webT = (S.webT || 0) - dt;
+    roamStep(S, e, dt, rnd2, "sp");
+    const goal = env.hunting ? env.goal : { x: S.rx, y: S.ry };
+    let out = null;
+    if (S.mode === "fall") {
+      S.vy = Math.min(S.vy + SPIDER.fall * dt, 600);
+      const n2 = Math.max(1, Math.ceil(S.vy * dt / SPIDER.step));
+      for (let i = 0; i < n2; i++) {
+        e.y += S.vy * dt / n2;
+        if (e.y > CH * CELL) {
+          e.y = CH * CELL;
+          break;
+        }
+        if (surfNormal(e.x, e.y, SPIDER.hold + 1, solidCell2)) {
+          spiderSeat(e, S, solidCell2, SPIDER.hold);
+          S.mode = "surf";
+          S.vy = 0;
+          S.on = 0;
+          S.rest = 0.1;
+          break;
+        }
+      }
+      return null;
+    }
+    if (S.mode === "shoot") {
+      const sh = S.shot;
+      sh.t += sh.spd * dt;
+      if (sh.t < sh.len) return null;
+      const hx = sh.x + sh.dx * sh.len, hy = sh.y + sh.dy * sh.len;
+      const inx = hx + sh.dx * 1.2, iny = hy + sh.dy * 1.2;
+      S.mode = sh.from;
+      S.shot = null;
+      if (!solidCell2(Math.floor(inx / CELL), Math.floor(iny / CELL))) return null;
+      const L = {
+        ax: sh.x,
+        ay: sh.y,
+        bx: hx - sh.dx * SPIDER.hold,
+        by: hy - sh.dy * SPIDER.hold,
+        a0x: sh.ax0,
+        a0y: sh.ay0,
+        b0x: hx,
+        b0y: hy,
+        ain: sh.ain,
+        bin: { x: inx, y: iny },
+        owner: e
+      };
+      webs.push(L);
+      const mine = webs.filter((w) => w.owner === e);
+      if (mine.length > Math.round(spr("spMaxLines", rnd2))) {
+        const old = mine.find((w) => w !== S.line);
+        if (old) webs.splice(webs.indexOf(old), 1);
+      }
+      S.mode = "line";
+      S.line = L;
+      S.u = 0;
+      S.dir = 1;
+      return "web";
+    }
+    if (S.mode === "line" && webs.indexOf(S.line) < 0) {
+      S.mode = "fall";
+      S.line = null;
+      S.vy = 0;
+      return null;
+    }
+    if (S.mode === "surf" && !surfNormal(e.x, e.y, SPIDER.hold + 2, solidCell2)) {
+      S.mode = "fall";
+      S.vy = 0;
+      return null;
+    }
+    if (S.on <= 0) {
+      if ((S.rest -= dt) > 0) return null;
+      S.on = spr(env.hunting ? "spHuntOn" : "spRoamOn", rnd2);
+      S.spd = env.speed || spr("spSpeed", rnd2);
+      S.arrive = env.hunting ? spr("spArrive", rnd2) : 3;
+      S.dot = spr("spDot", rnd2);
+      decide();
+      if (S.mode === "shoot") return null;
+      if (S.on <= 0) {
+        S.rest = 0.1 + rnd2() * 0.2;
+        return null;
+      }
+    }
+    if (S.mode === "shoot") return null;
+    const speed = (S.spd || spr("spSpeed", rnd2)) * (env.speedMul || 1);
+    const dist = speed * Math.min(dt, S.on);
+    S.on -= dt;
+    const n = Math.max(1, Math.ceil(dist / SPIDER.step));
+    for (let i = 0; i < n && S.mode !== "shoot"; i++) {
+      const st = dist / n;
+      if (S.mode === "surf") {
+        const tx = -S.ny * S.side, ty = S.nx * S.side;
+        e.x += tx * st;
+        e.y += ty * st;
+        if (!spiderSeat(e, S, solidCell2, st * 2)) {
+          e.x -= S.nx * st * 2;
+          e.y -= S.ny * st * 2;
+          if (!spiderSeat(e, S, solidCell2, st * 2)) {
+            S.mode = "fall";
+            S.vy = 0;
+            break;
+          }
+        }
+        const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy) || 1;
+        const high = (gx * S.nx + gy * S.ny) / gd >= S.dot;
+        if (high && !S.high) {
+          S.high = true;
+          decide();
+        } else if (!high) S.high = false;
+        if (gd < (S.arrive || 3) || (-S.ny * gx + S.nx * gy) * S.side < 0) {
+          S.on = 0;
+          break;
+        }
+      } else if (S.mode === "line") {
+        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
+        const ux = (L.bx - L.ax) / len * S.dir, uy = (L.by - L.ay) / len * S.dir;
+        if (!S.go && (goal.x - e.x) * ux + (goal.y - e.y) * uy <= 0) {
+          S.on = 0;
+          break;
+        }
+        S.u += S.dir * st / len;
+        if (S.u >= 1 || S.u <= 0) {
+          S.u = S.u >= 1 ? 1 : 0;
+          e.x = S.u ? L.bx : L.ax;
+          e.y = S.u ? L.by : L.ay;
+          S.mode = "surf";
+          S.line = null;
+          S.go = false;
+          if (!spiderSeat(e, S, solidCell2, SPIDER.hold)) {
+            S.mode = "fall";
+            S.vy = 0;
+            break;
+          }
+          decide();
+          continue;
+        }
+        e.x = L.ax + (L.bx - L.ax) * S.u;
+        e.y = L.ay + (L.by - L.ay) * S.u;
+      }
+    }
+    if (S.on <= 0 && S.rest <= 0) S.rest = spr(env.hunting ? "spHuntOff" : "spRoamOff", rnd2);
+    return out;
+    function decide() {
+      const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
+      if (gd < (S.arrive || 3)) {
+        S.on = 0;
+        return;
+      }
+      const dx = gx / gd, dy = gy / gd;
+      const tryLine = () => {
+        let best = null, bd = spr("spGrab", rnd2);
+        for (const L of webs) {
+          if (L === S.line) continue;
+          const q = segNear(L, e.x, e.y);
+          if (q.d > bd) continue;
+          const len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
+          const ux = (L.bx - L.ax) / len, uy = (L.by - L.ay) / len, al = ux * dx + uy * dy;
+          if (Math.abs(al) < 0.5) continue;
+          if (al > 0 && q.u > 0.97 || al < 0 && q.u < 0.03) continue;
+          best = { L, u: q.u, dir: al > 0 ? 1 : -1 };
+          bd = q.d;
+        }
+        if (!best) return false;
+        S.mode = "line";
+        S.line = best.L;
+        S.u = best.u;
+        S.dir = best.dir;
+        e.x = best.L.ax + (best.L.bx - best.L.ax) * best.u;
+        e.y = best.L.ay + (best.L.by - best.L.ay) * best.u;
+        return true;
+      };
+      const tryShoot = (from) => {
+        if (S.webT > 0 || !env.hunting && gd < 40) return false;
+        const a = spiderAim(e.x, e.y, dx, dy, env.reach || spr("spWeb", rnd2), solidCell2);
+        if (!a) return false;
+        let ax0 = e.x, ay0 = e.y, ain = null;
+        if (from === "surf") {
+          const d = rayDist(e.x, e.y, -S.nx, -S.ny, SPIDER.feel + 4, solidCell2);
+          ax0 = e.x - S.nx * d;
+          ay0 = e.y - S.ny * d;
+          ain = { x: e.x - S.nx * (d + 1.2), y: e.y - S.ny * (d + 1.2) };
+        }
+        S.webT = spr(env.hunting ? "spHuntWeb" : "spRoamWeb", rnd2);
+        S.shot = { spd: spr("spLineSpd", rnd2), x: e.x, y: e.y, dx: a.dx, dy: a.dy, len: a.len, t: 0, from, ax0, ay0, ain };
+        S.mode = "shoot";
+        return true;
+      };
+      if (S.mode === "surf") {
+        const dot = dx * S.nx + dy * S.ny;
+        S.high = dot >= (S.dot || 0.6);
+        if (S.high && (tryLine() || tryShoot("surf"))) return;
+        const t = -S.ny * dx + S.nx * dy;
+        if (Math.abs(t) * gd < 4) {
+          S.on = 0;
+          return;
+        }
+        S.side = t > 0 ? 1 : -1;
+      } else if (S.mode === "line") {
+        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
+        const al = ((L.bx - L.ax) * dx + (L.by - L.ay) * dy) / len;
+        S.go = false;
+        if (Math.abs(al) > 0.3) {
+          S.dir = al > 0 ? 1 : -1;
+          return;
+        }
+        if (tryLine() || tryShoot("line")) return;
+        const da = Math.hypot(goal.x - L.ax, goal.y - L.ay), db = Math.hypot(goal.x - L.bx, goal.y - L.by);
+        S.dir = db < da ? 1 : -1;
+        S.go = true;
+      }
+    }
+  }
+  function drawSpider(ctx, x, y, r, time, phase, flash, col, S) {
+    let nx = 0, ny = -1, side = 1, moving = false;
+    if (S) {
+      if (S.mode === "line" && S.line) {
+        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
+        nx = -(L.by - L.ay) / len;
+        ny = (L.bx - L.ax) / len;
+        if (ny > 0) {
+          nx = -nx;
+          ny = -ny;
+        }
+        side = S.dir * (L.bx - L.ax >= 0 ? 1 : -1);
+      } else if (S.mode === "surf" || S.mode === "shoot") {
+        nx = S.nx;
+        ny = S.ny;
+        side = S.side;
+      }
+      moving = S.on > 0 && S.mode !== "shoot";
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.atan2(nx, -ny));
+    const t = moving ? time * 38 + phase : phase;
+    ctx.strokeStyle = flash ? "#ffffff" : col.b;
+    ctx.lineWidth = r * 0.16;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    for (let i = 0; i < 4; i++) {
+      const o = (i - 1.5) * r * 0.28, sw = Math.sin(t + i * 1.7) * r * 0.22;
+      for (const s of [-1, 1]) {
+        const fx = s * (r * (0.75 + Math.abs(i - 1.5) * 0.35)) + sw * s;
+        ctx.beginPath();
+        ctx.moveTo(o * 0.5, 0);
+        ctx.lineTo(o * 0.5 + fx * 0.55, -r * 0.55 - Math.abs(sw) * 0.3);
+        ctx.lineTo(o * 0.5 + fx, r * 0.62);
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
+    ctx.beginPath();
+    ctx.ellipse(-side * r * 0.45, -r * 0.05, r * 0.62, r * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#ffffff" : col.a;
+    ctx.beginPath();
+    ctx.ellipse(-side * r * 0.45, -r * 0.12, r * 0.48, r * 0.36, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
+    ctx.beginPath();
+    ctx.ellipse(side * r * 0.3, 0, r * 0.38, r * 0.32, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#ffffff" : col.eye;
+    for (const [ex, ey, er] of [[0.5, -0.1, 0.1], [0.42, 0.06, 0.08], [0.58, 0.08, 0.07], [0.36, -0.14, 0.07]]) {
+      ctx.beginPath();
+      ctx.arc(side * r * ex, r * ey, r * er, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // src/game/creatures/spider.js
+  function spiderMove(W, G, e, C) {
+    const { dt, dx, dy, dist, sees, hunting, pcx, pcy } = C, k = e.k;
+    const cold = e.chill && e.chill < 1 ? e.chill : 1;
+    if (spiderStep(e, {
+      solidCell: (cx, cy) => solidCell(W, cx, cy),
+      webs: W.webs,
+      hunting,
+      goal: { x: pcx, y: pcy },
+      rnd: Math.random,
+      speedMul: cold
+    }, dt) === "web") SFX.fx("lash", e.x, e.y);
+    e.silkT = (e.silkT || 0) - dt;
+    const S = e.sp;
+    if (hunting && e.silkT <= 0 && S && (S.mode === "surf" || S.mode === "line") && dist < (e.silkR || (e.silkR = spr("spSilk"))) * sees && dist > e.r + 24) {
+      e.silkT = 0.4;
+      if (lineOfSight(W, e.x, e.y, pcx, pcy)) {
+        e.silkT = spr("spSilkCd");
+        e.silkR = spr("spSilk");
+        const v = spr("spSilkSpd");
+        W.silk.push({
+          x: e.x,
+          y: e.y,
+          ax: e.x,
+          ay: e.y,
+          vx: dx / dist * v,
+          vy: dy / dist * v,
+          life: 400 / v * 1.3 + 0.1
+        });
+        SFX.creature(k, "fire", e.x, e.y);
+      }
+    }
+  }
+  function spiderFrame(W, G, F) {
+    const { dt } = F;
+    for (let i = W.silk.length - 1; i >= 0; i--) {
+      const b = W.silk[i];
+      b.life -= dt;
+      let gone = b.life <= 0;
+      const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
+      for (let s = 0; s < sn && !gone; s++) {
+        b.x += b.vx * dt / sn;
+        b.y += b.vy * dt / sn;
+        if (solidAt(W, b.x, b.y)) {
+          gone = true;
+          break;
+        }
+        if (!W.p.dead && b.x > W.p.x - 3 && b.x < W.p.x + PW + 3 && b.y > W.p.y - 3 && b.y < W.p.y + PH + 3) {
+          gone = true;
+          W.strings.push({ ax: b.ax, ay: b.ay, ox: b.x - W.p.x, oy: b.y - W.p.y, slow: spr("spSlow"), max: spr("spSilkMax") });
+          SFX.fx("lash", b.x, b.y);
+        }
+      }
+      if (gone) W.silk.splice(i, 1);
+    }
+    for (let i = W.strings.length - 1; i >= 0; i--) {
+      const s = W.strings[i];
+      if (Math.hypot(W.p.x + s.ox - s.ax, W.p.y + s.oy - s.ay) > s.max) {
+        W.strings.splice(i, 1);
+        burst(W, W.p.x + s.ox, W.p.y + s.oy, 4, "#e8e8f0");
+        SFX.fx("lash", W.p.x + s.ox, W.p.y + s.oy);
+      }
+    }
+    for (let n = Math.min(W.webs.length, 6); n > 0; n--) {
+      W.webCheck = (W.webCheck + 1) % W.webs.length;
+      const L = W.webs[W.webCheck];
+      if (L.bin && !solidAt(W, L.bin.x, L.bin.y) || L.ain && !solidAt(W, L.ain.x, L.ain.y)) {
+        W.webs.splice(W.webCheck, 1);
+        if (!W.webs.length) break;
+      }
+    }
+  }
+  function drawSilk(W, G) {
+    G.ctx.lineCap = "round";
+    G.ctx.strokeStyle = "#eef0f6";
+    G.ctx.globalAlpha = 0.55;
+    G.ctx.lineWidth = 0.7;
+    G.ctx.beginPath();
+    for (const L of W.webs) {
+      G.ctx.moveTo(L.a0x, L.a0y);
+      G.ctx.lineTo(L.b0x, L.b0y);
+    }
+    for (const e of W.enemies) {
+      const sh = e.sp && e.sp.mode === "shoot" && e.sp.shot;
+      if (sh) {
+        G.ctx.moveTo(sh.ax0, sh.ay0);
+        G.ctx.lineTo(sh.x + sh.dx * Math.min(sh.t, sh.len), sh.y + sh.dy * Math.min(sh.t, sh.len));
+      }
+    }
+    G.ctx.stroke();
+    G.ctx.globalAlpha = 0.85;
+    G.ctx.lineWidth = 0.9;
+    G.ctx.beginPath();
+    for (const b of W.silk) {
+      G.ctx.moveTo(b.ax, b.ay);
+      G.ctx.lineTo(b.x, b.y);
+    }
+    for (const s of W.strings) {
+      G.ctx.moveTo(s.ax, s.ay);
+      G.ctx.lineTo(W.p.x + s.ox, W.p.y + s.oy);
+    }
+    G.ctx.stroke();
+    G.ctx.globalAlpha = 1;
+  }
+
+  // src/game/creatures/acts.js
+  var ACTS = {
+    nest: { move: nestMove, die: nestDie },
+    rat: { move: ratMove },
+    spider: { move: spiderMove, frame: spiderFrame },
+    jelly: { move: jellyMove },
+    chase: { move: classicMove },
+    bomb: { pre: bombFuse, move: classicMove, contact: bombBurst },
+    shoot: { move: classicMove, fire: gunFire },
+    turret: { fire: gunFire }
+    // holds station: the hover is all the movement it gets
+  };
+
   // src/game/systems/enemies.js
   function fireEnemyShot(W, e, tx, ty) {
     const k = e.k;
@@ -10370,6 +10446,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const C = { dt, pcx, pcy, i: 0, dx: 0, dy: 0, dist: 0, sees: 0, hunting: false };
     for (let i = W.enemies.length - 1; i >= 0; i--) {
       const e = W.enemies[i], k = e.k;
+      const A = ACTS[k.act] || ACTS.chase;
       e.flash -= dt;
       e.cd -= dt;
       e.touch -= dt;
@@ -10399,78 +10476,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       C.sees = sees;
       C.hunting = hunting;
       if (dist < 380 && Math.random() < 0.07 * dt) SFX.creature(k, "idle", e.x, e.ty);
-      if (hunting && k.act === "bomb" && dist < 160 && (e.fuseT = (e.fuseT || 0) - dt) <= 0) {
-        e.fuseT = 0.12 + dist / 400;
-        SFX.creature(k, "fuse", e.x, e.ty);
-      }
-      const A = ACTS[k.act];
-      if (A && A.move) {
-        if (A.move(W, G, e, C)) continue;
-      } else if (k.act === "turret") {
-      } else if (hunting) {
-        const step2 = k.spd * (e.chill || 1) * dt;
-        const wx = e.x + dx / dist * step2, wy = e.y + dy / dist * step2;
-        if (!solidAt(W, wx - e.r, wy) && !solidAt(W, wx + e.r, wy) && !solidAt(W, wx, wy - e.r) && !solidAt(W, wx, wy + e.r)) {
-          e.x = wx;
-          e.y = wy;
-        } else if (!solidAt(W, wx, e.y)) e.x = wx;
-        else if (!solidAt(W, e.x, wy)) e.y = wy;
-        else {
-          e.tgt = null;
-          e.rest = 0;
-        }
-      } else {
-        e.rest -= dt;
-        if (!e.tgt || e.rest <= 0 || Math.hypot(e.tgt.x - e.x, e.tgt.y - e.y) < 6) {
-          const a = Math.random() * Math.PI * 2, r = 10 + Math.random() * PATROL_R;
-          e.tgt = { x: e.hx + Math.cos(a) * r, y: e.hy + Math.sin(a) * r };
-          e.rest = 2 + Math.random() * 3.5;
-        }
-        const tdx = e.tgt.x - e.x, tdy = e.tgt.y - e.y, td = Math.hypot(tdx, tdy) || 1;
-        const step2 = k.spd * (e.chill || 1) * dt;
-        const wx = e.x + tdx / td * step2, wy = e.y + tdy / td * step2;
-        if (solidAt(W, wx - e.r, wy) || solidAt(W, wx + e.r, wy) || solidAt(W, wx, wy - e.r) || solidAt(W, wx, wy + e.r)) {
-          e.tgt = null;
-          e.rest = 0;
-        } else {
-          e.x = wx;
-          e.y = wy;
-        }
-      }
+      if (A.pre) A.pre(W, G, e, C);
+      if (A.move && A.move(W, G, e, C)) continue;
       e.chill = 1;
       e.ty = k.kp ? e.y : e.y + Math.sin(W.time * 2 + e.phase) * (hunting ? 2 : 4);
       if (hunting && dist < e.r + 14 && e.touch <= 0) {
-        if (k.act === "bomb") {
-          burst(W, e.x, e.ty, 22, k.col.a);
-          SFX.boom(e.x, e.ty, 26);
-          hurt(W, G, k.dmg);
-          W.enemies.splice(i, 1);
-          if (k.fire) fireBlast(W, G, e.x, e.ty, 26, 1);
-          continue;
-        }
+        if (A.contact && A.contact(W, G, e, C)) continue;
         SFX.creature(k, "bite", e.x, e.ty);
         hurt(W, G, k.kp ? Math.round(kr(k.kp + "Bite")) : k.dmg);
         e.touch = k.kp ? kr(k.kp + "BiteCd") : 0.9;
       }
-      if (k.act === "shoot" || k.act === "turret") {
-        if (e.charge > 0) {
-          e.charge -= dt;
-          if (e.charge <= 0) fireEnemyShot(W, e, pcx, pcy);
-        } else if (!W.p.dead && dist < k.range * sees && e.cd <= 0) {
-          e.cd = 0.4;
-          if (lineOfSight(W, e.x, e.ty, pcx, pcy)) {
-            e.cd = k.cd * (0.85 + Math.random() * 0.3);
-            if (!e.spotted) {
-              e.spotted = true;
-              SFX.creature(k, "alert", e.x, e.ty);
-            }
-            if (k.tele) {
-              e.charge = k.tele;
-              SFX.creature(k, "charge", e.x, e.ty, k.tele);
-            } else fireEnemyShot(W, e, pcx, pcy);
-          }
-        }
-      }
+      if (A.fire) A.fire(W, G, e, C);
     }
     if (W.pb.contact && !W.p.dead) {
       for (let i = W.enemies.length - 1; i >= 0; i--) {

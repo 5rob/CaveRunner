@@ -2,15 +2,20 @@
 // side of each creature is its own file here (its pure brain and sprite are in creatures/).
 // stepEnemies and damageEnemy (systems/enemies.js) call a hook exactly where its old inline
 // branch sat:
-//   move(W, G, e, C)    the act's move, at the old if/else chain; true = it did its whole
-//                       frame (nothing below it runs for this creature)
+//   pre(W, G, e, C)     before the move (a bomber's fuse)
+//   move(W, G, e, C)    the act's move; true = it did its whole frame (nothing below it runs
+//                       for this creature); no move = it stays put (a turret)
+//   contact(W, G, e, C) hunting and touching you, before the shared bite; true = it's gone
+//   fire(W, G, e, C)    after contact: shooting at you
 //   die(W, e)           in damageEnemy, once it's out of the list; true = no ordinary coin
 //   frame(W, G, F)      once a frame, after the creatures' shots (step's F)
-// C is stepEnemies' per-enemy object: dt, pcx, pcy, i, dx, dy, dist, sees, hunting.
+// C is stepEnemies' per-enemy object: dt, pcx, pcy, i, dx, dy, dist, sees, hunting. An act
+// that isn't in the table gets `chase`'s hooks.
 // Every hook is a function declaration, so this table can be made at load inside the import
 // cycle (enemies.js -> here -> rat.js -> systems -> enemies.js): a hoisted function is always
 // there (D17, D20).
 
+import { bombBurst, bombFuse, classicMove, gunFire } from './classic.js';
 import { jellyMove } from './jelly.js';
 import { nestDie, nestMove, ratMove } from './rat.js';
 import { spiderFrame, spiderMove } from './spider.js';
@@ -20,4 +25,8 @@ export const ACTS = {
   rat: { move: ratMove },
   spider: { move: spiderMove, frame: spiderFrame },
   jelly: { move: jellyMove },
+  chase: { move: classicMove },
+  bomb: { pre: bombFuse, move: classicMove, contact: bombBurst },
+  shoot: { move: classicMove, fire: gunFire },
+  turret: { fire: gunFire },            // holds station: the hover is all the movement it gets
 };
