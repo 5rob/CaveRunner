@@ -122,6 +122,7 @@ export function Game({ input }) {
     decoC.width = CW; decoC.height = CH;
     const dctx = decoC.getContext('2d');
     const aimPath = [];                              // scratch buffer for the aim line
+    const mouse = input.current.mouse;               // the pointer, when it's a mouse (App's, kept by the handlers below)
 
     let raf, last = performance.now();
 
@@ -147,9 +148,10 @@ export function Game({ input }) {
     const ratOnWeb = onWebIn(W.webs);
     // what the systems (game/systems/) need that isn't world state (REFACTOR.md, D16): the
     // React bridge, the canvases (tctx and dctx are the recorder's wrapped ones), the recorder,
-    // the fire's dirty boxes, the rats' web test, the plant glow's scratch and the replay's view
+    // the fire's dirty boxes, the rats' web test, the plant glow's scratch, the replay's view,
+    // the mouse and the aim line's scratch
     const G = { input, c, ctx, terrain, tctx, bg, bgctx, fogC, fctx, fogImg, fogBlurC, fbctx,
-      miniC, mctx, miniImg, mini32, decoC, dctx, REC, RT, fireBox, ratOnWeb,
+      miniC, mctx, miniImg, mini32, decoC, dctx, REC, RT, fireBox, ratOnWeb, mouse, aimPath,
       pgArt: null, pgC: null, pgCtx: null, pgGlow, pgGlowCtx,
       RP_ARR, rid: new WeakMap(), ridN: 0,  // the recorder's lists (W's own arrays) and each thing's replay id
       RPV: null };                          // while draw() is drawing a replay frame: the view
@@ -183,8 +185,7 @@ export function Game({ input }) {
     const ro = new ResizeObserver(resize); ro.observe(c.parentElement);
     window.addEventListener('resize', resize);
 
-    // ---- mouse ----
-    const mouse = input.current.mouse;
+    // ---- mouse (the pointer's state is `mouse`, above G) ----
     const mMove = e => {
       if (e.pointerType !== 'mouse') return;
       const r = c.getBoundingClientRect();

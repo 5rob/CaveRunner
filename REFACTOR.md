@@ -450,6 +450,9 @@ What the code says about P3.4 (checked at the end of P3.3):
         handlers, the rAF loop.
     1. **Prep:** `mouse` (= `input.current.mouse`) and `aimPath` join `G`: with the canvases already keys of `G`, they
        are the only closure names the two still use (`node tools/gamemap.js step draw`). Probe SAME.
+       **Done, P3.4 (20)**: `const mouse` moved up next to `aimPath`, both keys of `G`; gamemap then lists only `W`, `G`
+       and `G`'s keys for either. `system.js --dry step` then refused on `NO_INPUT` and `sputterStep` (Game.js
+       top-levels): they and `SPUTTER_FUEL` went to `systems/player.js` first, P3.4 (21).
     2. **Move each whole first, split after.** `step` → `systems/step.js` as `step(W, G, dt)` with `tools/system.js`, one
        commit, SAME. `draw` → `src/game/render/draw.js` (still layer 5) the same way; `drawReplay` then imports it and
        drops its `draw` argument. A whole move is mechanical and proven by the probe; a split inside a 1,100-line
@@ -839,3 +842,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.4 (18) | `recorder.js`: `idOf`, `recReset`, `recSample`, `recFrame`, `rpTerrain`, `drawReplay`, plus the putImageData wrapper as `recWrap(G)` (by hand, called right after `G`). Prep by hand, checked SAME on its own: `RPV` → `G.RPV`, `rid`/`ridN`/`RP_ARR` into `G`, `drawReplay` takes `draw` as an argument. `replay` (43/43), `fire`, `save` run too. | probe SAME, logic 33/33, smoke ok, replay ok |
 | 2026-09-29 | Phase 3, P3.4 (19) | `level-entry.js`: `enterLevel` (`(W, G, back)`). Clean move. `save`, `newcave`, `map`, `fog`, `shop`, `replay`, `creatures` run too. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 checkpoint | Full suite on a snapshot of cdb5c90: `jelly` spit (known) and `fog` "the next floor is dark again" failed; `fog` passed alone 3 of 3 (new on the flake list, Found along the way). Game.js 2,792 → 2,494 lines. The step()/draw() split planned under P3.4, not started; `tools/locals.js` added for it (each local's span and a function's own returns). Not merged. | logic 33/33; browser 44/44 after re-runs |
+| 2026-09-30 | Phase 3, P3.4 (20) | step()/draw() prep: `mouse` (its `const` moved up above `G`) and `aimPath` join `G`. `node tools/gamemap.js step draw` now lists only `W`, `G` and `G`'s keys. | probe SAME, logic 33/33, smoke ok |

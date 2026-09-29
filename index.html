@@ -13436,6 +13436,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       decoC.height = CH;
       const dctx = decoC.getContext("2d");
       const aimPath = [];
+      const mouse = input.current.mouse;
       let raf, last = performance.now();
       const RP_ARR = {
         bullets: W.bullets,
@@ -13499,6 +13500,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         RT,
         fireBox,
         ratOnWeb,
+        mouse,
+        aimPath,
         pgArt: null,
         pgC: null,
         pgCtx: null,
@@ -13552,7 +13555,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const ro = new ResizeObserver(resize);
       ro.observe(c.parentElement);
       window.addEventListener("resize", resize);
-      const mouse = input.current.mouse;
       const mMove = (e) => {
         if (e.pointerType !== "mouse") return;
         const r = c.getBoundingClientRect();
