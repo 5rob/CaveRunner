@@ -134,6 +134,7 @@ rest and imports them. Where things are (`main.js` line numbers as of v96, they 
 
 | What | Where |
 |---|---|
+| Small helpers | `src/core/util.js`: `rr` (rounded rect), `angDiff`/`turn`, `mix`/`mixHex`/`hexMix`/`hsvAdjust`, `approach`/`clamp` |
 | World constants | `src/core/consts.js`: `CELL`, `CW`/`CH`, `SHOP_*`, tuning consts (`GRAVITY`, `JET`, …); `VERSION` is in `src/version.js` |
 | `DEV` / `DEV_META` / `devSet` | ~70–400: live dev-panel knobs, saved to localStorage (see note below) |
 | `THEMES` / `themeFor` | ~411: the 12 level palettes; the floor number picks one |
@@ -145,7 +146,7 @@ rest and imports them. Where things are (`main.js` line numbers as of v96, they 
 | `planCast` | ~2485: **the heart of it** — works out what one pull of the trigger fires |
 | `gunRate` / `buildAdvice` | ~2761: the build advisor |
 | `castGroups` / `groupStats` | ~2875: the outlines and stat lines in the build screen |
-| sprites | ~3050–3600: `rr`, `drawGun`, `drawRunner`, `drawEnemy` (one per creature body) |
+| sprites | ~3050–3600: `drawGun`, `drawRunner`, `drawEnemy` (one per creature body) |
 | `PERKS` / `perkBag` | ~3600: the 31 perks, and folding an owned list into one effective bag |
 | `makeLevel` | ~6439: terrain, shop, enemies, pickups |
 | `tracePath` | ~7041: simulates a shot for the aim line |

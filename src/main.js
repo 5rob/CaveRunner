@@ -5,6 +5,9 @@ import {
   PATROL_R, PH, PICKUP_COOL, PICKUP_GAP, PLAYER_HP, PW, ROCK, SHOP_FLOOR, SHOP_ROOF, SHOP_TOP,
   SHOP_Y, SIGHT, START_GOLD, VIEW_MIN_H, VIEW_W, WALK, WEB_HAND, WH, WW
 } from './core/consts.js';
+import {
+  HEX_RE, angDiff, approach, clamp, hexArr, hexMix, hexRgb, hsvAdjust, mix, mixHex, rr, turn
+} from './core/util.js';
 
 const { useRef, useEffect, useState, useMemo } = React;
 const h = React.createElement;
@@ -226,31 +229,7 @@ function colourKnobs(g, rows) {
   }
   return rows;
 }
-const HEX_RE = /^#[0-9a-f]{6}$/i;
-// a to b by t, as '#rrggbb'
-function hexMix(a, b, t) {
-  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16), c = s => {
-    const x = pa >> s & 255, y = pb >> s & 255; return Math.round(x + (y - x) * t);
-  };
-  return '#' + ((1 << 24) | (c(16) << 16) | (c(8) << 8) | c(0)).toString(16).slice(1);
-}
-const hexRgb = h => { const n = parseInt(h.slice(1), 16); return (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255); };
-const hexArr = h => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
 const kcol = (k, u) => hexMix(DEV[k + 'Lo'], DEV[k + 'Hi'], u);
-// a colour turned round the colour wheel by `hue` degrees, its saturation and brightness
-// (HSV value) scaled — what the master sliders do to every part at once
-function hsvAdjust(hex, hue, sat, bri) {
-  const n = parseInt(hex.slice(1), 16);
-  const r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
-  const mx = Math.max(r, g, b), d = mx - Math.min(r, g, b);
-  let h = !d ? 0 : mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
-  h = ((h * 60 + hue) % 360 + 360) % 360;
-  const S = Math.min(1, (mx ? d / mx : 0) * sat), V = Math.min(1, mx * bri);
-  const c = V * S, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = V - c;
-  const [R, G, B] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
-  const to = q => Math.round((q + m) * 255);
-  return '#' + ((1 << 24) | (to(R) << 16) | (to(G) << 8) | to(B)).toString(16).slice(1);
-}
 // the jellyfish's master sliders, at the top of its colour group: they act on every part
 Object.assign(DEV_DEFAULTS, { jeHue: 0, jeSat: 1, jeBri: 1 });
 DEV_META.push(
@@ -2976,19 +2955,6 @@ function gunModDeltas(g) {
 // ---- sprites ----
 // Everything is drawn from primitives at world scale (the player is 12x22 units),
 // so it stays crisp at any zoom and there are no images to load.
-function rr(ctx, x, y, w, hh, r) {
-  const k = Math.min(r, w / 2, hh / 2);
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(x, y, w, hh, k);
-  else {
-    ctx.moveTo(x + k, y);
-    ctx.arcTo(x + w, y, x + w, y + hh, k);
-    ctx.arcTo(x + w, y + hh, x, y + hh, k);
-    ctx.arcTo(x, y + hh, x, y, k);
-    ctx.arcTo(x, y, x + w, y, k);
-    ctx.closePath();
-  }
-}
 
 // A gun, grip at the origin, barrel down +x. Scaled so the same drawing works for
 // the one in your hands and the little one lying on the cave floor.
@@ -3502,21 +3468,6 @@ function gunAccent(g) {
   if (g) for (const id of g.slots) if (id && MODS[id].kind === 'shot') return famCol(id);
   return COL.bullet;
 }
-
-// shortest signed angle from b to a
-function angDiff(a, b) {
-  let d = a - b;
-  while (d > Math.PI) d -= 2 * Math.PI;
-  while (d < -Math.PI) d += 2 * Math.PI;
-  return d;
-}
-// swing a projectile's velocity without changing how fast it is going
-function turn(b, by) {
-  const sp = Math.hypot(b.vx, b.vy), a = Math.atan2(b.vy, b.vx) + by;
-  b.vx = Math.cos(a) * sp; b.vy = Math.sin(a) * sp;
-}
-
-const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
 // ---- perks ----
 // One per hidden room, yours for the rest of the run. Each is a plain bag of multipliers
@@ -7051,37 +7002,33 @@ function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
   return out;
 }
 
-const approach = (v, t, a) => (v < t ? Math.min(t, v + a) : Math.max(t, v - a));
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-
 // The pure part of this file, for the logic tests: src/pure.js re-exports it (and every
 // module), and tests/load.js bundles that. It shrinks as the code moves out into modules
 // (REFACTOR.md, P1.5); the browser build ignores it.
 export {
   useRef, useEffect, useState, useMemo, h, SPUTTER_FUEL, sputterStep, jetPitch, DEV_DEFAULTS,
   DEV_META, DEV_GROUPS, devReport, DEV, rangeKnobs, SP_KNOBS, JE_KNOBS, twinkle, RA_KNOBS, kru,
-  kr, spr, colourKnobs, HEX_RE, hexMix, hexRgb, hexArr, kcol, hsvAdjust, jcol, JE_COLS, jellyPal,
-  LV_KNOBS, makeLevel, ARCH_KNOBS, FIRE_KNOBS, DEV_KEY, devSet, bhSp, MODS, NO_INPUT, THEMES,
-  themeFor, CREATURES, spiderStep, ratStep, CREATURE_IDS, ROSTERS, rosterFor, enemyFor, HUNTERS,
-  COL, turn, MOD_TIER, FAMILIES, FAMILY_OF, FIELD_WHAT, famOf, famCol, hueFromName, gunHue,
-  gunColor, MOD_PRICE, tierOf, TRIG_KINDS, TRIG_VARIANTS, TIMER_ADD, VACUUM_WAIT, NOITA_SPAWN,
-  NOITA_OF, floorTier, noitaP, TIER_FLOOR, modWeight, rollMod, ALL_IDS, priceOf, gunPrice,
-  isGunShop, VIS_RAYS, fogReveal, fogStart, nestFog, rayDist, losClear, roamStep, turnToward,
-  angDiff, flyMove, surfNormal, SPIDER, spiderSeat, surfSeat, segNear, spiderAim, RAT,
-  ratFooting, ratJump, ratSpread, pathAt, pathLen, NAV, navField, navWay, ratNests, JELLY,
-  jellyBell, jellyStep, segHitsBox, tentacleTouch, TW_N, TW_TILE, twNoise, plantWhite,
-  plantGlowFill, visPoly, MIN_CAST, MIN_RECH, effRecharge, gunPassives, SHOT_IDS, SEED_SHOTS,
-  GUN_A, GUN_B, shuffleOrder, resetGun, GUN_LV_MAX, RARE_GUN, GUN_RANGE, GUN_LV_COL, gunLvTier,
-  gunStat, gunLevel, caveGun, makeGun, startingGuns, blankShot, planCast, PREVIEW_FIELDS, num,
-  previewGun, previewPlan, modPreview, HP_BUDGET, shotPower, shotCount, shotPellets, gunRate,
-  SHORTLIST, buildAdvice, castGroups, groupStats, pullSteps, fireSimNew, fireSimStep,
-  fireSimGauges, statQual, gunModDeltas, rr, drawGun, drawRunner, flameDrop, drawFlame, glowAt,
-  drawTorch, drawSconce, drawDrone, drawSpider, drawRat, drawNest, drawJelly, drawCrawler,
-  drawBlob, drawSkull, drawWorm, drawEnemy, gunLvCol, gunAccent, mix, PERKS, PERK_IDS, perkBag,
-  fmtGold, deckLayout, DECOR, DECOR_DENSITY, GROVES, PLANTS, FLAMMABLE, FIRE_WET, HEAR_FIRE,
-  FIRE_COLS, decorFor, PROP_BOX, PROP_DMG, timberFrame, archCurve, archNear, archAt, decorate,
-  FUEL_MOSS, FUEL_GRASS, FUEL_WOOD, cullDecor, propAnchored, rgbA, rgbS, propCol, drawArch,
-  drawProp, propGlow, VENT_H, eyesAlpha, SPELL_VOICE, SPELL_VOICES, clampS, shotSound,
+  kr, spr, colourKnobs, kcol, jcol, JE_COLS, jellyPal, LV_KNOBS, makeLevel, ARCH_KNOBS,
+  FIRE_KNOBS, DEV_KEY, devSet, bhSp, MODS, NO_INPUT, THEMES, themeFor, CREATURES, spiderStep,
+  ratStep, CREATURE_IDS, ROSTERS, rosterFor, enemyFor, HUNTERS, COL, MOD_TIER, FAMILIES,
+  FAMILY_OF, FIELD_WHAT, famOf, famCol, hueFromName, gunHue, gunColor, MOD_PRICE, tierOf,
+  TRIG_KINDS, TRIG_VARIANTS, TIMER_ADD, VACUUM_WAIT, NOITA_SPAWN, NOITA_OF, floorTier, noitaP,
+  TIER_FLOOR, modWeight, rollMod, ALL_IDS, priceOf, gunPrice, isGunShop, VIS_RAYS, fogReveal,
+  fogStart, nestFog, rayDist, losClear, roamStep, turnToward, flyMove, surfNormal, SPIDER,
+  spiderSeat, surfSeat, segNear, spiderAim, RAT, ratFooting, ratJump, ratSpread, pathAt, pathLen,
+  NAV, navField, navWay, ratNests, JELLY, jellyBell, jellyStep, segHitsBox, tentacleTouch, TW_N,
+  TW_TILE, twNoise, plantWhite, plantGlowFill, visPoly, MIN_CAST, MIN_RECH, effRecharge,
+  gunPassives, SHOT_IDS, SEED_SHOTS, GUN_A, GUN_B, shuffleOrder, resetGun, GUN_LV_MAX, RARE_GUN,
+  GUN_RANGE, GUN_LV_COL, gunLvTier, gunStat, gunLevel, caveGun, makeGun, startingGuns, blankShot,
+  planCast, PREVIEW_FIELDS, num, previewGun, previewPlan, modPreview, HP_BUDGET, shotPower,
+  shotCount, shotPellets, gunRate, SHORTLIST, buildAdvice, castGroups, groupStats, pullSteps,
+  fireSimNew, fireSimStep, fireSimGauges, statQual, gunModDeltas, drawGun, drawRunner, flameDrop,
+  drawFlame, glowAt, drawTorch, drawSconce, drawDrone, drawSpider, drawRat, drawNest, drawJelly,
+  drawCrawler, drawBlob, drawSkull, drawWorm, drawEnemy, gunLvCol, gunAccent, PERKS, PERK_IDS,
+  perkBag, fmtGold, deckLayout, DECOR, DECOR_DENSITY, GROVES, PLANTS, FLAMMABLE, FIRE_WET,
+  HEAR_FIRE, FIRE_COLS, decorFor, PROP_BOX, PROP_DMG, timberFrame, archCurve, archNear, archAt,
+  decorate, FUEL_MOSS, FUEL_GRASS, FUEL_WOOD, cullDecor, propAnchored, rgbA, rgbS, propCol,
+  drawArch, drawProp, propGlow, VENT_H, eyesAlpha, SPELL_VOICE, SPELL_VOICES, clampS, shotSound,
   BODY_VOICE, CREATURE_TONE, CREATURE_VOICES, creatureSound, AMBIENCE, AMB_EVENTS, FX_VOL,
   fxVolKey, knob, rustleStep, SFX, SAVE_KEY, GUN_DEFAULTS, cleanGun, cleanLoadout, readSave,
   loadSave, clearSave, ORE_GOLD, ROOM_HW, ROOM_HH, goldVeins, strataCave, paveWorks, timberWorks,
@@ -7089,8 +7036,7 @@ export {
   fireArea, fireNear, fireStep, NATURAL_ONLY, boxReach, builtAt, RP_HZ, RP_BEFORE, RP_AFTER,
   RP_KEEP, RP_W, RP_H, RP_LISTS, RP_NUMS, RP_DEEP, RP_LERP, RP_ANGLE, rpPlain, rpClone, rpCopy,
   rpLerp, rpList, rpAt, rpFrame, rpCut, rpPaste, rpMerge, DRIFT_DRAG, DRIFT_SLOW, DRIFT_FLOAT,
-  DRIFT_RISE, DRIFT_R, DRIFT_CHASE, DRIFT_ACC, driftStep, WIG_HZ, wigAng, wigTurn, tracePath,
-  approach, clamp
+  DRIFT_RISE, DRIFT_R, DRIFT_CHASE, DRIFT_ACC, driftStep, WIG_HZ, wigAng, wigTurn, tracePath
 };
 
 function Game({ input }) {
@@ -11385,16 +11331,6 @@ const GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
 // the three gun stats shown as rings on the right stick and colour-coded in the bag, so a
 // ring and its stat read as the same thing: mana gold, recharge blue, cast delay purple
 const GAUGE_COL = { mana: '#ffc93c', rech: '#7ad7ff', cast: '#c58cff', fuel: '#ff9a2e' };
-// blend two "#rrggbb" colours; t=0 is a, t=1 is b. Used for the health ring, which
-// slides from green at full down through amber to red as it empties.
-function mixHex(a, b, t) {
-  t = Math.max(0, Math.min(1, t));
-  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
-  const r = Math.round((pa >> 16 & 255) + ((pb >> 16 & 255) - (pa >> 16 & 255)) * t);
-  const g = Math.round((pa >> 8 & 255) + ((pb >> 8 & 255) - (pa >> 8 & 255)) * t);
-  const bl = Math.round((pa & 255) + ((pb & 255) - (pa & 255)) * t);
-  return 'rgb(' + r + ',' + g + ',' + bl + ')';
-}
 // green -> amber -> red as health falls, so the colour itself reads as danger
 function healthCol(frac) {
   return frac > 0.5 ? mixHex('#e6a52c', '#57d267', (frac - 0.5) * 2)
