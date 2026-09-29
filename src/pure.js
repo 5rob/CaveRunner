@@ -6,3 +6,4 @@
 // Not part of the game: the browser build starts from main.js and never sees this file.
 export { VERSION } from './version.js';
 export * from './main.js';
+export * from './core/consts.js';

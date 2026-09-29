@@ -219,7 +219,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
       re-exports from `main.js`. Logic suites don't change.
 - [ ] **P1.5** Move modules out **in layer order**, one per commit, logic tests green
       each time (see the target layout for what goes where):
-  - [ ] core/consts.js
+  - [x] core/consts.js
   - [ ] core/util.js
   - [ ] dev/knobs.js
   - [ ] data/themes.js

@@ -476,9 +476,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <script>const VERSION = 'v96';</script>
 <script>
 (() => {
-  // src/main.js
-  var { useRef, useEffect, useState, useMemo } = React;
-  var h = React.createElement;
+  // src/core/consts.js
   var CELL = 2;
   var CW = 640, CH = 1600;
   var WW = CW * CELL, WH = CH * CELL;
@@ -498,6 +496,33 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var AIM_RING = AIM_DEAD * 0.72 + KNOB;
   var PW = 12, PH = 22;
   var FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
+  var PLAYER_HP = 100;
+  var START_GOLD = 40;
+  var COIN_PULL = 36;
+  var ENEMY_COUNT = 80;
+  var MOD_DROPS = 7;
+  var GUN_DROPS = 5;
+  var PICKUP_GAP = 260;
+  var PATROL_R = 70;
+  var PICKUP_COOL = 2;
+  var SHOP_FLOOR = CH - 10;
+  var SHOP_H = 48;
+  var SHOP_TOP = SHOP_FLOOR - SHOP_H;
+  var SHOP_ROOF = 6;
+  var SHOP_Y = SHOP_TOP * CELL;
+  var FOG = 8;
+  var FOG_U = FOG * CELL;
+  var FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
+  var MINI_D = 4;
+  var MMW = Math.ceil(CW / MINI_D), MMH = Math.ceil(CH / MINI_D);
+  var SIGHT = 200;
+  var LAMP_REACH = 1.15;
+  var FOG_DIM = 0.85;
+  var FOG_DARK = 0.99;
+
+  // src/main.js
+  var { useRef, useEffect, useState, useMemo } = React;
+  var h = React.createElement;
   var SPUTTER_FUEL = 0.25;
   function sputterStep(st, dt, fuel, on, rnd) {
     rnd = rnd || Math.random;
@@ -524,8 +549,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function jetPitch(onT) {
     return 1 + 0.7 * Math.min(Math.max(onT, 0), 3) / 3;
   }
-  var PLAYER_HP = 100;
-  var START_GOLD = 40;
   var DEV_DEFAULTS = {
     zoom: 1.35,
     torch: 1,
@@ -871,13 +894,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
   var bhSp = (sh) => sh.pull ? DEV.bhSpeed / MODS.void.speed : 1;
-  var COIN_PULL = 36;
-  var ENEMY_COUNT = 80;
-  var MOD_DROPS = 7;
-  var GUN_DROPS = 5;
-  var PICKUP_GAP = 260;
-  var PATROL_R = 70;
-  var PICKUP_COOL = 2;
   var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
   var THEMES = [
     {
@@ -3644,20 +3660,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return Math.max(45, Math.round(v / 5) * 5);
   }
   var isGunShop = (floor) => floor % 2 === 0;
-  var SHOP_FLOOR = CH - 10;
-  var SHOP_H = 48;
-  var SHOP_TOP = SHOP_FLOOR - SHOP_H;
-  var SHOP_ROOF = 6;
-  var SHOP_Y = SHOP_TOP * CELL;
-  var FOG = 8;
-  var FOG_U = FOG * CELL;
-  var FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
-  var MINI_D = 4;
-  var MMW = Math.ceil(CW / MINI_D), MMH = Math.ceil(CH / MINI_D);
-  var SIGHT = 200;
-  var LAMP_REACH = 1.15;
-  var FOG_DIM = 0.85;
-  var FOG_DARK = 0.99;
   var VIS_RAYS = 160;
   function fogReveal(seen, wx, wy, r, pts, rays) {
     const cx = wx / FOG_U, cy = wy / FOG_U, cr = r / FOG_U, r2 = cr * cr;

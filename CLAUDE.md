@@ -128,12 +128,13 @@ WebView shell in `android/`; the game itself is still just `index.html`. Full de
 
 `src/shell.html` is the page (the `<head>`, the two React CDN tags, and `/*@@file@@*/`
 slots the build fills), `src/style.css` the one CSS block (light and dark via
-`prefers-color-scheme`). All the code is `src/main.js`, roughly top to bottom (line
-numbers as of v96, they drift):
+`prefers-color-scheme`). The code is being split into modules (REFACTOR.md, P1.5): the pure
+parts move into `src/<folder>/*.js`, and `src/main.js` (the entry the build bundles) keeps the
+rest and imports them. Where things are (`main.js` line numbers as of v96, they drift):
 
-| What | Where in `src/main.js` |
+| What | Where |
 |---|---|
-| World constants | ~5: `CELL`, `CW`/`CH`, `SHOP_*`, tuning consts (`GRAVITY`, `JET`, …); `VERSION` is in `src/version.js` |
+| World constants | `src/core/consts.js`: `CELL`, `CW`/`CH`, `SHOP_*`, tuning consts (`GRAVITY`, `JET`, …); `VERSION` is in `src/version.js` |
 | `DEV` / `DEV_META` / `devSet` | ~70–400: live dev-panel knobs, saved to localStorage (see note below) |
 | `THEMES` / `themeFor` | ~411: the 12 level palettes; the floor number picks one |
 | `CREATURES` / `ROSTERS` | ~468: the 16 creature types, and which live on floors 1–10 |
@@ -151,8 +152,10 @@ numbers as of v96, they drift):
 | `Game` | ~7130–11390: the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields |
 | React UI | ~11400–end: `GunCard`, `GunSwap`, `ModCard`, `Editor`, `PerkCard`, `DevPanel`, `App` |
 
-Everything above `function Game(` is pure and top-level, which is why the logic tests can
-load it and call it directly (`tests/load.js`). **Keep it that way** — if a new mechanic can be a pure
+Everything in the modules, and everything above `function Game(` in `main.js`, is pure and
+top-level, which is why the logic tests can load it and call it directly (`tests/load.js`).
+**Layer rule:** a module imports only from its own layer or the layers above it in REFACTOR.md
+section 4 (core → dev → data → spells/world → creatures/art/audio…), never from `main.js`. **Keep it that way** — if a new mechanic can be a pure
 function, make it one.
 
 ## Things worth knowing before you change anything

@@ -1,40 +1,13 @@
+import {
+  AIM_DEAD, AIM_RING, AIR_ACC, BCELL, BED, BH, BRICK, BW, CELL, CH, CLIMB, COIN_PULL, CW, DEAD,
+  ENEMY_COUNT, FH, FOG, FOG_DARK, FOG_DIM, FOG_U, FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART, FW,
+  GRAVITY, GROUND_ACC, GUN_DROPS, JET, JET_ACC, KNOB, LAMP_REACH, MINI_D, MMH, MMW, MOD_DROPS,
+  PATROL_R, PH, PICKUP_COOL, PICKUP_GAP, PLAYER_HP, PW, ROCK, SHOP_FLOOR, SHOP_ROOF, SHOP_TOP,
+  SHOP_Y, SIGHT, START_GOLD, VIEW_MIN_H, VIEW_W, WALK, WEB_HAND, WH, WW
+} from './core/consts.js';
+
 const { useRef, useEffect, useState, useMemo } = React;
 const h = React.createElement;
-
-// ---- world ----
-const CELL = 2;                   // world units per terrain pixel
-const CW = 640, CH = 1600;        // terrain size in pixels
-const WW = CW * CELL, WH = CH * CELL;
-const BW = CW / 4, BH = CH / 4;   // background at quarter resolution
-const BCELL = WW / BW;            // world units per background pixel
-const VIEW_W = 360;               // world units visible across a phone screen
-const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
-const ROCK = 1, BRICK = 2, BED = 3;
-// VERSION lives in src/version.js; the build writes it into the page as its own
-// `<script>const VERSION = 'vNN';</script>` ahead of this code, so it is a global here.
-
-// ---- tuning ----
-const GRAVITY = 1400;
-const WALK = 150, GROUND_ACC = 1400, AIR_ACC = 600;
-const JET = 240, JET_ACC = 900;
-const CLIMB = 90;                 // how fast you climb a vine, chain or frozen fall
-const WEB_HAND = 3;               // hanging from a web line: where your hands are, down from your top
-const DEAD = 0.12;
-// the right stick's own dead zone: drag past this fraction of its throw to aim/fire.
-// A tap that never leaves it is an interact instead — see Stick() and the pickup/shop
-// code in Game.step. 0.35 of the stick's max throw is a big enough circle to land a
-// thumb on reliably without eating so much of the throw that aiming feels numb.
-const AIM_DEAD = 0.35;
-// The knob's diameter as a share of the stick. Big enough that its edge still shows
-// around a thumbprint, which is the whole point of it.
-const KNOB = 0.38;
-// The ring drawn on the right stick, as a share of the stick: the throw you have to
-// make (AIM_DEAD of the knob's full travel) plus one knob radius. So the ring is the
-// line the knob's *edge* crosses at the exact moment the trigger goes live, which is
-// what makes it worth drawing rather than just being another circle.
-const AIM_RING = AIM_DEAD * 0.72 + KNOB;
-const PW = 12, PH = 22;
-const FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
 // Near the bottom of the tank the jet coughs: short random cut-outs, more often and a touch
 // longer the closer the tank is to dry. `st` keeps the cut-out clock and how long the jet
 // has been held on (which bends its pitch). Returns true while it's cut out; `st.start`
@@ -59,8 +32,6 @@ function sputterStep(st, dt, fuel, on, rnd) {
 }
 // The jet's roar climbs the longer you hold it, levelling off after 3 seconds.
 function jetPitch(onT) { return 1 + 0.7 * Math.min(Math.max(onT, 0), 3) / 3; }
-const PLAYER_HP = 100;
-const START_GOLD = 40;
 
 // ---- dev settings ----
 // Live, tweakable knobs for testing, read by the Game every frame so a change shows at
@@ -390,17 +361,6 @@ function devSet(k, v) {
 
 // Black Hole travel speed from the Dev knob, as a multiplier so speed mods still stack
 const bhSp = sh => sh.pull ? DEV.bhSpeed / MODS.void.speed : 1;
-
-const COIN_PULL = 36;         // gold within this many units flies to you
-// how many enemies a floor gets before the floor lift. What they are and how hard
-// they hit is the roster's business now — see CREATURES.
-const ENEMY_COUNT = 80;
-const MOD_DROPS = 7;          // mods lying in the cave: half what it used to be
-const GUN_DROPS = 5;          // guns lying in the cave, unchanged
-const PICKUP_GAP = 260;       // and no two of them closer than this
-const PATROL_R = 70;          // how far an enemy will drift from where it spawned
-                              // (each creature carries its own patrol speed — see CREATURES)
-const PICKUP_COOL = 2;        // a gun you walked away from stays quiet this long
 const NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
 
 // ---- level themes ----
@@ -1250,40 +1210,6 @@ function gunPrice(g) {
 
 // Every second shop is a gun shop instead of a mod shop.
 const isGunShop = floor => floor % 2 === 0;
-
-// the shop room sits under the whole cave: floor, interior, then a brick roof
-const SHOP_FLOOR = CH - 10;            // first row of solid floor
-const SHOP_H = 48;                     // interior height
-const SHOP_TOP = SHOP_FLOOR - SHOP_H;  // first open row of the room
-const SHOP_ROOF = 6;                   // roof thickness
-const SHOP_Y = SHOP_TOP * CELL;        // world y of the ceiling, for "am I in the shop?"
-
-// ---- fog of war ----
-// A coarse reveal grid, never per pixel: one fog cell covers FOG terrain pixels each
-// way, and the overlay is a tiny FW x FH canvas scaled up over the view, so hiding the
-// map costs one image draw a frame however big the map gets.
-const FOG = 8;                         // terrain pixels per fog cell
-const FOG_U = FOG * CELL;              // world units per fog cell
-const FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
-// the minimap samples the real terrain at a finer grid than the fog: a cell is an
-// outline if a wall passes through it (has both rock and open), which traces every wall
-// continuously instead of the scatter you get detecting edges at the coarse fog grid.
-const MINI_D = 4;                      // terrain pixels per minimap cell
-const MMW = Math.ceil(CW / MINI_D), MMH = Math.ceil(CH / MINI_D);
-const SIGHT = 200;                     // how far the torch reaches: line of sight out to
-                                       // here lifts the fog, and the lamp then lights the
-                                       // ground it lifted. A cell this close and in view is
-                                       // marked as somewhere you have been and stays marked
-                                       // for the rest of the floor. This is a medium bubble —
-                                       // generous, but the cave beyond it stays dark
-const LAMP_REACH = 1.15;               // the lamp's pool is this many times the sight radius,
-                                       // so the whole lifted bubble is lit and fades out at
-                                       // its edge. The lamp is MASKED by the fog: it brightens
-                                       // ground the line of sight has already uncovered and
-                                       // leaves the rest dark — see the note on the lamp in draw()
-const FOG_DIM = 0.85;                  // how dark somewhere you have been but cannot see
-const FOG_DARK = 0.99;                 // how dark somewhere you have never been — near black,
-                                       // because that darkness is the fog of war now
 
 // What the map is allowed to remember is worked out as a fan of rays out from the player,
 // each stopping at the first wall: one ray per fog cell the fan crosses, so a shadow edge
@@ -7132,22 +7058,17 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // module), and tests/load.js bundles that. It shrinks as the code moves out into modules
 // (REFACTOR.md, P1.5); the browser build ignores it.
 export {
-  useRef, useEffect, useState, useMemo, h, CELL, CW, CH, WW, WH, BW, BH, BCELL, VIEW_W,
-  VIEW_MIN_H, ROCK, BRICK, BED, GRAVITY, WALK, GROUND_ACC, AIR_ACC, JET, JET_ACC, CLIMB,
-  WEB_HAND, DEAD, AIM_DEAD, KNOB, AIM_RING, PW, PH, FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART,
-  SPUTTER_FUEL, sputterStep, jetPitch, PLAYER_HP, START_GOLD, DEV_DEFAULTS, DEV_META, DEV_GROUPS,
-  devReport, DEV, rangeKnobs, SP_KNOBS, JE_KNOBS, twinkle, RA_KNOBS, kru, kr, spr, colourKnobs,
-  HEX_RE, hexMix, hexRgb, hexArr, kcol, hsvAdjust, jcol, JE_COLS, jellyPal, LV_KNOBS, makeLevel,
-  ARCH_KNOBS, FIRE_KNOBS, DEV_KEY, devSet, bhSp, MODS, COIN_PULL, ENEMY_COUNT, MOD_DROPS,
-  GUN_DROPS, PICKUP_GAP, PATROL_R, PICKUP_COOL, NO_INPUT, THEMES, themeFor, CREATURES,
-  spiderStep, ratStep, CREATURE_IDS, ROSTERS, rosterFor, enemyFor, HUNTERS, COL, turn, MOD_TIER,
-  FAMILIES, FAMILY_OF, FIELD_WHAT, famOf, famCol, hueFromName, gunHue, gunColor, MOD_PRICE,
-  tierOf, TRIG_KINDS, TRIG_VARIANTS, TIMER_ADD, VACUUM_WAIT, NOITA_SPAWN, NOITA_OF, floorTier,
-  noitaP, TIER_FLOOR, modWeight, rollMod, ALL_IDS, priceOf, gunPrice, isGunShop, SHOP_FLOOR,
-  SHOP_H, SHOP_TOP, SHOP_ROOF, SHOP_Y, FOG, FOG_U, FW, FH, MINI_D, MMW, MMH, SIGHT, LAMP_REACH,
-  FOG_DIM, FOG_DARK, VIS_RAYS, fogReveal, fogStart, nestFog, rayDist, losClear, roamStep,
-  turnToward, angDiff, flyMove, surfNormal, SPIDER, spiderSeat, surfSeat, segNear, spiderAim,
-  RAT, ratFooting, ratJump, ratSpread, pathAt, pathLen, NAV, navField, navWay, ratNests, JELLY,
+  useRef, useEffect, useState, useMemo, h, SPUTTER_FUEL, sputterStep, jetPitch, DEV_DEFAULTS,
+  DEV_META, DEV_GROUPS, devReport, DEV, rangeKnobs, SP_KNOBS, JE_KNOBS, twinkle, RA_KNOBS, kru,
+  kr, spr, colourKnobs, HEX_RE, hexMix, hexRgb, hexArr, kcol, hsvAdjust, jcol, JE_COLS, jellyPal,
+  LV_KNOBS, makeLevel, ARCH_KNOBS, FIRE_KNOBS, DEV_KEY, devSet, bhSp, MODS, NO_INPUT, THEMES,
+  themeFor, CREATURES, spiderStep, ratStep, CREATURE_IDS, ROSTERS, rosterFor, enemyFor, HUNTERS,
+  COL, turn, MOD_TIER, FAMILIES, FAMILY_OF, FIELD_WHAT, famOf, famCol, hueFromName, gunHue,
+  gunColor, MOD_PRICE, tierOf, TRIG_KINDS, TRIG_VARIANTS, TIMER_ADD, VACUUM_WAIT, NOITA_SPAWN,
+  NOITA_OF, floorTier, noitaP, TIER_FLOOR, modWeight, rollMod, ALL_IDS, priceOf, gunPrice,
+  isGunShop, VIS_RAYS, fogReveal, fogStart, nestFog, rayDist, losClear, roamStep, turnToward,
+  angDiff, flyMove, surfNormal, SPIDER, spiderSeat, surfSeat, segNear, spiderAim, RAT,
+  ratFooting, ratJump, ratSpread, pathAt, pathLen, NAV, navField, navWay, ratNests, JELLY,
   jellyBell, jellyStep, segHitsBox, tentacleTouch, TW_N, TW_TILE, twNoise, plantWhite,
   plantGlowFill, visPoly, MIN_CAST, MIN_RECH, effRecharge, gunPassives, SHOT_IDS, SEED_SHOTS,
   GUN_A, GUN_B, shuffleOrder, resetGun, GUN_LV_MAX, RARE_GUN, GUN_RANGE, GUN_LV_COL, gunLvTier,

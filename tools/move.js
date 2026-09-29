@@ -69,7 +69,8 @@ function moduleExports(skip) {
     for (const f of fs.readdirSync(dir)) {
       const p = path.join(dir, f);
       if (fs.statSync(p).isDirectory()) { walk(p); continue; }
-      if (!f.endsWith('.js') || p === MAIN || p === PURE || p === skip) continue;
+      // version.js too: VERSION is the page's global, never imported (REFACTOR.md, D7)
+      if (!f.endsWith('.js') || p === MAIN || p === PURE || p === skip || f === 'version.js') continue;
       const names = [];
       for (const st of parse(readN(p)).body) if (st.type === 'ExportNamedDeclaration') {
         names.push(...declared(st));
@@ -201,36 +202,37 @@ function main() {
   }
   modBody += moved.join('\n').replace(/\s+$/, '') + '\n';
 
-  const exportsMap = moduleExports(target);
-  const mainDecl = new Set(parse(left).body.flatMap(declared));
-  const modImp = importsFor(target, modBody, mainDecl, exportsMap);
-  if (modImp.problems.length) throw new Error(rest[0] + ' needs:\n  ' + modImp.problems.join('\n  '));
-  const modText = header + (modImp.lines.length ? (header ? '\n' : '') + modImp.lines.join('\n') + '\n' : '') + '\n' + modBody;
-
-  // main.js: its export list loses the moved names, then its imports are redone
-  exportsMap.set(target, names.concat(fs.existsSync(target) ? (exportsMap.get(target) || []) : []));
-  const leftAst = parse(left);
-  const exp = leftAst.body.find(st => st.type === 'ExportNamedDeclaration' && !st.declaration && !st.source);
-  if (exp) {
-    const keep = exp.specifiers.map(sp => sp.local.name).filter(n => mainDecl.has(n));
+  // main.js's export list loses the moved names (before anything parses main.js: an
+  // export of an undeclared name is a parse error)
+  const drop = new Set(names);
+  left = left.replace(/^export \{\n([\s\S]*?)\n\};\n*/m, (all, list) => {
+    const keep = list.split(/[\s,]+/).filter(n => n && !drop.has(n));
+    if (!keep.length) return '';
     const rows = [];
     let row = '';
     for (const n of keep) {
       if (row && (row + ', ' + n).length > 94) { rows.push(row + ','); row = n; }
       else row = row ? row + ', ' + n : n;
     }
-    if (row) rows.push(row);
-    const repl = keep.length ? 'export {\n  ' + rows.join('\n  ') + '\n};' : '';
-    left = left.slice(0, exp.range[0]) + repl + left.slice(exp.range[1]);
-  }
+    rows.push(row);
+    return 'export {\n  ' + rows.join('\n  ') + '\n};\n\n';
+  });
+
+  const exportsMap = moduleExports(target);
+  const mainDecl = new Set(parse(left).body.flatMap(declared));
+  const modImp = importsFor(target, modBody, mainDecl, exportsMap);
+  if (modImp.problems.length) throw new Error(rest[0] + ' needs:\n  ' + modImp.problems.join('\n  '));
+  const modText = header + (modImp.lines.length ? (header ? '\n' : '') + modImp.lines.join('\n') + '\n' : '') + '\n' + modBody;
+
+  exportsMap.set(target, names.concat(fs.existsSync(target) ? (exportsMap.get(target) || []) : []));
   // a module's own export line (its re-export in pure.js) is not a use of it
   const noImp = stripImports(left);
   const mainImp = importsFor(MAIN, noImp, null, exportsMap);
   if (mainImp.problems.length) throw new Error('main.js needs:\n  ' + mainImp.problems.join('\n  '));
   // imports go after main.js's leading comment block, if any
   const hm = /^(\/\/.*\n)*/.exec(noImp);
-  const newMain = noImp.slice(0, hm[0].length) + mainImp.lines.join('\n') + '\n' +
-    noImp.slice(hm[0].length).replace(/^\n+/, '\n');
+  const newMain = noImp.slice(0, hm[0].length) + mainImp.lines.join('\n') + '\n\n' +
+    noImp.slice(hm[0].length).replace(/^\n+/, '');
 
   let pure = fs.existsSync(PURE) ? readN(PURE) : '';
   const rel = './' + path.relative(SRC, target).replace(/\\/g, '/');
