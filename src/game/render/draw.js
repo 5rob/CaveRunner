@@ -13,7 +13,6 @@ import {
   VIEW_MIN_H, VIEW_W, WH, WW
 } from '../../core/consts.js';
 import { clamp, hexRgb } from '../../core/util.js';
-import { drawEnemy } from '../../creatures/draw.js';
 import { PERKS } from '../../data/perks.js';
 import { themeFor } from '../../data/themes.js';
 import { DEV, jcol, kru } from '../../dev/knobs.js';
@@ -28,8 +27,10 @@ import { jag } from '../systems/lightning.js';
 import { plantGlow } from '../systems/plantglow.js';
 import { maxHp, torchHand } from '../systems/player.js';
 import { solidAt, solidCell } from '../systems/terrain.js';
+import { drawEnemies, drawSilk } from './actors.js';
 import { drawPortal, drawProps, drawTerrain } from './cave.js';
-import { drawBolt, drawFieldLook, drawLook } from './looks.js';
+import { drawSmoke } from './effects.js';
+import { drawBolt, drawFields, drawLook } from './looks.js';
 
 export function draw(W, G) {
   // the frame: what draw's parts hand on to each other (REFACTOR.md D19). drawCamera fills
@@ -45,65 +46,13 @@ export function draw(W, G) {
 
   drawPortal(W, G);                         // the exit (cave.js)
 
-  // smoke
-  for (const m of W.smoke) {
-    G.ctx.fillStyle = m.c || COL.smoke;
-    G.ctx.globalAlpha = Math.max(0, m.life / m.max) * (m.a || 0.5);
-    G.ctx.beginPath(); G.ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2); G.ctx.fill();
-  }
-  G.ctx.globalAlpha = 1;
+  drawSmoke(W, G);                          // smoke (effects.js)
 
-  // static fields
-  for (const f of W.fields) {
-    if (f.y > W.camY + vh + f.r || f.y < W.camY - f.r) continue;
-    const t = f.life / f.max;
-    const beat = 0.75 + 0.25 * Math.sin(W.time * (f.field === 'mine' ? 7 : 3));
-    G.ctx.globalAlpha = 0.14 * beat * (f.field === 'mine' || f.field === 'dormant' ? 2 : 1);
-    G.ctx.fillStyle = f.col;
-    G.ctx.beginPath(); G.ctx.arc(f.x, f.y, f.r * (f.field === 'mine' ? 0.35 : 1), 0, Math.PI * 2); G.ctx.fill();
-    G.ctx.globalAlpha = 0.55 * beat;
-    G.ctx.strokeStyle = f.col;
-    G.ctx.lineWidth = 1.5;
-    G.ctx.setLineDash([5, 4]);
-    G.ctx.lineDashOffset = -W.time * 14;
-    G.ctx.beginPath(); G.ctx.arc(f.x, f.y, f.r * (0.4 + 0.6 * t), 0, Math.PI * 2); G.ctx.stroke();
-    G.ctx.setLineDash([]);
-    G.ctx.globalAlpha = 1;
-    if (!drawFieldLook(W, G, f, beat)) { G.ctx.fillStyle = f.col; G.ctx.beginPath(); G.ctx.arc(f.x, f.y, 3.5, 0, Math.PI * 2); G.ctx.fill(); }
-  }
-  G.ctx.globalAlpha = 1;
-  G.ctx.globalAlpha = 1;
+  drawFields(W, G, F);                      // static fields (looks.js)
 
-  // spider silk: the web lines they travel (anchor to anchor), lines being shot, the
-  // strings in flight at you and the ones stuck to you
-  G.ctx.lineCap = 'round';
-  G.ctx.strokeStyle = '#eef0f6';
-  G.ctx.globalAlpha = 0.55; G.ctx.lineWidth = 0.7;
-  G.ctx.beginPath();
-  for (const L of W.webs) { G.ctx.moveTo(L.a0x, L.a0y); G.ctx.lineTo(L.b0x, L.b0y); }
-  for (const e of W.enemies) {
-    const sh = e.sp && e.sp.mode === 'shoot' && e.sp.shot;
-    if (sh) { G.ctx.moveTo(sh.ax0, sh.ay0); G.ctx.lineTo(sh.x + sh.dx * Math.min(sh.t, sh.len), sh.y + sh.dy * Math.min(sh.t, sh.len)); }
-  }
-  G.ctx.stroke();
-  G.ctx.globalAlpha = 0.85; G.ctx.lineWidth = 0.9;
-  G.ctx.beginPath();
-  for (const b of W.silk) { G.ctx.moveTo(b.ax, b.ay); G.ctx.lineTo(b.x, b.y); }
-  for (const s of W.strings) { G.ctx.moveTo(s.ax, s.ay); G.ctx.lineTo(W.p.x + s.ox, W.p.y + s.oy); }
-  G.ctx.stroke();
-  G.ctx.globalAlpha = 1;
+  drawSilk(W, G);                           // spider silk (actors.js)
 
-  // enemies
-  for (const e of W.enemies) {
-    const ey = e.ty;
-    if (ey > W.camY + vh + 20 || ey < W.camY - 20 || e.x < W.camX - 20 || e.x > W.camX + vw + 20) continue;
-    drawEnemy(G.ctx, e, W.time);
-    if ((e.home || e.nest) && e.hp >= e.hpMax) continue;   // rats and nests: a bar only once hurt
-    const hw = 20, hx = e.x - hw / 2, hy = ey - e.r - 9;
-    G.ctx.fillStyle = COL.barBg; G.ctx.fillRect(hx, hy, hw, 3);
-    G.ctx.fillStyle = e.je ? jcol('jeColBody', e.je.u.col) : e.k.col.a;
-    G.ctx.fillRect(hx, hy, hw * Math.max(0, e.hp / e.hpMax), 3);
-  }
+  drawEnemies(W, G, F);                     // the creatures (actors.js)
 
   // projectiles
   for (const b of W.enemyShots) {

@@ -5577,1379 +5577,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var eyesAlpha = (d) => Math.max(0, Math.min(1, (d - 60) / 120));
   var VENT_H = 64;
 
-  // src/creatures/classic.js
-  function drawDrone(ctx, x, y, r, lx, ly, time, phase, flash, col) {
-    const shell = flash ? "#f4f0ff" : col.b;
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(lx * 0.22);
-    const puff = 0.55 + 0.25 * Math.sin(time * 9 + phase);
-    ctx.globalAlpha = 0.3 * puff;
-    ctx.fillStyle = col.a;
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.9, r * 0.45, r * 0.8 * puff, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = flash ? "#e6e0f5" : col.b;
-    rr(ctx, -r * 1.52, -r * 0.4, r * 0.62, r * 0.9, r * 0.22);
-    ctx.fill();
-    rr(ctx, r * 0.9, -r * 0.4, r * 0.62, r * 0.9, r * 0.22);
-    ctx.fill();
-    rr(ctx, -r * 0.34, r * 0.5, r * 0.68, r * 0.5, r * 0.18);
-    ctx.fill();
-    ctx.fillStyle = shell;
-    rr(ctx, -r * 1.05, -r * 0.78, r * 2.1, r * 1.5, r * 0.62);
-    ctx.fill();
-    ctx.strokeStyle = flash ? "#ffffff" : col.a;
-    ctx.lineWidth = r * 0.14;
-    rr(ctx, -r * 1.05, -r * 0.78, r * 2.1, r * 1.5, r * 0.62);
-    ctx.stroke();
-    ctx.fillStyle = flash ? "#ffffff" : col.c;
-    rr(ctx, -r * 0.72, -r * 0.7, r * 1.44, r * 0.46, r * 0.22);
-    ctx.fill();
-    ctx.restore();
-    const ex = x + lx * r * 0.34, ey = y + ly * r * 0.26;
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = col.a;
-    ctx.beginPath();
-    ctx.arc(ex, ey, r * 0.62, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = flash ? "#ffffff" : col.eye;
-    ctx.beginPath();
-    ctx.arc(ex, ey, r * 0.36, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#1b1526";
-    ctx.beginPath();
-    ctx.arc(ex + lx * r * 0.15, ey + ly * r * 0.15, r * 0.16, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  function drawCrawler(ctx, x, y, r, lx, ly, time, phase, flash, col) {
-    const s = Math.sin(time * 7 + phase);
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.strokeStyle = flash ? "#ffffff" : col.b;
-    ctx.lineWidth = r * 0.2;
-    ctx.lineCap = "round";
-    for (let i = 0; i < 3; i++) {
-      const o = (i - 1) * r * 0.5, sw = s * r * 0.26 * (i % 2 ? 1 : -1);
-      for (const side of [-1, 1]) {
-        ctx.beginPath();
-        ctx.moveTo(o * 0.6, 0);
-        ctx.lineTo(o * 0.6 + side * r * 0.8, side * r * 0.5 + sw);
-        ctx.lineTo(o * 0.6 + side * r * 1.3, side * r * 0.95 - sw * 0.5);
-        ctx.stroke();
-      }
-    }
-    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, r * 1.05, r * 0.8, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#ffffff" : col.a;
-    ctx.beginPath();
-    ctx.ellipse(0, -r * 0.12, r * 0.82, r * 0.6, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    for (const side of [-1, 1]) {
-      ctx.fillStyle = flash ? "#ffffff" : col.eye;
-      ctx.beginPath();
-      ctx.arc(x + lx * r * 0.35 + side * r * 0.3, y + ly * r * 0.25, r * 0.16, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-  function drawBlob(ctx, x, y, r, lx, ly, time, phase, flash, col) {
-    const wob = 1 + 0.09 * Math.sin(time * 3.4 + phase);
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.globalAlpha = 0.32;
-    ctx.fillStyle = col.a;
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.85, r * 0.72, r * 0.26, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.18, r * 1, r * 0.92 * wob, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#ffffff" : col.a;
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.3, r * 0.76, r * 0.66 * wob, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    for (const side of [-1, 1]) {
-      ctx.fillStyle = "#1b1526";
-      ctx.beginPath();
-      ctx.arc(
-        x + lx * r * 0.3 + side * r * 0.26,
-        y + r * 0.12 + ly * r * 0.18,
-        r * 0.15,
-        0,
-        Math.PI * 2
-      );
-      ctx.fill();
-    }
-  }
-  function drawSkull(ctx, x, y, r, lx, ly, time, phase, flash, col) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(lx * 0.18);
-    ctx.globalAlpha = 0.26 + 0.1 * Math.sin(time * 4 + phase);
-    ctx.fillStyle = col.a;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 1.55, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = flash ? "#ffffff" : col.a;
-    ctx.beginPath();
-    ctx.ellipse(0, -r * 0.15, r * 0.85, r * 0.8, 0, 0, Math.PI * 2);
-    ctx.fill();
-    rr(ctx, -r * 0.55, r * 0.4, r * 1.1, r * 0.55, r * 0.2);
-    ctx.fill();
-    ctx.fillStyle = "#1b1526";
-    for (const side of [-1, 1]) {
-      ctx.beginPath();
-      ctx.ellipse(side * r * 0.34, -r * 0.18, r * 0.24, r * 0.28, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillStyle = col.eye;
-    for (const side of [-1, 1]) {
-      ctx.beginPath();
-      ctx.arc(
-        side * r * 0.34 + lx * r * 0.1,
-        -r * 0.18 + ly * r * 0.1,
-        r * 0.11,
-        0,
-        Math.PI * 2
-      );
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-  function drawWorm(ctx, x, y, r, lx, ly, time, phase, flash, col) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(Math.atan2(ly, lx));
-    for (let i = 4; i >= 0; i--) {
-      const t = i / 4, off = -r * 1.5 * i * 0.62, w = r * (1 - t * 0.4);
-      ctx.fillStyle = flash ? "#ffffff" : i % 2 ? col.b : col.a;
-      ctx.beginPath();
-      ctx.ellipse(off, Math.sin(time * 6 + phase - i * 0.7) * r * 0.34, w * 0.62, w, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillStyle = "#1b1526";
-    ctx.beginPath();
-    ctx.arc(r * 0.55, 0, r * 0.26, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  // src/creatures/common.js
-  function roamStep(R, e, dt, rnd2, pre, ok) {
-    if (R.rx === void 0) {
-      R.rx = e.hx;
-      R.ry = e.hy;
-      R.ra = rnd2() * 6.28;
-    }
-    R.ra += (rnd2() - 0.5) * 3 * dt;
-    if (!R.roamR) {
-      R.roamR = kr(pre + "RoamR", rnd2);
-      R.roamSpd = kr(pre + "RoamSpd", rnd2);
-    }
-    if (Math.hypot(R.rx - e.hx, R.ry - e.hy) > R.roamR) {
-      R.ra = Math.atan2(e.hy - R.ry, e.hx - R.rx);
-      R.roamR = kr(pre + "RoamR", rnd2);
-      R.roamSpd = kr(pre + "RoamSpd", rnd2);
-    }
-    const nx = R.rx + Math.cos(R.ra) * R.roamSpd * dt, ny = R.ry + Math.sin(R.ra) * R.roamSpd * dt;
-    if (ok && !ok(nx, ny) && ok(R.rx, R.ry)) {
-      R.ra = Math.atan2(e.hy - R.ry, e.hx - R.rx);
-      return;
-    }
-    R.rx = nx;
-    R.ry = ny;
-  }
-  function turnToward(a, to, max) {
-    const d = angDiff(to, a), r = a + Math.max(-max, Math.min(max, d));
-    return r > Math.PI ? r - 2 * Math.PI : r < -Math.PI ? r + 2 * Math.PI : r;
-  }
-  function flyMove(e, V, dt, r, solidCell2, bounce) {
-    const n = Math.max(1, Math.ceil(Math.hypot(V.vx, V.vy) * dt / CELL));
-    let hit = false;
-    for (let i = 0; i < n; i++) {
-      e.x += V.vx * dt / n;
-      e.y += V.vy * dt / n;
-      const s = surfNormal(e.x, e.y, r + CELL, solidCell2);
-      if (!s || s.d >= r) continue;
-      hit = true;
-      const ox = s.d > 0.5 ? s.px : s.x, oy = s.d > 0.5 ? s.py : s.y;
-      e.x += ox * (r - s.d);
-      e.y += oy * (r - s.d);
-      const into = V.vx * ox + V.vy * oy;
-      if (into < 0) {
-        V.vx -= (1 + bounce) * into * ox;
-        V.vy -= (1 + bounce) * into * oy;
-      }
-    }
-    return hit;
-  }
-  function surfNormal(x, y, R, solidCell2) {
-    const cx0 = Math.floor(x / CELL), cy0 = Math.floor(y / CELL), rc = Math.ceil(R / CELL);
-    let nx = 0, ny = 0, n = 0, d = Infinity, px = 0, py = -1;
-    for (let dy = -rc; dy <= rc; dy++) for (let dx = -rc; dx <= rc; dx++) {
-      const wx = (cx0 + dx + 0.5) * CELL - x, wy = (cy0 + dy + 0.5) * CELL - y;
-      if (wx * wx + wy * wy > R * R) continue;
-      if (!solidCell2(cx0 + dx, cy0 + dy)) continue;
-      nx -= wx;
-      ny -= wy;
-      n++;
-      const qx = Math.max(wx - CELL / 2, Math.min(0, wx + CELL / 2)), qy = Math.max(wy - CELL / 2, Math.min(0, wy + CELL / 2));
-      const q = Math.hypot(qx, qy);
-      if (q < d) {
-        d = q;
-        if (q > 1e-6) {
-          px = -qx / q;
-          py = -qy / q;
-        }
-      }
-    }
-    if (!n) return null;
-    const l = Math.hypot(nx, ny);
-    return l < 1e-6 ? { x: px, y: py, d, px, py } : { x: nx / l, y: ny / l, d, px, py };
-  }
-  function surfSeat(e, S, solidCell2, maxMove, hold, feel) {
-    let n = surfNormal(e.x, e.y, feel, solidCell2);
-    if (!n) return false;
-    if (n.d < hold) {
-      const m = hold - n.d;
-      e.x += n.px * m;
-      e.y += n.py * m;
-      n = surfNormal(e.x, e.y, feel, solidCell2) || n;
-    } else {
-      const m = Math.min(maxMove, n.d - hold);
-      e.x -= n.x * m;
-      e.y -= n.y * m;
-    }
-    S.nx = n.x;
-    S.ny = n.y;
-    S.py = n.py;
-    return true;
-  }
-
-  // src/creatures/jelly.js
-  function jellyPal(u) {
-    const P = {};
-    for (const [k, , , , f] of JE_COLS) P[f] = jcol(k, u);
-    return P;
-  }
-  var JELLY = { hitR: 0.8 };
-  function jellyBell(r, s, q) {
-    const t = Math.max(0, Math.min(1.5, s * q));
-    const w = r * (1.15 - 0.36 * t), h3 = r * (0.95 + 0.6 * t);
-    return { w, h: h3, rw: w * (0.96 - 0.24 * t), top: -h3 * 0.62, rim: h3 * 0.38 };
-  }
-  function jellyStep(e, env, dt) {
-    const { solidCell: solidCell2, rnd: rnd2 } = env;
-    let S = e.je;
-    if (!S) {
-      S = e.je = {
-        hd: -Math.PI / 2 + (rnd2() - 0.5) * 0.6,
-        vx: 0,
-        vy: 0,
-        push: 0,
-        pushA: 0,
-        rest: rnd2() * 1.5,
-        shape: 0,
-        vref: Math.max(1, kr("jeRoamPush", rnd2)),
-        t: rnd2() * 10,
-        tent: [],
-        u: { thin: rnd2(), sq: rnd2(), len: rnd2(), wave: rnd2(), sag: rnd2(), glow: rnd2(), glowR: rnd2(), flare: rnd2(), col: rnd2(), plant: rnd2() }
-      };
-      feel(false);
-      const nt = Math.round(kr("jeTents", rnd2));
-      for (let i = 0; i < nt; i++) {
-        const T = [], nv = Math.max(2, Math.round(kr("jeVerts", rnd2)));
-        for (let j = 0; j < nv; j++) T.push({ x: NaN, y: NaN });
-        S.tent.push(T);
-      }
-    }
-    const mul = env.speedMul || 1;
-    let hunt = !!(env.hunting && env.goal);
-    S.t += dt;
-    roamStep(S, e, dt, rnd2, "je", env.stay);
-    const lost = !!(env.stay && !env.stay(e.x, e.y));
-    if (lost) hunt = false;
-    if (hunt && !S.range) S.range = kr("jeRange", rnd2);
-    if (!hunt) S.range = 0;
-    const goal = hunt ? env.goal : lost ? { x: e.hx, y: e.hy } : { x: S.rx, y: S.ry };
-    const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
-    const range = S.range * (env.rangeMul || 1);
-    const want = !hunt && gd < 12 ? -Math.PI / 2 : Math.atan2(gy, gx);
-    S.hd = turnToward(S.hd, want, S.turn * Math.PI / 180 * mul * dt);
-    const off = Math.abs(angDiff(want, S.hd)) * 180 / Math.PI;
-    S.inRange = hunt && gd < range;
-    S.aimed = hunt && off < S.aimTol;
-    let out = null;
-    if (S.push > 0) {
-      const a = S.pushA * mul * Math.min(dt, S.push);
-      S.vx += Math.cos(S.hd) * a;
-      S.vy += Math.sin(S.hd) * a;
-      S.push -= dt;
-    } else if ((S.rest -= dt) <= 0) {
-      const v = (hunt ? gd > range : gd > 10) && off < S.tol ? kr(hunt ? "jeHuntPush" : "jeRoamPush", rnd2) : 0;
-      const dg = Math.max(0.1, S.drag), glide = Math.min(gd, 160, Math.max(20, v / dg));
-      const stay = env.stay, out0 = stay && !lost && !stay(e.x + Math.cos(S.hd) * glide + S.vx / dg, e.y + Math.sin(S.hd) * glide + S.vy / dg);
-      if (v > 0 && !out0) {
-        const pt = kr("jePushT", rnd2);
-        S.push = pt;
-        S.pushA = v / Math.max(pt, 1e-3);
-        S.vref = Math.max(v, 1);
-        S.rest = kr(hunt ? "jeHuntRest" : "jeRoamRest", rnd2);
-        feel(hunt);
-        out = "pulse";
-      } else S.rest = 0.05 + rnd2() * 0.1;
-    }
-    const k = Math.exp(-S.drag * dt);
-    S.vx *= k;
-    S.vy = S.vy * k + S.sink * dt;
-    flyMove(e, S, dt, e.r * JELLY.hitR, solidCell2, S.bounce);
-    const f = Math.min(1, Math.hypot(S.vx, S.vy) / S.vref);
-    S.shape = 1 - Math.pow(1 - f, kru("jeThin", S.u.thin));
-    const B = jellyBell(e.r, S.shape, kru("jeSquash", S.u.sq));
-    const c = Math.cos(S.hd), s = Math.sin(S.hd), n = S.tent.length;
-    const len = kru("jeTentLen", S.u.len), wave = kru("jeWave", S.u.wave), sag = kru("jeSag", S.u.sag);
-    for (let i = 0; i < n; i++) {
-      const T = S.tent[i], seg = len / (T.length - 1);
-      const lx = n > 1 ? (i / (n - 1) - 0.5) * 1.4 * B.rw : 0;
-      T[0].x = e.x - lx * s - B.rim * c;
-      T[0].y = e.y + lx * c - B.rim * s;
-      if (isNaN(T[1].x)) for (let j = 1; j < T.length; j++) {
-        T[j].x = T[0].x - c * seg * j;
-        T[j].y = T[0].y - s * seg * j;
-      }
-      for (let j = 1; j < T.length; j++) {
-        const q = T[j], pq = T[j - 1];
-        const sw = Math.sin(S.t * 3.1 + i * 0.5 - j * 0.9) * wave * dt * j / (T.length - 1);
-        q.x -= s * sw;
-        q.y += c * sw + sag * dt;
-        const dx = q.x - pq.x, dy = q.y - pq.y, d = Math.hypot(dx, dy) || 1;
-        q.x = pq.x + dx / d * seg;
-        q.y = pq.y + dy / d * seg;
-      }
-    }
-    return out;
-    function feel(h3) {
-      S.turn = kr("jeTurn", rnd2);
-      S.tol = kr("jePushTol", rnd2);
-      S.drag = kr("jeDrag", rnd2);
-      S.sink = kr("jeSink", rnd2);
-      S.bounce = kr("jeBounce", rnd2);
-      S.aimTol = kr("jeAimTol", rnd2);
-      S.range = h3 ? kr("jeRange", rnd2) : 0;
-    }
-  }
-  function segHitsBox(ax, ay, bx, by, x0, y0, x1, y1) {
-    const dx = bx - ax, dy = by - ay;
-    let t0 = 0, t1 = 1;
-    const clip = (p, q) => {
-      if (p === 0) return q >= 0;
-      const t = q / p;
-      if (p < 0) {
-        if (t > t1) return false;
-        if (t > t0) t0 = t;
-      } else {
-        if (t < t0) return false;
-        if (t < t1) t1 = t;
-      }
-      return true;
-    };
-    return clip(-dx, ax - x0) && clip(dx, x1 - ax) && clip(-dy, ay - y0) && clip(dy, y1 - ay);
-  }
-  function tentacleTouch(S, x0, y0, x1, y1) {
-    if (!S || !S.tent) return null;
-    for (const T of S.tent) for (let j = 1; j < T.length; j++) {
-      const a = T[j - 1], b = T[j];
-      if (!isNaN(a.x) && segHitsBox(a.x, a.y, b.x, b.y, x0, y0, x1, y1)) return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-    }
-    return null;
-  }
-  var TW_N = 64;
-  var TW_TILE = (() => {
-    let q = 12345;
-    const a = new Float32Array(TW_N * TW_N);
-    for (let i = 0; i < a.length; i++) {
-      q = q * 16807 % 2147483647;
-      a[i] = q / 2147483647;
-    }
-    return a;
-  })();
-  function twNoise(x, y) {
-    const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
-    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
-    const x0 = (xi % TW_N + TW_N) % TW_N, y0 = (yi % TW_N + TW_N) % TW_N, x1 = (x0 + 1) % TW_N, y1 = (y0 + 1) % TW_N;
-    const a = TW_TILE[y0 * TW_N + x0], b = TW_TILE[y0 * TW_N + x1], c = TW_TILE[y1 * TW_N + x0], d = TW_TILE[y1 * TW_N + x1];
-    return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
-  }
-  function twinkle(x, y, t, size) {
-    const u = x / size, v = y / size;
-    const n = twNoise(u + t * 0.37, v - t * 0.23) * twNoise(u * 1.7 - t * 0.31 + 17, v * 1.7 + t * 0.29 + 5);
-    const k = Math.min(1, Math.max(0, (n - 0.12) / 0.45));
-    return k * k * (3 - 2 * k);
-  }
-  function plantWhite(...datas) {
-    const hist = new Uint32Array(256);
-    let n = 0;
-    for (const d of datas) if (d) {
-      for (let i = 0; i < d.length; i += 4)
-        if (d[i + 3] >= 128 && d[i + 1] >= d[i] && d[i + 1] >= d[i + 2]) {
-          hist[d[i + 1]]++;
-          n++;
-        }
-    }
-    if (!n) return 255;
-    for (let g = 0, c = 0; g < 256; g++) {
-      c += hist[g];
-      if (c >= n * 0.999) return Math.max(1, g);
-    }
-    return 255;
-  }
-  function plantGlowFill(out, art, w, h3, o) {
-    const black = o.white * (1 - o.top), span = Math.max(1, o.white - black);
-    const r = o.rgb[0], g = o.rgb[1], b = o.rgb[2];
-    let any = 0;
-    for (let y = 0; y < h3; y++) {
-      const wy = o.oy + (y + 0.5) * o.px, dy = wy - o.cy;
-      for (let x = 0; x < w; x++) {
-        const i = (y * w + x) * 4, G = art[i + 1];
-        out[i + 3] = 0;
-        if (!art[i + 3] || G <= black || G < art[i] || G < art[i + 2]) continue;
-        const wx = o.ox + (x + 0.5) * o.px, dx = wx - o.cx;
-        const ramp = 1 - Math.sqrt(dx * dx + dy * dy) / o.reach;
-        if (ramp <= 0 || o.lit && !o.lit(wx, wy)) continue;
-        const a = Math.min(1, (G - black) / span) * ramp * twinkle(wx, wy, o.t, o.size) * o.strength * art[i + 3] / 255;
-        if (a < 4e-3) continue;
-        out[i] = r;
-        out[i + 1] = g;
-        out[i + 2] = b;
-        out[i + 3] = Math.min(255, a * 255);
-        any++;
-      }
-    }
-    return any;
-  }
-  function drawJelly(ctx, x, y, r, time, phase, flash, col, S) {
-    const P = jellyPal(S ? S.u.col : 0.5);
-    const sh = Math.max(0, Math.min(1, (S ? S.shape : 0) + 0.05 * Math.sin(time * 2.2 + phase)));
-    const B = jellyBell(r, sh, S ? kru("jeSquash", S.u.sq) : 1);
-    if (S) {
-      ctx.fillStyle = flash ? "#ffffff" : P.tent;
-      ctx.globalAlpha = 0.6;
-      for (const T of S.tent) {
-        const n = T.length, L = [], R = [];
-        for (let j = 0; j < n; j++) {
-          const a = T[Math.max(0, j - 1)], b = T[Math.min(n - 1, j + 1)];
-          const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1;
-          const hw = r * 0.09 * (1 - j / (n - 1)) + 0.15;
-          L.push({ x: T[j].x - dy / d * hw, y: T[j].y + dx / d * hw });
-          R.push({ x: T[j].x + dy / d * hw, y: T[j].y - dx / d * hw });
-        }
-        const side = (P2, back) => {
-          const Q = back ? P2.slice().reverse() : P2;
-          ctx.lineTo(Q[0].x, Q[0].y);
-          for (let j = 1; j < n - 1; j++) ctx.quadraticCurveTo(Q[j].x, Q[j].y, (Q[j].x + Q[j + 1].x) / 2, (Q[j].y + Q[j + 1].y) / 2);
-          ctx.lineTo(Q[n - 1].x, Q[n - 1].y);
-        };
-        ctx.beginPath();
-        ctx.moveTo(L[0].x, L[0].y);
-        side(L, false);
-        side(R, true);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-    }
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate((S ? S.hd : -Math.PI / 2) + Math.PI / 2);
-    const bell = (k, oy, lap) => {
-      const w = B.w * k, h3 = B.h * k, rw = B.rw * k, top = B.top * k + oy, rim = B.rim * k + oy;
-      ctx.beginPath();
-      ctx.moveTo(-rw, rim);
-      ctx.bezierCurveTo(-w * 1.08, rim - h3 * 0.5, -w * 0.72, top, 0, top);
-      ctx.bezierCurveTo(w * 0.72, top, w * 1.08, rim - h3 * 0.5, rw, rim);
-      if (lap) for (let i = 0; i < 5; i++) {
-        const x0 = rw - 2 * rw * i / 5, x1 = rw - 2 * rw * (i + 1) / 5;
-        ctx.quadraticCurveTo((x0 + x1) / 2, rim + lap * (1 + 0.35 * Math.sin(time * 5 + i * 1.3 + phase)), x1, rim);
-      }
-      ctx.closePath();
-    };
-    const g = ctx.createLinearGradient(0, B.top, 0, B.rim);
-    g.addColorStop(0, flash ? "#ffffff" : P.top);
-    g.addColorStop(0.55, flash ? "#ffffff" : P.body);
-    g.addColorStop(1, flash ? "#f4f0ff" : P.rim);
-    ctx.globalAlpha = 0.8;
-    ctx.fillStyle = g;
-    bell(1, 0, r * 0.2 * (1 - 0.5 * sh));
-    ctx.fill();
-    ctx.globalAlpha = 0.85;
-    ctx.strokeStyle = flash ? "#ffffff" : P.edge;
-    ctx.lineWidth = r * 0.08;
-    ctx.stroke();
-    ctx.globalAlpha = 0.28;
-    ctx.fillStyle = flash ? "#ffffff" : P.inner;
-    bell(0.6, -B.h * 0.06, 0);
-    ctx.fill();
-    ctx.globalAlpha = 0.55 + 0.45 * sh;
-    ctx.strokeStyle = flash ? "#ffffff" : P.loops;
-    ctx.lineWidth = r * 0.08;
-    const gy = (B.top + B.rim) / 2 + B.h * 0.12;
-    for (let i = 0; i < 4; i++) {
-      const gx = (i - 1.5) * B.w * 0.34;
-      ctx.beginPath();
-      ctx.arc(gx, gy - Math.abs(i - 1.5) * r * 0.08, r * 0.09, Math.PI, 2 * Math.PI);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = P.shine;
-    ctx.beginPath();
-    ctx.ellipse(-B.w * 0.32, B.top + B.h * 0.24, B.w * 0.16, B.h * 0.09, -0.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  // src/creatures/rat.js
-  var RAT = { hold: 3.5, feel: 9, step: 1, fall: 900, ceil: 0.55, tunnel: 0.6 };
-  function ratFooting(x, y, solidCell2, onWeb) {
-    const n = surfNormal(x, y, RAT.hold + 5, solidCell2);
-    return n && n.py <= RAT.ceil || !!(onWeb && onWeb(x, y));
-  }
-  function ratJump(e, S, goal, env, rnd2) {
-    const solidCell2 = env.solidCell, gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
-    const v = kr("raJump", rnd2), cap = v * 1.4, x0 = e.x + S.nx * 1.5, y0 = e.y + S.ny * 1.5;
-    for (const T of [Math.max(0.18, Math.min(0.6, gd / v)), 0.4, 0.55, 0.7]) {
-      let vx = gx / T, vy = gy / T - 0.5 * RAT.fall * T;
-      const sp = Math.hypot(vx, vy);
-      if (sp > cap) {
-        vx *= cap / sp;
-        vy *= cap / sp;
-      }
-      let ok = true;
-      for (let k = 1; k <= 16 && ok; k++) {
-        const t = T * k / 16, px = x0 + vx * t, py = y0 + vy * t + 0.5 * RAT.fall * t * t;
-        if (Math.hypot(px - goal.x, py - goal.y) < RAT.hold + 3) break;
-        for (const [ox, oy] of [[0, 0], [2.5, 0], [-2.5, 0], [0, 2.5], [0, -2.5]])
-          if (solidCell2(Math.floor((px + ox) / CELL), Math.floor((py + oy) / CELL))) {
-            ok = false;
-            break;
-          }
-      }
-      if (!ok) continue;
-      S.vx = vx;
-      S.vy = vy;
-      e.x = x0;
-      e.y = y0;
-      S.mode = "air";
-      S.on = 0;
-      S.rest = 0.05;
-      if (Math.abs(S.vx) > 1) S.face = S.vx > 0 ? 1 : -1;
-      return "jump";
-    }
-    return null;
-  }
-  function ratSpread(e, others, D) {
-    let x = 0, y = 0;
-    for (const o of others) {
-      if (o === e) continue;
-      const dx = e.x - o.x, dy = e.y - o.y, d = Math.hypot(dx, dy);
-      if (d >= D) continue;
-      const f = 1 - d / D;
-      if (d > 0.01) {
-        x += dx / d * f;
-        y += dy / d * f;
-      } else {
-        const a = e.phase != null ? e.phase : 1;
-        x += Math.cos(a) * f;
-        y += Math.sin(a) * f;
-      }
-    }
-    return { x, y };
-  }
-  function pathAt(P, d) {
-    for (let i = 1; i < P.length; i++) {
-      const a = P[i - 1], b = P[i], l = Math.hypot(b.x - a.x, b.y - a.y);
-      if (d <= l || i === P.length - 1) {
-        const u = l ? Math.max(0, Math.min(1, d / l)) : 0;
-        return { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u, dx: (b.x - a.x) / (l || 1), dy: (b.y - a.y) / (l || 1) };
-      }
-      d -= l;
-    }
-    return { x: P[0].x, y: P[0].y, dx: 0, dy: -1 };
-  }
-  var pathLen = (P) => {
-    let l = 0;
-    for (let i = 1; i < P.length; i++) l += Math.hypot(P[i].x - P[i - 1].x, P[i].y - P[i - 1].y);
-    return l;
-  };
-  function ratStep(e, env, dt) {
-    const { solidCell: solidCell2, rnd: rnd2 } = env;
-    const S = e.ra || (e.ra = { mode: "air", vx: 0, vy: 0, nx: 0, ny: -1, on: 0, rest: rnd2() * 0.3, side: 1, face: 1, s: 0, dir: 1, wait: 0 });
-    const goal = env.goal;
-    const P = env.path, speed = (env.speed || kr("raSpeed", rnd2)) * (env.speedMul || 1);
-    if (S.noT > 0) S.noT -= dt;
-    if (S.mode === "tunnel") {
-      if (!P) {
-        S.mode = "air";
-        S.vx = S.vy = 0;
-        return null;
-      }
-      if (S.wait > 0) {
-        S.wait -= dt;
-        return null;
-      }
-      const L = S.len || (S.len = pathLen(P));
-      S.s += S.dir * speed * RAT.tunnel * dt;
-      if (S.s <= 0) {
-        S.s = 0;
-        S.dir = 1;
-        S.wait = kr("raNestRest", rnd2);
-        e.x = P[0].x;
-        e.y = P[0].y;
-        return "home";
-      }
-      if (S.s >= L) {
-        const m = P[P.length - 1];
-        e.x = m.x;
-        e.y = m.y;
-        S.mode = "surf";
-        S.on = 0;
-        S.rest = 0.05 + rnd2() * 0.2;
-        if (!surfSeat(e, S, solidCell2, RAT.hold, RAT.hold, RAT.feel)) {
-          S.mode = "air";
-          S.vx = S.vy = 0;
-        }
-        return "out";
-      }
-      const q = pathAt(P, S.s);
-      e.x = q.x;
-      e.y = q.y;
-      S.face = q.dx * S.dir >= 0 ? 1 : -1;
-      S.nx = 0;
-      S.ny = -1;
-      return null;
-    }
-    if (env.home && P) {
-      const m = P[P.length - 1];
-      if (Math.hypot(m.x - e.x, m.y - e.y) < 12) {
-        S.mode = "tunnel";
-        S.len = pathLen(P);
-        S.s = S.len;
-        S.dir = -1;
-        S.wait = 0;
-        S.vx = S.vy = 0;
-        return null;
-      }
-    }
-    if (env.follow && goal && S.mode !== "air") {
-      if (S.mode !== "path") {
-        S.mode = "path";
-        S.vx = S.vy = 0;
-      }
-      const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy), go = Math.min(gd, speed * dt);
-      const rock = (x, y) => solidCell2(Math.floor(x / CELL), Math.floor(y / CELL));
-      if (!ratFooting(e.x, e.y, solidCell2, env.onWeb)) {
-        S.mode = "air";
-        S.vx = gd ? gx / gd * speed * 0.4 : 0;
-        S.vy = 0;
-        return null;
-      }
-      if (env.air && gd > RAT.hold + 2) {
-        const f = Math.min(gd, 6) / gd;
-        if (!ratFooting(e.x + gx * f, e.y + gy * f, solidCell2, env.onWeb)) {
-          const j = ratJump(e, S, goal, env, rnd2);
-          if (j) return j;
-        }
-      }
-      if (gd > 0.01) {
-        const k = Math.max(1, Math.ceil(go / 0.8)), mx = gx / gd * go / k, my = gy / gd * go / k;
-        let moved = false;
-        for (let q = 0; q < k; q++) {
-          if (!rock(e.x + mx, e.y + my)) {
-            e.x += mx;
-            e.y += my;
-            moved = true;
-          } else if (!rock(e.x + mx, e.y)) {
-            e.x += mx;
-            moved = true;
-          } else if (!rock(e.x, e.y + my)) {
-            e.y += my;
-            moved = true;
-          } else break;
-          if (!ratFooting(e.x, e.y, solidCell2, env.onWeb)) {
-            S.mode = "air";
-            S.vx = gx / gd * speed * 0.6;
-            S.vy = 0;
-            return null;
-          }
-        }
-        if (Math.abs(gx) > 0.5) S.face = gx > 0 ? 1 : -1;
-        S.blockT = moved ? 0 : (S.blockT || 0) + dt;
-        if (S.blockT > 0.3) {
-          S.blockT = 0;
-          S.mode = "air";
-          S.vx = (rnd2() - 0.5) * 120;
-          S.vy = -160;
-          return null;
-        }
-      }
-      const n2 = surfNormal(e.x, e.y, RAT.feel, solidCell2);
-      if (n2) {
-        if (n2.d < RAT.hold && n2.d > 0.01 && !rock(e.x + n2.px * (RAT.hold - n2.d), e.y + n2.py * (RAT.hold - n2.d))) {
-          e.x += n2.px * (RAT.hold - n2.d);
-          e.y += n2.py * (RAT.hold - n2.d);
-        } else if (n2.d >= RAT.hold && n2.py < -0.5 && n2.d < RAT.hold + 7 && gy > -2) {
-          const m = Math.min(n2.d - RAT.hold, 80 * dt);
-          e.x -= n2.px * m;
-          e.y -= n2.py * m;
-        }
-        S.nx = n2.x;
-        S.ny = n2.y;
-        S.py = n2.py;
-      } else {
-        S.nx = 0;
-        S.ny = -1;
-        S.py = -1;
-      }
-      return null;
-    }
-    if (S.mode === "path") {
-      S.mode = "air";
-      S.vx = S.vy = 0;
-    }
-    if (S.mode === "air") {
-      S.vy = Math.min(S.vy + RAT.fall * dt, 600);
-      const n2 = Math.max(1, Math.ceil(Math.hypot(S.vx, S.vy) * dt / RAT.step));
-      for (let i = 0; i < n2; i++) {
-        e.x += S.vx * dt / n2;
-        e.y += S.vy * dt / n2;
-        if (e.y > CH * CELL) {
-          e.y = CH * CELL;
-          break;
-        }
-        if (S.vy > 0 && env.follow && env.onWeb && env.onWeb(e.x, e.y)) {
-          S.mode = "path";
-          S.vx = S.vy = 0;
-          return "land";
-        }
-        const s = surfNormal(e.x, e.y, RAT.hold + 0.5, solidCell2);
-        if (!s) continue;
-        if (s.py > RAT.ceil) {
-          e.x += s.px * (RAT.hold + 0.5 - s.d);
-          e.y += s.py * (RAT.hold + 0.5 - s.d);
-          S.vy = Math.max(S.vy, 0);
-          S.vx *= 0.5;
-          continue;
-        }
-        surfSeat(e, S, solidCell2, RAT.hold, RAT.hold, RAT.feel);
-        S.mode = "surf";
-        S.vx = S.vy = 0;
-        S.on = 0;
-        S.rest = Math.min(S.rest, 0.05);
-        return "land";
-      }
-      return null;
-    }
-    if (!surfNormal(e.x, e.y, RAT.hold + 2, solidCell2) || S.py > RAT.ceil) {
-      S.mode = "air";
-      S.vx = S.vy = 0;
-      return null;
-    }
-    if (S.on <= 0) {
-      if ((S.rest -= dt) > 0) return null;
-      S.on = kr(env.hunting ? "raHuntOn" : "raRoamOn", rnd2);
-      S.spd = speed;
-      S.arrive = env.arrive != null ? env.arrive : 3;
-      S.dot = kr("raDot", rnd2);
-      const j = decide();
-      if (j) return j;
-      if (S.on <= 0) {
-        S.rest = env.hunting ? 0.03 : 0.1 + rnd2() * 0.2;
-        return null;
-      }
-    }
-    const dist = S.spd * Math.min(dt, S.on);
-    S.on -= dt;
-    const n = Math.max(1, Math.ceil(dist / RAT.step));
-    for (let i = 0; i < n; i++) {
-      const st = dist / n, tx = -S.ny * S.side, ty = S.nx * S.side;
-      e.x += tx * st;
-      e.y += ty * st;
-      if (!surfSeat(e, S, solidCell2, st * 2, RAT.hold, RAT.feel)) {
-        e.x -= S.nx * st * 2;
-        e.y -= S.ny * st * 2;
-        if (!surfSeat(e, S, solidCell2, st * 2, RAT.hold, RAT.feel)) {
-          S.mode = "air";
-          S.vx = tx * S.spd * 0.5;
-          S.vy = 0;
-          break;
-        }
-      }
-      if (S.py > RAT.ceil) {
-        S.mode = "air";
-        S.vx = tx * S.spd * 0.3;
-        S.vy = 0;
-        S.noSide = S.side;
-        S.noT = 1.5;
-        break;
-      }
-      if (Math.abs(tx) > 0.2) S.face = tx > 0 ? 1 : -1;
-      if (!goal) continue;
-      const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy) || 1;
-      if (gd < S.arrive || (-S.ny * gx + S.nx * gy) * S.side < 0) {
-        S.on = 0;
-        break;
-      }
-      const high = (gx * S.nx + gy * S.ny) / gd >= S.dot;
-      if (high && !S.high) {
-        S.high = true;
-        const j = decide();
-        if (j) return j;
-        if (S.on <= 0) break;
-      } else if (!high) S.high = false;
-    }
-    if (S.on <= 0 && S.rest <= 0) S.rest = kr(env.hunting ? "raHuntOff" : "raRoamOff", rnd2);
-    return null;
-    function decide() {
-      if (!goal) {
-        S.on = 0;
-        return null;
-      }
-      const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
-      if (gd < S.arrive) {
-        S.on = 0;
-        return null;
-      }
-      const dx = gx / gd, dy = gy / gd, t = -S.ny * dx + S.nx * dy;
-      const barred = S.noT > 0 && (t > 0 ? 1 : -1) === S.noSide;
-      if ((barred || env.jump !== false && dx * S.nx + dy * S.ny >= S.dot) && gd < kr("raJumpR", rnd2)) {
-        const j = ratJump(e, S, goal, env, rnd2);
-        if (j) return j;
-      }
-      if (barred) {
-        S.side = -S.noSide;
-        return null;
-      }
-      if (Math.abs(t) * gd < 2) {
-        S.on = 0;
-        return null;
-      }
-      S.side = t > 0 ? 1 : -1;
-      return null;
-    }
-  }
-  function drawRat(ctx, x, y, r, time, phase, flash, col, S, carry) {
-    const air = !S || S.mode === "air", nx = air ? 0 : S.nx, ny = air ? -1 : S.ny, f = S ? S.face : 1;
-    const moving = S && (S.on > 0 || S.mode === "air" || S.mode === "path" || S.mode === "tunnel" && !(S.wait > 0));
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(Math.atan2(nx, -ny));
-    ctx.scale(f, 1);
-    const run = moving ? Math.sin(time * 38 + phase) : 0, bob = moving ? Math.abs(run) * 0.4 : 0;
-    ctx.translate(0, r * 0.35 - bob);
-    ctx.strokeStyle = flash ? "#fff" : "#d9a0a0";
-    ctx.lineWidth = 0.7;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(-r * 1.1, 0);
-    ctx.quadraticCurveTo(-r * 2.1, -r * (0.2 + 0.4 * Math.sin(time * 6 + phase)), -r * 2.9, r * 0.3 * Math.sin(time * 4 + phase));
-    ctx.stroke();
-    ctx.strokeStyle = flash ? "#fff" : col.b;
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(-r * 0.6, r * 0.2);
-    ctx.lineTo(-r * 0.6 - run * r * 0.4, r * 0.6 + bob);
-    ctx.moveTo(r * 0.5, r * 0.2);
-    ctx.lineTo(r * 0.5 + run * r * 0.4, r * 0.6 + bob);
-    ctx.stroke();
-    ctx.fillStyle = flash ? "#fff" : col.a;
-    ctx.beginPath();
-    ctx.ellipse(-r * 0.15, -r * 0.2, r * 1.15, r * 0.62, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(r * 0.6, -r * 0.65);
-    ctx.quadraticCurveTo(r * 1.5, -r * 0.5, r * 1.75, -r * 0.05);
-    ctx.lineTo(r * 0.55, r * 0.25);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = flash ? "#fff" : col.c;
-    ctx.beginPath();
-    ctx.ellipse(-r * 0.3, -r * 0.5, r * 0.7, r * 0.2, -0.1, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#fff" : "#c98f8f";
-    ctx.beginPath();
-    ctx.arc(r * 0.55, -r * 0.8, r * 0.3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = col.eye;
-    ctx.fillRect(r * 1, -r * 0.5, r * 0.25, r * 0.25);
-    ctx.fillStyle = "#e88a9a";
-    ctx.fillRect(r * 1.62, -r * 0.18, r * 0.25, r * 0.22);
-    if (carry > 0) {
-      ctx.translate(r * 2.1, r * 0.1);
-      ctx.scale(f, 1);
-      ctx.rotate(-Math.atan2(nx, -ny));
-      ctx.fillStyle = "#d8a52a";
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 3.2, 4, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = COL.flame2;
-      ctx.beginPath();
-      ctx.ellipse(-0.8, -0.8, 1.2, 1.8, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-  function drawNest(ctx, x, y, r, time, flash, col, N) {
-    ctx.save();
-    ctx.translate(x, y + r * 0.35);
-    ctx.fillStyle = flash ? "#fff" : col.b;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, r * 1.05, r * 0.55, 0, 0, Math.PI * 2);
-    ctx.fill();
-    const coins = N ? Math.min(12, Math.ceil(N.stash / 5)) : 0;
-    for (let k = 0; k < coins; k++) {
-      const a = k * 2.4, d = k % 4 * r * 0.16;
-      ctx.fillStyle = Math.sin(time * 3 + k) > 0.8 ? "#fff2a0" : "#ffd23c";
-      ctx.beginPath();
-      ctx.arc(Math.cos(a) * d * 1.6, -r * 0.2 + Math.sin(a) * d * 0.5, r * 0.16, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.strokeStyle = flash ? "#fff" : col.c;
-    ctx.lineWidth = 0.6;
-    ctx.beginPath();
-    for (let k = 0; k < 14; k++) {
-      const a = k / 14 * Math.PI * 2, b = a + 0.9 + k % 3 * 0.3;
-      ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r * 0.45 - r * 0.05);
-      ctx.lineTo(Math.cos(b) * r * 0.8, Math.sin(b) * r * 0.4 + r * 0.05);
-    }
-    ctx.stroke();
-    ctx.strokeStyle = flash ? "#fff" : col.a;
-    ctx.lineWidth = 0.9;
-    ctx.beginPath();
-    ctx.ellipse(0, -r * 0.1, r * 0.95, r * 0.35, 0, Math.PI * 0.05, Math.PI * 0.95);
-    ctx.stroke();
-    ctx.fillStyle = "#e8e0cc";
-    ctx.fillRect(-r * 0.9, -r * 0.3, r * 0.6, r * 0.12);
-    ctx.fillRect(r * 0.4, -r * 0.45, r * 0.12, r * 0.5);
-    ctx.restore();
-  }
-
-  // src/world/vision.js
-  var VIS_RAYS = 160;
-  function fogReveal(seen, wx, wy, r, pts, rays) {
-    const cx = wx / FOG_U, cy = wy / FOG_U, cr = r / FOG_U, r2 = cr * cr;
-    const x0 = Math.max(0, Math.floor(cx - cr)), x1 = Math.min(FW - 1, Math.ceil(cx + cr));
-    const y0 = Math.max(0, Math.floor(cy - cr)), y1 = Math.min(FH - 1, Math.ceil(cy + cr));
-    let n = 0;
-    for (let y = y0; y <= y1; y++) {
-      const row = y * FW, dy = y + 0.5 - cy, dy2 = dy * dy;
-      for (let x = x0; x <= x1; x++) {
-        if (seen[row + x]) continue;
-        const dx = x + 0.5 - cx;
-        if (dx * dx + dy2 > r2) continue;
-        const d = Math.sqrt(dx * dx + dy2) * FOG_U;
-        const t = (Math.atan2(dy, dx) / (Math.PI * 2) + 1) % 1 * rays;
-        const i0 = Math.floor(t), i1 = (i0 + 1) % rays;
-        const a = Math.hypot(pts[i0 * 2] - wx, pts[i0 * 2 + 1] - wy);
-        const b = Math.hypot(pts[i1 * 2] - wx, pts[i1 * 2 + 1] - wy);
-        if (d > Math.min(a, b)) continue;
-        seen[row + x] = 1;
-        n++;
-      }
-    }
-    return n;
-  }
-  function fogStart() {
-    const seen = new Uint8Array(FW * FH);
-    for (let y = Math.floor((SHOP_TOP - SHOP_ROOF) / FOG); y < FH; y++)
-      for (let x = 0; x < FW; x++) seen[y * FW + x] = 2;
-    return seen;
-  }
-  function nestFog(nests) {
-    const m = new Uint8Array(FW * FH);
-    for (const n of nests || []) {
-      const R = n.r + 2;
-      for (let y = Math.floor((n.y - R) / FOG); y <= Math.floor((n.y + R) / FOG); y++)
-        for (let x = Math.floor((n.x - R) / FOG); x <= Math.floor((n.x + R) / FOG); x++)
-          if (x >= 0 && y >= 0 && x < FW && y < FH) m[y * FW + x] = 1;
-    }
-    return m;
-  }
-  function rayDist(x, y, dx, dy, r, solidCell2) {
-    let cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
-    const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1;
-    const dtx = dx ? Math.abs(CELL / dx) : Infinity;
-    const dty = dy ? Math.abs(CELL / dy) : Infinity;
-    let tx = dx ? dx > 0 ? ((cx + 1) * CELL - x) / dx : (cx * CELL - x) / dx : Infinity;
-    let ty = dy ? dy > 0 ? ((cy + 1) * CELL - y) / dy : (cy * CELL - y) / dy : Infinity;
-    let t = 0;
-    for (; ; ) {
-      if (tx < ty) {
-        t = tx;
-        tx += dtx;
-        cx += sx;
-      } else {
-        t = ty;
-        ty += dty;
-        cy += sy;
-      }
-      if (t >= r) return r;
-      if (solidCell2(cx, cy)) return t;
-    }
-  }
-  function losClear(x0, y0, x1, y1, solidCell2) {
-    const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy);
-    if (d < 1e-3) return true;
-    return rayDist(x0, y0, dx / d, dy / d, d, solidCell2) >= d - 1e-3;
-  }
-  function visPoly(cx, cy, r, solidCell2, rays) {
-    const pts = [];
-    for (let i = 0; i < rays; i++) {
-      const a = i / rays * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
-      const d = rayDist(cx, cy, dx, dy, r, solidCell2);
-      pts.push(cx + dx * d, cy + dy * d);
-    }
-    return pts;
-  }
-
-  // src/creatures/spider.js
-  var SPIDER = { hold: 6, feel: 14, step: 1.5, fall: 900 };
-  function spiderSeat(e, S, solidCell2, maxMove) {
-    return surfSeat(e, S, solidCell2, maxMove, SPIDER.hold, SPIDER.feel);
-  }
-  var segNear = (L, x, y) => {
-    const vx = L.bx - L.ax, vy = L.by - L.ay, ll = vx * vx + vy * vy || 1;
-    const u = Math.max(0, Math.min(1, ((x - L.ax) * vx + (y - L.ay) * vy) / ll));
-    return { u, d: Math.hypot(L.ax + vx * u - x, L.ay + vy * u - y) };
-  };
-  function spiderAim(x, y, dx, dy, reach, solidCell2) {
-    for (const a of [0, 0.22, -0.22, 0.45, -0.45]) {
-      const c = Math.cos(a), s = Math.sin(a), ux = dx * c - dy * s, uy = dx * s + dy * c;
-      const d = rayDist(x, y, ux, uy, reach, solidCell2);
-      if (d < reach && d > SPIDER.hold * 2.5) return { dx: ux, dy: uy, len: d };
-    }
-    return null;
-  }
-  function spiderStep(e, env, dt) {
-    const { solidCell: solidCell2, webs, rnd: rnd2 } = env;
-    const S = e.sp || (e.sp = {
-      mode: "fall",
-      vy: 0,
-      nx: 0,
-      ny: -1,
-      on: 0,
-      rest: rnd2() * 0.5,
-      side: 1,
-      line: null,
-      u: 0,
-      dir: 1,
-      shot: null,
-      rx: e.hx,
-      ry: e.hy,
-      ra: rnd2() * 6.28,
-      high: false
-    });
-    S.webT = (S.webT || 0) - dt;
-    roamStep(S, e, dt, rnd2, "sp");
-    const goal = env.hunting ? env.goal : { x: S.rx, y: S.ry };
-    let out = null;
-    if (S.mode === "fall") {
-      S.vy = Math.min(S.vy + SPIDER.fall * dt, 600);
-      const n2 = Math.max(1, Math.ceil(S.vy * dt / SPIDER.step));
-      for (let i = 0; i < n2; i++) {
-        e.y += S.vy * dt / n2;
-        if (e.y > CH * CELL) {
-          e.y = CH * CELL;
-          break;
-        }
-        if (surfNormal(e.x, e.y, SPIDER.hold + 1, solidCell2)) {
-          spiderSeat(e, S, solidCell2, SPIDER.hold);
-          S.mode = "surf";
-          S.vy = 0;
-          S.on = 0;
-          S.rest = 0.1;
-          break;
-        }
-      }
-      return null;
-    }
-    if (S.mode === "shoot") {
-      const sh = S.shot;
-      sh.t += sh.spd * dt;
-      if (sh.t < sh.len) return null;
-      const hx = sh.x + sh.dx * sh.len, hy = sh.y + sh.dy * sh.len;
-      const inx = hx + sh.dx * 1.2, iny = hy + sh.dy * 1.2;
-      S.mode = sh.from;
-      S.shot = null;
-      if (!solidCell2(Math.floor(inx / CELL), Math.floor(iny / CELL))) return null;
-      const L = {
-        ax: sh.x,
-        ay: sh.y,
-        bx: hx - sh.dx * SPIDER.hold,
-        by: hy - sh.dy * SPIDER.hold,
-        a0x: sh.ax0,
-        a0y: sh.ay0,
-        b0x: hx,
-        b0y: hy,
-        ain: sh.ain,
-        bin: { x: inx, y: iny },
-        owner: e
-      };
-      webs.push(L);
-      const mine = webs.filter((w) => w.owner === e);
-      if (mine.length > Math.round(spr("spMaxLines", rnd2))) {
-        const old = mine.find((w) => w !== S.line);
-        if (old) webs.splice(webs.indexOf(old), 1);
-      }
-      S.mode = "line";
-      S.line = L;
-      S.u = 0;
-      S.dir = 1;
-      return "web";
-    }
-    if (S.mode === "line" && webs.indexOf(S.line) < 0) {
-      S.mode = "fall";
-      S.line = null;
-      S.vy = 0;
-      return null;
-    }
-    if (S.mode === "surf" && !surfNormal(e.x, e.y, SPIDER.hold + 2, solidCell2)) {
-      S.mode = "fall";
-      S.vy = 0;
-      return null;
-    }
-    if (S.on <= 0) {
-      if ((S.rest -= dt) > 0) return null;
-      S.on = spr(env.hunting ? "spHuntOn" : "spRoamOn", rnd2);
-      S.spd = env.speed || spr("spSpeed", rnd2);
-      S.arrive = env.hunting ? spr("spArrive", rnd2) : 3;
-      S.dot = spr("spDot", rnd2);
-      decide();
-      if (S.mode === "shoot") return null;
-      if (S.on <= 0) {
-        S.rest = 0.1 + rnd2() * 0.2;
-        return null;
-      }
-    }
-    if (S.mode === "shoot") return null;
-    const speed = (S.spd || spr("spSpeed", rnd2)) * (env.speedMul || 1);
-    const dist = speed * Math.min(dt, S.on);
-    S.on -= dt;
-    const n = Math.max(1, Math.ceil(dist / SPIDER.step));
-    for (let i = 0; i < n && S.mode !== "shoot"; i++) {
-      const st = dist / n;
-      if (S.mode === "surf") {
-        const tx = -S.ny * S.side, ty = S.nx * S.side;
-        e.x += tx * st;
-        e.y += ty * st;
-        if (!spiderSeat(e, S, solidCell2, st * 2)) {
-          e.x -= S.nx * st * 2;
-          e.y -= S.ny * st * 2;
-          if (!spiderSeat(e, S, solidCell2, st * 2)) {
-            S.mode = "fall";
-            S.vy = 0;
-            break;
-          }
-        }
-        const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy) || 1;
-        const high = (gx * S.nx + gy * S.ny) / gd >= S.dot;
-        if (high && !S.high) {
-          S.high = true;
-          decide();
-        } else if (!high) S.high = false;
-        if (gd < (S.arrive || 3) || (-S.ny * gx + S.nx * gy) * S.side < 0) {
-          S.on = 0;
-          break;
-        }
-      } else if (S.mode === "line") {
-        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
-        const ux = (L.bx - L.ax) / len * S.dir, uy = (L.by - L.ay) / len * S.dir;
-        if (!S.go && (goal.x - e.x) * ux + (goal.y - e.y) * uy <= 0) {
-          S.on = 0;
-          break;
-        }
-        S.u += S.dir * st / len;
-        if (S.u >= 1 || S.u <= 0) {
-          S.u = S.u >= 1 ? 1 : 0;
-          e.x = S.u ? L.bx : L.ax;
-          e.y = S.u ? L.by : L.ay;
-          S.mode = "surf";
-          S.line = null;
-          S.go = false;
-          if (!spiderSeat(e, S, solidCell2, SPIDER.hold)) {
-            S.mode = "fall";
-            S.vy = 0;
-            break;
-          }
-          decide();
-          continue;
-        }
-        e.x = L.ax + (L.bx - L.ax) * S.u;
-        e.y = L.ay + (L.by - L.ay) * S.u;
-      }
-    }
-    if (S.on <= 0 && S.rest <= 0) S.rest = spr(env.hunting ? "spHuntOff" : "spRoamOff", rnd2);
-    return out;
-    function decide() {
-      const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
-      if (gd < (S.arrive || 3)) {
-        S.on = 0;
-        return;
-      }
-      const dx = gx / gd, dy = gy / gd;
-      const tryLine = () => {
-        let best = null, bd = spr("spGrab", rnd2);
-        for (const L of webs) {
-          if (L === S.line) continue;
-          const q = segNear(L, e.x, e.y);
-          if (q.d > bd) continue;
-          const len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
-          const ux = (L.bx - L.ax) / len, uy = (L.by - L.ay) / len, al = ux * dx + uy * dy;
-          if (Math.abs(al) < 0.5) continue;
-          if (al > 0 && q.u > 0.97 || al < 0 && q.u < 0.03) continue;
-          best = { L, u: q.u, dir: al > 0 ? 1 : -1 };
-          bd = q.d;
-        }
-        if (!best) return false;
-        S.mode = "line";
-        S.line = best.L;
-        S.u = best.u;
-        S.dir = best.dir;
-        e.x = best.L.ax + (best.L.bx - best.L.ax) * best.u;
-        e.y = best.L.ay + (best.L.by - best.L.ay) * best.u;
-        return true;
-      };
-      const tryShoot = (from) => {
-        if (S.webT > 0 || !env.hunting && gd < 40) return false;
-        const a = spiderAim(e.x, e.y, dx, dy, env.reach || spr("spWeb", rnd2), solidCell2);
-        if (!a) return false;
-        let ax0 = e.x, ay0 = e.y, ain = null;
-        if (from === "surf") {
-          const d = rayDist(e.x, e.y, -S.nx, -S.ny, SPIDER.feel + 4, solidCell2);
-          ax0 = e.x - S.nx * d;
-          ay0 = e.y - S.ny * d;
-          ain = { x: e.x - S.nx * (d + 1.2), y: e.y - S.ny * (d + 1.2) };
-        }
-        S.webT = spr(env.hunting ? "spHuntWeb" : "spRoamWeb", rnd2);
-        S.shot = { spd: spr("spLineSpd", rnd2), x: e.x, y: e.y, dx: a.dx, dy: a.dy, len: a.len, t: 0, from, ax0, ay0, ain };
-        S.mode = "shoot";
-        return true;
-      };
-      if (S.mode === "surf") {
-        const dot = dx * S.nx + dy * S.ny;
-        S.high = dot >= (S.dot || 0.6);
-        if (S.high && (tryLine() || tryShoot("surf"))) return;
-        const t = -S.ny * dx + S.nx * dy;
-        if (Math.abs(t) * gd < 4) {
-          S.on = 0;
-          return;
-        }
-        S.side = t > 0 ? 1 : -1;
-      } else if (S.mode === "line") {
-        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
-        const al = ((L.bx - L.ax) * dx + (L.by - L.ay) * dy) / len;
-        S.go = false;
-        if (Math.abs(al) > 0.3) {
-          S.dir = al > 0 ? 1 : -1;
-          return;
-        }
-        if (tryLine() || tryShoot("line")) return;
-        const da = Math.hypot(goal.x - L.ax, goal.y - L.ay), db = Math.hypot(goal.x - L.bx, goal.y - L.by);
-        S.dir = db < da ? 1 : -1;
-        S.go = true;
-      }
-    }
-  }
-  function drawSpider(ctx, x, y, r, time, phase, flash, col, S) {
-    let nx = 0, ny = -1, side = 1, moving = false;
-    if (S) {
-      if (S.mode === "line" && S.line) {
-        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
-        nx = -(L.by - L.ay) / len;
-        ny = (L.bx - L.ax) / len;
-        if (ny > 0) {
-          nx = -nx;
-          ny = -ny;
-        }
-        side = S.dir * (L.bx - L.ax >= 0 ? 1 : -1);
-      } else if (S.mode === "surf" || S.mode === "shoot") {
-        nx = S.nx;
-        ny = S.ny;
-        side = S.side;
-      }
-      moving = S.on > 0 && S.mode !== "shoot";
-    }
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(Math.atan2(nx, -ny));
-    const t = moving ? time * 38 + phase : phase;
-    ctx.strokeStyle = flash ? "#ffffff" : col.b;
-    ctx.lineWidth = r * 0.16;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    for (let i = 0; i < 4; i++) {
-      const o = (i - 1.5) * r * 0.28, sw = Math.sin(t + i * 1.7) * r * 0.22;
-      for (const s of [-1, 1]) {
-        const fx = s * (r * (0.75 + Math.abs(i - 1.5) * 0.35)) + sw * s;
-        ctx.beginPath();
-        ctx.moveTo(o * 0.5, 0);
-        ctx.lineTo(o * 0.5 + fx * 0.55, -r * 0.55 - Math.abs(sw) * 0.3);
-        ctx.lineTo(o * 0.5 + fx, r * 0.62);
-        ctx.stroke();
-      }
-    }
-    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
-    ctx.beginPath();
-    ctx.ellipse(-side * r * 0.45, -r * 0.05, r * 0.62, r * 0.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#ffffff" : col.a;
-    ctx.beginPath();
-    ctx.ellipse(-side * r * 0.45, -r * 0.12, r * 0.48, r * 0.36, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
-    ctx.beginPath();
-    ctx.ellipse(side * r * 0.3, 0, r * 0.38, r * 0.32, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#ffffff" : col.eye;
-    for (const [ex, ey, er] of [[0.5, -0.1, 0.1], [0.42, 0.06, 0.08], [0.58, 0.08, 0.07], [0.36, -0.14, 0.07]]) {
-      ctx.beginPath();
-      ctx.arc(side * r * ex, r * ey, r * er, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  // src/creatures/draw.js
-  function drawEnemy(ctx, e, time) {
-    const k = e.k, flash = e.flash > 0;
-    const x = e.x, y = e.ty, r = e.r, lx = e.lx, ly = e.ly;
-    if (k.body === "spider") drawSpider(ctx, x, y, r, time, e.phase, flash, k.col, e.sp);
-    else if (k.body === "rat") drawRat(ctx, x, y, r, time, e.phase, flash, k.col, e.ra, e.carry);
-    else if (k.body === "nest") drawNest(ctx, x, y, r, time, flash, k.col, e.nest);
-    else if (k.body === "jelly") drawJelly(ctx, x, y, r, time, e.phase, flash, k.col, e.je);
-    else if (k.body === "crawler") drawCrawler(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-    else if (k.body === "blob") drawBlob(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-    else if (k.body === "skull") drawSkull(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-    else if (k.body === "worm") drawWorm(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-    else drawDrone(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
-    if (e.charge > 0 && k.tele) {
-      ctx.globalAlpha = 0.65;
-      ctx.strokeStyle = k.col.eye;
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.arc(x, y, e.r + 4 + e.charge * 10, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
-  }
-
   // src/spells/cast.js
   var MIN_CAST = 0.016;
   var MIN_RECH = 0.05;
@@ -10052,6 +8679,84 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
 
+  // src/world/vision.js
+  var VIS_RAYS = 160;
+  function fogReveal(seen, wx, wy, r, pts, rays) {
+    const cx = wx / FOG_U, cy = wy / FOG_U, cr = r / FOG_U, r2 = cr * cr;
+    const x0 = Math.max(0, Math.floor(cx - cr)), x1 = Math.min(FW - 1, Math.ceil(cx + cr));
+    const y0 = Math.max(0, Math.floor(cy - cr)), y1 = Math.min(FH - 1, Math.ceil(cy + cr));
+    let n = 0;
+    for (let y = y0; y <= y1; y++) {
+      const row = y * FW, dy = y + 0.5 - cy, dy2 = dy * dy;
+      for (let x = x0; x <= x1; x++) {
+        if (seen[row + x]) continue;
+        const dx = x + 0.5 - cx;
+        if (dx * dx + dy2 > r2) continue;
+        const d = Math.sqrt(dx * dx + dy2) * FOG_U;
+        const t = (Math.atan2(dy, dx) / (Math.PI * 2) + 1) % 1 * rays;
+        const i0 = Math.floor(t), i1 = (i0 + 1) % rays;
+        const a = Math.hypot(pts[i0 * 2] - wx, pts[i0 * 2 + 1] - wy);
+        const b = Math.hypot(pts[i1 * 2] - wx, pts[i1 * 2 + 1] - wy);
+        if (d > Math.min(a, b)) continue;
+        seen[row + x] = 1;
+        n++;
+      }
+    }
+    return n;
+  }
+  function fogStart() {
+    const seen = new Uint8Array(FW * FH);
+    for (let y = Math.floor((SHOP_TOP - SHOP_ROOF) / FOG); y < FH; y++)
+      for (let x = 0; x < FW; x++) seen[y * FW + x] = 2;
+    return seen;
+  }
+  function nestFog(nests) {
+    const m = new Uint8Array(FW * FH);
+    for (const n of nests || []) {
+      const R = n.r + 2;
+      for (let y = Math.floor((n.y - R) / FOG); y <= Math.floor((n.y + R) / FOG); y++)
+        for (let x = Math.floor((n.x - R) / FOG); x <= Math.floor((n.x + R) / FOG); x++)
+          if (x >= 0 && y >= 0 && x < FW && y < FH) m[y * FW + x] = 1;
+    }
+    return m;
+  }
+  function rayDist(x, y, dx, dy, r, solidCell2) {
+    let cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+    const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1;
+    const dtx = dx ? Math.abs(CELL / dx) : Infinity;
+    const dty = dy ? Math.abs(CELL / dy) : Infinity;
+    let tx = dx ? dx > 0 ? ((cx + 1) * CELL - x) / dx : (cx * CELL - x) / dx : Infinity;
+    let ty = dy ? dy > 0 ? ((cy + 1) * CELL - y) / dy : (cy * CELL - y) / dy : Infinity;
+    let t = 0;
+    for (; ; ) {
+      if (tx < ty) {
+        t = tx;
+        tx += dtx;
+        cx += sx;
+      } else {
+        t = ty;
+        ty += dty;
+        cy += sy;
+      }
+      if (t >= r) return r;
+      if (solidCell2(cx, cy)) return t;
+    }
+  }
+  function losClear(x0, y0, x1, y1, solidCell2) {
+    const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy);
+    if (d < 1e-3) return true;
+    return rayDist(x0, y0, dx / d, dy / d, d, solidCell2) >= d - 1e-3;
+  }
+  function visPoly(cx, cy, r, solidCell2, rays) {
+    const pts = [];
+    for (let i = 0; i < rays; i++) {
+      const a = i / rays * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
+      const d = rayDist(cx, cy, dx, dy, r, solidCell2);
+      pts.push(cx + dx * d, cy + dy * d);
+    }
+    return pts;
+  }
+
   // src/game/systems/fog.js
   var fogLit = (W, x, y) => {
     const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
@@ -10080,6 +8785,686 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
   var seenAt = (W, x, y) => W.seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)] !== 0;
+
+  // src/creatures/common.js
+  function roamStep(R, e, dt, rnd2, pre, ok) {
+    if (R.rx === void 0) {
+      R.rx = e.hx;
+      R.ry = e.hy;
+      R.ra = rnd2() * 6.28;
+    }
+    R.ra += (rnd2() - 0.5) * 3 * dt;
+    if (!R.roamR) {
+      R.roamR = kr(pre + "RoamR", rnd2);
+      R.roamSpd = kr(pre + "RoamSpd", rnd2);
+    }
+    if (Math.hypot(R.rx - e.hx, R.ry - e.hy) > R.roamR) {
+      R.ra = Math.atan2(e.hy - R.ry, e.hx - R.rx);
+      R.roamR = kr(pre + "RoamR", rnd2);
+      R.roamSpd = kr(pre + "RoamSpd", rnd2);
+    }
+    const nx = R.rx + Math.cos(R.ra) * R.roamSpd * dt, ny = R.ry + Math.sin(R.ra) * R.roamSpd * dt;
+    if (ok && !ok(nx, ny) && ok(R.rx, R.ry)) {
+      R.ra = Math.atan2(e.hy - R.ry, e.hx - R.rx);
+      return;
+    }
+    R.rx = nx;
+    R.ry = ny;
+  }
+  function turnToward(a, to, max) {
+    const d = angDiff(to, a), r = a + Math.max(-max, Math.min(max, d));
+    return r > Math.PI ? r - 2 * Math.PI : r < -Math.PI ? r + 2 * Math.PI : r;
+  }
+  function flyMove(e, V, dt, r, solidCell2, bounce) {
+    const n = Math.max(1, Math.ceil(Math.hypot(V.vx, V.vy) * dt / CELL));
+    let hit = false;
+    for (let i = 0; i < n; i++) {
+      e.x += V.vx * dt / n;
+      e.y += V.vy * dt / n;
+      const s = surfNormal(e.x, e.y, r + CELL, solidCell2);
+      if (!s || s.d >= r) continue;
+      hit = true;
+      const ox = s.d > 0.5 ? s.px : s.x, oy = s.d > 0.5 ? s.py : s.y;
+      e.x += ox * (r - s.d);
+      e.y += oy * (r - s.d);
+      const into = V.vx * ox + V.vy * oy;
+      if (into < 0) {
+        V.vx -= (1 + bounce) * into * ox;
+        V.vy -= (1 + bounce) * into * oy;
+      }
+    }
+    return hit;
+  }
+  function surfNormal(x, y, R, solidCell2) {
+    const cx0 = Math.floor(x / CELL), cy0 = Math.floor(y / CELL), rc = Math.ceil(R / CELL);
+    let nx = 0, ny = 0, n = 0, d = Infinity, px = 0, py = -1;
+    for (let dy = -rc; dy <= rc; dy++) for (let dx = -rc; dx <= rc; dx++) {
+      const wx = (cx0 + dx + 0.5) * CELL - x, wy = (cy0 + dy + 0.5) * CELL - y;
+      if (wx * wx + wy * wy > R * R) continue;
+      if (!solidCell2(cx0 + dx, cy0 + dy)) continue;
+      nx -= wx;
+      ny -= wy;
+      n++;
+      const qx = Math.max(wx - CELL / 2, Math.min(0, wx + CELL / 2)), qy = Math.max(wy - CELL / 2, Math.min(0, wy + CELL / 2));
+      const q = Math.hypot(qx, qy);
+      if (q < d) {
+        d = q;
+        if (q > 1e-6) {
+          px = -qx / q;
+          py = -qy / q;
+        }
+      }
+    }
+    if (!n) return null;
+    const l = Math.hypot(nx, ny);
+    return l < 1e-6 ? { x: px, y: py, d, px, py } : { x: nx / l, y: ny / l, d, px, py };
+  }
+  function surfSeat(e, S, solidCell2, maxMove, hold, feel) {
+    let n = surfNormal(e.x, e.y, feel, solidCell2);
+    if (!n) return false;
+    if (n.d < hold) {
+      const m = hold - n.d;
+      e.x += n.px * m;
+      e.y += n.py * m;
+      n = surfNormal(e.x, e.y, feel, solidCell2) || n;
+    } else {
+      const m = Math.min(maxMove, n.d - hold);
+      e.x -= n.x * m;
+      e.y -= n.y * m;
+    }
+    S.nx = n.x;
+    S.ny = n.y;
+    S.py = n.py;
+    return true;
+  }
+
+  // src/creatures/jelly.js
+  function jellyPal(u) {
+    const P = {};
+    for (const [k, , , , f] of JE_COLS) P[f] = jcol(k, u);
+    return P;
+  }
+  var JELLY = { hitR: 0.8 };
+  function jellyBell(r, s, q) {
+    const t = Math.max(0, Math.min(1.5, s * q));
+    const w = r * (1.15 - 0.36 * t), h3 = r * (0.95 + 0.6 * t);
+    return { w, h: h3, rw: w * (0.96 - 0.24 * t), top: -h3 * 0.62, rim: h3 * 0.38 };
+  }
+  function jellyStep(e, env, dt) {
+    const { solidCell: solidCell2, rnd: rnd2 } = env;
+    let S = e.je;
+    if (!S) {
+      S = e.je = {
+        hd: -Math.PI / 2 + (rnd2() - 0.5) * 0.6,
+        vx: 0,
+        vy: 0,
+        push: 0,
+        pushA: 0,
+        rest: rnd2() * 1.5,
+        shape: 0,
+        vref: Math.max(1, kr("jeRoamPush", rnd2)),
+        t: rnd2() * 10,
+        tent: [],
+        u: { thin: rnd2(), sq: rnd2(), len: rnd2(), wave: rnd2(), sag: rnd2(), glow: rnd2(), glowR: rnd2(), flare: rnd2(), col: rnd2(), plant: rnd2() }
+      };
+      feel(false);
+      const nt = Math.round(kr("jeTents", rnd2));
+      for (let i = 0; i < nt; i++) {
+        const T = [], nv = Math.max(2, Math.round(kr("jeVerts", rnd2)));
+        for (let j = 0; j < nv; j++) T.push({ x: NaN, y: NaN });
+        S.tent.push(T);
+      }
+    }
+    const mul = env.speedMul || 1;
+    let hunt = !!(env.hunting && env.goal);
+    S.t += dt;
+    roamStep(S, e, dt, rnd2, "je", env.stay);
+    const lost = !!(env.stay && !env.stay(e.x, e.y));
+    if (lost) hunt = false;
+    if (hunt && !S.range) S.range = kr("jeRange", rnd2);
+    if (!hunt) S.range = 0;
+    const goal = hunt ? env.goal : lost ? { x: e.hx, y: e.hy } : { x: S.rx, y: S.ry };
+    const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
+    const range = S.range * (env.rangeMul || 1);
+    const want = !hunt && gd < 12 ? -Math.PI / 2 : Math.atan2(gy, gx);
+    S.hd = turnToward(S.hd, want, S.turn * Math.PI / 180 * mul * dt);
+    const off = Math.abs(angDiff(want, S.hd)) * 180 / Math.PI;
+    S.inRange = hunt && gd < range;
+    S.aimed = hunt && off < S.aimTol;
+    let out = null;
+    if (S.push > 0) {
+      const a = S.pushA * mul * Math.min(dt, S.push);
+      S.vx += Math.cos(S.hd) * a;
+      S.vy += Math.sin(S.hd) * a;
+      S.push -= dt;
+    } else if ((S.rest -= dt) <= 0) {
+      const v = (hunt ? gd > range : gd > 10) && off < S.tol ? kr(hunt ? "jeHuntPush" : "jeRoamPush", rnd2) : 0;
+      const dg = Math.max(0.1, S.drag), glide = Math.min(gd, 160, Math.max(20, v / dg));
+      const stay = env.stay, out0 = stay && !lost && !stay(e.x + Math.cos(S.hd) * glide + S.vx / dg, e.y + Math.sin(S.hd) * glide + S.vy / dg);
+      if (v > 0 && !out0) {
+        const pt = kr("jePushT", rnd2);
+        S.push = pt;
+        S.pushA = v / Math.max(pt, 1e-3);
+        S.vref = Math.max(v, 1);
+        S.rest = kr(hunt ? "jeHuntRest" : "jeRoamRest", rnd2);
+        feel(hunt);
+        out = "pulse";
+      } else S.rest = 0.05 + rnd2() * 0.1;
+    }
+    const k = Math.exp(-S.drag * dt);
+    S.vx *= k;
+    S.vy = S.vy * k + S.sink * dt;
+    flyMove(e, S, dt, e.r * JELLY.hitR, solidCell2, S.bounce);
+    const f = Math.min(1, Math.hypot(S.vx, S.vy) / S.vref);
+    S.shape = 1 - Math.pow(1 - f, kru("jeThin", S.u.thin));
+    const B = jellyBell(e.r, S.shape, kru("jeSquash", S.u.sq));
+    const c = Math.cos(S.hd), s = Math.sin(S.hd), n = S.tent.length;
+    const len = kru("jeTentLen", S.u.len), wave = kru("jeWave", S.u.wave), sag = kru("jeSag", S.u.sag);
+    for (let i = 0; i < n; i++) {
+      const T = S.tent[i], seg = len / (T.length - 1);
+      const lx = n > 1 ? (i / (n - 1) - 0.5) * 1.4 * B.rw : 0;
+      T[0].x = e.x - lx * s - B.rim * c;
+      T[0].y = e.y + lx * c - B.rim * s;
+      if (isNaN(T[1].x)) for (let j = 1; j < T.length; j++) {
+        T[j].x = T[0].x - c * seg * j;
+        T[j].y = T[0].y - s * seg * j;
+      }
+      for (let j = 1; j < T.length; j++) {
+        const q = T[j], pq = T[j - 1];
+        const sw = Math.sin(S.t * 3.1 + i * 0.5 - j * 0.9) * wave * dt * j / (T.length - 1);
+        q.x -= s * sw;
+        q.y += c * sw + sag * dt;
+        const dx = q.x - pq.x, dy = q.y - pq.y, d = Math.hypot(dx, dy) || 1;
+        q.x = pq.x + dx / d * seg;
+        q.y = pq.y + dy / d * seg;
+      }
+    }
+    return out;
+    function feel(h3) {
+      S.turn = kr("jeTurn", rnd2);
+      S.tol = kr("jePushTol", rnd2);
+      S.drag = kr("jeDrag", rnd2);
+      S.sink = kr("jeSink", rnd2);
+      S.bounce = kr("jeBounce", rnd2);
+      S.aimTol = kr("jeAimTol", rnd2);
+      S.range = h3 ? kr("jeRange", rnd2) : 0;
+    }
+  }
+  function segHitsBox(ax, ay, bx, by, x0, y0, x1, y1) {
+    const dx = bx - ax, dy = by - ay;
+    let t0 = 0, t1 = 1;
+    const clip = (p, q) => {
+      if (p === 0) return q >= 0;
+      const t = q / p;
+      if (p < 0) {
+        if (t > t1) return false;
+        if (t > t0) t0 = t;
+      } else {
+        if (t < t0) return false;
+        if (t < t1) t1 = t;
+      }
+      return true;
+    };
+    return clip(-dx, ax - x0) && clip(dx, x1 - ax) && clip(-dy, ay - y0) && clip(dy, y1 - ay);
+  }
+  function tentacleTouch(S, x0, y0, x1, y1) {
+    if (!S || !S.tent) return null;
+    for (const T of S.tent) for (let j = 1; j < T.length; j++) {
+      const a = T[j - 1], b = T[j];
+      if (!isNaN(a.x) && segHitsBox(a.x, a.y, b.x, b.y, x0, y0, x1, y1)) return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    }
+    return null;
+  }
+  var TW_N = 64;
+  var TW_TILE = (() => {
+    let q = 12345;
+    const a = new Float32Array(TW_N * TW_N);
+    for (let i = 0; i < a.length; i++) {
+      q = q * 16807 % 2147483647;
+      a[i] = q / 2147483647;
+    }
+    return a;
+  })();
+  function twNoise(x, y) {
+    const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
+    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    const x0 = (xi % TW_N + TW_N) % TW_N, y0 = (yi % TW_N + TW_N) % TW_N, x1 = (x0 + 1) % TW_N, y1 = (y0 + 1) % TW_N;
+    const a = TW_TILE[y0 * TW_N + x0], b = TW_TILE[y0 * TW_N + x1], c = TW_TILE[y1 * TW_N + x0], d = TW_TILE[y1 * TW_N + x1];
+    return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+  }
+  function twinkle(x, y, t, size) {
+    const u = x / size, v = y / size;
+    const n = twNoise(u + t * 0.37, v - t * 0.23) * twNoise(u * 1.7 - t * 0.31 + 17, v * 1.7 + t * 0.29 + 5);
+    const k = Math.min(1, Math.max(0, (n - 0.12) / 0.45));
+    return k * k * (3 - 2 * k);
+  }
+  function plantWhite(...datas) {
+    const hist = new Uint32Array(256);
+    let n = 0;
+    for (const d of datas) if (d) {
+      for (let i = 0; i < d.length; i += 4)
+        if (d[i + 3] >= 128 && d[i + 1] >= d[i] && d[i + 1] >= d[i + 2]) {
+          hist[d[i + 1]]++;
+          n++;
+        }
+    }
+    if (!n) return 255;
+    for (let g = 0, c = 0; g < 256; g++) {
+      c += hist[g];
+      if (c >= n * 0.999) return Math.max(1, g);
+    }
+    return 255;
+  }
+  function plantGlowFill(out, art, w, h3, o) {
+    const black = o.white * (1 - o.top), span = Math.max(1, o.white - black);
+    const r = o.rgb[0], g = o.rgb[1], b = o.rgb[2];
+    let any = 0;
+    for (let y = 0; y < h3; y++) {
+      const wy = o.oy + (y + 0.5) * o.px, dy = wy - o.cy;
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4, G = art[i + 1];
+        out[i + 3] = 0;
+        if (!art[i + 3] || G <= black || G < art[i] || G < art[i + 2]) continue;
+        const wx = o.ox + (x + 0.5) * o.px, dx = wx - o.cx;
+        const ramp = 1 - Math.sqrt(dx * dx + dy * dy) / o.reach;
+        if (ramp <= 0 || o.lit && !o.lit(wx, wy)) continue;
+        const a = Math.min(1, (G - black) / span) * ramp * twinkle(wx, wy, o.t, o.size) * o.strength * art[i + 3] / 255;
+        if (a < 4e-3) continue;
+        out[i] = r;
+        out[i + 1] = g;
+        out[i + 2] = b;
+        out[i + 3] = Math.min(255, a * 255);
+        any++;
+      }
+    }
+    return any;
+  }
+  function drawJelly(ctx, x, y, r, time, phase, flash, col, S) {
+    const P = jellyPal(S ? S.u.col : 0.5);
+    const sh = Math.max(0, Math.min(1, (S ? S.shape : 0) + 0.05 * Math.sin(time * 2.2 + phase)));
+    const B = jellyBell(r, sh, S ? kru("jeSquash", S.u.sq) : 1);
+    if (S) {
+      ctx.fillStyle = flash ? "#ffffff" : P.tent;
+      ctx.globalAlpha = 0.6;
+      for (const T of S.tent) {
+        const n = T.length, L = [], R = [];
+        for (let j = 0; j < n; j++) {
+          const a = T[Math.max(0, j - 1)], b = T[Math.min(n - 1, j + 1)];
+          const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1;
+          const hw = r * 0.09 * (1 - j / (n - 1)) + 0.15;
+          L.push({ x: T[j].x - dy / d * hw, y: T[j].y + dx / d * hw });
+          R.push({ x: T[j].x + dy / d * hw, y: T[j].y - dx / d * hw });
+        }
+        const side = (P2, back) => {
+          const Q = back ? P2.slice().reverse() : P2;
+          ctx.lineTo(Q[0].x, Q[0].y);
+          for (let j = 1; j < n - 1; j++) ctx.quadraticCurveTo(Q[j].x, Q[j].y, (Q[j].x + Q[j + 1].x) / 2, (Q[j].y + Q[j + 1].y) / 2);
+          ctx.lineTo(Q[n - 1].x, Q[n - 1].y);
+        };
+        ctx.beginPath();
+        ctx.moveTo(L[0].x, L[0].y);
+        side(L, false);
+        side(R, true);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate((S ? S.hd : -Math.PI / 2) + Math.PI / 2);
+    const bell = (k, oy, lap) => {
+      const w = B.w * k, h3 = B.h * k, rw = B.rw * k, top = B.top * k + oy, rim = B.rim * k + oy;
+      ctx.beginPath();
+      ctx.moveTo(-rw, rim);
+      ctx.bezierCurveTo(-w * 1.08, rim - h3 * 0.5, -w * 0.72, top, 0, top);
+      ctx.bezierCurveTo(w * 0.72, top, w * 1.08, rim - h3 * 0.5, rw, rim);
+      if (lap) for (let i = 0; i < 5; i++) {
+        const x0 = rw - 2 * rw * i / 5, x1 = rw - 2 * rw * (i + 1) / 5;
+        ctx.quadraticCurveTo((x0 + x1) / 2, rim + lap * (1 + 0.35 * Math.sin(time * 5 + i * 1.3 + phase)), x1, rim);
+      }
+      ctx.closePath();
+    };
+    const g = ctx.createLinearGradient(0, B.top, 0, B.rim);
+    g.addColorStop(0, flash ? "#ffffff" : P.top);
+    g.addColorStop(0.55, flash ? "#ffffff" : P.body);
+    g.addColorStop(1, flash ? "#f4f0ff" : P.rim);
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = g;
+    bell(1, 0, r * 0.2 * (1 - 0.5 * sh));
+    ctx.fill();
+    ctx.globalAlpha = 0.85;
+    ctx.strokeStyle = flash ? "#ffffff" : P.edge;
+    ctx.lineWidth = r * 0.08;
+    ctx.stroke();
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = flash ? "#ffffff" : P.inner;
+    bell(0.6, -B.h * 0.06, 0);
+    ctx.fill();
+    ctx.globalAlpha = 0.55 + 0.45 * sh;
+    ctx.strokeStyle = flash ? "#ffffff" : P.loops;
+    ctx.lineWidth = r * 0.08;
+    const gy = (B.top + B.rim) / 2 + B.h * 0.12;
+    for (let i = 0; i < 4; i++) {
+      const gx = (i - 1.5) * B.w * 0.34;
+      ctx.beginPath();
+      ctx.arc(gx, gy - Math.abs(i - 1.5) * r * 0.08, r * 0.09, Math.PI, 2 * Math.PI);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = P.shine;
+    ctx.beginPath();
+    ctx.ellipse(-B.w * 0.32, B.top + B.h * 0.24, B.w * 0.16, B.h * 0.09, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // src/creatures/spider.js
+  var SPIDER = { hold: 6, feel: 14, step: 1.5, fall: 900 };
+  function spiderSeat(e, S, solidCell2, maxMove) {
+    return surfSeat(e, S, solidCell2, maxMove, SPIDER.hold, SPIDER.feel);
+  }
+  var segNear = (L, x, y) => {
+    const vx = L.bx - L.ax, vy = L.by - L.ay, ll = vx * vx + vy * vy || 1;
+    const u = Math.max(0, Math.min(1, ((x - L.ax) * vx + (y - L.ay) * vy) / ll));
+    return { u, d: Math.hypot(L.ax + vx * u - x, L.ay + vy * u - y) };
+  };
+  function spiderAim(x, y, dx, dy, reach, solidCell2) {
+    for (const a of [0, 0.22, -0.22, 0.45, -0.45]) {
+      const c = Math.cos(a), s = Math.sin(a), ux = dx * c - dy * s, uy = dx * s + dy * c;
+      const d = rayDist(x, y, ux, uy, reach, solidCell2);
+      if (d < reach && d > SPIDER.hold * 2.5) return { dx: ux, dy: uy, len: d };
+    }
+    return null;
+  }
+  function spiderStep(e, env, dt) {
+    const { solidCell: solidCell2, webs, rnd: rnd2 } = env;
+    const S = e.sp || (e.sp = {
+      mode: "fall",
+      vy: 0,
+      nx: 0,
+      ny: -1,
+      on: 0,
+      rest: rnd2() * 0.5,
+      side: 1,
+      line: null,
+      u: 0,
+      dir: 1,
+      shot: null,
+      rx: e.hx,
+      ry: e.hy,
+      ra: rnd2() * 6.28,
+      high: false
+    });
+    S.webT = (S.webT || 0) - dt;
+    roamStep(S, e, dt, rnd2, "sp");
+    const goal = env.hunting ? env.goal : { x: S.rx, y: S.ry };
+    let out = null;
+    if (S.mode === "fall") {
+      S.vy = Math.min(S.vy + SPIDER.fall * dt, 600);
+      const n2 = Math.max(1, Math.ceil(S.vy * dt / SPIDER.step));
+      for (let i = 0; i < n2; i++) {
+        e.y += S.vy * dt / n2;
+        if (e.y > CH * CELL) {
+          e.y = CH * CELL;
+          break;
+        }
+        if (surfNormal(e.x, e.y, SPIDER.hold + 1, solidCell2)) {
+          spiderSeat(e, S, solidCell2, SPIDER.hold);
+          S.mode = "surf";
+          S.vy = 0;
+          S.on = 0;
+          S.rest = 0.1;
+          break;
+        }
+      }
+      return null;
+    }
+    if (S.mode === "shoot") {
+      const sh = S.shot;
+      sh.t += sh.spd * dt;
+      if (sh.t < sh.len) return null;
+      const hx = sh.x + sh.dx * sh.len, hy = sh.y + sh.dy * sh.len;
+      const inx = hx + sh.dx * 1.2, iny = hy + sh.dy * 1.2;
+      S.mode = sh.from;
+      S.shot = null;
+      if (!solidCell2(Math.floor(inx / CELL), Math.floor(iny / CELL))) return null;
+      const L = {
+        ax: sh.x,
+        ay: sh.y,
+        bx: hx - sh.dx * SPIDER.hold,
+        by: hy - sh.dy * SPIDER.hold,
+        a0x: sh.ax0,
+        a0y: sh.ay0,
+        b0x: hx,
+        b0y: hy,
+        ain: sh.ain,
+        bin: { x: inx, y: iny },
+        owner: e
+      };
+      webs.push(L);
+      const mine = webs.filter((w) => w.owner === e);
+      if (mine.length > Math.round(spr("spMaxLines", rnd2))) {
+        const old = mine.find((w) => w !== S.line);
+        if (old) webs.splice(webs.indexOf(old), 1);
+      }
+      S.mode = "line";
+      S.line = L;
+      S.u = 0;
+      S.dir = 1;
+      return "web";
+    }
+    if (S.mode === "line" && webs.indexOf(S.line) < 0) {
+      S.mode = "fall";
+      S.line = null;
+      S.vy = 0;
+      return null;
+    }
+    if (S.mode === "surf" && !surfNormal(e.x, e.y, SPIDER.hold + 2, solidCell2)) {
+      S.mode = "fall";
+      S.vy = 0;
+      return null;
+    }
+    if (S.on <= 0) {
+      if ((S.rest -= dt) > 0) return null;
+      S.on = spr(env.hunting ? "spHuntOn" : "spRoamOn", rnd2);
+      S.spd = env.speed || spr("spSpeed", rnd2);
+      S.arrive = env.hunting ? spr("spArrive", rnd2) : 3;
+      S.dot = spr("spDot", rnd2);
+      decide();
+      if (S.mode === "shoot") return null;
+      if (S.on <= 0) {
+        S.rest = 0.1 + rnd2() * 0.2;
+        return null;
+      }
+    }
+    if (S.mode === "shoot") return null;
+    const speed = (S.spd || spr("spSpeed", rnd2)) * (env.speedMul || 1);
+    const dist = speed * Math.min(dt, S.on);
+    S.on -= dt;
+    const n = Math.max(1, Math.ceil(dist / SPIDER.step));
+    for (let i = 0; i < n && S.mode !== "shoot"; i++) {
+      const st = dist / n;
+      if (S.mode === "surf") {
+        const tx = -S.ny * S.side, ty = S.nx * S.side;
+        e.x += tx * st;
+        e.y += ty * st;
+        if (!spiderSeat(e, S, solidCell2, st * 2)) {
+          e.x -= S.nx * st * 2;
+          e.y -= S.ny * st * 2;
+          if (!spiderSeat(e, S, solidCell2, st * 2)) {
+            S.mode = "fall";
+            S.vy = 0;
+            break;
+          }
+        }
+        const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy) || 1;
+        const high = (gx * S.nx + gy * S.ny) / gd >= S.dot;
+        if (high && !S.high) {
+          S.high = true;
+          decide();
+        } else if (!high) S.high = false;
+        if (gd < (S.arrive || 3) || (-S.ny * gx + S.nx * gy) * S.side < 0) {
+          S.on = 0;
+          break;
+        }
+      } else if (S.mode === "line") {
+        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
+        const ux = (L.bx - L.ax) / len * S.dir, uy = (L.by - L.ay) / len * S.dir;
+        if (!S.go && (goal.x - e.x) * ux + (goal.y - e.y) * uy <= 0) {
+          S.on = 0;
+          break;
+        }
+        S.u += S.dir * st / len;
+        if (S.u >= 1 || S.u <= 0) {
+          S.u = S.u >= 1 ? 1 : 0;
+          e.x = S.u ? L.bx : L.ax;
+          e.y = S.u ? L.by : L.ay;
+          S.mode = "surf";
+          S.line = null;
+          S.go = false;
+          if (!spiderSeat(e, S, solidCell2, SPIDER.hold)) {
+            S.mode = "fall";
+            S.vy = 0;
+            break;
+          }
+          decide();
+          continue;
+        }
+        e.x = L.ax + (L.bx - L.ax) * S.u;
+        e.y = L.ay + (L.by - L.ay) * S.u;
+      }
+    }
+    if (S.on <= 0 && S.rest <= 0) S.rest = spr(env.hunting ? "spHuntOff" : "spRoamOff", rnd2);
+    return out;
+    function decide() {
+      const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
+      if (gd < (S.arrive || 3)) {
+        S.on = 0;
+        return;
+      }
+      const dx = gx / gd, dy = gy / gd;
+      const tryLine = () => {
+        let best = null, bd = spr("spGrab", rnd2);
+        for (const L of webs) {
+          if (L === S.line) continue;
+          const q = segNear(L, e.x, e.y);
+          if (q.d > bd) continue;
+          const len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
+          const ux = (L.bx - L.ax) / len, uy = (L.by - L.ay) / len, al = ux * dx + uy * dy;
+          if (Math.abs(al) < 0.5) continue;
+          if (al > 0 && q.u > 0.97 || al < 0 && q.u < 0.03) continue;
+          best = { L, u: q.u, dir: al > 0 ? 1 : -1 };
+          bd = q.d;
+        }
+        if (!best) return false;
+        S.mode = "line";
+        S.line = best.L;
+        S.u = best.u;
+        S.dir = best.dir;
+        e.x = best.L.ax + (best.L.bx - best.L.ax) * best.u;
+        e.y = best.L.ay + (best.L.by - best.L.ay) * best.u;
+        return true;
+      };
+      const tryShoot = (from) => {
+        if (S.webT > 0 || !env.hunting && gd < 40) return false;
+        const a = spiderAim(e.x, e.y, dx, dy, env.reach || spr("spWeb", rnd2), solidCell2);
+        if (!a) return false;
+        let ax0 = e.x, ay0 = e.y, ain = null;
+        if (from === "surf") {
+          const d = rayDist(e.x, e.y, -S.nx, -S.ny, SPIDER.feel + 4, solidCell2);
+          ax0 = e.x - S.nx * d;
+          ay0 = e.y - S.ny * d;
+          ain = { x: e.x - S.nx * (d + 1.2), y: e.y - S.ny * (d + 1.2) };
+        }
+        S.webT = spr(env.hunting ? "spHuntWeb" : "spRoamWeb", rnd2);
+        S.shot = { spd: spr("spLineSpd", rnd2), x: e.x, y: e.y, dx: a.dx, dy: a.dy, len: a.len, t: 0, from, ax0, ay0, ain };
+        S.mode = "shoot";
+        return true;
+      };
+      if (S.mode === "surf") {
+        const dot = dx * S.nx + dy * S.ny;
+        S.high = dot >= (S.dot || 0.6);
+        if (S.high && (tryLine() || tryShoot("surf"))) return;
+        const t = -S.ny * dx + S.nx * dy;
+        if (Math.abs(t) * gd < 4) {
+          S.on = 0;
+          return;
+        }
+        S.side = t > 0 ? 1 : -1;
+      } else if (S.mode === "line") {
+        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
+        const al = ((L.bx - L.ax) * dx + (L.by - L.ay) * dy) / len;
+        S.go = false;
+        if (Math.abs(al) > 0.3) {
+          S.dir = al > 0 ? 1 : -1;
+          return;
+        }
+        if (tryLine() || tryShoot("line")) return;
+        const da = Math.hypot(goal.x - L.ax, goal.y - L.ay), db = Math.hypot(goal.x - L.bx, goal.y - L.by);
+        S.dir = db < da ? 1 : -1;
+        S.go = true;
+      }
+    }
+  }
+  function drawSpider(ctx, x, y, r, time, phase, flash, col, S) {
+    let nx = 0, ny = -1, side = 1, moving = false;
+    if (S) {
+      if (S.mode === "line" && S.line) {
+        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
+        nx = -(L.by - L.ay) / len;
+        ny = (L.bx - L.ax) / len;
+        if (ny > 0) {
+          nx = -nx;
+          ny = -ny;
+        }
+        side = S.dir * (L.bx - L.ax >= 0 ? 1 : -1);
+      } else if (S.mode === "surf" || S.mode === "shoot") {
+        nx = S.nx;
+        ny = S.ny;
+        side = S.side;
+      }
+      moving = S.on > 0 && S.mode !== "shoot";
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.atan2(nx, -ny));
+    const t = moving ? time * 38 + phase : phase;
+    ctx.strokeStyle = flash ? "#ffffff" : col.b;
+    ctx.lineWidth = r * 0.16;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    for (let i = 0; i < 4; i++) {
+      const o = (i - 1.5) * r * 0.28, sw = Math.sin(t + i * 1.7) * r * 0.22;
+      for (const s of [-1, 1]) {
+        const fx = s * (r * (0.75 + Math.abs(i - 1.5) * 0.35)) + sw * s;
+        ctx.beginPath();
+        ctx.moveTo(o * 0.5, 0);
+        ctx.lineTo(o * 0.5 + fx * 0.55, -r * 0.55 - Math.abs(sw) * 0.3);
+        ctx.lineTo(o * 0.5 + fx, r * 0.62);
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
+    ctx.beginPath();
+    ctx.ellipse(-side * r * 0.45, -r * 0.05, r * 0.62, r * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#ffffff" : col.a;
+    ctx.beginPath();
+    ctx.ellipse(-side * r * 0.45, -r * 0.12, r * 0.48, r * 0.36, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
+    ctx.beginPath();
+    ctx.ellipse(side * r * 0.3, 0, r * 0.38, r * 0.32, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#ffffff" : col.eye;
+    for (const [ex, ey, er] of [[0.5, -0.1, 0.1], [0.42, 0.06, 0.08], [0.58, 0.08, 0.07], [0.36, -0.14, 0.07]]) {
+      ctx.beginPath();
+      ctx.arc(side * r * ex, r * ey, r * er, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
 
   // src/save/save.js
   var SAVE_KEY = "caverunner-save";
@@ -11722,6 +11107,431 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/creatures/rat.js
+  var RAT = { hold: 3.5, feel: 9, step: 1, fall: 900, ceil: 0.55, tunnel: 0.6 };
+  function ratFooting(x, y, solidCell2, onWeb) {
+    const n = surfNormal(x, y, RAT.hold + 5, solidCell2);
+    return n && n.py <= RAT.ceil || !!(onWeb && onWeb(x, y));
+  }
+  function ratJump(e, S, goal, env, rnd2) {
+    const solidCell2 = env.solidCell, gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
+    const v = kr("raJump", rnd2), cap = v * 1.4, x0 = e.x + S.nx * 1.5, y0 = e.y + S.ny * 1.5;
+    for (const T of [Math.max(0.18, Math.min(0.6, gd / v)), 0.4, 0.55, 0.7]) {
+      let vx = gx / T, vy = gy / T - 0.5 * RAT.fall * T;
+      const sp = Math.hypot(vx, vy);
+      if (sp > cap) {
+        vx *= cap / sp;
+        vy *= cap / sp;
+      }
+      let ok = true;
+      for (let k = 1; k <= 16 && ok; k++) {
+        const t = T * k / 16, px = x0 + vx * t, py = y0 + vy * t + 0.5 * RAT.fall * t * t;
+        if (Math.hypot(px - goal.x, py - goal.y) < RAT.hold + 3) break;
+        for (const [ox, oy] of [[0, 0], [2.5, 0], [-2.5, 0], [0, 2.5], [0, -2.5]])
+          if (solidCell2(Math.floor((px + ox) / CELL), Math.floor((py + oy) / CELL))) {
+            ok = false;
+            break;
+          }
+      }
+      if (!ok) continue;
+      S.vx = vx;
+      S.vy = vy;
+      e.x = x0;
+      e.y = y0;
+      S.mode = "air";
+      S.on = 0;
+      S.rest = 0.05;
+      if (Math.abs(S.vx) > 1) S.face = S.vx > 0 ? 1 : -1;
+      return "jump";
+    }
+    return null;
+  }
+  function ratSpread(e, others, D) {
+    let x = 0, y = 0;
+    for (const o of others) {
+      if (o === e) continue;
+      const dx = e.x - o.x, dy = e.y - o.y, d = Math.hypot(dx, dy);
+      if (d >= D) continue;
+      const f = 1 - d / D;
+      if (d > 0.01) {
+        x += dx / d * f;
+        y += dy / d * f;
+      } else {
+        const a = e.phase != null ? e.phase : 1;
+        x += Math.cos(a) * f;
+        y += Math.sin(a) * f;
+      }
+    }
+    return { x, y };
+  }
+  function pathAt(P, d) {
+    for (let i = 1; i < P.length; i++) {
+      const a = P[i - 1], b = P[i], l = Math.hypot(b.x - a.x, b.y - a.y);
+      if (d <= l || i === P.length - 1) {
+        const u = l ? Math.max(0, Math.min(1, d / l)) : 0;
+        return { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u, dx: (b.x - a.x) / (l || 1), dy: (b.y - a.y) / (l || 1) };
+      }
+      d -= l;
+    }
+    return { x: P[0].x, y: P[0].y, dx: 0, dy: -1 };
+  }
+  var pathLen = (P) => {
+    let l = 0;
+    for (let i = 1; i < P.length; i++) l += Math.hypot(P[i].x - P[i - 1].x, P[i].y - P[i - 1].y);
+    return l;
+  };
+  function ratStep(e, env, dt) {
+    const { solidCell: solidCell2, rnd: rnd2 } = env;
+    const S = e.ra || (e.ra = { mode: "air", vx: 0, vy: 0, nx: 0, ny: -1, on: 0, rest: rnd2() * 0.3, side: 1, face: 1, s: 0, dir: 1, wait: 0 });
+    const goal = env.goal;
+    const P = env.path, speed = (env.speed || kr("raSpeed", rnd2)) * (env.speedMul || 1);
+    if (S.noT > 0) S.noT -= dt;
+    if (S.mode === "tunnel") {
+      if (!P) {
+        S.mode = "air";
+        S.vx = S.vy = 0;
+        return null;
+      }
+      if (S.wait > 0) {
+        S.wait -= dt;
+        return null;
+      }
+      const L = S.len || (S.len = pathLen(P));
+      S.s += S.dir * speed * RAT.tunnel * dt;
+      if (S.s <= 0) {
+        S.s = 0;
+        S.dir = 1;
+        S.wait = kr("raNestRest", rnd2);
+        e.x = P[0].x;
+        e.y = P[0].y;
+        return "home";
+      }
+      if (S.s >= L) {
+        const m = P[P.length - 1];
+        e.x = m.x;
+        e.y = m.y;
+        S.mode = "surf";
+        S.on = 0;
+        S.rest = 0.05 + rnd2() * 0.2;
+        if (!surfSeat(e, S, solidCell2, RAT.hold, RAT.hold, RAT.feel)) {
+          S.mode = "air";
+          S.vx = S.vy = 0;
+        }
+        return "out";
+      }
+      const q = pathAt(P, S.s);
+      e.x = q.x;
+      e.y = q.y;
+      S.face = q.dx * S.dir >= 0 ? 1 : -1;
+      S.nx = 0;
+      S.ny = -1;
+      return null;
+    }
+    if (env.home && P) {
+      const m = P[P.length - 1];
+      if (Math.hypot(m.x - e.x, m.y - e.y) < 12) {
+        S.mode = "tunnel";
+        S.len = pathLen(P);
+        S.s = S.len;
+        S.dir = -1;
+        S.wait = 0;
+        S.vx = S.vy = 0;
+        return null;
+      }
+    }
+    if (env.follow && goal && S.mode !== "air") {
+      if (S.mode !== "path") {
+        S.mode = "path";
+        S.vx = S.vy = 0;
+      }
+      const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy), go = Math.min(gd, speed * dt);
+      const rock = (x, y) => solidCell2(Math.floor(x / CELL), Math.floor(y / CELL));
+      if (!ratFooting(e.x, e.y, solidCell2, env.onWeb)) {
+        S.mode = "air";
+        S.vx = gd ? gx / gd * speed * 0.4 : 0;
+        S.vy = 0;
+        return null;
+      }
+      if (env.air && gd > RAT.hold + 2) {
+        const f = Math.min(gd, 6) / gd;
+        if (!ratFooting(e.x + gx * f, e.y + gy * f, solidCell2, env.onWeb)) {
+          const j = ratJump(e, S, goal, env, rnd2);
+          if (j) return j;
+        }
+      }
+      if (gd > 0.01) {
+        const k = Math.max(1, Math.ceil(go / 0.8)), mx = gx / gd * go / k, my = gy / gd * go / k;
+        let moved = false;
+        for (let q = 0; q < k; q++) {
+          if (!rock(e.x + mx, e.y + my)) {
+            e.x += mx;
+            e.y += my;
+            moved = true;
+          } else if (!rock(e.x + mx, e.y)) {
+            e.x += mx;
+            moved = true;
+          } else if (!rock(e.x, e.y + my)) {
+            e.y += my;
+            moved = true;
+          } else break;
+          if (!ratFooting(e.x, e.y, solidCell2, env.onWeb)) {
+            S.mode = "air";
+            S.vx = gx / gd * speed * 0.6;
+            S.vy = 0;
+            return null;
+          }
+        }
+        if (Math.abs(gx) > 0.5) S.face = gx > 0 ? 1 : -1;
+        S.blockT = moved ? 0 : (S.blockT || 0) + dt;
+        if (S.blockT > 0.3) {
+          S.blockT = 0;
+          S.mode = "air";
+          S.vx = (rnd2() - 0.5) * 120;
+          S.vy = -160;
+          return null;
+        }
+      }
+      const n2 = surfNormal(e.x, e.y, RAT.feel, solidCell2);
+      if (n2) {
+        if (n2.d < RAT.hold && n2.d > 0.01 && !rock(e.x + n2.px * (RAT.hold - n2.d), e.y + n2.py * (RAT.hold - n2.d))) {
+          e.x += n2.px * (RAT.hold - n2.d);
+          e.y += n2.py * (RAT.hold - n2.d);
+        } else if (n2.d >= RAT.hold && n2.py < -0.5 && n2.d < RAT.hold + 7 && gy > -2) {
+          const m = Math.min(n2.d - RAT.hold, 80 * dt);
+          e.x -= n2.px * m;
+          e.y -= n2.py * m;
+        }
+        S.nx = n2.x;
+        S.ny = n2.y;
+        S.py = n2.py;
+      } else {
+        S.nx = 0;
+        S.ny = -1;
+        S.py = -1;
+      }
+      return null;
+    }
+    if (S.mode === "path") {
+      S.mode = "air";
+      S.vx = S.vy = 0;
+    }
+    if (S.mode === "air") {
+      S.vy = Math.min(S.vy + RAT.fall * dt, 600);
+      const n2 = Math.max(1, Math.ceil(Math.hypot(S.vx, S.vy) * dt / RAT.step));
+      for (let i = 0; i < n2; i++) {
+        e.x += S.vx * dt / n2;
+        e.y += S.vy * dt / n2;
+        if (e.y > CH * CELL) {
+          e.y = CH * CELL;
+          break;
+        }
+        if (S.vy > 0 && env.follow && env.onWeb && env.onWeb(e.x, e.y)) {
+          S.mode = "path";
+          S.vx = S.vy = 0;
+          return "land";
+        }
+        const s = surfNormal(e.x, e.y, RAT.hold + 0.5, solidCell2);
+        if (!s) continue;
+        if (s.py > RAT.ceil) {
+          e.x += s.px * (RAT.hold + 0.5 - s.d);
+          e.y += s.py * (RAT.hold + 0.5 - s.d);
+          S.vy = Math.max(S.vy, 0);
+          S.vx *= 0.5;
+          continue;
+        }
+        surfSeat(e, S, solidCell2, RAT.hold, RAT.hold, RAT.feel);
+        S.mode = "surf";
+        S.vx = S.vy = 0;
+        S.on = 0;
+        S.rest = Math.min(S.rest, 0.05);
+        return "land";
+      }
+      return null;
+    }
+    if (!surfNormal(e.x, e.y, RAT.hold + 2, solidCell2) || S.py > RAT.ceil) {
+      S.mode = "air";
+      S.vx = S.vy = 0;
+      return null;
+    }
+    if (S.on <= 0) {
+      if ((S.rest -= dt) > 0) return null;
+      S.on = kr(env.hunting ? "raHuntOn" : "raRoamOn", rnd2);
+      S.spd = speed;
+      S.arrive = env.arrive != null ? env.arrive : 3;
+      S.dot = kr("raDot", rnd2);
+      const j = decide();
+      if (j) return j;
+      if (S.on <= 0) {
+        S.rest = env.hunting ? 0.03 : 0.1 + rnd2() * 0.2;
+        return null;
+      }
+    }
+    const dist = S.spd * Math.min(dt, S.on);
+    S.on -= dt;
+    const n = Math.max(1, Math.ceil(dist / RAT.step));
+    for (let i = 0; i < n; i++) {
+      const st = dist / n, tx = -S.ny * S.side, ty = S.nx * S.side;
+      e.x += tx * st;
+      e.y += ty * st;
+      if (!surfSeat(e, S, solidCell2, st * 2, RAT.hold, RAT.feel)) {
+        e.x -= S.nx * st * 2;
+        e.y -= S.ny * st * 2;
+        if (!surfSeat(e, S, solidCell2, st * 2, RAT.hold, RAT.feel)) {
+          S.mode = "air";
+          S.vx = tx * S.spd * 0.5;
+          S.vy = 0;
+          break;
+        }
+      }
+      if (S.py > RAT.ceil) {
+        S.mode = "air";
+        S.vx = tx * S.spd * 0.3;
+        S.vy = 0;
+        S.noSide = S.side;
+        S.noT = 1.5;
+        break;
+      }
+      if (Math.abs(tx) > 0.2) S.face = tx > 0 ? 1 : -1;
+      if (!goal) continue;
+      const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy) || 1;
+      if (gd < S.arrive || (-S.ny * gx + S.nx * gy) * S.side < 0) {
+        S.on = 0;
+        break;
+      }
+      const high = (gx * S.nx + gy * S.ny) / gd >= S.dot;
+      if (high && !S.high) {
+        S.high = true;
+        const j = decide();
+        if (j) return j;
+        if (S.on <= 0) break;
+      } else if (!high) S.high = false;
+    }
+    if (S.on <= 0 && S.rest <= 0) S.rest = kr(env.hunting ? "raHuntOff" : "raRoamOff", rnd2);
+    return null;
+    function decide() {
+      if (!goal) {
+        S.on = 0;
+        return null;
+      }
+      const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
+      if (gd < S.arrive) {
+        S.on = 0;
+        return null;
+      }
+      const dx = gx / gd, dy = gy / gd, t = -S.ny * dx + S.nx * dy;
+      const barred = S.noT > 0 && (t > 0 ? 1 : -1) === S.noSide;
+      if ((barred || env.jump !== false && dx * S.nx + dy * S.ny >= S.dot) && gd < kr("raJumpR", rnd2)) {
+        const j = ratJump(e, S, goal, env, rnd2);
+        if (j) return j;
+      }
+      if (barred) {
+        S.side = -S.noSide;
+        return null;
+      }
+      if (Math.abs(t) * gd < 2) {
+        S.on = 0;
+        return null;
+      }
+      S.side = t > 0 ? 1 : -1;
+      return null;
+    }
+  }
+  function drawRat(ctx, x, y, r, time, phase, flash, col, S, carry) {
+    const air = !S || S.mode === "air", nx = air ? 0 : S.nx, ny = air ? -1 : S.ny, f = S ? S.face : 1;
+    const moving = S && (S.on > 0 || S.mode === "air" || S.mode === "path" || S.mode === "tunnel" && !(S.wait > 0));
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.atan2(nx, -ny));
+    ctx.scale(f, 1);
+    const run = moving ? Math.sin(time * 38 + phase) : 0, bob = moving ? Math.abs(run) * 0.4 : 0;
+    ctx.translate(0, r * 0.35 - bob);
+    ctx.strokeStyle = flash ? "#fff" : "#d9a0a0";
+    ctx.lineWidth = 0.7;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-r * 1.1, 0);
+    ctx.quadraticCurveTo(-r * 2.1, -r * (0.2 + 0.4 * Math.sin(time * 6 + phase)), -r * 2.9, r * 0.3 * Math.sin(time * 4 + phase));
+    ctx.stroke();
+    ctx.strokeStyle = flash ? "#fff" : col.b;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.6, r * 0.2);
+    ctx.lineTo(-r * 0.6 - run * r * 0.4, r * 0.6 + bob);
+    ctx.moveTo(r * 0.5, r * 0.2);
+    ctx.lineTo(r * 0.5 + run * r * 0.4, r * 0.6 + bob);
+    ctx.stroke();
+    ctx.fillStyle = flash ? "#fff" : col.a;
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.15, -r * 0.2, r * 1.15, r * 0.62, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(r * 0.6, -r * 0.65);
+    ctx.quadraticCurveTo(r * 1.5, -r * 0.5, r * 1.75, -r * 0.05);
+    ctx.lineTo(r * 0.55, r * 0.25);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = flash ? "#fff" : col.c;
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.3, -r * 0.5, r * 0.7, r * 0.2, -0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#fff" : "#c98f8f";
+    ctx.beginPath();
+    ctx.arc(r * 0.55, -r * 0.8, r * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = col.eye;
+    ctx.fillRect(r * 1, -r * 0.5, r * 0.25, r * 0.25);
+    ctx.fillStyle = "#e88a9a";
+    ctx.fillRect(r * 1.62, -r * 0.18, r * 0.25, r * 0.22);
+    if (carry > 0) {
+      ctx.translate(r * 2.1, r * 0.1);
+      ctx.scale(f, 1);
+      ctx.rotate(-Math.atan2(nx, -ny));
+      ctx.fillStyle = "#d8a52a";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 3.2, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = COL.flame2;
+      ctx.beginPath();
+      ctx.ellipse(-0.8, -0.8, 1.2, 1.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+  function drawNest(ctx, x, y, r, time, flash, col, N) {
+    ctx.save();
+    ctx.translate(x, y + r * 0.35);
+    ctx.fillStyle = flash ? "#fff" : col.b;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 1.05, r * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const coins = N ? Math.min(12, Math.ceil(N.stash / 5)) : 0;
+    for (let k = 0; k < coins; k++) {
+      const a = k * 2.4, d = k % 4 * r * 0.16;
+      ctx.fillStyle = Math.sin(time * 3 + k) > 0.8 ? "#fff2a0" : "#ffd23c";
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * d * 1.6, -r * 0.2 + Math.sin(a) * d * 0.5, r * 0.16, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = flash ? "#fff" : col.c;
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    for (let k = 0; k < 14; k++) {
+      const a = k / 14 * Math.PI * 2, b = a + 0.9 + k % 3 * 0.3;
+      ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r * 0.45 - r * 0.05);
+      ctx.lineTo(Math.cos(b) * r * 0.8, Math.sin(b) * r * 0.4 + r * 0.05);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = flash ? "#fff" : col.a;
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.ellipse(0, -r * 0.1, r * 0.95, r * 0.35, 0, Math.PI * 0.05, Math.PI * 0.95);
+    ctx.stroke();
+    ctx.fillStyle = "#e8e0cc";
+    ctx.fillRect(-r * 0.9, -r * 0.3, r * 0.6, r * 0.12);
+    ctx.fillRect(r * 0.4, -r * 0.45, r * 0.12, r * 0.5);
+    ctx.restore();
+  }
+
   // src/world/nav.js
   var NAV = 4;
   function navField(solid, tx, ty, R, onWeb) {
@@ -12550,6 +12360,244 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.ctx.imageSmoothingEnabled = sm;
   }
 
+  // src/creatures/classic.js
+  function drawDrone(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+    const shell = flash ? "#f4f0ff" : col.b;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(lx * 0.22);
+    const puff = 0.55 + 0.25 * Math.sin(time * 9 + phase);
+    ctx.globalAlpha = 0.3 * puff;
+    ctx.fillStyle = col.a;
+    ctx.beginPath();
+    ctx.ellipse(0, r * 0.9, r * 0.45, r * 0.8 * puff, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = flash ? "#e6e0f5" : col.b;
+    rr(ctx, -r * 1.52, -r * 0.4, r * 0.62, r * 0.9, r * 0.22);
+    ctx.fill();
+    rr(ctx, r * 0.9, -r * 0.4, r * 0.62, r * 0.9, r * 0.22);
+    ctx.fill();
+    rr(ctx, -r * 0.34, r * 0.5, r * 0.68, r * 0.5, r * 0.18);
+    ctx.fill();
+    ctx.fillStyle = shell;
+    rr(ctx, -r * 1.05, -r * 0.78, r * 2.1, r * 1.5, r * 0.62);
+    ctx.fill();
+    ctx.strokeStyle = flash ? "#ffffff" : col.a;
+    ctx.lineWidth = r * 0.14;
+    rr(ctx, -r * 1.05, -r * 0.78, r * 2.1, r * 1.5, r * 0.62);
+    ctx.stroke();
+    ctx.fillStyle = flash ? "#ffffff" : col.c;
+    rr(ctx, -r * 0.72, -r * 0.7, r * 1.44, r * 0.46, r * 0.22);
+    ctx.fill();
+    ctx.restore();
+    const ex = x + lx * r * 0.34, ey = y + ly * r * 0.26;
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = col.a;
+    ctx.beginPath();
+    ctx.arc(ex, ey, r * 0.62, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = flash ? "#ffffff" : col.eye;
+    ctx.beginPath();
+    ctx.arc(ex, ey, r * 0.36, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#1b1526";
+    ctx.beginPath();
+    ctx.arc(ex + lx * r * 0.15, ey + ly * r * 0.15, r * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  function drawCrawler(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+    const s = Math.sin(time * 7 + phase);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.strokeStyle = flash ? "#ffffff" : col.b;
+    ctx.lineWidth = r * 0.2;
+    ctx.lineCap = "round";
+    for (let i = 0; i < 3; i++) {
+      const o = (i - 1) * r * 0.5, sw = s * r * 0.26 * (i % 2 ? 1 : -1);
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(o * 0.6, 0);
+        ctx.lineTo(o * 0.6 + side * r * 0.8, side * r * 0.5 + sw);
+        ctx.lineTo(o * 0.6 + side * r * 1.3, side * r * 0.95 - sw * 0.5);
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 1.05, r * 0.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#ffffff" : col.a;
+    ctx.beginPath();
+    ctx.ellipse(0, -r * 0.12, r * 0.82, r * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    for (const side of [-1, 1]) {
+      ctx.fillStyle = flash ? "#ffffff" : col.eye;
+      ctx.beginPath();
+      ctx.arc(x + lx * r * 0.35 + side * r * 0.3, y + ly * r * 0.25, r * 0.16, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  function drawBlob(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+    const wob = 1 + 0.09 * Math.sin(time * 3.4 + phase);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.globalAlpha = 0.32;
+    ctx.fillStyle = col.a;
+    ctx.beginPath();
+    ctx.ellipse(0, r * 0.85, r * 0.72, r * 0.26, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
+    ctx.beginPath();
+    ctx.ellipse(0, r * 0.18, r * 1, r * 0.92 * wob, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#ffffff" : col.a;
+    ctx.beginPath();
+    ctx.ellipse(0, r * 0.3, r * 0.76, r * 0.66 * wob, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    for (const side of [-1, 1]) {
+      ctx.fillStyle = "#1b1526";
+      ctx.beginPath();
+      ctx.arc(
+        x + lx * r * 0.3 + side * r * 0.26,
+        y + r * 0.12 + ly * r * 0.18,
+        r * 0.15,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+  }
+  function drawSkull(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(lx * 0.18);
+    ctx.globalAlpha = 0.26 + 0.1 * Math.sin(time * 4 + phase);
+    ctx.fillStyle = col.a;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.55, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = flash ? "#ffffff" : col.a;
+    ctx.beginPath();
+    ctx.ellipse(0, -r * 0.15, r * 0.85, r * 0.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    rr(ctx, -r * 0.55, r * 0.4, r * 1.1, r * 0.55, r * 0.2);
+    ctx.fill();
+    ctx.fillStyle = "#1b1526";
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.ellipse(side * r * 0.34, -r * 0.18, r * 0.24, r * 0.28, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = col.eye;
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.arc(
+        side * r * 0.34 + lx * r * 0.1,
+        -r * 0.18 + ly * r * 0.1,
+        r * 0.11,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+  function drawWorm(ctx, x, y, r, lx, ly, time, phase, flash, col) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.atan2(ly, lx));
+    for (let i = 4; i >= 0; i--) {
+      const t = i / 4, off = -r * 1.5 * i * 0.62, w = r * (1 - t * 0.4);
+      ctx.fillStyle = flash ? "#ffffff" : i % 2 ? col.b : col.a;
+      ctx.beginPath();
+      ctx.ellipse(off, Math.sin(time * 6 + phase - i * 0.7) * r * 0.34, w * 0.62, w, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = "#1b1526";
+    ctx.beginPath();
+    ctx.arc(r * 0.55, 0, r * 0.26, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // src/creatures/draw.js
+  function drawEnemy(ctx, e, time) {
+    const k = e.k, flash = e.flash > 0;
+    const x = e.x, y = e.ty, r = e.r, lx = e.lx, ly = e.ly;
+    if (k.body === "spider") drawSpider(ctx, x, y, r, time, e.phase, flash, k.col, e.sp);
+    else if (k.body === "rat") drawRat(ctx, x, y, r, time, e.phase, flash, k.col, e.ra, e.carry);
+    else if (k.body === "nest") drawNest(ctx, x, y, r, time, flash, k.col, e.nest);
+    else if (k.body === "jelly") drawJelly(ctx, x, y, r, time, e.phase, flash, k.col, e.je);
+    else if (k.body === "crawler") drawCrawler(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+    else if (k.body === "blob") drawBlob(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+    else if (k.body === "skull") drawSkull(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+    else if (k.body === "worm") drawWorm(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+    else drawDrone(ctx, x, y, r, lx, ly, time, e.phase, flash, k.col);
+    if (e.charge > 0 && k.tele) {
+      ctx.globalAlpha = 0.65;
+      ctx.strokeStyle = k.col.eye;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(x, y, e.r + 4 + e.charge * 10, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // src/game/render/actors.js
+  function drawSilk(W, G) {
+    G.ctx.lineCap = "round";
+    G.ctx.strokeStyle = "#eef0f6";
+    G.ctx.globalAlpha = 0.55;
+    G.ctx.lineWidth = 0.7;
+    G.ctx.beginPath();
+    for (const L of W.webs) {
+      G.ctx.moveTo(L.a0x, L.a0y);
+      G.ctx.lineTo(L.b0x, L.b0y);
+    }
+    for (const e of W.enemies) {
+      const sh = e.sp && e.sp.mode === "shoot" && e.sp.shot;
+      if (sh) {
+        G.ctx.moveTo(sh.ax0, sh.ay0);
+        G.ctx.lineTo(sh.x + sh.dx * Math.min(sh.t, sh.len), sh.y + sh.dy * Math.min(sh.t, sh.len));
+      }
+    }
+    G.ctx.stroke();
+    G.ctx.globalAlpha = 0.85;
+    G.ctx.lineWidth = 0.9;
+    G.ctx.beginPath();
+    for (const b of W.silk) {
+      G.ctx.moveTo(b.ax, b.ay);
+      G.ctx.lineTo(b.x, b.y);
+    }
+    for (const s of W.strings) {
+      G.ctx.moveTo(s.ax, s.ay);
+      G.ctx.lineTo(W.p.x + s.ox, W.p.y + s.oy);
+    }
+    G.ctx.stroke();
+    G.ctx.globalAlpha = 1;
+  }
+  function drawEnemies(W, G, F) {
+    const { vw, vh } = F;
+    for (const e of W.enemies) {
+      const ey = e.ty;
+      if (ey > W.camY + vh + 20 || ey < W.camY - 20 || e.x < W.camX - 20 || e.x > W.camX + vw + 20) continue;
+      drawEnemy(G.ctx, e, W.time);
+      if ((e.home || e.nest) && e.hp >= e.hpMax) continue;
+      const hw = 20, hx = e.x - hw / 2, hy = ey - e.r - 9;
+      G.ctx.fillStyle = COL.barBg;
+      G.ctx.fillRect(hx, hy, hw, 3);
+      G.ctx.fillStyle = e.je ? jcol("jeColBody", e.je.u.col) : e.k.col.a;
+      G.ctx.fillRect(hx, hy, hw * Math.max(0, e.hp / e.hpMax), 3);
+    }
+  }
+
   // src/game/render/cave.js
   function drawTerrain(W, G, F) {
     const { vw, vh } = F;
@@ -12689,6 +12737,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.ctx.ellipse(pcxE, pcyE, W.portal.w * 0.62, W.portal.h * 0.6, 0, 0, Math.PI * 2);
     G.ctx.stroke();
     G.ctx.setLineDash([]);
+    G.ctx.globalAlpha = 1;
+  }
+
+  // src/game/render/effects.js
+  function drawSmoke(W, G) {
+    for (const m of W.smoke) {
+      G.ctx.fillStyle = m.c || COL.smoke;
+      G.ctx.globalAlpha = Math.max(0, m.life / m.max) * (m.a || 0.5);
+      G.ctx.beginPath();
+      G.ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+      G.ctx.fill();
+    }
     G.ctx.globalAlpha = 1;
   }
 
@@ -13409,24 +13469,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     path();
     G.ctx.restore();
   }
-
-  // src/game/render/draw.js
-  function draw(W, G) {
-    const F = { dpr: 0, playPx: 0, vw: 0, vh: 0, pcx: 0, pcy: 0, TH: null, onView: null };
-    drawCamera(W, G, F);
-    const { dpr, playPx, vw, vh, pcx, pcy } = F;
-    drawTerrain(W, G, F);
-    drawProps(W, G, F);
-    const { TH, onView } = F;
-    drawPortal(W, G);
-    for (const m of W.smoke) {
-      G.ctx.fillStyle = m.c || COL.smoke;
-      G.ctx.globalAlpha = Math.max(0, m.life / m.max) * (m.a || 0.5);
-      G.ctx.beginPath();
-      G.ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
-      G.ctx.fill();
-    }
-    G.ctx.globalAlpha = 1;
+  function drawFields(W, G, F) {
+    const { vh } = F;
     for (const f of W.fields) {
       if (f.y > W.camY + vh + f.r || f.y < W.camY - f.r) continue;
       const t = f.life / f.max;
@@ -13455,47 +13499,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     G.ctx.globalAlpha = 1;
     G.ctx.globalAlpha = 1;
-    G.ctx.lineCap = "round";
-    G.ctx.strokeStyle = "#eef0f6";
-    G.ctx.globalAlpha = 0.55;
-    G.ctx.lineWidth = 0.7;
-    G.ctx.beginPath();
-    for (const L of W.webs) {
-      G.ctx.moveTo(L.a0x, L.a0y);
-      G.ctx.lineTo(L.b0x, L.b0y);
-    }
-    for (const e of W.enemies) {
-      const sh = e.sp && e.sp.mode === "shoot" && e.sp.shot;
-      if (sh) {
-        G.ctx.moveTo(sh.ax0, sh.ay0);
-        G.ctx.lineTo(sh.x + sh.dx * Math.min(sh.t, sh.len), sh.y + sh.dy * Math.min(sh.t, sh.len));
-      }
-    }
-    G.ctx.stroke();
-    G.ctx.globalAlpha = 0.85;
-    G.ctx.lineWidth = 0.9;
-    G.ctx.beginPath();
-    for (const b of W.silk) {
-      G.ctx.moveTo(b.ax, b.ay);
-      G.ctx.lineTo(b.x, b.y);
-    }
-    for (const s of W.strings) {
-      G.ctx.moveTo(s.ax, s.ay);
-      G.ctx.lineTo(W.p.x + s.ox, W.p.y + s.oy);
-    }
-    G.ctx.stroke();
-    G.ctx.globalAlpha = 1;
-    for (const e of W.enemies) {
-      const ey = e.ty;
-      if (ey > W.camY + vh + 20 || ey < W.camY - 20 || e.x < W.camX - 20 || e.x > W.camX + vw + 20) continue;
-      drawEnemy(G.ctx, e, W.time);
-      if ((e.home || e.nest) && e.hp >= e.hpMax) continue;
-      const hw = 20, hx = e.x - hw / 2, hy = ey - e.r - 9;
-      G.ctx.fillStyle = COL.barBg;
-      G.ctx.fillRect(hx, hy, hw, 3);
-      G.ctx.fillStyle = e.je ? jcol("jeColBody", e.je.u.col) : e.k.col.a;
-      G.ctx.fillRect(hx, hy, hw * Math.max(0, e.hp / e.hpMax), 3);
-    }
+  }
+
+  // src/game/render/draw.js
+  function draw(W, G) {
+    const F = { dpr: 0, playPx: 0, vw: 0, vh: 0, pcx: 0, pcy: 0, TH: null, onView: null };
+    drawCamera(W, G, F);
+    const { dpr, playPx, vw, vh, pcx, pcy } = F;
+    drawTerrain(W, G, F);
+    drawProps(W, G, F);
+    const { TH, onView } = F;
+    drawPortal(W, G);
+    drawSmoke(W, G);
+    drawFields(W, G, F);
+    drawSilk(W, G);
+    drawEnemies(W, G, F);
     for (const b of W.enemyShots) {
       if (b.goo) {
         const s = b.size, wob = 1 + 0.12 * Math.sin(W.time * 30 + b.x * 0.1);

@@ -1,4 +1,5 @@
-// How shots and fields look, drawn by draw() (render/draw.js): drawLook (a v95/v96 shot's own
+// Shots and fields in draw() (render/draw.js): its layer drawFields (a part it calls in order
+// with its frame object F, REFACTOR.md D19) and the looks: drawLook (a v95/v96 shot's own
 // sprite, false to fall back to the streak), drawFieldLook (what sits in the middle of a
 // field, false for the plain dot) and drawBolt (a lightning line). drawLook and the
 // streaks round it draw from the sim's Math.random stream, so they stay in draw's order.
@@ -229,4 +230,30 @@ export function drawBolt(G, pts, col, w, alpha) {
   G.ctx.globalAlpha = alpha * 0.7; G.ctx.lineWidth = w * 1.8; path();
   G.ctx.strokeStyle = '#ffffff'; G.ctx.globalAlpha = alpha; G.ctx.lineWidth = w * 0.7; path();
   G.ctx.restore();
+}
+
+// Static fields: a pulsing disc, a dashed ring shrinking as it runs out, and what sits in the
+// middle (drawFieldLook, or a plain dot)
+export function drawFields(W, G, F) {
+  const { vh } = F;
+  // static fields
+  for (const f of W.fields) {
+    if (f.y > W.camY + vh + f.r || f.y < W.camY - f.r) continue;
+    const t = f.life / f.max;
+    const beat = 0.75 + 0.25 * Math.sin(W.time * (f.field === 'mine' ? 7 : 3));
+    G.ctx.globalAlpha = 0.14 * beat * (f.field === 'mine' || f.field === 'dormant' ? 2 : 1);
+    G.ctx.fillStyle = f.col;
+    G.ctx.beginPath(); G.ctx.arc(f.x, f.y, f.r * (f.field === 'mine' ? 0.35 : 1), 0, Math.PI * 2); G.ctx.fill();
+    G.ctx.globalAlpha = 0.55 * beat;
+    G.ctx.strokeStyle = f.col;
+    G.ctx.lineWidth = 1.5;
+    G.ctx.setLineDash([5, 4]);
+    G.ctx.lineDashOffset = -W.time * 14;
+    G.ctx.beginPath(); G.ctx.arc(f.x, f.y, f.r * (0.4 + 0.6 * t), 0, Math.PI * 2); G.ctx.stroke();
+    G.ctx.setLineDash([]);
+    G.ctx.globalAlpha = 1;
+    if (!drawFieldLook(W, G, f, beat)) { G.ctx.fillStyle = f.col; G.ctx.beginPath(); G.ctx.arc(f.x, f.y, 3.5, 0, Math.PI * 2); G.ctx.fill(); }
+  }
+  G.ctx.globalAlpha = 1;
+  G.ctx.globalAlpha = 1;
 }

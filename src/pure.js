@@ -70,5 +70,7 @@ export * from './game/systems/step.js';
 export * from './game/render/draw.js';
 export * from './game/render/looks.js';
 export * from './game/render/cave.js';
+export * from './game/render/effects.js';
+export * from './game/render/actors.js';
 export * from './game/Game.js';
 export * from './ui/app.js';
