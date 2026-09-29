@@ -7440,6 +7440,284 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return out;
   }
 
+  // src/spells/cast.js
+  var MIN_CAST = 0.016;
+  var MIN_RECH = 0.05;
+  function effRecharge(g) {
+    const pas = gunPassives(g);
+    return Math.max(MIN_RECH, (g.recharge + pas.rech) * pas.rechMul);
+  }
+  function blankShot(sm, spread) {
+    return {
+      dmg: sm.dmg || 0,
+      speed: sm.speed || 0,
+      spread: (sm.spread || 0) + spread,
+      size: sm.size || 2,
+      life: sm.life || 1,
+      count: sm.count || 1,
+      bounce: sm.bounce || 0,
+      pierce: sm.pierce || 0,
+      explode: sm.explode || 0,
+      grav: sm.grav || 0,
+      homing: sm.homing || 0,
+      accel: sm.accel || 0,
+      bore: sm.bore || 0,
+      recoil: sm.recoil || 0,
+      col: sm.col,
+      knock: sm.knock || 0,
+      crit: 0,
+      boomer: 0,
+      spiral: 0,
+      pong: 0,
+      orbit: 0,
+      autoaim: 0,
+      homeR: sm.homeR || 0,
+      flat: 0,
+      eat: sm.eat || 0,
+      pull: sm.pull || 0,
+      split: 0,
+      cluster: 0,
+      bounceFx: null,
+      friendly: 0,
+      chain: sm.chain || 0,
+      fuse: sm.fuse || 0,
+      beam: sm.beam || 0,
+      payload: null,
+      trig: sm.trig || null,
+      timer: sm.timer != null ? sm.timer : TIMER_ADD,
+      reach: sm.reach != null ? sm.reach : 10,
+      // how far ahead of the muzzle it spawns
+      hidden: sm.hidden || 0,
+      // don't draw it (Buzzsaw cuts unseen)
+      drift: sm.drift || 0,
+      pop: sm.pop || 0,
+      // Pollen: slows, floats, locks on; small pop on contact
+      arc: sm.arc || 0,
+      // Lightning: jagged bolt that throws side arcs
+      fire: sm.fire || 0,
+      // sets grass, moss, timber and creatures alight
+      tele: sm.tele || 0,
+      // Teleport Bolt: you go where it stops
+      // v95 Noita flight and looks: air drag (per s), speed kept per bounce, a hole dug where
+      // it stops on rock, a zig-zag swing (rad/s), how it's drawn and trails, and its glow
+      drag: sm.drag || 0,
+      bounceE: sm.bounceE || 0.92,
+      pit: sm.pit || 0,
+      wig: sm.wig || 0,
+      look: sm.look || null,
+      light: sm.light || null,
+      lightR: sm.lightR || 0,
+      embers: sm.embers || 0,
+      // Brimstone: burning sparks thrown out of the blast
+      vmax: sm.vmax || 0,
+      lifeBoom: sm.lifeBoom || 0,
+      // a top speed (rockets); explodes when its time runs out (bombs)
+      sid: sm.id,
+      // which spell it is, for its sound
+      still: sm.kind === "static" ? 1 : 0,
+      field: sm.field || null,
+      r: sm.r || 0
+    };
+  }
+  function planCast(g, others) {
+    const start = g.idx, mods = [], defs = [];
+    const holds = [];
+    let addTrig = null;
+    let multi = g.multi, cost = 0, manaMul = 1, ran = false, wrapped = 0;
+    let delay = g.castDelay;
+    let form = null, hp = 0;
+    const acts = [];
+    const timing = (m) => {
+      if (m.setDelay !== void 0) delay = m.setDelay;
+      else delay += (m.kind === "shot" || m.kind === "static" ? m.delay : m.d) || 0;
+    };
+    const live = () => g.slots.filter((id) => id && MODS[id].kind !== "passive");
+    const casts = (id) => id && (MODS[id].kind === "shot" || MODS[id].kind === "static");
+    const rest = () => {
+      let n = 0;
+      for (let i = g.idx; i < g.order.length; i++) if (casts(g.slots[g.order[i]])) n++;
+      return n;
+    };
+    const onGun = () => g.slots.filter(casts).length;
+    let queued = 0;
+    const queue = [];
+    const copiesOf = (m) => {
+      const all = live().filter((id) => !MODS[id].copy);
+      if (m.copy === "first") return all.slice(0, 1);
+      if (m.copy === "last") return all.slice(-1);
+      if (m.copy === "all") return all;
+      if (m.copy === "shots") return all.filter((id) => MODS[id].kind === "shot");
+      if (m.copy === "statics") return all.filter((id) => MODS[id].kind === "static");
+      if (m.copy === "next2") {
+        const out = [];
+        for (let i = g.idx; i < g.order.length && out.length < 2; i++) {
+          const id = g.slots[g.order[i]];
+          if (id && MODS[id].kind !== "passive") out.push(id);
+        }
+        return out;
+      }
+      if (m.copy === "other") {
+        const pool = [];
+        for (const o of others || []) {
+          if (!o || o === g) continue;
+          for (const id of o.slots) if (id && MODS[id].kind !== "passive" && !MODS[id].copy) pool.push(id);
+        }
+        return pool.length ? [pool[Math.floor(Math.random() * pool.length)]] : [];
+      }
+      return [];
+    };
+    const dress = (sm, list) => {
+      const sh = blankShot(sm, g.spread);
+      for (const m of list) if (m.f) m.f(sh);
+      sh.speed *= g.speedMul || 1;
+      if (sh.flat) sh.grav = 0;
+      return sh;
+    };
+    let drawn = 0;
+    const took = /* @__PURE__ */ new Set();
+    const payloadOf = (n, depth) => {
+      const pm = [], out = [];
+      let want = n, pform = null, pAdd = null;
+      while (out.length < want && drawn++ < 96) {
+        if (g.idx >= g.order.length) {
+          ran = true;
+          if (wrapped++) break;
+          g.idx = 0;
+        }
+        if (took.has(g.idx)) {
+          g.idx++;
+          continue;
+        }
+        took.add(g.idx);
+        const id = g.slots[g.order[g.idx++]];
+        if (!id) continue;
+        const m = MODS[id];
+        if (m.kind === "passive") continue;
+        cost += m.mana || 0;
+        if (m.hp) hp += m.hp;
+        if (m.manaMul) manaMul *= m.manaMul;
+        timing(m);
+        if (m.kind === "mod" || m.kind === "util") {
+          if (m.f) pm.push(m);
+          if (m.multi) want += m.multi;
+          if (m.form) pform = m.form;
+          if (m.addTrig) pAdd = m.addTrig;
+          continue;
+        }
+        const sh = dress(m, pm);
+        if (pAdd && m.kind === "shot" && !sh.trig) sh.trig = pAdd;
+        pAdd = null;
+        if (sh.trig) sh.payload = depth < 6 ? payloadOf(m.draw || 1, depth + 1) : [];
+        out.push(sh);
+      }
+      if (pform) out.forEach((sh, i) => {
+        sh.ang = pform[i % pform.length];
+      });
+      return out;
+    };
+    for (let guard = 0; defs.length < multi && guard < 96; guard++) {
+      let id, copied = false;
+      if (queue.length) {
+        id = queue.shift();
+        copied = true;
+      } else {
+        if (g.idx >= g.order.length) {
+          ran = true;
+          if (defs.length >= multi || wrapped++ || !defs.length && !mods.length) break;
+          g.idx = 0;
+        }
+        id = g.slots[g.order[g.idx]];
+        took.add(g.idx);
+        g.idx++;
+      }
+      if (!id) continue;
+      const m = MODS[id];
+      if (m.kind === "passive") continue;
+      if (m.kind === "mod" || m.kind === "util") {
+        cost += m.mana || 0;
+        if (m.hp) hp += m.hp;
+        if (m.act) acts.push(m.act);
+        if (m.manaMul) manaMul *= m.manaMul;
+        if (m.f) mods.push(m);
+        if (m.addTrig) addTrig = m.addTrig;
+        if (!copied && !wrapped) {
+          if (m.multi) multi += m.multi;
+          if (m.form) form = m.form;
+          if (m.myriad) {
+            multi += rest();
+            multi = Math.min(multi, queued + onGun());
+          }
+          if (m.copy === "mods") {
+            for (const oid of live()) if (MODS[oid].f && !mods.includes(MODS[oid])) mods.push(MODS[oid]);
+          } else if (m.copy) {
+            let room = 0;
+            for (const c of copiesOf(m)) {
+              queue.push(c);
+              if (casts(c)) {
+                room++;
+                queued++;
+              }
+            }
+            if (m.copy === "all" || m.copy === "shots" || m.copy === "statics") multi += room + rest();
+            else if (m.copy === "next2") multi += room * 2;
+            else multi += room;
+            multi = Math.min(multi, queued + onGun());
+          }
+        }
+        timing(m);
+        continue;
+      }
+      defs.push(m);
+      cost += m.mana;
+      timing(m);
+      const kind = m.trig || m.kind === "shot" && addTrig || null;
+      if (m.kind === "shot") addTrig = null;
+      if (kind) holds[defs.length - 1] = { kind, list: payloadOf(m.draw || 1, 1) };
+    }
+    const shots = defs.map((sm, i) => {
+      const sh = dress(sm, mods);
+      if (holds[i]) {
+        sh.trig = holds[i].kind;
+        sh.payload = holds[i].list;
+      }
+      return sh;
+    });
+    if (form) shots.forEach((sh, i) => {
+      sh.ang = form[i % form.length];
+    });
+    let more = false;
+    for (let i = g.idx; i < g.order.length; i++) {
+      const id = g.slots[g.order[i]];
+      const k = id && MODS[id].kind;
+      if (k === "shot" || k === "static") {
+        more = true;
+        break;
+      }
+    }
+    return {
+      shots,
+      defs,
+      start,
+      cost: cost * manaMul,
+      acts,
+      hp,
+      delay: Math.max(MIN_CAST, delay),
+      wrap: ran || !more
+    };
+  }
+  function gunPassives(g) {
+    let rech = 0, rechMul = 1, manaMax = 0, manaRegen = 0;
+    for (const id of g.slots) {
+      if (!id) continue;
+      const m = MODS[id];
+      if (m.rech) rech += m.rech;
+      if (m.rechMul) rechMul *= m.rechMul;
+      if (m.manaMax) manaMax += m.manaMax;
+      if (m.manaRegen) manaRegen += m.manaRegen;
+    }
+    return { rech, rechMul, manaMax, manaRegen };
+  }
+
   // src/spells/spawn.js
   var NOITA_SPAWN = {
     LIGHT_BULLET: ["0,1,2", "2,1,0.5"],
@@ -7882,371 +8160,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (const id of g.slots) if (id && MODS[id].kind === "shot") return famCol(id);
     }
     return COL.bullet;
-  }
-
-  // src/save/save.js
-  var SAVE_KEY = "caverunner-save";
-  var GUN_DEFAULTS = {
-    name: "Gun",
-    castDelay: 0.2,
-    recharge: 0.5,
-    manaMax: 100,
-    manaRegen: 30,
-    spread: 0,
-    multi: 1,
-    shuffle: false,
-    speedMul: 1,
-    hue: 0
-  };
-  function cleanGun(g) {
-    if (!g || typeof g !== "object" || !Array.isArray(g.slots) || !g.slots.length) return null;
-    const out = Object.assign({}, GUN_DEFAULTS, g);
-    out.slots = g.slots.map((id) => id && MODS[id] ? id : null);
-    out.cap = out.slots.length;
-    out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
-    return resetGun(out);
-  }
-  function cleanLoadout(lo) {
-    lo = lo && typeof lo === "object" ? lo : {};
-    const guns = [0, 1, 2, 3].map((i) => cleanGun((lo.guns || [])[i]));
-    if (!guns.some(Boolean)) return null;
-    const num2 = (v, d) => Number.isFinite(v) ? v : d;
-    let sel = num2(lo.sel, 0);
-    if (!guns[sel]) sel = guns.findIndex(Boolean);
-    return {
-      guns,
-      sel,
-      bag: (Array.isArray(lo.bag) ? lo.bag : []).filter((id) => MODS[id]),
-      perks: (Array.isArray(lo.perks) ? lo.perks : []).filter((id) => PERKS[id]),
-      gold: Math.max(0, num2(lo.gold, START_GOLD)),
-      maxBonus: Math.max(0, num2(lo.maxBonus, 0)),
-      usedLives: Math.max(0, num2(lo.usedLives, 0)),
-      debug: !!lo.debug
-    };
-  }
-  function readSave(raw) {
-    let s;
-    try {
-      s = JSON.parse(raw);
-    } catch (_) {
-      return null;
-    }
-    if (!s || typeof s !== "object") return null;
-    const loadout = cleanLoadout(s.loadout);
-    if (!loadout) return null;
-    const floor = Math.max(1, Math.floor(Number(s.floor) || 1));
-    const out = { loadout, floor, hp: Number.isFinite(s.hp) && s.hp > 0 ? s.hp : null, level: null };
-    const L = s.level;
-    if (s.ver === VERSION && L && Number.isFinite(L.seed)) {
-      out.level = {
-        seed: L.seed,
-        owned: (Array.isArray(L.owned) ? L.owned : []).filter((id) => PERKS[id]),
-        alive: Array.isArray(L.alive) ? L.alive : null,
-        sold: Array.isArray(L.sold) ? L.sold : [],
-        rooms: Array.isArray(L.rooms) ? L.rooms : [],
-        pickups: Array.isArray(L.pickups) ? L.pickups.map((q) => {
-          if (!q || typeof q !== "object") return null;
-          if (q.kind === "mod") return MODS[q.id] ? q : null;
-          if (q.kind === "gun") {
-            const gun = cleanGun(q.gun);
-            return gun ? Object.assign({}, q, { gun }) : null;
-          }
-          return null;
-        }).filter(Boolean) : null
-      };
-    }
-    return out;
-  }
-  var loadSave = () => {
-    try {
-      return readSave(localStorage.getItem(SAVE_KEY));
-    } catch (_) {
-      return null;
-    }
-  };
-  var clearSave = () => {
-    try {
-      localStorage.removeItem(SAVE_KEY);
-    } catch (_) {
-    }
-  };
-
-  // src/spells/cast.js
-  var MIN_CAST = 0.016;
-  var MIN_RECH = 0.05;
-  function effRecharge(g) {
-    const pas = gunPassives(g);
-    return Math.max(MIN_RECH, (g.recharge + pas.rech) * pas.rechMul);
-  }
-  function blankShot(sm, spread) {
-    return {
-      dmg: sm.dmg || 0,
-      speed: sm.speed || 0,
-      spread: (sm.spread || 0) + spread,
-      size: sm.size || 2,
-      life: sm.life || 1,
-      count: sm.count || 1,
-      bounce: sm.bounce || 0,
-      pierce: sm.pierce || 0,
-      explode: sm.explode || 0,
-      grav: sm.grav || 0,
-      homing: sm.homing || 0,
-      accel: sm.accel || 0,
-      bore: sm.bore || 0,
-      recoil: sm.recoil || 0,
-      col: sm.col,
-      knock: sm.knock || 0,
-      crit: 0,
-      boomer: 0,
-      spiral: 0,
-      pong: 0,
-      orbit: 0,
-      autoaim: 0,
-      homeR: sm.homeR || 0,
-      flat: 0,
-      eat: sm.eat || 0,
-      pull: sm.pull || 0,
-      split: 0,
-      cluster: 0,
-      bounceFx: null,
-      friendly: 0,
-      chain: sm.chain || 0,
-      fuse: sm.fuse || 0,
-      beam: sm.beam || 0,
-      payload: null,
-      trig: sm.trig || null,
-      timer: sm.timer != null ? sm.timer : TIMER_ADD,
-      reach: sm.reach != null ? sm.reach : 10,
-      // how far ahead of the muzzle it spawns
-      hidden: sm.hidden || 0,
-      // don't draw it (Buzzsaw cuts unseen)
-      drift: sm.drift || 0,
-      pop: sm.pop || 0,
-      // Pollen: slows, floats, locks on; small pop on contact
-      arc: sm.arc || 0,
-      // Lightning: jagged bolt that throws side arcs
-      fire: sm.fire || 0,
-      // sets grass, moss, timber and creatures alight
-      tele: sm.tele || 0,
-      // Teleport Bolt: you go where it stops
-      // v95 Noita flight and looks: air drag (per s), speed kept per bounce, a hole dug where
-      // it stops on rock, a zig-zag swing (rad/s), how it's drawn and trails, and its glow
-      drag: sm.drag || 0,
-      bounceE: sm.bounceE || 0.92,
-      pit: sm.pit || 0,
-      wig: sm.wig || 0,
-      look: sm.look || null,
-      light: sm.light || null,
-      lightR: sm.lightR || 0,
-      embers: sm.embers || 0,
-      // Brimstone: burning sparks thrown out of the blast
-      vmax: sm.vmax || 0,
-      lifeBoom: sm.lifeBoom || 0,
-      // a top speed (rockets); explodes when its time runs out (bombs)
-      sid: sm.id,
-      // which spell it is, for its sound
-      still: sm.kind === "static" ? 1 : 0,
-      field: sm.field || null,
-      r: sm.r || 0
-    };
-  }
-  function planCast(g, others) {
-    const start = g.idx, mods = [], defs = [];
-    const holds = [];
-    let addTrig = null;
-    let multi = g.multi, cost = 0, manaMul = 1, ran = false, wrapped = 0;
-    let delay = g.castDelay;
-    let form = null, hp = 0;
-    const acts = [];
-    const timing = (m) => {
-      if (m.setDelay !== void 0) delay = m.setDelay;
-      else delay += (m.kind === "shot" || m.kind === "static" ? m.delay : m.d) || 0;
-    };
-    const live = () => g.slots.filter((id) => id && MODS[id].kind !== "passive");
-    const casts = (id) => id && (MODS[id].kind === "shot" || MODS[id].kind === "static");
-    const rest = () => {
-      let n = 0;
-      for (let i = g.idx; i < g.order.length; i++) if (casts(g.slots[g.order[i]])) n++;
-      return n;
-    };
-    const onGun = () => g.slots.filter(casts).length;
-    let queued = 0;
-    const queue = [];
-    const copiesOf = (m) => {
-      const all = live().filter((id) => !MODS[id].copy);
-      if (m.copy === "first") return all.slice(0, 1);
-      if (m.copy === "last") return all.slice(-1);
-      if (m.copy === "all") return all;
-      if (m.copy === "shots") return all.filter((id) => MODS[id].kind === "shot");
-      if (m.copy === "statics") return all.filter((id) => MODS[id].kind === "static");
-      if (m.copy === "next2") {
-        const out = [];
-        for (let i = g.idx; i < g.order.length && out.length < 2; i++) {
-          const id = g.slots[g.order[i]];
-          if (id && MODS[id].kind !== "passive") out.push(id);
-        }
-        return out;
-      }
-      if (m.copy === "other") {
-        const pool = [];
-        for (const o of others || []) {
-          if (!o || o === g) continue;
-          for (const id of o.slots) if (id && MODS[id].kind !== "passive" && !MODS[id].copy) pool.push(id);
-        }
-        return pool.length ? [pool[Math.floor(Math.random() * pool.length)]] : [];
-      }
-      return [];
-    };
-    const dress = (sm, list) => {
-      const sh = blankShot(sm, g.spread);
-      for (const m of list) if (m.f) m.f(sh);
-      sh.speed *= g.speedMul || 1;
-      if (sh.flat) sh.grav = 0;
-      return sh;
-    };
-    let drawn = 0;
-    const took = /* @__PURE__ */ new Set();
-    const payloadOf = (n, depth) => {
-      const pm = [], out = [];
-      let want = n, pform = null, pAdd = null;
-      while (out.length < want && drawn++ < 96) {
-        if (g.idx >= g.order.length) {
-          ran = true;
-          if (wrapped++) break;
-          g.idx = 0;
-        }
-        if (took.has(g.idx)) {
-          g.idx++;
-          continue;
-        }
-        took.add(g.idx);
-        const id = g.slots[g.order[g.idx++]];
-        if (!id) continue;
-        const m = MODS[id];
-        if (m.kind === "passive") continue;
-        cost += m.mana || 0;
-        if (m.hp) hp += m.hp;
-        if (m.manaMul) manaMul *= m.manaMul;
-        timing(m);
-        if (m.kind === "mod" || m.kind === "util") {
-          if (m.f) pm.push(m);
-          if (m.multi) want += m.multi;
-          if (m.form) pform = m.form;
-          if (m.addTrig) pAdd = m.addTrig;
-          continue;
-        }
-        const sh = dress(m, pm);
-        if (pAdd && m.kind === "shot" && !sh.trig) sh.trig = pAdd;
-        pAdd = null;
-        if (sh.trig) sh.payload = depth < 6 ? payloadOf(m.draw || 1, depth + 1) : [];
-        out.push(sh);
-      }
-      if (pform) out.forEach((sh, i) => {
-        sh.ang = pform[i % pform.length];
-      });
-      return out;
-    };
-    for (let guard = 0; defs.length < multi && guard < 96; guard++) {
-      let id, copied = false;
-      if (queue.length) {
-        id = queue.shift();
-        copied = true;
-      } else {
-        if (g.idx >= g.order.length) {
-          ran = true;
-          if (defs.length >= multi || wrapped++ || !defs.length && !mods.length) break;
-          g.idx = 0;
-        }
-        id = g.slots[g.order[g.idx]];
-        took.add(g.idx);
-        g.idx++;
-      }
-      if (!id) continue;
-      const m = MODS[id];
-      if (m.kind === "passive") continue;
-      if (m.kind === "mod" || m.kind === "util") {
-        cost += m.mana || 0;
-        if (m.hp) hp += m.hp;
-        if (m.act) acts.push(m.act);
-        if (m.manaMul) manaMul *= m.manaMul;
-        if (m.f) mods.push(m);
-        if (m.addTrig) addTrig = m.addTrig;
-        if (!copied && !wrapped) {
-          if (m.multi) multi += m.multi;
-          if (m.form) form = m.form;
-          if (m.myriad) {
-            multi += rest();
-            multi = Math.min(multi, queued + onGun());
-          }
-          if (m.copy === "mods") {
-            for (const oid of live()) if (MODS[oid].f && !mods.includes(MODS[oid])) mods.push(MODS[oid]);
-          } else if (m.copy) {
-            let room = 0;
-            for (const c of copiesOf(m)) {
-              queue.push(c);
-              if (casts(c)) {
-                room++;
-                queued++;
-              }
-            }
-            if (m.copy === "all" || m.copy === "shots" || m.copy === "statics") multi += room + rest();
-            else if (m.copy === "next2") multi += room * 2;
-            else multi += room;
-            multi = Math.min(multi, queued + onGun());
-          }
-        }
-        timing(m);
-        continue;
-      }
-      defs.push(m);
-      cost += m.mana;
-      timing(m);
-      const kind = m.trig || m.kind === "shot" && addTrig || null;
-      if (m.kind === "shot") addTrig = null;
-      if (kind) holds[defs.length - 1] = { kind, list: payloadOf(m.draw || 1, 1) };
-    }
-    const shots = defs.map((sm, i) => {
-      const sh = dress(sm, mods);
-      if (holds[i]) {
-        sh.trig = holds[i].kind;
-        sh.payload = holds[i].list;
-      }
-      return sh;
-    });
-    if (form) shots.forEach((sh, i) => {
-      sh.ang = form[i % form.length];
-    });
-    let more = false;
-    for (let i = g.idx; i < g.order.length; i++) {
-      const id = g.slots[g.order[i]];
-      const k = id && MODS[id].kind;
-      if (k === "shot" || k === "static") {
-        more = true;
-        break;
-      }
-    }
-    return {
-      shots,
-      defs,
-      start,
-      cost: cost * manaMul,
-      acts,
-      hp,
-      delay: Math.max(MIN_CAST, delay),
-      wrap: ran || !more
-    };
-  }
-  function gunPassives(g) {
-    let rech = 0, rechMul = 1, manaMax = 0, manaRegen = 0;
-    for (const id of g.slots) {
-      if (!id) continue;
-      const m = MODS[id];
-      if (m.rech) rech += m.rech;
-      if (m.rechMul) rechMul *= m.rechMul;
-      if (m.manaMax) manaMax += m.manaMax;
-      if (m.manaRegen) manaRegen += m.manaRegen;
-    }
-    return { rech, rechMul, manaMax, manaRegen };
   }
 
   // src/spells/trace.js
@@ -10407,6 +10320,93 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       vy: -90 - Math.random() * 40
     });
   }
+
+  // src/save/save.js
+  var SAVE_KEY = "caverunner-save";
+  var GUN_DEFAULTS = {
+    name: "Gun",
+    castDelay: 0.2,
+    recharge: 0.5,
+    manaMax: 100,
+    manaRegen: 30,
+    spread: 0,
+    multi: 1,
+    shuffle: false,
+    speedMul: 1,
+    hue: 0
+  };
+  function cleanGun(g) {
+    if (!g || typeof g !== "object" || !Array.isArray(g.slots) || !g.slots.length) return null;
+    const out = Object.assign({}, GUN_DEFAULTS, g);
+    out.slots = g.slots.map((id) => id && MODS[id] ? id : null);
+    out.cap = out.slots.length;
+    out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
+    return resetGun(out);
+  }
+  function cleanLoadout(lo) {
+    lo = lo && typeof lo === "object" ? lo : {};
+    const guns = [0, 1, 2, 3].map((i) => cleanGun((lo.guns || [])[i]));
+    if (!guns.some(Boolean)) return null;
+    const num2 = (v, d) => Number.isFinite(v) ? v : d;
+    let sel = num2(lo.sel, 0);
+    if (!guns[sel]) sel = guns.findIndex(Boolean);
+    return {
+      guns,
+      sel,
+      bag: (Array.isArray(lo.bag) ? lo.bag : []).filter((id) => MODS[id]),
+      perks: (Array.isArray(lo.perks) ? lo.perks : []).filter((id) => PERKS[id]),
+      gold: Math.max(0, num2(lo.gold, START_GOLD)),
+      maxBonus: Math.max(0, num2(lo.maxBonus, 0)),
+      usedLives: Math.max(0, num2(lo.usedLives, 0)),
+      debug: !!lo.debug
+    };
+  }
+  function readSave(raw) {
+    let s;
+    try {
+      s = JSON.parse(raw);
+    } catch (_) {
+      return null;
+    }
+    if (!s || typeof s !== "object") return null;
+    const loadout = cleanLoadout(s.loadout);
+    if (!loadout) return null;
+    const floor = Math.max(1, Math.floor(Number(s.floor) || 1));
+    const out = { loadout, floor, hp: Number.isFinite(s.hp) && s.hp > 0 ? s.hp : null, level: null };
+    const L = s.level;
+    if (s.ver === VERSION && L && Number.isFinite(L.seed)) {
+      out.level = {
+        seed: L.seed,
+        owned: (Array.isArray(L.owned) ? L.owned : []).filter((id) => PERKS[id]),
+        alive: Array.isArray(L.alive) ? L.alive : null,
+        sold: Array.isArray(L.sold) ? L.sold : [],
+        rooms: Array.isArray(L.rooms) ? L.rooms : [],
+        pickups: Array.isArray(L.pickups) ? L.pickups.map((q) => {
+          if (!q || typeof q !== "object") return null;
+          if (q.kind === "mod") return MODS[q.id] ? q : null;
+          if (q.kind === "gun") {
+            const gun = cleanGun(q.gun);
+            return gun ? Object.assign({}, q, { gun }) : null;
+          }
+          return null;
+        }).filter(Boolean) : null
+      };
+    }
+    return out;
+  }
+  var loadSave = () => {
+    try {
+      return readSave(localStorage.getItem(SAVE_KEY));
+    } catch (_) {
+      return null;
+    }
+  };
+  var clearSave = () => {
+    try {
+      localStorage.removeItem(SAVE_KEY);
+    } catch (_) {
+    }
+  };
 
   // src/game/systems/player.js
   var refreshBag = (W, G) => {
@@ -12580,6 +12580,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/game/systems/save-run.js
+  function saveRun(W, G) {
+    if (W.p.dead) return;
+    const pk = W.pickups.filter((q) => !q.taken && (q.kind === "mod" || q.kind === "gun")).map((q) => q.kind === "mod" ? { kind: "mod", id: q.id, x: q.x, y: q.y, t: q.t } : { kind: "gun", gun: q.gun, x: q.x, y: q.y, t: q.t, old: !!q.old });
+    const data = {
+      ver: VERSION,
+      floor: W.floor,
+      hp: W.p.hp,
+      loadout: G.input.current.loadout,
+      level: {
+        seed: W.levelSeed,
+        owned: W.levelOwned,
+        alive: W.enemies.map((e) => e.sid),
+        sold: W.stock.map((it, i) => it.sold ? i : -1).filter((i) => i >= 0),
+        rooms: W.rooms.map((r, i) => r.taken ? i : -1).filter((i) => i >= 0),
+        pickups: pk
+      }
+    };
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    } catch (_) {
+    }
+  }
+
   // src/game/testhook.js
   function testHook(W, g) {
     const { tctx, dctx, paintFog: paintFog2 } = g;
@@ -13384,28 +13408,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         W.matterProps = W.props.filter((pr) => pr.k === "matter");
         setTimeout(() => SFX.fx("portalOut", W.arrival.x, W.arrival.y), 260);
       }
-      function saveRun() {
-        if (W.p.dead) return;
-        const pk = W.pickups.filter((q) => !q.taken && (q.kind === "mod" || q.kind === "gun")).map((q) => q.kind === "mod" ? { kind: "mod", id: q.id, x: q.x, y: q.y, t: q.t } : { kind: "gun", gun: q.gun, x: q.x, y: q.y, t: q.t, old: !!q.old });
-        const data = {
-          ver: VERSION,
-          floor: W.floor,
-          hp: W.p.hp,
-          loadout: input.current.loadout,
-          level: {
-            seed: W.levelSeed,
-            owned: W.levelOwned,
-            alive: W.enemies.map((e) => e.sid),
-            sold: W.stock.map((it, i) => it.sold ? i : -1).filter((i) => i >= 0),
-            rooms: W.rooms.map((r, i) => r.taken ? i : -1).filter((i) => i >= 0),
-            pickups: pk
-          }
-        };
-        try {
-          localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-        } catch (_) {
-        }
-      }
       if (window.__TEST) window.__lvl = testHook(W, {
         tctx,
         dctx,
@@ -13430,13 +13432,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (sv.hp) W.p.hp = Math.min(sv.hp, maxHp(W, G));
         } else enterLevel();
       }
-      const saveTick = setInterval(saveRun, 2e3);
+      const saveNow = () => saveRun(W, G);
+      const saveTick = setInterval(saveNow, 2e3);
       const saveHidden = () => {
-        if (document.visibilityState === "hidden") saveRun();
+        if (document.visibilityState === "hidden") saveRun(W, G);
       };
       document.addEventListener("visibilitychange", saveHidden);
-      window.addEventListener("pagehide", saveRun);
-      input.current.saveRun = saveRun;
+      window.addEventListener("pagehide", saveNow);
+      input.current.saveRun = saveNow;
       const resize = () => {
         const r = c.parentElement.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
         c.width = Math.max(1, Math.round(r.width * dpr));
@@ -13759,7 +13762,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (!W.p.dead && pcx > W.portal.x && pcx < W.portal.x + W.portal.w && pcy > W.portal.y && pcy < W.portal.y + W.portal.h) {
           W.floor++;
           enterLevel();
-          saveRun();
+          saveRun(W, G);
           SFX.fx("portalIn");
           toast(W, "Floor " + W.floor);
           input.current.notify();
@@ -16438,7 +16441,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (W.matterLoop) W.matterLoop.stop();
         for (const h3 of W.bhLoops.values()) h3.stop();
         document.removeEventListener("visibilitychange", saveHidden);
-        window.removeEventListener("pagehide", saveRun);
+        window.removeEventListener("pagehide", saveNow);
         c.removeEventListener("pointermove", mMove);
         c.removeEventListener("pointerdown", mDown);
         c.removeEventListener("pointerup", mUp);

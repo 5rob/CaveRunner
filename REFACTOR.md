@@ -433,11 +433,16 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] gun.js (`cast`, `spawnShot`, `releaseAt`, `firePayload`), fields.js (`castField`, `fireBeam`, `throwEmbers`,
         `fieldPayload`), bullets.js (`critRoll`, `shove`, `spray`, `explodeCross`, `teleportTo`): one move, a cycle
         (`spawnShot` → `fireBeam` → `releaseAt` → `spawnShot`). The bullet loop and fields' per-frame work stay in step()
+  - [x] save-run.js: `saveRun` (`(W, G)`: it reads `input`). Its four value uses are one `saveNow` arrow in Game, so
+        `pagehide`'s `removeEventListener` still gets the function it was given
   - Learned so far: `G`'s keys must be declared above `G` (a closure `const` further down moves up
     first, as `fireBox` did). A function passed as a callback gets an arrow at each site; for the
     per-frame ones (`visPoly`, `fireStep`, a spider's or jelly's `env`) that is one small allocation
     a call, no behaviour change. The tool takes `//` lines right above a function with it, so a
     section header can travel with the first function under it: read the module after each move.
+    **An event listener is the exception to the arrow-per-site:** `removeEventListener` needs the very
+    function `addEventListener` got, so a moved function used as one gets a single named arrow in Game
+    (`saveNow`) that every value use shares. Check the `--dry` "as a value" lines for `remove…Listener`.
   - The old rough list (P3.1's guess), still to do; the parts already out are noted:
   - [ ] recorder: the putImageData wrappers stay in Game until recorder.js (they wrap `tctx`/`dctx`, which the systems reach as `G.tctx`/`G.dctx`)
   - [ ] fog.js: paintFog, bake, blur, fogLit
@@ -453,7 +458,7 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [ ] ambience.js: spores and amb particles (see the ambience box above); motes, dparts, smoke, sparks are updated inline in step()
   - [ ] camera.js
   - [ ] recorder.js: recFrame, recSample, REC, and drawReplay's rebuild
-  - [ ] save-run.js: saveRun
+  - [x] save-run.js: saveRun
   - [ ] render/: split `draw()` into layers in their current order: background, terrain,
         props, entities, bullet looks (`drawLook`), fog, post-fog glows, HUD, map
 - [ ] **P3.5 Creature plugins.** The enemy loop's per-creature branches become a
@@ -788,3 +793,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.4 (12) | `fog.js`: `fogLit`, `roomSeen`, `seenAt` (`(W, …)`), `paintFog` (`(W, G)`: `fogImg`). `fog`, `map`, `torch`, `replay`, `jelly` (plant glow) run too; `jelly` spit flaked 2 of 4, glow checks passed every time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 (13) | Casting in one move (13 functions, a cycle): `gun.js`, `fields.js`, `bullets.js`. A scratch check stripped the `W, G` plumbing and found every moved line verbatim in the old closure. `everymod`, `trigger`, `blackhole`, `teleport`, `t1spells`, `spelllooks`, `pollen`, `lightning`, `buzzsaw`, `perks` run too. `trigger` "a trigger carrying an explosion…" flaked: 6 of 13 runs alone here, 1 of 4 on the commit before (see Found along the way). | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 checkpoint | Full suite on a snapshot of 4620bf6: only `trigger` "a trigger carrying an explosion…" failed, passed alone 3 of 3. Stopped here: Game.js 3,803 → 2,792 lines. Next (easy first): `saveRun`, `natural`, `torchHand` (only `W`); `plantGlow` (its `pgArt`/`pgC`/`pgCtx` `let`s to `G` first); the recorder (`rid`/`ridN`, `RPV`, `RP_ARR`); `enterLevel`; then `step`/`draw`. Not merged. | logic 33/33; browser 44/44 after re-runs |
+| 2026-09-29 | Phase 3, P3.4 (14) | `save-run.js`: `saveRun` (`(W, G)`). The tool made a separate arrow at each value use, which would have left `removeEventListener('pagehide', …)` removing nothing: one `saveNow` arrow in Game now serves all four (noted under Learned so far). `save` run too. | probe SAME, logic 33/33, smoke ok, save ok |

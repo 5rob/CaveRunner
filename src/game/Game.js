@@ -25,7 +25,6 @@ import { DEV, jcol, kr, kru, spr } from '../dev/knobs.js';
 import {
   RP_AFTER, RP_BEFORE, RP_H, RP_HZ, RP_KEEP, RP_W, rpClone, rpCut, rpFrame, rpMerge, rpPaste
 } from '../replay/replay.js';
-import { SAVE_KEY } from '../save/save.js';
 import { effRecharge, gunPassives, planCast } from '../spells/cast.js';
 import { caveGun, gunAccent } from '../spells/guns.js';
 import { MODS, VACUUM_WAIT, famCol } from '../spells/mods.js';
@@ -49,6 +48,7 @@ import { burst, goo, splat, toast } from './systems/particles.js';
 import { hurt, maxHp, refreshBag } from './systems/player.js';
 import { decorStep } from './systems/props.js';
 import { onWebIn, ratFrame, spawnRat } from './systems/rats.js';
+import { saveRun } from './systems/save-run.js';
 import { glowDot, rnd, shotBounce, shotDeath, shotGrind, shotTrail } from './systems/shotlooks.js';
 import {
   boxHit, dig, enemyAt, explode, lineOfSight, solidAt, solidCell
@@ -386,21 +386,6 @@ export function Game({ input }) {
       setTimeout(() => SFX.fx('portalOut', W.arrival.x, W.arrival.y), 260);
     }
 
-    // ---- autosave: the run as it stands, written every couple of seconds and whenever the
-    // app is put away, so closing it mid-floor loses almost nothing. A dead run is wiped. ----
-    function saveRun() {
-      if (W.p.dead) return;
-      const pk = W.pickups.filter(q => !q.taken && (q.kind === 'mod' || q.kind === 'gun'))
-        .map(q => (q.kind === 'mod' ? { kind: 'mod', id: q.id, x: q.x, y: q.y, t: q.t }
-          : { kind: 'gun', gun: q.gun, x: q.x, y: q.y, t: q.t, old: !!q.old }));
-      const data = { ver: VERSION, floor: W.floor, hp: W.p.hp, loadout: input.current.loadout,
-        level: { seed: W.levelSeed, owned: W.levelOwned, alive: W.enemies.map(e => e.sid),
-          sold: W.stock.map((it, i) => (it.sold ? i : -1)).filter(i => i >= 0),
-          rooms: W.rooms.map((r, i) => (r.taken ? i : -1)).filter(i => i >= 0),
-          pickups: pk } };
-      try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (_) {}
-    }
-
     // the browser tests' way in (game/testhook.js): only on the test page, which sets the flag
     if (window.__TEST) window.__lvl = testHook(W, { tctx, dctx, paintFog: () => paintFog(W, G), hurt: (n) => hurt(W, G, n), maxHp: () => maxHp(W, G), dig: (x, y, R) => dig(W, G, x, y, R), explode: (x, y, R, splash, hot) => explode(W, G, x, y, R, splash, hot), recSample,
       ignite: (x, y, r, chance) => ignite(W, G, x, y, r, chance), setAlight, youAlight: () => youAlight(W), REC, RT });
@@ -414,11 +399,12 @@ export function Game({ input }) {
         if (sv.hp) W.p.hp = Math.min(sv.hp, maxHp(W, G));
       } else enterLevel();
     }
-    const saveTick = setInterval(saveRun, 2000);
-    const saveHidden = () => { if (document.visibilityState === 'hidden') saveRun(); };
+    const saveNow = () => saveRun(W, G);         // one function, so pagehide's listener comes off again
+    const saveTick = setInterval(saveNow, 2000);
+    const saveHidden = () => { if (document.visibilityState === 'hidden') saveRun(W, G); };
     document.addEventListener('visibilitychange', saveHidden);
-    window.addEventListener('pagehide', saveRun);
-    input.current.saveRun = saveRun;
+    window.addEventListener('pagehide', saveNow);
+    input.current.saveRun = saveNow;
 
     const resize = () => {
       const r = c.parentElement.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
@@ -673,7 +659,7 @@ export function Game({ input }) {
           pcy > W.portal.y && pcy < W.portal.y + W.portal.h) {
         W.floor++;
         enterLevel();
-        saveRun();
+        saveRun(W, G);
         SFX.fx('portalIn');
         toast(W, 'Floor ' + W.floor);
         input.current.notify();
@@ -2779,7 +2765,7 @@ export function Game({ input }) {
       if (W.matterLoop) W.matterLoop.stop();
       for (const h of W.bhLoops.values()) h.stop();
       document.removeEventListener('visibilitychange', saveHidden);
-      window.removeEventListener('pagehide', saveRun);
+      window.removeEventListener('pagehide', saveNow);
       c.removeEventListener('pointermove', mMove);
       c.removeEventListener('pointerdown', mDown);
       c.removeEventListener('pointerup', mUp);
