@@ -152,6 +152,7 @@ rest and imports them. Where things are (`main.js` line numbers as of v96, they 
 | creatures | `src/creatures/`: `spider.js`, `rat.js`, `jelly.js` (brain + sprite each), `classic.js` (older bodies' sprites), `draw.js` (`drawEnemy`) |
 | sprites | `src/art/sprites.js`: `drawGun`, `drawRunner`, `drawFlame`, `drawTorch`, `drawSconce`, `drawGunGlow`; creature sprites live with their creature |
 | prop drawing | `src/art/props.js`: `drawProp`, `drawArch`, `propGlow`, `propCol` |
+| sound | `src/audio/recipes.js` (pure: `SPELL_VOICE`, `shotSound`, `creatureSound`, `FX_VOL`, `rustleStep`), `src/audio/sfx.js` (the `SFX` engine) |
 | `PERKS` / `perkBag` | `src/data/perks.js`: the 31 perks, and folding an owned list into one effective bag |
 | vision / fog memory | `src/world/vision.js`: `rayDist`, `losClear`, `visPoly`, `fogReveal`, `nestFog` |
 | fire | `src/world/fire.js`: `fireNew`, `fireStep`, `fireArea`, `fireDouse`, `FIRE_*`, `FLAMMABLE` |
