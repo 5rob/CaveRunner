@@ -14,13 +14,13 @@ it's stale.
   `src/game/world.js`) and P3.3 (`window.__lvl` = `W` via `src/game/testhook.js`) are done, and
   P3.4 (systems out of `Game` into `src/game/systems/`) is part done: terrain (queries and
   changes, `explode`), particles, `hurt`, `damageEnemy`, the fire, the ambience, the props
-  (`decorStep`), shot looks, lightning, the rats' Game side, the fog queries and casting
-  (`gun.js`/`fields.js`/`bullets.js`) are out (shape: REFACTOR.md D16, the `G` context; cycles:
-  D17). `Game.js` is 2,792 lines. Next, easy leaves first: `saveRun`, `natural`, `torchHand`
-  (only `W`); then `plantGlow` (its `pgArt`/`pgC`/`pgCtx` `let`s need `G.x` first), the
-  recorder (`idOf`/`rid`/`ridN`, `recReset`, `recSample`, `recFrame`, `rpTerrain`,
-  `drawReplay` with the `RPV` `let`, `RP_ARR`), `enterLevel`, and last `step`/`draw`.
-  Last green full suite: the P3.4 checkpoint after casting (4620bf6). The proof for each Phase 3 step
+  (`decorStep`), shot looks, lightning, the rats' Game side, the fog queries, casting
+  (`gun.js`/`fields.js`/`bullets.js`), `saveRun`, `natural`, `torchHand`, `plantGlow`, the
+  death replay's recorder and player (`recorder.js`) and `enterLevel` are out (shape:
+  REFACTOR.md D16, the `G` context; cycles: D17). `Game.js` is 2,494 lines: `step()` and
+  `draw()` (~1,100 each) plus setup. Next: `step`/`draw`, following the plan written under
+  P3.4 in REFACTOR.md ("step() and draw(): the plan"; `node tools/locals.js step draw`).
+  Last green full suite: the P3.4 checkpoint after `enterLevel` (cdb5c90). The proof for each Phase 3 step
   is `node tests/determinism.js` (same scripted run on HEAD and this tree, frame by frame).
   `node tools/system.js <file> name…` does a P3.4 move (`--dry` first), and
   `node tools/gamemap.js fn…` says what a function still in `Game` needs.

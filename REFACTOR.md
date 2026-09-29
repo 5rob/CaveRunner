@@ -13,10 +13,10 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4 part done: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting out in `game/systems/`. Next: `saveRun`/`natural`/`torchHand`, `plantGlow`, the recorder, `enterLevel`, then `step`/`draw`. Not merged |
+| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4 part done: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`. Next: `step`/`draw` (plan under P3.4). Not merged |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
-| **Last green full suite** | 2026-09-29, P3.4 after casting (4620bf6), bar a known flake: `trigger` "a trigger carrying an explosion…" (passed alone 3 of 3) |
+| **Last green full suite** | 2026-09-29, P3.4 after `enterLevel` (cdb5c90), bar flakes: `jelly` spit (known) and `fog` "the next floor is dark again" (passed alone 3 of 3) |
 | **Last merged to main** | v98 (Phase 2), 2026-09-29 |
 
 ---
@@ -444,6 +444,32 @@ What the code says about P3.4 (checked at the end of P3.3):
         First, by hand: `RPV` → `G.RPV` (21 references, most in draw()), `rid`/`ridN` and `RP_ARR` (still W's own arrays)
         joined `G`, and `drawReplay(V, draw)` is handed Game's `draw` while draw() lives in Game. `REC`/`RT` stay made in Game
   - [x] level-entry.js: `enterLevel` (`(W, G, back)`). Clean move
+  - [ ] **step() and draw(): the plan** (worked out at the end of P3.4 (19), not started; `node tools/locals.js step draw`
+        prints the facts below). Game.js is 2,494 lines, and they are ~1,100 lines each (step ~206–1302, draw ~1304–2452).
+        What's left in the closure besides them is setup: the canvases, `REC`/`RT`, `G`, the save timer, resize, the mouse
+        handlers, the rAF loop.
+    1. **Prep:** `mouse` (= `input.current.mouse`) and `aimPath` join `G`: with the canvases already keys of `G`, they
+       are the only closure names the two still use (`node tools/gamemap.js step draw`). Probe SAME.
+    2. **Move each whole first, split after.** `step` → `systems/step.js` as `step(W, G, dt)` with `tools/system.js`, one
+       commit, SAME. `draw` → `src/game/render/draw.js` (still layer 5) the same way; `drawReplay` then imports it and
+       drops its `draw` argument. A whole move is mechanical and proven by the probe; a split inside a 1,100-line
+       closure isn't.
+    3. **Then split in the module, in the same order**, into part functions the top-level `step`/`draw` call one after
+       another. Few locals live across parts: in step `dt`, `LO` (loadout), `MHP`, `pcx`/`pcy` (from the portal check on);
+       in draw `dpr`, `playPx`, `vw`/`vh`, `pcx`/`pcy`, `TH`, `onView`, and `held`/`ax` (aim → HUD). Hand them in a small
+       per-frame object (or recompute where it's cheap and nothing changes them in between). step's two early returns
+       (Dev → New cave at the top, the portal after the move) become a part returning `true` → step returns; draw's one
+       (`if (G.RPV) return;` before the HUD) stays in the top-level draw.
+       - step's parts, by its section comments: requests/perks (Dev asks, max health) → the player (jetpack, steering,
+         terrain, footsteps, portal) → aiming and gun ticks → **the bullet loop** (~190 lines, → bullets.js) → sound → static
+         fields (→ fields.js) → pickups, gold, interact (a pickups.js) → **the enemy loop** (~245 lines, → enemies.js; P3.5
+         takes it apart per creature) → ghost → fire and Levitation Trail → jetpack smoke, torch flicker, motes.
+       - draw's inner functions `drawLook`, `drawFieldLook`, `drawBolt` go out first (they use only their arguments and
+         `W`/`G`), then the layers in their current order: camera, background + terrain, props, portal, smoke, fields, silk,
+         enemies, projectiles, beams, arrival, shop, gold, pickups, rooms, trail, sparks, motes, flashes, flame, aim + gun,
+         player, torchlight + fog, post-fog glows, HUD, radar, messages, reticule, map.
+    4. Keep the order exactly: draw() draws from the sim's `Math.random` stream and writes fog memory and the camera, and
+       step's parts feed each other within the frame. The probe catches any reorder.
   - Learned so far: `G`'s keys must be declared above `G` (a closure `const` further down moves up
     first, as `fireBox` did). A function passed as a callback gets an arrow at each site; for the
     per-frame ones (`visPoly`, `fireStep`, a spider's or jelly's `env`) that is one small allocation
@@ -598,6 +624,10 @@ commit. List them here for after.
   The test waits in real time (50 × 25 ms) for the bolt to cross a 450-wide sandbox and hit the far wall; when it
   fails the carrier was born (`peak` 1) and never let go (`flash` 0), i.e. it hadn't hit anything in time or expired
   first. Worth making frame-counted rather than wall-clock after the refactor.
+- **`fog` "the next floor is dark again"**, new on the list: failed once in the full run at P3.4 (19) (`floor` 2 → 3 fine,
+  `caveLit` 1 vs a baseline of 0), passed 3 of 3 alone. It puts you in the portal and waits 500 ms of wall clock before
+  counting lit cells, so under load a frame or two more of play can reveal a cell. The probe (SAME) goes through the
+  portal and `enterLevel` on every step. Worth frame-counting too.
 - **Misplaced comments (left as they were, moved with their code).** A second copy of
   planCast's opening comment sits above `blankShot` (`spells/cast.js`); tracePath's opening
   comment sits above `DRIFT_DRAG` (`spells/trace.js`); `ROOM_HW`'s line carries the trailing
@@ -808,3 +838,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.4 (17) | `plantglow.js`: `plantGlow`. Its `pgArt`/`pgC`/`pgCtx` `let`s became `G` properties by hand first (a scripted rewrite of the 19 references inside it, the only place they were used), `pgGlow`/`pgGlowCtx` joined `G`. `jelly` run too: every glow check passed; spit flaked (known). | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 (18) | `recorder.js`: `idOf`, `recReset`, `recSample`, `recFrame`, `rpTerrain`, `drawReplay`, plus the putImageData wrapper as `recWrap(G)` (by hand, called right after `G`). Prep by hand, checked SAME on its own: `RPV` → `G.RPV`, `rid`/`ridN`/`RP_ARR` into `G`, `drawReplay` takes `draw` as an argument. `replay` (43/43), `fire`, `save` run too. | probe SAME, logic 33/33, smoke ok, replay ok |
 | 2026-09-29 | Phase 3, P3.4 (19) | `level-entry.js`: `enterLevel` (`(W, G, back)`). Clean move. `save`, `newcave`, `map`, `fog`, `shop`, `replay`, `creatures` run too. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 3, P3.4 checkpoint | Full suite on a snapshot of cdb5c90: `jelly` spit (known) and `fog` "the next floor is dark again" failed; `fog` passed alone 3 of 3 (new on the flake list, Found along the way). Game.js 2,792 → 2,494 lines. The step()/draw() split planned under P3.4, not started; `tools/locals.js` added for it (each local's span and a function's own returns). Not merged. | logic 33/33; browser 44/44 after re-runs |
