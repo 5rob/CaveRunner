@@ -5396,6 +5396,50 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
   }
 
+  // src/world/veins.js
+  var ORE_GOLD = 0.25;
+  function goldVeins(mat, seed, floor) {
+    let rs = (seed * 7919 + 12345) % 2147483647 || 1;
+    const rnd = () => (rs = rs * 16807 % 2147483647) / 2147483647;
+    const ore = new Uint8Array(CW * CH);
+    const n = Math.min(18, 7 + floor);
+    const maxY = SHOP_TOP - SHOP_ROOF - 6;
+    const rockAt = (x, y) => x >= 4 && y >= 4 && x < CW - 4 && y < maxY && mat[y * CW + x] === ROCK;
+    const nearOpen = (x, y, r) => {
+      for (let d = 2; d <= r; d += 2)
+        for (let k = 0; k < 8; k++) {
+          const a = k * Math.PI / 4, px = Math.round(x + Math.cos(a) * d), py = Math.round(y + Math.sin(a) * d);
+          if (px >= 0 && py >= 0 && px < CW && py < CH && !mat[py * CW + px]) return true;
+        }
+      return false;
+    };
+    for (let v = 0; v < n; v++) {
+      let x = 0, y = 0, ok = false;
+      for (let tries = 0; tries < 200 && !ok; tries++) {
+        x = 6 + Math.floor(rnd() * (CW - 12));
+        y = 6 + Math.floor(rnd() * (maxY - 12));
+        ok = rockAt(x, y) && rockAt(x + 3, y) && rockAt(x - 3, y) && rockAt(x, y + 3) && rockAt(x, y - 3) && nearOpen(x, y, 16);
+      }
+      if (!ok) continue;
+      let a = rnd() * Math.PI * 2;
+      const len = 18 + Math.floor(rnd() * 40);
+      for (let st = 0; st < len; st++) {
+        const r = rnd() < 0.2 ? 2 : 1;
+        for (let dy = -r; dy <= r; dy++)
+          for (let dx = -r; dx <= r; dx++) {
+            if (dx * dx + dy * dy > r * r + 0.5) continue;
+            const px = Math.round(x) + dx, py = Math.round(y) + dy;
+            if (rockAt(px, py)) ore[py * CW + px] = 1;
+          }
+        a += (rnd() - 0.5) * 0.9;
+        x += Math.cos(a) * 1.2;
+        y += Math.sin(a) * 1.2;
+        if (!rockAt(Math.round(x), Math.round(y))) break;
+      }
+    }
+    return ore;
+  }
+
   // src/main.js
   var { useRef, useEffect, useState, useMemo } = React;
   var h = React.createElement;
@@ -9661,49 +9705,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     } catch (_) {
     }
   };
-  var ORE_GOLD = 0.25;
   var ROOM_HW = 23 * CELL, ROOM_HH = 15 * CELL;
-  function goldVeins(mat, seed, floor) {
-    let rs = (seed * 7919 + 12345) % 2147483647 || 1;
-    const rnd = () => (rs = rs * 16807 % 2147483647) / 2147483647;
-    const ore = new Uint8Array(CW * CH);
-    const n = Math.min(18, 7 + floor);
-    const maxY = SHOP_TOP - SHOP_ROOF - 6;
-    const rockAt = (x, y) => x >= 4 && y >= 4 && x < CW - 4 && y < maxY && mat[y * CW + x] === ROCK;
-    const nearOpen = (x, y, r) => {
-      for (let d = 2; d <= r; d += 2)
-        for (let k = 0; k < 8; k++) {
-          const a = k * Math.PI / 4, px = Math.round(x + Math.cos(a) * d), py = Math.round(y + Math.sin(a) * d);
-          if (px >= 0 && py >= 0 && px < CW && py < CH && !mat[py * CW + px]) return true;
-        }
-      return false;
-    };
-    for (let v = 0; v < n; v++) {
-      let x = 0, y = 0, ok = false;
-      for (let tries = 0; tries < 200 && !ok; tries++) {
-        x = 6 + Math.floor(rnd() * (CW - 12));
-        y = 6 + Math.floor(rnd() * (maxY - 12));
-        ok = rockAt(x, y) && rockAt(x + 3, y) && rockAt(x - 3, y) && rockAt(x, y + 3) && rockAt(x, y - 3) && nearOpen(x, y, 16);
-      }
-      if (!ok) continue;
-      let a = rnd() * Math.PI * 2;
-      const len = 18 + Math.floor(rnd() * 40);
-      for (let st = 0; st < len; st++) {
-        const r = rnd() < 0.2 ? 2 : 1;
-        for (let dy = -r; dy <= r; dy++)
-          for (let dx = -r; dx <= r; dx++) {
-            if (dx * dx + dy * dy > r * r + 0.5) continue;
-            const px = Math.round(x) + dx, py = Math.round(y) + dy;
-            if (rockAt(px, py)) ore[py * CW + px] = 1;
-          }
-        a += (rnd() - 0.5) * 0.9;
-        x += Math.cos(a) * 1.2;
-        y += Math.sin(a) * 1.2;
-        if (!rockAt(Math.round(x), Math.round(y))) break;
-      }
-    }
-    return ore;
-  }
   function strataCave(mat, rnd, N, shopExit) {
     const { vn, fbm } = N, ok = N.ok || (() => true);
     const K = (k) => kr(k, rnd);
