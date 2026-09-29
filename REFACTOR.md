@@ -165,7 +165,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
 - [x] **P0.1** Create branch `refactor` from `main`.
 - [x] **P0.2** Split `index.html` verbatim into `src/shell.html` (everything but the CSS
       and the main script, with two placeholders), `src/style.css` and `src/main.js`.
-- [ ] **P0.3** `tools/build.js` (plain Node, no deps): reads those three and writes
+- [x] **P0.3** `tools/build.js` (plain Node, no deps): reads those three and writes
       `index.html`. **Acceptance: the output is byte-identical to v96's `index.html`**
       (`git diff --exit-code index.html`). Handle CRLF: compare after normalising, and write
       the same line endings the repo has.
