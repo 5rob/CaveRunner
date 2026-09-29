@@ -4,28 +4,23 @@
 // It is not only a picture, so keep its order: it draws from the sim's Math.random stream,
 // writes the fog memory (fogReveal) and moves the camera.
 
-import { propGlow } from '../../art/props.js';
-import { drawSconce, glowAt } from '../../art/sprites.js';
 import {
-  CELL, CH, COL, CW, FH, FOG, FOG_U, FW, LAMP_REACH, MINI_D, MMH, MMW, PH, PW, SIGHT, VIEW_MIN_H,
-  VIEW_W, WH, WW
+  CELL, CH, COL, CW, FOG, FW, MINI_D, MMH, MMW, PH, PW, VIEW_MIN_H, VIEW_W, WH, WW
 } from '../../core/consts.js';
-import { clamp, hexRgb } from '../../core/util.js';
+import { clamp } from '../../core/util.js';
 import { PERKS } from '../../data/perks.js';
 import { themeFor } from '../../data/themes.js';
-import { DEV, jcol, kru } from '../../dev/knobs.js';
+import { DEV } from '../../dev/knobs.js';
 import { effRecharge, gunPassives } from '../../spells/cast.js';
 import { ROOM_HH, ROOM_HW } from '../../world/level.js';
-import { VIS_RAYS, fogReveal, visPoly } from '../../world/vision.js';
 import { fogLit, roomSeen } from '../systems/fog.js';
-import { plantGlow } from '../systems/plantglow.js';
-import { maxHp, torchHand } from '../systems/player.js';
-import { solidCell } from '../systems/terrain.js';
+import { maxHp } from '../systems/player.js';
 import { drawAim, drawEnemies, drawJetFlame, drawPlayer, drawSilk } from './actors.js';
 import {
   drawArrival, drawLoot, drawPortal, drawProps, drawRooms, drawShop, drawTerrain
 } from './cave.js';
 import { drawFlashes, drawMotes, drawSmoke, drawSparks, drawTrail } from './effects.js';
+import { drawFog, drawGlows } from './light.js';
 import { drawBeams, drawFields, drawShots } from './looks.js';
 
 export function draw(W, G) {
@@ -77,141 +72,9 @@ export function draw(W, G) {
 
   drawPlayer(W, G, F);                      // you, the gun, the torch, the crosshair, shield, ghost (actors.js)
 
-  // ---- torchlight, masked by the fog of war ----
-  // Line of sight is what lifts the fog: fogReveal marks every cell the fan reaches as
-  // somewhere you have been, and it stays marked for the rest of the floor. The lamp
-  // then lights that lifted ground — brightest at your feet, fading out to torchR — but
-  // it is MASKED by the fog: a cell you have never had line of sight to stays dark even
-  // with the torch right on top of it, so the cave ahead of you is a real unknown. The
-  // lamp does not itself stop at walls; it is the *reveal* that respects them, so what
-  // you have already uncovered round a corner still lights up. `flick` is the flame's
-  // own number, so both the reach and the brightness breathe exactly as the fire does.
-  const sight = SIGHT * DEV.torch;                       // dev knob scales the whole bubble
-  W.torchR = clamp(sight * LAMP_REACH * (0.5 + 0.55 * W.flick), 120, 1400);
-  W.visPts = visPoly(pcx, pcy, sight, (cx, cy) => solidCell(W, cx, cy), VIS_RAYS);
-  fogReveal(W.seen, pcx, pcy, sight, W.visPts, VIS_RAYS);   // line of sight lifts the fog
-  if (!G.RPV || G.RPV.fog) {                                 // a replay can turn the fog off
-    // bake the visible slab of the overlay every frame: the base darkness is the fog
-    // state, then the lamp brightens the cells the fog has already been lifted from
-    const fdat = G.fogImg.data;
-    const dim = Math.round(255 * DEV.fogDim), dark = Math.round(255 * DEV.fogDark);
-    const lr2 = W.torchR * W.torchR;
-    const fx0 = clamp(Math.floor(W.camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(W.camY / FOG_U) - 1, 0, FH - 1);
-    const fx1 = clamp(Math.ceil((W.camX + vw) / FOG_U) + 2, 1, FW), fy1 = clamp(Math.ceil((W.camY + vh) / FOG_U) + 2, 1, FH);
-    for (let cy = fy0; cy < fy1; cy++) {
-      const ddy = (cy + 0.5) * FOG_U - pcy;
-      for (let cx = fx0; cx < fx1; cx++) {
-        const i = cy * FW + cx, k = i * 4;
-        fdat[k] = 9; fdat[k + 1] = 10; fdat[k + 2] = 14;
-        let s = W.seen[i];
-        // push the dark off ground you have seen: an unseen cell that borders a seen one
-        // is treated as remembered (dim + lamp), so a bit more of the uncovered surface
-        // shows instead of the darkness sitting right on its edge
-        if (!s && !(W.deepFog && W.deepFog[i]) && ((cx > 0 && W.seen[i - 1]) || (cx < FW - 1 && W.seen[i + 1]) ||
-            (cy > 0 && W.seen[i - FW]) || (cy < FH - 1 && W.seen[i + FW]) ||
-            (cx > 0 && cy > 0 && W.seen[i - FW - 1]) || (cx < FW - 1 && cy > 0 && W.seen[i - FW + 1]) ||
-            (cx > 0 && cy < FH - 1 && W.seen[i + FW - 1]) || (cx < FW - 1 && cy < FH - 1 && W.seen[i + FW + 1]))) s = 1;
-        let a = s === 2 ? 0 : s ? dim : dark;
-        if (s && a) {                        // the lamp only reaches ground the fog has lifted
-          const ddx = (cx + 0.5) * FOG_U - pcx, dd2 = ddx * ddx + ddy * ddy;
-          if (dd2 < lr2) {
-            const t = Math.sqrt(dd2) / W.torchR;               // 0 at your feet, 1 at the edge
-            const lift = t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45;
-            a = a * (1 - lift);
-          }
-        }
-        fdat[k + 3] = a;
-      }
-    }
-    G.fctx.putImageData(G.fogImg, 0, 0, fx0, fy0, fx1 - fx0, fy1 - fy0);
-    // blur the slab at source resolution (cheap: an 80x200 canvas), then upscale the soft
-    // copy — a source-px of blur becomes ~a fog cell of blur on screen, so the fog edge
-    // reads as a gradient rather than a hard line
-    G.fbctx.clearRect(fx0, fy0, fx1 - fx0, fy1 - fy0);
-    G.fbctx.filter = 'blur(0.9px)';
-    G.fbctx.drawImage(G.fogC, fx0, fy0, fx1 - fx0, fy1 - fy0, fx0, fy0, fx1 - fx0, fy1 - fy0);
-    G.fbctx.filter = 'none';
-    G.ctx.imageSmoothingEnabled = true;     // the upscale further softens the edge
-    G.ctx.drawImage(G.fogBlurC, fx0, fy0, fx1 - fx0, fy1 - fy0,
-      fx0 * FOG_U, fy0 * FOG_U, (fx1 - fx0) * FOG_U, (fy1 - fy0) * FOG_U);
-    G.ctx.imageSmoothingEnabled = false;
-  }
+  drawFog(W, G, F);                         // line of sight lifts the fog; torchlight and fog (light.js)
 
-  // ---- firelight on top of the fog: the wall torches (where you have been) and the hand
-  // torch's glow plus its small, warm second light round you. Additive, so it only ever
-  // brightens; the map lighting under it is unchanged. The glow gutters on its own,
-  // quicker and deeper than the lamp.
-  G.ctx.globalCompositeOperation = 'lighter';
-  const gl = clamp(0.82 + W.glowN + 0.08 * Math.sin(W.time * 23) + 0.06 * Math.sin(W.time * 37), 0.5, 1.1);
-  const scOn = sc => !(sc.y > W.camY + vh + 30 || sc.y < W.camY - 30 || sc.x < W.camX - 30 || sc.x > W.camX + vw + 30) &&
-    fogLit(W, sc.x, sc.y);
-  for (const sc of W.sconces) {
-    if (!scOn(sc)) continue;
-    const sg = 0.85 + 0.15 * Math.sin(W.time * 11 + sc.ph) * Math.sin(W.time * 5.3 + sc.ph);
-    glowAt(G.ctx, sc.x, sc.y - 6, 34, 0.16 * sg, '255,140,50');
-    glowAt(G.ctx, sc.x, sc.y - 7, 9, 0.45 * sg, '255,190,90');
-  }
-  // lit props and glowing motes, only where the fog has lifted — except the eyes, which
-  // watch from the dark
-  for (const pr of W.props) {
-    if (!(pr.k === 'lamp' || pr.k === 'vent' || pr.k === 'shard' || pr.k === 'eyes' || pr.k === 'matter' ||
-      (pr.k === 'drip' && pr.st === 'lava')) || !onView(pr.x, pr.y, 60)) continue;
-    if (pr.k !== 'eyes' && !fogLit(W, pr.x, pr.y)) continue;
-    propGlow(G.ctx, pr, W.time, TH, Math.hypot(pr.x - pcx, pr.y - pcy), W.torchR);
-  }
-  // and the green round each jelly glows and twinkles in its colour (plantGlow)
-  for (const e of W.enemies)
-    if (e.je && onView(e.x, e.ty, 160) && fogLit(W, e.x, e.ty)) plantGlow(W, G, e, TH);
-  // glowing creatures (the jellyfish) light the cave round them, flaring as they pulse.
-  // Radius, brightness and flare are its kp+'GlowR' / 'Glow' / 'Flare' knobs, and like
-  // every other light out here it shows only where the fog has lifted
-  for (const e of W.enemies) {
-    const k = e.k;
-    if (!k.glow || !k.kp || !onView(e.x, e.ty, 120) || !fogLit(W, e.x, e.ty)) continue;
-    const u = (e.je && e.je.u) || { glowR: 0.5, glow: 0.5, flare: 0.5 }, sh = e.je ? e.je.shape : 0;
-    const a = kru(k.kp + 'Glow', u.glow) * (1 + kru(k.kp + 'Flare', u.flare) * sh);
-    const rgb = e.je ? hexRgb(jcol('jeColGlow', e.je.u.col)) : k.glow;
-    glowAt(G.ctx, e.x, e.ty, kru(k.kp + 'GlowR', u.glowR), a, rgb);
-    glowAt(G.ctx, e.x, e.ty, e.r * 1.6, a * 1.4, rgb);
-  }
-  for (const b of W.enemyShots) if (b.glow && onView(b.x, b.y, 30) && fogLit(W, b.x, b.y)) glowAt(G.ctx, b.x, b.y, b.size * 6, 0.3, b.glow);
-  // v95: your glowing shots light the cave round them (the Bubble Spark most of all)
-  for (const b of W.bullets) if (b.light && !b.hidden && onView(b.x, b.y, 50) && fogLit(W, b.x, b.y))
-    glowAt(G.ctx, b.x, b.y, b.lightR || 20, 0.28, b.light);
-  // fire: the burning pixels brighten and throw a warm glow — only on ground you have seen
-  if (W.fireVis.length) {
-    G.ctx.fillStyle = 'rgba(255,140,50,0.32)';
-    G.ctx.beginPath();
-    for (const i of W.fireVis) {
-      const x = (i % CW) * CELL, y = ((i / CW) | 0) * CELL;
-      if (W.seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)]) G.ctx.rect(x, y, CELL, CELL);
-    }
-    G.ctx.fill();
-    const st = Math.max(1, Math.ceil(W.fireVis.length / 24));
-    for (let k = W.fireN % st; k < W.fireVis.length; k += st) {
-      const i = W.fireVis[k], x = (i % CW + 0.5) * CELL, y = (((i / CW) | 0) + 0.5) * CELL;
-      if (fogLit(W, x, y)) glowAt(G.ctx, x, y, 20, Math.min(0.14, 0.03 + W.fireVis.length / 3000) * W.flick, '255,120,40');
-    }
-  }
-  for (const e of W.enemies)
-    if (e.burn > 0 && onView(e.x, e.ty, 40) && fogLit(W, e.x, e.ty)) glowAt(G.ctx, e.x, e.ty, e.r * 2.4, 0.22 * W.flick, '255,130,50');
-  for (const pr of W.firePlants)
-    if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(W, pr.x, pr.y + pr.len))
-      glowAt(G.ctx, pr.x, pr.y + pr.len, 16, 0.2 * W.flick, '255,130,50');
-  if (W.p.burn > 0 && !W.p.dead) glowAt(G.ctx, W.p.x + PW / 2, W.p.y + PH / 2, 22, 0.25 * W.flick, '255,130,50');
-  for (const list of [W.dparts, W.amb]) for (const q of list) {
-    if (!q.glow || !onView(q.x, q.y, 10) || !fogLit(W, q.x, q.y)) continue;
-    G.ctx.globalAlpha = Math.min(1, q.life / (q.max * 0.3));
-    G.ctx.fillStyle = q.c; G.ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
-  }
-  G.ctx.globalAlpha = 1;
-  if (!W.p.dead) {
-    const th = torchHand(W), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
-    glowAt(G.ctx, gfx, gfy, 70 * (0.9 + 0.1 * gl), 0.2 * gl, '255,150,60');            // the second light
-    glowAt(G.ctx, gfx + W.leanX * 0.5, gfy + W.leanY * 0.5, 12, 0.5 * gl, '255,190,90');   // the halo
-  }
-  G.ctx.globalCompositeOperation = 'source-over';
-  for (const sc of W.sconces) if (scOn(sc)) drawSconce(G.ctx, sc.x, sc.y, W.time, sc.ph);
+  drawGlows(W, G, F);                       // light over the fog (light.js)
   if (G.RPV) return;                        // a replay frame has no HUD
 
   // ---- HUD ----

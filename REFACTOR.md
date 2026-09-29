@@ -517,6 +517,8 @@ What the code says about P3.4 (checked at the end of P3.3):
        - [x] P3.4 (40): `drawTrail`, `drawSparks`, `drawMotes`, `drawFlashes` → effects.js, `drawJetFlame` → actors.js (`part.js`)
        - [x] P3.4 (41): `drawAim` → actors.js (`part.js` on the Trajectory Sight block with `R` in `F` for the cut, then by hand
          the aim's four lines moved in and `R` out of `F` again: it fills `F.held`, `F.ax`/`F.ay`, `F.gy`), `drawPlayer` → actors.js
+       - [x] P3.4 (42): `drawFog` (the reveal, the bake, the blur) and `drawGlows` (everything lit over the fog, then the sconces)
+         → a new `render/light.js` (`part.js`)
     4. Keep the order exactly: draw() draws from the sim's `Math.random` stream and writes fog memory and the camera, and
        step's parts feed each other within the frame. The probe catches any reorder.
   - Learned so far: `G`'s keys must be declared above `G` (a closure `const` further down moves up
@@ -534,7 +536,7 @@ What the code says about P3.4 (checked at the end of P3.3):
     a doc from Git Bash: it wrote REFACTOR.md back with LF (harmless to the commit, but edit with node or the Edit tool).
   - The old rough list (P3.1's guess), still to do; the parts already out are noted:
   - [x] recorder: the putImageData wrappers stay in Game until recorder.js (they wrap `tctx`/`dctx`, which the systems reach as `G.tctx`/`G.dctx`): `recWrap`
-  - [ ] fog.js: paintFog, bake, blur, fogLit
+  - [x] fog.js: paintFog, bake, blur, fogLit (`fogLit`, `paintFog` in systems/fog.js; the reveal, bake and blur are `drawFog` in render/light.js, P3.4 (42))
   - [x] level-entry.js: enterLevel, sconces, per-floor precompute
   - [x] player.js: walking, jetpack + sputter, climbing (vines, webs, arches), the torch (hurt, maxHp, refreshBag are out; `movePlayer`, P3.4 (26); `stepTorch`, P3.4 (33))
   - [x] gun.js: cast, spawnShot, releaseAt, payload/triggers, gun ticks (the ticks and aiming: `aimAndCast`, P3.4 (27))
@@ -927,3 +929,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.4 (39) | `drawArrival`, `drawShop`, `drawLoot` (gold + pickups), `drawRooms` → cave.js with `tools/part.js`. `shop`, `shopcard`, `gunpickup`, `interact`, `perks`, `teleport`, `save` run too, all first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (40) | `drawTrail`, `drawSparks`, `drawMotes`, `drawFlashes` → effects.js, `drawJetFlame` → actors.js, with `tools/part.js`. `jetpack`, `blackhole`, `fire`, `replay`, `perks` run too, all first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (41) | `drawAim` (the aim's setup moved in by hand after `part.js`: fills `F.held`, `F.ax`/`F.ay`, `F.gy`) and `drawPlayer` (runner, gun, torch, crosshair, shield, ghost) → actors.js. `perks`, `jetpack`, `replay`, `buzzsaw`, `interact`, `cooldown-debug-shop` run too, first time; `torch` failed 3 of 8 (falloff / flicker checks, the known flake; 4 of 10 at (33)). | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 3, P3.4 (42) | `drawFog` (59 lines: `visPoly`, `fogReveal`, the bake and blur) and `drawGlows` (75 lines) → new `render/light.js` with `tools/part.js`. `fog`, `torch`, `replay`, `map`, `fire`, `decor`, `creatures`, `t1spells` run too, all first time; `jelly`'s glow checks passed both runs, its spit group failed both (the known flake). | probe SAME, logic 33/33, smoke ok |
