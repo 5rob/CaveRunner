@@ -189,7 +189,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
       Update `CLAUDE.md`'s "bump the version" step to match.
 - [x] **P0.9** `node tools/build.js --watch`: rebuild on save (polling `fs.watch` is
       fine), for use with `serve.js` on the phone.
-- [ ] **P0.10** Update `CLAUDE.md`: "edit `src/`, run the build (tests do it for you)";
+- [x] **P0.10** Update `CLAUDE.md`: "edit `src/`, run the build (tests do it for you)";
       the layout table points at `src/main.js` line ranges. Full suite green. Commit.
 
 ### Phase 1 — split the pure code into modules
@@ -371,7 +371,20 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
 Bugs, oddities and "this should be better" spotted mid-move. Don't fix them in a refactor
 commit. List them here for after.
 
-- (none yet)
+- **Pure code below `makeLevel`.** `tracePath` (~7041 in `src/main.js`) sits *between*
+  `makeLevel` and `Game`, and `drawGunGlow` (~11388) sits *after* `Game`, among the UI.
+  CLAUDE.md used to say "everything above `makeLevel` is pure"; the loader cuts at
+  `function Game(` so tracePath is covered, but drawGunGlow isn't reachable from logic
+  suites. Mind both when cutting modules in P1.5.
+- **Two logic suites read the code as text** (`creatures`: every body has a
+  `draw<Body>(ctx`; `rats`: `drawRat`/`drawNest` exist). They now get it from
+  `require('../load').source`. Once the code is split, `.source` must be *all* of
+  `src/` concatenated, or those checks go false.
+- **Browser suites need Playwright on this PC.** None is installed globally; this session
+  put `playwright-core` in the scratchpad and set `CAVERUNNER_PLAYWRIGHT` +
+  `CAVERUNNER_CHROME` (system Chrome at `C:Program FilesGoogleChromeApplication`).
+  `tests/chromium.js` only looks for Linux Chromium paths by default. P1.1's dev
+  `package.json` could carry `playwright-core` so this stops being per-session.
 
 ## Game map
 

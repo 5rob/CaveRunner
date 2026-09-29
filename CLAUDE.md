@@ -1,7 +1,12 @@
 # CaveRunner
 
-A single-file browser game: a jetpack cave shooter with Noita-style wand building.
-`index.html` is the whole thing — markup, CSS, React and game loop, no build step.
+A single-page browser game: a jetpack cave shooter with Noita-style wand building.
+`index.html` is the whole game — markup, CSS, React and game loop — but it is **built**:
+**edit `src/`, never `index.html`.** `node tools/build.js` (plain Node, no dependencies)
+glues `src/shell.html` (the page), `src/style.css` and `src/main.js` (all the code) back
+into `index.html`, and `node tests/run.js` runs the build first, so the tests do it for
+you. `index.html` stays committed: CI, Pages, the APK and `serve.js` all read it. Commit
+it together with the `src/` change.
 
 **Refactor planned / in progress:** splitting the file into modules under `src/`. The plan,
 rules and progress tracker are in **`REFACTOR.md`** — read it before touching code structure.
@@ -34,7 +39,9 @@ so **every change has to work at phone width with touch**.
 phone without cutting a full release. They open it on the phone at **http://192.168.86.233:8000/** —
 that is the PC's address on their wifi, so it only works while `serve.js` is running on
 the PC and the phone is on the same network. If the address stops answering, the PC has
-been given a new one: check with `ipconfig` and update the line here.
+been given a new one: check with `ipconfig` and update the line here. Run
+`node tools/build.js --watch` alongside it, so each save in `src/` rebuilds `index.html`
+and a reload on the phone shows it.
 
 It answers only for `index.html` — deliberately, because
 `.claude/settings.json` in this folder holds an API token, and a plain
@@ -43,7 +50,7 @@ replace it with a general static server.
 
 ## The loop we've settled into
 
-1. Make the change in `index.html`.
+1. Make the change in `src/` (the code is `src/main.js`, the CSS `src/style.css`).
 2. Test it. `node tests/run.js` — see **Testing** below. Add a suite for anything new.
 3. Bump the version: `const VERSION` near the top of `src/main.js` (the build copies it
    into the `<title>`). This is what the phone's update prompt keys off — see **The version number is not
@@ -89,7 +96,7 @@ WebView shell in `android/`; the game itself is still just `index.html`. Full de
 `android/README.md` — the essentials:
 
 - **It plays offline.** The APK bundles `index.html` + React, so no network is needed.
-  `index.html` loads React from a CDN (two `<script>` tags, ~line 399); the app rewrites
+  `index.html` loads React from a CDN (two `<script>` tags, in `src/shell.html`); the app rewrites
   those two URLs to the bundled local copies. This happens in **two** places that must stay
   in sync: `android/prep-assets.js` (build time, the bundled seed) and `localize()` in
   `MainActivity.java` (runtime, each downloaded update). **The canonical `index.html` is
@@ -113,33 +120,35 @@ WebView shell in `android/`; the game itself is still just `index.html`. Full de
   workflow permissions = read/write (CI needs write to publish the release and to commit the
   keystore on the first run).
 
-## Layout of index.html
+## Layout of src/
 
-Roughly top to bottom:
+`src/shell.html` is the page (the `<head>`, the two React CDN tags, and `/*@@file@@*/`
+slots the build fills), `src/style.css` the one CSS block (light and dark via
+`prefers-color-scheme`). All the code is `src/main.js`, roughly top to bottom (line
+numbers as of v96, they drift):
 
-| What | Where |
+| What | Where in `src/main.js` |
 |---|---|
-| CSS | in `<style>`, one block, light and dark via `prefers-color-scheme` |
-| World constants | `CELL`, `CW`/`CH`, `SHOP_*`, tuning consts (`GRAVITY`, `JET`, …) |
-| `DEV` / `DEV_META` / `devSet` | live dev-panel knobs, saved to localStorage (see note below) |
-| `THEMES` / `themeFor` | the 12 level palettes; the floor number picks one |
-| `CREATURES` / `ROSTERS` | the 16 creature types, and which live on floors 1–10 |
-| `rosterFor` / `enemyFor` | a floor's creatures, and one creature's floor-scaled stats |
-| `MODS` | the spells, each a plain object (`off: 1` = kept but never handed out) |
-| `FAMILIES` / `FAMILY_OF` | the 8 colour families the UI groups mods by |
-| `MOD_PRICE` / `MOD_TIER` | shop price and rarity 1–4 for every mod |
-| `PERKS` / `perkBag` | the 31 perks, and folding an owned list into one effective bag |
-| `planCast` | **the heart of it** — works out what one pull of the trigger fires |
-| `gunRate` / `buildAdvice` | the build advisor |
-| `castGroups` / `groupStats` | the outlines and stat lines in the build screen |
-| `tracePath` | simulates a shot for the aim line |
-| `makeLevel` | terrain, shop, enemies, pickups |
-| sprites | `drawRunner`, `drawEnemy` (one per creature body), `drawGun`, `rr` |
-| `Game` | the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields |
-| React UI | `ModCard`, `GunCard`, `PerkCard`, `Editor`, `GunSwap`, `DevPanel`, `App` |
+| World constants | ~5: `CELL`, `CW`/`CH`, `SHOP_*`, tuning consts (`GRAVITY`, `JET`, …); `VERSION` ~13 |
+| `DEV` / `DEV_META` / `devSet` | ~70–400: live dev-panel knobs, saved to localStorage (see note below) |
+| `THEMES` / `themeFor` | ~411: the 12 level palettes; the floor number picks one |
+| `CREATURES` / `ROSTERS` | ~468: the 16 creature types, and which live on floors 1–10 |
+| `rosterFor` / `enemyFor` | ~554: a floor's creatures, and one creature's floor-scaled stats |
+| `MODS` | ~591: the spells, each a plain object (`off: 1` = kept but never handed out) |
+| `FAMILIES` / `FAMILY_OF` | ~950: the 8 colour families the UI groups mods by |
+| `MOD_PRICE` / `MOD_TIER` | ~1019: shop price and rarity 1–4 for every mod |
+| `planCast` | ~2485: **the heart of it** — works out what one pull of the trigger fires |
+| `gunRate` / `buildAdvice` | ~2761: the build advisor |
+| `castGroups` / `groupStats` | ~2875: the outlines and stat lines in the build screen |
+| sprites | ~3050–3600: `rr`, `drawGun`, `drawRunner`, `drawEnemy` (one per creature body) |
+| `PERKS` / `perkBag` | ~3600: the 31 perks, and folding an owned list into one effective bag |
+| `makeLevel` | ~6439: terrain, shop, enemies, pickups |
+| `tracePath` | ~7041: simulates a shot for the aim line |
+| `Game` | ~7130–11390: the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields |
+| React UI | ~11400–end: `GunCard`, `GunSwap`, `ModCard`, `Editor`, `PerkCard`, `DevPanel`, `App` |
 
-Everything above `makeLevel` is pure and top-level, which is why the logic tests can
-load it and call it directly. **Keep it that way** — if a new mechanic can be a pure
+Everything above `function Game(` is pure and top-level, which is why the logic tests can
+load it and call it directly (`tests/load.js`). **Keep it that way** — if a new mechanic can be a pure
 function, make it one.
 
 ## Things worth knowing before you change anything
@@ -437,7 +446,7 @@ guarded. The old **DEBUG** shelf toggle moved into this panel as **All mods** (s
 now. The global key handler early-returns on `input`/`textarea`/`select` targets so typing a
 value doesn't also steer the runner.
 
-**Unicode is stored raw** in `index.html` (`·`, `—`, `×`, `Ω`), not as `\uXXXX`. Match the
+**Unicode is stored raw** in `src/main.js` (`·`, `—`, `×`, `Ω`), not as `\uXXXX`. Match the
 literal characters when editing with a script, or the edit silently finds nothing.
 
 **v56 visuals + Black Hole.** `motes` is one particle list with three kinds: `drift` (Black Hole trail), `in` (spawned round the exit `portal`, pulled to its centre with a sideways sine wobble, fade in from 0) and `out` (breathed out of `arrival`, wafting, fading to nothing by distance `fade`, then killed). Drawn additive. **Black Hole** (`b.pull`): reach is `DEV.bhPull * b.pull / 70` (v57), drag grows toward the centre and is capped so it never overshoots; it does not die on an enemy (`continue` in the hit block) and clears `b.hit` every 0.3s so it grinds; enemy shots within reach bend in and die at `size+6`. It draws its own look (haze + black starry core) and skips the streak. The hand torch flame is `drawFlame` — teardrops whose tip is `leanX/leanY`, a spring toward "opposite your velocity". Its halo and small second light, and the wall `sconces` (built in `enterLevel`: either side of both portals and each room prize), are drawn **after** the fog with `lighter`, so the map lighting is untouched; a sconce only shows once its cell is `seen`. Background parallax is `PARALLAX` (0.8) in `draw()`; the bg image gets big fbm shadow blotches in `makeLevel`. `tests/browser/blackhole.test.js` covers all of it. **v57:** the Black Hole digs only its drawn black core (`eat: 19`, and the draw uses `core = b.eat`, so they cannot drift apart). Two Dev knobs: `DEV.bhPull` (max pull range, default 154) and `DEV.bhSpeed` (travel speed, default 140 — applied as the multiplier `bhSp(sh)` at spawn *and* in the aim line, so speed mods still stack and the line stays honest). The Dev panel's **Copy all dev settings to clipboard** button (`.devcopy`) copies `devReport()` — the changed values with their DEV keys and old defaults. When the owner pastes that, set those numbers as the new `DEV_DEFAULTS`. If the clipboard is blocked (a WebView can refuse), it shows the text in a box to long-press and copy instead. `tests/logic/devsettings.test.js` covers it.
@@ -947,13 +956,13 @@ only because someone noticed.
 - Commit it in the same commit as the change it covers.
 - Throwaway debug scripts (one-off probes, screenshot scratch) can live in the scratchpad.
   If a probe turns out to be worth keeping, move it into `tests/` before the turn ends.
-- Don't hardcode machine paths. Logic suites find `index.html` relative to `__dirname`;
+- Don't hardcode machine paths. `tests/load.js` finds `index.html` relative to `__dirname`;
   browser suites get Chromium from `tests/chromium.js`. Keep both that way so the suites
   still run on a different machine.
-- Don't assume LF, either. A Windows checkout with `core.autocrlf` on hands you `index.html`
-  with CRLF, and the logic suites slice the script out on `'<script>\n'`, which then finds
-  nothing and every suite fails with a syntax error. They all normalise with
-  `.replace(/\r\n/g, '\n')` before slicing now — keep that when adding one.
+- Don't assume LF, either. A Windows checkout with `core.autocrlf` on hands you files
+  with CRLF. `tests/load.js` slices the script out on `'<script>\n'`, so it normalises
+  with `.replace(/\r\n/g, '\n')` first, and `tools/build.js` reads `src/` the same way and
+  writes `index.html` with whatever line endings the checkout already has — keep both so.
 - Before finishing a session, `git status` — anything untracked under `tests/` is about to
   be lost.
 
@@ -964,8 +973,10 @@ node tests/run.js browser   # Chromium, ~2 minutes, runs one at a time
 node tests/run.js advice    # anything matching "advice"
 ```
 
-**Logic suites** (`tests/logic/`) slice the `<script>` block out of `index.html`, eval it,
-and call the pure functions. ~1250 checks. Add to these first — they're fast and they've
+**Logic suites** (`tests/logic/`) start with `const G = require('../load');` —
+`tests/load.js` evals everything above `function Game(` from the built `index.html` and
+hands back every top-level name (plus `.source`, the script as text) — and call the pure
+functions. A new suite does the same; don't slice the file yourself. ~1250 checks. Add to these first — they're fast and they've
 caught most of the real bugs.
 
 **Browser suites** (`tests/browser/`) drive the real page in Chromium through
