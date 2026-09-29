@@ -13,7 +13,7 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). step() split into parts, P3.4 (25)–(33): a frame object `F` (D18) and 21 calls, the parts in their systems (`pickups.js` new). draw() split the same way, P3.4 (34)–(43): its own `F` (D19) and 29 calls, the parts in six `render/` modules by theme. **P3.4 done; next P3.5** (the enemy loop per creature, bullet looks as a table). Not merged |
+| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). step() split into parts, P3.4 (25)–(33): a frame object `F` (D18) and 21 calls, the parts in their systems (`pickups.js` new). draw() split the same way, P3.4 (34)–(43): its own `F` (D19) and 29 calls, the parts in six `render/` modules by theme. **P3.4 done.** P3.5 (creature plugins) planned from the code (D20: the Game side of each creature in `src/game/creatures/`, an `ACTS` table keyed by act; knob tables stay put; no looks table). Not merged |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
 | **Last green full suite** | 2026-09-30, end of P3.4, after draw()'s split (95d6ea6): logic 33/33, browser 44/44 after re-runs (`lightning` fork and `torch` "brighter frames" failed in the run, both known, both passed 2 of 2 alone) |
@@ -97,7 +97,7 @@ src/
   dev/                  LAYER 1
     knobs.js            DEV_DEFAULTS/DEV_META/DEV_GROUPS, DEV, devSet, devReport,
                         rangeKnobs, colourKnobs, kr/kru/spr, kcol/jcol
-                        (each creature's own knob table moves to that creature's file)
+                        (the creature knob tables stay here: D11, and P3.5's notes)
   data/                 LAYER 2: tables
     themes.js           THEMES, themeFor, DECOR table, AMBIENCE
     creatures.js        CREATURES, ROSTERS, rosterFor, enemyFor, HUNTERS, NATURAL_ONLY
@@ -136,6 +136,7 @@ src/
     Game.js             thin: owns the world object, the loop, the React bridge
     world.js            makeWorld(): the level-scoped state as one object
     systems/            one file per job, each `(W, dt)` or `(W, ctx)`: see Phase 3
+    creatures/          each creature's Game side (its part of the enemy loop), and ACTS (P3.5, D20)
   ui/                   LAYER 6
     h.js                const h = React.createElement, hooks re-exports
     hud.js              Stick, RKey, gauges, deckLayout, fmtGold, healthCol
@@ -569,6 +570,84 @@ What the code says about P3.4 (checked at the end of P3.3):
       W), onHurt?, onDeath? }`, and `enemies.js` dispatches by `e.k.act`. **Adding a creature
       = one new file + one registry line.** Do the same for bullet looks (`drawLook`/
       `shotTrail` → a `LOOKS` table, one entry per look) if it reads better.
+      (The paragraph as first written; what the code allows is below, and the shape is D20.)
+
+What the code says about P3.5 (checked at the end of P3.4, f50c758):
+- **The loop.** `stepEnemies(W, G, F)` (`systems/enemies.js`, ~245 lines) is one backwards `for` over `W.enemies`
+  (a bomber splices itself out mid-loop), then once-a-frame passes: Contact Damage, the creatures' shots, spider silk
+  in flight, strings on you, web lines whose rock is gone, `W.p.hitT`. Per enemy, in this order:
+  (a) **shared**: the timers (`flash`, `cd`, `touch`), `dx`/`dy`/`dist`, `lx`/`ly`, `sees`, aggro (`HUNTERS`, sticky,
+  the `kp` creature's aggro reach rolled once a second), the idle noise;
+  (b) **bomb only**: the fuse ticking;
+  (c) **the act's move**: `nest` and `rat` do their whole frame (with `chill`/`ty`) and `continue`, skipping all
+  below; then an `if/else` chain: `spider`, `jelly`, `turret` (nothing), `hunting` → the classic chase, else the
+  classic patrol (chase, bomb, shoot, and any act not named);
+  (d) **shared**: `chill` reset, `ty` (the hover bob, none for a `kp` creature);
+  (e) **contact**, when hunting and touching: a bomber bursts, splices itself and `continue`s; anyone else bites
+  (the `kp` bite knobs, or `k.dmg`);
+  (f) **shoot/turret only**: firing, with the turret's wind-up ring.
+  The acts are exclusive, so (c)'s branches can become one dispatch at the chain's place without reordering anything.
+- **Act and body are two separate axes.** 16 creature types, 8 acts, 8 bodies: the `drone` body is worn by three
+  shooters and a turret, `blob` by a chaser, two bombers and a turret, `skull` by two turrets, `crawler` by three
+  chasers. Only the four reworked creatures (spider, jelly, rat, nest) are one act = one body = one creature. A
+  classic creature has no step of its own: its behaviour is its act (shared by up to five types), its look is its
+  body. So the registry is keyed by **act** (what the loop does), and drawing stays keyed by **body**: `drawEnemy`
+  (`creatures/draw.js`, layer 4, pure, one line per body) needs nothing from the game and stays as it is.
+- **The layer rule.** The branches use layer-5 systems: `hurt`, `burst`, `lineOfSight`, `solidCell`, `puffSpores`,
+  `spawnRat`/`ratFrame`, `fireBlast`, `fireEnemyShot`, `W`, `G`. `creatures/` is layer 4, so "`creatures/<name>.js`
+  exports `step(e, W, dt)`" can't hold them. The pure brains (`spiderStep`, `jellyStep`, `ratStep`) and sprites stay in
+  `creatures/`; each creature's Game side goes to a new `src/game/creatures/` (layer 5). **D20.**
+- **Per-creature bits outside the loop**, and where they go:
+  - move in P3.5: the (c) branches, the bomb's fuse (b) and burst (e), the shoot/turret firing (f); the spider's
+    once-a-frame passes (silk, strings, web lines coming down) as its `frame` hook, at the same place; `drawSilk`
+    (render/actors.js: webs, lines being shot, silk, strings, all spider) to the spider's file, still called from
+    the same spot in draw; `damageEnemy`'s nest branch (the gold shower, early return) as the nest's `die` hook;
+    `systems/rats.js` whole (it *is* the rat's Game side: `ratFrame`, `spawnRat`, `navFor`, `unstick`, `ratSolid`,
+    `onWebIn`); `natural` (enemies.js, used only by the jelly's `env.stay`).
+  - stay: the jelly's colour ternaries (`e.je ? jcol('jeColBody', …) : e.k.col.a` in `damageEnemy`'s burst and
+    `drawEnemies`' bar; a hook each would be more code than the one line), rats' and nests' "bar only once hurt"
+    line in `drawEnemies`, the carried-gold drop in `damageEnemy` (any `e.carry`), light.js's creature glow (generic
+    on `k.glow`/`kp`, with the jelly's `u`) and plant glow call, `puffSpores` (ambience.js), `plantGlow` (its own
+    system), `alertAt` (props.js, via `HUNTERS`), `HUNTERS`/`NATURAL_ONLY` in `data/creatures.js` (`level.js`, layer 3,
+    reads `NATURAL_ONLY`), and the player's web climbing (`webSlow`/`webGrab`/`webClimb` in props.js and
+    `movePlayer`: your side of a web line, not the spider's).
+- **What stays shared in enemies.js**: (a), (d), the contact bite, Contact Damage, the creatures' shots (any
+  creature's: `goo`, `drip`, `splat`, `fire` are generic shot fields), `damageEnemy`, `fireEnemyShot`, `hitT`.
+- **Knob tables (D11): not safe to move now; they stay in `dev/knobs.js`.** `DEV = Object.assign({}, DEV_DEFAULTS)`
+  and the saved-values read run in knobs.js at load, and knobs.js loads before every creature file (they import
+  it), so a `rangeKnobs` call from `creatures/spider.js` would come after `DEV` is made: `DEV` would miss those
+  keys. Moving them needs `DEV` built differently (say `rangeKnobs` also writing `DEV[k]` and reading the saved
+  value itself): a change to how DEV is made, not a move. And `DEV_META`'s order would then follow the bundle's
+  module order instead of knobs.js's text. The panel itself wouldn't change (rows are filtered per `DEV_GROUPS`
+  group, and a table's rows stay together), but `devReport()`'s copied text (the one the owner pastes) lists the
+  changed and unchanged knobs in `DEV_META` order, and the logic tests' bundle (`pure.js`) orders modules
+  differently from the game's (`main.js`). Visible, and not clearly safe: left for after the refactor, if ever.
+- **Bullet looks as a `LOOKS` table: no.** `drawLook` and `shotTrail` already read as tables: one
+  `else if (L === 'x')` branch per look, in the same order in both files. Each branch leans on its function's shared
+  opening lines (the unit vector, `s`, the `dot` helper; `chance`), which a table would have to thread into every
+  entry, and `shotBounce`/`shotDeath` group looks *by effect* (`orb || chain || rubber || heavy` share one burst,
+  four looks share the skipping sparks), which a per-look table would split up or duplicate. More plumbing, not
+  clearer. Adding a look stays: a branch in `drawLook`, one in `shotTrail`, and optionally `shotBounce`/`shotDeath`.
+- **Proof.** The probe (D14) meets a spider, a jelly and a nest on floor 1 (rats may come out of the nest) and
+  walks onto floor 2 for a moment; it doesn't reach a classic creature reliably, nor a nest's death. So each step
+  also runs its creature's browser suites: `rats` (nest, rat), `spider`, `jelly` + `archvine` (the zones), and
+  `creatures` (climbs five floors: the classic acts) for the classic step and whenever `enemies.js`'s shared part moves.
+
+- [ ] **P3.5 sub-tasks** (D20; one commit each, probe SAME + logic + smoke + the creature's suites):
+  - [ ] P3.5 (1): the registry and its first creature, the nest. `src/game/creatures/acts.js` (`ACTS`), the
+        per-enemy object `C` in `stepEnemies`, the dispatch at (c)'s place (the other acts still inline below it),
+        `damageEnemy` asking `ACTS[act].die`; `src/game/creatures/rat.js` with `nestMove` and `nestDie`. (The registry
+        alone would be empty scaffolding with nothing to dispatch, so it comes with its first creature.)
+  - [ ] P3.5 (2): the rat: `systems/rats.js` into `game/creatures/rat.js` whole, `ratMove`; Game.js's `onWebIn`
+        import follows
+  - [ ] P3.5 (3): the spider: `spiderMove`, `spiderFrame` (silk in flight, strings on you, web lines coming down,
+        once a frame at the same place), `drawSilk` from render/actors.js → `game/creatures/spider.js`
+  - [ ] P3.5 (4): the jelly: `jellyMove` (tentacle sting, spit) and `natural` → `game/creatures/jelly.js`
+  - [ ] P3.5 (5): the classic acts → `game/creatures/classic.js`: `classicMove` (hunt or patrol: chase, bomb,
+        shoot, and the fallback for an act not in `ACTS`), `bombFuse` (`pre`), `bombBurst` (`contact`), `gunFire`
+        (`fire`, shoot and turret); `turret` gets no `move`. The inline chain is gone
+  - [ ] P3.5 (6): tidy and notes: enemies.js header, CLAUDE.md's creature notes ("adding a creature"), checkpoint
+        full suite
 - [ ] **P3.6** `Game.js` is left owning: making the world, the loop (step/draw/replay
       switch), and the React `input` bridge. Target < 800 lines. Full suite green. Merge to
       `main` with a version bump; owner plays it.
@@ -641,6 +720,7 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
 | D17 | **Call cycles between systems are allowed** (`explode` in terrain.js → `fireBlast` → `ignite` in fire.js → `blowProp` in props.js → `explode`), as circular imports. Rule that keeps them safe: a system module does nothing at load time that calls another system; its top level is function declarations, arrow consts and plain data | esbuild bundles everything into one scope (the game's iife, and tests/load.js's CommonJS bundle), so there are no half-loaded modules at runtime; every function in the cycle is only ever called while the game runs, long after all modules have loaded. Keeping the cycle inside one module instead would put an explosion, the fire and the props in one file |
 | D18 | **step()'s parts share one per-frame object `F`** (`{ dt, LO, MHP, pcx, pcy }`), made at the top of `step` and handed to every part; a part that fills one in (`stepPerks`: `LO`, `MHP`; the portal check: `pcx`/`pcy`) writes it there. A part reads its fields with a `const { … } = F;` first line. A part that can end the frame (New cave, the portal) returns `true` and step returns | The locals that live across parts are few and never change once set, so one small object a frame is simpler than a different argument list per part, and the destructuring keeps each moved block word for word. Recomputing `pcx`/`pcy` per part would not do: a Teleport Bolt moves you mid-frame and the later parts must still see where you were |
 | D19 | **draw()'s parts share a frame object `F` too**, like step's (D18): `{ dpr, playPx, vw, vh, pcx, pcy, … }`, made at the top of `draw`. `drawCamera` fills the view (`dpr`, `playPx`, `vw`/`vh`) and where you are (`pcx`/`pcy`); a later part that sets up something the parts after it use (the theme `TH` and `onView`, the held gun and aim) fills its fields the same way. Parts live in `render/` by theme, each `(W, G, F)` (only what it uses) with a `const { … } = F;` first line. `if (G.RPV) return;` (a replay has no HUD) stays in the top-level `draw` | Same reasons as D18, and the same tool (`tools/part.js`) does the cuts. Nothing in draw changes what these are made from, so a part could recompute them, but reading them off `F` keeps every moved block word for word (and `TH`/`onView`/the aim are more than a line each) |
+| D20 | **P3.5's shape: creature plugins keyed by act, in `src/game/creatures/`.** A creature's pure brain and sprite stay in `creatures/<name>.js` (layer 4). Its Game side (its part of the enemy loop, its hooks) is `src/game/creatures/<name>.js` (layer 5, beside `systems/`), exporting plain `function` declarations. `src/game/creatures/acts.js` holds `ACTS`: act → `{ move, pre?, contact?, fire?, die?, frame? }`, one line per act, and `stepEnemies`/`damageEnemy` call a hook exactly where its inline branch sat: `pre` before the move (bomb's fuse), `move` at the old `if/else` chain (returns true when the creature did its whole frame: today's `continue` for nest and rat), `contact` inside the touching check (true = it's gone: the bomber), `fire` after contact (shoot, turret), `die(W, e)` in `damageEnemy` after the splice (true = skip the normal coin: the nest), `frame(W, G, F)` once a frame after the creatures' shots (the spider's silk). The per-enemy hooks take `(W, G, e, C)`: `C` is one object `stepEnemies` makes per frame and refills per enemy (`dt`, `pcx`, `pcy`, then `i`, `dx`, `dy`, `dist`, `sees`, `hunting`), read with a `const { … } = C;` first line so a moved branch stays word for word (as D18). A file may hold two acts (`rat.js`: `rat` and `nest`). Adding a creature: its pure file (brain + sprite, a `drawEnemy` line for its body), its game file, one `ACTS` line, its knob table in `dev/knobs.js` (D11) | The layer rule: the branches use layer-5 systems, so they can't live in `creatures/` (layer 4), and the pure halves shouldn't move down to layer 5 (the logic suites and the Dev panel's jelly preview use them). Keyed by act, not by creature or body: act and body are separate axes (four acts are shared by 11 classic types, eight bodies by all 16), and the loop's branches are by act already; drawing stays by body in `drawEnemy`. One signature for every entry of a hook, since a table can't vary the arguments per creature (D16's "only what it uses" is per function, not per table). Function declarations, not `const` arrows: `ACTS` is read at load (plain data, D17) inside an import cycle (enemies.js → acts.js → rat.js → rats/terrain → enemies.js), and a hoisted function is always there, where another module's `const` might not be made yet |
 
 ## Found along the way
 
@@ -946,3 +1026,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.4 (42) | `drawFog` (59 lines: `visPoly`, `fogReveal`, the bake and blur) and `drawGlows` (75 lines) → new `render/light.js` with `tools/part.js`. `fog`, `torch`, `replay`, `map`, `fire`, `decor`, `creatures`, `t1spells` run too, all first time; `jelly`'s glow checks passed both runs, its spit group failed both (the known flake). | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (43) | `drawHud` (fills `F.cw`, setup moved in by hand), `drawRadar`, `drawMessages`, `drawReticule`, `drawMap` → new `render/overlay.js` with `tools/part.js`; draw's top level tidied, header rewritten. **draw() is split**: draw.js 96 lines, `node tools/locals.js` shows only `W`, `G`, `F`; render/ 1,397 lines in 7 files. `perks`, `shop`, `shopcard`, `map`, `replay`, `spawngun`, `restart-confirm`, `donebutton` run too, all first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 checkpoint, **P3.4 done** | Full suite on a snapshot of 95d6ea6 (draw() split): `lightning` "a fork hits a creature off to the side" and `torch` "the brighter frames are the ones with the taller flame" failed, both known flakes; each passed 2 of 2 alone. The old rough list checked against the code: props.js (`decorStep`, rustle, `zfx`), ambience.js and enemies.js (`stepEnemies`) were already done, ticked; P3.4 ticked. Next P3.5 (the enemy loop per creature, bullet looks as a table). Note: `git worktree remove` left `.git/worktrees/snap` behind (read-only folders, "Permission denied"); deleted by hand after the junction was gone. Not merged. | logic 33/33; browser 44/44 after re-runs |
+| 2026-09-30 | Phase 3, P3.5 plan | "What the code says about P3.5" written from `stepEnemies` and the creature code: the per-enemy order (shared, bomb fuse, the act's move, shared, contact, firing), act and body are separate axes, the branches need layer-5 systems. Shape D20 (`src/game/creatures/<name>.js` + `ACTS` in `acts.js`, hooks `(W, G, e, C)` called where each branch sat). Knob tables stay in `dev/knobs.js` (DEV is built at knobs.js's load; `devReport` order would follow bundle order). Bullet looks: no table (the chains already read one branch per look; bounce/death group by effect). Six sub-tasks. Docs only. | — |
