@@ -10081,56 +10081,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var seenAt = (W, x, y) => W.seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)] !== 0;
 
-  // src/game/systems/particles.js
-  var toast = (W, text) => {
-    W.toasts.push({ text, t: 2.2 });
-    if (W.toasts.length > 3) W.toasts.shift();
-  };
-  function goo(W, x, y, vx, vy, g, c, size, c2) {
-    if (W.sparks.length > 800) return;
-    const life = 0.5 + Math.random() * 0.5;
-    W.sparks.push({
-      x,
-      y,
-      vx,
-      vy,
-      life,
-      max: life,
-      c: Math.random() < 0.35 ? c2 || "#c8ff8a" : c,
-      size: size || 1.1 + Math.random() * 0.8,
-      heavy: 1,
-      g
-    });
-  }
-  function splat(W, b, x, y) {
-    const sp = Math.hypot(b.vx, b.vy) || 1;
-    for (let i = 0; i < b.splat; i++) {
-      const a = Math.random() * 6.28, v = b.splatV * (0.4 + Math.random() * 0.6);
-      goo(
-        W,
-        x,
-        y,
-        Math.cos(a) * v - b.vx / sp * v * 0.5,
-        Math.sin(a) * v - b.vy / sp * v * 0.5 - v * 0.3,
-        b.dripG,
-        b.dripCol || b.col,
-        1.3 + Math.random(),
-        b.dripCol2
-      );
-    }
-    SFX.fx("splash", x, y);
-  }
-  function burst(W, x, y, n, color) {
-    for (let i = 0; i < n; i++) {
-      const a = Math.random() * 6.28, sp = 60 + Math.random() * 160;
-      W.sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.45, max: 0.45, c: color, size: 3 });
-    }
-  }
-  function stepToasts(W, F) {
-    const { dt } = F;
-    for (let i = W.toasts.length - 1; i >= 0; i--) if ((W.toasts[i].t -= dt) <= 0) W.toasts.splice(i, 1);
-  }
-
   // src/save/save.js
   var SAVE_KEY = "caverunner-save";
   var GUN_DEFAULTS = {
@@ -10217,6 +10167,56 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     } catch (_) {
     }
   };
+
+  // src/game/systems/particles.js
+  var toast = (W, text) => {
+    W.toasts.push({ text, t: 2.2 });
+    if (W.toasts.length > 3) W.toasts.shift();
+  };
+  function goo(W, x, y, vx, vy, g, c, size, c2) {
+    if (W.sparks.length > 800) return;
+    const life = 0.5 + Math.random() * 0.5;
+    W.sparks.push({
+      x,
+      y,
+      vx,
+      vy,
+      life,
+      max: life,
+      c: Math.random() < 0.35 ? c2 || "#c8ff8a" : c,
+      size: size || 1.1 + Math.random() * 0.8,
+      heavy: 1,
+      g
+    });
+  }
+  function splat(W, b, x, y) {
+    const sp = Math.hypot(b.vx, b.vy) || 1;
+    for (let i = 0; i < b.splat; i++) {
+      const a = Math.random() * 6.28, v = b.splatV * (0.4 + Math.random() * 0.6);
+      goo(
+        W,
+        x,
+        y,
+        Math.cos(a) * v - b.vx / sp * v * 0.5,
+        Math.sin(a) * v - b.vy / sp * v * 0.5 - v * 0.3,
+        b.dripG,
+        b.dripCol || b.col,
+        1.3 + Math.random(),
+        b.dripCol2
+      );
+    }
+    SFX.fx("splash", x, y);
+  }
+  function burst(W, x, y, n, color) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * 6.28, sp = 60 + Math.random() * 160;
+      W.sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.45, max: 0.45, c: color, size: 3 });
+    }
+  }
+  function stepToasts(W, F) {
+    const { dt } = F;
+    for (let i = W.toasts.length - 1; i >= 0; i--) if ((W.toasts[i].t -= dt) <= 0) W.toasts.splice(i, 1);
+  }
 
   // src/game/systems/webs.js
   var webNear = (L, x, y) => {
@@ -10458,92 +10458,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           SFX.fx("step", null, null, W.zfx.surface);
         }
       } else W.stepT = Math.min(W.stepT, 0.35);
-    }
-  }
-
-  // src/game/systems/ambience.js
-  var AMB_RATE = { spores: 5, frost: 3, embers: 8, motes: 4, ashfall: 55 };
-  var AMB_MAX = { spores: 40, frost: 20, embers: 60, motes: 50, ashfall: 280 };
-  var spore = (W, x, y, r) => ({
-    kind: "spores",
-    x,
-    y,
-    vx: (r - 0.5) * 8,
-    vy: 0,
-    wob: r * 9,
-    life: 5 + r * 3,
-    max: 8,
-    c: rgbA(themeFor(W.floor).moss[1]),
-    s: 1.3,
-    glow: 1
-  });
-  function puffSpores(W, e) {
-    if (e.x < W.camX - 150 || e.x > W.camX + W.viewW + 150 || e.y < W.camY - 150 || e.y > W.camY + W.viewH + 150) return;
-    const S = e.je, B = jellyBell(e.r, S.shape, kru("jeSquash", S.u.sq));
-    const c = Math.cos(S.hd), sn = Math.sin(S.hd), n = Math.round(kr("jeSpores"));
-    for (let i = 0; i < n && W.amb.length < 500; i++) {
-      const lx = (Math.random() * 2 - 1) * B.rw * 0.7;
-      const q = spore(W, e.x - lx * sn - B.rim * c, e.y + lx * c - B.rim * sn, Math.random());
-      const a = S.hd + Math.PI + (Math.random() * 2 - 1) * kr("jeSporeSpread") * Math.PI / 180, v = kr("jeSporeSpd");
-      q.kx = Math.cos(a) * v;
-      q.ky = Math.sin(a) * v;
-      q.kd = kr("jeSporeDrag");
-      W.amb.push(q);
-    }
-  }
-  function stepAmbience(W, dt) {
-    const x0 = W.camX - 30, y0 = W.camY - 30, w = W.viewW + 60, h3 = W.viewH + 60;
-    const T = themeFor(W.floor);
-    for (const kind of W.ambKinds) {
-      if (kind === "devils") {
-        if (W.devils.length < 2 && Math.random() < dt * 0.4) {
-          let x = x0 + Math.random() * w, y = y0 + Math.random() * h3, k = 0;
-          while (k++ < 120 && !solidAt(W, x, y + 1)) y += 2;
-          if (k < 120 && !solidAt(W, x, y - 30)) W.devils.push({ x, y, vx: (Math.random() < 0.5 ? -1 : 1) * (15 + Math.random() * 20), life: 6 + Math.random() * 3, max: 9 });
-        }
-        continue;
-      }
-      const n = W.amb.reduce((a, q) => a + (q.kind === kind), 0);
-      let want = AMB_RATE[kind] * dt;
-      while (want > 0 && n < AMB_MAX[kind]) {
-        if (Math.random() >= want) break;
-        want -= 1;
-        const x = x0 + Math.random() * w, y = y0 + Math.random() * h3;
-        if (solidAt(W, x, y)) continue;
-        const r = Math.random();
-        if (kind === "spores") W.amb.push(spore(W, x, y, r));
-        else if (kind === "frost") {
-          const dir = W.floor % 2 ? 1 : -1;
-          W.amb.push({ kind, x, y, vx: dir * (100 + r * 60), vy: (r - 0.5) * 10, life: 0.9 + r * 0.5, max: 1.4, c: "rgba(215,238,255,0.5)", s: 1, streak: 10 });
-        } else if (kind === "embers") W.amb.push({ kind, x, y, vx: 0, vy: -20 - r * 30, wob: r * 9, life: 3 + r * 2, max: 5, c: r < 0.5 ? "#ffb050" : "#ff7a2a", s: 1.2, glow: 1 });
-        else if (kind === "motes") W.amb.push({ kind, x, y, vx: (r - 0.5) * 6, vy: (Math.random() - 0.5) * 4, wob: r * 9, life: 6 + r * 3, max: 9, c: "rgba(235,225,200,0.8)", s: 1 });
-        else if (kind === "ashfall") W.amb.push({ kind, x, y, vx: 8, vy: 20 + r * 22, wob: r * 9, life: 4 + r * 3, max: 7, c: "rgba(150,146,142,0.75)", s: 1 + r });
-      }
-    }
-    for (let i = W.amb.length - 1; i >= 0; i--) {
-      const q = W.amb[i];
-      q.life -= dt;
-      if (q.wob != null) q.x += Math.sin(W.time * 1.3 + q.wob) * 6 * dt;
-      if (q.kx || q.ky) {
-        q.x += q.kx * dt;
-        q.y += q.ky * dt;
-        const k = Math.exp(-q.kd * dt);
-        q.kx *= k;
-        q.ky *= k;
-      }
-      q.x += q.vx * dt;
-      q.y += q.vy * dt;
-      if (q.life <= 0 || solidAt(W, q.x, q.y) || q.x < x0 - 200 || q.x > x0 + w + 200 || q.y < y0 - 200 || q.y > y0 + h3 + 200) W.amb.splice(i, 1);
-    }
-    for (let i = W.devils.length - 1; i >= 0; i--) {
-      const dv = W.devils[i];
-      dv.life -= dt;
-      const nx = dv.x + dv.vx * dt;
-      if (solidAt(W, nx + Math.sign(dv.vx) * 6, dv.y - 4)) dv.vx = -dv.vx;
-      else dv.x = nx;
-      if (!solidAt(W, dv.x, dv.y + 2)) dv.y += 40 * dt;
-      else if (solidAt(W, dv.x, dv.y)) dv.y -= 2;
-      if (dv.life <= 0) W.devils.splice(i, 1);
     }
   }
 
@@ -11532,6 +11446,421 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/game/systems/ambience.js
+  var AMB_RATE = { spores: 5, frost: 3, embers: 8, motes: 4, ashfall: 55 };
+  var AMB_MAX = { spores: 40, frost: 20, embers: 60, motes: 50, ashfall: 280 };
+  var spore = (W, x, y, r) => ({
+    kind: "spores",
+    x,
+    y,
+    vx: (r - 0.5) * 8,
+    vy: 0,
+    wob: r * 9,
+    life: 5 + r * 3,
+    max: 8,
+    c: rgbA(themeFor(W.floor).moss[1]),
+    s: 1.3,
+    glow: 1
+  });
+  function puffSpores(W, e) {
+    if (e.x < W.camX - 150 || e.x > W.camX + W.viewW + 150 || e.y < W.camY - 150 || e.y > W.camY + W.viewH + 150) return;
+    const S = e.je, B = jellyBell(e.r, S.shape, kru("jeSquash", S.u.sq));
+    const c = Math.cos(S.hd), sn = Math.sin(S.hd), n = Math.round(kr("jeSpores"));
+    for (let i = 0; i < n && W.amb.length < 500; i++) {
+      const lx = (Math.random() * 2 - 1) * B.rw * 0.7;
+      const q = spore(W, e.x - lx * sn - B.rim * c, e.y + lx * c - B.rim * sn, Math.random());
+      const a = S.hd + Math.PI + (Math.random() * 2 - 1) * kr("jeSporeSpread") * Math.PI / 180, v = kr("jeSporeSpd");
+      q.kx = Math.cos(a) * v;
+      q.ky = Math.sin(a) * v;
+      q.kd = kr("jeSporeDrag");
+      W.amb.push(q);
+    }
+  }
+  function stepAmbience(W, dt) {
+    const x0 = W.camX - 30, y0 = W.camY - 30, w = W.viewW + 60, h3 = W.viewH + 60;
+    const T = themeFor(W.floor);
+    for (const kind of W.ambKinds) {
+      if (kind === "devils") {
+        if (W.devils.length < 2 && Math.random() < dt * 0.4) {
+          let x = x0 + Math.random() * w, y = y0 + Math.random() * h3, k = 0;
+          while (k++ < 120 && !solidAt(W, x, y + 1)) y += 2;
+          if (k < 120 && !solidAt(W, x, y - 30)) W.devils.push({ x, y, vx: (Math.random() < 0.5 ? -1 : 1) * (15 + Math.random() * 20), life: 6 + Math.random() * 3, max: 9 });
+        }
+        continue;
+      }
+      const n = W.amb.reduce((a, q) => a + (q.kind === kind), 0);
+      let want = AMB_RATE[kind] * dt;
+      while (want > 0 && n < AMB_MAX[kind]) {
+        if (Math.random() >= want) break;
+        want -= 1;
+        const x = x0 + Math.random() * w, y = y0 + Math.random() * h3;
+        if (solidAt(W, x, y)) continue;
+        const r = Math.random();
+        if (kind === "spores") W.amb.push(spore(W, x, y, r));
+        else if (kind === "frost") {
+          const dir = W.floor % 2 ? 1 : -1;
+          W.amb.push({ kind, x, y, vx: dir * (100 + r * 60), vy: (r - 0.5) * 10, life: 0.9 + r * 0.5, max: 1.4, c: "rgba(215,238,255,0.5)", s: 1, streak: 10 });
+        } else if (kind === "embers") W.amb.push({ kind, x, y, vx: 0, vy: -20 - r * 30, wob: r * 9, life: 3 + r * 2, max: 5, c: r < 0.5 ? "#ffb050" : "#ff7a2a", s: 1.2, glow: 1 });
+        else if (kind === "motes") W.amb.push({ kind, x, y, vx: (r - 0.5) * 6, vy: (Math.random() - 0.5) * 4, wob: r * 9, life: 6 + r * 3, max: 9, c: "rgba(235,225,200,0.8)", s: 1 });
+        else if (kind === "ashfall") W.amb.push({ kind, x, y, vx: 8, vy: 20 + r * 22, wob: r * 9, life: 4 + r * 3, max: 7, c: "rgba(150,146,142,0.75)", s: 1 + r });
+      }
+    }
+    for (let i = W.amb.length - 1; i >= 0; i--) {
+      const q = W.amb[i];
+      q.life -= dt;
+      if (q.wob != null) q.x += Math.sin(W.time * 1.3 + q.wob) * 6 * dt;
+      if (q.kx || q.ky) {
+        q.x += q.kx * dt;
+        q.y += q.ky * dt;
+        const k = Math.exp(-q.kd * dt);
+        q.kx *= k;
+        q.ky *= k;
+      }
+      q.x += q.vx * dt;
+      q.y += q.vy * dt;
+      if (q.life <= 0 || solidAt(W, q.x, q.y) || q.x < x0 - 200 || q.x > x0 + w + 200 || q.y < y0 - 200 || q.y > y0 + h3 + 200) W.amb.splice(i, 1);
+    }
+    for (let i = W.devils.length - 1; i >= 0; i--) {
+      const dv = W.devils[i];
+      dv.life -= dt;
+      const nx = dv.x + dv.vx * dt;
+      if (solidAt(W, nx + Math.sign(dv.vx) * 6, dv.y - 4)) dv.vx = -dv.vx;
+      else dv.x = nx;
+      if (!solidAt(W, dv.x, dv.y + 2)) dv.y += 40 * dt;
+      else if (solidAt(W, dv.x, dv.y)) dv.y -= 2;
+      if (dv.life <= 0) W.devils.splice(i, 1);
+    }
+  }
+
+  // src/world/nav.js
+  var NAV = 4;
+  function navField(solid, tx, ty, R, onWeb) {
+    const gi = Math.floor(tx / CELL / NAV), gj = Math.floor(ty / CELL / NAV);
+    const x0 = gi - R, y0 = gj - R, w = 2 * R + 1, n = w * w;
+    const open = new Uint8Array(n), surf = new Uint8Array(n);
+    const sol = (i, j) => solid((x0 + i) * NAV + 2, (y0 + j) * NAV + 2);
+    const fits = (i, j) => {
+      const px = (x0 + i) * NAV, py = (y0 + j) * NAV;
+      for (let b = 1; b <= 2; b++) for (let a = 1; a <= 2; a++) if (solid(px + a, py + b)) return false;
+      return true;
+    };
+    for (let j = 0; j < w; j++) for (let i = 0; i < w; i++) open[j * w + i] = fits(i, j) ? 1 : 0;
+    for (let j = 0; j < w; j++) for (let i = 0; i < w; i++) {
+      const k = j * w + i;
+      if (open[k]) surf[k] = sol(i, j + 1) || sol(i - 1, j) || sol(i + 1, j) || sol(i - 1, j + 1) || sol(i + 1, j + 1) || onWeb && onWeb(((x0 + i) * NAV + 2) * CELL, ((y0 + j) * NAV + 2) * CELL) ? 1 : 0;
+    }
+    const d = new Float32Array(n).fill(Infinity), done = new Uint8Array(n);
+    const cap = n * 8, hp = new Int32Array(cap);
+    let hn = 0;
+    const push = (k) => {
+      let c = hn++;
+      hp[c] = k;
+      while (c) {
+        const p = c - 1 >> 1;
+        if (d[hp[p]] <= d[k]) break;
+        hp[c] = hp[p];
+        hp[p] = k;
+        c = p;
+      }
+    };
+    const pop = () => {
+      const top = hp[0], last = hp[--hn];
+      let c = 0;
+      if (hn) {
+        hp[0] = last;
+        while (true) {
+          const l = 2 * c + 1, r = l + 1;
+          let m = c;
+          if (l < hn && d[hp[l]] < d[hp[m]]) m = l;
+          if (r < hn && d[hp[r]] < d[hp[m]]) m = r;
+          if (m === c) break;
+          hp[c] = hp[m];
+          hp[m] = last;
+          c = m;
+        }
+      }
+      return top;
+    };
+    let s = -1;
+    for (let r = 0; r <= 2 && s < 0; r++) for (let dj = -r; dj <= r && s < 0; dj++) for (let di = -r; di <= r; di++) {
+      const q = (R + dj) * w + R + di;
+      if (open[q]) {
+        s = q;
+        break;
+      }
+    }
+    if (s >= 0) {
+      d[s] = 0;
+      push(s);
+    }
+    while (hn && hn < cap - 8) {
+      const k = pop();
+      if (done[k]) continue;
+      done[k] = 1;
+      const i = k % w, j = k / w | 0;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        if (!di && !dj) continue;
+        const a = i + di, b = j + dj;
+        if (a < 0 || b < 0 || a >= w || b >= w) continue;
+        const q = b * w + a;
+        if (!open[q] || done[q]) continue;
+        if (di && dj && !open[j * w + a] && !open[b * w + i]) continue;
+        const up = -dj, step2 = di && dj ? 1.414 : 1;
+        const c = step2 * (surf[k] ? 1 : up < 0 ? 8 : up > 0 ? 1 : 3);
+        if (d[k] + c < d[q]) {
+          d[q] = d[k] + c;
+          push(q);
+        }
+      }
+    }
+    return { x0, y0, w, d, surf };
+  }
+  function navWay(F, x, y, steps) {
+    let i = Math.floor(x / CELL / NAV) - F.x0, j = Math.floor(y / CELL / NAV) - F.y0;
+    const w = F.w, d = F.d;
+    if (i < 1 || j < 1 || i >= w - 1 || j >= w - 1) return null;
+    if (!isFinite(d[j * w + i])) {
+      let b = -1;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        const q = (j + dj) * w + i + di;
+        if (isFinite(d[q]) && (b < 0 || d[q] < d[b])) b = q;
+      }
+      if (b < 0) return null;
+      i = b % w;
+      j = b / w | 0;
+    }
+    const dist = d[j * w + i];
+    let air = false;
+    for (let s = 0; s < steps; s++) {
+      let b = j * w + i;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        const a = i + di, c = j + dj;
+        if (a < 0 || c < 0 || a >= w || c >= w) continue;
+        if (d[c * w + a] < d[b]) b = c * w + a;
+      }
+      if (b === j * w + i) break;
+      if ((b / w | 0) <= j && !F.surf[b]) air = true;
+      i = b % w;
+      j = b / w | 0;
+      if (air && s === steps - 1 && !F.surf[b] && steps < 12) steps++;
+    }
+    return { x: (F.x0 + i + 0.5) * NAV * CELL, y: (F.y0 + j + 0.5) * NAV * CELL, dist, air };
+  }
+
+  // src/game/systems/rats.js
+  var onWebIn = (list) => (x, y) => {
+    for (const L of list) if (webDist(L, x, y) < 3) return true;
+    return false;
+  };
+  var ratSolid = (W, cx, cy) => solidCell(W, cx, cy) || W.burrow !== null && W.burrow[cy * CW + cx] === 1;
+  function navFor(W, o, goal, R) {
+    if (!o.F || o.v !== W.terrainV && W.time - o.t > 1 || Math.hypot(goal.x - o.fx, goal.y - o.fy) > (o === W.navYou ? 12 : 6) || o === W.navYou && W.time - o.t > 0.4 || o.wn !== W.webs.length && W.time - o.t > 1) {
+      const half = (R + 1) * NAV * CELL, near = W.webs.filter((L) => Math.max(L.a0x, L.b0x) > goal.x - half && Math.min(L.a0x, L.b0x) < goal.x + half && Math.max(L.a0y, L.b0y) > goal.y - half && Math.min(L.a0y, L.b0y) < goal.y + half);
+      o.F = navField((cx, cy) => ratSolid(W, cx, cy), goal.x, goal.y, R, near.length ? onWebIn(near) : null);
+      o.v = W.terrainV;
+      o.fx = goal.x;
+      o.fy = goal.y;
+      o.t = W.time;
+      o.wn = W.webs.length;
+    }
+    return o.F;
+  }
+  function spawnRat(W, n) {
+    const k = enemyFor("rotta", W.floor), P = n.nest.path, m = n.nest.mouth;
+    const e = {
+      x: P[0].x,
+      y: P[0].y,
+      ty: P[0].y,
+      r: k.r,
+      phase: Math.random() * 6.28,
+      hp: 1,
+      hpMax: 1,
+      cd: 0,
+      flash: 0,
+      lx: 0,
+      ly: 1,
+      hx: m.x,
+      hy: m.y,
+      tgt: null,
+      rest: 0,
+      k,
+      touch: 0,
+      charge: 0,
+      home: n,
+      path: P,
+      carry: 0
+    };
+    e.ra = { mode: "tunnel", vx: 0, vy: 0, nx: 0, ny: -1, on: 0, rest: 0, side: 1, face: 1, s: 0, dir: 1, wait: 0 };
+    W.enemies.push(e);
+    return e;
+  }
+  function unstick(W, e, S, home) {
+    e.stN = (e.stN || 0) + 1;
+    if (e.stN >= 3 && home) {
+      burst(W, e.x, e.y, 6, "#6a5a48");
+      S.mode = "tunnel";
+      S.len = pathLen(e.path);
+      S.s = S.len * 0.7;
+      S.dir = -1;
+      S.wait = 0;
+      e.stN = 0;
+    } else if (e.stN >= 3) {
+      e.giveUp = 4;
+      e.aggro = false;
+      e.stN = 0;
+    } else {
+      S.mode = "air";
+      S.vx = (Math.random() < 0.5 ? -1 : 1) * (60 + Math.random() * 80);
+      S.vy = -150 - Math.random() * 120;
+      e.x += S.nx * 1.5;
+      e.y += S.ny * 1.5;
+    }
+  }
+  function ratFrame(W, G, e, dt, dist, hunting, pcx, pcy) {
+    const N = e.home && !e.home.dead ? e.home : null, k = e.k;
+    const wake = N ? N.nest.wake || 520 : 520;
+    const S = e.ra;
+    if (dist > wake * 1.3 && S && S.mode !== "air") return;
+    let goal = null, home = false, fast = false, jump = true, want = null;
+    if (e.giveUp > 0) e.giveUp -= dt;
+    if (e.carry > 0 && N) {
+      goal = N.nest.mouth;
+      home = true;
+      fast = true;
+    } else if (e.giveUp > 0) {
+      const R = e.roam || (e.roam = {});
+      roamStep(R, e, dt, Math.random, "ra");
+      goal = { x: R.rx, y: R.ry };
+      jump = false;
+    } else {
+      let bd = e.smell || (e.smell = kr("raSmell"));
+      for (const g of W.coins) {
+        if (g.nopull > 0 && g.vy < 0) continue;
+        const d = Math.hypot(g.x - e.x, g.y - e.y);
+        if (d < bd) {
+          bd = d;
+          want = g;
+        }
+      }
+      if (want) {
+        goal = want;
+        fast = true;
+      } else if (hunting) {
+        goal = { x: pcx, y: W.p.y + PH - 2 };
+        fast = true;
+      } else {
+        const R = e.roam || (e.roam = {});
+        roamStep(R, e, dt, Math.random, "ra");
+        const D = e.spread || (e.spread = kr("raSpread")), sp = ratSpread(e, W.enemies.filter((o) => o.ra && o.ra.mode !== "tunnel" && Math.abs(o.x - e.x) < D && Math.abs(o.y - e.y) < D), D);
+        R.rx += sp.x * D * 1.5 * dt;
+        R.ry += sp.y * D * 1.5 * dt;
+        goal = { x: R.rx + sp.x * D, y: R.ry + sp.y * D };
+        jump = false;
+      }
+    }
+    if (!e.arrive || Math.random() < dt) e.arrive = kr("raArrive");
+    let way = goal, follow = false, air = false;
+    if (fast && S && S.mode !== "tunnel") {
+      const F = home ? navFor(W, N.nest, goal, 100) : want ? navFor(W, want, goal, 36) : navFor(W, W.navYou, goal, 56);
+      const w = F && navWay(F, e.x, e.y, 1);
+      if (w) {
+        way = w.dist > 2 ? w : goal;
+        follow = true;
+        air = w.air && w.dist > 2;
+      }
+      const job = home ? N : want || W.navYou;
+      if (w && (e.jobO !== job || w.dist < e.bestD - 3)) {
+        e.jobO = job;
+        e.bestD = w.dist;
+        e.bestT = 0;
+      } else if (w && (e.bestT += dt) > 4) {
+        e.bestT = 0;
+        e.bestD = w.dist;
+        unstick(W, e, S, home);
+      }
+    }
+    const cold = e.chill && e.chill < 1 ? e.chill : 1;
+    const ev = ratStep(e, {
+      solidCell: (cx, cy) => ratSolid(W, cx, cy),
+      rnd: Math.random,
+      goal: way,
+      hunting: fast,
+      home,
+      path: e.path,
+      follow,
+      air,
+      onWeb: G.ratOnWeb,
+      speedMul: cold,
+      arrive: way === goal && !want && hunting ? e.arrive : 3,
+      jump
+    }, dt);
+    if (fast && (S.mode === "surf" || S.mode === "path")) {
+      e.stT = (e.stT || 0) + dt;
+      if (e.stT > 1.2) {
+        if (Math.hypot(e.x - (e.stX || 0), e.y - (e.stY || 0)) < 6 && Math.hypot(goal.x - e.x, goal.y - e.y) > 14) unstick(W, e, S, home);
+        else if (!(e.bestT > 0)) e.stN = 0;
+        e.stT = 0;
+        e.stX = e.x;
+        e.stY = e.y;
+      }
+    }
+    if (ev === "home") {
+      if (N && e.carry > 0) {
+        N.nest.stash += e.carry;
+        SFX.fx("coinland", e.x, e.y);
+      }
+      if (N) e.carry = 0;
+    } else if (ev === "jump") SFX.creature(k, "alert", e.x, e.y);
+    if (e.ra.mode === "tunnel") return;
+    const inRock = e.x < 0 || e.x >= WW || e.y < 0 || e.y >= WH || ratSolid(W, Math.floor(e.x / CELL), Math.floor(e.y / CELL));
+    e.rockT = inRock ? (e.rockT || 0) + dt : 0;
+    if (e.rockT > 0.5) {
+      e.rockT = 0;
+      if (N) {
+        e.ra.mode = "tunnel";
+        e.ra.len = pathLen(e.path);
+        e.ra.s = e.ra.len * 0.8;
+        e.ra.dir = 1;
+        e.ra.wait = 0;
+      } else {
+        const j = W.enemies.indexOf(e);
+        if (j >= 0) W.enemies.splice(j, 1);
+      }
+      return;
+    }
+    if (want && Math.hypot(want.x - e.x, want.y - e.y) < e.r + 5) {
+      const i = W.coins.indexOf(want);
+      if (i >= 0) {
+        W.coins.splice(i, 1);
+        e.carry = (e.carry || 0) + want.amount;
+        SFX.fx("coinland", e.x, e.y);
+      }
+    }
+    if (hunting && !want && !(e.giveUp > 0) && !(e.carry > 0 && N) && dist < e.r + 12 && e.touch <= 0 && !W.p.dead) {
+      const LO = G.input.current.loadout, broke = !(LO.gold > 0);
+      hurt(W, G, Math.round(kr("raBite") * (broke ? kr("raBroke") : 1)));
+      e.touch = kr("raBiteCd");
+      SFX.creature(k, "bite", e.x, e.y);
+      if (!broke) {
+        const amt = Math.min(LO.gold, Math.max(1, Math.round(kr("raSteal"))));
+        LO.gold -= amt;
+        G.input.current.notify();
+        const side = e.x >= pcx ? 1 : -1;
+        W.coins.push({
+          x: pcx,
+          y: W.p.y + 4,
+          amount: amt,
+          t: Math.random() * 6.28,
+          vx: side * kr("raPopX"),
+          vy: -kr("raPopY"),
+          pop: 1,
+          nopull: 0.7
+        });
+        SFX.ui("coin");
+      }
+    }
+  }
+
   // src/game/systems/enemies.js
   function fireEnemyShot(W, e, tx, ty) {
     const k = e.k;
@@ -11599,6 +11928,286 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     });
   }
   var natural = (W, x, y) => !builtAt(W.zone, x, y);
+  function stepEnemies(W, G, F) {
+    const { dt, pcx, pcy } = F;
+    for (let i = W.enemies.length - 1; i >= 0; i--) {
+      const e = W.enemies[i], k = e.k;
+      e.flash -= dt;
+      e.cd -= dt;
+      e.touch -= dt;
+      const dx = pcx - e.x, dy = pcy - e.ty, dist = Math.hypot(dx, dy) || 1;
+      e.lx = dx / dist;
+      e.ly = dy / dist;
+      const sees = (W.pb.invis ? 0.4 : 1) / DEV.zoom;
+      const chaser = HUNTERS[k.act] && !W.p.dead;
+      if (k.kp && (e.aggroT = (e.aggroT || 0) - dt) <= 0) {
+        e.aggroM = kr(k.kp + "Aggro");
+        e.aggroT = 1;
+      }
+      const reach = k.aggro * sees * DEV.aggro * (k.kp ? e.aggroM : 1);
+      if (chaser) {
+        if (!e.aggro) {
+          if (dist < reach && lineOfSight(W, e.x, e.ty, pcx, pcy)) {
+            e.aggro = true;
+            SFX.creature(k, "alert", e.x, e.ty);
+          }
+        } else if (dist > reach * DEV.loseAggro) e.aggro = false;
+      } else e.aggro = false;
+      const hunting = chaser && e.aggro;
+      if (dist < 380 && Math.random() < 0.07 * dt) SFX.creature(k, "idle", e.x, e.ty);
+      if (hunting && k.act === "bomb" && dist < 160 && (e.fuseT = (e.fuseT || 0) - dt) <= 0) {
+        e.fuseT = 0.12 + dist / 400;
+        SFX.creature(k, "fuse", e.x, e.ty);
+      }
+      if (k.act === "nest") {
+        const N = e.nest;
+        if (!N.max) {
+          N.max = Math.round(kr("raMax"));
+          N.wake = kr("raWake");
+        }
+        if (dist < N.wake && (N.t -= dt) <= 0) {
+          N.t = kr("raSpawn");
+          let out = 0;
+          for (const r of W.enemies) if (r.home === e) out++;
+          if (out < N.max) spawnRat(W, e);
+        }
+        e.chill = 1;
+        e.ty = e.y;
+        continue;
+      }
+      if (k.act === "rat") {
+        ratFrame(W, G, e, dt, dist, hunting, pcx, pcy);
+        e.chill = 1;
+        e.ty = e.y;
+        continue;
+      }
+      if (k.act === "spider") {
+        const cold = e.chill && e.chill < 1 ? e.chill : 1;
+        if (spiderStep(e, {
+          solidCell: (cx, cy) => solidCell(W, cx, cy),
+          webs: W.webs,
+          hunting,
+          goal: { x: pcx, y: pcy },
+          rnd: Math.random,
+          speedMul: cold
+        }, dt) === "web") SFX.fx("lash", e.x, e.y);
+        e.silkT = (e.silkT || 0) - dt;
+        const S = e.sp;
+        if (hunting && e.silkT <= 0 && S && (S.mode === "surf" || S.mode === "line") && dist < (e.silkR || (e.silkR = spr("spSilk"))) * sees && dist > e.r + 24) {
+          e.silkT = 0.4;
+          if (lineOfSight(W, e.x, e.y, pcx, pcy)) {
+            e.silkT = spr("spSilkCd");
+            e.silkR = spr("spSilk");
+            const v = spr("spSilkSpd");
+            W.silk.push({
+              x: e.x,
+              y: e.y,
+              ax: e.x,
+              ay: e.y,
+              vx: dx / dist * v,
+              vy: dy / dist * v,
+              life: 400 / v * 1.3 + 0.1
+            });
+            SFX.creature(k, "fire", e.x, e.y);
+          }
+        }
+      } else if (k.act === "jelly") {
+        const cold = e.chill && e.chill < 1 ? e.chill : 1;
+        if (jellyStep(e, {
+          solidCell: (cx, cy) => solidCell(W, cx, cy),
+          hunting,
+          goal: { x: pcx, y: pcy },
+          rnd: Math.random,
+          speedMul: cold,
+          rangeMul: sees,
+          stay: W.zone ? ((x, y) => natural(W, x, y)) : null
+        }, dt) === "pulse") puffSpores(W, e);
+        const S = e.je;
+        if (!W.p.dead && e.touch <= 0 && dist < 180) {
+          const t = tentacleTouch(S, W.p.x, W.p.y, W.p.x + PW, W.p.y + PH);
+          if (t) {
+            hurt(W, G, Math.round(kr("jeBite")));
+            e.touch = kr("jeBiteCd");
+            burst(W, t.x, t.y, 5, jellyPal(S.u.col).tent);
+            SFX.creature(k, "bite", t.x, t.y);
+          }
+        }
+        if (hunting && S.inRange && S.aimed && e.cd <= 0) {
+          e.cd = 0.25;
+          const hx = e.x + Math.cos(S.hd) * e.r * 0.9, hy = e.y + Math.sin(S.hd) * e.r * 0.9;
+          if (lineOfSight(W, hx, hy, pcx, pcy)) {
+            e.cd = kr("jeShotCd");
+            const a = Math.atan2(pcy - hy, pcx - hx) + (Math.random() * 2 - 1) * kr("jeSpread") * Math.PI / 180;
+            const v = kr("jeShotSpd"), P = jellyPal(S.u.col);
+            W.enemyShots.push({
+              x: hx,
+              y: hy,
+              vx: Math.cos(a) * v,
+              vy: Math.sin(a) * v,
+              life: 3,
+              col: P.spit,
+              edge: P.spitEdge,
+              shine: P.spitShine,
+              dripCol: P.drip,
+              dripCol2: P.drip2,
+              glow: hexRgb(P.glow),
+              dmg: Math.round(kr("jeShotDmg")),
+              size: kr("jeShotSize"),
+              goo: 1,
+              drip: kr("jeDrip"),
+              da: 0,
+              dripG: kr("jeDripG"),
+              splat: Math.round(kr("jeSplat")),
+              splatV: kr("jeSplatSpd")
+            });
+            SFX.creature(k, "fire", e.x, e.y);
+          }
+        }
+      } else if (k.act === "turret") {
+      } else if (hunting) {
+        const step2 = k.spd * (e.chill || 1) * dt;
+        const wx = e.x + dx / dist * step2, wy = e.y + dy / dist * step2;
+        if (!solidAt(W, wx - e.r, wy) && !solidAt(W, wx + e.r, wy) && !solidAt(W, wx, wy - e.r) && !solidAt(W, wx, wy + e.r)) {
+          e.x = wx;
+          e.y = wy;
+        } else if (!solidAt(W, wx, e.y)) e.x = wx;
+        else if (!solidAt(W, e.x, wy)) e.y = wy;
+        else {
+          e.tgt = null;
+          e.rest = 0;
+        }
+      } else {
+        e.rest -= dt;
+        if (!e.tgt || e.rest <= 0 || Math.hypot(e.tgt.x - e.x, e.tgt.y - e.y) < 6) {
+          const a = Math.random() * Math.PI * 2, r = 10 + Math.random() * PATROL_R;
+          e.tgt = { x: e.hx + Math.cos(a) * r, y: e.hy + Math.sin(a) * r };
+          e.rest = 2 + Math.random() * 3.5;
+        }
+        const tdx = e.tgt.x - e.x, tdy = e.tgt.y - e.y, td = Math.hypot(tdx, tdy) || 1;
+        const step2 = k.spd * (e.chill || 1) * dt;
+        const wx = e.x + tdx / td * step2, wy = e.y + tdy / td * step2;
+        if (solidAt(W, wx - e.r, wy) || solidAt(W, wx + e.r, wy) || solidAt(W, wx, wy - e.r) || solidAt(W, wx, wy + e.r)) {
+          e.tgt = null;
+          e.rest = 0;
+        } else {
+          e.x = wx;
+          e.y = wy;
+        }
+      }
+      e.chill = 1;
+      e.ty = k.kp ? e.y : e.y + Math.sin(W.time * 2 + e.phase) * (hunting ? 2 : 4);
+      if (hunting && dist < e.r + 14 && e.touch <= 0) {
+        if (k.act === "bomb") {
+          burst(W, e.x, e.ty, 22, k.col.a);
+          SFX.boom(e.x, e.ty, 26);
+          hurt(W, G, k.dmg);
+          W.enemies.splice(i, 1);
+          if (k.fire) fireBlast(W, G, e.x, e.ty, 26, 1);
+          continue;
+        }
+        SFX.creature(k, "bite", e.x, e.ty);
+        hurt(W, G, k.kp ? Math.round(kr(k.kp + "Bite")) : k.dmg);
+        e.touch = k.kp ? kr(k.kp + "BiteCd") : 0.9;
+      }
+      if (k.act === "shoot" || k.act === "turret") {
+        if (e.charge > 0) {
+          e.charge -= dt;
+          if (e.charge <= 0) fireEnemyShot(W, e, pcx, pcy);
+        } else if (!W.p.dead && dist < k.range * sees && e.cd <= 0) {
+          e.cd = 0.4;
+          if (lineOfSight(W, e.x, e.ty, pcx, pcy)) {
+            e.cd = k.cd * (0.85 + Math.random() * 0.3);
+            if (!e.spotted) {
+              e.spotted = true;
+              SFX.creature(k, "alert", e.x, e.ty);
+            }
+            if (k.tele) {
+              e.charge = k.tele;
+              SFX.creature(k, "charge", e.x, e.ty, k.tele);
+            } else fireEnemyShot(W, e, pcx, pcy);
+          }
+        }
+      }
+    }
+    if (W.pb.contact && !W.p.dead) {
+      for (let i = W.enemies.length - 1; i >= 0; i--) {
+        const e = W.enemies[i];
+        if (Math.hypot(e.x - pcx, e.ty - pcy) < e.r + 12) damageEnemy(W, i, 45 * dt);
+      }
+    }
+    for (let i = W.enemyShots.length - 1; i >= 0; i--) {
+      const b = W.enemyShots[i];
+      b.life -= dt;
+      if (W.pb.repel) {
+        const rx = b.x - pcx, ry = b.y - pcy, rd = Math.hypot(rx, ry) || 1;
+        if (rd < 72) {
+          b.vx += rx / rd * 1100 * dt;
+          b.vy += ry / rd * 1100 * dt;
+        }
+      }
+      if (b.drip) for (b.da += b.drip * dt; b.da >= 1; b.da--)
+        goo(W, b.x + (Math.random() - 0.5) * b.size, b.y + b.size * 0.5, b.vx * 0.08, 8 + Math.random() * 18, b.dripG, b.dripCol || b.col, 0, b.dripCol2);
+      let gone = b.life <= 0;
+      if (b.fire) fireArea(W.fire, b.x, b.y, 4, 0.5);
+      const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
+      for (let s = 0; s < sn && !gone; s++) {
+        b.x += b.vx * dt / sn;
+        b.y += b.vy * dt / sn;
+        if (solidAt(W, b.x, b.y)) {
+          gone = true;
+          if (b.splat != null) splat(W, b, b.x - b.vx * dt / sn, b.y - b.vy * dt / sn);
+          else SFX.fx("fizzle", b.x, b.y);
+          if (b.fire) ignite(W, G, b.x - b.vx * dt / sn, b.y - b.vy * dt / sn, 8, 0.9);
+          break;
+        }
+        if (!W.p.dead && b.x > W.p.x - 2 && b.x < W.p.x + PW + 2 && b.y > W.p.y - 2 && b.y < W.p.y + PH + 2) {
+          gone = true;
+          if (b.splat != null) splat(W, b, b.x, b.y);
+          else burst(W, b.x, b.y, 5, COL.player);
+          hurt(W, G, b.dmg);
+          if (b.fire) youAlight(W);
+        }
+      }
+      if (gone) W.enemyShots.splice(i, 1);
+    }
+    for (let i = W.silk.length - 1; i >= 0; i--) {
+      const b = W.silk[i];
+      b.life -= dt;
+      let gone = b.life <= 0;
+      const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
+      for (let s = 0; s < sn && !gone; s++) {
+        b.x += b.vx * dt / sn;
+        b.y += b.vy * dt / sn;
+        if (solidAt(W, b.x, b.y)) {
+          gone = true;
+          break;
+        }
+        if (!W.p.dead && b.x > W.p.x - 3 && b.x < W.p.x + PW + 3 && b.y > W.p.y - 3 && b.y < W.p.y + PH + 3) {
+          gone = true;
+          W.strings.push({ ax: b.ax, ay: b.ay, ox: b.x - W.p.x, oy: b.y - W.p.y, slow: spr("spSlow"), max: spr("spSilkMax") });
+          SFX.fx("lash", b.x, b.y);
+        }
+      }
+      if (gone) W.silk.splice(i, 1);
+    }
+    for (let i = W.strings.length - 1; i >= 0; i--) {
+      const s = W.strings[i];
+      if (Math.hypot(W.p.x + s.ox - s.ax, W.p.y + s.oy - s.ay) > s.max) {
+        W.strings.splice(i, 1);
+        burst(W, W.p.x + s.ox, W.p.y + s.oy, 4, "#e8e8f0");
+        SFX.fx("lash", W.p.x + s.ox, W.p.y + s.oy);
+      }
+    }
+    for (let n = Math.min(W.webs.length, 6); n > 0; n--) {
+      W.webCheck = (W.webCheck + 1) % W.webs.length;
+      const L = W.webs[W.webCheck];
+      if (L.bin && !solidAt(W, L.bin.x, L.bin.y) || L.ain && !solidAt(W, L.ain.x, L.ain.y)) {
+        W.webs.splice(W.webCheck, 1);
+        if (!W.webs.length) break;
+      }
+    }
+    W.p.hitT -= dt;
+  }
 
   // src/game/systems/lightning.js
   function jag(pts, amp) {
@@ -13992,335 +14601,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     setTimeout(() => SFX.fx("portalOut", W.arrival.x, W.arrival.y), 260);
   }
 
-  // src/world/nav.js
-  var NAV = 4;
-  function navField(solid, tx, ty, R, onWeb) {
-    const gi = Math.floor(tx / CELL / NAV), gj = Math.floor(ty / CELL / NAV);
-    const x0 = gi - R, y0 = gj - R, w = 2 * R + 1, n = w * w;
-    const open = new Uint8Array(n), surf = new Uint8Array(n);
-    const sol = (i, j) => solid((x0 + i) * NAV + 2, (y0 + j) * NAV + 2);
-    const fits = (i, j) => {
-      const px = (x0 + i) * NAV, py = (y0 + j) * NAV;
-      for (let b = 1; b <= 2; b++) for (let a = 1; a <= 2; a++) if (solid(px + a, py + b)) return false;
-      return true;
-    };
-    for (let j = 0; j < w; j++) for (let i = 0; i < w; i++) open[j * w + i] = fits(i, j) ? 1 : 0;
-    for (let j = 0; j < w; j++) for (let i = 0; i < w; i++) {
-      const k = j * w + i;
-      if (open[k]) surf[k] = sol(i, j + 1) || sol(i - 1, j) || sol(i + 1, j) || sol(i - 1, j + 1) || sol(i + 1, j + 1) || onWeb && onWeb(((x0 + i) * NAV + 2) * CELL, ((y0 + j) * NAV + 2) * CELL) ? 1 : 0;
-    }
-    const d = new Float32Array(n).fill(Infinity), done = new Uint8Array(n);
-    const cap = n * 8, hp = new Int32Array(cap);
-    let hn = 0;
-    const push = (k) => {
-      let c = hn++;
-      hp[c] = k;
-      while (c) {
-        const p = c - 1 >> 1;
-        if (d[hp[p]] <= d[k]) break;
-        hp[c] = hp[p];
-        hp[p] = k;
-        c = p;
-      }
-    };
-    const pop = () => {
-      const top = hp[0], last = hp[--hn];
-      let c = 0;
-      if (hn) {
-        hp[0] = last;
-        while (true) {
-          const l = 2 * c + 1, r = l + 1;
-          let m = c;
-          if (l < hn && d[hp[l]] < d[hp[m]]) m = l;
-          if (r < hn && d[hp[r]] < d[hp[m]]) m = r;
-          if (m === c) break;
-          hp[c] = hp[m];
-          hp[m] = last;
-          c = m;
-        }
-      }
-      return top;
-    };
-    let s = -1;
-    for (let r = 0; r <= 2 && s < 0; r++) for (let dj = -r; dj <= r && s < 0; dj++) for (let di = -r; di <= r; di++) {
-      const q = (R + dj) * w + R + di;
-      if (open[q]) {
-        s = q;
-        break;
-      }
-    }
-    if (s >= 0) {
-      d[s] = 0;
-      push(s);
-    }
-    while (hn && hn < cap - 8) {
-      const k = pop();
-      if (done[k]) continue;
-      done[k] = 1;
-      const i = k % w, j = k / w | 0;
-      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
-        if (!di && !dj) continue;
-        const a = i + di, b = j + dj;
-        if (a < 0 || b < 0 || a >= w || b >= w) continue;
-        const q = b * w + a;
-        if (!open[q] || done[q]) continue;
-        if (di && dj && !open[j * w + a] && !open[b * w + i]) continue;
-        const up = -dj, step2 = di && dj ? 1.414 : 1;
-        const c = step2 * (surf[k] ? 1 : up < 0 ? 8 : up > 0 ? 1 : 3);
-        if (d[k] + c < d[q]) {
-          d[q] = d[k] + c;
-          push(q);
-        }
-      }
-    }
-    return { x0, y0, w, d, surf };
-  }
-  function navWay(F, x, y, steps) {
-    let i = Math.floor(x / CELL / NAV) - F.x0, j = Math.floor(y / CELL / NAV) - F.y0;
-    const w = F.w, d = F.d;
-    if (i < 1 || j < 1 || i >= w - 1 || j >= w - 1) return null;
-    if (!isFinite(d[j * w + i])) {
-      let b = -1;
-      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
-        const q = (j + dj) * w + i + di;
-        if (isFinite(d[q]) && (b < 0 || d[q] < d[b])) b = q;
-      }
-      if (b < 0) return null;
-      i = b % w;
-      j = b / w | 0;
-    }
-    const dist = d[j * w + i];
-    let air = false;
-    for (let s = 0; s < steps; s++) {
-      let b = j * w + i;
-      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
-        const a = i + di, c = j + dj;
-        if (a < 0 || c < 0 || a >= w || c >= w) continue;
-        if (d[c * w + a] < d[b]) b = c * w + a;
-      }
-      if (b === j * w + i) break;
-      if ((b / w | 0) <= j && !F.surf[b]) air = true;
-      i = b % w;
-      j = b / w | 0;
-      if (air && s === steps - 1 && !F.surf[b] && steps < 12) steps++;
-    }
-    return { x: (F.x0 + i + 0.5) * NAV * CELL, y: (F.y0 + j + 0.5) * NAV * CELL, dist, air };
-  }
-
-  // src/game/systems/rats.js
-  var onWebIn = (list) => (x, y) => {
-    for (const L of list) if (webDist(L, x, y) < 3) return true;
-    return false;
-  };
-  var ratSolid = (W, cx, cy) => solidCell(W, cx, cy) || W.burrow !== null && W.burrow[cy * CW + cx] === 1;
-  function navFor(W, o, goal, R) {
-    if (!o.F || o.v !== W.terrainV && W.time - o.t > 1 || Math.hypot(goal.x - o.fx, goal.y - o.fy) > (o === W.navYou ? 12 : 6) || o === W.navYou && W.time - o.t > 0.4 || o.wn !== W.webs.length && W.time - o.t > 1) {
-      const half = (R + 1) * NAV * CELL, near = W.webs.filter((L) => Math.max(L.a0x, L.b0x) > goal.x - half && Math.min(L.a0x, L.b0x) < goal.x + half && Math.max(L.a0y, L.b0y) > goal.y - half && Math.min(L.a0y, L.b0y) < goal.y + half);
-      o.F = navField((cx, cy) => ratSolid(W, cx, cy), goal.x, goal.y, R, near.length ? onWebIn(near) : null);
-      o.v = W.terrainV;
-      o.fx = goal.x;
-      o.fy = goal.y;
-      o.t = W.time;
-      o.wn = W.webs.length;
-    }
-    return o.F;
-  }
-  function spawnRat(W, n) {
-    const k = enemyFor("rotta", W.floor), P = n.nest.path, m = n.nest.mouth;
-    const e = {
-      x: P[0].x,
-      y: P[0].y,
-      ty: P[0].y,
-      r: k.r,
-      phase: Math.random() * 6.28,
-      hp: 1,
-      hpMax: 1,
-      cd: 0,
-      flash: 0,
-      lx: 0,
-      ly: 1,
-      hx: m.x,
-      hy: m.y,
-      tgt: null,
-      rest: 0,
-      k,
-      touch: 0,
-      charge: 0,
-      home: n,
-      path: P,
-      carry: 0
-    };
-    e.ra = { mode: "tunnel", vx: 0, vy: 0, nx: 0, ny: -1, on: 0, rest: 0, side: 1, face: 1, s: 0, dir: 1, wait: 0 };
-    W.enemies.push(e);
-    return e;
-  }
-  function unstick(W, e, S, home) {
-    e.stN = (e.stN || 0) + 1;
-    if (e.stN >= 3 && home) {
-      burst(W, e.x, e.y, 6, "#6a5a48");
-      S.mode = "tunnel";
-      S.len = pathLen(e.path);
-      S.s = S.len * 0.7;
-      S.dir = -1;
-      S.wait = 0;
-      e.stN = 0;
-    } else if (e.stN >= 3) {
-      e.giveUp = 4;
-      e.aggro = false;
-      e.stN = 0;
-    } else {
-      S.mode = "air";
-      S.vx = (Math.random() < 0.5 ? -1 : 1) * (60 + Math.random() * 80);
-      S.vy = -150 - Math.random() * 120;
-      e.x += S.nx * 1.5;
-      e.y += S.ny * 1.5;
-    }
-  }
-  function ratFrame(W, G, e, dt, dist, hunting, pcx, pcy) {
-    const N = e.home && !e.home.dead ? e.home : null, k = e.k;
-    const wake = N ? N.nest.wake || 520 : 520;
-    const S = e.ra;
-    if (dist > wake * 1.3 && S && S.mode !== "air") return;
-    let goal = null, home = false, fast = false, jump = true, want = null;
-    if (e.giveUp > 0) e.giveUp -= dt;
-    if (e.carry > 0 && N) {
-      goal = N.nest.mouth;
-      home = true;
-      fast = true;
-    } else if (e.giveUp > 0) {
-      const R = e.roam || (e.roam = {});
-      roamStep(R, e, dt, Math.random, "ra");
-      goal = { x: R.rx, y: R.ry };
-      jump = false;
-    } else {
-      let bd = e.smell || (e.smell = kr("raSmell"));
-      for (const g of W.coins) {
-        if (g.nopull > 0 && g.vy < 0) continue;
-        const d = Math.hypot(g.x - e.x, g.y - e.y);
-        if (d < bd) {
-          bd = d;
-          want = g;
-        }
-      }
-      if (want) {
-        goal = want;
-        fast = true;
-      } else if (hunting) {
-        goal = { x: pcx, y: W.p.y + PH - 2 };
-        fast = true;
-      } else {
-        const R = e.roam || (e.roam = {});
-        roamStep(R, e, dt, Math.random, "ra");
-        const D = e.spread || (e.spread = kr("raSpread")), sp = ratSpread(e, W.enemies.filter((o) => o.ra && o.ra.mode !== "tunnel" && Math.abs(o.x - e.x) < D && Math.abs(o.y - e.y) < D), D);
-        R.rx += sp.x * D * 1.5 * dt;
-        R.ry += sp.y * D * 1.5 * dt;
-        goal = { x: R.rx + sp.x * D, y: R.ry + sp.y * D };
-        jump = false;
-      }
-    }
-    if (!e.arrive || Math.random() < dt) e.arrive = kr("raArrive");
-    let way = goal, follow = false, air = false;
-    if (fast && S && S.mode !== "tunnel") {
-      const F = home ? navFor(W, N.nest, goal, 100) : want ? navFor(W, want, goal, 36) : navFor(W, W.navYou, goal, 56);
-      const w = F && navWay(F, e.x, e.y, 1);
-      if (w) {
-        way = w.dist > 2 ? w : goal;
-        follow = true;
-        air = w.air && w.dist > 2;
-      }
-      const job = home ? N : want || W.navYou;
-      if (w && (e.jobO !== job || w.dist < e.bestD - 3)) {
-        e.jobO = job;
-        e.bestD = w.dist;
-        e.bestT = 0;
-      } else if (w && (e.bestT += dt) > 4) {
-        e.bestT = 0;
-        e.bestD = w.dist;
-        unstick(W, e, S, home);
-      }
-    }
-    const cold = e.chill && e.chill < 1 ? e.chill : 1;
-    const ev = ratStep(e, {
-      solidCell: (cx, cy) => ratSolid(W, cx, cy),
-      rnd: Math.random,
-      goal: way,
-      hunting: fast,
-      home,
-      path: e.path,
-      follow,
-      air,
-      onWeb: G.ratOnWeb,
-      speedMul: cold,
-      arrive: way === goal && !want && hunting ? e.arrive : 3,
-      jump
-    }, dt);
-    if (fast && (S.mode === "surf" || S.mode === "path")) {
-      e.stT = (e.stT || 0) + dt;
-      if (e.stT > 1.2) {
-        if (Math.hypot(e.x - (e.stX || 0), e.y - (e.stY || 0)) < 6 && Math.hypot(goal.x - e.x, goal.y - e.y) > 14) unstick(W, e, S, home);
-        else if (!(e.bestT > 0)) e.stN = 0;
-        e.stT = 0;
-        e.stX = e.x;
-        e.stY = e.y;
-      }
-    }
-    if (ev === "home") {
-      if (N && e.carry > 0) {
-        N.nest.stash += e.carry;
-        SFX.fx("coinland", e.x, e.y);
-      }
-      if (N) e.carry = 0;
-    } else if (ev === "jump") SFX.creature(k, "alert", e.x, e.y);
-    if (e.ra.mode === "tunnel") return;
-    const inRock = e.x < 0 || e.x >= WW || e.y < 0 || e.y >= WH || ratSolid(W, Math.floor(e.x / CELL), Math.floor(e.y / CELL));
-    e.rockT = inRock ? (e.rockT || 0) + dt : 0;
-    if (e.rockT > 0.5) {
-      e.rockT = 0;
-      if (N) {
-        e.ra.mode = "tunnel";
-        e.ra.len = pathLen(e.path);
-        e.ra.s = e.ra.len * 0.8;
-        e.ra.dir = 1;
-        e.ra.wait = 0;
-      } else {
-        const j = W.enemies.indexOf(e);
-        if (j >= 0) W.enemies.splice(j, 1);
-      }
-      return;
-    }
-    if (want && Math.hypot(want.x - e.x, want.y - e.y) < e.r + 5) {
-      const i = W.coins.indexOf(want);
-      if (i >= 0) {
-        W.coins.splice(i, 1);
-        e.carry = (e.carry || 0) + want.amount;
-        SFX.fx("coinland", e.x, e.y);
-      }
-    }
-    if (hunting && !want && !(e.giveUp > 0) && !(e.carry > 0 && N) && dist < e.r + 12 && e.touch <= 0 && !W.p.dead) {
-      const LO = G.input.current.loadout, broke = !(LO.gold > 0);
-      hurt(W, G, Math.round(kr("raBite") * (broke ? kr("raBroke") : 1)));
-      e.touch = kr("raBiteCd");
-      SFX.creature(k, "bite", e.x, e.y);
-      if (!broke) {
-        const amt = Math.min(LO.gold, Math.max(1, Math.round(kr("raSteal"))));
-        LO.gold -= amt;
-        G.input.current.notify();
-        const side = e.x >= pcx ? 1 : -1;
-        W.coins.push({
-          x: pcx,
-          y: W.p.y + 4,
-          amount: amt,
-          t: Math.random() * 6.28,
-          vx: side * kr("raPopX"),
-          vy: -kr("raPopY"),
-          pop: 1,
-          nopull: 0.7
-        });
-        SFX.ui("coin");
-      }
-    }
-  }
-
   // src/game/systems/save-run.js
   function saveRun(W, G) {
     if (W.p.dead) return;
@@ -15349,283 +15629,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     stepPickups(W, G, F);
     stepToasts(W, F);
     decorStep(W, G, dt, pcx, pcy);
-    for (let i = W.enemies.length - 1; i >= 0; i--) {
-      const e = W.enemies[i], k = e.k;
-      e.flash -= dt;
-      e.cd -= dt;
-      e.touch -= dt;
-      const dx = pcx - e.x, dy = pcy - e.ty, dist = Math.hypot(dx, dy) || 1;
-      e.lx = dx / dist;
-      e.ly = dy / dist;
-      const sees = (W.pb.invis ? 0.4 : 1) / DEV.zoom;
-      const chaser = HUNTERS[k.act] && !W.p.dead;
-      if (k.kp && (e.aggroT = (e.aggroT || 0) - dt) <= 0) {
-        e.aggroM = kr(k.kp + "Aggro");
-        e.aggroT = 1;
-      }
-      const reach = k.aggro * sees * DEV.aggro * (k.kp ? e.aggroM : 1);
-      if (chaser) {
-        if (!e.aggro) {
-          if (dist < reach && lineOfSight(W, e.x, e.ty, pcx, pcy)) {
-            e.aggro = true;
-            SFX.creature(k, "alert", e.x, e.ty);
-          }
-        } else if (dist > reach * DEV.loseAggro) e.aggro = false;
-      } else e.aggro = false;
-      const hunting = chaser && e.aggro;
-      if (dist < 380 && Math.random() < 0.07 * dt) SFX.creature(k, "idle", e.x, e.ty);
-      if (hunting && k.act === "bomb" && dist < 160 && (e.fuseT = (e.fuseT || 0) - dt) <= 0) {
-        e.fuseT = 0.12 + dist / 400;
-        SFX.creature(k, "fuse", e.x, e.ty);
-      }
-      if (k.act === "nest") {
-        const N = e.nest;
-        if (!N.max) {
-          N.max = Math.round(kr("raMax"));
-          N.wake = kr("raWake");
-        }
-        if (dist < N.wake && (N.t -= dt) <= 0) {
-          N.t = kr("raSpawn");
-          let out = 0;
-          for (const r of W.enemies) if (r.home === e) out++;
-          if (out < N.max) spawnRat(W, e);
-        }
-        e.chill = 1;
-        e.ty = e.y;
-        continue;
-      }
-      if (k.act === "rat") {
-        ratFrame(W, G, e, dt, dist, hunting, pcx, pcy);
-        e.chill = 1;
-        e.ty = e.y;
-        continue;
-      }
-      if (k.act === "spider") {
-        const cold = e.chill && e.chill < 1 ? e.chill : 1;
-        if (spiderStep(e, {
-          solidCell: (cx, cy) => solidCell(W, cx, cy),
-          webs: W.webs,
-          hunting,
-          goal: { x: pcx, y: pcy },
-          rnd: Math.random,
-          speedMul: cold
-        }, dt) === "web") SFX.fx("lash", e.x, e.y);
-        e.silkT = (e.silkT || 0) - dt;
-        const S = e.sp;
-        if (hunting && e.silkT <= 0 && S && (S.mode === "surf" || S.mode === "line") && dist < (e.silkR || (e.silkR = spr("spSilk"))) * sees && dist > e.r + 24) {
-          e.silkT = 0.4;
-          if (lineOfSight(W, e.x, e.y, pcx, pcy)) {
-            e.silkT = spr("spSilkCd");
-            e.silkR = spr("spSilk");
-            const v = spr("spSilkSpd");
-            W.silk.push({
-              x: e.x,
-              y: e.y,
-              ax: e.x,
-              ay: e.y,
-              vx: dx / dist * v,
-              vy: dy / dist * v,
-              life: 400 / v * 1.3 + 0.1
-            });
-            SFX.creature(k, "fire", e.x, e.y);
-          }
-        }
-      } else if (k.act === "jelly") {
-        const cold = e.chill && e.chill < 1 ? e.chill : 1;
-        if (jellyStep(e, {
-          solidCell: (cx, cy) => solidCell(W, cx, cy),
-          hunting,
-          goal: { x: pcx, y: pcy },
-          rnd: Math.random,
-          speedMul: cold,
-          rangeMul: sees,
-          stay: W.zone ? ((x, y) => natural(W, x, y)) : null
-        }, dt) === "pulse") puffSpores(W, e);
-        const S = e.je;
-        if (!W.p.dead && e.touch <= 0 && dist < 180) {
-          const t = tentacleTouch(S, W.p.x, W.p.y, W.p.x + PW, W.p.y + PH);
-          if (t) {
-            hurt(W, G, Math.round(kr("jeBite")));
-            e.touch = kr("jeBiteCd");
-            burst(W, t.x, t.y, 5, jellyPal(S.u.col).tent);
-            SFX.creature(k, "bite", t.x, t.y);
-          }
-        }
-        if (hunting && S.inRange && S.aimed && e.cd <= 0) {
-          e.cd = 0.25;
-          const hx = e.x + Math.cos(S.hd) * e.r * 0.9, hy = e.y + Math.sin(S.hd) * e.r * 0.9;
-          if (lineOfSight(W, hx, hy, pcx, pcy)) {
-            e.cd = kr("jeShotCd");
-            const a = Math.atan2(pcy - hy, pcx - hx) + (Math.random() * 2 - 1) * kr("jeSpread") * Math.PI / 180;
-            const v = kr("jeShotSpd"), P = jellyPal(S.u.col);
-            W.enemyShots.push({
-              x: hx,
-              y: hy,
-              vx: Math.cos(a) * v,
-              vy: Math.sin(a) * v,
-              life: 3,
-              col: P.spit,
-              edge: P.spitEdge,
-              shine: P.spitShine,
-              dripCol: P.drip,
-              dripCol2: P.drip2,
-              glow: hexRgb(P.glow),
-              dmg: Math.round(kr("jeShotDmg")),
-              size: kr("jeShotSize"),
-              goo: 1,
-              drip: kr("jeDrip"),
-              da: 0,
-              dripG: kr("jeDripG"),
-              splat: Math.round(kr("jeSplat")),
-              splatV: kr("jeSplatSpd")
-            });
-            SFX.creature(k, "fire", e.x, e.y);
-          }
-        }
-      } else if (k.act === "turret") {
-      } else if (hunting) {
-        const step2 = k.spd * (e.chill || 1) * dt;
-        const wx = e.x + dx / dist * step2, wy = e.y + dy / dist * step2;
-        if (!solidAt(W, wx - e.r, wy) && !solidAt(W, wx + e.r, wy) && !solidAt(W, wx, wy - e.r) && !solidAt(W, wx, wy + e.r)) {
-          e.x = wx;
-          e.y = wy;
-        } else if (!solidAt(W, wx, e.y)) e.x = wx;
-        else if (!solidAt(W, e.x, wy)) e.y = wy;
-        else {
-          e.tgt = null;
-          e.rest = 0;
-        }
-      } else {
-        e.rest -= dt;
-        if (!e.tgt || e.rest <= 0 || Math.hypot(e.tgt.x - e.x, e.tgt.y - e.y) < 6) {
-          const a = Math.random() * Math.PI * 2, r = 10 + Math.random() * PATROL_R;
-          e.tgt = { x: e.hx + Math.cos(a) * r, y: e.hy + Math.sin(a) * r };
-          e.rest = 2 + Math.random() * 3.5;
-        }
-        const tdx = e.tgt.x - e.x, tdy = e.tgt.y - e.y, td = Math.hypot(tdx, tdy) || 1;
-        const step2 = k.spd * (e.chill || 1) * dt;
-        const wx = e.x + tdx / td * step2, wy = e.y + tdy / td * step2;
-        if (solidAt(W, wx - e.r, wy) || solidAt(W, wx + e.r, wy) || solidAt(W, wx, wy - e.r) || solidAt(W, wx, wy + e.r)) {
-          e.tgt = null;
-          e.rest = 0;
-        } else {
-          e.x = wx;
-          e.y = wy;
-        }
-      }
-      e.chill = 1;
-      e.ty = k.kp ? e.y : e.y + Math.sin(W.time * 2 + e.phase) * (hunting ? 2 : 4);
-      if (hunting && dist < e.r + 14 && e.touch <= 0) {
-        if (k.act === "bomb") {
-          burst(W, e.x, e.ty, 22, k.col.a);
-          SFX.boom(e.x, e.ty, 26);
-          hurt(W, G, k.dmg);
-          W.enemies.splice(i, 1);
-          if (k.fire) fireBlast(W, G, e.x, e.ty, 26, 1);
-          continue;
-        }
-        SFX.creature(k, "bite", e.x, e.ty);
-        hurt(W, G, k.kp ? Math.round(kr(k.kp + "Bite")) : k.dmg);
-        e.touch = k.kp ? kr(k.kp + "BiteCd") : 0.9;
-      }
-      if (k.act === "shoot" || k.act === "turret") {
-        if (e.charge > 0) {
-          e.charge -= dt;
-          if (e.charge <= 0) fireEnemyShot(W, e, pcx, pcy);
-        } else if (!W.p.dead && dist < k.range * sees && e.cd <= 0) {
-          e.cd = 0.4;
-          if (lineOfSight(W, e.x, e.ty, pcx, pcy)) {
-            e.cd = k.cd * (0.85 + Math.random() * 0.3);
-            if (!e.spotted) {
-              e.spotted = true;
-              SFX.creature(k, "alert", e.x, e.ty);
-            }
-            if (k.tele) {
-              e.charge = k.tele;
-              SFX.creature(k, "charge", e.x, e.ty, k.tele);
-            } else fireEnemyShot(W, e, pcx, pcy);
-          }
-        }
-      }
-    }
-    if (W.pb.contact && !W.p.dead) {
-      for (let i = W.enemies.length - 1; i >= 0; i--) {
-        const e = W.enemies[i];
-        if (Math.hypot(e.x - pcx, e.ty - pcy) < e.r + 12) damageEnemy(W, i, 45 * dt);
-      }
-    }
-    for (let i = W.enemyShots.length - 1; i >= 0; i--) {
-      const b = W.enemyShots[i];
-      b.life -= dt;
-      if (W.pb.repel) {
-        const rx = b.x - pcx, ry = b.y - pcy, rd = Math.hypot(rx, ry) || 1;
-        if (rd < 72) {
-          b.vx += rx / rd * 1100 * dt;
-          b.vy += ry / rd * 1100 * dt;
-        }
-      }
-      if (b.drip) for (b.da += b.drip * dt; b.da >= 1; b.da--)
-        goo(W, b.x + (Math.random() - 0.5) * b.size, b.y + b.size * 0.5, b.vx * 0.08, 8 + Math.random() * 18, b.dripG, b.dripCol || b.col, 0, b.dripCol2);
-      let gone = b.life <= 0;
-      if (b.fire) fireArea(W.fire, b.x, b.y, 4, 0.5);
-      const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
-      for (let s = 0; s < sn && !gone; s++) {
-        b.x += b.vx * dt / sn;
-        b.y += b.vy * dt / sn;
-        if (solidAt(W, b.x, b.y)) {
-          gone = true;
-          if (b.splat != null) splat(W, b, b.x - b.vx * dt / sn, b.y - b.vy * dt / sn);
-          else SFX.fx("fizzle", b.x, b.y);
-          if (b.fire) ignite(W, G, b.x - b.vx * dt / sn, b.y - b.vy * dt / sn, 8, 0.9);
-          break;
-        }
-        if (!W.p.dead && b.x > W.p.x - 2 && b.x < W.p.x + PW + 2 && b.y > W.p.y - 2 && b.y < W.p.y + PH + 2) {
-          gone = true;
-          if (b.splat != null) splat(W, b, b.x, b.y);
-          else burst(W, b.x, b.y, 5, COL.player);
-          hurt(W, G, b.dmg);
-          if (b.fire) youAlight(W);
-        }
-      }
-      if (gone) W.enemyShots.splice(i, 1);
-    }
-    for (let i = W.silk.length - 1; i >= 0; i--) {
-      const b = W.silk[i];
-      b.life -= dt;
-      let gone = b.life <= 0;
-      const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
-      for (let s = 0; s < sn && !gone; s++) {
-        b.x += b.vx * dt / sn;
-        b.y += b.vy * dt / sn;
-        if (solidAt(W, b.x, b.y)) {
-          gone = true;
-          break;
-        }
-        if (!W.p.dead && b.x > W.p.x - 3 && b.x < W.p.x + PW + 3 && b.y > W.p.y - 3 && b.y < W.p.y + PH + 3) {
-          gone = true;
-          W.strings.push({ ax: b.ax, ay: b.ay, ox: b.x - W.p.x, oy: b.y - W.p.y, slow: spr("spSlow"), max: spr("spSilkMax") });
-          SFX.fx("lash", b.x, b.y);
-        }
-      }
-      if (gone) W.silk.splice(i, 1);
-    }
-    for (let i = W.strings.length - 1; i >= 0; i--) {
-      const s = W.strings[i];
-      if (Math.hypot(W.p.x + s.ox - s.ax, W.p.y + s.oy - s.ay) > s.max) {
-        W.strings.splice(i, 1);
-        burst(W, W.p.x + s.ox, W.p.y + s.oy, 4, "#e8e8f0");
-        SFX.fx("lash", W.p.x + s.ox, W.p.y + s.oy);
-      }
-    }
-    for (let n = Math.min(W.webs.length, 6); n > 0; n--) {
-      W.webCheck = (W.webCheck + 1) % W.webs.length;
-      const L = W.webs[W.webCheck];
-      if (L.bin && !solidAt(W, L.bin.x, L.bin.y) || L.ain && !solidAt(W, L.ain.x, L.ain.y)) {
-        W.webs.splice(W.webCheck, 1);
-        if (!W.webs.length) break;
-      }
-    }
-    W.p.hitT -= dt;
+    stepEnemies(W, G, F);
     if (W.pb.ghost) {
       if (!W.ghost) W.ghost = { x: pcx, y: pcy, cd: 0 };
       const gtx = pcx - W.p.face * 22, gty = W.p.y - 4;

@@ -489,6 +489,8 @@ What the code says about P3.4 (checked at the end of P3.3):
          shorter import block moves every line under it (the first try at this one cut two lines too low; thrown away)
        - [x] P3.4 (30): `stepPickups` → a new pickups.js (pickups' cooldowns, gold, the card, the interact tap), and the toasts
          counting down → `stepToasts` in particles.js. `decorStep` was a function already: step calls it with `F.pcx`/`F.pcy`
+       - [x] P3.4 (31): `stepEnemies` → enemies.js, whole (the enemy loop, Contact Damage, the creatures' shots, spider silk
+         and strings, web lines coming down, and `W.p.hitT` fading, which sat at its end); P3.5 takes it apart per creature
        - draw's inner functions `drawLook`, `drawFieldLook`, `drawBolt` go out first (they use only their arguments and
          `W`/`G`), then the layers in their current order: camera, background + terrain, props, portal, smoke, fields, silk,
          enemies, projectiles, beams, arrival, shop, gold, pickups, rooms, trail, sparks, motes, flashes, flame, aim + gun,
@@ -516,7 +518,7 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] gun.js: cast, spawnShot, releaseAt, payload/triggers, gun ticks (the ticks and aiming: `aimAndCast`, P3.4 (27))
   - [x] bullets.js: the bullet loop, homing/drift/wig, bounce, teleport, trails (shotTrail/Bounce/Death/Grind are in shotlooks.js; the loop is `stepBullets`, P3.4 (28))
   - [x] fields.js: fields and beams (the per-frame work is `stepFields`, P3.4 (29))
-  - [ ] enemies.js: the enemy loop, aggro, contact damage, enemy shots (damageEnemy, fireEnemyShot are out; goo/splat are in particles.js); rats (`ratSolid`, `navFor`, `spawnRat`, `unstick`, `ratFrame`) likely a rats.js
+  - [ ] enemies.js: the enemy loop (whole, as `stepEnemies`, P3.4 (31); per creature is P3.5), aggro, contact damage, enemy shots (damageEnemy, fireEnemyShot are out; goo/splat are in particles.js); rats (`ratSolid`, `navFor`, `spawnRat`, `unstick`, `ratFrame`) likely a rats.js
   - [x] pickups.js: pickups, shop stock, coins, ore, rooms, the interact tap (`stepPickups`, P3.4 (30); ore stays with `dropOre` in terrain.js)
   - [ ] props.js: decorStep, landProp, rustle, zfx (blowProp is out)
   - [x] fire: done, as fire.js (step 6)
@@ -663,6 +665,9 @@ commit. List them here for after.
   at P3.4 (28) (`glow` 0), passed 3 of 3 alone right after. Chance, not the cut: the bubble's fizz is `chance(6)` a
   second, over 40 frames (~0.67 s) that is none at all about 2% of the time, and the browser suites don't seed
   `Math.random`. Worth more frames, or counting the pop too, after the refactor.
+- **`jelly` (browser) "the plant glow lights up a vine beside a jelly"**, new on the list: failed once (vine lit 49.98 →
+  48.83) on P3.4 (30)'s tree, in a run comparing the spit flake against P3.4 (31); the spit group failed 3 of 4 there
+  and 3 of 4 on (31), so (31) changed nothing.
 - **Misplaced comments (left as they were, moved with their code).** A second copy of
   planCast's opening comment sits above `blankShot` (`spells/cast.js`); tracePath's opening
   comment sits above `DRIFT_DRAG` (`spells/trace.js`); `ROOM_HW`'s line carries the trailing
@@ -885,3 +890,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.4 (28) | `stepBullets` (the bullet loop and the arcs fading: 187 lines) → bullets.js with `tools/part.js`; header rewritten. `everymod`, `trigger`, `blackhole`, `teleport`, `t1spells`, `spelllooks`, `pollen`, `buzzsaw`, `lightning` run too; `t1spells` "bubble … glowing trail" failed once, passed 3 of 3 alone (chance, see Found along the way), the rest first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (29) | `stepSound` (25 lines, in step.js) and `stepFields` (75 lines) → fields.js with `tools/part.js`; fields.js header. `sound`, `everymod`, `spelllooks`, `fire`, `teleport` run too, all first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (30) | `stepPickups` (176 lines) → new `pickups.js` with `tools/part.js` (its `pure.js` line too); `stepToasts` (one line) → particles.js. Watch out in Git Bash: a one-line argument starting with `//` gets a slash eaten or added (MSYS path conversion), which put a `///` in particles.js' header for a moment: `MSYS_NO_PATHCONV=1`. `shop`, `interact`, `gunpickup`, `perks`, `teleport`, `restart-confirm`, `rats`, `shopcard`, `compare` run too, all first time. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 3, P3.4 (31) | `stepEnemies` (243 lines: the enemy loop whole, Contact Damage, enemy shots, silk, strings, web lines, `hitT`) → enemies.js with `tools/part.js`; header. `creatures`, `spider`, `rats`, `lightning`, `perks` run too, first time; `jelly` spit failed 3 of 4 here and 3 of 4 on the commit before (the known flake). | probe SAME, logic 33/33, smoke ok |
