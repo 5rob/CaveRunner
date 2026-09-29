@@ -32,10 +32,11 @@ import {
   FIRE_COLS, FIRE_WET, FLAMMABLE, FUEL_GRASS, FUEL_MOSS, FUEL_WOOD, fireArea, fireDouse,
   fireNear, fireNew, fireStep
 } from './world/fire.js';
+import { NAV, navField, navWay } from './world/nav.js';
 import {
   VIS_RAYS, fogReveal, fogStart, losClear, nestFog, rayDist, visPoly
 } from './world/vision.js';
-import { NAV, navField, navWay } from './world/nav.js';
+import { boxReach, builtAt } from './world/zones.js';
 
 const { useRef, useEffect, useState, useMemo } = React;
 const h = React.createElement;
@@ -3797,43 +3798,6 @@ function timberWorks(mat, dimg, works, T, R, fuel, ok) {
   timberWorks.zones = zones;                       // for the tests
   return sets;
 }
-// Where can a runner-sized box (6 x 11 terrain pixels) get to from (x, y) (its top-left,
-// in the open), walking and flying through open pixels? ok[i] = 2 where its top-left can
-// be; top: it got to the top of the map (y <= 40), where the exit is.
-function boxReach(mat, x, y) {
-  const PWc = 6, PHc = 11;
-  const free = new Uint8Array(CW * CH), ok = new Uint8Array(CW * CH);
-  for (let cx = 0; cx < CW; cx++) {
-    let run = 0;
-    for (let cy = CH - 1; cy >= 0; cy--) { run = mat[cy * CW + cx] ? 0 : run + 1; if (run >= PHc) free[cy * CW + cx] = 1; }
-  }
-  for (let cy = 0; cy < CH; cy++) {
-    let run = 0;
-    for (let cx = CW - 1; cx >= 0; cx--) { run = free[cy * CW + cx] ? run + 1 : 0; if (run >= PWc) ok[cy * CW + cx] = 1; }
-  }
-  const s0 = y * CW + x;
-  let top = false;
-  if (!ok[s0]) return { ok, top };
-  const st = new Int32Array(CW * CH);
-  let n = 0;
-  ok[s0] = 2; st[n++] = s0;
-  while (n) {
-    const i = st[--n];
-    if (i < 40 * CW) top = true;
-    const x0 = i % CW;
-    if (x0 > 0 && ok[i - 1] === 1) { ok[i - 1] = 2; st[n++] = i - 1; }
-    if (x0 < CW - 1 && ok[i + 1] === 1) { ok[i + 1] = 2; st[n++] = i + 1; }
-    if (i >= CW && ok[i - CW] === 1) { ok[i - CW] = 2; st[n++] = i - CW; }
-    if (i < CW * (CH - 1) && ok[i + CW] === 1) { ok[i + CW] = 2; st[n++] = i + CW; }
-  }
-  return { ok, top };
-}
-// is world point (wx, wy) in a built-up zone? (level.zone; null on floors without zones)
-function builtAt(zone, wx, wy) {
-  if (!zone) return false;
-  const x = Math.floor(wx / CELL), y = Math.floor(wy / CELL);
-  return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
-}
 
 // ---- the death replay ("Witness yourself", v90) ----
 // The Game keeps the last few seconds as snapshots, RP_HZ a second: a copy of everything draw()
@@ -4552,9 +4516,9 @@ export {
   SPELL_VOICE, SPELL_VOICES, clampS, shotSound, BODY_VOICE, CREATURE_TONE, CREATURE_VOICES,
   creatureSound, AMB_EVENTS, FX_VOL, fxVolKey, knob, rustleStep, SFX, SAVE_KEY, GUN_DEFAULTS,
   cleanGun, cleanLoadout, readSave, loadSave, clearSave, ORE_GOLD, ROOM_HW, ROOM_HH, goldVeins,
-  strataCave, paveWorks, timberWorks, boxReach, builtAt, RP_HZ, RP_BEFORE, RP_AFTER, RP_KEEP,
-  RP_W, RP_H, RP_LISTS, RP_NUMS, RP_DEEP, RP_LERP, RP_ANGLE, rpPlain, rpClone, rpCopy, rpLerp,
-  rpList, rpAt, rpFrame, rpCut, rpPaste, rpMerge
+  strataCave, paveWorks, timberWorks, RP_HZ, RP_BEFORE, RP_AFTER, RP_KEEP, RP_W, RP_H, RP_LISTS,
+  RP_NUMS, RP_DEEP, RP_LERP, RP_ANGLE, rpPlain, rpClone, rpCopy, rpLerp, rpList, rpAt, rpFrame,
+  rpCut, rpPaste, rpMerge
 };
 
 function Game({ input }) {
