@@ -44,7 +44,7 @@ import { fogLit, paintFog, roomSeen, seenAt } from './systems/fog.js';
 import { cast, firePayload } from './systems/gun.js';
 import { addArc, jag, lightningStep } from './systems/lightning.js';
 import { burst, goo, splat, toast } from './systems/particles.js';
-import { hurt, maxHp, refreshBag } from './systems/player.js';
+import { hurt, maxHp, refreshBag, torchHand } from './systems/player.js';
 import { decorStep } from './systems/props.js';
 import { onWebIn, ratFrame, spawnRat } from './systems/rats.js';
 import { saveRun } from './systems/save-run.js';
@@ -122,13 +122,6 @@ export function Game({ input }) {
     decoC.width = CW; decoC.height = CH;
     const dctx = decoC.getContext('2d');
     const aimPath = [];                              // scratch buffer for the aim line
-
-    // The torch hand: whichever one the gun is not in, so the two never sit on top of
-    // each other. Aiming behind you swaps hands, the same way the gun does.
-    const torchHand = () => {
-      const a = W.p.aim.show ? W.p.aim.nx : W.p.face;
-      return { x: W.p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: W.p.y + 9 };
-    };
 
     let raf, last = performance.now();
 
@@ -1511,7 +1504,7 @@ export function Game({ input }) {
       W.torchAcc += dt;
       while (W.torchAcc > 0.04) {
         W.torchAcc -= 0.04;
-        const th = torchHand();
+        const th = torchHand(W);
         const life = 0.3 + Math.random() * 0.35;
         W.torchP.push({ x: th.x + (Math.random() - 0.5) * 2, y: th.y - 7,
           vx: (Math.random() - 0.5) * 10 + W.p.vx * 0.15, vy: -20 - Math.random() * 22,
@@ -2380,7 +2373,7 @@ export function Game({ input }) {
       drawRunner(ctx, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing);
       if (!W.p.dead) drawGun(ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
       // the torch, in the hand the gun is not in
-      if (!W.p.dead) { const th = torchHand(); drawTorch(ctx, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.torchP, W.leanX, W.leanY, W.time); }
+      if (!W.p.dead) { const th = torchHand(W); drawTorch(ctx, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.torchP, W.leanX, W.leanY, W.time); }
       // a small aim crosshair at DEV.aimDist out, rotating round you with the aim: a "+"
       // with the centre cut out (two short verticals, two short horizontals), drawn as thin
       // as the thumbstick lines (~1.5 css px, so 1.5/unitPx world units, whatever the zoom)
@@ -2553,7 +2546,7 @@ export function Game({ input }) {
       }
       ctx.globalAlpha = 1;
       if (!W.p.dead) {
-        const th = torchHand(), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
+        const th = torchHand(W), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
         glowAt(ctx, gfx, gfy, 70 * (0.9 + 0.1 * gl), 0.2 * gl, '255,150,60');            // the second light
         glowAt(ctx, gfx + W.leanX * 0.5, gfy + W.leanY * 0.5, 12, 0.5 * gl, '255,190,90');   // the halo
       }

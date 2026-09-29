@@ -10446,6 +10446,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       clearSave();
     }
   }
+  var torchHand = (W) => {
+    const a = W.p.aim.show ? W.p.aim.nx : W.p.face;
+    return { x: W.p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: W.p.y + 9 };
+  };
 
   // src/game/systems/webs.js
   var webNear = (L, x, y) => {
@@ -12999,10 +13003,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       decoC.height = CH;
       const dctx = decoC.getContext("2d");
       const aimPath = [];
-      const torchHand = () => {
-        const a = W.p.aim.show ? W.p.aim.nx : W.p.face;
-        return { x: W.p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: W.p.y + 9 };
-      };
       let raf, last = performance.now();
       const RP_ARR = {
         bullets: W.bullets,
@@ -14827,7 +14827,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         W.torchAcc += dt;
         while (W.torchAcc > 0.04) {
           W.torchAcc -= 0.04;
-          const th = torchHand();
+          const th = torchHand(W);
           const life = 0.3 + Math.random() * 0.35;
           W.torchP.push({
             x: th.x + (Math.random() - 0.5) * 2,
@@ -16059,7 +16059,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         drawRunner(ctx, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing);
         if (!W.p.dead) drawGun(ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
         if (!W.p.dead) {
-          const th = torchHand();
+          const th = torchHand(W);
           drawTorch(ctx, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.torchP, W.leanX, W.leanY, W.time);
         }
         if (!W.p.dead) {
@@ -16212,7 +16212,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         ctx.globalAlpha = 1;
         if (!W.p.dead) {
-          const th = torchHand(), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
+          const th = torchHand(W), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
           glowAt(ctx, gfx, gfy, 70 * (0.9 + 0.1 * gl), 0.2 * gl, "255,150,60");
           glowAt(ctx, gfx + W.leanX * 0.5, gfy + W.leanY * 0.5, 12, 0.5 * gl, "255,190,90");
         }

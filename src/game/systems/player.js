@@ -1,4 +1,5 @@
-// You: the perk bag and your health (maxHp, and hurt: shields, extra lives, death).
+// You: the perk bag, your health (maxHp, and hurt: shields, extra lives, death) and which
+// hand holds the torch.
 
 import { SFX } from '../../audio/sfx.js';
 import { COL, PH, PW } from '../../core/consts.js';
@@ -45,3 +46,10 @@ export function hurt(W, G, n) {
     clearSave();                          // a death is final: reopening starts a new run
   }
 }
+
+// The torch hand: whichever one the gun is not in, so the two never sit on top of
+// each other. Aiming behind you swaps hands, the same way the gun does.
+export const torchHand = (W) => {
+  const a = W.p.aim.show ? W.p.aim.nx : W.p.face;
+  return { x: W.p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: W.p.y + 9 };
+};
