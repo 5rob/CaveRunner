@@ -16,7 +16,7 @@ before this.
 | **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). Next: P3.4. Not merged |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
-| **Last green full suite** | 2026-09-29, v98 release (bar `jelly` spit: passed alone on the 3rd try, as on v96) |
+| **Last green full suite** | 2026-09-29, end of P3.3 (bar known flakes: `jelly` spit and `lightning` fork, both passed alone) |
 | **Last merged to main** | v98 (Phase 2), 2026-09-29 |
 
 ---
@@ -696,3 +696,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.2 (8) | The last group: step's timers and sound loops, `decorStep`'s counters, `oreBank`, `navYou` (26 names) to `W`. What stays loose is listed under P3.2 (D15). `sound`, `jetpack`, `rats` run too. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.2 done | Full suite on a snapshot of 7f9bfe5: only `jelly` spit failed, passed alone on the 3rd run (as on v96/v98). | logic 33/33; browser 44/44 after re-runs |
 | 2026-09-29 | Phase 3, P3.3 | `src/game/testhook.js`: `testHook(W, g)` puts `sandbox`, `placeProp`, Game's functions and the old names (`seed`, `theme`, `rec`, `rt`, `fog`, `light`, `world`) on `W` and Game sets `window.__lvl = W` when `window.__TEST` is set. `tests/build.js` no longer inserts code into the closure: it adds a `<script>window.__TEST = true;</script>` before the bundle (the `__in` anchor in App stays). The `const toast` anchor is retired. CLAUDE.md points at `testhook.js`. | probe SAME, logic 33/33, smoke, donebutton, restart-confirm, decor, replay ok |
+| 2026-09-29 | Phase 3, P3.3 done | Full suite on a snapshot of 24976eb: `jelly` spit and `lightning` "a fork hits a creature off to the side" failed, both passed alone (jelly on the 2nd run). Stopped here as planned: P3.4 next, Phase 3 not merged. | logic 33/33; browser 44/44 after re-runs |
