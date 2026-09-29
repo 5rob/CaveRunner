@@ -13,7 +13,7 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 1 done and merged to `main` as v97. Next: Phase 2 on `refactor` |
+| **Current phase** | Phase 1 done and merged to `main` as v97. Phase 2 in progress on `refactor` (see the boxes) |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
 | **Last green full suite** | 2026-09-29, P1.6 (bar known flakes: `fog` "flying on reveals more" and `rats` passed alone; `jelly` spit passed 1 of 3 alone, as on v96) |
@@ -278,7 +278,7 @@ What the code says about this phase (checked at the end of Phase 1):
 - `JellyPreview` (Dev panel) runs the real `jellyStep`/`drawJelly`: it can import them from
   `creatures/jelly.js` wherever it lands.
 
-- [ ] **P2.1** ui/h.js (the `h` helper and hook imports)
+- [x] **P2.1** ui/h.js (the `h` helper and hook imports)
 - [ ] **P2.2** ui/hud.js (Stick, RKey, gauges, holdPress, deckLayout, fmtGold, healthCol, GAUGE_*…)
 - [ ] **P2.3** ui/cards.js (GunCard, ModCard, PerkCard, GUN_STATS)
 - [ ] **P2.4** ui/editor.js (Editor, GunStats, SlotGrid, ScrollBox, GunIcon, PULL_COL, GS_ROWS)
@@ -490,3 +490,5 @@ commit. List them here for after.
 | 2026-09-29 | Phase 1, P1.5 | All 31 moves, one commit each via `tools/move.js`, logic suites + names check + `smoke` before every commit. Extra: `COL` joined `core/consts.js` (guns and sprites need it). Knob tables stay in `dev/knobs.js` (D11). `main.js` 12,816 → 5,767 lines (Game, UI, and 5 pure leftovers). Full runs on snapshots at the end of spells and world, and at the end: only known/load flakes, each passing alone. Bundle statements identical to P1.2's (D12). | logic 33/33; browser 43/44 (`sound`, as v96) after re-runs |
 | 2026-09-29 | handover | Docs made ready for the next session: Phase 2 notes worked out from the code (`Game` has to move to `game/Game.js` before `App` can leave `main.js`; where the pure leftovers and `h`/hooks go), a **How a move goes** recipe, `tools/same.js` (D12's check as a tool, tried both ways), the P1.5 parent box ticked, test timings in CLAUDE.md, HANDOVER status. | logic 33/33 |
 | 2026-09-29 | Phase 1, P1.6 | Owner play-tested the branch (plays the same as v96). Committed the last session's uncommitted handover docs + `tools/same.js` first. Full suite on a snapshot; `src/version.js` → v97; merged `refactor` → `main` and pushed (the release). This time `sound` passed and `fog` ("flying on reveals more", a new one) failed once, passed alone. | logic 33/33; browser 44/44 after re-runs (`jelly` spit flaky, as v96) |
+| 2026-09-29 | Release check | CI run 36533355733 green (deploy-pages, build-apk); `version.txt` = v97. `main` merged back into `refactor` (same commit). | — |
+| 2026-09-29 | Phase 2, P2.1 | `ui/h.js` (`h` + the four hooks). move.js hoisted the sputter comment (the first comment in `main.js` once the hooks left) to the top as a "file header"; put back by hand. | same 359/359, logic 33/33, smoke ok |

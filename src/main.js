@@ -23,6 +23,9 @@ import { themeFor } from './data/themes.js';
 import {
   DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_META, devReport, devSet, jcol, kr, kru, spr
 } from './dev/knobs.js';
+import {
+  RP_AFTER, RP_BEFORE, RP_H, RP_HZ, RP_KEEP, RP_W, rpClone, rpCut, rpFrame, rpMerge, rpPaste
+} from './replay/replay.js';
 import { SAVE_KEY, clearSave, loadSave } from './save/save.js';
 import { buildAdvice, modPreview } from './spells/advisor.js';
 import {
@@ -47,12 +50,8 @@ import {
   VIS_RAYS, fogReveal, fogStart, losClear, nestFog, rayDist, visPoly
 } from './world/vision.js';
 import { builtAt } from './world/zones.js';
-import {
-  RP_AFTER, RP_BEFORE, RP_H, RP_HZ, RP_KEEP, RP_W, rpClone, rpCut, rpFrame, rpMerge, rpPaste
-} from './replay/replay.js';
+import { h, useEffect, useMemo, useRef, useState } from './ui/h.js';
 
-const { useRef, useEffect, useState, useMemo } = React;
-const h = React.createElement;
 // Near the bottom of the tank the jet coughs: short random cut-outs, more often and a touch
 // longer the closer the tank is to dry. `st` keeps the cut-out clock and how long the jet
 // has been held on (which bends its pitch). Returns true while it's cut out; `st.start`
@@ -116,8 +115,7 @@ function deckLayout(W, size, n) {
 // module), and tests/load.js bundles that. It shrinks as the code moves out into modules
 // (REFACTOR.md, P1.5); the browser build ignores it.
 export {
-  useRef, useEffect, useState, useMemo, h, SPUTTER_FUEL, sputterStep, NO_INPUT, fmtGold,
-  deckLayout
+  SPUTTER_FUEL, sputterStep, NO_INPUT, fmtGold, deckLayout
 };
 
 function Game({ input }) {
