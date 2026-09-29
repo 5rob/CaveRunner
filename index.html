@@ -6182,297 +6182,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return false;
   }
 
-  // src/world/nav.js
-  var NAV = 4;
-  function navField(solid, tx, ty, R, onWeb) {
-    const gi = Math.floor(tx / CELL / NAV), gj = Math.floor(ty / CELL / NAV);
-    const x0 = gi - R, y0 = gj - R, w = 2 * R + 1, n = w * w;
-    const open = new Uint8Array(n), surf = new Uint8Array(n);
-    const sol = (i, j) => solid((x0 + i) * NAV + 2, (y0 + j) * NAV + 2);
-    const fits = (i, j) => {
-      const px = (x0 + i) * NAV, py = (y0 + j) * NAV;
-      for (let b = 1; b <= 2; b++) for (let a = 1; a <= 2; a++) if (solid(px + a, py + b)) return false;
-      return true;
-    };
-    for (let j = 0; j < w; j++) for (let i = 0; i < w; i++) open[j * w + i] = fits(i, j) ? 1 : 0;
-    for (let j = 0; j < w; j++) for (let i = 0; i < w; i++) {
-      const k = j * w + i;
-      if (open[k]) surf[k] = sol(i, j + 1) || sol(i - 1, j) || sol(i + 1, j) || sol(i - 1, j + 1) || sol(i + 1, j + 1) || onWeb && onWeb(((x0 + i) * NAV + 2) * CELL, ((y0 + j) * NAV + 2) * CELL) ? 1 : 0;
-    }
-    const d = new Float32Array(n).fill(Infinity), done = new Uint8Array(n);
-    const cap = n * 8, hp = new Int32Array(cap);
-    let hn = 0;
-    const push = (k) => {
-      let c = hn++;
-      hp[c] = k;
-      while (c) {
-        const p = c - 1 >> 1;
-        if (d[hp[p]] <= d[k]) break;
-        hp[c] = hp[p];
-        hp[p] = k;
-        c = p;
-      }
-    };
-    const pop = () => {
-      const top = hp[0], last = hp[--hn];
-      let c = 0;
-      if (hn) {
-        hp[0] = last;
-        while (true) {
-          const l = 2 * c + 1, r = l + 1;
-          let m = c;
-          if (l < hn && d[hp[l]] < d[hp[m]]) m = l;
-          if (r < hn && d[hp[r]] < d[hp[m]]) m = r;
-          if (m === c) break;
-          hp[c] = hp[m];
-          hp[m] = last;
-          c = m;
-        }
-      }
-      return top;
-    };
-    let s = -1;
-    for (let r = 0; r <= 2 && s < 0; r++) for (let dj = -r; dj <= r && s < 0; dj++) for (let di = -r; di <= r; di++) {
-      const q = (R + dj) * w + R + di;
-      if (open[q]) {
-        s = q;
-        break;
-      }
-    }
-    if (s >= 0) {
-      d[s] = 0;
-      push(s);
-    }
-    while (hn && hn < cap - 8) {
-      const k = pop();
-      if (done[k]) continue;
-      done[k] = 1;
-      const i = k % w, j = k / w | 0;
-      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
-        if (!di && !dj) continue;
-        const a = i + di, b = j + dj;
-        if (a < 0 || b < 0 || a >= w || b >= w) continue;
-        const q = b * w + a;
-        if (!open[q] || done[q]) continue;
-        if (di && dj && !open[j * w + a] && !open[b * w + i]) continue;
-        const up = -dj, step = di && dj ? 1.414 : 1;
-        const c = step * (surf[k] ? 1 : up < 0 ? 8 : up > 0 ? 1 : 3);
-        if (d[k] + c < d[q]) {
-          d[q] = d[k] + c;
-          push(q);
-        }
-      }
-    }
-    return { x0, y0, w, d, surf };
-  }
-  function navWay(F, x, y, steps) {
-    let i = Math.floor(x / CELL / NAV) - F.x0, j = Math.floor(y / CELL / NAV) - F.y0;
-    const w = F.w, d = F.d;
-    if (i < 1 || j < 1 || i >= w - 1 || j >= w - 1) return null;
-    if (!isFinite(d[j * w + i])) {
-      let b = -1;
-      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
-        const q = (j + dj) * w + i + di;
-        if (isFinite(d[q]) && (b < 0 || d[q] < d[b])) b = q;
-      }
-      if (b < 0) return null;
-      i = b % w;
-      j = b / w | 0;
-    }
-    const dist = d[j * w + i];
-    let air = false;
-    for (let s = 0; s < steps; s++) {
-      let b = j * w + i;
-      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
-        const a = i + di, c = j + dj;
-        if (a < 0 || c < 0 || a >= w || c >= w) continue;
-        if (d[c * w + a] < d[b]) b = c * w + a;
-      }
-      if (b === j * w + i) break;
-      if ((b / w | 0) <= j && !F.surf[b]) air = true;
-      i = b % w;
-      j = b / w | 0;
-      if (air && s === steps - 1 && !F.surf[b] && steps < 12) steps++;
-    }
-    return { x: (F.x0 + i + 0.5) * NAV * CELL, y: (F.y0 + j + 0.5) * NAV * CELL, dist, air };
-  }
-
-  // src/world/veins.js
-  var ORE_GOLD = 0.25;
-  function goldVeins(mat, seed, floor) {
-    let rs = (seed * 7919 + 12345) % 2147483647 || 1;
-    const rnd = () => (rs = rs * 16807 % 2147483647) / 2147483647;
-    const ore = new Uint8Array(CW * CH);
-    const n = Math.min(18, 7 + floor);
-    const maxY = SHOP_TOP - SHOP_ROOF - 6;
-    const rockAt = (x, y) => x >= 4 && y >= 4 && x < CW - 4 && y < maxY && mat[y * CW + x] === ROCK;
-    const nearOpen = (x, y, r) => {
-      for (let d = 2; d <= r; d += 2)
-        for (let k = 0; k < 8; k++) {
-          const a = k * Math.PI / 4, px = Math.round(x + Math.cos(a) * d), py = Math.round(y + Math.sin(a) * d);
-          if (px >= 0 && py >= 0 && px < CW && py < CH && !mat[py * CW + px]) return true;
-        }
-      return false;
-    };
-    for (let v = 0; v < n; v++) {
-      let x = 0, y = 0, ok = false;
-      for (let tries = 0; tries < 200 && !ok; tries++) {
-        x = 6 + Math.floor(rnd() * (CW - 12));
-        y = 6 + Math.floor(rnd() * (maxY - 12));
-        ok = rockAt(x, y) && rockAt(x + 3, y) && rockAt(x - 3, y) && rockAt(x, y + 3) && rockAt(x, y - 3) && nearOpen(x, y, 16);
-      }
-      if (!ok) continue;
-      let a = rnd() * Math.PI * 2;
-      const len = 18 + Math.floor(rnd() * 40);
-      for (let st = 0; st < len; st++) {
-        const r = rnd() < 0.2 ? 2 : 1;
-        for (let dy = -r; dy <= r; dy++)
-          for (let dx = -r; dx <= r; dx++) {
-            if (dx * dx + dy * dy > r * r + 0.5) continue;
-            const px = Math.round(x) + dx, py = Math.round(y) + dy;
-            if (rockAt(px, py)) ore[py * CW + px] = 1;
-          }
-        a += (rnd() - 0.5) * 0.9;
-        x += Math.cos(a) * 1.2;
-        y += Math.sin(a) * 1.2;
-        if (!rockAt(Math.round(x), Math.round(y))) break;
-      }
-    }
-    return ore;
-  }
-
-  // src/world/vision.js
-  var VIS_RAYS = 160;
-  function fogReveal(seen, wx, wy, r, pts, rays) {
-    const cx = wx / FOG_U, cy = wy / FOG_U, cr = r / FOG_U, r2 = cr * cr;
-    const x0 = Math.max(0, Math.floor(cx - cr)), x1 = Math.min(FW - 1, Math.ceil(cx + cr));
-    const y0 = Math.max(0, Math.floor(cy - cr)), y1 = Math.min(FH - 1, Math.ceil(cy + cr));
-    let n = 0;
-    for (let y = y0; y <= y1; y++) {
-      const row = y * FW, dy = y + 0.5 - cy, dy2 = dy * dy;
-      for (let x = x0; x <= x1; x++) {
-        if (seen[row + x]) continue;
-        const dx = x + 0.5 - cx;
-        if (dx * dx + dy2 > r2) continue;
-        const d = Math.sqrt(dx * dx + dy2) * FOG_U;
-        const t = (Math.atan2(dy, dx) / (Math.PI * 2) + 1) % 1 * rays;
-        const i0 = Math.floor(t), i1 = (i0 + 1) % rays;
-        const a = Math.hypot(pts[i0 * 2] - wx, pts[i0 * 2 + 1] - wy);
-        const b = Math.hypot(pts[i1 * 2] - wx, pts[i1 * 2 + 1] - wy);
-        if (d > Math.min(a, b)) continue;
-        seen[row + x] = 1;
-        n++;
-      }
-    }
-    return n;
-  }
-  function fogStart() {
-    const seen = new Uint8Array(FW * FH);
-    for (let y = Math.floor((SHOP_TOP - SHOP_ROOF) / FOG); y < FH; y++)
-      for (let x = 0; x < FW; x++) seen[y * FW + x] = 2;
-    return seen;
-  }
-  function nestFog(nests) {
-    const m = new Uint8Array(FW * FH);
-    for (const n of nests || []) {
-      const R = n.r + 2;
-      for (let y = Math.floor((n.y - R) / FOG); y <= Math.floor((n.y + R) / FOG); y++)
-        for (let x = Math.floor((n.x - R) / FOG); x <= Math.floor((n.x + R) / FOG); x++)
-          if (x >= 0 && y >= 0 && x < FW && y < FH) m[y * FW + x] = 1;
-    }
-    return m;
-  }
-  function rayDist(x, y, dx, dy, r, solidCell) {
-    let cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
-    const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1;
-    const dtx = dx ? Math.abs(CELL / dx) : Infinity;
-    const dty = dy ? Math.abs(CELL / dy) : Infinity;
-    let tx = dx ? dx > 0 ? ((cx + 1) * CELL - x) / dx : (cx * CELL - x) / dx : Infinity;
-    let ty = dy ? dy > 0 ? ((cy + 1) * CELL - y) / dy : (cy * CELL - y) / dy : Infinity;
-    let t = 0;
-    for (; ; ) {
-      if (tx < ty) {
-        t = tx;
-        tx += dtx;
-        cx += sx;
-      } else {
-        t = ty;
-        ty += dty;
-        cy += sy;
-      }
-      if (t >= r) return r;
-      if (solidCell(cx, cy)) return t;
-    }
-  }
-  function losClear(x0, y0, x1, y1, solidCell) {
-    const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy);
-    if (d < 1e-3) return true;
-    return rayDist(x0, y0, dx / d, dy / d, d, solidCell) >= d - 1e-3;
-  }
-  function visPoly(cx, cy, r, solidCell, rays) {
-    const pts = [];
-    for (let i = 0; i < rays; i++) {
-      const a = i / rays * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
-      const d = rayDist(cx, cy, dx, dy, r, solidCell);
-      pts.push(cx + dx * d, cy + dy * d);
-    }
-    return pts;
-  }
-
-  // src/world/zones.js
-  function boxReach(mat, x, y) {
-    const PWc = 6, PHc = 11;
-    const free = new Uint8Array(CW * CH), ok = new Uint8Array(CW * CH);
-    for (let cx = 0; cx < CW; cx++) {
-      let run = 0;
-      for (let cy = CH - 1; cy >= 0; cy--) {
-        run = mat[cy * CW + cx] ? 0 : run + 1;
-        if (run >= PHc) free[cy * CW + cx] = 1;
-      }
-    }
-    for (let cy = 0; cy < CH; cy++) {
-      let run = 0;
-      for (let cx = CW - 1; cx >= 0; cx--) {
-        run = free[cy * CW + cx] ? run + 1 : 0;
-        if (run >= PWc) ok[cy * CW + cx] = 1;
-      }
-    }
-    const s0 = y * CW + x;
-    let top = false;
-    if (!ok[s0]) return { ok, top };
-    const st = new Int32Array(CW * CH);
-    let n = 0;
-    ok[s0] = 2;
-    st[n++] = s0;
-    while (n) {
-      const i = st[--n];
-      if (i < 40 * CW) top = true;
-      const x0 = i % CW;
-      if (x0 > 0 && ok[i - 1] === 1) {
-        ok[i - 1] = 2;
-        st[n++] = i - 1;
-      }
-      if (x0 < CW - 1 && ok[i + 1] === 1) {
-        ok[i + 1] = 2;
-        st[n++] = i + 1;
-      }
-      if (i >= CW && ok[i - CW] === 1) {
-        ok[i - CW] = 2;
-        st[n++] = i - CW;
-      }
-      if (i < CW * (CH - 1) && ok[i + CW] === 1) {
-        ok[i + CW] = 2;
-        st[n++] = i + CW;
-      }
-    }
-    return { ok, top };
-  }
-  function builtAt(zone, wx, wy) {
-    if (!zone) return false;
-    const x = Math.floor(wx / CELL), y = Math.floor(wy / CELL);
-    return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
-  }
-
   // src/world/nests.js
   function ratNests(mat, rnd, zone, keep, nb, nw) {
     const inb = (x, y) => x >= 4 && y >= 4 && x < CW - 4 && y < CH - 4;
@@ -6576,6 +6285,104 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let i = 0; i < nb; i++) make(true);
     for (let i = 0; i < nw; i++) make(false);
     return nests;
+  }
+
+  // src/world/veins.js
+  var ORE_GOLD = 0.25;
+  function goldVeins(mat, seed, floor) {
+    let rs = (seed * 7919 + 12345) % 2147483647 || 1;
+    const rnd = () => (rs = rs * 16807 % 2147483647) / 2147483647;
+    const ore = new Uint8Array(CW * CH);
+    const n = Math.min(18, 7 + floor);
+    const maxY = SHOP_TOP - SHOP_ROOF - 6;
+    const rockAt = (x, y) => x >= 4 && y >= 4 && x < CW - 4 && y < maxY && mat[y * CW + x] === ROCK;
+    const nearOpen = (x, y, r) => {
+      for (let d = 2; d <= r; d += 2)
+        for (let k = 0; k < 8; k++) {
+          const a = k * Math.PI / 4, px = Math.round(x + Math.cos(a) * d), py = Math.round(y + Math.sin(a) * d);
+          if (px >= 0 && py >= 0 && px < CW && py < CH && !mat[py * CW + px]) return true;
+        }
+      return false;
+    };
+    for (let v = 0; v < n; v++) {
+      let x = 0, y = 0, ok = false;
+      for (let tries = 0; tries < 200 && !ok; tries++) {
+        x = 6 + Math.floor(rnd() * (CW - 12));
+        y = 6 + Math.floor(rnd() * (maxY - 12));
+        ok = rockAt(x, y) && rockAt(x + 3, y) && rockAt(x - 3, y) && rockAt(x, y + 3) && rockAt(x, y - 3) && nearOpen(x, y, 16);
+      }
+      if (!ok) continue;
+      let a = rnd() * Math.PI * 2;
+      const len = 18 + Math.floor(rnd() * 40);
+      for (let st = 0; st < len; st++) {
+        const r = rnd() < 0.2 ? 2 : 1;
+        for (let dy = -r; dy <= r; dy++)
+          for (let dx = -r; dx <= r; dx++) {
+            if (dx * dx + dy * dy > r * r + 0.5) continue;
+            const px = Math.round(x) + dx, py = Math.round(y) + dy;
+            if (rockAt(px, py)) ore[py * CW + px] = 1;
+          }
+        a += (rnd() - 0.5) * 0.9;
+        x += Math.cos(a) * 1.2;
+        y += Math.sin(a) * 1.2;
+        if (!rockAt(Math.round(x), Math.round(y))) break;
+      }
+    }
+    return ore;
+  }
+
+  // src/world/zones.js
+  function boxReach(mat, x, y) {
+    const PWc = 6, PHc = 11;
+    const free = new Uint8Array(CW * CH), ok = new Uint8Array(CW * CH);
+    for (let cx = 0; cx < CW; cx++) {
+      let run = 0;
+      for (let cy = CH - 1; cy >= 0; cy--) {
+        run = mat[cy * CW + cx] ? 0 : run + 1;
+        if (run >= PHc) free[cy * CW + cx] = 1;
+      }
+    }
+    for (let cy = 0; cy < CH; cy++) {
+      let run = 0;
+      for (let cx = CW - 1; cx >= 0; cx--) {
+        run = free[cy * CW + cx] ? run + 1 : 0;
+        if (run >= PWc) ok[cy * CW + cx] = 1;
+      }
+    }
+    const s0 = y * CW + x;
+    let top = false;
+    if (!ok[s0]) return { ok, top };
+    const st = new Int32Array(CW * CH);
+    let n = 0;
+    ok[s0] = 2;
+    st[n++] = s0;
+    while (n) {
+      const i = st[--n];
+      if (i < 40 * CW) top = true;
+      const x0 = i % CW;
+      if (x0 > 0 && ok[i - 1] === 1) {
+        ok[i - 1] = 2;
+        st[n++] = i - 1;
+      }
+      if (x0 < CW - 1 && ok[i + 1] === 1) {
+        ok[i + 1] = 2;
+        st[n++] = i + 1;
+      }
+      if (i >= CW && ok[i - CW] === 1) {
+        ok[i - CW] = 2;
+        st[n++] = i - CW;
+      }
+      if (i < CW * (CH - 1) && ok[i + CW] === 1) {
+        ok[i + CW] = 2;
+        st[n++] = i + CW;
+      }
+    }
+    return { ok, top };
+  }
+  function builtAt(zone, wx, wy) {
+    if (!zone) return false;
+    const x = Math.floor(wx / CELL), y = Math.floor(wy / CELL);
+    return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
   }
 
   // src/world/level.js
@@ -7158,41 +6965,200 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
 
-  // src/main.js
-  var { useRef, useEffect, useState, useMemo } = React;
-  var h = React.createElement;
-  var SPUTTER_FUEL = 0.25;
-  function sputterStep(st, dt, fuel, on, rnd) {
-    rnd = rnd || Math.random;
-    st.start = false;
-    if (!on) {
-      st.cut = 0;
-      st.gap = 0;
-      st.onT = 0;
-      return false;
+  // src/world/nav.js
+  var NAV = 4;
+  function navField(solid, tx, ty, R, onWeb) {
+    const gi = Math.floor(tx / CELL / NAV), gj = Math.floor(ty / CELL / NAV);
+    const x0 = gi - R, y0 = gj - R, w = 2 * R + 1, n = w * w;
+    const open = new Uint8Array(n), surf = new Uint8Array(n);
+    const sol = (i, j) => solid((x0 + i) * NAV + 2, (y0 + j) * NAV + 2);
+    const fits = (i, j) => {
+      const px = (x0 + i) * NAV, py = (y0 + j) * NAV;
+      for (let b = 1; b <= 2; b++) for (let a = 1; a <= 2; a++) if (solid(px + a, py + b)) return false;
+      return true;
+    };
+    for (let j = 0; j < w; j++) for (let i = 0; i < w; i++) open[j * w + i] = fits(i, j) ? 1 : 0;
+    for (let j = 0; j < w; j++) for (let i = 0; i < w; i++) {
+      const k = j * w + i;
+      if (open[k]) surf[k] = sol(i, j + 1) || sol(i - 1, j) || sol(i + 1, j) || sol(i - 1, j + 1) || sol(i + 1, j + 1) || onWeb && onWeb(((x0 + i) * NAV + 2) * CELL, ((y0 + j) * NAV + 2) * CELL) ? 1 : 0;
     }
-    st.onT = (st.onT || 0) + dt;
-    st.cut = Math.max(0, (st.cut || 0) - dt);
-    st.gap = Math.max(0, (st.gap || 0) - dt);
-    if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
-      const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;
-      if (rnd() < dt * (1 + 7 * w)) {
-        st.cut = 0.04 + rnd() * (0.05 + 0.08 * w);
-        st.gap = st.cut + 0.1 + rnd() * 0.2;
-        st.start = true;
+    const d = new Float32Array(n).fill(Infinity), done = new Uint8Array(n);
+    const cap = n * 8, hp = new Int32Array(cap);
+    let hn = 0;
+    const push = (k) => {
+      let c = hn++;
+      hp[c] = k;
+      while (c) {
+        const p = c - 1 >> 1;
+        if (d[hp[p]] <= d[k]) break;
+        hp[c] = hp[p];
+        hp[p] = k;
+        c = p;
+      }
+    };
+    const pop = () => {
+      const top = hp[0], last = hp[--hn];
+      let c = 0;
+      if (hn) {
+        hp[0] = last;
+        while (true) {
+          const l = 2 * c + 1, r = l + 1;
+          let m = c;
+          if (l < hn && d[hp[l]] < d[hp[m]]) m = l;
+          if (r < hn && d[hp[r]] < d[hp[m]]) m = r;
+          if (m === c) break;
+          hp[c] = hp[m];
+          hp[m] = last;
+          c = m;
+        }
+      }
+      return top;
+    };
+    let s = -1;
+    for (let r = 0; r <= 2 && s < 0; r++) for (let dj = -r; dj <= r && s < 0; dj++) for (let di = -r; di <= r; di++) {
+      const q = (R + dj) * w + R + di;
+      if (open[q]) {
+        s = q;
+        break;
       }
     }
-    return st.cut > 0;
+    if (s >= 0) {
+      d[s] = 0;
+      push(s);
+    }
+    while (hn && hn < cap - 8) {
+      const k = pop();
+      if (done[k]) continue;
+      done[k] = 1;
+      const i = k % w, j = k / w | 0;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        if (!di && !dj) continue;
+        const a = i + di, b = j + dj;
+        if (a < 0 || b < 0 || a >= w || b >= w) continue;
+        const q = b * w + a;
+        if (!open[q] || done[q]) continue;
+        if (di && dj && !open[j * w + a] && !open[b * w + i]) continue;
+        const up = -dj, step = di && dj ? 1.414 : 1;
+        const c = step * (surf[k] ? 1 : up < 0 ? 8 : up > 0 ? 1 : 3);
+        if (d[k] + c < d[q]) {
+          d[q] = d[k] + c;
+          push(q);
+        }
+      }
+    }
+    return { x0, y0, w, d, surf };
   }
-  function jetPitch(onT) {
-    return 1 + 0.7 * Math.min(Math.max(onT, 0), 3) / 3;
+  function navWay(F, x, y, steps) {
+    let i = Math.floor(x / CELL / NAV) - F.x0, j = Math.floor(y / CELL / NAV) - F.y0;
+    const w = F.w, d = F.d;
+    if (i < 1 || j < 1 || i >= w - 1 || j >= w - 1) return null;
+    if (!isFinite(d[j * w + i])) {
+      let b = -1;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        const q = (j + dj) * w + i + di;
+        if (isFinite(d[q]) && (b < 0 || d[q] < d[b])) b = q;
+      }
+      if (b < 0) return null;
+      i = b % w;
+      j = b / w | 0;
+    }
+    const dist = d[j * w + i];
+    let air = false;
+    for (let s = 0; s < steps; s++) {
+      let b = j * w + i;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        const a = i + di, c = j + dj;
+        if (a < 0 || c < 0 || a >= w || c >= w) continue;
+        if (d[c * w + a] < d[b]) b = c * w + a;
+      }
+      if (b === j * w + i) break;
+      if ((b / w | 0) <= j && !F.surf[b]) air = true;
+      i = b % w;
+      j = b / w | 0;
+      if (air && s === steps - 1 && !F.surf[b] && steps < 12) steps++;
+    }
+    return { x: (F.x0 + i + 0.5) * NAV * CELL, y: (F.y0 + j + 0.5) * NAV * CELL, dist, air };
   }
-  function jellyPal(u) {
-    const P = {};
-    for (const [k, , , , f] of JE_COLS) P[f] = jcol(k, u);
-    return P;
+
+  // src/world/vision.js
+  var VIS_RAYS = 160;
+  function fogReveal(seen, wx, wy, r, pts, rays) {
+    const cx = wx / FOG_U, cy = wy / FOG_U, cr = r / FOG_U, r2 = cr * cr;
+    const x0 = Math.max(0, Math.floor(cx - cr)), x1 = Math.min(FW - 1, Math.ceil(cx + cr));
+    const y0 = Math.max(0, Math.floor(cy - cr)), y1 = Math.min(FH - 1, Math.ceil(cy + cr));
+    let n = 0;
+    for (let y = y0; y <= y1; y++) {
+      const row = y * FW, dy = y + 0.5 - cy, dy2 = dy * dy;
+      for (let x = x0; x <= x1; x++) {
+        if (seen[row + x]) continue;
+        const dx = x + 0.5 - cx;
+        if (dx * dx + dy2 > r2) continue;
+        const d = Math.sqrt(dx * dx + dy2) * FOG_U;
+        const t = (Math.atan2(dy, dx) / (Math.PI * 2) + 1) % 1 * rays;
+        const i0 = Math.floor(t), i1 = (i0 + 1) % rays;
+        const a = Math.hypot(pts[i0 * 2] - wx, pts[i0 * 2 + 1] - wy);
+        const b = Math.hypot(pts[i1 * 2] - wx, pts[i1 * 2 + 1] - wy);
+        if (d > Math.min(a, b)) continue;
+        seen[row + x] = 1;
+        n++;
+      }
+    }
+    return n;
   }
-  var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
+  function fogStart() {
+    const seen = new Uint8Array(FW * FH);
+    for (let y = Math.floor((SHOP_TOP - SHOP_ROOF) / FOG); y < FH; y++)
+      for (let x = 0; x < FW; x++) seen[y * FW + x] = 2;
+    return seen;
+  }
+  function nestFog(nests) {
+    const m = new Uint8Array(FW * FH);
+    for (const n of nests || []) {
+      const R = n.r + 2;
+      for (let y = Math.floor((n.y - R) / FOG); y <= Math.floor((n.y + R) / FOG); y++)
+        for (let x = Math.floor((n.x - R) / FOG); x <= Math.floor((n.x + R) / FOG); x++)
+          if (x >= 0 && y >= 0 && x < FW && y < FH) m[y * FW + x] = 1;
+    }
+    return m;
+  }
+  function rayDist(x, y, dx, dy, r, solidCell) {
+    let cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+    const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1;
+    const dtx = dx ? Math.abs(CELL / dx) : Infinity;
+    const dty = dy ? Math.abs(CELL / dy) : Infinity;
+    let tx = dx ? dx > 0 ? ((cx + 1) * CELL - x) / dx : (cx * CELL - x) / dx : Infinity;
+    let ty = dy ? dy > 0 ? ((cy + 1) * CELL - y) / dy : (cy * CELL - y) / dy : Infinity;
+    let t = 0;
+    for (; ; ) {
+      if (tx < ty) {
+        t = tx;
+        tx += dtx;
+        cx += sx;
+      } else {
+        t = ty;
+        ty += dty;
+        cy += sy;
+      }
+      if (t >= r) return r;
+      if (solidCell(cx, cy)) return t;
+    }
+  }
+  function losClear(x0, y0, x1, y1, solidCell) {
+    const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy);
+    if (d < 1e-3) return true;
+    return rayDist(x0, y0, dx / d, dy / d, d, solidCell) >= d - 1e-3;
+  }
+  function visPoly(cx, cy, r, solidCell, rays) {
+    const pts = [];
+    for (let i = 0; i < rays; i++) {
+      const a = i / rays * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
+      const d = rayDist(cx, cy, dx, dy, r, solidCell);
+      pts.push(cx + dx * d, cy + dy * d);
+    }
+    return pts;
+  }
+
+  // src/creatures/common.js
   function roamStep(R, e, dt, rnd, pre, ok) {
     if (R.rx === void 0) {
       R.rx = e.hx;
@@ -7241,7 +7207,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return hit;
   }
-  var SPIDER = { hold: 6, feel: 14, step: 1.5, fall: 900 };
   function surfNormal(x, y, R, solidCell) {
     const cx0 = Math.floor(x / CELL), cy0 = Math.floor(y / CELL), rc = Math.ceil(R / CELL);
     let nx = 0, ny = 0, n = 0, d = Infinity, px = 0, py = -1;
@@ -7266,9 +7231,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const l = Math.hypot(nx, ny);
     return l < 1e-6 ? { x: px, y: py, d, px, py } : { x: nx / l, y: ny / l, d, px, py };
   }
-  function spiderSeat(e, S, solidCell, maxMove) {
-    return surfSeat(e, S, solidCell, maxMove, SPIDER.hold, SPIDER.feel);
-  }
   function surfSeat(e, S, solidCell, maxMove, hold, feel) {
     let n = surfNormal(e.x, e.y, feel, solidCell);
     if (!n) return false;
@@ -7286,6 +7248,46 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S.ny = n.y;
     S.py = n.py;
     return true;
+  }
+
+  // src/main.js
+  var { useRef, useEffect, useState, useMemo } = React;
+  var h = React.createElement;
+  var SPUTTER_FUEL = 0.25;
+  function sputterStep(st, dt, fuel, on, rnd) {
+    rnd = rnd || Math.random;
+    st.start = false;
+    if (!on) {
+      st.cut = 0;
+      st.gap = 0;
+      st.onT = 0;
+      return false;
+    }
+    st.onT = (st.onT || 0) + dt;
+    st.cut = Math.max(0, (st.cut || 0) - dt);
+    st.gap = Math.max(0, (st.gap || 0) - dt);
+    if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
+      const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;
+      if (rnd() < dt * (1 + 7 * w)) {
+        st.cut = 0.04 + rnd() * (0.05 + 0.08 * w);
+        st.gap = st.cut + 0.1 + rnd() * 0.2;
+        st.start = true;
+      }
+    }
+    return st.cut > 0;
+  }
+  function jetPitch(onT) {
+    return 1 + 0.7 * Math.min(Math.max(onT, 0), 3) / 3;
+  }
+  function jellyPal(u) {
+    const P = {};
+    for (const [k, , , , f] of JE_COLS) P[f] = jcol(k, u);
+    return P;
+  }
+  var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
+  var SPIDER = { hold: 6, feel: 14, step: 1.5, fall: 900 };
+  function spiderSeat(e, S, solidCell, maxMove) {
+    return surfSeat(e, S, solidCell, maxMove, SPIDER.hold, SPIDER.feel);
   }
   var segNear = (L, x, y) => {
     const vx = L.bx - L.ax, vy = L.by - L.ay, ll = vx * vx + vy * vy || 1;

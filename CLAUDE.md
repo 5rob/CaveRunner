@@ -148,6 +148,7 @@ rest and imports them. Where things are (`main.js` line numbers as of v96, they 
 | `planCast` | `src/spells/cast.js` (with `blankShot`, `effRecharge`, `gunPassives`): **the heart of it** — works out what one pull of the trigger fires |
 | `gunRate` / `buildAdvice` | `src/spells/advisor.js` (with `modPreview`): the build advisor |
 | `castGroups` / `groupStats` | `src/spells/bagsim.js` (with `pullSteps`, the `fireSim*` preview): the outlines and stat lines in the build screen |
+| creature movement pieces | `src/creatures/common.js`: `roamStep`, `turnToward`, `flyMove`, `surfNormal`, `surfSeat` |
 | sprites | ~3050–3600: `drawGun`, `drawRunner`, `drawEnemy` (one per creature body) |
 | `PERKS` / `perkBag` | `src/data/perks.js`: the 31 perks, and folding an owned list into one effective bag |
 | vision / fog memory | `src/world/vision.js`: `rayDist`, `losClear`, `visPoly`, `fogReveal`, `nestFog` |

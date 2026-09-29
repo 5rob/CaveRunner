@@ -28,3 +28,4 @@ export * from './world/nests.js';
 export * from './world/strata.js';
 export * from './world/decorate.js';
 export * from './world/level.js';
+export * from './creatures/common.js';
