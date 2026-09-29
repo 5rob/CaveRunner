@@ -11,11 +11,12 @@ import { HUNTERS } from '../../data/creatures.js';
 import { DEV, jcol, kr, spr } from '../../dev/knobs.js';
 import { fireArea } from '../../world/fire.js';
 import { builtAt } from '../../world/zones.js';
+import { ACTS } from '../creatures/acts.js';
 import { puffSpores } from './ambience.js';
 import { fireBlast, ignite, youAlight } from './fire.js';
 import { burst, goo, splat } from './particles.js';
 import { hurt } from './player.js';
-import { ratFrame, spawnRat } from './rats.js';
+import { ratFrame } from './rats.js';
 import { lineOfSight, solidAt, solidCell } from './terrain.js';
 
 // one pull of an enemy's trigger: aimed at the player, and a shotgun type throws
@@ -43,16 +44,9 @@ export function damageEnemy(W, j, dmg) {
   SFX.creature(e.k, 'die', e.x, e.ty);
   W.enemies.splice(j, 1);
   e.dead = true;                        // its rats find out they've no home to go to
-  if (e.nest) {
-    // a nest: its own gold and everything its rats brought home, in a little shower
-    const all = Math.round(kr('raNestGold') * W.pb.gold) + e.nest.stash;
-    const n = Math.max(1, Math.min(14, Math.ceil(all / 8)));
-    for (let k = 0; k < n; k++)
-      W.coins.push({ x: e.x + (Math.random() - 0.5) * 8, y: e.y, amount: Math.floor(all / n) + (k < all % n ? 1 : 0),
-        t: Math.random() * 6.28, vx: (Math.random() - 0.5) * 100, vy: -80 - Math.random() * 80 });
-    SFX.fx('coinland', e.x, e.y);
-    return;
-  }
+  // a creature's own end (ACTS, D20): a nest showers its gold instead of the one coin
+  const A = ACTS[e.k.act];
+  if (A && A.die && A.die(W, e)) return;
   W.coins.push({ x: e.x, y: e.ty,
     amount: Math.round((e.k.gold + Math.floor(Math.random() * 3)) * W.pb.gold),
     t: Math.random() * 6.28, vy: -60 - Math.random() * 40 });
@@ -69,6 +63,8 @@ export const natural = (W, x, y) => !builtAt(W.zone, x, y);      // jellies keep
 // flash of your last hit fading.
 export function stepEnemies(W, G, F) {
   const { dt, pcx, pcy } = F;
+  // one creature's frame, for its act's hooks (ACTS, D20): made once, refilled per enemy
+  const C = { dt, pcx, pcy, i: 0, dx: 0, dy: 0, dist: 0, sees: 0, hunting: false };
   // What an enemy does is what it is. Shooters hold a hover and fire on sight,
   // turrets never move and wind up a long shot, chasers come at you and hurt on
   // contact, bombers come at you and burst. Runs backwards because a bomber
@@ -104,32 +100,21 @@ export function stepEnemies(W, G, F) {
       else if (dist > reach * DEV.loseAggro) e.aggro = false;
     } else e.aggro = false;
     const hunting = chaser && e.aggro;
+    C.i = i; C.dx = dx; C.dy = dy; C.dist = dist; C.sees = sees; C.hunting = hunting;
     // the odd noise from anything near, seen or not: you hear the cave before you see it
     if (dist < 380 && Math.random() < 0.07 * dt) SFX.creature(k, 'idle', e.x, e.ty);
     // a bomber closing in ticks like a fuse, faster the nearer it gets
     if (hunting && k.act === 'bomb' && dist < 160 && (e.fuseT = (e.fuseT || 0) - dt) <= 0) {
       e.fuseT = 0.12 + dist / 400; SFX.creature(k, 'fuse', e.x, e.ty);
     }
-    if (k.act === 'nest') {
-      // lets a rat out now and then, while it has fewer than its max alive; only while
-      // you're near enough for it to matter
-      const N = e.nest;
-      if (!N.max) { N.max = Math.round(kr('raMax')); N.wake = kr('raWake'); }
-      if (dist < N.wake && (N.t -= dt) <= 0) {
-        N.t = kr('raSpawn');
-        let out = 0;
-        for (const r of W.enemies) if (r.home === e) out++;
-        if (out < N.max) spawnRat(W, e);
-      }
-      e.chill = 1; e.ty = e.y;
-      continue;
-    }
-    if (k.act === 'rat') {
+    // the act's move (ACTS, D20); true = it did its whole frame, nothing below runs for it
+    const A = ACTS[k.act];
+    if (A && A.move) { if (A.move(W, G, e, C)) continue; }
+    else if (k.act === 'rat') {
       ratFrame(W, G, e, dt, dist, hunting, pcx, pcy);
       e.chill = 1; e.ty = e.y;
       continue;
-    }
-    if (k.act === 'spider') {
+    } else if (k.act === 'spider') {
       // only on rock and its own lines (spiderStep); strings you when it has a clear line
       const cold = e.chill && e.chill < 1 ? e.chill : 1;
       if (spiderStep(e, { solidCell: (cx, cy) => solidCell(W, cx, cy), webs: W.webs, hunting, goal: { x: pcx, y: pcy }, rnd: Math.random,
