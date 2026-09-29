@@ -3,7 +3,7 @@
 // parts on each floor; the lists are emptied in place, never replaced, because the death
 // replay's recorder holds them by reference.
 
-import { CH, CW, PLAYER_HP } from '../core/consts.js';
+import { CH, CW, PLAYER_HP, SIGHT, VIEW_MIN_H, VIEW_W } from '../core/consts.js';
 import { perkBag } from '../data/perks.js';
 import { fireNew } from '../world/fire.js';
 import { fogStart } from '../world/vision.js';
@@ -20,6 +20,21 @@ export function makeWorld() {
     // what the props did to you this frame (slowed, slick, holding a vine, gravity flipped),
     // read by next frame's steering; decorStep makes a new one each frame
     zfx: { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 },
+
+    // ---- the clock, the camera, the torch ----
+    time: 0,                        // seconds of play (step adds dt)
+    levelT: 0,                      // seconds on this floor (the floor's name card)
+    best: 0,                        // the highest you've climbed on this floor
+    // the camera: draw() eases it toward you, so step() reads last frame's
+    camX: 0, camY: 0, camReady: false,
+    unitPx: 1,                      // css pixels per world unit, set while drawing
+    viewW: VIEW_W, viewH: VIEW_MIN_H,   // the view in world units, set while drawing
+    // one flicker number drives the flame and the lamp, so the light breathes with the fire
+    flick: 1,
+    torchR: SIGHT,                  // how far the lamp reaches this frame
+    visPts: [],                     // the line-of-sight fan from you, this frame
+    leanX: 0, leanY: 0,             // the hand torch's flame lean (sprung, trails behind you)
+    glowN: 0,                       // the torch glow's flicker
 
     // ---- terrain ----
     mat: null, img: null,           // the rock: solid cells, and its pixels (drawn to the terrain canvas)

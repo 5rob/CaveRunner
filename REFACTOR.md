@@ -359,7 +359,7 @@ What the code says about this phase (checked at the end of Phase 2):
   - [x] the swapped lists: `enemies`, `pickups`, `props`
   - [x] fog: `seen`, `deepFog`
   - [x] fire: `fire`, `firePlants`, `fireArches`, `fireCarts`, `firePropN`, `firePropLast`, `fireLoop`, `fireN`, `fireVis`
-  - [ ] player, camera, clock: `p`, `pb`, `ghost`, `zfx`, `time`, `levelT`, `best`, `camX`, `camY`, `camReady`, `unitPx`, `viewW`, `viewH`, `flick`, `torchR`, `visPts`, `leanX`…
+  - [x] player, camera, clock: `p`, `pb`, `ghost`, `zfx`, `time`, `levelT`, `best`, `camX`, `camY`, `camReady`, `unitPx`, `viewW`, `viewH`, `flick`, `torchR`, `visPts`, `leanX`…
   - [ ] the run's lists: `bullets`, `enemyShots`, `smoke`, `sparks`, … (never replaced)
   - [ ] frame timers and loops private to `step`/`decorStep`/`plantGlow`/`dropOre`
 - [ ] **P3.3 Test hooks from the world object.** `window.__lvl` becomes `W` (plus the
@@ -687,3 +687,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.2 (4) | `seen`, `deepFog` to `W` (36 references). `makeWorld` now calls `fogStart()` (pure) where the closure did. | probe SAME, logic 33/33, smoke ok, replay ok |
 | 2026-09-29 | Phase 3, P3.2 (5) | Fire group to `W` (9 names, 78 references), its comment moved with it. `fire` (logic + browser) and `replay` run too. | probe SAME, logic 33/33, smoke ok, fire ok, replay ok |
 | 2026-09-29 | Phase 3, P3.2 (6a) | The player group: `p`, `pb`, `ghost`, `zfx` to `W` (511 references, `p` is most of them). Two stale closure comments trimmed to point at `W`. `replay`, `perks` run too. | probe SAME, logic 33/33, smoke ok, replay ok, perks ok |
+| 2026-09-29 | Phase 3, P3.2 (6b) | Clock, camera and torch to `W`: `time`, `levelT`, `best`, `camX`/`camY`/`camReady`, `unitPx`, `viewW`/`viewH`, `flick`, `torchR`, `visPts`, `leanX`/`leanY`, `glowN` (216 references). Their step-private helpers (`leanVX`, `flickN`, `torchT`…) wait for the timers group. `replay`, `torch` run too. | probe SAME, logic 33/33, smoke ok, replay ok, torch ok |

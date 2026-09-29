@@ -131,15 +131,15 @@ export function Game({ input }) {
     decoC.width = CW; decoC.height = CH;
     const dctx = decoC.getContext('2d');
     const dparts = [], amb = [], clouds = [], rings = [], devils = [];
-    let decoFrame = 0, viewW = VIEW_W, viewH = VIEW_MIN_H, dripHurt = 0;
+    let decoFrame = 0, dripHurt = 0;
     // the hand torch's flame lean: a sprung offset dragged opposite to how you move,
     // the same way the jet flame swings, so the fire trails behind you
-    let leanX = 0, leanY = 0, leanVX = 0, leanVY = 0, glowN = 0;
+    let leanVX = 0, leanVY = 0;
     const aimPath = [];                              // scratch buffer for the aim line
-    let smokeAcc = 0, time = 0, levelT = 0, camX = 0, camY = 0, camReady = false;
+    let smokeAcc = 0;
     // the torch: one flicker number drives both the flame and the lamp, so the light
     // in the cave breathes exactly as much as the fire does
-    let flick = 1, flickN = 0, torchT = 0, torchAcc = 0, torchR = SIGHT, visPts = [];
+    let flickN = 0, torchT = 0, torchAcc = 0;
 
     // The torch hand: whichever one the gun is not in, so the two never sit on top of
     // each other. Aiming behind you swaps hands, the same way the gun does.
@@ -171,7 +171,7 @@ export function Game({ input }) {
     const webDist = (L, x, y) => { const q = webNear(L, x, y); return Math.hypot(q.x - x, q.y - y); };
 
     const toast = text => { toasts.push({ text, t: 2.2 }); if (toasts.length > 3) toasts.shift(); };
-    let best = 0, raf, last = performance.now();
+    let raf, last = performance.now();
 
     // ---- the death replay's recorder (see RP_HZ) ----
     // REC.snaps: what draw() reads round you, RP_HZ a second. Terrain: tBase/dBase are the rock
@@ -214,7 +214,7 @@ export function Game({ input }) {
         }
         return out;
       };
-      const S = { t: REC.t, time, flick, leanX, leanY, glowN, fireN: W.fireN, p: rpClone(W.p),
+      const S = { t: REC.t, time: W.time, flick: W.flick, leanX: W.leanX, leanY: W.leanY, glowN: W.glowN, fireN: W.fireN, p: rpClone(W.p),
         ghost: W.ghost ? rpClone(W.ghost) : null };
       for (const k in RP_ARR) S[k] = grab(RP_ARR[k], 40);
       S.enemies = grab(W.enemies, 40, 'ty'); S.pickups = grab(W.pickups, 40); S.props = grab(W.props, 120);
@@ -307,19 +307,19 @@ export function Game({ input }) {
       // swap the recording in
       const keepL = {};
       for (const k in RP_ARR) { const L = RP_ARR[k]; keepL[k] = L.splice(0, L.length, ...F[k]); }
-      const keep = { enemies: W.enemies, pickups: W.pickups, props: W.props, fire: W.fire, firePlants: W.firePlants, seen: W.seen, ghost: W.ghost, time, flick, leanX, leanY, glowN,
-        fireN: W.fireN, camX, camY, unitPx, torchR, visPts, viewW, viewH, p: Object.assign({}, W.p) };
+      const keep = { enemies: W.enemies, pickups: W.pickups, props: W.props, fire: W.fire, firePlants: W.firePlants, seen: W.seen, ghost: W.ghost, time: W.time, flick: W.flick, leanX: W.leanX, leanY: W.leanY, glowN: W.glowN,
+        fireN: W.fireN, camX: W.camX, camY: W.camY, unitPx: W.unitPx, torchR: W.torchR, visPts: W.visPts, viewW: W.viewW, viewH: W.viewH, p: Object.assign({}, W.p) };
       W.enemies = F.enemies; W.pickups = F.pickups; W.props = F.props; W.firePlants = [];
       W.fire = { list: near.fire, t: RT.fireT }; W.seen = RT.fog;
-      W.ghost = F.ghost; time = F.time; flick = F.flick; leanX = F.leanX; leanY = F.leanY; glowN = F.glowN; W.fireN = near.fireN;
+      W.ghost = F.ghost; W.time = F.time; W.flick = F.flick; W.leanX = F.leanX; W.leanY = F.leanY; W.glowN = F.glowN; W.fireN = near.fireN;
       Object.assign(W.p, F.p);
       RPV = V;
       try { draw(); } finally {
         // and the live world back, exactly as it was
         RPV = null;
         for (const k in RP_ARR) { const L = RP_ARR[k]; L.splice(0, L.length, ...keepL[k]); }
-        ({ enemies: W.enemies, pickups: W.pickups, props: W.props, fire: W.fire, firePlants: W.firePlants, seen: W.seen, ghost: W.ghost, time, flick, leanX, leanY, glowN,
-          fireN: W.fireN, camX, camY, unitPx, torchR, visPts, viewW, viewH } = keep);
+        ({ enemies: W.enemies, pickups: W.pickups, props: W.props, fire: W.fire, firePlants: W.firePlants, seen: W.seen, ghost: W.ghost, time: W.time, flick: W.flick, leanX: W.leanX, leanY: W.leanY, glowN: W.glowN,
+          fireN: W.fireN, camX: W.camX, camY: W.camY, unitPx: W.unitPx, torchR: W.torchR, visPts: W.visPts, viewW: W.viewW, viewH: W.viewH } = keep);
         Object.assign(W.p, keep.p);
         for (let k = 0; k < near.fire.length; k++) RT.fireT[near.fire[k]] = 0;
       }
@@ -404,8 +404,8 @@ export function Game({ input }) {
       bullets.length = enemyShots.length = smoke.length = 0;
       sparks.length = flashes.length = coins.length = arcs.length = 0;
       torchP.length = 0; motes.length = 0;
-      camReady = false; best = 0;
-      levelT = 0;                             // the floor's name card gets its three seconds
+      W.camReady = false; W.best = 0;
+      W.levelT = 0;                             // the floor's name card gets its three seconds
       W.seen = fogStart(); W.deepFog = nestFog(level.nests);
       if (W.pb.seeAll) W.seen.fill(2);            // All-Seeing Eye lights the whole floor
       paintFog();                             // otherwise every floor starts dark again
@@ -487,7 +487,6 @@ export function Game({ input }) {
 
     // ---- mouse ----
     const mouse = input.current.mouse;
-    let unitPx = 1;   // css pixels per world unit, set while drawing
     const mMove = e => {
       if (e.pointerType !== 'mouse') return;
       const r = c.getBoundingClientRect();
@@ -636,14 +635,14 @@ export function Game({ input }) {
     const ratOnWeb = onWebIn(webs);
     function navFor(o, goal, R) {
       // (the rock changing only counts once a second, or a drill would rebuild them every frame)
-      if (!o.F || (o.v !== W.terrainV && time - o.t > 1) || Math.hypot(goal.x - o.fx, goal.y - o.fy) > (o === navYou ? 12 : 6) ||
-          (o === navYou && time - o.t > 0.4) || (o.wn !== webs.length && time - o.t > 1)) {
+      if (!o.F || (o.v !== W.terrainV && W.time - o.t > 1) || Math.hypot(goal.x - o.fx, goal.y - o.fy) > (o === navYou ? 12 : 6) ||
+          (o === navYou && W.time - o.t > 0.4) || (o.wn !== webs.length && W.time - o.t > 1)) {
         // only the web lines that cross the field's square, so a floor of webs costs nothing
         const half = (R + 1) * NAV * CELL, near = webs.filter(L =>
           Math.max(L.a0x, L.b0x) > goal.x - half && Math.min(L.a0x, L.b0x) < goal.x + half &&
           Math.max(L.a0y, L.b0y) > goal.y - half && Math.min(L.a0y, L.b0y) < goal.y + half);
         o.F = navField(ratSolid, goal.x, goal.y, R, near.length ? onWebIn(near) : null);
-        o.v = W.terrainV; o.fx = goal.x; o.fy = goal.y; o.t = time; o.wn = webs.length;
+        o.v = W.terrainV; o.fx = goal.x; o.fy = goal.y; o.t = W.time; o.wn = webs.length;
       }
       return o.F;
     }
@@ -1451,7 +1450,7 @@ export function Game({ input }) {
       } else W.p.burn = 0;
       // flames and smoke off the burning pixels you can see, and the crackle at the nearest blaze
       if (any) {
-        const x0 = camX / CELL - 4, x1 = (camX + viewW) / CELL + 4, y0 = camY / CELL - 4, y1 = (camY + viewH) / CELL + 4;
+        const x0 = W.camX / CELL - 4, x1 = (W.camX + W.viewW) / CELL + 4, y0 = W.camY / CELL - 4, y1 = (W.camY + W.viewH) / CELL + 4;
         const want = Math.min(20, Math.ceil(L.length * dt * 2.5));
         for (let a = 0, got = 0; a < want * 3 && got < want && dparts.length < 700; a++) {
           const i = L[(Math.random() * L.length) | 0], x = i % CW, y = (i / CW) | 0;
@@ -1791,7 +1790,7 @@ export function Game({ input }) {
             if (me && !pr.heard && Math.hypot(pcx - pr.x, pcy - pr.y) < 170) { pr.heard = 1; SFX.fx('eyes', pr.x, pr.y); }
             break;
           case 'matter': {                           // gravity turns over near it
-            const by = pr.y + Math.sin(time * 1.3 + pr.seed * 9) * 3, dd = Math.hypot(pcx - pr.x, pcy - by);
+            const by = pr.y + Math.sin(W.time * 1.3 + pr.seed * 9) * 3, dd = Math.hypot(pcx - pr.x, pcy - by);
             if (me && dd < 48) z.rev = Math.max(z.rev, 1 - dd / 48);
             if (me && dd < 12 && pr.cd <= 0) { hurt(PROP_DMG.matter); pr.cd = 0.5; }
             break;
@@ -1833,7 +1832,7 @@ export function Game({ input }) {
         const q = dparts[i];
         q.life -= dt;
         q.vy += GRAVITY * q.g * dt;
-        if (q.wob != null) q.vx = Math.sin(time * 2 + q.wob) * 6;
+        if (q.wob != null) q.vx = Math.sin(W.time * 2 + q.wob) * 6;
         if (q.grow) q.s += dt * 3;
         q.x += q.vx * dt; q.y += q.vy * dt;
         let dead = q.life <= 0;
@@ -1904,7 +1903,7 @@ export function Game({ input }) {
     // a jelly's pulse blows a puff of spores out of its rim, back the way it pushes; drag
     // (kx, ky fading at kd) settles them, then they drift like any other spore
     function puffSpores(e) {
-      if (e.x < camX - 150 || e.x > camX + viewW + 150 || e.y < camY - 150 || e.y > camY + viewH + 150) return;
+      if (e.x < W.camX - 150 || e.x > W.camX + W.viewW + 150 || e.y < W.camY - 150 || e.y > W.camY + W.viewH + 150) return;
       const S = e.je, B = jellyBell(e.r, S.shape, kru('jeSquash', S.u.sq));
       const c = Math.cos(S.hd), sn = Math.sin(S.hd), n = Math.round(kr('jeSpores'));
       for (let i = 0; i < n && amb.length < 500; i++) {
@@ -1940,7 +1939,7 @@ export function Game({ input }) {
         if (pgC.width < w || pgC.height < h) { pgC.width = Math.max(pgC.width, w); pgC.height = Math.max(pgC.height, h); }
         pgCtx.setTransform(1, 0, 0, 1, 0, 0); pgCtx.clearRect(0, 0, w, h);
         pgCtx.setTransform(1 / CELL, 0, 0, 1 / CELL, -bx0, -by0);
-        for (const pr of plants) drawProp(pgCtx, pr, time, TH);
+        for (const pr of plants) drawProp(pgCtx, pr, W.time, TH);
         pd = pgCtx.getImageData(0, 0, w, h).data;
       }
       // compose the art: rock over the decoration layer, the plants over both
@@ -1959,7 +1958,7 @@ export function Game({ input }) {
       }
       const out = new ImageData(w, h);
       if (!plantGlowFill(out.data, A, w, h, { ox: x0w, oy: y0w, px: CELL, cx: e.x, cy: e.y, reach, white: W.plantW,
-        top: kru('jePlantTop', u.plant) / 100, strength, t: time * kru('jePlantTwinkle', u.plant),
+        top: kru('jePlantTop', u.plant) / 100, strength, t: W.time * kru('jePlantTwinkle', u.plant),
         size: kru('jePlantSize', u.plant), rgb: hexArr(jcol('jeColGlow', u.col)), lit: seenAt })) return;
       if (pgGlow.width < w || pgGlow.height < h) { pgGlow.width = Math.max(pgGlow.width, w); pgGlow.height = Math.max(pgGlow.height, h); }
       pgGlowCtx.putImageData(out, 0, 0);
@@ -1969,7 +1968,7 @@ export function Game({ input }) {
       ctx.imageSmoothingEnabled = sm;
     }
     function stepAmbience(dt) {
-      const x0 = camX - 30, y0 = camY - 30, w = viewW + 60, h = viewH + 60;
+      const x0 = W.camX - 30, y0 = W.camY - 30, w = W.viewW + 60, h = W.viewH + 60;
       const T = themeFor(W.floor);
       for (const kind of W.ambKinds) {
         if (kind === 'devils') {
@@ -2000,7 +1999,7 @@ export function Game({ input }) {
       for (let i = amb.length - 1; i >= 0; i--) {
         const q = amb[i];
         q.life -= dt;
-        if (q.wob != null) q.x += Math.sin(time * 1.3 + q.wob) * 6 * dt;
+        if (q.wob != null) q.x += Math.sin(W.time * 1.3 + q.wob) * 6 * dt;
         if (q.kx || q.ky) {                             // a puff's kick, dying away under drag
           q.x += q.kx * dt; q.y += q.ky * dt;
           const k = Math.exp(-q.kd * dt); q.kx *= k; q.ky *= k;
@@ -2020,8 +2019,8 @@ export function Game({ input }) {
     }
 
     function step(dt) {
-      time += dt;
-      levelT += dt;
+      W.time += dt;
+      W.levelT += dt;
       // a toast raised while the game was paused (picking a mod up, say) waits here,
       // because nothing runs on a paused frame
       if (input.current.pendingToast) { toast(input.current.pendingToast); input.current.pendingToast = null; }
@@ -2206,7 +2205,7 @@ export function Game({ input }) {
       // full at the trigger ring (vis is what the Trajectory Sight line reads)
       if (TR.active) R = { on: TR.on, show: true, nx: TR.nx, ny: TR.ny, vis: Math.min(1, TR.mag / AIM_DEAD) };
       else if (mouse.inside) {
-        const dx = camX + mouse.x / unitPx - gx, dy = camY + mouse.y / unitPx - gy, d = Math.hypot(dx, dy);
+        const dx = W.camX + mouse.x / W.unitPx - gx, dy = W.camY + mouse.y / W.unitPx - gy, d = Math.hypot(dx, dy);
         if (d > 1) R = { on: mouse.down, show: true, nx: dx / d, ny: dy / d };
       }
       // Pinpointer aims for you: the gun locks onto the nearest creature and you only
@@ -2632,7 +2631,7 @@ export function Game({ input }) {
       if (near) {
         const iy = near.src === 'shop' ? near.it.y : near.src === 'room' ? near.r.y : near.q.y;
         const dprc = window.devicePixelRatio || 1;
-        pbottom = Math.round(Math.max(10, c.height / dprc - (iy - 16 - camY) * unitPx));
+        pbottom = Math.round(Math.max(10, c.height / dprc - (iy - 16 - W.camY) * W.unitPx));
       }
       const sig = nearKey + ':' + (label && label.can ? 1 : 0) + ':' + inShop + ':' + Math.round(pbottom / 16);
       if (nearKey !== -1 && nearKey !== lastNear) SFX.fx('prompt');   // a soft blip as a card comes up
@@ -2850,7 +2849,7 @@ export function Game({ input }) {
           else { e.x = wx; e.y = wy; }
         }
         e.chill = 1;                                  // fields re-apply it every frame
-        e.ty = k.kp ? e.y : e.y + Math.sin(time * 2 + e.phase) * (hunting ? 2 : 4);
+        e.ty = k.kp ? e.y : e.y + Math.sin(W.time * 2 + e.phase) * (hunting ? 2 : 4);
 
         // contact: a chaser hurts you by reaching you, a bomber goes off
         if (hunting && dist < e.r + 14 && e.touch <= 0) {
@@ -3032,7 +3031,7 @@ export function Game({ input }) {
         if (flashes[i].t > 0.25) flashes.splice(i, 1);
       }
 
-      best = Math.max(best, Math.round((W.start.y - W.p.y) / 10));
+      W.best = Math.max(W.best, Math.round((W.start.y - W.p.y) / 10));
 
       // ---- the torch ----
       // A random walk with two sines on top, which is what makes a flame gutter rather
@@ -3041,7 +3040,7 @@ export function Game({ input }) {
       torchT += dt;
       flickN += (Math.random() - 0.5) * 2.6 * dt;
       flickN *= 0.94;
-      flick = clamp(0.94 + flickN + 0.04 * Math.sin(torchT * 11.3) + 0.025 * Math.sin(torchT * 19.7),
+      W.flick = clamp(0.94 + flickN + 0.04 * Math.sin(torchT * 11.3) + 0.025 * Math.sin(torchT * 19.7),
         0.84, 1);
       torchAcc += dt;
       while (torchAcc > 0.04) {
@@ -3063,11 +3062,11 @@ export function Game({ input }) {
       // the flame's lean: spring toward "opposite your velocity", so a sudden move flings
       // it back and it wobbles upright again when you stop
       const wantX = clamp(-W.p.vx * 0.055, -11, 11), wantY = clamp(-W.p.vy * 0.03, -5, 7);
-      leanVX += ((wantX - leanX) * 90 - leanVX * 9) * dt;
-      leanVY += ((wantY - leanY) * 90 - leanVY * 9) * dt;
-      leanX += leanVX * dt; leanY += leanVY * dt;
+      leanVX += ((wantX - W.leanX) * 90 - leanVX * 9) * dt;
+      leanVY += ((wantY - W.leanY) * 90 - leanVY * 9) * dt;
+      W.leanX += leanVX * dt; W.leanY += leanVY * dt;
       // the glow gets its own quicker, deeper flicker on top of flick (the map light is untouched)
-      glowN += (Math.random() - 0.5) * 6 * dt; glowN *= 0.9;
+      W.glowN += (Math.random() - 0.5) * 6 * dt; W.glowN *= 0.9;
 
       // ---- portal motes ----
       portalAcc += dt;
@@ -3125,7 +3124,7 @@ export function Game({ input }) {
       const playPx = c.height - ctlPx;
       const s = Math.min(c.width / VIEW_W, playPx / VIEW_MIN_H) * DEV.zoom * (RPV ? RPV.zoom : 1), vw = c.width / s, vh = c.height / s;
       const vhp = playPx / s;
-      unitPx = s / dpr;
+      W.unitPx = s / dpr;
       const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
 
       // camera (a replay's is wherever the viewer has dragged it, or on you)
@@ -3134,33 +3133,33 @@ export function Game({ input }) {
           RPV.cx = vw >= WW ? WW / 2 : clamp(RPV.cx - vw / 2, 0, WW - vw) + vw / 2;
           RPV.cy = clamp(RPV.cy - vhp * 0.55, 0, Math.max(0, WH - vhp)) + vhp / 2;
         }
-        camX = RPV.cx - vw / 2; camY = RPV.cy - vhp / 2; RPV.unit = unitPx;
+        W.camX = RPV.cx - vw / 2; W.camY = RPV.cy - vhp / 2; RPV.unit = W.unitPx;
       } else {
         const tx = vw >= WW ? (WW - vw) / 2 : clamp(pcx - vw / 2, 0, WW - vw);
         const ty = clamp(pcy - vhp * 0.55, 0, Math.max(0, WH - vhp));
-        if (!camReady) { camX = tx; camY = ty; camReady = true; }
-        camX += (tx - camX) * 0.15;
-        camY += (ty - camY) * 0.15;
+        if (!W.camReady) { W.camX = tx; W.camY = ty; W.camReady = true; }
+        W.camX += (tx - W.camX) * 0.15;
+        W.camY += (ty - W.camY) * 0.15;
       }
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.imageSmoothingEnabled = false;
       ctx.fillStyle = 'rgb(' + themeFor(W.floor).bg.join(',') + ')';
       ctx.fillRect(0, 0, c.width, c.height);
-      ctx.setTransform(s, 0, 0, s, -Math.round(camX * s), -Math.round(camY * s));
+      ctx.setTransform(s, 0, 0, s, -Math.round(W.camX * s), -Math.round(W.camY * s));
 
       // background and terrain (visible part only)
       // The background sits further back: it slides PARALLAX as far as the terrain does, so
       // it is shifted by the rest of the camera move. It still covers the view at every edge,
       // because the shift only ever pushes it toward the camera.
       const PARALLAX = 0.8;
-      const bgox = camX * (1 - PARALLAX), bgoy = camY * (1 - PARALLAX);
-      const bcx = camX - bgox, bcy = camY - bgoy;
+      const bgox = W.camX * (1 - PARALLAX), bgoy = W.camY * (1 - PARALLAX);
+      const bcx = W.camX - bgox, bcy = W.camY - bgoy;
       const bx0 = clamp(Math.floor(bcx / BCELL), 0, BW - 1), by0 = clamp(Math.floor(bcy / BCELL), 0, BH - 1);
       const bx1 = clamp(Math.ceil((bcx + vw) / BCELL) + 1, 1, BW), by1 = clamp(Math.ceil((bcy + vh) / BCELL) + 1, 1, BH);
       ctx.drawImage(bg, bx0, by0, bx1 - bx0, by1 - by0, bx0 * BCELL + bgox, by0 * BCELL + bgoy, (bx1 - bx0) * BCELL, (by1 - by0) * BCELL);
       // the shop's back wall
-      if (camY + vh > SHOP_Y) {
+      if (W.camY + vh > SHOP_Y) {
         ctx.fillStyle = '#241f28';
         ctx.fillRect(0, SHOP_Y, WW, (SHOP_FLOOR * CELL) - SHOP_Y);
         ctx.fillStyle = 'rgba(255,255,255,0.03)';
@@ -3187,9 +3186,9 @@ export function Game({ input }) {
         ctx.textAlign = 'left';
       }
 
-      const tx0 = clamp(Math.floor(camX / CELL), 0, CW - 1), ty0 = clamp(Math.floor(camY / CELL), 0, CH - 1);
-      const tx1 = clamp(Math.ceil((camX + vw) / CELL) + 1, 1, CW), ty1 = clamp(Math.ceil((camY + vh) / CELL) + 1, 1, CH);
-      viewW = vw; viewH = vh;
+      const tx0 = clamp(Math.floor(W.camX / CELL), 0, CW - 1), ty0 = clamp(Math.floor(W.camY / CELL), 0, CH - 1);
+      const tx1 = clamp(Math.ceil((W.camX + vw) / CELL) + 1, 1, CW), ty1 = clamp(Math.ceil((W.camY + vh) / CELL) + 1, 1, CH);
+      W.viewW = vw; W.viewH = vh;
       // the decoration layer (pass 2): behind the rock, in front of the back wall
       ctx.drawImage(RPV ? RT.dC : decoC, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
       ctx.drawImage(RPV ? RT.tC : terrain, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
@@ -3217,10 +3216,10 @@ export function Game({ input }) {
 
       // the props (pass 3), their drips and the theme's ambience
       const TH = themeFor(W.floor);
-      const onView = (x, y, m) => x > camX - m && x < camX + vw + m && y > camY - m && y < camY + vh + m;
+      const onView = (x, y, m) => x > W.camX - m && x < W.camX + vw + m && y > W.camY - m && y < W.camY + vh + m;
       for (const pr of W.props)
-        if (pr.x + pr.r > camX - 70 && pr.x + pr.l < camX + vw + 70 && pr.y + pr.b > camY - 90 && pr.y + pr.t0 < camY + vh + 90)
-          drawProp(ctx, pr, time, TH);
+        if (pr.x + pr.r > W.camX - 70 && pr.x + pr.l < W.camX + vw + 70 && pr.y + pr.b > W.camY - 90 && pr.y + pr.t0 < W.camY + vh + 90)
+          drawProp(ctx, pr, W.time, TH);
       for (const q of dparts) {
         if (q.glow) continue;
         ctx.globalAlpha = Math.min(1, q.life / q.max * 3);
@@ -3239,14 +3238,14 @@ export function Game({ input }) {
       for (const dv of devils) {                          // a dust devil: a funnel of grit
         ctx.globalAlpha = 0.7 * Math.min(1, dv.life / 1.5, (dv.max - dv.life) / 1);
         for (let k = 0; k < 24; k++) {
-          const hh = k / 24 * 30, r = 1.5 + hh * 0.35, a = time * 10 + k * 1.1;
-          ctx.fillRect(dv.x + Math.cos(a) * r + Math.sin(time * 3 + k) - 0.6, dv.y - hh - 0.6, 1.2, 1.2);
+          const hh = k / 24 * 30, r = 1.5 + hh * 0.35, a = W.time * 10 + k * 1.1;
+          ctx.fillRect(dv.x + Math.cos(a) * r + Math.sin(W.time * 3 + k) - 0.6, dv.y - hh - 0.6, 1.2, 1.2);
         }
       }
       for (const cl of clouds) {                          // a burst pod's spore cloud
         const a = Math.min(1, cl.life / 1.5) * 0.28;
         for (let k = 0; k < 5; k++) {
-          const ang = k * 1.26 + time * 0.6, rr = cl.r * 0.45;
+          const ang = k * 1.26 + W.time * 0.6, rr = cl.r * 0.45;
           ctx.globalAlpha = a; ctx.fillStyle = '#a8d85a';
           ctx.beginPath(); ctx.arc(cl.x + Math.cos(ang) * rr, cl.y + Math.sin(ang) * rr * 0.7, cl.r * 0.6, 0, 6.29); ctx.fill();
         }
@@ -3258,7 +3257,7 @@ export function Game({ input }) {
       ctx.globalAlpha = 1;
 
       // exit portal: a glowing pool with a slow swirl of dashes round its rim
-      const pulse = 0.55 + 0.25 * Math.sin(time * 3);
+      const pulse = 0.55 + 0.25 * Math.sin(W.time * 3);
       const pcxE = W.portal.x + W.portal.w / 2, pcyE = W.portal.y + W.portal.h / 2;
       ctx.globalAlpha = pulse * 0.35;
       ctx.fillStyle = COL.portal;
@@ -3270,7 +3269,7 @@ export function Game({ input }) {
       ctx.beginPath(); ctx.ellipse(pcxE, pcyE, W.portal.w * 0.22, W.portal.h * 0.26, 0, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = 0.6;
       ctx.strokeStyle = '#c8ffe4'; ctx.lineWidth = 1.2;
-      ctx.setLineDash([3, 5]); ctx.lineDashOffset = time * 12;
+      ctx.setLineDash([3, 5]); ctx.lineDashOffset = W.time * 12;
       ctx.beginPath(); ctx.ellipse(pcxE, pcyE, W.portal.w * 0.62, W.portal.h * 0.6, 0, 0, Math.PI * 2); ctx.stroke();
       ctx.setLineDash([]);
       ctx.globalAlpha = 1;
@@ -3285,9 +3284,9 @@ export function Game({ input }) {
 
       // static fields
       for (const f of fields) {
-        if (f.y > camY + vh + f.r || f.y < camY - f.r) continue;
+        if (f.y > W.camY + vh + f.r || f.y < W.camY - f.r) continue;
         const t = f.life / f.max;
-        const beat = 0.75 + 0.25 * Math.sin(time * (f.field === 'mine' ? 7 : 3));
+        const beat = 0.75 + 0.25 * Math.sin(W.time * (f.field === 'mine' ? 7 : 3));
         ctx.globalAlpha = 0.14 * beat * (f.field === 'mine' || f.field === 'dormant' ? 2 : 1);
         ctx.fillStyle = f.col;
         ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (f.field === 'mine' ? 0.35 : 1), 0, Math.PI * 2); ctx.fill();
@@ -3295,7 +3294,7 @@ export function Game({ input }) {
         ctx.strokeStyle = f.col;
         ctx.lineWidth = 1.5;
         ctx.setLineDash([5, 4]);
-        ctx.lineDashOffset = -time * 14;
+        ctx.lineDashOffset = -W.time * 14;
         ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.4 + 0.6 * t), 0, Math.PI * 2); ctx.stroke();
         ctx.setLineDash([]);
         ctx.globalAlpha = 1;
@@ -3311,17 +3310,17 @@ export function Game({ input }) {
         if (f.field === 'mine') {               // a red crystal, blinking faster when something's close
           dia(3.2, '#c8302a', '#ff9a90');
           const bl = f.near ? 18 : 5;
-          if (Math.sin(time * bl) > 0.3) { ctx.globalAlpha = 0.9; ctx.fillStyle = '#ffffff'; ctx.fillRect(f.x - 0.6, f.y - 0.6, 1.2, 1.2); }
+          if (Math.sin(W.time * bl) > 0.3) { ctx.globalAlpha = 0.9; ctx.fillStyle = '#ffffff'; ctx.fillRect(f.x - 0.6, f.y - 0.6, 1.2, 1.2); }
         } else if (f.field === 'dormant') {     // a dull orange crystal
           dia(3, '#b86a1c', '#ffd08a');
         } else if (f.field === 'slow') {        // an ice-white star
           ctx.strokeStyle = '#e8f8ff'; ctx.lineWidth = 0.8;
           ctx.beginPath();
-          for (let k = 0; k < 3; k++) { const a = k * 1.047 + time * 0.4; ctx.moveTo(f.x - Math.cos(a) * 4, f.y - Math.sin(a) * 4); ctx.lineTo(f.x + Math.cos(a) * 4, f.y + Math.sin(a) * 4); }
+          for (let k = 0; k < 3; k++) { const a = k * 1.047 + W.time * 0.4; ctx.moveTo(f.x - Math.cos(a) * 4, f.y - Math.sin(a) * 4); ctx.lineTo(f.x + Math.cos(a) * 4, f.y + Math.sin(a) * 4); }
           ctx.stroke();
         } else if (f.field === 'shield') {      // two shimmering arcs turning against each other
           ctx.strokeStyle = f.col; ctx.lineWidth = 1.2; ctx.globalAlpha = 0.7 * beat;
-          for (const [a0, sgn] of [[time * 1.3, 1], [-time * 1.7, -1]]) {
+          for (const [a0, sgn] of [[W.time * 1.3, 1], [-W.time * 1.7, -1]]) {
             ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (sgn > 0 ? 0.92 : 0.84), a0, a0 + 2.2); ctx.stroke();
             ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (sgn > 0 ? 0.92 : 0.84), a0 + 3.14, a0 + 5.3); ctx.stroke(); }
           ctx.globalAlpha = 1;
@@ -3331,19 +3330,19 @@ export function Game({ input }) {
         } else if (f.field === 'storm') {       // the cloud itself, over the top of the circle, with rain under it
           const cy = f.y - f.r * 0.85, t = Math.min(1, (f.max - f.life) * 3, f.life * 2);
           ctx.globalAlpha = 0.85 * t;
-          for (let k = 0; k < 7; k++) { const ox = (k - 3) * f.r * 0.28, oy = Math.sin(k * 1.7 + time * 0.8) * 2.5;
+          for (let k = 0; k < 7; k++) { const ox = (k - 3) * f.r * 0.28, oy = Math.sin(k * 1.7 + W.time * 0.8) * 2.5;
             ctx.fillStyle = k % 2 ? '#3a3e4a' : '#4c5160';
             ctx.beginPath(); ctx.arc(f.x + ox, cy + oy, f.r * (0.22 + 0.08 * Math.sin(k * 2.3)), 0, 6.283); ctx.fill(); }
           ctx.globalAlpha = 0.35 * t; ctx.strokeStyle = '#9ec8ff'; ctx.lineWidth = 0.6;
           ctx.beginPath();
-          for (let k = 0; k < 18; k++) { const x = f.x + (((k * 37.3 + time * 15) % (f.r * 1.8)) - f.r * 0.9),
-            y = cy + ((k * 23.7 + time * 160) % (f.r * 1.7));
+          for (let k = 0; k < 18; k++) { const x = f.x + (((k * 37.3 + W.time * 15) % (f.r * 1.8)) - f.r * 0.9),
+            y = cy + ((k * 23.7 + W.time * 160) % (f.r * 1.7));
             ctx.moveTo(x, y); ctx.lineTo(x - 0.6, y + 4); }
           ctx.stroke();
           ctx.globalAlpha = 1;
         } else if (f.field === 'glitter') {     // twinkling violet motes all over
-          for (let k = 0; k < 10; k++) { const a = k * 2.4 + time * 0.3, r = f.r * ((k * 0.37) % 1);
-            const tw = Math.sin(time * 9 + k * 1.3); if (tw < 0.2) continue;
+          for (let k = 0; k < 10; k++) { const a = k * 2.4 + W.time * 0.3, r = f.r * ((k * 0.37) % 1);
+            const tw = Math.sin(W.time * 9 + k * 1.3); if (tw < 0.2) continue;
             ctx.globalAlpha = tw; ctx.fillStyle = k % 3 ? '#e0a0ff' : '#ffffff';
             ctx.fillRect(f.x + Math.cos(a) * r - 0.7, f.y + Math.sin(a) * r - 0.7, 1.4, 1.4); }
           ctx.globalAlpha = 1;
@@ -3374,8 +3373,8 @@ export function Game({ input }) {
       // enemies
       for (const e of W.enemies) {
         const ey = e.ty;
-        if (ey > camY + vh + 20 || ey < camY - 20 || e.x < camX - 20 || e.x > camX + vw + 20) continue;
-        drawEnemy(ctx, e, time);
+        if (ey > W.camY + vh + 20 || ey < W.camY - 20 || e.x < W.camX - 20 || e.x > W.camX + vw + 20) continue;
+        drawEnemy(ctx, e, W.time);
         if ((e.home || e.nest) && e.hp >= e.hpMax) continue;   // rats and nests: a bar only once hurt
         const hw = 20, hx = e.x - hw / 2, hy = ey - e.r - 9;
         ctx.fillStyle = COL.barBg; ctx.fillRect(hx, hy, hw, 3);
@@ -3476,7 +3475,7 @@ export function Game({ input }) {
           dot(b.x - s * 0.35, b.y - s * 0.4, s * 0.3, '#6a6878', 1);
           ctx.globalAlpha = 1; ctx.strokeStyle = '#8a7a60'; ctx.lineWidth = 0.8;
           ctx.beginPath(); ctx.moveTo(b.x + cx * s, b.y + cy * s); ctx.lineTo(b.x + cx * s * 1.6, b.y + cy * s * 1.6); ctx.stroke();
-          const tw = Math.sin(time * 40) > 0;
+          const tw = Math.sin(W.time * 40) > 0;
           dot(b.x + cx * s * 1.7, b.y + cy * s * 1.7, tw ? 1 : 0.7, tw ? '#ffffff' : '#ffb347', 1);
         } else if (L === 'rocket') {          // a little rocket: body, fins, and a flickering flame
           ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy, b.vx));
@@ -3536,7 +3535,7 @@ export function Game({ input }) {
             ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, s * 0.6, t, t + 0.8); ctx.fill(); }
           ctx.fillStyle = '#6a6a58'; ctx.fillRect(-s * 1.7, -s * 0.8, s * 0.5, s * 1.6);
           ctx.restore();
-          if (Math.sin(time * 12) > 0) dot(b.x + ux * s * 1.2, b.y + uy * s * 1.2, 0.9, '#ff3a2a', 1);
+          if (Math.sin(W.time * 12) > 0) dot(b.x + ux * s * 1.2, b.y + uy * s * 1.2, 0.9, '#ff3a2a', 1);
         } else if (L === 'pollen') {          // a fuzzy puff
           for (let k = 0; k < 7; k++) { const a = k * 0.9 + b.spin * 0.3, r = s * (0.9 + 0.3 * Math.sin(k * 2.1 + b.spin));
             dot(b.x + Math.cos(a) * r, b.y + Math.sin(a) * r, 0.7, k % 2 ? b.col : '#f4ffb0', 0.9); }
@@ -3561,7 +3560,7 @@ export function Game({ input }) {
       // projectiles
       for (const b of enemyShots) {
         if (b.goo) {                           // poison spit: a wobbling glob with a wet highlight
-          const s = b.size, wob = 1 + 0.12 * Math.sin(time * 30 + b.x * 0.1);
+          const s = b.size, wob = 1 + 0.12 * Math.sin(W.time * 30 + b.x * 0.1);
           ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy, b.vx));
           ctx.fillStyle = b.edge || '#123d18';
           ctx.beginPath(); ctx.ellipse(0, 0, s * 1.45 * wob, s * 1.05 / wob, 0, 0, Math.PI * 2); ctx.fill();
@@ -3581,7 +3580,7 @@ export function Game({ input }) {
       for (const b of bullets) {
         if (b.hidden) continue;                 // Buzzsaw cuts without drawing a circle
         if (b.pull) {                           // Black Hole: purple haze, starry black core
-          const r = b.size, core = b.eat || r * 0.78, beat = 1 + 0.06 * Math.sin(time * 6 + b.spin);
+          const r = b.size, core = b.eat || r * 0.78, beat = 1 + 0.06 * Math.sin(W.time * 6 + b.spin);
           const g = ctx.createRadialGradient(b.x, b.y, core * 0.8, b.x, b.y, r * 1.55 * beat);
           g.addColorStop(0, 'rgba(197,140,255,0.75)');
           g.addColorStop(0.3, 'rgba(150,90,255,0.35)');
@@ -3591,9 +3590,9 @@ export function Game({ input }) {
           ctx.fillStyle = '#050208';
           ctx.beginPath(); ctx.arc(b.x, b.y, core, 0, Math.PI * 2); ctx.fill();
           for (let k = 0; k < 14; k++) {       // twinkling stars wheeling inside
-            const tw = Math.sin(time * 8 + k * 1.7);
+            const tw = Math.sin(W.time * 8 + k * 1.7);
             if (tw < 0.1) continue;
-            const ang = k * 2.4 + time * (0.5 + (k % 3) * 0.35), rad = core * (0.15 + ((k * 0.37) % 0.75));
+            const ang = k * 2.4 + W.time * (0.5 + (k % 3) * 0.35), rad = core * (0.15 + ((k * 0.37) % 0.75));
             const sx = b.x + Math.cos(ang) * rad, sy = b.y + Math.sin(ang) * rad, sz = 0.6 + tw * 0.9;
             ctx.globalAlpha = tw;
             ctx.fillStyle = k % 3 ? '#e6d4ff' : '#ffffff';
@@ -3649,8 +3648,8 @@ export function Game({ input }) {
       ctx.globalAlpha = 1;
 
       // the portal you arrived through: scenery only
-      if (W.arrival.y < camY + vh + 40 && W.arrival.y > camY - 40) {
-        const sway = 0.5 + 0.18 * Math.sin(time * 1.6);
+      if (W.arrival.y < W.camY + vh + 40 && W.arrival.y > W.camY - 40) {
+        const sway = 0.5 + 0.18 * Math.sin(W.time * 1.6);
         ctx.fillStyle = '#4a4550';
         ctx.fillRect(W.arrival.x - 16, W.arrival.y + 12, 32, 5);
         ctx.globalAlpha = 0.22 * sway;
@@ -3670,8 +3669,8 @@ export function Game({ input }) {
 
       // shop stock on its plinths
       for (const it of W.stock) {
-        if (it.y > camY + vh + 40 || it.y < camY - 40) continue;
-        const bob = Math.sin(time * 2 + it.x) * 2;
+        if (it.y > W.camY + vh + 40 || it.y < W.camY - 40) continue;
+        const bob = Math.sin(W.time * 2 + it.x) * 2;
         // the plinth: a narrow column dropping from just under the item down to the shop
         // floor (so it isn't left hovering), with a wider foot resting on the floor
         const floorY = SHOP_FLOOR * CELL;
@@ -3728,8 +3727,8 @@ export function Game({ input }) {
 
       // gold
       for (const g of coins) {
-        if (g.y > camY + vh + 30 || g.y < camY - 30) continue;
-        const bob = Math.sin(time * 4 + g.t) * 1.5;
+        if (g.y > W.camY + vh + 30 || g.y < W.camY - 30) continue;
+        const bob = Math.sin(W.time * 4 + g.t) * 1.5;
         ctx.fillStyle = '#d8a52a';
         ctx.beginPath(); ctx.ellipse(g.x, g.y + bob, 3.2, 4, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = COL.flame2;
@@ -3738,12 +3737,12 @@ export function Game({ input }) {
 
       // pickups
       for (const q of W.pickups) {
-        const qy = q.y + Math.sin(time * 2 + q.t) * 3;
-        if (qy > camY + vh + 30 || qy < camY - 30 || q.x < camX - 30 || q.x > camX + vw + 30) continue;
+        const qy = q.y + Math.sin(W.time * 2 + q.t) * 3;
+        if (qy > W.camY + vh + 30 || qy < W.camY - 30 || q.x < W.camX - 30 || q.x > W.camX + vw + 30) continue;
         if (q.kind === 'gun') {
           // a gun you've never held glows, with sparks streaking out of it; one you swapped
           // out and left on the ground doesn't, so you can tell new from discarded at a glance
-          if (!q.old) drawGunGlow(ctx, q.x, qy, time, q.t);
+          if (!q.old) drawGunGlow(ctx, q.x, qy, W.time, q.t);
           drawGun(ctx, q.x - 5, qy + 1, -0.22, 0.85, gunAccent(q.gun));
         } else {
           const m = MODS[q.id];
@@ -3765,14 +3764,14 @@ export function Game({ input }) {
       // the hidden rooms' prizes on their altars: a glowing perk sigil, or the +25 heart
       for (const r of W.rooms) {
         if (r.taken) continue;
-        if (r.y > camY + vh + 40 || r.y < camY - 40 || r.x < camX - 40 || r.x > camX + vw + 40) continue;
-        const bob = Math.sin(time * 2 + r.x) * 2.5;
+        if (r.y > W.camY + vh + 40 || r.y < W.camY - 40 || r.x < W.camX - 40 || r.x > W.camX + vw + 40) continue;
+        const bob = Math.sin(W.time * 2 + r.x) * 2.5;
         ctx.fillStyle = '#4a4550';
         ctx.fillRect(r.x - 12, r.y + 14, 24, 5);
         ctx.fillRect(r.x - 7, r.y + 5, 14, 10);
         if (r.kind === 'perk') {
           const pk = PERKS[r.id], col = pk.tint || COL.portal;
-          ctx.globalAlpha = 0.22 + 0.12 * Math.sin(time * 3);
+          ctx.globalAlpha = 0.22 + 0.12 * Math.sin(W.time * 3);
           ctx.fillStyle = col;
           ctx.beginPath(); ctx.arc(r.x, r.y + bob, 16, 0, Math.PI * 2); ctx.fill();
           ctx.globalAlpha = 1;
@@ -3782,7 +3781,7 @@ export function Game({ input }) {
           ctx.fillText(pk.glyph, r.x, r.y + 0.5 + bob);
           ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
         } else {
-          ctx.globalAlpha = 0.25 + 0.12 * Math.sin(time * 3);
+          ctx.globalAlpha = 0.25 + 0.12 * Math.sin(W.time * 3);
           ctx.fillStyle = COL.hp;
           ctx.beginPath(); ctx.arc(r.x, r.y + bob, 16, 0, Math.PI * 2); ctx.fill();
           ctx.globalAlpha = 1; ctx.fillStyle = COL.hp;
@@ -3820,7 +3819,7 @@ export function Game({ input }) {
       // magic motes: the Black Hole's trail and the portals' drift, added on as light
       ctx.globalCompositeOperation = 'lighter';
       for (const q of motes) {
-        if (q.y > camY + vh + 20 || q.y < camY - 20) continue;
+        if (q.y > W.camY + vh + 20 || q.y < W.camY - 20) continue;
         let a;
         if (q.kind === 'in') a = Math.min(1, q.age / 0.6) * 0.9;              // fade in, never pop
         else if (q.kind === 'out') a = Math.min(1, q.age / 0.3) *
@@ -3911,11 +3910,11 @@ export function Game({ input }) {
       if (W.p.dead) ctx.globalAlpha = 0.35;
       const flashing = W.p.hitT > 0 && Math.floor(W.p.hitT * 30) % 2 === 0;
       const running = W.p.onGround && Math.abs(W.p.vx) > 15;
-      const gait = running ? Math.sin(time * 15) : 0;
+      const gait = running ? Math.sin(W.time * 15) : 0;
       drawRunner(ctx, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing);
       if (!W.p.dead) drawGun(ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
       // the torch, in the hand the gun is not in
-      if (!W.p.dead) { const th = torchHand(); drawTorch(ctx, th.x, th.y, ax >= 0 ? -1 : 1, flick, torchP, leanX, leanY, time); }
+      if (!W.p.dead) { const th = torchHand(); drawTorch(ctx, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, torchP, W.leanX, W.leanY, W.time); }
       // a small aim crosshair at DEV.aimDist out, rotating round you with the aim: a "+"
       // with the centre cut out (two short verticals, two short horizontals), drawn as thin
       // as the thumbstick lines (~1.5 css px, so 1.5/unitPx world units, whatever the zoom)
@@ -3923,7 +3922,7 @@ export function Game({ input }) {
         const cxp = pcx + ax * DEV.aimDist, cyp = gy + ay * DEV.aimDist;
         const inr = 1.25, outr = 3;            // gap radius, arm end (half the v55 size)
         ctx.strokeStyle = 'rgba(255,255,255,0.92)';
-        ctx.lineWidth = 1.5 / unitPx;
+        ctx.lineWidth = 1.5 / W.unitPx;
         ctx.lineCap = 'butt';
         ctx.beginPath();
         ctx.moveTo(cxp, cyp - outr); ctx.lineTo(cxp, cyp - inr);   // top
@@ -3936,7 +3935,7 @@ export function Game({ input }) {
 
       // Permanent Shield: a soft ring while it is up, gone the moment it is spent
       if (W.pb.shield && W.p.shieldReady && !W.p.dead) {
-        ctx.globalAlpha = 0.35 + 0.15 * Math.sin(time * 4);
+        ctx.globalAlpha = 0.35 + 0.15 * Math.sin(W.time * 4);
         ctx.strokeStyle = '#7ad7ff'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(pcx, pcy, PW * 1.15, 0, Math.PI * 2); ctx.stroke();
         ctx.globalAlpha = 1;
@@ -3944,7 +3943,7 @@ export function Game({ input }) {
 
       // Angry Ghost: a pale wisp that drifts at your shoulder
       if (W.pb.ghost && W.ghost && !W.p.dead) {
-        const gb = Math.sin(time * 3) * 2;
+        const gb = Math.sin(W.time * 3) * 2;
         ctx.globalAlpha = 0.55;
         ctx.fillStyle = '#c9a6ff';
         ctx.beginPath(); ctx.arc(W.ghost.x, W.ghost.y + gb, 6, Math.PI, 0);
@@ -3969,17 +3968,17 @@ export function Game({ input }) {
       // you have already uncovered round a corner still lights up. `flick` is the flame's
       // own number, so both the reach and the brightness breathe exactly as the fire does.
       const sight = SIGHT * DEV.torch;                       // dev knob scales the whole bubble
-      torchR = clamp(sight * LAMP_REACH * (0.5 + 0.55 * flick), 120, 1400);
-      visPts = visPoly(pcx, pcy, sight, solidCell, VIS_RAYS);
-      fogReveal(W.seen, pcx, pcy, sight, visPts, VIS_RAYS);   // line of sight lifts the fog
+      W.torchR = clamp(sight * LAMP_REACH * (0.5 + 0.55 * W.flick), 120, 1400);
+      W.visPts = visPoly(pcx, pcy, sight, solidCell, VIS_RAYS);
+      fogReveal(W.seen, pcx, pcy, sight, W.visPts, VIS_RAYS);   // line of sight lifts the fog
       if (!RPV || RPV.fog) {                                 // a replay can turn the fog off
         // bake the visible slab of the overlay every frame: the base darkness is the fog
         // state, then the lamp brightens the cells the fog has already been lifted from
         const fdat = fogImg.data;
         const dim = Math.round(255 * DEV.fogDim), dark = Math.round(255 * DEV.fogDark);
-        const lr2 = torchR * torchR;
-        const fx0 = clamp(Math.floor(camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(camY / FOG_U) - 1, 0, FH - 1);
-        const fx1 = clamp(Math.ceil((camX + vw) / FOG_U) + 2, 1, FW), fy1 = clamp(Math.ceil((camY + vh) / FOG_U) + 2, 1, FH);
+        const lr2 = W.torchR * W.torchR;
+        const fx0 = clamp(Math.floor(W.camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(W.camY / FOG_U) - 1, 0, FH - 1);
+        const fx1 = clamp(Math.ceil((W.camX + vw) / FOG_U) + 2, 1, FW), fy1 = clamp(Math.ceil((W.camY + vh) / FOG_U) + 2, 1, FH);
         for (let cy = fy0; cy < fy1; cy++) {
           const ddy = (cy + 0.5) * FOG_U - pcy;
           for (let cx = fx0; cx < fx1; cx++) {
@@ -3997,7 +3996,7 @@ export function Game({ input }) {
             if (s && a) {                        // the lamp only reaches ground the fog has lifted
               const ddx = (cx + 0.5) * FOG_U - pcx, dd2 = ddx * ddx + ddy * ddy;
               if (dd2 < lr2) {
-                const t = Math.sqrt(dd2) / torchR;               // 0 at your feet, 1 at the edge
+                const t = Math.sqrt(dd2) / W.torchR;               // 0 at your feet, 1 at the edge
                 const lift = t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45;
                 a = a * (1 - lift);
               }
@@ -4024,12 +4023,12 @@ export function Game({ input }) {
       // brightens; the map lighting under it is unchanged. The glow gutters on its own,
       // quicker and deeper than the lamp.
       ctx.globalCompositeOperation = 'lighter';
-      const gl = clamp(0.82 + glowN + 0.08 * Math.sin(time * 23) + 0.06 * Math.sin(time * 37), 0.5, 1.1);
-      const scOn = sc => !(sc.y > camY + vh + 30 || sc.y < camY - 30 || sc.x < camX - 30 || sc.x > camX + vw + 30) &&
+      const gl = clamp(0.82 + W.glowN + 0.08 * Math.sin(W.time * 23) + 0.06 * Math.sin(W.time * 37), 0.5, 1.1);
+      const scOn = sc => !(sc.y > W.camY + vh + 30 || sc.y < W.camY - 30 || sc.x < W.camX - 30 || sc.x > W.camX + vw + 30) &&
         fogLit(sc.x, sc.y);
       for (const sc of W.sconces) {
         if (!scOn(sc)) continue;
-        const sg = 0.85 + 0.15 * Math.sin(time * 11 + sc.ph) * Math.sin(time * 5.3 + sc.ph);
+        const sg = 0.85 + 0.15 * Math.sin(W.time * 11 + sc.ph) * Math.sin(W.time * 5.3 + sc.ph);
         glowAt(ctx, sc.x, sc.y - 6, 34, 0.16 * sg, '255,140,50');
         glowAt(ctx, sc.x, sc.y - 7, 9, 0.45 * sg, '255,190,90');
       }
@@ -4039,7 +4038,7 @@ export function Game({ input }) {
         if (!(pr.k === 'lamp' || pr.k === 'vent' || pr.k === 'shard' || pr.k === 'eyes' || pr.k === 'matter' ||
           (pr.k === 'drip' && pr.st === 'lava')) || !onView(pr.x, pr.y, 60)) continue;
         if (pr.k !== 'eyes' && !fogLit(pr.x, pr.y)) continue;
-        propGlow(ctx, pr, time, TH, Math.hypot(pr.x - pcx, pr.y - pcy), torchR);
+        propGlow(ctx, pr, W.time, TH, Math.hypot(pr.x - pcx, pr.y - pcy), W.torchR);
       }
       // and the green round each jelly glows and twinkles in its colour (plantGlow)
       for (const e of W.enemies)
@@ -4072,15 +4071,15 @@ export function Game({ input }) {
         const st = Math.max(1, Math.ceil(W.fireVis.length / 24));
         for (let k = W.fireN % st; k < W.fireVis.length; k += st) {
           const i = W.fireVis[k], x = (i % CW + 0.5) * CELL, y = (((i / CW) | 0) + 0.5) * CELL;
-          if (fogLit(x, y)) glowAt(ctx, x, y, 20, Math.min(0.14, 0.03 + W.fireVis.length / 3000) * flick, '255,120,40');
+          if (fogLit(x, y)) glowAt(ctx, x, y, 20, Math.min(0.14, 0.03 + W.fireVis.length / 3000) * W.flick, '255,120,40');
         }
       }
       for (const e of W.enemies)
-        if (e.burn > 0 && onView(e.x, e.ty, 40) && fogLit(e.x, e.ty)) glowAt(ctx, e.x, e.ty, e.r * 2.4, 0.22 * flick, '255,130,50');
+        if (e.burn > 0 && onView(e.x, e.ty, 40) && fogLit(e.x, e.ty)) glowAt(ctx, e.x, e.ty, e.r * 2.4, 0.22 * W.flick, '255,130,50');
       for (const pr of W.firePlants)
         if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(pr.x, pr.y + pr.len))
-          glowAt(ctx, pr.x, pr.y + pr.len, 16, 0.2 * flick, '255,130,50');
-      if (W.p.burn > 0 && !W.p.dead) glowAt(ctx, W.p.x + PW / 2, W.p.y + PH / 2, 22, 0.25 * flick, '255,130,50');
+          glowAt(ctx, pr.x, pr.y + pr.len, 16, 0.2 * W.flick, '255,130,50');
+      if (W.p.burn > 0 && !W.p.dead) glowAt(ctx, W.p.x + PW / 2, W.p.y + PH / 2, 22, 0.25 * W.flick, '255,130,50');
       for (const list of [dparts, amb]) for (const q of list) {
         if (!q.glow || !onView(q.x, q.y, 10) || !fogLit(q.x, q.y)) continue;
         ctx.globalAlpha = Math.min(1, q.life / (q.max * 0.3));
@@ -4090,10 +4089,10 @@ export function Game({ input }) {
       if (!W.p.dead) {
         const th = torchHand(), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
         glowAt(ctx, gfx, gfy, 70 * (0.9 + 0.1 * gl), 0.2 * gl, '255,150,60');            // the second light
-        glowAt(ctx, gfx + leanX * 0.5, gfy + leanY * 0.5, 12, 0.5 * gl, '255,190,90');   // the halo
+        glowAt(ctx, gfx + W.leanX * 0.5, gfy + W.leanY * 0.5, 12, 0.5 * gl, '255,190,90');   // the halo
       }
       ctx.globalCompositeOperation = 'source-over';
-      for (const sc of W.sconces) if (scOn(sc)) drawSconce(ctx, sc.x, sc.y, time, sc.ph);
+      for (const sc of W.sconces) if (scOn(sc)) drawSconce(ctx, sc.x, sc.y, W.time, sc.ph);
       if (RPV) return;                        // a replay frame has no HUD
 
       // ---- HUD ----
@@ -4141,7 +4140,7 @@ export function Game({ input }) {
         };
         const marker = (t, col) => {
           if (!t) return;
-          const sx = (t.x - camX) * unitPx, sy = ((t.ty || t.y) - camY) * unitPx;
+          const sx = (t.x - W.camX) * W.unitPx, sy = ((t.ty || t.y) - W.camY) * W.unitPx;
           if (sx > m && sx < cwv - m && sy > m && sy < chv - m) {
             ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.globalAlpha = 0.85;
             ctx.beginPath(); ctx.arc(sx, sy, 11, 0, Math.PI * 2); ctx.stroke();
@@ -4173,9 +4172,9 @@ export function Game({ input }) {
       ctx.textAlign = 'left';
 
       ctx.textAlign = 'center';
-      if (levelT < 3) {
+      if (W.levelT < 3) {
         ctx.fillStyle = COL.text;
-        ctx.globalAlpha = Math.min(1, 3 - levelT);
+        ctx.globalAlpha = Math.min(1, 3 - W.levelT);
         ctx.font = '700 22px system-ui, sans-serif';
         ctx.fillText(themeFor(W.floor).name, cw / 2, 196);
         ctx.font = '500 14px system-ui, sans-serif';

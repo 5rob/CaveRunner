@@ -62,9 +62,9 @@ const HOOK_LVL = SANDBOX +
   "get fire(){return W.fire}, get burrow(){return W.burrow}, ignite, setAlight, youAlight, get dimg(){return W.dimg}, get zone(){return W.zone}, " +
   "world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y }, " +
   "fog: { get seen(){return W.seen}, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal, paint: paintFog }, " +
-  "light: { get flick(){return flick}, get r(){return torchR}, " +
-  "  get cam(){return { x: camX, y: camY }}, get s(){return unitPx * (window.devicePixelRatio || 1)}, " +
-  "  get embers(){return torchP.length}, get vis(){return visPts}, visPoly, losClear } };\n";
+  "light: { get flick(){return W.flick}, get r(){return W.torchR}, " +
+  "  get cam(){return { x: W.camX, y: W.camY }}, get s(){return W.unitPx * (window.devicePixelRatio || 1)}, " +
+  "  get embers(){return torchP.length}, get vis(){return W.visPts}, visPoly, losClear } };\n";
 
 function build() {
   let s = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
