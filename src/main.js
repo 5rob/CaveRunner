@@ -1,3 +1,10 @@
+import {
+  AIM_DEAD, AIM_RING, AIR_ACC, BCELL, BED, BH, BRICK, BW, CELL, CH, CLIMB, COIN_PULL, COL, CW,
+  DEAD, ENEMY_COUNT, FH, FOG, FOG_DARK, FOG_DIM, FOG_U, FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART, FW,
+  GRAVITY, GROUND_ACC, GUN_DROPS, JET, JET_ACC, KNOB, LAMP_REACH, MINI_D, MMH, MMW, MOD_DROPS,
+  PATROL_R, PH, PICKUP_COOL, PICKUP_GAP, PLAYER_HP, PW, ROCK, SHOP_FLOOR, SHOP_ROOF, SHOP_TOP,
+  SHOP_Y, SIGHT, START_GOLD, VIEW_MIN_H, VIEW_W, WALK, WEB_HAND, WH, WW
+} from './core/consts.js';
 import { angDiff, approach, clamp, hexArr, hexRgb, mix, mixHex, rr, turn } from './core/util.js';
 import { HUNTERS, NATURAL_ONLY, enemyFor, rosterFor } from './data/creatures.js';
 import { PERKS, PERK_IDS, perkBag } from './data/perks.js';
@@ -6,17 +13,13 @@ import {
   DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_META, JE_COLS, devReport, devSet, jcol, kr, kru, spr
 } from './dev/knobs.js';
 import {
-  ALL_IDS, FAMILIES, FAMILY_OF, FIELD_WHAT, MODS, SEED_SHOTS, TIMER_ADD, VACUUM_WAIT, famCol,
-  famOf, priceOf
+  ALL_IDS, FAMILIES, FAMILY_OF, FIELD_WHAT, MODS, TIMER_ADD, VACUUM_WAIT, famCol, famOf, priceOf
 } from './spells/mods.js';
 import { rollMod } from './spells/spawn.js';
 import {
-  AIM_DEAD, AIM_RING, AIR_ACC, BCELL, BED, BH, BRICK, BW, CELL, CH, CLIMB, COIN_PULL, COL, CW,
-  DEAD, ENEMY_COUNT, FH, FOG, FOG_DARK, FOG_DIM, FOG_U, FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART, FW,
-  GRAVITY, GROUND_ACC, GUN_DROPS, JET, JET_ACC, KNOB, LAMP_REACH, MINI_D, MMH, MMW, MOD_DROPS,
-  PATROL_R, PH, PICKUP_COOL, PICKUP_GAP, PLAYER_HP, PW, ROCK, SHOP_FLOOR, SHOP_ROOF, SHOP_TOP,
-  SHOP_Y, SIGHT, START_GOLD, VIEW_MIN_H, VIEW_W, WALK, WEB_HAND, WH, WW
-} from './core/consts.js';
+  GUN_LV_MAX, GUN_RANGE, caveGun, gunAccent, gunColor, gunLevel, gunLvCol, gunPrice, isGunShop,
+  makeGun, resetGun, shuffleOrder, startingGuns
+} from './spells/guns.js';
 
 const { useRef, useEffect, useState, useMemo } = React;
 const h = React.createElement;
@@ -54,35 +57,6 @@ function jellyPal(u) {
 // Black Hole travel speed from the Dev knob, as a multiplier so speed mods still stack
 const bhSp = sh => sh.pull ? DEV.bhSpeed / MODS.void.speed : 1;
 const NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
-
-// Every gun gets its own hue, fixed for the run so it works as an identifier.
-// Saturation and lightness come from the --gun-s/--gun-l CSS vars (see :root),
-// which flip per theme so the same hue stays readable in light and dark —
-// measured worst case is ~4.9:1 contrast against every background it lands on.
-// A gun made before this field existed (or any gun object missing .hue) falls
-// back to a hash of its name, so it still renders — just not stored, so it can
-// drift if the name is reused; that only ever happens to old data, never a
-// freshly made gun.
-const hueFromName = name => {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return h % 360;
-};
-const gunHue = g => (g && g.hue != null) ? g.hue : hueFromName(g ? g.name : '');
-const gunColor = g => 'hsl(' + gunHue(g) + ', var(--gun-s), var(--gun-l))';
-
-// Guns are priced off what they actually do: slots to build in, how fast they
-// cycle, how much mana they hold, and whether they fire in the order you set.
-function gunPrice(g) {
-  const rate = 1 / Math.max(0.05, g.castDelay) + 1 / Math.max(0.1, g.recharge);
-  const v = g.cap * 20 + rate * 7 + g.manaMax * 0.1 + g.manaRegen * 0.3
-    + (g.multi - 1) * 45 + ((g.speedMul || 1) - 1) * 40 - g.spread * 3
-    + (g.shuffle ? -30 : 20);
-  return Math.max(45, Math.round(v / 5) * 5);
-}
-
-// Every second shop is a gun shop instead of a mod shop.
-const isGunShop = floor => floor % 2 === 0;
 
 // What the map is allowed to remember is worked out as a fan of rays out from the player,
 // each stopping at the first wall: one ray per fog cell the fan crosses, so a shadow edge
@@ -1143,100 +1117,6 @@ const MIN_RECH = 0.05;
 function effRecharge(g) {
   const pas = gunPassives(g);
   return Math.max(MIN_RECH, (g.recharge + pas.rech) * pas.rechMul);
-}
-
-// ---- guns ----
-const GUN_A = ['Rusty', 'Bone', 'Cracked', 'Copper', 'Glass', 'Ivory', 'Molten', 'Static',
-               'Hollow', 'Ember', 'Quartz', 'Iron', 'Pale', 'Gilded'];
-const GUN_B = ['Pistol', 'Repeater', 'Carbine', 'Scattergun', 'Lance', 'Sidearm',
-               'Blaster', 'Cannon', 'Spitter', 'Wand'];
-
-function shuffleOrder(g) {
-  g.order = g.slots.map((_, i) => i);
-  if (g.shuffle) for (let i = g.order.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [g.order[i], g.order[j]] = [g.order[j], g.order[i]];
-  }
-}
-function resetGun(g) {
-  g.idx = 0; g.delayT = 0; g.rechT = 0;
-  shuffleOrder(g);
-  return g;
-}
-
-// A gun's level (1-10) comes from the floor alone: floor 1 rolls level 1 guns, floor 10
-// and beyond roll level 10. Every stat has a worst and a best end. A level 1 gun rolls
-// anywhere between them (wild); each level squeezes the roll toward the best end, until a
-// level 10 gun lands in the best tenth of every range (a little variance, never junk).
-const GUN_LV_MAX = 10;
-const RARE_GUN = 0.2;                     // chance a cave gun rolls a random higher level
-const GUN_RANGE = {                       // [worst, best]
-  cap: [2, 25], castDelay: [1.5, 0.01], recharge: [1.5, 0.01], manaMax: [50, 1000],
-  manaRegen: [10, 500], spread: [20, 0], speedMul: [0.5, 2] };
-// the colour a gun's level wears: grey through green, blue, purple to gold
-const GUN_LV_COL = ['#9a9a9a', '#d8d8d8', '#5fd35f', '#3fc9a8', '#4aa3ff',
-                    '#7a7aff', '#b565ff', '#ff5fcf', '#ff9a2a', '#ffd23c'];
-const gunLvTier = lvl => Math.min(1, Math.max(0, (lvl - 1) / (GUN_LV_MAX - 1)));
-function gunStat(rnd, k, t) {
-  const [w, b] = GUN_RANGE[k];
-  const f = rnd() * (1 - t) + rnd() * 0.1 * t;       // share of the way from best to worst
-  return b + (w - b) * f;
-}
-// the level of a gun found on this floor: the floor's own, or now and then a rare one
-// somewhere between the next level up and 10
-function gunLevel(floor, rnd) {
-  const base = Math.min(GUN_LV_MAX, Math.max(1, floor));
-  if (base < GUN_LV_MAX && rnd() < RARE_GUN) return base + 1 + Math.floor(rnd() * (GUN_LV_MAX - base));
-  return base;
-}
-
-// a gun of level `lvl` (the Dev panel's Spawn gun uses it to try deeper floors' guns on floor 1)
-function caveGun(lvl, rnd) {
-  return makeGun(rnd, Math.min(GUN_LV_MAX, Math.max(1, Math.floor(lvl))));
-}
-
-function makeGun(rnd, lvl) {
-  const t = gunLvTier(lvl);
-  const cap = Math.max(2, Math.min(25, Math.round(gunStat(rnd, 'cap', t))));
-  const g = {
-    name: GUN_A[Math.floor(rnd() * GUN_A.length)] + ' ' + GUN_B[Math.floor(rnd() * GUN_B.length)],
-    lvl, cap,
-    castDelay: gunStat(rnd, 'castDelay', t),
-    recharge: gunStat(rnd, 'recharge', t),
-    manaMax: Math.round(gunStat(rnd, 'manaMax', t)),
-    manaRegen: Math.round(gunStat(rnd, 'manaRegen', t)),
-    spread: gunStat(rnd, 'spread', t),
-    speedMul: gunStat(rnd, 'speedMul', t),
-    multi: rnd() < 0.1 + t * 0.4 ? 2 : 1,
-    shuffle: rnd() < 0.5 * (1 - t),
-    slots: new Array(cap).fill(null),
-    hue: Math.floor(rnd() * 360),
-  };
-  // seed it with something that already shoots
-  const used = 1 + Math.floor(rnd() * Math.min(cap, 2 + t * 3));
-  const spots = g.slots.map((_, i) => i).sort(() => rnd() - 0.5).slice(0, used);
-  const asFloor = 1 + t * 5;                  // a high-level gun comes with better mods on it
-  spots.forEach((slot, n) => {
-    g.slots[slot] = n === 0 ? SEED_SHOTS[Math.floor(rnd() * SEED_SHOTS.length)]
-                            : rollMod(rnd, asFloor);
-  });
-  if (!g.slots.some(id => id && MODS[id].kind === 'shot')) g.slots[spots[0]] = 'bolt';
-  g.mana = g.manaMax;
-  return resetGun(g);
-}
-
-function startingGuns() {
-  // The Scratch Pistol is a weak backup on purpose: slow, thirsty and single-shot, so
-  // anything you find on floor 1 is an upgrade over it. It's first in line (selected).
-  const pistol = resetGun({ name: 'Scratch Pistol', cap: 3, castDelay: 0.32, recharge: 1.7,
-    manaMax: 90, manaRegen: 22, spread: 5, multi: 1, shuffle: false, mana: 90, speedMul: 1,
-    slots: ['bolt', null, null], hue: Math.floor(Math.random() * 360) });
-  // The Pick Axe holds a Buzzsaw: no travel, a big circular slice right in front that chews
-  // rock and shreds anything close. Buzzsaw zeroes cast delay, so recharge (1s) sets the swing.
-  const pickaxe = resetGun({ name: 'Pick Axe', cap: 1, castDelay: 0.05, recharge: 1.0,
-    manaMax: 120, manaRegen: 60, spread: 0, multi: 1, shuffle: false, mana: 120, speedMul: 1,
-    slots: ['saw'], hue: 20 });
-  return [pistol, pickaxe, null, null];
 }
 
 // Work out what the next pull of the trigger fires. Walks the slot list from where
@@ -2344,15 +2224,6 @@ function drawEnemy(ctx, e, time) {
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
-}
-
-// the colour a gun wears: its level's colour, or (starter guns, which have no level)
-// whatever family its first shot belongs to
-const gunLvCol = g => (g && g.lvl ? GUN_LV_COL[Math.min(GUN_LV_MAX, g.lvl) - 1] : null);
-function gunAccent(g) {
-  if (g && g.lvl) return gunLvCol(g);
-  if (g) for (const id of g.slots) if (id && MODS[id].kind === 'shot') return famCol(id);
-  return COL.bullet;
 }
 
 // Gold for the deck readout: a bare number under 1000, and thousands truncated (not
@@ -5682,22 +5553,19 @@ function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
 // (REFACTOR.md, P1.5); the browser build ignores it.
 export {
   useRef, useEffect, useState, useMemo, h, SPUTTER_FUEL, sputterStep, jetPitch, twinkle,
-  jellyPal, makeLevel, bhSp, NO_INPUT, spiderStep, ratStep, hueFromName, gunHue, gunColor,
-  gunPrice, isGunShop, VIS_RAYS, fogReveal, fogStart, nestFog, rayDist, losClear, roamStep,
-  turnToward, flyMove, surfNormal, SPIDER, spiderSeat, surfSeat, segNear, spiderAim, RAT,
-  ratFooting, ratJump, ratSpread, pathAt, pathLen, NAV, navField, navWay, ratNests, JELLY,
-  jellyBell, jellyStep, segHitsBox, tentacleTouch, TW_N, TW_TILE, twNoise, plantWhite,
-  plantGlowFill, visPoly, MIN_CAST, MIN_RECH, effRecharge, gunPassives, GUN_A, GUN_B,
-  shuffleOrder, resetGun, GUN_LV_MAX, RARE_GUN, GUN_RANGE, GUN_LV_COL, gunLvTier, gunStat,
-  gunLevel, caveGun, makeGun, startingGuns, blankShot, planCast, PREVIEW_FIELDS, num, previewGun,
-  previewPlan, modPreview, HP_BUDGET, shotPower, shotCount, shotPellets, gunRate, SHORTLIST,
-  buildAdvice, castGroups, groupStats, pullSteps, fireSimNew, fireSimStep, fireSimGauges,
-  statQual, gunModDeltas, drawGun, drawRunner, flameDrop, drawFlame, glowAt, drawTorch,
-  drawSconce, drawDrone, drawSpider, drawRat, drawNest, drawJelly, drawCrawler, drawBlob,
-  drawSkull, drawWorm, drawEnemy, gunLvCol, gunAccent, fmtGold, deckLayout, DECOR_DENSITY,
-  GROVES, PLANTS, FLAMMABLE, FIRE_WET, HEAR_FIRE, FIRE_COLS, PROP_BOX, PROP_DMG, timberFrame,
-  archCurve, archNear, archAt, decorate, FUEL_MOSS, FUEL_GRASS, FUEL_WOOD, cullDecor,
-  propAnchored, rgbA, rgbS, propCol, drawArch, drawProp, propGlow, VENT_H, eyesAlpha,
+  jellyPal, makeLevel, bhSp, NO_INPUT, spiderStep, ratStep, VIS_RAYS, fogReveal, fogStart,
+  nestFog, rayDist, losClear, roamStep, turnToward, flyMove, surfNormal, SPIDER, spiderSeat,
+  surfSeat, segNear, spiderAim, RAT, ratFooting, ratJump, ratSpread, pathAt, pathLen, NAV,
+  navField, navWay, ratNests, JELLY, jellyBell, jellyStep, segHitsBox, tentacleTouch, TW_N,
+  TW_TILE, twNoise, plantWhite, plantGlowFill, visPoly, MIN_CAST, MIN_RECH, effRecharge,
+  gunPassives, blankShot, planCast, PREVIEW_FIELDS, num, previewGun, previewPlan, modPreview,
+  HP_BUDGET, shotPower, shotCount, shotPellets, gunRate, SHORTLIST, buildAdvice, castGroups,
+  groupStats, pullSteps, fireSimNew, fireSimStep, fireSimGauges, statQual, gunModDeltas, drawGun,
+  drawRunner, flameDrop, drawFlame, glowAt, drawTorch, drawSconce, drawDrone, drawSpider,
+  drawRat, drawNest, drawJelly, drawCrawler, drawBlob, drawSkull, drawWorm, drawEnemy, fmtGold,
+  deckLayout, DECOR_DENSITY, GROVES, PLANTS, FLAMMABLE, FIRE_WET, HEAR_FIRE, FIRE_COLS, PROP_BOX,
+  PROP_DMG, timberFrame, archCurve, archNear, archAt, decorate, FUEL_MOSS, FUEL_GRASS, FUEL_WOOD,
+  cullDecor, propAnchored, rgbA, rgbS, propCol, drawArch, drawProp, propGlow, VENT_H, eyesAlpha,
   SPELL_VOICE, SPELL_VOICES, clampS, shotSound, BODY_VOICE, CREATURE_TONE, CREATURE_VOICES,
   creatureSound, AMB_EVENTS, FX_VOL, fxVolKey, knob, rustleStep, SFX, SAVE_KEY, GUN_DEFAULTS,
   cleanGun, cleanLoadout, readSave, loadSave, clearSave, ORE_GOLD, ROOM_HW, ROOM_HH, goldVeins,

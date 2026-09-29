@@ -14,3 +14,4 @@ export * from './data/creatures.js';
 export * from './data/perks.js';
 export * from './spells/mods.js';
 export * from './spells/spawn.js';
+export * from './spells/guns.js';

@@ -476,6 +476,66 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <script>const VERSION = 'v96';</script>
 <script>
 (() => {
+  // src/core/consts.js
+  var CELL = 2;
+  var CW = 640, CH = 1600;
+  var WW = CW * CELL, WH = CH * CELL;
+  var BW = CW / 4, BH = CH / 4;
+  var BCELL = WW / BW;
+  var VIEW_W = 360;
+  var VIEW_MIN_H = 340;
+  var ROCK = 1, BRICK = 2, BED = 3;
+  var GRAVITY = 1400;
+  var WALK = 150, GROUND_ACC = 1400, AIR_ACC = 600;
+  var JET = 240, JET_ACC = 900;
+  var CLIMB = 90;
+  var WEB_HAND = 3;
+  var DEAD = 0.12;
+  var AIM_DEAD = 0.35;
+  var KNOB = 0.38;
+  var AIM_RING = AIM_DEAD * 0.72 + KNOB;
+  var PW = 12, PH = 22;
+  var FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
+  var PLAYER_HP = 100;
+  var START_GOLD = 40;
+  var COIN_PULL = 36;
+  var ENEMY_COUNT = 80;
+  var MOD_DROPS = 7;
+  var GUN_DROPS = 5;
+  var PICKUP_GAP = 260;
+  var PATROL_R = 70;
+  var PICKUP_COOL = 2;
+  var SHOP_FLOOR = CH - 10;
+  var SHOP_H = 48;
+  var SHOP_TOP = SHOP_FLOOR - SHOP_H;
+  var SHOP_ROOF = 6;
+  var SHOP_Y = SHOP_TOP * CELL;
+  var FOG = 8;
+  var FOG_U = FOG * CELL;
+  var FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
+  var MINI_D = 4;
+  var MMW = Math.ceil(CW / MINI_D), MMH = Math.ceil(CH / MINI_D);
+  var SIGHT = 200;
+  var LAMP_REACH = 1.15;
+  var FOG_DIM = 0.85;
+  var FOG_DARK = 0.99;
+  var COL = {
+    text: "#e9ecf2",
+    muted: "rgba(233,236,242,0.55)",
+    barBg: "rgba(255,255,255,0.12)",
+    player: "#ff5a36",
+    visor: "#17222e",
+    bullet: "#ffc93c",
+    flame: "#ff8a1f",
+    flame2: "#ffe066",
+    enemy: "#b57cff",
+    eye: "#f4f0ff",
+    smoke: "#9aa3ad",
+    hp: "#46c48c",
+    grenade: "#7cc04f",
+    portal: "#5ee0a0"
+  };
+
   // src/core/util.js
   var HEX_RE = /^#[0-9a-f]{6}$/i;
   function hexMix(a, b, t) {
@@ -874,66 +934,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var HUNTERS = { chase: 1, bomb: 1, spider: 1, jelly: 1, rat: 1 };
   var NATURAL_ONLY = { jelly: 1 };
-
-  // src/core/consts.js
-  var CELL = 2;
-  var CW = 640, CH = 1600;
-  var WW = CW * CELL, WH = CH * CELL;
-  var BW = CW / 4, BH = CH / 4;
-  var BCELL = WW / BW;
-  var VIEW_W = 360;
-  var VIEW_MIN_H = 340;
-  var ROCK = 1, BRICK = 2, BED = 3;
-  var GRAVITY = 1400;
-  var WALK = 150, GROUND_ACC = 1400, AIR_ACC = 600;
-  var JET = 240, JET_ACC = 900;
-  var CLIMB = 90;
-  var WEB_HAND = 3;
-  var DEAD = 0.12;
-  var AIM_DEAD = 0.35;
-  var KNOB = 0.38;
-  var AIM_RING = AIM_DEAD * 0.72 + KNOB;
-  var PW = 12, PH = 22;
-  var FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
-  var PLAYER_HP = 100;
-  var START_GOLD = 40;
-  var COIN_PULL = 36;
-  var ENEMY_COUNT = 80;
-  var MOD_DROPS = 7;
-  var GUN_DROPS = 5;
-  var PICKUP_GAP = 260;
-  var PATROL_R = 70;
-  var PICKUP_COOL = 2;
-  var SHOP_FLOOR = CH - 10;
-  var SHOP_H = 48;
-  var SHOP_TOP = SHOP_FLOOR - SHOP_H;
-  var SHOP_ROOF = 6;
-  var SHOP_Y = SHOP_TOP * CELL;
-  var FOG = 8;
-  var FOG_U = FOG * CELL;
-  var FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
-  var MINI_D = 4;
-  var MMW = Math.ceil(CW / MINI_D), MMH = Math.ceil(CH / MINI_D);
-  var SIGHT = 200;
-  var LAMP_REACH = 1.15;
-  var FOG_DIM = 0.85;
-  var FOG_DARK = 0.99;
-  var COL = {
-    text: "#e9ecf2",
-    muted: "rgba(233,236,242,0.55)",
-    barBg: "rgba(255,255,255,0.12)",
-    player: "#ff5a36",
-    visor: "#17222e",
-    bullet: "#ffc93c",
-    flame: "#ff8a1f",
-    flame2: "#ffe066",
-    enemy: "#b57cff",
-    eye: "#f4f0ff",
-    smoke: "#9aa3ad",
-    hp: "#46c48c",
-    grenade: "#7cc04f",
-    portal: "#5ee0a0"
-  };
 
   // src/data/perks.js
   var PERKS = {
@@ -4085,6 +4085,170 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return "bolt";
   }
 
+  // src/spells/guns.js
+  var hueFromName = (name) => {
+    let h2 = 0;
+    for (let i = 0; i < name.length; i++) h2 = h2 * 31 + name.charCodeAt(i) >>> 0;
+    return h2 % 360;
+  };
+  var gunHue = (g) => g && g.hue != null ? g.hue : hueFromName(g ? g.name : "");
+  var gunColor = (g) => "hsl(" + gunHue(g) + ", var(--gun-s), var(--gun-l))";
+  function gunPrice(g) {
+    const rate = 1 / Math.max(0.05, g.castDelay) + 1 / Math.max(0.1, g.recharge);
+    const v = g.cap * 20 + rate * 7 + g.manaMax * 0.1 + g.manaRegen * 0.3 + (g.multi - 1) * 45 + ((g.speedMul || 1) - 1) * 40 - g.spread * 3 + (g.shuffle ? -30 : 20);
+    return Math.max(45, Math.round(v / 5) * 5);
+  }
+  var isGunShop = (floor) => floor % 2 === 0;
+  var GUN_A = [
+    "Rusty",
+    "Bone",
+    "Cracked",
+    "Copper",
+    "Glass",
+    "Ivory",
+    "Molten",
+    "Static",
+    "Hollow",
+    "Ember",
+    "Quartz",
+    "Iron",
+    "Pale",
+    "Gilded"
+  ];
+  var GUN_B = [
+    "Pistol",
+    "Repeater",
+    "Carbine",
+    "Scattergun",
+    "Lance",
+    "Sidearm",
+    "Blaster",
+    "Cannon",
+    "Spitter",
+    "Wand"
+  ];
+  function shuffleOrder(g) {
+    g.order = g.slots.map((_, i) => i);
+    if (g.shuffle) for (let i = g.order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [g.order[i], g.order[j]] = [g.order[j], g.order[i]];
+    }
+  }
+  function resetGun(g) {
+    g.idx = 0;
+    g.delayT = 0;
+    g.rechT = 0;
+    shuffleOrder(g);
+    return g;
+  }
+  var GUN_LV_MAX = 10;
+  var RARE_GUN = 0.2;
+  var GUN_RANGE = {
+    // [worst, best]
+    cap: [2, 25],
+    castDelay: [1.5, 0.01],
+    recharge: [1.5, 0.01],
+    manaMax: [50, 1e3],
+    manaRegen: [10, 500],
+    spread: [20, 0],
+    speedMul: [0.5, 2]
+  };
+  var GUN_LV_COL = [
+    "#9a9a9a",
+    "#d8d8d8",
+    "#5fd35f",
+    "#3fc9a8",
+    "#4aa3ff",
+    "#7a7aff",
+    "#b565ff",
+    "#ff5fcf",
+    "#ff9a2a",
+    "#ffd23c"
+  ];
+  var gunLvTier = (lvl) => Math.min(1, Math.max(0, (lvl - 1) / (GUN_LV_MAX - 1)));
+  function gunStat(rnd, k, t) {
+    const [w, b] = GUN_RANGE[k];
+    const f = rnd() * (1 - t) + rnd() * 0.1 * t;
+    return b + (w - b) * f;
+  }
+  function gunLevel(floor, rnd) {
+    const base = Math.min(GUN_LV_MAX, Math.max(1, floor));
+    if (base < GUN_LV_MAX && rnd() < RARE_GUN) return base + 1 + Math.floor(rnd() * (GUN_LV_MAX - base));
+    return base;
+  }
+  function caveGun(lvl, rnd) {
+    return makeGun(rnd, Math.min(GUN_LV_MAX, Math.max(1, Math.floor(lvl))));
+  }
+  function makeGun(rnd, lvl) {
+    const t = gunLvTier(lvl);
+    const cap = Math.max(2, Math.min(25, Math.round(gunStat(rnd, "cap", t))));
+    const g = {
+      name: GUN_A[Math.floor(rnd() * GUN_A.length)] + " " + GUN_B[Math.floor(rnd() * GUN_B.length)],
+      lvl,
+      cap,
+      castDelay: gunStat(rnd, "castDelay", t),
+      recharge: gunStat(rnd, "recharge", t),
+      manaMax: Math.round(gunStat(rnd, "manaMax", t)),
+      manaRegen: Math.round(gunStat(rnd, "manaRegen", t)),
+      spread: gunStat(rnd, "spread", t),
+      speedMul: gunStat(rnd, "speedMul", t),
+      multi: rnd() < 0.1 + t * 0.4 ? 2 : 1,
+      shuffle: rnd() < 0.5 * (1 - t),
+      slots: new Array(cap).fill(null),
+      hue: Math.floor(rnd() * 360)
+    };
+    const used = 1 + Math.floor(rnd() * Math.min(cap, 2 + t * 3));
+    const spots = g.slots.map((_, i) => i).sort(() => rnd() - 0.5).slice(0, used);
+    const asFloor = 1 + t * 5;
+    spots.forEach((slot, n) => {
+      g.slots[slot] = n === 0 ? SEED_SHOTS[Math.floor(rnd() * SEED_SHOTS.length)] : rollMod(rnd, asFloor);
+    });
+    if (!g.slots.some((id) => id && MODS[id].kind === "shot")) g.slots[spots[0]] = "bolt";
+    g.mana = g.manaMax;
+    return resetGun(g);
+  }
+  function startingGuns() {
+    const pistol = resetGun({
+      name: "Scratch Pistol",
+      cap: 3,
+      castDelay: 0.32,
+      recharge: 1.7,
+      manaMax: 90,
+      manaRegen: 22,
+      spread: 5,
+      multi: 1,
+      shuffle: false,
+      mana: 90,
+      speedMul: 1,
+      slots: ["bolt", null, null],
+      hue: Math.floor(Math.random() * 360)
+    });
+    const pickaxe = resetGun({
+      name: "Pick Axe",
+      cap: 1,
+      castDelay: 0.05,
+      recharge: 1,
+      manaMax: 120,
+      manaRegen: 60,
+      spread: 0,
+      multi: 1,
+      shuffle: false,
+      mana: 120,
+      speedMul: 1,
+      slots: ["saw"],
+      hue: 20
+    });
+    return [pistol, pickaxe, null, null];
+  }
+  var gunLvCol = (g) => g && g.lvl ? GUN_LV_COL[Math.min(GUN_LV_MAX, g.lvl) - 1] : null;
+  function gunAccent(g) {
+    if (g && g.lvl) return gunLvCol(g);
+    if (g) {
+      for (const id of g.slots) if (id && MODS[id].kind === "shot") return famCol(id);
+    }
+    return COL.bullet;
+  }
+
   // src/main.js
   var { useRef, useEffect, useState, useMemo } = React;
   var h = React.createElement;
@@ -4121,19 +4285,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var bhSp = (sh) => sh.pull ? DEV.bhSpeed / MODS.void.speed : 1;
   var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
-  var hueFromName = (name) => {
-    let h2 = 0;
-    for (let i = 0; i < name.length; i++) h2 = h2 * 31 + name.charCodeAt(i) >>> 0;
-    return h2 % 360;
-  };
-  var gunHue = (g) => g && g.hue != null ? g.hue : hueFromName(g ? g.name : "");
-  var gunColor = (g) => "hsl(" + gunHue(g) + ", var(--gun-s), var(--gun-l))";
-  function gunPrice(g) {
-    const rate = 1 / Math.max(0.05, g.castDelay) + 1 / Math.max(0.1, g.recharge);
-    const v = g.cap * 20 + rate * 7 + g.manaMax * 0.1 + g.manaRegen * 0.3 + (g.multi - 1) * 45 + ((g.speedMul || 1) - 1) * 40 - g.spread * 3 + (g.shuffle ? -30 : 20);
-    return Math.max(45, Math.round(v / 5) * 5);
-  }
-  var isGunShop = (floor) => floor % 2 === 0;
   var VIS_RAYS = 160;
   function fogReveal(seen, wx, wy, r, pts, rays) {
     const cx = wx / FOG_U, cy = wy / FOG_U, cr = r / FOG_U, r2 = cr * cr;
@@ -5291,147 +5442,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function effRecharge(g) {
     const pas = gunPassives(g);
     return Math.max(MIN_RECH, (g.recharge + pas.rech) * pas.rechMul);
-  }
-  var GUN_A = [
-    "Rusty",
-    "Bone",
-    "Cracked",
-    "Copper",
-    "Glass",
-    "Ivory",
-    "Molten",
-    "Static",
-    "Hollow",
-    "Ember",
-    "Quartz",
-    "Iron",
-    "Pale",
-    "Gilded"
-  ];
-  var GUN_B = [
-    "Pistol",
-    "Repeater",
-    "Carbine",
-    "Scattergun",
-    "Lance",
-    "Sidearm",
-    "Blaster",
-    "Cannon",
-    "Spitter",
-    "Wand"
-  ];
-  function shuffleOrder(g) {
-    g.order = g.slots.map((_, i) => i);
-    if (g.shuffle) for (let i = g.order.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [g.order[i], g.order[j]] = [g.order[j], g.order[i]];
-    }
-  }
-  function resetGun(g) {
-    g.idx = 0;
-    g.delayT = 0;
-    g.rechT = 0;
-    shuffleOrder(g);
-    return g;
-  }
-  var GUN_LV_MAX = 10;
-  var RARE_GUN = 0.2;
-  var GUN_RANGE = {
-    // [worst, best]
-    cap: [2, 25],
-    castDelay: [1.5, 0.01],
-    recharge: [1.5, 0.01],
-    manaMax: [50, 1e3],
-    manaRegen: [10, 500],
-    spread: [20, 0],
-    speedMul: [0.5, 2]
-  };
-  var GUN_LV_COL = [
-    "#9a9a9a",
-    "#d8d8d8",
-    "#5fd35f",
-    "#3fc9a8",
-    "#4aa3ff",
-    "#7a7aff",
-    "#b565ff",
-    "#ff5fcf",
-    "#ff9a2a",
-    "#ffd23c"
-  ];
-  var gunLvTier = (lvl) => Math.min(1, Math.max(0, (lvl - 1) / (GUN_LV_MAX - 1)));
-  function gunStat(rnd, k, t) {
-    const [w, b] = GUN_RANGE[k];
-    const f = rnd() * (1 - t) + rnd() * 0.1 * t;
-    return b + (w - b) * f;
-  }
-  function gunLevel(floor, rnd) {
-    const base = Math.min(GUN_LV_MAX, Math.max(1, floor));
-    if (base < GUN_LV_MAX && rnd() < RARE_GUN) return base + 1 + Math.floor(rnd() * (GUN_LV_MAX - base));
-    return base;
-  }
-  function caveGun(lvl, rnd) {
-    return makeGun(rnd, Math.min(GUN_LV_MAX, Math.max(1, Math.floor(lvl))));
-  }
-  function makeGun(rnd, lvl) {
-    const t = gunLvTier(lvl);
-    const cap = Math.max(2, Math.min(25, Math.round(gunStat(rnd, "cap", t))));
-    const g = {
-      name: GUN_A[Math.floor(rnd() * GUN_A.length)] + " " + GUN_B[Math.floor(rnd() * GUN_B.length)],
-      lvl,
-      cap,
-      castDelay: gunStat(rnd, "castDelay", t),
-      recharge: gunStat(rnd, "recharge", t),
-      manaMax: Math.round(gunStat(rnd, "manaMax", t)),
-      manaRegen: Math.round(gunStat(rnd, "manaRegen", t)),
-      spread: gunStat(rnd, "spread", t),
-      speedMul: gunStat(rnd, "speedMul", t),
-      multi: rnd() < 0.1 + t * 0.4 ? 2 : 1,
-      shuffle: rnd() < 0.5 * (1 - t),
-      slots: new Array(cap).fill(null),
-      hue: Math.floor(rnd() * 360)
-    };
-    const used = 1 + Math.floor(rnd() * Math.min(cap, 2 + t * 3));
-    const spots = g.slots.map((_, i) => i).sort(() => rnd() - 0.5).slice(0, used);
-    const asFloor = 1 + t * 5;
-    spots.forEach((slot, n) => {
-      g.slots[slot] = n === 0 ? SEED_SHOTS[Math.floor(rnd() * SEED_SHOTS.length)] : rollMod(rnd, asFloor);
-    });
-    if (!g.slots.some((id) => id && MODS[id].kind === "shot")) g.slots[spots[0]] = "bolt";
-    g.mana = g.manaMax;
-    return resetGun(g);
-  }
-  function startingGuns() {
-    const pistol = resetGun({
-      name: "Scratch Pistol",
-      cap: 3,
-      castDelay: 0.32,
-      recharge: 1.7,
-      manaMax: 90,
-      manaRegen: 22,
-      spread: 5,
-      multi: 1,
-      shuffle: false,
-      mana: 90,
-      speedMul: 1,
-      slots: ["bolt", null, null],
-      hue: Math.floor(Math.random() * 360)
-    });
-    const pickaxe = resetGun({
-      name: "Pick Axe",
-      cap: 1,
-      castDelay: 0.05,
-      recharge: 1,
-      manaMax: 120,
-      manaRegen: 60,
-      spread: 0,
-      multi: 1,
-      shuffle: false,
-      mana: 120,
-      speedMul: 1,
-      slots: ["saw"],
-      hue: 20
-    });
-    return [pistol, pickaxe, null, null];
   }
   function blankShot(sm, spread) {
     return {
@@ -6674,14 +6684,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
-  }
-  var gunLvCol = (g) => g && g.lvl ? GUN_LV_COL[Math.min(GUN_LV_MAX, g.lvl) - 1] : null;
-  function gunAccent(g) {
-    if (g && g.lvl) return gunLvCol(g);
-    if (g) {
-      for (const id of g.slots) if (id && MODS[id].kind === "shot") return famCol(id);
-    }
-    return COL.bullet;
   }
   function fmtGold(g) {
     g = Math.max(0, Math.floor(g || 0));
