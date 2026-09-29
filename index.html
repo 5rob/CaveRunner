@@ -10410,6 +10410,52 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { x: (F.x0 + i + 0.5) * NAV * CELL, y: (F.y0 + j + 0.5) * NAV * CELL, dist, air };
   }
 
+  // src/game/systems/particles.js
+  var toast = (W, text) => {
+    W.toasts.push({ text, t: 2.2 });
+    if (W.toasts.length > 3) W.toasts.shift();
+  };
+  function goo(W, x, y, vx, vy, g, c, size, c2) {
+    if (W.sparks.length > 800) return;
+    const life = 0.5 + Math.random() * 0.5;
+    W.sparks.push({
+      x,
+      y,
+      vx,
+      vy,
+      life,
+      max: life,
+      c: Math.random() < 0.35 ? c2 || "#c8ff8a" : c,
+      size: size || 1.1 + Math.random() * 0.8,
+      heavy: 1,
+      g
+    });
+  }
+  function splat(W, b, x, y) {
+    const sp = Math.hypot(b.vx, b.vy) || 1;
+    for (let i = 0; i < b.splat; i++) {
+      const a = Math.random() * 6.28, v = b.splatV * (0.4 + Math.random() * 0.6);
+      goo(
+        W,
+        x,
+        y,
+        Math.cos(a) * v - b.vx / sp * v * 0.5,
+        Math.sin(a) * v - b.vy / sp * v * 0.5 - v * 0.3,
+        b.dripG,
+        b.dripCol || b.col,
+        1.3 + Math.random(),
+        b.dripCol2
+      );
+    }
+    SFX.fx("splash", x, y);
+  }
+  function burst(W, x, y, n, color) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * 6.28, sp = 60 + Math.random() * 160;
+      W.sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.45, max: 0.45, c: color, size: 3 });
+    }
+  }
+
   // src/game/systems/terrain.js
   var solidCell = (W, cx, cy) => cx < 0 || cy < 0 || cx >= CW || cy >= CH || W.mat[cy * CW + cx] !== 0;
   var solidAt = (W, x, y) => solidCell(W, Math.floor(x / CELL), Math.floor(y / CELL));
@@ -10844,10 +10890,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const webDist = (L, x, y) => {
         const q = webNear(L, x, y);
         return Math.hypot(q.x - x, q.y - y);
-      };
-      const toast = (text) => {
-        W.toasts.push({ text, t: 2.2 });
-        if (W.toasts.length > 3) W.toasts.shift();
       };
       let raf, last = performance.now();
       const RP_ARR = {
@@ -11344,51 +11386,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       c.addEventListener("pointerup", mUp);
       c.addEventListener("pointercancel", mUp);
       c.addEventListener("pointerleave", mLeave);
-      function goo(x, y, vx, vy, g, c2, size, c22) {
-        if (W.sparks.length > 800) return;
-        const life = 0.5 + Math.random() * 0.5;
-        W.sparks.push({
-          x,
-          y,
-          vx,
-          vy,
-          life,
-          max: life,
-          c: Math.random() < 0.35 ? c22 || "#c8ff8a" : c2,
-          size: size || 1.1 + Math.random() * 0.8,
-          heavy: 1,
-          g
-        });
-      }
-      function splat(b, x, y) {
-        const sp = Math.hypot(b.vx, b.vy) || 1;
-        for (let i = 0; i < b.splat; i++) {
-          const a = Math.random() * 6.28, v = b.splatV * (0.4 + Math.random() * 0.6);
-          goo(
-            x,
-            y,
-            Math.cos(a) * v - b.vx / sp * v * 0.5,
-            Math.sin(a) * v - b.vy / sp * v * 0.5 - v * 0.3,
-            b.dripG,
-            b.dripCol || b.col,
-            1.3 + Math.random(),
-            b.dripCol2
-          );
-        }
-        SFX.fx("splash", x, y);
-      }
-      function burst(x, y, n, color) {
-        for (let i = 0; i < n; i++) {
-          const a = Math.random() * 6.28, sp = 60 + Math.random() * 160;
-          W.sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.45, max: 0.45, c: color, size: 3 });
-        }
-      }
       function hurt(n) {
         if (W.p.dead || n <= 0) return;
         if (W.pb.shield && W.p.shieldReady) {
           W.p.shieldReady = false;
           W.p.shieldT = 2.5;
-          burst(W.p.x + PW / 2, W.p.y + PH / 2, 10, "#7ad7ff");
+          burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 10, "#7ad7ff");
           SFX.ui("shield");
           return;
         }
@@ -11402,14 +11405,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             W.p.hp = maxHp();
             W.p.shieldReady = true;
             W.p.shieldT = 0;
-            burst(W.p.x + PW / 2, W.p.y + PH / 2, 24, "#ff5a36");
+            burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 24, "#ff5a36");
             SFX.ui("revive");
-            toast("Back from the dead");
+            toast(W, "Back from the dead");
             input.current.notify();
             return;
           }
           W.p.dead = true;
-          burst(W.p.x + PW / 2, W.p.y + PH / 2, 24, COL.player);
+          burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 24, COL.player);
           W.strings.length = 0;
           SFX.ui("die");
           clearSave();
@@ -11445,7 +11448,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (dmg >= 0.5) SFX.creature(e.k, "hurt", e.x, e.ty);
           return;
         }
-        burst(e.x, e.ty, 16, e.je ? jcol("jeColBody", e.je.u.col) : e.k.col.a);
+        burst(W, e.x, e.ty, 16, e.je ? jcol("jeColBody", e.je.u.col) : e.k.col.a);
         SFX.creature(e.k, "die", e.x, e.ty);
         W.enemies.splice(j, 1);
         e.dead = true;
@@ -11530,7 +11533,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       function unstick(e, S, home) {
         e.stN = (e.stN || 0) + 1;
         if (e.stN >= 3 && home) {
-          burst(e.x, e.y, 6, "#6a5a48");
+          burst(W, e.x, e.y, 6, "#6a5a48");
           S.mode = "tunnel";
           S.len = pathLen(e.path);
           S.s = S.len * 0.7;
@@ -11981,7 +11984,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const base = Math.atan2(ny, nx);
         for (const sh of list) spawnShot(sh, x, y, base, 0, false, 0);
         SFX.cast(list, x0, y0);
-        burst(x0, y0, 5, col);
+        burst(W, x0, y0, 5, col);
       }
       function jag(pts, amp) {
         const th = [pts[0]];
@@ -12027,7 +12030,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           const j = near[Math.floor(Math.random() * near.length)], e = W.enemies[j];
           addArc([{ x: b.x, y: b.y }, { x: e.x, y: e.ty }], b.col, 1, 0.14);
           SFX.arc(e.x, e.ty);
-          burst(e.x, e.ty, 3, b.col);
+          burst(W, e.x, e.ty, 3, b.col);
           damageEnemy(j, b.dmg * 0.3);
           return;
         }
@@ -12038,7 +12041,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             const hx = b.x + dx * d, hy = b.y + dy * d;
             addArc([{ x: b.x, y: b.y }, { x: hx, y: hy }], b.col, 0.8, 0.12);
             SFX.arc(hx, hy);
-            burst(hx, hy, 2, b.col);
+            burst(W, hx, hy, 2, b.col);
             return;
           }
         }
@@ -12057,7 +12060,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           const j = enemyAt(W, bx, by, sh.size + 3);
           if (j >= 0) {
             damageEnemy(j, critRoll((sh.dmg + bonus) * pd, sh.crit + pc));
-            burst(bx, by, 4, sh.col);
+            burst(W, bx, by, 4, sh.col);
             if (sh.knock) shove(W.enemies[j], nx, ny, sh.knock);
             if (!sh.pierce) {
               hitAt = d;
@@ -12109,7 +12112,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             age: 0
           });
         }
-        burst(b.x, b.y, 8, b.col);
+        burst(W, b.x, b.y, 8, b.col);
       }
       const glowDot = (x, y, vx, vy, c2, s, life, g) => W.dparts.push({ x, y, vx, vy, g: g || 0, c: c2, s, life, max: life, glow: 1 });
       const rnd = (a, b) => a + Math.random() * (b - a);
@@ -12425,16 +12428,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             const x = b.x - nx * back - PW / 2, y = b.y - ny * back - PH / 2 + dy;
             if (x < CELL * 3 || y < CELL * 3 || x + PW > WW - CELL * 3 || y + PH > WH - CELL * 3) continue;
             if (boxHit(W, x, y)) continue;
-            burst(W.p.x + PW / 2, W.p.y + PH / 2, 10, b.col);
+            burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 10, b.col);
             W.p.x = x;
             W.p.y = y;
             W.p.vx = 0;
             W.p.vy = 0;
-            burst(W.p.x + PW / 2, W.p.y + PH / 2, 12, b.col);
+            burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 12, b.col);
             SFX.fx("warp", W.p.x + PW / 2, W.p.y + PH / 2);
             return;
           }
-        burst(b.x, b.y, 4, b.col);
+        burst(W, b.x, b.y, 4, b.col);
         SFX.fx("fizzle", b.x, b.y);
       }
       const fieldPayload = (f) => {
@@ -12806,7 +12809,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const MATERIAL = { icicle: "ice", geode: "crystal", salt: "salt", bone: "bone", obsidian: "glass", shard: "glass" };
       function shatter(pr, n) {
         SFX.fx("shatter", pr.x, pr.y + (pr.t0 + pr.b) / 2, MATERIAL[pr.st] || "stone");
-        burst(pr.x, pr.y + (pr.t0 + pr.b) / 2, n || 10, propCol(pr, themeFor(W.floor)));
+        burst(W, pr.x, pr.y + (pr.t0 + pr.b) / 2, n || 10, propCol(pr, themeFor(W.floor)));
         pr.gone = true;
       }
       function blowProp(pr) {
@@ -12818,7 +12821,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         } else if (pr.k === "pod") {
           SFX.pop(pr.x, pr.y - 6);
           W.clouds.push({ x: pr.x, y: pr.y - 8, r: 34, life: 4.5, max: 4.5, tick: 0 });
-          burst(pr.x, pr.y - 6, 14, "#b6e36a");
+          burst(W, pr.x, pr.y - 6, 14, "#b6e36a");
         }
       }
       function popLamp(pr) {
@@ -12829,7 +12832,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         else x -= pr.side * 5;
         SFX.fx("shatter", x, y, "glass");
         SFX.fx("whoosh", x, y);
-        burst(x, y, 6, "#fff2c0");
+        burst(W, x, y, 6, "#fff2c0");
         for (let k = 0; k < 16; k++) {
           const a = -Math.PI / 2 + (Math.random() - 0.5) * 3.4, v = 50 + Math.random() * 120;
           W.dparts.push({
@@ -12943,7 +12946,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 }
               } else {
                 pr.hurt = (pr.hurt || 0) + 1;
-                burst(b.x, b.y, 3, b.col);
+                burst(W, b.x, b.y, 3, b.col);
                 b.life = 0;
                 b.struck = 1;
               }
@@ -12951,7 +12954,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             if (tough) for (let k = W.enemyShots.length - 1; k >= 0; k--) {
               const es = W.enemyShots[k];
               if (es.x > x0 && es.x < x1 && es.y > y0 && es.y < y1) {
-                burst(es.x, es.y, 3, es.col);
+                burst(W, es.x, es.y, 3, es.col);
                 SFX.fx("coverHit", es.x, es.y);
                 W.enemyShots.splice(k, 1);
               }
@@ -13065,7 +13068,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 hurt(pr.st === "salt" ? 4 : PROP_DMG.spike);
                 pr.cd = 0.7;
                 W.p.vy = pr.hang ? 160 : -280;
-                burst(pcx, pr.hang ? W.p.y : W.p.y + PH, 5, "#ff5a5a");
+                burst(W, pcx, pr.hang ? W.p.y : W.p.y + PH, 5, "#ff5a5a");
               }
               break;
             case "vent": {
@@ -13123,7 +13126,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 W.p.onGround = false;
                 pr.sq = 0.3;
                 SFX.fx("shroom", pr.x, pr.y);
-                burst(pr.x, pr.y - 8, 5, propCol(pr, themeFor(W.floor)));
+                burst(W, pr.x, pr.y - 8, 5, propCol(pr, themeFor(W.floor)));
               }
               break;
             case "zone": {
@@ -13163,7 +13166,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 if (Math.abs(W.p.vx) > 80 && pr.cd <= 0) {
                   hurt(2);
                   pr.cd = 0.35;
-                  burst(pcx, pr.y - 1, 3, "#d8f4ff");
+                  burst(W, pcx, pr.y - 1, 3, "#d8f4ff");
                 }
               } else if (st === "log") {
                 pr.stand = (pr.stand || 0) + dt;
@@ -13188,7 +13191,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               if (pr.st === "skulls" && me && pr.cd <= 0 && pOver(pr, 0)) {
                 alertAt(pr.x, pr.y);
                 pr.cd = 3;
-                burst(pr.x, pr.y - 4, 6, "#e6dcc4");
+                burst(W, pr.x, pr.y - 4, 6, "#e6dcc4");
                 SFX.fx("skulls", pr.x, pr.y);
               }
               break;
@@ -13498,21 +13501,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         W.time += dt;
         W.levelT += dt;
         if (input.current.pendingToast) {
-          toast(input.current.pendingToast);
+          toast(W, input.current.pendingToast);
           input.current.pendingToast = null;
         }
         input.current.floor = W.floor;
         if (input.current.newCave) {
           input.current.newCave = false;
           enterLevel();
-          toast("New cave");
+          toast(W, "New cave");
           return;
         }
         if (input.current.spawnGun) {
           const gun2 = caveGun(input.current.spawnGun, Math.random);
           input.current.spawnGun = 0;
           W.pickups.push({ kind: "gun", x: W.p.x + PW / 2 + W.p.face * 22, y: W.p.y + PH - 9, gun: gun2, t: 0 });
-          toast("Spawned " + gun2.name);
+          toast(W, "Spawned " + gun2.name);
         }
         const LO = input.current.loadout;
         const MHP = maxHp();
@@ -13693,7 +13696,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           enterLevel();
           saveRun();
           SFX.fx("portalIn");
-          toast("Floor " + W.floor);
+          toast(W, "Floor " + W.floor);
           input.current.notify();
           return;
         }
@@ -13803,7 +13806,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               const es = W.enemyShots[k2];
               const dx = b.x - es.x, dy = b.y - es.y, d = Math.hypot(dx, dy) || 1;
               if (d < b.size + 6) {
-                burst(es.x, es.y, 3, "#c58cff");
+                burst(W, es.x, es.y, 3, "#c58cff");
                 SFX.fx("absorb", es.x, es.y);
                 W.enemyShots.splice(k2, 1);
                 continue;
@@ -13896,7 +13899,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               const sp = Math.hypot(b.vx, b.vy) || 1;
               damageEnemy(j, critRoll(b.dmg, b.crit));
               if (b.fire) setAlight(e);
-              burst(nx, ny, 4, b.col);
+              burst(W, nx, ny, 4, b.col);
               SFX.hit(nx, ny);
               if (b.knock) shove(e, b.vx / sp, b.vy / sp, b.knock);
               b.x = nx;
@@ -13950,7 +13953,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               }
             }
             if (b.friendly && !W.p.dead && nx > W.p.x - 2 && nx < W.p.x + PW + 2 && ny > W.p.y - 2 && ny < W.p.y + PH + 2) {
-              burst(nx, ny, 5, b.col);
+              burst(W, nx, ny, 5, b.col);
               hurt(Math.round(b.dmg * 2));
               dead = true;
               break;
@@ -13998,7 +14001,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 break;
               }
               if (b.pit) dig(nx, ny, b.pit);
-              burst(b.x, b.y, 3, b.col);
+              burst(W, b.x, b.y, 3, b.col);
               SFX.rock(b.x, b.y);
               dead = true;
               break;
@@ -14116,7 +14119,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             for (let k2 = W.enemyShots.length - 1; k2 >= 0; k2--) {
               const b = W.enemyShots[k2];
               if (Math.hypot(b.x - f.x, b.y - f.y) < f.r) {
-                burst(b.x, b.y, 3, f.col);
+                burst(W, b.x, b.y, 3, f.col);
                 SFX.fx("absorb", b.x, b.y);
                 W.enemyShots.splice(k2, 1);
               }
@@ -14135,7 +14138,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               const sx = f.x + Math.cos(a) * rr2, sy = f.y + Math.sin(a) * rr2;
               for (let j = W.enemies.length - 1; j >= 0; j--)
                 if (Math.hypot(W.enemies[j].x - sx, W.enemies[j].ty - sy) < 22) damageEnemy(j, 2);
-              burst(sx, sy, 6, "#a8e4ff");
+              burst(W, sx, sy, 6, "#a8e4ff");
               addArc([{ x: sx + rnd(-8, 8), y: f.y - f.r * 0.85 }, { x: sx, y: sy }], "#a8e4ff", 1.2, 0.14);
               SFX.arc(sx, sy, true);
             }
@@ -14164,7 +14167,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 q.x = f.x;
                 q.y = f.y;
               }
-              burst(f.x, f.y, 14, f.col);
+              burst(W, f.x, f.y, 14, f.col);
               SFX.fx("warp", f.x, f.y);
             }
           } else if (f.field === "glitter") {
@@ -14298,23 +14301,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               if (W.p.hp < MHP) {
                 W.p.hp = MHP;
                 it.sold = true;
-                toast("Patched up");
+                toast(W, "Patched up");
                 SFX.ui("heal");
               }
             } else if (LO.gold < it.price) {
-              toast("Not enough gold");
+              toast(W, "Not enough gold");
               SFX.ui("poor");
             } else if (it.kind === "gun") {
               LO.gold -= it.price;
               it.sold = true;
               W.pickups.push({ kind: "gun", x: it.x, y: it.y, gun: it.gun, t: 0 });
-              toast("Bought " + it.gun.name);
+              toast(W, "Bought " + it.gun.name);
               SFX.ui("buy");
             } else {
               LO.gold -= it.price;
               LO.bag.push(it.id);
               it.sold = true;
-              toast("Bought " + MODS[it.id].name);
+              toast(W, "Bought " + MODS[it.id].name);
               SFX.ui("buy");
             }
           } else if (near.src === "room") {
@@ -14331,11 +14334,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 paintFog();
               }
               if (W.pb.ghost && !W.ghost) W.ghost = { x: pcx, y: pcy, cd: 0 };
-              toast("Perk: " + PERKS[r.id].name);
+              toast(W, "Perk: " + PERKS[r.id].name);
               SFX.ui("perk");
             } else {
               LO.maxBonus = (LO.maxBonus || 0) + 25;
-              toast("+25 Max Health");
+              toast(W, "+25 Max Health");
               SFX.ui("heart");
             }
             r.taken = true;
@@ -14345,7 +14348,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               LO.bag.push(q.id);
               q.taken = true;
               q.cool = PICKUP_COOL;
-              toast("Picked up " + MODS[q.id].name);
+              toast(W, "Picked up " + MODS[q.id].name);
               SFX.ui("mod");
             } else {
               input.current.found = q;
@@ -14455,7 +14458,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               if (t) {
                 hurt(Math.round(kr("jeBite")));
                 e.touch = kr("jeBiteCd");
-                burst(t.x, t.y, 5, jellyPal(S.u.col).tent);
+                burst(W, t.x, t.y, 5, jellyPal(S.u.col).tent);
                 SFX.creature(k2, "bite", t.x, t.y);
               }
             }
@@ -14525,7 +14528,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           e.ty = k2.kp ? e.y : e.y + Math.sin(W.time * 2 + e.phase) * (hunting ? 2 : 4);
           if (hunting && dist < e.r + 14 && e.touch <= 0) {
             if (k2.act === "bomb") {
-              burst(e.x, e.ty, 22, k2.col.a);
+              burst(W, e.x, e.ty, 22, k2.col.a);
               SFX.boom(e.x, e.ty, 26);
               hurt(k2.dmg);
               W.enemies.splice(i, 1);
@@ -14573,7 +14576,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             }
           }
           if (b.drip) for (b.da += b.drip * dt; b.da >= 1; b.da--)
-            goo(b.x + (Math.random() - 0.5) * b.size, b.y + b.size * 0.5, b.vx * 0.08, 8 + Math.random() * 18, b.dripG, b.dripCol || b.col, 0, b.dripCol2);
+            goo(W, b.x + (Math.random() - 0.5) * b.size, b.y + b.size * 0.5, b.vx * 0.08, 8 + Math.random() * 18, b.dripG, b.dripCol || b.col, 0, b.dripCol2);
           let gone = b.life <= 0;
           if (b.fire) fireArea(W.fire, b.x, b.y, 4, 0.5);
           const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
@@ -14582,15 +14585,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             b.y += b.vy * dt / sn;
             if (solidAt(W, b.x, b.y)) {
               gone = true;
-              if (b.splat != null) splat(b, b.x - b.vx * dt / sn, b.y - b.vy * dt / sn);
+              if (b.splat != null) splat(W, b, b.x - b.vx * dt / sn, b.y - b.vy * dt / sn);
               else SFX.fx("fizzle", b.x, b.y);
               if (b.fire) ignite(b.x - b.vx * dt / sn, b.y - b.vy * dt / sn, 8, 0.9);
               break;
             }
             if (!W.p.dead && b.x > W.p.x - 2 && b.x < W.p.x + PW + 2 && b.y > W.p.y - 2 && b.y < W.p.y + PH + 2) {
               gone = true;
-              if (b.splat != null) splat(b, b.x, b.y);
-              else burst(b.x, b.y, 5, COL.player);
+              if (b.splat != null) splat(W, b, b.x, b.y);
+              else burst(W, b.x, b.y, 5, COL.player);
               hurt(b.dmg);
               if (b.fire) youAlight();
             }
@@ -14621,7 +14624,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           const s = W.strings[i];
           if (Math.hypot(W.p.x + s.ox - s.ax, W.p.y + s.oy - s.ay) > s.max) {
             W.strings.splice(i, 1);
-            burst(W.p.x + s.ox, W.p.y + s.oy, 4, "#e8e8f0");
+            burst(W, W.p.x + s.ox, W.p.y + s.oy, 4, "#e8e8f0");
             SFX.fx("lash", W.p.x + s.ox, W.p.y + s.oy);
           }
         }

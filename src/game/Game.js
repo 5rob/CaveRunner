@@ -43,6 +43,7 @@ import { NAV, navField, navWay } from '../world/nav.js';
 import { ORE_GOLD } from '../world/veins.js';
 import { VIS_RAYS, fogReveal, fogStart, nestFog, rayDist, visPoly } from '../world/vision.js';
 import { builtAt } from '../world/zones.js';
+import { burst, goo, splat, toast } from './systems/particles.js';
 import { boxHit, enemyAt, lineOfSight, solidAt, solidCell } from './systems/terrain.js';
 import { testHook } from './testhook.js';
 import { makeWorld } from './world.js';
@@ -137,7 +138,6 @@ export function Game({ input }) {
     };
     const webDist = (L, x, y) => { const q = webNear(L, x, y); return Math.hypot(q.x - x, q.y - y); };
 
-    const toast = text => { W.toasts.push({ text, t: 2.2 }); if (W.toasts.length > 3) W.toasts.shift(); };
     let raf, last = performance.now();
 
     // ---- the death replay's recorder (see RP_HZ) ----
@@ -475,35 +475,12 @@ export function Game({ input }) {
     c.addEventListener('pointercancel', mUp);
     c.addEventListener('pointerleave', mLeave);
 
-    // one drop of goo: falls under its own gravity g, lands and sits a moment on rock
-    function goo(x, y, vx, vy, g, c, size, c2) {
-      if (W.sparks.length > 800) return;
-      const life = 0.5 + Math.random() * 0.5;
-      W.sparks.push({ x, y, vx, vy, life, max: life, c: Math.random() < 0.35 ? (c2 || '#c8ff8a') : c,
-        size: size || 1.1 + Math.random() * 0.8, heavy: 1, g });
-    }
-    // a poison spit bursting: a little ring of goo thrown out, a bit back the way it came
-    function splat(b, x, y) {
-      const sp = Math.hypot(b.vx, b.vy) || 1;
-      for (let i = 0; i < b.splat; i++) {
-        const a = Math.random() * 6.28, v = b.splatV * (0.4 + Math.random() * 0.6);
-        goo(x, y, Math.cos(a) * v - b.vx / sp * v * 0.5, Math.sin(a) * v - b.vy / sp * v * 0.5 - v * 0.3,
-          b.dripG, b.dripCol || b.col, 1.3 + Math.random(), b.dripCol2);
-      }
-      SFX.fx('splash', x, y);
-    }
-    function burst(x, y, n, color) {
-      for (let i = 0; i < n; i++) {
-        const a = Math.random() * 6.28, sp = 60 + Math.random() * 160;
-        W.sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.45, max: 0.45, c: color, size: 3 });
-      }
-    }
     function hurt(n) {
       if (W.p.dead || n <= 0) return;
       // Permanent Shield soaks a hit whole, then winds back up over a couple of seconds
       if (W.pb.shield && W.p.shieldReady) {
         W.p.shieldReady = false; W.p.shieldT = 2.5;
-        burst(W.p.x + PW / 2, W.p.y + PH / 2, 10, '#7ad7ff');
+        burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 10, '#7ad7ff');
         SFX.ui('shield');
         return;
       }
@@ -517,13 +494,13 @@ export function Game({ input }) {
           LO.usedLives = (LO.usedLives || 0) + 1;
           W.p.hp = maxHp();
           W.p.shieldReady = true; W.p.shieldT = 0;
-          burst(W.p.x + PW / 2, W.p.y + PH / 2, 24, '#ff5a36');
+          burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 24, '#ff5a36');
           SFX.ui('revive');
-          toast('Back from the dead');
+          toast(W, 'Back from the dead');
           input.current.notify();
           return;
         }
-        W.p.dead = true; burst(W.p.x + PW / 2, W.p.y + PH / 2, 24, COL.player);
+        W.p.dead = true; burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 24, COL.player);
         W.strings.length = 0;
         SFX.ui('die');
         clearSave();                          // a death is final: reopening starts a new run
@@ -550,7 +527,7 @@ export function Game({ input }) {
       e.hp -= dmg; e.flash = 0.08;
       if (e.k.kp) e.aggro = true;          // hurt a spider or a jelly and it comes for you
       if (e.hp > 0) { if (dmg >= 0.5) SFX.creature(e.k, 'hurt', e.x, e.ty); return; }
-      burst(e.x, e.ty, 16, e.je ? jcol('jeColBody', e.je.u.col) : e.k.col.a);
+      burst(W, e.x, e.ty, 16, e.je ? jcol('jeColBody', e.je.u.col) : e.k.col.a);
       SFX.creature(e.k, 'die', e.x, e.ty);
       W.enemies.splice(j, 1);
       e.dead = true;                        // its rats find out they've no home to go to
@@ -607,7 +584,7 @@ export function Game({ input }) {
     function unstick(e, S, home) {
       e.stN = (e.stN || 0) + 1;
       if (e.stN >= 3 && home) {
-        burst(e.x, e.y, 6, '#6a5a48');
+        burst(W, e.x, e.y, 6, '#6a5a48');
         S.mode = 'tunnel'; S.len = pathLen(e.path); S.s = S.len * 0.7; S.dir = -1; S.wait = 0;
         e.stN = 0;
       } else if (e.stN >= 3) { e.giveUp = 4; e.aggro = false; e.stN = 0; }
@@ -933,7 +910,7 @@ export function Game({ input }) {
       const base = Math.atan2(ny, nx);
       for (const sh of list) spawnShot(sh, x, y, base, 0, false, 0);
       SFX.cast(list, x0, y0);
-      burst(x0, y0, 5, col);
+      burst(W, x0, y0, 5, col);
     }
 
     // Lightning. A zig-zag between points: each leg is split into short kinks knocked
@@ -981,7 +958,7 @@ export function Game({ input }) {
         const j = near[Math.floor(Math.random() * near.length)], e = W.enemies[j];
         addArc([{ x: b.x, y: b.y }, { x: e.x, y: e.ty }], b.col, 1, 0.14);
         SFX.arc(e.x, e.ty);
-        burst(e.x, e.ty, 3, b.col);
+        burst(W, e.x, e.ty, 3, b.col);
         damageEnemy(j, b.dmg * 0.3);
         return;
       }
@@ -993,7 +970,7 @@ export function Game({ input }) {
           const hx = b.x + dx * d, hy = b.y + dy * d;
           addArc([{ x: b.x, y: b.y }, { x: hx, y: hy }], b.col, 0.8, 0.12);
           SFX.arc(hx, hy);
-          burst(hx, hy, 2, b.col);
+          burst(W, hx, hy, 2, b.col);
           return;
         }
       }
@@ -1010,7 +987,7 @@ export function Game({ input }) {
         const j = enemyAt(W, bx, by, sh.size + 3);
         if (j >= 0) {
           damageEnemy(j, critRoll((sh.dmg + bonus) * pd, sh.crit + pc));
-          burst(bx, by, 4, sh.col);
+          burst(W, bx, by, 4, sh.col);
           if (sh.knock) shove(W.enemies[j], nx, ny, sh.knock);
           if (!sh.pierce) { hitAt = d; break; }
         }
@@ -1038,7 +1015,7 @@ export function Game({ input }) {
           col: b.col, spin: 0, homing: 0, bounce: 0, pierce: 0, explode: 9,
           grav: 300, accel: 0, bore: 0, hit: null, age: 0 });
       }
-      burst(b.x, b.y, 8, b.col);
+      burst(W, b.x, b.y, 8, b.col);
     }
     // ---- v95 spell looks: what each Noita-style shot sheds as it flies, bounces and dies.
     // Trails are glowing dparts (drawn after the fog, only where it has lifted), chips are
@@ -1196,13 +1173,13 @@ export function Game({ input }) {
           const x = b.x - nx * back - PW / 2, y = b.y - ny * back - PH / 2 + dy;
           if (x < CELL * 3 || y < CELL * 3 || x + PW > WW - CELL * 3 || y + PH > WH - CELL * 3) continue;
           if (boxHit(W, x, y)) continue;
-          burst(W.p.x + PW / 2, W.p.y + PH / 2, 10, b.col);
+          burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 10, b.col);
           W.p.x = x; W.p.y = y; W.p.vx = 0; W.p.vy = 0;
-          burst(W.p.x + PW / 2, W.p.y + PH / 2, 12, b.col);
+          burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 12, b.col);
           SFX.fx('warp', W.p.x + PW / 2, W.p.y + PH / 2);
           return;
         }
-      burst(b.x, b.y, 4, b.col);
+      burst(W, b.x, b.y, 4, b.col);
       SFX.fx('fizzle', b.x, b.y);
     }
     // a crystal "with Trigger" casts what it carries when it goes off
@@ -1504,7 +1481,7 @@ export function Game({ input }) {
     const MATERIAL = { icicle: 'ice', geode: 'crystal', salt: 'salt', bone: 'bone', obsidian: 'glass', shard: 'glass' };
     function shatter(pr, n) {
       SFX.fx('shatter', pr.x, pr.y + (pr.t0 + pr.b) / 2, MATERIAL[pr.st] || 'stone');
-      burst(pr.x, pr.y + (pr.t0 + pr.b) / 2, n || 10, propCol(pr, themeFor(W.floor)));
+      burst(W, pr.x, pr.y + (pr.t0 + pr.b) / 2, n || 10, propCol(pr, themeFor(W.floor)));
       pr.gone = true;
     }
     function blowProp(pr) {
@@ -1514,7 +1491,7 @@ export function Game({ input }) {
       else if (pr.k === 'pod') {
         SFX.pop(pr.x, pr.y - 6);
         W.clouds.push({ x: pr.x, y: pr.y - 8, r: 34, life: 4.5, max: 4.5, tick: 0 });
-        burst(pr.x, pr.y - 6, 14, '#b6e36a');
+        burst(W, pr.x, pr.y - 6, 14, '#b6e36a');
       }
     }
     // a lantern shot (or dropped, or blasted): the glass goes and its burning oil is thrown
@@ -1526,7 +1503,7 @@ export function Game({ input }) {
       if (pr.st === 'hanglamp') y += pr.len + 4.5; else x -= pr.side * 5;
       SFX.fx('shatter', x, y, 'glass');
       SFX.fx('whoosh', x, y);
-      burst(x, y, 6, '#fff2c0');
+      burst(W, x, y, 6, '#fff2c0');
       for (let k = 0; k < 16; k++) {
         const a = -Math.PI / 2 + (Math.random() - 0.5) * 3.4, v = 50 + Math.random() * 120;
         W.dparts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 20, g: 0.45,
@@ -1604,11 +1581,11 @@ export function Game({ input }) {
             if (b.pull || b.eat || b.bore) {          // rolls on through, but only counts once
               const seen = b.propHit || (b.propHit = new Set());
               if (!seen.has(pr)) { seen.add(pr); pr.hurt = (pr.hurt || 0) + 1; }
-            } else { pr.hurt = (pr.hurt || 0) + 1; burst(b.x, b.y, 3, b.col); b.life = 0; b.struck = 1; }
+            } else { pr.hurt = (pr.hurt || 0) + 1; burst(W, b.x, b.y, 3, b.col); b.life = 0; b.struck = 1; }
           }
           if (tough) for (let k = W.enemyShots.length - 1; k >= 0; k--) {
             const es = W.enemyShots[k];
-            if (es.x > x0 && es.x < x1 && es.y > y0 && es.y < y1) { burst(es.x, es.y, 3, es.col); SFX.fx('coverHit', es.x, es.y); W.enemyShots.splice(k, 1); }
+            if (es.x > x0 && es.x < x1 && es.y > y0 && es.y < y1) { burst(W, es.x, es.y, 3, es.col); SFX.fx('coverHit', es.x, es.y); W.enemyShots.splice(k, 1); }
           }
         }
         if (pr.hurt) {
@@ -1666,7 +1643,7 @@ export function Game({ input }) {
           case 'spike':
             if (me && pOver(pr, -1) && pr.cd <= 0) {
               hurt(pr.st === 'salt' ? 4 : PROP_DMG.spike); pr.cd = 0.7;
-              W.p.vy = pr.hang ? 160 : -280; burst(pcx, pr.hang ? W.p.y : W.p.y + PH, 5, '#ff5a5a');
+              W.p.vy = pr.hang ? 160 : -280; burst(W, pcx, pr.hang ? W.p.y : W.p.y + PH, 5, '#ff5a5a');
             }
             break;
           case 'vent': {
@@ -1697,7 +1674,7 @@ export function Game({ input }) {
             if (me && W.p.vy >= 0 && Math.abs(pcx - pr.x) < 11 && W.p.y + PH > pr.y - 12 && W.p.y + PH < pr.y + 2) {
               W.p.vy = -680; W.p.onGround = false; pr.sq = 0.3;
               SFX.fx('shroom', pr.x, pr.y);
-              burst(pr.x, pr.y - 8, 5, propCol(pr, themeFor(W.floor)));
+              burst(W, pr.x, pr.y - 8, 5, propCol(pr, themeFor(W.floor)));
             }
             break;
           case 'zone': {
@@ -1716,7 +1693,7 @@ export function Game({ input }) {
                 vy: -60 - Math.random() * 60, g: 0.9, c: 'rgba(150,200,255,0.8)', s: 1.3, life: 0.6, max: 0.6 });
             } else if (st === 'acid') { if (pr.cd <= 0) { hurt(3); pr.cd = 0.5; } }
             else if (st === 'glass') {
-              if (Math.abs(W.p.vx) > 80 && pr.cd <= 0) { hurt(2); pr.cd = 0.35; burst(pcx, pr.y - 1, 3, '#d8f4ff'); }
+              if (Math.abs(W.p.vx) > 80 && pr.cd <= 0) { hurt(2); pr.cd = 0.35; burst(W, pcx, pr.y - 1, 3, '#d8f4ff'); }
             } else if (st === 'log') {
               pr.stand = (pr.stand || 0) + dt;
               if (pr.stand > 0.8 && pr.cd <= 0) { hurt(3); pr.cd = 0.5; }
@@ -1728,7 +1705,7 @@ export function Game({ input }) {
           }
           case 'noise':                              // skulls crunch underfoot
             if (pr.st === 'skulls' && me && pr.cd <= 0 && pOver(pr, 0)) {
-              alertAt(pr.x, pr.y); pr.cd = 3; burst(pr.x, pr.y - 4, 6, '#e6dcc4');
+              alertAt(pr.x, pr.y); pr.cd = 3; burst(W, pr.x, pr.y - 4, 6, '#e6dcc4');
               SFX.fx('skulls', pr.x, pr.y);
             }
             break;
@@ -1969,19 +1946,19 @@ export function Game({ input }) {
       W.levelT += dt;
       // a toast raised while the game was paused (picking a mod up, say) waits here,
       // because nothing runs on a paused frame
-      if (input.current.pendingToast) { toast(input.current.pendingToast); input.current.pendingToast = null; }
+      if (input.current.pendingToast) { toast(W, input.current.pendingToast); input.current.pendingToast = null; }
       input.current.floor = W.floor;
       if (input.current.newCave) {                // Dev → New cave: this floor again, freshly rolled
         input.current.newCave = false;
         enterLevel();
-        toast('New cave');
+        toast(W, 'New cave');
         return;
       }
       if (input.current.spawnGun) {               // Dev → Spawn gun: drop one just in front of you
         const gun = caveGun(input.current.spawnGun, Math.random);
         input.current.spawnGun = 0;
         W.pickups.push({ kind: 'gun', x: W.p.x + PW / 2 + W.p.face * 22, y: W.p.y + PH - 9, gun, t: 0 });
-        toast('Spawned ' + gun.name);
+        toast(W, 'Spawned ' + gun.name);
       }
       const LO = input.current.loadout;
       // perks: keep the current maximum health honest, wind the shield back up, and never
@@ -2138,7 +2115,7 @@ export function Game({ input }) {
         enterLevel();
         saveRun();
         SFX.fx('portalIn');
-        toast('Floor ' + W.floor);
+        toast(W, 'Floor ' + W.floor);
         input.current.notify();
         return;
       }
@@ -2227,7 +2204,7 @@ export function Game({ input }) {
           for (let k = W.enemyShots.length - 1; k >= 0; k--) {
             const es = W.enemyShots[k];
             const dx = b.x - es.x, dy = b.y - es.y, d = Math.hypot(dx, dy) || 1;
-            if (d < b.size + 6) { burst(es.x, es.y, 3, '#c58cff'); SFX.fx('absorb', es.x, es.y); W.enemyShots.splice(k, 1); continue; }
+            if (d < b.size + 6) { burst(W, es.x, es.y, 3, '#c58cff'); SFX.fx('absorb', es.x, es.y); W.enemyShots.splice(k, 1); continue; }
             if (d < reach) { es.vx += dx / d * 900 * dt; es.vy += dy / d * 900 * dt; }
           }
           if ((b.grind = (b.grind || 0) + dt) > 0.3) { b.grind = 0; b.hit = null; }
@@ -2295,7 +2272,7 @@ export function Game({ input }) {
             const sp = Math.hypot(b.vx, b.vy) || 1;
             damageEnemy(j, critRoll(b.dmg, b.crit));
             if (b.fire) setAlight(e);
-            burst(nx, ny, 4, b.col);
+            burst(W, nx, ny, 4, b.col);
             SFX.hit(nx, ny);
             if (b.knock) shove(e, b.vx / sp, b.vy / sp, b.knock);
             b.x = nx; b.y = ny;
@@ -2326,7 +2303,7 @@ export function Game({ input }) {
           }
           if (b.friendly && !W.p.dead && nx > W.p.x - 2 && nx < W.p.x + PW + 2 &&
               ny > W.p.y - 2 && ny < W.p.y + PH + 2) {
-            burst(nx, ny, 5, b.col); hurt(Math.round(b.dmg * 2)); dead = true; break;
+            burst(W, nx, ny, 5, b.col); hurt(Math.round(b.dmg * 2)); dead = true; break;
           }
           if (solidAt(W, nx, ny)) {
             if (b.payload && b.trig !== 'expire') firePayload(b);   // so does touching rock
@@ -2353,7 +2330,7 @@ export function Game({ input }) {
             if (b.explode) { boom = true; break; }
             if (b.pop) { explode(b.x, b.y, b.pop, b.dmg * 0.5); dead = true; break; }
             if (b.pit) dig(nx, ny, b.pit);                // Noita's small hole where a shot lands
-            burst(b.x, b.y, 3, b.col);
+            burst(W, b.x, b.y, 3, b.col);
             SFX.rock(b.x, b.y);
             dead = true;
             break;
@@ -2436,7 +2413,7 @@ export function Game({ input }) {
         } else if (f.field === 'shield') {
           for (let k = W.enemyShots.length - 1; k >= 0; k--) {
             const b = W.enemyShots[k];
-            if (Math.hypot(b.x - f.x, b.y - f.y) < f.r) { burst(b.x, b.y, 3, f.col); SFX.fx('absorb', b.x, b.y); W.enemyShots.splice(k, 1); }
+            if (Math.hypot(b.x - f.x, b.y - f.y) < f.r) { burst(W, b.x, b.y, 3, f.col); SFX.fx('absorb', b.x, b.y); W.enemyShots.splice(k, 1); }
           }
         } else if (f.field === 'heal') {
           if (Math.hypot(pcx - f.x, pcy - f.y) < f.r && W.p.hp < MHP && f.tick <= 0) {
@@ -2449,7 +2426,7 @@ export function Game({ input }) {
             const sx = f.x + Math.cos(a) * rr, sy = f.y + Math.sin(a) * rr;
             for (let j = W.enemies.length - 1; j >= 0; j--)
               if (Math.hypot(W.enemies[j].x - sx, W.enemies[j].ty - sy) < 22) damageEnemy(j, 2);
-            burst(sx, sy, 6, '#a8e4ff');
+            burst(W, sx, sy, 6, '#a8e4ff');
             addArc([{ x: sx + rnd(-8, 8), y: f.y - f.r * 0.85 }, { x: sx, y: sy }], '#a8e4ff', 1.2, 0.14);   // down from the cloud
             SFX.arc(sx, sy, true);
           }
@@ -2465,7 +2442,7 @@ export function Game({ input }) {
             for (const b of W.enemyShots) if (inR(b.x, b.y)) { b.x = f.x; b.y = f.y; }
             for (const g of W.coins) if (inR(g.x, g.y)) { g.x = f.x; g.y = f.y; }
             for (const q of W.pickups) if (!q.taken && inR(q.x, q.y)) { q.x = f.x; q.y = f.y; }
-            burst(f.x, f.y, 14, f.col);
+            burst(W, f.x, f.y, 14, f.col);
             SFX.fx('warp', f.x, f.y);
           }
         } else if (f.field === 'glitter') {
@@ -2599,9 +2576,9 @@ export function Game({ input }) {
         if (near.src === 'shop') {
           const it = near.it;
           if (it.kind === 'heal') {
-            if (W.p.hp < MHP) { W.p.hp = MHP; it.sold = true; toast('Patched up'); SFX.ui('heal'); }
+            if (W.p.hp < MHP) { W.p.hp = MHP; it.sold = true; toast(W, 'Patched up'); SFX.ui('heal'); }
           } else if (LO.gold < it.price) {
-            toast('Not enough gold');
+            toast(W, 'Not enough gold');
             SFX.ui('poor');
           } else if (it.kind === 'gun') {
             LO.gold -= it.price;
@@ -2609,13 +2586,13 @@ export function Game({ input }) {
             // it drops at the plinth, so the usual chooser decides which slot it takes
             // and "leave it" parks the gun you paid for on the floor rather than binning it
             W.pickups.push({ kind: 'gun', x: it.x, y: it.y, gun: it.gun, t: 0 });
-            toast('Bought ' + it.gun.name);
+            toast(W, 'Bought ' + it.gun.name);
             SFX.ui('buy');
           } else {
             LO.gold -= it.price;
             LO.bag.push(it.id);
             it.sold = true;
-            toast('Bought ' + MODS[it.id].name);
+            toast(W, 'Bought ' + MODS[it.id].name);
             SFX.ui('buy');
           }
         } else if (near.src === 'room') {
@@ -2629,11 +2606,11 @@ export function Game({ input }) {
             W.p.hp = Math.min(W.p.hp, after);                 // Glass Cannon trims it
             if (W.pb.seeAll) { W.seen.fill(2); paintFog(); }  // All-Seeing Eye lights it up now
             if (W.pb.ghost && !W.ghost) W.ghost = { x: pcx, y: pcy, cd: 0 };
-            toast('Perk: ' + PERKS[r.id].name);
+            toast(W, 'Perk: ' + PERKS[r.id].name);
             SFX.ui('perk');
           } else {
             LO.maxBonus = (LO.maxBonus || 0) + 25;        // the heart raises the cap, no heal
-            toast('+25 Max Health');
+            toast(W, '+25 Max Health');
             SFX.ui('heart');
           }
           r.taken = true;
@@ -2644,7 +2621,7 @@ export function Game({ input }) {
             // mod has no slot to choose, so there's no second screen for it
             LO.bag.push(q.id);
             q.taken = true; q.cool = PICKUP_COOL;
-            toast('Picked up ' + MODS[q.id].name);
+            toast(W, 'Picked up ' + MODS[q.id].name);
             SFX.ui('mod');
           } else {
             // a gun opens the chooser: compare it with yours and pick the slot to swap
@@ -2750,7 +2727,7 @@ export function Game({ input }) {
             const t = tentacleTouch(S, W.p.x, W.p.y, W.p.x + PW, W.p.y + PH);
             if (t) {
               hurt(Math.round(kr('jeBite'))); e.touch = kr('jeBiteCd');
-              burst(t.x, t.y, 5, jellyPal(S.u.col).tent);
+              burst(W, t.x, t.y, 5, jellyPal(S.u.col).tent);
               SFX.creature(k, 'bite', t.x, t.y);
             }
           }
@@ -2800,7 +2777,7 @@ export function Game({ input }) {
         // contact: a chaser hurts you by reaching you, a bomber goes off
         if (hunting && dist < e.r + 14 && e.touch <= 0) {
           if (k.act === 'bomb') {
-            burst(e.x, e.ty, 22, k.col.a);
+            burst(W, e.x, e.ty, 22, k.col.a);
             SFX.boom(e.x, e.ty, 26);
             hurt(k.dmg);
             W.enemies.splice(i, 1);
@@ -2846,7 +2823,7 @@ export function Game({ input }) {
         }
         // poison spit drips as it flies
         if (b.drip) for (b.da += b.drip * dt; b.da >= 1; b.da--)
-          goo(b.x + (Math.random() - 0.5) * b.size, b.y + b.size * 0.5, b.vx * 0.08, 8 + Math.random() * 18, b.dripG, b.dripCol || b.col, 0, b.dripCol2);
+          goo(W, b.x + (Math.random() - 0.5) * b.size, b.y + b.size * 0.5, b.vx * 0.08, 8 + Math.random() * 18, b.dripG, b.dripCol || b.col, 0, b.dripCol2);
         let gone = b.life <= 0;
         if (b.fire) fireArea(W.fire, b.x, b.y, 4, 0.5);
         const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
@@ -2854,14 +2831,14 @@ export function Game({ input }) {
           b.x += b.vx * dt / sn; b.y += b.vy * dt / sn;
           if (solidAt(W, b.x, b.y)) {
             gone = true;
-            if (b.splat != null) splat(b, b.x - b.vx * dt / sn, b.y - b.vy * dt / sn);
+            if (b.splat != null) splat(W, b, b.x - b.vx * dt / sn, b.y - b.vy * dt / sn);
             else SFX.fx('fizzle', b.x, b.y);
             if (b.fire) ignite(b.x - b.vx * dt / sn, b.y - b.vy * dt / sn, 8, 0.9);
             break;
           }
           if (!W.p.dead && b.x > W.p.x - 2 && b.x < W.p.x + PW + 2 && b.y > W.p.y - 2 && b.y < W.p.y + PH + 2) {
             gone = true;
-            if (b.splat != null) splat(b, b.x, b.y); else burst(b.x, b.y, 5, COL.player);
+            if (b.splat != null) splat(W, b, b.x, b.y); else burst(W, b.x, b.y, 5, COL.player);
             hurt(b.dmg);
             if (b.fire) youAlight();
           }
@@ -2890,7 +2867,7 @@ export function Game({ input }) {
         const s = W.strings[i];
         if (Math.hypot(W.p.x + s.ox - s.ax, W.p.y + s.oy - s.ay) > s.max) {
           W.strings.splice(i, 1);
-          burst(W.p.x + s.ox, W.p.y + s.oy, 4, '#e8e8f0');
+          burst(W, W.p.x + s.ox, W.p.y + s.oy, 4, '#e8e8f0');
           SFX.fx('lash', W.p.x + s.ox, W.p.y + s.oy);
         }
       }

@@ -6,6 +6,9 @@
 // file: e.g. terrain.js; made (with --about as its header comment) or appended to.
 // name: closure-level functions (`function f` or `const f = … =>`), and any constant tables
 //       (`const T = {…}`) that only they use. Each goes with the `//` lines right above it.
+//       `other.js:name` sends that one to another module instead (for a call cycle, D17, whose
+//       functions belong in different systems but have to leave the closure together); a new
+//       one of those takes its header from `--about:other.js "text"`.
 //
 // What a moved function takes (D16): `(W, G, …)` if it needs anything outside the world (a
 // canvas, the recorder, `input`: the keys of Game's `const G = {…}`, and `input` itself),
@@ -33,15 +36,20 @@ const SYS = path.join(SRC, 'game', 'systems');
 
 const args = process.argv.slice(2);
 const dry = args.includes('--dry');
-let about = null;
+const abouts = {};
 const rest = [];
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === '--about') about = args[++i];
+  if (args[i] === '--about') abouts[''] = args[++i];
+  else if (args[i].startsWith('--about:')) abouts[args[i].slice(8)] = args[++i];
   else if (args[i] !== '--dry') rest.push(args[i]);
 }
-const [file, ...names] = rest;
-if (!file || !names.length) { console.error('usage: node tools/system.js <file> [--dry] [--about text] name...'); process.exit(2); }
-const MOD = path.join(SYS, file);
+const [file, ...spec] = rest;
+if (!file || !spec.length) { console.error('usage: node tools/system.js <file> [--dry] [--about text] name...'); process.exit(2); }
+if (abouts[''] !== undefined) abouts[file] = abouts[''];
+const target = new Map();       // name -> the module it goes to
+for (const s of spec) { const m = /^(.+\.js):(.+)$/.exec(s); target.set(m ? m[2] : s, m ? m[1] : file); }
+const names = [...target.keys()];
+const files = [...new Set(target.values())];
 
 const read = f => { const raw = fs.readFileSync(f, 'utf8'); return { crlf: raw.includes('\r\n'), src: raw.replace(/\r\n/g, '\n') }; };
 const write = (f, text, crlf) => fs.writeFileSync(f, crlf ? text.replace(/\n/g, '\r\n') : text);
@@ -221,11 +229,13 @@ const apply = (text, off, list) => {
   return text;
 };
 // the moved pieces, dedented by the closure's four spaces
-const pieces = segs.map((s, i) => {
+const pieces = new Map(files.map(f => [f, []]));
+segs.forEach((s, i) => {
   const t = apply(src.slice(s.a, s.b), s.a, edits.filter(e => e.at >= s.a && e.at < s.b));
-  // pieces that sat together stay together; others get a blank line between
-  const gap = i + 1 < segs.length && segs[i + 1].a !== s.b ? '\n' : '';
-  return t.split('\n').map(l => l.replace(/^ {4}/, '')).join('\n') + gap;
+  // pieces that sat together (going to the same module) stay together; others get a blank line between
+  const nx = segs.slice(i + 1).find(q => target.get(q.name) === target.get(s.name));
+  const gap = nx && nx.a !== s.b ? '\n' : '';
+  pieces.get(target.get(s.name)).push(t.split('\n').map(l => l.replace(/^ {4}/, '')).join('\n') + gap);
 });
 // Game.js without them
 let game2 = '', pos = 0;
@@ -242,7 +252,7 @@ const KNOWN = new Set([...Object.keys(globals.browser), ...Object.keys(globals.b
 const sysExports = () => {
   const m = new Map();
   if (!fs.existsSync(SYS)) return m;
-  for (const f of fs.readdirSync(SYS)) if (f.endsWith('.js') && f !== file) {
+  for (const f of fs.readdirSync(SYS)) if (f.endsWith('.js')) {
     const t = read(path.join(SYS, f)).src;
     for (const x of t.matchAll(/^export (?:async )?(?:function\*?|const|let|class) ([A-Za-z_$][\w$]*)/gm)) m.set(x[1], f);
   }
@@ -305,7 +315,8 @@ function reimport(text, want) {
 const gameImports = importsOf(ast);
 const sys = sysExports();
 const moved = new Set(items.keys());
-const fromGame = n => (moved.has(n) ? './systems/' + file : sys.has(n) ? './systems/' + sys.get(n) : gameImports.get(n) || null);
+for (const [n, f] of target) sys.set(n, f);
+const fromGame = n => (sys.has(n) ? './systems/' + sys.get(n) : gameImports.get(n) || null);
 const fromSys = n => {
   if (sys.has(n)) return './' + sys.get(n);
   const g = gameImports.get(n);
@@ -314,18 +325,23 @@ const fromSys = n => {
   return g.startsWith('./') ? '.' + g : '../' + g;       // ./world.js -> ../world.js, ../x -> ../../x
 };
 
-// the module
-let modText, modCrlf = G0.crlf;
-if (fs.existsSync(MOD)) {
-  const m = read(MOD); modCrlf = m.crlf;
-  modText = m.src.replace(/\n*$/, '\n') + '\n' + pieces.join('');
-} else {
-  if (!about) no(`${file} is new: give it a header with --about`);
-  modText = (about || '').split('\\n').join('\n').split('\n').map(l => '// ' + l).join('\n') + '\n\nimport {} from \'x\';\n\n' + pieces.join('');
+// the modules
+const out = new Map();          // file -> { text, crlf, isNew }
+for (const f of files) {
+  const P = path.join(SYS, f), isNew = !fs.existsSync(P);
+  let text, crlf = G0.crlf;
+  if (!isNew) {
+    const m = read(P); crlf = m.crlf;
+    text = m.src.replace(/\n*$/, '\n') + '\n' + pieces.get(f).join('');
+  } else {
+    if (abouts[f] === undefined) no(`${f} is new: give it a header with --about${f === file ? '' : ':' + f}`);
+    text = (abouts[f] || '').split('\\n').join('\n').split('\n').map(l => '// ' + l).join('\n') + '\n\nimport {} from \'x\';\n\n' + pieces.get(f).join('');
+  }
+  const mn = needed(text, n => (sys.get(n) === f ? null : fromSys(n)), f);
+  text = reimport(text, mn.out) || text;
+  text = text.replace(/\n{3,}/g, '\n\n');     // (a new module that needs no imports)
+  out.set(f, { text, crlf, isNew });
 }
-const mn = needed(modText, fromSys, file);
-modText = reimport(modText, mn.out) || modText;
-modText = modText.replace(/\n{3,}/g, '\n\n');     // (a new module that needs no imports)
 // Game.js
 const gn = needed(game2, fromGame, 'Game.js');
 game2 = reimport(game2, gn.out);
@@ -333,23 +349,23 @@ if (bad) { console.error(`refused: ${bad} problem(s)`); process.exit(1); }
 
 // names that another module exports too (export * would drop both from src/pure.js)
 const clash = [];
-const walk = d => { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); if (fs.statSync(p).isDirectory()) walk(p); else if (f.endsWith('.js') && p !== MOD) {
+const walk = d => { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); if (fs.statSync(p).isDirectory()) walk(p); else if (f.endsWith('.js') && !files.some(x => p === path.join(SYS, x))) {
   const t = fs.readFileSync(p, 'utf8');
   for (const n of moved) if (new RegExp(`^export (?:async )?(?:function\\*?|const|let|class) ${n.replace('$', '\\$')}\\b`, 'm').test(t)) clash.push(`${n} (${path.relative(SRC, p)})`);
 } } };
 walk(SRC);
 if (clash.length) console.log('NOTE: also exported elsewhere, so src/pure.js drops it: ' + clash.join(', '));
 
-for (const n of items.keys()) console.log(`${n.padEnd(14)} (${pre(n) || 'no world'}${items.get(n).fn ? '' : ', table'})`);
+for (const n of items.keys()) console.log(`${n.padEnd(14)} (${pre(n) || 'no world'}${items.get(n).fn ? '' : ', table'}) -> ${target.get(n)}`);
 for (const w of wraps) console.log('  as a value, ' + w);
 if (dry) { console.log('(dry run)'); return; }
 fs.mkdirSync(SYS, { recursive: true });
-const isNew = !fs.existsSync(MOD);
-write(MOD, modText, modCrlf);
-write(GAME, game2, G0.crlf);
-if (isNew) {
+for (const [f, o] of out) {
+  write(path.join(SYS, f), o.text, o.crlf);
+  if (!o.isNew) continue;
   const P = path.join(SRC, 'pure.js'), p = read(P);
-  const line = `export * from './game/systems/${file}';`;
+  const line = `export * from './game/systems/${f}';`;
   if (!p.src.includes(line)) write(P, p.src.replace("export * from './game/Game.js';\n", line + '\n' + "export * from './game/Game.js';\n"), p.crlf);
 }
-console.log(`moved ${items.size} into src/game/systems/${file}`);
+write(GAME, game2, G0.crlf);
+console.log(`moved ${items.size} into ${files.map(f => 'src/game/systems/' + f).join(', ')}`);

@@ -404,7 +404,7 @@ What the code says about P3.4 (checked at the end of P3.3):
       cycles: D17). `node tools/system.js <file> name…` does a move (`--dry` first). Leaves first;
       the list below is corrected as it goes:
   - [x] terrain.js, the queries: `solidCell`, `solidAt`, `boxHit`, `lineOfSight`, `enemyAt` (all `(W, …)`)
-  - [ ] particles.js: `goo`, `splat`, `burst`, `toast`
+  - [x] particles.js: `goo`, `splat`, `burst`, `toast` (all `(W, …)`)
   - [ ] `G` made; player.js, first part: `refreshBag`, `maxHp`, `hurt`
   - [ ] enemies.js, first part: `damageEnemy`, `fireEnemyShot`
   - [ ] terrain.js, the changes: `dig`, `dropOre`, `unDeco`, `paint` (through `G.tctx`/`G.dctx`, the wrapped ones)
@@ -739,3 +739,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.3 done | Full suite on a snapshot of 24976eb: `jelly` spit and `lightning` "a fork hits a creature off to the side" failed, both passed alone (jelly on the 2nd run). Stopped here as planned: P3.4 next, Phase 3 not merged. | logic 33/33; browser 44/44 after re-runs |
 | 2026-09-29 | handover | P3.4 notes written from the code (what a moving function needs, a `G` context to decide on, the explode/fire/prop call cycle, a leaves-first order, what the probe doesn't cover). The P3.1 mapping script kept as `tools/gamemap.js` (`node tools/gamemap.js fn…` = what a function needs). | — |
 | 2026-09-29 | Phase 3, P3.4 (1) | Shape decided (D16: `(W, G, …)` / `(W, …)` plain functions in `game/systems/`, a `G` context for what isn't world state) and the cycle rule (D17). `tools/system.js` does a move: cuts the functions out of the closure, gives each `W`/`G` by what it uses, rewrites every call (a callback becomes an arrow), redoes both files' imports, adds the `pure.js` line. First move: the terrain queries to `terrain.js`. Game.js's unused `PLAYER_HP` import dropped. `torch`, `perks`, `teleport` run too. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 3, P3.4 (2) | `particles.js`: `goo`, `splat`, `burst`, `toast`. `tools/system.js` can now send names of one move to several modules (`file.js:name`, for the fire cycle). `jelly` (spit, splat) run too. | probe SAME, logic 33/33, smoke ok, jelly ok |
