@@ -1,6 +1,8 @@
 // One frame of the simulation: step(W, G, dt), run by Game's loop on every unpaused frame
-// (then the recorder's recFrame, then draw). Moved whole out of Game in P3.4; REFACTOR.md
-// plans its split into parts, in the order they run here.
+// (then the recorder's recFrame, then draw). It calls its parts one after another in the
+// order they have always run (they feed each other within the frame, and share the sim's
+// Math.random stream), handing each the frame object F (REFACTOR.md D18). Being split into
+// those parts (P3.4); what isn't a part yet is still inline in step, in its place.
 
 import { jetPitch } from '../../audio/recipes.js';
 import { SFX } from '../../audio/sfx.js';
@@ -39,30 +41,13 @@ import { boxHit, dig, enemyAt, explode, lineOfSight, solidAt, solidCell } from '
 import { webNear } from './webs.js';
 
 export function step(W, G, dt) {
-  W.time += dt;
-  W.levelT += dt;
-  // a toast raised while the game was paused (picking a mod up, say) waits here,
-  // because nothing runs on a paused frame
-  if (G.input.current.pendingToast) { toast(W, G.input.current.pendingToast); G.input.current.pendingToast = null; }
-  G.input.current.floor = W.floor;
-  if (G.input.current.newCave) {                // Dev → New cave: this floor again, freshly rolled
-    G.input.current.newCave = false;
-    enterLevel(W, G);
-    toast(W, 'New cave');
-    return;
-  }
-  if (G.input.current.spawnGun) {               // Dev → Spawn gun: drop one just in front of you
-    const gun = caveGun(G.input.current.spawnGun, Math.random);
-    G.input.current.spawnGun = 0;
-    W.pickups.push({ kind: 'gun', x: W.p.x + PW / 2 + W.p.face * 22, y: W.p.y + PH - 9, gun, t: 0 });
-    toast(W, 'Spawned ' + gun.name);
-  }
-  const LO = G.input.current.loadout;
-  // perks: keep the current maximum health honest, wind the shield back up, and never
-  // let a shrunken cap (Glass Cannon) leave the bar reading over full
-  const MHP = maxHp(W, G);
-  if (W.p.hp > MHP) W.p.hp = MHP;
-  if (W.pb.shield && !W.p.shieldReady) { W.p.shieldT -= dt; if (W.p.shieldT <= 0) { W.p.shieldReady = true; SFX.fx('shieldUp'); } }
+  // the frame: what step's parts hand on to each other. LO (the loadout) and MHP (your
+  // maximum health) are filled in by stepPerks, pcx/pcy (your centre, once you've moved)
+  // by the portal check
+  const F = { dt, LO: null, MHP: 0, pcx: 0, pcy: 0 };
+  if (stepRequests(W, G, F)) return;
+  stepPerks(W, G, F);
+  const LO = F.LO, MHP = F.MHP;
   // movement: thumbstick first, otherwise keyboard (full strength)
   let L = G.input.current.left;
   if (!L.active) {
@@ -1134,4 +1119,39 @@ export function step(W, G, dt) {
     if ((q.life -= dt) <= 0) W.motes.splice(i, 1);
   }
   if (W.motes.length > 400) W.motes.splice(0, W.motes.length - 400);
+}
+
+// The clock, a toast held over from a paused frame, and the Dev panel's asks. True when
+// Dev → New cave rolled the floor again: that frame ends there.
+export function stepRequests(W, G, F) {
+  const { dt } = F;
+  W.time += dt;
+  W.levelT += dt;
+  // a toast raised while the game was paused (picking a mod up, say) waits here,
+  // because nothing runs on a paused frame
+  if (G.input.current.pendingToast) { toast(W, G.input.current.pendingToast); G.input.current.pendingToast = null; }
+  G.input.current.floor = W.floor;
+  if (G.input.current.newCave) {                // Dev → New cave: this floor again, freshly rolled
+    G.input.current.newCave = false;
+    enterLevel(W, G);
+    toast(W, 'New cave');
+    return true;
+  }
+  if (G.input.current.spawnGun) {               // Dev → Spawn gun: drop one just in front of you
+    const gun = caveGun(G.input.current.spawnGun, Math.random);
+    G.input.current.spawnGun = 0;
+    W.pickups.push({ kind: 'gun', x: W.p.x + PW / 2 + W.p.face * 22, y: W.p.y + PH - 9, gun, t: 0 });
+    toast(W, 'Spawned ' + gun.name);
+  }
+}
+
+// The loadout for this frame (F.LO), and your health against the perks (F.MHP)
+export function stepPerks(W, G, F) {
+  const { dt } = F;
+  F.LO = G.input.current.loadout;
+  // perks: keep the current maximum health honest, wind the shield back up, and never
+  // let a shrunken cap (Glass Cannon) leave the bar reading over full
+  const MHP = F.MHP = maxHp(W, G);
+  if (W.p.hp > MHP) W.p.hp = MHP;
+  if (W.pb.shield && !W.p.shieldReady) { W.p.shieldT -= dt; if (W.p.shieldT <= 0) { W.p.shieldReady = true; SFX.fx('shieldUp'); } }
 }
