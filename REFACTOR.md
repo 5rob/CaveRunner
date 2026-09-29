@@ -406,7 +406,7 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] terrain.js, the queries: `solidCell`, `solidAt`, `boxHit`, `lineOfSight`, `enemyAt` (all `(W, …)`)
   - [x] particles.js: `goo`, `splat`, `burst`, `toast` (all `(W, …)`)
   - [x] `G` made; player.js, first part: `refreshBag`, `maxHp`, `hurt` (all `(W, G, …)`: they read `input`)
-  - [ ] enemies.js, first part: `damageEnemy`, `fireEnemyShot`
+  - [x] enemies.js, first part: `damageEnemy`, `fireEnemyShot` (`(W, …)`)
   - [ ] terrain.js, the changes: `dig`, `dropOre`, `unDeco`, `paint` (through `G.tctx`/`G.dctx`, the wrapped ones)
   - [ ] fire.js and its cycle (D17): the fire's functions, `explode` → terrain.js, `blowProp` → props.js,
         `webNear`/`webDist` → webs.js
@@ -741,3 +741,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.4 (1) | Shape decided (D16: `(W, G, …)` / `(W, …)` plain functions in `game/systems/`, a `G` context for what isn't world state) and the cycle rule (D17). `tools/system.js` does a move: cuts the functions out of the closure, gives each `W`/`G` by what it uses, rewrites every call (a callback becomes an arrow), redoes both files' imports, adds the `pure.js` line. First move: the terrain queries to `terrain.js`. Game.js's unused `PLAYER_HP` import dropped. `torch`, `perks`, `teleport` run too. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 (2) | `particles.js`: `goo`, `splat`, `burst`, `toast`. `tools/system.js` can now send names of one move to several modules (`file.js:name`, for the fire cycle). `jelly` (spit, splat) run too. | probe SAME, logic 33/33, smoke ok, jelly ok |
 | 2026-09-29 | Phase 3, P3.4 (3) | `const G = { input, canvases and contexts, REC, RT }` right after the recorder (D16). `player.js`: `refreshBag`, `maxHp`, `hurt`. `perks`, `shop`, `save` run too. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 3, P3.4 (4) | `enemies.js`: `damageEnemy`, `fireEnemyShot`. `rats`, `creatures`, `lightning` run too. | probe SAME, logic 33/33, smoke ok |

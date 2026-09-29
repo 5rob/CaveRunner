@@ -43,6 +43,7 @@ import { NAV, navField, navWay } from '../world/nav.js';
 import { ORE_GOLD } from '../world/veins.js';
 import { VIS_RAYS, fogReveal, fogStart, nestFog, rayDist, visPoly } from '../world/vision.js';
 import { builtAt } from '../world/zones.js';
+import { damageEnemy, fireEnemyShot } from './systems/enemies.js';
 import { burst, goo, splat, toast } from './systems/particles.js';
 import { hurt, maxHp, refreshBag } from './systems/player.js';
 import { boxHit, enemyAt, lineOfSight, solidAt, solidCell } from './systems/terrain.js';
@@ -473,48 +474,6 @@ export function Game({ input }) {
     c.addEventListener('pointercancel', mUp);
     c.addEventListener('pointerleave', mLeave);
 
-    // one pull of an enemy's trigger: aimed at the player, and a shotgun type throws
-    // its pellets in a cone. Refuses the shot if the player has broken line of sight
-    // since it decided to take it.
-    function fireEnemyShot(e, tx, ty) {
-      const k = e.k;
-      if (!lineOfSight(W, e.x, e.ty, tx, ty)) return;
-      const base = Math.atan2(ty - e.ty, tx - e.x);
-      SFX.creature(k, 'fire', e.x, e.ty);
-      for (let s = 0; s < k.shots; s++) {
-        const cone = k.shots > 1 ? (s - (k.shots - 1) / 2) * 0.15 : 0;
-        const a = base + cone + (Math.random() - 0.5) * 0.22;
-        W.enemyShots.push({ x: e.x + Math.cos(a) * (e.r + 4), y: e.ty + Math.sin(a) * (e.r + 4),
-          vx: Math.cos(a) * k.bspd, vy: Math.sin(a) * k.bspd, life: 2.5,
-          col: k.col.a, dmg: k.dmg, size: k.body === 'blob' ? 4 : 3, fire: k.fire });
-      }
-    }
-    function damageEnemy(j, dmg) {
-      const e = W.enemies[j];
-      e.hp -= dmg; e.flash = 0.08;
-      if (e.k.kp) e.aggro = true;          // hurt a spider or a jelly and it comes for you
-      if (e.hp > 0) { if (dmg >= 0.5) SFX.creature(e.k, 'hurt', e.x, e.ty); return; }
-      burst(W, e.x, e.ty, 16, e.je ? jcol('jeColBody', e.je.u.col) : e.k.col.a);
-      SFX.creature(e.k, 'die', e.x, e.ty);
-      W.enemies.splice(j, 1);
-      e.dead = true;                        // its rats find out they've no home to go to
-      if (e.nest) {
-        // a nest: its own gold and everything its rats brought home, in a little shower
-        const all = Math.round(kr('raNestGold') * W.pb.gold) + e.nest.stash;
-        const n = Math.max(1, Math.min(14, Math.ceil(all / 8)));
-        for (let k = 0; k < n; k++)
-          W.coins.push({ x: e.x + (Math.random() - 0.5) * 8, y: e.y, amount: Math.floor(all / n) + (k < all % n ? 1 : 0),
-            t: Math.random() * 6.28, vx: (Math.random() - 0.5) * 100, vy: -80 - Math.random() * 80 });
-        SFX.fx('coinland', e.x, e.y);
-        return;
-      }
-      W.coins.push({ x: e.x, y: e.ty,
-        amount: Math.round((e.k.gold + Math.floor(Math.random() * 3)) * W.pb.gold),
-        t: Math.random() * 6.28, vy: -60 - Math.random() * 40 });
-      // a rat drops what it was carrying home
-      if (e.carry > 0) W.coins.push({ x: e.x, y: e.ty, amount: e.carry, t: Math.random() * 6.28,
-        vx: (Math.random() - 0.5) * 60, vy: -90 - Math.random() * 40 });
-    }
     // ---- rats ----
     // A rat's view of the terrain: rock, plus the burrows (so it runs over a hole rather than
     // falling in and wedging in a tunnel it only ever walks as a path). burrow is per floor.
@@ -926,7 +885,7 @@ export function Game({ input }) {
         addArc([{ x: b.x, y: b.y }, { x: e.x, y: e.ty }], b.col, 1, 0.14);
         SFX.arc(e.x, e.ty);
         burst(W, e.x, e.ty, 3, b.col);
-        damageEnemy(j, b.dmg * 0.3);
+        damageEnemy(W, j, b.dmg * 0.3);
         return;
       }
       // no creature: try a few random directions for rock close by
@@ -953,7 +912,7 @@ export function Game({ input }) {
         else if (solidAt(W, bx, by)) { hitAt = d; break; }
         const j = enemyAt(W, bx, by, sh.size + 3);
         if (j >= 0) {
-          damageEnemy(j, critRoll((sh.dmg + bonus) * pd, sh.crit + pc));
+          damageEnemy(W, j, critRoll((sh.dmg + bonus) * pd, sh.crit + pc));
           burst(W, bx, by, 4, sh.col);
           if (sh.knock) shove(W.enemies[j], nx, ny, sh.knock);
           if (!sh.pierce) { hitAt = d; break; }
@@ -1323,7 +1282,7 @@ export function Game({ input }) {
         if (Math.random() < dt * 6) fireSmoke(e.x, e.ty - e.r);
         if (ticks) ignite(e.x, e.ty + e.r * 0.4, e.r * 0.8, 0.35);
         if (!W.p.dead && Math.hypot(e.x - pcx, e.ty - pcy) < e.r + 8 && Math.random() < dt * 2) youAlight();
-        if (e.burnAcc >= 0.5 || e.burn <= 0) { const d = e.burnAcc; e.burnAcc = 0; if (d > 0 && W.enemies[j] === e) damageEnemy(j, d); }
+        if (e.burnAcc >= 0.5 || e.burn <= 0) { const d = e.burnAcc; e.burnAcc = 0; if (d > 0 && W.enemies[j] === e) damageEnemy(W, j, d); }
       }
       // you: fire underfoot or round you lights you; water, snow or slime puts you out
       if (!W.p.dead) {
@@ -1416,7 +1375,7 @@ export function Game({ input }) {
       }
       for (let j = W.enemies.length - 1; j >= 0; j--) {
         const e = W.enemies[j], dist = Math.hypot(e.x - x, e.ty - y);
-        if (dist < R + e.r) damageEnemy(j, splash != null ? splash : dist < R * 0.5 ? 3 : 2);
+        if (dist < R + e.r) damageEnemy(W, j, splash != null ? splash : dist < R * 0.5 ? 3 : 2);
       }
       if (splash != null) return;
       fireBlast(x, y, R, hot);
@@ -1528,7 +1487,7 @@ export function Game({ input }) {
             if (!W.p.dead && pOver(pr, 0)) { hurt(W, G, PROP_DMG.drop); shatter(pr, 14); continue; }
             for (let j = W.enemies.length - 1; j >= 0; j--) {
               const e = W.enemies[j];
-              if (Math.abs(e.x - pr.x) < e.r + 4 && Math.abs(e.ty - (pr.y + pr.b)) < e.r + 4) { damageEnemy(j, 4); shatter(pr, 14); break; }
+              if (Math.abs(e.x - pr.x) < e.r + 4 && Math.abs(e.ty - (pr.y + pr.b)) < e.r + 4) { damageEnemy(W, j, 4); shatter(pr, 14); break; }
             }
             if (pr.gone) continue;
           }
@@ -1630,7 +1589,7 @@ export function Game({ input }) {
                 for (let yy = 4; yy < VENT_H; yy += 12) ignite(pr.x, pr.y - yy, 6, 0.5);   // and it lights what hangs over it
                 for (let j = W.enemies.length - 1; j >= 0; j--) {
                   const e = W.enemies[j];
-                  if (Math.abs(e.x - pr.x) < e.r + 6 && e.ty < pr.y && e.ty > pr.y - VENT_H) { setAlight(e); damageEnemy(j, 1); }
+                  if (Math.abs(e.x - pr.x) < e.r + 6 && e.ty < pr.y && e.ty > pr.y - VENT_H) { setAlight(e); damageEnemy(W, j, 1); }
                 }
               }
             }
@@ -1711,7 +1670,7 @@ export function Game({ input }) {
           cl.tick = 0.4;
           if (!W.p.dead && Math.hypot(pcx - cl.x, pcy - cl.y) < cl.r) hurt(W, G, PROP_DMG.cloud);
           for (let j = W.enemies.length - 1; j >= 0; j--)
-            if (Math.hypot(W.enemies[j].x - cl.x, W.enemies[j].ty - cl.y) < cl.r + W.enemies[j].r) damageEnemy(j, 1);
+            if (Math.hypot(W.enemies[j].x - cl.x, W.enemies[j].ty - cl.y) < cl.r + W.enemies[j].r) damageEnemy(W, j, 1);
         }
         if (cl.life <= 0) W.clouds.splice(i, 1);
       }
@@ -2237,7 +2196,7 @@ export function Game({ input }) {
           if (j >= 0 && !(b.hit && b.hit.has(W.enemies[j]))) {
             const e = W.enemies[j];
             const sp = Math.hypot(b.vx, b.vy) || 1;
-            damageEnemy(j, critRoll(b.dmg, b.crit));
+            damageEnemy(W, j, critRoll(b.dmg, b.crit));
             if (b.fire) setAlight(e);
             burst(W, nx, ny, 4, b.col);
             SFX.hit(nx, ny);
@@ -2392,7 +2351,7 @@ export function Game({ input }) {
             const a = Math.random() * Math.PI * 2, rr = Math.random() * f.r;
             const sx = f.x + Math.cos(a) * rr, sy = f.y + Math.sin(a) * rr;
             for (let j = W.enemies.length - 1; j >= 0; j--)
-              if (Math.hypot(W.enemies[j].x - sx, W.enemies[j].ty - sy) < 22) damageEnemy(j, 2);
+              if (Math.hypot(W.enemies[j].x - sx, W.enemies[j].ty - sy) < 22) damageEnemy(W, j, 2);
             burst(W, sx, sy, 6, '#a8e4ff');
             addArc([{ x: sx + rnd(-8, 8), y: f.y - f.r * 0.85 }, { x: sx, y: sy }], '#a8e4ff', 1.2, 0.14);   // down from the cloud
             SFX.arc(sx, sy, true);
@@ -2761,13 +2720,13 @@ export function Game({ input }) {
         if (k.act === 'shoot' || k.act === 'turret') {
           if (e.charge > 0) {
             e.charge -= dt;
-            if (e.charge <= 0) fireEnemyShot(e, pcx, pcy);
+            if (e.charge <= 0) fireEnemyShot(W, e, pcx, pcy);
           } else if (!W.p.dead && dist < k.range * sees && e.cd <= 0) {
             e.cd = 0.4;   // re-check soon if we can't see the player
             if (lineOfSight(W, e.x, e.ty, pcx, pcy)) {
               e.cd = k.cd * (0.85 + Math.random() * 0.3);
               if (!e.spotted) { e.spotted = true; SFX.creature(k, 'alert', e.x, e.ty); }
-              if (k.tele) { e.charge = k.tele; SFX.creature(k, 'charge', e.x, e.ty, k.tele); } else fireEnemyShot(e, pcx, pcy);
+              if (k.tele) { e.charge = k.tele; SFX.creature(k, 'charge', e.x, e.ty, k.tele); } else fireEnemyShot(W, e, pcx, pcy);
             }
           }
         }
@@ -2776,7 +2735,7 @@ export function Game({ input }) {
       if (W.pb.contact && !W.p.dead) {
         for (let i = W.enemies.length - 1; i >= 0; i--) {
           const e = W.enemies[i];
-          if (Math.hypot(e.x - pcx, e.ty - pcy) < e.r + 12) damageEnemy(i, 45 * dt);
+          if (Math.hypot(e.x - pcx, e.ty - pcy) < e.r + 12) damageEnemy(W, i, 45 * dt);
         }
       }
 
@@ -2884,7 +2843,7 @@ export function Game({ input }) {
       for (let i = W.burns.length - 1; i >= 0; i--) {
         const bn = W.burns[i]; bn.life -= dt;
         for (let j = W.enemies.length - 1; j >= 0; j--)
-          if (Math.hypot(W.enemies[j].x - bn.x, W.enemies[j].ty - bn.y) < 15) { setAlight(W.enemies[j]); damageEnemy(j, 22 * dt); }
+          if (Math.hypot(W.enemies[j].x - bn.x, W.enemies[j].ty - bn.y) < 15) { setAlight(W.enemies[j]); damageEnemy(W, j, 22 * dt); }
         if (bn.life <= 0) W.burns.splice(i, 1);
       }
 
