@@ -491,6 +491,8 @@ What the code says about P3.4 (checked at the end of P3.3):
          counting down → `stepToasts` in particles.js. `decorStep` was a function already: step calls it with `F.pcx`/`F.pcy`
        - [x] P3.4 (31): `stepEnemies` → enemies.js, whole (the enemy loop, Contact Damage, the creatures' shots, spider silk
          and strings, web lines coming down, and `W.p.hitT` fading, which sat at its end); P3.5 takes it apart per creature
+       - [x] P3.4 (32): `stepGhost` in step.js (Angry Ghost), `stepTrail` → fire.js (Levitation Trail); `fireFrame` between them
+         was a function already
        - draw's inner functions `drawLook`, `drawFieldLook`, `drawBolt` go out first (they use only their arguments and
          `W`/`G`), then the layers in their current order: camera, background + terrain, props, portal, smoke, fields, silk,
          enemies, projectiles, beams, arrival, shop, gold, pickups, rooms, trail, sparks, motes, flashes, flame, aim + gun,
@@ -891,3 +893,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.4 (29) | `stepSound` (25 lines, in step.js) and `stepFields` (75 lines) → fields.js with `tools/part.js`; fields.js header. `sound`, `everymod`, `spelllooks`, `fire`, `teleport` run too, all first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (30) | `stepPickups` (176 lines) → new `pickups.js` with `tools/part.js` (its `pure.js` line too); `stepToasts` (one line) → particles.js. Watch out in Git Bash: a one-line argument starting with `//` gets a slash eaten or added (MSYS path conversion), which put a `///` in particles.js' header for a moment: `MSYS_NO_PATHCONV=1`. `shop`, `interact`, `gunpickup`, `perks`, `teleport`, `restart-confirm`, `rats`, `shopcard`, `compare` run too, all first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (31) | `stepEnemies` (243 lines: the enemy loop whole, Contact Damage, enemy shots, silk, strings, web lines, `hitT`) → enemies.js with `tools/part.js`; header. `creatures`, `spider`, `rats`, `lightning`, `perks` run too, first time; `jelly` spit failed 3 of 4 here and 3 of 4 on the commit before (the known flake). | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 3, P3.4 (32) | `stepGhost` (20 lines, in step.js) and `stepTrail` (12 lines) → fire.js with `tools/part.js`; fire.js header. `perks`, `fire`, `replay` run too, all first time. | probe SAME, logic 33/33, smoke ok |

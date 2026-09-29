@@ -1,7 +1,8 @@
 // Fire (v86): what the cave's fire (world/fire.js, fireStep) does to the level. Burnt-out pixels,
 // plants, arched vines, web lines and minecarts catching, creatures and you set alight, a blast's
-// heat, and fireFrame, one frame of all of it. It goes through the terrain canvases the same way
-// dig does (G.tctx / G.dctx, the recorder's wrapped ones).
+// heat, and fireFrame, one frame of all of it; and the Levitation Trail's burning patches
+// (stepTrail, a part of step()). It goes through the terrain canvases the same way dig does
+// (G.tctx / G.dctx, the recorder's wrapped ones).
 
 import { HEAR_FIRE } from '../../audio/recipes.js';
 import { SFX } from '../../audio/sfx.js';
@@ -219,4 +220,23 @@ export function fireFrame(W, G, dt, pcx, pcy) {
     }
   }
   flushFire(W, G);
+}
+
+// ---- Levitation Trail (a part of step) ----
+// Flying lays down fire that burns what it touches: a new patch under you, and each patch
+// setting creatures alight until it fades.
+export function stepTrail(W, F) {
+  const { dt, pcx } = F;
+  if (W.pb.trail && W.p.flame > 0 && !W.p.dead) {
+    const bn = { x: pcx + (Math.random() - 0.5) * 6, y: W.p.y + PH, life: 0.7, max: 0.7 };
+    W.burns.push(bn);
+    if (W.burns.length > 48) W.burns.shift();
+    fireArea(W.fire, bn.x, bn.y + 2, 4, 0.4);
+  }
+  for (let i = W.burns.length - 1; i >= 0; i--) {
+    const bn = W.burns[i]; bn.life -= dt;
+    for (let j = W.enemies.length - 1; j >= 0; j--)
+      if (Math.hypot(W.enemies[j].x - bn.x, W.enemies[j].ty - bn.y) < 15) { setAlight(W.enemies[j]); damageEnemy(W, j, 22 * dt); }
+    if (bn.life <= 0) W.burns.splice(i, 1);
+  }
 }

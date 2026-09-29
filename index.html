@@ -11255,6 +11255,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     flushFire(W, G);
   }
+  function stepTrail(W, F) {
+    const { dt, pcx } = F;
+    if (W.pb.trail && W.p.flame > 0 && !W.p.dead) {
+      const bn = { x: pcx + (Math.random() - 0.5) * 6, y: W.p.y + PH, life: 0.7, max: 0.7 };
+      W.burns.push(bn);
+      if (W.burns.length > 48) W.burns.shift();
+      fireArea(W.fire, bn.x, bn.y + 2, 4, 0.4);
+    }
+    for (let i = W.burns.length - 1; i >= 0; i--) {
+      const bn = W.burns[i];
+      bn.life -= dt;
+      for (let j = W.enemies.length - 1; j >= 0; j--)
+        if (Math.hypot(W.enemies[j].x - bn.x, W.enemies[j].ty - bn.y) < 15) {
+          setAlight(W.enemies[j]);
+          damageEnemy(W, j, 22 * dt);
+        }
+      if (bn.life <= 0) W.burns.splice(i, 1);
+    }
+  }
 
   // src/game/systems/terrain.js
   var solidCell = (W, cx, cy) => cx < 0 || cy < 0 || cx >= CW || cy >= CH || W.mat[cy * CW + cx] !== 0;
@@ -15630,69 +15649,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     stepToasts(W, F);
     decorStep(W, G, dt, pcx, pcy);
     stepEnemies(W, G, F);
-    if (W.pb.ghost) {
-      if (!W.ghost) W.ghost = { x: pcx, y: pcy, cd: 0 };
-      const gtx = pcx - W.p.face * 22, gty = W.p.y - 4;
-      const lp = Math.min(1, dt * 4);
-      W.ghost.x += (gtx - W.ghost.x) * lp;
-      W.ghost.y += (gty - W.ghost.y) * lp;
-      W.ghost.cd -= dt;
-      if (W.ghost.cd <= 0 && !W.p.dead) {
-        let best = null, bd = 340;
-        for (const e of W.enemies) {
-          const d = Math.hypot(e.x - W.ghost.x, e.ty - W.ghost.y);
-          if (d < bd) {
-            bd = d;
-            best = e;
-          }
-        }
-        if (best) {
-          W.ghost.cd = 0.7;
-          const a = Math.atan2(best.ty - W.ghost.y, best.x - W.ghost.x);
-          W.bullets.push({
-            x: W.ghost.x,
-            y: W.ghost.y,
-            vx: Math.cos(a) * 480,
-            vy: Math.sin(a) * 480,
-            life: 1.2,
-            dmg: 2 * W.pb.dmg,
-            size: 2,
-            col: "#c9a6ff",
-            spin: 0,
-            homing: 3,
-            bounce: 0,
-            pierce: 0,
-            explode: 0,
-            grav: 0,
-            accel: 0,
-            bore: 0,
-            hit: null,
-            knock: 0,
-            crit: 0,
-            age: 0,
-            born: 1.2
-          });
-          SFX.fx("ghost", W.ghost.x, W.ghost.y);
-        }
-      }
-    } else W.ghost = null;
+    stepGhost(W, F);
     fireFrame(W, G, dt, pcx, pcy);
-    if (W.pb.trail && W.p.flame > 0 && !W.p.dead) {
-      const bn = { x: pcx + (Math.random() - 0.5) * 6, y: W.p.y + PH, life: 0.7, max: 0.7 };
-      W.burns.push(bn);
-      if (W.burns.length > 48) W.burns.shift();
-      fireArea(W.fire, bn.x, bn.y + 2, 4, 0.4);
-    }
-    for (let i = W.burns.length - 1; i >= 0; i--) {
-      const bn = W.burns[i];
-      bn.life -= dt;
-      for (let j = W.enemies.length - 1; j >= 0; j--)
-        if (Math.hypot(W.enemies[j].x - bn.x, W.enemies[j].ty - bn.y) < 15) {
-          setAlight(W.enemies[j]);
-          damageEnemy(W, j, 22 * dt);
-        }
-      if (bn.life <= 0) W.burns.splice(i, 1);
-    }
+    stepTrail(W, F);
     if (W.p.flame > 0) {
       let fx = -W.p.jx, fy = -W.p.jy + 0.8;
       const fl = Math.hypot(fx, fy) || 1;
@@ -15953,6 +15912,55 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       W.beatT = 0.55 + 1.5 * W.p.hp / MHP;
       SFX.ui("beat");
     }
+  }
+  function stepGhost(W, F) {
+    const { dt, pcx, pcy } = F;
+    if (W.pb.ghost) {
+      if (!W.ghost) W.ghost = { x: pcx, y: pcy, cd: 0 };
+      const gtx = pcx - W.p.face * 22, gty = W.p.y - 4;
+      const lp = Math.min(1, dt * 4);
+      W.ghost.x += (gtx - W.ghost.x) * lp;
+      W.ghost.y += (gty - W.ghost.y) * lp;
+      W.ghost.cd -= dt;
+      if (W.ghost.cd <= 0 && !W.p.dead) {
+        let best = null, bd = 340;
+        for (const e of W.enemies) {
+          const d = Math.hypot(e.x - W.ghost.x, e.ty - W.ghost.y);
+          if (d < bd) {
+            bd = d;
+            best = e;
+          }
+        }
+        if (best) {
+          W.ghost.cd = 0.7;
+          const a = Math.atan2(best.ty - W.ghost.y, best.x - W.ghost.x);
+          W.bullets.push({
+            x: W.ghost.x,
+            y: W.ghost.y,
+            vx: Math.cos(a) * 480,
+            vy: Math.sin(a) * 480,
+            life: 1.2,
+            dmg: 2 * W.pb.dmg,
+            size: 2,
+            col: "#c9a6ff",
+            spin: 0,
+            homing: 3,
+            bounce: 0,
+            pierce: 0,
+            explode: 0,
+            grav: 0,
+            accel: 0,
+            bore: 0,
+            hit: null,
+            knock: 0,
+            crit: 0,
+            age: 0,
+            born: 1.2
+          });
+          SFX.fx("ghost", W.ghost.x, W.ghost.y);
+        }
+      }
+    } else W.ghost = null;
   }
 
   // src/game/testhook.js

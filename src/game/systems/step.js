@@ -9,11 +9,10 @@ import { SFX } from '../../audio/sfx.js';
 import { COL, PH, PW } from '../../core/consts.js';
 import { clamp } from '../../core/util.js';
 import { caveGun } from '../../spells/guns.js';
-import { fireArea } from '../../world/fire.js';
 import { stepBullets } from './bullets.js';
-import { damageEnemy, stepEnemies } from './enemies.js';
+import { stepEnemies } from './enemies.js';
 import { stepFields } from './fields.js';
-import { fireFrame, setAlight } from './fire.js';
+import { fireFrame, stepTrail } from './fire.js';
 import { aimAndCast } from './gun.js';
 import { enterLevel } from './level-entry.js';
 import { stepToasts, toast } from './particles.js';
@@ -51,44 +50,12 @@ export function step(W, G, dt) {
 
   stepEnemies(W, G, F);
 
-  // ---- Angry Ghost: a spirit that trails you and fires at what's nearest ----
-  if (W.pb.ghost) {
-    if (!W.ghost) W.ghost = { x: pcx, y: pcy, cd: 0 };
-    const gtx = pcx - W.p.face * 22, gty = W.p.y - 4;
-    const lp = Math.min(1, dt * 4);
-    W.ghost.x += (gtx - W.ghost.x) * lp; W.ghost.y += (gty - W.ghost.y) * lp;
-    W.ghost.cd -= dt;
-    if (W.ghost.cd <= 0 && !W.p.dead) {
-      let best = null, bd = 340;
-      for (const e of W.enemies) { const d = Math.hypot(e.x - W.ghost.x, e.ty - W.ghost.y); if (d < bd) { bd = d; best = e; } }
-      if (best) {
-        W.ghost.cd = 0.7;
-        const a = Math.atan2(best.ty - W.ghost.y, best.x - W.ghost.x);
-        W.bullets.push({ x: W.ghost.x, y: W.ghost.y, vx: Math.cos(a) * 480, vy: Math.sin(a) * 480,
-          life: 1.2, dmg: 2 * W.pb.dmg, size: 2, col: '#c9a6ff', spin: 0, homing: 3, bounce: 0,
-          pierce: 0, explode: 0, grav: 0, accel: 0, bore: 0, hit: null, knock: 0, crit: 0,
-          age: 0, born: 1.2 });
-        SFX.fx('ghost', W.ghost.x, W.ghost.y);
-      }
-    }
-  } else W.ghost = null;
+  stepGhost(W, F);
 
   // ---- fire: the cave's, the creatures', yours ----
   fireFrame(W, G, dt, pcx, pcy);
 
-  // ---- Levitation Trail: flying lays down fire that burns what it touches ----
-  if (W.pb.trail && W.p.flame > 0 && !W.p.dead) {
-    const bn = { x: pcx + (Math.random() - 0.5) * 6, y: W.p.y + PH, life: 0.7, max: 0.7 };
-    W.burns.push(bn);
-    if (W.burns.length > 48) W.burns.shift();
-    fireArea(W.fire, bn.x, bn.y + 2, 4, 0.4);
-  }
-  for (let i = W.burns.length - 1; i >= 0; i--) {
-    const bn = W.burns[i]; bn.life -= dt;
-    for (let j = W.enemies.length - 1; j >= 0; j--)
-      if (Math.hypot(W.enemies[j].x - bn.x, W.enemies[j].ty - bn.y) < 15) { setAlight(W.enemies[j]); damageEnemy(W, j, 22 * dt); }
-    if (bn.life <= 0) W.burns.splice(i, 1);
-  }
+  stepTrail(W, F);
 
   // ---- jetpack smoke ----
   if (W.p.flame > 0) {
@@ -289,4 +256,29 @@ export function stepSound(W, F) {
   W.wasJet = W.p.jet > 0;
   for (const dv of W.devils) if ((dv.snd = (dv.snd || 0) - dt) <= 0) { dv.snd = 0.9 + Math.random() * 0.8; SFX.fx('whirl', dv.x, dv.y - 14); }
   if (!W.p.dead && W.p.hp / MHP < 0.3 && (W.beatT -= dt) <= 0) { W.beatT = 0.55 + 1.5 * W.p.hp / MHP; SFX.ui('beat'); }
+}
+
+// Angry Ghost: a spirit that trails you and fires at what's nearest
+export function stepGhost(W, F) {
+  const { dt, pcx, pcy } = F;
+  if (W.pb.ghost) {
+    if (!W.ghost) W.ghost = { x: pcx, y: pcy, cd: 0 };
+    const gtx = pcx - W.p.face * 22, gty = W.p.y - 4;
+    const lp = Math.min(1, dt * 4);
+    W.ghost.x += (gtx - W.ghost.x) * lp; W.ghost.y += (gty - W.ghost.y) * lp;
+    W.ghost.cd -= dt;
+    if (W.ghost.cd <= 0 && !W.p.dead) {
+      let best = null, bd = 340;
+      for (const e of W.enemies) { const d = Math.hypot(e.x - W.ghost.x, e.ty - W.ghost.y); if (d < bd) { bd = d; best = e; } }
+      if (best) {
+        W.ghost.cd = 0.7;
+        const a = Math.atan2(best.ty - W.ghost.y, best.x - W.ghost.x);
+        W.bullets.push({ x: W.ghost.x, y: W.ghost.y, vx: Math.cos(a) * 480, vy: Math.sin(a) * 480,
+          life: 1.2, dmg: 2 * W.pb.dmg, size: 2, col: '#c9a6ff', spin: 0, homing: 3, bounce: 0,
+          pierce: 0, explode: 0, grav: 0, accel: 0, bore: 0, hit: null, knock: 0, crit: 0,
+          age: 0, born: 1.2 });
+        SFX.fx('ghost', W.ghost.x, W.ghost.y);
+      }
+    }
+  } else W.ghost = null;
 }
