@@ -1,5 +1,6 @@
 // The cave's layers of draw() (render/draw.js), each a part it calls in order with its frame
-// object F (REFACTOR.md D19): the rock and what sits on it
+// object F (REFACTOR.md D19): the rock and what sits on it. The background, rock and fire, the
+// props, the two portals, the shop's stock, loot, and the hidden rooms' prizes
 
 import { drawProp, rgbA } from '../../art/props.js';
 import { drawGun, drawGunGlow } from '../../art/sprites.js';

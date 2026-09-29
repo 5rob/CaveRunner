@@ -13,7 +13,7 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4 part done: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). step() split into parts, P3.4 (25)–(33): a frame object `F` (D18) and 21 calls, the parts in their systems (`pickups.js` new). Next: split draw() (step 3 of the plan under P3.4, the draw half). Not merged |
+| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4 part done: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). step() split into parts, P3.4 (25)–(33): a frame object `F` (D18) and 21 calls, the parts in their systems (`pickups.js` new). draw() split the same way, P3.4 (34)–(43): its own `F` (D19) and 29 calls, the parts in six `render/` modules by theme. Left of P3.4: the old rough list's open boxes (props.js/ambience.js tidying; the enemy loop per creature is P3.5). Not merged |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
 | **Last green full suite** | 2026-09-30, P3.4 after step()'s split (e5b7c1b), bar `jelly` "saturation 0 greys it out" (known; passed alone, then the spit flake twice) |
@@ -444,8 +444,8 @@ What the code says about P3.4 (checked at the end of P3.3):
         First, by hand: `RPV` → `G.RPV` (21 references, most in draw()), `rid`/`ridN` and `RP_ARR` (still W's own arrays)
         joined `G`, and `drawReplay(V, draw)` is handed Game's `draw` while draw() lives in Game. `REC`/`RT` stay made in Game
   - [x] level-entry.js: `enterLevel` (`(W, G, back)`). Clean move
-  - [ ] **step() and draw(): the plan** (worked out at the end of P3.4 (19); steps 1 and 2 done in P3.4 (20)–(24), step 3
-        done for step() in P3.4 (25)–(33), draw() next; `node tools/locals.js src/game/systems/step.js step` and `node tools/locals.js src/game/render/draw.js draw`
+  - [x] **step() and draw(): the plan** (worked out at the end of P3.4 (19); steps 1 and 2 done in P3.4 (20)–(24), step 3
+        done for step() in P3.4 (25)–(33) and for draw() in P3.4 (34)–(43); **both are split**; `node tools/locals.js src/game/systems/step.js step` and `node tools/locals.js src/game/render/draw.js draw`
         print the facts below). Game.js was 2,494 lines, and they were ~1,100 lines each; now `step.js` is 1,137 lines (step
         41–1137, returns at 52 and 217) and `render/draw.js` 1,182 (draw 34–1182, its return at 1011). What's left in Game's
         closure (186 lines) is setup: the canvases, `REC`/`RT`, `G`, the save timer, resize, the mouse handlers, the rAF loop.
@@ -519,6 +519,9 @@ What the code says about P3.4 (checked at the end of P3.3):
          the aim's four lines moved in and `R` out of `F` again: it fills `F.held`, `F.ax`/`F.ay`, `F.gy`), `drawPlayer` → actors.js
        - [x] P3.4 (42): `drawFog` (the reveal, the bake, the blur) and `drawGlows` (everything lit over the fog, then the sconces)
          → a new `render/light.js` (`part.js`)
+       - [x] P3.4 (43): `drawHud` (`part.js`, then its setup lines moved in by hand: it fills `F.cw`), `drawRadar`, `drawMessages`,
+         `drawReticule` (`(G)`), `drawMap` → a new `render/overlay.js`; draw's top level tidied (the leftover locals gone, one
+         comment per call). **draw() is split**: its top level is `F` and 29 calls (draw.js 1,182 → 96 lines)
     4. Keep the order exactly: draw() draws from the sim's `Math.random` stream and writes fog memory and the camera, and
        step's parts feed each other within the frame. The probe catches any reorder.
   - Learned so far: `G`'s keys must be declared above `G` (a closure `const` further down moves up
@@ -534,6 +537,12 @@ What the code says about P3.4 (checked at the end of P3.3):
     same-named inner local elsewhere (the exported `step` turned `rangeKnobs`' `step` into `step2` in `index.html`, D13)
     and reorder modules in the bundle: a big `index.html` diff with the probe SAME is that, nothing more. Don't `sed -i`
     a doc from Git Bash: it wrote REFACTOR.md back with LF (harmless to the commit, but edit with node or the Edit tool).
+    **A part that fills `F`** (draw's `drawProps`, `drawAim`, `drawHud`; step's `stepPerks`): `part.js` refuses lines that
+    declare a local used after them, so cut the lines *after* the declarations (a local they use that isn't in `F` yet,
+    like the aim's `R`, goes into `F` just for the cut), then move the declaration lines into the part by hand as
+    `const x = F.x = …` and read them back in the caller with `const { x } = F;` until the last user is out. Such a part
+    can keep a now-unused `const` (drawAim's `ax`, drawHud's `cw`) so its text stays the old one. Git Bash heredocs eat
+    `\\` (a scratch script's `/\\n/` came out as `/\n/`): write scripts with the Write tool.
   - The old rough list (P3.1's guess), still to do; the parts already out are noted:
   - [x] recorder: the putImageData wrappers stay in Game until recorder.js (they wrap `tctx`/`dctx`, which the systems reach as `G.tctx`/`G.dctx`): `recWrap`
   - [x] fog.js: paintFog, bake, blur, fogLit (`fogLit`, `paintFog` in systems/fog.js; the reveal, bake and blur are `drawFog` in render/light.js, P3.4 (42))
@@ -547,11 +556,12 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [ ] props.js: decorStep, landProp, rustle, zfx (blowProp is out)
   - [x] fire: done, as fire.js (step 6)
   - [ ] ambience.js: spores and amb particles (see the ambience box above); motes, smoke, sparks, flashes are `stepMotes`/`stepParticles` in particles.js (P3.4 (33)); dparts are updated in decorStep
-  - [ ] camera.js
+  - [x] camera.js: `drawCamera` in render/draw.js (the camera is eased in draw, P3.4 (35))
   - [x] recorder.js: recFrame, recSample, REC, and drawReplay's rebuild
   - [x] save-run.js: saveRun
-  - [ ] render/: split `draw()` into layers in their current order: background, terrain,
-        props, entities, bullet looks (`drawLook`), fog, post-fog glows, HUD, map
+  - [x] render/: split `draw()` into layers in their current order: background, terrain,
+        props, entities, bullet looks (`drawLook`), fog, post-fog glows, HUD, map (P3.4 (34)–(43): cave.js, effects.js,
+        actors.js, looks.js, light.js, overlay.js; D19)
 - [ ] **P3.5 Creature plugins.** The enemy loop's per-creature branches become a
       registry: `creatures/<name>.js` exports `{ act, knobs, step(e, W, dt), draw(ctx, e,
       W), onHurt?, onDeath? }`, and `enemies.js` dispatches by `e.k.act`. **Adding a creature
@@ -716,6 +726,8 @@ commit. List them here for after.
 - **The `shoplayout` logic suite takes ~26 s of its 30 s cap** (`LOGIC_CAP` in `tests/run.js`),
   and `perks` ~24 s. Not the refactor (the loader costs ~0.15 s), but on a busy PC they could
   time out. If one does, re-run it alone; worth making them lighter after the refactor.
+- **`drawFields` ends with `G.ctx.globalAlpha = 1;` twice** (render/looks.js): one was the line after the old inner
+  `drawFieldLook` declaration. Harmless; left as it was.
 
 ## Game map
 
@@ -930,3 +942,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.4 (40) | `drawTrail`, `drawSparks`, `drawMotes`, `drawFlashes` → effects.js, `drawJetFlame` → actors.js, with `tools/part.js`. `jetpack`, `blackhole`, `fire`, `replay`, `perks` run too, all first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (41) | `drawAim` (the aim's setup moved in by hand after `part.js`: fills `F.held`, `F.ax`/`F.ay`, `F.gy`) and `drawPlayer` (runner, gun, torch, crosshair, shield, ghost) → actors.js. `perks`, `jetpack`, `replay`, `buzzsaw`, `interact`, `cooldown-debug-shop` run too, first time; `torch` failed 3 of 8 (falloff / flicker checks, the known flake; 4 of 10 at (33)). | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (42) | `drawFog` (59 lines: `visPoly`, `fogReveal`, the bake and blur) and `drawGlows` (75 lines) → new `render/light.js` with `tools/part.js`. `fog`, `torch`, `replay`, `map`, `fire`, `decor`, `creatures`, `t1spells` run too, all first time; `jelly`'s glow checks passed both runs, its spit group failed both (the known flake). | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 3, P3.4 (43) | `drawHud` (fills `F.cw`, setup moved in by hand), `drawRadar`, `drawMessages`, `drawReticule`, `drawMap` → new `render/overlay.js` with `tools/part.js`; draw's top level tidied, header rewritten. **draw() is split**: draw.js 96 lines, `node tools/locals.js` shows only `W`, `G`, `F`; render/ 1,397 lines in 7 files. `perks`, `shop`, `shopcard`, `map`, `replay`, `spawngun`, `restart-confirm`, `donebutton` run too, all first time. | probe SAME, logic 33/33, smoke ok |

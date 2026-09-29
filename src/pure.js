@@ -73,5 +73,6 @@ export * from './game/render/cave.js';
 export * from './game/render/effects.js';
 export * from './game/render/actors.js';
 export * from './game/render/light.js';
+export * from './game/render/overlay.js';
 export * from './game/Game.js';
 export * from './ui/app.js';
