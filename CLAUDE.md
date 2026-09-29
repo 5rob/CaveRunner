@@ -164,7 +164,7 @@ rest and imports them. Where things are (`main.js` line numbers as of the end of
 | sound | `src/audio/recipes.js` (pure: `SPELL_VOICE`, `shotSound`, `creatureSound`, `FX_VOL`, `rustleStep`), `src/audio/sfx.js` (the `SFX` engine) |
 | autosave | `src/save/save.js`: `readSave`, `cleanLoadout`, `cleanGun`, `loadSave`, `clearSave` |
 | death replay (pure part) | `src/replay/replay.js`: `RP_*`, `rpClone`, `rpLerp`, `rpFrame`, `rpCut`/`rpPaste`/`rpMerge` |
-| `Game` | `src/main.js` ~123–4370: the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields |
+| `Game` | `src/game/Game.js`: the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields (with `sputterStep`, `SPUTTER_FUEL`, `NO_INPUT` above it). It has its own `h`/`useRef`/`useEffect` lines off the global React (layer 5 can't import `ui/`), so esbuild prints them as `h2`/`useRef2`/`useEffect2` in `index.html` |
 | `h` and hooks | `src/ui/h.js`: `h` (`React.createElement`), `useRef`/`useEffect`/`useState`/`useMemo` off the global React |
 | HUD | `src/ui/hud.js`: `Stick` (thumbsticks + gauge rings), `RKey`, `GAUGE_R`/`GAUGE_C`/`GAUGE_COL`, `healthCol`, `holdPress`, `deckLayout`, `fmtGold` |
 | Detail cards | `src/ui/cards.js`: `GunCard`, `ModCard`, `PerkCard`, `GUN_STATS` |

@@ -5,6 +5,7 @@
 //
 //   node tools/same.js            against the last commit (HEAD)
 //   node tools/same.js <ref>      against any commit, e.g. 2cb0fb9 (end of P1.5)
+//   node tools/same.js --renames  also say which differences are only esbuild renames
 //
 // Exit code 1 if anything differs, is missing or is new. Needs a ref whose index.html was
 // built by esbuild (P1.2, eb44d37, or later); older ones are printed differently.
@@ -34,7 +35,24 @@ function statements(html) {
   return m;
 }
 
-const ref = process.argv[2] || 'HEAD';
+// --renames: for a statement that differs, check whether only identifier names changed (the
+// same tokens otherwise). esbuild renames when two modules declare the same top-level name
+// (h2, useRef2…) and shifts a clashing local along with it (h2 -> h3). Those are reported as
+// "renamed a->b, …" instead of "differs"; the exit code stays 1 (it is still a difference).
+function renames(a, b) {
+  const A = espree.tokenize(a, { ecmaVersion: 'latest' }), B = espree.tokenize(b, { ecmaVersion: 'latest' });
+  if (A.length !== B.length) return null;
+  const pairs = new Set();
+  for (let i = 0; i < A.length; i++) if (A[i].value !== B[i].value) {
+    if (A[i].type !== 'Identifier' || B[i].type !== 'Identifier') return null;
+    pairs.add(A[i].value + '->' + B[i].value);
+  }
+  return [...pairs];
+}
+
+const args = process.argv.slice(2);
+const showRenames = args.includes('--renames');
+const ref = args.filter(a => a !== '--renames')[0] || 'HEAD';
 require('./build')();
 const now = statements(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'));
 const then = statements(execFileSync('git', ['show', ref + ':index.html'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 }));
@@ -43,7 +61,10 @@ const out = [];
 let same = 0;
 for (const [k, t] of then) {
   if (!now.has(k)) out.push('missing  ' + k);
-  else if (now.get(k) !== t) out.push('differs  ' + k);
+  else if (now.get(k) !== t) {
+    const r = showRenames && renames(t, now.get(k));
+    out.push(r ? 'renamed  ' + k + ': ' + r.join(', ') : 'differs  ' + k);
+  }
   else same++;
 }
 for (const k of now.keys()) if (!then.has(k)) out.push('new      ' + k);

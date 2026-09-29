@@ -297,6 +297,8 @@ What the code says about this phase (checked at the end of Phase 1):
 3. Run it without `--dry`, with `--about "header line\nsecond line"` for a new file.
 4. `node tools/same.js`: every top-level statement must be identical to the last commit
    (only order may change). Then `node tests/run.js logic` and `node tests/run.js smoke`.
+   If a move adds a top-level name some other module already has (D13), esbuild renames one
+   of them: `node tools/same.js --renames` shows whether renames are all that changed.
 5. Update the row in CLAUDE.md's **Layout of src/** table, tick the box here, commit (one
    move per commit, `index.html` with it).
 6. End of a task group: full `node tests/run.js`. It takes ~15 min; don't run other heavy
@@ -416,6 +418,8 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
 | D11 | In Phase 1 every knob table (`SP_KNOBS`, `JE_KNOBS`, `RA_KNOBS`, `JE_COLS`, `LV_KNOBS`, `ARCH_KNOBS`, `FIRE_KNOBS`) stays in `dev/knobs.js`, not in its creature's file | `DEV` is copied from `DEV_DEFAULTS` once, right after the tables register. A table in `creatures/spider.js` would register *after* that (knobs.js loads first), so `DEV` would miss its keys and the Dev rows would reorder: a behaviour change. Moving them needs `DEV` built after all tables (Phase 3) |
 | D12 | Proof a move changed nothing: parse the built bundle before and after, and compare every top-level statement's text (indentation aside): `node tools/same.js [ref]`. After P1.5 all 359 matched the P1.2 bundle exactly; only the order differs (modules first) | Stronger than the suites for a move-only phase: same text in, same behaviour out. The only thing a move can change is load order, and nothing at the top level reads a later module's state (checked for `MODS` in P1.5) |
 
+| D13 | `game/Game.js` declares its own `const { useRef, useEffect } = React; const h = React.createElement;` instead of importing them from `ui/h.js` | Layer rule: `game/` (5) may not import from `ui/` (6). Cost: two top-level `h`s in one bundle, so esbuild prints Game's as `h2`/`useRef2`/`useEffect2` and shifts inner locals already printed `h2` to `h3` (15 statements besides Game). `node tools/same.js --renames` shows every difference is such a rename (identifier tokens only, one consistent map); checked at P2.7 |
+
 ## Found along the way
 
 Bugs, oddities and "this should be better" spotted mid-move. Don't fix them in a refactor
@@ -499,3 +503,4 @@ commit. List them here for after.
 | 2026-09-29 | Phase 2, P2.5 (1/2) | `ui/swap.js` (GunSwap). Clean move. | same 359/359, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 2, P2.5 (2/2) | `ui/witness.js` (Witness, RP_SPEEDS). Clean move. | same 359/359, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 2, P2.6 | `ui/devpanel.js` (JellyPreview, DevRow, DevPanel, SpawnGun). JellyPreview went here, not with the jelly: it's a React component (needs `h`, layer 6). DevRow's comment sat above JellyPreview's; moved down to DevRow by hand. | same 359/359, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 2, P2.7 (1/2) | `game/Game.js` (Game as-is, with SPUTTER_FUEL, sputterStep, NO_INPUT). Its `ui/h.js` import swapped by hand for its own two React lines (D13). `same.js` then reports 343/359 identical, the other 16 renames only (`h2->h3` in 15 of them, and in Game also `h->h2`, `useRef->useRef2`, `useEffect->useEffect2`), plus the two new lines: shown with the new `node tools/same.js --renames`. `main.js`'s `export { … }` list is gone (nothing pure left in it), so its "pure part of this file" comment went too. | same: renames only (D13), logic 33/33, smoke ok |
