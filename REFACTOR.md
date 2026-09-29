@@ -13,8 +13,8 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 0 — not started |
-| **Branch** | `refactor` (create it from `main` when Phase 0 starts) |
+| **Current phase** | Phase 0 — in progress |
+| **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | From the start of Phase 0 until Phase 1 merges to `main` |
 | **Last green full suite** | — |
 | **Last merged to main** | — |
@@ -162,8 +162,8 @@ under ~800, `CLAUDE.md` under ~150 lines.
 The script moves into `src/`, and a tiny build script glues it back into the exact same
 `index.html`.
 
-- [ ] **P0.1** Create branch `refactor` from `main`.
-- [ ] **P0.2** Split `index.html` verbatim into `src/shell.html` (everything but the CSS
+- [x] **P0.1** Create branch `refactor` from `main`.
+- [x] **P0.2** Split `index.html` verbatim into `src/shell.html` (everything but the CSS
       and the main script, with two placeholders), `src/style.css` and `src/main.js`.
 - [ ] **P0.3** `tools/build.js` (plain Node, no deps): reads those three and writes
       `index.html`. **Acceptance: the output is byte-identical to v96's `index.html`**

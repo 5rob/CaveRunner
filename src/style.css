@@ -1,0 +1,461 @@
+:root{
+  --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
+  --pad:rgba(28,42,56,0.07); --ring:rgba(28,42,56,0.25);
+  --line:rgba(28,42,56,0.3); --knob:#1c2a38; --jet:rgba(255,138,31,0.18);
+  --btn:#e3ebf1;
+  --good:#1d8a52; --bad:#c2401f;
+  /* per-gun name colour: hue varies per gun (see gunColor), s/l fixed so every
+     hue clears an accessible contrast floor against this theme's backgrounds */
+  --gun-s:65%; --gun-l:22%;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101923; --text:#dbe6ef; --muted:rgba(219,230,239,0.5);
+    --pad:rgba(219,230,239,0.06); --ring:rgba(219,230,239,0.22);
+    --line:rgba(219,230,239,0.3); --knob:#dbe6ef; --jet:rgba(255,138,31,0.2);
+    --btn:#1a2633;
+    --good:#5fd39a; --bad:#ff8a6a;
+    --gun-s:65%; --gun-l:72%;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101923; --text:#dbe6ef; --muted:rgba(219,230,239,0.5);
+  --pad:rgba(219,230,239,0.06); --ring:rgba(219,230,239,0.22);
+  --line:rgba(219,230,239,0.3); --knob:#dbe6ef; --jet:rgba(255,138,31,0.2);
+  --btn:#1a2633;
+  --good:#5fd39a; --bad:#ff8a6a;
+  --gun-s:65%; --gun-l:72%;
+}
+/* ---- the control deck's own palette ----
+   The sticks and the toolbar are a black arcade panel, in both light and dark, so they
+   get their own variables rather than borrowing the sheet's. Amber is the live colour:
+   the selected slot, the dead-zone ring, the button you are pointing at. */
+:root{
+  --ctl-bg:#0a0a0c; --ctl-face:#151519; --ctl-edge:#000;
+  --ctl-line:#33333d; --ctl-fg:#eae7de; --ctl-dim:#8b8b96; --ctl-hot:#ffb02e;
+}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:hidden;
+  overscroll-behavior:none;touch-action:none;-webkit-user-select:none;user-select:none;
+  -webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#root{height:100%}
+.app{position:fixed;inset:0;display:flex;flex-direction:column}
+/* the view fills the screen; the controls float over its bottom, see-through */
+.view{position:absolute;inset:0;overflow:hidden;background:#12141a}
+.game{position:absolute;left:0;top:0;width:100%;height:100%;display:block;cursor:none}
+.controls{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;gap:6px;
+  padding:5px 0 calc(10px + env(safe-area-inset-bottom));background:none;
+  color:var(--ctl-fg);pointer-events:none;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace}
+.controls .stick,.controls .dbtn{pointer-events:auto}
+/* the round deck buttons: guns on an arc round the right stick, bag + map on the left.
+   Outlines only, so the cave shows through; the icons inside are full strength. */
+.dbtn{position:absolute;box-sizing:border-box;border-radius:50%;padding:0;margin:0;
+  background:none;border:1.5px solid rgba(255,255,255,0.55);color:#fff;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;touch-action:none;z-index:4;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,0.7))}
+.dbtn.on{border:2.5px solid var(--ctl-hot)}
+.dbtn.empty{border-style:dotted;opacity:.45;cursor:default}
+.dbtn .gicon{width:92%;height:auto;pointer-events:none}
+.dbtn .emo{font-size:20px;line-height:1;pointer-events:none}
+.dbtn .badge{position:absolute;right:-4px;top:-4px;margin:0;font:700 10px ui-monospace,monospace;
+  color:#fff;opacity:1;text-shadow:0 1px 2px #000}
+.toolbar{display:flex;align-items:center;justify-content:space-between;padding:0 8px;height:36px}
+.sticks{display:flex;justify-content:space-evenly;position:relative;z-index:3}
+/* gold readout in the gap between the sticks, level with their top halves. Sits on top
+   of the deck (pointer-events:none so a tap still falls to a stick) and reads amber. */
+.gold{position:absolute;left:50%;bottom:5%;transform:translateX(-50%);pointer-events:none;z-index:4;
+  display:flex;align-items:baseline;gap:1px;line-height:1;
+  font:800 19px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffc93c;
+  text-shadow:0 1px 3px rgba(0,0,0,0.85),0 0 6px rgba(0,0,0,0.6)}
+.gold span{font-size:12px;font-weight:700;color:#c9a24a}
+/* the perks you have found, a row of glyphs above the thumbsticks */
+.perkrow{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;align-items:center;
+  min-height:26px;padding:0 8px;position:relative;z-index:3}
+.perkpip{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;
+  justify-content:center;font-size:14px;line-height:1;box-sizing:border-box;
+  border:1.5px solid currentColor;background:rgba(255,255,255,0.05)}
+.num{position:absolute;top:2px;left:5px;font:600 10px ui-monospace,monospace;color:var(--ctl-dim)}
+.ico{position:absolute;left:50%;top:56%;transform:translate(-50%,-50%)}
+.ico.gun{width:18px;height:5px;border-radius:1px;background:var(--ctl-hot)}
+.ico.grenade{width:12px;height:12px;border-radius:2px;background:#7fbf4a}
+/* No overflow:hidden here, deliberately: a knob this size is wider than the gap
+   between the middle and the rim, so clipping to the rim would take a bite out of it
+   at full deflection. The decorations get their own clip layer instead (see .stickclip)
+   so the wash and the centre line still stop at the circle. */
+.stick{position:relative;flex:none;box-sizing:border-box;border-radius:50%;
+  touch-action:none;
+  background:none;border:1.5px solid rgba(255,255,255,0.35)}
+.stickclip{position:absolute;inset:0;border-radius:50%;overflow:hidden;pointer-events:none}
+.hline{position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,0.09)}
+/* the fuel gauge lives in the left stick's top half. It is anchored to the centre line
+   (bottom:50%) and its height is the fuel fraction, so as fuel burns the top edge wipes
+   down towards the centre. It brightens while the jet is firing (.jetting), and reads
+   red when the tank has run dry. Height is set inline by Stick. */
+.jetzone{position:absolute;left:0;right:0;bottom:50%;height:50%;background:rgba(255,176,46,0.16);
+  transition:background .1s}
+.jetting .jetzone{background:rgba(255,176,46,0.34)}
+.jetzone.dry{background:rgba(226,74,44,0.42)}
+/* the circular health / mana gauges: a ring round the stick's rim, wiped clockwise from
+   the top as the stat drops. Sits under the knob, never takes a touch. */
+.gauge{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+/* the amber ring is the line the knob's edge has to cross before the gun fires. Dotted,
+   so it reads as a threshold rather than a solid boundary. */
+.deadzone{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;
+  border:1.5px dotted rgba(255,176,46,0.85);pointer-events:none}
+/* the knob is the thing under your thumb, so it is sized to still show an edge around
+   a thumbprint rather than disappearing underneath one. Its size comes from KNOB, and
+   the dead-zone ring is built from the same number — see AIM_RING. */
+/* a white ring with a black fill. Its stroke is 1.5x the deadzone ring's 1.5px line,
+   so the knob reads as the boldest circle on the stick. */
+.knob{position:absolute;left:50%;top:50%;box-sizing:border-box;border-radius:50%;
+  background:none;
+  border:2.25px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,0.75);
+  opacity:.95;pointer-events:none}
+.lbl{position:absolute;left:50%;transform:translateX(-50%);pointer-events:none;
+  font:700 10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--ctl-dim);text-shadow:0 1px 2px #000}
+.lbl.top{top:12%}
+.lbl.bot{bottom:12%}
+.controls .slots{position:absolute;inset:0;pointer-events:none}
+.gname{font:700 10px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ctl-fg);max-width:100%;
+  padding:0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gsub{font:600 9px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ctl-dim)}
+.badge{margin-left:2px;font-size:11px;opacity:.7}
+
+/* ---- a mod on the ground: read it, then pick it up or leave it ----
+   pointer-events:none across the overlay on purpose: the right stick has to stay live
+   underneath it, because dragging the stick at a button is how you choose. Only the
+   card and the two buttons take touches back. ModFound also stops the overlay short of
+   the control deck, so the stick you are being asked to drag is not sat in shadow. */
+.modfound{position:fixed;top:0;left:0;right:0;bottom:0;z-index:29;display:flex;
+  flex-direction:column;justify-content:center;
+  gap:12px;background:rgba(6,6,8,0.88);pointer-events:none;
+  padding:calc(14px + env(safe-area-inset-top)) 12px 14px}
+/* the standing-on-a-plinth card, sat in the middle of the overlay instead of pinned
+   to the top of the view */
+.modfound .pop.ingame{position:static;left:auto;right:auto;top:auto;width:100%;max-width:340px;
+  align-self:center;max-height:calc(100% - 108px);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  pointer-events:auto;background:rgba(16,17,22,0.98);border-color:rgba(255,255,255,0.16)}
+.modfoundrow{display:flex;gap:10px;width:100%;max-width:340px;align-self:center;flex:0 0 auto}
+.modfoundbtn{flex:1 1 0;height:54px;border-radius:3px;border:2px solid var(--ctl-line);
+  background:var(--ctl-face);color:var(--ctl-fg);touch-action:none;pointer-events:auto;
+  font:700 15px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase}
+/* neither button is lit until the stick is past the trigger line and pointing at one:
+   the card must not look like it has already chosen for you */
+.modfoundbtn.hot{border-color:var(--ctl-hot);color:var(--ctl-hot);
+  box-shadow:0 0 16px rgba(255,176,46,0.25)}
+.modfoundhint{margin:0;text-align:center;font:600 11px ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.06em;color:var(--ctl-dim)}
+
+/* ---- mod sheet ---- */
+.sheet{position:fixed;inset:0;z-index:20;background:var(--bg);color:var(--text);
+  display:flex;flex-direction:column;padding:0 12px calc(12px + env(safe-area-inset-bottom));
+  padding-top:calc(10px + env(safe-area-inset-top))}
+.shead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 0 8px}
+.shead h2{margin:0;font-size:17px}
+.done{height:36px;padding:0 16px;border-radius:18px;border:1px solid var(--ring);
+  background:var(--btn);color:var(--text);font:600 14px system-ui,sans-serif}
+.btop{display:flex;gap:8px;margin-bottom:8px;align-items:flex-start}
+.gstats{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:0;background:var(--pad);
+  border-radius:9px;padding:5px 8px 3px}
+.gsrow{display:flex;align-items:baseline;gap:0 5px;font:500 11px system-ui,sans-serif;
+  color:var(--muted);line-height:1.15}
+.gsrow span{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gsrow b{font:700 11.5px system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.gsrow u{text-decoration:none;font:700 10px system-ui,sans-serif;min-width:34px;text-align:right}
+.gsrow{flex-wrap:wrap;row-gap:1px}
+.gsbar{flex:0 0 100%;height:2.5px;border-radius:2px;background:rgba(127,127,127,.18);overflow:hidden;margin:1px 0 2px}
+.gsbar i{display:block;height:100%;border-radius:2px}
+.gsrow u.up{color:var(--good)}
+.gsrow u.down{color:var(--bad)}
+.gtabs{flex:1 1 0;min-width:0;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.gtab{aspect-ratio:1;min-width:0;border-radius:9px;border:1px solid var(--ring);
+  background:var(--btn);color:var(--text);padding:4px;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;gap:4px;overflow:hidden}
+.gtab .gname{font:600 10.5px system-ui,sans-serif;text-align:center;line-height:1.15;max-width:100%;
+  white-space:normal;overflow:visible}
+.gicon{width:64px;height:32px;max-width:100%;pointer-events:none}
+.gtab.on{border:2px solid #ff8a1f}
+.gtab.lifted{opacity:.35}
+.gtab.target{border:2px dashed #ff8a1f}
+.gghost{position:fixed;z-index:30;transform:translate(-50%,-50%);pointer-events:none;
+  padding:7px 12px;border-radius:9px;border:2px solid #ff8a1f;background:var(--btn);
+  color:var(--text);font:600 12px system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.gtab.empty{opacity:.4}
+.stats{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
+.st{background:var(--pad);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--muted);
+  display:flex;gap:5px;align-items:baseline}
+.st b{font-size:12px;color:var(--text)}
+.lab{font-size:11px;color:var(--muted);margin:0 0 5px;text-transform:uppercase;letter-spacing:.06em}
+.advice{margin:0 0 9px}
+.diag{display:flex;align-items:baseline;gap:7px;font-size:11.5px;color:var(--muted);
+  border-left:3px solid var(--ring);padding:2px 0 2px 8px}
+.diag b{font:700 13px system-ui,sans-serif;color:var(--text)}
+.diag.rech{border-left-color:var(--bad)}
+.diag.mana{border-left-color:#63c8ff}
+.diag.blood{border-left-color:#c2401f}
+.diag.cast{border-left-color:#ff9e3d}
+.diag.none{border-left-color:var(--muted)}
+.tips{display:flex;gap:5px;margin-top:6px;overflow-x:auto;scrollbar-width:none}
+.tip{flex:0 0 auto;white-space:nowrap}
+.tip{display:flex;align-items:center;gap:6px;border:1px solid var(--ring);background:var(--pad);
+  color:var(--text);border-radius:8px;padding:5px 9px;font:500 11px system-ui,sans-serif;
+  touch-action:none}
+.tip b{color:var(--good);font-size:11px}
+.legend{display:flex;flex-wrap:wrap;gap:3px 8px;margin:0 0 7px}
+.lg{display:flex;align-items:center;gap:4px;font:500 9.5px system-ui,sans-serif;color:var(--muted)}
+.lg i{width:8px;height:8px;border-radius:2px;display:block}
+/* a scroll box with its own grab bar down the right side (ScrollBox): the wrapper takes the
+   box's place in the sheet, the box fills it, and the bar sits in the strip it leaves */
+.sbwrap{position:relative;display:flex;min-height:0}
+.sbwrap > .scroll{flex:1 1 auto;min-height:0;scrollbar-width:none;padding-right:26px !important}
+.sbwrap > .scroll::-webkit-scrollbar{display:none}
+.sbar{position:absolute;top:4px;bottom:4px;right:3px;width:18px;border-radius:9px;
+  background:rgba(127,127,140,0.14);touch-action:none;cursor:pointer}
+.sbar i{position:absolute;left:3px;right:3px;border-radius:6px;background:var(--muted);opacity:.75}
+.sbar.on i{opacity:1;background:var(--text)}
+.slotRowW{flex:1 1 0;min-height:64px;margin-bottom:8px}
+.slotRow{overflow-y:auto;border-radius:9px;
+  background:var(--pad);padding:6px}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:6px}
+.mgrid .tile{width:auto;height:auto;aspect-ratio:1}
+.mgrid .tile.cold{opacity:.45}
+.pulse{position:absolute;inset:0;border-radius:8px;border:2px solid;opacity:.22;pointer-events:none}
+.pulse.on{opacity:.42;box-shadow:0 0 10px currentColor}
+.grp{display:flex;flex-direction:column;gap:2px;min-width:0;max-width:100%}
+.gtiles{display:flex;flex-wrap:wrap;gap:6px;padding:5px;border:1.5px solid var(--ring);border-radius:12px;
+  background:var(--pad);min-width:0;max-width:100%;box-sizing:border-box}
+.glab{font:600 9px system-ui,sans-serif;color:var(--muted);padding-left:6px;
+  text-transform:uppercase;letter-spacing:.04em}
+.gfx{display:flex;flex-wrap:wrap;gap:3px 4px;padding:2px 4px 0;max-width:100%}
+.fx{display:flex;align-items:baseline;gap:3px;font:500 9.5px system-ui,sans-serif;
+  color:var(--muted);background:var(--pad);border-radius:5px;padding:1px 5px}
+.fx i{font-style:normal}
+.fx b{color:var(--text);font-size:10px;font-variant-numeric:tabular-nums}
+.fx u{text-decoration:none;font-weight:700;font-size:9.5px}
+.fx.up u{color:var(--good)}
+.fx.down u{color:var(--bad)}
+.grp.cold .gtiles{border-style:dashed;border-color:var(--pad);background:transparent;opacity:.6}
+.bagHead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.bagHead .lab{margin:0}
+.sortBag{flex:0 0 auto;height:22px;padding:0 10px;border-radius:11px;border:1px solid var(--ring);
+  background:var(--pad);color:var(--muted);font:700 10px system-ui,sans-serif;letter-spacing:.06em}
+.bagW{flex:1.5 1 0;min-height:70px;margin-top:5px}
+.bag{overflow-y:auto;border-radius:9px;background:var(--pad);padding:6px;
+  scroll-padding-bottom:12px}
+.tile{width:60px;height:56px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  touch-action:none;cursor:grab;overflow:hidden;flex:0 0 auto}
+.tile.hole{border-style:dashed;opacity:.5;cursor:default;touch-action:pan-y}
+.tile.shot{box-shadow:inset 0 0 0 2px currentColor}
+.tg{font-size:17px;line-height:1}
+.tile{position:relative}
+.tmark{position:absolute;top:2px;right:4px;font:700 9px system-ui,sans-serif;line-height:1}
+.tn{font:500 8.5px system-ui,sans-serif;color:var(--muted);text-align:center;line-height:1.1;
+  max-width:100%;padding:0 2px}
+.ghost{position:fixed;z-index:30;width:60px;height:56px;border-radius:9px;border:2px solid;
+  background:var(--btn);display:flex;align-items:center;justify-content:center;font-size:20px;
+  transform:translate(-50%,-50%);pointer-events:none;opacity:.9}
+.info{min-height:30px;font-size:12px;color:var(--muted);padding:7px 2px 0}
+.info b{color:var(--text)}
+
+/* ---- mod detail card ---- */
+.shade{position:fixed;inset:0;z-index:27;background:rgba(0,0,0,0.42)}
+.pop{position:fixed;z-index:28;box-sizing:border-box;left:10px;right:10px;
+  bottom:calc(10px + env(safe-area-inset-bottom));
+  max-height:34%;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--btn);border:1px solid var(--ring);
+  border-radius:15px;padding:12px 13px 14px;box-shadow:0 12px 40px rgba(0,0,0,0.35)}
+.pop.top{top:calc(10px + env(safe-area-inset-top));bottom:auto;
+  max-height:min(62%, calc(100vh - 320px))}   /* stays clear of the mod bag below */
+.pop.ingame{position:absolute;top:8px;left:8px;right:8px;bottom:auto;z-index:5;
+  max-height:calc(100% - 134px);        /* always clears the Buy button below it */
+  overflow:hidden;padding:11px 12px 16px;
+  pointer-events:none;background:rgba(18,20,26,0.93);border-color:rgba(255,255,255,0.18);color:#e9ecf2;
+  /* this card is always dark regardless of site theme, so force the dark-bg gun colour */
+  --gun-l:72%}
+.pop.ingame .pinfo{margin-top:7px;font-size:12.5px}
+.pop.ingame .pnote{display:none}
+.pop.ingame .prows{margin-top:6px}
+.pop.ingame .prow{padding:1.5px 2px;font-size:11px}
+.pop.ingame .prow b{font-size:11.5px}
+.pop.ingame .pglyph{width:36px;height:36px;font-size:17px}
+.pop.ingame .ptitle b{font-size:15px}
+.pop.ingame .pdemo{margin-top:6px;padding-top:6px;gap:6px}
+.pop.ingame .dnote{font-size:10.5px;margin-top:2px}
+.pop.ingame .dtile{padding:1px 5px}
+.pop.ingame .ptitle span,.pop.ingame .dnote,.pop.ingame .prow{color:rgba(233,236,242,0.62)}
+.pop.ingame .prow,.pop.ingame .pglyph{background:rgba(255,255,255,0.07)}
+.pop.ingame .prow b,.pop.ingame .dtile i{color:#e9ecf2}
+.pop.ingame .pdemo{border-top-color:rgba(255,255,255,0.18)}
+.phead{display:flex;align-items:center;gap:10px}
+.pglyph{width:42px;height:42px;flex:0 0 auto;border:2px solid;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:20px}
+.ptitle{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px}
+.ptitle b{font-size:16px}
+.ptitle span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.pclose{flex:0 0 auto;width:34px;height:34px;border-radius:17px;border:1px solid var(--ring);
+  background:var(--pad);color:var(--text);font-size:19px;line-height:1;padding:0}
+.pinfo{margin:9px 0 0;font-size:13px}
+.pnote{margin:7px 0 0;font-size:11.5px;line-height:1.45;color:var(--muted);
+  border-left:2px solid var(--ring);padding-left:8px}
+.prows{display:flex;flex-direction:column;margin-top:9px}
+.prow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  font-size:12px;color:var(--muted);padding:4px 2px;border-bottom:1px solid var(--pad)}
+.prow:last-child{border-bottom:0}
+.prow b{font-size:12.5px;color:var(--text);font-variant-numeric:tabular-nums}
+.prow.up b{color:var(--good)}
+.prow.down b{color:var(--bad)}
+.prow.up b::after{content:' \25b2';font-size:8px}
+.prow.down b::after{content:' \25bc';font-size:8px}
+.vs{margin:8px 0 0;font-size:11px;color:var(--muted)}
+.gtab.base{box-shadow:inset 0 0 0 2px var(--ring)}
+.pdemo{margin-top:11px;border-top:1px solid var(--ring);padding-top:9px;
+  display:flex;flex-direction:column;gap:9px}
+.drow{display:flex;align-items:flex-start;gap:8px}
+.dmark{flex:0 0 auto;width:18px;font-size:14px;font-weight:700;line-height:20px;text-align:center}
+.dmark.yes{color:#3aa76d}
+.dmark.no{color:#d5563a}
+.dtiles{display:flex;gap:4px;flex-wrap:wrap}
+.dtile{border:1px solid;border-radius:6px;padding:2px 6px;display:flex;align-items:center;gap:4px}
+.dtile b{font-size:12px;line-height:1}
+.dtile i{font-style:normal;font:600 10px system-ui,sans-serif;color:var(--text);opacity:.8}
+.dtile.off{opacity:.42}
+.dnote{display:block;font-size:11px;color:var(--muted);margin-top:3px}
+/* the shop/pickup panel: the item's card and its buy/take line in one box, grown up
+   from the bottom of the view. pointer-events:none so a tap falls through to the sticks —
+   buying is a tap on the right stick's dead zone. */
+.buypanel{position:absolute;left:25%;right:25%;bottom:12px;z-index:5;box-sizing:border-box;
+  display:flex;flex-direction:column;gap:9px;pointer-events:none;
+  max-height:calc(100% - 24px);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  background:rgba(18,20,26,0.93);border:1px solid rgba(255,255,255,0.18);border-radius:15px;
+  padding:11px 12px 13px;color:#e9ecf2;box-shadow:0 12px 40px rgba(0,0,0,0.35);
+  /* the card inside is always dark regardless of site theme, so force the dark-bg gun colour */
+  --gun-l:72%}
+/* the card sits inline inside the panel: strip its own frame and let the panel be the box */
+.buypanel .pop{position:static;top:auto;left:auto;right:auto;bottom:auto;width:auto;
+  background:none;border:0;box-shadow:none;padding:0;margin:0;max-height:none;overflow:visible}
+/* a long stat list (a loaded gun, a busy mod) gets its own small scroll box so the panel
+   stays short — about three rows, then it scrolls. pointer-events back on just here so you
+   can flick through it; the rest of the panel stays click-through */
+.buypanel .prows{max-height:60px;overflow-y:auto;-webkit-overflow-scrolling:touch;pointer-events:auto}
+/* the buy/take line (v89): a thin white circle with an R in it — "tap the right stick" —
+   and beside it the amber price (or "free", or a nameless item's name) */
+.pbuy{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:8px;
+  height:40px;color:#fff;font:700 14px system-ui,sans-serif;letter-spacing:.03em}
+.pbuy b{color:#ffc93c;font-size:15px}
+.pbuy .rkey{flex:0 0 auto;display:block}
+.pbuy.cant{opacity:.45}
+.pbuy.cant b{color:#fff}
+.weapon.locked{opacity:.45}
+.pop.flow{position:static;max-height:none;box-shadow:none;margin-bottom:2px}
+.spacer{flex:1 1 auto;min-height:6px}
+/* gun pickup: the two cards share what is left over. Head and mod row are fixed,
+   only the stat chips give way, so neither gun's mods can fall off the bottom. */
+.swapsheet{gap:6px}
+.pop.split{display:flex;flex-direction:column;flex:0 1 auto;min-height:0;overflow:hidden;
+  padding:9px 11px 10px;margin-bottom:0}
+.pop.split .phead{flex:0 0 auto}
+.pop.split .pglyph{width:32px;height:32px;font-size:16px;border-radius:9px}
+.pop.split .ptitle b{font-size:14.5px}
+.pop.split .ptitle span{font-size:10px}
+.pop.split .vs{flex:0 0 auto;margin:5px 0 0}
+.pop.split .gstats{flex:0 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  margin:7px 0 0;gap:4px}
+.pop.split .gstats .st{padding:2px 7px;font-size:10px}
+.pop.split .gstats .st b{font-size:11px}
+.pop.split .st.up b{color:var(--good)}
+.pop.split .st.down b{color:var(--bad)}
+.pop.split .pdemo{flex:0 0 auto;margin-top:7px;padding-top:7px;gap:6px}
+.pop.split .dtile{padding:1px 5px}
+.pop.split .dtile b{font-size:11px}
+.pop.split .dtile i{font-size:9.5px}
+.pop.split .dnote{font-size:10px;margin-top:2px}
+.swapsheet>.shead,.swapsheet>.lab{flex:0 0 auto}
+.swapsheet>.lab{margin:0}
+/* keeps the slot row down by the thumb when there is space, and costs nothing when there is not */
+.swapsheet>.lab.hint{margin-top:auto;padding-top:4px}
+.swaprow{display:flex;gap:6px;margin-top:4px;flex:0 0 auto}
+.swaprow .gtab{position:relative;height:62px;padding-top:6px}
+.gtab.holding,.slot.holding{background:linear-gradient(to right,#ff8a1f 0%,#ff8a1f 100%);
+  background-size:100% 100%;animation:fill .45s linear forwards;color:#12141a}
+@keyframes fill{from{background-size:0% 100%}to{background-size:100% 100%}}
+.gtab.holding{background-repeat:no-repeat}
+.slot.holding{background-repeat:no-repeat}
+.purse{font:700 14px system-ui,sans-serif;color:#c08a1f;margin-left:auto;margin-right:10px}
+.dbg{height:28px;padding:0 10px;border-radius:14px;border:1px solid var(--ring);
+  background:var(--pad);color:var(--muted);font:700 10px system-ui,sans-serif;letter-spacing:.09em}
+.dbg.on{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}
+.bag.debug{box-shadow:inset 0 0 0 1.5px rgba(255,138,31,0.5)}
+/* the dev tools: a gear in the top-right, and the panel it opens (Restart lives inside) */
+.devbtn{position:absolute;top:10px;right:10px;z-index:6;border:1px solid rgba(255,255,255,0.25);
+  background:rgba(0,0,0,0.35);color:#e9ecf2;border-radius:8px;width:38px;height:38px;padding:0;
+  font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center}
+.devcopy{display:block;width:100%;margin-top:10px}
+.devcopytext{width:100%;box-sizing:border-box;height:120px;margin-top:6px;font:12px ui-monospace,monospace;
+  background:var(--pad);color:var(--text);border:1px solid var(--ring);border-radius:8px}
+.dbg.restart{background:#c2401f;border-color:#c2401f;color:#fff}
+.devwrap{position:fixed;left:0;right:0;top:0;bottom:0;z-index:26;display:flex;
+  align-items:flex-start;justify-content:center;padding:52px 12px 12px}
+/* a light backdrop so the cave is still visible behind while you tune the look of it */
+.devback{position:absolute;inset:0;background:rgba(0,0,0,0.2)}
+.devpanel{position:relative;z-index:1;width:100%;max-width:360px;max-height:calc(100% - 64px);
+  overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;background:var(--btn);
+  border:1px solid var(--ring);border-radius:14px;padding:14px 16px;box-shadow:0 12px 40px rgba(0,0,0,0.45);color:var(--text)}
+.devhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.devhead h2{margin:0;font-size:17px}
+.devbtns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.devvars{display:flex;flex-direction:column;gap:10px;padding:4px 0 12px}
+.devgroup{border-top:1px solid var(--ring)}
+.devghead{display:flex;align-items:center;gap:8px;width:100%;height:40px;padding:0;border:0;background:none;
+  color:var(--text);font:700 13px system-ui,sans-serif;text-align:left}
+.devcaret{width:12px;color:var(--muted)}
+.spawnpanel .spawngo{margin-top:12px;width:100%}
+.devrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.devrow label{font-size:13px;color:var(--text);flex:1 1 auto}
+.devrow input[type=color]{width:56px;padding:2px 4px}
+.devrow input[type=range]{width:118px;padding:0;border:0;background:none;accent-color:#5ad65a}
+.devval{display:block;font:600 12px system-ui,sans-serif;color:var(--muted)}
+/* the live jellyfish above its colour knobs: stuck to the top of the panel while you
+   scroll through them, so every change shows as you make it */
+.jellyprev{position:sticky;top:-14px;z-index:2;display:block;width:100%;height:200px;margin:4px 0 6px;
+  border-radius:10px;border:1px solid var(--ring);background:#0d0f14;box-shadow:0 6px 14px rgba(0,0,0,0.35)}
+.devreset{flex:0 0 auto;width:34px;height:36px;border-radius:8px;border:1px solid var(--ring);
+  background:var(--pad);color:var(--text);font-size:16px}
+.devrow input{width:92px;flex:0 0 auto;box-sizing:border-box;height:36px;border-radius:8px;
+  border:1px solid var(--ring);background:var(--pad);color:var(--text);
+  font:600 14px system-ui,sans-serif;padding:0 9px;text-align:right;
+  user-select:text;-webkit-user-select:text}
+.devnote{margin:14px 0 0;font-size:11px;color:var(--muted);line-height:1.45}
+/* the death replay: a button on the death screen, then the replay's own screen over everything */
+.witnessbtn{position:absolute;left:50%;top:238px;transform:translateX(-50%);z-index:7;white-space:nowrap;
+  background:rgba(20,6,6,0.78);border:1.5px solid #ff4a3a;color:#ffd9d4;border-radius:24px;padding:12px 20px;
+  font:800 14px system-ui,sans-serif;letter-spacing:0.18em;box-shadow:0 0 18px rgba(255,74,58,0.35)}
+.app.witnessing .controls,.app.witnessing .devbtn,.app.witnessing .buypanel{visibility:hidden}
+.witness{position:fixed;inset:0;z-index:28;display:flex;flex-direction:column}
+.wscene{flex:1 1 auto;position:relative;touch-action:none}
+.wtitle{position:absolute;top:14px;left:0;right:0;text-align:center;pointer-events:none;
+  font:800 13px system-ui,sans-serif;letter-spacing:0.3em;color:rgba(255,255,255,0.72);text-shadow:0 1px 3px #000}
+.wpanel{flex:0 0 auto;background:rgba(10,12,16,0.92);border-top:1px solid rgba(255,255,255,0.12);color:#e9ecf2;
+  padding:6px 16px calc(12px + env(safe-area-inset-bottom))}
+.wscrub{position:relative;height:36px;touch-action:none}
+.wtrack,.wfill{position:absolute;left:0;top:16px;height:4px;border-radius:2px}
+.wtrack{right:0;background:rgba(255,255,255,0.18)}
+.wfill{background:#ff8a1f}
+.wdeath{position:absolute;top:9px;width:3px;height:18px;margin-left:-1.5px;border-radius:1px;background:#ff4a3a}
+.wthumb{position:absolute;top:9px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 4px rgba(0,0,0,0.5)}
+.wrow{display:flex;gap:6px;align-items:center;margin-top:8px}
+.wrow button{height:38px;min-width:38px;padding:0 10px;border-radius:19px;border:1px solid rgba(255,255,255,0.22);
+  background:rgba(255,255,255,0.06);color:#e9ecf2;font:600 13px system-ui,sans-serif}
+.wrow button.on{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}
+.wrow .wclose{margin-left:auto}
+.wtime{margin-left:auto;font:600 13px ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.confirm{position:fixed;inset:0;z-index:29;display:flex;align-items:center;justify-content:center;padding:24px}
+.confirmCard{position:relative;z-index:30;background:var(--btn);border:1px solid var(--ring);border-radius:14px;
+  padding:18px 20px;max-width:260px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.4)}
+.confirmCard p{margin:0 0 14px;font:600 14px system-ui,sans-serif;color:var(--text)}
+.confirmRow{display:flex;gap:10px;justify-content:center}
+.confirmRow button{height:40px;padding:0 16px;border-radius:20px;font:600 13px system-ui,sans-serif}
+.confirmRow .cancel{background:var(--pad);color:var(--text);border:1px solid var(--ring)}
+.confirmRow .go{background:#c2401f;color:#fff;border:1px solid #c2401f}
