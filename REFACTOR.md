@@ -13,10 +13,10 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 1 done and merged to `main` as v97. Phase 2 in progress on `refactor` (see the boxes) |
+| **Current phase** | Phase 1 merged to `main` as v97. Phase 2 done on `refactor`, not merged: waiting for the owner's play-test. Then Phase 3 |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
-| **Last green full suite** | 2026-09-29, P1.6 (bar known flakes: `fog` "flying on reveals more" and `rats` passed alone; `jelly` spit passed 1 of 3 alone, as on v96) |
+| **Last green full suite** | 2026-09-29, end of Phase 2 (bar known flakes: `decor` vine and `torch` passed alone; `jelly` spit passed 1 of 3 alone, as on v96) |
 | **Last merged to main** | v97 (P1.6), 2026-09-29 |
 
 ---
@@ -463,6 +463,8 @@ commit. List them here for after.
   reprint) against v96.
   P1.6 run: `fog` "flying on reveals more" ("186 -> 154 cave cells") failed once in the full
   run, passed alone. The P1.6 bundle is statement-identical to P1.5's, so chance/load again.
+  End of Phase 2: `decor` "a vine holds you where you grabbed it" (y 1381 → 1356) failed once
+  in the full run, passed alone; a new name on the list. `torch` "brighter frames…" again.
 - **Misplaced comments (left as they were, moved with their code).** A second copy of
   planCast's opening comment sits above `blankShot` (`spells/cast.js`); tracePath's opening
   comment sits above `DRIFT_DRAG` (`spells/trace.js`); `ROOM_HW`'s line carries the trailing
@@ -506,3 +508,4 @@ commit. List them here for after.
 | 2026-09-29 | Phase 2, P2.6 | `ui/devpanel.js` (JellyPreview, DevRow, DevPanel, SpawnGun). JellyPreview went here, not with the jelly: it's a React component (needs `h`, layer 6). DevRow's comment sat above JellyPreview's; moved down to DevRow by hand. | same 359/359, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 2, P2.7 (1/2) | `game/Game.js` (Game as-is, with SPUTTER_FUEL, sputterStep, NO_INPUT). Its `ui/h.js` import swapped by hand for its own two React lines (D13). `same.js` then reports 343/359 identical, the other 16 renames only (`h2->h3` in 15 of them, and in Game also `h->h2`, `useRef->useRef2`, `useEffect->useEffect2`), plus the two new lines: shown with the new `node tools/same.js --renames`. `main.js`'s `export { … }` list is gone (nothing pure left in it), so its "pure part of this file" comment went too. | same: renames only (D13), logic 33/33, smoke ok |
 | 2026-09-29 | Phase 2, P2.7 (2/2) | `ui/app.js` (App). `main.js` is now the two imports and the mount line, plus a two-line header comment. CLAUDE.md's "code is `src/main.js`" lines and the layout table updated. | same 361/361, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 2 done | Full suite at the end of P2.7: `decor`, `torch` failed in the run and passed alone; `jelly` spit passed 1 of 3 alone (as at P1.6 and on v96). Not merged: the owner play-tests Phase 2 first. `main.js` 5,767 → 6 lines; `game/Game.js` 4,330, `ui/` 8 files, 5–418 lines. | logic 33/33; browser 44/44 after re-runs (`jelly` flaky, as v96) |
