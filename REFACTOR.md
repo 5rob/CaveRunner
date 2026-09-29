@@ -508,6 +508,8 @@ What the code says about P3.4 (checked at the end of P3.3):
          `drawTerrain` → a new `render/cave.js` with `tools/part.js` (background, shop wall, rock, burning pixels). `part.js`
          now never imports `VERSION` (D7: its dry run wanted `import { VERSION } from '../../version.js'` in draw.js) and puts
          a new render module's `pure.js` line after the other render lines
+       - [x] P3.4 (36): `drawProps` → cave.js (`part.js`, then by hand the theme and `onView` moved in: it fills `F.TH`,
+         `F.onView`; draw reads them back with `const { TH, onView } = F;`), `drawPortal` → cave.js
     4. Keep the order exactly: draw() draws from the sim's `Math.random` stream and writes fog memory and the camera, and
        step's parts feed each other within the frame. The probe catches any reorder.
   - Learned so far: `G`'s keys must be declared above `G` (a closure `const` further down moves up
@@ -912,3 +914,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.4 checkpoint | Full suite on e5b7c1b (step() split): only `jelly` failed, "saturation 0 greys it out"; alone it passed once, then failed twice on the spit group (known). The probe against 630e6e9, the commit before the split, is SAME too. Stopped here: draw()'s split is next. Not merged. | logic 33/33; browser 44/44 after re-runs |
 | 2026-09-30 | Phase 3, P3.4 (34) | draw()'s split begins: its inner `drawLook`, `drawFieldLook`, `drawBolt` → new `render/looks.js` (scratch script; `rnd` goes with them). `spelllooks`, `t1spells`, `blackhole`, `everymod` run too, first time; `lightning` failed once, passed 2 of 2 alone (known flake). | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (35) | The frame object `F` for draw (D19); `drawCamera` by hand in draw.js, `drawTerrain` → new `render/cave.js` with `tools/part.js`. `part.js`: never imports `VERSION` (D7), render modules' `pure.js` lines go with the render ones. `replay`, `torch`, `fog`, `fire`, `shop`, `map` run too, all first time. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 3, P3.4 (36) | `drawProps` (fills `F.TH`, `F.onView`; the two lines moved in by hand after `part.js`) and `drawPortal` → cave.js. `decor`, `fire`, `replay`, `newcave` run too, first time; `archvine` "no jelly swims deep…" failed once, passed 2 of 2 alone (known flake). | probe SAME, logic 33/33, smoke ok |
