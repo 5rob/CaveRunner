@@ -14341,67 +14341,95 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
-  // src/game/systems/bullets.js
-  function spray(W, b) {
-    SFX.fx("cluster", b.x, b.y);
-    const n = Math.min(8, b.cluster);
-    for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI * 2, sp = 140 + Math.random() * 120;
-      W.bullets.push({
-        x: b.x,
-        y: b.y,
-        vx: Math.cos(a) * sp,
-        vy: Math.sin(a) * sp,
-        life: 0.5 + Math.random() * 0.3,
-        dmg: Math.max(0.6, b.dmg * 0.3),
-        size: 2,
-        col: b.col,
-        spin: 0,
-        homing: 0,
-        bounce: 0,
-        pierce: 0,
-        explode: 9,
-        grav: 300,
-        accel: 0,
-        bore: 0,
-        hit: null,
-        age: 0
+  // src/game/systems/fields.js
+  function fireBeam(W, G, sh, x, y, nx, ny, bonus, pd, pc) {
+    pd = pd || 1;
+    pc = pc || 0;
+    let hitAt = sh.beam;
+    for (let d = 6; d <= sh.beam; d += 4) {
+      const bx = x + nx * d, by = y + ny * d;
+      if (sh.bore) dig(W, G, bx, by, sh.bore);
+      else if (solidAt(W, bx, by)) {
+        hitAt = d;
+        break;
+      }
+      const j = enemyAt(W, bx, by, sh.size + 3);
+      if (j >= 0) {
+        damageEnemy(W, j, critRoll((sh.dmg + bonus) * pd, sh.crit + pc));
+        burst(W, bx, by, 4, sh.col);
+        if (sh.knock) shove(W.enemies[j], nx, ny, sh.knock);
+        if (!sh.pierce) {
+          hitAt = d;
+          break;
+        }
+      }
+    }
+    W.beams.push({ x, y, nx, ny, len: hitAt, col: sh.col, w: sh.size, t: 0, look: sh.look });
+    if (sh.look) {
+      const ex = x + nx * hitAt, ey = y + ny * hitAt;
+      for (let k = 0; k < 5; k++) glowDot(
+        W,
+        ex,
+        ey,
+        -nx * rnd(20, 80) + rnd(-50, 50),
+        -ny * rnd(20, 80) + rnd(-50, 30),
+        k ? sh.col : "#ffffff",
+        rnd(0.8, 1.3),
+        rnd(0.12, 0.3),
+        0.3
+      );
+      if (sh.pit && hitAt < sh.beam) dig(W, G, ex + nx * 2, ey + ny * 2, sh.pit);
+    }
+    if (sh.explode) explode(W, G, x + nx * hitAt, y + ny * hitAt, sh.explode);
+    if (sh.payload && sh.payload.length) releaseAt(W, G, sh.payload, x + nx * hitAt, y + ny * hitAt, nx, ny, sh.col);
+  }
+  function throwEmbers(W, x, y, n) {
+    for (let k = 0; k < n; k++) {
+      const a = -Math.PI / 2 + (Math.random() - 0.5) * 4.2, v = 60 + Math.random() * 150;
+      W.dparts.push({
+        x,
+        y,
+        vx: Math.cos(a) * v,
+        vy: Math.sin(a) * v - 20,
+        g: 0.45,
+        c: FIRE_COLS[Math.floor(Math.random() * 3)],
+        s: 1 + Math.random() * 0.8,
+        life: 0.7 + Math.random() * 0.6,
+        max: 1.3,
+        glow: 1,
+        ember: 1
       });
     }
-    burst(W, b.x, b.y, 8, b.col);
   }
-  function explodeCross(W, G, b) {
-    const R = b.explode || 20;
-    explode(W, G, b.x, b.y, R * 0.6);
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]])
-      explode(W, G, b.x + dx * R * 0.9, b.y + dy * R * 0.9, R * 0.55);
+  function castField(W, G, sh, x, y, ang) {
+    const pay = sh.payload && sh.payload.length ? sh.payload : null;
+    if (sh.field === "explode") {
+      explode(W, G, x, y, sh.r, void 0, sh.fire);
+      if (sh.embers) throwEmbers(W, x, y, sh.embers);
+      if (pay) releaseAt(W, G, pay, x, y, Math.cos(ang || 0), Math.sin(ang || 0), sh.col);
+      return;
+    }
+    W.fields.push({
+      x,
+      y,
+      r: sh.r,
+      field: sh.field,
+      life: sh.life,
+      max: sh.life,
+      col: sh.col,
+      dmg: sh.dmg || 1,
+      tick: 0,
+      payload: pay,
+      ang: ang || 0,
+      trig: sh.trig
+    });
   }
-  var critRoll = (dmg, chance) => chance && Math.random() < chance ? (SFX.fx("crit"), dmg * 3) : dmg;
-  var shove = (e, nx, ny, force) => {
-    e.x += nx * force * 0.03;
-    e.y += ny * force * 0.03;
-    e.tgt = null;
+  var fieldPayload = (W, G, f) => {
+    if (!f.payload) return;
+    const list = f.payload;
+    f.payload = null;
+    releaseAt(W, G, list, f.x, f.y, Math.cos(f.ang), Math.sin(f.ang), f.col);
   };
-  function teleportTo(W, b) {
-    if (W.p.dead) return;
-    const sp = Math.hypot(b.vx, b.vy), nx = sp ? b.vx / sp : 0, ny = sp ? b.vy / sp : 0;
-    for (let back = 0; back <= 40; back += 3)
-      for (const dy of [0, -4, 4, -8, 8, -12, 12, -16, 16]) {
-        const x = b.x - nx * back - PW / 2, y = b.y - ny * back - PH / 2 + dy;
-        if (x < CELL * 3 || y < CELL * 3 || x + PW > WW - CELL * 3 || y + PH > WH - CELL * 3) continue;
-        if (boxHit(W, x, y)) continue;
-        burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 10, b.col);
-        W.p.x = x;
-        W.p.y = y;
-        W.p.vx = 0;
-        W.p.vy = 0;
-        burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 12, b.col);
-        SFX.fx("warp", W.p.x + PW / 2, W.p.y + PH / 2);
-        return;
-      }
-    burst(W, b.x, b.y, 4, b.col);
-    SFX.fx("fizzle", b.x, b.y);
-  }
 
   // src/game/systems/gun.js
   function cast(W, G, g, gx, gy, nx, ny) {
@@ -14654,106 +14682,69 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (R.on && gun && gun.delayT <= 0 && gun.rechT <= 0) cast(W, G, gun, gx, gy, R.nx, R.ny);
   }
 
-  // src/game/systems/fields.js
-  function fireBeam(W, G, sh, x, y, nx, ny, bonus, pd, pc) {
-    pd = pd || 1;
-    pc = pc || 0;
-    let hitAt = sh.beam;
-    for (let d = 6; d <= sh.beam; d += 4) {
-      const bx = x + nx * d, by = y + ny * d;
-      if (sh.bore) dig(W, G, bx, by, sh.bore);
-      else if (solidAt(W, bx, by)) {
-        hitAt = d;
-        break;
-      }
-      const j = enemyAt(W, bx, by, sh.size + 3);
-      if (j >= 0) {
-        damageEnemy(W, j, critRoll((sh.dmg + bonus) * pd, sh.crit + pc));
-        burst(W, bx, by, 4, sh.col);
-        if (sh.knock) shove(W.enemies[j], nx, ny, sh.knock);
-        if (!sh.pierce) {
-          hitAt = d;
-          break;
-        }
-      }
-    }
-    W.beams.push({ x, y, nx, ny, len: hitAt, col: sh.col, w: sh.size, t: 0, look: sh.look });
-    if (sh.look) {
-      const ex = x + nx * hitAt, ey = y + ny * hitAt;
-      for (let k = 0; k < 5; k++) glowDot(
-        W,
-        ex,
-        ey,
-        -nx * rnd(20, 80) + rnd(-50, 50),
-        -ny * rnd(20, 80) + rnd(-50, 30),
-        k ? sh.col : "#ffffff",
-        rnd(0.8, 1.3),
-        rnd(0.12, 0.3),
-        0.3
-      );
-      if (sh.pit && hitAt < sh.beam) dig(W, G, ex + nx * 2, ey + ny * 2, sh.pit);
-    }
-    if (sh.explode) explode(W, G, x + nx * hitAt, y + ny * hitAt, sh.explode);
-    if (sh.payload && sh.payload.length) releaseAt(W, G, sh.payload, x + nx * hitAt, y + ny * hitAt, nx, ny, sh.col);
-  }
-  function throwEmbers(W, x, y, n) {
-    for (let k = 0; k < n; k++) {
-      const a = -Math.PI / 2 + (Math.random() - 0.5) * 4.2, v = 60 + Math.random() * 150;
-      W.dparts.push({
-        x,
-        y,
-        vx: Math.cos(a) * v,
-        vy: Math.sin(a) * v - 20,
-        g: 0.45,
-        c: FIRE_COLS[Math.floor(Math.random() * 3)],
-        s: 1 + Math.random() * 0.8,
-        life: 0.7 + Math.random() * 0.6,
-        max: 1.3,
-        glow: 1,
-        ember: 1
+  // src/game/systems/bullets.js
+  function spray(W, b) {
+    SFX.fx("cluster", b.x, b.y);
+    const n = Math.min(8, b.cluster);
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 140 + Math.random() * 120;
+      W.bullets.push({
+        x: b.x,
+        y: b.y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp,
+        life: 0.5 + Math.random() * 0.3,
+        dmg: Math.max(0.6, b.dmg * 0.3),
+        size: 2,
+        col: b.col,
+        spin: 0,
+        homing: 0,
+        bounce: 0,
+        pierce: 0,
+        explode: 9,
+        grav: 300,
+        accel: 0,
+        bore: 0,
+        hit: null,
+        age: 0
       });
     }
+    burst(W, b.x, b.y, 8, b.col);
   }
-  function castField(W, G, sh, x, y, ang) {
-    const pay = sh.payload && sh.payload.length ? sh.payload : null;
-    if (sh.field === "explode") {
-      explode(W, G, x, y, sh.r, void 0, sh.fire);
-      if (sh.embers) throwEmbers(W, x, y, sh.embers);
-      if (pay) releaseAt(W, G, pay, x, y, Math.cos(ang || 0), Math.sin(ang || 0), sh.col);
-      return;
-    }
-    W.fields.push({
-      x,
-      y,
-      r: sh.r,
-      field: sh.field,
-      life: sh.life,
-      max: sh.life,
-      col: sh.col,
-      dmg: sh.dmg || 1,
-      tick: 0,
-      payload: pay,
-      ang: ang || 0,
-      trig: sh.trig
-    });
+  function explodeCross(W, G, b) {
+    const R = b.explode || 20;
+    explode(W, G, b.x, b.y, R * 0.6);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]])
+      explode(W, G, b.x + dx * R * 0.9, b.y + dy * R * 0.9, R * 0.55);
   }
-  var fieldPayload = (W, G, f) => {
-    if (!f.payload) return;
-    const list = f.payload;
-    f.payload = null;
-    releaseAt(W, G, list, f.x, f.y, Math.cos(f.ang), Math.sin(f.ang), f.col);
+  var critRoll = (dmg, chance) => chance && Math.random() < chance ? (SFX.fx("crit"), dmg * 3) : dmg;
+  var shove = (e, nx, ny, force) => {
+    e.x += nx * force * 0.03;
+    e.y += ny * force * 0.03;
+    e.tgt = null;
   };
-
-  // src/game/systems/step.js
-  function step(W, G, dt) {
-    const F = { dt, LO: null, MHP: 0, pcx: 0, pcy: 0 };
-    if (stepRequests(W, G, F)) return;
-    stepPerks(W, G, F);
-    const LO = F.LO, MHP = F.MHP;
-    movePlayer(W, G, F);
-    if (atPortal(W, G, F)) return;
-    const pcx = F.pcx, pcy = F.pcy;
-    aimAndCast(W, G, F);
+  function teleportTo(W, b) {
+    if (W.p.dead) return;
+    const sp = Math.hypot(b.vx, b.vy), nx = sp ? b.vx / sp : 0, ny = sp ? b.vy / sp : 0;
+    for (let back = 0; back <= 40; back += 3)
+      for (const dy of [0, -4, 4, -8, 8, -12, 12, -16, 16]) {
+        const x = b.x - nx * back - PW / 2, y = b.y - ny * back - PH / 2 + dy;
+        if (x < CELL * 3 || y < CELL * 3 || x + PW > WW - CELL * 3 || y + PH > WH - CELL * 3) continue;
+        if (boxHit(W, x, y)) continue;
+        burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 10, b.col);
+        W.p.x = x;
+        W.p.y = y;
+        W.p.vx = 0;
+        W.p.vy = 0;
+        burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 12, b.col);
+        SFX.fx("warp", W.p.x + PW / 2, W.p.y + PH / 2);
+        return;
+      }
+    burst(W, b.x, b.y, 4, b.col);
+    SFX.fx("fizzle", b.x, b.y);
+  }
+  function stepBullets(W, G, F) {
+    const { dt } = F;
     for (let i = W.bullets.length - 1; i >= 0; i--) {
       const b = W.bullets[i];
       b.life -= dt;
@@ -15041,6 +15032,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (dead) W.bullets.splice(i, 1);
     }
     for (let i = W.arcs.length - 1; i >= 0; i--) if ((W.arcs[i].t += dt) > W.arcs[i].max) W.arcs.splice(i, 1);
+  }
+
+  // src/game/systems/step.js
+  function step(W, G, dt) {
+    const F = { dt, LO: null, MHP: 0, pcx: 0, pcy: 0 };
+    if (stepRequests(W, G, F)) return;
+    stepPerks(W, G, F);
+    const LO = F.LO, MHP = F.MHP;
+    movePlayer(W, G, F);
+    if (atPortal(W, G, F)) return;
+    const pcx = F.pcx, pcy = F.pcy;
+    aimAndCast(W, G, F);
+    stepBullets(W, G, F);
     SFX.ear(pcx, pcy);
     if (!W.jetLoop && SFX.ready) W.jetLoop = SFX.loop("jet");
     if (W.jetLoop) W.jetLoop.set(

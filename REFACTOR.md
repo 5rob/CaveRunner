@@ -483,6 +483,7 @@ What the code says about P3.4 (checked at the end of P3.3):
        - [x] P3.4 (26): `movePlayer` → player.js (the stick, jetpack and fuel, steering, the move, footsteps; `part.js`),
          `atPortal` (fills `F.pcx`/`F.pcy`, returns true through the exit) in step.js by hand
        - [x] P3.4 (27): `aimAndCast` → gun.js (aim, Pinpointer, facing, every gun's clocks and mana, the trigger)
+       - [x] P3.4 (28): `stepBullets` → bullets.js (the bullet loop, and the lightning arcs fading after it)
        - draw's inner functions `drawLook`, `drawFieldLook`, `drawBolt` go out first (they use only their arguments and
          `W`/`G`), then the layers in their current order: camera, background + terrain, props, portal, smoke, fields, silk,
          enemies, projectiles, beams, arrival, shop, gold, pickups, rooms, trail, sparks, motes, flashes, flame, aim + gun,
@@ -508,7 +509,7 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] level-entry.js: enterLevel, sconces, per-floor precompute
   - [ ] player.js: walking, jetpack + sputter, climbing (vines, webs, arches), the torch (hurt, maxHp, refreshBag are out; `movePlayer` is all but the torch, P3.4 (26))
   - [x] gun.js: cast, spawnShot, releaseAt, payload/triggers, gun ticks (the ticks and aiming: `aimAndCast`, P3.4 (27))
-  - [ ] bullets.js: the bullet loop, homing/drift/wig, bounce, teleport, trails (shotTrail/Bounce/Death/Grind)
+  - [x] bullets.js: the bullet loop, homing/drift/wig, bounce, teleport, trails (shotTrail/Bounce/Death/Grind are in shotlooks.js; the loop is `stepBullets`, P3.4 (28))
   - [ ] fields.js: fields and beams
   - [ ] enemies.js: the enemy loop, aggro, contact damage, enemy shots (damageEnemy, fireEnemyShot are out; goo/splat are in particles.js); rats (`ratSolid`, `navFor`, `spawnRat`, `unstick`, `ratFrame`) likely a rats.js
   - [ ] pickups.js: pickups, shop stock, coins, ore, rooms, the interact tap
@@ -653,6 +654,10 @@ commit. List them here for after.
   `caveLit` 1 vs a baseline of 0), passed 3 of 3 alone. It puts you in the portal and waits 500 ms of wall clock before
   counting lit cells, so under load a frame or two more of play can reveal a cell. The probe (SAME) goes through the
   portal and `enterLevel` on every step. Worth frame-counting too.
+- **`t1spells` (browser) "bubble flies with its own look and leaves a glowing trail"**, new on the list: failed once
+  at P3.4 (28) (`glow` 0), passed 3 of 3 alone right after. Chance, not the cut: the bubble's fizz is `chance(6)` a
+  second, over 40 frames (~0.67 s) that is none at all about 2% of the time, and the browser suites don't seed
+  `Math.random`. Worth more frames, or counting the pop too, after the refactor.
 - **Misplaced comments (left as they were, moved with their code).** A second copy of
   planCast's opening comment sits above `blankShot` (`spells/cast.js`); tracePath's opening
   comment sits above `DRIFT_DRAG` (`spells/trace.js`); `ROOM_HW`'s line carries the trailing
@@ -872,3 +877,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.4 (25) | step()'s split begins: the frame object `F` (D18) made first in step; `stepRequests` (returns true for Dev → New cave) and `stepPerks` (fills `F.LO`, `F.MHP`) cut out by hand, in step.js. `tools/part.js` added for the rest (tried with `--dry` on the player part). `newcave`, `spawngun`, `perks` run too, all first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (26) | `movePlayer` (the stick, jetpack and fuel, steering, the move against the terrain, footsteps: 141 lines) → player.js with `tools/part.js`; `atPortal` by hand in step.js (it fills `F.pcx`/`F.pcy`; true through the exit). `jetpack`, `archvine`, `decor`, `spider`, `fog`, `save`, `newcave` run too, all first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (27) | `aimAndCast` (aim, Pinpointer, facing, the gun ticks, the trigger: 41 lines) → gun.js with `tools/part.js`. `perks`, `buzzsaw`, `everymod`, `cooldown-debug-shop` run too, all first time. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 3, P3.4 (28) | `stepBullets` (the bullet loop and the arcs fading: 187 lines) → bullets.js with `tools/part.js`; header rewritten. `everymod`, `trigger`, `blackhole`, `teleport`, `t1spells`, `spelllooks`, `pollen`, `buzzsaw`, `lightning` run too; `t1spells` "bubble … glowing trail" failed once, passed 3 of 3 alone (chance, see Found along the way), the rest first time. | probe SAME, logic 33/33, smoke ok |
