@@ -1006,6 +1006,391 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return true;
   }
 
+  // src/world/vision.js
+  var VIS_RAYS = 160;
+  function fogReveal(seen, wx, wy, r, pts, rays) {
+    const cx = wx / FOG_U, cy = wy / FOG_U, cr = r / FOG_U, r2 = cr * cr;
+    const x0 = Math.max(0, Math.floor(cx - cr)), x1 = Math.min(FW - 1, Math.ceil(cx + cr));
+    const y0 = Math.max(0, Math.floor(cy - cr)), y1 = Math.min(FH - 1, Math.ceil(cy + cr));
+    let n = 0;
+    for (let y = y0; y <= y1; y++) {
+      const row = y * FW, dy = y + 0.5 - cy, dy2 = dy * dy;
+      for (let x = x0; x <= x1; x++) {
+        if (seen[row + x]) continue;
+        const dx = x + 0.5 - cx;
+        if (dx * dx + dy2 > r2) continue;
+        const d = Math.sqrt(dx * dx + dy2) * FOG_U;
+        const t = (Math.atan2(dy, dx) / (Math.PI * 2) + 1) % 1 * rays;
+        const i0 = Math.floor(t), i1 = (i0 + 1) % rays;
+        const a = Math.hypot(pts[i0 * 2] - wx, pts[i0 * 2 + 1] - wy);
+        const b = Math.hypot(pts[i1 * 2] - wx, pts[i1 * 2 + 1] - wy);
+        if (d > Math.min(a, b)) continue;
+        seen[row + x] = 1;
+        n++;
+      }
+    }
+    return n;
+  }
+  function fogStart() {
+    const seen = new Uint8Array(FW * FH);
+    for (let y = Math.floor((SHOP_TOP - SHOP_ROOF) / FOG); y < FH; y++)
+      for (let x = 0; x < FW; x++) seen[y * FW + x] = 2;
+    return seen;
+  }
+  function nestFog(nests) {
+    const m = new Uint8Array(FW * FH);
+    for (const n of nests || []) {
+      const R = n.r + 2;
+      for (let y = Math.floor((n.y - R) / FOG); y <= Math.floor((n.y + R) / FOG); y++)
+        for (let x = Math.floor((n.x - R) / FOG); x <= Math.floor((n.x + R) / FOG); x++)
+          if (x >= 0 && y >= 0 && x < FW && y < FH) m[y * FW + x] = 1;
+    }
+    return m;
+  }
+  function rayDist(x, y, dx, dy, r, solidCell) {
+    let cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+    const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1;
+    const dtx = dx ? Math.abs(CELL / dx) : Infinity;
+    const dty = dy ? Math.abs(CELL / dy) : Infinity;
+    let tx = dx ? dx > 0 ? ((cx + 1) * CELL - x) / dx : (cx * CELL - x) / dx : Infinity;
+    let ty = dy ? dy > 0 ? ((cy + 1) * CELL - y) / dy : (cy * CELL - y) / dy : Infinity;
+    let t = 0;
+    for (; ; ) {
+      if (tx < ty) {
+        t = tx;
+        tx += dtx;
+        cx += sx;
+      } else {
+        t = ty;
+        ty += dty;
+        cy += sy;
+      }
+      if (t >= r) return r;
+      if (solidCell(cx, cy)) return t;
+    }
+  }
+  function losClear(x0, y0, x1, y1, solidCell) {
+    const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy);
+    if (d < 1e-3) return true;
+    return rayDist(x0, y0, dx / d, dy / d, d, solidCell) >= d - 1e-3;
+  }
+  function visPoly(cx, cy, r, solidCell, rays) {
+    const pts = [];
+    for (let i = 0; i < rays; i++) {
+      const a = i / rays * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
+      const d = rayDist(cx, cy, dx, dy, r, solidCell);
+      pts.push(cx + dx * d, cy + dy * d);
+    }
+    return pts;
+  }
+
+  // src/creatures/spider.js
+  var SPIDER = { hold: 6, feel: 14, step: 1.5, fall: 900 };
+  function spiderSeat(e, S, solidCell, maxMove) {
+    return surfSeat(e, S, solidCell, maxMove, SPIDER.hold, SPIDER.feel);
+  }
+  var segNear = (L, x, y) => {
+    const vx = L.bx - L.ax, vy = L.by - L.ay, ll = vx * vx + vy * vy || 1;
+    const u = Math.max(0, Math.min(1, ((x - L.ax) * vx + (y - L.ay) * vy) / ll));
+    return { u, d: Math.hypot(L.ax + vx * u - x, L.ay + vy * u - y) };
+  };
+  function spiderAim(x, y, dx, dy, reach, solidCell) {
+    for (const a of [0, 0.22, -0.22, 0.45, -0.45]) {
+      const c = Math.cos(a), s = Math.sin(a), ux = dx * c - dy * s, uy = dx * s + dy * c;
+      const d = rayDist(x, y, ux, uy, reach, solidCell);
+      if (d < reach && d > SPIDER.hold * 2.5) return { dx: ux, dy: uy, len: d };
+    }
+    return null;
+  }
+  function spiderStep(e, env, dt) {
+    const { solidCell, webs, rnd } = env;
+    const S = e.sp || (e.sp = {
+      mode: "fall",
+      vy: 0,
+      nx: 0,
+      ny: -1,
+      on: 0,
+      rest: rnd() * 0.5,
+      side: 1,
+      line: null,
+      u: 0,
+      dir: 1,
+      shot: null,
+      rx: e.hx,
+      ry: e.hy,
+      ra: rnd() * 6.28,
+      high: false
+    });
+    S.webT = (S.webT || 0) - dt;
+    roamStep(S, e, dt, rnd, "sp");
+    const goal = env.hunting ? env.goal : { x: S.rx, y: S.ry };
+    let out = null;
+    if (S.mode === "fall") {
+      S.vy = Math.min(S.vy + SPIDER.fall * dt, 600);
+      const n2 = Math.max(1, Math.ceil(S.vy * dt / SPIDER.step));
+      for (let i = 0; i < n2; i++) {
+        e.y += S.vy * dt / n2;
+        if (e.y > CH * CELL) {
+          e.y = CH * CELL;
+          break;
+        }
+        if (surfNormal(e.x, e.y, SPIDER.hold + 1, solidCell)) {
+          spiderSeat(e, S, solidCell, SPIDER.hold);
+          S.mode = "surf";
+          S.vy = 0;
+          S.on = 0;
+          S.rest = 0.1;
+          break;
+        }
+      }
+      return null;
+    }
+    if (S.mode === "shoot") {
+      const sh = S.shot;
+      sh.t += sh.spd * dt;
+      if (sh.t < sh.len) return null;
+      const hx = sh.x + sh.dx * sh.len, hy = sh.y + sh.dy * sh.len;
+      const inx = hx + sh.dx * 1.2, iny = hy + sh.dy * 1.2;
+      S.mode = sh.from;
+      S.shot = null;
+      if (!solidCell(Math.floor(inx / CELL), Math.floor(iny / CELL))) return null;
+      const L = {
+        ax: sh.x,
+        ay: sh.y,
+        bx: hx - sh.dx * SPIDER.hold,
+        by: hy - sh.dy * SPIDER.hold,
+        a0x: sh.ax0,
+        a0y: sh.ay0,
+        b0x: hx,
+        b0y: hy,
+        ain: sh.ain,
+        bin: { x: inx, y: iny },
+        owner: e
+      };
+      webs.push(L);
+      const mine = webs.filter((w) => w.owner === e);
+      if (mine.length > Math.round(spr("spMaxLines", rnd))) {
+        const old = mine.find((w) => w !== S.line);
+        if (old) webs.splice(webs.indexOf(old), 1);
+      }
+      S.mode = "line";
+      S.line = L;
+      S.u = 0;
+      S.dir = 1;
+      return "web";
+    }
+    if (S.mode === "line" && webs.indexOf(S.line) < 0) {
+      S.mode = "fall";
+      S.line = null;
+      S.vy = 0;
+      return null;
+    }
+    if (S.mode === "surf" && !surfNormal(e.x, e.y, SPIDER.hold + 2, solidCell)) {
+      S.mode = "fall";
+      S.vy = 0;
+      return null;
+    }
+    if (S.on <= 0) {
+      if ((S.rest -= dt) > 0) return null;
+      S.on = spr(env.hunting ? "spHuntOn" : "spRoamOn", rnd);
+      S.spd = env.speed || spr("spSpeed", rnd);
+      S.arrive = env.hunting ? spr("spArrive", rnd) : 3;
+      S.dot = spr("spDot", rnd);
+      decide();
+      if (S.mode === "shoot") return null;
+      if (S.on <= 0) {
+        S.rest = 0.1 + rnd() * 0.2;
+        return null;
+      }
+    }
+    if (S.mode === "shoot") return null;
+    const speed = (S.spd || spr("spSpeed", rnd)) * (env.speedMul || 1);
+    const dist = speed * Math.min(dt, S.on);
+    S.on -= dt;
+    const n = Math.max(1, Math.ceil(dist / SPIDER.step));
+    for (let i = 0; i < n && S.mode !== "shoot"; i++) {
+      const st = dist / n;
+      if (S.mode === "surf") {
+        const tx = -S.ny * S.side, ty = S.nx * S.side;
+        e.x += tx * st;
+        e.y += ty * st;
+        if (!spiderSeat(e, S, solidCell, st * 2)) {
+          e.x -= S.nx * st * 2;
+          e.y -= S.ny * st * 2;
+          if (!spiderSeat(e, S, solidCell, st * 2)) {
+            S.mode = "fall";
+            S.vy = 0;
+            break;
+          }
+        }
+        const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy) || 1;
+        const high = (gx * S.nx + gy * S.ny) / gd >= S.dot;
+        if (high && !S.high) {
+          S.high = true;
+          decide();
+        } else if (!high) S.high = false;
+        if (gd < (S.arrive || 3) || (-S.ny * gx + S.nx * gy) * S.side < 0) {
+          S.on = 0;
+          break;
+        }
+      } else if (S.mode === "line") {
+        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
+        const ux = (L.bx - L.ax) / len * S.dir, uy = (L.by - L.ay) / len * S.dir;
+        if (!S.go && (goal.x - e.x) * ux + (goal.y - e.y) * uy <= 0) {
+          S.on = 0;
+          break;
+        }
+        S.u += S.dir * st / len;
+        if (S.u >= 1 || S.u <= 0) {
+          S.u = S.u >= 1 ? 1 : 0;
+          e.x = S.u ? L.bx : L.ax;
+          e.y = S.u ? L.by : L.ay;
+          S.mode = "surf";
+          S.line = null;
+          S.go = false;
+          if (!spiderSeat(e, S, solidCell, SPIDER.hold)) {
+            S.mode = "fall";
+            S.vy = 0;
+            break;
+          }
+          decide();
+          continue;
+        }
+        e.x = L.ax + (L.bx - L.ax) * S.u;
+        e.y = L.ay + (L.by - L.ay) * S.u;
+      }
+    }
+    if (S.on <= 0 && S.rest <= 0) S.rest = spr(env.hunting ? "spHuntOff" : "spRoamOff", rnd);
+    return out;
+    function decide() {
+      const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
+      if (gd < (S.arrive || 3)) {
+        S.on = 0;
+        return;
+      }
+      const dx = gx / gd, dy = gy / gd;
+      const tryLine = () => {
+        let best = null, bd = spr("spGrab", rnd);
+        for (const L of webs) {
+          if (L === S.line) continue;
+          const q = segNear(L, e.x, e.y);
+          if (q.d > bd) continue;
+          const len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
+          const ux = (L.bx - L.ax) / len, uy = (L.by - L.ay) / len, al = ux * dx + uy * dy;
+          if (Math.abs(al) < 0.5) continue;
+          if (al > 0 && q.u > 0.97 || al < 0 && q.u < 0.03) continue;
+          best = { L, u: q.u, dir: al > 0 ? 1 : -1 };
+          bd = q.d;
+        }
+        if (!best) return false;
+        S.mode = "line";
+        S.line = best.L;
+        S.u = best.u;
+        S.dir = best.dir;
+        e.x = best.L.ax + (best.L.bx - best.L.ax) * best.u;
+        e.y = best.L.ay + (best.L.by - best.L.ay) * best.u;
+        return true;
+      };
+      const tryShoot = (from) => {
+        if (S.webT > 0 || !env.hunting && gd < 40) return false;
+        const a = spiderAim(e.x, e.y, dx, dy, env.reach || spr("spWeb", rnd), solidCell);
+        if (!a) return false;
+        let ax0 = e.x, ay0 = e.y, ain = null;
+        if (from === "surf") {
+          const d = rayDist(e.x, e.y, -S.nx, -S.ny, SPIDER.feel + 4, solidCell);
+          ax0 = e.x - S.nx * d;
+          ay0 = e.y - S.ny * d;
+          ain = { x: e.x - S.nx * (d + 1.2), y: e.y - S.ny * (d + 1.2) };
+        }
+        S.webT = spr(env.hunting ? "spHuntWeb" : "spRoamWeb", rnd);
+        S.shot = { spd: spr("spLineSpd", rnd), x: e.x, y: e.y, dx: a.dx, dy: a.dy, len: a.len, t: 0, from, ax0, ay0, ain };
+        S.mode = "shoot";
+        return true;
+      };
+      if (S.mode === "surf") {
+        const dot = dx * S.nx + dy * S.ny;
+        S.high = dot >= (S.dot || 0.6);
+        if (S.high && (tryLine() || tryShoot("surf"))) return;
+        const t = -S.ny * dx + S.nx * dy;
+        if (Math.abs(t) * gd < 4) {
+          S.on = 0;
+          return;
+        }
+        S.side = t > 0 ? 1 : -1;
+      } else if (S.mode === "line") {
+        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
+        const al = ((L.bx - L.ax) * dx + (L.by - L.ay) * dy) / len;
+        S.go = false;
+        if (Math.abs(al) > 0.3) {
+          S.dir = al > 0 ? 1 : -1;
+          return;
+        }
+        if (tryLine() || tryShoot("line")) return;
+        const da = Math.hypot(goal.x - L.ax, goal.y - L.ay), db = Math.hypot(goal.x - L.bx, goal.y - L.by);
+        S.dir = db < da ? 1 : -1;
+        S.go = true;
+      }
+    }
+  }
+  function drawSpider(ctx, x, y, r, time, phase, flash, col, S) {
+    let nx = 0, ny = -1, side = 1, moving = false;
+    if (S) {
+      if (S.mode === "line" && S.line) {
+        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
+        nx = -(L.by - L.ay) / len;
+        ny = (L.bx - L.ax) / len;
+        if (ny > 0) {
+          nx = -nx;
+          ny = -ny;
+        }
+        side = S.dir * (L.bx - L.ax >= 0 ? 1 : -1);
+      } else if (S.mode === "surf" || S.mode === "shoot") {
+        nx = S.nx;
+        ny = S.ny;
+        side = S.side;
+      }
+      moving = S.on > 0 && S.mode !== "shoot";
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.atan2(nx, -ny));
+    const t = moving ? time * 38 + phase : phase;
+    ctx.strokeStyle = flash ? "#ffffff" : col.b;
+    ctx.lineWidth = r * 0.16;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    for (let i = 0; i < 4; i++) {
+      const o = (i - 1.5) * r * 0.28, sw = Math.sin(t + i * 1.7) * r * 0.22;
+      for (const s of [-1, 1]) {
+        const fx = s * (r * (0.75 + Math.abs(i - 1.5) * 0.35)) + sw * s;
+        ctx.beginPath();
+        ctx.moveTo(o * 0.5, 0);
+        ctx.lineTo(o * 0.5 + fx * 0.55, -r * 0.55 - Math.abs(sw) * 0.3);
+        ctx.lineTo(o * 0.5 + fx, r * 0.62);
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
+    ctx.beginPath();
+    ctx.ellipse(-side * r * 0.45, -r * 0.05, r * 0.62, r * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#ffffff" : col.a;
+    ctx.beginPath();
+    ctx.ellipse(-side * r * 0.45, -r * 0.12, r * 0.48, r * 0.36, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
+    ctx.beginPath();
+    ctx.ellipse(side * r * 0.3, 0, r * 0.38, r * 0.32, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#ffffff" : col.eye;
+    for (const [ex, ey, er] of [[0.5, -0.1, 0.1], [0.42, 0.06, 0.08], [0.58, 0.08, 0.07], [0.36, -0.14, 0.07]]) {
+      ctx.beginPath();
+      ctx.arc(side * r * ex, r * ey, r * er, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   // src/data/creatures.js
   var CREATURES = {
     // jellyfish: pulses along wherever its head points, drag slows it, then it pulses again;
@@ -7172,426 +7557,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { x: (F.x0 + i + 0.5) * NAV * CELL, y: (F.y0 + j + 0.5) * NAV * CELL, dist, air };
   }
 
-  // src/world/vision.js
-  var VIS_RAYS = 160;
-  function fogReveal(seen, wx, wy, r, pts, rays) {
-    const cx = wx / FOG_U, cy = wy / FOG_U, cr = r / FOG_U, r2 = cr * cr;
-    const x0 = Math.max(0, Math.floor(cx - cr)), x1 = Math.min(FW - 1, Math.ceil(cx + cr));
-    const y0 = Math.max(0, Math.floor(cy - cr)), y1 = Math.min(FH - 1, Math.ceil(cy + cr));
-    let n = 0;
-    for (let y = y0; y <= y1; y++) {
-      const row = y * FW, dy = y + 0.5 - cy, dy2 = dy * dy;
-      for (let x = x0; x <= x1; x++) {
-        if (seen[row + x]) continue;
-        const dx = x + 0.5 - cx;
-        if (dx * dx + dy2 > r2) continue;
-        const d = Math.sqrt(dx * dx + dy2) * FOG_U;
-        const t = (Math.atan2(dy, dx) / (Math.PI * 2) + 1) % 1 * rays;
-        const i0 = Math.floor(t), i1 = (i0 + 1) % rays;
-        const a = Math.hypot(pts[i0 * 2] - wx, pts[i0 * 2 + 1] - wy);
-        const b = Math.hypot(pts[i1 * 2] - wx, pts[i1 * 2 + 1] - wy);
-        if (d > Math.min(a, b)) continue;
-        seen[row + x] = 1;
-        n++;
-      }
-    }
-    return n;
-  }
-  function fogStart() {
-    const seen = new Uint8Array(FW * FH);
-    for (let y = Math.floor((SHOP_TOP - SHOP_ROOF) / FOG); y < FH; y++)
-      for (let x = 0; x < FW; x++) seen[y * FW + x] = 2;
-    return seen;
-  }
-  function nestFog(nests) {
-    const m = new Uint8Array(FW * FH);
-    for (const n of nests || []) {
-      const R = n.r + 2;
-      for (let y = Math.floor((n.y - R) / FOG); y <= Math.floor((n.y + R) / FOG); y++)
-        for (let x = Math.floor((n.x - R) / FOG); x <= Math.floor((n.x + R) / FOG); x++)
-          if (x >= 0 && y >= 0 && x < FW && y < FH) m[y * FW + x] = 1;
-    }
-    return m;
-  }
-  function rayDist(x, y, dx, dy, r, solidCell) {
-    let cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
-    const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1;
-    const dtx = dx ? Math.abs(CELL / dx) : Infinity;
-    const dty = dy ? Math.abs(CELL / dy) : Infinity;
-    let tx = dx ? dx > 0 ? ((cx + 1) * CELL - x) / dx : (cx * CELL - x) / dx : Infinity;
-    let ty = dy ? dy > 0 ? ((cy + 1) * CELL - y) / dy : (cy * CELL - y) / dy : Infinity;
-    let t = 0;
-    for (; ; ) {
-      if (tx < ty) {
-        t = tx;
-        tx += dtx;
-        cx += sx;
-      } else {
-        t = ty;
-        ty += dty;
-        cy += sy;
-      }
-      if (t >= r) return r;
-      if (solidCell(cx, cy)) return t;
-    }
-  }
-  function losClear(x0, y0, x1, y1, solidCell) {
-    const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy);
-    if (d < 1e-3) return true;
-    return rayDist(x0, y0, dx / d, dy / d, d, solidCell) >= d - 1e-3;
-  }
-  function visPoly(cx, cy, r, solidCell, rays) {
-    const pts = [];
-    for (let i = 0; i < rays; i++) {
-      const a = i / rays * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
-      const d = rayDist(cx, cy, dx, dy, r, solidCell);
-      pts.push(cx + dx * d, cy + dy * d);
-    }
-    return pts;
-  }
-
-  // src/creatures/spider.js
-  var SPIDER = { hold: 6, feel: 14, step: 1.5, fall: 900 };
-  function spiderSeat(e, S, solidCell, maxMove) {
-    return surfSeat(e, S, solidCell, maxMove, SPIDER.hold, SPIDER.feel);
-  }
-  var segNear = (L, x, y) => {
-    const vx = L.bx - L.ax, vy = L.by - L.ay, ll = vx * vx + vy * vy || 1;
-    const u = Math.max(0, Math.min(1, ((x - L.ax) * vx + (y - L.ay) * vy) / ll));
-    return { u, d: Math.hypot(L.ax + vx * u - x, L.ay + vy * u - y) };
-  };
-  function spiderAim(x, y, dx, dy, reach, solidCell) {
-    for (const a of [0, 0.22, -0.22, 0.45, -0.45]) {
-      const c = Math.cos(a), s = Math.sin(a), ux = dx * c - dy * s, uy = dx * s + dy * c;
-      const d = rayDist(x, y, ux, uy, reach, solidCell);
-      if (d < reach && d > SPIDER.hold * 2.5) return { dx: ux, dy: uy, len: d };
-    }
-    return null;
-  }
-  function spiderStep(e, env, dt) {
-    const { solidCell, webs, rnd } = env;
-    const S = e.sp || (e.sp = {
-      mode: "fall",
-      vy: 0,
-      nx: 0,
-      ny: -1,
-      on: 0,
-      rest: rnd() * 0.5,
-      side: 1,
-      line: null,
-      u: 0,
-      dir: 1,
-      shot: null,
-      rx: e.hx,
-      ry: e.hy,
-      ra: rnd() * 6.28,
-      high: false
-    });
-    S.webT = (S.webT || 0) - dt;
-    roamStep(S, e, dt, rnd, "sp");
-    const goal = env.hunting ? env.goal : { x: S.rx, y: S.ry };
-    let out = null;
-    if (S.mode === "fall") {
-      S.vy = Math.min(S.vy + SPIDER.fall * dt, 600);
-      const n2 = Math.max(1, Math.ceil(S.vy * dt / SPIDER.step));
-      for (let i = 0; i < n2; i++) {
-        e.y += S.vy * dt / n2;
-        if (e.y > CH * CELL) {
-          e.y = CH * CELL;
-          break;
-        }
-        if (surfNormal(e.x, e.y, SPIDER.hold + 1, solidCell)) {
-          spiderSeat(e, S, solidCell, SPIDER.hold);
-          S.mode = "surf";
-          S.vy = 0;
-          S.on = 0;
-          S.rest = 0.1;
-          break;
-        }
-      }
-      return null;
-    }
-    if (S.mode === "shoot") {
-      const sh = S.shot;
-      sh.t += sh.spd * dt;
-      if (sh.t < sh.len) return null;
-      const hx = sh.x + sh.dx * sh.len, hy = sh.y + sh.dy * sh.len;
-      const inx = hx + sh.dx * 1.2, iny = hy + sh.dy * 1.2;
-      S.mode = sh.from;
-      S.shot = null;
-      if (!solidCell(Math.floor(inx / CELL), Math.floor(iny / CELL))) return null;
-      const L = {
-        ax: sh.x,
-        ay: sh.y,
-        bx: hx - sh.dx * SPIDER.hold,
-        by: hy - sh.dy * SPIDER.hold,
-        a0x: sh.ax0,
-        a0y: sh.ay0,
-        b0x: hx,
-        b0y: hy,
-        ain: sh.ain,
-        bin: { x: inx, y: iny },
-        owner: e
-      };
-      webs.push(L);
-      const mine = webs.filter((w) => w.owner === e);
-      if (mine.length > Math.round(spr("spMaxLines", rnd))) {
-        const old = mine.find((w) => w !== S.line);
-        if (old) webs.splice(webs.indexOf(old), 1);
-      }
-      S.mode = "line";
-      S.line = L;
-      S.u = 0;
-      S.dir = 1;
-      return "web";
-    }
-    if (S.mode === "line" && webs.indexOf(S.line) < 0) {
-      S.mode = "fall";
-      S.line = null;
-      S.vy = 0;
-      return null;
-    }
-    if (S.mode === "surf" && !surfNormal(e.x, e.y, SPIDER.hold + 2, solidCell)) {
-      S.mode = "fall";
-      S.vy = 0;
-      return null;
-    }
-    if (S.on <= 0) {
-      if ((S.rest -= dt) > 0) return null;
-      S.on = spr(env.hunting ? "spHuntOn" : "spRoamOn", rnd);
-      S.spd = env.speed || spr("spSpeed", rnd);
-      S.arrive = env.hunting ? spr("spArrive", rnd) : 3;
-      S.dot = spr("spDot", rnd);
-      decide();
-      if (S.mode === "shoot") return null;
-      if (S.on <= 0) {
-        S.rest = 0.1 + rnd() * 0.2;
-        return null;
-      }
-    }
-    if (S.mode === "shoot") return null;
-    const speed = (S.spd || spr("spSpeed", rnd)) * (env.speedMul || 1);
-    const dist = speed * Math.min(dt, S.on);
-    S.on -= dt;
-    const n = Math.max(1, Math.ceil(dist / SPIDER.step));
-    for (let i = 0; i < n && S.mode !== "shoot"; i++) {
-      const st = dist / n;
-      if (S.mode === "surf") {
-        const tx = -S.ny * S.side, ty = S.nx * S.side;
-        e.x += tx * st;
-        e.y += ty * st;
-        if (!spiderSeat(e, S, solidCell, st * 2)) {
-          e.x -= S.nx * st * 2;
-          e.y -= S.ny * st * 2;
-          if (!spiderSeat(e, S, solidCell, st * 2)) {
-            S.mode = "fall";
-            S.vy = 0;
-            break;
-          }
-        }
-        const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy) || 1;
-        const high = (gx * S.nx + gy * S.ny) / gd >= S.dot;
-        if (high && !S.high) {
-          S.high = true;
-          decide();
-        } else if (!high) S.high = false;
-        if (gd < (S.arrive || 3) || (-S.ny * gx + S.nx * gy) * S.side < 0) {
-          S.on = 0;
-          break;
-        }
-      } else if (S.mode === "line") {
-        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
-        const ux = (L.bx - L.ax) / len * S.dir, uy = (L.by - L.ay) / len * S.dir;
-        if (!S.go && (goal.x - e.x) * ux + (goal.y - e.y) * uy <= 0) {
-          S.on = 0;
-          break;
-        }
-        S.u += S.dir * st / len;
-        if (S.u >= 1 || S.u <= 0) {
-          S.u = S.u >= 1 ? 1 : 0;
-          e.x = S.u ? L.bx : L.ax;
-          e.y = S.u ? L.by : L.ay;
-          S.mode = "surf";
-          S.line = null;
-          S.go = false;
-          if (!spiderSeat(e, S, solidCell, SPIDER.hold)) {
-            S.mode = "fall";
-            S.vy = 0;
-            break;
-          }
-          decide();
-          continue;
-        }
-        e.x = L.ax + (L.bx - L.ax) * S.u;
-        e.y = L.ay + (L.by - L.ay) * S.u;
-      }
-    }
-    if (S.on <= 0 && S.rest <= 0) S.rest = spr(env.hunting ? "spHuntOff" : "spRoamOff", rnd);
-    return out;
-    function decide() {
-      const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
-      if (gd < (S.arrive || 3)) {
-        S.on = 0;
-        return;
-      }
-      const dx = gx / gd, dy = gy / gd;
-      const tryLine = () => {
-        let best = null, bd = spr("spGrab", rnd);
-        for (const L of webs) {
-          if (L === S.line) continue;
-          const q = segNear(L, e.x, e.y);
-          if (q.d > bd) continue;
-          const len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
-          const ux = (L.bx - L.ax) / len, uy = (L.by - L.ay) / len, al = ux * dx + uy * dy;
-          if (Math.abs(al) < 0.5) continue;
-          if (al > 0 && q.u > 0.97 || al < 0 && q.u < 0.03) continue;
-          best = { L, u: q.u, dir: al > 0 ? 1 : -1 };
-          bd = q.d;
-        }
-        if (!best) return false;
-        S.mode = "line";
-        S.line = best.L;
-        S.u = best.u;
-        S.dir = best.dir;
-        e.x = best.L.ax + (best.L.bx - best.L.ax) * best.u;
-        e.y = best.L.ay + (best.L.by - best.L.ay) * best.u;
-        return true;
-      };
-      const tryShoot = (from) => {
-        if (S.webT > 0 || !env.hunting && gd < 40) return false;
-        const a = spiderAim(e.x, e.y, dx, dy, env.reach || spr("spWeb", rnd), solidCell);
-        if (!a) return false;
-        let ax0 = e.x, ay0 = e.y, ain = null;
-        if (from === "surf") {
-          const d = rayDist(e.x, e.y, -S.nx, -S.ny, SPIDER.feel + 4, solidCell);
-          ax0 = e.x - S.nx * d;
-          ay0 = e.y - S.ny * d;
-          ain = { x: e.x - S.nx * (d + 1.2), y: e.y - S.ny * (d + 1.2) };
-        }
-        S.webT = spr(env.hunting ? "spHuntWeb" : "spRoamWeb", rnd);
-        S.shot = { spd: spr("spLineSpd", rnd), x: e.x, y: e.y, dx: a.dx, dy: a.dy, len: a.len, t: 0, from, ax0, ay0, ain };
-        S.mode = "shoot";
-        return true;
-      };
-      if (S.mode === "surf") {
-        const dot = dx * S.nx + dy * S.ny;
-        S.high = dot >= (S.dot || 0.6);
-        if (S.high && (tryLine() || tryShoot("surf"))) return;
-        const t = -S.ny * dx + S.nx * dy;
-        if (Math.abs(t) * gd < 4) {
-          S.on = 0;
-          return;
-        }
-        S.side = t > 0 ? 1 : -1;
-      } else if (S.mode === "line") {
-        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
-        const al = ((L.bx - L.ax) * dx + (L.by - L.ay) * dy) / len;
-        S.go = false;
-        if (Math.abs(al) > 0.3) {
-          S.dir = al > 0 ? 1 : -1;
-          return;
-        }
-        if (tryLine() || tryShoot("line")) return;
-        const da = Math.hypot(goal.x - L.ax, goal.y - L.ay), db = Math.hypot(goal.x - L.bx, goal.y - L.by);
-        S.dir = db < da ? 1 : -1;
-        S.go = true;
-      }
-    }
-  }
-  function drawSpider(ctx, x, y, r, time, phase, flash, col, S) {
-    let nx = 0, ny = -1, side = 1, moving = false;
-    if (S) {
-      if (S.mode === "line" && S.line) {
-        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
-        nx = -(L.by - L.ay) / len;
-        ny = (L.bx - L.ax) / len;
-        if (ny > 0) {
-          nx = -nx;
-          ny = -ny;
-        }
-        side = S.dir * (L.bx - L.ax >= 0 ? 1 : -1);
-      } else if (S.mode === "surf" || S.mode === "shoot") {
-        nx = S.nx;
-        ny = S.ny;
-        side = S.side;
-      }
-      moving = S.on > 0 && S.mode !== "shoot";
-    }
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(Math.atan2(nx, -ny));
-    const t = moving ? time * 38 + phase : phase;
-    ctx.strokeStyle = flash ? "#ffffff" : col.b;
-    ctx.lineWidth = r * 0.16;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    for (let i = 0; i < 4; i++) {
-      const o = (i - 1.5) * r * 0.28, sw = Math.sin(t + i * 1.7) * r * 0.22;
-      for (const s of [-1, 1]) {
-        const fx = s * (r * (0.75 + Math.abs(i - 1.5) * 0.35)) + sw * s;
-        ctx.beginPath();
-        ctx.moveTo(o * 0.5, 0);
-        ctx.lineTo(o * 0.5 + fx * 0.55, -r * 0.55 - Math.abs(sw) * 0.3);
-        ctx.lineTo(o * 0.5 + fx, r * 0.62);
-        ctx.stroke();
-      }
-    }
-    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
-    ctx.beginPath();
-    ctx.ellipse(-side * r * 0.45, -r * 0.05, r * 0.62, r * 0.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#ffffff" : col.a;
-    ctx.beginPath();
-    ctx.ellipse(-side * r * 0.45, -r * 0.12, r * 0.48, r * 0.36, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
-    ctx.beginPath();
-    ctx.ellipse(side * r * 0.3, 0, r * 0.38, r * 0.32, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#ffffff" : col.eye;
-    for (const [ex, ey, er] of [[0.5, -0.1, 0.1], [0.42, 0.06, 0.08], [0.58, 0.08, 0.07], [0.36, -0.14, 0.07]]) {
-      ctx.beginPath();
-      ctx.arc(side * r * ex, r * ey, r * er, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  // src/main.js
-  var { useRef, useEffect, useState, useMemo } = React;
-  var h = React.createElement;
-  var SPUTTER_FUEL = 0.25;
-  function sputterStep(st, dt, fuel, on, rnd) {
-    rnd = rnd || Math.random;
-    st.start = false;
-    if (!on) {
-      st.cut = 0;
-      st.gap = 0;
-      st.onT = 0;
-      return false;
-    }
-    st.onT = (st.onT || 0) + dt;
-    st.cut = Math.max(0, (st.cut || 0) - dt);
-    st.gap = Math.max(0, (st.gap || 0) - dt);
-    if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
-      const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;
-      if (rnd() < dt * (1 + 7 * w)) {
-        st.cut = 0.04 + rnd() * (0.05 + 0.08 * w);
-        st.gap = st.cut + 0.1 + rnd() * 0.2;
-        st.start = true;
-      }
-    }
-    return st.cut > 0;
-  }
-  function jetPitch(onT) {
-    return 1 + 0.7 * Math.min(Math.max(onT, 0), 3) / 3;
-  }
-  function jellyPal(u) {
-    const P = {};
-    for (const [k, , , , f] of JE_COLS) P[f] = jcol(k, u);
-    return P;
-  }
-  var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
+  // src/creatures/rat.js
   var RAT = { hold: 3.5, feel: 9, step: 1, fall: 900, ceil: 0.55, tunnel: 0.6 };
   function ratFooting(x, y, solidCell, onWeb) {
     const n = surfNormal(x, y, RAT.hold + 5, solidCell);
@@ -7920,6 +7886,137 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return null;
     }
   }
+  function drawRat(ctx, x, y, r, time, phase, flash, col, S, carry) {
+    const air = !S || S.mode === "air", nx = air ? 0 : S.nx, ny = air ? -1 : S.ny, f = S ? S.face : 1;
+    const moving = S && (S.on > 0 || S.mode === "air" || S.mode === "path" || S.mode === "tunnel" && !(S.wait > 0));
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.atan2(nx, -ny));
+    ctx.scale(f, 1);
+    const run = moving ? Math.sin(time * 38 + phase) : 0, bob = moving ? Math.abs(run) * 0.4 : 0;
+    ctx.translate(0, r * 0.35 - bob);
+    ctx.strokeStyle = flash ? "#fff" : "#d9a0a0";
+    ctx.lineWidth = 0.7;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-r * 1.1, 0);
+    ctx.quadraticCurveTo(-r * 2.1, -r * (0.2 + 0.4 * Math.sin(time * 6 + phase)), -r * 2.9, r * 0.3 * Math.sin(time * 4 + phase));
+    ctx.stroke();
+    ctx.strokeStyle = flash ? "#fff" : col.b;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.6, r * 0.2);
+    ctx.lineTo(-r * 0.6 - run * r * 0.4, r * 0.6 + bob);
+    ctx.moveTo(r * 0.5, r * 0.2);
+    ctx.lineTo(r * 0.5 + run * r * 0.4, r * 0.6 + bob);
+    ctx.stroke();
+    ctx.fillStyle = flash ? "#fff" : col.a;
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.15, -r * 0.2, r * 1.15, r * 0.62, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(r * 0.6, -r * 0.65);
+    ctx.quadraticCurveTo(r * 1.5, -r * 0.5, r * 1.75, -r * 0.05);
+    ctx.lineTo(r * 0.55, r * 0.25);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = flash ? "#fff" : col.c;
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.3, -r * 0.5, r * 0.7, r * 0.2, -0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#fff" : "#c98f8f";
+    ctx.beginPath();
+    ctx.arc(r * 0.55, -r * 0.8, r * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = col.eye;
+    ctx.fillRect(r * 1, -r * 0.5, r * 0.25, r * 0.25);
+    ctx.fillStyle = "#e88a9a";
+    ctx.fillRect(r * 1.62, -r * 0.18, r * 0.25, r * 0.22);
+    if (carry > 0) {
+      ctx.translate(r * 2.1, r * 0.1);
+      ctx.scale(f, 1);
+      ctx.rotate(-Math.atan2(nx, -ny));
+      ctx.fillStyle = "#d8a52a";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 3.2, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = COL.flame2;
+      ctx.beginPath();
+      ctx.ellipse(-0.8, -0.8, 1.2, 1.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+  function drawNest(ctx, x, y, r, time, flash, col, N) {
+    ctx.save();
+    ctx.translate(x, y + r * 0.35);
+    ctx.fillStyle = flash ? "#fff" : col.b;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 1.05, r * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const coins = N ? Math.min(12, Math.ceil(N.stash / 5)) : 0;
+    for (let k = 0; k < coins; k++) {
+      const a = k * 2.4, d = k % 4 * r * 0.16;
+      ctx.fillStyle = Math.sin(time * 3 + k) > 0.8 ? "#fff2a0" : "#ffd23c";
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * d * 1.6, -r * 0.2 + Math.sin(a) * d * 0.5, r * 0.16, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = flash ? "#fff" : col.c;
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    for (let k = 0; k < 14; k++) {
+      const a = k / 14 * Math.PI * 2, b = a + 0.9 + k % 3 * 0.3;
+      ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r * 0.45 - r * 0.05);
+      ctx.lineTo(Math.cos(b) * r * 0.8, Math.sin(b) * r * 0.4 + r * 0.05);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = flash ? "#fff" : col.a;
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.ellipse(0, -r * 0.1, r * 0.95, r * 0.35, 0, Math.PI * 0.05, Math.PI * 0.95);
+    ctx.stroke();
+    ctx.fillStyle = "#e8e0cc";
+    ctx.fillRect(-r * 0.9, -r * 0.3, r * 0.6, r * 0.12);
+    ctx.fillRect(r * 0.4, -r * 0.45, r * 0.12, r * 0.5);
+    ctx.restore();
+  }
+
+  // src/main.js
+  var { useRef, useEffect, useState, useMemo } = React;
+  var h = React.createElement;
+  var SPUTTER_FUEL = 0.25;
+  function sputterStep(st, dt, fuel, on, rnd) {
+    rnd = rnd || Math.random;
+    st.start = false;
+    if (!on) {
+      st.cut = 0;
+      st.gap = 0;
+      st.onT = 0;
+      return false;
+    }
+    st.onT = (st.onT || 0) + dt;
+    st.cut = Math.max(0, (st.cut || 0) - dt);
+    st.gap = Math.max(0, (st.gap || 0) - dt);
+    if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
+      const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;
+      if (rnd() < dt * (1 + 7 * w)) {
+        st.cut = 0.04 + rnd() * (0.05 + 0.08 * w);
+        st.gap = st.cut + 0.1 + rnd() * 0.2;
+        st.start = true;
+      }
+    }
+    return st.cut > 0;
+  }
+  function jetPitch(onT) {
+    return 1 + 0.7 * Math.min(Math.max(onT, 0), 3) / 3;
+  }
+  function jellyPal(u) {
+    const P = {};
+    for (const [k, , , , f] of JE_COLS) P[f] = jcol(k, u);
+    return P;
+  }
+  var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
   var JELLY = { hitR: 0.8 };
   function jellyBell(r, s, q) {
     const t = Math.max(0, Math.min(1.5, s * q));
@@ -8326,101 +8423,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.beginPath();
     ctx.arc(ex + lx * r * 0.15, ey + ly * r * 0.15, r * 0.16, 0, Math.PI * 2);
     ctx.fill();
-  }
-  function drawRat(ctx, x, y, r, time, phase, flash, col, S, carry) {
-    const air = !S || S.mode === "air", nx = air ? 0 : S.nx, ny = air ? -1 : S.ny, f = S ? S.face : 1;
-    const moving = S && (S.on > 0 || S.mode === "air" || S.mode === "path" || S.mode === "tunnel" && !(S.wait > 0));
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(Math.atan2(nx, -ny));
-    ctx.scale(f, 1);
-    const run = moving ? Math.sin(time * 38 + phase) : 0, bob = moving ? Math.abs(run) * 0.4 : 0;
-    ctx.translate(0, r * 0.35 - bob);
-    ctx.strokeStyle = flash ? "#fff" : "#d9a0a0";
-    ctx.lineWidth = 0.7;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(-r * 1.1, 0);
-    ctx.quadraticCurveTo(-r * 2.1, -r * (0.2 + 0.4 * Math.sin(time * 6 + phase)), -r * 2.9, r * 0.3 * Math.sin(time * 4 + phase));
-    ctx.stroke();
-    ctx.strokeStyle = flash ? "#fff" : col.b;
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(-r * 0.6, r * 0.2);
-    ctx.lineTo(-r * 0.6 - run * r * 0.4, r * 0.6 + bob);
-    ctx.moveTo(r * 0.5, r * 0.2);
-    ctx.lineTo(r * 0.5 + run * r * 0.4, r * 0.6 + bob);
-    ctx.stroke();
-    ctx.fillStyle = flash ? "#fff" : col.a;
-    ctx.beginPath();
-    ctx.ellipse(-r * 0.15, -r * 0.2, r * 1.15, r * 0.62, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(r * 0.6, -r * 0.65);
-    ctx.quadraticCurveTo(r * 1.5, -r * 0.5, r * 1.75, -r * 0.05);
-    ctx.lineTo(r * 0.55, r * 0.25);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = flash ? "#fff" : col.c;
-    ctx.beginPath();
-    ctx.ellipse(-r * 0.3, -r * 0.5, r * 0.7, r * 0.2, -0.1, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#fff" : "#c98f8f";
-    ctx.beginPath();
-    ctx.arc(r * 0.55, -r * 0.8, r * 0.3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = col.eye;
-    ctx.fillRect(r * 1, -r * 0.5, r * 0.25, r * 0.25);
-    ctx.fillStyle = "#e88a9a";
-    ctx.fillRect(r * 1.62, -r * 0.18, r * 0.25, r * 0.22);
-    if (carry > 0) {
-      ctx.translate(r * 2.1, r * 0.1);
-      ctx.scale(f, 1);
-      ctx.rotate(-Math.atan2(nx, -ny));
-      ctx.fillStyle = "#d8a52a";
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 3.2, 4, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = COL.flame2;
-      ctx.beginPath();
-      ctx.ellipse(-0.8, -0.8, 1.2, 1.8, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-  function drawNest(ctx, x, y, r, time, flash, col, N) {
-    ctx.save();
-    ctx.translate(x, y + r * 0.35);
-    ctx.fillStyle = flash ? "#fff" : col.b;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, r * 1.05, r * 0.55, 0, 0, Math.PI * 2);
-    ctx.fill();
-    const coins = N ? Math.min(12, Math.ceil(N.stash / 5)) : 0;
-    for (let k = 0; k < coins; k++) {
-      const a = k * 2.4, d = k % 4 * r * 0.16;
-      ctx.fillStyle = Math.sin(time * 3 + k) > 0.8 ? "#fff2a0" : "#ffd23c";
-      ctx.beginPath();
-      ctx.arc(Math.cos(a) * d * 1.6, -r * 0.2 + Math.sin(a) * d * 0.5, r * 0.16, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.strokeStyle = flash ? "#fff" : col.c;
-    ctx.lineWidth = 0.6;
-    ctx.beginPath();
-    for (let k = 0; k < 14; k++) {
-      const a = k / 14 * Math.PI * 2, b = a + 0.9 + k % 3 * 0.3;
-      ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r * 0.45 - r * 0.05);
-      ctx.lineTo(Math.cos(b) * r * 0.8, Math.sin(b) * r * 0.4 + r * 0.05);
-    }
-    ctx.stroke();
-    ctx.strokeStyle = flash ? "#fff" : col.a;
-    ctx.lineWidth = 0.9;
-    ctx.beginPath();
-    ctx.ellipse(0, -r * 0.1, r * 0.95, r * 0.35, 0, Math.PI * 0.05, Math.PI * 0.95);
-    ctx.stroke();
-    ctx.fillStyle = "#e8e0cc";
-    ctx.fillRect(-r * 0.9, -r * 0.3, r * 0.6, r * 0.12);
-    ctx.fillRect(r * 0.4, -r * 0.45, r * 0.12, r * 0.5);
-    ctx.restore();
   }
   function drawJelly(ctx, x, y, r, time, phase, flash, col, S) {
     const P = jellyPal(S ? S.u.col : 0.5);

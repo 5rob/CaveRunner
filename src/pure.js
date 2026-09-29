@@ -30,3 +30,4 @@ export * from './world/decorate.js';
 export * from './world/level.js';
 export * from './creatures/common.js';
 export * from './creatures/spider.js';
+export * from './creatures/rat.js';
