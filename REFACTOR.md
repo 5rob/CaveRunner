@@ -428,6 +428,7 @@ What the code says about P3.4 (checked at the end of P3.3):
         (+ `MATERIAL`, `DRIP_RATE`); needs ambience first
   - [x] shotlooks.js: `glowDot`, `rnd`, `shotTrail`, `shotBounce`, `shotDeath`, `shotGrind` (`drawLook` stays in draw())
   - [x] lightning.js: `jag`, `addArc`, `lightningStep`
+  - [x] rats.js: `onWebIn`, `ratSolid`, `navFor`, `spawnRat`, `unstick`, `ratFrame` (`ratOnWeb` joins `G`)
   - Learned so far: `G`'s keys must be declared above `G` (a closure `const` further down moves up
     first, as `fireBox` did). A function passed as a callback gets an arrow at each site; for the
     per-frame ones (`visPoly`, `fireStep`, a spider's or jelly's `env`) that is one small allocation
@@ -774,3 +775,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.4 (8) | `props.js` gets `decorStep` with `pOver`, `alertAt`, `shatter`, `popLamp`, `landProp`, `spawnDrip`, `MATERIAL`, `DRIP_RATE` (`decorStep`, `popLamp`, `landProp` are `(W, G, …)`). Header rewritten. props.js ↔ fire.js is now a two-way import (D17). | probe SAME, logic 33/33, browser 44/44 (all, first try) |
 | 2026-09-29 | Phase 3, P3.4 (9) | `shotlooks.js`: `glowDot`, `rnd`, `shotTrail`, `shotBounce`, `shotDeath`, `shotGrind`. `rnd` is now a module-level import in Game.js; `sputterStep`'s own `rnd` parameter shadows it, as before. `t1spells`, `spelllooks`, `buzzsaw` run too. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 (10) | `lightning.js`: `jag`, `addArc`, `lightningStep`. Clean move. `lightning`, `spelllooks` run too. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 3, P3.4 (11) | `rats.js`: `onWebIn` first (pure), then `ratOnWeb` (made once from `W.webs`, same as before) moved up above `G` and into it by hand, then `ratSolid`, `navFor`, `spawnRat`, `unstick`, `ratFrame`. `navFor`'s comment had travelled with `onWebIn`: put back. `ratSolid` as a callback is an arrow at its two sites. `rats`, `spider` run too. | probe SAME, logic 33/33, smoke ok |

@@ -13,14 +13,12 @@ import {
   VIEW_MIN_H, VIEW_W, WALK, WEB_HAND, WH, WW
 } from '../core/consts.js';
 import { angDiff, approach, clamp, hexArr, hexRgb, mix, turn } from '../core/util.js';
-import { roamStep } from '../creatures/common.js';
 import { drawEnemy } from '../creatures/draw.js';
 import {
   jellyPal, jellyStep, plantGlowFill, plantWhite, tentacleTouch
 } from '../creatures/jelly.js';
-import { pathLen, ratSpread, ratStep } from '../creatures/rat.js';
 import { spiderStep } from '../creatures/spider.js';
-import { HUNTERS, enemyFor } from '../data/creatures.js';
+import { HUNTERS } from '../data/creatures.js';
 import { PERKS } from '../data/perks.js';
 import { themeFor } from '../data/themes.js';
 import { DEV, jcol, kr, kru, spr } from '../dev/knobs.js';
@@ -37,7 +35,6 @@ import {
 import { PLANTS, archNear } from '../world/decorate.js';
 import { FIRE_COLS, fireArea, fireDouse, fireNew } from '../world/fire.js';
 import { ROOM_HH, ROOM_HW, makeLevel } from '../world/level.js';
-import { NAV, navField, navWay } from '../world/nav.js';
 import { VIS_RAYS, fogReveal, fogStart, nestFog, visPoly } from '../world/vision.js';
 import { builtAt } from '../world/zones.js';
 import { puffSpores } from './systems/ambience.js';
@@ -47,11 +44,12 @@ import { addArc, jag, lightningStep } from './systems/lightning.js';
 import { burst, goo, splat, toast } from './systems/particles.js';
 import { hurt, maxHp, refreshBag } from './systems/player.js';
 import { decorStep } from './systems/props.js';
+import { onWebIn, ratFrame, spawnRat } from './systems/rats.js';
 import { glowDot, rnd, shotBounce, shotDeath, shotGrind, shotTrail } from './systems/shotlooks.js';
 import {
   boxHit, dig, enemyAt, explode, lineOfSight, solidAt, solidCell
 } from './systems/terrain.js';
-import { webDist, webNear } from './systems/webs.js';
+import { webNear } from './systems/webs.js';
 import { testHook } from './testhook.js';
 import { makeWorld } from './world.js';
 
@@ -234,11 +232,13 @@ export function Game({ input }) {
     const RT = { tC: null, dC: null, n: 0, at: -1, fog: null, fireT: null };
     // the fire's dirty boxes on the two terrain canvases (put back once a frame, see flushFire)
     const fireBox = { t: [CW, CH, -1, -1], d: [CW, CH, -1, -1] };
+    // a spider's web line under a rat's feet counts as ground: rats run along webs
+    const ratOnWeb = onWebIn(W.webs);
     // what the systems (game/systems/) need that isn't world state (REFACTOR.md, D16): the
-    // React bridge, the canvases (tctx and dctx are the recorder's wrapped ones), the recorder
-    // and the fire's dirty boxes
+    // React bridge, the canvases (tctx and dctx are the recorder's wrapped ones), the recorder,
+    // the fire's dirty boxes and the rats' web test
     const G = { input, c, ctx, terrain, tctx, bg, bgctx, fogC, fctx, fogImg, fogBlurC, fbctx,
-      miniC, mctx, miniImg, mini32, decoC, dctx, REC, RT, fireBox };
+      miniC, mctx, miniImg, mini32, decoC, dctx, REC, RT, fireBox, ratOnWeb };
     function rpTerrain(T) {
       if (!RT.tC) {
         RT.tC = document.createElement('canvas'); RT.tC.width = CW; RT.tC.height = CH;
@@ -474,150 +474,6 @@ export function Game({ input }) {
     c.addEventListener('pointerup', mUp);
     c.addEventListener('pointercancel', mUp);
     c.addEventListener('pointerleave', mLeave);
-
-    // ---- rats ----
-    // A rat's view of the terrain: rock, plus the burrows (so it runs over a hole rather than
-    // falling in and wedging in a tunnel it only ever walks as a path). burrow is per floor.
-    const ratSolid = (cx, cy) => solidCell(W, cx, cy) || (W.burrow !== null && W.burrow[cy * CW + cx] === 1);
-    // a goal's distance field, kept on `o` and made again when the goal moves or the rock changes
-    // a spider's web line under a rat's feet counts as ground: rats run along webs
-    const onWebIn = list => (x, y) => { for (const L of list) if (webDist(L, x, y) < 3) return true; return false; };
-    const ratOnWeb = onWebIn(W.webs);
-    function navFor(o, goal, R) {
-      // (the rock changing only counts once a second, or a drill would rebuild them every frame)
-      if (!o.F || (o.v !== W.terrainV && W.time - o.t > 1) || Math.hypot(goal.x - o.fx, goal.y - o.fy) > (o === W.navYou ? 12 : 6) ||
-          (o === W.navYou && W.time - o.t > 0.4) || (o.wn !== W.webs.length && W.time - o.t > 1)) {
-        // only the web lines that cross the field's square, so a floor of webs costs nothing
-        const half = (R + 1) * NAV * CELL, near = W.webs.filter(L =>
-          Math.max(L.a0x, L.b0x) > goal.x - half && Math.min(L.a0x, L.b0x) < goal.x + half &&
-          Math.max(L.a0y, L.b0y) > goal.y - half && Math.min(L.a0y, L.b0y) < goal.y + half);
-        o.F = navField(ratSolid, goal.x, goal.y, R, near.length ? onWebIn(near) : null);
-        o.v = W.terrainV; o.fx = goal.x; o.fy = goal.y; o.t = W.time; o.wn = W.webs.length;
-      }
-      return o.F;
-    }
-    // a new rat, down in nest `n`'s room, on its way out up the tunnel
-    function spawnRat(n) {
-      const k = enemyFor('rotta', W.floor), P = n.nest.path, m = n.nest.mouth;
-      const e = { x: P[0].x, y: P[0].y, ty: P[0].y, r: k.r, phase: Math.random() * 6.28, hp: 1, hpMax: 1,
-        cd: 0, flash: 0, lx: 0, ly: 1, hx: m.x, hy: m.y, tgt: null, rest: 0, k, touch: 0, charge: 0,
-        home: n, path: P, carry: 0 };
-      e.ra = { mode: 'tunnel', vx: 0, vy: 0, nx: 0, ny: -1, on: 0, rest: 0, side: 1, face: 1, s: 0, dir: 1, wait: 0 };
-      W.enemies.push(e);
-      return e;
-    }
-    // a rat that's stuck with a job on: a hop in some direction; the third time, a carrier
-    // slips into a crack and goes home underground, anyone else forgets it for a while
-    function unstick(e, S, home) {
-      e.stN = (e.stN || 0) + 1;
-      if (e.stN >= 3 && home) {
-        burst(W, e.x, e.y, 6, '#6a5a48');
-        S.mode = 'tunnel'; S.len = pathLen(e.path); S.s = S.len * 0.7; S.dir = -1; S.wait = 0;
-        e.stN = 0;
-      } else if (e.stN >= 3) { e.giveUp = 4; e.aggro = false; e.stN = 0; }
-      else {
-        S.mode = 'air'; S.vx = (Math.random() < 0.5 ? -1 : 1) * (60 + Math.random() * 80); S.vy = -150 - Math.random() * 120;
-        e.x += S.nx * 1.5; e.y += S.ny * 1.5;
-      }
-    }
-    // One rat's frame. What it wants, in order: home, if it has gold in its mouth; any loose
-    // gold it can smell; you, if it has noticed you; else its roam spot round the nest.
-    // Reaching you it bites, and knocks gold out of you over its head (triple bite if you've
-    // none); reaching gold it picks it up; reaching the nest room it drops it off.
-    function ratFrame(e, dt, dist, hunting, pcx, pcy) {
-      const N = e.home && !e.home.dead ? e.home : null, k = e.k;
-      const wake = N ? N.nest.wake || 520 : 520;
-      const S = e.ra;
-      // far off and not falling: asleep, so a floor full of rats costs nothing
-      if (dist > wake * 1.3 && S && S.mode !== 'air') return;
-      let goal = null, home = false, fast = false, jump = true, want = null;
-      if (e.giveUp > 0) e.giveUp -= dt;
-      if (e.carry > 0 && N) { goal = N.nest.mouth; home = true; fast = true; }
-      else if (e.giveUp > 0) {
-        const R = e.roam || (e.roam = {});
-        roamStep(R, e, dt, Math.random, 'ra');
-        goal = { x: R.rx, y: R.ry }; jump = false;
-      } else {
-        let bd = e.smell || (e.smell = kr('raSmell'));
-        for (const g of W.coins) {
-          if (g.nopull > 0 && g.vy < 0) continue;            // still on its way up
-          const d = Math.hypot(g.x - e.x, g.y - e.y);
-          if (d < bd) { bd = d; want = g; }
-        }
-        if (want) { goal = want; fast = true; }
-        else if (hunting) { goal = { x: pcx, y: W.p.y + PH - 2 }; fast = true; }
-        else {
-          const R = e.roam || (e.roam = {});
-          roamStep(R, e, dt, Math.random, 'ra');
-          // keep apart from the other loose rats: the push walks this rat's roam spot away
-          // from the crowd, so the pack fans out round the nest
-          const D = e.spread || (e.spread = kr('raSpread')), sp = ratSpread(e, W.enemies.filter(o => o.ra && o.ra.mode !== 'tunnel' &&
-            Math.abs(o.x - e.x) < D && Math.abs(o.y - e.y) < D), D);
-          R.rx += sp.x * D * 1.5 * dt; R.ry += sp.y * D * 1.5 * dt;
-          goal = { x: R.rx + sp.x * D, y: R.ry + sp.y * D }; jump = false;
-        }
-      }
-      if (!e.arrive || Math.random() < dt) e.arrive = kr('raArrive');
-      // with a job on, it follows the way there (navField) rather than a straight line
-      let way = goal, follow = false, air = false;
-      if (fast && S && S.mode !== 'tunnel') {
-        const F = home ? navFor(N.nest, goal, 100) : want ? navFor(want, goal, 36) : navFor(W.navYou, goal, 56);
-        const w = F && navWay(F, e.x, e.y, 1);
-        if (w) { way = w.dist > 2 ? w : goal; follow = true; air = w.air && w.dist > 2; }
-        // v95: getting no nearer along the way for 4s (hopping back and forth over a gap it
-        // can't clear) counts as stuck, the same as standing still
-        const job = home ? N : want || W.navYou;
-        if (w && (e.jobO !== job || w.dist < e.bestD - 3)) { e.jobO = job; e.bestD = w.dist; e.bestT = 0; }
-        else if (w && (e.bestT += dt) > 4) { e.bestT = 0; e.bestD = w.dist; unstick(e, S, home); }
-      }
-      const cold = e.chill && e.chill < 1 ? e.chill : 1;
-      const ev = ratStep(e, { solidCell: ratSolid, rnd: Math.random, goal: way, hunting: fast, home, path: e.path, follow, air, onWeb: ratOnWeb,
-        speedMul: cold, arrive: way === goal && !want && hunting ? e.arrive : 3, jump }, dt);
-      // stuck (wedged, or running on the spot) with a job on: a hop in some direction
-      if (fast && (S.mode === 'surf' || S.mode === 'path')) {
-        e.stT = (e.stT || 0) + dt;
-        if (e.stT > 1.2) {
-          if (Math.hypot(e.x - (e.stX || 0), e.y - (e.stY || 0)) < 6 && Math.hypot(goal.x - e.x, goal.y - e.y) > 14) unstick(e, S, home);
-          else if (!(e.bestT > 0)) e.stN = 0;
-          e.stT = 0; e.stX = e.x; e.stY = e.y;
-        }
-      }
-      if (ev === 'home') {
-        if (N && e.carry > 0) { N.nest.stash += e.carry; SFX.fx('coinland', e.x, e.y); }
-        if (N) e.carry = 0;
-      } else if (ev === 'jump') SFX.creature(k, 'alert', e.x, e.y);
-      if (e.ra.mode === 'tunnel') return;
-      // wedged in the rock or pushed off the map somehow: back out of its hole (or gone)
-      const inRock = e.x < 0 || e.x >= WW || e.y < 0 || e.y >= WH || ratSolid(Math.floor(e.x / CELL), Math.floor(e.y / CELL));
-      e.rockT = inRock ? (e.rockT || 0) + dt : 0;
-      if (e.rockT > 0.5) {
-        e.rockT = 0;
-        if (N) { e.ra.mode = 'tunnel'; e.ra.len = pathLen(e.path); e.ra.s = e.ra.len * 0.8; e.ra.dir = 1; e.ra.wait = 0; }
-        else { const j = W.enemies.indexOf(e); if (j >= 0) W.enemies.splice(j, 1); }
-        return;
-      }
-      // a coin in reach: in its mouth
-      if (want && Math.hypot(want.x - e.x, want.y - e.y) < e.r + 5) {
-        const i = W.coins.indexOf(want);
-        if (i >= 0) { W.coins.splice(i, 1); e.carry = (e.carry || 0) + want.amount; SFX.fx('coinland', e.x, e.y); }
-      }
-      // you, in reach: a bite, and a coin knocked out of you over its head
-      if (hunting && !want && !(e.giveUp > 0) && !(e.carry > 0 && N) && dist < e.r + 12 && e.touch <= 0 && !W.p.dead) {
-        const LO = input.current.loadout, broke = !(LO.gold > 0);
-        hurt(W, G, Math.round(kr('raBite') * (broke ? kr('raBroke') : 1)));
-        e.touch = kr('raBiteCd');
-        SFX.creature(k, 'bite', e.x, e.y);
-        if (!broke) {
-          const amt = Math.min(LO.gold, Math.max(1, Math.round(kr('raSteal'))));
-          LO.gold -= amt;
-          input.current.notify();
-          const side = e.x >= pcx ? 1 : -1;
-          W.coins.push({ x: pcx, y: W.p.y + 4, amount: amt, t: Math.random() * 6.28,
-            vx: side * kr('raPopX'), vy: -kr('raPopY'), pop: 1, nopull: 0.7 });
-          SFX.ui('coin');
-        }
-      }
-    }
 
     // ---- casting ----
     // Walk the gun's slot list from where it left off. Modifiers pile up and apply
@@ -1676,13 +1532,13 @@ export function Game({ input }) {
             N.t = kr('raSpawn');
             let out = 0;
             for (const r of W.enemies) if (r.home === e) out++;
-            if (out < N.max) spawnRat(e);
+            if (out < N.max) spawnRat(W, e);
           }
           e.chill = 1; e.ty = e.y;
           continue;
         }
         if (k.act === 'rat') {
-          ratFrame(e, dt, dist, hunting, pcx, pcy);
+          ratFrame(W, G, e, dt, dist, hunting, pcx, pcy);
           e.chill = 1; e.ty = e.y;
           continue;
         }
