@@ -1,8 +1,7 @@
 // Every pure part of the game, for the logic tests: tests/load.js bundles this file (with
 // esbuild, to CommonJS, in memory) and hands its exports to the suites as `G`.
 //
-// One `export * from` line per module under src/, plus main.js's own `export { … }` list
-// for what hasn't moved out yet. tools/move.js adds a line here for each module it makes.
+// One `export * from` line per module under src/; a new module gets a line here.
 // Not part of the game: the browser build starts from main.js and never sees this file.
 export { VERSION } from './version.js';
 export * from './main.js';
@@ -40,3 +39,12 @@ export * from './audio/recipes.js';
 export * from './audio/sfx.js';
 export * from './save/save.js';
 export * from './replay/replay.js';
+export * from './ui/h.js';
+export * from './ui/hud.js';
+export * from './ui/cards.js';
+export * from './ui/editor.js';
+export * from './ui/swap.js';
+export * from './ui/witness.js';
+export * from './ui/devpanel.js';
+export * from './game/Game.js';
+export * from './ui/app.js';

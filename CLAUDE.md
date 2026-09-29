@@ -2,8 +2,8 @@
 
 A single-page browser game: a jetpack cave shooter with Noita-style wand building.
 `index.html` is the whole game — markup, CSS, React and game loop — but it is **built**:
-**edit `src/`, never `index.html`.** `node tools/build.js` bundles `src/main.js` (all the
-code) with esbuild (`npm install` once) and glues it, `src/shell.html` (the page) and
+**edit `src/`, never `index.html`.** `node tools/build.js` bundles `src/main.js` (the entry;
+the code is in modules under `src/`) with esbuild (`npm install` once) and glues it, `src/shell.html` (the page) and
 `src/style.css` back into `index.html`, and `node tests/run.js` runs the build first, so the tests do it for
 you. `index.html` stays committed: CI, Pages, the APK and `serve.js` all read it. Commit
 it together with the `src/` change.
@@ -52,7 +52,7 @@ replace it with a general static server.
 
 ## The loop we've settled into
 
-1. Make the change in `src/` (the code is `src/main.js`, the CSS `src/style.css`).
+1. Make the change in `src/` (the code is the modules under `src/` — the table below says where; the CSS `src/style.css`).
 2. Test it. `node tests/run.js` — see **Testing** below. Add a suite for anything new.
 3. Bump the version: `src/version.js` (the build copies it into the page and the
    `<title>`). This is what the phone's update prompt keys off — see **The version number is not
@@ -73,7 +73,8 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v97**. Branch: `main` (release channel is `main`).
+Current version: **v98**. Branch: `main` (release channel is `main`). The refactor works on
+`refactor` and merges to `main` at the end of each phase (REFACTOR.md).
 
 ### The version number is not optional
 
@@ -128,9 +129,8 @@ WebView shell in `android/`; the game itself is still just `index.html`. Full de
 
 `src/shell.html` is the page (the `<head>`, the two React CDN tags, and `/*@@file@@*/`
 slots the build fills), `src/style.css` the one CSS block (light and dark via
-`prefers-color-scheme`). The code is being split into modules (REFACTOR.md, P1.5): the pure
-parts move into `src/<folder>/*.js`, and `src/main.js` (the entry the build bundles) keeps the
-rest and imports them. Where things are (`main.js` line numbers as of the end of refactor Phase 1, they drift):
+`prefers-color-scheme`). The code is in modules under `src/<folder>/*.js` (REFACTOR.md); `src/main.js` is
+just the entry the build bundles (it mounts `App`). Where things are:
 
 | What | Where |
 |---|---|
@@ -164,13 +164,20 @@ rest and imports them. Where things are (`main.js` line numbers as of the end of
 | sound | `src/audio/recipes.js` (pure: `SPELL_VOICE`, `shotSound`, `creatureSound`, `FX_VOL`, `rustleStep`), `src/audio/sfx.js` (the `SFX` engine) |
 | autosave | `src/save/save.js`: `readSave`, `cleanLoadout`, `cleanGun`, `loadSave`, `clearSave` |
 | death replay (pure part) | `src/replay/replay.js`: `RP_*`, `rpClone`, `rpLerp`, `rpFrame`, `rpCut`/`rpPaste`/`rpMerge` |
-| `Game` | `src/main.js` ~123–4370: the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields |
-| React UI | `src/main.js` ~4380–end: `GunCard`, `GunSwap`, `ModCard`, `Editor`, `PerkCard`, `DevPanel`, `App` |
+| `Game` | `src/game/Game.js`: the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields (with `sputterStep`, `SPUTTER_FUEL`, `NO_INPUT` above it). It has its own `h`/`useRef`/`useEffect` lines off the global React (layer 5 can't import `ui/`), so esbuild prints them as `h2`/`useRef2`/`useEffect2` in `index.html` |
+| `h` and hooks | `src/ui/h.js`: `h` (`React.createElement`), `useRef`/`useEffect`/`useState`/`useMemo` off the global React |
+| HUD | `src/ui/hud.js`: `Stick` (thumbsticks + gauge rings), `RKey`, `GAUGE_R`/`GAUGE_C`/`GAUGE_COL`, `healthCol`, `holdPress`, `deckLayout`, `fmtGold` |
+| Detail cards | `src/ui/cards.js`: `GunCard`, `ModCard`, `PerkCard`, `GUN_STATS` |
+| Build screen (Bag) | `src/ui/editor.js`: `Editor`, `GunStats`, `GunIcon`, `SlotGrid`, `ScrollBox`, `PULL_COL`, `GS_ROWS`, `LIVE_BAR`, `SHOW_TIPS` |
+| Gun chooser | `src/ui/swap.js`: `GunSwap` |
+| Death replay screen | `src/ui/witness.js`: `Witness`, `RP_SPEEDS` |
+| Dev panel | `src/ui/devpanel.js`: `DevPanel`, `DevRow`, `JellyPreview` (runs the real `jellyStep`/`drawJelly`), `SpawnGun` |
+| `App` | `src/ui/app.js`: the page: loadout, the input ref, the sticks and deck buttons, and every overlay |
 
-Everything in the modules, and everything above `function Game(` in `main.js`, is pure and
+Everything in the modules outside `game/` and `ui/` is pure and
 top-level, which is why the logic tests can load it and call it directly (`tests/load.js`).
 **Layer rule:** a module imports only from its own layer or the layers above it in REFACTOR.md
-section 4 (core → dev → data → spells/world → creatures/art/audio…), never from `main.js`. **Keep it that way** — if a new mechanic can be a pure
+section 4 (core → dev → data → spells/world → creatures/art/audio…), never from `main.js`; `game/` is layer 5 and `ui/` layer 6. **Keep it that way** — if a new mechanic can be a pure
 function, make it one. (The version notes below were written when everything was one file:
 "pure, above `makeLevel`" there now means "in its module under `src/`" — the table says which.)
 
@@ -469,7 +476,7 @@ guarded. The old **DEBUG** shelf toggle moved into this panel as **All mods** (s
 now. The global key handler early-returns on `input`/`textarea`/`select` targets so typing a
 value doesn't also steer the runner.
 
-**Unicode is stored raw** in `src/main.js` (`·`, `—`, `×`, `Ω`), not as `\uXXXX`. Match the
+**Unicode is stored raw** in `src/` (`·`, `—`, `×`, `Ω`), not as `\uXXXX`. Match the
 literal characters when editing with a script, or the edit silently finds nothing.
 
 **v56 visuals + Black Hole.** `motes` is one particle list with three kinds: `drift` (Black Hole trail), `in` (spawned round the exit `portal`, pulled to its centre with a sideways sine wobble, fade in from 0) and `out` (breathed out of `arrival`, wafting, fading to nothing by distance `fade`, then killed). Drawn additive. **Black Hole** (`b.pull`): reach is `DEV.bhPull * b.pull / 70` (v57), drag grows toward the centre and is capped so it never overshoots; it does not die on an enemy (`continue` in the hit block) and clears `b.hit` every 0.3s so it grinds; enemy shots within reach bend in and die at `size+6`. It draws its own look (haze + black starry core) and skips the streak. The hand torch flame is `drawFlame` — teardrops whose tip is `leanX/leanY`, a spring toward "opposite your velocity". Its halo and small second light, and the wall `sconces` (built in `enterLevel`: either side of both portals and each room prize), are drawn **after** the fog with `lighter`, so the map lighting is untouched; a sconce only shows once its cell is `seen`. Background parallax is `PARALLAX` (0.8) in `draw()`; the bg image gets big fbm shadow blotches in `makeLevel`. `tests/browser/blackhole.test.js` covers all of it. **v57:** the Black Hole digs only its drawn black core (`eat: 19`, and the draw uses `core = b.eat`, so they cannot drift apart). Two Dev knobs: `DEV.bhPull` (max pull range, default 154) and `DEV.bhSpeed` (travel speed, default 140 — applied as the multiplier `bhSp(sh)` at spawn *and* in the aim line, so speed mods still stack and the line stays honest). The Dev panel's **Copy all dev settings to clipboard** button (`.devcopy`) copies `devReport()` — the changed values with their DEV keys and old defaults. When the owner pastes that, set those numbers as the new `DEV_DEFAULTS`. If the clipboard is blocked (a WebView can refuse), it shows the text in a box to long-press and copy instead. `tests/logic/devsettings.test.js` covers it.
@@ -1003,9 +1010,8 @@ build; it fails when that line first runs. A report there counts as a failed sui
 **Logic suites** (`tests/logic/`) start with `const G = require('../load');` —
 `tests/load.js` bundles `src/pure.js` with esbuild (in memory, to CommonJS) and hands back
 its exports (plus `.source`, all of `src/` as text) — and call the pure functions.
-`src/pure.js` re-exports every module under `src/`, plus `main.js`'s own `export { … }` list
-of the pure names that haven't moved out yet. **A new top-level name in a module is
-exported** (so the suites see it); a new pure name still in `main.js` goes in that list. A new suite does the same; don't slice the file yourself. ~1250 checks. Add to these first — they're fast and they've
+`src/pure.js` re-exports every module under `src/`. **A new top-level name in a module is
+exported** (so the suites see it); a new module gets an `export * from` line in `pure.js`. A new suite does the same; don't slice the file yourself. ~1250 checks. Add to these first — they're fast and they've
 caught most of the real bugs.
 
 **Browser suites** (`tests/browser/`) drive the real page in Chromium through

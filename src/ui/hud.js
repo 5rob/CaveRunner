@@ -1,0 +1,206 @@
+// The in-game HUD: the two thumbsticks with their gauge rings (health + fuel on the left,
+// mana + recharge + cast delay on the right), the R key of the buy line, the round deck
+// buttons' layout, the gold readout, and holdPress (tap vs hold).
+
+import { AIM_DEAD, AIM_RING, DEAD, KNOB } from '../core/consts.js';
+import { mixHex } from '../core/util.js';
+import { h, useEffect, useRef, useState } from './h.js';
+
+// Gold for the deck readout: a bare number under 1000, and thousands truncated (not
+// rounded) to one decimal with a "k" — 999 -> "999", 1234 -> "1.2k", 2000 -> "2k".
+// Pure and above makeLevel so the logic suite can load it.
+export function fmtGold(g) {
+  g = Math.max(0, Math.floor(g || 0));
+  if (g < 1000) return String(g);
+  return (Math.floor(g / 100) / 10).toString() + 'k';
+}
+
+// Where the round deck buttons sit, in css px relative to the sticks row's top-left (the
+// row is W wide, the two sticks `size` across, spaced evenly). The gun buttons ride an arc
+// centred on the right stick: from the top of the gap between the sticks, clockwise over
+// the top, to near the right edge. The bag mirrors the last gun on the left, and the map
+// button sits straight above the bag. Returns centres plus the button diameter.
+export function deckLayout(W, size, n) {
+  n = n || 4;
+  const g = (W - 2 * size) / 3;
+  const rc = { x: 2 * g + 1.5 * size, y: size / 2 };
+  const btn = Math.round(Math.max(34, Math.min(46, size * 0.24)));
+  const sx = W / 2, sy = size * 0.05 + 10;             // the old gold spot
+  const R = Math.max(Math.hypot(sx - rc.x, sy - rc.y), size / 2 + btn / 2 + 4);
+  const a0 = Math.atan2(sy - rc.y, sx - rc.x);
+  const xmax = W - btn / 2 - 4;
+  const a1 = Math.max(a0 + 0.3, -Math.acos(Math.max(-1, Math.min(1, (xmax - rc.x) / R))));
+  const guns = [];
+  for (let i = 0; i < n; i++) {
+    const a = a0 + (a1 - a0) * (n > 1 ? i / (n - 1) : 0);
+    guns.push({ x: rc.x + Math.cos(a) * R, y: rc.y + Math.sin(a) * R });
+  }
+  const last = guns[n - 1];
+  const bag = { x: W - last.x, y: last.y };
+  const map = { x: bag.x, y: bag.y - btn - 8 };
+  return { btn, R, rc, guns, bag, map };
+}
+
+// the circumference of the gauge ring (r=46 in a 0..100 viewBox), used to turn a 0..1
+// fraction into a stroke-dasharray so the ring is drawn only as far as the stat reaches
+export const GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
+// the three gun stats shown as rings on the right stick and colour-coded in the bag, so a
+// ring and its stat read as the same thing: mana gold, recharge blue, cast delay purple
+export const GAUGE_COL = { mana: '#ffc93c', rech: '#7ad7ff', cast: '#c58cff', fuel: '#ff9a2e' };
+// green -> amber -> red as health falls, so the colour itself reads as danger
+export function healthCol(frac) {
+  return frac > 0.5 ? mixHex('#e6a52c', '#57d267', (frac - 0.5) * 2)
+                    : mixHex('#e24a2c', '#e6a52c', frac * 2);
+}
+// "Tap the right stick", for the buy/take line: a thin white circle with a thin R in it.
+export function RKey() {
+  return h('svg', { className: 'rkey', viewBox: '0 0 30 30', width: 28, height: 28, 'aria-hidden': true },
+    h('circle', { cx: 15, cy: 15, r: 13.5, fill: 'none', stroke: '#fff', strokeWidth: 1 }),
+    h('text', { x: 15, y: 15, textAnchor: 'middle', dominantBaseline: 'central', fill: '#fff',
+      fontSize: 14, fontWeight: 300, fontFamily: 'system-ui, sans-serif' }, 'R'));
+}
+export function Stick({ size, kind, input, refresh }) {
+  const [knob, setKnob] = useState({ x: 0, y: 0, jet: false });
+  // the live stat this stick shows: hp+fuel on the left, mana on the right. Read off
+  // input.current.hud each animation frame, and only re-rendered when a value actually
+  // moves (rounded to 1%), so the ring animates without churning the whole tree.
+  const [gauge, setGauge] = useState({ ring: 1, fuel: 1, empty: false, dry: true });
+  const left = kind === 'left';
+  useEffect(() => {
+    let raf, prev = '';
+    const tick = () => {
+      const s = input.current.hud;
+      if (s) {
+        const g = left
+          ? { ring: s.hp, fuel: s.fuel, empty: s.empty, dry: false }
+          : { ring: s.hasGun ? s.mana : 0, rech: s.hasGun ? s.rech : 0, cast: s.hasGun ? s.cast : 0,
+              has: s.hasGun, fuel: 0, empty: false, dry: !s.hasGun || s.recharging };
+        const key = Math.round(g.ring * 100) + '|' + Math.round(g.fuel * 100) + '|' +
+          Math.round((g.rech || 0) * 100) + '|' + Math.round((g.cast || 0) * 100) + '|' +
+          (g.has ? 1 : 0) + '|' + (g.empty ? 1 : 0) + '|' + (g.dry ? 1 : 0);
+        if (key !== prev) { prev = key; setGauge(g); }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [left]);
+  const ref = useRef(null);
+  const pid = useRef(null);
+  // right stick only: true while this touch has never left the dead zone. A tap that
+  // stays true until release is an interact; a drag out (even one that comes back to
+  // centre) sets it false the moment it first crosses AIM_DEAD, and stays false.
+  const stayed = useRef(true);
+
+  const right = kind === 'right';
+  const update = e => {
+    const r = ref.current.getBoundingClientRect();
+    const rad = r.width / 2;
+    const dx = e.clientX - (r.left + rad), dy = e.clientY - (r.top + rad);
+    const dist = Math.hypot(dx, dy);
+    const maxD = rad * 0.72;
+    const cl = Math.min(dist, maxD);
+    const nx = dist ? dx / dist : 0, ny = dist ? dy / dist : 0;
+    const mag = cl / maxD;
+    const thresh = right ? AIM_DEAD : 0.15;
+    if (right && mag > AIM_DEAD) stayed.current = false;
+    // A card is up: left picks up, right leaves, and the one you are pointing at is the
+    // one lit. Inside the dead zone neither is lit, because you have not chosen yet.
+    if (right && input.current.confirmAct) {
+      const side = mag > AIM_DEAD ? (nx < 0 ? 'take' : 'leave') : null;
+      if (input.current.confirmAim !== side) { input.current.confirmAim = side; refresh(); }
+    }
+    const st = input.current[kind];
+    st.active = true; st.nx = nx; st.ny = ny; st.mag = mag; st.dy = dy; st.on = mag > thresh;
+    setKnob({ x: nx * cl, y: ny * cl, jet: kind === 'left' && dy < 0 && mag > DEAD });
+  };
+  const down = e => {
+    if (pid.current !== null) return;
+    pid.current = e.pointerId;
+    stayed.current = true;
+    try { ref.current.setPointerCapture(e.pointerId); } catch (_) {}
+    update(e);
+  };
+  const move = e => { if (e.pointerId === pid.current) update(e); };
+  const end = e => {
+    if (e.pointerId !== pid.current) return;
+    pid.current = null;
+    const act = input.current.confirmAct;
+    if (right && act) {
+      // a confirmation is up, so the gesture is "point left or right and let go". The
+      // side was decided while dragging, so coming back to the middle before releasing
+      // picks nothing, which is the right answer — you were not pointing anywhere.
+      const side = input.current.confirmAim;
+      input.current.confirmAim = null;
+      if (side) act[side]();
+    } else if (right && stayed.current) {
+      input.current.interact = true;
+    }
+    Object.assign(input.current[kind], { active: false, mag: 0, on: false, dy: 0 });
+    setKnob({ x: 0, y: 0, jet: false });
+  };
+
+  // the circular gauges, each a thin ring wiped clockwise from the top as its stat falls.
+  // Left: health at the edge, jet fuel just inside it (red track when the tank is dry).
+  // Right: gold mana at the edge, then recharge and cast delay inside it, so you can see
+  // which one is gating your fire.
+  const rw = 3.2, sw = 1.6;
+  const wipe = (r, frac, col, track) => [
+    h('circle', { key: 't' + r, cx: 50, cy: 50, r, fill: 'none', stroke: track || 'rgba(0,0,0,0.35)', strokeWidth: sw }),
+    h('circle', { key: 'w' + r, cx: 50, cy: 50, r, fill: 'none', stroke: col, strokeWidth: sw,
+      strokeLinecap: 'round',
+      strokeDasharray: (Math.max(0, Math.min(1, frac)) * 2 * Math.PI * r) + ' ' + (2 * Math.PI * r),
+      transform: 'rotate(-90 50 50)' })];
+  const ring = left
+    ? h('svg', { className: 'gauge', viewBox: '0 0 100 100' },
+        wipe(GAUGE_R, gauge.ring, healthCol(gauge.ring)),
+        wipe(GAUGE_R - rw, gauge.fuel, knob.jet ? '#ffc35a' : GAUGE_COL.fuel,
+          gauge.empty ? 'rgba(226,74,44,0.7)' : null))
+    : h('svg', { className: 'gauge', viewBox: '0 0 100 100' },
+        wipe(GAUGE_R, gauge.ring, gauge.dry ? 'rgba(255,201,60,0.28)' : GAUGE_COL.mana),
+        wipe(GAUGE_R - rw, gauge.rech, gauge.has ? GAUGE_COL.rech : 'rgba(122,215,255,0.22)'),
+        wipe(GAUGE_R - 2 * rw, gauge.cast, gauge.has ? GAUGE_COL.cast : 'rgba(197,140,255,0.22)'));
+  return h('div', {
+      ref, className: 'stick' + (knob.jet ? ' jetting' : ''),
+      style: { width: size, height: size },
+      onPointerDown: down, onPointerMove: move, onPointerUp: end,
+      onPointerCancel: end, onLostPointerCapture: end,
+    },
+    // the centre line splits jet (top half) from walk
+    left && h('div', { className: 'stickclip' }, h('div', { className: 'hline' })),
+    ring,
+    // the right stick's amber ring: the line the knob's edge crosses when the drag starts
+    // counting as aiming rather than as a tap on the dead zone
+    h('div', { className: 'knob', style: {
+      width: (KNOB * 100) + '%', height: (KNOB * 100) + '%',
+      transform: `translate(-50%,-50%) translate(${knob.x}px,${knob.y}px)` } }),
+    right && h('div', { className: 'deadzone', style: {
+      width: (AIM_RING * 100) + '%', height: (AIM_RING * 100) + '%' } }),
+    h('span', { className: 'lbl top' }, left ? 'jet' : 'aim'),
+    left && h('span', { className: 'lbl bot' }, 'walk')
+  );
+}
+
+// Tap or hold, told apart: a hold fires on its own after `ms`, a release before
+// that counts as a tap, and sliding off cancels both.
+export function holdPress(onTap, onHold, onState, ms) {
+  return e => {
+    e.preventDefault();
+    const sx = e.clientX, sy = e.clientY;
+    let fired = false;
+    const done = () => {
+      clearTimeout(timer);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      if (onState) onState(false);
+    };
+    const timer = setTimeout(() => { fired = true; done(); onHold(); }, ms || 450);
+    const move = ev => { if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 14) done(); };
+    const up = () => { const tap = !fired; done(); if (tap && onTap) onTap(); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    if (onState) onState(true);
+  };
+}
