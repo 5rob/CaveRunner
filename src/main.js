@@ -10,7 +10,8 @@ const BCELL = WW / BW;            // world units per background pixel
 const VIEW_W = 360;               // world units visible across a phone screen
 const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
 const ROCK = 1, BRICK = 2, BED = 3;
-const VERSION = 'v96';
+// VERSION lives in src/version.js; the build writes it into the page as its own
+// `<script>const VERSION = 'vNN';</script>` ahead of this code, so it is a global here.
 
 // ---- tuning ----
 const GRAVITY = 1400;

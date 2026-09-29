@@ -11,7 +11,11 @@ const path = require('path');
 const src = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');   // a Windows checkout hands us CRLF
 const open = src.indexOf('<script>\n') + 9;
 const js = src.slice(open, src.indexOf('</script>', open));
-const head = js.slice(0, js.indexOf('function Game('));
+// the bundle is one iife, `(() => { ... })();`: take its body. VERSION isn't in it: the page
+// declares it in a script of its own just before (see tools/build.js), so add that back.
+const VERSION = /<script>const VERSION = '(v\d+)';<\/script>/.exec(src)[1];
+const head = "const VERSION = '" + VERSION + "';\n" +
+  js.slice(js.indexOf('(() => {\n') + 9, js.indexOf('function Game('));
 
 // Which names are top-level? Rather than parse the declarations, take every word in the
 // code and keep the ones that resolve inside the game's scope but not in an empty one.

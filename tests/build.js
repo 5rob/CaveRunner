@@ -72,13 +72,39 @@ function build() {
     if (!s.includes(from)) throw new Error('build.js is out of date: could not find ' + from);
     s = s.replace(from, to);
   };
+  // The suites call game names straight from page.evaluate (MODS, DEV, resetGun, makeLevel…).
+  // The bundle is one iife, so its top-level names aren't globals: copy every one onto
+  // window as the iife ends. Nothing at the top level is ever reassigned, so the copy is
+  // the same value (objects like DEV are the same object). The names come from parsing the
+  // bundle with espree, the parser ESLint (a dev dependency) ships with.
+  const exposeGlobals = () => {
+    const at = s.indexOf('(() => {', s.indexOf("<script>const VERSION = '"));
+    const end = s.lastIndexOf('})();', s.indexOf('</script>', at));
+    if (at < 0 || end < at) throw new Error('build.js is out of date: could not find the game bundle');
+    const espree = require(require.resolve('espree', { paths: [path.dirname(require.resolve('eslint'))] }));
+    const iife = espree.parse(s.slice(at, end + 5), { ecmaVersion: 'latest' }).body[0].expression.callee.body.body;
+    const names = [];
+    const bind = id => {
+      if (id.type === 'Identifier') names.push(id.name);
+      else if (id.type === 'ObjectPattern') for (const q of id.properties) bind(q.value);
+      else if (id.type === 'ArrayPattern') for (const q of id.elements) if (q) bind(q);
+    };
+    for (const st of iife) {
+      if (st.type === 'VariableDeclaration') for (const d of st.declarations) bind(d.id);
+      else if (st.id) bind(st.id);   // function and class declarations
+    }
+    s = s.slice(0, end) + '  Object.assign(window, { ' + names.join(', ') + ' });\n' + s.slice(end);
+  };
   swap('https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js',
     '../lib/react.production.min.js');
   swap('https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js',
     '../lib/react-dom.production.min.js');
-  swap('    const toast = text => {', HOOK_LVL + '    const toast = text => {');
-  swap('  const [size, setSize] = useState(150);',
-    '  window.__in = input;\n  const [size, setSize] = useState(150);');
+  // anchors as esbuild prints them (tools/build.js bundles src/), without the indent so a
+  // change of nesting depth doesn't lose them
+  swap('const toast = (text) => {', HOOK_LVL + 'const toast = (text) => {');
+  swap('const [size, setSize] = useState(150);',
+    'window.__in = input;\n  const [size, setSize] = useState(150);');
+  exposeGlobals();
   fs.mkdirSync(OUT, { recursive: true });
   fs.writeFileSync(path.join(OUT, 'test.html'), s);
   return path.join(OUT, 'test.html');

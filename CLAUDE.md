@@ -2,9 +2,9 @@
 
 A single-page browser game: a jetpack cave shooter with Noita-style wand building.
 `index.html` is the whole game — markup, CSS, React and game loop — but it is **built**:
-**edit `src/`, never `index.html`.** `node tools/build.js` (plain Node, no dependencies)
-glues `src/shell.html` (the page), `src/style.css` and `src/main.js` (all the code) back
-into `index.html`, and `node tests/run.js` runs the build first, so the tests do it for
+**edit `src/`, never `index.html`.** `node tools/build.js` bundles `src/main.js` (all the
+code) with esbuild (`npm install` once) and glues it, `src/shell.html` (the page) and
+`src/style.css` back into `index.html`, and `node tests/run.js` runs the build first, so the tests do it for
 you. `index.html` stays committed: CI, Pages, the APK and `serve.js` all read it. Commit
 it together with the `src/` change.
 
@@ -54,8 +54,8 @@ replace it with a general static server.
 
 1. Make the change in `src/` (the code is `src/main.js`, the CSS `src/style.css`).
 2. Test it. `node tests/run.js` — see **Testing** below. Add a suite for anything new.
-3. Bump the version: `const VERSION` near the top of `src/main.js` (the build copies it
-   into the `<title>`). This is what the phone's update prompt keys off — see **The version number is not
+3. Bump the version: `src/version.js` (the build copies it into the page and the
+   `<title>`). This is what the phone's update prompt keys off — see **The version number is not
    optional** below.
 4. Update `README.md` — it describes the game for a player, and stays current.
 5. Commit, then **get it onto `main`** — that is the release. Pushing/merging to `main`
@@ -83,10 +83,12 @@ number, `version.txt` doesn't change, and **the phone never prompts** — the ow
 on the old build debugging a bug that's already fixed. So **every release gets a new
 number**, in one place:
 
-- `const VERSION = 'vNN';` — near the top of `src/main.js`, drawn on screen in-game, and the
-  string the update check parses (`VERSION = 'v(\d+)'`, so keep the `vNN` shape).
-  `tools/build.js` fills `<title>CaveRunner vNN</title>` from it (`{{VERSION}}` in
-  `src/shell.html`), so the title can't drift.
+- `export const VERSION = 'vNN';` — `src/version.js`, drawn on screen in-game, and the
+  string the update check parses (`VERSION = 'v(\d+)'`, so keep the `vNN` shape, single quotes).
+  `tools/build.js` writes it into the page as its own un-bundled
+  `<script>const VERSION = 'vNN';</script>` (esbuild would reprint it with double quotes, and
+  CI and the app need the single-quoted shape), so the game code reads `VERSION` as a global.
+  It fills `<title>CaveRunner vNN</title>` from it too (`{{VERSION}}` in `src/shell.html`).
 
 The number on screen is how they tell you which build they're looking at. Bump it before
 you push to `main`, never after.
@@ -131,7 +133,7 @@ numbers as of v96, they drift):
 
 | What | Where in `src/main.js` |
 |---|---|
-| World constants | ~5: `CELL`, `CW`/`CH`, `SHOP_*`, tuning consts (`GRAVITY`, `JET`, …); `VERSION` ~13 |
+| World constants | ~5: `CELL`, `CW`/`CH`, `SHOP_*`, tuning consts (`GRAVITY`, `JET`, …); `VERSION` is in `src/version.js` |
 | `DEV` / `DEV_META` / `devSet` | ~70–400: live dev-panel knobs, saved to localStorage (see note below) |
 | `THEMES` / `themeFor` | ~411: the 12 level palettes; the floor number picks one |
 | `CREATURES` / `ROSTERS` | ~468: the 16 creature types, and which live on floors 1–10 |
@@ -962,7 +964,7 @@ only because someone noticed.
   browser suites get Chromium from `tests/chromium.js`. Keep both that way so the suites
   still run on a different machine.
 - Don't assume LF, either. A Windows checkout with `core.autocrlf` on hands you files
-  with CRLF. `tests/load.js` slices the script out on `'<script>\n'`, so it normalises
+  with CRLF. `tests/load.js` and `tests/build.js` read the built page, so they normalise
   with `.replace(/\r\n/g, '\n')` first, and `tools/build.js` reads `src/` the same way and
   writes `index.html` with whatever line endings the checkout already has — keep both so.
 - Before finishing a session, `git status` — anything untracked under `tests/` is about to
@@ -986,7 +988,10 @@ caught most of the real bugs.
 served from `tests/lib/` and two debug hooks, `window.__in` (the input ref — loadout,
 guns, bag, prompt) and `window.__lvl` (the live level — player, enemies, bullets, fields).
 If a suite needs to reach something new, add it to the hook in `build.js` rather than
-reaching into the game from the test.
+reaching into the game from the test. The bundle is one iife, so its top-level names aren't
+page globals by themselves; `build.js` copies every one onto `window` as the iife ends, which
+is why suites can still call `MODS`, `DEV`, `resetGun`, `makeLevel`… straight from
+`page.evaluate`.
 
 `tests/chromium.js` finds Playwright and a Chromium wherever this machine keeps them, so
 no suite hardcodes a path; override with `CAVERUNNER_PLAYWRIGHT` and `CAVERUNNER_CHROME`.
