@@ -221,7 +221,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
       each time (see the target layout for what goes where):
   - [x] core/consts.js
   - [x] core/util.js
-  - [ ] dev/knobs.js
+  - [x] dev/knobs.js
   - [ ] data/themes.js
   - [ ] data/creatures.js
   - [ ] data/perks.js
@@ -369,6 +369,7 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
 | D8 | esbuild runs with `treeShaking: false` | Otherwise it drops code nothing calls yet (`groupStats`, still tested) |
 | D9 | The browser test page copies every top-level name of the bundle onto `window` (`tests/build.js`, names found by parsing with espree, which ships with ESLint) | Browser suites call `MODS`, `DEV`, `resetGun`… from `page.evaluate`; inside the iife those aren't globals any more. Suites stay unchanged |
 | D10 | `tools/move.js` does the P1.5 moves: cuts named top-level statements (with the comments above them) out of `main.js`, puts `export` on them, and recomputes the imports on both sides from what each file actually uses; refuses a move whose code still needs something in `main.js` | Each move is mechanical and the same shape; a cycle back into `main.js` can't slip in. Delete it after Phase 2 |
+| D11 | In Phase 1 every knob table (`SP_KNOBS`, `JE_KNOBS`, `RA_KNOBS`, `JE_COLS`, `LV_KNOBS`, `ARCH_KNOBS`, `FIRE_KNOBS`) stays in `dev/knobs.js`, not in its creature's file | `DEV` is copied from `DEV_DEFAULTS` once, right after the tables register. A table in `creatures/spider.js` would register *after* that (knobs.js loads first), so `DEV` would miss its keys and the Dev rows would reorder: a behaviour change. Moving them needs `DEV` built after all tables (Phase 3) |
 | D6 | The dev `package.json` also carries `playwright-core` (and `globals`, the browser-globals list ESLint needs); `tests/chromium.js` finds an installed Windows Chrome | Browser suites run after one `npm install`, with no per-session scratchpad setup or env vars |
 
 ## Found along the way

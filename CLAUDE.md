@@ -136,7 +136,7 @@ rest and imports them. Where things are (`main.js` line numbers as of v96, they 
 |---|---|
 | Small helpers | `src/core/util.js`: `rr` (rounded rect), `angDiff`/`turn`, `mix`/`mixHex`/`hexMix`/`hsvAdjust`, `approach`/`clamp` |
 | World constants | `src/core/consts.js`: `CELL`, `CW`/`CH`, `SHOP_*`, tuning consts (`GRAVITY`, `JET`, …); `VERSION` is in `src/version.js` |
-| `DEV` / `DEV_META` / `devSet` | ~70–400: live dev-panel knobs, saved to localStorage (see note below) |
+| `DEV` / `DEV_META` / `devSet` | `src/dev/knobs.js` (with every range/colour knob table): live dev-panel knobs, saved to localStorage (see note below) |
 | `THEMES` / `themeFor` | ~411: the 12 level palettes; the floor number picks one |
 | `CREATURES` / `ROSTERS` | ~468: the 16 creature types, and which live on floors 1–10 |
 | `rosterFor` / `enemyFor` | ~554: a floor's creatures, and one creature's floor-scaled stats |

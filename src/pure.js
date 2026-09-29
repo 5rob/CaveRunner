@@ -8,3 +8,4 @@ export { VERSION } from './version.js';
 export * from './main.js';
 export * from './core/consts.js';
 export * from './core/util.js';
+export * from './dev/knobs.js';
