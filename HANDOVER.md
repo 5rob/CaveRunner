@@ -7,16 +7,16 @@ it's stale.
 
 ## Where things stand
 
-- **Refactor in progress on the `refactor` branch.** The code now lives in modules under
-  `src/`, bundled by esbuild into the same `index.html`. Phase 0 and Phase 1 are done and
-  released as v97 (merged to `main`). Phase 2 (the UI into `src/ui/`, `Game` into
-  `src/game/Game.js`) is done on `refactor`, **not merged** — the owner play-tests it first
-  (`node tools/build.js --watch` + `node serve.js`), then it goes to `main` with a version bump
-  (v98). Next after that: Phase 3 (taking `Game` apart); REFACTOR.md has notes on what the
-  code looks like for it and why the Phase 1–2 tools (`move.js`, `same.js`) don't fit it.
-  **`REFACTOR.md` is the tracker** — its Status table, **How a move goes** recipe and session
-  log say exactly where things are. The feature freeze lifted with v97.
-- **On-disk version: v97** (v97 = the refactor's Phase 1; plays the same as v96). Working on `main` (**release channel is `main`** — CI there
+- **Refactor in progress on the `refactor` branch.** The code lives in modules under `src/`,
+  bundled by esbuild into the same `index.html`. Phases 0–1 released as v97, Phase 2 (UI into
+  `src/ui/`, `Game` into `src/game/Game.js`) as v98. Phase 3 is under way on `refactor`, **not
+  merged**: P3.1 (the Game map), P3.2 (the level's state is one world object `W`,
+  `src/game/world.js`) and P3.3 (`window.__lvl` = `W` via `src/game/testhook.js`) are done; next is
+  P3.4, pulling systems out of `Game`. The proof for each Phase 3 step is
+  `node tests/determinism.js` (same scripted run on HEAD and this tree, frame by frame), and
+  `tools/world.js` did the `x` → `W.x` rewrites. **`REFACTOR.md` is the tracker** — its Status
+  table, Game map and session log say exactly where things are.
+- **On-disk version: v98** (v97/v98 = the refactor's Phases 1/2; play the same as v96). Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
