@@ -274,7 +274,7 @@ it's stale.
 
 1. Edit `index.html` (single file, no build step).
 2. Test: `node tests/run.js` (browser env vars below). Add a suite for anything new.
-3. Bump the version in **two** places: `<title>` (line 6) and `const VERSION` near the top.
+3. Bump the version in **two** places: `<title>` (line 7) and `const VERSION` near the top.
 4. Update `README.md` if it's a player-facing change (the Dev panel is a dev tool, so v41
    left the README alone — that was deliberate).
 5. Commit, then **get it onto `main`** (working branch + merge is fine). That push is the

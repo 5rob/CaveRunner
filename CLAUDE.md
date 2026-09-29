@@ -45,7 +45,7 @@ replace it with a general static server.
 
 1. Make the change in `index.html`.
 2. Test it. `node tests/run.js` — see **Testing** below. Add a suite for anything new.
-3. Bump the version: `<title>` on line 6 and `const VERSION` near the top of the script.
+3. Bump the version: `<title>` on line 7 and `const VERSION` near the top of the script.
    This is what the phone's update prompt keys off — see **The version number is not
    optional** below.
 4. Update `README.md` — it describes the game for a player, and stays current.
@@ -74,7 +74,7 @@ number, `version.txt` doesn't change, and **the phone never prompts** — the ow
 on the old build debugging a bug that's already fixed. So **every release gets a new
 number**, in both places:
 
-- `<title>CaveRunner vNN</title>` — line 6
+- `<title>CaveRunner vNN</title>` — line 7
 - `const VERSION = 'vNN';` — near the top of the script, drawn on screen in-game, and the
   string the update check parses (`VERSION = 'v(\d+)'`, so keep the `vNN` shape)
 
