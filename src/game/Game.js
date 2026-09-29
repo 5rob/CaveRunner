@@ -41,7 +41,9 @@ import { enterLevel } from './systems/level-entry.js';
 import { addArc, jag, lightningStep } from './systems/lightning.js';
 import { burst, goo, splat, toast } from './systems/particles.js';
 import { plantGlow } from './systems/plantglow.js';
-import { hurt, maxHp, refreshBag, torchHand } from './systems/player.js';
+import {
+  NO_INPUT, hurt, maxHp, refreshBag, sputterStep, torchHand
+} from './systems/player.js';
 import { decorStep } from './systems/props.js';
 import { onWebIn, ratFrame, spawnRat } from './systems/rats.js';
 import { drawReplay, recFrame, recSample, recWrap } from './systems/recorder.js';
@@ -58,30 +60,6 @@ import { makeWorld } from './world.js';
 // straight off the global React, as ui/h.js does (REFACTOR.md, D13).
 const { useRef, useEffect } = React;
 const h = React.createElement;
-
-// Near the bottom of the tank the jet coughs: short random cut-outs, more often and a touch
-// longer the closer the tank is to dry. `st` keeps the cut-out clock and how long the jet
-// has been held on (which bends its pitch). Returns true while it's cut out; `st.start`
-// is true on the frame a cut-out begins.
-export const SPUTTER_FUEL = 0.25;
-export function sputterStep(st, dt, fuel, on, rnd) {
-  rnd = rnd || Math.random;
-  st.start = false;
-  if (!on) { st.cut = 0; st.gap = 0; st.onT = 0; return false; }
-  st.onT = (st.onT || 0) + dt;
-  st.cut = Math.max(0, (st.cut || 0) - dt);
-  st.gap = Math.max(0, (st.gap || 0) - dt);                  // a catch of breath between coughs
-  if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
-    const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;          // 0 at the line, 1 bone dry
-    if (rnd() < dt * (1 + 7 * w)) {
-      st.cut = 0.04 + rnd() * (0.05 + 0.08 * w);
-      st.gap = st.cut + 0.1 + rnd() * 0.2;
-      st.start = true;
-    }
-  }
-  return st.cut > 0;
-}
-export const NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
 
 export function Game({ input }) {
   const cv = useRef(null);

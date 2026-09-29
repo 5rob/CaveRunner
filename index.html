@@ -10294,6 +10294,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const a = W.p.aim.show ? W.p.aim.nx : W.p.face;
     return { x: W.p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: W.p.y + 9 };
   };
+  var SPUTTER_FUEL = 0.25;
+  function sputterStep(st, dt, fuel, on, rnd2) {
+    rnd2 = rnd2 || Math.random;
+    st.start = false;
+    if (!on) {
+      st.cut = 0;
+      st.gap = 0;
+      st.onT = 0;
+      return false;
+    }
+    st.onT = (st.onT || 0) + dt;
+    st.cut = Math.max(0, (st.cut || 0) - dt);
+    st.gap = Math.max(0, (st.gap || 0) - dt);
+    if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
+      const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;
+      if (rnd2() < dt * (1 + 7 * w)) {
+        st.cut = 0.04 + rnd2() * (0.05 + 0.08 * w);
+        st.gap = st.cut + 0.1 + rnd2() * 0.2;
+        st.start = true;
+      }
+    }
+    return st.cut > 0;
+  }
+  var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
 
   // src/game/systems/webs.js
   var webNear = (L, x, y) => {
@@ -13378,30 +13402,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   // src/game/Game.js
   var { useRef: useRef2, useEffect: useEffect2 } = React;
   var h2 = React.createElement;
-  var SPUTTER_FUEL = 0.25;
-  function sputterStep(st, dt, fuel, on, rnd2) {
-    rnd2 = rnd2 || Math.random;
-    st.start = false;
-    if (!on) {
-      st.cut = 0;
-      st.gap = 0;
-      st.onT = 0;
-      return false;
-    }
-    st.onT = (st.onT || 0) + dt;
-    st.cut = Math.max(0, (st.cut || 0) - dt);
-    st.gap = Math.max(0, (st.gap || 0) - dt);
-    if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
-      const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;
-      if (rnd2() < dt * (1 + 7 * w)) {
-        st.cut = 0.04 + rnd2() * (0.05 + 0.08 * w);
-        st.gap = st.cut + 0.1 + rnd2() * 0.2;
-        st.start = true;
-      }
-    }
-    return st.cut > 0;
-  }
-  var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
   function Game({ input }) {
     const cv = useRef2(null);
     useEffect2(() => {
