@@ -248,7 +248,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
   - [x] art/props.js
   - [x] audio/recipes.js
   - [x] audio/sfx.js
-  - [ ] save/save.js
+  - [x] save/save.js
   - [ ] replay/replay.js
 - [ ] **P1.6** Full suite green. Merge `refactor` → `main` with a version bump. Owner
       plays it on the phone. **Feature freeze lifts**: new features go into `src/` from
