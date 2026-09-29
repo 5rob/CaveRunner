@@ -43,3 +43,4 @@ export * from './replay/replay.js';
 export * from './ui/h.js';
 export * from './ui/hud.js';
 export * from './ui/cards.js';
+export * from './ui/editor.js';

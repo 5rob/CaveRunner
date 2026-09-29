@@ -281,7 +281,7 @@ What the code says about this phase (checked at the end of Phase 1):
 - [x] **P2.1** ui/h.js (the `h` helper and hook imports)
 - [x] **P2.2** ui/hud.js (Stick, RKey, gauges, holdPress, deckLayout, fmtGold, healthCol, GAUGE_*…)
 - [x] **P2.3** ui/cards.js (GunCard, ModCard, PerkCard, GUN_STATS)
-- [ ] **P2.4** ui/editor.js (Editor, GunStats, SlotGrid, ScrollBox, GunIcon, PULL_COL, GS_ROWS)
+- [x] **P2.4** ui/editor.js (Editor, GunStats, SlotGrid, ScrollBox, GunIcon, PULL_COL, GS_ROWS)
 - [ ] **P2.5** ui/swap.js, ui/witness.js
 - [ ] **P2.6** ui/devpanel.js (DevRow, DevPanel, SpawnGun; JellyPreview goes with the jelly or here)
 - [ ] **P2.7** game/Game.js (Game as-is, with `sputterStep`, `SPUTTER_FUEL`, `NO_INPUT`),
@@ -462,7 +462,8 @@ commit. List them here for after.
 - **Misplaced comments (left as they were, moved with their code).** A second copy of
   planCast's opening comment sits above `blankShot` (`spells/cast.js`); tracePath's opening
   comment sits above `DRIFT_DRAG` (`spells/trace.js`); `ROOM_HW`'s line carries the trailing
-  comment "gold per vein pixel dug out", which belongs to `ORE_GOLD` (`world/level.js`).
+  comment "gold per vein pixel dug out", which belongs to `ORE_GOLD` (`world/level.js`);
+  GunStats' comment ("A gun's stats, one per line…") sits above `PULL_COL` (`ui/editor.js`).
   Two were fixed because a move would otherwise have carried them to the wrong file: the
   jellyfish sprite comment (was above `drawRat`, now above `drawJelly`) and the `---- sprites ----`
   header (was above `rr`, now above the sprites).
@@ -494,3 +495,4 @@ commit. List them here for after.
 | 2026-09-29 | Phase 2, P2.1 | `ui/h.js` (`h` + the four hooks). move.js hoisted the sputter comment (the first comment in `main.js` once the hooks left) to the top as a "file header"; put back by hand. | same 359/359, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 2, P2.2 | `ui/hud.js` (Stick, RKey, GAUGE_*, healthCol, holdPress, deckLayout, fmtGold). The two lines "The same detail card is used by the build screen and by the shop…" sat above `holdPress` but describe the cards: moved back above `GUN_STATS` by hand. | same 359/359, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 2, P2.3 | `ui/cards.js` (GUN_STATS, GunCard, ModCard, PerkCard). Clean move. | same 359/359, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 2, P2.4 | `ui/editor.js` (Editor, GunStats, GunIcon, SlotGrid, ScrollBox, PULL_COL, GS_ROWS, LIVE_BAR, SHOW_TIPS). GunStats' comment still sits above `PULL_COL` (moved with it, see Found along the way). | same 359/359, logic 33/33, smoke ok |
