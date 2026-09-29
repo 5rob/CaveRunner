@@ -1,13 +1,14 @@
 // Refactor helper for P3.2 (REFACTOR.md): turns closure variables of Game's useEffect into
 // properties of the world object, `name` -> `W.name`, in src/game/Game.js.
 //
-//   node tools/world.js [--dry] name...
+//   node tools/world.js [--dry] [--drop] name...
 //
 // Scope-aware (eslint-scope): only references that resolve to the closure-level variable are
 // rewritten, so an inner `let best` or a callback's own `e` is left alone. A shorthand
 // property (`{ enemies }`, also as a destructuring target) becomes `enemies: W.enemies`.
-// The declarations are NOT touched: move each one into makeWorld() (game/world.js) or turn it
-// into a `W.name = …` line by hand, then `node tests/run.js logic` (no-undef finds a missed one).
+// The declarations are left alone unless --drop, which takes them out and prints their
+// initial values: put those into makeWorld() (game/world.js) by hand, with their comments,
+// then `node tests/run.js logic` (no-undef finds anything missed).
 // Refuses if a reference sits where some inner `W` would capture it, or a name isn't a
 // closure variable. Keeps the file's line endings.
 const fs = require('fs');
@@ -78,6 +79,36 @@ for (const name of names) {
     n++;
   }
   console.log(`${name.padEnd(14)} ${n} reference${n === 1 ? '' : 's'}, declared line ${v.identifiers[0].loc.start.line}`);
+}
+// --drop: also take the declarators out of their `let`/`const` lines (printing each initial
+// value, for makeWorld). A declaration left with nothing is removed; comments stay put.
+if (args.includes('--drop')) {
+  const byDecl = new Map();
+  for (const name of names) {
+    const v = closure.set.get(name);
+    const d = v.defs[0];
+    if (d.type !== 'Variable' || d.node.id.type !== 'Identifier') { console.error(`${name}: not a plain let/const`); bad++; continue; }
+    if (!byDecl.has(d.parent)) byDecl.set(d.parent, new Set());
+    byDecl.get(d.parent).add(d.node);
+    console.log(`  ${name}: ${d.node.init ? src.slice(d.node.init.range[0], d.node.init.range[1]) : 'undefined'}`);
+  }
+  for (const [decl, drop] of byDecl) {
+    const keep = decl.declarations.filter(d => !drop.has(d));
+    const end = decl.range[1];
+    if (keep.length) {
+      edits.push({ at: decl.range[0], end, text: decl.kind + ' ' + keep.map(d => src.slice(d.range[0], d.range[1])).join(', ') + ';' });
+    } else {
+      // the whole statement goes; with its line if nothing else is on it
+      let a = decl.range[0], b = end;
+      const ls = src.lastIndexOf('\n', a - 1) + 1, le = src.indexOf('\n', b);
+      const tail = src.slice(b, le).trim();
+      if (!src.slice(ls, a).trim() && (!tail || tail.startsWith('//'))) {
+        if (tail) console.log(`  (its comment, to move by hand: ${tail})`);
+        a = ls; b = le + 1;
+      }
+      edits.push({ at: a, end: b, text: '' });
+    }
+  }
 }
 if (bad) { console.error(`refused: ${bad} problem(s)`); process.exit(1); }
 if (dry) return;

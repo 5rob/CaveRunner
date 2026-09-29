@@ -10424,7 +10424,37 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       // rat burrows (a mask over each nest's room and tunnel), and the rock's change count
       // (the rats' way-finding fields rebuild when it moves; see ratSolid / navFor)
       burrow: null,
-      terrainV: 0
+      terrainV: 0,
+      // ---- the floor's layout (enterLevel sets all of these) ----
+      floor: 1,
+      start: void 0,
+      portal: void 0,
+      arrival: void 0,
+      // where you come in, the way out
+      stock: void 0,
+      // the shop's plinths
+      zone: null,
+      // built-up vs natural, per terrain pixel (floor 1)
+      rooms: [],
+      // the perk room and the heart room
+      sconces: [],
+      // wall torches: by the portals and the prizes
+      levelSeed: 0,
+      levelOwned: [],
+      // what made this cave, for the autosave
+      roster: [],
+      themeName: "",
+      // this floor's creatures, and its palette
+      total: void 0,
+      // how many creatures the floor started with
+      miniEdgeIdx: [],
+      // the map's wall-outline cells
+      matterProps: [],
+      // the dark matter props (their hum)
+      ambKinds: [],
+      // the theme's ambience particle kinds
+      plantW: 255
+      // the jellies' plant glow: this floor's white point
     };
   }
 
@@ -10484,20 +10514,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const mctx = miniC.getContext("2d");
       const miniImg = new ImageData(MMW, MMH);
       const mini32 = new Uint32Array(miniImg.data.buffer);
-      let miniEdgeIdx = [];
-      let start, portal, enemies, pickups, stock, arrival, total, floor = 1, zone = null;
-      const natural = (x, y) => !builtAt(zone, x, y);
+      let enemies, pickups;
+      const natural = (x, y) => !builtAt(W.zone, x, y);
       let oreBank = 0;
-      let levelSeed = 0, levelOwned = [];
       let jetLoop = null, beatT = 0, wasEmpty = false;
       const jetSt = { cut: 0, onT: 0, start: false };
       const bhLoops = /* @__PURE__ */ new Map();
       const plantsNow = /* @__PURE__ */ new Set(), rustle = { t: 0 };
-      let portalLoop = null, matterLoop = null, matterProps = [], wasJet = false, stepT = 0, lastNear = "";
+      let portalLoop = null, matterLoop = null, wasJet = false, stepT = 0, lastNear = "";
       let plantsLast = /* @__PURE__ */ new Set();
-      let rooms = [];
-      let sconces = [];
-      let roster = [], themeName = "";
       const p = {
         x: 0,
         y: 0,
@@ -10528,8 +10553,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const torchP = [];
       const motes = [];
       let portalAcc = 0;
-      let props = [], ambKinds = [];
-      let plantW = 255, pgArt = null, pgC = null, pgCtx = null;
+      let props = [];
+      let pgArt = null, pgC = null, pgCtx = null;
       const decoC = document.createElement("canvas");
       decoC.width = CW;
       decoC.height = CH;
@@ -10836,9 +10861,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       function enterLevel(back) {
         refreshBag();
-        levelSeed = back ? back.seed : 1 + Math.floor(Math.random() * 2147483e3);
-        levelOwned = back ? back.owned : (input.current.loadout.perks || []).slice();
-        const level = makeLevel(levelSeed, floor, levelOwned);
+        W.levelSeed = back ? back.seed : 1 + Math.floor(Math.random() * 2147483e3);
+        W.levelOwned = back ? back.owned : (input.current.loadout.perks || []).slice();
+        const level = makeLevel(W.levelSeed, W.floor, W.levelOwned);
         level.enemies.forEach((e, i) => {
           e.sid = i;
         });
@@ -10858,7 +10883,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         W.mat = level.mat;
         W.img = level.img;
         W.ore = level.ore || null;
-        miniEdgeIdx = [];
+        W.miniEdgeIdx = [];
         for (let my = 0; my < MMH; my++) for (let mx = 0; mx < MMW; mx++) {
           let solid = 0, open = 0;
           for (let dy = 0; dy < MINI_D; dy++) {
@@ -10871,40 +10896,40 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               else open++;
             }
           }
-          if (solid && open) miniEdgeIdx.push(my * MMW + mx);
+          if (solid && open) W.miniEdgeIdx.push(my * MMW + mx);
         }
-        start = level.start;
-        portal = level.portal;
-        arrival = level.arrival;
+        W.start = level.start;
+        W.portal = level.portal;
+        W.arrival = level.arrival;
         enemies = level.enemies;
         pickups = level.pickups;
-        stock = level.stock;
-        rooms = level.rooms || [];
-        zone = level.zone || null;
+        W.stock = level.stock;
+        W.rooms = level.rooms || [];
+        W.zone = level.zone || null;
         props = level.props || [];
-        ambKinds = level.amb || [];
+        W.ambKinds = level.amb || [];
         W.dimg = level.dimg;
-        plantW = plantWhite(W.img.data, W.dimg && W.dimg.data);
+        W.plantW = plantWhite(W.img.data, W.dimg && W.dimg.data);
         dctx.putImageData(W.dimg, 0, 0);
         dparts.length = amb.length = clouds.length = rings.length = devils.length = 0;
         zfx = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
         {
-          const pcx0 = portal.x + portal.w / 2, pcy0 = portal.y + portal.h / 2;
-          sconces = [
+          const pcx0 = W.portal.x + W.portal.w / 2, pcy0 = W.portal.y + W.portal.h / 2;
+          W.sconces = [
             [pcx0 - 26, pcy0 - 2],
             [pcx0 + 26, pcy0 - 2],
-            [arrival.x - 26, arrival.y - 2],
-            [arrival.x + 26, arrival.y - 2]
+            [W.arrival.x - 26, W.arrival.y - 2],
+            [W.arrival.x + 26, W.arrival.y - 2]
           ];
-          for (const r of rooms) sconces.push([r.x - 28, r.y - 2], [r.x + 28, r.y - 2]);
-          sconces = sconces.map(([x, y], i) => ({ x, y, ph: i * 1.7 }));
+          for (const r of W.rooms) W.sconces.push([r.x - 28, r.y - 2], [r.x + 28, r.y - 2]);
+          W.sconces = W.sconces.map(([x, y], i) => ({ x, y, ph: i * 1.7 }));
         }
-        roster = level.roster;
-        themeName = level.theme;
-        SFX.setAmbience(themeName);
+        W.roster = level.roster;
+        W.themeName = level.theme;
+        SFX.setAmbience(W.themeName);
         for (const h3 of bhLoops.values()) h3.stop();
         bhLoops.clear();
-        total = enemies.length;
+        W.total = enemies.length;
         ghost = pb.ghost ? { x: level.start.x, y: level.start.y, cd: 0 } : null;
         burns.length = 0;
         webs.length = silk.length = strings.length = 0;
@@ -10927,8 +10952,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         p.burnAcc = 0;
         tctx.putImageData(W.img, 0, 0);
         bgctx.putImageData(level.bgImg, 0, 0);
-        p.x = start.x;
-        p.y = start.y;
+        p.x = W.start.x;
+        p.y = W.start.y;
         p.vx = 0;
         p.vy = 0;
         p.fuel = 1;
@@ -10946,23 +10971,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (pb.seeAll) seen.fill(2);
         paintFog();
         recReset();
-        matterProps = props.filter((pr) => pr.k === "matter");
-        setTimeout(() => SFX.fx("portalOut", arrival.x, arrival.y), 260);
+        W.matterProps = props.filter((pr) => pr.k === "matter");
+        setTimeout(() => SFX.fx("portalOut", W.arrival.x, W.arrival.y), 260);
       }
       function saveRun() {
         if (p.dead) return;
         const pk = pickups.filter((q) => !q.taken && (q.kind === "mod" || q.kind === "gun")).map((q) => q.kind === "mod" ? { kind: "mod", id: q.id, x: q.x, y: q.y, t: q.t } : { kind: "gun", gun: q.gun, x: q.x, y: q.y, t: q.t, old: !!q.old });
         const data = {
           ver: VERSION,
-          floor,
+          floor: W.floor,
           hp: p.hp,
           loadout: input.current.loadout,
           level: {
-            seed: levelSeed,
-            owned: levelOwned,
+            seed: W.levelSeed,
+            owned: W.levelOwned,
             alive: enemies.map((e) => e.sid),
-            sold: stock.map((it, i) => it.sold ? i : -1).filter((i) => i >= 0),
-            rooms: rooms.map((r, i) => r.taken ? i : -1).filter((i) => i >= 0),
+            sold: W.stock.map((it, i) => it.sold ? i : -1).filter((i) => i >= 0),
+            rooms: W.rooms.map((r, i) => r.taken ? i : -1).filter((i) => i >= 0),
             pickups: pk
           }
         };
@@ -11001,7 +11026,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const sv = input.current.saved;
         input.current.saved = null;
         if (sv) {
-          floor = sv.floor;
+          W.floor = sv.floor;
           enterLevel(sv.level);
           if (sv.hp) p.hp = Math.min(sv.hp, maxHp());
         } else enterLevel();
@@ -11227,7 +11252,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         return o.F;
       }
       function spawnRat(n) {
-        const k = enemyFor("rotta", floor), P = n.nest.path, m = n.nest.mouth;
+        const k = enemyFor("rotta", W.floor), P = n.nest.path, m = n.nest.mouth;
         const e = {
           x: P[0].x,
           y: P[0].y,
@@ -11455,7 +11480,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (nOre) dropOre(x, y, nOre);
       }
       function dropOre(x, y, n) {
-        oreBank += n * ORE_GOLD * (1 + (floor - 1) * 0.3) * pb.gold;
+        oreBank += n * ORE_GOLD * (1 + (W.floor - 1) * 0.3) * pb.gold;
         let bits = Math.min(12, Math.floor(oreBank / 2));
         if (!bits) return;
         const each = Math.floor(oreBank / bits);
@@ -12534,7 +12559,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const MATERIAL = { icicle: "ice", geode: "crystal", salt: "salt", bone: "bone", obsidian: "glass", shard: "glass" };
       function shatter(pr, n) {
         SFX.fx("shatter", pr.x, pr.y + (pr.t0 + pr.b) / 2, MATERIAL[pr.st] || "stone");
-        burst(pr.x, pr.y + (pr.t0 + pr.b) / 2, n || 10, propCol(pr, themeFor(floor)));
+        burst(pr.x, pr.y + (pr.t0 + pr.b) / 2, n || 10, propCol(pr, themeFor(W.floor)));
         pr.gone = true;
       }
       function blowProp(pr) {
@@ -12851,7 +12876,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 p.onGround = false;
                 pr.sq = 0.3;
                 SFX.fx("shroom", pr.x, pr.y);
-                burst(pr.x, pr.y - 8, 5, propCol(pr, themeFor(floor)));
+                burst(pr.x, pr.y - 8, 5, propCol(pr, themeFor(W.floor)));
               }
               break;
             case "zone": {
@@ -13060,7 +13085,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         wob: r * 9,
         life: 5 + r * 3,
         max: 8,
-        c: rgbA(themeFor(floor).moss[1]),
+        c: rgbA(themeFor(W.floor).moss[1]),
         s: 1.3,
         glow: 1
       });
@@ -13149,7 +13174,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           cx: e.x,
           cy: e.y,
           reach,
-          white: plantW,
+          white: W.plantW,
           top: kru("jePlantTop", u.plant) / 100,
           strength,
           t: time * kru("jePlantTwinkle", u.plant),
@@ -13169,8 +13194,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       function stepAmbience(dt) {
         const x0 = camX - 30, y0 = camY - 30, w = viewW + 60, h3 = viewH + 60;
-        const T = themeFor(floor);
-        for (const kind of ambKinds) {
+        const T = themeFor(W.floor);
+        for (const kind of W.ambKinds) {
           if (kind === "devils") {
             if (devils.length < 2 && Math.random() < dt * 0.4) {
               let x = x0 + Math.random() * w, y = y0 + Math.random() * h3, k = 0;
@@ -13189,7 +13214,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             const r = Math.random();
             if (kind === "spores") amb.push(spore(x, y, r));
             else if (kind === "frost") {
-              const dir = floor % 2 ? 1 : -1;
+              const dir = W.floor % 2 ? 1 : -1;
               amb.push({ kind, x, y, vx: dir * (100 + r * 60), vy: (r - 0.5) * 10, life: 0.9 + r * 0.5, max: 1.4, c: "rgba(215,238,255,0.5)", s: 1, streak: 10 });
             } else if (kind === "embers") amb.push({ kind, x, y, vx: 0, vy: -20 - r * 30, wob: r * 9, life: 3 + r * 2, max: 5, c: r < 0.5 ? "#ffb050" : "#ff7a2a", s: 1.2, glow: 1 });
             else if (kind === "motes") amb.push({ kind, x, y, vx: (r - 0.5) * 6, vy: (Math.random() - 0.5) * 4, wob: r * 9, life: 6 + r * 3, max: 9, c: "rgba(235,225,200,0.8)", s: 1 });
@@ -13229,7 +13254,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           toast(input.current.pendingToast);
           input.current.pendingToast = null;
         }
-        input.current.floor = floor;
+        input.current.floor = W.floor;
         if (input.current.newCave) {
           input.current.newCave = false;
           enterLevel();
@@ -13400,8 +13425,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
         }
         if (p.y > WH) {
-          p.x = start.x;
-          p.y = start.y;
+          p.x = W.start.x;
+          p.y = W.start.y;
           p.vx = 0;
           p.vy = 0;
         }
@@ -13416,12 +13441,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           } else stepT = Math.min(stepT, 0.35);
         }
         const pcx = p.x + PW / 2, pcy = p.y + PH / 2;
-        if (!p.dead && pcx > portal.x && pcx < portal.x + portal.w && pcy > portal.y && pcy < portal.y + portal.h) {
-          floor++;
+        if (!p.dead && pcx > W.portal.x && pcx < W.portal.x + W.portal.w && pcy > W.portal.y && pcy < W.portal.y + W.portal.h) {
+          W.floor++;
           enterLevel();
           saveRun();
           SFX.fx("portalIn");
-          toast("Floor " + floor);
+          toast("Floor " + W.floor);
           input.current.notify();
           return;
         }
@@ -13773,10 +13798,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         SFX.ambTick(dt);
         if (!portalLoop && SFX.ready) portalLoop = SFX.loop("portal");
-        if (portalLoop) portalLoop.set(0.55, portal.x + portal.w / 2, portal.y + portal.h / 2);
-        if (matterProps.length) {
+        if (portalLoop) portalLoop.set(0.55, W.portal.x + W.portal.w / 2, W.portal.y + W.portal.h / 2);
+        if (W.matterProps.length) {
           let best2 = null, bd = 300;
-          for (const pr of matterProps) {
+          for (const pr of W.matterProps) {
             const d = Math.hypot(pr.x - pcx, pr.y - pcy);
             if (!pr.gone && d < bd) {
               bd = d;
@@ -13968,7 +13993,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         const inShop = p.y + PH > SHOP_Y;
         let near = null;
-        for (const it of stock) {
+        for (const it of W.stock) {
           if (it.sold) continue;
           if (Math.abs(it.x - pcx) > 15 || Math.abs(it.y - pcy) > 22) continue;
           near = { src: "shop", it };
@@ -13980,13 +14005,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           near = { src: "pickup", q };
           break;
         }
-        if (!near) for (const r of rooms) {
+        if (!near) for (const r of W.rooms) {
           if (r.taken) continue;
           if (Math.abs(r.x - pcx) > 20 || Math.abs(r.y - pcy) > 26) continue;
           near = { src: "room", r };
           break;
         }
-        const nearKey = !near ? -1 : near.src + ":" + (near.src === "shop" ? stock.indexOf(near.it) : near.src === "room" ? rooms.indexOf(near.r) : pickups.indexOf(near.q));
+        const nearKey = !near ? -1 : near.src + ":" + (near.src === "shop" ? W.stock.indexOf(near.it) : near.src === "room" ? W.rooms.indexOf(near.r) : pickups.indexOf(near.q));
         const label = !near ? null : near.src === "shop" ? near.it.kind === "heal" ? { text: "Full heal", price: 0, can: p.hp < MHP } : near.it.kind === "gun" ? {
           text: near.it.gun.name,
           gun: near.it.gun,
@@ -14175,7 +14200,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               rnd: Math.random,
               speedMul: cold,
               rangeMul: sees,
-              stay: zone ? natural : null
+              stay: W.zone ? natural : null
             }, dt) === "pulse") puffSpores(e);
             const S = e.je;
             if (!p.dead && e.touch <= 0 && dist < 180) {
@@ -14472,7 +14497,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           flashes[i].t += dt;
           if (flashes[i].t > 0.25) flashes.splice(i, 1);
         }
-        best = Math.max(best, Math.round((start.y - p.y) / 10));
+        best = Math.max(best, Math.round((W.start.y - p.y) / 10));
         torchT += dt;
         flickN += (Math.random() - 0.5) * 2.6 * dt;
         flickN *= 0.94;
@@ -14516,7 +14541,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         portalAcc += dt;
         while (portalAcc > 0.05) {
           portalAcc -= 0.05;
-          const ex = portal.x + portal.w / 2, ey = portal.y + portal.h / 2;
+          const ex = W.portal.x + W.portal.w / 2, ey = W.portal.y + W.portal.h / 2;
           if (Math.abs(ey - p.y) < 500) {
             const a = Math.random() * 6.28, rr2 = 30 + Math.random() * 38;
             const life = 1.4 + Math.random() * 0.8;
@@ -14536,14 +14561,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               c: Math.random() < 0.4 ? "#c8ffe4" : COL.portal
             });
           }
-          if (Math.abs(arrival.y - p.y) < 500) {
+          if (Math.abs(W.arrival.y - p.y) < 500) {
             const a = Math.random() * 6.28, sp = 10 + Math.random() * 16;
             motes.push({
               kind: "out",
-              x: arrival.x + (Math.random() - 0.5) * 12,
-              y: arrival.y + (Math.random() - 0.5) * 18,
-              ox: arrival.x,
-              oy: arrival.y,
+              x: W.arrival.x + (Math.random() - 0.5) * 12,
+              y: W.arrival.y + (Math.random() - 0.5) * 18,
+              ox: W.arrival.x,
+              oy: W.arrival.y,
               vx: Math.cos(a) * sp,
               vy: Math.sin(a) * sp - 4,
               life: 4,
@@ -14618,7 +14643,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.imageSmoothingEnabled = false;
-        ctx.fillStyle = "rgb(" + themeFor(floor).bg.join(",") + ")";
+        ctx.fillStyle = "rgb(" + themeFor(W.floor).bg.join(",") + ")";
         ctx.fillRect(0, 0, c.width, c.height);
         ctx.setTransform(s, 0, 0, s, -Math.round(camX * s), -Math.round(camY * s));
         const PARALLAX = 0.8;
@@ -14639,7 +14664,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.textAlign = "center";
           ctx.fillText("SHOP", WW / 2, SHOP_Y + 14);
           const wallBot = SHOP_FLOOR * CELL, wallH = wallBot - SHOP_Y;
-          const label = "FLOOR " + floor;
+          const label = "FLOOR " + W.floor;
           ctx.fillStyle = "rgba(255,255,255,0.07)";
           ctx.font = "800 " + Math.round(wallH * 0.62) + "px system-ui, sans-serif";
           ctx.textBaseline = "middle";
@@ -14673,7 +14698,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             ctx.fill();
           }
         }
-        const TH = themeFor(floor);
+        const TH = themeFor(W.floor);
         const onView = (x, y, m) => x > camX - m && x < camX + vw + m && y > camY - m && y < camY + vh + m;
         for (const pr of props)
           if (pr.x + pr.r > camX - 70 && pr.x + pr.l < camX + vw + 70 && pr.y + pr.b > camY - 90 && pr.y + pr.t0 < camY + vh + 90)
@@ -14728,20 +14753,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         ctx.globalAlpha = 1;
         const pulse = 0.55 + 0.25 * Math.sin(time * 3);
-        const pcxE = portal.x + portal.w / 2, pcyE = portal.y + portal.h / 2;
+        const pcxE = W.portal.x + W.portal.w / 2, pcyE = W.portal.y + W.portal.h / 2;
         ctx.globalAlpha = pulse * 0.35;
         ctx.fillStyle = COL.portal;
         ctx.beginPath();
-        ctx.ellipse(pcxE, pcyE, portal.w, portal.h * 0.75, 0, 0, Math.PI * 2);
+        ctx.ellipse(pcxE, pcyE, W.portal.w, W.portal.h * 0.75, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = pulse;
         ctx.beginPath();
-        ctx.ellipse(pcxE, pcyE, portal.w / 2, portal.h / 2, 0, 0, Math.PI * 2);
+        ctx.ellipse(pcxE, pcyE, W.portal.w / 2, W.portal.h / 2, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 0.9;
         ctx.fillStyle = "#d8fff0";
         ctx.beginPath();
-        ctx.ellipse(pcxE, pcyE, portal.w * 0.22, portal.h * 0.26, 0, 0, Math.PI * 2);
+        ctx.ellipse(pcxE, pcyE, W.portal.w * 0.22, W.portal.h * 0.26, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 0.6;
         ctx.strokeStyle = "#c8ffe4";
@@ -14749,7 +14774,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.setLineDash([3, 5]);
         ctx.lineDashOffset = time * 12;
         ctx.beginPath();
-        ctx.ellipse(pcxE, pcyE, portal.w * 0.62, portal.h * 0.6, 0, 0, Math.PI * 2);
+        ctx.ellipse(pcxE, pcyE, W.portal.w * 0.62, W.portal.h * 0.6, 0, 0, Math.PI * 2);
         ctx.stroke();
         ctx.setLineDash([]);
         ctx.globalAlpha = 1;
@@ -15394,32 +15419,32 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.stroke();
         }
         ctx.globalAlpha = 1;
-        if (arrival.y < camY + vh + 40 && arrival.y > camY - 40) {
+        if (W.arrival.y < camY + vh + 40 && W.arrival.y > camY - 40) {
           const sway = 0.5 + 0.18 * Math.sin(time * 1.6);
           ctx.fillStyle = "#4a4550";
-          ctx.fillRect(arrival.x - 16, arrival.y + 12, 32, 5);
+          ctx.fillRect(W.arrival.x - 16, W.arrival.y + 12, 32, 5);
           ctx.globalAlpha = 0.22 * sway;
           ctx.fillStyle = COL.enemy;
           ctx.beginPath();
-          ctx.ellipse(arrival.x, arrival.y, 17, 21, 0, 0, Math.PI * 2);
+          ctx.ellipse(W.arrival.x, W.arrival.y, 17, 21, 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.globalAlpha = 0.5 * sway;
           ctx.beginPath();
-          ctx.ellipse(arrival.x, arrival.y, 10, 14, 0, 0, Math.PI * 2);
+          ctx.ellipse(W.arrival.x, W.arrival.y, 10, 14, 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.globalAlpha = 1;
           ctx.strokeStyle = "#6c6480";
           ctx.lineWidth = 2.5;
           ctx.beginPath();
-          ctx.ellipse(arrival.x, arrival.y, 13, 17, 0, 0, Math.PI * 2);
+          ctx.ellipse(W.arrival.x, W.arrival.y, 13, 17, 0, 0, Math.PI * 2);
           ctx.stroke();
           ctx.fillStyle = "rgba(233,236,242,0.34)";
           ctx.font = "600 7px system-ui, sans-serif";
           ctx.textAlign = "center";
-          ctx.fillText("WAY IN", arrival.x, arrival.y - 22);
+          ctx.fillText("WAY IN", W.arrival.x, W.arrival.y - 22);
           ctx.textAlign = "left";
         }
-        for (const it of stock) {
+        for (const it of W.stock) {
           if (it.y > camY + vh + 40 || it.y < camY - 40) continue;
           const bob = Math.sin(time * 2 + it.x) * 2;
           const floorY = SHOP_FLOOR * CELL;
@@ -15529,7 +15554,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             ctx.textBaseline = "alphabetic";
           }
         }
-        for (const r of rooms) {
+        for (const r of W.rooms) {
           if (r.taken) continue;
           if (r.y > camY + vh + 40 || r.y < camY - 40 || r.x < camX - 40 || r.x > camX + vw + 40) continue;
           const bob = Math.sin(time * 2 + r.x) * 2.5;
@@ -15816,7 +15841,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.globalCompositeOperation = "lighter";
         const gl = clamp(0.82 + glowN + 0.08 * Math.sin(time * 23) + 0.06 * Math.sin(time * 37), 0.5, 1.1);
         const scOn = (sc) => !(sc.y > camY + vh + 30 || sc.y < camY - 30 || sc.x < camX - 30 || sc.x > camX + vw + 30) && fogLit(sc.x, sc.y);
-        for (const sc of sconces) {
+        for (const sc of W.sconces) {
           if (!scOn(sc)) continue;
           const sg = 0.85 + 0.15 * Math.sin(time * 11 + sc.ph) * Math.sin(time * 5.3 + sc.ph);
           glowAt(ctx, sc.x, sc.y - 6, 34, 0.16 * sg, "255,140,50");
@@ -15874,7 +15899,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           glowAt(ctx, gfx + leanX * 0.5, gfy + leanY * 0.5, 12, 0.5 * gl, "255,190,90");
         }
         ctx.globalCompositeOperation = "source-over";
-        for (const sc of sconces) if (scOn(sc)) drawSconce(ctx, sc.x, sc.y, time, sc.ph);
+        for (const sc of W.sconces) if (scOn(sc)) drawSconce(ctx, sc.x, sc.y, time, sc.ph);
         if (RPV) return;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         const cw = c.width / dpr;
@@ -15961,7 +15986,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.fillStyle = COL.text;
           ctx.globalAlpha = Math.min(1, 3 - levelT);
           ctx.font = "700 22px system-ui, sans-serif";
-          ctx.fillText(themeFor(floor).name, cw / 2, 196);
+          ctx.fillText(themeFor(W.floor).name, cw / 2, 196);
           ctx.font = "500 14px system-ui, sans-serif";
           ctx.fillText("Find the green exit at the top", cw / 2, 218);
           ctx.fillText("Buy and fit mods here, then climb", cw / 2, 236);
@@ -16002,8 +16027,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         if (input.current.mapOpen) {
           mini32.fill(0);
-          for (let k2 = 0; k2 < miniEdgeIdx.length; k2++) {
-            const i = miniEdgeIdx[k2];
+          for (let k2 = 0; k2 < W.miniEdgeIdx.length; k2++) {
+            const i = W.miniEdgeIdx[k2];
             const tx = i % MMW * MINI_D, ty = (i / MMW | 0) * MINI_D;
             const fi = (ty / FOG | 0) * FW + (tx / FOG | 0);
             if (seen[fi]) mini32[i] = 3875536895;
@@ -16021,7 +16046,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           const mX = (x) => mx0 + x / wW * mw, mY = (y) => my0 + y / wH * mh;
           ctx.strokeStyle = "#ffd23c";
           ctx.lineWidth = 1.5;
-          for (const r of rooms) {
+          for (const r of W.rooms) {
             if (!roomSeen(r)) continue;
             const x0 = mX(r.x - ROOM_HW), y0 = mY(r.y - ROOM_HH), x1 = mX(r.x + ROOM_HW), y1 = mY(r.y + ROOM_HH);
             ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);

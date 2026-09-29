@@ -12,5 +12,20 @@ export function makeWorld() {
     // rat burrows (a mask over each nest's room and tunnel), and the rock's change count
     // (the rats' way-finding fields rebuild when it moves; see ratSolid / navFor)
     burrow: null, terrainV: 0,
+
+    // ---- the floor's layout (enterLevel sets all of these) ----
+    floor: 1,
+    start: undefined, portal: undefined, arrival: undefined,   // where you come in, the way out
+    stock: undefined,               // the shop's plinths
+    zone: null,                     // built-up vs natural, per terrain pixel (floor 1)
+    rooms: [],                      // the perk room and the heart room
+    sconces: [],                    // wall torches: by the portals and the prizes
+    levelSeed: 0, levelOwned: [],   // what made this cave, for the autosave
+    roster: [], themeName: '',      // this floor's creatures, and its palette
+    total: undefined,               // how many creatures the floor started with
+    miniEdgeIdx: [],                // the map's wall-outline cells
+    matterProps: [],                // the dark matter props (their hum)
+    ambKinds: [],                   // the theme's ambience particle kinds
+    plantW: 255,                    // the jellies' plant glow: this floor's white point
   };
 }

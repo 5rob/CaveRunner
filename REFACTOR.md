@@ -355,7 +355,7 @@ What the code says about this phase (checked at the end of Phase 2):
       `makeWorld()` by hand; fix the same names in `tests/build.js`'s hook text; then
       `node tests/determinism.js` (SAME), logic, smoke.
   - [x] terrain: `mat`, `img`, `dimg`, `ore`, `burrow`, `terrainV` (first: the five inner `W` locals renamed, see the map)
-  - [ ] level layout: `start`, `portal`, `arrival`, `stock`, `rooms`, `zone`, `sconces`, `floor`, `levelSeed`, `levelOwned`, `roster`, `themeName`, `total`, `miniEdgeIdx`, `matterProps`, `ambKinds`, `plantW`
+  - [x] level layout: `start`, `portal`, `arrival`, `stock`, `rooms`, `zone`, `sconces`, `floor`, `levelSeed`, `levelOwned`, `roster`, `themeName`, `total`, `miniEdgeIdx`, `matterProps`, `ambKinds`, `plantW`
   - [ ] the swapped lists: `enemies`, `pickups`, `props`
   - [ ] fog: `seen`, `deepFog`
   - [ ] fire: `fire`, `firePlants`, `fireArches`, `fireCarts`, `firePropN`, `firePropLast`, `fireLoop`, `fireN`, `fireVis`
@@ -682,3 +682,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Release v98 | Full suite on a snapshot of the v98 commit: only `jelly` spit failed (passed alone on the 3rd run, as on v96). `tools/move.js` deleted (D10). `src/version.js` → v98, merged `refactor` → `main`, pushed. CI run 36542142525 green, `version.txt` = v98; `main` merged back into `refactor`. | logic 33/33; browser 44/44 after re-runs |
 | 2026-09-29 | Phase 3, P3.1 | **Game map** written (from a scope-aware pass over the closure). Determinism probe built and kept: `tests/determinism.js` (D14), stable 5/5 and catches a one-number change. Where `W` stops is D15. No code changes. | probe SAME |
 | 2026-09-29 | Phase 3, P3.2 (1) | `game/world.js` `makeWorld()`; `const W = makeWorld()` first in the effect. Five inner locals named `W` renamed (`wit`, `ln`, `ar`). Terrain group to `W` with the new `tools/world.js` (65 references); hook text in `tests/build.js` follows. `W` keeps its name in the bundle. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 3, P3.2 (2) | Level layout group to `W` (17 names, 129 references). `tools/world.js --drop` now takes the old declarators out too and prints their starting values. | probe SAME, logic 33/33, smoke ok |

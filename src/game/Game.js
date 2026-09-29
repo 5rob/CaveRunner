@@ -106,22 +106,17 @@ export function Game({ input }) {
     const mctx = miniC.getContext('2d');
     const miniImg = new ImageData(MMW, MMH);
     const mini32 = new Uint32Array(miniImg.data.buffer);
-    let miniEdgeIdx = [];
 
-    let start, portal, enemies, pickups, stock, arrival, total, floor = 1, zone = null;
-    const natural = (x, y) => !builtAt(zone, x, y);      // jellies keep to the natural zones
+    let enemies, pickups;
+    const natural = (x, y) => !builtAt(W.zone, x, y);      // jellies keep to the natural zones
     let oreBank = 0;                                 // the loose change from gold seams dug out
-    let levelSeed = 0, levelOwned = [];              // what made this cave, for the autosave
     // sound: the jetpack's roar, each live Black Hole's drone, the low-health heartbeat
     let jetLoop = null, beatT = 0, wasEmpty = false;
     const jetSt = { cut: 0, onT: 0, start: false };   // the jet's cough clock and how long it's been held
     const bhLoops = new Map();
     const plantsNow = new Set(), rustle = { t: 0 };  // the plants you're brushing, and the rustle pause
-    let portalLoop = null, matterLoop = null, matterProps = [], wasJet = false, stepT = 0, lastNear = '';
+    let portalLoop = null, matterLoop = null, wasJet = false, stepT = 0, lastNear = '';
     let plantsLast = new Set();
-    let rooms = [];                                  // the perk room and the heart room
-    let sconces = [];                                // wall torches: by the portals and the prizes
-    let roster = [], themeName = '';                 // this floor's creatures, and its palette
 
     const p = { x: 0, y: 0, vx: 0, vy: 0, onGround: false, face: 1, jet: 0,
       fuel: 1, empty: false, sput: false, flame: 0, cough: 0, hp: PLAYER_HP, hitT: 0, dead: false, kick: 0,
@@ -138,8 +133,8 @@ export function Game({ input }) {
     // ---- level decoration (see DECOR): the props, the decoration layer, their particles,
     // the theme's ambience, spore clouds and noise rings. zfx is what the props did to you
     // this frame (slowed, slick, holding a vine, gravity flipped), read by next frame's steering.
-    let props = [], ambKinds = [];
-    let plantW = 255, pgArt = null, pgC = null, pgCtx = null;   // the jellies' plant glow (plantGlow)
+    let props = [];
+    let pgArt = null, pgC = null, pgCtx = null;   // the jellies' plant glow (plantGlow)
     const decoC = document.createElement('canvas');
     decoC.width = CW; decoC.height = CH;
     const dctx = decoC.getContext('2d');
@@ -350,9 +345,9 @@ export function Game({ input }) {
     // what was already taken, sold and killed stripped back out of it
     function enterLevel(back) {
       refreshBag();
-      levelSeed = back ? back.seed : 1 + Math.floor(Math.random() * 2147483000);
-      levelOwned = back ? back.owned : (input.current.loadout.perks || []).slice();
-      const level = makeLevel(levelSeed, floor, levelOwned);
+      W.levelSeed = back ? back.seed : 1 + Math.floor(Math.random() * 2147483000);
+      W.levelOwned = back ? back.owned : (input.current.loadout.perks || []).slice();
+      const level = makeLevel(W.levelSeed, W.floor, W.levelOwned);
       level.enemies.forEach((e, i) => { e.sid = i; });
       if (back) {
         if (back.alive) { const live = new Set(back.alive); level.enemies = level.enemies.filter(e => live.has(e.sid)); }
@@ -364,7 +359,7 @@ export function Game({ input }) {
       // minimap outlines for this floor: scan the real terrain in MINI_D x MINI_D blocks;
       // a block is an outline if a wall runs through it (it holds both rock and open), which
       // traces the cave walls continuously at a much finer grain than the fog grid.
-      miniEdgeIdx = [];
+      W.miniEdgeIdx = [];
       for (let my = 0; my < MMH; my++) for (let mx = 0; mx < MMW; mx++) {
         let solid = 0, open = 0;
         for (let dy = 0; dy < MINI_D; dy++) {
@@ -376,28 +371,28 @@ export function Game({ input }) {
             if (W.mat[ty * CW + tx]) solid++; else open++;
           }
         }
-        if (solid && open) miniEdgeIdx.push(my * MMW + mx);
+        if (solid && open) W.miniEdgeIdx.push(my * MMW + mx);
       }
-      start = level.start; portal = level.portal; arrival = level.arrival;
-      enemies = level.enemies; pickups = level.pickups; stock = level.stock;
-      rooms = level.rooms || []; zone = level.zone || null;
-      props = level.props || []; ambKinds = level.amb || []; W.dimg = level.dimg;
-      plantW = plantWhite(W.img.data, W.dimg && W.dimg.data);    // the jellies' plant glow keys off this
+      W.start = level.start; W.portal = level.portal; W.arrival = level.arrival;
+      enemies = level.enemies; pickups = level.pickups; W.stock = level.stock;
+      W.rooms = level.rooms || []; W.zone = level.zone || null;
+      props = level.props || []; W.ambKinds = level.amb || []; W.dimg = level.dimg;
+      W.plantW = plantWhite(W.img.data, W.dimg && W.dimg.data);    // the jellies' plant glow keys off this
       dctx.putImageData(W.dimg, 0, 0);
       dparts.length = amb.length = clouds.length = rings.length = devils.length = 0;
       zfx = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
       {
-        const pcx0 = portal.x + portal.w / 2, pcy0 = portal.y + portal.h / 2;
-        sconces = [[pcx0 - 26, pcy0 - 2], [pcx0 + 26, pcy0 - 2],
-          [arrival.x - 26, arrival.y - 2], [arrival.x + 26, arrival.y - 2]];
-        for (const r of rooms) sconces.push([r.x - 28, r.y - 2], [r.x + 28, r.y - 2]);
-        sconces = sconces.map(([x, y], i) => ({ x, y, ph: i * 1.7 }));
+        const pcx0 = W.portal.x + W.portal.w / 2, pcy0 = W.portal.y + W.portal.h / 2;
+        W.sconces = [[pcx0 - 26, pcy0 - 2], [pcx0 + 26, pcy0 - 2],
+          [W.arrival.x - 26, W.arrival.y - 2], [W.arrival.x + 26, W.arrival.y - 2]];
+        for (const r of W.rooms) W.sconces.push([r.x - 28, r.y - 2], [r.x + 28, r.y - 2]);
+        W.sconces = W.sconces.map(([x, y], i) => ({ x, y, ph: i * 1.7 }));
       }
-      roster = level.roster; themeName = level.theme;
-      SFX.setAmbience(themeName);
+      W.roster = level.roster; W.themeName = level.theme;
+      SFX.setAmbience(W.themeName);
       for (const h of bhLoops.values()) h.stop();
       bhLoops.clear();
-      total = enemies.length;
+      W.total = enemies.length;
       ghost = pb.ghost ? { x: level.start.x, y: level.start.y, cd: 0 } : null;
       burns.length = 0;
       webs.length = silk.length = strings.length = 0;
@@ -419,7 +414,7 @@ export function Game({ input }) {
       p.burn = 0; p.burnAcc = 0;
       tctx.putImageData(W.img, 0, 0);
       bgctx.putImageData(level.bgImg, 0, 0);
-      p.x = start.x; p.y = start.y; p.vx = 0; p.vy = 0;
+      p.x = W.start.x; p.y = W.start.y; p.vx = 0; p.vy = 0;
       p.fuel = 1; p.empty = false; p.kick = 0;
       bullets.length = enemyShots.length = smoke.length = 0;
       sparks.length = flashes.length = coins.length = arcs.length = 0;
@@ -430,9 +425,9 @@ export function Game({ input }) {
       if (pb.seeAll) seen.fill(2);            // All-Seeing Eye lights the whole floor
       paintFog();                             // otherwise every floor starts dark again
       recReset();                             // the death replay starts afresh each floor
-      matterProps = props.filter(pr => pr.k === 'matter');
+      W.matterProps = props.filter(pr => pr.k === 'matter');
       // out of the way-in, a moment after the way-out's whump
-      setTimeout(() => SFX.fx('portalOut', arrival.x, arrival.y), 260);
+      setTimeout(() => SFX.fx('portalOut', W.arrival.x, W.arrival.y), 260);
     }
 
     // ---- autosave: the run as it stands, written every couple of seconds and whenever the
@@ -442,10 +437,10 @@ export function Game({ input }) {
       const pk = pickups.filter(q => !q.taken && (q.kind === 'mod' || q.kind === 'gun'))
         .map(q => (q.kind === 'mod' ? { kind: 'mod', id: q.id, x: q.x, y: q.y, t: q.t }
           : { kind: 'gun', gun: q.gun, x: q.x, y: q.y, t: q.t, old: !!q.old }));
-      const data = { ver: VERSION, floor, hp: p.hp, loadout: input.current.loadout,
-        level: { seed: levelSeed, owned: levelOwned, alive: enemies.map(e => e.sid),
-          sold: stock.map((it, i) => (it.sold ? i : -1)).filter(i => i >= 0),
-          rooms: rooms.map((r, i) => (r.taken ? i : -1)).filter(i => i >= 0),
+      const data = { ver: VERSION, floor: W.floor, hp: p.hp, loadout: input.current.loadout,
+        level: { seed: W.levelSeed, owned: W.levelOwned, alive: enemies.map(e => e.sid),
+          sold: W.stock.map((it, i) => (it.sold ? i : -1)).filter(i => i >= 0),
+          rooms: W.rooms.map((r, i) => (r.taken ? i : -1)).filter(i => i >= 0),
           pickups: pk } };
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (_) {}
     }
@@ -486,7 +481,7 @@ export function Game({ input }) {
       const sv = input.current.saved;
       input.current.saved = null;
       if (sv) {
-        floor = sv.floor;
+        W.floor = sv.floor;
         enterLevel(sv.level);
         if (sv.hp) p.hp = Math.min(sv.hp, maxHp());
       } else enterLevel();
@@ -669,7 +664,7 @@ export function Game({ input }) {
     }
     // a new rat, down in nest `n`'s room, on its way out up the tunnel
     function spawnRat(n) {
-      const k = enemyFor('rotta', floor), P = n.nest.path, m = n.nest.mouth;
+      const k = enemyFor('rotta', W.floor), P = n.nest.path, m = n.nest.mouth;
       const e = { x: P[0].x, y: P[0].y, ty: P[0].y, r: k.r, phase: Math.random() * 6.28, hp: 1, hpMax: 1,
         cd: 0, flash: 0, lx: 0, ly: 1, hx: m.x, hy: m.y, tgt: null, rest: 0, k, touch: 0, charge: 0,
         home: n, path: P, carry: 0 };
@@ -816,7 +811,7 @@ export function Game({ input }) {
     // a gold seam cut or blown open: bits of gold tumble out, as much as the rock you took.
     // Fractions carry over in oreBank, so nibbling a seam with a drill pays the same as a blast.
     function dropOre(x, y, n) {
-      oreBank += n * ORE_GOLD * (1 + (floor - 1) * 0.3) * pb.gold;
+      oreBank += n * ORE_GOLD * (1 + (W.floor - 1) * 0.3) * pb.gold;
       let bits = Math.min(12, Math.floor(oreBank / 2));
       if (!bits) return;
       const each = Math.floor(oreBank / bits);
@@ -1579,7 +1574,7 @@ export function Game({ input }) {
     const MATERIAL = { icicle: 'ice', geode: 'crystal', salt: 'salt', bone: 'bone', obsidian: 'glass', shard: 'glass' };
     function shatter(pr, n) {
       SFX.fx('shatter', pr.x, pr.y + (pr.t0 + pr.b) / 2, MATERIAL[pr.st] || 'stone');
-      burst(pr.x, pr.y + (pr.t0 + pr.b) / 2, n || 10, propCol(pr, themeFor(floor)));
+      burst(pr.x, pr.y + (pr.t0 + pr.b) / 2, n || 10, propCol(pr, themeFor(W.floor)));
       pr.gone = true;
     }
     function blowProp(pr) {
@@ -1772,7 +1767,7 @@ export function Game({ input }) {
             if (me && p.vy >= 0 && Math.abs(pcx - pr.x) < 11 && p.y + PH > pr.y - 12 && p.y + PH < pr.y + 2) {
               p.vy = -680; p.onGround = false; pr.sq = 0.3;
               SFX.fx('shroom', pr.x, pr.y);
-              burst(pr.x, pr.y - 8, 5, propCol(pr, themeFor(floor)));
+              burst(pr.x, pr.y - 8, 5, propCol(pr, themeFor(W.floor)));
             }
             break;
           case 'zone': {
@@ -1920,7 +1915,7 @@ export function Game({ input }) {
     // one of the Luminescent Spores that drift about the green floors. The jellies puff the
     // very same thing out of their rims (puffSpores), so it is made in one place
     const spore = (x, y, r) => ({ kind: 'spores', x, y, vx: (r - 0.5) * 8, vy: 0, wob: r * 9, life: 5 + r * 3, max: 8,
-      c: rgbA(themeFor(floor).moss[1]), s: 1.3, glow: 1 });
+      c: rgbA(themeFor(W.floor).moss[1]), s: 1.3, glow: 1 });
     // a jelly's pulse blows a puff of spores out of its rim, back the way it pushes; drag
     // (kx, ky fading at kd) settles them, then they drift like any other spore
     function puffSpores(e) {
@@ -1978,7 +1973,7 @@ export function Game({ input }) {
         A[o] = r; A[o + 1] = g; A[o + 2] = b; A[o + 3] = a;
       }
       const out = new ImageData(w, h);
-      if (!plantGlowFill(out.data, A, w, h, { ox: x0w, oy: y0w, px: CELL, cx: e.x, cy: e.y, reach, white: plantW,
+      if (!plantGlowFill(out.data, A, w, h, { ox: x0w, oy: y0w, px: CELL, cx: e.x, cy: e.y, reach, white: W.plantW,
         top: kru('jePlantTop', u.plant) / 100, strength, t: time * kru('jePlantTwinkle', u.plant),
         size: kru('jePlantSize', u.plant), rgb: hexArr(jcol('jeColGlow', u.col)), lit: seenAt })) return;
       if (pgGlow.width < w || pgGlow.height < h) { pgGlow.width = Math.max(pgGlow.width, w); pgGlow.height = Math.max(pgGlow.height, h); }
@@ -1990,8 +1985,8 @@ export function Game({ input }) {
     }
     function stepAmbience(dt) {
       const x0 = camX - 30, y0 = camY - 30, w = viewW + 60, h = viewH + 60;
-      const T = themeFor(floor);
-      for (const kind of ambKinds) {
+      const T = themeFor(W.floor);
+      for (const kind of W.ambKinds) {
         if (kind === 'devils') {
           if (devils.length < 2 && Math.random() < dt * 0.4) {
             let x = x0 + Math.random() * w, y = y0 + Math.random() * h, k = 0;
@@ -2010,7 +2005,7 @@ export function Game({ input }) {
           const r = Math.random();
           if (kind === 'spores') amb.push(spore(x, y, r));
           else if (kind === 'frost') {
-            const dir = floor % 2 ? 1 : -1;
+            const dir = W.floor % 2 ? 1 : -1;
             amb.push({ kind, x, y, vx: dir * (100 + r * 60), vy: (r - 0.5) * 10, life: 0.9 + r * 0.5, max: 1.4, c: 'rgba(215,238,255,0.5)', s: 1, streak: 10 });
           } else if (kind === 'embers') amb.push({ kind, x, y, vx: 0, vy: -20 - r * 30, wob: r * 9, life: 3 + r * 2, max: 5, c: r < 0.5 ? '#ffb050' : '#ff7a2a', s: 1.2, glow: 1 });
           else if (kind === 'motes') amb.push({ kind, x, y, vx: (r - 0.5) * 6, vy: (Math.random() - 0.5) * 4, wob: r * 9, life: 6 + r * 3, max: 9, c: 'rgba(235,225,200,0.8)', s: 1 });
@@ -2045,7 +2040,7 @@ export function Game({ input }) {
       // a toast raised while the game was paused (picking a mod up, say) waits here,
       // because nothing runs on a paused frame
       if (input.current.pendingToast) { toast(input.current.pendingToast); input.current.pendingToast = null; }
-      input.current.floor = floor;
+      input.current.floor = W.floor;
       if (input.current.newCave) {                // Dev → New cave: this floor again, freshly rolled
         input.current.newCave = false;
         enterLevel();
@@ -2196,7 +2191,7 @@ export function Game({ input }) {
       if (boxHit(p.x, p.y)) {
         for (let up = 1; up <= 40; up++) if (!boxHit(p.x, p.y - up)) { p.y -= up; break; }
       }
-      if (p.y > WH) { p.x = start.x; p.y = start.y; p.vx = 0; p.vy = 0; }
+      if (p.y > WH) { p.x = W.start.x; p.y = W.start.y; p.vx = 0; p.vy = 0; }
       p.onGround = boxHit(p.x, p.y + 0.5);
       // footsteps and landings, in the sound of whatever you're standing on
       if (!p.dead) {
@@ -2207,13 +2202,13 @@ export function Game({ input }) {
       }
 
       const pcx = p.x + PW / 2, pcy = p.y + PH / 2;
-      if (!p.dead && pcx > portal.x && pcx < portal.x + portal.w &&
-          pcy > portal.y && pcy < portal.y + portal.h) {
-        floor++;
+      if (!p.dead && pcx > W.portal.x && pcx < W.portal.x + W.portal.w &&
+          pcy > W.portal.y && pcy < W.portal.y + W.portal.h) {
+        W.floor++;
         enterLevel();
         saveRun();
         SFX.fx('portalIn');
-        toast('Floor ' + floor);
+        toast('Floor ' + W.floor);
         input.current.notify();
         return;
       }
@@ -2465,10 +2460,10 @@ export function Game({ input }) {
       for (const [b, h] of bhLoops) if (!bullets.includes(b)) { h.stop(); bhLoops.delete(b); }
       SFX.ambTick(dt);
       if (!portalLoop && SFX.ready) portalLoop = SFX.loop('portal');
-      if (portalLoop) portalLoop.set(0.55, portal.x + portal.w / 2, portal.y + portal.h / 2);
-      if (matterProps.length) {
+      if (portalLoop) portalLoop.set(0.55, W.portal.x + W.portal.w / 2, W.portal.y + W.portal.h / 2);
+      if (W.matterProps.length) {
         let best = null, bd = 300;
-        for (const pr of matterProps) { const d = Math.hypot(pr.x - pcx, pr.y - pcy); if (!pr.gone && d < bd) { bd = d; best = pr; } }
+        for (const pr of W.matterProps) { const d = Math.hypot(pr.x - pcx, pr.y - pcy); if (!pr.gone && d < bd) { bd = d; best = pr; } }
         if (best && !matterLoop && SFX.ready) matterLoop = SFX.loop('matter');
         if (matterLoop && best) matterLoop.set(0.6, best.x, best.y);
       }
@@ -2606,7 +2601,7 @@ export function Game({ input }) {
       // ---- what you can interact with: a shop plinth, or something on the ground ----
       const inShop = p.y + PH > SHOP_Y;
       let near = null;                      // { src: 'shop', it } or { src: 'pickup', q }
-      for (const it of stock) {
+      for (const it of W.stock) {
         if (it.sold) continue;
         if (Math.abs(it.x - pcx) > 15 || Math.abs(it.y - pcy) > 22) continue;
         near = { src: 'shop', it };
@@ -2619,15 +2614,15 @@ export function Game({ input }) {
         break;
       }
       // the hidden rooms' prizes: a perk on its altar, or the +25 heart
-      if (!near) for (const r of rooms) {
+      if (!near) for (const r of W.rooms) {
         if (r.taken) continue;
         if (Math.abs(r.x - pcx) > 20 || Math.abs(r.y - pcy) > 26) continue;
         near = { src: 'room', r };
         break;
       }
       const nearKey = !near ? -1 : near.src + ':' +
-        (near.src === 'shop' ? stock.indexOf(near.it)
-          : near.src === 'room' ? rooms.indexOf(near.r) : pickups.indexOf(near.q));
+        (near.src === 'shop' ? W.stock.indexOf(near.it)
+          : near.src === 'room' ? W.rooms.indexOf(near.r) : pickups.indexOf(near.q));
       const label = !near ? null
         : near.src === 'shop'
           ? (near.it.kind === 'heal' ? { text: 'Full heal', price: 0, can: p.hp < MHP }
@@ -2818,7 +2813,7 @@ export function Game({ input }) {
           // swims in pulses (jellyStep); spits when its head is lined up on you, in range
           const cold = e.chill && e.chill < 1 ? e.chill : 1;
           if (jellyStep(e, { solidCell, hunting, goal: { x: pcx, y: pcy }, rnd: Math.random,
-            speedMul: cold, rangeMul: sees, stay: zone ? natural : null }, dt) === 'pulse') puffSpores(e);
+            speedMul: cold, rangeMul: sees, stay: W.zone ? natural : null }, dt) === 'pulse') puffSpores(e);
           const S = e.je;
           // brush its tentacles and you're stung, hunting or not (same sting knobs as the bell)
           if (!p.dead && e.touch <= 0 && dist < 180) {
@@ -3052,7 +3047,7 @@ export function Game({ input }) {
         if (flashes[i].t > 0.25) flashes.splice(i, 1);
       }
 
-      best = Math.max(best, Math.round((start.y - p.y) / 10));
+      best = Math.max(best, Math.round((W.start.y - p.y) / 10));
 
       // ---- the torch ----
       // A random walk with two sines on top, which is what makes a flame gutter rather
@@ -3093,7 +3088,7 @@ export function Game({ input }) {
       portalAcc += dt;
       while (portalAcc > 0.05) {
         portalAcc -= 0.05;
-        const ex = portal.x + portal.w / 2, ey = portal.y + portal.h / 2;
+        const ex = W.portal.x + W.portal.w / 2, ey = W.portal.y + W.portal.h / 2;
         if (Math.abs(ey - p.y) < 500) {        // the exit: scattered round it, drawn in
           const a = Math.random() * 6.28, rr = 30 + Math.random() * 38;
           const life = 1.4 + Math.random() * 0.8;
@@ -3101,10 +3096,10 @@ export function Game({ input }) {
             tx: ex, ty: ey, vx: 0, vy: 0, life, max: life, age: 0, ph: Math.random() * 6.28,
             s: 1 + Math.random() * 1.4, c: Math.random() < 0.4 ? '#c8ffe4' : COL.portal });
         }
-        if (Math.abs(arrival.y - p.y) < 500) { // the way in: breathed out, drifting away
+        if (Math.abs(W.arrival.y - p.y) < 500) { // the way in: breathed out, drifting away
           const a = Math.random() * 6.28, sp = 10 + Math.random() * 16;
-          motes.push({ kind: 'out', x: arrival.x + (Math.random() - 0.5) * 12,
-            y: arrival.y + (Math.random() - 0.5) * 18, ox: arrival.x, oy: arrival.y,
+          motes.push({ kind: 'out', x: W.arrival.x + (Math.random() - 0.5) * 12,
+            y: W.arrival.y + (Math.random() - 0.5) * 18, ox: W.arrival.x, oy: W.arrival.y,
             vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 4, life: 4, max: 4, age: 0,
             ph: Math.random() * 6.28, fade: 34 + Math.random() * 18,
             s: 1 + Math.random() * 1.3, c: Math.random() < 0.4 ? '#e6d4ff' : COL.enemy });
@@ -3165,7 +3160,7 @@ export function Game({ input }) {
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.imageSmoothingEnabled = false;
-      ctx.fillStyle = 'rgb(' + themeFor(floor).bg.join(',') + ')';
+      ctx.fillStyle = 'rgb(' + themeFor(W.floor).bg.join(',') + ')';
       ctx.fillRect(0, 0, c.width, c.height);
       ctx.setTransform(s, 0, 0, s, -Math.round(camX * s), -Math.round(camY * s));
 
@@ -3196,7 +3191,7 @@ export function Game({ input }) {
         // rather than a label. Each glyph is placed by hand so the word spans most of
         // the wall's width no matter how many digits the floor has.
         const wallBot = SHOP_FLOOR * CELL, wallH = wallBot - SHOP_Y;
-        const label = 'FLOOR ' + floor;
+        const label = 'FLOOR ' + W.floor;
         ctx.fillStyle = 'rgba(255,255,255,0.07)';
         ctx.font = '800 ' + Math.round(wallH * 0.62) + 'px system-ui, sans-serif';
         ctx.textBaseline = 'middle';
@@ -3236,7 +3231,7 @@ export function Game({ input }) {
       }
 
       // the props (pass 3), their drips and the theme's ambience
-      const TH = themeFor(floor);
+      const TH = themeFor(W.floor);
       const onView = (x, y, m) => x > camX - m && x < camX + vw + m && y > camY - m && y < camY + vh + m;
       for (const pr of props)
         if (pr.x + pr.r > camX - 70 && pr.x + pr.l < camX + vw + 70 && pr.y + pr.b > camY - 90 && pr.y + pr.t0 < camY + vh + 90)
@@ -3279,19 +3274,19 @@ export function Game({ input }) {
 
       // exit portal: a glowing pool with a slow swirl of dashes round its rim
       const pulse = 0.55 + 0.25 * Math.sin(time * 3);
-      const pcxE = portal.x + portal.w / 2, pcyE = portal.y + portal.h / 2;
+      const pcxE = W.portal.x + W.portal.w / 2, pcyE = W.portal.y + W.portal.h / 2;
       ctx.globalAlpha = pulse * 0.35;
       ctx.fillStyle = COL.portal;
-      ctx.beginPath(); ctx.ellipse(pcxE, pcyE, portal.w, portal.h * 0.75, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(pcxE, pcyE, W.portal.w, W.portal.h * 0.75, 0, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = pulse;
-      ctx.beginPath(); ctx.ellipse(pcxE, pcyE, portal.w / 2, portal.h / 2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(pcxE, pcyE, W.portal.w / 2, W.portal.h / 2, 0, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = 0.9;
       ctx.fillStyle = '#d8fff0';
-      ctx.beginPath(); ctx.ellipse(pcxE, pcyE, portal.w * 0.22, portal.h * 0.26, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(pcxE, pcyE, W.portal.w * 0.22, W.portal.h * 0.26, 0, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = 0.6;
       ctx.strokeStyle = '#c8ffe4'; ctx.lineWidth = 1.2;
       ctx.setLineDash([3, 5]); ctx.lineDashOffset = time * 12;
-      ctx.beginPath(); ctx.ellipse(pcxE, pcyE, portal.w * 0.62, portal.h * 0.6, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(pcxE, pcyE, W.portal.w * 0.62, W.portal.h * 0.6, 0, 0, Math.PI * 2); ctx.stroke();
       ctx.setLineDash([]);
       ctx.globalAlpha = 1;
 
@@ -3669,27 +3664,27 @@ export function Game({ input }) {
       ctx.globalAlpha = 1;
 
       // the portal you arrived through: scenery only
-      if (arrival.y < camY + vh + 40 && arrival.y > camY - 40) {
+      if (W.arrival.y < camY + vh + 40 && W.arrival.y > camY - 40) {
         const sway = 0.5 + 0.18 * Math.sin(time * 1.6);
         ctx.fillStyle = '#4a4550';
-        ctx.fillRect(arrival.x - 16, arrival.y + 12, 32, 5);
+        ctx.fillRect(W.arrival.x - 16, W.arrival.y + 12, 32, 5);
         ctx.globalAlpha = 0.22 * sway;
         ctx.fillStyle = COL.enemy;
-        ctx.beginPath(); ctx.ellipse(arrival.x, arrival.y, 17, 21, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(W.arrival.x, W.arrival.y, 17, 21, 0, 0, Math.PI * 2); ctx.fill();
         ctx.globalAlpha = 0.5 * sway;
-        ctx.beginPath(); ctx.ellipse(arrival.x, arrival.y, 10, 14, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(W.arrival.x, W.arrival.y, 10, 14, 0, 0, Math.PI * 2); ctx.fill();
         ctx.globalAlpha = 1;
         ctx.strokeStyle = '#6c6480'; ctx.lineWidth = 2.5;
-        ctx.beginPath(); ctx.ellipse(arrival.x, arrival.y, 13, 17, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(W.arrival.x, W.arrival.y, 13, 17, 0, 0, Math.PI * 2); ctx.stroke();
         ctx.fillStyle = 'rgba(233,236,242,0.34)';
         ctx.font = '600 7px system-ui, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('WAY IN', arrival.x, arrival.y - 22);
+        ctx.fillText('WAY IN', W.arrival.x, W.arrival.y - 22);
         ctx.textAlign = 'left';
       }
 
       // shop stock on its plinths
-      for (const it of stock) {
+      for (const it of W.stock) {
         if (it.y > camY + vh + 40 || it.y < camY - 40) continue;
         const bob = Math.sin(time * 2 + it.x) * 2;
         // the plinth: a narrow column dropping from just under the item down to the shop
@@ -3783,7 +3778,7 @@ export function Game({ input }) {
       }
 
       // the hidden rooms' prizes on their altars: a glowing perk sigil, or the +25 heart
-      for (const r of rooms) {
+      for (const r of W.rooms) {
         if (r.taken) continue;
         if (r.y > camY + vh + 40 || r.y < camY - 40 || r.x < camX - 40 || r.x > camX + vw + 40) continue;
         const bob = Math.sin(time * 2 + r.x) * 2.5;
@@ -4047,7 +4042,7 @@ export function Game({ input }) {
       const gl = clamp(0.82 + glowN + 0.08 * Math.sin(time * 23) + 0.06 * Math.sin(time * 37), 0.5, 1.1);
       const scOn = sc => !(sc.y > camY + vh + 30 || sc.y < camY - 30 || sc.x < camX - 30 || sc.x > camX + vw + 30) &&
         fogLit(sc.x, sc.y);
-      for (const sc of sconces) {
+      for (const sc of W.sconces) {
         if (!scOn(sc)) continue;
         const sg = 0.85 + 0.15 * Math.sin(time * 11 + sc.ph) * Math.sin(time * 5.3 + sc.ph);
         glowAt(ctx, sc.x, sc.y - 6, 34, 0.16 * sg, '255,140,50');
@@ -4113,7 +4108,7 @@ export function Game({ input }) {
         glowAt(ctx, gfx + leanX * 0.5, gfy + leanY * 0.5, 12, 0.5 * gl, '255,190,90');   // the halo
       }
       ctx.globalCompositeOperation = 'source-over';
-      for (const sc of sconces) if (scOn(sc)) drawSconce(ctx, sc.x, sc.y, time, sc.ph);
+      for (const sc of W.sconces) if (scOn(sc)) drawSconce(ctx, sc.x, sc.y, time, sc.ph);
       if (RPV) return;                        // a replay frame has no HUD
 
       // ---- HUD ----
@@ -4197,7 +4192,7 @@ export function Game({ input }) {
         ctx.fillStyle = COL.text;
         ctx.globalAlpha = Math.min(1, 3 - levelT);
         ctx.font = '700 22px system-ui, sans-serif';
-        ctx.fillText(themeFor(floor).name, cw / 2, 196);
+        ctx.fillText(themeFor(W.floor).name, cw / 2, 196);
         ctx.font = '500 14px system-ui, sans-serif';
         ctx.fillText('Find the green exit at the top', cw / 2, 218);
         ctx.fillText('Buy and fit mods here, then climb', cw / 2, 236);
@@ -4239,8 +4234,8 @@ export function Game({ input }) {
       // so the walls read as continuous lines, not a scatter.
       if (input.current.mapOpen) {
         mini32.fill(0);
-        for (let k = 0; k < miniEdgeIdx.length; k++) {
-          const i = miniEdgeIdx[k];
+        for (let k = 0; k < W.miniEdgeIdx.length; k++) {
+          const i = W.miniEdgeIdx[k];
           const tx = (i % MMW) * MINI_D, ty = ((i / MMW) | 0) * MINI_D;
           const fi = ((ty / FOG) | 0) * FW + ((tx / FOG) | 0);
           if (seen[fi]) mini32[i] = 0xe6ffffff;            // white, ~0.9 alpha
@@ -4258,7 +4253,7 @@ export function Game({ input }) {
         const mX = x => mx0 + (x / wW) * mw, mY = y => my0 + (y / wH) * mh;
         // the prize rooms you've found: a yellow outline, crossed out once you've had the prize
         ctx.strokeStyle = '#ffd23c'; ctx.lineWidth = 1.5;
-        for (const r of rooms) {
+        for (const r of W.rooms) {
           if (!roomSeen(r)) continue;
           const x0 = mX(r.x - ROOM_HW), y0 = mY(r.y - ROOM_HH), x1 = mX(r.x + ROOM_HW), y1 = mY(r.y + ROOM_HH);
           ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
