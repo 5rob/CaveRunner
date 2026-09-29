@@ -1,0 +1,16 @@
+{
+  "name": "caverunner-tools",
+  "private": true,
+  "description": "Dev tools only (the build, the undefined-name check, the browser tests). The game itself has no dependencies: it is index.html.",
+  "scripts": {
+    "build": "node tools/build.js",
+    "watch": "node tools/build.js --watch",
+    "test": "node tests/run.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0",
+    "playwright-core": "^1.63.0"
+  }
+}

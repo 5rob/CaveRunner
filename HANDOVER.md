@@ -290,9 +290,8 @@ Talk briefly, iterate fast, don't over-plan. Every change works at phone width w
 
 - `node tests/run.js` — everything. `node tests/run.js logic` — the fast pure ones. A single
   suite: `node tests/run.js <name>` (e.g. `perks`, `torch`, `fog`).
-- Browser suites need these env vars (bash) or they silently skip:
-  - `CAVERUNNER_PLAYWRIGHT=C:/Users/5robm/AppData/Local/Temp/cr-pw/node_modules/playwright-core`
-  - `CAVERUNNER_CHROME="C:/Program Files/Google/Chrome/Application/chrome.exe"`
+- `npm install` once (dev tools: esbuild, eslint, playwright-core). Browser suites then find
+  playwright-core in `node_modules/` and the installed Chrome by itself; no env vars needed.
 - Do **not** run `playwright install`.
 - **Known flakes** (pass reliably in isolation, occasionally fail under full-suite load —
   re-run the single suite to confirm; all are enemy-geometry / random-seed sensitive, not

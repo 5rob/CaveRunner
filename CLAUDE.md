@@ -29,8 +29,10 @@ Their words, from the first session:
 > infrastructure, just keep it simple and focus on just what I ask for. Reduce
 > technical jargon to a minimum unless I ask about something specific.
 
-So: do the thing asked, no more. No frameworks, no bundler, no package.json for the
-game itself.
+So: do the thing asked, no more. No frameworks, no package.json for the game itself.
+The root `package.json` is **dev tooling only** (the esbuild build, the undefined-name
+check, `playwright-core` for the browser tests): run `npm install` once per checkout. The
+game still ships as one `index.html` with no dependencies.
 
 They play on a phone through the **installed Android app** (see **The Android app** below),
 so **every change has to work at phone width with touch**.
@@ -988,8 +990,9 @@ reaching into the game from the test.
 
 `tests/chromium.js` finds Playwright and a Chromium wherever this machine keeps them, so
 no suite hardcodes a path; override with `CAVERUNNER_PLAYWRIGHT` and `CAVERUNNER_CHROME`.
-The runner skips the browser suites if there's no Chromium to drive. On this environment
-it's the preinstalled one at `/opt/pw-browsers/` — don't run `playwright install`.
+The runner skips the browser suites if there's no Chromium to drive. `playwright-core` comes
+from the dev `package.json`; the browser is an installed Chrome on Windows (found at its usual
+path) or the preinstalled one at `/opt/pw-browsers/` on Linux — don't run `playwright install`.
 
 Two suites are worth knowing about: `everymod.test.js` equips and fires all 108 mods in
 the real game and checks each puts something into the world, and `smoke.test.js` plays a

@@ -4,6 +4,7 @@
 // them has to hardcode a path. Override either with an env var:
 //   CAVERUNNER_PLAYWRIGHT=/path/to/playwright-core
 //   CAVERUNNER_CHROME=/path/to/chrome
+// playwright-core is a dev dependency (npm install), so on most machines neither is needed.
 const fs = require('fs');
 const { execSync } = require('child_process');
 
@@ -23,7 +24,11 @@ function findModule() {
 function findChrome() {
   const tries = [process.env.CAVERUNNER_CHROME,
     '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-    '/usr/bin/chromium', '/usr/bin/google-chrome'];
+    '/usr/bin/chromium', '/usr/bin/google-chrome',
+    // Windows: an installed Chrome does fine (playwright-core comes from the dev package.json)
+    'C:/Program Files/Google/Chrome/Application/chrome.exe',
+    'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
+    process.env.LOCALAPPDATA && process.env.LOCALAPPDATA + '/Google/Chrome/Application/chrome.exe'];
   for (const t of tries) if (t && fs.existsSync(t)) return t;
   // any chromium- build under the shared browser directory
   const dir = process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/pw-browsers';

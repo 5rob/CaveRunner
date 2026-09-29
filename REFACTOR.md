@@ -13,7 +13,7 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 0 — done (on `refactor`, not merged). Next: Phase 1 |
+| **Current phase** | Phase 1 — in progress (on `refactor`, not merged) |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | From the start of Phase 0 until Phase 1 merges to `main` |
 | **Last green full suite** | 2026-09-29, end of Phase 0 (bar the two known flakes: `sound` portalOut, `jelly` browser) |
@@ -194,7 +194,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
 
 ### Phase 1 — split the pure code into modules
 
-- [ ] **P1.1** Add a dev-only `package.json` (esbuild, eslint) with `node_modules/` in
+- [x] **P1.1** Add a dev-only `package.json` (esbuild, eslint) with `node_modules/` in
       `.gitignore`. The game stays one file. This overrides CLAUDE.md's "no package.json"
       rule for tooling only; update that line.
 - [ ] **P1.2** Switch `tools/build.js` to **esbuild** on the still-single `src/main.js`
@@ -365,6 +365,7 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
 | D3 | Built `index.html` stays committed at the root | Android shell, CI, Pages, `serve.js` and the version check all keep working untouched |
 | D4 | `VERSION` written as a literal un-bundled line by the build | The Android shell and CI parse `VERSION = 'vNN'` with single quotes; esbuild would reprint it |
 | D5 | Logic suites go through `tests/load.js` | Suites stop caring where code lives, so each move doesn't touch 33 files |
+| D6 | The dev `package.json` also carries `playwright-core` (and `globals`, the browser-globals list ESLint needs); `tests/chromium.js` finds an installed Windows Chrome | Browser suites run after one `npm install`, with no per-session scratchpad setup or env vars |
 
 ## Found along the way
 
@@ -385,6 +386,7 @@ commit. List them here for after.
   `CAVERUNNER_CHROME` (system Chrome at `C:Program FilesGoogleChromeApplication`).
   `tests/chromium.js` only looks for Linux Chromium paths by default. P1.1's dev
   `package.json` could carry `playwright-core` so this stops being per-session.
+  **Resolved in P1.1** (D6).
 - **`jelly` browser suite is flaky on this PC**, independent of the refactor: run on the
   untouched v96 `index.html` it failed 11 checks, then 1 (the spit / drip / spore-puff
   group: the jelly never gets to spit). Same pattern on the built file. Probably timing in
@@ -401,3 +403,4 @@ commit. List them here for after.
 |---|---|---|---|
 | 2026-09-29 | — | Plan written (this doc). Nothing built yet. | — |
 | 2026-09-29 | Phase 0, P0.1–P0.10 | Branch `refactor`. `src/shell.html` + `style.css` + `main.js`; `tools/build.js` (byte-identical to v96 bar the banner; `{{VERSION}}` fills the title; `--watch`); `tests/run.js` builds first; `tests/load.js` feeds all 33 logic suites (finds top-level names by resolving every identifier; `.source` for the two text checks). CLAUDE.md updated. Not merged. | logic 33/33; browser 44/44 bar `sound` portalOut + `jelly` (both fail on v96 too) |
+| 2026-09-29 | Phase 1, P1.1 | Dev `package.json` (esbuild, eslint, globals, playwright-core), `node_modules/` already ignored. `tests/chromium.js` finds Windows Chrome; browser suites run with no env vars. | logic 33/33, smoke ok |
