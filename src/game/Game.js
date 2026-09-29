@@ -156,7 +156,7 @@ export function Game({ input }) {
           }
         }
         SFX.tick();
-        drawReplay(W, G, rv, () => draw(W, G));
+        drawReplay(W, G, rv);
       } else {
         if (!input.current.paused) { step(W, G, dt); recFrame(W, G, dt); }
         SFX.tick();

@@ -6,6 +6,7 @@ import { clamp } from '../../core/util.js';
 import {
   RP_AFTER, RP_BEFORE, RP_H, RP_HZ, RP_KEEP, RP_W, rpClone, rpCut, rpFrame, rpMerge, rpPaste
 } from '../../replay/replay.js';
+import { draw } from '../render/draw.js';
 
 // every partial put on the two terrain canvases (dig, blast, burn, paint) lands in REC.dirty:
 // Game wraps their putImageData once, as soon as G is made, before anything draws on them
@@ -118,8 +119,7 @@ export function rpTerrain(W, G, T) {
   const L = G.REC.fogLog;
   for (let n = 0; n < L.length && L[n] <= T; n += 3) G.RT.fog[L[n + 1]] = L[n + 2];
 }
-// draw: Game's draw(), handed in while it still lives in Game
-export function drawReplay(W, G, V, draw) {
+export function drawReplay(W, G, V) {
   const wit = G.input.current.witness;
   V.t = clamp(V.t, wit.t0, wit.t1);
   const F = rpFrame(G.REC.snaps, V.t);
@@ -138,7 +138,7 @@ export function drawReplay(W, G, V, draw) {
   W.ghost = F.ghost; W.time = F.time; W.flick = F.flick; W.leanX = F.leanX; W.leanY = F.leanY; W.glowN = F.glowN; W.fireN = near.fireN;
   Object.assign(W.p, F.p);
   G.RPV = V;
-  try { draw(); } finally {
+  try { draw(W, G); } finally {
     // and the live world back, exactly as it was
     G.RPV = null;
     for (const k in G.RP_ARR) { const L = G.RP_ARR[k]; L.splice(0, L.length, ...keepL[k]); }

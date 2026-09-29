@@ -13615,7 +13615,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const L = G.REC.fogLog;
     for (let n = 0; n < L.length && L[n] <= T; n += 3) G.RT.fog[L[n + 1]] = L[n + 2];
   }
-  function drawReplay(W, G, V, draw2) {
+  function drawReplay(W, G, V) {
     const wit = G.input.current.witness;
     V.t = clamp(V.t, wit.t0, wit.t1);
     const F = rpFrame(G.REC.snaps, V.t);
@@ -13671,7 +13671,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     Object.assign(W.p, F.p);
     G.RPV = V;
     try {
-      draw2();
+      draw(W, G);
     } finally {
       G.RPV = null;
       for (const k in G.RP_ARR) {
@@ -16440,7 +16440,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             }
           }
           SFX.tick();
-          drawReplay(W, G, rv, () => draw(W, G));
+          drawReplay(W, G, rv);
         } else {
           if (!input.current.paused) {
             step(W, G, dt);

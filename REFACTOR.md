@@ -13,7 +13,7 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4 part done: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`. Next: `step`/`draw` (plan under P3.4). Not merged |
+| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4 part done: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). Next: split step/draw into parts (step 3 of the plan under P3.4). Not merged |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
 | **Last green full suite** | 2026-09-29, P3.4 after `enterLevel` (cdb5c90), bar flakes: `jelly` spit (known) and `fog` "the next floor is dark again" (passed alone 3 of 3) |
@@ -444,10 +444,11 @@ What the code says about P3.4 (checked at the end of P3.3):
         First, by hand: `RPV` → `G.RPV` (21 references, most in draw()), `rid`/`ridN` and `RP_ARR` (still W's own arrays)
         joined `G`, and `drawReplay(V, draw)` is handed Game's `draw` while draw() lives in Game. `REC`/`RT` stay made in Game
   - [x] level-entry.js: `enterLevel` (`(W, G, back)`). Clean move
-  - [ ] **step() and draw(): the plan** (worked out at the end of P3.4 (19), not started; `node tools/locals.js step draw`
-        prints the facts below). Game.js is 2,494 lines, and they are ~1,100 lines each (step ~206–1302, draw ~1304–2452).
-        What's left in the closure besides them is setup: the canvases, `REC`/`RT`, `G`, the save timer, resize, the mouse
-        handlers, the rAF loop.
+  - [ ] **step() and draw(): the plan** (worked out at the end of P3.4 (19); steps 1 and 2 done in P3.4 (20)–(24), step 3 not
+        started; `node tools/locals.js src/game/systems/step.js step` and `node tools/locals.js src/game/render/draw.js draw`
+        print the facts below). Game.js was 2,494 lines, and they were ~1,100 lines each; now `step.js` is 1,137 lines (step
+        41–1137, returns at 52 and 217) and `render/draw.js` 1,182 (draw 34–1182, its return at 1011). What's left in Game's
+        closure (186 lines) is setup: the canvases, `REC`/`RT`, `G`, the save timer, resize, the mouse handlers, the rAF loop.
     1. **Prep:** `mouse` (= `input.current.mouse`) and `aimPath` join `G`: with the canvases already keys of `G`, they
        are the only closure names the two still use (`node tools/gamemap.js step draw`). Probe SAME.
        **Done, P3.4 (20)**: `const mouse` moved up next to `aimPath`, both keys of `G`; gamemap then lists only `W`, `G`
@@ -461,7 +462,8 @@ What the code says about P3.4 (checked at the end of P3.3):
        line for line the old one with `G.` in front of `input`, `c`, `mouse`.
        **draw done, P3.4 (23)**: `system.js` into `systems/draw.js`, then moved by hand to `render/draw.js` (its
        `./x.js` imports became `../systems/x.js`, Game.js's and `pure.js`'s lines follow). Body line for line the old one
-       with `G.` in front of the canvases, `input`, `RT`, `mouse`, `aimPath`. The loop hands `drawReplay` an arrow for now.
+       with `G.` in front of the canvases, `input`, `RT`, `mouse`, `aimPath`. The loop handed `drawReplay` an arrow for one commit;
+       P3.4 (24): `recorder.js` imports `draw` from `../render/draw.js`, `drawReplay(W, G, V)` calls `draw(W, G)` itself.
     3. **Then split in the module, in the same order**, into part functions the top-level `step`/`draw` call one after
        another. Few locals live across parts: in step `dt`, `LO` (loadout), `MHP`, `pcx`/`pcy` (from the portal check on);
        in draw `dpr`, `playPx`, `vw`/`vh`, `pcx`/`pcy`, `TH`, `onView`, and `held`/`ax` (aim → HUD). Hand them in a small
@@ -851,3 +853,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.4 (21) | `SPUTTER_FUEL`, `sputterStep`, `NO_INPUT` (Game.js top-levels only step() uses; `system.js` can't take them) moved by hand to `systems/player.js`, under a "the jetpack" header. | probe SAME, logic 33/33, smoke ok, jetpack ok |
 | 2026-09-30 | Phase 3, P3.4 (22) | `step.js`: `step(W, G, dt)`, whole (1,097 lines). Clean move; a scratch diff (`G.input`/`G.c`/`G.mouse` back to bare names) found the body identical to the old one. Game.js 2,473 → 1,355 lines. `replay`, `map`, `shop`, `perks`, `torch`, `fog`, `jetpack`, `spider`, `blackhole`, `rats`, `interact` run too, all first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (23) | `render/draw.js`: `draw(W, G)`, whole (1,149 lines), by `system.js` into `systems/` and then moved to `render/` by hand (imports re-pointed). A scratch diff (the `G.` taken off the old closure names) found the body identical. The loop's `drawReplay(W, G, rv, () => draw(W, G))` is the tool's arrow. Game.js 1,355 → 186 lines. `replay`, `map`, `shop`, `perks`, `torch`, `fog`, `spelllooks`, `blackhole`, `fire`, `jelly`, `creatures`, `lightning` run too, all first time. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 3, P3.4 (24) | `drawReplay(W, G, V)` imports `draw` (`render/draw.js`) and calls it itself; the loop's arrow is gone. `tools/locals.js` takes a file now (`node tools/locals.js src/game/render/draw.js draw`), since step/draw left Game.js. `replay`, `map`, `shop`, `perks`, `torch`, `fog` run too, all first time. Steps 1–2 of the step()/draw() plan done; the split (step 3) not started. | probe SAME, logic 33/33, smoke ok |
