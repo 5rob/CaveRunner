@@ -488,6 +488,11 @@ What the code says about P3.4 (checked at the end of P3.3):
     **An event listener is the exception to the arrow-per-site:** `removeEventListener` needs the very
     function `addEventListener` got, so a moved function used as one gets a single named arrow in Game
     (`saveNow`) that every value use shares. Check the `--dry` "as a value" lines for `remove…Listener`.
+    `system.js` writes only into `systems/`: `render/draw.js` went there first and was moved by hand (its `./x.js`
+    imports → `../systems/x.js`, plus Game.js's and `pure.js`'s lines). A new top-level name can make esbuild rename a
+    same-named inner local elsewhere (the exported `step` turned `rangeKnobs`' `step` into `step2` in `index.html`, D13)
+    and reorder modules in the bundle: a big `index.html` diff with the probe SAME is that, nothing more. Don't `sed -i`
+    a doc from Git Bash: it wrote REFACTOR.md back with LF (harmless to the commit, but edit with node or the Edit tool).
   - The old rough list (P3.1's guess), still to do; the parts already out are noted:
   - [x] recorder: the putImageData wrappers stay in Game until recorder.js (they wrap `tctx`/`dctx`, which the systems reach as `G.tctx`/`G.dctx`): `recWrap`
   - [ ] fog.js: paintFog, bake, blur, fogLit
