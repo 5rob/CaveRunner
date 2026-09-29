@@ -7,10 +7,10 @@ import { drawGun, drawGunGlow, drawRunner, drawSconce, drawTorch, glowAt } from 
 import { HEAR_FIRE, jetPitch, rustleStep } from '../audio/recipes.js';
 import { SFX } from '../audio/sfx.js';
 import {
-  AIM_DEAD, AIR_ACC, BCELL, BED, BH, BRICK, BW, CELL, CH, CLIMB, COIN_PULL, COL, CW, DEAD, FH,
-  FOG, FOG_DARK, FOG_DIM, FOG_U, FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART, FW, GRAVITY, GROUND_ACC,
-  JET, JET_ACC, LAMP_REACH, MINI_D, MMH, MMW, PATROL_R, PH, PICKUP_COOL, PLAYER_HP, PW,
-  SHOP_FLOOR, SHOP_Y, SIGHT, VIEW_MIN_H, VIEW_W, WALK, WEB_HAND, WH, WW
+  AIM_DEAD, AIR_ACC, BCELL, BED, BH, BRICK, BW, CELL, CH, CLIMB, COIN_PULL, COL, CW, DEAD, FH, FOG,
+  FOG_DARK, FOG_DIM, FOG_U, FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART, FW, GRAVITY, GROUND_ACC, JET,
+  JET_ACC, LAMP_REACH, MINI_D, MMH, MMW, PATROL_R, PH, PICKUP_COOL, PW, SHOP_FLOOR, SHOP_Y, SIGHT,
+  VIEW_MIN_H, VIEW_W, WALK, WEB_HAND, WH, WW
 } from '../core/consts.js';
 import { angDiff, approach, clamp, hexArr, hexRgb, mix, turn } from '../core/util.js';
 import { roamStep } from '../creatures/common.js';
@@ -41,10 +41,9 @@ import {
 import { ROOM_HH, ROOM_HW, makeLevel } from '../world/level.js';
 import { NAV, navField, navWay } from '../world/nav.js';
 import { ORE_GOLD } from '../world/veins.js';
-import {
-  VIS_RAYS, fogReveal, fogStart, losClear, nestFog, rayDist, visPoly
-} from '../world/vision.js';
+import { VIS_RAYS, fogReveal, fogStart, nestFog, rayDist, visPoly } from '../world/vision.js';
 import { builtAt } from '../world/zones.js';
+import { boxHit, enemyAt, lineOfSight, solidAt, solidCell } from './systems/terrain.js';
 import { testHook } from './testhook.js';
 import { makeWorld } from './world.js';
 
@@ -476,30 +475,6 @@ export function Game({ input }) {
     c.addEventListener('pointercancel', mUp);
     c.addEventListener('pointerleave', mLeave);
 
-    // ---- terrain queries ----
-    const solidCell = (cx, cy) =>
-      cx < 0 || cy < 0 || cx >= CW || cy >= CH || W.mat[cy * CW + cx] !== 0;
-    const solidAt = (x, y) => solidCell(Math.floor(x / CELL), Math.floor(y / CELL));
-    const boxHit = (x, y) => {
-      const x0 = Math.floor(x / CELL), x1 = Math.floor((x + PW - 0.001) / CELL);
-      const y0 = Math.floor(y / CELL), y1 = Math.floor((y + PH - 0.001) / CELL);
-      for (let cy = y0; cy <= y1; cy++) {
-        if (cy < 0 || cy >= CH) return true;
-        for (let cx = x0; cx <= x1; cx++) {
-          if (cx < 0 || cx >= CW || W.mat[cy * CW + cx]) return true;
-        }
-      }
-      return false;
-    };
-    const lineOfSight = (x0, y0, x1, y1) => losClear(x0, y0, x1, y1, solidCell);
-    const enemyAt = (x, y, pad) => {
-      for (let j = 0; j < W.enemies.length; j++) {
-        const e = W.enemies[j];
-        if (Math.hypot(x - e.x, y - e.ty) < e.r + pad) return j;
-      }
-      return -1;
-    };
-
     // one drop of goo: falls under its own gravity g, lands and sits a moment on rock
     function goo(x, y, vx, vy, g, c, size, c2) {
       if (W.sparks.length > 800) return;
@@ -559,7 +534,7 @@ export function Game({ input }) {
     // since it decided to take it.
     function fireEnemyShot(e, tx, ty) {
       const k = e.k;
-      if (!lineOfSight(e.x, e.ty, tx, ty)) return;
+      if (!lineOfSight(W, e.x, e.ty, tx, ty)) return;
       const base = Math.atan2(ty - e.ty, tx - e.x);
       SFX.creature(k, 'fire', e.x, e.ty);
       for (let s = 0; s < k.shots; s++) {
@@ -599,7 +574,7 @@ export function Game({ input }) {
     // ---- rats ----
     // A rat's view of the terrain: rock, plus the burrows (so it runs over a hole rather than
     // falling in and wedging in a tunnel it only ever walks as a path). burrow is per floor.
-    const ratSolid = (cx, cy) => solidCell(cx, cy) || (W.burrow !== null && W.burrow[cy * CW + cx] === 1);
+    const ratSolid = (cx, cy) => solidCell(W, cx, cy) || (W.burrow !== null && W.burrow[cy * CW + cx] === 1);
     // a goal's distance field, kept on `o` and made again when the goal moves or the rock changes
     // a spider's web line under a rat's feet counts as ground: rats run along webs
     const onWebIn = list => (x, y) => { for (const L of list) if (webDist(L, x, y) < 3) return true; return false; };
@@ -857,7 +832,7 @@ export function Game({ input }) {
         for (let k = 0; k <= 10; k++) {
           const t = k / 10;
           const cx = tx + (gx - tx) * t, cy = ty + (gy - ty) * t;
-          if (!solidAt(cx, cy)) return [cx, cy];
+          if (!solidAt(W, cx, cy)) return [cx, cy];
         }
         return [gx, gy];
       };
@@ -918,7 +893,7 @@ export function Game({ input }) {
         if (warp) {                                   // jump forward, but not into rock
           for (let step = 0; step < 14; step++) {
             const tx = bx + Math.cos(a) * 10, ty = by + Math.sin(a) * 10;
-            if (solidAt(tx, ty)) break;
+            if (solidAt(W, tx, ty)) break;
             bx = tx; by = ty;
           }
         }
@@ -954,7 +929,7 @@ export function Game({ input }) {
       const x0 = x, y0 = y;
       // it may have stopped inside the rock, so back up along its own track until
       // there is open ground for the payload to come out into
-      for (let k = 0; k < 6 && solidAt(x + nx * 10, y + ny * 10); k++) { x -= nx * 4; y -= ny * 4; }
+      for (let k = 0; k < 6 && solidAt(W, x + nx * 10, y + ny * 10); k++) { x -= nx * 4; y -= ny * 4; }
       const base = Math.atan2(ny, nx);
       for (const sh of list) spawnShot(sh, x, y, base, 0, false, 0);
       SFX.cast(list, x0, y0);
@@ -1000,7 +975,7 @@ export function Game({ input }) {
       const R = 90, near = [];
       for (let j = 0; j < W.enemies.length; j++) {
         const e = W.enemies[j];
-        if (Math.hypot(e.x - b.x, e.ty - b.y) < R && lineOfSight(b.x, b.y, e.x, e.ty)) near.push(j);
+        if (Math.hypot(e.x - b.x, e.ty - b.y) < R && lineOfSight(W, b.x, b.y, e.x, e.ty)) near.push(j);
       }
       if (near.length && Math.random() < 0.75) {
         const j = near[Math.floor(Math.random() * near.length)], e = W.enemies[j];
@@ -1013,7 +988,7 @@ export function Game({ input }) {
       // no creature: try a few random directions for rock close by
       for (let k = 0; k < 4; k++) {
         const a = Math.random() * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
-        const d = rayDist(b.x, b.y, dx, dy, 70, solidCell);
+        const d = rayDist(b.x, b.y, dx, dy, 70, (cx, cy) => solidCell(W, cx, cy));
         if (d < 70 && d > 6) {
           const hx = b.x + dx * d, hy = b.y + dy * d;
           addArc([{ x: b.x, y: b.y }, { x: hx, y: hy }], b.col, 0.8, 0.12);
@@ -1031,8 +1006,8 @@ export function Game({ input }) {
       for (let d = 6; d <= sh.beam; d += 4) {
         const bx = x + nx * d, by = y + ny * d;
         if (sh.bore) dig(bx, by, sh.bore);
-        else if (solidAt(bx, by)) { hitAt = d; break; }
-        const j = enemyAt(bx, by, sh.size + 3);
+        else if (solidAt(W, bx, by)) { hitAt = d; break; }
+        const j = enemyAt(W, bx, by, sh.size + 3);
         if (j >= 0) {
           damageEnemy(j, critRoll((sh.dmg + bonus) * pd, sh.crit + pc));
           burst(bx, by, 4, sh.col);
@@ -1220,7 +1195,7 @@ export function Game({ input }) {
         for (const dy of [0, -4, 4, -8, 8, -12, 12, -16, 16]) {
           const x = b.x - nx * back - PW / 2, y = b.y - ny * back - PH / 2 + dy;
           if (x < CELL * 3 || y < CELL * 3 || x + PW > WW - CELL * 3 || y + PH > WH - CELL * 3) continue;
-          if (boxHit(x, y)) continue;
+          if (boxHit(W, x, y)) continue;
           burst(W.p.x + PW / 2, W.p.y + PH / 2, 10, b.col);
           W.p.x = x; W.p.y = y; W.p.vx = 0; W.p.vy = 0;
           burst(W.p.x + PW / 2, W.p.y + PH / 2, 12, b.col);
@@ -1613,7 +1588,7 @@ export function Game({ input }) {
             }
             if (pr.gone) continue;
           }
-          if (solidAt(pr.x, pr.y + pr.b + 1)) landProp(pr);
+          if (solidAt(W, pr.x, pr.y + pr.b + 1)) landProp(pr);
           continue;
         }
         if (Math.abs(pr.y - pcy) > 520) continue;     // only what's round you does anything
@@ -1685,7 +1660,7 @@ export function Game({ input }) {
             break;
           case 'drop':                             // an icicle lets go when you walk under it
             if (pr.st === 'icicle' && !pr.shake && me && Math.abs(pcx - pr.x) < 18 && pcy > pr.y &&
-                pcy - pr.y < 170 && lineOfSight(pr.x, pr.y + 18, pcx, pcy)) { pr.shake = 0.35; SFX.fx('iceCreak', pr.x, pr.y); }
+                pcy - pr.y < 170 && lineOfSight(W, pr.x, pr.y + 18, pcx, pcy)) { pr.shake = 0.35; SFX.fx('iceCreak', pr.x, pr.y); }
             if (pr.shake > 0 && (pr.shake -= dt) <= 0) { pr.fall = true; pr.vy = 0; pr.anc = null; }
             break;
           case 'spike':
@@ -1812,9 +1787,9 @@ export function Game({ input }) {
           const ex = Math.floor(q.x / CELL), ey = Math.floor(q.y / CELL);
           if (ex >= 0 && ey >= 0 && ex < CW && ey < CH && W.fire.fuel[ey * CW + ex]) ignite(q.x, q.y, 2, 0.6);
           if (!W.p.dead && q.x > W.p.x && q.x < W.p.x + PW && q.y > W.p.y && q.y < W.p.y + PH) { youAlight(); dead = true; }
-          if (!dead && solidAt(q.x, q.y)) ignite(q.x - q.vx * dt, q.y - q.vy * dt, 4, 0.85);
+          if (!dead && solidAt(W, q.x, q.y)) ignite(q.x - q.vx * dt, q.y - q.vy * dt, 4, 0.85);
         }
-        if (!dead && solidAt(q.x, q.y)) {
+        if (!dead && solidAt(W, q.x, q.y)) {
           dead = true;
           if (q.snd) SFX.fx(q.snd, q.x, q.y);
           if (q.splash) for (let k = 0; k < 2; k++) W.dparts.push({ x: q.x, y: q.y - 2, vx: (Math.random() - 0.5) * 50,
@@ -1945,8 +1920,8 @@ export function Game({ input }) {
         if (kind === 'devils') {
           if (W.devils.length < 2 && Math.random() < dt * 0.4) {
             let x = x0 + Math.random() * w, y = y0 + Math.random() * h, k = 0;
-            while (k++ < 120 && !solidAt(x, y + 1)) y += 2;
-            if (k < 120 && !solidAt(x, y - 30)) W.devils.push({ x, y, vx: (Math.random() < 0.5 ? -1 : 1) * (15 + Math.random() * 20), life: 6 + Math.random() * 3, max: 9 });
+            while (k++ < 120 && !solidAt(W, x, y + 1)) y += 2;
+            if (k < 120 && !solidAt(W, x, y - 30)) W.devils.push({ x, y, vx: (Math.random() < 0.5 ? -1 : 1) * (15 + Math.random() * 20), life: 6 + Math.random() * 3, max: 9 });
           }
           continue;
         }
@@ -1956,7 +1931,7 @@ export function Game({ input }) {
           if (Math.random() >= want) break;
           want -= 1;
           const x = x0 + Math.random() * w, y = y0 + Math.random() * h;
-          if (solidAt(x, y)) continue;
+          if (solidAt(W, x, y)) continue;
           const r = Math.random();
           if (kind === 'spores') W.amb.push(spore(x, y, r));
           else if (kind === 'frost') {
@@ -1976,15 +1951,15 @@ export function Game({ input }) {
           const k = Math.exp(-q.kd * dt); q.kx *= k; q.ky *= k;
         }
         q.x += q.vx * dt; q.y += q.vy * dt;
-        if (q.life <= 0 || solidAt(q.x, q.y) || q.x < x0 - 200 || q.x > x0 + w + 200 || q.y < y0 - 200 || q.y > y0 + h + 200) W.amb.splice(i, 1);
+        if (q.life <= 0 || solidAt(W, q.x, q.y) || q.x < x0 - 200 || q.x > x0 + w + 200 || q.y < y0 - 200 || q.y > y0 + h + 200) W.amb.splice(i, 1);
       }
       for (let i = W.devils.length - 1; i >= 0; i--) {
         const dv = W.devils[i];
         dv.life -= dt;
         const nx = dv.x + dv.vx * dt;
-        if (solidAt(nx + Math.sign(dv.vx) * 6, dv.y - 4)) dv.vx = -dv.vx; else dv.x = nx;
-        if (!solidAt(dv.x, dv.y + 2)) dv.y += 40 * dt;
-        else if (solidAt(dv.x, dv.y)) dv.y -= 2;
+        if (solidAt(W, nx + Math.sign(dv.vx) * 6, dv.y - 4)) dv.vx = -dv.vx; else dv.x = nx;
+        if (!solidAt(W, dv.x, dv.y + 2)) dv.y += 40 * dt;
+        else if (solidAt(W, dv.x, dv.y)) dv.y -= 2;
         if (dv.life <= 0) W.devils.splice(i, 1);
       }
     }
@@ -2115,11 +2090,11 @@ export function Game({ input }) {
       if (n > 0) {
         const sx = W.p.vx * dt / n;
         for (let i = 0; i < n; i++) {
-          if (!boxHit(W.p.x + sx, W.p.y)) { W.p.x += sx; continue; }
+          if (!boxHit(W, W.p.x + sx, W.p.y)) { W.p.x += sx; continue; }
           let moved = false;
           const maxUp = wasGround ? 6 : 3;          // walk up small bumps and slopes
           for (let up = 1; up <= maxUp; up++) {
-            if (!boxHit(W.p.x + sx, W.p.y - up)) { W.p.x += sx; W.p.y -= up; moved = true; break; }
+            if (!boxHit(W, W.p.x + sx, W.p.y - up)) { W.p.x += sx; W.p.y -= up; moved = true; break; }
           }
           if (!moved) { W.p.vx = 0; break; }
         }
@@ -2128,26 +2103,26 @@ export function Game({ input }) {
       if (n > 0) {
         const sy = W.p.vy * dt / n;
         for (let i = 0; i < n; i++) {
-          if (!boxHit(W.p.x, W.p.y + sy)) { W.p.y += sy; continue; }
+          if (!boxHit(W, W.p.x, W.p.y + sy)) { W.p.y += sy; continue; }
           if (sy > 0) W.p.y = Math.floor((W.p.y + sy + PH - 0.001) / CELL) * CELL - PH;
           else W.p.y = (Math.floor((W.p.y + sy) / CELL) + 1) * CELL;
-          if (boxHit(W.p.x, W.p.y)) W.p.y -= sy;   // fallback
+          if (boxHit(W, W.p.x, W.p.y)) W.p.y -= sy;   // fallback
           W.p.vy = 0;
           break;
         }
       }
       // stick to the ground when walking down slopes
-      if (wasGround && !jet && W.p.vy >= 0 && W.p.kick <= 0 && !boxHit(W.p.x, W.p.y + 1)) {
+      if (wasGround && !jet && W.p.vy >= 0 && W.p.kick <= 0 && !boxHit(W, W.p.x, W.p.y + 1)) {
         for (let dn = 1; dn <= 6; dn++) {
-          if (boxHit(W.p.x, W.p.y + dn + 1)) { W.p.y += dn; W.p.vy = 0; break; }
+          if (boxHit(W, W.p.x, W.p.y + dn + 1)) { W.p.y += dn; W.p.vy = 0; break; }
         }
       }
       // never stay stuck inside terrain
-      if (boxHit(W.p.x, W.p.y)) {
-        for (let up = 1; up <= 40; up++) if (!boxHit(W.p.x, W.p.y - up)) { W.p.y -= up; break; }
+      if (boxHit(W, W.p.x, W.p.y)) {
+        for (let up = 1; up <= 40; up++) if (!boxHit(W, W.p.x, W.p.y - up)) { W.p.y -= up; break; }
       }
       if (W.p.y > WH) { W.p.x = W.start.x; W.p.y = W.start.y; W.p.vx = 0; W.p.vy = 0; }
-      W.p.onGround = boxHit(W.p.x, W.p.y + 0.5);
+      W.p.onGround = boxHit(W, W.p.x, W.p.y + 0.5);
       // footsteps and landings, in the sound of whatever you're standing on
       if (!W.p.dead) {
         if (W.p.onGround && !wasGround && fallV > 200) SFX.fx('land', null, null, { v: fallV, s: W.zfx.surface });
@@ -2185,7 +2160,7 @@ export function Game({ input }) {
         let best = null, bd = 1e9;
         for (const e of W.enemies) {
           const d = Math.hypot(e.x - gx, e.ty - gy);
-          if (d < bd && lineOfSight(gx, gy, e.x, e.ty)) { bd = d; best = e; }
+          if (d < bd && lineOfSight(W, gx, gy, e.x, e.ty)) { bd = d; best = e; }
         }
         if (best) {
           const a = Math.atan2(best.ty - gy, best.x - gx);
@@ -2284,7 +2259,7 @@ export function Game({ input }) {
             let bd = b.homeR || DRIFT_R;
             for (const e of W.enemies) {
               const dd = Math.hypot(e.x - b.x, e.ty - b.y);
-              if (dd < bd && lineOfSight(b.x, b.y, e.x, e.ty)) { bd = dd; b.lock = e; }
+              if (dd < bd && lineOfSight(W, b.x, b.y, e.x, e.ty)) { bd = dd; b.lock = e; }
             }
           }
           if (b.lock) {
@@ -2314,7 +2289,7 @@ export function Game({ input }) {
         const sn = Math.max(1, Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2));
         for (let st = 0; st < sn && !dead && !boom; st++) {
           const nx = b.x + b.vx * dt / sn, ny = b.y + b.vy * dt / sn;
-          const j = enemyAt(nx, ny, b.size + 1);
+          const j = enemyAt(W, nx, ny, b.size + 1);
           if (j >= 0 && !(b.hit && b.hit.has(W.enemies[j]))) {
             const e = W.enemies[j];
             const sp = Math.hypot(b.vx, b.vy) || 1;
@@ -2353,11 +2328,11 @@ export function Game({ input }) {
               ny > W.p.y - 2 && ny < W.p.y + PH + 2) {
             burst(nx, ny, 5, b.col); hurt(Math.round(b.dmg * 2)); dead = true; break;
           }
-          if (solidAt(nx, ny)) {
+          if (solidAt(W, nx, ny)) {
             if (b.payload && b.trig !== 'expire') firePayload(b);   // so does touching rock
             if (b.bounce > 0 && !b.bore && !b.eat) {
               b.bounce--;
-              const hx = solidAt(nx, b.y), hy = solidAt(b.x, ny);
+              const hx = solidAt(W, nx, b.y), hy = solidAt(W, b.x, ny);
               if (hx || !hy) b.vx = -b.vx;
               if (hy || !hx) b.vy = -b.vy;
               const be = b.bounceE || 0.92;
@@ -2538,19 +2513,19 @@ export function Game({ input }) {
           g.vx *= Math.exp(-0.6 * dt);
           g.vy += 420 * dt;
           const nx = g.x + g.vx * dt, ny = g.y + g.vy * dt;
-          if (solidAt(nx, g.y)) g.vx *= -0.4; else g.x = nx;
-          if (solidAt(g.x, ny + 3)) {
+          if (solidAt(W, nx, g.y)) g.vx *= -0.4; else g.x = nx;
+          if (solidAt(W, g.x, ny + 3)) {
             if (g.vy > 70) { g.vy = -g.vy * 0.42; g.vx *= 0.7; SFX.fx('coinland', g.x, g.y); }
             else { g.vy = 0; g.vx *= Math.exp(-8 * dt); if (Math.abs(g.vx) < 4) { g.vx = 0; g.pop = 0; } }
-          } else if (solidAt(g.x, ny - 3) && g.vy < 0) g.vy = 0;
+          } else if (solidAt(W, g.x, ny - 3) && g.vy < 0) g.vy = 0;
           else g.y = ny;
           continue;
         }
         g.vx = (g.vx || 0) * 0.9;
         g.vy += 320 * dt;
         const nx = g.x + g.vx * dt, ny = g.y + g.vy * dt;
-        if (!solidAt(nx, g.y)) g.x = nx;
-        if (solidAt(g.x, ny + 3)) { if (g.vy > 60) SFX.fx('coinland', g.x, g.y); g.vy = 0; } else g.y = ny;
+        if (!solidAt(W, nx, g.y)) g.x = nx;
+        if (solidAt(W, g.x, ny + 3)) { if (g.vy > 60) SFX.fx('coinland', g.x, g.y); g.vy = 0; } else g.y = ny;
       }
 
       // ---- what you can interact with: a shop plinth, or something on the ground ----
@@ -2717,7 +2692,7 @@ export function Game({ input }) {
         if (k.kp && ((e.aggroT = (e.aggroT || 0) - dt) <= 0)) { e.aggroM = kr(k.kp + 'Aggro'); e.aggroT = 1; }
         const reach = k.aggro * sees * DEV.aggro * (k.kp ? e.aggroM : 1);
         if (chaser) {
-          if (!e.aggro) { if (dist < reach && lineOfSight(e.x, e.ty, pcx, pcy)) { e.aggro = true; SFX.creature(k, 'alert', e.x, e.ty); } }
+          if (!e.aggro) { if (dist < reach && lineOfSight(W, e.x, e.ty, pcx, pcy)) { e.aggro = true; SFX.creature(k, 'alert', e.x, e.ty); } }
           else if (dist > reach * DEV.loseAggro) e.aggro = false;
         } else e.aggro = false;
         const hunting = chaser && e.aggro;
@@ -2749,14 +2724,14 @@ export function Game({ input }) {
         if (k.act === 'spider') {
           // only on rock and its own lines (spiderStep); strings you when it has a clear line
           const cold = e.chill && e.chill < 1 ? e.chill : 1;
-          if (spiderStep(e, { solidCell, webs: W.webs, hunting, goal: { x: pcx, y: pcy }, rnd: Math.random,
+          if (spiderStep(e, { solidCell: (cx, cy) => solidCell(W, cx, cy), webs: W.webs, hunting, goal: { x: pcx, y: pcy }, rnd: Math.random,
             speedMul: cold }, dt) === 'web') SFX.fx('lash', e.x, e.y);
           e.silkT = (e.silkT || 0) - dt;
           const S = e.sp;
           if (hunting && e.silkT <= 0 && S && (S.mode === 'surf' || S.mode === 'line') &&
               dist < (e.silkR || (e.silkR = spr('spSilk'))) * sees && dist > e.r + 24) {
             e.silkT = 0.4;
-            if (lineOfSight(e.x, e.y, pcx, pcy)) {
+            if (lineOfSight(W, e.x, e.y, pcx, pcy)) {
               e.silkT = spr('spSilkCd'); e.silkR = spr('spSilk');
               const v = spr('spSilkSpd');
               W.silk.push({ x: e.x, y: e.y, ax: e.x, ay: e.y, vx: dx / dist * v, vy: dy / dist * v,
@@ -2767,7 +2742,7 @@ export function Game({ input }) {
         } else if (k.act === 'jelly') {
           // swims in pulses (jellyStep); spits when its head is lined up on you, in range
           const cold = e.chill && e.chill < 1 ? e.chill : 1;
-          if (jellyStep(e, { solidCell, hunting, goal: { x: pcx, y: pcy }, rnd: Math.random,
+          if (jellyStep(e, { solidCell: (cx, cy) => solidCell(W, cx, cy), hunting, goal: { x: pcx, y: pcy }, rnd: Math.random,
             speedMul: cold, rangeMul: sees, stay: W.zone ? natural : null }, dt) === 'pulse') puffSpores(e);
           const S = e.je;
           // brush its tentacles and you're stung, hunting or not (same sting knobs as the bell)
@@ -2782,7 +2757,7 @@ export function Game({ input }) {
           if (hunting && S.inRange && S.aimed && e.cd <= 0) {
             e.cd = 0.25;                                // no clear line: look again shortly
             const hx = e.x + Math.cos(S.hd) * e.r * 0.9, hy = e.y + Math.sin(S.hd) * e.r * 0.9;
-            if (lineOfSight(hx, hy, pcx, pcy)) {
+            if (lineOfSight(W, hx, hy, pcx, pcy)) {
               e.cd = kr('jeShotCd');
               const a = Math.atan2(pcy - hy, pcx - hx) + (Math.random() * 2 - 1) * kr('jeSpread') * Math.PI / 180;
               const v = kr('jeShotSpd'), P = jellyPal(S.u.col);
@@ -2798,10 +2773,10 @@ export function Game({ input }) {
         } else if (hunting) {
           const step = k.spd * (e.chill || 1) * dt;
           const wx = e.x + dx / dist * step, wy = e.y + dy / dist * step;
-          if (!solidAt(wx - e.r, wy) && !solidAt(wx + e.r, wy) &&
-              !solidAt(wx, wy - e.r) && !solidAt(wx, wy + e.r)) { e.x = wx; e.y = wy; }
-          else if (!solidAt(wx, e.y)) e.x = wx;            // slide along whatever it hit
-          else if (!solidAt(e.x, wy)) e.y = wy;
+          if (!solidAt(W, wx - e.r, wy) && !solidAt(W, wx + e.r, wy) &&
+              !solidAt(W, wx, wy - e.r) && !solidAt(W, wx, wy + e.r)) { e.x = wx; e.y = wy; }
+          else if (!solidAt(W, wx, e.y)) e.x = wx;            // slide along whatever it hit
+          else if (!solidAt(W, e.x, wy)) e.y = wy;
           else { e.tgt = null; e.rest = 0; }
         } else {
           // patrol: pick a spot near home, drift to it, pause, pick another. Rock in
@@ -2815,8 +2790,8 @@ export function Game({ input }) {
           const tdx = e.tgt.x - e.x, tdy = e.tgt.y - e.y, td = Math.hypot(tdx, tdy) || 1;
           const step = k.spd * (e.chill || 1) * dt;
           const wx = e.x + tdx / td * step, wy = e.y + tdy / td * step;
-          if (solidAt(wx - e.r, wy) || solidAt(wx + e.r, wy) ||
-              solidAt(wx, wy - e.r) || solidAt(wx, wy + e.r)) { e.tgt = null; e.rest = 0; }
+          if (solidAt(W, wx - e.r, wy) || solidAt(W, wx + e.r, wy) ||
+              solidAt(W, wx, wy - e.r) || solidAt(W, wx, wy + e.r)) { e.tgt = null; e.rest = 0; }
           else { e.x = wx; e.y = wy; }
         }
         e.chill = 1;                                  // fields re-apply it every frame
@@ -2845,7 +2820,7 @@ export function Game({ input }) {
             if (e.charge <= 0) fireEnemyShot(e, pcx, pcy);
           } else if (!W.p.dead && dist < k.range * sees && e.cd <= 0) {
             e.cd = 0.4;   // re-check soon if we can't see the player
-            if (lineOfSight(e.x, e.ty, pcx, pcy)) {
+            if (lineOfSight(W, e.x, e.ty, pcx, pcy)) {
               e.cd = k.cd * (0.85 + Math.random() * 0.3);
               if (!e.spotted) { e.spotted = true; SFX.creature(k, 'alert', e.x, e.ty); }
               if (k.tele) { e.charge = k.tele; SFX.creature(k, 'charge', e.x, e.ty, k.tele); } else fireEnemyShot(e, pcx, pcy);
@@ -2877,7 +2852,7 @@ export function Game({ input }) {
         const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
         for (let s = 0; s < sn && !gone; s++) {
           b.x += b.vx * dt / sn; b.y += b.vy * dt / sn;
-          if (solidAt(b.x, b.y)) {
+          if (solidAt(W, b.x, b.y)) {
             gone = true;
             if (b.splat != null) splat(b, b.x - b.vx * dt / sn, b.y - b.vy * dt / sn);
             else SFX.fx('fizzle', b.x, b.y);
@@ -2901,7 +2876,7 @@ export function Game({ input }) {
         const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
         for (let s = 0; s < sn && !gone; s++) {
           b.x += b.vx * dt / sn; b.y += b.vy * dt / sn;
-          if (solidAt(b.x, b.y)) { gone = true; break; }
+          if (solidAt(W, b.x, b.y)) { gone = true; break; }
           if (!W.p.dead && b.x > W.p.x - 3 && b.x < W.p.x + PW + 3 && b.y > W.p.y - 3 && b.y < W.p.y + PH + 3) {
             gone = true;
             W.strings.push({ ax: b.ax, ay: b.ay, ox: b.x - W.p.x, oy: b.y - W.p.y, slow: spr('spSlow'), max: spr('spSilkMax') });
@@ -2923,7 +2898,7 @@ export function Game({ input }) {
       for (let n = Math.min(W.webs.length, 6); n > 0; n--) {
         W.webCheck = (W.webCheck + 1) % W.webs.length;
         const L = W.webs[W.webCheck];
-        if ((L.bin && !solidAt(L.bin.x, L.bin.y)) || (L.ain && !solidAt(L.ain.x, L.ain.y))) {
+        if ((L.bin && !solidAt(W, L.bin.x, L.bin.y)) || (L.ain && !solidAt(W, L.ain.x, L.ain.y))) {
           W.webs.splice(W.webCheck, 1);
           if (!W.webs.length) break;
         }
@@ -2992,7 +2967,7 @@ export function Game({ input }) {
         const q = W.sparks[i];
         q.vy += (q.g != null ? q.g : q.heavy ? 600 : 300) * dt;
         const nx = q.x + q.vx * dt, ny = q.y + q.vy * dt;
-        if (q.heavy && solidAt(nx, ny)) { q.vx *= 0.3; q.vy = 0; }
+        if (q.heavy && solidAt(W, nx, ny)) { q.vx *= 0.3; q.vy = 0; }
         else { q.x = nx; q.y = ny; }
         q.life -= dt;
         if (q.life <= 0) W.sparks.splice(i, 1);
@@ -3862,7 +3837,7 @@ export function Game({ input }) {
             homing: Math.max(sh.homing, W.pb.homing), speed: sh.speed * W.pb.speed * bhSp(sh) });
           for (const off of cone) {
             const a = Math.atan2(R.ny, R.nx) + off * Math.PI / 180;
-            tracePath(tsh, pcx, gy, Math.cos(a), Math.sin(a), solidAt, W.enemies, aimPath,
+            tracePath(tsh, pcx, gy, Math.cos(a), Math.sin(a), (x, y) => solidAt(W, x, y), W.enemies, aimPath,
               { x: pcx, y: gy });
             ctx.fillStyle = sh.col;
             const edge = off !== 0;
@@ -3940,7 +3915,7 @@ export function Game({ input }) {
       // own number, so both the reach and the brightness breathe exactly as the fire does.
       const sight = SIGHT * DEV.torch;                       // dev knob scales the whole bubble
       W.torchR = clamp(sight * LAMP_REACH * (0.5 + 0.55 * W.flick), 120, 1400);
-      W.visPts = visPoly(pcx, pcy, sight, solidCell, VIS_RAYS);
+      W.visPts = visPoly(pcx, pcy, sight, (cx, cy) => solidCell(W, cx, cy), VIS_RAYS);
       fogReveal(W.seen, pcx, pcy, sight, W.visPts, VIS_RAYS);   // line of sight lifts the fog
       if (!RPV || RPV.fog) {                                 // a replay can turn the fog off
         // bake the visible slab of the overlay every frame: the base darkness is the fog
