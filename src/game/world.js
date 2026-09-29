@@ -3,6 +3,8 @@
 // parts on each floor; the lists are emptied in place, never replaced, because the death
 // replay's recorder holds them by reference.
 
+import { CH, CW } from '../core/consts.js';
+import { fireNew } from '../world/fire.js';
 import { fogStart } from '../world/vision.js';
 
 export function makeWorld() {
@@ -39,5 +41,14 @@ export function makeWorld() {
     // ---- the fog of war ----
     seen: fogStart(),               // per fog cell: 0 never been, 1 been (draw() lifts it), 2 never fogged (the shop)
     deepFog: null,                  // the fog cells over the rat nests' rooms (no soft edge there)
+
+    // ---- fire (v86, see fireStep): what's alight in the cave, the plants and carts it can
+    // take, the burning pixels on view this frame (for the glow after the fog), its crackle ----
+    fire: fireNew(new Uint8Array(CW * CH)),
+    firePlants: [], fireArches: [], fireCarts: [],   // what can burn (fireList, rebuilt when the props change)
+    firePropN: -1, firePropLast: null,              // how fireList notices the props changed
+    fireLoop: null,                 // the crackle, at the nearest blaze
+    fireN: 0,                       // burning pixels on view (the glow's strength)
+    fireVis: [],                    // and which ones, for the glow after the fog
   };
 }

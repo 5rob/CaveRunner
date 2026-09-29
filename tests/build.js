@@ -34,7 +34,7 @@ const SANDBOX =
   "      const d = W.img.data, dd = W.dimg.data;" +
   "      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {" +
   "        const i = y * CW + x, k = i * 4;" +
-  "        dd[k + 3] = 0; if (W.ore) W.ore[i] = 0; fire.fuel[i] = 0; fire.t[i] = 0;" +
+  "        dd[k + 3] = 0; if (W.ore) W.ore[i] = 0; W.fire.fuel[i] = 0; W.fire.t[i] = 0;" +
   "        if (y < fr) { W.mat[i] = 0; d[k + 3] = 0; }" +
   "        else { W.mat[i] = BRICK; d[k] = 132; d[k + 1] = 99; d[k + 2] = 71; d[k + 3] = 255; } }" +
   "      if (o.roof) for (let y = Math.max(0, y0 - 6); y < y0; y++) for (let x = x0; x <= x1; x++) {" +
@@ -59,7 +59,7 @@ const HOOK_LVL = SANDBOX +
   "get arrival(){return W.arrival}, get start(){return W.start}, get portal(){return W.portal}, " +
   "enemyShots, sparks, webs, silk, strings, fields, beams, arcs, flashes, dig, explode, get ore(){return W.ore}, motes, smoke, get sconces(){return W.sconces}, get props(){return W.props}, dparts, amb, clouds, rings, get zfx(){return zfx}, " +
   "get rec(){return REC}, get rt(){return RT}, recSample, " +
-  "get fire(){return fire}, get burrow(){return W.burrow}, ignite, setAlight, youAlight, get dimg(){return W.dimg}, get zone(){return W.zone}, " +
+  "get fire(){return W.fire}, get burrow(){return W.burrow}, ignite, setAlight, youAlight, get dimg(){return W.dimg}, get zone(){return W.zone}, " +
   "world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y }, " +
   "fog: { get seen(){return W.seen}, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal, paint: paintFog }, " +
   "light: { get flick(){return flick}, get r(){return torchR}, " +

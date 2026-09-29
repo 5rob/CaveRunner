@@ -164,10 +164,6 @@ export function Game({ input }) {
     // the ghost companion (Angry Ghost) and the fire trail (Levitation Trail), if owned
     let ghost = null;
     const burns = [];
-    // fire (v86, see fireStep): what's alight in the cave, the plants and carts it can take,
-    // the burning pixels on view this frame (for the glow after the fog), and its crackle
-    let fire = fireNew(new Uint8Array(CW * CH)), firePlants = [], fireArches = [], fireCarts = [], firePropN = -1, firePropLast = null, fireLoop = null, fireN = 0;
-    const fireVis = [];
     // the spiders' silk: webs are the lines they travel on (they stay), silk the strings in
     // flight at you, strings the ones stuck to you (each slows you; pull one too long, it snaps)
     const webs = [], silk = [], strings = [];
@@ -226,18 +222,18 @@ export function Game({ input }) {
         }
         return out;
       };
-      const S = { t: REC.t, time, flick, leanX, leanY, glowN, fireN, p: rpClone(p),
+      const S = { t: REC.t, time, flick, leanX, leanY, glowN, fireN: W.fireN, p: rpClone(p),
         ghost: ghost ? rpClone(ghost) : null };
       for (const k in RP_ARR) S[k] = grab(RP_ARR[k], 40);
       S.enemies = grab(W.enemies, 40, 'ty'); S.pickups = grab(W.pickups, 40); S.props = grab(W.props, 120);
       // the burning pixels in the box, and how much fuel each has left
       const fi = [];
-      for (const i of fire.list) {
+      for (const i of W.fire.list) {
         const x = (i % CW) * CELL, y = ((i / CW) | 0) * CELL;
         if (Math.abs(x - pcx) < RP_W && Math.abs(y - pcy) < RP_H) fi.push(i);
       }
       S.fire = Int32Array.from(fi);
-      S.fireT = Uint16Array.from(fi, i => fire.t[i]);
+      S.fireT = Uint16Array.from(fi, i => W.fire.t[i]);
       REC.snaps.push(S);
       // terrain changed since the last snapshot, as it stands now
       if (REC.dirty.length) {
@@ -319,19 +315,19 @@ export function Game({ input }) {
       // swap the recording in
       const keepL = {};
       for (const k in RP_ARR) { const L = RP_ARR[k]; keepL[k] = L.splice(0, L.length, ...F[k]); }
-      const keep = { enemies: W.enemies, pickups: W.pickups, props: W.props, fire, firePlants, seen: W.seen, ghost, time, flick, leanX, leanY, glowN,
-        fireN, camX, camY, unitPx, torchR, visPts, viewW, viewH, p: Object.assign({}, p) };
-      W.enemies = F.enemies; W.pickups = F.pickups; W.props = F.props; firePlants = [];
-      fire = { list: near.fire, t: RT.fireT }; W.seen = RT.fog;
-      ghost = F.ghost; time = F.time; flick = F.flick; leanX = F.leanX; leanY = F.leanY; glowN = F.glowN; fireN = near.fireN;
+      const keep = { enemies: W.enemies, pickups: W.pickups, props: W.props, fire: W.fire, firePlants: W.firePlants, seen: W.seen, ghost, time, flick, leanX, leanY, glowN,
+        fireN: W.fireN, camX, camY, unitPx, torchR, visPts, viewW, viewH, p: Object.assign({}, p) };
+      W.enemies = F.enemies; W.pickups = F.pickups; W.props = F.props; W.firePlants = [];
+      W.fire = { list: near.fire, t: RT.fireT }; W.seen = RT.fog;
+      ghost = F.ghost; time = F.time; flick = F.flick; leanX = F.leanX; leanY = F.leanY; glowN = F.glowN; W.fireN = near.fireN;
       Object.assign(p, F.p);
       RPV = V;
       try { draw(); } finally {
         // and the live world back, exactly as it was
         RPV = null;
         for (const k in RP_ARR) { const L = RP_ARR[k]; L.splice(0, L.length, ...keepL[k]); }
-        ({ enemies: W.enemies, pickups: W.pickups, props: W.props, fire, firePlants, seen: W.seen, ghost, time, flick, leanX, leanY, glowN,
-          fireN, camX, camY, unitPx, torchR, visPts, viewW, viewH } = keep);
+        ({ enemies: W.enemies, pickups: W.pickups, props: W.props, fire: W.fire, firePlants: W.firePlants, seen: W.seen, ghost, time, flick, leanX, leanY, glowN,
+          fireN: W.fireN, camX, camY, unitPx, torchR, visPts, viewW, viewH } = keep);
         Object.assign(p, keep.p);
         for (let k = 0; k < near.fire.length; k++) RT.fireT[near.fire[k]] = 0;
       }
@@ -406,8 +402,8 @@ export function Game({ input }) {
           for (const q of n.path) mark(q.x + 0.5, q.y + 0.5, 2.6);
         }
       }
-      fire = fireNew(level.fuel || new Uint8Array(CW * CH));
-      firePropN = -1;                         // fireFrame lists the plants and carts that burn
+      W.fire = fireNew(level.fuel || new Uint8Array(CW * CH));
+      W.firePropN = -1;                         // fireFrame lists the plants and carts that burn
       p.burn = 0; p.burnAcc = 0;
       tctx.putImageData(W.img, 0, 0);
       bgctx.putImageData(level.bgImg, 0, 0);
@@ -795,7 +791,7 @@ export function Game({ input }) {
           if (!W.mat[i] || W.mat[i] === BED) continue;
           if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
           if (W.ore && W.ore[i]) { W.ore[i] = 0; nOre++; }
-          fire.fuel[i] = 0; fire.t[i] = 0;
+          W.fire.fuel[i] = 0; W.fire.t[i] = 0;
           W.mat[i] = 0; d[i * 4 + 3] = 0; changed = true;
         }
       if (W.burrow) for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
@@ -828,7 +824,7 @@ export function Game({ input }) {
           const k = (cy * CW + cx) * 4;
           if (!dd[k + 3] || Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
           dd[k + 3] = 0; changed = true;
-          fire.fuel[k >> 2] = 0; fire.t[k >> 2] = 0;
+          W.fire.fuel[k >> 2] = 0; W.fire.t[k >> 2] = 0;
         }
       if (changed) dctx.putImageData(W.dimg, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
     }
@@ -1330,17 +1326,17 @@ export function Game({ input }) {
     // pixels, plants, web lines — and a minecart goes up
     function ignite(x, y, r, chance) {
       fireList();
-      const n = fireArea(fire, x, y, r, chance);
-      for (const pr of firePlants)
+      const n = fireArea(W.fire, x, y, r, chance);
+      for (const pr of W.firePlants)
         if (!pr.gone && !pr.burn && x > pr.x - 5 - r && x < pr.x + 5 + r && y > pr.y - r && y < pr.y + pr.len + r &&
           Math.random() < chance) catchPlant(pr);
       for (let w = webs.length - 1; w >= 0; w--) if (webDist(webs[w], x, y) < r + 2 && Math.random() < chance) burnWeb(w);
-      for (const pr of fireArches) {
+      for (const pr of W.fireArches) {
         if (pr.gone || pr.burn || x < pr.x + pr.l - r || x > pr.x + pr.r + r || y < pr.y + pr.t0 - r || y > pr.y + pr.b + r) continue;
         const q = archNear(pr, x, y);
         if (q.d < r + 3 && Math.random() < chance) catchArch(pr, q.k / (pr.arc.length - 1));
       }
-      for (const pr of fireCarts)
+      for (const pr of W.fireCarts)
         if (!pr.gone && x > pr.x + pr.l - r && x < pr.x + pr.r + r && y > pr.y + pr.t0 - r && y < pr.y + pr.b + r &&
           Math.random() < chance) blowProp(pr);
       if (n > 4) SFX.fx('whoosh', x, y);
@@ -1373,53 +1369,53 @@ export function Game({ input }) {
     // what's on view, and the crackle sits at the nearest blaze.
     // the props that burn, relisted whenever props came or went (a test room, a drop)
     function fireList() {
-      if (W.props.length === firePropN && W.props[W.props.length - 1] === firePropLast) return;
-      firePropN = W.props.length; firePropLast = W.props[W.props.length - 1];
-      firePlants = W.props.filter(pr => pr.k === 'climb' && FLAMMABLE[pr.st] && !pr.arc);
-      fireArches = W.props.filter(pr => pr.arc && FLAMMABLE[pr.st]);
-      fireCarts = W.props.filter(pr => pr.k === 'barrel');
+      if (W.props.length === W.firePropN && W.props[W.props.length - 1] === W.firePropLast) return;
+      W.firePropN = W.props.length; W.firePropLast = W.props[W.props.length - 1];
+      W.firePlants = W.props.filter(pr => pr.k === 'climb' && FLAMMABLE[pr.st] && !pr.arc);
+      W.fireArches = W.props.filter(pr => pr.arc && FLAMMABLE[pr.st]);
+      W.fireCarts = W.props.filter(pr => pr.k === 'barrel');
     }
     function fireFrame(dt, pcx, pcy) {
       fireList();
-      const ticks = fireStep(fire, dt, fireOut);
-      fireN += ticks;
-      const L = fire.list, any = L.length > 0;
+      const ticks = fireStep(W.fire, dt, fireOut);
+      W.fireN += ticks;
+      const L = W.fire.list, any = L.length > 0;
       if (ticks && any) {
-        for (let k = fireN & 3; k < firePlants.length; k += 4) {       // a quarter of the plants a tick
-          const pr = firePlants[k];
+        for (let k = W.fireN & 3; k < W.firePlants.length; k += 4) {       // a quarter of the plants a tick
+          const pr = W.firePlants[k];
           if (pr.gone || pr.burn) continue;
-          for (let yy = pr.y + 2; yy < pr.y + pr.len; yy += 8) if (fireNear(fire, pr.x, yy, 2)) { catchPlant(pr); break; }
+          for (let yy = pr.y + 2; yy < pr.y + pr.len; yy += 8) if (fireNear(W.fire, pr.x, yy, 2)) { catchPlant(pr); break; }
         }
-        for (const pr of fireArches) {
+        for (const pr of W.fireArches) {
           if (pr.gone || pr.burn) continue;
           const n = pr.arc.length - 1;
-          for (let k = 0; k <= n; k += 2) { const q = archAt(pr, k / n); if (fireNear(fire, q.x, q.y, 2)) { catchArch(pr, k / n); break; } }
+          for (let k = 0; k <= n; k += 2) { const q = archAt(pr, k / n); if (fireNear(W.fire, q.x, q.y, 2)) { catchArch(pr, k / n); break; } }
         }
         for (let w = webs.length - 1; w >= 0; w--) {
           const ln = webs[w];
           for (let u = 0; u <= 1; u += 0.25)
-            if (fireNear(fire, ln.a0x + (ln.b0x - ln.a0x) * u, ln.a0y + (ln.b0y - ln.a0y) * u, 2)) { burnWeb(w); break; }
+            if (fireNear(W.fire, ln.a0x + (ln.b0x - ln.a0x) * u, ln.a0y + (ln.b0y - ln.a0y) * u, 2)) { burnWeb(w); break; }
         }
-        for (const pr of fireCarts) if (!pr.gone && fireNear(fire, pr.x, pr.y - 4, 8)) blowProp(pr);
+        for (const pr of W.fireCarts) if (!pr.gone && fireNear(W.fire, pr.x, pr.y - 4, 8)) blowProp(pr);
       }
       // burning plants: the fire climbs from the tip to the rock, lighting what's round it
-      for (const pr of firePlants) {
+      for (const pr of W.firePlants) {
         if (!pr.burn || pr.gone) continue;
         pr.len -= kr('firePlant') * dt; pr.b = Math.max(0, pr.len);
         const ty = pr.y + Math.max(0, pr.len);
         if (Math.random() < dt * 30) flameAt(pr.x + (Math.random() - 0.5) * 4, ty);
         if (Math.random() < dt * 4) fireSmoke(pr.x, ty);
         if (ticks) {
-          fireArea(fire, pr.x, ty, 5, 0.3);
-          for (const o of firePlants)
+          fireArea(W.fire, pr.x, ty, 5, 0.3);
+          for (const o of W.firePlants)
             if (!o.burn && !o.gone && Math.abs(o.x - pr.x) < 10 && ty > o.y - 4 && ty < o.y + o.len + 4 && Math.random() < 0.25) catchPlant(o);
           if (!p.dead && zfx.climb === pr) youAlight();
         }
-        if (pr.len < 4) { pr.gone = true; fireArea(fire, pr.x, pr.y, 6, 1); }
+        if (pr.len < 4) { pr.gone = true; fireArea(W.fire, pr.x, pr.y, 6, 1); }
       }
       // burning arched vines: the fire runs both ways along it from where it caught, lighting
       // the strands as it reaches them, and the vine is gone when it meets both ends
-      for (const pr of fireArches) {
+      for (const pr of W.fireArches) {
         if (!pr.burn || pr.gone) continue;
         const du = kr('fireArch') * dt / Math.max(1, pr.alen);
         pr.u0 = Math.max(0, pr.u0 - du); pr.u1 = Math.min(1, pr.u1 + du);
@@ -1427,10 +1423,10 @@ export function Game({ input }) {
           const q = archAt(pr, u);
           if (Math.random() < dt * 30) flameAt(q.x + (Math.random() - 0.5) * 4, q.y);
           if (Math.random() < dt * 4) fireSmoke(q.x, q.y);
-          if (ticks) fireArea(fire, q.x, q.y, 5, 0.3);
+          if (ticks) fireArea(W.fire, q.x, q.y, 5, 0.3);
         }
         if (ticks) {
-          for (const o of firePlants) if (o.on === pr && !o.burn && !o.gone && o.u >= pr.u0 && o.u <= pr.u1) catchPlant(o);
+          for (const o of W.firePlants) if (o.on === pr && !o.burn && !o.gone && o.u >= pr.u0 && o.u <= pr.u1) catchPlant(o);
           if (!p.dead && zfx.climb === pr) youAlight();
         }
         if (pr.u0 <= 0 && pr.u1 >= 1) pr.gone = true;
@@ -1438,7 +1434,7 @@ export function Game({ input }) {
       // burning creatures: hurt in chunks (so they flash, not flicker), spread it where they go
       for (let j = W.enemies.length - 1; j >= 0; j--) {
         const e = W.enemies[j];
-        if (ticks && any && !(e.burn > 0) && fireNear(fire, e.x, e.ty, e.r * 0.7)) setAlight(e);
+        if (ticks && any && !(e.burn > 0) && fireNear(W.fire, e.x, e.ty, e.r * 0.7)) setAlight(e);
         if (!(e.burn > 0)) continue;
         e.burn -= dt;
         e.burnAcc = (e.burnAcc || 0) + kr('fireDps') * dt;
@@ -1450,14 +1446,14 @@ export function Game({ input }) {
       }
       // you: fire underfoot or round you lights you; water, snow or slime puts you out
       if (!p.dead) {
-        if (ticks && any && !(p.burn > 0) && (fireNear(fire, pcx, p.y + PH - 3, 3) || fireNear(fire, pcx, pcy, 3))) youAlight();
+        if (ticks && any && !(p.burn > 0) && (fireNear(W.fire, pcx, p.y + PH - 3, 3) || fireNear(W.fire, pcx, pcy, 3))) youAlight();
         if (p.burn > 0 && FIRE_WET[zfx.surface]) { p.burn = 0; p.burnAcc = 0; SFX.fx('sizzle', pcx, p.y + PH); }
         if (p.burn > 0) {
           p.burn -= dt;
           p.burnAcc = (p.burnAcc || 0) + kr('fireYouDps') * dt;
           if (Math.random() < dt * 40) flameAt(p.x + Math.random() * PW, p.y + PH * (0.2 + Math.random() * 0.8));
           if (Math.random() < dt * 6) fireSmoke(pcx, p.y);
-          if (ticks) fireArea(fire, pcx, p.y + PH - 2, 5, 0.3);
+          if (ticks) fireArea(W.fire, pcx, p.y + PH - 2, 5, 0.3);
           if (p.burnAcc >= 2 || p.burn <= 0) { const d = Math.round(p.burnAcc); p.burnAcc -= d; if (d > 0) hurt(d); }
         }
       } else p.burn = 0;
@@ -1480,8 +1476,8 @@ export function Game({ input }) {
           if (d < bd) { bd = d; bx = x; by = y; }
         }
         if (bd < HEAR_FIRE) {
-          if (!fireLoop && SFX.ready) fireLoop = SFX.loop('fire');
-          if (fireLoop) fireLoop.set(Math.min(1, 0.35 + near / 300) * 0.7, bx, by);
+          if (!W.fireLoop && SFX.ready) W.fireLoop = SFX.loop('fire');
+          if (W.fireLoop) W.fireLoop.set(Math.min(1, 0.35 + near / 300) * 0.7, bx, by);
         }
       }
       flushFire();
@@ -1510,7 +1506,7 @@ export function Game({ input }) {
                 life: 0.8 + Math.random() * 0.4, max: 1.2, c: `rgb(${d[k]},${d[k + 1]},${d[k + 2]})`, size: 2, heavy: true });
             }
             if (W.ore && W.ore[i]) { W.ore[i] = 0; nOre++; }
-            fire.fuel[i] = 0; fire.t[i] = 0;
+            W.fire.fuel[i] = 0; W.fire.t[i] = 0;
             W.mat[i] = 0;
             d[k + 3] = 0;
           } else if (dist <= ring) {
@@ -1852,7 +1848,7 @@ export function Game({ input }) {
         // burning oil from a lantern: lights what it passes through, and where it lands
         if (q.ember) {
           const ex = Math.floor(q.x / CELL), ey = Math.floor(q.y / CELL);
-          if (ex >= 0 && ey >= 0 && ex < CW && ey < CH && fire.fuel[ey * CW + ex]) ignite(q.x, q.y, 2, 0.6);
+          if (ex >= 0 && ey >= 0 && ex < CW && ey < CH && W.fire.fuel[ey * CW + ex]) ignite(q.x, q.y, 2, 0.6);
           if (!p.dead && q.x > p.x && q.x < p.x + PW && q.y > p.y && q.y < p.y + PH) { youAlight(); dead = true; }
           if (!dead && solidAt(q.x, q.y)) ignite(q.x - q.vx * dt, q.y - q.vy * dt, 4, 0.85);
         }
@@ -2477,7 +2473,7 @@ export function Game({ input }) {
         if (f.field === 'slow' || f.field === 'storm') {
           // Stillness frosts and the thundercloud's rain soaks: any fire under them goes out
           if ((f.dT = (f.dT || 0) - dt) <= 0) { f.dT = 0.15;
-            if (fireDouse(fire, f.x, f.y, f.r) && Math.random() < 0.5) SFX.fx('steam', f.x, f.y);
+            if (fireDouse(W.fire, f.x, f.y, f.r) && Math.random() < 0.5) SFX.fx('steam', f.x, f.y);
             for (const e of W.enemies) if (e.burn > 0 && Math.hypot(e.x - f.x, e.ty - f.y) < f.r) e.burn = 0;
             if (p.burn > 0 && Math.hypot(pcx - f.x, pcy - f.y) < f.r) p.burn = 0; }
           if (f.field === 'slow' && Math.random() < dt * 14) { const a = Math.random() * 6.283, r = Math.random() * f.r;
@@ -2915,7 +2911,7 @@ export function Game({ input }) {
         if (b.drip) for (b.da += b.drip * dt; b.da >= 1; b.da--)
           goo(b.x + (Math.random() - 0.5) * b.size, b.y + b.size * 0.5, b.vx * 0.08, 8 + Math.random() * 18, b.dripG, b.dripCol || b.col, 0, b.dripCol2);
         let gone = b.life <= 0;
-        if (b.fire) fireArea(fire, b.x, b.y, 4, 0.5);
+        if (b.fire) fireArea(W.fire, b.x, b.y, 4, 0.5);
         const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
         for (let s = 0; s < sn && !gone; s++) {
           b.x += b.vx * dt / sn; b.y += b.vy * dt / sn;
@@ -3002,7 +2998,7 @@ export function Game({ input }) {
         const bn = { x: pcx + (Math.random() - 0.5) * 6, y: p.y + PH, life: 0.7, max: 0.7 };
         burns.push(bn);
         if (burns.length > 48) burns.shift();
-        fireArea(fire, bn.x, bn.y + 2, 4, 0.4);
+        fireArea(W.fire, bn.x, bn.y + 2, 4, 0.4);
       }
       for (let i = burns.length - 1; i >= 0; i--) {
         const bn = burns[i]; bn.life -= dt;
@@ -3208,14 +3204,14 @@ export function Game({ input }) {
       // the burning pixels, over the art they're eating: colour by how much fuel is left, and a
       // new flicker each fire tick. Drawn under the fog, so fire you haven't seen stays hidden;
       // the glow on top comes after the fog, only on ground you have seen (fireVis).
-      fireVis.length = 0;
-      if (fire.list.length) {
+      W.fireVis.length = 0;
+      if (W.fire.list.length) {
         const buckets = [[], [], [], []];
-        for (const i of fire.list) {
+        for (const i of W.fire.list) {
           const x = i % CW, y = (i / CW) | 0;
           if (x < tx0 || x >= tx1 || y < ty0 || y >= ty1) continue;
-          fireVis.push(i);
-          const t = fire.t[i], h = (Math.imul(i, 2654435761) + fireN * 40503) >>> 30;
+          W.fireVis.push(i);
+          const t = W.fire.t[i], h = (Math.imul(i, 2654435761) + W.fireN * 40503) >>> 30;
           buckets[t <= 3 ? 3 : h === 0 ? 0 : h === 3 ? 2 : 1].push(i);
         }
         for (let c = 0; c < 4; c++) {
@@ -4073,23 +4069,23 @@ export function Game({ input }) {
       for (const b of bullets) if (b.light && !b.hidden && onView(b.x, b.y, 50) && fogLit(b.x, b.y))
         glowAt(ctx, b.x, b.y, b.lightR || 20, 0.28, b.light);
       // fire: the burning pixels brighten and throw a warm glow — only on ground you have seen
-      if (fireVis.length) {
+      if (W.fireVis.length) {
         ctx.fillStyle = 'rgba(255,140,50,0.32)';
         ctx.beginPath();
-        for (const i of fireVis) {
+        for (const i of W.fireVis) {
           const x = (i % CW) * CELL, y = ((i / CW) | 0) * CELL;
           if (W.seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)]) ctx.rect(x, y, CELL, CELL);
         }
         ctx.fill();
-        const st = Math.max(1, Math.ceil(fireVis.length / 24));
-        for (let k = fireN % st; k < fireVis.length; k += st) {
-          const i = fireVis[k], x = (i % CW + 0.5) * CELL, y = (((i / CW) | 0) + 0.5) * CELL;
-          if (fogLit(x, y)) glowAt(ctx, x, y, 20, Math.min(0.14, 0.03 + fireVis.length / 3000) * flick, '255,120,40');
+        const st = Math.max(1, Math.ceil(W.fireVis.length / 24));
+        for (let k = W.fireN % st; k < W.fireVis.length; k += st) {
+          const i = W.fireVis[k], x = (i % CW + 0.5) * CELL, y = (((i / CW) | 0) + 0.5) * CELL;
+          if (fogLit(x, y)) glowAt(ctx, x, y, 20, Math.min(0.14, 0.03 + W.fireVis.length / 3000) * flick, '255,120,40');
         }
       }
       for (const e of W.enemies)
         if (e.burn > 0 && onView(e.x, e.ty, 40) && fogLit(e.x, e.ty)) glowAt(ctx, e.x, e.ty, e.r * 2.4, 0.22 * flick, '255,130,50');
-      for (const pr of firePlants)
+      for (const pr of W.firePlants)
         if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(pr.x, pr.y + pr.len))
           glowAt(ctx, pr.x, pr.y + pr.len, 16, 0.2 * flick, '255,130,50');
       if (p.burn > 0 && !p.dead) glowAt(ctx, p.x + PW / 2, p.y + PH / 2, 22, 0.25 * flick, '255,130,50');
