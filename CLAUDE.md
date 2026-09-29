@@ -146,7 +146,7 @@ rest and imports them. Where things are (`main.js` line numbers as of v96, they 
 | `modWeight` / `rollMod` | `src/spells/spawn.js`: Noita's spawn table (`NOITA_SPAWN`, `NOITA_OF`, `TIER_FLOOR`) |
 | guns | `src/spells/guns.js`: `makeGun`, `caveGun`, `startingGuns`, `GUN_RANGE`, `resetGun`, `gunPrice`, gun colours |
 | `planCast` | `src/spells/cast.js` (with `blankShot`, `effRecharge`, `gunPassives`): **the heart of it** — works out what one pull of the trigger fires |
-| `gunRate` / `buildAdvice` | ~2761: the build advisor |
+| `gunRate` / `buildAdvice` | `src/spells/advisor.js` (with `modPreview`): the build advisor |
 | `castGroups` / `groupStats` | ~2875: the outlines and stat lines in the build screen |
 | sprites | ~3050–3600: `drawGun`, `drawRunner`, `drawEnemy` (one per creature body) |
 | `PERKS` / `perkBag` | `src/data/perks.js`: the 31 perks, and folding an owned list into one effective bag |

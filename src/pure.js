@@ -17,3 +17,4 @@ export * from './spells/spawn.js';
 export * from './spells/guns.js';
 export * from './spells/cast.js';
 export * from './spells/trace.js';
+export * from './spells/advisor.js';
