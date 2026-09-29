@@ -5142,6 +5142,91 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return pts;
   }
 
+  // src/world/fire.js
+  var FLAMMABLE = { vine: 1, myc: 1 };
+  var FIRE_WET = { puddle: 1, snow: 1, ice: 1, slime: 1 };
+  var FIRE_COLS = ["#ffe07a", "#ff9a2e", "#f0561c", "#8a2a14"];
+  var FUEL_GRASS = 1, FUEL_MOSS = 2, FUEL_WOOD = 3;
+  var FIRE_TICK = 0.05;
+  var FIRE_MAX = 5e3;
+  var FIRE_CATCH = [0, 1, 0.6, 0.45];
+  var FIRE_KNOB = [null, "fireGrass", "fireMoss", "fireWood"];
+  var FIRE_UPW = (dy) => dy < 0 ? 1 : dy === 0 ? 0.9 : 0.35;
+  var FIRE_NB = [];
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++)
+    if (dx || dy) FIRE_NB.push([dy * CW + dx, FIRE_UPW(dy) * (Math.max(Math.abs(dx), Math.abs(dy)) === 2 ? 0.3 : 1)]);
+  function fireNew(fuel) {
+    return { fuel, t: new Uint16Array(fuel.length), list: [], acc: 0 };
+  }
+  function fireLight(F, i, rnd) {
+    const kind = F.fuel[i];
+    if (!kind || F.t[i] || F.list.length >= FIRE_MAX) return false;
+    F.t[i] = Math.max(1, Math.round(kr(FIRE_KNOB[kind], rnd) / FIRE_TICK));
+    F.list.push(i);
+    return true;
+  }
+  function fireDouse(F, x, y, r) {
+    const cx0 = x / CELL, cy0 = y / CELL, rc = r / CELL;
+    const x0 = Math.max(0, Math.floor(cx0 - rc)), x1 = Math.min(CW - 1, Math.ceil(cx0 + rc));
+    const y0 = Math.max(0, Math.floor(cy0 - rc)), y1 = Math.min(CH - 1, Math.ceil(cy0 + rc));
+    let n = 0;
+    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
+      const i = cy * CW + cx;
+      if (F.t[i] && Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) {
+        F.t[i] = 0;
+        n++;
+      }
+    }
+    return n;
+  }
+  function fireArea(F, x, y, r, chance, rnd) {
+    rnd = rnd || Math.random;
+    const cx0 = x / CELL, cy0 = y / CELL, rc = r / CELL;
+    const x0 = Math.max(0, Math.floor(cx0 - rc)), x1 = Math.min(CW - 1, Math.ceil(cx0 + rc));
+    const y0 = Math.max(0, Math.floor(cy0 - rc)), y1 = Math.min(CH - 1, Math.ceil(cy0 + rc));
+    let n = 0;
+    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
+      const i = cy * CW + cx;
+      if (!F.fuel[i] || F.t[i] || Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc || rnd() >= chance) continue;
+      if (fireLight(F, i, rnd)) n++;
+    }
+    return n;
+  }
+  function fireNear(F, x, y, r) {
+    const cx0 = Math.floor(x / CELL), cy0 = Math.floor(y / CELL), rc = Math.ceil(r / CELL);
+    for (let cy = Math.max(0, cy0 - rc); cy <= Math.min(CH - 1, cy0 + rc); cy++)
+      for (let cx = Math.max(0, cx0 - rc); cx <= Math.min(CW - 1, cx0 + rc); cx++)
+        if (F.t[cy * CW + cx]) return true;
+    return false;
+  }
+  function fireStep(F, dt, out, rnd) {
+    rnd = rnd || Math.random;
+    F.acc = Math.min(F.acc + dt, FIRE_TICK * 4);
+    let ticks = 0;
+    while (F.acc >= FIRE_TICK) {
+      F.acc -= FIRE_TICK;
+      ticks++;
+      const L = F.list, n0 = L.length, sp = kr("fireSpread", rnd), N = F.fuel.length;
+      let w = 0;
+      for (let k = 0; k < n0; k++) {
+        const i = L[k];
+        if (!F.t[i]) continue;
+        for (const [o, w2] of FIRE_NB) {
+          const j = i + o;
+          if (j >= 0 && j < N && F.fuel[j] && !F.t[j] && rnd() < sp * w2 * FIRE_CATCH[F.fuel[j]]) fireLight(F, j, rnd);
+        }
+        if (--F.t[i] === 0) {
+          const kind = F.fuel[i];
+          F.fuel[i] = 0;
+          if (out) out(i, kind);
+        } else L[w++] = i;
+      }
+      for (let k = n0; k < L.length; k++) L[w++] = L[k];
+      L.length = w;
+    }
+    return ticks;
+  }
+
   // src/main.js
   var { useRef, useEffect, useState, useMemo } = React;
   var h = React.createElement;
@@ -6865,10 +6950,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var DECOR_DENSITY = 3;
   var GROVES = 14;
   var PLANTS = { vine: 1, myc: 1, root: 1, kelp: 1 };
-  var FLAMMABLE = { vine: 1, myc: 1 };
-  var FIRE_WET = { puddle: 1, snow: 1, ice: 1, slime: 1 };
   var HEAR_FIRE = 320;
-  var FIRE_COLS = ["#ffe07a", "#ff9a2e", "#f0561c", "#8a2a14"];
   var PROP_BOX = {
     drop: { icicle: [-4, 0, 4, 16], geode: [-7, 0, 7, 12] },
     spike: [-6, -10, 6, 0],
@@ -9916,86 +9998,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     timberWorks.zones = zones;
     return sets;
-  }
-  var FUEL_GRASS = 1, FUEL_MOSS = 2, FUEL_WOOD = 3;
-  var FIRE_TICK = 0.05;
-  var FIRE_MAX = 5e3;
-  var FIRE_CATCH = [0, 1, 0.6, 0.45];
-  var FIRE_KNOB = [null, "fireGrass", "fireMoss", "fireWood"];
-  var FIRE_UPW = (dy) => dy < 0 ? 1 : dy === 0 ? 0.9 : 0.35;
-  var FIRE_NB = [];
-  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++)
-    if (dx || dy) FIRE_NB.push([dy * CW + dx, FIRE_UPW(dy) * (Math.max(Math.abs(dx), Math.abs(dy)) === 2 ? 0.3 : 1)]);
-  function fireNew(fuel) {
-    return { fuel, t: new Uint16Array(fuel.length), list: [], acc: 0 };
-  }
-  function fireLight(F, i, rnd) {
-    const kind = F.fuel[i];
-    if (!kind || F.t[i] || F.list.length >= FIRE_MAX) return false;
-    F.t[i] = Math.max(1, Math.round(kr(FIRE_KNOB[kind], rnd) / FIRE_TICK));
-    F.list.push(i);
-    return true;
-  }
-  function fireDouse(F, x, y, r) {
-    const cx0 = x / CELL, cy0 = y / CELL, rc = r / CELL;
-    const x0 = Math.max(0, Math.floor(cx0 - rc)), x1 = Math.min(CW - 1, Math.ceil(cx0 + rc));
-    const y0 = Math.max(0, Math.floor(cy0 - rc)), y1 = Math.min(CH - 1, Math.ceil(cy0 + rc));
-    let n = 0;
-    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
-      const i = cy * CW + cx;
-      if (F.t[i] && Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) {
-        F.t[i] = 0;
-        n++;
-      }
-    }
-    return n;
-  }
-  function fireArea(F, x, y, r, chance, rnd) {
-    rnd = rnd || Math.random;
-    const cx0 = x / CELL, cy0 = y / CELL, rc = r / CELL;
-    const x0 = Math.max(0, Math.floor(cx0 - rc)), x1 = Math.min(CW - 1, Math.ceil(cx0 + rc));
-    const y0 = Math.max(0, Math.floor(cy0 - rc)), y1 = Math.min(CH - 1, Math.ceil(cy0 + rc));
-    let n = 0;
-    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
-      const i = cy * CW + cx;
-      if (!F.fuel[i] || F.t[i] || Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc || rnd() >= chance) continue;
-      if (fireLight(F, i, rnd)) n++;
-    }
-    return n;
-  }
-  function fireNear(F, x, y, r) {
-    const cx0 = Math.floor(x / CELL), cy0 = Math.floor(y / CELL), rc = Math.ceil(r / CELL);
-    for (let cy = Math.max(0, cy0 - rc); cy <= Math.min(CH - 1, cy0 + rc); cy++)
-      for (let cx = Math.max(0, cx0 - rc); cx <= Math.min(CW - 1, cx0 + rc); cx++)
-        if (F.t[cy * CW + cx]) return true;
-    return false;
-  }
-  function fireStep(F, dt, out, rnd) {
-    rnd = rnd || Math.random;
-    F.acc = Math.min(F.acc + dt, FIRE_TICK * 4);
-    let ticks = 0;
-    while (F.acc >= FIRE_TICK) {
-      F.acc -= FIRE_TICK;
-      ticks++;
-      const L = F.list, n0 = L.length, sp = kr("fireSpread", rnd), N = F.fuel.length;
-      let w = 0;
-      for (let k = 0; k < n0; k++) {
-        const i = L[k];
-        if (!F.t[i]) continue;
-        for (const [o, w2] of FIRE_NB) {
-          const j = i + o;
-          if (j >= 0 && j < N && F.fuel[j] && !F.t[j] && rnd() < sp * w2 * FIRE_CATCH[F.fuel[j]]) fireLight(F, j, rnd);
-        }
-        if (--F.t[i] === 0) {
-          const kind = F.fuel[i];
-          F.fuel[i] = 0;
-          if (out) out(i, kind);
-        } else L[w++] = i;
-      }
-      for (let k = n0; k < L.length; k++) L[w++] = L[k];
-      L.length = w;
-    }
-    return ticks;
   }
   function boxReach(mat, x, y) {
     const PWc = 6, PHc = 11;
