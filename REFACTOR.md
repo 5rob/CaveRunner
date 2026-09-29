@@ -500,6 +500,10 @@ What the code says about P3.4 (checked at the end of P3.3):
          `W`/`G`), then the layers in their current order: camera, background + terrain, props, portal, smoke, fields, silk,
          enemies, projectiles, beams, arrival, shop, gold, pickups, rooms, trail, sparks, motes, flashes, flame, aim + gun,
          player, torchlight + fog, post-fog glows, HUD, radar, messages, reticule, map.
+       **draw's split, P3.4 (34)–**:
+       - [x] P3.4 (34): `drawLook`, `drawFieldLook` → `(W, G, …)`, `drawBolt` → `(G, …)` (it only draws, like `recWrap(G)`)
+         into a new `render/looks.js`, by a scratch script (the three function texts cut, de-indented two spaces, the four
+         call sites given `W, G` / `G`)
     4. Keep the order exactly: draw() draws from the sim's `Math.random` stream and writes fog memory and the camera, and
        step's parts feed each other within the frame. The probe catches any reorder.
   - Learned so far: `G`'s keys must be declared above `G` (a closure `const` further down moves up
@@ -901,3 +905,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.4 (32) | `stepGhost` (20 lines, in step.js) and `stepTrail` (12 lines) → fire.js with `tools/part.js`; fire.js header. `perks`, `fire`, `replay` run too, all first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (33) | `stepParticles` (31 lines) and `stepMotes` (45) → particles.js, `stepTorch` (33) → player.js, with `tools/part.js`; the top-level step tidied (the leftover `LO`/`MHP`/`pcx`/`pcy` locals gone, one comment per call). **step() is split**: step.js 1,137 → 156 lines. `jetpack`, `blackhole`, `replay` run too, first time; `torch` failed 4 of 10 here ("falls off into the dark", "brighter frames… taller flame", "only falls away with distance") and 3 of 12 on the commit before (same names): the known flake. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 checkpoint | Full suite on e5b7c1b (step() split): only `jelly` failed, "saturation 0 greys it out"; alone it passed once, then failed twice on the spit group (known). The probe against 630e6e9, the commit before the split, is SAME too. Stopped here: draw()'s split is next. Not merged. | logic 33/33; browser 44/44 after re-runs |
+| 2026-09-30 | Phase 3, P3.4 (34) | draw()'s split begins: its inner `drawLook`, `drawFieldLook`, `drawBolt` → new `render/looks.js` (scratch script; `rnd` goes with them). `spelllooks`, `t1spells`, `blackhole`, `everymod` run too, first time; `lightning` failed once, passed 2 of 2 alone (known flake). | probe SAME, logic 33/33, smoke ok |

@@ -68,5 +68,6 @@ export * from './game/systems/level-entry.js';
 export * from './game/systems/pickups.js';
 export * from './game/systems/step.js';
 export * from './game/render/draw.js';
+export * from './game/render/looks.js';
 export * from './game/Game.js';
 export * from './ui/app.js';
