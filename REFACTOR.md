@@ -515,6 +515,8 @@ What the code says about P3.4 (checked at the end of P3.3):
        - [x] P3.4 (38): `drawShots` (the creatures' shots, yours, the lightning arcs) and `drawBeams` → looks.js (`part.js`)
        - [x] P3.4 (39): `drawArrival`, `drawShop`, `drawLoot` (gold and pickups together), `drawRooms` → cave.js (`part.js`)
        - [x] P3.4 (40): `drawTrail`, `drawSparks`, `drawMotes`, `drawFlashes` → effects.js, `drawJetFlame` → actors.js (`part.js`)
+       - [x] P3.4 (41): `drawAim` → actors.js (`part.js` on the Trajectory Sight block with `R` in `F` for the cut, then by hand
+         the aim's four lines moved in and `R` out of `F` again: it fills `F.held`, `F.ax`/`F.ay`, `F.gy`), `drawPlayer` → actors.js
     4. Keep the order exactly: draw() draws from the sim's `Math.random` stream and writes fog memory and the camera, and
        step's parts feed each other within the frame. The probe catches any reorder.
   - Learned so far: `G`'s keys must be declared above `G` (a closure `const` further down moves up
@@ -924,3 +926,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.4 (38) | `drawShots` (71 lines: enemy shots, bullets, arcs) and `drawBeams` → looks.js with `tools/part.js`; looks.js header. `spelllooks`, `t1spells`, `blackhole`, `lightning`, `everymod`, `pollen`, `trigger` run too, first time. `jelly` passed whole 1 of 9 (spit group mostly, spores once); on (37) 1 of 4, failing on the spit, the plant glow and "saturation 0": the known flake, no draw code in any of those checks moved. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (39) | `drawArrival`, `drawShop`, `drawLoot` (gold + pickups), `drawRooms` → cave.js with `tools/part.js`. `shop`, `shopcard`, `gunpickup`, `interact`, `perks`, `teleport`, `save` run too, all first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (40) | `drawTrail`, `drawSparks`, `drawMotes`, `drawFlashes` → effects.js, `drawJetFlame` → actors.js, with `tools/part.js`. `jetpack`, `blackhole`, `fire`, `replay`, `perks` run too, all first time. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 3, P3.4 (41) | `drawAim` (the aim's setup moved in by hand after `part.js`: fills `F.held`, `F.ax`/`F.ay`, `F.gy`) and `drawPlayer` (runner, gun, torch, crosshair, shield, ghost) → actors.js. `perks`, `jetpack`, `replay`, `buzzsaw`, `interact`, `cooldown-debug-shop` run too, first time; `torch` failed 3 of 8 (falloff / flicker checks, the known flake; 4 of 10 at (33)). | probe SAME, logic 33/33, smoke ok |

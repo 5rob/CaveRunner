@@ -5855,6 +5855,340 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { rech, rechMul, manaMax, manaRegen };
   }
 
+  // src/data/creatures.js
+  var CREATURES = {
+    // jellyfish: pulses along wherever its head points, drag slows it, then it pulses again;
+    // hunting, it lines its head up on you and spits dripping poison. Its numbers are
+    // Dev-panel knobs (DEV.je*); dmg and spd here are only its defaults, for show.
+    meduusa: {
+      name: "Myrkkymeduusa",
+      body: "jelly",
+      act: "jelly",
+      kp: "je",
+      aggro: 300,
+      col: { a: "#46c94f", b: "#133d1a", c: "#a6ff7c", eye: "#e4ff4a" },
+      glow: "110,255,90",
+      hp: 2,
+      dmg: 7,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 4,
+      r: 9,
+      spd: 140
+    },
+    hiisi: {
+      name: "Hiisi",
+      body: "drone",
+      act: "shoot",
+      col: { a: "#4f7a52", b: "#22331f", c: "#7fb383", eye: "#ffd98a" },
+      hp: 5,
+      dmg: 10,
+      bspd: 190,
+      range: 230,
+      cd: 1.5,
+      gold: 8,
+      r: 9,
+      spd: 34
+    },
+    tappura: {
+      name: "Tappurahiisi",
+      body: "drone",
+      act: "shoot",
+      shots: 4,
+      col: { a: "#7a5a3a", b: "#33241a", c: "#b08a5c", eye: "#ffb347" },
+      hp: 6,
+      dmg: 7,
+      bspd: 200,
+      range: 180,
+      cd: 2.3,
+      gold: 10,
+      r: 10,
+      spd: 30
+    },
+    chain: {
+      name: "Chaingunner",
+      body: "drone",
+      act: "shoot",
+      col: { a: "#8a3f3f", b: "#3a1c1c", c: "#c06a6a", eye: "#ff8a8a" },
+      hp: 7,
+      dmg: 5,
+      bspd: 230,
+      range: 250,
+      cd: 0.6,
+      gold: 12,
+      r: 10,
+      spd: 32
+    },
+    snipu: {
+      name: "Snipuhiisi",
+      body: "drone",
+      act: "turret",
+      tele: 0.55,
+      col: { a: "#5a5f8a", b: "#252a44", c: "#8f95c4", eye: "#9ad4ff" },
+      hp: 4,
+      dmg: 22,
+      bspd: 420,
+      range: 460,
+      cd: 3,
+      gold: 14,
+      r: 9,
+      spd: 0
+    },
+    // spider: lives on rock and its own silk (spiderStep); bites up close, and shoots a
+    // string at you that slows you until you pull it too long and it snaps. Its speeds and
+    // reaches are Dev-panel knobs (DEV.sp*); spd is the burst speed's default, for show.
+    hamahakki: {
+      name: "Hämähäkki",
+      body: "spider",
+      act: "spider",
+      kp: "sp",
+      aggro: 300,
+      col: { a: "#6a4a86", b: "#2b1d38", c: "#a077c4", eye: "#ffd98a" },
+      hp: 4,
+      dmg: 12,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 6,
+      r: 9,
+      spd: 260
+    },
+    // rat: runs the rock surfaces round its nest (ratStep), bites you and knocks gold out of
+    // you, grabs any loose gold near it and carries it home. Its numbers are Dev knobs (DEV.ra*).
+    // It is never rolled off a roster: rats only come out of nests.
+    rotta: {
+      name: "Rotta",
+      body: "rat",
+      act: "rat",
+      kp: "ra",
+      aggro: 260,
+      noRoster: 1,
+      col: { a: "#7a6a5e", b: "#3a302a", c: "#b3a291", eye: "#ff5a5a" },
+      hp: 1,
+      dmg: 4,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 2,
+      r: 4,
+      spd: 170
+    },
+    // rat nest: a room in the rock at the end of a thin tunnel. Doesn't move; lets a rat out
+    // now and then while it has fewer than its max out; dies to digging or blasting.
+    pesa: {
+      name: "Rotanpesä",
+      body: "nest",
+      act: "nest",
+      noRoster: 1,
+      col: { a: "#8a6a3a", b: "#3d2c18", c: "#c49a5a", eye: "#ffd23c" },
+      hp: 12,
+      dmg: 0,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 0,
+      r: 10,
+      spd: 0
+    },
+    lohkare: {
+      name: "Lohkare",
+      body: "crawler",
+      act: "chase",
+      aggro: 260,
+      col: { a: "#6a625a", b: "#2c2823", c: "#9d948a", eye: "#ffb347" },
+      hp: 16,
+      dmg: 18,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 20,
+      r: 13,
+      spd: 26
+    },
+    mato: {
+      name: "Mato",
+      body: "worm",
+      act: "chase",
+      aggro: 320,
+      col: { a: "#a2607a", b: "#40222e", c: "#d68fa8", eye: "#ffd98a" },
+      hp: 6,
+      dmg: 14,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 9,
+      r: 8,
+      spd: 84
+    },
+    hurtta: {
+      name: "Hurtta",
+      body: "crawler",
+      act: "chase",
+      aggro: 360,
+      col: { a: "#7a4a3a", b: "#2f1a14", c: "#b3765c", eye: "#ff9a5a" },
+      hp: 5,
+      dmg: 15,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 10,
+      r: 9,
+      spd: 105
+    },
+    kobold: {
+      name: "Kobold",
+      body: "crawler",
+      act: "chase",
+      aggro: 300,
+      col: { a: "#8a7a4a", b: "#332d18", c: "#c0ad74", eye: "#ffe066" },
+      hp: 3,
+      dmg: 8,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 5,
+      r: 7,
+      spd: 92
+    },
+    konna: {
+      name: "Konna",
+      body: "blob",
+      act: "chase",
+      aggro: 260,
+      col: { a: "#4a7a6a", b: "#1c332c", c: "#79b3a0", eye: "#d8ff9a" },
+      hp: 6,
+      dmg: 11,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 7,
+      r: 10,
+      spd: 48
+    },
+    lima: {
+      name: "Limanuljaska",
+      body: "blob",
+      act: "bomb",
+      aggro: 300,
+      col: { a: "#6fa03a", b: "#2a3d14", c: "#a6d46a", eye: "#e6ff9a" },
+      hp: 5,
+      dmg: 20,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 11,
+      r: 10,
+      spd: 55
+    },
+    tuli: {
+      name: "Stendari",
+      body: "blob",
+      act: "bomb",
+      aggro: 330,
+      fire: 1,
+      col: { a: "#c05a2a", b: "#3f1c0e", c: "#ff9a5a", eye: "#ffe066" },
+      hp: 6,
+      dmg: 26,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 13,
+      r: 10,
+      spd: 60
+    },
+    karpas: {
+      name: "Kärpässieni",
+      body: "blob",
+      act: "turret",
+      col: { a: "#b04a4a", b: "#3d1616", c: "#e88a8a", eye: "#ffffff" },
+      hp: 5,
+      dmg: 12,
+      bspd: 150,
+      range: 300,
+      cd: 1.9,
+      gold: 9,
+      r: 10,
+      spd: 0
+    },
+    jaatio: {
+      name: "Jäätiö",
+      body: "skull",
+      act: "turret",
+      tele: 0.3,
+      col: { a: "#7ab8d8", b: "#22414f", c: "#b6e2f4", eye: "#d8f4ff" },
+      hp: 8,
+      dmg: 12,
+      bspd: 130,
+      range: 240,
+      cd: 1.7,
+      gold: 15,
+      r: 10,
+      spd: 0
+    },
+    skull: {
+      name: "Elävät luut",
+      body: "skull",
+      act: "turret",
+      tele: 0.35,
+      col: { a: "#d8d2be", b: "#4a463c", c: "#f4f0e0", eye: "#5ee0a0" },
+      hp: 7,
+      dmg: 14,
+      bspd: 200,
+      range: 320,
+      cd: 2.1,
+      gold: 16,
+      r: 9,
+      spd: 0
+    }
+  };
+  var CREATURE_IDS = Object.keys(CREATURES);
+  var ROSTERS = [
+    ["meduusa", "hamahakki"],
+    ["meduusa", "hamahakki", "hiisi"],
+    ["hiisi", "konna", "hamahakki"],
+    ["hiisi", "mato", "lima", "kobold"],
+    ["hiisi", "karpas", "hurtta", "lima"],
+    ["snipu", "hiisi", "hurtta", "tuli", "karpas"],
+    ["snipu", "lohkare", "mato", "tuli", "kobold"],
+    ["jaatio", "chain", "lohkare", "hamahakki", "hurtta", "karpas"],
+    ["jaatio", "chain", "snipu", "tuli", "lohkare", "skull"],
+    ["chain", "snipu", "lohkare", "skull", "jaatio", "tappura"]
+  ];
+  function rosterFor(floor, rnd2) {
+    if (floor >= 1 && floor <= ROSTERS.length) return ROSTERS[floor - 1].slice();
+    const r = rnd2 || Math.random, pool = CREATURE_IDS.filter((id) => !CREATURES[id].noRoster), out = [];
+    const n = 2 + Math.floor(r() * 5);
+    while (out.length < n && pool.length) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
+    return out;
+  }
+  function enemyFor(id, floor) {
+    const c = CREATURES[id];
+    const hp = 1 + (floor - 1) * 0.35, dmg = 1 + (floor - 1) * 0.16, gold = 1 + (floor - 1) * 0.3;
+    return {
+      id,
+      name: c.name,
+      body: c.body,
+      act: c.act,
+      col: c.col,
+      hp: Math.max(1, Math.round(c.hp * hp)),
+      dmg: Math.max(1, Math.round(c.dmg * dmg)),
+      bspd: Math.round(c.bspd * (1 + (floor - 1) * 0.05)),
+      gold: Math.max(1, Math.round(c.gold * gold)),
+      range: c.range,
+      cd: c.cd,
+      tele: c.tele || 0,
+      shots: c.shots || 1,
+      r: c.r,
+      spd: c.spd,
+      aggro: c.aggro || 300,
+      kp: c.kp || null,
+      glow: c.glow || null
+    };
+  }
+  var HUNTERS = { chase: 1, bomb: 1, spider: 1, jelly: 1, rat: 1 };
+  var NATURAL_ONLY = { jelly: 1 };
+
   // src/spells/spawn.js
   var NOITA_SPAWN = {
     LIGHT_BULLET: ["0,1,2", "2,1,0.5"],
@@ -6298,485 +6632,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return COL.bullet;
   }
-
-  // src/spells/trace.js
-  var bhSp = (sh) => sh.pull ? DEV.bhSpeed / MODS.void.speed : 1;
-  var DRIFT_DRAG = 2.4, DRIFT_SLOW = 30, DRIFT_FLOAT = 40, DRIFT_RISE = 22;
-  var DRIFT_R = 80, DRIFT_CHASE = 130, DRIFT_ACC = 260;
-  function driftStep(vx, vy, dt) {
-    const k = Math.exp(-DRIFT_DRAG * dt);
-    vx *= k;
-    vy *= k;
-    if (Math.hypot(vx, vy) < DRIFT_SLOW) vy = Math.max(-DRIFT_RISE, vy - DRIFT_FLOAT * dt);
-    return [vx, vy];
-  }
-  var WIG_HZ = 45;
-  var wigAng = (amp, t) => amp / WIG_HZ * Math.cos(t * WIG_HZ);
-  var wigTurn = (amp, age, dt) => wigAng(amp, age) - (age - dt > 1e-9 ? wigAng(amp, age - dt) : 0);
-  function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
-    const dt = 1 / 60;
-    if (sh.flat) {
-      nx = nx >= 0 ? 1 : -1;
-      ny = 0;
-    }
-    if (sh.beam) {
-      out.length = 0;
-      out.push(x0, y0);
-      for (let d = 6; d <= sh.beam; d += 5) {
-        const bx = x0 + nx * d, by = y0 + ny * d;
-        if (!sh.bore && solid(bx, by)) break;
-        out.push(bx, by);
-      }
-      return out;
-    }
-    const reach = sh.reach != null ? sh.reach : 10;
-    let x = x0 + nx * reach, y = y0 + ny * reach;
-    const ox = x, oy = y;
-    let vx = nx * sh.speed, vy = ny * sh.speed;
-    let life = Math.min(sh.life, 2.5), bounce = sh.bounce || 0;
-    let age = 0, lock = false;
-    out.length = 0;
-    out.push(x, y);
-    for (let i = 0; i < 110 && life > 0; i++) {
-      life -= dt;
-      age += dt;
-      if (sh.grav) vy += sh.grav * dt;
-      if (sh.drag) {
-        const k = Math.exp(-sh.drag * dt);
-        vx *= k;
-        vy *= k;
-      }
-      if (sh.accel) {
-        const f = 1 + sh.accel * dt;
-        vx *= f;
-        vy *= f;
-      }
-      if (sh.vmax) {
-        const v = Math.hypot(vx, vy);
-        if (v > sh.vmax) {
-          vx *= sh.vmax / v;
-          vy *= sh.vmax / v;
-        }
-      }
-      const swing = (by) => {
-        const sp = Math.hypot(vx, vy), a = Math.atan2(vy, vx) + by;
-        vx = Math.cos(a) * sp;
-        vy = Math.sin(a) * sp;
-      };
-      if (sh.spiral) swing(sh.spiral * dt);
-      if (sh.wig) swing(wigTurn(sh.wig, age, dt));
-      if (sh.orbit) swing(sh.orbit * dt);
-      if (sh.pong && Math.floor(age / 0.45) % 2 === 1) {
-        vx = -vx;
-        vy = -vy;
-        age += dt;
-      }
-      if (sh.boomer && home) swing(Math.max(-sh.boomer * dt, Math.min(
-        sh.boomer * dt,
-        angDiff(Math.atan2(home.y - y, home.x - x), Math.atan2(vy, vx))
-      )));
-      if (sh.drift && !lock) {
-        const d = driftStep(vx, vy, dt);
-        vx = d[0];
-        vy = d[1];
-        if (enemies) {
-          for (const e of enemies) if (Math.hypot(e.x - x, e.ty - y) < (sh.homeR || DRIFT_R)) lock = true;
-        }
-      }
-      if (sh.drift && lock) {
-        const sp = Math.hypot(vx, vy);
-        if (sp < DRIFT_CHASE) {
-          const f = Math.min(DRIFT_CHASE, sp + DRIFT_ACC * dt) / (sp || 1);
-          vx = sp ? vx * f : 0;
-          vy = sp ? vy * f : -DRIFT_ACC * dt;
-        }
-      }
-      if (sh.homing && enemies && enemies.length && (!sh.drift || lock)) {
-        let best = null, bd = sh.homeR || 260;
-        for (const e of enemies) {
-          const d = Math.hypot(e.x - x, e.ty - y);
-          if (d < bd) {
-            bd = d;
-            best = e;
-          }
-        }
-        if (best) {
-          const sp = Math.hypot(vx, vy) || 1;
-          let ang = Math.atan2(vy, vx);
-          let diff = Math.atan2(best.ty - y, best.x - x) - ang;
-          while (diff > Math.PI) diff -= 2 * Math.PI;
-          while (diff < -Math.PI) diff += 2 * Math.PI;
-          const turn2 = sh.homing * dt;
-          ang += Math.max(-turn2, Math.min(turn2, diff));
-          vx = Math.cos(ang) * sp;
-          vy = Math.sin(ang) * sp;
-        }
-      }
-      const n = Math.max(1, Math.ceil(Math.hypot(vx, vy) * dt / 3));
-      let stop = false;
-      for (let st = 0; st < n; st++) {
-        const ax = x + vx * dt / n, ay = y + vy * dt / n;
-        if (solid(ax, ay)) {
-          if (sh.bore > 0 || sh.eat > 0) {
-            x = ax;
-            y = ay;
-            continue;
-          }
-          if (bounce > 0) {
-            bounce--;
-            const hx = solid(ax, y), hy = solid(x, ay);
-            if (hx || !hy) vx = -vx;
-            if (hy || !hx) vy = -vy;
-            const e = sh.bounceE || 0.92;
-            vx *= e;
-            vy *= e;
-            break;
-          }
-          stop = true;
-          break;
-        }
-        x = ax;
-        y = ay;
-      }
-      out.push(x, y);
-      if (stop) break;
-    }
-    return out;
-  }
-
-  // src/data/creatures.js
-  var CREATURES = {
-    // jellyfish: pulses along wherever its head points, drag slows it, then it pulses again;
-    // hunting, it lines its head up on you and spits dripping poison. Its numbers are
-    // Dev-panel knobs (DEV.je*); dmg and spd here are only its defaults, for show.
-    meduusa: {
-      name: "Myrkkymeduusa",
-      body: "jelly",
-      act: "jelly",
-      kp: "je",
-      aggro: 300,
-      col: { a: "#46c94f", b: "#133d1a", c: "#a6ff7c", eye: "#e4ff4a" },
-      glow: "110,255,90",
-      hp: 2,
-      dmg: 7,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 4,
-      r: 9,
-      spd: 140
-    },
-    hiisi: {
-      name: "Hiisi",
-      body: "drone",
-      act: "shoot",
-      col: { a: "#4f7a52", b: "#22331f", c: "#7fb383", eye: "#ffd98a" },
-      hp: 5,
-      dmg: 10,
-      bspd: 190,
-      range: 230,
-      cd: 1.5,
-      gold: 8,
-      r: 9,
-      spd: 34
-    },
-    tappura: {
-      name: "Tappurahiisi",
-      body: "drone",
-      act: "shoot",
-      shots: 4,
-      col: { a: "#7a5a3a", b: "#33241a", c: "#b08a5c", eye: "#ffb347" },
-      hp: 6,
-      dmg: 7,
-      bspd: 200,
-      range: 180,
-      cd: 2.3,
-      gold: 10,
-      r: 10,
-      spd: 30
-    },
-    chain: {
-      name: "Chaingunner",
-      body: "drone",
-      act: "shoot",
-      col: { a: "#8a3f3f", b: "#3a1c1c", c: "#c06a6a", eye: "#ff8a8a" },
-      hp: 7,
-      dmg: 5,
-      bspd: 230,
-      range: 250,
-      cd: 0.6,
-      gold: 12,
-      r: 10,
-      spd: 32
-    },
-    snipu: {
-      name: "Snipuhiisi",
-      body: "drone",
-      act: "turret",
-      tele: 0.55,
-      col: { a: "#5a5f8a", b: "#252a44", c: "#8f95c4", eye: "#9ad4ff" },
-      hp: 4,
-      dmg: 22,
-      bspd: 420,
-      range: 460,
-      cd: 3,
-      gold: 14,
-      r: 9,
-      spd: 0
-    },
-    // spider: lives on rock and its own silk (spiderStep); bites up close, and shoots a
-    // string at you that slows you until you pull it too long and it snaps. Its speeds and
-    // reaches are Dev-panel knobs (DEV.sp*); spd is the burst speed's default, for show.
-    hamahakki: {
-      name: "Hämähäkki",
-      body: "spider",
-      act: "spider",
-      kp: "sp",
-      aggro: 300,
-      col: { a: "#6a4a86", b: "#2b1d38", c: "#a077c4", eye: "#ffd98a" },
-      hp: 4,
-      dmg: 12,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 6,
-      r: 9,
-      spd: 260
-    },
-    // rat: runs the rock surfaces round its nest (ratStep), bites you and knocks gold out of
-    // you, grabs any loose gold near it and carries it home. Its numbers are Dev knobs (DEV.ra*).
-    // It is never rolled off a roster: rats only come out of nests.
-    rotta: {
-      name: "Rotta",
-      body: "rat",
-      act: "rat",
-      kp: "ra",
-      aggro: 260,
-      noRoster: 1,
-      col: { a: "#7a6a5e", b: "#3a302a", c: "#b3a291", eye: "#ff5a5a" },
-      hp: 1,
-      dmg: 4,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 2,
-      r: 4,
-      spd: 170
-    },
-    // rat nest: a room in the rock at the end of a thin tunnel. Doesn't move; lets a rat out
-    // now and then while it has fewer than its max out; dies to digging or blasting.
-    pesa: {
-      name: "Rotanpesä",
-      body: "nest",
-      act: "nest",
-      noRoster: 1,
-      col: { a: "#8a6a3a", b: "#3d2c18", c: "#c49a5a", eye: "#ffd23c" },
-      hp: 12,
-      dmg: 0,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 0,
-      r: 10,
-      spd: 0
-    },
-    lohkare: {
-      name: "Lohkare",
-      body: "crawler",
-      act: "chase",
-      aggro: 260,
-      col: { a: "#6a625a", b: "#2c2823", c: "#9d948a", eye: "#ffb347" },
-      hp: 16,
-      dmg: 18,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 20,
-      r: 13,
-      spd: 26
-    },
-    mato: {
-      name: "Mato",
-      body: "worm",
-      act: "chase",
-      aggro: 320,
-      col: { a: "#a2607a", b: "#40222e", c: "#d68fa8", eye: "#ffd98a" },
-      hp: 6,
-      dmg: 14,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 9,
-      r: 8,
-      spd: 84
-    },
-    hurtta: {
-      name: "Hurtta",
-      body: "crawler",
-      act: "chase",
-      aggro: 360,
-      col: { a: "#7a4a3a", b: "#2f1a14", c: "#b3765c", eye: "#ff9a5a" },
-      hp: 5,
-      dmg: 15,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 10,
-      r: 9,
-      spd: 105
-    },
-    kobold: {
-      name: "Kobold",
-      body: "crawler",
-      act: "chase",
-      aggro: 300,
-      col: { a: "#8a7a4a", b: "#332d18", c: "#c0ad74", eye: "#ffe066" },
-      hp: 3,
-      dmg: 8,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 5,
-      r: 7,
-      spd: 92
-    },
-    konna: {
-      name: "Konna",
-      body: "blob",
-      act: "chase",
-      aggro: 260,
-      col: { a: "#4a7a6a", b: "#1c332c", c: "#79b3a0", eye: "#d8ff9a" },
-      hp: 6,
-      dmg: 11,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 7,
-      r: 10,
-      spd: 48
-    },
-    lima: {
-      name: "Limanuljaska",
-      body: "blob",
-      act: "bomb",
-      aggro: 300,
-      col: { a: "#6fa03a", b: "#2a3d14", c: "#a6d46a", eye: "#e6ff9a" },
-      hp: 5,
-      dmg: 20,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 11,
-      r: 10,
-      spd: 55
-    },
-    tuli: {
-      name: "Stendari",
-      body: "blob",
-      act: "bomb",
-      aggro: 330,
-      fire: 1,
-      col: { a: "#c05a2a", b: "#3f1c0e", c: "#ff9a5a", eye: "#ffe066" },
-      hp: 6,
-      dmg: 26,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 13,
-      r: 10,
-      spd: 60
-    },
-    karpas: {
-      name: "Kärpässieni",
-      body: "blob",
-      act: "turret",
-      col: { a: "#b04a4a", b: "#3d1616", c: "#e88a8a", eye: "#ffffff" },
-      hp: 5,
-      dmg: 12,
-      bspd: 150,
-      range: 300,
-      cd: 1.9,
-      gold: 9,
-      r: 10,
-      spd: 0
-    },
-    jaatio: {
-      name: "Jäätiö",
-      body: "skull",
-      act: "turret",
-      tele: 0.3,
-      col: { a: "#7ab8d8", b: "#22414f", c: "#b6e2f4", eye: "#d8f4ff" },
-      hp: 8,
-      dmg: 12,
-      bspd: 130,
-      range: 240,
-      cd: 1.7,
-      gold: 15,
-      r: 10,
-      spd: 0
-    },
-    skull: {
-      name: "Elävät luut",
-      body: "skull",
-      act: "turret",
-      tele: 0.35,
-      col: { a: "#d8d2be", b: "#4a463c", c: "#f4f0e0", eye: "#5ee0a0" },
-      hp: 7,
-      dmg: 14,
-      bspd: 200,
-      range: 320,
-      cd: 2.1,
-      gold: 16,
-      r: 9,
-      spd: 0
-    }
-  };
-  var CREATURE_IDS = Object.keys(CREATURES);
-  var ROSTERS = [
-    ["meduusa", "hamahakki"],
-    ["meduusa", "hamahakki", "hiisi"],
-    ["hiisi", "konna", "hamahakki"],
-    ["hiisi", "mato", "lima", "kobold"],
-    ["hiisi", "karpas", "hurtta", "lima"],
-    ["snipu", "hiisi", "hurtta", "tuli", "karpas"],
-    ["snipu", "lohkare", "mato", "tuli", "kobold"],
-    ["jaatio", "chain", "lohkare", "hamahakki", "hurtta", "karpas"],
-    ["jaatio", "chain", "snipu", "tuli", "lohkare", "skull"],
-    ["chain", "snipu", "lohkare", "skull", "jaatio", "tappura"]
-  ];
-  function rosterFor(floor, rnd2) {
-    if (floor >= 1 && floor <= ROSTERS.length) return ROSTERS[floor - 1].slice();
-    const r = rnd2 || Math.random, pool = CREATURE_IDS.filter((id) => !CREATURES[id].noRoster), out = [];
-    const n = 2 + Math.floor(r() * 5);
-    while (out.length < n && pool.length) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
-    return out;
-  }
-  function enemyFor(id, floor) {
-    const c = CREATURES[id];
-    const hp = 1 + (floor - 1) * 0.35, dmg = 1 + (floor - 1) * 0.16, gold = 1 + (floor - 1) * 0.3;
-    return {
-      id,
-      name: c.name,
-      body: c.body,
-      act: c.act,
-      col: c.col,
-      hp: Math.max(1, Math.round(c.hp * hp)),
-      dmg: Math.max(1, Math.round(c.dmg * dmg)),
-      bspd: Math.round(c.bspd * (1 + (floor - 1) * 0.05)),
-      gold: Math.max(1, Math.round(c.gold * gold)),
-      range: c.range,
-      cd: c.cd,
-      tele: c.tele || 0,
-      shots: c.shots || 1,
-      r: c.r,
-      spd: c.spd,
-      aggro: c.aggro || 300,
-      kp: c.kp || null,
-      glow: c.glow || null
-    };
-  }
-  var HUNTERS = { chase: 1, bomb: 1, spider: 1, jelly: 1, rat: 1 };
-  var NATURAL_ONLY = { jelly: 1 };
 
   // src/world/fire.js
   var FLAMMABLE = { vine: 1, myc: 1 };
@@ -12488,6 +12343,151 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/spells/trace.js
+  var bhSp = (sh) => sh.pull ? DEV.bhSpeed / MODS.void.speed : 1;
+  var DRIFT_DRAG = 2.4, DRIFT_SLOW = 30, DRIFT_FLOAT = 40, DRIFT_RISE = 22;
+  var DRIFT_R = 80, DRIFT_CHASE = 130, DRIFT_ACC = 260;
+  function driftStep(vx, vy, dt) {
+    const k = Math.exp(-DRIFT_DRAG * dt);
+    vx *= k;
+    vy *= k;
+    if (Math.hypot(vx, vy) < DRIFT_SLOW) vy = Math.max(-DRIFT_RISE, vy - DRIFT_FLOAT * dt);
+    return [vx, vy];
+  }
+  var WIG_HZ = 45;
+  var wigAng = (amp, t) => amp / WIG_HZ * Math.cos(t * WIG_HZ);
+  var wigTurn = (amp, age, dt) => wigAng(amp, age) - (age - dt > 1e-9 ? wigAng(amp, age - dt) : 0);
+  function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
+    const dt = 1 / 60;
+    if (sh.flat) {
+      nx = nx >= 0 ? 1 : -1;
+      ny = 0;
+    }
+    if (sh.beam) {
+      out.length = 0;
+      out.push(x0, y0);
+      for (let d = 6; d <= sh.beam; d += 5) {
+        const bx = x0 + nx * d, by = y0 + ny * d;
+        if (!sh.bore && solid(bx, by)) break;
+        out.push(bx, by);
+      }
+      return out;
+    }
+    const reach = sh.reach != null ? sh.reach : 10;
+    let x = x0 + nx * reach, y = y0 + ny * reach;
+    const ox = x, oy = y;
+    let vx = nx * sh.speed, vy = ny * sh.speed;
+    let life = Math.min(sh.life, 2.5), bounce = sh.bounce || 0;
+    let age = 0, lock = false;
+    out.length = 0;
+    out.push(x, y);
+    for (let i = 0; i < 110 && life > 0; i++) {
+      life -= dt;
+      age += dt;
+      if (sh.grav) vy += sh.grav * dt;
+      if (sh.drag) {
+        const k = Math.exp(-sh.drag * dt);
+        vx *= k;
+        vy *= k;
+      }
+      if (sh.accel) {
+        const f = 1 + sh.accel * dt;
+        vx *= f;
+        vy *= f;
+      }
+      if (sh.vmax) {
+        const v = Math.hypot(vx, vy);
+        if (v > sh.vmax) {
+          vx *= sh.vmax / v;
+          vy *= sh.vmax / v;
+        }
+      }
+      const swing = (by) => {
+        const sp = Math.hypot(vx, vy), a = Math.atan2(vy, vx) + by;
+        vx = Math.cos(a) * sp;
+        vy = Math.sin(a) * sp;
+      };
+      if (sh.spiral) swing(sh.spiral * dt);
+      if (sh.wig) swing(wigTurn(sh.wig, age, dt));
+      if (sh.orbit) swing(sh.orbit * dt);
+      if (sh.pong && Math.floor(age / 0.45) % 2 === 1) {
+        vx = -vx;
+        vy = -vy;
+        age += dt;
+      }
+      if (sh.boomer && home) swing(Math.max(-sh.boomer * dt, Math.min(
+        sh.boomer * dt,
+        angDiff(Math.atan2(home.y - y, home.x - x), Math.atan2(vy, vx))
+      )));
+      if (sh.drift && !lock) {
+        const d = driftStep(vx, vy, dt);
+        vx = d[0];
+        vy = d[1];
+        if (enemies) {
+          for (const e of enemies) if (Math.hypot(e.x - x, e.ty - y) < (sh.homeR || DRIFT_R)) lock = true;
+        }
+      }
+      if (sh.drift && lock) {
+        const sp = Math.hypot(vx, vy);
+        if (sp < DRIFT_CHASE) {
+          const f = Math.min(DRIFT_CHASE, sp + DRIFT_ACC * dt) / (sp || 1);
+          vx = sp ? vx * f : 0;
+          vy = sp ? vy * f : -DRIFT_ACC * dt;
+        }
+      }
+      if (sh.homing && enemies && enemies.length && (!sh.drift || lock)) {
+        let best = null, bd = sh.homeR || 260;
+        for (const e of enemies) {
+          const d = Math.hypot(e.x - x, e.ty - y);
+          if (d < bd) {
+            bd = d;
+            best = e;
+          }
+        }
+        if (best) {
+          const sp = Math.hypot(vx, vy) || 1;
+          let ang = Math.atan2(vy, vx);
+          let diff = Math.atan2(best.ty - y, best.x - x) - ang;
+          while (diff > Math.PI) diff -= 2 * Math.PI;
+          while (diff < -Math.PI) diff += 2 * Math.PI;
+          const turn2 = sh.homing * dt;
+          ang += Math.max(-turn2, Math.min(turn2, diff));
+          vx = Math.cos(ang) * sp;
+          vy = Math.sin(ang) * sp;
+        }
+      }
+      const n = Math.max(1, Math.ceil(Math.hypot(vx, vy) * dt / 3));
+      let stop = false;
+      for (let st = 0; st < n; st++) {
+        const ax = x + vx * dt / n, ay = y + vy * dt / n;
+        if (solid(ax, ay)) {
+          if (sh.bore > 0 || sh.eat > 0) {
+            x = ax;
+            y = ay;
+            continue;
+          }
+          if (bounce > 0) {
+            bounce--;
+            const hx = solid(ax, y), hy = solid(x, ay);
+            if (hx || !hy) vx = -vx;
+            if (hy || !hx) vy = -vy;
+            const e = sh.bounceE || 0.92;
+            vx *= e;
+            vy *= e;
+            break;
+          }
+          stop = true;
+          break;
+        }
+        x = ax;
+        y = ay;
+      }
+      out.push(x, y);
+      if (stop) break;
+    }
+    return out;
+  }
+
   // src/game/render/actors.js
   function drawSilk(W, G) {
     G.ctx.lineCap = "round";
@@ -12556,6 +12556,143 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       G.ctx.lineTo(bx + 2, by);
       G.ctx.lineTo(bx + fx * len * 0.55, by + fy * len * 0.55);
       G.ctx.fill();
+    }
+  }
+  function drawAim(W, G, F) {
+    const { pcx } = F;
+    const R = W.p.aim;
+    const held = F.held = G.input.current.loadout.guns[G.input.current.loadout.sel];
+    const ax = F.ax = R.show ? R.nx : W.p.face, ay = F.ay = R.show ? R.ny : 0;
+    const gy = F.gy = W.p.y + PH * 0.52;
+    const tvis = R.vis == null ? 1 : R.vis;
+    if (!G.RPV && !W.p.dead && R.show && held && W.pb.trajectory && tvis > 0) {
+      const sim = Object.assign({}, held, {
+        slots: held.slots.slice(),
+        order: held.order.slice(),
+        idx: held.idx
+      });
+      const plan = planCast(sim);
+      const seen = {};
+      let drawn = 0;
+      for (const sh of plan.shots) {
+        if (sh.still) {
+          const fx = pcx + R.nx * 30, fy = gy + R.ny * 30;
+          G.ctx.globalAlpha = 0.5 * tvis;
+          G.ctx.strokeStyle = sh.col;
+          G.ctx.lineWidth = 1.5;
+          G.ctx.setLineDash([4, 4]);
+          G.ctx.beginPath();
+          G.ctx.arc(fx, fy, Math.max(8, sh.r), 0, Math.PI * 2);
+          G.ctx.stroke();
+          G.ctx.setLineDash([]);
+          G.ctx.globalAlpha = 1;
+          continue;
+        }
+        const key = [
+          Math.round(sh.speed),
+          Math.round(sh.grav),
+          sh.accel,
+          sh.bounce,
+          sh.bore,
+          sh.homing,
+          Math.round(sh.life * 20),
+          sh.beam,
+          sh.spiral,
+          sh.orbit,
+          sh.pong,
+          sh.boomer,
+          sh.flat
+        ].join(",");
+        if (seen[key] || drawn >= 3) continue;
+        seen[key] = 1;
+        const cone = drawn === 0 && sh.spread > 2 ? [-sh.spread / 2, 0, sh.spread / 2] : [0];
+        drawn++;
+        const tsh = Object.assign({}, sh, {
+          bounce: sh.bounce + W.pb.bounce,
+          homing: Math.max(sh.homing, W.pb.homing),
+          speed: sh.speed * W.pb.speed * bhSp(sh)
+        });
+        for (const off of cone) {
+          const a = Math.atan2(R.ny, R.nx) + off * Math.PI / 180;
+          tracePath(
+            tsh,
+            pcx,
+            gy,
+            Math.cos(a),
+            Math.sin(a),
+            (x, y) => solidAt(W, x, y),
+            W.enemies,
+            G.aimPath,
+            { x: pcx, y: gy }
+          );
+          G.ctx.fillStyle = sh.col;
+          const edge = off !== 0;
+          const size = edge ? 1.6 : 2.4;
+          for (let i = 2; i < G.aimPath.length; i += edge ? 8 : 4) {
+            const t = i / G.aimPath.length;
+            G.ctx.globalAlpha = (edge ? 0.3 : 0.9) * (1 - 0.6 * t) * tvis;
+            G.ctx.fillRect(G.aimPath[i] - size / 2, G.aimPath[i + 1] - size / 2, size, size);
+          }
+        }
+      }
+      G.ctx.globalAlpha = 1;
+    }
+  }
+  function drawPlayer(W, G, F) {
+    const { pcx, pcy, held, ax, ay, gy } = F;
+    if (W.p.dead) G.ctx.globalAlpha = 0.35;
+    const flashing = W.p.hitT > 0 && Math.floor(W.p.hitT * 30) % 2 === 0;
+    const running = W.p.onGround && Math.abs(W.p.vx) > 15;
+    const gait = running ? Math.sin(W.time * 15) : 0;
+    drawRunner(G.ctx, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing);
+    if (!W.p.dead) drawGun(G.ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
+    if (!W.p.dead) {
+      const th = torchHand(W);
+      drawTorch(G.ctx, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.torchP, W.leanX, W.leanY, W.time);
+    }
+    if (!W.p.dead) {
+      const cxp = pcx + ax * DEV.aimDist, cyp = gy + ay * DEV.aimDist;
+      const inr = 1.25, outr = 3;
+      G.ctx.strokeStyle = "rgba(255,255,255,0.92)";
+      G.ctx.lineWidth = 1.5 / W.unitPx;
+      G.ctx.lineCap = "butt";
+      G.ctx.beginPath();
+      G.ctx.moveTo(cxp, cyp - outr);
+      G.ctx.lineTo(cxp, cyp - inr);
+      G.ctx.moveTo(cxp, cyp + inr);
+      G.ctx.lineTo(cxp, cyp + outr);
+      G.ctx.moveTo(cxp - outr, cyp);
+      G.ctx.lineTo(cxp - inr, cyp);
+      G.ctx.moveTo(cxp + inr, cyp);
+      G.ctx.lineTo(cxp + outr, cyp);
+      G.ctx.stroke();
+    }
+    G.ctx.globalAlpha = 1;
+    if (W.pb.shield && W.p.shieldReady && !W.p.dead) {
+      G.ctx.globalAlpha = 0.35 + 0.15 * Math.sin(W.time * 4);
+      G.ctx.strokeStyle = "#7ad7ff";
+      G.ctx.lineWidth = 2;
+      G.ctx.beginPath();
+      G.ctx.arc(pcx, pcy, PW * 1.15, 0, Math.PI * 2);
+      G.ctx.stroke();
+      G.ctx.globalAlpha = 1;
+    }
+    if (W.pb.ghost && W.ghost && !W.p.dead) {
+      const gb = Math.sin(W.time * 3) * 2;
+      G.ctx.globalAlpha = 0.55;
+      G.ctx.fillStyle = "#c9a6ff";
+      G.ctx.beginPath();
+      G.ctx.arc(W.ghost.x, W.ghost.y + gb, 6, Math.PI, 0);
+      G.ctx.lineTo(W.ghost.x + 6, W.ghost.y + gb + 6);
+      G.ctx.lineTo(W.ghost.x + 2, W.ghost.y + gb + 4);
+      G.ctx.lineTo(W.ghost.x - 2, W.ghost.y + gb + 6);
+      G.ctx.lineTo(W.ghost.x - 6, W.ghost.y + gb + 4);
+      G.ctx.closePath();
+      G.ctx.fill();
+      G.ctx.globalAlpha = 1;
+      G.ctx.fillStyle = "#3a2f52";
+      G.ctx.fillRect(W.ghost.x - 3, W.ghost.y + gb - 1, 1.6, 2.4);
+      G.ctx.fillRect(W.ghost.x + 1.4, W.ghost.y + gb - 1, 1.6, 2.4);
     }
   }
 
@@ -13886,7 +14023,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/game/render/draw.js
   function draw(W, G) {
-    const F = { dpr: 0, playPx: 0, vw: 0, vh: 0, pcx: 0, pcy: 0, TH: null, onView: null };
+    const F = { dpr: 0, playPx: 0, vw: 0, vh: 0, pcx: 0, pcy: 0, TH: null, onView: null, held: null, ax: 0, ay: 0, gy: 0 };
     drawCamera(W, G, F);
     const { dpr, playPx, vw, vh, pcx, pcy } = F;
     drawTerrain(W, G, F);
@@ -13908,137 +14045,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     drawMotes(W, G, F);
     drawFlashes(W, G);
     drawJetFlame(W, G, F);
-    const R = W.p.aim;
-    const held = G.input.current.loadout.guns[G.input.current.loadout.sel];
-    const ax = R.show ? R.nx : W.p.face, ay = R.show ? R.ny : 0;
-    const gy = W.p.y + PH * 0.52;
-    const tvis = R.vis == null ? 1 : R.vis;
-    if (!G.RPV && !W.p.dead && R.show && held && W.pb.trajectory && tvis > 0) {
-      const sim = Object.assign({}, held, {
-        slots: held.slots.slice(),
-        order: held.order.slice(),
-        idx: held.idx
-      });
-      const plan = planCast(sim);
-      const seen = {};
-      let drawn = 0;
-      for (const sh of plan.shots) {
-        if (sh.still) {
-          const fx = pcx + R.nx * 30, fy = gy + R.ny * 30;
-          G.ctx.globalAlpha = 0.5 * tvis;
-          G.ctx.strokeStyle = sh.col;
-          G.ctx.lineWidth = 1.5;
-          G.ctx.setLineDash([4, 4]);
-          G.ctx.beginPath();
-          G.ctx.arc(fx, fy, Math.max(8, sh.r), 0, Math.PI * 2);
-          G.ctx.stroke();
-          G.ctx.setLineDash([]);
-          G.ctx.globalAlpha = 1;
-          continue;
-        }
-        const key = [
-          Math.round(sh.speed),
-          Math.round(sh.grav),
-          sh.accel,
-          sh.bounce,
-          sh.bore,
-          sh.homing,
-          Math.round(sh.life * 20),
-          sh.beam,
-          sh.spiral,
-          sh.orbit,
-          sh.pong,
-          sh.boomer,
-          sh.flat
-        ].join(",");
-        if (seen[key] || drawn >= 3) continue;
-        seen[key] = 1;
-        const cone = drawn === 0 && sh.spread > 2 ? [-sh.spread / 2, 0, sh.spread / 2] : [0];
-        drawn++;
-        const tsh = Object.assign({}, sh, {
-          bounce: sh.bounce + W.pb.bounce,
-          homing: Math.max(sh.homing, W.pb.homing),
-          speed: sh.speed * W.pb.speed * bhSp(sh)
-        });
-        for (const off of cone) {
-          const a = Math.atan2(R.ny, R.nx) + off * Math.PI / 180;
-          tracePath(
-            tsh,
-            pcx,
-            gy,
-            Math.cos(a),
-            Math.sin(a),
-            (x, y) => solidAt(W, x, y),
-            W.enemies,
-            G.aimPath,
-            { x: pcx, y: gy }
-          );
-          G.ctx.fillStyle = sh.col;
-          const edge = off !== 0;
-          const size = edge ? 1.6 : 2.4;
-          for (let i = 2; i < G.aimPath.length; i += edge ? 8 : 4) {
-            const t = i / G.aimPath.length;
-            G.ctx.globalAlpha = (edge ? 0.3 : 0.9) * (1 - 0.6 * t) * tvis;
-            G.ctx.fillRect(G.aimPath[i] - size / 2, G.aimPath[i + 1] - size / 2, size, size);
-          }
-        }
-      }
-      G.ctx.globalAlpha = 1;
-    }
-    if (W.p.dead) G.ctx.globalAlpha = 0.35;
-    const flashing = W.p.hitT > 0 && Math.floor(W.p.hitT * 30) % 2 === 0;
-    const running = W.p.onGround && Math.abs(W.p.vx) > 15;
-    const gait = running ? Math.sin(W.time * 15) : 0;
-    drawRunner(G.ctx, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing);
-    if (!W.p.dead) drawGun(G.ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
-    if (!W.p.dead) {
-      const th = torchHand(W);
-      drawTorch(G.ctx, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.torchP, W.leanX, W.leanY, W.time);
-    }
-    if (!W.p.dead) {
-      const cxp = pcx + ax * DEV.aimDist, cyp = gy + ay * DEV.aimDist;
-      const inr = 1.25, outr = 3;
-      G.ctx.strokeStyle = "rgba(255,255,255,0.92)";
-      G.ctx.lineWidth = 1.5 / W.unitPx;
-      G.ctx.lineCap = "butt";
-      G.ctx.beginPath();
-      G.ctx.moveTo(cxp, cyp - outr);
-      G.ctx.lineTo(cxp, cyp - inr);
-      G.ctx.moveTo(cxp, cyp + inr);
-      G.ctx.lineTo(cxp, cyp + outr);
-      G.ctx.moveTo(cxp - outr, cyp);
-      G.ctx.lineTo(cxp - inr, cyp);
-      G.ctx.moveTo(cxp + inr, cyp);
-      G.ctx.lineTo(cxp + outr, cyp);
-      G.ctx.stroke();
-    }
-    G.ctx.globalAlpha = 1;
-    if (W.pb.shield && W.p.shieldReady && !W.p.dead) {
-      G.ctx.globalAlpha = 0.35 + 0.15 * Math.sin(W.time * 4);
-      G.ctx.strokeStyle = "#7ad7ff";
-      G.ctx.lineWidth = 2;
-      G.ctx.beginPath();
-      G.ctx.arc(pcx, pcy, PW * 1.15, 0, Math.PI * 2);
-      G.ctx.stroke();
-      G.ctx.globalAlpha = 1;
-    }
-    if (W.pb.ghost && W.ghost && !W.p.dead) {
-      const gb = Math.sin(W.time * 3) * 2;
-      G.ctx.globalAlpha = 0.55;
-      G.ctx.fillStyle = "#c9a6ff";
-      G.ctx.beginPath();
-      G.ctx.arc(W.ghost.x, W.ghost.y + gb, 6, Math.PI, 0);
-      G.ctx.lineTo(W.ghost.x + 6, W.ghost.y + gb + 6);
-      G.ctx.lineTo(W.ghost.x + 2, W.ghost.y + gb + 4);
-      G.ctx.lineTo(W.ghost.x - 2, W.ghost.y + gb + 6);
-      G.ctx.lineTo(W.ghost.x - 6, W.ghost.y + gb + 4);
-      G.ctx.closePath();
-      G.ctx.fill();
-      G.ctx.globalAlpha = 1;
-      G.ctx.fillStyle = "#3a2f52";
-      G.ctx.fillRect(W.ghost.x - 3, W.ghost.y + gb - 1, 1.6, 2.4);
-      G.ctx.fillRect(W.ghost.x + 1.4, W.ghost.y + gb - 1, 1.6, 2.4);
-    }
+    drawAim(W, G, F);
+    const { held, ax, ay, gy } = F;
+    drawPlayer(W, G, F);
     const sight = SIGHT * DEV.torch;
     W.torchR = clamp(sight * LAMP_REACH * (0.5 + 0.55 * W.flick), 120, 1400);
     W.visPts = visPoly(pcx, pcy, sight, (cx, cy) => solidCell(W, cx, cy), VIS_RAYS);

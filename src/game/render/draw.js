@@ -5,7 +5,7 @@
 // writes the fog memory (fogReveal) and moves the camera.
 
 import { propGlow } from '../../art/props.js';
-import { drawGun, drawRunner, drawSconce, drawTorch, glowAt } from '../../art/sprites.js';
+import { drawSconce, glowAt } from '../../art/sprites.js';
 import {
   CELL, CH, COL, CW, FH, FOG, FOG_U, FW, LAMP_REACH, MINI_D, MMH, MMW, PH, PW, SIGHT, VIEW_MIN_H,
   VIEW_W, WH, WW
@@ -14,16 +14,14 @@ import { clamp, hexRgb } from '../../core/util.js';
 import { PERKS } from '../../data/perks.js';
 import { themeFor } from '../../data/themes.js';
 import { DEV, jcol, kru } from '../../dev/knobs.js';
-import { effRecharge, gunPassives, planCast } from '../../spells/cast.js';
-import { gunAccent } from '../../spells/guns.js';
-import { bhSp, tracePath } from '../../spells/trace.js';
+import { effRecharge, gunPassives } from '../../spells/cast.js';
 import { ROOM_HH, ROOM_HW } from '../../world/level.js';
 import { VIS_RAYS, fogReveal, visPoly } from '../../world/vision.js';
 import { fogLit, roomSeen } from '../systems/fog.js';
 import { plantGlow } from '../systems/plantglow.js';
 import { maxHp, torchHand } from '../systems/player.js';
-import { solidAt, solidCell } from '../systems/terrain.js';
-import { drawEnemies, drawJetFlame, drawSilk } from './actors.js';
+import { solidCell } from '../systems/terrain.js';
+import { drawAim, drawEnemies, drawJetFlame, drawPlayer, drawSilk } from './actors.js';
 import {
   drawArrival, drawLoot, drawPortal, drawProps, drawRooms, drawShop, drawTerrain
 } from './cave.js';
@@ -32,8 +30,9 @@ import { drawBeams, drawFields, drawShots } from './looks.js';
 
 export function draw(W, G) {
   // the frame: what draw's parts hand on to each other (REFACTOR.md D19). drawCamera fills
-  // in the view and where you are, drawProps the theme (TH) and onView
-  const F = { dpr: 0, playPx: 0, vw: 0, vh: 0, pcx: 0, pcy: 0, TH: null, onView: null };
+  // in the view and where you are, drawProps the theme (TH) and onView, drawAim the gun in
+  // hand and the aim
+  const F = { dpr: 0, playPx: 0, vw: 0, vh: 0, pcx: 0, pcy: 0, TH: null, onView: null, held: null, ax: 0, ay: 0, gy: 0 };
   drawCamera(W, G, F);                      // the view, the camera, the canvas cleared
   const { dpr, playPx, vw, vh, pcx, pcy } = F;
 
@@ -73,108 +72,10 @@ export function draw(W, G) {
 
   drawJetFlame(W, G, F);                    // the jet flame (actors.js)
 
-  // aim, grenade arc preview, gun
-  const R = W.p.aim;
-  const held = G.input.current.loadout.guns[G.input.current.loadout.sel];
-  const ax = R.show ? R.nx : W.p.face, ay = R.show ? R.ny : 0;
-  const gy = W.p.y + PH * 0.52;
+  drawAim(W, G, F);                         // the aim line; fills held, ax/ay, gy (actors.js)
+  const { held, ax, ay, gy } = F;
 
-  // where the next pull actually goes, mods and all — only with the Trajectory Sight perk
-  const tvis = R.vis == null ? 1 : R.vis;
-  if (!G.RPV && !W.p.dead && R.show && held && W.pb.trajectory && tvis > 0) {
-    const sim = Object.assign({}, held, { slots: held.slots.slice(),
-      order: held.order.slice(), idx: held.idx });
-    const plan = planCast(sim);                 // a copy, so the real gun is untouched
-    const seen = {};
-    let drawn = 0;
-    for (const sh of plan.shots) {
-      if (sh.still) {                    // a field lands in front of you, it does not fly
-        const fx = pcx + R.nx * 30, fy = gy + R.ny * 30;
-        G.ctx.globalAlpha = 0.5 * tvis; G.ctx.strokeStyle = sh.col; G.ctx.lineWidth = 1.5;
-        G.ctx.setLineDash([4, 4]);
-        G.ctx.beginPath(); G.ctx.arc(fx, fy, Math.max(8, sh.r), 0, Math.PI * 2); G.ctx.stroke();
-        G.ctx.setLineDash([]); G.ctx.globalAlpha = 1;
-        continue;
-      }
-      const key = [Math.round(sh.speed), Math.round(sh.grav), sh.accel, sh.bounce,
-        sh.bore, sh.homing, Math.round(sh.life * 20), sh.beam, sh.spiral, sh.orbit,
-        sh.pong, sh.boomer, sh.flat].join(',');
-      if (seen[key] || drawn >= 3) continue;
-      seen[key] = 1;
-      const cone = drawn === 0 && sh.spread > 2
-        ? [-sh.spread / 2, 0, sh.spread / 2] : [0];
-      drawn++;
-      // the perks that bend a bullet in flight bend the aim line too, or it lies
-      const tsh = Object.assign({}, sh, { bounce: sh.bounce + W.pb.bounce,
-        homing: Math.max(sh.homing, W.pb.homing), speed: sh.speed * W.pb.speed * bhSp(sh) });
-      for (const off of cone) {
-        const a = Math.atan2(R.ny, R.nx) + off * Math.PI / 180;
-        tracePath(tsh, pcx, gy, Math.cos(a), Math.sin(a), (x, y) => solidAt(W, x, y), W.enemies, G.aimPath,
-          { x: pcx, y: gy });
-        G.ctx.fillStyle = sh.col;
-        const edge = off !== 0;
-        const size = edge ? 1.6 : 2.4;
-        for (let i = 2; i < G.aimPath.length; i += edge ? 8 : 4) {
-          const t = i / G.aimPath.length;
-          G.ctx.globalAlpha = (edge ? 0.3 : 0.9) * (1 - 0.6 * t) * tvis;
-          G.ctx.fillRect(G.aimPath[i] - size / 2, G.aimPath[i + 1] - size / 2, size, size);
-        }
-      }
-    }
-    G.ctx.globalAlpha = 1;
-  }
-
-  // player
-  if (W.p.dead) G.ctx.globalAlpha = 0.35;
-  const flashing = W.p.hitT > 0 && Math.floor(W.p.hitT * 30) % 2 === 0;
-  const running = W.p.onGround && Math.abs(W.p.vx) > 15;
-  const gait = running ? Math.sin(W.time * 15) : 0;
-  drawRunner(G.ctx, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing);
-  if (!W.p.dead) drawGun(G.ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
-  // the torch, in the hand the gun is not in
-  if (!W.p.dead) { const th = torchHand(W); drawTorch(G.ctx, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.torchP, W.leanX, W.leanY, W.time); }
-  // a small aim crosshair at DEV.aimDist out, rotating round you with the aim: a "+"
-  // with the centre cut out (two short verticals, two short horizontals), drawn as thin
-  // as the thumbstick lines (~1.5 css px, so 1.5/unitPx world units, whatever the zoom)
-  if (!W.p.dead) {
-    const cxp = pcx + ax * DEV.aimDist, cyp = gy + ay * DEV.aimDist;
-    const inr = 1.25, outr = 3;            // gap radius, arm end (half the v55 size)
-    G.ctx.strokeStyle = 'rgba(255,255,255,0.92)';
-    G.ctx.lineWidth = 1.5 / W.unitPx;
-    G.ctx.lineCap = 'butt';
-    G.ctx.beginPath();
-    G.ctx.moveTo(cxp, cyp - outr); G.ctx.lineTo(cxp, cyp - inr);   // top
-    G.ctx.moveTo(cxp, cyp + inr);  G.ctx.lineTo(cxp, cyp + outr);  // bottom
-    G.ctx.moveTo(cxp - outr, cyp); G.ctx.lineTo(cxp - inr, cyp);   // left
-    G.ctx.moveTo(cxp + inr, cyp);  G.ctx.lineTo(cxp + outr, cyp);  // right
-    G.ctx.stroke();
-  }
-  G.ctx.globalAlpha = 1;
-
-  // Permanent Shield: a soft ring while it is up, gone the moment it is spent
-  if (W.pb.shield && W.p.shieldReady && !W.p.dead) {
-    G.ctx.globalAlpha = 0.35 + 0.15 * Math.sin(W.time * 4);
-    G.ctx.strokeStyle = '#7ad7ff'; G.ctx.lineWidth = 2;
-    G.ctx.beginPath(); G.ctx.arc(pcx, pcy, PW * 1.15, 0, Math.PI * 2); G.ctx.stroke();
-    G.ctx.globalAlpha = 1;
-  }
-
-  // Angry Ghost: a pale wisp that drifts at your shoulder
-  if (W.pb.ghost && W.ghost && !W.p.dead) {
-    const gb = Math.sin(W.time * 3) * 2;
-    G.ctx.globalAlpha = 0.55;
-    G.ctx.fillStyle = '#c9a6ff';
-    G.ctx.beginPath(); G.ctx.arc(W.ghost.x, W.ghost.y + gb, 6, Math.PI, 0);
-    G.ctx.lineTo(W.ghost.x + 6, W.ghost.y + gb + 6);
-    G.ctx.lineTo(W.ghost.x + 2, W.ghost.y + gb + 4);
-    G.ctx.lineTo(W.ghost.x - 2, W.ghost.y + gb + 6);
-    G.ctx.lineTo(W.ghost.x - 6, W.ghost.y + gb + 4);
-    G.ctx.closePath(); G.ctx.fill();
-    G.ctx.globalAlpha = 1;
-    G.ctx.fillStyle = '#3a2f52';
-    G.ctx.fillRect(W.ghost.x - 3, W.ghost.y + gb - 1, 1.6, 2.4);
-    G.ctx.fillRect(W.ghost.x + 1.4, W.ghost.y + gb - 1, 1.6, 2.4);
-  }
+  drawPlayer(W, G, F);                      // you, the gun, the torch, the crosshair, shield, ghost (actors.js)
 
   // ---- torchlight, masked by the fog of war ----
   // Line of sight is what lifts the fog: fogReveal marks every cell the fan reaches as
