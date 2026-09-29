@@ -5,12 +5,10 @@
 // writes the fog memory (fogReveal) and moves the camera.
 
 import { propGlow } from '../../art/props.js';
+import { drawGun, drawRunner, drawSconce, drawTorch, glowAt } from '../../art/sprites.js';
 import {
-  drawGun, drawGunGlow, drawRunner, drawSconce, drawTorch, glowAt
-} from '../../art/sprites.js';
-import {
-  CELL, CH, COL, CW, FH, FOG, FOG_U, FW, LAMP_REACH, MINI_D, MMH, MMW, PH, PW, SHOP_FLOOR, SIGHT,
-  VIEW_MIN_H, VIEW_W, WH, WW
+  CELL, CH, COL, CW, FH, FOG, FOG_U, FW, LAMP_REACH, MINI_D, MMH, MMW, PH, PW, SIGHT, VIEW_MIN_H,
+  VIEW_W, WH, WW
 } from '../../core/consts.js';
 import { clamp, hexRgb } from '../../core/util.js';
 import { PERKS } from '../../data/perks.js';
@@ -18,7 +16,6 @@ import { themeFor } from '../../data/themes.js';
 import { DEV, jcol, kru } from '../../dev/knobs.js';
 import { effRecharge, gunPassives, planCast } from '../../spells/cast.js';
 import { gunAccent } from '../../spells/guns.js';
-import { MODS, famCol } from '../../spells/mods.js';
 import { bhSp, tracePath } from '../../spells/trace.js';
 import { ROOM_HH, ROOM_HW } from '../../world/level.js';
 import { VIS_RAYS, fogReveal, visPoly } from '../../world/vision.js';
@@ -27,7 +24,9 @@ import { plantGlow } from '../systems/plantglow.js';
 import { maxHp, torchHand } from '../systems/player.js';
 import { solidAt, solidCell } from '../systems/terrain.js';
 import { drawEnemies, drawSilk } from './actors.js';
-import { drawPortal, drawProps, drawTerrain } from './cave.js';
+import {
+  drawArrival, drawLoot, drawPortal, drawProps, drawRooms, drawShop, drawTerrain
+} from './cave.js';
 import { drawSmoke } from './effects.js';
 import { drawBeams, drawFields, drawShots } from './looks.js';
 
@@ -56,157 +55,13 @@ export function draw(W, G) {
   drawShots(W, G);                          // shots in flight, lightning arcs (looks.js)
   drawBeams(W, G);                          // beams (looks.js)
 
-  // the portal you arrived through: scenery only
-  if (W.arrival.y < W.camY + vh + 40 && W.arrival.y > W.camY - 40) {
-    const sway = 0.5 + 0.18 * Math.sin(W.time * 1.6);
-    G.ctx.fillStyle = '#4a4550';
-    G.ctx.fillRect(W.arrival.x - 16, W.arrival.y + 12, 32, 5);
-    G.ctx.globalAlpha = 0.22 * sway;
-    G.ctx.fillStyle = COL.enemy;
-    G.ctx.beginPath(); G.ctx.ellipse(W.arrival.x, W.arrival.y, 17, 21, 0, 0, Math.PI * 2); G.ctx.fill();
-    G.ctx.globalAlpha = 0.5 * sway;
-    G.ctx.beginPath(); G.ctx.ellipse(W.arrival.x, W.arrival.y, 10, 14, 0, 0, Math.PI * 2); G.ctx.fill();
-    G.ctx.globalAlpha = 1;
-    G.ctx.strokeStyle = '#6c6480'; G.ctx.lineWidth = 2.5;
-    G.ctx.beginPath(); G.ctx.ellipse(W.arrival.x, W.arrival.y, 13, 17, 0, 0, Math.PI * 2); G.ctx.stroke();
-    G.ctx.fillStyle = 'rgba(233,236,242,0.34)';
-    G.ctx.font = '600 7px system-ui, sans-serif';
-    G.ctx.textAlign = 'center';
-    G.ctx.fillText('WAY IN', W.arrival.x, W.arrival.y - 22);
-    G.ctx.textAlign = 'left';
-  }
+  drawArrival(W, G, F);                     // the way in (cave.js)
 
-  // shop stock on its plinths
-  for (const it of W.stock) {
-    if (it.y > W.camY + vh + 40 || it.y < W.camY - 40) continue;
-    const bob = Math.sin(W.time * 2 + it.x) * 2;
-    // the plinth: a narrow column dropping from just under the item down to the shop
-    // floor (so it isn't left hovering), with a wider foot resting on the floor
-    const floorY = SHOP_FLOOR * CELL;
-    G.ctx.fillStyle = '#4a4550';
-    G.ctx.fillRect(it.x - 6, it.y + 4, 12, Math.max(9, floorY - (it.y + 4)));
-    G.ctx.fillRect(it.x - 11, floorY - 5, 22, 5);
-    if (it.sold) {
-      G.ctx.fillStyle = COL.muted;
-      G.ctx.font = '600 8px system-ui, sans-serif';
-      G.ctx.textAlign = 'center';
-      G.ctx.fillText('SOLD', it.x, it.y - 2);
-      G.ctx.textAlign = 'left';
-      continue;
-    }
-    if (it.kind === 'heal') {
-      G.ctx.globalAlpha = 0.25; G.ctx.fillStyle = COL.hp;
-      G.ctx.beginPath(); G.ctx.arc(it.x, it.y + bob, 13, 0, Math.PI * 2); G.ctx.fill();
-      G.ctx.globalAlpha = 1; G.ctx.fillStyle = COL.hp;
-      G.ctx.fillRect(it.x - 7, it.y - 2.5 + bob, 14, 5);
-      G.ctx.fillRect(it.x - 2.5, it.y - 7 + bob, 5, 14);
-    } else if (it.kind === 'gun') {
-      G.ctx.globalAlpha = 0.22; G.ctx.fillStyle = gunAccent(it.gun);
-      G.ctx.beginPath(); G.ctx.arc(it.x, it.y + bob, 14, 0, Math.PI * 2); G.ctx.fill();
-      G.ctx.globalAlpha = 1;
-      drawGun(G.ctx, it.x - 5, it.y + 1 + bob, -0.22, 0.9, gunAccent(it.gun));
-      G.ctx.fillStyle = COL.bullet;
-      G.ctx.font = '600 9px system-ui, sans-serif';
-      G.ctx.textAlign = 'center';
-      G.ctx.fillText(it.price + 'g', it.x, it.y - 13 + bob);
-      G.ctx.fillStyle = COL.muted;
-      G.ctx.font = '600 8px system-ui, sans-serif';
-      G.ctx.fillText(it.gun.cap + ' slots', it.x, it.y + 24 + bob);
-      G.ctx.textAlign = 'left';
-    } else {
-      const m = MODS[it.id];
-      G.ctx.globalAlpha = 0.22; G.ctx.fillStyle = famCol(it.id);
-      G.ctx.beginPath(); G.ctx.arc(it.x, it.y + bob, 13, 0, Math.PI * 2); G.ctx.fill();
-      G.ctx.globalAlpha = 1; G.ctx.fillStyle = famCol(it.id);
-      G.ctx.beginPath();
-      G.ctx.moveTo(it.x, it.y - 8 + bob); G.ctx.lineTo(it.x + 8, it.y + bob);
-      G.ctx.lineTo(it.x, it.y + 8 + bob); G.ctx.lineTo(it.x - 8, it.y + bob);
-      G.ctx.fill();
-      G.ctx.fillStyle = '#12141a';
-      G.ctx.font = '600 9px system-ui, sans-serif';
-      G.ctx.textAlign = 'center'; G.ctx.textBaseline = 'middle';
-      G.ctx.fillText(m.glyph, it.x, it.y + 0.5 + bob);
-      G.ctx.textBaseline = 'alphabetic';
-      G.ctx.fillStyle = COL.bullet;
-      G.ctx.font = '600 9px system-ui, sans-serif';
-      G.ctx.fillText(it.price + 'g', it.x, it.y - 12 + bob);
-      G.ctx.textAlign = 'left';
-    }
-  }
+  drawShop(W, G, F);                        // the shop's stock (cave.js)
 
-  // gold
-  for (const g of W.coins) {
-    if (g.y > W.camY + vh + 30 || g.y < W.camY - 30) continue;
-    const bob = Math.sin(W.time * 4 + g.t) * 1.5;
-    G.ctx.fillStyle = '#d8a52a';
-    G.ctx.beginPath(); G.ctx.ellipse(g.x, g.y + bob, 3.2, 4, 0, 0, Math.PI * 2); G.ctx.fill();
-    G.ctx.fillStyle = COL.flame2;
-    G.ctx.beginPath(); G.ctx.ellipse(g.x - 0.8, g.y - 0.8 + bob, 1.2, 1.8, 0, 0, Math.PI * 2); G.ctx.fill();
-  }
+  drawLoot(W, G, F);                        // gold, guns and mods lying about (cave.js)
 
-  // pickups
-  for (const q of W.pickups) {
-    const qy = q.y + Math.sin(W.time * 2 + q.t) * 3;
-    if (qy > W.camY + vh + 30 || qy < W.camY - 30 || q.x < W.camX - 30 || q.x > W.camX + vw + 30) continue;
-    if (q.kind === 'gun') {
-      // a gun you've never held glows, with sparks streaking out of it; one you swapped
-      // out and left on the ground doesn't, so you can tell new from discarded at a glance
-      if (!q.old) drawGunGlow(G.ctx, q.x, qy, W.time, q.t);
-      drawGun(G.ctx, q.x - 5, qy + 1, -0.22, 0.85, gunAccent(q.gun));
-    } else {
-      const m = MODS[q.id];
-      G.ctx.globalAlpha = 0.22; G.ctx.fillStyle = famCol(q.id);
-      G.ctx.beginPath(); G.ctx.arc(q.x, qy, 12, 0, Math.PI * 2); G.ctx.fill();
-      G.ctx.globalAlpha = 1;
-      G.ctx.fillStyle = famCol(q.id);
-      G.ctx.beginPath();
-      G.ctx.moveTo(q.x, qy - 8); G.ctx.lineTo(q.x + 8, qy); G.ctx.lineTo(q.x, qy + 8); G.ctx.lineTo(q.x - 8, qy);
-      G.ctx.fill();
-      G.ctx.fillStyle = '#12141a';
-      G.ctx.font = '600 9px system-ui, sans-serif';
-      G.ctx.textAlign = 'center'; G.ctx.textBaseline = 'middle';
-      G.ctx.fillText(m.glyph, q.x, qy + 0.5);
-      G.ctx.textAlign = 'left'; G.ctx.textBaseline = 'alphabetic';
-    }
-  }
-
-  // the hidden rooms' prizes on their altars: a glowing perk sigil, or the +25 heart
-  for (const r of W.rooms) {
-    if (r.taken) continue;
-    if (r.y > W.camY + vh + 40 || r.y < W.camY - 40 || r.x < W.camX - 40 || r.x > W.camX + vw + 40) continue;
-    const bob = Math.sin(W.time * 2 + r.x) * 2.5;
-    G.ctx.fillStyle = '#4a4550';
-    G.ctx.fillRect(r.x - 12, r.y + 14, 24, 5);
-    G.ctx.fillRect(r.x - 7, r.y + 5, 14, 10);
-    if (r.kind === 'perk') {
-      const pk = PERKS[r.id], col = pk.tint || COL.portal;
-      G.ctx.globalAlpha = 0.22 + 0.12 * Math.sin(W.time * 3);
-      G.ctx.fillStyle = col;
-      G.ctx.beginPath(); G.ctx.arc(r.x, r.y + bob, 16, 0, Math.PI * 2); G.ctx.fill();
-      G.ctx.globalAlpha = 1;
-      G.ctx.fillStyle = col;
-      G.ctx.font = '700 20px system-ui, sans-serif';
-      G.ctx.textAlign = 'center'; G.ctx.textBaseline = 'middle';
-      G.ctx.fillText(pk.glyph, r.x, r.y + 0.5 + bob);
-      G.ctx.textBaseline = 'alphabetic'; G.ctx.textAlign = 'left';
-    } else {
-      G.ctx.globalAlpha = 0.25 + 0.12 * Math.sin(W.time * 3);
-      G.ctx.fillStyle = COL.hp;
-      G.ctx.beginPath(); G.ctx.arc(r.x, r.y + bob, 16, 0, Math.PI * 2); G.ctx.fill();
-      G.ctx.globalAlpha = 1; G.ctx.fillStyle = COL.hp;
-      // a plump heart
-      G.ctx.beginPath();
-      G.ctx.moveTo(r.x, r.y + 7 + bob);
-      G.ctx.bezierCurveTo(r.x - 11, r.y - 2 + bob, r.x - 6, r.y - 11 + bob, r.x, r.y - 4 + bob);
-      G.ctx.bezierCurveTo(r.x + 6, r.y - 11 + bob, r.x + 11, r.y - 2 + bob, r.x, r.y + 7 + bob);
-      G.ctx.fill();
-      G.ctx.fillStyle = '#0c130f';
-      G.ctx.font = '700 8px system-ui, sans-serif';
-      G.ctx.textAlign = 'center';
-      G.ctx.fillText('+25', r.x, r.y - 14 + bob);
-      G.ctx.textAlign = 'left';
-    }
-  }
+  drawRooms(W, G, F);                       // the hidden rooms' prizes (cave.js)
 
   // Levitation Trail: the fire you left behind, still burning
   for (const bn of W.burns) {
