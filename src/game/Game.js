@@ -16,7 +16,7 @@ import { angDiff, approach, clamp, hexArr, hexRgb, mix, turn } from '../core/uti
 import { roamStep } from '../creatures/common.js';
 import { drawEnemy } from '../creatures/draw.js';
 import {
-  jellyBell, jellyPal, jellyStep, plantGlowFill, plantWhite, tentacleTouch
+  jellyPal, jellyStep, plantGlowFill, plantWhite, tentacleTouch
 } from '../creatures/jelly.js';
 import { pathLen, ratSpread, ratStep } from '../creatures/rat.js';
 import { spiderStep } from '../creatures/spider.js';
@@ -40,6 +40,7 @@ import { ROOM_HH, ROOM_HW, makeLevel } from '../world/level.js';
 import { NAV, navField, navWay } from '../world/nav.js';
 import { VIS_RAYS, fogReveal, fogStart, nestFog, rayDist, visPoly } from '../world/vision.js';
 import { builtAt } from '../world/zones.js';
+import { puffSpores, stepAmbience } from './systems/ambience.js';
 import { damageEnemy, fireEnemyShot } from './systems/enemies.js';
 import { fireBlast, fireFrame, ignite, setAlight, youAlight } from './systems/fire.js';
 import { burst, goo, splat, toast } from './systems/particles.js';
@@ -1350,7 +1351,7 @@ export function Game({ input }) {
         if (dead) W.dparts.splice(i, 1);
       }
       if (W.dparts.length > 700) W.dparts.splice(0, W.dparts.length - 700);
-      stepAmbience(dt);
+      stepAmbience(W, dt);
       // foliage: grabbing a vine, or pushing into a plant you weren't already in, rustles;
       // an arched vine in reach beats the strands hanging off it (let go with a push down, and
       // a strand under you catches you instead)
@@ -1387,27 +1388,6 @@ export function Game({ input }) {
       W.zfx = z;
     }
 
-    // ---- the theme's ambience, pooled round the camera rather than tied to a spot ----
-    const AMB_RATE = { spores: 5, frost: 3, embers: 8, motes: 4, ashfall: 55 };
-    const AMB_MAX = { spores: 40, frost: 20, embers: 60, motes: 50, ashfall: 280 };
-    // one of the Luminescent Spores that drift about the green floors. The jellies puff the
-    // very same thing out of their rims (puffSpores), so it is made in one place
-    const spore = (x, y, r) => ({ kind: 'spores', x, y, vx: (r - 0.5) * 8, vy: 0, wob: r * 9, life: 5 + r * 3, max: 8,
-      c: rgbA(themeFor(W.floor).moss[1]), s: 1.3, glow: 1 });
-    // a jelly's pulse blows a puff of spores out of its rim, back the way it pushes; drag
-    // (kx, ky fading at kd) settles them, then they drift like any other spore
-    function puffSpores(e) {
-      if (e.x < W.camX - 150 || e.x > W.camX + W.viewW + 150 || e.y < W.camY - 150 || e.y > W.camY + W.viewH + 150) return;
-      const S = e.je, B = jellyBell(e.r, S.shape, kru('jeSquash', S.u.sq));
-      const c = Math.cos(S.hd), sn = Math.sin(S.hd), n = Math.round(kr('jeSpores'));
-      for (let i = 0; i < n && W.amb.length < 500; i++) {
-        const lx = (Math.random() * 2 - 1) * B.rw * 0.7;
-        const q = spore(e.x - lx * sn - B.rim * c, e.y + lx * c - B.rim * sn, Math.random());
-        const a = S.hd + Math.PI + (Math.random() * 2 - 1) * kr('jeSporeSpread') * Math.PI / 180, v = kr('jeSporeSpd');
-        q.kx = Math.cos(a) * v; q.ky = Math.sin(a) * v; q.kd = kr('jeSporeDrag');
-        W.amb.push(q);
-      }
-    }
     // The jellyfish's plant glow in the game (the comp is plantGlowFill): the art round a
     // jelly — the rock with its baked moss over the decoration layer, and the hanging plants
     // drawn over both at terrain resolution and read back — keyed, ramped, twinkled and
@@ -1460,56 +1440,6 @@ export function Game({ input }) {
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(pgGlow, 0, 0, w, h, x0w, y0w, w * CELL, h * CELL);
       ctx.imageSmoothingEnabled = sm;
-    }
-    function stepAmbience(dt) {
-      const x0 = W.camX - 30, y0 = W.camY - 30, w = W.viewW + 60, h = W.viewH + 60;
-      const T = themeFor(W.floor);
-      for (const kind of W.ambKinds) {
-        if (kind === 'devils') {
-          if (W.devils.length < 2 && Math.random() < dt * 0.4) {
-            let x = x0 + Math.random() * w, y = y0 + Math.random() * h, k = 0;
-            while (k++ < 120 && !solidAt(W, x, y + 1)) y += 2;
-            if (k < 120 && !solidAt(W, x, y - 30)) W.devils.push({ x, y, vx: (Math.random() < 0.5 ? -1 : 1) * (15 + Math.random() * 20), life: 6 + Math.random() * 3, max: 9 });
-          }
-          continue;
-        }
-        const n = W.amb.reduce((a, q) => a + (q.kind === kind), 0);
-        let want = AMB_RATE[kind] * dt;
-        while (want > 0 && n < AMB_MAX[kind]) {
-          if (Math.random() >= want) break;
-          want -= 1;
-          const x = x0 + Math.random() * w, y = y0 + Math.random() * h;
-          if (solidAt(W, x, y)) continue;
-          const r = Math.random();
-          if (kind === 'spores') W.amb.push(spore(x, y, r));
-          else if (kind === 'frost') {
-            const dir = W.floor % 2 ? 1 : -1;
-            W.amb.push({ kind, x, y, vx: dir * (100 + r * 60), vy: (r - 0.5) * 10, life: 0.9 + r * 0.5, max: 1.4, c: 'rgba(215,238,255,0.5)', s: 1, streak: 10 });
-          } else if (kind === 'embers') W.amb.push({ kind, x, y, vx: 0, vy: -20 - r * 30, wob: r * 9, life: 3 + r * 2, max: 5, c: r < 0.5 ? '#ffb050' : '#ff7a2a', s: 1.2, glow: 1 });
-          else if (kind === 'motes') W.amb.push({ kind, x, y, vx: (r - 0.5) * 6, vy: (Math.random() - 0.5) * 4, wob: r * 9, life: 6 + r * 3, max: 9, c: 'rgba(235,225,200,0.8)', s: 1 });
-          else if (kind === 'ashfall') W.amb.push({ kind, x, y, vx: 8, vy: 20 + r * 22, wob: r * 9, life: 4 + r * 3, max: 7, c: 'rgba(150,146,142,0.75)', s: 1 + r });
-        }
-      }
-      for (let i = W.amb.length - 1; i >= 0; i--) {
-        const q = W.amb[i];
-        q.life -= dt;
-        if (q.wob != null) q.x += Math.sin(W.time * 1.3 + q.wob) * 6 * dt;
-        if (q.kx || q.ky) {                             // a puff's kick, dying away under drag
-          q.x += q.kx * dt; q.y += q.ky * dt;
-          const k = Math.exp(-q.kd * dt); q.kx *= k; q.ky *= k;
-        }
-        q.x += q.vx * dt; q.y += q.vy * dt;
-        if (q.life <= 0 || solidAt(W, q.x, q.y) || q.x < x0 - 200 || q.x > x0 + w + 200 || q.y < y0 - 200 || q.y > y0 + h + 200) W.amb.splice(i, 1);
-      }
-      for (let i = W.devils.length - 1; i >= 0; i--) {
-        const dv = W.devils[i];
-        dv.life -= dt;
-        const nx = dv.x + dv.vx * dt;
-        if (solidAt(W, nx + Math.sign(dv.vx) * 6, dv.y - 4)) dv.vx = -dv.vx; else dv.x = nx;
-        if (!solidAt(W, dv.x, dv.y + 2)) dv.y += 40 * dt;
-        else if (solidAt(W, dv.x, dv.y)) dv.y -= 2;
-        if (dv.life <= 0) W.devils.splice(i, 1);
-      }
     }
 
     function step(dt) {
@@ -2291,7 +2221,7 @@ export function Game({ input }) {
           // swims in pulses (jellyStep); spits when its head is lined up on you, in range
           const cold = e.chill && e.chill < 1 ? e.chill : 1;
           if (jellyStep(e, { solidCell: (cx, cy) => solidCell(W, cx, cy), hunting, goal: { x: pcx, y: pcy }, rnd: Math.random,
-            speedMul: cold, rangeMul: sees, stay: W.zone ? natural : null }, dt) === 'pulse') puffSpores(e);
+            speedMul: cold, rangeMul: sees, stay: W.zone ? natural : null }, dt) === 'pulse') puffSpores(W, e);
           const S = e.je;
           // brush its tentacles and you're stung, hunting or not (same sting knobs as the bell)
           if (!W.p.dead && e.touch <= 0 && dist < 180) {

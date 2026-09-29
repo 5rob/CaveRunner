@@ -423,7 +423,7 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] terrain.js, the changes: `dig`, `dropOre`, `unDeco`, `paint` (through `G.tctx`/`G.dctx`, the wrapped ones)
   - [x] fire.js and its cycle (D17): the fire's functions, `explode` → terrain.js, `blowProp` → props.js,
         `webNear`/`webDist` → webs.js
-  - [ ] ambience.js: `spore`, `puffSpores`, `stepAmbience` (+ `AMB_RATE`, `AMB_MAX`): all need only `W`
+  - [x] ambience.js: `spore`, `puffSpores`, `stepAmbience` (+ `AMB_RATE`, `AMB_MAX`): all need only `W`
   - [ ] props.js: `decorStep` with `pOver`, `alertAt`, `shatter`, `popLamp`, `landProp`, `spawnDrip`
         (+ `MATERIAL`, `DRIP_RATE`); needs ambience first
   - Learned so far: `G`'s keys must be declared above `G` (a closure `const` further down moves up
@@ -768,3 +768,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.4 (5) | `terrain.js` gets the changes: `dig`, `unDeco`, `paint` (`(W, G, …)`, drawing through `G.tctx`/`G.dctx`, the wrapped ones) and `dropOre` (`(W, …)`). `system.js` now also reads an existing module's own imports. `replay`, `buzzsaw`, `teleport` (ore) run too. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 (6) | The fire in one move (18 functions): `fire.js` (`fireFrame`, `ignite`, `fireBlast`, `fireOut`, `flushFire`, `setAlight`, `youAlight`, catching plants/arches/webs, `fireList`…), `explode` → `terrain.js`, `blowProp` → `props.js`, `webNear`/`webDist` → `webs.js` (the cycle, D17). `fireBox` joins `G` (its `const` moved up above `G`). `fire`, `archvine`, `decor`, `spider`, `replay`, `blackhole`, `pollen`, `trigger`, `rats` run too (`rats` "they come out of the hole" failed once, passed alone twice: a known flake). Game.js 4,280 → 3,803 lines. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 checkpoint | Full suite on a snapshot of efaeb42: only `jelly` (browser) failed, "saturation 0 greys it out"; alone it passed 3 of 3 (the spit/spore group failed twice of those, the known flake). Stopped here as planned: terrain, particles and fire are out; next the ambience and props. Not merged. | logic 33/33; browser 44/44 after re-runs |
+| 2026-09-29 | Phase 3, P3.4 (7) | `ambience.js`: `spore`, `puffSpores`, `stepAmbience`, `AMB_RATE`, `AMB_MAX` (all `(W, …)`). Clean move. `decor`, `jelly` run too (`jelly` spit/spore group failed 2 of 3 alone, passed the 3rd: the known flake). | probe SAME, logic 33/33, smoke ok |

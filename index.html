@@ -10456,6 +10456,73 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/game/systems/enemies.js
+  function fireEnemyShot(W, e, tx, ty) {
+    const k = e.k;
+    if (!lineOfSight(W, e.x, e.ty, tx, ty)) return;
+    const base = Math.atan2(ty - e.ty, tx - e.x);
+    SFX.creature(k, "fire", e.x, e.ty);
+    for (let s = 0; s < k.shots; s++) {
+      const cone = k.shots > 1 ? (s - (k.shots - 1) / 2) * 0.15 : 0;
+      const a = base + cone + (Math.random() - 0.5) * 0.22;
+      W.enemyShots.push({
+        x: e.x + Math.cos(a) * (e.r + 4),
+        y: e.ty + Math.sin(a) * (e.r + 4),
+        vx: Math.cos(a) * k.bspd,
+        vy: Math.sin(a) * k.bspd,
+        life: 2.5,
+        col: k.col.a,
+        dmg: k.dmg,
+        size: k.body === "blob" ? 4 : 3,
+        fire: k.fire
+      });
+    }
+  }
+  function damageEnemy(W, j, dmg) {
+    const e = W.enemies[j];
+    e.hp -= dmg;
+    e.flash = 0.08;
+    if (e.k.kp) e.aggro = true;
+    if (e.hp > 0) {
+      if (dmg >= 0.5) SFX.creature(e.k, "hurt", e.x, e.ty);
+      return;
+    }
+    burst(W, e.x, e.ty, 16, e.je ? jcol("jeColBody", e.je.u.col) : e.k.col.a);
+    SFX.creature(e.k, "die", e.x, e.ty);
+    W.enemies.splice(j, 1);
+    e.dead = true;
+    if (e.nest) {
+      const all = Math.round(kr("raNestGold") * W.pb.gold) + e.nest.stash;
+      const n = Math.max(1, Math.min(14, Math.ceil(all / 8)));
+      for (let k = 0; k < n; k++)
+        W.coins.push({
+          x: e.x + (Math.random() - 0.5) * 8,
+          y: e.y,
+          amount: Math.floor(all / n) + (k < all % n ? 1 : 0),
+          t: Math.random() * 6.28,
+          vx: (Math.random() - 0.5) * 100,
+          vy: -80 - Math.random() * 80
+        });
+      SFX.fx("coinland", e.x, e.y);
+      return;
+    }
+    W.coins.push({
+      x: e.x,
+      y: e.ty,
+      amount: Math.round((e.k.gold + Math.floor(Math.random() * 3)) * W.pb.gold),
+      t: Math.random() * 6.28,
+      vy: -60 - Math.random() * 40
+    });
+    if (e.carry > 0) W.coins.push({
+      x: e.x,
+      y: e.ty,
+      amount: e.carry,
+      t: Math.random() * 6.28,
+      vx: (Math.random() - 0.5) * 60,
+      vy: -90 - Math.random() * 40
+    });
+  }
+
   // src/game/systems/player.js
   var refreshBag = (W, G) => {
     W.pb = perkBag(G.input.current.loadout.perks || []);
@@ -10975,71 +11042,90 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
-  // src/game/systems/enemies.js
-  function fireEnemyShot(W, e, tx, ty) {
-    const k = e.k;
-    if (!lineOfSight(W, e.x, e.ty, tx, ty)) return;
-    const base = Math.atan2(ty - e.ty, tx - e.x);
-    SFX.creature(k, "fire", e.x, e.ty);
-    for (let s = 0; s < k.shots; s++) {
-      const cone = k.shots > 1 ? (s - (k.shots - 1) / 2) * 0.15 : 0;
-      const a = base + cone + (Math.random() - 0.5) * 0.22;
-      W.enemyShots.push({
-        x: e.x + Math.cos(a) * (e.r + 4),
-        y: e.ty + Math.sin(a) * (e.r + 4),
-        vx: Math.cos(a) * k.bspd,
-        vy: Math.sin(a) * k.bspd,
-        life: 2.5,
-        col: k.col.a,
-        dmg: k.dmg,
-        size: k.body === "blob" ? 4 : 3,
-        fire: k.fire
-      });
+  // src/game/systems/ambience.js
+  var AMB_RATE = { spores: 5, frost: 3, embers: 8, motes: 4, ashfall: 55 };
+  var AMB_MAX = { spores: 40, frost: 20, embers: 60, motes: 50, ashfall: 280 };
+  var spore = (W, x, y, r) => ({
+    kind: "spores",
+    x,
+    y,
+    vx: (r - 0.5) * 8,
+    vy: 0,
+    wob: r * 9,
+    life: 5 + r * 3,
+    max: 8,
+    c: rgbA(themeFor(W.floor).moss[1]),
+    s: 1.3,
+    glow: 1
+  });
+  function puffSpores(W, e) {
+    if (e.x < W.camX - 150 || e.x > W.camX + W.viewW + 150 || e.y < W.camY - 150 || e.y > W.camY + W.viewH + 150) return;
+    const S = e.je, B = jellyBell(e.r, S.shape, kru("jeSquash", S.u.sq));
+    const c = Math.cos(S.hd), sn = Math.sin(S.hd), n = Math.round(kr("jeSpores"));
+    for (let i = 0; i < n && W.amb.length < 500; i++) {
+      const lx = (Math.random() * 2 - 1) * B.rw * 0.7;
+      const q = spore(W, e.x - lx * sn - B.rim * c, e.y + lx * c - B.rim * sn, Math.random());
+      const a = S.hd + Math.PI + (Math.random() * 2 - 1) * kr("jeSporeSpread") * Math.PI / 180, v = kr("jeSporeSpd");
+      q.kx = Math.cos(a) * v;
+      q.ky = Math.sin(a) * v;
+      q.kd = kr("jeSporeDrag");
+      W.amb.push(q);
     }
   }
-  function damageEnemy(W, j, dmg) {
-    const e = W.enemies[j];
-    e.hp -= dmg;
-    e.flash = 0.08;
-    if (e.k.kp) e.aggro = true;
-    if (e.hp > 0) {
-      if (dmg >= 0.5) SFX.creature(e.k, "hurt", e.x, e.ty);
-      return;
+  function stepAmbience(W, dt) {
+    const x0 = W.camX - 30, y0 = W.camY - 30, w = W.viewW + 60, h3 = W.viewH + 60;
+    const T = themeFor(W.floor);
+    for (const kind of W.ambKinds) {
+      if (kind === "devils") {
+        if (W.devils.length < 2 && Math.random() < dt * 0.4) {
+          let x = x0 + Math.random() * w, y = y0 + Math.random() * h3, k = 0;
+          while (k++ < 120 && !solidAt(W, x, y + 1)) y += 2;
+          if (k < 120 && !solidAt(W, x, y - 30)) W.devils.push({ x, y, vx: (Math.random() < 0.5 ? -1 : 1) * (15 + Math.random() * 20), life: 6 + Math.random() * 3, max: 9 });
+        }
+        continue;
+      }
+      const n = W.amb.reduce((a, q) => a + (q.kind === kind), 0);
+      let want = AMB_RATE[kind] * dt;
+      while (want > 0 && n < AMB_MAX[kind]) {
+        if (Math.random() >= want) break;
+        want -= 1;
+        const x = x0 + Math.random() * w, y = y0 + Math.random() * h3;
+        if (solidAt(W, x, y)) continue;
+        const r = Math.random();
+        if (kind === "spores") W.amb.push(spore(W, x, y, r));
+        else if (kind === "frost") {
+          const dir = W.floor % 2 ? 1 : -1;
+          W.amb.push({ kind, x, y, vx: dir * (100 + r * 60), vy: (r - 0.5) * 10, life: 0.9 + r * 0.5, max: 1.4, c: "rgba(215,238,255,0.5)", s: 1, streak: 10 });
+        } else if (kind === "embers") W.amb.push({ kind, x, y, vx: 0, vy: -20 - r * 30, wob: r * 9, life: 3 + r * 2, max: 5, c: r < 0.5 ? "#ffb050" : "#ff7a2a", s: 1.2, glow: 1 });
+        else if (kind === "motes") W.amb.push({ kind, x, y, vx: (r - 0.5) * 6, vy: (Math.random() - 0.5) * 4, wob: r * 9, life: 6 + r * 3, max: 9, c: "rgba(235,225,200,0.8)", s: 1 });
+        else if (kind === "ashfall") W.amb.push({ kind, x, y, vx: 8, vy: 20 + r * 22, wob: r * 9, life: 4 + r * 3, max: 7, c: "rgba(150,146,142,0.75)", s: 1 + r });
+      }
     }
-    burst(W, e.x, e.ty, 16, e.je ? jcol("jeColBody", e.je.u.col) : e.k.col.a);
-    SFX.creature(e.k, "die", e.x, e.ty);
-    W.enemies.splice(j, 1);
-    e.dead = true;
-    if (e.nest) {
-      const all = Math.round(kr("raNestGold") * W.pb.gold) + e.nest.stash;
-      const n = Math.max(1, Math.min(14, Math.ceil(all / 8)));
-      for (let k = 0; k < n; k++)
-        W.coins.push({
-          x: e.x + (Math.random() - 0.5) * 8,
-          y: e.y,
-          amount: Math.floor(all / n) + (k < all % n ? 1 : 0),
-          t: Math.random() * 6.28,
-          vx: (Math.random() - 0.5) * 100,
-          vy: -80 - Math.random() * 80
-        });
-      SFX.fx("coinland", e.x, e.y);
-      return;
+    for (let i = W.amb.length - 1; i >= 0; i--) {
+      const q = W.amb[i];
+      q.life -= dt;
+      if (q.wob != null) q.x += Math.sin(W.time * 1.3 + q.wob) * 6 * dt;
+      if (q.kx || q.ky) {
+        q.x += q.kx * dt;
+        q.y += q.ky * dt;
+        const k = Math.exp(-q.kd * dt);
+        q.kx *= k;
+        q.ky *= k;
+      }
+      q.x += q.vx * dt;
+      q.y += q.vy * dt;
+      if (q.life <= 0 || solidAt(W, q.x, q.y) || q.x < x0 - 200 || q.x > x0 + w + 200 || q.y < y0 - 200 || q.y > y0 + h3 + 200) W.amb.splice(i, 1);
     }
-    W.coins.push({
-      x: e.x,
-      y: e.ty,
-      amount: Math.round((e.k.gold + Math.floor(Math.random() * 3)) * W.pb.gold),
-      t: Math.random() * 6.28,
-      vy: -60 - Math.random() * 40
-    });
-    if (e.carry > 0) W.coins.push({
-      x: e.x,
-      y: e.ty,
-      amount: e.carry,
-      t: Math.random() * 6.28,
-      vx: (Math.random() - 0.5) * 60,
-      vy: -90 - Math.random() * 40
-    });
+    for (let i = W.devils.length - 1; i >= 0; i--) {
+      const dv = W.devils[i];
+      dv.life -= dt;
+      const nx = dv.x + dv.vx * dt;
+      if (solidAt(W, nx + Math.sign(dv.vx) * 6, dv.y - 4)) dv.vx = -dv.vx;
+      else dv.x = nx;
+      if (!solidAt(W, dv.x, dv.y + 2)) dv.y += 40 * dt;
+      else if (solidAt(W, dv.x, dv.y)) dv.y -= 2;
+      if (dv.life <= 0) W.devils.splice(i, 1);
+    }
   }
 
   // src/game/testhook.js
@@ -13322,7 +13408,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (dead) W.dparts.splice(i, 1);
         }
         if (W.dparts.length > 700) W.dparts.splice(0, W.dparts.length - 700);
-        stepAmbience(dt);
+        stepAmbience(W, dt);
         if (W.webLetGo > 0) z.arch = null;
         if (z.arch) z.climb = z.arch;
         let entered = !!(z.climb && PLANTS[z.climb.st] && z.climb !== W.zfx.climb), style = null;
@@ -13356,35 +13442,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           else if (z.climb !== z.web) z.web = null;
         }
         W.zfx = z;
-      }
-      const AMB_RATE = { spores: 5, frost: 3, embers: 8, motes: 4, ashfall: 55 };
-      const AMB_MAX = { spores: 40, frost: 20, embers: 60, motes: 50, ashfall: 280 };
-      const spore = (x, y, r) => ({
-        kind: "spores",
-        x,
-        y,
-        vx: (r - 0.5) * 8,
-        vy: 0,
-        wob: r * 9,
-        life: 5 + r * 3,
-        max: 8,
-        c: rgbA(themeFor(W.floor).moss[1]),
-        s: 1.3,
-        glow: 1
-      });
-      function puffSpores(e) {
-        if (e.x < W.camX - 150 || e.x > W.camX + W.viewW + 150 || e.y < W.camY - 150 || e.y > W.camY + W.viewH + 150) return;
-        const S = e.je, B = jellyBell(e.r, S.shape, kru("jeSquash", S.u.sq));
-        const c2 = Math.cos(S.hd), sn = Math.sin(S.hd), n = Math.round(kr("jeSpores"));
-        for (let i = 0; i < n && W.amb.length < 500; i++) {
-          const lx = (Math.random() * 2 - 1) * B.rw * 0.7;
-          const q = spore(e.x - lx * sn - B.rim * c2, e.y + lx * c2 - B.rim * sn, Math.random());
-          const a = S.hd + Math.PI + (Math.random() * 2 - 1) * kr("jeSporeSpread") * Math.PI / 180, v = kr("jeSporeSpd");
-          q.kx = Math.cos(a) * v;
-          q.ky = Math.sin(a) * v;
-          q.kd = kr("jeSporeDrag");
-          W.amb.push(q);
-        }
       }
       const pgGlow = document.createElement("canvas"), pgGlowCtx = pgGlow.getContext("2d");
       const seenAt = (x, y) => W.seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)] !== 0;
@@ -13474,61 +13531,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.imageSmoothingEnabled = true;
         ctx.drawImage(pgGlow, 0, 0, w, h3, x0w, y0w, w * CELL, h3 * CELL);
         ctx.imageSmoothingEnabled = sm;
-      }
-      function stepAmbience(dt) {
-        const x0 = W.camX - 30, y0 = W.camY - 30, w = W.viewW + 60, h3 = W.viewH + 60;
-        const T = themeFor(W.floor);
-        for (const kind of W.ambKinds) {
-          if (kind === "devils") {
-            if (W.devils.length < 2 && Math.random() < dt * 0.4) {
-              let x = x0 + Math.random() * w, y = y0 + Math.random() * h3, k = 0;
-              while (k++ < 120 && !solidAt(W, x, y + 1)) y += 2;
-              if (k < 120 && !solidAt(W, x, y - 30)) W.devils.push({ x, y, vx: (Math.random() < 0.5 ? -1 : 1) * (15 + Math.random() * 20), life: 6 + Math.random() * 3, max: 9 });
-            }
-            continue;
-          }
-          const n = W.amb.reduce((a, q) => a + (q.kind === kind), 0);
-          let want = AMB_RATE[kind] * dt;
-          while (want > 0 && n < AMB_MAX[kind]) {
-            if (Math.random() >= want) break;
-            want -= 1;
-            const x = x0 + Math.random() * w, y = y0 + Math.random() * h3;
-            if (solidAt(W, x, y)) continue;
-            const r = Math.random();
-            if (kind === "spores") W.amb.push(spore(x, y, r));
-            else if (kind === "frost") {
-              const dir = W.floor % 2 ? 1 : -1;
-              W.amb.push({ kind, x, y, vx: dir * (100 + r * 60), vy: (r - 0.5) * 10, life: 0.9 + r * 0.5, max: 1.4, c: "rgba(215,238,255,0.5)", s: 1, streak: 10 });
-            } else if (kind === "embers") W.amb.push({ kind, x, y, vx: 0, vy: -20 - r * 30, wob: r * 9, life: 3 + r * 2, max: 5, c: r < 0.5 ? "#ffb050" : "#ff7a2a", s: 1.2, glow: 1 });
-            else if (kind === "motes") W.amb.push({ kind, x, y, vx: (r - 0.5) * 6, vy: (Math.random() - 0.5) * 4, wob: r * 9, life: 6 + r * 3, max: 9, c: "rgba(235,225,200,0.8)", s: 1 });
-            else if (kind === "ashfall") W.amb.push({ kind, x, y, vx: 8, vy: 20 + r * 22, wob: r * 9, life: 4 + r * 3, max: 7, c: "rgba(150,146,142,0.75)", s: 1 + r });
-          }
-        }
-        for (let i = W.amb.length - 1; i >= 0; i--) {
-          const q = W.amb[i];
-          q.life -= dt;
-          if (q.wob != null) q.x += Math.sin(W.time * 1.3 + q.wob) * 6 * dt;
-          if (q.kx || q.ky) {
-            q.x += q.kx * dt;
-            q.y += q.ky * dt;
-            const k = Math.exp(-q.kd * dt);
-            q.kx *= k;
-            q.ky *= k;
-          }
-          q.x += q.vx * dt;
-          q.y += q.vy * dt;
-          if (q.life <= 0 || solidAt(W, q.x, q.y) || q.x < x0 - 200 || q.x > x0 + w + 200 || q.y < y0 - 200 || q.y > y0 + h3 + 200) W.amb.splice(i, 1);
-        }
-        for (let i = W.devils.length - 1; i >= 0; i--) {
-          const dv = W.devils[i];
-          dv.life -= dt;
-          const nx = dv.x + dv.vx * dt;
-          if (solidAt(W, nx + Math.sign(dv.vx) * 6, dv.y - 4)) dv.vx = -dv.vx;
-          else dv.x = nx;
-          if (!solidAt(W, dv.x, dv.y + 2)) dv.y += 40 * dt;
-          else if (solidAt(W, dv.x, dv.y)) dv.y -= 2;
-          if (dv.life <= 0) W.devils.splice(i, 1);
-        }
       }
       function step(dt) {
         W.time += dt;
@@ -14484,7 +14486,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               speedMul: cold,
               rangeMul: sees,
               stay: W.zone ? natural : null
-            }, dt) === "pulse") puffSpores(e);
+            }, dt) === "pulse") puffSpores(W, e);
             const S = e.je;
             if (!W.p.dead && e.touch <= 0 && dist < 180) {
               const t = tentacleTouch(S, W.p.x, W.p.y, W.p.x + PW, W.p.y + PH);
