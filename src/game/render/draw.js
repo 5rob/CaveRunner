@@ -23,11 +23,11 @@ import { fogLit, roomSeen } from '../systems/fog.js';
 import { plantGlow } from '../systems/plantglow.js';
 import { maxHp, torchHand } from '../systems/player.js';
 import { solidAt, solidCell } from '../systems/terrain.js';
-import { drawEnemies, drawSilk } from './actors.js';
+import { drawEnemies, drawJetFlame, drawSilk } from './actors.js';
 import {
   drawArrival, drawLoot, drawPortal, drawProps, drawRooms, drawShop, drawTerrain
 } from './cave.js';
-import { drawSmoke } from './effects.js';
+import { drawFlashes, drawMotes, drawSmoke, drawSparks, drawTrail } from './effects.js';
 import { drawBeams, drawFields, drawShots } from './looks.js';
 
 export function draw(W, G) {
@@ -63,61 +63,15 @@ export function draw(W, G) {
 
   drawRooms(W, G, F);                       // the hidden rooms' prizes (cave.js)
 
-  // Levitation Trail: the fire you left behind, still burning
-  for (const bn of W.burns) {
-    const t = bn.life / bn.max;
-    G.ctx.globalAlpha = t * 0.8;
-    G.ctx.fillStyle = t > 0.5 ? COL.flame2 : COL.flame;
-    G.ctx.beginPath(); G.ctx.arc(bn.x, bn.y, 3 + (1 - t) * 5, 0, Math.PI * 2); G.ctx.fill();
-  }
-  G.ctx.globalAlpha = 1;
+  drawTrail(W, G);                          // Levitation Trail (effects.js)
 
-  // sparks and debris
-  for (const q of W.sparks) {
-    G.ctx.fillStyle = q.c;
-    G.ctx.globalAlpha = Math.max(0, q.life / q.max);
-    G.ctx.fillRect(q.x - q.size / 2, q.y - q.size / 2, q.size, q.size);
-  }
-  G.ctx.globalAlpha = 1;
+  drawSparks(W, G);                         // sparks and debris (effects.js)
 
-  // magic motes: the Black Hole's trail and the portals' drift, added on as light
-  G.ctx.globalCompositeOperation = 'lighter';
-  for (const q of W.motes) {
-    if (q.y > W.camY + vh + 20 || q.y < W.camY - 20) continue;
-    let a;
-    if (q.kind === 'in') a = Math.min(1, q.age / 0.6) * 0.9;              // fade in, never pop
-    else if (q.kind === 'out') a = Math.min(1, q.age / 0.3) *
-      Math.max(0, 1 - Math.hypot(q.x - q.ox, q.y - q.oy) / q.fade) * 0.9;  // fade with distance
-    else a = Math.max(0, q.life / q.max) * 0.9;
-    G.ctx.globalAlpha = a;
-    G.ctx.fillStyle = q.c;
-    G.ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
-  }
-  G.ctx.globalCompositeOperation = 'source-over';
-  G.ctx.globalAlpha = 1;
+  drawMotes(W, G, F);                       // magic motes (effects.js)
 
-  // explosion flashes
-  for (const f of W.flashes) {
-    const t = f.t / 0.25;
-    G.ctx.globalAlpha = 1 - t;
-    G.ctx.fillStyle = COL.flame;
-    G.ctx.beginPath(); G.ctx.arc(f.x, f.y, f.r * (0.6 + 0.5 * t), 0, Math.PI * 2); G.ctx.fill();
-    G.ctx.fillStyle = COL.flame2;
-    G.ctx.beginPath(); G.ctx.arc(f.x, f.y, f.r * (0.35 + 0.3 * t), 0, Math.PI * 2); G.ctx.fill();
-  }
-  G.ctx.globalAlpha = 1;
+  drawFlashes(W, G);                        // explosion flashes (effects.js)
 
-  // jet flame
-  if (W.p.flame > 0) {
-    let fx = -W.p.jx, fy = -W.p.jy + 0.8;
-    const fl = Math.hypot(fx, fy) || 1; fx /= fl; fy /= fl;
-    const len = 6 + W.p.flame * 16 + Math.random() * 3;
-    const bx = pcx, by = W.p.y + PH - 2;
-    G.ctx.fillStyle = COL.flame;
-    G.ctx.beginPath(); G.ctx.moveTo(bx - 4, by); G.ctx.lineTo(bx + 4, by); G.ctx.lineTo(bx + fx * len, by + fy * len); G.ctx.fill();
-    G.ctx.fillStyle = COL.flame2;
-    G.ctx.beginPath(); G.ctx.moveTo(bx - 2, by); G.ctx.lineTo(bx + 2, by); G.ctx.lineTo(bx + fx * len * 0.55, by + fy * len * 0.55); G.ctx.fill();
-  }
+  drawJetFlame(W, G, F);                    // the jet flame (actors.js)
 
   // aim, grenade arc preview, gun
   const R = W.p.aim;

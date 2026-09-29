@@ -2,7 +2,7 @@
 // object F (REFACTOR.md D19): spider silk, the creatures, the jet flame, the aim line and the gun,
 // the runner with the torch, the crosshair, Permanent Shield and Angry Ghost
 
-import { COL } from '../../core/consts.js';
+import { COL, PH } from '../../core/consts.js';
 import { drawEnemy } from '../../creatures/draw.js';
 import { jcol } from '../../dev/knobs.js';
 
@@ -41,5 +41,21 @@ export function drawEnemies(W, G, F) {
     G.ctx.fillStyle = COL.barBg; G.ctx.fillRect(hx, hy, hw, 3);
     G.ctx.fillStyle = e.je ? jcol('jeColBody', e.je.u.col) : e.k.col.a;
     G.ctx.fillRect(hx, hy, hw * Math.max(0, e.hp / e.hpMax), 3);
+  }
+}
+
+// The jetpack's flame, pointing away from the thrust
+export function drawJetFlame(W, G, F) {
+  const { pcx } = F;
+  // jet flame
+  if (W.p.flame > 0) {
+    let fx = -W.p.jx, fy = -W.p.jy + 0.8;
+    const fl = Math.hypot(fx, fy) || 1; fx /= fl; fy /= fl;
+    const len = 6 + W.p.flame * 16 + Math.random() * 3;
+    const bx = pcx, by = W.p.y + PH - 2;
+    G.ctx.fillStyle = COL.flame;
+    G.ctx.beginPath(); G.ctx.moveTo(bx - 4, by); G.ctx.lineTo(bx + 4, by); G.ctx.lineTo(bx + fx * len, by + fy * len); G.ctx.fill();
+    G.ctx.fillStyle = COL.flame2;
+    G.ctx.beginPath(); G.ctx.moveTo(bx - 2, by); G.ctx.lineTo(bx + 2, by); G.ctx.lineTo(bx + fx * len * 0.55, by + fy * len * 0.55); G.ctx.fill();
   }
 }
