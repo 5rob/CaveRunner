@@ -9,8 +9,8 @@ import {
   drawGun, drawGunGlow, drawRunner, drawSconce, drawTorch, glowAt
 } from '../../art/sprites.js';
 import {
-  BCELL, BH, BW, CELL, CH, COL, CW, FH, FOG, FOG_U, FW, LAMP_REACH, MINI_D, MMH, MMW, PH, PW,
-  SHOP_FLOOR, SHOP_Y, SIGHT, VIEW_MIN_H, VIEW_W, WH, WW
+  CELL, CH, COL, CW, FH, FOG, FOG_U, FW, LAMP_REACH, MINI_D, MMH, MMW, PH, PW, SHOP_FLOOR, SIGHT,
+  VIEW_MIN_H, VIEW_W, WH, WW
 } from '../../core/consts.js';
 import { clamp, hexRgb, mix } from '../../core/util.js';
 import { drawEnemy } from '../../creatures/draw.js';
@@ -21,7 +21,6 @@ import { effRecharge, gunPassives, planCast } from '../../spells/cast.js';
 import { gunAccent } from '../../spells/guns.js';
 import { MODS, famCol } from '../../spells/mods.js';
 import { bhSp, tracePath } from '../../spells/trace.js';
-import { FIRE_COLS } from '../../world/fire.js';
 import { ROOM_HH, ROOM_HW } from '../../world/level.js';
 import { VIS_RAYS, fogReveal, visPoly } from '../../world/vision.js';
 import { fogLit, roomSeen } from '../systems/fog.js';
@@ -29,105 +28,17 @@ import { jag } from '../systems/lightning.js';
 import { plantGlow } from '../systems/plantglow.js';
 import { maxHp, torchHand } from '../systems/player.js';
 import { solidAt, solidCell } from '../systems/terrain.js';
+import { drawTerrain } from './cave.js';
 import { drawBolt, drawFieldLook, drawLook } from './looks.js';
 
 export function draw(W, G) {
-  const dpr = window.devicePixelRatio || 1;
-  // the controls overlay the bottom of the canvas (see-through), so the play area is the
-  // part above them: scale and frame to that, but still draw (and cull) the full canvas
-  const ctlPx = Math.min(G.c.height * 0.8, (G.RPV ? G.RPV.panelH || 0 : G.input.current.ctlH || 0) * dpr);   // a replay: its panel
-  const playPx = G.c.height - ctlPx;
-  const s = Math.min(G.c.width / VIEW_W, playPx / VIEW_MIN_H) * DEV.zoom * (G.RPV ? G.RPV.zoom : 1), vw = G.c.width / s, vh = G.c.height / s;
-  const vhp = playPx / s;
-  W.unitPx = s / dpr;
-  const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
+  // the frame: what draw's parts hand on to each other (REFACTOR.md D19). drawCamera fills
+  // in the view and where you are
+  const F = { dpr: 0, playPx: 0, vw: 0, vh: 0, pcx: 0, pcy: 0 };
+  drawCamera(W, G, F);                      // the view, the camera, the canvas cleared
+  const { dpr, playPx, vw, vh, pcx, pcy } = F;
 
-  // camera (a replay's is wherever the viewer has dragged it, or on you)
-  if (G.RPV) {
-    if (G.RPV.follow) {                     // framed on you like the live camera, then kept as the centre
-      G.RPV.cx = vw >= WW ? WW / 2 : clamp(G.RPV.cx - vw / 2, 0, WW - vw) + vw / 2;
-      G.RPV.cy = clamp(G.RPV.cy - vhp * 0.55, 0, Math.max(0, WH - vhp)) + vhp / 2;
-    }
-    W.camX = G.RPV.cx - vw / 2; W.camY = G.RPV.cy - vhp / 2; G.RPV.unit = W.unitPx;
-  } else {
-    const tx = vw >= WW ? (WW - vw) / 2 : clamp(pcx - vw / 2, 0, WW - vw);
-    const ty = clamp(pcy - vhp * 0.55, 0, Math.max(0, WH - vhp));
-    if (!W.camReady) { W.camX = tx; W.camY = ty; W.camReady = true; }
-    W.camX += (tx - W.camX) * 0.15;
-    W.camY += (ty - W.camY) * 0.15;
-  }
-
-  G.ctx.setTransform(1, 0, 0, 1, 0, 0);
-  G.ctx.imageSmoothingEnabled = false;
-  G.ctx.fillStyle = 'rgb(' + themeFor(W.floor).bg.join(',') + ')';
-  G.ctx.fillRect(0, 0, G.c.width, G.c.height);
-  G.ctx.setTransform(s, 0, 0, s, -Math.round(W.camX * s), -Math.round(W.camY * s));
-
-  // background and terrain (visible part only)
-  // The background sits further back: it slides PARALLAX as far as the terrain does, so
-  // it is shifted by the rest of the camera move. It still covers the view at every edge,
-  // because the shift only ever pushes it toward the camera.
-  const PARALLAX = 0.8;
-  const bgox = W.camX * (1 - PARALLAX), bgoy = W.camY * (1 - PARALLAX);
-  const bcx = W.camX - bgox, bcy = W.camY - bgoy;
-  const bx0 = clamp(Math.floor(bcx / BCELL), 0, BW - 1), by0 = clamp(Math.floor(bcy / BCELL), 0, BH - 1);
-  const bx1 = clamp(Math.ceil((bcx + vw) / BCELL) + 1, 1, BW), by1 = clamp(Math.ceil((bcy + vh) / BCELL) + 1, 1, BH);
-  G.ctx.drawImage(G.bg, bx0, by0, bx1 - bx0, by1 - by0, bx0 * BCELL + bgox, by0 * BCELL + bgoy, (bx1 - bx0) * BCELL, (by1 - by0) * BCELL);
-  // the shop's back wall
-  if (W.camY + vh > SHOP_Y) {
-    G.ctx.fillStyle = '#241f28';
-    G.ctx.fillRect(0, SHOP_Y, WW, (SHOP_FLOOR * CELL) - SHOP_Y);
-    G.ctx.fillStyle = 'rgba(255,255,255,0.03)';
-    for (let bx = 0; bx < WW; bx += 24)
-      for (let by = SHOP_Y; by < SHOP_FLOOR * CELL; by += 12)
-        G.ctx.fillRect(bx + ((by / 12) % 2) * 12, by, 11, 11);
-    G.ctx.fillStyle = 'rgba(233,236,242,0.30)';
-    G.ctx.font = '600 11px system-ui, sans-serif';
-    G.ctx.textAlign = 'center';
-    G.ctx.fillText('SHOP', WW / 2, SHOP_Y + 14);
-    // The floor number, huge and widely spaced along the whole back wall — just a
-    // touch brighter than the wall itself, so it reads as painted-on lettering
-    // rather than a label. Each glyph is placed by hand so the word spans most of
-    // the wall's width no matter how many digits the floor has.
-    const wallBot = SHOP_FLOOR * CELL, wallH = wallBot - SHOP_Y;
-    const label = 'FLOOR ' + W.floor;
-    G.ctx.fillStyle = 'rgba(255,255,255,0.07)';
-    G.ctx.font = '800 ' + Math.round(wallH * 0.62) + 'px system-ui, sans-serif';
-    G.ctx.textBaseline = 'middle';
-    const margin = WW * 0.05, span = WW - margin * 2, cyText = SHOP_Y + wallH / 2 + 4;
-    for (let i = 0; i < label.length; i++)
-      G.ctx.fillText(label[i], margin + span * (i + 0.5) / label.length, cyText);
-    G.ctx.textBaseline = 'alphabetic';
-    G.ctx.textAlign = 'left';
-  }
-
-  const tx0 = clamp(Math.floor(W.camX / CELL), 0, CW - 1), ty0 = clamp(Math.floor(W.camY / CELL), 0, CH - 1);
-  const tx1 = clamp(Math.ceil((W.camX + vw) / CELL) + 1, 1, CW), ty1 = clamp(Math.ceil((W.camY + vh) / CELL) + 1, 1, CH);
-  W.viewW = vw; W.viewH = vh;
-  // the decoration layer (pass 2): behind the rock, in front of the back wall
-  G.ctx.drawImage(G.RPV ? G.RT.dC : G.decoC, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
-  G.ctx.drawImage(G.RPV ? G.RT.tC : G.terrain, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
-  // the burning pixels, over the art they're eating: colour by how much fuel is left, and a
-  // new flicker each fire tick. Drawn under the fog, so fire you haven't seen stays hidden;
-  // the glow on top comes after the fog, only on ground you have seen (fireVis).
-  W.fireVis.length = 0;
-  if (W.fire.list.length) {
-    const buckets = [[], [], [], []];
-    for (const i of W.fire.list) {
-      const x = i % CW, y = (i / CW) | 0;
-      if (x < tx0 || x >= tx1 || y < ty0 || y >= ty1) continue;
-      W.fireVis.push(i);
-      const t = W.fire.t[i], h = (Math.imul(i, 2654435761) + W.fireN * 40503) >>> 30;
-      buckets[t <= 3 ? 3 : h === 0 ? 0 : h === 3 ? 2 : 1].push(i);
-    }
-    for (let c = 0; c < 4; c++) {
-      if (!buckets[c].length) continue;
-      G.ctx.fillStyle = FIRE_COLS[c];
-      G.ctx.beginPath();
-      for (const i of buckets[c]) G.ctx.rect((i % CW) * CELL, ((i / CW) | 0) * CELL, CELL, CELL);
-      G.ctx.fill();
-    }
-  }
+  drawTerrain(W, G, F);                     // background, shop wall, rock, burning pixels (cave.js)
 
   // the props (pass 3), their drips and the theme's ambience
   const TH = themeFor(W.floor);
@@ -956,4 +867,40 @@ export function draw(W, G) {
     G.ctx.fill(); G.ctx.stroke();
     G.ctx.imageSmoothingEnabled = false;
   }
+}
+
+// The view for this frame (F.dpr, F.playPx: the play area above the controls, F.vw/F.vh: the
+// view in world units, F.pcx/F.pcy: your centre), the camera eased toward you (a replay's
+// is the viewer's), and the canvas cleared to the floor's colour under the world's transform
+export function drawCamera(W, G, F) {
+  const dpr = F.dpr = window.devicePixelRatio || 1;
+  // the controls overlay the bottom of the canvas (see-through), so the play area is the
+  // part above them: scale and frame to that, but still draw (and cull) the full canvas
+  const ctlPx = Math.min(G.c.height * 0.8, (G.RPV ? G.RPV.panelH || 0 : G.input.current.ctlH || 0) * dpr);   // a replay: its panel
+  const playPx = F.playPx = G.c.height - ctlPx;
+  const s = Math.min(G.c.width / VIEW_W, playPx / VIEW_MIN_H) * DEV.zoom * (G.RPV ? G.RPV.zoom : 1), vw = F.vw = G.c.width / s, vh = F.vh = G.c.height / s;
+  const vhp = playPx / s;
+  W.unitPx = s / dpr;
+  const pcx = F.pcx = W.p.x + PW / 2, pcy = F.pcy = W.p.y + PH / 2;
+
+  // camera (a replay's is wherever the viewer has dragged it, or on you)
+  if (G.RPV) {
+    if (G.RPV.follow) {                     // framed on you like the live camera, then kept as the centre
+      G.RPV.cx = vw >= WW ? WW / 2 : clamp(G.RPV.cx - vw / 2, 0, WW - vw) + vw / 2;
+      G.RPV.cy = clamp(G.RPV.cy - vhp * 0.55, 0, Math.max(0, WH - vhp)) + vhp / 2;
+    }
+    W.camX = G.RPV.cx - vw / 2; W.camY = G.RPV.cy - vhp / 2; G.RPV.unit = W.unitPx;
+  } else {
+    const tx = vw >= WW ? (WW - vw) / 2 : clamp(pcx - vw / 2, 0, WW - vw);
+    const ty = clamp(pcy - vhp * 0.55, 0, Math.max(0, WH - vhp));
+    if (!W.camReady) { W.camX = tx; W.camY = ty; W.camReady = true; }
+    W.camX += (tx - W.camX) * 0.15;
+    W.camY += (ty - W.camY) * 0.15;
+  }
+
+  G.ctx.setTransform(1, 0, 0, 1, 0, 0);
+  G.ctx.imageSmoothingEnabled = false;
+  G.ctx.fillStyle = 'rgb(' + themeFor(W.floor).bg.join(',') + ')';
+  G.ctx.fillRect(0, 0, G.c.width, G.c.height);
+  G.ctx.setTransform(s, 0, 0, s, -Math.round(W.camX * s), -Math.round(W.camY * s));
 }

@@ -15,7 +15,8 @@
 // local of fn declared outside them, declare one that is used after them, or hold one of fn's
 // own `return`s: those need doing by hand first. The imports of both files are worked out again
 // from what each uses (existing imports first, then every module's `export`s under src/); a new
-// module gets its `export * from` line in src/pure.js. Keeps the files' line endings.
+// module gets its `export * from` line in src/pure.js (a render/ one after the other render lines).
+// VERSION is never imported (the page's global, D7). Keeps the files' line endings.
 const fs = require('fs');
 const path = require('path');
 const espree = require('espree');
@@ -120,7 +121,7 @@ const exportsOf = new Map();     // name -> [module paths]
   for (const f of fs.readdirSync(d)) {
     const p = path.join(d, f);
     if (fs.statSync(p).isDirectory()) walkDir(p);
-    else if (f.endsWith('.js')) {
+    else if (f.endsWith('.js') && p !== path.join(SRC, 'version.js')) {   // VERSION is the page's global, never imported (D7)
       const t = read(p).src;
       for (const x of t.matchAll(/^export (?:async )?(?:function\*?|const|let|class) ([A-Za-z_$][\w$]*)/gm)) {
         if (!exportsOf.has(x[1])) exportsOf.set(x[1], []);
@@ -233,6 +234,10 @@ for (const [f, o] of out) {
   if (!o.isNew) continue;
   const P = path.join(SRC, 'pure.js'), p = read(P);
   const line = `export * from './${path.relative(SRC, f).split(path.sep).join('/')}';`;
-  if (!p.src.includes(line)) write(P, p.src.replace("export * from './game/systems/step.js';\n", line + '\n' + "export * from './game/systems/step.js';\n"), p.crlf);
+  if (p.src.includes(line)) continue;
+  if (line.includes('/game/render/')) {                 // a render module: after the last render line
+    const rs = [...p.src.matchAll(/^export \* from '\.\/game\/render\/.*\n/gm)], last = rs[rs.length - 1];
+    write(P, p.src.slice(0, last.index + last[0].length) + line + '\n' + p.src.slice(last.index + last[0].length), p.crlf);
+  } else write(P, p.src.replace("export * from './game/systems/step.js';\n", line + '\n' + "export * from './game/systems/step.js';\n"), p.crlf);
 }
 console.log('done');
