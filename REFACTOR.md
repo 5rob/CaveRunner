@@ -356,7 +356,7 @@ What the code says about this phase (checked at the end of Phase 2):
       `node tests/determinism.js` (SAME), logic, smoke.
   - [x] terrain: `mat`, `img`, `dimg`, `ore`, `burrow`, `terrainV` (first: the five inner `W` locals renamed, see the map)
   - [x] level layout: `start`, `portal`, `arrival`, `stock`, `rooms`, `zone`, `sconces`, `floor`, `levelSeed`, `levelOwned`, `roster`, `themeName`, `total`, `miniEdgeIdx`, `matterProps`, `ambKinds`, `plantW`
-  - [ ] the swapped lists: `enemies`, `pickups`, `props`
+  - [x] the swapped lists: `enemies`, `pickups`, `props`
   - [ ] fog: `seen`, `deepFog`
   - [ ] fire: `fire`, `firePlants`, `fireArches`, `fireCarts`, `firePropN`, `firePropLast`, `fireLoop`, `fireN`, `fireVis`
   - [ ] player, camera, clock: `p`, `pb`, `ghost`, `zfx`, `time`, `levelT`, `best`, `camX`, `camY`, `camReady`, `unitPx`, `viewW`, `viewH`, `flick`, `torchR`, `visPts`, `leanX`…
@@ -683,3 +683,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.1 | **Game map** written (from a scope-aware pass over the closure). Determinism probe built and kept: `tests/determinism.js` (D14), stable 5/5 and catches a one-number change. Where `W` stops is D15. No code changes. | probe SAME |
 | 2026-09-29 | Phase 3, P3.2 (1) | `game/world.js` `makeWorld()`; `const W = makeWorld()` first in the effect. Five inner locals named `W` renamed (`wit`, `ln`, `ar`). Terrain group to `W` with the new `tools/world.js` (65 references); hook text in `tests/build.js` follows. `W` keeps its name in the bundle. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.2 (2) | Level layout group to `W` (17 names, 129 references). `tools/world.js --drop` now takes the old declarators out too and prints their starting values. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 3, P3.2 (3) | `enemies`, `pickups`, `props` to `W` (119 references); `drawReplay`'s swap is now `enemies: W.enemies` in `keep` and in the destructuring restore. The probe doesn't play a replay, so `replay` (browser) was run too. | probe SAME, logic 33/33, smoke ok, replay ok |

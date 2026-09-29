@@ -27,5 +27,11 @@ export function makeWorld() {
     matterProps: [],                // the dark matter props (their hum)
     ambKinds: [],                   // the theme's ambience particle kinds
     plantW: 255,                    // the jellies' plant glow: this floor's white point
+
+    // ---- what's in it: new lists from each floor (and swapped for the recorded ones while
+    // the death replay draws a frame) ----
+    enemies: undefined,             // the creatures, nests included
+    pickups: undefined,             // loot on the ground: mods, guns, hearts
+    props: [],                      // the decoration that does things (see DECOR): plants, lamps, carts…
   };
 }

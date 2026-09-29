@@ -107,7 +107,6 @@ export function Game({ input }) {
     const miniImg = new ImageData(MMW, MMH);
     const mini32 = new Uint32Array(miniImg.data.buffer);
 
-    let enemies, pickups;
     const natural = (x, y) => !builtAt(W.zone, x, y);      // jellies keep to the natural zones
     let oreBank = 0;                                 // the loose change from gold seams dug out
     // sound: the jetpack's roar, each live Black Hole's drone, the low-health heartbeat
@@ -133,7 +132,6 @@ export function Game({ input }) {
     // ---- level decoration (see DECOR): the props, the decoration layer, their particles,
     // the theme's ambience, spore clouds and noise rings. zfx is what the props did to you
     // this frame (slowed, slick, holding a vine, gravity flipped), read by next frame's steering.
-    let props = [];
     let pgArt = null, pgC = null, pgCtx = null;   // the jellies' plant glow (plantGlow)
     const decoC = document.createElement('canvas');
     decoC.width = CW; decoC.height = CH;
@@ -232,7 +230,7 @@ export function Game({ input }) {
       const S = { t: REC.t, time, flick, leanX, leanY, glowN, fireN, p: rpClone(p),
         ghost: ghost ? rpClone(ghost) : null };
       for (const k in RP_ARR) S[k] = grab(RP_ARR[k], 40);
-      S.enemies = grab(enemies, 40, 'ty'); S.pickups = grab(pickups, 40); S.props = grab(props, 120);
+      S.enemies = grab(W.enemies, 40, 'ty'); S.pickups = grab(W.pickups, 40); S.props = grab(W.props, 120);
       // the burning pixels in the box, and how much fuel each has left
       const fi = [];
       for (const i of fire.list) {
@@ -322,9 +320,9 @@ export function Game({ input }) {
       // swap the recording in
       const keepL = {};
       for (const k in RP_ARR) { const L = RP_ARR[k]; keepL[k] = L.splice(0, L.length, ...F[k]); }
-      const keep = { enemies, pickups, props, fire, firePlants, seen, ghost, time, flick, leanX, leanY, glowN,
+      const keep = { enemies: W.enemies, pickups: W.pickups, props: W.props, fire, firePlants, seen, ghost, time, flick, leanX, leanY, glowN,
         fireN, camX, camY, unitPx, torchR, visPts, viewW, viewH, p: Object.assign({}, p) };
-      enemies = F.enemies; pickups = F.pickups; props = F.props; firePlants = [];
+      W.enemies = F.enemies; W.pickups = F.pickups; W.props = F.props; firePlants = [];
       fire = { list: near.fire, t: RT.fireT }; seen = RT.fog;
       ghost = F.ghost; time = F.time; flick = F.flick; leanX = F.leanX; leanY = F.leanY; glowN = F.glowN; fireN = near.fireN;
       Object.assign(p, F.p);
@@ -333,7 +331,7 @@ export function Game({ input }) {
         // and the live world back, exactly as it was
         RPV = null;
         for (const k in RP_ARR) { const L = RP_ARR[k]; L.splice(0, L.length, ...keepL[k]); }
-        ({ enemies, pickups, props, fire, firePlants, seen, ghost, time, flick, leanX, leanY, glowN,
+        ({ enemies: W.enemies, pickups: W.pickups, props: W.props, fire, firePlants, seen, ghost, time, flick, leanX, leanY, glowN,
           fireN, camX, camY, unitPx, torchR, visPts, viewW, viewH } = keep);
         Object.assign(p, keep.p);
         for (let k = 0; k < near.fire.length; k++) RT.fireT[near.fire[k]] = 0;
@@ -374,9 +372,9 @@ export function Game({ input }) {
         if (solid && open) W.miniEdgeIdx.push(my * MMW + mx);
       }
       W.start = level.start; W.portal = level.portal; W.arrival = level.arrival;
-      enemies = level.enemies; pickups = level.pickups; W.stock = level.stock;
+      W.enemies = level.enemies; W.pickups = level.pickups; W.stock = level.stock;
       W.rooms = level.rooms || []; W.zone = level.zone || null;
-      props = level.props || []; W.ambKinds = level.amb || []; W.dimg = level.dimg;
+      W.props = level.props || []; W.ambKinds = level.amb || []; W.dimg = level.dimg;
       W.plantW = plantWhite(W.img.data, W.dimg && W.dimg.data);    // the jellies' plant glow keys off this
       dctx.putImageData(W.dimg, 0, 0);
       dparts.length = amb.length = clouds.length = rings.length = devils.length = 0;
@@ -392,7 +390,7 @@ export function Game({ input }) {
       SFX.setAmbience(W.themeName);
       for (const h of bhLoops.values()) h.stop();
       bhLoops.clear();
-      W.total = enemies.length;
+      W.total = W.enemies.length;
       ghost = pb.ghost ? { x: level.start.x, y: level.start.y, cd: 0 } : null;
       burns.length = 0;
       webs.length = silk.length = strings.length = 0;
@@ -425,7 +423,7 @@ export function Game({ input }) {
       if (pb.seeAll) seen.fill(2);            // All-Seeing Eye lights the whole floor
       paintFog();                             // otherwise every floor starts dark again
       recReset();                             // the death replay starts afresh each floor
-      W.matterProps = props.filter(pr => pr.k === 'matter');
+      W.matterProps = W.props.filter(pr => pr.k === 'matter');
       // out of the way-in, a moment after the way-out's whump
       setTimeout(() => SFX.fx('portalOut', W.arrival.x, W.arrival.y), 260);
     }
@@ -434,11 +432,11 @@ export function Game({ input }) {
     // app is put away, so closing it mid-floor loses almost nothing. A dead run is wiped. ----
     function saveRun() {
       if (p.dead) return;
-      const pk = pickups.filter(q => !q.taken && (q.kind === 'mod' || q.kind === 'gun'))
+      const pk = W.pickups.filter(q => !q.taken && (q.kind === 'mod' || q.kind === 'gun'))
         .map(q => (q.kind === 'mod' ? { kind: 'mod', id: q.id, x: q.x, y: q.y, t: q.t }
           : { kind: 'gun', gun: q.gun, x: q.x, y: q.y, t: q.t, old: !!q.old }));
       const data = { ver: VERSION, floor: W.floor, hp: p.hp, loadout: input.current.loadout,
-        level: { seed: W.levelSeed, owned: W.levelOwned, alive: enemies.map(e => e.sid),
+        level: { seed: W.levelSeed, owned: W.levelOwned, alive: W.enemies.map(e => e.sid),
           sold: W.stock.map((it, i) => (it.sold ? i : -1)).filter(i => i >= 0),
           rooms: W.rooms.map((r, i) => (r.taken ? i : -1)).filter(i => i >= 0),
           pickups: pk } };
@@ -538,8 +536,8 @@ export function Game({ input }) {
     };
     const lineOfSight = (x0, y0, x1, y1) => losClear(x0, y0, x1, y1, solidCell);
     const enemyAt = (x, y, pad) => {
-      for (let j = 0; j < enemies.length; j++) {
-        const e = enemies[j];
+      for (let j = 0; j < W.enemies.length; j++) {
+        const e = W.enemies[j];
         if (Math.hypot(x - e.x, y - e.ty) < e.r + pad) return j;
       }
       return -1;
@@ -616,13 +614,13 @@ export function Game({ input }) {
       }
     }
     function damageEnemy(j, dmg) {
-      const e = enemies[j];
+      const e = W.enemies[j];
       e.hp -= dmg; e.flash = 0.08;
       if (e.k.kp) e.aggro = true;          // hurt a spider or a jelly and it comes for you
       if (e.hp > 0) { if (dmg >= 0.5) SFX.creature(e.k, 'hurt', e.x, e.ty); return; }
       burst(e.x, e.ty, 16, e.je ? jcol('jeColBody', e.je.u.col) : e.k.col.a);
       SFX.creature(e.k, 'die', e.x, e.ty);
-      enemies.splice(j, 1);
+      W.enemies.splice(j, 1);
       e.dead = true;                        // its rats find out they've no home to go to
       if (e.nest) {
         // a nest: its own gold and everything its rats brought home, in a little shower
@@ -669,7 +667,7 @@ export function Game({ input }) {
         cd: 0, flash: 0, lx: 0, ly: 1, hx: m.x, hy: m.y, tgt: null, rest: 0, k, touch: 0, charge: 0,
         home: n, path: P, carry: 0 };
       e.ra = { mode: 'tunnel', vx: 0, vy: 0, nx: 0, ny: -1, on: 0, rest: 0, side: 1, face: 1, s: 0, dir: 1, wait: 0 };
-      enemies.push(e);
+      W.enemies.push(e);
       return e;
     }
     // a rat that's stuck with a job on: a hop in some direction; the third time, a carrier
@@ -717,7 +715,7 @@ export function Game({ input }) {
           roamStep(R, e, dt, Math.random, 'ra');
           // keep apart from the other loose rats: the push walks this rat's roam spot away
           // from the crowd, so the pack fans out round the nest
-          const D = e.spread || (e.spread = kr('raSpread')), sp = ratSpread(e, enemies.filter(o => o.ra && o.ra.mode !== 'tunnel' &&
+          const D = e.spread || (e.spread = kr('raSpread')), sp = ratSpread(e, W.enemies.filter(o => o.ra && o.ra.mode !== 'tunnel' &&
             Math.abs(o.x - e.x) < D && Math.abs(o.y - e.y) < D), D);
           R.rx += sp.x * D * 1.5 * dt; R.ry += sp.y * D * 1.5 * dt;
           goal = { x: R.rx + sp.x * D, y: R.ry + sp.y * D }; jump = false;
@@ -759,7 +757,7 @@ export function Game({ input }) {
       if (e.rockT > 0.5) {
         e.rockT = 0;
         if (N) { e.ra.mode = 'tunnel'; e.ra.len = pathLen(e.path); e.ra.s = e.ra.len * 0.8; e.ra.dir = 1; e.ra.wait = 0; }
-        else { const j = enemies.indexOf(e); if (j >= 0) enemies.splice(j, 1); }
+        else { const j = W.enemies.indexOf(e); if (j >= 0) W.enemies.splice(j, 1); }
         return;
       }
       // a coin in reach: in its mouth
@@ -909,7 +907,7 @@ export function Game({ input }) {
       if (acts.includes('far')) [ox, oy] = clearSpot(gx + nx * 95, gy + ny * 95);
       if (acts.includes('tele')) {
         let best = null, bd = 420;
-        for (const e of enemies) {
+        for (const e of W.enemies) {
           const d = Math.hypot(e.x - gx, e.ty - gy);
           if (d < bd) { bd = d; best = e; }
         }
@@ -945,12 +943,12 @@ export function Game({ input }) {
       // right on top of you, so it is worked out once per cast, not once per pellet.
       const pd = pb.dmg;
       let pc = pb.crit;
-      if (pb.close && enemies.some(e => Math.hypot(e.x - ox, e.ty - oy) < 56)) pc += 0.4;
+      if (pb.close && W.enemies.some(e => Math.hypot(e.x - ox, e.ty - oy) < 56)) pc += 0.4;
       for (let i = 0; i < n; i++) {
         let a = base + off + (Math.random() - 0.5) * sh.spread * pb.spread * Math.PI / 180;
         if (sh.autoaim) {
           let best = null, bd = 320;
-          for (const e of enemies) {
+          for (const e of W.enemies) {
             const d = Math.hypot(e.x - ox, e.ty - oy);
             if (d < bd) { bd = d; best = e; }
           }
@@ -1043,12 +1041,12 @@ export function Game({ input }) {
       if ((b.arcT = (b.arcT || 0) - dt) > 0) return;
       b.arcT = 0.035 + Math.random() * 0.04;
       const R = 90, near = [];
-      for (let j = 0; j < enemies.length; j++) {
-        const e = enemies[j];
+      for (let j = 0; j < W.enemies.length; j++) {
+        const e = W.enemies[j];
         if (Math.hypot(e.x - b.x, e.ty - b.y) < R && lineOfSight(b.x, b.y, e.x, e.ty)) near.push(j);
       }
       if (near.length && Math.random() < 0.75) {
-        const j = near[Math.floor(Math.random() * near.length)], e = enemies[j];
+        const j = near[Math.floor(Math.random() * near.length)], e = W.enemies[j];
         addArc([{ x: b.x, y: b.y }, { x: e.x, y: e.ty }], b.col, 1, 0.14);
         SFX.arc(e.x, e.ty);
         burst(e.x, e.ty, 3, b.col);
@@ -1081,7 +1079,7 @@ export function Game({ input }) {
         if (j >= 0) {
           damageEnemy(j, critRoll((sh.dmg + bonus) * pd, sh.crit + pc));
           burst(bx, by, 4, sh.col);
-          if (sh.knock) shove(enemies[j], nx, ny, sh.knock);
+          if (sh.knock) shove(W.enemies[j], nx, ny, sh.knock);
           if (!sh.pierce) { hitAt = d; break; }
         }
       }
@@ -1362,7 +1360,7 @@ export function Game({ input }) {
     function fireBlast(x, y, R, hot) {
       const ch = hot ? 0.9 : kr('fireBoom');
       ignite(x, y, R * 1.3, ch);
-      for (const e of enemies) if (Math.hypot(e.x - x, e.ty - y) < R + e.r && Math.random() < ch) setAlight(e);
+      for (const e of W.enemies) if (Math.hypot(e.x - x, e.ty - y) < R + e.r && Math.random() < ch) setAlight(e);
       if (!p.dead && Math.hypot(p.x + PW / 2 - x, p.y + PH / 2 - y) < R + 6 && Math.random() < ch * 0.5) youAlight();
     }
     // a flame licking up off a burning spot
@@ -1376,11 +1374,11 @@ export function Game({ input }) {
     // what's on view, and the crackle sits at the nearest blaze.
     // the props that burn, relisted whenever props came or went (a test room, a drop)
     function fireList() {
-      if (props.length === firePropN && props[props.length - 1] === firePropLast) return;
-      firePropN = props.length; firePropLast = props[props.length - 1];
-      firePlants = props.filter(pr => pr.k === 'climb' && FLAMMABLE[pr.st] && !pr.arc);
-      fireArches = props.filter(pr => pr.arc && FLAMMABLE[pr.st]);
-      fireCarts = props.filter(pr => pr.k === 'barrel');
+      if (W.props.length === firePropN && W.props[W.props.length - 1] === firePropLast) return;
+      firePropN = W.props.length; firePropLast = W.props[W.props.length - 1];
+      firePlants = W.props.filter(pr => pr.k === 'climb' && FLAMMABLE[pr.st] && !pr.arc);
+      fireArches = W.props.filter(pr => pr.arc && FLAMMABLE[pr.st]);
+      fireCarts = W.props.filter(pr => pr.k === 'barrel');
     }
     function fireFrame(dt, pcx, pcy) {
       fireList();
@@ -1439,8 +1437,8 @@ export function Game({ input }) {
         if (pr.u0 <= 0 && pr.u1 >= 1) pr.gone = true;
       }
       // burning creatures: hurt in chunks (so they flash, not flicker), spread it where they go
-      for (let j = enemies.length - 1; j >= 0; j--) {
-        const e = enemies[j];
+      for (let j = W.enemies.length - 1; j >= 0; j--) {
+        const e = W.enemies[j];
         if (ticks && any && !(e.burn > 0) && fireNear(fire, e.x, e.ty, e.r * 0.7)) setAlight(e);
         if (!(e.burn > 0)) continue;
         e.burn -= dt;
@@ -1449,7 +1447,7 @@ export function Game({ input }) {
         if (Math.random() < dt * 6) fireSmoke(e.x, e.ty - e.r);
         if (ticks) ignite(e.x, e.ty + e.r * 0.4, e.r * 0.8, 0.35);
         if (!p.dead && Math.hypot(e.x - pcx, e.ty - pcy) < e.r + 8 && Math.random() < dt * 2) youAlight();
-        if (e.burnAcc >= 0.5 || e.burn <= 0) { const d = e.burnAcc; e.burnAcc = 0; if (d > 0 && enemies[j] === e) damageEnemy(j, d); }
+        if (e.burnAcc >= 0.5 || e.burn <= 0) { const d = e.burnAcc; e.burnAcc = 0; if (d > 0 && W.enemies[j] === e) damageEnemy(j, d); }
       }
       // you: fire underfoot or round you lights you; water, snow or slime puts you out
       if (!p.dead) {
@@ -1528,7 +1526,7 @@ export function Game({ input }) {
         if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) W.burrow[cy * CW + cx] = 0;
       W.terrainV++;
       // a blast knocks the props about: carts and pods go off, pillars crack, icicles let go
-      for (const pr of props) {
+      for (const pr of W.props) {
         if (pr.gone || Math.abs(pr.x - x) > R + 40 || Math.abs(pr.y - y) > R + 40) continue;
         const bx = clamp(x, pr.x + pr.l, pr.x + pr.r), by = clamp(y, pr.y + pr.t0, pr.y + pr.b);
         if (Math.hypot(bx - x, by - y) < R + 6) pr.hurt = (pr.hurt || 0) + 2;
@@ -1540,8 +1538,8 @@ export function Game({ input }) {
           vx: (Math.random() - 0.5) * 40, vy: (Math.random() - 0.5) * 40 - 20,
           r: 4 + Math.random() * 5, life: 1.2, max: 1.2 });
       }
-      for (let j = enemies.length - 1; j >= 0; j--) {
-        const e = enemies[j], dist = Math.hypot(e.x - x, e.ty - y);
+      for (let j = W.enemies.length - 1; j >= 0; j--) {
+        const e = W.enemies[j], dist = Math.hypot(e.x - x, e.ty - y);
         if (dist < R + e.r) damageEnemy(j, splash != null ? splash : dist < R * 0.5 ? 3 : 2);
       }
       if (splash != null) return;
@@ -1564,7 +1562,7 @@ export function Game({ input }) {
     // a loud noise: every creature within earshot comes looking, and shooters get ready
     function alertAt(x, y) {
       rings.push({ x, y, t: 0 });
-      for (const e of enemies) {
+      for (const e of W.enemies) {
         if (Math.hypot(e.x - x, e.ty - y) > 320) continue;
         if (HUNTERS[e.k.act]) e.aggro = true;
         else e.cd = Math.min(e.cd, 0.3);
@@ -1639,21 +1637,21 @@ export function Game({ input }) {
       const z = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
       // the runtime anchor check, staggered: a thirtieth of the props each frame, so each one
       // finds out within half a second that the rock it hung off has been blown away
-      for (let i = decoFrame % 30; i < props.length; i += 30) {
-        const pr = props[i];
+      for (let i = decoFrame % 30; i < W.props.length; i += 30) {
+        const pr = W.props[i];
         if (!pr.gone && !pr.fall && (pr.anc || pr.on) && !propAnchored(pr, W.mat)) { pr.fall = true; pr.vy = 0; pr.anc = null; pr.on = null; }
       }
-      for (let i = props.length - 1; i >= 0; i--) {
-        const pr = props[i];
-        if (pr.gone) { props.splice(i, 1); continue; }
+      for (let i = W.props.length - 1; i >= 0; i--) {
+        const pr = W.props[i];
+        if (pr.gone) { W.props.splice(i, 1); continue; }
         if (pr.fall) {                           // physics hand-off: it drops
           pr.vy = Math.min(pr.vy + GRAVITY * 0.8 * dt, 700);
           pr.y += pr.vy * dt;
           if (pr.y > WH) { pr.gone = true; continue; }
           if (pr.vy > 120 && (pr.k === 'drop' || pr.k === 'spike' || pr.k === 'cover' || pr.k === 'noise')) {
             if (!p.dead && pOver(pr, 0)) { hurt(PROP_DMG.drop); shatter(pr, 14); continue; }
-            for (let j = enemies.length - 1; j >= 0; j--) {
-              const e = enemies[j];
+            for (let j = W.enemies.length - 1; j >= 0; j--) {
+              const e = W.enemies[j];
               if (Math.abs(e.x - pr.x) < e.r + 4 && Math.abs(e.ty - (pr.y + pr.b)) < e.r + 4) { damageEnemy(j, 4); shatter(pr, 14); break; }
             }
             if (pr.gone) continue;
@@ -1754,8 +1752,8 @@ export function Game({ input }) {
               if ((pr.ecd = (pr.ecd || 0) - dt) <= 0) {
                 pr.ecd = 0.4;
                 for (let yy = 4; yy < VENT_H; yy += 12) ignite(pr.x, pr.y - yy, 6, 0.5);   // and it lights what hangs over it
-                for (let j = enemies.length - 1; j >= 0; j--) {
-                  const e = enemies[j];
+                for (let j = W.enemies.length - 1; j >= 0; j--) {
+                  const e = W.enemies[j];
                   if (Math.abs(e.x - pr.x) < e.r + 6 && e.ty < pr.y && e.ty > pr.y - VENT_H) { setAlight(e); damageEnemy(j, 1); }
                 }
               }
@@ -1773,7 +1771,7 @@ export function Game({ input }) {
           case 'zone': {
             const on = me && p.onGround && p.x + PW > pr.x + pr.l && p.x < pr.x + pr.r && Math.abs(p.y + PH - pr.y) < 5;
             const st = pr.st, moving = Math.abs(p.vx) > 30;
-            if (st === 'slime') for (const e of enemies)
+            if (st === 'slime') for (const e of W.enemies)
               if (e.x > pr.x + pr.l && e.x < pr.x + pr.r && e.ty > pr.y - 30 && e.ty < pr.y) e.chill = 0.45;
             if (!on) { pr.stand = 0; break; }
             z.surface = st;
@@ -1836,8 +1834,8 @@ export function Game({ input }) {
         if (cl.tick <= 0) {
           cl.tick = 0.4;
           if (!p.dead && Math.hypot(pcx - cl.x, pcy - cl.y) < cl.r) hurt(PROP_DMG.cloud);
-          for (let j = enemies.length - 1; j >= 0; j--)
-            if (Math.hypot(enemies[j].x - cl.x, enemies[j].ty - cl.y) < cl.r + enemies[j].r) damageEnemy(j, 1);
+          for (let j = W.enemies.length - 1; j >= 0; j--)
+            if (Math.hypot(W.enemies[j].x - cl.x, W.enemies[j].ty - cl.y) < cl.r + W.enemies[j].r) damageEnemy(j, 1);
         }
         if (cl.life <= 0) clouds.splice(i, 1);
       }
@@ -1948,7 +1946,7 @@ export function Game({ input }) {
       const x0w = bx0 * CELL, y0w = by0 * CELL, x1w = bx1 * CELL, y1w = by1 * CELL;
       // the hanging plants in reach, drawn at terrain resolution and read back
       let pd = null;
-      const plants = props.filter(pr => pr.k === 'climb' && PLANTS[pr.st] &&
+      const plants = W.props.filter(pr => pr.k === 'climb' && PLANTS[pr.st] &&
         pr.x + pr.r > x0w && pr.x + pr.l < x1w && pr.y + pr.b > y0w && pr.y + pr.t0 < y1w);
       if (plants.length) {
         if (!pgC) { pgC = document.createElement('canvas'); pgCtx = pgC.getContext('2d', { willReadFrequently: true }); }
@@ -2050,7 +2048,7 @@ export function Game({ input }) {
       if (input.current.spawnGun) {               // Dev → Spawn gun: drop one just in front of you
         const gun = caveGun(input.current.spawnGun, Math.random);
         input.current.spawnGun = 0;
-        pickups.push({ kind: 'gun', x: p.x + PW / 2 + p.face * 22, y: p.y + PH - 9, gun, t: 0 });
+        W.pickups.push({ kind: 'gun', x: p.x + PW / 2 + p.face * 22, y: p.y + PH - 9, gun, t: 0 });
         toast('Spawned ' + gun.name);
       }
       const LO = input.current.loadout;
@@ -2228,7 +2226,7 @@ export function Game({ input }) {
       // decide whether to fire. It replaces hand-aiming — the stick becomes a trigger.
       if (pb.pinpointer && !p.dead) {
         let best = null, bd = 1e9;
-        for (const e of enemies) {
+        for (const e of W.enemies) {
           const d = Math.hypot(e.x - gx, e.ty - gy);
           if (d < bd && lineOfSight(gx, gy, e.x, e.ty)) { bd = d; best = e; }
         }
@@ -2287,7 +2285,7 @@ export function Game({ input }) {
           // closer you are, so creatures get hauled in and held in the middle of it. It
           // swallows enemy shots that come near, and grinds anything in it every 0.3s.
           const reach = DEV.bhPull * b.pull / 70;          // Dev knob: max pull range
-          for (const e of enemies) {
+          for (const e of W.enemies) {
             const dx = b.x - e.x, dy = b.y - e.ty, d = Math.hypot(dx, dy) || 1;
             if (d < reach) {
               const f = Math.min(d / dt, 60 + 420 * (1 - d / reach));   // never overshoot the centre
@@ -2323,11 +2321,11 @@ export function Game({ input }) {
         if (b.drift) {
           // Pollen: drags to a stop and floats; locks onto the first creature in range
           // it can see, then speeds back up and homes. Loses the lock if that one dies.
-          if (b.lock && enemies.indexOf(b.lock) < 0) b.lock = null;
+          if (b.lock && W.enemies.indexOf(b.lock) < 0) b.lock = null;
           if (!b.lock) {
             const d = driftStep(b.vx, b.vy, dt); b.vx = d[0]; b.vy = d[1];
             let bd = b.homeR || DRIFT_R;
-            for (const e of enemies) {
+            for (const e of W.enemies) {
               const dd = Math.hypot(e.x - b.x, e.ty - b.y);
               if (dd < bd && lineOfSight(b.x, b.y, e.x, e.ty)) { bd = dd; b.lock = e; }
             }
@@ -2342,7 +2340,7 @@ export function Game({ input }) {
         }
         if (b.homing && !b.drift) {
           let best = null, bd = b.homeR || 260;
-          for (const e of enemies) {
+          for (const e of W.enemies) {
             const d = Math.hypot(e.x - b.x, e.ty - b.y);
             if (d < bd) { bd = d; best = e; }
           }
@@ -2360,8 +2358,8 @@ export function Game({ input }) {
         for (let st = 0; st < sn && !dead && !boom; st++) {
           const nx = b.x + b.vx * dt / sn, ny = b.y + b.vy * dt / sn;
           const j = enemyAt(nx, ny, b.size + 1);
-          if (j >= 0 && !(b.hit && b.hit.has(enemies[j]))) {
-            const e = enemies[j];
+          if (j >= 0 && !(b.hit && b.hit.has(W.enemies[j]))) {
+            const e = W.enemies[j];
             const sp = Math.hypot(b.vx, b.vy) || 1;
             damageEnemy(j, critRoll(b.dmg, b.crit));
             if (b.fire) setAlight(e);
@@ -2373,7 +2371,7 @@ export function Game({ input }) {
             if (b.chain > 0) {                            // hop to the next one along
               (b.hit || (b.hit = new Set())).add(e);
               let best = null, bd = 150;
-              for (const o of enemies) {
+              for (const o of W.enemies) {
                 if (b.hit.has(o)) continue;
                 const d = Math.hypot(o.x - nx, o.ty - ny);
                 if (d < bd) { bd = d; best = o; }
@@ -2476,12 +2474,12 @@ export function Game({ input }) {
       for (let i = fields.length - 1; i >= 0; i--) {
         const f = fields[i];
         f.life -= dt; f.tick -= dt;
-        const near = j => Math.hypot(enemies[j].x - f.x, enemies[j].ty - f.y) < f.r;
+        const near = j => Math.hypot(W.enemies[j].x - f.x, W.enemies[j].ty - f.y) < f.r;
         if (f.field === 'slow' || f.field === 'storm') {
           // Stillness frosts and the thundercloud's rain soaks: any fire under them goes out
           if ((f.dT = (f.dT || 0) - dt) <= 0) { f.dT = 0.15;
             if (fireDouse(fire, f.x, f.y, f.r) && Math.random() < 0.5) SFX.fx('steam', f.x, f.y);
-            for (const e of enemies) if (e.burn > 0 && Math.hypot(e.x - f.x, e.ty - f.y) < f.r) e.burn = 0;
+            for (const e of W.enemies) if (e.burn > 0 && Math.hypot(e.x - f.x, e.ty - f.y) < f.r) e.burn = 0;
             if (p.burn > 0 && Math.hypot(pcx - f.x, pcy - f.y) < f.r) p.burn = 0; }
           if (f.field === 'slow' && Math.random() < dt * 14) { const a = Math.random() * 6.283, r = Math.random() * f.r;
             glowDot(f.x + Math.cos(a) * r, f.y + Math.sin(a) * r, rnd(-4, 4), rnd(4, 12), Math.random() < 0.5 ? '#ffffff' : '#bfe8ff', rnd(0.7, 1.1), rnd(0.4, 0.9)); }
@@ -2489,9 +2487,9 @@ export function Game({ input }) {
         if (f.field === 'heal' && Math.random() < dt * 10) { const a = Math.random() * 6.283, r = Math.random() * f.r;
           glowDot(f.x + Math.cos(a) * r, f.y + Math.sin(a) * r, 0, rnd(-18, -8), Math.random() < 0.5 ? '#9dff9a' : '#46c48c', rnd(0.8, 1.2), rnd(0.4, 0.8)); }
         if (f.field === 'mine') {
-          f.near = enemies.some(e => Math.hypot(e.x - f.x, e.ty - f.y) < f.r * 2.2);
+          f.near = W.enemies.some(e => Math.hypot(e.x - f.x, e.ty - f.y) < f.r * 2.2);
           let trip = f.life <= 0;
-          for (let j = 0; j < enemies.length && !trip; j++) if (near(j)) trip = true;
+          for (let j = 0; j < W.enemies.length && !trip; j++) if (near(j)) trip = true;
           if (trip) { explode(f.x, f.y, f.r); fieldPayload(f); fields.splice(i, 1); continue; }
         } else if (f.field === 'dormant') {
           // set off by any blast of yours, which is the whole point of it
@@ -2502,7 +2500,7 @@ export function Game({ input }) {
           }
           if (f.life < 0) continue;
         } else if (f.field === 'slow') {
-          for (const e of enemies) if (Math.hypot(e.x - f.x, e.ty - f.y) < f.r) e.chill = 0.2;
+          for (const e of W.enemies) if (Math.hypot(e.x - f.x, e.ty - f.y) < f.r) e.chill = 0.2;
         } else if (f.field === 'shield') {
           for (let k = enemyShots.length - 1; k >= 0; k--) {
             const b = enemyShots[k];
@@ -2517,8 +2515,8 @@ export function Game({ input }) {
             f.tick = 0.22;
             const a = Math.random() * Math.PI * 2, rr = Math.random() * f.r;
             const sx = f.x + Math.cos(a) * rr, sy = f.y + Math.sin(a) * rr;
-            for (let j = enemies.length - 1; j >= 0; j--)
-              if (Math.hypot(enemies[j].x - sx, enemies[j].ty - sy) < 22) damageEnemy(j, 2);
+            for (let j = W.enemies.length - 1; j >= 0; j--)
+              if (Math.hypot(W.enemies[j].x - sx, W.enemies[j].ty - sy) < 22) damageEnemy(j, 2);
             burst(sx, sy, 6, '#a8e4ff');
             addArc([{ x: sx + rnd(-8, 8), y: f.y - f.r * 0.85 }, { x: sx, y: sy }], '#a8e4ff', 1.2, 0.14);   // down from the cloud
             SFX.arc(sx, sy, true);
@@ -2530,11 +2528,11 @@ export function Game({ input }) {
           if (!f.done && f.max - f.life >= VACUUM_WAIT) {
             f.done = true;
             const inR = (x, y) => Math.hypot(x - f.x, y - f.y) < f.r;
-            for (const e of enemies) if (inR(e.x, e.ty)) { e.y += f.y - e.ty; e.x = f.x; e.tgt = null; }
+            for (const e of W.enemies) if (inR(e.x, e.ty)) { e.y += f.y - e.ty; e.x = f.x; e.tgt = null; }
             for (const b of bullets) if (inR(b.x, b.y)) { b.x = f.x; b.y = f.y; }
             for (const b of enemyShots) if (inR(b.x, b.y)) { b.x = f.x; b.y = f.y; }
             for (const g of coins) if (inR(g.x, g.y)) { g.x = f.x; g.y = f.y; }
-            for (const q of pickups) if (!q.taken && inR(q.x, q.y)) { q.x = f.x; q.y = f.y; }
+            for (const q of W.pickups) if (!q.taken && inR(q.x, q.y)) { q.x = f.x; q.y = f.y; }
             burst(f.x, f.y, 14, f.col);
             SFX.fx('warp', f.x, f.y);
           }
@@ -2552,9 +2550,9 @@ export function Game({ input }) {
       // ---- pickups: just cooldown upkeep and clearing what was taken. Whether one is
       // near enough to show its card, and whether you actually take it, is decided
       // below together with the shop — both go through the same interact tap now. ----
-      for (let i = pickups.length - 1; i >= 0; i--) {
-        const q = pickups[i];
-        if (q.taken) { pickups.splice(i, 1); continue; }
+      for (let i = W.pickups.length - 1; i >= 0; i--) {
+        const q = W.pickups[i];
+        if (q.taken) { W.pickups.splice(i, 1); continue; }
         if (q.cool > 0) q.cool -= dt;
       }
       // ---- gold ----
@@ -2607,7 +2605,7 @@ export function Game({ input }) {
         near = { src: 'shop', it };
         break;
       }
-      if (!near) for (const q of pickups) {
+      if (!near) for (const q of W.pickups) {
         if (q.cool > 0) continue;
         if (Math.abs(q.x - pcx) > 18 || Math.abs(q.y - pcy) > 20) continue;
         near = { src: 'pickup', q };
@@ -2622,7 +2620,7 @@ export function Game({ input }) {
       }
       const nearKey = !near ? -1 : near.src + ':' +
         (near.src === 'shop' ? W.stock.indexOf(near.it)
-          : near.src === 'room' ? W.rooms.indexOf(near.r) : pickups.indexOf(near.q));
+          : near.src === 'room' ? W.rooms.indexOf(near.r) : W.pickups.indexOf(near.q));
       const label = !near ? null
         : near.src === 'shop'
           ? (near.it.kind === 'heal' ? { text: 'Full heal', price: 0, can: p.hp < MHP }
@@ -2678,7 +2676,7 @@ export function Game({ input }) {
             it.sold = true;
             // it drops at the plinth, so the usual chooser decides which slot it takes
             // and "leave it" parks the gun you paid for on the floor rather than binning it
-            pickups.push({ kind: 'gun', x: it.x, y: it.y, gun: it.gun, t: 0 });
+            W.pickups.push({ kind: 'gun', x: it.x, y: it.y, gun: it.gun, t: 0 });
             toast('Bought ' + it.gun.name);
             SFX.ui('buy');
           } else {
@@ -2735,8 +2733,8 @@ export function Game({ input }) {
       // turrets never move and wind up a long shot, chasers come at you and hurt on
       // contact, bombers come at you and burst. Runs backwards because a bomber
       // takes itself out of the list.
-      for (let i = enemies.length - 1; i >= 0; i--) {
-        const e = enemies[i], k = e.k;
+      for (let i = W.enemies.length - 1; i >= 0; i--) {
+        const e = W.enemies[i], k = e.k;
         e.flash -= dt;
         e.cd -= dt;
         e.touch -= dt;
@@ -2780,7 +2778,7 @@ export function Game({ input }) {
           if (dist < N.wake && (N.t -= dt) <= 0) {
             N.t = kr('raSpawn');
             let out = 0;
-            for (const r of enemies) if (r.home === e) out++;
+            for (const r of W.enemies) if (r.home === e) out++;
             if (out < N.max) spawnRat(e);
           }
           e.chill = 1; e.ty = e.y;
@@ -2873,7 +2871,7 @@ export function Game({ input }) {
             burst(e.x, e.ty, 22, k.col.a);
             SFX.boom(e.x, e.ty, 26);
             hurt(k.dmg);
-            enemies.splice(i, 1);
+            W.enemies.splice(i, 1);
             if (k.fire) fireBlast(e.x, e.ty, 26, 1);
             continue;
           }
@@ -2900,8 +2898,8 @@ export function Game({ input }) {
       }
       // Contact Damage: anything touching you is hurt for it, whether or not it's hunting
       if (pb.contact && !p.dead) {
-        for (let i = enemies.length - 1; i >= 0; i--) {
-          const e = enemies[i];
+        for (let i = W.enemies.length - 1; i >= 0; i--) {
+          const e = W.enemies[i];
           if (Math.hypot(e.x - pcx, e.ty - pcy) < e.r + 12) damageEnemy(i, 45 * dt);
         }
       }
@@ -2984,7 +2982,7 @@ export function Game({ input }) {
         ghost.cd -= dt;
         if (ghost.cd <= 0 && !p.dead) {
           let best = null, bd = 340;
-          for (const e of enemies) { const d = Math.hypot(e.x - ghost.x, e.ty - ghost.y); if (d < bd) { bd = d; best = e; } }
+          for (const e of W.enemies) { const d = Math.hypot(e.x - ghost.x, e.ty - ghost.y); if (d < bd) { bd = d; best = e; } }
           if (best) {
             ghost.cd = 0.7;
             const a = Math.atan2(best.ty - ghost.y, best.x - ghost.x);
@@ -3009,8 +3007,8 @@ export function Game({ input }) {
       }
       for (let i = burns.length - 1; i >= 0; i--) {
         const bn = burns[i]; bn.life -= dt;
-        for (let j = enemies.length - 1; j >= 0; j--)
-          if (Math.hypot(enemies[j].x - bn.x, enemies[j].ty - bn.y) < 15) { setAlight(enemies[j]); damageEnemy(j, 22 * dt); }
+        for (let j = W.enemies.length - 1; j >= 0; j--)
+          if (Math.hypot(W.enemies[j].x - bn.x, W.enemies[j].ty - bn.y) < 15) { setAlight(W.enemies[j]); damageEnemy(j, 22 * dt); }
         if (bn.life <= 0) burns.splice(i, 1);
       }
 
@@ -3233,7 +3231,7 @@ export function Game({ input }) {
       // the props (pass 3), their drips and the theme's ambience
       const TH = themeFor(W.floor);
       const onView = (x, y, m) => x > camX - m && x < camX + vw + m && y > camY - m && y < camY + vh + m;
-      for (const pr of props)
+      for (const pr of W.props)
         if (pr.x + pr.r > camX - 70 && pr.x + pr.l < camX + vw + 70 && pr.y + pr.b > camY - 90 && pr.y + pr.t0 < camY + vh + 90)
           drawProp(ctx, pr, time, TH);
       for (const q of dparts) {
@@ -3374,7 +3372,7 @@ export function Game({ input }) {
       ctx.globalAlpha = 0.55; ctx.lineWidth = 0.7;
       ctx.beginPath();
       for (const L of webs) { ctx.moveTo(L.a0x, L.a0y); ctx.lineTo(L.b0x, L.b0y); }
-      for (const e of enemies) {
+      for (const e of W.enemies) {
         const sh = e.sp && e.sp.mode === 'shoot' && e.sp.shot;
         if (sh) { ctx.moveTo(sh.ax0, sh.ay0); ctx.lineTo(sh.x + sh.dx * Math.min(sh.t, sh.len), sh.y + sh.dy * Math.min(sh.t, sh.len)); }
       }
@@ -3387,7 +3385,7 @@ export function Game({ input }) {
       ctx.globalAlpha = 1;
 
       // enemies
-      for (const e of enemies) {
+      for (const e of W.enemies) {
         const ey = e.ty;
         if (ey > camY + vh + 20 || ey < camY - 20 || e.x < camX - 20 || e.x > camX + vw + 20) continue;
         drawEnemy(ctx, e, time);
@@ -3752,7 +3750,7 @@ export function Game({ input }) {
       }
 
       // pickups
-      for (const q of pickups) {
+      for (const q of W.pickups) {
         const qy = q.y + Math.sin(time * 2 + q.t) * 3;
         if (qy > camY + vh + 30 || qy < camY - 30 || q.x < camX - 30 || q.x > camX + vw + 30) continue;
         if (q.kind === 'gun') {
@@ -3907,7 +3905,7 @@ export function Game({ input }) {
             homing: Math.max(sh.homing, pb.homing), speed: sh.speed * pb.speed * bhSp(sh) });
           for (const off of cone) {
             const a = Math.atan2(R.ny, R.nx) + off * Math.PI / 180;
-            tracePath(tsh, pcx, gy, Math.cos(a), Math.sin(a), solidAt, enemies, aimPath,
+            tracePath(tsh, pcx, gy, Math.cos(a), Math.sin(a), solidAt, W.enemies, aimPath,
               { x: pcx, y: gy });
             ctx.fillStyle = sh.col;
             const edge = off !== 0;
@@ -4050,19 +4048,19 @@ export function Game({ input }) {
       }
       // lit props and glowing motes, only where the fog has lifted — except the eyes, which
       // watch from the dark
-      for (const pr of props) {
+      for (const pr of W.props) {
         if (!(pr.k === 'lamp' || pr.k === 'vent' || pr.k === 'shard' || pr.k === 'eyes' || pr.k === 'matter' ||
           (pr.k === 'drip' && pr.st === 'lava')) || !onView(pr.x, pr.y, 60)) continue;
         if (pr.k !== 'eyes' && !fogLit(pr.x, pr.y)) continue;
         propGlow(ctx, pr, time, TH, Math.hypot(pr.x - pcx, pr.y - pcy), torchR);
       }
       // and the green round each jelly glows and twinkles in its colour (plantGlow)
-      for (const e of enemies)
+      for (const e of W.enemies)
         if (e.je && onView(e.x, e.ty, 160) && fogLit(e.x, e.ty)) plantGlow(e, TH);
       // glowing creatures (the jellyfish) light the cave round them, flaring as they pulse.
       // Radius, brightness and flare are its kp+'GlowR' / 'Glow' / 'Flare' knobs, and like
       // every other light out here it shows only where the fog has lifted
-      for (const e of enemies) {
+      for (const e of W.enemies) {
         const k = e.k;
         if (!k.glow || !k.kp || !onView(e.x, e.ty, 120) || !fogLit(e.x, e.ty)) continue;
         const u = (e.je && e.je.u) || { glowR: 0.5, glow: 0.5, flare: 0.5 }, sh = e.je ? e.je.shape : 0;
@@ -4090,7 +4088,7 @@ export function Game({ input }) {
           if (fogLit(x, y)) glowAt(ctx, x, y, 20, Math.min(0.14, 0.03 + fireVis.length / 3000) * flick, '255,120,40');
         }
       }
-      for (const e of enemies)
+      for (const e of W.enemies)
         if (e.burn > 0 && onView(e.x, e.ty, 40) && fogLit(e.x, e.ty)) glowAt(ctx, e.x, e.ty, e.r * 2.4, 0.22 * flick, '255,130,50');
       for (const pr of firePlants)
         if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(pr.x, pr.y + pr.len))
@@ -4169,9 +4167,9 @@ export function Game({ input }) {
           ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(-7, -6); ctx.lineTo(-7, 6); ctx.closePath(); ctx.fill();
           ctx.restore(); ctx.globalAlpha = 1;
         };
-        if (pb.radarEnemy) marker(nearest(enemies), PERKS.eradar.tint);
-        if (pb.radarItem) marker(nearest(pickups.filter(q => q.kind === 'mod')), '#b57cff');
-        if (pb.radarWand) marker(nearest(pickups.filter(q => q.kind === 'gun')), COL.bullet);
+        if (pb.radarEnemy) marker(nearest(W.enemies), PERKS.eradar.tint);
+        if (pb.radarItem) marker(nearest(W.pickups.filter(q => q.kind === 'mod')), '#b57cff');
+        if (pb.radarWand) marker(nearest(W.pickups.filter(q => q.kind === 'gun')), COL.bullet);
       }
 
       // pickup messages
@@ -4205,7 +4203,7 @@ export function Game({ input }) {
         ctx.fillText('You were shot down', cw / 2, msgY);
         ctx.font = '500 14px system-ui, sans-serif';
         ctx.fillText('Tap the right stick to restart', cw / 2, msgY + 22);
-      } else if (enemies.length === 0) {
+      } else if (W.enemies.length === 0) {
         ctx.font = '700 18px system-ui, sans-serif';
         ctx.fillText('All enemies destroyed', cw / 2, msgY);
       }
@@ -4266,7 +4264,7 @@ export function Game({ input }) {
           }
         }
         // loot you've seen and left: green for mods, yellow for guns (a ring if you threw it back)
-        for (const q of pickups) {
+        for (const q of W.pickups) {
           if (q.taken || !fogLit(q.x, q.y)) continue;
           const col = q.kind === 'gun' ? '#ffd23c' : '#46e07a';
           ctx.beginPath(); ctx.arc(mX(q.x), mY(q.y), 2.6, 0, Math.PI * 2);

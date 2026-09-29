@@ -10453,8 +10453,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       // the dark matter props (their hum)
       ambKinds: [],
       // the theme's ambience particle kinds
-      plantW: 255
+      plantW: 255,
       // the jellies' plant glow: this floor's white point
+      // ---- what's in it: new lists from each floor (and swapped for the recorded ones while
+      // the death replay draws a frame) ----
+      enemies: void 0,
+      // the creatures, nests included
+      pickups: void 0,
+      // loot on the ground: mods, guns, hearts
+      props: []
+      // the decoration that does things (see DECOR): plants, lamps, carts…
     };
   }
 
@@ -10514,7 +10522,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const mctx = miniC.getContext("2d");
       const miniImg = new ImageData(MMW, MMH);
       const mini32 = new Uint32Array(miniImg.data.buffer);
-      let enemies, pickups;
       const natural = (x, y) => !builtAt(W.zone, x, y);
       let oreBank = 0;
       let jetLoop = null, beatT = 0, wasEmpty = false;
@@ -10553,7 +10560,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const torchP = [];
       const motes = [];
       let portalAcc = 0;
-      let props = [];
       let pgArt = null, pgC = null, pgCtx = null;
       const decoC = document.createElement("canvas");
       decoC.width = CW;
@@ -10687,9 +10693,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ghost: ghost ? rpClone(ghost) : null
         };
         for (const k in RP_ARR) S[k] = grab(RP_ARR[k], 40);
-        S.enemies = grab(enemies, 40, "ty");
-        S.pickups = grab(pickups, 40);
-        S.props = grab(props, 120);
+        S.enemies = grab(W.enemies, 40, "ty");
+        S.pickups = grab(W.pickups, 40);
+        S.props = grab(W.props, 120);
         const fi = [];
         for (const i of fire.list) {
           const x = i % CW * CELL, y = (i / CW | 0) * CELL;
@@ -10788,9 +10794,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           keepL[k] = L.splice(0, L.length, ...F[k]);
         }
         const keep = {
-          enemies,
-          pickups,
-          props,
+          enemies: W.enemies,
+          pickups: W.pickups,
+          props: W.props,
           fire,
           firePlants,
           seen,
@@ -10810,9 +10816,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           viewH,
           p: Object.assign({}, p)
         };
-        enemies = F.enemies;
-        pickups = F.pickups;
-        props = F.props;
+        W.enemies = F.enemies;
+        W.pickups = F.pickups;
+        W.props = F.props;
         firePlants = [];
         fire = { list: near.fire, t: RT.fireT };
         seen = RT.fog;
@@ -10834,9 +10840,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             L.splice(0, L.length, ...keepL[k]);
           }
           ({
-            enemies,
-            pickups,
-            props,
+            enemies: W.enemies,
+            pickups: W.pickups,
+            props: W.props,
             fire,
             firePlants,
             seen,
@@ -10901,12 +10907,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         W.start = level.start;
         W.portal = level.portal;
         W.arrival = level.arrival;
-        enemies = level.enemies;
-        pickups = level.pickups;
+        W.enemies = level.enemies;
+        W.pickups = level.pickups;
         W.stock = level.stock;
         W.rooms = level.rooms || [];
         W.zone = level.zone || null;
-        props = level.props || [];
+        W.props = level.props || [];
         W.ambKinds = level.amb || [];
         W.dimg = level.dimg;
         W.plantW = plantWhite(W.img.data, W.dimg && W.dimg.data);
@@ -10929,7 +10935,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         SFX.setAmbience(W.themeName);
         for (const h3 of bhLoops.values()) h3.stop();
         bhLoops.clear();
-        W.total = enemies.length;
+        W.total = W.enemies.length;
         ghost = pb.ghost ? { x: level.start.x, y: level.start.y, cd: 0 } : null;
         burns.length = 0;
         webs.length = silk.length = strings.length = 0;
@@ -10971,12 +10977,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (pb.seeAll) seen.fill(2);
         paintFog();
         recReset();
-        W.matterProps = props.filter((pr) => pr.k === "matter");
+        W.matterProps = W.props.filter((pr) => pr.k === "matter");
         setTimeout(() => SFX.fx("portalOut", W.arrival.x, W.arrival.y), 260);
       }
       function saveRun() {
         if (p.dead) return;
-        const pk = pickups.filter((q) => !q.taken && (q.kind === "mod" || q.kind === "gun")).map((q) => q.kind === "mod" ? { kind: "mod", id: q.id, x: q.x, y: q.y, t: q.t } : { kind: "gun", gun: q.gun, x: q.x, y: q.y, t: q.t, old: !!q.old });
+        const pk = W.pickups.filter((q) => !q.taken && (q.kind === "mod" || q.kind === "gun")).map((q) => q.kind === "mod" ? { kind: "mod", id: q.id, x: q.x, y: q.y, t: q.t } : { kind: "gun", gun: q.gun, x: q.x, y: q.y, t: q.t, old: !!q.old });
         const data = {
           ver: VERSION,
           floor: W.floor,
@@ -10985,7 +10991,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           level: {
             seed: W.levelSeed,
             owned: W.levelOwned,
-            alive: enemies.map((e) => e.sid),
+            alive: W.enemies.map((e) => e.sid),
             sold: W.stock.map((it, i) => it.sold ? i : -1).filter((i) => i >= 0),
             rooms: W.rooms.map((r, i) => r.taken ? i : -1).filter((i) => i >= 0),
             pickups: pk
@@ -11091,8 +11097,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       };
       const lineOfSight = (x0, y0, x1, y1) => losClear(x0, y0, x1, y1, solidCell);
       const enemyAt = (x, y, pad) => {
-        for (let j = 0; j < enemies.length; j++) {
-          const e = enemies[j];
+        for (let j = 0; j < W.enemies.length; j++) {
+          const e = W.enemies[j];
           if (Math.hypot(x - e.x, y - e.ty) < e.r + pad) return j;
         }
         return -1;
@@ -11190,7 +11196,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
       function damageEnemy(j, dmg) {
-        const e = enemies[j];
+        const e = W.enemies[j];
         e.hp -= dmg;
         e.flash = 0.08;
         if (e.k.kp) e.aggro = true;
@@ -11200,7 +11206,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         burst(e.x, e.ty, 16, e.je ? jcol("jeColBody", e.je.u.col) : e.k.col.a);
         SFX.creature(e.k, "die", e.x, e.ty);
-        enemies.splice(j, 1);
+        W.enemies.splice(j, 1);
         e.dead = true;
         if (e.nest) {
           const all = Math.round(kr("raNestGold") * pb.gold) + e.nest.stash;
@@ -11277,7 +11283,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           carry: 0
         };
         e.ra = { mode: "tunnel", vx: 0, vy: 0, nx: 0, ny: -1, on: 0, rest: 0, side: 1, face: 1, s: 0, dir: 1, wait: 0 };
-        enemies.push(e);
+        W.enemies.push(e);
         return e;
       }
       function unstick(e, S, home) {
@@ -11337,7 +11343,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           } else {
             const R = e.roam || (e.roam = {});
             roamStep(R, e, dt, Math.random, "ra");
-            const D = e.spread || (e.spread = kr("raSpread")), sp = ratSpread(e, enemies.filter((o) => o.ra && o.ra.mode !== "tunnel" && Math.abs(o.x - e.x) < D && Math.abs(o.y - e.y) < D), D);
+            const D = e.spread || (e.spread = kr("raSpread")), sp = ratSpread(e, W.enemies.filter((o) => o.ra && o.ra.mode !== "tunnel" && Math.abs(o.x - e.x) < D && Math.abs(o.y - e.y) < D), D);
             R.rx += sp.x * D * 1.5 * dt;
             R.ry += sp.y * D * 1.5 * dt;
             goal = { x: R.rx + sp.x * D, y: R.ry + sp.y * D };
@@ -11409,8 +11415,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             e.ra.dir = 1;
             e.ra.wait = 0;
           } else {
-            const j = enemies.indexOf(e);
-            if (j >= 0) enemies.splice(j, 1);
+            const j = W.enemies.indexOf(e);
+            if (j >= 0) W.enemies.splice(j, 1);
           }
           return;
         }
@@ -11598,7 +11604,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (acts.includes("far")) [ox, oy] = clearSpot(gx + nx * 95, gy + ny * 95);
         if (acts.includes("tele")) {
           let best2 = null, bd = 420;
-          for (const e of enemies) {
+          for (const e of W.enemies) {
             const d = Math.hypot(e.x - gx, e.ty - gy);
             if (d < bd) {
               bd = d;
@@ -11631,12 +11637,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const off = (sh.ang || 0) * Math.PI / 180;
         const pd = pb.dmg;
         let pc = pb.crit;
-        if (pb.close && enemies.some((e) => Math.hypot(e.x - ox, e.ty - oy) < 56)) pc += 0.4;
+        if (pb.close && W.enemies.some((e) => Math.hypot(e.x - ox, e.ty - oy) < 56)) pc += 0.4;
         for (let i = 0; i < n; i++) {
           let a = base + off + (Math.random() - 0.5) * sh.spread * pb.spread * Math.PI / 180;
           if (sh.autoaim) {
             let best2 = null, bd = 320;
-            for (const e of enemies) {
+            for (const e of W.enemies) {
               const d = Math.hypot(e.x - ox, e.ty - oy);
               if (d < bd) {
                 bd = d;
@@ -11772,12 +11778,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if ((b.arcT = (b.arcT || 0) - dt) > 0) return;
         b.arcT = 0.035 + Math.random() * 0.04;
         const R = 90, near = [];
-        for (let j = 0; j < enemies.length; j++) {
-          const e = enemies[j];
+        for (let j = 0; j < W.enemies.length; j++) {
+          const e = W.enemies[j];
           if (Math.hypot(e.x - b.x, e.ty - b.y) < R && lineOfSight(b.x, b.y, e.x, e.ty)) near.push(j);
         }
         if (near.length && Math.random() < 0.75) {
-          const j = near[Math.floor(Math.random() * near.length)], e = enemies[j];
+          const j = near[Math.floor(Math.random() * near.length)], e = W.enemies[j];
           addArc([{ x: b.x, y: b.y }, { x: e.x, y: e.ty }], b.col, 1, 0.14);
           SFX.arc(e.x, e.ty);
           burst(e.x, e.ty, 3, b.col);
@@ -11811,7 +11817,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (j >= 0) {
             damageEnemy(j, critRoll((sh.dmg + bonus) * pd, sh.crit + pc));
             burst(bx, by, 4, sh.col);
-            if (sh.knock) shove(enemies[j], nx, ny, sh.knock);
+            if (sh.knock) shove(W.enemies[j], nx, ny, sh.knock);
             if (!sh.pierce) {
               hitAt = d;
               break;
@@ -12293,7 +12299,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       function fireBlast(x, y, R, hot) {
         const ch = hot ? 0.9 : kr("fireBoom");
         ignite(x, y, R * 1.3, ch);
-        for (const e of enemies) if (Math.hypot(e.x - x, e.ty - y) < R + e.r && Math.random() < ch) setAlight(e);
+        for (const e of W.enemies) if (Math.hypot(e.x - x, e.ty - y) < R + e.r && Math.random() < ch) setAlight(e);
         if (!p.dead && Math.hypot(p.x + PW / 2 - x, p.y + PH / 2 - y) < R + 6 && Math.random() < ch * 0.5) youAlight();
       }
       const flameAt = (x, y, sp) => dparts.push({
@@ -12320,12 +12326,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         a: 0.35
       });
       function fireList() {
-        if (props.length === firePropN && props[props.length - 1] === firePropLast) return;
-        firePropN = props.length;
-        firePropLast = props[props.length - 1];
-        firePlants = props.filter((pr) => pr.k === "climb" && FLAMMABLE[pr.st] && !pr.arc);
-        fireArches = props.filter((pr) => pr.arc && FLAMMABLE[pr.st]);
-        fireCarts = props.filter((pr) => pr.k === "barrel");
+        if (W.props.length === firePropN && W.props[W.props.length - 1] === firePropLast) return;
+        firePropN = W.props.length;
+        firePropLast = W.props[W.props.length - 1];
+        firePlants = W.props.filter((pr) => pr.k === "climb" && FLAMMABLE[pr.st] && !pr.arc);
+        fireArches = W.props.filter((pr) => pr.arc && FLAMMABLE[pr.st]);
+        fireCarts = W.props.filter((pr) => pr.k === "barrel");
       }
       function fireFrame(dt, pcx, pcy) {
         fireList();
@@ -12397,8 +12403,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
           if (pr.u0 <= 0 && pr.u1 >= 1) pr.gone = true;
         }
-        for (let j = enemies.length - 1; j >= 0; j--) {
-          const e = enemies[j];
+        for (let j = W.enemies.length - 1; j >= 0; j--) {
+          const e = W.enemies[j];
           if (ticks && any && !(e.burn > 0) && fireNear(fire, e.x, e.ty, e.r * 0.7)) setAlight(e);
           if (!(e.burn > 0)) continue;
           e.burn -= dt;
@@ -12410,7 +12416,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (e.burnAcc >= 0.5 || e.burn <= 0) {
             const d = e.burnAcc;
             e.burnAcc = 0;
-            if (d > 0 && enemies[j] === e) damageEnemy(j, d);
+            if (d > 0 && W.enemies[j] === e) damageEnemy(j, d);
           }
         }
         if (!p.dead) {
@@ -12513,7 +12519,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) W.burrow[cy * CW + cx] = 0;
         }
         W.terrainV++;
-        for (const pr of props) {
+        for (const pr of W.props) {
           if (pr.gone || Math.abs(pr.x - x) > R + 40 || Math.abs(pr.y - y) > R + 40) continue;
           const bx = clamp(x, pr.x + pr.l, pr.x + pr.r), by = clamp(y, pr.y + pr.t0, pr.y + pr.b);
           if (Math.hypot(bx - x, by - y) < R + 6) pr.hurt = (pr.hurt || 0) + 2;
@@ -12530,8 +12536,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             max: 1.2
           });
         }
-        for (let j = enemies.length - 1; j >= 0; j--) {
-          const e = enemies[j], dist2 = Math.hypot(e.x - x, e.ty - y);
+        for (let j = W.enemies.length - 1; j >= 0; j--) {
+          const e = W.enemies[j], dist2 = Math.hypot(e.x - x, e.ty - y);
           if (dist2 < R + e.r) damageEnemy(j, splash != null ? splash : dist2 < R * 0.5 ? 3 : 2);
         }
         if (splash != null) return;
@@ -12550,7 +12556,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const pOver = (pr, pad) => p.x + PW > pr.x + pr.l - pad && p.x < pr.x + pr.r + pad && p.y + PH > pr.y + pr.t0 - pad && p.y < pr.y + pr.b + pad;
       function alertAt(x, y) {
         rings.push({ x, y, t: 0 });
-        for (const e of enemies) {
+        for (const e of W.enemies) {
           if (Math.hypot(e.x - x, e.ty - y) > 320) continue;
           if (HUNTERS[e.k.act]) e.aggro = true;
           else e.cd = Math.min(e.cd, 0.3);
@@ -12639,8 +12645,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         decoFrame++;
         plantsNow.clear();
         const z = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
-        for (let i = decoFrame % 30; i < props.length; i += 30) {
-          const pr = props[i];
+        for (let i = decoFrame % 30; i < W.props.length; i += 30) {
+          const pr = W.props[i];
           if (!pr.gone && !pr.fall && (pr.anc || pr.on) && !propAnchored(pr, W.mat)) {
             pr.fall = true;
             pr.vy = 0;
@@ -12648,10 +12654,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             pr.on = null;
           }
         }
-        for (let i = props.length - 1; i >= 0; i--) {
-          const pr = props[i];
+        for (let i = W.props.length - 1; i >= 0; i--) {
+          const pr = W.props[i];
           if (pr.gone) {
-            props.splice(i, 1);
+            W.props.splice(i, 1);
             continue;
           }
           if (pr.fall) {
@@ -12667,8 +12673,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 shatter(pr, 14);
                 continue;
               }
-              for (let j = enemies.length - 1; j >= 0; j--) {
-                const e = enemies[j];
+              for (let j = W.enemies.length - 1; j >= 0; j--) {
+                const e = W.enemies[j];
                 if (Math.abs(e.x - pr.x) < e.r + 4 && Math.abs(e.ty - (pr.y + pr.b)) < e.r + 4) {
                   damageEnemy(j, 4);
                   shatter(pr, 14);
@@ -12858,8 +12864,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 if ((pr.ecd = (pr.ecd || 0) - dt) <= 0) {
                   pr.ecd = 0.4;
                   for (let yy = 4; yy < VENT_H; yy += 12) ignite(pr.x, pr.y - yy, 6, 0.5);
-                  for (let j = enemies.length - 1; j >= 0; j--) {
-                    const e = enemies[j];
+                  for (let j = W.enemies.length - 1; j >= 0; j--) {
+                    const e = W.enemies[j];
                     if (Math.abs(e.x - pr.x) < e.r + 6 && e.ty < pr.y && e.ty > pr.y - VENT_H) {
                       setAlight(e);
                       damageEnemy(j, 1);
@@ -12883,7 +12889,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               const on = me && p.onGround && p.x + PW > pr.x + pr.l && p.x < pr.x + pr.r && Math.abs(p.y + PH - pr.y) < 5;
               const st = pr.st, moving = Math.abs(p.vx) > 30;
               if (st === "slime") {
-                for (const e of enemies)
+                for (const e of W.enemies)
                   if (e.x > pr.x + pr.l && e.x < pr.x + pr.r && e.ty > pr.y - 30 && e.ty < pr.y) e.chill = 0.45;
               }
               if (!on) {
@@ -12988,8 +12994,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (cl.tick <= 0) {
             cl.tick = 0.4;
             if (!p.dead && Math.hypot(pcx - cl.x, pcy - cl.y) < cl.r) hurt(PROP_DMG.cloud);
-            for (let j = enemies.length - 1; j >= 0; j--)
-              if (Math.hypot(enemies[j].x - cl.x, enemies[j].ty - cl.y) < cl.r + enemies[j].r) damageEnemy(j, 1);
+            for (let j = W.enemies.length - 1; j >= 0; j--)
+              if (Math.hypot(W.enemies[j].x - cl.x, W.enemies[j].ty - cl.y) < cl.r + W.enemies[j].r) damageEnemy(j, 1);
           }
           if (cl.life <= 0) clouds.splice(i, 1);
         }
@@ -13116,7 +13122,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (!pgArt || pgArt.length < w * h3 * 4) pgArt = new Uint8ClampedArray(w * h3 * 4);
         const x0w = bx0 * CELL, y0w = by0 * CELL, x1w = bx1 * CELL, y1w = by1 * CELL;
         let pd = null;
-        const plants = props.filter((pr) => pr.k === "climb" && PLANTS[pr.st] && pr.x + pr.r > x0w && pr.x + pr.l < x1w && pr.y + pr.b > y0w && pr.y + pr.t0 < y1w);
+        const plants = W.props.filter((pr) => pr.k === "climb" && PLANTS[pr.st] && pr.x + pr.r > x0w && pr.x + pr.l < x1w && pr.y + pr.b > y0w && pr.y + pr.t0 < y1w);
         if (plants.length) {
           if (!pgC) {
             pgC = document.createElement("canvas");
@@ -13264,7 +13270,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (input.current.spawnGun) {
           const gun2 = caveGun(input.current.spawnGun, Math.random);
           input.current.spawnGun = 0;
-          pickups.push({ kind: "gun", x: p.x + PW / 2 + p.face * 22, y: p.y + PH - 9, gun: gun2, t: 0 });
+          W.pickups.push({ kind: "gun", x: p.x + PW / 2 + p.face * 22, y: p.y + PH - 9, gun: gun2, t: 0 });
           toast("Spawned " + gun2.name);
         }
         const LO = input.current.loadout;
@@ -13460,7 +13466,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         if (pb.pinpointer && !p.dead) {
           let best2 = null, bd = 1e9;
-          for (const e of enemies) {
+          for (const e of W.enemies) {
             const d = Math.hypot(e.x - gx, e.ty - gy);
             if (d < bd && lineOfSight(gx, gy, e.x, e.ty)) {
               bd = d;
@@ -13543,7 +13549,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (b.payload && b.timer != null && (b.timer -= dt) <= 0) firePayload(b);
           if (b.pull) {
             const reach = DEV.bhPull * b.pull / 70;
-            for (const e of enemies) {
+            for (const e of W.enemies) {
               const dx = b.x - e.x, dy = b.y - e.ty, d = Math.hypot(dx, dy) || 1;
               if (d < reach) {
                 const f = Math.min(d / dt, 60 + 420 * (1 - d / reach));
@@ -13598,13 +13604,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             }
           }
           if (b.drift) {
-            if (b.lock && enemies.indexOf(b.lock) < 0) b.lock = null;
+            if (b.lock && W.enemies.indexOf(b.lock) < 0) b.lock = null;
             if (!b.lock) {
               const d = driftStep(b.vx, b.vy, dt);
               b.vx = d[0];
               b.vy = d[1];
               let bd = b.homeR || DRIFT_R;
-              for (const e of enemies) {
+              for (const e of W.enemies) {
                 const dd = Math.hypot(e.x - b.x, e.ty - b.y);
                 if (dd < bd && lineOfSight(b.x, b.y, e.x, e.ty)) {
                   bd = dd;
@@ -13622,7 +13628,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
           if (b.homing && !b.drift) {
             let best2 = null, bd = b.homeR || 260;
-            for (const e of enemies) {
+            for (const e of W.enemies) {
               const d = Math.hypot(e.x - b.x, e.ty - b.y);
               if (d < bd) {
                 bd = d;
@@ -13644,8 +13650,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           for (let st = 0; st < sn && !dead && !boom; st++) {
             const nx = b.x + b.vx * dt / sn, ny = b.y + b.vy * dt / sn;
             const j = enemyAt(nx, ny, b.size + 1);
-            if (j >= 0 && !(b.hit && b.hit.has(enemies[j]))) {
-              const e = enemies[j];
+            if (j >= 0 && !(b.hit && b.hit.has(W.enemies[j]))) {
+              const e = W.enemies[j];
               const sp = Math.hypot(b.vx, b.vy) || 1;
               damageEnemy(j, critRoll(b.dmg, b.crit));
               if (b.fire) setAlight(e);
@@ -13658,7 +13664,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               if (b.chain > 0) {
                 (b.hit || (b.hit = /* @__PURE__ */ new Set())).add(e);
                 let best2 = null, bd = 150;
-                for (const o of enemies) {
+                for (const o of W.enemies) {
                   if (b.hit.has(o)) continue;
                   const d = Math.hypot(o.x - nx, o.ty - ny);
                   if (d < bd) {
@@ -13825,12 +13831,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           const f = fields[i];
           f.life -= dt;
           f.tick -= dt;
-          const near2 = (j) => Math.hypot(enemies[j].x - f.x, enemies[j].ty - f.y) < f.r;
+          const near2 = (j) => Math.hypot(W.enemies[j].x - f.x, W.enemies[j].ty - f.y) < f.r;
           if (f.field === "slow" || f.field === "storm") {
             if ((f.dT = (f.dT || 0) - dt) <= 0) {
               f.dT = 0.15;
               if (fireDouse(fire, f.x, f.y, f.r) && Math.random() < 0.5) SFX.fx("steam", f.x, f.y);
-              for (const e of enemies) if (e.burn > 0 && Math.hypot(e.x - f.x, e.ty - f.y) < f.r) e.burn = 0;
+              for (const e of W.enemies) if (e.burn > 0 && Math.hypot(e.x - f.x, e.ty - f.y) < f.r) e.burn = 0;
               if (p.burn > 0 && Math.hypot(pcx - f.x, pcy - f.y) < f.r) p.burn = 0;
             }
             if (f.field === "slow" && Math.random() < dt * 14) {
@@ -13843,9 +13849,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             glowDot(f.x + Math.cos(a) * r, f.y + Math.sin(a) * r, 0, rnd(-18, -8), Math.random() < 0.5 ? "#9dff9a" : "#46c48c", rnd(0.8, 1.2), rnd(0.4, 0.8));
           }
           if (f.field === "mine") {
-            f.near = enemies.some((e) => Math.hypot(e.x - f.x, e.ty - f.y) < f.r * 2.2);
+            f.near = W.enemies.some((e) => Math.hypot(e.x - f.x, e.ty - f.y) < f.r * 2.2);
             let trip = f.life <= 0;
-            for (let j = 0; j < enemies.length && !trip; j++) if (near2(j)) trip = true;
+            for (let j = 0; j < W.enemies.length && !trip; j++) if (near2(j)) trip = true;
             if (trip) {
               explode(f.x, f.y, f.r);
               fieldPayload(f);
@@ -13864,7 +13870,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             }
             if (f.life < 0) continue;
           } else if (f.field === "slow") {
-            for (const e of enemies) if (Math.hypot(e.x - f.x, e.ty - f.y) < f.r) e.chill = 0.2;
+            for (const e of W.enemies) if (Math.hypot(e.x - f.x, e.ty - f.y) < f.r) e.chill = 0.2;
           } else if (f.field === "shield") {
             for (let k2 = enemyShots.length - 1; k2 >= 0; k2--) {
               const b = enemyShots[k2];
@@ -13886,8 +13892,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               f.tick = 0.22;
               const a = Math.random() * Math.PI * 2, rr2 = Math.random() * f.r;
               const sx = f.x + Math.cos(a) * rr2, sy = f.y + Math.sin(a) * rr2;
-              for (let j = enemies.length - 1; j >= 0; j--)
-                if (Math.hypot(enemies[j].x - sx, enemies[j].ty - sy) < 22) damageEnemy(j, 2);
+              for (let j = W.enemies.length - 1; j >= 0; j--)
+                if (Math.hypot(W.enemies[j].x - sx, W.enemies[j].ty - sy) < 22) damageEnemy(j, 2);
               burst(sx, sy, 6, "#a8e4ff");
               addArc([{ x: sx + rnd(-8, 8), y: f.y - f.r * 0.85 }, { x: sx, y: sy }], "#a8e4ff", 1.2, 0.14);
               SFX.arc(sx, sy, true);
@@ -13896,7 +13902,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             if (!f.done && f.max - f.life >= VACUUM_WAIT) {
               f.done = true;
               const inR = (x, y) => Math.hypot(x - f.x, y - f.y) < f.r;
-              for (const e of enemies) if (inR(e.x, e.ty)) {
+              for (const e of W.enemies) if (inR(e.x, e.ty)) {
                 e.y += f.y - e.ty;
                 e.x = f.x;
                 e.tgt = null;
@@ -13913,7 +13919,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 g.x = f.x;
                 g.y = f.y;
               }
-              for (const q of pickups) if (!q.taken && inR(q.x, q.y)) {
+              for (const q of W.pickups) if (!q.taken && inR(q.x, q.y)) {
                 q.x = f.x;
                 q.y = f.y;
               }
@@ -13930,10 +13936,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (f.life <= 0) fields.splice(i, 1);
         }
         for (let i = beams.length - 1; i >= 0; i--) if ((beams[i].t += dt) > 0.12) beams.splice(i, 1);
-        for (let i = pickups.length - 1; i >= 0; i--) {
-          const q = pickups[i];
+        for (let i = W.pickups.length - 1; i >= 0; i--) {
+          const q = W.pickups[i];
           if (q.taken) {
-            pickups.splice(i, 1);
+            W.pickups.splice(i, 1);
             continue;
           }
           if (q.cool > 0) q.cool -= dt;
@@ -13999,7 +14005,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           near = { src: "shop", it };
           break;
         }
-        if (!near) for (const q of pickups) {
+        if (!near) for (const q of W.pickups) {
           if (q.cool > 0) continue;
           if (Math.abs(q.x - pcx) > 18 || Math.abs(q.y - pcy) > 20) continue;
           near = { src: "pickup", q };
@@ -14011,7 +14017,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           near = { src: "room", r };
           break;
         }
-        const nearKey = !near ? -1 : near.src + ":" + (near.src === "shop" ? W.stock.indexOf(near.it) : near.src === "room" ? W.rooms.indexOf(near.r) : pickups.indexOf(near.q));
+        const nearKey = !near ? -1 : near.src + ":" + (near.src === "shop" ? W.stock.indexOf(near.it) : near.src === "room" ? W.rooms.indexOf(near.r) : W.pickups.indexOf(near.q));
         const label = !near ? null : near.src === "shop" ? near.it.kind === "heal" ? { text: "Full heal", price: 0, can: p.hp < MHP } : near.it.kind === "gun" ? {
           text: near.it.gun.name,
           gun: near.it.gun,
@@ -14060,7 +14066,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             } else if (it.kind === "gun") {
               LO.gold -= it.price;
               it.sold = true;
-              pickups.push({ kind: "gun", x: it.x, y: it.y, gun: it.gun, t: 0 });
+              W.pickups.push({ kind: "gun", x: it.x, y: it.y, gun: it.gun, t: 0 });
               toast("Bought " + it.gun.name);
               SFX.ui("buy");
             } else {
@@ -14110,8 +14116,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         input.current.interact = false;
         for (let i = toasts.length - 1; i >= 0; i--) if ((toasts[i].t -= dt) <= 0) toasts.splice(i, 1);
         decorStep(dt, pcx, pcy);
-        for (let i = enemies.length - 1; i >= 0; i--) {
-          const e = enemies[i], k2 = e.k;
+        for (let i = W.enemies.length - 1; i >= 0; i--) {
+          const e = W.enemies[i], k2 = e.k;
           e.flash -= dt;
           e.cd -= dt;
           e.touch -= dt;
@@ -14148,7 +14154,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             if (dist < N.wake && (N.t -= dt) <= 0) {
               N.t = kr("raSpawn");
               let out = 0;
-              for (const r of enemies) if (r.home === e) out++;
+              for (const r of W.enemies) if (r.home === e) out++;
               if (out < N.max) spawnRat(e);
             }
             e.chill = 1;
@@ -14281,7 +14287,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               burst(e.x, e.ty, 22, k2.col.a);
               SFX.boom(e.x, e.ty, 26);
               hurt(k2.dmg);
-              enemies.splice(i, 1);
+              W.enemies.splice(i, 1);
               if (k2.fire) fireBlast(e.x, e.ty, 26, 1);
               continue;
             }
@@ -14310,8 +14316,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
         }
         if (pb.contact && !p.dead) {
-          for (let i = enemies.length - 1; i >= 0; i--) {
-            const e = enemies[i];
+          for (let i = W.enemies.length - 1; i >= 0; i--) {
+            const e = W.enemies[i];
             if (Math.hypot(e.x - pcx, e.ty - pcy) < e.r + 12) damageEnemy(i, 45 * dt);
           }
         }
@@ -14396,7 +14402,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ghost.cd -= dt;
           if (ghost.cd <= 0 && !p.dead) {
             let best2 = null, bd = 340;
-            for (const e of enemies) {
+            for (const e of W.enemies) {
               const d = Math.hypot(e.x - ghost.x, e.ty - ghost.y);
               if (d < bd) {
                 bd = d;
@@ -14443,9 +14449,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         for (let i = burns.length - 1; i >= 0; i--) {
           const bn = burns[i];
           bn.life -= dt;
-          for (let j = enemies.length - 1; j >= 0; j--)
-            if (Math.hypot(enemies[j].x - bn.x, enemies[j].ty - bn.y) < 15) {
-              setAlight(enemies[j]);
+          for (let j = W.enemies.length - 1; j >= 0; j--)
+            if (Math.hypot(W.enemies[j].x - bn.x, W.enemies[j].ty - bn.y) < 15) {
+              setAlight(W.enemies[j]);
               damageEnemy(j, 22 * dt);
             }
           if (bn.life <= 0) burns.splice(i, 1);
@@ -14700,7 +14706,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         const TH = themeFor(W.floor);
         const onView = (x, y, m) => x > camX - m && x < camX + vw + m && y > camY - m && y < camY + vh + m;
-        for (const pr of props)
+        for (const pr of W.props)
           if (pr.x + pr.r > camX - 70 && pr.x + pr.l < camX + vw + 70 && pr.y + pr.b > camY - 90 && pr.y + pr.t0 < camY + vh + 90)
             drawProp(ctx, pr, time, TH);
         for (const q of dparts) {
@@ -14914,7 +14920,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.moveTo(L.a0x, L.a0y);
           ctx.lineTo(L.b0x, L.b0y);
         }
-        for (const e of enemies) {
+        for (const e of W.enemies) {
           const sh = e.sp && e.sp.mode === "shoot" && e.sp.shot;
           if (sh) {
             ctx.moveTo(sh.ax0, sh.ay0);
@@ -14935,7 +14941,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         ctx.stroke();
         ctx.globalAlpha = 1;
-        for (const e of enemies) {
+        for (const e of W.enemies) {
           const ey = e.ty;
           if (ey > camY + vh + 20 || ey < camY - 20 || e.x < camX - 20 || e.x > camX + vw + 20) continue;
           drawEnemy(ctx, e, time);
@@ -15524,7 +15530,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.ellipse(g.x - 0.8, g.y - 0.8 + bob, 1.2, 1.8, 0, 0, Math.PI * 2);
           ctx.fill();
         }
-        for (const q of pickups) {
+        for (const q of W.pickups) {
           const qy = q.y + Math.sin(time * 2 + q.t) * 3;
           if (qy > camY + vh + 30 || qy < camY - 30 || q.x < camX - 30 || q.x > camX + vw + 30) continue;
           if (q.kind === "gun") {
@@ -15718,7 +15724,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 Math.cos(a),
                 Math.sin(a),
                 solidAt,
-                enemies,
+                W.enemies,
                 aimPath,
                 { x: pcx, y: gy }
               );
@@ -15847,14 +15853,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           glowAt(ctx, sc.x, sc.y - 6, 34, 0.16 * sg, "255,140,50");
           glowAt(ctx, sc.x, sc.y - 7, 9, 0.45 * sg, "255,190,90");
         }
-        for (const pr of props) {
+        for (const pr of W.props) {
           if (!(pr.k === "lamp" || pr.k === "vent" || pr.k === "shard" || pr.k === "eyes" || pr.k === "matter" || pr.k === "drip" && pr.st === "lava") || !onView(pr.x, pr.y, 60)) continue;
           if (pr.k !== "eyes" && !fogLit(pr.x, pr.y)) continue;
           propGlow(ctx, pr, time, TH, Math.hypot(pr.x - pcx, pr.y - pcy), torchR);
         }
-        for (const e of enemies)
+        for (const e of W.enemies)
           if (e.je && onView(e.x, e.ty, 160) && fogLit(e.x, e.ty)) plantGlow(e, TH);
-        for (const e of enemies) {
+        for (const e of W.enemies) {
           const k = e.k;
           if (!k.glow || !k.kp || !onView(e.x, e.ty, 120) || !fogLit(e.x, e.ty)) continue;
           const u = e.je && e.je.u || { glowR: 0.5, glow: 0.5, flare: 0.5 }, sh = e.je ? e.je.shape : 0;
@@ -15880,7 +15886,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             if (fogLit(x, y)) glowAt(ctx, x, y, 20, Math.min(0.14, 0.03 + fireVis.length / 3e3) * flick, "255,120,40");
           }
         }
-        for (const e of enemies)
+        for (const e of W.enemies)
           if (e.burn > 0 && onView(e.x, e.ty, 40) && fogLit(e.x, e.ty)) glowAt(ctx, e.x, e.ty, e.r * 2.4, 0.22 * flick, "255,130,50");
         for (const pr of firePlants)
           if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(pr.x, pr.y + pr.len))
@@ -15966,9 +15972,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             ctx.restore();
             ctx.globalAlpha = 1;
           };
-          if (pb.radarEnemy) marker(nearest(enemies), PERKS.eradar.tint);
-          if (pb.radarItem) marker(nearest(pickups.filter((q) => q.kind === "mod")), "#b57cff");
-          if (pb.radarWand) marker(nearest(pickups.filter((q) => q.kind === "gun")), COL.bullet);
+          if (pb.radarEnemy) marker(nearest(W.enemies), PERKS.eradar.tint);
+          if (pb.radarItem) marker(nearest(W.pickups.filter((q) => q.kind === "mod")), "#b57cff");
+          if (pb.radarWand) marker(nearest(W.pickups.filter((q) => q.kind === "gun")), COL.bullet);
         }
         ctx.textAlign = "center";
         const ch = playPx / dpr;
@@ -15999,7 +16005,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.fillText("You were shot down", cw / 2, msgY);
           ctx.font = "500 14px system-ui, sans-serif";
           ctx.fillText("Tap the right stick to restart", cw / 2, msgY + 22);
-        } else if (enemies.length === 0) {
+        } else if (W.enemies.length === 0) {
           ctx.font = "700 18px system-ui, sans-serif";
           ctx.fillText("All enemies destroyed", cw / 2, msgY);
         }
@@ -16060,7 +16066,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               ctx.stroke();
             }
           }
-          for (const q of pickups) {
+          for (const q of W.pickups) {
             if (q.taken || !fogLit(q.x, q.y)) continue;
             const col = q.kind === "gun" ? "#ffd23c" : "#46e07a";
             ctx.beginPath();
