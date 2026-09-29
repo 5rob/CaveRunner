@@ -13,11 +13,11 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 1 — P1.1–P1.5 done (on `refactor`, not merged). Next: P1.6 (merge as v97) once the owner has play-tested the branch, then Phase 2 |
+| **Current phase** | Phase 1 done and merged to `main` as v97. Next: Phase 2 on `refactor` |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
-| **Feature freeze** | From the start of Phase 0 until Phase 1 merges to `main` |
-| **Last green full suite** | 2026-09-29, end of P1.5 (bar known flakes: `sound` portalOut fails every run, as on v96; `everymod` telecast and `rats` passed on re-run) |
-| **Last merged to main** | — |
+| **Feature freeze** | Lifted with P1.6 (v97) |
+| **Last green full suite** | 2026-09-29, P1.6 (bar known flakes: `fog` "flying on reveals more" and `rats` passed alone; `jelly` spit passed 1 of 3 alone, as on v96) |
+| **Last merged to main** | v97 (P1.6), 2026-09-29 |
 
 ---
 
@@ -250,7 +250,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
   - [x] audio/sfx.js
   - [x] save/save.js
   - [x] replay/replay.js
-- [ ] **P1.6** Full suite green. Merge `refactor` → `main` with a version bump. Owner
+- [x] **P1.6** Full suite green. Merge `refactor` → `main` with a version bump. Owner
       plays it on the phone. **Feature freeze lifts**: new features go into `src/` from
       here, and the rest of the refactor continues in small steps between them.
 
@@ -457,6 +457,8 @@ commit. List them here for after.
   statement of the P1.5 bundle is identical to the P1.2 bundle's (see D12). Most likely chance
   (random rat moves over a fixed frame count); if it keeps showing, bisect P1.2 (esbuild's
   reprint) against v96.
+  P1.6 run: `fog` "flying on reveals more" ("186 -> 154 cave cells") failed once in the full
+  run, passed alone. The P1.6 bundle is statement-identical to P1.5's, so chance/load again.
 - **Misplaced comments (left as they were, moved with their code).** A second copy of
   planCast's opening comment sits above `blankShot` (`spells/cast.js`); tracePath's opening
   comment sits above `DRIFT_DRAG` (`spells/trace.js`); `ROOM_HW`'s line carries the trailing
@@ -487,3 +489,4 @@ commit. List them here for after.
 | 2026-09-29 | Phase 1, P1.4 | `src/pure.js` (VERSION + `export * from main.js`); main.js got an `export { … }` list of the 346 names the old loader found above `Game`. `tests/load.js` bundles pure.js to CJS in memory and runs it with stubs for React/ReactDOM/document (main.js now runs to its mount line); `.source` = all of `src/`. Same 348 names, same types, before and after; `index.html` unchanged (iife drops exports). | logic 33/33 |
 | 2026-09-29 | Phase 1, P1.5 | All 31 moves, one commit each via `tools/move.js`, logic suites + names check + `smoke` before every commit. Extra: `COL` joined `core/consts.js` (guns and sprites need it). Knob tables stay in `dev/knobs.js` (D11). `main.js` 12,816 → 5,767 lines (Game, UI, and 5 pure leftovers). Full runs on snapshots at the end of spells and world, and at the end: only known/load flakes, each passing alone. Bundle statements identical to P1.2's (D12). | logic 33/33; browser 43/44 (`sound`, as v96) after re-runs |
 | 2026-09-29 | handover | Docs made ready for the next session: Phase 2 notes worked out from the code (`Game` has to move to `game/Game.js` before `App` can leave `main.js`; where the pure leftovers and `h`/hooks go), a **How a move goes** recipe, `tools/same.js` (D12's check as a tool, tried both ways), the P1.5 parent box ticked, test timings in CLAUDE.md, HANDOVER status. | logic 33/33 |
+| 2026-09-29 | Phase 1, P1.6 | Owner play-tested the branch (plays the same as v96). Committed the last session's uncommitted handover docs + `tools/same.js` first. Full suite on a snapshot; `src/version.js` → v97; merged `refactor` → `main` and pushed (the release). This time `sound` passed and `fog` ("flying on reveals more", a new one) failed once, passed alone. | logic 33/33; browser 44/44 after re-runs (`jelly` spit flaky, as v96) |

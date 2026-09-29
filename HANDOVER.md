@@ -7,13 +7,12 @@ it's stale.
 
 ## Where things stand
 
-- **Refactor in progress on the `refactor` branch (not merged).** The code now lives in
-  modules under `src/`, bundled by esbuild into the same `index.html`. Phase 0 and P1.1–P1.5
-  are done; next is P1.6 (merge to `main` as v97, after the owner play-tests the branch with
-  `node tools/build.js --watch` + `node serve.js`), then Phase 2. **`REFACTOR.md` is the
-  tracker** — its Status table, **How a move goes** recipe and session log say exactly where
-  things are. Feature freeze until P1.6 lands.
-- **On-disk version: v96.** Working on `main` (**release channel is `main`** — CI there
+- **Refactor in progress on the `refactor` branch.** The code now lives in modules under
+  `src/`, bundled by esbuild into the same `index.html`. Phase 0 and Phase 1 are done and
+  released as v97 (merged to `main`); Phase 2 (the UI into `src/ui/`) continues on `refactor`.
+  **`REFACTOR.md` is the tracker** — its Status table, **How a move goes** recipe and session
+  log say exactly where things are. The feature freeze lifted with v97.
+- **On-disk version: v97** (v97 = the refactor's Phase 1; plays the same as v96). Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
