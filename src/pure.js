@@ -57,5 +57,6 @@ export * from './game/systems/ambience.js';
 export * from './game/systems/shotlooks.js';
 export * from './game/systems/lightning.js';
 export * from './game/systems/rats.js';
+export * from './game/systems/fog.js';
 export * from './game/Game.js';
 export * from './ui/app.js';

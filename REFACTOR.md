@@ -429,6 +429,7 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] shotlooks.js: `glowDot`, `rnd`, `shotTrail`, `shotBounce`, `shotDeath`, `shotGrind` (`drawLook` stays in draw())
   - [x] lightning.js: `jag`, `addArc`, `lightningStep`
   - [x] rats.js: `onWebIn`, `ratSolid`, `navFor`, `spawnRat`, `unstick`, `ratFrame` (`ratOnWeb` joins `G`)
+  - [x] fog.js: `fogLit`, `roomSeen`, `seenAt`, `paintFog` (the reveal, bake and blur stay in draw())
   - Learned so far: `G`'s keys must be declared above `G` (a closure `const` further down moves up
     first, as `fireBox` did). A function passed as a callback gets an arrow at each site; for the
     per-frame ones (`visPoly`, `fireStep`, a spider's or jelly's `env`) that is one small allocation
@@ -776,3 +777,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.4 (9) | `shotlooks.js`: `glowDot`, `rnd`, `shotTrail`, `shotBounce`, `shotDeath`, `shotGrind`. `rnd` is now a module-level import in Game.js; `sputterStep`'s own `rnd` parameter shadows it, as before. `t1spells`, `spelllooks`, `buzzsaw` run too. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 (10) | `lightning.js`: `jag`, `addArc`, `lightningStep`. Clean move. `lightning`, `spelllooks` run too. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 (11) | `rats.js`: `onWebIn` first (pure), then `ratOnWeb` (made once from `W.webs`, same as before) moved up above `G` and into it by hand, then `ratSolid`, `navFor`, `spawnRat`, `unstick`, `ratFrame`. `navFor`'s comment had travelled with `onWebIn`: put back. `ratSolid` as a callback is an arrow at its two sites. `rats`, `spider` run too. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 3, P3.4 (12) | `fog.js`: `fogLit`, `roomSeen`, `seenAt` (`(W, …)`), `paintFog` (`(W, G)`: `fogImg`). `fog`, `map`, `torch`, `replay`, `jelly` (plant glow) run too; `jelly` spit flaked 2 of 4, glow checks passed every time. | probe SAME, logic 33/33, smoke ok |

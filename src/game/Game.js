@@ -7,10 +7,10 @@ import { drawGun, drawGunGlow, drawRunner, drawSconce, drawTorch, glowAt } from 
 import { jetPitch } from '../audio/recipes.js';
 import { SFX } from '../audio/sfx.js';
 import {
-  AIM_DEAD, AIR_ACC, BCELL, BH, BW, CELL, CH, CLIMB, COIN_PULL, COL, CW, DEAD, FH, FOG, FOG_DARK,
-  FOG_DIM, FOG_U, FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART, FW, GRAVITY, GROUND_ACC, JET, JET_ACC,
-  LAMP_REACH, MINI_D, MMH, MMW, PATROL_R, PH, PICKUP_COOL, PW, SHOP_FLOOR, SHOP_Y, SIGHT,
-  VIEW_MIN_H, VIEW_W, WALK, WEB_HAND, WH, WW
+  AIM_DEAD, AIR_ACC, BCELL, BH, BW, CELL, CH, CLIMB, COIN_PULL, COL, CW, DEAD, FH, FOG, FOG_U,
+  FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART, FW, GRAVITY, GROUND_ACC, JET, JET_ACC, LAMP_REACH, MINI_D,
+  MMH, MMW, PATROL_R, PH, PICKUP_COOL, PW, SHOP_FLOOR, SHOP_Y, SIGHT, VIEW_MIN_H, VIEW_W, WALK,
+  WEB_HAND, WH, WW
 } from '../core/consts.js';
 import { angDiff, approach, clamp, hexArr, hexRgb, mix, turn } from '../core/util.js';
 import { drawEnemy } from '../creatures/draw.js';
@@ -40,6 +40,7 @@ import { builtAt } from '../world/zones.js';
 import { puffSpores } from './systems/ambience.js';
 import { damageEnemy, fireEnemyShot } from './systems/enemies.js';
 import { fireBlast, fireFrame, ignite, setAlight, youAlight } from './systems/fire.js';
+import { fogLit, paintFog, roomSeen, seenAt } from './systems/fog.js';
 import { addArc, jag, lightningStep } from './systems/lightning.js';
 import { burst, goo, splat, toast } from './systems/particles.js';
 import { hurt, maxHp, refreshBag } from './systems/player.js';
@@ -375,7 +376,7 @@ export function Game({ input }) {
       W.levelT = 0;                             // the floor's name card gets its three seconds
       W.seen = fogStart(); W.deepFog = nestFog(level.nests);
       if (W.pb.seeAll) W.seen.fill(2);            // All-Seeing Eye lights the whole floor
-      paintFog();                             // otherwise every floor starts dark again
+      paintFog(W, G);                             // otherwise every floor starts dark again
       recReset();                             // the death replay starts afresh each floor
       W.matterProps = W.props.filter(pr => pr.k === 'matter');
       // out of the way-in, a moment after the way-out's whump
@@ -397,39 +398,8 @@ export function Game({ input }) {
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (_) {}
     }
 
-    // Wall torches and lanterns follow the same rule as the loot: they show once the fog
-    // over them has lifted (`fogLit`), and never clear it themselves — v59 let them clear
-    // a circle round themselves, which lit up every prize room on the map from the start.
-    const fogLit = (x, y) => {
-      const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
-      if (W.deepFog && W.deepFog[cy * FW + cx]) return W.seen[cy * FW + cx] > 0;   // a nest room: no soft edge
-      // the fog bake's one-cell soft edge counts, so a torch shows exactly when an item there would
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-        const nx = cx + dx, ny = cy + dy;
-        if (nx >= 0 && ny >= 0 && nx < FW && ny < FH && W.seen[ny * FW + nx]) return true;
-      }
-      return false;
-    };
-    // a prize room counts as found once any of it has been in your line of sight
-    const roomSeen = r => {
-      for (let y = r.y - ROOM_HH; y <= r.y + ROOM_HH; y += FOG_U)
-        for (let x = r.x - ROOM_HW; x <= r.x + ROOM_HW; x += FOG_U) {
-          const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
-          if (W.seen[cy * FW + cx]) return true;
-        }
-      return false;
-    };
-    // Repaint the whole overlay mask from the reveal grid. FW x FH is a few thousand
-    // cells, and it only runs on the frames where you actually light something new.
-    function paintFog() {
-      const d = fogImg.data, dim = Math.round(255 * FOG_DIM), dark = Math.round(255 * FOG_DARK);
-      for (let i = 0, k = 0; i < FW * FH; i++, k += 4) {
-        d[k] = 9; d[k + 1] = 10; d[k + 2] = 14;
-        d[k + 3] = W.seen[i] === 2 ? 0 : W.seen[i] ? dim : dark;
-      }
-    }
     // the browser tests' way in (game/testhook.js): only on the test page, which sets the flag
-    if (window.__TEST) window.__lvl = testHook(W, { tctx, dctx, paintFog, hurt: (n) => hurt(W, G, n), maxHp: () => maxHp(W, G), dig: (x, y, R) => dig(W, G, x, y, R), explode: (x, y, R, splash, hot) => explode(W, G, x, y, R, splash, hot), recSample,
+    if (window.__TEST) window.__lvl = testHook(W, { tctx, dctx, paintFog: () => paintFog(W, G), hurt: (n) => hurt(W, G, n), maxHp: () => maxHp(W, G), dig: (x, y, R) => dig(W, G, x, y, R), explode: (x, y, R, splash, hot) => explode(W, G, x, y, R, splash, hot), recSample,
       ignite: (x, y, r, chance) => ignite(W, G, x, y, r, chance), setAlight, youAlight: () => youAlight(W), REC, RT });
     {
       // picking up where the last session left off, if App found a save
@@ -736,7 +706,6 @@ export function Game({ input }) {
     // drawn over both at terrain resolution and read back — keyed, ramped, twinkled and
     // added on top in its colour. Only on ground you've seen.
     const pgGlow = document.createElement('canvas'), pgGlowCtx = pgGlow.getContext('2d');
-    const seenAt = (x, y) => W.seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)] !== 0;
     function plantGlow(e, TH) {
       const u = e.je.u, reach = kru('jeGlowR', u.glowR) * kru('jePlantReach', u.plant);
       const strength = kru('jePlantGlow', u.plant);
@@ -776,7 +745,7 @@ export function Game({ input }) {
       const out = new ImageData(w, h);
       if (!plantGlowFill(out.data, A, w, h, { ox: x0w, oy: y0w, px: CELL, cx: e.x, cy: e.y, reach, white: W.plantW,
         top: kru('jePlantTop', u.plant) / 100, strength, t: W.time * kru('jePlantTwinkle', u.plant),
-        size: kru('jePlantSize', u.plant), rgb: hexArr(jcol('jeColGlow', u.col)), lit: seenAt })) return;
+        size: kru('jePlantSize', u.plant), rgb: hexArr(jcol('jeColGlow', u.col)), lit: (x, y) => seenAt(W, x, y) })) return;
       if (pgGlow.width < w || pgGlow.height < h) { pgGlow.width = Math.max(pgGlow.width, w); pgGlow.height = Math.max(pgGlow.height, h); }
       pgGlowCtx.putImageData(out, 0, 0);
       const sm = ctx.imageSmoothingEnabled;
@@ -1448,7 +1417,7 @@ export function Game({ input }) {
             const after = maxHp(W, G);
             if (after > before) W.p.hp += after - before;   // Extra Health comes full
             W.p.hp = Math.min(W.p.hp, after);                 // Glass Cannon trims it
-            if (W.pb.seeAll) { W.seen.fill(2); paintFog(); }  // All-Seeing Eye lights it up now
+            if (W.pb.seeAll) { W.seen.fill(2); paintFog(W, G); }  // All-Seeing Eye lights it up now
             if (W.pb.ghost && !W.ghost) W.ghost = { x: pcx, y: pcy, cd: 0 };
             toast(W, 'Perk: ' + PERKS[r.id].name);
             SFX.ui('perk');
@@ -2792,7 +2761,7 @@ export function Game({ input }) {
       ctx.globalCompositeOperation = 'lighter';
       const gl = clamp(0.82 + W.glowN + 0.08 * Math.sin(W.time * 23) + 0.06 * Math.sin(W.time * 37), 0.5, 1.1);
       const scOn = sc => !(sc.y > W.camY + vh + 30 || sc.y < W.camY - 30 || sc.x < W.camX - 30 || sc.x > W.camX + vw + 30) &&
-        fogLit(sc.x, sc.y);
+        fogLit(W, sc.x, sc.y);
       for (const sc of W.sconces) {
         if (!scOn(sc)) continue;
         const sg = 0.85 + 0.15 * Math.sin(W.time * 11 + sc.ph) * Math.sin(W.time * 5.3 + sc.ph);
@@ -2804,27 +2773,27 @@ export function Game({ input }) {
       for (const pr of W.props) {
         if (!(pr.k === 'lamp' || pr.k === 'vent' || pr.k === 'shard' || pr.k === 'eyes' || pr.k === 'matter' ||
           (pr.k === 'drip' && pr.st === 'lava')) || !onView(pr.x, pr.y, 60)) continue;
-        if (pr.k !== 'eyes' && !fogLit(pr.x, pr.y)) continue;
+        if (pr.k !== 'eyes' && !fogLit(W, pr.x, pr.y)) continue;
         propGlow(ctx, pr, W.time, TH, Math.hypot(pr.x - pcx, pr.y - pcy), W.torchR);
       }
       // and the green round each jelly glows and twinkles in its colour (plantGlow)
       for (const e of W.enemies)
-        if (e.je && onView(e.x, e.ty, 160) && fogLit(e.x, e.ty)) plantGlow(e, TH);
+        if (e.je && onView(e.x, e.ty, 160) && fogLit(W, e.x, e.ty)) plantGlow(e, TH);
       // glowing creatures (the jellyfish) light the cave round them, flaring as they pulse.
       // Radius, brightness and flare are its kp+'GlowR' / 'Glow' / 'Flare' knobs, and like
       // every other light out here it shows only where the fog has lifted
       for (const e of W.enemies) {
         const k = e.k;
-        if (!k.glow || !k.kp || !onView(e.x, e.ty, 120) || !fogLit(e.x, e.ty)) continue;
+        if (!k.glow || !k.kp || !onView(e.x, e.ty, 120) || !fogLit(W, e.x, e.ty)) continue;
         const u = (e.je && e.je.u) || { glowR: 0.5, glow: 0.5, flare: 0.5 }, sh = e.je ? e.je.shape : 0;
         const a = kru(k.kp + 'Glow', u.glow) * (1 + kru(k.kp + 'Flare', u.flare) * sh);
         const rgb = e.je ? hexRgb(jcol('jeColGlow', e.je.u.col)) : k.glow;
         glowAt(ctx, e.x, e.ty, kru(k.kp + 'GlowR', u.glowR), a, rgb);
         glowAt(ctx, e.x, e.ty, e.r * 1.6, a * 1.4, rgb);
       }
-      for (const b of W.enemyShots) if (b.glow && onView(b.x, b.y, 30) && fogLit(b.x, b.y)) glowAt(ctx, b.x, b.y, b.size * 6, 0.3, b.glow);
+      for (const b of W.enemyShots) if (b.glow && onView(b.x, b.y, 30) && fogLit(W, b.x, b.y)) glowAt(ctx, b.x, b.y, b.size * 6, 0.3, b.glow);
       // v95: your glowing shots light the cave round them (the Bubble Spark most of all)
-      for (const b of W.bullets) if (b.light && !b.hidden && onView(b.x, b.y, 50) && fogLit(b.x, b.y))
+      for (const b of W.bullets) if (b.light && !b.hidden && onView(b.x, b.y, 50) && fogLit(W, b.x, b.y))
         glowAt(ctx, b.x, b.y, b.lightR || 20, 0.28, b.light);
       // fire: the burning pixels brighten and throw a warm glow — only on ground you have seen
       if (W.fireVis.length) {
@@ -2838,17 +2807,17 @@ export function Game({ input }) {
         const st = Math.max(1, Math.ceil(W.fireVis.length / 24));
         for (let k = W.fireN % st; k < W.fireVis.length; k += st) {
           const i = W.fireVis[k], x = (i % CW + 0.5) * CELL, y = (((i / CW) | 0) + 0.5) * CELL;
-          if (fogLit(x, y)) glowAt(ctx, x, y, 20, Math.min(0.14, 0.03 + W.fireVis.length / 3000) * W.flick, '255,120,40');
+          if (fogLit(W, x, y)) glowAt(ctx, x, y, 20, Math.min(0.14, 0.03 + W.fireVis.length / 3000) * W.flick, '255,120,40');
         }
       }
       for (const e of W.enemies)
-        if (e.burn > 0 && onView(e.x, e.ty, 40) && fogLit(e.x, e.ty)) glowAt(ctx, e.x, e.ty, e.r * 2.4, 0.22 * W.flick, '255,130,50');
+        if (e.burn > 0 && onView(e.x, e.ty, 40) && fogLit(W, e.x, e.ty)) glowAt(ctx, e.x, e.ty, e.r * 2.4, 0.22 * W.flick, '255,130,50');
       for (const pr of W.firePlants)
-        if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(pr.x, pr.y + pr.len))
+        if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(W, pr.x, pr.y + pr.len))
           glowAt(ctx, pr.x, pr.y + pr.len, 16, 0.2 * W.flick, '255,130,50');
       if (W.p.burn > 0 && !W.p.dead) glowAt(ctx, W.p.x + PW / 2, W.p.y + PH / 2, 22, 0.25 * W.flick, '255,130,50');
       for (const list of [W.dparts, W.amb]) for (const q of list) {
-        if (!q.glow || !onView(q.x, q.y, 10) || !fogLit(q.x, q.y)) continue;
+        if (!q.glow || !onView(q.x, q.y, 10) || !fogLit(W, q.x, q.y)) continue;
         ctx.globalAlpha = Math.min(1, q.life / (q.max * 0.3));
         ctx.fillStyle = q.c; ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
       }
@@ -3005,7 +2974,7 @@ export function Game({ input }) {
         // the prize rooms you've found: a yellow outline, crossed out once you've had the prize
         ctx.strokeStyle = '#ffd23c'; ctx.lineWidth = 1.5;
         for (const r of W.rooms) {
-          if (!roomSeen(r)) continue;
+          if (!roomSeen(W, r)) continue;
           const x0 = mX(r.x - ROOM_HW), y0 = mY(r.y - ROOM_HH), x1 = mX(r.x + ROOM_HW), y1 = mY(r.y + ROOM_HH);
           ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
           if (r.taken) {
@@ -3018,7 +2987,7 @@ export function Game({ input }) {
         }
         // loot you've seen and left: green for mods, yellow for guns (a ring if you threw it back)
         for (const q of W.pickups) {
-          if (q.taken || !fogLit(q.x, q.y)) continue;
+          if (q.taken || !fogLit(W, q.x, q.y)) continue;
           const col = q.kind === 'gun' ? '#ffd23c' : '#46e07a';
           ctx.beginPath(); ctx.arc(mX(q.x), mY(q.y), 2.6, 0, Math.PI * 2);
           if (q.old) { ctx.strokeStyle = col; ctx.lineWidth = 1.2; ctx.stroke(); }

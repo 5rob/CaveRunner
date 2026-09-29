@@ -11528,6 +11528,35 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/game/systems/fog.js
+  var fogLit = (W, x, y) => {
+    const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
+    if (W.deepFog && W.deepFog[cy * FW + cx]) return W.seen[cy * FW + cx] > 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx >= 0 && ny >= 0 && nx < FW && ny < FH && W.seen[ny * FW + nx]) return true;
+    }
+    return false;
+  };
+  var roomSeen = (W, r) => {
+    for (let y = r.y - ROOM_HH; y <= r.y + ROOM_HH; y += FOG_U)
+      for (let x = r.x - ROOM_HW; x <= r.x + ROOM_HW; x += FOG_U) {
+        const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
+        if (W.seen[cy * FW + cx]) return true;
+      }
+    return false;
+  };
+  function paintFog(W, G) {
+    const d = G.fogImg.data, dim = Math.round(255 * FOG_DIM), dark = Math.round(255 * FOG_DARK);
+    for (let i = 0, k = 0; i < FW * FH; i++, k += 4) {
+      d[k] = 9;
+      d[k + 1] = 10;
+      d[k + 2] = 14;
+      d[k + 3] = W.seen[i] === 2 ? 0 : W.seen[i] ? dim : dark;
+    }
+  }
+  var seenAt = (W, x, y) => W.seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)] !== 0;
+
   // src/game/systems/lightning.js
   function jag(pts, amp) {
     const th = [pts[0]];
@@ -12190,7 +12219,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/game/testhook.js
   function testHook(W, g) {
-    const { tctx, dctx, paintFog } = g;
+    const { tctx, dctx, paintFog: paintFog2 } = g;
     const sandbox = (o) => {
       o = o || {};
       const w = o.w || 300, h3 = o.h || 200;
@@ -12240,7 +12269,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       W.amb.length = 0;
       for (let y = Math.floor(y0 * CELL / FOG_U); y <= Math.floor(y1 * CELL / FOG_U); y++)
         for (let x = Math.floor(x0 * CELL / FOG_U); x <= Math.floor(x1 * CELL / FOG_U); x++) W.seen[y * FW + x] = 2;
-      paintFog();
+      paintFog2();
       W.p.x = cx - PW / 2;
       W.p.y = fy - PH - 0.5;
       W.p.vx = 0;
@@ -12275,7 +12304,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y },
       fog: { get seen() {
         return W.seen;
-      }, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal, paint: paintFog },
+      }, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal, paint: paintFog2 },
       light: {
         get flick() {
           return W.flick;
@@ -12987,7 +13016,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         W.seen = fogStart();
         W.deepFog = nestFog(level.nests);
         if (W.pb.seeAll) W.seen.fill(2);
-        paintFog();
+        paintFog(W, G);
         recReset();
         W.matterProps = W.props.filter((pr) => pr.k === "matter");
         setTimeout(() => SFX.fx("portalOut", W.arrival.x, W.arrival.y), 260);
@@ -13014,36 +13043,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         } catch (_) {
         }
       }
-      const fogLit = (x, y) => {
-        const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
-        if (W.deepFog && W.deepFog[cy * FW + cx]) return W.seen[cy * FW + cx] > 0;
-        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-          const nx = cx + dx, ny = cy + dy;
-          if (nx >= 0 && ny >= 0 && nx < FW && ny < FH && W.seen[ny * FW + nx]) return true;
-        }
-        return false;
-      };
-      const roomSeen = (r) => {
-        for (let y = r.y - ROOM_HH; y <= r.y + ROOM_HH; y += FOG_U)
-          for (let x = r.x - ROOM_HW; x <= r.x + ROOM_HW; x += FOG_U) {
-            const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
-            if (W.seen[cy * FW + cx]) return true;
-          }
-        return false;
-      };
-      function paintFog() {
-        const d = fogImg.data, dim = Math.round(255 * FOG_DIM), dark = Math.round(255 * FOG_DARK);
-        for (let i = 0, k = 0; i < FW * FH; i++, k += 4) {
-          d[k] = 9;
-          d[k + 1] = 10;
-          d[k + 2] = 14;
-          d[k + 3] = W.seen[i] === 2 ? 0 : W.seen[i] ? dim : dark;
-        }
-      }
       if (window.__TEST) window.__lvl = testHook(W, {
         tctx,
         dctx,
-        paintFog,
+        paintFog: () => paintFog(W, G),
         hurt: (n) => hurt(W, G, n),
         maxHp: () => maxHp(W, G),
         dig: (x, y, R) => dig(W, G, x, y, R),
@@ -13466,7 +13469,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         releaseAt(list, f.x, f.y, Math.cos(f.ang), Math.sin(f.ang), f.col);
       };
       const pgGlow = document.createElement("canvas"), pgGlowCtx = pgGlow.getContext("2d");
-      const seenAt = (x, y) => W.seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)] !== 0;
       function plantGlow(e, TH) {
         const u = e.je.u, reach = kru("jeGlowR", u.glowR) * kru("jePlantReach", u.plant);
         const strength = kru("jePlantGlow", u.plant);
@@ -13542,7 +13544,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           t: W.time * kru("jePlantTwinkle", u.plant),
           size: kru("jePlantSize", u.plant),
           rgb: hexArr(jcol("jeColGlow", u.col)),
-          lit: seenAt
+          lit: (x, y) => seenAt(W, x, y)
         })) return;
         if (pgGlow.width < w || pgGlow.height < h3) {
           pgGlow.width = Math.max(pgGlow.width, w);
@@ -14388,7 +14390,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               W.p.hp = Math.min(W.p.hp, after);
               if (W.pb.seeAll) {
                 W.seen.fill(2);
-                paintFog();
+                paintFog(W, G);
               }
               if (W.pb.ghost && !W.ghost) W.ghost = { x: pcx, y: pcy, cd: 0 };
               toast(W, "Perk: " + PERKS[r.id].name);
@@ -16147,7 +16149,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         ctx.globalCompositeOperation = "lighter";
         const gl = clamp(0.82 + W.glowN + 0.08 * Math.sin(W.time * 23) + 0.06 * Math.sin(W.time * 37), 0.5, 1.1);
-        const scOn = (sc) => !(sc.y > W.camY + vh + 30 || sc.y < W.camY - 30 || sc.x < W.camX - 30 || sc.x > W.camX + vw + 30) && fogLit(sc.x, sc.y);
+        const scOn = (sc) => !(sc.y > W.camY + vh + 30 || sc.y < W.camY - 30 || sc.x < W.camX - 30 || sc.x > W.camX + vw + 30) && fogLit(W, sc.x, sc.y);
         for (const sc of W.sconces) {
           if (!scOn(sc)) continue;
           const sg = 0.85 + 0.15 * Math.sin(W.time * 11 + sc.ph) * Math.sin(W.time * 5.3 + sc.ph);
@@ -16156,22 +16158,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         for (const pr of W.props) {
           if (!(pr.k === "lamp" || pr.k === "vent" || pr.k === "shard" || pr.k === "eyes" || pr.k === "matter" || pr.k === "drip" && pr.st === "lava") || !onView(pr.x, pr.y, 60)) continue;
-          if (pr.k !== "eyes" && !fogLit(pr.x, pr.y)) continue;
+          if (pr.k !== "eyes" && !fogLit(W, pr.x, pr.y)) continue;
           propGlow(ctx, pr, W.time, TH, Math.hypot(pr.x - pcx, pr.y - pcy), W.torchR);
         }
         for (const e of W.enemies)
-          if (e.je && onView(e.x, e.ty, 160) && fogLit(e.x, e.ty)) plantGlow(e, TH);
+          if (e.je && onView(e.x, e.ty, 160) && fogLit(W, e.x, e.ty)) plantGlow(e, TH);
         for (const e of W.enemies) {
           const k = e.k;
-          if (!k.glow || !k.kp || !onView(e.x, e.ty, 120) || !fogLit(e.x, e.ty)) continue;
+          if (!k.glow || !k.kp || !onView(e.x, e.ty, 120) || !fogLit(W, e.x, e.ty)) continue;
           const u = e.je && e.je.u || { glowR: 0.5, glow: 0.5, flare: 0.5 }, sh = e.je ? e.je.shape : 0;
           const a = kru(k.kp + "Glow", u.glow) * (1 + kru(k.kp + "Flare", u.flare) * sh);
           const rgb = e.je ? hexRgb(jcol("jeColGlow", e.je.u.col)) : k.glow;
           glowAt(ctx, e.x, e.ty, kru(k.kp + "GlowR", u.glowR), a, rgb);
           glowAt(ctx, e.x, e.ty, e.r * 1.6, a * 1.4, rgb);
         }
-        for (const b of W.enemyShots) if (b.glow && onView(b.x, b.y, 30) && fogLit(b.x, b.y)) glowAt(ctx, b.x, b.y, b.size * 6, 0.3, b.glow);
-        for (const b of W.bullets) if (b.light && !b.hidden && onView(b.x, b.y, 50) && fogLit(b.x, b.y))
+        for (const b of W.enemyShots) if (b.glow && onView(b.x, b.y, 30) && fogLit(W, b.x, b.y)) glowAt(ctx, b.x, b.y, b.size * 6, 0.3, b.glow);
+        for (const b of W.bullets) if (b.light && !b.hidden && onView(b.x, b.y, 50) && fogLit(W, b.x, b.y))
           glowAt(ctx, b.x, b.y, b.lightR || 20, 0.28, b.light);
         if (W.fireVis.length) {
           ctx.fillStyle = "rgba(255,140,50,0.32)";
@@ -16184,17 +16186,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           const st = Math.max(1, Math.ceil(W.fireVis.length / 24));
           for (let k = W.fireN % st; k < W.fireVis.length; k += st) {
             const i = W.fireVis[k], x = (i % CW + 0.5) * CELL, y = ((i / CW | 0) + 0.5) * CELL;
-            if (fogLit(x, y)) glowAt(ctx, x, y, 20, Math.min(0.14, 0.03 + W.fireVis.length / 3e3) * W.flick, "255,120,40");
+            if (fogLit(W, x, y)) glowAt(ctx, x, y, 20, Math.min(0.14, 0.03 + W.fireVis.length / 3e3) * W.flick, "255,120,40");
           }
         }
         for (const e of W.enemies)
-          if (e.burn > 0 && onView(e.x, e.ty, 40) && fogLit(e.x, e.ty)) glowAt(ctx, e.x, e.ty, e.r * 2.4, 0.22 * W.flick, "255,130,50");
+          if (e.burn > 0 && onView(e.x, e.ty, 40) && fogLit(W, e.x, e.ty)) glowAt(ctx, e.x, e.ty, e.r * 2.4, 0.22 * W.flick, "255,130,50");
         for (const pr of W.firePlants)
-          if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(pr.x, pr.y + pr.len))
+          if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(W, pr.x, pr.y + pr.len))
             glowAt(ctx, pr.x, pr.y + pr.len, 16, 0.2 * W.flick, "255,130,50");
         if (W.p.burn > 0 && !W.p.dead) glowAt(ctx, W.p.x + PW / 2, W.p.y + PH / 2, 22, 0.25 * W.flick, "255,130,50");
         for (const list of [W.dparts, W.amb]) for (const q of list) {
-          if (!q.glow || !onView(q.x, q.y, 10) || !fogLit(q.x, q.y)) continue;
+          if (!q.glow || !onView(q.x, q.y, 10) || !fogLit(W, q.x, q.y)) continue;
           ctx.globalAlpha = Math.min(1, q.life / (q.max * 0.3));
           ctx.fillStyle = q.c;
           ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
@@ -16354,7 +16356,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.strokeStyle = "#ffd23c";
           ctx.lineWidth = 1.5;
           for (const r of W.rooms) {
-            if (!roomSeen(r)) continue;
+            if (!roomSeen(W, r)) continue;
             const x0 = mX(r.x - ROOM_HW), y0 = mY(r.y - ROOM_HH), x1 = mX(r.x + ROOM_HW), y1 = mY(r.y + ROOM_HH);
             ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
             if (r.taken) {
@@ -16368,7 +16370,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             }
           }
           for (const q of W.pickups) {
-            if (q.taken || !fogLit(q.x, q.y)) continue;
+            if (q.taken || !fogLit(W, q.x, q.y)) continue;
             const col = q.kind === "gun" ? "#ffd23c" : "#46e07a";
             ctx.beginPath();
             ctx.arc(mX(q.x), mY(q.y), 2.6, 0, Math.PI * 2);
