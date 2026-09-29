@@ -68,6 +68,7 @@ export * from './game/systems/pickups.js';
 export * from './game/systems/step.js';
 export * from './game/creatures/acts.js';
 export * from './game/creatures/rat.js';
+export * from './game/creatures/spider.js';
 export * from './game/render/draw.js';
 export * from './game/render/looks.js';
 export * from './game/render/cave.js';

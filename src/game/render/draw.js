@@ -3,7 +3,8 @@
 // swapped into W. It calls its parts one after another, back to front, handing each the frame
 // object F (REFACTOR.md D19); the parts live in render/ by theme: cave.js (the rock and what
 // sits on it), effects.js (particles), actors.js (creatures and you), looks.js (shots and
-// fields), light.js (the fog and the light over it), overlay.js (HUD, messages, the map).
+// fields), light.js (the fog and the light over it), overlay.js (HUD, messages, the map); and
+// the spider's silk (drawSilk) with the spider, in game/creatures/spider.js.
 // drawCamera, the frame's own part, is here.
 // It is not only a picture, so keep its order: it draws from the sim's Math.random stream,
 // writes the fog memory (fogReveal, in drawFog) and moves the camera (drawCamera).
@@ -12,7 +13,8 @@ import { PH, PW, VIEW_MIN_H, VIEW_W, WH, WW } from '../../core/consts.js';
 import { clamp } from '../../core/util.js';
 import { themeFor } from '../../data/themes.js';
 import { DEV } from '../../dev/knobs.js';
-import { drawAim, drawEnemies, drawJetFlame, drawPlayer, drawSilk } from './actors.js';
+import { drawSilk } from '../creatures/spider.js';
+import { drawAim, drawEnemies, drawJetFlame, drawPlayer } from './actors.js';
 import {
   drawArrival, drawLoot, drawPortal, drawProps, drawRooms, drawShop, drawTerrain
 } from './cave.js';
@@ -34,7 +36,7 @@ export function draw(W, G) {
   drawPortal(W, G);                         // the exit (cave.js)
   drawSmoke(W, G);                          // smoke (effects.js)
   drawFields(W, G, F);                      // static fields (looks.js)
-  drawSilk(W, G);                           // spider silk (actors.js)
+  drawSilk(W, G);                           // spider silk (game/creatures/spider.js)
   drawEnemies(W, G, F);                     // the creatures (actors.js)
   drawShots(W, G);                          // shots in flight, lightning arcs (looks.js)
   drawBeams(W, G);                          // beams (looks.js)

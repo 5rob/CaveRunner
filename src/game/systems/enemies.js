@@ -1,5 +1,5 @@
 // The creatures: a frame of them all (stepEnemies, a part of step(): the enemy loop, with each
-// act's own part through ACTS in game/creatures/ (REFACTOR.md D20), their shots, spider silk),
+// act's own part through ACTS in game/creatures/ (REFACTOR.md D20), their shots),
 // shooting at you, taking damage (a kill drops its gold, or the act's `die` does its own thing:
 // a nest's shower), and where a jelly may swim (natural).
 
@@ -7,9 +7,8 @@ import { SFX } from '../../audio/sfx.js';
 import { COL, PATROL_R, PH, PW } from '../../core/consts.js';
 import { hexRgb } from '../../core/util.js';
 import { jellyPal, jellyStep, tentacleTouch } from '../../creatures/jelly.js';
-import { spiderStep } from '../../creatures/spider.js';
 import { HUNTERS } from '../../data/creatures.js';
-import { DEV, jcol, kr, spr } from '../../dev/knobs.js';
+import { DEV, jcol, kr } from '../../dev/knobs.js';
 import { fireArea } from '../../world/fire.js';
 import { builtAt } from '../../world/zones.js';
 import { ACTS } from '../creatures/acts.js';
@@ -59,8 +58,8 @@ export const natural = (W, x, y) => !builtAt(W.zone, x, y);      // jellies keep
 
 // ---- the creatures (a part of step) ----
 // The enemy loop (aggro, each kind's move, contact, firing), Contact Damage, the creatures'
-// shots, spider strings in flight and on you, web lines whose rock is gone, and the red
-// flash of your last hit fading.
+// shots, each act's once-a-frame part (ACTS: the spider's silk), and the red flash of your
+// last hit fading.
 export function stepEnemies(W, G, F) {
   const { dt, pcx, pcy } = F;
   // one creature's frame, for its act's hooks (ACTS, D20): made once, refilled per enemy
@@ -110,25 +109,7 @@ export function stepEnemies(W, G, F) {
     // the act's move (ACTS, D20); true = it did its whole frame, nothing below runs for it
     const A = ACTS[k.act];
     if (A && A.move) { if (A.move(W, G, e, C)) continue; }
-    else if (k.act === 'spider') {
-      // only on rock and its own lines (spiderStep); strings you when it has a clear line
-      const cold = e.chill && e.chill < 1 ? e.chill : 1;
-      if (spiderStep(e, { solidCell: (cx, cy) => solidCell(W, cx, cy), webs: W.webs, hunting, goal: { x: pcx, y: pcy }, rnd: Math.random,
-        speedMul: cold }, dt) === 'web') SFX.fx('lash', e.x, e.y);
-      e.silkT = (e.silkT || 0) - dt;
-      const S = e.sp;
-      if (hunting && e.silkT <= 0 && S && (S.mode === 'surf' || S.mode === 'line') &&
-          dist < (e.silkR || (e.silkR = spr('spSilk'))) * sees && dist > e.r + 24) {
-        e.silkT = 0.4;
-        if (lineOfSight(W, e.x, e.y, pcx, pcy)) {
-          e.silkT = spr('spSilkCd'); e.silkR = spr('spSilk');
-          const v = spr('spSilkSpd');
-          W.silk.push({ x: e.x, y: e.y, ax: e.x, ay: e.y, vx: dx / dist * v, vy: dy / dist * v,
-            life: 400 / v * 1.3 + 0.1 });
-          SFX.creature(k, 'fire', e.x, e.y);
-        }
-      }
-    } else if (k.act === 'jelly') {
+    else if (k.act === 'jelly') {
       // swims in pulses (jellyStep); spits when its head is lined up on you, in range
       const cold = e.chill && e.chill < 1 ? e.chill : 1;
       if (jellyStep(e, { solidCell: (cx, cy) => solidCell(W, cx, cy), hunting, goal: { x: pcx, y: pcy }, rnd: Math.random,
@@ -257,40 +238,7 @@ export function stepEnemies(W, G, F) {
     }
     if (gone) W.enemyShots.splice(i, 1);
   }
-  // spider strings in flight: rock stops them, you catch them
-  for (let i = W.silk.length - 1; i >= 0; i--) {
-    const b = W.silk[i];
-    b.life -= dt;
-    let gone = b.life <= 0;
-    const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
-    for (let s = 0; s < sn && !gone; s++) {
-      b.x += b.vx * dt / sn; b.y += b.vy * dt / sn;
-      if (solidAt(W, b.x, b.y)) { gone = true; break; }
-      if (!W.p.dead && b.x > W.p.x - 3 && b.x < W.p.x + PW + 3 && b.y > W.p.y - 3 && b.y < W.p.y + PH + 3) {
-        gone = true;
-        W.strings.push({ ax: b.ax, ay: b.ay, ox: b.x - W.p.x, oy: b.y - W.p.y, slow: spr('spSlow'), max: spr('spSilkMax') });
-        SFX.fx('lash', b.x, b.y);
-      }
-    }
-    if (gone) W.silk.splice(i, 1);
-  }
-  // strings on you: pulled past their length, they snap
-  for (let i = W.strings.length - 1; i >= 0; i--) {
-    const s = W.strings[i];
-    if (Math.hypot(W.p.x + s.ox - s.ax, W.p.y + s.oy - s.ay) > s.max) {
-      W.strings.splice(i, 1);
-      burst(W, W.p.x + s.ox, W.p.y + s.oy, 4, '#e8e8f0');
-      SFX.fx('lash', W.p.x + s.ox, W.p.y + s.oy);
-    }
-  }
-  // a web line whose rock has been blasted away comes down (a few checked a frame)
-  for (let n = Math.min(W.webs.length, 6); n > 0; n--) {
-    W.webCheck = (W.webCheck + 1) % W.webs.length;
-    const L = W.webs[W.webCheck];
-    if ((L.bin && !solidAt(W, L.bin.x, L.bin.y)) || (L.ain && !solidAt(W, L.ain.x, L.ain.y))) {
-      W.webs.splice(W.webCheck, 1);
-      if (!W.webs.length) break;
-    }
-  }
+  // each act's once-a-frame part (ACTS, D20): the spider's silk, strings and web lines
+  for (const a in ACTS) { const fr = ACTS[a].frame; if (fr) fr(W, G, F); }
   W.p.hitT -= dt;
 }
