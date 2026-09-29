@@ -13,10 +13,10 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4 part done: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props (`decorStep`) out in `game/systems/`. Next: shot looks, lightning, rats, fog. Not merged |
+| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4 part done: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting out in `game/systems/`. Next: `saveRun`/`natural`/`torchHand`, `plantGlow`, the recorder, `enterLevel`, then `step`/`draw`. Not merged |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
-| **Last green full suite** | 2026-09-29, P3.4 after the props (step 8): logic 33/33, browser 44/44 first try |
+| **Last green full suite** | 2026-09-29, P3.4 after casting (4620bf6), bar a known flake: `trigger` "a trigger carrying an explosion…" (passed alone 3 of 3) |
 | **Last merged to main** | v98 (Phase 2), 2026-09-29 |
 
 ---
@@ -787,3 +787,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.4 (11) | `rats.js`: `onWebIn` first (pure), then `ratOnWeb` (made once from `W.webs`, same as before) moved up above `G` and into it by hand, then `ratSolid`, `navFor`, `spawnRat`, `unstick`, `ratFrame`. `navFor`'s comment had travelled with `onWebIn`: put back. `ratSolid` as a callback is an arrow at its two sites. `rats`, `spider` run too. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 (12) | `fog.js`: `fogLit`, `roomSeen`, `seenAt` (`(W, …)`), `paintFog` (`(W, G)`: `fogImg`). `fog`, `map`, `torch`, `replay`, `jelly` (plant glow) run too; `jelly` spit flaked 2 of 4, glow checks passed every time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 (13) | Casting in one move (13 functions, a cycle): `gun.js`, `fields.js`, `bullets.js`. A scratch check stripped the `W, G` plumbing and found every moved line verbatim in the old closure. `everymod`, `trigger`, `blackhole`, `teleport`, `t1spells`, `spelllooks`, `pollen`, `lightning`, `buzzsaw`, `perks` run too. `trigger` "a trigger carrying an explosion…" flaked: 6 of 13 runs alone here, 1 of 4 on the commit before (see Found along the way). | probe SAME, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 3, P3.4 checkpoint | Full suite on a snapshot of 4620bf6: only `trigger` "a trigger carrying an explosion…" failed, passed alone 3 of 3. Stopped here: Game.js 3,803 → 2,792 lines. Next (easy first): `saveRun`, `natural`, `torchHand` (only `W`); `plantGlow` (its `pgArt`/`pgC`/`pgCtx` `let`s to `G` first); the recorder (`rid`/`ridN`, `RPV`, `RP_ARR`); `enterLevel`; then `step`/`draw`. Not merged. | logic 33/33; browser 44/44 after re-runs |
