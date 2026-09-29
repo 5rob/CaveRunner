@@ -426,6 +426,7 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] ambience.js: `spore`, `puffSpores`, `stepAmbience` (+ `AMB_RATE`, `AMB_MAX`): all need only `W`
   - [x] props.js: `decorStep` with `pOver`, `alertAt`, `shatter`, `popLamp`, `landProp`, `spawnDrip`
         (+ `MATERIAL`, `DRIP_RATE`); needs ambience first
+  - [x] shotlooks.js: `glowDot`, `rnd`, `shotTrail`, `shotBounce`, `shotDeath`, `shotGrind` (`drawLook` stays in draw())
   - Learned so far: `G`'s keys must be declared above `G` (a closure `const` further down moves up
     first, as `fireBox` did). A function passed as a callback gets an arrow at each site; for the
     per-frame ones (`visPoly`, `fireStep`, a spider's or jelly's `env`) that is one small allocation
@@ -770,3 +771,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.4 checkpoint | Full suite on a snapshot of efaeb42: only `jelly` (browser) failed, "saturation 0 greys it out"; alone it passed 3 of 3 (the spit/spore group failed twice of those, the known flake). Stopped here as planned: terrain, particles and fire are out; next the ambience and props. Not merged. | logic 33/33; browser 44/44 after re-runs |
 | 2026-09-29 | Phase 3, P3.4 (7) | `ambience.js`: `spore`, `puffSpores`, `stepAmbience`, `AMB_RATE`, `AMB_MAX` (all `(W, …)`). Clean move. `decor`, `jelly` run too (`jelly` spit/spore group failed 2 of 3 alone, passed the 3rd: the known flake). | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 (8) | `props.js` gets `decorStep` with `pOver`, `alertAt`, `shatter`, `popLamp`, `landProp`, `spawnDrip`, `MATERIAL`, `DRIP_RATE` (`decorStep`, `popLamp`, `landProp` are `(W, G, …)`). Header rewritten. props.js ↔ fire.js is now a two-way import (D17). | probe SAME, logic 33/33, browser 44/44 (all, first try) |
+| 2026-09-29 | Phase 3, P3.4 (9) | `shotlooks.js`: `glowDot`, `rnd`, `shotTrail`, `shotBounce`, `shotDeath`, `shotGrind`. `rnd` is now a module-level import in Game.js; `sputterStep`'s own `rnd` parameter shadows it, as before. `t1spells`, `spelllooks`, `buzzsaw` run too. | probe SAME, logic 33/33, smoke ok |

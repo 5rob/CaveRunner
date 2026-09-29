@@ -742,7 +742,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const a = DEV[k + "Lo"], b = DEV[k + "Hi"];
     return a + u * (b - a);
   };
-  var kr = (k, rnd) => kru(k, (rnd || Math.random)());
+  var kr = (k, rnd2) => kru(k, (rnd2 || Math.random)());
   var spr = kr;
   function colourKnobs(g, rows) {
     for (const [k, label, a, b] of rows) {
@@ -3038,17 +3038,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return FX_VOL[name] || "vWorld";
   }
   var knob = (k) => DEV[k] == null ? 1 : DEV[k];
-  function rustleStep(st, dt, touching, entered, speed, rnd) {
-    rnd = rnd || Math.random;
+  function rustleStep(st, dt, touching, entered, speed, rnd2) {
+    rnd2 = rnd2 || Math.random;
     st.t = Math.max(0, (st.t || 0) - dt);
     if (!touching || st.t > 0) return 0;
     const s = clampS(speed / 220, 0, 1);
     if (entered) {
-      st.t = 0.16 + rnd() * 0.12;
+      st.t = 0.16 + rnd2() * 0.12;
       return Math.max(0.55, s);
     }
     if (speed < 25) return 0;
-    st.t = (0.42 - 0.24 * s) * (0.8 + rnd() * 0.5);
+    st.t = (0.42 - 0.24 * s) * (0.8 + rnd2() * 0.5);
     return 0.3 + 0.5 * s;
   }
 
@@ -3307,7 +3307,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       gates[key] = t;
       return true;
     };
-    const rnd = (a, b) => a + Math.random() * (b - a);
+    const rnd2 = (a, b) => a + Math.random() * (b - a);
     const safe = (fn) => function() {
       try {
         return fn.apply(null, arguments);
@@ -3552,7 +3552,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (r.v === "none") return;
       const d = out(x, y, r.v === "void" ? 1.3 : 0.6, x == null, null, knob("vSpell"));
       if (!d) return;
-      const t0 = ac.currentTime + (delay || 0), P = r.pitch * rnd(0.95, 1.05), V = r.vol * 0.55, D = r.dur;
+      const t0 = ac.currentTime + (delay || 0), P = r.pitch * rnd2(0.95, 1.05), V = r.vol * 0.55, D = r.dur;
       for (let k = 0; k < r.n; k++) VOICE[r.v](d, t0 + k * 0.018, P * (1 + k * 0.04), V / (1 + k * 0.6), D);
       if (r.wob) tone(d, "sine", 700 * P, 500 * P, t0, 0.22 * D, 0.13 * V, 0.01, [9, 60]);
       if (r.grit) hiss(d, t0, 0.1, 0.3 * V, "lowpass", 900, 250, 1, true);
@@ -3579,7 +3579,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const d = out(x, y, 0.2, false, null, knob("vHit"));
       if (!d) return;
       const t = ac.currentTime;
-      tone(d, "sine", rnd(240, 290), 110, t, 0.08, 0.4);
+      tone(d, "sine", rnd2(240, 290), 110, t, 0.08, 0.4);
       hiss(d, t, 0.06, 0.45, "bandpass", 1400, 700, 1.5);
     }
     function rock(x, y) {
@@ -3599,13 +3599,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     function boom(x, y, R) {
       const big = R >= 40;
       if (!gate(big ? "bigboom" : "boom", big ? 60 : 30)) return;
-      const s = clampS(R / 30, 0.3, 3.2), P = rnd(0.82, 1.18), L = rnd(0.85, 1.2);
+      const s = clampS(R / 30, 0.3, 3.2), P = rnd2(0.82, 1.18), L = rnd2(0.85, 1.2);
       const d = out(x, y, 0.8 + 0.6 * s * L, big, null, knob("vBoom"));
       if (!d) return;
       const t = ac.currentTime;
-      hiss(d, t, (0.25 + 0.45 * s) * L, rnd(0.8, 1), "lowpass", 2600 / Math.pow(s, 0.4) * P, rnd(110, 200), rnd(0.5, 1));
-      tone(d, "sine", 95 / Math.pow(s, 0.2) * P, rnd(26, 36), t, (0.3 + 0.4 * s) * L, 0.9, 3e-3);
-      if (R >= 18 && Math.random() < 0.85) hiss(d, t + rnd(0.02, 0.08), (0.4 + 0.5 * s) * L, rnd(0.3, 0.5), "bandpass", rnd(2e3, 3e3), rnd(900, 1500), 0.8, true);
+      hiss(d, t, (0.25 + 0.45 * s) * L, rnd2(0.8, 1), "lowpass", 2600 / Math.pow(s, 0.4) * P, rnd2(110, 200), rnd2(0.5, 1));
+      tone(d, "sine", 95 / Math.pow(s, 0.2) * P, rnd2(26, 36), t, (0.3 + 0.4 * s) * L, 0.9, 3e-3);
+      if (R >= 18 && Math.random() < 0.85) hiss(d, t + rnd2(0.02, 0.08), (0.4 + 0.5 * s) * L, rnd2(0.3, 0.5), "bandpass", rnd2(2e3, 3e3), rnd2(900, 1500), 0.8, true);
       if (R >= 60) hiss(d, t + 0.1, 1.6 * L, 0.5, "lowpass", 300 * P, 80, 0.7, false, 0.2);
     }
     function debris(x, y) {
@@ -3613,19 +3613,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (!d) return;
       const t = ac.currentTime, n = 4 + Math.floor(Math.random() * 5);
       for (let i = 0; i < n; i++) {
-        const tt = t + rnd(0.12, 0.8), metal = Math.random() < 0.4;
-        if (metal) tone(d, "square", rnd(600, 1400), rnd(500, 1200), tt, rnd(0.04, 0.12), rnd(0.03, 0.07));
-        hiss(d, tt, rnd(0.02, 0.07), rnd(0.15, 0.4), "bandpass", rnd(1500, 5e3), rnd(1e3, 3e3), rnd(1, 4), Math.random() < 0.6);
+        const tt = t + rnd2(0.12, 0.8), metal = Math.random() < 0.4;
+        if (metal) tone(d, "square", rnd2(600, 1400), rnd2(500, 1200), tt, rnd2(0.04, 0.12), rnd2(0.03, 0.07));
+        hiss(d, tt, rnd2(0.02, 0.07), rnd2(0.15, 0.4), "bandpass", rnd2(1500, 5e3), rnd2(1e3, 3e3), rnd2(1, 4), Math.random() < 0.6);
       }
     }
     function pop(x, y) {
       const d = out(x, y, 1.2, false, null, knob("vBoom"));
       if (!d) return;
-      const t = ac.currentTime, P = rnd(0.8, 1.25);
-      tone(d, "sine", 220 * P, 55 * P, t, rnd(0.12, 0.2), 0.7, 3e-3);
-      hiss(d, t, rnd(0.06, 0.12), 0.6, "bandpass", rnd(600, 1300), rnd(250, 500), rnd(1.5, 3));
-      hiss(d, t + rnd(0.03, 0.08), rnd(0.6, 1.1), rnd(0.12, 0.2), "highpass", rnd(2500, 4e3), rnd(5e3, 7e3), 0.7, false, rnd(0.08, 0.2));
-      for (let i = 0; i < 3; i++) tone(d, "sine", rnd(250, 500), rnd(500, 1e3), t + rnd(0.05, 0.3), 0.05, 0.1, 4e-3);
+      const t = ac.currentTime, P = rnd2(0.8, 1.25);
+      tone(d, "sine", 220 * P, 55 * P, t, rnd2(0.12, 0.2), 0.7, 3e-3);
+      hiss(d, t, rnd2(0.06, 0.12), 0.6, "bandpass", rnd2(600, 1300), rnd2(250, 500), rnd2(1.5, 3));
+      hiss(d, t + rnd2(0.03, 0.08), rnd2(0.6, 1.1), rnd2(0.12, 0.2), "highpass", rnd2(2500, 4e3), rnd2(5e3, 7e3), 0.7, false, rnd2(0.08, 0.2));
+      for (let i = 0; i < 3; i++) tone(d, "sine", rnd2(250, 500), rnd2(500, 1e3), t + rnd2(0.05, 0.3), 0.05, 0.1, 4e-3);
     }
     const RUSTLE = {
       vine: { lo: 1800, hi: 4800, swish: [1400, 4200], wet: 0 },
@@ -3639,13 +3639,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const d = out(x, y, 0.5, false, null, knob("vWorld"));
       if (!d) return;
       const t = ac.currentTime, v = clampS(str, 0.2, 1);
-      const up = Math.random() < 0.5, a = rnd(R.swish[0], R.swish[1]), b = rnd(R.swish[0], R.swish[1]) * (up ? 1.5 : 0.6);
-      hiss(d, t, rnd(0.1, 0.26) * (0.6 + v * 0.6), rnd(0.12, 0.22) * v, "bandpass", a, b, rnd(0.6, 1.4), false, rnd(0.015, 0.05));
+      const up = Math.random() < 0.5, a = rnd2(R.swish[0], R.swish[1]), b = rnd2(R.swish[0], R.swish[1]) * (up ? 1.5 : 0.6);
+      hiss(d, t, rnd2(0.1, 0.26) * (0.6 + v * 0.6), rnd2(0.12, 0.22) * v, "bandpass", a, b, rnd2(0.6, 1.4), false, rnd2(0.015, 0.05));
       const n = 2 + Math.floor(Math.random() * (2 + v * 3));
       for (let i = 0; i < n; i++)
-        hiss(d, t + rnd(0, 0.2), rnd(0.02, 0.07), rnd(0.1, 0.3) * v, "bandpass", rnd(R.lo, R.hi), rnd(R.lo, R.hi), rnd(0.8, 2.5), Math.random() < 0.55);
-      if (R.wet) tone(d, "sine", rnd(180, 300), rnd(400, 700), t + rnd(0, 0.1), 0.07, 0.08 * v, 4e-3);
-      if (R.creak && Math.random() < 0.35) tone(lp(d, 800, 5), "sawtooth", rnd(110, 160), rnd(90, 130), t, rnd(0.15, 0.3), 0.05 * v, 0.03);
+        hiss(d, t + rnd2(0, 0.2), rnd2(0.02, 0.07), rnd2(0.1, 0.3) * v, "bandpass", rnd2(R.lo, R.hi), rnd2(R.lo, R.hi), rnd2(0.8, 2.5), Math.random() < 0.55);
+      if (R.wet) tone(d, "sine", rnd2(180, 300), rnd2(400, 700), t + rnd2(0, 0.1), 0.07, 0.08 * v, 4e-3);
+      if (R.creak && Math.random() < 0.35) tone(lp(d, 800, 5), "sawtooth", rnd2(110, 160), rnd2(90, 130), t, rnd2(0.15, 0.3), 0.05 * v, 0.03);
     }
     function arc(x, y, big) {
       if (!gate("arc", big ? 90 : 45)) return;
@@ -3671,9 +3671,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         knob(what === "fire" || what === "charge" || what === "fuse" ? "vEnemyFire" : "vEnemy")
       );
       if (!d) return;
-      const t = ac.currentTime, R = rnd(0.92, 1.08);
+      const t = ac.currentTime, R = rnd2(0.92, 1.08);
       const clicks = (n, gap, f, pk2) => {
-        for (let i = 0; i < n; i++) hiss(d, t + i * gap * rnd(0.7, 1.3), 0.014, pk2, "bandpass", f * rnd(0.85, 1.15), f, 6);
+        for (let i = 0; i < n; i++) hiss(d, t + i * gap * rnd2(0.7, 1.3), 0.014, pk2, "bandpass", f * rnd2(0.85, 1.15), f, 6);
       };
       const bloop = (tt, f, pk2) => tone(d, "sine", f, f * 2.4, tt, 0.07, pk2, 4e-3);
       const squelch = (pk2) => {
@@ -3731,8 +3731,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
           const n = alert ? 2 : 1 + Math.floor(Math.random() * 3);
           for (let i = 0; i < n; i++) {
-            const f = rnd(380, 680) * P, tt = t + i * 0.09;
-            tone(lp(d, 2400), "square", f, alert ? f * 1.6 : f * rnd(0.8, 1.2), tt, 0.08, pk * 0.35, 5e-3, [22, 40 * P]);
+            const f = rnd2(380, 680) * P, tt = t + i * 0.09;
+            tone(lp(d, 2400), "square", f, alert ? f * 1.6 : f * rnd2(0.8, 1.2), tt, 0.08, pk * 0.35, 5e-3, [22, 40 * P]);
           }
           break;
         }
@@ -3774,7 +3774,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             break;
           }
           const n = alert ? 4 : 2;
-          for (let i = 0; i < n; i++) bloop(t + i * rnd(0.05, 0.1), rnd(160, 320) * P, pk * 0.7);
+          for (let i = 0; i < n; i++) bloop(t + i * rnd2(0.05, 0.1), rnd2(160, 320) * P, pk * 0.7);
           break;
         }
         case "spore":
@@ -3790,7 +3790,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             clicks(10, 0.02, 5e3, 0.3);
             break;
           }
-          bell(d, rnd(1800, 2600), t, 0.5, pk * 0.5);
+          bell(d, rnd2(1800, 2600), t, 0.5, pk * 0.5);
           break;
         case "rattle":
           clicks(die ? 14 : alert ? 8 : 5, 0.022, 2300 * R, pk * 1.2);
@@ -3910,92 +3910,92 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     function surfaceHit(d, t, surf, v) {
       switch (surf) {
         case "snow":
-          hiss(d, t, rnd(0.07, 0.12), 0.45 * v, "lowpass", rnd(2200, 3e3), rnd(600, 900), 1, true);
+          hiss(d, t, rnd2(0.07, 0.12), 0.45 * v, "lowpass", rnd2(2200, 3e3), rnd2(600, 900), 1, true);
           break;
         case "ice":
-          tone(d, "sine", rnd(1800, 2600), rnd(1400, 2e3), t, rnd(0.03, 0.06), 0.06 * v);
+          tone(d, "sine", rnd2(1800, 2600), rnd2(1400, 2e3), t, rnd2(0.03, 0.06), 0.06 * v);
           hiss(d, t, 0.03, 0.2 * v, "highpass", 4e3, 3e3, 0.8, true);
           break;
         case "slime":
-          hiss(d, t, rnd(0.08, 0.13), 0.4 * v, "lowpass", rnd(800, 1100), 250, 2);
-          tone(d, "sine", rnd(160, 220), rnd(400, 600), t + 0.02, 0.06, 0.12 * v, 4e-3);
+          hiss(d, t, rnd2(0.08, 0.13), 0.4 * v, "lowpass", rnd2(800, 1100), 250, 2);
+          tone(d, "sine", rnd2(160, 220), rnd2(400, 600), t + 0.02, 0.06, 0.12 * v, 4e-3);
           break;
         case "puddle":
-          hiss(d, t, rnd(0.1, 0.16), 0.45 * v, "bandpass", rnd(1300, 1900), rnd(500, 800), 1.2);
-          tone(d, "sine", rnd(250, 400), rnd(600, 900), t + rnd(0.02, 0.06), 0.05, 0.1 * v, 4e-3);
+          hiss(d, t, rnd2(0.1, 0.16), 0.45 * v, "bandpass", rnd2(1300, 1900), rnd2(500, 800), 1.2);
+          tone(d, "sine", rnd2(250, 400), rnd2(600, 900), t + rnd2(0.02, 0.06), 0.05, 0.1 * v, 4e-3);
           break;
         case "ash":
-          hiss(d, t, rnd(0.08, 0.14), 0.3 * v, "lowpass", rnd(900, 1400), 400, 0.8, false, 0.01);
+          hiss(d, t, rnd2(0.08, 0.14), 0.3 * v, "lowpass", rnd2(900, 1400), 400, 0.8, false, 0.01);
           break;
         case "glass":
           hiss(d, t, 0.05, 0.3 * v, "highpass", 4e3, 3500, 0.8, true);
-          for (let i = 0; i < 3; i++) tone(d, "sine", rnd(3500, 6e3), rnd(3500, 6e3), t + rnd(0, 0.05), 0.03, 0.05 * v, 2e-3);
+          for (let i = 0; i < 3; i++) tone(d, "sine", rnd2(3500, 6e3), rnd2(3500, 6e3), t + rnd2(0, 0.05), 0.03, 0.05 * v, 2e-3);
           break;
         case "log":
         case "acid":
-          hiss(d, t, rnd(0.15, 0.25), 0.25 * v, "highpass", rnd(2500, 3500), 4e3, 0.7, true);
+          hiss(d, t, rnd2(0.15, 0.25), 0.25 * v, "highpass", rnd2(2500, 3500), 4e3, 0.7, true);
           break;
         default:
-          hiss(d, t, rnd(0.03, 0.06), 0.35 * v, "bandpass", rnd(700, 1500), rnd(500, 900), rnd(0.8, 1.6), Math.random() < 0.6);
-          tone(d, "sine", rnd(90, 120), 60, t, 0.04, 0.2 * v);
+          hiss(d, t, rnd2(0.03, 0.06), 0.35 * v, "bandpass", rnd2(700, 1500), rnd2(500, 900), rnd2(0.8, 1.6), Math.random() < 0.6);
+          tone(d, "sine", rnd2(90, 120), 60, t, 0.04, 0.2 * v);
       }
     }
     function tinkles(d, t, n, lo, hi, pk, spread) {
-      for (let i = 0; i < n; i++) tone(d, "sine", rnd(lo, hi), rnd(lo, hi) * rnd(0.9, 1.05), t + rnd(0, spread), rnd(0.04, 0.12), pk * rnd(0.5, 1), 2e-3);
+      for (let i = 0; i < n; i++) tone(d, "sine", rnd2(lo, hi), rnd2(lo, hi) * rnd2(0.9, 1.05), t + rnd2(0, spread), rnd2(0.04, 0.12), pk * rnd2(0.5, 1), 2e-3);
     }
     const FX = {
       // stepping into the exit: the air is drawn in, a falling shimmer, and a soft whump
       portalIn(d, t) {
-        hiss(d, t, 0.7, 0.4, "bandpass", rnd(2800, 3600), rnd(180, 260), 2.5, false, 0.45);
-        tone(d, "sine", rnd(850, 1e3), rnd(110, 140), t, 0.75, 0.25, 0.05, [rnd(5, 8), 18]);
-        [1568, 1319, 1047, 784].forEach((f, i) => bell(d, f * rnd(0.98, 1.02), t + 0.08 * i, 0.5, 0.08));
-        tone(d, "sine", rnd(75, 90), 38, t + 0.62, 0.35, 0.7, 0.01);
+        hiss(d, t, 0.7, 0.4, "bandpass", rnd2(2800, 3600), rnd2(180, 260), 2.5, false, 0.45);
+        tone(d, "sine", rnd2(850, 1e3), rnd2(110, 140), t, 0.75, 0.25, 0.05, [rnd2(5, 8), 18]);
+        [1568, 1319, 1047, 784].forEach((f, i) => bell(d, f * rnd2(0.98, 1.02), t + 0.08 * i, 0.5, 0.08));
+        tone(d, "sine", rnd2(75, 90), 38, t + 0.62, 0.35, 0.7, 0.01);
         hiss(d, t + 0.62, 0.3, 0.3, "lowpass", 700, 150, 0.8);
       },
       // coming out of the way-in: an exhale of air and a rising sparkle
       portalOut(d, t) {
-        hiss(d, t, 0.9, 0.35, "bandpass", rnd(250, 350), rnd(2200, 3e3), 2, false, 0.03);
+        hiss(d, t, 0.9, 0.35, "bandpass", rnd2(250, 350), rnd2(2200, 3e3), 2, false, 0.03);
         const notes = [523, 659, 784, 988, 1175, 1319];
-        for (let i = 0; i < 4; i++) bell(d, notes[Math.floor(Math.random() * notes.length)] * 2, t + 0.12 + i * rnd(0.06, 0.1), 0.6, 0.06);
-        tone(d, "sine", rnd(180, 220), rnd(450, 550), t, 0.5, 0.15, 0.1);
+        for (let i = 0; i < 4; i++) bell(d, notes[Math.floor(Math.random() * notes.length)] * 2, t + 0.12 + i * rnd2(0.06, 0.1), 0.6, 0.06);
+        tone(d, "sine", rnd2(180, 220), rnd2(450, 550), t, 0.5, 0.15, 0.1);
       },
       step(d, t, surf) {
-        surfaceHit(d, t, surf, rnd(0.55, 0.8));
+        surfaceHit(d, t, surf, rnd2(0.55, 0.8));
       },
       land(d, t, a) {
         const v = clampS((a.v - 150) / 500, 0.35, 1);
-        tone(d, "sine", rnd(100, 140), rnd(40, 55), t, 0.1 + 0.08 * v, 0.7 * v, 3e-3);
+        tone(d, "sine", rnd2(100, 140), rnd2(40, 55), t, 0.1 + 0.08 * v, 0.7 * v, 3e-3);
         surfaceHit(d, t, a.s, v * 1.2);
         if (v > 0.6 && (!a.s || a.s === "rock")) hiss(d, t + 0.03, 0.2, 0.25 * v, "lowpass", 1600, 400, 1, true);
       },
       ignite(d, t) {
-        hiss(d, t, rnd(0.12, 0.2), 0.45, "bandpass", rnd(300, 450), rnd(1e3, 1400), 1.2, true);
+        hiss(d, t, rnd2(0.12, 0.2), 0.45, "bandpass", rnd2(300, 450), rnd2(1e3, 1400), 1.2, true);
         hiss(d, t, 0.08, 0.3, "lowpass", 900, 300);
       },
       switch(d, t) {
-        tone(d, "square", rnd(1600, 2e3), 1400, t, 0.02, 0.05);
-        hiss(d, t, 0.03, 0.3, "bandpass", rnd(2500, 3500), 2500, 3);
-        hiss(d, t + rnd(0.06, 0.09), 0.03, 0.3, "bandpass", rnd(1800, 2400), 1800, 3);
+        tone(d, "square", rnd2(1600, 2e3), 1400, t, 0.02, 0.05);
+        hiss(d, t, 0.03, 0.3, "bandpass", rnd2(2500, 3500), 2500, 3);
+        hiss(d, t + rnd2(0.06, 0.09), 0.03, 0.3, "bandpass", rnd2(1800, 2400), 1800, 3);
         tone(d, "sine", 220, 160, t + 0.07, 0.04, 0.12);
       },
       ready(d, t) {
-        tone(d, "triangle", 1320 * rnd(0.98, 1.02), 1320, t, 0.04, 0.07);
-        tone(d, "triangle", 1760 * rnd(0.98, 1.02), 1760, t + 0.045, 0.06, 0.06);
+        tone(d, "triangle", 1320 * rnd2(0.98, 1.02), 1320, t, 0.04, 0.07);
+        tone(d, "triangle", 1760 * rnd2(0.98, 1.02), 1760, t + 0.045, 0.06, 0.06);
       },
       open(d, t) {
-        hiss(d, t, rnd(0.1, 0.15), 0.18, "bandpass", rnd(900, 1300), rnd(2200, 2800), 1.5, false, 0.03);
+        hiss(d, t, rnd2(0.1, 0.15), 0.18, "bandpass", rnd2(900, 1300), rnd2(2200, 2800), 1.5, false, 0.03);
         tone(d, "sine", 700, 900, t, 0.04, 0.06);
       },
       close(d, t) {
-        hiss(d, t, rnd(0.1, 0.15), 0.18, "bandpass", rnd(2200, 2800), rnd(900, 1300), 1.5, false, 0.03);
+        hiss(d, t, rnd2(0.1, 0.15), 0.18, "bandpass", rnd2(2200, 2800), rnd2(900, 1300), 1.5, false, 0.03);
         tone(d, "sine", 900, 700, t, 0.04, 0.06);
       },
       place(d, t) {
-        tone(d, "triangle", rnd(850, 1e3), 700, t, 0.03, 0.12);
-        tone(d, "sine", rnd(180, 220), 120, t, 0.06, 0.25);
+        tone(d, "triangle", rnd2(850, 1e3), 700, t, 0.03, 0.12);
+        tone(d, "sine", rnd2(180, 220), 120, t, 0.06, 0.25);
       },
       prompt(d, t) {
-        tone(d, "sine", 1047 * rnd(0.98, 1.02), 1047, t, 0.06, 0.07);
+        tone(d, "sine", 1047 * rnd2(0.98, 1.02), 1047, t, 0.06, 0.07);
         tone(d, "sine", 1568, 1568, t + 0.05, 0.08, 0.05);
       },
       // something breaking. a = what it's made of
@@ -4005,92 +4005,92 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           tinkles(d, t + 0.01, 6 + Math.floor(Math.random() * 7), 2500, 6500, 0.12, 0.35);
         } else if (m === "crystal") {
           hiss(d, t, 0.08, 0.4, "highpass", 2500, 1500, 0.8, true);
-          for (let i = 0; i < 3 + Math.floor(Math.random() * 3); i++) bell(d, rnd(1400, 3400), t + rnd(0, 0.25), rnd(0.4, 0.8), 0.08);
+          for (let i = 0; i < 3 + Math.floor(Math.random() * 3); i++) bell(d, rnd2(1400, 3400), t + rnd2(0, 0.25), rnd2(0.4, 0.8), 0.08);
         } else if (m === "salt") {
-          hiss(d, t, rnd(0.15, 0.25), 0.45, "highpass", 2500, 1800, 0.9, true);
+          hiss(d, t, rnd2(0.15, 0.25), 0.45, "highpass", 2500, 1800, 0.9, true);
           tinkles(d, t, 3, 3e3, 5e3, 0.07, 0.15);
         } else if (m === "bone") {
           hiss(d, t, 0.04, 0.4, "bandpass", 2200, 1500, 2, true);
-          for (let i = 0; i < 8; i++) hiss(d, t + rnd(0.02, 0.35), 0.015, rnd(0.15, 0.35), "bandpass", rnd(1500, 3200), 1500, 5);
+          for (let i = 0; i < 8; i++) hiss(d, t + rnd2(0.02, 0.35), 0.015, rnd2(0.15, 0.35), "bandpass", rnd2(1500, 3200), 1500, 5);
         } else {
-          hiss(d, t, rnd(0.4, 0.6), 0.6, "lowpass", rnd(800, 1100), 150, 0.8, true);
-          tone(d, "sine", rnd(90, 120), 40, t, 0.3, 0.6, 4e-3);
-          for (let i = 0; i < 5; i++) tone(d, "sine", rnd(120, 220), 60, t + rnd(0.1, 0.5), 0.06, rnd(0.1, 0.25), 3e-3);
+          hiss(d, t, rnd2(0.4, 0.6), 0.6, "lowpass", rnd2(800, 1100), 150, 0.8, true);
+          tone(d, "sine", rnd2(90, 120), 40, t, 0.3, 0.6, 4e-3);
+          for (let i = 0; i < 5; i++) tone(d, "sine", rnd2(120, 220), 60, t + rnd2(0.1, 0.5), 0.06, rnd2(0.1, 0.25), 3e-3);
         }
       },
       coverHit(d, t) {
-        tone(d, "sine", rnd(160, 210), 90, t, 0.06, 0.4);
-        hiss(d, t, 0.05, 0.3, "bandpass", rnd(900, 1500), 600, 1.5, true);
+        tone(d, "sine", rnd2(160, 210), 90, t, 0.06, 0.4);
+        hiss(d, t, 0.05, 0.3, "bandpass", rnd2(900, 1500), 600, 1.5, true);
       },
       iceCreak(d, t) {
         hiss(d, t, 0.3, 0.3, "highpass", 2200, 1500, 0.8, true, 0.02);
-        for (let i = 0; i < 3; i++) tone(d, "sine", rnd(2600, 3400), rnd(1200, 1800), t + i * rnd(0.07, 0.12), 0.05, 0.05);
+        for (let i = 0; i < 3; i++) tone(d, "sine", rnd2(2600, 3400), rnd2(1200, 1800), t + i * rnd2(0.07, 0.12), 0.05, 0.05);
       },
       propLand(d, t) {
-        tone(d, "sine", rnd(110, 150), 50, t, 0.1, 0.4);
+        tone(d, "sine", rnd2(110, 150), 50, t, 0.1, 0.4);
         hiss(d, t, 0.08, 0.3, "lowpass", 1200, 300, 1, true);
       },
       skulls(d, t) {
-        hiss(d, t, rnd(0.12, 0.18), 0.5, "lowpass", 1800, 600, 1, true);
-        for (let i = 0; i < 7; i++) hiss(d, t + rnd(0.02, 0.4), 0.015, rnd(0.15, 0.35), "bandpass", rnd(1600, 3e3), 1600, 5);
+        hiss(d, t, rnd2(0.12, 0.18), 0.5, "lowpass", 1800, 600, 1, true);
+        for (let i = 0; i < 7; i++) hiss(d, t + rnd2(0.02, 0.4), 0.015, rnd2(0.15, 0.35), "bandpass", rnd2(1600, 3e3), 1600, 5);
       },
       resonate(d, t) {
-        const f = rnd(170, 260);
+        const f = rnd2(170, 260);
         bell(d, f, t, 2.4, 0.35);
-        tone(d, "sine", f * 1.005, f, t, 2.2, 0.15, 0.02, [rnd(4, 7), 3]);
+        tone(d, "sine", f * 1.005, f, t, 2.2, 0.15, 0.02, [rnd2(4, 7), 3]);
       },
       ventWarn(d, t) {
-        hiss(d, t, 0.75, 0.3, "highpass", rnd(1500, 2200), rnd(3500, 4500), 0.8, false, 0.55);
+        hiss(d, t, 0.75, 0.3, "highpass", rnd2(1500, 2200), rnd2(3500, 4500), 0.8, false, 0.55);
         tone(d, "sine", 55, 70, t, 0.7, 0.15, 0.5);
       },
       ventFire(d, t) {
-        hiss(d, t, rnd(0.9, 1.1), 0.7, "bandpass", rnd(350, 450), rnd(800, 1e3), 0.9, false, 0.04);
+        hiss(d, t, rnd2(0.9, 1.1), 0.7, "bandpass", rnd2(350, 450), rnd2(800, 1e3), 0.9, false, 0.04);
         hiss(d, t, 0.9, 0.5, "bandpass", 2600, 2e3, 1, true, 0.05);
-        tone(d, "sine", rnd(60, 75), 50, t, 0.9, 0.35, 0.05);
+        tone(d, "sine", rnd2(60, 75), 50, t, 0.9, 0.35, 0.05);
       },
       shroom(d, t) {
-        tone(d, "sine", rnd(130, 190), rnd(480, 720), t, rnd(0.15, 0.22), 0.5, 4e-3);
+        tone(d, "sine", rnd2(130, 190), rnd2(480, 720), t, rnd2(0.15, 0.22), 0.5, 4e-3);
         hiss(d, t, 0.08, 0.3, "lowpass", 800, 300, 2);
       },
       lash(d, t) {
-        hiss(d, t, 0.09, 0.45, "highpass", rnd(1200, 1800), rnd(5e3, 7e3), 0.8, false, 0.06);
+        hiss(d, t, 0.09, 0.45, "highpass", rnd2(1200, 1800), rnd2(5e3, 7e3), 0.8, false, 0.06);
         hiss(d, t + 0.09, 0.03, 0.5, "bandpass", 3e3, 2e3, 1.5, true);
       },
       eyes(d, t) {
-        for (let i = 0; i < 3; i++) hiss(d, t + i * rnd(0.1, 0.18), rnd(0.08, 0.14), 0.12, "bandpass", rnd(900, 1500) * (1 + i * 0.25), rnd(1500, 2400), 8, false, 0.03);
+        for (let i = 0; i < 3; i++) hiss(d, t + i * rnd2(0.1, 0.18), rnd2(0.08, 0.14), 0.12, "bandpass", rnd2(900, 1500) * (1 + i * 0.25), rnd2(1500, 2400), 8, false, 0.03);
       },
       sparks(d, t) {
-        hiss(d, t, rnd(0.1, 0.2), 0.4, "highpass", 3e3, 2200, 0.8, true);
+        hiss(d, t, rnd2(0.1, 0.2), 0.4, "highpass", 3e3, 2200, 0.8, true);
         zap(d, t, 0.05, 0.05, 4e3, 1500);
       },
       steam(d, t) {
-        hiss(d, t, rnd(0.3, 0.8), rnd(0.15, 0.25), "highpass", rnd(2500, 3500), rnd(3e3, 5e3), 0.7, false, rnd(0.03, 0.1));
+        hiss(d, t, rnd2(0.3, 0.8), rnd2(0.15, 0.25), "highpass", rnd2(2500, 3500), rnd2(3e3, 5e3), 0.7, false, rnd2(0.03, 0.1));
       },
       drip(d, t) {
-        const f = rnd(1300, 2400);
-        tone(d, "sine", f, f * rnd(1.4, 1.8), t, 0.05, 0.09, 2e-3);
+        const f = rnd2(1300, 2400);
+        tone(d, "sine", f, f * rnd2(1.4, 1.8), t, 0.05, 0.09, 2e-3);
       },
       sizzle(d, t) {
-        hiss(d, t, rnd(0.2, 0.35), 0.35, "highpass", rnd(2500, 3500), 4500, 0.7, true);
-        tone(d, "sine", rnd(200, 300), 120, t, 0.05, 0.1);
+        hiss(d, t, rnd2(0.2, 0.35), 0.35, "highpass", rnd2(2500, 3500), 4500, 0.7, true);
+        tone(d, "sine", rnd2(200, 300), 120, t, 0.05, 0.1);
       },
       splash(d, t) {
-        hiss(d, t, rnd(0.06, 0.12), 0.25, "bandpass", rnd(1e3, 2500), rnd(600, 1200), 1.2);
+        hiss(d, t, rnd2(0.06, 0.12), 0.25, "bandpass", rnd2(1e3, 2500), rnd2(600, 1200), 1.2);
       },
       whirl(d, t) {
-        hiss(d, t, 1.1, 0.25, "bandpass", rnd(350, 500), rnd(1300, 1700), 3, false, 0.45);
-        hiss(d, t + 0.3, 0.9, 0.15, "bandpass", rnd(1300, 1700), rnd(350, 500), 3, false, 0.3);
+        hiss(d, t, 1.1, 0.25, "bandpass", rnd2(350, 500), rnd2(1300, 1700), 3, false, 0.45);
+        hiss(d, t + 0.3, 0.9, 0.15, "bandpass", rnd2(1300, 1700), rnd2(350, 500), 3, false, 0.3);
       },
       fizzle(d, t) {
         hiss(d, t, 0.05, 0.25, "highpass", 3e3, 2e3, 0.8, true);
-        tone(d, "sine", rnd(700, 900), 300, t, 0.04, 0.08);
+        tone(d, "sine", rnd2(700, 900), 300, t, 0.04, 0.08);
       },
       absorb(d, t) {
-        tone(d, "sine", rnd(500, 700), rnd(1200, 1600), t, 0.08, 0.2);
+        tone(d, "sine", rnd2(500, 700), rnd2(1200, 1600), t, 0.08, 0.2);
         hiss(d, t, 0.1, 0.15, "highpass", 5e3, 8e3, 0.7);
       },
       crit(d, t) {
-        tone(d, "triangle", rnd(1900, 2100), 2700, t, 0.08, 0.2);
+        tone(d, "triangle", rnd2(1900, 2100), 2700, t, 0.08, 0.2);
         tone(d, "square", 4e3, 4200, t, 0.03, 0.06);
       },
       chainhop(d, t) {
@@ -4098,14 +4098,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         hiss(d, t, 0.06, 0.35, "highpass", 2500, 1800, 0.8, true);
       },
       split(d, t) {
-        tone(d, "sine", 1200, rnd(1700, 2e3), t, 0.1, 0.18);
-        tone(d, "sine", 1200, rnd(800, 950), t, 0.1, 0.18);
+        tone(d, "sine", 1200, rnd2(1700, 2e3), t, 0.1, 0.18);
+        tone(d, "sine", 1200, rnd2(800, 950), t, 0.1, 0.18);
       },
       cluster(d, t) {
-        for (let i = 0; i < 4; i++) tone(d, "sine", rnd(250, 450), rnd(80, 120), t + rnd(0, 0.12), 0.06, 0.3, 3e-3);
+        for (let i = 0; i < 4; i++) tone(d, "sine", rnd2(250, 450), rnd2(80, 120), t + rnd2(0, 0.12), 0.06, 0.3, 3e-3);
       },
       refresh(d, t) {
-        tone(lp(d, 1400), "sawtooth", rnd(200, 260), rnd(1e3, 1300), t, 0.3, 0.2, 0.02);
+        tone(lp(d, 1400), "sawtooth", rnd2(200, 260), rnd2(1e3, 1300), t, 0.3, 0.2, 0.02);
         bell(d, 1760, t + 0.28, 0.5, 0.1);
       },
       warp(d, t) {
@@ -4114,21 +4114,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         hiss(d, t, 0.15, 0.15, "bandpass", 1500, 4e3, 3);
       },
       saws(d, t) {
-        for (let i = 0; i < 3; i++) hiss(d, t + i * 0.05, 0.15, 0.3, "bandpass", rnd(5e3, 7e3), 3500, 4);
+        for (let i = 0; i < 3; i++) hiss(d, t + i * 0.05, 0.15, 0.3, "bandpass", rnd2(5e3, 7e3), 3500, 4);
         tone(d, "square", 2200, 1800, t, 0.2, 0.06);
       },
       gspend(d, t) {
         for (let i = 0; i < 3; i++) tone(d, "triangle", 2093 - i * 300, 1800 - i * 300, t + i * 0.05, 0.06, 0.12, 2e-3);
       },
       drain(d, t) {
-        tone(d, "sine", rnd(800, 1e3), 200, t, 0.3, 0.2, 0.01, [14, 40]);
+        tone(d, "sine", rnd2(800, 1e3), 200, t, 0.3, 0.2, 0.01, [14, 40]);
       },
       healtick(d, t) {
-        tone(d, "sine", 880 * rnd(0.98, 1.02), 880, t, 0.15, 0.08, 0.01);
+        tone(d, "sine", 880 * rnd2(0.98, 1.02), 880, t, 0.15, 0.08, 0.01);
         tone(d, "sine", 1320, 1320, t + 0.05, 0.15, 0.05, 0.01);
       },
       ghost(d, t) {
-        tone(d, "sine", rnd(1300, 1500), rnd(650, 750), t, 0.14, 0.12, 0.01, [20, 30]);
+        tone(d, "sine", rnd2(1300, 1500), rnd2(650, 750), t, 0.14, 0.12, 0.01, [20, 30]);
         hiss(d, t, 0.1, 0.08, "bandpass", 2e3, 1200, 3, false, 0.02);
       },
       shieldUp(d, t) {
@@ -4136,11 +4136,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         hiss(d, t, 0.25, 0.07, "highpass", 6e3, 9e3, 0.7, false, 0.1);
       },
       whoosh(d, t) {
-        hiss(d, t, rnd(0.3, 0.5), rnd(0.35, 0.5), "bandpass", rnd(280, 450), rnd(1300, 2200), 0.7, false, rnd(0.03, 0.08));
-        hiss(d, t + rnd(0.03, 0.08), rnd(0.2, 0.35), 0.25, "highpass", rnd(2200, 3e3), 3600, 0.7, true);
+        hiss(d, t, rnd2(0.3, 0.5), rnd2(0.35, 0.5), "bandpass", rnd2(280, 450), rnd2(1300, 2200), 0.7, false, rnd2(0.03, 0.08));
+        hiss(d, t + rnd2(0.03, 0.08), rnd2(0.2, 0.35), 0.25, "highpass", rnd2(2200, 3e3), 3600, 0.7, true);
       },
       coinland(d, t) {
-        tone(d, "sine", rnd(2600, 3600), rnd(2600, 3600), t, 0.04, 0.08, 2e-3);
+        tone(d, "sine", rnd2(2600, 3600), rnd2(2600, 3600), t, 0.04, 0.08, 2e-3);
       }
     };
     function fx(name, x, y, a) {
@@ -4330,36 +4330,36 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const t = ac.currentTime;
       switch (kind) {
         case "drip": {
-          const f = rnd(1300, 2200);
+          const f = rnd2(1300, 2200);
           tone(d, "sine", f, f * 1.6, t, 0.05, 0.15, 2e-3);
           tone(d, "sine", f, f * 1.6, t + 0.2, 0.05, 0.035, 2e-3);
           break;
         }
         case "critter":
-          for (let i = 0; i < 3; i++) tone(d, "sine", rnd(3e3, 4200), rnd(3e3, 4200), t + i * 0.07, 0.03, 0.08, 3e-3);
+          for (let i = 0; i < 3; i++) tone(d, "sine", rnd2(3e3, 4200), rnd2(3e3, 4200), t + i * 0.07, 0.03, 0.08, 3e-3);
           break;
         case "wind":
-          hiss(d, t, 2.2, 0.3, "bandpass", rnd(300, 500), rnd(700, 1e3), 1.5, false, 0.8);
+          hiss(d, t, 2.2, 0.3, "bandpass", rnd2(300, 500), rnd2(700, 1e3), 1.5, false, 0.8);
           break;
         case "trickle":
-          for (let i = 0; i < 9; i++) tone(d, "triangle", rnd(1500, 3200), rnd(1200, 2600), t + rnd(0, 0.8), 0.025, 0.07, 2e-3);
+          for (let i = 0; i < 9; i++) tone(d, "triangle", rnd2(1500, 3200), rnd2(1200, 2600), t + rnd2(0, 0.8), 0.025, 0.07, 2e-3);
           break;
         case "rumble":
           hiss(d, t, 2, 0.6, "lowpass", 180, 90, 0.7, false, 0.5);
           tone(d, "sine", 38, 32, t, 1.8, 0.25, 0.5);
           break;
         case "creak":
-          tone(lp(d, 900, 6), "sawtooth", rnd(80, 110), rnd(60, 80), t, 0.9, 0.22, 0.15, [5, 6]);
+          tone(lp(d, 900, 6), "sawtooth", rnd2(80, 110), rnd2(60, 80), t, 0.9, 0.22, 0.15, [5, 6]);
           break;
         case "chime":
-          bell(d, rnd(1800, 3e3), t, 1.4, 0.12);
+          bell(d, rnd2(1800, 3e3), t, 1.4, 0.12);
           break;
         case "crack":
           hiss(d, t, 0.08, 0.35, "highpass", 3e3, 2e3, 0.8, true);
           tone(d, "sine", 2800, 900, t, 0.12, 0.1);
           break;
         case "crackle":
-          hiss(d, t, rnd(0.3, 0.7), 0.35, "bandpass", 2600, 2e3, 1, true);
+          hiss(d, t, rnd2(0.3, 0.7), 0.35, "bandpass", 2600, 2e3, 1, true);
           break;
         case "hiss":
           hiss(d, t, 1, 0.13, "highpass", 3e3, 4500, 0.7, false, 0.35);
@@ -4381,7 +4381,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           hiss(d, t, 0.05, 0.3, "bandpass", 3e3, 3e3, 4);
           break;
         case "rattle":
-          for (let i = 0; i < 6; i++) hiss(d, t + i * rnd(0.03, 0.05), 0.012, 0.25, "bandpass", 2500, 2500, 6);
+          for (let i = 0; i < 6; i++) hiss(d, t + i * rnd2(0.03, 0.05), 0.012, 0.25, "bandpass", 2500, 2500, 6);
           break;
         case "whisper":
           hiss(d, t, 1.4, 0.12, "bandpass", 1200, 2400, 6, false, 0.5);
@@ -4392,7 +4392,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     function ambTick(dt) {
       if (!amb || !live()) return;
       for (const k in amb.A.ev) if (Math.random() < amb.A.ev[k] * dt) {
-        const a = Math.random() * Math.PI * 2, r = rnd(80, 320);
+        const a = Math.random() * Math.PI * 2, r = rnd2(80, 320);
         envSound(k, ear.x + Math.cos(a) * r, ear.y + Math.sin(a) * r * 0.6);
       }
     }
@@ -5578,21 +5578,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var VENT_H = 64;
 
   // src/creatures/common.js
-  function roamStep(R, e, dt, rnd, pre, ok) {
+  function roamStep(R, e, dt, rnd2, pre, ok) {
     if (R.rx === void 0) {
       R.rx = e.hx;
       R.ry = e.hy;
-      R.ra = rnd() * 6.28;
+      R.ra = rnd2() * 6.28;
     }
-    R.ra += (rnd() - 0.5) * 3 * dt;
+    R.ra += (rnd2() - 0.5) * 3 * dt;
     if (!R.roamR) {
-      R.roamR = kr(pre + "RoamR", rnd);
-      R.roamSpd = kr(pre + "RoamSpd", rnd);
+      R.roamR = kr(pre + "RoamR", rnd2);
+      R.roamSpd = kr(pre + "RoamSpd", rnd2);
     }
     if (Math.hypot(R.rx - e.hx, R.ry - e.hy) > R.roamR) {
       R.ra = Math.atan2(e.hy - R.ry, e.hx - R.rx);
-      R.roamR = kr(pre + "RoamR", rnd);
-      R.roamSpd = kr(pre + "RoamSpd", rnd);
+      R.roamR = kr(pre + "RoamR", rnd2);
+      R.roamSpd = kr(pre + "RoamSpd", rnd2);
     }
     const nx = R.rx + Math.cos(R.ra) * R.roamSpd * dt, ny = R.ry + Math.sin(R.ra) * R.roamSpd * dt;
     if (ok && !ok(nx, ny) && ok(R.rx, R.ry)) {
@@ -5848,26 +5848,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { w, h: h3, rw: w * (0.96 - 0.24 * t), top: -h3 * 0.62, rim: h3 * 0.38 };
   }
   function jellyStep(e, env, dt) {
-    const { solidCell: solidCell2, rnd } = env;
+    const { solidCell: solidCell2, rnd: rnd2 } = env;
     let S = e.je;
     if (!S) {
       S = e.je = {
-        hd: -Math.PI / 2 + (rnd() - 0.5) * 0.6,
+        hd: -Math.PI / 2 + (rnd2() - 0.5) * 0.6,
         vx: 0,
         vy: 0,
         push: 0,
         pushA: 0,
-        rest: rnd() * 1.5,
+        rest: rnd2() * 1.5,
         shape: 0,
-        vref: Math.max(1, kr("jeRoamPush", rnd)),
-        t: rnd() * 10,
+        vref: Math.max(1, kr("jeRoamPush", rnd2)),
+        t: rnd2() * 10,
         tent: [],
-        u: { thin: rnd(), sq: rnd(), len: rnd(), wave: rnd(), sag: rnd(), glow: rnd(), glowR: rnd(), flare: rnd(), col: rnd(), plant: rnd() }
+        u: { thin: rnd2(), sq: rnd2(), len: rnd2(), wave: rnd2(), sag: rnd2(), glow: rnd2(), glowR: rnd2(), flare: rnd2(), col: rnd2(), plant: rnd2() }
       };
       feel(false);
-      const nt = Math.round(kr("jeTents", rnd));
+      const nt = Math.round(kr("jeTents", rnd2));
       for (let i = 0; i < nt; i++) {
-        const T = [], nv = Math.max(2, Math.round(kr("jeVerts", rnd)));
+        const T = [], nv = Math.max(2, Math.round(kr("jeVerts", rnd2)));
         for (let j = 0; j < nv; j++) T.push({ x: NaN, y: NaN });
         S.tent.push(T);
       }
@@ -5875,10 +5875,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const mul = env.speedMul || 1;
     let hunt = !!(env.hunting && env.goal);
     S.t += dt;
-    roamStep(S, e, dt, rnd, "je", env.stay);
+    roamStep(S, e, dt, rnd2, "je", env.stay);
     const lost = !!(env.stay && !env.stay(e.x, e.y));
     if (lost) hunt = false;
-    if (hunt && !S.range) S.range = kr("jeRange", rnd);
+    if (hunt && !S.range) S.range = kr("jeRange", rnd2);
     if (!hunt) S.range = 0;
     const goal = hunt ? env.goal : lost ? { x: e.hx, y: e.hy } : { x: S.rx, y: S.ry };
     const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
@@ -5895,18 +5895,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S.vy += Math.sin(S.hd) * a;
       S.push -= dt;
     } else if ((S.rest -= dt) <= 0) {
-      const v = (hunt ? gd > range : gd > 10) && off < S.tol ? kr(hunt ? "jeHuntPush" : "jeRoamPush", rnd) : 0;
+      const v = (hunt ? gd > range : gd > 10) && off < S.tol ? kr(hunt ? "jeHuntPush" : "jeRoamPush", rnd2) : 0;
       const dg = Math.max(0.1, S.drag), glide = Math.min(gd, 160, Math.max(20, v / dg));
       const stay = env.stay, out0 = stay && !lost && !stay(e.x + Math.cos(S.hd) * glide + S.vx / dg, e.y + Math.sin(S.hd) * glide + S.vy / dg);
       if (v > 0 && !out0) {
-        const pt = kr("jePushT", rnd);
+        const pt = kr("jePushT", rnd2);
         S.push = pt;
         S.pushA = v / Math.max(pt, 1e-3);
         S.vref = Math.max(v, 1);
-        S.rest = kr(hunt ? "jeHuntRest" : "jeRoamRest", rnd);
+        S.rest = kr(hunt ? "jeHuntRest" : "jeRoamRest", rnd2);
         feel(hunt);
         out = "pulse";
-      } else S.rest = 0.05 + rnd() * 0.1;
+      } else S.rest = 0.05 + rnd2() * 0.1;
     }
     const k = Math.exp(-S.drag * dt);
     S.vx *= k;
@@ -5938,13 +5938,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return out;
     function feel(h3) {
-      S.turn = kr("jeTurn", rnd);
-      S.tol = kr("jePushTol", rnd);
-      S.drag = kr("jeDrag", rnd);
-      S.sink = kr("jeSink", rnd);
-      S.bounce = kr("jeBounce", rnd);
-      S.aimTol = kr("jeAimTol", rnd);
-      S.range = h3 ? kr("jeRange", rnd) : 0;
+      S.turn = kr("jeTurn", rnd2);
+      S.tol = kr("jePushTol", rnd2);
+      S.drag = kr("jeDrag", rnd2);
+      S.sink = kr("jeSink", rnd2);
+      S.bounce = kr("jeBounce", rnd2);
+      S.aimTol = kr("jeAimTol", rnd2);
+      S.range = h3 ? kr("jeRange", rnd2) : 0;
     }
   }
   function segHitsBox(ax, ay, bx, by, x0, y0, x1, y1) {
@@ -6122,9 +6122,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const n = surfNormal(x, y, RAT.hold + 5, solidCell2);
     return n && n.py <= RAT.ceil || !!(onWeb && onWeb(x, y));
   }
-  function ratJump(e, S, goal, env, rnd) {
+  function ratJump(e, S, goal, env, rnd2) {
     const solidCell2 = env.solidCell, gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
-    const v = kr("raJump", rnd), cap = v * 1.4, x0 = e.x + S.nx * 1.5, y0 = e.y + S.ny * 1.5;
+    const v = kr("raJump", rnd2), cap = v * 1.4, x0 = e.x + S.nx * 1.5, y0 = e.y + S.ny * 1.5;
     for (const T of [Math.max(0.18, Math.min(0.6, gd / v)), 0.4, 0.55, 0.7]) {
       let vx = gx / T, vy = gy / T - 0.5 * RAT.fall * T;
       const sp = Math.hypot(vx, vy);
@@ -6190,10 +6190,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return l;
   };
   function ratStep(e, env, dt) {
-    const { solidCell: solidCell2, rnd } = env;
-    const S = e.ra || (e.ra = { mode: "air", vx: 0, vy: 0, nx: 0, ny: -1, on: 0, rest: rnd() * 0.3, side: 1, face: 1, s: 0, dir: 1, wait: 0 });
+    const { solidCell: solidCell2, rnd: rnd2 } = env;
+    const S = e.ra || (e.ra = { mode: "air", vx: 0, vy: 0, nx: 0, ny: -1, on: 0, rest: rnd2() * 0.3, side: 1, face: 1, s: 0, dir: 1, wait: 0 });
     const goal = env.goal;
-    const P = env.path, speed = (env.speed || kr("raSpeed", rnd)) * (env.speedMul || 1);
+    const P = env.path, speed = (env.speed || kr("raSpeed", rnd2)) * (env.speedMul || 1);
     if (S.noT > 0) S.noT -= dt;
     if (S.mode === "tunnel") {
       if (!P) {
@@ -6210,7 +6210,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (S.s <= 0) {
         S.s = 0;
         S.dir = 1;
-        S.wait = kr("raNestRest", rnd);
+        S.wait = kr("raNestRest", rnd2);
         e.x = P[0].x;
         e.y = P[0].y;
         return "home";
@@ -6221,7 +6221,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         e.y = m.y;
         S.mode = "surf";
         S.on = 0;
-        S.rest = 0.05 + rnd() * 0.2;
+        S.rest = 0.05 + rnd2() * 0.2;
         if (!surfSeat(e, S, solidCell2, RAT.hold, RAT.hold, RAT.feel)) {
           S.mode = "air";
           S.vx = S.vy = 0;
@@ -6264,7 +6264,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (env.air && gd > RAT.hold + 2) {
         const f = Math.min(gd, 6) / gd;
         if (!ratFooting(e.x + gx * f, e.y + gy * f, solidCell2, env.onWeb)) {
-          const j = ratJump(e, S, goal, env, rnd);
+          const j = ratJump(e, S, goal, env, rnd2);
           if (j) return j;
         }
       }
@@ -6295,7 +6295,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (S.blockT > 0.3) {
           S.blockT = 0;
           S.mode = "air";
-          S.vx = (rnd() - 0.5) * 120;
+          S.vx = (rnd2() - 0.5) * 120;
           S.vy = -160;
           return null;
         }
@@ -6364,14 +6364,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (S.on <= 0) {
       if ((S.rest -= dt) > 0) return null;
-      S.on = kr(env.hunting ? "raHuntOn" : "raRoamOn", rnd);
+      S.on = kr(env.hunting ? "raHuntOn" : "raRoamOn", rnd2);
       S.spd = speed;
       S.arrive = env.arrive != null ? env.arrive : 3;
-      S.dot = kr("raDot", rnd);
+      S.dot = kr("raDot", rnd2);
       const j = decide();
       if (j) return j;
       if (S.on <= 0) {
-        S.rest = env.hunting ? 0.03 : 0.1 + rnd() * 0.2;
+        S.rest = env.hunting ? 0.03 : 0.1 + rnd2() * 0.2;
         return null;
       }
     }
@@ -6415,7 +6415,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (S.on <= 0) break;
       } else if (!high) S.high = false;
     }
-    if (S.on <= 0 && S.rest <= 0) S.rest = kr(env.hunting ? "raHuntOff" : "raRoamOff", rnd);
+    if (S.on <= 0 && S.rest <= 0) S.rest = kr(env.hunting ? "raHuntOff" : "raRoamOff", rnd2);
     return null;
     function decide() {
       if (!goal) {
@@ -6429,8 +6429,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       const dx = gx / gd, dy = gy / gd, t = -S.ny * dx + S.nx * dy;
       const barred = S.noT > 0 && (t > 0 ? 1 : -1) === S.noSide;
-      if ((barred || env.jump !== false && dx * S.nx + dy * S.ny >= S.dot) && gd < kr("raJumpR", rnd)) {
-        const j = ratJump(e, S, goal, env, rnd);
+      if ((barred || env.jump !== false && dx * S.nx + dy * S.ny >= S.dot) && gd < kr("raJumpR", rnd2)) {
+        const j = ratJump(e, S, goal, env, rnd2);
         if (j) return j;
       }
       if (barred) {
@@ -6638,14 +6638,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return null;
   }
   function spiderStep(e, env, dt) {
-    const { solidCell: solidCell2, webs, rnd } = env;
+    const { solidCell: solidCell2, webs, rnd: rnd2 } = env;
     const S = e.sp || (e.sp = {
       mode: "fall",
       vy: 0,
       nx: 0,
       ny: -1,
       on: 0,
-      rest: rnd() * 0.5,
+      rest: rnd2() * 0.5,
       side: 1,
       line: null,
       u: 0,
@@ -6653,11 +6653,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       shot: null,
       rx: e.hx,
       ry: e.hy,
-      ra: rnd() * 6.28,
+      ra: rnd2() * 6.28,
       high: false
     });
     S.webT = (S.webT || 0) - dt;
-    roamStep(S, e, dt, rnd, "sp");
+    roamStep(S, e, dt, rnd2, "sp");
     const goal = env.hunting ? env.goal : { x: S.rx, y: S.ry };
     let out = null;
     if (S.mode === "fall") {
@@ -6704,7 +6704,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       };
       webs.push(L);
       const mine = webs.filter((w) => w.owner === e);
-      if (mine.length > Math.round(spr("spMaxLines", rnd))) {
+      if (mine.length > Math.round(spr("spMaxLines", rnd2))) {
         const old = mine.find((w) => w !== S.line);
         if (old) webs.splice(webs.indexOf(old), 1);
       }
@@ -6727,19 +6727,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (S.on <= 0) {
       if ((S.rest -= dt) > 0) return null;
-      S.on = spr(env.hunting ? "spHuntOn" : "spRoamOn", rnd);
-      S.spd = env.speed || spr("spSpeed", rnd);
-      S.arrive = env.hunting ? spr("spArrive", rnd) : 3;
-      S.dot = spr("spDot", rnd);
+      S.on = spr(env.hunting ? "spHuntOn" : "spRoamOn", rnd2);
+      S.spd = env.speed || spr("spSpeed", rnd2);
+      S.arrive = env.hunting ? spr("spArrive", rnd2) : 3;
+      S.dot = spr("spDot", rnd2);
       decide();
       if (S.mode === "shoot") return null;
       if (S.on <= 0) {
-        S.rest = 0.1 + rnd() * 0.2;
+        S.rest = 0.1 + rnd2() * 0.2;
         return null;
       }
     }
     if (S.mode === "shoot") return null;
-    const speed = (S.spd || spr("spSpeed", rnd)) * (env.speedMul || 1);
+    const speed = (S.spd || spr("spSpeed", rnd2)) * (env.speedMul || 1);
     const dist = speed * Math.min(dt, S.on);
     S.on -= dt;
     const n = Math.max(1, Math.ceil(dist / SPIDER.step));
@@ -6795,7 +6795,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         e.y = L.ay + (L.by - L.ay) * S.u;
       }
     }
-    if (S.on <= 0 && S.rest <= 0) S.rest = spr(env.hunting ? "spHuntOff" : "spRoamOff", rnd);
+    if (S.on <= 0 && S.rest <= 0) S.rest = spr(env.hunting ? "spHuntOff" : "spRoamOff", rnd2);
     return out;
     function decide() {
       const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
@@ -6805,7 +6805,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       const dx = gx / gd, dy = gy / gd;
       const tryLine = () => {
-        let best = null, bd = spr("spGrab", rnd);
+        let best = null, bd = spr("spGrab", rnd2);
         for (const L of webs) {
           if (L === S.line) continue;
           const q = segNear(L, e.x, e.y);
@@ -6828,7 +6828,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       };
       const tryShoot = (from) => {
         if (S.webT > 0 || !env.hunting && gd < 40) return false;
-        const a = spiderAim(e.x, e.y, dx, dy, env.reach || spr("spWeb", rnd), solidCell2);
+        const a = spiderAim(e.x, e.y, dx, dy, env.reach || spr("spWeb", rnd2), solidCell2);
         if (!a) return false;
         let ax0 = e.x, ay0 = e.y, ain = null;
         if (from === "surf") {
@@ -6837,8 +6837,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ay0 = e.y - S.ny * d;
           ain = { x: e.x - S.nx * (d + 1.2), y: e.y - S.ny * (d + 1.2) };
         }
-        S.webT = spr(env.hunting ? "spHuntWeb" : "spRoamWeb", rnd);
-        S.shot = { spd: spr("spLineSpd", rnd), x: e.x, y: e.y, dx: a.dx, dy: a.dy, len: a.len, t: 0, from, ax0, ay0, ain };
+        S.webT = spr(env.hunting ? "spHuntWeb" : "spRoamWeb", rnd2);
+        S.shot = { spd: spr("spLineSpd", rnd2), x: e.x, y: e.y, dx: a.dx, dy: a.dy, len: a.len, t: 0, from, ax0, ay0, ain };
         S.mode = "shoot";
         return true;
       };
@@ -7250,9 +7250,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ["jaatio", "chain", "snipu", "tuli", "lohkare", "skull"],
     ["chain", "snipu", "lohkare", "skull", "jaatio", "tappura"]
   ];
-  function rosterFor(floor, rnd) {
+  function rosterFor(floor, rnd2) {
     if (floor >= 1 && floor <= ROSTERS.length) return ROSTERS[floor - 1].slice();
-    const r = rnd || Math.random, pool = CREATURE_IDS.filter((id) => !CREATURES[id].noRoster), out = [];
+    const r = rnd2 || Math.random, pool = CREATURE_IDS.filter((id) => !CREATURES[id].noRoster), out = [];
     const n = 2 + Math.floor(r() * 5);
     while (out.length < n && pool.length) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
     return out;
@@ -7708,10 +7708,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const a = Math.floor(t), f = t - a;
     return noitaP(id, a) * (1 - f) + noitaP(id, a + 1) * f;
   }
-  function rollMod(rnd, floor, skip) {
+  function rollMod(rnd2, floor, skip) {
     let total = 0;
     for (const id of ALL_IDS) if (!skip || !skip[id]) total += modWeight(id, floor);
-    let r = rnd() * total;
+    let r = rnd2() * total;
     for (const id of ALL_IDS) {
       if (skip && skip[id]) continue;
       r -= modWeight(id, floor);
@@ -7801,42 +7801,42 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "#ffd23c"
   ];
   var gunLvTier = (lvl) => Math.min(1, Math.max(0, (lvl - 1) / (GUN_LV_MAX - 1)));
-  function gunStat(rnd, k, t) {
+  function gunStat(rnd2, k, t) {
     const [w, b] = GUN_RANGE[k];
-    const f = rnd() * (1 - t) + rnd() * 0.1 * t;
+    const f = rnd2() * (1 - t) + rnd2() * 0.1 * t;
     return b + (w - b) * f;
   }
-  function gunLevel(floor, rnd) {
+  function gunLevel(floor, rnd2) {
     const base = Math.min(GUN_LV_MAX, Math.max(1, floor));
-    if (base < GUN_LV_MAX && rnd() < RARE_GUN) return base + 1 + Math.floor(rnd() * (GUN_LV_MAX - base));
+    if (base < GUN_LV_MAX && rnd2() < RARE_GUN) return base + 1 + Math.floor(rnd2() * (GUN_LV_MAX - base));
     return base;
   }
-  function caveGun(lvl, rnd) {
-    return makeGun(rnd, Math.min(GUN_LV_MAX, Math.max(1, Math.floor(lvl))));
+  function caveGun(lvl, rnd2) {
+    return makeGun(rnd2, Math.min(GUN_LV_MAX, Math.max(1, Math.floor(lvl))));
   }
-  function makeGun(rnd, lvl) {
+  function makeGun(rnd2, lvl) {
     const t = gunLvTier(lvl);
-    const cap = Math.max(2, Math.min(25, Math.round(gunStat(rnd, "cap", t))));
+    const cap = Math.max(2, Math.min(25, Math.round(gunStat(rnd2, "cap", t))));
     const g = {
-      name: GUN_A[Math.floor(rnd() * GUN_A.length)] + " " + GUN_B[Math.floor(rnd() * GUN_B.length)],
+      name: GUN_A[Math.floor(rnd2() * GUN_A.length)] + " " + GUN_B[Math.floor(rnd2() * GUN_B.length)],
       lvl,
       cap,
-      castDelay: gunStat(rnd, "castDelay", t),
-      recharge: gunStat(rnd, "recharge", t),
-      manaMax: Math.round(gunStat(rnd, "manaMax", t)),
-      manaRegen: Math.round(gunStat(rnd, "manaRegen", t)),
-      spread: gunStat(rnd, "spread", t),
-      speedMul: gunStat(rnd, "speedMul", t),
-      multi: rnd() < 0.1 + t * 0.4 ? 2 : 1,
-      shuffle: rnd() < 0.5 * (1 - t),
+      castDelay: gunStat(rnd2, "castDelay", t),
+      recharge: gunStat(rnd2, "recharge", t),
+      manaMax: Math.round(gunStat(rnd2, "manaMax", t)),
+      manaRegen: Math.round(gunStat(rnd2, "manaRegen", t)),
+      spread: gunStat(rnd2, "spread", t),
+      speedMul: gunStat(rnd2, "speedMul", t),
+      multi: rnd2() < 0.1 + t * 0.4 ? 2 : 1,
+      shuffle: rnd2() < 0.5 * (1 - t),
       slots: new Array(cap).fill(null),
-      hue: Math.floor(rnd() * 360)
+      hue: Math.floor(rnd2() * 360)
     };
-    const used = 1 + Math.floor(rnd() * Math.min(cap, 2 + t * 3));
-    const spots = g.slots.map((_, i) => i).sort(() => rnd() - 0.5).slice(0, used);
+    const used = 1 + Math.floor(rnd2() * Math.min(cap, 2 + t * 3));
+    const spots = g.slots.map((_, i) => i).sort(() => rnd2() - 0.5).slice(0, used);
     const asFloor = 1 + t * 5;
     spots.forEach((slot, n) => {
-      g.slots[slot] = n === 0 ? SEED_SHOTS[Math.floor(rnd() * SEED_SHOTS.length)] : rollMod(rnd, asFloor);
+      g.slots[slot] = n === 0 ? SEED_SHOTS[Math.floor(rnd2() * SEED_SHOTS.length)] : rollMod(rnd2, asFloor);
     });
     if (!g.slots.some((id) => id && MODS[id].kind === "shot")) g.slots[spots[0]] = "bolt";
     g.mana = g.manaMax;
@@ -8410,10 +8410,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function fireNew(fuel) {
     return { fuel, t: new Uint16Array(fuel.length), list: [], acc: 0 };
   }
-  function fireLight(F, i, rnd) {
+  function fireLight(F, i, rnd2) {
     const kind = F.fuel[i];
     if (!kind || F.t[i] || F.list.length >= FIRE_MAX) return false;
-    F.t[i] = Math.max(1, Math.round(kr(FIRE_KNOB[kind], rnd) / FIRE_TICK));
+    F.t[i] = Math.max(1, Math.round(kr(FIRE_KNOB[kind], rnd2) / FIRE_TICK));
     F.list.push(i);
     return true;
   }
@@ -8431,16 +8431,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return n;
   }
-  function fireArea(F, x, y, r, chance, rnd) {
-    rnd = rnd || Math.random;
+  function fireArea(F, x, y, r, chance, rnd2) {
+    rnd2 = rnd2 || Math.random;
     const cx0 = x / CELL, cy0 = y / CELL, rc = r / CELL;
     const x0 = Math.max(0, Math.floor(cx0 - rc)), x1 = Math.min(CW - 1, Math.ceil(cx0 + rc));
     const y0 = Math.max(0, Math.floor(cy0 - rc)), y1 = Math.min(CH - 1, Math.ceil(cy0 + rc));
     let n = 0;
     for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
       const i = cy * CW + cx;
-      if (!F.fuel[i] || F.t[i] || Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc || rnd() >= chance) continue;
-      if (fireLight(F, i, rnd)) n++;
+      if (!F.fuel[i] || F.t[i] || Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc || rnd2() >= chance) continue;
+      if (fireLight(F, i, rnd2)) n++;
     }
     return n;
   }
@@ -8451,21 +8451,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (F.t[cy * CW + cx]) return true;
     return false;
   }
-  function fireStep(F, dt, out, rnd) {
-    rnd = rnd || Math.random;
+  function fireStep(F, dt, out, rnd2) {
+    rnd2 = rnd2 || Math.random;
     F.acc = Math.min(F.acc + dt, FIRE_TICK * 4);
     let ticks = 0;
     while (F.acc >= FIRE_TICK) {
       F.acc -= FIRE_TICK;
       ticks++;
-      const L = F.list, n0 = L.length, sp = kr("fireSpread", rnd), N = F.fuel.length;
+      const L = F.list, n0 = L.length, sp = kr("fireSpread", rnd2), N = F.fuel.length;
       let w = 0;
       for (let k = 0; k < n0; k++) {
         const i = L[k];
         if (!F.t[i]) continue;
         for (const [o, w2] of FIRE_NB) {
           const j = i + o;
-          if (j >= 0 && j < N && F.fuel[j] && !F.t[j] && rnd() < sp * w2 * FIRE_CATCH[F.fuel[j]]) fireLight(F, j, rnd);
+          if (j >= 0 && j < N && F.fuel[j] && !F.t[j] && rnd2() < sp * w2 * FIRE_CATCH[F.fuel[j]]) fireLight(F, j, rnd2);
         }
         if (--F.t[i] === 0) {
           const kind = F.fuel[i];
@@ -8545,34 +8545,34 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return true;
   }
-  function strataCave(mat, rnd, N, shopExit) {
+  function strataCave(mat, rnd2, N, shopExit) {
     const { vn, fbm } = N, ok = N.ok || (() => true);
-    const K = (k) => kr(k, rnd);
+    const K = (k) => kr(k, rnd2);
     const cnt = (k) => {
       const v = Math.max(0, K(k));
-      return Math.floor(v) + (rnd() < v % 1 ? 1 : 0);
+      return Math.floor(v) + (rnd2() < v % 1 ? 1 : 0);
     };
     const X0 = 4, X1 = CW - 5;
     const sm = (t) => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
     const yBase = SHOP_TOP - SHOP_ROOF - 24;
     const hFloor = Math.max(12, Math.min(DEV.lvSqueezeLo, DEV.lvSqueezeHi, DEV.lvHeadLo, DEV.lvHeadHi));
     const line = (base, amp, sy) => {
-      const a = new Float32Array(CW), ph = rnd() * 50, tilt = (rnd() - 0.5) * 2 * amp;
+      const a = new Float32Array(CW), ph = rnd2() * 50, tilt = (rnd2() - 0.5) * 2 * amp;
       for (let x = 0; x < CW; x++)
         a[x] = base + amp * (2 * vn(x / 95 + ph, sy) - 1) + 0.45 * amp * (2 * vn(x / 28 + ph * 3, sy + 40) - 1) + tilt * (x / CW - 0.5) + 1.2 * amp * (2 * vn(x / 230 + 700, base / 240 + 700) - 1);
       return a;
     };
     const vaultAt = [];
     for (let k = 0; k < 40 && vaultAt.length < 2; k++) {
-      const y = 160 + rnd() * (yBase - 420);
+      const y = 160 + rnd2() * (yBase - 420);
       if (vaultAt.every((v) => Math.abs(v.y - y) > 300)) vaultAt.push({ y, done: false });
     }
     const layers = [{ top: line(yBase, 2, 3.7), bot: null, holes: [] }];
     const cors = [], vaults = [];
     for (let i = 0; ; i++) {
       const floorL = layers[i].top, H = K("lvHead"), sq = [];
-      for (let n = cnt("lvSqz"); n-- > 0; ) sq.push({ x: X0 + 20 + rnd() * (X1 - X0 - 40), w: 10 + rnd() * 22, h: K("lvSqueeze") });
-      const ph = rnd() * 80, ceil = new Float32Array(CW);
+      for (let n = cnt("lvSqz"); n-- > 0; ) sq.push({ x: X0 + 20 + rnd2() * (X1 - X0 - 40), w: 10 + rnd2() * 22, h: K("lvSqueeze") });
+      const ph = rnd2() * 80, ceil = new Float32Array(CW);
       let cMin = 1e9, cSum = 0;
       for (let x = 0; x < CW; x++) {
         let h3 = H * (1 + 0.3 * (2 * vn(x / 60 + ph, i * 2.3) - 1));
@@ -8601,9 +8601,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const want = vaultAt.find((v) => !v.done && cSum / (X1 - X0 + 1) - T < v.y);
       if (want && i > 0) {
         want.done = true;
-        let vx = Math.round(60 + rnd() * (CW - 120));
+        let vx = Math.round(60 + rnd2() * (CW - 120));
         for (let t = 0; t < 30 && !(ok(vx - 50, ceil[vx] - 19) && ok(vx + 50, ceil[vx] - 19) && ok(vx, ceil[vx] + 8)); t++)
-          vx = Math.round(60 + rnd() * (CW - 120));
+          vx = Math.round(60 + rnd2() * (CW - 120));
         let cm = 1e9;
         for (let x = vx - 34; x <= vx + 34; x++) cm = Math.min(cm, ceil[x]);
         cm = Math.floor(cm);
@@ -8619,7 +8619,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const c of cors) {
       if (c.top) continue;
       for (let n = cnt("lvWalls"), tries = 0; n > 0 && tries < 40; tries++) {
-        const x = X0 + 50 + rnd() * (X1 - X0 - 100), w = 8 + rnd() * 16;
+        const x = X0 + 50 + rnd2() * (X1 - X0 - 100), w = 8 + rnd2() * 16;
         if (c.i === 0 && Math.abs(x - shopExit) < 40) continue;
         if (c.walls.some((q) => Math.abs(q.x - x) < 70)) continue;
         c.walls.push({ x, w, a: x - w / 2 - 2, b: x + w / 2 + 2 });
@@ -8651,7 +8651,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           let ok2 = false;
           for (let t = 0; t < 40 && !ok2; t++) {
             const hw = Math.max(12, Math.min(K("lvHoleW"), s.b - s.a - 10));
-            const a = s.a + 5 + rnd() * Math.max(0, s.b - s.a - 10 - hw), b = a + hw;
+            const a = s.a + 5 + rnd2() * Math.max(0, s.b - s.a - 10 - hw), b = a + hw;
             if (!clash(j, a, b)) {
               layers[j].holes.push({ a, b });
               ok2 = true;
@@ -8666,7 +8666,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         break;
       }
       for (let n = cnt("lvHoles"), t = 0; n > 0 && t < 40; t++) {
-        const hw = K("lvHoleW"), a = X0 + 8 + rnd() * (X1 - X0 - 16 - hw);
+        const hw = K("lvHoleW"), a = X0 + 8 + rnd2() * (X1 - X0 - 16 - hw);
         if (!clash(j, a, a + hw)) {
           layers[j].holes.push({ a, b: a + hw });
           n--;
@@ -8675,12 +8675,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     const works = [];
     for (let n = cnt("lvWorks"), tries = 0; n > 0 && tries < 400; tries++) {
-      const ci = Math.floor(rnd() * cors.length), c = cors[ci];
+      const ci = Math.floor(rnd2() * cors.length), c = cors[ci];
       if (c.top) continue;
-      const ss = segs(c), s = ss[Math.floor(rnd() * ss.length)];
+      const ss = segs(c), s = ss[Math.floor(rnd2() * ss.length)];
       if (s.b - s.a < 60) continue;
       const len = Math.min(K("lvWorkW"), s.b - s.a - 8);
-      const x0 = Math.round(s.a + 4 + rnd() * (s.b - s.a - 8 - len)), x1 = Math.round(x0 + len);
+      const x0 = Math.round(s.a + 4 + rnd2() * (s.b - s.a - 8 - len)), x1 = Math.round(x0 + len);
       if (works.some((w) => w.ci === ci && x0 < w.x1 + 40 && x1 > w.x0 - 40)) continue;
       if (vaults.some((v) => (v.below === ci || v.below === ci - 1) && x0 < v.b + 24 && x1 > v.a - 24)) continue;
       if (tries < 250 && hits(layers[ci].holes, x0, x1, 4)) continue;
@@ -8752,8 +8752,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const caves = [];
     for (let n = cnt("lvCaves"), tries = 0; n > 0 && tries < 80; tries++) {
       const rx = K("lvCaveW"), ry = K("lvCaveH");
-      const cx = X0 + rx * 0.6 + rnd() * Math.max(0, X1 - X0 - rx * 1.2);
-      const cy = 90 + ry * 0.5 + rnd() * Math.max(0, yBase - 160 - ry);
+      const cx = X0 + rx * 0.6 + rnd2() * Math.max(0, X1 - X0 - rx * 1.2);
+      const cy = 90 + ry * 0.5 + rnd2() * Math.max(0, yBase - 160 - ry);
       if (keepOut.some((k) => k.a < cx + rx * 1.2 && k.b > cx - rx * 1.2 && k.t < cy + ry * 1.2 && k.u > cy - ry * 1.2)) continue;
       if (caves.some((q) => Math.hypot((q.cx - cx) / (q.rx + rx), (q.cy - cy) / (q.ry + ry)) < 0.6)) continue;
       caves.push({ cx, cy, rx, ry, k: caves.length });
@@ -8771,16 +8771,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (vn(x / 30 + 300 + q.k * 7, y / 7 + 300) > 0.8 - 0.14 * d) continue;
         mat[i] = 0;
       }
-      for (let m = 5 + Math.floor(rnd() * 8); m-- > 0; ) {
-        const x = Math.round(q.cx + (rnd() * 2 - 1) * q.rx * 0.8), y = Math.round(q.cy);
+      for (let m = 5 + Math.floor(rnd2() * 8); m-- > 0; ) {
+        const x = Math.round(q.cx + (rnd2() * 2 - 1) * q.rx * 0.8), y = Math.round(q.cy);
         if (x < X0 + 4 || x > X1 - 4 || mat[y * CW + x]) continue;
         let yr = y, yf = y;
         while (yr > 4 && !mat[(yr - 1) * CW + x]) yr--;
         while (yf < yBase && !mat[(yf + 1) * CW + x]) yf++;
         const room = yf - yr + 1;
         if (room < 50) continue;
-        const hang = rnd() < 0.6, len = Math.min(room * (hang ? 0.4 : 0.25), (hang ? 10 : 6) + rnd() * (hang ? 30 : 16));
-        const w = 2.5 + rnd() * 4;
+        const hang = rnd2() < 0.6, len = Math.min(room * (hang ? 0.4 : 0.25), (hang ? 10 : 6) + rnd2() * (hang ? 30 : 16));
+        const w = 2.5 + rnd2() * 4;
         for (let k = 0; k < len; k++) {
           const half = w * Math.pow(1 - k / len, 0.8) + (vn(k / 3, x) - 0.5) * 1.5;
           const yy = hang ? yr + k : yf - k;
@@ -8816,7 +8816,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const v of vaults) {
       const c = cors[v.below];
       for (let t = 0; t < 20; t++) {
-        const px = Math.round(Math.max(X0 + 10, Math.min(X1 - 10, v.x + (rnd() < 0.5 ? -1 : 1) * (48 + rnd() * 24))));
+        const px = Math.round(Math.max(X0 + 10, Math.min(X1 - 10, v.x + (rnd2() < 0.5 ? -1 : 1) * (48 + rnd2() * 24))));
         if (hits(c.walls, px, px, 6) || !ok(px, mid(c, px))) continue;
         v.px = px;
         v.py = mid(c, px);
@@ -9513,7 +9513,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/world/nests.js
-  function ratNests(mat, rnd, zone, keep, nb, nw) {
+  function ratNests(mat, rnd2, zone, keep, nb, nw) {
     const inb = (x, y) => x >= 4 && y >= 4 && x < CW - 4 && y < CH - 4;
     const rock = (x, y) => {
       x = Math.round(x);
@@ -9534,10 +9534,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const nests = [];
     const make = (wantBuilt) => {
       for (let a = 0; a < 400; a++) {
-        const x = 8 + Math.floor(rnd() * (CW - 16)), y = 60 + Math.floor(rnd() * (SHOP_TOP - SHOP_ROOF - 110));
+        const x = 8 + Math.floor(rnd2() * (CW - 16)), y = 60 + Math.floor(rnd2() * (SHOP_TOP - SHOP_ROOF - 110));
         if (!open(x, y) || isBuilt(x, y) !== wantBuilt) continue;
         let sx = x, sy = y, found = false;
-        const dir = rnd() < 0.33 ? rnd() < 0.5 ? -1 : 1 : 0;
+        const dir = rnd2() < 0.33 ? rnd2() < 0.5 ? -1 : 1 : 0;
         for (let k = 0; k < 30; k++) {
           const nx2 = dir ? sx + dir : sx, ny2 = dir ? sy : sy + 1;
           if (!inb(nx2, ny2)) break;
@@ -9563,15 +9563,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         let clear = true;
         for (let k = 2; k <= 22 && clear; k += 2) if (!open(sx + nx * k, sy + ny * k)) clear = false;
         if (!clear) continue;
-        const ang = Math.atan2(-ny, -nx) + (rnd() - 0.5) * 1.3, D = 20 + rnd() * 14, rr2 = 5 + Math.floor(rnd() * 3);
+        const ang = Math.atan2(-ny, -nx) + (rnd2() - 0.5) * 1.3, D = 20 + rnd2() * 14, rr2 = 5 + Math.floor(rnd2() * 3);
         const cx = Math.round(sx + Math.cos(ang) * D), cy = Math.round(sy + Math.sin(ang) * D);
         if (cy > SHOP_TOP - SHOP_ROOF - 14 || !allRock(cx, cy, rr2 + 5)) continue;
         if (keep.some((k) => Math.hypot(k.x - cx, k.y - cy) < k.r + rr2 || Math.hypot(k.x - sx, k.y - sy) < k.r)) continue;
         if (nests.some((n) => Math.hypot(n.x - cx, n.y - cy) < 50 || Math.hypot(n.mouth.x - sx, n.mouth.y - sy) < 40)) continue;
-        const M = 4 + rnd() * 1.5;
+        const M = 4 + rnd2() * 1.5;
         const tx = sx + nx * (M - 0.5), ty = sy + ny * (M - 0.5);
         const L = Math.hypot(tx - cx, ty - cy), px = -(ty - cy) / L, py = (tx - cx) / L;
-        const amp = (4 + rnd() * 4) * (rnd() < 0.5 ? -1 : 1), waves = 1 + rnd() * 0.8, steps = Math.ceil(L * 2);
+        const amp = (4 + rnd2() * 4) * (rnd2() < 0.5 ? -1 : 1), waves = 1 + rnd2() * 0.8, steps = Math.ceil(L * 2);
         const path = [];
         let buried = true;
         for (let k = 0; k <= steps; k++) {
@@ -9621,7 +9621,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var ORE_GOLD = 0.25;
   function goldVeins(mat, seed, floor) {
     let rs = (seed * 7919 + 12345) % 2147483647 || 1;
-    const rnd = () => (rs = rs * 16807 % 2147483647) / 2147483647;
+    const rnd2 = () => (rs = rs * 16807 % 2147483647) / 2147483647;
     const ore = new Uint8Array(CW * CH);
     const n = Math.min(18, 7 + floor);
     const maxY = SHOP_TOP - SHOP_ROOF - 6;
@@ -9637,22 +9637,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let v = 0; v < n; v++) {
       let x = 0, y = 0, ok = false;
       for (let tries = 0; tries < 200 && !ok; tries++) {
-        x = 6 + Math.floor(rnd() * (CW - 12));
-        y = 6 + Math.floor(rnd() * (maxY - 12));
+        x = 6 + Math.floor(rnd2() * (CW - 12));
+        y = 6 + Math.floor(rnd2() * (maxY - 12));
         ok = rockAt(x, y) && rockAt(x + 3, y) && rockAt(x - 3, y) && rockAt(x, y + 3) && rockAt(x, y - 3) && nearOpen(x, y, 16);
       }
       if (!ok) continue;
-      let a = rnd() * Math.PI * 2;
-      const len = 18 + Math.floor(rnd() * 40);
+      let a = rnd2() * Math.PI * 2;
+      const len = 18 + Math.floor(rnd2() * 40);
       for (let st = 0; st < len; st++) {
-        const r = rnd() < 0.2 ? 2 : 1;
+        const r = rnd2() < 0.2 ? 2 : 1;
         for (let dy = -r; dy <= r; dy++)
           for (let dx = -r; dx <= r; dx++) {
             if (dx * dx + dy * dy > r * r + 0.5) continue;
             const px = Math.round(x) + dx, py = Math.round(y) + dy;
             if (rockAt(px, py)) ore[py * CW + px] = 1;
           }
-        a += (rnd() - 0.5) * 0.9;
+        a += (rnd2() - 0.5) * 0.9;
         x += Math.cos(a) * 1.2;
         y += Math.sin(a) * 1.2;
         if (!rockAt(Math.round(x), Math.round(y))) break;
@@ -9734,8 +9734,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     const fbm = (x, y) => 0.55 * vn(x, y) + 0.3 * vn(x * 2 + 17, y * 2 + 31) + 0.15 * vn(x * 4 + 53, y * 4 + 7);
     let rs = seed % 2147483646 + 1;
-    const rnd = () => (rs = rs * 16807 % 2147483647) / 2147483647;
-    for (let i = 0; i < 12; i++) rnd();
+    const rnd2 = () => (rs = rs * 16807 % 2147483647) / 2147483647;
+    for (let i = 0; i < 12; i++) rnd2();
     const mat = new Uint8Array(CW * CH);
     const inside = (x, y) => x >= 0 && y >= 0 && x < CW && y < CH;
     const disc = (ex, ey, r, v) => {
@@ -9771,7 +9771,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     let zone = null;
     if (layered) {
-      const zs = kr("lvZoneSize", rnd), share = kr("lvZoneShare", rnd), rag = kr("lvZoneRag", rnd), ph = rnd() * 100;
+      const zs = kr("lvZoneSize", rnd2), share = kr("lvZoneShare", rnd2), rag = kr("lvZoneRag", rnd2), ph = rnd2() * 100;
       const zoneL = lattice(8, (x, y) => fbm(x / zs + 1300 + ph, y / zs + 1300));
       const warpX = lattice(4, (x, y) => vn(x / 14 + 1700, y / 14 + 1700));
       const warpY = lattice(4, (x, y) => vn(x / 14 + 1900, y / 14 + 1900));
@@ -9792,13 +9792,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       y = Math.round(y);
       return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
     };
-    const shopExit = 40 + Math.floor(rnd() * (CW - 80));
+    const shopExit = 40 + Math.floor(rnd2() * (CW - 80));
     const lay = layered ? new Uint8Array(CW * CH) : null;
-    const strata = layered ? strataCave(lay, rnd, { vn, fbm, ok: built }, shopExit) : null;
+    const strata = layered ? strataCave(lay, rnd2, { vn, fbm, ok: built }, shopExit) : null;
     const points = [{ x: shopExit, y: SHOP_TOP - 30 }];
     const hops = 12;
     for (let i = 1; i <= hops; i++) {
-      points.push({ x: 40 + rnd() * (CW - 80), y: CH - 26 - (CH - 60) * i / (hops + 1) + (rnd() - 0.5) * 40 });
+      points.push({ x: 40 + rnd2() * (CW - 80), y: CH - 26 - (CH - 60) * i / (hops + 1) + (rnd2() - 0.5) * 40 });
     }
     points.push({ x: CW / 2, y: 22 });
     const blob = (ex, ey, r) => {
@@ -9814,7 +9814,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const routePath = [];
     const spineBuilt = [];
     const worm = (x, y, tx, ty, r, maxSteps, keep2, spine) => {
-      let ang = tx !== null ? Math.atan2(ty - y, tx - x) : rnd() * Math.PI * 2;
+      let ang = tx !== null ? Math.atan2(ty - y, tx - x) : rnd2() * Math.PI * 2;
       for (let s = 0; s < maxSteps; s++) {
         if (spine && built(x, y)) spineBuilt.push({ x, y, r: Math.min(r, 7) - 1 });
         else {
@@ -9826,7 +9826,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         let diff = want - ang;
         while (diff > Math.PI) diff -= 2 * Math.PI;
         while (diff < -Math.PI) diff += 2 * Math.PI;
-        ang += diff * 0.12 + (rnd() - 0.5) * 0.9;
+        ang += diff * 0.12 + (rnd2() - 0.5) * 0.9;
         x += Math.cos(ang) * 1.5;
         y += Math.sin(ang) * 1.5;
         x = Math.max(6, Math.min(CW - 7, x));
@@ -9834,11 +9834,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     };
     for (let i = 1; i < points.length - 1; i++) {
-      if (rnd() < 0.7) blob(points[i].x, points[i].y, 16 + rnd() * 30);
+      if (rnd2() < 0.7) blob(points[i].x, points[i].y, 16 + rnd2() * 30);
     }
     const side = [];
     for (let i = 0; i < 48; i++) {
-      worm(10 + rnd() * (CW - 20), 20 + rnd() * (CH - 60), null, null, 5 + rnd() * 6, 40 + rnd() * 150, side);
+      worm(10 + rnd2() * (CW - 20), 20 + rnd2() * (CH - 60), null, null, 5 + rnd2() * 6, 40 + rnd2() * 150, side);
     }
     for (const c of side) if (!built(c.x, c.y)) routePath.push(c);
     if (layered) {
@@ -9847,7 +9847,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     for (let i = 0; i < points.length - 1; i++) {
       const a = points[i], b = points[i + 1];
-      const r = rnd() < 0.4 ? 7 + rnd() * 2 : 11 + rnd() * 6;
+      const r = rnd2() < 0.4 ? 7 + rnd2() * 2 : 11 + rnd2() * 6;
       worm(a.x, a.y, b.x, b.y, r, 2e3, routePath, true);
     }
     const works = strata ? strata.works.filter((w) => built(w.x0, w.fy - 4) && built(w.x1, w.fy - 4) && built((w.x0 + w.x1) / 2, w.cy + 2)) : [];
@@ -9889,16 +9889,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     let ledges = 0;
     for (let a = 0; a < 2400 && ledges < 120; a++) {
-      const x = 10 + Math.floor(rnd() * (CW - 20)), y = 20 + Math.floor(rnd() * (SHOP_TOP - 50));
+      const x = 10 + Math.floor(rnd2() * (CW - 20)), y = 20 + Math.floor(rnd2() * (SHOP_TOP - 50));
       if (mat[y * CW + x] || built(x, y)) continue;
-      const dir = rnd() < 0.5 ? -1 : 1;
+      const dir = rnd2() < 0.5 ? -1 : 1;
       let wx = x, dist = 0;
       while (dist < 50 && inside(wx, y) && !mat[y * CW + wx]) {
         wx += dir;
         dist++;
       }
       if (dist >= 50 || dist < 8) continue;
-      const len = Math.min(dist + 4, 14 + Math.floor(rnd() * 26));
+      const len = Math.min(dist + 4, 14 + Math.floor(rnd2() * 26));
       const x0 = dir < 0 ? wx - 3 : wx - len + 4;
       if (emptyRatio(dir < 0 ? wx + 1 : x0, y - 12, len - 4, 12) < 0.9) continue;
       if (built(x0, y) || built(x0 + len, y)) continue;
@@ -9906,12 +9906,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ledges++;
     }
     for (let i = 0; i < 36; i++) {
-      const fw = 30 + Math.floor(rnd() * 40), fh = 20 + Math.floor(rnd() * 20);
-      const fx = 8 + Math.floor(rnd() * (CW - 16 - fw)), fy = 60 + Math.floor(rnd() * (SHOP_TOP - 120));
+      const fw = 30 + Math.floor(rnd2() * 40), fh = 20 + Math.floor(rnd2() * 20);
+      const fx = 8 + Math.floor(rnd2() * (CW - 16 - fw)), fy = 60 + Math.floor(rnd2() * (SHOP_TOP - 120));
       if (built(fx, fy) || built(fx + fw, fy) || built(fx, fy + fh) || built(fx + fw, fy + fh)) continue;
       const rockRatio = 1 - emptyRatio(fx, fy, fw, fh);
       if (rockRatio < 0.25 || rockRatio > 0.85) continue;
-      const gap = Math.floor(rnd() * 4);
+      const gap = Math.floor(rnd2() * 4);
       slab(fx, fy, fw, 4);
       slab(fx, fy + fh - 4, fw, 4);
       slab(fx, fy, 4, fh);
@@ -9922,8 +9922,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     let floats = 0;
     for (let a = 0; a < 1600 && floats < 40; a++) {
-      const len = 18 + Math.floor(rnd() * 22);
-      const x0 = 8 + Math.floor(rnd() * (CW - 16 - len)), y0 = 40 + Math.floor(rnd() * (SHOP_TOP - 80));
+      const len = 18 + Math.floor(rnd2() * 22);
+      const x0 = 8 + Math.floor(rnd2() * (CW - 16 - len)), y0 = 40 + Math.floor(rnd2() * (SHOP_TOP - 80));
       if (built(x0 - 12, y0) || built(x0 + len + 12, y0)) continue;
       if (emptyRatio(x0 - 12, y0 - 18, len + 24, 34) < 0.98) continue;
       slab(x0, y0, len, 4);
@@ -9951,8 +9951,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const makeRoom = (want) => {
       for (let tries = 0; tries < 80; tries++) {
         const v = !layered || want ? vaults.shift() : null;
-        const p0 = v ? { x: v.px, y: v.py } : points[1 + Math.floor(rnd() * (points.length - 2))];
-        const a = rnd() * Math.PI * 2, d2 = 50 + rnd() * 100;
+        const p0 = v ? { x: v.px, y: v.py } : points[1 + Math.floor(rnd2() * (points.length - 2))];
+        const a = rnd2() * Math.PI * 2, d2 = 50 + rnd2() * 100;
         const ex = v ? v.x : Math.round(Math.max(40, Math.min(CW - 40, p0.x + Math.cos(a) * d2)));
         const ey = v ? v.y : Math.round(Math.max(70, Math.min(SHOP_TOP - 70, p0.y + Math.sin(a) * d2)));
         const rx = 20, ry = 12, sh = 3;
@@ -9966,7 +9966,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       return null;
     };
-    const heartBuilt = layered ? rnd() < 0.5 : false;
+    const heartBuilt = layered ? rnd2() < 0.5 : false;
     const perkRoom = makeRoom(!heartBuilt);
     const heartRoom = makeRoom(heartBuilt);
     for (const c of routePath)
@@ -10053,7 +10053,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (perkRoom) {
       const fresh = PERK_IDS.filter((k) => !have.has(k));
       const pool = fresh.length ? fresh : PERK_IDS;
-      perkId = pool[Math.floor(rnd() * pool.length)];
+      perkId = pool[Math.floor(rnd2() * pool.length)];
     }
     const rooms = [];
     if (perkRoom) rooms.push({ kind: "perk", id: perkId, x: perkRoom.x, y: perkRoom.y, taken: false, built: built(perkRoom.x / CELL, perkRoom.y / CELL) });
@@ -10118,7 +10118,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const offer = [], taken = {};
     const items = have.has("holyitem") ? 5 : 4;
     for (let i = 0; i < items; i++) {
-      const id = rollMod(rnd, floor, taken);
+      const id = rollMod(rnd2, floor, taken);
       taken[id] = 1;
       offer.push(id);
     }
@@ -10129,7 +10129,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let i = 0; i < items; i++) {
       const x = WW / 2 + (i - (items - 1) / 2) * PLINTH_GAP;
       if (gunShop) {
-        const gun = makeGun(rnd, Math.min(GUN_LV_MAX, floor));
+        const gun = makeGun(rnd2, Math.min(GUN_LV_MAX, floor));
         stock.push({ kind: "gun", gun, x, y: shelf, price: gunPrice(gun), sold: false });
       } else {
         const id = offer[i];
@@ -10147,16 +10147,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return true;
     };
     const enemies = [];
-    const roster = rosterFor(floor, rnd);
+    const roster = rosterFor(floor, rnd2);
     const wanted = Math.min(136, ENEMY_COUNT + (floor - 1) * 12);
     let waiting = null, waits = 0;
     for (let a = 0; a < 2e4 && enemies.length < wanted; a++) {
-      const cx = 8 + Math.floor(rnd() * (CW - 16)), cy = 50 + Math.floor(rnd() * (SHOP_TOP - 70));
+      const cx = 8 + Math.floor(rnd2() * (CW - 16)), cy = 50 + Math.floor(rnd2() * (SHOP_TOP - 70));
       if (!clear(cx, cy, 8) || nearNest(cx, cy)) continue;
       const x = cx * CELL, y = cy * CELL;
       if (Math.hypot(x - start.x, y - start.y) < 200) continue;
       if (enemies.some((e) => Math.hypot(e.x - x, e.y - y) < 90)) continue;
-      const k = waiting || enemyFor(roster[Math.floor(rnd() * roster.length)], floor);
+      const k = waiting || enemyFor(roster[Math.floor(rnd2() * roster.length)], floor);
       waiting = null;
       if (NATURAL_ONLY[k.act] && built(cx, cy)) {
         if (++waits < 300) waiting = k;
@@ -10168,17 +10168,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         y,
         ty: y,
         r: k.r,
-        phase: rnd() * 6.28,
+        phase: rnd2() * 6.28,
         hp: k.hp,
         hpMax: k.hp,
-        cd: 1 + rnd() * 2,
+        cd: 1 + rnd2() * 2,
         flash: 0,
         lx: 0,
         ly: 1,
         hx: x,
         hy: y,
         tgt: null,
-        rest: rnd() * 3,
+        rest: rnd2() * 3,
         k,
         touch: 0,
         charge: 0
@@ -10218,7 +10218,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const pickups = [];
     let gunsLeft = GUN_DROPS, modsLeft = MOD_DROPS;
     for (let a = 0; a < 2e4 && gunsLeft + modsLeft > 0; a++) {
-      const cx = 8 + Math.floor(rnd() * (CW - 16)), cy = 30 + Math.floor(rnd() * (SHOP_TOP - 60));
+      const cx = 8 + Math.floor(rnd2() * (CW - 16)), cy = 30 + Math.floor(rnd2() * (SHOP_TOP - 60));
       if (!clear(cx, cy, 6) || nearNest(cx, cy)) continue;
       let gy = cy;
       while (gy - cy < 6 && !mat[(gy + 1) * CW + cx]) gy++;
@@ -10226,17 +10226,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const x = cx * CELL, y = (gy + 1) * CELL - 9;
       if (Math.hypot(x - start.x, y - start.y) < 200) continue;
       if (pickups.some((q) => Math.hypot(q.x - x, q.y - y) < PICKUP_GAP)) continue;
-      if (gunsLeft && (!modsLeft || rnd() < gunsLeft / (gunsLeft + modsLeft))) {
+      if (gunsLeft && (!modsLeft || rnd2() < gunsLeft / (gunsLeft + modsLeft))) {
         gunsLeft--;
-        pickups.push({ kind: "gun", x, y, gun: makeGun(rnd, gunLevel(floor, rnd)), t: rnd() * 6.28 });
+        pickups.push({ kind: "gun", x, y, gun: makeGun(rnd2, gunLevel(floor, rnd2)), t: rnd2() * 6.28 });
       } else {
         modsLeft--;
-        pickups.push({ kind: "mod", x, y, id: rollMod(rnd, floor), t: rnd() * 6.28 });
+        pickups.push({ kind: "mod", x, y, id: rollMod(rnd2, floor), t: rnd2() * 6.28 });
       }
     }
     const dimg = new ImageData(CW, CH);
     const fuel = new Uint8Array(CW * CH);
-    if (strata) timberWorks(mat, dimg, works, T, rnd, fuel, built);
+    if (strata) timberWorks(mat, dimg, works, T, rnd2, fuel, built);
     const keep = [
       { x: start.x, y: start.y, r: 40 },
       { x: arrival.x, y: arrival.y, r: 50 },
@@ -11643,6 +11643,275 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/game/systems/shotlooks.js
+  var glowDot = (W, x, y, vx, vy, c, s, life, g) => W.dparts.push({ x, y, vx, vy, g: g || 0, c, s, life, max: life, glow: 1 });
+  var rnd = (a, b) => a + Math.random() * (b - a);
+  function shotTrail(W, b, dt) {
+    const L = b.look, sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp;
+    const chance = (n) => Math.random() < n * dt;
+    if (L === "spark") {
+      if (chance(70)) glowDot(
+        W,
+        b.x + rnd(-1, 1),
+        b.y + rnd(-1, 1),
+        rnd(-8, 8),
+        rnd(-8, 8),
+        Math.random() < 0.3 ? "#ffffff" : Math.random() < 0.6 ? "#ff9cf5" : "#d86ad0",
+        rnd(0.8, 1.5),
+        rnd(0.12, 0.5)
+      );
+    } else if (L === "crackle") {
+      if (chance(22)) glowDot(
+        W,
+        b.x,
+        b.y,
+        -ux * 40 + rnd(-50, 50),
+        -uy * 40 + rnd(-60, 20),
+        Math.random() < 0.5 ? "#fff6c0" : "#ffd23c",
+        rnd(0.7, 1.1),
+        rnd(0.15, 0.35),
+        0.5
+      );
+    } else if (L === "ember") {
+      if (chance(40)) glowDot(
+        W,
+        b.x + rnd(-1, 1),
+        b.y + rnd(-1, 1),
+        -ux * 20 + rnd(-10, 10),
+        -uy * 20 - rnd(5, 25),
+        Math.random() < 0.4 ? "#e6ffc8" : "#8dff5a",
+        rnd(0.7, 1.3),
+        rnd(0.1, 0.25),
+        -0.02
+      );
+    } else if (L === "glob") {
+      if (chance(10)) glowDot(W, b.x, b.y, b.vx * 0.2, b.vy * 0.2, "#f578dc", rnd(0.8, 1.2), rnd(0.3, 0.6), 0.6);
+    } else if (L === "bubble") {
+      if (chance(6)) glowDot(
+        W,
+        b.x + rnd(-3, 3),
+        b.y + rnd(-3, 3),
+        rnd(-6, 6),
+        rnd(-20, -8),
+        "#bfe8ff",
+        rnd(0.6, 1),
+        rnd(0.3, 0.6)
+      );
+    } else if (L === "arrow") {
+      if (chance(35)) glowDot(
+        W,
+        b.x - ux * 3,
+        b.y - uy * 3,
+        rnd(-6, 6),
+        rnd(-6, 6),
+        Math.random() < 0.3 ? "#e8ffd8" : "#78ff50",
+        rnd(0.7, 1.2),
+        rnd(0.5, 1.1),
+        0.03
+      );
+    } else if (L === "drill") {
+      if (chance(18)) W.smoke.push({
+        x: b.x,
+        y: b.y,
+        vx: rnd(-10, 10),
+        vy: rnd(-12, 4),
+        r: rnd(1.2, 2.2),
+        life: 0.5,
+        max: 0.5,
+        c: "#4e7fc8",
+        a: 0.4
+      });
+    } else if (L === "sparks") {
+      const n = Math.min(8, Math.max(1, Math.round(sp * dt / 3)));
+      for (let k = 0; k < n; k++) {
+        const f = k / n;
+        glowDot(
+          W,
+          b.x - b.vx * dt * f + rnd(-1, 1),
+          b.y - b.vy * dt * f + rnd(-1, 1),
+          rnd(-15, 15),
+          rnd(-15, 15),
+          Math.random() < 0.3 ? "#ffffff" : "#8fe8ff",
+          rnd(0.8, 1.4),
+          rnd(0.3, 0.6)
+        );
+      }
+    } else if (L === "heavy") {
+      if (chance(45)) glowDot(
+        W,
+        b.x,
+        b.y,
+        -ux * rnd(20, 60) + rnd(-25, 25),
+        -uy * rnd(20, 60) + rnd(-25, 25),
+        Math.random() < 0.5 ? "#c8ff5a" : "#ffe84a",
+        rnd(0.8, 1.3),
+        rnd(0.2, 0.45),
+        0.3
+      );
+    } else if (L === "lance") {
+      if (chance(40)) glowDot(
+        W,
+        b.x - ux * rnd(0, 8),
+        b.y - uy * rnd(0, 8),
+        rnd(-12, 12),
+        rnd(-12, 12),
+        Math.random() < 0.3 ? "#ffffff" : b.col,
+        rnd(0.7, 1.1),
+        rnd(0.2, 0.5),
+        0.05
+      );
+    } else if (L === "rubber") {
+      if (chance(30)) glowDot(W, b.x, b.y, rnd(-5, 5), rnd(-5, 5), Math.random() < 0.5 ? "#9ef07a" : "#5ad05a", rnd(0.8, 1.3), rnd(0.2, 0.45));
+    } else if (L === "bomb") {
+      const fx = b.x + Math.cos(b.spin * 0.5 - 1.2) * b.size, fy = b.y + Math.sin(b.spin * 0.5 - 1.2) * b.size;
+      if (chance(40)) glowDot(W, fx, fy, rnd(-30, 30), rnd(-50, 0), Math.random() < 0.4 ? "#ffffff" : "#ffb347", rnd(0.6, 1), rnd(0.1, 0.25), 0.4);
+    } else if (L === "rocket") {
+      if (chance(50)) glowDot(
+        W,
+        b.x - ux * 4,
+        b.y - uy * 4,
+        -ux * rnd(30, 90) + rnd(-15, 15),
+        -uy * rnd(30, 90) + rnd(-15, 15),
+        FIRE_COLS[Math.floor(Math.random() * 3)],
+        rnd(0.8, 1.3),
+        rnd(0.08, 0.2)
+      );
+      if (chance(25)) W.smoke.push({
+        x: b.x - ux * 5,
+        y: b.y - uy * 5,
+        vx: rnd(-6, 6),
+        vy: rnd(-8, 2),
+        r: rnd(1.2, 2.4),
+        life: 0.9,
+        max: 0.9,
+        c: "#5a5652",
+        a: 0.4
+      });
+    } else if (L === "flame") {
+      const big = b.size >= 4;
+      if (chance(big ? 70 : 40)) glowDot(
+        W,
+        b.x + rnd(-b.size, b.size),
+        b.y + rnd(-b.size, b.size),
+        -ux * 20 + rnd(-15, 15),
+        -uy * 20 - rnd(10, 40),
+        FIRE_COLS[Math.floor(Math.random() * 3)],
+        rnd(0.8, 1.2 + b.size * 0.2),
+        rnd(0.12, 0.35),
+        -0.03
+      );
+      if (chance(big ? 14 : 5)) W.smoke.push({
+        x: b.x,
+        y: b.y,
+        vx: rnd(-6, 6),
+        vy: rnd(-14, -4),
+        r: rnd(1.5, 1 + b.size * 0.6),
+        life: 1,
+        max: 1,
+        c: "#3a3430",
+        a: 0.35
+      });
+    } else if (L === "orb") {
+      if (chance(35)) glowDot(
+        W,
+        b.x + rnd(-b.size, b.size) * 0.6,
+        b.y + rnd(-b.size, b.size) * 0.6,
+        rnd(-6, 6),
+        rnd(-6, 6),
+        Math.random() < 0.3 ? "#e8f4ff" : b.col,
+        rnd(0.8, 1.4),
+        rnd(0.2, 0.5)
+      );
+    } else if (L === "chain") {
+      if (chance(35)) glowDot(W, b.x, b.y, rnd(-60, 60), rnd(-60, 60), Math.random() < 0.3 ? "#ffffff" : "#e0a0ff", rnd(0.7, 1.1), rnd(0.08, 0.2));
+    } else if (L === "cross") {
+      if (chance(25)) {
+        const a = b.spin * 0.8 + Math.floor(Math.random() * 4) * 1.571;
+        glowDot(W, b.x + Math.cos(a) * b.size * 1.6, b.y + Math.sin(a) * b.size * 1.6, rnd(-6, 6), rnd(-6, 6), b.col, rnd(0.8, 1.2), rnd(0.2, 0.4));
+      }
+    } else if (L === "nuke") {
+      if (chance(20)) glowDot(W, b.x, b.y + b.size * 0.6, b.vx * 0.1, b.vy * 0.1, Math.random() < 0.5 ? "#b4ff5a" : "#6adf3a", rnd(1, 1.6), rnd(0.5, 0.9), 0.6);
+      if (chance(10)) W.smoke.push({ x: b.x - ux * 6, y: b.y - uy * 6, vx: rnd(-5, 5), vy: rnd(-10, 0), r: rnd(2, 3), life: 1, max: 1, c: "#4a4a40", a: 0.35 });
+    } else if (L === "pollen") {
+      if (chance(8)) glowDot(
+        W,
+        b.x + rnd(-2, 2),
+        b.y + rnd(-2, 2),
+        rnd(-5, 5),
+        rnd(-8, 2),
+        "#e8ff9a",
+        rnd(0.6, 0.9),
+        rnd(0.4, 0.8),
+        -0.01
+      );
+    }
+  }
+  function shotBounce(W, b) {
+    const L = b.look;
+    if (L === "glob") for (let k = 0; k < 2; k++)
+      glowDot(W, b.x, b.y, rnd(-40, 40), rnd(-50, -10), "#f578dc", 1, rnd(0.15, 0.3), 0.6);
+    else if (L === "bubble") glowDot(W, b.x, b.y, 0, 0, "#bfe8ff", 1.4, 0.12);
+    else if (L === "ember") for (let k = 0; k < 3; k++)
+      glowDot(W, b.x, b.y, rnd(-60, 60), rnd(-60, -10), "#8dff5a", 1, rnd(0.1, 0.25), 0.4);
+    else if ((L === "disc" || L === "flame" || L === "rubber" || L === "orb") && Math.hypot(b.vx, b.vy) > 60)
+      for (let k = 0; k < (L === "disc" ? 5 : 2); k++)
+        glowDot(
+          W,
+          b.x,
+          b.y,
+          rnd(-70, 70),
+          rnd(-80, -10),
+          L === "disc" ? Math.random() < 0.5 ? "#ffe7a0" : "#ffb347" : L === "flame" ? "#ffb347" : b.col,
+          rnd(0.7, 1.1),
+          rnd(0.1, 0.25),
+          0.5
+        );
+  }
+  function shotDeath(W, b) {
+    const L = b.look;
+    if (L === "bubble") {
+      SFX.pop(b.x, b.y);
+      for (let k = 0; k < 8; k++) {
+        const a = k / 8 * 6.283;
+        glowDot(
+          W,
+          b.x + Math.cos(a) * b.size,
+          b.y + Math.sin(a) * b.size,
+          Math.cos(a) * 45,
+          Math.sin(a) * 45,
+          "#bfe8ff",
+          1,
+          rnd(0.15, 0.3),
+          0.3
+        );
+      }
+    } else if (L === "spark" || L === "arrow" || L === "crackle") {
+      const c = L === "spark" ? "#ff9cf5" : L === "arrow" ? "#78ff50" : "#ffe066";
+      for (let k = 0; k < 5; k++) glowDot(W, b.x, b.y, rnd(-70, 70), rnd(-70, 40), k ? c : "#ffffff", 1, rnd(0.12, 0.3), 0.3);
+    } else if (L === "glob") {
+      for (let k = 0; k < 4; k++) glowDot(W, b.x, b.y, rnd(-50, 50), rnd(-60, 0), "#f578dc", 1.1, rnd(0.2, 0.4), 0.6);
+    } else if (L === "orb" || L === "chain" || L === "rubber" || L === "heavy") {
+      for (let k = 0; k < 7; k++) glowDot(W, b.x, b.y, rnd(-80, 80), rnd(-80, 60), k ? b.col : "#ffffff", rnd(0.8, 1.3), rnd(0.15, 0.35), 0.3);
+    }
+  }
+  function shotGrind(W, b, x, y) {
+    if (b.look !== "drill" || Math.random() < 0.5) return;
+    const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+    if (cx < 0 || cy < 0 || cx >= CW || cy >= CH || !W.mat[cy * CW + cx]) return;
+    const k = (cy * CW + cx) * 4, d = W.img.data, sp = Math.hypot(b.vx, b.vy) || 1;
+    W.sparks.push({
+      x,
+      y,
+      vx: -b.vx / sp * rnd(40, 110) + rnd(-50, 50),
+      vy: -b.vy / sp * rnd(40, 110) - rnd(20, 70),
+      life: rnd(0.4, 0.8),
+      max: 0.8,
+      c: "rgb(" + d[k] + "," + d[k + 1] + "," + d[k + 2] + ")",
+      size: rnd(1, 1.8),
+      heavy: true
+    });
+  }
+
   // src/game/testhook.js
   function testHook(W, g) {
     const { tctx, dctx, paintFog } = g;
@@ -11980,8 +12249,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var { useRef: useRef2, useEffect: useEffect2 } = React;
   var h2 = React.createElement;
   var SPUTTER_FUEL = 0.25;
-  function sputterStep(st, dt, fuel, on, rnd) {
-    rnd = rnd || Math.random;
+  function sputterStep(st, dt, fuel, on, rnd2) {
+    rnd2 = rnd2 || Math.random;
     st.start = false;
     if (!on) {
       st.cut = 0;
@@ -11994,9 +12263,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     st.gap = Math.max(0, (st.gap || 0) - dt);
     if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
       const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;
-      if (rnd() < dt * (1 + 7 * w)) {
-        st.cut = 0.04 + rnd() * (0.05 + 0.08 * w);
-        st.gap = st.cut + 0.1 + rnd() * 0.2;
+      if (rnd2() < dt * (1 + 7 * w)) {
+        st.cut = 0.04 + rnd2() * (0.05 + 0.08 * w);
+        st.gap = st.cut + 0.1 + rnd2() * 0.2;
         st.start = true;
       }
     }
@@ -13069,6 +13338,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (sh.look) {
           const ex = x + nx * hitAt, ey = y + ny * hitAt;
           for (let k = 0; k < 5; k++) glowDot(
+            W,
             ex,
             ey,
             -nx * rnd(20, 80) + rnd(-50, 50),
@@ -13110,259 +13380,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           });
         }
         burst(W, b.x, b.y, 8, b.col);
-      }
-      const glowDot = (x, y, vx, vy, c2, s, life, g) => W.dparts.push({ x, y, vx, vy, g: g || 0, c: c2, s, life, max: life, glow: 1 });
-      const rnd = (a, b) => a + Math.random() * (b - a);
-      function shotTrail(b, dt) {
-        const L = b.look, sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp;
-        const chance = (n) => Math.random() < n * dt;
-        if (L === "spark") {
-          if (chance(70)) glowDot(
-            b.x + rnd(-1, 1),
-            b.y + rnd(-1, 1),
-            rnd(-8, 8),
-            rnd(-8, 8),
-            Math.random() < 0.3 ? "#ffffff" : Math.random() < 0.6 ? "#ff9cf5" : "#d86ad0",
-            rnd(0.8, 1.5),
-            rnd(0.12, 0.5)
-          );
-        } else if (L === "crackle") {
-          if (chance(22)) glowDot(
-            b.x,
-            b.y,
-            -ux * 40 + rnd(-50, 50),
-            -uy * 40 + rnd(-60, 20),
-            Math.random() < 0.5 ? "#fff6c0" : "#ffd23c",
-            rnd(0.7, 1.1),
-            rnd(0.15, 0.35),
-            0.5
-          );
-        } else if (L === "ember") {
-          if (chance(40)) glowDot(
-            b.x + rnd(-1, 1),
-            b.y + rnd(-1, 1),
-            -ux * 20 + rnd(-10, 10),
-            -uy * 20 - rnd(5, 25),
-            Math.random() < 0.4 ? "#e6ffc8" : "#8dff5a",
-            rnd(0.7, 1.3),
-            rnd(0.1, 0.25),
-            -0.02
-          );
-        } else if (L === "glob") {
-          if (chance(10)) glowDot(b.x, b.y, b.vx * 0.2, b.vy * 0.2, "#f578dc", rnd(0.8, 1.2), rnd(0.3, 0.6), 0.6);
-        } else if (L === "bubble") {
-          if (chance(6)) glowDot(
-            b.x + rnd(-3, 3),
-            b.y + rnd(-3, 3),
-            rnd(-6, 6),
-            rnd(-20, -8),
-            "#bfe8ff",
-            rnd(0.6, 1),
-            rnd(0.3, 0.6)
-          );
-        } else if (L === "arrow") {
-          if (chance(35)) glowDot(
-            b.x - ux * 3,
-            b.y - uy * 3,
-            rnd(-6, 6),
-            rnd(-6, 6),
-            Math.random() < 0.3 ? "#e8ffd8" : "#78ff50",
-            rnd(0.7, 1.2),
-            rnd(0.5, 1.1),
-            0.03
-          );
-        } else if (L === "drill") {
-          if (chance(18)) W.smoke.push({
-            x: b.x,
-            y: b.y,
-            vx: rnd(-10, 10),
-            vy: rnd(-12, 4),
-            r: rnd(1.2, 2.2),
-            life: 0.5,
-            max: 0.5,
-            c: "#4e7fc8",
-            a: 0.4
-          });
-        } else if (L === "sparks") {
-          const n = Math.min(8, Math.max(1, Math.round(sp * dt / 3)));
-          for (let k = 0; k < n; k++) {
-            const f = k / n;
-            glowDot(
-              b.x - b.vx * dt * f + rnd(-1, 1),
-              b.y - b.vy * dt * f + rnd(-1, 1),
-              rnd(-15, 15),
-              rnd(-15, 15),
-              Math.random() < 0.3 ? "#ffffff" : "#8fe8ff",
-              rnd(0.8, 1.4),
-              rnd(0.3, 0.6)
-            );
-          }
-        } else if (L === "heavy") {
-          if (chance(45)) glowDot(
-            b.x,
-            b.y,
-            -ux * rnd(20, 60) + rnd(-25, 25),
-            -uy * rnd(20, 60) + rnd(-25, 25),
-            Math.random() < 0.5 ? "#c8ff5a" : "#ffe84a",
-            rnd(0.8, 1.3),
-            rnd(0.2, 0.45),
-            0.3
-          );
-        } else if (L === "lance") {
-          if (chance(40)) glowDot(
-            b.x - ux * rnd(0, 8),
-            b.y - uy * rnd(0, 8),
-            rnd(-12, 12),
-            rnd(-12, 12),
-            Math.random() < 0.3 ? "#ffffff" : b.col,
-            rnd(0.7, 1.1),
-            rnd(0.2, 0.5),
-            0.05
-          );
-        } else if (L === "rubber") {
-          if (chance(30)) glowDot(b.x, b.y, rnd(-5, 5), rnd(-5, 5), Math.random() < 0.5 ? "#9ef07a" : "#5ad05a", rnd(0.8, 1.3), rnd(0.2, 0.45));
-        } else if (L === "bomb") {
-          const fx = b.x + Math.cos(b.spin * 0.5 - 1.2) * b.size, fy = b.y + Math.sin(b.spin * 0.5 - 1.2) * b.size;
-          if (chance(40)) glowDot(fx, fy, rnd(-30, 30), rnd(-50, 0), Math.random() < 0.4 ? "#ffffff" : "#ffb347", rnd(0.6, 1), rnd(0.1, 0.25), 0.4);
-        } else if (L === "rocket") {
-          if (chance(50)) glowDot(
-            b.x - ux * 4,
-            b.y - uy * 4,
-            -ux * rnd(30, 90) + rnd(-15, 15),
-            -uy * rnd(30, 90) + rnd(-15, 15),
-            FIRE_COLS[Math.floor(Math.random() * 3)],
-            rnd(0.8, 1.3),
-            rnd(0.08, 0.2)
-          );
-          if (chance(25)) W.smoke.push({
-            x: b.x - ux * 5,
-            y: b.y - uy * 5,
-            vx: rnd(-6, 6),
-            vy: rnd(-8, 2),
-            r: rnd(1.2, 2.4),
-            life: 0.9,
-            max: 0.9,
-            c: "#5a5652",
-            a: 0.4
-          });
-        } else if (L === "flame") {
-          const big = b.size >= 4;
-          if (chance(big ? 70 : 40)) glowDot(
-            b.x + rnd(-b.size, b.size),
-            b.y + rnd(-b.size, b.size),
-            -ux * 20 + rnd(-15, 15),
-            -uy * 20 - rnd(10, 40),
-            FIRE_COLS[Math.floor(Math.random() * 3)],
-            rnd(0.8, 1.2 + b.size * 0.2),
-            rnd(0.12, 0.35),
-            -0.03
-          );
-          if (chance(big ? 14 : 5)) W.smoke.push({
-            x: b.x,
-            y: b.y,
-            vx: rnd(-6, 6),
-            vy: rnd(-14, -4),
-            r: rnd(1.5, 1 + b.size * 0.6),
-            life: 1,
-            max: 1,
-            c: "#3a3430",
-            a: 0.35
-          });
-        } else if (L === "orb") {
-          if (chance(35)) glowDot(
-            b.x + rnd(-b.size, b.size) * 0.6,
-            b.y + rnd(-b.size, b.size) * 0.6,
-            rnd(-6, 6),
-            rnd(-6, 6),
-            Math.random() < 0.3 ? "#e8f4ff" : b.col,
-            rnd(0.8, 1.4),
-            rnd(0.2, 0.5)
-          );
-        } else if (L === "chain") {
-          if (chance(35)) glowDot(b.x, b.y, rnd(-60, 60), rnd(-60, 60), Math.random() < 0.3 ? "#ffffff" : "#e0a0ff", rnd(0.7, 1.1), rnd(0.08, 0.2));
-        } else if (L === "cross") {
-          if (chance(25)) {
-            const a = b.spin * 0.8 + Math.floor(Math.random() * 4) * 1.571;
-            glowDot(b.x + Math.cos(a) * b.size * 1.6, b.y + Math.sin(a) * b.size * 1.6, rnd(-6, 6), rnd(-6, 6), b.col, rnd(0.8, 1.2), rnd(0.2, 0.4));
-          }
-        } else if (L === "nuke") {
-          if (chance(20)) glowDot(b.x, b.y + b.size * 0.6, b.vx * 0.1, b.vy * 0.1, Math.random() < 0.5 ? "#b4ff5a" : "#6adf3a", rnd(1, 1.6), rnd(0.5, 0.9), 0.6);
-          if (chance(10)) W.smoke.push({ x: b.x - ux * 6, y: b.y - uy * 6, vx: rnd(-5, 5), vy: rnd(-10, 0), r: rnd(2, 3), life: 1, max: 1, c: "#4a4a40", a: 0.35 });
-        } else if (L === "pollen") {
-          if (chance(8)) glowDot(
-            b.x + rnd(-2, 2),
-            b.y + rnd(-2, 2),
-            rnd(-5, 5),
-            rnd(-8, 2),
-            "#e8ff9a",
-            rnd(0.6, 0.9),
-            rnd(0.4, 0.8),
-            -0.01
-          );
-        }
-      }
-      function shotBounce(b) {
-        const L = b.look;
-        if (L === "glob") for (let k = 0; k < 2; k++)
-          glowDot(b.x, b.y, rnd(-40, 40), rnd(-50, -10), "#f578dc", 1, rnd(0.15, 0.3), 0.6);
-        else if (L === "bubble") glowDot(b.x, b.y, 0, 0, "#bfe8ff", 1.4, 0.12);
-        else if (L === "ember") for (let k = 0; k < 3; k++)
-          glowDot(b.x, b.y, rnd(-60, 60), rnd(-60, -10), "#8dff5a", 1, rnd(0.1, 0.25), 0.4);
-        else if ((L === "disc" || L === "flame" || L === "rubber" || L === "orb") && Math.hypot(b.vx, b.vy) > 60)
-          for (let k = 0; k < (L === "disc" ? 5 : 2); k++)
-            glowDot(
-              b.x,
-              b.y,
-              rnd(-70, 70),
-              rnd(-80, -10),
-              L === "disc" ? Math.random() < 0.5 ? "#ffe7a0" : "#ffb347" : L === "flame" ? "#ffb347" : b.col,
-              rnd(0.7, 1.1),
-              rnd(0.1, 0.25),
-              0.5
-            );
-      }
-      function shotDeath(b) {
-        const L = b.look;
-        if (L === "bubble") {
-          SFX.pop(b.x, b.y);
-          for (let k = 0; k < 8; k++) {
-            const a = k / 8 * 6.283;
-            glowDot(
-              b.x + Math.cos(a) * b.size,
-              b.y + Math.sin(a) * b.size,
-              Math.cos(a) * 45,
-              Math.sin(a) * 45,
-              "#bfe8ff",
-              1,
-              rnd(0.15, 0.3),
-              0.3
-            );
-          }
-        } else if (L === "spark" || L === "arrow" || L === "crackle") {
-          const c2 = L === "spark" ? "#ff9cf5" : L === "arrow" ? "#78ff50" : "#ffe066";
-          for (let k = 0; k < 5; k++) glowDot(b.x, b.y, rnd(-70, 70), rnd(-70, 40), k ? c2 : "#ffffff", 1, rnd(0.12, 0.3), 0.3);
-        } else if (L === "glob") {
-          for (let k = 0; k < 4; k++) glowDot(b.x, b.y, rnd(-50, 50), rnd(-60, 0), "#f578dc", 1.1, rnd(0.2, 0.4), 0.6);
-        } else if (L === "orb" || L === "chain" || L === "rubber" || L === "heavy") {
-          for (let k = 0; k < 7; k++) glowDot(b.x, b.y, rnd(-80, 80), rnd(-80, 60), k ? b.col : "#ffffff", rnd(0.8, 1.3), rnd(0.15, 0.35), 0.3);
-        }
-      }
-      function shotGrind(b, x, y) {
-        if (b.look !== "drill" || Math.random() < 0.5) return;
-        const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
-        if (cx < 0 || cy < 0 || cx >= CW || cy >= CH || !W.mat[cy * CW + cx]) return;
-        const k = (cy * CW + cx) * 4, d = W.img.data, sp = Math.hypot(b.vx, b.vy) || 1;
-        W.sparks.push({
-          x,
-          y,
-          vx: -b.vx / sp * rnd(40, 110) + rnd(-50, 50),
-          vy: -b.vy / sp * rnd(40, 110) - rnd(20, 70),
-          life: rnd(0.4, 0.8),
-          max: 0.8,
-          c: "rgb(" + d[k] + "," + d[k + 1] + "," + d[k + 2] + ")",
-          size: rnd(1, 1.8),
-          heavy: true
-        });
       }
       function throwEmbers(x, y, n) {
         for (let k = 0; k < n; k++) {
@@ -13810,7 +13827,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             }
           }
           if (b.wig) turn(b, wigTurn(b.wig, b.age, dt));
-          if (b.look) shotTrail(b, dt);
+          if (b.look) shotTrail(W, b, dt);
           if (b.spiral) turn(b, b.spiral * dt);
           if (b.pong && Math.floor(b.age / 0.45) % 2 === 1) {
             b.vx = -b.vx;
@@ -14006,14 +14023,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 const slow = Math.hypot(b.vx, b.vy) < 60;
                 if (slow && b.lifeBoom) b.bounce++;
                 if (!slow) SFX.bounce(b.x, b.y);
-                if (b.look) shotBounce(b);
+                if (b.look) shotBounce(W, b);
                 if (b.bounceFx === "explode") explode(W, G, b.x, b.y, Math.max(10, b.explode || 12));
                 break;
               }
               b.x = nx;
               b.y = ny;
               if (b.bore > 0) {
-                if (b.look) shotGrind(b, nx, ny);
+                if (b.look) shotGrind(W, b, nx, ny);
                 dig(W, G, nx, ny, b.bore);
                 continue;
               }
@@ -14055,7 +14072,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             b.trail.push({ x: b.x, y: b.y });
             addArc(b.trail, b.col, 1.4, 0.16);
           }
-          if (dead && b.look) shotDeath(b);
+          if (dead && b.look) shotDeath(W, b);
           if (dead) W.bullets.splice(i, 1);
         }
         for (let i = W.arcs.length - 1; i >= 0; i--) if ((W.arcs[i].t += dt) > W.arcs[i].max) W.arcs.splice(i, 1);
@@ -14120,12 +14137,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             }
             if (f.field === "slow" && Math.random() < dt * 14) {
               const a = Math.random() * 6.283, r = Math.random() * f.r;
-              glowDot(f.x + Math.cos(a) * r, f.y + Math.sin(a) * r, rnd(-4, 4), rnd(4, 12), Math.random() < 0.5 ? "#ffffff" : "#bfe8ff", rnd(0.7, 1.1), rnd(0.4, 0.9));
+              glowDot(W, f.x + Math.cos(a) * r, f.y + Math.sin(a) * r, rnd(-4, 4), rnd(4, 12), Math.random() < 0.5 ? "#ffffff" : "#bfe8ff", rnd(0.7, 1.1), rnd(0.4, 0.9));
             }
           }
           if (f.field === "heal" && Math.random() < dt * 10) {
             const a = Math.random() * 6.283, r = Math.random() * f.r;
-            glowDot(f.x + Math.cos(a) * r, f.y + Math.sin(a) * r, 0, rnd(-18, -8), Math.random() < 0.5 ? "#9dff9a" : "#46c48c", rnd(0.8, 1.2), rnd(0.4, 0.8));
+            glowDot(W, f.x + Math.cos(a) * r, f.y + Math.sin(a) * r, 0, rnd(-18, -8), Math.random() < 0.5 ? "#9dff9a" : "#46c48c", rnd(0.8, 1.2), rnd(0.4, 0.8));
           }
           if (f.field === "mine") {
             f.near = W.enemies.some((e) => Math.hypot(e.x - f.x, e.ty - f.y) < f.r * 2.2);
