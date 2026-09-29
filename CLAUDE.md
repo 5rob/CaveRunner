@@ -167,6 +167,7 @@ rest and imports them. Where things are (`main.js` line numbers as of the end of
 | `Game` | `src/main.js` ~123–4370: the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields |
 | `h` and hooks | `src/ui/h.js`: `h` (`React.createElement`), `useRef`/`useEffect`/`useState`/`useMemo` off the global React |
 | HUD | `src/ui/hud.js`: `Stick` (thumbsticks + gauge rings), `RKey`, `GAUGE_R`/`GAUGE_C`/`GAUGE_COL`, `healthCol`, `holdPress`, `deckLayout`, `fmtGold` |
+| Detail cards | `src/ui/cards.js`: `GunCard`, `ModCard`, `PerkCard`, `GUN_STATS` |
 | React UI | `src/main.js` ~4380–end: `GunCard`, `GunSwap`, `ModCard`, `Editor`, `PerkCard`, `DevPanel`, `App` |
 
 Everything in the modules, and everything above `function Game(` in `main.js`, is pure and

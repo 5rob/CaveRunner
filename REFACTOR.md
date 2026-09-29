@@ -280,7 +280,7 @@ What the code says about this phase (checked at the end of Phase 1):
 
 - [x] **P2.1** ui/h.js (the `h` helper and hook imports)
 - [x] **P2.2** ui/hud.js (Stick, RKey, gauges, holdPress, deckLayout, fmtGold, healthCol, GAUGE_*…)
-- [ ] **P2.3** ui/cards.js (GunCard, ModCard, PerkCard, GUN_STATS)
+- [x] **P2.3** ui/cards.js (GunCard, ModCard, PerkCard, GUN_STATS)
 - [ ] **P2.4** ui/editor.js (Editor, GunStats, SlotGrid, ScrollBox, GunIcon, PULL_COL, GS_ROWS)
 - [ ] **P2.5** ui/swap.js, ui/witness.js
 - [ ] **P2.6** ui/devpanel.js (DevRow, DevPanel, SpawnGun; JellyPreview goes with the jelly or here)
@@ -493,3 +493,4 @@ commit. List them here for after.
 | 2026-09-29 | Release check | CI run 36533355733 green (deploy-pages, build-apk); `version.txt` = v97. `main` merged back into `refactor` (same commit). | — |
 | 2026-09-29 | Phase 2, P2.1 | `ui/h.js` (`h` + the four hooks). move.js hoisted the sputter comment (the first comment in `main.js` once the hooks left) to the top as a "file header"; put back by hand. | same 359/359, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 2, P2.2 | `ui/hud.js` (Stick, RKey, GAUGE_*, healthCol, holdPress, deckLayout, fmtGold). The two lines "The same detail card is used by the build screen and by the shop…" sat above `holdPress` but describe the cards: moved back above `GUN_STATS` by hand. | same 359/359, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 2, P2.3 | `ui/cards.js` (GUN_STATS, GunCard, ModCard, PerkCard). Clean move. | same 359/359, logic 33/33, smoke ok |

@@ -8786,6 +8786,236 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var { useRef, useEffect, useState, useMemo } = React;
   var h = React.createElement;
 
+  // src/ui/hud.js
+  function fmtGold(g) {
+    g = Math.max(0, Math.floor(g || 0));
+    if (g < 1e3) return String(g);
+    return (Math.floor(g / 100) / 10).toString() + "k";
+  }
+  function deckLayout(W, size, n) {
+    n = n || 4;
+    const g = (W - 2 * size) / 3;
+    const rc = { x: 2 * g + 1.5 * size, y: size / 2 };
+    const btn = Math.round(Math.max(34, Math.min(46, size * 0.24)));
+    const sx = W / 2, sy = size * 0.05 + 10;
+    const R = Math.max(Math.hypot(sx - rc.x, sy - rc.y), size / 2 + btn / 2 + 4);
+    const a0 = Math.atan2(sy - rc.y, sx - rc.x);
+    const xmax = W - btn / 2 - 4;
+    const a1 = Math.max(a0 + 0.3, -Math.acos(Math.max(-1, Math.min(1, (xmax - rc.x) / R))));
+    const guns = [];
+    for (let i = 0; i < n; i++) {
+      const a = a0 + (a1 - a0) * (n > 1 ? i / (n - 1) : 0);
+      guns.push({ x: rc.x + Math.cos(a) * R, y: rc.y + Math.sin(a) * R });
+    }
+    const last = guns[n - 1];
+    const bag = { x: W - last.x, y: last.y };
+    const map = { x: bag.x, y: bag.y - btn - 8 };
+    return { btn, R, rc, guns, bag, map };
+  }
+  var GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
+  var GAUGE_COL = { mana: "#ffc93c", rech: "#7ad7ff", cast: "#c58cff", fuel: "#ff9a2e" };
+  function healthCol(frac) {
+    return frac > 0.5 ? mixHex("#e6a52c", "#57d267", (frac - 0.5) * 2) : mixHex("#e24a2c", "#e6a52c", frac * 2);
+  }
+  function RKey() {
+    return h(
+      "svg",
+      { className: "rkey", viewBox: "0 0 30 30", width: 28, height: 28, "aria-hidden": true },
+      h("circle", { cx: 15, cy: 15, r: 13.5, fill: "none", stroke: "#fff", strokeWidth: 1 }),
+      h("text", {
+        x: 15,
+        y: 15,
+        textAnchor: "middle",
+        dominantBaseline: "central",
+        fill: "#fff",
+        fontSize: 14,
+        fontWeight: 300,
+        fontFamily: "system-ui, sans-serif"
+      }, "R")
+    );
+  }
+  function Stick({ size, kind, input, refresh }) {
+    const [knob2, setKnob] = useState({ x: 0, y: 0, jet: false });
+    const [gauge, setGauge] = useState({ ring: 1, fuel: 1, empty: false, dry: true });
+    const left = kind === "left";
+    useEffect(() => {
+      let raf, prev = "";
+      const tick = () => {
+        const s = input.current.hud;
+        if (s) {
+          const g = left ? { ring: s.hp, fuel: s.fuel, empty: s.empty, dry: false } : {
+            ring: s.hasGun ? s.mana : 0,
+            rech: s.hasGun ? s.rech : 0,
+            cast: s.hasGun ? s.cast : 0,
+            has: s.hasGun,
+            fuel: 0,
+            empty: false,
+            dry: !s.hasGun || s.recharging
+          };
+          const key = Math.round(g.ring * 100) + "|" + Math.round(g.fuel * 100) + "|" + Math.round((g.rech || 0) * 100) + "|" + Math.round((g.cast || 0) * 100) + "|" + (g.has ? 1 : 0) + "|" + (g.empty ? 1 : 0) + "|" + (g.dry ? 1 : 0);
+          if (key !== prev) {
+            prev = key;
+            setGauge(g);
+          }
+        }
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }, [left]);
+    const ref = useRef(null);
+    const pid = useRef(null);
+    const stayed = useRef(true);
+    const right = kind === "right";
+    const update = (e) => {
+      const r = ref.current.getBoundingClientRect();
+      const rad = r.width / 2;
+      const dx = e.clientX - (r.left + rad), dy = e.clientY - (r.top + rad);
+      const dist = Math.hypot(dx, dy);
+      const maxD = rad * 0.72;
+      const cl = Math.min(dist, maxD);
+      const nx = dist ? dx / dist : 0, ny = dist ? dy / dist : 0;
+      const mag = cl / maxD;
+      const thresh = right ? AIM_DEAD : 0.15;
+      if (right && mag > AIM_DEAD) stayed.current = false;
+      if (right && input.current.confirmAct) {
+        const side = mag > AIM_DEAD ? nx < 0 ? "take" : "leave" : null;
+        if (input.current.confirmAim !== side) {
+          input.current.confirmAim = side;
+          refresh();
+        }
+      }
+      const st = input.current[kind];
+      st.active = true;
+      st.nx = nx;
+      st.ny = ny;
+      st.mag = mag;
+      st.dy = dy;
+      st.on = mag > thresh;
+      setKnob({ x: nx * cl, y: ny * cl, jet: kind === "left" && dy < 0 && mag > DEAD });
+    };
+    const down = (e) => {
+      if (pid.current !== null) return;
+      pid.current = e.pointerId;
+      stayed.current = true;
+      try {
+        ref.current.setPointerCapture(e.pointerId);
+      } catch (_) {
+      }
+      update(e);
+    };
+    const move = (e) => {
+      if (e.pointerId === pid.current) update(e);
+    };
+    const end = (e) => {
+      if (e.pointerId !== pid.current) return;
+      pid.current = null;
+      const act = input.current.confirmAct;
+      if (right && act) {
+        const side = input.current.confirmAim;
+        input.current.confirmAim = null;
+        if (side) act[side]();
+      } else if (right && stayed.current) {
+        input.current.interact = true;
+      }
+      Object.assign(input.current[kind], { active: false, mag: 0, on: false, dy: 0 });
+      setKnob({ x: 0, y: 0, jet: false });
+    };
+    const rw = 3.2, sw = 1.6;
+    const wipe = (r, frac, col, track) => [
+      h("circle", { key: "t" + r, cx: 50, cy: 50, r, fill: "none", stroke: track || "rgba(0,0,0,0.35)", strokeWidth: sw }),
+      h("circle", {
+        key: "w" + r,
+        cx: 50,
+        cy: 50,
+        r,
+        fill: "none",
+        stroke: col,
+        strokeWidth: sw,
+        strokeLinecap: "round",
+        strokeDasharray: Math.max(0, Math.min(1, frac)) * 2 * Math.PI * r + " " + 2 * Math.PI * r,
+        transform: "rotate(-90 50 50)"
+      })
+    ];
+    const ring = left ? h(
+      "svg",
+      { className: "gauge", viewBox: "0 0 100 100" },
+      wipe(GAUGE_R, gauge.ring, healthCol(gauge.ring)),
+      wipe(
+        GAUGE_R - rw,
+        gauge.fuel,
+        knob2.jet ? "#ffc35a" : GAUGE_COL.fuel,
+        gauge.empty ? "rgba(226,74,44,0.7)" : null
+      )
+    ) : h(
+      "svg",
+      { className: "gauge", viewBox: "0 0 100 100" },
+      wipe(GAUGE_R, gauge.ring, gauge.dry ? "rgba(255,201,60,0.28)" : GAUGE_COL.mana),
+      wipe(GAUGE_R - rw, gauge.rech, gauge.has ? GAUGE_COL.rech : "rgba(122,215,255,0.22)"),
+      wipe(GAUGE_R - 2 * rw, gauge.cast, gauge.has ? GAUGE_COL.cast : "rgba(197,140,255,0.22)")
+    );
+    return h(
+      "div",
+      {
+        ref,
+        className: "stick" + (knob2.jet ? " jetting" : ""),
+        style: { width: size, height: size },
+        onPointerDown: down,
+        onPointerMove: move,
+        onPointerUp: end,
+        onPointerCancel: end,
+        onLostPointerCapture: end
+      },
+      // the centre line splits jet (top half) from walk
+      left && h("div", { className: "stickclip" }, h("div", { className: "hline" })),
+      ring,
+      // the right stick's amber ring: the line the knob's edge crosses when the drag starts
+      // counting as aiming rather than as a tap on the dead zone
+      h("div", { className: "knob", style: {
+        width: KNOB * 100 + "%",
+        height: KNOB * 100 + "%",
+        transform: `translate(-50%,-50%) translate(${knob2.x}px,${knob2.y}px)`
+      } }),
+      right && h("div", { className: "deadzone", style: {
+        width: AIM_RING * 100 + "%",
+        height: AIM_RING * 100 + "%"
+      } }),
+      h("span", { className: "lbl top" }, left ? "jet" : "aim"),
+      left && h("span", { className: "lbl bot" }, "walk")
+    );
+  }
+  function holdPress(onTap, onHold, onState, ms) {
+    return (e) => {
+      e.preventDefault();
+      const sx = e.clientX, sy = e.clientY;
+      let fired = false;
+      const done = () => {
+        clearTimeout(timer);
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        window.removeEventListener("pointercancel", up);
+        if (onState) onState(false);
+      };
+      const timer = setTimeout(() => {
+        fired = true;
+        done();
+        onHold();
+      }, ms || 450);
+      const move = (ev) => {
+        if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 14) done();
+      };
+      const up = () => {
+        const tap = !fired;
+        done();
+        if (tap && onTap) onTap();
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+      window.addEventListener("pointercancel", up);
+      if (onState) onState(true);
+    };
+  }
+
   // src/world/fire.js
   var FLAMMABLE = { vine: 1, myc: 1 };
   var FIRE_WET = { puddle: 1, snow: 1, ice: 1, slime: 1 };
@@ -10802,234 +11032,305 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { x: (F.x0 + i + 0.5) * NAV * CELL, y: (F.y0 + j + 0.5) * NAV * CELL, dist, air };
   }
 
-  // src/ui/hud.js
-  function fmtGold(g) {
-    g = Math.max(0, Math.floor(g || 0));
-    if (g < 1e3) return String(g);
-    return (Math.floor(g / 100) / 10).toString() + "k";
-  }
-  function deckLayout(W, size, n) {
-    n = n || 4;
-    const g = (W - 2 * size) / 3;
-    const rc = { x: 2 * g + 1.5 * size, y: size / 2 };
-    const btn = Math.round(Math.max(34, Math.min(46, size * 0.24)));
-    const sx = W / 2, sy = size * 0.05 + 10;
-    const R = Math.max(Math.hypot(sx - rc.x, sy - rc.y), size / 2 + btn / 2 + 4);
-    const a0 = Math.atan2(sy - rc.y, sx - rc.x);
-    const xmax = W - btn / 2 - 4;
-    const a1 = Math.max(a0 + 0.3, -Math.acos(Math.max(-1, Math.min(1, (xmax - rc.x) / R))));
-    const guns = [];
-    for (let i = 0; i < n; i++) {
-      const a = a0 + (a1 - a0) * (n > 1 ? i / (n - 1) : 0);
-      guns.push({ x: rc.x + Math.cos(a) * R, y: rc.y + Math.sin(a) * R });
+  // src/ui/cards.js
+  var GUN_STATS = [
+    { k: "cap", label: "slots", better: 1, get: (g) => g.cap, fmt: (v) => String(v) },
+    { k: "delay", label: "cast delay", better: -1, get: (g) => g.castDelay, fmt: (v) => v.toFixed(2) + "s" },
+    { k: "rech", label: "recharge", better: -1, get: effRecharge, fmt: (v) => v.toFixed(2) + "s" },
+    {
+      k: "mana",
+      label: "mana",
+      better: 1,
+      get: (g) => g.manaMax + gunPassives(g).manaMax,
+      fmt: (v) => String(Math.round(v))
+    },
+    {
+      k: "regen",
+      label: "mana regen",
+      better: 1,
+      get: (g) => g.manaRegen + gunPassives(g).manaRegen,
+      fmt: (v) => Math.round(v) + "/s"
+    },
+    { k: "spread", label: "spread", better: -1, get: (g) => g.spread, fmt: (v) => v.toFixed(1) + "°" },
+    { k: "multi", label: "shots per cast", better: 1, get: (g) => g.multi, fmt: (v) => String(v) },
+    { k: "speed", label: "shot speed", better: 1, get: (g) => g.speedMul || 1, fmt: (v) => "x" + v.toFixed(2) },
+    {
+      k: "order",
+      label: "cast order",
+      better: 1,
+      get: (g) => g.shuffle ? 0 : 1,
+      fmt: (v) => v ? "in order" : "shuffle"
     }
-    const last = guns[n - 1];
-    const bag = { x: W - last.x, y: last.y };
-    const map = { x: bag.x, y: bag.y - btn - 8 };
-    return { btn, R, rc, guns, bag, map };
-  }
-  var GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
-  var GAUGE_COL = { mana: "#ffc93c", rech: "#7ad7ff", cast: "#c58cff", fuel: "#ff9a2e" };
-  function healthCol(frac) {
-    return frac > 0.5 ? mixHex("#e6a52c", "#57d267", (frac - 0.5) * 2) : mixHex("#e24a2c", "#e6a52c", frac * 2);
-  }
-  function RKey() {
-    return h(
-      "svg",
-      { className: "rkey", viewBox: "0 0 30 30", width: 28, height: 28, "aria-hidden": true },
-      h("circle", { cx: 15, cy: 15, r: 13.5, fill: "none", stroke: "#fff", strokeWidth: 1 }),
-      h("text", {
-        x: 15,
-        y: 15,
-        textAnchor: "middle",
-        dominantBaseline: "central",
-        fill: "#fff",
-        fontSize: 14,
-        fontWeight: 300,
-        fontFamily: "system-ui, sans-serif"
-      }, "R")
-    );
-  }
-  function Stick({ size, kind, input, refresh }) {
-    const [knob2, setKnob] = useState({ x: 0, y: 0, jet: false });
-    const [gauge, setGauge] = useState({ ring: 1, fuel: 1, empty: false, dry: true });
-    const left = kind === "left";
-    useEffect(() => {
-      let raf, prev = "";
-      const tick = () => {
-        const s = input.current.hud;
-        if (s) {
-          const g = left ? { ring: s.hp, fuel: s.fuel, empty: s.empty, dry: false } : {
-            ring: s.hasGun ? s.mana : 0,
-            rech: s.hasGun ? s.rech : 0,
-            cast: s.hasGun ? s.cast : 0,
-            has: s.hasGun,
-            fuel: 0,
-            empty: false,
-            dry: !s.hasGun || s.recharging
-          };
-          const key = Math.round(g.ring * 100) + "|" + Math.round(g.fuel * 100) + "|" + Math.round((g.rech || 0) * 100) + "|" + Math.round((g.cast || 0) * 100) + "|" + (g.has ? 1 : 0) + "|" + (g.empty ? 1 : 0) + "|" + (g.dry ? 1 : 0);
-          if (key !== prev) {
-            prev = key;
-            setGauge(g);
-          }
-        }
-        raf = requestAnimationFrame(tick);
-      };
-      raf = requestAnimationFrame(tick);
-      return () => cancelAnimationFrame(raf);
-    }, [left]);
-    const ref = useRef(null);
-    const pid = useRef(null);
-    const stayed = useRef(true);
-    const right = kind === "right";
-    const update = (e) => {
-      const r = ref.current.getBoundingClientRect();
-      const rad = r.width / 2;
-      const dx = e.clientX - (r.left + rad), dy = e.clientY - (r.top + rad);
-      const dist = Math.hypot(dx, dy);
-      const maxD = rad * 0.72;
-      const cl = Math.min(dist, maxD);
-      const nx = dist ? dx / dist : 0, ny = dist ? dy / dist : 0;
-      const mag = cl / maxD;
-      const thresh = right ? AIM_DEAD : 0.15;
-      if (right && mag > AIM_DEAD) stayed.current = false;
-      if (right && input.current.confirmAct) {
-        const side = mag > AIM_DEAD ? nx < 0 ? "take" : "leave" : null;
-        if (input.current.confirmAim !== side) {
-          input.current.confirmAim = side;
-          refresh();
-        }
+  ];
+  function GunCard({ gun, label, onClose, ingame, flow, split, mark, compare, compareName }) {
+    const vs = compare && compare !== gun ? compare : null;
+    const stats = GUN_STATS.map((st) => {
+      const v = st.get(gun);
+      let cls = "";
+      if (vs) {
+        const o = st.get(vs);
+        if (Math.abs(v - o) > 1e-6) cls = v > o === st.better > 0 ? " up" : " down";
       }
-      const st = input.current[kind];
-      st.active = true;
-      st.nx = nx;
-      st.ny = ny;
-      st.mag = mag;
-      st.dy = dy;
-      st.on = mag > thresh;
-      setKnob({ x: nx * cl, y: ny * cl, jet: kind === "left" && dy < 0 && mag > DEAD });
-    };
-    const down = (e) => {
-      if (pid.current !== null) return;
-      pid.current = e.pointerId;
-      stayed.current = true;
-      try {
-        ref.current.setPointerCapture(e.pointerId);
-      } catch (_) {
-      }
-      update(e);
-    };
-    const move = (e) => {
-      if (e.pointerId === pid.current) update(e);
-    };
-    const end = (e) => {
-      if (e.pointerId !== pid.current) return;
-      pid.current = null;
-      const act = input.current.confirmAct;
-      if (right && act) {
-        const side = input.current.confirmAim;
-        input.current.confirmAim = null;
-        if (side) act[side]();
-      } else if (right && stayed.current) {
-        input.current.interact = true;
-      }
-      Object.assign(input.current[kind], { active: false, mag: 0, on: false, dy: 0 });
-      setKnob({ x: 0, y: 0, jet: false });
-    };
-    const rw = 3.2, sw = 1.6;
-    const wipe = (r, frac, col, track) => [
-      h("circle", { key: "t" + r, cx: 50, cy: 50, r, fill: "none", stroke: track || "rgba(0,0,0,0.35)", strokeWidth: sw }),
-      h("circle", {
-        key: "w" + r,
-        cx: 50,
-        cy: 50,
-        r,
-        fill: "none",
-        stroke: col,
-        strokeWidth: sw,
-        strokeLinecap: "round",
-        strokeDasharray: Math.max(0, Math.min(1, frac)) * 2 * Math.PI * r + " " + 2 * Math.PI * r,
-        transform: "rotate(-90 50 50)"
-      })
-    ];
-    const ring = left ? h(
-      "svg",
-      { className: "gauge", viewBox: "0 0 100 100" },
-      wipe(GAUGE_R, gauge.ring, healthCol(gauge.ring)),
-      wipe(
-        GAUGE_R - rw,
-        gauge.fuel,
-        knob2.jet ? "#ffc35a" : GAUGE_COL.fuel,
-        gauge.empty ? "rgba(226,74,44,0.7)" : null
-      )
-    ) : h(
-      "svg",
-      { className: "gauge", viewBox: "0 0 100 100" },
-      wipe(GAUGE_R, gauge.ring, gauge.dry ? "rgba(255,201,60,0.28)" : GAUGE_COL.mana),
-      wipe(GAUGE_R - rw, gauge.rech, gauge.has ? GAUGE_COL.rech : "rgba(122,215,255,0.22)"),
-      wipe(GAUGE_R - 2 * rw, gauge.cast, gauge.has ? GAUGE_COL.cast : "rgba(197,140,255,0.22)")
-    );
+      return { st, v, cls };
+    });
     return h(
       "div",
-      {
-        ref,
-        className: "stick" + (knob2.jet ? " jetting" : ""),
-        style: { width: size, height: size },
-        onPointerDown: down,
-        onPointerMove: move,
-        onPointerUp: end,
-        onPointerCancel: end,
-        onLostPointerCapture: end
-      },
-      // the centre line splits jet (top half) from walk
-      left && h("div", { className: "stickclip" }, h("div", { className: "hline" })),
-      ring,
-      // the right stick's amber ring: the line the knob's edge crosses when the drag starts
-      // counting as aiming rather than as a tap on the dead zone
-      h("div", { className: "knob", style: {
-        width: KNOB * 100 + "%",
-        height: KNOB * 100 + "%",
-        transform: `translate(-50%,-50%) translate(${knob2.x}px,${knob2.y}px)`
-      } }),
-      right && h("div", { className: "deadzone", style: {
-        width: AIM_RING * 100 + "%",
-        height: AIM_RING * 100 + "%"
-      } }),
-      h("span", { className: "lbl top" }, left ? "jet" : "aim"),
-      left && h("span", { className: "lbl bot" }, "walk")
+      { className: "pop scroll" + (ingame ? " ingame" : "") + (flow ? " flow" : "") + (split ? " split" : "") + (mark ? " " + mark : "") },
+      h(
+        "div",
+        { className: "phead" },
+        h("div", { className: "pglyph", style: { borderColor: gunLvCol(gun) || "#c9ccd4", color: gunLvCol(gun) || "#c9ccd4" } }, "⌥"),
+        h(
+          "div",
+          { className: "ptitle" },
+          h("b", { style: { color: gunColor(gun) } }, gun.name),
+          h("span", null, (label || "Gun") + (gun.lvl ? " · Lv " + gun.lvl : "") + " · " + gun.cap + " slots")
+        ),
+        onClose ? h("button", {
+          className: "pclose",
+          onPointerDown: (e) => {
+            e.preventDefault();
+            onClose();
+          }
+        }, "×") : null
+      ),
+      vs ? h("p", { className: "vs" }, "compared with " + compareName) : null,
+      split ? h(
+        "div",
+        { className: "stats gstats" },
+        stats.map((r) => h(
+          "div",
+          { className: "st" + r.cls, key: r.st.k },
+          h("b", null, r.st.fmt(r.v)),
+          h("span", null, r.st.label)
+        ))
+      ) : h(
+        "div",
+        { className: "prows" },
+        stats.map((r) => h(
+          "div",
+          { className: "prow" + r.cls, key: r.st.k },
+          h("span", null, r.st.label),
+          h("b", null, r.st.fmt(r.v))
+        ))
+      ),
+      h(
+        "div",
+        { className: "pdemo" },
+        h(
+          "div",
+          { className: "dtiles" },
+          gun.slots.map((id, i) => id ? h(
+            "div",
+            {
+              key: i,
+              className: "dtile",
+              style: { borderColor: famCol(id), color: famCol(id) }
+            },
+            h("b", null, MODS[id].glyph),
+            h("i", null, MODS[id].name)
+          ) : h("div", { key: i, className: "dtile off" }, h("i", null, "empty")))
+        ),
+        split && gun.slots.some(Boolean) ? null : h("span", { className: "dnote" }, gun.slots.some(Boolean) ? "cast left to right" : "nothing fitted yet")
+      )
     );
   }
-  function holdPress(onTap, onHold, onState, ms) {
-    return (e) => {
-      e.preventDefault();
-      const sx = e.clientX, sy = e.clientY;
-      let fired = false;
-      const done = () => {
-        clearTimeout(timer);
-        window.removeEventListener("pointermove", move);
-        window.removeEventListener("pointerup", up);
-        window.removeEventListener("pointercancel", up);
-        if (onState) onState(false);
-      };
-      const timer = setTimeout(() => {
-        fired = true;
-        done();
-        onHold();
-      }, ms || 450);
-      const move = (ev) => {
-        if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 14) done();
-      };
-      const up = () => {
-        const tap = !fired;
-        done();
-        if (tap && onTap) onTap();
-      };
-      window.addEventListener("pointermove", move);
-      window.addEventListener("pointerup", up);
-      window.addEventListener("pointercancel", up);
-      if (onState) onState(true);
-    };
+  function ModCard({ id, onClose, ingame, top, flow }) {
+    const m = MODS[id];
+    const kind = famOf(id).name + (m.kind === "passive" ? " · always on" : "");
+    const rows = modPreview(id).rows;
+    const dtile = (did, key, faded) => h(
+      "div",
+      {
+        key,
+        className: "dtile" + (faded ? " off" : ""),
+        style: { borderColor: famCol(did), color: famCol(did) }
+      },
+      h("b", null, MODS[did].glyph),
+      h("i", null, MODS[did].name)
+    );
+    const drow = (ok, tiles, note, key) => h(
+      "div",
+      { className: "drow", key },
+      h("span", { className: "dmark " + (ok ? "yes" : "no") }, ok ? "✓" : "✗"),
+      h(
+        "div",
+        null,
+        h("div", { className: "dtiles" }, tiles),
+        h("span", { className: "dnote" }, note)
+      )
+    );
+    let timing = null;
+    if (m.setDelay !== void 0) {
+      timing = "Sets the gun’s cast delay to " + m.setDelay + "s the moment it is cast, instead of nudging it like other mods. Anything cast AFTER it adds its own delay back on top, so it only pays off last — usually at the tail of a multicast group, where it fires alongside your real shot and leaves the gun ready immediately.";
+    } else if (m.d) {
+      timing = (m.d < 0 ? "Takes " + Math.abs(m.d) : "Adds " + m.d) + "s " + (m.d < 0 ? "off" : "to") + " the cast delay of the pull it is drawn in. Cast delay is the gap between shots; a mod that zeroes it outright (Buzzsaw) wipes this out if it comes after.";
+    } else if (m.rech || m.rechMul) {
+      timing = "Recharge is the pause once the gun reaches the end of its list. This counts from any slot, so position does not matter for it.";
+    }
+    let demo;
+    if (m.setDelay !== void 0) {
+      demo = [
+        drow(
+          true,
+          [dtile("double", "a"), dtile("bolt", "b"), dtile(id, "c")],
+          "the bolt fires, then this wipes the delay — shoot again at once",
+          1
+        ),
+        drow(
+          false,
+          [dtile(id, "d"), dtile("bolt", "e", true)],
+          "the bolt adds its delay back after the reset",
+          2
+        )
+      ];
+    } else if (m.kind === "passive") {
+      demo = [
+        drow(true, [dtile(id, "a"), dtile("bolt", "b")], "counts wherever you put it", 1),
+        drow(true, [dtile("bolt", "c"), dtile(id, "d")], "same here — order does not matter", 2)
+      ];
+    } else if (m.kind === "shot") {
+      demo = [
+        drow(true, [dtile("dmg_up", "a"), dtile(id, "b")], "modifiers go to its left", 1),
+        drow(false, [dtile(id, "c"), dtile("dmg_up", "d", true)], "a modifier here comes too late", 2)
+      ];
+    } else if (m.kind === "static") {
+      demo = [
+        drow(
+          true,
+          [dtile("dmg_up", "a"), dtile(id, "b")],
+          "modifiers to its left still count",
+          1
+        ),
+        drow(
+          true,
+          [dtile("double", "c"), dtile(id, "d"), dtile("bolt", "e")],
+          "it takes a cast slot like any shot does",
+          2
+        )
+      ];
+    } else if (m.copy === "mods") {
+      demo = [
+        drow(
+          true,
+          [dtile(id, "a"), dtile("bolt", "b"), dtile("heavy", "c")],
+          "the heavy shot counts even though it sits after the bolt",
+          1
+        ),
+        drow(
+          true,
+          [dtile("heavy", "d"), dtile(id, "e"), dtile("bolt", "f")],
+          "and here too — Mu does not care where they are",
+          2
+        )
+      ];
+    } else if (m.copy) {
+      demo = [
+        drow(
+          true,
+          [dtile("bolt", "a"), dtile(id, "b")],
+          "it copies off the gun, so give it something to copy",
+          1
+        ),
+        drow(
+          false,
+          [dtile(id, "c"), dtile("bolt", "d", true)],
+          "first in an empty gun, there is nothing to copy yet",
+          2
+        )
+      ];
+    } else if (m.myriad) {
+      demo = [
+        drow(
+          true,
+          [dtile(id, "a"), dtile("bolt", "b"), dtile("bolt", "c"), dtile("slug", "d")],
+          "all three fire together on one pull",
+          1
+        ),
+        drow(false, [dtile("bolt", "e"), dtile(id, "f", true)], "nothing left after it", 2)
+      ];
+    } else if (m.multi) {
+      demo = [
+        drow(
+          true,
+          [dtile(id, "a"), dtile("bolt", "b"), dtile("bolt", "c")],
+          "both bolts fire on one pull",
+          1
+        ),
+        drow(false, [dtile("bolt", "d"), dtile(id, "e", true)], "nothing after it to gather", 2)
+      ];
+    } else if (m.kind === "util" && !m.f) {
+      demo = [
+        drow(
+          true,
+          [dtile(id, "a"), dtile("bolt", "b")],
+          "it fires along with the pull it is drawn in",
+          1
+        ),
+        drow(true, [dtile("bolt", "c"), dtile(id, "d")], "same pull, same effect", 2)
+      ];
+    } else {
+      demo = [
+        drow(true, [dtile(id, "a"), dtile("bolt", "b")], "the bolt gets the effect", 1),
+        drow(false, [dtile("bolt", "c"), dtile(id, "d", true)], "too late — the bolt already fired", 2)
+      ];
+    }
+    return h(
+      "div",
+      { className: "pop scroll" + (ingame ? " ingame" : "") + (top ? " top" : "") + (flow ? " flow" : "") },
+      h(
+        "div",
+        { className: "phead" },
+        h("div", { className: "pglyph", style: { borderColor: famCol(id), color: famCol(id) } }, m.glyph),
+        h(
+          "div",
+          { className: "ptitle" },
+          h("b", null, m.name),
+          h("span", null, kind + (m.mana ? " · " + m.mana + " mana" : ""))
+        ),
+        onClose ? h("button", {
+          className: "pclose",
+          onPointerDown: (e) => {
+            e.preventDefault();
+            onClose();
+          }
+        }, "×") : null
+      ),
+      m.info ? h("p", { className: "pinfo" }, m.info) : null,
+      timing ? h("p", { className: "pnote" }, timing) : null,
+      rows.length ? h(
+        "div",
+        { className: "prows" },
+        rows.map((r, i) => h(
+          "div",
+          { className: "prow", key: i },
+          h("span", null, r[0]),
+          h("b", null, r[1])
+        ))
+      ) : null,
+      // the placement use-example is for the editor, where you're deciding where a mod
+      // goes — the shop/pickup preview leaves it off and keeps the card compact.
+      ingame ? null : h("div", { className: "pdemo" }, demo)
+    );
+  }
+  function PerkCard({ id, ingame, flow }) {
+    const pk = PERKS[id];
+    return h(
+      "div",
+      { className: "pop scroll" + (ingame ? " ingame" : "") + (flow ? " flow" : "") },
+      h(
+        "div",
+        { className: "phead" },
+        h("div", { className: "pglyph", style: { borderColor: pk.tint, color: pk.tint } }, pk.glyph),
+        h(
+          "div",
+          { className: "ptitle" },
+          h("b", { style: { color: pk.tint } }, pk.name),
+          h("span", null, "Perk · rest of the run")
+        )
+      ),
+      h("p", { className: "pinfo" }, pk.info)
+    );
   }
 
   // src/main.js
@@ -16712,108 +17013,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }, []);
     return h("canvas", { ref: cv, className: "game" });
   }
-  var GUN_STATS = [
-    { k: "cap", label: "slots", better: 1, get: (g) => g.cap, fmt: (v) => String(v) },
-    { k: "delay", label: "cast delay", better: -1, get: (g) => g.castDelay, fmt: (v) => v.toFixed(2) + "s" },
-    { k: "rech", label: "recharge", better: -1, get: effRecharge, fmt: (v) => v.toFixed(2) + "s" },
-    {
-      k: "mana",
-      label: "mana",
-      better: 1,
-      get: (g) => g.manaMax + gunPassives(g).manaMax,
-      fmt: (v) => String(Math.round(v))
-    },
-    {
-      k: "regen",
-      label: "mana regen",
-      better: 1,
-      get: (g) => g.manaRegen + gunPassives(g).manaRegen,
-      fmt: (v) => Math.round(v) + "/s"
-    },
-    { k: "spread", label: "spread", better: -1, get: (g) => g.spread, fmt: (v) => v.toFixed(1) + "°" },
-    { k: "multi", label: "shots per cast", better: 1, get: (g) => g.multi, fmt: (v) => String(v) },
-    { k: "speed", label: "shot speed", better: 1, get: (g) => g.speedMul || 1, fmt: (v) => "x" + v.toFixed(2) },
-    {
-      k: "order",
-      label: "cast order",
-      better: 1,
-      get: (g) => g.shuffle ? 0 : 1,
-      fmt: (v) => v ? "in order" : "shuffle"
-    }
-  ];
-  function GunCard({ gun, label, onClose, ingame, flow, split, mark, compare, compareName }) {
-    const vs = compare && compare !== gun ? compare : null;
-    const stats = GUN_STATS.map((st) => {
-      const v = st.get(gun);
-      let cls = "";
-      if (vs) {
-        const o = st.get(vs);
-        if (Math.abs(v - o) > 1e-6) cls = v > o === st.better > 0 ? " up" : " down";
-      }
-      return { st, v, cls };
-    });
-    return h(
-      "div",
-      { className: "pop scroll" + (ingame ? " ingame" : "") + (flow ? " flow" : "") + (split ? " split" : "") + (mark ? " " + mark : "") },
-      h(
-        "div",
-        { className: "phead" },
-        h("div", { className: "pglyph", style: { borderColor: gunLvCol(gun) || "#c9ccd4", color: gunLvCol(gun) || "#c9ccd4" } }, "⌥"),
-        h(
-          "div",
-          { className: "ptitle" },
-          h("b", { style: { color: gunColor(gun) } }, gun.name),
-          h("span", null, (label || "Gun") + (gun.lvl ? " · Lv " + gun.lvl : "") + " · " + gun.cap + " slots")
-        ),
-        onClose ? h("button", {
-          className: "pclose",
-          onPointerDown: (e) => {
-            e.preventDefault();
-            onClose();
-          }
-        }, "×") : null
-      ),
-      vs ? h("p", { className: "vs" }, "compared with " + compareName) : null,
-      split ? h(
-        "div",
-        { className: "stats gstats" },
-        stats.map((r) => h(
-          "div",
-          { className: "st" + r.cls, key: r.st.k },
-          h("b", null, r.st.fmt(r.v)),
-          h("span", null, r.st.label)
-        ))
-      ) : h(
-        "div",
-        { className: "prows" },
-        stats.map((r) => h(
-          "div",
-          { className: "prow" + r.cls, key: r.st.k },
-          h("span", null, r.st.label),
-          h("b", null, r.st.fmt(r.v))
-        ))
-      ),
-      h(
-        "div",
-        { className: "pdemo" },
-        h(
-          "div",
-          { className: "dtiles" },
-          gun.slots.map((id, i) => id ? h(
-            "div",
-            {
-              key: i,
-              className: "dtile",
-              style: { borderColor: famCol(id), color: famCol(id) }
-            },
-            h("b", null, MODS[id].glyph),
-            h("i", null, MODS[id].name)
-          ) : h("div", { key: i, className: "dtile off" }, h("i", null, "empty")))
-        ),
-        split && gun.slots.some(Boolean) ? null : h("span", { className: "dnote" }, gun.slots.some(Boolean) ? "cast left to right" : "nothing fitted yet")
-      )
-    );
-  }
   function GunSwap({ input, refresh, onDone }) {
     const LO = input.current.loadout;
     useEffect(() => {
@@ -16895,184 +17094,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           h("span", { className: "gsub" }, g ? g.slots.filter(Boolean).length + "/" + g.cap + " mods" : "hold to take")
         ))
       )
-    );
-  }
-  function ModCard({ id, onClose, ingame, top, flow }) {
-    const m = MODS[id];
-    const kind = famOf(id).name + (m.kind === "passive" ? " · always on" : "");
-    const rows = modPreview(id).rows;
-    const dtile = (did, key, faded) => h(
-      "div",
-      {
-        key,
-        className: "dtile" + (faded ? " off" : ""),
-        style: { borderColor: famCol(did), color: famCol(did) }
-      },
-      h("b", null, MODS[did].glyph),
-      h("i", null, MODS[did].name)
-    );
-    const drow = (ok, tiles, note, key) => h(
-      "div",
-      { className: "drow", key },
-      h("span", { className: "dmark " + (ok ? "yes" : "no") }, ok ? "✓" : "✗"),
-      h(
-        "div",
-        null,
-        h("div", { className: "dtiles" }, tiles),
-        h("span", { className: "dnote" }, note)
-      )
-    );
-    let timing = null;
-    if (m.setDelay !== void 0) {
-      timing = "Sets the gun’s cast delay to " + m.setDelay + "s the moment it is cast, instead of nudging it like other mods. Anything cast AFTER it adds its own delay back on top, so it only pays off last — usually at the tail of a multicast group, where it fires alongside your real shot and leaves the gun ready immediately.";
-    } else if (m.d) {
-      timing = (m.d < 0 ? "Takes " + Math.abs(m.d) : "Adds " + m.d) + "s " + (m.d < 0 ? "off" : "to") + " the cast delay of the pull it is drawn in. Cast delay is the gap between shots; a mod that zeroes it outright (Buzzsaw) wipes this out if it comes after.";
-    } else if (m.rech || m.rechMul) {
-      timing = "Recharge is the pause once the gun reaches the end of its list. This counts from any slot, so position does not matter for it.";
-    }
-    let demo;
-    if (m.setDelay !== void 0) {
-      demo = [
-        drow(
-          true,
-          [dtile("double", "a"), dtile("bolt", "b"), dtile(id, "c")],
-          "the bolt fires, then this wipes the delay — shoot again at once",
-          1
-        ),
-        drow(
-          false,
-          [dtile(id, "d"), dtile("bolt", "e", true)],
-          "the bolt adds its delay back after the reset",
-          2
-        )
-      ];
-    } else if (m.kind === "passive") {
-      demo = [
-        drow(true, [dtile(id, "a"), dtile("bolt", "b")], "counts wherever you put it", 1),
-        drow(true, [dtile("bolt", "c"), dtile(id, "d")], "same here — order does not matter", 2)
-      ];
-    } else if (m.kind === "shot") {
-      demo = [
-        drow(true, [dtile("dmg_up", "a"), dtile(id, "b")], "modifiers go to its left", 1),
-        drow(false, [dtile(id, "c"), dtile("dmg_up", "d", true)], "a modifier here comes too late", 2)
-      ];
-    } else if (m.kind === "static") {
-      demo = [
-        drow(
-          true,
-          [dtile("dmg_up", "a"), dtile(id, "b")],
-          "modifiers to its left still count",
-          1
-        ),
-        drow(
-          true,
-          [dtile("double", "c"), dtile(id, "d"), dtile("bolt", "e")],
-          "it takes a cast slot like any shot does",
-          2
-        )
-      ];
-    } else if (m.copy === "mods") {
-      demo = [
-        drow(
-          true,
-          [dtile(id, "a"), dtile("bolt", "b"), dtile("heavy", "c")],
-          "the heavy shot counts even though it sits after the bolt",
-          1
-        ),
-        drow(
-          true,
-          [dtile("heavy", "d"), dtile(id, "e"), dtile("bolt", "f")],
-          "and here too — Mu does not care where they are",
-          2
-        )
-      ];
-    } else if (m.copy) {
-      demo = [
-        drow(
-          true,
-          [dtile("bolt", "a"), dtile(id, "b")],
-          "it copies off the gun, so give it something to copy",
-          1
-        ),
-        drow(
-          false,
-          [dtile(id, "c"), dtile("bolt", "d", true)],
-          "first in an empty gun, there is nothing to copy yet",
-          2
-        )
-      ];
-    } else if (m.myriad) {
-      demo = [
-        drow(
-          true,
-          [dtile(id, "a"), dtile("bolt", "b"), dtile("bolt", "c"), dtile("slug", "d")],
-          "all three fire together on one pull",
-          1
-        ),
-        drow(false, [dtile("bolt", "e"), dtile(id, "f", true)], "nothing left after it", 2)
-      ];
-    } else if (m.multi) {
-      demo = [
-        drow(
-          true,
-          [dtile(id, "a"), dtile("bolt", "b"), dtile("bolt", "c")],
-          "both bolts fire on one pull",
-          1
-        ),
-        drow(false, [dtile("bolt", "d"), dtile(id, "e", true)], "nothing after it to gather", 2)
-      ];
-    } else if (m.kind === "util" && !m.f) {
-      demo = [
-        drow(
-          true,
-          [dtile(id, "a"), dtile("bolt", "b")],
-          "it fires along with the pull it is drawn in",
-          1
-        ),
-        drow(true, [dtile("bolt", "c"), dtile(id, "d")], "same pull, same effect", 2)
-      ];
-    } else {
-      demo = [
-        drow(true, [dtile(id, "a"), dtile("bolt", "b")], "the bolt gets the effect", 1),
-        drow(false, [dtile("bolt", "c"), dtile(id, "d", true)], "too late — the bolt already fired", 2)
-      ];
-    }
-    return h(
-      "div",
-      { className: "pop scroll" + (ingame ? " ingame" : "") + (top ? " top" : "") + (flow ? " flow" : "") },
-      h(
-        "div",
-        { className: "phead" },
-        h("div", { className: "pglyph", style: { borderColor: famCol(id), color: famCol(id) } }, m.glyph),
-        h(
-          "div",
-          { className: "ptitle" },
-          h("b", null, m.name),
-          h("span", null, kind + (m.mana ? " · " + m.mana + " mana" : ""))
-        ),
-        onClose ? h("button", {
-          className: "pclose",
-          onPointerDown: (e) => {
-            e.preventDefault();
-            onClose();
-          }
-        }, "×") : null
-      ),
-      m.info ? h("p", { className: "pinfo" }, m.info) : null,
-      timing ? h("p", { className: "pnote" }, timing) : null,
-      rows.length ? h(
-        "div",
-        { className: "prows" },
-        rows.map((r, i) => h(
-          "div",
-          { className: "prow", key: i },
-          h("span", null, r[0]),
-          h("b", null, r[1])
-        ))
-      ) : null,
-      // the placement use-example is for the editor, where you're deciding where a mod
-      // goes — the shop/pickup preview leaves it off and keeps the card compact.
-      ingame ? null : h("div", { className: "pdemo" }, demo)
     );
   }
   var PULL_COL = ["#ff8a1f", "#3fc9ff", "#b565ff", "#57d267", "#ff5fa2", "#ffd23c"];
@@ -17534,25 +17555,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         MODS[drag.id].glyph
       ) : null,
       card
-    );
-  }
-  function PerkCard({ id, ingame, flow }) {
-    const pk = PERKS[id];
-    return h(
-      "div",
-      { className: "pop scroll" + (ingame ? " ingame" : "") + (flow ? " flow" : "") },
-      h(
-        "div",
-        { className: "phead" },
-        h("div", { className: "pglyph", style: { borderColor: pk.tint, color: pk.tint } }, pk.glyph),
-        h(
-          "div",
-          { className: "ptitle" },
-          h("b", { style: { color: pk.tint } }, pk.name),
-          h("span", null, "Perk · rest of the run")
-        )
-      ),
-      h("p", { className: "pinfo" }, pk.info)
     );
   }
   function JellyPreview() {
