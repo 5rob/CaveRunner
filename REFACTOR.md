@@ -439,6 +439,10 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] player.js: `torchHand` (`(W)`)
   - [x] plantglow.js: `plantGlow` (`(W, G, …)`). First, by hand: its scratch `let`s became `G.pgArt`/`G.pgC`/`G.pgCtx`
         (null in `G`, made on first use as before; only plantGlow touched them), and `pgGlow`/`pgGlowCtx` moved up and joined `G`
+  - [x] recorder.js: `idOf`, `recReset`, `recSample`, `recFrame`, `rpTerrain`, `drawReplay` (all `(W, G, …)`), and the
+        putImageData wrapper as `recWrap(G)`, called as soon as `G` is made (nothing draws on `tctx`/`dctx` before that).
+        First, by hand: `RPV` → `G.RPV` (21 references, most in draw()), `rid`/`ridN` and `RP_ARR` (still W's own arrays)
+        joined `G`, and `drawReplay(V, draw)` is handed Game's `draw` while draw() lives in Game. `REC`/`RT` stay made in Game
   - Learned so far: `G`'s keys must be declared above `G` (a closure `const` further down moves up
     first, as `fireBox` did). A function passed as a callback gets an arrow at each site; for the
     per-frame ones (`visPoly`, `fireStep`, a spider's or jelly's `env`) that is one small allocation
@@ -448,7 +452,7 @@ What the code says about P3.4 (checked at the end of P3.3):
     function `addEventListener` got, so a moved function used as one gets a single named arrow in Game
     (`saveNow`) that every value use shares. Check the `--dry` "as a value" lines for `remove…Listener`.
   - The old rough list (P3.1's guess), still to do; the parts already out are noted:
-  - [ ] recorder: the putImageData wrappers stay in Game until recorder.js (they wrap `tctx`/`dctx`, which the systems reach as `G.tctx`/`G.dctx`)
+  - [x] recorder: the putImageData wrappers stay in Game until recorder.js (they wrap `tctx`/`dctx`, which the systems reach as `G.tctx`/`G.dctx`): `recWrap`
   - [ ] fog.js: paintFog, bake, blur, fogLit
   - [ ] level-entry.js: enterLevel, sconces, per-floor precompute
   - [ ] player.js: walking, jetpack + sputter, climbing (vines, webs, arches), the torch (hurt, maxHp, refreshBag are out)
@@ -461,7 +465,7 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] fire: done, as fire.js (step 6)
   - [ ] ambience.js: spores and amb particles (see the ambience box above); motes, dparts, smoke, sparks are updated inline in step()
   - [ ] camera.js
-  - [ ] recorder.js: recFrame, recSample, REC, and drawReplay's rebuild
+  - [x] recorder.js: recFrame, recSample, REC, and drawReplay's rebuild
   - [x] save-run.js: saveRun
   - [ ] render/: split `draw()` into layers in their current order: background, terrain,
         props, entities, bullet looks (`drawLook`), fog, post-fog glows, HUD, map
@@ -801,3 +805,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.4 (15) | `natural` to `enemies.js` (`(W, …)`), header extended. `archvine`, `jelly` run too: `jelly` spit failed 3 of 5 alone here and 3 of 4 on the commit before (the known flake). | probe SAME, logic 33/33, smoke ok, archvine ok |
 | 2026-09-29 | Phase 3, P3.4 (16) | `torchHand` to `player.js` (`(W)`), header extended. `torch` (failed once, passed alone twice: known flake), `replay` run too. | probe SAME, logic 33/33, smoke ok, torch ok, replay ok |
 | 2026-09-29 | Phase 3, P3.4 (17) | `plantglow.js`: `plantGlow`. Its `pgArt`/`pgC`/`pgCtx` `let`s became `G` properties by hand first (a scripted rewrite of the 19 references inside it, the only place they were used), `pgGlow`/`pgGlowCtx` joined `G`. `jelly` run too: every glow check passed; spit flaked (known). | probe SAME, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 3, P3.4 (18) | `recorder.js`: `idOf`, `recReset`, `recSample`, `recFrame`, `rpTerrain`, `drawReplay`, plus the putImageData wrapper as `recWrap(G)` (by hand, called right after `G`). Prep by hand, checked SAME on its own: `RPV` → `G.RPV`, `rid`/`ridN`/`RP_ARR` into `G`, `drawReplay` takes `draw` as an argument. `replay` (43/43), `fire`, `save` run too. | probe SAME, logic 33/33, smoke ok, replay ok |

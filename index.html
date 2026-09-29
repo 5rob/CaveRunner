@@ -7284,162 +7284,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var HUNTERS = { chase: 1, bomb: 1, spider: 1, jelly: 1, rat: 1 };
   var NATURAL_ONLY = { jelly: 1 };
 
-  // src/replay/replay.js
-  var RP_HZ = 20;
-  var RP_BEFORE = 10;
-  var RP_AFTER = 3;
-  var RP_KEEP = RP_BEFORE + 0.5;
-  var RP_W = 320, RP_H = 440;
-  var RP_LISTS = [
-    "bullets",
-    "enemyShots",
-    "smoke",
-    "sparks",
-    "flashes",
-    "coins",
-    "fields",
-    "beams",
-    "arcs",
-    "torchP",
-    "motes",
-    "burns",
-    "webs",
-    "silk",
-    "strings",
-    "dparts",
-    "amb",
-    "clouds",
-    "rings",
-    "devils",
-    "enemies",
-    "pickups",
-    "props"
-  ];
-  var RP_NUMS = ["time", "flick", "leanX", "leanY", "glowN"];
-  var RP_DEEP = { sp: 1, ra: 1, je: 1, nest: 1, shot: 1, tent: 1, trail: 1, aim: 1 };
-  var RP_LERP = {
-    x: 1,
-    y: 1,
-    ty: 1,
-    lx: 1,
-    ly: 1,
-    vx: 1,
-    vy: 1,
-    nx: 1,
-    ny: 1,
-    jx: 1,
-    jy: 1,
-    ox: 1,
-    oy: 1,
-    life: 1,
-    t: 1,
-    age: 1,
-    r: 1,
-    size: 1,
-    shape: 1,
-    flame: 1,
-    fuel: 1,
-    hp: 1,
-    charge: 1,
-    len: 1,
-    hitT: 1
-  };
-  var RP_ANGLE = { hd: 1 };
-  var rpPlain = (v) => v !== null && typeof v === "object" && (Array.isArray(v) || Object.getPrototypeOf(v) === Object.prototype);
-  function rpClone(o, id) {
-    const c = {};
-    for (const k in o) {
-      const v = o[k];
-      c[k] = RP_DEEP[k] && rpPlain(v) ? rpCopy(v) : v;
-    }
-    if (id !== void 0) c._r = id;
-    return c;
-  }
-  function rpCopy(v) {
-    return Array.isArray(v) ? v.map(rpCopy) : rpPlain(v) ? rpClone(v) : v;
-  }
-  function rpLerp(a, b, u) {
-    if (!b || a === b) return a;
-    if (Array.isArray(a)) {
-      if (!Array.isArray(b) || a.length !== b.length) return u < 0.5 ? a : b;
-      return a.map((x, i) => rpLerp(x, b[i], u));
-    }
-    if (!rpPlain(a) || !rpPlain(b)) return u < 0.5 ? a : b;
-    const c = Object.assign({}, u < 0.5 ? a : b);
-    for (const k in c) {
-      const va = a[k], vb = b[k];
-      if (typeof va === "number" && typeof vb === "number") {
-        if (RP_LERP[k]) c[k] = va + (vb - va) * u;
-        else if (RP_ANGLE[k]) c[k] = va + angDiff(vb, va) * u;
-      } else if (RP_DEEP[k] && va && vb && typeof va === "object") c[k] = rpLerp(va, vb, u);
-    }
-    return c;
-  }
-  function rpList(A, B, u) {
-    const out = [], mb = /* @__PURE__ */ new Map();
-    for (const o of B) mb.set(o._r, o);
-    for (const a of A) {
-      const b = mb.get(a._r);
-      if (b) {
-        out.push(rpLerp(a, b, u));
-        mb.delete(a._r);
-      } else if (u < 0.5) out.push(a);
-    }
-    if (u >= 0.5) for (const b of mb.values()) out.push(b);
-    return out;
-  }
-  function rpAt(snaps, t) {
-    let lo = 0, hi = snaps.length - 1;
-    if (t <= snaps[0].t) return { a: snaps[0], b: snaps[0], u: 0 };
-    if (t >= snaps[hi].t) return { a: snaps[hi], b: snaps[hi], u: 0 };
-    while (hi - lo > 1) {
-      const m = lo + hi >> 1;
-      if (snaps[m].t <= t) lo = m;
-      else hi = m;
-    }
-    const a = snaps[lo], b = snaps[hi];
-    return { a, b, u: (t - a.t) / (b.t - a.t || 1) };
-  }
-  function rpFrame(snaps, t) {
-    const { a, b, u } = rpAt(snaps, t), F = { near: u < 0.5 ? a : b };
-    for (const k of RP_LISTS) F[k] = rpList(a[k], b[k], u);
-    for (const k of RP_NUMS) F[k] = a[k] + (b[k] - a[k]) * u;
-    F.p = rpLerp(a.p, b.p, u);
-    F.ghost = a.ghost && b.ghost ? rpLerp(a.ghost, b.ghost, u) : F.near.ghost;
-    return F;
-  }
-  function rpCut(data, W, x, y, w, h3) {
-    const out = new Uint8ClampedArray(w * h3 * 4);
-    for (let r = 0; r < h3; r++) out.set(data.subarray(((y + r) * W + x) * 4, ((y + r) * W + x + w) * 4), r * w * 4);
-    return out;
-  }
-  function rpPaste(data, W, P) {
-    for (let r = 0; r < P.h; r++) data.set(P.px.subarray(r * P.w * 4, (r + 1) * P.w * 4), ((P.y + r) * W + P.x) * 4);
-  }
-  function rpMerge(rects, W, H) {
-    const out = [];
-    for (const which of ["t", "d"]) {
-      const rs = [];
-      for (const [c, x, y, w, h3] of rects) {
-        if (c !== which) continue;
-        const x0 = Math.max(0, x), y0 = Math.max(0, y), x1 = Math.min(W, x + w), y1 = Math.min(H, y + h3);
-        if (x1 > x0 && y1 > y0) rs.push([x0, y0, x1, y1]);
-      }
-      if (!rs.length) continue;
-      let area = 0, X0 = W, Y0 = H, X1 = 0, Y1 = 0;
-      for (const [x0, y0, x1, y1] of rs) {
-        area += (x1 - x0) * (y1 - y0);
-        X0 = Math.min(X0, x0);
-        Y0 = Math.min(Y0, y0);
-        X1 = Math.max(X1, x1);
-        Y1 = Math.max(Y1, y1);
-      }
-      if ((X1 - X0) * (Y1 - Y0) <= Math.max(4096, area * 3)) out.push([which, X0, Y0, X1 - X0, Y1 - Y0]);
-      else for (const [x0, y0, x1, y1] of rs) out.push([which, x0, y0, x1 - x0, y1 - y0]);
-    }
-    return out;
-  }
-
   // src/spells/cast.js
   var MIN_CAST = 0.016;
   var MIN_RECH = 0.05;
@@ -12674,6 +12518,389 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/replay/replay.js
+  var RP_HZ = 20;
+  var RP_BEFORE = 10;
+  var RP_AFTER = 3;
+  var RP_KEEP = RP_BEFORE + 0.5;
+  var RP_W = 320, RP_H = 440;
+  var RP_LISTS = [
+    "bullets",
+    "enemyShots",
+    "smoke",
+    "sparks",
+    "flashes",
+    "coins",
+    "fields",
+    "beams",
+    "arcs",
+    "torchP",
+    "motes",
+    "burns",
+    "webs",
+    "silk",
+    "strings",
+    "dparts",
+    "amb",
+    "clouds",
+    "rings",
+    "devils",
+    "enemies",
+    "pickups",
+    "props"
+  ];
+  var RP_NUMS = ["time", "flick", "leanX", "leanY", "glowN"];
+  var RP_DEEP = { sp: 1, ra: 1, je: 1, nest: 1, shot: 1, tent: 1, trail: 1, aim: 1 };
+  var RP_LERP = {
+    x: 1,
+    y: 1,
+    ty: 1,
+    lx: 1,
+    ly: 1,
+    vx: 1,
+    vy: 1,
+    nx: 1,
+    ny: 1,
+    jx: 1,
+    jy: 1,
+    ox: 1,
+    oy: 1,
+    life: 1,
+    t: 1,
+    age: 1,
+    r: 1,
+    size: 1,
+    shape: 1,
+    flame: 1,
+    fuel: 1,
+    hp: 1,
+    charge: 1,
+    len: 1,
+    hitT: 1
+  };
+  var RP_ANGLE = { hd: 1 };
+  var rpPlain = (v) => v !== null && typeof v === "object" && (Array.isArray(v) || Object.getPrototypeOf(v) === Object.prototype);
+  function rpClone(o, id) {
+    const c = {};
+    for (const k in o) {
+      const v = o[k];
+      c[k] = RP_DEEP[k] && rpPlain(v) ? rpCopy(v) : v;
+    }
+    if (id !== void 0) c._r = id;
+    return c;
+  }
+  function rpCopy(v) {
+    return Array.isArray(v) ? v.map(rpCopy) : rpPlain(v) ? rpClone(v) : v;
+  }
+  function rpLerp(a, b, u) {
+    if (!b || a === b) return a;
+    if (Array.isArray(a)) {
+      if (!Array.isArray(b) || a.length !== b.length) return u < 0.5 ? a : b;
+      return a.map((x, i) => rpLerp(x, b[i], u));
+    }
+    if (!rpPlain(a) || !rpPlain(b)) return u < 0.5 ? a : b;
+    const c = Object.assign({}, u < 0.5 ? a : b);
+    for (const k in c) {
+      const va = a[k], vb = b[k];
+      if (typeof va === "number" && typeof vb === "number") {
+        if (RP_LERP[k]) c[k] = va + (vb - va) * u;
+        else if (RP_ANGLE[k]) c[k] = va + angDiff(vb, va) * u;
+      } else if (RP_DEEP[k] && va && vb && typeof va === "object") c[k] = rpLerp(va, vb, u);
+    }
+    return c;
+  }
+  function rpList(A, B, u) {
+    const out = [], mb = /* @__PURE__ */ new Map();
+    for (const o of B) mb.set(o._r, o);
+    for (const a of A) {
+      const b = mb.get(a._r);
+      if (b) {
+        out.push(rpLerp(a, b, u));
+        mb.delete(a._r);
+      } else if (u < 0.5) out.push(a);
+    }
+    if (u >= 0.5) for (const b of mb.values()) out.push(b);
+    return out;
+  }
+  function rpAt(snaps, t) {
+    let lo = 0, hi = snaps.length - 1;
+    if (t <= snaps[0].t) return { a: snaps[0], b: snaps[0], u: 0 };
+    if (t >= snaps[hi].t) return { a: snaps[hi], b: snaps[hi], u: 0 };
+    while (hi - lo > 1) {
+      const m = lo + hi >> 1;
+      if (snaps[m].t <= t) lo = m;
+      else hi = m;
+    }
+    const a = snaps[lo], b = snaps[hi];
+    return { a, b, u: (t - a.t) / (b.t - a.t || 1) };
+  }
+  function rpFrame(snaps, t) {
+    const { a, b, u } = rpAt(snaps, t), F = { near: u < 0.5 ? a : b };
+    for (const k of RP_LISTS) F[k] = rpList(a[k], b[k], u);
+    for (const k of RP_NUMS) F[k] = a[k] + (b[k] - a[k]) * u;
+    F.p = rpLerp(a.p, b.p, u);
+    F.ghost = a.ghost && b.ghost ? rpLerp(a.ghost, b.ghost, u) : F.near.ghost;
+    return F;
+  }
+  function rpCut(data, W, x, y, w, h3) {
+    const out = new Uint8ClampedArray(w * h3 * 4);
+    for (let r = 0; r < h3; r++) out.set(data.subarray(((y + r) * W + x) * 4, ((y + r) * W + x + w) * 4), r * w * 4);
+    return out;
+  }
+  function rpPaste(data, W, P) {
+    for (let r = 0; r < P.h; r++) data.set(P.px.subarray(r * P.w * 4, (r + 1) * P.w * 4), ((P.y + r) * W + P.x) * 4);
+  }
+  function rpMerge(rects, W, H) {
+    const out = [];
+    for (const which of ["t", "d"]) {
+      const rs = [];
+      for (const [c, x, y, w, h3] of rects) {
+        if (c !== which) continue;
+        const x0 = Math.max(0, x), y0 = Math.max(0, y), x1 = Math.min(W, x + w), y1 = Math.min(H, y + h3);
+        if (x1 > x0 && y1 > y0) rs.push([x0, y0, x1, y1]);
+      }
+      if (!rs.length) continue;
+      let area = 0, X0 = W, Y0 = H, X1 = 0, Y1 = 0;
+      for (const [x0, y0, x1, y1] of rs) {
+        area += (x1 - x0) * (y1 - y0);
+        X0 = Math.min(X0, x0);
+        Y0 = Math.min(Y0, y0);
+        X1 = Math.max(X1, x1);
+        Y1 = Math.max(Y1, y1);
+      }
+      if ((X1 - X0) * (Y1 - Y0) <= Math.max(4096, area * 3)) out.push([which, X0, Y0, X1 - X0, Y1 - Y0]);
+      else for (const [x0, y0, x1, y1] of rs) out.push([which, x0, y0, x1 - x0, y1 - y0]);
+    }
+    return out;
+  }
+
+  // src/game/systems/recorder.js
+  function recWrap(G) {
+    for (const [cx, which] of [[G.tctx, "t"], [G.dctx, "d"]]) {
+      const put = cx.putImageData.bind(cx);
+      cx.putImageData = (im, dx, dy, x, y, w, h3) => {
+        if (w === void 0) return put(im, dx, dy);
+        put(im, dx, dy, x, y, w, h3);
+        if (G.REC.tBase && !G.REC.done) G.REC.dirty.push([which, x, y, w, h3]);
+      };
+    }
+  }
+  var idOf = (W, G, o) => {
+    let i = G.rid.get(o);
+    if (i === void 0) G.rid.set(o, i = ++G.ridN);
+    return i;
+  };
+  function recReset(W, G) {
+    G.REC.t = 0;
+    G.REC.acc = 0;
+    G.REC.snaps = [];
+    G.REC.patches = [];
+    G.REC.dirty = [];
+    G.REC.fogLog = [];
+    G.REC.tBase = W.img.data.slice();
+    G.REC.dBase = W.dimg ? W.dimg.data.slice() : null;
+    G.REC.fogBase = W.seen.slice();
+    G.REC.fogPrev = W.seen.slice();
+    G.REC.deathT = -1;
+    G.REC.done = false;
+    G.RT.n = 0;
+    G.RT.at = -1;
+    G.input.current.witness = null;
+  }
+  function recSample(W, G) {
+    const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
+    const grab = (list, m, ty) => {
+      const out = [];
+      for (const o of list) {
+        const x = o.x !== void 0 ? o.x : o.a0x !== void 0 ? o.a0x : o.ax;
+        const y = ty && o[ty] !== void 0 ? o[ty] : o.y !== void 0 ? o.y : o.a0y !== void 0 ? o.a0y : o.ay;
+        if (x === void 0 || Math.abs(x - pcx) < RP_W + m && Math.abs(y - pcy) < RP_H + m) out.push(rpClone(o, idOf(W, G, o)));
+      }
+      return out;
+    };
+    const S = {
+      t: G.REC.t,
+      time: W.time,
+      flick: W.flick,
+      leanX: W.leanX,
+      leanY: W.leanY,
+      glowN: W.glowN,
+      fireN: W.fireN,
+      p: rpClone(W.p),
+      ghost: W.ghost ? rpClone(W.ghost) : null
+    };
+    for (const k in G.RP_ARR) S[k] = grab(G.RP_ARR[k], 40);
+    S.enemies = grab(W.enemies, 40, "ty");
+    S.pickups = grab(W.pickups, 40);
+    S.props = grab(W.props, 120);
+    const fi = [];
+    for (const i of W.fire.list) {
+      const x = i % CW * CELL, y = (i / CW | 0) * CELL;
+      if (Math.abs(x - pcx) < RP_W && Math.abs(y - pcy) < RP_H) fi.push(i);
+    }
+    S.fire = Int32Array.from(fi);
+    S.fireT = Uint16Array.from(fi, (i) => W.fire.t[i]);
+    G.REC.snaps.push(S);
+    if (G.REC.dirty.length) {
+      for (const [w, x, y, ww, hh] of rpMerge(G.REC.dirty, CW, CH)) {
+        const src = w === "t" ? W.img : W.dimg;
+        if (src) G.REC.patches.push({ t: G.REC.t, c: w, x, y, w: ww, h: hh, px: rpCut(src.data, CW, x, y, ww, hh) });
+      }
+      G.REC.dirty.length = 0;
+    }
+    for (let i = 0; i < W.seen.length; i++)
+      if (W.seen[i] !== G.REC.fogPrev[i]) {
+        G.REC.fogLog.push(G.REC.t, i, W.seen[i]);
+        G.REC.fogPrev[i] = W.seen[i];
+      }
+    if (G.REC.deathT >= 0) return;
+    const cut = G.REC.t - RP_KEEP;
+    let n = 0;
+    while (n < G.REC.snaps.length && G.REC.snaps[n].t < cut) n++;
+    if (n) G.REC.snaps.splice(0, n);
+    n = 0;
+    while (n < G.REC.patches.length && G.REC.patches[n].t < cut) {
+      const P = G.REC.patches[n++], base = P.c === "t" ? G.REC.tBase : G.REC.dBase;
+      if (base) rpPaste(base, CW, P);
+    }
+    if (n) G.REC.patches.splice(0, n);
+    n = 0;
+    while (n < G.REC.fogLog.length && G.REC.fogLog[n] < cut) {
+      G.REC.fogBase[G.REC.fogLog[n + 1]] = G.REC.fogLog[n + 2];
+      n += 3;
+    }
+    if (n) G.REC.fogLog.splice(0, n);
+  }
+  function recFrame(W, G, dt) {
+    if (G.REC.done || !G.REC.tBase) return;
+    G.REC.t += dt;
+    if (W.p.dead && G.REC.deathT < 0) G.REC.deathT = G.REC.t;
+    if ((G.REC.acc -= dt) > 0) return;
+    G.REC.acc = Math.max(0, G.REC.acc + 1 / RP_HZ);
+    recSample(W, G);
+    if (G.REC.deathT >= 0 && G.REC.t >= G.REC.deathT + RP_AFTER) {
+      G.REC.done = true;
+      G.input.current.witness = { t0: Math.max(G.REC.snaps[0].t, G.REC.deathT - RP_BEFORE), t1: G.REC.t, death: G.REC.deathT };
+      G.input.current.notify();
+    }
+  }
+  function rpTerrain(W, G, T) {
+    if (!G.RT.tC) {
+      G.RT.tC = document.createElement("canvas");
+      G.RT.tC.width = CW;
+      G.RT.tC.height = CH;
+      G.RT.dC = document.createElement("canvas");
+      G.RT.dC.width = CW;
+      G.RT.dC.height = CH;
+      G.RT.fireT = new Uint16Array(CW * CH);
+    }
+    const tc = G.RT.tC.getContext("2d"), dc = G.RT.dC.getContext("2d");
+    if (G.RT.at < 0 || G.RT.n > 0 && G.REC.patches[G.RT.n - 1].t > T) {
+      tc.putImageData(new ImageData(G.REC.tBase, CW, CH), 0, 0);
+      dc.clearRect(0, 0, CW, CH);
+      if (G.REC.dBase) dc.putImageData(new ImageData(G.REC.dBase, CW, CH), 0, 0);
+      G.RT.n = 0;
+    }
+    while (G.RT.n < G.REC.patches.length && G.REC.patches[G.RT.n].t <= T) {
+      const P = G.REC.patches[G.RT.n++];
+      (P.c === "t" ? tc : dc).putImageData(new ImageData(P.px, P.w, P.h), P.x, P.y);
+    }
+    G.RT.at = T;
+    if (!G.RT.fog || G.RT.fog.length !== G.REC.fogBase.length) G.RT.fog = new Uint8Array(G.REC.fogBase.length);
+    G.RT.fog.set(G.REC.fogBase);
+    const L = G.REC.fogLog;
+    for (let n = 0; n < L.length && L[n] <= T; n += 3) G.RT.fog[L[n + 1]] = L[n + 2];
+  }
+  function drawReplay(W, G, V, draw) {
+    const wit = G.input.current.witness;
+    V.t = clamp(V.t, wit.t0, wit.t1);
+    const F = rpFrame(G.REC.snaps, V.t);
+    rpTerrain(W, G, V.t);
+    if (!V.fog) G.RT.fog.fill(1);
+    if (V.follow) {
+      V.cx = F.p.x + PW / 2;
+      V.cy = F.p.y + PH / 2;
+    }
+    const near = F.near;
+    for (let k = 0; k < near.fire.length; k++) G.RT.fireT[near.fire[k]] = near.fireT[k];
+    const keepL = {};
+    for (const k in G.RP_ARR) {
+      const L = G.RP_ARR[k];
+      keepL[k] = L.splice(0, L.length, ...F[k]);
+    }
+    const keep = {
+      enemies: W.enemies,
+      pickups: W.pickups,
+      props: W.props,
+      fire: W.fire,
+      firePlants: W.firePlants,
+      seen: W.seen,
+      ghost: W.ghost,
+      time: W.time,
+      flick: W.flick,
+      leanX: W.leanX,
+      leanY: W.leanY,
+      glowN: W.glowN,
+      fireN: W.fireN,
+      camX: W.camX,
+      camY: W.camY,
+      unitPx: W.unitPx,
+      torchR: W.torchR,
+      visPts: W.visPts,
+      viewW: W.viewW,
+      viewH: W.viewH,
+      p: Object.assign({}, W.p)
+    };
+    W.enemies = F.enemies;
+    W.pickups = F.pickups;
+    W.props = F.props;
+    W.firePlants = [];
+    W.fire = { list: near.fire, t: G.RT.fireT };
+    W.seen = G.RT.fog;
+    W.ghost = F.ghost;
+    W.time = F.time;
+    W.flick = F.flick;
+    W.leanX = F.leanX;
+    W.leanY = F.leanY;
+    W.glowN = F.glowN;
+    W.fireN = near.fireN;
+    Object.assign(W.p, F.p);
+    G.RPV = V;
+    try {
+      draw();
+    } finally {
+      G.RPV = null;
+      for (const k in G.RP_ARR) {
+        const L = G.RP_ARR[k];
+        L.splice(0, L.length, ...keepL[k]);
+      }
+      ({
+        enemies: W.enemies,
+        pickups: W.pickups,
+        props: W.props,
+        fire: W.fire,
+        firePlants: W.firePlants,
+        seen: W.seen,
+        ghost: W.ghost,
+        time: W.time,
+        flick: W.flick,
+        leanX: W.leanX,
+        leanY: W.leanY,
+        glowN: W.glowN,
+        fireN: W.fireN,
+        camX: W.camX,
+        camY: W.camY,
+        unitPx: W.unitPx,
+        torchR: W.torchR,
+        visPts: W.visPts,
+        viewW: W.viewW,
+        viewH: W.viewH
+      } = keep);
+      Object.assign(W.p, keep.p);
+      for (let k = 0; k < near.fire.length; k++) G.RT.fireT[near.fire[k]] = 0;
+    }
+  }
+
   // src/game/systems/save-run.js
   function saveRun(W, G) {
     if (W.p.dead) return;
@@ -13115,13 +13342,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         rings: W.rings,
         devils: W.devils
       };
-      const rid = /* @__PURE__ */ new WeakMap();
-      let ridN = 0;
-      const idOf = (o) => {
-        let i = rid.get(o);
-        if (i === void 0) rid.set(o, i = ++ridN);
-        return i;
-      };
       const REC = {
         t: 0,
         acc: 0,
@@ -13136,109 +13356,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         deathT: -1,
         done: false
       };
-      for (const [cx, which] of [[tctx, "t"], [dctx, "d"]]) {
-        const put = cx.putImageData.bind(cx);
-        cx.putImageData = (im, dx, dy, x, y, w, h3) => {
-          if (w === void 0) return put(im, dx, dy);
-          put(im, dx, dy, x, y, w, h3);
-          if (REC.tBase && !REC.done) REC.dirty.push([which, x, y, w, h3]);
-        };
-      }
-      function recReset() {
-        REC.t = 0;
-        REC.acc = 0;
-        REC.snaps = [];
-        REC.patches = [];
-        REC.dirty = [];
-        REC.fogLog = [];
-        REC.tBase = W.img.data.slice();
-        REC.dBase = W.dimg ? W.dimg.data.slice() : null;
-        REC.fogBase = W.seen.slice();
-        REC.fogPrev = W.seen.slice();
-        REC.deathT = -1;
-        REC.done = false;
-        RT.n = 0;
-        RT.at = -1;
-        input.current.witness = null;
-      }
-      function recSample() {
-        const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
-        const grab = (list, m, ty) => {
-          const out = [];
-          for (const o of list) {
-            const x = o.x !== void 0 ? o.x : o.a0x !== void 0 ? o.a0x : o.ax;
-            const y = ty && o[ty] !== void 0 ? o[ty] : o.y !== void 0 ? o.y : o.a0y !== void 0 ? o.a0y : o.ay;
-            if (x === void 0 || Math.abs(x - pcx) < RP_W + m && Math.abs(y - pcy) < RP_H + m) out.push(rpClone(o, idOf(o)));
-          }
-          return out;
-        };
-        const S = {
-          t: REC.t,
-          time: W.time,
-          flick: W.flick,
-          leanX: W.leanX,
-          leanY: W.leanY,
-          glowN: W.glowN,
-          fireN: W.fireN,
-          p: rpClone(W.p),
-          ghost: W.ghost ? rpClone(W.ghost) : null
-        };
-        for (const k in RP_ARR) S[k] = grab(RP_ARR[k], 40);
-        S.enemies = grab(W.enemies, 40, "ty");
-        S.pickups = grab(W.pickups, 40);
-        S.props = grab(W.props, 120);
-        const fi = [];
-        for (const i of W.fire.list) {
-          const x = i % CW * CELL, y = (i / CW | 0) * CELL;
-          if (Math.abs(x - pcx) < RP_W && Math.abs(y - pcy) < RP_H) fi.push(i);
-        }
-        S.fire = Int32Array.from(fi);
-        S.fireT = Uint16Array.from(fi, (i) => W.fire.t[i]);
-        REC.snaps.push(S);
-        if (REC.dirty.length) {
-          for (const [w, x, y, ww, hh] of rpMerge(REC.dirty, CW, CH)) {
-            const src = w === "t" ? W.img : W.dimg;
-            if (src) REC.patches.push({ t: REC.t, c: w, x, y, w: ww, h: hh, px: rpCut(src.data, CW, x, y, ww, hh) });
-          }
-          REC.dirty.length = 0;
-        }
-        for (let i = 0; i < W.seen.length; i++)
-          if (W.seen[i] !== REC.fogPrev[i]) {
-            REC.fogLog.push(REC.t, i, W.seen[i]);
-            REC.fogPrev[i] = W.seen[i];
-          }
-        if (REC.deathT >= 0) return;
-        const cut = REC.t - RP_KEEP;
-        let n = 0;
-        while (n < REC.snaps.length && REC.snaps[n].t < cut) n++;
-        if (n) REC.snaps.splice(0, n);
-        n = 0;
-        while (n < REC.patches.length && REC.patches[n].t < cut) {
-          const P = REC.patches[n++], base = P.c === "t" ? REC.tBase : REC.dBase;
-          if (base) rpPaste(base, CW, P);
-        }
-        if (n) REC.patches.splice(0, n);
-        n = 0;
-        while (n < REC.fogLog.length && REC.fogLog[n] < cut) {
-          REC.fogBase[REC.fogLog[n + 1]] = REC.fogLog[n + 2];
-          n += 3;
-        }
-        if (n) REC.fogLog.splice(0, n);
-      }
-      function recFrame(dt) {
-        if (REC.done || !REC.tBase) return;
-        REC.t += dt;
-        if (W.p.dead && REC.deathT < 0) REC.deathT = REC.t;
-        if ((REC.acc -= dt) > 0) return;
-        REC.acc = Math.max(0, REC.acc + 1 / RP_HZ);
-        recSample();
-        if (REC.deathT >= 0 && REC.t >= REC.deathT + RP_AFTER) {
-          REC.done = true;
-          input.current.witness = { t0: Math.max(REC.snaps[0].t, REC.deathT - RP_BEFORE), t1: REC.t, death: REC.deathT };
-          input.current.notify();
-        }
-      }
-      let RPV = null;
       const RT = { tC: null, dC: null, n: 0, at: -1, fog: null, fireT: null };
       const fireBox = { t: [CW, CH, -1, -1], d: [CW, CH, -1, -1] };
       const ratOnWeb = onWebIn(W.webs);
@@ -13269,124 +13386,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         pgC: null,
         pgCtx: null,
         pgGlow,
-        pgGlowCtx
+        pgGlowCtx,
+        RP_ARR,
+        rid: /* @__PURE__ */ new WeakMap(),
+        ridN: 0,
+        // the recorder's lists (W's own arrays) and each thing's replay id
+        RPV: null
       };
-      function rpTerrain(T) {
-        if (!RT.tC) {
-          RT.tC = document.createElement("canvas");
-          RT.tC.width = CW;
-          RT.tC.height = CH;
-          RT.dC = document.createElement("canvas");
-          RT.dC.width = CW;
-          RT.dC.height = CH;
-          RT.fireT = new Uint16Array(CW * CH);
-        }
-        const tc = RT.tC.getContext("2d"), dc = RT.dC.getContext("2d");
-        if (RT.at < 0 || RT.n > 0 && REC.patches[RT.n - 1].t > T) {
-          tc.putImageData(new ImageData(REC.tBase, CW, CH), 0, 0);
-          dc.clearRect(0, 0, CW, CH);
-          if (REC.dBase) dc.putImageData(new ImageData(REC.dBase, CW, CH), 0, 0);
-          RT.n = 0;
-        }
-        while (RT.n < REC.patches.length && REC.patches[RT.n].t <= T) {
-          const P = REC.patches[RT.n++];
-          (P.c === "t" ? tc : dc).putImageData(new ImageData(P.px, P.w, P.h), P.x, P.y);
-        }
-        RT.at = T;
-        if (!RT.fog || RT.fog.length !== REC.fogBase.length) RT.fog = new Uint8Array(REC.fogBase.length);
-        RT.fog.set(REC.fogBase);
-        const L = REC.fogLog;
-        for (let n = 0; n < L.length && L[n] <= T; n += 3) RT.fog[L[n + 1]] = L[n + 2];
-      }
-      function drawReplay(V) {
-        const wit = input.current.witness;
-        V.t = clamp(V.t, wit.t0, wit.t1);
-        const F = rpFrame(REC.snaps, V.t);
-        rpTerrain(V.t);
-        if (!V.fog) RT.fog.fill(1);
-        if (V.follow) {
-          V.cx = F.p.x + PW / 2;
-          V.cy = F.p.y + PH / 2;
-        }
-        const near = F.near;
-        for (let k = 0; k < near.fire.length; k++) RT.fireT[near.fire[k]] = near.fireT[k];
-        const keepL = {};
-        for (const k in RP_ARR) {
-          const L = RP_ARR[k];
-          keepL[k] = L.splice(0, L.length, ...F[k]);
-        }
-        const keep = {
-          enemies: W.enemies,
-          pickups: W.pickups,
-          props: W.props,
-          fire: W.fire,
-          firePlants: W.firePlants,
-          seen: W.seen,
-          ghost: W.ghost,
-          time: W.time,
-          flick: W.flick,
-          leanX: W.leanX,
-          leanY: W.leanY,
-          glowN: W.glowN,
-          fireN: W.fireN,
-          camX: W.camX,
-          camY: W.camY,
-          unitPx: W.unitPx,
-          torchR: W.torchR,
-          visPts: W.visPts,
-          viewW: W.viewW,
-          viewH: W.viewH,
-          p: Object.assign({}, W.p)
-        };
-        W.enemies = F.enemies;
-        W.pickups = F.pickups;
-        W.props = F.props;
-        W.firePlants = [];
-        W.fire = { list: near.fire, t: RT.fireT };
-        W.seen = RT.fog;
-        W.ghost = F.ghost;
-        W.time = F.time;
-        W.flick = F.flick;
-        W.leanX = F.leanX;
-        W.leanY = F.leanY;
-        W.glowN = F.glowN;
-        W.fireN = near.fireN;
-        Object.assign(W.p, F.p);
-        RPV = V;
-        try {
-          draw();
-        } finally {
-          RPV = null;
-          for (const k in RP_ARR) {
-            const L = RP_ARR[k];
-            L.splice(0, L.length, ...keepL[k]);
-          }
-          ({
-            enemies: W.enemies,
-            pickups: W.pickups,
-            props: W.props,
-            fire: W.fire,
-            firePlants: W.firePlants,
-            seen: W.seen,
-            ghost: W.ghost,
-            time: W.time,
-            flick: W.flick,
-            leanX: W.leanX,
-            leanY: W.leanY,
-            glowN: W.glowN,
-            fireN: W.fireN,
-            camX: W.camX,
-            camY: W.camY,
-            unitPx: W.unitPx,
-            torchR: W.torchR,
-            visPts: W.visPts,
-            viewW: W.viewW,
-            viewH: W.viewH
-          } = keep);
-          Object.assign(W.p, keep.p);
-          for (let k = 0; k < near.fire.length; k++) RT.fireT[near.fire[k]] = 0;
-        }
-      }
+      recWrap(G);
       function enterLevel(back) {
         refreshBag(W, G);
         W.levelSeed = back ? back.seed : 1 + Math.floor(Math.random() * 2147483e3);
@@ -13498,7 +13505,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         W.deepFog = nestFog(level.nests);
         if (W.pb.seeAll) W.seen.fill(2);
         paintFog(W, G);
-        recReset();
+        recReset(W, G);
         W.matterProps = W.props.filter((pr) => pr.k === "matter");
         setTimeout(() => SFX.fx("portalOut", W.arrival.x, W.arrival.y), 260);
       }
@@ -13510,7 +13517,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         maxHp: () => maxHp(W, G),
         dig: (x, y, R) => dig(W, G, x, y, R),
         explode: (x, y, R, splash, hot) => explode(W, G, x, y, R, splash, hot),
-        recSample,
+        recSample: () => recSample(W, G),
         ignite: (x, y, r, chance) => ignite(W, G, x, y, r, chance),
         setAlight,
         youAlight: () => youAlight(W),
@@ -14940,20 +14947,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       function draw() {
         const dpr = window.devicePixelRatio || 1;
-        const ctlPx = Math.min(c.height * 0.8, (RPV ? RPV.panelH || 0 : input.current.ctlH || 0) * dpr);
+        const ctlPx = Math.min(c.height * 0.8, (G.RPV ? G.RPV.panelH || 0 : input.current.ctlH || 0) * dpr);
         const playPx = c.height - ctlPx;
-        const s = Math.min(c.width / VIEW_W, playPx / VIEW_MIN_H) * DEV.zoom * (RPV ? RPV.zoom : 1), vw = c.width / s, vh = c.height / s;
+        const s = Math.min(c.width / VIEW_W, playPx / VIEW_MIN_H) * DEV.zoom * (G.RPV ? G.RPV.zoom : 1), vw = c.width / s, vh = c.height / s;
         const vhp = playPx / s;
         W.unitPx = s / dpr;
         const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
-        if (RPV) {
-          if (RPV.follow) {
-            RPV.cx = vw >= WW ? WW / 2 : clamp(RPV.cx - vw / 2, 0, WW - vw) + vw / 2;
-            RPV.cy = clamp(RPV.cy - vhp * 0.55, 0, Math.max(0, WH - vhp)) + vhp / 2;
+        if (G.RPV) {
+          if (G.RPV.follow) {
+            G.RPV.cx = vw >= WW ? WW / 2 : clamp(G.RPV.cx - vw / 2, 0, WW - vw) + vw / 2;
+            G.RPV.cy = clamp(G.RPV.cy - vhp * 0.55, 0, Math.max(0, WH - vhp)) + vhp / 2;
           }
-          W.camX = RPV.cx - vw / 2;
-          W.camY = RPV.cy - vhp / 2;
-          RPV.unit = W.unitPx;
+          W.camX = G.RPV.cx - vw / 2;
+          W.camY = G.RPV.cy - vhp / 2;
+          G.RPV.unit = W.unitPx;
         } else {
           const tx = vw >= WW ? (WW - vw) / 2 : clamp(pcx - vw / 2, 0, WW - vw);
           const ty = clamp(pcy - vhp * 0.55, 0, Math.max(0, WH - vhp));
@@ -15002,8 +15009,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const tx1 = clamp(Math.ceil((W.camX + vw) / CELL) + 1, 1, CW), ty1 = clamp(Math.ceil((W.camY + vh) / CELL) + 1, 1, CH);
         W.viewW = vw;
         W.viewH = vh;
-        ctx.drawImage(RPV ? RT.dC : decoC, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
-        ctx.drawImage(RPV ? RT.tC : terrain, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
+        ctx.drawImage(G.RPV ? RT.dC : decoC, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
+        ctx.drawImage(G.RPV ? RT.tC : terrain, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
         W.fireVis.length = 0;
         if (W.fire.list.length) {
           const buckets = [[], [], [], []];
@@ -15986,7 +15993,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const ax = R.show ? R.nx : W.p.face, ay = R.show ? R.ny : 0;
         const gy = W.p.y + PH * 0.52;
         const tvis = R.vis == null ? 1 : R.vis;
-        if (!RPV && !W.p.dead && R.show && held && W.pb.trajectory && tvis > 0) {
+        if (!G.RPV && !W.p.dead && R.show && held && W.pb.trajectory && tvis > 0) {
           const sim = Object.assign({}, held, {
             slots: held.slots.slice(),
             order: held.order.slice(),
@@ -16116,7 +16123,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         W.torchR = clamp(sight * LAMP_REACH * (0.5 + 0.55 * W.flick), 120, 1400);
         W.visPts = visPoly(pcx, pcy, sight, (cx, cy) => solidCell(W, cx, cy), VIS_RAYS);
         fogReveal(W.seen, pcx, pcy, sight, W.visPts, VIS_RAYS);
-        if (!RPV || RPV.fog) {
+        if (!G.RPV || G.RPV.fog) {
           const fdat = fogImg.data;
           const dim = Math.round(255 * DEV.fogDim), dark = Math.round(255 * DEV.fogDark);
           const lr2 = W.torchR * W.torchR;
@@ -16224,7 +16231,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         ctx.globalCompositeOperation = "source-over";
         for (const sc of W.sconces) if (scOn(sc)) drawSconce(ctx, sc.x, sc.y, W.time, sc.ph);
-        if (RPV) return;
+        if (G.RPV) return;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         const cw = c.width / dpr;
         ctx.shadowColor = "rgba(0,0,0,0.6)";
@@ -16425,11 +16432,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             }
           }
           SFX.tick();
-          drawReplay(rv);
+          drawReplay(W, G, rv, draw);
         } else {
           if (!input.current.paused) {
             step(dt);
-            recFrame(dt);
+            recFrame(W, G, dt);
           }
           SFX.tick();
           draw();
