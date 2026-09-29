@@ -3,6 +3,8 @@
 // parts on each floor; the lists are emptied in place, never replaced, because the death
 // replay's recorder holds them by reference.
 
+import { fogStart } from '../world/vision.js';
+
 export function makeWorld() {
   return {
     // ---- terrain ----
@@ -33,5 +35,9 @@ export function makeWorld() {
     enemies: undefined,             // the creatures, nests included
     pickups: undefined,             // loot on the ground: mods, guns, hearts
     props: [],                      // the decoration that does things (see DECOR): plants, lamps, carts…
+
+    // ---- the fog of war ----
+    seen: fogStart(),               // per fog cell: 0 never been, 1 been (draw() lifts it), 2 never fogged (the shop)
+    deepFog: null,                  // the fog cells over the rat nests' rooms (no soft edge there)
   };
 }

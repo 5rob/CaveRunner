@@ -97,7 +97,6 @@ export function Game({ input }) {
     const fogBlurC = document.createElement('canvas');
     fogBlurC.width = FW; fogBlurC.height = FH;
     const fbctx = fogBlurC.getContext('2d');
-    let seen = fogStart(), deepFog = null;
     // the minimap: an MMW x MMH canvas of white cave outlines, smooth-scaled into the
     // bottom-left of the view. miniEdgeIdx lists the wall-outline cells (static per floor);
     // each frame only the ones the fog has revealed are painted white, the rest cleared.
@@ -211,7 +210,7 @@ export function Game({ input }) {
     function recReset() {
       REC.t = 0; REC.acc = 0; REC.snaps = []; REC.patches = []; REC.dirty = []; REC.fogLog = [];
       REC.tBase = W.img.data.slice(); REC.dBase = W.dimg ? W.dimg.data.slice() : null;
-      REC.fogBase = seen.slice(); REC.fogPrev = seen.slice();
+      REC.fogBase = W.seen.slice(); REC.fogPrev = W.seen.slice();
       REC.deathT = -1; REC.done = false;
       RT.n = 0; RT.at = -1;
       input.current.witness = null;
@@ -248,8 +247,8 @@ export function Game({ input }) {
         }
         REC.dirty.length = 0;
       }
-      for (let i = 0; i < seen.length; i++)
-        if (seen[i] !== REC.fogPrev[i]) { REC.fogLog.push(REC.t, i, seen[i]); REC.fogPrev[i] = seen[i]; }
+      for (let i = 0; i < W.seen.length; i++)
+        if (W.seen[i] !== REC.fogPrev[i]) { REC.fogLog.push(REC.t, i, W.seen[i]); REC.fogPrev[i] = W.seen[i]; }
       if (REC.deathT >= 0) return;
       // alive: drop what's older than RP_KEEP, folding its terrain and fog into the base
       const cut = REC.t - RP_KEEP;
@@ -320,10 +319,10 @@ export function Game({ input }) {
       // swap the recording in
       const keepL = {};
       for (const k in RP_ARR) { const L = RP_ARR[k]; keepL[k] = L.splice(0, L.length, ...F[k]); }
-      const keep = { enemies: W.enemies, pickups: W.pickups, props: W.props, fire, firePlants, seen, ghost, time, flick, leanX, leanY, glowN,
+      const keep = { enemies: W.enemies, pickups: W.pickups, props: W.props, fire, firePlants, seen: W.seen, ghost, time, flick, leanX, leanY, glowN,
         fireN, camX, camY, unitPx, torchR, visPts, viewW, viewH, p: Object.assign({}, p) };
       W.enemies = F.enemies; W.pickups = F.pickups; W.props = F.props; firePlants = [];
-      fire = { list: near.fire, t: RT.fireT }; seen = RT.fog;
+      fire = { list: near.fire, t: RT.fireT }; W.seen = RT.fog;
       ghost = F.ghost; time = F.time; flick = F.flick; leanX = F.leanX; leanY = F.leanY; glowN = F.glowN; fireN = near.fireN;
       Object.assign(p, F.p);
       RPV = V;
@@ -331,7 +330,7 @@ export function Game({ input }) {
         // and the live world back, exactly as it was
         RPV = null;
         for (const k in RP_ARR) { const L = RP_ARR[k]; L.splice(0, L.length, ...keepL[k]); }
-        ({ enemies: W.enemies, pickups: W.pickups, props: W.props, fire, firePlants, seen, ghost, time, flick, leanX, leanY, glowN,
+        ({ enemies: W.enemies, pickups: W.pickups, props: W.props, fire, firePlants, seen: W.seen, ghost, time, flick, leanX, leanY, glowN,
           fireN, camX, camY, unitPx, torchR, visPts, viewW, viewH } = keep);
         Object.assign(p, keep.p);
         for (let k = 0; k < near.fire.length; k++) RT.fireT[near.fire[k]] = 0;
@@ -419,8 +418,8 @@ export function Game({ input }) {
       torchP.length = 0; motes.length = 0;
       camReady = false; best = 0;
       levelT = 0;                             // the floor's name card gets its three seconds
-      seen = fogStart(); deepFog = nestFog(level.nests);
-      if (pb.seeAll) seen.fill(2);            // All-Seeing Eye lights the whole floor
+      W.seen = fogStart(); W.deepFog = nestFog(level.nests);
+      if (pb.seeAll) W.seen.fill(2);            // All-Seeing Eye lights the whole floor
       paintFog();                             // otherwise every floor starts dark again
       recReset();                             // the death replay starts afresh each floor
       W.matterProps = W.props.filter(pr => pr.k === 'matter');
@@ -448,11 +447,11 @@ export function Game({ input }) {
     // a circle round themselves, which lit up every prize room on the map from the start.
     const fogLit = (x, y) => {
       const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
-      if (deepFog && deepFog[cy * FW + cx]) return seen[cy * FW + cx] > 0;   // a nest room: no soft edge
+      if (W.deepFog && W.deepFog[cy * FW + cx]) return W.seen[cy * FW + cx] > 0;   // a nest room: no soft edge
       // the fog bake's one-cell soft edge counts, so a torch shows exactly when an item there would
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
         const nx = cx + dx, ny = cy + dy;
-        if (nx >= 0 && ny >= 0 && nx < FW && ny < FH && seen[ny * FW + nx]) return true;
+        if (nx >= 0 && ny >= 0 && nx < FW && ny < FH && W.seen[ny * FW + nx]) return true;
       }
       return false;
     };
@@ -461,7 +460,7 @@ export function Game({ input }) {
       for (let y = r.y - ROOM_HH; y <= r.y + ROOM_HH; y += FOG_U)
         for (let x = r.x - ROOM_HW; x <= r.x + ROOM_HW; x += FOG_U) {
           const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
-          if (seen[cy * FW + cx]) return true;
+          if (W.seen[cy * FW + cx]) return true;
         }
       return false;
     };
@@ -471,7 +470,7 @@ export function Game({ input }) {
       const d = fogImg.data, dim = Math.round(255 * FOG_DIM), dark = Math.round(255 * FOG_DARK);
       for (let i = 0, k = 0; i < FW * FH; i++, k += 4) {
         d[k] = 9; d[k + 1] = 10; d[k + 2] = 14;
-        d[k + 3] = seen[i] === 2 ? 0 : seen[i] ? dim : dark;
+        d[k + 3] = W.seen[i] === 2 ? 0 : W.seen[i] ? dim : dark;
       }
     }
     {
@@ -1933,7 +1932,7 @@ export function Game({ input }) {
     // drawn over both at terrain resolution and read back — keyed, ramped, twinkled and
     // added on top in its colour. Only on ground you've seen.
     const pgGlow = document.createElement('canvas'), pgGlowCtx = pgGlow.getContext('2d');
-    const seenAt = (x, y) => seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)] !== 0;
+    const seenAt = (x, y) => W.seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)] !== 0;
     function plantGlow(e, TH) {
       const u = e.je.u, reach = kru('jeGlowR', u.glowR) * kru('jePlantReach', u.plant);
       const strength = kru('jePlantGlow', u.plant);
@@ -2695,7 +2694,7 @@ export function Game({ input }) {
             const after = maxHp();
             if (after > before) p.hp += after - before;   // Extra Health comes full
             p.hp = Math.min(p.hp, after);                 // Glass Cannon trims it
-            if (pb.seeAll) { seen.fill(2); paintFog(); }  // All-Seeing Eye lights it up now
+            if (pb.seeAll) { W.seen.fill(2); paintFog(); }  // All-Seeing Eye lights it up now
             if (pb.ghost && !ghost) ghost = { x: pcx, y: pcy, cd: 0 };
             toast('Perk: ' + PERKS[r.id].name);
             SFX.ui('perk');
@@ -3984,7 +3983,7 @@ export function Game({ input }) {
       const sight = SIGHT * DEV.torch;                       // dev knob scales the whole bubble
       torchR = clamp(sight * LAMP_REACH * (0.5 + 0.55 * flick), 120, 1400);
       visPts = visPoly(pcx, pcy, sight, solidCell, VIS_RAYS);
-      fogReveal(seen, pcx, pcy, sight, visPts, VIS_RAYS);   // line of sight lifts the fog
+      fogReveal(W.seen, pcx, pcy, sight, visPts, VIS_RAYS);   // line of sight lifts the fog
       if (!RPV || RPV.fog) {                                 // a replay can turn the fog off
         // bake the visible slab of the overlay every frame: the base darkness is the fog
         // state, then the lamp brightens the cells the fog has already been lifted from
@@ -3998,14 +3997,14 @@ export function Game({ input }) {
           for (let cx = fx0; cx < fx1; cx++) {
             const i = cy * FW + cx, k = i * 4;
             fdat[k] = 9; fdat[k + 1] = 10; fdat[k + 2] = 14;
-            let s = seen[i];
+            let s = W.seen[i];
             // push the dark off ground you have seen: an unseen cell that borders a seen one
             // is treated as remembered (dim + lamp), so a bit more of the uncovered surface
             // shows instead of the darkness sitting right on its edge
-            if (!s && !(deepFog && deepFog[i]) && ((cx > 0 && seen[i - 1]) || (cx < FW - 1 && seen[i + 1]) ||
-                (cy > 0 && seen[i - FW]) || (cy < FH - 1 && seen[i + FW]) ||
-                (cx > 0 && cy > 0 && seen[i - FW - 1]) || (cx < FW - 1 && cy > 0 && seen[i - FW + 1]) ||
-                (cx > 0 && cy < FH - 1 && seen[i + FW - 1]) || (cx < FW - 1 && cy < FH - 1 && seen[i + FW + 1]))) s = 1;
+            if (!s && !(W.deepFog && W.deepFog[i]) && ((cx > 0 && W.seen[i - 1]) || (cx < FW - 1 && W.seen[i + 1]) ||
+                (cy > 0 && W.seen[i - FW]) || (cy < FH - 1 && W.seen[i + FW]) ||
+                (cx > 0 && cy > 0 && W.seen[i - FW - 1]) || (cx < FW - 1 && cy > 0 && W.seen[i - FW + 1]) ||
+                (cx > 0 && cy < FH - 1 && W.seen[i + FW - 1]) || (cx < FW - 1 && cy < FH - 1 && W.seen[i + FW + 1]))) s = 1;
             let a = s === 2 ? 0 : s ? dim : dark;
             if (s && a) {                        // the lamp only reaches ground the fog has lifted
               const ddx = (cx + 0.5) * FOG_U - pcx, dd2 = ddx * ddx + ddy * ddy;
@@ -4079,7 +4078,7 @@ export function Game({ input }) {
         ctx.beginPath();
         for (const i of fireVis) {
           const x = (i % CW) * CELL, y = ((i / CW) | 0) * CELL;
-          if (seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)]) ctx.rect(x, y, CELL, CELL);
+          if (W.seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)]) ctx.rect(x, y, CELL, CELL);
         }
         ctx.fill();
         const st = Math.max(1, Math.ceil(fireVis.length / 24));
@@ -4236,7 +4235,7 @@ export function Game({ input }) {
           const i = W.miniEdgeIdx[k];
           const tx = (i % MMW) * MINI_D, ty = ((i / MMW) | 0) * MINI_D;
           const fi = ((ty / FOG) | 0) * FW + ((tx / FOG) | 0);
-          if (seen[fi]) mini32[i] = 0xe6ffffff;            // white, ~0.9 alpha
+          if (W.seen[fi]) mini32[i] = 0xe6ffffff;            // white, ~0.9 alpha
         }
         mctx.putImageData(miniImg, 0, 0);
         const pw = c.width / dpr, ph = playPx / dpr, pad = 10;

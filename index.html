@@ -10461,8 +10461,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       // the creatures, nests included
       pickups: void 0,
       // loot on the ground: mods, guns, hearts
-      props: []
+      props: [],
       // the decoration that does things (see DECOR): plants, lamps, carts…
+      // ---- the fog of war ----
+      seen: fogStart(),
+      // per fog cell: 0 never been, 1 been (draw() lifts it), 2 never fogged (the shop)
+      deepFog: null
+      // the fog cells over the rat nests' rooms (no soft edge there)
     };
   }
 
@@ -10515,7 +10520,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       fogBlurC.width = FW;
       fogBlurC.height = FH;
       const fbctx = fogBlurC.getContext("2d");
-      let seen = fogStart(), deepFog = null;
       const miniC = document.createElement("canvas");
       miniC.width = MMW;
       miniC.height = MMH;
@@ -10662,8 +10666,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         REC.fogLog = [];
         REC.tBase = W.img.data.slice();
         REC.dBase = W.dimg ? W.dimg.data.slice() : null;
-        REC.fogBase = seen.slice();
-        REC.fogPrev = seen.slice();
+        REC.fogBase = W.seen.slice();
+        REC.fogPrev = W.seen.slice();
         REC.deathT = -1;
         REC.done = false;
         RT.n = 0;
@@ -10711,10 +10715,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
           REC.dirty.length = 0;
         }
-        for (let i = 0; i < seen.length; i++)
-          if (seen[i] !== REC.fogPrev[i]) {
-            REC.fogLog.push(REC.t, i, seen[i]);
-            REC.fogPrev[i] = seen[i];
+        for (let i = 0; i < W.seen.length; i++)
+          if (W.seen[i] !== REC.fogPrev[i]) {
+            REC.fogLog.push(REC.t, i, W.seen[i]);
+            REC.fogPrev[i] = W.seen[i];
           }
         if (REC.deathT >= 0) return;
         const cut = REC.t - RP_KEEP;
@@ -10799,7 +10803,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           props: W.props,
           fire,
           firePlants,
-          seen,
+          seen: W.seen,
           ghost,
           time,
           flick,
@@ -10821,7 +10825,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         W.props = F.props;
         firePlants = [];
         fire = { list: near.fire, t: RT.fireT };
-        seen = RT.fog;
+        W.seen = RT.fog;
         ghost = F.ghost;
         time = F.time;
         flick = F.flick;
@@ -10845,7 +10849,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             props: W.props,
             fire,
             firePlants,
-            seen,
+            seen: W.seen,
             ghost,
             time,
             flick,
@@ -10972,9 +10976,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         camReady = false;
         best = 0;
         levelT = 0;
-        seen = fogStart();
-        deepFog = nestFog(level.nests);
-        if (pb.seeAll) seen.fill(2);
+        W.seen = fogStart();
+        W.deepFog = nestFog(level.nests);
+        if (pb.seeAll) W.seen.fill(2);
         paintFog();
         recReset();
         W.matterProps = W.props.filter((pr) => pr.k === "matter");
@@ -11004,10 +11008,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       const fogLit = (x, y) => {
         const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
-        if (deepFog && deepFog[cy * FW + cx]) return seen[cy * FW + cx] > 0;
+        if (W.deepFog && W.deepFog[cy * FW + cx]) return W.seen[cy * FW + cx] > 0;
         for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
           const nx = cx + dx, ny = cy + dy;
-          if (nx >= 0 && ny >= 0 && nx < FW && ny < FH && seen[ny * FW + nx]) return true;
+          if (nx >= 0 && ny >= 0 && nx < FW && ny < FH && W.seen[ny * FW + nx]) return true;
         }
         return false;
       };
@@ -11015,7 +11019,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         for (let y = r.y - ROOM_HH; y <= r.y + ROOM_HH; y += FOG_U)
           for (let x = r.x - ROOM_HW; x <= r.x + ROOM_HW; x += FOG_U) {
             const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
-            if (seen[cy * FW + cx]) return true;
+            if (W.seen[cy * FW + cx]) return true;
           }
         return false;
       };
@@ -11025,7 +11029,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           d[k] = 9;
           d[k + 1] = 10;
           d[k + 2] = 14;
-          d[k + 3] = seen[i] === 2 ? 0 : seen[i] ? dim : dark;
+          d[k + 3] = W.seen[i] === 2 ? 0 : W.seen[i] ? dim : dark;
         }
       }
       {
@@ -12695,9 +12699,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             for (const b of bullets) {
               if (b.life <= 0 || b.x + b.size < x0 || b.x - b.size > x1 || b.y + b.size < y0 || b.y - b.size > y1) continue;
               if (b.pull || b.eat || b.bore) {
-                const seen2 = b.propHit || (b.propHit = /* @__PURE__ */ new Set());
-                if (!seen2.has(pr)) {
-                  seen2.add(pr);
+                const seen = b.propHit || (b.propHit = /* @__PURE__ */ new Set());
+                if (!seen.has(pr)) {
+                  seen.add(pr);
                   pr.hurt = (pr.hurt || 0) + 1;
                 }
               } else {
@@ -13110,7 +13114,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
       const pgGlow = document.createElement("canvas"), pgGlowCtx = pgGlow.getContext("2d");
-      const seenAt = (x, y) => seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)] !== 0;
+      const seenAt = (x, y) => W.seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)] !== 0;
       function plantGlow(e, TH) {
         const u = e.je.u, reach = kru("jeGlowR", u.glowR) * kru("jePlantReach", u.plant);
         const strength = kru("jePlantGlow", u.plant);
@@ -14086,7 +14090,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               if (after > before) p.hp += after - before;
               p.hp = Math.min(p.hp, after);
               if (pb.seeAll) {
-                seen.fill(2);
+                W.seen.fill(2);
                 paintFog();
               }
               if (pb.ghost && !ghost) ghost = { x: pcx, y: pcy, cd: 0 };
@@ -15675,7 +15679,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             idx: held.idx
           });
           const plan = planCast(sim);
-          const seen2 = {};
+          const seen = {};
           let drawn = 0;
           for (const sh of plan.shots) {
             if (sh.still) {
@@ -15706,8 +15710,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               sh.boomer,
               sh.flat
             ].join(",");
-            if (seen2[key] || drawn >= 3) continue;
-            seen2[key] = 1;
+            if (seen[key] || drawn >= 3) continue;
+            seen[key] = 1;
             const cone = drawn === 0 && sh.spread > 2 ? [-sh.spread / 2, 0, sh.spread / 2] : [0];
             drawn++;
             const tsh = Object.assign({}, sh, {
@@ -15797,7 +15801,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const sight = SIGHT * DEV.torch;
         torchR = clamp(sight * LAMP_REACH * (0.5 + 0.55 * flick), 120, 1400);
         visPts = visPoly(pcx, pcy, sight, solidCell, VIS_RAYS);
-        fogReveal(seen, pcx, pcy, sight, visPts, VIS_RAYS);
+        fogReveal(W.seen, pcx, pcy, sight, visPts, VIS_RAYS);
         if (!RPV || RPV.fog) {
           const fdat = fogImg.data;
           const dim = Math.round(255 * DEV.fogDim), dark = Math.round(255 * DEV.fogDark);
@@ -15811,8 +15815,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               fdat[k] = 9;
               fdat[k + 1] = 10;
               fdat[k + 2] = 14;
-              let s2 = seen[i];
-              if (!s2 && !(deepFog && deepFog[i]) && (cx > 0 && seen[i - 1] || cx < FW - 1 && seen[i + 1] || cy > 0 && seen[i - FW] || cy < FH - 1 && seen[i + FW] || cx > 0 && cy > 0 && seen[i - FW - 1] || cx < FW - 1 && cy > 0 && seen[i - FW + 1] || cx > 0 && cy < FH - 1 && seen[i + FW - 1] || cx < FW - 1 && cy < FH - 1 && seen[i + FW + 1])) s2 = 1;
+              let s2 = W.seen[i];
+              if (!s2 && !(W.deepFog && W.deepFog[i]) && (cx > 0 && W.seen[i - 1] || cx < FW - 1 && W.seen[i + 1] || cy > 0 && W.seen[i - FW] || cy < FH - 1 && W.seen[i + FW] || cx > 0 && cy > 0 && W.seen[i - FW - 1] || cx < FW - 1 && cy > 0 && W.seen[i - FW + 1] || cx > 0 && cy < FH - 1 && W.seen[i + FW - 1] || cx < FW - 1 && cy < FH - 1 && W.seen[i + FW + 1])) s2 = 1;
               let a = s2 === 2 ? 0 : s2 ? dim : dark;
               if (s2 && a) {
                 const ddx = (cx + 0.5) * FOG_U - pcx, dd2 = ddx * ddx + ddy * ddy;
@@ -15877,7 +15881,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.beginPath();
           for (const i of fireVis) {
             const x = i % CW * CELL, y = (i / CW | 0) * CELL;
-            if (seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)]) ctx.rect(x, y, CELL, CELL);
+            if (W.seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)]) ctx.rect(x, y, CELL, CELL);
           }
           ctx.fill();
           const st = Math.max(1, Math.ceil(fireVis.length / 24));
@@ -16037,7 +16041,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             const i = W.miniEdgeIdx[k2];
             const tx = i % MMW * MINI_D, ty = (i / MMW | 0) * MINI_D;
             const fi = (ty / FOG | 0) * FW + (tx / FOG | 0);
-            if (seen[fi]) mini32[i] = 3875536895;
+            if (W.seen[fi]) mini32[i] = 3875536895;
           }
           mctx.putImageData(miniImg, 0, 0);
           const pw = c.width / dpr, ph = playPx / dpr, pad = 10;

@@ -44,7 +44,7 @@ const SANDBOX =
   "      W.enemies.length = 0; W.props.length = 0; W.pickups.length = 0; bullets.length = 0;" +
   "      enemyShots.length = 0; webs.length = 0; silk.length = 0; strings.length = 0; fields.length = 0; dparts.length = 0; amb.length = 0;" +
   "      for (let y = Math.floor(y0 * CELL / FOG_U); y <= Math.floor(y1 * CELL / FOG_U); y++)" +
-  "        for (let x = Math.floor(x0 * CELL / FOG_U); x <= Math.floor(x1 * CELL / FOG_U); x++) seen[y * FW + x] = 2;" +
+  "        for (let x = Math.floor(x0 * CELL / FOG_U); x <= Math.floor(x1 * CELL / FOG_U); x++) W.seen[y * FW + x] = 2;" +
   "      paintFog();" +
   "      p.x = cx - PW / 2; p.y = fy - PH - 0.5; p.vx = 0; p.vy = 0; p.hp = 9999; p.dead = false;" +
   "      return { x: cx, y: fy, l: x0 * CELL, r: x1 * CELL }; };\n" +
@@ -61,7 +61,7 @@ const HOOK_LVL = SANDBOX +
   "get rec(){return REC}, get rt(){return RT}, recSample, " +
   "get fire(){return fire}, get burrow(){return W.burrow}, ignite, setAlight, youAlight, get dimg(){return W.dimg}, get zone(){return W.zone}, " +
   "world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y }, " +
-  "fog: { get seen(){return seen}, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal, paint: paintFog }, " +
+  "fog: { get seen(){return W.seen}, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal, paint: paintFog }, " +
   "light: { get flick(){return flick}, get r(){return torchR}, " +
   "  get cam(){return { x: camX, y: camY }}, get s(){return unitPx * (window.devicePixelRatio || 1)}, " +
   "  get embers(){return torchP.length}, get vis(){return visPts}, visPoly, losClear } };\n";
