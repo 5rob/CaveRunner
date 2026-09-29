@@ -154,6 +154,7 @@ rest and imports them. Where things are (`main.js` line numbers as of v96, they 
 | fire | `src/world/fire.js`: `fireNew`, `fireStep`, `fireArea`, `fireDouse`, `FIRE_*`, `FLAMMABLE` |
 | pathfinding | `src/world/nav.js`: `navField`, `navWay` |
 | zones, gold, nests | `src/world/zones.js` (`builtAt`, `boxReach`), `veins.js` (`goldVeins`), `nests.js` (`ratNests`) |
+| floor 1 strata + timber | `src/world/strata.js`: `strataCave`, `paveWorks`, `timberWorks`, `timberFrame` |
 | `makeLevel` | ~6439: terrain, shop, enemies, pickups |
 | `tracePath` | `src/spells/trace.js` (with `driftStep`, `wigTurn`, `bhSp`): simulates a shot for the aim line |
 | `Game` | ~7130–11390: the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields |
