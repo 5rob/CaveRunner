@@ -982,9 +982,11 @@ with only `no-undef`, over `src/`). With the code in modules, a forgotten import
 build; it fails when that line first runs. A report there counts as a failed suite.
 
 **Logic suites** (`tests/logic/`) start with `const G = require('../load');` —
-`tests/load.js` evals everything above `function Game(` from the built `index.html` and
-hands back every top-level name (plus `.source`, the script as text) — and call the pure
-functions. A new suite does the same; don't slice the file yourself. ~1250 checks. Add to these first — they're fast and they've
+`tests/load.js` bundles `src/pure.js` with esbuild (in memory, to CommonJS) and hands back
+its exports (plus `.source`, all of `src/` as text) — and call the pure functions.
+`src/pure.js` re-exports every module under `src/`, plus `main.js`'s own `export { … }` list
+of the pure names that haven't moved out yet. **A new top-level name in a module is
+exported** (so the suites see it); a new pure name still in `main.js` goes in that list. A new suite does the same; don't slice the file yourself. ~1250 checks. Add to these first — they're fast and they've
 caught most of the real bugs.
 
 **Browser suites** (`tests/browser/`) drive the real page in Chromium through

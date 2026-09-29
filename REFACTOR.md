@@ -214,7 +214,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
       (browser globals + `React`, `ReactDOM`), run by `tests/run.js` before the suites.
       **This matters:** with modules, a missed import doesn't fail the build. It fails only
       when that line runs, maybe mid-game on floor 7.
-- [ ] **P1.4** Switch `tests/load.js` to bundle a `src/pure.js` (re-exports every pure
+- [x] **P1.4** Switch `tests/load.js` to bundle a `src/pure.js` (re-exports every pure
       module) with esbuild in-memory to CJS and return its exports. At first `pure.js` just
       re-exports from `main.js`. Logic suites don't change.
 - [ ] **P1.5** Move modules out **in layer order**, one per commit, logic tests green
@@ -413,3 +413,4 @@ commit. List them here for after.
 | 2026-09-29 | Phase 1, P1.1 | Dev `package.json` (esbuild, eslint, globals, playwright-core), `node_modules/` already ignored. `tests/chromium.js` finds Windows Chrome; browser suites run with no env vars. | logic 33/33, smoke ok |
 | 2026-09-29 | Phase 1, P1.2 | Build is esbuild (iife, utf8, no minify, no tree shaking). `VERSION` → `src/version.js` + an un-bundled `<script>` line. `tests/build.js` anchors now match esbuild's print (`const toast = (text) => {`) and it exposes the bundle's names on `window`; `tests/load.js` unwraps the iife. `sound`/`jelly` fail the same on v96 from `main` (checked in a worktree); `save`/`archvine` failed once under load, pass alone. | logic 33/33; browser 42/44 (the two known) |
 | 2026-09-29 | Phase 1, P1.3 | `eslint.config.js` (flat, only `no-undef`, browser globals + React/ReactDOM/VERSION); `tests/run.js` runs it over `src/` first and counts a report as a failure. Checked it catches a planted undefined name. | logic 33/33 |
+| 2026-09-29 | Phase 1, P1.4 | `src/pure.js` (VERSION + `export * from main.js`); main.js got an `export { … }` list of the 346 names the old loader found above `Game`. `tests/load.js` bundles pure.js to CJS in memory and runs it with stubs for React/ReactDOM/document (main.js now runs to its mount line); `.source` = all of `src/`. Same 348 names, same types, before and after; `index.html` unchanged (iife drops exports). | logic 33/33 |

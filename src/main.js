@@ -7128,6 +7128,50 @@ function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
 const approach = (v, t, a) => (v < t ? Math.min(t, v + a) : Math.max(t, v - a));
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
+// The pure part of this file, for the logic tests: src/pure.js re-exports it (and every
+// module), and tests/load.js bundles that. It shrinks as the code moves out into modules
+// (REFACTOR.md, P1.5); the browser build ignores it.
+export {
+  useRef, useEffect, useState, useMemo, h, CELL, CW, CH, WW, WH, BW, BH, BCELL, VIEW_W,
+  VIEW_MIN_H, ROCK, BRICK, BED, GRAVITY, WALK, GROUND_ACC, AIR_ACC, JET, JET_ACC, CLIMB,
+  WEB_HAND, DEAD, AIM_DEAD, KNOB, AIM_RING, PW, PH, FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART,
+  SPUTTER_FUEL, sputterStep, jetPitch, PLAYER_HP, START_GOLD, DEV_DEFAULTS, DEV_META, DEV_GROUPS,
+  devReport, DEV, rangeKnobs, SP_KNOBS, JE_KNOBS, twinkle, RA_KNOBS, kru, kr, spr, colourKnobs,
+  HEX_RE, hexMix, hexRgb, hexArr, kcol, hsvAdjust, jcol, JE_COLS, jellyPal, LV_KNOBS, makeLevel,
+  ARCH_KNOBS, FIRE_KNOBS, DEV_KEY, devSet, bhSp, MODS, COIN_PULL, ENEMY_COUNT, MOD_DROPS,
+  GUN_DROPS, PICKUP_GAP, PATROL_R, PICKUP_COOL, NO_INPUT, THEMES, themeFor, CREATURES,
+  spiderStep, ratStep, CREATURE_IDS, ROSTERS, rosterFor, enemyFor, HUNTERS, COL, turn, MOD_TIER,
+  FAMILIES, FAMILY_OF, FIELD_WHAT, famOf, famCol, hueFromName, gunHue, gunColor, MOD_PRICE,
+  tierOf, TRIG_KINDS, TRIG_VARIANTS, TIMER_ADD, VACUUM_WAIT, NOITA_SPAWN, NOITA_OF, floorTier,
+  noitaP, TIER_FLOOR, modWeight, rollMod, ALL_IDS, priceOf, gunPrice, isGunShop, SHOP_FLOOR,
+  SHOP_H, SHOP_TOP, SHOP_ROOF, SHOP_Y, FOG, FOG_U, FW, FH, MINI_D, MMW, MMH, SIGHT, LAMP_REACH,
+  FOG_DIM, FOG_DARK, VIS_RAYS, fogReveal, fogStart, nestFog, rayDist, losClear, roamStep,
+  turnToward, angDiff, flyMove, surfNormal, SPIDER, spiderSeat, surfSeat, segNear, spiderAim,
+  RAT, ratFooting, ratJump, ratSpread, pathAt, pathLen, NAV, navField, navWay, ratNests, JELLY,
+  jellyBell, jellyStep, segHitsBox, tentacleTouch, TW_N, TW_TILE, twNoise, plantWhite,
+  plantGlowFill, visPoly, MIN_CAST, MIN_RECH, effRecharge, gunPassives, SHOT_IDS, SEED_SHOTS,
+  GUN_A, GUN_B, shuffleOrder, resetGun, GUN_LV_MAX, RARE_GUN, GUN_RANGE, GUN_LV_COL, gunLvTier,
+  gunStat, gunLevel, caveGun, makeGun, startingGuns, blankShot, planCast, PREVIEW_FIELDS, num,
+  previewGun, previewPlan, modPreview, HP_BUDGET, shotPower, shotCount, shotPellets, gunRate,
+  SHORTLIST, buildAdvice, castGroups, groupStats, pullSteps, fireSimNew, fireSimStep,
+  fireSimGauges, statQual, gunModDeltas, rr, drawGun, drawRunner, flameDrop, drawFlame, glowAt,
+  drawTorch, drawSconce, drawDrone, drawSpider, drawRat, drawNest, drawJelly, drawCrawler,
+  drawBlob, drawSkull, drawWorm, drawEnemy, gunLvCol, gunAccent, mix, PERKS, PERK_IDS, perkBag,
+  fmtGold, deckLayout, DECOR, DECOR_DENSITY, GROVES, PLANTS, FLAMMABLE, FIRE_WET, HEAR_FIRE,
+  FIRE_COLS, decorFor, PROP_BOX, PROP_DMG, timberFrame, archCurve, archNear, archAt, decorate,
+  FUEL_MOSS, FUEL_GRASS, FUEL_WOOD, cullDecor, propAnchored, rgbA, rgbS, propCol, drawArch,
+  drawProp, propGlow, VENT_H, eyesAlpha, SPELL_VOICE, SPELL_VOICES, clampS, shotSound,
+  BODY_VOICE, CREATURE_TONE, CREATURE_VOICES, creatureSound, AMBIENCE, AMB_EVENTS, FX_VOL,
+  fxVolKey, knob, rustleStep, SFX, SAVE_KEY, GUN_DEFAULTS, cleanGun, cleanLoadout, readSave,
+  loadSave, clearSave, ORE_GOLD, ROOM_HW, ROOM_HH, goldVeins, strataCave, paveWorks, timberWorks,
+  FIRE_TICK, FIRE_MAX, FIRE_CATCH, FIRE_KNOB, FIRE_UPW, FIRE_NB, fireNew, fireLight, fireDouse,
+  fireArea, fireNear, fireStep, NATURAL_ONLY, boxReach, builtAt, RP_HZ, RP_BEFORE, RP_AFTER,
+  RP_KEEP, RP_W, RP_H, RP_LISTS, RP_NUMS, RP_DEEP, RP_LERP, RP_ANGLE, rpPlain, rpClone, rpCopy,
+  rpLerp, rpList, rpAt, rpFrame, rpCut, rpPaste, rpMerge, DRIFT_DRAG, DRIFT_SLOW, DRIFT_FLOAT,
+  DRIFT_RISE, DRIFT_R, DRIFT_CHASE, DRIFT_ACC, driftStep, WIG_HZ, wigAng, wigTurn, tracePath,
+  approach, clamp
+};
+
 function Game({ input }) {
   const cv = useRef(null);
   useEffect(() => {
