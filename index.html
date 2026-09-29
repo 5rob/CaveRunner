@@ -585,6 +585,340 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return "rgb(" + r + "," + g + "," + bl + ")";
   }
 
+  // src/data/creatures.js
+  var CREATURES = {
+    // jellyfish: pulses along wherever its head points, drag slows it, then it pulses again;
+    // hunting, it lines its head up on you and spits dripping poison. Its numbers are
+    // Dev-panel knobs (DEV.je*); dmg and spd here are only its defaults, for show.
+    meduusa: {
+      name: "Myrkkymeduusa",
+      body: "jelly",
+      act: "jelly",
+      kp: "je",
+      aggro: 300,
+      col: { a: "#46c94f", b: "#133d1a", c: "#a6ff7c", eye: "#e4ff4a" },
+      glow: "110,255,90",
+      hp: 2,
+      dmg: 7,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 4,
+      r: 9,
+      spd: 140
+    },
+    hiisi: {
+      name: "Hiisi",
+      body: "drone",
+      act: "shoot",
+      col: { a: "#4f7a52", b: "#22331f", c: "#7fb383", eye: "#ffd98a" },
+      hp: 5,
+      dmg: 10,
+      bspd: 190,
+      range: 230,
+      cd: 1.5,
+      gold: 8,
+      r: 9,
+      spd: 34
+    },
+    tappura: {
+      name: "Tappurahiisi",
+      body: "drone",
+      act: "shoot",
+      shots: 4,
+      col: { a: "#7a5a3a", b: "#33241a", c: "#b08a5c", eye: "#ffb347" },
+      hp: 6,
+      dmg: 7,
+      bspd: 200,
+      range: 180,
+      cd: 2.3,
+      gold: 10,
+      r: 10,
+      spd: 30
+    },
+    chain: {
+      name: "Chaingunner",
+      body: "drone",
+      act: "shoot",
+      col: { a: "#8a3f3f", b: "#3a1c1c", c: "#c06a6a", eye: "#ff8a8a" },
+      hp: 7,
+      dmg: 5,
+      bspd: 230,
+      range: 250,
+      cd: 0.6,
+      gold: 12,
+      r: 10,
+      spd: 32
+    },
+    snipu: {
+      name: "Snipuhiisi",
+      body: "drone",
+      act: "turret",
+      tele: 0.55,
+      col: { a: "#5a5f8a", b: "#252a44", c: "#8f95c4", eye: "#9ad4ff" },
+      hp: 4,
+      dmg: 22,
+      bspd: 420,
+      range: 460,
+      cd: 3,
+      gold: 14,
+      r: 9,
+      spd: 0
+    },
+    // spider: lives on rock and its own silk (spiderStep); bites up close, and shoots a
+    // string at you that slows you until you pull it too long and it snaps. Its speeds and
+    // reaches are Dev-panel knobs (DEV.sp*); spd is the burst speed's default, for show.
+    hamahakki: {
+      name: "Hämähäkki",
+      body: "spider",
+      act: "spider",
+      kp: "sp",
+      aggro: 300,
+      col: { a: "#6a4a86", b: "#2b1d38", c: "#a077c4", eye: "#ffd98a" },
+      hp: 4,
+      dmg: 12,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 6,
+      r: 9,
+      spd: 260
+    },
+    // rat: runs the rock surfaces round its nest (ratStep), bites you and knocks gold out of
+    // you, grabs any loose gold near it and carries it home. Its numbers are Dev knobs (DEV.ra*).
+    // It is never rolled off a roster: rats only come out of nests.
+    rotta: {
+      name: "Rotta",
+      body: "rat",
+      act: "rat",
+      kp: "ra",
+      aggro: 260,
+      noRoster: 1,
+      col: { a: "#7a6a5e", b: "#3a302a", c: "#b3a291", eye: "#ff5a5a" },
+      hp: 1,
+      dmg: 4,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 2,
+      r: 4,
+      spd: 170
+    },
+    // rat nest: a room in the rock at the end of a thin tunnel. Doesn't move; lets a rat out
+    // now and then while it has fewer than its max out; dies to digging or blasting.
+    pesa: {
+      name: "Rotanpesä",
+      body: "nest",
+      act: "nest",
+      noRoster: 1,
+      col: { a: "#8a6a3a", b: "#3d2c18", c: "#c49a5a", eye: "#ffd23c" },
+      hp: 12,
+      dmg: 0,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 0,
+      r: 10,
+      spd: 0
+    },
+    lohkare: {
+      name: "Lohkare",
+      body: "crawler",
+      act: "chase",
+      aggro: 260,
+      col: { a: "#6a625a", b: "#2c2823", c: "#9d948a", eye: "#ffb347" },
+      hp: 16,
+      dmg: 18,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 20,
+      r: 13,
+      spd: 26
+    },
+    mato: {
+      name: "Mato",
+      body: "worm",
+      act: "chase",
+      aggro: 320,
+      col: { a: "#a2607a", b: "#40222e", c: "#d68fa8", eye: "#ffd98a" },
+      hp: 6,
+      dmg: 14,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 9,
+      r: 8,
+      spd: 84
+    },
+    hurtta: {
+      name: "Hurtta",
+      body: "crawler",
+      act: "chase",
+      aggro: 360,
+      col: { a: "#7a4a3a", b: "#2f1a14", c: "#b3765c", eye: "#ff9a5a" },
+      hp: 5,
+      dmg: 15,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 10,
+      r: 9,
+      spd: 105
+    },
+    kobold: {
+      name: "Kobold",
+      body: "crawler",
+      act: "chase",
+      aggro: 300,
+      col: { a: "#8a7a4a", b: "#332d18", c: "#c0ad74", eye: "#ffe066" },
+      hp: 3,
+      dmg: 8,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 5,
+      r: 7,
+      spd: 92
+    },
+    konna: {
+      name: "Konna",
+      body: "blob",
+      act: "chase",
+      aggro: 260,
+      col: { a: "#4a7a6a", b: "#1c332c", c: "#79b3a0", eye: "#d8ff9a" },
+      hp: 6,
+      dmg: 11,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 7,
+      r: 10,
+      spd: 48
+    },
+    lima: {
+      name: "Limanuljaska",
+      body: "blob",
+      act: "bomb",
+      aggro: 300,
+      col: { a: "#6fa03a", b: "#2a3d14", c: "#a6d46a", eye: "#e6ff9a" },
+      hp: 5,
+      dmg: 20,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 11,
+      r: 10,
+      spd: 55
+    },
+    tuli: {
+      name: "Stendari",
+      body: "blob",
+      act: "bomb",
+      aggro: 330,
+      fire: 1,
+      col: { a: "#c05a2a", b: "#3f1c0e", c: "#ff9a5a", eye: "#ffe066" },
+      hp: 6,
+      dmg: 26,
+      bspd: 0,
+      range: 0,
+      cd: 0,
+      gold: 13,
+      r: 10,
+      spd: 60
+    },
+    karpas: {
+      name: "Kärpässieni",
+      body: "blob",
+      act: "turret",
+      col: { a: "#b04a4a", b: "#3d1616", c: "#e88a8a", eye: "#ffffff" },
+      hp: 5,
+      dmg: 12,
+      bspd: 150,
+      range: 300,
+      cd: 1.9,
+      gold: 9,
+      r: 10,
+      spd: 0
+    },
+    jaatio: {
+      name: "Jäätiö",
+      body: "skull",
+      act: "turret",
+      tele: 0.3,
+      col: { a: "#7ab8d8", b: "#22414f", c: "#b6e2f4", eye: "#d8f4ff" },
+      hp: 8,
+      dmg: 12,
+      bspd: 130,
+      range: 240,
+      cd: 1.7,
+      gold: 15,
+      r: 10,
+      spd: 0
+    },
+    skull: {
+      name: "Elävät luut",
+      body: "skull",
+      act: "turret",
+      tele: 0.35,
+      col: { a: "#d8d2be", b: "#4a463c", c: "#f4f0e0", eye: "#5ee0a0" },
+      hp: 7,
+      dmg: 14,
+      bspd: 200,
+      range: 320,
+      cd: 2.1,
+      gold: 16,
+      r: 9,
+      spd: 0
+    }
+  };
+  var CREATURE_IDS = Object.keys(CREATURES);
+  var ROSTERS = [
+    ["meduusa", "hamahakki"],
+    ["meduusa", "hamahakki", "hiisi"],
+    ["hiisi", "konna", "hamahakki"],
+    ["hiisi", "mato", "lima", "kobold"],
+    ["hiisi", "karpas", "hurtta", "lima"],
+    ["snipu", "hiisi", "hurtta", "tuli", "karpas"],
+    ["snipu", "lohkare", "mato", "tuli", "kobold"],
+    ["jaatio", "chain", "lohkare", "hamahakki", "hurtta", "karpas"],
+    ["jaatio", "chain", "snipu", "tuli", "lohkare", "skull"],
+    ["chain", "snipu", "lohkare", "skull", "jaatio", "tappura"]
+  ];
+  function rosterFor(floor, rnd) {
+    if (floor >= 1 && floor <= ROSTERS.length) return ROSTERS[floor - 1].slice();
+    const r = rnd || Math.random, pool = CREATURE_IDS.filter((id) => !CREATURES[id].noRoster), out = [];
+    const n = 2 + Math.floor(r() * 5);
+    while (out.length < n && pool.length) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
+    return out;
+  }
+  function enemyFor(id, floor) {
+    const c = CREATURES[id];
+    const hp = 1 + (floor - 1) * 0.35, dmg = 1 + (floor - 1) * 0.16, gold = 1 + (floor - 1) * 0.3;
+    return {
+      id,
+      name: c.name,
+      body: c.body,
+      act: c.act,
+      col: c.col,
+      hp: Math.max(1, Math.round(c.hp * hp)),
+      dmg: Math.max(1, Math.round(c.dmg * dmg)),
+      bspd: Math.round(c.bspd * (1 + (floor - 1) * 0.05)),
+      gold: Math.max(1, Math.round(c.gold * gold)),
+      range: c.range,
+      cd: c.cd,
+      tele: c.tele || 0,
+      shots: c.shots || 1,
+      r: c.r,
+      spd: c.spd,
+      aggro: c.aggro || 300,
+      kp: c.kp || null,
+      glow: c.glow || null
+    };
+  }
+  var HUNTERS = { chase: 1, bomb: 1, spider: 1, jelly: 1, rat: 1 };
+  var NATURAL_ONLY = { jelly: 1 };
+
   // src/data/themes.js
   var THEMES = [
     {
@@ -1136,339 +1470,314 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
-  // src/data/creatures.js
-  var CREATURES = {
-    // jellyfish: pulses along wherever its head points, drag slows it, then it pulses again;
-    // hunting, it lines its head up on you and spits dripping poison. Its numbers are
-    // Dev-panel knobs (DEV.je*); dmg and spd here are only its defaults, for show.
-    meduusa: {
-      name: "Myrkkymeduusa",
-      body: "jelly",
-      act: "jelly",
-      kp: "je",
-      aggro: 300,
-      col: { a: "#46c94f", b: "#133d1a", c: "#a6ff7c", eye: "#e4ff4a" },
-      glow: "110,255,90",
-      hp: 2,
-      dmg: 7,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 4,
-      r: 9,
-      spd: 140
+  // src/data/perks.js
+  var PERKS = {
+    eye: {
+      name: "All-Seeing Eye",
+      glyph: "◉",
+      tint: "#8fd3ff",
+      seeAll: 1,
+      info: "The whole floor is lit. No fog anywhere, on this floor or any other."
     },
-    hiisi: {
-      name: "Hiisi",
-      body: "drone",
-      act: "shoot",
-      col: { a: "#4f7a52", b: "#22331f", c: "#7fb383", eye: "#ffd98a" },
-      hp: 5,
-      dmg: 10,
-      bspd: 190,
-      range: 230,
-      cd: 1.5,
-      gold: 8,
-      r: 9,
-      spd: 34
+    ghost: {
+      name: "Angry Ghost",
+      glyph: "☾",
+      tint: "#c9a6ff",
+      ghost: 1,
+      info: "A spirit trails you and fires at whatever is nearest."
     },
-    tappura: {
-      name: "Tappurahiisi",
-      body: "drone",
-      act: "shoot",
-      shots: 4,
-      col: { a: "#7a5a3a", b: "#33241a", c: "#b08a5c", eye: "#ffb347" },
-      hp: 6,
-      dmg: 7,
-      bspd: 200,
-      range: 180,
-      cd: 2.3,
-      gold: 10,
-      r: 10,
-      spd: 30
+    gold: {
+      name: "Attract Gold",
+      glyph: "◇",
+      tint: "#ffc93c",
+      goldPull: 3,
+      info: "Coin flies to you from three times as far away."
     },
-    chain: {
-      name: "Chaingunner",
-      body: "drone",
-      act: "shoot",
-      col: { a: "#8a3f3f", b: "#3a1c1c", c: "#c06a6a", eye: "#ff8a8a" },
-      hp: 7,
-      dmg: 5,
-      bspd: 230,
-      range: 250,
-      cd: 0.6,
-      gold: 12,
-      r: 10,
-      spd: 32
+    bounce: {
+      name: "Bouncing Spells",
+      glyph: "⤢",
+      tint: "#7ad7ff",
+      bounce: 1,
+      info: "Every shot bounces once more than it otherwise would."
     },
-    snipu: {
-      name: "Snipuhiisi",
-      body: "drone",
-      act: "turret",
-      tele: 0.55,
-      col: { a: "#5a5f8a", b: "#252a44", c: "#8f95c4", eye: "#9ad4ff" },
-      hp: 4,
-      dmg: 22,
-      bspd: 420,
-      range: 460,
-      cd: 3,
-      gold: 14,
-      r: 9,
-      spd: 0
+    close: {
+      name: "Close Call",
+      glyph: "✧",
+      tint: "#ff8a1f",
+      close: 1,
+      info: "+40% critical chance while something is within 56 units of you."
     },
-    // spider: lives on rock and its own silk (spiderStep); bites up close, and shoots a
-    // string at you that slows you until you pull it too long and it snaps. Its speeds and
-    // reaches are Dev-panel knobs (DEV.sp*); spd is the burst speed's default, for show.
-    hamahakki: {
-      name: "Hämähäkki",
-      body: "spider",
-      act: "spider",
-      kp: "sp",
-      aggro: 300,
-      col: { a: "#6a4a86", b: "#2b1d38", c: "#a077c4", eye: "#ffd98a" },
-      hp: 4,
-      dmg: 12,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 6,
-      r: 9,
-      spd: 260
+    conc: {
+      name: "Concentrated Spells",
+      glyph: "✹",
+      tint: "#ff5a52",
+      dmg: 1.25,
+      spread: 0.5,
+      delay: 1.15,
+      recoil: 1.25,
+      info: "A quarter more damage and half the spread, but a slower gun and a harder kick."
     },
-    // rat: runs the rock surfaces round its nest (ratStep), bites you and knocks gold out of
-    // you, grabs any loose gold near it and carries it home. Its numbers are Dev knobs (DEV.ra*).
-    // It is never rolled off a roster: rats only come out of nests.
-    rotta: {
-      name: "Rotta",
-      body: "rat",
-      act: "rat",
-      kp: "ra",
-      aggro: 260,
-      noRoster: 1,
-      col: { a: "#7a6a5e", b: "#3a302a", c: "#b3a291", eye: "#ff5a5a" },
-      hp: 1,
-      dmg: 4,
-      bspd: 0,
-      range: 0,
-      cd: 0,
+    contact: {
+      name: "Contact Damage",
+      glyph: "✺",
+      tint: "#ff5a36",
+      contact: 1,
+      info: "Anything that touches you is hurt by it."
+    },
+    crit: {
+      name: "Critical Hit +",
+      glyph: "✳",
+      tint: "#ff5a52",
+      crit: 0.15,
+      info: "+15% chance of a hit doing triple damage."
+    },
+    eradar: {
+      name: "Enemy Radar",
+      glyph: "▲",
+      tint: "#ff5a52",
+      radarEnemy: 1,
+      info: "The nearest creatures are marked at the edge of the screen."
+    },
+    health: {
+      name: "Extra Health",
+      glyph: "✚",
+      tint: "#46c48c",
+      hpAdd: 50,
+      info: "50 more maximum health, and it comes full."
+    },
+    holyitem: {
+      name: "Extra Item in Holy Mountain",
+      glyph: "♦",
+      tint: "#ffc93c",
+      extraItem: 1,
+      info: "Every shop offers five things instead of four."
+    },
+    life: {
+      name: "Extra Life",
+      glyph: "♥",
+      tint: "#ff5a36",
+      lives: 1,
+      info: "You get back up once, at full health, the first time you are killed."
+    },
+    knock: {
+      name: "Extra Knockback on Spells",
+      glyph: "⟫",
+      tint: "#e88a3c",
+      recoil: 1.5,
+      info: "Half again the kick out of every shot — which the jetpack can work with."
+    },
+    lev: {
+      name: "Faster Levitation",
+      glyph: "⬆",
+      tint: "#7ad7ff",
+      jet: 1.25,
+      info: "A quarter more thrust out of the jetpack."
+    },
+    move: {
+      name: "Faster Movement",
+      glyph: "➤",
+      tint: "#6db8ff",
+      walk: 1.3,
+      info: "Walk and fly a third faster."
+    },
+    proj: {
+      name: "Faster Projectiles",
+      glyph: "⇒",
+      tint: "#ffc93c",
+      speed: 1.25,
+      info: "Everything you fire travels a quarter faster."
+    },
+    wands: {
+      name: "Faster Wands",
+      glyph: "↻",
+      tint: "#6db8ff",
+      delay: 0.75,
+      rech: 0.75,
+      info: "Cast delay and recharge are three quarters of what they were."
+    },
+    glass: {
+      name: "Glass Cannon",
+      glyph: "✷",
+      tint: "#ff5a52",
+      dmg: 2.5,
+      hpMul: 0.5,
+      info: "Two and a half times the damage, and half the health to spend."
+    },
+    greed: {
+      name: "Greed",
+      glyph: "⬤",
+      tint: "#ffc93c",
       gold: 2,
-      r: 4,
-      spd: 170
+      info: "Every coin is worth double."
     },
-    // rat nest: a room in the rock at the end of a thin tunnel. Doesn't move; lets a rat out
-    // now and then while it has fewer than its max out; dies to digging or blasting.
-    pesa: {
-      name: "Rotanpesä",
-      body: "nest",
-      act: "nest",
-      noRoster: 1,
-      col: { a: "#8a6a3a", b: "#3d2c18", c: "#c49a5a", eye: "#ffd23c" },
-      hp: 12,
-      dmg: 0,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 0,
-      r: 10,
-      spd: 0
+    homing: {
+      name: "Homing Shots",
+      glyph: "↝",
+      tint: "#b57cff",
+      homing: 3,
+      info: "Your shots bend towards whatever is nearest."
     },
-    lohkare: {
-      name: "Lohkare",
-      body: "crawler",
-      act: "chase",
-      aggro: 260,
-      col: { a: "#6a625a", b: "#2c2823", c: "#9d948a", eye: "#ffb347" },
-      hp: 16,
-      dmg: 18,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 20,
-      r: 13,
-      spd: 26
+    invis: {
+      name: "Invisibility",
+      glyph: "☁",
+      tint: "#9aa3ad",
+      invis: 1,
+      info: "Creatures do not notice you until you are almost on top of them."
     },
-    mato: {
-      name: "Mato",
-      body: "worm",
-      act: "chase",
-      aggro: 320,
-      col: { a: "#a2607a", b: "#40222e", c: "#d68fa8", eye: "#ffd98a" },
-      hp: 6,
-      dmg: 14,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 9,
-      r: 8,
-      spd: 84
+    iradar: {
+      name: "Item Radar",
+      glyph: "◆",
+      tint: "#b57cff",
+      radarItem: 1,
+      info: "The nearest mod lying in the cave is marked at the edge of the screen."
     },
-    hurtta: {
-      name: "Hurtta",
-      body: "crawler",
-      act: "chase",
-      aggro: 360,
-      col: { a: "#7a4a3a", b: "#2f1a14", c: "#b3765c", eye: "#ff9a5a" },
-      hp: 5,
-      dmg: 15,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 10,
-      r: 9,
-      spd: 105
+    trail: {
+      name: "Levitation Trail",
+      glyph: "≈",
+      tint: "#ff8a1f",
+      trail: 1,
+      info: "Flying leaves a trail of fire behind you that burns what it touches."
     },
-    kobold: {
-      name: "Kobold",
-      body: "crawler",
-      act: "chase",
-      aggro: 300,
-      col: { a: "#8a7a4a", b: "#332d18", c: "#c0ad74", eye: "#ffe066" },
-      hp: 3,
-      dmg: 8,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 5,
-      r: 7,
-      spd: 92
+    shield: {
+      name: "Permanent Shield",
+      glyph: "⬡",
+      tint: "#7ad7ff",
+      shield: 1,
+      info: "A shield soaks the first hit and comes back a couple of seconds later."
     },
-    konna: {
-      name: "Konna",
-      body: "blob",
-      act: "chase",
-      aggro: 260,
-      col: { a: "#4a7a6a", b: "#1c332c", c: "#79b3a0", eye: "#d8ff9a" },
-      hp: 6,
-      dmg: 11,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 7,
-      r: 10,
-      spd: 48
+    pinpoint: {
+      name: "Pinpointer",
+      glyph: "⊙",
+      tint: "#5ee0a0",
+      pinpointer: 1,
+      speed: 1.2,
+      spread: 0.6,
+      info: "You aim at the nearest creature instead of by hand, with a sightline to it."
     },
-    lima: {
-      name: "Limanuljaska",
-      body: "blob",
-      act: "bomb",
-      aggro: 300,
-      col: { a: "#6fa03a", b: "#2a3d14", c: "#a6d46a", eye: "#e6ff9a" },
-      hp: 5,
-      dmg: 20,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 11,
-      r: 10,
-      spd: 55
+    repel: {
+      name: "Projectile Repulsion Field",
+      glyph: "⊘",
+      tint: "#8fd3ff",
+      repel: 1,
+      info: "Shots aimed at you are shoved aside before they arrive."
     },
-    tuli: {
-      name: "Stendari",
-      body: "blob",
-      act: "bomb",
-      aggro: 330,
-      fire: 1,
-      col: { a: "#c05a2a", b: "#3f1c0e", c: "#ff9a5a", eye: "#ffe066" },
-      hp: 6,
-      dmg: 26,
-      bspd: 0,
-      range: 0,
-      cd: 0,
-      gold: 13,
-      r: 10,
-      spd: 60
+    tinker: {
+      name: "Tinker with Wands Everywhere",
+      glyph: "⚙",
+      tint: "#e9ecf2",
+      tinker: 1,
+      info: "The mod screen works out in the cave, not only in the shop."
     },
-    karpas: {
-      name: "Kärpässieni",
-      body: "blob",
-      act: "turret",
-      col: { a: "#b04a4a", b: "#3d1616", c: "#e88a8a", eye: "#ffffff" },
-      hp: 5,
-      dmg: 12,
-      bspd: 150,
-      range: 300,
-      cd: 1.9,
-      gold: 9,
-      r: 10,
-      spd: 0
+    unlimited: {
+      name: "Unlimited Spells",
+      glyph: "∞",
+      tint: "#6db8ff",
+      mana: 0,
+      info: "Spells cost no mana at all."
     },
-    jaatio: {
-      name: "Jäätiö",
-      body: "skull",
-      act: "turret",
-      tele: 0.3,
-      col: { a: "#7ab8d8", b: "#22414f", c: "#b6e2f4", eye: "#d8f4ff" },
-      hp: 8,
-      dmg: 12,
-      bspd: 130,
-      range: 240,
-      cd: 1.7,
-      gold: 15,
-      r: 10,
-      spd: 0
+    wradar: {
+      name: "Wand Radar",
+      glyph: "▣",
+      tint: "#ffc93c",
+      radarWand: 1,
+      info: "The nearest gun lying in the cave is marked at the edge of the screen."
     },
-    skull: {
-      name: "Elävät luut",
-      body: "skull",
-      act: "turret",
-      tele: 0.35,
-      col: { a: "#d8d2be", b: "#4a463c", c: "#f4f0e0", eye: "#5ee0a0" },
-      hp: 7,
-      dmg: 14,
-      bspd: 200,
-      range: 320,
-      cd: 2.1,
-      gold: 16,
-      r: 9,
-      spd: 0
+    hearts: {
+      name: "Stronger Hearts",
+      glyph: "❤",
+      tint: "#46c48c",
+      heal: 1.5,
+      info: "Anything that heals you heals half again as much."
+    },
+    sight: {
+      name: "Trajectory Sight",
+      glyph: "⋯",
+      tint: "#7ad7ff",
+      trajectory: 1,
+      info: "Shows where your next shot flies — the dotted aim line, mods and all."
     }
   };
-  var CREATURE_IDS = Object.keys(CREATURES);
-  var ROSTERS = [
-    ["meduusa", "hamahakki"],
-    ["meduusa", "hamahakki", "hiisi"],
-    ["hiisi", "konna", "hamahakki"],
-    ["hiisi", "mato", "lima", "kobold"],
-    ["hiisi", "karpas", "hurtta", "lima"],
-    ["snipu", "hiisi", "hurtta", "tuli", "karpas"],
-    ["snipu", "lohkare", "mato", "tuli", "kobold"],
-    ["jaatio", "chain", "lohkare", "hamahakki", "hurtta", "karpas"],
-    ["jaatio", "chain", "snipu", "tuli", "lohkare", "skull"],
-    ["chain", "snipu", "lohkare", "skull", "jaatio", "tappura"]
-  ];
-  function rosterFor(floor, rnd) {
-    if (floor >= 1 && floor <= ROSTERS.length) return ROSTERS[floor - 1].slice();
-    const r = rnd || Math.random, pool = CREATURE_IDS.filter((id) => !CREATURES[id].noRoster), out = [];
-    const n = 2 + Math.floor(r() * 5);
-    while (out.length < n && pool.length) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
-    return out;
-  }
-  function enemyFor(id, floor) {
-    const c = CREATURES[id];
-    const hp = 1 + (floor - 1) * 0.35, dmg = 1 + (floor - 1) * 0.16, gold = 1 + (floor - 1) * 0.3;
-    return {
-      id,
-      name: c.name,
-      body: c.body,
-      act: c.act,
-      col: c.col,
-      hp: Math.max(1, Math.round(c.hp * hp)),
-      dmg: Math.max(1, Math.round(c.dmg * dmg)),
-      bspd: Math.round(c.bspd * (1 + (floor - 1) * 0.05)),
-      gold: Math.max(1, Math.round(c.gold * gold)),
-      range: c.range,
-      cd: c.cd,
-      tele: c.tele || 0,
-      shots: c.shots || 1,
-      r: c.r,
-      spd: c.spd,
-      aggro: c.aggro || 300,
-      kp: c.kp || null,
-      glow: c.glow || null
+  var PERK_IDS = Object.keys(PERKS);
+  function perkBag(ids) {
+    const P = {
+      dmg: 1,
+      speed: 1,
+      spread: 1,
+      bounce: 0,
+      recoil: 1,
+      crit: 0,
+      mana: 1,
+      delay: 1,
+      rech: 1,
+      walk: 1,
+      jet: 1,
+      hpMul: 1,
+      hpAdd: 0,
+      heal: 1,
+      gold: 1,
+      goldPull: 1,
+      shield: 0,
+      lives: 0,
+      ghost: 0,
+      homing: 0,
+      trail: 0,
+      contact: 0,
+      close: 0,
+      invis: 0,
+      repel: 0,
+      seeAll: 0,
+      radarEnemy: 0,
+      radarItem: 0,
+      radarWand: 0,
+      tinker: 0,
+      extraItem: 0,
+      pinpointer: 0,
+      trajectory: 0
     };
+    for (const id of ids || []) {
+      const k = PERKS[id];
+      if (!k) continue;
+      P.dmg *= k.dmg || 1;
+      P.speed *= k.speed || 1;
+      P.spread *= k.spread || 1;
+      P.recoil *= k.recoil || 1;
+      P.delay *= k.delay || 1;
+      P.rech *= k.rech || 1;
+      P.walk *= k.walk || 1;
+      P.jet *= k.jet || 1;
+      P.hpMul *= k.hpMul || 1;
+      P.heal *= k.heal || 1;
+      P.gold *= k.gold || 1;
+      P.goldPull *= k.goldPull || 1;
+      if (k.mana === 0) P.mana = 0;
+      else P.mana *= k.mana || 1;
+      P.bounce += k.bounce || 0;
+      P.crit += k.crit || 0;
+      P.hpAdd += k.hpAdd || 0;
+      P.lives += k.lives || 0;
+      P.ghost += k.ghost || 0;
+      P.homing = Math.max(P.homing, k.homing || 0);
+      for (const f of [
+        "shield",
+        "trail",
+        "contact",
+        "close",
+        "invis",
+        "repel",
+        "seeAll",
+        "radarEnemy",
+        "radarItem",
+        "radarWand",
+        "tinker",
+        "extraItem",
+        "pinpointer",
+        "trajectory"
+      ])
+        if (k[f]) P[f] = 1;
+    }
+    P.maxHp = Math.max(10, Math.round((PLAYER_HP + P.hpAdd) * P.hpMul));
+    return P;
   }
-  var HUNTERS = { chase: 1, bomb: 1, spider: 1, jelly: 1, rat: 1 };
-  var NATURAL_ONLY = { jelly: 1 };
 
   // src/main.js
   var { useRef, useEffect, useState, useMemo } = React;
@@ -6369,313 +6678,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (const id of g.slots) if (id && MODS[id].kind === "shot") return famCol(id);
     }
     return COL.bullet;
-  }
-  var PERKS = {
-    eye: {
-      name: "All-Seeing Eye",
-      glyph: "◉",
-      tint: "#8fd3ff",
-      seeAll: 1,
-      info: "The whole floor is lit. No fog anywhere, on this floor or any other."
-    },
-    ghost: {
-      name: "Angry Ghost",
-      glyph: "☾",
-      tint: "#c9a6ff",
-      ghost: 1,
-      info: "A spirit trails you and fires at whatever is nearest."
-    },
-    gold: {
-      name: "Attract Gold",
-      glyph: "◇",
-      tint: "#ffc93c",
-      goldPull: 3,
-      info: "Coin flies to you from three times as far away."
-    },
-    bounce: {
-      name: "Bouncing Spells",
-      glyph: "⤢",
-      tint: "#7ad7ff",
-      bounce: 1,
-      info: "Every shot bounces once more than it otherwise would."
-    },
-    close: {
-      name: "Close Call",
-      glyph: "✧",
-      tint: "#ff8a1f",
-      close: 1,
-      info: "+40% critical chance while something is within 56 units of you."
-    },
-    conc: {
-      name: "Concentrated Spells",
-      glyph: "✹",
-      tint: "#ff5a52",
-      dmg: 1.25,
-      spread: 0.5,
-      delay: 1.15,
-      recoil: 1.25,
-      info: "A quarter more damage and half the spread, but a slower gun and a harder kick."
-    },
-    contact: {
-      name: "Contact Damage",
-      glyph: "✺",
-      tint: "#ff5a36",
-      contact: 1,
-      info: "Anything that touches you is hurt by it."
-    },
-    crit: {
-      name: "Critical Hit +",
-      glyph: "✳",
-      tint: "#ff5a52",
-      crit: 0.15,
-      info: "+15% chance of a hit doing triple damage."
-    },
-    eradar: {
-      name: "Enemy Radar",
-      glyph: "▲",
-      tint: "#ff5a52",
-      radarEnemy: 1,
-      info: "The nearest creatures are marked at the edge of the screen."
-    },
-    health: {
-      name: "Extra Health",
-      glyph: "✚",
-      tint: "#46c48c",
-      hpAdd: 50,
-      info: "50 more maximum health, and it comes full."
-    },
-    holyitem: {
-      name: "Extra Item in Holy Mountain",
-      glyph: "♦",
-      tint: "#ffc93c",
-      extraItem: 1,
-      info: "Every shop offers five things instead of four."
-    },
-    life: {
-      name: "Extra Life",
-      glyph: "♥",
-      tint: "#ff5a36",
-      lives: 1,
-      info: "You get back up once, at full health, the first time you are killed."
-    },
-    knock: {
-      name: "Extra Knockback on Spells",
-      glyph: "⟫",
-      tint: "#e88a3c",
-      recoil: 1.5,
-      info: "Half again the kick out of every shot — which the jetpack can work with."
-    },
-    lev: {
-      name: "Faster Levitation",
-      glyph: "⬆",
-      tint: "#7ad7ff",
-      jet: 1.25,
-      info: "A quarter more thrust out of the jetpack."
-    },
-    move: {
-      name: "Faster Movement",
-      glyph: "➤",
-      tint: "#6db8ff",
-      walk: 1.3,
-      info: "Walk and fly a third faster."
-    },
-    proj: {
-      name: "Faster Projectiles",
-      glyph: "⇒",
-      tint: "#ffc93c",
-      speed: 1.25,
-      info: "Everything you fire travels a quarter faster."
-    },
-    wands: {
-      name: "Faster Wands",
-      glyph: "↻",
-      tint: "#6db8ff",
-      delay: 0.75,
-      rech: 0.75,
-      info: "Cast delay and recharge are three quarters of what they were."
-    },
-    glass: {
-      name: "Glass Cannon",
-      glyph: "✷",
-      tint: "#ff5a52",
-      dmg: 2.5,
-      hpMul: 0.5,
-      info: "Two and a half times the damage, and half the health to spend."
-    },
-    greed: {
-      name: "Greed",
-      glyph: "⬤",
-      tint: "#ffc93c",
-      gold: 2,
-      info: "Every coin is worth double."
-    },
-    homing: {
-      name: "Homing Shots",
-      glyph: "↝",
-      tint: "#b57cff",
-      homing: 3,
-      info: "Your shots bend towards whatever is nearest."
-    },
-    invis: {
-      name: "Invisibility",
-      glyph: "☁",
-      tint: "#9aa3ad",
-      invis: 1,
-      info: "Creatures do not notice you until you are almost on top of them."
-    },
-    iradar: {
-      name: "Item Radar",
-      glyph: "◆",
-      tint: "#b57cff",
-      radarItem: 1,
-      info: "The nearest mod lying in the cave is marked at the edge of the screen."
-    },
-    trail: {
-      name: "Levitation Trail",
-      glyph: "≈",
-      tint: "#ff8a1f",
-      trail: 1,
-      info: "Flying leaves a trail of fire behind you that burns what it touches."
-    },
-    shield: {
-      name: "Permanent Shield",
-      glyph: "⬡",
-      tint: "#7ad7ff",
-      shield: 1,
-      info: "A shield soaks the first hit and comes back a couple of seconds later."
-    },
-    pinpoint: {
-      name: "Pinpointer",
-      glyph: "⊙",
-      tint: "#5ee0a0",
-      pinpointer: 1,
-      speed: 1.2,
-      spread: 0.6,
-      info: "You aim at the nearest creature instead of by hand, with a sightline to it."
-    },
-    repel: {
-      name: "Projectile Repulsion Field",
-      glyph: "⊘",
-      tint: "#8fd3ff",
-      repel: 1,
-      info: "Shots aimed at you are shoved aside before they arrive."
-    },
-    tinker: {
-      name: "Tinker with Wands Everywhere",
-      glyph: "⚙",
-      tint: "#e9ecf2",
-      tinker: 1,
-      info: "The mod screen works out in the cave, not only in the shop."
-    },
-    unlimited: {
-      name: "Unlimited Spells",
-      glyph: "∞",
-      tint: "#6db8ff",
-      mana: 0,
-      info: "Spells cost no mana at all."
-    },
-    wradar: {
-      name: "Wand Radar",
-      glyph: "▣",
-      tint: "#ffc93c",
-      radarWand: 1,
-      info: "The nearest gun lying in the cave is marked at the edge of the screen."
-    },
-    hearts: {
-      name: "Stronger Hearts",
-      glyph: "❤",
-      tint: "#46c48c",
-      heal: 1.5,
-      info: "Anything that heals you heals half again as much."
-    },
-    sight: {
-      name: "Trajectory Sight",
-      glyph: "⋯",
-      tint: "#7ad7ff",
-      trajectory: 1,
-      info: "Shows where your next shot flies — the dotted aim line, mods and all."
-    }
-  };
-  var PERK_IDS = Object.keys(PERKS);
-  function perkBag(ids) {
-    const P = {
-      dmg: 1,
-      speed: 1,
-      spread: 1,
-      bounce: 0,
-      recoil: 1,
-      crit: 0,
-      mana: 1,
-      delay: 1,
-      rech: 1,
-      walk: 1,
-      jet: 1,
-      hpMul: 1,
-      hpAdd: 0,
-      heal: 1,
-      gold: 1,
-      goldPull: 1,
-      shield: 0,
-      lives: 0,
-      ghost: 0,
-      homing: 0,
-      trail: 0,
-      contact: 0,
-      close: 0,
-      invis: 0,
-      repel: 0,
-      seeAll: 0,
-      radarEnemy: 0,
-      radarItem: 0,
-      radarWand: 0,
-      tinker: 0,
-      extraItem: 0,
-      pinpointer: 0,
-      trajectory: 0
-    };
-    for (const id of ids || []) {
-      const k = PERKS[id];
-      if (!k) continue;
-      P.dmg *= k.dmg || 1;
-      P.speed *= k.speed || 1;
-      P.spread *= k.spread || 1;
-      P.recoil *= k.recoil || 1;
-      P.delay *= k.delay || 1;
-      P.rech *= k.rech || 1;
-      P.walk *= k.walk || 1;
-      P.jet *= k.jet || 1;
-      P.hpMul *= k.hpMul || 1;
-      P.heal *= k.heal || 1;
-      P.gold *= k.gold || 1;
-      P.goldPull *= k.goldPull || 1;
-      if (k.mana === 0) P.mana = 0;
-      else P.mana *= k.mana || 1;
-      P.bounce += k.bounce || 0;
-      P.crit += k.crit || 0;
-      P.hpAdd += k.hpAdd || 0;
-      P.lives += k.lives || 0;
-      P.ghost += k.ghost || 0;
-      P.homing = Math.max(P.homing, k.homing || 0);
-      for (const f of [
-        "shield",
-        "trail",
-        "contact",
-        "close",
-        "invis",
-        "repel",
-        "seeAll",
-        "radarEnemy",
-        "radarItem",
-        "radarWand",
-        "tinker",
-        "extraItem",
-        "pinpointer",
-        "trajectory"
-      ])
-        if (k[f]) P[f] = 1;
-    }
-    P.maxHp = Math.max(10, Math.round((PLAYER_HP + P.hpAdd) * P.hpMul));
-    return P;
   }
   function fmtGold(g) {
     g = Math.max(0, Math.floor(g || 0));

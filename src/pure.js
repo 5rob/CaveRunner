@@ -11,3 +11,4 @@ export * from './core/util.js';
 export * from './dev/knobs.js';
 export * from './data/themes.js';
 export * from './data/creatures.js';
+export * from './data/perks.js';

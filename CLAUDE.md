@@ -147,7 +147,7 @@ rest and imports them. Where things are (`main.js` line numbers as of v96, they 
 | `gunRate` / `buildAdvice` | ~2761: the build advisor |
 | `castGroups` / `groupStats` | ~2875: the outlines and stat lines in the build screen |
 | sprites | ~3050–3600: `drawGun`, `drawRunner`, `drawEnemy` (one per creature body) |
-| `PERKS` / `perkBag` | ~3600: the 31 perks, and folding an owned list into one effective bag |
+| `PERKS` / `perkBag` | `src/data/perks.js`: the 31 perks, and folding an owned list into one effective bag |
 | `makeLevel` | ~6439: terrain, shop, enemies, pickups |
 | `tracePath` | ~7041: simulates a shot for the aim line |
 | `Game` | ~7130–11390: the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields |
