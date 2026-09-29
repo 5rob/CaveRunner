@@ -145,7 +145,7 @@ rest and imports them. Where things are (`main.js` line numbers as of v96, they 
 | `MOD_PRICE` / `MOD_TIER` | `src/spells/mods.js` (with `TRIG_VARIANTS`): shop price and rarity 1–4 for every mod |
 | `modWeight` / `rollMod` | `src/spells/spawn.js`: Noita's spawn table (`NOITA_SPAWN`, `NOITA_OF`, `TIER_FLOOR`) |
 | guns | `src/spells/guns.js`: `makeGun`, `caveGun`, `startingGuns`, `GUN_RANGE`, `resetGun`, `gunPrice`, gun colours |
-| `planCast` | ~2485: **the heart of it** — works out what one pull of the trigger fires |
+| `planCast` | `src/spells/cast.js` (with `blankShot`, `effRecharge`, `gunPassives`): **the heart of it** — works out what one pull of the trigger fires |
 | `gunRate` / `buildAdvice` | ~2761: the build advisor |
 | `castGroups` / `groupStats` | ~2875: the outlines and stat lines in the build screen |
 | sprites | ~3050–3600: `drawGun`, `drawRunner`, `drawEnemy` (one per creature body) |
