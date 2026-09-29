@@ -272,9 +272,10 @@ it's stale.
 
 ## The owner's loop (from CLAUDE.md — follow it every change)
 
-1. Edit `index.html` (single file, no build step).
+1. Edit `src/` (`npm install` once; `node tools/build.js` bundles it into `index.html`, and the
+   tests run the build first). See REFACTOR.md for where things live now.
 2. Test: `node tests/run.js` (browser env vars below). Add a suite for anything new.
-3. Bump the version: `const VERSION` near the top of `src/main.js` (the build fills the `<title>`).
+3. Bump the version: `src/version.js` (the build copies it into the page and the `<title>`).
 4. Update `README.md` if it's a player-facing change (the Dev panel is a dev tool, so v41
    left the README alone — that was deliberate).
 5. Commit, then **get it onto `main`** (working branch + merge is fine). That push is the
