@@ -601,6 +601,411 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return "rgb(" + r + "," + g + "," + bl + ")";
   }
 
+  // src/dev/knobs.js
+  var DEV_DEFAULTS = {
+    zoom: 1.35,
+    torch: 1,
+    fogDark: 0.99,
+    fogDim: 0.85,
+    move: 1,
+    sputDip: 45,
+    aggro: 0.8,
+    loseAggro: 2,
+    aimDist: 44,
+    bhPull: 50,
+    bhSpeed: 65,
+    vol: 0.8,
+    amb: 1,
+    jetVol: 1,
+    vSpell: 1,
+    vBoom: 1,
+    vHit: 1,
+    vEnemy: 1,
+    vEnemyFire: 1,
+    vWorld: 1,
+    vDrip: 1,
+    vStep: 1,
+    vUi: 1,
+    bagSpeed: 1
+  };
+  var DEV_META = [
+    { k: "zoom", g: "view", label: "Camera zoom", min: 0.3, max: 3, step: 0.05 },
+    { k: "aimDist", g: "view", label: "Crosshair distance", min: 10, max: 200, step: 2 },
+    { k: "torch", g: "light", label: "Torch fall-off distance", min: 0.2, max: 5, step: 0.05 },
+    { k: "fogDark", g: "light", label: "Fog of war darkness", min: 0, max: 1, step: 0.01 },
+    { k: "fogDim", g: "light", label: "Outside-torchlight darkness", min: 0, max: 1, step: 0.01 },
+    { k: "move", g: "player", label: "Base movement speed", min: 0.2, max: 5, step: 0.05 },
+    { k: "sputDip", g: "player", label: "Jet sputter drop", min: 0, max: 300, step: 5 },
+    { k: "aggro", g: "enemy", label: "Enemy aggro distance", min: 0.2, max: 5, step: 0.05 },
+    { k: "loseAggro", g: "enemy", label: "Lose aggro distance (×aggro)", min: 1, max: 10, step: 0.1 },
+    { k: "bhPull", g: "bh", label: "Black Hole max pull range", min: 0, max: 600, step: 5 },
+    { k: "bhSpeed", g: "bh", label: "Black Hole travel speed", min: 0, max: 1e3, step: 5 },
+    { k: "vol", g: "sound", label: "Sound volume", min: 0, max: 2, step: 0.05 },
+    { k: "amb", g: "sound", label: "Ambience volume (×sound)", min: 0, max: 3, step: 0.05 },
+    { k: "jetVol", g: "sound", label: "Jetpack volume (×sound)", min: 0, max: 3, step: 0.05 },
+    { k: "vSpell", g: "sound", label: "Your spells (×sound)", min: 0, max: 3, step: 0.05 },
+    { k: "vBoom", g: "sound", label: "Explosions (×sound)", min: 0, max: 3, step: 0.05 },
+    { k: "vHit", g: "sound", label: "Bullet hits (×sound)", min: 0, max: 3, step: 0.05 },
+    { k: "vEnemyFire", g: "sound", label: "Enemy fire (×sound)", min: 0, max: 3, step: 0.05 },
+    { k: "vEnemy", g: "sound", label: "Creature voices (×sound)", min: 0, max: 3, step: 0.05 },
+    { k: "vWorld", g: "sound", label: "World, props, portals (×sound)", min: 0, max: 3, step: 0.05 },
+    { k: "vDrip", g: "sound", label: "Drips & trickles (×sound)", min: 0, max: 3, step: 0.05 },
+    { k: "vStep", g: "sound", label: "Footsteps (×sound)", min: 0, max: 3, step: 0.05 },
+    { k: "vUi", g: "sound", label: "UI & pickups (×sound)", min: 0, max: 3, step: 0.05 },
+    { k: "bagSpeed", g: "ui", label: "Bag fire preview speed (×real time)", min: 0.05, max: 5, step: 0.05 }
+  ];
+  var DEV_GROUPS = [
+    ["view", "Camera & aim"],
+    ["light", "Torch & fog"],
+    ["player", "Player"],
+    ["enemy", "Enemies"],
+    ["spider", "Spider"],
+    ["rat", "Rats & nests"],
+    ["jelly", "Jellyfish"],
+    ["jellycol", "Jellyfish colours"],
+    ["bh", "Black Hole tweaks"],
+    ["sound", "Sound"],
+    ["ui", "Bag screen"],
+    ["level", "Level layout (floor 1)"],
+    ["arch", "Arched vines"],
+    ["fire", "Fire"]
+  ];
+  function devReport() {
+    const changed = DEV_META.filter((m) => DEV[m.k] !== DEV_DEFAULTS[m.k]);
+    const lines = ["CaveRunner " + VERSION + " dev settings — please make these the new defaults:", ""];
+    if (!changed.length) lines.push("(nothing changed — everything is at its default)");
+    for (const m of changed)
+      lines.push("- " + m.label + " (DEV." + m.k + "): " + DEV[m.k] + "   [default " + DEV_DEFAULTS[m.k] + "]");
+    lines.push("", "Unchanged: " + (DEV_META.filter((m) => DEV[m.k] === DEV_DEFAULTS[m.k]).map((m) => m.k).join(", ") || "none"));
+    return lines.join("\n");
+  }
+  function rangeKnobs(g, rows) {
+    for (const [k, label, min, max, step, lo, hi] of rows) {
+      DEV_DEFAULTS[k + "Lo"] = lo;
+      DEV_DEFAULTS[k + "Hi"] = hi;
+      DEV_META.push(
+        { k: k + "Lo", g, label: label + " — min", min, max, step },
+        { k: k + "Hi", g, label: label + " — max", min, max, step }
+      );
+    }
+    return rows;
+  }
+  var SP_KNOBS = rangeKnobs("spider", [
+    ["spSpeed", "Burst speed", 20, 800, 10, 220, 300],
+    ["spRoamOn", "Roaming: burst length (s)", 0.02, 2, 0.01, 0.1, 0.25],
+    ["spRoamOff", "Roaming: rest between (s)", 0, 6, 0.05, 0.8, 2],
+    ["spHuntOn", "Hunting: burst length (s)", 0.02, 2, 0.01, 0.3, 0.55],
+    ["spHuntOff", "Hunting: rest between (s)", 0, 3, 0.01, 0.05, 0.18],
+    ["spRoamR", "Roam distance from home", 0, 600, 5, 80, 140],
+    ["spRoamSpd", "Roam spot drift speed", 0, 200, 1, 15, 35],
+    ["spAggro", "Aggro distance (×enemy aggro)", 0.1, 5, 0.05, 0.9, 1.1],
+    ["spArrive", "Stops this close to you", 2, 60, 1, 14, 22],
+    ["spDot", "Web instead of walk above dot", -1, 1, 0.05, 0.55, 0.65],
+    ["spGrab", "Grabs a line within", 0, 60, 1, 8, 12],
+    ["spWeb", "Web line max reach", 20, 400, 5, 140, 200],
+    ["spLineSpd", "Web line shot speed", 50, 3e3, 25, 700, 1100],
+    ["spRoamWeb", "Roaming: secs between new lines", 0, 30, 0.5, 4, 8],
+    ["spHuntWeb", "Hunting: secs between new lines", 0, 10, 0.1, 0.3, 0.7],
+    ["spMaxLines", "Lines kept per spider", 1, 40, 1, 6, 10],
+    ["spBite", "Bite damage", 0, 100, 1, 10, 14],
+    ["spBiteCd", "Secs between bites", 0.1, 5, 0.05, 0.7, 1.1],
+    ["spSilk", "String shot range", 0, 400, 5, 140, 180],
+    ["spSilkSpd", "String shot speed", 50, 2e3, 10, 450, 600],
+    ["spSilkCd", "Secs between string shots", 0.2, 20, 0.1, 2.5, 4],
+    ["spSilkMax", "String snaps past (length)", 20, 600, 5, 170, 210],
+    ["spSlow", "Your speed ×, per string on you", 0.1, 1, 0.05, 0.8, 0.8],
+    ["webSlow", "Your speed ×, per web line you touch", 0.1, 1, 0.05, 0.8, 0.8],
+    ["webGrab", "Web line touch/latch distance", 0, 40, 1, 8, 10],
+    ["webClimb", "Climb speed along a web line", 0, 400, 5, 80, 100]
+  ]);
+  var JE_KNOBS = rangeKnobs("jelly", [
+    ["jeRoamPush", "Roaming: pulse push speed", 0, 600, 5, 60, 85],
+    ["jeHuntPush", "Hunting: pulse push speed", 0, 600, 5, 120, 160],
+    ["jePushT", "Pulse push time (s)", 0.02, 1, 0.01, 0.12, 0.2],
+    ["jeRoamRest", "Roaming: rest between pulses (s)", 0, 8, 0.05, 1.4, 2.6],
+    ["jeHuntRest", "Hunting: rest between pulses (s)", 0, 4, 0.05, 0.55, 0.9],
+    ["jeDrag", "Water drag (higher stops sooner)", 0, 10, 0.1, 1.6, 2],
+    ["jeTurn", "Turn rate (degrees/s)", 5, 720, 5, 70, 110],
+    ["jePushTol", "Only pulses facing within (deg)", 1, 180, 1, 30, 45],
+    ["jeSink", "Sinks between pulses", 0, 200, 1, 6, 10],
+    ["jeBounce", "Bounce off rock", 0, 1, 0.05, 0.3, 0.5],
+    ["jeRoamR", "Roam distance from home", 0, 600, 5, 60, 120],
+    ["jeRoamSpd", "Roam spot drift speed", 0, 200, 1, 10, 25],
+    ["jeAggro", "Aggro distance (×enemy aggro)", 0.1, 5, 0.05, 0.9, 1.1],
+    ["jeRange", "Stops closing in at (spit range)", 10, 500, 5, 110, 150],
+    ["jeAimTol", "Spits when head within (deg)", 1, 180, 1, 12, 20],
+    ["jeShotCd", "Secs between spits", 0.1, 10, 0.05, 1.6, 2.4],
+    ["jeShotSpd", "Spit speed", 20, 1e3, 5, 150, 190],
+    ["jeShotDmg", "Spit damage", 0, 100, 1, 6, 8],
+    ["jeShotSize", "Spit size", 0.5, 12, 0.25, 2.5, 3.25],
+    ["jeSpread", "Spit aim wobble (± deg)", 0, 45, 1, 0, 5],
+    ["jeDrip", "Spit drips per second", 0, 80, 1, 14, 20],
+    ["jeDripG", "Drip fall (gravity)", 0, 1200, 10, 220, 320],
+    ["jeSplat", "Splat particles", 0, 60, 1, 10, 16],
+    ["jeSplatSpd", "Splat spread speed", 0, 400, 5, 50, 110],
+    ["jeBite", "Sting damage on touch", 0, 100, 1, 3, 5],
+    ["jeBiteCd", "Secs between stings", 0.1, 5, 0.05, 0.8, 1.2],
+    ["jeThin", "Shape: stays thin longer (curve)", 0.3, 6, 0.1, 2.2, 2.8],
+    ["jeSquash", "Shape: how much it changes", 0, 2, 0.05, 0.9, 1.1],
+    ["jeTents", "Tentacles", 0, 8, 1, 3, 4],
+    ["jeVerts", "Points per tentacle", 2, 10, 1, 4, 6],
+    ["jeTentLen", "Tentacle length", 0, 120, 1, 22, 32],
+    ["jeWave", "Tentacle sway", 0, 60, 1, 5, 9],
+    ["jeSag", "Tentacle droop", 0, 200, 1, 14, 22],
+    ["jeGlowR", "Glow radius", 0, 200, 2, 40, 56],
+    ["jeGlow", "Glow brightness", 0, 1, 0.01, 0.1, 0.15],
+    ["jeFlare", "Glow flare on a pulse (×)", 0, 5, 0.05, 0.6, 1],
+    ["jeSpores", "Spores puffed out per pulse", 0, 40, 1, 4, 8],
+    ["jeSporeSpd", "Spore puff speed", 0, 400, 5, 40, 80],
+    ["jeSporeDrag", "Spore puff drag (settles)", 0, 20, 0.1, 2.5, 3.5],
+    ["jeSporeSpread", "Spore puff spread (± deg)", 0, 180, 1, 25, 40],
+    ["jePlantTop", "Plant glow: top % of green", 1, 100, 1, 25, 25],
+    ["jePlantReach", "Plant glow reach (× glow radius)", 0, 5, 0.05, 1, 1],
+    ["jePlantGlow", "Plant glow strength", 0, 4, 0.05, 1.5, 2],
+    ["jePlantTwinkle", "Plant twinkle speed", 0, 10, 0.1, 1.2, 2],
+    ["jePlantSize", "Plant twinkle size", 1, 60, 1, 5, 8]
+  ]);
+  var RA_KNOBS = rangeKnobs("rat", [
+    ["raSpeed", "Run speed", 20, 600, 5, 150, 200],
+    ["raRoamOn", "Roaming: burst length (s)", 0.02, 3, 0.01, 0.15, 0.4],
+    ["raRoamOff", "Roaming: rest between (s)", 0, 6, 0.05, 0.5, 1.6],
+    ["raHuntOn", "Chasing: burst length (s)", 0.02, 3, 0.01, 0.35, 0.7],
+    ["raHuntOff", "Chasing: rest between (s)", 0, 3, 0.01, 0, 0.03],
+    ["raRoamR", "Roam distance from its nest", 0, 600, 5, 50, 110],
+    ["raRoamSpd", "Roam spot drift speed", 0, 200, 1, 15, 30],
+    ["raAggro", "Aggro distance (×enemy aggro)", 0.1, 5, 0.05, 0.9, 1.1],
+    ["raArrive", "Stops this close to you", 0, 40, 1, 4, 8],
+    ["raDot", "Jumps instead of runs above dot", -1, 1, 0.05, 0.5, 0.65],
+    ["raJump", "Jump speed", 50, 800, 10, 260, 330],
+    ["raJumpR", "Jumps at things within", 10, 300, 5, 70, 110],
+    ["raBite", "Bite damage", 0, 100, 1, 3, 5],
+    ["raBiteCd", "Secs between bites", 0.1, 5, 0.05, 0.8, 1.2],
+    ["raBroke", "Bite × when you have no gold", 1, 10, 0.5, 3, 3],
+    ["raSteal", "Gold knocked out per bite", 0, 100, 1, 3, 6],
+    ["raPopX", "Stolen gold: sideways throw", 0, 400, 5, 70, 100],
+    ["raPopY", "Stolen gold: upward throw", 0, 600, 5, 200, 250],
+    ["raSmell", "Goes for loose gold within", 0, 600, 5, 150, 220],
+    ["raMax", "Rats per nest", 1, 20, 1, 3, 7],
+    ["raSpawn", "Secs between rats from a nest", 0.5, 60, 0.5, 6, 12],
+    ["raWake", "Nests and rats wake within", 100, 2e3, 10, 480, 560],
+    ["raNestRest", "Secs a rat stays in the nest", 0, 20, 0.5, 2, 6],
+    ["raNests", "Nests in the built-up zones", 0, 60, 1, 14, 18],
+    ["raNestsWild", "Nests in the natural caves", 0, 30, 1, 2, 4],
+    ["raNestGold", "Gold in a nest when it dies", 0, 500, 5, 60, 60],
+    ["raSpread", "Roaming rats keep this far apart", 0, 200, 1, 22, 40]
+  ]);
+  var kru = (k, u) => {
+    const a = DEV[k + "Lo"], b = DEV[k + "Hi"];
+    return a + u * (b - a);
+  };
+  var kr = (k, rnd) => kru(k, (rnd || Math.random)());
+  var spr = kr;
+  function colourKnobs(g, rows) {
+    for (const [k, label, a, b] of rows) {
+      DEV_DEFAULTS[k + "Lo"] = a;
+      DEV_DEFAULTS[k + "Hi"] = b;
+      DEV_META.push(
+        { k: k + "Lo", g, label: label + " — A", type: "color" },
+        { k: k + "Hi", g, label: label + " — B", type: "color" }
+      );
+    }
+    return rows;
+  }
+  var kcol = (k, u) => hexMix(DEV[k + "Lo"], DEV[k + "Hi"], u);
+  Object.assign(DEV_DEFAULTS, { jeHue: 0, jeSat: 1, jeBri: 1 });
+  DEV_META.push(
+    { k: "jeHue", g: "jellycol", label: "All colours: hue shift (°)", min: -180, max: 180, step: 1, type: "slider" },
+    { k: "jeSat", g: "jellycol", label: "All colours: saturation (×)", min: 0, max: 3, step: 0.05, type: "slider" },
+    { k: "jeBri", g: "jellycol", label: "All colours: brightness (×)", min: 0, max: 3, step: 0.05, type: "slider" }
+  );
+  var jcol = (k, u) => {
+    const c = kcol(k, u);
+    return DEV.jeHue || DEV.jeSat !== 1 || DEV.jeBri !== 1 ? hsvAdjust(c, DEV.jeHue, DEV.jeSat, DEV.jeBri) : c;
+  };
+  var JE_COLS = colourKnobs("jellycol", [
+    ["jeColTop", "Bell top", "#a6ff7c", "#b4ff9a", "top"],
+    ["jeColBody", "Bell middle", "#46c94f", "#3fbf6e", "body"],
+    ["jeColRim", "Bell bottom (dark)", "#133d1a", "#123a28", "rim"],
+    ["jeColEdge", "Bell outline", "#a6ff7c", "#a6ffb0", "edge"],
+    ["jeColInner", "Inner bell", "#a6ff7c", "#a6ff7c", "inner"],
+    ["jeColLoops", "Poison loops", "#e4ff4a", "#f0ff6a", "loops"],
+    ["jeColShine", "Shine", "#ffffff", "#ffffff", "shine"],
+    ["jeColTent", "Tentacles", "#a6ff7c", "#9cffb4", "tent"],
+    ["jeColGlow", "Glow", "#6eff5a", "#5affa0", "glow"],
+    ["jeColSpit", "Spit", "#46c94f", "#46c94f", "spit"],
+    ["jeColSpitEdge", "Spit edge", "#123d18", "#123d18", "spitEdge"],
+    ["jeColSpitShine", "Spit shine", "#e6ffb8", "#e6ffb8", "spitShine"],
+    ["jeColDrip", "Drips & splat", "#46c94f", "#46c94f", "drip"],
+    ["jeColDrip2", "Drips & splat (light)", "#c8ff8a", "#c8ff8a", "drip2"]
+  ]);
+  var LV_KNOBS = rangeKnobs("level", [
+    ["lvHead", "Corridor headroom (px, runner is 11)", 12, 80, 1, 20, 32],
+    ["lvSqueeze", "Squeeze headroom (px)", 12, 30, 1, 13, 16],
+    ["lvSqz", "Squeezes per corridor", 0, 4, 0.1, 0, 1.2],
+    ["lvThick", "Layer thickness (px)", 5, 60, 1, 16, 32],
+    ["lvWave", "Layer waviness (px)", 0, 40, 1, 5, 12],
+    ["lvHoles", "Extra holes per layer (loops)", 0, 8, 0.1, 0.2, 1],
+    ["lvHoleW", "Hole width (px)", 12, 80, 1, 18, 40],
+    ["lvWalls", "Walls per corridor (dead ends)", 0, 5, 0.1, 0, 1],
+    ["lvCaves", "Big caverns", 0, 8, 0.1, 2.5, 3.5],
+    ["lvCaveW", "Cavern half width (px)", 20, 320, 5, 90, 170],
+    ["lvCaveH", "Cavern half height (px)", 20, 320, 5, 80, 150],
+    ["lvWorks", "Old workings (flattened stretches)", 0, 12, 0.1, 3, 5],
+    ["lvWorkW", "Old workings length (px)", 30, 400, 5, 90, 190],
+    ["lvWorkH", "Old workings headroom (px)", 14, 60, 1, 22, 30],
+    ["lvPost", "Timber post spacing (px)", 14, 120, 1, 30, 46],
+    ["lvPropZones", "Propped patches", 0, 16, 0.1, 5, 8],
+    ["lvPropR", "Propped patch radius (px)", 20, 400, 5, 70, 140],
+    ["lvPropDense", "Timber density in a patch (×)", 0.5, 4, 0.05, 0.9, 1.15],
+    ["lvPropRot", "Bays rotted away outside patches (0-1)", 0, 1, 0.05, 0.3, 0.6],
+    // v87: floor 1 is two styles in zones. A big slow noise over the map says which: built-up
+    // (the layered cave above) or natural (the old noise cave). See makeLevel.
+    ["lvZoneSize", "Zone size (px)", 60, 900, 10, 220, 320],
+    ["lvZoneShare", "Built-up share of the map (0-1)", 0, 1, 0.05, 0.4, 0.55],
+    ["lvZoneRag", "Zone edge raggedness (px)", 0, 60, 1, 8, 18],
+    ["lvLamps", "Lanterns in the built-up zones", 0, 150, 1, 40, 55]
+  ]);
+  var ARCH_KNOBS = rangeKnobs("arch", [
+    ["arVines", "Arched vine clusters per floor", 0, 40, 0.5, 9, 13],
+    ["arCluster", "Arches per cluster", 1, 8, 0.1, 1.5, 3.5],
+    ["arSpan", "Span between the two ends (px)", 20, 300, 5, 50, 150],
+    ["arRise", "Height difference of the ends (× span)", 0, 1, 0.05, 0, 0.35],
+    ["arSlack", "Vine length (× span)", 1, 3, 0.05, 1.1, 1.6],
+    ["arClear", "Open air under its lowest point (px)", 0, 150, 2, 18, 40],
+    ["arThick", "Twisted stems", 1, 5, 1, 2, 3],
+    ["arStrands", "Hanging strands per 10px", 0, 6, 0.1, 0.8, 1.8],
+    ["arStrandLen", "Hanging strand length (px)", 2, 80, 1, 5, 28],
+    ["arGrab", "Grab distance (world units)", 0, 30, 1, 7, 9],
+    ["arClimb", "Climb speed along it", 0, 400, 5, 80, 100]
+  ]);
+  var FIRE_KNOBS = rangeKnobs("fire", [
+    ["fireSpread", "Spread chance per tick", 0, 1, 0.01, 0.45, 0.6],
+    ["fireGrass", "Grass burns for (s)", 0.05, 5, 0.05, 0.4, 1],
+    ["fireMoss", "Moss burns for (s)", 0.05, 8, 0.05, 1, 2.2],
+    ["fireWood", "Timber burns for (s)", 0.1, 20, 0.1, 3, 6],
+    ["fireBoom", "Explosions light things (chance)", 0, 1, 0.05, 0.35, 0.6],
+    ["fireBurn", "A creature burns for (s)", 0, 20, 0.1, 3, 5],
+    ["fireDps", "Creature burn damage per s", 0, 20, 0.1, 1, 1.6],
+    ["fireYou", "You burn for (s)", 0, 10, 0.1, 1.2, 2],
+    ["fireYouDps", "Your burn damage per s", 0, 40, 0.5, 5, 8],
+    ["firePlant", "Vines burn up at (px/s)", 1, 200, 1, 18, 34],
+    ["fireArch", "Arched vines burn along at (px/s)", 1, 400, 1, 60, 100]
+  ]);
+  var DEV_KEY = "caverunner-dev";
+  var DEV = Object.assign({}, DEV_DEFAULTS);
+  (() => {
+    try {
+      const raw = localStorage.getItem(DEV_KEY);
+      if (raw) {
+        const o = JSON.parse(raw);
+        for (const k in DEV_DEFAULTS) {
+          const d = DEV_DEFAULTS[k], v = o[k];
+          if (typeof d === "number" ? typeof v === "number" && isFinite(v) : typeof v === "string" && HEX_RE.test(v)) DEV[k] = v;
+        }
+      }
+    } catch (_) {
+    }
+  })();
+  function devSet(k, v) {
+    DEV[k] = v;
+    try {
+      localStorage.setItem(DEV_KEY, JSON.stringify(DEV));
+    } catch (_) {
+    }
+  }
+
+  // src/creatures/common.js
+  function roamStep(R, e, dt, rnd, pre, ok) {
+    if (R.rx === void 0) {
+      R.rx = e.hx;
+      R.ry = e.hy;
+      R.ra = rnd() * 6.28;
+    }
+    R.ra += (rnd() - 0.5) * 3 * dt;
+    if (!R.roamR) {
+      R.roamR = kr(pre + "RoamR", rnd);
+      R.roamSpd = kr(pre + "RoamSpd", rnd);
+    }
+    if (Math.hypot(R.rx - e.hx, R.ry - e.hy) > R.roamR) {
+      R.ra = Math.atan2(e.hy - R.ry, e.hx - R.rx);
+      R.roamR = kr(pre + "RoamR", rnd);
+      R.roamSpd = kr(pre + "RoamSpd", rnd);
+    }
+    const nx = R.rx + Math.cos(R.ra) * R.roamSpd * dt, ny = R.ry + Math.sin(R.ra) * R.roamSpd * dt;
+    if (ok && !ok(nx, ny) && ok(R.rx, R.ry)) {
+      R.ra = Math.atan2(e.hy - R.ry, e.hx - R.rx);
+      return;
+    }
+    R.rx = nx;
+    R.ry = ny;
+  }
+  function turnToward(a, to, max) {
+    const d = angDiff(to, a), r = a + Math.max(-max, Math.min(max, d));
+    return r > Math.PI ? r - 2 * Math.PI : r < -Math.PI ? r + 2 * Math.PI : r;
+  }
+  function flyMove(e, V, dt, r, solidCell, bounce) {
+    const n = Math.max(1, Math.ceil(Math.hypot(V.vx, V.vy) * dt / CELL));
+    let hit = false;
+    for (let i = 0; i < n; i++) {
+      e.x += V.vx * dt / n;
+      e.y += V.vy * dt / n;
+      const s = surfNormal(e.x, e.y, r + CELL, solidCell);
+      if (!s || s.d >= r) continue;
+      hit = true;
+      const ox = s.d > 0.5 ? s.px : s.x, oy = s.d > 0.5 ? s.py : s.y;
+      e.x += ox * (r - s.d);
+      e.y += oy * (r - s.d);
+      const into = V.vx * ox + V.vy * oy;
+      if (into < 0) {
+        V.vx -= (1 + bounce) * into * ox;
+        V.vy -= (1 + bounce) * into * oy;
+      }
+    }
+    return hit;
+  }
+  function surfNormal(x, y, R, solidCell) {
+    const cx0 = Math.floor(x / CELL), cy0 = Math.floor(y / CELL), rc = Math.ceil(R / CELL);
+    let nx = 0, ny = 0, n = 0, d = Infinity, px = 0, py = -1;
+    for (let dy = -rc; dy <= rc; dy++) for (let dx = -rc; dx <= rc; dx++) {
+      const wx = (cx0 + dx + 0.5) * CELL - x, wy = (cy0 + dy + 0.5) * CELL - y;
+      if (wx * wx + wy * wy > R * R) continue;
+      if (!solidCell(cx0 + dx, cy0 + dy)) continue;
+      nx -= wx;
+      ny -= wy;
+      n++;
+      const qx = Math.max(wx - CELL / 2, Math.min(0, wx + CELL / 2)), qy = Math.max(wy - CELL / 2, Math.min(0, wy + CELL / 2));
+      const q = Math.hypot(qx, qy);
+      if (q < d) {
+        d = q;
+        if (q > 1e-6) {
+          px = -qx / q;
+          py = -qy / q;
+        }
+      }
+    }
+    if (!n) return null;
+    const l = Math.hypot(nx, ny);
+    return l < 1e-6 ? { x: px, y: py, d, px, py } : { x: nx / l, y: ny / l, d, px, py };
+  }
+  function surfSeat(e, S, solidCell, maxMove, hold, feel) {
+    let n = surfNormal(e.x, e.y, feel, solidCell);
+    if (!n) return false;
+    if (n.d < hold) {
+      const m = hold - n.d;
+      e.x += n.px * m;
+      e.y += n.py * m;
+      n = surfNormal(e.x, e.y, feel, solidCell) || n;
+    } else {
+      const m = Math.min(maxMove, n.d - hold);
+      e.x -= n.x * m;
+      e.y -= n.y * m;
+    }
+    S.nx = n.x;
+    S.ny = n.y;
+    S.py = n.py;
+    return true;
+  }
+
   // src/data/creatures.js
   var CREATURES = {
     // jellyfish: pulses along wherever its head points, drag slows it, then it pulses again;
@@ -1481,319 +1886,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "Ash wastes": { bed: [700, 0.05], drone: 40, ev: { wind: 0.28, crackle: 0.3, rumble: 0.05 } },
     "Void hollow": { bed: [160, 0.05], drone: 33, ev: { whisper: 0.18, hum: 0.12, chime: 0.07 } }
   };
-
-  // src/dev/knobs.js
-  var DEV_DEFAULTS = {
-    zoom: 1.35,
-    torch: 1,
-    fogDark: 0.99,
-    fogDim: 0.85,
-    move: 1,
-    sputDip: 45,
-    aggro: 0.8,
-    loseAggro: 2,
-    aimDist: 44,
-    bhPull: 50,
-    bhSpeed: 65,
-    vol: 0.8,
-    amb: 1,
-    jetVol: 1,
-    vSpell: 1,
-    vBoom: 1,
-    vHit: 1,
-    vEnemy: 1,
-    vEnemyFire: 1,
-    vWorld: 1,
-    vDrip: 1,
-    vStep: 1,
-    vUi: 1,
-    bagSpeed: 1
-  };
-  var DEV_META = [
-    { k: "zoom", g: "view", label: "Camera zoom", min: 0.3, max: 3, step: 0.05 },
-    { k: "aimDist", g: "view", label: "Crosshair distance", min: 10, max: 200, step: 2 },
-    { k: "torch", g: "light", label: "Torch fall-off distance", min: 0.2, max: 5, step: 0.05 },
-    { k: "fogDark", g: "light", label: "Fog of war darkness", min: 0, max: 1, step: 0.01 },
-    { k: "fogDim", g: "light", label: "Outside-torchlight darkness", min: 0, max: 1, step: 0.01 },
-    { k: "move", g: "player", label: "Base movement speed", min: 0.2, max: 5, step: 0.05 },
-    { k: "sputDip", g: "player", label: "Jet sputter drop", min: 0, max: 300, step: 5 },
-    { k: "aggro", g: "enemy", label: "Enemy aggro distance", min: 0.2, max: 5, step: 0.05 },
-    { k: "loseAggro", g: "enemy", label: "Lose aggro distance (×aggro)", min: 1, max: 10, step: 0.1 },
-    { k: "bhPull", g: "bh", label: "Black Hole max pull range", min: 0, max: 600, step: 5 },
-    { k: "bhSpeed", g: "bh", label: "Black Hole travel speed", min: 0, max: 1e3, step: 5 },
-    { k: "vol", g: "sound", label: "Sound volume", min: 0, max: 2, step: 0.05 },
-    { k: "amb", g: "sound", label: "Ambience volume (×sound)", min: 0, max: 3, step: 0.05 },
-    { k: "jetVol", g: "sound", label: "Jetpack volume (×sound)", min: 0, max: 3, step: 0.05 },
-    { k: "vSpell", g: "sound", label: "Your spells (×sound)", min: 0, max: 3, step: 0.05 },
-    { k: "vBoom", g: "sound", label: "Explosions (×sound)", min: 0, max: 3, step: 0.05 },
-    { k: "vHit", g: "sound", label: "Bullet hits (×sound)", min: 0, max: 3, step: 0.05 },
-    { k: "vEnemyFire", g: "sound", label: "Enemy fire (×sound)", min: 0, max: 3, step: 0.05 },
-    { k: "vEnemy", g: "sound", label: "Creature voices (×sound)", min: 0, max: 3, step: 0.05 },
-    { k: "vWorld", g: "sound", label: "World, props, portals (×sound)", min: 0, max: 3, step: 0.05 },
-    { k: "vDrip", g: "sound", label: "Drips & trickles (×sound)", min: 0, max: 3, step: 0.05 },
-    { k: "vStep", g: "sound", label: "Footsteps (×sound)", min: 0, max: 3, step: 0.05 },
-    { k: "vUi", g: "sound", label: "UI & pickups (×sound)", min: 0, max: 3, step: 0.05 },
-    { k: "bagSpeed", g: "ui", label: "Bag fire preview speed (×real time)", min: 0.05, max: 5, step: 0.05 }
-  ];
-  var DEV_GROUPS = [
-    ["view", "Camera & aim"],
-    ["light", "Torch & fog"],
-    ["player", "Player"],
-    ["enemy", "Enemies"],
-    ["spider", "Spider"],
-    ["rat", "Rats & nests"],
-    ["jelly", "Jellyfish"],
-    ["jellycol", "Jellyfish colours"],
-    ["bh", "Black Hole tweaks"],
-    ["sound", "Sound"],
-    ["ui", "Bag screen"],
-    ["level", "Level layout (floor 1)"],
-    ["arch", "Arched vines"],
-    ["fire", "Fire"]
-  ];
-  function devReport() {
-    const changed = DEV_META.filter((m) => DEV[m.k] !== DEV_DEFAULTS[m.k]);
-    const lines = ["CaveRunner " + VERSION + " dev settings — please make these the new defaults:", ""];
-    if (!changed.length) lines.push("(nothing changed — everything is at its default)");
-    for (const m of changed)
-      lines.push("- " + m.label + " (DEV." + m.k + "): " + DEV[m.k] + "   [default " + DEV_DEFAULTS[m.k] + "]");
-    lines.push("", "Unchanged: " + (DEV_META.filter((m) => DEV[m.k] === DEV_DEFAULTS[m.k]).map((m) => m.k).join(", ") || "none"));
-    return lines.join("\n");
-  }
-  function rangeKnobs(g, rows) {
-    for (const [k, label, min, max, step, lo, hi] of rows) {
-      DEV_DEFAULTS[k + "Lo"] = lo;
-      DEV_DEFAULTS[k + "Hi"] = hi;
-      DEV_META.push(
-        { k: k + "Lo", g, label: label + " — min", min, max, step },
-        { k: k + "Hi", g, label: label + " — max", min, max, step }
-      );
-    }
-    return rows;
-  }
-  var SP_KNOBS = rangeKnobs("spider", [
-    ["spSpeed", "Burst speed", 20, 800, 10, 220, 300],
-    ["spRoamOn", "Roaming: burst length (s)", 0.02, 2, 0.01, 0.1, 0.25],
-    ["spRoamOff", "Roaming: rest between (s)", 0, 6, 0.05, 0.8, 2],
-    ["spHuntOn", "Hunting: burst length (s)", 0.02, 2, 0.01, 0.3, 0.55],
-    ["spHuntOff", "Hunting: rest between (s)", 0, 3, 0.01, 0.05, 0.18],
-    ["spRoamR", "Roam distance from home", 0, 600, 5, 80, 140],
-    ["spRoamSpd", "Roam spot drift speed", 0, 200, 1, 15, 35],
-    ["spAggro", "Aggro distance (×enemy aggro)", 0.1, 5, 0.05, 0.9, 1.1],
-    ["spArrive", "Stops this close to you", 2, 60, 1, 14, 22],
-    ["spDot", "Web instead of walk above dot", -1, 1, 0.05, 0.55, 0.65],
-    ["spGrab", "Grabs a line within", 0, 60, 1, 8, 12],
-    ["spWeb", "Web line max reach", 20, 400, 5, 140, 200],
-    ["spLineSpd", "Web line shot speed", 50, 3e3, 25, 700, 1100],
-    ["spRoamWeb", "Roaming: secs between new lines", 0, 30, 0.5, 4, 8],
-    ["spHuntWeb", "Hunting: secs between new lines", 0, 10, 0.1, 0.3, 0.7],
-    ["spMaxLines", "Lines kept per spider", 1, 40, 1, 6, 10],
-    ["spBite", "Bite damage", 0, 100, 1, 10, 14],
-    ["spBiteCd", "Secs between bites", 0.1, 5, 0.05, 0.7, 1.1],
-    ["spSilk", "String shot range", 0, 400, 5, 140, 180],
-    ["spSilkSpd", "String shot speed", 50, 2e3, 10, 450, 600],
-    ["spSilkCd", "Secs between string shots", 0.2, 20, 0.1, 2.5, 4],
-    ["spSilkMax", "String snaps past (length)", 20, 600, 5, 170, 210],
-    ["spSlow", "Your speed ×, per string on you", 0.1, 1, 0.05, 0.8, 0.8],
-    ["webSlow", "Your speed ×, per web line you touch", 0.1, 1, 0.05, 0.8, 0.8],
-    ["webGrab", "Web line touch/latch distance", 0, 40, 1, 8, 10],
-    ["webClimb", "Climb speed along a web line", 0, 400, 5, 80, 100]
-  ]);
-  var JE_KNOBS = rangeKnobs("jelly", [
-    ["jeRoamPush", "Roaming: pulse push speed", 0, 600, 5, 60, 85],
-    ["jeHuntPush", "Hunting: pulse push speed", 0, 600, 5, 120, 160],
-    ["jePushT", "Pulse push time (s)", 0.02, 1, 0.01, 0.12, 0.2],
-    ["jeRoamRest", "Roaming: rest between pulses (s)", 0, 8, 0.05, 1.4, 2.6],
-    ["jeHuntRest", "Hunting: rest between pulses (s)", 0, 4, 0.05, 0.55, 0.9],
-    ["jeDrag", "Water drag (higher stops sooner)", 0, 10, 0.1, 1.6, 2],
-    ["jeTurn", "Turn rate (degrees/s)", 5, 720, 5, 70, 110],
-    ["jePushTol", "Only pulses facing within (deg)", 1, 180, 1, 30, 45],
-    ["jeSink", "Sinks between pulses", 0, 200, 1, 6, 10],
-    ["jeBounce", "Bounce off rock", 0, 1, 0.05, 0.3, 0.5],
-    ["jeRoamR", "Roam distance from home", 0, 600, 5, 60, 120],
-    ["jeRoamSpd", "Roam spot drift speed", 0, 200, 1, 10, 25],
-    ["jeAggro", "Aggro distance (×enemy aggro)", 0.1, 5, 0.05, 0.9, 1.1],
-    ["jeRange", "Stops closing in at (spit range)", 10, 500, 5, 110, 150],
-    ["jeAimTol", "Spits when head within (deg)", 1, 180, 1, 12, 20],
-    ["jeShotCd", "Secs between spits", 0.1, 10, 0.05, 1.6, 2.4],
-    ["jeShotSpd", "Spit speed", 20, 1e3, 5, 150, 190],
-    ["jeShotDmg", "Spit damage", 0, 100, 1, 6, 8],
-    ["jeShotSize", "Spit size", 0.5, 12, 0.25, 2.5, 3.25],
-    ["jeSpread", "Spit aim wobble (± deg)", 0, 45, 1, 0, 5],
-    ["jeDrip", "Spit drips per second", 0, 80, 1, 14, 20],
-    ["jeDripG", "Drip fall (gravity)", 0, 1200, 10, 220, 320],
-    ["jeSplat", "Splat particles", 0, 60, 1, 10, 16],
-    ["jeSplatSpd", "Splat spread speed", 0, 400, 5, 50, 110],
-    ["jeBite", "Sting damage on touch", 0, 100, 1, 3, 5],
-    ["jeBiteCd", "Secs between stings", 0.1, 5, 0.05, 0.8, 1.2],
-    ["jeThin", "Shape: stays thin longer (curve)", 0.3, 6, 0.1, 2.2, 2.8],
-    ["jeSquash", "Shape: how much it changes", 0, 2, 0.05, 0.9, 1.1],
-    ["jeTents", "Tentacles", 0, 8, 1, 3, 4],
-    ["jeVerts", "Points per tentacle", 2, 10, 1, 4, 6],
-    ["jeTentLen", "Tentacle length", 0, 120, 1, 22, 32],
-    ["jeWave", "Tentacle sway", 0, 60, 1, 5, 9],
-    ["jeSag", "Tentacle droop", 0, 200, 1, 14, 22],
-    ["jeGlowR", "Glow radius", 0, 200, 2, 40, 56],
-    ["jeGlow", "Glow brightness", 0, 1, 0.01, 0.1, 0.15],
-    ["jeFlare", "Glow flare on a pulse (×)", 0, 5, 0.05, 0.6, 1],
-    ["jeSpores", "Spores puffed out per pulse", 0, 40, 1, 4, 8],
-    ["jeSporeSpd", "Spore puff speed", 0, 400, 5, 40, 80],
-    ["jeSporeDrag", "Spore puff drag (settles)", 0, 20, 0.1, 2.5, 3.5],
-    ["jeSporeSpread", "Spore puff spread (± deg)", 0, 180, 1, 25, 40],
-    ["jePlantTop", "Plant glow: top % of green", 1, 100, 1, 25, 25],
-    ["jePlantReach", "Plant glow reach (× glow radius)", 0, 5, 0.05, 1, 1],
-    ["jePlantGlow", "Plant glow strength", 0, 4, 0.05, 1.5, 2],
-    ["jePlantTwinkle", "Plant twinkle speed", 0, 10, 0.1, 1.2, 2],
-    ["jePlantSize", "Plant twinkle size", 1, 60, 1, 5, 8]
-  ]);
-  var RA_KNOBS = rangeKnobs("rat", [
-    ["raSpeed", "Run speed", 20, 600, 5, 150, 200],
-    ["raRoamOn", "Roaming: burst length (s)", 0.02, 3, 0.01, 0.15, 0.4],
-    ["raRoamOff", "Roaming: rest between (s)", 0, 6, 0.05, 0.5, 1.6],
-    ["raHuntOn", "Chasing: burst length (s)", 0.02, 3, 0.01, 0.35, 0.7],
-    ["raHuntOff", "Chasing: rest between (s)", 0, 3, 0.01, 0, 0.03],
-    ["raRoamR", "Roam distance from its nest", 0, 600, 5, 50, 110],
-    ["raRoamSpd", "Roam spot drift speed", 0, 200, 1, 15, 30],
-    ["raAggro", "Aggro distance (×enemy aggro)", 0.1, 5, 0.05, 0.9, 1.1],
-    ["raArrive", "Stops this close to you", 0, 40, 1, 4, 8],
-    ["raDot", "Jumps instead of runs above dot", -1, 1, 0.05, 0.5, 0.65],
-    ["raJump", "Jump speed", 50, 800, 10, 260, 330],
-    ["raJumpR", "Jumps at things within", 10, 300, 5, 70, 110],
-    ["raBite", "Bite damage", 0, 100, 1, 3, 5],
-    ["raBiteCd", "Secs between bites", 0.1, 5, 0.05, 0.8, 1.2],
-    ["raBroke", "Bite × when you have no gold", 1, 10, 0.5, 3, 3],
-    ["raSteal", "Gold knocked out per bite", 0, 100, 1, 3, 6],
-    ["raPopX", "Stolen gold: sideways throw", 0, 400, 5, 70, 100],
-    ["raPopY", "Stolen gold: upward throw", 0, 600, 5, 200, 250],
-    ["raSmell", "Goes for loose gold within", 0, 600, 5, 150, 220],
-    ["raMax", "Rats per nest", 1, 20, 1, 3, 7],
-    ["raSpawn", "Secs between rats from a nest", 0.5, 60, 0.5, 6, 12],
-    ["raWake", "Nests and rats wake within", 100, 2e3, 10, 480, 560],
-    ["raNestRest", "Secs a rat stays in the nest", 0, 20, 0.5, 2, 6],
-    ["raNests", "Nests in the built-up zones", 0, 60, 1, 14, 18],
-    ["raNestsWild", "Nests in the natural caves", 0, 30, 1, 2, 4],
-    ["raNestGold", "Gold in a nest when it dies", 0, 500, 5, 60, 60],
-    ["raSpread", "Roaming rats keep this far apart", 0, 200, 1, 22, 40]
-  ]);
-  var kru = (k, u) => {
-    const a = DEV[k + "Lo"], b = DEV[k + "Hi"];
-    return a + u * (b - a);
-  };
-  var kr = (k, rnd) => kru(k, (rnd || Math.random)());
-  var spr = kr;
-  function colourKnobs(g, rows) {
-    for (const [k, label, a, b] of rows) {
-      DEV_DEFAULTS[k + "Lo"] = a;
-      DEV_DEFAULTS[k + "Hi"] = b;
-      DEV_META.push(
-        { k: k + "Lo", g, label: label + " — A", type: "color" },
-        { k: k + "Hi", g, label: label + " — B", type: "color" }
-      );
-    }
-    return rows;
-  }
-  var kcol = (k, u) => hexMix(DEV[k + "Lo"], DEV[k + "Hi"], u);
-  Object.assign(DEV_DEFAULTS, { jeHue: 0, jeSat: 1, jeBri: 1 });
-  DEV_META.push(
-    { k: "jeHue", g: "jellycol", label: "All colours: hue shift (°)", min: -180, max: 180, step: 1, type: "slider" },
-    { k: "jeSat", g: "jellycol", label: "All colours: saturation (×)", min: 0, max: 3, step: 0.05, type: "slider" },
-    { k: "jeBri", g: "jellycol", label: "All colours: brightness (×)", min: 0, max: 3, step: 0.05, type: "slider" }
-  );
-  var jcol = (k, u) => {
-    const c = kcol(k, u);
-    return DEV.jeHue || DEV.jeSat !== 1 || DEV.jeBri !== 1 ? hsvAdjust(c, DEV.jeHue, DEV.jeSat, DEV.jeBri) : c;
-  };
-  var JE_COLS = colourKnobs("jellycol", [
-    ["jeColTop", "Bell top", "#a6ff7c", "#b4ff9a", "top"],
-    ["jeColBody", "Bell middle", "#46c94f", "#3fbf6e", "body"],
-    ["jeColRim", "Bell bottom (dark)", "#133d1a", "#123a28", "rim"],
-    ["jeColEdge", "Bell outline", "#a6ff7c", "#a6ffb0", "edge"],
-    ["jeColInner", "Inner bell", "#a6ff7c", "#a6ff7c", "inner"],
-    ["jeColLoops", "Poison loops", "#e4ff4a", "#f0ff6a", "loops"],
-    ["jeColShine", "Shine", "#ffffff", "#ffffff", "shine"],
-    ["jeColTent", "Tentacles", "#a6ff7c", "#9cffb4", "tent"],
-    ["jeColGlow", "Glow", "#6eff5a", "#5affa0", "glow"],
-    ["jeColSpit", "Spit", "#46c94f", "#46c94f", "spit"],
-    ["jeColSpitEdge", "Spit edge", "#123d18", "#123d18", "spitEdge"],
-    ["jeColSpitShine", "Spit shine", "#e6ffb8", "#e6ffb8", "spitShine"],
-    ["jeColDrip", "Drips & splat", "#46c94f", "#46c94f", "drip"],
-    ["jeColDrip2", "Drips & splat (light)", "#c8ff8a", "#c8ff8a", "drip2"]
-  ]);
-  var LV_KNOBS = rangeKnobs("level", [
-    ["lvHead", "Corridor headroom (px, runner is 11)", 12, 80, 1, 20, 32],
-    ["lvSqueeze", "Squeeze headroom (px)", 12, 30, 1, 13, 16],
-    ["lvSqz", "Squeezes per corridor", 0, 4, 0.1, 0, 1.2],
-    ["lvThick", "Layer thickness (px)", 5, 60, 1, 16, 32],
-    ["lvWave", "Layer waviness (px)", 0, 40, 1, 5, 12],
-    ["lvHoles", "Extra holes per layer (loops)", 0, 8, 0.1, 0.2, 1],
-    ["lvHoleW", "Hole width (px)", 12, 80, 1, 18, 40],
-    ["lvWalls", "Walls per corridor (dead ends)", 0, 5, 0.1, 0, 1],
-    ["lvCaves", "Big caverns", 0, 8, 0.1, 2.5, 3.5],
-    ["lvCaveW", "Cavern half width (px)", 20, 320, 5, 90, 170],
-    ["lvCaveH", "Cavern half height (px)", 20, 320, 5, 80, 150],
-    ["lvWorks", "Old workings (flattened stretches)", 0, 12, 0.1, 3, 5],
-    ["lvWorkW", "Old workings length (px)", 30, 400, 5, 90, 190],
-    ["lvWorkH", "Old workings headroom (px)", 14, 60, 1, 22, 30],
-    ["lvPost", "Timber post spacing (px)", 14, 120, 1, 30, 46],
-    ["lvPropZones", "Propped patches", 0, 16, 0.1, 5, 8],
-    ["lvPropR", "Propped patch radius (px)", 20, 400, 5, 70, 140],
-    ["lvPropDense", "Timber density in a patch (×)", 0.5, 4, 0.05, 0.9, 1.15],
-    ["lvPropRot", "Bays rotted away outside patches (0-1)", 0, 1, 0.05, 0.3, 0.6],
-    // v87: floor 1 is two styles in zones. A big slow noise over the map says which: built-up
-    // (the layered cave above) or natural (the old noise cave). See makeLevel.
-    ["lvZoneSize", "Zone size (px)", 60, 900, 10, 220, 320],
-    ["lvZoneShare", "Built-up share of the map (0-1)", 0, 1, 0.05, 0.4, 0.55],
-    ["lvZoneRag", "Zone edge raggedness (px)", 0, 60, 1, 8, 18],
-    ["lvLamps", "Lanterns in the built-up zones", 0, 150, 1, 40, 55]
-  ]);
-  var ARCH_KNOBS = rangeKnobs("arch", [
-    ["arVines", "Arched vine clusters per floor", 0, 40, 0.5, 9, 13],
-    ["arCluster", "Arches per cluster", 1, 8, 0.1, 1.5, 3.5],
-    ["arSpan", "Span between the two ends (px)", 20, 300, 5, 50, 150],
-    ["arRise", "Height difference of the ends (× span)", 0, 1, 0.05, 0, 0.35],
-    ["arSlack", "Vine length (× span)", 1, 3, 0.05, 1.1, 1.6],
-    ["arClear", "Open air under its lowest point (px)", 0, 150, 2, 18, 40],
-    ["arThick", "Twisted stems", 1, 5, 1, 2, 3],
-    ["arStrands", "Hanging strands per 10px", 0, 6, 0.1, 0.8, 1.8],
-    ["arStrandLen", "Hanging strand length (px)", 2, 80, 1, 5, 28],
-    ["arGrab", "Grab distance (world units)", 0, 30, 1, 7, 9],
-    ["arClimb", "Climb speed along it", 0, 400, 5, 80, 100]
-  ]);
-  var FIRE_KNOBS = rangeKnobs("fire", [
-    ["fireSpread", "Spread chance per tick", 0, 1, 0.01, 0.45, 0.6],
-    ["fireGrass", "Grass burns for (s)", 0.05, 5, 0.05, 0.4, 1],
-    ["fireMoss", "Moss burns for (s)", 0.05, 8, 0.05, 1, 2.2],
-    ["fireWood", "Timber burns for (s)", 0.1, 20, 0.1, 3, 6],
-    ["fireBoom", "Explosions light things (chance)", 0, 1, 0.05, 0.35, 0.6],
-    ["fireBurn", "A creature burns for (s)", 0, 20, 0.1, 3, 5],
-    ["fireDps", "Creature burn damage per s", 0, 20, 0.1, 1, 1.6],
-    ["fireYou", "You burn for (s)", 0, 10, 0.1, 1.2, 2],
-    ["fireYouDps", "Your burn damage per s", 0, 40, 0.5, 5, 8],
-    ["firePlant", "Vines burn up at (px/s)", 1, 200, 1, 18, 34],
-    ["fireArch", "Arched vines burn along at (px/s)", 1, 400, 1, 60, 100]
-  ]);
-  var DEV_KEY = "caverunner-dev";
-  var DEV = Object.assign({}, DEV_DEFAULTS);
-  (() => {
-    try {
-      const raw = localStorage.getItem(DEV_KEY);
-      if (raw) {
-        const o = JSON.parse(raw);
-        for (const k in DEV_DEFAULTS) {
-          const d = DEV_DEFAULTS[k], v = o[k];
-          if (typeof d === "number" ? typeof v === "number" && isFinite(v) : typeof v === "string" && HEX_RE.test(v)) DEV[k] = v;
-        }
-      }
-    } catch (_) {
-    }
-  })();
-  function devSet(k, v) {
-    DEV[k] = v;
-    try {
-      localStorage.setItem(DEV_KEY, JSON.stringify(DEV));
-    } catch (_) {
-    }
-  }
 
   // src/spells/mods.js
   var MODS = {
@@ -7158,133 +7250,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return pts;
   }
 
-  // src/creatures/common.js
-  function roamStep(R, e, dt, rnd, pre, ok) {
-    if (R.rx === void 0) {
-      R.rx = e.hx;
-      R.ry = e.hy;
-      R.ra = rnd() * 6.28;
-    }
-    R.ra += (rnd() - 0.5) * 3 * dt;
-    if (!R.roamR) {
-      R.roamR = kr(pre + "RoamR", rnd);
-      R.roamSpd = kr(pre + "RoamSpd", rnd);
-    }
-    if (Math.hypot(R.rx - e.hx, R.ry - e.hy) > R.roamR) {
-      R.ra = Math.atan2(e.hy - R.ry, e.hx - R.rx);
-      R.roamR = kr(pre + "RoamR", rnd);
-      R.roamSpd = kr(pre + "RoamSpd", rnd);
-    }
-    const nx = R.rx + Math.cos(R.ra) * R.roamSpd * dt, ny = R.ry + Math.sin(R.ra) * R.roamSpd * dt;
-    if (ok && !ok(nx, ny) && ok(R.rx, R.ry)) {
-      R.ra = Math.atan2(e.hy - R.ry, e.hx - R.rx);
-      return;
-    }
-    R.rx = nx;
-    R.ry = ny;
-  }
-  function turnToward(a, to, max) {
-    const d = angDiff(to, a), r = a + Math.max(-max, Math.min(max, d));
-    return r > Math.PI ? r - 2 * Math.PI : r < -Math.PI ? r + 2 * Math.PI : r;
-  }
-  function flyMove(e, V, dt, r, solidCell, bounce) {
-    const n = Math.max(1, Math.ceil(Math.hypot(V.vx, V.vy) * dt / CELL));
-    let hit = false;
-    for (let i = 0; i < n; i++) {
-      e.x += V.vx * dt / n;
-      e.y += V.vy * dt / n;
-      const s = surfNormal(e.x, e.y, r + CELL, solidCell);
-      if (!s || s.d >= r) continue;
-      hit = true;
-      const ox = s.d > 0.5 ? s.px : s.x, oy = s.d > 0.5 ? s.py : s.y;
-      e.x += ox * (r - s.d);
-      e.y += oy * (r - s.d);
-      const into = V.vx * ox + V.vy * oy;
-      if (into < 0) {
-        V.vx -= (1 + bounce) * into * ox;
-        V.vy -= (1 + bounce) * into * oy;
-      }
-    }
-    return hit;
-  }
-  function surfNormal(x, y, R, solidCell) {
-    const cx0 = Math.floor(x / CELL), cy0 = Math.floor(y / CELL), rc = Math.ceil(R / CELL);
-    let nx = 0, ny = 0, n = 0, d = Infinity, px = 0, py = -1;
-    for (let dy = -rc; dy <= rc; dy++) for (let dx = -rc; dx <= rc; dx++) {
-      const wx = (cx0 + dx + 0.5) * CELL - x, wy = (cy0 + dy + 0.5) * CELL - y;
-      if (wx * wx + wy * wy > R * R) continue;
-      if (!solidCell(cx0 + dx, cy0 + dy)) continue;
-      nx -= wx;
-      ny -= wy;
-      n++;
-      const qx = Math.max(wx - CELL / 2, Math.min(0, wx + CELL / 2)), qy = Math.max(wy - CELL / 2, Math.min(0, wy + CELL / 2));
-      const q = Math.hypot(qx, qy);
-      if (q < d) {
-        d = q;
-        if (q > 1e-6) {
-          px = -qx / q;
-          py = -qy / q;
-        }
-      }
-    }
-    if (!n) return null;
-    const l = Math.hypot(nx, ny);
-    return l < 1e-6 ? { x: px, y: py, d, px, py } : { x: nx / l, y: ny / l, d, px, py };
-  }
-  function surfSeat(e, S, solidCell, maxMove, hold, feel) {
-    let n = surfNormal(e.x, e.y, feel, solidCell);
-    if (!n) return false;
-    if (n.d < hold) {
-      const m = hold - n.d;
-      e.x += n.px * m;
-      e.y += n.py * m;
-      n = surfNormal(e.x, e.y, feel, solidCell) || n;
-    } else {
-      const m = Math.min(maxMove, n.d - hold);
-      e.x -= n.x * m;
-      e.y -= n.y * m;
-    }
-    S.nx = n.x;
-    S.ny = n.y;
-    S.py = n.py;
-    return true;
-  }
-
-  // src/main.js
-  var { useRef, useEffect, useState, useMemo } = React;
-  var h = React.createElement;
-  var SPUTTER_FUEL = 0.25;
-  function sputterStep(st, dt, fuel, on, rnd) {
-    rnd = rnd || Math.random;
-    st.start = false;
-    if (!on) {
-      st.cut = 0;
-      st.gap = 0;
-      st.onT = 0;
-      return false;
-    }
-    st.onT = (st.onT || 0) + dt;
-    st.cut = Math.max(0, (st.cut || 0) - dt);
-    st.gap = Math.max(0, (st.gap || 0) - dt);
-    if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
-      const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;
-      if (rnd() < dt * (1 + 7 * w)) {
-        st.cut = 0.04 + rnd() * (0.05 + 0.08 * w);
-        st.gap = st.cut + 0.1 + rnd() * 0.2;
-        st.start = true;
-      }
-    }
-    return st.cut > 0;
-  }
-  function jetPitch(onT) {
-    return 1 + 0.7 * Math.min(Math.max(onT, 0), 3) / 3;
-  }
-  function jellyPal(u) {
-    const P = {};
-    for (const [k, , , , f] of JE_COLS) P[f] = jcol(k, u);
-    return P;
-  }
-  var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
+  // src/creatures/spider.js
   var SPIDER = { hold: 6, feel: 14, step: 1.5, fall: 900 };
   function spiderSeat(e, S, solidCell, maxMove) {
     return surfSeat(e, S, solidCell, maxMove, SPIDER.hold, SPIDER.feel);
@@ -7532,6 +7498,100 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
   }
+  function drawSpider(ctx, x, y, r, time, phase, flash, col, S) {
+    let nx = 0, ny = -1, side = 1, moving = false;
+    if (S) {
+      if (S.mode === "line" && S.line) {
+        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
+        nx = -(L.by - L.ay) / len;
+        ny = (L.bx - L.ax) / len;
+        if (ny > 0) {
+          nx = -nx;
+          ny = -ny;
+        }
+        side = S.dir * (L.bx - L.ax >= 0 ? 1 : -1);
+      } else if (S.mode === "surf" || S.mode === "shoot") {
+        nx = S.nx;
+        ny = S.ny;
+        side = S.side;
+      }
+      moving = S.on > 0 && S.mode !== "shoot";
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.atan2(nx, -ny));
+    const t = moving ? time * 38 + phase : phase;
+    ctx.strokeStyle = flash ? "#ffffff" : col.b;
+    ctx.lineWidth = r * 0.16;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    for (let i = 0; i < 4; i++) {
+      const o = (i - 1.5) * r * 0.28, sw = Math.sin(t + i * 1.7) * r * 0.22;
+      for (const s of [-1, 1]) {
+        const fx = s * (r * (0.75 + Math.abs(i - 1.5) * 0.35)) + sw * s;
+        ctx.beginPath();
+        ctx.moveTo(o * 0.5, 0);
+        ctx.lineTo(o * 0.5 + fx * 0.55, -r * 0.55 - Math.abs(sw) * 0.3);
+        ctx.lineTo(o * 0.5 + fx, r * 0.62);
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
+    ctx.beginPath();
+    ctx.ellipse(-side * r * 0.45, -r * 0.05, r * 0.62, r * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#ffffff" : col.a;
+    ctx.beginPath();
+    ctx.ellipse(-side * r * 0.45, -r * 0.12, r * 0.48, r * 0.36, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
+    ctx.beginPath();
+    ctx.ellipse(side * r * 0.3, 0, r * 0.38, r * 0.32, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#ffffff" : col.eye;
+    for (const [ex, ey, er] of [[0.5, -0.1, 0.1], [0.42, 0.06, 0.08], [0.58, 0.08, 0.07], [0.36, -0.14, 0.07]]) {
+      ctx.beginPath();
+      ctx.arc(side * r * ex, r * ey, r * er, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // src/main.js
+  var { useRef, useEffect, useState, useMemo } = React;
+  var h = React.createElement;
+  var SPUTTER_FUEL = 0.25;
+  function sputterStep(st, dt, fuel, on, rnd) {
+    rnd = rnd || Math.random;
+    st.start = false;
+    if (!on) {
+      st.cut = 0;
+      st.gap = 0;
+      st.onT = 0;
+      return false;
+    }
+    st.onT = (st.onT || 0) + dt;
+    st.cut = Math.max(0, (st.cut || 0) - dt);
+    st.gap = Math.max(0, (st.gap || 0) - dt);
+    if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
+      const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;
+      if (rnd() < dt * (1 + 7 * w)) {
+        st.cut = 0.04 + rnd() * (0.05 + 0.08 * w);
+        st.gap = st.cut + 0.1 + rnd() * 0.2;
+        st.start = true;
+      }
+    }
+    return st.cut > 0;
+  }
+  function jetPitch(onT) {
+    return 1 + 0.7 * Math.min(Math.max(onT, 0), 3) / 3;
+  }
+  function jellyPal(u) {
+    const P = {};
+    for (const [k, , , , f] of JE_COLS) P[f] = jcol(k, u);
+    return P;
+  }
+  var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
   var RAT = { hold: 3.5, feel: 9, step: 1, fall: 900, ceil: 0.55, tunnel: 0.6 };
   function ratFooting(x, y, solidCell, onWeb) {
     const n = surfNormal(x, y, RAT.hold + 5, solidCell);
@@ -8266,64 +8326,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.beginPath();
     ctx.arc(ex + lx * r * 0.15, ey + ly * r * 0.15, r * 0.16, 0, Math.PI * 2);
     ctx.fill();
-  }
-  function drawSpider(ctx, x, y, r, time, phase, flash, col, S) {
-    let nx = 0, ny = -1, side = 1, moving = false;
-    if (S) {
-      if (S.mode === "line" && S.line) {
-        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
-        nx = -(L.by - L.ay) / len;
-        ny = (L.bx - L.ax) / len;
-        if (ny > 0) {
-          nx = -nx;
-          ny = -ny;
-        }
-        side = S.dir * (L.bx - L.ax >= 0 ? 1 : -1);
-      } else if (S.mode === "surf" || S.mode === "shoot") {
-        nx = S.nx;
-        ny = S.ny;
-        side = S.side;
-      }
-      moving = S.on > 0 && S.mode !== "shoot";
-    }
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(Math.atan2(nx, -ny));
-    const t = moving ? time * 38 + phase : phase;
-    ctx.strokeStyle = flash ? "#ffffff" : col.b;
-    ctx.lineWidth = r * 0.16;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    for (let i = 0; i < 4; i++) {
-      const o = (i - 1.5) * r * 0.28, sw = Math.sin(t + i * 1.7) * r * 0.22;
-      for (const s of [-1, 1]) {
-        const fx = s * (r * (0.75 + Math.abs(i - 1.5) * 0.35)) + sw * s;
-        ctx.beginPath();
-        ctx.moveTo(o * 0.5, 0);
-        ctx.lineTo(o * 0.5 + fx * 0.55, -r * 0.55 - Math.abs(sw) * 0.3);
-        ctx.lineTo(o * 0.5 + fx, r * 0.62);
-        ctx.stroke();
-      }
-    }
-    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
-    ctx.beginPath();
-    ctx.ellipse(-side * r * 0.45, -r * 0.05, r * 0.62, r * 0.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#ffffff" : col.a;
-    ctx.beginPath();
-    ctx.ellipse(-side * r * 0.45, -r * 0.12, r * 0.48, r * 0.36, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
-    ctx.beginPath();
-    ctx.ellipse(side * r * 0.3, 0, r * 0.38, r * 0.32, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#ffffff" : col.eye;
-    for (const [ex, ey, er] of [[0.5, -0.1, 0.1], [0.42, 0.06, 0.08], [0.58, 0.08, 0.07], [0.36, -0.14, 0.07]]) {
-      ctx.beginPath();
-      ctx.arc(side * r * ex, r * ey, r * er, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
   }
   function drawRat(ctx, x, y, r, time, phase, flash, col, S, carry) {
     const air = !S || S.mode === "air", nx = air ? 0 : S.nx, ny = air ? -1 : S.ny, f = S ? S.face : 1;

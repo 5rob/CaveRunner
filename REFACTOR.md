@@ -240,7 +240,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
   - [x] world/decorate.js
   - [x] world/level.js
   - [x] creatures/common.js
-  - [ ] creatures/spider.js (knobs + spiderStep/Seat/Aim + drawSpider)
+  - [x] creatures/spider.js (knobs + spiderStep/Seat/Aim + drawSpider)
   - [ ] creatures/rat.js
   - [ ] creatures/jelly.js
   - [ ] creatures/classic.js + creatures/draw.js
