@@ -1,13 +1,13 @@
 // One frame of the simulation: step(W, G, dt), run by Game's loop on every unpaused frame
 // (then the recorder's recFrame, then draw). It calls its parts one after another in the
 // order they have always run (they feed each other within the frame, and share the sim's
-// Math.random stream), handing each the frame object F (REFACTOR.md D18). Being split into
-// those parts (P3.4); what isn't a part yet is still inline in step, in its place.
+// Math.random stream), handing each the frame object F (REFACTOR.md D18). Most parts live
+// with their system; the ones here are the frame's own: its clock and requests, health against
+// the perks, the portal, the sound, and Angry Ghost.
 
 import { jetPitch } from '../../audio/recipes.js';
 import { SFX } from '../../audio/sfx.js';
-import { COL, PH, PW } from '../../core/consts.js';
-import { clamp } from '../../core/util.js';
+import { PH, PW } from '../../core/consts.js';
 import { caveGun } from '../../spells/guns.js';
 import { stepBullets } from './bullets.js';
 import { stepEnemies } from './enemies.js';
@@ -15,164 +15,36 @@ import { stepFields } from './fields.js';
 import { fireFrame, stepTrail } from './fire.js';
 import { aimAndCast } from './gun.js';
 import { enterLevel } from './level-entry.js';
-import { stepToasts, toast } from './particles.js';
+import { stepMotes, stepParticles, stepToasts, toast } from './particles.js';
 import { stepPickups } from './pickups.js';
-import { maxHp, movePlayer, torchHand } from './player.js';
+import { maxHp, movePlayer, stepTorch } from './player.js';
 import { decorStep } from './props.js';
 import { saveRun } from './save-run.js';
-import { solidAt } from './terrain.js';
 
 export function step(W, G, dt) {
   // the frame: what step's parts hand on to each other. LO (the loadout) and MHP (your
   // maximum health) are filled in by stepPerks, pcx/pcy (your centre, once you've moved)
   // by the portal check
   const F = { dt, LO: null, MHP: 0, pcx: 0, pcy: 0 };
-  if (stepRequests(W, G, F)) return;
-  stepPerks(W, G, F);
-  const LO = F.LO, MHP = F.MHP;
-  movePlayer(W, G, F);
-  if (atPortal(W, G, F)) return;
-  const pcx = F.pcx, pcy = F.pcy;
-
-  aimAndCast(W, G, F);
-
-  stepBullets(W, G, F);
-
-  stepSound(W, F);
-
-  stepFields(W, G, F);
-
-  stepPickups(W, G, F);
-
-  stepToasts(W, F);
-
-  decorStep(W, G, dt, pcx, pcy);
-
-  stepEnemies(W, G, F);
-
-  stepGhost(W, F);
-
-  // ---- fire: the cave's, the creatures', yours ----
-  fireFrame(W, G, dt, pcx, pcy);
-
-  stepTrail(W, F);
-
-  // ---- jetpack smoke ----
-  if (W.p.flame > 0) {
-    let fx = -W.p.jx, fy = -W.p.jy + 0.8;
-    const fl = Math.hypot(fx, fy) || 1; fx /= fl; fy /= fl;
-    W.smokeAcc += dt * (25 + 35 * W.p.flame);
-    while (W.smokeAcc >= 1) {
-      W.smokeAcc--;
-      W.smoke.push({ x: pcx + (Math.random() - 0.5) * 5, y: W.p.y + PH + 3,
-        vx: fx * 50 + (Math.random() - 0.5) * 20, vy: fy * 50 + (Math.random() - 0.5) * 20,
-        r: 1.5 + Math.random(), life: 0.9, max: 0.9 });
-    }
-  }
-  for (let i = W.smoke.length - 1; i >= 0; i--) {
-    const m = W.smoke[i];
-    m.x += m.vx * dt; m.y += m.vy * dt;
-    m.vx *= 1 - 2.5 * dt; m.vy = m.vy * (1 - 2.5 * dt) - 12 * dt;
-    m.r += 5 * dt; m.life -= dt;
-    if (m.life <= 0) W.smoke.splice(i, 1);
-  }
-  for (let i = W.sparks.length - 1; i >= 0; i--) {
-    const q = W.sparks[i];
-    q.vy += (q.g != null ? q.g : q.heavy ? 600 : 300) * dt;
-    const nx = q.x + q.vx * dt, ny = q.y + q.vy * dt;
-    if (q.heavy && solidAt(W, nx, ny)) { q.vx *= 0.3; q.vy = 0; }
-    else { q.x = nx; q.y = ny; }
-    q.life -= dt;
-    if (q.life <= 0) W.sparks.splice(i, 1);
-  }
-  for (let i = W.flashes.length - 1; i >= 0; i--) {
-    W.flashes[i].t += dt;
-    if (W.flashes[i].t > 0.25) W.flashes.splice(i, 1);
-  }
-
-  W.best = Math.max(W.best, Math.round((W.start.y - W.p.y) / 10));
-
-  // ---- the torch ----
-  // A random walk with two sines on top, which is what makes a flame gutter rather
-  // than pulse. It never goes above 1: flicker means the light dipping, and a canvas
-  // globalAlpha over 1 is simply ignored.
-  W.torchT += dt;
-  W.flickN += (Math.random() - 0.5) * 2.6 * dt;
-  W.flickN *= 0.94;
-  W.flick = clamp(0.94 + W.flickN + 0.04 * Math.sin(W.torchT * 11.3) + 0.025 * Math.sin(W.torchT * 19.7),
-    0.84, 1);
-  W.torchAcc += dt;
-  while (W.torchAcc > 0.04) {
-    W.torchAcc -= 0.04;
-    const th = torchHand(W);
-    const life = 0.3 + Math.random() * 0.35;
-    W.torchP.push({ x: th.x + (Math.random() - 0.5) * 2, y: th.y - 7,
-      vx: (Math.random() - 0.5) * 10 + W.p.vx * 0.15, vy: -20 - Math.random() * 22,
-      life, max: life, s: 1 + Math.random() * 1.3,
-      c: Math.random() < 0.5 ? COL.flame2 : COL.flame });
-    if (W.torchP.length > 60) W.torchP.shift();
-  }
-  for (let i = W.torchP.length - 1; i >= 0; i--) {
-    const q = W.torchP[i];
-    q.vy += 30 * dt; q.vx *= 0.98;
-    q.x += q.vx * dt; q.y += q.vy * dt;
-    if ((q.life -= dt) <= 0) W.torchP.splice(i, 1);
-  }
-  // the flame's lean: spring toward "opposite your velocity", so a sudden move flings
-  // it back and it wobbles upright again when you stop
-  const wantX = clamp(-W.p.vx * 0.055, -11, 11), wantY = clamp(-W.p.vy * 0.03, -5, 7);
-  W.leanVX += ((wantX - W.leanX) * 90 - W.leanVX * 9) * dt;
-  W.leanVY += ((wantY - W.leanY) * 90 - W.leanVY * 9) * dt;
-  W.leanX += W.leanVX * dt; W.leanY += W.leanVY * dt;
-  // the glow gets its own quicker, deeper flicker on top of flick (the map light is untouched)
-  W.glowN += (Math.random() - 0.5) * 6 * dt; W.glowN *= 0.9;
-
-  // ---- portal motes ----
-  W.portalAcc += dt;
-  while (W.portalAcc > 0.05) {
-    W.portalAcc -= 0.05;
-    const ex = W.portal.x + W.portal.w / 2, ey = W.portal.y + W.portal.h / 2;
-    if (Math.abs(ey - W.p.y) < 500) {        // the exit: scattered round it, drawn in
-      const a = Math.random() * 6.28, rr = 30 + Math.random() * 38;
-      const life = 1.4 + Math.random() * 0.8;
-      W.motes.push({ kind: 'in', x: ex + Math.cos(a) * rr, y: ey + Math.sin(a) * rr * 0.9,
-        tx: ex, ty: ey, vx: 0, vy: 0, life, max: life, age: 0, ph: Math.random() * 6.28,
-        s: 1 + Math.random() * 1.4, c: Math.random() < 0.4 ? '#c8ffe4' : COL.portal });
-    }
-    if (Math.abs(W.arrival.y - W.p.y) < 500) { // the way in: breathed out, drifting away
-      const a = Math.random() * 6.28, sp = 10 + Math.random() * 16;
-      W.motes.push({ kind: 'out', x: W.arrival.x + (Math.random() - 0.5) * 12,
-        y: W.arrival.y + (Math.random() - 0.5) * 18, ox: W.arrival.x, oy: W.arrival.y,
-        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 4, life: 4, max: 4, age: 0,
-        ph: Math.random() * 6.28, fade: 34 + Math.random() * 18,
-        s: 1 + Math.random() * 1.3, c: Math.random() < 0.4 ? '#e6d4ff' : COL.enemy });
-    }
-  }
-  for (let i = W.motes.length - 1; i >= 0; i--) {
-    const q = W.motes[i];
-    q.age += dt;
-    if (q.kind === 'in') {
-      // accelerate toward the centre, with a sideways wobble so it spirals in unevenly
-      const dx = q.tx - q.x, dy = q.ty - q.y, d = Math.hypot(dx, dy) || 1;
-      const pullF = 70 + 260 * q.age;
-      q.vx += dx / d * pullF * dt; q.vy += dy / d * pullF * dt;
-      q.vx *= 1 - 2.2 * dt; q.vy *= 1 - 2.2 * dt;
-      const w = Math.sin(q.age * 7 + q.ph) * 26;
-      q.x += (q.vx - dy / d * w) * dt; q.y += (q.vy + dx / d * w) * dt;
-      if (d < 3) q.life = 0;
-    } else if (q.kind === 'out') {
-      const w = Math.sin(q.age * 2.3 + q.ph);
-      q.vx += w * 18 * dt; q.vy += (Math.cos(q.age * 1.7 + q.ph) * 12 - 3) * dt;
-      q.vx *= 1 - 0.4 * dt; q.vy *= 1 - 0.4 * dt;
-      q.x += q.vx * dt; q.y += q.vy * dt;
-      if (Math.hypot(q.x - q.ox, q.y - q.oy) > q.fade) q.life = 0;
-    } else {
-      q.vx *= 1 - 1.8 * dt; q.vy = q.vy * (1 - 1.8 * dt) - 6 * dt;
-      q.x += q.vx * dt; q.y += q.vy * dt;
-    }
-    if ((q.life -= dt) <= 0) W.motes.splice(i, 1);
-  }
-  if (W.motes.length > 400) W.motes.splice(0, W.motes.length - 400);
+  if (stepRequests(W, G, F)) return;        // the clock, Dev asks (New cave ends the frame)
+  stepPerks(W, G, F);                       // the loadout, health against the perks
+  movePlayer(W, G, F);                      // the stick, jetpack, steering, the move (player.js)
+  if (atPortal(W, G, F)) return;            // where you are now; through the exit ends the frame
+  aimAndCast(W, G, F);                      // aim, facing, gun clocks, the trigger (gun.js)
+  stepBullets(W, G, F);                     // your shots in flight (bullets.js)
+  stepSound(W, F);                          // the ear, the loops, the heartbeat
+  stepFields(W, G, F);                      // static fields and beams (fields.js)
+  stepPickups(W, G, F);                     // pickups, gold, the card, the interact tap (pickups.js)
+  stepToasts(W, F);                         // messages fading (particles.js)
+  decorStep(W, G, dt, F.pcx, F.pcy);        // props, plants, webs, what you stand in (props.js)
+  stepEnemies(W, G, F);                     // the creatures and their shots (enemies.js)
+  stepGhost(W, F);                          // Angry Ghost
+  fireFrame(W, G, dt, F.pcx, F.pcy);        // fire: the cave's, the creatures', yours (fire.js)
+  stepTrail(W, F);                          // Levitation Trail (fire.js)
+  stepParticles(W, F);                      // jetpack smoke, smoke, sparks, flashes (particles.js)
+  W.best = Math.max(W.best, Math.round((W.start.y - W.p.y) / 10));   // highest you've been
+  stepTorch(W, F);                          // the torch's flicker, flame and lean (player.js)
+  stepMotes(W, F);                          // portal motes (particles.js)
 }
 
 // The clock, a toast held over from a paused frame, and the Dev panel's asks. True when

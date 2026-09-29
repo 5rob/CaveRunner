@@ -13,7 +13,7 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4 part done: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). Now: splitting step() into parts (step 3 of the plan under P3.4; P3.4 (25) on), then draw(). Not merged |
+| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4 part done: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). step() split into parts, P3.4 (25)–(33): a frame object `F` (D18) and 21 calls, the parts in their systems (`pickups.js` new). Next: split draw() (step 3 of the plan under P3.4, the draw half). Not merged |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
 | **Last green full suite** | 2026-09-29, P3.4 after `enterLevel` (cdb5c90), bar flakes: `jelly` spit (known) and `fog` "the next floor is dark again" (passed alone 3 of 3) |
@@ -444,8 +444,8 @@ What the code says about P3.4 (checked at the end of P3.3):
         First, by hand: `RPV` → `G.RPV` (21 references, most in draw()), `rid`/`ridN` and `RP_ARR` (still W's own arrays)
         joined `G`, and `drawReplay(V, draw)` is handed Game's `draw` while draw() lives in Game. `REC`/`RT` stay made in Game
   - [x] level-entry.js: `enterLevel` (`(W, G, back)`). Clean move
-  - [ ] **step() and draw(): the plan** (worked out at the end of P3.4 (19); steps 1 and 2 done in P3.4 (20)–(24), step 3 not
-        started; `node tools/locals.js src/game/systems/step.js step` and `node tools/locals.js src/game/render/draw.js draw`
+  - [ ] **step() and draw(): the plan** (worked out at the end of P3.4 (19); steps 1 and 2 done in P3.4 (20)–(24), step 3
+        done for step() in P3.4 (25)–(33), draw() next; `node tools/locals.js src/game/systems/step.js step` and `node tools/locals.js src/game/render/draw.js draw`
         print the facts below). Game.js was 2,494 lines, and they were ~1,100 lines each; now `step.js` is 1,137 lines (step
         41–1137, returns at 52 and 217) and `render/draw.js` 1,182 (draw 34–1182, its return at 1011). What's left in Game's
         closure (186 lines) is setup: the canvases, `REC`/`RT`, `G`, the save timer, resize, the mouse handlers, the rAF loop.
@@ -493,6 +493,9 @@ What the code says about P3.4 (checked at the end of P3.3):
          and strings, web lines coming down, and `W.p.hitT` fading, which sat at its end); P3.5 takes it apart per creature
        - [x] P3.4 (32): `stepGhost` in step.js (Angry Ghost), `stepTrail` → fire.js (Levitation Trail); `fireFrame` between them
          was a function already
+       - [x] P3.4 (33): `stepParticles` (jetpack smoke, smoke, sparks, flashes) and `stepMotes` → particles.js, `stepTorch`
+         → player.js; `W.best` stays a line in step between them (nothing else there to go with). **step() is split**: its
+         top level is `F` and 21 calls (step.js 155 lines, `node tools/locals.js` shows only `W`, `G`, `dt`, `F`)
        - draw's inner functions `drawLook`, `drawFieldLook`, `drawBolt` go out first (they use only their arguments and
          `W`/`G`), then the layers in their current order: camera, background + terrain, props, portal, smoke, fields, silk,
          enemies, projectiles, beams, arrival, shop, gold, pickups, rooms, trail, sparks, motes, flashes, flame, aim + gun,
@@ -516,7 +519,7 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] recorder: the putImageData wrappers stay in Game until recorder.js (they wrap `tctx`/`dctx`, which the systems reach as `G.tctx`/`G.dctx`): `recWrap`
   - [ ] fog.js: paintFog, bake, blur, fogLit
   - [x] level-entry.js: enterLevel, sconces, per-floor precompute
-  - [ ] player.js: walking, jetpack + sputter, climbing (vines, webs, arches), the torch (hurt, maxHp, refreshBag are out; `movePlayer` is all but the torch, P3.4 (26))
+  - [x] player.js: walking, jetpack + sputter, climbing (vines, webs, arches), the torch (hurt, maxHp, refreshBag are out; `movePlayer`, P3.4 (26); `stepTorch`, P3.4 (33))
   - [x] gun.js: cast, spawnShot, releaseAt, payload/triggers, gun ticks (the ticks and aiming: `aimAndCast`, P3.4 (27))
   - [x] bullets.js: the bullet loop, homing/drift/wig, bounce, teleport, trails (shotTrail/Bounce/Death/Grind are in shotlooks.js; the loop is `stepBullets`, P3.4 (28))
   - [x] fields.js: fields and beams (the per-frame work is `stepFields`, P3.4 (29))
@@ -524,7 +527,7 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] pickups.js: pickups, shop stock, coins, ore, rooms, the interact tap (`stepPickups`, P3.4 (30); ore stays with `dropOre` in terrain.js)
   - [ ] props.js: decorStep, landProp, rustle, zfx (blowProp is out)
   - [x] fire: done, as fire.js (step 6)
-  - [ ] ambience.js: spores and amb particles (see the ambience box above); motes, dparts, smoke, sparks are updated inline in step()
+  - [ ] ambience.js: spores and amb particles (see the ambience box above); motes, smoke, sparks, flashes are `stepMotes`/`stepParticles` in particles.js (P3.4 (33)); dparts are updated in decorStep
   - [ ] camera.js
   - [x] recorder.js: recFrame, recSample, REC, and drawReplay's rebuild
   - [x] save-run.js: saveRun
@@ -670,6 +673,8 @@ commit. List them here for after.
 - **`jelly` (browser) "the plant glow lights up a vine beside a jelly"**, new on the list: failed once (vine lit 49.98 →
   48.83) on P3.4 (30)'s tree, in a run comparing the spit flake against P3.4 (31); the spit group failed 3 of 4 there
   and 3 of 4 on (31), so (31) changed nothing.
+- **`W.best` is written every frame and reset per floor, and read by nothing** (the P3.1 map lists `draw` as a
+  reader; it isn't any more, or never was). Left in step, where it was.
 - **Misplaced comments (left as they were, moved with their code).** A second copy of
   planCast's opening comment sits above `blankShot` (`spells/cast.js`); tracePath's opening
   comment sits above `DRIFT_DRAG` (`spells/trace.js`); `ROOM_HW`'s line carries the trailing
@@ -894,3 +899,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.4 (30) | `stepPickups` (176 lines) → new `pickups.js` with `tools/part.js` (its `pure.js` line too); `stepToasts` (one line) → particles.js. Watch out in Git Bash: a one-line argument starting with `//` gets a slash eaten or added (MSYS path conversion), which put a `///` in particles.js' header for a moment: `MSYS_NO_PATHCONV=1`. `shop`, `interact`, `gunpickup`, `perks`, `teleport`, `restart-confirm`, `rats`, `shopcard`, `compare` run too, all first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (31) | `stepEnemies` (243 lines: the enemy loop whole, Contact Damage, enemy shots, silk, strings, web lines, `hitT`) → enemies.js with `tools/part.js`; header. `creatures`, `spider`, `rats`, `lightning`, `perks` run too, first time; `jelly` spit failed 3 of 4 here and 3 of 4 on the commit before (the known flake). | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (32) | `stepGhost` (20 lines, in step.js) and `stepTrail` (12 lines) → fire.js with `tools/part.js`; fire.js header. `perks`, `fire`, `replay` run too, all first time. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 3, P3.4 (33) | `stepParticles` (31 lines) and `stepMotes` (45) → particles.js, `stepTorch` (33) → player.js, with `tools/part.js`; the top-level step tidied (the leftover `LO`/`MHP`/`pcx`/`pcy` locals gone, one comment per call). **step() is split**: step.js 1,137 → 155 lines. `jetpack`, `blackhole`, `replay` run too, first time; `torch` failed 4 of 10 here ("falls off into the dark", "brighter frames… taller flame", "only falls away with distance") and 3 of 12 on the commit before (same names): the known flake. | probe SAME, logic 33/33, smoke ok |

@@ -1,13 +1,13 @@
 // You: the perk bag, your health (maxHp, and hurt: shields, extra lives, death) and which
 // hand holds the torch; the jetpack's cough (sputterStep) and the dead stick (NO_INPUT);
-// and moving you, one frame's worth (movePlayer, a part of step()).
+// and two parts of step(): moving you (movePlayer) and the torch's flicker (stepTorch).
 
 import { SFX } from '../../audio/sfx.js';
 import {
   AIR_ACC, CELL, CLIMB, COL, DEAD, FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART, GRAVITY, GROUND_ACC, JET,
   JET_ACC, PH, PW, WALK, WEB_HAND, WH
 } from '../../core/consts.js';
-import { approach } from '../../core/util.js';
+import { approach, clamp } from '../../core/util.js';
 import { perkBag } from '../../data/perks.js';
 import { DEV, kr, spr } from '../../dev/knobs.js';
 import { clearSave } from '../../save/save.js';
@@ -235,4 +235,44 @@ export function movePlayer(W, G, F) {
       if ((W.stepT -= dt * Math.abs(W.p.vx) / 40) <= 0) { W.stepT = 1; SFX.fx('step', null, null, W.zfx.surface); }
     } else W.stepT = Math.min(W.stepT, 0.35);
   }
+}
+
+// ---- the torch (a part of step) ----
+// Its flicker (flick, which everything that lights the cave reads), the flame's particles,
+// its lean, and the glow's own flicker.
+export function stepTorch(W, F) {
+  const { dt } = F;
+  // A random walk with two sines on top, which is what makes a flame gutter rather
+  // than pulse. It never goes above 1: flicker means the light dipping, and a canvas
+  // globalAlpha over 1 is simply ignored.
+  W.torchT += dt;
+  W.flickN += (Math.random() - 0.5) * 2.6 * dt;
+  W.flickN *= 0.94;
+  W.flick = clamp(0.94 + W.flickN + 0.04 * Math.sin(W.torchT * 11.3) + 0.025 * Math.sin(W.torchT * 19.7),
+    0.84, 1);
+  W.torchAcc += dt;
+  while (W.torchAcc > 0.04) {
+    W.torchAcc -= 0.04;
+    const th = torchHand(W);
+    const life = 0.3 + Math.random() * 0.35;
+    W.torchP.push({ x: th.x + (Math.random() - 0.5) * 2, y: th.y - 7,
+      vx: (Math.random() - 0.5) * 10 + W.p.vx * 0.15, vy: -20 - Math.random() * 22,
+      life, max: life, s: 1 + Math.random() * 1.3,
+      c: Math.random() < 0.5 ? COL.flame2 : COL.flame });
+    if (W.torchP.length > 60) W.torchP.shift();
+  }
+  for (let i = W.torchP.length - 1; i >= 0; i--) {
+    const q = W.torchP[i];
+    q.vy += 30 * dt; q.vx *= 0.98;
+    q.x += q.vx * dt; q.y += q.vy * dt;
+    if ((q.life -= dt) <= 0) W.torchP.splice(i, 1);
+  }
+  // the flame's lean: spring toward "opposite your velocity", so a sudden move flings
+  // it back and it wobbles upright again when you stop
+  const wantX = clamp(-W.p.vx * 0.055, -11, 11), wantY = clamp(-W.p.vy * 0.03, -5, 7);
+  W.leanVX += ((wantX - W.leanX) * 90 - W.leanVX * 9) * dt;
+  W.leanVY += ((wantY - W.leanY) * 90 - W.leanVY * 9) * dt;
+  W.leanX += W.leanVX * dt; W.leanY += W.leanVY * dt;
+  // the glow gets its own quicker, deeper flicker on top of flick (the map light is untouched)
+  W.glowN += (Math.random() - 0.5) * 6 * dt; W.glowN *= 0.9;
 }

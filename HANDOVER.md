@@ -19,8 +19,9 @@ it's stale.
   death replay's recorder and player (`recorder.js`) and `enterLevel` are out (shape:
   REFACTOR.md D16, the `G` context; cycles: D17), and `step()`/`draw()` have moved out whole
   (`src/game/systems/step.js`, `src/game/render/draw.js`, ~1,100 lines each). `Game.js` is 186
-  lines of setup and the loop. Next: split step/draw into parts, step 3 of the plan under
-  P3.4 in REFACTOR.md ("step() and draw(): the plan"; `node tools/locals.js src/game/render/draw.js draw`).
+  lines of setup and the loop. step() is split into parts (P3.4 (25)–(33): a frame object `F`, REFACTOR.md
+  D18, and 21 calls, each part in its system; `node tools/part.js` does a cut). Next: split draw() the same way,
+  step 3 of the plan under P3.4 in REFACTOR.md ("step() and draw(): the plan"; `node tools/locals.js src/game/render/draw.js draw`).
   Last green full suite: the P3.4 checkpoint after `enterLevel` (cdb5c90). The proof for each Phase 3 step
   is `node tests/determinism.js` (same scripted run on HEAD and this tree, frame by frame).
   `node tools/system.js <file> name…` does a P3.4 move (`--dry` first), and
