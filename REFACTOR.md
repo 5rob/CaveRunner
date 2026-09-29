@@ -187,7 +187,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
 - [x] **P0.8** `src/version.js` isn't needed yet (still one file). Instead, have
       `tools/build.js` fill `<title>` from the `VERSION` const, so there's one place to bump.
       Update `CLAUDE.md`'s "bump the version" step to match.
-- [ ] **P0.9** `node tools/build.js --watch`: rebuild on save (polling `fs.watch` is
+- [x] **P0.9** `node tools/build.js --watch`: rebuild on save (polling `fs.watch` is
       fine), for use with `serve.js` on the phone.
 - [ ] **P0.10** Update `CLAUDE.md`: "edit `src/`, run the build (tests do it for you)";
       the layout table points at `src/main.js` line ranges. Full suite green. Commit.

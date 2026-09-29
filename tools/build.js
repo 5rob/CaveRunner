@@ -1,6 +1,8 @@
 // Builds index.html from src/. Plain Node, no dependencies.
 //
 //   node tools/build.js          build once
+//   node tools/build.js --watch  rebuild whenever a file in src/ is saved (pair it with
+//                                `node serve.js` to see changes on the phone)
 //
 // src/shell.html is the page skeleton; each /*@@file@@*/ line in it is replaced by that
 // file from src/ (style.css, main.js), and {{VERSION}} by the `const VERSION = 'vNN'` in
@@ -31,4 +33,18 @@ function build() {
 
 module.exports = build;
 
-if (require.main === module) console.log(build() ? 'index.html built' : 'index.html up to date');
+function watch() {
+  const once = () => {
+    try { if (build()) console.log(new Date().toLocaleTimeString() + '  index.html rebuilt'); }
+    catch (e) { console.log('build failed: ' + e.message); }
+  };
+  once();
+  let timer = null;   // an editor's save can fire several events: wait for them to settle
+  fs.watch(SRC, { recursive: true }, () => { clearTimeout(timer); timer = setTimeout(once, 100); });
+  console.log('watching src/ (ctrl+c to stop)');
+}
+
+if (require.main === module) {
+  if (process.argv.includes('--watch')) watch();
+  else console.log(build() ? 'index.html built' : 'index.html up to date');
+}
