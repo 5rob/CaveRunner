@@ -1,22 +1,18 @@
 // The creatures: a frame of them all (stepEnemies, a part of step(): the enemy loop, with each
 // act's own part through ACTS in game/creatures/ (REFACTOR.md D20), their shots),
-// shooting at you, taking damage (a kill drops its gold, or the act's `die` does its own thing:
-// a nest's shower), and where a jelly may swim (natural).
+// shooting at you, and taking damage (a kill drops its gold, or the act's `die` does its own
+// thing: a nest's shower).
 
 import { SFX } from '../../audio/sfx.js';
 import { COL, PATROL_R, PH, PW } from '../../core/consts.js';
-import { hexRgb } from '../../core/util.js';
-import { jellyPal, jellyStep, tentacleTouch } from '../../creatures/jelly.js';
 import { HUNTERS } from '../../data/creatures.js';
 import { DEV, jcol, kr } from '../../dev/knobs.js';
 import { fireArea } from '../../world/fire.js';
-import { builtAt } from '../../world/zones.js';
 import { ACTS } from '../creatures/acts.js';
-import { puffSpores } from './ambience.js';
 import { fireBlast, ignite, youAlight } from './fire.js';
 import { burst, goo, splat } from './particles.js';
 import { hurt } from './player.js';
-import { lineOfSight, solidAt, solidCell } from './terrain.js';
+import { lineOfSight, solidAt } from './terrain.js';
 
 // one pull of an enemy's trigger: aimed at the player, and a shotgun type throws
 // its pellets in a cone. Refuses the shot if the player has broken line of sight
@@ -53,8 +49,6 @@ export function damageEnemy(W, j, dmg) {
   if (e.carry > 0) W.coins.push({ x: e.x, y: e.ty, amount: e.carry, t: Math.random() * 6.28,
     vx: (Math.random() - 0.5) * 60, vy: -90 - Math.random() * 40 });
 }
-
-export const natural = (W, x, y) => !builtAt(W.zone, x, y);      // jellies keep to the natural zones
 
 // ---- the creatures (a part of step) ----
 // The enemy loop (aggro, each kind's move, contact, firing), Contact Damage, the creatures'
@@ -109,36 +103,7 @@ export function stepEnemies(W, G, F) {
     // the act's move (ACTS, D20); true = it did its whole frame, nothing below runs for it
     const A = ACTS[k.act];
     if (A && A.move) { if (A.move(W, G, e, C)) continue; }
-    else if (k.act === 'jelly') {
-      // swims in pulses (jellyStep); spits when its head is lined up on you, in range
-      const cold = e.chill && e.chill < 1 ? e.chill : 1;
-      if (jellyStep(e, { solidCell: (cx, cy) => solidCell(W, cx, cy), hunting, goal: { x: pcx, y: pcy }, rnd: Math.random,
-        speedMul: cold, rangeMul: sees, stay: W.zone ? ((x, y) => natural(W, x, y)) : null }, dt) === 'pulse') puffSpores(W, e);
-      const S = e.je;
-      // brush its tentacles and you're stung, hunting or not (same sting knobs as the bell)
-      if (!W.p.dead && e.touch <= 0 && dist < 180) {
-        const t = tentacleTouch(S, W.p.x, W.p.y, W.p.x + PW, W.p.y + PH);
-        if (t) {
-          hurt(W, G, Math.round(kr('jeBite'))); e.touch = kr('jeBiteCd');
-          burst(W, t.x, t.y, 5, jellyPal(S.u.col).tent);
-          SFX.creature(k, 'bite', t.x, t.y);
-        }
-      }
-      if (hunting && S.inRange && S.aimed && e.cd <= 0) {
-        e.cd = 0.25;                                // no clear line: look again shortly
-        const hx = e.x + Math.cos(S.hd) * e.r * 0.9, hy = e.y + Math.sin(S.hd) * e.r * 0.9;
-        if (lineOfSight(W, hx, hy, pcx, pcy)) {
-          e.cd = kr('jeShotCd');
-          const a = Math.atan2(pcy - hy, pcx - hx) + (Math.random() * 2 - 1) * kr('jeSpread') * Math.PI / 180;
-          const v = kr('jeShotSpd'), P = jellyPal(S.u.col);
-          W.enemyShots.push({ x: hx, y: hy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 3,
-            col: P.spit, edge: P.spitEdge, shine: P.spitShine, dripCol: P.drip, dripCol2: P.drip2, glow: hexRgb(P.glow),
-            dmg: Math.round(kr('jeShotDmg')), size: kr('jeShotSize'), goo: 1,
-            drip: kr('jeDrip'), da: 0, dripG: kr('jeDripG'), splat: Math.round(kr('jeSplat')), splatV: kr('jeSplatSpd') });
-          SFX.creature(k, 'fire', e.x, e.y);
-        }
-      }
-    } else if (k.act === 'turret') {
+    else if (k.act === 'turret') {
       // holds station: the hover is all the movement it gets
     } else if (hunting) {
       const step = k.spd * (e.chill || 1) * dt;

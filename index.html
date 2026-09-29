@@ -5903,6 +5903,91 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return pts;
   }
 
+  // src/world/fire.js
+  var FLAMMABLE = { vine: 1, myc: 1 };
+  var FIRE_WET = { puddle: 1, snow: 1, ice: 1, slime: 1 };
+  var FIRE_COLS = ["#ffe07a", "#ff9a2e", "#f0561c", "#8a2a14"];
+  var FUEL_GRASS = 1, FUEL_MOSS = 2, FUEL_WOOD = 3;
+  var FIRE_TICK = 0.05;
+  var FIRE_MAX = 5e3;
+  var FIRE_CATCH = [0, 1, 0.6, 0.45];
+  var FIRE_KNOB = [null, "fireGrass", "fireMoss", "fireWood"];
+  var FIRE_UPW = (dy) => dy < 0 ? 1 : dy === 0 ? 0.9 : 0.35;
+  var FIRE_NB = [];
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++)
+    if (dx || dy) FIRE_NB.push([dy * CW + dx, FIRE_UPW(dy) * (Math.max(Math.abs(dx), Math.abs(dy)) === 2 ? 0.3 : 1)]);
+  function fireNew(fuel) {
+    return { fuel, t: new Uint16Array(fuel.length), list: [], acc: 0 };
+  }
+  function fireLight(F, i, rnd2) {
+    const kind = F.fuel[i];
+    if (!kind || F.t[i] || F.list.length >= FIRE_MAX) return false;
+    F.t[i] = Math.max(1, Math.round(kr(FIRE_KNOB[kind], rnd2) / FIRE_TICK));
+    F.list.push(i);
+    return true;
+  }
+  function fireDouse(F, x, y, r) {
+    const cx0 = x / CELL, cy0 = y / CELL, rc = r / CELL;
+    const x0 = Math.max(0, Math.floor(cx0 - rc)), x1 = Math.min(CW - 1, Math.ceil(cx0 + rc));
+    const y0 = Math.max(0, Math.floor(cy0 - rc)), y1 = Math.min(CH - 1, Math.ceil(cy0 + rc));
+    let n = 0;
+    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
+      const i = cy * CW + cx;
+      if (F.t[i] && Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) {
+        F.t[i] = 0;
+        n++;
+      }
+    }
+    return n;
+  }
+  function fireArea(F, x, y, r, chance, rnd2) {
+    rnd2 = rnd2 || Math.random;
+    const cx0 = x / CELL, cy0 = y / CELL, rc = r / CELL;
+    const x0 = Math.max(0, Math.floor(cx0 - rc)), x1 = Math.min(CW - 1, Math.ceil(cx0 + rc));
+    const y0 = Math.max(0, Math.floor(cy0 - rc)), y1 = Math.min(CH - 1, Math.ceil(cy0 + rc));
+    let n = 0;
+    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
+      const i = cy * CW + cx;
+      if (!F.fuel[i] || F.t[i] || Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc || rnd2() >= chance) continue;
+      if (fireLight(F, i, rnd2)) n++;
+    }
+    return n;
+  }
+  function fireNear(F, x, y, r) {
+    const cx0 = Math.floor(x / CELL), cy0 = Math.floor(y / CELL), rc = Math.ceil(r / CELL);
+    for (let cy = Math.max(0, cy0 - rc); cy <= Math.min(CH - 1, cy0 + rc); cy++)
+      for (let cx = Math.max(0, cx0 - rc); cx <= Math.min(CW - 1, cx0 + rc); cx++)
+        if (F.t[cy * CW + cx]) return true;
+    return false;
+  }
+  function fireStep(F, dt, out, rnd2) {
+    rnd2 = rnd2 || Math.random;
+    F.acc = Math.min(F.acc + dt, FIRE_TICK * 4);
+    let ticks = 0;
+    while (F.acc >= FIRE_TICK) {
+      F.acc -= FIRE_TICK;
+      ticks++;
+      const L = F.list, n0 = L.length, sp = kr("fireSpread", rnd2), N = F.fuel.length;
+      let w = 0;
+      for (let k = 0; k < n0; k++) {
+        const i = L[k];
+        if (!F.t[i]) continue;
+        for (const [o, w2] of FIRE_NB) {
+          const j = i + o;
+          if (j >= 0 && j < N && F.fuel[j] && !F.t[j] && rnd2() < sp * w2 * FIRE_CATCH[F.fuel[j]]) fireLight(F, j, rnd2);
+        }
+        if (--F.t[i] === 0) {
+          const kind = F.fuel[i];
+          F.fuel[i] = 0;
+          if (out) out(i, kind);
+        } else L[w++] = i;
+      }
+      for (let k = n0; k < L.length; k++) L[w++] = L[k];
+      L.length = w;
+    }
+    return ticks;
+  }
+
   // src/creatures/jelly.js
   function jellyPal(u) {
     const P = {};
@@ -6184,91 +6269,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.restore();
   }
 
-  // src/world/fire.js
-  var FLAMMABLE = { vine: 1, myc: 1 };
-  var FIRE_WET = { puddle: 1, snow: 1, ice: 1, slime: 1 };
-  var FIRE_COLS = ["#ffe07a", "#ff9a2e", "#f0561c", "#8a2a14"];
-  var FUEL_GRASS = 1, FUEL_MOSS = 2, FUEL_WOOD = 3;
-  var FIRE_TICK = 0.05;
-  var FIRE_MAX = 5e3;
-  var FIRE_CATCH = [0, 1, 0.6, 0.45];
-  var FIRE_KNOB = [null, "fireGrass", "fireMoss", "fireWood"];
-  var FIRE_UPW = (dy) => dy < 0 ? 1 : dy === 0 ? 0.9 : 0.35;
-  var FIRE_NB = [];
-  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++)
-    if (dx || dy) FIRE_NB.push([dy * CW + dx, FIRE_UPW(dy) * (Math.max(Math.abs(dx), Math.abs(dy)) === 2 ? 0.3 : 1)]);
-  function fireNew(fuel) {
-    return { fuel, t: new Uint16Array(fuel.length), list: [], acc: 0 };
-  }
-  function fireLight(F, i, rnd2) {
-    const kind = F.fuel[i];
-    if (!kind || F.t[i] || F.list.length >= FIRE_MAX) return false;
-    F.t[i] = Math.max(1, Math.round(kr(FIRE_KNOB[kind], rnd2) / FIRE_TICK));
-    F.list.push(i);
-    return true;
-  }
-  function fireDouse(F, x, y, r) {
-    const cx0 = x / CELL, cy0 = y / CELL, rc = r / CELL;
-    const x0 = Math.max(0, Math.floor(cx0 - rc)), x1 = Math.min(CW - 1, Math.ceil(cx0 + rc));
-    const y0 = Math.max(0, Math.floor(cy0 - rc)), y1 = Math.min(CH - 1, Math.ceil(cy0 + rc));
-    let n = 0;
-    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
-      const i = cy * CW + cx;
-      if (F.t[i] && Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) {
-        F.t[i] = 0;
-        n++;
-      }
-    }
-    return n;
-  }
-  function fireArea(F, x, y, r, chance, rnd2) {
-    rnd2 = rnd2 || Math.random;
-    const cx0 = x / CELL, cy0 = y / CELL, rc = r / CELL;
-    const x0 = Math.max(0, Math.floor(cx0 - rc)), x1 = Math.min(CW - 1, Math.ceil(cx0 + rc));
-    const y0 = Math.max(0, Math.floor(cy0 - rc)), y1 = Math.min(CH - 1, Math.ceil(cy0 + rc));
-    let n = 0;
-    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
-      const i = cy * CW + cx;
-      if (!F.fuel[i] || F.t[i] || Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc || rnd2() >= chance) continue;
-      if (fireLight(F, i, rnd2)) n++;
-    }
-    return n;
-  }
-  function fireNear(F, x, y, r) {
-    const cx0 = Math.floor(x / CELL), cy0 = Math.floor(y / CELL), rc = Math.ceil(r / CELL);
-    for (let cy = Math.max(0, cy0 - rc); cy <= Math.min(CH - 1, cy0 + rc); cy++)
-      for (let cx = Math.max(0, cx0 - rc); cx <= Math.min(CW - 1, cx0 + rc); cx++)
-        if (F.t[cy * CW + cx]) return true;
-    return false;
-  }
-  function fireStep(F, dt, out, rnd2) {
-    rnd2 = rnd2 || Math.random;
-    F.acc = Math.min(F.acc + dt, FIRE_TICK * 4);
-    let ticks = 0;
-    while (F.acc >= FIRE_TICK) {
-      F.acc -= FIRE_TICK;
-      ticks++;
-      const L = F.list, n0 = L.length, sp = kr("fireSpread", rnd2), N = F.fuel.length;
-      let w = 0;
-      for (let k = 0; k < n0; k++) {
-        const i = L[k];
-        if (!F.t[i]) continue;
-        for (const [o, w2] of FIRE_NB) {
-          const j = i + o;
-          if (j >= 0 && j < N && F.fuel[j] && !F.t[j] && rnd2() < sp * w2 * FIRE_CATCH[F.fuel[j]]) fireLight(F, j, rnd2);
-        }
-        if (--F.t[i] === 0) {
-          const kind = F.fuel[i];
-          F.fuel[i] = 0;
-          if (out) out(i, kind);
-        } else L[w++] = i;
-      }
-      for (let k = n0; k < L.length; k++) L[w++] = L[k];
-      L.length = w;
-    }
-    return ticks;
-  }
-
   // src/world/zones.js
   function boxReach(mat, x, y) {
     const PWc = 6, PHc = 11;
@@ -6322,425 +6322,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const x = Math.floor(wx / CELL), y = Math.floor(wy / CELL);
     return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
   }
-
-  // src/creatures/spider.js
-  var SPIDER = { hold: 6, feel: 14, step: 1.5, fall: 900 };
-  function spiderSeat(e, S, solidCell2, maxMove) {
-    return surfSeat(e, S, solidCell2, maxMove, SPIDER.hold, SPIDER.feel);
-  }
-  var segNear = (L, x, y) => {
-    const vx = L.bx - L.ax, vy = L.by - L.ay, ll = vx * vx + vy * vy || 1;
-    const u = Math.max(0, Math.min(1, ((x - L.ax) * vx + (y - L.ay) * vy) / ll));
-    return { u, d: Math.hypot(L.ax + vx * u - x, L.ay + vy * u - y) };
-  };
-  function spiderAim(x, y, dx, dy, reach, solidCell2) {
-    for (const a of [0, 0.22, -0.22, 0.45, -0.45]) {
-      const c = Math.cos(a), s = Math.sin(a), ux = dx * c - dy * s, uy = dx * s + dy * c;
-      const d = rayDist(x, y, ux, uy, reach, solidCell2);
-      if (d < reach && d > SPIDER.hold * 2.5) return { dx: ux, dy: uy, len: d };
-    }
-    return null;
-  }
-  function spiderStep(e, env, dt) {
-    const { solidCell: solidCell2, webs, rnd: rnd2 } = env;
-    const S = e.sp || (e.sp = {
-      mode: "fall",
-      vy: 0,
-      nx: 0,
-      ny: -1,
-      on: 0,
-      rest: rnd2() * 0.5,
-      side: 1,
-      line: null,
-      u: 0,
-      dir: 1,
-      shot: null,
-      rx: e.hx,
-      ry: e.hy,
-      ra: rnd2() * 6.28,
-      high: false
-    });
-    S.webT = (S.webT || 0) - dt;
-    roamStep(S, e, dt, rnd2, "sp");
-    const goal = env.hunting ? env.goal : { x: S.rx, y: S.ry };
-    let out = null;
-    if (S.mode === "fall") {
-      S.vy = Math.min(S.vy + SPIDER.fall * dt, 600);
-      const n2 = Math.max(1, Math.ceil(S.vy * dt / SPIDER.step));
-      for (let i = 0; i < n2; i++) {
-        e.y += S.vy * dt / n2;
-        if (e.y > CH * CELL) {
-          e.y = CH * CELL;
-          break;
-        }
-        if (surfNormal(e.x, e.y, SPIDER.hold + 1, solidCell2)) {
-          spiderSeat(e, S, solidCell2, SPIDER.hold);
-          S.mode = "surf";
-          S.vy = 0;
-          S.on = 0;
-          S.rest = 0.1;
-          break;
-        }
-      }
-      return null;
-    }
-    if (S.mode === "shoot") {
-      const sh = S.shot;
-      sh.t += sh.spd * dt;
-      if (sh.t < sh.len) return null;
-      const hx = sh.x + sh.dx * sh.len, hy = sh.y + sh.dy * sh.len;
-      const inx = hx + sh.dx * 1.2, iny = hy + sh.dy * 1.2;
-      S.mode = sh.from;
-      S.shot = null;
-      if (!solidCell2(Math.floor(inx / CELL), Math.floor(iny / CELL))) return null;
-      const L = {
-        ax: sh.x,
-        ay: sh.y,
-        bx: hx - sh.dx * SPIDER.hold,
-        by: hy - sh.dy * SPIDER.hold,
-        a0x: sh.ax0,
-        a0y: sh.ay0,
-        b0x: hx,
-        b0y: hy,
-        ain: sh.ain,
-        bin: { x: inx, y: iny },
-        owner: e
-      };
-      webs.push(L);
-      const mine = webs.filter((w) => w.owner === e);
-      if (mine.length > Math.round(spr("spMaxLines", rnd2))) {
-        const old = mine.find((w) => w !== S.line);
-        if (old) webs.splice(webs.indexOf(old), 1);
-      }
-      S.mode = "line";
-      S.line = L;
-      S.u = 0;
-      S.dir = 1;
-      return "web";
-    }
-    if (S.mode === "line" && webs.indexOf(S.line) < 0) {
-      S.mode = "fall";
-      S.line = null;
-      S.vy = 0;
-      return null;
-    }
-    if (S.mode === "surf" && !surfNormal(e.x, e.y, SPIDER.hold + 2, solidCell2)) {
-      S.mode = "fall";
-      S.vy = 0;
-      return null;
-    }
-    if (S.on <= 0) {
-      if ((S.rest -= dt) > 0) return null;
-      S.on = spr(env.hunting ? "spHuntOn" : "spRoamOn", rnd2);
-      S.spd = env.speed || spr("spSpeed", rnd2);
-      S.arrive = env.hunting ? spr("spArrive", rnd2) : 3;
-      S.dot = spr("spDot", rnd2);
-      decide();
-      if (S.mode === "shoot") return null;
-      if (S.on <= 0) {
-        S.rest = 0.1 + rnd2() * 0.2;
-        return null;
-      }
-    }
-    if (S.mode === "shoot") return null;
-    const speed = (S.spd || spr("spSpeed", rnd2)) * (env.speedMul || 1);
-    const dist = speed * Math.min(dt, S.on);
-    S.on -= dt;
-    const n = Math.max(1, Math.ceil(dist / SPIDER.step));
-    for (let i = 0; i < n && S.mode !== "shoot"; i++) {
-      const st = dist / n;
-      if (S.mode === "surf") {
-        const tx = -S.ny * S.side, ty = S.nx * S.side;
-        e.x += tx * st;
-        e.y += ty * st;
-        if (!spiderSeat(e, S, solidCell2, st * 2)) {
-          e.x -= S.nx * st * 2;
-          e.y -= S.ny * st * 2;
-          if (!spiderSeat(e, S, solidCell2, st * 2)) {
-            S.mode = "fall";
-            S.vy = 0;
-            break;
-          }
-        }
-        const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy) || 1;
-        const high = (gx * S.nx + gy * S.ny) / gd >= S.dot;
-        if (high && !S.high) {
-          S.high = true;
-          decide();
-        } else if (!high) S.high = false;
-        if (gd < (S.arrive || 3) || (-S.ny * gx + S.nx * gy) * S.side < 0) {
-          S.on = 0;
-          break;
-        }
-      } else if (S.mode === "line") {
-        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
-        const ux = (L.bx - L.ax) / len * S.dir, uy = (L.by - L.ay) / len * S.dir;
-        if (!S.go && (goal.x - e.x) * ux + (goal.y - e.y) * uy <= 0) {
-          S.on = 0;
-          break;
-        }
-        S.u += S.dir * st / len;
-        if (S.u >= 1 || S.u <= 0) {
-          S.u = S.u >= 1 ? 1 : 0;
-          e.x = S.u ? L.bx : L.ax;
-          e.y = S.u ? L.by : L.ay;
-          S.mode = "surf";
-          S.line = null;
-          S.go = false;
-          if (!spiderSeat(e, S, solidCell2, SPIDER.hold)) {
-            S.mode = "fall";
-            S.vy = 0;
-            break;
-          }
-          decide();
-          continue;
-        }
-        e.x = L.ax + (L.bx - L.ax) * S.u;
-        e.y = L.ay + (L.by - L.ay) * S.u;
-      }
-    }
-    if (S.on <= 0 && S.rest <= 0) S.rest = spr(env.hunting ? "spHuntOff" : "spRoamOff", rnd2);
-    return out;
-    function decide() {
-      const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
-      if (gd < (S.arrive || 3)) {
-        S.on = 0;
-        return;
-      }
-      const dx = gx / gd, dy = gy / gd;
-      const tryLine = () => {
-        let best = null, bd = spr("spGrab", rnd2);
-        for (const L of webs) {
-          if (L === S.line) continue;
-          const q = segNear(L, e.x, e.y);
-          if (q.d > bd) continue;
-          const len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
-          const ux = (L.bx - L.ax) / len, uy = (L.by - L.ay) / len, al = ux * dx + uy * dy;
-          if (Math.abs(al) < 0.5) continue;
-          if (al > 0 && q.u > 0.97 || al < 0 && q.u < 0.03) continue;
-          best = { L, u: q.u, dir: al > 0 ? 1 : -1 };
-          bd = q.d;
-        }
-        if (!best) return false;
-        S.mode = "line";
-        S.line = best.L;
-        S.u = best.u;
-        S.dir = best.dir;
-        e.x = best.L.ax + (best.L.bx - best.L.ax) * best.u;
-        e.y = best.L.ay + (best.L.by - best.L.ay) * best.u;
-        return true;
-      };
-      const tryShoot = (from) => {
-        if (S.webT > 0 || !env.hunting && gd < 40) return false;
-        const a = spiderAim(e.x, e.y, dx, dy, env.reach || spr("spWeb", rnd2), solidCell2);
-        if (!a) return false;
-        let ax0 = e.x, ay0 = e.y, ain = null;
-        if (from === "surf") {
-          const d = rayDist(e.x, e.y, -S.nx, -S.ny, SPIDER.feel + 4, solidCell2);
-          ax0 = e.x - S.nx * d;
-          ay0 = e.y - S.ny * d;
-          ain = { x: e.x - S.nx * (d + 1.2), y: e.y - S.ny * (d + 1.2) };
-        }
-        S.webT = spr(env.hunting ? "spHuntWeb" : "spRoamWeb", rnd2);
-        S.shot = { spd: spr("spLineSpd", rnd2), x: e.x, y: e.y, dx: a.dx, dy: a.dy, len: a.len, t: 0, from, ax0, ay0, ain };
-        S.mode = "shoot";
-        return true;
-      };
-      if (S.mode === "surf") {
-        const dot = dx * S.nx + dy * S.ny;
-        S.high = dot >= (S.dot || 0.6);
-        if (S.high && (tryLine() || tryShoot("surf"))) return;
-        const t = -S.ny * dx + S.nx * dy;
-        if (Math.abs(t) * gd < 4) {
-          S.on = 0;
-          return;
-        }
-        S.side = t > 0 ? 1 : -1;
-      } else if (S.mode === "line") {
-        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
-        const al = ((L.bx - L.ax) * dx + (L.by - L.ay) * dy) / len;
-        S.go = false;
-        if (Math.abs(al) > 0.3) {
-          S.dir = al > 0 ? 1 : -1;
-          return;
-        }
-        if (tryLine() || tryShoot("line")) return;
-        const da = Math.hypot(goal.x - L.ax, goal.y - L.ay), db = Math.hypot(goal.x - L.bx, goal.y - L.by);
-        S.dir = db < da ? 1 : -1;
-        S.go = true;
-      }
-    }
-  }
-  function drawSpider(ctx, x, y, r, time, phase, flash, col, S) {
-    let nx = 0, ny = -1, side = 1, moving = false;
-    if (S) {
-      if (S.mode === "line" && S.line) {
-        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
-        nx = -(L.by - L.ay) / len;
-        ny = (L.bx - L.ax) / len;
-        if (ny > 0) {
-          nx = -nx;
-          ny = -ny;
-        }
-        side = S.dir * (L.bx - L.ax >= 0 ? 1 : -1);
-      } else if (S.mode === "surf" || S.mode === "shoot") {
-        nx = S.nx;
-        ny = S.ny;
-        side = S.side;
-      }
-      moving = S.on > 0 && S.mode !== "shoot";
-    }
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(Math.atan2(nx, -ny));
-    const t = moving ? time * 38 + phase : phase;
-    ctx.strokeStyle = flash ? "#ffffff" : col.b;
-    ctx.lineWidth = r * 0.16;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    for (let i = 0; i < 4; i++) {
-      const o = (i - 1.5) * r * 0.28, sw = Math.sin(t + i * 1.7) * r * 0.22;
-      for (const s of [-1, 1]) {
-        const fx = s * (r * (0.75 + Math.abs(i - 1.5) * 0.35)) + sw * s;
-        ctx.beginPath();
-        ctx.moveTo(o * 0.5, 0);
-        ctx.lineTo(o * 0.5 + fx * 0.55, -r * 0.55 - Math.abs(sw) * 0.3);
-        ctx.lineTo(o * 0.5 + fx, r * 0.62);
-        ctx.stroke();
-      }
-    }
-    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
-    ctx.beginPath();
-    ctx.ellipse(-side * r * 0.45, -r * 0.05, r * 0.62, r * 0.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#ffffff" : col.a;
-    ctx.beginPath();
-    ctx.ellipse(-side * r * 0.45, -r * 0.12, r * 0.48, r * 0.36, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
-    ctx.beginPath();
-    ctx.ellipse(side * r * 0.3, 0, r * 0.38, r * 0.32, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = flash ? "#ffffff" : col.eye;
-    for (const [ex, ey, er] of [[0.5, -0.1, 0.1], [0.42, 0.06, 0.08], [0.58, 0.08, 0.07], [0.36, -0.14, 0.07]]) {
-      ctx.beginPath();
-      ctx.arc(side * r * ex, r * ey, r * er, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  // src/game/creatures/spider.js
-  function spiderMove(W, G, e, C) {
-    const { dt, dx, dy, dist, sees, hunting, pcx, pcy } = C, k = e.k;
-    const cold = e.chill && e.chill < 1 ? e.chill : 1;
-    if (spiderStep(e, {
-      solidCell: (cx, cy) => solidCell(W, cx, cy),
-      webs: W.webs,
-      hunting,
-      goal: { x: pcx, y: pcy },
-      rnd: Math.random,
-      speedMul: cold
-    }, dt) === "web") SFX.fx("lash", e.x, e.y);
-    e.silkT = (e.silkT || 0) - dt;
-    const S = e.sp;
-    if (hunting && e.silkT <= 0 && S && (S.mode === "surf" || S.mode === "line") && dist < (e.silkR || (e.silkR = spr("spSilk"))) * sees && dist > e.r + 24) {
-      e.silkT = 0.4;
-      if (lineOfSight(W, e.x, e.y, pcx, pcy)) {
-        e.silkT = spr("spSilkCd");
-        e.silkR = spr("spSilk");
-        const v = spr("spSilkSpd");
-        W.silk.push({
-          x: e.x,
-          y: e.y,
-          ax: e.x,
-          ay: e.y,
-          vx: dx / dist * v,
-          vy: dy / dist * v,
-          life: 400 / v * 1.3 + 0.1
-        });
-        SFX.creature(k, "fire", e.x, e.y);
-      }
-    }
-  }
-  function spiderFrame(W, G, F) {
-    const { dt } = F;
-    for (let i = W.silk.length - 1; i >= 0; i--) {
-      const b = W.silk[i];
-      b.life -= dt;
-      let gone = b.life <= 0;
-      const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
-      for (let s = 0; s < sn && !gone; s++) {
-        b.x += b.vx * dt / sn;
-        b.y += b.vy * dt / sn;
-        if (solidAt(W, b.x, b.y)) {
-          gone = true;
-          break;
-        }
-        if (!W.p.dead && b.x > W.p.x - 3 && b.x < W.p.x + PW + 3 && b.y > W.p.y - 3 && b.y < W.p.y + PH + 3) {
-          gone = true;
-          W.strings.push({ ax: b.ax, ay: b.ay, ox: b.x - W.p.x, oy: b.y - W.p.y, slow: spr("spSlow"), max: spr("spSilkMax") });
-          SFX.fx("lash", b.x, b.y);
-        }
-      }
-      if (gone) W.silk.splice(i, 1);
-    }
-    for (let i = W.strings.length - 1; i >= 0; i--) {
-      const s = W.strings[i];
-      if (Math.hypot(W.p.x + s.ox - s.ax, W.p.y + s.oy - s.ay) > s.max) {
-        W.strings.splice(i, 1);
-        burst(W, W.p.x + s.ox, W.p.y + s.oy, 4, "#e8e8f0");
-        SFX.fx("lash", W.p.x + s.ox, W.p.y + s.oy);
-      }
-    }
-    for (let n = Math.min(W.webs.length, 6); n > 0; n--) {
-      W.webCheck = (W.webCheck + 1) % W.webs.length;
-      const L = W.webs[W.webCheck];
-      if (L.bin && !solidAt(W, L.bin.x, L.bin.y) || L.ain && !solidAt(W, L.ain.x, L.ain.y)) {
-        W.webs.splice(W.webCheck, 1);
-        if (!W.webs.length) break;
-      }
-    }
-  }
-  function drawSilk(W, G) {
-    G.ctx.lineCap = "round";
-    G.ctx.strokeStyle = "#eef0f6";
-    G.ctx.globalAlpha = 0.55;
-    G.ctx.lineWidth = 0.7;
-    G.ctx.beginPath();
-    for (const L of W.webs) {
-      G.ctx.moveTo(L.a0x, L.a0y);
-      G.ctx.lineTo(L.b0x, L.b0y);
-    }
-    for (const e of W.enemies) {
-      const sh = e.sp && e.sp.mode === "shoot" && e.sp.shot;
-      if (sh) {
-        G.ctx.moveTo(sh.ax0, sh.ay0);
-        G.ctx.lineTo(sh.x + sh.dx * Math.min(sh.t, sh.len), sh.y + sh.dy * Math.min(sh.t, sh.len));
-      }
-    }
-    G.ctx.stroke();
-    G.ctx.globalAlpha = 0.85;
-    G.ctx.lineWidth = 0.9;
-    G.ctx.beginPath();
-    for (const b of W.silk) {
-      G.ctx.moveTo(b.ax, b.ay);
-      G.ctx.lineTo(b.x, b.y);
-    }
-    for (const s of W.strings) {
-      G.ctx.moveTo(s.ax, s.ay);
-      G.ctx.lineTo(W.p.x + s.ox, W.p.y + s.oy);
-    }
-    G.ctx.stroke();
-    G.ctx.globalAlpha = 1;
-  }
-
-  // src/game/creatures/acts.js
-  var ACTS = {
-    nest: { move: nestMove, die: nestDie },
-    rat: { move: ratMove },
-    spider: { move: spiderMove, frame: spiderFrame }
-  };
 
   // src/art/sprites.js
   function drawGun(ctx, x, y, ang, sc, accent) {
@@ -7589,6 +7170,537 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (dv.life <= 0) W.devils.splice(i, 1);
     }
   }
+
+  // src/spells/spawn.js
+  var NOITA_SPAWN = {
+    LIGHT_BULLET: ["0,1,2", "2,1,0.5"],
+    LIGHT_BULLET_TRIGGER: ["0,1,2,3", "1,0.5,0.5,0.5"],
+    LIGHT_BULLET_TRIGGER_2: ["2,3,5,6,10", "1,0.5,1,1,0.2"],
+    LIGHT_BULLET_TIMER: ["1,2,3", "0.5,0.5,0.75"],
+    BULLET: ["1,2,3,4,5", "1,1,1,0.8,0.5"],
+    BULLET_TRIGGER: ["1,2,3,4,5", "0.5,0.5,0.5,0.6,0.5"],
+    BULLET_TIMER: ["2,3,4,5,6", "0.5,0.5,0.5,0.5,0.6"],
+    HEAVY_BULLET: ["1,2,3,4,5,6", "0.5,1,1,1,1,1"],
+    SLOW_BULLET: ["1,2,3,4", "1,1,1,1"],
+    SLOW_BULLET_TRIGGER: ["1,2,3,4,5", "0.5,0.5,0.5,0.5,1"],
+    SLOW_BULLET_TIMER: ["1,2,3,4,5,6", "0.5,0.5,0.5,0.5,1,1"],
+    BLACK_HOLE: ["0,2,4,5", "0.8,0.8,0.8,0.8"],
+    BLACK_HOLE_DEATH_TRIGGER: ["2,4,5,6", "0.5,0.5,0.5,0.5"],
+    SPITTER: ["0,1,2,3", "1,1,1,0.5"],
+    SPITTER_TIMER: ["0,1,2,3", "0.5,0.5,0.5,1"],
+    BUBBLESHOT: ["0,1,2,3", "1,0.6,1,0.5"],
+    BUBBLESHOT_TRIGGER: ["1,2,3", "0.5,0.5,1"],
+    DISC_BULLET: ["0,2,4", "1,1,0.6"],
+    BOUNCY_ORB: ["0,2,4", "1,1,1"],
+    BOUNCY_ORB_TIMER: ["0,2,4", "0.5,0.5,0.5"],
+    RUBBER_BALL: ["0,1,6", "1,1,0.2"],
+    POLLEN: ["0,1,3,4", "0.6,1,1,0.6"],
+    LANCE: ["1,2,5,6", "0.9,1,0.8,1"],
+    ROCKET: ["1,2,3,4,5", "1,1,1,0.5,0.3"],
+    GRENADE: ["0,1,2,3,4", "1,1,0.5,0.25,0.2"],
+    GRENADE_TRIGGER: ["0,1,2,3,4,5", "0.5,0.5,0.2,0.5,0.5,1"],
+    MINE: ["1,3,4,6", "1,0.75,1,0.5"],
+    MINE_DEATH_TRIGGER: ["2,6", "1,1"],
+    PIPE_BOMB: ["2,3,4", "1,1,0.6"],
+    PIPE_BOMB_DEATH_TRIGGER: ["2,3,4,5", "0.6,0.8,1,0.8"],
+    LIGHTNING: ["1,2,5,6", "1,0.9,0.7,1"],
+    LASER_EMITTER: ["1,2,3,4", "0.2,0.8,1,0.5"],
+    DIGGER: ["1,2", "1,0.5"],
+    CHAINSAW: ["0,2", "1,1"],
+    LUMINOUS_DRILL: ["0,2,10", "1,1,0.1"],
+    LASER_LUMINOUS_DRILL: ["0,2,6,10", "1,1,0.2,0.1"],
+    CHAIN_BOLT: ["0,4,5,6", "0.75,1,0.8,0.6"],
+    FIREBALL: ["0,3,4,6", "1,0.7,1,0.5"],
+    METEOR: ["4,5,6,10", "0.6,0.6,0.7,0.5"],
+    BUCKSHOT: ["0,1,2,3,4", "1,1,0.9,0.9,0.6"],
+    BOMB: ["0,1,2,3,4,5,6", "1,1,1,1,0.5,0.5,0.1"],
+    DEATH_CROSS: ["1,2,3,4,5,6", "1,0.8,0.6,0.5,0.5,0.3"],
+    NUKE: ["1,5,6,10", "0.3,1,1,0.2"],
+    TELEPORT_PROJECTILE: ["0,1,2,4,5,6", "0.6,0.6,0.6,0.4,0.4,0.4"],
+    TELEPORT_PROJECTILE_SHORT: ["0,1,2,4,5,6", "0.6,0.6,0.6,0.4,0.4,0.4"],
+    PURPLE_EXPLOSION_FIELD: ["0,1,2,4,5,6", "0.7,1,0.7,0.5,0.5,0.3"],
+    LONG_DISTANCE_CAST: ["0,1,2,4,5,6", "0.6,0.7,0.8,0.6,0.3,0.4"],
+    TELEPORT_CAST: ["1,2,4,5,6", "0.6,0.6,0.6,0.8,1"],
+    SUPER_TELEPORT_CAST: ["2,4,5,6", "0.2,0.6,0.8,0.8"],
+    BURST_2: ["0,1,2,3,4,5,6", "0.8,0.8,0.8,0.8,0.8,0.8,0.8"],
+    BURST_3: ["1,2,3,4,5,6", "0.7,0.7,0.7,0.7,0.7,0.7"],
+    BURST_4: ["2,3,4,5,6", "0.4,0.5,0.6,0.6,0.6"],
+    BURST_8: ["5,6,10", "0.1,0.1,0.5"],
+    BURST_X: ["5,6,10", "0.1,0.1,0.5"],
+    SCATTER_3: ["0,1,2,3", "0.6,0.7,0.7,0.8"],
+    I_SHAPE: ["1,2,3", "0.4,0.5,0.3"],
+    Y_SHAPE: ["0,1,2,3", "0.8,0.5,0.4,0.3"],
+    W_SHAPE: ["2,3,4,5,6", "0.4,0.3,0.5,0.3,0.3"],
+    SPREAD_REDUCE: ["1,2,3,4,5,6", "0.8,0.8,0.8,0.8,0.7,0.6"],
+    HEAVY_SPREAD: ["0,1,2,4,5,6", "0.6,0.7,0.8,0.8,0.8,0.6"],
+    RECHARGE: ["1,2,3,4,5,6", "0.8,0.9,1,0.8,0.9,1"],
+    LIFETIME: ["3,4,5,6,10", "0.5,0.5,0.5,0.75,0.1"],
+    LIFETIME_DOWN: ["3,4,5,6,10", "0.5,0.5,0.75,0.5,0.1"],
+    MANA_REDUCE: ["1,2,3,4,5,6", "0.7,0.9,1,1,1,1"],
+    BLOOD_MAGIC: ["5,6,10", "0.3,0.7,0.5"],
+    MONEY_MAGIC: ["3,5,6,10", "0.2,0.8,0.3,0.5"],
+    BLOOD_TO_POWER: ["2,5,6,10", "0.2,0.8,0.2,0.5"],
+    QUANTUM_SPLIT: ["2,3,4,5,6", "0.5,0.6,0.5,0.5,1"],
+    GRAVITY: ["2,3,4,5,6", "0.5,0.4,0.4,0.3,0.3"],
+    GRAVITY_ANTI: ["2,3,4,5,6", "0.5,0.4,0.4,0.3,0.3"],
+    PINGPONG_PATH: ["1,3,5", "0.4,0.5,0.4"],
+    HORIZONTAL_ARC: ["1,3,5", "0.4,0.4,0.4"],
+    ORBIT_SHOT: ["1,2,3,4", "0.2,0.4,0.4,0.3"],
+    SPIRALING_SHOT: ["1,2,3,4", "0.2,0.3,0.4,0.5"],
+    BOUNCE: ["2,3,4,6", "1,1,0.4,0.2"],
+    HOMING: ["1,2,3,4,5,6", "0.1,0.4,0.4,0.4,0.4,0.4"],
+    HOMING_SHORT: ["1,2,3,4,5,6", "0.4,0.8,1,0.4,0.3,0.1"],
+    HOMING_SHOOTER: ["2,3,4,6", "0.2,0.3,0.2,0.2"],
+    AUTOAIM: ["2,3,4,5,6", "0.4,0.4,0.4,0.4,0.4"],
+    HOMING_ACCELERATING: ["1,2,3,4", "0.1,0.3,0.3,0.5"],
+    PIERCING_SHOT: ["2,3,4,5,6", "0.4,0.5,0.6,0.6,0.4"],
+    CLIPPING_SHOT: ["2,3,4,5,6", "0.2,0.3,0.6,0.4,0.6"],
+    DAMAGE: ["1,2,3,4,5", "0.6,0.6,0.8,0.6,0.6"],
+    DAMAGE_RANDOM: ["3,4,5", "0.7,0.6,0.6"],
+    BLOODLUST: ["1,3,4,5,6", "0.2,0.3,0.6,0.7,0.3"],
+    DAMAGE_FOREVER: ["2,3,4,5,6,10", "0.2,0.3,0.6,0.5,0.2,0.2"],
+    CRITICAL_HIT: ["1,2,3,4,5", "0.5,0.6,0.6,0.7,0.6"],
+    HEAVY_SHOT: ["2,3,4", "0.4,0.4,0.5"],
+    LIGHT_SHOT: ["2,3,4", "0.3,0.5,0.4"],
+    KNOCKBACK: ["3,5", "0.7,0.6"],
+    RECOIL: ["2,4", "0.6,0.7"],
+    RECOIL_DAMPER: ["3,6", "0.6,0.7"],
+    SPEED: ["1,2,3", "1,0.5,0.5"],
+    ACCELERATING_SHOT: ["2,3,4", "0.5,0.4,1"],
+    EXPLOSIVE_PROJECTILE: ["2,3,4", "1,1,0.8"],
+    CLUSTERMOD: ["1,2,3", "0.5,1,0.6"],
+    EXPLOSION: ["0,2,4,5", "0.5,1,1,0.7"],
+    FIRE_BLAST: ["0,1,3,5", "0.5,0.7,0.6,0.4"],
+    FREEZE_FIELD: ["0,2,4,5", "0.3,0.6,0.7,0.3"],
+    REGENERATION_FIELD: ["1,2,3,4", "0.3,0.3,0.4,0.3"],
+    SHIELD_FIELD: ["2,3,4,5,6", "0.3,0.3,0.4,0.5,0.3"],
+    VACUUM_ENTITIES: ["2,3,5,6", "0.3,0.7,0.3,0.4"],
+    CLOUD_THUNDER: ["0,1,2,3,4,5", "0.3,0.3,0.2,0.3,0.4,0.5"],
+    MATTER_EATER: ["1,2,4,5,10", "0.1,0.9,0.1,0.2,0.2"],
+    BOUNCE_EXPLOSION: ["2,3,4,5", "0.2,0.6,0.8,0.8"],
+    ALL_DISCS: ["0,6,10", "0.1,0.05,1"],
+    RESET: ["10", "1"],
+    ADD_TRIGGER: ["3,4,5,10", "0.3,0.6,0.6,1"],
+    ADD_TIMER: ["3,4,5,10", "0.3,0.6,0.6,1"],
+    ADD_DEATH_TRIGGER: ["3,4,5,10", "0.3,0.6,0.6,1"],
+    ALPHA: ["5,6,10", "0.1,0.2,1"],
+    GAMMA: ["5,6,10", "0.1,0.2,1"],
+    TAU: ["5,6,10", "0.1,0.2,1"],
+    OMEGA: ["5,6,10", "0.1,0.1,1"],
+    MU: ["5,6,10", "0.1,0.2,1"],
+    PHI: ["5,6,10", "0.1,0.2,1"],
+    SIGMA: ["4,5,10", "0.1,0.2,1"],
+    ZETA: ["2,5,10", "0.2,0.4,0.5"],
+    // ours alone: no Noita twin
+    OURS_COLD: ["3,4,5,6", "0.2,0.3,0.4,0.5"],
+    OURS_BATTERY: ["2,3,4,5,6", "0.3,0.4,0.5,0.5,0.5"]
+  };
+  var NOITA_OF = {
+    bolt: "LIGHT_BULLET",
+    spark: "LIGHT_BULLET",
+    slug: "HEAVY_BULLET",
+    buck: "BUCKSHOT",
+    lance: "LANCE",
+    orb: "RUBBER_BALL",
+    saw: "CHAINSAW",
+    blast: "BOMB",
+    dmg_up: "DAMAGE",
+    heavy: "HEAVY_SHOT",
+    light: "LIGHT_SHOT",
+    speed: "SPEED",
+    accel: "ACCELERATING_SHOT",
+    homing: "HOMING",
+    seeker: "HOMING_ACCELERATING",
+    bounce: "BOUNCE",
+    pierce: "PIERCING_SHOT",
+    tight: "SPREAD_REDUCE",
+    scatter: "SCATTER_3",
+    big: "DAMAGE",
+    range: "LIFETIME",
+    brief: "LIFETIME_DOWN",
+    tip: "EXPLOSIVE_PROJECTILE",
+    borer: "CLIPPING_SHOT",
+    fast: "RECHARGE",
+    over: "HEAVY_SHOT",
+    double: "BURST_2",
+    triple: "BURST_3",
+    quad: "BURST_4",
+    cheap: "MANA_REDUCE",
+    trigger: "RECHARGE",
+    over_heat: "DAMAGE_RANDOM",
+    cold: "OURS_COLD",
+    recharge: "RECHARGE",
+    battery: "OURS_BATTERY",
+    arrow: "BULLET",
+    missile: "ROCKET",
+    fball: "FIREBALL",
+    fbolt: "GRENADE",
+    bubble: "BUBBLESHOT",
+    spit: "SPITTER",
+    eorb: "SLOW_BULLET",
+    esph: "BOUNCY_ORB",
+    zap: "LIGHTNING",
+    chain: "CHAIN_BOLT",
+    void: "BLACK_HOLE",
+    digbolt: "DIGGER",
+    glance: "LANCE",
+    plasma: "LASER_EMITTER",
+    ldrill: "LUMINOUS_DRILL",
+    cross: "DEATH_CROSS",
+    pollen: "POLLEN",
+    disc: "DISC_BULLET",
+    nuke: "NUKE",
+    meteor: "METEOR",
+    tele: "TELEPORT_PROJECTILE",
+    teleshort: "TELEPORT_PROJECTILE_SHORT",
+    boom: "EXPLOSION",
+    brim: "FIRE_BLAST",
+    crystal: "MINE",
+    dormant: "PIPE_BOMB",
+    stillc: "FREEZE_FIELD",
+    shieldc: "SHIELD_FIELD",
+    vigour: "REGENERATION_FIELD",
+    storm: "CLOUD_THUNDER",
+    vacfield: "VACUUM_ENTITIES",
+    glitter: "PURPLE_EXPLOSION_FIELD",
+    refresh: "RESET",
+    blood: "BLOOD_MAGIC",
+    bpower: "BLOOD_TO_POWER",
+    gpower: "MONEY_MAGIC",
+    farcast: "LONG_DISTANCE_CAST",
+    telecast: "TELEPORT_CAST",
+    warpcast: "SUPER_TELEPORT_CAST",
+    sawstorm: "ALL_DISCS",
+    knock: "KNOCKBACK",
+    kick: "RECOIL",
+    damper: "RECOIL_DAMPER",
+    crit: "CRITICAL_HIT",
+    gravmod: "GRAVITY",
+    float: "GRAVITY_ANTI",
+    boomer: "HOMING_SHOOTER",
+    spiral: "SPIRALING_SHOT",
+    pong: "PINGPONG_PATH",
+    orbit: "ORBIT_SHOT",
+    autoaim: "AUTOAIM",
+    nearhome: "HOMING_SHORT",
+    flat: "HORIZONTAL_ARC",
+    eater: "MATTER_EATER",
+    lust: "BLOODLUST",
+    manapow: "DAMAGE_FOREVER",
+    split: "QUANTUM_SPLIT",
+    cluster: "CLUSTERMOD",
+    bboom: "BOUNCE_EXPLOSION",
+    hspread: "HEAVY_SPREAD",
+    oct: "BURST_8",
+    myriad: "BURST_X",
+    bifur: "Y_SHAPE",
+    trifur: "W_SHAPE",
+    behind: "I_SHAPE",
+    alpha: "ALPHA",
+    gamma: "GAMMA",
+    tau: "TAU",
+    omega: "OMEGA",
+    phi: "PHI",
+    sigma: "SIGMA",
+    mu: "MU",
+    zeta: "ZETA",
+    addtrig: "ADD_TRIGGER",
+    addtimer: "ADD_TIMER",
+    adddeath: "ADD_DEATH_TRIGGER",
+    bolt_t: "LIGHT_BULLET_TRIGGER",
+    bolt_tt: "LIGHT_BULLET_TRIGGER_2",
+    arrow_t: "BULLET_TRIGGER",
+    fbolt_t: "GRENADE_TRIGGER",
+    bubble_t: "BUBBLESHOT_TRIGGER",
+    eorb_t: "SLOW_BULLET_TRIGGER",
+    crystal_t: "MINE_DEATH_TRIGGER",
+    dormant_t: "PIPE_BOMB_DEATH_TRIGGER",
+    bolt_ti: "LIGHT_BULLET_TIMER",
+    arrow_ti: "BULLET_TIMER",
+    spit_ti: "SPITTER_TIMER",
+    esph_ti: "BOUNCY_ORB_TIMER",
+    eorb_ti: "SLOW_BULLET_TIMER",
+    ldrill_ti: "LASER_LUMINOUS_DRILL",
+    void_d: "BLACK_HOLE_DEATH_TRIGGER"
+  };
+  var floorTier = (floor) => floor > 10 ? 10 : Math.max(0, (floor - 1) * 6 / 9);
+  function noitaP(id, tier) {
+    const row = NOITA_SPAWN[NOITA_OF[id]];
+    if (!row) return 0;
+    const lv = row[0].split(",").map(Number), pr = row[1].split(",").map(Number);
+    const k = lv.indexOf(tier);
+    return k < 0 ? 0 : pr[k];
+  }
+  var TIER_FLOOR = { 4: 4 };
+  function modWeight(id, floor) {
+    const t = floorTier(floor);
+    if (floor < (TIER_FLOOR[tierOf(id)] || 0)) return 0;
+    if (t >= 10) return Math.max(noitaP(id, 10), noitaP(id, 6));
+    const a = Math.floor(t), f = t - a;
+    return noitaP(id, a) * (1 - f) + noitaP(id, a + 1) * f;
+  }
+  function rollMod(rnd2, floor, skip) {
+    let total = 0;
+    for (const id of ALL_IDS) if (!skip || !skip[id]) total += modWeight(id, floor);
+    let r = rnd2() * total;
+    for (const id of ALL_IDS) {
+      if (skip && skip[id]) continue;
+      r -= modWeight(id, floor);
+      if (r <= 0) return id;
+    }
+    return "bolt";
+  }
+
+  // src/spells/guns.js
+  var hueFromName = (name) => {
+    let h3 = 0;
+    for (let i = 0; i < name.length; i++) h3 = h3 * 31 + name.charCodeAt(i) >>> 0;
+    return h3 % 360;
+  };
+  var gunHue = (g) => g && g.hue != null ? g.hue : hueFromName(g ? g.name : "");
+  var gunColor = (g) => "hsl(" + gunHue(g) + ", var(--gun-s), var(--gun-l))";
+  function gunPrice(g) {
+    const rate = 1 / Math.max(0.05, g.castDelay) + 1 / Math.max(0.1, g.recharge);
+    const v = g.cap * 20 + rate * 7 + g.manaMax * 0.1 + g.manaRegen * 0.3 + (g.multi - 1) * 45 + ((g.speedMul || 1) - 1) * 40 - g.spread * 3 + (g.shuffle ? -30 : 20);
+    return Math.max(45, Math.round(v / 5) * 5);
+  }
+  var isGunShop = (floor) => floor % 2 === 0;
+  var GUN_A = [
+    "Rusty",
+    "Bone",
+    "Cracked",
+    "Copper",
+    "Glass",
+    "Ivory",
+    "Molten",
+    "Static",
+    "Hollow",
+    "Ember",
+    "Quartz",
+    "Iron",
+    "Pale",
+    "Gilded"
+  ];
+  var GUN_B = [
+    "Pistol",
+    "Repeater",
+    "Carbine",
+    "Scattergun",
+    "Lance",
+    "Sidearm",
+    "Blaster",
+    "Cannon",
+    "Spitter",
+    "Wand"
+  ];
+  function shuffleOrder(g) {
+    g.order = g.slots.map((_, i) => i);
+    if (g.shuffle) for (let i = g.order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [g.order[i], g.order[j]] = [g.order[j], g.order[i]];
+    }
+  }
+  function resetGun(g) {
+    g.idx = 0;
+    g.delayT = 0;
+    g.rechT = 0;
+    shuffleOrder(g);
+    return g;
+  }
+  var GUN_LV_MAX = 10;
+  var RARE_GUN = 0.2;
+  var GUN_RANGE = {
+    // [worst, best]
+    cap: [2, 25],
+    castDelay: [1.5, 0.01],
+    recharge: [1.5, 0.01],
+    manaMax: [50, 1e3],
+    manaRegen: [10, 500],
+    spread: [20, 0],
+    speedMul: [0.5, 2]
+  };
+  var GUN_LV_COL = [
+    "#9a9a9a",
+    "#d8d8d8",
+    "#5fd35f",
+    "#3fc9a8",
+    "#4aa3ff",
+    "#7a7aff",
+    "#b565ff",
+    "#ff5fcf",
+    "#ff9a2a",
+    "#ffd23c"
+  ];
+  var gunLvTier = (lvl) => Math.min(1, Math.max(0, (lvl - 1) / (GUN_LV_MAX - 1)));
+  function gunStat(rnd2, k, t) {
+    const [w, b] = GUN_RANGE[k];
+    const f = rnd2() * (1 - t) + rnd2() * 0.1 * t;
+    return b + (w - b) * f;
+  }
+  function gunLevel(floor, rnd2) {
+    const base = Math.min(GUN_LV_MAX, Math.max(1, floor));
+    if (base < GUN_LV_MAX && rnd2() < RARE_GUN) return base + 1 + Math.floor(rnd2() * (GUN_LV_MAX - base));
+    return base;
+  }
+  function caveGun(lvl, rnd2) {
+    return makeGun(rnd2, Math.min(GUN_LV_MAX, Math.max(1, Math.floor(lvl))));
+  }
+  function makeGun(rnd2, lvl) {
+    const t = gunLvTier(lvl);
+    const cap = Math.max(2, Math.min(25, Math.round(gunStat(rnd2, "cap", t))));
+    const g = {
+      name: GUN_A[Math.floor(rnd2() * GUN_A.length)] + " " + GUN_B[Math.floor(rnd2() * GUN_B.length)],
+      lvl,
+      cap,
+      castDelay: gunStat(rnd2, "castDelay", t),
+      recharge: gunStat(rnd2, "recharge", t),
+      manaMax: Math.round(gunStat(rnd2, "manaMax", t)),
+      manaRegen: Math.round(gunStat(rnd2, "manaRegen", t)),
+      spread: gunStat(rnd2, "spread", t),
+      speedMul: gunStat(rnd2, "speedMul", t),
+      multi: rnd2() < 0.1 + t * 0.4 ? 2 : 1,
+      shuffle: rnd2() < 0.5 * (1 - t),
+      slots: new Array(cap).fill(null),
+      hue: Math.floor(rnd2() * 360)
+    };
+    const used = 1 + Math.floor(rnd2() * Math.min(cap, 2 + t * 3));
+    const spots = g.slots.map((_, i) => i).sort(() => rnd2() - 0.5).slice(0, used);
+    const asFloor = 1 + t * 5;
+    spots.forEach((slot, n) => {
+      g.slots[slot] = n === 0 ? SEED_SHOTS[Math.floor(rnd2() * SEED_SHOTS.length)] : rollMod(rnd2, asFloor);
+    });
+    if (!g.slots.some((id) => id && MODS[id].kind === "shot")) g.slots[spots[0]] = "bolt";
+    g.mana = g.manaMax;
+    return resetGun(g);
+  }
+  function startingGuns() {
+    const pistol = resetGun({
+      name: "Scratch Pistol",
+      cap: 3,
+      castDelay: 0.32,
+      recharge: 1.7,
+      manaMax: 90,
+      manaRegen: 22,
+      spread: 5,
+      multi: 1,
+      shuffle: false,
+      mana: 90,
+      speedMul: 1,
+      slots: ["bolt", null, null],
+      hue: Math.floor(Math.random() * 360)
+    });
+    const pickaxe = resetGun({
+      name: "Pick Axe",
+      cap: 1,
+      castDelay: 0.05,
+      recharge: 1,
+      manaMax: 120,
+      manaRegen: 60,
+      spread: 0,
+      multi: 1,
+      shuffle: false,
+      mana: 120,
+      speedMul: 1,
+      slots: ["saw"],
+      hue: 20
+    });
+    return [pistol, pickaxe, null, null];
+  }
+  var gunLvCol = (g) => g && g.lvl ? GUN_LV_COL[Math.min(GUN_LV_MAX, g.lvl) - 1] : null;
+  function gunAccent(g) {
+    if (g && g.lvl) return gunLvCol(g);
+    if (g) {
+      for (const id of g.slots) if (id && MODS[id].kind === "shot") return famCol(id);
+    }
+    return COL.bullet;
+  }
+
+  // src/save/save.js
+  var SAVE_KEY = "caverunner-save";
+  var GUN_DEFAULTS = {
+    name: "Gun",
+    castDelay: 0.2,
+    recharge: 0.5,
+    manaMax: 100,
+    manaRegen: 30,
+    spread: 0,
+    multi: 1,
+    shuffle: false,
+    speedMul: 1,
+    hue: 0
+  };
+  function cleanGun(g) {
+    if (!g || typeof g !== "object" || !Array.isArray(g.slots) || !g.slots.length) return null;
+    const out = Object.assign({}, GUN_DEFAULTS, g);
+    out.slots = g.slots.map((id) => id && MODS[id] ? id : null);
+    out.cap = out.slots.length;
+    out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
+    return resetGun(out);
+  }
+  function cleanLoadout(lo) {
+    lo = lo && typeof lo === "object" ? lo : {};
+    const guns = [0, 1, 2, 3].map((i) => cleanGun((lo.guns || [])[i]));
+    if (!guns.some(Boolean)) return null;
+    const num2 = (v, d) => Number.isFinite(v) ? v : d;
+    let sel = num2(lo.sel, 0);
+    if (!guns[sel]) sel = guns.findIndex(Boolean);
+    return {
+      guns,
+      sel,
+      bag: (Array.isArray(lo.bag) ? lo.bag : []).filter((id) => MODS[id]),
+      perks: (Array.isArray(lo.perks) ? lo.perks : []).filter((id) => PERKS[id]),
+      gold: Math.max(0, num2(lo.gold, START_GOLD)),
+      maxBonus: Math.max(0, num2(lo.maxBonus, 0)),
+      usedLives: Math.max(0, num2(lo.usedLives, 0)),
+      debug: !!lo.debug
+    };
+  }
+  function readSave(raw) {
+    let s;
+    try {
+      s = JSON.parse(raw);
+    } catch (_) {
+      return null;
+    }
+    if (!s || typeof s !== "object") return null;
+    const loadout = cleanLoadout(s.loadout);
+    if (!loadout) return null;
+    const floor = Math.max(1, Math.floor(Number(s.floor) || 1));
+    const out = { loadout, floor, hp: Number.isFinite(s.hp) && s.hp > 0 ? s.hp : null, level: null };
+    const L = s.level;
+    if (s.ver === VERSION && L && Number.isFinite(L.seed)) {
+      out.level = {
+        seed: L.seed,
+        owned: (Array.isArray(L.owned) ? L.owned : []).filter((id) => PERKS[id]),
+        alive: Array.isArray(L.alive) ? L.alive : null,
+        sold: Array.isArray(L.sold) ? L.sold : [],
+        rooms: Array.isArray(L.rooms) ? L.rooms : [],
+        pickups: Array.isArray(L.pickups) ? L.pickups.map((q) => {
+          if (!q || typeof q !== "object") return null;
+          if (q.kind === "mod") return MODS[q.id] ? q : null;
+          if (q.kind === "gun") {
+            const gun = cleanGun(q.gun);
+            return gun ? Object.assign({}, q, { gun }) : null;
+          }
+          return null;
+        }).filter(Boolean) : null
+      };
+    }
+    return out;
+  }
+  var loadSave = () => {
+    try {
+      return readSave(localStorage.getItem(SAVE_KEY));
+    } catch (_) {
+      return null;
+    }
+  };
+  var clearSave = () => {
+    try {
+      localStorage.removeItem(SAVE_KEY);
+    } catch (_) {
+    }
+  };
 
   // src/world/strata.js
   function timberFrame(mat, set, R, T, xa, xb, y, old, fy, maxH) {
@@ -8623,537 +8735,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return false;
   }
 
-  // src/spells/spawn.js
-  var NOITA_SPAWN = {
-    LIGHT_BULLET: ["0,1,2", "2,1,0.5"],
-    LIGHT_BULLET_TRIGGER: ["0,1,2,3", "1,0.5,0.5,0.5"],
-    LIGHT_BULLET_TRIGGER_2: ["2,3,5,6,10", "1,0.5,1,1,0.2"],
-    LIGHT_BULLET_TIMER: ["1,2,3", "0.5,0.5,0.75"],
-    BULLET: ["1,2,3,4,5", "1,1,1,0.8,0.5"],
-    BULLET_TRIGGER: ["1,2,3,4,5", "0.5,0.5,0.5,0.6,0.5"],
-    BULLET_TIMER: ["2,3,4,5,6", "0.5,0.5,0.5,0.5,0.6"],
-    HEAVY_BULLET: ["1,2,3,4,5,6", "0.5,1,1,1,1,1"],
-    SLOW_BULLET: ["1,2,3,4", "1,1,1,1"],
-    SLOW_BULLET_TRIGGER: ["1,2,3,4,5", "0.5,0.5,0.5,0.5,1"],
-    SLOW_BULLET_TIMER: ["1,2,3,4,5,6", "0.5,0.5,0.5,0.5,1,1"],
-    BLACK_HOLE: ["0,2,4,5", "0.8,0.8,0.8,0.8"],
-    BLACK_HOLE_DEATH_TRIGGER: ["2,4,5,6", "0.5,0.5,0.5,0.5"],
-    SPITTER: ["0,1,2,3", "1,1,1,0.5"],
-    SPITTER_TIMER: ["0,1,2,3", "0.5,0.5,0.5,1"],
-    BUBBLESHOT: ["0,1,2,3", "1,0.6,1,0.5"],
-    BUBBLESHOT_TRIGGER: ["1,2,3", "0.5,0.5,1"],
-    DISC_BULLET: ["0,2,4", "1,1,0.6"],
-    BOUNCY_ORB: ["0,2,4", "1,1,1"],
-    BOUNCY_ORB_TIMER: ["0,2,4", "0.5,0.5,0.5"],
-    RUBBER_BALL: ["0,1,6", "1,1,0.2"],
-    POLLEN: ["0,1,3,4", "0.6,1,1,0.6"],
-    LANCE: ["1,2,5,6", "0.9,1,0.8,1"],
-    ROCKET: ["1,2,3,4,5", "1,1,1,0.5,0.3"],
-    GRENADE: ["0,1,2,3,4", "1,1,0.5,0.25,0.2"],
-    GRENADE_TRIGGER: ["0,1,2,3,4,5", "0.5,0.5,0.2,0.5,0.5,1"],
-    MINE: ["1,3,4,6", "1,0.75,1,0.5"],
-    MINE_DEATH_TRIGGER: ["2,6", "1,1"],
-    PIPE_BOMB: ["2,3,4", "1,1,0.6"],
-    PIPE_BOMB_DEATH_TRIGGER: ["2,3,4,5", "0.6,0.8,1,0.8"],
-    LIGHTNING: ["1,2,5,6", "1,0.9,0.7,1"],
-    LASER_EMITTER: ["1,2,3,4", "0.2,0.8,1,0.5"],
-    DIGGER: ["1,2", "1,0.5"],
-    CHAINSAW: ["0,2", "1,1"],
-    LUMINOUS_DRILL: ["0,2,10", "1,1,0.1"],
-    LASER_LUMINOUS_DRILL: ["0,2,6,10", "1,1,0.2,0.1"],
-    CHAIN_BOLT: ["0,4,5,6", "0.75,1,0.8,0.6"],
-    FIREBALL: ["0,3,4,6", "1,0.7,1,0.5"],
-    METEOR: ["4,5,6,10", "0.6,0.6,0.7,0.5"],
-    BUCKSHOT: ["0,1,2,3,4", "1,1,0.9,0.9,0.6"],
-    BOMB: ["0,1,2,3,4,5,6", "1,1,1,1,0.5,0.5,0.1"],
-    DEATH_CROSS: ["1,2,3,4,5,6", "1,0.8,0.6,0.5,0.5,0.3"],
-    NUKE: ["1,5,6,10", "0.3,1,1,0.2"],
-    TELEPORT_PROJECTILE: ["0,1,2,4,5,6", "0.6,0.6,0.6,0.4,0.4,0.4"],
-    TELEPORT_PROJECTILE_SHORT: ["0,1,2,4,5,6", "0.6,0.6,0.6,0.4,0.4,0.4"],
-    PURPLE_EXPLOSION_FIELD: ["0,1,2,4,5,6", "0.7,1,0.7,0.5,0.5,0.3"],
-    LONG_DISTANCE_CAST: ["0,1,2,4,5,6", "0.6,0.7,0.8,0.6,0.3,0.4"],
-    TELEPORT_CAST: ["1,2,4,5,6", "0.6,0.6,0.6,0.8,1"],
-    SUPER_TELEPORT_CAST: ["2,4,5,6", "0.2,0.6,0.8,0.8"],
-    BURST_2: ["0,1,2,3,4,5,6", "0.8,0.8,0.8,0.8,0.8,0.8,0.8"],
-    BURST_3: ["1,2,3,4,5,6", "0.7,0.7,0.7,0.7,0.7,0.7"],
-    BURST_4: ["2,3,4,5,6", "0.4,0.5,0.6,0.6,0.6"],
-    BURST_8: ["5,6,10", "0.1,0.1,0.5"],
-    BURST_X: ["5,6,10", "0.1,0.1,0.5"],
-    SCATTER_3: ["0,1,2,3", "0.6,0.7,0.7,0.8"],
-    I_SHAPE: ["1,2,3", "0.4,0.5,0.3"],
-    Y_SHAPE: ["0,1,2,3", "0.8,0.5,0.4,0.3"],
-    W_SHAPE: ["2,3,4,5,6", "0.4,0.3,0.5,0.3,0.3"],
-    SPREAD_REDUCE: ["1,2,3,4,5,6", "0.8,0.8,0.8,0.8,0.7,0.6"],
-    HEAVY_SPREAD: ["0,1,2,4,5,6", "0.6,0.7,0.8,0.8,0.8,0.6"],
-    RECHARGE: ["1,2,3,4,5,6", "0.8,0.9,1,0.8,0.9,1"],
-    LIFETIME: ["3,4,5,6,10", "0.5,0.5,0.5,0.75,0.1"],
-    LIFETIME_DOWN: ["3,4,5,6,10", "0.5,0.5,0.75,0.5,0.1"],
-    MANA_REDUCE: ["1,2,3,4,5,6", "0.7,0.9,1,1,1,1"],
-    BLOOD_MAGIC: ["5,6,10", "0.3,0.7,0.5"],
-    MONEY_MAGIC: ["3,5,6,10", "0.2,0.8,0.3,0.5"],
-    BLOOD_TO_POWER: ["2,5,6,10", "0.2,0.8,0.2,0.5"],
-    QUANTUM_SPLIT: ["2,3,4,5,6", "0.5,0.6,0.5,0.5,1"],
-    GRAVITY: ["2,3,4,5,6", "0.5,0.4,0.4,0.3,0.3"],
-    GRAVITY_ANTI: ["2,3,4,5,6", "0.5,0.4,0.4,0.3,0.3"],
-    PINGPONG_PATH: ["1,3,5", "0.4,0.5,0.4"],
-    HORIZONTAL_ARC: ["1,3,5", "0.4,0.4,0.4"],
-    ORBIT_SHOT: ["1,2,3,4", "0.2,0.4,0.4,0.3"],
-    SPIRALING_SHOT: ["1,2,3,4", "0.2,0.3,0.4,0.5"],
-    BOUNCE: ["2,3,4,6", "1,1,0.4,0.2"],
-    HOMING: ["1,2,3,4,5,6", "0.1,0.4,0.4,0.4,0.4,0.4"],
-    HOMING_SHORT: ["1,2,3,4,5,6", "0.4,0.8,1,0.4,0.3,0.1"],
-    HOMING_SHOOTER: ["2,3,4,6", "0.2,0.3,0.2,0.2"],
-    AUTOAIM: ["2,3,4,5,6", "0.4,0.4,0.4,0.4,0.4"],
-    HOMING_ACCELERATING: ["1,2,3,4", "0.1,0.3,0.3,0.5"],
-    PIERCING_SHOT: ["2,3,4,5,6", "0.4,0.5,0.6,0.6,0.4"],
-    CLIPPING_SHOT: ["2,3,4,5,6", "0.2,0.3,0.6,0.4,0.6"],
-    DAMAGE: ["1,2,3,4,5", "0.6,0.6,0.8,0.6,0.6"],
-    DAMAGE_RANDOM: ["3,4,5", "0.7,0.6,0.6"],
-    BLOODLUST: ["1,3,4,5,6", "0.2,0.3,0.6,0.7,0.3"],
-    DAMAGE_FOREVER: ["2,3,4,5,6,10", "0.2,0.3,0.6,0.5,0.2,0.2"],
-    CRITICAL_HIT: ["1,2,3,4,5", "0.5,0.6,0.6,0.7,0.6"],
-    HEAVY_SHOT: ["2,3,4", "0.4,0.4,0.5"],
-    LIGHT_SHOT: ["2,3,4", "0.3,0.5,0.4"],
-    KNOCKBACK: ["3,5", "0.7,0.6"],
-    RECOIL: ["2,4", "0.6,0.7"],
-    RECOIL_DAMPER: ["3,6", "0.6,0.7"],
-    SPEED: ["1,2,3", "1,0.5,0.5"],
-    ACCELERATING_SHOT: ["2,3,4", "0.5,0.4,1"],
-    EXPLOSIVE_PROJECTILE: ["2,3,4", "1,1,0.8"],
-    CLUSTERMOD: ["1,2,3", "0.5,1,0.6"],
-    EXPLOSION: ["0,2,4,5", "0.5,1,1,0.7"],
-    FIRE_BLAST: ["0,1,3,5", "0.5,0.7,0.6,0.4"],
-    FREEZE_FIELD: ["0,2,4,5", "0.3,0.6,0.7,0.3"],
-    REGENERATION_FIELD: ["1,2,3,4", "0.3,0.3,0.4,0.3"],
-    SHIELD_FIELD: ["2,3,4,5,6", "0.3,0.3,0.4,0.5,0.3"],
-    VACUUM_ENTITIES: ["2,3,5,6", "0.3,0.7,0.3,0.4"],
-    CLOUD_THUNDER: ["0,1,2,3,4,5", "0.3,0.3,0.2,0.3,0.4,0.5"],
-    MATTER_EATER: ["1,2,4,5,10", "0.1,0.9,0.1,0.2,0.2"],
-    BOUNCE_EXPLOSION: ["2,3,4,5", "0.2,0.6,0.8,0.8"],
-    ALL_DISCS: ["0,6,10", "0.1,0.05,1"],
-    RESET: ["10", "1"],
-    ADD_TRIGGER: ["3,4,5,10", "0.3,0.6,0.6,1"],
-    ADD_TIMER: ["3,4,5,10", "0.3,0.6,0.6,1"],
-    ADD_DEATH_TRIGGER: ["3,4,5,10", "0.3,0.6,0.6,1"],
-    ALPHA: ["5,6,10", "0.1,0.2,1"],
-    GAMMA: ["5,6,10", "0.1,0.2,1"],
-    TAU: ["5,6,10", "0.1,0.2,1"],
-    OMEGA: ["5,6,10", "0.1,0.1,1"],
-    MU: ["5,6,10", "0.1,0.2,1"],
-    PHI: ["5,6,10", "0.1,0.2,1"],
-    SIGMA: ["4,5,10", "0.1,0.2,1"],
-    ZETA: ["2,5,10", "0.2,0.4,0.5"],
-    // ours alone: no Noita twin
-    OURS_COLD: ["3,4,5,6", "0.2,0.3,0.4,0.5"],
-    OURS_BATTERY: ["2,3,4,5,6", "0.3,0.4,0.5,0.5,0.5"]
-  };
-  var NOITA_OF = {
-    bolt: "LIGHT_BULLET",
-    spark: "LIGHT_BULLET",
-    slug: "HEAVY_BULLET",
-    buck: "BUCKSHOT",
-    lance: "LANCE",
-    orb: "RUBBER_BALL",
-    saw: "CHAINSAW",
-    blast: "BOMB",
-    dmg_up: "DAMAGE",
-    heavy: "HEAVY_SHOT",
-    light: "LIGHT_SHOT",
-    speed: "SPEED",
-    accel: "ACCELERATING_SHOT",
-    homing: "HOMING",
-    seeker: "HOMING_ACCELERATING",
-    bounce: "BOUNCE",
-    pierce: "PIERCING_SHOT",
-    tight: "SPREAD_REDUCE",
-    scatter: "SCATTER_3",
-    big: "DAMAGE",
-    range: "LIFETIME",
-    brief: "LIFETIME_DOWN",
-    tip: "EXPLOSIVE_PROJECTILE",
-    borer: "CLIPPING_SHOT",
-    fast: "RECHARGE",
-    over: "HEAVY_SHOT",
-    double: "BURST_2",
-    triple: "BURST_3",
-    quad: "BURST_4",
-    cheap: "MANA_REDUCE",
-    trigger: "RECHARGE",
-    over_heat: "DAMAGE_RANDOM",
-    cold: "OURS_COLD",
-    recharge: "RECHARGE",
-    battery: "OURS_BATTERY",
-    arrow: "BULLET",
-    missile: "ROCKET",
-    fball: "FIREBALL",
-    fbolt: "GRENADE",
-    bubble: "BUBBLESHOT",
-    spit: "SPITTER",
-    eorb: "SLOW_BULLET",
-    esph: "BOUNCY_ORB",
-    zap: "LIGHTNING",
-    chain: "CHAIN_BOLT",
-    void: "BLACK_HOLE",
-    digbolt: "DIGGER",
-    glance: "LANCE",
-    plasma: "LASER_EMITTER",
-    ldrill: "LUMINOUS_DRILL",
-    cross: "DEATH_CROSS",
-    pollen: "POLLEN",
-    disc: "DISC_BULLET",
-    nuke: "NUKE",
-    meteor: "METEOR",
-    tele: "TELEPORT_PROJECTILE",
-    teleshort: "TELEPORT_PROJECTILE_SHORT",
-    boom: "EXPLOSION",
-    brim: "FIRE_BLAST",
-    crystal: "MINE",
-    dormant: "PIPE_BOMB",
-    stillc: "FREEZE_FIELD",
-    shieldc: "SHIELD_FIELD",
-    vigour: "REGENERATION_FIELD",
-    storm: "CLOUD_THUNDER",
-    vacfield: "VACUUM_ENTITIES",
-    glitter: "PURPLE_EXPLOSION_FIELD",
-    refresh: "RESET",
-    blood: "BLOOD_MAGIC",
-    bpower: "BLOOD_TO_POWER",
-    gpower: "MONEY_MAGIC",
-    farcast: "LONG_DISTANCE_CAST",
-    telecast: "TELEPORT_CAST",
-    warpcast: "SUPER_TELEPORT_CAST",
-    sawstorm: "ALL_DISCS",
-    knock: "KNOCKBACK",
-    kick: "RECOIL",
-    damper: "RECOIL_DAMPER",
-    crit: "CRITICAL_HIT",
-    gravmod: "GRAVITY",
-    float: "GRAVITY_ANTI",
-    boomer: "HOMING_SHOOTER",
-    spiral: "SPIRALING_SHOT",
-    pong: "PINGPONG_PATH",
-    orbit: "ORBIT_SHOT",
-    autoaim: "AUTOAIM",
-    nearhome: "HOMING_SHORT",
-    flat: "HORIZONTAL_ARC",
-    eater: "MATTER_EATER",
-    lust: "BLOODLUST",
-    manapow: "DAMAGE_FOREVER",
-    split: "QUANTUM_SPLIT",
-    cluster: "CLUSTERMOD",
-    bboom: "BOUNCE_EXPLOSION",
-    hspread: "HEAVY_SPREAD",
-    oct: "BURST_8",
-    myriad: "BURST_X",
-    bifur: "Y_SHAPE",
-    trifur: "W_SHAPE",
-    behind: "I_SHAPE",
-    alpha: "ALPHA",
-    gamma: "GAMMA",
-    tau: "TAU",
-    omega: "OMEGA",
-    phi: "PHI",
-    sigma: "SIGMA",
-    mu: "MU",
-    zeta: "ZETA",
-    addtrig: "ADD_TRIGGER",
-    addtimer: "ADD_TIMER",
-    adddeath: "ADD_DEATH_TRIGGER",
-    bolt_t: "LIGHT_BULLET_TRIGGER",
-    bolt_tt: "LIGHT_BULLET_TRIGGER_2",
-    arrow_t: "BULLET_TRIGGER",
-    fbolt_t: "GRENADE_TRIGGER",
-    bubble_t: "BUBBLESHOT_TRIGGER",
-    eorb_t: "SLOW_BULLET_TRIGGER",
-    crystal_t: "MINE_DEATH_TRIGGER",
-    dormant_t: "PIPE_BOMB_DEATH_TRIGGER",
-    bolt_ti: "LIGHT_BULLET_TIMER",
-    arrow_ti: "BULLET_TIMER",
-    spit_ti: "SPITTER_TIMER",
-    esph_ti: "BOUNCY_ORB_TIMER",
-    eorb_ti: "SLOW_BULLET_TIMER",
-    ldrill_ti: "LASER_LUMINOUS_DRILL",
-    void_d: "BLACK_HOLE_DEATH_TRIGGER"
-  };
-  var floorTier = (floor) => floor > 10 ? 10 : Math.max(0, (floor - 1) * 6 / 9);
-  function noitaP(id, tier) {
-    const row = NOITA_SPAWN[NOITA_OF[id]];
-    if (!row) return 0;
-    const lv = row[0].split(",").map(Number), pr = row[1].split(",").map(Number);
-    const k = lv.indexOf(tier);
-    return k < 0 ? 0 : pr[k];
-  }
-  var TIER_FLOOR = { 4: 4 };
-  function modWeight(id, floor) {
-    const t = floorTier(floor);
-    if (floor < (TIER_FLOOR[tierOf(id)] || 0)) return 0;
-    if (t >= 10) return Math.max(noitaP(id, 10), noitaP(id, 6));
-    const a = Math.floor(t), f = t - a;
-    return noitaP(id, a) * (1 - f) + noitaP(id, a + 1) * f;
-  }
-  function rollMod(rnd2, floor, skip) {
-    let total = 0;
-    for (const id of ALL_IDS) if (!skip || !skip[id]) total += modWeight(id, floor);
-    let r = rnd2() * total;
-    for (const id of ALL_IDS) {
-      if (skip && skip[id]) continue;
-      r -= modWeight(id, floor);
-      if (r <= 0) return id;
-    }
-    return "bolt";
-  }
-
-  // src/spells/guns.js
-  var hueFromName = (name) => {
-    let h3 = 0;
-    for (let i = 0; i < name.length; i++) h3 = h3 * 31 + name.charCodeAt(i) >>> 0;
-    return h3 % 360;
-  };
-  var gunHue = (g) => g && g.hue != null ? g.hue : hueFromName(g ? g.name : "");
-  var gunColor = (g) => "hsl(" + gunHue(g) + ", var(--gun-s), var(--gun-l))";
-  function gunPrice(g) {
-    const rate = 1 / Math.max(0.05, g.castDelay) + 1 / Math.max(0.1, g.recharge);
-    const v = g.cap * 20 + rate * 7 + g.manaMax * 0.1 + g.manaRegen * 0.3 + (g.multi - 1) * 45 + ((g.speedMul || 1) - 1) * 40 - g.spread * 3 + (g.shuffle ? -30 : 20);
-    return Math.max(45, Math.round(v / 5) * 5);
-  }
-  var isGunShop = (floor) => floor % 2 === 0;
-  var GUN_A = [
-    "Rusty",
-    "Bone",
-    "Cracked",
-    "Copper",
-    "Glass",
-    "Ivory",
-    "Molten",
-    "Static",
-    "Hollow",
-    "Ember",
-    "Quartz",
-    "Iron",
-    "Pale",
-    "Gilded"
-  ];
-  var GUN_B = [
-    "Pistol",
-    "Repeater",
-    "Carbine",
-    "Scattergun",
-    "Lance",
-    "Sidearm",
-    "Blaster",
-    "Cannon",
-    "Spitter",
-    "Wand"
-  ];
-  function shuffleOrder(g) {
-    g.order = g.slots.map((_, i) => i);
-    if (g.shuffle) for (let i = g.order.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [g.order[i], g.order[j]] = [g.order[j], g.order[i]];
-    }
-  }
-  function resetGun(g) {
-    g.idx = 0;
-    g.delayT = 0;
-    g.rechT = 0;
-    shuffleOrder(g);
-    return g;
-  }
-  var GUN_LV_MAX = 10;
-  var RARE_GUN = 0.2;
-  var GUN_RANGE = {
-    // [worst, best]
-    cap: [2, 25],
-    castDelay: [1.5, 0.01],
-    recharge: [1.5, 0.01],
-    manaMax: [50, 1e3],
-    manaRegen: [10, 500],
-    spread: [20, 0],
-    speedMul: [0.5, 2]
-  };
-  var GUN_LV_COL = [
-    "#9a9a9a",
-    "#d8d8d8",
-    "#5fd35f",
-    "#3fc9a8",
-    "#4aa3ff",
-    "#7a7aff",
-    "#b565ff",
-    "#ff5fcf",
-    "#ff9a2a",
-    "#ffd23c"
-  ];
-  var gunLvTier = (lvl) => Math.min(1, Math.max(0, (lvl - 1) / (GUN_LV_MAX - 1)));
-  function gunStat(rnd2, k, t) {
-    const [w, b] = GUN_RANGE[k];
-    const f = rnd2() * (1 - t) + rnd2() * 0.1 * t;
-    return b + (w - b) * f;
-  }
-  function gunLevel(floor, rnd2) {
-    const base = Math.min(GUN_LV_MAX, Math.max(1, floor));
-    if (base < GUN_LV_MAX && rnd2() < RARE_GUN) return base + 1 + Math.floor(rnd2() * (GUN_LV_MAX - base));
-    return base;
-  }
-  function caveGun(lvl, rnd2) {
-    return makeGun(rnd2, Math.min(GUN_LV_MAX, Math.max(1, Math.floor(lvl))));
-  }
-  function makeGun(rnd2, lvl) {
-    const t = gunLvTier(lvl);
-    const cap = Math.max(2, Math.min(25, Math.round(gunStat(rnd2, "cap", t))));
-    const g = {
-      name: GUN_A[Math.floor(rnd2() * GUN_A.length)] + " " + GUN_B[Math.floor(rnd2() * GUN_B.length)],
-      lvl,
-      cap,
-      castDelay: gunStat(rnd2, "castDelay", t),
-      recharge: gunStat(rnd2, "recharge", t),
-      manaMax: Math.round(gunStat(rnd2, "manaMax", t)),
-      manaRegen: Math.round(gunStat(rnd2, "manaRegen", t)),
-      spread: gunStat(rnd2, "spread", t),
-      speedMul: gunStat(rnd2, "speedMul", t),
-      multi: rnd2() < 0.1 + t * 0.4 ? 2 : 1,
-      shuffle: rnd2() < 0.5 * (1 - t),
-      slots: new Array(cap).fill(null),
-      hue: Math.floor(rnd2() * 360)
-    };
-    const used = 1 + Math.floor(rnd2() * Math.min(cap, 2 + t * 3));
-    const spots = g.slots.map((_, i) => i).sort(() => rnd2() - 0.5).slice(0, used);
-    const asFloor = 1 + t * 5;
-    spots.forEach((slot, n) => {
-      g.slots[slot] = n === 0 ? SEED_SHOTS[Math.floor(rnd2() * SEED_SHOTS.length)] : rollMod(rnd2, asFloor);
-    });
-    if (!g.slots.some((id) => id && MODS[id].kind === "shot")) g.slots[spots[0]] = "bolt";
-    g.mana = g.manaMax;
-    return resetGun(g);
-  }
-  function startingGuns() {
-    const pistol = resetGun({
-      name: "Scratch Pistol",
-      cap: 3,
-      castDelay: 0.32,
-      recharge: 1.7,
-      manaMax: 90,
-      manaRegen: 22,
-      spread: 5,
-      multi: 1,
-      shuffle: false,
-      mana: 90,
-      speedMul: 1,
-      slots: ["bolt", null, null],
-      hue: Math.floor(Math.random() * 360)
-    });
-    const pickaxe = resetGun({
-      name: "Pick Axe",
-      cap: 1,
-      castDelay: 0.05,
-      recharge: 1,
-      manaMax: 120,
-      manaRegen: 60,
-      spread: 0,
-      multi: 1,
-      shuffle: false,
-      mana: 120,
-      speedMul: 1,
-      slots: ["saw"],
-      hue: 20
-    });
-    return [pistol, pickaxe, null, null];
-  }
-  var gunLvCol = (g) => g && g.lvl ? GUN_LV_COL[Math.min(GUN_LV_MAX, g.lvl) - 1] : null;
-  function gunAccent(g) {
-    if (g && g.lvl) return gunLvCol(g);
-    if (g) {
-      for (const id of g.slots) if (id && MODS[id].kind === "shot") return famCol(id);
-    }
-    return COL.bullet;
-  }
-
-  // src/save/save.js
-  var SAVE_KEY = "caverunner-save";
-  var GUN_DEFAULTS = {
-    name: "Gun",
-    castDelay: 0.2,
-    recharge: 0.5,
-    manaMax: 100,
-    manaRegen: 30,
-    spread: 0,
-    multi: 1,
-    shuffle: false,
-    speedMul: 1,
-    hue: 0
-  };
-  function cleanGun(g) {
-    if (!g || typeof g !== "object" || !Array.isArray(g.slots) || !g.slots.length) return null;
-    const out = Object.assign({}, GUN_DEFAULTS, g);
-    out.slots = g.slots.map((id) => id && MODS[id] ? id : null);
-    out.cap = out.slots.length;
-    out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
-    return resetGun(out);
-  }
-  function cleanLoadout(lo) {
-    lo = lo && typeof lo === "object" ? lo : {};
-    const guns = [0, 1, 2, 3].map((i) => cleanGun((lo.guns || [])[i]));
-    if (!guns.some(Boolean)) return null;
-    const num2 = (v, d) => Number.isFinite(v) ? v : d;
-    let sel = num2(lo.sel, 0);
-    if (!guns[sel]) sel = guns.findIndex(Boolean);
-    return {
-      guns,
-      sel,
-      bag: (Array.isArray(lo.bag) ? lo.bag : []).filter((id) => MODS[id]),
-      perks: (Array.isArray(lo.perks) ? lo.perks : []).filter((id) => PERKS[id]),
-      gold: Math.max(0, num2(lo.gold, START_GOLD)),
-      maxBonus: Math.max(0, num2(lo.maxBonus, 0)),
-      usedLives: Math.max(0, num2(lo.usedLives, 0)),
-      debug: !!lo.debug
-    };
-  }
-  function readSave(raw) {
-    let s;
-    try {
-      s = JSON.parse(raw);
-    } catch (_) {
-      return null;
-    }
-    if (!s || typeof s !== "object") return null;
-    const loadout = cleanLoadout(s.loadout);
-    if (!loadout) return null;
-    const floor = Math.max(1, Math.floor(Number(s.floor) || 1));
-    const out = { loadout, floor, hp: Number.isFinite(s.hp) && s.hp > 0 ? s.hp : null, level: null };
-    const L = s.level;
-    if (s.ver === VERSION && L && Number.isFinite(L.seed)) {
-      out.level = {
-        seed: L.seed,
-        owned: (Array.isArray(L.owned) ? L.owned : []).filter((id) => PERKS[id]),
-        alive: Array.isArray(L.alive) ? L.alive : null,
-        sold: Array.isArray(L.sold) ? L.sold : [],
-        rooms: Array.isArray(L.rooms) ? L.rooms : [],
-        pickups: Array.isArray(L.pickups) ? L.pickups.map((q) => {
-          if (!q || typeof q !== "object") return null;
-          if (q.kind === "mod") return MODS[q.id] ? q : null;
-          if (q.kind === "gun") {
-            const gun = cleanGun(q.gun);
-            return gun ? Object.assign({}, q, { gun }) : null;
-          }
-          return null;
-        }).filter(Boolean) : null
-      };
-    }
-    return out;
-  }
-  var loadSave = () => {
-    try {
-      return readSave(localStorage.getItem(SAVE_KEY));
-    } catch (_) {
-      return null;
-    }
-  };
-  var clearSave = () => {
-    try {
-      localStorage.removeItem(SAVE_KEY);
-    } catch (_) {
-    }
-  };
-
   // src/game/systems/webs.js
   var webNear = (L, x, y) => {
     const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, ll = vx * vx + vy * vy || 1;
@@ -9439,6 +9020,483 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.glowN += (Math.random() - 0.5) * 6 * dt;
     W.glowN *= 0.9;
   }
+
+  // src/game/creatures/jelly.js
+  var natural = (W, x, y) => !builtAt(W.zone, x, y);
+  function jellyMove(W, G, e, C) {
+    const { dt, dist, sees, hunting, pcx, pcy } = C, k = e.k;
+    const cold = e.chill && e.chill < 1 ? e.chill : 1;
+    if (jellyStep(e, {
+      solidCell: (cx, cy) => solidCell(W, cx, cy),
+      hunting,
+      goal: { x: pcx, y: pcy },
+      rnd: Math.random,
+      speedMul: cold,
+      rangeMul: sees,
+      stay: W.zone ? ((x, y) => natural(W, x, y)) : null
+    }, dt) === "pulse") puffSpores(W, e);
+    const S = e.je;
+    if (!W.p.dead && e.touch <= 0 && dist < 180) {
+      const t = tentacleTouch(S, W.p.x, W.p.y, W.p.x + PW, W.p.y + PH);
+      if (t) {
+        hurt(W, G, Math.round(kr("jeBite")));
+        e.touch = kr("jeBiteCd");
+        burst(W, t.x, t.y, 5, jellyPal(S.u.col).tent);
+        SFX.creature(k, "bite", t.x, t.y);
+      }
+    }
+    if (hunting && S.inRange && S.aimed && e.cd <= 0) {
+      e.cd = 0.25;
+      const hx = e.x + Math.cos(S.hd) * e.r * 0.9, hy = e.y + Math.sin(S.hd) * e.r * 0.9;
+      if (lineOfSight(W, hx, hy, pcx, pcy)) {
+        e.cd = kr("jeShotCd");
+        const a = Math.atan2(pcy - hy, pcx - hx) + (Math.random() * 2 - 1) * kr("jeSpread") * Math.PI / 180;
+        const v = kr("jeShotSpd"), P = jellyPal(S.u.col);
+        W.enemyShots.push({
+          x: hx,
+          y: hy,
+          vx: Math.cos(a) * v,
+          vy: Math.sin(a) * v,
+          life: 3,
+          col: P.spit,
+          edge: P.spitEdge,
+          shine: P.spitShine,
+          dripCol: P.drip,
+          dripCol2: P.drip2,
+          glow: hexRgb(P.glow),
+          dmg: Math.round(kr("jeShotDmg")),
+          size: kr("jeShotSize"),
+          goo: 1,
+          drip: kr("jeDrip"),
+          da: 0,
+          dripG: kr("jeDripG"),
+          splat: Math.round(kr("jeSplat")),
+          splatV: kr("jeSplatSpd")
+        });
+        SFX.creature(k, "fire", e.x, e.y);
+      }
+    }
+  }
+
+  // src/creatures/spider.js
+  var SPIDER = { hold: 6, feel: 14, step: 1.5, fall: 900 };
+  function spiderSeat(e, S, solidCell2, maxMove) {
+    return surfSeat(e, S, solidCell2, maxMove, SPIDER.hold, SPIDER.feel);
+  }
+  var segNear = (L, x, y) => {
+    const vx = L.bx - L.ax, vy = L.by - L.ay, ll = vx * vx + vy * vy || 1;
+    const u = Math.max(0, Math.min(1, ((x - L.ax) * vx + (y - L.ay) * vy) / ll));
+    return { u, d: Math.hypot(L.ax + vx * u - x, L.ay + vy * u - y) };
+  };
+  function spiderAim(x, y, dx, dy, reach, solidCell2) {
+    for (const a of [0, 0.22, -0.22, 0.45, -0.45]) {
+      const c = Math.cos(a), s = Math.sin(a), ux = dx * c - dy * s, uy = dx * s + dy * c;
+      const d = rayDist(x, y, ux, uy, reach, solidCell2);
+      if (d < reach && d > SPIDER.hold * 2.5) return { dx: ux, dy: uy, len: d };
+    }
+    return null;
+  }
+  function spiderStep(e, env, dt) {
+    const { solidCell: solidCell2, webs, rnd: rnd2 } = env;
+    const S = e.sp || (e.sp = {
+      mode: "fall",
+      vy: 0,
+      nx: 0,
+      ny: -1,
+      on: 0,
+      rest: rnd2() * 0.5,
+      side: 1,
+      line: null,
+      u: 0,
+      dir: 1,
+      shot: null,
+      rx: e.hx,
+      ry: e.hy,
+      ra: rnd2() * 6.28,
+      high: false
+    });
+    S.webT = (S.webT || 0) - dt;
+    roamStep(S, e, dt, rnd2, "sp");
+    const goal = env.hunting ? env.goal : { x: S.rx, y: S.ry };
+    let out = null;
+    if (S.mode === "fall") {
+      S.vy = Math.min(S.vy + SPIDER.fall * dt, 600);
+      const n2 = Math.max(1, Math.ceil(S.vy * dt / SPIDER.step));
+      for (let i = 0; i < n2; i++) {
+        e.y += S.vy * dt / n2;
+        if (e.y > CH * CELL) {
+          e.y = CH * CELL;
+          break;
+        }
+        if (surfNormal(e.x, e.y, SPIDER.hold + 1, solidCell2)) {
+          spiderSeat(e, S, solidCell2, SPIDER.hold);
+          S.mode = "surf";
+          S.vy = 0;
+          S.on = 0;
+          S.rest = 0.1;
+          break;
+        }
+      }
+      return null;
+    }
+    if (S.mode === "shoot") {
+      const sh = S.shot;
+      sh.t += sh.spd * dt;
+      if (sh.t < sh.len) return null;
+      const hx = sh.x + sh.dx * sh.len, hy = sh.y + sh.dy * sh.len;
+      const inx = hx + sh.dx * 1.2, iny = hy + sh.dy * 1.2;
+      S.mode = sh.from;
+      S.shot = null;
+      if (!solidCell2(Math.floor(inx / CELL), Math.floor(iny / CELL))) return null;
+      const L = {
+        ax: sh.x,
+        ay: sh.y,
+        bx: hx - sh.dx * SPIDER.hold,
+        by: hy - sh.dy * SPIDER.hold,
+        a0x: sh.ax0,
+        a0y: sh.ay0,
+        b0x: hx,
+        b0y: hy,
+        ain: sh.ain,
+        bin: { x: inx, y: iny },
+        owner: e
+      };
+      webs.push(L);
+      const mine = webs.filter((w) => w.owner === e);
+      if (mine.length > Math.round(spr("spMaxLines", rnd2))) {
+        const old = mine.find((w) => w !== S.line);
+        if (old) webs.splice(webs.indexOf(old), 1);
+      }
+      S.mode = "line";
+      S.line = L;
+      S.u = 0;
+      S.dir = 1;
+      return "web";
+    }
+    if (S.mode === "line" && webs.indexOf(S.line) < 0) {
+      S.mode = "fall";
+      S.line = null;
+      S.vy = 0;
+      return null;
+    }
+    if (S.mode === "surf" && !surfNormal(e.x, e.y, SPIDER.hold + 2, solidCell2)) {
+      S.mode = "fall";
+      S.vy = 0;
+      return null;
+    }
+    if (S.on <= 0) {
+      if ((S.rest -= dt) > 0) return null;
+      S.on = spr(env.hunting ? "spHuntOn" : "spRoamOn", rnd2);
+      S.spd = env.speed || spr("spSpeed", rnd2);
+      S.arrive = env.hunting ? spr("spArrive", rnd2) : 3;
+      S.dot = spr("spDot", rnd2);
+      decide();
+      if (S.mode === "shoot") return null;
+      if (S.on <= 0) {
+        S.rest = 0.1 + rnd2() * 0.2;
+        return null;
+      }
+    }
+    if (S.mode === "shoot") return null;
+    const speed = (S.spd || spr("spSpeed", rnd2)) * (env.speedMul || 1);
+    const dist = speed * Math.min(dt, S.on);
+    S.on -= dt;
+    const n = Math.max(1, Math.ceil(dist / SPIDER.step));
+    for (let i = 0; i < n && S.mode !== "shoot"; i++) {
+      const st = dist / n;
+      if (S.mode === "surf") {
+        const tx = -S.ny * S.side, ty = S.nx * S.side;
+        e.x += tx * st;
+        e.y += ty * st;
+        if (!spiderSeat(e, S, solidCell2, st * 2)) {
+          e.x -= S.nx * st * 2;
+          e.y -= S.ny * st * 2;
+          if (!spiderSeat(e, S, solidCell2, st * 2)) {
+            S.mode = "fall";
+            S.vy = 0;
+            break;
+          }
+        }
+        const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy) || 1;
+        const high = (gx * S.nx + gy * S.ny) / gd >= S.dot;
+        if (high && !S.high) {
+          S.high = true;
+          decide();
+        } else if (!high) S.high = false;
+        if (gd < (S.arrive || 3) || (-S.ny * gx + S.nx * gy) * S.side < 0) {
+          S.on = 0;
+          break;
+        }
+      } else if (S.mode === "line") {
+        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
+        const ux = (L.bx - L.ax) / len * S.dir, uy = (L.by - L.ay) / len * S.dir;
+        if (!S.go && (goal.x - e.x) * ux + (goal.y - e.y) * uy <= 0) {
+          S.on = 0;
+          break;
+        }
+        S.u += S.dir * st / len;
+        if (S.u >= 1 || S.u <= 0) {
+          S.u = S.u >= 1 ? 1 : 0;
+          e.x = S.u ? L.bx : L.ax;
+          e.y = S.u ? L.by : L.ay;
+          S.mode = "surf";
+          S.line = null;
+          S.go = false;
+          if (!spiderSeat(e, S, solidCell2, SPIDER.hold)) {
+            S.mode = "fall";
+            S.vy = 0;
+            break;
+          }
+          decide();
+          continue;
+        }
+        e.x = L.ax + (L.bx - L.ax) * S.u;
+        e.y = L.ay + (L.by - L.ay) * S.u;
+      }
+    }
+    if (S.on <= 0 && S.rest <= 0) S.rest = spr(env.hunting ? "spHuntOff" : "spRoamOff", rnd2);
+    return out;
+    function decide() {
+      const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
+      if (gd < (S.arrive || 3)) {
+        S.on = 0;
+        return;
+      }
+      const dx = gx / gd, dy = gy / gd;
+      const tryLine = () => {
+        let best = null, bd = spr("spGrab", rnd2);
+        for (const L of webs) {
+          if (L === S.line) continue;
+          const q = segNear(L, e.x, e.y);
+          if (q.d > bd) continue;
+          const len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
+          const ux = (L.bx - L.ax) / len, uy = (L.by - L.ay) / len, al = ux * dx + uy * dy;
+          if (Math.abs(al) < 0.5) continue;
+          if (al > 0 && q.u > 0.97 || al < 0 && q.u < 0.03) continue;
+          best = { L, u: q.u, dir: al > 0 ? 1 : -1 };
+          bd = q.d;
+        }
+        if (!best) return false;
+        S.mode = "line";
+        S.line = best.L;
+        S.u = best.u;
+        S.dir = best.dir;
+        e.x = best.L.ax + (best.L.bx - best.L.ax) * best.u;
+        e.y = best.L.ay + (best.L.by - best.L.ay) * best.u;
+        return true;
+      };
+      const tryShoot = (from) => {
+        if (S.webT > 0 || !env.hunting && gd < 40) return false;
+        const a = spiderAim(e.x, e.y, dx, dy, env.reach || spr("spWeb", rnd2), solidCell2);
+        if (!a) return false;
+        let ax0 = e.x, ay0 = e.y, ain = null;
+        if (from === "surf") {
+          const d = rayDist(e.x, e.y, -S.nx, -S.ny, SPIDER.feel + 4, solidCell2);
+          ax0 = e.x - S.nx * d;
+          ay0 = e.y - S.ny * d;
+          ain = { x: e.x - S.nx * (d + 1.2), y: e.y - S.ny * (d + 1.2) };
+        }
+        S.webT = spr(env.hunting ? "spHuntWeb" : "spRoamWeb", rnd2);
+        S.shot = { spd: spr("spLineSpd", rnd2), x: e.x, y: e.y, dx: a.dx, dy: a.dy, len: a.len, t: 0, from, ax0, ay0, ain };
+        S.mode = "shoot";
+        return true;
+      };
+      if (S.mode === "surf") {
+        const dot = dx * S.nx + dy * S.ny;
+        S.high = dot >= (S.dot || 0.6);
+        if (S.high && (tryLine() || tryShoot("surf"))) return;
+        const t = -S.ny * dx + S.nx * dy;
+        if (Math.abs(t) * gd < 4) {
+          S.on = 0;
+          return;
+        }
+        S.side = t > 0 ? 1 : -1;
+      } else if (S.mode === "line") {
+        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
+        const al = ((L.bx - L.ax) * dx + (L.by - L.ay) * dy) / len;
+        S.go = false;
+        if (Math.abs(al) > 0.3) {
+          S.dir = al > 0 ? 1 : -1;
+          return;
+        }
+        if (tryLine() || tryShoot("line")) return;
+        const da = Math.hypot(goal.x - L.ax, goal.y - L.ay), db = Math.hypot(goal.x - L.bx, goal.y - L.by);
+        S.dir = db < da ? 1 : -1;
+        S.go = true;
+      }
+    }
+  }
+  function drawSpider(ctx, x, y, r, time, phase, flash, col, S) {
+    let nx = 0, ny = -1, side = 1, moving = false;
+    if (S) {
+      if (S.mode === "line" && S.line) {
+        const L = S.line, len = Math.hypot(L.bx - L.ax, L.by - L.ay) || 1;
+        nx = -(L.by - L.ay) / len;
+        ny = (L.bx - L.ax) / len;
+        if (ny > 0) {
+          nx = -nx;
+          ny = -ny;
+        }
+        side = S.dir * (L.bx - L.ax >= 0 ? 1 : -1);
+      } else if (S.mode === "surf" || S.mode === "shoot") {
+        nx = S.nx;
+        ny = S.ny;
+        side = S.side;
+      }
+      moving = S.on > 0 && S.mode !== "shoot";
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.atan2(nx, -ny));
+    const t = moving ? time * 38 + phase : phase;
+    ctx.strokeStyle = flash ? "#ffffff" : col.b;
+    ctx.lineWidth = r * 0.16;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    for (let i = 0; i < 4; i++) {
+      const o = (i - 1.5) * r * 0.28, sw = Math.sin(t + i * 1.7) * r * 0.22;
+      for (const s of [-1, 1]) {
+        const fx = s * (r * (0.75 + Math.abs(i - 1.5) * 0.35)) + sw * s;
+        ctx.beginPath();
+        ctx.moveTo(o * 0.5, 0);
+        ctx.lineTo(o * 0.5 + fx * 0.55, -r * 0.55 - Math.abs(sw) * 0.3);
+        ctx.lineTo(o * 0.5 + fx, r * 0.62);
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
+    ctx.beginPath();
+    ctx.ellipse(-side * r * 0.45, -r * 0.05, r * 0.62, r * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#ffffff" : col.a;
+    ctx.beginPath();
+    ctx.ellipse(-side * r * 0.45, -r * 0.12, r * 0.48, r * 0.36, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#f4f0ff" : col.b;
+    ctx.beginPath();
+    ctx.ellipse(side * r * 0.3, 0, r * 0.38, r * 0.32, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#ffffff" : col.eye;
+    for (const [ex, ey, er] of [[0.5, -0.1, 0.1], [0.42, 0.06, 0.08], [0.58, 0.08, 0.07], [0.36, -0.14, 0.07]]) {
+      ctx.beginPath();
+      ctx.arc(side * r * ex, r * ey, r * er, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // src/game/creatures/spider.js
+  function spiderMove(W, G, e, C) {
+    const { dt, dx, dy, dist, sees, hunting, pcx, pcy } = C, k = e.k;
+    const cold = e.chill && e.chill < 1 ? e.chill : 1;
+    if (spiderStep(e, {
+      solidCell: (cx, cy) => solidCell(W, cx, cy),
+      webs: W.webs,
+      hunting,
+      goal: { x: pcx, y: pcy },
+      rnd: Math.random,
+      speedMul: cold
+    }, dt) === "web") SFX.fx("lash", e.x, e.y);
+    e.silkT = (e.silkT || 0) - dt;
+    const S = e.sp;
+    if (hunting && e.silkT <= 0 && S && (S.mode === "surf" || S.mode === "line") && dist < (e.silkR || (e.silkR = spr("spSilk"))) * sees && dist > e.r + 24) {
+      e.silkT = 0.4;
+      if (lineOfSight(W, e.x, e.y, pcx, pcy)) {
+        e.silkT = spr("spSilkCd");
+        e.silkR = spr("spSilk");
+        const v = spr("spSilkSpd");
+        W.silk.push({
+          x: e.x,
+          y: e.y,
+          ax: e.x,
+          ay: e.y,
+          vx: dx / dist * v,
+          vy: dy / dist * v,
+          life: 400 / v * 1.3 + 0.1
+        });
+        SFX.creature(k, "fire", e.x, e.y);
+      }
+    }
+  }
+  function spiderFrame(W, G, F) {
+    const { dt } = F;
+    for (let i = W.silk.length - 1; i >= 0; i--) {
+      const b = W.silk[i];
+      b.life -= dt;
+      let gone = b.life <= 0;
+      const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
+      for (let s = 0; s < sn && !gone; s++) {
+        b.x += b.vx * dt / sn;
+        b.y += b.vy * dt / sn;
+        if (solidAt(W, b.x, b.y)) {
+          gone = true;
+          break;
+        }
+        if (!W.p.dead && b.x > W.p.x - 3 && b.x < W.p.x + PW + 3 && b.y > W.p.y - 3 && b.y < W.p.y + PH + 3) {
+          gone = true;
+          W.strings.push({ ax: b.ax, ay: b.ay, ox: b.x - W.p.x, oy: b.y - W.p.y, slow: spr("spSlow"), max: spr("spSilkMax") });
+          SFX.fx("lash", b.x, b.y);
+        }
+      }
+      if (gone) W.silk.splice(i, 1);
+    }
+    for (let i = W.strings.length - 1; i >= 0; i--) {
+      const s = W.strings[i];
+      if (Math.hypot(W.p.x + s.ox - s.ax, W.p.y + s.oy - s.ay) > s.max) {
+        W.strings.splice(i, 1);
+        burst(W, W.p.x + s.ox, W.p.y + s.oy, 4, "#e8e8f0");
+        SFX.fx("lash", W.p.x + s.ox, W.p.y + s.oy);
+      }
+    }
+    for (let n = Math.min(W.webs.length, 6); n > 0; n--) {
+      W.webCheck = (W.webCheck + 1) % W.webs.length;
+      const L = W.webs[W.webCheck];
+      if (L.bin && !solidAt(W, L.bin.x, L.bin.y) || L.ain && !solidAt(W, L.ain.x, L.ain.y)) {
+        W.webs.splice(W.webCheck, 1);
+        if (!W.webs.length) break;
+      }
+    }
+  }
+  function drawSilk(W, G) {
+    G.ctx.lineCap = "round";
+    G.ctx.strokeStyle = "#eef0f6";
+    G.ctx.globalAlpha = 0.55;
+    G.ctx.lineWidth = 0.7;
+    G.ctx.beginPath();
+    for (const L of W.webs) {
+      G.ctx.moveTo(L.a0x, L.a0y);
+      G.ctx.lineTo(L.b0x, L.b0y);
+    }
+    for (const e of W.enemies) {
+      const sh = e.sp && e.sp.mode === "shoot" && e.sp.shot;
+      if (sh) {
+        G.ctx.moveTo(sh.ax0, sh.ay0);
+        G.ctx.lineTo(sh.x + sh.dx * Math.min(sh.t, sh.len), sh.y + sh.dy * Math.min(sh.t, sh.len));
+      }
+    }
+    G.ctx.stroke();
+    G.ctx.globalAlpha = 0.85;
+    G.ctx.lineWidth = 0.9;
+    G.ctx.beginPath();
+    for (const b of W.silk) {
+      G.ctx.moveTo(b.ax, b.ay);
+      G.ctx.lineTo(b.x, b.y);
+    }
+    for (const s of W.strings) {
+      G.ctx.moveTo(s.ax, s.ay);
+      G.ctx.lineTo(W.p.x + s.ox, W.p.y + s.oy);
+    }
+    G.ctx.stroke();
+    G.ctx.globalAlpha = 1;
+  }
+
+  // src/game/creatures/acts.js
+  var ACTS = {
+    nest: { move: nestMove, die: nestDie },
+    rat: { move: ratMove },
+    spider: { move: spiderMove, frame: spiderFrame },
+    jelly: { move: jellyMove }
+  };
 
   // src/game/systems/props.js
   function blowProp(W, G, pr) {
@@ -10307,7 +10365,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       vy: -90 - Math.random() * 40
     });
   }
-  var natural = (W, x, y) => !builtAt(W.zone, x, y);
   function stepEnemies(W, G, F) {
     const { dt, pcx, pcy } = F;
     const C = { dt, pcx, pcy, i: 0, dx: 0, dy: 0, dist: 0, sees: 0, hunting: false };
@@ -10349,58 +10406,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const A = ACTS[k.act];
       if (A && A.move) {
         if (A.move(W, G, e, C)) continue;
-      } else if (k.act === "jelly") {
-        const cold = e.chill && e.chill < 1 ? e.chill : 1;
-        if (jellyStep(e, {
-          solidCell: (cx, cy) => solidCell(W, cx, cy),
-          hunting,
-          goal: { x: pcx, y: pcy },
-          rnd: Math.random,
-          speedMul: cold,
-          rangeMul: sees,
-          stay: W.zone ? ((x, y) => natural(W, x, y)) : null
-        }, dt) === "pulse") puffSpores(W, e);
-        const S = e.je;
-        if (!W.p.dead && e.touch <= 0 && dist < 180) {
-          const t = tentacleTouch(S, W.p.x, W.p.y, W.p.x + PW, W.p.y + PH);
-          if (t) {
-            hurt(W, G, Math.round(kr("jeBite")));
-            e.touch = kr("jeBiteCd");
-            burst(W, t.x, t.y, 5, jellyPal(S.u.col).tent);
-            SFX.creature(k, "bite", t.x, t.y);
-          }
-        }
-        if (hunting && S.inRange && S.aimed && e.cd <= 0) {
-          e.cd = 0.25;
-          const hx = e.x + Math.cos(S.hd) * e.r * 0.9, hy = e.y + Math.sin(S.hd) * e.r * 0.9;
-          if (lineOfSight(W, hx, hy, pcx, pcy)) {
-            e.cd = kr("jeShotCd");
-            const a = Math.atan2(pcy - hy, pcx - hx) + (Math.random() * 2 - 1) * kr("jeSpread") * Math.PI / 180;
-            const v = kr("jeShotSpd"), P = jellyPal(S.u.col);
-            W.enemyShots.push({
-              x: hx,
-              y: hy,
-              vx: Math.cos(a) * v,
-              vy: Math.sin(a) * v,
-              life: 3,
-              col: P.spit,
-              edge: P.spitEdge,
-              shine: P.spitShine,
-              dripCol: P.drip,
-              dripCol2: P.drip2,
-              glow: hexRgb(P.glow),
-              dmg: Math.round(kr("jeShotDmg")),
-              size: kr("jeShotSize"),
-              goo: 1,
-              drip: kr("jeDrip"),
-              da: 0,
-              dripG: kr("jeDripG"),
-              splat: Math.round(kr("jeSplat")),
-              splatV: kr("jeSplatSpd")
-            });
-            SFX.creature(k, "fire", e.x, e.y);
-          }
-        }
       } else if (k.act === "turret") {
       } else if (hunting) {
         const step2 = k.spd * (e.chill || 1) * dt;

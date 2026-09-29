@@ -11,6 +11,7 @@
 // cycle (enemies.js -> here -> rat.js -> systems -> enemies.js): a hoisted function is always
 // there (D17, D20).
 
+import { jellyMove } from './jelly.js';
 import { nestDie, nestMove, ratMove } from './rat.js';
 import { spiderFrame, spiderMove } from './spider.js';
 
@@ -18,4 +19,5 @@ export const ACTS = {
   nest: { move: nestMove, die: nestDie },
   rat: { move: ratMove },
   spider: { move: spiderMove, frame: spiderFrame },
+  jelly: { move: jellyMove },
 };
