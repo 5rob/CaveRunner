@@ -232,7 +232,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
   - [x] spells/trace.js
   - [x] spells/advisor.js
   - [x] spells/bagsim.js
-  - [ ] world/vision.js
+  - [x] world/vision.js
   - [ ] world/fire.js
   - [ ] world/nav.js
   - [ ] world/zones.js, veins.js, nests.js

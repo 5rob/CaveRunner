@@ -4750,151 +4750,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { now, limit, tips: picked };
   }
 
-  // src/spells/trace.js
-  var bhSp = (sh) => sh.pull ? DEV.bhSpeed / MODS.void.speed : 1;
-  var DRIFT_DRAG = 2.4, DRIFT_SLOW = 30, DRIFT_FLOAT = 40, DRIFT_RISE = 22;
-  var DRIFT_R = 80, DRIFT_CHASE = 130, DRIFT_ACC = 260;
-  function driftStep(vx, vy, dt) {
-    const k = Math.exp(-DRIFT_DRAG * dt);
-    vx *= k;
-    vy *= k;
-    if (Math.hypot(vx, vy) < DRIFT_SLOW) vy = Math.max(-DRIFT_RISE, vy - DRIFT_FLOAT * dt);
-    return [vx, vy];
-  }
-  var WIG_HZ = 45;
-  var wigAng = (amp, t) => amp / WIG_HZ * Math.cos(t * WIG_HZ);
-  var wigTurn = (amp, age, dt) => wigAng(amp, age) - (age - dt > 1e-9 ? wigAng(amp, age - dt) : 0);
-  function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
-    const dt = 1 / 60;
-    if (sh.flat) {
-      nx = nx >= 0 ? 1 : -1;
-      ny = 0;
-    }
-    if (sh.beam) {
-      out.length = 0;
-      out.push(x0, y0);
-      for (let d = 6; d <= sh.beam; d += 5) {
-        const bx = x0 + nx * d, by = y0 + ny * d;
-        if (!sh.bore && solid(bx, by)) break;
-        out.push(bx, by);
-      }
-      return out;
-    }
-    const reach = sh.reach != null ? sh.reach : 10;
-    let x = x0 + nx * reach, y = y0 + ny * reach;
-    const ox = x, oy = y;
-    let vx = nx * sh.speed, vy = ny * sh.speed;
-    let life = Math.min(sh.life, 2.5), bounce = sh.bounce || 0;
-    let age = 0, lock = false;
-    out.length = 0;
-    out.push(x, y);
-    for (let i = 0; i < 110 && life > 0; i++) {
-      life -= dt;
-      age += dt;
-      if (sh.grav) vy += sh.grav * dt;
-      if (sh.drag) {
-        const k = Math.exp(-sh.drag * dt);
-        vx *= k;
-        vy *= k;
-      }
-      if (sh.accel) {
-        const f = 1 + sh.accel * dt;
-        vx *= f;
-        vy *= f;
-      }
-      if (sh.vmax) {
-        const v = Math.hypot(vx, vy);
-        if (v > sh.vmax) {
-          vx *= sh.vmax / v;
-          vy *= sh.vmax / v;
-        }
-      }
-      const swing = (by) => {
-        const sp = Math.hypot(vx, vy), a = Math.atan2(vy, vx) + by;
-        vx = Math.cos(a) * sp;
-        vy = Math.sin(a) * sp;
-      };
-      if (sh.spiral) swing(sh.spiral * dt);
-      if (sh.wig) swing(wigTurn(sh.wig, age, dt));
-      if (sh.orbit) swing(sh.orbit * dt);
-      if (sh.pong && Math.floor(age / 0.45) % 2 === 1) {
-        vx = -vx;
-        vy = -vy;
-        age += dt;
-      }
-      if (sh.boomer && home) swing(Math.max(-sh.boomer * dt, Math.min(
-        sh.boomer * dt,
-        angDiff(Math.atan2(home.y - y, home.x - x), Math.atan2(vy, vx))
-      )));
-      if (sh.drift && !lock) {
-        const d = driftStep(vx, vy, dt);
-        vx = d[0];
-        vy = d[1];
-        if (enemies) {
-          for (const e of enemies) if (Math.hypot(e.x - x, e.ty - y) < (sh.homeR || DRIFT_R)) lock = true;
-        }
-      }
-      if (sh.drift && lock) {
-        const sp = Math.hypot(vx, vy);
-        if (sp < DRIFT_CHASE) {
-          const f = Math.min(DRIFT_CHASE, sp + DRIFT_ACC * dt) / (sp || 1);
-          vx = sp ? vx * f : 0;
-          vy = sp ? vy * f : -DRIFT_ACC * dt;
-        }
-      }
-      if (sh.homing && enemies && enemies.length && (!sh.drift || lock)) {
-        let best = null, bd = sh.homeR || 260;
-        for (const e of enemies) {
-          const d = Math.hypot(e.x - x, e.ty - y);
-          if (d < bd) {
-            bd = d;
-            best = e;
-          }
-        }
-        if (best) {
-          const sp = Math.hypot(vx, vy) || 1;
-          let ang = Math.atan2(vy, vx);
-          let diff = Math.atan2(best.ty - y, best.x - x) - ang;
-          while (diff > Math.PI) diff -= 2 * Math.PI;
-          while (diff < -Math.PI) diff += 2 * Math.PI;
-          const turn2 = sh.homing * dt;
-          ang += Math.max(-turn2, Math.min(turn2, diff));
-          vx = Math.cos(ang) * sp;
-          vy = Math.sin(ang) * sp;
-        }
-      }
-      const n = Math.max(1, Math.ceil(Math.hypot(vx, vy) * dt / 3));
-      let stop = false;
-      for (let st = 0; st < n; st++) {
-        const ax = x + vx * dt / n, ay = y + vy * dt / n;
-        if (solid(ax, ay)) {
-          if (sh.bore > 0 || sh.eat > 0) {
-            x = ax;
-            y = ay;
-            continue;
-          }
-          if (bounce > 0) {
-            bounce--;
-            const hx = solid(ax, y), hy = solid(x, ay);
-            if (hx || !hy) vx = -vx;
-            if (hy || !hx) vy = -vy;
-            const e = sh.bounceE || 0.92;
-            vx *= e;
-            vy *= e;
-            break;
-          }
-          stop = true;
-          break;
-        }
-        x = ax;
-        y = ay;
-      }
-      out.push(x, y);
-      if (stop) break;
-    }
-    return out;
-  }
-
   // src/spells/bagsim.js
   function castGroups(gun) {
     if (gun.shuffle) return null;
@@ -5064,41 +4919,152 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return out;
   }
 
-  // src/main.js
-  var { useRef, useEffect, useState, useMemo } = React;
-  var h = React.createElement;
-  var SPUTTER_FUEL = 0.25;
-  function sputterStep(st, dt, fuel, on, rnd) {
-    rnd = rnd || Math.random;
-    st.start = false;
-    if (!on) {
-      st.cut = 0;
-      st.gap = 0;
-      st.onT = 0;
-      return false;
+  // src/spells/trace.js
+  var bhSp = (sh) => sh.pull ? DEV.bhSpeed / MODS.void.speed : 1;
+  var DRIFT_DRAG = 2.4, DRIFT_SLOW = 30, DRIFT_FLOAT = 40, DRIFT_RISE = 22;
+  var DRIFT_R = 80, DRIFT_CHASE = 130, DRIFT_ACC = 260;
+  function driftStep(vx, vy, dt) {
+    const k = Math.exp(-DRIFT_DRAG * dt);
+    vx *= k;
+    vy *= k;
+    if (Math.hypot(vx, vy) < DRIFT_SLOW) vy = Math.max(-DRIFT_RISE, vy - DRIFT_FLOAT * dt);
+    return [vx, vy];
+  }
+  var WIG_HZ = 45;
+  var wigAng = (amp, t) => amp / WIG_HZ * Math.cos(t * WIG_HZ);
+  var wigTurn = (amp, age, dt) => wigAng(amp, age) - (age - dt > 1e-9 ? wigAng(amp, age - dt) : 0);
+  function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
+    const dt = 1 / 60;
+    if (sh.flat) {
+      nx = nx >= 0 ? 1 : -1;
+      ny = 0;
     }
-    st.onT = (st.onT || 0) + dt;
-    st.cut = Math.max(0, (st.cut || 0) - dt);
-    st.gap = Math.max(0, (st.gap || 0) - dt);
-    if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
-      const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;
-      if (rnd() < dt * (1 + 7 * w)) {
-        st.cut = 0.04 + rnd() * (0.05 + 0.08 * w);
-        st.gap = st.cut + 0.1 + rnd() * 0.2;
-        st.start = true;
+    if (sh.beam) {
+      out.length = 0;
+      out.push(x0, y0);
+      for (let d = 6; d <= sh.beam; d += 5) {
+        const bx = x0 + nx * d, by = y0 + ny * d;
+        if (!sh.bore && solid(bx, by)) break;
+        out.push(bx, by);
       }
+      return out;
     }
-    return st.cut > 0;
+    const reach = sh.reach != null ? sh.reach : 10;
+    let x = x0 + nx * reach, y = y0 + ny * reach;
+    const ox = x, oy = y;
+    let vx = nx * sh.speed, vy = ny * sh.speed;
+    let life = Math.min(sh.life, 2.5), bounce = sh.bounce || 0;
+    let age = 0, lock = false;
+    out.length = 0;
+    out.push(x, y);
+    for (let i = 0; i < 110 && life > 0; i++) {
+      life -= dt;
+      age += dt;
+      if (sh.grav) vy += sh.grav * dt;
+      if (sh.drag) {
+        const k = Math.exp(-sh.drag * dt);
+        vx *= k;
+        vy *= k;
+      }
+      if (sh.accel) {
+        const f = 1 + sh.accel * dt;
+        vx *= f;
+        vy *= f;
+      }
+      if (sh.vmax) {
+        const v = Math.hypot(vx, vy);
+        if (v > sh.vmax) {
+          vx *= sh.vmax / v;
+          vy *= sh.vmax / v;
+        }
+      }
+      const swing = (by) => {
+        const sp = Math.hypot(vx, vy), a = Math.atan2(vy, vx) + by;
+        vx = Math.cos(a) * sp;
+        vy = Math.sin(a) * sp;
+      };
+      if (sh.spiral) swing(sh.spiral * dt);
+      if (sh.wig) swing(wigTurn(sh.wig, age, dt));
+      if (sh.orbit) swing(sh.orbit * dt);
+      if (sh.pong && Math.floor(age / 0.45) % 2 === 1) {
+        vx = -vx;
+        vy = -vy;
+        age += dt;
+      }
+      if (sh.boomer && home) swing(Math.max(-sh.boomer * dt, Math.min(
+        sh.boomer * dt,
+        angDiff(Math.atan2(home.y - y, home.x - x), Math.atan2(vy, vx))
+      )));
+      if (sh.drift && !lock) {
+        const d = driftStep(vx, vy, dt);
+        vx = d[0];
+        vy = d[1];
+        if (enemies) {
+          for (const e of enemies) if (Math.hypot(e.x - x, e.ty - y) < (sh.homeR || DRIFT_R)) lock = true;
+        }
+      }
+      if (sh.drift && lock) {
+        const sp = Math.hypot(vx, vy);
+        if (sp < DRIFT_CHASE) {
+          const f = Math.min(DRIFT_CHASE, sp + DRIFT_ACC * dt) / (sp || 1);
+          vx = sp ? vx * f : 0;
+          vy = sp ? vy * f : -DRIFT_ACC * dt;
+        }
+      }
+      if (sh.homing && enemies && enemies.length && (!sh.drift || lock)) {
+        let best = null, bd = sh.homeR || 260;
+        for (const e of enemies) {
+          const d = Math.hypot(e.x - x, e.ty - y);
+          if (d < bd) {
+            bd = d;
+            best = e;
+          }
+        }
+        if (best) {
+          const sp = Math.hypot(vx, vy) || 1;
+          let ang = Math.atan2(vy, vx);
+          let diff = Math.atan2(best.ty - y, best.x - x) - ang;
+          while (diff > Math.PI) diff -= 2 * Math.PI;
+          while (diff < -Math.PI) diff += 2 * Math.PI;
+          const turn2 = sh.homing * dt;
+          ang += Math.max(-turn2, Math.min(turn2, diff));
+          vx = Math.cos(ang) * sp;
+          vy = Math.sin(ang) * sp;
+        }
+      }
+      const n = Math.max(1, Math.ceil(Math.hypot(vx, vy) * dt / 3));
+      let stop = false;
+      for (let st = 0; st < n; st++) {
+        const ax = x + vx * dt / n, ay = y + vy * dt / n;
+        if (solid(ax, ay)) {
+          if (sh.bore > 0 || sh.eat > 0) {
+            x = ax;
+            y = ay;
+            continue;
+          }
+          if (bounce > 0) {
+            bounce--;
+            const hx = solid(ax, y), hy = solid(x, ay);
+            if (hx || !hy) vx = -vx;
+            if (hy || !hx) vy = -vy;
+            const e = sh.bounceE || 0.92;
+            vx *= e;
+            vy *= e;
+            break;
+          }
+          stop = true;
+          break;
+        }
+        x = ax;
+        y = ay;
+      }
+      out.push(x, y);
+      if (stop) break;
+    }
+    return out;
   }
-  function jetPitch(onT) {
-    return 1 + 0.7 * Math.min(Math.max(onT, 0), 3) / 3;
-  }
-  function jellyPal(u) {
-    const P = {};
-    for (const [k, , , , f] of JE_COLS) P[f] = jcol(k, u);
-    return P;
-  }
-  var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
+
+  // src/world/vision.js
   var VIS_RAYS = 160;
   function fogReveal(seen, wx, wy, r, pts, rays) {
     const cx = wx / FOG_U, cy = wy / FOG_U, cr = r / FOG_U, r2 = cr * cr;
@@ -5166,6 +5132,51 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (d < 1e-3) return true;
     return rayDist(x0, y0, dx / d, dy / d, d, solidCell) >= d - 1e-3;
   }
+  function visPoly(cx, cy, r, solidCell, rays) {
+    const pts = [];
+    for (let i = 0; i < rays; i++) {
+      const a = i / rays * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
+      const d = rayDist(cx, cy, dx, dy, r, solidCell);
+      pts.push(cx + dx * d, cy + dy * d);
+    }
+    return pts;
+  }
+
+  // src/main.js
+  var { useRef, useEffect, useState, useMemo } = React;
+  var h = React.createElement;
+  var SPUTTER_FUEL = 0.25;
+  function sputterStep(st, dt, fuel, on, rnd) {
+    rnd = rnd || Math.random;
+    st.start = false;
+    if (!on) {
+      st.cut = 0;
+      st.gap = 0;
+      st.onT = 0;
+      return false;
+    }
+    st.onT = (st.onT || 0) + dt;
+    st.cut = Math.max(0, (st.cut || 0) - dt);
+    st.gap = Math.max(0, (st.gap || 0) - dt);
+    if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
+      const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;
+      if (rnd() < dt * (1 + 7 * w)) {
+        st.cut = 0.04 + rnd() * (0.05 + 0.08 * w);
+        st.gap = st.cut + 0.1 + rnd() * 0.2;
+        st.start = true;
+      }
+    }
+    return st.cut > 0;
+  }
+  function jetPitch(onT) {
+    return 1 + 0.7 * Math.min(Math.max(onT, 0), 3) / 3;
+  }
+  function jellyPal(u) {
+    const P = {};
+    for (const [k, , , , f] of JE_COLS) P[f] = jcol(k, u);
+    return P;
+  }
+  var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
   function roamStep(R, e, dt, rnd, pre, ok) {
     if (R.rx === void 0) {
       R.rx = e.hx;
@@ -6241,15 +6252,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     return any;
-  }
-  function visPoly(cx, cy, r, solidCell, rays) {
-    const pts = [];
-    for (let i = 0; i < rays; i++) {
-      const a = i / rays * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
-      const d = rayDist(cx, cy, dx, dy, r, solidCell);
-      pts.push(cx + dx * d, cy + dy * d);
-    }
-    return pts;
   }
   function drawGun(ctx, x, y, ang, sc, accent) {
     ctx.save();
