@@ -371,6 +371,35 @@ What the code says about this phase (checked at the end of Phase 2):
       string-swapping code into the closure. Keep every name the browser suites use today
       (`__lvl.p`, `.enemies`, `.sandbox()`, `.placeProp()`, `.fog.seen`, `.light.*`…), so
       suites don't change.
+What the code says about P3.4 (checked at the end of P3.3):
+- `Game.js` is 4,280 lines; the closure has 98 inner functions. The level's state is all on `W`
+  (P3.2), so a function that moves out mostly needs `W` plus three other kinds of thing:
+  **other closure functions** (`burst` has 13 callers, `hurt` 7, `explode` 6), **closure-only
+  objects** (the canvases `tctx`/`dctx`/`bgctx`…, the recorder `REC`/`RT`, `toast`, `mouse`), and
+  **`input`**, Game's React prop (`input.current` appears 55 times: loadout, notify, prompt…).
+  `node tools/gamemap.js fn…` lists the first two for any function (not `input`: grep for it).
+- Suggested shape (decide in the first P3.4 step, record it as a decision): Game makes one
+  `G` context next to `W` holding the canvases and contexts, `input`, the recorder, `toast`,
+  `mouse`, and each system module exports plain functions `(W, G, …args)`. Systems import each
+  other's functions directly.
+- **There are call cycles**: `explode` → `fireBlast` → `ignite` → `blowProp` → `explode`. Across
+  modules that's a circular import. It's safe at runtime only because every one of them is a
+  function called later, never at load; say so in a decision, or keep a cycle inside one module.
+- Start with leaves and work up: terrain queries (`solidCell`, `solidAt`, `boxHit`,
+  `lineOfSight`, `enemyAt` use only `W`), then particles (`burst`, `goo`, `splat` use only `W`),
+  then terrain changes (`dig`, `unDeco`, `dropOre`, `explode`: need `tctx`/`dctx`, the
+  recorder's *wrapped* ones: never use an unwrapped context, or the replay misses the change).
+  `step()` and `draw()` go last, as the render/ split and the systems' per-frame parts.
+- **`draw()` must keep its order**: it calls `Math.random()` at 7 sites from the sim's stream, and
+  it writes the fog memory (`fogReveal`) and the camera. The determinism probe fails at once if a
+  render split reorders them (which is the point).
+- `tests/determinism.js` doesn't play a death replay, the map, the shop, the Bag screen or perks.
+  When a step touches those, also run the matching browser suites (`replay`, `map`, `shop`,
+  `perks`, …), as P3.2 did.
+- How a step goes: move the functions (by hand or a small script; `tools/world.js` can be
+  adapted), `node tests/determinism.js` (SAME), `node tests/run.js logic` + `smoke`, the
+  related browser suites, tick, log, commit. Full suite at the end of the task.
+
 - [ ] **P3.4 Pull systems out**, one per commit, each a module in `game/systems/` taking
       `W` (and `dt` or `ctx`). Rough list, which P3.1 will correct:
   - [ ] terrain.js: dig, explode, unDeco, dirty rects, putImageData wrappers (replay needs these!)
@@ -697,3 +726,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.2 done | Full suite on a snapshot of 7f9bfe5: only `jelly` spit failed, passed alone on the 3rd run (as on v96/v98). | logic 33/33; browser 44/44 after re-runs |
 | 2026-09-29 | Phase 3, P3.3 | `src/game/testhook.js`: `testHook(W, g)` puts `sandbox`, `placeProp`, Game's functions and the old names (`seed`, `theme`, `rec`, `rt`, `fog`, `light`, `world`) on `W` and Game sets `window.__lvl = W` when `window.__TEST` is set. `tests/build.js` no longer inserts code into the closure: it adds a `<script>window.__TEST = true;</script>` before the bundle (the `__in` anchor in App stays). The `const toast` anchor is retired. CLAUDE.md points at `testhook.js`. | probe SAME, logic 33/33, smoke, donebutton, restart-confirm, decor, replay ok |
 | 2026-09-29 | Phase 3, P3.3 done | Full suite on a snapshot of 24976eb: `jelly` spit and `lightning` "a fork hits a creature off to the side" failed, both passed alone (jelly on the 2nd run). Stopped here as planned: P3.4 next, Phase 3 not merged. | logic 33/33; browser 44/44 after re-runs |
+| 2026-09-29 | handover | P3.4 notes written from the code (what a moving function needs, a `G` context to decide on, the explode/fire/prop call cycle, a leaves-first order, what the probe doesn't cover). The P3.1 mapping script kept as `tools/gamemap.js` (`node tools/gamemap.js fn…` = what a function needs). | — |
