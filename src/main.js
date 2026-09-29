@@ -12,6 +12,7 @@ import { AMBIENCE, decorFor, themeFor } from './data/themes.js';
 import {
   DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_META, JE_COLS, devReport, devSet, jcol, kr, kru, spr
 } from './dev/knobs.js';
+import { effRecharge, gunPassives, planCast } from './spells/cast.js';
 import {
   GUN_LV_MAX, GUN_RANGE, caveGun, gunAccent, gunColor, gunLevel, gunLvCol, gunPrice, isGunShop,
   makeGun, resetGun, shuffleOrder, startingGuns
@@ -20,7 +21,9 @@ import {
   ALL_IDS, FAMILIES, FAMILY_OF, FIELD_WHAT, MODS, VACUUM_WAIT, famCol, famOf, priceOf
 } from './spells/mods.js';
 import { rollMod } from './spells/spawn.js';
-import { effRecharge, gunPassives, planCast } from './spells/cast.js';
+import {
+  DRIFT_ACC, DRIFT_CHASE, DRIFT_R, bhSp, driftStep, tracePath, wigTurn
+} from './spells/trace.js';
 
 const { useRef, useEffect, useState, useMemo } = React;
 const h = React.createElement;
@@ -54,9 +57,6 @@ function jellyPal(u) {
   for (const [k, , , , f] of JE_COLS) P[f] = jcol(k, u);
   return P;
 }
-
-// Black Hole travel speed from the Dev knob, as a multiplier so speed mods still stack
-const bhSp = sh => sh.pull ? DEV.bhSpeed / MODS.void.speed : 1;
 const NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
 
 // What the map is allowed to remember is worked out as a fan of rays out from the player,
@@ -5205,140 +5205,31 @@ function makeLevel(seed, floor, owned) {
     rooms, roster, theme: T.name, works, zone, nests };
 }
 
-// Fly a shot forward with the same rules the live bullets use, so the aim line
-// shows what this gun with these mods will actually do: gravity, acceleration,
-// homing, ricochets and drilling all included.
-// Pollen's flight: its launch speed drags away, and once it's nearly still it floats
-// upward. It only homes once a creature comes within its lock radius; then it speeds
-// back up to DRIFT_CHASE and steers in.
-const DRIFT_DRAG = 2.4, DRIFT_SLOW = 30, DRIFT_FLOAT = 40, DRIFT_RISE = 22;
-const DRIFT_R = 80, DRIFT_CHASE = 130, DRIFT_ACC = 260;
-function driftStep(vx, vy, dt) {
-  const k = Math.exp(-DRIFT_DRAG * dt);
-  vx *= k; vy *= k;
-  if (Math.hypot(vx, vy) < DRIFT_SLOW) vy = Math.max(-DRIFT_RISE, vy - DRIFT_FLOAT * dt);
-  return [vx, vy];
-}
-
-// Spark's crackle: a fast side-to-side swing of the heading, amp/WIG_HZ radians either way,
-// centred on where you aimed. wigTurn is how far to turn this step (from age - dt to age);
-// it's pure in the shot's age, so the aim line and the live shot swing the same way.
-const WIG_HZ = 45;
-const wigAng = (amp, t) => amp / WIG_HZ * Math.cos(t * WIG_HZ);
-const wigTurn = (amp, age, dt) => wigAng(amp, age) - (age - dt > 1e-9 ? wigAng(amp, age - dt) : 0);
-
-function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
-  const dt = 1 / 60;
-  if (sh.flat) { nx = nx >= 0 ? 1 : -1; ny = 0; }
-  if (sh.beam) {                       // a beam is a straight line, drawn to whatever stops it
-    out.length = 0;
-    out.push(x0, y0);
-    for (let d = 6; d <= sh.beam; d += 5) {
-      const bx = x0 + nx * d, by = y0 + ny * d;
-      if (!sh.bore && solid(bx, by)) break;
-      out.push(bx, by);
-    }
-    return out;
-  }
-  const reach = sh.reach != null ? sh.reach : 10;
-  let x = x0 + nx * reach, y = y0 + ny * reach;
-  const ox = x, oy = y;
-  let vx = nx * sh.speed, vy = ny * sh.speed;
-  let life = Math.min(sh.life, 2.5), bounce = sh.bounce || 0;
-  let age = 0, lock = false;
-  out.length = 0;
-  out.push(x, y);
-  for (let i = 0; i < 110 && life > 0; i++) {
-    life -= dt; age += dt;
-    if (sh.grav) vy += sh.grav * dt;
-    if (sh.drag) { const k = Math.exp(-sh.drag * dt); vx *= k; vy *= k; }
-    if (sh.accel) { const f = 1 + sh.accel * dt; vx *= f; vy *= f; }
-    if (sh.vmax) { const v = Math.hypot(vx, vy); if (v > sh.vmax) { vx *= sh.vmax / v; vy *= sh.vmax / v; } }
-    // the same bends the live bullets get, so the line stays honest
-    const swing = by => { const sp = Math.hypot(vx, vy), a = Math.atan2(vy, vx) + by;
-      vx = Math.cos(a) * sp; vy = Math.sin(a) * sp; };
-    if (sh.spiral) swing(sh.spiral * dt);
-    if (sh.wig) swing(wigTurn(sh.wig, age, dt));
-    if (sh.orbit) swing(sh.orbit * dt);
-    if (sh.pong && Math.floor(age / 0.45) % 2 === 1) { vx = -vx; vy = -vy; age += dt; }
-    if (sh.boomer && home) swing(Math.max(-sh.boomer * dt, Math.min(sh.boomer * dt,
-      angDiff(Math.atan2(home.y - y, home.x - x), Math.atan2(vy, vx)))));
-    if (sh.drift && !lock) {             // Pollen: drags to a stop, then floats up
-      const d = driftStep(vx, vy, dt); vx = d[0]; vy = d[1];
-      if (enemies) for (const e of enemies) if (Math.hypot(e.x - x, e.ty - y) < (sh.homeR || DRIFT_R)) lock = true;
-    }
-    if (sh.drift && lock) { const sp = Math.hypot(vx, vy);
-      if (sp < DRIFT_CHASE) { const f = Math.min(DRIFT_CHASE, sp + DRIFT_ACC * dt) / (sp || 1);
-        vx = sp ? vx * f : 0; vy = sp ? vy * f : -DRIFT_ACC * dt; } }
-    if (sh.homing && enemies && enemies.length && (!sh.drift || lock)) {
-      let best = null, bd = sh.homeR || 260;
-      for (const e of enemies) {
-        const d = Math.hypot(e.x - x, e.ty - y);
-        if (d < bd) { bd = d; best = e; }
-      }
-      if (best) {
-        const sp = Math.hypot(vx, vy) || 1;
-        let ang = Math.atan2(vy, vx);
-        let diff = Math.atan2(best.ty - y, best.x - x) - ang;
-        while (diff > Math.PI) diff -= 2 * Math.PI;
-        while (diff < -Math.PI) diff += 2 * Math.PI;
-        const turn = sh.homing * dt;
-        ang += Math.max(-turn, Math.min(turn, diff));
-        vx = Math.cos(ang) * sp; vy = Math.sin(ang) * sp;
-      }
-    }
-    const n = Math.max(1, Math.ceil(Math.hypot(vx, vy) * dt / 3));
-    let stop = false;
-    for (let st = 0; st < n; st++) {
-      const ax = x + vx * dt / n, ay = y + vy * dt / n;
-      if (solid(ax, ay)) {
-        if (sh.bore > 0 || sh.eat > 0) { x = ax; y = ay; continue; }
-        if (bounce > 0) {
-          bounce--;
-          const hx = solid(ax, y), hy = solid(x, ay);
-          if (hx || !hy) vx = -vx;
-          if (hy || !hx) vy = -vy;
-          const e = sh.bounceE || 0.92;
-          vx *= e; vy *= e;
-          break;
-        }
-        stop = true;
-        break;
-      }
-      x = ax; y = ay;
-    }
-    out.push(x, y);
-    if (stop) break;
-  }
-  return out;
-}
-
 // The pure part of this file, for the logic tests: src/pure.js re-exports it (and every
 // module), and tests/load.js bundles that. It shrinks as the code moves out into modules
 // (REFACTOR.md, P1.5); the browser build ignores it.
 export {
   useRef, useEffect, useState, useMemo, h, SPUTTER_FUEL, sputterStep, jetPitch, twinkle,
-  jellyPal, makeLevel, bhSp, NO_INPUT, spiderStep, ratStep, VIS_RAYS, fogReveal, fogStart,
-  nestFog, rayDist, losClear, roamStep, turnToward, flyMove, surfNormal, SPIDER, spiderSeat,
-  surfSeat, segNear, spiderAim, RAT, ratFooting, ratJump, ratSpread, pathAt, pathLen, NAV,
-  navField, navWay, ratNests, JELLY, jellyBell, jellyStep, segHitsBox, tentacleTouch, TW_N,
-  TW_TILE, twNoise, plantWhite, plantGlowFill, visPoly, PREVIEW_FIELDS, num, previewGun,
-  previewPlan, modPreview, HP_BUDGET, shotPower, shotCount, shotPellets, gunRate, SHORTLIST,
-  buildAdvice, castGroups, groupStats, pullSteps, fireSimNew, fireSimStep, fireSimGauges,
-  statQual, gunModDeltas, drawGun, drawRunner, flameDrop, drawFlame, glowAt, drawTorch,
-  drawSconce, drawDrone, drawSpider, drawRat, drawNest, drawJelly, drawCrawler, drawBlob,
-  drawSkull, drawWorm, drawEnemy, fmtGold, deckLayout, DECOR_DENSITY, GROVES, PLANTS, FLAMMABLE,
-  FIRE_WET, HEAR_FIRE, FIRE_COLS, PROP_BOX, PROP_DMG, timberFrame, archCurve, archNear, archAt,
-  decorate, FUEL_MOSS, FUEL_GRASS, FUEL_WOOD, cullDecor, propAnchored, rgbA, rgbS, propCol,
-  drawArch, drawProp, propGlow, VENT_H, eyesAlpha, SPELL_VOICE, SPELL_VOICES, clampS, shotSound,
+  jellyPal, makeLevel, NO_INPUT, spiderStep, ratStep, VIS_RAYS, fogReveal, fogStart, nestFog,
+  rayDist, losClear, roamStep, turnToward, flyMove, surfNormal, SPIDER, spiderSeat, surfSeat,
+  segNear, spiderAim, RAT, ratFooting, ratJump, ratSpread, pathAt, pathLen, NAV, navField,
+  navWay, ratNests, JELLY, jellyBell, jellyStep, segHitsBox, tentacleTouch, TW_N, TW_TILE,
+  twNoise, plantWhite, plantGlowFill, visPoly, PREVIEW_FIELDS, num, previewGun, previewPlan,
+  modPreview, HP_BUDGET, shotPower, shotCount, shotPellets, gunRate, SHORTLIST, buildAdvice,
+  castGroups, groupStats, pullSteps, fireSimNew, fireSimStep, fireSimGauges, statQual,
+  gunModDeltas, drawGun, drawRunner, flameDrop, drawFlame, glowAt, drawTorch, drawSconce,
+  drawDrone, drawSpider, drawRat, drawNest, drawJelly, drawCrawler, drawBlob, drawSkull,
+  drawWorm, drawEnemy, fmtGold, deckLayout, DECOR_DENSITY, GROVES, PLANTS, FLAMMABLE, FIRE_WET,
+  HEAR_FIRE, FIRE_COLS, PROP_BOX, PROP_DMG, timberFrame, archCurve, archNear, archAt, decorate,
+  FUEL_MOSS, FUEL_GRASS, FUEL_WOOD, cullDecor, propAnchored, rgbA, rgbS, propCol, drawArch,
+  drawProp, propGlow, VENT_H, eyesAlpha, SPELL_VOICE, SPELL_VOICES, clampS, shotSound,
   BODY_VOICE, CREATURE_TONE, CREATURE_VOICES, creatureSound, AMB_EVENTS, FX_VOL, fxVolKey, knob,
   rustleStep, SFX, SAVE_KEY, GUN_DEFAULTS, cleanGun, cleanLoadout, readSave, loadSave, clearSave,
   ORE_GOLD, ROOM_HW, ROOM_HH, goldVeins, strataCave, paveWorks, timberWorks, FIRE_TICK, FIRE_MAX,
   FIRE_CATCH, FIRE_KNOB, FIRE_UPW, FIRE_NB, fireNew, fireLight, fireDouse, fireArea, fireNear,
   fireStep, boxReach, builtAt, RP_HZ, RP_BEFORE, RP_AFTER, RP_KEEP, RP_W, RP_H, RP_LISTS,
   RP_NUMS, RP_DEEP, RP_LERP, RP_ANGLE, rpPlain, rpClone, rpCopy, rpLerp, rpList, rpAt, rpFrame,
-  rpCut, rpPaste, rpMerge, DRIFT_DRAG, DRIFT_SLOW, DRIFT_FLOAT, DRIFT_RISE, DRIFT_R, DRIFT_CHASE,
-  DRIFT_ACC, driftStep, WIG_HZ, wigAng, wigTurn, tracePath
+  rpCut, rpPaste, rpMerge
 };
 
 function Game({ input }) {

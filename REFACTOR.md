@@ -229,7 +229,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
   - [x] spells/spawn.js
   - [x] spells/guns.js
   - [x] spells/cast.js
-  - [ ] spells/trace.js
+  - [x] spells/trace.js
   - [ ] spells/advisor.js
   - [ ] spells/bagsim.js
   - [ ] world/vision.js

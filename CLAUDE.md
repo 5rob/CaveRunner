@@ -151,7 +151,7 @@ rest and imports them. Where things are (`main.js` line numbers as of v96, they 
 | sprites | ~3050–3600: `drawGun`, `drawRunner`, `drawEnemy` (one per creature body) |
 | `PERKS` / `perkBag` | `src/data/perks.js`: the 31 perks, and folding an owned list into one effective bag |
 | `makeLevel` | ~6439: terrain, shop, enemies, pickups |
-| `tracePath` | ~7041: simulates a shot for the aim line |
+| `tracePath` | `src/spells/trace.js` (with `driftStep`, `wigTurn`, `bhSp`): simulates a shot for the aim line |
 | `Game` | ~7130–11390: the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields |
 | React UI | ~11400–end: `GunCard`, `GunSwap`, `ModCard`, `Editor`, `PerkCard`, `DevPanel`, `App` |
 
