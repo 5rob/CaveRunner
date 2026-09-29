@@ -9159,6 +9159,182 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.restore();
   }
 
+  // src/game/systems/plantglow.js
+  function plantGlow(W, G, e, TH) {
+    const u = e.je.u, reach = kru("jeGlowR", u.glowR) * kru("jePlantReach", u.plant);
+    const strength = kru("jePlantGlow", u.plant);
+    if (reach < 2 || strength <= 0) return;
+    const bx0 = clamp(Math.floor((e.x - reach) / CELL), 0, CW - 1), by0 = clamp(Math.floor((e.y - reach) / CELL), 0, CH - 1);
+    const bx1 = clamp(Math.ceil((e.x + reach) / CELL), 1, CW), by1 = clamp(Math.ceil((e.y + reach) / CELL), 1, CH);
+    const w = bx1 - bx0, h3 = by1 - by0;
+    if (w <= 0 || h3 <= 0) return;
+    if (!G.pgArt || G.pgArt.length < w * h3 * 4) G.pgArt = new Uint8ClampedArray(w * h3 * 4);
+    const x0w = bx0 * CELL, y0w = by0 * CELL, x1w = bx1 * CELL, y1w = by1 * CELL;
+    let pd = null;
+    const plants = W.props.filter((pr) => pr.k === "climb" && PLANTS[pr.st] && pr.x + pr.r > x0w && pr.x + pr.l < x1w && pr.y + pr.b > y0w && pr.y + pr.t0 < y1w);
+    if (plants.length) {
+      if (!G.pgC) {
+        G.pgC = document.createElement("canvas");
+        G.pgCtx = G.pgC.getContext("2d", { willReadFrequently: true });
+      }
+      if (G.pgC.width < w || G.pgC.height < h3) {
+        G.pgC.width = Math.max(G.pgC.width, w);
+        G.pgC.height = Math.max(G.pgC.height, h3);
+      }
+      G.pgCtx.setTransform(1, 0, 0, 1, 0, 0);
+      G.pgCtx.clearRect(0, 0, w, h3);
+      G.pgCtx.setTransform(1 / CELL, 0, 0, 1 / CELL, -bx0, -by0);
+      for (const pr of plants) drawProp(G.pgCtx, pr, W.time, TH);
+      pd = G.pgCtx.getImageData(0, 0, w, h3).data;
+    }
+    const T = W.img.data, D = W.dimg ? W.dimg.data : null, A = G.pgArt;
+    for (let y = 0; y < h3; y++) for (let x = 0; x < w; x++) {
+      const si = ((by0 + y) * CW + bx0 + x) * 4, o = (y * w + x) * 4;
+      let r = 0, g = 0, b = 0, a = 0;
+      if (T[si + 3]) {
+        r = T[si];
+        g = T[si + 1];
+        b = T[si + 2];
+        a = 255;
+      } else if (D && D[si + 3]) {
+        r = D[si];
+        g = D[si + 1];
+        b = D[si + 2];
+        a = D[si + 3];
+      }
+      if (pd && pd[o + 3]) {
+        const pa = pd[o + 3] / 255;
+        if (a) {
+          r += (pd[o] - r) * pa;
+          g += (pd[o + 1] - g) * pa;
+          b += (pd[o + 2] - b) * pa;
+          a = Math.max(a, pd[o + 3]);
+        } else {
+          r = pd[o];
+          g = pd[o + 1];
+          b = pd[o + 2];
+          a = pd[o + 3];
+        }
+      }
+      A[o] = r;
+      A[o + 1] = g;
+      A[o + 2] = b;
+      A[o + 3] = a;
+    }
+    const out = new ImageData(w, h3);
+    if (!plantGlowFill(out.data, A, w, h3, {
+      ox: x0w,
+      oy: y0w,
+      px: CELL,
+      cx: e.x,
+      cy: e.y,
+      reach,
+      white: W.plantW,
+      top: kru("jePlantTop", u.plant) / 100,
+      strength,
+      t: W.time * kru("jePlantTwinkle", u.plant),
+      size: kru("jePlantSize", u.plant),
+      rgb: hexArr(jcol("jeColGlow", u.col)),
+      lit: (x, y) => seenAt(W, x, y)
+    })) return;
+    if (G.pgGlow.width < w || G.pgGlow.height < h3) {
+      G.pgGlow.width = Math.max(G.pgGlow.width, w);
+      G.pgGlow.height = Math.max(G.pgGlow.height, h3);
+    }
+    G.pgGlowCtx.putImageData(out, 0, 0);
+    const sm = G.ctx.imageSmoothingEnabled;
+    G.ctx.imageSmoothingEnabled = true;
+    G.ctx.drawImage(G.pgGlow, 0, 0, w, h3, x0w, y0w, w * CELL, h3 * CELL);
+    G.ctx.imageSmoothingEnabled = sm;
+  }
+
+  // src/save/save.js
+  var SAVE_KEY = "caverunner-save";
+  var GUN_DEFAULTS = {
+    name: "Gun",
+    castDelay: 0.2,
+    recharge: 0.5,
+    manaMax: 100,
+    manaRegen: 30,
+    spread: 0,
+    multi: 1,
+    shuffle: false,
+    speedMul: 1,
+    hue: 0
+  };
+  function cleanGun(g) {
+    if (!g || typeof g !== "object" || !Array.isArray(g.slots) || !g.slots.length) return null;
+    const out = Object.assign({}, GUN_DEFAULTS, g);
+    out.slots = g.slots.map((id) => id && MODS[id] ? id : null);
+    out.cap = out.slots.length;
+    out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
+    return resetGun(out);
+  }
+  function cleanLoadout(lo) {
+    lo = lo && typeof lo === "object" ? lo : {};
+    const guns = [0, 1, 2, 3].map((i) => cleanGun((lo.guns || [])[i]));
+    if (!guns.some(Boolean)) return null;
+    const num2 = (v, d) => Number.isFinite(v) ? v : d;
+    let sel = num2(lo.sel, 0);
+    if (!guns[sel]) sel = guns.findIndex(Boolean);
+    return {
+      guns,
+      sel,
+      bag: (Array.isArray(lo.bag) ? lo.bag : []).filter((id) => MODS[id]),
+      perks: (Array.isArray(lo.perks) ? lo.perks : []).filter((id) => PERKS[id]),
+      gold: Math.max(0, num2(lo.gold, START_GOLD)),
+      maxBonus: Math.max(0, num2(lo.maxBonus, 0)),
+      usedLives: Math.max(0, num2(lo.usedLives, 0)),
+      debug: !!lo.debug
+    };
+  }
+  function readSave(raw) {
+    let s;
+    try {
+      s = JSON.parse(raw);
+    } catch (_) {
+      return null;
+    }
+    if (!s || typeof s !== "object") return null;
+    const loadout = cleanLoadout(s.loadout);
+    if (!loadout) return null;
+    const floor = Math.max(1, Math.floor(Number(s.floor) || 1));
+    const out = { loadout, floor, hp: Number.isFinite(s.hp) && s.hp > 0 ? s.hp : null, level: null };
+    const L = s.level;
+    if (s.ver === VERSION && L && Number.isFinite(L.seed)) {
+      out.level = {
+        seed: L.seed,
+        owned: (Array.isArray(L.owned) ? L.owned : []).filter((id) => PERKS[id]),
+        alive: Array.isArray(L.alive) ? L.alive : null,
+        sold: Array.isArray(L.sold) ? L.sold : [],
+        rooms: Array.isArray(L.rooms) ? L.rooms : [],
+        pickups: Array.isArray(L.pickups) ? L.pickups.map((q) => {
+          if (!q || typeof q !== "object") return null;
+          if (q.kind === "mod") return MODS[q.id] ? q : null;
+          if (q.kind === "gun") {
+            const gun = cleanGun(q.gun);
+            return gun ? Object.assign({}, q, { gun }) : null;
+          }
+          return null;
+        }).filter(Boolean) : null
+      };
+    }
+    return out;
+  }
+  var loadSave = () => {
+    try {
+      return readSave(localStorage.getItem(SAVE_KEY));
+    } catch (_) {
+      return null;
+    }
+  };
+  var clearSave = () => {
+    try {
+      localStorage.removeItem(SAVE_KEY);
+    } catch (_) {
+    }
+  };
+
   // src/creatures/spider.js
   var SPIDER = { hold: 6, feel: 14, step: 1.5, fall: 900 };
   function spiderSeat(e, S, solidCell2, maxMove) {
@@ -9466,269 +9642,90 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.restore();
   }
 
-  // src/save/save.js
-  var SAVE_KEY = "caverunner-save";
-  var GUN_DEFAULTS = {
-    name: "Gun",
-    castDelay: 0.2,
-    recharge: 0.5,
-    manaMax: 100,
-    manaRegen: 30,
-    spread: 0,
-    multi: 1,
-    shuffle: false,
-    speedMul: 1,
-    hue: 0
-  };
-  function cleanGun(g) {
-    if (!g || typeof g !== "object" || !Array.isArray(g.slots) || !g.slots.length) return null;
-    const out = Object.assign({}, GUN_DEFAULTS, g);
-    out.slots = g.slots.map((id) => id && MODS[id] ? id : null);
-    out.cap = out.slots.length;
-    out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
-    return resetGun(out);
-  }
-  function cleanLoadout(lo) {
-    lo = lo && typeof lo === "object" ? lo : {};
-    const guns = [0, 1, 2, 3].map((i) => cleanGun((lo.guns || [])[i]));
-    if (!guns.some(Boolean)) return null;
-    const num2 = (v, d) => Number.isFinite(v) ? v : d;
-    let sel = num2(lo.sel, 0);
-    if (!guns[sel]) sel = guns.findIndex(Boolean);
-    return {
-      guns,
-      sel,
-      bag: (Array.isArray(lo.bag) ? lo.bag : []).filter((id) => MODS[id]),
-      perks: (Array.isArray(lo.perks) ? lo.perks : []).filter((id) => PERKS[id]),
-      gold: Math.max(0, num2(lo.gold, START_GOLD)),
-      maxBonus: Math.max(0, num2(lo.maxBonus, 0)),
-      usedLives: Math.max(0, num2(lo.usedLives, 0)),
-      debug: !!lo.debug
-    };
-  }
-  function readSave(raw) {
-    let s;
-    try {
-      s = JSON.parse(raw);
-    } catch (_) {
-      return null;
-    }
-    if (!s || typeof s !== "object") return null;
-    const loadout = cleanLoadout(s.loadout);
-    if (!loadout) return null;
-    const floor = Math.max(1, Math.floor(Number(s.floor) || 1));
-    const out = { loadout, floor, hp: Number.isFinite(s.hp) && s.hp > 0 ? s.hp : null, level: null };
-    const L = s.level;
-    if (s.ver === VERSION && L && Number.isFinite(L.seed)) {
-      out.level = {
-        seed: L.seed,
-        owned: (Array.isArray(L.owned) ? L.owned : []).filter((id) => PERKS[id]),
-        alive: Array.isArray(L.alive) ? L.alive : null,
-        sold: Array.isArray(L.sold) ? L.sold : [],
-        rooms: Array.isArray(L.rooms) ? L.rooms : [],
-        pickups: Array.isArray(L.pickups) ? L.pickups.map((q) => {
-          if (!q || typeof q !== "object") return null;
-          if (q.kind === "mod") return MODS[q.id] ? q : null;
-          if (q.kind === "gun") {
-            const gun = cleanGun(q.gun);
-            return gun ? Object.assign({}, q, { gun }) : null;
-          }
-          return null;
-        }).filter(Boolean) : null
-      };
-    }
-    return out;
-  }
-  var loadSave = () => {
-    try {
-      return readSave(localStorage.getItem(SAVE_KEY));
-    } catch (_) {
-      return null;
-    }
-  };
-  var clearSave = () => {
-    try {
-      localStorage.removeItem(SAVE_KEY);
-    } catch (_) {
-    }
-  };
-
-  // src/game/systems/particles.js
-  var toast = (W, text) => {
-    W.toasts.push({ text, t: 2.2 });
-    if (W.toasts.length > 3) W.toasts.shift();
-  };
-  function goo(W, x, y, vx, vy, g, c, size, c2) {
-    if (W.sparks.length > 800) return;
-    const life = 0.5 + Math.random() * 0.5;
-    W.sparks.push({
-      x,
-      y,
-      vx,
-      vy,
-      life,
-      max: life,
-      c: Math.random() < 0.35 ? c2 || "#c8ff8a" : c,
-      size: size || 1.1 + Math.random() * 0.8,
-      heavy: 1,
-      g
-    });
-  }
-  function splat(W, b, x, y) {
-    const sp = Math.hypot(b.vx, b.vy) || 1;
-    for (let i = 0; i < b.splat; i++) {
-      const a = Math.random() * 6.28, v = b.splatV * (0.4 + Math.random() * 0.6);
-      goo(
-        W,
-        x,
-        y,
-        Math.cos(a) * v - b.vx / sp * v * 0.5,
-        Math.sin(a) * v - b.vy / sp * v * 0.5 - v * 0.3,
-        b.dripG,
-        b.dripCol || b.col,
-        1.3 + Math.random(),
-        b.dripCol2
-      );
-    }
-    SFX.fx("splash", x, y);
-  }
-  function burst(W, x, y, n, color) {
-    for (let i = 0; i < n; i++) {
-      const a = Math.random() * 6.28, sp = 60 + Math.random() * 160;
-      W.sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.45, max: 0.45, c: color, size: 3 });
+  // src/game/systems/ambience.js
+  var AMB_RATE = { spores: 5, frost: 3, embers: 8, motes: 4, ashfall: 55 };
+  var AMB_MAX = { spores: 40, frost: 20, embers: 60, motes: 50, ashfall: 280 };
+  var spore = (W, x, y, r) => ({
+    kind: "spores",
+    x,
+    y,
+    vx: (r - 0.5) * 8,
+    vy: 0,
+    wob: r * 9,
+    life: 5 + r * 3,
+    max: 8,
+    c: rgbA(themeFor(W.floor).moss[1]),
+    s: 1.3,
+    glow: 1
+  });
+  function puffSpores(W, e) {
+    if (e.x < W.camX - 150 || e.x > W.camX + W.viewW + 150 || e.y < W.camY - 150 || e.y > W.camY + W.viewH + 150) return;
+    const S = e.je, B = jellyBell(e.r, S.shape, kru("jeSquash", S.u.sq));
+    const c = Math.cos(S.hd), sn = Math.sin(S.hd), n = Math.round(kr("jeSpores"));
+    for (let i = 0; i < n && W.amb.length < 500; i++) {
+      const lx = (Math.random() * 2 - 1) * B.rw * 0.7;
+      const q = spore(W, e.x - lx * sn - B.rim * c, e.y + lx * c - B.rim * sn, Math.random());
+      const a = S.hd + Math.PI + (Math.random() * 2 - 1) * kr("jeSporeSpread") * Math.PI / 180, v = kr("jeSporeSpd");
+      q.kx = Math.cos(a) * v;
+      q.ky = Math.sin(a) * v;
+      q.kd = kr("jeSporeDrag");
+      W.amb.push(q);
     }
   }
-  function stepToasts(W, F) {
-    const { dt } = F;
-    for (let i = W.toasts.length - 1; i >= 0; i--) if ((W.toasts[i].t -= dt) <= 0) W.toasts.splice(i, 1);
-  }
-  function stepParticles(W, F) {
-    const { dt, pcx } = F;
-    if (W.p.flame > 0) {
-      let fx = -W.p.jx, fy = -W.p.jy + 0.8;
-      const fl = Math.hypot(fx, fy) || 1;
-      fx /= fl;
-      fy /= fl;
-      W.smokeAcc += dt * (25 + 35 * W.p.flame);
-      while (W.smokeAcc >= 1) {
-        W.smokeAcc--;
-        W.smoke.push({
-          x: pcx + (Math.random() - 0.5) * 5,
-          y: W.p.y + PH + 3,
-          vx: fx * 50 + (Math.random() - 0.5) * 20,
-          vy: fy * 50 + (Math.random() - 0.5) * 20,
-          r: 1.5 + Math.random(),
-          life: 0.9,
-          max: 0.9
-        });
+  function stepAmbience(W, dt) {
+    const x0 = W.camX - 30, y0 = W.camY - 30, w = W.viewW + 60, h3 = W.viewH + 60;
+    const T = themeFor(W.floor);
+    for (const kind of W.ambKinds) {
+      if (kind === "devils") {
+        if (W.devils.length < 2 && Math.random() < dt * 0.4) {
+          let x = x0 + Math.random() * w, y = y0 + Math.random() * h3, k = 0;
+          while (k++ < 120 && !solidAt(W, x, y + 1)) y += 2;
+          if (k < 120 && !solidAt(W, x, y - 30)) W.devils.push({ x, y, vx: (Math.random() < 0.5 ? -1 : 1) * (15 + Math.random() * 20), life: 6 + Math.random() * 3, max: 9 });
+        }
+        continue;
+      }
+      const n = W.amb.reduce((a, q) => a + (q.kind === kind), 0);
+      let want = AMB_RATE[kind] * dt;
+      while (want > 0 && n < AMB_MAX[kind]) {
+        if (Math.random() >= want) break;
+        want -= 1;
+        const x = x0 + Math.random() * w, y = y0 + Math.random() * h3;
+        if (solidAt(W, x, y)) continue;
+        const r = Math.random();
+        if (kind === "spores") W.amb.push(spore(W, x, y, r));
+        else if (kind === "frost") {
+          const dir = W.floor % 2 ? 1 : -1;
+          W.amb.push({ kind, x, y, vx: dir * (100 + r * 60), vy: (r - 0.5) * 10, life: 0.9 + r * 0.5, max: 1.4, c: "rgba(215,238,255,0.5)", s: 1, streak: 10 });
+        } else if (kind === "embers") W.amb.push({ kind, x, y, vx: 0, vy: -20 - r * 30, wob: r * 9, life: 3 + r * 2, max: 5, c: r < 0.5 ? "#ffb050" : "#ff7a2a", s: 1.2, glow: 1 });
+        else if (kind === "motes") W.amb.push({ kind, x, y, vx: (r - 0.5) * 6, vy: (Math.random() - 0.5) * 4, wob: r * 9, life: 6 + r * 3, max: 9, c: "rgba(235,225,200,0.8)", s: 1 });
+        else if (kind === "ashfall") W.amb.push({ kind, x, y, vx: 8, vy: 20 + r * 22, wob: r * 9, life: 4 + r * 3, max: 7, c: "rgba(150,146,142,0.75)", s: 1 + r });
       }
     }
-    for (let i = W.smoke.length - 1; i >= 0; i--) {
-      const m = W.smoke[i];
-      m.x += m.vx * dt;
-      m.y += m.vy * dt;
-      m.vx *= 1 - 2.5 * dt;
-      m.vy = m.vy * (1 - 2.5 * dt) - 12 * dt;
-      m.r += 5 * dt;
-      m.life -= dt;
-      if (m.life <= 0) W.smoke.splice(i, 1);
-    }
-    for (let i = W.sparks.length - 1; i >= 0; i--) {
-      const q = W.sparks[i];
-      q.vy += (q.g != null ? q.g : q.heavy ? 600 : 300) * dt;
-      const nx = q.x + q.vx * dt, ny = q.y + q.vy * dt;
-      if (q.heavy && solidAt(W, nx, ny)) {
-        q.vx *= 0.3;
-        q.vy = 0;
-      } else {
-        q.x = nx;
-        q.y = ny;
-      }
+    for (let i = W.amb.length - 1; i >= 0; i--) {
+      const q = W.amb[i];
       q.life -= dt;
-      if (q.life <= 0) W.sparks.splice(i, 1);
-    }
-    for (let i = W.flashes.length - 1; i >= 0; i--) {
-      W.flashes[i].t += dt;
-      if (W.flashes[i].t > 0.25) W.flashes.splice(i, 1);
-    }
-  }
-  function stepMotes(W, F) {
-    const { dt } = F;
-    W.portalAcc += dt;
-    while (W.portalAcc > 0.05) {
-      W.portalAcc -= 0.05;
-      const ex = W.portal.x + W.portal.w / 2, ey = W.portal.y + W.portal.h / 2;
-      if (Math.abs(ey - W.p.y) < 500) {
-        const a = Math.random() * 6.28, rr2 = 30 + Math.random() * 38;
-        const life = 1.4 + Math.random() * 0.8;
-        W.motes.push({
-          kind: "in",
-          x: ex + Math.cos(a) * rr2,
-          y: ey + Math.sin(a) * rr2 * 0.9,
-          tx: ex,
-          ty: ey,
-          vx: 0,
-          vy: 0,
-          life,
-          max: life,
-          age: 0,
-          ph: Math.random() * 6.28,
-          s: 1 + Math.random() * 1.4,
-          c: Math.random() < 0.4 ? "#c8ffe4" : COL.portal
-        });
+      if (q.wob != null) q.x += Math.sin(W.time * 1.3 + q.wob) * 6 * dt;
+      if (q.kx || q.ky) {
+        q.x += q.kx * dt;
+        q.y += q.ky * dt;
+        const k = Math.exp(-q.kd * dt);
+        q.kx *= k;
+        q.ky *= k;
       }
-      if (Math.abs(W.arrival.y - W.p.y) < 500) {
-        const a = Math.random() * 6.28, sp = 10 + Math.random() * 16;
-        W.motes.push({
-          kind: "out",
-          x: W.arrival.x + (Math.random() - 0.5) * 12,
-          y: W.arrival.y + (Math.random() - 0.5) * 18,
-          ox: W.arrival.x,
-          oy: W.arrival.y,
-          vx: Math.cos(a) * sp,
-          vy: Math.sin(a) * sp - 4,
-          life: 4,
-          max: 4,
-          age: 0,
-          ph: Math.random() * 6.28,
-          fade: 34 + Math.random() * 18,
-          s: 1 + Math.random() * 1.3,
-          c: Math.random() < 0.4 ? "#e6d4ff" : COL.enemy
-        });
-      }
+      q.x += q.vx * dt;
+      q.y += q.vy * dt;
+      if (q.life <= 0 || solidAt(W, q.x, q.y) || q.x < x0 - 200 || q.x > x0 + w + 200 || q.y < y0 - 200 || q.y > y0 + h3 + 200) W.amb.splice(i, 1);
     }
-    for (let i = W.motes.length - 1; i >= 0; i--) {
-      const q = W.motes[i];
-      q.age += dt;
-      if (q.kind === "in") {
-        const dx = q.tx - q.x, dy = q.ty - q.y, d = Math.hypot(dx, dy) || 1;
-        const pullF = 70 + 260 * q.age;
-        q.vx += dx / d * pullF * dt;
-        q.vy += dy / d * pullF * dt;
-        q.vx *= 1 - 2.2 * dt;
-        q.vy *= 1 - 2.2 * dt;
-        const w = Math.sin(q.age * 7 + q.ph) * 26;
-        q.x += (q.vx - dy / d * w) * dt;
-        q.y += (q.vy + dx / d * w) * dt;
-        if (d < 3) q.life = 0;
-      } else if (q.kind === "out") {
-        const w = Math.sin(q.age * 2.3 + q.ph);
-        q.vx += w * 18 * dt;
-        q.vy += (Math.cos(q.age * 1.7 + q.ph) * 12 - 3) * dt;
-        q.vx *= 1 - 0.4 * dt;
-        q.vy *= 1 - 0.4 * dt;
-        q.x += q.vx * dt;
-        q.y += q.vy * dt;
-        if (Math.hypot(q.x - q.ox, q.y - q.oy) > q.fade) q.life = 0;
-      } else {
-        q.vx *= 1 - 1.8 * dt;
-        q.vy = q.vy * (1 - 1.8 * dt) - 6 * dt;
-        q.x += q.vx * dt;
-        q.y += q.vy * dt;
-      }
-      if ((q.life -= dt) <= 0) W.motes.splice(i, 1);
+    for (let i = W.devils.length - 1; i >= 0; i--) {
+      const dv = W.devils[i];
+      dv.life -= dt;
+      const nx = dv.x + dv.vx * dt;
+      if (solidAt(W, nx + Math.sign(dv.vx) * 6, dv.y - 4)) dv.vx = -dv.vx;
+      else dv.x = nx;
+      if (!solidAt(W, dv.x, dv.y + 2)) dv.y += 40 * dt;
+      else if (solidAt(W, dv.x, dv.y)) dv.y -= 2;
+      if (dv.life <= 0) W.devils.splice(i, 1);
     }
-    if (W.motes.length > 400) W.motes.splice(0, W.motes.length - 400);
   }
 
   // src/game/systems/webs.js
@@ -9741,281 +9738,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const q = webNear(L, x, y);
     return Math.hypot(q.x - x, q.y - y);
   };
-
-  // src/game/systems/player.js
-  var refreshBag = (W, G) => {
-    W.pb = perkBag(G.input.current.loadout.perks || []);
-  };
-  var maxHp = (W, G) => W.pb.maxHp + (G.input.current.loadout.maxBonus || 0);
-  function hurt(W, G, n) {
-    if (W.p.dead || n <= 0) return;
-    if (W.pb.shield && W.p.shieldReady) {
-      W.p.shieldReady = false;
-      W.p.shieldT = 2.5;
-      burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 10, "#7ad7ff");
-      SFX.ui("shield");
-      return;
-    }
-    W.p.hp = Math.max(0, W.p.hp - n);
-    W.p.hitT = 0.3;
-    if (W.p.hp > 0) SFX.ui("hurt");
-    if (W.p.hp === 0) {
-      const LO = G.input.current.loadout;
-      if (W.pb.lives > (LO.usedLives || 0)) {
-        LO.usedLives = (LO.usedLives || 0) + 1;
-        W.p.hp = maxHp(W, G);
-        W.p.shieldReady = true;
-        W.p.shieldT = 0;
-        burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 24, "#ff5a36");
-        SFX.ui("revive");
-        toast(W, "Back from the dead");
-        G.input.current.notify();
-        return;
-      }
-      W.p.dead = true;
-      burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 24, COL.player);
-      W.strings.length = 0;
-      SFX.ui("die");
-      clearSave();
-    }
-  }
-  var torchHand = (W) => {
-    const a = W.p.aim.show ? W.p.aim.nx : W.p.face;
-    return { x: W.p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: W.p.y + 9 };
-  };
-  var SPUTTER_FUEL = 0.25;
-  function sputterStep(st, dt, fuel, on, rnd2) {
-    rnd2 = rnd2 || Math.random;
-    st.start = false;
-    if (!on) {
-      st.cut = 0;
-      st.gap = 0;
-      st.onT = 0;
-      return false;
-    }
-    st.onT = (st.onT || 0) + dt;
-    st.cut = Math.max(0, (st.cut || 0) - dt);
-    st.gap = Math.max(0, (st.gap || 0) - dt);
-    if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
-      const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;
-      if (rnd2() < dt * (1 + 7 * w)) {
-        st.cut = 0.04 + rnd2() * (0.05 + 0.08 * w);
-        st.gap = st.cut + 0.1 + rnd2() * 0.2;
-        st.start = true;
-      }
-    }
-    return st.cut > 0;
-  }
-  var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
-  function movePlayer(W, G, F) {
-    const { dt } = F;
-    let L = G.input.current.left;
-    if (!L.active) {
-      const keys = G.input.current.keys;
-      const kx = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
-      if (kx || keys.w) {
-        const ny = keys.w ? -1 : 0, len = Math.hypot(kx, ny);
-        L = { active: true, nx: kx / len, ny: ny / len, mag: 1, dy: keys.w ? -1 : 1, on: true };
-      }
-    }
-    if (W.p.dead) L = NO_INPUT;
-    W.p.jx = L.nx;
-    W.p.jy = L.ny;
-    const raw = L.active ? L.mag : 0;
-    const mag = raw > DEAD ? (raw - DEAD) / (1 - DEAD) : 0;
-    const wantJet = mag > 0 && L.dy < 0;
-    if (W.p.empty && W.p.fuel >= FUEL_RESTART) W.p.empty = false;
-    const jet = wantJet && !W.p.empty;
-    const climbing = W.zfx.climb && !jet && !W.p.dead;
-    W.p.jet = jet ? mag : 0;
-    W.p.sput = sputterStep(W.jetSt, dt, W.p.fuel, jet);
-    W.p.flame = W.p.sput ? 0 : W.p.jet;
-    if (W.p.sput) W.p.cough = 0.15;
-    else W.p.cough = Math.max(0, W.p.cough - dt);
-    if (W.jetSt.start) {
-      W.p.vy += DEV.sputDip;
-      for (let i = 0; i < 3; i++)
-        W.smoke.push({
-          x: W.p.x + PW / 2 + (Math.random() - 0.5) * 6,
-          y: W.p.y + PH + 2,
-          vx: (Math.random() - 0.5) * 40,
-          vy: 20 + Math.random() * 30,
-          r: 2.5 + Math.random() * 2,
-          life: 0.7 + Math.random() * 0.4,
-          max: 1.1,
-          c: "#6f767e",
-          a: 0.8
-        });
-    }
-    if (jet) {
-      W.p.fuel -= FUEL_DRAIN * (0.5 + 0.5 * mag) * dt;
-      if (W.p.fuel <= 0) {
-        W.p.fuel = 0;
-        W.p.empty = true;
-      }
-    } else if (W.p.onGround || climbing) {
-      W.p.fuel = Math.min(1, W.p.fuel + FUEL_REGEN * dt);
-    }
-    const pcx0 = W.p.x + PW / 2;
-    W.p.kick -= dt;
-    const k = W.p.kick > 0 ? 0.15 : 1;
-    const tied = W.strings.reduce((m, s) => m * s.slow, 1) * W.zfx.webMul;
-    W.webLetGo -= dt;
-    if (jet && W.p.sput) {
-      W.p.vx = approach(W.p.vx, L.nx * mag * JET * W.pb.walk * DEV.move * tied, JET_ACC * dt * k);
-      W.p.vy = Math.min(W.p.vy + GRAVITY * dt, 900);
-    } else if (jet) {
-      W.p.vx = approach(W.p.vx, L.nx * mag * JET * W.pb.walk * DEV.move * tied, JET_ACC * dt * k);
-      const ty = L.ny * mag * JET * W.pb.jet * DEV.move * tied;
-      if (ty < W.p.vy && W.p.kick <= 0 && W.p.cough <= 0) W.p.vy = ty;
-      else W.p.vy = approach(W.p.vy, ty, JET_ACC * dt * k);
-      if (W.zfx.rev) W.p.vy -= GRAVITY * W.zfx.rev * dt;
-    } else if (climbing && W.zfx.arch && W.p.kick <= 0) {
-      const ar = W.zfx.arch, hy = W.p.y + WEB_HAND, q = archNear(ar, pcx0, hy);
-      const a = ar.arc[q.k], b = ar.arc[q.k + 1], ul = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
-      const ux = (b[0] - a[0]) / ul, uy = (b[1] - a[1]) / ul;
-      const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
-      if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) {
-        W.webLetGo = 0.35;
-        W.p.vy = 40;
-      } else {
-        const v = along * (ar.climb || (ar.climb = kr("arClimb"))) * tied;
-        W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
-        W.p.vy = approach(W.p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
-      }
-    } else if (climbing && W.zfx.web && W.p.kick <= 0) {
-      const ln = W.zfx.web, wl = Math.hypot(ln.b0x - ln.a0x, ln.b0y - ln.a0y) || 1;
-      let ux = (ln.b0x - ln.a0x) / wl, uy = (ln.b0y - ln.a0y) / wl;
-      const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
-      if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) {
-        W.webLetGo = 0.35;
-        W.p.vy = 40;
-      } else {
-        const v = along * (ln.climb || (ln.climb = spr("webClimb"))) * tied, hy = W.p.y + WEB_HAND, q = webNear(ln, pcx0, hy);
-        W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
-        W.p.vy = approach(W.p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
-      }
-    } else {
-      const target = mag > 0 ? L.nx * mag * WALK * W.pb.walk * DEV.move * W.zfx.slow * tied : 0;
-      W.p.vx = approach(W.p.vx, target, (W.p.onGround ? GROUND_ACC * (W.zfx.slick ? 0.08 : 1) : AIR_ACC) * dt * k);
-      if (climbing && W.p.kick <= 0) W.p.vy = approach(W.p.vy, mag > 0 ? L.ny * mag * CLIMB * tied : 0, 1800 * dt);
-      else W.p.vy = Math.min(W.p.vy + GRAVITY * dt * (1 - 2 * W.zfx.rev), 900);
-    }
-    const wasGround = W.p.onGround, fallV = W.p.vy;
-    let n = Math.ceil(Math.abs(W.p.vx * dt));
-    if (n > 0) {
-      const sx = W.p.vx * dt / n;
-      for (let i = 0; i < n; i++) {
-        if (!boxHit(W, W.p.x + sx, W.p.y)) {
-          W.p.x += sx;
-          continue;
-        }
-        let moved = false;
-        const maxUp = wasGround ? 6 : 3;
-        for (let up = 1; up <= maxUp; up++) {
-          if (!boxHit(W, W.p.x + sx, W.p.y - up)) {
-            W.p.x += sx;
-            W.p.y -= up;
-            moved = true;
-            break;
-          }
-        }
-        if (!moved) {
-          W.p.vx = 0;
-          break;
-        }
-      }
-    }
-    n = Math.ceil(Math.abs(W.p.vy * dt));
-    if (n > 0) {
-      const sy = W.p.vy * dt / n;
-      for (let i = 0; i < n; i++) {
-        if (!boxHit(W, W.p.x, W.p.y + sy)) {
-          W.p.y += sy;
-          continue;
-        }
-        if (sy > 0) W.p.y = Math.floor((W.p.y + sy + PH - 1e-3) / CELL) * CELL - PH;
-        else W.p.y = (Math.floor((W.p.y + sy) / CELL) + 1) * CELL;
-        if (boxHit(W, W.p.x, W.p.y)) W.p.y -= sy;
-        W.p.vy = 0;
-        break;
-      }
-    }
-    if (wasGround && !jet && W.p.vy >= 0 && W.p.kick <= 0 && !boxHit(W, W.p.x, W.p.y + 1)) {
-      for (let dn = 1; dn <= 6; dn++) {
-        if (boxHit(W, W.p.x, W.p.y + dn + 1)) {
-          W.p.y += dn;
-          W.p.vy = 0;
-          break;
-        }
-      }
-    }
-    if (boxHit(W, W.p.x, W.p.y)) {
-      for (let up = 1; up <= 40; up++) if (!boxHit(W, W.p.x, W.p.y - up)) {
-        W.p.y -= up;
-        break;
-      }
-    }
-    if (W.p.y > WH) {
-      W.p.x = W.start.x;
-      W.p.y = W.start.y;
-      W.p.vx = 0;
-      W.p.vy = 0;
-    }
-    W.p.onGround = boxHit(W, W.p.x, W.p.y + 0.5);
-    if (!W.p.dead) {
-      if (W.p.onGround && !wasGround && fallV > 200) SFX.fx("land", null, null, { v: fallV, s: W.zfx.surface });
-      if (W.p.onGround && Math.abs(W.p.vx) > 40) {
-        if ((W.stepT -= dt * Math.abs(W.p.vx) / 40) <= 0) {
-          W.stepT = 1;
-          SFX.fx("step", null, null, W.zfx.surface);
-        }
-      } else W.stepT = Math.min(W.stepT, 0.35);
-    }
-  }
-  function stepTorch(W, F) {
-    const { dt } = F;
-    W.torchT += dt;
-    W.flickN += (Math.random() - 0.5) * 2.6 * dt;
-    W.flickN *= 0.94;
-    W.flick = clamp(
-      0.94 + W.flickN + 0.04 * Math.sin(W.torchT * 11.3) + 0.025 * Math.sin(W.torchT * 19.7),
-      0.84,
-      1
-    );
-    W.torchAcc += dt;
-    while (W.torchAcc > 0.04) {
-      W.torchAcc -= 0.04;
-      const th = torchHand(W);
-      const life = 0.3 + Math.random() * 0.35;
-      W.torchP.push({
-        x: th.x + (Math.random() - 0.5) * 2,
-        y: th.y - 7,
-        vx: (Math.random() - 0.5) * 10 + W.p.vx * 0.15,
-        vy: -20 - Math.random() * 22,
-        life,
-        max: life,
-        s: 1 + Math.random() * 1.3,
-        c: Math.random() < 0.5 ? COL.flame2 : COL.flame
-      });
-      if (W.torchP.length > 60) W.torchP.shift();
-    }
-    for (let i = W.torchP.length - 1; i >= 0; i--) {
-      const q = W.torchP[i];
-      q.vy += 30 * dt;
-      q.vx *= 0.98;
-      q.x += q.vx * dt;
-      q.y += q.vy * dt;
-      if ((q.life -= dt) <= 0) W.torchP.splice(i, 1);
-    }
-    const wantX = clamp(-W.p.vx * 0.055, -11, 11), wantY = clamp(-W.p.vy * 0.03, -5, 7);
-    W.leanVX += ((wantX - W.leanX) * 90 - W.leanVX * 9) * dt;
-    W.leanVY += ((wantY - W.leanY) * 90 - W.leanVY * 9) * dt;
-    W.leanX += W.leanVX * dt;
-    W.leanY += W.leanVY * dt;
-    W.glowN += (Math.random() - 0.5) * 6 * dt;
-    W.glowN *= 0.9;
-  }
 
   // src/game/systems/props.js
   function blowProp(W, G, pr) {
@@ -10828,282 +10550,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           damageEnemy(W, j, 22 * dt);
         }
       if (bn.life <= 0) W.burns.splice(i, 1);
-    }
-  }
-
-  // src/game/systems/terrain.js
-  var solidCell = (W, cx, cy) => cx < 0 || cy < 0 || cx >= CW || cy >= CH || W.mat[cy * CW + cx] !== 0;
-  var solidAt = (W, x, y) => solidCell(W, Math.floor(x / CELL), Math.floor(y / CELL));
-  var boxHit = (W, x, y) => {
-    const x0 = Math.floor(x / CELL), x1 = Math.floor((x + PW - 1e-3) / CELL);
-    const y0 = Math.floor(y / CELL), y1 = Math.floor((y + PH - 1e-3) / CELL);
-    for (let cy = y0; cy <= y1; cy++) {
-      if (cy < 0 || cy >= CH) return true;
-      for (let cx = x0; cx <= x1; cx++) {
-        if (cx < 0 || cx >= CW || W.mat[cy * CW + cx]) return true;
-      }
-    }
-    return false;
-  };
-  var lineOfSight = (W, x0, y0, x1, y1) => losClear(x0, y0, x1, y1, (cx, cy) => solidCell(W, cx, cy));
-  var enemyAt = (W, x, y, pad) => {
-    for (let j = 0; j < W.enemies.length; j++) {
-      const e = W.enemies[j];
-      if (Math.hypot(x - e.x, y - e.ty) < e.r + pad) return j;
-    }
-    return -1;
-  };
-  function dig(W, G, x, y, R) {
-    const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL;
-    const minX = Math.max(0, Math.floor(cx0 - rc)), maxX = Math.min(CW - 1, Math.ceil(cx0 + rc));
-    const minY = Math.max(0, Math.floor(cy0 - rc)), maxY = Math.min(CH - 1, Math.ceil(cy0 + rc));
-    const d = W.img.data;
-    let changed = false, nOre = 0;
-    for (let cy = minY; cy <= maxY; cy++)
-      for (let cx = minX; cx <= maxX; cx++) {
-        const i = cy * CW + cx;
-        if (!W.mat[i] || W.mat[i] === BED) continue;
-        if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
-        if (W.ore && W.ore[i]) {
-          W.ore[i] = 0;
-          nOre++;
-        }
-        W.fire.fuel[i] = 0;
-        W.fire.t[i] = 0;
-        W.mat[i] = 0;
-        d[i * 4 + 3] = 0;
-        changed = true;
-      }
-    if (W.burrow) {
-      for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
-        if (W.burrow[cy * CW + cx] && Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) {
-          W.burrow[cy * CW + cx] = 0;
-          changed = true;
-        }
-    }
-    if (changed) W.terrainV++;
-    if (changed) G.tctx.putImageData(W.img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
-    unDeco(W, G, cx0, cy0, rc, minX, minY, maxX, maxY);
-    if (nOre) dropOre(W, x, y, nOre);
-  }
-  function dropOre(W, x, y, n) {
-    W.oreBank += n * ORE_GOLD * (1 + (W.floor - 1) * 0.3) * W.pb.gold;
-    let bits = Math.min(12, Math.floor(W.oreBank / 2));
-    if (!bits) return;
-    const each = Math.floor(W.oreBank / bits);
-    W.oreBank -= each * bits;
-    for (let k = 0; k < bits; k++)
-      W.coins.push({
-        x: x + (Math.random() - 0.5) * 6,
-        y,
-        amount: each,
-        t: Math.random() * 6.28,
-        vx: (Math.random() - 0.5) * 120,
-        vy: -60 - Math.random() * 80
-      });
-    SFX.fx("coinland", x, y);
-  }
-  function unDeco(W, G, cx0, cy0, rc, minX, minY, maxX, maxY) {
-    const dd = W.dimg.data;
-    let changed = false;
-    for (let cy = minY; cy <= maxY; cy++)
-      for (let cx = minX; cx <= maxX; cx++) {
-        const k = (cy * CW + cx) * 4;
-        if (!dd[k + 3] || Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
-        dd[k + 3] = 0;
-        changed = true;
-        W.fire.fuel[k >> 2] = 0;
-        W.fire.t[k >> 2] = 0;
-      }
-    if (changed) G.dctx.putImageData(W.dimg, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
-  }
-  function paint(W, G, x, y, w, hh) {
-    const x0 = Math.max(1, Math.round(x / CELL - w / 2)), x1 = Math.min(CW - 2, x0 + w);
-    const y0 = Math.max(1, Math.round(y / CELL)), y1 = Math.min(CH - 2, y0 + hh);
-    const d = W.img.data;
-    for (let cy = y0; cy < y1; cy++)
-      for (let cx = x0; cx < x1; cx++) {
-        const i = cy * CW + cx;
-        if (W.mat[i]) continue;
-        W.mat[i] = BRICK;
-        const k = i * 4;
-        d[k] = 132;
-        d[k + 1] = 99;
-        d[k + 2] = 71;
-        d[k + 3] = 255;
-      }
-    if (x1 > x0 && y1 > y0) G.tctx.putImageData(W.img, 0, 0, x0, y0, x1 - x0, y1 - y0);
-  }
-  function explode(W, G, x, y, R, splash, hot) {
-    SFX.boom(x, y, R);
-    const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL, ring = rc + 2.5;
-    const minX = Math.max(0, Math.floor(cx0 - ring)), maxX = Math.min(CW - 1, Math.ceil(cx0 + ring));
-    const minY = Math.max(0, Math.floor(cy0 - ring)), maxY = Math.min(CH - 1, Math.ceil(cy0 + ring));
-    const d = W.img.data;
-    let debris = 0, nOre = 0;
-    for (let cy = minY; cy <= maxY; cy++) {
-      for (let cx = minX; cx <= maxX; cx++) {
-        const i = cy * CW + cx, m = W.mat[i];
-        if (!m) continue;
-        const dist2 = Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0);
-        const k = i * 4;
-        if (dist2 <= rc && m !== BED) {
-          if (debris < 40 && Math.random() < 0.08) {
-            debris++;
-            const f = 0.5 + Math.random();
-            W.sparks.push({
-              x: cx * CELL,
-              y: cy * CELL,
-              vx: (cx - cx0) / rc * 220 * f,
-              vy: ((cy - cy0) / rc * 220 - 140) * f,
-              life: 0.8 + Math.random() * 0.4,
-              max: 1.2,
-              c: `rgb(${d[k]},${d[k + 1]},${d[k + 2]})`,
-              size: 2,
-              heavy: true
-            });
-          }
-          if (W.ore && W.ore[i]) {
-            W.ore[i] = 0;
-            nOre++;
-          }
-          W.fire.fuel[i] = 0;
-          W.fire.t[i] = 0;
-          W.mat[i] = 0;
-          d[k + 3] = 0;
-        } else if (dist2 <= ring) {
-          d[k] *= 0.72;
-          d[k + 1] *= 0.72;
-          d[k + 2] *= 0.72;
-        }
-      }
-    }
-    G.tctx.putImageData(W.img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
-    unDeco(W, G, cx0, cy0, rc, minX, minY, maxX, maxY);
-    if (nOre) dropOre(W, x, y, nOre);
-    if (W.burrow) {
-      for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
-        if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) W.burrow[cy * CW + cx] = 0;
-    }
-    W.terrainV++;
-    for (const pr of W.props) {
-      if (pr.gone || Math.abs(pr.x - x) > R + 40 || Math.abs(pr.y - y) > R + 40) continue;
-      const bx = clamp(x, pr.x + pr.l, pr.x + pr.r), by = clamp(y, pr.y + pr.t0, pr.y + pr.b);
-      if (Math.hypot(bx - x, by - y) < R + 6) pr.hurt = (pr.hurt || 0) + 2;
-    }
-    W.flashes.push({ x, y, r: R, t: 0 });
-    for (let i = 0; i < (splash != null ? 2 : 10); i++) {
-      W.smoke.push({
-        x: x + (Math.random() - 0.5) * R,
-        y: y + (Math.random() - 0.5) * R,
-        vx: (Math.random() - 0.5) * 40,
-        vy: (Math.random() - 0.5) * 40 - 20,
-        r: 4 + Math.random() * 5,
-        life: 1.2,
-        max: 1.2
-      });
-    }
-    for (let j = W.enemies.length - 1; j >= 0; j--) {
-      const e = W.enemies[j], dist2 = Math.hypot(e.x - x, e.ty - y);
-      if (dist2 < R + e.r) damageEnemy(W, j, splash != null ? splash : dist2 < R * 0.5 ? 3 : 2);
-    }
-    if (splash != null) return;
-    fireBlast(W, G, x, y, R, hot);
-    const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
-    const dist = Math.hypot(pcx - x, pcy - y), reach = R + 10;
-    if (dist < reach && !W.p.dead) {
-      const f = 1 - dist / reach;
-      hurt(W, G, Math.round(25 * f));
-      const nx = (pcx - x) / (dist || 1), ny = (pcy - y) / (dist || 1);
-      W.p.vx += nx * 500 * f;
-      W.p.vy += ny * 500 * f - 150 * f;
-      W.p.kick = 0.25;
-    }
-  }
-
-  // src/game/systems/ambience.js
-  var AMB_RATE = { spores: 5, frost: 3, embers: 8, motes: 4, ashfall: 55 };
-  var AMB_MAX = { spores: 40, frost: 20, embers: 60, motes: 50, ashfall: 280 };
-  var spore = (W, x, y, r) => ({
-    kind: "spores",
-    x,
-    y,
-    vx: (r - 0.5) * 8,
-    vy: 0,
-    wob: r * 9,
-    life: 5 + r * 3,
-    max: 8,
-    c: rgbA(themeFor(W.floor).moss[1]),
-    s: 1.3,
-    glow: 1
-  });
-  function puffSpores(W, e) {
-    if (e.x < W.camX - 150 || e.x > W.camX + W.viewW + 150 || e.y < W.camY - 150 || e.y > W.camY + W.viewH + 150) return;
-    const S = e.je, B = jellyBell(e.r, S.shape, kru("jeSquash", S.u.sq));
-    const c = Math.cos(S.hd), sn = Math.sin(S.hd), n = Math.round(kr("jeSpores"));
-    for (let i = 0; i < n && W.amb.length < 500; i++) {
-      const lx = (Math.random() * 2 - 1) * B.rw * 0.7;
-      const q = spore(W, e.x - lx * sn - B.rim * c, e.y + lx * c - B.rim * sn, Math.random());
-      const a = S.hd + Math.PI + (Math.random() * 2 - 1) * kr("jeSporeSpread") * Math.PI / 180, v = kr("jeSporeSpd");
-      q.kx = Math.cos(a) * v;
-      q.ky = Math.sin(a) * v;
-      q.kd = kr("jeSporeDrag");
-      W.amb.push(q);
-    }
-  }
-  function stepAmbience(W, dt) {
-    const x0 = W.camX - 30, y0 = W.camY - 30, w = W.viewW + 60, h3 = W.viewH + 60;
-    const T = themeFor(W.floor);
-    for (const kind of W.ambKinds) {
-      if (kind === "devils") {
-        if (W.devils.length < 2 && Math.random() < dt * 0.4) {
-          let x = x0 + Math.random() * w, y = y0 + Math.random() * h3, k = 0;
-          while (k++ < 120 && !solidAt(W, x, y + 1)) y += 2;
-          if (k < 120 && !solidAt(W, x, y - 30)) W.devils.push({ x, y, vx: (Math.random() < 0.5 ? -1 : 1) * (15 + Math.random() * 20), life: 6 + Math.random() * 3, max: 9 });
-        }
-        continue;
-      }
-      const n = W.amb.reduce((a, q) => a + (q.kind === kind), 0);
-      let want = AMB_RATE[kind] * dt;
-      while (want > 0 && n < AMB_MAX[kind]) {
-        if (Math.random() >= want) break;
-        want -= 1;
-        const x = x0 + Math.random() * w, y = y0 + Math.random() * h3;
-        if (solidAt(W, x, y)) continue;
-        const r = Math.random();
-        if (kind === "spores") W.amb.push(spore(W, x, y, r));
-        else if (kind === "frost") {
-          const dir = W.floor % 2 ? 1 : -1;
-          W.amb.push({ kind, x, y, vx: dir * (100 + r * 60), vy: (r - 0.5) * 10, life: 0.9 + r * 0.5, max: 1.4, c: "rgba(215,238,255,0.5)", s: 1, streak: 10 });
-        } else if (kind === "embers") W.amb.push({ kind, x, y, vx: 0, vy: -20 - r * 30, wob: r * 9, life: 3 + r * 2, max: 5, c: r < 0.5 ? "#ffb050" : "#ff7a2a", s: 1.2, glow: 1 });
-        else if (kind === "motes") W.amb.push({ kind, x, y, vx: (r - 0.5) * 6, vy: (Math.random() - 0.5) * 4, wob: r * 9, life: 6 + r * 3, max: 9, c: "rgba(235,225,200,0.8)", s: 1 });
-        else if (kind === "ashfall") W.amb.push({ kind, x, y, vx: 8, vy: 20 + r * 22, wob: r * 9, life: 4 + r * 3, max: 7, c: "rgba(150,146,142,0.75)", s: 1 + r });
-      }
-    }
-    for (let i = W.amb.length - 1; i >= 0; i--) {
-      const q = W.amb[i];
-      q.life -= dt;
-      if (q.wob != null) q.x += Math.sin(W.time * 1.3 + q.wob) * 6 * dt;
-      if (q.kx || q.ky) {
-        q.x += q.kx * dt;
-        q.y += q.ky * dt;
-        const k = Math.exp(-q.kd * dt);
-        q.kx *= k;
-        q.ky *= k;
-      }
-      q.x += q.vx * dt;
-      q.y += q.vy * dt;
-      if (q.life <= 0 || solidAt(W, q.x, q.y) || q.x < x0 - 200 || q.x > x0 + w + 200 || q.y < y0 - 200 || q.y > y0 + h3 + 200) W.amb.splice(i, 1);
-    }
-    for (let i = W.devils.length - 1; i >= 0; i--) {
-      const dv = W.devils[i];
-      dv.life -= dt;
-      const nx = dv.x + dv.vx * dt;
-      if (solidAt(W, nx + Math.sign(dv.vx) * 6, dv.y - 4)) dv.vx = -dv.vx;
-      else dv.x = nx;
-      if (!solidAt(W, dv.x, dv.y + 2)) dv.y += 40 * dt;
-      else if (solidAt(W, dv.x, dv.y)) dv.y -= 2;
-      if (dv.life <= 0) W.devils.splice(i, 1);
     }
   }
 
@@ -12209,155 +11655,647 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.p.hitT -= dt;
   }
 
-  // src/game/systems/lightning.js
-  function jag(pts, amp) {
-    const th = [pts[0]];
-    for (let k = 1; k < pts.length; k++) {
-      const q = th[th.length - 1];
-      if (k === pts.length - 1 || Math.hypot(pts[k].x - q.x, pts[k].y - q.y) >= 12) th.push(pts[k]);
-    }
-    pts = th;
-    const out = [pts[0]];
-    for (let k = 1; k < pts.length; k++) {
-      const a = pts[k - 1], c = pts[k], dx = c.x - a.x, dy = c.y - a.y, d = Math.hypot(dx, dy) || 1;
-      const n = Math.max(1, Math.round(d / 9)), px = -dy / d, py = dx / d;
-      for (let s = 1; s < n; s++) {
-        const f = s / n, o = (Math.random() - 0.5) * 2 * amp;
-        out.push({ x: a.x + dx * f + px * o, y: a.y + dy * f + py * o });
-      }
-      out.push(c);
-    }
-    return out;
-  }
-  function addArc(W, pts, col, w, max) {
-    W.arcs.push({ pts: jag(pts, 4), col, w, t: 0, max });
-  }
-  function lightningStep(W, b, dt) {
-    const tr = b.trail || (b.trail = [{ x: b.ox, y: b.oy }]);
-    tr.push({ x: b.x, y: b.y });
-    let len = 0;
-    for (let k = tr.length - 1; k > 0; k--) {
-      len += Math.hypot(tr[k].x - tr[k - 1].x, tr[k].y - tr[k - 1].y);
-      if (len > 110) {
-        tr.splice(0, k - 1);
-        break;
+  // src/game/systems/terrain.js
+  var solidCell = (W, cx, cy) => cx < 0 || cy < 0 || cx >= CW || cy >= CH || W.mat[cy * CW + cx] !== 0;
+  var solidAt = (W, x, y) => solidCell(W, Math.floor(x / CELL), Math.floor(y / CELL));
+  var boxHit = (W, x, y) => {
+    const x0 = Math.floor(x / CELL), x1 = Math.floor((x + PW - 1e-3) / CELL);
+    const y0 = Math.floor(y / CELL), y1 = Math.floor((y + PH - 1e-3) / CELL);
+    for (let cy = y0; cy <= y1; cy++) {
+      if (cy < 0 || cy >= CH) return true;
+      for (let cx = x0; cx <= x1; cx++) {
+        if (cx < 0 || cx >= CW || W.mat[cy * CW + cx]) return true;
       }
     }
-    if ((b.arcT = (b.arcT || 0) - dt) > 0) return;
-    b.arcT = 0.035 + Math.random() * 0.04;
-    const R = 90, near = [];
+    return false;
+  };
+  var lineOfSight = (W, x0, y0, x1, y1) => losClear(x0, y0, x1, y1, (cx, cy) => solidCell(W, cx, cy));
+  var enemyAt = (W, x, y, pad) => {
     for (let j = 0; j < W.enemies.length; j++) {
       const e = W.enemies[j];
-      if (Math.hypot(e.x - b.x, e.ty - b.y) < R && lineOfSight(W, b.x, b.y, e.x, e.ty)) near.push(j);
+      if (Math.hypot(x - e.x, y - e.ty) < e.r + pad) return j;
     }
-    if (near.length && Math.random() < 0.75) {
-      const j = near[Math.floor(Math.random() * near.length)], e = W.enemies[j];
-      addArc(W, [{ x: b.x, y: b.y }, { x: e.x, y: e.ty }], b.col, 1, 0.14);
-      SFX.arc(e.x, e.ty);
-      burst(W, e.x, e.ty, 3, b.col);
-      damageEnemy(W, j, b.dmg * 0.3);
-      return;
-    }
-    for (let k = 0; k < 4; k++) {
-      const a = Math.random() * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
-      const d = rayDist(b.x, b.y, dx, dy, 70, (cx, cy) => solidCell(W, cx, cy));
-      if (d < 70 && d > 6) {
-        const hx = b.x + dx * d, hy = b.y + dy * d;
-        addArc(W, [{ x: b.x, y: b.y }, { x: hx, y: hy }], b.col, 0.8, 0.12);
-        SFX.arc(hx, hy);
-        burst(W, hx, hy, 2, b.col);
-        return;
+    return -1;
+  };
+  function dig(W, G, x, y, R) {
+    const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL;
+    const minX = Math.max(0, Math.floor(cx0 - rc)), maxX = Math.min(CW - 1, Math.ceil(cx0 + rc));
+    const minY = Math.max(0, Math.floor(cy0 - rc)), maxY = Math.min(CH - 1, Math.ceil(cy0 + rc));
+    const d = W.img.data;
+    let changed = false, nOre = 0;
+    for (let cy = minY; cy <= maxY; cy++)
+      for (let cx = minX; cx <= maxX; cx++) {
+        const i = cy * CW + cx;
+        if (!W.mat[i] || W.mat[i] === BED) continue;
+        if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
+        if (W.ore && W.ore[i]) {
+          W.ore[i] = 0;
+          nOre++;
+        }
+        W.fire.fuel[i] = 0;
+        W.fire.t[i] = 0;
+        W.mat[i] = 0;
+        d[i * 4 + 3] = 0;
+        changed = true;
       }
+    if (W.burrow) {
+      for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
+        if (W.burrow[cy * CW + cx] && Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) {
+          W.burrow[cy * CW + cx] = 0;
+          changed = true;
+        }
+    }
+    if (changed) W.terrainV++;
+    if (changed) G.tctx.putImageData(W.img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
+    unDeco(W, G, cx0, cy0, rc, minX, minY, maxX, maxY);
+    if (nOre) dropOre(W, x, y, nOre);
+  }
+  function dropOre(W, x, y, n) {
+    W.oreBank += n * ORE_GOLD * (1 + (W.floor - 1) * 0.3) * W.pb.gold;
+    let bits = Math.min(12, Math.floor(W.oreBank / 2));
+    if (!bits) return;
+    const each = Math.floor(W.oreBank / bits);
+    W.oreBank -= each * bits;
+    for (let k = 0; k < bits; k++)
+      W.coins.push({
+        x: x + (Math.random() - 0.5) * 6,
+        y,
+        amount: each,
+        t: Math.random() * 6.28,
+        vx: (Math.random() - 0.5) * 120,
+        vy: -60 - Math.random() * 80
+      });
+    SFX.fx("coinland", x, y);
+  }
+  function unDeco(W, G, cx0, cy0, rc, minX, minY, maxX, maxY) {
+    const dd = W.dimg.data;
+    let changed = false;
+    for (let cy = minY; cy <= maxY; cy++)
+      for (let cx = minX; cx <= maxX; cx++) {
+        const k = (cy * CW + cx) * 4;
+        if (!dd[k + 3] || Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
+        dd[k + 3] = 0;
+        changed = true;
+        W.fire.fuel[k >> 2] = 0;
+        W.fire.t[k >> 2] = 0;
+      }
+    if (changed) G.dctx.putImageData(W.dimg, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
+  }
+  function paint(W, G, x, y, w, hh) {
+    const x0 = Math.max(1, Math.round(x / CELL - w / 2)), x1 = Math.min(CW - 2, x0 + w);
+    const y0 = Math.max(1, Math.round(y / CELL)), y1 = Math.min(CH - 2, y0 + hh);
+    const d = W.img.data;
+    for (let cy = y0; cy < y1; cy++)
+      for (let cx = x0; cx < x1; cx++) {
+        const i = cy * CW + cx;
+        if (W.mat[i]) continue;
+        W.mat[i] = BRICK;
+        const k = i * 4;
+        d[k] = 132;
+        d[k + 1] = 99;
+        d[k + 2] = 71;
+        d[k + 3] = 255;
+      }
+    if (x1 > x0 && y1 > y0) G.tctx.putImageData(W.img, 0, 0, x0, y0, x1 - x0, y1 - y0);
+  }
+  function explode(W, G, x, y, R, splash, hot) {
+    SFX.boom(x, y, R);
+    const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL, ring = rc + 2.5;
+    const minX = Math.max(0, Math.floor(cx0 - ring)), maxX = Math.min(CW - 1, Math.ceil(cx0 + ring));
+    const minY = Math.max(0, Math.floor(cy0 - ring)), maxY = Math.min(CH - 1, Math.ceil(cy0 + ring));
+    const d = W.img.data;
+    let debris = 0, nOre = 0;
+    for (let cy = minY; cy <= maxY; cy++) {
+      for (let cx = minX; cx <= maxX; cx++) {
+        const i = cy * CW + cx, m = W.mat[i];
+        if (!m) continue;
+        const dist2 = Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0);
+        const k = i * 4;
+        if (dist2 <= rc && m !== BED) {
+          if (debris < 40 && Math.random() < 0.08) {
+            debris++;
+            const f = 0.5 + Math.random();
+            W.sparks.push({
+              x: cx * CELL,
+              y: cy * CELL,
+              vx: (cx - cx0) / rc * 220 * f,
+              vy: ((cy - cy0) / rc * 220 - 140) * f,
+              life: 0.8 + Math.random() * 0.4,
+              max: 1.2,
+              c: `rgb(${d[k]},${d[k + 1]},${d[k + 2]})`,
+              size: 2,
+              heavy: true
+            });
+          }
+          if (W.ore && W.ore[i]) {
+            W.ore[i] = 0;
+            nOre++;
+          }
+          W.fire.fuel[i] = 0;
+          W.fire.t[i] = 0;
+          W.mat[i] = 0;
+          d[k + 3] = 0;
+        } else if (dist2 <= ring) {
+          d[k] *= 0.72;
+          d[k + 1] *= 0.72;
+          d[k + 2] *= 0.72;
+        }
+      }
+    }
+    G.tctx.putImageData(W.img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
+    unDeco(W, G, cx0, cy0, rc, minX, minY, maxX, maxY);
+    if (nOre) dropOre(W, x, y, nOre);
+    if (W.burrow) {
+      for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
+        if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) W.burrow[cy * CW + cx] = 0;
+    }
+    W.terrainV++;
+    for (const pr of W.props) {
+      if (pr.gone || Math.abs(pr.x - x) > R + 40 || Math.abs(pr.y - y) > R + 40) continue;
+      const bx = clamp(x, pr.x + pr.l, pr.x + pr.r), by = clamp(y, pr.y + pr.t0, pr.y + pr.b);
+      if (Math.hypot(bx - x, by - y) < R + 6) pr.hurt = (pr.hurt || 0) + 2;
+    }
+    W.flashes.push({ x, y, r: R, t: 0 });
+    for (let i = 0; i < (splash != null ? 2 : 10); i++) {
+      W.smoke.push({
+        x: x + (Math.random() - 0.5) * R,
+        y: y + (Math.random() - 0.5) * R,
+        vx: (Math.random() - 0.5) * 40,
+        vy: (Math.random() - 0.5) * 40 - 20,
+        r: 4 + Math.random() * 5,
+        life: 1.2,
+        max: 1.2
+      });
+    }
+    for (let j = W.enemies.length - 1; j >= 0; j--) {
+      const e = W.enemies[j], dist2 = Math.hypot(e.x - x, e.ty - y);
+      if (dist2 < R + e.r) damageEnemy(W, j, splash != null ? splash : dist2 < R * 0.5 ? 3 : 2);
+    }
+    if (splash != null) return;
+    fireBlast(W, G, x, y, R, hot);
+    const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
+    const dist = Math.hypot(pcx - x, pcy - y), reach = R + 10;
+    if (dist < reach && !W.p.dead) {
+      const f = 1 - dist / reach;
+      hurt(W, G, Math.round(25 * f));
+      const nx = (pcx - x) / (dist || 1), ny = (pcy - y) / (dist || 1);
+      W.p.vx += nx * 500 * f;
+      W.p.vy += ny * 500 * f - 150 * f;
+      W.p.kick = 0.25;
     }
   }
 
-  // src/game/systems/plantglow.js
-  function plantGlow(W, G, e, TH) {
-    const u = e.je.u, reach = kru("jeGlowR", u.glowR) * kru("jePlantReach", u.plant);
-    const strength = kru("jePlantGlow", u.plant);
-    if (reach < 2 || strength <= 0) return;
-    const bx0 = clamp(Math.floor((e.x - reach) / CELL), 0, CW - 1), by0 = clamp(Math.floor((e.y - reach) / CELL), 0, CH - 1);
-    const bx1 = clamp(Math.ceil((e.x + reach) / CELL), 1, CW), by1 = clamp(Math.ceil((e.y + reach) / CELL), 1, CH);
-    const w = bx1 - bx0, h3 = by1 - by0;
-    if (w <= 0 || h3 <= 0) return;
-    if (!G.pgArt || G.pgArt.length < w * h3 * 4) G.pgArt = new Uint8ClampedArray(w * h3 * 4);
-    const x0w = bx0 * CELL, y0w = by0 * CELL, x1w = bx1 * CELL, y1w = by1 * CELL;
-    let pd = null;
-    const plants = W.props.filter((pr) => pr.k === "climb" && PLANTS[pr.st] && pr.x + pr.r > x0w && pr.x + pr.l < x1w && pr.y + pr.b > y0w && pr.y + pr.t0 < y1w);
-    if (plants.length) {
-      if (!G.pgC) {
-        G.pgC = document.createElement("canvas");
-        G.pgCtx = G.pgC.getContext("2d", { willReadFrequently: true });
-      }
-      if (G.pgC.width < w || G.pgC.height < h3) {
-        G.pgC.width = Math.max(G.pgC.width, w);
-        G.pgC.height = Math.max(G.pgC.height, h3);
-      }
-      G.pgCtx.setTransform(1, 0, 0, 1, 0, 0);
-      G.pgCtx.clearRect(0, 0, w, h3);
-      G.pgCtx.setTransform(1 / CELL, 0, 0, 1 / CELL, -bx0, -by0);
-      for (const pr of plants) drawProp(G.pgCtx, pr, W.time, TH);
-      pd = G.pgCtx.getImageData(0, 0, w, h3).data;
+  // src/game/systems/particles.js
+  var toast = (W, text) => {
+    W.toasts.push({ text, t: 2.2 });
+    if (W.toasts.length > 3) W.toasts.shift();
+  };
+  function goo(W, x, y, vx, vy, g, c, size, c2) {
+    if (W.sparks.length > 800) return;
+    const life = 0.5 + Math.random() * 0.5;
+    W.sparks.push({
+      x,
+      y,
+      vx,
+      vy,
+      life,
+      max: life,
+      c: Math.random() < 0.35 ? c2 || "#c8ff8a" : c,
+      size: size || 1.1 + Math.random() * 0.8,
+      heavy: 1,
+      g
+    });
+  }
+  function splat(W, b, x, y) {
+    const sp = Math.hypot(b.vx, b.vy) || 1;
+    for (let i = 0; i < b.splat; i++) {
+      const a = Math.random() * 6.28, v = b.splatV * (0.4 + Math.random() * 0.6);
+      goo(
+        W,
+        x,
+        y,
+        Math.cos(a) * v - b.vx / sp * v * 0.5,
+        Math.sin(a) * v - b.vy / sp * v * 0.5 - v * 0.3,
+        b.dripG,
+        b.dripCol || b.col,
+        1.3 + Math.random(),
+        b.dripCol2
+      );
     }
-    const T = W.img.data, D = W.dimg ? W.dimg.data : null, A = G.pgArt;
-    for (let y = 0; y < h3; y++) for (let x = 0; x < w; x++) {
-      const si = ((by0 + y) * CW + bx0 + x) * 4, o = (y * w + x) * 4;
-      let r = 0, g = 0, b = 0, a = 0;
-      if (T[si + 3]) {
-        r = T[si];
-        g = T[si + 1];
-        b = T[si + 2];
-        a = 255;
-      } else if (D && D[si + 3]) {
-        r = D[si];
-        g = D[si + 1];
-        b = D[si + 2];
-        a = D[si + 3];
+    SFX.fx("splash", x, y);
+  }
+  function burst(W, x, y, n, color) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * 6.28, sp = 60 + Math.random() * 160;
+      W.sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.45, max: 0.45, c: color, size: 3 });
+    }
+  }
+  function stepToasts(W, F) {
+    const { dt } = F;
+    for (let i = W.toasts.length - 1; i >= 0; i--) if ((W.toasts[i].t -= dt) <= 0) W.toasts.splice(i, 1);
+  }
+  function stepParticles(W, F) {
+    const { dt, pcx } = F;
+    if (W.p.flame > 0) {
+      let fx = -W.p.jx, fy = -W.p.jy + 0.8;
+      const fl = Math.hypot(fx, fy) || 1;
+      fx /= fl;
+      fy /= fl;
+      W.smokeAcc += dt * (25 + 35 * W.p.flame);
+      while (W.smokeAcc >= 1) {
+        W.smokeAcc--;
+        W.smoke.push({
+          x: pcx + (Math.random() - 0.5) * 5,
+          y: W.p.y + PH + 3,
+          vx: fx * 50 + (Math.random() - 0.5) * 20,
+          vy: fy * 50 + (Math.random() - 0.5) * 20,
+          r: 1.5 + Math.random(),
+          life: 0.9,
+          max: 0.9
+        });
       }
-      if (pd && pd[o + 3]) {
-        const pa = pd[o + 3] / 255;
-        if (a) {
-          r += (pd[o] - r) * pa;
-          g += (pd[o + 1] - g) * pa;
-          b += (pd[o + 2] - b) * pa;
-          a = Math.max(a, pd[o + 3]);
-        } else {
-          r = pd[o];
-          g = pd[o + 1];
-          b = pd[o + 2];
-          a = pd[o + 3];
+    }
+    for (let i = W.smoke.length - 1; i >= 0; i--) {
+      const m = W.smoke[i];
+      m.x += m.vx * dt;
+      m.y += m.vy * dt;
+      m.vx *= 1 - 2.5 * dt;
+      m.vy = m.vy * (1 - 2.5 * dt) - 12 * dt;
+      m.r += 5 * dt;
+      m.life -= dt;
+      if (m.life <= 0) W.smoke.splice(i, 1);
+    }
+    for (let i = W.sparks.length - 1; i >= 0; i--) {
+      const q = W.sparks[i];
+      q.vy += (q.g != null ? q.g : q.heavy ? 600 : 300) * dt;
+      const nx = q.x + q.vx * dt, ny = q.y + q.vy * dt;
+      if (q.heavy && solidAt(W, nx, ny)) {
+        q.vx *= 0.3;
+        q.vy = 0;
+      } else {
+        q.x = nx;
+        q.y = ny;
+      }
+      q.life -= dt;
+      if (q.life <= 0) W.sparks.splice(i, 1);
+    }
+    for (let i = W.flashes.length - 1; i >= 0; i--) {
+      W.flashes[i].t += dt;
+      if (W.flashes[i].t > 0.25) W.flashes.splice(i, 1);
+    }
+  }
+  function stepMotes(W, F) {
+    const { dt } = F;
+    W.portalAcc += dt;
+    while (W.portalAcc > 0.05) {
+      W.portalAcc -= 0.05;
+      const ex = W.portal.x + W.portal.w / 2, ey = W.portal.y + W.portal.h / 2;
+      if (Math.abs(ey - W.p.y) < 500) {
+        const a = Math.random() * 6.28, rr2 = 30 + Math.random() * 38;
+        const life = 1.4 + Math.random() * 0.8;
+        W.motes.push({
+          kind: "in",
+          x: ex + Math.cos(a) * rr2,
+          y: ey + Math.sin(a) * rr2 * 0.9,
+          tx: ex,
+          ty: ey,
+          vx: 0,
+          vy: 0,
+          life,
+          max: life,
+          age: 0,
+          ph: Math.random() * 6.28,
+          s: 1 + Math.random() * 1.4,
+          c: Math.random() < 0.4 ? "#c8ffe4" : COL.portal
+        });
+      }
+      if (Math.abs(W.arrival.y - W.p.y) < 500) {
+        const a = Math.random() * 6.28, sp = 10 + Math.random() * 16;
+        W.motes.push({
+          kind: "out",
+          x: W.arrival.x + (Math.random() - 0.5) * 12,
+          y: W.arrival.y + (Math.random() - 0.5) * 18,
+          ox: W.arrival.x,
+          oy: W.arrival.y,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp - 4,
+          life: 4,
+          max: 4,
+          age: 0,
+          ph: Math.random() * 6.28,
+          fade: 34 + Math.random() * 18,
+          s: 1 + Math.random() * 1.3,
+          c: Math.random() < 0.4 ? "#e6d4ff" : COL.enemy
+        });
+      }
+    }
+    for (let i = W.motes.length - 1; i >= 0; i--) {
+      const q = W.motes[i];
+      q.age += dt;
+      if (q.kind === "in") {
+        const dx = q.tx - q.x, dy = q.ty - q.y, d = Math.hypot(dx, dy) || 1;
+        const pullF = 70 + 260 * q.age;
+        q.vx += dx / d * pullF * dt;
+        q.vy += dy / d * pullF * dt;
+        q.vx *= 1 - 2.2 * dt;
+        q.vy *= 1 - 2.2 * dt;
+        const w = Math.sin(q.age * 7 + q.ph) * 26;
+        q.x += (q.vx - dy / d * w) * dt;
+        q.y += (q.vy + dx / d * w) * dt;
+        if (d < 3) q.life = 0;
+      } else if (q.kind === "out") {
+        const w = Math.sin(q.age * 2.3 + q.ph);
+        q.vx += w * 18 * dt;
+        q.vy += (Math.cos(q.age * 1.7 + q.ph) * 12 - 3) * dt;
+        q.vx *= 1 - 0.4 * dt;
+        q.vy *= 1 - 0.4 * dt;
+        q.x += q.vx * dt;
+        q.y += q.vy * dt;
+        if (Math.hypot(q.x - q.ox, q.y - q.oy) > q.fade) q.life = 0;
+      } else {
+        q.vx *= 1 - 1.8 * dt;
+        q.vy = q.vy * (1 - 1.8 * dt) - 6 * dt;
+        q.x += q.vx * dt;
+        q.y += q.vy * dt;
+      }
+      if ((q.life -= dt) <= 0) W.motes.splice(i, 1);
+    }
+    if (W.motes.length > 400) W.motes.splice(0, W.motes.length - 400);
+  }
+
+  // src/game/systems/player.js
+  var refreshBag = (W, G) => {
+    W.pb = perkBag(G.input.current.loadout.perks || []);
+  };
+  var maxHp = (W, G) => W.pb.maxHp + (G.input.current.loadout.maxBonus || 0);
+  function hurt(W, G, n) {
+    if (W.p.dead || n <= 0) return;
+    if (W.pb.shield && W.p.shieldReady) {
+      W.p.shieldReady = false;
+      W.p.shieldT = 2.5;
+      burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 10, "#7ad7ff");
+      SFX.ui("shield");
+      return;
+    }
+    W.p.hp = Math.max(0, W.p.hp - n);
+    W.p.hitT = 0.3;
+    if (W.p.hp > 0) SFX.ui("hurt");
+    if (W.p.hp === 0) {
+      const LO = G.input.current.loadout;
+      if (W.pb.lives > (LO.usedLives || 0)) {
+        LO.usedLives = (LO.usedLives || 0) + 1;
+        W.p.hp = maxHp(W, G);
+        W.p.shieldReady = true;
+        W.p.shieldT = 0;
+        burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 24, "#ff5a36");
+        SFX.ui("revive");
+        toast(W, "Back from the dead");
+        G.input.current.notify();
+        return;
+      }
+      W.p.dead = true;
+      burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 24, COL.player);
+      W.strings.length = 0;
+      SFX.ui("die");
+      clearSave();
+    }
+  }
+  var torchHand = (W) => {
+    const a = W.p.aim.show ? W.p.aim.nx : W.p.face;
+    return { x: W.p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: W.p.y + 9 };
+  };
+  var SPUTTER_FUEL = 0.25;
+  function sputterStep(st, dt, fuel, on, rnd2) {
+    rnd2 = rnd2 || Math.random;
+    st.start = false;
+    if (!on) {
+      st.cut = 0;
+      st.gap = 0;
+      st.onT = 0;
+      return false;
+    }
+    st.onT = (st.onT || 0) + dt;
+    st.cut = Math.max(0, (st.cut || 0) - dt);
+    st.gap = Math.max(0, (st.gap || 0) - dt);
+    if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
+      const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;
+      if (rnd2() < dt * (1 + 7 * w)) {
+        st.cut = 0.04 + rnd2() * (0.05 + 0.08 * w);
+        st.gap = st.cut + 0.1 + rnd2() * 0.2;
+        st.start = true;
+      }
+    }
+    return st.cut > 0;
+  }
+  var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
+  function movePlayer(W, G, F) {
+    const { dt } = F;
+    let L = G.input.current.left;
+    if (!L.active) {
+      const keys = G.input.current.keys;
+      const kx = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
+      if (kx || keys.w) {
+        const ny = keys.w ? -1 : 0, len = Math.hypot(kx, ny);
+        L = { active: true, nx: kx / len, ny: ny / len, mag: 1, dy: keys.w ? -1 : 1, on: true };
+      }
+    }
+    if (W.p.dead) L = NO_INPUT;
+    W.p.jx = L.nx;
+    W.p.jy = L.ny;
+    const raw = L.active ? L.mag : 0;
+    const mag = raw > DEAD ? (raw - DEAD) / (1 - DEAD) : 0;
+    const wantJet = mag > 0 && L.dy < 0;
+    if (W.p.empty && W.p.fuel >= FUEL_RESTART) W.p.empty = false;
+    const jet = wantJet && !W.p.empty;
+    const climbing = W.zfx.climb && !jet && !W.p.dead;
+    W.p.jet = jet ? mag : 0;
+    W.p.sput = sputterStep(W.jetSt, dt, W.p.fuel, jet);
+    W.p.flame = W.p.sput ? 0 : W.p.jet;
+    if (W.p.sput) W.p.cough = 0.15;
+    else W.p.cough = Math.max(0, W.p.cough - dt);
+    if (W.jetSt.start) {
+      W.p.vy += DEV.sputDip;
+      for (let i = 0; i < 3; i++)
+        W.smoke.push({
+          x: W.p.x + PW / 2 + (Math.random() - 0.5) * 6,
+          y: W.p.y + PH + 2,
+          vx: (Math.random() - 0.5) * 40,
+          vy: 20 + Math.random() * 30,
+          r: 2.5 + Math.random() * 2,
+          life: 0.7 + Math.random() * 0.4,
+          max: 1.1,
+          c: "#6f767e",
+          a: 0.8
+        });
+    }
+    if (jet) {
+      W.p.fuel -= FUEL_DRAIN * (0.5 + 0.5 * mag) * dt;
+      if (W.p.fuel <= 0) {
+        W.p.fuel = 0;
+        W.p.empty = true;
+      }
+    } else if (W.p.onGround || climbing) {
+      W.p.fuel = Math.min(1, W.p.fuel + FUEL_REGEN * dt);
+    }
+    const pcx0 = W.p.x + PW / 2;
+    W.p.kick -= dt;
+    const k = W.p.kick > 0 ? 0.15 : 1;
+    const tied = W.strings.reduce((m, s) => m * s.slow, 1) * W.zfx.webMul;
+    W.webLetGo -= dt;
+    if (jet && W.p.sput) {
+      W.p.vx = approach(W.p.vx, L.nx * mag * JET * W.pb.walk * DEV.move * tied, JET_ACC * dt * k);
+      W.p.vy = Math.min(W.p.vy + GRAVITY * dt, 900);
+    } else if (jet) {
+      W.p.vx = approach(W.p.vx, L.nx * mag * JET * W.pb.walk * DEV.move * tied, JET_ACC * dt * k);
+      const ty = L.ny * mag * JET * W.pb.jet * DEV.move * tied;
+      if (ty < W.p.vy && W.p.kick <= 0 && W.p.cough <= 0) W.p.vy = ty;
+      else W.p.vy = approach(W.p.vy, ty, JET_ACC * dt * k);
+      if (W.zfx.rev) W.p.vy -= GRAVITY * W.zfx.rev * dt;
+    } else if (climbing && W.zfx.arch && W.p.kick <= 0) {
+      const ar = W.zfx.arch, hy = W.p.y + WEB_HAND, q = archNear(ar, pcx0, hy);
+      const a = ar.arc[q.k], b = ar.arc[q.k + 1], ul = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const ux = (b[0] - a[0]) / ul, uy = (b[1] - a[1]) / ul;
+      const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
+      if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) {
+        W.webLetGo = 0.35;
+        W.p.vy = 40;
+      } else {
+        const v = along * (ar.climb || (ar.climb = kr("arClimb"))) * tied;
+        W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
+        W.p.vy = approach(W.p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
+      }
+    } else if (climbing && W.zfx.web && W.p.kick <= 0) {
+      const ln = W.zfx.web, wl = Math.hypot(ln.b0x - ln.a0x, ln.b0y - ln.a0y) || 1;
+      let ux = (ln.b0x - ln.a0x) / wl, uy = (ln.b0y - ln.a0y) / wl;
+      const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
+      if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) {
+        W.webLetGo = 0.35;
+        W.p.vy = 40;
+      } else {
+        const v = along * (ln.climb || (ln.climb = spr("webClimb"))) * tied, hy = W.p.y + WEB_HAND, q = webNear(ln, pcx0, hy);
+        W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
+        W.p.vy = approach(W.p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
+      }
+    } else {
+      const target = mag > 0 ? L.nx * mag * WALK * W.pb.walk * DEV.move * W.zfx.slow * tied : 0;
+      W.p.vx = approach(W.p.vx, target, (W.p.onGround ? GROUND_ACC * (W.zfx.slick ? 0.08 : 1) : AIR_ACC) * dt * k);
+      if (climbing && W.p.kick <= 0) W.p.vy = approach(W.p.vy, mag > 0 ? L.ny * mag * CLIMB * tied : 0, 1800 * dt);
+      else W.p.vy = Math.min(W.p.vy + GRAVITY * dt * (1 - 2 * W.zfx.rev), 900);
+    }
+    const wasGround = W.p.onGround, fallV = W.p.vy;
+    let n = Math.ceil(Math.abs(W.p.vx * dt));
+    if (n > 0) {
+      const sx = W.p.vx * dt / n;
+      for (let i = 0; i < n; i++) {
+        if (!boxHit(W, W.p.x + sx, W.p.y)) {
+          W.p.x += sx;
+          continue;
+        }
+        let moved = false;
+        const maxUp = wasGround ? 6 : 3;
+        for (let up = 1; up <= maxUp; up++) {
+          if (!boxHit(W, W.p.x + sx, W.p.y - up)) {
+            W.p.x += sx;
+            W.p.y -= up;
+            moved = true;
+            break;
+          }
+        }
+        if (!moved) {
+          W.p.vx = 0;
+          break;
         }
       }
-      A[o] = r;
-      A[o + 1] = g;
-      A[o + 2] = b;
-      A[o + 3] = a;
     }
-    const out = new ImageData(w, h3);
-    if (!plantGlowFill(out.data, A, w, h3, {
-      ox: x0w,
-      oy: y0w,
-      px: CELL,
-      cx: e.x,
-      cy: e.y,
-      reach,
-      white: W.plantW,
-      top: kru("jePlantTop", u.plant) / 100,
-      strength,
-      t: W.time * kru("jePlantTwinkle", u.plant),
-      size: kru("jePlantSize", u.plant),
-      rgb: hexArr(jcol("jeColGlow", u.col)),
-      lit: (x, y) => seenAt(W, x, y)
-    })) return;
-    if (G.pgGlow.width < w || G.pgGlow.height < h3) {
-      G.pgGlow.width = Math.max(G.pgGlow.width, w);
-      G.pgGlow.height = Math.max(G.pgGlow.height, h3);
+    n = Math.ceil(Math.abs(W.p.vy * dt));
+    if (n > 0) {
+      const sy = W.p.vy * dt / n;
+      for (let i = 0; i < n; i++) {
+        if (!boxHit(W, W.p.x, W.p.y + sy)) {
+          W.p.y += sy;
+          continue;
+        }
+        if (sy > 0) W.p.y = Math.floor((W.p.y + sy + PH - 1e-3) / CELL) * CELL - PH;
+        else W.p.y = (Math.floor((W.p.y + sy) / CELL) + 1) * CELL;
+        if (boxHit(W, W.p.x, W.p.y)) W.p.y -= sy;
+        W.p.vy = 0;
+        break;
+      }
     }
-    G.pgGlowCtx.putImageData(out, 0, 0);
-    const sm = G.ctx.imageSmoothingEnabled;
-    G.ctx.imageSmoothingEnabled = true;
-    G.ctx.drawImage(G.pgGlow, 0, 0, w, h3, x0w, y0w, w * CELL, h3 * CELL);
-    G.ctx.imageSmoothingEnabled = sm;
+    if (wasGround && !jet && W.p.vy >= 0 && W.p.kick <= 0 && !boxHit(W, W.p.x, W.p.y + 1)) {
+      for (let dn = 1; dn <= 6; dn++) {
+        if (boxHit(W, W.p.x, W.p.y + dn + 1)) {
+          W.p.y += dn;
+          W.p.vy = 0;
+          break;
+        }
+      }
+    }
+    if (boxHit(W, W.p.x, W.p.y)) {
+      for (let up = 1; up <= 40; up++) if (!boxHit(W, W.p.x, W.p.y - up)) {
+        W.p.y -= up;
+        break;
+      }
+    }
+    if (W.p.y > WH) {
+      W.p.x = W.start.x;
+      W.p.y = W.start.y;
+      W.p.vx = 0;
+      W.p.vy = 0;
+    }
+    W.p.onGround = boxHit(W, W.p.x, W.p.y + 0.5);
+    if (!W.p.dead) {
+      if (W.p.onGround && !wasGround && fallV > 200) SFX.fx("land", null, null, { v: fallV, s: W.zfx.surface });
+      if (W.p.onGround && Math.abs(W.p.vx) > 40) {
+        if ((W.stepT -= dt * Math.abs(W.p.vx) / 40) <= 0) {
+          W.stepT = 1;
+          SFX.fx("step", null, null, W.zfx.surface);
+        }
+      } else W.stepT = Math.min(W.stepT, 0.35);
+    }
+  }
+  function stepTorch(W, F) {
+    const { dt } = F;
+    W.torchT += dt;
+    W.flickN += (Math.random() - 0.5) * 2.6 * dt;
+    W.flickN *= 0.94;
+    W.flick = clamp(
+      0.94 + W.flickN + 0.04 * Math.sin(W.torchT * 11.3) + 0.025 * Math.sin(W.torchT * 19.7),
+      0.84,
+      1
+    );
+    W.torchAcc += dt;
+    while (W.torchAcc > 0.04) {
+      W.torchAcc -= 0.04;
+      const th = torchHand(W);
+      const life = 0.3 + Math.random() * 0.35;
+      W.torchP.push({
+        x: th.x + (Math.random() - 0.5) * 2,
+        y: th.y - 7,
+        vx: (Math.random() - 0.5) * 10 + W.p.vx * 0.15,
+        vy: -20 - Math.random() * 22,
+        life,
+        max: life,
+        s: 1 + Math.random() * 1.3,
+        c: Math.random() < 0.5 ? COL.flame2 : COL.flame
+      });
+      if (W.torchP.length > 60) W.torchP.shift();
+    }
+    for (let i = W.torchP.length - 1; i >= 0; i--) {
+      const q = W.torchP[i];
+      q.vy += 30 * dt;
+      q.vx *= 0.98;
+      q.x += q.vx * dt;
+      q.y += q.vy * dt;
+      if ((q.life -= dt) <= 0) W.torchP.splice(i, 1);
+    }
+    const wantX = clamp(-W.p.vx * 0.055, -11, 11), wantY = clamp(-W.p.vy * 0.03, -5, 7);
+    W.leanVX += ((wantX - W.leanX) * 90 - W.leanVX * 9) * dt;
+    W.leanVY += ((wantY - W.leanY) * 90 - W.leanVY * 9) * dt;
+    W.leanX += W.leanVX * dt;
+    W.leanY += W.leanVY * dt;
+    W.glowN += (Math.random() - 0.5) * 6 * dt;
+    W.glowN *= 0.9;
   }
 
   // src/creatures/classic.js
@@ -12750,6 +12688,68 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       G.ctx.fill();
     }
     G.ctx.globalAlpha = 1;
+  }
+
+  // src/game/systems/lightning.js
+  function jag(pts, amp) {
+    const th = [pts[0]];
+    for (let k = 1; k < pts.length; k++) {
+      const q = th[th.length - 1];
+      if (k === pts.length - 1 || Math.hypot(pts[k].x - q.x, pts[k].y - q.y) >= 12) th.push(pts[k]);
+    }
+    pts = th;
+    const out = [pts[0]];
+    for (let k = 1; k < pts.length; k++) {
+      const a = pts[k - 1], c = pts[k], dx = c.x - a.x, dy = c.y - a.y, d = Math.hypot(dx, dy) || 1;
+      const n = Math.max(1, Math.round(d / 9)), px = -dy / d, py = dx / d;
+      for (let s = 1; s < n; s++) {
+        const f = s / n, o = (Math.random() - 0.5) * 2 * amp;
+        out.push({ x: a.x + dx * f + px * o, y: a.y + dy * f + py * o });
+      }
+      out.push(c);
+    }
+    return out;
+  }
+  function addArc(W, pts, col, w, max) {
+    W.arcs.push({ pts: jag(pts, 4), col, w, t: 0, max });
+  }
+  function lightningStep(W, b, dt) {
+    const tr = b.trail || (b.trail = [{ x: b.ox, y: b.oy }]);
+    tr.push({ x: b.x, y: b.y });
+    let len = 0;
+    for (let k = tr.length - 1; k > 0; k--) {
+      len += Math.hypot(tr[k].x - tr[k - 1].x, tr[k].y - tr[k - 1].y);
+      if (len > 110) {
+        tr.splice(0, k - 1);
+        break;
+      }
+    }
+    if ((b.arcT = (b.arcT || 0) - dt) > 0) return;
+    b.arcT = 0.035 + Math.random() * 0.04;
+    const R = 90, near = [];
+    for (let j = 0; j < W.enemies.length; j++) {
+      const e = W.enemies[j];
+      if (Math.hypot(e.x - b.x, e.ty - b.y) < R && lineOfSight(W, b.x, b.y, e.x, e.ty)) near.push(j);
+    }
+    if (near.length && Math.random() < 0.75) {
+      const j = near[Math.floor(Math.random() * near.length)], e = W.enemies[j];
+      addArc(W, [{ x: b.x, y: b.y }, { x: e.x, y: e.ty }], b.col, 1, 0.14);
+      SFX.arc(e.x, e.ty);
+      burst(W, e.x, e.ty, 3, b.col);
+      damageEnemy(W, j, b.dmg * 0.3);
+      return;
+    }
+    for (let k = 0; k < 4; k++) {
+      const a = Math.random() * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
+      const d = rayDist(b.x, b.y, dx, dy, 70, (cx, cy) => solidCell(W, cx, cy));
+      if (d < 70 && d > 6) {
+        const hx = b.x + dx * d, hy = b.y + dy * d;
+        addArc(W, [{ x: b.x, y: b.y }, { x: hx, y: hy }], b.col, 0.8, 0.12);
+        SFX.arc(hx, hy);
+        burst(W, hx, hy, 2, b.col);
+        return;
+      }
+    }
   }
 
   // src/game/systems/shotlooks.js
@@ -13500,20 +13500,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.ctx.globalAlpha = 1;
     G.ctx.globalAlpha = 1;
   }
-
-  // src/game/render/draw.js
-  function draw(W, G) {
-    const F = { dpr: 0, playPx: 0, vw: 0, vh: 0, pcx: 0, pcy: 0, TH: null, onView: null };
-    drawCamera(W, G, F);
-    const { dpr, playPx, vw, vh, pcx, pcy } = F;
-    drawTerrain(W, G, F);
-    drawProps(W, G, F);
-    const { TH, onView } = F;
-    drawPortal(W, G);
-    drawSmoke(W, G);
-    drawFields(W, G, F);
-    drawSilk(W, G);
-    drawEnemies(W, G, F);
+  function drawShots(W, G) {
     for (const b of W.enemyShots) {
       if (b.goo) {
         const s = b.size, wob = 1 + 0.12 * Math.sin(W.time * 30 + b.x * 0.1);
@@ -13605,6 +13592,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     for (const a of W.arcs) drawBolt(G, a.pts, a.col, a.w, 1 - a.t / a.max);
+  }
+  function drawBeams(W, G) {
     for (const bm of W.beams) {
       const fade = 1 - bm.t / 0.12;
       if (bm.look) {
@@ -13631,6 +13620,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       G.ctx.stroke();
     }
     G.ctx.globalAlpha = 1;
+  }
+
+  // src/game/render/draw.js
+  function draw(W, G) {
+    const F = { dpr: 0, playPx: 0, vw: 0, vh: 0, pcx: 0, pcy: 0, TH: null, onView: null };
+    drawCamera(W, G, F);
+    const { dpr, playPx, vw, vh, pcx, pcy } = F;
+    drawTerrain(W, G, F);
+    drawProps(W, G, F);
+    const { TH, onView } = F;
+    drawPortal(W, G);
+    drawSmoke(W, G);
+    drawFields(W, G, F);
+    drawSilk(W, G);
+    drawEnemies(W, G, F);
+    drawShots(W, G);
+    drawBeams(W, G);
     if (W.arrival.y < W.camY + vh + 40 && W.arrival.y > W.camY - 40) {
       const sway = 0.5 + 0.18 * Math.sin(W.time * 1.6);
       G.ctx.fillStyle = "#4a4550";

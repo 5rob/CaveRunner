@@ -512,6 +512,7 @@ What the code says about P3.4 (checked at the end of P3.3):
          `F.onView`; draw reads them back with `const { TH, onView } = F;`), `drawPortal` → cave.js
        - [x] P3.4 (37): `drawSmoke` → a new `render/effects.js`, `drawFields` → looks.js, `drawSilk`, `drawEnemies` → a new
          `render/actors.js`, all with `part.js`
+       - [x] P3.4 (38): `drawShots` (the creatures' shots, yours, the lightning arcs) and `drawBeams` → looks.js (`part.js`)
     4. Keep the order exactly: draw() draws from the sim's `Math.random` stream and writes fog memory and the camera, and
        step's parts feed each other within the frame. The probe catches any reorder.
   - Learned so far: `G`'s keys must be declared above `G` (a closure `const` further down moves up
@@ -918,3 +919,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.4 (35) | The frame object `F` for draw (D19); `drawCamera` by hand in draw.js, `drawTerrain` → new `render/cave.js` with `tools/part.js`. `part.js`: never imports `VERSION` (D7), render modules' `pure.js` lines go with the render ones. `replay`, `torch`, `fog`, `fire`, `shop`, `map` run too, all first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (36) | `drawProps` (fills `F.TH`, `F.onView`; the two lines moved in by hand after `part.js`) and `drawPortal` → cave.js. `decor`, `fire`, `replay`, `newcave` run too, first time; `archvine` "no jelly swims deep…" failed once, passed 2 of 2 alone (known flake). | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (37) | `drawSmoke` → new `render/effects.js`, `drawFields` → looks.js (header now says it holds layers too), `drawSilk`, `drawEnemies` → new `render/actors.js`, with `tools/part.js`. `spider`, `creatures`, `rats`, `jetpack`, `everymod` run too, first time; `jelly` spit/spore group failed 3 of 4 (the known flake; passed whole once). | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 3, P3.4 (38) | `drawShots` (71 lines: enemy shots, bullets, arcs) and `drawBeams` → looks.js with `tools/part.js`; looks.js header. `spelllooks`, `t1spells`, `blackhole`, `lightning`, `everymod`, `pollen`, `trigger` run too, first time. `jelly` passed whole 1 of 9 (spit group mostly, spores once); on (37) 1 of 4, failing on the spit, the plant glow and "saturation 0": the known flake, no draw code in any of those checks moved. | probe SAME, logic 33/33, smoke ok |

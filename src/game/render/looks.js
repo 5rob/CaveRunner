@@ -1,9 +1,12 @@
-// Shots and fields in draw() (render/draw.js): its layer drawFields (a part it calls in order
-// with its frame object F, REFACTOR.md D19) and the looks: drawLook (a v95/v96 shot's own
-// sprite, false to fall back to the streak), drawFieldLook (what sits in the middle of a
-// field, false for the plain dot) and drawBolt (a lightning line). drawLook and the
-// streaks round it draw from the sim's Math.random stream, so they stay in draw's order.
+// Shots and fields in draw() (render/draw.js): the layers drawFields, drawShots and drawBeams
+// (parts it calls in order; drawFields reads its frame object F, REFACTOR.md D19), and the
+// looks they use: drawLook (a v95/v96 shot's own sprite, false to fall back to the streak),
+// drawFieldLook (what sits in the middle of a field, false for the plain dot) and drawBolt
+// (a lightning line). drawShots and drawBeams draw from the sim's Math.random stream (the
+// looks, lightning, beam halos), so they stay in draw's order.
 
+import { COL } from '../../core/consts.js';
+import { jag } from '../systems/lightning.js';
 import { rnd } from '../systems/shotlooks.js';
 
 // v95: the Noita-style shots' own sprites. Returns false to fall back to the streak.
@@ -255,5 +258,103 @@ export function drawFields(W, G, F) {
     if (!drawFieldLook(W, G, f, beat)) { G.ctx.fillStyle = f.col; G.ctx.beginPath(); G.ctx.arc(f.x, f.y, 3.5, 0, Math.PI * 2); G.ctx.fill(); }
   }
   G.ctx.globalAlpha = 1;
+  G.ctx.globalAlpha = 1;
+}
+
+// Shots in flight: the creatures' (poison spit as a glob), yours (Black Hole, a look, a lightning
+// bolt, or a streak as long as its speed), and the lightning arcs
+export function drawShots(W, G) {
+  // projectiles
+  for (const b of W.enemyShots) {
+    if (b.goo) {                           // poison spit: a wobbling glob with a wet highlight
+      const s = b.size, wob = 1 + 0.12 * Math.sin(W.time * 30 + b.x * 0.1);
+      G.ctx.save(); G.ctx.translate(b.x, b.y); G.ctx.rotate(Math.atan2(b.vy, b.vx));
+      G.ctx.fillStyle = b.edge || '#123d18';
+      G.ctx.beginPath(); G.ctx.ellipse(0, 0, s * 1.45 * wob, s * 1.05 / wob, 0, 0, Math.PI * 2); G.ctx.fill();
+      G.ctx.fillStyle = b.col;
+      G.ctx.beginPath(); G.ctx.ellipse(-s * 0.08, 0, s * 1.2 * wob, s * 0.82 / wob, 0, 0, Math.PI * 2); G.ctx.fill();
+      G.ctx.fillStyle = b.shine || '#e6ffb8';
+      G.ctx.beginPath(); G.ctx.arc(s * 0.3, -s * 0.28, s * 0.32, 0, Math.PI * 2); G.ctx.fill();
+      G.ctx.restore();
+      continue;
+    }
+    G.ctx.fillStyle = b.col;
+    G.ctx.beginPath(); G.ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2); G.ctx.fill();
+  }
+  // shots are drawn as streaks along their own velocity, so a fast one reads
+  // as a long dash and a slow heavy one as a stub
+  G.ctx.lineCap = 'round';
+  for (const b of W.bullets) {
+    if (b.hidden) continue;                 // Buzzsaw cuts without drawing a circle
+    if (b.pull) {                           // Black Hole: purple haze, starry black core
+      const r = b.size, core = b.eat || r * 0.78, beat = 1 + 0.06 * Math.sin(W.time * 6 + b.spin);
+      const g = G.ctx.createRadialGradient(b.x, b.y, core * 0.8, b.x, b.y, r * 1.55 * beat);
+      g.addColorStop(0, 'rgba(197,140,255,0.75)');
+      g.addColorStop(0.3, 'rgba(150,90,255,0.35)');
+      g.addColorStop(1, 'rgba(110,50,220,0)');
+      G.ctx.fillStyle = g;
+      G.ctx.beginPath(); G.ctx.arc(b.x, b.y, r * 1.55 * beat, 0, Math.PI * 2); G.ctx.fill();
+      G.ctx.fillStyle = '#050208';
+      G.ctx.beginPath(); G.ctx.arc(b.x, b.y, core, 0, Math.PI * 2); G.ctx.fill();
+      for (let k = 0; k < 14; k++) {       // twinkling stars wheeling inside
+        const tw = Math.sin(W.time * 8 + k * 1.7);
+        if (tw < 0.1) continue;
+        const ang = k * 2.4 + W.time * (0.5 + (k % 3) * 0.35), rad = core * (0.15 + ((k * 0.37) % 0.75));
+        const sx = b.x + Math.cos(ang) * rad, sy = b.y + Math.sin(ang) * rad, sz = 0.6 + tw * 0.9;
+        G.ctx.globalAlpha = tw;
+        G.ctx.fillStyle = k % 3 ? '#e6d4ff' : '#ffffff';
+        G.ctx.fillRect(sx - sz / 2, sy - sz / 2, sz, sz);
+      }
+      G.ctx.globalAlpha = 0.8;
+      G.ctx.strokeStyle = '#b98aff'; G.ctx.lineWidth = 1.2;
+      G.ctx.beginPath(); G.ctx.arc(b.x, b.y, core, 0, Math.PI * 2); G.ctx.stroke();
+      G.ctx.globalAlpha = 1;
+      continue;
+    }
+    if (b.look && drawLook(W, G, b)) continue;
+    if (b.arc && b.trail && b.trail.length > 1) {   // lightning: a fresh zig-zag every frame
+      drawBolt(G, jag(b.trail.concat([{ x: b.x, y: b.y }]), 5), b.col, 1.6, 1);
+      continue;
+    }
+    const sp = Math.hypot(b.vx, b.vy) || 1;
+    const len = Math.max(0.5, Math.min(46, sp * 0.022));   // length is speed alone
+    const hx = b.vx / sp * len, hy = b.vy / sp * len;
+    if (b.homing) {
+      G.ctx.globalAlpha = 0.3;
+      G.ctx.strokeStyle = COL.enemy;
+      G.ctx.lineWidth = b.size * 1.7 + 4;
+      G.ctx.beginPath(); G.ctx.moveTo(b.x - hx, b.y - hy); G.ctx.lineTo(b.x, b.y); G.ctx.stroke();
+      G.ctx.globalAlpha = 1;
+    }
+    G.ctx.strokeStyle = b.col;
+    G.ctx.lineWidth = b.size * 1.7;
+    G.ctx.beginPath(); G.ctx.moveTo(b.x - hx, b.y - hy); G.ctx.lineTo(b.x, b.y); G.ctx.stroke();
+    if (b.explode) {
+      G.ctx.fillStyle = Math.sin(b.spin) > 0 ? COL.flame2 : COL.visor;
+      G.ctx.fillRect(b.x - 1, b.y - 1, 2, 2);
+    }
+  }
+  for (const a of W.arcs) drawBolt(G, a.pts, a.col, a.w, 1 - a.t / a.max);
+}
+
+// Instant beams, fading over a few frames (a v96 beam with a look has a wavering halo)
+export function drawBeams(W, G) {
+  // instant beams, which fade over a few frames
+  for (const bm of W.beams) {
+    const fade = 1 - bm.t / 0.12;
+    if (bm.look) {                          // v96: a wide wavering halo under the beam
+      G.ctx.globalAlpha = fade * 0.18;
+      G.ctx.strokeStyle = bm.col; G.ctx.lineWidth = bm.w * (7 + Math.random() * 2);
+      G.ctx.beginPath(); G.ctx.moveTo(bm.x, bm.y); G.ctx.lineTo(bm.x + bm.nx * bm.len, bm.y + bm.ny * bm.len); G.ctx.stroke();
+    }
+    G.ctx.globalAlpha = fade * 0.35;
+    G.ctx.strokeStyle = bm.col; G.ctx.lineWidth = bm.w * 3.5;
+    G.ctx.beginPath(); G.ctx.moveTo(bm.x, bm.y);
+    G.ctx.lineTo(bm.x + bm.nx * bm.len, bm.y + bm.ny * bm.len); G.ctx.stroke();
+    G.ctx.globalAlpha = fade;
+    G.ctx.lineWidth = bm.w * 1.2;
+    G.ctx.beginPath(); G.ctx.moveTo(bm.x, bm.y);
+    G.ctx.lineTo(bm.x + bm.nx * bm.len, bm.y + bm.ny * bm.len); G.ctx.stroke();
+  }
   G.ctx.globalAlpha = 1;
 }
