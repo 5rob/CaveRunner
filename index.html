@@ -11643,6 +11643,68 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/game/systems/lightning.js
+  function jag(pts, amp) {
+    const th = [pts[0]];
+    for (let k = 1; k < pts.length; k++) {
+      const q = th[th.length - 1];
+      if (k === pts.length - 1 || Math.hypot(pts[k].x - q.x, pts[k].y - q.y) >= 12) th.push(pts[k]);
+    }
+    pts = th;
+    const out = [pts[0]];
+    for (let k = 1; k < pts.length; k++) {
+      const a = pts[k - 1], c = pts[k], dx = c.x - a.x, dy = c.y - a.y, d = Math.hypot(dx, dy) || 1;
+      const n = Math.max(1, Math.round(d / 9)), px = -dy / d, py = dx / d;
+      for (let s = 1; s < n; s++) {
+        const f = s / n, o = (Math.random() - 0.5) * 2 * amp;
+        out.push({ x: a.x + dx * f + px * o, y: a.y + dy * f + py * o });
+      }
+      out.push(c);
+    }
+    return out;
+  }
+  function addArc(W, pts, col, w, max) {
+    W.arcs.push({ pts: jag(pts, 4), col, w, t: 0, max });
+  }
+  function lightningStep(W, b, dt) {
+    const tr = b.trail || (b.trail = [{ x: b.ox, y: b.oy }]);
+    tr.push({ x: b.x, y: b.y });
+    let len = 0;
+    for (let k = tr.length - 1; k > 0; k--) {
+      len += Math.hypot(tr[k].x - tr[k - 1].x, tr[k].y - tr[k - 1].y);
+      if (len > 110) {
+        tr.splice(0, k - 1);
+        break;
+      }
+    }
+    if ((b.arcT = (b.arcT || 0) - dt) > 0) return;
+    b.arcT = 0.035 + Math.random() * 0.04;
+    const R = 90, near = [];
+    for (let j = 0; j < W.enemies.length; j++) {
+      const e = W.enemies[j];
+      if (Math.hypot(e.x - b.x, e.ty - b.y) < R && lineOfSight(W, b.x, b.y, e.x, e.ty)) near.push(j);
+    }
+    if (near.length && Math.random() < 0.75) {
+      const j = near[Math.floor(Math.random() * near.length)], e = W.enemies[j];
+      addArc(W, [{ x: b.x, y: b.y }, { x: e.x, y: e.ty }], b.col, 1, 0.14);
+      SFX.arc(e.x, e.ty);
+      burst(W, e.x, e.ty, 3, b.col);
+      damageEnemy(W, j, b.dmg * 0.3);
+      return;
+    }
+    for (let k = 0; k < 4; k++) {
+      const a = Math.random() * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
+      const d = rayDist(b.x, b.y, dx, dy, 70, (cx, cy) => solidCell(W, cx, cy));
+      if (d < 70 && d > 6) {
+        const hx = b.x + dx * d, hy = b.y + dy * d;
+        addArc(W, [{ x: b.x, y: b.y }, { x: hx, y: hy }], b.col, 0.8, 0.12);
+        SFX.arc(hx, hy);
+        burst(W, hx, hy, 2, b.col);
+        return;
+      }
+    }
+  }
+
   // src/game/systems/shotlooks.js
   var glowDot = (W, x, y, vx, vy, c, s, life, g) => W.dparts.push({ x, y, vx, vy, g: g || 0, c, s, life, max: life, glow: 1 });
   var rnd = (a, b) => a + Math.random() * (b - a);
@@ -13252,66 +13314,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         SFX.cast(list, x0, y0);
         burst(W, x0, y0, 5, col);
       }
-      function jag(pts, amp) {
-        const th = [pts[0]];
-        for (let k = 1; k < pts.length; k++) {
-          const q = th[th.length - 1];
-          if (k === pts.length - 1 || Math.hypot(pts[k].x - q.x, pts[k].y - q.y) >= 12) th.push(pts[k]);
-        }
-        pts = th;
-        const out = [pts[0]];
-        for (let k = 1; k < pts.length; k++) {
-          const a = pts[k - 1], c2 = pts[k], dx = c2.x - a.x, dy = c2.y - a.y, d = Math.hypot(dx, dy) || 1;
-          const n = Math.max(1, Math.round(d / 9)), px = -dy / d, py = dx / d;
-          for (let s = 1; s < n; s++) {
-            const f = s / n, o = (Math.random() - 0.5) * 2 * amp;
-            out.push({ x: a.x + dx * f + px * o, y: a.y + dy * f + py * o });
-          }
-          out.push(c2);
-        }
-        return out;
-      }
-      function addArc(pts, col, w, max) {
-        W.arcs.push({ pts: jag(pts, 4), col, w, t: 0, max });
-      }
-      function lightningStep(b, dt) {
-        const tr = b.trail || (b.trail = [{ x: b.ox, y: b.oy }]);
-        tr.push({ x: b.x, y: b.y });
-        let len = 0;
-        for (let k = tr.length - 1; k > 0; k--) {
-          len += Math.hypot(tr[k].x - tr[k - 1].x, tr[k].y - tr[k - 1].y);
-          if (len > 110) {
-            tr.splice(0, k - 1);
-            break;
-          }
-        }
-        if ((b.arcT = (b.arcT || 0) - dt) > 0) return;
-        b.arcT = 0.035 + Math.random() * 0.04;
-        const R = 90, near = [];
-        for (let j = 0; j < W.enemies.length; j++) {
-          const e = W.enemies[j];
-          if (Math.hypot(e.x - b.x, e.ty - b.y) < R && lineOfSight(W, b.x, b.y, e.x, e.ty)) near.push(j);
-        }
-        if (near.length && Math.random() < 0.75) {
-          const j = near[Math.floor(Math.random() * near.length)], e = W.enemies[j];
-          addArc([{ x: b.x, y: b.y }, { x: e.x, y: e.ty }], b.col, 1, 0.14);
-          SFX.arc(e.x, e.ty);
-          burst(W, e.x, e.ty, 3, b.col);
-          damageEnemy(W, j, b.dmg * 0.3);
-          return;
-        }
-        for (let k = 0; k < 4; k++) {
-          const a = Math.random() * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
-          const d = rayDist(b.x, b.y, dx, dy, 70, (cx, cy) => solidCell(W, cx, cy));
-          if (d < 70 && d > 6) {
-            const hx = b.x + dx * d, hy = b.y + dy * d;
-            addArc([{ x: b.x, y: b.y }, { x: hx, y: hy }], b.col, 0.8, 0.12);
-            SFX.arc(hx, hy);
-            burst(W, hx, hy, 2, b.col);
-            return;
-          }
-        }
-      }
       function fireBeam(sh, x, y, nx, ny, bonus, pd, pc) {
         pd = pd || 1;
         pc = pc || 0;
@@ -13841,7 +13843,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
           if (b.eat) dig(W, G, b.x, b.y, b.eat);
           if (b.fire) ignite(W, G, b.x, b.y, b.size + 2, 0.5);
-          if (b.arc) lightningStep(b, dt);
+          if (b.arc) lightningStep(W, b, dt);
           if (b.payload && b.timer != null && (b.timer -= dt) <= 0) firePayload(b);
           if (b.pull) {
             const reach = DEV.bhPull * b.pull / 70;
@@ -14070,7 +14072,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (dead && b.tele) teleportTo(b);
           if (dead && b.arc && b.trail) {
             b.trail.push({ x: b.x, y: b.y });
-            addArc(b.trail, b.col, 1.4, 0.16);
+            addArc(W, b.trail, b.col, 1.4, 0.16);
           }
           if (dead && b.look) shotDeath(W, b);
           if (dead) W.bullets.splice(i, 1);
@@ -14191,7 +14193,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               for (let j = W.enemies.length - 1; j >= 0; j--)
                 if (Math.hypot(W.enemies[j].x - sx, W.enemies[j].ty - sy) < 22) damageEnemy(W, j, 2);
               burst(W, sx, sy, 6, "#a8e4ff");
-              addArc([{ x: sx + rnd(-8, 8), y: f.y - f.r * 0.85 }, { x: sx, y: sy }], "#a8e4ff", 1.2, 0.14);
+              addArc(W, [{ x: sx + rnd(-8, 8), y: f.y - f.r * 0.85 }, { x: sx, y: sy }], "#a8e4ff", 1.2, 0.14);
               SFX.arc(sx, sy, true);
             }
           } else if (f.field === "vacuum") {

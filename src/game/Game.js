@@ -38,11 +38,12 @@ import { PLANTS, archNear } from '../world/decorate.js';
 import { FIRE_COLS, fireArea, fireDouse, fireNew } from '../world/fire.js';
 import { ROOM_HH, ROOM_HW, makeLevel } from '../world/level.js';
 import { NAV, navField, navWay } from '../world/nav.js';
-import { VIS_RAYS, fogReveal, fogStart, nestFog, rayDist, visPoly } from '../world/vision.js';
+import { VIS_RAYS, fogReveal, fogStart, nestFog, visPoly } from '../world/vision.js';
 import { builtAt } from '../world/zones.js';
 import { puffSpores } from './systems/ambience.js';
 import { damageEnemy, fireEnemyShot } from './systems/enemies.js';
 import { fireBlast, fireFrame, ignite, setAlight, youAlight } from './systems/fire.js';
+import { addArc, jag, lightningStep } from './systems/lightning.js';
 import { burst, goo, splat, toast } from './systems/particles.js';
 import { hurt, maxHp, refreshBag } from './systems/player.js';
 import { decorStep } from './systems/props.js';
@@ -772,69 +773,6 @@ export function Game({ input }) {
       burst(W, x0, y0, 5, col);
     }
 
-    // Lightning. A zig-zag between points: each leg is split into short kinks knocked
-    // sideways, so a straight line reads as a crackling bolt.
-    function jag(pts, amp) {
-      // thin the path to points ~12 apart first, so a slow bolt's crowded trail still kinks
-      const th = [pts[0]];
-      for (let k = 1; k < pts.length; k++) {
-        const q = th[th.length - 1];
-        if (k === pts.length - 1 || Math.hypot(pts[k].x - q.x, pts[k].y - q.y) >= 12) th.push(pts[k]);
-      }
-      pts = th;
-      const out = [pts[0]];
-      for (let k = 1; k < pts.length; k++) {
-        const a = pts[k - 1], c = pts[k], dx = c.x - a.x, dy = c.y - a.y, d = Math.hypot(dx, dy) || 1;
-        const n = Math.max(1, Math.round(d / 9)), px = -dy / d, py = dx / d;
-        for (let s = 1; s < n; s++) {
-          const f = s / n, o = (Math.random() - 0.5) * 2 * amp;
-          out.push({ x: a.x + dx * f + px * o, y: a.y + dy * f + py * o });
-        }
-        out.push(c);
-      }
-      return out;
-    }
-    function addArc(pts, col, w, max) { W.arcs.push({ pts: jag(pts, 4), col, w, t: 0, max }); }
-    // A lightning bolt remembers its last stretch of path (drawn as the bolt) and every
-    // few hundredths of a second throws a fork: at a creature in reach and in sight
-    // (a little damage), else at a nearby bit of rock (just the flash).
-    function lightningStep(b, dt) {
-      const tr = b.trail || (b.trail = [{ x: b.ox, y: b.oy }]);
-      tr.push({ x: b.x, y: b.y });
-      let len = 0;
-      for (let k = tr.length - 1; k > 0; k--) {
-        len += Math.hypot(tr[k].x - tr[k - 1].x, tr[k].y - tr[k - 1].y);
-        if (len > 110) { tr.splice(0, k - 1); break; }
-      }
-      if ((b.arcT = (b.arcT || 0) - dt) > 0) return;
-      b.arcT = 0.035 + Math.random() * 0.04;
-      const R = 90, near = [];
-      for (let j = 0; j < W.enemies.length; j++) {
-        const e = W.enemies[j];
-        if (Math.hypot(e.x - b.x, e.ty - b.y) < R && lineOfSight(W, b.x, b.y, e.x, e.ty)) near.push(j);
-      }
-      if (near.length && Math.random() < 0.75) {
-        const j = near[Math.floor(Math.random() * near.length)], e = W.enemies[j];
-        addArc([{ x: b.x, y: b.y }, { x: e.x, y: e.ty }], b.col, 1, 0.14);
-        SFX.arc(e.x, e.ty);
-        burst(W, e.x, e.ty, 3, b.col);
-        damageEnemy(W, j, b.dmg * 0.3);
-        return;
-      }
-      // no creature: try a few random directions for rock close by
-      for (let k = 0; k < 4; k++) {
-        const a = Math.random() * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
-        const d = rayDist(b.x, b.y, dx, dy, 70, (cx, cy) => solidCell(W, cx, cy));
-        if (d < 70 && d > 6) {
-          const hx = b.x + dx * d, hy = b.y + dy * d;
-          addArc([{ x: b.x, y: b.y }, { x: hx, y: hy }], b.col, 0.8, 0.12);
-          SFX.arc(hx, hy);
-          burst(W, hx, hy, 2, b.col);
-          return;
-        }
-      }
-    }
-
     // A beam is instant: it walks a line, damages what it touches and leaves a streak.
     function fireBeam(sh, x, y, nx, ny, bonus, pd, pc) {
       pd = pd || 1; pc = pc || 0;
@@ -1236,7 +1174,7 @@ export function Game({ input }) {
         }
         if (b.eat) dig(W, G, b.x, b.y, b.eat);
         if (b.fire) ignite(W, G, b.x, b.y, b.size + 2, 0.5);     // a fire spell lights what it flies through
-        if (b.arc) lightningStep(b, dt);
+        if (b.arc) lightningStep(W, b, dt);
         // a timer lets its payload go in mid-air, and the carrier flies on
         if (b.payload && b.timer != null && (b.timer -= dt) <= 0) firePayload(b);
         if (b.pull) {
@@ -1394,7 +1332,7 @@ export function Game({ input }) {
         if (dead && b.tele) teleportTo(b);            // Teleport Bolt: you go where it stopped
         if (dead && b.arc && b.trail) {               // the bolt's path lingers for a blink
           b.trail.push({ x: b.x, y: b.y });
-          addArc(b.trail, b.col, 1.4, 0.16);
+          addArc(W, b.trail, b.col, 1.4, 0.16);
         }
         if (dead && b.look) shotDeath(W, b);
         if (dead) W.bullets.splice(i, 1);
@@ -1477,7 +1415,7 @@ export function Game({ input }) {
             for (let j = W.enemies.length - 1; j >= 0; j--)
               if (Math.hypot(W.enemies[j].x - sx, W.enemies[j].ty - sy) < 22) damageEnemy(W, j, 2);
             burst(W, sx, sy, 6, '#a8e4ff');
-            addArc([{ x: sx + rnd(-8, 8), y: f.y - f.r * 0.85 }, { x: sx, y: sy }], '#a8e4ff', 1.2, 0.14);   // down from the cloud
+            addArc(W, [{ x: sx + rnd(-8, 8), y: f.y - f.r * 0.85 }, { x: sx, y: sy }], '#a8e4ff', 1.2, 0.14);   // down from the cloud
             SFX.arc(sx, sy, true);
           }
         } else if (f.field === 'vacuum') {
