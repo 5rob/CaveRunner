@@ -10214,6 +10214,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   };
 
+  // src/game/systems/webs.js
+  var webNear = (L, x, y) => {
+    const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, ll = vx * vx + vy * vy || 1;
+    const u = Math.max(0, Math.min(1, ((x - L.a0x) * vx + (y - L.a0y) * vy) / ll));
+    return { x: L.a0x + vx * u, y: L.a0y + vy * u };
+  };
+  var webDist = (L, x, y) => {
+    const q = webNear(L, x, y);
+    return Math.hypot(q.x - x, q.y - y);
+  };
+
   // src/game/systems/player.js
   var refreshBag = (W, G) => {
     W.pb = perkBag(G.input.current.loadout.perks || []);
@@ -10279,6 +10290,172 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return st.cut > 0;
   }
   var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
+  function movePlayer(W, G, F) {
+    const { dt } = F;
+    let L = G.input.current.left;
+    if (!L.active) {
+      const keys = G.input.current.keys;
+      const kx = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
+      if (kx || keys.w) {
+        const ny = keys.w ? -1 : 0, len = Math.hypot(kx, ny);
+        L = { active: true, nx: kx / len, ny: ny / len, mag: 1, dy: keys.w ? -1 : 1, on: true };
+      }
+    }
+    if (W.p.dead) L = NO_INPUT;
+    W.p.jx = L.nx;
+    W.p.jy = L.ny;
+    const raw = L.active ? L.mag : 0;
+    const mag = raw > DEAD ? (raw - DEAD) / (1 - DEAD) : 0;
+    const wantJet = mag > 0 && L.dy < 0;
+    if (W.p.empty && W.p.fuel >= FUEL_RESTART) W.p.empty = false;
+    const jet = wantJet && !W.p.empty;
+    const climbing = W.zfx.climb && !jet && !W.p.dead;
+    W.p.jet = jet ? mag : 0;
+    W.p.sput = sputterStep(W.jetSt, dt, W.p.fuel, jet);
+    W.p.flame = W.p.sput ? 0 : W.p.jet;
+    if (W.p.sput) W.p.cough = 0.15;
+    else W.p.cough = Math.max(0, W.p.cough - dt);
+    if (W.jetSt.start) {
+      W.p.vy += DEV.sputDip;
+      for (let i = 0; i < 3; i++)
+        W.smoke.push({
+          x: W.p.x + PW / 2 + (Math.random() - 0.5) * 6,
+          y: W.p.y + PH + 2,
+          vx: (Math.random() - 0.5) * 40,
+          vy: 20 + Math.random() * 30,
+          r: 2.5 + Math.random() * 2,
+          life: 0.7 + Math.random() * 0.4,
+          max: 1.1,
+          c: "#6f767e",
+          a: 0.8
+        });
+    }
+    if (jet) {
+      W.p.fuel -= FUEL_DRAIN * (0.5 + 0.5 * mag) * dt;
+      if (W.p.fuel <= 0) {
+        W.p.fuel = 0;
+        W.p.empty = true;
+      }
+    } else if (W.p.onGround || climbing) {
+      W.p.fuel = Math.min(1, W.p.fuel + FUEL_REGEN * dt);
+    }
+    const pcx0 = W.p.x + PW / 2;
+    W.p.kick -= dt;
+    const k = W.p.kick > 0 ? 0.15 : 1;
+    const tied = W.strings.reduce((m, s) => m * s.slow, 1) * W.zfx.webMul;
+    W.webLetGo -= dt;
+    if (jet && W.p.sput) {
+      W.p.vx = approach(W.p.vx, L.nx * mag * JET * W.pb.walk * DEV.move * tied, JET_ACC * dt * k);
+      W.p.vy = Math.min(W.p.vy + GRAVITY * dt, 900);
+    } else if (jet) {
+      W.p.vx = approach(W.p.vx, L.nx * mag * JET * W.pb.walk * DEV.move * tied, JET_ACC * dt * k);
+      const ty = L.ny * mag * JET * W.pb.jet * DEV.move * tied;
+      if (ty < W.p.vy && W.p.kick <= 0 && W.p.cough <= 0) W.p.vy = ty;
+      else W.p.vy = approach(W.p.vy, ty, JET_ACC * dt * k);
+      if (W.zfx.rev) W.p.vy -= GRAVITY * W.zfx.rev * dt;
+    } else if (climbing && W.zfx.arch && W.p.kick <= 0) {
+      const ar = W.zfx.arch, hy = W.p.y + WEB_HAND, q = archNear(ar, pcx0, hy);
+      const a = ar.arc[q.k], b = ar.arc[q.k + 1], ul = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const ux = (b[0] - a[0]) / ul, uy = (b[1] - a[1]) / ul;
+      const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
+      if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) {
+        W.webLetGo = 0.35;
+        W.p.vy = 40;
+      } else {
+        const v = along * (ar.climb || (ar.climb = kr("arClimb"))) * tied;
+        W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
+        W.p.vy = approach(W.p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
+      }
+    } else if (climbing && W.zfx.web && W.p.kick <= 0) {
+      const ln = W.zfx.web, wl = Math.hypot(ln.b0x - ln.a0x, ln.b0y - ln.a0y) || 1;
+      let ux = (ln.b0x - ln.a0x) / wl, uy = (ln.b0y - ln.a0y) / wl;
+      const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
+      if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) {
+        W.webLetGo = 0.35;
+        W.p.vy = 40;
+      } else {
+        const v = along * (ln.climb || (ln.climb = spr("webClimb"))) * tied, hy = W.p.y + WEB_HAND, q = webNear(ln, pcx0, hy);
+        W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
+        W.p.vy = approach(W.p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
+      }
+    } else {
+      const target = mag > 0 ? L.nx * mag * WALK * W.pb.walk * DEV.move * W.zfx.slow * tied : 0;
+      W.p.vx = approach(W.p.vx, target, (W.p.onGround ? GROUND_ACC * (W.zfx.slick ? 0.08 : 1) : AIR_ACC) * dt * k);
+      if (climbing && W.p.kick <= 0) W.p.vy = approach(W.p.vy, mag > 0 ? L.ny * mag * CLIMB * tied : 0, 1800 * dt);
+      else W.p.vy = Math.min(W.p.vy + GRAVITY * dt * (1 - 2 * W.zfx.rev), 900);
+    }
+    const wasGround = W.p.onGround, fallV = W.p.vy;
+    let n = Math.ceil(Math.abs(W.p.vx * dt));
+    if (n > 0) {
+      const sx = W.p.vx * dt / n;
+      for (let i = 0; i < n; i++) {
+        if (!boxHit(W, W.p.x + sx, W.p.y)) {
+          W.p.x += sx;
+          continue;
+        }
+        let moved = false;
+        const maxUp = wasGround ? 6 : 3;
+        for (let up = 1; up <= maxUp; up++) {
+          if (!boxHit(W, W.p.x + sx, W.p.y - up)) {
+            W.p.x += sx;
+            W.p.y -= up;
+            moved = true;
+            break;
+          }
+        }
+        if (!moved) {
+          W.p.vx = 0;
+          break;
+        }
+      }
+    }
+    n = Math.ceil(Math.abs(W.p.vy * dt));
+    if (n > 0) {
+      const sy = W.p.vy * dt / n;
+      for (let i = 0; i < n; i++) {
+        if (!boxHit(W, W.p.x, W.p.y + sy)) {
+          W.p.y += sy;
+          continue;
+        }
+        if (sy > 0) W.p.y = Math.floor((W.p.y + sy + PH - 1e-3) / CELL) * CELL - PH;
+        else W.p.y = (Math.floor((W.p.y + sy) / CELL) + 1) * CELL;
+        if (boxHit(W, W.p.x, W.p.y)) W.p.y -= sy;
+        W.p.vy = 0;
+        break;
+      }
+    }
+    if (wasGround && !jet && W.p.vy >= 0 && W.p.kick <= 0 && !boxHit(W, W.p.x, W.p.y + 1)) {
+      for (let dn = 1; dn <= 6; dn++) {
+        if (boxHit(W, W.p.x, W.p.y + dn + 1)) {
+          W.p.y += dn;
+          W.p.vy = 0;
+          break;
+        }
+      }
+    }
+    if (boxHit(W, W.p.x, W.p.y)) {
+      for (let up = 1; up <= 40; up++) if (!boxHit(W, W.p.x, W.p.y - up)) {
+        W.p.y -= up;
+        break;
+      }
+    }
+    if (W.p.y > WH) {
+      W.p.x = W.start.x;
+      W.p.y = W.start.y;
+      W.p.vx = 0;
+      W.p.vy = 0;
+    }
+    W.p.onGround = boxHit(W, W.p.x, W.p.y + 0.5);
+    if (!W.p.dead) {
+      if (W.p.onGround && !wasGround && fallV > 200) SFX.fx("land", null, null, { v: fallV, s: W.zfx.surface });
+      if (W.p.onGround && Math.abs(W.p.vx) > 40) {
+        if ((W.stepT -= dt * Math.abs(W.p.vx) / 40) <= 0) {
+          W.stepT = 1;
+          SFX.fx("step", null, null, W.zfx.surface);
+        }
+      } else W.stepT = Math.min(W.stepT, 0.35);
+    }
+  }
 
   // src/game/systems/ambience.js
   var AMB_RATE = { spores: 5, frost: 3, embers: 8, motes: 4, ashfall: 55 };
@@ -10365,17 +10542,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (dv.life <= 0) W.devils.splice(i, 1);
     }
   }
-
-  // src/game/systems/webs.js
-  var webNear = (L, x, y) => {
-    const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, ll = vx * vx + vy * vy || 1;
-    const u = Math.max(0, Math.min(1, ((x - L.a0x) * vx + (y - L.a0y) * vy) / ll));
-    return { x: L.a0x + vx * u, y: L.a0y + vy * u };
-  };
-  var webDist = (L, x, y) => {
-    const q = webNear(L, x, y);
-    return Math.hypot(q.x - x, q.y - y);
-  };
 
   // src/game/systems/props.js
   function blowProp(W, G, pr) {
@@ -14544,179 +14710,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (stepRequests(W, G, F)) return;
     stepPerks(W, G, F);
     const LO = F.LO, MHP = F.MHP;
-    let L = G.input.current.left;
-    if (!L.active) {
-      const keys = G.input.current.keys;
-      const kx = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
-      if (kx || keys.w) {
-        const ny = keys.w ? -1 : 0, len = Math.hypot(kx, ny);
-        L = { active: true, nx: kx / len, ny: ny / len, mag: 1, dy: keys.w ? -1 : 1, on: true };
-      }
-    }
-    if (W.p.dead) L = NO_INPUT;
-    W.p.jx = L.nx;
-    W.p.jy = L.ny;
-    const raw = L.active ? L.mag : 0;
-    const mag = raw > DEAD ? (raw - DEAD) / (1 - DEAD) : 0;
-    const wantJet = mag > 0 && L.dy < 0;
-    if (W.p.empty && W.p.fuel >= FUEL_RESTART) W.p.empty = false;
-    const jet = wantJet && !W.p.empty;
-    const climbing = W.zfx.climb && !jet && !W.p.dead;
-    W.p.jet = jet ? mag : 0;
-    W.p.sput = sputterStep(W.jetSt, dt, W.p.fuel, jet);
-    W.p.flame = W.p.sput ? 0 : W.p.jet;
-    if (W.p.sput) W.p.cough = 0.15;
-    else W.p.cough = Math.max(0, W.p.cough - dt);
-    if (W.jetSt.start) {
-      W.p.vy += DEV.sputDip;
-      for (let i = 0; i < 3; i++)
-        W.smoke.push({
-          x: W.p.x + PW / 2 + (Math.random() - 0.5) * 6,
-          y: W.p.y + PH + 2,
-          vx: (Math.random() - 0.5) * 40,
-          vy: 20 + Math.random() * 30,
-          r: 2.5 + Math.random() * 2,
-          life: 0.7 + Math.random() * 0.4,
-          max: 1.1,
-          c: "#6f767e",
-          a: 0.8
-        });
-    }
-    if (jet) {
-      W.p.fuel -= FUEL_DRAIN * (0.5 + 0.5 * mag) * dt;
-      if (W.p.fuel <= 0) {
-        W.p.fuel = 0;
-        W.p.empty = true;
-      }
-    } else if (W.p.onGround || climbing) {
-      W.p.fuel = Math.min(1, W.p.fuel + FUEL_REGEN * dt);
-    }
-    const pcx0 = W.p.x + PW / 2;
-    W.p.kick -= dt;
-    const k = W.p.kick > 0 ? 0.15 : 1;
-    const tied = W.strings.reduce((m, s) => m * s.slow, 1) * W.zfx.webMul;
-    W.webLetGo -= dt;
-    if (jet && W.p.sput) {
-      W.p.vx = approach(W.p.vx, L.nx * mag * JET * W.pb.walk * DEV.move * tied, JET_ACC * dt * k);
-      W.p.vy = Math.min(W.p.vy + GRAVITY * dt, 900);
-    } else if (jet) {
-      W.p.vx = approach(W.p.vx, L.nx * mag * JET * W.pb.walk * DEV.move * tied, JET_ACC * dt * k);
-      const ty = L.ny * mag * JET * W.pb.jet * DEV.move * tied;
-      if (ty < W.p.vy && W.p.kick <= 0 && W.p.cough <= 0) W.p.vy = ty;
-      else W.p.vy = approach(W.p.vy, ty, JET_ACC * dt * k);
-      if (W.zfx.rev) W.p.vy -= GRAVITY * W.zfx.rev * dt;
-    } else if (climbing && W.zfx.arch && W.p.kick <= 0) {
-      const ar = W.zfx.arch, hy = W.p.y + WEB_HAND, q = archNear(ar, pcx0, hy);
-      const a = ar.arc[q.k], b = ar.arc[q.k + 1], ul = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
-      const ux = (b[0] - a[0]) / ul, uy = (b[1] - a[1]) / ul;
-      const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
-      if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) {
-        W.webLetGo = 0.35;
-        W.p.vy = 40;
-      } else {
-        const v = along * (ar.climb || (ar.climb = kr("arClimb"))) * tied;
-        W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
-        W.p.vy = approach(W.p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
-      }
-    } else if (climbing && W.zfx.web && W.p.kick <= 0) {
-      const ln = W.zfx.web, wl = Math.hypot(ln.b0x - ln.a0x, ln.b0y - ln.a0y) || 1;
-      let ux = (ln.b0x - ln.a0x) / wl, uy = (ln.b0y - ln.a0y) / wl;
-      const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
-      if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) {
-        W.webLetGo = 0.35;
-        W.p.vy = 40;
-      } else {
-        const v = along * (ln.climb || (ln.climb = spr("webClimb"))) * tied, hy = W.p.y + WEB_HAND, q = webNear(ln, pcx0, hy);
-        W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
-        W.p.vy = approach(W.p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
-      }
-    } else {
-      const target = mag > 0 ? L.nx * mag * WALK * W.pb.walk * DEV.move * W.zfx.slow * tied : 0;
-      W.p.vx = approach(W.p.vx, target, (W.p.onGround ? GROUND_ACC * (W.zfx.slick ? 0.08 : 1) : AIR_ACC) * dt * k);
-      if (climbing && W.p.kick <= 0) W.p.vy = approach(W.p.vy, mag > 0 ? L.ny * mag * CLIMB * tied : 0, 1800 * dt);
-      else W.p.vy = Math.min(W.p.vy + GRAVITY * dt * (1 - 2 * W.zfx.rev), 900);
-    }
-    const wasGround = W.p.onGround, fallV = W.p.vy;
-    let n = Math.ceil(Math.abs(W.p.vx * dt));
-    if (n > 0) {
-      const sx = W.p.vx * dt / n;
-      for (let i = 0; i < n; i++) {
-        if (!boxHit(W, W.p.x + sx, W.p.y)) {
-          W.p.x += sx;
-          continue;
-        }
-        let moved = false;
-        const maxUp = wasGround ? 6 : 3;
-        for (let up = 1; up <= maxUp; up++) {
-          if (!boxHit(W, W.p.x + sx, W.p.y - up)) {
-            W.p.x += sx;
-            W.p.y -= up;
-            moved = true;
-            break;
-          }
-        }
-        if (!moved) {
-          W.p.vx = 0;
-          break;
-        }
-      }
-    }
-    n = Math.ceil(Math.abs(W.p.vy * dt));
-    if (n > 0) {
-      const sy = W.p.vy * dt / n;
-      for (let i = 0; i < n; i++) {
-        if (!boxHit(W, W.p.x, W.p.y + sy)) {
-          W.p.y += sy;
-          continue;
-        }
-        if (sy > 0) W.p.y = Math.floor((W.p.y + sy + PH - 1e-3) / CELL) * CELL - PH;
-        else W.p.y = (Math.floor((W.p.y + sy) / CELL) + 1) * CELL;
-        if (boxHit(W, W.p.x, W.p.y)) W.p.y -= sy;
-        W.p.vy = 0;
-        break;
-      }
-    }
-    if (wasGround && !jet && W.p.vy >= 0 && W.p.kick <= 0 && !boxHit(W, W.p.x, W.p.y + 1)) {
-      for (let dn = 1; dn <= 6; dn++) {
-        if (boxHit(W, W.p.x, W.p.y + dn + 1)) {
-          W.p.y += dn;
-          W.p.vy = 0;
-          break;
-        }
-      }
-    }
-    if (boxHit(W, W.p.x, W.p.y)) {
-      for (let up = 1; up <= 40; up++) if (!boxHit(W, W.p.x, W.p.y - up)) {
-        W.p.y -= up;
-        break;
-      }
-    }
-    if (W.p.y > WH) {
-      W.p.x = W.start.x;
-      W.p.y = W.start.y;
-      W.p.vx = 0;
-      W.p.vy = 0;
-    }
-    W.p.onGround = boxHit(W, W.p.x, W.p.y + 0.5);
-    if (!W.p.dead) {
-      if (W.p.onGround && !wasGround && fallV > 200) SFX.fx("land", null, null, { v: fallV, s: W.zfx.surface });
-      if (W.p.onGround && Math.abs(W.p.vx) > 40) {
-        if ((W.stepT -= dt * Math.abs(W.p.vx) / 40) <= 0) {
-          W.stepT = 1;
-          SFX.fx("step", null, null, W.zfx.surface);
-        }
-      } else W.stepT = Math.min(W.stepT, 0.35);
-    }
-    const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
-    if (!W.p.dead && pcx > W.portal.x && pcx < W.portal.x + W.portal.w && pcy > W.portal.y && pcy < W.portal.y + W.portal.h) {
-      W.floor++;
-      enterLevel(W, G);
-      saveRun(W, G);
-      SFX.fx("portalIn");
-      toast(W, "Floor " + W.floor);
-      G.input.current.notify();
-      return;
-    }
+    movePlayer(W, G, F);
+    if (atPortal(W, G, F)) return;
+    const pcx = F.pcx, pcy = F.pcy;
     const gx = pcx, gy = W.p.y + PH * 0.4;
     const TR = G.input.current.right;
     let R = { on: false, show: false, nx: W.p.face, ny: 0 };
@@ -14775,9 +14771,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       if (b.grav) b.vy += b.grav * dt;
       if (b.drag) {
-        const k2 = Math.exp(-b.drag * dt);
-        b.vx *= k2;
-        b.vy *= k2;
+        const k = Math.exp(-b.drag * dt);
+        b.vx *= k;
+        b.vy *= k;
       }
       if (b.accel) {
         const f = 1 + b.accel * dt;
@@ -14819,13 +14815,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             e.tgt = null;
           }
         }
-        for (let k2 = W.enemyShots.length - 1; k2 >= 0; k2--) {
-          const es = W.enemyShots[k2];
+        for (let k = W.enemyShots.length - 1; k >= 0; k--) {
+          const es = W.enemyShots[k];
           const dx = b.x - es.x, dy = b.y - es.y, d = Math.hypot(dx, dy) || 1;
           if (d < b.size + 6) {
             burst(W, es.x, es.y, 3, "#c58cff");
             SFX.fx("absorb", es.x, es.y);
-            W.enemyShots.splice(k2, 1);
+            W.enemyShots.splice(k, 1);
             continue;
           }
           if (d < reach) {
@@ -15133,12 +15129,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       } else if (f.field === "slow") {
         for (const e of W.enemies) if (Math.hypot(e.x - f.x, e.ty - f.y) < f.r) e.chill = 0.2;
       } else if (f.field === "shield") {
-        for (let k2 = W.enemyShots.length - 1; k2 >= 0; k2--) {
-          const b = W.enemyShots[k2];
+        for (let k = W.enemyShots.length - 1; k >= 0; k--) {
+          const b = W.enemyShots[k];
           if (Math.hypot(b.x - f.x, b.y - f.y) < f.r) {
             burst(W, b.x, b.y, 3, f.col);
             SFX.fx("absorb", b.x, b.y);
-            W.enemyShots.splice(k2, 1);
+            W.enemyShots.splice(k, 1);
           }
         }
       } else if (f.field === "heal") {
@@ -15378,7 +15374,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let i = W.toasts.length - 1; i >= 0; i--) if ((W.toasts[i].t -= dt) <= 0) W.toasts.splice(i, 1);
     decorStep(W, G, dt, pcx, pcy);
     for (let i = W.enemies.length - 1; i >= 0; i--) {
-      const e = W.enemies[i], k2 = e.k;
+      const e = W.enemies[i], k = e.k;
       e.flash -= dt;
       e.cd -= dt;
       e.touch -= dt;
@@ -15386,27 +15382,27 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       e.lx = dx / dist;
       e.ly = dy / dist;
       const sees = (W.pb.invis ? 0.4 : 1) / DEV.zoom;
-      const chaser = HUNTERS[k2.act] && !W.p.dead;
-      if (k2.kp && (e.aggroT = (e.aggroT || 0) - dt) <= 0) {
-        e.aggroM = kr(k2.kp + "Aggro");
+      const chaser = HUNTERS[k.act] && !W.p.dead;
+      if (k.kp && (e.aggroT = (e.aggroT || 0) - dt) <= 0) {
+        e.aggroM = kr(k.kp + "Aggro");
         e.aggroT = 1;
       }
-      const reach = k2.aggro * sees * DEV.aggro * (k2.kp ? e.aggroM : 1);
+      const reach = k.aggro * sees * DEV.aggro * (k.kp ? e.aggroM : 1);
       if (chaser) {
         if (!e.aggro) {
           if (dist < reach && lineOfSight(W, e.x, e.ty, pcx, pcy)) {
             e.aggro = true;
-            SFX.creature(k2, "alert", e.x, e.ty);
+            SFX.creature(k, "alert", e.x, e.ty);
           }
         } else if (dist > reach * DEV.loseAggro) e.aggro = false;
       } else e.aggro = false;
       const hunting = chaser && e.aggro;
-      if (dist < 380 && Math.random() < 0.07 * dt) SFX.creature(k2, "idle", e.x, e.ty);
-      if (hunting && k2.act === "bomb" && dist < 160 && (e.fuseT = (e.fuseT || 0) - dt) <= 0) {
+      if (dist < 380 && Math.random() < 0.07 * dt) SFX.creature(k, "idle", e.x, e.ty);
+      if (hunting && k.act === "bomb" && dist < 160 && (e.fuseT = (e.fuseT || 0) - dt) <= 0) {
         e.fuseT = 0.12 + dist / 400;
-        SFX.creature(k2, "fuse", e.x, e.ty);
+        SFX.creature(k, "fuse", e.x, e.ty);
       }
-      if (k2.act === "nest") {
+      if (k.act === "nest") {
         const N = e.nest;
         if (!N.max) {
           N.max = Math.round(kr("raMax"));
@@ -15422,13 +15418,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         e.ty = e.y;
         continue;
       }
-      if (k2.act === "rat") {
+      if (k.act === "rat") {
         ratFrame(W, G, e, dt, dist, hunting, pcx, pcy);
         e.chill = 1;
         e.ty = e.y;
         continue;
       }
-      if (k2.act === "spider") {
+      if (k.act === "spider") {
         const cold = e.chill && e.chill < 1 ? e.chill : 1;
         if (spiderStep(e, {
           solidCell: (cx, cy) => solidCell(W, cx, cy),
@@ -15455,10 +15451,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               vy: dy / dist * v,
               life: 400 / v * 1.3 + 0.1
             });
-            SFX.creature(k2, "fire", e.x, e.y);
+            SFX.creature(k, "fire", e.x, e.y);
           }
         }
-      } else if (k2.act === "jelly") {
+      } else if (k.act === "jelly") {
         const cold = e.chill && e.chill < 1 ? e.chill : 1;
         if (jellyStep(e, {
           solidCell: (cx, cy) => solidCell(W, cx, cy),
@@ -15476,7 +15472,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             hurt(W, G, Math.round(kr("jeBite")));
             e.touch = kr("jeBiteCd");
             burst(W, t.x, t.y, 5, jellyPal(S.u.col).tent);
-            SFX.creature(k2, "bite", t.x, t.y);
+            SFX.creature(k, "bite", t.x, t.y);
           }
         }
         if (hunting && S.inRange && S.aimed && e.cd <= 0) {
@@ -15507,12 +15503,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               splat: Math.round(kr("jeSplat")),
               splatV: kr("jeSplatSpd")
             });
-            SFX.creature(k2, "fire", e.x, e.y);
+            SFX.creature(k, "fire", e.x, e.y);
           }
         }
-      } else if (k2.act === "turret") {
+      } else if (k.act === "turret") {
       } else if (hunting) {
-        const step2 = k2.spd * (e.chill || 1) * dt;
+        const step2 = k.spd * (e.chill || 1) * dt;
         const wx = e.x + dx / dist * step2, wy = e.y + dy / dist * step2;
         if (!solidAt(W, wx - e.r, wy) && !solidAt(W, wx + e.r, wy) && !solidAt(W, wx, wy - e.r) && !solidAt(W, wx, wy + e.r)) {
           e.x = wx;
@@ -15531,7 +15527,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           e.rest = 2 + Math.random() * 3.5;
         }
         const tdx = e.tgt.x - e.x, tdy = e.tgt.y - e.y, td = Math.hypot(tdx, tdy) || 1;
-        const step2 = k2.spd * (e.chill || 1) * dt;
+        const step2 = k.spd * (e.chill || 1) * dt;
         const wx = e.x + tdx / td * step2, wy = e.y + tdy / td * step2;
         if (solidAt(W, wx - e.r, wy) || solidAt(W, wx + e.r, wy) || solidAt(W, wx, wy - e.r) || solidAt(W, wx, wy + e.r)) {
           e.tgt = null;
@@ -15542,35 +15538,35 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
       e.chill = 1;
-      e.ty = k2.kp ? e.y : e.y + Math.sin(W.time * 2 + e.phase) * (hunting ? 2 : 4);
+      e.ty = k.kp ? e.y : e.y + Math.sin(W.time * 2 + e.phase) * (hunting ? 2 : 4);
       if (hunting && dist < e.r + 14 && e.touch <= 0) {
-        if (k2.act === "bomb") {
-          burst(W, e.x, e.ty, 22, k2.col.a);
+        if (k.act === "bomb") {
+          burst(W, e.x, e.ty, 22, k.col.a);
           SFX.boom(e.x, e.ty, 26);
-          hurt(W, G, k2.dmg);
+          hurt(W, G, k.dmg);
           W.enemies.splice(i, 1);
-          if (k2.fire) fireBlast(W, G, e.x, e.ty, 26, 1);
+          if (k.fire) fireBlast(W, G, e.x, e.ty, 26, 1);
           continue;
         }
-        SFX.creature(k2, "bite", e.x, e.ty);
-        hurt(W, G, k2.kp ? Math.round(kr(k2.kp + "Bite")) : k2.dmg);
-        e.touch = k2.kp ? kr(k2.kp + "BiteCd") : 0.9;
+        SFX.creature(k, "bite", e.x, e.ty);
+        hurt(W, G, k.kp ? Math.round(kr(k.kp + "Bite")) : k.dmg);
+        e.touch = k.kp ? kr(k.kp + "BiteCd") : 0.9;
       }
-      if (k2.act === "shoot" || k2.act === "turret") {
+      if (k.act === "shoot" || k.act === "turret") {
         if (e.charge > 0) {
           e.charge -= dt;
           if (e.charge <= 0) fireEnemyShot(W, e, pcx, pcy);
-        } else if (!W.p.dead && dist < k2.range * sees && e.cd <= 0) {
+        } else if (!W.p.dead && dist < k.range * sees && e.cd <= 0) {
           e.cd = 0.4;
           if (lineOfSight(W, e.x, e.ty, pcx, pcy)) {
-            e.cd = k2.cd * (0.85 + Math.random() * 0.3);
+            e.cd = k.cd * (0.85 + Math.random() * 0.3);
             if (!e.spotted) {
               e.spotted = true;
-              SFX.creature(k2, "alert", e.x, e.ty);
+              SFX.creature(k, "alert", e.x, e.ty);
             }
-            if (k2.tele) {
-              e.charge = k2.tele;
-              SFX.creature(k2, "charge", e.x, e.ty, k2.tele);
+            if (k.tele) {
+              e.charge = k.tele;
+              SFX.creature(k, "charge", e.x, e.ty, k.tele);
             } else fireEnemyShot(W, e, pcx, pcy);
           }
         }
@@ -15645,10 +15641,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         SFX.fx("lash", W.p.x + s.ox, W.p.y + s.oy);
       }
     }
-    for (let n2 = Math.min(W.webs.length, 6); n2 > 0; n2--) {
+    for (let n = Math.min(W.webs.length, 6); n > 0; n--) {
       W.webCheck = (W.webCheck + 1) % W.webs.length;
-      const L2 = W.webs[W.webCheck];
-      if (L2.bin && !solidAt(W, L2.bin.x, L2.bin.y) || L2.ain && !solidAt(W, L2.ain.x, L2.ain.y)) {
+      const L = W.webs[W.webCheck];
+      if (L.bin && !solidAt(W, L.bin.x, L.bin.y) || L.ain && !solidAt(W, L.ain.x, L.ain.y)) {
         W.webs.splice(W.webCheck, 1);
         if (!W.webs.length) break;
       }
@@ -15914,6 +15910,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         W.p.shieldReady = true;
         SFX.fx("shieldUp");
       }
+    }
+  }
+  function atPortal(W, G, F) {
+    const pcx = F.pcx = W.p.x + PW / 2, pcy = F.pcy = W.p.y + PH / 2;
+    if (!W.p.dead && pcx > W.portal.x && pcx < W.portal.x + W.portal.w && pcy > W.portal.y && pcy < W.portal.y + W.portal.h) {
+      W.floor++;
+      enterLevel(W, G);
+      saveRun(W, G);
+      SFX.fx("portalIn");
+      toast(W, "Floor " + W.floor);
+      G.input.current.notify();
+      return true;
     }
   }
 

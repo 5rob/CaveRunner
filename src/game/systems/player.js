@@ -1,11 +1,20 @@
 // You: the perk bag, your health (maxHp, and hurt: shields, extra lives, death) and which
-// hand holds the torch; the jetpack's cough (sputterStep) and the dead stick (NO_INPUT).
+// hand holds the torch; the jetpack's cough (sputterStep) and the dead stick (NO_INPUT);
+// and moving you, one frame's worth (movePlayer, a part of step()).
 
 import { SFX } from '../../audio/sfx.js';
-import { COL, PH, PW } from '../../core/consts.js';
+import {
+  AIR_ACC, CELL, CLIMB, COL, DEAD, FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART, GRAVITY, GROUND_ACC, JET,
+  JET_ACC, PH, PW, WALK, WEB_HAND, WH
+} from '../../core/consts.js';
+import { approach } from '../../core/util.js';
 import { perkBag } from '../../data/perks.js';
+import { DEV, kr, spr } from '../../dev/knobs.js';
 import { clearSave } from '../../save/save.js';
+import { archNear } from '../../world/decorate.js';
 import { burst, toast } from './particles.js';
+import { boxHit } from './terrain.js';
+import { webNear } from './webs.js';
 
 // ---- perks ----
 // Everything the perks you are carrying add up to, recomputed whenever the run's perk
@@ -79,3 +88,151 @@ export function sputterStep(st, dt, fuel, on, rnd) {
 }
 // the stick when nothing is pushing it (step() steers you with this once you are dead)
 export const NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
+
+// ---- moving you (a part of step) ----
+// The stick (or the keys), the jetpack and its fuel, steering (walking, flying, climbing a
+// vine, an arched vine or a web line), moving against the pixel terrain, and your footsteps.
+export function movePlayer(W, G, F) {
+  const { dt } = F;
+  // movement: thumbstick first, otherwise keyboard (full strength)
+  let L = G.input.current.left;
+  if (!L.active) {
+    const keys = G.input.current.keys;
+    const kx = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
+    if (kx || keys.w) {
+      const ny = keys.w ? -1 : 0, len = Math.hypot(kx, ny);
+      L = { active: true, nx: kx / len, ny: ny / len, mag: 1, dy: keys.w ? -1 : 1, on: true };
+    }
+  }
+  if (W.p.dead) L = NO_INPUT;
+  W.p.jx = L.nx; W.p.jy = L.ny;
+
+  // ---- jetpack and fuel ----
+  const raw = L.active ? L.mag : 0;
+  const mag = raw > DEAD ? (raw - DEAD) / (1 - DEAD) : 0;
+  const wantJet = mag > 0 && L.dy < 0;
+  if (W.p.empty && W.p.fuel >= FUEL_RESTART) W.p.empty = false;
+  const jet = wantJet && !W.p.empty;
+  // holding a vine (or chain, root, frozen fall): no jet means you hang on and get your
+  // breath back; the stick climbs you up and down
+  const climbing = W.zfx.climb && !jet && !W.p.dead;
+  W.p.jet = jet ? mag : 0;
+  // low on fuel it coughs: the flame, smoke and roar cut out for a blink, you drop a
+  // little, and it spits a grey puff
+  W.p.sput = sputterStep(W.jetSt, dt, W.p.fuel, jet);
+  W.p.flame = W.p.sput ? 0 : W.p.jet;
+  if (W.p.sput) W.p.cough = 0.15;
+  else W.p.cough = Math.max(0, W.p.cough - dt);
+  if (W.jetSt.start) {
+    W.p.vy += DEV.sputDip;
+    for (let i = 0; i < 3; i++)
+      W.smoke.push({ x: W.p.x + PW / 2 + (Math.random() - 0.5) * 6, y: W.p.y + PH + 2,
+        vx: (Math.random() - 0.5) * 40, vy: 20 + Math.random() * 30,
+        r: 2.5 + Math.random() * 2, life: 0.7 + Math.random() * 0.4, max: 1.1, c: '#6f767e', a: 0.8 });
+  }
+  if (jet) {
+    W.p.fuel -= FUEL_DRAIN * (0.5 + 0.5 * mag) * dt;
+    if (W.p.fuel <= 0) { W.p.fuel = 0; W.p.empty = true; }
+  } else if (W.p.onGround || climbing) {
+    W.p.fuel = Math.min(1, W.p.fuel + FUEL_REGEN * dt);
+  }
+
+  // ---- steering ----
+  const pcx0 = W.p.x + PW / 2;
+  W.p.kick -= dt;
+  const k = W.p.kick > 0 ? 0.15 : 1;   // let explosions push you around briefly
+  // each spider string on you slows you, and so does each web line you're pushing through
+  const tied = W.strings.reduce((m, s) => m * s.slow, 1) * W.zfx.webMul;
+  W.webLetGo -= dt;
+  if (jet && W.p.sput) {
+    // coughing: steer on, but no lift for the blink
+    W.p.vx = approach(W.p.vx, L.nx * mag * JET * W.pb.walk * DEV.move * tied, JET_ACC * dt * k);
+    W.p.vy = Math.min(W.p.vy + GRAVITY * dt, 900);
+  } else if (jet) {
+    W.p.vx = approach(W.p.vx, L.nx * mag * JET * W.pb.walk * DEV.move * tied, JET_ACC * dt * k);
+    const ty = L.ny * mag * JET * W.pb.jet * DEV.move * tied;    // Faster Levitation lifts harder
+    // rising beats a fall instantly (except just after a cough, which it has to climb
+    // back out of); only an explosion still throws you around
+    if (ty < W.p.vy && W.p.kick <= 0 && W.p.cough <= 0) W.p.vy = ty;
+    else W.p.vy = approach(W.p.vy, ty, JET_ACC * dt * k);
+    if (W.zfx.rev) W.p.vy -= GRAVITY * W.zfx.rev * dt;          // dark matter lifts you
+  } else if (climbing && W.zfx.arch && W.p.kick <= 0) {
+    // hanging from an arched vine: the stick runs you along its curve, hands on it. Push
+    // down (not along it) to let go.
+    const ar = W.zfx.arch, hy = W.p.y + WEB_HAND, q = archNear(ar, pcx0, hy);
+    const a = ar.arc[q.k], b = ar.arc[q.k + 1], ul = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    const ux = (b[0] - a[0]) / ul, uy = (b[1] - a[1]) / ul;
+    const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
+    if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) { W.webLetGo = 0.35; W.p.vy = 40; }
+    else {
+      const v = along * (ar.climb || (ar.climb = kr('arClimb'))) * tied;
+      W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
+      W.p.vy = approach(W.p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
+    }
+  } else if (climbing && W.zfx.web && W.p.kick <= 0) {
+    // hanging from a spider's web line: the stick runs you along it, hands on the line.
+    // Push down (not along it) to let go.
+    const ln = W.zfx.web, wl = Math.hypot(ln.b0x - ln.a0x, ln.b0y - ln.a0y) || 1;
+    let ux = (ln.b0x - ln.a0x) / wl, uy = (ln.b0y - ln.a0y) / wl;
+    const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
+    if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) { W.webLetGo = 0.35; W.p.vy = 40; }
+    else {
+      const v = along * (ln.climb || (ln.climb = spr('webClimb'))) * tied, hy = W.p.y + WEB_HAND, q = webNear(ln, pcx0, hy);
+      W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
+      W.p.vy = approach(W.p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
+    }
+  } else {
+    // decoration underfoot: snow, slime and puddles slow you, ice takes your grip away
+    const target = mag > 0 ? L.nx * mag * WALK * W.pb.walk * DEV.move * W.zfx.slow * tied : 0;
+    W.p.vx = approach(W.p.vx, target, (W.p.onGround ? GROUND_ACC * (W.zfx.slick ? 0.08 : 1) : AIR_ACC) * dt * k);
+    if (climbing && W.p.kick <= 0) W.p.vy = approach(W.p.vy, mag > 0 ? L.ny * mag * CLIMB * tied : 0, 1800 * dt);
+    else W.p.vy = Math.min(W.p.vy + GRAVITY * dt * (1 - 2 * W.zfx.rev), 900);   // dark matter flips it
+  }
+
+  // ---- move against the pixel terrain ----
+  const wasGround = W.p.onGround, fallV = W.p.vy;
+  let n = Math.ceil(Math.abs(W.p.vx * dt));
+  if (n > 0) {
+    const sx = W.p.vx * dt / n;
+    for (let i = 0; i < n; i++) {
+      if (!boxHit(W, W.p.x + sx, W.p.y)) { W.p.x += sx; continue; }
+      let moved = false;
+      const maxUp = wasGround ? 6 : 3;          // walk up small bumps and slopes
+      for (let up = 1; up <= maxUp; up++) {
+        if (!boxHit(W, W.p.x + sx, W.p.y - up)) { W.p.x += sx; W.p.y -= up; moved = true; break; }
+      }
+      if (!moved) { W.p.vx = 0; break; }
+    }
+  }
+  n = Math.ceil(Math.abs(W.p.vy * dt));
+  if (n > 0) {
+    const sy = W.p.vy * dt / n;
+    for (let i = 0; i < n; i++) {
+      if (!boxHit(W, W.p.x, W.p.y + sy)) { W.p.y += sy; continue; }
+      if (sy > 0) W.p.y = Math.floor((W.p.y + sy + PH - 0.001) / CELL) * CELL - PH;
+      else W.p.y = (Math.floor((W.p.y + sy) / CELL) + 1) * CELL;
+      if (boxHit(W, W.p.x, W.p.y)) W.p.y -= sy;   // fallback
+      W.p.vy = 0;
+      break;
+    }
+  }
+  // stick to the ground when walking down slopes
+  if (wasGround && !jet && W.p.vy >= 0 && W.p.kick <= 0 && !boxHit(W, W.p.x, W.p.y + 1)) {
+    for (let dn = 1; dn <= 6; dn++) {
+      if (boxHit(W, W.p.x, W.p.y + dn + 1)) { W.p.y += dn; W.p.vy = 0; break; }
+    }
+  }
+  // never stay stuck inside terrain
+  if (boxHit(W, W.p.x, W.p.y)) {
+    for (let up = 1; up <= 40; up++) if (!boxHit(W, W.p.x, W.p.y - up)) { W.p.y -= up; break; }
+  }
+  if (W.p.y > WH) { W.p.x = W.start.x; W.p.y = W.start.y; W.p.vx = 0; W.p.vy = 0; }
+  W.p.onGround = boxHit(W, W.p.x, W.p.y + 0.5);
+  // footsteps and landings, in the sound of whatever you're standing on
+  if (!W.p.dead) {
+    if (W.p.onGround && !wasGround && fallV > 200) SFX.fx('land', null, null, { v: fallV, s: W.zfx.surface });
+    if (W.p.onGround && Math.abs(W.p.vx) > 40) {
+      if ((W.stepT -= dt * Math.abs(W.p.vx) / 40) <= 0) { W.stepT = 1; SFX.fx('step', null, null, W.zfx.surface); }
+    } else W.stepT = Math.min(W.stepT, 0.35);
+  }
+}

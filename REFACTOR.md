@@ -480,6 +480,8 @@ What the code says about P3.4 (checked at the end of P3.3):
        (and later `pcx`/`pcy`) for what's still inline. `node tools/part.js` does a cut (header; `--dry` first).
        - [x] P3.4 (25): `stepRequests` (clock, held toast, Dev → New cave returns true, Dev → Spawn gun) and
          `stepPerks` (fills `F.LO`, `F.MHP`; health cap, shield) in step.js, by hand (the return)
+       - [x] P3.4 (26): `movePlayer` → player.js (the stick, jetpack and fuel, steering, the move, footsteps; `part.js`),
+         `atPortal` (fills `F.pcx`/`F.pcy`, returns true through the exit) in step.js by hand
        - draw's inner functions `drawLook`, `drawFieldLook`, `drawBolt` go out first (they use only their arguments and
          `W`/`G`), then the layers in their current order: camera, background + terrain, props, portal, smoke, fields, silk,
          enemies, projectiles, beams, arrival, shop, gold, pickups, rooms, trail, sparks, motes, flashes, flame, aim + gun,
@@ -503,7 +505,7 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] recorder: the putImageData wrappers stay in Game until recorder.js (they wrap `tctx`/`dctx`, which the systems reach as `G.tctx`/`G.dctx`): `recWrap`
   - [ ] fog.js: paintFog, bake, blur, fogLit
   - [x] level-entry.js: enterLevel, sconces, per-floor precompute
-  - [ ] player.js: walking, jetpack + sputter, climbing (vines, webs, arches), the torch (hurt, maxHp, refreshBag are out)
+  - [ ] player.js: walking, jetpack + sputter, climbing (vines, webs, arches), the torch (hurt, maxHp, refreshBag are out; `movePlayer` is all but the torch, P3.4 (26))
   - [ ] gun.js: cast, spawnShot, releaseAt, payload/triggers, gun ticks
   - [ ] bullets.js: the bullet loop, homing/drift/wig, bounce, teleport, trails (shotTrail/Bounce/Death/Grind)
   - [ ] fields.js: fields and beams
@@ -867,3 +869,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.4 (23) | `render/draw.js`: `draw(W, G)`, whole (1,149 lines), by `system.js` into `systems/` and then moved to `render/` by hand (imports re-pointed). A scratch diff (the `G.` taken off the old closure names) found the body identical. The loop's `drawReplay(W, G, rv, () => draw(W, G))` is the tool's arrow. Game.js 1,355 → 186 lines. `replay`, `map`, `shop`, `perks`, `torch`, `fog`, `spelllooks`, `blackhole`, `fire`, `jelly`, `creatures`, `lightning` run too, all first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (24) | `drawReplay(W, G, V)` imports `draw` (`render/draw.js`) and calls it itself; the loop's arrow is gone. `tools/locals.js` takes a file now (`node tools/locals.js src/game/render/draw.js draw`), since step/draw left Game.js. `replay`, `map`, `shop`, `perks`, `torch`, `fog` run too, all first time. Steps 1–2 of the step()/draw() plan done; the split (step 3) not started. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (25) | step()'s split begins: the frame object `F` (D18) made first in step; `stepRequests` (returns true for Dev → New cave) and `stepPerks` (fills `F.LO`, `F.MHP`) cut out by hand, in step.js. `tools/part.js` added for the rest (tried with `--dry` on the player part). `newcave`, `spawngun`, `perks` run too, all first time. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 3, P3.4 (26) | `movePlayer` (the stick, jetpack and fuel, steering, the move against the terrain, footsteps: 141 lines) → player.js with `tools/part.js`; `atPortal` by hand in step.js (it fills `F.pcx`/`F.pcy`; true through the exit). `jetpack`, `archvine`, `decor`, `spider`, `fog`, `save`, `newcave` run too, all first time. | probe SAME, logic 33/33, smoke ok |
