@@ -210,7 +210,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
     useState(150);`) must still be found. Check they survive reprinting; update the
     anchors if not.
   - Full suite green + play it in the browser. Commit.
-- [ ] **P1.3** Add the **undefined-name check**: ESLint flat config with only `no-undef`
+- [x] **P1.3** Add the **undefined-name check**: ESLint flat config with only `no-undef`
       (browser globals + `React`, `ReactDOM`), run by `tests/run.js` before the suites.
       **This matters:** with modules, a missed import doesn't fail the build. It fails only
       when that line runs, maybe mid-game on floor 7.
@@ -396,6 +396,10 @@ commit. List them here for after.
   the sandbox hunt. Treat like the `sound` flake: re-run before calling it a failure, and
   worth fixing after the refactor.
 
+- **`no-undef` can't see a missing import of a name that is also a browser global** (`name`,
+  `close`, `status`…): it would quietly resolve to `window's`. No top-level game name clashes
+  with one today (checked in P1.3). `tools/move.js` lints with no globals at all, so moves are safe.
+
 ## Game map
 
 (filled in by P3.1)
@@ -408,3 +412,4 @@ commit. List them here for after.
 | 2026-09-29 | Phase 0, P0.1–P0.10 | Branch `refactor`. `src/shell.html` + `style.css` + `main.js`; `tools/build.js` (byte-identical to v96 bar the banner; `{{VERSION}}` fills the title; `--watch`); `tests/run.js` builds first; `tests/load.js` feeds all 33 logic suites (finds top-level names by resolving every identifier; `.source` for the two text checks). CLAUDE.md updated. Not merged. | logic 33/33; browser 44/44 bar `sound` portalOut + `jelly` (both fail on v96 too) |
 | 2026-09-29 | Phase 1, P1.1 | Dev `package.json` (esbuild, eslint, globals, playwright-core), `node_modules/` already ignored. `tests/chromium.js` finds Windows Chrome; browser suites run with no env vars. | logic 33/33, smoke ok |
 | 2026-09-29 | Phase 1, P1.2 | Build is esbuild (iife, utf8, no minify, no tree shaking). `VERSION` → `src/version.js` + an un-bundled `<script>` line. `tests/build.js` anchors now match esbuild's print (`const toast = (text) => {`) and it exposes the bundle's names on `window`; `tests/load.js` unwraps the iife. `sound`/`jelly` fail the same on v96 from `main` (checked in a worktree); `save`/`archvine` failed once under load, pass alone. | logic 33/33; browser 42/44 (the two known) |
+| 2026-09-29 | Phase 1, P1.3 | `eslint.config.js` (flat, only `no-undef`, browser globals + React/ReactDOM/VERSION); `tests/run.js` runs it over `src/` first and counts a report as a failure. Checked it catches a planted undefined name. | logic 33/33 |

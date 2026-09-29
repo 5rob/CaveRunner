@@ -977,6 +977,10 @@ node tests/run.js browser   # Chromium, ~2 minutes, runs one at a time
 node tests/run.js advice    # anything matching "advice"
 ```
 
+Every run first builds `index.html` and runs the **undefined-name check** (`eslint.config.js`: ESLint
+with only `no-undef`, over `src/`). With the code in modules, a forgotten import doesn't fail the
+build; it fails when that line first runs. A report there counts as a failed suite.
+
 **Logic suites** (`tests/logic/`) start with `const G = require('../load');` —
 `tests/load.js` evals everything above `function Game(` from the built `index.html` and
 hands back every top-level name (plus `.source`, the script as text) — and call the pure

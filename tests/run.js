@@ -16,6 +16,19 @@ const path = require('path');
 
 console.log(require('../tools/build')() ? 'index.html rebuilt from src/' : 'index.html up to date');
 
+// The undefined-name check (ESLint, only no-undef, see eslint.config.js). With the code in
+// modules, a missing import doesn't fail the build: it fails when that line first runs.
+let failed = [];
+try {
+  execFileSync('node', [path.join(__dirname, '..', 'node_modules', 'eslint', 'bin', 'eslint.js'), 'src'],
+    { cwd: path.join(__dirname, '..'), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  console.log('src/ has no undefined names');
+} catch (e) {
+  failed.push('undefined-names');
+  console.log('UNDEFINED NAMES in src/ (eslint no-undef):');
+  for (const line of ((e.stdout || '') + (e.stderr || '') || e.message).trim().split('\n').slice(0, 30)) console.log('      ' + line);
+}
+
 const filter = process.argv[2] || '';
 const only = filter === 'logic' || filter === 'browser' ? filter : '';
 const match = only ? '' : filter;
@@ -28,7 +41,6 @@ const list = dir => fs.readdirSync(path.join(__dirname, dir))
 // seconds a suite may take before it is called stuck: logic suites run in ~1s, the
 // slowest browser suite (everymod) in well under a minute
 const LOGIC_CAP = 30, BROWSER_CAP = 120;
-let failed = [];
 const run = (file, kind) => {
   const name = path.basename(file, '.test.js');
   process.stdout.write(`${kind === 'logic' ? '  ' : '  '}${name.padEnd(24)}`);
