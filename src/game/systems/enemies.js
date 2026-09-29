@@ -1,6 +1,7 @@
-// The creatures: a frame of them all (stepEnemies, a part of step(): the enemy loop, their
-// shots, spider silk), shooting at you, taking damage (a kill drops its gold; a nest showers
-// what its rats brought home), and where a jelly may swim (natural).
+// The creatures: a frame of them all (stepEnemies, a part of step(): the enemy loop, with each
+// act's own part through ACTS in game/creatures/ (REFACTOR.md D20), their shots, spider silk),
+// shooting at you, taking damage (a kill drops its gold, or the act's `die` does its own thing:
+// a nest's shower), and where a jelly may swim (natural).
 
 import { SFX } from '../../audio/sfx.js';
 import { COL, PATROL_R, PH, PW } from '../../core/consts.js';
@@ -16,7 +17,6 @@ import { puffSpores } from './ambience.js';
 import { fireBlast, ignite, youAlight } from './fire.js';
 import { burst, goo, splat } from './particles.js';
 import { hurt } from './player.js';
-import { ratFrame } from './rats.js';
 import { lineOfSight, solidAt, solidCell } from './terrain.js';
 
 // one pull of an enemy's trigger: aimed at the player, and a shotgun type throws
@@ -110,11 +110,7 @@ export function stepEnemies(W, G, F) {
     // the act's move (ACTS, D20); true = it did its whole frame, nothing below runs for it
     const A = ACTS[k.act];
     if (A && A.move) { if (A.move(W, G, e, C)) continue; }
-    else if (k.act === 'rat') {
-      ratFrame(W, G, e, dt, dist, hunting, pcx, pcy);
-      e.chill = 1; e.ty = e.y;
-      continue;
-    } else if (k.act === 'spider') {
+    else if (k.act === 'spider') {
       // only on rock and its own lines (spiderStep); strings you when it has a clear line
       const cold = e.chill && e.chill < 1 ? e.chill : 1;
       if (spiderStep(e, { solidCell: (cx, cy) => solidCell(W, cx, cy), webs: W.webs, hunting, goal: { x: pcx, y: pcy }, rnd: Math.random,

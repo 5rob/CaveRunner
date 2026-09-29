@@ -4,12 +4,12 @@
 
 import { SFX } from '../audio/sfx.js';
 import { BH, BW, CH, CW, FH, FW, MMH, MMW } from '../core/consts.js';
+import { onWebIn } from './creatures/rat.js';
 import { draw } from './render/draw.js';
 import { ignite, setAlight, youAlight } from './systems/fire.js';
 import { paintFog } from './systems/fog.js';
 import { enterLevel } from './systems/level-entry.js';
 import { hurt, maxHp } from './systems/player.js';
-import { onWebIn } from './systems/rats.js';
 import { drawReplay, recFrame, recSample, recWrap } from './systems/recorder.js';
 import { saveRun } from './systems/save-run.js';
 import { step } from './systems/step.js';
