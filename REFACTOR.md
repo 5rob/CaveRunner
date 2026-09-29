@@ -482,6 +482,7 @@ What the code says about P3.4 (checked at the end of P3.3):
          `stepPerks` (fills `F.LO`, `F.MHP`; health cap, shield) in step.js, by hand (the return)
        - [x] P3.4 (26): `movePlayer` → player.js (the stick, jetpack and fuel, steering, the move, footsteps; `part.js`),
          `atPortal` (fills `F.pcx`/`F.pcy`, returns true through the exit) in step.js by hand
+       - [x] P3.4 (27): `aimAndCast` → gun.js (aim, Pinpointer, facing, every gun's clocks and mana, the trigger)
        - draw's inner functions `drawLook`, `drawFieldLook`, `drawBolt` go out first (they use only their arguments and
          `W`/`G`), then the layers in their current order: camera, background + terrain, props, portal, smoke, fields, silk,
          enemies, projectiles, beams, arrival, shop, gold, pickups, rooms, trail, sparks, motes, flashes, flame, aim + gun,
@@ -506,7 +507,7 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [ ] fog.js: paintFog, bake, blur, fogLit
   - [x] level-entry.js: enterLevel, sconces, per-floor precompute
   - [ ] player.js: walking, jetpack + sputter, climbing (vines, webs, arches), the torch (hurt, maxHp, refreshBag are out; `movePlayer` is all but the torch, P3.4 (26))
-  - [ ] gun.js: cast, spawnShot, releaseAt, payload/triggers, gun ticks
+  - [x] gun.js: cast, spawnShot, releaseAt, payload/triggers, gun ticks (the ticks and aiming: `aimAndCast`, P3.4 (27))
   - [ ] bullets.js: the bullet loop, homing/drift/wig, bounce, teleport, trails (shotTrail/Bounce/Death/Grind)
   - [ ] fields.js: fields and beams
   - [ ] enemies.js: the enemy loop, aggro, contact damage, enemy shots (damageEnemy, fireEnemyShot are out; goo/splat are in particles.js); rats (`ratSolid`, `navFor`, `spawnRat`, `unstick`, `ratFrame`) likely a rats.js
@@ -870,3 +871,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.4 (24) | `drawReplay(W, G, V)` imports `draw` (`render/draw.js`) and calls it itself; the loop's arrow is gone. `tools/locals.js` takes a file now (`node tools/locals.js src/game/render/draw.js draw`), since step/draw left Game.js. `replay`, `map`, `shop`, `perks`, `torch`, `fog` run too, all first time. Steps 1–2 of the step()/draw() plan done; the split (step 3) not started. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (25) | step()'s split begins: the frame object `F` (D18) made first in step; `stepRequests` (returns true for Dev → New cave) and `stepPerks` (fills `F.LO`, `F.MHP`) cut out by hand, in step.js. `tools/part.js` added for the rest (tried with `--dry` on the player part). `newcave`, `spawngun`, `perks` run too, all first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (26) | `movePlayer` (the stick, jetpack and fuel, steering, the move against the terrain, footsteps: 141 lines) → player.js with `tools/part.js`; `atPortal` by hand in step.js (it fills `F.pcx`/`F.pcy`; true through the exit). `jetpack`, `archvine`, `decor`, `spider`, `fog`, `save`, `newcave` run too, all first time. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 3, P3.4 (27) | `aimAndCast` (aim, Pinpointer, facing, the gun ticks, the trigger: 41 lines) → gun.js with `tools/part.js`. `perks`, `buzzsaw`, `everymod`, `cooldown-debug-shop` run too, all first time. | probe SAME, logic 33/33, smoke ok |

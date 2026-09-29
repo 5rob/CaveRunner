@@ -14613,6 +14613,46 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     SFX.cast(list, x0, y0);
     burst(W, x0, y0, 5, col);
   }
+  function aimAndCast(W, G, F) {
+    const { dt, LO, pcx } = F;
+    const gx = pcx, gy = W.p.y + PH * 0.4;
+    const TR = G.input.current.right;
+    let R = { on: false, show: false, nx: W.p.face, ny: 0 };
+    if (TR.active) R = { on: TR.on, show: true, nx: TR.nx, ny: TR.ny, vis: Math.min(1, TR.mag / AIM_DEAD) };
+    else if (G.mouse.inside) {
+      const dx = W.camX + G.mouse.x / W.unitPx - gx, dy = W.camY + G.mouse.y / W.unitPx - gy, d = Math.hypot(dx, dy);
+      if (d > 1) R = { on: G.mouse.down, show: true, nx: dx / d, ny: dy / d };
+    }
+    if (W.pb.pinpointer && !W.p.dead) {
+      let best = null, bd = 1e9;
+      for (const e of W.enemies) {
+        const d = Math.hypot(e.x - gx, e.ty - gy);
+        if (d < bd && lineOfSight(W, gx, gy, e.x, e.ty)) {
+          bd = d;
+          best = e;
+        }
+      }
+      if (best) {
+        const a = Math.atan2(best.ty - gy, best.x - gx);
+        R = { on: R.on || TR.active && TR.on, show: true, nx: Math.cos(a), ny: Math.sin(a), vis: R.vis };
+      }
+    }
+    if (W.p.dead) R.on = false;
+    W.p.aim = R;
+    if (R.show) W.p.face = R.nx >= 0 ? 1 : -1;
+    else if (Math.abs(W.p.vx) > 10) W.p.face = W.p.vx > 0 ? 1 : -1;
+    for (const g of LO.guns) {
+      if (!g) continue;
+      const pas = gunPassives(g);
+      const recharging = g.rechT > 0;
+      g.delayT -= dt;
+      g.rechT -= dt;
+      if (recharging && g.rechT <= 0 && g === LO.guns[LO.sel] && (g.rechLen || 0) >= 0.45) SFX.fx("ready");
+      g.mana = Math.min(g.manaMax + pas.manaMax, g.mana + (g.manaRegen + pas.manaRegen) * dt);
+    }
+    const gun = LO.guns[LO.sel];
+    if (R.on && gun && gun.delayT <= 0 && gun.rechT <= 0) cast(W, G, gun, gx, gy, R.nx, R.ny);
+  }
 
   // src/game/systems/fields.js
   function fireBeam(W, G, sh, x, y, nx, ny, bonus, pd, pc) {
@@ -14713,43 +14753,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     movePlayer(W, G, F);
     if (atPortal(W, G, F)) return;
     const pcx = F.pcx, pcy = F.pcy;
-    const gx = pcx, gy = W.p.y + PH * 0.4;
-    const TR = G.input.current.right;
-    let R = { on: false, show: false, nx: W.p.face, ny: 0 };
-    if (TR.active) R = { on: TR.on, show: true, nx: TR.nx, ny: TR.ny, vis: Math.min(1, TR.mag / AIM_DEAD) };
-    else if (G.mouse.inside) {
-      const dx = W.camX + G.mouse.x / W.unitPx - gx, dy = W.camY + G.mouse.y / W.unitPx - gy, d = Math.hypot(dx, dy);
-      if (d > 1) R = { on: G.mouse.down, show: true, nx: dx / d, ny: dy / d };
-    }
-    if (W.pb.pinpointer && !W.p.dead) {
-      let best = null, bd = 1e9;
-      for (const e of W.enemies) {
-        const d = Math.hypot(e.x - gx, e.ty - gy);
-        if (d < bd && lineOfSight(W, gx, gy, e.x, e.ty)) {
-          bd = d;
-          best = e;
-        }
-      }
-      if (best) {
-        const a = Math.atan2(best.ty - gy, best.x - gx);
-        R = { on: R.on || TR.active && TR.on, show: true, nx: Math.cos(a), ny: Math.sin(a), vis: R.vis };
-      }
-    }
-    if (W.p.dead) R.on = false;
-    W.p.aim = R;
-    if (R.show) W.p.face = R.nx >= 0 ? 1 : -1;
-    else if (Math.abs(W.p.vx) > 10) W.p.face = W.p.vx > 0 ? 1 : -1;
-    for (const g of LO.guns) {
-      if (!g) continue;
-      const pas = gunPassives(g);
-      const recharging = g.rechT > 0;
-      g.delayT -= dt;
-      g.rechT -= dt;
-      if (recharging && g.rechT <= 0 && g === LO.guns[LO.sel] && (g.rechLen || 0) >= 0.45) SFX.fx("ready");
-      g.mana = Math.min(g.manaMax + pas.manaMax, g.mana + (g.manaRegen + pas.manaRegen) * dt);
-    }
-    const gun = LO.guns[LO.sel];
-    if (R.on && gun && gun.delayT <= 0 && gun.rechT <= 0) cast(W, G, gun, gx, gy, R.nx, R.ny);
+    aimAndCast(W, G, F);
     for (let i = W.bullets.length - 1; i >= 0; i--) {
       const b = W.bullets[i];
       b.life -= dt;

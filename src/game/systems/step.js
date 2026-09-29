@@ -6,16 +6,13 @@
 
 import { jetPitch } from '../../audio/recipes.js';
 import { SFX } from '../../audio/sfx.js';
-import {
-  AIM_DEAD, COIN_PULL, COL, PATROL_R, PH, PICKUP_COOL, PW, SHOP_Y
-} from '../../core/consts.js';
+import { COIN_PULL, COL, PATROL_R, PH, PICKUP_COOL, PW, SHOP_Y } from '../../core/consts.js';
 import { angDiff, clamp, hexRgb, turn } from '../../core/util.js';
 import { jellyPal, jellyStep, tentacleTouch } from '../../creatures/jelly.js';
 import { spiderStep } from '../../creatures/spider.js';
 import { HUNTERS } from '../../data/creatures.js';
 import { PERKS } from '../../data/perks.js';
 import { DEV, kr, spr } from '../../dev/knobs.js';
-import { gunPassives } from '../../spells/cast.js';
 import { caveGun } from '../../spells/guns.js';
 import { MODS, VACUUM_WAIT } from '../../spells/mods.js';
 import { DRIFT_ACC, DRIFT_CHASE, DRIFT_R, driftStep, wigTurn } from '../../spells/trace.js';
@@ -26,7 +23,7 @@ import { damageEnemy, fireEnemyShot, natural } from './enemies.js';
 import { fieldPayload } from './fields.js';
 import { fireBlast, fireFrame, ignite, setAlight, youAlight } from './fire.js';
 import { paintFog } from './fog.js';
-import { cast, firePayload } from './gun.js';
+import { aimAndCast, firePayload } from './gun.js';
 import { enterLevel } from './level-entry.js';
 import { addArc, lightningStep } from './lightning.js';
 import { burst, goo, splat, toast } from './particles.js';
@@ -49,47 +46,7 @@ export function step(W, G, dt) {
   if (atPortal(W, G, F)) return;
   const pcx = F.pcx, pcy = F.pcy;
 
-  // ---- aiming: thumbstick first, otherwise mouse ----
-  const gx = pcx, gy = W.p.y + PH * 0.4;
-  const TR = G.input.current.right;
-  let R = { on: false, show: false, nx: W.p.face, ny: 0 };
-  // line shows as soon as you touch the stick, fading in with the push: 0 at the centre,
-  // full at the trigger ring (vis is what the Trajectory Sight line reads)
-  if (TR.active) R = { on: TR.on, show: true, nx: TR.nx, ny: TR.ny, vis: Math.min(1, TR.mag / AIM_DEAD) };
-  else if (G.mouse.inside) {
-    const dx = W.camX + G.mouse.x / W.unitPx - gx, dy = W.camY + G.mouse.y / W.unitPx - gy, d = Math.hypot(dx, dy);
-    if (d > 1) R = { on: G.mouse.down, show: true, nx: dx / d, ny: dy / d };
-  }
-  // Pinpointer aims for you: the gun locks onto the nearest creature and you only
-  // decide whether to fire. It replaces hand-aiming — the stick becomes a trigger.
-  if (W.pb.pinpointer && !W.p.dead) {
-    let best = null, bd = 1e9;
-    for (const e of W.enemies) {
-      const d = Math.hypot(e.x - gx, e.ty - gy);
-      if (d < bd && lineOfSight(W, gx, gy, e.x, e.ty)) { bd = d; best = e; }
-    }
-    if (best) {
-      const a = Math.atan2(best.ty - gy, best.x - gx);
-      R = { on: R.on || (TR.active && TR.on), show: true, nx: Math.cos(a), ny: Math.sin(a), vis: R.vis };
-    }
-  }
-  if (W.p.dead) R.on = false;
-  W.p.aim = R;
-
-  if (R.show) W.p.face = R.nx >= 0 ? 1 : -1;
-  else if (Math.abs(W.p.vx) > 10) W.p.face = W.p.vx > 0 ? 1 : -1;
-
-  // every gun you carry ticks down and tops up its mana, holstered or not
-  for (const g of LO.guns) {
-    if (!g) continue;
-    const pas = gunPassives(g);
-    const recharging = g.rechT > 0;
-    g.delayT -= dt; g.rechT -= dt;
-    if (recharging && g.rechT <= 0 && g === LO.guns[LO.sel] && (g.rechLen || 0) >= 0.45) SFX.fx('ready');
-    g.mana = Math.min(g.manaMax + pas.manaMax, g.mana + (g.manaRegen + pas.manaRegen) * dt);
-  }
-  const gun = LO.guns[LO.sel];
-  if (R.on && gun && gun.delayT <= 0 && gun.rechT <= 0) cast(W, G, gun, gx, gy, R.nx, R.ny);
+  aimAndCast(W, G, F);
 
   // ---- shots ----
   for (let i = W.bullets.length - 1; i >= 0; i--) {

@@ -1,14 +1,16 @@
 // Casting: one pull of the trigger through planCast (cast), each planned shot into the world
-// (spawnShot), and a trigger's payload coming out where its carrier stopped (releaseAt).
+// (spawnShot), and a trigger's payload coming out where its carrier stopped (releaseAt); and
+// each frame's aiming, gun clocks and trigger pull (aimAndCast, a part of step()).
 
 import { SFX } from '../../audio/sfx.js';
+import { AIM_DEAD, PH } from '../../core/consts.js';
 import { effRecharge, gunPassives, planCast } from '../../spells/cast.js';
 import { shuffleOrder } from '../../spells/guns.js';
 import { bhSp } from '../../spells/trace.js';
 import { castField, fireBeam } from './fields.js';
 import { burst } from './particles.js';
 import { hurt } from './player.js';
-import { solidAt } from './terrain.js';
+import { lineOfSight, solidAt } from './terrain.js';
 
 // ---- casting ----
 // Walk the gun's slot list from where it left off. Modifiers pile up and apply
@@ -162,4 +164,52 @@ export function releaseAt(W, G, list, x, y, nx, ny, col) {
   for (const sh of list) spawnShot(W, G, sh, x, y, base, 0, false, 0);
   SFX.cast(list, x0, y0);
   burst(W, x0, y0, 5, col);
+}
+
+// ---- aiming and firing (a part of step) ----
+// Where you aim (the right stick, else the mouse; Pinpointer aims for you), which way you
+// face, every gun's clocks and mana, and a pull of the held gun's trigger.
+export function aimAndCast(W, G, F) {
+  const { dt, LO, pcx } = F;
+  // ---- aiming: thumbstick first, otherwise mouse ----
+  const gx = pcx, gy = W.p.y + PH * 0.4;
+  const TR = G.input.current.right;
+  let R = { on: false, show: false, nx: W.p.face, ny: 0 };
+  // line shows as soon as you touch the stick, fading in with the push: 0 at the centre,
+  // full at the trigger ring (vis is what the Trajectory Sight line reads)
+  if (TR.active) R = { on: TR.on, show: true, nx: TR.nx, ny: TR.ny, vis: Math.min(1, TR.mag / AIM_DEAD) };
+  else if (G.mouse.inside) {
+    const dx = W.camX + G.mouse.x / W.unitPx - gx, dy = W.camY + G.mouse.y / W.unitPx - gy, d = Math.hypot(dx, dy);
+    if (d > 1) R = { on: G.mouse.down, show: true, nx: dx / d, ny: dy / d };
+  }
+  // Pinpointer aims for you: the gun locks onto the nearest creature and you only
+  // decide whether to fire. It replaces hand-aiming — the stick becomes a trigger.
+  if (W.pb.pinpointer && !W.p.dead) {
+    let best = null, bd = 1e9;
+    for (const e of W.enemies) {
+      const d = Math.hypot(e.x - gx, e.ty - gy);
+      if (d < bd && lineOfSight(W, gx, gy, e.x, e.ty)) { bd = d; best = e; }
+    }
+    if (best) {
+      const a = Math.atan2(best.ty - gy, best.x - gx);
+      R = { on: R.on || (TR.active && TR.on), show: true, nx: Math.cos(a), ny: Math.sin(a), vis: R.vis };
+    }
+  }
+  if (W.p.dead) R.on = false;
+  W.p.aim = R;
+
+  if (R.show) W.p.face = R.nx >= 0 ? 1 : -1;
+  else if (Math.abs(W.p.vx) > 10) W.p.face = W.p.vx > 0 ? 1 : -1;
+
+  // every gun you carry ticks down and tops up its mana, holstered or not
+  for (const g of LO.guns) {
+    if (!g) continue;
+    const pas = gunPassives(g);
+    const recharging = g.rechT > 0;
+    g.delayT -= dt; g.rechT -= dt;
+    if (recharging && g.rechT <= 0 && g === LO.guns[LO.sel] && (g.rechLen || 0) >= 0.45) SFX.fx('ready');
+    g.mana = Math.min(g.manaMax + pas.manaMax, g.mana + (g.manaRegen + pas.manaRegen) * dt);
+  }
+  const gun = LO.guns[LO.sel];
+  if (R.on && gun && gun.delayT <= 0 && gun.rechT <= 0) cast(W, G, gun, gx, gy, R.nx, R.ny);
 }
