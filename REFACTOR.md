@@ -242,7 +242,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
   - [x] creatures/common.js
   - [x] creatures/spider.js (knobs + spiderStep/Seat/Aim + drawSpider)
   - [x] creatures/rat.js
-  - [ ] creatures/jelly.js
+  - [x] creatures/jelly.js
   - [ ] creatures/classic.js + creatures/draw.js
   - [ ] art/sprites.js
   - [ ] art/props.js
