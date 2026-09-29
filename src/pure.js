@@ -41,3 +41,4 @@ export * from './audio/sfx.js';
 export * from './save/save.js';
 export * from './replay/replay.js';
 export * from './ui/h.js';
+export * from './ui/hud.js';

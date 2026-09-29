@@ -8782,6 +8782,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return out;
   }
 
+  // src/ui/h.js
+  var { useRef, useEffect, useState, useMemo } = React;
+  var h = React.createElement;
+
   // src/world/fire.js
   var FLAMMABLE = { vine: 1, myc: 1 };
   var FIRE_WET = { puddle: 1, snow: 1, ice: 1, slime: 1 };
@@ -10798,9 +10802,235 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { x: (F.x0 + i + 0.5) * NAV * CELL, y: (F.y0 + j + 0.5) * NAV * CELL, dist, air };
   }
 
-  // src/ui/h.js
-  var { useRef, useEffect, useState, useMemo } = React;
-  var h = React.createElement;
+  // src/ui/hud.js
+  function fmtGold(g) {
+    g = Math.max(0, Math.floor(g || 0));
+    if (g < 1e3) return String(g);
+    return (Math.floor(g / 100) / 10).toString() + "k";
+  }
+  function deckLayout(W, size, n) {
+    n = n || 4;
+    const g = (W - 2 * size) / 3;
+    const rc = { x: 2 * g + 1.5 * size, y: size / 2 };
+    const btn = Math.round(Math.max(34, Math.min(46, size * 0.24)));
+    const sx = W / 2, sy = size * 0.05 + 10;
+    const R = Math.max(Math.hypot(sx - rc.x, sy - rc.y), size / 2 + btn / 2 + 4);
+    const a0 = Math.atan2(sy - rc.y, sx - rc.x);
+    const xmax = W - btn / 2 - 4;
+    const a1 = Math.max(a0 + 0.3, -Math.acos(Math.max(-1, Math.min(1, (xmax - rc.x) / R))));
+    const guns = [];
+    for (let i = 0; i < n; i++) {
+      const a = a0 + (a1 - a0) * (n > 1 ? i / (n - 1) : 0);
+      guns.push({ x: rc.x + Math.cos(a) * R, y: rc.y + Math.sin(a) * R });
+    }
+    const last = guns[n - 1];
+    const bag = { x: W - last.x, y: last.y };
+    const map = { x: bag.x, y: bag.y - btn - 8 };
+    return { btn, R, rc, guns, bag, map };
+  }
+  var GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
+  var GAUGE_COL = { mana: "#ffc93c", rech: "#7ad7ff", cast: "#c58cff", fuel: "#ff9a2e" };
+  function healthCol(frac) {
+    return frac > 0.5 ? mixHex("#e6a52c", "#57d267", (frac - 0.5) * 2) : mixHex("#e24a2c", "#e6a52c", frac * 2);
+  }
+  function RKey() {
+    return h(
+      "svg",
+      { className: "rkey", viewBox: "0 0 30 30", width: 28, height: 28, "aria-hidden": true },
+      h("circle", { cx: 15, cy: 15, r: 13.5, fill: "none", stroke: "#fff", strokeWidth: 1 }),
+      h("text", {
+        x: 15,
+        y: 15,
+        textAnchor: "middle",
+        dominantBaseline: "central",
+        fill: "#fff",
+        fontSize: 14,
+        fontWeight: 300,
+        fontFamily: "system-ui, sans-serif"
+      }, "R")
+    );
+  }
+  function Stick({ size, kind, input, refresh }) {
+    const [knob2, setKnob] = useState({ x: 0, y: 0, jet: false });
+    const [gauge, setGauge] = useState({ ring: 1, fuel: 1, empty: false, dry: true });
+    const left = kind === "left";
+    useEffect(() => {
+      let raf, prev = "";
+      const tick = () => {
+        const s = input.current.hud;
+        if (s) {
+          const g = left ? { ring: s.hp, fuel: s.fuel, empty: s.empty, dry: false } : {
+            ring: s.hasGun ? s.mana : 0,
+            rech: s.hasGun ? s.rech : 0,
+            cast: s.hasGun ? s.cast : 0,
+            has: s.hasGun,
+            fuel: 0,
+            empty: false,
+            dry: !s.hasGun || s.recharging
+          };
+          const key = Math.round(g.ring * 100) + "|" + Math.round(g.fuel * 100) + "|" + Math.round((g.rech || 0) * 100) + "|" + Math.round((g.cast || 0) * 100) + "|" + (g.has ? 1 : 0) + "|" + (g.empty ? 1 : 0) + "|" + (g.dry ? 1 : 0);
+          if (key !== prev) {
+            prev = key;
+            setGauge(g);
+          }
+        }
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }, [left]);
+    const ref = useRef(null);
+    const pid = useRef(null);
+    const stayed = useRef(true);
+    const right = kind === "right";
+    const update = (e) => {
+      const r = ref.current.getBoundingClientRect();
+      const rad = r.width / 2;
+      const dx = e.clientX - (r.left + rad), dy = e.clientY - (r.top + rad);
+      const dist = Math.hypot(dx, dy);
+      const maxD = rad * 0.72;
+      const cl = Math.min(dist, maxD);
+      const nx = dist ? dx / dist : 0, ny = dist ? dy / dist : 0;
+      const mag = cl / maxD;
+      const thresh = right ? AIM_DEAD : 0.15;
+      if (right && mag > AIM_DEAD) stayed.current = false;
+      if (right && input.current.confirmAct) {
+        const side = mag > AIM_DEAD ? nx < 0 ? "take" : "leave" : null;
+        if (input.current.confirmAim !== side) {
+          input.current.confirmAim = side;
+          refresh();
+        }
+      }
+      const st = input.current[kind];
+      st.active = true;
+      st.nx = nx;
+      st.ny = ny;
+      st.mag = mag;
+      st.dy = dy;
+      st.on = mag > thresh;
+      setKnob({ x: nx * cl, y: ny * cl, jet: kind === "left" && dy < 0 && mag > DEAD });
+    };
+    const down = (e) => {
+      if (pid.current !== null) return;
+      pid.current = e.pointerId;
+      stayed.current = true;
+      try {
+        ref.current.setPointerCapture(e.pointerId);
+      } catch (_) {
+      }
+      update(e);
+    };
+    const move = (e) => {
+      if (e.pointerId === pid.current) update(e);
+    };
+    const end = (e) => {
+      if (e.pointerId !== pid.current) return;
+      pid.current = null;
+      const act = input.current.confirmAct;
+      if (right && act) {
+        const side = input.current.confirmAim;
+        input.current.confirmAim = null;
+        if (side) act[side]();
+      } else if (right && stayed.current) {
+        input.current.interact = true;
+      }
+      Object.assign(input.current[kind], { active: false, mag: 0, on: false, dy: 0 });
+      setKnob({ x: 0, y: 0, jet: false });
+    };
+    const rw = 3.2, sw = 1.6;
+    const wipe = (r, frac, col, track) => [
+      h("circle", { key: "t" + r, cx: 50, cy: 50, r, fill: "none", stroke: track || "rgba(0,0,0,0.35)", strokeWidth: sw }),
+      h("circle", {
+        key: "w" + r,
+        cx: 50,
+        cy: 50,
+        r,
+        fill: "none",
+        stroke: col,
+        strokeWidth: sw,
+        strokeLinecap: "round",
+        strokeDasharray: Math.max(0, Math.min(1, frac)) * 2 * Math.PI * r + " " + 2 * Math.PI * r,
+        transform: "rotate(-90 50 50)"
+      })
+    ];
+    const ring = left ? h(
+      "svg",
+      { className: "gauge", viewBox: "0 0 100 100" },
+      wipe(GAUGE_R, gauge.ring, healthCol(gauge.ring)),
+      wipe(
+        GAUGE_R - rw,
+        gauge.fuel,
+        knob2.jet ? "#ffc35a" : GAUGE_COL.fuel,
+        gauge.empty ? "rgba(226,74,44,0.7)" : null
+      )
+    ) : h(
+      "svg",
+      { className: "gauge", viewBox: "0 0 100 100" },
+      wipe(GAUGE_R, gauge.ring, gauge.dry ? "rgba(255,201,60,0.28)" : GAUGE_COL.mana),
+      wipe(GAUGE_R - rw, gauge.rech, gauge.has ? GAUGE_COL.rech : "rgba(122,215,255,0.22)"),
+      wipe(GAUGE_R - 2 * rw, gauge.cast, gauge.has ? GAUGE_COL.cast : "rgba(197,140,255,0.22)")
+    );
+    return h(
+      "div",
+      {
+        ref,
+        className: "stick" + (knob2.jet ? " jetting" : ""),
+        style: { width: size, height: size },
+        onPointerDown: down,
+        onPointerMove: move,
+        onPointerUp: end,
+        onPointerCancel: end,
+        onLostPointerCapture: end
+      },
+      // the centre line splits jet (top half) from walk
+      left && h("div", { className: "stickclip" }, h("div", { className: "hline" })),
+      ring,
+      // the right stick's amber ring: the line the knob's edge crosses when the drag starts
+      // counting as aiming rather than as a tap on the dead zone
+      h("div", { className: "knob", style: {
+        width: KNOB * 100 + "%",
+        height: KNOB * 100 + "%",
+        transform: `translate(-50%,-50%) translate(${knob2.x}px,${knob2.y}px)`
+      } }),
+      right && h("div", { className: "deadzone", style: {
+        width: AIM_RING * 100 + "%",
+        height: AIM_RING * 100 + "%"
+      } }),
+      h("span", { className: "lbl top" }, left ? "jet" : "aim"),
+      left && h("span", { className: "lbl bot" }, "walk")
+    );
+  }
+  function holdPress(onTap, onHold, onState, ms) {
+    return (e) => {
+      e.preventDefault();
+      const sx = e.clientX, sy = e.clientY;
+      let fired = false;
+      const done = () => {
+        clearTimeout(timer);
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        window.removeEventListener("pointercancel", up);
+        if (onState) onState(false);
+      };
+      const timer = setTimeout(() => {
+        fired = true;
+        done();
+        onHold();
+      }, ms || 450);
+      const move = (ev) => {
+        if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 14) done();
+      };
+      const up = () => {
+        const tap = !fired;
+        done();
+        if (tap && onTap) onTap();
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+      window.addEventListener("pointercancel", up);
+      if (onState) onState(true);
+    };
+  }
 
   // src/main.js
   var SPUTTER_FUEL = 0.25;
@@ -10827,31 +11057,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return st.cut > 0;
   }
   var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
-  function fmtGold(g) {
-    g = Math.max(0, Math.floor(g || 0));
-    if (g < 1e3) return String(g);
-    return (Math.floor(g / 100) / 10).toString() + "k";
-  }
-  function deckLayout(W, size, n) {
-    n = n || 4;
-    const g = (W - 2 * size) / 3;
-    const rc = { x: 2 * g + 1.5 * size, y: size / 2 };
-    const btn = Math.round(Math.max(34, Math.min(46, size * 0.24)));
-    const sx = W / 2, sy = size * 0.05 + 10;
-    const R = Math.max(Math.hypot(sx - rc.x, sy - rc.y), size / 2 + btn / 2 + 4);
-    const a0 = Math.atan2(sy - rc.y, sx - rc.x);
-    const xmax = W - btn / 2 - 4;
-    const a1 = Math.max(a0 + 0.3, -Math.acos(Math.max(-1, Math.min(1, (xmax - rc.x) / R))));
-    const guns = [];
-    for (let i = 0; i < n; i++) {
-      const a = a0 + (a1 - a0) * (n > 1 ? i / (n - 1) : 0);
-      guns.push({ x: rc.x + Math.cos(a) * R, y: rc.y + Math.sin(a) * R });
-    }
-    const last = guns[n - 1];
-    const bag = { x: W - last.x, y: last.y };
-    const map = { x: bag.x, y: bag.y - btn - 8 };
-    return { btn, R, rc, guns, bag, map };
-  }
   function Game({ input }) {
     const cv = useRef(null);
     useEffect(() => {
@@ -16506,209 +16711,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       };
     }, []);
     return h("canvas", { ref: cv, className: "game" });
-  }
-  var GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
-  var GAUGE_COL = { mana: "#ffc93c", rech: "#7ad7ff", cast: "#c58cff", fuel: "#ff9a2e" };
-  function healthCol(frac) {
-    return frac > 0.5 ? mixHex("#e6a52c", "#57d267", (frac - 0.5) * 2) : mixHex("#e24a2c", "#e6a52c", frac * 2);
-  }
-  function RKey() {
-    return h(
-      "svg",
-      { className: "rkey", viewBox: "0 0 30 30", width: 28, height: 28, "aria-hidden": true },
-      h("circle", { cx: 15, cy: 15, r: 13.5, fill: "none", stroke: "#fff", strokeWidth: 1 }),
-      h("text", {
-        x: 15,
-        y: 15,
-        textAnchor: "middle",
-        dominantBaseline: "central",
-        fill: "#fff",
-        fontSize: 14,
-        fontWeight: 300,
-        fontFamily: "system-ui, sans-serif"
-      }, "R")
-    );
-  }
-  function Stick({ size, kind, input, refresh }) {
-    const [knob2, setKnob] = useState({ x: 0, y: 0, jet: false });
-    const [gauge, setGauge] = useState({ ring: 1, fuel: 1, empty: false, dry: true });
-    const left = kind === "left";
-    useEffect(() => {
-      let raf, prev = "";
-      const tick = () => {
-        const s = input.current.hud;
-        if (s) {
-          const g = left ? { ring: s.hp, fuel: s.fuel, empty: s.empty, dry: false } : {
-            ring: s.hasGun ? s.mana : 0,
-            rech: s.hasGun ? s.rech : 0,
-            cast: s.hasGun ? s.cast : 0,
-            has: s.hasGun,
-            fuel: 0,
-            empty: false,
-            dry: !s.hasGun || s.recharging
-          };
-          const key = Math.round(g.ring * 100) + "|" + Math.round(g.fuel * 100) + "|" + Math.round((g.rech || 0) * 100) + "|" + Math.round((g.cast || 0) * 100) + "|" + (g.has ? 1 : 0) + "|" + (g.empty ? 1 : 0) + "|" + (g.dry ? 1 : 0);
-          if (key !== prev) {
-            prev = key;
-            setGauge(g);
-          }
-        }
-        raf = requestAnimationFrame(tick);
-      };
-      raf = requestAnimationFrame(tick);
-      return () => cancelAnimationFrame(raf);
-    }, [left]);
-    const ref = useRef(null);
-    const pid = useRef(null);
-    const stayed = useRef(true);
-    const right = kind === "right";
-    const update = (e) => {
-      const r = ref.current.getBoundingClientRect();
-      const rad = r.width / 2;
-      const dx = e.clientX - (r.left + rad), dy = e.clientY - (r.top + rad);
-      const dist = Math.hypot(dx, dy);
-      const maxD = rad * 0.72;
-      const cl = Math.min(dist, maxD);
-      const nx = dist ? dx / dist : 0, ny = dist ? dy / dist : 0;
-      const mag = cl / maxD;
-      const thresh = right ? AIM_DEAD : 0.15;
-      if (right && mag > AIM_DEAD) stayed.current = false;
-      if (right && input.current.confirmAct) {
-        const side = mag > AIM_DEAD ? nx < 0 ? "take" : "leave" : null;
-        if (input.current.confirmAim !== side) {
-          input.current.confirmAim = side;
-          refresh();
-        }
-      }
-      const st = input.current[kind];
-      st.active = true;
-      st.nx = nx;
-      st.ny = ny;
-      st.mag = mag;
-      st.dy = dy;
-      st.on = mag > thresh;
-      setKnob({ x: nx * cl, y: ny * cl, jet: kind === "left" && dy < 0 && mag > DEAD });
-    };
-    const down = (e) => {
-      if (pid.current !== null) return;
-      pid.current = e.pointerId;
-      stayed.current = true;
-      try {
-        ref.current.setPointerCapture(e.pointerId);
-      } catch (_) {
-      }
-      update(e);
-    };
-    const move = (e) => {
-      if (e.pointerId === pid.current) update(e);
-    };
-    const end = (e) => {
-      if (e.pointerId !== pid.current) return;
-      pid.current = null;
-      const act = input.current.confirmAct;
-      if (right && act) {
-        const side = input.current.confirmAim;
-        input.current.confirmAim = null;
-        if (side) act[side]();
-      } else if (right && stayed.current) {
-        input.current.interact = true;
-      }
-      Object.assign(input.current[kind], { active: false, mag: 0, on: false, dy: 0 });
-      setKnob({ x: 0, y: 0, jet: false });
-    };
-    const rw = 3.2, sw = 1.6;
-    const wipe = (r, frac, col, track) => [
-      h("circle", { key: "t" + r, cx: 50, cy: 50, r, fill: "none", stroke: track || "rgba(0,0,0,0.35)", strokeWidth: sw }),
-      h("circle", {
-        key: "w" + r,
-        cx: 50,
-        cy: 50,
-        r,
-        fill: "none",
-        stroke: col,
-        strokeWidth: sw,
-        strokeLinecap: "round",
-        strokeDasharray: Math.max(0, Math.min(1, frac)) * 2 * Math.PI * r + " " + 2 * Math.PI * r,
-        transform: "rotate(-90 50 50)"
-      })
-    ];
-    const ring = left ? h(
-      "svg",
-      { className: "gauge", viewBox: "0 0 100 100" },
-      wipe(GAUGE_R, gauge.ring, healthCol(gauge.ring)),
-      wipe(
-        GAUGE_R - rw,
-        gauge.fuel,
-        knob2.jet ? "#ffc35a" : GAUGE_COL.fuel,
-        gauge.empty ? "rgba(226,74,44,0.7)" : null
-      )
-    ) : h(
-      "svg",
-      { className: "gauge", viewBox: "0 0 100 100" },
-      wipe(GAUGE_R, gauge.ring, gauge.dry ? "rgba(255,201,60,0.28)" : GAUGE_COL.mana),
-      wipe(GAUGE_R - rw, gauge.rech, gauge.has ? GAUGE_COL.rech : "rgba(122,215,255,0.22)"),
-      wipe(GAUGE_R - 2 * rw, gauge.cast, gauge.has ? GAUGE_COL.cast : "rgba(197,140,255,0.22)")
-    );
-    return h(
-      "div",
-      {
-        ref,
-        className: "stick" + (knob2.jet ? " jetting" : ""),
-        style: { width: size, height: size },
-        onPointerDown: down,
-        onPointerMove: move,
-        onPointerUp: end,
-        onPointerCancel: end,
-        onLostPointerCapture: end
-      },
-      // the centre line splits jet (top half) from walk
-      left && h("div", { className: "stickclip" }, h("div", { className: "hline" })),
-      ring,
-      // the right stick's amber ring: the line the knob's edge crosses when the drag starts
-      // counting as aiming rather than as a tap on the dead zone
-      h("div", { className: "knob", style: {
-        width: KNOB * 100 + "%",
-        height: KNOB * 100 + "%",
-        transform: `translate(-50%,-50%) translate(${knob2.x}px,${knob2.y}px)`
-      } }),
-      right && h("div", { className: "deadzone", style: {
-        width: AIM_RING * 100 + "%",
-        height: AIM_RING * 100 + "%"
-      } }),
-      h("span", { className: "lbl top" }, left ? "jet" : "aim"),
-      left && h("span", { className: "lbl bot" }, "walk")
-    );
-  }
-  function holdPress(onTap, onHold, onState, ms) {
-    return (e) => {
-      e.preventDefault();
-      const sx = e.clientX, sy = e.clientY;
-      let fired = false;
-      const done = () => {
-        clearTimeout(timer);
-        window.removeEventListener("pointermove", move);
-        window.removeEventListener("pointerup", up);
-        window.removeEventListener("pointercancel", up);
-        if (onState) onState(false);
-      };
-      const timer = setTimeout(() => {
-        fired = true;
-        done();
-        onHold();
-      }, ms || 450);
-      const move = (ev) => {
-        if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 14) done();
-      };
-      const up = () => {
-        const tap = !fired;
-        done();
-        if (tap && onTap) onTap();
-      };
-      window.addEventListener("pointermove", move);
-      window.addEventListener("pointerup", up);
-      window.addEventListener("pointercancel", up);
-      if (onState) onState(true);
-    };
   }
   var GUN_STATS = [
     { k: "cap", label: "slots", better: 1, get: (g) => g.cap, fmt: (v) => String(v) },

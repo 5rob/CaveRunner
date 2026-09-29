@@ -279,7 +279,7 @@ What the code says about this phase (checked at the end of Phase 1):
   `creatures/jelly.js` wherever it lands.
 
 - [x] **P2.1** ui/h.js (the `h` helper and hook imports)
-- [ ] **P2.2** ui/hud.js (Stick, RKey, gauges, holdPress, deckLayout, fmtGold, healthCol, GAUGE_*…)
+- [x] **P2.2** ui/hud.js (Stick, RKey, gauges, holdPress, deckLayout, fmtGold, healthCol, GAUGE_*…)
 - [ ] **P2.3** ui/cards.js (GunCard, ModCard, PerkCard, GUN_STATS)
 - [ ] **P2.4** ui/editor.js (Editor, GunStats, SlotGrid, ScrollBox, GunIcon, PULL_COL, GS_ROWS)
 - [ ] **P2.5** ui/swap.js, ui/witness.js
@@ -492,3 +492,4 @@ commit. List them here for after.
 | 2026-09-29 | Phase 1, P1.6 | Owner play-tested the branch (plays the same as v96). Committed the last session's uncommitted handover docs + `tools/same.js` first. Full suite on a snapshot; `src/version.js` → v97; merged `refactor` → `main` and pushed (the release). This time `sound` passed and `fog` ("flying on reveals more", a new one) failed once, passed alone. | logic 33/33; browser 44/44 after re-runs (`jelly` spit flaky, as v96) |
 | 2026-09-29 | Release check | CI run 36533355733 green (deploy-pages, build-apk); `version.txt` = v97. `main` merged back into `refactor` (same commit). | — |
 | 2026-09-29 | Phase 2, P2.1 | `ui/h.js` (`h` + the four hooks). move.js hoisted the sputter comment (the first comment in `main.js` once the hooks left) to the top as a "file header"; put back by hand. | same 359/359, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 2, P2.2 | `ui/hud.js` (Stick, RKey, GAUGE_*, healthCol, holdPress, deckLayout, fmtGold). The two lines "The same detail card is used by the build screen and by the shop…" sat above `holdPress` but describe the cards: moved back above `GUN_STATS` by hand. | same 359/359, logic 33/33, smoke ok |
