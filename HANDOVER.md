@@ -12,7 +12,7 @@ it's stale.
   `src/ui/`, `Game` into `src/game/Game.js`) as v98. Phase 3 is under way on `refactor`, **not
   merged**: P3.1 (the Game map), P3.2 (the level's state is one world object `W`,
   `src/game/world.js`) and P3.3 (`window.__lvl` = `W` via `src/game/testhook.js`) are done, and
-  P3.4 (systems out of `Game` into `src/game/systems/`) is part done: terrain (queries and
+  P3.4 (systems out of `Game` into `src/game/systems/`) is done: terrain (queries and
   changes, `explode`), particles, `hurt`, `damageEnemy`, the fire, the ambience, the props
   (`decorStep`), shot looks, lightning, the rats' Game side, the fog queries, casting
   (`gun.js`/`fields.js`/`bullets.js`), `saveRun`, `natural`, `torchHand`, `plantGlow`, the
@@ -21,8 +21,8 @@ it's stale.
   (`src/game/systems/step.js`, `src/game/render/draw.js`, ~1,100 lines each). `Game.js` is 186
   lines of setup and the loop. step() is split into parts (P3.4 (25)–(33): a frame object `F`, REFACTOR.md
   D18, and 21 calls, each part in its system; `node tools/part.js` does a cut), and so is draw() (P3.4 (34)–(43): its own `F`, D19, and 29 calls,
-  the parts in six `src/game/render/` modules by theme). Next: the rest of P3.4's old rough list, then P3.5 (creature plugins).
-  Last green full suite: the P3.4 checkpoint after `enterLevel` (cdb5c90). The proof for each Phase 3 step
+  the parts in six `src/game/render/` modules by theme). Next: P3.5 (creature plugins: the enemy loop
+  per creature, bullet looks as a table). Last green full suite: the end-of-P3.4 checkpoint (95d6ea6). The proof for each Phase 3 step
   is `node tests/determinism.js` (same scripted run on HEAD and this tree, frame by frame).
   `node tools/system.js <file> name…` does a P3.4 move (`--dry` first), and
   `node tools/gamemap.js fn…` says what a function still in `Game` needs.

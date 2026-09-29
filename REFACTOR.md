@@ -13,10 +13,10 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4 part done: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). step() split into parts, P3.4 (25)–(33): a frame object `F` (D18) and 21 calls, the parts in their systems (`pickups.js` new). draw() split the same way, P3.4 (34)–(43): its own `F` (D19) and 29 calls, the parts in six `render/` modules by theme. Left of P3.4: the old rough list's open boxes (props.js/ambience.js tidying; the enemy loop per creature is P3.5). Not merged |
+| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). step() split into parts, P3.4 (25)–(33): a frame object `F` (D18) and 21 calls, the parts in their systems (`pickups.js` new). draw() split the same way, P3.4 (34)–(43): its own `F` (D19) and 29 calls, the parts in six `render/` modules by theme. **P3.4 done; next P3.5** (the enemy loop per creature, bullet looks as a table). Not merged |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
-| **Last green full suite** | 2026-09-30, P3.4 after step()'s split (e5b7c1b), bar `jelly` "saturation 0 greys it out" (known; passed alone, then the spit flake twice) |
+| **Last green full suite** | 2026-09-30, end of P3.4, after draw()'s split (95d6ea6): logic 33/33, browser 44/44 after re-runs (`lightning` fork and `torch` "brighter frames" failed in the run, both known, both passed 2 of 2 alone) |
 | **Last merged to main** | v98 (Phase 2), 2026-09-29 |
 
 ---
@@ -413,7 +413,7 @@ What the code says about P3.4 (checked at the end of P3.3):
   system at load). If `system.js` says "can't tell where X comes from", X is a Game.js top-level
   (`SPUTTER_FUEL`, `NO_INPUT`…): move it into a module first.
 
-- [ ] **P3.4 Pull systems out**, one per commit, each a module in `game/systems/` (shape: D16,
+- [x] **P3.4 Pull systems out**, one per commit, each a module in `game/systems/` (shape: D16,
       cycles: D17). `node tools/system.js <file> name…` does a move (`--dry` first). Leaves first;
       the list below is corrected as it goes:
   - [x] terrain.js, the queries: `solidCell`, `solidAt`, `boxHit`, `lineOfSight`, `enemyAt` (all `(W, …)`)
@@ -543,7 +543,9 @@ What the code says about P3.4 (checked at the end of P3.3):
     `const x = F.x = …` and read them back in the caller with `const { x } = F;` until the last user is out. Such a part
     can keep a now-unused `const` (drawAim's `ax`, drawHud's `cw`) so its text stays the old one. Git Bash heredocs eat
     `\\` (a scratch script's `/\\n/` came out as `/\n/`): write scripts with the Write tool.
-  - The old rough list (P3.1's guess), still to do; the parts already out are noted:
+  - The old rough list (P3.1's guess), all done (checked against the code at the end of P3.4); where each part went is noted.
+    What's left is P3.5's, not P3.4's: the enemy loop per creature (`stepEnemies` is one function today) and bullet
+    looks as a table (`drawLook`/`shotTrail`):
   - [x] recorder: the putImageData wrappers stay in Game until recorder.js (they wrap `tctx`/`dctx`, which the systems reach as `G.tctx`/`G.dctx`): `recWrap`
   - [x] fog.js: paintFog, bake, blur, fogLit (`fogLit`, `paintFog` in systems/fog.js; the reveal, bake and blur are `drawFog` in render/light.js, P3.4 (42))
   - [x] level-entry.js: enterLevel, sconces, per-floor precompute
@@ -551,11 +553,11 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] gun.js: cast, spawnShot, releaseAt, payload/triggers, gun ticks (the ticks and aiming: `aimAndCast`, P3.4 (27))
   - [x] bullets.js: the bullet loop, homing/drift/wig, bounce, teleport, trails (shotTrail/Bounce/Death/Grind are in shotlooks.js; the loop is `stepBullets`, P3.4 (28))
   - [x] fields.js: fields and beams (the per-frame work is `stepFields`, P3.4 (29))
-  - [ ] enemies.js: the enemy loop (whole, as `stepEnemies`, P3.4 (31); per creature is P3.5), aggro, contact damage, enemy shots (damageEnemy, fireEnemyShot are out; goo/splat are in particles.js); rats (`ratSolid`, `navFor`, `spawnRat`, `unstick`, `ratFrame`) likely a rats.js
+  - [x] enemies.js: the enemy loop (whole, as `stepEnemies`, P3.4 (31); per creature is P3.5), aggro, contact damage, enemy shots (all inside `stepEnemies`; damageEnemy, fireEnemyShot are out; goo/splat are in particles.js); rats (`ratSolid`, `navFor`, `spawnRat`, `unstick`, `ratFrame`) are rats.js, P3.4 (11)
   - [x] pickups.js: pickups, shop stock, coins, ore, rooms, the interact tap (`stepPickups`, P3.4 (30); ore stays with `dropOre` in terrain.js)
-  - [ ] props.js: decorStep, landProp, rustle, zfx (blowProp is out)
+  - [x] props.js: decorStep, landProp, rustle, zfx (all in props.js, P3.4 (6) and (8): the rustle and `W.zfx` are written in `decorStep`)
   - [x] fire: done, as fire.js (step 6)
-  - [ ] ambience.js: spores and amb particles (see the ambience box above); motes, smoke, sparks, flashes are `stepMotes`/`stepParticles` in particles.js (P3.4 (33)); dparts are updated in decorStep
+  - [x] ambience.js: spores and amb particles (`spore`, `puffSpores`, `stepAmbience`, P3.4 (7); `decorStep` calls `stepAmbience`); motes, smoke, sparks, flashes are `stepMotes`/`stepParticles` in particles.js (P3.4 (33)); dparts are updated in decorStep
   - [x] camera.js: `drawCamera` in render/draw.js (the camera is eased in draw, P3.4 (35))
   - [x] recorder.js: recFrame, recSample, REC, and drawReplay's rebuild
   - [x] save-run.js: saveRun
@@ -943,3 +945,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.4 (41) | `drawAim` (the aim's setup moved in by hand after `part.js`: fills `F.held`, `F.ax`/`F.ay`, `F.gy`) and `drawPlayer` (runner, gun, torch, crosshair, shield, ghost) → actors.js. `perks`, `jetpack`, `replay`, `buzzsaw`, `interact`, `cooldown-debug-shop` run too, first time; `torch` failed 3 of 8 (falloff / flicker checks, the known flake; 4 of 10 at (33)). | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (42) | `drawFog` (59 lines: `visPoly`, `fogReveal`, the bake and blur) and `drawGlows` (75 lines) → new `render/light.js` with `tools/part.js`. `fog`, `torch`, `replay`, `map`, `fire`, `decor`, `creatures`, `t1spells` run too, all first time; `jelly`'s glow checks passed both runs, its spit group failed both (the known flake). | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.4 (43) | `drawHud` (fills `F.cw`, setup moved in by hand), `drawRadar`, `drawMessages`, `drawReticule`, `drawMap` → new `render/overlay.js` with `tools/part.js`; draw's top level tidied, header rewritten. **draw() is split**: draw.js 96 lines, `node tools/locals.js` shows only `W`, `G`, `F`; render/ 1,397 lines in 7 files. `perks`, `shop`, `shopcard`, `map`, `replay`, `spawngun`, `restart-confirm`, `donebutton` run too, all first time. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 3, P3.4 checkpoint, **P3.4 done** | Full suite on a snapshot of 95d6ea6 (draw() split): `lightning` "a fork hits a creature off to the side" and `torch` "the brighter frames are the ones with the taller flame" failed, both known flakes; each passed 2 of 2 alone. The old rough list checked against the code: props.js (`decorStep`, rustle, `zfx`), ambience.js and enemies.js (`stepEnemies`) were already done, ticked; P3.4 ticked. Next P3.5 (the enemy loop per creature, bullet looks as a table). Note: `git worktree remove` left `.git/worktrees/snap` behind (read-only folders, "Permission denied"); deleted by hand after the junction was gone. Not merged. | logic 33/33; browser 44/44 after re-runs |
