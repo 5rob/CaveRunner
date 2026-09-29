@@ -9780,6 +9780,91 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
+  // src/ui/swap.js
+  function GunSwap({ input, refresh, onDone }) {
+    const LO = input.current.loadout;
+    useEffect(() => {
+      SFX.fx("open");
+    }, []);
+    const found = input.current.found;
+    const [base, setBase] = useState(LO.guns[LO.sel] ? LO.sel : LO.guns.findIndex(Boolean));
+    const [held, setHeld] = useState(-1);
+    if (!found) return null;
+    const baseGun = base >= 0 ? LO.guns[base] : null;
+    const take = (i) => {
+      const old = LO.guns[i];
+      LO.guns[i] = resetGun(found.gun);
+      SFX.ui("gun");
+      if (old) {
+        found.gun = old;
+        found.old = true;
+      } else found.taken = true;
+      found.cool = PICKUP_COOL;
+      input.current.found = null;
+      refresh();
+      onDone();
+    };
+    const leave = () => {
+      found.cool = PICKUP_COOL;
+      input.current.found = null;
+      refresh();
+      onDone();
+    };
+    return h(
+      "div",
+      { className: "sheet swapsheet" },
+      h(
+        "div",
+        { className: "shead" },
+        h("h2", null, "Gun on the ground"),
+        h("button", { className: "done", onPointerDown: (e) => {
+          e.preventDefault();
+          leave();
+        } }, "Leave it")
+      ),
+      h(GunCard, {
+        gun: found.gun,
+        label: "Found",
+        flow: true,
+        split: true,
+        mark: "found",
+        compare: baseGun,
+        compareName: baseGun ? "slot " + (base + 1) + ", " + baseGun.name : ""
+      }),
+      baseGun ? h(GunCard, {
+        gun: baseGun,
+        label: "Slot " + (base + 1) + " · yours",
+        flow: true,
+        split: true,
+        mark: "mine",
+        compare: found.gun,
+        compareName: found.gun.name
+      }) : h("p", { className: "lab mine" }, base >= 0 ? "Slot " + (base + 1) + " is empty" : "No guns to compare it with"),
+      h("p", { className: "lab hint" }, "Hold a slot to swap it · tap to compare it"),
+      h(
+        "div",
+        { className: "swaprow" },
+        LO.guns.map((g, i) => h(
+          "button",
+          {
+            key: i,
+            className: "gtab" + (g ? "" : " empty") + (held === i ? " holding" : "") + (base === i ? " base" : ""),
+            onPointerDown: holdPress(
+              () => {
+                if (g) setBase(i);
+              },
+              () => take(i),
+              (on) => setHeld(on ? i : -1)
+            )
+          },
+          h("span", { className: "num" }, i + 1),
+          h("span", { className: "gname", style: g ? { color: gunColor(g) } : null }, g ? g.name : "Empty slot"),
+          h("span", { className: "gsub" }, g ? g.slots.filter(Boolean).length + "/" + g.cap + " mods" : "hold to take")
+        ))
+      )
+    );
+  }
+
   // src/world/fire.js
   var FLAMMABLE = { vine: 1, myc: 1 };
   var FIRE_WET = { puddle: 1, snow: 1, ice: 1, slime: 1 };
@@ -11796,87 +11881,186 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { x: (F.x0 + i + 0.5) * NAV * CELL, y: (F.y0 + j + 0.5) * NAV * CELL, dist, air };
   }
 
-  // src/ui/swap.js
-  function GunSwap({ input, refresh, onDone }) {
-    const LO = input.current.loadout;
+  // src/ui/witness.js
+  var RP_SPEEDS = [0.25, 0.5, 1, 2];
+  function Witness({ input, close }) {
+    const V = input.current.replay, W = input.current.witness;
+    const [, bump] = useState(0);
+    const redo = () => bump((n) => n + 1);
+    const scrub = useRef(null), pts = useRef(/* @__PURE__ */ new Map()), pinch = useRef(null), dragging = useRef(false);
     useEffect(() => {
-      SFX.fx("open");
+      let raf, last = "";
+      const tick = () => {
+        const sig = Math.round(V.t * 20) + (V.playing ? "p" : "");
+        if (sig !== last) {
+          last = sig;
+          redo();
+        }
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
     }, []);
-    const found = input.current.found;
-    const [base, setBase] = useState(LO.guns[LO.sel] ? LO.sel : LO.guns.findIndex(Boolean));
-    const [held, setHeld] = useState(-1);
-    if (!found) return null;
-    const baseGun = base >= 0 ? LO.guns[base] : null;
-    const take = (i) => {
-      const old = LO.guns[i];
-      LO.guns[i] = resetGun(found.gun);
-      SFX.ui("gun");
-      if (old) {
-        found.gun = old;
-        found.old = true;
-      } else found.taken = true;
-      found.cool = PICKUP_COOL;
-      input.current.found = null;
-      refresh();
-      onDone();
+    const span = Math.max(0.01, W.t1 - W.t0);
+    const seek = (e) => {
+      const r = scrub.current.getBoundingClientRect();
+      V.t = W.t0 + clamp((e.clientX - r.left) / r.width, 0, 1) * span;
+      V.playing = false;
+      redo();
     };
-    const leave = () => {
-      found.cool = PICKUP_COOL;
-      input.current.found = null;
-      refresh();
-      onDone();
+    const down = (e) => {
+      e.preventDefault();
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch (_) {
+      }
+      pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      pinch.current = null;
     };
+    const move = (e) => {
+      const P = pts.current, q = P.get(e.pointerId);
+      if (!q) return;
+      const u = V.unit || 1;
+      if (P.size === 1) {
+        V.cx -= (e.clientX - q.x) / u;
+        V.cy -= (e.clientY - q.y) / u;
+        V.follow = false;
+      }
+      q.x = e.clientX;
+      q.y = e.clientY;
+      if (P.size >= 2) {
+        const [a, b] = [...P.values()];
+        const d = Math.hypot(a.x - b.x, a.y - b.y) || 1, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, L = pinch.current;
+        if (L) {
+          V.zoom = clamp(V.zoom * d / L.d, 0.4, 4);
+          V.cx -= (mx - L.mx) / u;
+          V.cy -= (my - L.my) / u;
+          V.follow = false;
+        }
+        pinch.current = { d, mx, my };
+      }
+      if (!V.follow) redo();
+    };
+    const up = (e) => {
+      pts.current.delete(e.pointerId);
+      pinch.current = null;
+    };
+    const tap = (f) => (e) => {
+      e.preventDefault();
+      f();
+      redo();
+    };
+    const rel = V.t - W.death, frac = (V.t - W.t0) / span;
+    const atEnd = V.t >= W.t1 - 1e-6;
     return h(
       "div",
-      { className: "sheet swapsheet" },
+      { className: "witness" },
       h(
         "div",
-        { className: "shead" },
-        h("h2", null, "Gun on the ground"),
-        h("button", { className: "done", onPointerDown: (e) => {
-          e.preventDefault();
-          leave();
-        } }, "Leave it")
+        {
+          className: "wscene",
+          onPointerDown: down,
+          onPointerMove: move,
+          onPointerUp: up,
+          onPointerCancel: up,
+          onWheel: (e) => {
+            V.zoom = clamp(V.zoom * Math.exp(-e.deltaY * 15e-4), 0.4, 4);
+          }
+        },
+        h("div", { className: "wtitle" }, "WITNESS YOURSELF")
       ),
-      h(GunCard, {
-        gun: found.gun,
-        label: "Found",
-        flow: true,
-        split: true,
-        mark: "found",
-        compare: baseGun,
-        compareName: baseGun ? "slot " + (base + 1) + ", " + baseGun.name : ""
-      }),
-      baseGun ? h(GunCard, {
-        gun: baseGun,
-        label: "Slot " + (base + 1) + " · yours",
-        flow: true,
-        split: true,
-        mark: "mine",
-        compare: found.gun,
-        compareName: found.gun.name
-      }) : h("p", { className: "lab mine" }, base >= 0 ? "Slot " + (base + 1) + " is empty" : "No guns to compare it with"),
-      h("p", { className: "lab hint" }, "Hold a slot to swap it · tap to compare it"),
       h(
         "div",
-        { className: "swaprow" },
-        LO.guns.map((g, i) => h(
-          "button",
+        { className: "wpanel", ref: (el) => {
+          if (el) V.panelH = el.getBoundingClientRect().height;
+        } },
+        h(
+          "div",
           {
-            key: i,
-            className: "gtab" + (g ? "" : " empty") + (held === i ? " holding" : "") + (base === i ? " base" : ""),
-            onPointerDown: holdPress(
-              () => {
-                if (g) setBase(i);
-              },
-              () => take(i),
-              (on) => setHeld(on ? i : -1)
-            )
+            className: "wscrub",
+            ref: scrub,
+            onPointerDown: (e) => {
+              e.preventDefault();
+              dragging.current = true;
+              try {
+                e.currentTarget.setPointerCapture(e.pointerId);
+              } catch (_) {
+              }
+              seek(e);
+            },
+            onPointerMove: (e) => {
+              if (dragging.current) seek(e);
+            },
+            onPointerUp: () => {
+              dragging.current = false;
+            },
+            onPointerCancel: () => {
+              dragging.current = false;
+            }
           },
-          h("span", { className: "num" }, i + 1),
-          h("span", { className: "gname", style: g ? { color: gunColor(g) } : null }, g ? g.name : "Empty slot"),
-          h("span", { className: "gsub" }, g ? g.slots.filter(Boolean).length + "/" + g.cap + " mods" : "hold to take")
-        ))
+          h("div", { className: "wtrack" }),
+          h("div", { className: "wfill", style: { width: frac * 100 + "%" } }),
+          h("div", {
+            className: "wdeath",
+            title: "The moment you died",
+            style: { left: (W.death - W.t0) / span * 100 + "%" }
+          }),
+          h("div", { className: "wthumb", style: { left: frac * 100 + "%" } })
+        ),
+        h(
+          "div",
+          { className: "wrow" },
+          h("button", {
+            className: "wfirst",
+            "aria-label": "Back to the start",
+            onPointerDown: tap(() => {
+              V.t = W.t0;
+              V.playing = true;
+            })
+          }, "⏮"),
+          h(
+            "button",
+            {
+              className: "wplay",
+              "aria-label": V.playing ? "Pause" : "Play",
+              onPointerDown: tap(() => {
+                if (!V.playing && atEnd) V.t = W.t0;
+                V.playing = !V.playing;
+              })
+            },
+            V.playing ? "⏸" : "▶"
+          ),
+          RP_SPEEDS.map((sp) => h("button", {
+            key: sp,
+            className: "wspeed" + (V.speed === sp ? " on" : ""),
+            onPointerDown: tap(() => {
+              V.speed = sp;
+            })
+          }, (sp < 1 ? String(sp).slice(1) : sp) + "×")),
+          h("span", { className: "wtime" }, (rel < 0 ? "−" : "+") + Math.abs(rel).toFixed(1) + "s")
+        ),
+        h(
+          "div",
+          { className: "wrow" },
+          h("button", { className: "wloop" + (V.loop ? " on" : ""), onPointerDown: tap(() => {
+            V.loop = !V.loop;
+          }) }, "Loop"),
+          h("button", { className: "wfog" + (V.fog ? " on" : ""), onPointerDown: tap(() => {
+            V.fog = !V.fog;
+          }) }, "Fog"),
+          h(
+            "button",
+            { className: "wfollow" + (V.follow ? " on" : ""), onPointerDown: tap(() => {
+              V.follow = true;
+              V.zoom = 1;
+            }) },
+            "Follow"
+          ),
+          h("button", { className: "wclose", onPointerDown: (e) => {
+            e.preventDefault();
+            close();
+          } }, "Close")
+        )
       )
     );
   }
@@ -18029,188 +18213,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           e.preventDefault();
           spawn();
         } }, "Spawn")
-      )
-    );
-  }
-  var RP_SPEEDS = [0.25, 0.5, 1, 2];
-  function Witness({ input, close }) {
-    const V = input.current.replay, W = input.current.witness;
-    const [, bump] = useState(0);
-    const redo = () => bump((n) => n + 1);
-    const scrub = useRef(null), pts = useRef(/* @__PURE__ */ new Map()), pinch = useRef(null), dragging = useRef(false);
-    useEffect(() => {
-      let raf, last = "";
-      const tick = () => {
-        const sig = Math.round(V.t * 20) + (V.playing ? "p" : "");
-        if (sig !== last) {
-          last = sig;
-          redo();
-        }
-        raf = requestAnimationFrame(tick);
-      };
-      raf = requestAnimationFrame(tick);
-      return () => cancelAnimationFrame(raf);
-    }, []);
-    const span = Math.max(0.01, W.t1 - W.t0);
-    const seek = (e) => {
-      const r = scrub.current.getBoundingClientRect();
-      V.t = W.t0 + clamp((e.clientX - r.left) / r.width, 0, 1) * span;
-      V.playing = false;
-      redo();
-    };
-    const down = (e) => {
-      e.preventDefault();
-      try {
-        e.currentTarget.setPointerCapture(e.pointerId);
-      } catch (_) {
-      }
-      pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      pinch.current = null;
-    };
-    const move = (e) => {
-      const P = pts.current, q = P.get(e.pointerId);
-      if (!q) return;
-      const u = V.unit || 1;
-      if (P.size === 1) {
-        V.cx -= (e.clientX - q.x) / u;
-        V.cy -= (e.clientY - q.y) / u;
-        V.follow = false;
-      }
-      q.x = e.clientX;
-      q.y = e.clientY;
-      if (P.size >= 2) {
-        const [a, b] = [...P.values()];
-        const d = Math.hypot(a.x - b.x, a.y - b.y) || 1, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, L = pinch.current;
-        if (L) {
-          V.zoom = clamp(V.zoom * d / L.d, 0.4, 4);
-          V.cx -= (mx - L.mx) / u;
-          V.cy -= (my - L.my) / u;
-          V.follow = false;
-        }
-        pinch.current = { d, mx, my };
-      }
-      if (!V.follow) redo();
-    };
-    const up = (e) => {
-      pts.current.delete(e.pointerId);
-      pinch.current = null;
-    };
-    const tap = (f) => (e) => {
-      e.preventDefault();
-      f();
-      redo();
-    };
-    const rel = V.t - W.death, frac = (V.t - W.t0) / span;
-    const atEnd = V.t >= W.t1 - 1e-6;
-    return h(
-      "div",
-      { className: "witness" },
-      h(
-        "div",
-        {
-          className: "wscene",
-          onPointerDown: down,
-          onPointerMove: move,
-          onPointerUp: up,
-          onPointerCancel: up,
-          onWheel: (e) => {
-            V.zoom = clamp(V.zoom * Math.exp(-e.deltaY * 15e-4), 0.4, 4);
-          }
-        },
-        h("div", { className: "wtitle" }, "WITNESS YOURSELF")
-      ),
-      h(
-        "div",
-        { className: "wpanel", ref: (el) => {
-          if (el) V.panelH = el.getBoundingClientRect().height;
-        } },
-        h(
-          "div",
-          {
-            className: "wscrub",
-            ref: scrub,
-            onPointerDown: (e) => {
-              e.preventDefault();
-              dragging.current = true;
-              try {
-                e.currentTarget.setPointerCapture(e.pointerId);
-              } catch (_) {
-              }
-              seek(e);
-            },
-            onPointerMove: (e) => {
-              if (dragging.current) seek(e);
-            },
-            onPointerUp: () => {
-              dragging.current = false;
-            },
-            onPointerCancel: () => {
-              dragging.current = false;
-            }
-          },
-          h("div", { className: "wtrack" }),
-          h("div", { className: "wfill", style: { width: frac * 100 + "%" } }),
-          h("div", {
-            className: "wdeath",
-            title: "The moment you died",
-            style: { left: (W.death - W.t0) / span * 100 + "%" }
-          }),
-          h("div", { className: "wthumb", style: { left: frac * 100 + "%" } })
-        ),
-        h(
-          "div",
-          { className: "wrow" },
-          h("button", {
-            className: "wfirst",
-            "aria-label": "Back to the start",
-            onPointerDown: tap(() => {
-              V.t = W.t0;
-              V.playing = true;
-            })
-          }, "⏮"),
-          h(
-            "button",
-            {
-              className: "wplay",
-              "aria-label": V.playing ? "Pause" : "Play",
-              onPointerDown: tap(() => {
-                if (!V.playing && atEnd) V.t = W.t0;
-                V.playing = !V.playing;
-              })
-            },
-            V.playing ? "⏸" : "▶"
-          ),
-          RP_SPEEDS.map((sp) => h("button", {
-            key: sp,
-            className: "wspeed" + (V.speed === sp ? " on" : ""),
-            onPointerDown: tap(() => {
-              V.speed = sp;
-            })
-          }, (sp < 1 ? String(sp).slice(1) : sp) + "×")),
-          h("span", { className: "wtime" }, (rel < 0 ? "−" : "+") + Math.abs(rel).toFixed(1) + "s")
-        ),
-        h(
-          "div",
-          { className: "wrow" },
-          h("button", { className: "wloop" + (V.loop ? " on" : ""), onPointerDown: tap(() => {
-            V.loop = !V.loop;
-          }) }, "Loop"),
-          h("button", { className: "wfog" + (V.fog ? " on" : ""), onPointerDown: tap(() => {
-            V.fog = !V.fog;
-          }) }, "Fog"),
-          h(
-            "button",
-            { className: "wfollow" + (V.follow ? " on" : ""), onPointerDown: tap(() => {
-              V.follow = true;
-              V.zoom = 1;
-            }) },
-            "Follow"
-          ),
-          h("button", { className: "wclose", onPointerDown: (e) => {
-            e.preventDefault();
-            close();
-          } }, "Close")
-        )
       )
     );
   }

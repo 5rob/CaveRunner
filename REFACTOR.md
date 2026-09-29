@@ -282,7 +282,7 @@ What the code says about this phase (checked at the end of Phase 1):
 - [x] **P2.2** ui/hud.js (Stick, RKey, gauges, holdPress, deckLayout, fmtGold, healthCol, GAUGE_*…)
 - [x] **P2.3** ui/cards.js (GunCard, ModCard, PerkCard, GUN_STATS)
 - [x] **P2.4** ui/editor.js (Editor, GunStats, SlotGrid, ScrollBox, GunIcon, PULL_COL, GS_ROWS)
-- [ ] **P2.5** ui/swap.js, ui/witness.js
+- [x] **P2.5** ui/swap.js, ui/witness.js
 - [ ] **P2.6** ui/devpanel.js (DevRow, DevPanel, SpawnGun; JellyPreview goes with the jelly or here)
 - [ ] **P2.7** game/Game.js (Game as-is, with `sputterStep`, `SPUTTER_FUEL`, `NO_INPUT`),
       then ui/app.js (App); `main.js` is now just the mount. Full suite green.
@@ -497,3 +497,4 @@ commit. List them here for after.
 | 2026-09-29 | Phase 2, P2.3 | `ui/cards.js` (GUN_STATS, GunCard, ModCard, PerkCard). Clean move. | same 359/359, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 2, P2.4 | `ui/editor.js` (Editor, GunStats, GunIcon, SlotGrid, ScrollBox, PULL_COL, GS_ROWS, LIVE_BAR, SHOW_TIPS). GunStats' comment still sits above `PULL_COL` (moved with it, see Found along the way). | same 359/359, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 2, P2.5 (1/2) | `ui/swap.js` (GunSwap). Clean move. | same 359/359, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 2, P2.5 (2/2) | `ui/witness.js` (Witness, RP_SPEEDS). Clean move. | same 359/359, logic 33/33, smoke ok |

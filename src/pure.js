@@ -45,3 +45,4 @@ export * from './ui/hud.js';
 export * from './ui/cards.js';
 export * from './ui/editor.js';
 export * from './ui/swap.js';
+export * from './ui/witness.js';
