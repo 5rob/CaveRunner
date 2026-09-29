@@ -10456,6 +10456,44 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/game/systems/player.js
+  var refreshBag = (W, G) => {
+    W.pb = perkBag(G.input.current.loadout.perks || []);
+  };
+  var maxHp = (W, G) => W.pb.maxHp + (G.input.current.loadout.maxBonus || 0);
+  function hurt(W, G, n) {
+    if (W.p.dead || n <= 0) return;
+    if (W.pb.shield && W.p.shieldReady) {
+      W.p.shieldReady = false;
+      W.p.shieldT = 2.5;
+      burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 10, "#7ad7ff");
+      SFX.ui("shield");
+      return;
+    }
+    W.p.hp = Math.max(0, W.p.hp - n);
+    W.p.hitT = 0.3;
+    if (W.p.hp > 0) SFX.ui("hurt");
+    if (W.p.hp === 0) {
+      const LO = G.input.current.loadout;
+      if (W.pb.lives > (LO.usedLives || 0)) {
+        LO.usedLives = (LO.usedLives || 0) + 1;
+        W.p.hp = maxHp(W, G);
+        W.p.shieldReady = true;
+        W.p.shieldT = 0;
+        burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 24, "#ff5a36");
+        SFX.ui("revive");
+        toast(W, "Back from the dead");
+        G.input.current.notify();
+        return;
+      }
+      W.p.dead = true;
+      burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 24, COL.player);
+      W.strings.length = 0;
+      SFX.ui("die");
+      clearSave();
+    }
+  }
+
   // src/game/systems/terrain.js
   var solidCell = (W, cx, cy) => cx < 0 || cy < 0 || cx >= CW || cy >= CH || W.mat[cy * CW + cx] !== 0;
   var solidAt = (W, x, y) => solidCell(W, Math.floor(x / CELL), Math.floor(y / CELL));
@@ -10878,10 +10916,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const a = W.p.aim.show ? W.p.aim.nx : W.p.face;
         return { x: W.p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: W.p.y + 9 };
       };
-      const refreshBag = () => {
-        W.pb = perkBag(input.current.loadout.perks || []);
-      };
-      const maxHp = () => W.pb.maxHp + (input.current.loadout.maxBonus || 0);
       const webNear = (L, x, y) => {
         const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, ll = vx * vx + vy * vy || 1;
         const u = Math.max(0, Math.min(1, ((x - L.a0x) * vx + (y - L.a0y) * vy) / ll));
@@ -11039,6 +11073,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       let RPV = null;
       const RT = { tC: null, dC: null, n: 0, at: -1, fog: null, fireT: null };
+      const G = {
+        input,
+        c,
+        ctx,
+        terrain,
+        tctx,
+        bg,
+        bgctx,
+        fogC,
+        fctx,
+        fogImg,
+        fogBlurC,
+        fbctx,
+        miniC,
+        mctx,
+        miniImg,
+        mini32,
+        decoC,
+        dctx,
+        REC,
+        RT
+      };
       function rpTerrain(T) {
         if (!RT.tC) {
           RT.tC = document.createElement("canvas");
@@ -11156,7 +11212,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
       function enterLevel(back) {
-        refreshBag();
+        refreshBag(W, G);
         W.levelSeed = back ? back.seed : 1 + Math.floor(Math.random() * 2147483e3);
         W.levelOwned = back ? back.owned : (input.current.loadout.perks || []).slice();
         const level = makeLevel(W.levelSeed, W.floor, W.levelOwned);
@@ -11322,8 +11378,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         tctx,
         dctx,
         paintFog,
-        hurt,
-        maxHp,
+        hurt: (n) => hurt(W, G, n),
+        maxHp: () => maxHp(W, G),
         dig,
         explode,
         recSample,
@@ -11339,7 +11395,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (sv) {
           W.floor = sv.floor;
           enterLevel(sv.level);
-          if (sv.hp) W.p.hp = Math.min(sv.hp, maxHp());
+          if (sv.hp) W.p.hp = Math.min(sv.hp, maxHp(W, G));
         } else enterLevel();
       }
       const saveTick = setInterval(saveRun, 2e3);
@@ -11386,38 +11442,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       c.addEventListener("pointerup", mUp);
       c.addEventListener("pointercancel", mUp);
       c.addEventListener("pointerleave", mLeave);
-      function hurt(n) {
-        if (W.p.dead || n <= 0) return;
-        if (W.pb.shield && W.p.shieldReady) {
-          W.p.shieldReady = false;
-          W.p.shieldT = 2.5;
-          burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 10, "#7ad7ff");
-          SFX.ui("shield");
-          return;
-        }
-        W.p.hp = Math.max(0, W.p.hp - n);
-        W.p.hitT = 0.3;
-        if (W.p.hp > 0) SFX.ui("hurt");
-        if (W.p.hp === 0) {
-          const LO = input.current.loadout;
-          if (W.pb.lives > (LO.usedLives || 0)) {
-            LO.usedLives = (LO.usedLives || 0) + 1;
-            W.p.hp = maxHp();
-            W.p.shieldReady = true;
-            W.p.shieldT = 0;
-            burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 24, "#ff5a36");
-            SFX.ui("revive");
-            toast(W, "Back from the dead");
-            input.current.notify();
-            return;
-          }
-          W.p.dead = true;
-          burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 24, COL.player);
-          W.strings.length = 0;
-          SFX.ui("die");
-          clearSave();
-        }
-      }
       function fireEnemyShot(e, tx, ty) {
         const k = e.k;
         if (!lineOfSight(W, e.x, e.ty, tx, ty)) return;
@@ -11674,7 +11698,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         if (hunting && !want && !(e.giveUp > 0) && !(e.carry > 0 && N) && dist < e.r + 12 && e.touch <= 0 && !W.p.dead) {
           const LO = input.current.loadout, broke = !(LO.gold > 0);
-          hurt(Math.round(kr("raBite") * (broke ? kr("raBroke") : 1)));
+          hurt(W, G, Math.round(kr("raBite") * (broke ? kr("raBroke") : 1)));
           e.touch = kr("raBiteCd");
           SFX.creature(k, "bite", e.x, e.y);
           if (!broke) {
@@ -11803,7 +11827,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const base = Math.atan2(ny, nx);
         const acts = plan.acts || [];
         let bonus = 0;
-        if (plan.hp && !W.p.dead) hurt(plan.hp);
+        if (plan.hp && !W.p.dead) hurt(W, G, plan.hp);
         if (acts.includes("refresh")) {
           g.skipRech = true;
           SFX.fx("refresh");
@@ -12679,7 +12703,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             if (W.p.burnAcc >= 2 || W.p.burn <= 0) {
               const d = Math.round(W.p.burnAcc);
               W.p.burnAcc -= d;
-              if (d > 0) hurt(d);
+              if (d > 0) hurt(W, G, d);
             }
           }
         } else W.p.burn = 0;
@@ -12790,7 +12814,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const dist = Math.hypot(pcx - x, pcy - y), reach = R + 10;
         if (dist < reach && !W.p.dead) {
           const f = 1 - dist / reach;
-          hurt(Math.round(25 * f));
+          hurt(W, G, Math.round(25 * f));
           const nx = (pcx - x) / (dist || 1), ny = (pcy - y) / (dist || 1);
           W.p.vx += nx * 500 * f;
           W.p.vy += ny * 500 * f - 150 * f;
@@ -12913,7 +12937,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             }
             if (pr.vy > 120 && (pr.k === "drop" || pr.k === "spike" || pr.k === "cover" || pr.k === "noise")) {
               if (!W.p.dead && pOver(pr, 0)) {
-                hurt(PROP_DMG.drop);
+                hurt(W, G, PROP_DMG.drop);
                 shatter(pr, 14);
                 continue;
               }
@@ -13065,7 +13089,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               break;
             case "spike":
               if (me && pOver(pr, -1) && pr.cd <= 0) {
-                hurt(pr.st === "salt" ? 4 : PROP_DMG.spike);
+                hurt(W, G, pr.st === "salt" ? 4 : PROP_DMG.spike);
                 pr.cd = 0.7;
                 W.p.vy = pr.hang ? 160 : -280;
                 burst(W, pcx, pr.hang ? W.p.y : W.p.y + PH, 5, "#ff5a5a");
@@ -13101,7 +13125,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                   glow: 1
                 });
                 if (me && pr.cd <= 0 && W.p.x + PW > pr.x - 6 && W.p.x < pr.x + 6 && W.p.y < pr.y && W.p.y + PH > pr.y - VENT_H) {
-                  hurt(PROP_DMG.vent);
+                  hurt(W, G, PROP_DMG.vent);
                   youAlight();
                   pr.cd = 0.4;
                 }
@@ -13159,19 +13183,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 });
               } else if (st === "acid") {
                 if (pr.cd <= 0) {
-                  hurt(3);
+                  hurt(W, G, 3);
                   pr.cd = 0.5;
                 }
               } else if (st === "glass") {
                 if (Math.abs(W.p.vx) > 80 && pr.cd <= 0) {
-                  hurt(2);
+                  hurt(W, G, 2);
                   pr.cd = 0.35;
                   burst(W, pcx, pr.y - 1, 3, "#d8f4ff");
                 }
               } else if (st === "log") {
                 pr.stand = (pr.stand || 0) + dt;
                 if (pr.stand > 0.8 && pr.cd <= 0) {
-                  hurt(3);
+                  hurt(W, G, 3);
                   pr.cd = 0.5;
                 }
               } else if (st === "ash" && moving && Math.random() < dt * 30) {
@@ -13205,7 +13229,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               const by = pr.y + Math.sin(W.time * 1.3 + pr.seed * 9) * 3, dd = Math.hypot(pcx - pr.x, pcy - by);
               if (me && dd < 48) z.rev = Math.max(z.rev, 1 - dd / 48);
               if (me && dd < 12 && pr.cd <= 0) {
-                hurt(PROP_DMG.matter);
+                hurt(W, G, PROP_DMG.matter);
                 pr.cd = 0.5;
               }
               break;
@@ -13221,7 +13245,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 const tx = pr.x + Math.cos(pr.aimA) * pr.ext, ty = pr.y - 2 + Math.sin(pr.aimA) * pr.ext;
                 const vx = tx - pr.x, vy = ty - pr.y + 2, t = clamp(((pcx - pr.x) * vx + (pcy - pr.y + 2) * vy) / (vx * vx + vy * vy), 0, 1);
                 if (Math.hypot(pr.x + vx * t - pcx, pr.y - 2 + vy * t - pcy) < 10) {
-                  hurt(PROP_DMG.tendril);
+                  hurt(W, G, PROP_DMG.tendril);
                   pr.cd = 0.8;
                   W.p.vx += Math.cos(pr.aimA) * 220;
                   W.p.kick = 0.15;
@@ -13237,7 +13261,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           cl.tick -= dt;
           if (cl.tick <= 0) {
             cl.tick = 0.4;
-            if (!W.p.dead && Math.hypot(pcx - cl.x, pcy - cl.y) < cl.r) hurt(PROP_DMG.cloud);
+            if (!W.p.dead && Math.hypot(pcx - cl.x, pcy - cl.y) < cl.r) hurt(W, G, PROP_DMG.cloud);
             for (let j = W.enemies.length - 1; j >= 0; j--)
               if (Math.hypot(W.enemies[j].x - cl.x, W.enemies[j].ty - cl.y) < cl.r + W.enemies[j].r) damageEnemy(j, 1);
           }
@@ -13281,7 +13305,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
           if (!dead && q.dmg && !W.p.dead && q.x > W.p.x && q.x < W.p.x + PW && q.y > W.p.y && q.y < W.p.y + PH) {
             if (W.dripHurt <= 0) {
-              hurt(q.dmg);
+              hurt(W, G, q.dmg);
               W.dripHurt = 0.4;
             }
             dead = true;
@@ -13518,7 +13542,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           toast(W, "Spawned " + gun2.name);
         }
         const LO = input.current.loadout;
-        const MHP = maxHp();
+        const MHP = maxHp(W, G);
         if (W.p.hp > MHP) W.p.hp = MHP;
         if (W.pb.shield && !W.p.shieldReady) {
           W.p.shieldT -= dt;
@@ -13954,7 +13978,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             }
             if (b.friendly && !W.p.dead && nx > W.p.x - 2 && nx < W.p.x + PW + 2 && ny > W.p.y - 2 && ny < W.p.y + PH + 2) {
               burst(W, nx, ny, 5, b.col);
-              hurt(Math.round(b.dmg * 2));
+              hurt(W, G, Math.round(b.dmg * 2));
               dead = true;
               break;
             }
@@ -14323,10 +14347,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           } else if (near.src === "room") {
             const r = near.r;
             if (r.kind === "perk") {
-              const before = maxHp();
+              const before = maxHp(W, G);
               (LO.perks || (LO.perks = [])).push(r.id);
-              refreshBag();
-              const after = maxHp();
+              refreshBag(W, G);
+              const after = maxHp(W, G);
               if (after > before) W.p.hp += after - before;
               W.p.hp = Math.min(W.p.hp, after);
               if (W.pb.seeAll) {
@@ -14456,7 +14480,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             if (!W.p.dead && e.touch <= 0 && dist < 180) {
               const t = tentacleTouch(S, W.p.x, W.p.y, W.p.x + PW, W.p.y + PH);
               if (t) {
-                hurt(Math.round(kr("jeBite")));
+                hurt(W, G, Math.round(kr("jeBite")));
                 e.touch = kr("jeBiteCd");
                 burst(W, t.x, t.y, 5, jellyPal(S.u.col).tent);
                 SFX.creature(k2, "bite", t.x, t.y);
@@ -14530,13 +14554,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             if (k2.act === "bomb") {
               burst(W, e.x, e.ty, 22, k2.col.a);
               SFX.boom(e.x, e.ty, 26);
-              hurt(k2.dmg);
+              hurt(W, G, k2.dmg);
               W.enemies.splice(i, 1);
               if (k2.fire) fireBlast(e.x, e.ty, 26, 1);
               continue;
             }
             SFX.creature(k2, "bite", e.x, e.ty);
-            hurt(k2.kp ? Math.round(kr(k2.kp + "Bite")) : k2.dmg);
+            hurt(W, G, k2.kp ? Math.round(kr(k2.kp + "Bite")) : k2.dmg);
             e.touch = k2.kp ? kr(k2.kp + "BiteCd") : 0.9;
           }
           if (k2.act === "shoot" || k2.act === "turret") {
@@ -14594,7 +14618,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               gone = true;
               if (b.splat != null) splat(W, b, b.x, b.y);
               else burst(W, b.x, b.y, 5, COL.player);
-              hurt(b.dmg);
+              hurt(W, G, b.dmg);
               if (b.fire) youAlight();
             }
           }
@@ -16160,7 +16184,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.textAlign = "left";
         ctx.fillText(VERSION, 12, 22);
         ctx.shadowBlur = 0;
-        const MHP = maxHp();
+        const MHP = maxHp(W, G);
         const gpas = held ? gunPassives(held) : null;
         const effRech = held ? Math.max(1e-3, effRecharge(held) * W.pb.rech) : 1;
         input.current.hud = {

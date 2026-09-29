@@ -21,13 +21,13 @@ import {
 import { pathLen, ratSpread, ratStep } from '../creatures/rat.js';
 import { spiderStep } from '../creatures/spider.js';
 import { HUNTERS, enemyFor } from '../data/creatures.js';
-import { PERKS, perkBag } from '../data/perks.js';
+import { PERKS } from '../data/perks.js';
 import { themeFor } from '../data/themes.js';
 import { DEV, jcol, kr, kru, spr } from '../dev/knobs.js';
 import {
   RP_AFTER, RP_BEFORE, RP_H, RP_HZ, RP_KEEP, RP_W, rpClone, rpCut, rpFrame, rpMerge, rpPaste
 } from '../replay/replay.js';
-import { SAVE_KEY, clearSave } from '../save/save.js';
+import { SAVE_KEY } from '../save/save.js';
 import { effRecharge, gunPassives, planCast } from '../spells/cast.js';
 import { caveGun, gunAccent, shuffleOrder } from '../spells/guns.js';
 import { MODS, VACUUM_WAIT, famCol } from '../spells/mods.js';
@@ -44,6 +44,7 @@ import { ORE_GOLD } from '../world/veins.js';
 import { VIS_RAYS, fogReveal, fogStart, nestFog, rayDist, visPoly } from '../world/vision.js';
 import { builtAt } from '../world/zones.js';
 import { burst, goo, splat, toast } from './systems/particles.js';
+import { hurt, maxHp, refreshBag } from './systems/player.js';
 import { boxHit, enemyAt, lineOfSight, solidAt, solidCell } from './systems/terrain.js';
 import { testHook } from './testhook.js';
 import { makeWorld } from './world.js';
@@ -123,13 +124,6 @@ export function Game({ input }) {
       const a = W.p.aim.show ? W.p.aim.nx : W.p.face;
       return { x: W.p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: W.p.y + 9 };
     };
-    // ---- perks ----
-    // Everything the perks you are carrying add up to, recomputed whenever the run's perk
-    // list changes and read all over step() and draw(). Neutral (all multipliers 1, all
-    // flags 0) until a perk is found, so a run with no perks behaves exactly as before.
-    const refreshBag = () => { W.pb = perkBag(input.current.loadout.perks || []); };
-    // the true maximum health: the perk bag's answer plus the running +25 per heart room.
-    const maxHp = () => W.pb.maxHp + (input.current.loadout.maxBonus || 0);
     // how far a point is from a web line (anchor to anchor, as drawn), and where on it is closest
     const webNear = (L, x, y) => {
       const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, ll = vx * vx + vy * vy || 1;
@@ -239,6 +233,10 @@ export function Game({ input }) {
     // scene through draw() itself, swapped in for the live world and swapped back after ----
     let RPV = null;                       // while draw() is drawing a replay frame: the view
     const RT = { tC: null, dC: null, n: 0, at: -1, fog: null, fireT: null };
+    // what the systems (game/systems/) need that isn't world state (REFACTOR.md, D16): the
+    // React bridge, the canvases (tctx and dctx are the recorder's wrapped ones) and the recorder
+    const G = { input, c, ctx, terrain, tctx, bg, bgctx, fogC, fctx, fogImg, fogBlurC, fbctx,
+      miniC, mctx, miniImg, mini32, decoC, dctx, REC, RT };
     function rpTerrain(T) {
       if (!RT.tC) {
         RT.tC = document.createElement('canvas'); RT.tC.width = CW; RT.tC.height = CH;
@@ -296,7 +294,7 @@ export function Game({ input }) {
     // `back` is a saved cave to rebuild (same seed, same perks owned on the way in), with
     // what was already taken, sold and killed stripped back out of it
     function enterLevel(back) {
-      refreshBag();
+      refreshBag(W, G);
       W.levelSeed = back ? back.seed : 1 + Math.floor(Math.random() * 2147483000);
       W.levelOwned = back ? back.owned : (input.current.loadout.perks || []).slice();
       const level = makeLevel(W.levelSeed, W.floor, W.levelOwned);
@@ -429,7 +427,7 @@ export function Game({ input }) {
       }
     }
     // the browser tests' way in (game/testhook.js): only on the test page, which sets the flag
-    if (window.__TEST) window.__lvl = testHook(W, { tctx, dctx, paintFog, hurt, maxHp, dig, explode, recSample,
+    if (window.__TEST) window.__lvl = testHook(W, { tctx, dctx, paintFog, hurt: (n) => hurt(W, G, n), maxHp: () => maxHp(W, G), dig, explode, recSample,
       ignite, setAlight, youAlight, REC, RT });
     {
       // picking up where the last session left off, if App found a save
@@ -438,7 +436,7 @@ export function Game({ input }) {
       if (sv) {
         W.floor = sv.floor;
         enterLevel(sv.level);
-        if (sv.hp) W.p.hp = Math.min(sv.hp, maxHp());
+        if (sv.hp) W.p.hp = Math.min(sv.hp, maxHp(W, G));
       } else enterLevel();
     }
     const saveTick = setInterval(saveRun, 2000);
@@ -475,37 +473,6 @@ export function Game({ input }) {
     c.addEventListener('pointercancel', mUp);
     c.addEventListener('pointerleave', mLeave);
 
-    function hurt(n) {
-      if (W.p.dead || n <= 0) return;
-      // Permanent Shield soaks a hit whole, then winds back up over a couple of seconds
-      if (W.pb.shield && W.p.shieldReady) {
-        W.p.shieldReady = false; W.p.shieldT = 2.5;
-        burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 10, '#7ad7ff');
-        SFX.ui('shield');
-        return;
-      }
-      W.p.hp = Math.max(0, W.p.hp - n);
-      W.p.hitT = 0.3;
-      if (W.p.hp > 0) SFX.ui('hurt');
-      if (W.p.hp === 0) {
-        // Extra Life gets you back up once, at full health
-        const LO = input.current.loadout;
-        if (W.pb.lives > (LO.usedLives || 0)) {
-          LO.usedLives = (LO.usedLives || 0) + 1;
-          W.p.hp = maxHp();
-          W.p.shieldReady = true; W.p.shieldT = 0;
-          burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 24, '#ff5a36');
-          SFX.ui('revive');
-          toast(W, 'Back from the dead');
-          input.current.notify();
-          return;
-        }
-        W.p.dead = true; burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 24, COL.player);
-        W.strings.length = 0;
-        SFX.ui('die');
-        clearSave();                          // a death is final: reopening starts a new run
-      }
-    }
     // one pull of an enemy's trigger: aimed at the player, and a shotgun type throws
     // its pellets in a cone. Refuses the shot if the player has broken line of sight
     // since it decided to take it.
@@ -677,7 +644,7 @@ export function Game({ input }) {
       // you, in reach: a bite, and a coin knocked out of you over its head
       if (hunting && !want && !(e.giveUp > 0) && !(e.carry > 0 && N) && dist < e.r + 12 && e.touch <= 0 && !W.p.dead) {
         const LO = input.current.loadout, broke = !(LO.gold > 0);
-        hurt(Math.round(kr('raBite') * (broke ? kr('raBroke') : 1)));
+        hurt(W, G, Math.round(kr('raBite') * (broke ? kr('raBroke') : 1)));
         e.touch = kr('raBiteCd');
         SFX.creature(k, 'bite', e.x, e.y);
         if (!broke) {
@@ -781,7 +748,7 @@ export function Game({ input }) {
       const acts = plan.acts || [];
       let bonus = 0;                                   // damage bought with something else
 
-      if (plan.hp && !W.p.dead) hurt(plan.hp);
+      if (plan.hp && !W.p.dead) hurt(W, G, plan.hp);
       if (acts.includes('refresh')) { g.skipRech = true; SFX.fx('refresh'); }
       if (acts.includes('manapow')) {
         SFX.fx('drain');
@@ -1368,7 +1335,7 @@ export function Game({ input }) {
           if (Math.random() < dt * 40) flameAt(W.p.x + Math.random() * PW, W.p.y + PH * (0.2 + Math.random() * 0.8));
           if (Math.random() < dt * 6) fireSmoke(pcx, W.p.y);
           if (ticks) fireArea(W.fire, pcx, W.p.y + PH - 2, 5, 0.3);
-          if (W.p.burnAcc >= 2 || W.p.burn <= 0) { const d = Math.round(W.p.burnAcc); W.p.burnAcc -= d; if (d > 0) hurt(d); }
+          if (W.p.burnAcc >= 2 || W.p.burn <= 0) { const d = Math.round(W.p.burnAcc); W.p.burnAcc -= d; if (d > 0) hurt(W, G, d); }
         }
       } else W.p.burn = 0;
       // flames and smoke off the burning pixels you can see, and the crackle at the nearest blaze
@@ -1457,7 +1424,7 @@ export function Game({ input }) {
       const dist = Math.hypot(pcx - x, pcy - y), reach = R + 10;
       if (dist < reach && !W.p.dead) {
         const f = 1 - dist / reach;
-        hurt(Math.round(25 * f));
+        hurt(W, G, Math.round(25 * f));
         const nx = (pcx - x) / (dist || 1), ny = (pcy - y) / (dist || 1);
         W.p.vx += nx * 500 * f;
         W.p.vy += ny * 500 * f - 150 * f;
@@ -1558,7 +1525,7 @@ export function Game({ input }) {
           pr.y += pr.vy * dt;
           if (pr.y > WH) { pr.gone = true; continue; }
           if (pr.vy > 120 && (pr.k === 'drop' || pr.k === 'spike' || pr.k === 'cover' || pr.k === 'noise')) {
-            if (!W.p.dead && pOver(pr, 0)) { hurt(PROP_DMG.drop); shatter(pr, 14); continue; }
+            if (!W.p.dead && pOver(pr, 0)) { hurt(W, G, PROP_DMG.drop); shatter(pr, 14); continue; }
             for (let j = W.enemies.length - 1; j >= 0; j--) {
               const e = W.enemies[j];
               if (Math.abs(e.x - pr.x) < e.r + 4 && Math.abs(e.ty - (pr.y + pr.b)) < e.r + 4) { damageEnemy(j, 4); shatter(pr, 14); break; }
@@ -1642,7 +1609,7 @@ export function Game({ input }) {
             break;
           case 'spike':
             if (me && pOver(pr, -1) && pr.cd <= 0) {
-              hurt(pr.st === 'salt' ? 4 : PROP_DMG.spike); pr.cd = 0.7;
+              hurt(W, G, pr.st === 'salt' ? 4 : PROP_DMG.spike); pr.cd = 0.7;
               W.p.vy = pr.hang ? 160 : -280; burst(W, pcx, pr.hang ? W.p.y : W.p.y + PH, 5, '#ff5a5a');
             }
             break;
@@ -1657,7 +1624,7 @@ export function Game({ input }) {
             if (pr.on) {
               if (Math.random() < dt * 40) W.dparts.push({ x: pr.x + (Math.random() - 0.5) * 6, y: pr.y - 4, vx: (Math.random() - 0.5) * 20,
                 vy: -140 - Math.random() * 80, g: 0, c: Math.random() < 0.5 ? '#ffb050' : '#ff7a2a', s: 1.6, life: 0.4, max: 0.4, glow: 1 });
-              if (me && pr.cd <= 0 && W.p.x + PW > pr.x - 6 && W.p.x < pr.x + 6 && W.p.y < pr.y && W.p.y + PH > pr.y - VENT_H) { hurt(PROP_DMG.vent); youAlight(); pr.cd = 0.4; }
+              if (me && pr.cd <= 0 && W.p.x + PW > pr.x - 6 && W.p.x < pr.x + 6 && W.p.y < pr.y && W.p.y + PH > pr.y - VENT_H) { hurt(W, G, PROP_DMG.vent); youAlight(); pr.cd = 0.4; }
               if ((pr.ecd = (pr.ecd || 0) - dt) <= 0) {
                 pr.ecd = 0.4;
                 for (let yy = 4; yy < VENT_H; yy += 12) ignite(pr.x, pr.y - yy, 6, 0.5);   // and it lights what hangs over it
@@ -1691,12 +1658,12 @@ export function Game({ input }) {
               z.slow = Math.min(z.slow, 0.7);
               if (moving && Math.random() < dt * 20) W.dparts.push({ x: pcx, y: pr.y - 2, vx: (Math.random() - 0.5) * 60,
                 vy: -60 - Math.random() * 60, g: 0.9, c: 'rgba(150,200,255,0.8)', s: 1.3, life: 0.6, max: 0.6 });
-            } else if (st === 'acid') { if (pr.cd <= 0) { hurt(3); pr.cd = 0.5; } }
+            } else if (st === 'acid') { if (pr.cd <= 0) { hurt(W, G, 3); pr.cd = 0.5; } }
             else if (st === 'glass') {
-              if (Math.abs(W.p.vx) > 80 && pr.cd <= 0) { hurt(2); pr.cd = 0.35; burst(W, pcx, pr.y - 1, 3, '#d8f4ff'); }
+              if (Math.abs(W.p.vx) > 80 && pr.cd <= 0) { hurt(W, G, 2); pr.cd = 0.35; burst(W, pcx, pr.y - 1, 3, '#d8f4ff'); }
             } else if (st === 'log') {
               pr.stand = (pr.stand || 0) + dt;
-              if (pr.stand > 0.8 && pr.cd <= 0) { hurt(3); pr.cd = 0.5; }
+              if (pr.stand > 0.8 && pr.cd <= 0) { hurt(W, G, 3); pr.cd = 0.5; }
             } else if (st === 'ash' && moving && Math.random() < dt * 30) {
               W.smoke.push({ x: pcx + (Math.random() - 0.5) * 8, y: pr.y - 2, vx: -W.p.vx * 0.2 + (Math.random() - 0.5) * 20,
                 vy: -15 - Math.random() * 20, r: 1.5 + Math.random() * 2, life: 0.9, max: 0.9 });
@@ -1715,7 +1682,7 @@ export function Game({ input }) {
           case 'matter': {                           // gravity turns over near it
             const by = pr.y + Math.sin(W.time * 1.3 + pr.seed * 9) * 3, dd = Math.hypot(pcx - pr.x, pcy - by);
             if (me && dd < 48) z.rev = Math.max(z.rev, 1 - dd / 48);
-            if (me && dd < 12 && pr.cd <= 0) { hurt(PROP_DMG.matter); pr.cd = 0.5; }
+            if (me && dd < 12 && pr.cd <= 0) { hurt(W, G, PROP_DMG.matter); pr.cd = 0.5; }
             break;
           }
           case 'tendril': {                          // lashes out on a beat
@@ -1729,7 +1696,7 @@ export function Game({ input }) {
               const tx = pr.x + Math.cos(pr.aimA) * pr.ext, ty = pr.y - 2 + Math.sin(pr.aimA) * pr.ext;
               const vx = tx - pr.x, vy = ty - pr.y + 2, t = clamp(((pcx - pr.x) * vx + (pcy - pr.y + 2) * vy) / (vx * vx + vy * vy), 0, 1);
               if (Math.hypot(pr.x + vx * t - pcx, pr.y - 2 + vy * t - pcy) < 10) {
-                hurt(PROP_DMG.tendril); pr.cd = 0.8; W.p.vx += Math.cos(pr.aimA) * 220; W.p.kick = 0.15;
+                hurt(W, G, PROP_DMG.tendril); pr.cd = 0.8; W.p.vx += Math.cos(pr.aimA) * 220; W.p.kick = 0.15;
               }
             }
             break;
@@ -1742,7 +1709,7 @@ export function Game({ input }) {
         cl.life -= dt; cl.tick -= dt;
         if (cl.tick <= 0) {
           cl.tick = 0.4;
-          if (!W.p.dead && Math.hypot(pcx - cl.x, pcy - cl.y) < cl.r) hurt(PROP_DMG.cloud);
+          if (!W.p.dead && Math.hypot(pcx - cl.x, pcy - cl.y) < cl.r) hurt(W, G, PROP_DMG.cloud);
           for (let j = W.enemies.length - 1; j >= 0; j--)
             if (Math.hypot(W.enemies[j].x - cl.x, W.enemies[j].ty - cl.y) < cl.r + W.enemies[j].r) damageEnemy(j, 1);
         }
@@ -1773,7 +1740,7 @@ export function Game({ input }) {
             vy: -30 - Math.random() * 40, g: 0.8, c: q.c, s: 1, life: 0.35, max: 0.35, glow: q.glow });
         }
         if (!dead && q.dmg && !W.p.dead && q.x > W.p.x && q.x < W.p.x + PW && q.y > W.p.y && q.y < W.p.y + PH) {
-          if (W.dripHurt <= 0) { hurt(q.dmg); W.dripHurt = 0.4; }
+          if (W.dripHurt <= 0) { hurt(W, G, q.dmg); W.dripHurt = 0.4; }
           dead = true;
         }
         if (dead) W.dparts.splice(i, 1);
@@ -1963,7 +1930,7 @@ export function Game({ input }) {
       const LO = input.current.loadout;
       // perks: keep the current maximum health honest, wind the shield back up, and never
       // let a shrunken cap (Glass Cannon) leave the bar reading over full
-      const MHP = maxHp();
+      const MHP = maxHp(W, G);
       if (W.p.hp > MHP) W.p.hp = MHP;
       if (W.pb.shield && !W.p.shieldReady) { W.p.shieldT -= dt; if (W.p.shieldT <= 0) { W.p.shieldReady = true; SFX.fx('shieldUp'); } }
       // movement: thumbstick first, otherwise keyboard (full strength)
@@ -2303,7 +2270,7 @@ export function Game({ input }) {
           }
           if (b.friendly && !W.p.dead && nx > W.p.x - 2 && nx < W.p.x + PW + 2 &&
               ny > W.p.y - 2 && ny < W.p.y + PH + 2) {
-            burst(W, nx, ny, 5, b.col); hurt(Math.round(b.dmg * 2)); dead = true; break;
+            burst(W, nx, ny, 5, b.col); hurt(W, G, Math.round(b.dmg * 2)); dead = true; break;
           }
           if (solidAt(W, nx, ny)) {
             if (b.payload && b.trig !== 'expire') firePayload(b);   // so does touching rock
@@ -2598,10 +2565,10 @@ export function Game({ input }) {
         } else if (near.src === 'room') {
           const r = near.r;
           if (r.kind === 'perk') {
-            const before = maxHp();
+            const before = maxHp(W, G);
             (LO.perks || (LO.perks = [])).push(r.id);
-            refreshBag();
-            const after = maxHp();
+            refreshBag(W, G);
+            const after = maxHp(W, G);
             if (after > before) W.p.hp += after - before;   // Extra Health comes full
             W.p.hp = Math.min(W.p.hp, after);                 // Glass Cannon trims it
             if (W.pb.seeAll) { W.seen.fill(2); paintFog(); }  // All-Seeing Eye lights it up now
@@ -2726,7 +2693,7 @@ export function Game({ input }) {
           if (!W.p.dead && e.touch <= 0 && dist < 180) {
             const t = tentacleTouch(S, W.p.x, W.p.y, W.p.x + PW, W.p.y + PH);
             if (t) {
-              hurt(Math.round(kr('jeBite'))); e.touch = kr('jeBiteCd');
+              hurt(W, G, Math.round(kr('jeBite'))); e.touch = kr('jeBiteCd');
               burst(W, t.x, t.y, 5, jellyPal(S.u.col).tent);
               SFX.creature(k, 'bite', t.x, t.y);
             }
@@ -2779,13 +2746,13 @@ export function Game({ input }) {
           if (k.act === 'bomb') {
             burst(W, e.x, e.ty, 22, k.col.a);
             SFX.boom(e.x, e.ty, 26);
-            hurt(k.dmg);
+            hurt(W, G, k.dmg);
             W.enemies.splice(i, 1);
             if (k.fire) fireBlast(e.x, e.ty, 26, 1);
             continue;
           }
           SFX.creature(k, 'bite', e.x, e.ty);
-          hurt(k.kp ? Math.round(kr(k.kp + 'Bite')) : k.dmg);
+          hurt(W, G, k.kp ? Math.round(kr(k.kp + 'Bite')) : k.dmg);
           e.touch = k.kp ? kr(k.kp + 'BiteCd') : 0.9;
         }
 
@@ -2839,7 +2806,7 @@ export function Game({ input }) {
           if (!W.p.dead && b.x > W.p.x - 2 && b.x < W.p.x + PW + 2 && b.y > W.p.y - 2 && b.y < W.p.y + PH + 2) {
             gone = true;
             if (b.splat != null) splat(W, b, b.x, b.y); else burst(W, b.x, b.y, 5, COL.player);
-            hurt(b.dmg);
+            hurt(W, G, b.dmg);
             if (b.fire) youAlight();
           }
         }
@@ -4035,7 +4002,7 @@ export function Game({ input }) {
       // hand the sticks the live health / fuel / mana so they can draw their gauges:
       // the green ring round the left stick, the amber fuel wipe in its top half, and
       // the gold ring round the right stick. Written every frame the loop draws.
-      const MHP = maxHp();
+      const MHP = maxHp(W, G);
       const gpas = held ? gunPassives(held) : null;
       // recharge / cast-delay "readiness": 1 when ready, dropping to 0 the moment it fires
       // and filling back over its own time — so the ring that spends the most time refilling

@@ -48,5 +48,6 @@ export * from './ui/witness.js';
 export * from './ui/devpanel.js';
 export * from './game/systems/terrain.js';
 export * from './game/systems/particles.js';
+export * from './game/systems/player.js';
 export * from './game/Game.js';
 export * from './ui/app.js';
