@@ -46,18 +46,18 @@ const SANDBOX =
   "      for (let y = Math.floor(y0 * CELL / FOG_U); y <= Math.floor(y1 * CELL / FOG_U); y++)" +
   "        for (let x = Math.floor(x0 * CELL / FOG_U); x <= Math.floor(x1 * CELL / FOG_U); x++) W.seen[y * FW + x] = 2;" +
   "      paintFog();" +
-  "      p.x = cx - PW / 2; p.y = fy - PH - 0.5; p.vx = 0; p.vy = 0; p.hp = 9999; p.dead = false;" +
+  "      W.p.x = cx - PW / 2; W.p.y = fy - PH - 0.5; W.p.vx = 0; W.p.vy = 0; W.p.hp = 9999; W.p.dead = false;" +
   "      return { x: cx, y: fy, l: x0 * CELL, r: x1 * CELL }; };\n" +
   "    const __placeProp = (pr, x, y) => { const q = Object.assign({}, pr, { x, y, gone: false, fall: false, vy: 0," +
   "      anc: [Math.floor(x / CELL), Math.floor(y / CELL)] }); W.props.push(q); return q; };\n";
 
 const HOOK_LVL = SANDBOX +
   "    window.__lvl = { sandbox: __sandbox, placeProp: __placeProp, get pickups(){return W.pickups}, get enemies(){return W.enemies}, " +
-  "bullets, p, get mat(){return W.mat}, get stock(){return W.stock}, coins, get floor(){return W.floor}, get seed(){return W.levelSeed}, hurt, get bhLoops(){return bhLoops}, " +
-  "get rooms(){return W.rooms}, get pb(){return pb}, maxHp, " +
+  "bullets, p: W.p, get mat(){return W.mat}, get stock(){return W.stock}, coins, get floor(){return W.floor}, get seed(){return W.levelSeed}, hurt, get bhLoops(){return bhLoops}, " +
+  "get rooms(){return W.rooms}, get pb(){return W.pb}, maxHp, " +
   "get roster(){return W.roster}, get theme(){return W.themeName}, " +
   "get arrival(){return W.arrival}, get start(){return W.start}, get portal(){return W.portal}, " +
-  "enemyShots, sparks, webs, silk, strings, fields, beams, arcs, flashes, dig, explode, get ore(){return W.ore}, motes, smoke, get sconces(){return W.sconces}, get props(){return W.props}, dparts, amb, clouds, rings, get zfx(){return zfx}, " +
+  "enemyShots, sparks, webs, silk, strings, fields, beams, arcs, flashes, dig, explode, get ore(){return W.ore}, motes, smoke, get sconces(){return W.sconces}, get props(){return W.props}, dparts, amb, clouds, rings, get zfx(){return W.zfx}, " +
   "get rec(){return REC}, get rt(){return RT}, recSample, " +
   "get fire(){return W.fire}, get burrow(){return W.burrow}, ignite, setAlight, youAlight, get dimg(){return W.dimg}, get zone(){return W.zone}, " +
   "world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y }, " +

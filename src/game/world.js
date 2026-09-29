@@ -3,12 +3,24 @@
 // parts on each floor; the lists are emptied in place, never replaced, because the death
 // replay's recorder holds them by reference.
 
-import { CH, CW } from '../core/consts.js';
+import { CH, CW, PLAYER_HP } from '../core/consts.js';
+import { perkBag } from '../data/perks.js';
 import { fireNew } from '../world/fire.js';
 import { fogStart } from '../world/vision.js';
 
 export function makeWorld() {
   return {
+    // ---- you ----
+    p: { x: 0, y: 0, vx: 0, vy: 0, onGround: false, face: 1, jet: 0,
+      fuel: 1, empty: false, sput: false, flame: 0, cough: 0, hp: PLAYER_HP, hitT: 0, dead: false, kick: 0,
+      shieldReady: true, shieldT: 0,        // Permanent Shield: up, and its recharge clock
+      jx: 0, jy: 0, aim: { on: false, show: false, nx: 1, ny: 0 } },
+    pb: perkBag([]),                // what the perks you carry add up to (refreshBag)
+    ghost: null,                    // the Angry Ghost companion, if owned
+    // what the props did to you this frame (slowed, slick, holding a vine, gravity flipped),
+    // read by next frame's steering; decorStep makes a new one each frame
+    zfx: { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 },
+
     // ---- terrain ----
     mat: null, img: null,           // the rock: solid cells, and its pixels (drawn to the terrain canvas)
     dimg: null,                     // the decoration layer's pixels (walk-through: moss, beams, rubble)

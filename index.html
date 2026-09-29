@@ -10413,6 +10413,38 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   // src/game/world.js
   function makeWorld() {
     return {
+      // ---- you ----
+      p: {
+        x: 0,
+        y: 0,
+        vx: 0,
+        vy: 0,
+        onGround: false,
+        face: 1,
+        jet: 0,
+        fuel: 1,
+        empty: false,
+        sput: false,
+        flame: 0,
+        cough: 0,
+        hp: PLAYER_HP,
+        hitT: 0,
+        dead: false,
+        kick: 0,
+        shieldReady: true,
+        shieldT: 0,
+        // Permanent Shield: up, and its recharge clock
+        jx: 0,
+        jy: 0,
+        aim: { on: false, show: false, nx: 1, ny: 0 }
+      },
+      pb: perkBag([]),
+      // what the perks you carry add up to (refreshBag)
+      ghost: null,
+      // the Angry Ghost companion, if owned
+      // what the props did to you this frame (slowed, slick, holding a vine, gravity flipped),
+      // read by next frame's steering; decorStep makes a new one each frame
+      zfx: { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 },
       // ---- terrain ----
       mat: null,
       img: null,
@@ -10550,30 +10582,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const plantsNow = /* @__PURE__ */ new Set(), rustle = { t: 0 };
       let portalLoop = null, matterLoop = null, wasJet = false, stepT = 0, lastNear = "";
       let plantsLast = /* @__PURE__ */ new Set();
-      const p = {
-        x: 0,
-        y: 0,
-        vx: 0,
-        vy: 0,
-        onGround: false,
-        face: 1,
-        jet: 0,
-        fuel: 1,
-        empty: false,
-        sput: false,
-        flame: 0,
-        cough: 0,
-        hp: PLAYER_HP,
-        hitT: 0,
-        dead: false,
-        kick: 0,
-        shieldReady: true,
-        shieldT: 0,
-        // Permanent Shield: up, and its recharge clock
-        jx: 0,
-        jy: 0,
-        aim: { on: false, show: false, nx: 1, ny: 0 }
-      };
       const bullets = [], enemyShots = [], smoke = [], sparks = [], flashes = [], toasts = [], coins = [];
       const fields = [], beams = [];
       const arcs = [];
@@ -10587,21 +10595,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const dctx = decoC.getContext("2d");
       const dparts = [], amb = [], clouds = [], rings = [], devils = [];
       let decoFrame = 0, viewW = VIEW_W, viewH = VIEW_MIN_H, dripHurt = 0;
-      let zfx = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
       let leanX = 0, leanY = 0, leanVX = 0, leanVY = 0, glowN = 0;
       const aimPath = [];
       let smokeAcc = 0, time = 0, levelT = 0, camX = 0, camY = 0, camReady = false;
       let flick = 1, flickN = 0, torchT = 0, torchAcc = 0, torchR = SIGHT, visPts = [];
       const torchHand = () => {
-        const a = p.aim.show ? p.aim.nx : p.face;
-        return { x: p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: p.y + 9 };
+        const a = W.p.aim.show ? W.p.aim.nx : W.p.face;
+        return { x: W.p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: W.p.y + 9 };
       };
-      let pb = perkBag([]);
       const refreshBag = () => {
-        pb = perkBag(input.current.loadout.perks || []);
+        W.pb = perkBag(input.current.loadout.perks || []);
       };
-      const maxHp = () => pb.maxHp + (input.current.loadout.maxBonus || 0);
-      let ghost = null;
+      const maxHp = () => W.pb.maxHp + (input.current.loadout.maxBonus || 0);
       const burns = [];
       const webs = [], silk = [], strings = [];
       const navYou = {};
@@ -10689,7 +10694,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         input.current.witness = null;
       }
       function recSample() {
-        const pcx = p.x + PW / 2, pcy = p.y + PH / 2;
+        const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
         const grab = (list, m, ty) => {
           const out = [];
           for (const o of list) {
@@ -10707,8 +10712,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           leanY,
           glowN,
           fireN: W.fireN,
-          p: rpClone(p),
-          ghost: ghost ? rpClone(ghost) : null
+          p: rpClone(W.p),
+          ghost: W.ghost ? rpClone(W.ghost) : null
         };
         for (const k in RP_ARR) S[k] = grab(RP_ARR[k], 40);
         S.enemies = grab(W.enemies, 40, "ty");
@@ -10755,7 +10760,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       function recFrame(dt) {
         if (REC.done || !REC.tBase) return;
         REC.t += dt;
-        if (p.dead && REC.deathT < 0) REC.deathT = REC.t;
+        if (W.p.dead && REC.deathT < 0) REC.deathT = REC.t;
         if ((REC.acc -= dt) > 0) return;
         REC.acc = Math.max(0, REC.acc + 1 / RP_HZ);
         recSample();
@@ -10818,7 +10823,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           fire: W.fire,
           firePlants: W.firePlants,
           seen: W.seen,
-          ghost,
+          ghost: W.ghost,
           time,
           flick,
           leanX,
@@ -10832,7 +10837,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           visPts,
           viewW,
           viewH,
-          p: Object.assign({}, p)
+          p: Object.assign({}, W.p)
         };
         W.enemies = F.enemies;
         W.pickups = F.pickups;
@@ -10840,14 +10845,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         W.firePlants = [];
         W.fire = { list: near.fire, t: RT.fireT };
         W.seen = RT.fog;
-        ghost = F.ghost;
+        W.ghost = F.ghost;
         time = F.time;
         flick = F.flick;
         leanX = F.leanX;
         leanY = F.leanY;
         glowN = F.glowN;
         W.fireN = near.fireN;
-        Object.assign(p, F.p);
+        Object.assign(W.p, F.p);
         RPV = V;
         try {
           draw();
@@ -10864,7 +10869,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             fire: W.fire,
             firePlants: W.firePlants,
             seen: W.seen,
-            ghost,
+            ghost: W.ghost,
             time,
             flick,
             leanX,
@@ -10879,7 +10884,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             viewW,
             viewH
           } = keep);
-          Object.assign(p, keep.p);
+          Object.assign(W.p, keep.p);
           for (let k = 0; k < near.fire.length; k++) RT.fireT[near.fire[k]] = 0;
         }
       }
@@ -10936,7 +10941,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         W.plantW = plantWhite(W.img.data, W.dimg && W.dimg.data);
         dctx.putImageData(W.dimg, 0, 0);
         dparts.length = amb.length = clouds.length = rings.length = devils.length = 0;
-        zfx = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
+        W.zfx = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
         {
           const pcx0 = W.portal.x + W.portal.w / 2, pcy0 = W.portal.y + W.portal.h / 2;
           W.sconces = [
@@ -10954,7 +10959,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         for (const h3 of bhLoops.values()) h3.stop();
         bhLoops.clear();
         W.total = W.enemies.length;
-        ghost = pb.ghost ? { x: level.start.x, y: level.start.y, cd: 0 } : null;
+        W.ghost = W.pb.ghost ? { x: level.start.x, y: level.start.y, cd: 0 } : null;
         burns.length = 0;
         webs.length = silk.length = strings.length = 0;
         W.burrow = null;
@@ -10972,17 +10977,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         W.fire = fireNew(level.fuel || new Uint8Array(CW * CH));
         W.firePropN = -1;
-        p.burn = 0;
-        p.burnAcc = 0;
+        W.p.burn = 0;
+        W.p.burnAcc = 0;
         tctx.putImageData(W.img, 0, 0);
         bgctx.putImageData(level.bgImg, 0, 0);
-        p.x = W.start.x;
-        p.y = W.start.y;
-        p.vx = 0;
-        p.vy = 0;
-        p.fuel = 1;
-        p.empty = false;
-        p.kick = 0;
+        W.p.x = W.start.x;
+        W.p.y = W.start.y;
+        W.p.vx = 0;
+        W.p.vy = 0;
+        W.p.fuel = 1;
+        W.p.empty = false;
+        W.p.kick = 0;
         bullets.length = enemyShots.length = smoke.length = 0;
         sparks.length = flashes.length = coins.length = arcs.length = 0;
         torchP.length = 0;
@@ -10992,19 +10997,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         levelT = 0;
         W.seen = fogStart();
         W.deepFog = nestFog(level.nests);
-        if (pb.seeAll) W.seen.fill(2);
+        if (W.pb.seeAll) W.seen.fill(2);
         paintFog();
         recReset();
         W.matterProps = W.props.filter((pr) => pr.k === "matter");
         setTimeout(() => SFX.fx("portalOut", W.arrival.x, W.arrival.y), 260);
       }
       function saveRun() {
-        if (p.dead) return;
+        if (W.p.dead) return;
         const pk = W.pickups.filter((q) => !q.taken && (q.kind === "mod" || q.kind === "gun")).map((q) => q.kind === "mod" ? { kind: "mod", id: q.id, x: q.x, y: q.y, t: q.t } : { kind: "gun", gun: q.gun, x: q.x, y: q.y, t: q.t, old: !!q.old });
         const data = {
           ver: VERSION,
           floor: W.floor,
-          hp: p.hp,
+          hp: W.p.hp,
           loadout: input.current.loadout,
           level: {
             seed: W.levelSeed,
@@ -11052,7 +11057,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (sv) {
           W.floor = sv.floor;
           enterLevel(sv.level);
-          if (sv.hp) p.hp = Math.min(sv.hp, maxHp());
+          if (sv.hp) W.p.hp = Math.min(sv.hp, maxHp());
         } else enterLevel();
       }
       const saveTick = setInterval(saveRun, 2e3);
@@ -11161,32 +11166,32 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
       function hurt(n) {
-        if (p.dead || n <= 0) return;
-        if (pb.shield && p.shieldReady) {
-          p.shieldReady = false;
-          p.shieldT = 2.5;
-          burst(p.x + PW / 2, p.y + PH / 2, 10, "#7ad7ff");
+        if (W.p.dead || n <= 0) return;
+        if (W.pb.shield && W.p.shieldReady) {
+          W.p.shieldReady = false;
+          W.p.shieldT = 2.5;
+          burst(W.p.x + PW / 2, W.p.y + PH / 2, 10, "#7ad7ff");
           SFX.ui("shield");
           return;
         }
-        p.hp = Math.max(0, p.hp - n);
-        p.hitT = 0.3;
-        if (p.hp > 0) SFX.ui("hurt");
-        if (p.hp === 0) {
+        W.p.hp = Math.max(0, W.p.hp - n);
+        W.p.hitT = 0.3;
+        if (W.p.hp > 0) SFX.ui("hurt");
+        if (W.p.hp === 0) {
           const LO = input.current.loadout;
-          if (pb.lives > (LO.usedLives || 0)) {
+          if (W.pb.lives > (LO.usedLives || 0)) {
             LO.usedLives = (LO.usedLives || 0) + 1;
-            p.hp = maxHp();
-            p.shieldReady = true;
-            p.shieldT = 0;
-            burst(p.x + PW / 2, p.y + PH / 2, 24, "#ff5a36");
+            W.p.hp = maxHp();
+            W.p.shieldReady = true;
+            W.p.shieldT = 0;
+            burst(W.p.x + PW / 2, W.p.y + PH / 2, 24, "#ff5a36");
             SFX.ui("revive");
             toast("Back from the dead");
             input.current.notify();
             return;
           }
-          p.dead = true;
-          burst(p.x + PW / 2, p.y + PH / 2, 24, COL.player);
+          W.p.dead = true;
+          burst(W.p.x + PW / 2, W.p.y + PH / 2, 24, COL.player);
           strings.length = 0;
           SFX.ui("die");
           clearSave();
@@ -11227,7 +11232,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         W.enemies.splice(j, 1);
         e.dead = true;
         if (e.nest) {
-          const all = Math.round(kr("raNestGold") * pb.gold) + e.nest.stash;
+          const all = Math.round(kr("raNestGold") * W.pb.gold) + e.nest.stash;
           const n = Math.max(1, Math.min(14, Math.ceil(all / 8)));
           for (let k = 0; k < n; k++)
             coins.push({
@@ -11244,7 +11249,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         coins.push({
           x: e.x,
           y: e.ty,
-          amount: Math.round((e.k.gold + Math.floor(Math.random() * 3)) * pb.gold),
+          amount: Math.round((e.k.gold + Math.floor(Math.random() * 3)) * W.pb.gold),
           t: Math.random() * 6.28,
           vy: -60 - Math.random() * 40
         });
@@ -11356,7 +11361,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             goal = want;
             fast = true;
           } else if (hunting) {
-            goal = { x: pcx, y: p.y + PH - 2 };
+            goal = { x: pcx, y: W.p.y + PH - 2 };
             fast = true;
           } else {
             const R = e.roam || (e.roam = {});
@@ -11446,7 +11451,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             SFX.fx("coinland", e.x, e.y);
           }
         }
-        if (hunting && !want && !(e.giveUp > 0) && !(e.carry > 0 && N) && dist < e.r + 12 && e.touch <= 0 && !p.dead) {
+        if (hunting && !want && !(e.giveUp > 0) && !(e.carry > 0 && N) && dist < e.r + 12 && e.touch <= 0 && !W.p.dead) {
           const LO = input.current.loadout, broke = !(LO.gold > 0);
           hurt(Math.round(kr("raBite") * (broke ? kr("raBroke") : 1)));
           e.touch = kr("raBiteCd");
@@ -11458,7 +11463,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             const side = e.x >= pcx ? 1 : -1;
             coins.push({
               x: pcx,
-              y: p.y + 4,
+              y: W.p.y + 4,
               amount: amt,
               t: Math.random() * 6.28,
               vx: side * kr("raPopX"),
@@ -11504,7 +11509,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (nOre) dropOre(x, y, nOre);
       }
       function dropOre(x, y, n) {
-        oreBank += n * ORE_GOLD * (1 + (W.floor - 1) * 0.3) * pb.gold;
+        oreBank += n * ORE_GOLD * (1 + (W.floor - 1) * 0.3) * W.pb.gold;
         let bits = Math.min(12, Math.floor(oreBank / 2));
         if (!bits) return;
         const each = Math.floor(oreBank / bits);
@@ -11555,7 +11560,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const pas = gunPassives(g);
         const wrap = () => {
           g.idx = 0;
-          g.rechT = g.skipRech ? 0 : effRecharge(g) * pb.rech;
+          g.rechT = g.skipRech ? 0 : effRecharge(g) * W.pb.rech;
           g.rechLen = g.rechT;
           g.skipRech = false;
           shuffleOrder(g);
@@ -11565,7 +11570,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           wrap();
           return;
         }
-        const cost = pb.mana === 0 ? 0 : plan.cost;
+        const cost = W.pb.mana === 0 ? 0 : plan.cost;
         if (g.mana < cost) {
           g.idx = plan.start;
           g.delayT = 0.12;
@@ -11577,7 +11582,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const base = Math.atan2(ny, nx);
         const acts = plan.acts || [];
         let bonus = 0;
-        if (plan.hp && !p.dead) hurt(plan.hp);
+        if (plan.hp && !W.p.dead) hurt(plan.hp);
         if (acts.includes("refresh")) {
           g.skipRech = true;
           SFX.fx("refresh");
@@ -11637,12 +11642,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         SFX.cast(plan.shots, ox === gx && oy === gy ? null : ox, oy);
         let kick = 0;
         for (const sh of plan.shots) kick += sh.recoil;
-        if (kick && !p.dead) {
-          kick = Math.min(220, kick * 1.4 * pb.recoil);
-          p.vx -= Math.cos(base) * kick;
-          p.vy -= Math.sin(base) * kick;
+        if (kick && !W.p.dead) {
+          kick = Math.min(220, kick * 1.4 * W.pb.recoil);
+          W.p.vx -= Math.cos(base) * kick;
+          W.p.vy -= Math.sin(base) * kick;
         }
-        g.delayT = plan.delay * pb.delay;
+        g.delayT = plan.delay * W.pb.delay;
         g.delayMax = Math.max(g.delayT, 1e-3);
         if (plan.wrap) wrap();
       }
@@ -11653,11 +11658,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         const n = Math.min(24, Math.max(1, Math.round(sh.count)));
         const off = (sh.ang || 0) * Math.PI / 180;
-        const pd = pb.dmg;
-        let pc = pb.crit;
-        if (pb.close && W.enemies.some((e) => Math.hypot(e.x - ox, e.ty - oy) < 56)) pc += 0.4;
+        const pd = W.pb.dmg;
+        let pc = W.pb.crit;
+        if (W.pb.close && W.enemies.some((e) => Math.hypot(e.x - ox, e.ty - oy) < 56)) pc += 0.4;
         for (let i = 0; i < n; i++) {
-          let a = base + off + (Math.random() - 0.5) * sh.spread * pb.spread * Math.PI / 180;
+          let a = base + off + (Math.random() - 0.5) * sh.spread * W.pb.spread * Math.PI / 180;
           if (sh.autoaim) {
             let best2 = null, bd = 320;
             for (const e of W.enemies) {
@@ -11687,15 +11692,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           bullets.push({
             x: bx,
             y: by,
-            vx: Math.cos(a) * sh.speed * pb.speed * bhSp(sh),
-            vy: Math.sin(a) * sh.speed * pb.speed * bhSp(sh),
+            vx: Math.cos(a) * sh.speed * W.pb.speed * bhSp(sh),
+            vy: Math.sin(a) * sh.speed * W.pb.speed * bhSp(sh),
             life: sh.life,
             dmg: (sh.dmg + bonus) * pd,
             size: sh.size,
             col: sh.col,
             spin: 0,
-            homing: Math.max(sh.homing, pb.homing),
-            bounce: sh.bounce + pb.bounce,
+            homing: Math.max(sh.homing, W.pb.homing),
+            bounce: sh.bounce + W.pb.bounce,
             pierce: sh.pierce,
             explode: sh.explode,
             grav: sh.grav,
@@ -12195,20 +12200,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         });
       }
       function teleportTo(b) {
-        if (p.dead) return;
+        if (W.p.dead) return;
         const sp = Math.hypot(b.vx, b.vy), nx = sp ? b.vx / sp : 0, ny = sp ? b.vy / sp : 0;
         for (let back = 0; back <= 40; back += 3)
           for (const dy of [0, -4, 4, -8, 8, -12, 12, -16, 16]) {
             const x = b.x - nx * back - PW / 2, y = b.y - ny * back - PH / 2 + dy;
             if (x < CELL * 3 || y < CELL * 3 || x + PW > WW - CELL * 3 || y + PH > WH - CELL * 3) continue;
             if (boxHit(x, y)) continue;
-            burst(p.x + PW / 2, p.y + PH / 2, 10, b.col);
-            p.x = x;
-            p.y = y;
-            p.vx = 0;
-            p.vy = 0;
-            burst(p.x + PW / 2, p.y + PH / 2, 12, b.col);
-            SFX.fx("warp", p.x + PW / 2, p.y + PH / 2);
+            burst(W.p.x + PW / 2, W.p.y + PH / 2, 10, b.col);
+            W.p.x = x;
+            W.p.y = y;
+            W.p.vx = 0;
+            W.p.vy = 0;
+            burst(W.p.x + PW / 2, W.p.y + PH / 2, 12, b.col);
+            SFX.fx("warp", W.p.x + PW / 2, W.p.y + PH / 2);
             return;
           }
         burst(b.x, b.y, 4, b.col);
@@ -12307,18 +12312,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         e.burn = Math.max(e.burn || 0, kr("fireBurn"));
       }
       function youAlight() {
-        if (p.dead) return;
-        if (!(p.burn > 0)) {
-          SFX.fx("whoosh", p.x + PW / 2, p.y + PH / 2);
+        if (W.p.dead) return;
+        if (!(W.p.burn > 0)) {
+          SFX.fx("whoosh", W.p.x + PW / 2, W.p.y + PH / 2);
           strings.length = 0;
         }
-        p.burn = Math.max(p.burn || 0, kr("fireYou"));
+        W.p.burn = Math.max(W.p.burn || 0, kr("fireYou"));
       }
       function fireBlast(x, y, R, hot) {
         const ch = hot ? 0.9 : kr("fireBoom");
         ignite(x, y, R * 1.3, ch);
         for (const e of W.enemies) if (Math.hypot(e.x - x, e.ty - y) < R + e.r && Math.random() < ch) setAlight(e);
-        if (!p.dead && Math.hypot(p.x + PW / 2 - x, p.y + PH / 2 - y) < R + 6 && Math.random() < ch * 0.5) youAlight();
+        if (!W.p.dead && Math.hypot(W.p.x + PW / 2 - x, W.p.y + PH / 2 - y) < R + 6 && Math.random() < ch * 0.5) youAlight();
       }
       const flameAt = (x, y, sp) => dparts.push({
         x,
@@ -12397,7 +12402,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             fireArea(W.fire, pr.x, ty, 5, 0.3);
             for (const o of W.firePlants)
               if (!o.burn && !o.gone && Math.abs(o.x - pr.x) < 10 && ty > o.y - 4 && ty < o.y + o.len + 4 && Math.random() < 0.25) catchPlant(o);
-            if (!p.dead && zfx.climb === pr) youAlight();
+            if (!W.p.dead && W.zfx.climb === pr) youAlight();
           }
           if (pr.len < 4) {
             pr.gone = true;
@@ -12417,7 +12422,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
           if (ticks) {
             for (const o of W.firePlants) if (o.on === pr && !o.burn && !o.gone && o.u >= pr.u0 && o.u <= pr.u1) catchPlant(o);
-            if (!p.dead && zfx.climb === pr) youAlight();
+            if (!W.p.dead && W.zfx.climb === pr) youAlight();
           }
           if (pr.u0 <= 0 && pr.u1 >= 1) pr.gone = true;
         }
@@ -12430,33 +12435,33 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (Math.random() < dt * 40) flameAt(e.x + (Math.random() - 0.5) * e.r * 1.4, e.ty + (Math.random() - 0.3) * e.r);
           if (Math.random() < dt * 6) fireSmoke(e.x, e.ty - e.r);
           if (ticks) ignite(e.x, e.ty + e.r * 0.4, e.r * 0.8, 0.35);
-          if (!p.dead && Math.hypot(e.x - pcx, e.ty - pcy) < e.r + 8 && Math.random() < dt * 2) youAlight();
+          if (!W.p.dead && Math.hypot(e.x - pcx, e.ty - pcy) < e.r + 8 && Math.random() < dt * 2) youAlight();
           if (e.burnAcc >= 0.5 || e.burn <= 0) {
             const d = e.burnAcc;
             e.burnAcc = 0;
             if (d > 0 && W.enemies[j] === e) damageEnemy(j, d);
           }
         }
-        if (!p.dead) {
-          if (ticks && any && !(p.burn > 0) && (fireNear(W.fire, pcx, p.y + PH - 3, 3) || fireNear(W.fire, pcx, pcy, 3))) youAlight();
-          if (p.burn > 0 && FIRE_WET[zfx.surface]) {
-            p.burn = 0;
-            p.burnAcc = 0;
-            SFX.fx("sizzle", pcx, p.y + PH);
+        if (!W.p.dead) {
+          if (ticks && any && !(W.p.burn > 0) && (fireNear(W.fire, pcx, W.p.y + PH - 3, 3) || fireNear(W.fire, pcx, pcy, 3))) youAlight();
+          if (W.p.burn > 0 && FIRE_WET[W.zfx.surface]) {
+            W.p.burn = 0;
+            W.p.burnAcc = 0;
+            SFX.fx("sizzle", pcx, W.p.y + PH);
           }
-          if (p.burn > 0) {
-            p.burn -= dt;
-            p.burnAcc = (p.burnAcc || 0) + kr("fireYouDps") * dt;
-            if (Math.random() < dt * 40) flameAt(p.x + Math.random() * PW, p.y + PH * (0.2 + Math.random() * 0.8));
-            if (Math.random() < dt * 6) fireSmoke(pcx, p.y);
-            if (ticks) fireArea(W.fire, pcx, p.y + PH - 2, 5, 0.3);
-            if (p.burnAcc >= 2 || p.burn <= 0) {
-              const d = Math.round(p.burnAcc);
-              p.burnAcc -= d;
+          if (W.p.burn > 0) {
+            W.p.burn -= dt;
+            W.p.burnAcc = (W.p.burnAcc || 0) + kr("fireYouDps") * dt;
+            if (Math.random() < dt * 40) flameAt(W.p.x + Math.random() * PW, W.p.y + PH * (0.2 + Math.random() * 0.8));
+            if (Math.random() < dt * 6) fireSmoke(pcx, W.p.y);
+            if (ticks) fireArea(W.fire, pcx, W.p.y + PH - 2, 5, 0.3);
+            if (W.p.burnAcc >= 2 || W.p.burn <= 0) {
+              const d = Math.round(W.p.burnAcc);
+              W.p.burnAcc -= d;
               if (d > 0) hurt(d);
             }
           }
-        } else p.burn = 0;
+        } else W.p.burn = 0;
         if (any) {
           const x0 = camX / CELL - 4, x1 = (camX + viewW) / CELL + 4, y0 = camY / CELL - 4, y1 = (camY + viewH) / CELL + 4;
           const want = Math.min(20, Math.ceil(L.length * dt * 2.5));
@@ -12560,18 +12565,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         if (splash != null) return;
         fireBlast(x, y, R, hot);
-        const pcx = p.x + PW / 2, pcy = p.y + PH / 2;
+        const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
         const dist = Math.hypot(pcx - x, pcy - y), reach = R + 10;
-        if (dist < reach && !p.dead) {
+        if (dist < reach && !W.p.dead) {
           const f = 1 - dist / reach;
           hurt(Math.round(25 * f));
           const nx = (pcx - x) / (dist || 1), ny = (pcy - y) / (dist || 1);
-          p.vx += nx * 500 * f;
-          p.vy += ny * 500 * f - 150 * f;
-          p.kick = 0.25;
+          W.p.vx += nx * 500 * f;
+          W.p.vy += ny * 500 * f - 150 * f;
+          W.p.kick = 0.25;
         }
       }
-      const pOver = (pr, pad) => p.x + PW > pr.x + pr.l - pad && p.x < pr.x + pr.r + pad && p.y + PH > pr.y + pr.t0 - pad && p.y < pr.y + pr.b + pad;
+      const pOver = (pr, pad) => W.p.x + PW > pr.x + pr.l - pad && W.p.x < pr.x + pr.r + pad && W.p.y + PH > pr.y + pr.t0 - pad && W.p.y < pr.y + pr.b + pad;
       function alertAt(x, y) {
         rings.push({ x, y, t: 0 });
         for (const e of W.enemies) {
@@ -12686,7 +12691,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               continue;
             }
             if (pr.vy > 120 && (pr.k === "drop" || pr.k === "spike" || pr.k === "cover" || pr.k === "noise")) {
-              if (!p.dead && pOver(pr, 0)) {
+              if (!W.p.dead && pOver(pr, 0)) {
                 hurt(PROP_DMG.drop);
                 shatter(pr, 14);
                 continue;
@@ -12771,13 +12776,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             }
           }
           if (pr.ring > 0) pr.ring -= dt;
-          const me = !p.dead;
+          const me = !W.p.dead;
           switch (pr.k) {
             case "climb":
               if (pr.arc) {
                 if (!me || !pOver(pr, 0)) break;
                 const R = pr.grab || (pr.grab = kr("arGrab"));
-                const d = archNear(pr, pcx, p.y + WEB_HAND).d, d2 = archNear(pr, pcx, pcy).d;
+                const d = archNear(pr, pcx, W.p.y + WEB_HAND).d, d2 = archNear(pr, pcx, pcy).d;
                 if (Math.min(d, d2) < R + 3) plantsNow.add(pr);
                 if (d <= R && (!z.arch || d < z.archD)) {
                   z.arch = pr;
@@ -12841,8 +12846,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               if (me && pOver(pr, -1) && pr.cd <= 0) {
                 hurt(pr.st === "salt" ? 4 : PROP_DMG.spike);
                 pr.cd = 0.7;
-                p.vy = pr.hang ? 160 : -280;
-                burst(pcx, pr.hang ? p.y : p.y + PH, 5, "#ff5a5a");
+                W.p.vy = pr.hang ? 160 : -280;
+                burst(pcx, pr.hang ? W.p.y : W.p.y + PH, 5, "#ff5a5a");
               }
               break;
             case "vent": {
@@ -12874,7 +12879,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                   max: 0.4,
                   glow: 1
                 });
-                if (me && pr.cd <= 0 && p.x + PW > pr.x - 6 && p.x < pr.x + 6 && p.y < pr.y && p.y + PH > pr.y - VENT_H) {
+                if (me && pr.cd <= 0 && W.p.x + PW > pr.x - 6 && W.p.x < pr.x + 6 && W.p.y < pr.y && W.p.y + PH > pr.y - VENT_H) {
                   hurt(PROP_DMG.vent);
                   youAlight();
                   pr.cd = 0.4;
@@ -12895,17 +12900,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             }
             case "pad":
               if (pr.sq > 0) pr.sq -= dt;
-              if (me && p.vy >= 0 && Math.abs(pcx - pr.x) < 11 && p.y + PH > pr.y - 12 && p.y + PH < pr.y + 2) {
-                p.vy = -680;
-                p.onGround = false;
+              if (me && W.p.vy >= 0 && Math.abs(pcx - pr.x) < 11 && W.p.y + PH > pr.y - 12 && W.p.y + PH < pr.y + 2) {
+                W.p.vy = -680;
+                W.p.onGround = false;
                 pr.sq = 0.3;
                 SFX.fx("shroom", pr.x, pr.y);
                 burst(pr.x, pr.y - 8, 5, propCol(pr, themeFor(W.floor)));
               }
               break;
             case "zone": {
-              const on = me && p.onGround && p.x + PW > pr.x + pr.l && p.x < pr.x + pr.r && Math.abs(p.y + PH - pr.y) < 5;
-              const st = pr.st, moving = Math.abs(p.vx) > 30;
+              const on = me && W.p.onGround && W.p.x + PW > pr.x + pr.l && W.p.x < pr.x + pr.r && Math.abs(W.p.y + PH - pr.y) < 5;
+              const st = pr.st, moving = Math.abs(W.p.vx) > 30;
               if (st === "slime") {
                 for (const e of W.enemies)
                   if (e.x > pr.x + pr.l && e.x < pr.x + pr.r && e.ty > pr.y - 30 && e.ty < pr.y) e.chill = 0.45;
@@ -12937,7 +12942,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                   pr.cd = 0.5;
                 }
               } else if (st === "glass") {
-                if (Math.abs(p.vx) > 80 && pr.cd <= 0) {
+                if (Math.abs(W.p.vx) > 80 && pr.cd <= 0) {
                   hurt(2);
                   pr.cd = 0.35;
                   burst(pcx, pr.y - 1, 3, "#d8f4ff");
@@ -12952,7 +12957,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 smoke.push({
                   x: pcx + (Math.random() - 0.5) * 8,
                   y: pr.y - 2,
-                  vx: -p.vx * 0.2 + (Math.random() - 0.5) * 20,
+                  vx: -W.p.vx * 0.2 + (Math.random() - 0.5) * 20,
                   vy: -15 - Math.random() * 20,
                   r: 1.5 + Math.random() * 2,
                   life: 0.9,
@@ -12997,8 +13002,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 if (Math.hypot(pr.x + vx * t - pcx, pr.y - 2 + vy * t - pcy) < 10) {
                   hurt(PROP_DMG.tendril);
                   pr.cd = 0.8;
-                  p.vx += Math.cos(pr.aimA) * 220;
-                  p.kick = 0.15;
+                  W.p.vx += Math.cos(pr.aimA) * 220;
+                  W.p.kick = 0.15;
                 }
               }
               break;
@@ -13011,7 +13016,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           cl.tick -= dt;
           if (cl.tick <= 0) {
             cl.tick = 0.4;
-            if (!p.dead && Math.hypot(pcx - cl.x, pcy - cl.y) < cl.r) hurt(PROP_DMG.cloud);
+            if (!W.p.dead && Math.hypot(pcx - cl.x, pcy - cl.y) < cl.r) hurt(PROP_DMG.cloud);
             for (let j = W.enemies.length - 1; j >= 0; j--)
               if (Math.hypot(W.enemies[j].x - cl.x, W.enemies[j].ty - cl.y) < cl.r + W.enemies[j].r) damageEnemy(j, 1);
           }
@@ -13031,7 +13036,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (q.ember) {
             const ex = Math.floor(q.x / CELL), ey = Math.floor(q.y / CELL);
             if (ex >= 0 && ey >= 0 && ex < CW && ey < CH && W.fire.fuel[ey * CW + ex]) ignite(q.x, q.y, 2, 0.6);
-            if (!p.dead && q.x > p.x && q.x < p.x + PW && q.y > p.y && q.y < p.y + PH) {
+            if (!W.p.dead && q.x > W.p.x && q.x < W.p.x + PW && q.y > W.p.y && q.y < W.p.y + PH) {
               youAlight();
               dead = true;
             }
@@ -13053,7 +13058,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               glow: q.glow
             });
           }
-          if (!dead && q.dmg && !p.dead && q.x > p.x && q.x < p.x + PW && q.y > p.y && q.y < p.y + PH) {
+          if (!dead && q.dmg && !W.p.dead && q.x > W.p.x && q.x < W.p.x + PW && q.y > W.p.y && q.y < W.p.y + PH) {
             if (dripHurt <= 0) {
               hurt(q.dmg);
               dripHurt = 0.4;
@@ -13066,23 +13071,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         stepAmbience(dt);
         if (webLetGo > 0) z.arch = null;
         if (z.arch) z.climb = z.arch;
-        let entered = !!(z.climb && PLANTS[z.climb.st] && z.climb !== zfx.climb), style = null;
+        let entered = !!(z.climb && PLANTS[z.climb.st] && z.climb !== W.zfx.climb), style = null;
         for (const pr of plantsNow) if (!plantsLast.has(pr)) {
           entered = true;
           style = pr.st;
         }
-        const str = rustleStep(rustle, dt, plantsNow.size > 0, entered, Math.hypot(p.vx, p.vy));
+        const str = rustleStep(rustle, dt, plantsNow.size > 0, entered, Math.hypot(W.p.vx, W.p.vy));
         if (str) {
           const pr = style ? null : plantsNow.values().next().value;
           SFX.rustle(pcx, pcy, str, style || pr && pr.st || "vine");
         }
         plantsLast = new Set(plantsNow);
-        if (!p.dead) {
+        if (!W.p.dead) {
           let wd = Infinity;
           for (const L of webs) {
             const R = L.grab || (L.grab = spr("webGrab"));
             if (pcx < Math.min(L.a0x, L.b0x) - R || pcx > Math.max(L.a0x, L.b0x) + R || pcy < Math.min(L.a0y, L.b0y) - R - PH / 2 || pcy > Math.max(L.a0y, L.b0y) + R + PH / 2) continue;
-            const d = webDist(L, pcx, p.y + WEB_HAND);
+            const d = webDist(L, pcx, W.p.y + WEB_HAND);
             const d2 = webDist(L, pcx, pcy);
             if (Math.min(d, d2) > R) continue;
             z.webs++;
@@ -13096,7 +13101,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (z.web && !z.climb) z.climb = z.web;
           else if (z.climb !== z.web) z.web = null;
         }
-        zfx = z;
+        W.zfx = z;
       }
       const AMB_RATE = { spores: 5, frost: 3, embers: 8, motes: 4, ashfall: 55 };
       const AMB_MAX = { spores: 40, frost: 20, embers: 60, motes: 50, ashfall: 280 };
@@ -13288,16 +13293,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (input.current.spawnGun) {
           const gun2 = caveGun(input.current.spawnGun, Math.random);
           input.current.spawnGun = 0;
-          W.pickups.push({ kind: "gun", x: p.x + PW / 2 + p.face * 22, y: p.y + PH - 9, gun: gun2, t: 0 });
+          W.pickups.push({ kind: "gun", x: W.p.x + PW / 2 + W.p.face * 22, y: W.p.y + PH - 9, gun: gun2, t: 0 });
           toast("Spawned " + gun2.name);
         }
         const LO = input.current.loadout;
         const MHP = maxHp();
-        if (p.hp > MHP) p.hp = MHP;
-        if (pb.shield && !p.shieldReady) {
-          p.shieldT -= dt;
-          if (p.shieldT <= 0) {
-            p.shieldReady = true;
+        if (W.p.hp > MHP) W.p.hp = MHP;
+        if (W.pb.shield && !W.p.shieldReady) {
+          W.p.shieldT -= dt;
+          if (W.p.shieldT <= 0) {
+            W.p.shieldReady = true;
             SFX.fx("shieldUp");
           }
         }
@@ -13310,26 +13315,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             L = { active: true, nx: kx / len, ny: ny / len, mag: 1, dy: keys.w ? -1 : 1, on: true };
           }
         }
-        if (p.dead) L = NO_INPUT;
-        p.jx = L.nx;
-        p.jy = L.ny;
+        if (W.p.dead) L = NO_INPUT;
+        W.p.jx = L.nx;
+        W.p.jy = L.ny;
         const raw = L.active ? L.mag : 0;
         const mag = raw > DEAD ? (raw - DEAD) / (1 - DEAD) : 0;
         const wantJet = mag > 0 && L.dy < 0;
-        if (p.empty && p.fuel >= FUEL_RESTART) p.empty = false;
-        const jet = wantJet && !p.empty;
-        const climbing = zfx.climb && !jet && !p.dead;
-        p.jet = jet ? mag : 0;
-        p.sput = sputterStep(jetSt, dt, p.fuel, jet);
-        p.flame = p.sput ? 0 : p.jet;
-        if (p.sput) p.cough = 0.15;
-        else p.cough = Math.max(0, p.cough - dt);
+        if (W.p.empty && W.p.fuel >= FUEL_RESTART) W.p.empty = false;
+        const jet = wantJet && !W.p.empty;
+        const climbing = W.zfx.climb && !jet && !W.p.dead;
+        W.p.jet = jet ? mag : 0;
+        W.p.sput = sputterStep(jetSt, dt, W.p.fuel, jet);
+        W.p.flame = W.p.sput ? 0 : W.p.jet;
+        if (W.p.sput) W.p.cough = 0.15;
+        else W.p.cough = Math.max(0, W.p.cough - dt);
         if (jetSt.start) {
-          p.vy += DEV.sputDip;
+          W.p.vy += DEV.sputDip;
           for (let i = 0; i < 3; i++)
             smoke.push({
-              x: p.x + PW / 2 + (Math.random() - 0.5) * 6,
-              y: p.y + PH + 2,
+              x: W.p.x + PW / 2 + (Math.random() - 0.5) * 6,
+              y: W.p.y + PH + 2,
               vx: (Math.random() - 0.5) * 40,
               vy: 20 + Math.random() * 30,
               r: 2.5 + Math.random() * 2,
@@ -13340,132 +13345,132 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             });
         }
         if (jet) {
-          p.fuel -= FUEL_DRAIN * (0.5 + 0.5 * mag) * dt;
-          if (p.fuel <= 0) {
-            p.fuel = 0;
-            p.empty = true;
+          W.p.fuel -= FUEL_DRAIN * (0.5 + 0.5 * mag) * dt;
+          if (W.p.fuel <= 0) {
+            W.p.fuel = 0;
+            W.p.empty = true;
           }
-        } else if (p.onGround || climbing) {
-          p.fuel = Math.min(1, p.fuel + FUEL_REGEN * dt);
+        } else if (W.p.onGround || climbing) {
+          W.p.fuel = Math.min(1, W.p.fuel + FUEL_REGEN * dt);
         }
-        const pcx0 = p.x + PW / 2;
-        p.kick -= dt;
-        const k = p.kick > 0 ? 0.15 : 1;
-        const tied = strings.reduce((m, s) => m * s.slow, 1) * zfx.webMul;
+        const pcx0 = W.p.x + PW / 2;
+        W.p.kick -= dt;
+        const k = W.p.kick > 0 ? 0.15 : 1;
+        const tied = strings.reduce((m, s) => m * s.slow, 1) * W.zfx.webMul;
         webLetGo -= dt;
-        if (jet && p.sput) {
-          p.vx = approach(p.vx, L.nx * mag * JET * pb.walk * DEV.move * tied, JET_ACC * dt * k);
-          p.vy = Math.min(p.vy + GRAVITY * dt, 900);
+        if (jet && W.p.sput) {
+          W.p.vx = approach(W.p.vx, L.nx * mag * JET * W.pb.walk * DEV.move * tied, JET_ACC * dt * k);
+          W.p.vy = Math.min(W.p.vy + GRAVITY * dt, 900);
         } else if (jet) {
-          p.vx = approach(p.vx, L.nx * mag * JET * pb.walk * DEV.move * tied, JET_ACC * dt * k);
-          const ty = L.ny * mag * JET * pb.jet * DEV.move * tied;
-          if (ty < p.vy && p.kick <= 0 && p.cough <= 0) p.vy = ty;
-          else p.vy = approach(p.vy, ty, JET_ACC * dt * k);
-          if (zfx.rev) p.vy -= GRAVITY * zfx.rev * dt;
-        } else if (climbing && zfx.arch && p.kick <= 0) {
-          const ar = zfx.arch, hy = p.y + WEB_HAND, q = archNear(ar, pcx0, hy);
+          W.p.vx = approach(W.p.vx, L.nx * mag * JET * W.pb.walk * DEV.move * tied, JET_ACC * dt * k);
+          const ty = L.ny * mag * JET * W.pb.jet * DEV.move * tied;
+          if (ty < W.p.vy && W.p.kick <= 0 && W.p.cough <= 0) W.p.vy = ty;
+          else W.p.vy = approach(W.p.vy, ty, JET_ACC * dt * k);
+          if (W.zfx.rev) W.p.vy -= GRAVITY * W.zfx.rev * dt;
+        } else if (climbing && W.zfx.arch && W.p.kick <= 0) {
+          const ar = W.zfx.arch, hy = W.p.y + WEB_HAND, q = archNear(ar, pcx0, hy);
           const a = ar.arc[q.k], b = ar.arc[q.k + 1], ul = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
           const ux = (b[0] - a[0]) / ul, uy = (b[1] - a[1]) / ul;
           const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
           if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) {
             webLetGo = 0.35;
-            p.vy = 40;
+            W.p.vy = 40;
           } else {
             const v = along * (ar.climb || (ar.climb = kr("arClimb"))) * tied;
-            p.vx = approach(p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
-            p.vy = approach(p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
+            W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
+            W.p.vy = approach(W.p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
           }
-        } else if (climbing && zfx.web && p.kick <= 0) {
-          const ln = zfx.web, wl = Math.hypot(ln.b0x - ln.a0x, ln.b0y - ln.a0y) || 1;
+        } else if (climbing && W.zfx.web && W.p.kick <= 0) {
+          const ln = W.zfx.web, wl = Math.hypot(ln.b0x - ln.a0x, ln.b0y - ln.a0y) || 1;
           let ux = (ln.b0x - ln.a0x) / wl, uy = (ln.b0y - ln.a0y) / wl;
           const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
           if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) {
             webLetGo = 0.35;
-            p.vy = 40;
+            W.p.vy = 40;
           } else {
-            const v = along * (ln.climb || (ln.climb = spr("webClimb"))) * tied, hy = p.y + WEB_HAND, q = webNear(ln, pcx0, hy);
-            p.vx = approach(p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
-            p.vy = approach(p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
+            const v = along * (ln.climb || (ln.climb = spr("webClimb"))) * tied, hy = W.p.y + WEB_HAND, q = webNear(ln, pcx0, hy);
+            W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
+            W.p.vy = approach(W.p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
           }
         } else {
-          const target = mag > 0 ? L.nx * mag * WALK * pb.walk * DEV.move * zfx.slow * tied : 0;
-          p.vx = approach(p.vx, target, (p.onGround ? GROUND_ACC * (zfx.slick ? 0.08 : 1) : AIR_ACC) * dt * k);
-          if (climbing && p.kick <= 0) p.vy = approach(p.vy, mag > 0 ? L.ny * mag * CLIMB * tied : 0, 1800 * dt);
-          else p.vy = Math.min(p.vy + GRAVITY * dt * (1 - 2 * zfx.rev), 900);
+          const target = mag > 0 ? L.nx * mag * WALK * W.pb.walk * DEV.move * W.zfx.slow * tied : 0;
+          W.p.vx = approach(W.p.vx, target, (W.p.onGround ? GROUND_ACC * (W.zfx.slick ? 0.08 : 1) : AIR_ACC) * dt * k);
+          if (climbing && W.p.kick <= 0) W.p.vy = approach(W.p.vy, mag > 0 ? L.ny * mag * CLIMB * tied : 0, 1800 * dt);
+          else W.p.vy = Math.min(W.p.vy + GRAVITY * dt * (1 - 2 * W.zfx.rev), 900);
         }
-        const wasGround = p.onGround, fallV = p.vy;
-        let n = Math.ceil(Math.abs(p.vx * dt));
+        const wasGround = W.p.onGround, fallV = W.p.vy;
+        let n = Math.ceil(Math.abs(W.p.vx * dt));
         if (n > 0) {
-          const sx = p.vx * dt / n;
+          const sx = W.p.vx * dt / n;
           for (let i = 0; i < n; i++) {
-            if (!boxHit(p.x + sx, p.y)) {
-              p.x += sx;
+            if (!boxHit(W.p.x + sx, W.p.y)) {
+              W.p.x += sx;
               continue;
             }
             let moved = false;
             const maxUp = wasGround ? 6 : 3;
             for (let up = 1; up <= maxUp; up++) {
-              if (!boxHit(p.x + sx, p.y - up)) {
-                p.x += sx;
-                p.y -= up;
+              if (!boxHit(W.p.x + sx, W.p.y - up)) {
+                W.p.x += sx;
+                W.p.y -= up;
                 moved = true;
                 break;
               }
             }
             if (!moved) {
-              p.vx = 0;
+              W.p.vx = 0;
               break;
             }
           }
         }
-        n = Math.ceil(Math.abs(p.vy * dt));
+        n = Math.ceil(Math.abs(W.p.vy * dt));
         if (n > 0) {
-          const sy = p.vy * dt / n;
+          const sy = W.p.vy * dt / n;
           for (let i = 0; i < n; i++) {
-            if (!boxHit(p.x, p.y + sy)) {
-              p.y += sy;
+            if (!boxHit(W.p.x, W.p.y + sy)) {
+              W.p.y += sy;
               continue;
             }
-            if (sy > 0) p.y = Math.floor((p.y + sy + PH - 1e-3) / CELL) * CELL - PH;
-            else p.y = (Math.floor((p.y + sy) / CELL) + 1) * CELL;
-            if (boxHit(p.x, p.y)) p.y -= sy;
-            p.vy = 0;
+            if (sy > 0) W.p.y = Math.floor((W.p.y + sy + PH - 1e-3) / CELL) * CELL - PH;
+            else W.p.y = (Math.floor((W.p.y + sy) / CELL) + 1) * CELL;
+            if (boxHit(W.p.x, W.p.y)) W.p.y -= sy;
+            W.p.vy = 0;
             break;
           }
         }
-        if (wasGround && !jet && p.vy >= 0 && p.kick <= 0 && !boxHit(p.x, p.y + 1)) {
+        if (wasGround && !jet && W.p.vy >= 0 && W.p.kick <= 0 && !boxHit(W.p.x, W.p.y + 1)) {
           for (let dn = 1; dn <= 6; dn++) {
-            if (boxHit(p.x, p.y + dn + 1)) {
-              p.y += dn;
-              p.vy = 0;
+            if (boxHit(W.p.x, W.p.y + dn + 1)) {
+              W.p.y += dn;
+              W.p.vy = 0;
               break;
             }
           }
         }
-        if (boxHit(p.x, p.y)) {
-          for (let up = 1; up <= 40; up++) if (!boxHit(p.x, p.y - up)) {
-            p.y -= up;
+        if (boxHit(W.p.x, W.p.y)) {
+          for (let up = 1; up <= 40; up++) if (!boxHit(W.p.x, W.p.y - up)) {
+            W.p.y -= up;
             break;
           }
         }
-        if (p.y > WH) {
-          p.x = W.start.x;
-          p.y = W.start.y;
-          p.vx = 0;
-          p.vy = 0;
+        if (W.p.y > WH) {
+          W.p.x = W.start.x;
+          W.p.y = W.start.y;
+          W.p.vx = 0;
+          W.p.vy = 0;
         }
-        p.onGround = boxHit(p.x, p.y + 0.5);
-        if (!p.dead) {
-          if (p.onGround && !wasGround && fallV > 200) SFX.fx("land", null, null, { v: fallV, s: zfx.surface });
-          if (p.onGround && Math.abs(p.vx) > 40) {
-            if ((stepT -= dt * Math.abs(p.vx) / 40) <= 0) {
+        W.p.onGround = boxHit(W.p.x, W.p.y + 0.5);
+        if (!W.p.dead) {
+          if (W.p.onGround && !wasGround && fallV > 200) SFX.fx("land", null, null, { v: fallV, s: W.zfx.surface });
+          if (W.p.onGround && Math.abs(W.p.vx) > 40) {
+            if ((stepT -= dt * Math.abs(W.p.vx) / 40) <= 0) {
               stepT = 1;
-              SFX.fx("step", null, null, zfx.surface);
+              SFX.fx("step", null, null, W.zfx.surface);
             }
           } else stepT = Math.min(stepT, 0.35);
         }
-        const pcx = p.x + PW / 2, pcy = p.y + PH / 2;
-        if (!p.dead && pcx > W.portal.x && pcx < W.portal.x + W.portal.w && pcy > W.portal.y && pcy < W.portal.y + W.portal.h) {
+        const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
+        if (!W.p.dead && pcx > W.portal.x && pcx < W.portal.x + W.portal.w && pcy > W.portal.y && pcy < W.portal.y + W.portal.h) {
           W.floor++;
           enterLevel();
           saveRun();
@@ -13474,15 +13479,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           input.current.notify();
           return;
         }
-        const gx = pcx, gy = p.y + PH * 0.4;
+        const gx = pcx, gy = W.p.y + PH * 0.4;
         const TR = input.current.right;
-        let R = { on: false, show: false, nx: p.face, ny: 0 };
+        let R = { on: false, show: false, nx: W.p.face, ny: 0 };
         if (TR.active) R = { on: TR.on, show: true, nx: TR.nx, ny: TR.ny, vis: Math.min(1, TR.mag / AIM_DEAD) };
         else if (mouse.inside) {
           const dx = camX + mouse.x / unitPx - gx, dy = camY + mouse.y / unitPx - gy, d = Math.hypot(dx, dy);
           if (d > 1) R = { on: mouse.down, show: true, nx: dx / d, ny: dy / d };
         }
-        if (pb.pinpointer && !p.dead) {
+        if (W.pb.pinpointer && !W.p.dead) {
           let best2 = null, bd = 1e9;
           for (const e of W.enemies) {
             const d = Math.hypot(e.x - gx, e.ty - gy);
@@ -13496,10 +13501,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             R = { on: R.on || TR.active && TR.on, show: true, nx: Math.cos(a), ny: Math.sin(a), vis: R.vis };
           }
         }
-        if (p.dead) R.on = false;
-        p.aim = R;
-        if (R.show) p.face = R.nx >= 0 ? 1 : -1;
-        else if (Math.abs(p.vx) > 10) p.face = p.vx > 0 ? 1 : -1;
+        if (W.p.dead) R.on = false;
+        W.p.aim = R;
+        if (R.show) W.p.face = R.nx >= 0 ? 1 : -1;
+        else if (Math.abs(W.p.vx) > 10) W.p.face = W.p.vx > 0 ? 1 : -1;
         for (const g of LO.guns) {
           if (!g) continue;
           const pas = gunPassives(g);
@@ -13558,7 +13563,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
           if (b.orbit) turn(b, b.orbit * dt);
           if (b.boomer) {
-            const want = Math.atan2(p.y + PH / 2 - b.y, p.x + PW / 2 - b.x);
+            const want = Math.atan2(W.p.y + PH / 2 - b.y, W.p.x + PW / 2 - b.x);
             turn(b, clamp(angDiff(want, Math.atan2(b.vy, b.vx)), -b.boomer * dt, b.boomer * dt));
           }
           if (b.eat) dig(b.x, b.y, b.eat);
@@ -13726,7 +13731,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 break;
               }
             }
-            if (b.friendly && !p.dead && nx > p.x - 2 && nx < p.x + PW + 2 && ny > p.y - 2 && ny < p.y + PH + 2) {
+            if (b.friendly && !W.p.dead && nx > W.p.x - 2 && nx < W.p.x + PW + 2 && ny > W.p.y - 2 && ny < W.p.y + PH + 2) {
               burst(nx, ny, 5, b.col);
               hurt(Math.round(b.dmg * 2));
               dead = true;
@@ -13801,13 +13806,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         SFX.ear(pcx, pcy);
         if (!jetLoop && SFX.ready) jetLoop = SFX.loop("jet");
         if (jetLoop) jetLoop.set(
-          p.dead ? 0 : Math.min(1, p.flame) * 0.35,
+          W.p.dead ? 0 : Math.min(1, W.p.flame) * 0.35,
           null,
           null,
-          (1 + 0.49 * Math.min(1, p.flame)) * jetPitch(jetSt.onT)
+          (1 + 0.49 * Math.min(1, W.p.flame)) * jetPitch(jetSt.onT)
         );
-        if (p.empty && !wasEmpty) SFX.ui("sputter");
-        wasEmpty = p.empty;
+        if (W.p.empty && !wasEmpty) SFX.ui("sputter");
+        wasEmpty = W.p.empty;
         for (const b of bullets) if (b.pull) {
           let h3 = bhLoops.get(b);
           if (!h3 && bhLoops.size < 3 && SFX.ready) {
@@ -13835,14 +13840,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (best2 && !matterLoop && SFX.ready) matterLoop = SFX.loop("matter");
           if (matterLoop && best2) matterLoop.set(0.6, best2.x, best2.y);
         }
-        if (p.jet > 0 && !wasJet) SFX.fx("ignite");
-        wasJet = p.jet > 0;
+        if (W.p.jet > 0 && !wasJet) SFX.fx("ignite");
+        wasJet = W.p.jet > 0;
         for (const dv of devils) if ((dv.snd = (dv.snd || 0) - dt) <= 0) {
           dv.snd = 0.9 + Math.random() * 0.8;
           SFX.fx("whirl", dv.x, dv.y - 14);
         }
-        if (!p.dead && p.hp / MHP < 0.3 && (beatT -= dt) <= 0) {
-          beatT = 0.55 + 1.5 * p.hp / MHP;
+        if (!W.p.dead && W.p.hp / MHP < 0.3 && (beatT -= dt) <= 0) {
+          beatT = 0.55 + 1.5 * W.p.hp / MHP;
           SFX.ui("beat");
         }
         for (let i = fields.length - 1; i >= 0; i--) {
@@ -13855,7 +13860,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               f.dT = 0.15;
               if (fireDouse(W.fire, f.x, f.y, f.r) && Math.random() < 0.5) SFX.fx("steam", f.x, f.y);
               for (const e of W.enemies) if (e.burn > 0 && Math.hypot(e.x - f.x, e.ty - f.y) < f.r) e.burn = 0;
-              if (p.burn > 0 && Math.hypot(pcx - f.x, pcy - f.y) < f.r) p.burn = 0;
+              if (W.p.burn > 0 && Math.hypot(pcx - f.x, pcy - f.y) < f.r) W.p.burn = 0;
             }
             if (f.field === "slow" && Math.random() < dt * 14) {
               const a = Math.random() * 6.283, r = Math.random() * f.r;
@@ -13899,9 +13904,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               }
             }
           } else if (f.field === "heal") {
-            if (Math.hypot(pcx - f.x, pcy - f.y) < f.r && p.hp < MHP && f.tick <= 0) {
+            if (Math.hypot(pcx - f.x, pcy - f.y) < f.r && W.p.hp < MHP && f.tick <= 0) {
               f.tick = 0.4;
-              p.hp = Math.min(MHP, p.hp + 4 * pb.heal);
+              W.p.hp = Math.min(MHP, W.p.hp + 4 * W.pb.heal);
               input.current.notify();
               SFX.fx("healtick");
             }
@@ -13965,9 +13970,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         for (let i = coins.length - 1; i >= 0; i--) {
           const g = coins[i];
           const dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;
-          const pull = COIN_PULL * pb.goldPull;
+          const pull = COIN_PULL * W.pb.goldPull;
           if (g.nopull > 0) g.nopull -= dt;
-          if (d < pull && !p.dead && !(g.nopull > 0)) {
+          if (d < pull && !W.p.dead && !(g.nopull > 0)) {
             const grab = 180 + 900 * (1 - d / pull);
             g.vx = (g.vx || 0) + dx / d * grab * dt * 6;
             g.vy += dy / d * grab * dt * 6;
@@ -14015,7 +14020,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             g.vy = 0;
           } else g.y = ny;
         }
-        const inShop = p.y + PH > SHOP_Y;
+        const inShop = W.p.y + PH > SHOP_Y;
         let near = null;
         for (const it of W.stock) {
           if (it.sold) continue;
@@ -14036,7 +14041,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           break;
         }
         const nearKey = !near ? -1 : near.src + ":" + (near.src === "shop" ? W.stock.indexOf(near.it) : near.src === "room" ? W.rooms.indexOf(near.r) : W.pickups.indexOf(near.q));
-        const label = !near ? null : near.src === "shop" ? near.it.kind === "heal" ? { text: "Full heal", price: 0, can: p.hp < MHP } : near.it.kind === "gun" ? {
+        const label = !near ? null : near.src === "shop" ? near.it.kind === "heal" ? { text: "Full heal", price: 0, can: W.p.hp < MHP } : near.it.kind === "gun" ? {
           text: near.it.gun.name,
           gun: near.it.gun,
           price: near.it.price,
@@ -14063,7 +14068,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           input.current.inShop = inShop;
           input.current.notify();
         }
-        if (p.dead && input.current.interact) {
+        if (W.p.dead && input.current.interact) {
           input.current.interact = false;
           if (input.current.requestRestart) input.current.requestRestart();
         }
@@ -14072,8 +14077,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (near.src === "shop") {
             const it = near.it;
             if (it.kind === "heal") {
-              if (p.hp < MHP) {
-                p.hp = MHP;
+              if (W.p.hp < MHP) {
+                W.p.hp = MHP;
                 it.sold = true;
                 toast("Patched up");
                 SFX.ui("heal");
@@ -14101,13 +14106,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               (LO.perks || (LO.perks = [])).push(r.id);
               refreshBag();
               const after = maxHp();
-              if (after > before) p.hp += after - before;
-              p.hp = Math.min(p.hp, after);
-              if (pb.seeAll) {
+              if (after > before) W.p.hp += after - before;
+              W.p.hp = Math.min(W.p.hp, after);
+              if (W.pb.seeAll) {
                 W.seen.fill(2);
                 paintFog();
               }
-              if (pb.ghost && !ghost) ghost = { x: pcx, y: pcy, cd: 0 };
+              if (W.pb.ghost && !W.ghost) W.ghost = { x: pcx, y: pcy, cd: 0 };
               toast("Perk: " + PERKS[r.id].name);
               SFX.ui("perk");
             } else {
@@ -14142,8 +14147,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           const dx = pcx - e.x, dy = pcy - e.ty, dist = Math.hypot(dx, dy) || 1;
           e.lx = dx / dist;
           e.ly = dy / dist;
-          const sees = (pb.invis ? 0.4 : 1) / DEV.zoom;
-          const chaser = HUNTERS[k2.act] && !p.dead;
+          const sees = (W.pb.invis ? 0.4 : 1) / DEV.zoom;
+          const chaser = HUNTERS[k2.act] && !W.p.dead;
           if (k2.kp && (e.aggroT = (e.aggroT || 0) - dt) <= 0) {
             e.aggroM = kr(k2.kp + "Aggro");
             e.aggroT = 1;
@@ -14227,8 +14232,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               stay: W.zone ? natural : null
             }, dt) === "pulse") puffSpores(e);
             const S = e.je;
-            if (!p.dead && e.touch <= 0 && dist < 180) {
-              const t = tentacleTouch(S, p.x, p.y, p.x + PW, p.y + PH);
+            if (!W.p.dead && e.touch <= 0 && dist < 180) {
+              const t = tentacleTouch(S, W.p.x, W.p.y, W.p.x + PW, W.p.y + PH);
               if (t) {
                 hurt(Math.round(kr("jeBite")));
                 e.touch = kr("jeBiteCd");
@@ -14317,7 +14322,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             if (e.charge > 0) {
               e.charge -= dt;
               if (e.charge <= 0) fireEnemyShot(e, pcx, pcy);
-            } else if (!p.dead && dist < k2.range * sees && e.cd <= 0) {
+            } else if (!W.p.dead && dist < k2.range * sees && e.cd <= 0) {
               e.cd = 0.4;
               if (lineOfSight(e.x, e.ty, pcx, pcy)) {
                 e.cd = k2.cd * (0.85 + Math.random() * 0.3);
@@ -14333,7 +14338,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             }
           }
         }
-        if (pb.contact && !p.dead) {
+        if (W.pb.contact && !W.p.dead) {
           for (let i = W.enemies.length - 1; i >= 0; i--) {
             const e = W.enemies[i];
             if (Math.hypot(e.x - pcx, e.ty - pcy) < e.r + 12) damageEnemy(i, 45 * dt);
@@ -14342,7 +14347,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         for (let i = enemyShots.length - 1; i >= 0; i--) {
           const b = enemyShots[i];
           b.life -= dt;
-          if (pb.repel) {
+          if (W.pb.repel) {
             const rx = b.x - pcx, ry = b.y - pcy, rd = Math.hypot(rx, ry) || 1;
             if (rd < 72) {
               b.vx += rx / rd * 1100 * dt;
@@ -14364,7 +14369,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               if (b.fire) ignite(b.x - b.vx * dt / sn, b.y - b.vy * dt / sn, 8, 0.9);
               break;
             }
-            if (!p.dead && b.x > p.x - 2 && b.x < p.x + PW + 2 && b.y > p.y - 2 && b.y < p.y + PH + 2) {
+            if (!W.p.dead && b.x > W.p.x - 2 && b.x < W.p.x + PW + 2 && b.y > W.p.y - 2 && b.y < W.p.y + PH + 2) {
               gone = true;
               if (b.splat != null) splat(b, b.x, b.y);
               else burst(b.x, b.y, 5, COL.player);
@@ -14386,9 +14391,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               gone = true;
               break;
             }
-            if (!p.dead && b.x > p.x - 3 && b.x < p.x + PW + 3 && b.y > p.y - 3 && b.y < p.y + PH + 3) {
+            if (!W.p.dead && b.x > W.p.x - 3 && b.x < W.p.x + PW + 3 && b.y > W.p.y - 3 && b.y < W.p.y + PH + 3) {
               gone = true;
-              strings.push({ ax: b.ax, ay: b.ay, ox: b.x - p.x, oy: b.y - p.y, slow: spr("spSlow"), max: spr("spSilkMax") });
+              strings.push({ ax: b.ax, ay: b.ay, ox: b.x - W.p.x, oy: b.y - W.p.y, slow: spr("spSlow"), max: spr("spSilkMax") });
               SFX.fx("lash", b.x, b.y);
             }
           }
@@ -14396,10 +14401,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         for (let i = strings.length - 1; i >= 0; i--) {
           const s = strings[i];
-          if (Math.hypot(p.x + s.ox - s.ax, p.y + s.oy - s.ay) > s.max) {
+          if (Math.hypot(W.p.x + s.ox - s.ax, W.p.y + s.oy - s.ay) > s.max) {
             strings.splice(i, 1);
-            burst(p.x + s.ox, p.y + s.oy, 4, "#e8e8f0");
-            SFX.fx("lash", p.x + s.ox, p.y + s.oy);
+            burst(W.p.x + s.ox, W.p.y + s.oy, 4, "#e8e8f0");
+            SFX.fx("lash", W.p.x + s.ox, W.p.y + s.oy);
           }
         }
         for (let n2 = Math.min(webs.length, 6); n2 > 0; n2--) {
@@ -14410,33 +14415,33 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             if (!webs.length) break;
           }
         }
-        p.hitT -= dt;
-        if (pb.ghost) {
-          if (!ghost) ghost = { x: pcx, y: pcy, cd: 0 };
-          const gtx = pcx - p.face * 22, gty = p.y - 4;
+        W.p.hitT -= dt;
+        if (W.pb.ghost) {
+          if (!W.ghost) W.ghost = { x: pcx, y: pcy, cd: 0 };
+          const gtx = pcx - W.p.face * 22, gty = W.p.y - 4;
           const lp = Math.min(1, dt * 4);
-          ghost.x += (gtx - ghost.x) * lp;
-          ghost.y += (gty - ghost.y) * lp;
-          ghost.cd -= dt;
-          if (ghost.cd <= 0 && !p.dead) {
+          W.ghost.x += (gtx - W.ghost.x) * lp;
+          W.ghost.y += (gty - W.ghost.y) * lp;
+          W.ghost.cd -= dt;
+          if (W.ghost.cd <= 0 && !W.p.dead) {
             let best2 = null, bd = 340;
             for (const e of W.enemies) {
-              const d = Math.hypot(e.x - ghost.x, e.ty - ghost.y);
+              const d = Math.hypot(e.x - W.ghost.x, e.ty - W.ghost.y);
               if (d < bd) {
                 bd = d;
                 best2 = e;
               }
             }
             if (best2) {
-              ghost.cd = 0.7;
-              const a = Math.atan2(best2.ty - ghost.y, best2.x - ghost.x);
+              W.ghost.cd = 0.7;
+              const a = Math.atan2(best2.ty - W.ghost.y, best2.x - W.ghost.x);
               bullets.push({
-                x: ghost.x,
-                y: ghost.y,
+                x: W.ghost.x,
+                y: W.ghost.y,
                 vx: Math.cos(a) * 480,
                 vy: Math.sin(a) * 480,
                 life: 1.2,
-                dmg: 2 * pb.dmg,
+                dmg: 2 * W.pb.dmg,
                 size: 2,
                 col: "#c9a6ff",
                 spin: 0,
@@ -14453,13 +14458,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 age: 0,
                 born: 1.2
               });
-              SFX.fx("ghost", ghost.x, ghost.y);
+              SFX.fx("ghost", W.ghost.x, W.ghost.y);
             }
           }
-        } else ghost = null;
+        } else W.ghost = null;
         fireFrame(dt, pcx, pcy);
-        if (pb.trail && p.flame > 0 && !p.dead) {
-          const bn = { x: pcx + (Math.random() - 0.5) * 6, y: p.y + PH, life: 0.7, max: 0.7 };
+        if (W.pb.trail && W.p.flame > 0 && !W.p.dead) {
+          const bn = { x: pcx + (Math.random() - 0.5) * 6, y: W.p.y + PH, life: 0.7, max: 0.7 };
           burns.push(bn);
           if (burns.length > 48) burns.shift();
           fireArea(W.fire, bn.x, bn.y + 2, 4, 0.4);
@@ -14474,17 +14479,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             }
           if (bn.life <= 0) burns.splice(i, 1);
         }
-        if (p.flame > 0) {
-          let fx = -p.jx, fy = -p.jy + 0.8;
+        if (W.p.flame > 0) {
+          let fx = -W.p.jx, fy = -W.p.jy + 0.8;
           const fl = Math.hypot(fx, fy) || 1;
           fx /= fl;
           fy /= fl;
-          smokeAcc += dt * (25 + 35 * p.flame);
+          smokeAcc += dt * (25 + 35 * W.p.flame);
           while (smokeAcc >= 1) {
             smokeAcc--;
             smoke.push({
               x: pcx + (Math.random() - 0.5) * 5,
-              y: p.y + PH + 3,
+              y: W.p.y + PH + 3,
               vx: fx * 50 + (Math.random() - 0.5) * 20,
               vy: fy * 50 + (Math.random() - 0.5) * 20,
               r: 1.5 + Math.random(),
@@ -14521,7 +14526,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           flashes[i].t += dt;
           if (flashes[i].t > 0.25) flashes.splice(i, 1);
         }
-        best = Math.max(best, Math.round((W.start.y - p.y) / 10));
+        best = Math.max(best, Math.round((W.start.y - W.p.y) / 10));
         torchT += dt;
         flickN += (Math.random() - 0.5) * 2.6 * dt;
         flickN *= 0.94;
@@ -14538,7 +14543,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           torchP.push({
             x: th.x + (Math.random() - 0.5) * 2,
             y: th.y - 7,
-            vx: (Math.random() - 0.5) * 10 + p.vx * 0.15,
+            vx: (Math.random() - 0.5) * 10 + W.p.vx * 0.15,
             vy: -20 - Math.random() * 22,
             life,
             max: life,
@@ -14555,7 +14560,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           q.y += q.vy * dt;
           if ((q.life -= dt) <= 0) torchP.splice(i, 1);
         }
-        const wantX = clamp(-p.vx * 0.055, -11, 11), wantY = clamp(-p.vy * 0.03, -5, 7);
+        const wantX = clamp(-W.p.vx * 0.055, -11, 11), wantY = clamp(-W.p.vy * 0.03, -5, 7);
         leanVX += ((wantX - leanX) * 90 - leanVX * 9) * dt;
         leanVY += ((wantY - leanY) * 90 - leanVY * 9) * dt;
         leanX += leanVX * dt;
@@ -14566,7 +14571,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         while (portalAcc > 0.05) {
           portalAcc -= 0.05;
           const ex = W.portal.x + W.portal.w / 2, ey = W.portal.y + W.portal.h / 2;
-          if (Math.abs(ey - p.y) < 500) {
+          if (Math.abs(ey - W.p.y) < 500) {
             const a = Math.random() * 6.28, rr2 = 30 + Math.random() * 38;
             const life = 1.4 + Math.random() * 0.8;
             motes.push({
@@ -14585,7 +14590,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               c: Math.random() < 0.4 ? "#c8ffe4" : COL.portal
             });
           }
-          if (Math.abs(W.arrival.y - p.y) < 500) {
+          if (Math.abs(W.arrival.y - W.p.y) < 500) {
             const a = Math.random() * 6.28, sp = 10 + Math.random() * 16;
             motes.push({
               kind: "out",
@@ -14645,7 +14650,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const s = Math.min(c.width / VIEW_W, playPx / VIEW_MIN_H) * DEV.zoom * (RPV ? RPV.zoom : 1), vw = c.width / s, vh = c.height / s;
         const vhp = playPx / s;
         unitPx = s / dpr;
-        const pcx = p.x + PW / 2, pcy = p.y + PH / 2;
+        const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
         if (RPV) {
           if (RPV.follow) {
             RPV.cx = vw >= WW ? WW / 2 : clamp(RPV.cx - vw / 2, 0, WW - vw) + vw / 2;
@@ -14955,7 +14960,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         for (const s2 of strings) {
           ctx.moveTo(s2.ax, s2.ay);
-          ctx.lineTo(p.x + s2.ox, p.y + s2.oy);
+          ctx.lineTo(W.p.x + s2.ox, W.p.y + s2.oy);
         }
         ctx.stroke();
         ctx.globalAlpha = 1;
@@ -15661,13 +15666,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.fill();
         }
         ctx.globalAlpha = 1;
-        if (p.flame > 0) {
-          let fx = -p.jx, fy = -p.jy + 0.8;
+        if (W.p.flame > 0) {
+          let fx = -W.p.jx, fy = -W.p.jy + 0.8;
           const fl = Math.hypot(fx, fy) || 1;
           fx /= fl;
           fy /= fl;
-          const len = 6 + p.flame * 16 + Math.random() * 3;
-          const bx = pcx, by = p.y + PH - 2;
+          const len = 6 + W.p.flame * 16 + Math.random() * 3;
+          const bx = pcx, by = W.p.y + PH - 2;
           ctx.fillStyle = COL.flame;
           ctx.beginPath();
           ctx.moveTo(bx - 4, by);
@@ -15681,12 +15686,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.lineTo(bx + fx * len * 0.55, by + fy * len * 0.55);
           ctx.fill();
         }
-        const R = p.aim;
+        const R = W.p.aim;
         const held = input.current.loadout.guns[input.current.loadout.sel];
-        const ax = R.show ? R.nx : p.face, ay = R.show ? R.ny : 0;
-        const gy = p.y + PH * 0.52;
+        const ax = R.show ? R.nx : W.p.face, ay = R.show ? R.ny : 0;
+        const gy = W.p.y + PH * 0.52;
         const tvis = R.vis == null ? 1 : R.vis;
-        if (!RPV && !p.dead && R.show && held && pb.trajectory && tvis > 0) {
+        if (!RPV && !W.p.dead && R.show && held && W.pb.trajectory && tvis > 0) {
           const sim = Object.assign({}, held, {
             slots: held.slots.slice(),
             order: held.order.slice(),
@@ -15729,9 +15734,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             const cone = drawn === 0 && sh.spread > 2 ? [-sh.spread / 2, 0, sh.spread / 2] : [0];
             drawn++;
             const tsh = Object.assign({}, sh, {
-              bounce: sh.bounce + pb.bounce,
-              homing: Math.max(sh.homing, pb.homing),
-              speed: sh.speed * pb.speed * bhSp(sh)
+              bounce: sh.bounce + W.pb.bounce,
+              homing: Math.max(sh.homing, W.pb.homing),
+              speed: sh.speed * W.pb.speed * bhSp(sh)
             });
             for (const off of cone) {
               const a = Math.atan2(R.ny, R.nx) + off * Math.PI / 180;
@@ -15758,17 +15763,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
           ctx.globalAlpha = 1;
         }
-        if (p.dead) ctx.globalAlpha = 0.35;
-        const flashing = p.hitT > 0 && Math.floor(p.hitT * 30) % 2 === 0;
-        const running = p.onGround && Math.abs(p.vx) > 15;
+        if (W.p.dead) ctx.globalAlpha = 0.35;
+        const flashing = W.p.hitT > 0 && Math.floor(W.p.hitT * 30) % 2 === 0;
+        const running = W.p.onGround && Math.abs(W.p.vx) > 15;
         const gait = running ? Math.sin(time * 15) : 0;
-        drawRunner(ctx, p.x, p.y, PW, PH, p.face, gait, !p.onGround, p.flame, flashing);
-        if (!p.dead) drawGun(ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
-        if (!p.dead) {
+        drawRunner(ctx, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing);
+        if (!W.p.dead) drawGun(ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
+        if (!W.p.dead) {
           const th = torchHand();
           drawTorch(ctx, th.x, th.y, ax >= 0 ? -1 : 1, flick, torchP, leanX, leanY, time);
         }
-        if (!p.dead) {
+        if (!W.p.dead) {
           const cxp = pcx + ax * DEV.aimDist, cyp = gy + ay * DEV.aimDist;
           const inr = 1.25, outr = 3;
           ctx.strokeStyle = "rgba(255,255,255,0.92)";
@@ -15786,7 +15791,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.stroke();
         }
         ctx.globalAlpha = 1;
-        if (pb.shield && p.shieldReady && !p.dead) {
+        if (W.pb.shield && W.p.shieldReady && !W.p.dead) {
           ctx.globalAlpha = 0.35 + 0.15 * Math.sin(time * 4);
           ctx.strokeStyle = "#7ad7ff";
           ctx.lineWidth = 2;
@@ -15795,22 +15800,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.stroke();
           ctx.globalAlpha = 1;
         }
-        if (pb.ghost && ghost && !p.dead) {
+        if (W.pb.ghost && W.ghost && !W.p.dead) {
           const gb = Math.sin(time * 3) * 2;
           ctx.globalAlpha = 0.55;
           ctx.fillStyle = "#c9a6ff";
           ctx.beginPath();
-          ctx.arc(ghost.x, ghost.y + gb, 6, Math.PI, 0);
-          ctx.lineTo(ghost.x + 6, ghost.y + gb + 6);
-          ctx.lineTo(ghost.x + 2, ghost.y + gb + 4);
-          ctx.lineTo(ghost.x - 2, ghost.y + gb + 6);
-          ctx.lineTo(ghost.x - 6, ghost.y + gb + 4);
+          ctx.arc(W.ghost.x, W.ghost.y + gb, 6, Math.PI, 0);
+          ctx.lineTo(W.ghost.x + 6, W.ghost.y + gb + 6);
+          ctx.lineTo(W.ghost.x + 2, W.ghost.y + gb + 4);
+          ctx.lineTo(W.ghost.x - 2, W.ghost.y + gb + 6);
+          ctx.lineTo(W.ghost.x - 6, W.ghost.y + gb + 4);
           ctx.closePath();
           ctx.fill();
           ctx.globalAlpha = 1;
           ctx.fillStyle = "#3a2f52";
-          ctx.fillRect(ghost.x - 3, ghost.y + gb - 1, 1.6, 2.4);
-          ctx.fillRect(ghost.x + 1.4, ghost.y + gb - 1, 1.6, 2.4);
+          ctx.fillRect(W.ghost.x - 3, W.ghost.y + gb - 1, 1.6, 2.4);
+          ctx.fillRect(W.ghost.x + 1.4, W.ghost.y + gb - 1, 1.6, 2.4);
         }
         const sight = SIGHT * DEV.torch;
         torchR = clamp(sight * LAMP_REACH * (0.5 + 0.55 * flick), 120, 1400);
@@ -15909,7 +15914,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         for (const pr of W.firePlants)
           if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(pr.x, pr.y + pr.len))
             glowAt(ctx, pr.x, pr.y + pr.len, 16, 0.2 * flick, "255,130,50");
-        if (p.burn > 0 && !p.dead) glowAt(ctx, p.x + PW / 2, p.y + PH / 2, 22, 0.25 * flick, "255,130,50");
+        if (W.p.burn > 0 && !W.p.dead) glowAt(ctx, W.p.x + PW / 2, W.p.y + PH / 2, 22, 0.25 * flick, "255,130,50");
         for (const list of [dparts, amb]) for (const q of list) {
           if (!q.glow || !onView(q.x, q.y, 10) || !fogLit(q.x, q.y)) continue;
           ctx.globalAlpha = Math.min(1, q.life / (q.max * 0.3));
@@ -15917,7 +15922,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
         }
         ctx.globalAlpha = 1;
-        if (!p.dead) {
+        if (!W.p.dead) {
           const th = torchHand(), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
           glowAt(ctx, gfx, gfy, 70 * (0.9 + 0.1 * gl), 0.2 * gl, "255,150,60");
           glowAt(ctx, gfx + leanX * 0.5, gfy + leanY * 0.5, 12, 0.5 * gl, "255,190,90");
@@ -15936,19 +15941,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.shadowBlur = 0;
         const MHP = maxHp();
         const gpas = held ? gunPassives(held) : null;
-        const effRech = held ? Math.max(1e-3, effRecharge(held) * pb.rech) : 1;
+        const effRech = held ? Math.max(1e-3, effRecharge(held) * W.pb.rech) : 1;
         input.current.hud = {
-          hp: MHP > 0 ? Math.max(0, Math.min(1, p.hp / MHP)) : 0,
-          low: p.hp <= 30,
-          fuel: Math.max(0, Math.min(1, p.fuel)),
-          empty: !!p.empty,
+          hp: MHP > 0 ? Math.max(0, Math.min(1, W.p.hp / MHP)) : 0,
+          low: W.p.hp <= 30,
+          fuel: Math.max(0, Math.min(1, W.p.fuel)),
+          empty: !!W.p.empty,
           mana: held ? Math.max(0, Math.min(1, held.mana / (held.manaMax + gpas.manaMax))) : 0,
           rech: held ? held.rechT > 0 ? clamp(1 - held.rechT / effRech, 0, 1) : 1 : 0,
           cast: held ? held.delayT > 0 && held.delayMax ? clamp(1 - held.delayT / held.delayMax, 0, 1) : 1 : 0,
           recharging: !!(held && held.rechT > 0),
           hasGun: !!held
         };
-        if (pb.radarEnemy || pb.radarItem || pb.radarWand) {
+        if (W.pb.radarEnemy || W.pb.radarItem || W.pb.radarWand) {
           const cwv = c.width / dpr, chv = playPx / dpr, m = 18;
           const nearest = (list) => {
             let best2 = null, bd = 1e18;
@@ -15990,9 +15995,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             ctx.restore();
             ctx.globalAlpha = 1;
           };
-          if (pb.radarEnemy) marker(nearest(W.enemies), PERKS.eradar.tint);
-          if (pb.radarItem) marker(nearest(W.pickups.filter((q) => q.kind === "mod")), "#b57cff");
-          if (pb.radarWand) marker(nearest(W.pickups.filter((q) => q.kind === "gun")), COL.bullet);
+          if (W.pb.radarEnemy) marker(nearest(W.enemies), PERKS.eradar.tint);
+          if (W.pb.radarItem) marker(nearest(W.pickups.filter((q) => q.kind === "mod")), "#b57cff");
+          if (W.pb.radarWand) marker(nearest(W.pickups.filter((q) => q.kind === "gun")), COL.bullet);
         }
         ctx.textAlign = "center";
         const ch = playPx / dpr;
@@ -16018,7 +16023,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         const msgY = 196;
         ctx.fillStyle = COL.text;
-        if (p.dead) {
+        if (W.p.dead) {
           ctx.font = "700 22px system-ui, sans-serif";
           ctx.fillText("You were shot down", cw / 2, msgY);
           ctx.font = "500 14px system-ui, sans-serif";
@@ -16102,7 +16107,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.strokeStyle = "#fff";
           ctx.lineWidth = 1.5;
           ctx.beginPath();
-          ctx.arc(mX(p.x + PW / 2), mY(p.y + PH / 2), 4, 0, Math.PI * 2);
+          ctx.arc(mX(W.p.x + PW / 2), mY(W.p.y + PH / 2), 4, 0, Math.PI * 2);
           ctx.fill();
           ctx.stroke();
           ctx.imageSmoothingEnabled = false;
