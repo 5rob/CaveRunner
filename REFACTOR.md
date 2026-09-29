@@ -182,9 +182,9 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
       stay untouched (`G.planCast` etc.). Some suites cut earlier (at `const approach` or
       `function makeLevel`). Check cutting at `Game(` works for all of them. In Phase 1
       the loader's *inside* switches to importing `src/`, and no suite changes again.
-- [ ] **P0.7** `tests/build.js` (the browser test page) keeps working unchanged. It
+- [x] **P0.7** `tests/build.js` (the browser test page) keeps working unchanged. It
       string-swaps anchors in `index.html`, which is still identical. Confirm.
-- [ ] **P0.8** `src/version.js` isn't needed yet (still one file). Instead, have
+- [x] **P0.8** `src/version.js` isn't needed yet (still one file). Instead, have
       `tools/build.js` fill `<title>` from the `VERSION` const, so there's one place to bump.
       Update `CLAUDE.md`'s "bump the version" step to match.
 - [ ] **P0.9** `node tools/build.js --watch`: rebuild on save (polling `fs.watch` is
