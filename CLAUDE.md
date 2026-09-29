@@ -3,6 +3,9 @@
 A single-file browser game: a jetpack cave shooter with Noita-style wand building.
 `index.html` is the whole thing — markup, CSS, React and game loop, no build step.
 
+**Refactor planned / in progress:** splitting the file into modules under `src/`. The plan,
+rules and progress tracker are in **`REFACTOR.md`** — read it before touching code structure.
+
 ## How the owner likes to work
 
 **Talk briefly.** Short, concise replies. Minimal technical jargon unless they ask about
