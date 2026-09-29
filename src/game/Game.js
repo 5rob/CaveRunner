@@ -7,7 +7,7 @@ import { drawGun, drawGunGlow, drawRunner, drawSconce, drawTorch, glowAt } from 
 import { HEAR_FIRE, jetPitch, rustleStep } from '../audio/recipes.js';
 import { SFX } from '../audio/sfx.js';
 import {
-  AIM_DEAD, AIR_ACC, BCELL, BED, BH, BRICK, BW, CELL, CH, CLIMB, COIN_PULL, COL, CW, DEAD, FH, FOG,
+  AIM_DEAD, AIR_ACC, BCELL, BED, BH, BW, CELL, CH, CLIMB, COIN_PULL, COL, CW, DEAD, FH, FOG,
   FOG_DARK, FOG_DIM, FOG_U, FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART, FW, GRAVITY, GROUND_ACC, JET,
   JET_ACC, LAMP_REACH, MINI_D, MMH, MMW, PATROL_R, PH, PICKUP_COOL, PW, SHOP_FLOOR, SHOP_Y, SIGHT,
   VIEW_MIN_H, VIEW_W, WALK, WEB_HAND, WH, WW
@@ -40,13 +40,14 @@ import {
 } from '../world/fire.js';
 import { ROOM_HH, ROOM_HW, makeLevel } from '../world/level.js';
 import { NAV, navField, navWay } from '../world/nav.js';
-import { ORE_GOLD } from '../world/veins.js';
 import { VIS_RAYS, fogReveal, fogStart, nestFog, rayDist, visPoly } from '../world/vision.js';
 import { builtAt } from '../world/zones.js';
 import { damageEnemy, fireEnemyShot } from './systems/enemies.js';
 import { burst, goo, splat, toast } from './systems/particles.js';
 import { hurt, maxHp, refreshBag } from './systems/player.js';
-import { boxHit, enemyAt, lineOfSight, solidAt, solidCell } from './systems/terrain.js';
+import {
+  boxHit, dig, dropOre, enemyAt, lineOfSight, solidAt, solidCell, unDeco
+} from './systems/terrain.js';
 import { testHook } from './testhook.js';
 import { makeWorld } from './world.js';
 
@@ -428,7 +429,7 @@ export function Game({ input }) {
       }
     }
     // the browser tests' way in (game/testhook.js): only on the test page, which sets the flag
-    if (window.__TEST) window.__lvl = testHook(W, { tctx, dctx, paintFog, hurt: (n) => hurt(W, G, n), maxHp: () => maxHp(W, G), dig, explode, recSample,
+    if (window.__TEST) window.__lvl = testHook(W, { tctx, dctx, paintFog, hurt: (n) => hurt(W, G, n), maxHp: () => maxHp(W, G), dig: (x, y, R) => dig(W, G, x, y, R), explode, recSample,
       ignite, setAlight, youAlight, REC, RT });
     {
       // picking up where the last session left off, if App found a save
@@ -616,73 +617,6 @@ export function Game({ input }) {
           SFX.ui('coin');
         }
       }
-    }
-
-    // clear rock without the bang, for drilling shots
-    function dig(x, y, R) {
-      const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL;
-      const minX = Math.max(0, Math.floor(cx0 - rc)), maxX = Math.min(CW - 1, Math.ceil(cx0 + rc));
-      const minY = Math.max(0, Math.floor(cy0 - rc)), maxY = Math.min(CH - 1, Math.ceil(cy0 + rc));
-      const d = W.img.data;
-      let changed = false, nOre = 0;
-      for (let cy = minY; cy <= maxY; cy++)
-        for (let cx = minX; cx <= maxX; cx++) {
-          const i = cy * CW + cx;
-          if (!W.mat[i] || W.mat[i] === BED) continue;
-          if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
-          if (W.ore && W.ore[i]) { W.ore[i] = 0; nOre++; }
-          W.fire.fuel[i] = 0; W.fire.t[i] = 0;
-          W.mat[i] = 0; d[i * 4 + 3] = 0; changed = true;
-        }
-      if (W.burrow) for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
-        if (W.burrow[cy * CW + cx] && Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) { W.burrow[cy * CW + cx] = 0; changed = true; }
-      if (changed) W.terrainV++;
-      if (changed) tctx.putImageData(W.img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
-      unDeco(cx0, cy0, rc, minX, minY, maxX, maxY);
-      if (nOre) dropOre(x, y, nOre);
-    }
-    // a gold seam cut or blown open: bits of gold tumble out, as much as the rock you took.
-    // Fractions carry over in oreBank, so nibbling a seam with a drill pays the same as a blast.
-    function dropOre(x, y, n) {
-      W.oreBank += n * ORE_GOLD * (1 + (W.floor - 1) * 0.3) * W.pb.gold;
-      let bits = Math.min(12, Math.floor(W.oreBank / 2));
-      if (!bits) return;
-      const each = Math.floor(W.oreBank / bits);
-      W.oreBank -= each * bits;
-      for (let k = 0; k < bits; k++)
-        W.coins.push({ x: x + (Math.random() - 0.5) * 6, y, amount: each, t: Math.random() * 6.28,
-          vx: (Math.random() - 0.5) * 120, vy: -60 - Math.random() * 80 });
-      SFX.fx('coinland', x, y);
-    }
-    // wipe the decoration layer inside a cleared circle, so baked rubble, beams and pillars
-    // go with the rock round them
-    function unDeco(cx0, cy0, rc, minX, minY, maxX, maxY) {
-      const dd = W.dimg.data;
-      let changed = false;
-      for (let cy = minY; cy <= maxY; cy++)
-        for (let cx = minX; cx <= maxX; cx++) {
-          const k = (cy * CW + cx) * 4;
-          if (!dd[k + 3] || Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
-          dd[k + 3] = 0; changed = true;
-          W.fire.fuel[k >> 2] = 0; W.fire.t[k >> 2] = 0;
-        }
-      if (changed) dctx.putImageData(W.dimg, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
-    }
-
-    // lay solid brick down, the opposite of dig()
-    function paint(x, y, w, hh) {
-      const x0 = Math.max(1, Math.round(x / CELL - w / 2)), x1 = Math.min(CW - 2, x0 + w);
-      const y0 = Math.max(1, Math.round(y / CELL)), y1 = Math.min(CH - 2, y0 + hh);
-      const d = W.img.data;
-      for (let cy = y0; cy < y1; cy++)
-        for (let cx = x0; cx < x1; cx++) {
-          const i = cy * CW + cx;
-          if (W.mat[i]) continue;
-          W.mat[i] = BRICK;
-          const k = i * 4;
-          d[k] = 132; d[k + 1] = 99; d[k + 2] = 71; d[k + 3] = 255;
-        }
-      if (x1 > x0 && y1 > y0) tctx.putImageData(W.img, 0, 0, x0, y0, x1 - x0, y1 - y0);
     }
 
     // ---- casting ----
@@ -908,7 +842,7 @@ export function Game({ input }) {
       let hitAt = sh.beam;
       for (let d = 6; d <= sh.beam; d += 4) {
         const bx = x + nx * d, by = y + ny * d;
-        if (sh.bore) dig(bx, by, sh.bore);
+        if (sh.bore) dig(W, G, bx, by, sh.bore);
         else if (solidAt(W, bx, by)) { hitAt = d; break; }
         const j = enemyAt(W, bx, by, sh.size + 3);
         if (j >= 0) {
@@ -923,7 +857,7 @@ export function Game({ input }) {
         const ex = x + nx * hitAt, ey = y + ny * hitAt;
         for (let k = 0; k < 5; k++) glowDot(ex, ey, -nx * rnd(20, 80) + rnd(-50, 50), -ny * rnd(20, 80) + rnd(-50, 30),
           k ? sh.col : '#ffffff', rnd(0.8, 1.3), rnd(0.12, 0.3), 0.3);
-        if (sh.pit && hitAt < sh.beam) dig(ex + nx * 2, ey + ny * 2, sh.pit);
+        if (sh.pit && hitAt < sh.beam) dig(W, G, ex + nx * 2, ey + ny * 2, sh.pit);
       }
       if (sh.explode) explode(x + nx * hitAt, y + ny * hitAt, sh.explode);
       // a beam is instant, so whatever kind of carrier it is, the payload goes off at its end
@@ -1355,8 +1289,8 @@ export function Game({ input }) {
         }
       }
       tctx.putImageData(W.img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
-      unDeco(cx0, cy0, rc, minX, minY, maxX, maxY);
-      if (nOre) dropOre(x, y, nOre);
+      unDeco(W, G, cx0, cy0, rc, minX, minY, maxX, maxY);
+      if (nOre) dropOre(W, x, y, nOre);
       if (W.burrow) for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
         if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) W.burrow[cy * CW + cx] = 0;
       W.terrainV++;
@@ -2110,7 +2044,7 @@ export function Game({ input }) {
           const want = Math.atan2(W.p.y + PH / 2 - b.y, W.p.x + PW / 2 - b.x);
           turn(b, clamp(angDiff(want, Math.atan2(b.vy, b.vx)), -b.boomer * dt, b.boomer * dt));
         }
-        if (b.eat) dig(b.x, b.y, b.eat);
+        if (b.eat) dig(W, G, b.x, b.y, b.eat);
         if (b.fire) ignite(b.x, b.y, b.size + 2, 0.5);     // a fire spell lights what it flies through
         if (b.arc) lightningStep(b, dt);
         // a timer lets its payload go in mid-air, and the carrier flies on
@@ -2248,14 +2182,14 @@ export function Game({ input }) {
               break;                      // stay put: b.x/b.y are still outside the rock
             }
             b.x = nx; b.y = ny;
-            if (b.bore > 0) { if (b.look) shotGrind(b, nx, ny); dig(nx, ny, b.bore); continue; }
+            if (b.bore > 0) { if (b.look) shotGrind(b, nx, ny); dig(W, G, nx, ny, b.bore); continue; }
             // Matter Eater / Black Hole: eat straight through the rock, digging as it goes,
             // so a fast shot can't outrun the small hole its per-frame eat carves ahead
-            if (b.eat > 0) { dig(nx, ny, b.eat); continue; }
+            if (b.eat > 0) { dig(W, G, nx, ny, b.eat); continue; }
             if (b.cluster) { spray(b); dead = true; break; }
             if (b.explode) { boom = true; break; }
             if (b.pop) { explode(b.x, b.y, b.pop, b.dmg * 0.5); dead = true; break; }
-            if (b.pit) dig(nx, ny, b.pit);                // Noita's small hole where a shot lands
+            if (b.pit) dig(W, G, nx, ny, b.pit);                // Noita's small hole where a shot lands
             burst(W, b.x, b.y, 3, b.col);
             SFX.rock(b.x, b.y);
             dead = true;

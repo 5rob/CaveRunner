@@ -10478,6 +10478,87 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return -1;
   };
+  function dig(W, G, x, y, R) {
+    const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL;
+    const minX = Math.max(0, Math.floor(cx0 - rc)), maxX = Math.min(CW - 1, Math.ceil(cx0 + rc));
+    const minY = Math.max(0, Math.floor(cy0 - rc)), maxY = Math.min(CH - 1, Math.ceil(cy0 + rc));
+    const d = W.img.data;
+    let changed = false, nOre = 0;
+    for (let cy = minY; cy <= maxY; cy++)
+      for (let cx = minX; cx <= maxX; cx++) {
+        const i = cy * CW + cx;
+        if (!W.mat[i] || W.mat[i] === BED) continue;
+        if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
+        if (W.ore && W.ore[i]) {
+          W.ore[i] = 0;
+          nOre++;
+        }
+        W.fire.fuel[i] = 0;
+        W.fire.t[i] = 0;
+        W.mat[i] = 0;
+        d[i * 4 + 3] = 0;
+        changed = true;
+      }
+    if (W.burrow) {
+      for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
+        if (W.burrow[cy * CW + cx] && Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) {
+          W.burrow[cy * CW + cx] = 0;
+          changed = true;
+        }
+    }
+    if (changed) W.terrainV++;
+    if (changed) G.tctx.putImageData(W.img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
+    unDeco(W, G, cx0, cy0, rc, minX, minY, maxX, maxY);
+    if (nOre) dropOre(W, x, y, nOre);
+  }
+  function dropOre(W, x, y, n) {
+    W.oreBank += n * ORE_GOLD * (1 + (W.floor - 1) * 0.3) * W.pb.gold;
+    let bits = Math.min(12, Math.floor(W.oreBank / 2));
+    if (!bits) return;
+    const each = Math.floor(W.oreBank / bits);
+    W.oreBank -= each * bits;
+    for (let k = 0; k < bits; k++)
+      W.coins.push({
+        x: x + (Math.random() - 0.5) * 6,
+        y,
+        amount: each,
+        t: Math.random() * 6.28,
+        vx: (Math.random() - 0.5) * 120,
+        vy: -60 - Math.random() * 80
+      });
+    SFX.fx("coinland", x, y);
+  }
+  function unDeco(W, G, cx0, cy0, rc, minX, minY, maxX, maxY) {
+    const dd = W.dimg.data;
+    let changed = false;
+    for (let cy = minY; cy <= maxY; cy++)
+      for (let cx = minX; cx <= maxX; cx++) {
+        const k = (cy * CW + cx) * 4;
+        if (!dd[k + 3] || Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
+        dd[k + 3] = 0;
+        changed = true;
+        W.fire.fuel[k >> 2] = 0;
+        W.fire.t[k >> 2] = 0;
+      }
+    if (changed) G.dctx.putImageData(W.dimg, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
+  }
+  function paint(W, G, x, y, w, hh) {
+    const x0 = Math.max(1, Math.round(x / CELL - w / 2)), x1 = Math.min(CW - 2, x0 + w);
+    const y0 = Math.max(1, Math.round(y / CELL)), y1 = Math.min(CH - 2, y0 + hh);
+    const d = W.img.data;
+    for (let cy = y0; cy < y1; cy++)
+      for (let cx = x0; cx < x1; cx++) {
+        const i = cy * CW + cx;
+        if (W.mat[i]) continue;
+        W.mat[i] = BRICK;
+        const k = i * 4;
+        d[k] = 132;
+        d[k + 1] = 99;
+        d[k + 2] = 71;
+        d[k + 3] = 255;
+      }
+    if (x1 > x0 && y1 > y0) G.tctx.putImageData(W.img, 0, 0, x0, y0, x1 - x0, y1 - y0);
+  }
 
   // src/game/systems/enemies.js
   function fireEnemyShot(W, e, tx, ty) {
@@ -11447,7 +11528,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         paintFog,
         hurt: (n) => hurt(W, G, n),
         maxHp: () => maxHp(W, G),
-        dig,
+        dig: (x, y, R) => dig(W, G, x, y, R),
         explode,
         recSample,
         ignite,
@@ -11721,87 +11802,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             SFX.ui("coin");
           }
         }
-      }
-      function dig(x, y, R) {
-        const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL;
-        const minX = Math.max(0, Math.floor(cx0 - rc)), maxX = Math.min(CW - 1, Math.ceil(cx0 + rc));
-        const minY = Math.max(0, Math.floor(cy0 - rc)), maxY = Math.min(CH - 1, Math.ceil(cy0 + rc));
-        const d = W.img.data;
-        let changed = false, nOre = 0;
-        for (let cy = minY; cy <= maxY; cy++)
-          for (let cx = minX; cx <= maxX; cx++) {
-            const i = cy * CW + cx;
-            if (!W.mat[i] || W.mat[i] === BED) continue;
-            if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
-            if (W.ore && W.ore[i]) {
-              W.ore[i] = 0;
-              nOre++;
-            }
-            W.fire.fuel[i] = 0;
-            W.fire.t[i] = 0;
-            W.mat[i] = 0;
-            d[i * 4 + 3] = 0;
-            changed = true;
-          }
-        if (W.burrow) {
-          for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
-            if (W.burrow[cy * CW + cx] && Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) {
-              W.burrow[cy * CW + cx] = 0;
-              changed = true;
-            }
-        }
-        if (changed) W.terrainV++;
-        if (changed) tctx.putImageData(W.img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
-        unDeco(cx0, cy0, rc, minX, minY, maxX, maxY);
-        if (nOre) dropOre(x, y, nOre);
-      }
-      function dropOre(x, y, n) {
-        W.oreBank += n * ORE_GOLD * (1 + (W.floor - 1) * 0.3) * W.pb.gold;
-        let bits = Math.min(12, Math.floor(W.oreBank / 2));
-        if (!bits) return;
-        const each = Math.floor(W.oreBank / bits);
-        W.oreBank -= each * bits;
-        for (let k = 0; k < bits; k++)
-          W.coins.push({
-            x: x + (Math.random() - 0.5) * 6,
-            y,
-            amount: each,
-            t: Math.random() * 6.28,
-            vx: (Math.random() - 0.5) * 120,
-            vy: -60 - Math.random() * 80
-          });
-        SFX.fx("coinland", x, y);
-      }
-      function unDeco(cx0, cy0, rc, minX, minY, maxX, maxY) {
-        const dd = W.dimg.data;
-        let changed = false;
-        for (let cy = minY; cy <= maxY; cy++)
-          for (let cx = minX; cx <= maxX; cx++) {
-            const k = (cy * CW + cx) * 4;
-            if (!dd[k + 3] || Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc) continue;
-            dd[k + 3] = 0;
-            changed = true;
-            W.fire.fuel[k >> 2] = 0;
-            W.fire.t[k >> 2] = 0;
-          }
-        if (changed) dctx.putImageData(W.dimg, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
-      }
-      function paint(x, y, w, hh) {
-        const x0 = Math.max(1, Math.round(x / CELL - w / 2)), x1 = Math.min(CW - 2, x0 + w);
-        const y0 = Math.max(1, Math.round(y / CELL)), y1 = Math.min(CH - 2, y0 + hh);
-        const d = W.img.data;
-        for (let cy = y0; cy < y1; cy++)
-          for (let cx = x0; cx < x1; cx++) {
-            const i = cy * CW + cx;
-            if (W.mat[i]) continue;
-            W.mat[i] = BRICK;
-            const k = i * 4;
-            d[k] = 132;
-            d[k + 1] = 99;
-            d[k + 2] = 71;
-            d[k + 3] = 255;
-          }
-        if (x1 > x0 && y1 > y0) tctx.putImageData(W.img, 0, 0, x0, y0, x1 - x0, y1 - y0);
       }
       function cast(g, gx, gy, nx, ny) {
         const pas = gunPassives(g);
@@ -12078,7 +12078,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         let hitAt = sh.beam;
         for (let d = 6; d <= sh.beam; d += 4) {
           const bx = x + nx * d, by = y + ny * d;
-          if (sh.bore) dig(bx, by, sh.bore);
+          if (sh.bore) dig(W, G, bx, by, sh.bore);
           else if (solidAt(W, bx, by)) {
             hitAt = d;
             break;
@@ -12107,7 +12107,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             rnd(0.12, 0.3),
             0.3
           );
-          if (sh.pit && hitAt < sh.beam) dig(ex + nx * 2, ey + ny * 2, sh.pit);
+          if (sh.pit && hitAt < sh.beam) dig(W, G, ex + nx * 2, ey + ny * 2, sh.pit);
         }
         if (sh.explode) explode(x + nx * hitAt, y + ny * hitAt, sh.explode);
         if (sh.payload && sh.payload.length) releaseAt(sh.payload, x + nx * hitAt, y + ny * hitAt, nx, ny, sh.col);
@@ -12782,8 +12782,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
         }
         tctx.putImageData(W.img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
-        unDeco(cx0, cy0, rc, minX, minY, maxX, maxY);
-        if (nOre) dropOre(x, y, nOre);
+        unDeco(W, G, cx0, cy0, rc, minX, minY, maxX, maxY);
+        if (nOre) dropOre(W, x, y, nOre);
         if (W.burrow) {
           for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
             if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) W.burrow[cy * CW + cx] = 0;
@@ -13813,7 +13813,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             const want = Math.atan2(W.p.y + PH / 2 - b.y, W.p.x + PW / 2 - b.x);
             turn(b, clamp(angDiff(want, Math.atan2(b.vy, b.vx)), -b.boomer * dt, b.boomer * dt));
           }
-          if (b.eat) dig(b.x, b.y, b.eat);
+          if (b.eat) dig(W, G, b.x, b.y, b.eat);
           if (b.fire) ignite(b.x, b.y, b.size + 2, 0.5);
           if (b.arc) lightningStep(b, dt);
           if (b.payload && b.timer != null && (b.timer -= dt) <= 0) firePayload(b);
@@ -14005,11 +14005,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               b.y = ny;
               if (b.bore > 0) {
                 if (b.look) shotGrind(b, nx, ny);
-                dig(nx, ny, b.bore);
+                dig(W, G, nx, ny, b.bore);
                 continue;
               }
               if (b.eat > 0) {
-                dig(nx, ny, b.eat);
+                dig(W, G, nx, ny, b.eat);
                 continue;
               }
               if (b.cluster) {
@@ -14026,7 +14026,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 dead = true;
                 break;
               }
-              if (b.pit) dig(nx, ny, b.pit);
+              if (b.pit) dig(W, G, nx, ny, b.pit);
               burst(W, b.x, b.y, 3, b.col);
               SFX.rock(b.x, b.y);
               dead = true;

@@ -337,7 +337,8 @@ for (const f of files) {
     if (abouts[f] === undefined) no(`${f} is new: give it a header with --about${f === file ? '' : ':' + f}`);
     text = (abouts[f] || '').split('\\n').join('\n').split('\n').map(l => '// ' + l).join('\n') + '\n\nimport {} from \'x\';\n\n' + pieces.get(f).join('');
   }
-  const mn = needed(text, n => (sys.get(n) === f ? null : fromSys(n)), f);
+  const had = isNew ? new Map() : importsOf(parse(read(P).src));    // what the module imports already
+  const mn = needed(text, n => (sys.get(n) === f ? null : had.get(n) || fromSys(n)), f);
   text = reimport(text, mn.out) || text;
   text = text.replace(/\n{3,}/g, '\n\n');     // (a new module that needs no imports)
   out.set(f, { text, crlf, isNew });

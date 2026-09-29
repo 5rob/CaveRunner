@@ -407,7 +407,7 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] particles.js: `goo`, `splat`, `burst`, `toast` (all `(W, …)`)
   - [x] `G` made; player.js, first part: `refreshBag`, `maxHp`, `hurt` (all `(W, G, …)`: they read `input`)
   - [x] enemies.js, first part: `damageEnemy`, `fireEnemyShot` (`(W, …)`)
-  - [ ] terrain.js, the changes: `dig`, `dropOre`, `unDeco`, `paint` (through `G.tctx`/`G.dctx`, the wrapped ones)
+  - [x] terrain.js, the changes: `dig`, `dropOre`, `unDeco`, `paint` (through `G.tctx`/`G.dctx`, the wrapped ones)
   - [ ] fire.js and its cycle (D17): the fire's functions, `explode` → terrain.js, `blowProp` → props.js,
         `webNear`/`webDist` → webs.js
   - The old rough list, still to do:
@@ -742,3 +742,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.4 (2) | `particles.js`: `goo`, `splat`, `burst`, `toast`. `tools/system.js` can now send names of one move to several modules (`file.js:name`, for the fire cycle). `jelly` (spit, splat) run too. | probe SAME, logic 33/33, smoke ok, jelly ok |
 | 2026-09-29 | Phase 3, P3.4 (3) | `const G = { input, canvases and contexts, REC, RT }` right after the recorder (D16). `player.js`: `refreshBag`, `maxHp`, `hurt`. `perks`, `shop`, `save` run too. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-29 | Phase 3, P3.4 (4) | `enemies.js`: `damageEnemy`, `fireEnemyShot`. `rats`, `creatures`, `lightning` run too. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 3, P3.4 (5) | `terrain.js` gets the changes: `dig`, `unDeco`, `paint` (`(W, G, …)`, drawing through `G.tctx`/`G.dctx`, the wrapped ones) and `dropOre` (`(W, …)`). `system.js` now also reads an existing module's own imports. `replay`, `buzzsaw`, `teleport` (ore) run too. | probe SAME, logic 33/33, smoke ok |
