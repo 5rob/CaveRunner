@@ -435,6 +435,22 @@ a cave shooter. They come in a few shapes:
   puff of blue smoke that throws out chips of the rock it chews; **Small Teleport Bolt** is
   nothing but a streak of blue sparks; and **Explosion of Brimstone** sets things alight
   and throws burning sparks (mind your feet).
+- **So do the rest** (all but Black Hole): **Slug** is a green-gold ball that droops, shoves
+  and blasts a small hole; **Lance** is a blue spear that speeds up as it flies (the
+  **Glowing Lance** a shining golden one that lights the cave); **Bounce Orb** is a rubber
+  ball that falls and barely slows on each bounce; **Blast** is a real bomb with a lit fuse
+  that bounces and rolls and goes off when the fuse burns down (or at once on a creature);
+  **Magic Missile** is a little rocket that leaves slowly in a trail of smoke then roars
+  off; **Fireball** is a slow, big, drooping ball of flame; **Firebolt** a lobbed flame that
+  bounces four times; **Energy Orb** a slow blue orb that shoves and blasts a round hole;
+  **Energy Sphere** a blue ball that arcs and bounces; **Chain Bolt** a slow crackling violet
+  orb; **Death Cross** a tumbling cyan cross; **Disc Projectile** a spinning sawblade that
+  skips along throwing sparks; the **Nuke** droops, drips green and sets the cave alight;
+  **Meteor** is a falling ball of fire; beams throw sparks off their end (the Plasma Beam
+  scorches a hole). Fields got looks too: the crystals are crystals (the mine blinks faster
+  when something's close), **Circle of Stillness** frosts out any fire inside it, the
+  **Thundercloud** is a real cloud whose lightning comes down out of it and whose rain puts
+  out fires, and **Explosion** leaves fire behind.
 - **Static fields** stay where you cast them and work over time. Unstable Crystal is a
   proximity mine; Dormant Crystal sits harmless until another blast reaches it; Circle
   of Stillness leaves enemies crawling; Circle of Shielding swallows their fire; Circle

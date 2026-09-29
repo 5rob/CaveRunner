@@ -61,7 +61,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v95**. Branch: `main` (release channel is `main`).
+Current version: **v96**. Branch: `main` (release channel is `main`).
 
 ### The version number is not optional
 
@@ -908,6 +908,18 @@ fires only when the next ~6 units truly lack footing. `unstick(e, S, home)` is t
 carrier slips home underground / others give up); it now also fires when the nav distance hasn't improved by 3 in 4s
 (`e.bestD`/`e.bestT`), for rats hopping back and forth at a gap. Real-floor probe: ~14/16 carriers home in 15s (v94 was
 17/17, partly by floating).
+**v96 every other spell after Noita (Black Hole left alone — owner likes it).** Same kit as v95, plus: `vmax` (top
+speed, clamped after `accel`, in `tracePath` too — Magic Missile is a rocket: speed 140, accel 2.6, vmax 780),
+`lifeBoom` (explodes when its life runs out instead of fizzling; Blast is a bomb, life 1.8 = the fuse, bounce 30 at
+`bounceE` 0.4, and a slow bounce doesn't use one up, so it rolls and rests), `blankShot.accel` now reads the spell's own
+`accel` (Lance/Glowing Lance speed up). New looks in `shotTrail`/`drawLook`: `heavy`, `lance`, `rubber`, `bomb`, `rocket`,
+`flame` (fball/fbolt/meteor), `orb` (eorb/esph), `chain`, `cross`, `disc`, `nuke`. Beams with a `look` get a halo, end
+sparks, and a `pit` where they meet rock. Fields: `drawFieldLook(f)` draws the middle of each (mine/dormant crystals,
+Stillness star, shield arcs, vigour cross, the storm's cloud + rain over the top of its circle, glitter motes); the
+mine sets `f.near` to blink faster. `fireDouse(F, x, y, r)` (pure, above `fireArea`) sets `t` to 0 in a disc — the fuel
+stays; Stillness and Thundercloud run it every 0.15s and put out burning creatures/you inside. Storm strikes draw an
+arc down from the cloud. Explosion (`boom`) is `fire: 1, embers: 6`. Old tests that used Slug as "the straight shot" now
+use Glowing Lance. Tests: `tests/logic/t1spells.test.js` (v96 block), `tests/browser/spelllooks.test.js`.
 **v74 Pollen nerf.** Pollen has `drift: 1`, `homeR: 80`, `pop: 6` (no `eat`). `driftStep` (pure, above
 `tracePath`, consts `DRIFT_*`) damps its speed and, once slow, floats it up. It only homes after
 locking (`b.lock`: nearest creature within `homeR` with `lineOfSight`), then speeds back to

@@ -7,8 +7,8 @@ const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf
 const o = src.indexOf('<script>\n') + 9;
 const js = src.slice(o, src.indexOf('</script>', o));
 const api = new Function('React', js.slice(0, js.indexOf('function Game(')) +
-  '\nreturn { MODS, MOD_TIER, planCast, resetGun, tracePath, wigTurn };')({ createElement: () => {} });
-const { MODS, MOD_TIER, planCast, resetGun, tracePath, wigTurn } = api;
+  '\nreturn { MODS, MOD_TIER, planCast, resetGun, tracePath, wigTurn, fireDouse, fireNew, fireLight, CW };')({ createElement: () => {} });
+const { MODS, MOD_TIER, planCast, resetGun, tracePath, wigTurn, fireDouse, fireNew, fireLight, CW } = api;
 let pass = 0, fail = 0;
 const check = (n, ok, x) => { ok ? pass++ : fail++;
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
@@ -59,6 +59,30 @@ if (back > 0) {
   const vIn = wp[back - 2][0] - wp[back - 3][0], vOut = wp[back + 2][0] - wp[back + 3][0];
   check('and loses a fifth of its speed', vOut < vIn * 0.95, [vIn, vOut]);
 }
+
+// ---- v96: the rest of the tiers ----
+const skip = { void: 1, saw: 1, zap: 1 };        // Black Hole kept as it is; Buzzsaw is an unseen cut; Lightning has its own bolt
+const shots = Object.keys(MODS).filter(id => MODS[id].kind === 'shot' && !MODS[id].off && !MODS[id].base && !skip[id]);
+const bare = shots.filter(id => !MODS[id].look);
+check('every other shot has a look of its own', bare.length === 0, bare);
+// rocket: starts slow, speeds up, never past its top speed
+const rk = shotOf(['missile']);
+const rp = trace(Object.assign({}, rk, { grav: 0, spread: 0 }), 1, 0);
+const st = i => rp[i][0] - rp[i - 1][0];
+check('Magic Missile leaves slowly and speeds up', st(2) < st(40) * 0.5, [st(2), st(40)]);
+check('to a top speed', Math.abs(st(rp.length - 2) - rk.vmax / 60) < 0.5, [st(rp.length - 2), rk.vmax / 60]);
+const lp = trace(shotOf(['lance']), 1, 0);
+check('the lance picks up speed', lp[lp.length - 1][0] - lp[lp.length - 2][0] > lp[2][0] - lp[1][0]);
+check('Blast is a bomb on a fuse', MODS.blast.lifeBoom === 1 && shotOf(['blast']).lifeBoom === 1 && MODS.blast.explode > 0);
+check('Bounce Orb keeps nine-tenths per bounce, under gravity', shotOf(['orb']).bounceE === 0.9 && shotOf(['orb']).grav > 0);
+check('Energy Orb blasts a hole', shotOf(['eorb']).pit > 0);
+check('Explosion leaves fire', MODS.boom.fire === 1);
+// fireDouse puts out burning pixels in the disc only
+const fuel = new Uint8Array(CW * 40).fill(1), F = fireNew(fuel);
+for (let x = 10; x < 60; x++) fireLight(F, 20 * CW + x);
+const out = fireDouse(F, 20, 41, 10);      // world units: pixel (10, 20.5), radius 5 pixels
+let lit = 0, near = 0; for (let x = 10; x < 60; x++) if (F.t[20 * CW + x]) { lit++; if (x < 15) near++; }
+check('fireDouse puts out the fire in its disc', out > 0 && near === 0 && lit > 30, { out, near, lit });
 
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
