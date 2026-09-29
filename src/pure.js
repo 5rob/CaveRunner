@@ -39,3 +39,4 @@ export * from './art/props.js';
 export * from './audio/recipes.js';
 export * from './audio/sfx.js';
 export * from './save/save.js';
+export * from './replay/replay.js';

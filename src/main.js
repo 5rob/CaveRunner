@@ -23,6 +23,7 @@ import { themeFor } from './data/themes.js';
 import {
   DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_META, devReport, devSet, jcol, kr, kru, spr
 } from './dev/knobs.js';
+import { SAVE_KEY, clearSave, loadSave } from './save/save.js';
 import { buildAdvice, modPreview } from './spells/advisor.js';
 import {
   fireSimGauges, fireSimNew, fireSimStep, gunModDeltas, pullSteps, statQual
@@ -46,7 +47,9 @@ import {
   VIS_RAYS, fogReveal, fogStart, losClear, nestFog, rayDist, visPoly
 } from './world/vision.js';
 import { builtAt } from './world/zones.js';
-import { SAVE_KEY, clearSave, loadSave } from './save/save.js';
+import {
+  RP_AFTER, RP_BEFORE, RP_H, RP_HZ, RP_KEEP, RP_W, rpClone, rpCut, rpFrame, rpMerge, rpPaste
+} from './replay/replay.js';
 
 const { useRef, useEffect, useState, useMemo } = React;
 const h = React.createElement;
@@ -109,135 +112,12 @@ function deckLayout(W, size, n) {
   return { btn, R, rc, guns, bag, map };
 }
 
-// ---- the death replay ("Witness yourself", v90) ----
-// The Game keeps the last few seconds as snapshots, RP_HZ a second: a copy of everything draw()
-// reads in a box round you. On the death screen the replay feeds them back through draw(),
-// blended between snapshots so slow motion stays smooth. Terrain isn't in the snapshots: it's a
-// base picture from the start of the window plus the patches dug or burnt since (rpCut/rpPaste),
-// and the fog is a base plus a log of the cells that changed.
-const RP_HZ = 20;                  // snapshots a second
-const RP_BEFORE = 10;              // seconds shown before the death
-const RP_AFTER = 3;                // and after it: the recording runs on this long
-const RP_KEEP = RP_BEFORE + 0.5;   // seconds kept while you're alive
-const RP_W = 320, RP_H = 440;      // half-size of the box round you that gets recorded (world units)
-// the lists draw() reads that go into a snapshot (enemies, pickups and props are handled the same)
-const RP_LISTS = ['bullets', 'enemyShots', 'smoke', 'sparks', 'flashes', 'coins', 'fields', 'beams', 'arcs',
-  'torchP', 'motes', 'burns', 'webs', 'silk', 'strings', 'dparts', 'amb', 'clouds', 'rings', 'devils',
-  'enemies', 'pickups', 'props'];
-// single numbers draw() reads, blended between snapshots
-const RP_NUMS = ['time', 'flick', 'leanX', 'leanY', 'glowN'];
-// nested state worth copying (creature brains the sprites read, tentacles, lightning trails, the
-// aim); any other object inside an entity is shared, not copied
-const RP_DEEP = { sp: 1, ra: 1, je: 1, nest: 1, shot: 1, tent: 1, trail: 1, aim: 1 };
-// fields that slide between snapshots; everything else jumps at the halfway point
-const RP_LERP = { x: 1, y: 1, ty: 1, lx: 1, ly: 1, vx: 1, vy: 1, nx: 1, ny: 1, jx: 1, jy: 1, ox: 1, oy: 1,
-  life: 1, t: 1, age: 1, r: 1, size: 1, shape: 1, flame: 1, fuel: 1, hp: 1, charge: 1, len: 1, hitT: 1 };
-const RP_ANGLE = { hd: 1 };        // angles blend the short way round
-const rpPlain = v => v !== null && typeof v === 'object' &&
-  (Array.isArray(v) || Object.getPrototypeOf(v) === Object.prototype);
-// a snapshot copy of one entity: its own fields, plus copies of the RP_DEEP parts; `id` ties
-// the copies of one entity together across snapshots
-function rpClone(o, id) {
-  const c = {};
-  for (const k in o) {
-    const v = o[k];
-    c[k] = RP_DEEP[k] && rpPlain(v) ? rpCopy(v) : v;
-  }
-  if (id !== undefined) c._r = id;
-  return c;
-}
-function rpCopy(v) {
-  return Array.isArray(v) ? v.map(rpCopy) : rpPlain(v) ? rpClone(v) : v;
-}
-// one entity at fraction u of the way from snapshot copy a to b
-function rpLerp(a, b, u) {
-  if (!b || a === b) return a;
-  if (Array.isArray(a)) {
-    if (!Array.isArray(b) || a.length !== b.length) return u < 0.5 ? a : b;
-    return a.map((x, i) => rpLerp(x, b[i], u));
-  }
-  if (!rpPlain(a) || !rpPlain(b)) return u < 0.5 ? a : b;
-  const c = Object.assign({}, u < 0.5 ? a : b);
-  for (const k in c) {
-    const va = a[k], vb = b[k];
-    if (typeof va === 'number' && typeof vb === 'number') {
-      if (RP_LERP[k]) c[k] = va + (vb - va) * u;
-      else if (RP_ANGLE[k]) c[k] = va + angDiff(vb, va) * u;
-    } else if (RP_DEEP[k] && va && vb && typeof va === 'object') c[k] = rpLerp(va, vb, u);
-  }
-  return c;
-}
-// a whole list at fraction u: matched entities blend; one that only exists in the earlier
-// snapshot shows until halfway, one born in the later shows from halfway
-function rpList(A, B, u) {
-  const out = [], mb = new Map();
-  for (const o of B) mb.set(o._r, o);
-  for (const a of A) {
-    const b = mb.get(a._r);
-    if (b) { out.push(rpLerp(a, b, u)); mb.delete(a._r); }
-    else if (u < 0.5) out.push(a);
-  }
-  if (u >= 0.5) for (const b of mb.values()) out.push(b);
-  return out;
-}
-// the two snapshots either side of time t, and how far between them
-function rpAt(snaps, t) {
-  let lo = 0, hi = snaps.length - 1;
-  if (t <= snaps[0].t) return { a: snaps[0], b: snaps[0], u: 0 };
-  if (t >= snaps[hi].t) return { a: snaps[hi], b: snaps[hi], u: 0 };
-  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (snaps[m].t <= t) lo = m; else hi = m; }
-  const a = snaps[lo], b = snaps[hi];
-  return { a, b, u: (t - a.t) / (b.t - a.t || 1) };
-}
-// the whole scene at time t, ready to swap in for the live one
-function rpFrame(snaps, t) {
-  const { a, b, u } = rpAt(snaps, t), F = { near: u < 0.5 ? a : b };
-  for (const k of RP_LISTS) F[k] = rpList(a[k], b[k], u);
-  for (const k of RP_NUMS) F[k] = a[k] + (b[k] - a[k]) * u;
-  F.p = rpLerp(a.p, b.p, u);
-  F.ghost = a.ghost && b.ghost ? rpLerp(a.ghost, b.ghost, u) : F.near.ghost;
-  return F;
-}
-// terrain patches: copy a rectangle out of (and back into) a W-wide RGBA pixel array
-function rpCut(data, W, x, y, w, h) {
-  const out = new Uint8ClampedArray(w * h * 4);
-  for (let r = 0; r < h; r++) out.set(data.subarray(((y + r) * W + x) * 4, ((y + r) * W + x + w) * 4), r * w * 4);
-  return out;
-}
-function rpPaste(data, W, P) {
-  for (let r = 0; r < P.h; r++) data.set(P.px.subarray(r * P.w * 4, (r + 1) * P.w * 4), ((P.y + r) * W + P.x) * 4);
-}
-// the dirty rectangles of one snapshot ([which, x, y, w, h]), clipped to the W x H map and
-// merged per layer into one box when that box isn't much bigger than the pieces
-function rpMerge(rects, W, H) {
-  const out = [];
-  for (const which of ['t', 'd']) {
-    const rs = [];
-    for (const [c, x, y, w, h] of rects) {
-      if (c !== which) continue;
-      const x0 = Math.max(0, x), y0 = Math.max(0, y), x1 = Math.min(W, x + w), y1 = Math.min(H, y + h);
-      if (x1 > x0 && y1 > y0) rs.push([x0, y0, x1, y1]);
-    }
-    if (!rs.length) continue;
-    let area = 0, X0 = W, Y0 = H, X1 = 0, Y1 = 0;
-    for (const [x0, y0, x1, y1] of rs) {
-      area += (x1 - x0) * (y1 - y0);
-      X0 = Math.min(X0, x0); Y0 = Math.min(Y0, y0); X1 = Math.max(X1, x1); Y1 = Math.max(Y1, y1);
-    }
-    if ((X1 - X0) * (Y1 - Y0) <= Math.max(4096, area * 3)) out.push([which, X0, Y0, X1 - X0, Y1 - Y0]);
-    else for (const [x0, y0, x1, y1] of rs) out.push([which, x0, y0, x1 - x0, y1 - y0]);
-  }
-  return out;
-}
-
 // The pure part of this file, for the logic tests: src/pure.js re-exports it (and every
 // module), and tests/load.js bundles that. It shrinks as the code moves out into modules
 // (REFACTOR.md, P1.5); the browser build ignores it.
 export {
   useRef, useEffect, useState, useMemo, h, SPUTTER_FUEL, sputterStep, NO_INPUT, fmtGold,
-  deckLayout, RP_HZ, RP_BEFORE, RP_AFTER, RP_KEEP, RP_W, RP_H, RP_LISTS, RP_NUMS, RP_DEEP,
-  RP_LERP, RP_ANGLE, rpPlain, rpClone, rpCopy, rpLerp, rpList, rpAt, rpFrame, rpCut, rpPaste,
-  rpMerge
+  deckLayout
 };
 
 function Game({ input }) {
