@@ -13,10 +13,10 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 0 — in progress |
+| **Current phase** | Phase 0 — done (on `refactor`, not merged). Next: Phase 1 |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | From the start of Phase 0 until Phase 1 merges to `main` |
-| **Last green full suite** | — |
+| **Last green full suite** | 2026-09-29, end of Phase 0 (bar the two known flakes: `sound` portalOut, `jelly` browser) |
 | **Last merged to main** | — |
 
 ---
@@ -385,6 +385,11 @@ commit. List them here for after.
   `CAVERUNNER_CHROME` (system Chrome at `C:Program FilesGoogleChromeApplication`).
   `tests/chromium.js` only looks for Linux Chromium paths by default. P1.1's dev
   `package.json` could carry `playwright-core` so this stops being per-session.
+- **`jelly` browser suite is flaky on this PC**, independent of the refactor: run on the
+  untouched v96 `index.html` it failed 11 checks, then 1 (the spit / drip / spore-puff
+  group: the jelly never gets to spit). Same pattern on the built file. Probably timing in
+  the sandbox hunt. Treat like the `sound` flake: re-run before calling it a failure, and
+  worth fixing after the refactor.
 
 ## Game map
 
@@ -395,3 +400,4 @@ commit. List them here for after.
 | Date | Phase / tasks | What happened | Suite |
 |---|---|---|---|
 | 2026-09-29 | — | Plan written (this doc). Nothing built yet. | — |
+| 2026-09-29 | Phase 0, P0.1–P0.10 | Branch `refactor`. `src/shell.html` + `style.css` + `main.js`; `tools/build.js` (byte-identical to v96 bar the banner; `{{VERSION}}` fills the title; `--watch`); `tests/run.js` builds first; `tests/load.js` feeds all 33 logic suites (finds top-level names by resolving every identifier; `.source` for the two text checks). CLAUDE.md updated. Not merged. | logic 33/33; browser 44/44 bar `sound` portalOut + `jelly` (both fail on v96 too) |
