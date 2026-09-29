@@ -368,6 +368,7 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
 | D7 | `VERSION` is not imported: `src/version.js` is read by the build (and by `tests/load.js`), and the game code uses the global the page's own `<script>const VERSION = 'vNN';</script>` declares (ESLint knows it as a global) | The bundle never declares it, so there is exactly one `VERSION = 'vNN'` in `index.html` for CI and the app to find |
 | D8 | esbuild runs with `treeShaking: false` | Otherwise it drops code nothing calls yet (`groupStats`, still tested) |
 | D9 | The browser test page copies every top-level name of the bundle onto `window` (`tests/build.js`, names found by parsing with espree, which ships with ESLint) | Browser suites call `MODS`, `DEV`, `resetGun`… from `page.evaluate`; inside the iife those aren't globals any more. Suites stay unchanged |
+| D10 | `tools/move.js` does the P1.5 moves: cuts named top-level statements (with the comments above them) out of `main.js`, puts `export` on them, and recomputes the imports on both sides from what each file actually uses; refuses a move whose code still needs something in `main.js` | Each move is mechanical and the same shape; a cycle back into `main.js` can't slip in. Delete it after Phase 2 |
 | D6 | The dev `package.json` also carries `playwright-core` (and `globals`, the browser-globals list ESLint needs); `tests/chromium.js` finds an installed Windows Chrome | Browser suites run after one `npm install`, with no per-session scratchpad setup or env vars |
 
 ## Found along the way
