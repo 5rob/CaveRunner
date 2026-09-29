@@ -164,7 +164,8 @@ just the entry the build bundles (it mounts `App`). Where things are:
 | sound | `src/audio/recipes.js` (pure: `SPELL_VOICE`, `shotSound`, `creatureSound`, `FX_VOL`, `rustleStep`), `src/audio/sfx.js` (the `SFX` engine) |
 | autosave | `src/save/save.js`: `readSave`, `cleanLoadout`, `cleanGun`, `loadSave`, `clearSave` |
 | death replay (pure part) | `src/replay/replay.js`: `RP_*`, `rpClone`, `rpLerp`, `rpFrame`, `rpCut`/`rpPaste`/`rpMerge` |
-| `W` / `makeWorld` | `src/game/world.js`: the live level's state as one object (REFACTOR.md P3.2, filling in group by group; `Game` makes it once) |
+| `W` / `makeWorld` | `src/game/world.js`: the live level's state as one object (`Game` makes it once; what stays out of it is listed under P3.2 in REFACTOR.md) |
+| `testHook` | `src/game/testhook.js`: `window.__lvl` for the browser suites (= `W` + `sandbox`, `placeProp` and old names), only when `window.__TEST` is set |
 | `Game` | `src/game/Game.js`: the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields (with `sputterStep`, `SPUTTER_FUEL`, `NO_INPUT` above it). It has its own `h`/`useRef`/`useEffect` lines off the global React (layer 5 can't import `ui/`), so esbuild prints them as `h2`/`useRef2`/`useEffect2` in `index.html` |
 | `h` and hooks | `src/ui/h.js`: `h` (`React.createElement`), `useRef`/`useEffect`/`useState`/`useMemo` off the global React |
 | HUD | `src/ui/hud.js`: `Stick` (thumbsticks + gauge rings), `RKey`, `GAUGE_R`/`GAUGE_C`/`GAUGE_COL`, `healthCol`, `holdPress`, `deckLayout`, `fmtGold` |
@@ -1019,9 +1020,10 @@ caught most of the real bugs.
 **Browser suites** (`tests/browser/`) drive the real page in Chromium through
 `playwright-core`. `tests/build.js` makes `tests/build/test.html`: the game with React
 served from `tests/lib/` and two debug hooks, `window.__in` (the input ref — loadout,
-guns, bag, prompt) and `window.__lvl` (the live level — player, enemies, bullets, fields).
-If a suite needs to reach something new, add it to the hook in `build.js` rather than
-reaching into the game from the test. The bundle is one iife, so its top-level names aren't
+guns, bag, prompt) and `window.__lvl` (the live level: the world object `W` itself, made by
+`src/game/testhook.js` when the page sets `window.__TEST`, which only the test page does).
+If a suite needs to reach something new, add it in `testhook.js` rather than reaching into
+the game from the test. The bundle is one iife, so its top-level names aren't
 page globals by themselves; `build.js` copies every one onto `window` as the iife ends, which
 is why suites can still call `MODS`, `DEV`, `resetGun`, `makeLevel`… straight from
 `page.evaluate`.
@@ -1050,7 +1052,7 @@ not in a generated cave.** The owner asked for this after the mushroom and minec
 failing on cave layout (an overhang, a slope, rock in the way) rather than on the mechanic.
 Random terrain round the thing under test is noise; take it out.
 
-- `__lvl.sandbox()` (in `tests/build.js`) carves a clean room into the live level: open air, a
+- `__lvl.sandbox()` (in `src/game/testhook.js`) carves a clean room into the live level: open air, a
   flat brick floor, no enemies, props, loot or shots, fog lifted, the player standing on the
   floor. It returns `{ x, y, l, r }` — centre x, the floor's top y, the room's edges.
 - Put the test object at a known spot in it: `__lvl.placeProp(proto, x, room.y)` copies a real
@@ -1060,7 +1062,7 @@ Random terrain round the thing under test is noise; take it out.
   then act and measure the outcome. `decor.test.js`'s mushroom and minecart checks are the
   pattern to copy.
 - If a sandbox needs something new (a wall, a ceiling, a pit), add an option to `sandbox()` in
-  `build.js` rather than digging terrain by hand in the test.
+  `testhook.js` rather than digging terrain by hand in the test.
 - Still pin `DEV.zoom = 1` if the test reads the canvas, and still cap every wait.
 
 **Keep generated-level tests for what is about generation** — tunnels connecting, a floor's

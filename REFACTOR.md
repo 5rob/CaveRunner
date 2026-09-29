@@ -13,7 +13,7 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1 done (map + determinism probe) |
+| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). Next: P3.4. Not merged |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
 | **Last green full suite** | 2026-09-29, v98 release (bar `jelly` spit: passed alone on the 3rd try, as on v96) |
@@ -346,7 +346,7 @@ What the code says about this phase (checked at the end of Phase 2):
       it belongs to, and who reads/writes it. Look especially for variables reassigned
       (`let x = …; x = …`), since those can't simply be shared, and for things `draw()` and
       `step()` both touch.
-- [ ] **P3.2 One world object.** `game/world.js` `makeWorld()` holds the level-scoped
+- [x] **P3.2 One world object.** `game/world.js` `makeWorld()` holds the level-scoped
       state (`mat`, `img`, `dimg`, `seen`, `enemies`, `bullets`, `fields`, `props`, `fire`,
       `p`, camera, timers…). In `Game`, replace the loose variables with `W.x` a few at a
       time. Reassigned `let`s become `W` properties. Commit per group.
@@ -366,7 +366,7 @@ What the code says about this phase (checked at the end of Phase 2):
     `aimPath` (render scratch), `fireBox` (the fire's dirty rects on the two canvases), `REC`/`RT`/`RPV`/`RP_ARR`/`rid`/`ridN`
     (recorder and replay), `raf`/`last`, `mouse`, `saveTick`/`ro`, `ratOnWeb`, and the constant tables `MATERIAL`,
     `DRIP_RATE`, `AMB_RATE`, `AMB_MAX`.
-- [ ] **P3.3 Test hooks from the world object.** `window.__lvl` becomes `W` (plus the
+- [x] **P3.3 Test hooks from the world object.** `window.__lvl` becomes `W` (plus the
       helper functions), set when a test-build flag is on, instead of `tests/build.js`
       string-swapping code into the closure. Keep every name the browser suites use today
       (`__lvl.p`, `.enemies`, `.sandbox()`, `.placeProp()`, `.fog.seen`, `.light.*`…), so
@@ -694,3 +694,5 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-29 | Phase 3, P3.2 (6b) | Clock, camera and torch to `W`: `time`, `levelT`, `best`, `camX`/`camY`/`camReady`, `unitPx`, `viewW`/`viewH`, `flick`, `torchR`, `visPts`, `leanX`/`leanY`, `glowN` (216 references). Their step-private helpers (`leanVX`, `flickN`, `torchT`…) wait for the timers group. `replay`, `torch` run too. | probe SAME, logic 33/33, smoke ok, replay ok, torch ok |
 | 2026-09-29 | Phase 3, P3.2 (7) | The run's 21 lists to `W` (same arrays; `RP_ARR` and `ratOnWeb` now take them from `W`). Their comments moved to `world.js`. `replay`, `spider`, `blackhole` run too. | probe SAME, logic 33/33, smoke ok, replay ok |
 | 2026-09-29 | Phase 3, P3.2 (8) | The last group: step's timers and sound loops, `decorStep`'s counters, `oreBank`, `navYou` (26 names) to `W`. What stays loose is listed under P3.2 (D15). `sound`, `jetpack`, `rats` run too. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-29 | Phase 3, P3.2 done | Full suite on a snapshot of 7f9bfe5: only `jelly` spit failed, passed alone on the 3rd run (as on v96/v98). | logic 33/33; browser 44/44 after re-runs |
+| 2026-09-29 | Phase 3, P3.3 | `src/game/testhook.js`: `testHook(W, g)` puts `sandbox`, `placeProp`, Game's functions and the old names (`seed`, `theme`, `rec`, `rt`, `fog`, `light`, `world`) on `W` and Game sets `window.__lvl = W` when `window.__TEST` is set. `tests/build.js` no longer inserts code into the closure: it adds a `<script>window.__TEST = true;</script>` before the bundle (the `__in` anchor in App stays). The `const toast` anchor is retired. CLAUDE.md points at `testhook.js`. | probe SAME, logic 33/33, smoke, donebutton, restart-confirm, decor, replay ok |

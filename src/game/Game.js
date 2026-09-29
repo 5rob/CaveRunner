@@ -45,6 +45,7 @@ import {
   VIS_RAYS, fogReveal, fogStart, losClear, nestFog, rayDist, visPoly
 } from '../world/vision.js';
 import { builtAt } from '../world/zones.js';
+import { testHook } from './testhook.js';
 import { makeWorld } from './world.js';
 
 // Game is layer 5 and may not import from ui/ (layer 6), so it takes its React helpers
@@ -428,6 +429,9 @@ export function Game({ input }) {
         d[k + 3] = W.seen[i] === 2 ? 0 : W.seen[i] ? dim : dark;
       }
     }
+    // the browser tests' way in (game/testhook.js): only on the test page, which sets the flag
+    if (window.__TEST) window.__lvl = testHook(W, { tctx, dctx, paintFog, hurt, maxHp, dig, explode, recSample,
+      ignite, setAlight, youAlight, REC, RT });
     {
       // picking up where the last session left off, if App found a save
       const sv = input.current.saved;
