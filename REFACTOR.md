@@ -13,7 +13,7 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 1 — P1.1–P1.5 done (on `refactor`, not merged). Next: P1.6, after the owner play-tests the branch |
+| **Current phase** | Phase 1 — P1.1–P1.5 done (on `refactor`, not merged). Next: P1.6 (merge as v97) once the owner has play-tested the branch, then Phase 2 |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | From the start of Phase 0 until Phase 1 merges to `main` |
 | **Last green full suite** | 2026-09-29, end of P1.5 (bar known flakes: `sound` portalOut fails every run, as on v96; `everymod` telecast and `rats` passed on re-run) |
@@ -217,7 +217,7 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
 - [x] **P1.4** Switch `tests/load.js` to bundle a `src/pure.js` (re-exports every pure
       module) with esbuild in-memory to CJS and return its exports. At first `pure.js` just
       re-exports from `main.js`. Logic suites don't change.
-- [ ] **P1.5** Move modules out **in layer order**, one per commit, logic tests green
+- [x] **P1.5** Move modules out **in layer order**, one per commit, logic tests green
       each time (see the target layout for what goes where):
   - [x] core/consts.js
   - [x] core/util.js
@@ -256,15 +256,58 @@ The script moves into `src/`, and a tiny build script glues it back into the exa
 
 ### Phase 2 — the React UI into `ui/`
 
-Same move-only method. `Game` stays where it is for now.
+Same move-only method (see **How a move goes** below). `Game` itself isn't taken apart
+until Phase 3.
+
+What the code says about this phase (checked at the end of Phase 1):
+- `Game` uses **no** UI name, so the UI can leave `main.js` freely. But `App` renders
+  `Game`, and a module may never import from `main.js` (`tools/move.js` refuses). So
+  **before P2.7, move `Game` as-is into `src/game/Game.js`** (one plain move, its own commit;
+  it's layer 5, below the UI). `App` then imports it from there and `main.js` becomes just the
+  mount. `tests/build.js`'s hook anchor `const toast = (text) => {` is inside `Game`; it stays
+  unique in the bundle wherever `Game` lives, so the test page keeps working.
+- Five pure leftovers sit above `Game` in `main.js`: `fmtGold` and `deckLayout` go to
+  `ui/hud.js` in P2.2 (only the UI uses them). `sputterStep`, `SPUTTER_FUEL` and `NO_INPUT`
+  are used by `Game` only: they go with `Game` into `game/Game.js`.
+- `h` and the hooks (`useRef`, `useEffect`, `useState`, `useMemo`) are destructured from the
+  global `React` on `main.js`'s first two lines. `Game` uses only `useRef`, `useEffect` and one
+  `h('canvas', …)`. Once `Game` is in `game/Game.js` (layer 5) it may not import from `ui/h.js`
+  (layer 6), so give `game/Game.js` its own two lines off the global `React` (`const { useRef,
+  useEffect } = React; const h = React.createElement;`) and record it as a decision. Until
+  then, `main.js` imports them from `ui/h.js` like everything else.
+- `JellyPreview` (Dev panel) runs the real `jellyStep`/`drawJelly`: it can import them from
+  `creatures/jelly.js` wherever it lands.
 
 - [ ] **P2.1** ui/h.js (the `h` helper and hook imports)
-- [ ] **P2.2** ui/hud.js (Stick, RKey, gauges, holdPress, deckLayout…)
+- [ ] **P2.2** ui/hud.js (Stick, RKey, gauges, holdPress, deckLayout, fmtGold, healthCol, GAUGE_*…)
 - [ ] **P2.3** ui/cards.js (GunCard, ModCard, PerkCard, GUN_STATS)
 - [ ] **P2.4** ui/editor.js (Editor, GunStats, SlotGrid, ScrollBox, GunIcon, PULL_COL, GS_ROWS)
 - [ ] **P2.5** ui/swap.js, ui/witness.js
 - [ ] **P2.6** ui/devpanel.js (DevRow, DevPanel, SpawnGun; JellyPreview goes with the jelly or here)
-- [ ] **P2.7** ui/app.js (App); `main.js` is now just the mount. Full suite green.
+- [ ] **P2.7** game/Game.js (Game as-is, with `sputterStep`, `SPUTTER_FUEL`, `NO_INPUT`),
+      then ui/app.js (App); `main.js` is now just the mount. Full suite green.
+
+### How a move goes (the recipe Phase 1 used; keep using it)
+
+1. `node tools/move.js <folder/file.js> --dry <names or @line ranges>`: shows what moves and
+   the imports it needs. If it says "X is still in main.js", move X first or along with it.
+2. Look at the comments above each statement in `src/main.js` (`grep -n -B4`): a statement
+   takes the comment lines above it, so a section header or a neighbour's comment can travel
+   with it. Fix that by hand after the move and say so in the commit.
+3. Run it without `--dry`, with `--about "header line\nsecond line"` for a new file.
+4. `node tools/same.js`: every top-level statement must be identical to the last commit
+   (only order may change). Then `node tests/run.js logic` and `node tests/run.js smoke`.
+5. Update the row in CLAUDE.md's **Layout of src/** table, tick the box here, commit (one
+   move per commit, `index.html` with it).
+6. End of a task group: full `node tests/run.js`. It takes ~15 min; don't run other heavy
+   work alongside it (several browser checks are timing-sensitive and fail under load). To
+   keep working meanwhile, run it in a snapshot worktree: `git worktree add <scratch>/snap
+   HEAD`, link `node_modules` in with a junction (PowerShell `New-Item -ItemType Junction`),
+   and **remove the junction (`cmd /c rmdir <snap>\node_modules`) before `git worktree remove`**,
+   or the removal can reach through it into the real `node_modules`.
+7. A suite that fails: re-run it alone; if it still fails, compare against v96 (a worktree of
+   `d89c6cd`, i.e. `main` before P1.6, with `CAVERUNNER_CHROME` set, since old checkouts don't know the
+   Windows Chrome path).
 
 ### Phase 3 — take the `Game` closure apart (the big one)
 
@@ -365,13 +408,13 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
 | D3 | Built `index.html` stays committed at the root | Android shell, CI, Pages, `serve.js` and the version check all keep working untouched |
 | D4 | `VERSION` written as a literal un-bundled line by the build | The Android shell and CI parse `VERSION = 'vNN'` with single quotes; esbuild would reprint it |
 | D5 | Logic suites go through `tests/load.js` | Suites stop caring where code lives, so each move doesn't touch 33 files |
+| D6 | The dev `package.json` also carries `playwright-core` (and `globals`, the browser-globals list ESLint needs); `tests/chromium.js` finds an installed Windows Chrome | Browser suites run after one `npm install`, with no per-session scratchpad setup or env vars |
 | D7 | `VERSION` is not imported: `src/version.js` is read by the build (and by `tests/load.js`), and the game code uses the global the page's own `<script>const VERSION = 'vNN';</script>` declares (ESLint knows it as a global) | The bundle never declares it, so there is exactly one `VERSION = 'vNN'` in `index.html` for CI and the app to find |
 | D8 | esbuild runs with `treeShaking: false` | Otherwise it drops code nothing calls yet (`groupStats`, still tested) |
 | D9 | The browser test page copies every top-level name of the bundle onto `window` (`tests/build.js`, names found by parsing with espree, which ships with ESLint) | Browser suites call `MODS`, `DEV`, `resetGun`… from `page.evaluate`; inside the iife those aren't globals any more. Suites stay unchanged |
 | D10 | `tools/move.js` does the P1.5 moves: cuts named top-level statements (with the comments above them) out of `main.js`, puts `export` on them, and recomputes the imports on both sides from what each file actually uses; refuses a move whose code still needs something in `main.js` | Each move is mechanical and the same shape; a cycle back into `main.js` can't slip in. Delete it after Phase 2 |
 | D11 | In Phase 1 every knob table (`SP_KNOBS`, `JE_KNOBS`, `RA_KNOBS`, `JE_COLS`, `LV_KNOBS`, `ARCH_KNOBS`, `FIRE_KNOBS`) stays in `dev/knobs.js`, not in its creature's file | `DEV` is copied from `DEV_DEFAULTS` once, right after the tables register. A table in `creatures/spider.js` would register *after* that (knobs.js loads first), so `DEV` would miss its keys and the Dev rows would reorder: a behaviour change. Moving them needs `DEV` built after all tables (Phase 3) |
-| D12 | Proof a move changed nothing: parse the built bundle before and after, and compare every top-level statement's text (indentation aside). After P1.5 all 359 matched the P1.2 bundle exactly; only the order differs (modules first) | Stronger than the suites for a move-only phase: same text in, same behaviour out. The only thing a move can change is load order, and nothing at the top level reads a later module's state (checked for `MODS` in P1.5) |
-| D6 | The dev `package.json` also carries `playwright-core` (and `globals`, the browser-globals list ESLint needs); `tests/chromium.js` finds an installed Windows Chrome | Browser suites run after one `npm install`, with no per-session scratchpad setup or env vars |
+| D12 | Proof a move changed nothing: parse the built bundle before and after, and compare every top-level statement's text (indentation aside): `node tools/same.js [ref]`. After P1.5 all 359 matched the P1.2 bundle exactly; only the order differs (modules first) | Stronger than the suites for a move-only phase: same text in, same behaviour out. The only thing a move can change is load order, and nothing at the top level reads a later module's state (checked for `MODS` in P1.5) |
 
 ## Found along the way
 
@@ -390,7 +433,7 @@ commit. List them here for after.
   `src/` concatenated, or those checks go false. **Done in P1.4** (`.source` walks `src/`).
 - **Browser suites need Playwright on this PC.** None is installed globally; this session
   put `playwright-core` in the scratchpad and set `CAVERUNNER_PLAYWRIGHT` +
-  `CAVERUNNER_CHROME` (system Chrome at `C:Program FilesGoogleChromeApplication`).
+  `CAVERUNNER_CHROME` (system Chrome at `C:/Program Files/Google/Chrome/Application/chrome.exe`).
   `tests/chromium.js` only looks for Linux Chromium paths by default. P1.1's dev
   `package.json` could carry `playwright-core` so this stops being per-session.
   **Resolved in P1.1** (D6).
@@ -401,7 +444,7 @@ commit. List them here for after.
   worth fixing after the refactor. Also fails the same way on v96 from `main`, run in a
   worktree with this PC's Chrome (P1.2), and passed once in a full run (P1.5 spells).
 - **`no-undef` can't see a missing import of a name that is also a browser global** (`name`,
-  `close`, `status`…): it would quietly resolve to `window's`. No top-level game name clashes
+  `close`, `status`…): it would quietly resolve to the `window` one. No top-level game name clashes
   with one today (checked in P1.3). `tools/move.js` lints with no globals at all, so moves are safe.
 - **More load-sensitive browser checks.** Seen failing in full runs while other work was
   loading the PC, passing alone every time: `torch` ("falls off into the dark…", "the brighter
@@ -423,7 +466,10 @@ commit. List them here for after.
   header (was above `rr`, now above the sprites).
 - **Pure code still in `main.js`** after P1.5: `sputterStep`/`SPUTTER_FUEL` (the jetpack,
   Phase 3 player), `NO_INPUT`, `fmtGold`, `deckLayout` (the HUD, Phase 2). They stay in its
-  `export { … }` list until they move.
+  `export { … }` list until they move (the Phase 2 notes say where each goes).
+- **The `shoplayout` logic suite takes ~26 s of its 30 s cap** (`LOGIC_CAP` in `tests/run.js`),
+  and `perks` ~24 s. Not the refactor (the loader costs ~0.15 s), but on a busy PC they could
+  time out. If one does, re-run it alone; worth making them lighter after the refactor.
 
 ## Game map
 
@@ -440,3 +486,4 @@ commit. List them here for after.
 | 2026-09-29 | Phase 1, P1.3 | `eslint.config.js` (flat, only `no-undef`, browser globals + React/ReactDOM/VERSION); `tests/run.js` runs it over `src/` first and counts a report as a failure. Checked it catches a planted undefined name. | logic 33/33 |
 | 2026-09-29 | Phase 1, P1.4 | `src/pure.js` (VERSION + `export * from main.js`); main.js got an `export { … }` list of the 346 names the old loader found above `Game`. `tests/load.js` bundles pure.js to CJS in memory and runs it with stubs for React/ReactDOM/document (main.js now runs to its mount line); `.source` = all of `src/`. Same 348 names, same types, before and after; `index.html` unchanged (iife drops exports). | logic 33/33 |
 | 2026-09-29 | Phase 1, P1.5 | All 31 moves, one commit each via `tools/move.js`, logic suites + names check + `smoke` before every commit. Extra: `COL` joined `core/consts.js` (guns and sprites need it). Knob tables stay in `dev/knobs.js` (D11). `main.js` 12,816 → 5,767 lines (Game, UI, and 5 pure leftovers). Full runs on snapshots at the end of spells and world, and at the end: only known/load flakes, each passing alone. Bundle statements identical to P1.2's (D12). | logic 33/33; browser 43/44 (`sound`, as v96) after re-runs |
+| 2026-09-29 | handover | Docs made ready for the next session: Phase 2 notes worked out from the code (`Game` has to move to `game/Game.js` before `App` can leave `main.js`; where the pure leftovers and `h`/hooks go), a **How a move goes** recipe, `tools/same.js` (D12's check as a tool, tried both ways), the P1.5 parent box ticked, test timings in CLAUDE.md, HANDOVER status. | logic 33/33 |

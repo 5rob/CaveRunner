@@ -7,6 +7,12 @@ it's stale.
 
 ## Where things stand
 
+- **Refactor in progress on the `refactor` branch (not merged).** The code now lives in
+  modules under `src/`, bundled by esbuild into the same `index.html`. Phase 0 and P1.1–P1.5
+  are done; next is P1.6 (merge to `main` as v97, after the owner play-tests the branch with
+  `node tools/build.js --watch` + `node serve.js`), then Phase 2. **`REFACTOR.md` is the
+  tracker** — its Status table, **How a move goes** recipe and session log say exactly where
+  things are. Feature freeze until P1.6 lands.
 - **On-disk version: v96.** Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
@@ -18,7 +24,8 @@ it's stale.
   app** section in `CLAUDE.md` and `android/README.md`. Details below.
 - Working tree is clean apart from `.claude/` (untracked on purpose — it holds an API token,
   never commit it).
-- Full test suite is green (`node tests/run.js`), see **Testing** below for two known flakes.
+- Full test suite is green (`node tests/run.js`) bar `sound` portal-out, which fails the same
+  on v96; see **Testing** below and REFACTOR.md's "Found along the way" for the flakes.
   (The suite covers `index.html` logic/browser only; the Android shell isn't unit-tested —
   its test is the CI build + installing the APK.)
 

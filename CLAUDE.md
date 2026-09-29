@@ -991,8 +991,8 @@ only because someone noticed.
 
 ```
 node tests/run.js           # everything
-node tests/run.js logic     # the fast ones, ~2 seconds
-node tests/run.js browser   # Chromium, ~2 minutes, runs one at a time
+node tests/run.js logic     # the fast ones, ~2.5 minutes (level-generating suites are most of it)
+node tests/run.js browser   # Chromium, ~12 minutes on this PC, runs one at a time
 node tests/run.js advice    # anything matching "advice"
 ```
 
