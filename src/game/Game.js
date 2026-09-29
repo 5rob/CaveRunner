@@ -35,10 +35,9 @@ import { PLANTS, archNear } from '../world/decorate.js';
 import { FIRE_COLS, fireArea, fireDouse, fireNew } from '../world/fire.js';
 import { ROOM_HH, ROOM_HW, makeLevel } from '../world/level.js';
 import { VIS_RAYS, fogReveal, fogStart, nestFog, visPoly } from '../world/vision.js';
-import { builtAt } from '../world/zones.js';
 import { puffSpores } from './systems/ambience.js';
 import { critRoll, explodeCross, shove, spray, teleportTo } from './systems/bullets.js';
-import { damageEnemy, fireEnemyShot } from './systems/enemies.js';
+import { damageEnemy, fireEnemyShot, natural } from './systems/enemies.js';
 import { fieldPayload } from './systems/fields.js';
 import { fireBlast, fireFrame, ignite, setAlight, youAlight } from './systems/fire.js';
 import { fogLit, paintFog, roomSeen, seenAt } from './systems/fog.js';
@@ -115,8 +114,6 @@ export function Game({ input }) {
     const mctx = miniC.getContext('2d');
     const miniImg = new ImageData(MMW, MMH);
     const mini32 = new Uint32Array(miniImg.data.buffer);
-
-    const natural = (x, y) => !builtAt(W.zone, x, y);      // jellies keep to the natural zones
 
     // ---- level decoration (see DECOR): the decoration layer's canvas and the plant glow's
     // scratch. The props, their particles, decorStep's counters and what they did to you are in W.
@@ -1266,7 +1263,7 @@ export function Game({ input }) {
           // swims in pulses (jellyStep); spits when its head is lined up on you, in range
           const cold = e.chill && e.chill < 1 ? e.chill : 1;
           if (jellyStep(e, { solidCell: (cx, cy) => solidCell(W, cx, cy), hunting, goal: { x: pcx, y: pcy }, rnd: Math.random,
-            speedMul: cold, rangeMul: sees, stay: W.zone ? natural : null }, dt) === 'pulse') puffSpores(W, e);
+            speedMul: cold, rangeMul: sees, stay: W.zone ? ((x, y) => natural(W, x, y)) : null }, dt) === 'pulse') puffSpores(W, e);
           const S = e.je;
           // brush its tentacles and you're stung, hunting or not (same sting knobs as the bell)
           if (!W.p.dead && e.touch <= 0 && dist < 180) {

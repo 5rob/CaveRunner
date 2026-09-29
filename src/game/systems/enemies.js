@@ -1,8 +1,9 @@
-// The creatures: shooting at you, and taking damage (a kill drops its gold; a nest showers
-// what its rats brought home).
+// The creatures: shooting at you, taking damage (a kill drops its gold; a nest showers
+// what its rats brought home), and where a jelly may swim (natural).
 
 import { SFX } from '../../audio/sfx.js';
 import { jcol, kr } from '../../dev/knobs.js';
+import { builtAt } from '../../world/zones.js';
 import { burst } from './particles.js';
 import { lineOfSight } from './terrain.js';
 
@@ -48,3 +49,5 @@ export function damageEnemy(W, j, dmg) {
   if (e.carry > 0) W.coins.push({ x: e.x, y: e.ty, amount: e.carry, t: Math.random() * 6.28,
     vx: (Math.random() - 0.5) * 60, vy: -90 - Math.random() * 40 });
 }
+
+export const natural = (W, x, y) => !builtAt(W.zone, x, y);      // jellies keep to the natural zones

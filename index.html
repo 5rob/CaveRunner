@@ -10320,6 +10320,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       vy: -90 - Math.random() * 40
     });
   }
+  var natural = (W, x, y) => !builtAt(W.zone, x, y);
 
   // src/save/save.js
   var SAVE_KEY = "caverunner-save";
@@ -12992,7 +12993,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const mctx = miniC.getContext("2d");
       const miniImg = new ImageData(MMW, MMH);
       const mini32 = new Uint32Array(miniImg.data.buffer);
-      const natural = (x, y) => !builtAt(W.zone, x, y);
       let pgArt = null, pgC = null, pgCtx = null;
       const decoC = document.createElement("canvas");
       decoC.width = CW;
@@ -14518,7 +14518,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               rnd: Math.random,
               speedMul: cold,
               rangeMul: sees,
-              stay: W.zone ? natural : null
+              stay: W.zone ? ((x, y) => natural(W, x, y)) : null
             }, dt) === "pulse") puffSpores(W, e);
             const S = e.je;
             if (!W.p.dead && e.touch <= 0 && dist < 180) {
