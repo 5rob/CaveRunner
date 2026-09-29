@@ -18,3 +18,4 @@ export * from './spells/guns.js';
 export * from './spells/cast.js';
 export * from './spells/trace.js';
 export * from './spells/advisor.js';
+export * from './spells/bagsim.js';
