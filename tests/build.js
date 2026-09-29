@@ -41,8 +41,8 @@ const SANDBOX =
   "        const i = y * CW + x, k = i * 4; W.mat[i] = BRICK; d[k] = 132; d[k + 1] = 99; d[k + 2] = 71; d[k + 3] = 255; dd[k + 3] = 0; }" +
   "      tctx.putImageData(W.img, 0, 0, x0, Math.max(0, y0 - 6), x1 - x0 + 1, y1 - y0 + 7);" +
   "      dctx.putImageData(W.dimg, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);" +
-  "      W.enemies.length = 0; W.props.length = 0; W.pickups.length = 0; bullets.length = 0;" +
-  "      enemyShots.length = 0; webs.length = 0; silk.length = 0; strings.length = 0; fields.length = 0; dparts.length = 0; amb.length = 0;" +
+  "      W.enemies.length = 0; W.props.length = 0; W.pickups.length = 0; W.bullets.length = 0;" +
+  "      W.enemyShots.length = 0; W.webs.length = 0; W.silk.length = 0; W.strings.length = 0; W.fields.length = 0; W.dparts.length = 0; W.amb.length = 0;" +
   "      for (let y = Math.floor(y0 * CELL / FOG_U); y <= Math.floor(y1 * CELL / FOG_U); y++)" +
   "        for (let x = Math.floor(x0 * CELL / FOG_U); x <= Math.floor(x1 * CELL / FOG_U); x++) W.seen[y * FW + x] = 2;" +
   "      paintFog();" +
@@ -53,18 +53,18 @@ const SANDBOX =
 
 const HOOK_LVL = SANDBOX +
   "    window.__lvl = { sandbox: __sandbox, placeProp: __placeProp, get pickups(){return W.pickups}, get enemies(){return W.enemies}, " +
-  "bullets, p: W.p, get mat(){return W.mat}, get stock(){return W.stock}, coins, get floor(){return W.floor}, get seed(){return W.levelSeed}, hurt, get bhLoops(){return bhLoops}, " +
+  "bullets: W.bullets, p: W.p, get mat(){return W.mat}, get stock(){return W.stock}, coins: W.coins, get floor(){return W.floor}, get seed(){return W.levelSeed}, hurt, get bhLoops(){return bhLoops}, " +
   "get rooms(){return W.rooms}, get pb(){return W.pb}, maxHp, " +
   "get roster(){return W.roster}, get theme(){return W.themeName}, " +
   "get arrival(){return W.arrival}, get start(){return W.start}, get portal(){return W.portal}, " +
-  "enemyShots, sparks, webs, silk, strings, fields, beams, arcs, flashes, dig, explode, get ore(){return W.ore}, motes, smoke, get sconces(){return W.sconces}, get props(){return W.props}, dparts, amb, clouds, rings, get zfx(){return W.zfx}, " +
+  "enemyShots: W.enemyShots, sparks: W.sparks, webs: W.webs, silk: W.silk, strings: W.strings, fields: W.fields, beams: W.beams, arcs: W.arcs, flashes: W.flashes, dig, explode, get ore(){return W.ore}, motes: W.motes, smoke: W.smoke, get sconces(){return W.sconces}, get props(){return W.props}, dparts: W.dparts, amb: W.amb, clouds: W.clouds, rings: W.rings, get zfx(){return W.zfx}, " +
   "get rec(){return REC}, get rt(){return RT}, recSample, " +
   "get fire(){return W.fire}, get burrow(){return W.burrow}, ignite, setAlight, youAlight, get dimg(){return W.dimg}, get zone(){return W.zone}, " +
   "world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y }, " +
   "fog: { get seen(){return W.seen}, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal, paint: paintFog }, " +
   "light: { get flick(){return W.flick}, get r(){return W.torchR}, " +
   "  get cam(){return { x: W.camX, y: W.camY }}, get s(){return W.unitPx * (window.devicePixelRatio || 1)}, " +
-  "  get embers(){return torchP.length}, get vis(){return W.visPts}, visPoly, losClear } };\n";
+  "  get embers(){return W.torchP.length}, get vis(){return W.visPts}, visPoly, losClear } };\n";
 
 function build() {
   let s = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');

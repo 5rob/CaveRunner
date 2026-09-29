@@ -77,5 +77,25 @@ export function makeWorld() {
     fireLoop: null,                 // the crackle, at the nearest blaze
     fireN: 0,                       // burning pixels on view (the glow's strength)
     fireVis: [],                    // and which ones, for the glow after the fog
+
+    // ---- the run's lists: kept for the whole run, emptied by enterLevel (not fields, beams,
+    // toasts), and never replaced: the recorder's RP_ARR holds them by reference ----
+    bullets: [], enemyShots: [],    // your shots, and the creatures'
+    fields: [], beams: [],          // static projectiles, and instant beam streaks
+    arcs: [],                       // lightning forks: jagged lines that flash and fade
+    coins: [],
+    toasts: [],                     // the messages at the bottom of the view
+    smoke: [], sparks: [], flashes: [],
+    torchP: [],                     // the embers the torch throws off
+    // soft magic particles: the Black Hole's trail ('drift'), motes sucked into the exit
+    // portal ('in') and motes wafting out of the arrival portal ('out')
+    motes: [],
+    burns: [],                      // the fire trail (Levitation Trail), if owned
+    // the spiders' silk: webs are the lines they travel on (they stay), silk the strings in
+    // flight at you, strings the ones stuck to you (each slows you; pull one too long, it snaps)
+    webs: [], silk: [], strings: [],
+    // the decoration's particles (glow dots, drips, embers), the theme's ambience, spore
+    // clouds, noise rings and dust devils
+    dparts: [], amb: [], clouds: [], rings: [], devils: [],
   };
 }

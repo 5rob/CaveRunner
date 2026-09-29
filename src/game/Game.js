@@ -116,21 +116,13 @@ export function Game({ input }) {
     let portalLoop = null, matterLoop = null, wasJet = false, stepT = 0, lastNear = '';
     let plantsLast = new Set();
 
-    const bullets = [], enemyShots = [], smoke = [], sparks = [], flashes = [], toasts = [], coins = [];
-    const fields = [], beams = [];                   // static projectiles, and instant beam streaks
-    const arcs = [];                                 // lightning forks: jagged lines that flash and fade
-    const torchP = [];                               // the embers the torch throws off
-    // soft magic particles: the Black Hole's trail ('drift'), motes sucked into the exit
-    // portal ('in') and motes wafting out of the arrival portal ('out')
-    const motes = [];
-    let portalAcc = 0;
-    // ---- level decoration (see DECOR): the props, the decoration layer, their particles,
-    // the theme's ambience, spore clouds and noise rings. (What the props did to you is W.zfx.)
+    let portalAcc = 0;                               // the exit portal's motes, spawned by the clock
+    // ---- level decoration (see DECOR): the decoration layer's canvas, the plant glow's scratch
+    // and decorStep's counters. The props, their particles and what they did to you are in W.
     let pgArt = null, pgC = null, pgCtx = null;   // the jellies' plant glow (plantGlow)
     const decoC = document.createElement('canvas');
     decoC.width = CW; decoC.height = CH;
     const dctx = decoC.getContext('2d');
-    const dparts = [], amb = [], clouds = [], rings = [], devils = [];
     let decoFrame = 0, dripHurt = 0;
     // the hand torch's flame lean: a sprung offset dragged opposite to how you move,
     // the same way the jet flame swings, so the fire trails behind you
@@ -154,11 +146,6 @@ export function Game({ input }) {
     const refreshBag = () => { W.pb = perkBag(input.current.loadout.perks || []); };
     // the true maximum health: the perk bag's answer plus the running +25 per heart room.
     const maxHp = () => W.pb.maxHp + (input.current.loadout.maxBonus || 0);
-    // the fire trail (Levitation Trail), if owned (the Angry Ghost is W.ghost)
-    const burns = [];
-    // the spiders' silk: webs are the lines they travel on (they stay), silk the strings in
-    // flight at you, strings the ones stuck to you (each slows you; pull one too long, it snaps)
-    const webs = [], silk = [], strings = [];
     // the shared way-to-you field the hunting rats follow (see ratSolid / navFor)
     const navYou = {};
     let webCheck = 0, webLetGo = 0;
@@ -170,7 +157,7 @@ export function Game({ input }) {
     };
     const webDist = (L, x, y) => { const q = webNear(L, x, y); return Math.hypot(q.x - x, q.y - y); };
 
-    const toast = text => { toasts.push({ text, t: 2.2 }); if (toasts.length > 3) toasts.shift(); };
+    const toast = text => { W.toasts.push({ text, t: 2.2 }); if (W.toasts.length > 3) W.toasts.shift(); };
     let raf, last = performance.now();
 
     // ---- the death replay's recorder (see RP_HZ) ----
@@ -180,8 +167,8 @@ export function Game({ input }) {
     // through). Fog: fogBase + fogLog (time, cell, value). While you're alive only the last
     // RP_KEEP seconds are kept (older patches fold into the base); from the death it runs
     // RP_AFTER more seconds and stops.
-    const RP_ARR = { bullets, enemyShots, smoke, sparks, flashes, coins, fields, beams, arcs, torchP, motes,
-      burns, webs, silk, strings, dparts, amb, clouds, rings, devils };
+    const RP_ARR = { bullets: W.bullets, enemyShots: W.enemyShots, smoke: W.smoke, sparks: W.sparks, flashes: W.flashes, coins: W.coins, fields: W.fields, beams: W.beams, arcs: W.arcs, torchP: W.torchP, motes: W.motes,
+      burns: W.burns, webs: W.webs, silk: W.silk, strings: W.strings, dparts: W.dparts, amb: W.amb, clouds: W.clouds, rings: W.rings, devils: W.devils };
     const rid = new WeakMap();
     let ridN = 0;
     const idOf = o => { let i = rid.get(o); if (i === undefined) rid.set(o, i = ++ridN); return i; };
@@ -364,7 +351,7 @@ export function Game({ input }) {
       W.props = level.props || []; W.ambKinds = level.amb || []; W.dimg = level.dimg;
       W.plantW = plantWhite(W.img.data, W.dimg && W.dimg.data);    // the jellies' plant glow keys off this
       dctx.putImageData(W.dimg, 0, 0);
-      dparts.length = amb.length = clouds.length = rings.length = devils.length = 0;
+      W.dparts.length = W.amb.length = W.clouds.length = W.rings.length = W.devils.length = 0;
       W.zfx = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
       {
         const pcx0 = W.portal.x + W.portal.w / 2, pcy0 = W.portal.y + W.portal.h / 2;
@@ -379,8 +366,8 @@ export function Game({ input }) {
       bhLoops.clear();
       W.total = W.enemies.length;
       W.ghost = W.pb.ghost ? { x: level.start.x, y: level.start.y, cd: 0 } : null;
-      burns.length = 0;
-      webs.length = silk.length = strings.length = 0;
+      W.burns.length = 0;
+      W.webs.length = W.silk.length = W.strings.length = 0;
       // the rat burrows (see ratSolid): each room and tunnel, bar nothing — the hole too
       W.burrow = null; navYou.F = null;
       if (level.nests && level.nests.length) {
@@ -401,9 +388,9 @@ export function Game({ input }) {
       bgctx.putImageData(level.bgImg, 0, 0);
       W.p.x = W.start.x; W.p.y = W.start.y; W.p.vx = 0; W.p.vy = 0;
       W.p.fuel = 1; W.p.empty = false; W.p.kick = 0;
-      bullets.length = enemyShots.length = smoke.length = 0;
-      sparks.length = flashes.length = coins.length = arcs.length = 0;
-      torchP.length = 0; motes.length = 0;
+      W.bullets.length = W.enemyShots.length = W.smoke.length = 0;
+      W.sparks.length = W.flashes.length = W.coins.length = W.arcs.length = 0;
+      W.torchP.length = 0; W.motes.length = 0;
       W.camReady = false; W.best = 0;
       W.levelT = 0;                             // the floor's name card gets its three seconds
       W.seen = fogStart(); W.deepFog = nestFog(level.nests);
@@ -531,9 +518,9 @@ export function Game({ input }) {
 
     // one drop of goo: falls under its own gravity g, lands and sits a moment on rock
     function goo(x, y, vx, vy, g, c, size, c2) {
-      if (sparks.length > 800) return;
+      if (W.sparks.length > 800) return;
       const life = 0.5 + Math.random() * 0.5;
-      sparks.push({ x, y, vx, vy, life, max: life, c: Math.random() < 0.35 ? (c2 || '#c8ff8a') : c,
+      W.sparks.push({ x, y, vx, vy, life, max: life, c: Math.random() < 0.35 ? (c2 || '#c8ff8a') : c,
         size: size || 1.1 + Math.random() * 0.8, heavy: 1, g });
     }
     // a poison spit bursting: a little ring of goo thrown out, a bit back the way it came
@@ -549,7 +536,7 @@ export function Game({ input }) {
     function burst(x, y, n, color) {
       for (let i = 0; i < n; i++) {
         const a = Math.random() * 6.28, sp = 60 + Math.random() * 160;
-        sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.45, max: 0.45, c: color, size: 3 });
+        W.sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.45, max: 0.45, c: color, size: 3 });
       }
     }
     function hurt(n) {
@@ -578,7 +565,7 @@ export function Game({ input }) {
           return;
         }
         W.p.dead = true; burst(W.p.x + PW / 2, W.p.y + PH / 2, 24, COL.player);
-        strings.length = 0;
+        W.strings.length = 0;
         SFX.ui('die');
         clearSave();                          // a death is final: reopening starts a new run
       }
@@ -594,7 +581,7 @@ export function Game({ input }) {
       for (let s = 0; s < k.shots; s++) {
         const cone = k.shots > 1 ? (s - (k.shots - 1) / 2) * 0.15 : 0;
         const a = base + cone + (Math.random() - 0.5) * 0.22;
-        enemyShots.push({ x: e.x + Math.cos(a) * (e.r + 4), y: e.ty + Math.sin(a) * (e.r + 4),
+        W.enemyShots.push({ x: e.x + Math.cos(a) * (e.r + 4), y: e.ty + Math.sin(a) * (e.r + 4),
           vx: Math.cos(a) * k.bspd, vy: Math.sin(a) * k.bspd, life: 2.5,
           col: k.col.a, dmg: k.dmg, size: k.body === 'blob' ? 4 : 3, fire: k.fire });
       }
@@ -613,16 +600,16 @@ export function Game({ input }) {
         const all = Math.round(kr('raNestGold') * W.pb.gold) + e.nest.stash;
         const n = Math.max(1, Math.min(14, Math.ceil(all / 8)));
         for (let k = 0; k < n; k++)
-          coins.push({ x: e.x + (Math.random() - 0.5) * 8, y: e.y, amount: Math.floor(all / n) + (k < all % n ? 1 : 0),
+          W.coins.push({ x: e.x + (Math.random() - 0.5) * 8, y: e.y, amount: Math.floor(all / n) + (k < all % n ? 1 : 0),
             t: Math.random() * 6.28, vx: (Math.random() - 0.5) * 100, vy: -80 - Math.random() * 80 });
         SFX.fx('coinland', e.x, e.y);
         return;
       }
-      coins.push({ x: e.x, y: e.ty,
+      W.coins.push({ x: e.x, y: e.ty,
         amount: Math.round((e.k.gold + Math.floor(Math.random() * 3)) * W.pb.gold),
         t: Math.random() * 6.28, vy: -60 - Math.random() * 40 });
       // a rat drops what it was carrying home
-      if (e.carry > 0) coins.push({ x: e.x, y: e.ty, amount: e.carry, t: Math.random() * 6.28,
+      if (e.carry > 0) W.coins.push({ x: e.x, y: e.ty, amount: e.carry, t: Math.random() * 6.28,
         vx: (Math.random() - 0.5) * 60, vy: -90 - Math.random() * 40 });
     }
     // ---- rats ----
@@ -632,17 +619,17 @@ export function Game({ input }) {
     // a goal's distance field, kept on `o` and made again when the goal moves or the rock changes
     // a spider's web line under a rat's feet counts as ground: rats run along webs
     const onWebIn = list => (x, y) => { for (const L of list) if (webDist(L, x, y) < 3) return true; return false; };
-    const ratOnWeb = onWebIn(webs);
+    const ratOnWeb = onWebIn(W.webs);
     function navFor(o, goal, R) {
       // (the rock changing only counts once a second, or a drill would rebuild them every frame)
       if (!o.F || (o.v !== W.terrainV && W.time - o.t > 1) || Math.hypot(goal.x - o.fx, goal.y - o.fy) > (o === navYou ? 12 : 6) ||
-          (o === navYou && W.time - o.t > 0.4) || (o.wn !== webs.length && W.time - o.t > 1)) {
+          (o === navYou && W.time - o.t > 0.4) || (o.wn !== W.webs.length && W.time - o.t > 1)) {
         // only the web lines that cross the field's square, so a floor of webs costs nothing
-        const half = (R + 1) * NAV * CELL, near = webs.filter(L =>
+        const half = (R + 1) * NAV * CELL, near = W.webs.filter(L =>
           Math.max(L.a0x, L.b0x) > goal.x - half && Math.min(L.a0x, L.b0x) < goal.x + half &&
           Math.max(L.a0y, L.b0y) > goal.y - half && Math.min(L.a0y, L.b0y) < goal.y + half);
         o.F = navField(ratSolid, goal.x, goal.y, R, near.length ? onWebIn(near) : null);
-        o.v = W.terrainV; o.fx = goal.x; o.fy = goal.y; o.t = W.time; o.wn = webs.length;
+        o.v = W.terrainV; o.fx = goal.x; o.fy = goal.y; o.t = W.time; o.wn = W.webs.length;
       }
       return o.F;
     }
@@ -689,7 +676,7 @@ export function Game({ input }) {
         goal = { x: R.rx, y: R.ry }; jump = false;
       } else {
         let bd = e.smell || (e.smell = kr('raSmell'));
-        for (const g of coins) {
+        for (const g of W.coins) {
           if (g.nopull > 0 && g.vy < 0) continue;            // still on its way up
           const d = Math.hypot(g.x - e.x, g.y - e.y);
           if (d < bd) { bd = d; want = g; }
@@ -748,8 +735,8 @@ export function Game({ input }) {
       }
       // a coin in reach: in its mouth
       if (want && Math.hypot(want.x - e.x, want.y - e.y) < e.r + 5) {
-        const i = coins.indexOf(want);
-        if (i >= 0) { coins.splice(i, 1); e.carry = (e.carry || 0) + want.amount; SFX.fx('coinland', e.x, e.y); }
+        const i = W.coins.indexOf(want);
+        if (i >= 0) { W.coins.splice(i, 1); e.carry = (e.carry || 0) + want.amount; SFX.fx('coinland', e.x, e.y); }
       }
       // you, in reach: a bite, and a coin knocked out of you over its head
       if (hunting && !want && !(e.giveUp > 0) && !(e.carry > 0 && N) && dist < e.r + 12 && e.touch <= 0 && !W.p.dead) {
@@ -762,7 +749,7 @@ export function Game({ input }) {
           LO.gold -= amt;
           input.current.notify();
           const side = e.x >= pcx ? 1 : -1;
-          coins.push({ x: pcx, y: W.p.y + 4, amount: amt, t: Math.random() * 6.28,
+          W.coins.push({ x: pcx, y: W.p.y + 4, amount: amt, t: Math.random() * 6.28,
             vx: side * kr('raPopX'), vy: -kr('raPopY'), pop: 1, nopull: 0.7 });
           SFX.ui('coin');
         }
@@ -801,7 +788,7 @@ export function Game({ input }) {
       const each = Math.floor(oreBank / bits);
       oreBank -= each * bits;
       for (let k = 0; k < bits; k++)
-        coins.push({ x: x + (Math.random() - 0.5) * 6, y, amount: each, t: Math.random() * 6.28,
+        W.coins.push({ x: x + (Math.random() - 0.5) * 6, y, amount: each, t: Math.random() * 6.28,
           vx: (Math.random() - 0.5) * 120, vy: -60 - Math.random() * 80 });
       SFX.fx('coinland', x, y);
     }
@@ -873,7 +860,7 @@ export function Game({ input }) {
       }
       if (acts.includes('saws')) {
         SFX.fx('saws');
-        for (const b of bullets) {
+        for (const b of W.bullets) {
           b.dmg = Math.max(b.dmg, 3); b.size = 5; b.bore = 4; b.col = '#d9dde4';
           b.life = Math.max(b.life, 1.2); b.bounce = Math.max(b.bounce, 4); b.explode = 0;
         }
@@ -951,7 +938,7 @@ export function Game({ input }) {
             bx = tx; by = ty;
           }
         }
-        bullets.push({ x: bx, y: by,
+        W.bullets.push({ x: bx, y: by,
           vx: Math.cos(a) * sh.speed * W.pb.speed * bhSp(sh), vy: Math.sin(a) * sh.speed * W.pb.speed * bhSp(sh),
           life: sh.life, dmg: (sh.dmg + bonus) * pd, size: sh.size, col: sh.col, spin: 0,
           homing: Math.max(sh.homing, W.pb.homing), bounce: sh.bounce + W.pb.bounce, pierce: sh.pierce,
@@ -1012,7 +999,7 @@ export function Game({ input }) {
       }
       return out;
     }
-    function addArc(pts, col, w, max) { arcs.push({ pts: jag(pts, 4), col, w, t: 0, max }); }
+    function addArc(pts, col, w, max) { W.arcs.push({ pts: jag(pts, 4), col, w, t: 0, max }); }
     // A lightning bolt remembers its last stretch of path (drawn as the bolt) and every
     // few hundredths of a second throws a fork: at a creature in reach and in sight
     // (a little damage), else at a nearby bit of rock (just the flash).
@@ -1069,7 +1056,7 @@ export function Game({ input }) {
           if (!sh.pierce) { hitAt = d; break; }
         }
       }
-      beams.push({ x, y, nx, ny, len: hitAt, col: sh.col, w: sh.size, t: 0, look: sh.look });
+      W.beams.push({ x, y, nx, ny, len: hitAt, col: sh.col, w: sh.size, t: 0, look: sh.look });
       if (sh.look) {                                   // sparks off the end, and a scorched hole where it meets rock
         const ex = x + nx * hitAt, ey = y + ny * hitAt;
         for (let k = 0; k < 5; k++) glowDot(ex, ey, -nx * rnd(20, 80) + rnd(-50, 50), -ny * rnd(20, 80) + rnd(-50, 30),
@@ -1087,7 +1074,7 @@ export function Game({ input }) {
       const n = Math.min(8, b.cluster);
       for (let i = 0; i < n; i++) {
         const a = Math.random() * Math.PI * 2, sp = 140 + Math.random() * 120;
-        bullets.push({ x: b.x, y: b.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        W.bullets.push({ x: b.x, y: b.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
           life: 0.5 + Math.random() * 0.3, dmg: Math.max(0.6, b.dmg * 0.3), size: 2,
           col: b.col, spin: 0, homing: 0, bounce: 0, pierce: 0, explode: 9,
           grav: 300, accel: 0, bore: 0, hit: null, age: 0 });
@@ -1098,7 +1085,7 @@ export function Game({ input }) {
     // Trails are glowing dparts (drawn after the fog, only where it has lifted), chips are
     // sparks, puffs are smoke. `look` is set on the spell in MODS.
     const glowDot = (x, y, vx, vy, c, s, life, g) =>
-      dparts.push({ x, y, vx, vy, g: g || 0, c, s, life, max: life, glow: 1 });
+      W.dparts.push({ x, y, vx, vy, g: g || 0, c, s, life, max: life, glow: 1 });
     const rnd = (a, b) => a + Math.random() * (b - a);
     function shotTrail(b, dt) {
       const L = b.look, sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp;
@@ -1121,7 +1108,7 @@ export function Game({ input }) {
         if (chance(35)) glowDot(b.x - ux * 3, b.y - uy * 3, rnd(-6, 6), rnd(-6, 6),
           Math.random() < 0.3 ? '#e8ffd8' : '#78ff50', rnd(0.7, 1.2), rnd(0.5, 1.1), 0.03);
       } else if (L === 'drill') {             // a puff of blue smoke
-        if (chance(18)) smoke.push({ x: b.x, y: b.y, vx: rnd(-10, 10), vy: rnd(-12, 4), r: rnd(1.2, 2.2),
+        if (chance(18)) W.smoke.push({ x: b.x, y: b.y, vx: rnd(-10, 10), vy: rnd(-12, 4), r: rnd(1.2, 2.2),
           life: 0.5, max: 0.5, c: '#4e7fc8', a: 0.4 });
       } else if (L === 'sparks') {            // it IS its trail: a streak of blue sparks
         const n = Math.min(8, Math.max(1, Math.round(sp * dt / 3)));
@@ -1144,13 +1131,13 @@ export function Game({ input }) {
       } else if (L === 'rocket') {            // exhaust: sparks and a rope of grey smoke
         if (chance(50)) glowDot(b.x - ux * 4, b.y - uy * 4, -ux * rnd(30, 90) + rnd(-15, 15), -uy * rnd(30, 90) + rnd(-15, 15),
           FIRE_COLS[Math.floor(Math.random() * 3)], rnd(0.8, 1.3), rnd(0.08, 0.2));
-        if (chance(25)) smoke.push({ x: b.x - ux * 5, y: b.y - uy * 5, vx: rnd(-6, 6), vy: rnd(-8, 2), r: rnd(1.2, 2.4),
+        if (chance(25)) W.smoke.push({ x: b.x - ux * 5, y: b.y - uy * 5, vx: rnd(-6, 6), vy: rnd(-8, 2), r: rnd(1.2, 2.4),
           life: 0.9, max: 0.9, c: '#5a5652', a: 0.4 });
       } else if (L === 'flame') {             // fire licking up off it, and smoke off the big ones
         const big = b.size >= 4;
         if (chance(big ? 70 : 40)) glowDot(b.x + rnd(-b.size, b.size), b.y + rnd(-b.size, b.size), -ux * 20 + rnd(-15, 15), -uy * 20 - rnd(10, 40),
           FIRE_COLS[Math.floor(Math.random() * 3)], rnd(0.8, 1.2 + b.size * 0.2), rnd(0.12, 0.35), -0.03);
-        if (chance(big ? 14 : 5)) smoke.push({ x: b.x, y: b.y, vx: rnd(-6, 6), vy: rnd(-14, -4), r: rnd(1.5, 1 + b.size * 0.6),
+        if (chance(big ? 14 : 5)) W.smoke.push({ x: b.x, y: b.y, vx: rnd(-6, 6), vy: rnd(-14, -4), r: rnd(1.5, 1 + b.size * 0.6),
           life: 1, max: 1, c: '#3a3430', a: 0.35 });
       } else if (L === 'orb') {               // fading plasma of its colour
         if (chance(35)) glowDot(b.x + rnd(-b.size, b.size) * 0.6, b.y + rnd(-b.size, b.size) * 0.6, rnd(-6, 6), rnd(-6, 6),
@@ -1162,7 +1149,7 @@ export function Game({ input }) {
           glowDot(b.x + Math.cos(a) * b.size * 1.6, b.y + Math.sin(a) * b.size * 1.6, rnd(-6, 6), rnd(-6, 6), b.col, rnd(0.8, 1.2), rnd(0.2, 0.4)); }
       } else if (L === 'nuke') {              // dripping radioactive green, and smoke
         if (chance(20)) glowDot(b.x, b.y + b.size * 0.6, b.vx * 0.1, b.vy * 0.1, Math.random() < 0.5 ? '#b4ff5a' : '#6adf3a', rnd(1, 1.6), rnd(0.5, 0.9), 0.6);
-        if (chance(10)) smoke.push({ x: b.x - ux * 6, y: b.y - uy * 6, vx: rnd(-5, 5), vy: rnd(-10, 0), r: rnd(2, 3), life: 1, max: 1, c: '#4a4a40', a: 0.35 });
+        if (chance(10)) W.smoke.push({ x: b.x - ux * 6, y: b.y - uy * 6, vx: rnd(-5, 5), vy: rnd(-10, 0), r: rnd(2, 3), life: 1, max: 1, c: '#4a4a40', a: 0.35 });
       } else if (L === 'pollen') {            // yellow dust drifting off it
         if (chance(8)) glowDot(b.x + rnd(-2, 2), b.y + rnd(-2, 2), rnd(-5, 5), rnd(-8, 2),
           '#e8ff9a', rnd(0.6, 0.9), rnd(0.4, 0.8), -0.01);
@@ -1202,14 +1189,14 @@ export function Game({ input }) {
       const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
       if (cx < 0 || cy < 0 || cx >= CW || cy >= CH || !W.mat[cy * CW + cx]) return;
       const k = (cy * CW + cx) * 4, d = W.img.data, sp = Math.hypot(b.vx, b.vy) || 1;
-      sparks.push({ x, y, vx: -b.vx / sp * rnd(40, 110) + rnd(-50, 50), vy: -b.vy / sp * rnd(40, 110) - rnd(20, 70),
+      W.sparks.push({ x, y, vx: -b.vx / sp * rnd(40, 110) + rnd(-50, 50), vy: -b.vy / sp * rnd(40, 110) - rnd(20, 70),
         life: rnd(0.4, 0.8), max: 0.8, c: 'rgb(' + d[k] + ',' + d[k + 1] + ',' + d[k + 2] + ')', size: rnd(1, 1.8), heavy: true });
     }
     // Brimstone: burning sparks thrown out of the blast, lighting what they land on
     function throwEmbers(x, y, n) {
       for (let k = 0; k < n; k++) {
         const a = -Math.PI / 2 + (Math.random() - 0.5) * 4.2, v = 60 + Math.random() * 150;
-        dparts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 20, g: 0.45,
+        W.dparts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 20, g: 0.45,
           c: FIRE_COLS[Math.floor(Math.random() * 3)], s: 1 + Math.random() * 0.8, life: 0.7 + Math.random() * 0.6, max: 1.3,
           glow: 1, ember: 1 });
       }
@@ -1236,7 +1223,7 @@ export function Game({ input }) {
         if (pay) releaseAt(pay, x, y, Math.cos(ang || 0), Math.sin(ang || 0), sh.col);
         return;
       }
-      fields.push({ x, y, r: sh.r, field: sh.field, life: sh.life, max: sh.life,
+      W.fields.push({ x, y, r: sh.r, field: sh.field, life: sh.life, max: sh.life,
         col: sh.col, dmg: sh.dmg || 1, tick: 0, payload: pay, ang: ang || 0, trig: sh.trig });
     }
     // Teleport Bolt: put you where the bolt stopped. It may have stopped against rock, so
@@ -1306,11 +1293,11 @@ export function Game({ input }) {
     }
     // a web line catches: it flares along its length and is gone
     function burnWeb(w) {
-      const L = webs[w];
+      const L = W.webs[w];
       for (let u = 0; u <= 1; u += 0.1)
-        dparts.push({ x: L.a0x + (L.b0x - L.a0x) * u, y: L.a0y + (L.b0y - L.a0y) * u, vx: (Math.random() - 0.5) * 20,
+        W.dparts.push({ x: L.a0x + (L.b0x - L.a0x) * u, y: L.a0y + (L.b0y - L.a0y) * u, vx: (Math.random() - 0.5) * 20,
           vy: -20 - Math.random() * 30, g: -0.02, c: Math.random() < 0.5 ? '#ffd35a' : '#ff8a2a', s: 1.4, life: 0.4, max: 0.4, glow: 1 });
-      webs.splice(w, 1);
+      W.webs.splice(w, 1);
       SFX.fx('whoosh', (L.a0x + L.b0x) / 2, (L.a0y + L.b0y) / 2);
     }
     // everything that burns within r of (x, y) catches at `chance`: grass, moss and timber
@@ -1321,7 +1308,7 @@ export function Game({ input }) {
       for (const pr of W.firePlants)
         if (!pr.gone && !pr.burn && x > pr.x - 5 - r && x < pr.x + 5 + r && y > pr.y - r && y < pr.y + pr.len + r &&
           Math.random() < chance) catchPlant(pr);
-      for (let w = webs.length - 1; w >= 0; w--) if (webDist(webs[w], x, y) < r + 2 && Math.random() < chance) burnWeb(w);
+      for (let w = W.webs.length - 1; w >= 0; w--) if (webDist(W.webs[w], x, y) < r + 2 && Math.random() < chance) burnWeb(w);
       for (const pr of W.fireArches) {
         if (pr.gone || pr.burn || x < pr.x + pr.l - r || x > pr.x + pr.r + r || y < pr.y + pr.t0 - r || y > pr.y + pr.b + r) continue;
         const q = archNear(pr, x, y);
@@ -1339,7 +1326,7 @@ export function Game({ input }) {
     }
     function youAlight() {
       if (W.p.dead) return;
-      if (!(W.p.burn > 0)) { SFX.fx('whoosh', W.p.x + PW / 2, W.p.y + PH / 2); strings.length = 0; }   // spider silk burns off
+      if (!(W.p.burn > 0)) { SFX.fx('whoosh', W.p.x + PW / 2, W.p.y + PH / 2); W.strings.length = 0; }   // spider silk burns off
       W.p.burn = Math.max(W.p.burn || 0, kr('fireYou'));
     }
     // a blast's heat: fuel round it catches, and creatures (and you) in it may go up
@@ -1350,10 +1337,10 @@ export function Game({ input }) {
       if (!W.p.dead && Math.hypot(W.p.x + PW / 2 - x, W.p.y + PH / 2 - y) < R + 6 && Math.random() < ch * 0.5) youAlight();
     }
     // a flame licking up off a burning spot
-    const flameAt = (x, y, sp) => dparts.push({ x, y, vx: (Math.random() - 0.5) * 16, vy: -30 - Math.random() * (sp || 40),
+    const flameAt = (x, y, sp) => W.dparts.push({ x, y, vx: (Math.random() - 0.5) * 16, vy: -30 - Math.random() * (sp || 40),
       g: -0.03, c: Math.random() < 0.4 ? '#ffd35a' : Math.random() < 0.6 ? '#ff8a2a' : '#e8461c', s: 1 + Math.random() * 1.2,
       life: 0.25 + Math.random() * 0.3, max: 0.55, glow: 1 });
-    const fireSmoke = (x, y) => smoke.push({ x, y, vx: (Math.random() - 0.5) * 12, vy: -25 - Math.random() * 20,
+    const fireSmoke = (x, y) => W.smoke.push({ x, y, vx: (Math.random() - 0.5) * 12, vy: -25 - Math.random() * 20,
       r: 2 + Math.random() * 2.5, life: 1.4, max: 1.4, c: '#2a2624', a: 0.35 });
     // One frame of fire: the cave's fire moves on, plants, webs and carts catch off it,
     // burning creatures (and you) take damage and spread it, flames and smoke come off
@@ -1382,8 +1369,8 @@ export function Game({ input }) {
           const n = pr.arc.length - 1;
           for (let k = 0; k <= n; k += 2) { const q = archAt(pr, k / n); if (fireNear(W.fire, q.x, q.y, 2)) { catchArch(pr, k / n); break; } }
         }
-        for (let w = webs.length - 1; w >= 0; w--) {
-          const ln = webs[w];
+        for (let w = W.webs.length - 1; w >= 0; w--) {
+          const ln = W.webs[w];
           for (let u = 0; u <= 1; u += 0.25)
             if (fireNear(W.fire, ln.a0x + (ln.b0x - ln.a0x) * u, ln.a0y + (ln.b0y - ln.a0y) * u, 2)) { burnWeb(w); break; }
         }
@@ -1452,7 +1439,7 @@ export function Game({ input }) {
       if (any) {
         const x0 = W.camX / CELL - 4, x1 = (W.camX + W.viewW) / CELL + 4, y0 = W.camY / CELL - 4, y1 = (W.camY + W.viewH) / CELL + 4;
         const want = Math.min(20, Math.ceil(L.length * dt * 2.5));
-        for (let a = 0, got = 0; a < want * 3 && got < want && dparts.length < 700; a++) {
+        for (let a = 0, got = 0; a < want * 3 && got < want && W.dparts.length < 700; a++) {
           const i = L[(Math.random() * L.length) | 0], x = i % CW, y = (i / CW) | 0;
           if (x < x0 || x > x1 || y < y0 || y > y1) continue;
           got++;
@@ -1492,7 +1479,7 @@ export function Game({ input }) {
             if (debris < 40 && Math.random() < 0.08) {
               debris++;
               const f = 0.5 + Math.random();
-              sparks.push({ x: cx * CELL, y: cy * CELL,
+              W.sparks.push({ x: cx * CELL, y: cy * CELL,
                 vx: (cx - cx0) / rc * 220 * f, vy: ((cy - cy0) / rc * 220 - 140) * f,
                 life: 0.8 + Math.random() * 0.4, max: 1.2, c: `rgb(${d[k]},${d[k + 1]},${d[k + 2]})`, size: 2, heavy: true });
             }
@@ -1518,9 +1505,9 @@ export function Game({ input }) {
         if (Math.hypot(bx - x, by - y) < R + 6) pr.hurt = (pr.hurt || 0) + 2;
       }
 
-      flashes.push({ x, y, r: R, t: 0 });
+      W.flashes.push({ x, y, r: R, t: 0 });
       for (let i = 0; i < (splash != null ? 2 : 10); i++) {
-        smoke.push({ x: x + (Math.random() - 0.5) * R, y: y + (Math.random() - 0.5) * R,
+        W.smoke.push({ x: x + (Math.random() - 0.5) * R, y: y + (Math.random() - 0.5) * R,
           vx: (Math.random() - 0.5) * 40, vy: (Math.random() - 0.5) * 40 - 20,
           r: 4 + Math.random() * 5, life: 1.2, max: 1.2 });
       }
@@ -1547,7 +1534,7 @@ export function Game({ input }) {
       W.p.y + PH > pr.y + pr.t0 - pad && W.p.y < pr.y + pr.b + pad;
     // a loud noise: every creature within earshot comes looking, and shooters get ready
     function alertAt(x, y) {
-      rings.push({ x, y, t: 0 });
+      W.rings.push({ x, y, t: 0 });
       for (const e of W.enemies) {
         if (Math.hypot(e.x - x, e.ty - y) > 320) continue;
         if (HUNTERS[e.k.act]) e.aggro = true;
@@ -1567,7 +1554,7 @@ export function Game({ input }) {
       if (pr.k === 'barrel') { explode(pr.x, pr.y - 6, 105, undefined, 1); SFX.debris(pr.x, pr.y - 6); }
       else if (pr.k === 'pod') {
         SFX.pop(pr.x, pr.y - 6);
-        clouds.push({ x: pr.x, y: pr.y - 8, r: 34, life: 4.5, max: 4.5, tick: 0 });
+        W.clouds.push({ x: pr.x, y: pr.y - 8, r: 34, life: 4.5, max: 4.5, tick: 0 });
         burst(pr.x, pr.y - 6, 14, '#b6e36a');
       }
     }
@@ -1583,7 +1570,7 @@ export function Game({ input }) {
       burst(x, y, 6, '#fff2c0');
       for (let k = 0; k < 16; k++) {
         const a = -Math.PI / 2 + (Math.random() - 0.5) * 3.4, v = 50 + Math.random() * 120;
-        dparts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 20, g: 0.45,
+        W.dparts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 20, g: 0.45,
           c: FIRE_COLS[Math.floor(Math.random() * 3)], s: 1.2 + Math.random() * 0.9, life: 1.2 + Math.random() * 0.8, max: 2,
           glow: 1, ember: 1 });
       }
@@ -1653,16 +1640,16 @@ export function Game({ input }) {
           (pr.k === 'noise' && pr.st === 'stone') || (pr.k === 'spike' && pr.st === 'salt') || (pr.k === 'lamp' && pr.st !== 'cap');
         if (feels) {
           const x0 = pr.x + pr.l, x1 = pr.x + pr.r, y0 = pr.y + pr.t0, y1 = pr.y + pr.b;
-          for (const b of bullets) {
+          for (const b of W.bullets) {
             if (b.life <= 0 || b.x + b.size < x0 || b.x - b.size > x1 || b.y + b.size < y0 || b.y - b.size > y1) continue;
             if (b.pull || b.eat || b.bore) {          // rolls on through, but only counts once
               const seen = b.propHit || (b.propHit = new Set());
               if (!seen.has(pr)) { seen.add(pr); pr.hurt = (pr.hurt || 0) + 1; }
             } else { pr.hurt = (pr.hurt || 0) + 1; burst(b.x, b.y, 3, b.col); b.life = 0; b.struck = 1; }
           }
-          if (tough) for (let k = enemyShots.length - 1; k >= 0; k--) {
-            const es = enemyShots[k];
-            if (es.x > x0 && es.x < x1 && es.y > y0 && es.y < y1) { burst(es.x, es.y, 3, es.col); SFX.fx('coverHit', es.x, es.y); enemyShots.splice(k, 1); }
+          if (tough) for (let k = W.enemyShots.length - 1; k >= 0; k--) {
+            const es = W.enemyShots[k];
+            if (es.x > x0 && es.x < x1 && es.y > y0 && es.y < y1) { burst(es.x, es.y, 3, es.col); SFX.fx('coverHit', es.x, es.y); W.enemyShots.splice(k, 1); }
           }
         }
         if (pr.hurt) {
@@ -1699,7 +1686,7 @@ export function Game({ input }) {
               if (pr.t <= 0) {
                 pr.t = 1.2 + Math.random() * 2.6;
                 SFX.fx('sparks', pr.x, pr.y);
-                for (let k = 0; k < 10; k++) dparts.push({ x: pr.x, y: pr.y + 4, vx: (Math.random() - 0.5) * 170,
+                for (let k = 0; k < 10; k++) W.dparts.push({ x: pr.x, y: pr.y + 4, vx: (Math.random() - 0.5) * 170,
                   vy: -20 + Math.random() * 90, g: 0.5, c: Math.random() < 0.5 ? '#ffe27a' : '#fff6c8', s: 1.2, life: 0.5, max: 0.5, glow: 1 });
               }
             } else {
@@ -1708,7 +1695,7 @@ export function Game({ input }) {
               if (pr.dn == null) { pr.di = (0.3 + Math.random() * 1.4) / rate; pr.dn = Math.random() * pr.di; }
               pr.dn -= dt;
               if (pr.st === 'steam' && (pr.hs = (pr.hs || Math.random() * 3) - dt) <= 0) { pr.hs = 1.5 + Math.random() * 3; SFX.fx('steam', pr.x, pr.y); }
-              while (pr.dn <= 0) { pr.di = (0.3 + Math.random() * 1.4) / rate; pr.dn += pr.di; dparts.push(spawnDrip(pr)); }
+              while (pr.dn <= 0) { pr.di = (0.3 + Math.random() * 1.4) / rate; pr.dn += pr.di; W.dparts.push(spawnDrip(pr)); }
               pr.acc = 1 - pr.dn / pr.di;                // how far the next drop has swelled (the sprite reads it)
             }
             break;
@@ -1729,10 +1716,10 @@ export function Game({ input }) {
             pr.on = ph > 2.6; pr.warn = ph > 1.9 && !pr.on;
             if (pr.warn && !wasWarn) SFX.fx('ventWarn', pr.x, pr.y);
             if (pr.on && !wasOn) SFX.fx('ventFire', pr.x, pr.y - 20);
-            if (pr.warn && Math.random() < dt * 14) smoke.push({ x: pr.x, y: pr.y - 2, vx: (Math.random() - 0.5) * 10,
+            if (pr.warn && Math.random() < dt * 14) W.smoke.push({ x: pr.x, y: pr.y - 2, vx: (Math.random() - 0.5) * 10,
               vy: -30, r: 2 + Math.random() * 2, life: 0.8, max: 0.8 });
             if (pr.on) {
-              if (Math.random() < dt * 40) dparts.push({ x: pr.x + (Math.random() - 0.5) * 6, y: pr.y - 4, vx: (Math.random() - 0.5) * 20,
+              if (Math.random() < dt * 40) W.dparts.push({ x: pr.x + (Math.random() - 0.5) * 6, y: pr.y - 4, vx: (Math.random() - 0.5) * 20,
                 vy: -140 - Math.random() * 80, g: 0, c: Math.random() < 0.5 ? '#ffb050' : '#ff7a2a', s: 1.6, life: 0.4, max: 0.4, glow: 1 });
               if (me && pr.cd <= 0 && W.p.x + PW > pr.x - 6 && W.p.x < pr.x + 6 && W.p.y < pr.y && W.p.y + PH > pr.y - VENT_H) { hurt(PROP_DMG.vent); youAlight(); pr.cd = 0.4; }
               if ((pr.ecd = (pr.ecd || 0) - dt) <= 0) {
@@ -1766,7 +1753,7 @@ export function Game({ input }) {
             else if (st === 'slime') z.slow = Math.min(z.slow, 0.45);
             else if (st === 'puddle') {
               z.slow = Math.min(z.slow, 0.7);
-              if (moving && Math.random() < dt * 20) dparts.push({ x: pcx, y: pr.y - 2, vx: (Math.random() - 0.5) * 60,
+              if (moving && Math.random() < dt * 20) W.dparts.push({ x: pcx, y: pr.y - 2, vx: (Math.random() - 0.5) * 60,
                 vy: -60 - Math.random() * 60, g: 0.9, c: 'rgba(150,200,255,0.8)', s: 1.3, life: 0.6, max: 0.6 });
             } else if (st === 'acid') { if (pr.cd <= 0) { hurt(3); pr.cd = 0.5; } }
             else if (st === 'glass') {
@@ -1775,7 +1762,7 @@ export function Game({ input }) {
               pr.stand = (pr.stand || 0) + dt;
               if (pr.stand > 0.8 && pr.cd <= 0) { hurt(3); pr.cd = 0.5; }
             } else if (st === 'ash' && moving && Math.random() < dt * 30) {
-              smoke.push({ x: pcx + (Math.random() - 0.5) * 8, y: pr.y - 2, vx: -W.p.vx * 0.2 + (Math.random() - 0.5) * 20,
+              W.smoke.push({ x: pcx + (Math.random() - 0.5) * 8, y: pr.y - 2, vx: -W.p.vx * 0.2 + (Math.random() - 0.5) * 20,
                 vy: -15 - Math.random() * 20, r: 1.5 + Math.random() * 2, life: 0.9, max: 0.9 });
             }
             break;
@@ -1814,8 +1801,8 @@ export function Game({ input }) {
         }
       }
       // spore clouds from burst pods
-      for (let i = clouds.length - 1; i >= 0; i--) {
-        const cl = clouds[i];
+      for (let i = W.clouds.length - 1; i >= 0; i--) {
+        const cl = W.clouds[i];
         cl.life -= dt; cl.tick -= dt;
         if (cl.tick <= 0) {
           cl.tick = 0.4;
@@ -1823,13 +1810,13 @@ export function Game({ input }) {
           for (let j = W.enemies.length - 1; j >= 0; j--)
             if (Math.hypot(W.enemies[j].x - cl.x, W.enemies[j].ty - cl.y) < cl.r + W.enemies[j].r) damageEnemy(j, 1);
         }
-        if (cl.life <= 0) clouds.splice(i, 1);
+        if (cl.life <= 0) W.clouds.splice(i, 1);
       }
-      for (let i = rings.length - 1; i >= 0; i--) if ((rings[i].t += dt) > 0.9) rings.splice(i, 1);
+      for (let i = W.rings.length - 1; i >= 0; i--) if ((W.rings[i].t += dt) > 0.9) W.rings.splice(i, 1);
       // drips, sparks, steam and splashes
       dripHurt -= dt;
-      for (let i = dparts.length - 1; i >= 0; i--) {
-        const q = dparts[i];
+      for (let i = W.dparts.length - 1; i >= 0; i--) {
+        const q = W.dparts[i];
         q.life -= dt;
         q.vy += GRAVITY * q.g * dt;
         if (q.wob != null) q.vx = Math.sin(W.time * 2 + q.wob) * 6;
@@ -1846,16 +1833,16 @@ export function Game({ input }) {
         if (!dead && solidAt(q.x, q.y)) {
           dead = true;
           if (q.snd) SFX.fx(q.snd, q.x, q.y);
-          if (q.splash) for (let k = 0; k < 2; k++) dparts.push({ x: q.x, y: q.y - 2, vx: (Math.random() - 0.5) * 50,
+          if (q.splash) for (let k = 0; k < 2; k++) W.dparts.push({ x: q.x, y: q.y - 2, vx: (Math.random() - 0.5) * 50,
             vy: -30 - Math.random() * 40, g: 0.8, c: q.c, s: 1, life: 0.35, max: 0.35, glow: q.glow });
         }
         if (!dead && q.dmg && !W.p.dead && q.x > W.p.x && q.x < W.p.x + PW && q.y > W.p.y && q.y < W.p.y + PH) {
           if (dripHurt <= 0) { hurt(q.dmg); dripHurt = 0.4; }
           dead = true;
         }
-        if (dead) dparts.splice(i, 1);
+        if (dead) W.dparts.splice(i, 1);
       }
-      if (dparts.length > 700) dparts.splice(0, dparts.length - 700);
+      if (W.dparts.length > 700) W.dparts.splice(0, W.dparts.length - 700);
       stepAmbience(dt);
       // foliage: grabbing a vine, or pushing into a plant you weren't already in, rustles;
       // an arched vine in reach beats the strands hanging off it (let go with a push down, and
@@ -1875,7 +1862,7 @@ export function Game({ input }) {
       // to the nearest (unless you've just let go of one)
       if (!W.p.dead) {
         let wd = Infinity;
-        for (const L of webs) {
+        for (const L of W.webs) {
           const R = L.grab || (L.grab = spr('webGrab'));
           if (pcx < Math.min(L.a0x, L.b0x) - R || pcx > Math.max(L.a0x, L.b0x) + R ||
               pcy < Math.min(L.a0y, L.b0y) - R - PH / 2 || pcy > Math.max(L.a0y, L.b0y) + R + PH / 2) continue;
@@ -1906,12 +1893,12 @@ export function Game({ input }) {
       if (e.x < W.camX - 150 || e.x > W.camX + W.viewW + 150 || e.y < W.camY - 150 || e.y > W.camY + W.viewH + 150) return;
       const S = e.je, B = jellyBell(e.r, S.shape, kru('jeSquash', S.u.sq));
       const c = Math.cos(S.hd), sn = Math.sin(S.hd), n = Math.round(kr('jeSpores'));
-      for (let i = 0; i < n && amb.length < 500; i++) {
+      for (let i = 0; i < n && W.amb.length < 500; i++) {
         const lx = (Math.random() * 2 - 1) * B.rw * 0.7;
         const q = spore(e.x - lx * sn - B.rim * c, e.y + lx * c - B.rim * sn, Math.random());
         const a = S.hd + Math.PI + (Math.random() * 2 - 1) * kr('jeSporeSpread') * Math.PI / 180, v = kr('jeSporeSpd');
         q.kx = Math.cos(a) * v; q.ky = Math.sin(a) * v; q.kd = kr('jeSporeDrag');
-        amb.push(q);
+        W.amb.push(q);
       }
     }
     // The jellyfish's plant glow in the game (the comp is plantGlowFill): the art round a
@@ -1972,14 +1959,14 @@ export function Game({ input }) {
       const T = themeFor(W.floor);
       for (const kind of W.ambKinds) {
         if (kind === 'devils') {
-          if (devils.length < 2 && Math.random() < dt * 0.4) {
+          if (W.devils.length < 2 && Math.random() < dt * 0.4) {
             let x = x0 + Math.random() * w, y = y0 + Math.random() * h, k = 0;
             while (k++ < 120 && !solidAt(x, y + 1)) y += 2;
-            if (k < 120 && !solidAt(x, y - 30)) devils.push({ x, y, vx: (Math.random() < 0.5 ? -1 : 1) * (15 + Math.random() * 20), life: 6 + Math.random() * 3, max: 9 });
+            if (k < 120 && !solidAt(x, y - 30)) W.devils.push({ x, y, vx: (Math.random() < 0.5 ? -1 : 1) * (15 + Math.random() * 20), life: 6 + Math.random() * 3, max: 9 });
           }
           continue;
         }
-        const n = amb.reduce((a, q) => a + (q.kind === kind), 0);
+        const n = W.amb.reduce((a, q) => a + (q.kind === kind), 0);
         let want = AMB_RATE[kind] * dt;
         while (want > 0 && n < AMB_MAX[kind]) {
           if (Math.random() >= want) break;
@@ -1987,17 +1974,17 @@ export function Game({ input }) {
           const x = x0 + Math.random() * w, y = y0 + Math.random() * h;
           if (solidAt(x, y)) continue;
           const r = Math.random();
-          if (kind === 'spores') amb.push(spore(x, y, r));
+          if (kind === 'spores') W.amb.push(spore(x, y, r));
           else if (kind === 'frost') {
             const dir = W.floor % 2 ? 1 : -1;
-            amb.push({ kind, x, y, vx: dir * (100 + r * 60), vy: (r - 0.5) * 10, life: 0.9 + r * 0.5, max: 1.4, c: 'rgba(215,238,255,0.5)', s: 1, streak: 10 });
-          } else if (kind === 'embers') amb.push({ kind, x, y, vx: 0, vy: -20 - r * 30, wob: r * 9, life: 3 + r * 2, max: 5, c: r < 0.5 ? '#ffb050' : '#ff7a2a', s: 1.2, glow: 1 });
-          else if (kind === 'motes') amb.push({ kind, x, y, vx: (r - 0.5) * 6, vy: (Math.random() - 0.5) * 4, wob: r * 9, life: 6 + r * 3, max: 9, c: 'rgba(235,225,200,0.8)', s: 1 });
-          else if (kind === 'ashfall') amb.push({ kind, x, y, vx: 8, vy: 20 + r * 22, wob: r * 9, life: 4 + r * 3, max: 7, c: 'rgba(150,146,142,0.75)', s: 1 + r });
+            W.amb.push({ kind, x, y, vx: dir * (100 + r * 60), vy: (r - 0.5) * 10, life: 0.9 + r * 0.5, max: 1.4, c: 'rgba(215,238,255,0.5)', s: 1, streak: 10 });
+          } else if (kind === 'embers') W.amb.push({ kind, x, y, vx: 0, vy: -20 - r * 30, wob: r * 9, life: 3 + r * 2, max: 5, c: r < 0.5 ? '#ffb050' : '#ff7a2a', s: 1.2, glow: 1 });
+          else if (kind === 'motes') W.amb.push({ kind, x, y, vx: (r - 0.5) * 6, vy: (Math.random() - 0.5) * 4, wob: r * 9, life: 6 + r * 3, max: 9, c: 'rgba(235,225,200,0.8)', s: 1 });
+          else if (kind === 'ashfall') W.amb.push({ kind, x, y, vx: 8, vy: 20 + r * 22, wob: r * 9, life: 4 + r * 3, max: 7, c: 'rgba(150,146,142,0.75)', s: 1 + r });
         }
       }
-      for (let i = amb.length - 1; i >= 0; i--) {
-        const q = amb[i];
+      for (let i = W.amb.length - 1; i >= 0; i--) {
+        const q = W.amb[i];
         q.life -= dt;
         if (q.wob != null) q.x += Math.sin(W.time * 1.3 + q.wob) * 6 * dt;
         if (q.kx || q.ky) {                             // a puff's kick, dying away under drag
@@ -2005,16 +1992,16 @@ export function Game({ input }) {
           const k = Math.exp(-q.kd * dt); q.kx *= k; q.ky *= k;
         }
         q.x += q.vx * dt; q.y += q.vy * dt;
-        if (q.life <= 0 || solidAt(q.x, q.y) || q.x < x0 - 200 || q.x > x0 + w + 200 || q.y < y0 - 200 || q.y > y0 + h + 200) amb.splice(i, 1);
+        if (q.life <= 0 || solidAt(q.x, q.y) || q.x < x0 - 200 || q.x > x0 + w + 200 || q.y < y0 - 200 || q.y > y0 + h + 200) W.amb.splice(i, 1);
       }
-      for (let i = devils.length - 1; i >= 0; i--) {
-        const dv = devils[i];
+      for (let i = W.devils.length - 1; i >= 0; i--) {
+        const dv = W.devils[i];
         dv.life -= dt;
         const nx = dv.x + dv.vx * dt;
         if (solidAt(nx + Math.sign(dv.vx) * 6, dv.y - 4)) dv.vx = -dv.vx; else dv.x = nx;
         if (!solidAt(dv.x, dv.y + 2)) dv.y += 40 * dt;
         else if (solidAt(dv.x, dv.y)) dv.y -= 2;
-        if (dv.life <= 0) devils.splice(i, 1);
+        if (dv.life <= 0) W.devils.splice(i, 1);
       }
     }
 
@@ -2075,7 +2062,7 @@ export function Game({ input }) {
       if (jetSt.start) {
         W.p.vy += DEV.sputDip;
         for (let i = 0; i < 3; i++)
-          smoke.push({ x: W.p.x + PW / 2 + (Math.random() - 0.5) * 6, y: W.p.y + PH + 2,
+          W.smoke.push({ x: W.p.x + PW / 2 + (Math.random() - 0.5) * 6, y: W.p.y + PH + 2,
             vx: (Math.random() - 0.5) * 40, vy: 20 + Math.random() * 30,
             r: 2.5 + Math.random() * 2, life: 0.7 + Math.random() * 0.4, max: 1.1, c: '#6f767e', a: 0.8 });
       }
@@ -2091,7 +2078,7 @@ export function Game({ input }) {
       W.p.kick -= dt;
       const k = W.p.kick > 0 ? 0.15 : 1;   // let explosions push you around briefly
       // each spider string on you slows you, and so does each web line you're pushing through
-      const tied = strings.reduce((m, s) => m * s.slow, 1) * W.zfx.webMul;
+      const tied = W.strings.reduce((m, s) => m * s.slow, 1) * W.zfx.webMul;
       webLetGo -= dt;
       if (jet && W.p.sput) {
         // coughing: steer on, but no lift for the blink
@@ -2240,8 +2227,8 @@ export function Game({ input }) {
       if (R.on && gun && gun.delayT <= 0 && gun.rechT <= 0) cast(gun, gx, gy, R.nx, R.ny);
 
       // ---- shots ----
-      for (let i = bullets.length - 1; i >= 0; i--) {
-        const b = bullets[i];
+      for (let i = W.bullets.length - 1; i >= 0; i--) {
+        const b = W.bullets[i];
         b.life -= dt; b.spin += dt * 12; b.age = (b.age || 0) + dt;
         let dead = b.life <= 0, boom = false;
         if (dead && b.lifeBoom && b.explode) { dead = false; boom = true; }   // a bomb's fuse burns down
@@ -2278,10 +2265,10 @@ export function Game({ input }) {
               e.x += dx / d * f * dt; e.y += dy / d * f * dt; e.tgt = null;
             }
           }
-          for (let k = enemyShots.length - 1; k >= 0; k--) {
-            const es = enemyShots[k];
+          for (let k = W.enemyShots.length - 1; k >= 0; k--) {
+            const es = W.enemyShots[k];
             const dx = b.x - es.x, dy = b.y - es.y, d = Math.hypot(dx, dy) || 1;
-            if (d < b.size + 6) { burst(es.x, es.y, 3, '#c58cff'); SFX.fx('absorb', es.x, es.y); enemyShots.splice(k, 1); continue; }
+            if (d < b.size + 6) { burst(es.x, es.y, 3, '#c58cff'); SFX.fx('absorb', es.x, es.y); W.enemyShots.splice(k, 1); continue; }
             if (d < reach) { es.vx += dx / d * 900 * dt; es.vy += dy / d * 900 * dt; }
           }
           if ((b.grind = (b.grind || 0) + dt) > 0.3) { b.grind = 0; b.hit = null; }
@@ -2289,7 +2276,7 @@ export function Game({ input }) {
           if (Math.random() < 0.9) {
             const a = Math.random() * 6.28, rr = b.size * (0.6 + Math.random() * 0.5);
             const life = 0.6 + Math.random() * 0.7;
-            motes.push({ kind: 'drift', x: b.x + Math.cos(a) * rr, y: b.y + Math.sin(a) * rr,
+            W.motes.push({ kind: 'drift', x: b.x + Math.cos(a) * rr, y: b.y + Math.sin(a) * rr,
               vx: (Math.random() - 0.5) * 20, vy: (Math.random() - 0.5) * 20, life, max: life,
               s: 0.8 + Math.random() * 1.6, c: Math.random() < 0.3 ? '#f0e0ff' : Math.random() < 0.6 ? '#c58cff' : '#8a5cff' });
           }
@@ -2301,7 +2288,7 @@ export function Game({ input }) {
             const c = Object.assign({}, b, { hit: null, split: 0, age: 0 });
             const sp = Math.hypot(b.vx, b.vy), a = Math.atan2(b.vy, b.vx) + turnBy;
             c.vx = Math.cos(a) * sp; c.vy = Math.sin(a) * sp;
-            bullets.push(c);
+            W.bullets.push(c);
           }
         }
         if (b.drift) {
@@ -2424,9 +2411,9 @@ export function Game({ input }) {
           addArc(b.trail, b.col, 1.4, 0.16);
         }
         if (dead && b.look) shotDeath(b);
-        if (dead) bullets.splice(i, 1);
+        if (dead) W.bullets.splice(i, 1);
       }
-      for (let i = arcs.length - 1; i >= 0; i--) if ((arcs[i].t += dt) > arcs[i].max) arcs.splice(i, 1);
+      for (let i = W.arcs.length - 1; i >= 0; i--) if ((W.arcs[i].t += dt) > W.arcs[i].max) W.arcs.splice(i, 1);
 
       // ---- sound, once a frame: where you are listening from, the jetpack, each live
       // Black Hole's drone, the floor's ambience, and a heartbeat when you're nearly dead ----
@@ -2436,12 +2423,12 @@ export function Game({ input }) {
         (1 + 0.49 * Math.min(1, W.p.flame)) * jetPitch(jetSt.onT));   // tone: thrust, then how long it's held
       if (W.p.empty && !wasEmpty) SFX.ui('sputter');
       wasEmpty = W.p.empty;
-      for (const b of bullets) if (b.pull) {
+      for (const b of W.bullets) if (b.pull) {
         let h = bhLoops.get(b);
         if (!h && bhLoops.size < 3 && SFX.ready) { h = SFX.loop('void'); if (h) bhLoops.set(b, h); }
         if (h) h.set(0.5, b.x, b.y);
       }
-      for (const [b, h] of bhLoops) if (!bullets.includes(b)) { h.stop(); bhLoops.delete(b); }
+      for (const [b, h] of bhLoops) if (!W.bullets.includes(b)) { h.stop(); bhLoops.delete(b); }
       SFX.ambTick(dt);
       if (!portalLoop && SFX.ready) portalLoop = SFX.loop('portal');
       if (portalLoop) portalLoop.set(0.55, W.portal.x + W.portal.w / 2, W.portal.y + W.portal.h / 2);
@@ -2453,12 +2440,12 @@ export function Game({ input }) {
       }
       if (W.p.jet > 0 && !wasJet) SFX.fx('ignite');
       wasJet = W.p.jet > 0;
-      for (const dv of devils) if ((dv.snd = (dv.snd || 0) - dt) <= 0) { dv.snd = 0.9 + Math.random() * 0.8; SFX.fx('whirl', dv.x, dv.y - 14); }
+      for (const dv of W.devils) if ((dv.snd = (dv.snd || 0) - dt) <= 0) { dv.snd = 0.9 + Math.random() * 0.8; SFX.fx('whirl', dv.x, dv.y - 14); }
       if (!W.p.dead && W.p.hp / MHP < 0.3 && (beatT -= dt) <= 0) { beatT = 0.55 + 1.5 * W.p.hp / MHP; SFX.ui('beat'); }
 
       // ---- static fields ----
-      for (let i = fields.length - 1; i >= 0; i--) {
-        const f = fields[i];
+      for (let i = W.fields.length - 1; i >= 0; i--) {
+        const f = W.fields[i];
         f.life -= dt; f.tick -= dt;
         const near = j => Math.hypot(W.enemies[j].x - f.x, W.enemies[j].ty - f.y) < f.r;
         if (f.field === 'slow' || f.field === 'storm') {
@@ -2476,21 +2463,21 @@ export function Game({ input }) {
           f.near = W.enemies.some(e => Math.hypot(e.x - f.x, e.ty - f.y) < f.r * 2.2);
           let trip = f.life <= 0;
           for (let j = 0; j < W.enemies.length && !trip; j++) if (near(j)) trip = true;
-          if (trip) { explode(f.x, f.y, f.r); fieldPayload(f); fields.splice(i, 1); continue; }
+          if (trip) { explode(f.x, f.y, f.r); fieldPayload(f); W.fields.splice(i, 1); continue; }
         } else if (f.field === 'dormant') {
           // set off by any blast of yours, which is the whole point of it
-          for (const fl of flashes) {
+          for (const fl of W.flashes) {
             if (Math.hypot(fl.x - f.x, fl.y - f.y) < fl.r + f.r * 0.5) {
-              explode(f.x, f.y, f.r * 1.6); fieldPayload(f); fields.splice(i, 1); f.life = -1; break;
+              explode(f.x, f.y, f.r * 1.6); fieldPayload(f); W.fields.splice(i, 1); f.life = -1; break;
             }
           }
           if (f.life < 0) continue;
         } else if (f.field === 'slow') {
           for (const e of W.enemies) if (Math.hypot(e.x - f.x, e.ty - f.y) < f.r) e.chill = 0.2;
         } else if (f.field === 'shield') {
-          for (let k = enemyShots.length - 1; k >= 0; k--) {
-            const b = enemyShots[k];
-            if (Math.hypot(b.x - f.x, b.y - f.y) < f.r) { burst(b.x, b.y, 3, f.col); SFX.fx('absorb', b.x, b.y); enemyShots.splice(k, 1); }
+          for (let k = W.enemyShots.length - 1; k >= 0; k--) {
+            const b = W.enemyShots[k];
+            if (Math.hypot(b.x - f.x, b.y - f.y) < f.r) { burst(b.x, b.y, 3, f.col); SFX.fx('absorb', b.x, b.y); W.enemyShots.splice(k, 1); }
           }
         } else if (f.field === 'heal') {
           if (Math.hypot(pcx - f.x, pcy - f.y) < f.r && W.p.hp < MHP && f.tick <= 0) {
@@ -2515,9 +2502,9 @@ export function Game({ input }) {
             f.done = true;
             const inR = (x, y) => Math.hypot(x - f.x, y - f.y) < f.r;
             for (const e of W.enemies) if (inR(e.x, e.ty)) { e.y += f.y - e.ty; e.x = f.x; e.tgt = null; }
-            for (const b of bullets) if (inR(b.x, b.y)) { b.x = f.x; b.y = f.y; }
-            for (const b of enemyShots) if (inR(b.x, b.y)) { b.x = f.x; b.y = f.y; }
-            for (const g of coins) if (inR(g.x, g.y)) { g.x = f.x; g.y = f.y; }
+            for (const b of W.bullets) if (inR(b.x, b.y)) { b.x = f.x; b.y = f.y; }
+            for (const b of W.enemyShots) if (inR(b.x, b.y)) { b.x = f.x; b.y = f.y; }
+            for (const g of W.coins) if (inR(g.x, g.y)) { g.x = f.x; g.y = f.y; }
             for (const q of W.pickups) if (!q.taken && inR(q.x, q.y)) { q.x = f.x; q.y = f.y; }
             burst(f.x, f.y, 14, f.col);
             SFX.fx('warp', f.x, f.y);
@@ -2529,9 +2516,9 @@ export function Game({ input }) {
             explode(f.x + Math.cos(a) * rr, f.y + Math.sin(a) * rr, 9);
           }
         }
-        if (f.life <= 0) fields.splice(i, 1);
+        if (f.life <= 0) W.fields.splice(i, 1);
       }
-      for (let i = beams.length - 1; i >= 0; i--) if ((beams[i].t += dt) > 0.12) beams.splice(i, 1);
+      for (let i = W.beams.length - 1; i >= 0; i--) if ((W.beams[i].t += dt) > 0.12) W.beams.splice(i, 1);
 
       // ---- pickups: just cooldown upkeep and clearing what was taken. Whether one is
       // near enough to show its card, and whether you actually take it, is decided
@@ -2542,8 +2529,8 @@ export function Game({ input }) {
         if (q.cool > 0) q.cool -= dt;
       }
       // ---- gold ----
-      for (let i = coins.length - 1; i >= 0; i--) {
-        const g = coins[i];
+      for (let i = W.coins.length - 1; i >= 0; i--) {
+        const g = W.coins[i];
         const dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;
         const pull = COIN_PULL * W.pb.goldPull;    // Attract Gold reaches further
         if (g.nopull > 0) g.nopull -= dt;        // gold a rat just knocked out of you flies clear first
@@ -2556,7 +2543,7 @@ export function Game({ input }) {
           g.x += g.vx * dt; g.y += g.vy * dt;
           if (d < 12) {
             LO.gold += g.amount;
-            coins.splice(i, 1);
+            W.coins.splice(i, 1);
             SFX.ui('coin');
             input.current.notify();
           }
@@ -2710,7 +2697,7 @@ export function Game({ input }) {
       }
       input.current.interact = false;
 
-      for (let i = toasts.length - 1; i >= 0; i--) if ((toasts[i].t -= dt) <= 0) toasts.splice(i, 1);
+      for (let i = W.toasts.length - 1; i >= 0; i--) if ((W.toasts[i].t -= dt) <= 0) W.toasts.splice(i, 1);
 
       decorStep(dt, pcx, pcy);
 
@@ -2778,7 +2765,7 @@ export function Game({ input }) {
         if (k.act === 'spider') {
           // only on rock and its own lines (spiderStep); strings you when it has a clear line
           const cold = e.chill && e.chill < 1 ? e.chill : 1;
-          if (spiderStep(e, { solidCell, webs, hunting, goal: { x: pcx, y: pcy }, rnd: Math.random,
+          if (spiderStep(e, { solidCell, webs: W.webs, hunting, goal: { x: pcx, y: pcy }, rnd: Math.random,
             speedMul: cold }, dt) === 'web') SFX.fx('lash', e.x, e.y);
           e.silkT = (e.silkT || 0) - dt;
           const S = e.sp;
@@ -2788,7 +2775,7 @@ export function Game({ input }) {
             if (lineOfSight(e.x, e.y, pcx, pcy)) {
               e.silkT = spr('spSilkCd'); e.silkR = spr('spSilk');
               const v = spr('spSilkSpd');
-              silk.push({ x: e.x, y: e.y, ax: e.x, ay: e.y, vx: dx / dist * v, vy: dy / dist * v,
+              W.silk.push({ x: e.x, y: e.y, ax: e.x, ay: e.y, vx: dx / dist * v, vy: dy / dist * v,
                 life: 400 / v * 1.3 + 0.1 });
               SFX.creature(k, 'fire', e.x, e.y);
             }
@@ -2815,7 +2802,7 @@ export function Game({ input }) {
               e.cd = kr('jeShotCd');
               const a = Math.atan2(pcy - hy, pcx - hx) + (Math.random() * 2 - 1) * kr('jeSpread') * Math.PI / 180;
               const v = kr('jeShotSpd'), P = jellyPal(S.u.col);
-              enemyShots.push({ x: hx, y: hy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 3,
+              W.enemyShots.push({ x: hx, y: hy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 3,
                 col: P.spit, edge: P.spitEdge, shine: P.spitShine, dripCol: P.drip, dripCol2: P.drip2, glow: hexRgb(P.glow),
                 dmg: Math.round(kr('jeShotDmg')), size: kr('jeShotSize'), goo: 1,
                 drip: kr('jeDrip'), da: 0, dripG: kr('jeDripG'), splat: Math.round(kr('jeSplat')), splatV: kr('jeSplatSpd') });
@@ -2890,8 +2877,8 @@ export function Game({ input }) {
         }
       }
 
-      for (let i = enemyShots.length - 1; i >= 0; i--) {
-        const b = enemyShots[i];
+      for (let i = W.enemyShots.length - 1; i >= 0; i--) {
+        const b = W.enemyShots[i];
         b.life -= dt;
         // Projectile Repulsion Field: shots on their way to you are shoved aside
         if (W.pb.repel) {
@@ -2920,11 +2907,11 @@ export function Game({ input }) {
             if (b.fire) youAlight();
           }
         }
-        if (gone) enemyShots.splice(i, 1);
+        if (gone) W.enemyShots.splice(i, 1);
       }
       // spider strings in flight: rock stops them, you catch them
-      for (let i = silk.length - 1; i >= 0; i--) {
-        const b = silk[i];
+      for (let i = W.silk.length - 1; i >= 0; i--) {
+        const b = W.silk[i];
         b.life -= dt;
         let gone = b.life <= 0;
         const sn = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
@@ -2933,28 +2920,28 @@ export function Game({ input }) {
           if (solidAt(b.x, b.y)) { gone = true; break; }
           if (!W.p.dead && b.x > W.p.x - 3 && b.x < W.p.x + PW + 3 && b.y > W.p.y - 3 && b.y < W.p.y + PH + 3) {
             gone = true;
-            strings.push({ ax: b.ax, ay: b.ay, ox: b.x - W.p.x, oy: b.y - W.p.y, slow: spr('spSlow'), max: spr('spSilkMax') });
+            W.strings.push({ ax: b.ax, ay: b.ay, ox: b.x - W.p.x, oy: b.y - W.p.y, slow: spr('spSlow'), max: spr('spSilkMax') });
             SFX.fx('lash', b.x, b.y);
           }
         }
-        if (gone) silk.splice(i, 1);
+        if (gone) W.silk.splice(i, 1);
       }
       // strings on you: pulled past their length, they snap
-      for (let i = strings.length - 1; i >= 0; i--) {
-        const s = strings[i];
+      for (let i = W.strings.length - 1; i >= 0; i--) {
+        const s = W.strings[i];
         if (Math.hypot(W.p.x + s.ox - s.ax, W.p.y + s.oy - s.ay) > s.max) {
-          strings.splice(i, 1);
+          W.strings.splice(i, 1);
           burst(W.p.x + s.ox, W.p.y + s.oy, 4, '#e8e8f0');
           SFX.fx('lash', W.p.x + s.ox, W.p.y + s.oy);
         }
       }
       // a web line whose rock has been blasted away comes down (a few checked a frame)
-      for (let n = Math.min(webs.length, 6); n > 0; n--) {
-        webCheck = (webCheck + 1) % webs.length;
-        const L = webs[webCheck];
+      for (let n = Math.min(W.webs.length, 6); n > 0; n--) {
+        webCheck = (webCheck + 1) % W.webs.length;
+        const L = W.webs[webCheck];
         if ((L.bin && !solidAt(L.bin.x, L.bin.y)) || (L.ain && !solidAt(L.ain.x, L.ain.y))) {
-          webs.splice(webCheck, 1);
-          if (!webs.length) break;
+          W.webs.splice(webCheck, 1);
+          if (!W.webs.length) break;
         }
       }
       W.p.hitT -= dt;
@@ -2972,7 +2959,7 @@ export function Game({ input }) {
           if (best) {
             W.ghost.cd = 0.7;
             const a = Math.atan2(best.ty - W.ghost.y, best.x - W.ghost.x);
-            bullets.push({ x: W.ghost.x, y: W.ghost.y, vx: Math.cos(a) * 480, vy: Math.sin(a) * 480,
+            W.bullets.push({ x: W.ghost.x, y: W.ghost.y, vx: Math.cos(a) * 480, vy: Math.sin(a) * 480,
               life: 1.2, dmg: 2 * W.pb.dmg, size: 2, col: '#c9a6ff', spin: 0, homing: 3, bounce: 0,
               pierce: 0, explode: 0, grav: 0, accel: 0, bore: 0, hit: null, knock: 0, crit: 0,
               age: 0, born: 1.2 });
@@ -2987,15 +2974,15 @@ export function Game({ input }) {
       // ---- Levitation Trail: flying lays down fire that burns what it touches ----
       if (W.pb.trail && W.p.flame > 0 && !W.p.dead) {
         const bn = { x: pcx + (Math.random() - 0.5) * 6, y: W.p.y + PH, life: 0.7, max: 0.7 };
-        burns.push(bn);
-        if (burns.length > 48) burns.shift();
+        W.burns.push(bn);
+        if (W.burns.length > 48) W.burns.shift();
         fireArea(W.fire, bn.x, bn.y + 2, 4, 0.4);
       }
-      for (let i = burns.length - 1; i >= 0; i--) {
-        const bn = burns[i]; bn.life -= dt;
+      for (let i = W.burns.length - 1; i >= 0; i--) {
+        const bn = W.burns[i]; bn.life -= dt;
         for (let j = W.enemies.length - 1; j >= 0; j--)
           if (Math.hypot(W.enemies[j].x - bn.x, W.enemies[j].ty - bn.y) < 15) { setAlight(W.enemies[j]); damageEnemy(j, 22 * dt); }
-        if (bn.life <= 0) burns.splice(i, 1);
+        if (bn.life <= 0) W.burns.splice(i, 1);
       }
 
       // ---- jetpack smoke ----
@@ -3005,30 +2992,30 @@ export function Game({ input }) {
         smokeAcc += dt * (25 + 35 * W.p.flame);
         while (smokeAcc >= 1) {
           smokeAcc--;
-          smoke.push({ x: pcx + (Math.random() - 0.5) * 5, y: W.p.y + PH + 3,
+          W.smoke.push({ x: pcx + (Math.random() - 0.5) * 5, y: W.p.y + PH + 3,
             vx: fx * 50 + (Math.random() - 0.5) * 20, vy: fy * 50 + (Math.random() - 0.5) * 20,
             r: 1.5 + Math.random(), life: 0.9, max: 0.9 });
         }
       }
-      for (let i = smoke.length - 1; i >= 0; i--) {
-        const m = smoke[i];
+      for (let i = W.smoke.length - 1; i >= 0; i--) {
+        const m = W.smoke[i];
         m.x += m.vx * dt; m.y += m.vy * dt;
         m.vx *= 1 - 2.5 * dt; m.vy = m.vy * (1 - 2.5 * dt) - 12 * dt;
         m.r += 5 * dt; m.life -= dt;
-        if (m.life <= 0) smoke.splice(i, 1);
+        if (m.life <= 0) W.smoke.splice(i, 1);
       }
-      for (let i = sparks.length - 1; i >= 0; i--) {
-        const q = sparks[i];
+      for (let i = W.sparks.length - 1; i >= 0; i--) {
+        const q = W.sparks[i];
         q.vy += (q.g != null ? q.g : q.heavy ? 600 : 300) * dt;
         const nx = q.x + q.vx * dt, ny = q.y + q.vy * dt;
         if (q.heavy && solidAt(nx, ny)) { q.vx *= 0.3; q.vy = 0; }
         else { q.x = nx; q.y = ny; }
         q.life -= dt;
-        if (q.life <= 0) sparks.splice(i, 1);
+        if (q.life <= 0) W.sparks.splice(i, 1);
       }
-      for (let i = flashes.length - 1; i >= 0; i--) {
-        flashes[i].t += dt;
-        if (flashes[i].t > 0.25) flashes.splice(i, 1);
+      for (let i = W.flashes.length - 1; i >= 0; i--) {
+        W.flashes[i].t += dt;
+        if (W.flashes[i].t > 0.25) W.flashes.splice(i, 1);
       }
 
       W.best = Math.max(W.best, Math.round((W.start.y - W.p.y) / 10));
@@ -3047,17 +3034,17 @@ export function Game({ input }) {
         torchAcc -= 0.04;
         const th = torchHand();
         const life = 0.3 + Math.random() * 0.35;
-        torchP.push({ x: th.x + (Math.random() - 0.5) * 2, y: th.y - 7,
+        W.torchP.push({ x: th.x + (Math.random() - 0.5) * 2, y: th.y - 7,
           vx: (Math.random() - 0.5) * 10 + W.p.vx * 0.15, vy: -20 - Math.random() * 22,
           life, max: life, s: 1 + Math.random() * 1.3,
           c: Math.random() < 0.5 ? COL.flame2 : COL.flame });
-        if (torchP.length > 60) torchP.shift();
+        if (W.torchP.length > 60) W.torchP.shift();
       }
-      for (let i = torchP.length - 1; i >= 0; i--) {
-        const q = torchP[i];
+      for (let i = W.torchP.length - 1; i >= 0; i--) {
+        const q = W.torchP[i];
         q.vy += 30 * dt; q.vx *= 0.98;
         q.x += q.vx * dt; q.y += q.vy * dt;
-        if ((q.life -= dt) <= 0) torchP.splice(i, 1);
+        if ((q.life -= dt) <= 0) W.torchP.splice(i, 1);
       }
       // the flame's lean: spring toward "opposite your velocity", so a sudden move flings
       // it back and it wobbles upright again when you stop
@@ -3076,21 +3063,21 @@ export function Game({ input }) {
         if (Math.abs(ey - W.p.y) < 500) {        // the exit: scattered round it, drawn in
           const a = Math.random() * 6.28, rr = 30 + Math.random() * 38;
           const life = 1.4 + Math.random() * 0.8;
-          motes.push({ kind: 'in', x: ex + Math.cos(a) * rr, y: ey + Math.sin(a) * rr * 0.9,
+          W.motes.push({ kind: 'in', x: ex + Math.cos(a) * rr, y: ey + Math.sin(a) * rr * 0.9,
             tx: ex, ty: ey, vx: 0, vy: 0, life, max: life, age: 0, ph: Math.random() * 6.28,
             s: 1 + Math.random() * 1.4, c: Math.random() < 0.4 ? '#c8ffe4' : COL.portal });
         }
         if (Math.abs(W.arrival.y - W.p.y) < 500) { // the way in: breathed out, drifting away
           const a = Math.random() * 6.28, sp = 10 + Math.random() * 16;
-          motes.push({ kind: 'out', x: W.arrival.x + (Math.random() - 0.5) * 12,
+          W.motes.push({ kind: 'out', x: W.arrival.x + (Math.random() - 0.5) * 12,
             y: W.arrival.y + (Math.random() - 0.5) * 18, ox: W.arrival.x, oy: W.arrival.y,
             vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 4, life: 4, max: 4, age: 0,
             ph: Math.random() * 6.28, fade: 34 + Math.random() * 18,
             s: 1 + Math.random() * 1.3, c: Math.random() < 0.4 ? '#e6d4ff' : COL.enemy });
         }
       }
-      for (let i = motes.length - 1; i >= 0; i--) {
-        const q = motes[i];
+      for (let i = W.motes.length - 1; i >= 0; i--) {
+        const q = W.motes[i];
         q.age += dt;
         if (q.kind === 'in') {
           // accelerate toward the centre, with a sideways wobble so it spirals in unevenly
@@ -3111,9 +3098,9 @@ export function Game({ input }) {
           q.vx *= 1 - 1.8 * dt; q.vy = q.vy * (1 - 1.8 * dt) - 6 * dt;
           q.x += q.vx * dt; q.y += q.vy * dt;
         }
-        if ((q.life -= dt) <= 0) motes.splice(i, 1);
+        if ((q.life -= dt) <= 0) W.motes.splice(i, 1);
       }
-      if (motes.length > 400) motes.splice(0, motes.length - 400);
+      if (W.motes.length > 400) W.motes.splice(0, W.motes.length - 400);
     }
 
     function draw() {
@@ -3220,13 +3207,13 @@ export function Game({ input }) {
       for (const pr of W.props)
         if (pr.x + pr.r > W.camX - 70 && pr.x + pr.l < W.camX + vw + 70 && pr.y + pr.b > W.camY - 90 && pr.y + pr.t0 < W.camY + vh + 90)
           drawProp(ctx, pr, W.time, TH);
-      for (const q of dparts) {
+      for (const q of W.dparts) {
         if (q.glow) continue;
         ctx.globalAlpha = Math.min(1, q.life / q.max * 3);
         ctx.fillStyle = q.c; ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
       }
       ctx.lineWidth = 0.8;
-      for (const q of amb) {
+      for (const q of W.amb) {
         if (q.glow) continue;
         ctx.globalAlpha = Math.min(1, q.life);
         if (q.streak) {
@@ -3235,14 +3222,14 @@ export function Game({ input }) {
         } else { ctx.fillStyle = q.c; ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s); }
       }
       ctx.fillStyle = rgbA(mix(TH.rock[1], [255, 255, 255], 0.2));
-      for (const dv of devils) {                          // a dust devil: a funnel of grit
+      for (const dv of W.devils) {                          // a dust devil: a funnel of grit
         ctx.globalAlpha = 0.7 * Math.min(1, dv.life / 1.5, (dv.max - dv.life) / 1);
         for (let k = 0; k < 24; k++) {
           const hh = k / 24 * 30, r = 1.5 + hh * 0.35, a = W.time * 10 + k * 1.1;
           ctx.fillRect(dv.x + Math.cos(a) * r + Math.sin(W.time * 3 + k) - 0.6, dv.y - hh - 0.6, 1.2, 1.2);
         }
       }
-      for (const cl of clouds) {                          // a burst pod's spore cloud
+      for (const cl of W.clouds) {                          // a burst pod's spore cloud
         const a = Math.min(1, cl.life / 1.5) * 0.28;
         for (let k = 0; k < 5; k++) {
           const ang = k * 1.26 + W.time * 0.6, rr = cl.r * 0.45;
@@ -3250,7 +3237,7 @@ export function Game({ input }) {
           ctx.beginPath(); ctx.arc(cl.x + Math.cos(ang) * rr, cl.y + Math.sin(ang) * rr * 0.7, cl.r * 0.6, 0, 6.29); ctx.fill();
         }
       }
-      for (const rg of rings) {                           // a noise going out
+      for (const rg of W.rings) {                           // a noise going out
         ctx.globalAlpha = 1 - rg.t / 0.9; ctx.strokeStyle = '#f0e6ff'; ctx.lineWidth = 1.2;
         ctx.beginPath(); ctx.arc(rg.x, rg.y, 8 + rg.t * 140, 0, 6.29); ctx.stroke();
       }
@@ -3275,7 +3262,7 @@ export function Game({ input }) {
       ctx.globalAlpha = 1;
 
       // smoke
-      for (const m of smoke) {
+      for (const m of W.smoke) {
         ctx.fillStyle = m.c || COL.smoke;
         ctx.globalAlpha = Math.max(0, m.life / m.max) * (m.a || 0.5);
         ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2); ctx.fill();
@@ -3283,7 +3270,7 @@ export function Game({ input }) {
       ctx.globalAlpha = 1;
 
       // static fields
-      for (const f of fields) {
+      for (const f of W.fields) {
         if (f.y > W.camY + vh + f.r || f.y < W.camY - f.r) continue;
         const t = f.life / f.max;
         const beat = 0.75 + 0.25 * Math.sin(W.time * (f.field === 'mine' ? 7 : 3));
@@ -3357,7 +3344,7 @@ export function Game({ input }) {
       ctx.strokeStyle = '#eef0f6';
       ctx.globalAlpha = 0.55; ctx.lineWidth = 0.7;
       ctx.beginPath();
-      for (const L of webs) { ctx.moveTo(L.a0x, L.a0y); ctx.lineTo(L.b0x, L.b0y); }
+      for (const L of W.webs) { ctx.moveTo(L.a0x, L.a0y); ctx.lineTo(L.b0x, L.b0y); }
       for (const e of W.enemies) {
         const sh = e.sp && e.sp.mode === 'shoot' && e.sp.shot;
         if (sh) { ctx.moveTo(sh.ax0, sh.ay0); ctx.lineTo(sh.x + sh.dx * Math.min(sh.t, sh.len), sh.y + sh.dy * Math.min(sh.t, sh.len)); }
@@ -3365,8 +3352,8 @@ export function Game({ input }) {
       ctx.stroke();
       ctx.globalAlpha = 0.85; ctx.lineWidth = 0.9;
       ctx.beginPath();
-      for (const b of silk) { ctx.moveTo(b.ax, b.ay); ctx.lineTo(b.x, b.y); }
-      for (const s of strings) { ctx.moveTo(s.ax, s.ay); ctx.lineTo(W.p.x + s.ox, W.p.y + s.oy); }
+      for (const b of W.silk) { ctx.moveTo(b.ax, b.ay); ctx.lineTo(b.x, b.y); }
+      for (const s of W.strings) { ctx.moveTo(s.ax, s.ay); ctx.lineTo(W.p.x + s.ox, W.p.y + s.oy); }
       ctx.stroke();
       ctx.globalAlpha = 1;
 
@@ -3558,7 +3545,7 @@ export function Game({ input }) {
         ctx.restore();
       }
       // projectiles
-      for (const b of enemyShots) {
+      for (const b of W.enemyShots) {
         if (b.goo) {                           // poison spit: a wobbling glob with a wet highlight
           const s = b.size, wob = 1 + 0.12 * Math.sin(W.time * 30 + b.x * 0.1);
           ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy, b.vx));
@@ -3577,7 +3564,7 @@ export function Game({ input }) {
       // shots are drawn as streaks along their own velocity, so a fast one reads
       // as a long dash and a slow heavy one as a stub
       ctx.lineCap = 'round';
-      for (const b of bullets) {
+      for (const b of W.bullets) {
         if (b.hidden) continue;                 // Buzzsaw cuts without drawing a circle
         if (b.pull) {                           // Black Hole: purple haze, starry black core
           const r = b.size, core = b.eat || r * 0.78, beat = 1 + 0.06 * Math.sin(W.time * 6 + b.spin);
@@ -3627,9 +3614,9 @@ export function Game({ input }) {
           ctx.fillRect(b.x - 1, b.y - 1, 2, 2);
         }
       }
-      for (const a of arcs) drawBolt(a.pts, a.col, a.w, 1 - a.t / a.max);
+      for (const a of W.arcs) drawBolt(a.pts, a.col, a.w, 1 - a.t / a.max);
       // instant beams, which fade over a few frames
-      for (const bm of beams) {
+      for (const bm of W.beams) {
         const fade = 1 - bm.t / 0.12;
         if (bm.look) {                          // v96: a wide wavering halo under the beam
           ctx.globalAlpha = fade * 0.18;
@@ -3726,7 +3713,7 @@ export function Game({ input }) {
       }
 
       // gold
-      for (const g of coins) {
+      for (const g of W.coins) {
         if (g.y > W.camY + vh + 30 || g.y < W.camY - 30) continue;
         const bob = Math.sin(W.time * 4 + g.t) * 1.5;
         ctx.fillStyle = '#d8a52a';
@@ -3800,7 +3787,7 @@ export function Game({ input }) {
       }
 
       // Levitation Trail: the fire you left behind, still burning
-      for (const bn of burns) {
+      for (const bn of W.burns) {
         const t = bn.life / bn.max;
         ctx.globalAlpha = t * 0.8;
         ctx.fillStyle = t > 0.5 ? COL.flame2 : COL.flame;
@@ -3809,7 +3796,7 @@ export function Game({ input }) {
       ctx.globalAlpha = 1;
 
       // sparks and debris
-      for (const q of sparks) {
+      for (const q of W.sparks) {
         ctx.fillStyle = q.c;
         ctx.globalAlpha = Math.max(0, q.life / q.max);
         ctx.fillRect(q.x - q.size / 2, q.y - q.size / 2, q.size, q.size);
@@ -3818,7 +3805,7 @@ export function Game({ input }) {
 
       // magic motes: the Black Hole's trail and the portals' drift, added on as light
       ctx.globalCompositeOperation = 'lighter';
-      for (const q of motes) {
+      for (const q of W.motes) {
         if (q.y > W.camY + vh + 20 || q.y < W.camY - 20) continue;
         let a;
         if (q.kind === 'in') a = Math.min(1, q.age / 0.6) * 0.9;              // fade in, never pop
@@ -3833,7 +3820,7 @@ export function Game({ input }) {
       ctx.globalAlpha = 1;
 
       // explosion flashes
-      for (const f of flashes) {
+      for (const f of W.flashes) {
         const t = f.t / 0.25;
         ctx.globalAlpha = 1 - t;
         ctx.fillStyle = COL.flame;
@@ -3914,7 +3901,7 @@ export function Game({ input }) {
       drawRunner(ctx, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing);
       if (!W.p.dead) drawGun(ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
       // the torch, in the hand the gun is not in
-      if (!W.p.dead) { const th = torchHand(); drawTorch(ctx, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, torchP, W.leanX, W.leanY, W.time); }
+      if (!W.p.dead) { const th = torchHand(); drawTorch(ctx, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.torchP, W.leanX, W.leanY, W.time); }
       // a small aim crosshair at DEV.aimDist out, rotating round you with the aim: a "+"
       // with the centre cut out (two short verticals, two short horizontals), drawn as thin
       // as the thumbstick lines (~1.5 css px, so 1.5/unitPx world units, whatever the zoom)
@@ -4055,9 +4042,9 @@ export function Game({ input }) {
         glowAt(ctx, e.x, e.ty, kru(k.kp + 'GlowR', u.glowR), a, rgb);
         glowAt(ctx, e.x, e.ty, e.r * 1.6, a * 1.4, rgb);
       }
-      for (const b of enemyShots) if (b.glow && onView(b.x, b.y, 30) && fogLit(b.x, b.y)) glowAt(ctx, b.x, b.y, b.size * 6, 0.3, b.glow);
+      for (const b of W.enemyShots) if (b.glow && onView(b.x, b.y, 30) && fogLit(b.x, b.y)) glowAt(ctx, b.x, b.y, b.size * 6, 0.3, b.glow);
       // v95: your glowing shots light the cave round them (the Bubble Spark most of all)
-      for (const b of bullets) if (b.light && !b.hidden && onView(b.x, b.y, 50) && fogLit(b.x, b.y))
+      for (const b of W.bullets) if (b.light && !b.hidden && onView(b.x, b.y, 50) && fogLit(b.x, b.y))
         glowAt(ctx, b.x, b.y, b.lightR || 20, 0.28, b.light);
       // fire: the burning pixels brighten and throw a warm glow — only on ground you have seen
       if (W.fireVis.length) {
@@ -4080,7 +4067,7 @@ export function Game({ input }) {
         if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(pr.x, pr.y + pr.len))
           glowAt(ctx, pr.x, pr.y + pr.len, 16, 0.2 * W.flick, '255,130,50');
       if (W.p.burn > 0 && !W.p.dead) glowAt(ctx, W.p.x + PW / 2, W.p.y + PH / 2, 22, 0.25 * W.flick, '255,130,50');
-      for (const list of [dparts, amb]) for (const q of list) {
+      for (const list of [W.dparts, W.amb]) for (const q of list) {
         if (!q.glow || !onView(q.x, q.y, 10) || !fogLit(q.x, q.y)) continue;
         ctx.globalAlpha = Math.min(1, q.life / (q.max * 0.3));
         ctx.fillStyle = q.c; ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
@@ -4161,12 +4148,12 @@ export function Game({ input }) {
       // pickup messages
       ctx.textAlign = 'center';
       const ch = playPx / dpr;
-      for (let i = 0; i < toasts.length; i++) {
-        const tm = toasts[i];
+      for (let i = 0; i < W.toasts.length; i++) {
+        const tm = W.toasts[i];
         ctx.globalAlpha = Math.min(1, tm.t * 1.5);
         ctx.fillStyle = COL.text;
         ctx.font = '600 14px system-ui, sans-serif';
-        ctx.fillText(tm.text, cw / 2, ch - 18 - (toasts.length - 1 - i) * 19);
+        ctx.fillText(tm.text, cw / 2, ch - 18 - (W.toasts.length - 1 - i) * 19);
       }
       ctx.globalAlpha = 1;
       ctx.textAlign = 'left';
