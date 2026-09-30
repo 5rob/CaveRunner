@@ -13,7 +13,7 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | **Phase 4** (TypeScript, gradually): P4.1 done (tsc in the test run). Phase 3 merged to `main` as v99 (P3.6 done, 2026-09-30). Phase 3 recap: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). step() split into parts, P3.4 (25)–(33): a frame object `F` (D18) and 21 calls, the parts in their systems (`pickups.js` new). draw() split the same way, P3.4 (34)–(43): its own `F` (D19) and 29 calls, the parts in six `render/` modules by theme. **P3.4 done.** **P3.5 done** (D20: the Game side of each creature in `src/game/creatures/`, an `ACTS` table keyed by act, the loop keeps the shared part; knob tables stay put; no looks table). P3.6: Game.js 186 lines (world, loop, React bridge) |
+| **Current phase** | **Phase 4** (TypeScript, gradually): P4.1 done (tsc in the test run), P4.2 done (`src/types.d.ts`). Phase 3 merged to `main` as v99 (P3.6 done, 2026-09-30). Phase 3 recap: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). step() split into parts, P3.4 (25)–(33): a frame object `F` (D18) and 21 calls, the parts in their systems (`pickups.js` new). draw() split the same way, P3.4 (34)–(43): its own `F` (D19) and 29 calls, the parts in six `render/` modules by theme. **P3.4 done.** **P3.5 done** (D20: the Game side of each creature in `src/game/creatures/`, an `ACTS` table keyed by act, the loop keeps the shared part; knob tables stay put; no looks table). P3.6: Game.js 186 lines (world, loop, React bridge) |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
 | **Last green full suite** | 2026-09-30, end of P3.5 (the tree of P3.5 (6)): logic 33/33, browser 44/44 after re-runs (`everymod` telecast, `lightning` fork and `jelly` failed in the run, all known; each passed alone, `jelly` 3 of 5, the same as on the commit before the jelly move) |
@@ -669,8 +669,19 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
       `src/**/*.js` + `src/**/*.d.ts`. TS 7 defaults `strict` on, so it's set off explicitly. `src/globals.d.ts`: `React`,
       `ReactDOM` (the UMD tags, `any`: `@types/react` would be a new dependency for `createElement` and four hooks) and
       `VERSION`. `tests/run.js` runs `tsc --noEmit -p .` after ESLint; a report is a failed suite named `types`.
-- [ ] **P4.2** Write the shared shapes once in `src/types.d.ts`: Gun, Shot (blankShot's
+- [x] **P4.2** Write the shared shapes once in `src/types.d.ts`: Gun, Shot (blankShot's
       fields), Plan (planCast's return), Enemy, CreatureKind, Prop, Level, World, DevKnobs.
+      Done, written from the real objects (a scratch script dumped the key sets of `MODS`, `makeGun`, `planCast`,
+      `CREATURES`, `enemyFor`, `perkBag`, `makeLevel` on floors 1 and 3, `DEV`; the fields the game adds were
+      grepped from `src/game/`). Global (no import/export), so a checked file names them straight in JSDoc. Besides
+      the list: `Mod` (a MODS entry), `Pt`, `Rnd`, `Pixels`, `CreatureType` (a CREATURES entry), `NestState`,
+      `Perk`/`PerkBag`, `Pickup`/`StockItem`/`Room`/`NestSpot`, `FireState`, `DevRow`, `Bullet`, `Player`,
+      `GameCtx` (`G`), `StepFrame`/`DrawFrame` (the two `F`s). 58 `any`s, nearly all in `World`/`GameCtx` (the
+      particle lists, sound loops, the recorder, App's `input`, the creatures' brains): left for the game, creatures
+      and ui folders to narrow when they're checked. `DevKnobs` has an `any` index signature: the range and colour
+      tables add hundreds of `xLo`/`xHi` keys, numbers or colour strings, which a type can't tell apart by name.
+      `skipLibCheck` is now off, so tsc checks `types.d.ts` itself (a .d.ts is otherwise skipped; lib.dom is clean,
+      0.25 s).
 - [ ] **P4.3** Turn checking on per folder (`// @ts-check` or rename to `.ts`, since
       esbuild strips types), in this order: core, data, spells, world, creatures, game, ui.
       Fix real errors. For noise, add a type, not an `any`, where it's cheap.
@@ -1051,3 +1062,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, **P3.6 done**, Release v99 | Owner play-tested the branch ("plays great"). Game.js checked against P3.6: 186 lines, owns making the world, the loop and the React bridge; its header comment updated. Sanity runs on this tree (the full suite was green at the end of P3.5, and 7c96c5e ran its touched suites). README: the spider/web slow ×0.8 → ×0.7 (the new defaults). `src/version.js` → v99, merged `refactor` → `main` (merge commit, as v98), pushed. | logic 33/33, smoke ok |
 | 2026-09-30 | Release check | CI run 36657455557 green (deploy-pages, build-apk) on fa3ff66; `version.txt` = v99. `main` merged back into `refactor` (fast-forward, same commit). | — |
 | 2026-09-30 | Phase 4, P4.1 | `typescript` 7.0.2 dev dependency, `tsconfig.json` (choices under P4.1), `src/globals.d.ts`; `tests/run.js` runs `tsc --noEmit -p .` after ESLint (checked it fails the run on a planted error in a `// @ts-check` file). No file is checked yet. CLAUDE.md Testing says how it runs. `index.html` unchanged. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.2 | `src/types.d.ts` (the shapes, under P4.2), `skipLibCheck` off so it is checked itself (a planted unknown name in it fails the run). No `.js` changed; `index.html` unchanged. CLAUDE.md's layout table gets a row. | probe SAME, logic 33/33, smoke ok |

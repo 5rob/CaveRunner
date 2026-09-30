@@ -180,6 +180,7 @@ just the entry the build bundles (it mounts `App`). Where things are:
 | Death replay screen | `src/ui/witness.js`: `Witness`, `RP_SPEEDS` |
 | Dev panel | `src/ui/devpanel.js`: `DevPanel`, `DevRow`, `JellyPreview` (runs the real `jellyStep`/`drawJelly`), `SpawnGun` |
 | `App` | `src/ui/app.js`: the page: loadout, the input ref, the sticks and deck buttons, and every overlay |
+| Types (checking only) | `src/types.d.ts`: the shared shapes (`Gun`, `Mod`, `Shot`, `Plan`, `Enemy`, `CreatureKind`, `Prop`, `Level`, `World`, `GameCtx` = `G`, `DevKnobs`…), global, named in JSDoc; `src/globals.d.ts`: React, ReactDOM, VERSION. See **Testing** |
 
 Everything in the modules outside `game/` and `ui/` is pure and
 top-level, which is why the logic tests can load it and call it directly (`tests/load.js`).

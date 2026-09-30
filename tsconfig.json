@@ -18,7 +18,8 @@
     // not strict to start: null checks and implicit any would flood the first folders
     "strict": false,
     "noImplicitAny": false,
-    "skipLibCheck": true,
+    // off, so src/types.d.ts and src/globals.d.ts are checked too (skipLibCheck skips every .d.ts)
+    "skipLibCheck": false,
     "types": []
   },
   "include": ["src/**/*.js", "src/**/*.d.ts"]
