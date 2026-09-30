@@ -3,7 +3,7 @@
 // (REFACTOR.md D19): the torchlight and the fog of war, then every light drawn over the fog.
 // drawFog is not only a picture: it writes the fog memory (fogReveal), so it keeps its place
 
-import { propGlow } from '../../art/props.js';
+import { drawProp, propGlow } from '../../art/props.js';
 import { drawSconce, glowAt } from '../../art/sprites.js';
 import { CELL, CW, FH, FOG_U, FW, LAMP_REACH, PH, PW, SIGHT } from '../../core/consts.js';
 import { clamp, hexRgb } from '../../core/util.js';
@@ -17,10 +17,12 @@ import { holoMask, sizedCanvas } from './holo.js';
 
 // The fog of war alone (never-seen ground; none of the dark outside your torchlight), baked and
 // blurred beside the full fog: the hologram is darkened by this one only. Made on first use
-/** @type {{ c: HTMLCanvasElement | null, img: ImageData | null, blur: HTMLCanvasElement | null, mask: HTMLCanvasElement | null, over: HTMLCanvasElement | null }} */
-const war = { c: null, img: null, blur: null, mask: null, over: null };
+/** @type {{ c: HTMLCanvasElement | null, img: ImageData | null, blur: HTMLCanvasElement | null, mask: HTMLCanvasElement | null, over: HTMLCanvasElement | null, sil: HTMLCanvasElement | null, dark: HTMLCanvasElement | null }} */
+const war = { c: null, img: null, blur: null, mask: null, over: null, sil: null, dark: null };
 /** the blurred fog-of-war-only canvas (FW x FH), or null before the first frame */
 export const fogWarC = () => war.blur;
+/** this frame's silhouettes over the hologram (1/2 of the canvas), or null: fx.js keeps the bloom off them */
+export const holoSil = () => war.sil;
 const HOLO_D = 2;                              // the hologram's fog swap works at 1/2 size
 
 // Blur a slab of a fog canvas into its blurred copy (at source size: cheap). The blur sees nothing
@@ -108,6 +110,7 @@ export function drawFog(W, G, F) {
     blurSlab(war.c, wbctx, fx0, fy0, fx1, fy1);
     const sx = fx0 * FOG_U, sy = fy0 * FOG_U, sw = (fx1 - fx0) * FOG_U, sh = (fy1 - fy0) * FOG_U;
     if (!(DEV.holoAlpha > 0)) {
+      war.sil = null;
       G.ctx.imageSmoothingEnabled = true;     // the upscale further softens the edge
       G.ctx.drawImage(G.fogBlurC, fx0, fy0, fx1 - fx0, fy1 - fy0, sx, sy, sw, sh);
       G.ctx.imageSmoothingEnabled = false;
@@ -117,23 +120,44 @@ export function drawFog(W, G, F) {
     // torchlight: at half size, the full fog with the hologram's visible part cut out of it, and
     // the fog of war alone laid under that hole; then that over the picture
     const w = Math.max(1, Math.ceil(G.c.width / HOLO_D)), h = Math.max(1, Math.ceil(G.c.height / HOLO_D));
+    // The vines, chains and spider webs in front of it are silhouettes instead: they keep the
+    // full fog, three times over, so out of the torchlight they go black against it
     const M = war.mask = sizedCanvas(war.mask, w, h), O = war.over = sizedCanvas(war.over, w, h);
-    const mc = M.getContext('2d'), oc = O.getContext('2d');
-    if (!mc || !oc) return;
+    const S = war.sil = sizedCanvas(war.sil, w, h), E = war.dark = sizedCanvas(war.dark, w, h);
+    const mc = M.getContext('2d'), oc = O.getContext('2d'), scx = S.getContext('2d'), ec = E.getContext('2d');
+    if (!mc || !oc || !scx || !ec) return;
     const m = G.ctx.getTransform();
-    for (const x of [mc, oc]) {
-      x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, w, h);
-      x.setTransform(m.a / HOLO_D, 0, 0, m.d / HOLO_D, m.e / HOLO_D, m.f / HOLO_D);
+    const world = x => x.setTransform(m.a / HOLO_D, 0, 0, m.d / HOLO_D, m.e / HOLO_D, m.f / HOLO_D);
+    const flat = x => x.setTransform(1, 0, 0, 1, 0, 0);
+    for (const x of [mc, oc, scx, ec]) { flat(x); x.clearRect(0, 0, w, h); world(x); }
+    holoMask(mc, W, G, F, 1, HOLO_D);
+    for (const pr of W.props)
+      if (pr.k === 'climb' && pr.x + pr.r > W.camX - 70 && pr.x + pr.l < W.camX + vw + 70 &&
+        pr.y + pr.b > W.camY - 90 && pr.y + pr.t0 < W.camY + vh + 90) drawProp(scx, pr, W.time, F.TH);
+    scx.strokeStyle = '#000'; scx.lineWidth = 1; scx.lineCap = 'round';
+    scx.beginPath();
+    for (const Ln of W.webs) { scx.moveTo(Ln.a0x, Ln.a0y); scx.lineTo(Ln.b0x, Ln.b0y); }
+    for (const b of W.silk) { scx.moveTo(b.ax, b.ay); scx.lineTo(b.x, b.y); }
+    for (const e of W.enemies) {
+      const sh = e.sp && e.sp.mode === 'shoot' && e.sp.shot;
+      if (sh) { scx.moveTo(sh.ax0, sh.ay0); scx.lineTo(sh.x + sh.dx * Math.min(sh.t, sh.len), sh.y + sh.dy * Math.min(sh.t, sh.len)); }
     }
-    holoMask(mc, W, G, F, 1);
-    oc.imageSmoothingEnabled = true;
+    scx.stroke();
+    flat(scx); scx.globalCompositeOperation = 'destination-in'; scx.drawImage(M, 0, 0);   // only over the hologram
+    scx.globalCompositeOperation = 'source-over';
+    flat(mc); mc.globalCompositeOperation = 'destination-out'; mc.drawImage(S, 0, 0); mc.globalCompositeOperation = 'source-over';
+    oc.imageSmoothingEnabled = true; ec.imageSmoothingEnabled = true;
     oc.drawImage(G.fogBlurC, fx0, fy0, fx1 - fx0, fy1 - fy0, sx, sy, sw, sh);
-    oc.setTransform(1, 0, 0, 1, 0, 0);
+    ec.drawImage(G.fogBlurC, fx0, fy0, fx1 - fx0, fy1 - fy0, sx, sy, sw, sh);
+    flat(ec); ec.globalCompositeOperation = 'destination-in'; ec.drawImage(S, 0, 0); ec.globalCompositeOperation = 'source-over';
+    flat(oc);
     oc.globalCompositeOperation = 'destination-out'; oc.drawImage(M, 0, 0);
-    oc.setTransform(m.a / HOLO_D, 0, 0, m.d / HOLO_D, m.e / HOLO_D, m.f / HOLO_D);
+    world(oc);
     oc.globalCompositeOperation = 'destination-over';
     oc.drawImage(war.blur, fx0, fy0, fx1 - fx0, fy1 - fy0, sx, sy, sw, sh);
+    flat(oc);
     oc.globalCompositeOperation = 'source-over';
+    oc.drawImage(E, 0, 0); oc.drawImage(E, 0, 0);
     G.ctx.save();
     G.ctx.setTransform(1, 0, 0, 1, 0, 0);
     G.ctx.imageSmoothingEnabled = true;

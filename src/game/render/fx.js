@@ -1,13 +1,15 @@
 // @ts-check
 // The FX layer: effects drawn over the whole finished picture (after the fog and the lights),
-// that change its look rather than add things to it. Now: the hologram's bloom.
+// that change its look rather than add things to it. Now: the hologram's bloom (with a flash
+// when its number changes).
 
 import { FH, FOG_U, FW, WH } from '../../core/consts.js';
 import { DEV } from '../../dev/knobs.js';
-import { holoMask, sizedCanvas } from './holo.js';
-import { fogWarC } from './light.js';
+import { holoGlitch, holoMask, sizedCanvas } from './holo.js';
+import { fogWarC, holoSil } from './light.js';
 
 const D = 4;                                   // the bloom buffers are 1/D of the canvas
+const GLITCH_FLASH = 1.5;                      // the glow's flash when the number changes (×)
 
 /** @type {{ a: HTMLCanvasElement | null, b: HTMLCanvasElement | null }} */
 const buf = { a: null, b: null };
@@ -25,13 +27,15 @@ export function drawFx(W, G, F) {
   const m = G.ctx.getTransform();              // the world's transform, shrunk into the buffer
   a.setTransform(1, 0, 0, 1, 0, 0); a.clearRect(0, 0, w, h);
   a.setTransform(m.a / D, 0, 0, m.d / D, m.e / D, m.f / D);
-  holoMask(a, W, G, F, DEV.holoAlpha);
+  holoMask(a, W, G, F, DEV.holoAlpha, D);
   // and the fog of war (only: the dark outside your torchlight doesn't dim the hologram)
   const war = fogWarC();
   if (war && (!G.RPV || G.RPV.fog)) {
     a.globalCompositeOperation = 'destination-out'; a.imageSmoothingEnabled = true;
     a.drawImage(war, 0, 0, FW, FH, 0, 0, FW * FOG_U, FH * FOG_U);
   }
+  const sil = holoSil();                       // the silhouettes in front don't glow
+  if (sil) { a.setTransform(1, 0, 0, 1, 0, 0); a.globalCompositeOperation = 'destination-out'; a.drawImage(sil, 0, 0, w, h); }
   a.globalCompositeOperation = 'source-over';
   // blur (and brighten) at the small size, then lay it over the picture as light
   b.setTransform(1, 0, 0, 1, 0, 0); b.clearRect(0, 0, w, h);
@@ -40,10 +44,11 @@ export function drawFx(W, G, F) {
   b.filter = 'none';
   G.ctx.save();
   G.ctx.setTransform(1, 0, 0, 1, 0, 0);
-  G.ctx.globalCompositeOperation = 'lighter'; G.ctx.globalAlpha = Math.min(1, DEV.bloom);
+  // the number changing flashes the glow brighter for a moment
+  let k = DEV.bloom * (1 + GLITCH_FLASH * holoGlitch(W));
+  G.ctx.globalCompositeOperation = 'lighter';
   G.ctx.imageSmoothingEnabled = true;
-  G.ctx.drawImage(B, 0, 0, w * D, h * D);
-  if (DEV.bloom > 1) { G.ctx.globalAlpha = DEV.bloom - 1; G.ctx.drawImage(B, 0, 0, w * D, h * D); }
+  while (k > 0.001) { G.ctx.globalAlpha = Math.min(1, k); G.ctx.drawImage(B, 0, 0, w * D, h * D); k -= 1; }
   G.ctx.restore();
 }
 
