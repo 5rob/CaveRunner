@@ -46,6 +46,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     // 1: dropped in the air, it lands on the floor and never enters rock
     const e = put(room.x + 60, room.y - 60);
     const cd0 = [DEV.spSilkCdLo, DEV.spSilkCdHi]; DEV.spSilkCdLo = DEV.spSilkCdHi = 0.5;
+    const sk0 = DEV.spSilkLo; DEV.spSilkLo = 140;       // strings from 120 away: the range this was written for
     let inside = 0, landed = false;
     for (let i = 0; i < 90; i++) {
       await frame();
@@ -72,7 +73,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       for (let i = 0; i < 5; i++) await frame();
     }
     out.snapped = L.strings.length === 0;
-    [DEV.spSilkCdLo, DEV.spSilkCdHi] = cd0;
+    [DEV.spSilkCdLo, DEV.spSilkCdHi] = cd0; DEV.spSilkLo = sk0;
 
     // 4: it bites when it reaches you
     L.strings.length = 0;
@@ -119,7 +120,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       window.__in.current.left = { active: false, nx: 0, ny: 0, mag: 0, dy: 0 };
       return { n, vx: Math.round(vx) };
     };
+    const ws = [DEV.webSlowLo, DEV.webSlowHi]; DEV.webSlowLo = DEV.webSlowHi = 0.8;   // the slow this check was written for
     out.w0 = await through(0); out.w2 = await through(2);
+    [DEV.webSlowLo, DEV.webSlowHi] = ws;
     L.webs.length = 0;
     return out;
   });

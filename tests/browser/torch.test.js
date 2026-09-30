@@ -44,7 +44,9 @@ const STEPS = [270, 220, 170, 120, 70];   // the distance the far point is read 
   //   __line    a point on the line the light is read along
   // the distances below are laid out for a zoom of 1; the default zoom (v59: 1.35) would
   // push the far points off the top of the screen
-  await page.evaluate(() => { DEV.zoom = 1; });
+  // and the torch reach it was written for: at a short torch (0.5) the lamp sits on its 120-unit
+  // floor and the flicker can't move it
+  await page.evaluate(() => { DEV.zoom = 1; DEV.torch = 1; });
   await page.evaluate(({ OFF }) => {
     window.__anchor = () => {
       const { p } = window.__lvl;

@@ -25,7 +25,7 @@ it's stale.
   of the enemy loop is hooks in `ACTS` (`src/game/creatures/`, REFACTOR.md D20); knob tables stayed in
   `dev/knobs.js`, and bullet looks stayed as they are (no table: see REFACTOR.md's P3.5 notes). Next: P3.6
   (Game.js is already 186 lines; the full suite, then merge to `main` with a version bump). Last green full
-  suite: the end-of-P3.5 checkpoint. The proof for each Phase 3 step
+  suite: the end-of-P3.5 checkpoint. After P3.5 the owner's Dev settings became the defaults (zoom, torch, aggro, spider/jelly/rat/fire ranges: REFACTOR.md session log), so the next release plays differently from v98 and the probe's baseline is that commit. The proof for each Phase 3 step
   is `node tests/determinism.js` (same scripted run on HEAD and this tree, frame by frame).
   `node tools/system.js <file> name…` does a P3.4 move (`--dry` first), and
   `node tools/gamemap.js fn…` says what a function still in `Game` needs.

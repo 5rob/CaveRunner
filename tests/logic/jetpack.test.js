@@ -32,7 +32,7 @@ check('pitch starts at 1', jetPitch(0) === 1);
 check('pitch climbs while held', jetPitch(1.5) > jetPitch(0.5));
 check('pitch stops climbing at 3s', jetPitch(3) === jetPitch(10) && jetPitch(3) > jetPitch(2.9));
 check('sputter drop is a Dev knob', DEV_META.some(m => m.k === 'sputDip') && DEV.sputDip > 0);
-check('jetpack volume is a Dev knob in Sound', DEV_META.some(m => m.k === 'jetVol' && m.g === 'sound') && DEV.jetVol === 1);
+check('jetpack volume is a Dev knob in Sound', DEV_META.some(m => m.k === 'jetVol' && m.g === 'sound') && DEV.jetVol === G.DEV_DEFAULTS.jetVol);
 
 console.log(fail ? `\n${fail} failed` : `\n${pass} passed, 0 failed`);
 process.exit(fail ? 1 : 0);

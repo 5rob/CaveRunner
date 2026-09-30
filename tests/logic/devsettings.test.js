@@ -26,7 +26,7 @@ DEV.zoom = 1.3; DEV.bhPull = 90;
 r = devReport();
 console.log(r.split('\n').map(l => '     | ' + l).join('\n'));
 check('report lists a changed value with its key', /Camera zoom \(DEV\.zoom\): 1\.3/.test(r));
-check('and its old default', /DEV\.bhPull\): 90\s+\[default 50\]/.test(r));
+check('and its old default', new RegExp('DEV\\.bhPull\\): 90\\s+\\[default ' + DEV_DEFAULTS.bhPull + '\\]').test(r));
 check('and leaves unchanged ones out of the list', !/DEV\.torch\)/.test(r) && /Unchanged: .*torch/.test(r));
 
 check('Black Hole digs no wider than its body', MODS.void.eat < MODS.void.size, [MODS.void.eat, MODS.void.size]);

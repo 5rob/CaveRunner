@@ -117,6 +117,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     // 6: the colour knobs repaint it: a red bell reads red on the canvas
     const cols = ['jeColTopLo', 'jeColTopHi', 'jeColBodyLo', 'jeColBodyHi', 'jeColRimLo', 'jeColRimHi'];
     const cs = cols.map(k => DEV[k]);
+    const hs = [DEV.jeHue, DEV.jeSat]; DEV.jeHue = 0; DEV.jeSat = 1;   // the plain colours this was written for
     const q = put(room.x + 60, room.y - 60);
     const rgbAt = () => {
       const { cam, s } = L.light, cv = document.querySelector('canvas.game');
@@ -130,6 +131,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     cols.forEach(k => { DEV[k] = '#ff2020'; });
     out.red = await hold();
     cols.forEach((k, i) => { DEV[k] = cs[i]; });
+    [DEV.jeHue, DEV.jeSat] = hs;
     L.enemies.splice(L.enemies.indexOf(q), 1);
     // 7: a pulse puffs spores out of its rim, back the way it pushes; drag settles them and
     // they drift on like the cave's own
@@ -257,8 +259,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.waitForTimeout(400);
   const p2 = await prev();
   check('saturation 0 greys it out', p2 && Math.abs(p2.green) < 12, p2);
-  const rs = await page.evaluate(() => { const b = document.querySelectorAll('.devrow .devreset'); b[0].dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); b[1].dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); return [DEV.jeHue, DEV.jeSat]; });
-  check('↺ puts the sliders back', rs[0] === 0 && rs[1] === 1, rs);
+  const rs = await page.evaluate(() => { const b = document.querySelectorAll('.devrow .devreset'); b[0].dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); b[1].dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); return [DEV.jeHue, DEV.jeSat, DEV_DEFAULTS.jeHue, DEV_DEFAULTS.jeSat]; });
+  check('↺ puts the sliders back', rs[0] === rs[2] && rs[1] === rs[3], rs);
   await page.evaluate(() => { try { localStorage.removeItem('caverunner-dev'); } catch (_) {} });
 
   await browser.close();

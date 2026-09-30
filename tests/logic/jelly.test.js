@@ -8,6 +8,8 @@ const { jellyStep, jellyBell, roamStep, turnToward, flyMove, JELLY, CELL, CW, CH
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
 const mkRnd = s => () => ((s = (s * 16807) % 2147483647) / 2147483647);
+// pins the knobs a check was written for (the defaults are the owner's to move); returns the undo
+const pin = o => { const was = {}; for (const k in o) { was[k] = DEV[k]; DEV[k] = o[k]; } return () => Object.assign(DEV, was); };
 function grid(W, H, fill) {
   const m = new Uint8Array(W * H);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) m[y * W + x] = fill(x, y) ? 1 : 0;
@@ -110,7 +112,8 @@ check('and the group is on the Dev panel', DEV_GROUPS.some(g => g[0] === 'jelly'
   check('and it flattens smoothly as it slows (no jumps back)', shapeDown);
 }
 {
-  // it won't push until its head is round: a goal behind it means a turn first
+  // it won't push until its head is round: a goal behind it means a turn first (at the turn rate it was written for)
+  const unpin = pin({ jeTurnLo: 70, jeTurnHi: 110 });
   const e = jelly(300, 300), rnd = mkRnd(5);
   jellyStep(e, { solidCell: box.solidCell, hunting: false, goal: null, rnd }, DT);
   const S = e.je;
@@ -120,6 +123,7 @@ check('and the group is on the Dev panel', DEV_GROUPS.some(g => g[0] === 'jelly'
     if (jellyStep(e, { solidCell: box.solidCell, hunting: false, goal: null, rnd }, DT) === 'pulse') firstPulseHd = S.hd;
   const off = firstPulseHd === null ? 999 : Math.abs(Math.atan2(Math.sin(firstPulseHd - Math.PI), Math.cos(firstPulseHd - Math.PI))) * 180 / Math.PI;
   check('a goal behind it: it turns round before it pulses', off <= 30.5, off);
+  unpin();
 }
 
 // ---- hunting ----
@@ -191,6 +195,8 @@ check('and the group is on the Dev panel', DEV_GROUPS.some(g => g[0] === 'jelly'
   check('a line stopping short misses', !segHitsBox(-10, 10, -0.5, 10, ...B));
   check('a line skimming past a corner misses', !segHitsBox(-3, 1, 1, -3, ...B));
   // a real jelly hanging over the box: tentacles down into it sting, pulled up they don't
+  // (at the droop the box was placed for)
+  const unpin = pin({ jeSagLo: 14, jeSagHi: 22 });
   const e = jelly(300, 300), rnd = mkRnd(21);
   jellyStep(e, { solidCell: box.solidCell, hunting: false, goal: null, rnd }, DT);
   const S = e.je; S.hd = -Math.PI / 2; S.turn = 0; S.sink = 0;
@@ -201,9 +207,12 @@ check('and the group is on the Dev panel', DEV_GROUPS.some(g => g[0] === 'jelly'
   check('and the sting is placed on a tentacle', under && under.y > 300 && under.y <= tipY + 0.01, under);
   check('a box beside them is not', !tentacleTouch(S, 330, tipY - 10, 342, tipY + 12));
   check('nor one above the bell (the bell is not a tentacle)', !tentacleTouch(S, 294, 270, 306, 292));
+  unpin();
 }
 
 // ---- colour knobs: each part an A and a B, a jelly a blend between ----
+// (the blend is checked with the master sliders at no change; the owner's defaults move them)
+const unpinCol = pin({ jeHue: 0, jeSat: 1, jeBri: 1 });
 {
   check('every part has a colour A and B in the Jellyfish colours group', JE_COLS.every(([k]) =>
     ['Lo', 'Hi'].every(x => DEV_META.some(m => m.k === k + x && m.g === 'jellycol' && m.type === 'color') &&
@@ -233,9 +242,9 @@ check('and the group is on the Dev panel', DEV_GROUPS.some(g => g[0] === 'jelly'
   check('saturation 0 makes it grey', (([r, g, b]) => r === g && g === b)(ch(hsvAdjust('#46c94f', 0, 0, 1))), hsvAdjust('#46c94f', 0, 0, 1));
   check('brightness 0 makes it black, 0.5 halves it', hsvAdjust('#46c94f', 0, 1, 0) === '#000000' &&
     near(hsvAdjust('#46c94f', 0, 1, 0.5), '#23652' + '8'), hsvAdjust('#46c94f', 0, 1, 0.5));
-  check('the master sliders are in the colour group and default to no change',
-    ['jeHue', 'jeSat', 'jeBri'].every(k => DEV_META.some(m => m.k === k && m.g === 'jellycol' && m.type === 'slider')) &&
-    DEV_DEFAULTS.jeHue === 0 && DEV_DEFAULTS.jeSat === 1 && DEV_DEFAULTS.jeBri === 1);
+  check('the master sliders are in the colour group, with number defaults',
+    ['jeHue', 'jeSat', 'jeBri'].every(k => DEV_META.some(m => m.k === k && m.g === 'jellycol' && m.type === 'slider') &&
+      typeof DEV_DEFAULTS[k] === 'number'));
   const before = jellyPal(0.3);
   DEV.jeHue = 180;
   const after = jellyPal(0.3);
@@ -244,6 +253,7 @@ check('and the group is on the Dev panel', DEV_GROUPS.some(g => g[0] === 'jelly'
   check('and jcol (glow, health bar, death burst) follows them', jcol('jeColGlow', 0.3) === after.glow);
   DEV.jeHue = 0;
   check('back at 0 it is the plain blend again', jellyPal(0.3).body === kcol('jeColBody', 0.3));
+  unpinCol();
 }
 
 // ---- the plant glow comp: green key, levels, ramp, twinkle ----

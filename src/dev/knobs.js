@@ -11,8 +11,8 @@ import { HEX_RE, hexMix, hsvAdjust } from '../core/util.js';
 // Each has a default; clearing a field in the dev panel puts the default back. Every
 // localStorage touch is wrapped: it throws in a private window and does not exist at all
 // under Node (the logic tests eval this file), and a missing store just means "defaults".
-export const DEV_DEFAULTS = { zoom: 1.35, torch: 1, fogDark: 0.99, fogDim: 0.85, move: 1, sputDip: 45, aggro: 0.8, loseAggro: 2, aimDist: 44, bhPull: 50, bhSpeed: 65, vol: 0.8, amb: 1, jetVol: 1,
-  vSpell: 1, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vDrip: 1, vStep: 1, vUi: 1, bagSpeed: 1 };
+export const DEV_DEFAULTS = { zoom: 1.6, torch: 0.5, fogDark: 0.99, fogDim: 0.85, move: 1, sputDip: 45, aggro: 0.6, loseAggro: 2, aimDist: 44, bhPull: 65, bhSpeed: 50, vol: 1, amb: 0.4, jetVol: 0.2,
+  vSpell: 0.6, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vDrip: 1, vStep: 1, vUi: 1, bagSpeed: 1 };
 // g: the collapsible group the knob sits in on the Dev panel (DEV_GROUPS gives the order)
 export const DEV_META = [
   { k: 'zoom',      g: 'view',  label: 'Camera zoom',                 min: 0.3, max: 3,  step: 0.05 },
@@ -70,30 +70,30 @@ export function rangeKnobs(g, rows) {
   return rows;
 }
 export const SP_KNOBS = rangeKnobs('spider', [
-  ['spSpeed',    'Burst speed',                       20, 800, 10,   220, 300],
-  ['spRoamOn',   'Roaming: burst length (s)',         0.02, 2, 0.01, 0.1, 0.25],
-  ['spRoamOff',  'Roaming: rest between (s)',         0, 6, 0.05,    0.8, 2],
-  ['spHuntOn',   'Hunting: burst length (s)',         0.02, 2, 0.01, 0.3, 0.55],
-  ['spHuntOff',  'Hunting: rest between (s)',         0, 3, 0.01,    0.05, 0.18],
+  ['spSpeed',    'Burst speed',                       20, 800, 10,   60, 200],
+  ['spRoamOn',   'Roaming: burst length (s)',         0.02, 2, 0.01, 0.1, 1],
+  ['spRoamOff',  'Roaming: rest between (s)',         0, 6, 0.05,    0.8, 6],
+  ['spHuntOn',   'Hunting: burst length (s)',         0.02, 2, 0.01, 0.3, 1],
+  ['spHuntOff',  'Hunting: rest between (s)',         0, 3, 0.01,    0.1, 3],
   ['spRoamR',    'Roam distance from home',           0, 600, 5,     80, 140],
-  ['spRoamSpd',  'Roam spot drift speed',             0, 200, 1,     15, 35],
+  ['spRoamSpd',  'Roam spot drift speed',             0, 200, 1,     3, 35],
   ['spAggro',    'Aggro distance (×enemy aggro)',     0.1, 5, 0.05,  0.9, 1.1],
   ['spArrive',   'Stops this close to you',           2, 60, 1,      14, 22],
-  ['spDot',      'Web instead of walk above dot',     -1, 1, 0.05,   0.55, 0.65],
+  ['spDot',      'Web instead of walk above dot',     -1, 1, 0.05,   0.7, 0.9],
   ['spGrab',     'Grabs a line within',               0, 60, 1,      8, 12],
   ['spWeb',      'Web line max reach',                20, 400, 5,    140, 200],
-  ['spLineSpd',  'Web line shot speed',               50, 3000, 25,  700, 1100],
-  ['spRoamWeb',  'Roaming: secs between new lines',   0, 30, 0.5,    4, 8],
-  ['spHuntWeb',  'Hunting: secs between new lines',   0, 10, 0.1,    0.3, 0.7],
-  ['spMaxLines', 'Lines kept per spider',             1, 40, 1,      6, 10],
+  ['spLineSpd',  'Web line shot speed',               50, 3000, 25,  200, 200],
+  ['spRoamWeb',  'Roaming: secs between new lines',   0, 30, 0.5,    2, 10],
+  ['spHuntWeb',  'Hunting: secs between new lines',   0, 10, 0.1,    0.3, 2],
+  ['spMaxLines', 'Lines kept per spider',             1, 40, 1,      6, 16],
   ['spBite',     'Bite damage',                       0, 100, 1,     10, 14],
-  ['spBiteCd',   'Secs between bites',                0.1, 5, 0.05,  0.7, 1.1],
-  ['spSilk',     'String shot range',                 0, 400, 5,     140, 180],
-  ['spSilkSpd',  'String shot speed',                 50, 2000, 10,  450, 600],
+  ['spBiteCd',   'Secs between bites',                0.1, 5, 0.05,  0.7, 2],
+  ['spSilk',     'String shot range',                 0, 400, 5,     60, 180],
+  ['spSilkSpd',  'String shot speed',                 50, 2000, 10,  200, 600],
   ['spSilkCd',   'Secs between string shots',         0.2, 20, 0.1,  2.5, 4],
   ['spSilkMax',  'String snaps past (length)',        20, 600, 5,    170, 210],
-  ['spSlow',     'Your speed ×, per string on you',   0.1, 1, 0.05,  0.8, 0.8],
-  ['webSlow',    'Your speed ×, per web line you touch', 0.1, 1, 0.05, 0.8, 0.8],
+  ['spSlow',     'Your speed ×, per string on you',   0.1, 1, 0.05,  0.7, 0.7],
+  ['webSlow',    'Your speed ×, per web line you touch', 0.1, 1, 0.05, 0.7, 0.7],
   ['webGrab',    'Web line touch/latch distance',     0, 40, 1,      8, 10],
   ['webClimb',   'Climb speed along a web line',      0, 400, 5,     80, 100],
 ]);
@@ -101,14 +101,14 @@ export const SP_KNOBS = rangeKnobs('spider', [
 // (shape, tentacles, glow) are rolled once per jelly as a fraction (kru), so each jelly
 // is its own and a change on the Dev panel still shows at once.
 export const JE_KNOBS = rangeKnobs('jelly', [
-  ['jeRoamPush', 'Roaming: pulse push speed',         0, 600, 5,     60, 85],
-  ['jeHuntPush', 'Hunting: pulse push speed',         0, 600, 5,     120, 160],
+  ['jeRoamPush', 'Roaming: pulse push speed',         0, 600, 5,     30, 47],
+  ['jeHuntPush', 'Hunting: pulse push speed',         0, 600, 5,     60, 85],
   ['jePushT',    'Pulse push time (s)',               0.02, 1, 0.01, 0.12, 0.2],
-  ['jeRoamRest', 'Roaming: rest between pulses (s)',  0, 8, 0.05,    1.4, 2.6],
-  ['jeHuntRest', 'Hunting: rest between pulses (s)',  0, 4, 0.05,    0.55, 0.9],
+  ['jeRoamRest', 'Roaming: rest between pulses (s)',  0, 8, 0.05,    1.5, 3],
+  ['jeHuntRest', 'Hunting: rest between pulses (s)',  0, 4, 0.05,    0.55, 1.5],
   ['jeDrag',     'Water drag (higher stops sooner)',  0, 10, 0.1,    1.6, 2],
-  ['jeTurn',     'Turn rate (degrees/s)',             5, 720, 5,     70, 110],
-  ['jePushTol',  'Only pulses facing within (deg)',   1, 180, 1,     30, 45],
+  ['jeTurn',     'Turn rate (degrees/s)',             5, 720, 5,     35, 50],
+  ['jePushTol',  'Only pulses facing within (deg)',   1, 180, 1,     15, 30],
   ['jeSink',     'Sinks between pulses',              0, 200, 1,     6, 10],
   ['jeBounce',   'Bounce off rock',                   0, 1, 0.05,    0.3, 0.5],
   ['jeRoamR',    'Roam distance from home',           0, 600, 5,     60, 120],
@@ -117,23 +117,23 @@ export const JE_KNOBS = rangeKnobs('jelly', [
   ['jeRange',    'Stops closing in at (spit range)',  10, 500, 5,    110, 150],
   ['jeAimTol',   'Spits when head within (deg)',      1, 180, 1,     12, 20],
   ['jeShotCd',   'Secs between spits',                0.1, 10, 0.05, 1.6, 2.4],
-  ['jeShotSpd',  'Spit speed',                        20, 1000, 5,   150, 190],
+  ['jeShotSpd',  'Spit speed',                        20, 1000, 5,   65, 90],
   ['jeShotDmg',  'Spit damage',                       0, 100, 1,     6, 8],
-  ['jeShotSize', 'Spit size',                         0.5, 12, 0.25, 2.5, 3.25],
-  ['jeSpread',   'Spit aim wobble (± deg)',           0, 45, 1,      0, 5],
-  ['jeDrip',     'Spit drips per second',             0, 80, 1,      14, 20],
+  ['jeShotSize', 'Spit size',                         0.5, 12, 0.25, 2.5, 4],
+  ['jeSpread',   'Spit aim wobble (± deg)',           0, 45, 1,      0, 10],
+  ['jeDrip',     'Spit drips per second',             0, 80, 1,      20, 50],
   ['jeDripG',    'Drip fall (gravity)',               0, 1200, 10,   220, 320],
   ['jeSplat',    'Splat particles',                   0, 60, 1,      10, 16],
-  ['jeSplatSpd', 'Splat spread speed',                0, 400, 5,     50, 110],
+  ['jeSplatSpd', 'Splat spread speed',                0, 400, 5,     30, 80],
   ['jeBite',     'Sting damage on touch',             0, 100, 1,     3, 5],
   ['jeBiteCd',   'Secs between stings',               0.1, 5, 0.05,  0.8, 1.2],
   ['jeThin',     'Shape: stays thin longer (curve)',  0.3, 6, 0.1,   2.2, 2.8],
   ['jeSquash',   'Shape: how much it changes',        0, 2, 0.05,    0.9, 1.1],
   ['jeTents',    'Tentacles',                         0, 8, 1,       3, 4],
-  ['jeVerts',    'Points per tentacle',               2, 10, 1,      4, 6],
-  ['jeTentLen',  'Tentacle length',                   0, 120, 1,     22, 32],
+  ['jeVerts',    'Points per tentacle',               2, 10, 1,      6, 6],
+  ['jeTentLen',  'Tentacle length',                   0, 120, 1,     50, 75],
   ['jeWave',     'Tentacle sway',                     0, 60, 1,      5, 9],
-  ['jeSag',      'Tentacle droop',                    0, 200, 1,     14, 22],
+  ['jeSag',      'Tentacle droop',                    0, 200, 1,     0, 10],
   ['jeGlowR',    'Glow radius',                       0, 200, 2,     40, 56],
   ['jeGlow',     'Glow brightness',                   0, 1, 0.01,    0.1, 0.15],
   ['jeFlare',    'Glow flare on a pulse (×)',         0, 5, 0.05,    0.6, 1],
@@ -141,9 +141,9 @@ export const JE_KNOBS = rangeKnobs('jelly', [
   ['jeSporeSpd', 'Spore puff speed',                  0, 400, 5,     40, 80],
   ['jeSporeDrag', 'Spore puff drag (settles)',        0, 20, 0.1,    2.5, 3.5],
   ['jeSporeSpread', 'Spore puff spread (± deg)',      0, 180, 1,     25, 40],
-  ['jePlantTop', 'Plant glow: top % of green',        1, 100, 1,     25, 25],
-  ['jePlantReach', 'Plant glow reach (× glow radius)', 0, 5, 0.05,   1, 1],
-  ['jePlantGlow', 'Plant glow strength',              0, 4, 0.05,    1.5, 2],
+  ['jePlantTop', 'Plant glow: top % of green',        1, 100, 1,     30, 40],
+  ['jePlantReach', 'Plant glow reach (× glow radius)', 0, 5, 0.05,   2, 5],
+  ['jePlantGlow', 'Plant glow strength',              0, 4, 0.05,    4, 4],
   ['jePlantTwinkle', 'Plant twinkle speed',           0, 10, 0.1,    1.2, 2],
   ['jePlantSize', 'Plant twinkle size',               1, 60, 1,      5, 8],
 ]);
@@ -151,18 +151,18 @@ export const JE_KNOBS = rangeKnobs('jelly', [
 // zones of floor 1 (and a few in the natural caves) with a thin winding tunnel down to a
 // room in the rock; rats come out, bite you, knock gold out of you and carry it home.
 export const RA_KNOBS = rangeKnobs('rat', [
-  ['raSpeed',    'Run speed',                         20, 600, 5,    150, 200],
-  ['raRoamOn',   'Roaming: burst length (s)',         0.02, 3, 0.01, 0.15, 0.4],
-  ['raRoamOff',  'Roaming: rest between (s)',         0, 6, 0.05,    0.5, 1.6],
-  ['raHuntOn',   'Chasing: burst length (s)',         0.02, 3, 0.01, 0.35, 0.7],
-  ['raHuntOff',  'Chasing: rest between (s)',         0, 3, 0.01,    0, 0.03],
-  ['raRoamR',    'Roam distance from its nest',       0, 600, 5,     50, 110],
+  ['raSpeed',    'Run speed',                         20, 600, 5,    45, 60],
+  ['raRoamOn',   'Roaming: burst length (s)',         0.02, 3, 0.01, 0.15, 1],
+  ['raRoamOff',  'Roaming: rest between (s)',         0, 6, 0.05,    0.5, 3],
+  ['raHuntOn',   'Chasing: burst length (s)',         0.02, 3, 0.01, 0.35, 0.5],
+  ['raHuntOff',  'Chasing: rest between (s)',         0, 3, 0.01,    0.04, 0.4],
+  ['raRoamR',    'Roam distance from its nest',       0, 600, 5,     20, 65],
   ['raRoamSpd',  'Roam spot drift speed',             0, 200, 1,     15, 30],
   ['raAggro',    'Aggro distance (×enemy aggro)',     0.1, 5, 0.05,  0.9, 1.1],
-  ['raArrive',   'Stops this close to you',           0, 40, 1,      4, 8],
+  ['raArrive',   'Stops this close to you',           0, 40, 1,      2, 3],
   ['raDot',      'Jumps instead of runs above dot',   -1, 1, 0.05,   0.5, 0.65],
-  ['raJump',     'Jump speed',                        50, 800, 10,   260, 330],
-  ['raJumpR',    'Jumps at things within',            10, 300, 5,    70, 110],
+  ['raJump',     'Jump speed',                        50, 800, 10,   100, 200],
+  ['raJumpR',    'Jumps at things within',            10, 300, 5,    50, 75],
   ['raBite',     'Bite damage',                       0, 100, 1,     3, 5],
   ['raBiteCd',   'Secs between bites',                0.1, 5, 0.05,  0.8, 1.2],
   ['raBroke',    'Bite × when you have no gold',      1, 10, 0.5,    3, 3],
@@ -200,7 +200,7 @@ export function colourKnobs(g, rows) {
 }
 export const kcol = (k, u) => hexMix(DEV[k + 'Lo'], DEV[k + 'Hi'], u);
 // the jellyfish's master sliders, at the top of its colour group: they act on every part
-Object.assign(DEV_DEFAULTS, { jeHue: 0, jeSat: 1, jeBri: 1 });
+Object.assign(DEV_DEFAULTS, { jeHue: 26, jeSat: 1.4, jeBri: 1 });
 DEV_META.push(
   { k: 'jeHue', g: 'jellycol', label: 'All colours: hue shift (°)',  min: -180, max: 180, step: 1,    type: 'slider' },
   { k: 'jeSat', g: 'jellycol', label: 'All colours: saturation (×)', min: 0,    max: 3,   step: 0.05, type: 'slider' },
@@ -275,17 +275,17 @@ export const ARCH_KNOBS = rangeKnobs('arch', [
 ]);
 // Fire (v86): see fireStep. Every knob a min/max range like the creatures'.
 export const FIRE_KNOBS = rangeKnobs('fire', [
-  ['fireSpread', 'Spread chance per tick',            0, 1, 0.01,    0.45, 0.6],
-  ['fireGrass',  'Grass burns for (s)',               0.05, 5, 0.05, 0.4, 1],
-  ['fireMoss',   'Moss burns for (s)',                0.05, 8, 0.05, 1, 2.2],
-  ['fireWood',   'Timber burns for (s)',              0.1, 20, 0.1,  3, 6],
+  ['fireSpread', 'Spread chance per tick',            0, 1, 0.01,    0.02, 0.2],
+  ['fireGrass',  'Grass burns for (s)',               0.05, 5, 0.05, 0.4, 1.5],
+  ['fireMoss',   'Moss burns for (s)',                0.05, 8, 0.05, 1, 4],
+  ['fireWood',   'Timber burns for (s)',              0.1, 20, 0.1,  3, 9],
   ['fireBoom',   'Explosions light things (chance)',  0, 1, 0.05,    0.35, 0.6],
-  ['fireBurn',   'A creature burns for (s)',          0, 20, 0.1,    3, 5],
-  ['fireDps',    'Creature burn damage per s',        0, 20, 0.1,    1, 1.6],
+  ['fireBurn',   'A creature burns for (s)',          0, 20, 0.1,    3, 6],
+  ['fireDps',    'Creature burn damage per s',        0, 20, 0.1,    1, 3],
   ['fireYou',    'You burn for (s)',                  0, 10, 0.1,    1.2, 2],
   ['fireYouDps', 'Your burn damage per s',            0, 40, 0.5,    5, 8],
-  ['firePlant',  'Vines burn up at (px/s)',           1, 200, 1,     18, 34],
-  ['fireArch',   'Arched vines burn along at (px/s)', 1, 400, 1,     60, 100],
+  ['firePlant',  'Vines burn up at (px/s)',           1, 200, 1,     5, 25],
+  ['fireArch',   'Arched vines burn along at (px/s)', 1, 400, 1,     5, 25],
 ]);
 export const DEV_KEY = 'caverunner-dev';
 export const DEV = Object.assign({}, DEV_DEFAULTS);
