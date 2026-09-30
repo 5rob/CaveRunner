@@ -323,6 +323,7 @@ interface Loadout {
   sel: number;                // the held one
   bag: string[];              // mod ids not on a gun
   perks: string[];
+  perksOff?: number[];        // places in `perks` switched off (activePerks)
   gold: number;
   maxBonus: number;           // the +25 hearts: raises max health only
   usedLives: number;
@@ -516,6 +517,8 @@ interface GameInput {
   saved: SaveData | null;
   paused: boolean; notify: () => void; inShop: boolean;
   prompt: Prompt | null; interact: boolean; sig: string;
+  perksDirty?: boolean;       // a perk was switched: Game re-adds the bag before the next step
+  perkTap?: (() => void) | null;   // a perk card is up: a right-stick tap switches it instead
   found: Pickup | null;
   // legacy: a two-way confirm the right stick answered by pointing (Stick still reads them; nothing sets them)
   confirmAct: Record<string, () => void> | null; confirmAim: string | null;

@@ -138,6 +138,8 @@ export function Stick({ size, kind, input, refresh }) {
       const side = input.current.confirmAim;
       input.current.confirmAim = null;
       if (side) act[side]();
+    } else if (right && stayed.current && input.current.perkTap) {
+      input.current.perkTap();              // a perk card is up: R switches it
     } else if (right && stayed.current) {
       input.current.interact = true;
     }

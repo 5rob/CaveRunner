@@ -5,7 +5,7 @@
 
 import { SFX } from '../audio/sfx.js';
 import { START_GOLD } from '../core/consts.js';
-import { PERKS, perkBag } from '../data/perks.js';
+import { PERKS, activePerks, perkBag } from '../data/perks.js';
 import { Game } from '../game/Game.js';
 import { clearSave, loadSave } from '../save/save.js';
 import { startingGuns } from '../spells/guns.js';
@@ -16,6 +16,9 @@ import { h, useEffect, useRef, useState } from './h.js';
 import { RKey, Stick, deckLayout, fmtGold, holdPress } from './hud.js';
 import { GunSwap } from './swap.js';
 import { Witness } from './witness.js';
+
+// the perk column over the map button: a pip's size, and how tall a column grows before wrapping
+const PERK_PIP = 30, PERK_COL_H = 6 * (PERK_PIP + 6) - 6;
 
 export function App() {
   const blank = () => ({ active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false });
@@ -44,6 +47,7 @@ export function App() {
   const [witnessOpen, setWitnessOpen] = useState(false);
   const [gunInfo, setGunInfo] = useState(-1);
   const [held, setHeld] = useState(-1);
+  const [perkInfo, setPerkInfo] = useState(-1);   // the perk whose card is up (its place in LO.perks)
   // null when closed; a timestamp (from the tap that opened it) while open, so
   // the Restart button's own tap can't also land on the Yes button underneath —
   // see the guard on the confirm button below
@@ -53,7 +57,7 @@ export function App() {
   input.current.notify = refresh;
   const found = input.current.found;
   input.current.mapOpen = mapOpen;
-  input.current.paused = edit || !!found || devOpen || spawnOpen || mapOpen || witnessOpen;
+  input.current.paused = edit || !!found || devOpen || spawnOpen || mapOpen || witnessOpen || perkInfo >= 0;
 
   const LO = input.current.loadout;
   // read through the ref: after a Restart the loadout object is replaced, and a
@@ -72,6 +76,7 @@ export function App() {
     input.current.witness = null; input.current.replay = null;
     setWitnessOpen(false);
     setGunInfo(-1);
+    setPerkInfo(-1);
     setEdit(false);
     setRun(r => r + 1);
   };
@@ -119,7 +124,8 @@ export function App() {
       SFX.unlock();
       if (k >= '1' && k <= '4') select(Number(k) - 1);
       if (k === 'e' || k === 'tab') { e.preventDefault();
-        if (input.current.inShop || perkBag(input.current.loadout.perks || []).tinker) setEdit(v => !v); }
+        if (input.current.inShop || perkBag(activePerks(input.current.loadout)).tinker) setEdit(v => !v); }
+      if (k === 'r' && input.current.perkTap) input.current.perkTap();
       if (k === 'f') input.current.interact = true;
       if (k === 'm') setMapOpen(v => !v);
       if (k === 'escape') setEdit(false);
@@ -144,9 +150,23 @@ export function App() {
 
   const prompt = input.current.prompt;
   const inShop = input.current.inShop;
-  const perkB = perkBag(LO.perks || []);
+  const perkB = perkBag(activePerks(LO));
   const canEdit = inShop || perkB.tinker;      // Tinker with Wands Everywhere frees the editor
   const heldGun = input.current.loadout.guns[input.current.loadout.sel];
+  // a perk's card: the game pauses behind it, and R (a tap on the right stick, the r key, or
+  // the line itself) switches the perk on or off
+  const perkOn = i => !(LO.perksOff || []).includes(i);
+  const togglePerk = () => {
+    const L = input.current.loadout, i = perkInfo;
+    if (i < 0) return;
+    const off = L.perksOff || (L.perksOff = []);
+    const j = off.indexOf(i);
+    if (j >= 0) off.splice(j, 1); else off.push(i);
+    input.current.perksDirty = true;
+    SFX.fx('switch');
+    refresh();
+  };
+  input.current.perkTap = perkInfo >= 0 ? togglePerk : null;
   const deck = deckLayout(vw, size, LO.guns.length);
   const btnAt = pt => ({ width: deck.btn, height: deck.btn,
     left: Math.round(pt.x - deck.btn / 2), top: Math.round(pt.y - deck.btn / 2) });
@@ -207,12 +227,6 @@ export function App() {
               } }, 'Yes, restart')))) : null
     ),
     h('div', { className: 'controls', ref: ctlRef },
-      (LO.perks && LO.perks.length)
-        ? h('div', { className: 'perkrow' },
-            LO.perks.map((id, i) => PERKS[id] ? h('span', {
-                key: i, className: 'perkpip', title: PERKS[id].name,
-                style: { color: PERKS[id].tint } }, PERKS[id].glyph) : null))
-        : null,
       h('div', { className: 'sticks' },
         h(Stick, { size, kind: 'left', input, refresh }),
         h(Stick, { size, kind: 'right', input, refresh }),
@@ -244,7 +258,19 @@ export function App() {
             className: 'dbtn mapbtn' + (mapOpen ? ' on' : ''), style: btnAt(deck.map),
             title: 'Map', 'aria-label': 'Map',
             onPointerDown: e => { e.preventDefault(); setMapOpen(v => !v); } },
-          h('span', { className: 'emo' }, '🗺️'))
+          h('span', { className: 'emo' }, '🗺️')),
+        // the perks you carry: a column going up from above the map, wrapping into a new
+        // column further in. Tap one for its card
+        (LO.perks && LO.perks.length)
+          ? h('div', { className: 'perkcol', style: {
+                left: Math.round(deck.map.x - PERK_PIP / 2),
+                top: Math.round(deck.map.y - deck.btn / 2 - 8 - PERK_COL_H), height: PERK_COL_H } },
+              LO.perks.map((id, i) => PERKS[id] ? h('button', {
+                  key: i, className: 'perkpip' + (perkOn(i) ? '' : ' off') + (perkInfo === i ? ' sel' : ''),
+                  title: PERKS[id].name, style: { color: PERKS[id].tint },
+                  onPointerDown: e => { e.preventDefault(); setMapOpen(false); setPerkInfo(i); } },
+                PERKS[id].glyph) : null))
+          : null
       )
     ),
     edit ? h(Editor, { input, refresh, canEdit, close: () => setEdit(false) }) : null,
@@ -253,6 +279,17 @@ export function App() {
       onSpawnGun: () => { setDevOpen(false); setSpawnOpen(true); } }) : null,
     spawnOpen ? h(SpawnGun, { input, close: () => setSpawnOpen(false) }) : null,
     found ? h(GunSwap, { input, refresh, onDone: () => { setGunInfo(-1); refresh(); } }) : null,
+    perkInfo >= 0 && PERKS[LO.perks[perkInfo]]
+      ? h('div', null,
+          // the shade stops above the controls, so the right stick can still be tapped
+          h('div', { className: 'shade', style: { bottom: (input.current.ctlH || 0) + 'px' },
+            onPointerDown: e => { e.preventDefault(); setPerkInfo(-1); } }),
+          h('div', { className: 'perkinfo' + (perkOn(perkInfo) ? '' : ' off') },
+            h(PerkCard, { id: LO.perks[perkInfo], ingame: true }),
+            h('div', { className: 'pbuy perktoggle', onPointerDown: e => { e.preventDefault(); togglePerk(); } },
+              h(RKey), h('b', null, 'Tap R to toggle on / off'),
+              h('i', null, perkOn(perkInfo) ? 'ON' : 'OFF'))))
+      : null,
     gunInfo >= 0 && LO.guns[gunInfo]
       ? h('div', null,
           h('div', { className: 'shade', onPointerDown: e => { e.preventDefault(); setGunInfo(-1); } }),

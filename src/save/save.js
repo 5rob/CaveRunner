@@ -39,6 +39,7 @@ export function cleanLoadout(lo) {
     guns, sel,
     bag: (Array.isArray(lo.bag) ? lo.bag : []).filter(id => MODS[id]),
     perks: (Array.isArray(lo.perks) ? lo.perks : []).filter(id => PERKS[id]),
+    perksOff: (Array.isArray(lo.perksOff) ? lo.perksOff : []).filter(i => Number.isInteger(i) && i >= 0),
     gold: Math.max(0, num(lo.gold, START_GOLD)),
     maxBonus: Math.max(0, num(lo.maxBonus, 0)),
     usedLives: Math.max(0, num(lo.usedLives, 0)),

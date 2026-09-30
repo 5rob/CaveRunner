@@ -11,7 +11,7 @@ import { draw } from './render/draw.js';
 import { ignite, setAlight, youAlight } from './systems/fire.js';
 import { paintFog } from './systems/fog.js';
 import { enterLevel } from './systems/level-entry.js';
-import { hurt, maxHp } from './systems/player.js';
+import { hurt, maxHp, refreshBag } from './systems/player.js';
 import { drawReplay, recFrame, recSample, recWrap } from './systems/recorder.js';
 import { saveRun } from './systems/save-run.js';
 import { step } from './systems/step.js';
@@ -162,6 +162,7 @@ export function Game({ input }) {
         SFX.tick();
         drawReplay(W, G, rv);
       } else {
+        if (input.current.perksDirty) { input.current.perksDirty = false; refreshBag(W, G); }
         if (!input.current.paused) { step(W, G, dt); recFrame(W, G, dt); }
         SFX.tick();
         draw(W, G);

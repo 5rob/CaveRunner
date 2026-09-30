@@ -78,6 +78,14 @@ export const PERKS = {
 };
 export const PERK_IDS = Object.keys(PERKS);
 
+// The perks that count: the ones you carry minus those you've switched off (LO.perksOff holds
+// their places in LO.perks, so two of the same perk switch separately)
+/** @param {{ perks?: string[], perksOff?: number[] }} lo @returns {string[]} */
+export function activePerks(lo) {
+  const off = lo.perksOff || [];
+  return (lo.perks || []).filter((_, i) => !off.includes(i));
+}
+
 // Everything the perks you are carrying add up to. Multipliers multiply, flags stick,
 // `mana: 0` means unlimited and stays unlimited however many of them you find.
 /** @param {string[]} [ids] @returns {PerkBag} */

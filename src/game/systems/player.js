@@ -9,7 +9,7 @@ import {
   JET_ACC, PH, PW, WALK, WEB_HAND, WH
 } from '../../core/consts.js';
 import { approach, clamp } from '../../core/util.js';
-import { perkBag } from '../../data/perks.js';
+import { activePerks, perkBag } from '../../data/perks.js';
 import { DEV, kr, spr } from '../../dev/knobs.js';
 import { clearSave } from '../../save/save.js';
 import { archNear } from '../../world/decorate.js';
@@ -22,7 +22,7 @@ import { webNear } from './webs.js';
 // list changes and read all over step() and draw(). Neutral (all multipliers 1, all
 // flags 0) until a perk is found, so a run with no perks behaves exactly as before.
 /** @param {World} W @param {GameCtx} G */
-export const refreshBag = (W, G) => { W.pb = perkBag(G.input.current.loadout.perks || []); };
+export const refreshBag = (W, G) => { W.pb = perkBag(activePerks(G.input.current.loadout)); };
 // the true maximum health: the perk bag's answer plus the running +25 per heart room.
 /** @param {World} W @param {GameCtx} G */
 export const maxHp = (W, G) => W.pb.maxHp + (G.input.current.loadout.maxBonus || 0);
