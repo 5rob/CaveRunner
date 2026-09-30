@@ -13,7 +13,7 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | **Phase 4** (TypeScript, gradually): P4.1 done (tsc in the test run), P4.2 done (`src/types.d.ts`). P4.3 (`// @ts-check` per folder, D21): core, dev, data, spells, world, creatures, art, audio, save, replay; game in groups (world/Game/testhook done). Next: the rest of game, then ui. Phase 3 merged to `main` as v99 (P3.6 done, 2026-09-30). Phase 3 recap: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). step() split into parts, P3.4 (25)–(33): a frame object `F` (D18) and 21 calls, the parts in their systems (`pickups.js` new). draw() split the same way, P3.4 (34)–(43): its own `F` (D19) and 29 calls, the parts in six `render/` modules by theme. **P3.4 done.** **P3.5 done** (D20: the Game side of each creature in `src/game/creatures/`, an `ACTS` table keyed by act, the loop keeps the shared part; knob tables stay put; no looks table). P3.6: Game.js 186 lines (world, loop, React bridge) |
+| **Current phase** | **Phase 4** (TypeScript, gradually): P4.1 done (tsc in the test run), P4.2 done (`src/types.d.ts`). P4.3 (`// @ts-check` per folder, D21): core, dev, data, spells, world, creatures, art, audio, save, replay; game. Next: ui, then P4.4. Phase 3 merged to `main` as v99 (P3.6 done, 2026-09-30). Phase 3 recap: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). step() split into parts, P3.4 (25)–(33): a frame object `F` (D18) and 21 calls, the parts in their systems (`pickups.js` new). draw() split the same way, P3.4 (34)–(43): its own `F` (D19) and 29 calls, the parts in six `render/` modules by theme. **P3.4 done.** **P3.5 done** (D20: the Game side of each creature in `src/game/creatures/`, an `ACTS` table keyed by act, the loop keeps the shared part; knob tables stay put; no looks table). P3.6: Game.js 186 lines (world, loop, React bridge) |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
 | **Last green full suite** | 2026-09-30, end of P3.5 (the tree of P3.5 (6)): logic 33/33, browser 44/44 after re-runs (`everymod` telecast, `lightning` fork and `jelly` failed in the run, all known; each passed alone, `jelly` 3 of 5, the same as on the commit before the jelly move) |
@@ -737,7 +737,7 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
         `SaveData`, `SavedLevel`, `RpSnap`, `RpFrame`, `RpRect`, `RpPatch`; `Prop.u0`/`u1` (a burning arch). 0 bugs; `any`s: save 2
         (`cleanGun`/`cleanLoadout` take whatever the store held), replay 7 (snapshot entities are clones of anything:
         `rpCopy`/`rpLerp`/`rpList`/`rpClone`, and `RpSnap`/`RpFrame`/`RpPatch`'s index signatures), 1 `@ts-expect-error` (noise)
-  - [ ] game (`src/game/`), in groups, one commit each. types.d.ts's game section narrowed first (one go, before
+  - [x] game (`src/game/`), in groups, one commit each. types.d.ts's game section narrowed first (one go, before
         any game file was on): `World`'s lists typed (`EnemyShot`, `Field`, `Beam`, `Arc`, `Coin`, `Toast`, `Flash`,
         `Cloud`, `Ring`, `Devil`, `Silk`, `SilkString`, `Sconce`, `Ghost`, `Zfx`; `Particle` for the grab-bag lists
         smoke/sparks/torchP/motes/dparts/amb/burns, common fields + an index signature), sound loops as `SoundLoop`
@@ -777,6 +777,17 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
           but for one wrong type of mine: `G.aimPath` is `tracePath`'s flat `x, y, x, y, …` (was `Pt[]`). Fixed by a type:
           `Player.aim.vis` (the aim line's fade), `drawTorch`'s embers are `Particle`s. One `@ts-expect-error`, noise:
           `drawReticule`'s `[width, colour]` rows read as a union. 0 bugs, 0 `any`s
+    - [x] `creatures/` (`acts`, `classic`, `jelly`, `rat`, `spider`): 3 errors when turned on. Noise: `unstick`'s `home`
+          is the "carrying gold home" flag, not an `Enemy` (the script's guess). **Stendari's `k.fire`** in `bombBurst`
+          (`src/game/creatures/classic.js:65`), the logged bug: a statement, so a one-line `@ts-expect-error` pointing at
+          the entry. `ACTS` is `Record<string, ActHooks>` (every hook's signature checked against D20's), `onWebIn`
+          typed; `Enemy.roam`/`path`/`jobO` narrowed from `any` (`RoamState`, `Pt[]`, `object`). Then the index
+          signatures on `Coin`, `Silk`, `Ghost`, `Field` came off (the fields they really get added: `Silk.life`,
+          `Field.near`/`dT`/`done`), `Bullet.trail` is `Pt[]`. 0 new bugs, 0 `any`s
+  - [x] **game done**: every file under `src/game/` checked. `any`s left in the game section of types.d.ts: 9
+        (`Particle`'s index signature, for the grab-bag particle lists; `Shot`/`Bullet.bounceFx`, always null; `sconces`;
+        `StickState`'s and `Prompt`'s index signatures and the two legacy `confirmAct`/`confirmAim`, for the ui folder to
+        narrow; `RP_ARR`'s `any[]`). `@ts-expect-error`: 9 noise + 1 for the Stendari bug (plus `fireEnemyShot`'s typed local)
 - [ ] **P4.4** Once a folder is clean, keep it clean: the check is part of the green bar.
 
 ### Phase 5 — notes live next to the code
@@ -1188,3 +1199,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 4, P4.3 game (2) | systems part 1 checked (`terrain`, `particles`, `player`, `enemies`, `fire`, `webs`, `fog`, `ambience`, `props`, `plantglow`, `lightning`): 34 errors, all noise but Stendari's known `k.fire` (typed on the local, since its line is inside an object literal: a comment there, or joining the literal onto one line, changed `index.html`). types.d.ts fitted (`Prop.fall`/`warn`/`heard`/`climb`, `Bullet.struck`, `jetSt.gap`); 3 `@ts-expect-error` (noise). Logged: a vent reuses `Prop.on`. `index.html` unchanged. 0 new bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 4, P4.3 game (3) | systems part 2 checked (`gun`, `fields`, `bullets`, `shotlooks`, `pickups`, `recorder`, `save-run`, `level-entry`, `step`): ~200 errors, nearly all one wrong guess of the JSDoc script's (`rnd(a, b)`); the rest noise, fixed by types (`Bullet`'s optional part, `hit` a `Set`, `Pickup.cool`, `Devil.snd`, `SavedLevel`, `Uint8ClampedArray<ArrayBuffer>`), 4 `@ts-expect-error` (recWrap's rows, the replay's stand-in fire). `index.html` unchanged. 0 bugs, 1 `any` (`World.sconces`). | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 4, P4.3 game (4) | `render/` checked (7 files): 8 errors, noise (`G.aimPath` is flat numbers, `Player.aim.vis`, `drawTorch`'s embers as `Particle`s; one `@ts-expect-error` for a `[width, colour]` row union). `index.html` unchanged. 0 bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.3 game (5) | `game/creatures/` checked (5 files): 3 errors, one the logged Stendari bug (`bombBurst`, a one-line `@ts-expect-error`), two a wrong guess (`unstick`'s `home` is a flag). `ACTS` typed with `ActHooks`; `Enemy.roam`/`path`/`jobO` and `Coin`/`Silk`/`Ghost`/`Field`'s index signatures narrowed away. **game/ done.** `index.html` unchanged. 0 new bugs, 0 `any`s (9 left in the game section, listed under P4.3). | probe SAME, logic 33/33, smoke ok |

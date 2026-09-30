@@ -142,7 +142,8 @@ interface Enemy {
   dead?: boolean; chill?: number; burn?: number; burnAcc?: number; fuseT?: number;
   // a rat's jobs and fallbacks
   home?: Enemy; carry?: number; giveUp?: number; bestD?: number; bestT?: number;
-  roam?: any; path?: any; smell?: number; arrive?: number; jobO?: any;
+  roam?: RoamState; path?: Pt[]; smell?: number; arrive?: number;
+  jobO?: object;              // what it was last heading for (its nest, a coin, W.navYou): progress is judged per job
   stN?: number; stT?: number; stX?: number; stY?: number; rockT?: number;
   silkT?: number; silkR?: number; spread?: number;
 }
@@ -379,7 +380,7 @@ interface Bullet {
   ox?: number; oy?: number; born?: number;
   // set as it flies
   ang?: number; struck?: number; propHit?: Set<Prop>; lock?: Enemy | null; arcT?: number;
-  ax?: number; ay?: number; da?: number; grind?: number; trail?: any;
+  ax?: number; ay?: number; da?: number; grind?: number; trail?: Pt[];
 }
 
 /** a sound loop (SFX.loop): set it every frame or it fades */
@@ -410,7 +411,9 @@ interface EnemyShot {
 interface Field {
   x: number; y: number; r: number; field: string; life: number; max: number;
   col: string; dmg: number; tick: number; payload: Shot[] | null; ang: number; trig: TrigKind | null;
-  [k: string]: any;           // each field keeps its own clocks (a mine's near, a storm's strike…)
+  near?: boolean;             // a mine: a creature close (it blinks faster)
+  dT?: number;                // Stillness, a storm: until they next douse the fire under them
+  done?: boolean;             // a vacuum: has pulled everything in
 }
 /** an instant beam streak */
 interface Beam { x: number; y: number; nx: number; ny: number; len: number; col: string; w: number; t: number; look: string | null }
@@ -419,7 +422,7 @@ interface Arc { pts: Pt[]; col: string; w: number; t: number; max: number }
 /** gold on the ground */
 interface Coin {
   x: number; y: number; amount: number; t: number;
-  vx?: number; vy?: number; pop?: number; nopull?: number; [k: string]: any;
+  vx?: number; vy?: number; pop?: number; nopull?: number;
 }
 /** a line at the bottom of the view */
 interface Toast { text: string; t: number }
@@ -432,13 +435,13 @@ interface Ring { x: number; y: number; t: number }
 /** a dust devil */
 interface Devil { x: number; y: number; vx: number; life: number; max: number; snd?: number }
 /** a spider string in flight at you */
-interface Silk { x: number; y: number; ax: number; ay: number; vx: number; vy: number; [k: string]: any }
+interface Silk { x: number; y: number; ax: number; ay: number; vx: number; vy: number; life: number }
 /** a spider string stuck to you: anchored at (ax, ay), held at (ox, oy) off you */
 interface SilkString { ax: number; ay: number; ox: number; oy: number; slow: number; max: number }
 /** a wall torch */
 interface Sconce { x: number; y: number; ph: number }
 /** the Angry Ghost companion */
-interface Ghost { x: number; y: number; cd: number; [k: string]: any }
+interface Ghost { x: number; y: number; cd: number }
 /** what the props did to you this frame (decorStep), read by next frame's steering */
 interface Zfx {
   slow: number; slick: number; climb: Prop | WebLine | null; rev: number; web: WebLine | null; webs: number; webMul: number;

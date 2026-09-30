@@ -1,3 +1,4 @@
+// @ts-check
 // The jellyfish's Game side (REFACTOR.md D20; its brain, jellyStep, its sprite, drawJelly, and
 // its palette are in creatures/jelly.js): its part of the enemy loop (jellyMove: the swim, the
 // tentacles' sting, the spit) and where it may swim (natural).
@@ -13,10 +14,12 @@ import { burst } from '../systems/particles.js';
 import { hurt } from '../systems/player.js';
 import { lineOfSight, solidCell } from '../systems/terrain.js';
 
+/** @param {World} W @param {number} x @param {number} y */
 export const natural = (W, x, y) => !builtAt(W.zone, x, y);      // jellies keep to the natural zones
 
 // A jelly's frame (ACTS): the swim, the sting, the spit; the shared part of the loop runs
 // after it
+/** @param {World} W @param {GameCtx} G @param {Enemy} e @param {EnemyCtx} C */
 export function jellyMove(W, G, e, C) {
   const { dt, dist, sees, hunting, pcx, pcy } = C, k = e.k;
   // swims in pulses (jellyStep); spits when its head is lined up on you, in range

@@ -1,3 +1,4 @@
+// @ts-check
 // The rats' and nests' Game side (REFACTOR.md D20; the brain, ratStep, and the sprites,
 // drawRat and drawNest, are in creatures/rat.js): their view of the terrain, the cached ways
 // home / to a coin / to you, a new rat out of a nest, the per-frame goal picking and safety
@@ -17,12 +18,15 @@ import { solidCell } from '../systems/terrain.js';
 import { webDist } from '../systems/webs.js';
 
 // a spider's web line under a rat's feet counts as ground: rats run along webs
+/** @param {WebLine[]} list @returns {(x: number, y: number) => boolean} */
 export const onWebIn = list => (x, y) => { for (const L of list) if (webDist(L, x, y) < 3) return true; return false; };
 
 // A rat's view of the terrain: rock, plus the burrows (so it runs over a hole rather than
 // falling in and wedging in a tunnel it only ever walks as a path). burrow is per floor.
+/** @param {World} W @param {number} cx @param {number} cy */
 export const ratSolid = (W, cx, cy) => solidCell(W, cx, cy) || (W.burrow !== null && W.burrow[cy * CW + cx] === 1);
 // a goal's distance field, kept on `o` and made again when the goal moves or the rock changes
+/** @param {World} W @param {NavCache} o @param {Pt} goal @param {number} R */
 export function navFor(W, o, goal, R) {
   // (the rock changing only counts once a second, or a drill would rebuild them every frame)
   if (!o.F || (o.v !== W.terrainV && W.time - o.t > 1) || Math.hypot(goal.x - o.fx, goal.y - o.fy) > (o === W.navYou ? 12 : 6) ||
@@ -37,6 +41,7 @@ export function navFor(W, o, goal, R) {
   return o.F;
 }
 // a new rat, down in nest `n`'s room, on its way out up the tunnel
+/** @param {World} W @param {Enemy} n */
 export function spawnRat(W, n) {
   const k = enemyFor('rotta', W.floor), P = n.nest.path, m = n.nest.mouth;
   const e = { x: P[0].x, y: P[0].y, ty: P[0].y, r: k.r, phase: Math.random() * 6.28, hp: 1, hpMax: 1,
@@ -48,6 +53,7 @@ export function spawnRat(W, n) {
 }
 // a rat that's stuck with a job on: a hop in some direction; the third time, a carrier
 // slips into a crack and goes home underground, anyone else forgets it for a while
+/** @param {World} W @param {Enemy} e @param {RatBrain} S @param {boolean} home carrying gold home */
 export function unstick(W, e, S, home) {
   e.stN = (e.stN || 0) + 1;
   if (e.stN >= 3 && home) {
@@ -64,6 +70,7 @@ export function unstick(W, e, S, home) {
 // gold it can smell; you, if it has noticed you; else its roam spot round the nest.
 // Reaching you it bites, and knocks gold out of you over its head (triple bite if you've
 // none); reaching gold it picks it up; reaching the nest room it drops it off.
+/** @param {World} W @param {GameCtx} G @param {Enemy} e @param {number} dt @param {number} dist @param {boolean} hunting @param {number} pcx @param {number} pcy */
 export function ratFrame(W, G, e, dt, dist, hunting, pcx, pcy) {
   const N = e.home && !e.home.dead ? e.home : null, k = e.k;
   const wake = N ? N.nest.wake || 520 : 520;
@@ -160,6 +167,7 @@ export function ratFrame(W, G, e, dt, dist, hunting, pcx, pcy) {
 }
 
 // A rat's frame (ACTS): ratFrame, then nothing after its move runs for it
+/** @param {World} W @param {GameCtx} G @param {Enemy} e @param {EnemyCtx} C */
 export function ratMove(W, G, e, C) {
   const { dt, dist, hunting, pcx, pcy } = C;
   ratFrame(W, G, e, dt, dist, hunting, pcx, pcy);
@@ -168,6 +176,7 @@ export function ratMove(W, G, e, C) {
 }
 
 // A nest's frame: it never moves, and nothing after its move runs for it
+/** @param {World} W @param {GameCtx} G @param {Enemy} e @param {EnemyCtx} C */
 export function nestMove(W, G, e, C) {
   const { dt, dist } = C;
   // lets a rat out now and then, while it has fewer than its max alive; only while
@@ -185,6 +194,7 @@ export function nestMove(W, G, e, C) {
 }
 
 // A nest dies (damageEnemy, once it's out of the list): no ordinary coin
+/** @param {World} W @param {Enemy} e */
 export function nestDie(W, e) {
   // a nest: its own gold and everything its rats brought home, in a little shower
   const all = Math.round(kr('raNestGold') * W.pb.gold) + e.nest.stash;
