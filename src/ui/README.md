@@ -43,6 +43,12 @@ CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).
   truncated) sits in the gap at the bottom, `pointer-events:none`; it updates because gold changes
   call `input.current.notify()` (re-renders `App`). The Dev button is a bare ⚙️
   (`.devbtn`); Restart is inside the Dev panel (`.dbg.restart`).
+- **Perks: a column over the map button** (`.perkcol`, `PERK_PIP`/`PERK_COL_H` in `app.js`): bottom
+  up from just above `.mapbtn`, wrapping into a column further in. Tap a pip: `perkInfo` (pauses),
+  a `.perkinfo` card (always dark) with an R line. R switches it: `input.current.perkTap` is set while
+  the card is up and `Stick`'s dead-zone tap, the `r` key and the line call it. Off perks are places
+  in `LO.perksOff`; every perk bag is `perkBag(activePerks(LO))`; `perksDirty` has Game re-add the
+  bag. The card's shade stops at the controls so the right stick stays tappable.
 - **The Bag always opens; editing is gated**: `canEdit = inShop || Tinker`. Read-only hides drop,
   gun reorder, Sort and the tips, and the footer says "Viewing only…"; tapping a mod still shows it.
   (The `e`/`tab` key opens it only where you can edit.)

@@ -196,7 +196,9 @@ Spells, Permanent Shield, Pinpointer, Trajectory Sight (draws the dotted aim lin
 next shot), Angry Ghost, Attract Gold, radars and Invisibility among them — and once
 taken, a perk lasts the rest of the run: until you die or hit
 Restart. A perk room never offers one you already hold. What you've collected shows as a
-row of small icons along the bottom of the screen, just above the thumbsticks.
+column of icons going up from above the map button (a new column starts further in when one
+fills). Tap one to pause and see its card; tap R (the right stick, or the R key) to switch that
+perk off or on again. A switched-off perk's icon fades.
 
 The other room holds a heart that raises your maximum health by 25. It does not heal
 you — it only raises the ceiling. On floor 1 the two rooms are split between the two kinds
@@ -532,7 +534,7 @@ them if it cannot find either.
 - A torch in the runner's free hand, throwing embers, guttering — and the light in the cave gutters with it. Its flame is dragged about as you move, and it throws a small warm glow round you
 - Wall torches either side of the portals and the prizes in the hidden rooms
 - Portals that breathe: motes drift out of the way in, and get drawn into the exit
-- A background that sits well back from the rock, sliding slower as you move (parallax), with a slanted red hologram halfway between: "N biological entities detected", counting every creature alive on the floor plus you while you're out of the shop; it flips and turns green at zero
+- A background that sits well back from the rock, sliding slower as you move (parallax), with a big slanted hologram of glowing red light halfway between: "N biological entities detected", counting every creature alive on the floor plus you while you're out of the shop; it flips and turns green at zero
 - The map only keeps what you had a line on: a wall hides its far side from the fog of war for good
 - Destructible pixel terrain: explosions and drilling shots eat everything except the outer border
 - Guns and mods to find, with a drag-and-drop screen for building them

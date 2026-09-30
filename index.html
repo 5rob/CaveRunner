@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v101</title>
+<title>CaveRunner v102</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -77,12 +77,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   font:800 19px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffc93c;
   text-shadow:0 1px 3px rgba(0,0,0,0.85),0 0 6px rgba(0,0,0,0.6)}
 .gold span{font-size:12px;font-weight:700;color:#c9a24a}
-/* the perks you have found, a row of glyphs above the thumbsticks */
-.perkrow{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;align-items:center;
-  min-height:26px;padding:0 8px;position:relative;z-index:3}
-.perkpip{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;
-  justify-content:center;font-size:14px;line-height:1;box-sizing:border-box;
-  border:1.5px solid currentColor;background:rgba(255,255,255,0.05)}
+/* the perks you have found: a column going up from above the map button, wrapping inwards */
+.perkcol{position:absolute;display:flex;flex-direction:column-reverse;flex-wrap:wrap;
+  align-content:flex-start;gap:6px;pointer-events:none;z-index:4}
+.perkpip{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;padding:0;margin:0;
+  justify-content:center;font-size:16px;line-height:1;box-sizing:border-box;pointer-events:auto;
+  border:1.5px solid currentColor;background:rgba(0,0,0,0.45);font-family:inherit;cursor:pointer}
+.perkpip.off{opacity:.35;border-style:dashed}
+.perkpip.sel{box-shadow:0 0 0 2px #fff}
+/* a perk's card, tapped from the column: the game pauses behind it */
+/* always dark, like the shop panel, so the R and the words read in either theme */
+.perkinfo{position:fixed;z-index:28;left:10px;right:10px;top:calc(10px + env(safe-area-inset-top));
+  box-sizing:border-box;display:flex;flex-direction:column;gap:9px;
+  background:rgba(18,20,26,0.95);border:1px solid rgba(255,255,255,0.18);border-radius:15px;
+  padding:11px 12px 12px;color:#e9ecf2;box-shadow:0 12px 40px rgba(0,0,0,0.35)}
+.perkinfo .pop.ingame{position:static;background:none;border:0;box-shadow:none;padding:0;margin:0;
+  max-height:none;overflow:visible}
+.perktoggle{cursor:pointer;margin-top:2px}
+.perktoggle b{color:#e9ecf2;font-size:14px}
+.perktoggle i{font-style:normal;font:700 12px ui-monospace,monospace;padding:2px 7px;border-radius:6px;
+  background:#57d267;color:#000}
+.perkinfo.off .perktoggle i{background:#6b6f78;color:#fff}
+.perkinfo.off .ptitle b{text-decoration:line-through}
 .num{position:absolute;top:2px;left:5px;font:600 10px ui-monospace,monospace;color:var(--ctl-dim)}
 .ico{position:absolute;left:50%;top:56%;transform:translate(-50%,-50%)}
 .ico.gun{width:18px;height:5px;border-radius:1px;background:var(--ctl-hot)}
@@ -473,7 +489,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v101';</script>
+<script>const VERSION = 'v102';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -4734,6 +4750,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   };
   var PERK_IDS = Object.keys(PERKS);
+  function activePerks(lo) {
+    const off = lo.perksOff || [];
+    return (lo.perks || []).filter((_, i) => !off.includes(i));
+  }
   function perkBag(ids) {
     const P = {
       dmg: 1,
@@ -7504,6 +7524,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       sel,
       bag: (Array.isArray(lo.bag) ? lo.bag : []).filter((id) => MODS[id]),
       perks: (Array.isArray(lo.perks) ? lo.perks : []).filter((id) => PERKS[id]),
+      perksOff: (Array.isArray(lo.perksOff) ? lo.perksOff : []).filter((i) => Number.isInteger(i) && i >= 0),
       gold: Math.max(0, num2(lo.gold, START_GOLD)),
       maxBonus: Math.max(0, num2(lo.maxBonus, 0)),
       usedLives: Math.max(0, num2(lo.usedLives, 0)),
@@ -7570,7 +7591,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/game/systems/player.js
   var refreshBag = (W, G) => {
-    W.pb = perkBag(G.input.current.loadout.perks || []);
+    W.pb = perkBag(activePerks(G.input.current.loadout));
   };
   var maxHp = (W, G) => W.pb.maxHp + (G.input.current.loadout.maxBonus || 0);
   function hurt(W, G, n) {
@@ -11954,31 +11975,43 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   // src/game/render/holo.js
   var BG_PAR = 0.6;
   var HOLO_PAR = (1 + BG_PAR) / 2;
-  var BOX_W = 64, TOP_H = 44, BOT_H = 40;
-  var PAD = 5, TXT_PAD = 5;
-  var GAP_X = 36, GAP_Y = 30;
+  var BOX_W = 192, TOP_H = 132, BOT_H = 120;
+  var PAD = 15, TXT_PAD = 15;
+  var GAP_X = 108, GAP_Y = 90;
   var SLANT = -0.3;
-  var ALPHA = 0.22;
-  var RES = 4;
+  var ALPHA = 0.45;
+  var FILL = 0.42;
+  var LINE = 3;
+  var GLOW = 10;
+  var RES = 3;
   var cache = { key: "", pat: null };
   function tilePattern(ctx, n) {
     const key = String(n);
     if (cache.key === key && cache.pat) return cache.pat;
-    const zero = n === 0, hue = zero ? "#3dff6e" : "#ff2a2a";
-    const c = document.createElement("canvas");
-    c.width = (BOX_W + GAP_X) * RES;
-    c.height = (TOP_H + BOT_H + GAP_Y) * RES;
-    const t = c.getContext("2d");
+    const zero = n === 0;
+    const hue = zero ? "61,255,110" : "255,40,40", core = zero ? "#b8ffc8" : "#ff9a9a";
+    const W = (BOX_W + GAP_X) * RES, H = (TOP_H + BOT_H + GAP_Y) * RES;
+    const L = document.createElement("canvas");
+    L.width = W;
+    L.height = H;
+    const t = L.getContext("2d");
     if (!t) return null;
     t.scale(RES, RES);
-    const x = GAP_X / 2, y = GAP_Y / 2, lw = 1.2;
-    t.fillStyle = zero ? "#000" : hue;
-    t.fillRect(x, y, BOX_W, TOP_H);
-    if (zero) {
-      t.strokeStyle = hue;
-      t.lineWidth = lw;
-      t.strokeRect(x + lw / 2, y + lw / 2, BOX_W - lw, TOP_H - lw);
-    }
+    const x = GAP_X / 2, y = GAP_Y / 2, by = y + TOP_H;
+    const box = (yy, hh, lit) => {
+      if (lit) {
+        t.fillStyle = "rgba(" + hue + "," + FILL + ")";
+        t.fillRect(x, yy, BOX_W, hh);
+      }
+      t.strokeStyle = core;
+      t.lineWidth = LINE;
+      t.strokeRect(x + LINE / 2, yy + LINE / 2, BOX_W - LINE, hh - LINE);
+    };
+    const ink = (cut) => {
+      t.globalCompositeOperation = cut ? "destination-out" : "source-over";
+      t.fillStyle = cut ? "#000" : core;
+    };
+    box(y, TOP_H, !zero);
     const s = String(n);
     let fs = Math.min(BOX_W, TOP_H) - PAD * 2;
     t.font = "900 " + fs + "px system-ui, sans-serif";
@@ -11987,26 +12020,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       fs *= (BOX_W - PAD * 2) / w;
       t.font = "900 " + fs + "px system-ui, sans-serif";
     }
-    t.fillStyle = zero ? hue : "#000";
+    ink(!zero);
     t.textBaseline = "middle";
     t.textAlign = "left";
     t.fillText(s, x + PAD, y + TOP_H / 2 + fs * 0.05);
-    const by = y + TOP_H;
-    t.fillStyle = zero ? hue : "#000";
-    t.fillRect(x, by, BOX_W, BOT_H);
-    if (!zero) {
-      t.strokeStyle = hue;
-      t.lineWidth = lw;
-      t.strokeRect(x + lw / 2, by + lw / 2, BOX_W - lw, BOT_H - lw);
-    }
+    t.globalCompositeOperation = "source-over";
+    box(by, BOT_H, zero);
     const words = ["biological", "entities", "detected"], lh = (BOT_H - TXT_PAD * 2) / words.length;
     t.font = "700 " + lh * 0.85 + "px system-ui, sans-serif";
     t.textBaseline = "top";
-    t.fillStyle = zero ? "#000" : hue;
+    ink(zero);
     words.forEach((wd, i) => t.fillText(wd, x + TXT_PAD, by + TXT_PAD + i * lh + lh * 0.08));
     t.globalCompositeOperation = "destination-out";
     t.fillStyle = "rgba(0,0,0,0.35)";
-    for (let sy = 0; sy < c.height / RES; sy += 1.5) t.fillRect(0, sy, c.width / RES, 0.5);
+    for (let sy = 0; sy < H / RES; sy += 4.5) t.fillRect(0, sy, W / RES, 1.5);
+    const c = document.createElement("canvas");
+    c.width = W;
+    c.height = H;
+    const o = c.getContext("2d");
+    if (!o) return null;
+    o.shadowColor = "rgba(" + hue + ",1)";
+    o.shadowBlur = GLOW * RES;
+    o.drawImage(L, 0, 0);
+    o.drawImage(L, 0, 0);
+    o.shadowBlur = 0;
+    o.drawImage(L, 0, 0);
     cache.key = key;
     cache.pat = ctx.createPattern(c, "repeat");
     if (cache.pat) cache.pat.setTransform(new DOMMatrix().scale(1 / RES));
@@ -12020,6 +12058,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const cx = W.camX + F.vw / 2, cy = W.camY + F.vh / 2, R = Math.hypot(F.vw, F.vh) / 2 + 10;
     ctx.save();
     ctx.globalAlpha = ALPHA * (0.92 + 0.08 * Math.sin(W.time * 7));
+    ctx.globalCompositeOperation = "lighter";
     ctx.translate(ox, oy);
     ctx.rotate(SLANT);
     const dx = cx - ox, dy = cy - oy, c = Math.cos(-SLANT), s = Math.sin(-SLANT);
@@ -16773,6 +16812,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           SFX.tick();
           drawReplay(W, G, rv);
         } else {
+          if (input.current.perksDirty) {
+            input.current.perksDirty = false;
+            refreshBag(W, G);
+          }
           if (!input.current.paused) {
             step(W, G, dt);
             recFrame(W, G, dt);
@@ -18101,6 +18144,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const side = input.current.confirmAim;
         input.current.confirmAim = null;
         if (side) act[side]();
+      } else if (right && stayed.current && input.current.perkTap) {
+        input.current.perkTap();
       } else if (right && stayed.current) {
         input.current.interact = true;
       }
@@ -18935,6 +18980,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/ui/app.js
+  var PERK_PIP = 30, PERK_COL_H = 6 * (PERK_PIP + 6) - 6;
   function App() {
     const blank = () => ({ active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false });
     const [saved] = useState(loadSave);
@@ -18981,13 +19027,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [witnessOpen, setWitnessOpen] = useState(false);
     const [gunInfo, setGunInfo] = useState(-1);
     const [held, setHeld] = useState(-1);
+    const [perkInfo, setPerkInfo] = useState(-1);
     const [confirmAt, setConfirmAt] = useState(null);
     const [, bump] = useState(0);
     const refresh = () => bump((n) => n + 1);
     input.current.notify = refresh;
     const found = input.current.found;
     input.current.mapOpen = mapOpen;
-    input.current.paused = edit || !!found || devOpen || spawnOpen || mapOpen || witnessOpen;
+    input.current.paused = edit || !!found || devOpen || spawnOpen || mapOpen || witnessOpen || perkInfo >= 0;
     const LO = input.current.loadout;
     const select = (i) => {
       const L = input.current.loadout;
@@ -19016,6 +19063,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       input.current.replay = null;
       setWitnessOpen(false);
       setGunInfo(-1);
+      setPerkInfo(-1);
       setEdit(false);
       setRun((r) => r + 1);
     };
@@ -19068,8 +19116,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (k >= "1" && k <= "4") select(Number(k) - 1);
         if (k === "e" || k === "tab") {
           e.preventDefault();
-          if (input.current.inShop || perkBag(input.current.loadout.perks || []).tinker) setEdit((v) => !v);
+          if (input.current.inShop || perkBag(activePerks(input.current.loadout)).tinker) setEdit((v) => !v);
         }
+        if (k === "r" && input.current.perkTap) input.current.perkTap();
         if (k === "f") input.current.interact = true;
         if (k === "m") setMapOpen((v) => !v);
         if (k === "escape") setEdit(false);
@@ -19095,9 +19144,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }, []);
     const prompt = input.current.prompt;
     const inShop = input.current.inShop;
-    const perkB = perkBag(LO.perks || []);
+    const perkB = perkBag(activePerks(LO));
     const canEdit = inShop || perkB.tinker;
     const heldGun = input.current.loadout.guns[input.current.loadout.sel];
+    const perkOn = (i) => !(LO.perksOff || []).includes(i);
+    const togglePerk = () => {
+      const L = input.current.loadout, i = perkInfo;
+      if (i < 0) return;
+      const off = L.perksOff || (L.perksOff = []);
+      const j = off.indexOf(i);
+      if (j >= 0) off.splice(j, 1);
+      else off.push(i);
+      input.current.perksDirty = true;
+      SFX.fx("switch");
+      refresh();
+    };
+    input.current.perkTap = perkInfo >= 0 ? togglePerk : null;
     const deck = deckLayout(vw, size, LO.guns.length);
     const btnAt = (pt) => ({
       width: deck.btn,
@@ -19211,16 +19273,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(
         "div",
         { className: "controls", ref: ctlRef },
-        LO.perks && LO.perks.length ? h(
-          "div",
-          { className: "perkrow" },
-          LO.perks.map((id, i) => PERKS[id] ? h("span", {
-            key: i,
-            className: "perkpip",
-            title: PERKS[id].name,
-            style: { color: PERKS[id].tint }
-          }, PERKS[id].glyph) : null)
-        ) : null,
         h(
           "div",
           { className: "sticks" },
@@ -19277,7 +19329,32 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               }
             },
             h("span", { className: "emo" }, "🗺️")
-          )
+          ),
+          // the perks you carry: a column going up from above the map, wrapping into a new
+          // column further in. Tap one for its card
+          LO.perks && LO.perks.length ? h(
+            "div",
+            { className: "perkcol", style: {
+              left: Math.round(deck.map.x - PERK_PIP / 2),
+              top: Math.round(deck.map.y - deck.btn / 2 - 8 - PERK_COL_H),
+              height: PERK_COL_H
+            } },
+            LO.perks.map((id, i) => PERKS[id] ? h(
+              "button",
+              {
+                key: i,
+                className: "perkpip" + (perkOn(i) ? "" : " off") + (perkInfo === i ? " sel" : ""),
+                title: PERKS[id].name,
+                style: { color: PERKS[id].tint },
+                onPointerDown: (e) => {
+                  e.preventDefault();
+                  setMapOpen(false);
+                  setPerkInfo(i);
+                }
+              },
+              PERKS[id].glyph
+            ) : null)
+          ) : null
         )
       ),
       edit ? h(Editor, { input, refresh, canEdit, close: () => setEdit(false) }) : null,
@@ -19299,6 +19376,34 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         setGunInfo(-1);
         refresh();
       } }) : null,
+      perkInfo >= 0 && PERKS[LO.perks[perkInfo]] ? h(
+        "div",
+        null,
+        // the shade stops above the controls, so the right stick can still be tapped
+        h("div", {
+          className: "shade",
+          style: { bottom: (input.current.ctlH || 0) + "px" },
+          onPointerDown: (e) => {
+            e.preventDefault();
+            setPerkInfo(-1);
+          }
+        }),
+        h(
+          "div",
+          { className: "perkinfo" + (perkOn(perkInfo) ? "" : " off") },
+          h(PerkCard, { id: LO.perks[perkInfo], ingame: true }),
+          h(
+            "div",
+            { className: "pbuy perktoggle", onPointerDown: (e) => {
+              e.preventDefault();
+              togglePerk();
+            } },
+            h(RKey),
+            h("b", null, "Tap R to toggle on / off"),
+            h("i", null, perkOn(perkInfo) ? "ON" : "OFF")
+          )
+        )
+      ) : null,
       gunInfo >= 0 && LO.guns[gunInfo] ? h(
         "div",
         null,

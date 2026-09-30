@@ -5,6 +5,16 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v102 — perks you can switch off; the hologram glows
+Released 2026-09-30.
+
+- The perk icons are a column going up from above the map button, wrapping into a new column
+  further in (they used to hide behind the controls). Tap one: the game pauses and its card opens;
+  R (a right-stick tap, the r key, or the card's line) switches it off/on (`LO.perksOff`,
+  `activePerks`; saved).
+- The hologram 3× bigger and drawn as red light: added over the background, black is no light
+  (numbers cut out of the lit box), with a glow.
+
 ## v101 — the hologram
 Released 2026-09-30. A slanted, tiled red "N biological entities detected" hologram between the
 background and the rock (`src/game/render/holo.js`, count: `bioCount`), parallaxing halfway; green and
