@@ -53,9 +53,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('sold stock stays sold', after.stock[before.sold] === true, after.stock);
   check('ground loot count kept', after.pickups === before.pickups, [before.pickups, after.pickups]);
 
-  // walking through the portal saves the new floor at once
-  await page.evaluate(() => { const L = window.__lvl, P = L.portal;
-    L.p.x = P.x + P.w / 2 - 4; L.p.y = P.y + P.h / 2 - 8; });
+  // a new floor is saved at once
+  await page.evaluate(() => window.__lvl.nextFloor());
   await page.waitForTimeout(400);
   const fl = await page.evaluate(() => [window.__lvl.floor, JSON.parse(localStorage.getItem('caverunner-save')).floor]);
   check('new floor is saved', fl[0] === 2 && fl[1] === 2, fl);

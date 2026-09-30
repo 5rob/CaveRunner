@@ -3,7 +3,7 @@
 // the fog and the recorder for it.
 
 import { SFX } from '../../audio/sfx.js';
-import { CH, CW, MINI_D, MMH, MMW } from '../../core/consts.js';
+import { CH, CW, MINI_D, MMH, MMW, SHOP_Y } from '../../core/consts.js';
 import { plantWhite } from '../../creatures/jelly.js';
 import { fireNew } from '../../world/fire.js';
 import { makeLevel } from '../../world/level.js';
@@ -15,8 +15,10 @@ import { recReset } from './recorder.js';
 // a floor is a fresh cave with its own shop at the bottom; you keep everything else
 // `back` is a saved cave to rebuild (same seed, same perks owned on the way in), with
 // what was already taken, sold and killed stripped back out of it
-/** @param {World} W @param {GameCtx} G @param {SavedLevel} [back] a save's cave, to put back */
-export function enterLevel(W, G, back) {
+// `keep` (a level teleporting in or out over the shop you're standing in, game/systems/vend.js):
+// 'you' stay where you are and so does what's lying on the shop's floor; 'shop' keeps its stock too
+/** @param {World} W @param {GameCtx} G @param {SavedLevel} [back] a save's cave, to put back @param {'you' | 'shop'} [keep] */
+export function enterLevel(W, G, back, keep) {
   refreshBag(W, G);
   W.levelSeed = back ? back.seed : 1 + Math.floor(Math.random() * 2147483000);
   W.levelOwned = back ? back.owned : (G.input.current.loadout.perks || []).slice();
@@ -28,24 +30,12 @@ export function enterLevel(W, G, back) {
     back.rooms.forEach(i => { if (level.rooms && level.rooms[i]) level.rooms[i].taken = true; });
     if (back.pickups) level.pickups = back.pickups;
   }
-  W.mat = level.mat; W.img = level.img; W.ore = level.ore || null;
-  // minimap outlines for this floor: scan the real terrain in MINI_D x MINI_D blocks;
-  // a block is an outline if a wall runs through it (it holds both rock and open), which
-  // traces the cave walls continuously at a much finer grain than the fog grid.
-  W.miniEdgeIdx = [];
-  for (let my = 0; my < MMH; my++) for (let mx = 0; mx < MMW; mx++) {
-    let solid = 0, open = 0;
-    for (let dy = 0; dy < MINI_D; dy++) {
-      const ty = my * MINI_D + dy;
-      if (ty >= CH) break;
-      for (let dx = 0; dx < MINI_D; dx++) {
-        const tx = mx * MINI_D + dx;
-        if (tx >= CW) break;
-        if (W.mat[ty * CW + tx]) solid++; else open++;
-      }
-    }
-    if (solid && open) W.miniEdgeIdx.push(my * MMW + mx);
+  if (keep) {
+    if (keep === 'shop') level.stock = W.stock;
+    level.pickups = level.pickups.concat(W.pickups.filter(q => !q.taken && q.y >= SHOP_Y));
   }
+  W.mat = level.mat; W.img = level.img; W.ore = level.ore || null;
+  miniEdges(W);
   W.start = level.start; W.portal = level.portal; W.arrival = level.arrival;
   W.enemies = level.enemies; W.pickups = level.pickups; W.stock = level.stock;
   W.rooms = level.rooms || []; W.zone = level.zone || null;
@@ -87,12 +77,15 @@ export function enterLevel(W, G, back) {
   W.p.burn = 0; W.p.burnAcc = 0;
   G.tctx.putImageData(W.img, 0, 0);
   G.bgctx.putImageData(level.bgImg, 0, 0);
-  W.p.x = W.start.x; W.p.y = W.start.y; W.p.vx = 0; W.p.vy = 0;
-  W.p.fuel = 1; W.p.empty = false; W.p.kick = 0;
+  if (!keep) {
+    W.p.x = W.start.x; W.p.y = W.start.y; W.p.vx = 0; W.p.vy = 0;
+    W.p.fuel = 1; W.p.empty = false; W.p.kick = 0;
+  }
   W.bullets.length = W.enemyShots.length = W.smoke.length = 0;
   W.sparks.length = W.flashes.length = W.coins.length = W.arcs.length = 0;
   W.torchP.length = 0; W.motes.length = 0;
-  W.camReady = false; W.best = 0;
+  if (!keep) W.camReady = false;
+  W.best = 0;
   W.levelT = 0;                             // the floor's name card gets its three seconds
   W.seen = fogStart(); W.deepFog = nestFog(level.nests);
   if (W.pb.seeAll) W.seen.fill(2);            // All-Seeing Eye lights the whole floor
@@ -100,5 +93,26 @@ export function enterLevel(W, G, back) {
   recReset(W, G);                             // the death replay starts afresh each floor
   W.matterProps = W.props.filter(pr => pr.k === 'matter');
   // out of the way-in, a moment after the way-out's whump
-  setTimeout(() => SFX.fx('portalOut', W.arrival.x, W.arrival.y), 260);
+  if (!keep) setTimeout(() => SFX.fx('portalOut', W.arrival.x, W.arrival.y), 260);
+}
+
+// The minimap outlines for this floor: scan the real terrain in MINI_D x MINI_D blocks;
+// a block is an outline if a wall runs through it (it holds both rock and open), which
+// traces the cave walls continuously at a much finer grain than the fog grid.
+/** @param {World} W */
+export function miniEdges(W) {
+  W.miniEdgeIdx = [];
+  for (let my = 0; my < MMH; my++) for (let mx = 0; mx < MMW; mx++) {
+    let solid = 0, open = 0;
+    for (let dy = 0; dy < MINI_D; dy++) {
+      const ty = my * MINI_D + dy;
+      if (ty >= CH) break;
+      for (let dx = 0; dx < MINI_D; dx++) {
+        const tx = mx * MINI_D + dx;
+        if (tx >= CW) break;
+        if (W.mat[ty * CW + tx]) solid++; else open++;
+      }
+    }
+    if (solid && open) W.miniEdgeIdx.push(my * MMW + mx);
+  }
 }

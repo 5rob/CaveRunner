@@ -1,10 +1,15 @@
 # CaveRunner
 
-A jetpack cave platformer prototype that runs in the browser. Each floor is a
-shop room with a freshly generated destructible cave above it: climb from the
-shop to the green exit at the top, and the exit drops you into the next floor's
-shop. You keep your guns, mods and gold; the cave and the loot are new every
-time.
+A jetpack cave platformer prototype that runs in the browser. You start in a
+shop room with nothing above it. On its back wall, past the free heal, stand
+two vending machines: the green one sells you a freshly generated destructible
+level for 64,000,000,000 gold on credit (your gold goes negative), and it
+teleports in over the shop in a flash and a crackle of lightning. Climb to the
+green exit at the top and it drops you back in the shop. The other machine buys
+the level back for 64,000,001,000, but its screen stays red until no biological
+entities are left in it (rat nests too); sell it and it teleports away, leaving
+you 1,000 up, and the machine next to it offers the next level. You keep your
+guns, mods and gold; the cave and the loot are new every time.
 
 **Every floor keeps its identity.** Floor 3 is always the frozen one and always
 holds the same mix of creatures, on every run and after every restart — the

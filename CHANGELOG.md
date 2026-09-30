@@ -5,6 +5,22 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v106 — the level vending machines
+Released 2026-10-01.
+
+- A run starts with no level: above the shop is solid dark bedrock and the roof is sealed
+  (`voidCave`, `src/game/systems/vend.js`). Two tech vending machines on the shop's back wall,
+  past the way in and the heal (`VEND_BUY_X`, `VEND_SELL_X`): **BUY LVL N** (64,000,000,000 G on credit:
+  gold goes negative) and **SELL LVL N** (64,000,001,000 G, red until `bioCount` is 0, then green).
+  Screens are stacked like the background hologram, in its green and red (`src/game/render/vend.js`).
+- Buying: the screen goes dark, then a flash, a sweep and lightning over the shop roof, and the level
+  arrives (`enterLevel(..., 'shop')` rebuilds it from its seed; you and the stock stay put). Selling:
+  the same, it goes, the floor number goes up and the next floor's shop and level are made, hidden.
+- The exit portal no longer ends the floor: it drops you back in the shop.
+- Gold can be negative (save, deck readout: `fmtGold` does k/M/B and a minus sign).
+- The browser test page starts with the level bought (`window.__TEST_VOID` for the game's start);
+  `__lvl.nextFloor()` replaces walking into the portal in the suites.
+
 ## v105 — hologram static, change glitch, silhouettes
 Released 2026-09-30.
 

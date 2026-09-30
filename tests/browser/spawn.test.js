@@ -29,8 +29,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
   // and the next floor puts you in the same place
   await page.evaluate(async () => {
-    const { p, portal } = window.__lvl;
-    p.x = portal.x; p.y = portal.y;
+    window.__lvl.nextFloor();
     await new Promise(r => setTimeout(r, 500));
   });
   const b = await at();

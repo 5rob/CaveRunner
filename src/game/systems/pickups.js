@@ -10,6 +10,7 @@ import { paintFog } from './fog.js';
 import { toast } from './particles.js';
 import { maxHp, refreshBag } from './player.js';
 import { solidAt } from './terrain.js';
+import { VEND_TOP, vendLabel, vendNear, vendUse } from './vend.js';
 
 // ---- pickups, gold and the interact tap (a part of step) ----
 // Pickups' cooldowns, gold flying to you or bouncing, which card (shop plinth, something on
@@ -68,8 +69,10 @@ export function stepPickups(W, G, F) {
 
   // ---- what you can interact with: a shop plinth, or something on the ground ----
   const inShop = W.p.y + PH > SHOP_Y;
-  let near = null;                      // { src: 'shop', it } or { src: 'pickup', q }
-  for (const it of W.stock) {
+  let near = null;                      // { src: 'shop', it } or { src: 'pickup', q }, or a vending machine
+  const vend = vendNear(W, pcx, pcy);
+  if (vend) near = { src: 'vend', kind: vend };
+  if (!near) for (const it of W.stock) {
     if (it.sold) continue;
     if (Math.abs(it.x - pcx) > 15 || Math.abs(it.y - pcy) > 22) continue;
     near = { src: 'shop', it };
@@ -89,9 +92,10 @@ export function stepPickups(W, G, F) {
     break;
   }
   const nearKey = !near ? -1 : near.src + ':' +
-    (near.src === 'shop' ? W.stock.indexOf(near.it)
+    (near.src === 'vend' ? near.kind : near.src === 'shop' ? W.stock.indexOf(near.it)
       : near.src === 'room' ? W.rooms.indexOf(near.r) : W.pickups.indexOf(near.q));
   const label = !near ? null
+    : near.src === 'vend' ? vendLabel(W, near.kind)
     : near.src === 'shop'
       ? (near.it.kind === 'heal' ? { text: 'Full heal', price: 0, can: W.p.hp < MHP }
         : near.it.kind === 'gun' ? { text: near.it.gun.name, gun: near.it.gun,
@@ -113,7 +117,7 @@ export function stepPickups(W, G, F) {
   // `bottom`. Bucketed into the sig so the panel re-lays-out as the camera settles.
   let pbottom = 12;
   if (near) {
-    const iy = near.src === 'shop' ? near.it.y : near.src === 'room' ? near.r.y : near.q.y;
+    const iy = near.src === 'vend' ? VEND_TOP : near.src === 'shop' ? near.it.y : near.src === 'room' ? near.r.y : near.q.y;
     const dprc = window.devicePixelRatio || 1;
     pbottom = Math.round(Math.max(10, G.c.height / dprc - (iy - 16 - W.camY) * W.unitPx));
   }
@@ -134,7 +138,8 @@ export function stepPickups(W, G, F) {
   }
   if (G.input.current.interact && near) {
     G.input.current.interact = false;
-    if (near.src === 'shop') {
+    if (near.src === 'vend') vendUse(W, G, near.kind, LO);
+    else if (near.src === 'shop') {
       const it = near.it;
       if (it.kind === 'heal') {
         if (W.p.hp < MHP) { W.p.hp = MHP; it.sold = true; toast(W, 'Patched up'); SFX.ui('heal'); }

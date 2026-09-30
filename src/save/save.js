@@ -40,7 +40,7 @@ export function cleanLoadout(lo) {
     bag: (Array.isArray(lo.bag) ? lo.bag : []).filter(id => MODS[id]),
     perks: (Array.isArray(lo.perks) ? lo.perks : []).filter(id => PERKS[id]),
     perksOff: (Array.isArray(lo.perksOff) ? lo.perksOff : []).filter(i => Number.isInteger(i) && i >= 0),
-    gold: Math.max(0, num(lo.gold, START_GOLD)),
+    gold: num(lo.gold, START_GOLD),               // negative while a level is on credit
     maxBonus: Math.max(0, num(lo.maxBonus, 0)),
     usedLives: Math.max(0, num(lo.usedLives, 0)),
     debug: !!lo.debug,
@@ -55,7 +55,8 @@ export function readSave(raw) {
   const loadout = cleanLoadout(s.loadout);
   if (!loadout) return null;
   const floor = Math.max(1, Math.floor(Number(s.floor) || 1));
-  const out = { loadout, floor, hp: Number.isFinite(s.hp) && s.hp > 0 ? s.hp : null, level: null };
+  const out = { loadout, floor, hp: Number.isFinite(s.hp) && s.hp > 0 ? s.hp : null, level: null,
+    hasLvl: s.hasLvl !== false };               // a save from before the vending machines was mid-level
   // the cave itself only comes back on the same version, where the seed makes the same cave
   const L = s.level;
   if (s.ver === VERSION && L && Number.isFinite(L.seed)) {

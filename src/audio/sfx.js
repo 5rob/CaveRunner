@@ -549,6 +549,15 @@ export const SFX = (() => {
       for (let i = 0; i < 4; i++) bell(d, notes[Math.floor(Math.random() * notes.length)] * 2, t + 0.12 + i * rnd(0.06, 0.1), 0.6, 0.06);
       tone(d, 'sine', rnd(180, 220), rnd(450, 550), t, 0.5, 0.15, 0.1);
     },
+    // a whole level teleporting in or out over the shop: a crackle of lightning, a rising
+    // whine and a deep thump
+    levelWarp(d, t) {
+      hiss(d, t, 1.1, 0.45, 'highpass', 3500, 2000, 0.8, true);
+      for (let i = 0; i < 9; i++) zap(d, t + i * rnd(0.06, 0.12), rnd(0.05, 0.14), 0.11, rnd(2500, 4500), rnd(300, 900));
+      tone(d, 'sine', rnd(180, 220), rnd(1400, 1700), t, 0.5, 0.15, 0.05);
+      tone(d, 'sine', rnd(70, 85), 35, t, 0.6, 0.8, 0.01);
+      hiss(d, t, 0.5, 0.4, 'lowpass', 900, 120, 0.8);
+    },
     step(d, t, surf) { surfaceHit(d, t, surf, rnd(0.55, 0.8)); },
     land(d, t, a) {
       const v = clampS((a.v - 150) / 500, 0.35, 1);

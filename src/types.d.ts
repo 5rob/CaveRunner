@@ -332,6 +332,7 @@ interface Loadout {
 /** a save read back: readSave (save/save.js) */
 interface SaveData {
   loadout: Loadout; floor: number; hp: number | null;
+  hasLvl: boolean;            // is the floor's level bought (v106; older saves: true)
   level: SavedLevel | null;   // the exact cave, only on the same version
 }
 /** the cave part of a save */
@@ -451,6 +452,11 @@ interface Zfx {
 }
 
 /** the live level, `W`: makeWorld (game/world.js). enterLevel refills the floor's parts */
+/** the level teleporting in (bought) or out (sold): game/systems/vend.js */
+interface Warp {
+  dir: 'in' | 'out'; t: number; done: boolean;   // done: the swap (at WARP_SWAP) has happened
+  bolts: { pts: Pt[]; t: number; max: number }[];     // the crackle over the shop roof
+}
 interface World {
   p: Player;
   pb: PerkBag;
@@ -461,6 +467,7 @@ interface World {
   flick: number; torchR: number; visPts: number[]; leanX: number; leanY: number; glowN: number;
   mat: Uint8Array; img: ImageData; dimg: ImageData; ore: Uint8Array; burrow: Uint8Array | null; terrainV: number;
   floor: number;
+  hasLvl: boolean; warp: Warp | null;
   start: Pt; portal: Level['portal']; arrival: Pt; stock: StockItem[];
   zone: Uint8Array | null; rooms: Room[];
   sconces: any[];             // Sconce[]: enterLevel builds [x, y] pairs first and maps them after

@@ -180,8 +180,7 @@ const OUT = path.join(__dirname, '..', 'build');
   // ---- a new floor starts dark again ----
   const floorBefore = await page.evaluate(() => window.__lvl.floor);
   await page.evaluate(async () => {
-    const { p, portal } = window.__lvl;
-    p.x = portal.x; p.y = portal.y;
+    window.__lvl.nextFloor();
     await new Promise(r => setTimeout(r, 500));
   });
   const floor = await page.evaluate(() => window.__lvl.floor);

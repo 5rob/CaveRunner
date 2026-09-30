@@ -114,7 +114,7 @@ export function drawMessages(W, G, F) {
     G.ctx.fillText(themeFor(W.floor).name, cw / 2, 196);
     G.ctx.font = '500 14px system-ui, sans-serif';
     G.ctx.fillText('Find the green exit at the top', cw / 2, 218);
-    G.ctx.fillText('Buy and fit mods here, then climb', cw / 2, 236);
+    G.ctx.fillText('Clear it, then sell it back in the shop', cw / 2, 236);
     G.ctx.globalAlpha = 1;
   }
   const msgY = 196;
@@ -124,7 +124,7 @@ export function drawMessages(W, G, F) {
     G.ctx.fillText('You were shot down', cw / 2, msgY);
     G.ctx.font = '500 14px system-ui, sans-serif';
     G.ctx.fillText('Tap the right stick to restart', cw / 2, msgY + 22);
-  } else if (W.enemies.length === 0) {
+  } else if (W.hasLvl && !W.warp && W.enemies.length === 0) {
     G.ctx.font = '700 18px system-ui, sans-serif';
     G.ctx.fillText('All enemies destroyed', cw / 2, msgY);
   }

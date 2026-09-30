@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v105</title>
+<title>CaveRunner v106</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -489,7 +489,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v105';</script>
+<script>const VERSION = 'v106';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -519,8 +519,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const mx = Math.max(r, g, b), d = mx - Math.min(r, g, b);
     let h3 = !d ? 0 : mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
     h3 = ((h3 * 60 + hue) % 360 + 360) % 360;
-    const S = Math.min(1, (mx ? d / mx : 0) * sat), V = Math.min(1, mx * bri);
-    const c = V * S, x = c * (1 - Math.abs(h3 / 60 % 2 - 1)), m = V - c;
+    const S = Math.min(1, (mx ? d / mx : 0) * sat), V2 = Math.min(1, mx * bri);
+    const c = V2 * S, x = c * (1 - Math.abs(h3 / 60 % 2 - 1)), m = V2 - c;
     const [R, G, B] = h3 < 60 ? [c, x, 0] : h3 < 120 ? [x, c, 0] : h3 < 180 ? [0, c, x] : h3 < 240 ? [0, x, c] : h3 < 300 ? [x, 0, c] : [c, 0, x];
     const to = (q) => Math.round((q + m) * 255);
     return "#" + (1 << 24 | to(R) << 16 | to(G) << 8 | to(B)).toString(16).slice(1);
@@ -3487,88 +3487,88 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       [1, 2.76, 5.4].forEach((m, i) => tone(dest, "sine", f * m, f * m, t, dur / (i + 1), peak / (i + 1), 2e-3));
     }
     const VOICE = {
-      magic(d, t, P, V, D2) {
-        tone(d, "triangle", 950 * P, 380 * P, t, 0.13 * D2, 0.5 * V);
-        tone(d, "square", 475 * P, 190 * P, t, 0.09 * D2, 0.1 * V);
-        hiss(d, t, 0.07 * D2, 0.25 * V, "bandpass", 2600 * P, 1200 * P, 1.2);
+      magic(d, t, P, V2, D2) {
+        tone(d, "triangle", 950 * P, 380 * P, t, 0.13 * D2, 0.5 * V2);
+        tone(d, "square", 475 * P, 190 * P, t, 0.09 * D2, 0.1 * V2);
+        hiss(d, t, 0.07 * D2, 0.25 * V2, "bandpass", 2600 * P, 1200 * P, 1.2);
       },
-      pierce(d, t, P, V, D2) {
-        tone(d, "sawtooth", 1500 * P, 500 * P, t, 0.1 * D2, 0.22 * V);
-        hiss(d, t, 0.15 * D2, 0.35 * V, "highpass", 5e3, 2500, 0.7);
-        tone(d, "sine", 2400 * P, 2300 * P, t, 0.05, 0.18 * V);
+      pierce(d, t, P, V2, D2) {
+        tone(d, "sawtooth", 1500 * P, 500 * P, t, 0.1 * D2, 0.22 * V2);
+        hiss(d, t, 0.15 * D2, 0.35 * V2, "highpass", 5e3, 2500, 0.7);
+        tone(d, "sine", 2400 * P, 2300 * P, t, 0.05, 0.18 * V2);
       },
-      heavy(d, t, P, V, D2) {
-        tone(d, "sine", 170 * P, 50 * P, t, 0.28 * D2, 0.9 * V, 3e-3);
-        tone(d, "square", 85 * P, 42 * P, t, 0.16 * D2, 0.12 * V);
-        hiss(d, t, 0.14 * D2, 0.5 * V, "lowpass", 900, 200, 0.8);
+      heavy(d, t, P, V2, D2) {
+        tone(d, "sine", 170 * P, 50 * P, t, 0.28 * D2, 0.9 * V2, 3e-3);
+        tone(d, "square", 85 * P, 42 * P, t, 0.16 * D2, 0.12 * V2);
+        hiss(d, t, 0.14 * D2, 0.5 * V2, "lowpass", 900, 200, 0.8);
       },
-      energy(d, t, P, V, D2) {
-        tone(d, "sine", 260 * P, 380 * P, t, 0.3 * D2, 0.6 * V, 0.02, [16, 30 * P]);
-        tone(d, "square", 130 * P, 190 * P, t, 0.22 * D2, 0.07 * V);
-        hiss(d, t, 0.2 * D2, 0.15 * V, "bandpass", 800 * P, 1600 * P, 3);
+      energy(d, t, P, V2, D2) {
+        tone(d, "sine", 260 * P, 380 * P, t, 0.3 * D2, 0.6 * V2, 0.02, [16, 30 * P]);
+        tone(d, "square", 130 * P, 190 * P, t, 0.22 * D2, 0.07 * V2);
+        hiss(d, t, 0.2 * D2, 0.15 * V2, "bandpass", 800 * P, 1600 * P, 3);
       },
-      scatter(d, t, P, V, D2) {
-        hiss(d, t, 0.2 * D2, 0.9 * V, "lowpass", 3e3, 500, 0.8);
-        tone(d, "square", 150 * P, 55 * P, t, 0.12 * D2, 0.22 * V);
-        hiss(d, t, 0.05, 0.35 * V, "highpass", 4e3, 4e3, 0.7);
+      scatter(d, t, P, V2, D2) {
+        hiss(d, t, 0.2 * D2, 0.9 * V2, "lowpass", 3e3, 500, 0.8);
+        tone(d, "square", 150 * P, 55 * P, t, 0.12 * D2, 0.22 * V2);
+        hiss(d, t, 0.05, 0.35 * V2, "highpass", 4e3, 4e3, 0.7);
       },
-      bubble(d, t, P, V, D2) {
-        tone(d, "sine", 320 * P, 1e3 * P, t, 0.09 * D2, 0.55 * V, 4e-3);
-        tone(d, "sine", 480 * P, 1400 * P, t + 0.05, 0.07 * D2, 0.3 * V, 4e-3);
+      bubble(d, t, P, V2, D2) {
+        tone(d, "sine", 320 * P, 1e3 * P, t, 0.09 * D2, 0.55 * V2, 4e-3);
+        tone(d, "sine", 480 * P, 1400 * P, t + 0.05, 0.07 * D2, 0.3 * V2, 4e-3);
       },
-      saw(d, t, P, V, D2) {
-        tone(d, "square", 1900 * P, 1500 * P, t, 0.16 * D2, 0.1 * V);
-        tone(d, "square", 2470 * P, 2e3 * P, t, 0.16 * D2, 0.08 * V);
-        hiss(d, t, 0.18 * D2, 0.45 * V, "bandpass", 6e3, 3500, 4);
-        hiss(d, t, 0.1, 0.3 * V, "lowpass", 700, 300, 1, true);
+      saw(d, t, P, V2, D2) {
+        tone(d, "square", 1900 * P, 1500 * P, t, 0.16 * D2, 0.1 * V2);
+        tone(d, "square", 2470 * P, 2e3 * P, t, 0.16 * D2, 0.08 * V2);
+        hiss(d, t, 0.18 * D2, 0.45 * V2, "bandpass", 6e3, 3500, 4);
+        hiss(d, t, 0.1, 0.3 * V2, "lowpass", 700, 300, 1, true);
       },
-      lob(d, t, P, V, D2) {
-        tone(d, "sine", 240 * P, 85 * P, t, 0.16 * D2, 0.8 * V, 3e-3);
-        hiss(d, t, 0.1, 0.35 * V, "lowpass", 1400, 300);
-        tone(d, "triangle", 120 * P, 60 * P, t, 0.2 * D2, 0.22 * V);
+      lob(d, t, P, V2, D2) {
+        tone(d, "sine", 240 * P, 85 * P, t, 0.16 * D2, 0.8 * V2, 3e-3);
+        hiss(d, t, 0.1, 0.35 * V2, "lowpass", 1400, 300);
+        tone(d, "triangle", 120 * P, 60 * P, t, 0.2 * D2, 0.22 * V2);
       },
-      fire(d, t, P, V, D2) {
-        hiss(d, t, 0.38 * D2, 0.7 * V, "bandpass", 500 * P, 2400 * P, 1.4, false, 0.04);
-        hiss(d, t, 0.3 * D2, 0.7 * V, "bandpass", 3e3, 2e3, 1, true);
-        tone(d, "sine", 110 * P, 60 * P, t, 0.3 * D2, 0.35 * V, 0.02);
+      fire(d, t, P, V2, D2) {
+        hiss(d, t, 0.38 * D2, 0.7 * V2, "bandpass", 500 * P, 2400 * P, 1.4, false, 0.04);
+        hiss(d, t, 0.3 * D2, 0.7 * V2, "bandpass", 3e3, 2e3, 1, true);
+        tone(d, "sine", 110 * P, 60 * P, t, 0.3 * D2, 0.35 * V2, 0.02);
       },
-      thunder(d, t, P, V, D2) {
-        hiss(d, t, 0.28 * D2, 1 * V, "highpass", 1400, 900, 0.7, true);
-        zap(d, t, 0.14 * D2, 0.14 * V, 2600 * P, 200 * P);
-        tone(d, "sine", 70, 40, t, 0.3 * D2, 0.6 * V, 3e-3);
+      thunder(d, t, P, V2, D2) {
+        hiss(d, t, 0.28 * D2, 1 * V2, "highpass", 1400, 900, 0.7, true);
+        zap(d, t, 0.14 * D2, 0.14 * V2, 2600 * P, 200 * P);
+        tone(d, "sine", 70, 40, t, 0.3 * D2, 0.6 * V2, 3e-3);
       },
       // Black Hole: a deep falling sub, two low saws beating against each other, a slow
       // inward rush of air and a spit of crackle — and it keeps it up while it lives (loop)
-      void(d, t, P, V, D2) {
-        tone(d, "sine", 80, 30, t, 1 * D2, 0.9 * V, 0.03);
+      void(d, t, P, V2, D2) {
+        tone(d, "sine", 80, 30, t, 1 * D2, 0.9 * V2, 0.03);
         const f = lp(d, 320);
-        tone(f, "sawtooth", 55, 41, t, 0.9 * D2, 0.2 * V, 0.05);
-        tone(f, "sawtooth", 56.7, 42, t, 0.9 * D2, 0.2 * V, 0.05);
-        hiss(d, t, 0.9 * D2, 0.6 * V, "bandpass", 1700, 900, 0.9, true);
-        hiss(d, t, 0.55, 0.3 * V, "bandpass", 300, 2400, 2, false, 0.35);
+        tone(f, "sawtooth", 55, 41, t, 0.9 * D2, 0.2 * V2, 0.05);
+        tone(f, "sawtooth", 56.7, 42, t, 0.9 * D2, 0.2 * V2, 0.05);
+        hiss(d, t, 0.9 * D2, 0.6 * V2, "bandpass", 1700, 900, 0.9, true);
+        hiss(d, t, 0.55, 0.3 * V2, "bandpass", 300, 2400, 2, false, 0.35);
       },
-      dig(d, t, P, V, D2) {
-        hiss(d, t, 0.12 * D2, 0.7 * V, "lowpass", 1200, 300, 1, true);
-        hiss(d, t, 0.08 * D2, 0.4 * V, "lowpass", 800, 200);
-        tone(d, "square", 120 * P, 70 * P, t, 0.08, 0.15 * V);
+      dig(d, t, P, V2, D2) {
+        hiss(d, t, 0.12 * D2, 0.7 * V2, "lowpass", 1200, 300, 1, true);
+        hiss(d, t, 0.08 * D2, 0.4 * V2, "lowpass", 800, 200);
+        tone(d, "square", 120 * P, 70 * P, t, 0.08, 0.15 * V2);
       },
-      beam(d, t, P, V, D2) {
-        tone(lp(d, 2400), "sawtooth", 650 * P, 520 * P, t, 0.22 * D2, 0.3 * V, 5e-3, [34, 40 * P]);
-        tone(d, "sine", 1300 * P, 1100 * P, t, 0.2 * D2, 0.28 * V);
-        hiss(d, t, 0.18 * D2, 0.2 * V, "bandpass", 3e3 * P, 1200 * P, 5);
+      beam(d, t, P, V2, D2) {
+        tone(lp(d, 2400), "sawtooth", 650 * P, 520 * P, t, 0.22 * D2, 0.3 * V2, 5e-3, [34, 40 * P]);
+        tone(d, "sine", 1300 * P, 1100 * P, t, 0.2 * D2, 0.28 * V2);
+        hiss(d, t, 0.18 * D2, 0.2 * V2, "bandpass", 3e3 * P, 1200 * P, 5);
       },
-      spore(d, t, P, V, D2) {
-        hiss(d, t, 0.18 * D2, 0.45 * V, "bandpass", 1300 * P, 700 * P, 2.5, false, 0.02);
-        hiss(d, t + 0.07, 0.14 * D2, 0.3 * V, "bandpass", 1700 * P, 900 * P, 2.5, false, 0.02);
-        tone(d, "sine", 520 * P, 720 * P, t, 0.12, 0.12 * V);
+      spore(d, t, P, V2, D2) {
+        hiss(d, t, 0.18 * D2, 0.45 * V2, "bandpass", 1300 * P, 700 * P, 2.5, false, 0.02);
+        hiss(d, t + 0.07, 0.14 * D2, 0.3 * V2, "bandpass", 1700 * P, 900 * P, 2.5, false, 0.02);
+        tone(d, "sine", 520 * P, 720 * P, t, 0.12, 0.12 * V2);
       },
-      crystal(d, t, P, V, D2) {
-        bell(d, 1250 * P, t, 0.7 * D2, 0.35 * V);
-        hiss(d, t, 0.04, 0.2 * V, "highpass", 7e3, 7e3);
+      crystal(d, t, P, V2, D2) {
+        bell(d, 1250 * P, t, 0.7 * D2, 0.35 * V2);
+        hiss(d, t, 0.04, 0.2 * V2, "highpass", 7e3, 7e3);
       },
-      aura(d, t, P, V) {
-        [1, 1.26, 1.5].forEach((m) => tone(d, "sine", 330 * P * m, 333 * P * m, t, 0.9, 0.16 * V, 0.25));
-        hiss(d, t, 0.8, 0.1 * V, "highpass", 6e3, 9e3, 0.7, false, 0.3);
+      aura(d, t, P, V2) {
+        [1, 1.26, 1.5].forEach((m) => tone(d, "sine", 330 * P * m, 333 * P * m, t, 0.9, 0.16 * V2, 0.25));
+        hiss(d, t, 0.8, 0.1 * V2, "highpass", 6e3, 9e3, 0.7, false, 0.3);
       },
       none() {
       }
@@ -3577,12 +3577,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (r.v === "none") return;
       const d = out(x, y, r.v === "void" ? 1.3 : 0.6, x == null, null, knob("vSpell"));
       if (!d) return;
-      const t0 = ac.currentTime + (delay || 0), P = r.pitch * rnd2(0.95, 1.05), V = r.vol * 0.55, D2 = r.dur;
-      for (let k = 0; k < r.n; k++) VOICE[r.v](d, t0 + k * 0.018, P * (1 + k * 0.04), V / (1 + k * 0.6), D2);
-      if (r.wob) tone(d, "sine", 700 * P, 500 * P, t0, 0.22 * D2, 0.13 * V, 0.01, [9, 60]);
-      if (r.grit) hiss(d, t0, 0.1, 0.3 * V, "lowpass", 900, 250, 1, true);
-      if (r.bright) tone(d, "square", 3200, 3e3, t0, 0.03, 0.1 * V);
-      if (r.boing) tone(d, "triangle", 500 * P, 1100 * P, t0 + 0.08 * D2, 0.07, 0.16 * V);
+      const t0 = ac.currentTime + (delay || 0), P = r.pitch * rnd2(0.95, 1.05), V2 = r.vol * 0.55, D2 = r.dur;
+      for (let k = 0; k < r.n; k++) VOICE[r.v](d, t0 + k * 0.018, P * (1 + k * 0.04), V2 / (1 + k * 0.6), D2);
+      if (r.wob) tone(d, "sine", 700 * P, 500 * P, t0, 0.22 * D2, 0.13 * V2, 0.01, [9, 60]);
+      if (r.grit) hiss(d, t0, 0.1, 0.3 * V2, "lowpass", 900, 250, 1, true);
+      if (r.bright) tone(d, "square", 3200, 3e3, t0, 0.03, 0.1 * V2);
+      if (r.boing) tone(d, "triangle", 500 * P, 1100 * P, t0 + 0.08 * D2, 0.07, 0.16 * V2);
     }
     function cast2(shots, x, y) {
       const seen = {};
@@ -3983,6 +3983,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const notes = [523, 659, 784, 988, 1175, 1319];
         for (let i = 0; i < 4; i++) bell(d, notes[Math.floor(Math.random() * notes.length)] * 2, t + 0.12 + i * rnd2(0.06, 0.1), 0.6, 0.06);
         tone(d, "sine", rnd2(180, 220), rnd2(450, 550), t, 0.5, 0.15, 0.1);
+      },
+      // a whole level teleporting in or out over the shop: a crackle of lightning, a rising
+      // whine and a deep thump
+      levelWarp(d, t) {
+        hiss(d, t, 1.1, 0.45, "highpass", 3500, 2e3, 0.8, true);
+        for (let i = 0; i < 9; i++) zap(d, t + i * rnd2(0.06, 0.12), rnd2(0.05, 0.14), 0.11, rnd2(2500, 4500), rnd2(300, 900));
+        tone(d, "sine", rnd2(180, 220), rnd2(1400, 1700), t, 0.5, 0.15, 0.05);
+        tone(d, "sine", rnd2(70, 85), 35, t, 0.6, 0.8, 0.01);
+        hiss(d, t, 0.5, 0.4, "lowpass", 900, 120, 0.8);
       },
       step(d, t, surf) {
         surfaceHit(d, t, surf, rnd2(0.55, 0.8));
@@ -4505,6 +4514,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var SHOP_TOP = SHOP_FLOOR - SHOP_H;
   var SHOP_ROOF = 6;
   var SHOP_Y = SHOP_TOP * CELL;
+  var VEND_BUY_X = 180, VEND_SELL_X = 280;
+  var LVL_BUY = 64e9, LVL_SELL = 64000001e3;
   var FOG = 8;
   var FOG_U = FOG * CELL;
   var FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
@@ -4873,22 +4884,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const d = angDiff(to, a), r = a + Math.max(-max, Math.min(max, d));
     return r > Math.PI ? r - 2 * Math.PI : r < -Math.PI ? r + 2 * Math.PI : r;
   }
-  function flyMove(e, V, dt, r, solidCell2, bounce) {
-    const n = Math.max(1, Math.ceil(Math.hypot(V.vx, V.vy) * dt / CELL));
+  function flyMove(e, V2, dt, r, solidCell2, bounce) {
+    const n = Math.max(1, Math.ceil(Math.hypot(V2.vx, V2.vy) * dt / CELL));
     let hit = false;
     for (let i = 0; i < n; i++) {
-      e.x += V.vx * dt / n;
-      e.y += V.vy * dt / n;
+      e.x += V2.vx * dt / n;
+      e.y += V2.vy * dt / n;
       const s = surfNormal(e.x, e.y, r + CELL, solidCell2);
       if (!s || s.d >= r) continue;
       hit = true;
       const ox = s.d > 0.5 ? s.px : s.x, oy = s.d > 0.5 ? s.py : s.y;
       e.x += ox * (r - s.d);
       e.y += oy * (r - s.d);
-      const into = V.vx * ox + V.vy * oy;
+      const into = V2.vx * ox + V2.vy * oy;
       if (into < 0) {
-        V.vx -= (1 + bounce) * into * ox;
-        V.vy -= (1 + bounce) * into * oy;
+        V2.vx -= (1 + bounce) * into * ox;
+        V2.vy -= (1 + bounce) * into * oy;
       }
     }
     return hit;
@@ -6486,7 +6497,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const A = pr.arc, f = Math.max(0, Math.min(1, u)) * (A.length - 1), k = Math.min(A.length - 2, Math.floor(f)), t = f - k;
     return { x: pr.x + A[k][0] + (A[k + 1][0] - A[k][0]) * t, y: pr.y + A[k][1] + (A[k + 1][1] - A[k][1]) * t };
   }
-  function decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel, zone) {
+  function decorate(mat, img, dimg, bgImg, floor, seed, keep2, fuel, zone) {
     let rs = (Math.imul(seed | 0, 7919) + floor * 104729 >>> 0) % 2147483646 + 1;
     const R = () => (rs = rs * 16807 % 2147483647) / 2147483647;
     const T = themeFor(floor), list = decorFor(floor);
@@ -7020,15 +7031,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       baked.lanterns = got.length;
     }
-    return { props: cullDecor(props, keep || []), amb, baked };
+    return { props: cullDecor(props, keep2 || []), amb, baked };
   }
-  function cullDecor(props, keep) {
+  function cullDecor(props, keep2) {
     const out = [];
     const pad = 3;
     const dropped = /* @__PURE__ */ new Set();
     for (const pr of props) {
       if (pr.arc) {
-        if (pr.arc.some(([x, y]) => keep.some((k) => Math.hypot(pr.x + x - k.x, pr.y + y - k.y) < k.r) || out.some((o) => o.k !== "climb" && pr.x + x > o.x + o.l - pad && pr.x + x < o.x + o.r + pad && pr.y + y > o.y + o.t0 - pad && pr.y + y < o.y + o.b + pad))) {
+        if (pr.arc.some(([x, y]) => keep2.some((k) => Math.hypot(pr.x + x - k.x, pr.y + y - k.y) < k.r) || out.some((o) => o.k !== "climb" && pr.x + x > o.x + o.l - pad && pr.x + x < o.x + o.r + pad && pr.y + y > o.y + o.t0 - pad && pr.y + y < o.y + o.b + pad))) {
           dropped.add(pr);
           continue;
         }
@@ -7037,7 +7048,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       if (pr.on && dropped.has(pr.on)) continue;
       const x0 = pr.x + pr.l - pad, x1 = pr.x + pr.r + pad, y0 = pr.y + pr.t0 - pad, y1 = pr.y + pr.b + pad;
-      if (keep.some((k) => k.x + k.r > x0 && k.x - k.r < x1 && k.y + k.r > y0 && k.y - k.r < y1)) continue;
+      if (keep2.some((k) => k.x + k.r > x0 && k.x - k.r < x1 && k.y + k.r > y0 && k.y - k.r < y1)) continue;
       if (out.some((o) => !(o.k === "climb" && pr.k === "climb") && !o.arc && o.x + o.l < x1 && o.x + o.r > x0 && o.y + o.t0 < y1 && o.y + o.b > y0)) continue;
       out.push(pr);
     }
@@ -7534,7 +7545,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       bag: (Array.isArray(lo.bag) ? lo.bag : []).filter((id) => MODS[id]),
       perks: (Array.isArray(lo.perks) ? lo.perks : []).filter((id) => PERKS[id]),
       perksOff: (Array.isArray(lo.perksOff) ? lo.perksOff : []).filter((i) => Number.isInteger(i) && i >= 0),
-      gold: Math.max(0, num2(lo.gold, START_GOLD)),
+      gold: num2(lo.gold, START_GOLD),
+      // negative while a level is on credit
       maxBonus: Math.max(0, num2(lo.maxBonus, 0)),
       usedLives: Math.max(0, num2(lo.usedLives, 0)),
       debug: !!lo.debug
@@ -7551,7 +7563,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const loadout = cleanLoadout(s.loadout);
     if (!loadout) return null;
     const floor = Math.max(1, Math.floor(Number(s.floor) || 1));
-    const out = { loadout, floor, hp: Number.isFinite(s.hp) && s.hp > 0 ? s.hp : null, level: null };
+    const out = {
+      loadout,
+      floor,
+      hp: Number.isFinite(s.hp) && s.hp > 0 ? s.hp : null,
+      level: null,
+      hasLvl: s.hasLvl !== false
+    };
     const L2 = s.level;
     if (s.ver === VERSION && L2 && Number.isFinite(L2.seed)) {
       out.level = {
@@ -12541,7 +12559,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/world/nests.js
-  function ratNests(mat, rnd2, zone, keep, nb, nw) {
+  function ratNests(mat, rnd2, zone, keep2, nb, nw) {
     const inb = (x, y) => x >= 4 && y >= 4 && x < CW - 4 && y < CH - 4;
     const rock = (x, y) => {
       x = Math.round(x);
@@ -12594,7 +12612,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const ang = Math.atan2(-ny, -nx) + (rnd2() - 0.5) * 1.3, D2 = 20 + rnd2() * 14, rr2 = 5 + Math.floor(rnd2() * 3);
         const cx = Math.round(sx + Math.cos(ang) * D2), cy = Math.round(sy + Math.sin(ang) * D2);
         if (cy > SHOP_TOP - SHOP_ROOF - 14 || !allRock(cx, cy, rr2 + 5)) continue;
-        if (keep.some((k) => Math.hypot(k.x - cx, k.y - cy) < k.r + rr2 || Math.hypot(k.x - sx, k.y - sy) < k.r)) continue;
+        if (keep2.some((k) => Math.hypot(k.x - cx, k.y - cy) < k.r + rr2 || Math.hypot(k.x - sx, k.y - sy) < k.r)) continue;
         if (nests.some((n) => Math.hypot(n.x - cx, n.y - cy) < 50 || Math.hypot(n.mouth.x - sx, n.mouth.y - sy) < 40)) continue;
         const M = 4 + rnd2() * 1.5;
         const tx = sx + nx * (M - 0.5), ty = sy + ny * (M - 0.5);
@@ -12650,7 +12668,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function makeLevel(seed, floor, owned) {
     floor = floor || 1;
     const have = new Set(owned || []);
-    const hash2 = (x, y) => {
+    const hash3 = (x, y) => {
       let v = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 982451653) | 0;
       v = Math.imul(v ^ v >>> 13, 1274126177);
       v ^= v >>> 16;
@@ -12659,7 +12677,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const vn = (x, y) => {
       const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
       const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
-      const a = hash2(xi, yi), b = hash2(xi + 1, yi), c = hash2(xi, yi + 1), d2 = hash2(xi + 1, yi + 1);
+      const a = hash3(xi, yi), b = hash3(xi + 1, yi), c = hash3(xi, yi + 1), d2 = hash3(xi + 1, yi + 1);
       return a + (b - a) * u + (c - a) * v + (a - b - c + d2) * u * v;
     };
     const fbm = (x, y) => 0.55 * vn(x, y) + 0.3 * vn(x * 2 + 17, y * 2 + 31) + 0.15 * vn(x * 4 + 53, y * 4 + 7);
@@ -12743,13 +12761,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     const routePath = [];
     const spineBuilt = [];
-    const worm = (x, y, tx, ty, r, maxSteps, keep2, spine) => {
+    const worm = (x, y, tx, ty, r, maxSteps, keep3, spine) => {
       let ang = tx !== null ? Math.atan2(ty - y, tx - x) : rnd2() * Math.PI * 2;
       for (let s = 0; s < maxSteps; s++) {
         if (spine && built(x, y)) spineBuilt.push({ x, y, r: Math.min(r, 7) - 1 });
         else {
           disc(x, y, r, 0);
-          if (keep2) keep2.push({ x, y, r: r - 1 });
+          if (keep3) keep3.push({ x, y, r: r - 1 });
         }
         if (tx !== null && Math.hypot(tx - x, ty - y) < 3) break;
         const want = tx !== null ? Math.atan2(ty - y, tx - x) : ang;
@@ -12999,7 +13017,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let cx = 0; cx < CW; cx++) {
         const i = cy * CW + cx, m = mat[i];
         if (!m) continue;
-        const r1 = hash2(cx * 7 + 3, cy * 13 + 5);
+        const r1 = hash3(cx * 7 + 3, cy * 13 + 5);
         let c;
         if (m === ROCK) {
           const exposed = cy > 1 && (mat[i - CW] === 0 || mat[i - 2 * CW] === 0);
@@ -13008,7 +13026,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           const k = cx + cy % 2 * 3;
           if (k % 6 === 0) c = T.mortar;
           else {
-            c = mix(T.brick[0], T.brick[1], hash2(Math.floor(k / 6), cy));
+            c = mix(T.brick[0], T.brick[1], hash3(Math.floor(k / 6), cy));
             if (cy > 0 && mat[i - CW] === 0) c = c.map((v) => v * 1.18);
           }
         } else {
@@ -13023,7 +13041,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     for (const n of nests) for (const i of n.mound) {
       if (mat[i] !== ROCK) continue;
-      const r1 = hash2(i % CW * 3 + 5, (i / CW | 0) * 7 + 1), c = mix([92, 70, 48], [128, 98, 66], r1);
+      const r1 = hash3(i % CW * 3 + 5, (i / CW | 0) * 7 + 1), c = mix([92, 70, 48], [128, 98, 66], r1);
       d[i * 4] = c[0];
       d[i * 4 + 1] = c[1];
       d[i * 4 + 2] = c[2];
@@ -13035,7 +13053,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const c = mix(T.bg, T.bg2, Math.min(1, t * 1.3));
         const big = fbm(x / 34 + 700, y / 34 + 500);
         const shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
-        const j = (hash2(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
+        const j = (hash3(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
         bgImg.data[k] = c[0] * shade + j;
         bgImg.data[k + 1] = c[1] * shade + j;
         bgImg.data[k + 2] = c[2] * shade + j;
@@ -13167,7 +13185,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const dimg = new ImageData(CW, CH);
     const fuel = new Uint8Array(CW * CH);
     if (strata) timberWorks(mat, dimg, works, T, rnd2, fuel, built);
-    const keep = [
+    const keep2 = [
       { x: start.x, y: start.y, r: 40 },
       { x: arrival.x, y: arrival.y, r: 50 },
       { x: portal.x + portal.w / 2, y: portal.y + portal.h / 2, r: 50 },
@@ -13175,7 +13193,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ...pickups.map((q) => ({ x: q.x, y: q.y, r: 22 })),
       ...nests.map((n) => ({ x: n.mouth.x * CELL, y: n.mouth.y * CELL, r: 18 }))
     ];
-    const deco = decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel, zone);
+    const deco = decorate(mat, img, dimg, bgImg, floor, seed, keep2, fuel, zone);
     const ore = goldVeins(mat, seed, floor);
     for (let i = 0; i < ore.length; i++) {
       if (!ore[i] || mat[i] !== ROCK) {
@@ -13183,7 +13201,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         continue;
       }
       fuel[i] = 0;
-      const r1 = hash2(i % CW * 5 + 11, (i / CW | 0) * 3 + 7), k = i * 4;
+      const r1 = hash3(i % CW * 5 + 11, (i / CW | 0) * 3 + 7), k = i * 4;
       const glint = r1 > 0.9 ? 1.25 : 0.8 + r1 * 0.3;
       d[k] = Math.min(255, 222 * glint);
       d[k + 1] = Math.min(255, 168 * glint);
@@ -14633,7 +14651,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       G.ctx.fillText(themeFor(W.floor).name, cw / 2, 196);
       G.ctx.font = "500 14px system-ui, sans-serif";
       G.ctx.fillText("Find the green exit at the top", cw / 2, 218);
-      G.ctx.fillText("Buy and fit mods here, then climb", cw / 2, 236);
+      G.ctx.fillText("Clear it, then sell it back in the shop", cw / 2, 236);
       G.ctx.globalAlpha = 1;
     }
     const msgY = 196;
@@ -14643,7 +14661,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       G.ctx.fillText("You were shot down", cw / 2, msgY);
       G.ctx.font = "500 14px system-ui, sans-serif";
       G.ctx.fillText("Tap the right stick to restart", cw / 2, msgY + 22);
-    } else if (W.enemies.length === 0) {
+    } else if (W.hasLvl && !W.warp && W.enemies.length === 0) {
       G.ctx.font = "700 18px system-ui, sans-serif";
       G.ctx.fillText("All enemies destroyed", cw / 2, msgY);
     }
@@ -14732,89 +14750,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       G.ctx.stroke();
       G.ctx.imageSmoothingEnabled = false;
     }
-  }
-
-  // src/game/render/draw.js
-  function draw(W, G) {
-    const F = {
-      dpr: 0,
-      playPx: 0,
-      vw: 0,
-      vh: 0,
-      pcx: 0,
-      pcy: 0,
-      TH: null,
-      onView: null,
-      held: null,
-      ax: 0,
-      ay: 0,
-      gy: 0,
-      cw: 0
-    };
-    drawCamera(W, G, F);
-    drawTerrain(W, G, F);
-    drawProps(W, G, F);
-    drawPortal(W, G);
-    drawSmoke(W, G);
-    drawFields(W, G, F);
-    drawSilk(W, G);
-    drawEnemies(W, G, F);
-    drawShots(W, G);
-    drawBeams(W, G);
-    drawArrival(W, G, F);
-    drawShop(W, G, F);
-    drawLoot(W, G, F);
-    drawRooms(W, G, F);
-    drawTrail(W, G);
-    drawSparks(W, G);
-    drawMotes(W, G, F);
-    drawFlashes(W, G);
-    drawJetFlame(W, G, F);
-    drawAim(W, G, F);
-    drawPlayer(W, G, F);
-    drawFog(W, G, F);
-    drawGlows(W, G, F);
-    drawFx(W, G, F);
-    drawBelow(W, G, F);
-    if (G.RPV) return;
-    drawHud(W, G, F);
-    drawRadar(W, G, F);
-    drawMessages(W, G, F);
-    drawReticule(G);
-    drawMap(W, G, F);
-  }
-  function drawCamera(W, G, F) {
-    const dpr = F.dpr = window.devicePixelRatio || 1;
-    const ctlPx = Math.min(G.c.height * 0.8, (G.RPV ? G.RPV.panelH || 0 : G.input.current.ctlH || 0) * dpr);
-    const playPx = F.playPx = G.c.height - ctlPx;
-    const s = Math.min(G.c.width / VIEW_W, playPx / VIEW_MIN_H) * DEV.zoom * (G.RPV ? G.RPV.zoom : 1), vw = F.vw = G.c.width / s, vh = F.vh = G.c.height / s;
-    const vhp = playPx / s;
-    W.unitPx = s / dpr;
-    const pcx = F.pcx = W.p.x + PW / 2, pcy = F.pcy = W.p.y + PH / 2;
-    if (G.RPV) {
-      if (G.RPV.follow) {
-        G.RPV.cx = vw >= WW ? WW / 2 : clamp(G.RPV.cx - vw / 2, 0, WW - vw) + vw / 2;
-        G.RPV.cy = clamp(G.RPV.cy - vhp * 0.55, 0, Math.max(0, WH - vhp)) + vhp / 2;
-      }
-      W.camX = G.RPV.cx - vw / 2;
-      W.camY = G.RPV.cy - vhp / 2;
-      G.RPV.unit = W.unitPx;
-    } else {
-      const tx = vw >= WW ? (WW - vw) / 2 : clamp(pcx - vw / 2, 0, WW - vw);
-      const ty = clamp(pcy - vhp * 0.55, 0, Math.max(0, WH - vhp));
-      if (!W.camReady) {
-        W.camX = tx;
-        W.camY = ty;
-        W.camReady = true;
-      }
-      W.camX += (tx - W.camX) * 0.15;
-      W.camY += (ty - W.camY) * 0.15;
-    }
-    G.ctx.setTransform(1, 0, 0, 1, 0, 0);
-    G.ctx.imageSmoothingEnabled = false;
-    G.ctx.fillStyle = "rgb(" + themeFor(W.floor).bg.join(",") + ")";
-    G.ctx.fillRect(0, 0, G.c.width, G.c.height);
-    G.ctx.setTransform(s, 0, 0, s, -Math.round(W.camX * s), -Math.round(W.camY * s));
   }
 
   // src/replay/replay.js
@@ -15110,15 +15045,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const L2 = G.REC.fogLog;
     for (let n = 0; n < L2.length && L2[n] <= T; n += 3) G.RT.fog[L2[n + 1]] = L2[n + 2];
   }
-  function drawReplay(W, G, V) {
+  function drawReplay(W, G, V2) {
     const wit = G.input.current.witness;
-    V.t = clamp(V.t, wit.t0, wit.t1);
-    const F = rpFrame(G.REC.snaps, V.t);
-    rpTerrain(W, G, V.t);
-    if (!V.fog) G.RT.fog.fill(1);
-    if (V.follow) {
-      V.cx = F.p.x + PW / 2;
-      V.cy = F.p.y + PH / 2;
+    V2.t = clamp(V2.t, wit.t0, wit.t1);
+    const F = rpFrame(G.REC.snaps, V2.t);
+    rpTerrain(W, G, V2.t);
+    if (!V2.fog) G.RT.fog.fill(1);
+    if (V2.follow) {
+      V2.cx = F.p.x + PW / 2;
+      V2.cy = F.p.y + PH / 2;
     }
     const near = F.near;
     for (let k = 0; k < near.fire.length; k++) G.RT.fireT[near.fire[k]] = near.fireT[k];
@@ -15127,7 +15062,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const L2 = G.RP_ARR[k];
       keepL[k] = L2.splice(0, L2.length, ...F[k]);
     }
-    const keep = {
+    const keep2 = {
       enemies: W.enemies,
       pickups: W.pickups,
       props: W.props,
@@ -15164,7 +15099,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.glowN = F.glowN;
     W.fireN = near.fireN;
     Object.assign(W.p, F.p);
-    G.RPV = V;
+    G.RPV = V2;
     try {
       draw(W, G);
     } finally {
@@ -15194,14 +15129,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         visPts: W.visPts,
         viewW: W.viewW,
         viewH: W.viewH
-      } = keep);
-      Object.assign(W.p, keep.p);
+      } = keep2);
+      Object.assign(W.p, keep2.p);
       for (let k = 0; k < near.fire.length; k++) G.RT.fireT[near.fire[k]] = 0;
     }
   }
 
   // src/game/systems/level-entry.js
-  function enterLevel(W, G, back) {
+  function enterLevel(W, G, back, keep2) {
     refreshBag(W, G);
     W.levelSeed = back ? back.seed : 1 + Math.floor(Math.random() * 2147483e3);
     W.levelOwned = back ? back.owned : (G.input.current.loadout.perks || []).slice();
@@ -15222,24 +15157,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       });
       if (back.pickups) level.pickups = back.pickups;
     }
+    if (keep2) {
+      if (keep2 === "shop") level.stock = W.stock;
+      level.pickups = level.pickups.concat(W.pickups.filter((q) => !q.taken && q.y >= SHOP_Y));
+    }
     W.mat = level.mat;
     W.img = level.img;
     W.ore = level.ore || null;
-    W.miniEdgeIdx = [];
-    for (let my = 0; my < MMH; my++) for (let mx = 0; mx < MMW; mx++) {
-      let solid = 0, open = 0;
-      for (let dy = 0; dy < MINI_D; dy++) {
-        const ty = my * MINI_D + dy;
-        if (ty >= CH) break;
-        for (let dx = 0; dx < MINI_D; dx++) {
-          const tx = mx * MINI_D + dx;
-          if (tx >= CW) break;
-          if (W.mat[ty * CW + tx]) solid++;
-          else open++;
-        }
-      }
-      if (solid && open) W.miniEdgeIdx.push(my * MMW + mx);
-    }
+    miniEdges(W);
     W.start = level.start;
     W.portal = level.portal;
     W.arrival = level.arrival;
@@ -15294,18 +15219,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.p.burnAcc = 0;
     G.tctx.putImageData(W.img, 0, 0);
     G.bgctx.putImageData(level.bgImg, 0, 0);
-    W.p.x = W.start.x;
-    W.p.y = W.start.y;
-    W.p.vx = 0;
-    W.p.vy = 0;
-    W.p.fuel = 1;
-    W.p.empty = false;
-    W.p.kick = 0;
+    if (!keep2) {
+      W.p.x = W.start.x;
+      W.p.y = W.start.y;
+      W.p.vx = 0;
+      W.p.vy = 0;
+      W.p.fuel = 1;
+      W.p.empty = false;
+      W.p.kick = 0;
+    }
     W.bullets.length = W.enemyShots.length = W.smoke.length = 0;
     W.sparks.length = W.flashes.length = W.coins.length = W.arcs.length = 0;
     W.torchP.length = 0;
     W.motes.length = 0;
-    W.camReady = false;
+    if (!keep2) W.camReady = false;
     W.best = 0;
     W.levelT = 0;
     W.seen = fogStart();
@@ -15314,7 +15241,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     paintFog(W, G);
     recReset(W, G);
     W.matterProps = W.props.filter((pr) => pr.k === "matter");
-    setTimeout(() => SFX.fx("portalOut", W.arrival.x, W.arrival.y), 260);
+    if (!keep2) setTimeout(() => SFX.fx("portalOut", W.arrival.x, W.arrival.y), 260);
+  }
+  function miniEdges(W) {
+    W.miniEdgeIdx = [];
+    for (let my = 0; my < MMH; my++) for (let mx = 0; mx < MMW; mx++) {
+      let solid = 0, open = 0;
+      for (let dy = 0; dy < MINI_D; dy++) {
+        const ty = my * MINI_D + dy;
+        if (ty >= CH) break;
+        for (let dx = 0; dx < MINI_D; dx++) {
+          const tx = mx * MINI_D + dx;
+          if (tx >= CW) break;
+          if (W.mat[ty * CW + tx]) solid++;
+          else open++;
+        }
+      }
+      if (solid && open) W.miniEdgeIdx.push(my * MMW + mx);
+    }
   }
 
   // src/game/systems/save-run.js
@@ -15324,6 +15268,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const data = {
       ver: VERSION,
       floor: W.floor,
+      hasLvl: W.hasLvl,
       hp: W.p.hp,
       loadout: G.input.current.loadout,
       level: {
@@ -15339,6 +15284,426 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch (_) {
     }
+  }
+
+  // src/game/systems/vend.js
+  var WARP_SWAP = 0.6;
+  var WARP_END = 2.4;
+  var ROOF_Y = (SHOP_TOP - SHOP_ROOF) * CELL;
+  var VEND_W = 60, VEND_H = 84;
+  var VEND_TOP = SHOP_FLOOR * CELL - VEND_H;
+  function vendNear(W, pcx, pcy) {
+    if (W.warp || pcy < SHOP_Y || pcy > SHOP_FLOOR * CELL) return null;
+    if (Math.abs(pcx - VEND_BUY_X) < 30 && !W.hasLvl) return "buy";
+    if (Math.abs(pcx - VEND_SELL_X) < 30 && W.hasLvl) return "sell";
+    return null;
+  }
+  var canSell = (W) => W.hasLvl && bioCount(W.enemies, false) === 0;
+  function vendLabel(W, kind) {
+    if (kind === "buy") return { text: "Tap R to buy", price: 0, can: true };
+    return canSell(W) ? { text: "Tap R to sell", price: 0, can: true } : { text: "Biological entities detected", price: 0, can: false };
+  }
+  function vendUse(W, G, kind, LO) {
+    if (W.warp) return;
+    if (kind === "buy" && !W.hasLvl) {
+      LO.gold -= LVL_BUY;
+      W.hasLvl = true;
+      W.warp = { dir: "in", t: 0, done: false, bolts: [] };
+      toast(W, "Level " + W.floor + " bought on credit");
+      SFX.ui("buy");
+    } else if (kind === "sell" && W.hasLvl) {
+      if (!canSell(W)) {
+        toast(W, "No biological entities accepted");
+        SFX.ui("poor");
+        return;
+      }
+      LO.gold += LVL_SELL;
+      W.hasLvl = false;
+      W.warp = { dir: "out", t: 0, done: false, bolts: [] };
+      toast(W, "Level " + W.floor + " sold");
+      SFX.ui("buy");
+    }
+  }
+  function stepWarp(W, G, F) {
+    const w = W.warp;
+    if (!w) return;
+    const t0 = w.t;
+    w.t += F.dt;
+    if (!w.done && w.t >= WARP_SWAP) {
+      w.done = true;
+      if (w.dir === "in") enterLevel(W, G, { seed: W.levelSeed, owned: W.levelOwned, alive: null, sold: [], rooms: [], pickups: null }, "shop");
+      else {
+        W.floor++;
+        enterLevel(W, G, void 0, "you");
+        voidCave(W, G);
+      }
+      SFX.fx("levelWarp");
+      const x0 = W.camX, x1 = W.camX + W.viewW;
+      for (let i = 0; i < 26; i++) burst(W, x0 + Math.random() * (x1 - x0), ROOF_Y - Math.random() * 6, 3, Math.random() < 0.5 ? "#eafff0" : "#6dffa0");
+      saveRun(W, G);
+      G.input.current.notify();
+    }
+    const since = w.t - WARP_SWAP;
+    const rate = since < -0.3 ? 0 : since < 0 ? 8 : since < 1.2 ? 30 * (1 - since / 1.2) + 4 : 0;
+    const n = Math.floor(w.t * rate) - Math.floor(t0 * rate);
+    for (let i = 0; i < n; i++) {
+      const x = W.camX + Math.random() * W.viewW, up = since < 0 ? 10 + Math.random() * 30 : 40 + Math.random() * 260;
+      const pts = [{ x, y: ROOF_Y }];
+      let px = x, py = ROOF_Y;
+      const steps = 4 + Math.floor(up / 30);
+      for (let k = 1; k <= steps; k++) {
+        px += (Math.random() - 0.5) * 26;
+        py -= up / steps;
+        pts.push({ x: px, y: py });
+      }
+      w.bolts.push({ pts: jag(pts, 5), t: 0, max: 0.12 + Math.random() * 0.18 });
+    }
+    for (let i = w.bolts.length - 1; i >= 0; i--) if ((w.bolts[i].t += F.dt) >= w.bolts[i].max) w.bolts.splice(i, 1);
+    if (w.t >= WARP_END && !w.bolts.length) W.warp = null;
+  }
+  function voidCave(W, G) {
+    const top = SHOP_TOP - SHOP_ROOF, d = W.img.data, dd = W.dimg.data;
+    for (let cy = top; cy < SHOP_TOP; cy++) for (let cx = 0; cx < CW; cx++) {
+      const i = cy * CW + cx;
+      if (W.mat[i]) continue;
+      let j = -1;
+      for (let k = 1; k < 60 && j < 0; k++) {
+        if (cx - k >= 0 && W.mat[i - k] === BRICK) j = i - k;
+        else if (cx + k < CW && W.mat[i + k] === BRICK) j = i + k;
+      }
+      W.mat[i] = BED;
+      if (j >= 0) for (let c = 0; c < 4; c++) d[i * 4 + c] = d[j * 4 + c];
+    }
+    for (let i = 0; i < top * CW; i++) {
+      W.mat[i] = BED;
+      d[i * 4] = 6;
+      d[i * 4 + 1] = 6;
+      d[i * 4 + 2] = 9;
+      d[i * 4 + 3] = 255;
+      dd[i * 4 + 3] = 0;
+      if (W.ore) W.ore[i] = 0;
+    }
+    W.enemies.length = 0;
+    W.total = 0;
+    W.pickups = W.pickups.filter(keep);
+    W.rooms = [];
+    W.props = W.props.filter(keep);
+    W.matterProps = W.props.filter((pr) => pr.k === "matter");
+    W.sconces = W.sconces.filter(keep);
+    for (let i = W.coins.length - 1; i >= 0; i--) if (!keep(W.coins[i])) W.coins.splice(i, 1);
+    W.webs.length = W.silk.length = W.strings.length = 0;
+    W.dparts.length = W.amb.length = W.clouds.length = W.rings.length = W.devils.length = 0;
+    W.fire = fireNew(new Uint8Array(CW * CH));
+    W.firePropN = -1;
+    W.burrow = null;
+    W.deepFog = null;
+    W.navYou.F = null;
+    W.terrainV++;
+    W.levelT = 99;
+    G.tctx.putImageData(W.img, 0, 0);
+    G.dctx.putImageData(W.dimg, 0, 0);
+    miniEdges(W);
+    W.seen = fogStart();
+    paintFog(W, G);
+  }
+  var keep = (q) => q.y >= SHOP_Y - 12;
+
+  // src/game/render/vend.js
+  var HOLO_GREEN = "#00ff3c", HOLO_RED = "#ff0000";
+  var SW = 72, TOP_H2 = 26, GAP = 2, BOT_H2 = 32, SH = TOP_H2 + GAP + BOT_H2;
+  var PAD2 = 4, LINE2 = 1.2, GLOW = 6, RES2 = 4;
+  var hash2 = (n) => {
+    const v = Math.sin(n * 12.9898) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  var commas = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  var cache2 = /* @__PURE__ */ new Map();
+  function screen(top, bot, hue) {
+    const key = top.join("|") + "/" + bot.join("|") + hue;
+    const got = cache2.get(key);
+    if (got) return got;
+    const w = (SW + GLOW * 2) * RES2, h3 = (SH + GLOW * 2) * RES2;
+    const A = document.createElement("canvas");
+    A.width = w;
+    A.height = h3;
+    const t = A.getContext("2d");
+    const B = document.createElement("canvas");
+    B.width = w;
+    B.height = h3;
+    const b = B.getContext("2d");
+    if (!t || !b) return B;
+    t.scale(RES2, RES2);
+    t.translate(GLOW, GLOW);
+    t.fillStyle = hue;
+    t.fillRect(0, 0, SW, TOP_H2);
+    t.strokeStyle = hue;
+    t.lineWidth = LINE2;
+    t.strokeRect(LINE2 / 2, TOP_H2 + GAP + LINE2 / 2, SW - LINE2, BOT_H2 - LINE2);
+    const stack = (t2, lines, y0, hh, weight, cut) => {
+      const lh = (hh - PAD2 * 2) / lines.length;
+      let fs = lh * 0.9;
+      t2.font = weight + " " + fs + "px system-ui, sans-serif";
+      const wide = Math.max(...lines.map((s) => t2.measureText(s).width));
+      if (wide > SW - PAD2 * 2) fs *= (SW - PAD2 * 2) / wide;
+      t2.font = weight + " " + fs + "px system-ui, sans-serif";
+      t2.globalCompositeOperation = cut ? "destination-out" : "source-over";
+      t2.fillStyle = cut ? "#000" : hue;
+      t2.textBaseline = "middle";
+      t2.textAlign = "left";
+      lines.forEach((s, i) => t2.fillText(s, PAD2, y0 + PAD2 + lh * (i + 0.5)));
+    };
+    stack(t, top, 0, TOP_H2, "900", true);
+    stack(t, bot, TOP_H2 + GAP, BOT_H2, "700", false);
+    t.globalCompositeOperation = "destination-out";
+    t.fillStyle = "rgba(0,0,0,0.3)";
+    for (let y = 0; y < SH; y += 1.5) t.fillRect(0, y, SW, 0.5);
+    b.shadowColor = hue;
+    b.shadowBlur = GLOW * RES2 * 0.7;
+    b.drawImage(A, 0, 0);
+    b.shadowBlur = 0;
+    b.drawImage(A, 0, 0);
+    b.scale(RES2, RES2);
+    b.translate(GLOW, GLOW);
+    stack(b, top, 0, TOP_H2, "900", true);
+    cache2.set(key, B);
+    return B;
+  }
+  var V = { buy: { on: null, t: -99 }, sell: { on: null, t: -99 } };
+  function machine(ctx, W, kind, cx, on, hue, top, bot) {
+    const s = V[kind];
+    if (s.on !== on || s.t > W.time) {
+      s.t = s.on === null || s.t > W.time ? -99 : W.time;
+      s.on = on;
+    }
+    const since = W.time - s.t;
+    const x = cx - VEND_W / 2, y = VEND_TOP, fy = SHOP_FLOOR * CELL;
+    ctx.fillStyle = "#171a21";
+    ctx.fillRect(x, y, VEND_W, VEND_H);
+    ctx.fillStyle = "#252a35";
+    ctx.fillRect(x, y, 6, VEND_H);
+    ctx.fillRect(x + VEND_W - 6, y, 6, VEND_H);
+    ctx.fillStyle = "#323948";
+    ctx.fillRect(x - 2, y - 1, VEND_W + 4, 5);
+    ctx.fillRect(x - 3, fy - 5, VEND_W + 6, 5);
+    ctx.fillStyle = "#0c0e12";
+    ctx.fillRect(x + 1, y + 4, 4, VEND_H - 9);
+    ctx.fillRect(x + VEND_W - 5, y + 4, 4, VEND_H - 9);
+    ctx.fillStyle = hue;
+    ctx.globalAlpha = on ? 0.55 + 0.2 * Math.sin(W.time * 3 + cx) : 0.12;
+    ctx.fillRect(x + 6, y + 6, 1, VEND_H - 14);
+    ctx.fillRect(x + VEND_W - 7, y + 6, 1, VEND_H - 14);
+    for (let i = 0; i < 5; i++) {
+      ctx.globalAlpha = on ? hash2(Math.floor(W.time * 3) + i * 7 + cx) < 0.6 ? 0.9 : 0.25 : 0.1;
+      ctx.fillRect(x + 10 + i * 4, y + 1, 2, 1.5);
+    }
+    ctx.globalAlpha = 1;
+    const gx = x + 8, gy = y + 7, gw = VEND_W - 16, gh = SH - 2;
+    ctx.fillStyle = "#05070a";
+    ctx.fillRect(gx, gy, gw, gh);
+    ctx.fillStyle = "rgba(255,255,255,0.05)";
+    ctx.beginPath();
+    ctx.moveTo(gx + gw * 0.55, gy);
+    ctx.lineTo(gx + gw, gy);
+    ctx.lineTo(gx + gw, gy + gh * 0.35);
+    ctx.closePath();
+    ctx.fill();
+    const py = gy + gh + 3;
+    ctx.fillStyle = "#2a303c";
+    ctx.fillRect(x + 10, py, VEND_W - 20, 2);
+    ctx.fillStyle = hue;
+    ctx.globalAlpha = on ? 0.9 : 0.15;
+    ctx.fillRect(x + 12, py + 0.5, VEND_W - 24, 1);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#0a0c10";
+    ctx.fillRect(x + 12, py + 6, 16, 3);
+    ctx.fillStyle = hue;
+    ctx.globalAlpha = on ? 0.7 : 0.1;
+    ctx.fillRect(x + 13, py + 7, 14, 1);
+    for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) {
+      ctx.globalAlpha = on && hash2(Math.floor(W.time * 2) * 5 + r * 4 + c + cx) < 0.3 ? 0.9 : on ? 0.3 : 0.08;
+      ctx.fillRect(x + 34 + c * 4, py + 5 + r * 3.5, 2.5, 2.5);
+    }
+    ctx.globalAlpha = 1;
+    const sx = cx - SW / 2, sy = y + 6;
+    let alpha = 0, squeeze = 1;
+    if (on) alpha = since < 0.4 ? hash2(Math.floor(since * 40)) < since / 0.4 ? 1 : 0.15 : 0.88 + 0.1 * hash2(Math.floor(W.time * 20) + cx);
+    else if (since < 0.25) {
+      alpha = 1;
+      squeeze = Math.max(0.02, 1 - since / 0.2);
+    }
+    if (alpha <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.12 * squeeze;
+    ctx.fillStyle = hue;
+    ctx.beginPath();
+    ctx.moveTo(x + 14, py);
+    ctx.lineTo(x + VEND_W - 14, py);
+    ctx.lineTo(sx + SW, sy + SH);
+    ctx.lineTo(sx, sy + SH);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = alpha;
+    const img = screen(top, bot, hue), mid = sy + SH / 2;
+    ctx.translate(0, mid);
+    ctx.scale(1, squeeze);
+    ctx.translate(0, -mid);
+    ctx.drawImage(img, sx - GLOW, sy - GLOW, SW + GLOW * 2, SH + GLOW * 2);
+    const band = sy + (W.time * 18 + cx) % (SH + 20) - 10;
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = alpha * 0.18;
+    ctx.fillStyle = hue;
+    ctx.fillRect(sx, Math.max(sy, band), SW, Math.max(0, Math.min(6, sy + SH - band)));
+    ctx.restore();
+    if (!on) {
+      ctx.globalAlpha = Math.max(0, 1 - since / 0.25);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(sx - 4, mid - 0.6, SW + 8, 1.2);
+      ctx.globalAlpha = 1;
+    }
+  }
+  function drawVend(W, G, F) {
+    if (VEND_TOP > W.camY + F.vh + 10 || VEND_TOP + VEND_H < W.camY - 10) return;
+    const lv = "LVL " + W.floor, busy = !!W.warp;
+    machine(
+      G.ctx,
+      W,
+      "buy",
+      VEND_BUY_X,
+      !W.hasLvl && !busy,
+      HOLO_GREEN,
+      ["BUY", lv],
+      [commas(LVL_BUY) + " G.", "(credit", "available)"]
+    );
+    machine(
+      G.ctx,
+      W,
+      "sell",
+      VEND_SELL_X,
+      W.hasLvl && !busy,
+      canSell(W) ? HOLO_GREEN : HOLO_RED,
+      ["SELL", lv],
+      [commas(LVL_SELL) + " G.", "(no biological", "entities accepted)"]
+    );
+  }
+  function drawWarp(W, G, F) {
+    const w = W.warp;
+    if (!w) return;
+    const ctx = G.ctx, since = w.t - WARP_SWAP;
+    const x0 = W.camX - 10, x1 = W.camX + F.vw + 10, top = W.camY - 10, bot = ROOF_Y + 12;
+    if (top >= bot) return;
+    ctx.save();
+    if (since < 0) {
+      const k = Math.max(0, 1 + since / 0.4);
+      const g = ctx.createLinearGradient(0, ROOF_Y, 0, ROOF_Y - 40);
+      g.addColorStop(0, "rgba(150,255,190," + (0.6 * k * k).toFixed(3) + ")");
+      g.addColorStop(1, "rgba(150,255,190,0)");
+      ctx.globalCompositeOperation = "lighter";
+      ctx.fillStyle = g;
+      ctx.fillRect(x0, ROOF_Y - 40, x1 - x0, 40);
+    } else {
+      const a = Math.exp(-since * 2.6);
+      const g = ctx.createLinearGradient(0, bot, 0, top);
+      g.addColorStop(0, "rgba(240,255,244," + a.toFixed(3) + ")");
+      g.addColorStop(1, "rgba(160,255,200," + (a * 0.5).toFixed(3) + ")");
+      ctx.fillStyle = g;
+      ctx.fillRect(x0, top, x1 - x0, bot - top);
+      if (since < 0.9) {
+        const k = since / 0.9, span = ROOF_Y - top;
+        const y = w.dir === "in" ? ROOF_Y - k * span : top + k * span;
+        ctx.globalCompositeOperation = "lighter";
+        ctx.fillStyle = "rgba(110,255,160," + (0.35 * (1 - k)).toFixed(3) + ")";
+        ctx.fillRect(x0, y - 8, x1 - x0, 16);
+        ctx.fillStyle = "rgba(220,255,230," + (0.9 * (1 - k)).toFixed(3) + ")";
+        ctx.fillRect(x0, y - 1.2, x1 - x0, 2.4);
+      }
+    }
+    ctx.restore();
+    for (const b of w.bolts) drawBolt(G, b.pts, "#7dffb0", 1.3, 1 - b.t / b.max);
+  }
+
+  // src/game/render/draw.js
+  function draw(W, G) {
+    const F = {
+      dpr: 0,
+      playPx: 0,
+      vw: 0,
+      vh: 0,
+      pcx: 0,
+      pcy: 0,
+      TH: null,
+      onView: null,
+      held: null,
+      ax: 0,
+      ay: 0,
+      gy: 0,
+      cw: 0
+    };
+    drawCamera(W, G, F);
+    drawTerrain(W, G, F);
+    drawProps(W, G, F);
+    drawPortal(W, G);
+    drawSmoke(W, G);
+    drawFields(W, G, F);
+    drawSilk(W, G);
+    drawEnemies(W, G, F);
+    drawShots(W, G);
+    drawBeams(W, G);
+    drawArrival(W, G, F);
+    drawShop(W, G, F);
+    drawVend(W, G, F);
+    drawLoot(W, G, F);
+    drawRooms(W, G, F);
+    drawTrail(W, G);
+    drawSparks(W, G);
+    drawMotes(W, G, F);
+    drawFlashes(W, G);
+    drawJetFlame(W, G, F);
+    drawAim(W, G, F);
+    drawPlayer(W, G, F);
+    drawFog(W, G, F);
+    drawGlows(W, G, F);
+    drawWarp(W, G, F);
+    drawFx(W, G, F);
+    drawBelow(W, G, F);
+    if (G.RPV) return;
+    drawHud(W, G, F);
+    drawRadar(W, G, F);
+    drawMessages(W, G, F);
+    drawReticule(G);
+    drawMap(W, G, F);
+  }
+  function drawCamera(W, G, F) {
+    const dpr = F.dpr = window.devicePixelRatio || 1;
+    const ctlPx = Math.min(G.c.height * 0.8, (G.RPV ? G.RPV.panelH || 0 : G.input.current.ctlH || 0) * dpr);
+    const playPx = F.playPx = G.c.height - ctlPx;
+    const s = Math.min(G.c.width / VIEW_W, playPx / VIEW_MIN_H) * DEV.zoom * (G.RPV ? G.RPV.zoom : 1), vw = F.vw = G.c.width / s, vh = F.vh = G.c.height / s;
+    const vhp = playPx / s;
+    W.unitPx = s / dpr;
+    const pcx = F.pcx = W.p.x + PW / 2, pcy = F.pcy = W.p.y + PH / 2;
+    if (G.RPV) {
+      if (G.RPV.follow) {
+        G.RPV.cx = vw >= WW ? WW / 2 : clamp(G.RPV.cx - vw / 2, 0, WW - vw) + vw / 2;
+        G.RPV.cy = clamp(G.RPV.cy - vhp * 0.55, 0, Math.max(0, WH - vhp)) + vhp / 2;
+      }
+      W.camX = G.RPV.cx - vw / 2;
+      W.camY = G.RPV.cy - vhp / 2;
+      G.RPV.unit = W.unitPx;
+    } else {
+      const tx = vw >= WW ? (WW - vw) / 2 : clamp(pcx - vw / 2, 0, WW - vw);
+      const ty = clamp(pcy - vhp * 0.55, 0, Math.max(0, WH - vhp));
+      if (!W.camReady) {
+        W.camX = tx;
+        W.camY = ty;
+        W.camReady = true;
+      }
+      W.camX += (tx - W.camX) * 0.15;
+      W.camY += (ty - W.camY) * 0.15;
+    }
+    G.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    G.ctx.imageSmoothingEnabled = false;
+    G.ctx.fillStyle = "rgb(" + themeFor(W.floor).bg.join(",") + ")";
+    G.ctx.fillRect(0, 0, G.c.width, G.c.height);
+    G.ctx.setTransform(s, 0, 0, s, -Math.round(W.camX * s), -Math.round(W.camY * s));
   }
 
   // src/game/systems/fields.js
@@ -16212,7 +16577,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     const inShop = W.p.y + PH > SHOP_Y;
     let near = null;
-    for (const it of W.stock) {
+    const vend = vendNear(W, pcx, pcy);
+    if (vend) near = { src: "vend", kind: vend };
+    if (!near) for (const it of W.stock) {
       if (it.sold) continue;
       if (Math.abs(it.x - pcx) > 15 || Math.abs(it.y - pcy) > 22) continue;
       near = { src: "shop", it };
@@ -16230,8 +16597,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       near = { src: "room", r };
       break;
     }
-    const nearKey = !near ? -1 : near.src + ":" + (near.src === "shop" ? W.stock.indexOf(near.it) : near.src === "room" ? W.rooms.indexOf(near.r) : W.pickups.indexOf(near.q));
-    const label = !near ? null : near.src === "shop" ? near.it.kind === "heal" ? { text: "Full heal", price: 0, can: W.p.hp < MHP } : near.it.kind === "gun" ? {
+    const nearKey = !near ? -1 : near.src + ":" + (near.src === "vend" ? near.kind : near.src === "shop" ? W.stock.indexOf(near.it) : near.src === "room" ? W.rooms.indexOf(near.r) : W.pickups.indexOf(near.q));
+    const label = !near ? null : near.src === "vend" ? vendLabel(W, near.kind) : near.src === "shop" ? near.it.kind === "heal" ? { text: "Full heal", price: 0, can: W.p.hp < MHP } : near.it.kind === "gun" ? {
       text: near.it.gun.name,
       gun: near.it.gun,
       price: near.it.price,
@@ -16244,7 +16611,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     } : near.src === "room" ? near.r.kind === "perk" ? { text: PERKS[near.r.id].name, perk: near.r.id, price: 0, can: true } : { text: "+25 Max Health", heart: true, price: 0, can: true } : near.q.kind === "gun" ? { text: near.q.gun.name, gun: near.q.gun, price: 0, can: true, found: true } : { text: MODS[near.q.id].name, id: near.q.id, price: 0, can: true, found: true };
     let pbottom = 12;
     if (near) {
-      const iy = near.src === "shop" ? near.it.y : near.src === "room" ? near.r.y : near.q.y;
+      const iy = near.src === "vend" ? VEND_TOP : near.src === "shop" ? near.it.y : near.src === "room" ? near.r.y : near.q.y;
       const dprc = window.devicePixelRatio || 1;
       pbottom = Math.round(Math.max(10, G.c.height / dprc - (iy - 16 - W.camY) * W.unitPx));
     }
@@ -16264,7 +16631,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (G.input.current.interact && near) {
       G.input.current.interact = false;
-      if (near.src === "shop") {
+      if (near.src === "vend") vendUse(W, G, near.kind, LO);
+      else if (near.src === "shop") {
         const it = near.it;
         if (it.kind === "heal") {
           if (W.p.hp < MHP) {
@@ -16341,6 +16709,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     stepSound(W, F);
     stepFields(W, G, F);
     stepPickups(W, G, F);
+    stepWarp(W, G, F);
     stepToasts(W, F);
     decorStep(W, G, dt, F.pcx, F.pcy);
     stepEnemies(W, G, F);
@@ -16364,6 +16733,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (G.input.current.newCave) {
       G.input.current.newCave = false;
       enterLevel(W, G);
+      if (!W.hasLvl) voidCave(W, G);
       toast(W, "New cave");
       return true;
     }
@@ -16389,12 +16759,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function atPortal(W, G, F) {
     const pcx = F.pcx = W.p.x + PW / 2, pcy = F.pcy = W.p.y + PH / 2;
-    if (!W.p.dead && pcx > W.portal.x && pcx < W.portal.x + W.portal.w && pcy > W.portal.y && pcy < W.portal.y + W.portal.h) {
-      W.floor++;
-      enterLevel(W, G);
+    if (!W.p.dead && W.hasLvl && pcx > W.portal.x && pcx < W.portal.x + W.portal.w && pcy > W.portal.y && pcy < W.portal.y + W.portal.h) {
+      W.p.x = W.start.x;
+      W.p.y = W.start.y;
+      W.p.vx = 0;
+      W.p.vy = 0;
+      W.p.fuel = 1;
+      W.p.empty = false;
+      W.camReady = false;
       saveRun(W, G);
       SFX.fx("portalIn");
-      toast(W, "Floor " + W.floor);
+      setTimeout(() => SFX.fx("portalOut", W.arrival.x, W.arrival.y), 260);
+      toast(W, "Back to the shop");
       G.input.current.notify();
       return true;
     }
@@ -16502,6 +16878,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   // src/game/testhook.js
   function testHook(W, g) {
     const { tctx, dctx, paintFog: paintFog2 } = g;
+    if (!window.__TEST_VOID) W.hasLvl = true;
     const sandbox = (o) => {
       o = o || {};
       const w = o.w || 300, h3 = o.h || 200;
@@ -16583,6 +16960,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ignite: g.ignite,
       setAlight: g.setAlight,
       youAlight: g.youAlight,
+      nextFloor: g.nextFloor,
       world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y },
       fog: { get seen() {
         return W.seen;
@@ -16695,6 +17073,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       terrainV: 0,
       // ---- the floor's layout (enterLevel sets all of these) ----
       floor: 1,
+      // the level above the shop is bought from the vending machine and sold back (vend.js): false
+      // while there isn't one (the cave is solid dark, the roof sealed); warp is the teleport under way
+      hasLvl: false,
+      warp: null,
       start: void 0,
       portal: void 0,
       arrival: void 0,
@@ -16960,16 +17342,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         setAlight,
         youAlight: () => youAlight(W),
         REC,
-        RT
+        RT,
+        nextFloor: () => {
+          W.floor++;
+          W.hasLvl = true;
+          W.warp = null;
+          enterLevel(W, G);
+          saveRun(W, G);
+        }
       });
       {
         const sv = input.current.saved;
         input.current.saved = null;
         if (sv) {
           W.floor = sv.floor;
+          W.hasLvl = sv.hasLvl;
           enterLevel(W, G, sv.level);
           if (sv.hp) W.p.hp = Math.min(sv.hp, maxHp(W, G));
         } else enterLevel(W, G);
+        if (!W.hasLvl) voidCave(W, G);
       }
       const saveNow = () => saveRun(W, G);
       const saveTick = setInterval(saveNow, 2e3);
@@ -18239,9 +18630,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/ui/hud.js
   function fmtGold(g) {
-    g = Math.max(0, Math.floor(g || 0));
-    if (g < 1e3) return String(g);
-    return (Math.floor(g / 100) / 10).toString() + "k";
+    g = Math.trunc(g || 0);
+    if (g < 0) return "-" + fmtGold(-g);
+    const units = ["B", "M", "k"];
+    for (let i = 0; i < 3; i++) {
+      const n = 10 ** (9 - i * 3);
+      if (g >= n) return (Math.floor(g / (n / 10)) / 10).toString() + units[i];
+    }
+    return String(g);
   }
   function deckLayout(W, size, n) {
     n = n || 4;
@@ -19020,14 +19416,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   // src/ui/witness.js
   var RP_SPEEDS = [0.25, 0.5, 1, 2];
   function Witness({ input, close }) {
-    const V = input.current.replay, W = input.current.witness;
+    const V2 = input.current.replay, W = input.current.witness;
     const [, bump] = useState(0);
     const redo = () => bump((n) => n + 1);
     const scrub = useRef(null), pts = useRef(/* @__PURE__ */ new Map()), pinch = useRef(null), dragging = useRef(false);
     useEffect(() => {
       let raf, last = "";
       const tick = () => {
-        const sig = Math.round(V.t * 20) + (V.playing ? "p" : "");
+        const sig = Math.round(V2.t * 20) + (V2.playing ? "p" : "");
         if (sig !== last) {
           last = sig;
           redo();
@@ -19040,8 +19436,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const span = Math.max(0.01, W.t1 - W.t0);
     const seek = (e) => {
       const r = scrub.current.getBoundingClientRect();
-      V.t = W.t0 + clamp((e.clientX - r.left) / r.width, 0, 1) * span;
-      V.playing = false;
+      V2.t = W.t0 + clamp((e.clientX - r.left) / r.width, 0, 1) * span;
+      V2.playing = false;
       redo();
     };
     const down = (e) => {
@@ -19056,11 +19452,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const move = (e) => {
       const P = pts.current, q = P.get(e.pointerId);
       if (!q) return;
-      const u = V.unit || 1;
+      const u = V2.unit || 1;
       if (P.size === 1) {
-        V.cx -= (e.clientX - q.x) / u;
-        V.cy -= (e.clientY - q.y) / u;
-        V.follow = false;
+        V2.cx -= (e.clientX - q.x) / u;
+        V2.cy -= (e.clientY - q.y) / u;
+        V2.follow = false;
       }
       q.x = e.clientX;
       q.y = e.clientY;
@@ -19068,14 +19464,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const [a, b] = [...P.values()];
         const d = Math.hypot(a.x - b.x, a.y - b.y) || 1, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, L2 = pinch.current;
         if (L2) {
-          V.zoom = clamp(V.zoom * d / L2.d, 0.4, 4);
-          V.cx -= (mx - L2.mx) / u;
-          V.cy -= (my - L2.my) / u;
-          V.follow = false;
+          V2.zoom = clamp(V2.zoom * d / L2.d, 0.4, 4);
+          V2.cx -= (mx - L2.mx) / u;
+          V2.cy -= (my - L2.my) / u;
+          V2.follow = false;
         }
         pinch.current = { d, mx, my };
       }
-      if (!V.follow) redo();
+      if (!V2.follow) redo();
     };
     const up = (e) => {
       pts.current.delete(e.pointerId);
@@ -19086,8 +19482,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       f();
       redo();
     };
-    const rel = V.t - W.death, frac = (V.t - W.t0) / span;
-    const atEnd = V.t >= W.t1 - 1e-6;
+    const rel = V2.t - W.death, frac = (V2.t - W.t0) / span;
+    const atEnd = V2.t >= W.t1 - 1e-6;
     return h(
       "div",
       { className: "witness" },
@@ -19100,7 +19496,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           onPointerUp: up,
           onPointerCancel: up,
           onWheel: (e) => {
-            V.zoom = clamp(V.zoom * Math.exp(-e.deltaY * 15e-4), 0.4, 4);
+            V2.zoom = clamp(V2.zoom * Math.exp(-e.deltaY * 15e-4), 0.4, 4);
           }
         },
         h("div", { className: "wtitle" }, "WITNESS YOURSELF")
@@ -19108,7 +19504,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(
         "div",
         { className: "wpanel", ref: (el) => {
-          if (el) V.panelH = el.getBoundingClientRect().height;
+          if (el) V2.panelH = el.getBoundingClientRect().height;
         } },
         h(
           "div",
@@ -19150,27 +19546,27 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             className: "wfirst",
             "aria-label": "Back to the start",
             onPointerDown: tap(() => {
-              V.t = W.t0;
-              V.playing = true;
+              V2.t = W.t0;
+              V2.playing = true;
             })
           }, "⏮"),
           h(
             "button",
             {
               className: "wplay",
-              "aria-label": V.playing ? "Pause" : "Play",
+              "aria-label": V2.playing ? "Pause" : "Play",
               onPointerDown: tap(() => {
-                if (!V.playing && atEnd) V.t = W.t0;
-                V.playing = !V.playing;
+                if (!V2.playing && atEnd) V2.t = W.t0;
+                V2.playing = !V2.playing;
               })
             },
-            V.playing ? "⏸" : "▶"
+            V2.playing ? "⏸" : "▶"
           ),
           RP_SPEEDS.map((sp) => h("button", {
             key: sp,
-            className: "wspeed" + (V.speed === sp ? " on" : ""),
+            className: "wspeed" + (V2.speed === sp ? " on" : ""),
             onPointerDown: tap(() => {
-              V.speed = sp;
+              V2.speed = sp;
             })
           }, (sp < 1 ? String(sp).slice(1) : sp) + "×")),
           h("span", { className: "wtime" }, (rel < 0 ? "−" : "+") + Math.abs(rel).toFixed(1) + "s")
@@ -19178,17 +19574,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h(
           "div",
           { className: "wrow" },
-          h("button", { className: "wloop" + (V.loop ? " on" : ""), onPointerDown: tap(() => {
-            V.loop = !V.loop;
+          h("button", { className: "wloop" + (V2.loop ? " on" : ""), onPointerDown: tap(() => {
+            V2.loop = !V2.loop;
           }) }, "Loop"),
-          h("button", { className: "wfog" + (V.fog ? " on" : ""), onPointerDown: tap(() => {
-            V.fog = !V.fog;
+          h("button", { className: "wfog" + (V2.fog ? " on" : ""), onPointerDown: tap(() => {
+            V2.fog = !V2.fog;
           }) }, "Fog"),
           h(
             "button",
-            { className: "wfollow" + (V.follow ? " on" : ""), onPointerDown: tap(() => {
-              V.follow = true;
-              V.zoom = 1;
+            { className: "wfollow" + (V2.follow ? " on" : ""), onPointerDown: tap(() => {
+              V2.follow = true;
+              V2.zoom = 1;
             }) },
             "Follow"
           ),

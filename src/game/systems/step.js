@@ -21,6 +21,7 @@ import { stepPickups } from './pickups.js';
 import { maxHp, movePlayer, stepTorch } from './player.js';
 import { decorStep } from './props.js';
 import { saveRun } from './save-run.js';
+import { stepWarp, voidCave } from './vend.js';
 
 /** @param {World} W @param {GameCtx} G @param {number} dt */
 export function step(W, G, dt) {
@@ -37,6 +38,7 @@ export function step(W, G, dt) {
   stepSound(W, F);                          // the ear, the loops, the heartbeat
   stepFields(W, G, F);                      // static fields and beams (fields.js)
   stepPickups(W, G, F);                     // pickups, gold, the card, the interact tap (pickups.js)
+  stepWarp(W, G, F);                        // a level teleporting in or out (vend.js)
   stepToasts(W, F);                         // messages fading (particles.js)
   decorStep(W, G, dt, F.pcx, F.pcy);        // props, plants, webs, what you stand in (props.js)
   stepEnemies(W, G, F);                     // the creatures and their shots (enemies.js)
@@ -63,6 +65,7 @@ export function stepRequests(W, G, F) {
   if (G.input.current.newCave) {                // Dev → New cave: this floor again, freshly rolled
     G.input.current.newCave = false;
     enterLevel(W, G);
+    if (!W.hasLvl) voidCave(W, G);
     toast(W, 'New cave');
     return true;
   }
@@ -87,18 +90,20 @@ export function stepPerks(W, G, F) {
 }
 
 // Where you are now you've moved (F.pcx/F.pcy, your centre: the rest of the frame works
-// from it), and the exit: step into it and you're on the next floor. True when you went
-// through: that frame ends there.
+// from it), and the exit: step into it and it drops you back in the shop (the level stays:
+// sell it at the vending machine once it's clear). True when you went through: that frame ends there.
 /** @param {World} W @param {GameCtx} G @param {StepFrame} F */
 export function atPortal(W, G, F) {
   const pcx = F.pcx = W.p.x + PW / 2, pcy = F.pcy = W.p.y + PH / 2;
-  if (!W.p.dead && pcx > W.portal.x && pcx < W.portal.x + W.portal.w &&
+  if (!W.p.dead && W.hasLvl && pcx > W.portal.x && pcx < W.portal.x + W.portal.w &&
       pcy > W.portal.y && pcy < W.portal.y + W.portal.h) {
-    W.floor++;
-    enterLevel(W, G);
+    W.p.x = W.start.x; W.p.y = W.start.y; W.p.vx = 0; W.p.vy = 0;
+    W.p.fuel = 1; W.p.empty = false;
+    W.camReady = false;
     saveRun(W, G);
     SFX.fx('portalIn');
-    toast(W, 'Floor ' + W.floor);
+    setTimeout(() => SFX.fx('portalOut', W.arrival.x, W.arrival.y), 260);
+    toast(W, 'Back to the shop');
     G.input.current.notify();
     return true;
   }

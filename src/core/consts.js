@@ -54,6 +54,11 @@ export const SHOP_H = 48;                     // interior height
 export const SHOP_TOP = SHOP_FLOOR - SHOP_H;  // first open row of the room
 export const SHOP_ROOF = 6;                   // roof thickness
 export const SHOP_Y = SHOP_TOP * CELL;        // world y of the ceiling, for "am I in the shop?"
+// the two level vending machines on the shop's back wall, past the way in and the heal (centre x,
+// world units; a screen is 72 wide), and their prices:
+// a level costs LVL_BUY on credit and sells back for LVL_SELL, a thousand more
+export const VEND_BUY_X = 180, VEND_SELL_X = 280;
+export const LVL_BUY = 64000000000, LVL_SELL = 64000001000;
 
 // ---- fog of war ----
 // A coarse reveal grid, never per pixel: one fog cell covers FOG terrain pixels each
