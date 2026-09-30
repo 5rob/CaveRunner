@@ -1,11 +1,15 @@
 # REFACTOR — splitting CaveRunner into modules
 
+**Done.** All five phases are finished (2026-09-30). Phases 0–3 are on `main` (v97–v99); Phases 4–5 are on
+`refactor`, with `index.html` byte-identical to v99, waiting for the final merge, which the owner decides. The
+game's notes now live in the `src/` folder READMEs; what the refactor left to do is **Found along the way** below.
+
 **The design doc and progress tracker for the refactor.** Every session working on it reads
 this first, works the next unticked tasks, ticks them, and adds a line to the **Session log**
 at the bottom. Commit this file with the work it describes.
 
-Read `CLAUDE.md` (owner's working style, the release loop, per-system notes) and `HANDOVER.md`
-before this.
+Read `CLAUDE.md` (owner's working style, the release loop, testing), the `src/` folder READMEs (the
+per-system notes) and `HANDOVER.md` before this.
 
 ---
 
@@ -13,11 +17,11 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | **Phase 4** (TypeScript, gradually): P4.1 done (tsc in the test run), P4.2 done (`src/types.d.ts`). P4.3 (`// @ts-check` per folder, D21): core, dev, data, spells, world, creatures, art, audio, save, replay, game, ui: **P4.3 done**. **P4.4 done** (`checkJs` on: all of `src/` is checked). Next: merge Phase 4 to `main` (version bump), then Phase 5. Phase 3 merged to `main` as v99 (P3.6 done, 2026-09-30). Phase 3 recap: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). step() split into parts, P3.4 (25)–(33): a frame object `F` (D18) and 21 calls, the parts in their systems (`pickups.js` new). draw() split the same way, P3.4 (34)–(43): its own `F` (D19) and 29 calls, the parts in six `render/` modules by theme. **P3.4 done.** **P3.5 done** (D20: the Game side of each creature in `src/game/creatures/`, an `ACTS` table keyed by act, the loop keeps the shared part; knob tables stay put; no looks table). P3.6: Game.js 186 lines (world, loop, React bridge) |
+| **Current phase** | **Done.** Phase 5 done (P5.1 folder READMEs, P5.2 CLAUDE.md 148 lines, P5.3 `CHANGELOG.md`, P5.4 HANDOVER). Phase 4 done (P4.1–P4.4: every file under `src/` type-checked). Phase 3 done and released as v99 (`W`, `G`, `F`, systems, render, `ACTS`; Game.js 186 lines). All phases done bar the final merge of Phases 4–5 to `main` (a version bump), which the owner decides |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
 | **Last green full suite** | 2026-09-30, end of P3.5 (the tree of P3.5 (6)): logic 33/33, browser 44/44 after re-runs (`everymod` telecast, `lightning` fork and `jelly` failed in the run, all known; each passed alone, `jelly` 3 of 5, the same as on the commit before the jelly move) |
-| **Last merged to main** | v99 (Phase 3), 2026-09-30 |
+| **Last merged to main** | v99 (Phase 3), 2026-09-30. Phases 4–5 not merged (the owner decides) |
 
 ---
 
@@ -71,8 +75,8 @@ existing Android WebView app. No Godot, no Unity, no app-store work (see **Out o
    `no-undef`** (from Phase 1) and later **TypeScript** (Phase 4). No framework, no JSX, no
    Vite/webpack, no test framework swap.
 6. **Keep the notes true.** When something moves, fix any path or name `CLAUDE.md` gives
-   for it in the same commit. (Notes move into per-folder READMEs in Phase 5. Until then
-   `CLAUDE.md` stays the reference.)
+   for it in the same commit. (Since Phase 5 the notes are the `src/` folder READMEs; `CLAUDE.md`
+   keeps only the working style, the loop, testing and the folder map.)
 7. **Merging to `main` is a release**: bump the version (`src/version.js` once Phase 0 is
    done), let CI go green, and the owner plays it on the phone to confirm nothing changed.
 8. **Tick boxes and log as you go**, not at the end, so a cut-off session leaves an honest
@@ -831,7 +835,9 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
       needed as a *rule* goes to the right folder README. Done: `CHANGELOG.md` at the root, v39–v99
       plus an Unreleased entry (Phases 4–5), from CLAUDE.md's vNN notes, HANDOVER's "What shipped"
       and the release commits; the rules in them went to the READMEs in P5.1.
-- [ ] **P5.4** Update `HANDOVER.md`; mark this doc **Done** at the top.
+- [x] **P5.4** Update `HANDOVER.md`; mark this doc **Done** at the top. Done: HANDOVER is short (where
+      things stand, what's next = Found along the way, the app, testing, ideas); the old HANDOVER flake
+      list moved into Found along the way so it is the one list.
 
 ---
 
@@ -994,6 +1000,19 @@ commit. List them here for after.
   quiet part of the cycle; `decorStep` also sets `pr.on = null` when a prop falls. Harmless today (vents have their own
   anchor and get checked a moment later), but one field meaning two things. `Prop.on` stays typed as the arch; the vent
   line has a `@ts-expect-error`. Fix after the refactor: a vent field of its own (`roar`).
+
+- **Flakes from before the refactor** (moved here from HANDOVER in P5.4, so this is the one list): `everymod`
+  (telecast), `trigger` (double trigger), `compare` (a found gun that happens not to differ in regen, so "less regen
+  is red" finds nothing; seen once in the v47 run), `fog` "the next floor is dark again" (~1 in 4–5 runs a new floor
+  starts with a few cave cells lit up the shaft; fails on v56 too, seed-dependent), `lightning` "a fork hits a
+  creature off to the side" (~1 in 5–8: the fork roll is random and the target bobs near the edge of its 90 reach;
+  seen v78/v79, not a spider bug), `torch` "light moves with it" (flicker-range sensitive, v50), `jelly` spit (~1 in 3,
+  on v87 and v96 code as well). All pass alone.
+- **Stale code comments found in P5.1** (left, docs-only phase): `game/systems/shotlooks.js`' header says the draw side
+  (`drawLook`) "is still in Game's draw()" and `lightning.js`' says the arcs are drawn "in Game's draw()": both are in
+  `game/render/looks.js` now. `replay/replay.js`' header says "the recorder and player live in the Game for now" (they're
+  `game/systems/recorder.js`). The old CLAUDE.md said the `e`/`tab` key opens the Bag "unconditionally"; the code
+  (`ui/app.js`) opens it only in the shop or with Tinker (the README says what the code does).
 
 ## Game map
 
@@ -1239,3 +1258,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 5, P5.1 | A README.md in each src/ folder (15): what each file holds and that area's rules, moved from CLAUDE.md in today's names (`W.mat`, the system or render module a function lives in). Every backticked name in them checked against src/. CLAUDE.md not trimmed yet (P5.2). Docs only: `index.html` unchanged. | logic 33/33, smoke ok |
 | 2026-09-30 | Phase 5, P5.3 | `CHANGELOG.md`: one entry per release v39–v99, newest first, plus Unreleased (Phases 4–5). Docs only. | index.html unchanged |
 | 2026-09-30 | Phase 5, P5.2 | CLAUDE.md 1,132 → 148 lines: the owner's working style (their words intact), the loop, version, Android essentials, a folder → README map with the layer rule, editing and testing rules (sandbox, no waiting forever, flakes pointer, the type check, D21). Section-by-section check against the old file; two rules added to READMEs in the pass (Pollen, the inert confirm path). Docs only. | logic 33/33, smoke ok |
+| 2026-09-30 | Phase 5, P5.4, **Phase 5 done, refactor done** | HANDOVER.md rewritten short (status, next steps pointing at Found along the way incl. Stendari's fire, the vent's `Prop.on`, the flakes; the app; testing; ideas). The old HANDOVER flakes and the stale code comments found in P5.1 added to Found along the way. This doc marked **Done**; the final merge of Phases 4–5 (v100) is the owner's call. Docs only. | logic 33/33, smoke ok |
