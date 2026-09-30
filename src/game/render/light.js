@@ -13,6 +13,33 @@ import { fogLit } from '../systems/fog.js';
 import { plantGlow } from '../systems/plantglow.js';
 import { torchHand } from '../systems/player.js';
 import { solidCell } from '../systems/terrain.js';
+import { holoMask, sizedCanvas } from './holo.js';
+
+// The fog of war alone (never-seen ground; none of the dark outside your torchlight), baked and
+// blurred beside the full fog: the hologram is darkened by this one only. Made on first use
+/** @type {{ c: HTMLCanvasElement | null, img: ImageData | null, blur: HTMLCanvasElement | null, mask: HTMLCanvasElement | null, over: HTMLCanvasElement | null }} */
+const war = { c: null, img: null, blur: null, mask: null, over: null };
+/** the blurred fog-of-war-only canvas (FW x FH), or null before the first frame */
+export const fogWarC = () => war.blur;
+const HOLO_D = 2;                              // the hologram's fog swap works at 1/2 size
+
+// Blur a slab of a fog canvas into its blurred copy (at source size: cheap). The blur sees nothing
+// past the level, which thinned the fog to a see-through strip down both sides, so the sharp edge
+// cells go back underneath
+/** @param {HTMLCanvasElement} src @param {CanvasRenderingContext2D} dst @param {number} fx0 @param {number} fy0 @param {number} fx1 @param {number} fy1 */
+function blurSlab(src, dst, fx0, fy0, fx1, fy1) {
+  const ew = fx1 - fx0, eh = fy1 - fy0;
+  dst.clearRect(fx0, fy0, ew, eh);
+  dst.filter = 'blur(0.9px)';
+  dst.drawImage(src, fx0, fy0, ew, eh, fx0, fy0, ew, eh);
+  dst.filter = 'none';
+  dst.globalCompositeOperation = 'destination-over';
+  if (fx0 === 0) dst.drawImage(src, 0, fy0, 1, eh, 0, fy0, 1, eh);
+  if (fx1 === FW) dst.drawImage(src, FW - 1, fy0, 1, eh, FW - 1, fy0, 1, eh);
+  if (fy0 === 0) dst.drawImage(src, fx0, 0, ew, 1, fx0, 0, ew, 1);
+  if (fy1 === FH) dst.drawImage(src, fx0, FH - 1, ew, 1, fx0, FH - 1, ew, 1);
+  dst.globalCompositeOperation = 'source-over';
+}
 
 // The torchlight and the fog of war: the line of sight lifts the fog (fogReveal writes the fog
 // memory here, every frame), then the fog overlay is baked, blurred and drawn with the lamp
@@ -36,7 +63,11 @@ export function drawFog(W, G, F) {
   if (!G.RPV || G.RPV.fog) {                                 // a replay can turn the fog off
     // bake the visible slab of the overlay every frame: the base darkness is the fog
     // state, then the lamp brightens the cells the fog has already been lifted from
-    const fdat = G.fogImg.data;
+    if (!war.c) { war.c = sizedCanvas(null, FW, FH); war.blur = sizedCanvas(null, FW, FH); }
+    const wctx = war.c.getContext('2d'), wbctx = war.blur && war.blur.getContext('2d');
+    if (!wctx || !wbctx || !war.blur) return;
+    if (!war.img) war.img = wctx.createImageData(FW, FH);
+    const fdat = G.fogImg.data, wdat = war.img.data;
     const dim = Math.round(255 * DEV.fogDim), dark = Math.round(255 * DEV.fogDark);
     const lr2 = W.torchR * W.torchR;
     const fx0 = clamp(Math.floor(W.camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(W.camY / FOG_U) - 1, 0, FH - 1);
@@ -46,6 +77,7 @@ export function drawFog(W, G, F) {
       for (let cx = fx0; cx < fx1; cx++) {
         const i = cy * FW + cx, k = i * 4;
         fdat[k] = 9; fdat[k + 1] = 10; fdat[k + 2] = 14;
+        wdat[k] = 9; wdat[k + 1] = 10; wdat[k + 2] = 14;
         let s = W.seen[i];
         // push the dark off ground you have seen: an unseen cell that borders a seen one
         // is treated as remembered (dim + lamp), so a bit more of the uncovered surface
@@ -55,6 +87,7 @@ export function drawFog(W, G, F) {
             (cx > 0 && cy > 0 && W.seen[i - FW - 1]) || (cx < FW - 1 && cy > 0 && W.seen[i - FW + 1]) ||
             (cx > 0 && cy < FH - 1 && W.seen[i + FW - 1]) || (cx < FW - 1 && cy < FH - 1 && W.seen[i + FW + 1]))) s = 1;
         let a = s === 2 ? 0 : s ? dim : dark;
+        wdat[k + 3] = s ? 0 : dark;          // the fog of war alone
         if (s && a) {                        // the lamp only reaches ground the fog has lifted
           const ddx = (cx + 0.5) * FOG_U - pcx, dd2 = ddx * ddx + ddy * ddy;
           if (dd2 < lr2) {
@@ -67,25 +100,45 @@ export function drawFog(W, G, F) {
       }
     }
     G.fctx.putImageData(G.fogImg, 0, 0, fx0, fy0, fx1 - fx0, fy1 - fy0);
+    wctx.putImageData(war.img, 0, 0, fx0, fy0, fx1 - fx0, fy1 - fy0);
     // blur the slab at source resolution (cheap: an 80x200 canvas), then upscale the soft
     // copy — a source-px of blur becomes ~a fog cell of blur on screen, so the fog edge
     // reads as a gradient rather than a hard line
-    G.fbctx.clearRect(fx0, fy0, fx1 - fx0, fy1 - fy0);
-    G.fbctx.filter = 'blur(0.9px)';
-    G.fbctx.drawImage(G.fogC, fx0, fy0, fx1 - fx0, fy1 - fy0, fx0, fy0, fx1 - fx0, fy1 - fy0);
-    G.fbctx.filter = 'none';
-    // the blur pulls in nothing from past the level's edges, which thinned the fog to a
-    // see-through strip down both sides: put the sharp edge cells back underneath
-    G.fbctx.globalCompositeOperation = 'destination-over';
-    const ew = fx1 - fx0, eh = fy1 - fy0;
-    if (fx0 === 0) G.fbctx.drawImage(G.fogC, 0, fy0, 1, eh, 0, fy0, 1, eh);
-    if (fx1 === FW) G.fbctx.drawImage(G.fogC, FW - 1, fy0, 1, eh, FW - 1, fy0, 1, eh);
-    if (fy0 === 0) G.fbctx.drawImage(G.fogC, fx0, 0, ew, 1, fx0, 0, ew, 1);
-    if (fy1 === FH) G.fbctx.drawImage(G.fogC, fx0, FH - 1, ew, 1, fx0, FH - 1, ew, 1);
-    G.fbctx.globalCompositeOperation = 'source-over';
-    G.ctx.imageSmoothingEnabled = true;     // the upscale further softens the edge
-    G.ctx.drawImage(G.fogBlurC, fx0, fy0, fx1 - fx0, fy1 - fy0,
-      fx0 * FOG_U, fy0 * FOG_U, (fx1 - fx0) * FOG_U, (fy1 - fy0) * FOG_U);
+    blurSlab(G.fogC, G.fbctx, fx0, fy0, fx1, fy1);
+    blurSlab(war.c, wbctx, fx0, fy0, fx1, fy1);
+    const sx = fx0 * FOG_U, sy = fy0 * FOG_U, sw = (fx1 - fx0) * FOG_U, sh = (fy1 - fy0) * FOG_U;
+    if (!(DEV.holoAlpha > 0)) {
+      G.ctx.imageSmoothingEnabled = true;     // the upscale further softens the edge
+      G.ctx.drawImage(G.fogBlurC, fx0, fy0, fx1 - fx0, fy1 - fy0, sx, sy, sw, sh);
+      G.ctx.imageSmoothingEnabled = false;
+      return;
+    }
+    // Where the hologram shows, it takes only the fog of war, not the dark outside your
+    // torchlight: at half size, the full fog with the hologram's visible part cut out of it, and
+    // the fog of war alone laid under that hole; then that over the picture
+    const w = Math.max(1, Math.ceil(G.c.width / HOLO_D)), h = Math.max(1, Math.ceil(G.c.height / HOLO_D));
+    const M = war.mask = sizedCanvas(war.mask, w, h), O = war.over = sizedCanvas(war.over, w, h);
+    const mc = M.getContext('2d'), oc = O.getContext('2d');
+    if (!mc || !oc) return;
+    const m = G.ctx.getTransform();
+    for (const x of [mc, oc]) {
+      x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, w, h);
+      x.setTransform(m.a / HOLO_D, 0, 0, m.d / HOLO_D, m.e / HOLO_D, m.f / HOLO_D);
+    }
+    holoMask(mc, W, G, F, 1);
+    oc.imageSmoothingEnabled = true;
+    oc.drawImage(G.fogBlurC, fx0, fy0, fx1 - fx0, fy1 - fy0, sx, sy, sw, sh);
+    oc.setTransform(1, 0, 0, 1, 0, 0);
+    oc.globalCompositeOperation = 'destination-out'; oc.drawImage(M, 0, 0);
+    oc.setTransform(m.a / HOLO_D, 0, 0, m.d / HOLO_D, m.e / HOLO_D, m.f / HOLO_D);
+    oc.globalCompositeOperation = 'destination-over';
+    oc.drawImage(war.blur, fx0, fy0, fx1 - fx0, fy1 - fy0, sx, sy, sw, sh);
+    oc.globalCompositeOperation = 'source-over';
+    G.ctx.save();
+    G.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    G.ctx.imageSmoothingEnabled = true;
+    G.ctx.drawImage(O, 0, 0, w * HOLO_D, h * HOLO_D);
+    G.ctx.restore();
     G.ctx.imageSmoothingEnabled = false;
   }
 }
