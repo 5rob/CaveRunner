@@ -486,7 +486,7 @@ interface Player {
   x: number; y: number; vx: number; vy: number; onGround: boolean; face: number; jet: number;
   fuel: number; empty: boolean; sput: boolean; flame: number; cough: number; hp: number; hitT: number;
   dead: boolean; kick: number; shieldReady: boolean; shieldT: number; jx: number; jy: number;
-  aim: { on: boolean; show: boolean; nx: number; ny: number };
+  aim: { on: boolean; show: boolean; nx: number; ny: number; vis?: number };   // vis: the aim line's fade with the push
   burn?: number; burnAcc?: number;
 }
 
@@ -555,7 +555,7 @@ interface GameCtx {
   REC: Recorder; RT: ReplayPlayer;
   fireBox: { t: number[]; d: number[] };
   ratOnWeb: (x: number, y: number) => boolean;
-  mouse: GameInput['mouse']; aimPath: Pt[];
+  mouse: GameInput['mouse']; aimPath: number[];   // aimPath: tracePath's x, y, x, y, …
   pgArt: Uint8ClampedArray | null; pgC: HTMLCanvasElement | null; pgCtx: CanvasRenderingContext2D | null;
   pgGlow: HTMLCanvasElement; pgGlowCtx: CanvasRenderingContext2D;
   RP_ARR: Record<string, any[]>;   // W's own lists by name, whatever they hold

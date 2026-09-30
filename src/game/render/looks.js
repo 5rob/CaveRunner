@@ -1,3 +1,4 @@
+// @ts-check
 // Shots and fields in draw() (render/draw.js): the layers drawFields, drawShots and drawBeams
 // (parts it calls in order; drawFields reads its frame object F, REFACTOR.md D19), and the
 // looks they use: drawLook (a v95/v96 shot's own sprite, false to fall back to the streak),
@@ -10,6 +11,7 @@ import { jag } from '../systems/lightning.js';
 import { rnd } from '../systems/shotlooks.js';
 
 // v95: the Noita-style shots' own sprites. Returns false to fall back to the streak.
+/** @param {World} W @param {GameCtx} G @param {Bullet} b */
 export function drawLook(W, G, b) {
   const L = b.look, sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp, s = b.size;
   const dot = (x, y, r, c, a) => { G.ctx.globalAlpha = a; G.ctx.fillStyle = c; G.ctx.beginPath(); G.ctx.arc(x, y, r, 0, 6.283); G.ctx.fill(); };
@@ -173,6 +175,7 @@ export function drawLook(W, G, b) {
 }
 
 // v96: what sits in the middle of a field (or over it)
+/** @param {World} W @param {GameCtx} G @param {Field} f @param {number} beat */
 export function drawFieldLook(W, G, f, beat) {
   const dia = (r, c, c2) => { G.ctx.fillStyle = c; G.ctx.beginPath(); G.ctx.moveTo(f.x, f.y - r * 1.4); G.ctx.lineTo(f.x + r, f.y);
     G.ctx.lineTo(f.x, f.y + r * 1.4); G.ctx.lineTo(f.x - r, f.y); G.ctx.fill();
@@ -222,6 +225,7 @@ export function drawFieldLook(W, G, f, beat) {
 }
 
 // a lightning line: a wide soft glow, then a thin white-hot core
+/** @param {GameCtx} G @param {Pt[]} pts @param {string} col @param {number} w @param {number} alpha */
 export function drawBolt(G, pts, col, w, alpha) {
   G.ctx.save();
   G.ctx.globalCompositeOperation = 'lighter';
@@ -237,6 +241,7 @@ export function drawBolt(G, pts, col, w, alpha) {
 
 // Static fields: a pulsing disc, a dashed ring shrinking as it runs out, and what sits in the
 // middle (drawFieldLook, or a plain dot)
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawFields(W, G, F) {
   const { vh } = F;
   // static fields
@@ -263,6 +268,7 @@ export function drawFields(W, G, F) {
 
 // Shots in flight: the creatures' (poison spit as a glob), yours (Black Hole, a look, a lightning
 // bolt, or a streak as long as its speed), and the lightning arcs
+/** @param {World} W @param {GameCtx} G */
 export function drawShots(W, G) {
   // projectiles
   for (const b of W.enemyShots) {
@@ -338,6 +344,7 @@ export function drawShots(W, G) {
 }
 
 // Instant beams, fading over a few frames (a v96 beam with a look has a wavering halo)
+/** @param {World} W @param {GameCtx} G */
 export function drawBeams(W, G) {
   // instant beams, which fade over a few frames
   for (const bm of W.beams) {

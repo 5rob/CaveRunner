@@ -1,3 +1,4 @@
+// @ts-check
 // What draw() (render/draw.js) puts over the picture in screen space, each a part it calls in
 // order with its frame object F (REFACTOR.md D19): the HUD (the version, the sticks' gauges),
 // the radar perks' markers, messages, the mouse reticule and the map. A death replay stops
@@ -14,6 +15,7 @@ import { maxHp } from '../systems/player.js';
 
 // The HUD, in screen space: fills in F.cw (the canvas width in css px) for the parts after it,
 // writes the version top-left, and hands the sticks their gauges (G.input.current.hud)
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawHud(W, G, F) {
   const { dpr, held } = F;
   // ---- HUD ----
@@ -54,6 +56,7 @@ export function drawHud(W, G, F) {
 
 // The radar perks: a ring on the nearest enemy / mod / gun, or an arrow at the screen's edge
 // pointing to it
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawRadar(W, G, F) {
   const { dpr, playPx, pcx, pcy } = F;
   // ---- radar perks: point at the nearest enemy / mod / gun still out there ----
@@ -87,6 +90,7 @@ export function drawRadar(W, G, F) {
 
 // Messages: the toasts over the controls, the floor's name as you arrive, and the death or
 // all-clear line
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawMessages(W, G, F) {
   const { dpr, playPx, cw } = F;
   // pickup messages
@@ -129,11 +133,13 @@ export function drawMessages(W, G, F) {
 }
 
 // The mouse reticule, while the mouse is over the canvas
+/** @param {GameCtx} G */
 export function drawReticule(G) {
   // mouse reticule
   if (G.mouse.inside) {
     const mx = G.mouse.x, my = G.mouse.y;
     for (const [w, colr] of [[4, 'rgba(0,0,0,0.6)'], [2, G.mouse.down ? COL.flame2 : COL.text]]) {
+      // @ts-expect-error the loop's [width, colour] rows are read as a union of their elements (noise)
       G.ctx.strokeStyle = colr; G.ctx.lineWidth = w;
       G.ctx.beginPath(); G.ctx.arc(mx, my, 9, 0, Math.PI * 2); G.ctx.stroke();
       G.ctx.beginPath();
@@ -148,6 +154,7 @@ export function drawReticule(G) {
 
 // The map, while it is open (the run is paused): the cave you've seen as outlines, the prize
 // rooms you've found, loot you've seen, and you
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawMap(W, G, F) {
   const { dpr, playPx } = F;
   // ---- the map (toggled by the map button; the run is paused while it is up) ----

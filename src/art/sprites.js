@@ -131,7 +131,7 @@ export function glowAt(ctx, x, y, r, a, rgb) {
 // The torch in the runner's free hand. `flick` is the very same number the lamp is drawn
 // with, so the flame and the light it throws gutter together and the cave reads as
 // torchlight rather than as a dimmer switch. (lx, ly) drags the flame about as you move.
-/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} face @param {number} flick @param {{ x: number, y: number, life: number, max: number, s: number, c: string }[]} embers @param {number} lx @param {number} ly @param {number} time */
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} face @param {number} flick @param {Particle[]} embers @param {number} lx @param {number} ly @param {number} time */
 export function drawTorch(ctx, x, y, face, flick, embers, lx, ly, time) {
   const fx = x + face * 1.6, fy = y - 7;           // the flame rides above the fist
   ctx.save();

@@ -1,3 +1,4 @@
+// @ts-check
 // The light of draw() (render/draw.js), each a part it calls in order with its frame object F
 // (REFACTOR.md D19): the torchlight and the fog of war, then every light drawn over the fog.
 // drawFog is not only a picture: it writes the fog memory (fogReveal), so it keeps its place
@@ -16,6 +17,7 @@ import { solidCell } from '../systems/terrain.js';
 // The torchlight and the fog of war: the line of sight lifts the fog (fogReveal writes the fog
 // memory here, every frame), then the fog overlay is baked, blurred and drawn with the lamp
 // brightening only ground already uncovered
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawFog(W, G, F) {
   const { vw, vh, pcx, pcy } = F;
   // ---- torchlight, masked by the fog of war ----
@@ -82,6 +84,7 @@ export function drawFog(W, G, F) {
 // Light over the fog, only where it has lifted (fogLit): wall torches, glowing props, the
 // jellies' glow and their plant glow, glowing shots, fire, burning creatures and you, glowing
 // particles, the hand torch's glow; then the wall torches themselves
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawGlows(W, G, F) {
   const { vw, vh, pcx, pcy, TH, onView, ax } = F;
   // ---- firelight on top of the fog: the wall torches (where you have been) and the hand

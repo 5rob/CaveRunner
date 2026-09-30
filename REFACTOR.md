@@ -773,6 +773,10 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
           `Sconce`s; the pairs span two lines of one array, where a comment would reach `index.html`). Four one-line
           `@ts-expect-error`, noise: `recWrap`'s `[context, 't'/'d']` rows read as a union (3), and `drawReplay`'s
           stand-in `W.fire` (no fuel). 0 bugs, 1 `any` (`sconces`)
+    - [x] `render/` (`draw`, `cave`, `actors`, `effects`, `light`, `looks`, `overlay`): 8 errors when turned on, noise
+          but for one wrong type of mine: `G.aimPath` is `tracePath`'s flat `x, y, x, y, …` (was `Pt[]`). Fixed by a type:
+          `Player.aim.vis` (the aim line's fade), `drawTorch`'s embers are `Particle`s. One `@ts-expect-error`, noise:
+          `drawReticule`'s `[width, colour]` rows read as a union. 0 bugs, 0 `any`s
 - [ ] **P4.4** Once a folder is clean, keep it clean: the check is part of the green bar.
 
 ### Phase 5 — notes live next to the code
@@ -1183,3 +1187,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 4, P4.3 game (1) | types.d.ts's game section narrowed (World's lists, `GameInput`, `Recorder`/`ReplayPlayer`, `EnemyCtx`, `ActHooks`, `SoundLoop`, `NavCache`; `img`/`dimg` as `ImageData`), then `world.js`, `Game.js`, `testhook.js` checked: two errors, noise (the test page's `window` hooks; `Pixels` to `putImageData`). `index.html` unchanged. 0 bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 4, P4.3 game (2) | systems part 1 checked (`terrain`, `particles`, `player`, `enemies`, `fire`, `webs`, `fog`, `ambience`, `props`, `plantglow`, `lightning`): 34 errors, all noise but Stendari's known `k.fire` (typed on the local, since its line is inside an object literal: a comment there, or joining the literal onto one line, changed `index.html`). types.d.ts fitted (`Prop.fall`/`warn`/`heard`/`climb`, `Bullet.struck`, `jetSt.gap`); 3 `@ts-expect-error` (noise). Logged: a vent reuses `Prop.on`. `index.html` unchanged. 0 new bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 4, P4.3 game (3) | systems part 2 checked (`gun`, `fields`, `bullets`, `shotlooks`, `pickups`, `recorder`, `save-run`, `level-entry`, `step`): ~200 errors, nearly all one wrong guess of the JSDoc script's (`rnd(a, b)`); the rest noise, fixed by types (`Bullet`'s optional part, `hit` a `Set`, `Pickup.cool`, `Devil.snd`, `SavedLevel`, `Uint8ClampedArray<ArrayBuffer>`), 4 `@ts-expect-error` (recWrap's rows, the replay's stand-in fire). `index.html` unchanged. 0 bugs, 1 `any` (`World.sconces`). | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.3 game (4) | `render/` checked (7 files): 8 errors, noise (`G.aimPath` is flat numbers, `Player.aim.vis`, `drawTorch`'s embers as `Particle`s; one `@ts-expect-error` for a `[width, colour]` row union). `index.html` unchanged. 0 bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |

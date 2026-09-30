@@ -1,3 +1,4 @@
+// @ts-check
 // The cave's layers of draw() (render/draw.js), each a part it calls in order with its frame
 // object F (REFACTOR.md D19): the rock and what sits on it. The background, rock and fire, the
 // props, the two portals, the shop's stock, loot, and the hidden rooms' prizes
@@ -14,6 +15,7 @@ import { FIRE_COLS } from '../../world/fire.js';
 
 // The cave behind everything: the background (with parallax), the shop's back wall, the
 // decoration layer and the rock (the visible part only), and the burning pixels over them
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawTerrain(W, G, F) {
   const { vw, vh } = F;
   // background and terrain (visible part only)
@@ -86,6 +88,7 @@ export function drawTerrain(W, G, F) {
 // The props (pass 3), their drips and the theme's ambience (grit, dust devils, spore clouds,
 // noise rings). Fills in F.TH (the floor's theme) and F.onView (is a point in view, give or
 // take a margin) for the parts after it
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawProps(W, G, F) {
   const { vw, vh } = F;
   // the props (pass 3), their drips and the theme's ambience
@@ -132,6 +135,7 @@ export function drawProps(W, G, F) {
 }
 
 // The exit portal
+/** @param {World} W @param {GameCtx} G */
 export function drawPortal(W, G) {
   // exit portal: a glowing pool with a slow swirl of dashes round its rim
   const pulse = 0.55 + 0.25 * Math.sin(W.time * 3);
@@ -153,6 +157,7 @@ export function drawPortal(W, G) {
 }
 
 // The portal you arrived through, as scenery ("WAY IN")
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawArrival(W, G, F) {
   const { vh } = F;
   // the portal you arrived through: scenery only
@@ -177,6 +182,7 @@ export function drawArrival(W, G, F) {
 }
 
 // The shop's stock on its plinths: a heal, a gun or a mod each, with its price (or SOLD)
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawShop(W, G, F) {
   const { vh } = F;
   // shop stock on its plinths
@@ -239,6 +245,7 @@ export function drawShop(W, G, F) {
 }
 
 // Loot in the cave: gold coins, and the guns and mods lying about (a never-held gun glows)
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawLoot(W, G, F) {
   const { vw, vh } = F;
   // gold
@@ -279,6 +286,7 @@ export function drawLoot(W, G, F) {
 }
 
 // The hidden rooms' prizes on their altars: a perk's sigil, or the +25 heart
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawRooms(W, G, F) {
   const { vw, vh } = F;
   // the hidden rooms' prizes on their altars: a glowing perk sigil, or the +25 heart

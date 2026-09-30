@@ -1,3 +1,4 @@
+// @ts-check
 // One frame of the picture: draw(W, G). Game's loop runs it every frame (after step(), unless
 // paused), and the death replay (drawReplay, systems/recorder.js) runs it with a recorded moment
 // swapped into W. It calls its parts one after another, back to front, handing each the frame
@@ -23,6 +24,7 @@ import { drawFog, drawGlows } from './light.js';
 import { drawBeams, drawFields, drawShots } from './looks.js';
 import { drawHud, drawMap, drawMessages, drawRadar, drawReticule } from './overlay.js';
 
+/** @param {World} W @param {GameCtx} G */
 export function draw(W, G) {
   // the frame: what draw's parts hand on to each other (REFACTOR.md D19). drawCamera fills in
   // the view (dpr, playPx, vw/vh) and where you are (pcx/pcy), drawProps the theme (TH) and
@@ -64,6 +66,7 @@ export function draw(W, G) {
 // The view for this frame (F.dpr, F.playPx: the play area above the controls, F.vw/F.vh: the
 // view in world units, F.pcx/F.pcy: your centre), the camera eased toward you (a replay's
 // is the viewer's), and the canvas cleared to the floor's colour under the world's transform
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawCamera(W, G, F) {
   const dpr = F.dpr = window.devicePixelRatio || 1;
   // the controls overlay the bottom of the canvas (see-through), so the play area is the
