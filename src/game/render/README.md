@@ -1,0 +1,52 @@
+# game/render/ — one frame of the picture
+
+`draw(W, G)` (in `draw.js`) makes the frame object `F` and calls its parts back to front, each
+`(W, G, F)`. The death replay runs the same `draw()` with a recorded moment swapped into `W`.
+
+| File | Holds |
+|---|---|
+| `draw.js` | `draw` and `drawCamera` (fills the view `dpr`, `playPx`, `vw`/`vh` and `pcx`/`pcy`; eases the camera) |
+| `cave.js` | `drawTerrain` (background with `PARALLAX`, the shop wall with the floor number, rock, burning pixels), `drawProps` (fills `TH`, `onView`; props, drips, ambience), `drawPortal`, `drawArrival`, `drawShop`, `drawLoot` (gold, guns, mods), `drawRooms` |
+| `effects.js` | `drawSmoke`, `drawTrail`, `drawSparks`, `drawMotes`, `drawFlashes` |
+| `actors.js` | `drawEnemies`, `drawJetFlame`, `drawAim` (fills `held`, `ax`/`ay`, `gy`; the Trajectory Sight line), `drawPlayer` (runner, gun, torch, crosshair, shield, ghost) |
+| `looks.js` | `drawFields`, `drawShots`, `drawBeams`, and the looks: `drawLook` (a shot's sprite), `drawFieldLook`, `drawBolt` (a lightning line) |
+| `light.js` | `drawFog` (line of sight, `fogReveal`, the fog bake and blur), `drawGlows` (every light over the fog, `fogLit`-gated, then the sconces) |
+| `overlay.js` (screen space) | `drawHud` (the version; publishes `input.current.hud`), `drawRadar`, `drawMessages`, `drawReticule`, `drawMap` |
+
+The order in `draw`: `drawCamera`, `drawTerrain`, `drawProps`, `drawPortal`, `drawSmoke`,
+`drawFields`, `drawSilk` (`game/creatures/spider.js`), `drawEnemies`, `drawShots`, `drawBeams`,
+`drawArrival`, `drawShop`, `drawLoot`, `drawRooms`, `drawTrail`, `drawSparks`, `drawMotes`,
+`drawFlashes`, `drawJetFlame`, `drawAim`, `drawPlayer`, `drawFog`, `drawGlows`, then
+`if (G.RPV) return;` (a replay has no HUD), `drawHud`, `drawRadar`, `drawMessages`, `drawReticule`,
+`drawMap`.
+
+## Rules
+
+- **The order is fixed**: draw writes the fog memory (`drawFog`), moves the camera (`drawCamera`)
+  and draws from the simulation's `Math.random` stream (the looks, the jet flame, the beams).
+- **Before the fog vs after it:** anything that must not give away unseen ground (terrain,
+  burning pixels, props, creatures) is drawn before `drawFog`; lights and glows after it, only where
+  `fogLit` says the ground is seen. The fog and lamp rules are in `world/README.md`.
+- **The camera frames the play area above the controls**: `playPx = c.height − ctlH·dpr` (App
+  measures `input.current.ctlH`); the whole canvas is still drawn. Toasts and radar markers use
+  `playPx` too. `DEV.zoom` scales it all.
+- **The HUD lives on the thumbsticks** (`ui/README.md`). `drawHud` writes
+  `input.current.hud = { hp, low, fuel, empty, mana, rech, cast, recharging, hasGun }` (0–1) every
+  frame: `rech = 1 − rechT/(effRecharge·W.pb.rech)`, `cast = 1 − delayT/delayMax` (`delayMax` is set in
+  `cast` when the delay starts). Only the version is drawn on the canvas. The floor number is painted
+  big across the shop's back wall (`rgba(255,255,255,0.07)`).
+- **The aim line** draws only with Trajectory Sight (`W.pb.trajectory`), and fades in with the right
+  stick's push (`vis = min(1, mag/AIM_DEAD)`; mouse/keys = 1). **The crosshair** is always on: a `+`
+  with its centre cut out, `DEV.aimDist` out along the aim, arms 1.25 → 3 world units, ~1.5 css px thick.
+- **Shots:** `drawLook(b)` draws a shot's own look and returns false to fall back to the streak; a
+  `hidden` bullet (Buzzsaw) isn't drawn. The Black Hole draws its haze + starry core (core = `b.eat`,
+  so the drawn core and the dig can't drift apart).
+- **The map** (`drawMap`) is a toggle (`input.current.mapOpen`: the 🗺️ button or `M`, which also
+  pauses), drawn last over the play area on `rgba(0,0,0,0.8)`, fitted and centred. It samples the real
+  rock in `MINI_D` (4px) blocks: `enterLevel` lists the outline cells (`W.miniEdgeIdx`: blocks holding
+  both rock and open), and each frame only those whose fog cell is seen are painted into `G.mini32`,
+  blitted with image smoothing on so walls read as lines. Marks: `fogLit` pickups as dots (mods green,
+  guns yellow, `old` guns a hollow ring), seen rooms outlined yellow (X when taken), you a yellow dot
+  with a white rim.
+- A replay frame (`G.RPV`): camera from the view, the play area above the replay panel, terrain from
+  `G.RT`, no aim line, the fog overlay only when the viewer's fog toggle is on.

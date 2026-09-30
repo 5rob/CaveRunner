@@ -1,0 +1,68 @@
+# game/systems/ — one frame of the simulation, by job
+
+Plain functions taking `(W, G, …)` / `(W, …)` (`game/README.md` has the shapes). `step.js` runs
+the frame; most of its parts live with their system.
+
+| File | Holds |
+|---|---|
+| `step.js` | `step(W, G, dt)`: makes `F` and calls, in order: `stepRequests` (clock, Dev asks; New cave ends the frame), `stepPerks`, `movePlayer`, `atPortal` (fills `pcx`/`pcy`; the exit ends the frame), `aimAndCast`, `stepBullets`, `stepSound`, `stepFields`, `stepPickups`, `stepToasts`, `decorStep`, `stepEnemies`, `stepGhost`, `fireFrame`, `stepTrail`, `stepParticles`, `W.best`, `stepTorch`, `stepMotes` |
+| `terrain.js` | Questions: `solidCell`, `solidAt`, `boxHit`, `lineOfSight`, `enemyAt`. Changes: `dig`, `unDeco`, `paint`, `explode`, `dropOre` |
+| `player.js` | `refreshBag`, `maxHp`, `hurt`, `torchHand`, the jetpack's cough `sputterStep`/`SPUTTER_FUEL`, `NO_INPUT`, `movePlayer` (stick, jetpack, steering, climbing, the move, footsteps), `stepTorch` |
+| `gun.js` | `cast` (one pull through `planCast`), `spawnShot`, `releaseAt`/`firePayload` (a trigger's payload), `aimAndCast` (aim, Pinpointer, facing, gun clocks, the trigger) |
+| `bullets.js` | `stepBullets` (the bullet loop), `critRoll`, `shove`, `spray`, `explodeCross`, `teleportTo` |
+| `fields.js` | `castField`, `fireBeam`, `throwEmbers`, `fieldPayload`, `stepFields` |
+| `shotlooks.js` | What a shot sheds: `shotTrail`, `shotBounce`, `shotDeath`, `shotGrind`, `glowDot`, `rnd` |
+| `lightning.js` | `jag`, `addArc`, `lightningStep` (a bolt's forks) |
+| `enemies.js` | `stepEnemies` (the shared part of the enemy loop, `game/creatures/README.md`), `damageEnemy`, `fireEnemyShot` |
+| `pickups.js` | `stepPickups`: ground pickups, shop stock, room prizes, gold, the card that shows, the interact tap |
+| `props.js` | `decorStep` (anchors, falling, shootable props, drips, plants and web lines under you → `W.zfx`, rustles; with `pOver`, `alertAt`, `shatter`, `popLamp`, `landProp`, `spawnDrip`, `MATERIAL`, `DRIP_RATE`), `blowProp` |
+| `fire.js` | The fire's Game side: `fireFrame`, `ignite`, `fireBlast`, `setAlight`, `youAlight`, `fireOut`/`flushFire`, `catchPlant`/`catchArch`/`burnWeb`, `fireList`, `stepTrail` (Levitation Trail) |
+| `ambience.js` | `spore`, `puffSpores`, `stepAmbience`, `AMB_RATE`/`AMB_MAX` |
+| `particles.js` | `burst`, `goo`, `splat`, `toast`, `stepToasts`, `stepParticles`, `stepMotes` |
+| `fog.js` | `fogLit`, `roomSeen`, `seenAt`, `paintFog` |
+| `webs.js` | `webNear`, `webDist` |
+| `plantglow.js` | `plantGlow` (the jelly's glow on plants, drawn after the fog) |
+| `level-entry.js` | `enterLevel(W, G, back)`: makes (or rebuilds a saved) level, resets the world, canvases, fog, sconces, the map outline cells, the recorder |
+| `recorder.js` | The death replay's recorder and player (`replay/README.md`) |
+| `save-run.js` | `saveRun` (`save/README.md`) |
+
+## Rules
+
+- **Terrain changes draw through `G.tctx`/`G.dctx`** (the recorder's wrapped contexts), and
+  `dig`/`unDeco`/`explode` zero `W.fuel` and the fire timer for what they clear. `dig`/`explode`
+  count gold-seam pixels and call `dropOre` (coins worth `ORE_GOLD` × floor lift × `W.pb.gold`,
+  fractions kept in `W.oreBank`).
+- **`W.zfx` is written by `decorStep` and read by the *next* frame's steering** (`slow`, `slick`,
+  `climb`, `rev`, `web`, `webMul`, `arch`, `surface`). Climbing = on a climbable and **not** jetting
+  (hang, fuel comes back, the stick climbs at `CLIMB`). On a web line or an arch you run *along* it;
+  pushing down (not along) lets go (`W.webLetGo`, 0.35s).
+- **Props:** `decorStep` checks a thirtieth of the props per frame with `propAnchored`; one that
+  lost its rock falls, and `landProp` breaks it, blows it (carts, pods) or settles it. Shootable
+  props catch a bullet by setting `b.life = 0` (so payloads still fire); pass-through shots
+  (`pull`/`eat`/`bore`) count once via `b.propHit`. Drips each keep their own clock (`pr.dn`/`pr.di`).
+- **The bullet loop:** a bullet with `eat` digs its radius every frame it lives, and passes through
+  rock instead of dying on it (as `bore` does); the bounce guard skips both. Mirror any flight change
+  in `tracePath` (`spells/README.md`). The Black Hole (`b.pull`): pull reach `DEV.bhPull × b.pull / 70`,
+  drag grows toward the centre and is capped so it never overshoots, it doesn't die on a creature and
+  clears `b.hit` every 0.3s so it grinds, enemy shots in reach bend in and die. A `tele` shot's death
+  moves you with `teleportTo` (backs up its track, nudges ±16 until `!boxHit`, else fizzles).
+  Vacuum Field warps everything within `r` to its middle once, at `VACUUM_WAIT`, walls ignored.
+- **Pickups:** standing by one shows its card; the card's panel floats above the item
+  (`input.current.promptBottom`, measured here from the last frame's camera). An interact tap on a
+  **mod** takes it at once (`LO.bag`, `q.taken`, `PICKUP_COOL`); on a **gun** sets
+  `input.current.found`, which opens `GunSwap` (owner's choice). A bought gun drops at the plinth, so
+  the same chooser handles it. **Dead + interact tap = restart** (`input.current.requestRestart`),
+  checked before the pickup handling.
+- **Jetpack cough:** below `SPUTTER_FUEL` (0.25) `sputterStep` cuts the jet for 0.04–0.17s at random,
+  more often the drier it is. `W.p.jet` stays the stick; `W.p.flame` is 0 during a cut and is what the
+  flame, smoke, glow, Levitation Trail and jet loop read. A cut: no lift, `vy += DEV.sputDip`, grey
+  puffs; `p.cough` briefly stops the rise snap so the dip shows. Jet pitch climbs over 3s held
+  (`jetPitch`).
+- **Fire (Game side):** `ignite` lights pixels, `FLAMMABLE` plants (vine, myc), web lines and carts;
+  `fireBlast` runs in `explode` unless `splash` (`hot` = 0.9 chance); creatures and you catch off
+  burning pixels (`e.burn`/`p.burn`, damage in chunks), `FIRE_WET` surfaces put you out; Stillness and
+  Thundercloud douse (`fireDouse`) every 0.15s. **Fire must not reveal fog** (`world/README.md`).
+- **Footsteps:** cadence `|vx|/40` per second on the ground, `land` when falling faster than 200,
+  both voiced by `W.zfx.surface`.
+- **Motes** (`W.motes`, drawn additive): `drift` (Black Hole trail), `in` (pulled into the exit
+  portal), `out` (breathed out of the arrival point).

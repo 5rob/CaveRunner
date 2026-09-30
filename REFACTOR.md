@@ -816,10 +816,13 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
 
 ### Phase 5 — notes live next to the code
 
-- [ ] **P5.1** Each `src/<folder>/` gets a short `README.md`: what's in it, the rules that
+- [x] **P5.1** Each `src/<folder>/` gets a short `README.md`: what's in it, the rules that
       matter ("planCast mutates g.idx", "the aim line must stay honest", "fire must not
       reveal fog", the owner's rules for that area). Moved from `CLAUDE.md`, and updated to
-      new names.
+      new names. Done: 15 READMEs (core, dev, data, spells, world, creatures, art, audio, save,
+      replay, game, game/systems, game/render, game/creatures, ui). They don't reach the build or
+      the checks: esbuild bundles only what `main.js` imports, `tests/load.js`'s `.source` reads
+      only `.js`, ESLint lints `src/**/*.js`, tsc includes `.js` and `.d.ts`; `index.html` unchanged.
 - [ ] **P5.2** `CLAUDE.md` slims to: the owner's working style, the release loop, the
       testing rules, the layer rule, a map of folders → READMEs. Target < 150 lines.
 - [ ] **P5.3** Version history paragraphs (v40…v96) go to `CHANGELOG.md`. Anything still
@@ -1229,3 +1232,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 4, P4.3 game (5) | `game/creatures/` checked (5 files): 3 errors, one the logged Stendari bug (`bombBurst`, a one-line `@ts-expect-error`), two a wrong guess (`unstick`'s `home` is a flag). `ACTS` typed with `ActHooks`; `Enemy.roam`/`path`/`jobO` and `Coin`/`Silk`/`Ghost`/`Field`'s index signatures narrowed away. **game/ done.** `index.html` unchanged. 0 new bugs, 0 `any`s (9 left in the game section, listed under P4.3). | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 4, P4.3 ui | `ui/` checked (8 files): 9 errors, noise (the jelly preview's stand-in creature: `jellyStep` takes what it reads; `closest()` results typed `HTMLElement` on their `const`s; 3 `@ts-expect-error`). Props typed on every component; `StickState`/`Prompt` index signatures and the legacy confirm hooks narrowed. **P4.3 done** for every folder. `index.html` unchanged. 0 bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 4, P4.4 | Every file under `src/` checked (`main.js`, `pure.js`, `version.js` were clean), so `tsconfig.json` has `checkJs: true`: all of `src/` is checked and a new file is too (checked with a planted error in a new, unmarked file). The `// @ts-check` lines stay, redundant. tsconfig, tests/run.js, CLAUDE.md (Testing, the layout row), HANDOVER say so; CLAUDE.md also: no comment inside an object/array literal. The Stendari entry says where its two reads are silenced. **Phase 4's tasks done**; not merged. `index.html` unchanged. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 5, P5.1 | A README.md in each src/ folder (15): what each file holds and that area's rules, moved from CLAUDE.md in today's names (`W.mat`, the system or render module a function lives in). Every backticked name in them checked against src/. CLAUDE.md not trimmed yet (P5.2). Docs only: `index.html` unchanged. | logic 33/33, smoke ok |
