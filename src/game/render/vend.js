@@ -2,9 +2,11 @@
 // The level vending machines (game/systems/vend.js): two tall tech cabinets on the shop's back
 // wall, each with a holographic screen stacked like the background hologram (a solid box with
 // the words cut out of it over an outlined one), green, or red while the level can't be sold.
-// A screen goes dark when its machine has nothing to offer. And the teleport: the flash over the
+// A screen goes dark when its machine has nothing to offer, except that once the level is bought
+// the buy machine counts down the debt's repayment deadline in red (real time, the device clock). And the teleport: the flash over the
 // shop, the sweep and the crackle (drawWarp, after the fog).
 
+import { countdown } from '../../core/util.js';
 import { CELL, LVL_BUY, LVL_SELL, SHOP_FLOOR, VEND_BUY_X, VEND_SELL_X } from '../../core/consts.js';
 import { canSell, ROOF_Y, VEND_H, VEND_TOP, VEND_W, WARP_SWAP } from '../systems/vend.js';
 import { drawBolt } from './looks.js';
@@ -34,6 +36,7 @@ function screen(top, bot, hue) {
   const key = top.join('|') + '/' + bot.join('|') + hue;
   const got = cache.get(key);
   if (got) return got;
+  if (cache.size > 12) cache.clear();       // the countdown makes a new screen every second
   const w = (SW + GLOW * 2) * RES, h = (SH + GLOW * 2) * RES;
   const A = document.createElement('canvas'); A.width = w; A.height = h;
   const t = A.getContext('2d');
@@ -144,8 +147,10 @@ function machine(ctx, W, kind, cx, on, hue, top, bot) {
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawVend(W, G, F) {
   if (VEND_TOP > W.camY + F.vh + 10 || VEND_TOP + VEND_H < W.camY - 10) return;
-  const lv = 'LVL ' + W.floor, busy = !!W.warp;
-  machine(G.ctx, W, 'buy', VEND_BUY_X, !W.hasLvl && !busy, HOLO_GREEN,
+  const lv = 'LVL ' + W.floor, busy = !!W.warp, due = G.input.current.loadout.due || 0;
+  if (W.hasLvl && due) machine(G.ctx, W, 'buy', VEND_BUY_X, !busy, HOLO_RED,
+    [countdown(due - Date.now())], ['debt repayment', 'deadline', lv]);
+  else machine(G.ctx, W, 'buy', VEND_BUY_X, !W.hasLvl && !busy, HOLO_GREEN,
     ['BUY', lv], [commas(LVL_BUY) + ' G.', '(credit', 'available)']);
   machine(G.ctx, W, 'sell', VEND_SELL_X, W.hasLvl && !busy, canSell(W) ? HOLO_GREEN : HOLO_RED,
     ['SELL', lv], [commas(LVL_SELL) + ' G.', '(no biological', 'entities accepted)']);

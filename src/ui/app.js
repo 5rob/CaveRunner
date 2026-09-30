@@ -214,6 +214,11 @@ export function App() {
           h('b', null, prompt.price ? prompt.price + 'g'
             : (prompt.id || prompt.gun || prompt.perk || prompt.heart) ? 'free' : prompt.text))) : null,
       // one gear in the top-right opens the Dev panel; Restart now lives inside it.
+      // gold, top centre: "g" not "gold", truncated to k/M/B (1234 -> 1.2k). Under it in red, what
+      // you owe the company for the level you're on
+      h('div', { className: 'gold' },
+        h('div', { className: 'purse' }, fmtGold(LO.gold), h('span', null, 'g')),
+        LO.debt > 0 ? h('div', { className: 'debt' }, '-' + fmtGold(LO.debt), h('span', null, 'g owed')) : null),
       h('button', { className: 'devbtn', title: 'Dev tools',
         onPointerDown: e => { e.preventDefault(); setDevOpen(true); } }, '⚙️'),
       confirmAt != null ? h('div', { className: 'confirm' },
@@ -238,9 +243,6 @@ export function App() {
       h('div', { className: 'sticks', ref: sticksRef },
         h(Stick, { size, kind: 'left', input, refresh }),
         h(Stick, { size, kind: 'right', input, refresh }),
-        // gold sits in the gap between the two sticks, down level with their bottom halves.
-        // "g" not "gold", and thousands truncate to a "k" (1234 -> 1.2k, 2000 -> 2k).
-        h('div', { className: 'gold' }, fmtGold(LO.gold), h('span', null, 'g')),
         // the gun buttons ride an arc round the right stick; tap to hold it, hold for its card
         h('div', { className: 'slots' },
           LO.guns.map((g, i) => h('button', {

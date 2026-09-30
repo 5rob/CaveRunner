@@ -325,6 +325,8 @@ interface Loadout {
   perks: string[];
   perksOff?: number[];        // places in `perks` switched off (activePerks)
   gold: number;
+  debt?: number;              // owed to the company for the level you're on (game/systems/vend.js)
+  due?: number;               // when it must be repaid: Date.now() ms, the device's clock (0 = no debt)
   maxBonus: number;           // the +25 hearts: raises max health only
   usedLives: number;
   debug: boolean;             // Dev → All mods

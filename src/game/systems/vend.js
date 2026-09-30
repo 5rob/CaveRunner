@@ -1,13 +1,14 @@
 // @ts-check
 // The level vending machines on the shop's back wall. The level above the shop is bought on
-// credit from one (LVL_BUY: your gold goes deep negative) and sold back to the other once no
-// biological entities are left in it (LVL_SELL, a thousand more). Buying teleports the level
+// credit from one (LVL_BUY goes on your debt, LO.debt, not your gold) and sold back to the other
+// once no biological entities are left in it (LVL_SELL pays the debt off, and a thousand to you).
+// It must be repaid by LO.due: five real days (DEADLINE_MS), counted down on the buy machine. Buying teleports the level
 // in over the shop, selling teleports it away and puts the next floor's level up for sale.
 // Without one the cave is solid dark rock (BED) and the shop's roof is sealed (voidCave).
 
 import { SFX } from '../../audio/sfx.js';
 import {
-  BED, BRICK, CELL, CH, CW, LVL_BUY, LVL_SELL, SHOP_FLOOR, SHOP_ROOF, SHOP_TOP, SHOP_Y, VEND_BUY_X, VEND_SELL_X
+  BED, BRICK, CELL, CH, CW, DEADLINE_MS, LVL_BUY, LVL_SELL, SHOP_FLOOR, SHOP_ROOF, SHOP_TOP, SHOP_Y, VEND_BUY_X, VEND_SELL_X
 } from '../../core/consts.js';
 import { bioCount } from '../../creatures/common.js';
 import { fireNew } from '../../world/fire.js';
@@ -50,14 +51,16 @@ export function vendLabel(W, kind) {
 export function vendUse(W, G, kind, LO) {
   if (W.warp) return;
   if (kind === 'buy' && !W.hasLvl) {
-    LO.gold -= LVL_BUY;
+    LO.debt = (LO.debt || 0) + LVL_BUY;       // your wallet is yours: the level goes on your debt
+    LO.due = Date.now() + DEADLINE_MS;        // five real days to repay it, on the device's clock
     W.hasLvl = true;
     W.warp = { dir: 'in', t: 0, done: false, bolts: [] };
     toast(W, 'Level ' + W.floor + ' bought on credit');
     SFX.ui('buy');
   } else if (kind === 'sell' && W.hasLvl) {
     if (!canSell(W)) { toast(W, 'No biological entities accepted'); SFX.ui('poor'); return; }
-    LO.gold += LVL_SELL;
+    LO.gold += LVL_SELL - (LO.debt || 0);     // the debt paid off out of the sale, the rest is yours
+    LO.debt = 0; LO.due = 0;
     W.hasLvl = false;
     W.warp = { dir: 'out', t: 0, done: false, bolts: [] };
     toast(W, 'Level ' + W.floor + ' sold');

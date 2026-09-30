@@ -3,7 +3,7 @@
 // (maybe from an older version) into a loadout that loads; loadSave / clearSave touch the
 // store. Uses the page's VERSION global to decide whether the exact cave comes back.
 
-import { START_GOLD } from '../core/consts.js';
+import { DEADLINE_MS, LVL_BUY, START_GOLD } from '../core/consts.js';
 import { PERKS } from '../data/perks.js';
 import { resetGun } from '../spells/guns.js';
 import { MODS } from '../spells/mods.js';
@@ -40,7 +40,11 @@ export function cleanLoadout(lo) {
     bag: (Array.isArray(lo.bag) ? lo.bag : []).filter(id => MODS[id]),
     perks: (Array.isArray(lo.perks) ? lo.perks : []).filter(id => PERKS[id]),
     perksOff: (Array.isArray(lo.perksOff) ? lo.perksOff : []).filter(i => Number.isInteger(i) && i >= 0),
-    gold: num(lo.gold, START_GOLD),               // negative while a level is on credit
+    // v106 put a bought level's price on your gold (it went negative); now it's a debt of its own
+    gold: num(lo.gold, START_GOLD) < 0 ? Math.max(0, num(lo.gold, 0) + LVL_BUY) : num(lo.gold, START_GOLD),
+    debt: Math.max(0, num(lo.debt, 0)) || (num(lo.gold, 0) < 0 ? LVL_BUY : 0),
+    // the repayment deadline; a debt from before v107 had none: it gets its five days from now
+    due: num(lo.due, 0) || (num(lo.debt, 0) > 0 || num(lo.gold, 0) < 0 ? Date.now() + DEADLINE_MS : 0),
     maxBonus: Math.max(0, num(lo.maxBonus, 0)),
     usedLives: Math.max(0, num(lo.usedLives, 0)),
     debug: !!lo.debug,
