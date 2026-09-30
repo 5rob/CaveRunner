@@ -180,7 +180,7 @@ just the entry the build bundles (it mounts `App`). Where things are:
 | Death replay screen | `src/ui/witness.js`: `Witness`, `RP_SPEEDS` |
 | Dev panel | `src/ui/devpanel.js`: `DevPanel`, `DevRow`, `JellyPreview` (runs the real `jellyStep`/`drawJelly`), `SpawnGun` |
 | `App` | `src/ui/app.js`: the page: loadout, the input ref, the sticks and deck buttons, and every overlay |
-| Types (checking only) | `src/types.d.ts`: the shared shapes (`Gun`, `Mod`, `Shot`, `Plan`, `Enemy`, `CreatureKind`, `Prop`, `Level`, `World`, `GameCtx` = `G`, `DevKnobs`…), global, named in JSDoc; `src/globals.d.ts`: React, ReactDOM, VERSION. See **Testing** |
+| Types (checking only) | `src/types.d.ts`: the shared shapes (`Gun`, `Mod`, `Shot`, `Plan`, `Enemy`, `CreatureKind`, `Prop`, `Level`, `World`, `GameCtx` = `G`, `GameInput` = App's `input.current`, `StepFrame`/`DrawFrame`/`EnemyCtx` = the `F`s and `C`, `SpiderBrain`/`RatBrain`/`JellyBrain`, `DevKnobs`…), global, named in JSDoc; `src/globals.d.ts`: React, ReactDOM, VERSION, the test page's `window` hooks. Every `.js` under `src/` is checked. See **Testing** |
 
 Everything in the modules outside `game/` and `ui/` is pure and
 top-level, which is why the logic tests can load it and call it directly (`tests/load.js`).
@@ -1029,13 +1029,19 @@ with only `no-undef`, over `src/`). With the code in modules, a forgotten import
 build; it fails when that line first runs. A report there counts as a failed suite.
 
 Then the **type check** (Phase 4): `tsc --noEmit -p .` (TypeScript, dev dependency, `tsconfig.json`),
-checking only — esbuild still builds, and types never reach `index.html`. A file is checked when its
-first line is `// @ts-check` (types in JSDoc, the files stay `.js`); the shared shapes (Gun, Shot, Plan,
-Enemy, Level, World, …) are in `src/types.d.ts`, the page's globals (React, ReactDOM, VERSION) in
-`src/globals.d.ts`. A report counts as a failed suite (`types`). Run it alone with
-`node node_modules/typescript/bin/tsc --noEmit -p .` (~0.2 s). **No inline JSDoc casts**
-(`/** @type {X} */ (expr)`): esbuild keeps a comment inside an expression, so it lands in `index.html`;
-put the type on the declaration instead (REFACTOR.md D21).
+checking only — esbuild still builds, and types never reach `index.html`. **Every `.js` under `src/` is
+checked** (`checkJs`, so a new file is too; the `// @ts-check` first lines are left from turning folders on
+one at a time, and a new file doesn't need one). Types go in JSDoc, the files stay `.js`; the shared shapes
+(Gun, Shot, Plan, Enemy, Level, World, G's `GameCtx`, App's `GameInput`, the creature brains, …) are in
+`src/types.d.ts`, the page's globals (React, ReactDOM, VERSION, the test page's hooks) in
+`src/globals.d.ts`. A new function gets `@param` types; a new field on a shape goes in `types.d.ts`.
+A report counts as a failed suite (`types`). Run it alone with
+`node node_modules/typescript/bin/tsc --noEmit -p .` (~0.3 s). **No comment inside an expression**:
+esbuild keeps it, so it lands in `index.html` — no inline JSDoc casts (`/** @type {X} */ (expr)`), and no
+`// @ts-expect-error` on a line inside an object or array literal; put the type on the declaration
+instead (REFACTOR.md D21). A `@ts-expect-error` above a statement is fine (and says why). During the
+refactor, a type error that is a real bug is logged and its line silenced, not fixed in passing
+(REFACTOR.md, P4.3).
 
 **Logic suites** (`tests/logic/`) start with `const G = require('../load');` —
 `tests/load.js` bundles `src/pure.js` with esbuild (in memory, to CommonJS) and hands back

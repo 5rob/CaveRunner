@@ -29,9 +29,9 @@ try {
   for (const line of ((e.stdout || '') + (e.stderr || '') || e.message).trim().split('\n').slice(0, 30)) console.log('      ' + line);
 }
 
-// The type check (TypeScript, checking only: tsconfig.json, src/types.d.ts). A file is checked
-// when it starts with `// @ts-check`; the folders are turned on one at a time (REFACTOR.md
-// Phase 4). A report counts as a failed suite, like the undefined-name check's.
+// The type check (TypeScript, checking only: tsconfig.json, src/types.d.ts). Every .js under src/
+// is checked (checkJs, REFACTOR.md P4.4). A report counts as a failed suite, like the
+// undefined-name check's.
 try {
   execFileSync('node', [path.join(__dirname, '..', 'node_modules', 'typescript', 'bin', 'tsc'), '--noEmit', '-p', '.'],
     { cwd: path.join(__dirname, '..'), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });

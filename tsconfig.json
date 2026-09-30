@@ -3,11 +3,13 @@
   // check). Checking only, never building: esbuild still makes index.html (tools/build.js),
   // and types and JSDoc never reach the bundle. REFACTOR.md Phase 4, D21.
   //
-  // A file is checked only if it starts with `// @ts-check` (checkJs is off), so folders are
-  // turned on one at a time. Shared shapes: src/types.d.ts. Page globals: src/globals.d.ts.
+  // checkJs is on (P4.4): every .js under src/ is checked, a new file too. (During P4.3 it was
+  // off and each folder was turned on with a `// @ts-check` first line; those lines are still
+  // there, now redundant.) Types go in JSDoc, never as an inline cast (D21). Shared shapes:
+  // src/types.d.ts. Page globals: src/globals.d.ts.
   "compilerOptions": {
     "allowJs": true,
-    "checkJs": false,
+    "checkJs": true,
     "noEmit": true,
     // what a modern Android WebView (Chrome) runs; lib adds the canvas / DOM types
     "target": "es2022",

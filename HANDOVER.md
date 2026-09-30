@@ -11,8 +11,9 @@ it's stale.
   bundled by esbuild into the same `index.html`. Phases 0–1 released as v97, Phase 2 (UI into
   `src/ui/`, `Game` into `src/game/Game.js`) as v98, **Phase 3 (Game taken apart) as v99**
   (2026-09-30, owner play-tested it: "plays great"). **Phase 4 (TypeScript, gradually) under way** on `refactor`:
-  `tsc --noEmit` runs in `node tests/run.js`, the shapes are in `src/types.d.ts`, and `core`, `dev`, `data`, `spells`,
-  `world` are checked (`// @ts-check` + JSDoc, REFACTOR.md D21). Next: `creatures`, then `game`, `ui`. What Phase 3 did: P3.1 (the Game map), P3.2 (the level's state is one world object `W`,
+  `tsc --noEmit` runs in `node tests/run.js`, the shapes are in `src/types.d.ts`, and **every file under `src/` is
+  checked** (JSDoc types, REFACTOR.md D21; `checkJs` on, P4.4). P4.1–P4.4 done; merging Phase 4 to `main` (with a version bump) is the next step, not done yet. Real bugs the
+  checker found are logged in REFACTOR.md's Found along the way (Stendari's fire, a vent reusing `Prop.on`), not fixed. What Phase 3 did: P3.1 (the Game map), P3.2 (the level's state is one world object `W`,
   `src/game/world.js`) and P3.3 (`window.__lvl` = `W` via `src/game/testhook.js`) are done, and
   P3.4 (systems out of `Game` into `src/game/systems/`) is done: terrain (queries and
   changes, `explode`), particles, `hurt`, `damageEnemy`, the fire, the ambience, the props
