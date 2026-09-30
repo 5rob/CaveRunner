@@ -20,7 +20,7 @@ interface Pixels { width: number; height: number; data: Uint8ClampedArray }
 
 /** what a spell is: one entry of MODS (spells/mods.js). `kind` decides which fields matter */
 interface Mod {
-  id: string;                 // its key in MODS (filled in after the table)
+  id?: string;                // its key in MODS: always there, but filled in after the table
   name: string;
   kind: 'shot' | 'static' | 'mod' | 'util' | 'passive';
   glyph: string;
@@ -56,13 +56,15 @@ interface Gun {
   lvl?: number;               // 1-10; the starter guns have none
   cap: number;                // slots
   castDelay: number; recharge: number;
-  manaMax: number; manaRegen: number; mana: number;
+  manaMax: number; manaRegen: number;
   spread: number; speedMul: number; multi: number; shuffle: boolean;
   slots: (string | null)[];   // mod ids, null for an empty slot
-  hue: number;
-  // where it is in its slot list, and the order it walks them (resetGun, shuffleOrder)
-  idx: number; order: number[];
-  delayT: number; rechT: number;   // cast delay and recharge counting down
+  hue?: number;               // its colour; a gun without one (an old save, a preview) hashes its name (gunHue)
+  // Always there on a gun in play; optional only because the gun makers build the object
+  // first and fill these in after (makeGun sets mana, resetGun the rest):
+  mana?: number;
+  idx?: number; order?: number[];   // where it is in its slot list, and the order it walks them
+  delayT?: number; rechT?: number;  // cast delay and recharge counting down
   delayMax?: number;          // the cast delay last set (the right stick's ring)
   rechLen?: number;           // the recharge last started (the "ready" click)
   skipRech?: boolean;

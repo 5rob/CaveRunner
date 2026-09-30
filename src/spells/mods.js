@@ -1,3 +1,4 @@
+// @ts-check
 // Every spell (MODS), the colour families the UI groups them by, shop prices, rarity
 // tiers, and the Noita-style trigger variants built from the base spells.
 
@@ -5,6 +6,7 @@
 // 'shot' mods are the projectiles. 'mod' mods change the shots cast AFTER them in
 // the list, so the order you arrange them in is the whole game. 'passive' mods
 // work from anywhere on the gun.
+/** @type {Record<string, Mod>} */
 export const MODS = {
   // Noita's Spark Bolt: a pink sparkle on a slight arc, trailing fading pink plasma,
   // nicking a speck out of the rock where it lands
@@ -364,6 +366,7 @@ export const MODS = {
 // Mods are coloured by what they are FOR, not one colour each: an amber shot
 // needs a blue mod to speed it up, a red one to hit harder, and so on. The
 // projectile colours in `col` are separate and stay distinct in flight.
+/** @type {Record<string, { name: string, col: string }>} */
 export const FAMILIES = {
   shots:   { name: 'Shot', col: '#ffc93c' },
   dmg:     { name: 'Damage', col: '#ff5a52' },
@@ -374,6 +377,7 @@ export const FAMILIES = {
   field:   { name: 'Static field', col: '#2fd4c4' },
   cast:    { name: 'Casting & copies', col: '#e8e4f0' },
 };
+/** @type {Record<string, string>} */
 export const FAMILY_OF = {
   bolt: 'shots', spark: 'shots', slug: 'shots', buck: 'shots', lance: 'shots',
   orb: 'shots', blast: 'shots', saw: 'shots',
@@ -402,6 +406,7 @@ export const FAMILY_OF = {
   damper: 'upkeep', hspread: 'upkeep', blood: 'upkeep',
   addtrig: 'cast', addtimer: 'cast', adddeath: 'cast',
 };
+/** @type {Record<string, string>} */
 export const FIELD_WHAT = {
   explode: 'blows up on the spot',
   mine: 'waits, then detonates when something comes near',
@@ -413,10 +418,11 @@ export const FIELD_WHAT = {
   vacuum: 'snaps everything close by into the middle',
   glitter: 'small blasts going off all over it',
 };
-export const famOf = id => FAMILIES[FAMILY_OF[id]] || FAMILIES.shots;
-export const famCol = id => famOf(id).col;
+export const famOf = (/** @type {string} */ id) => FAMILIES[FAMILY_OF[id]] || FAMILIES.shots;
+export const famCol = (/** @type {string} */ id) => famOf(id).col;
 
 // shop prices in gold
+/** @type {Record<string, number>} */
 export const MOD_PRICE = {
   bolt: 20, spark: 12, slug: 40, buck: 35, lance: 45, orb: 30, blast: 45,
   dmg_up: 30, heavy: 40, light: 30, speed: 25, accel: 35, homing: 70, seeker: 90,
@@ -438,6 +444,7 @@ export const MOD_PRICE = {
 
 // How rare a mod is, 1 common to 4 rare. Shops and the cave weight what they hand out by
 // this, so early floors offer workhorses and the Greek letters stay a find.
+/** @type {Record<string, number>} */
 export const MOD_TIER = {
   bolt: 1, spark: 1, buck: 1, tight: 1, fast: 1, cheap: 1, spit: 1, bubble: 1, pollen: 1,
   digbolt: 1, arrow: 1, brim: 1, hspread: 1, damper: 1, knock: 1, kick: 1,
@@ -454,7 +461,7 @@ export const MOD_TIER = {
   meteor: 4, storm: 4, glitter: 4, sawstorm: 4, blood: 4, oct: 4, myriad: 4, omega: 4,
   zeta: 4, addtrig: 3, addtimer: 3, adddeath: 3, tele: 2, teleshort: 1,
 };
-export const tierOf = id => MOD_TIER[id] || 2;
+export const tierOf = (/** @type {string} */ id) => MOD_TIER[id] || 2;
 
 // ---- trigger, timer and expiration variants (Noita's "... With Trigger" spells) ----
 // Not their own kind of thing: each is an existing spell that also carries a payload.
@@ -467,6 +474,7 @@ export const TRIG_KINDS = {
   timer:  { tag: 'With Timer', mark: '◔' },
   expire: { tag: 'With Expiration Trigger', mark: '✝' },
 };
+/** @type {[id: string, base: string, trig: TrigKind, extra?: Partial<Mod>][]} */
 export const TRIG_VARIANTS = [
   // id, base, trigger kind, extra
   ['bolt_t',    'bolt',    'hit'],
@@ -502,7 +510,7 @@ for (const [id, base, trig, extra] of TRIG_VARIANTS) {
   MOD_TIER[id] = Math.min(4, tierOf(base) + 1);
 }
 
-export const priceOf = id => MOD_PRICE[id] || 30;
+export const priceOf = (/** @type {string} */ id) => MOD_PRICE[id] || 30;
 
 for (const k of Object.keys(MODS)) MODS[k].id = k;
 

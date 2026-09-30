@@ -1,3 +1,4 @@
+// @ts-check
 // The bag screen's pure side: castGroups / pullSteps (which slots each pull fires),
 // groupStats, the trigger-held fire preview (fireSimNew / fireSimStep / fireSimGauges), and
 // the stat colouring (statQual, gunModDeltas).
@@ -10,6 +11,8 @@ import { MODS } from './mods.js';
 // Which slots come out together on one pull. A modifier lands in the same group
 // as the shots it modifies, which is exactly what the outline in the build screen
 // draws. Null means the order is shuffled, so there is nothing fixed to show.
+/** @typedef {{ from: number, to: number, wrapped: boolean, shots: number, plan: Plan }} CastGroup the slots from..to, one pull */
+/** @param {Gun} gun @returns {CastGroup[] | null} */
 export function castGroups(gun) {
   if (gun.shuffle) return null;
   const sim = resetGun(Object.assign({}, gun, { slots: gun.slots.slice() }));
@@ -29,21 +32,29 @@ export function castGroups(gun) {
 
 // Replay a pull with its modifiers stripped out, so the difference is exactly
 // what the mods in that group are contributing.
+/** @param {Gun} gun @param {CastGroup} gr */
 export function groupStats(gun, gr) {
   const plan = gr.plan;
   const ids = plan.defs.map(d => d.id);
   const bare = planCast(resetGun(Object.assign({}, gun, {
     cap: Math.max(1, ids.length), slots: ids.slice(),
     multi: Math.max(1, ids.length), shuffle: false })));
+  /** @type {(p: Plan, f: string) => number} */
   const sum = (p, f) => p.shots.reduce((t, sh) => t + (sh[f] || 0), 0);
   // damage is what the whole pull puts out, so a pellet spray counts every pellet
+  /** @type {(p: Plan) => number} */
   const power = p => p.shots.reduce((t, sh) => t + shotPower(sh), 0);
+  /** @type {(sh: Shot, f: string) => number} */
   const topOf = (sh, f) => (sh.payload || []).reduce((n, ps) => Math.max(n, topOf(ps, f)), sh[f] || 0);
+  /** @type {(p: Plan, f: string) => number} */
   const top = (p, f) => p.shots.reduce((t, sh) => Math.max(t, topOf(sh, f)), 0);
+  /** @type {(p: Plan) => number} */
   const pellets = p => p.shots.reduce((t, sh) => t + shotPellets(sh), 0);
+  /** @type {(p: Plan, f: string) => number} */
   const avg = (p, f) => (p.shots.length ? sum(p, f) / p.shots.length : 0);
 
   const out = [];
+  /** @type {(label: string, now: number, was: number, better: number, fmt: (v: number) => string, always?: boolean) => void} */
   const add = (label, now, was, better, fmt, always) => {
     const d = now - was;
     if (!always && Math.abs(d) < 1e-6) return;
@@ -78,6 +89,7 @@ export function groupStats(gun, gr) {
 // The bag screen's slot animation: the filled slots in the order one full cycle fires
 // them, each tagged with the pull it comes out on. Empty slots are skipped. Null for a
 // shuffled gun, whose order changes every recharge.
+/** @param {Gun} g @returns {{ slot: number, pull: number }[] | null} */
 export function pullSteps(g) {
   const groups = castGroups(g);
   if (!groups) return null;
@@ -93,11 +105,17 @@ export function pullSteps(g) {
 // per-frame gun tick) run on a copy of the gun, so the slot lights and the stat bars move at
 // the gun's real pace — cast delay between pulls, recharge after the last, mana drained per
 // pull and regenerating, a pause when it runs dry. No perks: the gun as it is.
+/**
+ * @typedef {{ g: Gun, max: number, mana: number, delayT: number, delayMax: number, rechT: number, rechLen: number,
+ *   pull: number, lit: { slots: number[], pull: number, t: number } | null, fired: number }} FireSim
+ */
+/** @param {Gun} gun @returns {FireSim} */
 export function fireSimNew(gun) {
   const g = resetGun(Object.assign({}, gun, { slots: gun.slots.slice() }));
   const max = gun.manaMax + gunPassives(gun).manaMax;
   return { g, max, mana: max, delayT: 0, delayMax: 0, rechT: 0, rechLen: 0, pull: 0, lit: null, fired: 0 };
 }
+/** @param {FireSim} S @param {number} dt */
 export function fireSimStep(S, dt) {
   const g = S.g, pas = gunPassives(g);
   S.delayT -= dt; S.rechT -= dt;
@@ -123,6 +141,7 @@ export function fireSimStep(S, dt) {
   if (plan.wrap) wrap();
 }
 // the live gauges, 0-1, the same readiness the right stick's rings show
+/** @param {FireSim} S */
 export function fireSimGauges(S) {
   return { mana: S.max > 0 ? Math.max(0, S.mana / S.max) : 0,
     castDelay: S.delayT > 0 && S.delayMax ? Math.max(0, 1 - S.delayT / S.delayMax) : 1,
@@ -131,6 +150,7 @@ export function fireSimGauges(S) {
 
 // How close a gun stat is to perfect: 0 at the worst end of its GUN_RANGE, 1 at the best.
 // Double cast and cast order are yes/no, so they are 0 or 1.
+/** @param {string} k a GS_ROWS stat @param {any} v its value: a number, or shuffle's boolean */
 export function statQual(k, v) {
   if (k === 'multi') return v > 1 ? 1 : 0;
   if (k === 'shuffle') return v ? 0 : 1;
@@ -141,6 +161,7 @@ export function statQual(k, v) {
 // What the mods on a gun do to its own stats, as a change from the gun's bare number.
 // Cast delay, spread and shot speed are averaged over every pull of one full cycle
 // (spread and speed against the same pull with its modifiers stripped out).
+/** @param {Gun} g */
 export function gunModDeltas(g) {
   const pas = gunPassives(g);
   const out = { cap: 0, castDelay: 0, recharge: effRecharge(g) - g.recharge,
@@ -153,6 +174,7 @@ export function gunModDeltas(g) {
     if (p.wrap) break;
   }
   if (!plans.length) return out;
+  /** @type {(sh: Shot[], f: string) => number} */
   const avg = (sh, f) => sh.reduce((t, x) => t + (x[f] || 0), 0) / sh.length;
   let d = 0, sp = 0, spd = 0;
   for (const p of plans) {
