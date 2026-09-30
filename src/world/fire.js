@@ -1,10 +1,13 @@
+// @ts-check
 // Fire: the pixel-by-pixel spread of burning grass, moss and timber (fireNew, fireStep,
 // fireArea, fireDouse…) and what burns or puts you out. Pure: the Game owns one state F.
 
 import { CELL, CH, CW } from '../core/consts.js';
 import { kr } from '../dev/knobs.js';
 
+/** @type {Record<string, number>} */
 export const FLAMMABLE = { vine: 1, myc: 1 };                  // the ones that burn (kelp's wet, the roots are fossil)
+/** @type {Record<string, number>} */
 export const FIRE_WET = { puddle: 1, snow: 1, ice: 1, slime: 1 };   // standing in these puts you out
 export const FIRE_COLS = ['#ffe07a', '#ff9a2e', '#f0561c', '#8a2a14'];   // bright, flame, deep, dying ember
 
@@ -21,13 +24,16 @@ export const FIRE_KNOB = [null, 'fireGrass', 'fireMoss', 'fireWood'];
 // Fire climbs: a pixel above catches about three times as readily as one below, one beside
 // nearly as readily as above. FIRE_NB is every spot within two pixels as [pixel-index offset,
 // weight]; the ring two out is at 0.3 of that, so fire crosses a hairline gap but not open air.
-export const FIRE_UPW = dy => dy < 0 ? 1 : dy === 0 ? 0.9 : 0.35;
+export const FIRE_UPW = (/** @type {number} */ dy) => dy < 0 ? 1 : dy === 0 ? 0.9 : 0.35;
+/** @type {[offset: number, weight: number][]} */
 export const FIRE_NB = [];
 for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++)
   if (dx || dy) FIRE_NB.push([dy * CW + dx, FIRE_UPW(dy) * (Math.max(Math.abs(dx), Math.abs(dy)) === 2 ? 0.3 : 1)]);
 // t: ticks of burning left per pixel (0 = not alight); list: the pixels alight
+/** @param {Uint8Array} fuel @returns {FireState} */
 export function fireNew(fuel) { return { fuel, t: new Uint16Array(fuel.length), list: [], acc: 0 }; }
 // set pixel i alight if it has fuel and isn't already burning; true if it caught
+/** @param {FireState} F @param {number} i @param {Rnd} [rnd] */
 export function fireLight(F, i, rnd) {
   const kind = F.fuel[i];
   if (!kind || F.t[i] || F.list.length >= FIRE_MAX) return false;
@@ -38,6 +44,7 @@ export function fireLight(F, i, rnd) {
 // everything with fuel within r world units of (x, y) catches, each at `chance`; how many did
 // v96: put out the burning pixels in a disc (the fuel stays, so it can catch again later).
 // Returns how many went out.
+/** @param {FireState} F @param {number} x @param {number} y @param {number} r */
 export function fireDouse(F, x, y, r) {
   const cx0 = x / CELL, cy0 = y / CELL, rc = r / CELL;
   const x0 = Math.max(0, Math.floor(cx0 - rc)), x1 = Math.min(CW - 1, Math.ceil(cx0 + rc));
@@ -49,6 +56,7 @@ export function fireDouse(F, x, y, r) {
   }
   return n;
 }
+/** @param {FireState} F @param {number} x @param {number} y @param {number} r @param {number} chance @param {Rnd} [rnd] */
 export function fireArea(F, x, y, r, chance, rnd) {
   rnd = rnd || Math.random;
   const cx0 = x / CELL, cy0 = y / CELL, rc = r / CELL;
@@ -63,6 +71,7 @@ export function fireArea(F, x, y, r, chance, rnd) {
   return n;
 }
 // is anything burning within r world units of (x, y)? (a square test — cheap, and fire is ragged)
+/** @param {FireState} F @param {number} x @param {number} y @param {number} r */
 export function fireNear(F, x, y, r) {
   const cx0 = Math.floor(x / CELL), cy0 = Math.floor(y / CELL), rc = Math.ceil(r / CELL);
   for (let cy = Math.max(0, cy0 - rc); cy <= Math.min(CH - 1, cy0 + rc); cy++)
@@ -77,6 +86,7 @@ export function fireNear(F, x, y, r) {
 // out(i, kind) — the Game erases it (grass, timber) or chars it (moss on rock) — and its fuel
 // is gone for good, so the fire dies once it runs out. A pixel whose t was zeroed from outside
 // (dug or blasted away) just drops off the list. Returns the ticks run.
+/** @param {FireState} F @param {number} dt @param {((i: number, kind: number) => void) | null} [out] @param {Rnd} [rnd] */
 export function fireStep(F, dt, out, rnd) {
   rnd = rnd || Math.random;
   F.acc = Math.min(F.acc + dt, FIRE_TICK * 4);

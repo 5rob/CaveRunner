@@ -1,3 +1,4 @@
+// @ts-check
 // What you can see: exact ray marching (rayDist, losClear), the visibility fan (visPoly)
 // and the fog-of-war memory it lifts (fogReveal, fogStart, nestFog). Exact on purpose: a
 // fixed-step march jumps clean over a one-cell wall.
@@ -14,6 +15,7 @@ export const VIS_RAYS = 160;
 // frames where nothing changed. `pts` is the fan visPoly cast from the same spot, and a
 // cell is only lit if the fan reaches at least that far in its direction — so ground
 // round the corner of a wall is not seen and never goes on the map.
+/** @param {Uint8Array} seen @param {number} wx @param {number} wy @param {number} r @param {number[]} pts visPoly's fan @param {number} rays @returns {number} */
 export function fogReveal(seen, wx, wy, r, pts, rays) {
   const cx = wx / FOG_U, cy = wy / FOG_U, cr = r / FOG_U, r2 = cr * cr;
   const x0 = Math.max(0, Math.floor(cx - cr)), x1 = Math.min(FW - 1, Math.ceil(cx + cr));
@@ -54,6 +56,7 @@ export function fogStart() {
 // The fog cells over each rat nest's room (nests in terrain px). The fog bake's soft edge
 // never spreads into these, so a room only shows once a real line of sight reaches it —
 // down the bent tunnel it can't, so you have to dig to see in.
+/** @param {NestSpot[]} [nests] @returns {Uint8Array} */
 export function nestFog(nests) {
   const m = new Uint8Array(FW * FH);
   for (const n of nests || []) {
@@ -69,6 +72,7 @@ export function nestFog(nests) {
 // capped at r. It steps from one cell boundary to the next, so it visits every cell the
 // ray crosses — a fixed sampling step would jump clean over a one-pixel wall and let a
 // sliver of light through the far side of it.
+/** @param {number} x @param {number} y @param {number} dx @param {number} dy @param {number} r @param {(cx: number, cy: number) => unknown} solidCell @returns {number} */
 export function rayDist(x, y, dx, dy, r, solidCell) {
   let cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
   const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1;
@@ -88,6 +92,7 @@ export function rayDist(x, y, dx, dy, r, solidCell) {
 // Is the straight line from one point to another clear of rock? Marched the same way the
 // light is, so "can I shoot that" and "can I see that" give the same answer, and a
 // one-pixel wall stops both.
+/** @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 @param {(cx: number, cy: number) => unknown} solidCell */
 export function losClear(x0, y0, x1, y1, solidCell) {
   const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy);
   if (d < 0.001) return true;
@@ -96,6 +101,7 @@ export function losClear(x0, y0, x1, y1, solidCell) {
 
 // The fan of points that bound what can be seen from (cx, cy) out to r. The lamp is
 // clipped to this, which is what makes walls cast shadows.
+/** @param {number} cx @param {number} cy @param {number} r @param {(cx: number, cy: number) => unknown} solidCell @param {number} rays @returns {number[]} x, y, x, y, … */
 export function visPoly(cx, cy, r, solidCell, rays) {
   const pts = [];
   for (let i = 0; i < rays; i++) {

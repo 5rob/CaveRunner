@@ -1,3 +1,4 @@
+// @ts-check
 // Level decoration, pass 2 (baked pixels) and pass 3 (props): decorate places each
 // theme's DECOR on its own random stream, cullDecor drops overlaps, propAnchored says if a
 // prop still hangs off rock. Props are never in mat; they act only by box overlap.
@@ -12,6 +13,7 @@ import { timberFrame } from './strata.js';
 // v59: three times as much of everything as v58 had, and vines come in clumps and groves
 export const DECOR_DENSITY = 3;
 export const GROVES = 14;                     // patches of thick growth per floor, on the green themes
+/** @type {Record<string, number>} */
 export const PLANTS = { vine: 1, myc: 1, root: 1, kelp: 1 };   // the hanging plants (not chains, not ice)
 // the hit box of each prop kind about its attach point (x, y), in world units: [l, t, r, b].
 // Ceiling props hang down from y, floor props stand up from it, wall props sit beside it.
@@ -32,6 +34,7 @@ export const PROP_BOX = {
   drip:   [-3, 0, 3, 4],
 };
 // what a hazard does to you when it lands a hit, and how often
+/** @type {Record<string, number>} */
 export const PROP_DMG = { spike: 8, drop: 12, vent: 7, tendril: 8, matter: 4, lava: 5, cloud: 3 };
 
 // `fuel` (optional) gets the fuel kind of every pixel painted: whatever FU is at the time
@@ -40,6 +43,7 @@ export const PROP_DMG = { spike: 8, drop: 12, vent: 7, tendril: 8, matter: 4, la
 // straight line between them, so it sags. A parabola under the chord, its depth set so the
 // curve's length comes out near slack × chord (for a shallow sag, length ≈ c(1 + 8/3 (s/c)²)).
 // n + 1 points, world units.
+/** @param {number} ax @param {number} ay @param {number} bx @param {number} by @param {number} slack @param {number} n @returns {Pt[]} */
 export function archCurve(ax, ay, bx, by, slack, n) {
   const c = Math.hypot(bx - ax, by - ay), s = c * Math.sqrt(3 * Math.max(0, slack - 1) / 8);
   const pts = [];
@@ -50,6 +54,7 @@ export function archCurve(ax, ay, bx, by, slack, n) {
   return pts;
 }
 // the nearest point on arched vine pr to (x, y): { x, y, d, k } (k = the segment it's on)
+/** @param {{ x: number, y: number, arc?: number[][] }} pr an arched vine @param {number} x @param {number} y */
 export function archNear(pr, x, y) {
   const A = pr.arc;
   let best = null;
@@ -63,11 +68,17 @@ export function archNear(pr, x, y) {
   return best;
 }
 // a point on arched vine pr (world units) at fraction u of the way along its points
+/** @param {{ x: number, y: number, arc?: number[][] }} pr an arched vine @param {number} u */
 export function archAt(pr, u) {
   const A = pr.arc, f = Math.max(0, Math.min(1, u)) * (A.length - 1), k = Math.min(A.length - 2, Math.floor(f)), t = f - k;
   return { x: pr.x + A[k][0] + (A[k + 1][0] - A[k][0]) * t, y: pr.y + A[k][1] + (A[k + 1][1] - A[k][1]) * t };
 }
 
+/**
+ * @param {Uint8Array} mat @param {Pixels} img @param {Pixels} dimg @param {Pixels} bgImg @param {number} floor @param {number} seed
+ * @param {Spot[]} keep @param {Uint8Array | null} [fuel] @param {Uint8Array | null} [zone]
+ * @returns {{ props: Prop[], amb: string[], baked: Record<string, number> }}
+ */
 export function decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel, zone) {
   let rs = (Math.imul(seed | 0, 7919) + floor * 104729 >>> 0) % 2147483646 + 1;
   const R = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
@@ -131,6 +142,7 @@ export function decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel, zone) {
         FU = FUEL_MOSS;
         for (let k = 1; k <= deep; k++) tset(cx + dx, cy + k, jit(pick(T.moss[0], T.moss[1]), 14));
         FU = FUEL_GRASS;
+        // @ts-expect-error a boolean counts as 0 or 1 here, on purpose (1 or 2 rows tall)
         if (R() < 0.35) { const tall = 1 + (R() < 0.4); for (let k = 0; k < tall; k++) dset(cx + dx, cy - k, jit(T.moss[1], 20)); }
       }
       FU = 0;
@@ -520,6 +532,7 @@ export function decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel, zone) {
 }
 // Load-time cleanup: drop any prop whose box overlaps one already kept (first placed wins),
 // or that sits on a keep-out spot, so nothing starts life clipped into something else.
+/** @param {Prop[]} props @param {Spot[]} keep @returns {Prop[]} */
 export function cullDecor(props, keep) {
   const out = [];
   const pad = 3;
@@ -544,6 +557,7 @@ export function cullDecor(props, keep) {
 }
 // is a prop's anchoring rock still there? The cell it hangs off, or either neighbour, so a
 // one-pixel nick doesn't drop it — you have to really cut it loose.
+/** @param {{ on?: Prop, anc?: number[], anc2?: number[] }} pr @param {Uint8Array} mat @returns {boolean} */
 export function propAnchored(pr, mat) {
   if (pr.on) return !pr.on.fall && !pr.on.gone;          // a strand hangs off its arched vine
   if (pr.anc2 && !propAnchored({ anc: pr.anc2 }, mat)) return false;   // an arch needs both ends

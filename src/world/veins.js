@@ -1,3 +1,4 @@
+// @ts-check
 // Gold seams in the rock (goldVeins), on their own random stream so the cave stays
 // exactly as the seed makes it, and what each dug-out pixel is worth (ORE_GOLD).
 
@@ -9,6 +10,7 @@ import { CH, CW, ROCK, SHOP_ROOF, SHOP_TOP } from '../core/consts.js';
 // own random stream so the rest of the cave stays exactly as the seed makes it.
 // Only ever marks ROCK, never brick or bedrock, and never down in the shop.
 export const ORE_GOLD = 0.25;
+/** @param {Uint8Array} mat @param {number} seed @param {number} floor @returns {Uint8Array} */
 export function goldVeins(mat, seed, floor) {
   let rs = (seed * 7919 + 12345) % 2147483647 || 1;
   const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;

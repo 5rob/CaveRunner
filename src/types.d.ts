@@ -11,6 +11,8 @@
 
 /** a point in world units */
 interface Pt { x: number; y: number }
+/** a spot nothing may be put on (portals, loot, rooms): a circle, world units or terrain px as the caller says */
+interface Spot { x: number; y: number; r: number }
 /** a random number source: Math.random, or a seeded one (0 <= n < 1) */
 type Rnd = () => number;
 /** an `ImageData`, or the stand-in tests/load.js gives the logic suites under Node */
@@ -183,7 +185,7 @@ interface Prop {
   anc?: number[];             // the rock cell it hangs on (propAnchored)
   anc2?: number[];            // an arch's second anchor
   len?: number; side?: number;
-  arc?: Pt[]; thick?: number; alen?: number;     // an arched vine
+  arc?: number[][]; thick?: number; alen?: number;   // an arched vine: its curve as [x, y] from x, y
   on?: Prop; u?: number;      // a strand on an arch, and where along it
   // what the game adds as it plays (decorStep, fire, drips)
   fall?: number; vy?: number; gone?: boolean; burn?: number; hp?: number; hitT?: number;
@@ -207,8 +209,15 @@ interface Room { kind: string; id?: string; x: number; y: number; taken: boolean
 /** a rat nest as ratNests makes it (world/nests.js) */
 interface NestSpot {
   x: number; y: number; r: number; path: Pt[]; mouth: Pt; built: boolean;
-  mound: any[]; nx: number; ny: number;
+  mound: number[]; nx: number; ny: number;   // mound: the terrain pixels of earth at the mouth
 }
+
+/** an old working (strataCave): a levelled stretch of corridor, x0..x1 at floor row fy (terrain px) */
+interface Working { ci: number; x0: number; x1: number; fy: number; cy: number }
+/** a floor's palette: one entry of THEMES (data/themes.js) */
+type Theme = (typeof import('./data/themes.js').THEMES)[number];
+/** the level's seeded 2D noise (makeLevel's vn / fbm), 0..1 */
+type Noise2 = (x: number, y: number) => number;
 
 /** a new floor: makeLevel's return (world/level.js) */
 interface Level {
@@ -224,7 +233,7 @@ interface Level {
   shopExit: number;
   roster: string[];
   theme: string;              // the palette's name
-  works: { ci: number; x0: number; x1: number; fy: number; cy: number }[];
+  works: Working[];
   zone: Uint8Array | null;    // built-up vs natural, floor 1 only
   nests: NestSpot[];
 }
