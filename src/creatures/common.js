@@ -1,3 +1,4 @@
+// @ts-check
 // Movement pieces the reworked creatures share: roamStep (a roam spot drifting round
 // home), turnToward (turn-rate limit), flyMove (a free flyer bounced off rock), surfNormal
 // and surfSeat (sitting on a rock surface). Reach for these first for a new creature.
@@ -15,6 +16,7 @@ import { kr } from '../dev/knobs.js';
 // ra, roamR, roamSpd on the creature's state R; radius and drift speed are the creature's
 // knobs pre+'RoamR' / pre+'RoamSpd', rolled again each time it turns back. ok(x, y), if
 // given, is where the spot may go: it turns back toward home at the edge of that too.
+/** @param {RoamState} R @param {Enemy} e @param {number} dt @param {Rnd} rnd @param {string} pre the knob prefix @param {((x: number, y: number) => boolean) | null} [ok] */
 export function roamStep(R, e, dt, rnd, pre, ok) {
   if (R.rx === undefined) { R.rx = e.hx; R.ry = e.hy; R.ra = rnd() * 6.28; }
   R.ra += (rnd() - 0.5) * 3 * dt;
@@ -30,6 +32,7 @@ export function roamStep(R, e, dt, rnd, pre, ok) {
 
 // a heading `a` turned toward `to` by at most `max` radians: a turn-rate limit. Kept
 // within ±π so it never winds up.
+/** @param {number} a @param {number} to @param {number} max @returns {number} */
 export function turnToward(a, to, max) {
   const d = angDiff(to, a), r = a + Math.max(-max, Math.min(max, d));
   return r > Math.PI ? r - 2 * Math.PI : r < -Math.PI ? r + 2 * Math.PI : r;
@@ -41,6 +44,7 @@ export function turnToward(a, to, max) {
 // and scaled by `bounce` (0 stops dead against it, 1 is a perfect bounce). surfNormal's
 // smoothed normal means it glances off lumpy rock rather than snagging on a pixel.
 // true if it touched rock.
+/** @param {Pt} e moved @param {{ vx: number, vy: number }} V @param {number} dt @param {number} r @param {SolidCell} solidCell @param {number} bounce @returns {boolean} */
 export function flyMove(e, V, dt, r, solidCell, bounce) {
   const n = Math.max(1, Math.ceil(Math.hypot(V.vx, V.vy) * dt / CELL));
   let hit = false;
@@ -60,6 +64,7 @@ export function flyMove(e, V, dt, r, solidCell, bounce) {
 
 // the smoothed surface normal at (x, y): points away from the rock, null if there's no
 // rock within R. Also the nearest rock: d is the distance to it, (px, py) the way out.
+/** @param {number} x @param {number} y @param {number} R @param {SolidCell} solidCell @returns {{ x: number, y: number, d: number, px: number, py: number } | null} */
 export function surfNormal(x, y, R, solidCell) {
   const cx0 = Math.floor(x / CELL), cy0 = Math.floor(y / CELL), rc = Math.ceil(R / CELL);
   let nx = 0, ny = 0, n = 0, d = Infinity, px = 0, py = -1;
@@ -78,6 +83,7 @@ export function surfNormal(x, y, R, solidCell) {
   return l < 1e-6 ? { x: px, y: py, d, px, py } : { x: nx / l, y: ny / l, d, px, py };
 }
 // the same for any surface crawler: hold is how far off the rock it sits, feel how far it feels
+/** @param {Pt} e moved @param {SurfState} S @param {SolidCell} solidCell @param {number} maxMove @param {number} hold @param {number} feel @returns {boolean} */
 export function surfSeat(e, S, solidCell, maxMove, hold, feel) {
   let n = surfNormal(e.x, e.y, feel, solidCell);
   if (!n) return false;

@@ -1,3 +1,4 @@
+// @ts-check
 // The jellyfish (Myrkkymeduusa, act 'jelly'): its brain (jellyStep, pure, state on e.je),
 // its bell shape and tentacle stings, its palette (jellyPal) and sprite (drawJelly), and the
 // plant-glow comp it throws on green vegetation (plantGlowFill, plantWhite, twinkle). Its
@@ -8,6 +9,7 @@ import { flyMove, roamStep, turnToward } from './common.js';
 import { JE_COLS, jcol, kr, kru } from '../dev/knobs.js';
 
 // one jelly's palette at its colour fraction u
+/** @param {number} u @returns {Record<string, string>} */
 export function jellyPal(u) {
   const P = {};
   for (const [k, , , , f] of JE_COLS) P[f] = jcol(k, u);
@@ -31,6 +33,7 @@ export const JELLY = { hitR: 0.8 };            // collision radius, × body r
 // the bell at shape s (0 flat .. 1 thin) and squash q (how much the shape changes), body r.
 // top is the head end, rim the open end, in the jelly's own frame (head up). Shared by the
 // tentacle roots (jellyStep) and the sprite (drawJelly), so the two always agree.
+/** @param {number} r @param {number} s @param {number} q @returns {{ w: number, h: number, rw: number, top: number, rim: number }} */
 export function jellyBell(r, s, q) {
   const t = Math.max(0, Math.min(1.5, s * q));
   const w = r * (1.15 - 0.36 * t), h = r * (0.95 + 0.6 * t);
@@ -42,6 +45,7 @@ export function jellyBell(r, s, q) {
 // inside, and from inside it never pulses toward a spot its glide would carry it out of —
 // hunting you into a built-up corridor, it hangs at the edge and spits from there.
 // Returns 'pulse' on the frame a pulse starts, else null.
+/** @param {Enemy} e @param {JellyEnv} env @param {number} dt @returns {string | null} */
 export function jellyStep(e, env, dt) {
   const { solidCell, rnd } = env;
   let S = e.je;
@@ -137,6 +141,7 @@ export function jellyStep(e, env, dt) {
 // Does the line from (ax, ay) to (bx, by) pass through the box x0..x1, y0..y1? Clips the
 // line to the box one edge at a time (Liang–Barsky) — exact, so a thin tentacle crossing
 // a corner of you counts, and one passing close by doesn't.
+/** @param {number} ax @param {number} ay @param {number} bx @param {number} by @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 @returns {boolean} */
 export function segHitsBox(ax, ay, bx, by, x0, y0, x1, y1) {
   const dx = bx - ax, dy = by - ay;
   let t0 = 0, t1 = 1;
@@ -150,6 +155,7 @@ export function segHitsBox(ax, ay, bx, by, x0, y0, x1, y1) {
   return clip(-dx, ax - x0) && clip(dx, x1 - ax) && clip(-dy, ay - y0) && clip(dy, y1 - ay);
 }
 // where a jelly's tentacles cross the box (the middle of the first segment that does), or null
+/** @param {JellyBrain | undefined} S @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 @returns {Pt | null} */
 export function tentacleTouch(S, x0, y0, x1, y1) {
   if (!S || !S.tent) return null;
   for (const T of S.tent) for (let j = 1; j < T.length; j++) {
@@ -175,6 +181,7 @@ export const TW_TILE = (() => {
   return a;
 })();
 // smooth value noise, 0..1, repeating every 64
+/** @param {number} x @param {number} y @returns {number} */
 export function twNoise(x, y) {
   const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
   const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
@@ -184,6 +191,7 @@ export function twNoise(x, y) {
 }
 // the twinkle at world (x, y), time t: two layers of that noise drifting past each other,
 // multiplied, the contrast pushed so it reads as soft points coming and going. 0..1.
+/** @param {number} x @param {number} y @param {number} t @param {number} size @returns {number} */
 export function twinkle(x, y, t, size) {
   const u = x / size, v = y / size;
   const n = twNoise(u + t * 0.37, v - t * 0.23) * twNoise(u * 1.7 - t * 0.31 + 17, v * 1.7 + t * 0.29 + 5);
@@ -193,6 +201,7 @@ export function twinkle(x, y, t, size) {
 // the white point: the floor's brightest green (its 99.9th percentile, so a stray pixel
 // can't set it) among mostly-opaque pixels where green is the strongest channel. A faint
 // anti-aliased edge (alpha 1/255 comes back as junk like 0,255,0) must not count.
+/** @param {...(Uint8ClampedArray | null | undefined)} datas @returns {number} */
 export function plantWhite(...datas) {
   const hist = new Uint32Array(256);
   let n = 0;
@@ -202,10 +211,12 @@ export function plantWhite(...datas) {
   for (let g = 0, c = 0; g < 256; g++) { c += hist[g]; if (c >= n * 0.999) return Math.max(1, g); }
   return 255;
 }
+/** @typedef {{ ox: number, oy: number, px: number, cx: number, cy: number, reach: number, white: number, top: number, strength: number, t: number, size: number, rgb: ArrayLike<number>, lit?: ((x: number, y: number) => unknown) | null }} PlantGlowOpts where the box is, the jelly, the levels, the colour */
 // The comp for one box of art (RGBA `art`, w×h, each pixel `o.px` world units, top-left
 // at world (o.ox, o.oy)) lit by a jelly at (o.cx, o.cy): writes out (RGBA, same size) with
 // the colour o.rgb at alpha = key × ramp × twinkle × strength. o.lit(x, y), if given, holds
 // out ground you haven't seen. Returns how many pixels glow.
+/** @param {Uint8ClampedArray} out @param {ArrayLike<number>} art @param {number} w @param {number} h @param {PlantGlowOpts} o @returns {number} */
 export function plantGlowFill(out, art, w, h, o) {
   const black = o.white * (1 - o.top), span = Math.max(1, o.white - black);
   const r = o.rgb[0], g = o.rgb[1], b = o.rgb[2];
@@ -232,6 +243,7 @@ export function plantGlowFill(out, art, w, h, o) {
 // scalloped rim, four bright poison loops inside and a pale crown, trailing its tentacles
 // (S.tent, world points from jellyStep). The glow it throws on the cave is added after the
 // fog, in the Game's draw.
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} r @param {number} time @param {number} phase @param {boolean} flash @param {CreatureCol} col @param {JellyBrain} [S] */
 export function drawJelly(ctx, x, y, r, time, phase, flash, col, S) {
   const P = jellyPal(S ? S.u.col : 0.5);                  // Dev → Jellyfish colours
   const sh = Math.max(0, Math.min(1, (S ? S.shape : 0) + 0.05 * Math.sin(time * 2.2 + phase)));

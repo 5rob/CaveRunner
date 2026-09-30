@@ -1,3 +1,4 @@
+// @ts-check
 // Sprites for the creatures not reworked yet (each still one shared body): the drone,
 // crawler, blob, skull and worm.
 
@@ -8,6 +9,7 @@ import { rr } from '../core/util.js';
 // colour together, and a flash on hit is the same white for all of them.
 //
 // The drone: a hovering gunner with one big eye that follows you around.
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} r @param {number} lx @param {number} ly where it looks @param {number} time @param {number} phase @param {boolean} flash @param {CreatureCol} col */
 export function drawDrone(ctx, x, y, r, lx, ly, time, phase, flash, col) {
   const shell = flash ? '#f4f0ff' : col.b;
   ctx.save();
@@ -47,6 +49,7 @@ export function drawDrone(ctx, x, y, r, lx, ly, time, phase, flash, col) {
 
 // The crawler: a low body on six legs that scuttle as it walks. Spiders, hounds,
 // kobolds and the armoured Lohkare all wear this one.
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} r @param {number} lx @param {number} ly where it looks @param {number} time @param {number} phase @param {boolean} flash @param {CreatureCol} col */
 export function drawCrawler(ctx, x, y, r, lx, ly, time, phase, flash, col) {
   const s = Math.sin(time * 7 + phase);
   ctx.save();
@@ -76,6 +79,7 @@ export function drawCrawler(ctx, x, y, r, lx, ly, time, phase, flash, col) {
 }
 
 // The blob: a wobbling sac with two eyes. Slimes, toads and the fungal turret.
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} r @param {number} lx @param {number} ly where it looks @param {number} time @param {number} phase @param {boolean} flash @param {CreatureCol} col */
 export function drawBlob(ctx, x, y, r, lx, ly, time, phase, flash, col) {
   const wob = 1 + 0.09 * Math.sin(time * 3.4 + phase);
   ctx.save();
@@ -98,6 +102,7 @@ export function drawBlob(ctx, x, y, r, lx, ly, time, phase, flash, col) {
 
 // The skull: bone, a jaw, and a halo of whatever it is made of. The Jäätiö and the
 // living bones are both this, one frozen blue and one bare.
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} r @param {number} lx @param {number} ly where it looks @param {number} time @param {number} phase @param {boolean} flash @param {CreatureCol} col */
 export function drawSkull(ctx, x, y, r, lx, ly, time, phase, flash, col) {
   ctx.save();
   ctx.translate(x, y);
@@ -122,6 +127,7 @@ export function drawSkull(ctx, x, y, r, lx, ly, time, phase, flash, col) {
 }
 
 // The worm: a chain of segments that trails behind wherever the head is pointing.
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} r @param {number} lx @param {number} ly where it looks @param {number} time @param {number} phase @param {boolean} flash @param {CreatureCol} col */
 export function drawWorm(ctx, x, y, r, lx, ly, time, phase, flash, col) {
   ctx.save();
   ctx.translate(x, y);

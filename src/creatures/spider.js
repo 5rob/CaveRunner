@@ -1,3 +1,4 @@
+// @ts-check
 // The spider (Hämähäkki, act 'spider'): its brain (spiderStep, pure, state on e.sp),
 // how it sits on rock and aims its lines, and its sprite (drawSpider). Its Dev knobs
 // (SP_KNOBS) are in dev/knobs.js for now (REFACTOR.md, D11).
@@ -23,8 +24,10 @@ export const SPIDER = { hold: 6, feel: 14, step: 1.5, fall: 900 };
 // sit the spider at `hold` off the nearest rock: pushed straight out of anything closer
 // (so a spike or a step just lifts it over, like a ball rolling on it), pulled in along
 // the smoothed normal if it has drifted off. false if there's no rock to sit on.
+/** @param {Pt} e @param {SurfState} S @param {SolidCell} solidCell @param {number} maxMove */
 export function spiderSeat(e, S, solidCell, maxMove) { return surfSeat(e, S, solidCell, maxMove, SPIDER.hold, SPIDER.feel); }
 
+/** @type {(L: WebLine, x: number, y: number) => { u: number, d: number }} */
 export const segNear = (L, x, y) => {
   const vx = L.bx - L.ax, vy = L.by - L.ay, ll = vx * vx + vy * vy || 1;
   const u = Math.max(0, Math.min(1, ((x - L.ax) * vx + (y - L.ay) * vy) / ll));
@@ -33,6 +36,7 @@ export const segNear = (L, x, y) => {
 
 // a new line from (x, y) toward the rock along (dx, dy), or null if no rock within reach.
 // Tries straight at it first, then fans out a little.
+/** @param {number} x @param {number} y @param {number} dx @param {number} dy @param {number} reach @param {SolidCell} solidCell @returns {{ dx: number, dy: number, len: number } | null} */
 export function spiderAim(x, y, dx, dy, reach, solidCell) {
   for (const a of [0, 0.22, -0.22, 0.45, -0.45]) {
     const c = Math.cos(a), s = Math.sin(a), ux = dx * c - dy * s, uy = dx * s + dy * c;
@@ -45,6 +49,7 @@ export function spiderAim(x, y, dx, dy, reach, solidCell) {
 // One frame of one spider. env: { solidCell, webs, goal: {x,y}, hunting, rnd, speed,
 // reach }. Moves e, may push a line onto env.webs. Returns 'web' on the frame a shot
 // line lands (for a sound), else null.
+/** @param {Enemy} e @param {SpiderEnv} env @param {number} dt @returns {string | null} */
 export function spiderStep(e, env, dt) {
   const { solidCell, webs, rnd } = env;
   const S = e.sp || (e.sp = { mode: 'fall', vy: 0, nx: 0, ny: -1, on: 0, rest: rnd() * 0.5,
@@ -213,6 +218,7 @@ export function spiderStep(e, env, dt) {
 
 // The spider: eight legs planted on the rock (or gripping its line), body turned so its
 // underside faces the surface it's on. Legs scuttle while it bursts, sit still at rest.
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} r @param {number} time @param {number} phase @param {boolean} flash @param {CreatureCol} col @param {SpiderBrain} [S] */
 export function drawSpider(ctx, x, y, r, time, phase, flash, col, S) {
   let nx = 0, ny = -1, side = 1, moving = false;
   if (S) {

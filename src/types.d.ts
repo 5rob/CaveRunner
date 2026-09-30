@@ -136,8 +136,8 @@ interface Enemy {
   k: CreatureKind;
   nest?: NestState;           // a rat nest
   sid?: number;               // its index on the floor (the autosave)
-  // the reworked creatures' brains, on the creature; typed with the creatures folder (P4.3)
-  sp?: any; je?: any; ra?: any;
+  // the reworked creatures' brains, on the creature (made on their first step)
+  sp?: SpiderBrain; je?: JellyBrain; ra?: RatBrain;
   aggro?: boolean; aggroT?: number; aggroM?: number; spotted?: boolean;
   dead?: boolean; chill?: number; burn?: number; burnAcc?: number; fuseT?: number;
   // a rat's jobs and fallbacks
@@ -146,6 +146,76 @@ interface Enemy {
   stN?: number; stT?: number; stX?: number; stY?: number; rockT?: number;
   silkT?: number; silkR?: number; spread?: number;
 }
+/** is terrain cell (cx, cy) rock? (truthy: rock). What the pure movement code is handed */
+type SolidCell = (cx: number, cy: number) => unknown;
+/** a creature's colours (CreatureType['col']) */
+type CreatureCol = CreatureType['col'];
+
+/** the roam spot a brain carries (roamStep, creatures/common.js): made on its first call */
+interface RoamState { rx?: number; ry?: number; ra?: number; roamR?: number; roamSpd?: number }
+/** a surface crawler's seat (surfSeat): the smoothed normal, and straight out from the nearest rock */
+interface SurfState { nx: number; ny: number; py?: number }
+
+/** a spider's web line (spiderStep pushes it onto W.webs): it rides a..b, draws a0..b0 */
+interface WebLine {
+  ax: number; ay: number; bx: number; by: number;
+  a0x: number; a0y: number; b0x: number; b0y: number;
+  ain: Pt | null; bin: Pt;    // points inside the rock at each end: dig one out and the line comes down
+  owner: Enemy;
+  // rolled once per line when you first touch it (decorStep)
+  slow?: number; grab?: number; climb?: number;
+}
+/** a line being shot (e.sp.shot) */
+interface SpiderShot {
+  spd: number; x: number; y: number; dx: number; dy: number; len: number; t: number;
+  from: 'surf' | 'line'; ax0: number; ay0: number; ain: Pt | null;
+}
+/** the spider's brain, `e.sp` (spiderStep, creatures/spider.js) */
+interface SpiderBrain extends RoamState, SurfState {
+  mode: string;               // 'fall' | 'surf' | 'line' | 'shoot' (a string: decide() changes it under a narrowed check)
+  vy: number; on: number; rest: number; side: number;
+  line: WebLine | null; u: number; dir: number; shot: SpiderShot | null; high: boolean;
+  webT?: number; spd?: number; arrive?: number; dot?: number; go?: boolean;
+}
+/** what spiderStep is handed */
+interface SpiderEnv {
+  solidCell: SolidCell; webs: WebLine[]; goal: Pt; hunting: boolean; rnd: Rnd;
+  speed?: number; reach?: number; speedMul?: number;
+}
+/** the rat's brain, `e.ra` (ratStep, creatures/rat.js) */
+interface RatBrain extends SurfState {
+  mode: 'air' | 'surf' | 'path' | 'tunnel';
+  vx: number; vy: number; on: number; rest: number; side: number; face: number;
+  s: number; dir: number; wait: number;   // tunnel mode: how far along the nest path, which way, a pause
+  len?: number; noT?: number; noSide?: number; blockT?: number;
+  spd?: number; arrive?: number; dot?: number; high?: boolean;
+}
+/** what ratStep is handed */
+interface RatEnv {
+  solidCell: SolidCell; rnd: Rnd; goal: Pt | null; path: Pt[] | null;
+  home?: boolean; hunting?: boolean; follow?: boolean; air?: boolean; jump?: boolean;
+  arrive?: number; speed?: number; speedMul?: number;
+  onWeb?: ((x: number, y: number) => unknown) | null;
+}
+/** a jelly's looks, rolled once as fractions of their knob ranges (kru) */
+interface JellyLooks { thin: number; sq: number; len: number; wave: number; sag: number; glow: number; glowR: number; flare: number; col: number; plant: number }
+/** the jelly's brain, `e.je` (jellyStep, creatures/jelly.js) */
+interface JellyBrain extends RoamState {
+  hd: number;                 // heading: where its head points
+  vx: number; vy: number; push: number; pushA: number; rest: number;
+  shape: number;              // the bell: 0 flat .. 1 thin
+  vref: number; t: number;
+  tent: Pt[][];               // tentacles, world points from the rim out
+  u: JellyLooks;
+  turn?: number; tol?: number; drag?: number; sink?: number; bounce?: number; aimTol?: number;
+  range?: number; inRange?: boolean; aimed?: boolean;
+}
+/** what jellyStep is handed */
+interface JellyEnv {
+  solidCell: SolidCell; rnd: Rnd; goal: Pt | null; hunting: boolean;
+  speedMul?: number; rangeMul?: number; stay?: ((x: number, y: number) => boolean) | null;
+}
+
 /** a nest's state, `e.nest` (made in makeLevel from a ratNests entry) */
 interface NestState {
   path: Pt[]; mouth: Pt; built: boolean;
@@ -302,7 +372,7 @@ interface World {
   firePropN: number; firePropLast: any; fireLoop: any; fireN: number; fireVis: number[];
   bullets: Bullet[]; enemyShots: any[]; fields: any[]; beams: any[]; arcs: any[]; coins: any[];
   toasts: any[]; smoke: any[]; sparks: any[]; flashes: any[]; torchP: any[]; motes: any[];
-  burns: any[]; webs: any[]; silk: any[]; strings: any[];
+  burns: any[]; webs: WebLine[]; silk: any[]; strings: any[];
   dparts: any[]; amb: any[]; clouds: any[]; rings: any[]; devils: any[];
   jetLoop: any; beatT: number; wasEmpty: boolean;
   jetSt: { cut: number; onT: number; start: boolean };
