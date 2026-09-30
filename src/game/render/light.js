@@ -74,6 +74,15 @@ export function drawFog(W, G, F) {
     G.fbctx.filter = 'blur(0.9px)';
     G.fbctx.drawImage(G.fogC, fx0, fy0, fx1 - fx0, fy1 - fy0, fx0, fy0, fx1 - fx0, fy1 - fy0);
     G.fbctx.filter = 'none';
+    // the blur pulls in nothing from past the level's edges, which thinned the fog to a
+    // see-through strip down both sides: put the sharp edge cells back underneath
+    G.fbctx.globalCompositeOperation = 'destination-over';
+    const ew = fx1 - fx0, eh = fy1 - fy0;
+    if (fx0 === 0) G.fbctx.drawImage(G.fogC, 0, fy0, 1, eh, 0, fy0, 1, eh);
+    if (fx1 === FW) G.fbctx.drawImage(G.fogC, FW - 1, fy0, 1, eh, FW - 1, fy0, 1, eh);
+    if (fy0 === 0) G.fbctx.drawImage(G.fogC, fx0, 0, ew, 1, fx0, 0, ew, 1);
+    if (fy1 === FH) G.fbctx.drawImage(G.fogC, fx0, FH - 1, ew, 1, fx0, FH - 1, ew, 1);
+    G.fbctx.globalCompositeOperation = 'source-over';
     G.ctx.imageSmoothingEnabled = true;     // the upscale further softens the edge
     G.ctx.drawImage(G.fogBlurC, fx0, fy0, fx1 - fx0, fy1 - fy0,
       fx0 * FOG_U, fy0 * FOG_U, (fx1 - fx0) * FOG_U, (fy1 - fy0) * FOG_U);

@@ -20,6 +20,7 @@ import {
   drawArrival, drawLoot, drawPortal, drawProps, drawRooms, drawShop, drawTerrain
 } from './cave.js';
 import { drawFlashes, drawMotes, drawSmoke, drawSparks, drawTrail } from './effects.js';
+import { drawBelow, drawFx } from './fx.js';
 import { drawFog, drawGlows } from './light.js';
 import { drawBeams, drawFields, drawShots } from './looks.js';
 import { drawHud, drawMap, drawMessages, drawRadar, drawReticule } from './overlay.js';
@@ -55,6 +56,8 @@ export function draw(W, G) {
   drawPlayer(W, G, F);                      // you, gun, torch, crosshair, shield, ghost (actors.js)
   drawFog(W, G, F);                         // line of sight lifts the fog; the fog (light.js)
   drawGlows(W, G, F);                       // light over the fog (light.js)
+  drawFx(W, G, F);                          // the FX layer: the hologram's bloom (fx.js)
+  drawBelow(W, G, F);                       // black below the shop floor (fx.js)
   if (G.RPV) return;                        // a replay frame has no HUD
   drawHud(W, G, F);                         // the version, the sticks' gauges; fills cw (overlay.js)
   drawRadar(W, G, F);                       // radar perks (overlay.js)

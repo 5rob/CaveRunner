@@ -1,5 +1,5 @@
-// The perks you carry: a column going up from above the map button that wraps into a new
-// column further in; tap one for its card (the game pauses), and R — a right-stick tap, the
+// The perks you carry: a column going up from above the map button to near the top of the
+// screen, then a new column further in; tap one for its card (the game pauses), and R — a right-stick tap, the
 // r key, or the card's own line — switches it off and on again.
 const { launch } = require('../chromium');
 const path = require('path');
@@ -13,7 +13,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   page.on('pageerror', e => { fails++; console.log('PAGEERROR', e.message); });
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   await page.waitForTimeout(1200);
-  const ids = ['unlimited', 'shield', 'tinker', 'sight', 'crit', 'eye', 'gold', 'hearts'];
+  const ids = ['unlimited', 'shield', 'tinker', 'sight', 'crit', 'eye', 'gold', 'hearts', 'ghost', 'bounce', 'close', 'conc',
+    'contact', 'eradar', 'health', 'knock', 'lev', 'move', 'proj', 'wands'];
   await page.evaluate(ids => { const I = window.__in.current; I.loadout.perks = ids.slice(); I.perksDirty = true; I.notify(); }, ids);
   await page.waitForTimeout(200);
 
@@ -24,8 +25,11 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   const P = lay.pips;
   check('a pip per perk', P.length === ids.length, P.length);
   check('the first sits just above the map button', P[0] && Math.abs(P[0].x - lay.map.x) < 2 && P[0].b < lay.map.t && lay.map.t - P[0].b < 20, { p: P[0], map: lay.map });
-  check('they stack upwards', P.slice(1, 6).every((p, i) => p.y < P[i].y - 20 && Math.abs(p.x - P[0].x) < 2));
-  check('the seventh wraps into a column further in, back at the bottom', P[6] && P[6].x > P[0].x + 20 && Math.abs(P[6].y - P[0].y) < 2, P[6]);
+  const n1 = P.findIndex(p => Math.abs(p.x - P[0].x) > 2);
+  check('they stack upwards', P.slice(1, n1).every((p, i) => p.y < P[i].y - 30));
+  check('the first column reaches near the top of the screen', n1 > 8 && P[n1 - 1].t >= 60 && P[n1 - 1].t < 120, { n1, top: P[n1 - 1] && P[n1 - 1].t });
+  check('then a new column further in, back at the bottom', P[n1] && P[n1].x > P[0].x + 30 && Math.abs(P[n1].y - P[0].y) < 2, P[n1]);
+  check('the pips are 36px', P[0] && Math.round(P[0].b - P[0].t) === 36, P[0]);
 
   const state = () => page.evaluate(() => ({ paused: window.__in.current.paused, card: !!document.querySelector('.perkinfo'),
     text: (document.querySelector('.perkinfo') || {}).textContent || '', off: window.__in.current.loadout.perksOff || [],
@@ -51,6 +55,14 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.waitForTimeout(100);
   s = await state();
   check('the r key switches it back on', !s.off.includes(0) && /ON/.test(s.text), s);
+  // with the card up, tapping another perk switches the card to it
+  const other = await page.evaluate(() => { const r = document.querySelectorAll('.perkpip')[4].getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+  await page.touchscreen.tap(other.x, other.y);
+  await page.waitForTimeout(150);
+  s = await state();
+  check('tapping another perk shows its card instead', s.card && /Critical|crit/i.test(s.text) && !/Unlimited/.test(s.text), s.text);
+  await page.touchscreen.tap(P[0].x, P[0].y);
+  await page.waitForTimeout(100);
   await page.tap('.perktoggle');
   await page.waitForTimeout(100);
   // close it: tap the shade up in the play area

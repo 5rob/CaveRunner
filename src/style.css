@@ -72,8 +72,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* the perks you have found: a column going up from above the map button, wrapping inwards */
 .perkcol{position:absolute;display:flex;flex-direction:column-reverse;flex-wrap:wrap;
   align-content:flex-start;gap:6px;pointer-events:none;z-index:4}
-.perkpip{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;padding:0;margin:0;
-  justify-content:center;font-size:16px;line-height:1;box-sizing:border-box;pointer-events:auto;
+.perkpip{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;padding:0;margin:0;
+  justify-content:center;font-size:19px;line-height:1;box-sizing:border-box;pointer-events:auto;
   border:1.5px solid currentColor;background:rgba(0,0,0,0.45);font-family:inherit;cursor:pointer}
 .perkpip.off{opacity:.35;border-style:dashed}
 .perkpip.sel{box-shadow:0 0 0 2px #fff}
