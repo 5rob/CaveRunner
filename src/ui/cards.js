@@ -1,3 +1,4 @@
+// @ts-check
 // The detail cards: GunCard (a gun's stats, optionally compared with another), ModCard
 // (a spell: what it does, its numbers, a use example in the editor) and PerkCard. The same
 // card shows in the build screen and in the shop/pickup panel (ingame).
@@ -31,6 +32,7 @@ export const GUN_STATS = [
 // One card for a gun: its rolled stats and the mods sitting on it.
 // `split` is the gun-pickup variant: the stats collapse to wrapping chips and the
 // card becomes a flex column, so the mod row at the bottom never gets pushed off.
+/** @param {{ gun: Gun, label?: string, onClose?: () => void, ingame?: boolean, flow?: boolean, split?: boolean, mark?: string, compare?: Gun | null, compareName?: string }} props */
 export function GunCard({ gun, label, onClose, ingame, flow, split, mark, compare, compareName }) {
   const vs = compare && compare !== gun ? compare : null;
   const stats = GUN_STATS.map(st => {
@@ -73,6 +75,7 @@ export function GunCard({ gun, label, onClose, ingame, flow, split, mark, compar
   );
 }
 
+/** @param {{ id: string, onClose?: () => void, ingame?: boolean, top?: boolean, flow?: boolean }} props */
 export function ModCard({ id, onClose, ingame, top, flow }) {
   const m = MODS[id];
   const kind = famOf(id).name + (m.kind === 'passive' ? ' \u00b7 always on' : '');
@@ -168,6 +171,7 @@ export function ModCard({ id, onClose, ingame, top, flow }) {
 
 // The card that comes up standing on a perk altar, so you know what you're taking before
 // you take it. A perk is permanent, so this is the only look you get.
+/** @param {{ id: string, ingame?: boolean, flow?: boolean }} props */
 export function PerkCard({ id, ingame, flow }) {
   const pk = PERKS[id];
   return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') + (flow ? ' flow' : '') },

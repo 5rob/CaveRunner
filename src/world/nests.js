@@ -1,3 +1,4 @@
+// @ts-check
 // Rat nests (floor 1): ratNests finds a surface, digs a room into the rock behind it and
 // a bending tunnel back out, so no sightline runs down it.
 
@@ -11,6 +12,7 @@ import { CH, CW, ROCK, SHOP_ROOF, SHOP_TOP } from '../core/consts.js';
 // gets a little mound of earth. Everything in terrain pixels. `zone` is the level's zone
 // map (null: everything is natural); `keep` spots {x, y, r} (px) no nest goes near.
 // Returns [{ x, y, r (room), path: [{x, y}] room → mouth, mouth, built, mound: [i...] }].
+/** @param {Uint8Array} mat @param {Rnd} rnd @param {Uint8Array | null} zone @param {{ x: number, y: number, r: number }[]} keep @param {number} nb @param {number} nw @returns {NestSpot[]} */
 export function ratNests(mat, rnd, zone, keep, nb, nw) {
   const inb = (x, y) => x >= 4 && y >= 4 && x < CW - 4 && y < CH - 4;
   const rock = (x, y) => { x = Math.round(x); y = Math.round(y); return inb(x, y) && mat[y * CW + x] === ROCK; };

@@ -1,3 +1,4 @@
+// @ts-check
 // The perks (one per hidden perk room) and perkBag, which folds the ones you own into
 // the single bag of multipliers and flags the game reads.
 
@@ -9,6 +10,7 @@ import { PLAYER_HP } from '../core/consts.js';
 // the game reads. That keeps every effect in one place and testable on its own: a perk
 // that does nothing is a field nobody read, and the logic suite checks the fields that
 // matter actually move.
+/** @type {Record<string, Perk>} */
 export const PERKS = {
   eye:      { name: 'All-Seeing Eye', glyph: '◉', tint: '#8fd3ff', seeAll: 1,
               info: 'The whole floor is lit. No fog anywhere, on this floor or any other.' },
@@ -78,7 +80,9 @@ export const PERK_IDS = Object.keys(PERKS);
 
 // Everything the perks you are carrying add up to. Multipliers multiply, flags stick,
 // `mana: 0` means unlimited and stays unlimited however many of them you find.
+/** @param {string[]} [ids] @returns {PerkBag} */
 export function perkBag(ids) {
+  /** @type {PerkBag} */
   const P = { dmg: 1, speed: 1, spread: 1, bounce: 0, recoil: 1, crit: 0, mana: 1,
     delay: 1, rech: 1, walk: 1, jet: 1, hpMul: 1, hpAdd: 0, heal: 1, gold: 1, goldPull: 1,
     shield: 0, lives: 0, ghost: 0, homing: 0, trail: 0, contact: 0, close: 0, invis: 0,

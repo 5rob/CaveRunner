@@ -1,3 +1,4 @@
+// @ts-check
 // Plain numbers every layer can use: world size, physics tuning, the shop room, the fog grid
 // and how far you see. No imports: this is the bottom layer (REFACTOR.md, section 4).
 

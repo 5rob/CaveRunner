@@ -1,3 +1,4 @@
+// @ts-check
 // The death replay (see RP_HZ in replay/replay.js): the recorder, which snapshots the world round you
 // RP_HZ a second, and the player, which rebuilds a moment and draws it through the real draw().
 
@@ -10,19 +11,25 @@ import { draw } from '../render/draw.js';
 
 // every partial put on the two terrain canvases (dig, blast, burn, paint) lands in REC.dirty:
 // Game wraps their putImageData once, as soon as G is made, before anything draws on them
+/** @param {GameCtx} G */
 export function recWrap(G) {
   for (const [cx, which] of [[G.tctx, 't'], [G.dctx, 'd']]) {
+    // @ts-expect-error the loop's [context, 't'/'d'] rows are read as a union of their elements (noise)
     const put = cx.putImageData.bind(cx);
+    // @ts-expect-error the loop's [context, 't'/'d'] rows are read as a union of their elements (noise)
     cx.putImageData = (im, dx, dy, x, y, w, h) => {
       if (w === undefined) return put(im, dx, dy);
       put(im, dx, dy, x, y, w, h);
+      // @ts-expect-error the loop's [context, 't'/'d'] rows are read as a union of their elements (noise)
       if (G.REC.tBase && !G.REC.done) G.REC.dirty.push([which, x, y, w, h]);
     };
   }
 }
 
+/** @param {World} W @param {GameCtx} G @param {object} o */
 export const idOf = (W, G, o) => { let i = G.rid.get(o); if (i === undefined) G.rid.set(o, i = ++G.ridN); return i; };
 
+/** @param {World} W @param {GameCtx} G */
 export function recReset(W, G) {
   G.REC.t = 0; G.REC.acc = 0; G.REC.snaps = []; G.REC.patches = []; G.REC.dirty = []; G.REC.fogLog = [];
   G.REC.tBase = W.img.data.slice(); G.REC.dBase = W.dimg ? W.dimg.data.slice() : null;
@@ -31,6 +38,7 @@ export function recReset(W, G) {
   G.RT.n = 0; G.RT.at = -1;
   G.input.current.witness = null;
 }
+/** @param {World} W @param {GameCtx} G */
 export function recSample(W, G) {
   const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
   const grab = (list, m, ty) => {
@@ -82,6 +90,7 @@ export function recSample(W, G) {
   if (n) G.REC.fogLog.splice(0, n);
 }
 // every stepped frame: keep the clock, snapshot RP_HZ a second, and stop RP_AFTER after a death
+/** @param {World} W @param {GameCtx} G @param {number} dt */
 export function recFrame(W, G, dt) {
   if (G.REC.done || !G.REC.tBase) return;
   G.REC.t += dt;
@@ -96,6 +105,7 @@ export function recFrame(W, G, dt) {
   }
 }
 
+/** @param {World} W @param {GameCtx} G @param {number} T */
 export function rpTerrain(W, G, T) {
   if (!G.RT.tC) {
     G.RT.tC = document.createElement('canvas'); G.RT.tC.width = CW; G.RT.tC.height = CH;
@@ -119,6 +129,7 @@ export function rpTerrain(W, G, T) {
   const L = G.REC.fogLog;
   for (let n = 0; n < L.length && L[n] <= T; n += 3) G.RT.fog[L[n + 1]] = L[n + 2];
 }
+/** @param {World} W @param {GameCtx} G @param {ReplayView} V */
 export function drawReplay(W, G, V) {
   const wit = G.input.current.witness;
   V.t = clamp(V.t, wit.t0, wit.t1);
@@ -134,6 +145,7 @@ export function drawReplay(W, G, V) {
   const keep = { enemies: W.enemies, pickups: W.pickups, props: W.props, fire: W.fire, firePlants: W.firePlants, seen: W.seen, ghost: W.ghost, time: W.time, flick: W.flick, leanX: W.leanX, leanY: W.leanY, glowN: W.glowN,
     fireN: W.fireN, camX: W.camX, camY: W.camY, unitPx: W.unitPx, torchR: W.torchR, visPts: W.visPts, viewW: W.viewW, viewH: W.viewH, p: Object.assign({}, W.p) };
   W.enemies = F.enemies; W.pickups = F.pickups; W.props = F.props; W.firePlants = [];
+  // @ts-expect-error the replay's stand-in fire: only the burning pixels draw() reads, no fuel (noise)
   W.fire = { list: near.fire, t: G.RT.fireT }; W.seen = G.RT.fog;
   W.ghost = F.ghost; W.time = F.time; W.flick = F.flick; W.leanX = F.leanX; W.leanY = F.leanY; W.glowN = F.glowN; W.fireN = near.fireN;
   Object.assign(W.p, F.p);

@@ -1,3 +1,4 @@
+// @ts-check
 // The creatures, the part they all share: a frame of them all (stepEnemies, a part of step():
 // timers, aggro, the hover, the contact bite, Contact Damage, their shots), one pull of a
 // creature's trigger (fireEnemyShot), and taking damage (damageEnemy: a kill drops its gold).
@@ -18,7 +19,12 @@ import { lineOfSight, solidAt } from './terrain.js';
 // one pull of an enemy's trigger: aimed at the player, and a shotgun type throws
 // its pellets in a cone. Refuses the shot if the player has broken line of sight
 // since it decided to take it.
+/** @param {World} W @param {Enemy} e @param {number} tx @param {number} ty */
 export function fireEnemyShot(W, e, tx, ty) {
+  // k.fire is always undefined: enemyFor never copies it (REFACTOR.md, Found along the way: Stendari). Typed as
+  // maybe-there here rather than a @ts-expect-error on its line, which sits inside an object literal, and a
+  // comment there would reach index.html (D21)
+  /** @type {CreatureKind & { fire?: number }} */
   const k = e.k;
   if (!lineOfSight(W, e.x, e.ty, tx, ty)) return;
   const base = Math.atan2(ty - e.ty, tx - e.x);
@@ -31,6 +37,7 @@ export function fireEnemyShot(W, e, tx, ty) {
       col: k.col.a, dmg: k.dmg, size: k.body === 'blob' ? 4 : 3, fire: k.fire });
   }
 }
+/** @param {World} W @param {number} j @param {number} dmg */
 export function damageEnemy(W, j, dmg) {
   const e = W.enemies[j];
   e.hp -= dmg; e.flash = 0.08;
@@ -55,6 +62,7 @@ export function damageEnemy(W, j, dmg) {
 // The enemy loop (aggro, each act's hooks: its move, contact, firing), Contact Damage, the
 // creatures' shots, each act's once-a-frame part (ACTS: the spider's silk), and the red flash
 // of your last hit fading.
+/** @param {World} W @param {GameCtx} G @param {StepFrame} F */
 export function stepEnemies(W, G, F) {
   const { dt, pcx, pcy } = F;
   // one creature's frame, for its act's hooks (ACTS, D20): made once, refilled per enemy

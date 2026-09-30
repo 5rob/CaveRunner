@@ -1,3 +1,4 @@
+// @ts-check
 // Firing a gun: planCast works out what one pull of the trigger fires (the heart of the
 // game), blankShot is every field a shot has, effRecharge / gunPassives what the mods on a
 // gun do to it. planCast mutates g.idx: callers that only look pass a copy.
@@ -9,6 +10,7 @@ export const MIN_RECH = 0.05;
 
 // Recharge counts every slot on the gun, wherever the mod sits, so the number on
 // the gun card is always the number you get.
+/** @param {Gun} g */
 export function effRecharge(g) {
   const pas = gunPassives(g);
   return Math.max(MIN_RECH, (g.recharge + pas.rech) * pas.rechMul);
@@ -19,6 +21,7 @@ export function effRecharge(g) {
 // Advances g.idx; the caller rolls it back if there isn't the mana to pay.
 // Anything that comes out of the barrel: a shot has these and nothing else, so a
 // modifier's f() can only touch fields that exist here.
+/** @param {Mod} sm @param {number} spread the gun's @returns {Shot} */
 export function blankShot(sm, spread) {
   return { dmg: sm.dmg || 0, speed: sm.speed || 0, spread: (sm.spread || 0) + spread,
     size: sm.size || 2, life: sm.life || 1, count: sm.count || 1,
@@ -49,6 +52,7 @@ export function blankShot(sm, spread) {
 // the gun left off, piling up modifiers and applying them to the spells that follow.
 // Advances g.idx; the caller rolls it back if there isn't the mana to pay.
 // `others` is your other guns, which only Zeta looks at.
+/** @param {Gun} g @param {(Gun | null)[]} [others] @returns {Plan} */
 export function planCast(g, others) {
   const start = g.idx, mods = [], defs = [];
   // what each cast spell is carrying, by its index in defs: a trigger fills this
@@ -227,6 +231,7 @@ export function planCast(g, others) {
 }
 
 // what the gun actually does with the mods on it right now
+/** @param {Gun} g */
 export function gunPassives(g) {
   let rech = 0, rechMul = 1, manaMax = 0, manaRegen = 0;
   for (const id of g.slots) {

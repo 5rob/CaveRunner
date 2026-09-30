@@ -1,3 +1,4 @@
+// @ts-check
 // The game itself: the canvas component. It makes the world (`W`, the canvases, the `G`
 // context), runs the loop (step/draw, or the death replay) and is the React bridge: App
 // talks to it through the input ref. What happens in a frame is in game/systems/,
@@ -23,6 +24,7 @@ import { makeWorld } from './world.js';
 const { useRef, useEffect } = React;
 const h = React.createElement;
 
+/** @param {{ input: { current: GameInput } }} props */
 export function Game({ input }) {
   const cv = useRef(null);
   useEffect(() => {
@@ -90,6 +92,7 @@ export function Game({ input }) {
     // React bridge, the canvases (tctx and dctx are the recorder's wrapped ones), the recorder,
     // the fire's dirty boxes, the rats' web test, the plant glow's scratch, the replay's view,
     // the mouse and the aim line's scratch
+    /** @type {GameCtx} */
     const G = { input, c, ctx, terrain, tctx, bg, bgctx, fogC, fctx, fogImg, fogBlurC, fbctx,
       miniC, mctx, miniImg, mini32, decoC, dctx, REC, RT, fireBox, ratOnWeb, mouse, aimPath,
       pgArt: null, pgC: null, pgCtx: null, pgGlow, pgGlowCtx,

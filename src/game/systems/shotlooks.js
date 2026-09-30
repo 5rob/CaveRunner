@@ -1,3 +1,4 @@
+// @ts-check
 // What each Noita-style shot sheds as it flies, bounces, grinds and dies (v95 spell looks):
 // glowing dparts, chips and puffs. The draw side (drawLook) is still in Game's draw().
 
@@ -8,9 +9,12 @@ import { FIRE_COLS } from '../../world/fire.js';
 // ---- v95 spell looks: what each Noita-style shot sheds as it flies, bounces and dies.
 // Trails are glowing dparts (drawn after the fog, only where it has lifted), chips are
 // sparks, puffs are smoke. `look` is set on the spell in MODS.
+/** @param {World} W @param {number} x @param {number} y @param {number} vx @param {number} vy @param {string} c @param {number} s @param {number} life @param {number} [g] */
 export const glowDot = (W, x, y, vx, vy, c, s, life, g) =>
   W.dparts.push({ x, y, vx, vy, g: g || 0, c, s, life, max: life, glow: 1 });
+/** @param {number} a @param {number} b */
 export const rnd = (a, b) => a + Math.random() * (b - a);
+/** @param {World} W @param {Bullet} b @param {number} dt */
 export function shotTrail(W, b, dt) {
   const L = b.look, sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp;
   const chance = n => Math.random() < n * dt;
@@ -79,6 +83,7 @@ export function shotTrail(W, b, dt) {
       '#e8ff9a', rnd(0.6, 0.9), rnd(0.4, 0.8), -0.01);
   }
 }
+/** @param {World} W @param {Bullet} b */
 export function shotBounce(W, b) {
   const L = b.look;
   if (L === 'glob') for (let k = 0; k < 2; k++)
@@ -91,6 +96,7 @@ export function shotBounce(W, b) {
       glowDot(W, b.x, b.y, rnd(-70, 70), rnd(-80, -10), L === 'disc' ? (Math.random() < 0.5 ? '#ffe7a0' : '#ffb347') : L === 'flame' ? '#ffb347' : b.col,
         rnd(0.7, 1.1), rnd(0.1, 0.25), 0.5);
 }
+/** @param {World} W @param {Bullet} b */
 export function shotDeath(W, b) {
   const L = b.look;
   if (L === 'bubble') {                   // it pops: a ring of droplets
@@ -108,6 +114,7 @@ export function shotDeath(W, b) {
   }
 }
 // a digging bolt chewing rock: chips of whatever it's chewing thrown back out
+/** @param {World} W @param {Bullet} b @param {number} x @param {number} y */
 export function shotGrind(W, b, x, y) {
   if (b.look !== 'drill' || Math.random() < 0.5) return;
   const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);

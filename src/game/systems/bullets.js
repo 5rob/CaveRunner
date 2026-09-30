@@ -1,3 +1,4 @@
+// @ts-check
 // Your shots in flight: each frame of them (stepBullets, a part of step()), and what a shot
 // does when it hits or dies: crits, knockback, Clusterbolt's spray, Death Cross, Teleport Bolt.
 
@@ -16,6 +17,7 @@ import { shotBounce, shotDeath, shotGrind, shotTrail } from './shotlooks.js';
 import { boxHit, dig, enemyAt, explode, lineOfSight, solidAt } from './terrain.js';
 
 // Clusterbolt: the shot bursts into a handful of small explosive bolts
+/** @param {World} W @param {Bullet} b */
 export function spray(W, b) {
   SFX.fx('cluster', b.x, b.y);
   const n = Math.min(8, b.cluster);
@@ -30,6 +32,7 @@ export function spray(W, b) {
 }
 
 // Death Cross: four arms of blast rather than one round crater
+/** @param {World} W @param {GameCtx} G @param {Bullet} b */
 export function explodeCross(W, G, b) {
   const R = b.explode || 20;
   explode(W, G, b.x, b.y, R * 0.6);
@@ -37,7 +40,9 @@ export function explodeCross(W, G, b) {
     explode(W, G, b.x + dx * R * 0.9, b.y + dy * R * 0.9, R * 0.55);
 }
 
+/** @param {number} dmg @param {number} chance */
 export const critRoll = (dmg, chance) => (chance && Math.random() < chance ? (SFX.fx('crit'), dmg * 3) : dmg);
+/** @param {Enemy} e @param {number} nx @param {number} ny */
 export const shove = (e, nx, ny, force) => {
   e.x += nx * force * 0.03; e.y += ny * force * 0.03; e.tgt = null;
 };
@@ -45,6 +50,7 @@ export const shove = (e, nx, ny, force) => {
 // Teleport Bolt: put you where the bolt stopped. It may have stopped against rock, so
 // back up along its own track (and nudge up/down) until your whole body fits; if
 // nowhere near fits, it fizzles and you stay put.
+/** @param {World} W @param {Bullet} b */
 export function teleportTo(W, b) {
   if (W.p.dead) return;
   const sp = Math.hypot(b.vx, b.vy), nx = sp ? b.vx / sp : 0, ny = sp ? b.vy / sp : 0;
@@ -68,6 +74,7 @@ export function teleportTo(W, b) {
 // pull, the move in small steps (creatures hit, rock hit or bounced off or dug through), how
 // it dies (explosion, fire, a trigger's payload, Teleport Bolt, its look), then the lightning
 // arcs fading.
+/** @param {World} W @param {GameCtx} G @param {StepFrame} F */
 export function stepBullets(W, G, F) {
   const { dt } = F;
   for (let i = W.bullets.length - 1; i >= 0; i--) {

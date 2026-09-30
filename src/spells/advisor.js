@@ -1,3 +1,4 @@
+// @ts-check
 // The build advisor and the mod previews: gunRate (damage a gun really deals, priced by
 // the mana and health it costs), buildAdvice (swap suggestions), modPreview / previewPlan
 // (the use-example on a mod card).
@@ -9,30 +10,35 @@ import { FIELD_WHAT, MODS } from './mods.js';
 
 // What does this mod actually do? Rather than describing it by hand, run a plain
 // bolt through the planner with and without it and report whatever changed.
+/** @type {[key: string, label: string, unit?: string][]} a Shot field, how the card names it */
 export const PREVIEW_FIELDS = [['dmg', 'damage'], ['speed', 'speed'], ['spread', 'spread', '\u00b0'],
   ['size', 'size'], ['life', 'flight time', 's'], ['bounce', 'bounces'], ['pierce', 'pierce'],
   ['homing', 'homing'], ['explode', 'blast radius'], ['bore', 'drill'], ['recoil', 'recoil'],
   ['accel', 'acceleration']];
-export const num = v => {
+export const num = (/** @type {number} */ v) => {
   const r = Math.round(v * 100) / 100;
   return String(r);
 };
+/** @param {(string | null)[]} slots @param {Partial<Gun>} [over] @returns {Gun} */
 export function previewGun(slots, over) {
   return resetGun(Object.assign({ name: 'p', cap: slots.length, castDelay: 0.2, recharge: 1,
     manaMax: 99999, manaRegen: 0, spread: 0, multi: 1, shuffle: false, mana: 99999,
     speedMul: 1, slots }, over || {}));
 }
+/** @param {(string | null)[]} slots @returns {Plan} */
 export function previewPlan(slots) { return planCast(previewGun(slots)); }
+/** @param {string} id @returns {{ rows: string[][] }} label, value */
 export function modPreview(id) {
   const m = MODS[id];
   const rows = [];
+  /** @type {(label: string, x: number, y: number, unit?: string) => void} */
   const push = (label, x, y, unit) => {
     if (Math.abs(x - y) < 1e-6) return;
     rows.push([label, num(x) + (unit || '') + ' \u2192 ' + num(y) + (unit || '')]);
   };
   // a plain, readable gun to measure against
   const REF = { recharge: 1, manaMax: 100, manaRegen: 40 };
-  const ref = slots => previewGun(slots, REF);
+  const ref = (/** @type {string[]} */ slots) => previewGun(slots, REF);
 
   if (m.kind === 'passive') {
     const a = ref(['bolt']), b = ref([id, 'bolt']);
@@ -100,12 +106,16 @@ export const HP_BUDGET = PLAYER_HP / 25;
 
 // What one planned shot is worth: every pellet of it, plus anything a trigger is
 // carrying to the point of impact. Payloads nest, but are finite, so this ends.
+/** @type {(sh: Shot) => number} */
 export const shotPower = sh => (sh.dmg || 0) * Math.max(1, Math.round(sh.count || 1))
   + (sh.payload || []).reduce((t, ps) => t + shotPower(ps), 0);
+/** @type {(sh: Shot) => number} */
 export const shotCount = sh => 1 + (sh.payload || []).reduce((t, ps) => t + shotCount(ps), 0);
+/** @type {(sh: Shot) => number} */
 export const shotPellets = sh => Math.max(1, Math.round(sh.count || 1))
   + (sh.payload || []).reduce((t, ps) => t + shotPellets(ps), 0);
 
+/** @param {Gun} gun */
 export function gunRate(gun) {
   const g = resetGun(Object.assign({}, gun, { slots: gun.slots.slice() }));
   let cast = 0, dmg = 0, cost = 0, shots = 0, blood = 0;
@@ -141,6 +151,7 @@ export function gunRate(gun) {
 // how many promising mods get the full every-slot treatment
 export const SHORTLIST = 14;
 
+/** @param {Gun} gun @param {string[]} bag the mod ids you carry */
 export function buildAdvice(gun, bag) {
   const now = gunRate(gun);
   let limit;
@@ -156,7 +167,7 @@ export function buildAdvice(gun, bag) {
     text: 'Cast delay is the limit — ' + Math.round(100 * now.cast / now.cycle) + '% of the cycle' };
 
   const tips = [];
-  const score = slots => gunRate(Object.assign({}, gun, { slots })).dps;
+  const score = (/** @type {(string | null)[]} */ slots) => gunRate(Object.assign({}, gun, { slots })).dps;
   if (now.shots) {
     const seen = {};
     const pool = bag.filter(id => !seen[id] && (seen[id] = 1));

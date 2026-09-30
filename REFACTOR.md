@@ -1,11 +1,15 @@
 # REFACTOR — splitting CaveRunner into modules
 
+**Done.** All five phases are finished (2026-09-30) and all on `main`: Phases 0–3 as v97–v99, Phases 4–5 as
+v100 (`index.html` byte-identical to v99 apart from the version). The
+game's notes now live in the `src/` folder READMEs; what the refactor left to do is **Found along the way** below.
+
 **The design doc and progress tracker for the refactor.** Every session working on it reads
 this first, works the next unticked tasks, ticks them, and adds a line to the **Session log**
 at the bottom. Commit this file with the work it describes.
 
-Read `CLAUDE.md` (owner's working style, the release loop, per-system notes) and `HANDOVER.md`
-before this.
+Read `CLAUDE.md` (owner's working style, the release loop, testing), the `src/` folder READMEs (the
+per-system notes) and `HANDOVER.md` before this.
 
 ---
 
@@ -13,11 +17,11 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | **Phase 3 merged to `main` as v99** (P3.6 done, 2026-09-30). Next: Phase 4 (TypeScript, gradually). Phase 3 recap: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). step() split into parts, P3.4 (25)–(33): a frame object `F` (D18) and 21 calls, the parts in their systems (`pickups.js` new). draw() split the same way, P3.4 (34)–(43): its own `F` (D19) and 29 calls, the parts in six `render/` modules by theme. **P3.4 done.** **P3.5 done** (D20: the Game side of each creature in `src/game/creatures/`, an `ACTS` table keyed by act, the loop keeps the shared part; knob tables stay put; no looks table). P3.6: Game.js 186 lines (world, loop, React bridge) |
+| **Current phase** | **Done.** Phase 5 done (P5.1 folder READMEs, P5.2 CLAUDE.md 148 lines, P5.3 `CHANGELOG.md`, P5.4 HANDOVER). Phase 4 done (P4.1–P4.4: every file under `src/` type-checked). Phase 3 done and released as v99 (`W`, `G`, `F`, systems, render, `ACTS`; Game.js 186 lines). All phases done and merged to `main` (Phases 4–5 as v100) |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
 | **Last green full suite** | 2026-09-30, end of P3.5 (the tree of P3.5 (6)): logic 33/33, browser 44/44 after re-runs (`everymod` telecast, `lightning` fork and `jelly` failed in the run, all known; each passed alone, `jelly` 3 of 5, the same as on the commit before the jelly move) |
-| **Last merged to main** | v99 (Phase 3), 2026-09-30 |
+| **Last merged to main** | v100 (Phases 4–5), 2026-09-30. The refactor is fully merged |
 
 ---
 
@@ -71,8 +75,8 @@ existing Android WebView app. No Godot, no Unity, no app-store work (see **Out o
    `no-undef`** (from Phase 1) and later **TypeScript** (Phase 4). No framework, no JSX, no
    Vite/webpack, no test framework swap.
 6. **Keep the notes true.** When something moves, fix any path or name `CLAUDE.md` gives
-   for it in the same commit. (Notes move into per-folder READMEs in Phase 5. Until then
-   `CLAUDE.md` stays the reference.)
+   for it in the same commit. (Since Phase 5 the notes are the `src/` folder READMEs; `CLAUDE.md`
+   keeps only the working style, the loop, testing and the folder map.)
 7. **Merging to `main` is a release**: bump the version (`src/version.js` once Phase 0 is
    done), let CI go green, and the owner plays it on the phone to confirm nothing changed.
 8. **Tick boxes and log as you go**, not at the end, so a cut-off session leaves an honest
@@ -660,26 +664,180 @@ What the code says about P3.5 (checked at the end of P3.4, f50c758):
 
 Catches "wrong field name" and "missing argument" bugs before the phone does.
 
-- [ ] **P4.1** Add `typescript` (dev dep), `tsconfig.json` with `allowJs` + `checkJs`
+- [x] **P4.1** Add `typescript` (dev dep), `tsconfig.json` with `allowJs` + `checkJs`
       off globally. `tests/run.js` runs `tsc --noEmit`.
-- [ ] **P4.2** Write the shared shapes once in `src/types.d.ts`: Gun, Shot (blankShot's
+      Done: `typescript` 7.0.2 (the native compiler; `node_modules/typescript/bin/tsc` runs it, ~0.2 s for all of
+      `src/`). `tsconfig.json`: `allowJs`, `checkJs: false`, `noEmit`, target `es2022` + lib `es2023`/`dom`/`dom.iterable`
+      (a modern WebView), `module: esnext` + `moduleResolution: bundler` (plain `./x.js` imports as written), `strict`
+      and `noImplicitAny` off to start, `skipLibCheck`, `types: []` (no stray `@types` from node_modules), include
+      `src/**/*.js` + `src/**/*.d.ts`. TS 7 defaults `strict` on, so it's set off explicitly. `src/globals.d.ts`: `React`,
+      `ReactDOM` (the UMD tags, `any`: `@types/react` would be a new dependency for `createElement` and four hooks) and
+      `VERSION`. `tests/run.js` runs `tsc --noEmit -p .` after ESLint; a report is a failed suite named `types`.
+- [x] **P4.2** Write the shared shapes once in `src/types.d.ts`: Gun, Shot (blankShot's
       fields), Plan (planCast's return), Enemy, CreatureKind, Prop, Level, World, DevKnobs.
-- [ ] **P4.3** Turn checking on per folder (`// @ts-check` or rename to `.ts`, since
+      Done, written from the real objects (a scratch script dumped the key sets of `MODS`, `makeGun`, `planCast`,
+      `CREATURES`, `enemyFor`, `perkBag`, `makeLevel` on floors 1 and 3, `DEV`; the fields the game adds were
+      grepped from `src/game/`). Global (no import/export), so a checked file names them straight in JSDoc. Besides
+      the list: `Mod` (a MODS entry), `Pt`, `Rnd`, `Pixels`, `CreatureType` (a CREATURES entry), `NestState`,
+      `Perk`/`PerkBag`, `Pickup`/`StockItem`/`Room`/`NestSpot`, `FireState`, `DevRow`, `Bullet`, `Player`,
+      `GameCtx` (`G`), `StepFrame`/`DrawFrame` (the two `F`s). 58 `any`s, nearly all in `World`/`GameCtx` (the
+      particle lists, sound loops, the recorder, App's `input`, the creatures' brains): left for the game, creatures
+      and ui folders to narrow when they're checked. `DevKnobs` has an `any` index signature: the range and colour
+      tables add hundreds of `xLo`/`xHi` keys, numbers or colour strings, which a type can't tell apart by name.
+      `skipLibCheck` is now off, so tsc checks `types.d.ts` itself (a .d.ts is otherwise skipped; lib.dom is clean,
+      0.25 s).
+- [x] **P4.3** Turn checking on per folder (`// @ts-check` or rename to `.ts`, since
       esbuild strips types), in this order: core, data, spells, world, creatures, game, ui.
       Fix real errors. For noise, add a type, not an `any`, where it's cheap.
-- [ ] **P4.4** Once a folder is clean, keep it clean: the check is part of the green bar.
+      **How (D21):** `// @ts-check` as each file's first line, types in JSDoc (the shapes from `src/types.d.ts`).
+      **Behaviour doesn't change, overriding "fix real errors":** only types, JSDoc, casts in comments and
+      type-only declarations go in. A real bug the checker finds is logged under **Found along the way**
+      (file:line, what, why it's real) and its one line silenced with `// @ts-expect-error <reason>`, not fixed.
+      Proof per folder: `index.html` unchanged (JSDoc never reaches the bundle), probe SAME, logic, smoke.
+  - [x] core (`consts.js`, `util.js`): clean as soon as it was on; util's helpers got JSDoc parameter types
+        (so callers in checked folders are checked against them). 0 bugs, 0 `any`s
+  - [x] dev (`knobs.js`): one error, noise: `DEV_META`'s type was inferred from its first rows, so the colour
+        rows (no min/max/step) didn't fit. `DevRow[]`/`DevKnobs` on the tables and `DEV`; `RangeRow`/`ColourRow` tuple
+        typedefs, so every knob table's rows are now checked (they all fit). 0 bugs, 0 new `any`s
+  - [x] data (`themes.js`, `creatures.js`, `perks.js`): clean as soon as it was on. Types on the tables
+        (`CREATURES`, `PERKS`, `HUNTERS`, `NATURAL_ONLY`) and functions (`rosterFor`, `enemyFor` → `CreatureKind`,
+        `perkBag` → `PerkBag`, `themeFor`, `decorFor`); `Perk` in types.d.ts tightened (its effects are `PerkBag`'s
+        fields), `PerkBag.maxHp` optional (perkBag fills it after the literal). **1 real bug** found while typing
+        `enemyFor` (not by tsc: nothing reads `k.fire` in a checked file yet): Stendari's fire never lights, logged under
+        Found along the way. `CreatureKind` has no `fire`, so the game folder's check will flag the two readers. 0 `any`s
+  - [x] spells (`mods`, `spawn`, `guns`, `cast`, `trace`, `advisor`, `bagsim`): two errors when turned on, both noise
+        (`TRIG_VARIANTS`' extras inferred as a union with the strings). Typed: `MODS` as `Record<string, Mod>` (so every
+        spell's fields and kind are checked against `Mod`, and every modifier's `f(s)` against `Shot`'s fields: all fit),
+        the price/tier/family tables, `TRIG_VARIANTS` as tuples, and every exported function (`planCast` → `Plan`,
+        `blankShot` → `Shot`, `makeGun` → `Gun`, `tracePath`, `gunRate`, `buildAdvice`, the fire preview's `FireSim`,
+        `CastGroup`). types.d.ts: `Gun.mana`/`idx`/`order`/`delayT`/`rechT` optional (the makers build the object and
+        `resetGun` fills them in), `Gun.hue` optional (a preview gun has none; `gunHue` hashes the name, by design),
+        `Mod.id` optional (filled in after the table). 0 bugs, 1 `any` (`statQual`'s value: a number, or `shuffle`'s boolean)
+  - [x] world (`vision`, `fire`, `nav`, `zones`, `veins`, `nests`, `strata`, `decorate`, `level`): three errors when
+        turned on, all noise, none a type could fix without touching code, so each got a one-line `@ts-expect-error`
+        with its reason: `1 + (R() < 0.4)` in decorate's moss (a boolean as 0/1, on purpose), and the two test hooks set
+        as properties on their own function inside its body (`strataCave.last`, `timberWorks.zones`: TS only sees such
+        a property when it's set at the top level). Typed every exported function (`makeLevel` → `Level`, `decorate`,
+        `cullDecor`, `propAnchored`, `archCurve`/`Near`/`At`, `strataCave`, `timberFrame`, `timberWorks`, `paveWorks`, the fire engine on
+        `FireState`, `navField` → a `NavField` typedef, `navWay`, `ratNests` → `NestSpot[]`, `goldVeins`, `boxReach`,
+        `builtAt`, the vision functions with a `solidCell` callback type) and the flag tables. types.d.ts: `Spot`,
+        `Working`, `Theme`, `Noise2` added; `Prop.arc` was wrong (it is `[x, y]` pairs from the prop, not points),
+        `NestSpot.mound` is pixel indices. The arch helpers take `{ x, y, arc }` (decorate calls them on an arch before
+        its box is filled in). 0 bugs, 0 `any`s, 3 `@ts-expect-error` (noise)
+  - [x] creatures (`common`, `spider`, `rat`, `jelly`, `classic`, `draw`): clean as soon as it was on. Typed every
+        exported function; the brains are shapes now (types.d.ts: `SpiderBrain`, `RatBrain`, `JellyBrain` on `Enemy.sp`/
+        `ra`/`je` instead of `any`, with `RoamState`/`SurfState` for what `roamStep`/`surfSeat` keep on them), what each
+        step is handed (`SpiderEnv`, `RatEnv`, `JellyEnv`), `WebLine` (also `World.webs`), `SpiderShot`, `SolidCell`,
+        `CreatureCol`; `PlantGlowOpts` in jelly.js. Typing the spider's brain gave three errors, noise: `mode` narrowed
+        after `if (S.mode === 'shoot') return` though `decide()` changes it in between, so `SpiderBrain.mode` is a
+        `string` (its values in the comment). 0 bugs, 0 `any`s
+  - [x] the rest of layer 4 (`art/`, `audio/`, `save/`, `replay/`; not in the order above, but P4.4 wants every file on):
+        one error when turned on, noise: `window.webkitAudioContext` (the old prefixed constructor sfx.js falls back to),
+        declared on `Window` in globals.d.ts. Typed the exported functions and tables (the sprites, `drawProp`/`propGlow` on
+        `Prop` + `Theme`, `shotSound`, `creatureSound`, `rustleStep`, `cleanGun` → `Gun`, `cleanLoadout` → `Loadout`, `readSave`
+        → `SaveData`, the replay helpers) and SFX's public calls. `SFX`'s `safe()` wrapper returned a bare `function ()`, so
+        every `SFX.x(…)` call would have been "expected 0 arguments" once game/ is checked: it is typed `<T>(fn: T) => T`, with
+        one `@ts-expect-error` (TS can't see that passing `arguments` through keeps the signature). types.d.ts: `Loadout`,
+        `SaveData`, `SavedLevel`, `RpSnap`, `RpFrame`, `RpRect`, `RpPatch`; `Prop.u0`/`u1` (a burning arch). 0 bugs; `any`s: save 2
+        (`cleanGun`/`cleanLoadout` take whatever the store held), replay 7 (snapshot entities are clones of anything:
+        `rpCopy`/`rpLerp`/`rpList`/`rpClone`, and `RpSnap`/`RpFrame`/`RpPatch`'s index signatures), 1 `@ts-expect-error` (noise)
+  - [x] game (`src/game/`), in groups, one commit each. types.d.ts's game section narrowed first (one go, before
+        any game file was on): `World`'s lists typed (`EnemyShot`, `Field`, `Beam`, `Arc`, `Coin`, `Toast`, `Flash`,
+        `Cloud`, `Ring`, `Devil`, `Silk`, `SilkString`, `Sconce`, `Ghost`, `Zfx`; `Particle` for the grab-bag lists
+        smoke/sparks/torchP/motes/dparts/amb/burns, common fields + an index signature), sound loops as `SoundLoop`
+        (`ReturnType` of `SFX.loop`), `navYou` as `NavCache`; `Player` lost its index signature (every field it gets
+        is declared); `GameCtx.input` is `{ current: GameInput }` (App's ref: `StickState`, `Hud`, `Prompt`,
+        `Witness`, `ReplayView`), `REC`/`RT` are `Recorder`/`ReplayPlayer`, `RPV` a `ReplayView`; `StepFrame.LO` a
+        `Loadout`, `DrawFrame.TH` a `Theme`; new `EnemyCtx` (`C`, D20) and `ActHooks`. `Level`/`World` `img`/`dimg`
+        are `ImageData` (makeLevel makes them with `new ImageData`; `Pixels` stays for the pure code that only reads
+        them). JSDoc on the functions by a scratch script from the parameter names (`W` → `World`, `G` → `GameCtx`,
+        `F` → `StepFrame`/`DrawFrame` by folder, `e` → `Enemy`, `b` → `Bullet`, `pr` → `Prop`, coordinates and
+        times → `number`, a table of the odd ones), then checked by hand
+    - [x] `world.js`, `Game.js`, `testhook.js`: two errors, noise: `window.__TEST`/`__lvl` (declared on `Window`
+          in globals.d.ts), and `W.img`/`W.dimg` as `Pixels` handed to `putImageData` (now `ImageData`, above).
+          `makeWorld` → `World`, `G` → `GameCtx`, testHook's `g` a local `TestFns` typedef. 0 bugs, 0 `any`s
+    - [x] systems, part 1 (`terrain`, `particles`, `player`, `enemies`, `fire`, `webs`, `fog`, `ambience`, `props`,
+          `plantglow`, `lightning`): 34 errors when turned on. Noise fixed by a type: the script's guesses (`growBox`'s box
+          and `splat`'s enemy shot weren't a `Bullet`), optional parameters callers leave off (`goo`'s size/colour,
+          `flameAt`'s speed, `shatter`'s count, `sputterStep`'s rnd, `explode`'s splash/hot, `fireBlast`'s hot), and
+          types.d.ts fitted to what the code stores: `Prop.fall`/`warn` booleans, `heard` a 1, `climb` (an arch's rolled
+          climb speed), `Bullet.struck` a 1, `jetSt.gap`. Three one-line `@ts-expect-error`, noise: a boolean counted as
+          0/1 (ambience), `flushFire`'s `[box, context, pixels]` rows read as a union, and a vent reusing `Prop.on` as
+          "roaring" (logged, below). **Stendari's `k.fire`** (the logged bug) in `fireEnemyShot`: its line sits inside an
+          object literal, where esbuild keeps comments (a `@ts-expect-error` there reached `index.html`, and so did
+          joining the literal onto one line: esbuild keeps an object's line breaks), so the local `k` is typed
+          `CreatureKind & { fire?: number }` with a comment pointing at the entry. 0 new bugs, 0 `any`s
+    - [x] systems, part 2 (`gun`, `fields`, `bullets`, `shotlooks`, `pickups`, `recorder`, `save-run`, `level-entry`,
+          `step`): ~200 errors when turned on, nearly all one guess of the script's (`shotlooks.rnd(a, b)`'s `b` is a
+          number, not a `Bullet`: every call flagged). The rest noise, fixed by a type: `Bullet` split into what every
+          bullet has and optional rest (a cluster's pellets and the Angry Ghost's shots are pushed with only the first
+          block; the loop reads a missing field as 0), `hit`/`propHit` are `Set`s, `Pickup.cool`, `Devil.snd`,
+          `enterLevel`'s `back` a `SavedLevel`, the recorder's pixel copies `Uint8ClampedArray<ArrayBuffer>` (what
+          `new ImageData` takes). `World.sconces` stays `any[]` (enterLevel builds `[x, y]` pairs, then maps them to
+          `Sconce`s; the pairs span two lines of one array, where a comment would reach `index.html`). Four one-line
+          `@ts-expect-error`, noise: `recWrap`'s `[context, 't'/'d']` rows read as a union (3), and `drawReplay`'s
+          stand-in `W.fire` (no fuel). 0 bugs, 1 `any` (`sconces`)
+    - [x] `render/` (`draw`, `cave`, `actors`, `effects`, `light`, `looks`, `overlay`): 8 errors when turned on, noise
+          but for one wrong type of mine: `G.aimPath` is `tracePath`'s flat `x, y, x, y, …` (was `Pt[]`). Fixed by a type:
+          `Player.aim.vis` (the aim line's fade), `drawTorch`'s embers are `Particle`s. One `@ts-expect-error`, noise:
+          `drawReticule`'s `[width, colour]` rows read as a union. 0 bugs, 0 `any`s
+    - [x] `creatures/` (`acts`, `classic`, `jelly`, `rat`, `spider`): 3 errors when turned on. Noise: `unstick`'s `home`
+          is the "carrying gold home" flag, not an `Enemy` (the script's guess). **Stendari's `k.fire`** in `bombBurst`
+          (`src/game/creatures/classic.js:65`), the logged bug: a statement, so a one-line `@ts-expect-error` pointing at
+          the entry. `ACTS` is `Record<string, ActHooks>` (every hook's signature checked against D20's), `onWebIn`
+          typed; `Enemy.roam`/`path`/`jobO` narrowed from `any` (`RoamState`, `Pt[]`, `object`). Then the index
+          signatures on `Coin`, `Silk`, `Ghost`, `Field` came off (the fields they really get added: `Silk.life`,
+          `Field.near`/`dT`/`done`), `Bullet.trail` is `Pt[]`. 0 new bugs, 0 `any`s
+  - [x] **game done**: every file under `src/game/` checked. `any`s left in the game section of types.d.ts: 9
+        (`Particle`'s index signature, for the grab-bag particle lists; `Shot`/`Bullet.bounceFx`, always null; `sconces`;
+        `StickState`'s and `Prompt`'s index signatures and the two legacy `confirmAct`/`confirmAim`, for the ui folder to
+        narrow (it did: 4 left after ui); `RP_ARR`'s `any[]`). `@ts-expect-error` in game/: 9 (7 noise, 1 the vent, 1 Stendari in
+        `bombBurst`; `fireEnemyShot`'s Stendari line is a typed local instead)
+  - [x] ui (`app`, `cards`, `devpanel`, `editor`, `h`, `hud`, `swap`, `witness`): 9 errors when turned on, all noise.
+        The Dev panel's jelly preview hands `jellyStep` a stand-in creature: `jellyStep`'s `e` is now
+        `Pick<Enemy, 'x' | 'y' | 'hx' | 'hy' | 'r' | 'je'>` (what it reads) and `roamStep`'s just a home. DOM lookups:
+        `closest(…)` returns an `Element`, `.dataset` is on `HTMLElement`, so the three `const`s are typed
+        `HTMLElement | null` (`closest` is generic: TS infers it from the declared type, no cast). Three one-line
+        `@ts-expect-error`: the preview's stand-in vines to `drawProp`, and `document.activeElement.blur` twice (an
+        `Element`). Typed every component's props (`input` as `{ current: GameInput }`, so App's bridge is checked
+        on both sides; App's own `useRef` gets the type on its `const`), `fmtGold`, `deckLayout`, `healthCol`,
+        `holdPress`. `StickState` and `Prompt` lost their index signatures, the legacy `confirmAct`/`confirmAim` are typed.
+        React stays `any` (globals.d.ts, P4.1), so `h(Component, props)` calls aren't checked against the props.
+        0 bugs, 0 `any`s
+- [x] **P4.4** Once a folder is clean, keep it clean: the check is part of the green bar.
+      Done: every `.js` under `src/` is on (the three left, `main.js`, `pure.js`, `version.js`, were clean), so
+      `tsconfig.json` now has `checkJs: true`: all of `src/` is checked, and a new file is too without anyone remembering
+      a first line (checked: a planted error in a new file with no `// @ts-check` fails the run). The `// @ts-check` lines
+      stay, now redundant (taking them out of ~80 files is churn for nothing). `tests/run.js` already fails the run on
+      a report (`types`, since P4.1). tsconfig's, run.js's and CLAUDE.md's notes on the check say so; CLAUDE.md also
+      says where a comment may not go (inside an object or array literal: esbuild keeps it). Totals for P4.3: 1 real
+      bug (Stendari's fire, found in data/, silenced where game/ reads it) and 1 oddity (a vent reusing `Prop.on`), both
+      logged, not fixed; 16 `@ts-expect-error` lines (14 noise, each with its reason; 1 Stendari; 1 the vent). `any`s
+      left besides React/ReactDOM: in types.d.ts `DevKnobs`' index (P4.2), `bounceFx` on `Shot`/`Bullet` (always null),
+      `Particle`'s index, `World.sconces`, `G.RP_ARR` and the replay's snapshot shapes; in JSDoc the four replay helpers,
+      `cleanGun`/`cleanLoadout`'s input (whatever the store held), `statQual`'s value and `ScrollBox`'s React children.
+      `strict` is still off (D21): turning on `strictNullChecks` per folder is the next step up, if wanted
 
 ### Phase 5 — notes live next to the code
 
-- [ ] **P5.1** Each `src/<folder>/` gets a short `README.md`: what's in it, the rules that
+- [x] **P5.1** Each `src/<folder>/` gets a short `README.md`: what's in it, the rules that
       matter ("planCast mutates g.idx", "the aim line must stay honest", "fire must not
       reveal fog", the owner's rules for that area). Moved from `CLAUDE.md`, and updated to
-      new names.
-- [ ] **P5.2** `CLAUDE.md` slims to: the owner's working style, the release loop, the
-      testing rules, the layer rule, a map of folders → READMEs. Target < 150 lines.
-- [ ] **P5.3** Version history paragraphs (v40…v96) go to `CHANGELOG.md`. Anything still
-      needed as a *rule* goes to the right folder README.
-- [ ] **P5.4** Update `HANDOVER.md`; mark this doc **Done** at the top.
+      new names. Done: 15 READMEs (core, dev, data, spells, world, creatures, art, audio, save,
+      replay, game, game/systems, game/render, game/creatures, ui). They don't reach the build or
+      the checks: esbuild bundles only what `main.js` imports, `tests/load.js`'s `.source` reads
+      only `.js`, ESLint lints `src/**/*.js`, tsc includes `.js` and `.d.ts`; `index.html` unchanged.
+- [x] **P5.2** `CLAUDE.md` slims to: the owner's working style, the release loop, the
+      testing rules, the layer rule, a map of folders → READMEs. Target < 150 lines. Done: 1,132 →
+      148 lines; every rule checked against the old file (`git show 1aa5181:CLAUDE.md`) and found in a
+      README, `CHANGELOG.md` or the new CLAUDE.md.
+- [x] **P5.3** Version history paragraphs (v40…v96) go to `CHANGELOG.md`. Anything still
+      needed as a *rule* goes to the right folder README. Done: `CHANGELOG.md` at the root, v39–v99
+      plus an Unreleased entry (Phases 4–5), from CLAUDE.md's vNN notes, HANDOVER's "What shipped"
+      and the release commits; the rules in them went to the READMEs in P5.1.
+- [x] **P5.4** Update `HANDOVER.md`; mark this doc **Done** at the top. Done: HANDOVER is short (where
+      things stand, what's next = Found along the way, the app, testing, ideas); the old HANDOVER flake
+      list moved into Found along the way so it is the one list.
 
 ---
 
@@ -725,6 +883,7 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
 | D18 | **step()'s parts share one per-frame object `F`** (`{ dt, LO, MHP, pcx, pcy }`), made at the top of `step` and handed to every part; a part that fills one in (`stepPerks`: `LO`, `MHP`; the portal check: `pcx`/`pcy`) writes it there. A part reads its fields with a `const { … } = F;` first line. A part that can end the frame (New cave, the portal) returns `true` and step returns | The locals that live across parts are few and never change once set, so one small object a frame is simpler than a different argument list per part, and the destructuring keeps each moved block word for word. Recomputing `pcx`/`pcy` per part would not do: a Teleport Bolt moves you mid-frame and the later parts must still see where you were |
 | D19 | **draw()'s parts share a frame object `F` too**, like step's (D18): `{ dpr, playPx, vw, vh, pcx, pcy, … }`, made at the top of `draw`. `drawCamera` fills the view (`dpr`, `playPx`, `vw`/`vh`) and where you are (`pcx`/`pcy`); a later part that sets up something the parts after it use (the theme `TH` and `onView`, the held gun and aim) fills its fields the same way. Parts live in `render/` by theme, each `(W, G, F)` (only what it uses) with a `const { … } = F;` first line. `if (G.RPV) return;` (a replay has no HUD) stays in the top-level `draw` | Same reasons as D18, and the same tool (`tools/part.js`) does the cuts. Nothing in draw changes what these are made from, so a part could recompute them, but reading them off `F` keeps every moved block word for word (and `TH`/`onView`/the aim are more than a line each) |
 | D20 | **P3.5's shape: creature plugins keyed by act, in `src/game/creatures/`.** A creature's pure brain and sprite stay in `creatures/<name>.js` (layer 4). Its Game side (its part of the enemy loop, its hooks) is `src/game/creatures/<name>.js` (layer 5, beside `systems/`), exporting plain `function` declarations. `src/game/creatures/acts.js` holds `ACTS`: act → `{ move, pre?, contact?, fire?, die?, frame? }`, one line per act, and `stepEnemies`/`damageEnemy` call a hook exactly where its inline branch sat: `pre` before the move (bomb's fuse), `move` at the old `if/else` chain (returns true when the creature did its whole frame: today's `continue` for nest and rat), `contact` inside the touching check (true = it's gone: the bomber), `fire` after contact (shoot, turret), `die(W, e)` in `damageEnemy` after the splice (true = skip the normal coin: the nest), `frame(W, G, F)` once a frame after the creatures' shots (the spider's silk). The per-enemy hooks take `(W, G, e, C)`: `C` is one object `stepEnemies` makes per frame and refills per enemy (`dt`, `pcx`, `pcy`, then `i`, `dx`, `dy`, `dist`, `sees`, `hunting`), read with a `const { … } = C;` first line so a moved branch stays word for word (as D18). A file may hold two acts (`rat.js`: `rat` and `nest`). Adding a creature: its pure file (brain + sprite, a `drawEnemy` line for its body), its game file, one `ACTS` line, its knob table in `dev/knobs.js` (D11) | The layer rule: the branches use layer-5 systems, so they can't live in `creatures/` (layer 4), and the pure halves shouldn't move down to layer 5 (the logic suites and the Dev panel's jelly preview use them). Keyed by act, not by creature or body: act and body are separate axes (four acts are shared by 11 classic types, eight bodies by all 16), and the loop's branches are by act already; drawing stays by body in `drawEnemy`. One signature for every entry of a hook, since a table can't vary the arguments per creature (D16's "only what it uses" is per function, not per table). Function declarations, not `const` arrows: `ACTS` is read at load (plain data, D17) inside an import cycle (enemies.js → acts.js → rat.js → rats/terrain → enemies.js), and a hoisted function is always there, where another module's `const` might not be made yet |
+| D21 | **P4.3: `// @ts-check` + JSDoc, not renaming to `.ts`.** Each checked file starts with `// @ts-check`; parameter and variable types are JSDoc comments naming the shapes in `src/types.d.ts` (global, no import); no inline casts (`/** @type {X} */ (expr)`): esbuild keeps a comment inside an expression, so it would show in `index.html` (Found along the way); a statement-level `@type` or a narrow `@ts-expect-error` instead. `tsconfig.json` keeps `checkJs` off, so a folder is on when its files carry the line (P4.4: once every file was, `checkJs` went on). A `@ts-expect-error` can't go inside an object or array literal either (esbuild keeps that comment, and keeps a literal's line breaks, so joining it onto one line changes `index.html` too): type the local instead. `strict` stays off (null checks and implicit `any` would be a rewrite's worth of noise); it can be turned on per folder later | Every tool and doc names `.js` paths: `tools/build.js` bundles `src/main.js`, `tests/load.js` bundles `src/pure.js` and walks `src/` for `.js` (`.source`), `tools/system.js`/`part.js`/`gamemap.js`, `pure.js`'s ~80 `export * from './x.js'` lines, every import in `src/`, the layout table in CLAUDE.md and this doc. A rename ripples through all of them for no gain the checker doesn't already give. esbuild drops statement-level comments, so JSDoc never reaches `index.html`, and the proof that a step changed nothing is simply that `index.html` didn't change. Cost: JSDoc is wordier than TS syntax, and without inline casts a few spots need a type on a declaration or a `@ts-expect-error` |
 
 ## Found along the way
 
@@ -815,8 +974,45 @@ commit. List them here for after.
 - **`jelly` (browser) spore-puff group** ("a pulse puffs spores out of it", and the four after it), new on the list: failed once in the P3.5 checkpoint's full run (`puffN` 0), passed in 8 runs alone after it. The jelly suite on 3d04c5b (before the jelly move) passed whole 2 of 5 and on the P3.5 (6) tree 3 of 5, both failing only on the spit group and "saturation 0". The probe counts every random draw, spore puffs included, and was SAME at each step.
 - **`damageEnemy` looks up `ACTS[act]` with no fallback, `stepEnemies` with `|| ACTS.chase`.** Same behaviour as before for every act (only `nest` has `die`); noted in case an act ever gets a `die` and an unknown act is expected to share `chase`'s.
 - **`fireEnemyShot` has one caller now** (`gunFire`, game/creatures/classic.js). Left in enemies.js as the plan said: it reads only generic creature fields (`shots`, `bspd`, `dmg`, `fire`), so any act could fire it.
+- **Found in P4.3 (data): Stendari's bomb never sets anything alight.** `enemyFor` (`src/data/creatures.js:123`) copies
+  a fixed list of fields from the creature type onto `e.k`, and `fire` isn't among them: `CREATURES.tuli.fire` is 1,
+  `enemyFor('tuli', 6).fire` is `undefined` (checked in node). So `bombBurst`'s `if (k.fire) fireBlast(…)`
+  (`src/game/creatures/classic.js:60`) never runs, and `fireEnemyShot`'s `fire: k.fire` (`src/game/systems/enemies.js:31`)
+  is always `undefined`, though CLAUDE.md's v86 note lists "creature `fire: 1` (Stendari's bomb blast)" as a fire
+  source. The fix is one field (`fire: c.fire || 0`) in `enemyFor`, a gameplay change (bombs on floors 6, 7 and 9
+  start fires), so it's the owner's call. `CreatureKind` (types.d.ts) says what `enemyFor` really returns (no `fire`), so
+  those two lines will need a `@ts-expect-error` when the game folder is checked. **Done in P4.3 (game):** `bombBurst`'s
+  line has one (`src/game/creatures/classic.js:64`); `fireEnemyShot`'s read sits inside an object literal, where a comment
+  would reach `index.html`, so its local `k` is typed `CreatureKind & { fire?: number }` with a comment pointing here
+  (`src/game/systems/enemies.js:28`). When the bug is fixed: add `fire` to `CreatureKind` and drop both.
+- **esbuild keeps a comment that sits inside an expression** (P4.3, data): a JSDoc cast `/** @type {X} */ (expr)` came
+  out in `index.html` as `(
+ /** @type {X} */
+ expr
+)`. Same code, but the "`index.html` unchanged" proof breaks.
+  Statement-level JSDoc (`/** @type */` above a `const`, `@param` above a function), a comment on an arrow's parameter
+  and `// @ts-expect-error` lines are all dropped. So P4.3 uses no inline casts (D21).
 - **`drawFields` ends with `G.ctx.globalAlpha = 1;` twice** (render/looks.js): one was the line after the old inner
   `drawFieldLook` declaration. Harmless; left as it was.
+- **A vent reuses `Prop.on` as "roaring"** (P4.3, game: `src/game/systems/props.js:218`, `pr.on = ph > 2.6`). On an
+  arch strand `on` is the arch it hangs off, and `propAnchored` (`src/world/decorate.js:562`) reads `if (pr.on) return
+  !pr.on.fall && !pr.on.gone`, so a vent is counted as anchored (never dropped) while it roars, and only checked in its
+  quiet part of the cycle; `decorStep` also sets `pr.on = null` when a prop falls. Harmless today (vents have their own
+  anchor and get checked a moment later), but one field meaning two things. `Prop.on` stays typed as the arch; the vent
+  line has a `@ts-expect-error`. Fix after the refactor: a vent field of its own (`roar`).
+
+- **Flakes from before the refactor** (moved here from HANDOVER in P5.4, so this is the one list): `everymod`
+  (telecast), `trigger` (double trigger), `compare` (a found gun that happens not to differ in regen, so "less regen
+  is red" finds nothing; seen once in the v47 run), `fog` "the next floor is dark again" (~1 in 4–5 runs a new floor
+  starts with a few cave cells lit up the shaft; fails on v56 too, seed-dependent), `lightning` "a fork hits a
+  creature off to the side" (~1 in 5–8: the fork roll is random and the target bobs near the edge of its 90 reach;
+  seen v78/v79, not a spider bug), `torch` "light moves with it" (flicker-range sensitive, v50), `jelly` spit (~1 in 3,
+  on v87 and v96 code as well). All pass alone.
+- **Stale code comments found in P5.1** (left, docs-only phase): `game/systems/shotlooks.js`' header says the draw side
+  (`drawLook`) "is still in Game's draw()" and `lightning.js`' says the arcs are drawn "in Game's draw()": both are in
+  `game/render/looks.js` now. `replay/replay.js`' header says "the recorder and player live in the Game for now" (they're
+  `game/systems/recorder.js`). The old CLAUDE.md said the `e`/`tab` key opens the Bag "unconditionally"; the code
+  (`ui/app.js`) opens it only in the shop or with Tinker (the README says what the code does).
 
 ## Game map
 
@@ -1042,3 +1238,25 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.5 (6), **P3.5 done** | enemies.js' header and `stepEnemies`' comment say what's shared and where each act's part is (comments only: `index.html` unchanged); CLAUDE.md's creature note gets "Since P3.5 … Adding a creature"; HANDOVER's status. Checkpoint full suite on this tree: `everymod` telecast, `lightning` fork and `jelly` (the spore-puff group, new on the list) failed; alone `everymod` 1 of 1, `lightning` 2 of 2, `jelly` whole 3 of 5 here vs 2 of 5 on 3d04c5b (before the jelly move), both failing only on the spit group and "saturation 0" (Found along the way). `git worktree remove` again left `.git/worktrees/snap` (deleted by hand after the junction). P3.5: `stepEnemies` 245 → ~110 lines; `src/game/creatures/` 5 files. Not merged. | logic 33/33; browser 44/44 after re-runs |
 | 2026-09-30 | Owner change (not a refactor move) | The owner's Dev-panel report made the new defaults: 90 values in `src/dev/knobs.js` (`DEV_DEFAULTS`: zoom 1.6, torch 0.5, aggro 0.6, bhPull 65, bhSpeed 50, sound levels; the spider, jelly, rat and fire range tables; `jeHue` 26, `jeSat` 1.4). **Plays differently**, so the determinism probe's baseline moves with this commit: compare later steps against it, not against 98ed736. Tests that silently leaned on an old default now pin the knob they were written for (not loosened): logic `fire` (spread), `jelly` (turn rate, droop, master sliders for the blend checks), `rats` (jump speed/reach, chase rests), `spider` (hunting bursts/rests, roaming rests on the real-cave check); browser `spider` (web slow, string range), `jelly` (plain colours for the red-bell check), `torch` (`DEV.torch = 1`); `devsettings`, `jetpack` and browser `jelly`'s ↺ check read `DEV_DEFAULTS` instead of a hardcoded number. CLAUDE.md's BH and aggro defaults updated. | logic 33/33; browser spider, jelly, rats, fire, archvine, blackhole, torch, fog, map, sound, smoke, creatures, decor, replay ok (jelly spit group: the known flake, same rate at HEAD) |
 | 2026-09-30 | Phase 3, **P3.6 done**, Release v99 | Owner play-tested the branch ("plays great"). Game.js checked against P3.6: 186 lines, owns making the world, the loop and the React bridge; its header comment updated. Sanity runs on this tree (the full suite was green at the end of P3.5, and 7c96c5e ran its touched suites). README: the spider/web slow ×0.8 → ×0.7 (the new defaults). `src/version.js` → v99, merged `refactor` → `main` (merge commit, as v98), pushed. | logic 33/33, smoke ok |
+| 2026-09-30 | Release check | CI run 36657455557 green (deploy-pages, build-apk) on fa3ff66; `version.txt` = v99. `main` merged back into `refactor` (fast-forward, same commit). | — |
+| 2026-09-30 | Phase 4, P4.1 | `typescript` 7.0.2 dev dependency, `tsconfig.json` (choices under P4.1), `src/globals.d.ts`; `tests/run.js` runs `tsc --noEmit -p .` after ESLint (checked it fails the run on a planted error in a `// @ts-check` file). No file is checked yet. CLAUDE.md Testing says how it runs. `index.html` unchanged. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.2 | `src/types.d.ts` (the shapes, under P4.2), `skipLibCheck` off so it is checked itself (a planted unknown name in it fails the run). No `.js` changed; `index.html` unchanged. CLAUDE.md's layout table gets a row. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.3 core | D21 decided (`// @ts-check` + JSDoc, files stay `.js`). `core/consts.js`, `core/util.js` checked: clean at once; JSDoc parameter types on util's helpers (`mix`/`approach`/`clamp` as `@type` on the arrow consts; `hexRgb`/`hexArr` gained parentheses round their one parameter to carry the type: esbuild prints them the same). `index.html` unchanged. 0 bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.3 dev | `dev/knobs.js` checked. One error (noise: `DEV_META` inferred from its first rows); `DevKnobs`/`DevRow[]` on the tables, `RangeRow`/`ColourRow` typedefs for the knob tables' rows, types on `kr`/`kru`/`kcol`/`jcol`/`devSet`. `index.html` unchanged. 0 bugs, 0 new `any`s. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.3 data | `data/` checked: clean at once; types on its tables and functions (`perkBag` needed `PerkBag.maxHp` optional). A first try cast perkBag's return with `/** @type {PerkBag} */ (P)` and `index.html` changed: esbuild keeps comments inside expressions, so no inline casts (D21, Found along the way). Found while typing `enemyFor`: Stendari's `fire` never reaches `e.k` (logged, not fixed). `index.html` unchanged. 1 bug, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.3 spells | `spells/` checked (7 files): two errors, noise (`TRIG_VARIANTS`' extras). JSDoc on the tables (`MODS` as `Record<string, Mod>` checks every spell and every modifier's `f` against `Mod`/`Shot`: all fit) and every exported function; local typedefs `CastGroup`, `FireSim`; `NOITA_SPAWN`, `GUN_RANGE`, `TRIG_VARIANTS` as tuples. `Gun`'s filled-in-later fields and `hue`, and `Mod.id`, made optional in types.d.ts (what the code really builds). `index.html` unchanged. 0 bugs, 1 `any`. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.3 world | `world/` checked (9 files): three errors, noise, each silenced on its line with `@ts-expect-error` and a reason (a boolean as 0/1 in decorate; two test hooks set on their function inside its body). JSDoc on every exported function and the flag tables; types.d.ts gets `Spot`, `Working`, `Theme`, `Noise2`, and `Prop.arc` fixed (pairs, not points). `index.html` unchanged. 0 bugs, 0 `any`s. Stopped here: creatures, game, ui are the next job. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.3 creatures | `creatures/` checked (6 files): clean at once. JSDoc on every exported function; types.d.ts: the three brains (`SpiderBrain`, `RatBrain`, `JellyBrain`, replacing `Enemy.sp/ra/je: any`), their `*Env`s, `WebLine` (`World.webs` too), `SpiderShot`, `RoamState`, `SurfState`, `SolidCell`, `CreatureCol`. The spider brain's `mode` is a `string` (a literal union narrowed wrongly across `decide()`: 3 errors, noise). `index.html` unchanged. 0 bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.3 layer 4 | `art/`, `audio/`, `save/`, `replay/` checked (7 files): one error, noise (`webkitAudioContext`, declared in globals.d.ts). JSDoc on the exported functions and SFX's public calls; `safe()` typed to keep its function's signature (one `@ts-expect-error`). types.d.ts: `Loadout`, `SaveData`, `SavedLevel`, the replay's `RpSnap`/`RpFrame`/`RpRect`/`RpPatch`, `Prop.u0`/`u1`. `index.html` unchanged. 0 bugs, 9 `any`s (save 2, replay 7). | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.3 game (1) | types.d.ts's game section narrowed (World's lists, `GameInput`, `Recorder`/`ReplayPlayer`, `EnemyCtx`, `ActHooks`, `SoundLoop`, `NavCache`; `img`/`dimg` as `ImageData`), then `world.js`, `Game.js`, `testhook.js` checked: two errors, noise (the test page's `window` hooks; `Pixels` to `putImageData`). `index.html` unchanged. 0 bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.3 game (2) | systems part 1 checked (`terrain`, `particles`, `player`, `enemies`, `fire`, `webs`, `fog`, `ambience`, `props`, `plantglow`, `lightning`): 34 errors, all noise but Stendari's known `k.fire` (typed on the local, since its line is inside an object literal: a comment there, or joining the literal onto one line, changed `index.html`). types.d.ts fitted (`Prop.fall`/`warn`/`heard`/`climb`, `Bullet.struck`, `jetSt.gap`); 3 `@ts-expect-error` (noise). Logged: a vent reuses `Prop.on`. `index.html` unchanged. 0 new bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.3 game (3) | systems part 2 checked (`gun`, `fields`, `bullets`, `shotlooks`, `pickups`, `recorder`, `save-run`, `level-entry`, `step`): ~200 errors, nearly all one wrong guess of the JSDoc script's (`rnd(a, b)`); the rest noise, fixed by types (`Bullet`'s optional part, `hit` a `Set`, `Pickup.cool`, `Devil.snd`, `SavedLevel`, `Uint8ClampedArray<ArrayBuffer>`), 4 `@ts-expect-error` (recWrap's rows, the replay's stand-in fire). `index.html` unchanged. 0 bugs, 1 `any` (`World.sconces`). | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.3 game (4) | `render/` checked (7 files): 8 errors, noise (`G.aimPath` is flat numbers, `Player.aim.vis`, `drawTorch`'s embers as `Particle`s; one `@ts-expect-error` for a `[width, colour]` row union). `index.html` unchanged. 0 bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.3 game (5) | `game/creatures/` checked (5 files): 3 errors, one the logged Stendari bug (`bombBurst`, a one-line `@ts-expect-error`), two a wrong guess (`unstick`'s `home` is a flag). `ACTS` typed with `ActHooks`; `Enemy.roam`/`path`/`jobO` and `Coin`/`Silk`/`Ghost`/`Field`'s index signatures narrowed away. **game/ done.** `index.html` unchanged. 0 new bugs, 0 `any`s (9 left in the game section, listed under P4.3). | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.3 ui | `ui/` checked (8 files): 9 errors, noise (the jelly preview's stand-in creature: `jellyStep` takes what it reads; `closest()` results typed `HTMLElement` on their `const`s; 3 `@ts-expect-error`). Props typed on every component; `StickState`/`Prompt` index signatures and the legacy confirm hooks narrowed. **P4.3 done** for every folder. `index.html` unchanged. 0 bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.4 | Every file under `src/` checked (`main.js`, `pure.js`, `version.js` were clean), so `tsconfig.json` has `checkJs: true`: all of `src/` is checked and a new file is too (checked with a planted error in a new, unmarked file). The `// @ts-check` lines stay, redundant. tsconfig, tests/run.js, CLAUDE.md (Testing, the layout row), HANDOVER say so; CLAUDE.md also: no comment inside an object/array literal. The Stendari entry says where its two reads are silenced. **Phase 4's tasks done**; not merged. `index.html` unchanged. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 5, P5.1 | A README.md in each src/ folder (15): what each file holds and that area's rules, moved from CLAUDE.md in today's names (`W.mat`, the system or render module a function lives in). Every backticked name in them checked against src/. CLAUDE.md not trimmed yet (P5.2). Docs only: `index.html` unchanged. | logic 33/33, smoke ok |
+| 2026-09-30 | Phase 5, P5.3 | `CHANGELOG.md`: one entry per release v39–v99, newest first, plus Unreleased (Phases 4–5). Docs only. | index.html unchanged |
+| 2026-09-30 | Phase 5, P5.2 | CLAUDE.md 1,132 → 148 lines: the owner's working style (their words intact), the loop, version, Android essentials, a folder → README map with the layer rule, editing and testing rules (sandbox, no waiting forever, flakes pointer, the type check, D21). Section-by-section check against the old file; two rules added to READMEs in the pass (Pollen, the inert confirm path). Docs only. | logic 33/33, smoke ok |
+| 2026-09-30 | Phase 5, P5.4, **Phase 5 done, refactor done** | HANDOVER.md rewritten short (status, next steps pointing at Found along the way incl. Stendari's fire, the vent's `Prop.on`, the flakes; the app; testing; ideas). The old HANDOVER flakes and the stale code comments found in P5.1 added to Found along the way. This doc marked **Done**; the final merge of Phases 4–5 (v100) is the owner's call. Docs only. | logic 33/33, smoke ok |
+| 2026-09-30 | Release v100 | Owner: "merge all to main". `src/version.js` → v100; `git diff 8ac14fd -- index.html` shows only the `<title>` and `const VERSION` lines. CI and the app parse the version as `v(\d+)` → integer, so three digits are fine. CHANGELOG Unreleased → v100; CLAUDE.md, HANDOVER, this doc updated. Merged `refactor` → `main` (merge commit, as v99), pushed. | logic all passed, smoke ok |

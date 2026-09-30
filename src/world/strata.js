@@ -1,3 +1,4 @@
+// @ts-check
 // Floor 1's layered, built-up cave: strataCave (the layers, corridors, holes, vaults and
 // old workings), paveWorks, and the timber that props it (timberWorks, timberFrame).
 
@@ -18,6 +19,11 @@ import { FUEL_WOOD } from './fire.js';
 // `set(x, y, rgb)` paints the decoration layer; `y` is a row in the open air between the
 // posts; `fy` (optional) is the floor row the posts must stand on; `old` adds moss and rot;
 // `maxH` the tallest post (64 by default).
+/**
+ * @param {Uint8Array} mat @param {(x: number, y: number, rgb: number[]) => void} set paints the decoration layer @param {Rnd} R @param {Theme} T
+ * @param {number} xa @param {number} xb @param {number} y @param {boolean} old @param {number} [fy] @param {number} [maxH]
+ * @returns {boolean} whether it went in
+ */
 export function timberFrame(mat, set, R, T, xa, xb, y, old, fy, maxH) {
   const solid = (x, yy) => x < 0 || yy < 0 || x >= CW || yy >= CH || mat[yy * CW + x] !== 0;
   const down = x => { let k = y; while (k < y + 70 && !solid(x, k + 1)) k++; return solid(x, k + 1) ? k + 1 : -1; };
@@ -94,6 +100,7 @@ export function timberFrame(mat, set, R, T, xa, xb, y, old, fy, maxH) {
 // Returns what makeLevel needs: route points for re-clearing, vaults for the rooms, works.
 // N = { vn, fbm, ok } (the level's seeded noise; ok(x, y), if given, is where built-up
 // features may go — makeLevel's zones — so workings and vaults land whole inside one).
+/** @param {Uint8Array} mat @param {Rnd} rnd @param {{ vn: Noise2, fbm: Noise2, ok?: (x: number, y: number) => boolean }} N @param {number} shopExit */
 export function strataCave(mat, rnd, N, shopExit) {
   const { vn, fbm } = N, ok = N.ok || (() => true);
   const K = k => kr(k, rnd);
@@ -374,12 +381,14 @@ export function strataCave(mat, rnd, N, shopExit) {
       break;
     }
   }
+  // @ts-expect-error a test hook hung on the function; TS doesn't see a property set inside the body
   strataCave.last = { layers, cors, caves };     // for the tests
   return { routePath, points, vaults: vaults.filter(v => v.px != null), works, layers: layers.length };
 }
 
 // The old workings' floors: worn paving, with gaps where stones have gone. After smoothing,
 // which would turn brick back into rock.
+/** @param {Uint8Array} mat @param {Working[]} works @param {Noise2} vn */
 export function paveWorks(mat, works, vn) {
   for (const w of works)
     for (let x = w.x0; x <= w.x1; x++) {
@@ -395,6 +404,7 @@ export function paveWorks(mat, works, vn) {
 // most round a working, where the galleries keep every bay and the natural tunnels get
 // timber sets too wherever the rock will take one, spaced at the post spacing. Outside them
 // the galleries keep a sparse, half-rotted run of sets and the natural cave has none.
+/** @param {Uint8Array} mat @param {Pixels} dimg @param {Working[]} works @param {Theme} T @param {Rnd} R @param {Uint8Array | null} fuel @param {(x: number, y: number) => boolean} [ok] @returns {number} sets put in */
 export function timberWorks(mat, dimg, works, T, R, fuel, ok) {
   const dd = dimg.data;
   const set = (x, y, c) => {
@@ -446,6 +456,7 @@ export function timberWorks(mat, dimg, works, T, R, fuel, ok) {
       }
     }
   }
+  // @ts-expect-error a test hook hung on the function; TS doesn't see a property set inside the body
   timberWorks.zones = zones;                       // for the tests
   return sets;
 }

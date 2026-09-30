@@ -1,3 +1,4 @@
+// @ts-check
 // The rat (Rotta, act 'rat') and its nest: its brain (ratStep, pure, state on e.ra:
 // surface crawl, jumps, path mode, tunnels), footing and spreading out, and the sprites
 // (drawRat, drawNest). Its Dev knobs (RA_KNOBS) are in dev/knobs.js for now (D11).
@@ -21,6 +22,7 @@ export const RAT = { hold: 3.5, feel: 9, step: 1, fall: 900, ceil: 0.55, tunnel:
 // that's a ceiling, and it drops off those), or a web line under its feet.
 // (The reach is generous: a rat running a path rides a little off bumpy rock, and a dip in
 // the floor isn't a cliff. Open air means nothing within a rat-and-a-half.)
+/** @param {number} x @param {number} y @param {SolidCell} solidCell @param {((x: number, y: number) => unknown) | null} [onWeb] @returns {boolean} */
 export function ratFooting(x, y, solidCell, onWeb) {
   const n = surfNormal(x, y, RAT.hold + 5, solidCell);
   return (n && n.py <= RAT.ceil) || !!(onWeb && onWeb(x, y));
@@ -28,6 +30,7 @@ export function ratFooting(x, y, solidCell, onWeb) {
 // a hop that lands on `goal`: time of flight from how far, the lift to make up the drop.
 // Higher and higher arcs until one clears the rock (round the edge of a slab, not into it).
 // Sets the rat flying and returns 'jump', or null if no arc gets there.
+/** @param {Enemy} e @param {RatBrain} S @param {Pt} goal @param {RatEnv} env @param {Rnd} rnd @returns {string | null} */
 export function ratJump(e, S, goal, env, rnd) {
   const solidCell = env.solidCell, gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
   const v = kr('raJump', rnd), cap = v * 1.4, x0 = e.x + S.nx * 1.5, y0 = e.y + S.ny * 1.5;
@@ -53,6 +56,7 @@ export function ratJump(e, S, goal, env, rnd) {
 // v95: roaming rats spread out. A push away from every other loose rat nearer than `D`,
 // harder the closer it is (0 at D, 1 on top of it, summed). Pure; the Game adds it to the
 // rat's roam spot, so the pack fans out round the nest instead of moving as one lump.
+/** @param {Enemy} e @param {Enemy[]} others @param {number} D @returns {Pt} */
 export function ratSpread(e, others, D) {
   let x = 0, y = 0;
   for (const o of others) {
@@ -66,6 +70,7 @@ export function ratSpread(e, others, D) {
   return { x, y };
 }
 // the point `d` along a path of points, and which way it's heading there
+/** @param {Pt[]} P @param {number} d @returns {{ x: number, y: number, dx: number, dy: number }} */
 export function pathAt(P, d) {
   for (let i = 1; i < P.length; i++) {
     const a = P[i - 1], b = P[i], l = Math.hypot(b.x - a.x, b.y - a.y);
@@ -77,8 +82,10 @@ export function pathAt(P, d) {
   }
   return { x: P[0].x, y: P[0].y, dx: 0, dy: -1 };
 }
+/** @type {(P: Pt[]) => number} */
 export const pathLen = P => { let l = 0; for (let i = 1; i < P.length; i++) l += Math.hypot(P[i].x - P[i - 1].x, P[i].y - P[i - 1].y); return l; };
 
+/** @param {Enemy} e @param {RatEnv} env @param {number} dt @returns {string | null} */
 export function ratStep(e, env, dt) {
   const { solidCell, rnd } = env;
   const S = e.ra || (e.ra = { mode: 'air', vx: 0, vy: 0, nx: 0, ny: -1, on: 0, rest: rnd() * 0.3, side: 1, face: 1, s: 0, dir: 1, wait: 0 });
@@ -241,6 +248,7 @@ export function ratStep(e, env, dt) {
 
 // a rat: a low grey-brown body along the rock (its "up" is the rock's normal), pointed snout,
 // round ear, long pink tail, legs scurrying while it runs; a coin in its mouth if it has one
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} r @param {number} time @param {number} phase @param {boolean} flash @param {CreatureCol} col @param {RatBrain} [S] @param {number} [carry] */
 export function drawRat(ctx, x, y, r, time, phase, flash, col, S, carry) {
   const air = !S || S.mode === 'air', nx = air ? 0 : S.nx, ny = air ? -1 : S.ny, f = S ? S.face : 1;
   const moving = S && (S.on > 0 || S.mode === 'air' || S.mode === 'path' || (S.mode === 'tunnel' && !(S.wait > 0)));
@@ -286,6 +294,7 @@ export function drawRat(ctx, x, y, r, time, phase, flash, col, S, carry) {
 }
 // a rat nest: a bowl of straw and twigs in its little room, with the gold the rats brought
 // home glinting in it
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} r @param {number} time @param {boolean} flash @param {CreatureCol} col @param {NestState} [N] */
 export function drawNest(ctx, x, y, r, time, flash, col, N) {
   ctx.save();
   ctx.translate(x, y + r * 0.35);

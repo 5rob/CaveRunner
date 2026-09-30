@@ -1,3 +1,4 @@
+// @ts-check
 // App: the page. Holds the loadout and the input ref shared with the Game, renders the
 // canvas, the two sticks and the deck buttons, and opens every overlay (Bag, Dev panel, gun
 // chooser, cards, death replay).
@@ -19,6 +20,7 @@ import { Witness } from './witness.js';
 export function App() {
   const blank = () => ({ active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false });
   const [saved] = useState(loadSave);      // last session's run, if there is one
+  /** @type {{ current: GameInput }} */
   const input = useRef({
     left: blank(), right: blank(),
     loadout: saved ? saved.loadout : { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false,

@@ -1,3 +1,4 @@
+// @ts-check
 // The theme's ambience (spores, frost, embers, motes, ash, dust devils), pooled round the
 // camera, and the spore puffs a jelly's pulse blows out of its rim.
 
@@ -12,10 +13,12 @@ export const AMB_RATE = { spores: 5, frost: 3, embers: 8, motes: 4, ashfall: 55 
 export const AMB_MAX = { spores: 40, frost: 20, embers: 60, motes: 50, ashfall: 280 };
 // one of the Luminescent Spores that drift about the green floors. The jellies puff the
 // very same thing out of their rims (puffSpores), so it is made in one place
+/** @param {World} W @param {number} x @param {number} y @param {number} r */
 export const spore = (W, x, y, r) => ({ kind: 'spores', x, y, vx: (r - 0.5) * 8, vy: 0, wob: r * 9, life: 5 + r * 3, max: 8,
   c: rgbA(themeFor(W.floor).moss[1]), s: 1.3, glow: 1 });
 // a jelly's pulse blows a puff of spores out of its rim, back the way it pushes; drag
 // (kx, ky fading at kd) settles them, then they drift like any other spore
+/** @param {World} W @param {Enemy} e */
 export function puffSpores(W, e) {
   if (e.x < W.camX - 150 || e.x > W.camX + W.viewW + 150 || e.y < W.camY - 150 || e.y > W.camY + W.viewH + 150) return;
   const S = e.je, B = jellyBell(e.r, S.shape, kru('jeSquash', S.u.sq));
@@ -29,6 +32,7 @@ export function puffSpores(W, e) {
   }
 }
 
+/** @param {World} W @param {number} dt */
 export function stepAmbience(W, dt) {
   const x0 = W.camX - 30, y0 = W.camY - 30, w = W.viewW + 60, h = W.viewH + 60;
   const T = themeFor(W.floor);
@@ -41,6 +45,7 @@ export function stepAmbience(W, dt) {
       }
       continue;
     }
+    // @ts-expect-error a boolean counted as 0/1, on purpose (noise)
     const n = W.amb.reduce((a, q) => a + (q.kind === kind), 0);
     let want = AMB_RATE[kind] * dt;
     while (want > 0 && n < AMB_MAX[kind]) {

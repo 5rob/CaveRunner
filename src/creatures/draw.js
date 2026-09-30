@@ -1,3 +1,4 @@
+// @ts-check
 // drawEnemy: draws any creature by its body (e.k.body), plus the ring that warns of a
 // charged shot.
 
@@ -7,6 +8,7 @@ import { drawNest, drawRat } from './rat.js';
 import { drawSpider } from './spider.js';
 
 // Whatever this enemy is, plus the ring that warns you a charged shot is coming.
+/** @param {CanvasRenderingContext2D} ctx @param {Enemy} e @param {number} time */
 export function drawEnemy(ctx, e, time) {
   const k = e.k, flash = e.flash > 0;
   const x = e.x, y = e.ty, r = e.r, lx = e.lx, ly = e.ly;

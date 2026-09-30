@@ -1,3 +1,4 @@
+// @ts-check
 // The spider's Game side (REFACTOR.md D20; its brain, spiderStep, and its sprite, drawSpider,
 // are in creatures/spider.js): its part of the enemy loop (spiderMove: the crawl, the string
 // shot at you), once a frame its silk (strings in flight and on you, web lines whose rock is
@@ -12,6 +13,7 @@ import { lineOfSight, solidAt, solidCell } from '../systems/terrain.js';
 
 // A spider's frame (ACTS): the move, and the string it shoots; the shared part of the loop
 // runs after it
+/** @param {World} W @param {GameCtx} G @param {Enemy} e @param {EnemyCtx} C */
 export function spiderMove(W, G, e, C) {
   const { dt, dx, dy, dist, sees, hunting, pcx, pcy } = C, k = e.k;
   // only on rock and its own lines (spiderStep); strings you when it has a clear line
@@ -34,6 +36,7 @@ export function spiderMove(W, G, e, C) {
 }
 
 // Once a frame (ACTS), after the creatures' shots: the spiders' silk
+/** @param {World} W @param {GameCtx} G @param {StepFrame} F */
 export function spiderFrame(W, G, F) {
   const { dt } = F;
   // spider strings in flight: rock stops them, you catch them
@@ -74,6 +77,7 @@ export function spiderFrame(W, G, F) {
 }
 
 // Spider silk: web lines, lines being shot, strings flying at you and stuck to you
+/** @param {World} W @param {GameCtx} G */
 export function drawSilk(W, G) {
   // spider silk: the web lines they travel (anchor to anchor), lines being shot, the
   // strings in flight at you and the ones stuck to you

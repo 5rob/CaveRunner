@@ -1,3 +1,4 @@
+// @ts-check
 // The creatures and you, in draw() (render/draw.js), each a part it calls in order with its frame
 // object F (REFACTOR.md D19): the creatures, the jet flame, the aim line and the gun, the runner
 // with the torch, the crosshair, Permanent Shield and Angry Ghost (the spider's silk, drawn just
@@ -14,6 +15,7 @@ import { torchHand } from '../systems/player.js';
 import { solidAt } from '../systems/terrain.js';
 
 // The creatures in view, each with a health bar (rats and nests only once hurt)
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawEnemies(W, G, F) {
   const { vw, vh } = F;
   // enemies
@@ -30,6 +32,7 @@ export function drawEnemies(W, G, F) {
 }
 
 // The jetpack's flame, pointing away from the thrust
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawJetFlame(W, G, F) {
   const { pcx } = F;
   // jet flame
@@ -48,6 +51,7 @@ export function drawJetFlame(W, G, F) {
 // The aim: fills in F.held (the gun in hand), F.ax/F.ay (where you aim, or face) and F.gy (the
 // gun's height) for the parts after it, then the Trajectory Sight line: where the next pull
 // actually goes, mods and perks and all
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawAim(W, G, F) {
   const { pcx } = F;
   // aim, grenade arc preview, gun
@@ -104,6 +108,7 @@ export function drawAim(W, G, F) {
 
 // You: the runner, the gun, the torch in your other hand, the aim crosshair, and the perks you
 // can see (Permanent Shield's ring, Angry Ghost)
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawPlayer(W, G, F) {
   const { pcx, pcy, held, ax, ay, gy } = F;
   // player

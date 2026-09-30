@@ -1,3 +1,4 @@
+// @ts-check
 // Guns: making them (makeGun at a level 1-10, caveGun, startingGuns), their names,
 // colours and prices, and resetGun / shuffleOrder.
 
@@ -13,16 +14,17 @@ import { rollMod } from './spawn.js';
 // back to a hash of its name, so it still renders — just not stored, so it can
 // drift if the name is reused; that only ever happens to old data, never a
 // freshly made gun.
-export const hueFromName = name => {
+export const hueFromName = (/** @type {string} */ name) => {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
   return h % 360;
 };
-export const gunHue = g => (g && g.hue != null) ? g.hue : hueFromName(g ? g.name : '');
-export const gunColor = g => 'hsl(' + gunHue(g) + ', var(--gun-s), var(--gun-l))';
+export const gunHue = (/** @type {Gun} */ g) => (g && g.hue != null) ? g.hue : hueFromName(g ? g.name : '');
+export const gunColor = (/** @type {Gun} */ g) => 'hsl(' + gunHue(g) + ', var(--gun-s), var(--gun-l))';
 
 // Guns are priced off what they actually do: slots to build in, how fast they
 // cycle, how much mana they hold, and whether they fire in the order you set.
+/** @param {Gun} g */
 export function gunPrice(g) {
   const rate = 1 / Math.max(0.05, g.castDelay) + 1 / Math.max(0.1, g.recharge);
   const v = g.cap * 20 + rate * 7 + g.manaMax * 0.1 + g.manaRegen * 0.3
@@ -32,7 +34,7 @@ export function gunPrice(g) {
 }
 
 // Every second shop is a gun shop instead of a mod shop.
-export const isGunShop = floor => floor % 2 === 0;
+export const isGunShop = (/** @type {number} */ floor) => floor % 2 === 0;
 
 // ---- guns ----
 export const GUN_A = ['Rusty', 'Bone', 'Cracked', 'Copper', 'Glass', 'Ivory', 'Molten', 'Static',
@@ -40,6 +42,7 @@ export const GUN_A = ['Rusty', 'Bone', 'Cracked', 'Copper', 'Glass', 'Ivory', 'M
 export const GUN_B = ['Pistol', 'Repeater', 'Carbine', 'Scattergun', 'Lance', 'Sidearm',
                'Blaster', 'Cannon', 'Spitter', 'Wand'];
 
+/** @param {Gun} g */
 export function shuffleOrder(g) {
   g.order = g.slots.map((_, i) => i);
   if (g.shuffle) for (let i = g.order.length - 1; i > 0; i--) {
@@ -47,6 +50,7 @@ export function shuffleOrder(g) {
     [g.order[i], g.order[j]] = [g.order[j], g.order[i]];
   }
 }
+/** @param {Gun} g */
 export function resetGun(g) {
   g.idx = 0; g.delayT = 0; g.rechT = 0;
   shuffleOrder(g);
@@ -59,13 +63,15 @@ export function resetGun(g) {
 // level 10 gun lands in the best tenth of every range (a little variance, never junk).
 export const GUN_LV_MAX = 10;
 export const RARE_GUN = 0.2;                     // chance a cave gun rolls a random higher level
+/** @type {Record<string, [worst: number, best: number]>} */
 export const GUN_RANGE = {                       // [worst, best]
   cap: [2, 25], castDelay: [1.5, 0.01], recharge: [1.5, 0.01], manaMax: [50, 1000],
   manaRegen: [10, 500], spread: [20, 0], speedMul: [0.5, 2] };
 // the colour a gun's level wears: grey through green, blue, purple to gold
 export const GUN_LV_COL = ['#9a9a9a', '#d8d8d8', '#5fd35f', '#3fc9a8', '#4aa3ff',
                     '#7a7aff', '#b565ff', '#ff5fcf', '#ff9a2a', '#ffd23c'];
-export const gunLvTier = lvl => Math.min(1, Math.max(0, (lvl - 1) / (GUN_LV_MAX - 1)));
+export const gunLvTier = (/** @type {number} */ lvl) => Math.min(1, Math.max(0, (lvl - 1) / (GUN_LV_MAX - 1)));
+/** @param {Rnd} rnd @param {string} k a GUN_RANGE key @param {number} t the level's tier (0-1) */
 export function gunStat(rnd, k, t) {
   const [w, b] = GUN_RANGE[k];
   const f = rnd() * (1 - t) + rnd() * 0.1 * t;       // share of the way from best to worst
@@ -73,6 +79,7 @@ export function gunStat(rnd, k, t) {
 }
 // the level of a gun found on this floor: the floor's own, or now and then a rare one
 // somewhere between the next level up and 10
+/** @param {number} floor @param {Rnd} rnd @returns {number} */
 export function gunLevel(floor, rnd) {
   const base = Math.min(GUN_LV_MAX, Math.max(1, floor));
   if (base < GUN_LV_MAX && rnd() < RARE_GUN) return base + 1 + Math.floor(rnd() * (GUN_LV_MAX - base));
@@ -80,10 +87,12 @@ export function gunLevel(floor, rnd) {
 }
 
 // a gun of level `lvl` (the Dev panel's Spawn gun uses it to try deeper floors' guns on floor 1)
+/** @param {number} lvl @param {Rnd} rnd @returns {Gun} */
 export function caveGun(lvl, rnd) {
   return makeGun(rnd, Math.min(GUN_LV_MAX, Math.max(1, Math.floor(lvl))));
 }
 
+/** @param {Rnd} rnd @param {number} lvl 1-10 @returns {Gun} */
 export function makeGun(rnd, lvl) {
   const t = gunLvTier(lvl);
   const cap = Math.max(2, Math.min(25, Math.round(gunStat(rnd, 'cap', t))));
@@ -114,6 +123,7 @@ export function makeGun(rnd, lvl) {
   return resetGun(g);
 }
 
+/** @returns {(Gun | null)[]} */
 export function startingGuns() {
   // The Scratch Pistol is a weak backup on purpose: slow, thirsty and single-shot, so
   // anything you find on floor 1 is an upgrade over it. It's first in line (selected).
@@ -130,7 +140,8 @@ export function startingGuns() {
 
 // the colour a gun wears: its level's colour, or (starter guns, which have no level)
 // whatever family its first shot belongs to
-export const gunLvCol = g => (g && g.lvl ? GUN_LV_COL[Math.min(GUN_LV_MAX, g.lvl) - 1] : null);
+export const gunLvCol = (/** @type {Gun} */ g) => (g && g.lvl ? GUN_LV_COL[Math.min(GUN_LV_MAX, g.lvl) - 1] : null);
+/** @param {Gun} g */
 export function gunAccent(g) {
   if (g && g.lvl) return gunLvCol(g);
   if (g) for (const id of g.slots) if (id && MODS[id].kind === 'shot') return famCol(id);

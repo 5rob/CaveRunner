@@ -1,3 +1,4 @@
+// @ts-check
 // Drawing the decoration props (drawProp, drawArch), their colours (propCol) and the
 // light some of them give off after the fog (propGlow, eyesAlpha).
 
@@ -5,9 +6,12 @@ import { glowAt } from './sprites.js';
 import { mix } from '../core/util.js';
 
 // ---- drawing the props ----
+/** @type {(c: ArrayLike<number>, a?: number) => string} */
 export const rgbA = (c, a) => 'rgba(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ',' + (a == null ? 1 : a) + ')';
+/** @type {(c: ArrayLike<number>) => string} */
 export const rgbS = c => (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0);
 // the colour a prop breaks into
+/** @param {Prop} pr @param {Theme} T @returns {string} */
 export function propCol(pr, T) {
   return { icicle: '#bfe6ff', icefall: '#bfe6ff', geode: '#c58cff', salt: '#e8e2cc', bone: '#e6dcc4',
     obsidian: '#4a3050', cart: '#8a5a3a', statue: rgbA(T.rock[1]), pillar: rgbA(T.brick[1]),
@@ -17,6 +21,7 @@ export function propCol(pr, T) {
 // An arched vine (v87): a few twisted stems along the curve, swaying a little in the middle
 // (never at the ends, which are held), thick with leaves. The strands hanging off it are
 // ordinary vine props. While it burns, the burnt stretch (u0..u1) is gone.
+/** @param {CanvasRenderingContext2D} ctx @param {Prop} pr @param {number} time @param {Theme} T */
 export function drawArch(ctx, pr, time, T) {
   const A = pr.arc, n = A.length - 1, x = pr.x, y = pr.y;
   const col = pr.st === 'root' ? mix(T.moss[0], [200, 190, 160], 0.4) : T.moss[0];
@@ -53,6 +58,7 @@ export function drawArch(ctx, pr, time, T) {
 }
 // One prop, in world units, before the fog. Anything that glows gets its light added after
 // the fog in propGlow, so the light shows in the dark but the prop itself stays hidden.
+/** @param {CanvasRenderingContext2D} ctx @param {Prop} pr @param {number} time @param {Theme} T */
 export function drawProp(ctx, pr, time, T) {
   const x = pr.x, y = pr.y, st = pr.st;
   ctx.save();
@@ -307,6 +313,7 @@ export function drawProp(ctx, pr, time, T) {
 }
 // The light a prop gives off, drawn after the fog with 'lighter'. Lanterns, glowing caps,
 // a vent in full roar, shards catching your torch, eyes in the dark.
+/** @param {CanvasRenderingContext2D} ctx @param {Prop} pr @param {number} time @param {Theme} T @param {number} pdist how far you are @param {number} torchR */
 export function propGlow(ctx, pr, time, T, pdist, torchR) {
   const x = pr.x, y = pr.y;
   if (pr.k === 'lamp') {
@@ -350,5 +357,6 @@ export function propGlow(ctx, pr, time, T, pdist, torchR) {
   }
 }
 // eyes are gone by the time you're 60 units off, and fully there from 180
+/** @type {(d: number) => number} */
 export const eyesAlpha = d => Math.max(0, Math.min(1, (d - 60) / 120));
 export const VENT_H = 64;                     // how tall a scorched vent's fire pillar stands

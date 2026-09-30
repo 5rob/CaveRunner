@@ -1,9 +1,11 @@
+// @ts-check
 // The autosave's Game side (save/save.js reads it back).
 
 import { SAVE_KEY } from '../../save/save.js';
 
 // ---- autosave: the run as it stands, written every couple of seconds and whenever the
 // app is put away, so closing it mid-floor loses almost nothing. A dead run is wiped. ----
+/** @param {World} W @param {GameCtx} G */
 export function saveRun(W, G) {
   if (W.p.dead) return;
   const pk = W.pickups.filter(q => !q.taken && (q.kind === 'mod' || q.kind === 'gun'))

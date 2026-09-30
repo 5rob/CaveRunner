@@ -1,3 +1,4 @@
+// @ts-check
 // Things to pick up: pickups on the ground, the shop's stock, the hidden rooms' prizes and gold,
 // and the interact tap that takes one: a frame of them all (stepPickups, a part of step()).
 
@@ -13,6 +14,7 @@ import { solidAt } from './terrain.js';
 // ---- pickups, gold and the interact tap (a part of step) ----
 // Pickups' cooldowns, gold flying to you or bouncing, which card (shop plinth, something on
 // the ground, a room's prize) shows and where, and what a tap on the right stick takes.
+/** @param {World} W @param {GameCtx} G @param {StepFrame} F */
 export function stepPickups(W, G, F) {
   const { dt, LO, MHP, pcx, pcy } = F;
   // ---- pickups: just cooldown upkeep and clearing what was taken. Whether one is

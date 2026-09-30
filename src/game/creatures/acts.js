@@ -1,3 +1,4 @@
+// @ts-check
 // ACTS: what the enemy loop does for each act (REFACTOR.md D20). One line per act; the Game
 // side of each creature is its own file here (its pure brain and sprite are in creatures/).
 // stepEnemies and damageEnemy (systems/enemies.js) call a hook exactly where its old inline
@@ -20,6 +21,7 @@ import { jellyMove } from './jelly.js';
 import { nestDie, nestMove, ratMove } from './rat.js';
 import { spiderFrame, spiderMove } from './spider.js';
 
+/** @type {Record<string, ActHooks>} */
 export const ACTS = {
   nest: { move: nestMove, die: nestDie },
   rat: { move: ratMove },

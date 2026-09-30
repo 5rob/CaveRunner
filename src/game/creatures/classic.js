@@ -1,3 +1,4 @@
+// @ts-check
 // The classic creatures' Game side (REFACTOR.md D20): the acts the not-yet-reworked ones share,
 // whatever body they wear (their sprites are in creatures/classic.js). A chaser comes at you and
 // bites (the shared contact), a bomber comes at you with a fuse ticking and bursts, a shooter
@@ -13,6 +14,7 @@ import { hurt } from '../systems/player.js';
 import { lineOfSight, solidAt } from '../systems/terrain.js';
 
 // Hunting, it comes straight at you, sliding along rock; else it patrols round home
+/** @param {World} W @param {GameCtx} G @param {Enemy} e @param {EnemyCtx} C */
 export function classicMove(W, G, e, C) {
   const { dt, dx, dy, dist, hunting } = C, k = e.k;
   if (hunting) {
@@ -42,6 +44,7 @@ export function classicMove(W, G, e, C) {
 }
 
 // Before a bomber's move (ACTS pre)
+/** @param {World} W @param {GameCtx} G @param {Enemy} e @param {EnemyCtx} C */
 export function bombFuse(W, G, e, C) {
   const { dt, dist, hunting } = C, k = e.k;
   // a bomber closing in ticks like a fuse, faster the nearer it gets
@@ -51,18 +54,21 @@ export function bombFuse(W, G, e, C) {
 }
 
 // A bomber reaching you (ACTS contact): it bursts, and it's gone
+/** @param {World} W @param {GameCtx} G @param {Enemy} e @param {EnemyCtx} C */
 export function bombBurst(W, G, e, C) {
   const { i } = C, k = e.k;
   burst(W, e.x, e.ty, 22, k.col.a);
   SFX.boom(e.x, e.ty, 26);
   hurt(W, G, k.dmg);
   W.enemies.splice(i, 1);
+  // @ts-expect-error k.fire is never set: enemyFor doesn't copy it (REFACTOR.md, Found along the way: Stendari)
   if (k.fire) fireBlast(W, G, e.x, e.ty, 26, 1);
   return true;
 }
 
 // A shooter's or turret's firing (ACTS fire). A turret with a wind-up shows the ring first and
 // only shoots if it still has a line on you when the ring closes.
+/** @param {World} W @param {GameCtx} G @param {Enemy} e @param {EnemyCtx} C */
 export function gunFire(W, G, e, C) {
   const { dt, dist, sees, pcx, pcy } = C, k = e.k;
   if (e.charge > 0) {

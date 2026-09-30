@@ -1,3 +1,4 @@
+// @ts-check
 // Particles and small feedback: sparks thrown out of a point (burst), drops of goo and a spit's
 // splat, and the messages at the bottom of the view (toast). Three parts of step(): the messages
 // counting down (stepToasts), smoke, sparks and flashes moving on (stepParticles), and the motes
@@ -7,9 +8,11 @@ import { SFX } from '../../audio/sfx.js';
 import { COL, PH } from '../../core/consts.js';
 import { solidAt } from './terrain.js';
 
+/** @param {World} W @param {string} text */
 export const toast = (W, text) => { W.toasts.push({ text, t: 2.2 }); if (W.toasts.length > 3) W.toasts.shift(); };
 
 // one drop of goo: falls under its own gravity g, lands and sits a moment on rock
+/** @param {World} W @param {number} x @param {number} y @param {number} vx @param {number} vy @param {number} g @param {string} c @param {number} [size] @param {string} [c2] */
 export function goo(W, x, y, vx, vy, g, c, size, c2) {
   if (W.sparks.length > 800) return;
   const life = 0.5 + Math.random() * 0.5;
@@ -17,6 +20,7 @@ export function goo(W, x, y, vx, vy, g, c, size, c2) {
     size: size || 1.1 + Math.random() * 0.8, heavy: 1, g });
 }
 // a poison spit bursting: a little ring of goo thrown out, a bit back the way it came
+/** @param {World} W @param {EnemyShot} b @param {number} x @param {number} y */
 export function splat(W, b, x, y) {
   const sp = Math.hypot(b.vx, b.vy) || 1;
   for (let i = 0; i < b.splat; i++) {
@@ -26,6 +30,7 @@ export function splat(W, b, x, y) {
   }
   SFX.fx('splash', x, y);
 }
+/** @param {World} W @param {number} x @param {number} y @param {number} n @param {string} color */
 export function burst(W, x, y, n, color) {
   for (let i = 0; i < n; i++) {
     const a = Math.random() * 6.28, sp = 60 + Math.random() * 160;
@@ -34,6 +39,7 @@ export function burst(W, x, y, n, color) {
 }
 
 // the messages count down and go (a part of step)
+/** @param {World} W @param {StepFrame} F */
 export function stepToasts(W, F) {
   const { dt } = F;
   for (let i = W.toasts.length - 1; i >= 0; i--) if ((W.toasts[i].t -= dt) <= 0) W.toasts.splice(i, 1);
@@ -42,6 +48,7 @@ export function stepToasts(W, F) {
 // ---- smoke, sparks and flashes (a part of step) ----
 // The jetpack's smoke puffing out while its flame is lit, then every smoke puff, spark (and
 // goo drop) and blast flash moved on and aged.
+/** @param {World} W @param {StepFrame} F */
 export function stepParticles(W, F) {
   const { dt, pcx } = F;
   if (W.p.flame > 0) {
@@ -80,6 +87,7 @@ export function stepParticles(W, F) {
 // ---- portal motes (a part of step) ----
 // Motes drawn into the exit and breathed out of the way in, and every mote's drift (Black
 // Hole's trail too), capped at 400.
+/** @param {World} W @param {StepFrame} F */
 export function stepMotes(W, F) {
   const { dt } = F;
   W.portalAcc += dt;

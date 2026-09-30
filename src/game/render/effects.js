@@ -1,9 +1,11 @@
+// @ts-check
 // Particles and effects of draw() (render/draw.js), each a part it calls in order with its frame
 // object F (REFACTOR.md D19): smoke, Levitation Trail, sparks, motes, explosion flashes
 
 import { COL } from '../../core/consts.js';
 
 // Smoke: the jetpack's (grey puffs when it sputters), the fire's, blasts', vents' and shot trails'
+/** @param {World} W @param {GameCtx} G */
 export function drawSmoke(W, G) {
   // smoke
   for (const m of W.smoke) {
@@ -15,6 +17,7 @@ export function drawSmoke(W, G) {
 }
 
 // Levitation Trail: the fire you left behind, still burning
+/** @param {World} W @param {GameCtx} G */
 export function drawTrail(W, G) {
   // Levitation Trail: the fire you left behind, still burning
   for (const bn of W.burns) {
@@ -27,6 +30,7 @@ export function drawTrail(W, G) {
 }
 
 // Sparks and debris
+/** @param {World} W @param {GameCtx} G */
 export function drawSparks(W, G) {
   // sparks and debris
   for (const q of W.sparks) {
@@ -38,6 +42,7 @@ export function drawSparks(W, G) {
 }
 
 // Magic motes, added on as light: the Black Hole's trail and the portals' drift
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawMotes(W, G, F) {
   const { vh } = F;
   // magic motes: the Black Hole's trail and the portals' drift, added on as light
@@ -58,6 +63,7 @@ export function drawMotes(W, G, F) {
 }
 
 // Explosion flashes
+/** @param {World} W @param {GameCtx} G */
 export function drawFlashes(W, G) {
   // explosion flashes
   for (const f of W.flashes) {

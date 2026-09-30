@@ -1,3 +1,4 @@
+// @ts-check
 // What each floor looks and sounds like: its palette (THEMES), its five decorations (DECOR)
 // and its ambience (AMBIENCE). All picked by the floor number, never the seed.
 
@@ -45,7 +46,7 @@ export const THEMES = [
     rock: [[42, 38, 58], [70, 64, 94]],    moss: [[72, 180, 190], [130, 230, 236]],
     brick: [[56, 48, 78], [88, 76, 116]],  mortar: [32, 28, 46], bed: [[18, 16, 28], [34, 30, 48]] },
 ];
-export const themeFor = floor => THEMES[(Math.max(1, floor) - 1) % THEMES.length];
+export const themeFor = (/** @type {number} */ floor) => THEMES[(Math.max(1, floor) - 1) % THEMES.length];
 
 // ---- level decoration: pass 2 (baked pixels) and pass 3 (props) ----
 // Every floor's theme gets five decorations. They come in three sorts:
@@ -134,7 +135,7 @@ export const DECOR = [
     { id: 'tendrils', name: 'Void Tendrils',       at: 'floor', kind: 'tendril', style: 'tendril', n: 18 },
     { id: 'fissures', name: 'Neon Fissures',       at: 'surf',  kind: 'bake',    style: 'fissure', n: 50 } ],
 ];
-export const decorFor = floor => DECOR[(Math.max(1, floor) - 1) % DECOR.length];
+export const decorFor = (/** @type {number} */ floor) => DECOR[(Math.max(1, floor) - 1) % DECOR.length];
 
 // Each floor's palette has a sound too: a quiet bed (filtered noise, `bed: [cutoff, gain]`),
 // an optional low drone in Hz, and the one-shots that go off round you now and then

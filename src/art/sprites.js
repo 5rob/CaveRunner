@@ -1,3 +1,4 @@
+// @ts-check
 // The player's and the world's sprites, all drawn from canvas primitives at world scale:
 // the runner, guns (and a new gun's glow), the torch flame, wall sconces, glowAt.
 
@@ -10,6 +11,7 @@ import { rr } from '../core/util.js';
 
 // A gun, grip at the origin, barrel down +x. Scaled so the same drawing works for
 // the one in your hands and the little one lying on the cave floor.
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} ang @param {number} sc @param {string} accent */
 export function drawGun(ctx, x, y, ang, sc, accent) {
   ctx.save();
   ctx.translate(x, y);
@@ -38,6 +40,7 @@ export function drawGun(ctx, x, y, ang, sc, accent) {
 }
 
 // The runner: jetpack on the back, sealed helmet, legs that actually move.
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} w @param {number} hh @param {number} face @param {number} gait @param {boolean} air @param {number} jet @param {boolean} flash */
 export function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash) {
   const suit = flash ? '#ffffff' : '#ff5a36';
   const dark = flash ? '#d8dde6' : '#c33a1f';
@@ -87,6 +90,7 @@ export function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash) {
 // torchlight rather than as a dimmer switch. The embers are the loop's particles.
 // A teardrop of fire: a round base at (bx, by) of radius r, drawn out to a point at (tx, ty).
 // The tip is wherever the flame is being dragged, so one shape covers upright and leaning.
+/** @param {CanvasRenderingContext2D} ctx @param {number} bx @param {number} by @param {number} tx @param {number} ty @param {number} r */
 export function flameDrop(ctx, bx, by, tx, ty, r) {
   const dx = tx - bx, dy = ty - by, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
   const px = -uy, py = ux, a = Math.atan2(py, px);
@@ -99,6 +103,7 @@ export function flameDrop(ctx, bx, by, tx, ty, r) {
 }
 // The flame itself, three layers, its tip pushed by (lx, ly) — the drag of moving — and a
 // small lick of its own. s scales the whole thing (the wall torches are smaller).
+/** @param {CanvasRenderingContext2D} ctx @param {number} fx @param {number} fy @param {number} lx @param {number} ly @param {number} s @param {number} flick @param {number} time */
 export function drawFlame(ctx, fx, fy, lx, ly, s, flick, time) {
   const wob = Math.sin(time * 17) * 0.6 + Math.sin(time * 29) * 0.35;
   const h = 9.5 * s * (0.85 + 0.2 * flick);
@@ -113,6 +118,7 @@ export function drawFlame(ctx, fx, fy, lx, ly, s, flick, time) {
 }
 // A soft warm glow at (x, y): additive, so it brightens whatever is under it. Used for the
 // halo round a flame and for the torch's small second light round the player.
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} r @param {number} a @param {string} rgb 'r,g,b' */
 export function glowAt(ctx, x, y, r, a, rgb) {
   const g = ctx.createRadialGradient(x, y, 0, x, y, r);
   g.addColorStop(0, 'rgba(' + rgb + ',' + a + ')');
@@ -125,6 +131,7 @@ export function glowAt(ctx, x, y, r, a, rgb) {
 // The torch in the runner's free hand. `flick` is the very same number the lamp is drawn
 // with, so the flame and the light it throws gutter together and the cave reads as
 // torchlight rather than as a dimmer switch. (lx, ly) drags the flame about as you move.
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} face @param {number} flick @param {Particle[]} embers @param {number} lx @param {number} ly @param {number} time */
 export function drawTorch(ctx, x, y, face, flick, embers, lx, ly, time) {
   const fx = x + face * 1.6, fy = y - 7;           // the flame rides above the fist
   ctx.save();
@@ -144,6 +151,7 @@ export function drawTorch(ctx, x, y, face, flick, embers, lx, ly, time) {
 }
 // A smaller torch in an iron bracket on the wall, either side of a portal or a room's prize.
 // Its flame sways a little on its own; ph keeps neighbours out of step.
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} time @param {number} ph */
 export function drawSconce(ctx, x, y, time, ph) {
   const s = 0.72, fl = 0.9 + 0.1 * Math.sin(time * 13 + ph) * Math.sin(time * 7.3 + ph * 2);
   ctx.save();
@@ -163,6 +171,7 @@ export function drawSconce(ctx, x, y, time, ph) {
 // (drawn before the gun, so they come from behind it). Each streak rides its own clock:
 // born at the middle, flying out and fading, then round again at a fresh angle.
 export const GLOW_STREAKS = 9;
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} time @param {number} seed */
 export function drawGunGlow(ctx, x, y, time, seed) {
   const breathe = 0.85 + 0.15 * Math.sin(time * 2.6 + seed);
   ctx.save();

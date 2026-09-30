@@ -1,3 +1,4 @@
+// @ts-check
 // The Dev panel's knobs: DEV (the live values the game reads every frame, saved to
 // localStorage), their defaults, rows and groups, and the range / colour knob tables.
 // Every table registers its rows before DEV is built from the defaults below, so they all
@@ -11,9 +12,11 @@ import { HEX_RE, hexMix, hsvAdjust } from '../core/util.js';
 // Each has a default; clearing a field in the dev panel puts the default back. Every
 // localStorage touch is wrapped: it throws in a private window and does not exist at all
 // under Node (the logic tests eval this file), and a missing store just means "defaults".
+/** @type {DevKnobs} */
 export const DEV_DEFAULTS = { zoom: 1.6, torch: 0.5, fogDark: 0.99, fogDim: 0.85, move: 1, sputDip: 45, aggro: 0.6, loseAggro: 2, aimDist: 44, bhPull: 65, bhSpeed: 50, vol: 1, amb: 0.4, jetVol: 0.2,
   vSpell: 0.6, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vDrip: 1, vStep: 1, vUi: 1, bagSpeed: 1 };
 // g: the collapsible group the knob sits in on the Dev panel (DEV_GROUPS gives the order)
+/** @type {DevRow[]} */
 export const DEV_META = [
   { k: 'zoom',      g: 'view',  label: 'Camera zoom',                 min: 0.3, max: 3,  step: 0.05 },
   { k: 'aimDist',   g: 'view',  label: 'Crosshair distance',          min: 10,  max: 200, step: 2 },
@@ -61,6 +64,8 @@ export function devReport() {
 // reworked creature gets its own table and its own group (its keys share a prefix, which
 // the creature carries as `kp` — see CREATURES).
 //   [key, label, lowest, highest, step, default min, default max]
+/** @typedef {[key: string, label: string, min: number, max: number, step: number, lo: number, hi: number]} RangeRow */
+/** @param {string} g @param {RangeRow[]} rows */
 export function rangeKnobs(g, rows) {
   for (const [k, label, min, max, step, lo, hi] of rows) {
     DEV_DEFAULTS[k + 'Lo'] = lo; DEV_DEFAULTS[k + 'Hi'] = hi;
@@ -181,7 +186,9 @@ export const RA_KNOBS = rangeKnobs('rat', [
 ]);
 // one roll of a creature knob: anywhere from its min to its max (either way round).
 // kru is the same at a given fraction u (0..1) — for a jelly's looks, rolled once at birth.
+/** @type {(k: string, u: number) => number} */
 export const kru = (k, u) => { const a = DEV[k + 'Lo'], b = DEV[k + 'Hi']; return a + u * (b - a); };
+/** @type {(k: string, rnd?: Rnd) => number} */
 export const kr = (k, rnd) => kru(k, (rnd || Math.random)());
 export const spr = kr;                                  // the spider's code calls it this
 
@@ -190,6 +197,8 @@ export const spr = kr;                                  // the spider's code cal
 // is born (kcol at its own fraction u) — set both the same for one fixed colour. The Dev
 // panel shows a colour picker for these (type 'color').
 //   [key, label, default A, default B, field name in the creature's palette]
+/** @typedef {[key: string, label: string, a: string, b: string, field: string]} ColourRow */
+/** @param {string} g @param {ColourRow[]} rows */
 export function colourKnobs(g, rows) {
   for (const [k, label, a, b] of rows) {
     DEV_DEFAULTS[k + 'Lo'] = a; DEV_DEFAULTS[k + 'Hi'] = b;
@@ -198,6 +207,7 @@ export function colourKnobs(g, rows) {
   }
   return rows;
 }
+/** @type {(k: string, u: number) => string} */
 export const kcol = (k, u) => hexMix(DEV[k + 'Lo'], DEV[k + 'Hi'], u);
 // the jellyfish's master sliders, at the top of its colour group: they act on every part
 Object.assign(DEV_DEFAULTS, { jeHue: 26, jeSat: 1.4, jeBri: 1 });
@@ -206,6 +216,7 @@ DEV_META.push(
   { k: 'jeSat', g: 'jellycol', label: 'All colours: saturation (×)', min: 0,    max: 3,   step: 0.05, type: 'slider' },
   { k: 'jeBri', g: 'jellycol', label: 'All colours: brightness (×)', min: 0,    max: 3,   step: 0.05, type: 'slider' });
 // one jellyfish colour: its part's A-to-B blend at u, then the master sliders
+/** @type {(k: string, u: number) => string} */
 export const jcol = (k, u) => {
   const c = kcol(k, u);
   return DEV.jeHue || DEV.jeSat !== 1 || DEV.jeBri !== 1 ? hsvAdjust(c, DEV.jeHue, DEV.jeSat, DEV.jeBri) : c;
@@ -288,6 +299,7 @@ export const FIRE_KNOBS = rangeKnobs('fire', [
   ['fireArch',   'Arched vines burn along at (px/s)', 1, 400, 1,     5, 25],
 ]);
 export const DEV_KEY = 'caverunner-dev';
+/** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);
 (() => { try {
   const raw = localStorage.getItem(DEV_KEY);
@@ -296,6 +308,7 @@ export const DEV = Object.assign({}, DEV_DEFAULTS);
     if (typeof d === 'number' ? typeof v === 'number' && isFinite(v) : typeof v === 'string' && HEX_RE.test(v)) DEV[k] = v;
   } }
 } catch (_) {} })();
+/** @param {string} k @param {number | string} v */
 export function devSet(k, v) {
   DEV[k] = v;
   try { localStorage.setItem(DEV_KEY, JSON.stringify(DEV)); } catch (_) {}

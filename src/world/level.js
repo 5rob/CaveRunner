@@ -1,3 +1,4 @@
+// @ts-check
 // makeLevel(seed, floor, owned): one floor, built whole — terrain, shop, prize rooms,
 // enemies, pickups, decoration, gold seams and nests. Pure: the same seed, floor and
 // perks owned make the same cave.
@@ -23,6 +24,7 @@ import { boxReach } from './zones.js';
 // a prize room's half-size in world units, shell included (makeLevel's rx/ry + sh, in pixels)
 export const ROOM_HW = 23 * CELL, ROOM_HH = 15 * CELL;                   // gold per vein pixel dug out (before the floor's lift)
 
+/** @param {number} seed @param {number} floor @param {string[]} [owned] perks you hold (the perk room skips them) @returns {Level} */
 export function makeLevel(seed, floor, owned) {
   floor = floor || 1;
   const have = new Set(owned || []);     // perks you are already carrying, so a room is

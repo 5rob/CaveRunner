@@ -1,3 +1,4 @@
+// @ts-check
 // Which spell a floor hands you: Noita's own spawn table (NOITA_SPAWN, NOITA_OF),
 // the rarity gate (TIER_FLOOR), modWeight and rollMod.
 
@@ -8,6 +9,7 @@ import { ALL_IDS, tierOf } from './mods.js';
 // Each spell lists the Noita tiers it turns up at and how likely it is there.
 // Tiers 0-6 run down the main world; 10 is the end-game. Our spells point at their
 // Noita twin in NOITA_OF; the few we made up borrow the nearest twin, or a row of their own.
+/** @type {Record<string, [levels: string, chances: string]>} */
 export const NOITA_SPAWN = {
   LIGHT_BULLET: ['0,1,2', '2,1,0.5'], LIGHT_BULLET_TRIGGER: ['0,1,2,3', '1,0.5,0.5,0.5'],
   LIGHT_BULLET_TRIGGER_2: ['2,3,5,6,10', '1,0.5,1,1,0.2'], LIGHT_BULLET_TIMER: ['1,2,3', '0.5,0.5,0.75'],
@@ -71,6 +73,7 @@ export const NOITA_SPAWN = {
   // ours alone: no Noita twin
   OURS_COLD: ['3,4,5,6', '0.2,0.3,0.4,0.5'], OURS_BATTERY: ['2,3,4,5,6', '0.3,0.4,0.5,0.5,0.5'],
 };
+/** @type {Record<string, string>} */
 export const NOITA_OF = {
   bolt: 'LIGHT_BULLET', spark: 'LIGHT_BULLET', slug: 'HEAVY_BULLET', buck: 'BUCKSHOT', lance: 'LANCE',
   orb: 'RUBBER_BALL', saw: 'CHAINSAW', blast: 'BOMB', dmg_up: 'DAMAGE', heavy: 'HEAVY_SHOT',
@@ -106,8 +109,9 @@ export const NOITA_OF = {
 };
 // Our floors onto Noita's tiers: floor 1 is tier 0, floor 10 is tier 6, past that the
 // end-game tier 10. In between it slides, so a spell fades in and out over a floor or two.
-export const floorTier = floor => floor > 10 ? 10 : Math.max(0, (floor - 1) * 6 / 9);
+export const floorTier = (/** @type {number} */ floor) => floor > 10 ? 10 : Math.max(0, (floor - 1) * 6 / 9);
 // a spell's chance at one Noita tier (0 if it isn't listed there)
+/** @param {string} id @param {number} tier @returns {number} */
 export function noitaP(id, tier) {
   const row = NOITA_SPAWN[NOITA_OF[id]];
   if (!row) return 0;
@@ -117,7 +121,9 @@ export function noitaP(id, tier) {
 }
 // our own rarity overrides Noita where our spell is far stronger than its twin
 // (Black Hole is a tier-0 spell in Noita): a rarity-4 spell waits for floor 4
+/** @type {Record<number, number>} */
 export const TIER_FLOOR = { 4: 4 };
+/** @param {string} id @param {number} floor @returns {number} */
 export function modWeight(id, floor) {
   const t = floorTier(floor);
   if (floor < (TIER_FLOOR[tierOf(id)] || 0)) return 0;
@@ -125,6 +131,7 @@ export function modWeight(id, floor) {
   const a = Math.floor(t), f = t - a;
   return noitaP(id, a) * (1 - f) + noitaP(id, a + 1) * f;
 }
+/** @param {Rnd} rnd @param {number} floor @param {Record<string, boolean | number>} [skip] ids never to roll @returns {string} */
 export function rollMod(rnd, floor, skip) {
   let total = 0;
   for (const id of ALL_IDS) if (!skip || !skip[id]) total += modWeight(id, floor);

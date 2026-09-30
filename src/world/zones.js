@@ -1,3 +1,4 @@
+// @ts-check
 // Floor 1's two kinds of zone (built-up and natural): builtAt (which one a point is in)
 // and boxReach (where a runner-sized box can get to, used to keep the main route open).
 
@@ -6,6 +7,7 @@ import { CELL, CH, CW } from '../core/consts.js';
 // Where can a runner-sized box (6 x 11 terrain pixels) get to from (x, y) (its top-left,
 // in the open), walking and flying through open pixels? ok[i] = 2 where its top-left can
 // be; top: it got to the top of the map (y <= 40), where the exit is.
+/** @param {Uint8Array} mat @param {number} x @param {number} y terrain px @returns {{ ok: Uint8Array, top: boolean }} */
 export function boxReach(mat, x, y) {
   const PWc = 6, PHc = 11;
   const free = new Uint8Array(CW * CH), ok = new Uint8Array(CW * CH);
@@ -35,6 +37,7 @@ export function boxReach(mat, x, y) {
   return { ok, top };
 }
 // is world point (wx, wy) in a built-up zone? (level.zone; null on floors without zones)
+/** @param {Uint8Array | null} zone @param {number} wx @param {number} wy */
 export function builtAt(zone, wx, wy) {
   if (!zone) return false;
   const x = Math.floor(wx / CELL), y = Math.floor(wy / CELL);

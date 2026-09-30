@@ -1,3 +1,4 @@
+// @ts-check
 // The terrain: what's solid where (the questions every system asks: rock at a cell or a point,
 // the runner's box, a clear line; and which creature is at a point), and changing it: dig,
 // paint, and the decoration and gold that go with the rock. Every change is drawn through
@@ -13,9 +14,12 @@ import { fireBlast } from './fire.js';
 import { hurt } from './player.js';
 
 // ---- terrain queries ----
+/** @param {World} W @param {number} cx @param {number} cy */
 export const solidCell = (W, cx, cy) =>
   cx < 0 || cy < 0 || cx >= CW || cy >= CH || W.mat[cy * CW + cx] !== 0;
+/** @param {World} W @param {number} x @param {number} y */
 export const solidAt = (W, x, y) => solidCell(W, Math.floor(x / CELL), Math.floor(y / CELL));
+/** @param {World} W @param {number} x @param {number} y */
 export const boxHit = (W, x, y) => {
   const x0 = Math.floor(x / CELL), x1 = Math.floor((x + PW - 0.001) / CELL);
   const y0 = Math.floor(y / CELL), y1 = Math.floor((y + PH - 0.001) / CELL);
@@ -27,7 +31,9 @@ export const boxHit = (W, x, y) => {
   }
   return false;
 };
+/** @param {World} W @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 */
 export const lineOfSight = (W, x0, y0, x1, y1) => losClear(x0, y0, x1, y1, (cx, cy) => solidCell(W, cx, cy));
+/** @param {World} W @param {number} x @param {number} y @param {number} pad */
 export const enemyAt = (W, x, y, pad) => {
   for (let j = 0; j < W.enemies.length; j++) {
     const e = W.enemies[j];
@@ -37,6 +43,7 @@ export const enemyAt = (W, x, y, pad) => {
 };
 
 // clear rock without the bang, for drilling shots
+/** @param {World} W @param {GameCtx} G @param {number} x @param {number} y @param {number} R */
 export function dig(W, G, x, y, R) {
   const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL;
   const minX = Math.max(0, Math.floor(cx0 - rc)), maxX = Math.min(CW - 1, Math.ceil(cx0 + rc));
@@ -61,6 +68,7 @@ export function dig(W, G, x, y, R) {
 }
 // a gold seam cut or blown open: bits of gold tumble out, as much as the rock you took.
 // Fractions carry over in oreBank, so nibbling a seam with a drill pays the same as a blast.
+/** @param {World} W @param {number} x @param {number} y @param {number} n */
 export function dropOre(W, x, y, n) {
   W.oreBank += n * ORE_GOLD * (1 + (W.floor - 1) * 0.3) * W.pb.gold;
   let bits = Math.min(12, Math.floor(W.oreBank / 2));
@@ -74,6 +82,7 @@ export function dropOre(W, x, y, n) {
 }
 // wipe the decoration layer inside a cleared circle, so baked rubble, beams and pillars
 // go with the rock round them
+/** @param {World} W @param {GameCtx} G @param {number} cx0 @param {number} cy0 @param {number} rc @param {number} minX @param {number} minY @param {number} maxX @param {number} maxY */
 export function unDeco(W, G, cx0, cy0, rc, minX, minY, maxX, maxY) {
   const dd = W.dimg.data;
   let changed = false;
@@ -88,6 +97,7 @@ export function unDeco(W, G, cx0, cy0, rc, minX, minY, maxX, maxY) {
 }
 
 // lay solid brick down, the opposite of dig()
+/** @param {World} W @param {GameCtx} G @param {number} x @param {number} y @param {number} w @param {number} hh */
 export function paint(W, G, x, y, w, hh) {
   const x0 = Math.max(1, Math.round(x / CELL - w / 2)), x1 = Math.min(CW - 2, x0 + w);
   const y0 = Math.max(1, Math.round(y / CELL)), y1 = Math.min(CH - 2, y0 + hh);
@@ -105,6 +115,7 @@ export function paint(W, G, x, y, w, hh) {
 
 // `splash` set = a small pop (Pollen): enemies take that instead, and it never hurts you.
 // Any other blast can set things alight (fireBoom); `hot` (fire spells, minecarts) nearly always does.
+/** @param {World} W @param {GameCtx} G @param {number} x @param {number} y @param {number} R @param {number} [splash] @param {number} [hot] */
 export function explode(W, G, x, y, R, splash, hot) {
   SFX.boom(x, y, R);
   const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL, ring = rc + 2.5;

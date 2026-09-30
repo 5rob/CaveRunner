@@ -1,3 +1,4 @@
+// @ts-check
 // You: the perk bag, your health (maxHp, and hurt: shields, extra lives, death) and which
 // hand holds the torch; the jetpack's cough (sputterStep) and the dead stick (NO_INPUT);
 // and two parts of step(): moving you (movePlayer) and the torch's flicker (stepTorch).
@@ -20,10 +21,13 @@ import { webNear } from './webs.js';
 // Everything the perks you are carrying add up to, recomputed whenever the run's perk
 // list changes and read all over step() and draw(). Neutral (all multipliers 1, all
 // flags 0) until a perk is found, so a run with no perks behaves exactly as before.
+/** @param {World} W @param {GameCtx} G */
 export const refreshBag = (W, G) => { W.pb = perkBag(G.input.current.loadout.perks || []); };
 // the true maximum health: the perk bag's answer plus the running +25 per heart room.
+/** @param {World} W @param {GameCtx} G */
 export const maxHp = (W, G) => W.pb.maxHp + (G.input.current.loadout.maxBonus || 0);
 
+/** @param {World} W @param {GameCtx} G @param {number} n */
 export function hurt(W, G, n) {
   if (W.p.dead || n <= 0) return;
   // Permanent Shield soaks a hit whole, then winds back up over a couple of seconds
@@ -58,6 +62,7 @@ export function hurt(W, G, n) {
 
 // The torch hand: whichever one the gun is not in, so the two never sit on top of
 // each other. Aiming behind you swaps hands, the same way the gun does.
+/** @param {World} W */
 export const torchHand = (W) => {
   const a = W.p.aim.show ? W.p.aim.nx : W.p.face;
   return { x: W.p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: W.p.y + 9 };
@@ -69,6 +74,7 @@ export const torchHand = (W) => {
 // has been held on (which bends its pitch). Returns true while it's cut out; `st.start`
 // is true on the frame a cut-out begins.
 export const SPUTTER_FUEL = 0.25;
+/** @param {World['jetSt']} st @param {number} dt @param {number} fuel @param {unknown} on @param {Rnd} [rnd] */
 export function sputterStep(st, dt, fuel, on, rnd) {
   rnd = rnd || Math.random;
   st.start = false;
@@ -92,6 +98,7 @@ export const NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false 
 // ---- moving you (a part of step) ----
 // The stick (or the keys), the jetpack and its fuel, steering (walking, flying, climbing a
 // vine, an arched vine or a web line), moving against the pixel terrain, and your footsteps.
+/** @param {World} W @param {GameCtx} G @param {StepFrame} F */
 export function movePlayer(W, G, F) {
   const { dt } = F;
   // movement: thumbstick first, otherwise keyboard (full strength)
@@ -240,6 +247,7 @@ export function movePlayer(W, G, F) {
 // ---- the torch (a part of step) ----
 // Its flicker (flick, which everything that lights the cave reads), the flame's particles,
 // its lean, and the glow's own flicker.
+/** @param {World} W @param {StepFrame} F */
 export function stepTorch(W, F) {
   const { dt } = F;
   // A random walk with two sines on top, which is what makes a flame gutter rather

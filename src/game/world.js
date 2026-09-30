@@ -1,3 +1,4 @@
+// @ts-check
 // The world: the live level's state as one object, `W`. Game makes it once and every part of
 // the loop reads and writes it (REFACTOR.md, Phase 3). enterLevel replaces the level-scoped
 // parts on each floor; the lists are emptied in place, never replaced, because the death
@@ -8,6 +9,7 @@ import { perkBag } from '../data/perks.js';
 import { fireNew } from '../world/fire.js';
 import { fogStart } from '../world/vision.js';
 
+/** @returns {World} */
 export function makeWorld() {
   return {
     // ---- you ----

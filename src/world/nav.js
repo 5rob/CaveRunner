@@ -1,3 +1,4 @@
+// @ts-check
 // Pathfinding for creatures that walk (rats): navField (a cost field out from a goal)
 // and navWay (the next waypoint down it).
 
@@ -11,6 +12,12 @@ import { CELL } from '../core/consts.js';
 // which it runs (or jumps) to with ratStep. solid(px, py) is the rat's view of the
 // terrain, in pixels. R is the field's half-size in cells.
 export const NAV = 4;                               // terrain pixels per nav cell
+/** @typedef {{ x0: number, y0: number, w: number, d: Float32Array, surf: Uint8Array }} NavField a cost field: d per cell (Infinity: no way), surf: cells with footing */
+/**
+ * @param {(px: number, py: number) => unknown} solid @param {number} tx @param {number} ty the goal (world)
+ * @param {number} R half-size in cells @param {((px: number, py: number) => unknown) | null} [onWeb] web lines count as footing
+ * @returns {NavField}
+ */
 export function navField(solid, tx, ty, R, onWeb) {
   const gi = Math.floor(tx / CELL / NAV), gj = Math.floor(ty / CELL / NAV);
   const x0 = gi - R, y0 = gj - R, w = 2 * R + 1, n = w * w;
@@ -82,6 +89,7 @@ export function navField(solid, tx, ty, R, onWeb) {
 }
 // a point `steps` cells down the field from (x, y) (world units), or null if the rat is off
 // the field or can't get to the goal from here. dist: the field's value where it stands.
+/** @param {NavField} F @param {number} x @param {number} y @param {number} steps @returns {{ x: number, y: number, dist: number, air: boolean } | null} */
 export function navWay(F, x, y, steps) {
   let i = Math.floor(x / CELL / NAV) - F.x0, j = Math.floor(y / CELL / NAV) - F.y0;
   const w = F.w, d = F.d;
