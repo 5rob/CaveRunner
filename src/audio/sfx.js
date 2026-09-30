@@ -652,7 +652,7 @@ export const SFX = (() => {
     },
     coinland(d, t) { tone(d, 'sine', rnd(2600, 3600), rnd(2600, 3600), t, 0.04, 0.08, 0.002); },
   };
-  /** @param {string} name @param {number | null} [x] @param {number | null} [y] no x: at you @param {number} [a] */
+  /** @param {string} name @param {number | null} [x] @param {number | null} [y] no x: at you @param {number | string | { v: number, s?: string }} [a] what the recipe takes (a size, a material, a landing) */
   function fx(name, x, y, a) {
     const f = FX[name];
     if (!f || !gate('fx:' + name, FX_GAP[name] || 40)) return;

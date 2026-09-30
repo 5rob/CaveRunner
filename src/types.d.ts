@@ -293,7 +293,7 @@ type Noise2 = (x: number, y: number) => number;
 /** a new floor: makeLevel's return (world/level.js) */
 interface Level {
   mat: Uint8Array;            // per terrain cell: open or which rock
-  img: Pixels; bgImg: Pixels; dimg: Pixels;
+  img: ImageData; bgImg: ImageData; dimg: ImageData;   // made with new ImageData (a stand-in under Node: tests/load.js)
   ore: Uint8Array; fuel: Uint8Array;
   props: Prop[];
   amb: string[];              // the theme's ambience particle kinds
@@ -374,41 +374,103 @@ interface Bullet {
   ax?: number; ay?: number; da?: number; grind?: number; trail?: any;
 }
 
+/** a sound loop (SFX.loop): set it every frame or it fades */
+type SoundLoop = ReturnType<typeof import('./audio/sfx.js').SFX.loop>;
+/** a way-finding field kept on something the rats head for (navFor, game/creatures/rat.js) */
+interface NavCache {
+  F?: import('./world/nav.js').NavField;
+  v?: number; fx?: number; fy?: number; t?: number; wn?: number;   // what it was made for
+}
+
+/**
+ * a particle in one of the grab-bag lists (smoke, sparks, torchP, motes, dparts, amb, burns):
+ * each is pushed in a dozen places with its own extras (a kind, a colour, a drip's sound,
+ * a spore's kick…), so past the common fields it's an index signature: `any`.
+ */
+interface Particle {
+  x: number; y: number; vx?: number; vy?: number; life?: number; max?: number;
+  [k: string]: any;
+}
+/** a creature's shot (fireEnemyShot, a jelly's spit): the common fields, plus a spit's look */
+interface EnemyShot {
+  x: number; y: number; vx: number; vy: number; life: number; col: string; dmg: number; size: number;
+  fire?: number;              // always undefined today (Found along the way: Stendari)
+  edge?: string; shine?: string; dripCol?: string; dripCol2?: string; glow?: string;
+  goo?: number; drip?: number; da?: number; dripG?: number; splat?: number; splatV?: number;
+}
+/** a static field (castField, game/systems/fields.js) */
+interface Field {
+  x: number; y: number; r: number; field: string; life: number; max: number;
+  col: string; dmg: number; tick: number; payload: Shot[] | null; ang: number; trig: TrigKind | null;
+  [k: string]: any;           // each field keeps its own clocks (a mine's near, a storm's strike…)
+}
+/** an instant beam streak */
+interface Beam { x: number; y: number; nx: number; ny: number; len: number; col: string; w: number; t: number; look: string | null }
+/** a lightning fork (addArc) */
+interface Arc { pts: Pt[]; col: string; w: number; t: number; max: number }
+/** gold on the ground */
+interface Coin {
+  x: number; y: number; amount: number; t: number;
+  vx?: number; vy?: number; pop?: number; nopull?: number; [k: string]: any;
+}
+/** a line at the bottom of the view */
+interface Toast { text: string; t: number }
+/** a blast's flash */
+interface Flash { x: number; y: number; r: number; t: number }
+/** a spore cloud (a pod popping) */
+interface Cloud { x: number; y: number; r: number; life: number; max: number; tick: number }
+/** a noise ring (skulls, stones) */
+interface Ring { x: number; y: number; t: number }
+/** a dust devil */
+interface Devil { x: number; y: number; vx: number; life: number; max: number }
+/** a spider string in flight at you */
+interface Silk { x: number; y: number; ax: number; ay: number; vx: number; vy: number; [k: string]: any }
+/** a spider string stuck to you: anchored at (ax, ay), held at (ox, oy) off you */
+interface SilkString { ax: number; ay: number; ox: number; oy: number; slow: number; max: number }
+/** a wall torch */
+interface Sconce { x: number; y: number; ph: number }
+/** the Angry Ghost companion */
+interface Ghost { x: number; y: number; cd: number; [k: string]: any }
+/** what the props did to you this frame (decorStep), read by next frame's steering */
+interface Zfx {
+  slow: number; slick: number; climb: Prop | WebLine | null; rev: number; web: WebLine | null; webs: number; webMul: number;
+  arch?: Prop | null; surface?: string;
+}
+
 /** the live level, `W`: makeWorld (game/world.js). enterLevel refills the floor's parts */
 interface World {
   p: Player;
   pb: PerkBag;
-  ghost: any;
-  zfx: { slow: number; slick: number; climb: Prop | null; rev: number; web: any; webs: number; webMul: number;
-    arch?: Prop | null; surface?: string };
+  ghost: Ghost | null;
+  zfx: Zfx;
   time: number; levelT: number; best: number;
   camX: number; camY: number; camReady: boolean; unitPx: number; viewW: number; viewH: number;
   flick: number; torchR: number; visPts: number[]; leanX: number; leanY: number; glowN: number;
-  mat: Uint8Array; img: Pixels; dimg: Pixels; ore: Uint8Array; burrow: Uint8Array; terrainV: number;
+  mat: Uint8Array; img: ImageData; dimg: ImageData; ore: Uint8Array; burrow: Uint8Array | null; terrainV: number;
   floor: number;
   start: Pt; portal: Level['portal']; arrival: Pt; stock: StockItem[];
-  zone: Uint8Array | null; rooms: Room[]; sconces: any[];
+  zone: Uint8Array | null; rooms: Room[]; sconces: Sconce[];
   levelSeed: number; levelOwned: string[]; roster: string[]; themeName: string; total: number;
   miniEdgeIdx: number[]; matterProps: Prop[]; ambKinds: string[]; plantW: number;
   enemies: Enemy[]; pickups: Pickup[]; props: Prop[];
-  seen: Uint8Array; deepFog: any;
+  seen: Uint8Array; deepFog: Uint8Array | null;
   fire: FireState;
   firePlants: Prop[]; fireArches: Prop[]; fireCarts: Prop[];
-  firePropN: number; firePropLast: any; fireLoop: any; fireN: number; fireVis: number[];
-  bullets: Bullet[]; enemyShots: any[]; fields: any[]; beams: any[]; arcs: any[]; coins: any[];
-  toasts: any[]; smoke: any[]; sparks: any[]; flashes: any[]; torchP: any[]; motes: any[];
-  burns: any[]; webs: WebLine[]; silk: any[]; strings: any[];
-  dparts: any[]; amb: any[]; clouds: any[]; rings: any[]; devils: any[];
-  jetLoop: any; beatT: number; wasEmpty: boolean;
+  firePropN: number; firePropLast: Prop | null; fireLoop: SoundLoop; fireN: number; fireVis: number[];
+  bullets: Bullet[]; enemyShots: EnemyShot[]; fields: Field[]; beams: Beam[]; arcs: Arc[]; coins: Coin[];
+  toasts: Toast[]; smoke: Particle[]; sparks: Particle[]; flashes: Flash[]; torchP: Particle[]; motes: Particle[];
+  burns: Particle[]; webs: WebLine[]; silk: Silk[]; strings: SilkString[];
+  dparts: Particle[]; amb: Particle[]; clouds: Cloud[]; rings: Ring[]; devils: Devil[];
+  jetLoop: SoundLoop; beatT: number; wasEmpty: boolean;
   jetSt: { cut: number; onT: number; start: boolean };
-  bhLoops: Map<Bullet, any>;
-  portalLoop: any; matterLoop: any; wasJet: boolean;
-  stepT: number; lastNear: string; portalAcc: number;
+  bhLoops: Map<Bullet, SoundLoop>;
+  portalLoop: SoundLoop; matterLoop: SoundLoop; wasJet: boolean;
+  stepT: number; lastNear: string | number; portalAcc: number;
   leanVX: number; leanVY: number; flickN: number; torchT: number; torchAcc: number; smokeAcc: number;
   webCheck: number; webLetGo: number;
   plantsNow: Set<Prop>; plantsLast: Set<Prop>; rustle: { t: number };
   decoFrame: number; dripHurt: number; oreBank: number;
-  navYou: any;
+  navYou: NavCache;
 }
 /** you: W.p */
 interface Player {
@@ -417,7 +479,54 @@ interface Player {
   dead: boolean; kick: number; shieldReady: boolean; shieldT: number; jx: number; jy: number;
   aim: { on: boolean; show: boolean; nx: number; ny: number };
   burn?: number; burnAcc?: number;
-  [k: string]: any;           // step() adds more as it goes; typed with the game folder
+}
+
+/** one thumbstick's state, written by the Stick (ui/hud.js), read by step */
+interface StickState { active: boolean; nx: number; ny: number; mag: number; dy: number; on: boolean; [k: string]: any }
+/** the gauges draw() hands the sticks each frame (all 0..1) */
+interface Hud { hp: number; low: boolean; fuel: number; empty: boolean; mana: number; rech: number; cast: number; recharging: boolean; hasGun: boolean }
+/** what the pickup panel shows (pickups.js): the item near you */
+interface Prompt {
+  text: string; price: number; can: boolean;
+  id?: string; gun?: Gun; perk?: string; heart?: boolean; found?: boolean; [k: string]: any;
+}
+/** the death replay's span, once recorded: from t0 to t1, the death at `death` (REC's clock) */
+interface Witness { t0: number; t1: number; death: number }
+/** the replay's view (App's Witness sets it; draw() reads it as G.RPV) */
+interface ReplayView {
+  t: number; speed: number; playing: boolean; fog: boolean; follow: boolean; loop?: boolean;
+  zoom: number; cx: number; cy: number; unit?: number; panelH?: number;
+}
+/** App's input ref: the React bridge (ui/app.js makes it, Game and the systems read and write it) */
+interface GameInput {
+  left: StickState; right: StickState;
+  loadout: Loadout;
+  saved: SaveData | null;
+  paused: boolean; notify: () => void; inShop: boolean;
+  prompt: Prompt | null; interact: boolean; sig: string;
+  found: Pickup | null;
+  confirmAct: any; confirmAim: any;   // legacy hooks, nothing sets them any more
+  pendingToast: string | null;
+  keys: { w: boolean; a: boolean; s: boolean; d: boolean };
+  mouse: { x: number; y: number; inside: boolean; down: boolean };
+  // set as it runs
+  hud?: Hud; witness?: Witness | null; replay?: ReplayView | null; spawnGun?: number;
+  requestRestart?: () => void; promptBottom?: number; newCave?: boolean; ctlH?: number;
+  mapOpen?: boolean; floor?: number; saveRun?: () => void;
+}
+
+/** the death replay's recorder (systems/recorder.js) */
+interface Recorder {
+  t: number; acc: number; snaps: RpSnap[]; patches: RpPatch[]; dirty: RpRect[];
+  fogLog: number[];           // flat: time, cell, value
+  tBase: Uint8ClampedArray | null; dBase: Uint8ClampedArray | null;
+  fogBase: Uint8Array | null; fogPrev: Uint8Array | null;
+  deathT: number; done: boolean;
+}
+/** the replay's player: its own terrain canvases and fog (rpTerrain) */
+interface ReplayPlayer {
+  tC: HTMLCanvasElement | null; dC: HTMLCanvasElement | null; n: number; at: number;
+  fog: Uint8Array | null; fireT: Uint16Array | null;
 }
 
 /**
@@ -426,7 +535,7 @@ interface Player {
  * dirty boxes, the rats' web test, the plant glow's scratch, the replay's view.
  */
 interface GameCtx {
-  input: { current: any };    // App's input ref: typed with the ui folder
+  input: { current: GameInput };
   c: HTMLCanvasElement; ctx: CanvasRenderingContext2D;
   terrain: HTMLCanvasElement; tctx: CanvasRenderingContext2D;
   bg: HTMLCanvasElement; bgctx: CanvasRenderingContext2D;
@@ -434,23 +543,38 @@ interface GameCtx {
   fogBlurC: HTMLCanvasElement; fbctx: CanvasRenderingContext2D;
   miniC: HTMLCanvasElement; mctx: CanvasRenderingContext2D; miniImg: ImageData; mini32: Uint32Array;
   decoC: HTMLCanvasElement; dctx: CanvasRenderingContext2D;
-  REC: any; RT: any;          // the recorder and the replay's player (systems/recorder.js)
+  REC: Recorder; RT: ReplayPlayer;
   fireBox: { t: number[]; d: number[] };
-  ratOnWeb: (x: number, y: number) => any;
-  mouse: any; aimPath: any[];
-  pgArt: any; pgC: HTMLCanvasElement | null; pgCtx: CanvasRenderingContext2D | null;
+  ratOnWeb: (x: number, y: number) => boolean;
+  mouse: GameInput['mouse']; aimPath: Pt[];
+  pgArt: Uint8ClampedArray | null; pgC: HTMLCanvasElement | null; pgCtx: CanvasRenderingContext2D | null;
   pgGlow: HTMLCanvasElement; pgGlowCtx: CanvasRenderingContext2D;
-  RP_ARR: Record<string, any[]>; rid: WeakMap<object, number>; ridN: number;
-  RPV: any;                   // while draw() draws a replay frame: the view
+  RP_ARR: Record<string, any[]>;   // W's own lists by name, whatever they hold
+  rid: WeakMap<object, number>; ridN: number;
+  RPV: ReplayView | null;     // while draw() draws a replay frame: the view
 }
 
 /** step()'s frame object `F` (systems/step.js, D18) */
-interface StepFrame { dt: number; LO: any; MHP: number; pcx: number; pcy: number }
+interface StepFrame { dt: number; LO: Loadout; MHP: number; pcx: number; pcy: number }
 /** draw()'s frame object `F` (render/draw.js, D19) */
 interface DrawFrame {
   dpr: number; playPx: number; vw: number; vh: number; pcx: number; pcy: number;
-  TH: any; onView: ((x: number, y: number, m?: number) => boolean) | null;
+  TH: Theme; onView: ((x: number, y: number, m?: number) => boolean) | null;
   held: Gun | null; ax: number; ay: number; gy: number; cw: number;
+}
+/** stepEnemies' per-enemy object `C` (systems/enemies.js, D20): refilled for each creature */
+interface EnemyCtx {
+  dt: number; pcx: number; pcy: number;
+  i: number; dx: number; dy: number; dist: number; sees: number; hunting: boolean;
+}
+/** one act's hooks in ACTS (game/creatures/acts.js, D20) */
+interface ActHooks {
+  move?: (W: World, G: GameCtx, e: Enemy, C: EnemyCtx) => boolean | void;
+  pre?: (W: World, G: GameCtx, e: Enemy, C: EnemyCtx) => void;
+  contact?: (W: World, G: GameCtx, e: Enemy, C: EnemyCtx) => boolean | void;
+  fire?: (W: World, G: GameCtx, e: Enemy, C: EnemyCtx) => void;
+  die?: (W: World, e: Enemy) => boolean | void;
+  frame?: (W: World, G: GameCtx, F: StepFrame) => void;
 }
 
 // ---- the death replay (replay/replay.js, game/systems/recorder.js) ----

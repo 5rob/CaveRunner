@@ -1,3 +1,4 @@
+// @ts-check
 // The browser tests' way into the live level (REFACTOR.md, P3.3). Only runs when the test
 // page sets `window.__TEST` (tests/build.js does); the game never does. It hands the suites
 // the world object itself as `window.__lvl`, plus a few of Game's functions and the names
@@ -24,6 +25,8 @@ import { fogReveal, losClear, visPoly } from '../world/vision.js';
 
 // g: what the suites reach that isn't world state: the two terrain canvases' contexts (the
 // recorder's wrapped ones), and Game's functions and recorder objects
+/** @typedef {{ tctx: CanvasRenderingContext2D, dctx: CanvasRenderingContext2D, paintFog: () => void, hurt: (n: number) => void, maxHp: () => number, dig: (x: number, y: number, R: number) => void, explode: (x: number, y: number, R: number, splash?: number, hot?: number) => void, recSample: () => void, ignite: (x: number, y: number, r: number, chance: number) => void, setAlight: (e: Enemy) => void, youAlight: () => void, REC: Recorder, RT: ReplayPlayer }} TestFns Game's functions and recorder objects, for the suites */
+/** @param {World} W @param {TestFns} g */
 export function testHook(W, g) {
   const { tctx, dctx, paintFog } = g;
   // A clean test room carved into the live level, far from the exit portal and above the shop.
