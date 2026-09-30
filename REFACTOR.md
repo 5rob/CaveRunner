@@ -825,8 +825,10 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
       only `.js`, ESLint lints `src/**/*.js`, tsc includes `.js` and `.d.ts`; `index.html` unchanged.
 - [ ] **P5.2** `CLAUDE.md` slims to: the owner's working style, the release loop, the
       testing rules, the layer rule, a map of folders → READMEs. Target < 150 lines.
-- [ ] **P5.3** Version history paragraphs (v40…v96) go to `CHANGELOG.md`. Anything still
-      needed as a *rule* goes to the right folder README.
+- [x] **P5.3** Version history paragraphs (v40…v96) go to `CHANGELOG.md`. Anything still
+      needed as a *rule* goes to the right folder README. Done: `CHANGELOG.md` at the root, v39–v99
+      plus an Unreleased entry (Phases 4–5), from CLAUDE.md's vNN notes, HANDOVER's "What shipped"
+      and the release commits; the rules in them went to the READMEs in P5.1.
 - [ ] **P5.4** Update `HANDOVER.md`; mark this doc **Done** at the top.
 
 ---
@@ -1233,3 +1235,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 4, P4.3 ui | `ui/` checked (8 files): 9 errors, noise (the jelly preview's stand-in creature: `jellyStep` takes what it reads; `closest()` results typed `HTMLElement` on their `const`s; 3 `@ts-expect-error`). Props typed on every component; `StickState`/`Prompt` index signatures and the legacy confirm hooks narrowed. **P4.3 done** for every folder. `index.html` unchanged. 0 bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 4, P4.4 | Every file under `src/` checked (`main.js`, `pure.js`, `version.js` were clean), so `tsconfig.json` has `checkJs: true`: all of `src/` is checked and a new file is too (checked with a planted error in a new, unmarked file). The `// @ts-check` lines stay, redundant. tsconfig, tests/run.js, CLAUDE.md (Testing, the layout row), HANDOVER say so; CLAUDE.md also: no comment inside an object/array literal. The Stendari entry says where its two reads are silenced. **Phase 4's tasks done**; not merged. `index.html` unchanged. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 5, P5.1 | A README.md in each src/ folder (15): what each file holds and that area's rules, moved from CLAUDE.md in today's names (`W.mat`, the system or render module a function lives in). Every backticked name in them checked against src/. CLAUDE.md not trimmed yet (P5.2). Docs only: `index.html` unchanged. | logic 33/33, smoke ok |
+| 2026-09-30 | Phase 5, P5.3 | `CHANGELOG.md`: one entry per release v39–v99, newest first, plus Unreleased (Phases 4–5). Docs only. | index.html unchanged |
