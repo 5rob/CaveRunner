@@ -1,3 +1,4 @@
+// @ts-check
 // The level's props (see DECOR in data/themes.js) at work, once a frame (decorStep): anchors,
 // falling and landing, shooting them, drips, plants and web lines under the player (zfx),
 // and what happens when one is blown up, shattered or a lantern pops.
@@ -20,6 +21,7 @@ import { hurt } from './player.js';
 import { explode, lineOfSight, solidAt } from './terrain.js';
 import { webDist } from './webs.js';
 
+/** @param {World} W @param {GameCtx} G @param {Prop} pr */
 export function blowProp(W, G, pr) {
   if (pr.gone) return;
   pr.gone = true;                          // first, so a chain of blasts can't loop
@@ -32,9 +34,11 @@ export function blowProp(W, G, pr) {
 }
 
 // ---- decoration, pass 3: the props at work ----
+/** @param {World} W @param {Prop} pr @param {number} pad */
 export const pOver = (W, pr, pad) => W.p.x + PW > pr.x + pr.l - pad && W.p.x < pr.x + pr.r + pad &&
   W.p.y + PH > pr.y + pr.t0 - pad && W.p.y < pr.y + pr.b + pad;
 // a loud noise: every creature within earshot comes looking, and shooters get ready
+/** @param {World} W @param {number} x @param {number} y */
 export function alertAt(W, x, y) {
   W.rings.push({ x, y, t: 0 });
   for (const e of W.enemies) {
@@ -45,6 +49,7 @@ export function alertAt(W, x, y) {
 }
 // what a breakable prop is made of, for the sound it breaks with
 export const MATERIAL = { icicle: 'ice', geode: 'crystal', salt: 'salt', bone: 'bone', obsidian: 'glass', shard: 'glass' };
+/** @param {World} W @param {Prop} pr @param {number} [n] */
 export function shatter(W, pr, n) {
   SFX.fx('shatter', pr.x, pr.y + (pr.t0 + pr.b) / 2, MATERIAL[pr.st] || 'stone');
   burst(W, pr.x, pr.y + (pr.t0 + pr.b) / 2, n || 10, propCol(pr, themeFor(W.floor)));
@@ -52,6 +57,7 @@ export function shatter(W, pr, n) {
 }
 // a lantern shot (or dropped, or blasted): the glass goes and its burning oil is thrown
 // out in blobs that light whatever burnable they fall through or land on
+/** @param {World} W @param {GameCtx} G @param {Prop} pr */
 export function popLamp(W, G, pr) {
   if (pr.gone) return;
   pr.gone = true;
@@ -69,6 +75,7 @@ export function popLamp(W, G, pr) {
   ignite(W, G, x, y, 6, 0.8);
 }
 // a prop whose rock has gone hits the ground: it breaks, blows, or settles there
+/** @param {World} W @param {GameCtx} G @param {Prop} pr */
 export function landProp(W, G, pr) {
   pr.fall = false; pr.vy = 0;
   if (pr.k === 'barrel' || pr.k === 'pod') { blowProp(W, G, pr); return; }
@@ -81,6 +88,7 @@ export function landProp(W, G, pr) {
   pr.y = cy * CELL - pr.b;
   pr.anc = [Math.floor(pr.x / CELL), cy];
 }
+/** @param {Prop} pr */
 export function spawnDrip(pr) {
   const r = Math.random, st = pr.st;
   if (st === 'water') return { x: pr.x + (r() - 0.5) * 2, y: pr.y + 3, vx: 0, vy: 0, g: 0.9, c: '#7ec8ff', s: 1.5, life: 3, max: 3, splash: 1, snd: 'drip' };
@@ -96,6 +104,7 @@ export function spawnDrip(pr) {
 }
 export const DRIP_RATE = { water: 0.7, lava: 1.1, soot: 6, crystal: 3, cascade: 45, steam: 10 };
 
+/** @param {World} W @param {GameCtx} G @param {number} dt @param {number} pcx @param {number} pcy */
 export function decorStep(W, G, dt, pcx, pcy) {
   W.decoFrame++;
   W.plantsNow.clear();
@@ -205,6 +214,7 @@ export function decorStep(W, G, dt, pcx, pcy) {
       case 'vent': {
         pr.t += dt;
         const ph = pr.t % 3.6, wasOn = pr.on, wasWarn = pr.warn;
+        // @ts-expect-error a vent reuses `on` as roaring, a boolean (Found along the way)
         pr.on = ph > 2.6; pr.warn = ph > 1.9 && !pr.on;
         if (pr.warn && !wasWarn) SFX.fx('ventWarn', pr.x, pr.y);
         if (pr.on && !wasOn) SFX.fx('ventFire', pr.x, pr.y - 20);

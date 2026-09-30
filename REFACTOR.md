@@ -752,6 +752,17 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
     - [x] `world.js`, `Game.js`, `testhook.js`: two errors, noise: `window.__TEST`/`__lvl` (declared on `Window`
           in globals.d.ts), and `W.img`/`W.dimg` as `Pixels` handed to `putImageData` (now `ImageData`, above).
           `makeWorld` → `World`, `G` → `GameCtx`, testHook's `g` a local `TestFns` typedef. 0 bugs, 0 `any`s
+    - [x] systems, part 1 (`terrain`, `particles`, `player`, `enemies`, `fire`, `webs`, `fog`, `ambience`, `props`,
+          `plantglow`, `lightning`): 34 errors when turned on. Noise fixed by a type: the script's guesses (`growBox`'s box
+          and `splat`'s enemy shot weren't a `Bullet`), optional parameters callers leave off (`goo`'s size/colour,
+          `flameAt`'s speed, `shatter`'s count, `sputterStep`'s rnd, `explode`'s splash/hot, `fireBlast`'s hot), and
+          types.d.ts fitted to what the code stores: `Prop.fall`/`warn` booleans, `heard` a 1, `climb` (an arch's rolled
+          climb speed), `Bullet.struck` a 1, `jetSt.gap`. Three one-line `@ts-expect-error`, noise: a boolean counted as
+          0/1 (ambience), `flushFire`'s `[box, context, pixels]` rows read as a union, and a vent reusing `Prop.on` as
+          "roaring" (logged, below). **Stendari's `k.fire`** (the logged bug) in `fireEnemyShot`: its line sits inside an
+          object literal, where esbuild keeps comments (a `@ts-expect-error` there reached `index.html`, and so did
+          joining the literal onto one line: esbuild keeps an object's line breaks), so the local `k` is typed
+          `CreatureKind & { fire?: number }` with a comment pointing at the entry. 0 new bugs, 0 `any`s
 - [ ] **P4.4** Once a folder is clean, keep it clean: the check is part of the green bar.
 
 ### Phase 5 — notes live next to the code
@@ -918,6 +929,12 @@ commit. List them here for after.
   and `// @ts-expect-error` lines are all dropped. So P4.3 uses no inline casts (D21).
 - **`drawFields` ends with `G.ctx.globalAlpha = 1;` twice** (render/looks.js): one was the line after the old inner
   `drawFieldLook` declaration. Harmless; left as it was.
+- **A vent reuses `Prop.on` as "roaring"** (P4.3, game: `src/game/systems/props.js:217`, `pr.on = ph > 2.6`). On an
+  arch strand `on` is the arch it hangs off, and `propAnchored` (`src/world/decorate.js:562`) reads `if (pr.on) return
+  !pr.on.fall && !pr.on.gone`, so a vent is counted as anchored (never dropped) while it roars, and only checked in its
+  quiet part of the cycle; `decorStep` also sets `pr.on = null` when a prop falls. Harmless today (vents have their own
+  anchor and get checked a moment later), but one field meaning two things. `Prop.on` stays typed as the arch; the vent
+  line has a `@ts-expect-error`. Fix after the refactor: a vent field of its own (`roar`).
 
 ## Game map
 
@@ -1154,3 +1171,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 4, P4.3 creatures | `creatures/` checked (6 files): clean at once. JSDoc on every exported function; types.d.ts: the three brains (`SpiderBrain`, `RatBrain`, `JellyBrain`, replacing `Enemy.sp/ra/je: any`), their `*Env`s, `WebLine` (`World.webs` too), `SpiderShot`, `RoamState`, `SurfState`, `SolidCell`, `CreatureCol`. The spider brain's `mode` is a `string` (a literal union narrowed wrongly across `decide()`: 3 errors, noise). `index.html` unchanged. 0 bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 4, P4.3 layer 4 | `art/`, `audio/`, `save/`, `replay/` checked (7 files): one error, noise (`webkitAudioContext`, declared in globals.d.ts). JSDoc on the exported functions and SFX's public calls; `safe()` typed to keep its function's signature (one `@ts-expect-error`). types.d.ts: `Loadout`, `SaveData`, `SavedLevel`, the replay's `RpSnap`/`RpFrame`/`RpRect`/`RpPatch`, `Prop.u0`/`u1`. `index.html` unchanged. 0 bugs, 9 `any`s (save 2, replay 7). | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 4, P4.3 game (1) | types.d.ts's game section narrowed (World's lists, `GameInput`, `Recorder`/`ReplayPlayer`, `EnemyCtx`, `ActHooks`, `SoundLoop`, `NavCache`; `img`/`dimg` as `ImageData`), then `world.js`, `Game.js`, `testhook.js` checked: two errors, noise (the test page's `window` hooks; `Pixels` to `putImageData`). `index.html` unchanged. 0 bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.3 game (2) | systems part 1 checked (`terrain`, `particles`, `player`, `enemies`, `fire`, `webs`, `fog`, `ambience`, `props`, `plantglow`, `lightning`): 34 errors, all noise but Stendari's known `k.fire` (typed on the local, since its line is inside an object literal: a comment there, or joining the literal onto one line, changed `index.html`). types.d.ts fitted (`Prop.fall`/`warn`/`heard`/`climb`, `Bullet.struck`, `jetSt.gap`); 3 `@ts-expect-error` (noise). Logged: a vent reuses `Prop.on`. `index.html` unchanged. 0 new bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |

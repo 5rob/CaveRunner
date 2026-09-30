@@ -259,10 +259,11 @@ interface Prop {
   on?: Prop; u?: number;      // a strand on an arch, and where along it
   u0?: number; u1?: number;   // an arch burning: the burnt stretch (catchArch)
   // what the game adds as it plays (decorStep, fire, drips)
-  fall?: number; vy?: number; gone?: boolean; burn?: number; hp?: number; hitT?: number;
+  fall?: boolean; vy?: number; gone?: boolean; burn?: number; hp?: number; hitT?: number;
   acc?: number; dn?: number; di?: number; cd?: number; ecd?: number; shake?: number;
-  warn?: number; ring?: number; heard?: boolean; hurt?: number; hs?: number; sq?: number;
+  warn?: boolean; ring?: number; heard?: number; hurt?: number; hs?: number; sq?: number;
   stand?: number; grab?: number; ang?: number; aimA?: number; ext?: number;
+  climb?: number;             // an arch: its climbing speed, rolled when you first hang on it
 }
 
 /** a thing on the ground: a mod, a gun, a heart */
@@ -370,7 +371,7 @@ interface Bullet {
   trig: TrigKind | null; timer: number | null;
   ox: number; oy: number; age: number; born: number;
   // set as it flies
-  ang?: number; struck?: boolean; propHit?: any; lock?: Enemy | null; arcT?: number;
+  ang?: number; struck?: number; propHit?: any; lock?: Enemy | null; arcT?: number;
   ax?: number; ay?: number; da?: number; grind?: number; trail?: any;
 }
 
@@ -462,7 +463,7 @@ interface World {
   burns: Particle[]; webs: WebLine[]; silk: Silk[]; strings: SilkString[];
   dparts: Particle[]; amb: Particle[]; clouds: Cloud[]; rings: Ring[]; devils: Devil[];
   jetLoop: SoundLoop; beatT: number; wasEmpty: boolean;
-  jetSt: { cut: number; onT: number; start: boolean };
+  jetSt: { cut: number; onT: number; start: boolean; gap?: number };
   bhLoops: Map<Bullet, SoundLoop>;
   portalLoop: SoundLoop; matterLoop: SoundLoop; wasJet: boolean;
   stepT: number; lastNear: string | number; portalAcc: number;

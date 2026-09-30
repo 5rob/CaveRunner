@@ -1,3 +1,4 @@
+// @ts-check
 // The fog of war's queries (what has been seen, what a torch or loot may show on) and
 // repainting the overlay mask from the reveal grid. The reveal and the bake are in draw().
 
@@ -8,6 +9,7 @@ import { ROOM_HH, ROOM_HW } from '../../world/level.js';
 // Wall torches and lanterns follow the same rule as the loot: they show once the fog
 // over them has lifted (`fogLit`), and never clear it themselves — v59 let them clear
 // a circle round themselves, which lit up every prize room on the map from the start.
+/** @param {World} W @param {number} x @param {number} y */
 export const fogLit = (W, x, y) => {
   const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
   if (W.deepFog && W.deepFog[cy * FW + cx]) return W.seen[cy * FW + cx] > 0;   // a nest room: no soft edge
@@ -19,6 +21,7 @@ export const fogLit = (W, x, y) => {
   return false;
 };
 // a prize room counts as found once any of it has been in your line of sight
+/** @param {World} W @param {Room} r */
 export const roomSeen = (W, r) => {
   for (let y = r.y - ROOM_HH; y <= r.y + ROOM_HH; y += FOG_U)
     for (let x = r.x - ROOM_HW; x <= r.x + ROOM_HW; x += FOG_U) {
@@ -29,6 +32,7 @@ export const roomSeen = (W, r) => {
 };
 // Repaint the whole overlay mask from the reveal grid. FW x FH is a few thousand
 // cells, and it only runs on the frames where you actually light something new.
+/** @param {World} W @param {GameCtx} G */
 export function paintFog(W, G) {
   const d = G.fogImg.data, dim = Math.round(255 * FOG_DIM), dark = Math.round(255 * FOG_DARK);
   for (let i = 0, k = 0; i < FW * FH; i++, k += 4) {
@@ -37,4 +41,5 @@ export function paintFog(W, G) {
   }
 }
 
+/** @param {World} W @param {number} x @param {number} y */
 export const seenAt = (W, x, y) => W.seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)] !== 0;

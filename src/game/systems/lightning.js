@@ -1,3 +1,4 @@
+// @ts-check
 // Lightning: the zig-zag arcs (jag, addArc) and a lightning bolt's forks as it flies
 // (lightningStep). The arcs are drawn in Game's draw().
 
@@ -9,6 +10,7 @@ import { lineOfSight, solidCell } from './terrain.js';
 
 // Lightning. A zig-zag between points: each leg is split into short kinks knocked
 // sideways, so a straight line reads as a crackling bolt.
+/** @param {Pt[]} pts @param {number} amp */
 export function jag(pts, amp) {
   // thin the path to points ~12 apart first, so a slow bolt's crowded trail still kinks
   const th = [pts[0]];
@@ -29,10 +31,12 @@ export function jag(pts, amp) {
   }
   return out;
 }
+/** @param {World} W @param {Pt[]} pts @param {string} col @param {number} w @param {number} max */
 export function addArc(W, pts, col, w, max) { W.arcs.push({ pts: jag(pts, 4), col, w, t: 0, max }); }
 // A lightning bolt remembers its last stretch of path (drawn as the bolt) and every
 // few hundredths of a second throws a fork: at a creature in reach and in sight
 // (a little damage), else at a nearby bit of rock (just the flash).
+/** @param {World} W @param {Bullet} b @param {number} dt */
 export function lightningStep(W, b, dt) {
   const tr = b.trail || (b.trail = [{ x: b.ox, y: b.oy }]);
   tr.push({ x: b.x, y: b.y });

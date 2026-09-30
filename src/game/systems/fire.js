@@ -1,3 +1,4 @@
+// @ts-check
 // Fire (v86): what the cave's fire (world/fire.js, fireStep) does to the level. Burnt-out pixels,
 // plants, arched vines, web lines and minecarts catching, creatures and you set alight, a blast's
 // heat, and fireFrame, one frame of all of it; and the Levitation Trail's burning patches
@@ -18,7 +19,9 @@ import { webDist } from './webs.js';
 // ---- fire (v86): the cave's fire runs in fireStep; this is what it does to the level ----
 // A pixel whose fuel is spent: grass and timber go (a fleck of ash now and then stays),
 // moss leaves the rock under it scorched. Changed areas are put back once a frame.
+/** @param {number[]} b a dirty box: x0, y0, x1, y1 @param {number} x @param {number} y */
 export const growBox = (b, x, y) => { if (x < b[0]) b[0] = x; if (y < b[1]) b[1] = y; if (x > b[2]) b[2] = x; if (y > b[3]) b[3] = y; };
+/** @param {World} W @param {GameCtx} G @param {number} i */
 export function fireOut(W, G, i) {
   const x = i % CW, y = (i / CW) | 0, k = i * 4, r = Math.random();
   if (W.mat[i]) {
@@ -32,20 +35,24 @@ export function fireOut(W, G, i) {
     growBox(G.fireBox.d, x, y);
   }
 }
+/** @param {World} W @param {GameCtx} G */
 export function flushFire(W, G) {
   for (const [b, c, im] of [[G.fireBox.t, G.tctx, W.img], [G.fireBox.d, G.dctx, W.dimg]]) {
     if (b[2] < b[0] || !im) continue;
+    // @ts-expect-error the loop's [box, context, pixels] rows are read as a union of their elements (noise)
     c.putImageData(im, 0, 0, b[0], b[1], b[2] - b[0] + 1, b[3] - b[1] + 1);
     b[0] = CW; b[1] = CH; b[2] = -1; b[3] = -1;
   }
 }
 // a plant catches: it burns up from its tip toward the rock it hangs from
+/** @param {Prop} pr */
 export function catchPlant(pr) {
   if (pr.burn || pr.gone) return;
   pr.burn = 1;
   SFX.fx('whoosh', pr.x, pr.y + pr.len);
 }
 // an arched vine catches at fraction u along it; the fire runs out both ways from there
+/** @param {Prop} pr @param {number} u */
 export function catchArch(pr, u) {
   if (pr.burn || pr.gone) return;
   pr.burn = 1; pr.u0 = pr.u1 = u;
@@ -53,6 +60,7 @@ export function catchArch(pr, u) {
   SFX.fx('whoosh', q.x, q.y);
 }
 // a web line catches: it flares along its length and is gone
+/** @param {World} W @param {number} w */
 export function burnWeb(W, w) {
   const L = W.webs[w];
   for (let u = 0; u <= 1; u += 0.1)
@@ -63,6 +71,7 @@ export function burnWeb(W, w) {
 }
 // everything that burns within r of (x, y) catches at `chance`: grass, moss and timber
 // pixels, plants, web lines — and a minecart goes up
+/** @param {World} W @param {GameCtx} G @param {number} x @param {number} y @param {number} r @param {number} chance */
 export function ignite(W, G, x, y, r, chance) {
   fireList(W);
   const n = fireArea(W.fire, x, y, r, chance);
@@ -81,16 +90,19 @@ export function ignite(W, G, x, y, r, chance) {
   if (n > 4) SFX.fx('whoosh', x, y);
   return n;
 }
+/** @param {Enemy} e */
 export function setAlight(e) {
   if (!(e.burn > 0)) SFX.fx('whoosh', e.x, e.ty);
   e.burn = Math.max(e.burn || 0, kr('fireBurn'));
 }
+/** @param {World} W */
 export function youAlight(W) {
   if (W.p.dead) return;
   if (!(W.p.burn > 0)) { SFX.fx('whoosh', W.p.x + PW / 2, W.p.y + PH / 2); W.strings.length = 0; }   // spider silk burns off
   W.p.burn = Math.max(W.p.burn || 0, kr('fireYou'));
 }
 // a blast's heat: fuel round it catches, and creatures (and you) in it may go up
+/** @param {World} W @param {GameCtx} G @param {number} x @param {number} y @param {number} R @param {number} [hot] */
 export function fireBlast(W, G, x, y, R, hot) {
   const ch = hot ? 0.9 : kr('fireBoom');
   ignite(W, G, x, y, R * 1.3, ch);
@@ -98,15 +110,18 @@ export function fireBlast(W, G, x, y, R, hot) {
   if (!W.p.dead && Math.hypot(W.p.x + PW / 2 - x, W.p.y + PH / 2 - y) < R + 6 && Math.random() < ch * 0.5) youAlight(W);
 }
 // a flame licking up off a burning spot
+/** @param {World} W @param {number} x @param {number} y @param {number} [sp] */
 export const flameAt = (W, x, y, sp) => W.dparts.push({ x, y, vx: (Math.random() - 0.5) * 16, vy: -30 - Math.random() * (sp || 40),
   g: -0.03, c: Math.random() < 0.4 ? '#ffd35a' : Math.random() < 0.6 ? '#ff8a2a' : '#e8461c', s: 1 + Math.random() * 1.2,
   life: 0.25 + Math.random() * 0.3, max: 0.55, glow: 1 });
+/** @param {World} W @param {number} x @param {number} y */
 export const fireSmoke = (W, x, y) => W.smoke.push({ x, y, vx: (Math.random() - 0.5) * 12, vy: -25 - Math.random() * 20,
   r: 2 + Math.random() * 2.5, life: 1.4, max: 1.4, c: '#2a2624', a: 0.35 });
 // One frame of fire: the cave's fire moves on, plants, webs and carts catch off it,
 // burning creatures (and you) take damage and spread it, flames and smoke come off
 // what's on view, and the crackle sits at the nearest blaze.
 // the props that burn, relisted whenever props came or went (a test room, a drop)
+/** @param {World} W */
 export function fireList(W) {
   if (W.props.length === W.firePropN && W.props[W.props.length - 1] === W.firePropLast) return;
   W.firePropN = W.props.length; W.firePropLast = W.props[W.props.length - 1];
@@ -114,6 +129,7 @@ export function fireList(W) {
   W.fireArches = W.props.filter(pr => pr.arc && FLAMMABLE[pr.st]);
   W.fireCarts = W.props.filter(pr => pr.k === 'barrel');
 }
+/** @param {World} W @param {GameCtx} G @param {number} dt @param {number} pcx @param {number} pcy */
 export function fireFrame(W, G, dt, pcx, pcy) {
   fireList(W);
   const ticks = fireStep(W.fire, dt, (i) => fireOut(W, G, i));
@@ -225,6 +241,7 @@ export function fireFrame(W, G, dt, pcx, pcy) {
 // ---- Levitation Trail (a part of step) ----
 // Flying lays down fire that burns what it touches: a new patch under you, and each patch
 // setting creatures alight until it fades.
+/** @param {World} W @param {StepFrame} F */
 export function stepTrail(W, F) {
   const { dt, pcx } = F;
   if (W.pb.trail && W.p.flame > 0 && !W.p.dead) {

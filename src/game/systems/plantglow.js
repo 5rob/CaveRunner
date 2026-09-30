@@ -1,3 +1,4 @@
+// @ts-check
 // The jellyfish's plant glow, drawn by draw() after the fog (its scratch canvases are on G).
 
 import { drawProp } from '../../art/props.js';
@@ -12,6 +13,7 @@ import { seenAt } from './fog.js';
 // jelly — the rock with its baked moss over the decoration layer, and the hanging plants
 // drawn over both at terrain resolution and read back — keyed, ramped, twinkled and
 // added on top in its colour. Only on ground you've seen.
+/** @param {World} W @param {GameCtx} G @param {Enemy} e @param {Theme} TH */
 export function plantGlow(W, G, e, TH) {
   const u = e.je.u, reach = kru('jeGlowR', u.glowR) * kru('jePlantReach', u.plant);
   const strength = kru('jePlantGlow', u.plant);
