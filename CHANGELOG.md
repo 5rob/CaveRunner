@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v104 — the hologram ignores the torchlight's dark
+Released 2026-09-30. The hologram is darkened only by the fog of war, not by the dark outside your
+torchlight: `drawFog` also bakes a fog-of-war-only layer (`fogWarC`), and where the hologram shows
+(`holoMask`) the picture takes that one instead. The bloom uses it too. A creature standing in
+front of the hologram gets the same treatment there.
+
 ## v103 — flat red hologram with bloom; fog reaches the edges
 Released 2026-09-30.
 

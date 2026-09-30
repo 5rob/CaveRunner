@@ -4,7 +4,8 @@
 // parallaxes halfway between the two (HOLO_PAR). At zero it flips (the top box an outline, the
 // bottom one solid) and turns green. Its glow is the bloom in fx.js, which uses holoFill.
 
-import { PH, SHOP_Y } from '../../core/consts.js';
+import { CELL, CH, CW, PH, SHOP_FLOOR, SHOP_Y, WH, WW } from '../../core/consts.js';
+import { clamp } from '../../core/util.js';
 import { bioCount } from '../../creatures/common.js';
 import { DEV } from '../../dev/knobs.js';
 
@@ -86,4 +87,31 @@ export function drawHolo(W, G, F) {
   G.ctx.globalAlpha = DEV.holoAlpha;
   holoFill(G.ctx, W, F);
   G.ctx.globalAlpha = 1;
+}
+
+// A canvas of (at least) w x h, reused: made once, resized only when the view changes
+/** @param {HTMLCanvasElement | null} c @param {number} w @param {number} h @returns {HTMLCanvasElement} */
+export function sizedCanvas(c, w, h) {
+  const o = c || document.createElement('canvas');
+  if (o.width !== w || o.height !== h) { o.width = w; o.height = h; }
+  return o;
+}
+
+// The part of the hologram you could see, drawn into ctx (already under the world's transform,
+// scaled to ctx's size): the hologram, with what's in front of it cut out (the decoration and the
+// rock, the shop's wall, below the floor). Not the fog: the callers cut the fog they want
+/** @param {CanvasRenderingContext2D} a @param {World} W @param {GameCtx} G @param {DrawFrame} F @param {number} alpha */
+export function holoMask(a, W, G, F, alpha) {
+  a.globalCompositeOperation = 'source-over'; a.globalAlpha = alpha;
+  holoFill(a, W, F);
+  a.globalAlpha = 1;
+  a.globalCompositeOperation = 'destination-out';
+  a.imageSmoothingEnabled = false;
+  const tx0 = clamp(Math.floor(W.camX / CELL), 0, CW - 1), ty0 = clamp(Math.floor(W.camY / CELL), 0, CH - 1);
+  const tx1 = clamp(Math.ceil((W.camX + F.vw) / CELL) + 1, 1, CW), ty1 = clamp(Math.ceil((W.camY + F.vh) / CELL) + 1, 1, CH);
+  for (const src of G.RPV ? [G.RT.dC, G.RT.tC] : [G.decoC, G.terrain])
+    a.drawImage(src, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
+  a.fillStyle = '#000'; a.fillRect(0, SHOP_Y, WW, SHOP_FLOOR * CELL - SHOP_Y);
+  if (W.camY + F.vh > WH) a.fillRect(W.camX - 10, WH, F.vw + 20, W.camY + F.vh - WH + 10);
+  a.globalCompositeOperation = 'source-over';
 }

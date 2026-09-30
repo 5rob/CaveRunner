@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v103</title>
+<title>CaveRunner v104</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -489,7 +489,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v103';</script>
+<script>const VERSION = 'v104';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -12061,6 +12061,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     holoFill(G.ctx, W, F);
     G.ctx.globalAlpha = 1;
   }
+  function sizedCanvas(c, w, h3) {
+    const o = c || document.createElement("canvas");
+    if (o.width !== w || o.height !== h3) {
+      o.width = w;
+      o.height = h3;
+    }
+    return o;
+  }
+  function holoMask(a, W, G, F, alpha) {
+    a.globalCompositeOperation = "source-over";
+    a.globalAlpha = alpha;
+    holoFill(a, W, F);
+    a.globalAlpha = 1;
+    a.globalCompositeOperation = "destination-out";
+    a.imageSmoothingEnabled = false;
+    const tx0 = clamp(Math.floor(W.camX / CELL), 0, CW - 1), ty0 = clamp(Math.floor(W.camY / CELL), 0, CH - 1);
+    const tx1 = clamp(Math.ceil((W.camX + F.vw) / CELL) + 1, 1, CW), ty1 = clamp(Math.ceil((W.camY + F.vh) / CELL) + 1, 1, CH);
+    for (const src of G.RPV ? [G.RT.dC, G.RT.tC] : [G.decoC, G.terrain])
+      a.drawImage(src, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
+    a.fillStyle = "#000";
+    a.fillRect(0, SHOP_Y, WW, SHOP_FLOOR * CELL - SHOP_Y);
+    if (W.camY + F.vh > WH) a.fillRect(W.camX - 10, WH, F.vw + 20, W.camY + F.vh - WH + 10);
+    a.globalCompositeOperation = "source-over";
+  }
 
   // src/game/render/cave.js
   function drawTerrain(W, G, F) {
@@ -12453,68 +12477,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       G.ctx.fill();
     }
     G.ctx.globalAlpha = 1;
-  }
-
-  // src/game/render/fx.js
-  var D = 4;
-  var buf = { a: null, b: null };
-  var sized = (c, w, h3) => {
-    const o = c || document.createElement("canvas");
-    if (o.width !== w || o.height !== h3) {
-      o.width = w;
-      o.height = h3;
-    }
-    return o;
-  };
-  function drawFx(W, G, F) {
-    if (!(DEV.bloom > 0) || !(DEV.holoAlpha > 0)) return;
-    const w = Math.max(1, Math.ceil(G.c.width / D)), h3 = Math.max(1, Math.ceil(G.c.height / D));
-    const A = buf.a = sized(buf.a, w, h3), B = buf.b = sized(buf.b, w, h3);
-    const a = A.getContext("2d"), b = B.getContext("2d");
-    if (!a || !b) return;
-    const m = G.ctx.getTransform();
-    a.setTransform(1, 0, 0, 1, 0, 0);
-    a.clearRect(0, 0, w, h3);
-    a.setTransform(m.a / D, 0, 0, m.d / D, m.e / D, m.f / D);
-    a.globalCompositeOperation = "source-over";
-    a.globalAlpha = DEV.holoAlpha;
-    holoFill(a, W, F);
-    a.globalAlpha = 1;
-    a.globalCompositeOperation = "destination-out";
-    a.imageSmoothingEnabled = false;
-    const tx0 = clamp(Math.floor(W.camX / CELL), 0, CW - 1), ty0 = clamp(Math.floor(W.camY / CELL), 0, CH - 1);
-    const tx1 = clamp(Math.ceil((W.camX + F.vw) / CELL) + 1, 1, CW), ty1 = clamp(Math.ceil((W.camY + F.vh) / CELL) + 1, 1, CH);
-    for (const src of G.RPV ? [G.RT.dC, G.RT.tC] : [G.decoC, G.terrain])
-      a.drawImage(src, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
-    a.fillStyle = "#000";
-    a.fillRect(0, SHOP_Y, WW, SHOP_FLOOR * CELL - SHOP_Y);
-    if (W.camY + F.vh > WH) a.fillRect(W.camX - 10, WH, F.vw + 20, W.camY + F.vh - WH + 10);
-    if (!G.RPV || G.RPV.fog) {
-      a.imageSmoothingEnabled = true;
-      a.drawImage(G.fogBlurC, 0, 0, FW, FH, 0, 0, FW * FOG_U, FH * FOG_U);
-    }
-    a.globalCompositeOperation = "source-over";
-    b.setTransform(1, 0, 0, 1, 0, 0);
-    b.clearRect(0, 0, w, h3);
-    b.filter = "blur(" + (DEV.bloomBlur * F.dpr / D).toFixed(2) + "px) brightness(" + DEV.bloomBright + ")";
-    b.drawImage(A, 0, 0);
-    b.filter = "none";
-    G.ctx.save();
-    G.ctx.setTransform(1, 0, 0, 1, 0, 0);
-    G.ctx.globalCompositeOperation = "lighter";
-    G.ctx.globalAlpha = Math.min(1, DEV.bloom);
-    G.ctx.imageSmoothingEnabled = true;
-    G.ctx.drawImage(B, 0, 0, w * D, h3 * D);
-    if (DEV.bloom > 1) {
-      G.ctx.globalAlpha = DEV.bloom - 1;
-      G.ctx.drawImage(B, 0, 0, w * D, h3 * D);
-    }
-    G.ctx.restore();
-  }
-  function drawBelow(W, G, F) {
-    if (W.camY + F.vh <= WH) return;
-    G.ctx.fillStyle = "#000";
-    G.ctx.fillRect(W.camX - 10, WH, F.vw + 20, W.camY + F.vh - WH + 10);
   }
 
   // src/world/nests.js
@@ -13321,6 +13283,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/game/render/light.js
+  var war = { c: null, img: null, blur: null, mask: null, over: null };
+  var fogWarC = () => war.blur;
+  var HOLO_D = 2;
+  function blurSlab(src, dst, fx0, fy0, fx1, fy1) {
+    const ew = fx1 - fx0, eh = fy1 - fy0;
+    dst.clearRect(fx0, fy0, ew, eh);
+    dst.filter = "blur(0.9px)";
+    dst.drawImage(src, fx0, fy0, ew, eh, fx0, fy0, ew, eh);
+    dst.filter = "none";
+    dst.globalCompositeOperation = "destination-over";
+    if (fx0 === 0) dst.drawImage(src, 0, fy0, 1, eh, 0, fy0, 1, eh);
+    if (fx1 === FW) dst.drawImage(src, FW - 1, fy0, 1, eh, FW - 1, fy0, 1, eh);
+    if (fy0 === 0) dst.drawImage(src, fx0, 0, ew, 1, fx0, 0, ew, 1);
+    if (fy1 === FH) dst.drawImage(src, fx0, FH - 1, ew, 1, fx0, FH - 1, ew, 1);
+    dst.globalCompositeOperation = "source-over";
+  }
   function drawFog(W, G, F) {
     const { vw, vh, pcx, pcy } = F;
     const sight = SIGHT * DEV.torch;
@@ -13328,7 +13306,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.visPts = visPoly(pcx, pcy, sight, (cx, cy) => solidCell(W, cx, cy), VIS_RAYS);
     fogReveal(W.seen, pcx, pcy, sight, W.visPts, VIS_RAYS);
     if (!G.RPV || G.RPV.fog) {
-      const fdat = G.fogImg.data;
+      if (!war.c) {
+        war.c = sizedCanvas(null, FW, FH);
+        war.blur = sizedCanvas(null, FW, FH);
+      }
+      const wctx = war.c.getContext("2d"), wbctx = war.blur && war.blur.getContext("2d");
+      if (!wctx || !wbctx || !war.blur) return;
+      if (!war.img) war.img = wctx.createImageData(FW, FH);
+      const fdat = G.fogImg.data, wdat = war.img.data;
       const dim = Math.round(255 * DEV.fogDim), dark = Math.round(255 * DEV.fogDark);
       const lr2 = W.torchR * W.torchR;
       const fx0 = clamp(Math.floor(W.camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(W.camY / FOG_U) - 1, 0, FH - 1);
@@ -13340,9 +13325,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           fdat[k] = 9;
           fdat[k + 1] = 10;
           fdat[k + 2] = 14;
+          wdat[k] = 9;
+          wdat[k + 1] = 10;
+          wdat[k + 2] = 14;
           let s = W.seen[i];
           if (!s && !(W.deepFog && W.deepFog[i]) && (cx > 0 && W.seen[i - 1] || cx < FW - 1 && W.seen[i + 1] || cy > 0 && W.seen[i - FW] || cy < FH - 1 && W.seen[i + FW] || cx > 0 && cy > 0 && W.seen[i - FW - 1] || cx < FW - 1 && cy > 0 && W.seen[i - FW + 1] || cx > 0 && cy < FH - 1 && W.seen[i + FW - 1] || cx < FW - 1 && cy < FH - 1 && W.seen[i + FW + 1])) s = 1;
           let a = s === 2 ? 0 : s ? dim : dark;
+          wdat[k + 3] = s ? 0 : dark;
           if (s && a) {
             const ddx = (cx + 0.5) * FOG_U - pcx, dd2 = ddx * ddx + ddy * ddy;
             if (dd2 < lr2) {
@@ -13355,29 +13344,41 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
       G.fctx.putImageData(G.fogImg, 0, 0, fx0, fy0, fx1 - fx0, fy1 - fy0);
-      G.fbctx.clearRect(fx0, fy0, fx1 - fx0, fy1 - fy0);
-      G.fbctx.filter = "blur(0.9px)";
-      G.fbctx.drawImage(G.fogC, fx0, fy0, fx1 - fx0, fy1 - fy0, fx0, fy0, fx1 - fx0, fy1 - fy0);
-      G.fbctx.filter = "none";
-      G.fbctx.globalCompositeOperation = "destination-over";
-      const ew = fx1 - fx0, eh = fy1 - fy0;
-      if (fx0 === 0) G.fbctx.drawImage(G.fogC, 0, fy0, 1, eh, 0, fy0, 1, eh);
-      if (fx1 === FW) G.fbctx.drawImage(G.fogC, FW - 1, fy0, 1, eh, FW - 1, fy0, 1, eh);
-      if (fy0 === 0) G.fbctx.drawImage(G.fogC, fx0, 0, ew, 1, fx0, 0, ew, 1);
-      if (fy1 === FH) G.fbctx.drawImage(G.fogC, fx0, FH - 1, ew, 1, fx0, FH - 1, ew, 1);
-      G.fbctx.globalCompositeOperation = "source-over";
+      wctx.putImageData(war.img, 0, 0, fx0, fy0, fx1 - fx0, fy1 - fy0);
+      blurSlab(G.fogC, G.fbctx, fx0, fy0, fx1, fy1);
+      blurSlab(war.c, wbctx, fx0, fy0, fx1, fy1);
+      const sx = fx0 * FOG_U, sy = fy0 * FOG_U, sw = (fx1 - fx0) * FOG_U, sh = (fy1 - fy0) * FOG_U;
+      if (!(DEV.holoAlpha > 0)) {
+        G.ctx.imageSmoothingEnabled = true;
+        G.ctx.drawImage(G.fogBlurC, fx0, fy0, fx1 - fx0, fy1 - fy0, sx, sy, sw, sh);
+        G.ctx.imageSmoothingEnabled = false;
+        return;
+      }
+      const w = Math.max(1, Math.ceil(G.c.width / HOLO_D)), h3 = Math.max(1, Math.ceil(G.c.height / HOLO_D));
+      const M = war.mask = sizedCanvas(war.mask, w, h3), O = war.over = sizedCanvas(war.over, w, h3);
+      const mc = M.getContext("2d"), oc = O.getContext("2d");
+      if (!mc || !oc) return;
+      const m = G.ctx.getTransform();
+      for (const x of [mc, oc]) {
+        x.setTransform(1, 0, 0, 1, 0, 0);
+        x.clearRect(0, 0, w, h3);
+        x.setTransform(m.a / HOLO_D, 0, 0, m.d / HOLO_D, m.e / HOLO_D, m.f / HOLO_D);
+      }
+      holoMask(mc, W, G, F, 1);
+      oc.imageSmoothingEnabled = true;
+      oc.drawImage(G.fogBlurC, fx0, fy0, fx1 - fx0, fy1 - fy0, sx, sy, sw, sh);
+      oc.setTransform(1, 0, 0, 1, 0, 0);
+      oc.globalCompositeOperation = "destination-out";
+      oc.drawImage(M, 0, 0);
+      oc.setTransform(m.a / HOLO_D, 0, 0, m.d / HOLO_D, m.e / HOLO_D, m.f / HOLO_D);
+      oc.globalCompositeOperation = "destination-over";
+      oc.drawImage(war.blur, fx0, fy0, fx1 - fx0, fy1 - fy0, sx, sy, sw, sh);
+      oc.globalCompositeOperation = "source-over";
+      G.ctx.save();
+      G.ctx.setTransform(1, 0, 0, 1, 0, 0);
       G.ctx.imageSmoothingEnabled = true;
-      G.ctx.drawImage(
-        G.fogBlurC,
-        fx0,
-        fy0,
-        fx1 - fx0,
-        fy1 - fy0,
-        fx0 * FOG_U,
-        fy0 * FOG_U,
-        (fx1 - fx0) * FOG_U,
-        (fy1 - fy0) * FOG_U
-      );
+      G.ctx.drawImage(O, 0, 0, w * HOLO_D, h3 * HOLO_D);
+      G.ctx.restore();
       G.ctx.imageSmoothingEnabled = false;
     }
   }
@@ -13445,6 +13446,50 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     G.ctx.globalCompositeOperation = "source-over";
     for (const sc of W.sconces) if (scOn(sc)) drawSconce(G.ctx, sc.x, sc.y, W.time, sc.ph);
+  }
+
+  // src/game/render/fx.js
+  var D = 4;
+  var buf = { a: null, b: null };
+  function drawFx(W, G, F) {
+    if (!(DEV.bloom > 0) || !(DEV.holoAlpha > 0)) return;
+    const w = Math.max(1, Math.ceil(G.c.width / D)), h3 = Math.max(1, Math.ceil(G.c.height / D));
+    const A = buf.a = sizedCanvas(buf.a, w, h3), B = buf.b = sizedCanvas(buf.b, w, h3);
+    const a = A.getContext("2d"), b = B.getContext("2d");
+    if (!a || !b) return;
+    const m = G.ctx.getTransform();
+    a.setTransform(1, 0, 0, 1, 0, 0);
+    a.clearRect(0, 0, w, h3);
+    a.setTransform(m.a / D, 0, 0, m.d / D, m.e / D, m.f / D);
+    holoMask(a, W, G, F, DEV.holoAlpha);
+    const war2 = fogWarC();
+    if (war2 && (!G.RPV || G.RPV.fog)) {
+      a.globalCompositeOperation = "destination-out";
+      a.imageSmoothingEnabled = true;
+      a.drawImage(war2, 0, 0, FW, FH, 0, 0, FW * FOG_U, FH * FOG_U);
+    }
+    a.globalCompositeOperation = "source-over";
+    b.setTransform(1, 0, 0, 1, 0, 0);
+    b.clearRect(0, 0, w, h3);
+    b.filter = "blur(" + (DEV.bloomBlur * F.dpr / D).toFixed(2) + "px) brightness(" + DEV.bloomBright + ")";
+    b.drawImage(A, 0, 0);
+    b.filter = "none";
+    G.ctx.save();
+    G.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    G.ctx.globalCompositeOperation = "lighter";
+    G.ctx.globalAlpha = Math.min(1, DEV.bloom);
+    G.ctx.imageSmoothingEnabled = true;
+    G.ctx.drawImage(B, 0, 0, w * D, h3 * D);
+    if (DEV.bloom > 1) {
+      G.ctx.globalAlpha = DEV.bloom - 1;
+      G.ctx.drawImage(B, 0, 0, w * D, h3 * D);
+    }
+    G.ctx.restore();
+  }
+  function drawBelow(W, G, F) {
+    if (W.camY + F.vh <= WH) return;
+    G.ctx.fillStyle = "#000";
+    G.ctx.fillRect(W.camX - 10, WH, F.vw + 20, W.camY + F.vh - WH + 10);
   }
 
   // src/game/systems/lightning.js
