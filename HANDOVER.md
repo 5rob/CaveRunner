@@ -5,15 +5,13 @@ release loop, testing), then the README of the `src/` folder you're working in.
 
 ## Where things stand
 
-- **The refactor is done** (all five phases, on the `refactor` branch). The game is modules under
+- **The refactor is done and fully on `main`** (all five phases). The game is modules under
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
-- **Released: v99** (Phase 3) on `main`; CI green, `version.txt` = v99, the owner play-tested it
-  ("plays great"). **Not merged yet: Phases 4–5** (type checking, docs). Both leave `index.html`
-  byte-identical to v99, so the merge is a docs/tooling release; **the owner decides when** (bump
-  `src/version.js` to v100 then, as always).
-- Tests: logic 33/33 and `smoke` green on every Phase 5 commit; the last full browser run was green
+- **Released: v100** (Phases 4–5: type checking, docs) on `main`, 2026-09-30. `index.html` is
+  byte-identical to v99 (Phase 3, which the owner play-tested: "plays great") apart from the version.
+- Tests: logic 33/33 and `smoke` green on every Phase 5 commit and on the v100 release; the last full browser run was green
   after re-runs of known flakes (end of P3.5).
 - `.claude/` is untracked on purpose (it holds an API token): never commit it.
 

@@ -5,7 +5,8 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
-## Unreleased (on `refactor`)
+## v100 — refactor Phases 4–5: type checking, notes next to the code
+Released 2026-09-30. `index.html` is the same as v99 apart from the version. Same game.
 
 - **Refactor Phase 4**: TypeScript checking (JSDoc, `tsc --noEmit` in the test run, `src/types.d.ts`),
   every file under `src/` checked. Found, not fixed: Stendari's bomb never lights fires; a vent reuses

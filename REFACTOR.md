@@ -1,7 +1,7 @@
 # REFACTOR — splitting CaveRunner into modules
 
-**Done.** All five phases are finished (2026-09-30). Phases 0–3 are on `main` (v97–v99); Phases 4–5 are on
-`refactor`, with `index.html` byte-identical to v99, waiting for the final merge, which the owner decides. The
+**Done.** All five phases are finished (2026-09-30) and all on `main`: Phases 0–3 as v97–v99, Phases 4–5 as
+v100 (`index.html` byte-identical to v99 apart from the version). The
 game's notes now live in the `src/` folder READMEs; what the refactor left to do is **Found along the way** below.
 
 **The design doc and progress tracker for the refactor.** Every session working on it reads
@@ -17,11 +17,11 @@ per-system notes) and `HANDOVER.md` before this.
 
 | | |
 |---|---|
-| **Current phase** | **Done.** Phase 5 done (P5.1 folder READMEs, P5.2 CLAUDE.md 148 lines, P5.3 `CHANGELOG.md`, P5.4 HANDOVER). Phase 4 done (P4.1–P4.4: every file under `src/` type-checked). Phase 3 done and released as v99 (`W`, `G`, `F`, systems, render, `ACTS`; Game.js 186 lines). All phases done bar the final merge of Phases 4–5 to `main` (a version bump), which the owner decides |
+| **Current phase** | **Done.** Phase 5 done (P5.1 folder READMEs, P5.2 CLAUDE.md 148 lines, P5.3 `CHANGELOG.md`, P5.4 HANDOVER). Phase 4 done (P4.1–P4.4: every file under `src/` type-checked). Phase 3 done and released as v99 (`W`, `G`, `F`, systems, render, `ACTS`; Game.js 186 lines). All phases done and merged to `main` (Phases 4–5 as v100) |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
 | **Last green full suite** | 2026-09-30, end of P3.5 (the tree of P3.5 (6)): logic 33/33, browser 44/44 after re-runs (`everymod` telecast, `lightning` fork and `jelly` failed in the run, all known; each passed alone, `jelly` 3 of 5, the same as on the commit before the jelly move) |
-| **Last merged to main** | v99 (Phase 3), 2026-09-30. Phases 4–5 not merged (the owner decides) |
+| **Last merged to main** | v100 (Phases 4–5), 2026-09-30. The refactor is fully merged |
 
 ---
 
@@ -1259,3 +1259,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 5, P5.3 | `CHANGELOG.md`: one entry per release v39–v99, newest first, plus Unreleased (Phases 4–5). Docs only. | index.html unchanged |
 | 2026-09-30 | Phase 5, P5.2 | CLAUDE.md 1,132 → 148 lines: the owner's working style (their words intact), the loop, version, Android essentials, a folder → README map with the layer rule, editing and testing rules (sandbox, no waiting forever, flakes pointer, the type check, D21). Section-by-section check against the old file; two rules added to READMEs in the pass (Pollen, the inert confirm path). Docs only. | logic 33/33, smoke ok |
 | 2026-09-30 | Phase 5, P5.4, **Phase 5 done, refactor done** | HANDOVER.md rewritten short (status, next steps pointing at Found along the way incl. Stendari's fire, the vent's `Prop.on`, the flakes; the app; testing; ideas). The old HANDOVER flakes and the stale code comments found in P5.1 added to Found along the way. This doc marked **Done**; the final merge of Phases 4–5 (v100) is the owner's call. Docs only. | logic 33/33, smoke ok |
+| 2026-09-30 | Release v100 | Owner: "merge all to main". `src/version.js` → v100; `git diff 8ac14fd -- index.html` shows only the `<title>` and `const VERSION` lines. CI and the app parse the version as `v(\d+)` → integer, so three digits are fine. CHANGELOG Unreleased → v100; CLAUDE.md, HANDOVER, this doc updated. Merged `refactor` → `main` (merge commit, as v99), pushed. | logic all passed, smoke ok |
