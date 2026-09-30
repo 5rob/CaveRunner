@@ -10,6 +10,7 @@ import { PERKS } from '../../data/perks.js';
 import { themeFor } from '../../data/themes.js';
 import { effRecharge, gunPassives } from '../../spells/cast.js';
 import { ROOM_HH, ROOM_HW } from '../../world/level.js';
+import { REPO_ALARM, REPO_FIRE } from '../systems/vend.js';
 import { fogLit, roomSeen } from '../systems/fog.js';
 import { maxHp } from '../systems/player.js';
 
@@ -118,13 +119,24 @@ export function drawMessages(W, G, F) {
     G.ctx.globalAlpha = 1;
   }
   const msgY = 196;
+  // repossessed: the incineration countdown, big and red
+  if (W.repo && !W.p.dead && W.repo.t >= REPO_ALARM && W.repo.t < REPO_FIRE) {
+    const left = Math.ceil(REPO_FIRE - W.repo.t);
+    G.ctx.fillStyle = '#ff3030';
+    G.ctx.globalAlpha = 0.6 + 0.4 * (1 - ((REPO_FIRE - W.repo.t) % 1));
+    G.ctx.font = '600 14px system-ui, sans-serif';
+    G.ctx.fillText('INCINERATION IN', cw / 2, msgY - 44);
+    G.ctx.font = '800 48px system-ui, sans-serif';
+    G.ctx.fillText(String(left), cw / 2, msgY + 4);
+    G.ctx.globalAlpha = 1;
+  }
   G.ctx.fillStyle = COL.text;
   if (W.p.dead) {
     G.ctx.font = '700 22px system-ui, sans-serif';
     G.ctx.fillText('You were shot down', cw / 2, msgY);
     G.ctx.font = '500 14px system-ui, sans-serif';
     G.ctx.fillText('Tap the right stick to restart', cw / 2, msgY + 22);
-  } else if (W.hasLvl && !W.warp && W.enemies.length === 0) {
+  } else if (W.hasLvl && !W.warp && !W.repo && W.enemies.length === 0) {
     G.ctx.font = '700 18px system-ui, sans-serif';
     G.ctx.fillText('All enemies destroyed', cw / 2, msgY);
   }

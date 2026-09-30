@@ -21,7 +21,7 @@ import { stepPickups } from './pickups.js';
 import { maxHp, movePlayer, stepTorch } from './player.js';
 import { decorStep } from './props.js';
 import { saveRun } from './save-run.js';
-import { stepWarp, voidCave } from './vend.js';
+import { stepRepo, stepWarp, voidCave } from './vend.js';
 
 /** @param {World} W @param {GameCtx} G @param {number} dt */
 export function step(W, G, dt) {
@@ -39,6 +39,7 @@ export function step(W, G, dt) {
   stepFields(W, G, F);                      // static fields and beams (fields.js)
   stepPickups(W, G, F);                     // pickups, gold, the card, the interact tap (pickups.js)
   stepWarp(W, G, F);                        // a level teleporting in or out (vend.js)
+  stepRepo(W, G, F);                        // the repayment deadline passed: repossession, fire (vend.js)
   stepToasts(W, F);                         // messages fading (particles.js)
   decorStep(W, G, dt, F.pcx, F.pcy);        // props, plants, webs, what you stand in (props.js)
   stepEnemies(W, G, F);                     // the creatures and their shots (enemies.js)

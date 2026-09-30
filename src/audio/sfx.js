@@ -549,6 +549,11 @@ export const SFX = (() => {
       for (let i = 0; i < 4; i++) bell(d, notes[Math.floor(Math.random() * notes.length)] * 2, t + 0.12 + i * rnd(0.06, 0.1), 0.6, 0.06);
       tone(d, 'sine', rnd(180, 220), rnd(450, 550), t, 0.5, 0.15, 0.1);
     },
+    // the shop's emergency alarm: a two-tone klaxon, once a cycle
+    alarm(d, t) {
+      tone(d, 'square', 620, 620, t, 0.32, 0.05, 0.02);
+      tone(d, 'square', 470, 470, t + 0.34, 0.32, 0.05, 0.02);
+    },
     // a whole level teleporting in or out over the shop: a crackle of lightning, a rising
     // whine and a deep thump
     levelWarp(d, t) {

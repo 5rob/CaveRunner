@@ -5,7 +5,7 @@ the frame; most of its parts live with their system.
 
 | File | Holds |
 |---|---|
-| `step.js` | `step(W, G, dt)`: makes `F` and calls, in order: `stepRequests` (clock, Dev asks; New cave ends the frame), `stepPerks`, `movePlayer`, `atPortal` (fills `pcx`/`pcy`; the exit takes you back to the shop and ends the frame), `aimAndCast`, `stepBullets`, `stepSound`, `stepFields`, `stepPickups`, `stepWarp`, `stepToasts`, `decorStep`, `stepEnemies`, `stepGhost`, `fireFrame`, `stepTrail`, `stepParticles`, `W.best`, `stepTorch`, `stepMotes` |
+| `step.js` | `step(W, G, dt)`: makes `F` and calls, in order: `stepRequests` (clock, Dev asks; New cave ends the frame), `stepPerks`, `movePlayer`, `atPortal` (fills `pcx`/`pcy`; the exit takes you back to the shop and ends the frame), `aimAndCast`, `stepBullets`, `stepSound`, `stepFields`, `stepPickups`, `stepWarp`, `stepRepo`, `stepToasts`, `decorStep`, `stepEnemies`, `stepGhost`, `fireFrame`, `stepTrail`, `stepParticles`, `W.best`, `stepTorch`, `stepMotes` |
 | `terrain.js` | Questions: `solidCell`, `solidAt`, `boxHit`, `lineOfSight`, `enemyAt`. Changes: `dig`, `unDeco`, `paint`, `explode`, `dropOre` |
 | `player.js` | `refreshBag`, `maxHp`, `hurt`, `torchHand`, the jetpack's cough `sputterStep`/`SPUTTER_FUEL`, `NO_INPUT`, `movePlayer` (stick, jetpack, steering, climbing, the move, footsteps), `stepTorch` |
 | `gun.js` | `cast` (one pull through `planCast`), `spawnShot`, `releaseAt`/`firePayload` (a trigger's payload), `aimAndCast` (aim, Pinpointer, facing, gun clocks, the trigger) |
@@ -23,7 +23,7 @@ the frame; most of its parts live with their system.
 | `webs.js` | `webNear`, `webDist` |
 | `plantglow.js` | `plantGlow` (the jelly's glow on plants, drawn after the fog) |
 | `level-entry.js` | `enterLevel(W, G, back, keep)`: makes (or rebuilds a saved) level, resets the world, canvases, fog, sconces, the recorder; `keep` leaves you (and the stock) where you are for a teleport; `miniEdges` (the map outline cells) |
-| `vend.js` | The level vending machines: `vendNear`/`vendLabel`/`vendUse` (via `stepPickups`), `canSell` (no `bioCount`), `stepWarp` (the teleport: swap at `WARP_SWAP`, the bolts), `voidCave` (no level: BED above the roof, the roof sealed) |
+| `vend.js` | The level vending machines: `vendNear`/`vendLabel`/`vendUse` (via `stepPickups`), `canSell` (no `bioCount`), `stepWarp` (the teleport: swap at `WARP_SWAP`, the bolts), `voidCave` (no level: BED above the roof, the roof sealed), `stepRepo` (the deadline passed: repossession, the alarm, the fire; `REPO_WARP`/`REPO_ALARM`/`REPO_FIRE`) |
 | `recorder.js` | The death replay's recorder and player (`replay/README.md`) |
 | `save-run.js` | `saveRun` (`save/README.md`) |
 

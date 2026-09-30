@@ -456,7 +456,7 @@ interface Zfx {
 /** the live level, `W`: makeWorld (game/world.js). enterLevel refills the floor's parts */
 /** the level teleporting in (bought) or out (sold): game/systems/vend.js */
 interface Warp {
-  dir: 'in' | 'out'; t: number; done: boolean;   // done: the swap (at WARP_SWAP) has happened
+  dir: 'in' | 'out' | 'repo'; t: number; done: boolean;   // done: the swap (at WARP_SWAP) has happened
   bolts: { pts: Pt[]; t: number; max: number }[];     // the crackle over the shop roof
 }
 interface World {
@@ -470,6 +470,7 @@ interface World {
   mat: Uint8Array; img: ImageData; dimg: ImageData; ore: Uint8Array; burrow: Uint8Array | null; terrainV: number;
   floor: number;
   hasLvl: boolean; warp: Warp | null;
+  repo: { t: number; hurtT: number; sndT: number } | null;   // the deadline passed: repossession, then the fire (vend.js)
   start: Pt; portal: Level['portal']; arrival: Pt; stock: StockItem[];
   zone: Uint8Array | null; rooms: Room[];
   sconces: any[];             // Sconce[]: enterLevel builds [x, y] pairs first and maps them after
