@@ -1027,6 +1027,13 @@ Every run first builds `index.html` and runs the **undefined-name check** (`esli
 with only `no-undef`, over `src/`). With the code in modules, a forgotten import doesn't fail the
 build; it fails when that line first runs. A report there counts as a failed suite.
 
+Then the **type check** (Phase 4): `tsc --noEmit -p .` (TypeScript, dev dependency, `tsconfig.json`),
+checking only — esbuild still builds, and types never reach `index.html`. A file is checked when its
+first line is `// @ts-check` (types in JSDoc, the files stay `.js`); the shared shapes (Gun, Shot, Plan,
+Enemy, Level, World, …) are in `src/types.d.ts`, the page's globals (React, ReactDOM, VERSION) in
+`src/globals.d.ts`. A report counts as a failed suite (`types`). Run it alone with
+`node node_modules/typescript/bin/tsc --noEmit -p .` (~0.2 s).
+
 **Logic suites** (`tests/logic/`) start with `const G = require('../load');` —
 `tests/load.js` bundles `src/pure.js` with esbuild (in memory, to CommonJS) and hands back
 its exports (plus `.source`, all of `src/` as text) — and call the pure functions.

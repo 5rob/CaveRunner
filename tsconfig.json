@@ -1,0 +1,25 @@
+{
+  // The type check (`node tests/run.js` runs `tsc --noEmit -p .` after the undefined-name
+  // check). Checking only, never building: esbuild still makes index.html (tools/build.js),
+  // and types and JSDoc never reach the bundle. REFACTOR.md Phase 4, D21.
+  //
+  // A file is checked only if it starts with `// @ts-check` (checkJs is off), so folders are
+  // turned on one at a time. Shared shapes: src/types.d.ts. Page globals: src/globals.d.ts.
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    // what a modern Android WebView (Chrome) runs; lib adds the canvas / DOM types
+    "target": "es2022",
+    "lib": ["es2023", "dom", "dom.iterable"],
+    // plain ESM with `./x.js` paths, bundled by esbuild: "bundler" resolves them as written
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    // not strict to start: null checks and implicit any would flood the first folders
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": ["src/**/*.js", "src/**/*.d.ts"]
+}

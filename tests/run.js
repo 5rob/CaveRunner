@@ -29,6 +29,19 @@ try {
   for (const line of ((e.stdout || '') + (e.stderr || '') || e.message).trim().split('\n').slice(0, 30)) console.log('      ' + line);
 }
 
+// The type check (TypeScript, checking only: tsconfig.json, src/types.d.ts). A file is checked
+// when it starts with `// @ts-check`; the folders are turned on one at a time (REFACTOR.md
+// Phase 4). A report counts as a failed suite, like the undefined-name check's.
+try {
+  execFileSync('node', [path.join(__dirname, '..', 'node_modules', 'typescript', 'bin', 'tsc'), '--noEmit', '-p', '.'],
+    { cwd: path.join(__dirname, '..'), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  console.log('src/ type-checks');
+} catch (e) {
+  failed.push('types');
+  console.log('TYPE ERRORS in src/ (tsc --noEmit):');
+  for (const line of ((e.stdout || '') + (e.stderr || '') || e.message).trim().split('\n').slice(0, 30)) console.log('      ' + line);
+}
+
 const filter = process.argv[2] || '';
 const only = filter === 'logic' || filter === 'browser' ? filter : '';
 const match = only ? '' : filter;
