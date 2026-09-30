@@ -5,6 +5,17 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v107 — debt of its own, a five-day deadline; gold at the top
+Released 2026-10-01.
+
+- A bought level goes on your debt (`LO.debt`), not your gold, so the shop still works. Selling
+  pays it off out of the sale; the other 1,000 is yours.
+- The repayment deadline: five real days from buying (`LO.due`, the device clock, so it runs while
+  the game is closed), counted down in red on the buy machine's screen (`countdown`: "4d 23:59:59",
+  then "OVERDUE"). Nothing happens at zero yet.
+- Gold moved to the top centre of the screen; the debt shows under it in red ("-64B g owed").
+- A v106 save with negative gold loads as gold + the debt.
+
 ## v106 — the level vending machines
 Released 2026-10-01.
 

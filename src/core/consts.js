@@ -59,6 +59,8 @@ export const SHOP_Y = SHOP_TOP * CELL;        // world y of the ceiling, for "am
 // a level costs LVL_BUY on credit and sells back for LVL_SELL, a thousand more
 export const VEND_BUY_X = 180, VEND_SELL_X = 280;
 export const LVL_BUY = 64000000000, LVL_SELL = 64000001000;
+// and it must be repaid within five real days of buying the level (device clock, ms)
+export const DEADLINE_MS = 5 * 24 * 60 * 60 * 1000;
 
 // ---- fog of war ----
 // A coarse reveal grid, never per pixel: one fog cell covers FOG terrain pixels each

@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v106</title>
+<title>CaveRunner v107</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -72,11 +72,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .sticks{display:flex;justify-content:space-evenly;position:relative;z-index:3}
 /* gold readout in the gap between the sticks, level with their top halves. Sits on top
    of the deck (pointer-events:none so a tap still falls to a stick) and reads amber. */
-.gold{position:absolute;left:50%;bottom:5%;transform:translateX(-50%);pointer-events:none;z-index:4;
-  display:flex;align-items:baseline;gap:1px;line-height:1;
+.gold{position:absolute;left:50%;top:calc(12px + env(safe-area-inset-top));transform:translateX(-50%);
+  pointer-events:none;z-index:4;display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1;
   font:800 19px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffc93c;
   text-shadow:0 1px 3px rgba(0,0,0,0.85),0 0 6px rgba(0,0,0,0.6)}
+.gold .purse,.gold .debt{display:flex;align-items:baseline;gap:1px;white-space:nowrap}
 .gold span{font-size:12px;font-weight:700;color:#c9a24a}
+.gold .debt{font-size:14px;color:#ff4a4a}
+.gold .debt span{font-size:10px;color:#d06060;margin-left:3px}
 /* the perks you have found: a column going up from above the map button, wrapping inwards */
 .perkcol{position:absolute;display:flex;flex-direction:column-reverse;flex-wrap:wrap;
   align-content:flex-start;gap:6px;pointer-events:none;z-index:4}
@@ -489,7 +492,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v106';</script>
+<script>const VERSION = 'v107';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -560,6 +563,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const bl = Math.round((pa & 255) + ((pb & 255) - (pa & 255)) * t);
     return "rgb(" + r + "," + g + "," + bl + ")";
   }
+  function countdown(ms) {
+    if (ms <= 0) return "OVERDUE";
+    const s = Math.floor(ms / 1e3);
+    return Math.floor(s / 86400) + "d " + pad2(Math.floor(s / 3600) % 24) + ":" + pad2(Math.floor(s / 60) % 60) + ":" + pad2(s % 60);
+  }
+  var pad2 = (n) => String(n).padStart(2, "0");
 
   // src/dev/knobs.js
   var DEV_DEFAULTS = {
@@ -4516,6 +4525,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var SHOP_Y = SHOP_TOP * CELL;
   var VEND_BUY_X = 180, VEND_SELL_X = 280;
   var LVL_BUY = 64e9, LVL_SELL = 64000001e3;
+  var DEADLINE_MS = 5 * 24 * 60 * 60 * 1e3;
   var FOG = 8;
   var FOG_U = FOG * CELL;
   var FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
@@ -7545,8 +7555,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       bag: (Array.isArray(lo.bag) ? lo.bag : []).filter((id) => MODS[id]),
       perks: (Array.isArray(lo.perks) ? lo.perks : []).filter((id) => PERKS[id]),
       perksOff: (Array.isArray(lo.perksOff) ? lo.perksOff : []).filter((i) => Number.isInteger(i) && i >= 0),
-      gold: num2(lo.gold, START_GOLD),
-      // negative while a level is on credit
+      // v106 put a bought level's price on your gold (it went negative); now it's a debt of its own
+      gold: num2(lo.gold, START_GOLD) < 0 ? Math.max(0, num2(lo.gold, 0) + LVL_BUY) : num2(lo.gold, START_GOLD),
+      debt: Math.max(0, num2(lo.debt, 0)) || (num2(lo.gold, 0) < 0 ? LVL_BUY : 0),
+      // the repayment deadline; a debt from before v107 had none: it gets its five days from now
+      due: num2(lo.due, 0) || (num2(lo.debt, 0) > 0 || num2(lo.gold, 0) < 0 ? Date.now() + DEADLINE_MS : 0),
       maxBonus: Math.max(0, num2(lo.maxBonus, 0)),
       usedLives: Math.max(0, num2(lo.usedLives, 0)),
       debug: !!lo.debug
@@ -15306,7 +15319,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function vendUse(W, G, kind, LO) {
     if (W.warp) return;
     if (kind === "buy" && !W.hasLvl) {
-      LO.gold -= LVL_BUY;
+      LO.debt = (LO.debt || 0) + LVL_BUY;
+      LO.due = Date.now() + DEADLINE_MS;
       W.hasLvl = true;
       W.warp = { dir: "in", t: 0, done: false, bolts: [] };
       toast(W, "Level " + W.floor + " bought on credit");
@@ -15317,7 +15331,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         SFX.ui("poor");
         return;
       }
-      LO.gold += LVL_SELL;
+      LO.gold += LVL_SELL - (LO.debt || 0);
+      LO.debt = 0;
+      LO.due = 0;
       W.hasLvl = false;
       W.warp = { dir: "out", t: 0, done: false, bolts: [] };
       toast(W, "Level " + W.floor + " sold");
@@ -15422,6 +15438,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const key = top.join("|") + "/" + bot.join("|") + hue;
     const got = cache2.get(key);
     if (got) return got;
+    if (cache2.size > 12) cache2.clear();
     const w = (SW + GLOW * 2) * RES2, h3 = (SH + GLOW * 2) * RES2;
     const A = document.createElement("canvas");
     A.width = w;
@@ -15563,8 +15580,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function drawVend(W, G, F) {
     if (VEND_TOP > W.camY + F.vh + 10 || VEND_TOP + VEND_H < W.camY - 10) return;
-    const lv = "LVL " + W.floor, busy = !!W.warp;
-    machine(
+    const lv = "LVL " + W.floor, busy = !!W.warp, due = G.input.current.loadout.due || 0;
+    if (W.hasLvl && due) machine(
+      G.ctx,
+      W,
+      "buy",
+      VEND_BUY_X,
+      !busy,
+      HOLO_RED,
+      [countdown(due - Date.now())],
+      ["debt repayment", "deadline", lv]
+    );
+    else machine(
       G.ctx,
       W,
       "buy",
@@ -19851,6 +19878,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           )
         ) : null,
         // one gear in the top-right opens the Dev panel; Restart now lives inside it.
+        // gold, top centre: "g" not "gold", truncated to k/M/B (1234 -> 1.2k). Under it in red, what
+        // you owe the company for the level you're on
+        h(
+          "div",
+          { className: "gold" },
+          h("div", { className: "purse" }, fmtGold(LO.gold), h("span", null, "g")),
+          LO.debt > 0 ? h("div", { className: "debt" }, "-" + fmtGold(LO.debt), h("span", null, "g owed")) : null
+        ),
         h("button", {
           className: "devbtn",
           title: "Dev tools",
@@ -19901,9 +19936,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           { className: "sticks", ref: sticksRef },
           h(Stick, { size, kind: "left", input, refresh }),
           h(Stick, { size, kind: "right", input, refresh }),
-          // gold sits in the gap between the two sticks, down level with their bottom halves.
-          // "g" not "gold", and thousands truncate to a "k" (1234 -> 1.2k, 2000 -> 2k).
-          h("div", { className: "gold" }, fmtGold(LO.gold), h("span", null, "g")),
           // the gun buttons ride an arc round the right stick; tap to hold it, hold for its card
           h(
             "div",

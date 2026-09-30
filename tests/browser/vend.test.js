@@ -23,7 +23,7 @@ const DIR = path.join(__dirname, '..', 'build');
     for (let i = 0; i < (L.fog.SHOP_TOP - L.fog.SHOP_ROOF) * W; i++) if (!L.mat[i]) open++;
     let roofHole = 0;
     for (let y = L.fog.SHOP_TOP - L.fog.SHOP_ROOF; y < L.fog.SHOP_TOP; y++) for (let x = 0; x < W; x++) if (!L.mat[y * W + x]) roofHole++;
-    return { has: L.hasLvl, warp: !!L.warp, floor: L.floor, gold: window.__in.current.loadout.gold, open, roofHole,
+    return { has: L.hasLvl, warp: !!L.warp, floor: L.floor, gold: window.__in.current.loadout.gold, debt: window.__in.current.loadout.debt || 0, open, roofHole,
       enemies: L.enemies.length, px: L.p.x, py: L.p.y, C,
       prompt: window.__in.current.prompt && window.__in.current.prompt.text,
       can: window.__in.current.prompt && window.__in.current.prompt.can };
@@ -39,7 +39,7 @@ const DIR = path.join(__dirname, '..', 'build');
   let s = await state();
   check('a run starts with no level', !s.has && s.open === 0 && s.enemies === 0, s);
   check('and the shop roof sealed', s.roofHole === 0, s.roofHole);
-  const gold0 = s.gold;
+  let gold0 = s.gold;
 
   await standAt(X.buy);
   await page.waitForTimeout(200);
@@ -54,7 +54,14 @@ const DIR = path.join(__dirname, '..', 'build');
   s = await state();
   check('bought: the level is here', s.has && s.open > 10000 && s.enemies > 20, { open: s.open, enemies: s.enemies });
   check('the roof has its hole again', s.roofHole > 0, s.roofHole);
-  check('gold went negative by the price', s.gold === gold0 - X.LVL_BUY, s.gold);
+  check('the price went on your debt, not your gold', s.gold === gold0 && s.debt === X.LVL_BUY, s);
+  check('the debt shows in red at the top', await page.evaluate(() => { const d = document.querySelector('.gold .debt'); return !!d && d.getBoundingClientRect().top < 100; }));
+  // five real days to repay it, on the device's clock, and saved with the run
+  const due = await page.evaluate(() => window.__in.current.loadout.due - Date.now() - DEADLINE_MS);
+  check('the repayment deadline is five days out', Math.abs(due) < 10000, due);
+  await page.evaluate(() => window.__in.current.saveRun());
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('caverunner-save')).loadout.due);
+  check('the deadline is in the save', saved === await page.evaluate(() => window.__in.current.loadout.due), saved);
   check('you stayed at the machine', Math.abs(s.px + 6 - X.buy) < 4, s.px);
   await page.screenshot({ path: path.join(DIR, 'vend_bought.png') });
 
@@ -73,7 +80,7 @@ const DIR = path.join(__dirname, '..', 'build');
   await tap();
   await page.waitForTimeout(100);
   s = await state();
-  check('and a tap does nothing', s.has && s.gold === gold0 - X.LVL_BUY);
+  check('and a tap does nothing', s.has && s.gold === gold0 && s.debt === X.LVL_BUY);
 
   // clear it (the nests too: they let more rats out), then it's green and sells
   await page.evaluate(() => { const L = window.__lvl; L.enemies.length = 0; });
@@ -86,7 +93,9 @@ const DIR = path.join(__dirname, '..', 'build');
   check('the teleport ran out again', await waitWarp());
   s = await state();
   check('sold: the level is gone', !s.has && s.open === 0 && s.enemies === 0 && s.roofHole === 0, s);
-  check('gold is where you started plus 1000', s.gold === gold0 + 1000, s.gold);
+  check('debt paid off, and 1000 to you', s.gold === gold0 + 1000 && s.debt === 0, s);
+  check('and no deadline any more', !(await page.evaluate(() => window.__in.current.loadout.due)));
+  check('the debt line is gone', await page.evaluate(() => !document.querySelector('.gold .debt')));
   check('and the next floor is up for sale', s.floor === 2, s.floor);
   await standAt(X.buy);
   await page.waitForTimeout(200);

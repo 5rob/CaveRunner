@@ -51,6 +51,15 @@ check('guns are reset', s.loadout.guns.every(g => !g || (g.idx === 0 && g.rechT 
 const pk = readSave(run({ level: { seed: 1, pickups: [{ kind: 'mod', id: 'gone_forever' }, { kind: 'gun', gun: { slots: ['bolt'] } }, null] } }));
 check('ground loot: unknown mods dropped, guns cleaned', pk.level.pickups.length === 1 && pk.level.pickups[0].gun.cap === 1, pk.level.pickups);
 
+// the level's debt (v107): kept, and v106's negative gold turned into one
+const withLo = o => JSON.stringify({ ver: VERSION, floor: 1, loadout: Object.assign(lo(), o) });
+s = readSave(withLo({ gold: 55, debt: 64000000000 }));
+check('keeps the debt and the gold', s.loadout.debt === 64000000000 && s.loadout.gold === 55, s.loadout);
+s = readSave(withLo({ gold: 40 - 64000000000 }));
+check('v106 negative gold becomes gold + debt', s.loadout.gold === 40 && s.loadout.debt === 64000000000, s.loadout);
+s = readSave(withLo({ gold: 40 }));
+check('no debt by default', s.loadout.debt === 0, s.loadout);
+
 check('a fresh loadout round-trips', JSON.stringify(cleanLoadout(JSON.parse(JSON.stringify(lo()))).bag) === '["bolt","homing"]');
 
 console.log(fail ? `\n${fail} failed` : `\n${pass} passed, 0 failed`);
