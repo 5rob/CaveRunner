@@ -9,8 +9,9 @@ it's stale.
 
 - **Refactor in progress on the `refactor` branch.** The code lives in modules under `src/`,
   bundled by esbuild into the same `index.html`. Phases 0–1 released as v97, Phase 2 (UI into
-  `src/ui/`, `Game` into `src/game/Game.js`) as v98. Phase 3 is under way on `refactor`, **not
-  merged**: P3.1 (the Game map), P3.2 (the level's state is one world object `W`,
+  `src/ui/`, `Game` into `src/game/Game.js`) as v98, **Phase 3 (Game taken apart) as v99**
+  (2026-09-30, owner play-tested it: "plays great"). **Next: Phase 4** (TypeScript, gradually;
+  REFACTOR.md). What Phase 3 did: P3.1 (the Game map), P3.2 (the level's state is one world object `W`,
   `src/game/world.js`) and P3.3 (`window.__lvl` = `W` via `src/game/testhook.js`) are done, and
   P3.4 (systems out of `Game` into `src/game/systems/`) is done: terrain (queries and
   changes, `explode`), particles, `hurt`, `damageEnemy`, the fire, the ambience, the props
@@ -23,15 +24,15 @@ it's stale.
   D18, and 21 calls, each part in its system; `node tools/part.js` does a cut), and so is draw() (P3.4 (34)–(43): its own `F`, D19, and 29 calls,
   the parts in six `src/game/render/` modules by theme). P3.5 (creature plugins) is done: each act's part
   of the enemy loop is hooks in `ACTS` (`src/game/creatures/`, REFACTOR.md D20); knob tables stayed in
-  `dev/knobs.js`, and bullet looks stayed as they are (no table: see REFACTOR.md's P3.5 notes). Next: P3.6
-  (Game.js is already 186 lines; the full suite, then merge to `main` with a version bump). Last green full
-  suite: the end-of-P3.5 checkpoint. After P3.5 the owner's Dev settings became the defaults (zoom, torch, aggro, spider/jelly/rat/fire ranges: REFACTOR.md session log), so the next release plays differently from v98 and the probe's baseline is that commit. The proof for each Phase 3 step
+  `dev/knobs.js`, and bullet looks stayed as they are (no table: see REFACTOR.md's P3.5 notes). P3.6 done:
+  Game.js is 186 lines (making the world, the loop, the React bridge). Last green full
+  suite: the end-of-P3.5 checkpoint. After P3.5 the owner's Dev settings became the defaults (zoom, torch, aggro, spider/jelly/rat/fire ranges: REFACTOR.md session log), so v99 plays differently from v98 (on purpose) and the probe's baseline is that commit (7c96c5e) or later. The proof for each Phase 3 step
   is `node tests/determinism.js` (same scripted run on HEAD and this tree, frame by frame).
   `node tools/system.js <file> name…` does a P3.4 move (`--dry` first), and
   `node tools/gamemap.js fn…` says what a function still in `Game` needs.
   **`REFACTOR.md` is the tracker** — its Status table, Game map and session log say exactly
   where things are.
-- **On-disk version: v98** (v97/v98 = the refactor's Phases 1/2; play the same as v96). Working on `main` (**release channel is `main`** — CI there
+- **On-disk version: v99** (v97/v98/v99 = the refactor's Phases 1/2/3; v97/v98 play the same as v96, v99 carries the owner's new Dev defaults). Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that

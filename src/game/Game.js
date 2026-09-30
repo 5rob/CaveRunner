@@ -1,6 +1,7 @@
-// The game itself: the canvas component. One closure holds the live level and runs the
-// loop (step, draw, cast, bullets, fields, the enemy loop, the recorder); App talks to it
-// through the input ref. Phase 3 of REFACTOR.md takes it apart.
+// The game itself: the canvas component. It makes the world (`W`, the canvases, the `G`
+// context), runs the loop (step/draw, or the death replay) and is the React bridge: App
+// talks to it through the input ref. What happens in a frame is in game/systems/,
+// game/render/ and game/creatures/ (REFACTOR.md, Phase 3).
 
 import { SFX } from '../audio/sfx.js';
 import { BH, BW, CH, CW, FH, FW, MMH, MMW } from '../core/consts.js';
