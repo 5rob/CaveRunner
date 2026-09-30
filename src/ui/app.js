@@ -17,8 +17,9 @@ import { RKey, Stick, deckLayout, fmtGold, holdPress } from './hud.js';
 import { GunSwap } from './swap.js';
 import { Witness } from './witness.js';
 
-// the perk column over the map button: a pip's size, and how tall a column grows before wrapping
-const PERK_PIP = 30, PERK_COL_H = 6 * (PERK_PIP + 6) - 6;
+// the perk column over the map button: a pip's size and gap, and how close to the top of the
+// screen a column may grow before the next one starts
+const PERK_PIP = 36, PERK_GAP = 6, PERK_TOP = 70;
 
 export function App() {
   const blank = () => ({ active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false });
@@ -40,6 +41,7 @@ export function App() {
   const [vw, setVw] = useState(window.innerWidth);
   const [mapOpen, setMapOpen] = useState(false);
   const ctlRef = useRef(null);
+  const sticksRef = useRef(null);
   const [run, setRun] = useState(0);
   const [edit, setEdit] = useState(false);
   const [devOpen, setDevOpen] = useState(false);
@@ -170,6 +172,12 @@ export function App() {
   const deck = deckLayout(vw, size, LO.guns.length);
   const btnAt = pt => ({ width: deck.btn, height: deck.btn,
     left: Math.round(pt.x - deck.btn / 2), top: Math.round(pt.y - deck.btn / 2) });
+  // the perk column runs from just above the map button up to near the top of the screen
+  const sticksTop = sticksRef.current ? sticksRef.current.getBoundingClientRect().top
+    : window.innerHeight - (input.current.ctlH || 0);
+  const perkRoom = sticksTop + deck.map.y - deck.btn / 2 - 8 - PERK_TOP;
+  const perkPer = Math.max(1, Math.floor((perkRoom + PERK_GAP) / (PERK_PIP + PERK_GAP)));
+  const perkColH = perkPer * (PERK_PIP + PERK_GAP) - PERK_GAP;
 
   // the death replay: offered once the recording has run on past the death (input.current.witness)
   const witness = input.current.witness;
@@ -227,7 +235,7 @@ export function App() {
               } }, 'Yes, restart')))) : null
     ),
     h('div', { className: 'controls', ref: ctlRef },
-      h('div', { className: 'sticks' },
+      h('div', { className: 'sticks', ref: sticksRef },
         h(Stick, { size, kind: 'left', input, refresh }),
         h(Stick, { size, kind: 'right', input, refresh }),
         // gold sits in the gap between the two sticks, down level with their bottom halves.
@@ -264,9 +272,9 @@ export function App() {
         (LO.perks && LO.perks.length)
           ? h('div', { className: 'perkcol', style: {
                 left: Math.round(deck.map.x - PERK_PIP / 2),
-                top: Math.round(deck.map.y - deck.btn / 2 - 8 - PERK_COL_H), height: PERK_COL_H } },
+                top: Math.round(deck.map.y - deck.btn / 2 - 8 - perkColH), height: perkColH } },
               LO.perks.map((id, i) => PERKS[id] ? h('button', {
-                  key: i, className: 'perkpip' + (perkOn(i) ? '' : ' off') + (perkInfo === i ? ' sel' : ''),
+                  key: i, 'data-i': i, className: 'perkpip' + (perkOn(i) ? '' : ' off') + (perkInfo === i ? ' sel' : ''),
                   title: PERKS[id].name, style: { color: PERKS[id].tint },
                   onPointerDown: e => { e.preventDefault(); setMapOpen(false); setPerkInfo(i); } },
                 PERKS[id].glyph) : null))
@@ -283,7 +291,12 @@ export function App() {
       ? h('div', null,
           // the shade stops above the controls, so the right stick can still be tapped
           h('div', { className: 'shade', style: { bottom: (input.current.ctlH || 0) + 'px' },
-            onPointerDown: e => { e.preventDefault(); setPerkInfo(-1); } }),
+            onPointerDown: e => {
+              // the shade lies over the perk column: a tap on another perk opens that one
+              e.preventDefault();
+              const pip = document.elementsFromPoint(e.clientX, e.clientY).find(el => el.classList.contains('perkpip'));
+              setPerkInfo(pip ? Number(pip.getAttribute('data-i')) : -1);
+            } }),
           h('div', { className: 'perkinfo' + (perkOn(perkInfo) ? '' : ' off') },
             h(PerkCard, { id: LO.perks[perkInfo], ingame: true }),
             h('div', { className: 'pbuy perktoggle', onPointerDown: e => { e.preventDefault(); togglePerk(); } },

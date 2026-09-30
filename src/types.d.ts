@@ -353,6 +353,7 @@ interface DevKnobs {
   vol: number; amb: number; jetVol: number; vSpell: number; vBoom: number; vHit: number;
   vEnemy: number; vEnemyFire: number; vWorld: number; vDrip: number; vStep: number; vUi: number;
   bagSpeed: number;
+  holoAlpha: number; bloom: number; bloomBlur: number; bloomBright: number;
   [k: string]: any;
 }
 /** one Dev panel row (DEV_META) */

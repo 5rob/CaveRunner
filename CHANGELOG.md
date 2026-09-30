@@ -5,6 +5,20 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v103 — flat red hologram with bloom; fog reaches the edges
+Released 2026-09-30.
+
+- The hologram: flat bright red and see-through, nothing else (no outline colour, no halo, no
+  flicker), full brightness, the boxes half the size on the same grid.
+- The FX layer (`src/game/render/fx.js`, after the lights): the hologram's bloom. The parts of it you
+  can see (not behind rock, the shop wall or fog) are brightened, blurred and added over everything.
+  Dev → Hologram & glow: `holoAlpha`, `bloom`, `bloomBlur`, `bloomBright`.
+- Everything below the shop floor is black.
+- Perks: the column grows to near the top of the screen before starting the next; pips 36px; with a
+  perk's card up, tapping another perk shows its card.
+- Fixed: the fog's blur faded out at the level's left and right edges, leaving a see-through strip
+  down both sides (the sharp edge cells now go back under the blur).
+
 ## v102 — perks you can switch off; the hologram glows
 Released 2026-09-30.
 

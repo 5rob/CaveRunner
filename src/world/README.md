@@ -78,7 +78,8 @@ gated by `fogLit` (`game/systems/fog.js`).
   Don't turn it back into a gradient without asking.
 - **Soft edge:** an unseen cell next to a seen one is *baked* as remembered (one-cell dilation —
   the bake only, never `W.seen`), and the small fog slab is blurred at source resolution
-  (`fogBlurC`, cheap) before it is scaled up. No full-screen `ctx.filter` (too slow on a phone).
+  (`fogBlurC`, cheap) before it is scaled up. No full-screen `ctx.filter` (too slow on a phone). The blur sees nothing past the level, so the
+  sharp edge cells are drawn back under it (`destination-over`), or the sides go see-through.
 - **One flicker, `flick`,** drives the flame, the light's reach and its brightness, clamped ≤ 1
   (a canvas `globalAlpha` over 1 is silently ignored, so an overshooting flicker stops flickering).
 - **An enemy is drawn if the light reaches it** — no line-of-sight test in the draw, same as the

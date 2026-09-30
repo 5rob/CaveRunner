@@ -43,8 +43,10 @@ CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).
   truncated) sits in the gap at the bottom, `pointer-events:none`; it updates because gold changes
   call `input.current.notify()` (re-renders `App`). The Dev button is a bare ⚙️
   (`.devbtn`); Restart is inside the Dev panel (`.dbg.restart`).
-- **Perks: a column over the map button** (`.perkcol`, `PERK_PIP`/`PERK_COL_H` in `app.js`): bottom
-  up from just above `.mapbtn`, wrapping into a column further in. Tap a pip: `perkInfo` (pauses),
+- **Perks: a column over the map button** (`.perkcol`, `PERK_PIP`/`PERK_GAP`/`PERK_TOP` in `app.js`):
+  bottom up from just above `.mapbtn` to `PERK_TOP` px from the top of the screen, then a column further in.
+  With a card up, the shade sits over the column: its tap finds a `.perkpip` under the finger
+  (`elementsFromPoint`) and switches the card to it. Tap a pip: `perkInfo` (pauses),
   a `.perkinfo` card (always dark) with an R line. R switches it: `input.current.perkTap` is set while
   the card is up and `Stick`'s dead-zone tap, the `r` key and the line call it. Off perks are places
   in `LO.perksOff`; every perk bag is `perkBag(activePerks(LO))`; `perksDirty` has Game re-add the
