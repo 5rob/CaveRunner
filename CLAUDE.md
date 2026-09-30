@@ -244,6 +244,14 @@ stats, and `e.k.act` decides how it moves and fights: `shoot`, `turret`, `chase`
 `dmg`, `col` and `size` — there is no global enemy damage constant any more. The enemy
 loop runs backwards because a bomber splices itself out mid-loop. If you add a creature,
 give it all of those fields and a body that already has a sprite.
+**Since P3.5 (REFACTOR.md D20) what each act does is its hooks in `ACTS`** (`src/game/creatures/acts.js`):
+`stepEnemies` runs the shared part (timers, aggro, the hover, the contact bite) and calls the act's
+`pre`, `move`, `contact`, `fire` where they belong, `frame` once a frame, and `damageEnemy` its `die`.
+Act and body are separate: the classic acts are shared by several creatures and bodies. **Adding a
+creature:** its pure brain and sprite in `src/creatures/<name>.js` (plus a `drawEnemy` line for its body),
+its Game side in `src/game/creatures/<name>.js` (hooks as `function` declarations taking `(W, G, e, C)`,
+reading `C` with `const { … } = C;`), one line in `ACTS`, its `CREATURES` entry (and `HUNTERS` if it hunts),
+and its knob table in `dev/knobs.js` (D11: they can't move next to the creature yet).
 
 **Aggro is line-of-sight to acquire, then sticky (v50).** A `chase`/`bomb` enemy carries
 `e.aggro`. It *acquires* aggro only within `reach = k.aggro * sees * DEV.aggro` **and** with

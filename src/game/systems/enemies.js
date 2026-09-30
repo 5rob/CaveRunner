@@ -1,7 +1,8 @@
-// The creatures: a frame of them all (stepEnemies, a part of step(): the enemy loop, with each
-// act's own part through ACTS in game/creatures/ (REFACTOR.md D20), their shots),
-// shooting at you, and taking damage (a kill drops its gold, or the act's `die` does its own
-// thing: a nest's shower).
+// The creatures, the part they all share: a frame of them all (stepEnemies, a part of step():
+// timers, aggro, the hover, the contact bite, Contact Damage, their shots), one pull of a
+// creature's trigger (fireEnemyShot), and taking damage (damageEnemy: a kill drops its gold).
+// What each act does on top (its move, a bomber's fuse and burst, firing, a nest's death, the
+// spider's silk) is its hooks in ACTS, the files in game/creatures/ (REFACTOR.md D20).
 
 import { SFX } from '../../audio/sfx.js';
 import { COL, PH, PW } from '../../core/consts.js';
@@ -51,9 +52,9 @@ export function damageEnemy(W, j, dmg) {
 }
 
 // ---- the creatures (a part of step) ----
-// The enemy loop (aggro, each kind's move, contact, firing), Contact Damage, the creatures'
-// shots, each act's once-a-frame part (ACTS: the spider's silk), and the red flash of your
-// last hit fading.
+// The enemy loop (aggro, each act's hooks: its move, contact, firing), Contact Damage, the
+// creatures' shots, each act's once-a-frame part (ACTS: the spider's silk), and the red flash
+// of your last hit fading.
 export function stepEnemies(W, G, F) {
   const { dt, pcx, pcy } = F;
   // one creature's frame, for its act's hooks (ACTS, D20): made once, refilled per enemy

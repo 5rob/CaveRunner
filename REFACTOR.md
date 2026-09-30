@@ -13,10 +13,10 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). step() split into parts, P3.4 (25)–(33): a frame object `F` (D18) and 21 calls, the parts in their systems (`pickups.js` new). draw() split the same way, P3.4 (34)–(43): its own `F` (D19) and 29 calls, the parts in six `render/` modules by theme. **P3.4 done.** P3.5 (creature plugins) planned from the code (D20: the Game side of each creature in `src/game/creatures/`, an `ACTS` table keyed by act; knob tables stay put; no looks table). Not merged |
+| **Current phase** | Phase 2 merged to `main` as v98. Phase 3 on `refactor`: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). step() split into parts, P3.4 (25)–(33): a frame object `F` (D18) and 21 calls, the parts in their systems (`pickups.js` new). draw() split the same way, P3.4 (34)–(43): its own `F` (D19) and 29 calls, the parts in six `render/` modules by theme. **P3.4 done.** **P3.5 done** (D20: the Game side of each creature in `src/game/creatures/`, an `ACTS` table keyed by act, the loop keeps the shared part; knob tables stay put; no looks table). Next P3.6. Not merged |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
-| **Last green full suite** | 2026-09-30, end of P3.4, after draw()'s split (95d6ea6): logic 33/33, browser 44/44 after re-runs (`lightning` fork and `torch` "brighter frames" failed in the run, both known, both passed 2 of 2 alone) |
+| **Last green full suite** | 2026-09-30, end of P3.5 (the tree of P3.5 (6)): logic 33/33, browser 44/44 after re-runs (`everymod` telecast, `lightning` fork and `jelly` failed in the run, all known; each passed alone, `jelly` 3 of 5, the same as on the commit before the jelly move) |
 | **Last merged to main** | v98 (Phase 2), 2026-09-29 |
 
 ---
@@ -565,7 +565,7 @@ What the code says about P3.4 (checked at the end of P3.3):
   - [x] render/: split `draw()` into layers in their current order: background, terrain,
         props, entities, bullet looks (`drawLook`), fog, post-fog glows, HUD, map (P3.4 (34)–(43): cave.js, effects.js,
         actors.js, looks.js, light.js, overlay.js; D19)
-- [ ] **P3.5 Creature plugins.** The enemy loop's per-creature branches become a
+- [x] **P3.5 Creature plugins.** The enemy loop's per-creature branches become a
       registry: `creatures/<name>.js` exports `{ act, knobs, step(e, W, dt), draw(ctx, e,
       W), onHurt?, onDeath? }`, and `enemies.js` dispatches by `e.k.act`. **Adding a creature
       = one new file + one registry line.** Do the same for bullet looks (`drawLook`/
@@ -633,7 +633,7 @@ What the code says about P3.5 (checked at the end of P3.4, f50c758):
   also runs its creature's browser suites: `rats` (nest, rat), `spider`, `jelly` + `archvine` (the zones), and
   `creatures` (climbs five floors: the classic acts) for the classic step and whenever `enemies.js`'s shared part moves.
 
-- [ ] **P3.5 sub-tasks** (D20; one commit each, probe SAME + logic + smoke + the creature's suites):
+- [x] **P3.5 sub-tasks** (D20; one commit each, probe SAME + logic + smoke + the creature's suites):
   - [x] P3.5 (1): the registry and its first creature, the nest. `src/game/creatures/acts.js` (`ACTS`), the
         per-enemy object `C` in `stepEnemies`, the dispatch at (c)'s place (the other acts still inline below it),
         `damageEnemy` asking `ACTS[act].die`; `src/game/creatures/rat.js` with `nestMove` and `nestDie`. (The registry
@@ -646,7 +646,7 @@ What the code says about P3.5 (checked at the end of P3.4, f50c758):
   - [x] P3.5 (5): the classic acts → `game/creatures/classic.js`: `classicMove` (hunt or patrol: chase, bomb,
         shoot, and the fallback for an act not in `ACTS`), `bombFuse` (`pre`), `bombBurst` (`contact`), `gunFire`
         (`fire`, shoot and turret); `turret` gets no `move`. The inline chain is gone
-  - [ ] P3.5 (6): tidy and notes: enemies.js header, CLAUDE.md's creature notes ("adding a creature"), checkpoint
+  - [x] P3.5 (6): tidy and notes: enemies.js header, CLAUDE.md's creature notes ("adding a creature"), checkpoint
         full suite
 - [ ] **P3.6** `Game.js` is left owning: making the world, the loop (step/draw/replay
       switch), and the React `input` bridge. Target < 800 lines. Full suite green. Merge to
@@ -808,6 +808,9 @@ commit. List them here for after.
 - **The `shoplayout` logic suite takes ~26 s of its 30 s cap** (`LOGIC_CAP` in `tests/run.js`),
   and `perks` ~24 s. Not the refactor (the loader costs ~0.15 s), but on a busy PC they could
   time out. If one does, re-run it alone; worth making them lighter after the refactor.
+- **`jelly` (browser) spore-puff group** ("a pulse puffs spores out of it", and the four after it), new on the list: failed once in the P3.5 checkpoint's full run (`puffN` 0), passed in 8 runs alone after it. The jelly suite on 3d04c5b (before the jelly move) passed whole 2 of 5 and on the P3.5 (6) tree 3 of 5, both failing only on the spit group and "saturation 0". The probe counts every random draw, spore puffs included, and was SAME at each step.
+- **`damageEnemy` looks up `ACTS[act]` with no fallback, `stepEnemies` with `|| ACTS.chase`.** Same behaviour as before for every act (only `nest` has `die`); noted in case an act ever gets a `die` and an unknown act is expected to share `chase`'s.
+- **`fireEnemyShot` has one caller now** (`gunFire`, game/creatures/classic.js). Left in enemies.js as the plan said: it reads only generic creature fields (`shots`, `bspd`, `dmg`, `fire`), so any act could fire it.
 - **`drawFields` ends with `G.ctx.globalAlpha = 1;` twice** (render/looks.js): one was the line after the old inner
   `drawFieldLook` declaration. Harmless; left as it was.
 
@@ -1032,3 +1035,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 3, P3.5 (3) | New `game/creatures/spider.js` by a scratch script: `spiderMove` (the branch, de-indented, `const { … } = C, k = e.k;` first; returns nothing, so the shared part runs after it as before), `spiderFrame` (the three once-a-frame passes, called from `stepEnemies` at their old place as `for (const a in ACTS) { … frame … }`), `drawSilk` from render/actors.js (draw.js imports it from there, same spot). `spider: { move, frame }` in `ACTS`. Headers of enemies.js, actors.js, draw.js follow. `spider`, `creatures`, `replay`, `rats`, `archvine` run too, first time. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.5 (4) | New `game/creatures/jelly.js` by a scratch script: `jellyMove` (the branch, de-indented, `const { … } = C, k = e.k;` first; returns nothing) and `natural` from enemies.js. `jelly: { move: jellyMove }`; enemies.js drops eight imports it no longer uses. `archvine`, `creatures` run too, first time; `jelly` failed "saturation 0" in the first run, then passed whole 2 of 3 (the spit group once: known flakes, and neither the Dev preview nor anything the spit checks read moved). | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 3, P3.5 (5) | New `game/creatures/classic.js` by a scratch script: `classicMove` (the hunt-or-patrol chain), `bombFuse` (its `k.act === 'bomb'` test dropped: the table decides), `bombBurst` (its `continue` → `return true`), `gunFire` (its `shoot \|\| turret` test dropped, same reason). `ACTS` gets `chase`, `bomb`, `shoot`, `turret`; `A = ACTS[k.act] \|\| ACTS.chase` is looked up at the top of the loop body (a lookup, nothing else), and the loop calls `pre`, `move`, `contact`, `fire` where the branches were. The probe hardly meets a classic creature, so a scratch copy of it (not kept) put twelve floor-5 ones (chase, bomb incl. Stendari, shoot, turret) round you in a sandbox for 600 frames: SAME against HEAD, and it did catch a planted change (a bomber's burst count). `creatures`, `fire`, `lightning`, `perks`, `blackhole` run too, first time. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 3, P3.5 (6), **P3.5 done** | enemies.js' header and `stepEnemies`' comment say what's shared and where each act's part is (comments only: `index.html` unchanged); CLAUDE.md's creature note gets "Since P3.5 … Adding a creature"; HANDOVER's status. Checkpoint full suite on this tree: `everymod` telecast, `lightning` fork and `jelly` (the spore-puff group, new on the list) failed; alone `everymod` 1 of 1, `lightning` 2 of 2, `jelly` whole 3 of 5 here vs 2 of 5 on 3d04c5b (before the jelly move), both failing only on the spit group and "saturation 0" (Found along the way). `git worktree remove` again left `.git/worktrees/snap` (deleted by hand after the junction). P3.5: `stepEnemies` 245 → ~110 lines; `src/game/creatures/` 5 files. Not merged. | logic 33/33; browser 44/44 after re-runs |

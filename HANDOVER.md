@@ -21,8 +21,11 @@ it's stale.
   (`src/game/systems/step.js`, `src/game/render/draw.js`, ~1,100 lines each). `Game.js` is 186
   lines of setup and the loop. step() is split into parts (P3.4 (25)–(33): a frame object `F`, REFACTOR.md
   D18, and 21 calls, each part in its system; `node tools/part.js` does a cut), and so is draw() (P3.4 (34)–(43): its own `F`, D19, and 29 calls,
-  the parts in six `src/game/render/` modules by theme). Next: P3.5 (creature plugins: the enemy loop
-  per creature, bullet looks as a table). Last green full suite: the end-of-P3.4 checkpoint (95d6ea6). The proof for each Phase 3 step
+  the parts in six `src/game/render/` modules by theme). P3.5 (creature plugins) is done: each act's part
+  of the enemy loop is hooks in `ACTS` (`src/game/creatures/`, REFACTOR.md D20); knob tables stayed in
+  `dev/knobs.js`, and bullet looks stayed as they are (no table: see REFACTOR.md's P3.5 notes). Next: P3.6
+  (Game.js is already 186 lines; the full suite, then merge to `main` with a version bump). Last green full
+  suite: the end-of-P3.5 checkpoint. The proof for each Phase 3 step
   is `node tests/determinism.js` (same scripted run on HEAD and this tree, frame by frame).
   `node tools/system.js <file> name…` does a P3.4 move (`--dry` first), and
   `node tools/gamemap.js fn…` says what a function still in `Game` needs.
