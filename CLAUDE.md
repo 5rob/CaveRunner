@@ -1033,7 +1033,9 @@ checking only — esbuild still builds, and types never reach `index.html`. A fi
 first line is `// @ts-check` (types in JSDoc, the files stay `.js`); the shared shapes (Gun, Shot, Plan,
 Enemy, Level, World, …) are in `src/types.d.ts`, the page's globals (React, ReactDOM, VERSION) in
 `src/globals.d.ts`. A report counts as a failed suite (`types`). Run it alone with
-`node node_modules/typescript/bin/tsc --noEmit -p .` (~0.2 s).
+`node node_modules/typescript/bin/tsc --noEmit -p .` (~0.2 s). **No inline JSDoc casts**
+(`/** @type {X} */ (expr)`): esbuild keeps a comment inside an expression, so it lands in `index.html`;
+put the type on the declaration instead (REFACTOR.md D21).
 
 **Logic suites** (`tests/logic/`) start with `const G = require('../load');` —
 `tests/load.js` bundles `src/pure.js` with esbuild (in memory, to CommonJS) and hands back

@@ -120,7 +120,7 @@ interface CreatureKind {
   hp: number; dmg: number; bspd: number; gold: number; range: number; cd: number;
   tele: number; shots: number; r: number; spd: number; aggro: number;
   kp: string | null; glow: string | null;
-  fire?: number;
+  // no `fire`: enemyFor doesn't copy CreatureType's (REFACTOR.md, Found along the way)
 }
 
 /** a creature in the level: makeLevel's enemies, then the enemy loop's own fields */
@@ -153,9 +153,8 @@ interface NestState {
 // ---- perks (data/perks.js) ----
 
 /** a perk: one entry of PERKS. Its numbers fold into a PerkBag */
-interface Perk {
+interface Perk extends Partial<Omit<PerkBag, 'maxHp'>> {   // dmg, speed, shield, …: the bag fields it moves
   name: string; glyph: string; tint: string; info: string;
-  [effect: string]: string | number;   // dmg, speed, shield, … (the PerkBag fields it moves)
 }
 /** every perk you own folded into one bag: perkBag (data/perks.js), W.pb */
 interface PerkBag {
@@ -165,7 +164,8 @@ interface PerkBag {
   ghost: number; homing: number; trail: number; contact: number; close: number; invis: number;
   repel: number; seeAll: number; radarEnemy: number; radarItem: number; radarWand: number;
   tinker: number; extraItem: number; pinpointer: number; trajectory: number;
-  maxHp: number;
+  // always there on a bag perkBag returns; optional only because it is filled in after the rest
+  maxHp?: number;
 }
 
 // ---- the level (world/) ----

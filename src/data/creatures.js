@@ -1,3 +1,4 @@
+// @ts-check
 // Who lives where: the creature types (CREATURES), which ones live on floors 1-10
 // (ROSTERS, rosterFor) and one creature's floor-scaled stats (enemyFor). A floor's roster is
 // picked by the floor number, never the seed.
@@ -19,6 +20,7 @@
 // kp:   a reworked creature's Dev-knob prefix. A creature with one runs its own step
 //       function, rolls its aggro reach (kp+'Aggro') and bite (kp+'Bite'/'BiteCd') off its
 //       own knobs, owns its motion (no generic hover bob), and comes for you when hurt.
+/** @type {Record<string, CreatureType>} */
 export const CREATURES = {
   // jellyfish: pulses along wherever its head points, drag slows it, then it pulses again;
   // hunting, it lines its head up on you and spits dripping poison. Its numbers are
@@ -105,6 +107,7 @@ export const ROSTERS = [
 ];
 // the roster for a floor. Past the fixed ten it rolls a fresh 2-6 off the whole list,
 // using the level's own seeded rnd so a floor stays consistent while you are on it.
+/** @param {number} floor @param {Rnd} [rnd] @returns {string[]} */
 export function rosterFor(floor, rnd) {
   if (floor >= 1 && floor <= ROSTERS.length) return ROSTERS[floor - 1].slice();
   const r = rnd || Math.random, pool = CREATURE_IDS.filter(id => !CREATURES[id].noRoster), out = [];
@@ -116,6 +119,7 @@ export function rosterFor(floor, rnd) {
 // One floor's worth of one creature: the type's own numbers, lifted by the floor it
 // belongs to. Health climbs hardest, gold next, damage least — a floor 10 enemy is
 // worth a lot more than it hurts, or the shop heal would never keep up.
+/** @param {string} id @param {number} floor @returns {CreatureKind} */
 export function enemyFor(id, floor) {
   const c = CREATURES[id];
   const hp = 1 + (floor - 1) * 0.35, dmg = 1 + (floor - 1) * 0.16, gold = 1 + (floor - 1) * 0.30;
@@ -130,8 +134,10 @@ export function enemyFor(id, floor) {
 }
 // the acts that hunt you: they notice you on a sightline within their aggro reach, keep
 // coming, and only lose you far away (see the enemy loop)
+/** @type {Record<string, number>} */
 export const HUNTERS = { chase: 1, bomb: 1, spider: 1, jelly: 1, rat: 1 };
 
 // creatures (by act) that live only in the natural zones: spawned there, and they won't swim
 // out into a built-up zone (jellyStep's env.stay)
+/** @type {Record<string, number>} */
 export const NATURAL_ONLY = { jelly: 1 };
