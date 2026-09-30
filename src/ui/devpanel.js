@@ -1,3 +1,4 @@
+// @ts-check
 // The Dev panel (the gear button): live-tweak knob rows by group (DevRow, DevPanel), the
 // live jellyfish box above the jelly colours (JellyPreview), and the Spawn gun box (SpawnGun).
 
@@ -108,6 +109,7 @@ export function JellyPreview() {
         artCtx.fillStyle = rgbA(mix(TH.moss[0], TH.moss[1], q.c)); artCtx.fillRect(x, top - q.h + 1, 1, q.h);
         artCtx.fillStyle = rgbA(TH.moss[1]); artCtx.fillRect(x, top - q.h + 1, 1, 1);
       });
+      // @ts-expect-error the preview's stand-in vines: only what drawProp reads for a vine (noise)
       for (const v of vines) drawProp(artCtx, v, t, TH);
       ctx.imageSmoothingEnabled = false;            // pixel art, like the terrain
       ctx.drawImage(artC, 0, 0);
@@ -152,6 +154,7 @@ export function JellyPreview() {
 // One tweakable value in the dev panel: a labelled number box prefilled with the live
 // value, its default shown as the placeholder. Committing an empty box restores the
 // default; anything else is parsed, clamped to the knob's range and saved at once.
+/** @param {{ meta: DevRow }} props */
 export function DevRow({ meta }) {
   const [val, setVal] = useState(String(DEV[meta.k]));
   if (meta.type === 'slider') {
@@ -193,6 +196,7 @@ export function DevRow({ meta }) {
 // The dev window: it pauses the run but the game keeps drawing behind a light backdrop,
 // so the look-of-it knobs (zoom, torch, fog) preview live as you type. Holds the toggle
 // buttons — "All mods" is the old DEBUG shelf — and the saved, persisted variables.
+/** @param {{ input: { current: GameInput }, refresh: () => void, close: () => void, onRestart: () => void, onSpawnGun: () => void }} props */
 export function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
   const LO = input.current.loadout;
   const [, bump] = useState(0);
@@ -200,12 +204,14 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
   // which groups are open: remembered on this device only, all shut the first time
   const [openG, setOpenG] = useState(() => { try { return JSON.parse(localStorage.getItem('caverunner-devgroups')) || {}; } catch (_) { return {}; } });
   const toggleG = g => {
+    // @ts-expect-error document.activeElement is an Element; the focused box is an HTMLElement (noise)
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // commit a half-typed box
     const o = Object.assign({}, openG, { [g]: !openG[g] });
     setOpenG(o);
     try { localStorage.setItem('caverunner-devgroups', JSON.stringify(o)); } catch (_) {}
   };
   const copyAll = () => {
+    // @ts-expect-error document.activeElement is an Element; the focused box is an HTMLElement (noise)
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // commit a half-typed box
     const text = devReport();
     const fallback = () => {
@@ -258,6 +264,7 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
   );
 }
 
+/** @param {{ input: { current: GameInput }, close: () => void }} props */
 export function SpawnGun({ input, close }) {
   const [lvl, setLvl] = useState(String(input.current.floor || 1));
   const spawn = () => {

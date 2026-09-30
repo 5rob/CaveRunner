@@ -16,7 +16,7 @@ import { kr } from '../dev/knobs.js';
 // ra, roamR, roamSpd on the creature's state R; radius and drift speed are the creature's
 // knobs pre+'RoamR' / pre+'RoamSpd', rolled again each time it turns back. ok(x, y), if
 // given, is where the spot may go: it turns back toward home at the edge of that too.
-/** @param {RoamState} R @param {Enemy} e @param {number} dt @param {Rnd} rnd @param {string} pre the knob prefix @param {((x: number, y: number) => boolean) | null} [ok] */
+/** @param {RoamState} R @param {{ hx: number, hy: number }} e its home @param {number} dt @param {Rnd} rnd @param {string} pre the knob prefix @param {((x: number, y: number) => boolean) | null} [ok] */
 export function roamStep(R, e, dt, rnd, pre, ok) {
   if (R.rx === undefined) { R.rx = e.hx; R.ry = e.hy; R.ra = rnd() * 6.28; }
   R.ra += (rnd() - 0.5) * 3 * dt;

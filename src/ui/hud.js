@@ -1,3 +1,4 @@
+// @ts-check
 // The in-game HUD: the two thumbsticks with their gauge rings (health + fuel on the left,
 // mana + recharge + cast delay on the right), the R key of the buy line, the round deck
 // buttons' layout, the gold readout, and holdPress (tap vs hold).
@@ -9,6 +10,7 @@ import { h, useEffect, useRef, useState } from './h.js';
 // Gold for the deck readout: a bare number under 1000, and thousands truncated (not
 // rounded) to one decimal with a "k" — 999 -> "999", 1234 -> "1.2k", 2000 -> "2k".
 // Pure and above makeLevel so the logic suite can load it.
+/** @param {number} g @returns {string} */
 export function fmtGold(g) {
   g = Math.max(0, Math.floor(g || 0));
   if (g < 1000) return String(g);
@@ -20,6 +22,7 @@ export function fmtGold(g) {
 // centred on the right stick: from the top of the gap between the sticks, clockwise over
 // the top, to near the right edge. The bag mirrors the last gun on the left, and the map
 // button sits straight above the bag. Returns centres plus the button diameter.
+/** @param {number} W the row's width @param {number} size a stick's @param {number} [n] guns @returns {{ btn: number, R: number, rc: Pt, guns: Pt[], bag: Pt, map: Pt }} */
 export function deckLayout(W, size, n) {
   n = n || 4;
   const g = (W - 2 * size) / 3;
@@ -48,6 +51,7 @@ export const GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
 // ring and its stat read as the same thing: mana gold, recharge blue, cast delay purple
 export const GAUGE_COL = { mana: '#ffc93c', rech: '#7ad7ff', cast: '#c58cff', fuel: '#ff9a2e' };
 // green -> amber -> red as health falls, so the colour itself reads as danger
+/** @param {number} frac @returns {string} */
 export function healthCol(frac) {
   return frac > 0.5 ? mixHex('#e6a52c', '#57d267', (frac - 0.5) * 2)
                     : mixHex('#e24a2c', '#e6a52c', frac * 2);
@@ -59,6 +63,7 @@ export function RKey() {
     h('text', { x: 15, y: 15, textAnchor: 'middle', dominantBaseline: 'central', fill: '#fff',
       fontSize: 14, fontWeight: 300, fontFamily: 'system-ui, sans-serif' }, 'R'));
 }
+/** @param {{ size: number, kind: 'left' | 'right', input: { current: GameInput }, refresh: () => void }} props */
 export function Stick({ size, kind, input, refresh }) {
   const [knob, setKnob] = useState({ x: 0, y: 0, jet: false });
   // the live stat this stick shows: hp+fuel on the left, mana on the right. Read off
@@ -183,6 +188,7 @@ export function Stick({ size, kind, input, refresh }) {
 
 // Tap or hold, told apart: a hold fires on its own after `ms`, a release before
 // that counts as a tap, and sliding off cancels both.
+/** @param {() => void} onTap @param {() => void} onHold @param {((on: boolean) => void) | null} [onState] @param {number} [ms] */
 export function holdPress(onTap, onHold, onState, ms) {
   return e => {
     e.preventDefault();

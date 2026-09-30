@@ -45,7 +45,7 @@ export function jellyBell(r, s, q) {
 // inside, and from inside it never pulses toward a spot its glide would carry it out of —
 // hunting you into a built-up corridor, it hangs at the edge and spits from there.
 // Returns 'pulse' on the frame a pulse starts, else null.
-/** @param {Enemy} e @param {JellyEnv} env @param {number} dt @returns {string | null} */
+/** @param {Pick<Enemy, 'x' | 'y' | 'hx' | 'hy' | 'r' | 'je'>} e what it reads (the Dev preview's jelly has only these) @param {JellyEnv} env @param {number} dt @returns {string | null} */
 export function jellyStep(e, env, dt) {
   const { solidCell, rnd } = env;
   let S = e.je;

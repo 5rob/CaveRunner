@@ -494,13 +494,13 @@ interface Player {
 }
 
 /** one thumbstick's state, written by the Stick (ui/hud.js), read by step */
-interface StickState { active: boolean; nx: number; ny: number; mag: number; dy: number; on: boolean; [k: string]: any }
+interface StickState { active: boolean; nx: number; ny: number; mag: number; dy: number; on: boolean }
 /** the gauges draw() hands the sticks each frame (all 0..1) */
 interface Hud { hp: number; low: boolean; fuel: number; empty: boolean; mana: number; rech: number; cast: number; recharging: boolean; hasGun: boolean }
 /** what the pickup panel shows (pickups.js): the item near you */
 interface Prompt {
   text: string; price: number; can: boolean;
-  id?: string; gun?: Gun; perk?: string; heart?: boolean; found?: boolean; [k: string]: any;
+  id?: string; gun?: Gun; perk?: string; heart?: boolean; found?: boolean;
 }
 /** the death replay's span, once recorded: from t0 to t1, the death at `death` (REC's clock) */
 interface Witness { t0: number; t1: number; death: number }
@@ -517,7 +517,8 @@ interface GameInput {
   paused: boolean; notify: () => void; inShop: boolean;
   prompt: Prompt | null; interact: boolean; sig: string;
   found: Pickup | null;
-  confirmAct: any; confirmAim: any;   // legacy hooks, nothing sets them any more
+  // legacy: a two-way confirm the right stick answered by pointing (Stick still reads them; nothing sets them)
+  confirmAct: Record<string, () => void> | null; confirmAim: string | null;
   pendingToast: string | null;
   keys: { w: boolean; a: boolean; s: boolean; d: boolean };
   mouse: { x: number; y: number; inside: boolean; down: boolean };

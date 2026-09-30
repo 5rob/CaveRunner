@@ -1,3 +1,4 @@
+// @ts-check
 // The build screen (the Bag): Editor, with the gun's stats (GunStats) and its tabs
 // (GunIcon), the slot grid lit by the live fire preview (SlotGrid), the mod bag, and the
 // ScrollBox grab bars both grids scroll with.
@@ -33,6 +34,7 @@ export const GS_ROWS = [
 // draining and refilling like the right stick's rings (the other stats have none). The
 // bars are written straight to the DOM each frame, not re-rendered.
 export const LIVE_BAR = { castDelay: GAUGE_COL.cast, recharge: GAUGE_COL.rech, manaMax: GAUGE_COL.mana };
+/** @param {{ gun: Gun, sim: { current: import('../spells/bagsim.js').FireSim | null }, sig: string }} props */
 export function GunStats({ gun, sim, sig }) {
   const d = useMemo(() => gunModDeltas(gun), [sig]);
   const bars = useRef({});
@@ -69,6 +71,7 @@ export function GunStats({ gun, sim, sig }) {
 }
 
 // the gun's picture on its button, drawn with the same sprite as the one in your hands
+/** @param {{ gun: Gun }} props */
 export function GunIcon({ gun }) {
   const ref = useRef(null);
   useEffect(() => {
@@ -88,6 +91,7 @@ export function GunIcon({ gun }) {
 // (fireSimStep, trigger held) runs here at DEV.bagSpeed × real time; each pull lights the
 // slots it fired in that pull's colour. Only re-renders when the lit set changes, so the
 // Editor (and the advisor) never re-render per frame.
+/** @param {{ gun: Gun, tile: (id: string | null, from: { type: string, i: number }, key: number | string) => any, sig: string, sim: { current: import('../spells/bagsim.js').FireSim | null } }} props */
 export function SlotGrid({ gun, tile, sig, sim }) {
   const [lit, setLit] = useState(null);
   const steps = useMemo(() => pullSteps(gun), [sig]);
@@ -124,6 +128,7 @@ export function SlotGrid({ gun, tile, sig, sim }) {
 // A scroll box with a bar down its right side you can grab: the mod tiles take a touch for
 // dragging, so with a full grid there was nothing left to scroll by. Tap the bar to jump
 // there, or drag the thumb. The thumb follows the box however it scrolled.
+/** @param {{ cls: string, drop?: string, children?: any }} props */
 export function ScrollBox({ cls, drop, children }) {
   const ref = useRef(null);
   const [t, setT] = useState({ top: 0, size: 1, show: false, on: false });
@@ -175,6 +180,7 @@ export function ScrollBox({ cls, drop, children }) {
 // tip buttons don't. buildAdvice and the tip code are kept; flip this to bring them back.
 export const SHOW_TIPS = false;
 
+/** @param {{ input: { current: GameInput }, close: () => void, refresh: () => void, canEdit: boolean }} props */
 export function Editor({ input, close, refresh, canEdit }) {
   const LO = input.current.loadout;
   useEffect(() => { SFX.fx('open'); return () => SFX.fx('close'); }, []);
@@ -240,6 +246,7 @@ export function Editor({ input, close, refresh, canEdit }) {
         return;
       }
       const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      /** @type {HTMLElement | null} */
       const tab = el && el.closest ? el.closest('[data-gun]') : null;
       if (tab) over = Number(tab.dataset.gun);
       setGdrag({ from: i, x: ev.clientX, y: ev.clientY, over });
@@ -259,6 +266,7 @@ export function Editor({ input, close, refresh, canEdit }) {
     if (!canEdit) return;                 // outside the shop (and without Tinker) the bag is read-only
     SFX.fx('place');
     const el = document.elementFromPoint(x, y);
+    /** @type {HTMLElement | null} */
     const node = el && el.closest ? el.closest('[data-drop]') : null;
     const to = node && node.dataset.drop;
     const g = LO.guns[sel];
@@ -326,6 +334,7 @@ export function Editor({ input, close, refresh, canEdit }) {
     el.style.pointerEvents = 'none';
     const under = document.elementFromPoint(e.clientX, e.clientY);
     el.style.pointerEvents = '';
+    /** @type {HTMLElement | null} */
     const tile = under && under.closest ? under.closest('[data-mod]') : null;
     const next = tile && tile.dataset.mod;
     setInfo(next && next !== info ? next : null);

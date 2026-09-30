@@ -1,3 +1,4 @@
+// @ts-check
 // Witness: the death replay's screen (the controls; the Game draws the scene).
 
 import { clamp } from '../core/util.js';
@@ -7,6 +8,7 @@ import { h, useEffect, useRef, useState } from './h.js';
 // to pan, pinch (or the wheel) to zoom — with a scrub bar and the controls along the bottom.
 // The Game draws it (drawReplay); this only moves input.current.replay's clock and camera.
 export const RP_SPEEDS = [0.25, 0.5, 1, 2];
+/** @param {{ input: { current: GameInput }, close: () => void }} props */
 export function Witness({ input, close }) {
   const V = input.current.replay, W = input.current.witness;
   const [, bump] = useState(0);

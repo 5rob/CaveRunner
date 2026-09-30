@@ -1,3 +1,4 @@
+// @ts-check
 // GunSwap: the chooser that opens when you take a gun off the ground (found or bought).
 
 import { SFX } from '../audio/sfx.js';
@@ -10,6 +11,7 @@ import { holdPress } from './hud.js';
 // Walked onto a gun: compare it with yours and pick which of your four it replaces, or
 // leave it. Mods are taken straight (no screen); guns keep this chooser because a gun goes
 // into one of four slots and is worth comparing before you commit.
+/** @param {{ input: { current: GameInput }, refresh: () => void, onDone: () => void }} props */
 export function GunSwap({ input, refresh, onDone }) {
   const LO = input.current.loadout;
   useEffect(() => { SFX.fx('open'); }, []);

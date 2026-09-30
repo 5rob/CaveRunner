@@ -13,7 +13,7 @@ before this.
 
 | | |
 |---|---|
-| **Current phase** | **Phase 4** (TypeScript, gradually): P4.1 done (tsc in the test run), P4.2 done (`src/types.d.ts`). P4.3 (`// @ts-check` per folder, D21): core, dev, data, spells, world, creatures, art, audio, save, replay; game. Next: ui, then P4.4. Phase 3 merged to `main` as v99 (P3.6 done, 2026-09-30). Phase 3 recap: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). step() split into parts, P3.4 (25)–(33): a frame object `F` (D18) and 21 calls, the parts in their systems (`pickups.js` new). draw() split the same way, P3.4 (34)–(43): its own `F` (D19) and 29 calls, the parts in six `render/` modules by theme. **P3.4 done.** **P3.5 done** (D20: the Game side of each creature in `src/game/creatures/`, an `ACTS` table keyed by act, the loop keeps the shared part; knob tables stay put; no looks table). P3.6: Game.js 186 lines (world, loop, React bridge) |
+| **Current phase** | **Phase 4** (TypeScript, gradually): P4.1 done (tsc in the test run), P4.2 done (`src/types.d.ts`). P4.3 (`// @ts-check` per folder, D21): core, dev, data, spells, world, creatures, art, audio, save, replay, game, ui: **P4.3 done**. Next: P4.4. Phase 3 merged to `main` as v99 (P3.6 done, 2026-09-30). Phase 3 recap: P3.1–P3.3 done (map + probe, world object `W`, test hook from `W`). P3.4: terrain, particles, `hurt`, `damageEnemy`, fire, ambience, props, shot looks, lightning, rats, fog queries, casting, `saveRun`, `natural`, `torchHand`, `plantGlow`, the recorder, `enterLevel` out in `game/systems/`, and `step`/`draw` moved whole (`systems/step.js`, `render/draw.js`; Game.js 186 lines). step() split into parts, P3.4 (25)–(33): a frame object `F` (D18) and 21 calls, the parts in their systems (`pickups.js` new). draw() split the same way, P3.4 (34)–(43): its own `F` (D19) and 29 calls, the parts in six `render/` modules by theme. **P3.4 done.** **P3.5 done** (D20: the Game side of each creature in `src/game/creatures/`, an `ACTS` table keyed by act, the loop keeps the shared part; knob tables stay put; no looks table). P3.6: Game.js 186 lines (world, loop, React bridge) |
 | **Branch** | `refactor` (created from `main` at v96, d89c6cd) |
 | **Feature freeze** | Lifted with P1.6 (v97) |
 | **Last green full suite** | 2026-09-30, end of P3.5 (the tree of P3.5 (6)): logic 33/33, browser 44/44 after re-runs (`everymod` telecast, `lightning` fork and `jelly` failed in the run, all known; each passed alone, `jelly` 3 of 5, the same as on the commit before the jelly move) |
@@ -682,7 +682,7 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
       tables add hundreds of `xLo`/`xHi` keys, numbers or colour strings, which a type can't tell apart by name.
       `skipLibCheck` is now off, so tsc checks `types.d.ts` itself (a .d.ts is otherwise skipped; lib.dom is clean,
       0.25 s).
-- [ ] **P4.3** Turn checking on per folder (`// @ts-check` or rename to `.ts`, since
+- [x] **P4.3** Turn checking on per folder (`// @ts-check` or rename to `.ts`, since
       esbuild strips types), in this order: core, data, spells, world, creatures, game, ui.
       Fix real errors. For noise, add a type, not an `any`, where it's cheap.
       **How (D21):** `// @ts-check` as each file's first line, types in JSDoc (the shapes from `src/types.d.ts`).
@@ -787,7 +787,18 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
   - [x] **game done**: every file under `src/game/` checked. `any`s left in the game section of types.d.ts: 9
         (`Particle`'s index signature, for the grab-bag particle lists; `Shot`/`Bullet.bounceFx`, always null; `sconces`;
         `StickState`'s and `Prompt`'s index signatures and the two legacy `confirmAct`/`confirmAim`, for the ui folder to
-        narrow; `RP_ARR`'s `any[]`). `@ts-expect-error`: 9 noise + 1 for the Stendari bug (plus `fireEnemyShot`'s typed local)
+        narrow (it did: 4 left after ui); `RP_ARR`'s `any[]`). `@ts-expect-error`: 9 noise + 1 for the Stendari bug (plus `fireEnemyShot`'s typed local)
+  - [x] ui (`app`, `cards`, `devpanel`, `editor`, `h`, `hud`, `swap`, `witness`): 9 errors when turned on, all noise.
+        The Dev panel's jelly preview hands `jellyStep` a stand-in creature: `jellyStep`'s `e` is now
+        `Pick<Enemy, 'x' | 'y' | 'hx' | 'hy' | 'r' | 'je'>` (what it reads) and `roamStep`'s just a home. DOM lookups:
+        `closest(…)` returns an `Element`, `.dataset` is on `HTMLElement`, so the three `const`s are typed
+        `HTMLElement | null` (`closest` is generic: TS infers it from the declared type, no cast). Three one-line
+        `@ts-expect-error`: the preview's stand-in vines to `drawProp`, and `document.activeElement.blur` twice (an
+        `Element`). Typed every component's props (`input` as `{ current: GameInput }`, so App's bridge is checked
+        on both sides; App's own `useRef` gets the type on its `const`), `fmtGold`, `deckLayout`, `healthCol`,
+        `holdPress`. `StickState` and `Prompt` lost their index signatures, the legacy `confirmAct`/`confirmAim` are typed.
+        React stays `any` (globals.d.ts, P4.1), so `h(Component, props)` calls aren't checked against the props.
+        0 bugs, 0 `any`s
 - [ ] **P4.4** Once a folder is clean, keep it clean: the check is part of the green bar.
 
 ### Phase 5 — notes live next to the code
@@ -1200,3 +1211,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 4, P4.3 game (3) | systems part 2 checked (`gun`, `fields`, `bullets`, `shotlooks`, `pickups`, `recorder`, `save-run`, `level-entry`, `step`): ~200 errors, nearly all one wrong guess of the JSDoc script's (`rnd(a, b)`); the rest noise, fixed by types (`Bullet`'s optional part, `hit` a `Set`, `Pickup.cool`, `Devil.snd`, `SavedLevel`, `Uint8ClampedArray<ArrayBuffer>`), 4 `@ts-expect-error` (recWrap's rows, the replay's stand-in fire). `index.html` unchanged. 0 bugs, 1 `any` (`World.sconces`). | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 4, P4.3 game (4) | `render/` checked (7 files): 8 errors, noise (`G.aimPath` is flat numbers, `Player.aim.vis`, `drawTorch`'s embers as `Particle`s; one `@ts-expect-error` for a `[width, colour]` row union). `index.html` unchanged. 0 bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 4, P4.3 game (5) | `game/creatures/` checked (5 files): 3 errors, one the logged Stendari bug (`bombBurst`, a one-line `@ts-expect-error`), two a wrong guess (`unstick`'s `home` is a flag). `ACTS` typed with `ActHooks`; `Enemy.roam`/`path`/`jobO` and `Coin`/`Silk`/`Ghost`/`Field`'s index signatures narrowed away. **game/ done.** `index.html` unchanged. 0 new bugs, 0 `any`s (9 left in the game section, listed under P4.3). | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.3 ui | `ui/` checked (8 files): 9 errors, noise (the jelly preview's stand-in creature: `jellyStep` takes what it reads; `closest()` results typed `HTMLElement` on their `const`s; 3 `@ts-expect-error`). Props typed on every component; `StickState`/`Prompt` index signatures and the legacy confirm hooks narrowed. **P4.3 done** for every folder. `index.html` unchanged. 0 bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
