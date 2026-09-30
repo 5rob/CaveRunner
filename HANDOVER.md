@@ -7,16 +7,32 @@ it's stale.
 
 ## Where things stand
 
-- **Refactor in progress on the `refactor` branch.** The code now lives in modules under
-  `src/`, bundled by esbuild into the same `index.html`. Phase 0 and Phase 1 are done and
-  released as v97 (merged to `main`). Phase 2 (the UI into `src/ui/`, `Game` into
-  `src/game/Game.js`) is done on `refactor`, **not merged** — the owner play-tests it first
-  (`node tools/build.js --watch` + `node serve.js`), then it goes to `main` with a version bump
-  (v98). Next after that: Phase 3 (taking `Game` apart); REFACTOR.md has notes on what the
-  code looks like for it and why the Phase 1–2 tools (`move.js`, `same.js`) don't fit it.
-  **`REFACTOR.md` is the tracker** — its Status table, **How a move goes** recipe and session
-  log say exactly where things are. The feature freeze lifted with v97.
-- **On-disk version: v97** (v97 = the refactor's Phase 1; plays the same as v96). Working on `main` (**release channel is `main`** — CI there
+- **Refactor in progress on the `refactor` branch.** The code lives in modules under `src/`,
+  bundled by esbuild into the same `index.html`. Phases 0–1 released as v97, Phase 2 (UI into
+  `src/ui/`, `Game` into `src/game/Game.js`) as v98, **Phase 3 (Game taken apart) as v99**
+  (2026-09-30, owner play-tested it: "plays great"). **Next: Phase 4** (TypeScript, gradually;
+  REFACTOR.md). What Phase 3 did: P3.1 (the Game map), P3.2 (the level's state is one world object `W`,
+  `src/game/world.js`) and P3.3 (`window.__lvl` = `W` via `src/game/testhook.js`) are done, and
+  P3.4 (systems out of `Game` into `src/game/systems/`) is done: terrain (queries and
+  changes, `explode`), particles, `hurt`, `damageEnemy`, the fire, the ambience, the props
+  (`decorStep`), shot looks, lightning, the rats' Game side, the fog queries, casting
+  (`gun.js`/`fields.js`/`bullets.js`), `saveRun`, `natural`, `torchHand`, `plantGlow`, the
+  death replay's recorder and player (`recorder.js`) and `enterLevel` are out (shape:
+  REFACTOR.md D16, the `G` context; cycles: D17), and `step()`/`draw()` have moved out whole
+  (`src/game/systems/step.js`, `src/game/render/draw.js`, ~1,100 lines each). `Game.js` is 186
+  lines of setup and the loop. step() is split into parts (P3.4 (25)–(33): a frame object `F`, REFACTOR.md
+  D18, and 21 calls, each part in its system; `node tools/part.js` does a cut), and so is draw() (P3.4 (34)–(43): its own `F`, D19, and 29 calls,
+  the parts in six `src/game/render/` modules by theme). P3.5 (creature plugins) is done: each act's part
+  of the enemy loop is hooks in `ACTS` (`src/game/creatures/`, REFACTOR.md D20); knob tables stayed in
+  `dev/knobs.js`, and bullet looks stayed as they are (no table: see REFACTOR.md's P3.5 notes). P3.6 done:
+  Game.js is 186 lines (making the world, the loop, the React bridge). Last green full
+  suite: the end-of-P3.5 checkpoint. After P3.5 the owner's Dev settings became the defaults (zoom, torch, aggro, spider/jelly/rat/fire ranges: REFACTOR.md session log), so v99 plays differently from v98 (on purpose) and the probe's baseline is that commit (7c96c5e) or later. The proof for each Phase 3 step
+  is `node tests/determinism.js` (same scripted run on HEAD and this tree, frame by frame).
+  `node tools/system.js <file> name…` does a P3.4 move (`--dry` first), and
+  `node tools/gamemap.js fn…` says what a function still in `Game` needs.
+  **`REFACTOR.md` is the tracker** — its Status table, Game map and session log say exactly
+  where things are.
+- **On-disk version: v99** (v97/v98/v99 = the refactor's Phases 1/2/3; v97/v98 play the same as v96, v99 carries the owner's new Dev defaults). Working on `main` (**release channel is `main`** — CI there
   deploys Pages + builds the APK). Recent: v50 big batch, v51–v53 Buzzsaw melee rework, v54
   Matter Eater fix + softer fog + aim crosshair, v55 crosshair "+" + gun-stat rings (see
   **What shipped recently**). After a push, confirm CI green and that
@@ -308,7 +324,7 @@ Talk briefly, iterate fast, don't over-plan. Every change works at phone width w
   re-run the single suite to confirm; all are enemy-geometry / random-seed sensitive, not
   regressions): `everymod` (telecast), `trigger` (double trigger), and `compare` (a
   found gun that happens not to differ in regen, so "less regen is red" finds nothing —
-  seen once during the v47 run, green on its own), and `fog` "the next floor is dark again" (~1 in 4-5 runs a new floor spawns with a few cave cells already visible up the shaft; also fails on v56 code, seed-dependent), and `lightning` "a fork hits a creature off to the side" (~1 in 5-8: the fork roll is random and the target bobs near the edge of its 90 reach; seen v78/v79, fails with any creature, not a spider bug). And `jelly` (browser) "hunting with a clear line, it spits at you" (~1 in 3, same on v87 code — the sandbox jelly sometimes never lines up a shot; in the refactor sessions it passed only ~1 in 3 even alone, on v96 as well). Also seen during the refactor, each passing alone: `sound` portalOut, `torch` ("falls off into the dark", "brighter frames… taller flame"), `fog` "flying on reveals more", `decor` "a vine holds you where you grabbed it", `rats`, `save`, `archvine` — REFACTOR.md "Found along the way" has the list.
+  seen once during the v47 run, green on its own), and `fog` "the next floor is dark again" (~1 in 4-5 runs a new floor spawns with a few cave cells already visible up the shaft; also fails on v56 code, seed-dependent), and `lightning` "a fork hits a creature off to the side" (~1 in 5-8: the fork roll is random and the target bobs near the edge of its 90 reach; seen v78/v79, fails with any creature, not a spider bug). And `jelly` (browser) "hunting with a clear line, it spits at you" (~1 in 3, same on v87 code — the sandbox jelly sometimes never lines up a shot; in the refactor sessions it passed only ~1 in 3 even alone, on v96 as well). Also seen during the refactor, each passing alone: `sound` portalOut, `torch` ("falls off into the dark", "brighter frames… taller flame"), `fog` "flying on reveals more", `decor` "a vine holds you where you grabbed it", `rats`, `save`, `archvine`, `jelly` "saturation 0 greys it out" (the Dev panel preview; once, at the P3.4 checkpoint), `trigger` "a trigger carrying an explosion blows it up where it hits" (often: 6 of 13 alone at P3.4 step 13, 1 of 4 on the commit before; wall-clock waits) — REFACTOR.md "Found along the way" has the list.
 
 ## Testing on the phone over WiFi
 

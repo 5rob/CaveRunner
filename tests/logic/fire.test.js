@@ -36,6 +36,9 @@ const run = (F, secs, out) => { for (let t = 0; t < secs; t += 1 / 60) G.fireSte
   ok('the salt flats have nothing to burn', saltFuel === 0, saltFuel);
 }
 
+// The mechanics below were written for these fire knobs (the defaults are the owner's to move).
+Object.assign(G.DEV, { fireSpreadLo: 0.45, fireSpreadHi: 0.6 });
+
 // ---- a strip of grass burns end to end, and the fire dies when it runs out ----
 {
   const fuel = new Uint8Array(CW * CH);

@@ -10,6 +10,8 @@ const { ratStep, ratFooting, ratSpread, navField, navWay, pathAt, pathLen, RAT, 
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
 const mkRnd = s => () => ((s = (s * 16807) % 2147483647) / 2147483647);
+// pins the knobs a hand-made check was written for (the defaults are the owner's to move); returns the undo
+const pin = o => { const was = {}; for (const k in o) { was[k] = DEV[k]; DEV[k] = o[k]; } return () => Object.assign(DEV, was); };
 
 // ---- the table ----
 check('Rotta is a rat, and a hunter', CREATURES.rotta.act === 'rat' && CREATURES.rotta.kp === 'ra' && HUNTERS.rat === 1);
@@ -139,7 +141,8 @@ function run(g, e, secs, env, watch) {
   run(g, e, 4, { goal: { x: 320, y: 117 } }, e => { if (inRock(g, e.x, e.y)) inside++; });
   check('a ledge by a wall: it runs up the wall onto it', e.y < 125 && e.x > 290, { x: e.x, y: e.y });
   check('still never inside the rock', inside === 0, inside);
-  // a slab floating in the air, nothing to climb: it jumps
+  // a slab floating in the air, nothing to climb: it jumps (at the jump it was written for)
+  const unpin = pin({ raJumpLo: 260, raJumpHi: 330, raJumpRLo: 70, raJumpRHi: 110 });
   const f = grid(200, 100, (x, y) => y >= 80 || (x >= 140 && x < 180 && y >= 56 && y < 60));
   const j = rat(370, 150);
   run(f, j, 0.5, { goal: { x: 420, y: 157 } });
@@ -147,6 +150,7 @@ function run(g, e, secs, env, watch) {
   check('something up off the floor and near: it jumps for it', evs.includes('jump'), evs.slice(0, 6));
   check('and lands on it', Math.abs(j.y - (112 - RAT.hold)) < 2 && j.x > 280 && j.x < 360, { x: j.x, y: j.y });
   check('never inside the rock', inside === 0, inside);
+  unpin();
   // roaming it doesn't jump
   const r2 = rat(60, 150), ev2 = run(g, r2, 4, { goal: { x: 90, y: 110 }, hunting: false, jump: false });
   check('roaming, it only runs', !ev2.includes('jump'));
@@ -200,7 +204,8 @@ function run(g, e, secs, env, watch) {
   check('a crack thinner than a rat is not a way', navWay(Fc, 120, 155, 1) === null);
 }
 {
-  // it runs flat out with a job on: no rests on a long stretch of floor
+  // it runs flat out with a job on: no rests on a long stretch of floor (at the chase rests it was written for)
+  const unpin = pin({ raHuntOnLo: 0.35, raHuntOnHi: 0.7, raHuntOffLo: 0, raHuntOffHi: 0.03 });
   const g = grid(400, 100, (x, y) => y >= 80);
   const e = rat(40, 156.5);
   ratStep(e, { solidCell: g.solidCell, rnd: mkRnd(5), goal: { x: 700, y: 156 }, hunting: true }, 1 / 60);
@@ -211,6 +216,7 @@ function run(g, e, secs, env, watch) {
     if (Math.abs(e.x - x0) < 0.01) still++;
   }
   check('with a job on it barely stops (a frame to pick its way, no rests)', still <= 6, still);
+  unpin();
 }
 
 // ---- v95: no walking on air, webs are ground, and loose rats spread out ----

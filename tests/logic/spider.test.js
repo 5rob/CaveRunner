@@ -10,6 +10,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
 // a seeded rnd so a failure repeats
 const mkRnd = s => () => ((s = (s * 16807) % 2147483647) / 2147483647);
+// pins the knobs a check was written for (the defaults are the owner's to move); returns the undo
+const pin = o => { const was = {}; for (const k in o) { was[k] = DEV[k]; DEV[k] = o[k]; } return () => Object.assign(DEV, was); };
 
 // grid helper: W x H cells, fill(cx, cy) says what's rock
 function grid(W, H, fill) {
@@ -89,7 +91,8 @@ check('every spider knob is a min/max pair', SP_KNOBS.every(([k]) => knobs.some(
   });
   check('roaming, it rests more than it moves', still > moving * 2, { moving, still });
   check('but when it moves it is fast', top > 150, Math.round(top));
-  // hunting: rests are short
+  // hunting: rests are short (at the hunting bursts and rests it was written for)
+  const unpin = pin({ spHuntOnLo: 0.3, spHuntOnHi: 0.55, spHuntOffLo: 0.05, spHuntOffHi: 0.18 });
   const e2 = spider(100, 80);
   let m2 = 0, s2 = 0; lx = e2.x; ly = e2.y;
   run(g, e2, 10, { reach: 20, hunting: true, goalFn: t => ({ x: 40 + 320 * Math.abs(Math.sin(t * 5)), y: 80 }) }, e => {
@@ -98,6 +101,7 @@ check('every spider knob is a min/max pair', SP_KNOBS.every(([k]) => knobs.some(
     if (d > 0.01) m2++; else s2++;
   });
   check('hunting, it moves more than it rests', m2 > s2, { m2, s2 });
+  unpin();
 }
 
 // ---- it slides over a bumpy, pixel-stepped floor without snagging ----
@@ -193,6 +197,8 @@ check('every spider knob is a min/max pair', SP_KNOBS.every(([k]) => knobs.some(
 
 // ---- the real floor 1: every spider on it gets about, roaming on its own ----
 {
+  // (at the roaming rests it was written for: with rests up to 6s a live spider can cover < 40 in 35s)
+  const unpin = pin({ spRoamOffHi: 2 });
   let still = 0, total = 0;
   for (const seed of [11, 222, 3333]) {
     const lv = makeLevel(seed, 1, []);
@@ -208,6 +214,7 @@ check('every spider knob is a min/max pair', SP_KNOBS.every(([k]) => knobs.some(
     total += sp.length; still += path.filter(p => p < 40).length;
   }
   check('on real floor-1 caves, every roaming spider moves about (40s each)', still === 0 && total > 10, { still, total });
+  unpin();
 }
 
 if (fails) { console.log(`\n${fails} failed`); process.exit(1); }

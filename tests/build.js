@@ -2,69 +2,18 @@
 // tests never depend on the network, and two hooks the browser suites drive it through.
 //
 //   window.__in   the App's input ref: loadout, guns, bag, prompt, found, keys, sticks
-//   window.__lvl  the live level: player, enemies, bullets, fields, beams, pickups,
-//                 stock, roster, theme; rec / rt: the death replay's recorder and player
+//   window.__lvl  the live level: the world object W itself (player, enemies, bullets, fields,
+//                 beams, pickups, stock, roster, theme; rec / rt: the death replay's recorder
+//                 and player), plus sandbox() and placeProp(). Game makes it only when the
+//                 page sets window.__TEST, which this does: see src/game/testhook.js.
 //
-//   __lvl.sandbox(o)     wipes a box of the live level into a clean test room: open air, a
-//                        flat floor, nothing else (no enemies, props, loot, shots), fog
-//                        lifted, the player standing on the floor. Returns { x, y, l, r }:
-//                        the centre x, the floor's top y, and the room's left/right edges.
-//                        o: { w, h } room size in world units (default 300 x 200);
-//                        o.roof: a solid brick roof over the room (something to hang things off).
-//   __lvl.placeProp(pr, x, y)  a copy of prop `pr` (take one off a real floor so its shape
-//                        is honest) set down at (x, y), anchored to the cell below; returns it.
-//   See "Test mechanics in a sandbox" in CLAUDE.md for when to use these.
-//
-// Nothing here changes game logic. If a test needs to reach something new, add it to the
-// __lvl object below rather than reaching into the game from the test.
+// Nothing here changes game logic. If a test needs to reach something new, add it to
+// src/game/testhook.js rather than reaching into the game from the test.
 const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(__dirname, 'build');
-
-// A clean test room carved into the live level, far from the exit portal and above the shop.
-const SANDBOX =
-  "    const __sandbox = o => { o = o || {};" +
-  "      const w = o.w || 300, h = o.h || 200;" +
-  "      const cx = Math.round((portal.x + portal.w / 2 < WW / 2 ? WW * 0.72 : WW * 0.28) / CELL) * CELL;" +
-  "      const fy = (SHOP_TOP - SHOP_ROOF) * CELL - 160;   /* SHOP_* are cell rows */" +
-  "      const x0 = Math.max(2, Math.floor((cx - w / 2) / CELL)), x1 = Math.min(CW - 3, Math.ceil((cx + w / 2) / CELL));" +
-  "      const y0 = Math.max(2, Math.floor((fy - h) / CELL)), fr = fy / CELL, y1 = Math.min(CH - 3, fr + 6);" +
-  "      const d = img.data, dd = dimg.data;" +
-  "      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {" +
-  "        const i = y * CW + x, k = i * 4;" +
-  "        dd[k + 3] = 0; if (ore) ore[i] = 0; fire.fuel[i] = 0; fire.t[i] = 0;" +
-  "        if (y < fr) { mat[i] = 0; d[k + 3] = 0; }" +
-  "        else { mat[i] = BRICK; d[k] = 132; d[k + 1] = 99; d[k + 2] = 71; d[k + 3] = 255; } }" +
-  "      if (o.roof) for (let y = Math.max(0, y0 - 6); y < y0; y++) for (let x = x0; x <= x1; x++) {" +
-  "        const i = y * CW + x, k = i * 4; mat[i] = BRICK; d[k] = 132; d[k + 1] = 99; d[k + 2] = 71; d[k + 3] = 255; dd[k + 3] = 0; }" +
-  "      tctx.putImageData(img, 0, 0, x0, Math.max(0, y0 - 6), x1 - x0 + 1, y1 - y0 + 7);" +
-  "      dctx.putImageData(dimg, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);" +
-  "      enemies.length = 0; props.length = 0; pickups.length = 0; bullets.length = 0;" +
-  "      enemyShots.length = 0; webs.length = 0; silk.length = 0; strings.length = 0; fields.length = 0; dparts.length = 0; amb.length = 0;" +
-  "      for (let y = Math.floor(y0 * CELL / FOG_U); y <= Math.floor(y1 * CELL / FOG_U); y++)" +
-  "        for (let x = Math.floor(x0 * CELL / FOG_U); x <= Math.floor(x1 * CELL / FOG_U); x++) seen[y * FW + x] = 2;" +
-  "      paintFog();" +
-  "      p.x = cx - PW / 2; p.y = fy - PH - 0.5; p.vx = 0; p.vy = 0; p.hp = 9999; p.dead = false;" +
-  "      return { x: cx, y: fy, l: x0 * CELL, r: x1 * CELL }; };\n" +
-  "    const __placeProp = (pr, x, y) => { const q = Object.assign({}, pr, { x, y, gone: false, fall: false, vy: 0," +
-  "      anc: [Math.floor(x / CELL), Math.floor(y / CELL)] }); props.push(q); return q; };\n";
-
-const HOOK_LVL = SANDBOX +
-  "    window.__lvl = { sandbox: __sandbox, placeProp: __placeProp, get pickups(){return pickups}, get enemies(){return enemies}, " +
-  "bullets, p, get mat(){return mat}, get stock(){return stock}, coins, get floor(){return floor}, get seed(){return levelSeed}, hurt, get bhLoops(){return bhLoops}, " +
-  "get rooms(){return rooms}, get pb(){return pb}, maxHp, " +
-  "get roster(){return roster}, get theme(){return themeName}, " +
-  "get arrival(){return arrival}, get start(){return start}, get portal(){return portal}, " +
-  "enemyShots, sparks, webs, silk, strings, fields, beams, arcs, flashes, dig, explode, get ore(){return ore}, motes, smoke, get sconces(){return sconces}, get props(){return props}, dparts, amb, clouds, rings, get zfx(){return zfx}, " +
-  "get rec(){return REC}, get rt(){return RT}, recSample, " +
-  "get fire(){return fire}, get burrow(){return burrow}, ignite, setAlight, youAlight, get dimg(){return dimg}, get zone(){return zone}, " +
-  "world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y }, " +
-  "fog: { get seen(){return seen}, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal, paint: paintFog }, " +
-  "light: { get flick(){return flick}, get r(){return torchR}, " +
-  "  get cam(){return { x: camX, y: camY }}, get s(){return unitPx * (window.devicePixelRatio || 1)}, " +
-  "  get embers(){return torchP.length}, get vis(){return visPts}, visPoly, losClear } };\n";
 
 function build() {
   let s = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
@@ -99,9 +48,10 @@ function build() {
     '../lib/react.production.min.js');
   swap('https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js',
     '../lib/react-dom.production.min.js');
-  // anchors as esbuild prints them (tools/build.js bundles src/), without the indent so a
-  // change of nesting depth doesn't lose them
-  swap('const toast = (text) => {', HOOK_LVL + 'const toast = (text) => {');
+  // the flag that makes Game hand its world to the suites as window.__lvl (src/game/testhook.js)
+  swap("<script>const VERSION = '", "<script>window.__TEST = true;</script>\n<script>const VERSION = '");
+  // an anchor as esbuild prints it (tools/build.js bundles src/), without the indent so a
+  // change of nesting depth doesn't lose it
   swap('const [size, setSize] = useState(150);',
     'window.__in = input;\n  const [size, setSize] = useState(150);');
   exposeGlobals();

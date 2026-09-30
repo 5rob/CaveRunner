@@ -8,8 +8,10 @@ the code is in modules under `src/`) with esbuild (`npm install` once) and glues
 you. `index.html` stays committed: CI, Pages, the APK and `serve.js` all read it. Commit
 it together with the `src/` change.
 
-**Refactor planned / in progress:** splitting the file into modules under `src/`. The plan,
-rules and progress tracker are in **`REFACTOR.md`** — read it before touching code structure.
+**Refactor in progress** (Phase 3 on the `refactor` branch: taking `Game` apart into
+`src/game/systems/`). The plan, rules and progress tracker are in **`REFACTOR.md`** — read it
+before touching code structure. Its tools: `tools/system.js` (moves Game functions into a
+system), `tools/gamemap.js` (what a Game function needs), `tests/determinism.js` (the proof).
 
 ## How the owner likes to work
 
@@ -73,7 +75,7 @@ GitHub public API needs no token, so check it: `.../actions/runs?per_page=5` for
 for the error text (job *logs* need auth, step names + annotations don't). When green,
 `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN`.
 
-Current version: **v98**. Branch: `main` (release channel is `main`). The refactor works on
+Current version: **v99**. Branch: `main` (release channel is `main`). The refactor works on
 `refactor` and merges to `main` at the end of each phase (REFACTOR.md).
 
 ### The version number is not optional
@@ -164,7 +166,12 @@ just the entry the build bundles (it mounts `App`). Where things are:
 | sound | `src/audio/recipes.js` (pure: `SPELL_VOICE`, `shotSound`, `creatureSound`, `FX_VOL`, `rustleStep`), `src/audio/sfx.js` (the `SFX` engine) |
 | autosave | `src/save/save.js`: `readSave`, `cleanLoadout`, `cleanGun`, `loadSave`, `clearSave` |
 | death replay (pure part) | `src/replay/replay.js`: `RP_*`, `rpClone`, `rpLerp`, `rpFrame`, `rpCut`/`rpPaste`/`rpMerge` |
-| `Game` | `src/game/Game.js`: the canvas component: `step(dt)`, `draw()`, `cast()`, bullets, fields (with `sputterStep`, `SPUTTER_FUEL`, `NO_INPUT` above it). It has its own `h`/`useRef`/`useEffect` lines off the global React (layer 5 can't import `ui/`), so esbuild prints them as `h2`/`useRef2`/`useEffect2` in `index.html` |
+| `W` / `makeWorld` | `src/game/world.js`: the live level's state as one object (`Game` makes it once; what stays out of it is listed under P3.2 in REFACTOR.md) |
+| `testHook` | `src/game/testhook.js`: `window.__lvl` for the browser suites (= `W` + `sandbox`, `placeProp` and old names), only when `window.__TEST` is set |
+| `Game` | `src/game/Game.js`: the canvas component: makes `W` and `G`, the listeners, the loop (`step` is in `systems/step.js`, `draw` in `render/draw.js`). It has its own `h`/`useRef`/`useEffect` lines off the global React (layer 5 can't import `ui/`), so esbuild prints them as `h2`/`useRef2`/`useEffect2` in `index.html` |
+| game systems | `src/game/systems/` (P3.4, REFACTOR.md D16): Game's parts as plain functions taking `(W, G, …)` / `(W, …)`. `terrain.js`: `solidCell`, `solidAt`, `boxHit`, `lineOfSight`, `enemyAt`, `dig`, `unDeco`, `dropOre`, `paint`, `explode`; `particles.js`: `burst`, `goo`, `splat`, `toast`, `stepToasts`, `stepParticles` (smoke, sparks, flashes), `stepMotes`; `pickups.js`: `stepPickups` (a part of step: pickups' cooldowns, gold, the card that shows, the interact tap); `player.js`: `refreshBag`, `maxHp`, `hurt`, `torchHand`, `sputterStep`/`SPUTTER_FUEL` (the jetpack's cough), `NO_INPUT`, `movePlayer` (a part of step: the stick, jetpack, steering, the move against the terrain, footsteps), `stepTorch` (a part of step: flicker, flame, lean); `enemies.js`: `stepEnemies` (a part of step: the enemy loop's shared part, each act's own through `ACTS` (the creatures' Game side row), Contact Damage, their shots, each act's once-a-frame `frame`), `damageEnemy`, `fireEnemyShot`; `fire.js`: `fireFrame`, `stepTrail` (a part of step: Levitation Trail), `ignite`, `fireBlast`, `setAlight`, `youAlight`, `fireOut`/`flushFire`, catching plants/arches/webs; `props.js`: `decorStep` (with `pOver`, `alertAt`, `shatter`, `popLamp`, `landProp`, `spawnDrip`, `MATERIAL`, `DRIP_RATE`), `blowProp`; `webs.js`: `webNear`, `webDist`; `ambience.js`: `spore`, `puffSpores`, `stepAmbience`, `AMB_RATE`/`AMB_MAX`; `shotlooks.js`: `shotTrail`, `shotBounce`, `shotDeath`, `shotGrind`, `glowDot`, `rnd`; `lightning.js`: `jag`, `addArc`, `lightningStep`; `fog.js`: `fogLit`, `roomSeen`, `seenAt`, `paintFog`; `gun.js`: `cast`, `spawnShot`, `releaseAt`, `firePayload`, `aimAndCast` (a part of step: aim, facing, gun clocks, the trigger); `fields.js`: `castField`, `fireBeam`, `throwEmbers`, `fieldPayload`, `stepFields` (a part of step: every field at work, beams fading); `bullets.js`: `stepBullets` (a part of step: the bullet loop), `critRoll`, `shove`, `spray`, `explodeCross`, `teleportTo`; `save-run.js`: `saveRun`; `plantglow.js`: `plantGlow`; `recorder.js`: `recWrap` (the putImageData wrapper), `recReset`, `recSample`, `recFrame`, `rpTerrain`, `drawReplay` (draws through `render/draw.js`'s `draw`), `idOf`; `level-entry.js`: `enterLevel`; `step.js`: `step(W, G, dt)`, one frame of the simulation: it makes the frame object `F` (`dt`, `LO`, `MHP`, `pcx`/`pcy`, D18) and calls its parts in order, `stepRequests` (true = frame over), `stepPerks`, `movePlayer` (player.js), `atPortal` (fills `pcx`/`pcy`; true = frame over), `aimAndCast` (gun.js), `stepBullets` (bullets.js), `stepSound`, `stepFields` (fields.js), `stepPickups` (pickups.js), `stepToasts` (particles.js), `decorStep` (props.js), `stepEnemies` (enemies.js), `stepGhost`, `fireFrame` (fire.js), `stepTrail` (fire.js), `stepParticles` (particles.js), `W.best`, `stepTorch` (player.js), `stepMotes` (particles.js). Each part takes `(W, G, F)` (only what it uses) and reads its fields with `const { … } = F;` (REFACTOR.md P3.4). `G` (made in `Game`): `input`, the canvases/contexts, `REC`/`RT`, `RP_ARR`/`rid`/`ridN`, `RPV` (the replay view draw() reads), `fireBox`, `ratOnWeb`, `mouse`, `aimPath`, the plant glow's scratch (`pgArt`, `pgC`/`pgCtx`, `pgGlow`/`pgGlowCtx`) |
+| render | `src/game/render/` (layer 5, like `systems/`; REFACTOR.md D19). `draw.js`: `draw(W, G)`, one frame of the picture: it makes the frame object `F` (`dpr`, `playPx`, `vw`/`vh`, `pcx`/`pcy`, `TH`, `onView`, `held`, `ax`/`ay`, `gy`, `cw`) and calls its parts back to front, each `(W, G, F)` (only what it uses, fields read with `const { … } = F;`): `drawCamera` (in draw.js; fills the view and `pcx`/`pcy`, eases the camera), `drawTerrain`, `drawProps` (fills `TH`, `onView`), `drawPortal`, `drawSmoke`, `drawFields`, `drawSilk` (game/creatures/spider.js), `drawEnemies`, `drawShots`, `drawBeams`, `drawArrival`, `drawShop`, `drawLoot`, `drawRooms`, `drawTrail`, `drawSparks`, `drawMotes`, `drawFlashes`, `drawJetFlame`, `drawAim` (fills `held`, `ax`/`ay`, `gy`), `drawPlayer`, `drawFog`, `drawGlows`, then `if (G.RPV) return;` (a replay has no HUD), `drawHud` (fills `cw`), `drawRadar`, `drawMessages`, `drawReticule`, `drawMap`. draw is not only a picture (it writes the fog memory in `drawFog`, the camera in `drawCamera`, and draws from the sim's `Math.random` in the looks, the jet flame and the beams), so its order is fixed. `cave.js`: `drawTerrain` (background, shop wall, rock, burning pixels), `drawProps` (props, drips, ambience), `drawPortal`, `drawArrival`, `drawShop`, `drawLoot` (gold, guns, mods), `drawRooms`. `effects.js`: `drawSmoke`, `drawTrail`, `drawSparks`, `drawMotes`, `drawFlashes`. `actors.js`: `drawEnemies`, `drawJetFlame`, `drawAim` (the Trajectory Sight line), `drawPlayer` (runner, gun, torch, crosshair, shield, ghost). `looks.js`: `drawFields`, `drawShots`, `drawBeams`, and the looks `drawLook` (a shot's own sprite), `drawFieldLook`, `drawBolt` (a lightning line). `light.js`: `drawFog` (line of sight, `fogReveal`, the fog overlay baked and blurred), `drawGlows` (every light over the fog, `fogLit`-gated, then the sconces). `overlay.js` (screen space): `drawHud` (the version, `input.current.hud` for the sticks), `drawRadar`, `drawMessages`, `drawReticule`, `drawMap` |
+| creatures' Game side | `src/game/creatures/` (layer 5, P3.5, REFACTOR.md D20): each creature's part of the enemy loop, as hooks `stepEnemies`/`damageEnemy` (systems/enemies.js) call by `e.k.act` where the old inline branch sat. `acts.js`: `ACTS` (act → `{ pre, move, contact, fire, die, frame }`, each optional, one line per act; an act not in it gets `chase`'s); `rat.js`: the rats' and nests' whole Game side: `ratFrame`, `spawnRat`, `navFor`, `unstick`, `ratSolid`, `onWebIn`, and the hooks `ratMove`, `nestMove` (lets rats out; both true = its whole frame), `nestDie` (the gold shower); `spider.js`: `spiderMove` (the crawl, the string shot), `spiderFrame` (once a frame: silk in flight, strings on you, web lines whose rock is gone), `drawSilk` (a part of draw); `jelly.js`: `jellyMove` (the swim, the tentacles' sting, the spit), `natural` (where a jelly may swim); `classic.js` (the acts the not-yet-reworked creatures share, whatever their body): `classicMove` (hunt or patrol: chase, bomb, shoot), `bombFuse` (pre), `bombBurst` (contact), `gunFire` (fire: shoot, turret; a turret has no move). The pure brains and sprites stay in `src/creatures/`. Hooks are function declarations (safe inside the import cycle) taking `(W, G, e, C)`, `C` = `stepEnemies`' per-enemy object (`dt`, `pcx`, `pcy`, `i`, `dx`, `dy`, `dist`, `sees`, `hunting`) |
 | `h` and hooks | `src/ui/h.js`: `h` (`React.createElement`), `useRef`/`useEffect`/`useState`/`useMemo` off the global React |
 | HUD | `src/ui/hud.js`: `Stick` (thumbsticks + gauge rings), `RKey`, `GAUGE_R`/`GAUGE_C`/`GAUGE_COL`, `healthCol`, `holdPress`, `deckLayout`, `fmtGold` |
 | Detail cards | `src/ui/cards.js`: `GunCard`, `ModCard`, `PerkCard`, `GUN_STATS` |
@@ -182,6 +189,10 @@ function, make it one. (The version notes below were written when everything was
 "pure, above `makeLevel`" there now means "in its module under `src/`" — the table says which.)
 
 ## Things worth knowing before you change anything
+
+**The notes below name Game's state by its old loose names** (`mat`, `seen`, `zfx`, `enemies`,
+`p`, `camY`, `fire`…). Since P3.2 each one is a property of the world object: `W.mat`, `W.seen`,
+`W.zfx`… (`src/game/world.js` lists them all). The notes move next to the code in Phase 5.
 
 **`planCast(g, others)` mutates `g.idx`.** It walks the slot list from wherever the gun
 left off. Callers that only want to look (previews, the advisor, `castGroups`) pass a
@@ -233,6 +244,14 @@ stats, and `e.k.act` decides how it moves and fights: `shoot`, `turret`, `chase`
 `dmg`, `col` and `size` — there is no global enemy damage constant any more. The enemy
 loop runs backwards because a bomber splices itself out mid-loop. If you add a creature,
 give it all of those fields and a body that already has a sprite.
+**Since P3.5 (REFACTOR.md D20) what each act does is its hooks in `ACTS`** (`src/game/creatures/acts.js`):
+`stepEnemies` runs the shared part (timers, aggro, the hover, the contact bite) and calls the act's
+`pre`, `move`, `contact`, `fire` where they belong, `frame` once a frame, and `damageEnemy` its `die`.
+Act and body are separate: the classic acts are shared by several creatures and bodies. **Adding a
+creature:** its pure brain and sprite in `src/creatures/<name>.js` (plus a `drawEnemy` line for its body),
+its Game side in `src/game/creatures/<name>.js` (hooks as `function` declarations taking `(W, G, e, C)`,
+reading `C` with `const { … } = C;`), one line in `ACTS`, its `CREATURES` entry (and `HUNTERS` if it hunts),
+and its knob table in `dev/knobs.js` (D11: they can't move next to the creature yet).
 
 **Aggro is line-of-sight to acquire, then sticky (v50).** A `chase`/`bomb` enemy carries
 `e.aggro`. It *acquires* aggro only within `reach = k.aggro * sees * DEV.aggro` **and** with
@@ -465,7 +484,7 @@ pauses the run but leaves `draw()` running behind a light backdrop so the look-o
 preview live as you type. `DEV` is a plain mutable object the `Game` reads every frame —
 `DEV.zoom` (draw scale), `DEV.torch` (scales the effective `sight`, so reveal and lamp grow
 together), `DEV.fogDark`/`DEV.fogDim` (the two fog shades), `DEV.move` (a `WALK`/`JET`
-multiplier), `DEV.aggro` (v49, the enemy-aggro-*acquire*-distance multiplier),
+multiplier), `DEV.aggro` (v49, default 0.6, the enemy-aggro-*acquire*-distance multiplier),
 `DEV.loseAggro` (v50, default 2, the multiplier from acquire reach to the *drop* reach —
 see the aggro note above). `DEV_META` drives the rows; a blank field restores `DEV_DEFAULTS[k]`; `devSet`
 writes through to `localStorage` under `caverunner-dev`. Every localStorage touch is wrapped
@@ -479,7 +498,7 @@ value doesn't also steer the runner.
 **Unicode is stored raw** in `src/` (`·`, `—`, `×`, `Ω`), not as `\uXXXX`. Match the
 literal characters when editing with a script, or the edit silently finds nothing.
 
-**v56 visuals + Black Hole.** `motes` is one particle list with three kinds: `drift` (Black Hole trail), `in` (spawned round the exit `portal`, pulled to its centre with a sideways sine wobble, fade in from 0) and `out` (breathed out of `arrival`, wafting, fading to nothing by distance `fade`, then killed). Drawn additive. **Black Hole** (`b.pull`): reach is `DEV.bhPull * b.pull / 70` (v57), drag grows toward the centre and is capped so it never overshoots; it does not die on an enemy (`continue` in the hit block) and clears `b.hit` every 0.3s so it grinds; enemy shots within reach bend in and die at `size+6`. It draws its own look (haze + black starry core) and skips the streak. The hand torch flame is `drawFlame` — teardrops whose tip is `leanX/leanY`, a spring toward "opposite your velocity". Its halo and small second light, and the wall `sconces` (built in `enterLevel`: either side of both portals and each room prize), are drawn **after** the fog with `lighter`, so the map lighting is untouched; a sconce only shows once its cell is `seen`. Background parallax is `PARALLAX` (0.8) in `draw()`; the bg image gets big fbm shadow blotches in `makeLevel`. `tests/browser/blackhole.test.js` covers all of it. **v57:** the Black Hole digs only its drawn black core (`eat: 19`, and the draw uses `core = b.eat`, so they cannot drift apart). Two Dev knobs: `DEV.bhPull` (max pull range, default 154) and `DEV.bhSpeed` (travel speed, default 140 — applied as the multiplier `bhSp(sh)` at spawn *and* in the aim line, so speed mods still stack and the line stays honest). The Dev panel's **Copy all dev settings to clipboard** button (`.devcopy`) copies `devReport()` — the changed values with their DEV keys and old defaults. When the owner pastes that, set those numbers as the new `DEV_DEFAULTS`. If the clipboard is blocked (a WebView can refuse), it shows the text in a box to long-press and copy instead. `tests/logic/devsettings.test.js` covers it.
+**v56 visuals + Black Hole.** `motes` is one particle list with three kinds: `drift` (Black Hole trail), `in` (spawned round the exit `portal`, pulled to its centre with a sideways sine wobble, fade in from 0) and `out` (breathed out of `arrival`, wafting, fading to nothing by distance `fade`, then killed). Drawn additive. **Black Hole** (`b.pull`): reach is `DEV.bhPull * b.pull / 70` (v57), drag grows toward the centre and is capped so it never overshoots; it does not die on an enemy (`continue` in the hit block) and clears `b.hit` every 0.3s so it grinds; enemy shots within reach bend in and die at `size+6`. It draws its own look (haze + black starry core) and skips the streak. The hand torch flame is `drawFlame` — teardrops whose tip is `leanX/leanY`, a spring toward "opposite your velocity". Its halo and small second light, and the wall `sconces` (built in `enterLevel`: either side of both portals and each room prize), are drawn **after** the fog with `lighter`, so the map lighting is untouched; a sconce only shows once its cell is `seen`. Background parallax is `PARALLAX` (0.8) in `draw()`; the bg image gets big fbm shadow blotches in `makeLevel`. `tests/browser/blackhole.test.js` covers all of it. **v57:** the Black Hole digs only its drawn black core (`eat: 19`, and the draw uses `core = b.eat`, so they cannot drift apart). Two Dev knobs: `DEV.bhPull` (max pull range, default 65) and `DEV.bhSpeed` (travel speed, default 50 — applied as the multiplier `bhSp(sh)` at spawn *and* in the aim line, so speed mods still stack and the line stays honest). The Dev panel's **Copy all dev settings to clipboard** button (`.devcopy`) copies `devReport()` — the changed values with their DEV keys and old defaults. When the owner pastes that, set those numbers as the new `DEV_DEFAULTS`. If the clipboard is blocked (a WebView can refuse), it shows the text in a box to long-press and copy instead. `tests/logic/devsettings.test.js` covers it.
 
 **v58 level decoration: pass 2 (bakes) and pass 3 (props).** `DECOR` (one list of five per
 theme, indexed like `THEMES`) drives it; `decorate(mat, img, dimg, bgImg, floor, seed, keep)`
@@ -1001,6 +1020,7 @@ node tests/run.js           # everything
 node tests/run.js logic     # the fast ones, ~2.5 minutes (level-generating suites are most of it)
 node tests/run.js browser   # Chromium, ~12 minutes on this PC, runs one at a time
 node tests/run.js advice    # anything matching "advice"
+node tests/determinism.js   # refactor proof: same scripted run on HEAD's build and this tree's, frame by frame
 ```
 
 Every run first builds `index.html` and runs the **undefined-name check** (`eslint.config.js`: ESLint
@@ -1017,9 +1037,10 @@ caught most of the real bugs.
 **Browser suites** (`tests/browser/`) drive the real page in Chromium through
 `playwright-core`. `tests/build.js` makes `tests/build/test.html`: the game with React
 served from `tests/lib/` and two debug hooks, `window.__in` (the input ref — loadout,
-guns, bag, prompt) and `window.__lvl` (the live level — player, enemies, bullets, fields).
-If a suite needs to reach something new, add it to the hook in `build.js` rather than
-reaching into the game from the test. The bundle is one iife, so its top-level names aren't
+guns, bag, prompt) and `window.__lvl` (the live level: the world object `W` itself, made by
+`src/game/testhook.js` when the page sets `window.__TEST`, which only the test page does).
+If a suite needs to reach something new, add it in `testhook.js` rather than reaching into
+the game from the test. The bundle is one iife, so its top-level names aren't
 page globals by themselves; `build.js` copies every one onto `window` as the iife ends, which
 is why suites can still call `MODS`, `DEV`, `resetGun`, `makeLevel`… straight from
 `page.evaluate`.
@@ -1048,7 +1069,7 @@ not in a generated cave.** The owner asked for this after the mushroom and minec
 failing on cave layout (an overhang, a slope, rock in the way) rather than on the mechanic.
 Random terrain round the thing under test is noise; take it out.
 
-- `__lvl.sandbox()` (in `tests/build.js`) carves a clean room into the live level: open air, a
+- `__lvl.sandbox()` (in `src/game/testhook.js`) carves a clean room into the live level: open air, a
   flat brick floor, no enemies, props, loot or shots, fog lifted, the player standing on the
   floor. It returns `{ x, y, l, r }` — centre x, the floor's top y, the room's edges.
 - Put the test object at a known spot in it: `__lvl.placeProp(proto, x, room.y)` copies a real
@@ -1058,7 +1079,7 @@ Random terrain round the thing under test is noise; take it out.
   then act and measure the outcome. `decor.test.js`'s mushroom and minecart checks are the
   pattern to copy.
 - If a sandbox needs something new (a wall, a ceiling, a pit), add an option to `sandbox()` in
-  `build.js` rather than digging terrain by hand in the test.
+  `testhook.js` rather than digging terrain by hand in the test.
 - Still pin `DEV.zoom = 1` if the test reads the canvas, and still cap every wait.
 
 **Keep generated-level tests for what is about generation** — tunnels connecting, a floor's

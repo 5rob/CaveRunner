@@ -309,8 +309,8 @@ Sixteen of them, named after Noita's, and they do not all behave the same way:
   on the other side and running over it. The lines stay, so a spider's corner of the
   cave fills with web — and you can use them too: brush one and you grab it like a
   vine, hang there getting your fuel back, climb along it with the stick, and push
-  down to let go. Pushing through web slows you (×0.8 for each line you touch). Up close it bites; from range it shoots a string that sticks to
-  you — each one stuck on slows you (×0.8), until you pull far enough away to snap it.
+  down to let go. Pushing through web slows you (×0.7 for each line you touch). Up close it bites; from range it shoots a string that sticks to
+  you — each one stuck on slows you (×0.7), until you pull far enough away to snap it.
 - **The jellyfish** (Myrkkymeduusa) drifts through the open cave, glowing a poison
   green that lights the rock round it. It swims in pulses: a push along wherever its
   head points, then a long glide as it slows — tall and thin when it has just pushed,
