@@ -7,14 +7,20 @@ import { AIM_DEAD, AIM_RING, DEAD, KNOB } from '../core/consts.js';
 import { mixHex } from '../core/util.js';
 import { h, useEffect, useRef, useState } from './h.js';
 
-// Gold for the deck readout: a bare number under 1000, and thousands truncated (not
-// rounded) to one decimal with a "k" — 999 -> "999", 1234 -> "1.2k", 2000 -> "2k".
+// Gold for the deck readout: a bare number under 1000, and above that truncated (not rounded)
+// to one decimal with a k, M or B: 999 -> "999", 1234 -> "1.2k", 2000 -> "2k". Negative (a level
+// bought on credit) keeps its minus sign: -63999999960 -> "-63.9B".
 // Pure and above makeLevel so the logic suite can load it.
 /** @param {number} g @returns {string} */
 export function fmtGold(g) {
-  g = Math.max(0, Math.floor(g || 0));
-  if (g < 1000) return String(g);
-  return (Math.floor(g / 100) / 10).toString() + 'k';
+  g = Math.trunc(g || 0);
+  if (g < 0) return '-' + fmtGold(-g);
+  const units = ['B', 'M', 'k'];
+  for (let i = 0; i < 3; i++) {
+    const n = 10 ** (9 - i * 3);
+    if (g >= n) return (Math.floor(g / (n / 10)) / 10).toString() + units[i];
+  }
+  return String(g);
 }
 
 // Where the round deck buttons sit, in css px relative to the sticks row's top-left (the

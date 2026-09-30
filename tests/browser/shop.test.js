@@ -99,7 +99,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.tap('.done');
   await page.waitForTimeout(200);
 
-  // the portal drops you into the next floor's shop
+  // the portal drops you back in the shop, the level still up there (sell it at the machine)
   st = await page.evaluate(async () => {
     const LO = window.__in.current.loadout;
     LO.bag.push('homing');
@@ -108,13 +108,17 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     const pt = window.__lvl.portal;
     window.__lvl.p.x = pt.x; window.__lvl.p.y = pt.y;       // drop onto the portal
     await new Promise(r => setTimeout(r, 400));
-    return { before, floor: window.__lvl.floor, inShop: window.__in.current.inShop,
+    const back = { floor: window.__lvl.floor, inShop: window.__in.current.inShop, py: window.__lvl.p.y, has: window.__lvl.hasLvl };
+    window.__lvl.nextFloor();
+    await new Promise(r => setTimeout(r, 200));
+    return { before, back, floor: window.__lvl.floor, inShop: window.__in.current.inShop,
       shopY: window.__lvl.world.SHOP_Y,
       py: window.__lvl.p.y, bag: LO.bag.length, gold: LO.gold, hp: window.__lvl.p.hp,
       stock: window.__lvl.stock.filter(i => !i.sold).length, enemies: window.__lvl.enemies.length };
   });
-  check('portal advances the floor', st.floor === st.before.floor + 1, st);
-  check('you arrive in the new shop', st.inShop === true && st.py > st.shopY, st);
+  check('the portal takes you back to the shop', st.back.floor === st.before.floor && st.back.inShop && st.back.py > st.shopY && st.back.has, st.back);
+  check('the next floor', st.floor === st.before.floor + 1, st);
+  check('you are in the new shop', st.inShop === true && st.py > st.shopY, st);
   check('the new shop is fully stocked', st.stock === 5, st);
   check('the new floor has enemies', st.enemies > 0, st.enemies);
   check('you keep your mods and gold', st.bag === st.before.bag && st.gold === st.before.gold, st);

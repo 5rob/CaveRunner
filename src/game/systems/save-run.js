@@ -11,7 +11,7 @@ export function saveRun(W, G) {
   const pk = W.pickups.filter(q => !q.taken && (q.kind === 'mod' || q.kind === 'gun'))
     .map(q => (q.kind === 'mod' ? { kind: 'mod', id: q.id, x: q.x, y: q.y, t: q.t }
       : { kind: 'gun', gun: q.gun, x: q.x, y: q.y, t: q.t, old: !!q.old }));
-  const data = { ver: VERSION, floor: W.floor, hp: W.p.hp, loadout: G.input.current.loadout,
+  const data = { ver: VERSION, floor: W.floor, hasLvl: W.hasLvl, hp: W.p.hp, loadout: G.input.current.loadout,
     level: { seed: W.levelSeed, owned: W.levelOwned, alive: W.enemies.map(e => e.sid),
       sold: W.stock.map((it, i) => (it.sold ? i : -1)).filter(i => i >= 0),
       rooms: W.rooms.map((r, i) => (r.taken ? i : -1)).filter(i => i >= 0),

@@ -12,6 +12,8 @@
 //                        o.roof: a solid brick roof over the room (something to hang things off).
 //   __lvl.placeProp(pr, x, y)  a copy of prop `pr` (take one off a real floor so its shape
 //                        is honest) set down at (x, y), anchored to the cell below; returns it.
+//   __lvl.nextFloor()    straight on to the next floor's level, bought (the exit portal only takes
+//                        you back to the shop now: game/systems/vend.js sells and buys levels).
 //   See "Test mechanics in a sandbox" in CLAUDE.md for when to use these.
 //
 // Nothing here changes game logic. If a test needs to reach something new, add it here rather
@@ -25,10 +27,13 @@ import { fogReveal, losClear, visPoly } from '../world/vision.js';
 
 // g: what the suites reach that isn't world state: the two terrain canvases' contexts (the
 // recorder's wrapped ones), and Game's functions and recorder objects
-/** @typedef {{ tctx: CanvasRenderingContext2D, dctx: CanvasRenderingContext2D, paintFog: () => void, hurt: (n: number) => void, maxHp: () => number, dig: (x: number, y: number, R: number) => void, explode: (x: number, y: number, R: number, splash?: number, hot?: number) => void, recSample: () => void, ignite: (x: number, y: number, r: number, chance: number) => void, setAlight: (e: Enemy) => void, youAlight: () => void, REC: Recorder, RT: ReplayPlayer }} TestFns Game's functions and recorder objects, for the suites */
+/** @typedef {{ tctx: CanvasRenderingContext2D, dctx: CanvasRenderingContext2D, paintFog: () => void, hurt: (n: number) => void, maxHp: () => number, dig: (x: number, y: number, R: number) => void, explode: (x: number, y: number, R: number, splash?: number, hot?: number) => void, recSample: () => void, ignite: (x: number, y: number, r: number, chance: number) => void, nextFloor: () => void, setAlight: (e: Enemy) => void, youAlight: () => void, REC: Recorder, RT: ReplayPlayer }} TestFns Game's functions and recorder objects, for the suites */
 /** @param {World} W @param {TestFns} g */
 export function testHook(W, g) {
   const { tctx, dctx, paintFog } = g;
+  // the test page starts with the level already bought, so the suites have a cave to test (a run
+  // in the game starts with none: buy it in the shop). window.__TEST_VOID: start the game's way
+  if (!window.__TEST_VOID) W.hasLvl = true;
   // A clean test room carved into the live level, far from the exit portal and above the shop.
   const sandbox = o => {
     o = o || {};
@@ -65,7 +70,7 @@ export function testHook(W, g) {
   Object.assign(W, {
     sandbox, placeProp,
     hurt: g.hurt, maxHp: g.maxHp, dig: g.dig, explode: g.explode, recSample: g.recSample,
-    ignite: g.ignite, setAlight: g.setAlight, youAlight: g.youAlight,
+    ignite: g.ignite, setAlight: g.setAlight, youAlight: g.youAlight, nextFloor: g.nextFloor,
     world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y },
     fog: { get seen() { return W.seen; }, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal, paint: paintFog },
     light: { get flick() { return W.flick; }, get r() { return W.torchR; },

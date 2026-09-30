@@ -160,6 +160,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     SFX.fx = function (n) { seen[n] = 1; return orig.apply(null, arguments); };
     L.p.x = P.x + P.w / 2 - 4; L.p.y = P.y + P.h / 2 - 8;
     await new Promise(res => setTimeout(res, 300));
+    L.nextFloor();                          // the portal only takes you back to the shop now
     await new Promise(res => setTimeout(res, 200));
     SFX.fx = orig;
     return { floor: L.floor, amb: SFX.ambience, theme: L.theme, portalIn: !!seen.portalIn, portalOut: !!seen.portalOut };
@@ -167,8 +168,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('floor 2 has its own ambience', next.floor === 2 && next.amb === next.theme, next);
   check('stepping into the portal and out the other side both sound', next.portalIn && next.portalOut, next);
   // exploding props: hop floors until there is a minecart, then a spore pod, and set each off
-  const hop = () => page.evaluate(async () => { const L = window.__lvl, P = L.portal;
-    L.p.x = P.x + P.w / 2 - 4; L.p.y = P.y + P.h / 2 - 8; await new Promise(r => setTimeout(r, 300)); });
+  const hop = () => page.evaluate(async () => { window.__lvl.nextFloor(); await new Promise(r => setTimeout(r, 300)); });
   const blow = kind => page.evaluate(async kind => {
     const L = window.__lvl, P = L.p, pr = L.props.find(q => q.k === kind && !q.gone);
     if (!pr) return null;

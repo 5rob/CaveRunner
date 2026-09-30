@@ -152,7 +152,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('and burns up to nothing', vine.gone, vine);
 
   // ---- floor 2 (coal seams): a minecart in a fire goes up ----
-  await page.evaluate(() => { const L = window.__lvl, pt = L.portal; L.p.x = pt.x + pt.w / 2 - 6; L.p.y = pt.y + pt.h / 2 - 11; L.p.vx = L.p.vy = 0; L.p.hp = 9999; });
+  await page.evaluate(() => { const L = window.__lvl; L.nextFloor(); L.p.hp = 9999; });
   await page.waitForTimeout(900);
   const cart = await page.evaluate(async () => {
     const L = window.__lvl, proto = L.props.find(q => q.k === 'barrel');

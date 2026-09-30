@@ -90,5 +90,16 @@ check('and usually four different names by luck of the roll',
   named / gunShops.length > 0.7, `${named}/${gunShops.length} shop rows have four distinct names`);
 check('the heal is free', shops.every(s => s.heal.price === 0 && s.heal.sold === false));
 
+// ---- the level vending machines (v106): way in, heal, buy, sell, left to right, with room ----
+// a machine's screen is 72 wide: at least 16 of clear wall either side of each
+const { VEND_BUY_X, VEND_SELL_X } = g;
+check('the machines come after the way in and the heal, buy then sell',
+  shops.every(s => s.lv.arrival.x < s.heal.x && s.heal.x < VEND_BUY_X && VEND_BUY_X < VEND_SELL_X),
+  { heal: shops[0].heal.x, buy: VEND_BUY_X, sell: VEND_SELL_X });
+check('with space between each',
+  shops.every(s => VEND_BUY_X - 36 - (s.heal.x + 13) >= 16 && VEND_SELL_X - VEND_BUY_X - 72 >= 16 &&
+    s.xs[0] - 11 - (VEND_SELL_X + 36) >= 16),
+  { healEdge: shops[0].heal.x + 13, buy: VEND_BUY_X, sell: VEND_SELL_X, row: shops.map(s => s.xs[0]) });
+
 console.log(fails ? `${fails} FAILED` : 'all ok');
 process.exit(fails ? 1 : 0);

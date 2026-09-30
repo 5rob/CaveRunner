@@ -11,6 +11,7 @@ import { draw } from './render/draw.js';
 import { ignite, setAlight, youAlight } from './systems/fire.js';
 import { paintFog } from './systems/fog.js';
 import { enterLevel } from './systems/level-entry.js';
+import { voidCave } from './systems/vend.js';
 import { hurt, maxHp, refreshBag } from './systems/player.js';
 import { drawReplay, recFrame, recSample, recWrap } from './systems/recorder.js';
 import { saveRun } from './systems/save-run.js';
@@ -102,16 +103,19 @@ export function Game({ input }) {
 
     // the browser tests' way in (game/testhook.js): only on the test page, which sets the flag
     if (window.__TEST) window.__lvl = testHook(W, { tctx, dctx, paintFog: () => paintFog(W, G), hurt: (n) => hurt(W, G, n), maxHp: () => maxHp(W, G), dig: (x, y, R) => dig(W, G, x, y, R), explode: (x, y, R, splash, hot) => explode(W, G, x, y, R, splash, hot), recSample: () => recSample(W, G),
-      ignite: (x, y, r, chance) => ignite(W, G, x, y, r, chance), setAlight, youAlight: () => youAlight(W), REC, RT });
+      ignite: (x, y, r, chance) => ignite(W, G, x, y, r, chance), setAlight, youAlight: () => youAlight(W), REC, RT,
+      nextFloor: () => { W.floor++; W.hasLvl = true; W.warp = null; enterLevel(W, G); saveRun(W, G); } });
     {
       // picking up where the last session left off, if App found a save
       const sv = input.current.saved;
       input.current.saved = null;
       if (sv) {
         W.floor = sv.floor;
+        W.hasLvl = sv.hasLvl;
         enterLevel(W, G, sv.level);
         if (sv.hp) W.p.hp = Math.min(sv.hp, maxHp(W, G));
       } else enterLevel(W, G);
+      if (!W.hasLvl) voidCave(W, G);            // a run starts with no level: buy one in the shop
     }
     const saveNow = () => saveRun(W, G);         // one function, so pagehide's listener comes off again
     const saveTick = setInterval(saveNow, 2000);

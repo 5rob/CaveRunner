@@ -63,9 +63,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   // ---- climb a few floors and watch the identity come with you ----
   const hop = async () => {
     await page.evaluate(() => {
-      const L = window.__lvl, pt = L.portal;
-      L.p.x = pt.x + pt.w / 2 - 6; L.p.y = pt.y + pt.h / 2 - 11;
-      L.p.vx = 0; L.p.vy = 0; L.p.hp = 100; L.p.dead = false;
+      const L = window.__lvl;               // (the exit portal only goes back to the shop now)
+      L.nextFloor(); L.p.hp = 100; L.p.dead = false;
     });
     await page.waitForTimeout(800);
     return page.evaluate(() => ({
@@ -81,7 +80,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
   const floors = [];
   for (let i = 0; i < 5; i++) floors.push(await hop());
-  check('the portal keeps climbing', floors.map(f => f.floor).join() === '2,3,4,5,6', floors.map(f => f.floor));
+  check('the floors keep climbing', floors.map(f => f.floor).join() === '2,3,4,5,6', floors.map(f => f.floor));
   check('every floor is wearing its own palette',
     floors.every(f => f.theme === f.expectedTheme), floors.map(f => [f.floor, f.theme, f.expectedTheme]));
   check('and no two of those floors look alike',

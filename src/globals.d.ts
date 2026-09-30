@@ -11,4 +11,4 @@ declare const VERSION: string;
 // the old prefixed Web Audio constructor (audio/sfx.js falls back to it on older WebViews)
 interface Window { webkitAudioContext?: typeof AudioContext }
 // the browser test page's hooks (tests/build.js sets __TEST; src/game/testhook.js makes __lvl)
-interface Window { __TEST?: boolean; __lvl?: any; __in?: any }
+interface Window { __TEST?: boolean; __TEST_VOID?: boolean; __lvl?: any; __in?: any }
