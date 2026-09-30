@@ -77,6 +77,10 @@ and `game/systems/shotlooks.js`.
   order). The pistol is deliberately worse than any floor-1 find. The Pick Axe holds one Buzzsaw
   (`saw`): a melee slice, `speed: 0`, `reach: 5`, `size: 15`, `eat: 14` (digs its radius every frame,
   whether or not its centre is in rock), `hidden: 1`, `setDelay: 0`.
+- **Pollen** (`drift: 1`, `homeR: 80`, `pop: 6`): `driftStep` damps it and, once slow, floats it
+  up; it homes only after locking on (`b.lock`: the nearest creature within `homeR` in line of
+  sight); `tracePath` mirrors it. `pop` = a small `explode` with `splash` on contact (never hurts
+  you); a Borer/Eater before it still tunnels (checked before the pop).
 - **`eat` tunnels through rock**: a bullet with `eat` digs and passes through instead of dying on
   the wall (else a fast Matter Eater outruns its hole). The Black Hole's dig (`eat: 19`) is exactly
   its drawn core.

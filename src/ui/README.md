@@ -40,7 +40,8 @@ CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).
   `input.current.ctlH`. `deckLayout` places the round `.dbtn`s: the four guns (`.slot`, `.on` = held,
   hold for its card) on an arc round the right stick; the Bag (`.weapon`, 🎒) mirrors the last gun on
   the left; the map (`.mapbtn`, 🗺️) above it. Gold (`.gold`, `fmtGold`: `1234` → `1.2kg`, thousands
-  truncated) sits in the gap at the bottom, `pointer-events:none`. The Dev button is a bare ⚙️
+  truncated) sits in the gap at the bottom, `pointer-events:none`; it updates because gold changes
+  call `input.current.notify()` (re-renders `App`). The Dev button is a bare ⚙️
   (`.devbtn`); Restart is inside the Dev panel (`.dbg.restart`).
 - **The Bag always opens; editing is gated**: `canEdit = inShop || Tinker`. Read-only hides drop,
   gun reorder, Sort and the tips, and the footer says "Viewing only…"; tapping a mod still shows it.
@@ -55,6 +56,10 @@ CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).
   right stick) except its stat list `.prows` (max ~3 rows, 60px, scrolls). `.buypanel .pop` strips the
   inner card's frame and wins over `.pop.ingame` on source order: **keep the `.buypanel` block after
   `.pop.ingame` in the CSS**. `ModCard` drops its use-example (`.pdemo`) when `ingame`.
+- **Mods are taken with a tap, guns open `GunSwap`** (hold a slot to swap, or "Leave it"; the owner
+  asked to keep this chooser). The old ModFound overlay is gone; `Stick` still writes `confirmAim` and
+  reads `confirmAct`, but nothing sets `confirmAct` any more, so a dead-zone tap just sets
+  `input.current.interact`.
 - **The key handler ignores keys aimed at `input`/`textarea`/`select`** (so typing a Dev value doesn't
   steer the runner).
 - **The bag screen:** `GunStats` (one `.gsrow[data-stat]` per `GS_ROWS`, value coloured by

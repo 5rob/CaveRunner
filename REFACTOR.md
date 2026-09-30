@@ -823,8 +823,10 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
       replay, game, game/systems, game/render, game/creatures, ui). They don't reach the build or
       the checks: esbuild bundles only what `main.js` imports, `tests/load.js`'s `.source` reads
       only `.js`, ESLint lints `src/**/*.js`, tsc includes `.js` and `.d.ts`; `index.html` unchanged.
-- [ ] **P5.2** `CLAUDE.md` slims to: the owner's working style, the release loop, the
-      testing rules, the layer rule, a map of folders → READMEs. Target < 150 lines.
+- [x] **P5.2** `CLAUDE.md` slims to: the owner's working style, the release loop, the
+      testing rules, the layer rule, a map of folders → READMEs. Target < 150 lines. Done: 1,132 →
+      148 lines; every rule checked against the old file (`git show 1aa5181:CLAUDE.md`) and found in a
+      README, `CHANGELOG.md` or the new CLAUDE.md.
 - [x] **P5.3** Version history paragraphs (v40…v96) go to `CHANGELOG.md`. Anything still
       needed as a *rule* goes to the right folder README. Done: `CHANGELOG.md` at the root, v39–v99
       plus an Unreleased entry (Phases 4–5), from CLAUDE.md's vNN notes, HANDOVER's "What shipped"
@@ -1236,3 +1238,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 4, P4.4 | Every file under `src/` checked (`main.js`, `pure.js`, `version.js` were clean), so `tsconfig.json` has `checkJs: true`: all of `src/` is checked and a new file is too (checked with a planted error in a new, unmarked file). The `// @ts-check` lines stay, redundant. tsconfig, tests/run.js, CLAUDE.md (Testing, the layout row), HANDOVER say so; CLAUDE.md also: no comment inside an object/array literal. The Stendari entry says where its two reads are silenced. **Phase 4's tasks done**; not merged. `index.html` unchanged. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 5, P5.1 | A README.md in each src/ folder (15): what each file holds and that area's rules, moved from CLAUDE.md in today's names (`W.mat`, the system or render module a function lives in). Every backticked name in them checked against src/. CLAUDE.md not trimmed yet (P5.2). Docs only: `index.html` unchanged. | logic 33/33, smoke ok |
 | 2026-09-30 | Phase 5, P5.3 | `CHANGELOG.md`: one entry per release v39–v99, newest first, plus Unreleased (Phases 4–5). Docs only. | index.html unchanged |
+| 2026-09-30 | Phase 5, P5.2 | CLAUDE.md 1,132 → 148 lines: the owner's working style (their words intact), the loop, version, Android essentials, a folder → README map with the layer rule, editing and testing rules (sandbox, no waiting forever, flakes pointer, the type check, D21). Section-by-section check against the old file; two rules added to READMEs in the pass (Pollen, the inert confirm path). Docs only. | logic 33/33, smoke ok |
