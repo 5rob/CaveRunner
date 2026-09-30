@@ -1,3 +1,4 @@
+// @ts-check
 // SFX, the sound engine: Web Audio, no files. A lazy AudioContext unlocked on the first
 // tap, two buses (sfx, ambience), distance / pan / muffle, loops that fade unless set every
 // frame, and the one-shot FX table. Every public call is wrapped: sound never breaks the game.
@@ -22,6 +23,8 @@ export const SFX = (() => {
   const gate = (key, ms) => { const t = now(); if (gates[key] && t - gates[key] < ms) return false; gates[key] = t; return true; };
   const rnd = (a, b) => a + Math.random() * (b - a);
   // a broken sound must never break the game: it is noted (the tests read it) and skipped
+  /** @type {<T extends Function>(fn: T) => T} keeps the wrapped function's signature, so calls to SFX are checked */
+  // @ts-expect-error the wrapper passes `arguments` through: TS can't see it has fn's signature (noise)
   const safe = fn => function () {
     try { return fn.apply(null, arguments); } catch (e) { if (stats.errors.length < 20) stats.errors.push(String(e && e.message)); return null; }
   };
@@ -234,6 +237,7 @@ export const SFX = (() => {
   }
   // a cast: every shot planned for this pull, but each theme only once (a Myriad of bolts
   // is one bolt sound, louder, not twenty of them on top of each other)
+  /** @param {Shot[]} shots @param {number | null} [x] @param {number | null} [y] no x: at you */
   function cast(shots, x, y) {
     const seen = {};
     let k = 0;
@@ -248,6 +252,7 @@ export const SFX = (() => {
   }
 
   // ---- impacts ----
+  /** @param {number} x @param {number} y */
   function hit(x, y) {
     if (!gate('hit', 35)) return;
     const d = out(x, y, 0.2, false, null, knob('vHit')); if (!d) return;
@@ -255,6 +260,7 @@ export const SFX = (() => {
     tone(d, 'sine', rnd(240, 290), 110, t, 0.08, 0.4);
     hiss(d, t, 0.06, 0.45, 'bandpass', 1400, 700, 1.5);
   }
+  /** @param {number} x @param {number} y */
   function rock(x, y) {
     if (!gate('rock', 45)) return;
     const d = out(x, y, 0.1, false, null, knob('vHit')); if (!d) return;
@@ -262,6 +268,7 @@ export const SFX = (() => {
     hiss(d, t, 0.05, 0.28, 'highpass', 2500, 1800, 0.8, true);
     tone(d, 'square', 180, 120, t, 0.03, 0.05);
   }
+  /** @param {number} x @param {number} y */
   function bounce(x, y) {
     if (!gate('bounce', 50)) return;
     const d = out(x, y, 0.1, false, null, knob('vHit')); if (!d) return;
@@ -269,6 +276,7 @@ export const SFX = (() => {
   }
   // every blast is a little different: its pitch, length, brightness and crackle tail are
   // rolled each time, so a chain of them doesn't sound like one sample on repeat
+  /** @param {number} x @param {number} y @param {number} R */
   function boom(x, y, R) {
     const big = R >= 40;
     if (!gate(big ? 'bigboom' : 'boom', big ? 60 : 30)) return;
@@ -281,6 +289,7 @@ export const SFX = (() => {
     if (R >= 60) hiss(d, t + 0.1, 1.6 * L, 0.5, 'lowpass', 300 * P, 80, 0.7, false, 0.2);
   }
   // what a minecart throws about when it goes up: wood and iron clattering down after the bang
+  /** @param {number} x @param {number} y */
   function debris(x, y) {
     const d = out(x, y, 1.2, false, null, knob('vBoom')); if (!d) return;
     const t = ac.currentTime, n = 4 + Math.floor(Math.random() * 5);
@@ -291,6 +300,7 @@ export const SFX = (() => {
     }
   }
   // a spore pod bursting: a wet pop and a breath of spores, rolled fresh each time
+  /** @param {number} x @param {number} y */
   function pop(x, y) {
     const d = out(x, y, 1.2, false, null, knob('vBoom')); if (!d) return;
     const t = ac.currentTime, P = rnd(0.8, 1.25);
@@ -309,6 +319,7 @@ export const SFX = (() => {
     root: { lo: 1200, hi: 3200, swish: [900, 2600], wet: 0, creak: 1 },
     kelp: { lo: 500, hi: 1800, swish: [400, 1400], wet: 1 },
   };
+  /** @param {number} x @param {number} y @param {number} str @param {string} [style] */
   function rustle(x, y, str, style) {
     if (!gate('rustle', 60)) return;
     const R = RUSTLE[style] || RUSTLE.vine;
@@ -322,6 +333,7 @@ export const SFX = (() => {
     if (R.wet) tone(d, 'sine', rnd(180, 300), rnd(400, 700), t + rnd(0, 0.1), 0.07, 0.08 * v, 0.004);
     if (R.creak && Math.random() < 0.35) tone(lp(d, 800, 5), 'sawtooth', rnd(110, 160), rnd(90, 130), t, rnd(0.15, 0.3), 0.05 * v, 0.03);
   }
+  /** @param {number} x @param {number} y @param {unknown} [big] */
   function arc(x, y, big) {
     if (!gate('arc', big ? 90 : 45)) return;
     const d = out(x, y, 0.35, false, null, knob('vHit')); if (!d) return;
@@ -332,6 +344,7 @@ export const SFX = (() => {
   }
 
   // ---- creatures: (k = creature, what = alert|idle|fire|charge|hurt|die|bite|fuse) ----
+  /** @param {CreatureKind} k @param {string} what @param {number} x @param {number} y @param {number} [extra] */
   function creature(k, what, x, y, extra) {
     if (what === 'hurt' && !gate('churt', 90)) return;
     if (what === 'idle' && !gate('idle', 250)) return;
@@ -423,6 +436,7 @@ export const SFX = (() => {
 
   // ---- you: pickups, the shop, damage, the portal ----
   let coinStreak = 0, coinT = 0;
+  /** @param {string} what */
   function ui(what) {
     if (what === 'hurt' && !gate('phurt', 120)) return;
     if (what === 'empty' && !gate('empty', 250)) return;
@@ -638,6 +652,7 @@ export const SFX = (() => {
     },
     coinland(d, t) { tone(d, 'sine', rnd(2600, 3600), rnd(2600, 3600), t, 0.04, 0.08, 0.002); },
   };
+  /** @param {string} name @param {number | null} [x] @param {number | null} [y] no x: at you @param {number} [a] */
   function fx(name, x, y, a) {
     const f = FX[name];
     if (!f || !gate('fx:' + name, FX_GAP[name] || 40)) return;
@@ -647,6 +662,7 @@ export const SFX = (() => {
 
   // ---- loops: the jetpack, and a Black Hole while it lives. set() every frame you want it;
   // tick() fades any loop nobody set this frame (a pause, a dead bullet) ----
+  /** @param {string} kind */
   function loop(kind) {
     if (!live() || loops.size > 8) return null;
     const g = ac.createGain(); g.gain.value = 0;
@@ -716,6 +732,7 @@ export const SFX = (() => {
   }
 
   // ---- ambience: the floor's bed and drone, and its one-shots going off round you ----
+  /** @param {string} name */
   function setAmbience(name) {
     ambWant = name;
     if (!live()) return;
@@ -743,6 +760,7 @@ export const SFX = (() => {
     }
     amb = { g, srcs, A, name };
   }
+  /** @param {string} kind @param {number} x @param {number} y */
   function envSound(kind, x, y) {
     // the ambience's drips and trickles also answer to the Drips knob
     const d = out(x, y, 2.5, false, ambBus, kind === 'drip' || kind === 'trickle' ? knob('vDrip') : 1); if (!d) return;
@@ -771,6 +789,7 @@ export const SFX = (() => {
   }
   // called every frame the game runs: each of the floor's one-shots rolls its dice, and
   // what goes off lands somewhere round you, off to one side or the other
+  /** @param {number} dt */
   function ambTick(dt) {
     if (!amb || !live()) return;
     for (const k in amb.A.ev) if (Math.random() < amb.A.ev[k] * dt) {

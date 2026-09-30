@@ -257,6 +257,7 @@ interface Prop {
   len?: number; side?: number;
   arc?: number[][]; thick?: number; alen?: number;   // an arched vine: its curve as [x, y] from x, y
   on?: Prop; u?: number;      // a strand on an arch, and where along it
+  u0?: number; u1?: number;   // an arch burning: the burnt stretch (catchArch)
   // what the game adds as it plays (decorStep, fire, drips)
   fall?: number; vy?: number; gone?: boolean; burn?: number; hp?: number; hitT?: number;
   acc?: number; dn?: number; di?: number; cd?: number; ecd?: number; shake?: number;
@@ -310,6 +311,30 @@ interface Level {
 
 /** the fire's state: fireNew (world/fire.js) */
 interface FireState { fuel: Uint8Array; t: Uint16Array; list: number[]; acc: number }
+
+// ---- the run (save/save.js, ui/app.js) ----
+
+/** what you carry: App's loadout (`LO` in step), and what the save keeps */
+interface Loadout {
+  guns: (Gun | null)[];       // four slots
+  sel: number;                // the held one
+  bag: string[];              // mod ids not on a gun
+  perks: string[];
+  gold: number;
+  maxBonus: number;           // the +25 hearts: raises max health only
+  usedLives: number;
+  debug: boolean;             // Dev → All mods
+}
+/** a save read back: readSave (save/save.js) */
+interface SaveData {
+  loadout: Loadout; floor: number; hp: number | null;
+  level: SavedLevel | null;   // the exact cave, only on the same version
+}
+/** the cave part of a save */
+interface SavedLevel {
+  seed: number; owned: string[]; alive: number[] | null; sold: number[]; rooms: number[];
+  pickups: Pickup[] | null;
+}
 
 // ---- the Dev panel (dev/knobs.js) ----
 
@@ -427,3 +452,17 @@ interface DrawFrame {
   TH: any; onView: ((x: number, y: number, m?: number) => boolean) | null;
   held: Gun | null; ax: number; ay: number; gy: number; cw: number;
 }
+
+// ---- the death replay (replay/replay.js, game/systems/recorder.js) ----
+
+/**
+ * one snapshot: `t`, `p`, `ghost`, the RP_NUMS, and a copy of each RP_LISTS list (entities cloned
+ * with rpClone, so any shape: `any`). Keyed by list name, which a type can't spell out cheaply.
+ */
+interface RpSnap { t: number; p: any; ghost: any; [k: string]: any }
+/** the scene at one time (rpFrame): the lists, numbers, p and ghost, and the nearer snapshot */
+interface RpFrame { near: RpSnap; p?: any; ghost?: any; [k: string]: any }
+/** a dirty rectangle: which layer ('t' rock, 'd' decoration), x, y, w, h in terrain px */
+type RpRect = [string, number, number, number, number];
+/** a terrain patch: the rectangle's pixels after the change */
+interface RpPatch { x: number; y: number; w: number; h: number; px: Uint8ClampedArray; [k: string]: any }

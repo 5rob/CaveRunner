@@ -8,3 +8,5 @@ declare const React: any;
 declare const ReactDOM: any;
 // written into the page by tools/build.js as `const VERSION = 'vNN';` (D4, D7)
 declare const VERSION: string;
+// the old prefixed Web Audio constructor (audio/sfx.js falls back to it on older WebViews)
+interface Window { webkitAudioContext?: typeof AudioContext }

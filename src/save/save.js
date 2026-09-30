@@ -1,3 +1,4 @@
+// @ts-check
 // The autosave: readSave / cleanLoadout / cleanGun turn whatever is in localStorage
 // (maybe from an older version) into a loadout that loads; loadSave / clearSave touch the
 // store. Uses the page's VERSION global to decide whether the exact cave comes back.
@@ -17,6 +18,7 @@ import { MODS } from '../spells/mods.js';
 export const SAVE_KEY = 'caverunner-save';
 export const GUN_DEFAULTS = { name: 'Gun', castDelay: 0.2, recharge: 0.5, manaMax: 100, manaRegen: 30,
   spread: 0, multi: 1, shuffle: false, speedMul: 1, hue: 0 };
+/** @param {any} g whatever the store held @returns {Gun | null} */
 export function cleanGun(g) {
   if (!g || typeof g !== 'object' || !Array.isArray(g.slots) || !g.slots.length) return null;
   const out = Object.assign({}, GUN_DEFAULTS, g);
@@ -25,6 +27,7 @@ export function cleanGun(g) {
   out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
   return resetGun(out);
 }
+/** @param {any} lo whatever the store held @returns {Loadout | null} */
 export function cleanLoadout(lo) {
   lo = lo && typeof lo === 'object' ? lo : {};
   const guns = [0, 1, 2, 3].map(i => cleanGun((lo.guns || [])[i]));
@@ -43,6 +46,7 @@ export function cleanLoadout(lo) {
   };
 }
 // Turn the stored text back into a run, or null if there isn't a usable one.
+/** @param {string | null} raw @returns {SaveData | null} */
 export function readSave(raw) {
   let s;
   try { s = JSON.parse(raw); } catch (_) { return null; }
@@ -70,5 +74,6 @@ export function readSave(raw) {
   }
   return out;
 }
+/** @type {() => SaveData | null} */
 export const loadSave = () => { try { return readSave(localStorage.getItem(SAVE_KEY)); } catch (_) { return null; } };
 export const clearSave = () => { try { localStorage.removeItem(SAVE_KEY); } catch (_) {} };

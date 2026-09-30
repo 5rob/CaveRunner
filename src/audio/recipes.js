@@ -1,3 +1,4 @@
+// @ts-check
 // Sound, the pure part: which voice a spell, creature or floor speaks with and how its
 // stats bend it (shotSound, creatureSound), which Dev volume knob each sound answers to
 // (FX_VOL, knob), and the foliage rustle limiter (rustleStep). The engine is audio/sfx.js.
@@ -6,6 +7,7 @@ import { DEV } from '../dev/knobs.js';
 import { MODS } from '../spells/mods.js';
 
 // The jet's roar climbs the longer you hold it, levelling off after 3 seconds.
+/** @param {number} onT @returns {number} */
 export function jetPitch(onT) { return 1 + 0.7 * Math.min(Math.max(onT, 0), 3) / 3; }
 export const HEAR_FIRE = 320;                                  // how far off a blaze's crackle carries
 
@@ -17,6 +19,7 @@ export const HEAR_FIRE = 320;                                  // how far off a 
 // filtered noise and crackle for the organic parts (fire, rock, breath, water).
 
 // A spell's voice is its theme. Anything a trigger variant is built from speaks with its base.
+/** @type {Record<string, string>} */
 export const SPELL_VOICE = {
   bolt: 'magic', spark: 'magic', spit: 'magic', arrow: 'magic',
   lance: 'pierce', glance: 'pierce',
@@ -34,11 +37,13 @@ export const SPELL_VOICE = {
 };
 export const SPELL_VOICES = ['magic', 'pierce', 'heavy', 'energy', 'scatter', 'bubble', 'saw', 'lob',
   'fire', 'thunder', 'void', 'dig', 'beam', 'spore', 'crystal', 'aura', 'none'];
+/** @type {(v: number, a: number, b: number) => number} */
 export const clampS = (v, a, b) => Math.max(a, Math.min(b, v));
 // The recipe for one planned shot, from its FINAL stats — after every modifier has had its
 // go. The theme gives it its character; the stats bend it: faster is higher, bigger is lower
 // and longer, harder-hitting is louder, homing warbles, explosive/boring shots get grit,
 // piercing ones a bright edge, bouncing ones a little "boing", pellets a flam.
+/** @param {Shot} sh @returns {{ v: string, pitch: number, vol: number, dur: number, n: number, wob: number, grit: number, bright: number, boing: number }} */
 export function shotSound(sh) {
   const id = sh.sid, m = id && MODS[id];
   const v = SPELL_VOICE[(m && m.base) || id] || (sh.still ? 'aura' : 'magic');
@@ -64,10 +69,13 @@ export function shotSound(sh) {
 }
 
 // Creatures speak by body, with a few overrides where the body alone would be wrong.
+/** @type {Record<string, string>} */
 export const BODY_VOICE = { drone: 'gibber', crawler: 'chitter', spider: 'chitter', worm: 'slither', blob: 'gurgle', jelly: 'gurgle', skull: 'rattle',
   rat: 'chitter', nest: 'chitter' };
+/** @type {Record<string, string>} */
 export const CREATURE_TONE = { lohkare: 'growl', hurtta: 'growl', jaatio: 'icy', tuli: 'ember', karpas: 'spore' };
 export const CREATURE_VOICES = ['gibber', 'chitter', 'slither', 'gurgle', 'rattle', 'growl', 'icy', 'ember', 'spore'];
+/** @param {CreatureKind} k @returns {{ v: string, pitch: number }} */
 export function creatureSound(k) {
   const v = CREATURE_TONE[k.id] || BODY_VOICE[k.body] || 'chitter';
   // small things squeak, big ones rumble; quick ones are a touch higher again
@@ -79,12 +87,15 @@ export const AMB_EVENTS = ['drip', 'critter', 'wind', 'trickle', 'rumble', 'crea
   'crackle', 'hiss', 'puff', 'bloop', 'hum', 'clank', 'rattle', 'whisper'];
 
 // Which Dev volume knob each SFX.fx sound answers to (anything not listed is world/props).
+/** @type {Record<string, string>} */
 export const FX_VOL = { step: 'vStep', land: 'vStep', ignite: 'jetVol',
   open: 'vUi', close: 'vUi', switch: 'vUi', ready: 'vUi', prompt: 'vUi', place: 'vUi', coinland: 'vUi',
   crit: 'vSpell', chainhop: 'vSpell', split: 'vSpell', cluster: 'vSpell', refresh: 'vSpell', drain: 'vSpell',
   gspend: 'vSpell', saws: 'vSpell', warp: 'vSpell', healtick: 'vSpell', shieldUp: 'vSpell', ghost: 'vSpell',
   absorb: 'vEnemyFire', fizzle: 'vEnemyFire', drip: 'vDrip', sizzle: 'vDrip', splash: 'vDrip' };
+/** @param {string} name @returns {string} */
 export function fxVolKey(name) { return FX_VOL[name] || 'vWorld'; }
+/** @type {(k: string) => number} */
 export const knob = k => (DEV[k] == null ? 1 : DEV[k]);
 
 // Brushing through hanging plants. Called once a frame with what you are touching; returns
@@ -92,6 +103,7 @@ export const knob = k => (DEV[k] == null ? 1 : DEV[k]);
 // rustles at once; moving about inside them rustles now and then, more often the faster you
 // go; hanging still is silent. After any rustle there is a short random pause, so a big clump
 // of vines is a run of rustles rather than one per vine per frame. `st` keeps the pause.
+/** @param {{ t?: number }} st @param {number} dt @param {unknown} touching @param {unknown} entered @param {number} speed @param {Rnd} [rnd] @returns {number} */
 export function rustleStep(st, dt, touching, entered, speed, rnd) {
   rnd = rnd || Math.random;
   st.t = Math.max(0, (st.t || 0) - dt);
