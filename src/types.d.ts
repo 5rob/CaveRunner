@@ -273,6 +273,7 @@ interface Pickup {
   id?: string;                // a mod's or perk's id
   gun?: Gun;
   taken?: boolean; old?: boolean;
+  cool?: number;              // just dropped or swapped: not takeable yet
 }
 /** a shop plinth (makeLevel's stock) */
 interface StockItem { kind: string; x: number; y: number; price: number; sold: boolean; id?: string; gun?: Gun }
@@ -357,21 +358,27 @@ interface DevRow { k: string; g: string; label: string; min?: number; max?: numb
 
 // ---- the game (game/, layer 5) ----
 
-/** a shot in flight (spawnShot, game/systems/gun.js): the Shot's numbers and where it is */
+/**
+ * a shot in flight: spawnShot (game/systems/gun.js) makes the whole thing from a Shot; a cluster's
+ * pellets (spray) and the Angry Ghost's shots are pushed with only the first block, so the rest is
+ * optional (the bullet loop reads a missing one as 0 / off)
+ */
 interface Bullet {
   x: number; y: number; vx: number; vy: number;
   life: number; dmg: number; size: number; col: string; spin: number;
   homing: number; bounce: number; pierce: number; explode: number; grav: number; accel: number;
-  bore: number; hit: any; knock: number; crit: number; boomer: number; spiral: number;
-  pong: number; orbit: number; homeR: number; eat: number; pull: number; split: number;
-  cluster: number; bounceFx: any; friendly: number; chain: number; fuse: number;
-  payload: Shot[] | null; hidden: number; arc: number; drift: number; pop: number; tele: number;
-  fire: number; drag: number; bounceE: number; pit: number; wig: number; look: string | null;
-  light: string | null; lightR: number; vmax: number; lifeBoom: number;
-  trig: TrigKind | null; timer: number | null;
-  ox: number; oy: number; age: number; born: number;
+  bore: number; hit: Set<Enemy> | null; age: number;   // hit: what it has already struck (pierce)
+  // spawnShot's (the ghost's shots have knock, crit and born too)
+  knock?: number; crit?: number; boomer?: number; spiral?: number;
+  pong?: number; orbit?: number; homeR?: number; eat?: number; pull?: number; split?: number;
+  cluster?: number; bounceFx?: any; friendly?: number; chain?: number; fuse?: number;
+  payload?: Shot[] | null; hidden?: number; arc?: number; drift?: number; pop?: number; tele?: number;
+  fire?: number; drag?: number; bounceE?: number; pit?: number; wig?: number; look?: string | null;
+  light?: string | null; lightR?: number; vmax?: number; lifeBoom?: number;
+  trig?: TrigKind | null; timer?: number | null;
+  ox?: number; oy?: number; born?: number;
   // set as it flies
-  ang?: number; struck?: number; propHit?: any; lock?: Enemy | null; arcT?: number;
+  ang?: number; struck?: number; propHit?: Set<Prop>; lock?: Enemy | null; arcT?: number;
   ax?: number; ay?: number; da?: number; grind?: number; trail?: any;
 }
 
@@ -423,7 +430,7 @@ interface Cloud { x: number; y: number; r: number; life: number; max: number; ti
 /** a noise ring (skulls, stones) */
 interface Ring { x: number; y: number; t: number }
 /** a dust devil */
-interface Devil { x: number; y: number; vx: number; life: number; max: number }
+interface Devil { x: number; y: number; vx: number; life: number; max: number; snd?: number }
 /** a spider string in flight at you */
 interface Silk { x: number; y: number; ax: number; ay: number; vx: number; vy: number; [k: string]: any }
 /** a spider string stuck to you: anchored at (ax, ay), held at (ox, oy) off you */
@@ -450,7 +457,8 @@ interface World {
   mat: Uint8Array; img: ImageData; dimg: ImageData; ore: Uint8Array; burrow: Uint8Array | null; terrainV: number;
   floor: number;
   start: Pt; portal: Level['portal']; arrival: Pt; stock: StockItem[];
-  zone: Uint8Array | null; rooms: Room[]; sconces: Sconce[];
+  zone: Uint8Array | null; rooms: Room[];
+  sconces: any[];             // Sconce[]: enterLevel builds [x, y] pairs first and maps them after
   levelSeed: number; levelOwned: string[]; roster: string[]; themeName: string; total: number;
   miniEdgeIdx: number[]; matterProps: Prop[]; ambKinds: string[]; plantW: number;
   enemies: Enemy[]; pickups: Pickup[]; props: Prop[];
@@ -520,7 +528,7 @@ interface GameInput {
 interface Recorder {
   t: number; acc: number; snaps: RpSnap[]; patches: RpPatch[]; dirty: RpRect[];
   fogLog: number[];           // flat: time, cell, value
-  tBase: Uint8ClampedArray | null; dBase: Uint8ClampedArray | null;
+  tBase: Uint8ClampedArray<ArrayBuffer> | null; dBase: Uint8ClampedArray<ArrayBuffer> | null;
   fogBase: Uint8Array | null; fogPrev: Uint8Array | null;
   deathT: number; done: boolean;
 }
@@ -590,4 +598,4 @@ interface RpFrame { near: RpSnap; p?: any; ghost?: any; [k: string]: any }
 /** a dirty rectangle: which layer ('t' rock, 'd' decoration), x, y, w, h in terrain px */
 type RpRect = [string, number, number, number, number];
 /** a terrain patch: the rectangle's pixels after the change */
-interface RpPatch { x: number; y: number; w: number; h: number; px: Uint8ClampedArray; [k: string]: any }
+interface RpPatch { x: number; y: number; w: number; h: number; px: Uint8ClampedArray<ArrayBuffer>; [k: string]: any }

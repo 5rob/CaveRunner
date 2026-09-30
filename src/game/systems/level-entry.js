@@ -1,3 +1,4 @@
+// @ts-check
 // Entering a floor: makes the level (or rebuilds a saved one) and resets the world, the canvases,
 // the fog and the recorder for it.
 
@@ -14,6 +15,7 @@ import { recReset } from './recorder.js';
 // a floor is a fresh cave with its own shop at the bottom; you keep everything else
 // `back` is a saved cave to rebuild (same seed, same perks owned on the way in), with
 // what was already taken, sold and killed stripped back out of it
+/** @param {World} W @param {GameCtx} G @param {SavedLevel} [back] a save's cave, to put back */
 export function enterLevel(W, G, back) {
   refreshBag(W, G);
   W.levelSeed = back ? back.seed : 1 + Math.floor(Math.random() * 2147483000);

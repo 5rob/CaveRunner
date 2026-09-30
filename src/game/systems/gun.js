@@ -1,3 +1,4 @@
+// @ts-check
 // Casting: one pull of the trigger through planCast (cast), each planned shot into the world
 // (spawnShot), and a trigger's payload coming out where its carrier stopped (releaseAt); and
 // each frame's aiming, gun clocks and trigger pull (aimAndCast, a part of step()).
@@ -15,6 +16,7 @@ import { lineOfSight, solidAt } from './terrain.js';
 // ---- casting ----
 // Walk the gun's slot list from where it left off. Modifiers pile up and apply
 // to the shots that come after them; running off the end triggers the recharge.
+/** @param {World} W @param {GameCtx} G @param {Gun} g @param {number} gx @param {number} gy @param {number} nx @param {number} ny */
 export function cast(W, G, g, gx, gy, nx, ny) {
   const pas = gunPassives(g);
   const wrap = () => {
@@ -96,6 +98,7 @@ export function cast(W, G, g, gx, gy, nx, ny) {
 // its own function because a trigger's payload comes through here too, from
 // wherever the carrier stopped. `fd` is how far ahead of the origin a static field
 // lands: a barrel's length out of the gun, and nothing at all off a trigger.
+/** @param {World} W @param {GameCtx} G @param {Shot} sh @param {number} ox @param {number} oy @param {number} base @param {number} bonus @param {boolean} warp @param {number} fd */
 export function spawnShot(W, G, sh, ox, oy, base, bonus, warp, fd) {
   if (sh.still) { castField(W, G, sh, ox + Math.cos(base) * fd, oy + Math.sin(base) * fd, base); return; }
   const n = Math.min(24, Math.max(1, Math.round(sh.count)));
@@ -148,6 +151,7 @@ export function spawnShot(W, G, sh, ox, oy, base, bonus, warp, fd) {
 // A carrier lets go of its payload: 'hit' on the first thing it touches, 'timer'
 // when its timer runs out (or on a hit first), 'expire' when it dies. It fires once;
 // anything in the payload that is itself a carrier takes its own payload along.
+/** @param {World} W @param {GameCtx} G @param {Bullet} b */
 export function firePayload(W, G, b) {
   const list = b.payload;
   b.payload = null;
@@ -155,6 +159,7 @@ export function firePayload(W, G, b) {
   const nx = sp ? b.vx / sp : Math.cos(b.ang || 0), ny = sp ? b.vy / sp : Math.sin(b.ang || 0);
   releaseAt(W, G, list, b.x, b.y, nx, ny, b.col);
 }
+/** @param {World} W @param {GameCtx} G @param {Shot[]} list @param {number} x @param {number} y @param {number} nx @param {number} ny @param {string} col */
 export function releaseAt(W, G, list, x, y, nx, ny, col) {
   const x0 = x, y0 = y;
   // it may have stopped inside the rock, so back up along its own track until
@@ -169,6 +174,7 @@ export function releaseAt(W, G, list, x, y, nx, ny, col) {
 // ---- aiming and firing (a part of step) ----
 // Where you aim (the right stick, else the mouse; Pinpointer aims for you), which way you
 // face, every gun's clocks and mana, and a pull of the held gun's trigger.
+/** @param {World} W @param {GameCtx} G @param {StepFrame} F */
 export function aimAndCast(W, G, F) {
   const { dt, LO, pcx } = F;
   // ---- aiming: thumbstick first, otherwise mouse ----

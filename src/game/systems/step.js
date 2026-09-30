@@ -1,3 +1,4 @@
+// @ts-check
 // One frame of the simulation: step(W, G, dt), run by Game's loop on every unpaused frame
 // (then the recorder's recFrame, then draw). It calls its parts one after another in the
 // order they have always run (they feed each other within the frame, and share the sim's
@@ -21,6 +22,7 @@ import { maxHp, movePlayer, stepTorch } from './player.js';
 import { decorStep } from './props.js';
 import { saveRun } from './save-run.js';
 
+/** @param {World} W @param {GameCtx} G @param {number} dt */
 export function step(W, G, dt) {
   // the frame: what step's parts hand on to each other. LO (the loadout) and MHP (your
   // maximum health) are filled in by stepPerks, pcx/pcy (your centre, once you've moved)
@@ -49,6 +51,7 @@ export function step(W, G, dt) {
 
 // The clock, a toast held over from a paused frame, and the Dev panel's asks. True when
 // Dev → New cave rolled the floor again: that frame ends there.
+/** @param {World} W @param {GameCtx} G @param {StepFrame} F */
 export function stepRequests(W, G, F) {
   const { dt } = F;
   W.time += dt;
@@ -72,6 +75,7 @@ export function stepRequests(W, G, F) {
 }
 
 // The loadout for this frame (F.LO), and your health against the perks (F.MHP)
+/** @param {World} W @param {GameCtx} G @param {StepFrame} F */
 export function stepPerks(W, G, F) {
   const { dt } = F;
   F.LO = G.input.current.loadout;
@@ -85,6 +89,7 @@ export function stepPerks(W, G, F) {
 // Where you are now you've moved (F.pcx/F.pcy, your centre: the rest of the frame works
 // from it), and the exit: step into it and you're on the next floor. True when you went
 // through: that frame ends there.
+/** @param {World} W @param {GameCtx} G @param {StepFrame} F */
 export function atPortal(W, G, F) {
   const pcx = F.pcx = W.p.x + PW / 2, pcy = F.pcy = W.p.y + PH / 2;
   if (!W.p.dead && pcx > W.portal.x && pcx < W.portal.x + W.portal.w &&
@@ -101,6 +106,7 @@ export function atPortal(W, G, F) {
 
 // Sound, once a frame: where you are listening from, the jetpack, each live Black Hole's
 // drone, the floor's ambience, and a heartbeat when you're nearly dead
+/** @param {World} W @param {StepFrame} F */
 export function stepSound(W, F) {
   const { dt, MHP, pcx, pcy } = F;
   SFX.ear(pcx, pcy);
@@ -131,6 +137,7 @@ export function stepSound(W, F) {
 }
 
 // Angry Ghost: a spirit that trails you and fires at what's nearest
+/** @param {World} W @param {StepFrame} F */
 export function stepGhost(W, F) {
   const { dt, pcx, pcy } = F;
   if (W.pb.ghost) {

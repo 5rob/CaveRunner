@@ -1,3 +1,4 @@
+// @ts-check
 // Static fields and beams: a field cast into the world (castField, Brimstone's embers), a
 // crystal's payload, and a beam walked out instantly (fireBeam); and every field at work each
 // frame (stepFields, a part of step()).
@@ -14,6 +15,7 @@ import { glowDot, rnd } from './shotlooks.js';
 import { dig, enemyAt, explode, solidAt } from './terrain.js';
 
 // A beam is instant: it walks a line, damages what it touches and leaves a streak.
+/** @param {World} W @param {GameCtx} G @param {Shot} sh @param {number} x @param {number} y @param {number} nx @param {number} ny @param {number} bonus @param {number} pd @param {number} pc */
 export function fireBeam(W, G, sh, x, y, nx, ny, bonus, pd, pc) {
   pd = pd || 1; pc = pc || 0;
   let hitAt = sh.beam;
@@ -42,6 +44,7 @@ export function fireBeam(W, G, sh, x, y, nx, ny, bonus, pd, pc) {
 }
 
 // Brimstone: burning sparks thrown out of the blast, lighting what they land on
+/** @param {World} W @param {number} x @param {number} y @param {number} n */
 export function throwEmbers(W, x, y, n) {
   for (let k = 0; k < n; k++) {
     const a = -Math.PI / 2 + (Math.random() - 0.5) * 4.2, v = 60 + Math.random() * 150;
@@ -52,6 +55,7 @@ export function throwEmbers(W, x, y, n) {
 }
 
 // Static projectiles: they sit where you cast them and work over time.
+/** @param {World} W @param {GameCtx} G @param {Shot} sh @param {number} x @param {number} y @param {number} ang */
 export function castField(W, G, sh, x, y, ang) {
   const pay = sh.payload && sh.payload.length ? sh.payload : null;
   if (sh.field === 'explode') {
@@ -65,6 +69,7 @@ export function castField(W, G, sh, x, y, ang) {
 }
 
 // a crystal "with Trigger" casts what it carries when it goes off
+/** @param {World} W @param {GameCtx} G @param {Field} f */
 export const fieldPayload = (W, G, f) => {
   if (!f.payload) return;
   const list = f.payload; f.payload = null;
@@ -75,6 +80,7 @@ export const fieldPayload = (W, G, f) => {
 // Every field of yours at work, one frame (each kind by its field: Stillness and the storm
 // put fire out, mines and dormant crystals go off, shields eat shots, heal, lightning,
 // Vacuum Field's warp, glitter), then the beams fading.
+/** @param {World} W @param {GameCtx} G @param {StepFrame} F */
 export function stepFields(W, G, F) {
   const { dt, MHP, pcx, pcy } = F;
   for (let i = W.fields.length - 1; i >= 0; i--) {

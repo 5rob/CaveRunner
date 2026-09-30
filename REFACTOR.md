@@ -763,6 +763,16 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
           object literal, where esbuild keeps comments (a `@ts-expect-error` there reached `index.html`, and so did
           joining the literal onto one line: esbuild keeps an object's line breaks), so the local `k` is typed
           `CreatureKind & { fire?: number }` with a comment pointing at the entry. 0 new bugs, 0 `any`s
+    - [x] systems, part 2 (`gun`, `fields`, `bullets`, `shotlooks`, `pickups`, `recorder`, `save-run`, `level-entry`,
+          `step`): ~200 errors when turned on, nearly all one guess of the script's (`shotlooks.rnd(a, b)`'s `b` is a
+          number, not a `Bullet`: every call flagged). The rest noise, fixed by a type: `Bullet` split into what every
+          bullet has and optional rest (a cluster's pellets and the Angry Ghost's shots are pushed with only the first
+          block; the loop reads a missing field as 0), `hit`/`propHit` are `Set`s, `Pickup.cool`, `Devil.snd`,
+          `enterLevel`'s `back` a `SavedLevel`, the recorder's pixel copies `Uint8ClampedArray<ArrayBuffer>` (what
+          `new ImageData` takes). `World.sconces` stays `any[]` (enterLevel builds `[x, y]` pairs, then maps them to
+          `Sconce`s; the pairs span two lines of one array, where a comment would reach `index.html`). Four one-line
+          `@ts-expect-error`, noise: `recWrap`'s `[context, 't'/'d']` rows read as a union (3), and `drawReplay`'s
+          stand-in `W.fire` (no fuel). 0 bugs, 1 `any` (`sconces`)
 - [ ] **P4.4** Once a folder is clean, keep it clean: the check is part of the green bar.
 
 ### Phase 5 — notes live next to the code
@@ -929,7 +939,7 @@ commit. List them here for after.
   and `// @ts-expect-error` lines are all dropped. So P4.3 uses no inline casts (D21).
 - **`drawFields` ends with `G.ctx.globalAlpha = 1;` twice** (render/looks.js): one was the line after the old inner
   `drawFieldLook` declaration. Harmless; left as it was.
-- **A vent reuses `Prop.on` as "roaring"** (P4.3, game: `src/game/systems/props.js:217`, `pr.on = ph > 2.6`). On an
+- **A vent reuses `Prop.on` as "roaring"** (P4.3, game: `src/game/systems/props.js:218`, `pr.on = ph > 2.6`). On an
   arch strand `on` is the arch it hangs off, and `propAnchored` (`src/world/decorate.js:562`) reads `if (pr.on) return
   !pr.on.fall && !pr.on.gone`, so a vent is counted as anchored (never dropped) while it roars, and only checked in its
   quiet part of the cycle; `decorStep` also sets `pr.on = null` when a prop falls. Harmless today (vents have their own
@@ -1172,3 +1182,4 @@ contents *into* them and back; `ratOnWeb = onWebIn(webs)` captured `webs`. They 
 | 2026-09-30 | Phase 4, P4.3 layer 4 | `art/`, `audio/`, `save/`, `replay/` checked (7 files): one error, noise (`webkitAudioContext`, declared in globals.d.ts). JSDoc on the exported functions and SFX's public calls; `safe()` typed to keep its function's signature (one `@ts-expect-error`). types.d.ts: `Loadout`, `SaveData`, `SavedLevel`, the replay's `RpSnap`/`RpFrame`/`RpRect`/`RpPatch`, `Prop.u0`/`u1`. `index.html` unchanged. 0 bugs, 9 `any`s (save 2, replay 7). | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 4, P4.3 game (1) | types.d.ts's game section narrowed (World's lists, `GameInput`, `Recorder`/`ReplayPlayer`, `EnemyCtx`, `ActHooks`, `SoundLoop`, `NavCache`; `img`/`dimg` as `ImageData`), then `world.js`, `Game.js`, `testhook.js` checked: two errors, noise (the test page's `window` hooks; `Pixels` to `putImageData`). `index.html` unchanged. 0 bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
 | 2026-09-30 | Phase 4, P4.3 game (2) | systems part 1 checked (`terrain`, `particles`, `player`, `enemies`, `fire`, `webs`, `fog`, `ambience`, `props`, `plantglow`, `lightning`): 34 errors, all noise but Stendari's known `k.fire` (typed on the local, since its line is inside an object literal: a comment there, or joining the literal onto one line, changed `index.html`). types.d.ts fitted (`Prop.fall`/`warn`/`heard`/`climb`, `Bullet.struck`, `jetSt.gap`); 3 `@ts-expect-error` (noise). Logged: a vent reuses `Prop.on`. `index.html` unchanged. 0 new bugs, 0 `any`s. | probe SAME, logic 33/33, smoke ok |
+| 2026-09-30 | Phase 4, P4.3 game (3) | systems part 2 checked (`gun`, `fields`, `bullets`, `shotlooks`, `pickups`, `recorder`, `save-run`, `level-entry`, `step`): ~200 errors, nearly all one wrong guess of the JSDoc script's (`rnd(a, b)`); the rest noise, fixed by types (`Bullet`'s optional part, `hit` a `Set`, `Pickup.cool`, `Devil.snd`, `SavedLevel`, `Uint8ClampedArray<ArrayBuffer>`), 4 `@ts-expect-error` (recWrap's rows, the replay's stand-in fire). `index.html` unchanged. 0 bugs, 1 `any` (`World.sconces`). | probe SAME, logic 33/33, smoke ok |

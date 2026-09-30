@@ -105,7 +105,7 @@ export function rpFrame(snaps, t) {
   return F;
 }
 // terrain patches: copy a rectangle out of (and back into) a W-wide RGBA pixel array
-/** @param {Uint8ClampedArray} data @param {number} W @param {number} x @param {number} y @param {number} w @param {number} h @returns {Uint8ClampedArray} */
+/** @param {Uint8ClampedArray} data @param {number} W @param {number} x @param {number} y @param {number} w @param {number} h @returns {Uint8ClampedArray<ArrayBuffer>} */
 export function rpCut(data, W, x, y, w, h) {
   const out = new Uint8ClampedArray(w * h * 4);
   for (let r = 0; r < h; r++) out.set(data.subarray(((y + r) * W + x) * 4, ((y + r) * W + x + w) * 4), r * w * 4);
