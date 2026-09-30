@@ -24,7 +24,7 @@ import { drawBelow, drawFx } from './fx.js';
 import { drawFog, drawGlows } from './light.js';
 import { drawBeams, drawFields, drawShots } from './looks.js';
 import { drawHud, drawMap, drawMessages, drawRadar, drawReticule } from './overlay.js';
-import { drawVend, drawWarp } from './vend.js';
+import { drawRepo, drawVend, drawWarp } from './vend.js';
 
 /** @param {World} W @param {GameCtx} G */
 export function draw(W, G) {
@@ -59,6 +59,7 @@ export function draw(W, G) {
   drawFog(W, G, F);                         // line of sight lifts the fog; the fog (light.js)
   drawGlows(W, G, F);                       // light over the fog (light.js)
   drawWarp(W, G, F);                        // a level teleporting in or out: flash, crackle (vend.js)
+  drawRepo(W, G, F);                        // repossessed: red lights, then the fire jets (vend.js)
   drawFx(W, G, F);                          // the FX layer: the hologram's bloom (fx.js)
   drawBelow(W, G, F);                       // black below the shop floor (fx.js)
   if (G.RPV) return;                        // a replay frame has no HUD

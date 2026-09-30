@@ -29,33 +29,34 @@ const cache = { key: '', pat: null };
 function tilePattern(ctx, n) {
   const key = String(n);
   if (cache.key === key && cache.pat) return cache.pat;
-  const zero = n === 0, hue = zero ? '#00ff3c' : '#ff0000';
+  // n < 0: the level has been repossessed (REPOSSESSED in a box wide enough for it)
+  const zero = n === 0, repo = n < 0, hue = zero ? '#00ff3c' : '#ff0000', bw = repo ? 200 : BOX_W;
   const c = document.createElement('canvas');
   c.width = PERIOD_X * RES; c.height = PERIOD_Y * RES;
   const t = c.getContext('2d');
   if (!t) return null;
   t.scale(RES, RES);
-  const x = (PERIOD_X - BOX_W) / 2, y = (PERIOD_Y - TOP_H - BOT_H) / 2, by = y + TOP_H;
+  const x = (PERIOD_X - bw) / 2, y = (PERIOD_Y - TOP_H - BOT_H) / 2, by = y + TOP_H;
   /** @param {number} yy @param {number} hh @param {boolean} solid */
   const box = (yy, hh, solid) => {
     t.globalCompositeOperation = 'source-over';
-    if (solid) { t.fillStyle = hue; t.fillRect(x, yy, BOX_W, hh); return; }
+    if (solid) { t.fillStyle = hue; t.fillRect(x, yy, bw, hh); return; }
     t.strokeStyle = hue; t.lineWidth = LINE;
-    t.strokeRect(x + LINE / 2, yy + LINE / 2, BOX_W - LINE, hh - LINE);
+    t.strokeRect(x + LINE / 2, yy + LINE / 2, bw - LINE, hh - LINE);
   };
   // text in a solid box is cut out of it; in an outlined box it's drawn in the hue
   /** @param {boolean} cut */
   const ink = cut => { t.globalCompositeOperation = cut ? 'destination-out' : 'source-over'; t.fillStyle = cut ? '#000' : hue; };
   box(y, TOP_H, !zero);
-  const s = String(n);
-  let fs = Math.min(BOX_W, TOP_H) - PAD * 2;
+  const s = repo ? 'REPOSSESSED' : String(n);
+  let fs = Math.min(bw, TOP_H) - PAD * 2;
   t.font = '900 ' + fs + 'px system-ui, sans-serif';
   const w = t.measureText(s).width;
-  if (w > BOX_W - PAD * 2) { fs *= (BOX_W - PAD * 2) / w; t.font = '900 ' + fs + 'px system-ui, sans-serif'; }
+  if (w > bw - PAD * 2) { fs *= (bw - PAD * 2) / w; t.font = '900 ' + fs + 'px system-ui, sans-serif'; }
   ink(!zero); t.textBaseline = 'middle'; t.textAlign = 'left';
   t.fillText(s, x + PAD, y + TOP_H / 2 + fs * 0.05);
   box(by, BOT_H, zero);
-  const words = ['biological', 'entities', 'detected'], lh = (BOT_H - TXT_PAD * 2) / words.length;
+  const words = repo ? ['debt', 'not', 'repaid'] : ['biological', 'entities', 'detected'], lh = (BOT_H - TXT_PAD * 2) / words.length;
   t.font = '700 ' + (lh * 0.85) + 'px system-ui, sans-serif'; t.textBaseline = 'top';
   ink(zero);
   words.forEach((wd, i) => t.fillText(wd, x + TXT_PAD, by + TXT_PAD + i * lh + lh * 0.08));
@@ -135,7 +136,7 @@ function glitch(lc, C, g, t, dpr) {
 // and the shop cover it). The fog swap (light.js) and the bloom (fx.js) reuse the layer
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawHolo(W, G, F) {
-  const n = bioCount(W.enemies, !W.p.dead && W.p.y + PH <= SHOP_Y);
+  const n = W.repo ? -2 : bioCount(W.enemies, !W.p.dead && W.p.y + PH <= SHOP_Y);
   if (n !== L.n) { if (L.n >= 0) L.gt = W.time; L.n = n; }
   if (L.gt > W.time) L.gt = -99;                // a new run: the clock started again
   const C = L.c = sizedCanvas(L.c, G.c.width, G.c.height), lc = C.getContext('2d');
@@ -150,6 +151,20 @@ export function drawHolo(W, G, F) {
   G.ctx.globalAlpha = DEV.holoAlpha;
   G.ctx.drawImage(C, 0, 0);
   G.ctx.restore();
+}
+
+// Once the level is repossessed the hologram shows on the shop's back wall too (dimmer), so you
+// see why from in there: this frame's layer, clipped to the room (drawn after the shop's stock)
+/** @param {World} W @param {GameCtx} G */
+export function drawHoloShop(W, G) {
+  if (!W.repo || !L.c) return;
+  const ctx = G.ctx;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, SHOP_Y, WW, SHOP_FLOOR * CELL - SHOP_Y); ctx.clip();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 0.3 * DEV.holoAlpha;
+  ctx.drawImage(L.c, 0, 0);
+  ctx.restore();
 }
 
 // A canvas of (at least) w x h, reused: made once, resized only when the view changes

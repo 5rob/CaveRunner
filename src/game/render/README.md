@@ -10,7 +10,7 @@
 | `fx.js` | The FX layer, over the finished picture: `drawFx` (the hologram's bloom: `holoFill` into a 1/4-size buffer, rock/decoration/shop wall/fog/below-the-floor cut out, blurred + brightened, added with `lighter`; Dev knobs `bloom`, `bloomBlur`, `bloomBright`), `drawBelow` (black below the level, `WH`) |
 | `holo.js` | the hologram, made once a frame into its own layer (static from `W.time` hashes; `holoGlitch` when the number changes), then `drawHolo` (the slanted "biological entities detected" tiles, count from `bioCount`; parallax `HOLO_PAR`, halfway between the background's `BG_PAR` and the rock), called by `drawTerrain` right after the background |
 | `cave.js` | `drawTerrain` (background with `BG_PAR`, the shop wall with the floor number, rock, burning pixels), `drawProps` (fills `TH`, `onView`; props, drips, ambience), `drawPortal`, `drawArrival`, `drawShop`, `drawVend`, `drawLoot` (gold, guns, mods), `drawRooms` |
-| `vend.js` | `drawVend` (the two level vending machines, after `drawShop`: cabinet, and a screen cached per text + hue with its glow baked in; flicker-in on, CRT squeeze off) and `drawWarp` (the teleport's flash, sweep and bolts, after `drawGlows`) |
+| `vend.js` | `drawVend` (the two level vending machines, after `drawShop`: cabinet, and a screen cached per text + hue with its glow baked in; flicker-in on, CRT squeeze off) and `drawWarp` (the teleport's flash, sweep and bolts, after `drawGlows`), `drawRepo` (after it: the repossession's grates, red lights, fire jets); `holo.js` `drawHoloShop` puts REPOSSESSED on the shop wall |
 | `effects.js` | `drawSmoke`, `drawTrail`, `drawSparks`, `drawMotes`, `drawFlashes` |
 | `actors.js` | `drawEnemies`, `drawJetFlame`, `drawAim` (fills `held`, `ax`/`ay`, `gy`; the Trajectory Sight line), `drawPlayer` (runner, gun, torch, crosshair, shield, ghost) |
 | `looks.js` | `drawFields`, `drawShots`, `drawBeams`, and the looks: `drawLook` (a shot's sprite), `drawFieldLook`, `drawBolt` (a lightning line) |
@@ -20,7 +20,7 @@
 The order in `draw`: `drawCamera`, `drawTerrain`, `drawProps`, `drawPortal`, `drawSmoke`,
 `drawFields`, `drawSilk` (`game/creatures/spider.js`), `drawEnemies`, `drawShots`, `drawBeams`,
 `drawArrival`, `drawShop`, `drawLoot`, `drawRooms`, `drawTrail`, `drawSparks`, `drawMotes`,
-`drawFlashes`, `drawJetFlame`, `drawAim`, `drawPlayer`, `drawFog`, `drawGlows`, `drawWarp`, `drawFx`, `drawBelow`, then
+`drawFlashes`, `drawJetFlame`, `drawAim`, `drawPlayer`, `drawFog`, `drawGlows`, `drawWarp`, `drawRepo`, `drawFx`, `drawBelow`, then
 `if (G.RPV) return;` (a replay has no HUD), `drawHud`, `drawRadar`, `drawMessages`, `drawReticule`,
 `drawMap`.
 

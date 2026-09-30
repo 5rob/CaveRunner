@@ -51,6 +51,7 @@ export function makeWorld() {
     // the level above the shop is bought from the vending machine and sold back (vend.js): false
     // while there isn't one (the cave is solid dark, the roof sealed); warp is the teleport under way
     hasLvl: false, warp: null,
+    repo: null,                     // the repayment deadline passed: the level is taken back, then the fire
     start: undefined, portal: undefined, arrival: undefined,   // where you come in, the way out
     stock: undefined,               // the shop's plinths
     zone: null,                     // built-up vs natural, per terrain pixel (floor 1)

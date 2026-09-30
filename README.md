@@ -5,7 +5,9 @@ shop room with nothing above it. On its back wall, past the free heal, stand
 two vending machines: the green one sells you a freshly generated destructible
 level for 64,000,000,000 gold on credit (it goes on a debt shown in red under
 your gold, and you have five real days to repay it: the buy machine counts
-the deadline down, even while the game is closed), and it
+the deadline down, even while the game is closed; miss it and the level is
+repossessed, the alarms go off, and ten seconds later the shop floor fills with
+fire), and it
 teleports in over the shop in a flash and a crackle of lightning. Climb to the
 green exit at the top and it drops you back in the shop. The other machine buys
 the level back for 64,000,001,000, but its screen stays red until no biological

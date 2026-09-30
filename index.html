@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v107</title>
+<title>CaveRunner v108</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -492,7 +492,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v107';</script>
+<script>const VERSION = 'v108';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -3992,6 +3992,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const notes = [523, 659, 784, 988, 1175, 1319];
         for (let i = 0; i < 4; i++) bell(d, notes[Math.floor(Math.random() * notes.length)] * 2, t + 0.12 + i * rnd2(0.06, 0.1), 0.6, 0.06);
         tone(d, "sine", rnd2(180, 220), rnd2(450, 550), t, 0.5, 0.15, 0.1);
+      },
+      // the shop's emergency alarm: a two-tone klaxon, once a cycle
+      alarm(d, t) {
+        tone(d, "square", 620, 620, t, 0.32, 0.05, 0.02);
+        tone(d, "square", 470, 470, t + 0.34, 0.32, 0.05, 0.02);
       },
       // a whole level teleporting in or out over the shop: a crackle of lightning, a rising
       // whine and a deep thump
@@ -12025,36 +12030,36 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function tilePattern(ctx, n) {
     const key = String(n);
     if (cache.key === key && cache.pat) return cache.pat;
-    const zero = n === 0, hue = zero ? "#00ff3c" : "#ff0000";
+    const zero = n === 0, repo = n < 0, hue = zero ? "#00ff3c" : "#ff0000", bw = repo ? 200 : BOX_W;
     const c = document.createElement("canvas");
     c.width = PERIOD_X * RES;
     c.height = PERIOD_Y * RES;
     const t = c.getContext("2d");
     if (!t) return null;
     t.scale(RES, RES);
-    const x = (PERIOD_X - BOX_W) / 2, y = (PERIOD_Y - TOP_H - BOT_H) / 2, by = y + TOP_H;
+    const x = (PERIOD_X - bw) / 2, y = (PERIOD_Y - TOP_H - BOT_H) / 2, by = y + TOP_H;
     const box = (yy, hh, solid) => {
       t.globalCompositeOperation = "source-over";
       if (solid) {
         t.fillStyle = hue;
-        t.fillRect(x, yy, BOX_W, hh);
+        t.fillRect(x, yy, bw, hh);
         return;
       }
       t.strokeStyle = hue;
       t.lineWidth = LINE;
-      t.strokeRect(x + LINE / 2, yy + LINE / 2, BOX_W - LINE, hh - LINE);
+      t.strokeRect(x + LINE / 2, yy + LINE / 2, bw - LINE, hh - LINE);
     };
     const ink = (cut) => {
       t.globalCompositeOperation = cut ? "destination-out" : "source-over";
       t.fillStyle = cut ? "#000" : hue;
     };
     box(y, TOP_H, !zero);
-    const s = String(n);
-    let fs = Math.min(BOX_W, TOP_H) - PAD * 2;
+    const s = repo ? "REPOSSESSED" : String(n);
+    let fs = Math.min(bw, TOP_H) - PAD * 2;
     t.font = "900 " + fs + "px system-ui, sans-serif";
     const w = t.measureText(s).width;
-    if (w > BOX_W - PAD * 2) {
-      fs *= (BOX_W - PAD * 2) / w;
+    if (w > bw - PAD * 2) {
+      fs *= (bw - PAD * 2) / w;
       t.font = "900 " + fs + "px system-ui, sans-serif";
     }
     ink(!zero);
@@ -12062,7 +12067,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     t.textAlign = "left";
     t.fillText(s, x + PAD, y + TOP_H / 2 + fs * 0.05);
     box(by, BOT_H, zero);
-    const words = ["biological", "entities", "detected"], lh = (BOT_H - TXT_PAD * 2) / words.length;
+    const words = repo ? ["debt", "not", "repaid"] : ["biological", "entities", "detected"], lh = (BOT_H - TXT_PAD * 2) / words.length;
     t.font = "700 " + lh * 0.85 + "px system-ui, sans-serif";
     t.textBaseline = "top";
     ink(zero);
@@ -12129,7 +12134,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     lc.globalCompositeOperation = "source-over";
   }
   function drawHolo(W, G, F) {
-    const n = bioCount(W.enemies, !W.p.dead && W.p.y + PH <= SHOP_Y);
+    const n = W.repo ? -2 : bioCount(W.enemies, !W.p.dead && W.p.y + PH <= SHOP_Y);
     if (n !== L.n) {
       if (L.n >= 0) L.gt = W.time;
       L.n = n;
@@ -12148,6 +12153,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.ctx.globalAlpha = DEV.holoAlpha;
     G.ctx.drawImage(C, 0, 0);
     G.ctx.restore();
+  }
+  function drawHoloShop(W, G) {
+    if (!W.repo || !L.c) return;
+    const ctx = G.ctx;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, SHOP_Y, WW, SHOP_FLOOR * CELL - SHOP_Y);
+    ctx.clip();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 0.3 * DEV.holoAlpha;
+    ctx.drawImage(L.c, 0, 0);
+    ctx.restore();
   }
   function sizedCanvas(c, w, h3) {
     const o = c || document.createElement("canvas");
@@ -14567,204 +14584,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.ctx.globalAlpha = 1;
   }
 
-  // src/game/render/overlay.js
-  function drawHud(W, G, F) {
-    const { dpr, held } = F;
-    G.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const cw = F.cw = G.c.width / dpr;
-    G.ctx.shadowColor = "rgba(0,0,0,0.6)";
-    G.ctx.shadowBlur = 3;
-    G.ctx.fillStyle = COL.muted;
-    G.ctx.font = "500 12px system-ui, sans-serif";
-    G.ctx.textAlign = "left";
-    G.ctx.fillText(VERSION, 12, 22);
-    G.ctx.shadowBlur = 0;
-    const MHP = maxHp(W, G);
-    const gpas = held ? gunPassives(held) : null;
-    const effRech = held ? Math.max(1e-3, effRecharge(held) * W.pb.rech) : 1;
-    G.input.current.hud = {
-      hp: MHP > 0 ? Math.max(0, Math.min(1, W.p.hp / MHP)) : 0,
-      low: W.p.hp <= 30,
-      fuel: Math.max(0, Math.min(1, W.p.fuel)),
-      empty: !!W.p.empty,
-      mana: held ? Math.max(0, Math.min(1, held.mana / (held.manaMax + gpas.manaMax))) : 0,
-      rech: held ? held.rechT > 0 ? clamp(1 - held.rechT / effRech, 0, 1) : 1 : 0,
-      cast: held ? held.delayT > 0 && held.delayMax ? clamp(1 - held.delayT / held.delayMax, 0, 1) : 1 : 0,
-      recharging: !!(held && held.rechT > 0),
-      hasGun: !!held
-    };
-  }
-  function drawRadar(W, G, F) {
-    const { dpr, playPx, pcx, pcy } = F;
-    if (W.pb.radarEnemy || W.pb.radarItem || W.pb.radarWand) {
-      const cwv = G.c.width / dpr, chv = playPx / dpr, m = 18;
-      const nearest = (list) => {
-        let best = null, bd = 1e18;
-        for (const t of list) {
-          const d = (t.x - pcx) * (t.x - pcx) + ((t.ty || t.y) - pcy) * ((t.ty || t.y) - pcy);
-          if (d < bd) {
-            bd = d;
-            best = t;
-          }
-        }
-        return best;
-      };
-      const marker = (t, col) => {
-        if (!t) return;
-        const sx = (t.x - W.camX) * W.unitPx, sy = ((t.ty || t.y) - W.camY) * W.unitPx;
-        if (sx > m && sx < cwv - m && sy > m && sy < chv - m) {
-          G.ctx.strokeStyle = col;
-          G.ctx.lineWidth = 2;
-          G.ctx.globalAlpha = 0.85;
-          G.ctx.beginPath();
-          G.ctx.arc(sx, sy, 11, 0, Math.PI * 2);
-          G.ctx.stroke();
-          G.ctx.globalAlpha = 1;
-          return;
-        }
-        const ex = clamp(sx, m, cwv - m), ey = clamp(sy, m, chv - m);
-        const a = Math.atan2(sy - ey, sx - ex);
-        G.ctx.save();
-        G.ctx.translate(ex, ey);
-        G.ctx.rotate(a);
-        G.ctx.fillStyle = col;
-        G.ctx.globalAlpha = 0.9;
-        G.ctx.beginPath();
-        G.ctx.moveTo(9, 0);
-        G.ctx.lineTo(-7, -6);
-        G.ctx.lineTo(-7, 6);
-        G.ctx.closePath();
-        G.ctx.fill();
-        G.ctx.restore();
-        G.ctx.globalAlpha = 1;
-      };
-      if (W.pb.radarEnemy) marker(nearest(W.enemies), PERKS.eradar.tint);
-      if (W.pb.radarItem) marker(nearest(W.pickups.filter((q) => q.kind === "mod")), "#b57cff");
-      if (W.pb.radarWand) marker(nearest(W.pickups.filter((q) => q.kind === "gun")), COL.bullet);
-    }
-  }
-  function drawMessages(W, G, F) {
-    const { dpr, playPx, cw } = F;
-    G.ctx.textAlign = "center";
-    const ch = playPx / dpr;
-    for (let i = 0; i < W.toasts.length; i++) {
-      const tm = W.toasts[i];
-      G.ctx.globalAlpha = Math.min(1, tm.t * 1.5);
-      G.ctx.fillStyle = COL.text;
-      G.ctx.font = "600 14px system-ui, sans-serif";
-      G.ctx.fillText(tm.text, cw / 2, ch - 18 - (W.toasts.length - 1 - i) * 19);
-    }
-    G.ctx.globalAlpha = 1;
-    G.ctx.textAlign = "left";
-    G.ctx.textAlign = "center";
-    if (W.levelT < 3) {
-      G.ctx.fillStyle = COL.text;
-      G.ctx.globalAlpha = Math.min(1, 3 - W.levelT);
-      G.ctx.font = "700 22px system-ui, sans-serif";
-      G.ctx.fillText(themeFor(W.floor).name, cw / 2, 196);
-      G.ctx.font = "500 14px system-ui, sans-serif";
-      G.ctx.fillText("Find the green exit at the top", cw / 2, 218);
-      G.ctx.fillText("Clear it, then sell it back in the shop", cw / 2, 236);
-      G.ctx.globalAlpha = 1;
-    }
-    const msgY = 196;
-    G.ctx.fillStyle = COL.text;
-    if (W.p.dead) {
-      G.ctx.font = "700 22px system-ui, sans-serif";
-      G.ctx.fillText("You were shot down", cw / 2, msgY);
-      G.ctx.font = "500 14px system-ui, sans-serif";
-      G.ctx.fillText("Tap the right stick to restart", cw / 2, msgY + 22);
-    } else if (W.hasLvl && !W.warp && W.enemies.length === 0) {
-      G.ctx.font = "700 18px system-ui, sans-serif";
-      G.ctx.fillText("All enemies destroyed", cw / 2, msgY);
-    }
-    G.ctx.textAlign = "left";
-    G.ctx.shadowBlur = 0;
-  }
-  function drawReticule(G) {
-    if (G.mouse.inside) {
-      const mx = G.mouse.x, my = G.mouse.y;
-      for (const [w, colr] of [[4, "rgba(0,0,0,0.6)"], [2, G.mouse.down ? COL.flame2 : COL.text]]) {
-        G.ctx.strokeStyle = colr;
-        G.ctx.lineWidth = w;
-        G.ctx.beginPath();
-        G.ctx.arc(mx, my, 9, 0, Math.PI * 2);
-        G.ctx.stroke();
-        G.ctx.beginPath();
-        G.ctx.moveTo(mx - 15, my);
-        G.ctx.lineTo(mx - 5, my);
-        G.ctx.moveTo(mx + 5, my);
-        G.ctx.lineTo(mx + 15, my);
-        G.ctx.moveTo(mx, my - 15);
-        G.ctx.lineTo(mx, my - 5);
-        G.ctx.moveTo(mx, my + 5);
-        G.ctx.lineTo(mx, my + 15);
-        G.ctx.stroke();
-      }
-    }
-  }
-  function drawMap(W, G, F) {
-    const { dpr, playPx } = F;
-    if (G.input.current.mapOpen) {
-      G.mini32.fill(0);
-      for (let k2 = 0; k2 < W.miniEdgeIdx.length; k2++) {
-        const i = W.miniEdgeIdx[k2];
-        const tx = i % MMW * MINI_D, ty = (i / MMW | 0) * MINI_D;
-        const fi = (ty / FOG | 0) * FW + (tx / FOG | 0);
-        if (W.seen[fi]) G.mini32[i] = 3875536895;
-      }
-      G.mctx.putImageData(G.miniImg, 0, 0);
-      const pw = G.c.width / dpr, ph = playPx / dpr, pad = 10;
-      G.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      G.ctx.fillStyle = "rgba(0,0,0,0.8)";
-      G.ctx.fillRect(0, 0, pw, ph);
-      const k = Math.min((pw - 2 * pad) / MMW, (ph - 2 * pad) / MMH);
-      const mw = MMW * k, mh = MMH * k, mx0 = (pw - mw) / 2, my0 = (ph - mh) / 2;
-      G.ctx.imageSmoothingEnabled = true;
-      G.ctx.drawImage(G.miniC, 0, 0, MMW, MMH, mx0, my0, mw, mh);
-      const wW = CW * CELL, wH = CH * CELL;
-      const mX = (x) => mx0 + x / wW * mw, mY = (y) => my0 + y / wH * mh;
-      G.ctx.strokeStyle = "#ffd23c";
-      G.ctx.lineWidth = 1.5;
-      for (const r of W.rooms) {
-        if (!roomSeen(W, r)) continue;
-        const x0 = mX(r.x - ROOM_HW), y0 = mY(r.y - ROOM_HH), x1 = mX(r.x + ROOM_HW), y1 = mY(r.y + ROOM_HH);
-        G.ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
-        if (r.taken) {
-          const ix = (x1 - x0) * 0.25, iy = (y1 - y0) * 0.2;
-          G.ctx.beginPath();
-          G.ctx.moveTo(x0 + ix, y0 + iy);
-          G.ctx.lineTo(x1 - ix, y1 - iy);
-          G.ctx.moveTo(x1 - ix, y0 + iy);
-          G.ctx.lineTo(x0 + ix, y1 - iy);
-          G.ctx.stroke();
-        }
-      }
-      for (const q of W.pickups) {
-        if (q.taken || !fogLit(W, q.x, q.y)) continue;
-        const col = q.kind === "gun" ? "#ffd23c" : "#46e07a";
-        G.ctx.beginPath();
-        G.ctx.arc(mX(q.x), mY(q.y), 2.6, 0, Math.PI * 2);
-        if (q.old) {
-          G.ctx.strokeStyle = col;
-          G.ctx.lineWidth = 1.2;
-          G.ctx.stroke();
-        } else {
-          G.ctx.fillStyle = col;
-          G.ctx.fill();
-        }
-      }
-      G.ctx.fillStyle = "#ffd23c";
-      G.ctx.strokeStyle = "#fff";
-      G.ctx.lineWidth = 1.5;
-      G.ctx.beginPath();
-      G.ctx.arc(mX(W.p.x + PW / 2), mY(W.p.y + PH / 2), 4, 0, Math.PI * 2);
-      G.ctx.fill();
-      G.ctx.stroke();
-      G.ctx.imageSmoothingEnabled = false;
-    }
-  }
-
   // src/replay/replay.js
   var RP_HZ = 20;
   var RP_BEFORE = 10;
@@ -15300,13 +15119,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/game/systems/vend.js
+  var REPO_WARP = 3, REPO_ALARM = 5.6, REPO_FIRE = REPO_ALARM + 10;
+  var REPO_JET = 40;
   var WARP_SWAP = 0.6;
   var WARP_END = 2.4;
   var ROOF_Y = (SHOP_TOP - SHOP_ROOF) * CELL;
   var VEND_W = 60, VEND_H = 84;
   var VEND_TOP = SHOP_FLOOR * CELL - VEND_H;
   function vendNear(W, pcx, pcy) {
-    if (W.warp || pcy < SHOP_Y || pcy > SHOP_FLOOR * CELL) return null;
+    if (W.warp || W.repo || pcy < SHOP_Y || pcy > SHOP_FLOOR * CELL) return null;
     if (Math.abs(pcx - VEND_BUY_X) < 30 && !W.hasLvl) return "buy";
     if (Math.abs(pcx - VEND_SELL_X) < 30 && W.hasLvl) return "sell";
     return null;
@@ -15347,7 +15168,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     w.t += F.dt;
     if (!w.done && w.t >= WARP_SWAP) {
       w.done = true;
-      if (w.dir === "in") enterLevel(W, G, { seed: W.levelSeed, owned: W.levelOwned, alive: null, sold: [], rooms: [], pickups: null }, "shop");
+      if (w.dir === "repo") {
+        W.p.x = W.start.x;
+        W.p.y = W.start.y;
+        W.p.vx = W.p.vy = 0;
+        W.camReady = false;
+        W.hasLvl = false;
+        voidCave(W, G);
+      } else if (w.dir === "in") enterLevel(W, G, { seed: W.levelSeed, owned: W.levelOwned, alive: null, sold: [], rooms: [], pickups: null }, "shop");
       else {
         W.floor++;
         enterLevel(W, G, void 0, "you");
@@ -15423,6 +15251,254 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     paintFog(W, G);
   }
   var keep = (q) => q.y >= SHOP_Y - 12;
+  function stepRepo(W, G, F) {
+    const LO = F.LO;
+    if (!W.repo) {
+      if ((W.hasLvl || LO.debt > 0) && !W.warp && !W.p.dead && LO.due && Date.now() >= LO.due) {
+        W.repo = { t: W.hasLvl ? 0 : REPO_ALARM - 0.5, hurtT: 0, sndT: 0 };
+        toast(W, "Debt defaulted: level repossessed");
+        SFX.fx("ventWarn");
+      }
+      return;
+    }
+    const R = W.repo, t0 = R.t;
+    R.t += F.dt;
+    if (t0 < REPO_WARP && R.t >= REPO_WARP) W.warp = { dir: "repo", t: 0, done: false, bolts: [] };
+    if (R.t < REPO_ALARM) return;
+    if ((R.sndT -= F.dt) <= 0) {
+      R.sndT = 0.9;
+      SFX.fx("alarm");
+      if (R.t >= REPO_FIRE) SFX.fx("ventFire", W.p.x + (Math.random() - 0.5) * 200, SHOP_FLOOR * CELL);
+    }
+    if (R.t < REPO_FIRE) return;
+    const fy = SHOP_FLOOR * CELL, x0 = Math.floor(W.camX / REPO_JET) * REPO_JET, grow = Math.min(1, (R.t - REPO_FIRE) / 2);
+    for (let x = x0; x < W.camX + W.viewW + REPO_JET; x += REPO_JET) if (Math.random() < 0.6) {
+      W.sparks.push({
+        x: x + (Math.random() - 0.5) * 6,
+        y: fy - 2,
+        vx: (Math.random() - 0.5) * 40,
+        vy: -(120 + Math.random() * 260) * grow,
+        life: 0.6,
+        max: 0.6,
+        c: Math.random() < 0.5 ? "#ffd35a" : "#ff7a1a",
+        size: 3
+      });
+    }
+    if (W.p.dead || R.t < REPO_FIRE + 1) return;
+    if ((R.hurtT -= F.dt) <= 0) {
+      R.hurtT = 0.3;
+      youAlight(W);
+      hurt(W, G, Math.round(3 + 2.5 * (R.t - REPO_FIRE)));
+    }
+  }
+
+  // src/game/render/overlay.js
+  function drawHud(W, G, F) {
+    const { dpr, held } = F;
+    G.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const cw = F.cw = G.c.width / dpr;
+    G.ctx.shadowColor = "rgba(0,0,0,0.6)";
+    G.ctx.shadowBlur = 3;
+    G.ctx.fillStyle = COL.muted;
+    G.ctx.font = "500 12px system-ui, sans-serif";
+    G.ctx.textAlign = "left";
+    G.ctx.fillText(VERSION, 12, 22);
+    G.ctx.shadowBlur = 0;
+    const MHP = maxHp(W, G);
+    const gpas = held ? gunPassives(held) : null;
+    const effRech = held ? Math.max(1e-3, effRecharge(held) * W.pb.rech) : 1;
+    G.input.current.hud = {
+      hp: MHP > 0 ? Math.max(0, Math.min(1, W.p.hp / MHP)) : 0,
+      low: W.p.hp <= 30,
+      fuel: Math.max(0, Math.min(1, W.p.fuel)),
+      empty: !!W.p.empty,
+      mana: held ? Math.max(0, Math.min(1, held.mana / (held.manaMax + gpas.manaMax))) : 0,
+      rech: held ? held.rechT > 0 ? clamp(1 - held.rechT / effRech, 0, 1) : 1 : 0,
+      cast: held ? held.delayT > 0 && held.delayMax ? clamp(1 - held.delayT / held.delayMax, 0, 1) : 1 : 0,
+      recharging: !!(held && held.rechT > 0),
+      hasGun: !!held
+    };
+  }
+  function drawRadar(W, G, F) {
+    const { dpr, playPx, pcx, pcy } = F;
+    if (W.pb.radarEnemy || W.pb.radarItem || W.pb.radarWand) {
+      const cwv = G.c.width / dpr, chv = playPx / dpr, m = 18;
+      const nearest = (list) => {
+        let best = null, bd = 1e18;
+        for (const t of list) {
+          const d = (t.x - pcx) * (t.x - pcx) + ((t.ty || t.y) - pcy) * ((t.ty || t.y) - pcy);
+          if (d < bd) {
+            bd = d;
+            best = t;
+          }
+        }
+        return best;
+      };
+      const marker = (t, col) => {
+        if (!t) return;
+        const sx = (t.x - W.camX) * W.unitPx, sy = ((t.ty || t.y) - W.camY) * W.unitPx;
+        if (sx > m && sx < cwv - m && sy > m && sy < chv - m) {
+          G.ctx.strokeStyle = col;
+          G.ctx.lineWidth = 2;
+          G.ctx.globalAlpha = 0.85;
+          G.ctx.beginPath();
+          G.ctx.arc(sx, sy, 11, 0, Math.PI * 2);
+          G.ctx.stroke();
+          G.ctx.globalAlpha = 1;
+          return;
+        }
+        const ex = clamp(sx, m, cwv - m), ey = clamp(sy, m, chv - m);
+        const a = Math.atan2(sy - ey, sx - ex);
+        G.ctx.save();
+        G.ctx.translate(ex, ey);
+        G.ctx.rotate(a);
+        G.ctx.fillStyle = col;
+        G.ctx.globalAlpha = 0.9;
+        G.ctx.beginPath();
+        G.ctx.moveTo(9, 0);
+        G.ctx.lineTo(-7, -6);
+        G.ctx.lineTo(-7, 6);
+        G.ctx.closePath();
+        G.ctx.fill();
+        G.ctx.restore();
+        G.ctx.globalAlpha = 1;
+      };
+      if (W.pb.radarEnemy) marker(nearest(W.enemies), PERKS.eradar.tint);
+      if (W.pb.radarItem) marker(nearest(W.pickups.filter((q) => q.kind === "mod")), "#b57cff");
+      if (W.pb.radarWand) marker(nearest(W.pickups.filter((q) => q.kind === "gun")), COL.bullet);
+    }
+  }
+  function drawMessages(W, G, F) {
+    const { dpr, playPx, cw } = F;
+    G.ctx.textAlign = "center";
+    const ch = playPx / dpr;
+    for (let i = 0; i < W.toasts.length; i++) {
+      const tm = W.toasts[i];
+      G.ctx.globalAlpha = Math.min(1, tm.t * 1.5);
+      G.ctx.fillStyle = COL.text;
+      G.ctx.font = "600 14px system-ui, sans-serif";
+      G.ctx.fillText(tm.text, cw / 2, ch - 18 - (W.toasts.length - 1 - i) * 19);
+    }
+    G.ctx.globalAlpha = 1;
+    G.ctx.textAlign = "left";
+    G.ctx.textAlign = "center";
+    if (W.levelT < 3) {
+      G.ctx.fillStyle = COL.text;
+      G.ctx.globalAlpha = Math.min(1, 3 - W.levelT);
+      G.ctx.font = "700 22px system-ui, sans-serif";
+      G.ctx.fillText(themeFor(W.floor).name, cw / 2, 196);
+      G.ctx.font = "500 14px system-ui, sans-serif";
+      G.ctx.fillText("Find the green exit at the top", cw / 2, 218);
+      G.ctx.fillText("Clear it, then sell it back in the shop", cw / 2, 236);
+      G.ctx.globalAlpha = 1;
+    }
+    const msgY = 196;
+    if (W.repo && !W.p.dead && W.repo.t >= REPO_ALARM && W.repo.t < REPO_FIRE) {
+      const left = Math.ceil(REPO_FIRE - W.repo.t);
+      G.ctx.fillStyle = "#ff3030";
+      G.ctx.globalAlpha = 0.6 + 0.4 * (1 - (REPO_FIRE - W.repo.t) % 1);
+      G.ctx.font = "600 14px system-ui, sans-serif";
+      G.ctx.fillText("INCINERATION IN", cw / 2, msgY - 44);
+      G.ctx.font = "800 48px system-ui, sans-serif";
+      G.ctx.fillText(String(left), cw / 2, msgY + 4);
+      G.ctx.globalAlpha = 1;
+    }
+    G.ctx.fillStyle = COL.text;
+    if (W.p.dead) {
+      G.ctx.font = "700 22px system-ui, sans-serif";
+      G.ctx.fillText("You were shot down", cw / 2, msgY);
+      G.ctx.font = "500 14px system-ui, sans-serif";
+      G.ctx.fillText("Tap the right stick to restart", cw / 2, msgY + 22);
+    } else if (W.hasLvl && !W.warp && !W.repo && W.enemies.length === 0) {
+      G.ctx.font = "700 18px system-ui, sans-serif";
+      G.ctx.fillText("All enemies destroyed", cw / 2, msgY);
+    }
+    G.ctx.textAlign = "left";
+    G.ctx.shadowBlur = 0;
+  }
+  function drawReticule(G) {
+    if (G.mouse.inside) {
+      const mx = G.mouse.x, my = G.mouse.y;
+      for (const [w, colr] of [[4, "rgba(0,0,0,0.6)"], [2, G.mouse.down ? COL.flame2 : COL.text]]) {
+        G.ctx.strokeStyle = colr;
+        G.ctx.lineWidth = w;
+        G.ctx.beginPath();
+        G.ctx.arc(mx, my, 9, 0, Math.PI * 2);
+        G.ctx.stroke();
+        G.ctx.beginPath();
+        G.ctx.moveTo(mx - 15, my);
+        G.ctx.lineTo(mx - 5, my);
+        G.ctx.moveTo(mx + 5, my);
+        G.ctx.lineTo(mx + 15, my);
+        G.ctx.moveTo(mx, my - 15);
+        G.ctx.lineTo(mx, my - 5);
+        G.ctx.moveTo(mx, my + 5);
+        G.ctx.lineTo(mx, my + 15);
+        G.ctx.stroke();
+      }
+    }
+  }
+  function drawMap(W, G, F) {
+    const { dpr, playPx } = F;
+    if (G.input.current.mapOpen) {
+      G.mini32.fill(0);
+      for (let k2 = 0; k2 < W.miniEdgeIdx.length; k2++) {
+        const i = W.miniEdgeIdx[k2];
+        const tx = i % MMW * MINI_D, ty = (i / MMW | 0) * MINI_D;
+        const fi = (ty / FOG | 0) * FW + (tx / FOG | 0);
+        if (W.seen[fi]) G.mini32[i] = 3875536895;
+      }
+      G.mctx.putImageData(G.miniImg, 0, 0);
+      const pw = G.c.width / dpr, ph = playPx / dpr, pad = 10;
+      G.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      G.ctx.fillStyle = "rgba(0,0,0,0.8)";
+      G.ctx.fillRect(0, 0, pw, ph);
+      const k = Math.min((pw - 2 * pad) / MMW, (ph - 2 * pad) / MMH);
+      const mw = MMW * k, mh = MMH * k, mx0 = (pw - mw) / 2, my0 = (ph - mh) / 2;
+      G.ctx.imageSmoothingEnabled = true;
+      G.ctx.drawImage(G.miniC, 0, 0, MMW, MMH, mx0, my0, mw, mh);
+      const wW = CW * CELL, wH = CH * CELL;
+      const mX = (x) => mx0 + x / wW * mw, mY = (y) => my0 + y / wH * mh;
+      G.ctx.strokeStyle = "#ffd23c";
+      G.ctx.lineWidth = 1.5;
+      for (const r of W.rooms) {
+        if (!roomSeen(W, r)) continue;
+        const x0 = mX(r.x - ROOM_HW), y0 = mY(r.y - ROOM_HH), x1 = mX(r.x + ROOM_HW), y1 = mY(r.y + ROOM_HH);
+        G.ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+        if (r.taken) {
+          const ix = (x1 - x0) * 0.25, iy = (y1 - y0) * 0.2;
+          G.ctx.beginPath();
+          G.ctx.moveTo(x0 + ix, y0 + iy);
+          G.ctx.lineTo(x1 - ix, y1 - iy);
+          G.ctx.moveTo(x1 - ix, y0 + iy);
+          G.ctx.lineTo(x0 + ix, y1 - iy);
+          G.ctx.stroke();
+        }
+      }
+      for (const q of W.pickups) {
+        if (q.taken || !fogLit(W, q.x, q.y)) continue;
+        const col = q.kind === "gun" ? "#ffd23c" : "#46e07a";
+        G.ctx.beginPath();
+        G.ctx.arc(mX(q.x), mY(q.y), 2.6, 0, Math.PI * 2);
+        if (q.old) {
+          G.ctx.strokeStyle = col;
+          G.ctx.lineWidth = 1.2;
+          G.ctx.stroke();
+        } else {
+          G.ctx.fillStyle = col;
+          G.ctx.fill();
+        }
+      }
+      G.ctx.fillStyle = "#ffd23c";
+      G.ctx.strokeStyle = "#fff";
+      G.ctx.lineWidth = 1.5;
+      G.ctx.beginPath();
+      G.ctx.arc(mX(W.p.x + PW / 2), mY(W.p.y + PH / 2), 4, 0, Math.PI * 2);
+      G.ctx.fill();
+      G.ctx.stroke();
+      G.ctx.imageSmoothingEnabled = false;
+    }
+  }
 
   // src/game/render/vend.js
   var HOLO_GREEN = "#00ff3c", HOLO_RED = "#ff0000";
@@ -15581,6 +15657,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function drawVend(W, G, F) {
     if (VEND_TOP > W.camY + F.vh + 10 || VEND_TOP + VEND_H < W.camY - 10) return;
     const lv = "LVL " + W.floor, busy = !!W.warp, due = G.input.current.loadout.due || 0;
+    drawHoloShop(W, G);
+    if (W.repo) {
+      const left = REPO_FIRE - W.repo.t;
+      const top = [W.repo.t < REPO_ALARM ? "OVERDUE" : left > 0 ? "0:" + String(Math.ceil(left)).padStart(2, "0") : "BURN"];
+      const bot = W.repo.t < REPO_ALARM ? ["debt defaulted", "level", "repossessed"] : ["incineration", "sequence", "initiated"];
+      machine(G.ctx, W, "buy", VEND_BUY_X, !busy, HOLO_RED, top, bot);
+      machine(G.ctx, W, "sell", VEND_SELL_X, W.repo.t >= REPO_ALARM, HOLO_RED, top, bot);
+      return;
+    }
     if (W.hasLvl && due) machine(
       G.ctx,
       W,
@@ -15647,6 +15732,65 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.restore();
     for (const b of w.bolts) drawBolt(G, b.pts, "#7dffb0", 1.3, 1 - b.t / b.max);
   }
+  function drawRepo(W, G, F) {
+    const R = W.repo;
+    if (!R || R.t < REPO_ALARM - 0.5) return;
+    const ctx = G.ctx, top = SHOP_Y, fy = SHOP_FLOOR * CELL, x0 = W.camX - 20, x1 = W.camX + F.vw + 20;
+    if (top > W.camY + F.vh || fy < W.camY) return;
+    const on = Math.min(1, (R.t - REPO_ALARM + 0.5) / 0.5);
+    const pulse = on * (0.5 - 0.5 * Math.cos((R.t - REPO_ALARM) * Math.PI * 2 / 1.8));
+    ctx.save();
+    const j0 = Math.floor(x0 / REPO_JET) * REPO_JET;
+    for (let x = j0; x < x1; x += REPO_JET) {
+      ctx.fillStyle = "#15171c";
+      ctx.fillRect(x - 6, fy - 2, 12, 3);
+      ctx.fillStyle = "#3a3f4a";
+      for (let k = -4; k <= 4; k += 3) ctx.fillRect(x + k, fy - 2, 1, 2);
+    }
+    ctx.fillStyle = "rgba(255,20,20," + (0.28 * pulse).toFixed(3) + ")";
+    ctx.fillRect(x0, top, x1 - x0, fy - top);
+    ctx.globalCompositeOperation = "lighter";
+    for (let x = Math.floor(x0 / 160) * 160 + 80; x < x1; x += 160) {
+      const g = ctx.createRadialGradient(x, top + 3, 0, x, top + 3, 70);
+      g.addColorStop(0, "rgba(255,60,40," + (0.55 * pulse).toFixed(3) + ")");
+      g.addColorStop(1, "rgba(255,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(x - 70, top, 140, 70);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = "#2a2020";
+      ctx.fillRect(x - 5, top, 10, 3);
+      ctx.fillStyle = "rgba(255," + Math.round(40 + 80 * pulse) + ",60," + (0.4 + 0.6 * pulse).toFixed(3) + ")";
+      ctx.fillRect(x - 3, top + 3, 6, 2);
+      ctx.globalCompositeOperation = "lighter";
+    }
+    if (R.t >= REPO_FIRE) {
+      const ft = R.t - REPO_FIRE, H = fy - top, fl = Math.floor(W.time * 20);
+      for (let x = j0; x < x1; x += REPO_JET) {
+        const h3 = Math.min(H, ft * 110) * (0.75 + 0.25 * hash2(fl + x * 0.13)), w = 7 + 10 * Math.min(1, ft / 3);
+        const g = ctx.createLinearGradient(0, fy, 0, fy - h3);
+        g.addColorStop(0, "rgba(255,250,210,0.95)");
+        g.addColorStop(0.25, "rgba(255,200,60,0.85)");
+        g.addColorStop(0.7, "rgba(255,90,20,0.55)");
+        g.addColorStop(1, "rgba(200,20,0,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(x - 3, fy);
+        ctx.quadraticCurveTo(x - w, fy - h3 * 0.5, x + (hash2(fl + x) - 0.5) * 8, fy - h3);
+        ctx.quadraticCurveTo(x + w, fy - h3 * 0.5, x + 3, fy);
+        ctx.closePath();
+        ctx.fill();
+      }
+      const eng = Math.min(0.75, Math.max(0, (ft - 1.5) / 4)) * (0.85 + 0.15 * hash2(fl * 1.7));
+      if (eng > 0) {
+        const g = ctx.createLinearGradient(0, fy, 0, top);
+        g.addColorStop(0, "rgba(255,160,40," + eng.toFixed(3) + ")");
+        g.addColorStop(1, "rgba(255,60,10," + (eng * 0.6).toFixed(3) + ")");
+        ctx.fillStyle = g;
+        ctx.fillRect(x0, top, x1 - x0, fy - top);
+      }
+    }
+    ctx.restore();
+  }
 
   // src/game/render/draw.js
   function draw(W, G) {
@@ -15690,6 +15834,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     drawFog(W, G, F);
     drawGlows(W, G, F);
     drawWarp(W, G, F);
+    drawRepo(W, G, F);
     drawFx(W, G, F);
     drawBelow(W, G, F);
     if (G.RPV) return;
@@ -16737,6 +16882,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     stepFields(W, G, F);
     stepPickups(W, G, F);
     stepWarp(W, G, F);
+    stepRepo(W, G, F);
     stepToasts(W, F);
     decorStep(W, G, dt, F.pcx, F.pcy);
     stepEnemies(W, G, F);
@@ -17104,6 +17250,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       // while there isn't one (the cave is solid dark, the roof sealed); warp is the teleport under way
       hasLvl: false,
       warp: null,
+      repo: null,
+      // the repayment deadline passed: the level is taken back, then the fire
       start: void 0,
       portal: void 0,
       arrival: void 0,

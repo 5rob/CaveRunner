@@ -17,8 +17,14 @@ import { paintFog } from './fog.js';
 import { enterLevel, miniEdges } from './level-entry.js';
 import { jag } from './lightning.js';
 import { burst, toast } from './particles.js';
+import { youAlight } from './fire.js';
+import { hurt } from './player.js';
 import { saveRun } from './save-run.js';
 
+// the repossession (seconds from the deadline passing): the hologram says so, the level is
+// teleported away, the alarm and the red lights, and ten seconds later the floor's fire jets
+export const REPO_WARP = 3, REPO_ALARM = 5.6, REPO_FIRE = REPO_ALARM + 10;
+export const REPO_JET = 40;       // world units between the fire jets in the shop floor
 export const WARP_SWAP = 0.6;     // seconds from the tap to the flash (the screen goes dark first)
 export const WARP_END = 2.4;      // and to the end of the crackle
 export const ROOF_Y = (SHOP_TOP - SHOP_ROOF) * CELL;   // the top of the shop's roof
@@ -28,7 +34,7 @@ export const VEND_TOP = SHOP_FLOOR * CELL - VEND_H;    // its top
 // the machine you're standing at, if its screen is on (null otherwise)
 /** @param {World} W @param {number} pcx @param {number} pcy @returns {'buy' | 'sell' | null} */
 export function vendNear(W, pcx, pcy) {
-  if (W.warp || pcy < SHOP_Y || pcy > SHOP_FLOOR * CELL) return null;
+  if (W.warp || W.repo || pcy < SHOP_Y || pcy > SHOP_FLOOR * CELL) return null;
   if (Math.abs(pcx - VEND_BUY_X) < 30 && !W.hasLvl) return 'buy';
   if (Math.abs(pcx - VEND_SELL_X) < 30 && W.hasLvl) return 'sell';
   return null;
@@ -79,7 +85,10 @@ export function stepWarp(W, G, F) {
   w.t += F.dt;
   if (!w.done && w.t >= WARP_SWAP) {
     w.done = true;
-    if (w.dir === 'in') enterLevel(W, G, { seed: W.levelSeed, owned: W.levelOwned, alive: null, sold: [], rooms: [], pickups: null }, 'shop');
+    if (w.dir === 'repo') {                  // taken back: you land in the shop, the cave goes
+      W.p.x = W.start.x; W.p.y = W.start.y; W.p.vx = W.p.vy = 0; W.camReady = false;
+      W.hasLvl = false; voidCave(W, G);
+    } else if (w.dir === 'in') enterLevel(W, G, { seed: W.levelSeed, owned: W.levelOwned, alive: null, sold: [], rooms: [], pickups: null }, 'shop');
     else { W.floor++; enterLevel(W, G, undefined, 'you'); voidCave(W, G); }
     SFX.fx('levelWarp');
     const x0 = W.camX, x1 = W.camX + W.viewW;
@@ -151,3 +160,39 @@ export function voidCave(W, G) {
 // in the shop (or its roof), so it stays when the cave goes
 /** @param {{ y: number }} q */
 const keep = q => q.y >= SHOP_Y - 12;
+
+// The repayment deadline, a part of step: once the device's clock passes LO.due with the level
+// still yours, it is repossessed (W.repo): REPOSSESSED on the hologram, the level teleported away
+// (you with it, into the shop), the alarm and the red lights, then after a ten second countdown
+// fire jets come up out of the shop floor and the room burns until you're dead. A new run clears it.
+/** @param {World} W @param {GameCtx} G @param {StepFrame} F */
+export function stepRepo(W, G, F) {
+  const LO = F.LO;
+  if (!W.repo) {
+    if ((W.hasLvl || LO.debt > 0) && !W.warp && !W.p.dead && LO.due && Date.now() >= LO.due) {
+      // (no level: it was taken while the game was closed; straight on to the alarm)
+      W.repo = { t: W.hasLvl ? 0 : REPO_ALARM - 0.5, hurtT: 0, sndT: 0 };
+      toast(W, 'Debt defaulted: level repossessed');
+      SFX.fx('ventWarn');
+    }
+    return;
+  }
+  const R = W.repo, t0 = R.t;
+  R.t += F.dt;
+  if (t0 < REPO_WARP && R.t >= REPO_WARP) W.warp = { dir: 'repo', t: 0, done: false, bolts: [] };
+  if (R.t < REPO_ALARM) return;
+  if ((R.sndT -= F.dt) <= 0) {                 // the klaxon, then the roar of the jets over it
+    R.sndT = 0.9;
+    SFX.fx('alarm');
+    if (R.t >= REPO_FIRE) SFX.fx('ventFire', W.p.x + (Math.random() - 0.5) * 200, SHOP_FLOOR * CELL);
+  }
+  if (R.t < REPO_FIRE) return;
+  const fy = SHOP_FLOOR * CELL, x0 = Math.floor(W.camX / REPO_JET) * REPO_JET, grow = Math.min(1, (R.t - REPO_FIRE) / 2);
+  for (let x = x0; x < W.camX + W.viewW + REPO_JET; x += REPO_JET) if (Math.random() < 0.6) {
+    W.sparks.push({ x: x + (Math.random() - 0.5) * 6, y: fy - 2, vx: (Math.random() - 0.5) * 40,
+      vy: -(120 + Math.random() * 260) * grow, life: 0.6, max: 0.6, c: Math.random() < 0.5 ? '#ffd35a' : '#ff7a1a', size: 3 });
+  }
+  if (W.p.dead || R.t < REPO_FIRE + 1) return;
+  // the room is alight: you burn, harder the longer it goes
+  if ((R.hurtT -= F.dt) <= 0) { R.hurtT = 0.3; youAlight(W); hurt(W, G, Math.round(3 + 2.5 * (R.t - REPO_FIRE))); }
+}

@@ -7,8 +7,9 @@
 // shop, the sweep and the crackle (drawWarp, after the fog).
 
 import { countdown } from '../../core/util.js';
-import { CELL, LVL_BUY, LVL_SELL, SHOP_FLOOR, VEND_BUY_X, VEND_SELL_X } from '../../core/consts.js';
-import { canSell, ROOF_Y, VEND_H, VEND_TOP, VEND_W, WARP_SWAP } from '../systems/vend.js';
+import { CELL, LVL_BUY, LVL_SELL, SHOP_FLOOR, SHOP_Y, VEND_BUY_X, VEND_SELL_X } from '../../core/consts.js';
+import { drawHoloShop } from './holo.js';
+import { canSell, REPO_ALARM, REPO_FIRE, REPO_JET, ROOF_Y, VEND_H, VEND_TOP, VEND_W, WARP_SWAP } from '../systems/vend.js';
 import { drawBolt } from './looks.js';
 
 export const HOLO_GREEN = '#00ff3c', HOLO_RED = '#ff0000';   // the background hologram's two hues
@@ -148,6 +149,15 @@ function machine(ctx, W, kind, cx, on, hue, top, bot) {
 export function drawVend(W, G, F) {
   if (VEND_TOP > W.camY + F.vh + 10 || VEND_TOP + VEND_H < W.camY - 10) return;
   const lv = 'LVL ' + W.floor, busy = !!W.warp, due = G.input.current.loadout.due || 0;
+  drawHoloShop(W, G);
+  if (W.repo) {                                // repossessed: both screens count down the incineration
+    const left = REPO_FIRE - W.repo.t;
+    const top = [W.repo.t < REPO_ALARM ? 'OVERDUE' : left > 0 ? '0:' + String(Math.ceil(left)).padStart(2, '0') : 'BURN'];
+    const bot = W.repo.t < REPO_ALARM ? ['debt defaulted', 'level', 'repossessed'] : ['incineration', 'sequence', 'initiated'];
+    machine(G.ctx, W, 'buy', VEND_BUY_X, !busy, HOLO_RED, top, bot);
+    machine(G.ctx, W, 'sell', VEND_SELL_X, W.repo.t >= REPO_ALARM, HOLO_RED, top, bot);
+    return;
+  }
   if (W.hasLvl && due) machine(G.ctx, W, 'buy', VEND_BUY_X, !busy, HOLO_RED,
     [countdown(due - Date.now())], ['debt repayment', 'deadline', lv]);
   else machine(G.ctx, W, 'buy', VEND_BUY_X, !W.hasLvl && !busy, HOLO_GREEN,
@@ -189,4 +199,57 @@ export function drawWarp(W, G, F) {
   }
   ctx.restore();
   for (const b of w.bolts) drawBolt(G, b.pts, '#7dffb0', 1.3, 1 - b.t / b.max);
+}
+
+// The repossession in the shop (after the fog): the fire jets' grates in the floor, the red
+// emergency lights fading on and off, and once REPO_FIRE comes the jets roaring up out of the
+// grates until the whole room is flame. Only screen-steady hashes here, never Math.random
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
+export function drawRepo(W, G, F) {
+  const R = W.repo;
+  if (!R || R.t < REPO_ALARM - 0.5) return;
+  const ctx = G.ctx, top = SHOP_Y, fy = SHOP_FLOOR * CELL, x0 = W.camX - 20, x1 = W.camX + F.vw + 20;
+  if (top > W.camY + F.vh || fy < W.camY) return;
+  const on = Math.min(1, (R.t - REPO_ALARM + 0.5) / 0.5);
+  const pulse = on * (0.5 - 0.5 * Math.cos((R.t - REPO_ALARM) * Math.PI * 2 / 1.8));   // fades on and off
+  ctx.save();
+  // the grates, in the floor every REPO_JET
+  const j0 = Math.floor(x0 / REPO_JET) * REPO_JET;
+  for (let x = j0; x < x1; x += REPO_JET) {
+    ctx.fillStyle = '#15171c'; ctx.fillRect(x - 6, fy - 2, 12, 3);
+    ctx.fillStyle = '#3a3f4a'; for (let k = -4; k <= 4; k += 3) ctx.fillRect(x + k, fy - 2, 1, 2);
+  }
+  // the emergency lights: red wash over the room, and the lamps along the ceiling
+  ctx.fillStyle = 'rgba(255,20,20,' + (0.28 * pulse).toFixed(3) + ')';
+  ctx.fillRect(x0, top, x1 - x0, fy - top);
+  ctx.globalCompositeOperation = 'lighter';
+  for (let x = Math.floor(x0 / 160) * 160 + 80; x < x1; x += 160) {
+    const g = ctx.createRadialGradient(x, top + 3, 0, x, top + 3, 70);
+    g.addColorStop(0, 'rgba(255,60,40,' + (0.55 * pulse).toFixed(3) + ')'); g.addColorStop(1, 'rgba(255,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(x - 70, top, 140, 70);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#2a2020'; ctx.fillRect(x - 5, top, 10, 3);
+    ctx.fillStyle = 'rgba(255,' + Math.round(40 + 80 * pulse) + ',60,' + (0.4 + 0.6 * pulse).toFixed(3) + ')'; ctx.fillRect(x - 3, top + 3, 6, 2);
+    ctx.globalCompositeOperation = 'lighter';
+  }
+  // the fire: each jet grows to the ceiling, then the room fills
+  if (R.t >= REPO_FIRE) {
+    const ft = R.t - REPO_FIRE, H = fy - top, fl = Math.floor(W.time * 20);
+    for (let x = j0; x < x1; x += REPO_JET) {
+      const h = Math.min(H, ft * 110) * (0.75 + 0.25 * hash(fl + x * 0.13)), w = 7 + 10 * Math.min(1, ft / 3);
+      const g = ctx.createLinearGradient(0, fy, 0, fy - h);
+      g.addColorStop(0, 'rgba(255,250,210,0.95)'); g.addColorStop(0.25, 'rgba(255,200,60,0.85)');
+      g.addColorStop(0.7, 'rgba(255,90,20,0.55)'); g.addColorStop(1, 'rgba(200,20,0,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.moveTo(x - 3, fy); ctx.quadraticCurveTo(x - w, fy - h * 0.5, x + (hash(fl + x) - 0.5) * 8, fy - h);
+      ctx.quadraticCurveTo(x + w, fy - h * 0.5, x + 3, fy); ctx.closePath(); ctx.fill();
+    }
+    const eng = Math.min(0.75, Math.max(0, (ft - 1.5) / 4)) * (0.85 + 0.15 * hash(fl * 1.7));
+    if (eng > 0) {
+      const g = ctx.createLinearGradient(0, fy, 0, top);
+      g.addColorStop(0, 'rgba(255,160,40,' + eng.toFixed(3) + ')'); g.addColorStop(1, 'rgba(255,60,10,' + (eng * 0.6).toFixed(3) + ')');
+      ctx.fillStyle = g; ctx.fillRect(x0, top, x1 - x0, fy - top);
+    }
+  }
+  ctx.restore();
 }

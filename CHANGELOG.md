@@ -5,6 +5,16 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v108 — repossession
+Released 2026-10-01.
+
+When the repayment deadline passes (`stepRepo`, `W.repo`, `src/game/systems/vend.js`): the hologram
+says REPOSSESSED (also on the shop's back wall, `drawHoloShop`), after 3 s the level is teleported
+away with you in the shop (warp `repo`), then the klaxon, red emergency lights pulsing and a ten
+second "INCINERATION IN" countdown (also on both machines), then fire jets out of grates in the
+shop floor (`drawRepo`, every `REPO_JET`) fill the room and burn you, harder each second, until
+you're dead. A deadline that passed while the game was closed goes straight to the alarm.
+
 ## v107 — debt of its own, a five-day deadline; gold at the top
 Released 2026-10-01.
 
