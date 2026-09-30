@@ -98,3 +98,13 @@ export function surfSeat(e, S, solidCell, maxMove, hold, feel) {
   S.nx = n.x; S.ny = n.y; S.py = n.py;          // py: straight out from the nearest rock
   return true;
 }
+
+// ---- the hologram's count ----
+// "Biological entities detected" (the background hologram, game/render/holo.js): every living
+// creature on the floor (not rat nests, not the dead), plus you while you're out of the shop.
+/** @param {Enemy[]} enemies @param {boolean} youOut are you in the level (alive, above the shop)? */
+export function bioCount(enemies, youOut) {
+  let n = youOut ? 1 : 0;
+  for (const e of enemies) if (!e.dead && !e.nest && e.k.act !== 'nest') n++;
+  return n;
+}

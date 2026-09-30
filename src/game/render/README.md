@@ -6,7 +6,8 @@
 | File | Holds |
 |---|---|
 | `draw.js` | `draw` and `drawCamera` (fills the view `dpr`, `playPx`, `vw`/`vh` and `pcx`/`pcy`; eases the camera) |
-| `cave.js` | `drawTerrain` (background with `PARALLAX`, the shop wall with the floor number, rock, burning pixels), `drawProps` (fills `TH`, `onView`; props, drips, ambience), `drawPortal`, `drawArrival`, `drawShop`, `drawLoot` (gold, guns, mods), `drawRooms` |
+| `holo.js` | `drawHolo` (the slanted "biological entities detected" tiles, count from `bioCount`; parallax `HOLO_PAR`, halfway between the background's `BG_PAR` and the rock), called by `drawTerrain` right after the background |
+| `cave.js` | `drawTerrain` (background with `BG_PAR`, the shop wall with the floor number, rock, burning pixels), `drawProps` (fills `TH`, `onView`; props, drips, ambience), `drawPortal`, `drawArrival`, `drawShop`, `drawLoot` (gold, guns, mods), `drawRooms` |
 | `effects.js` | `drawSmoke`, `drawTrail`, `drawSparks`, `drawMotes`, `drawFlashes` |
 | `actors.js` | `drawEnemies`, `drawJetFlame`, `drawAim` (fills `held`, `ax`/`ay`, `gy`; the Trajectory Sight line), `drawPlayer` (runner, gun, torch, crosshair, shield, ghost) |
 | `looks.js` | `drawFields`, `drawShots`, `drawBeams`, and the looks: `drawLook` (a shot's sprite), `drawFieldLook`, `drawBolt` (a lightning line) |

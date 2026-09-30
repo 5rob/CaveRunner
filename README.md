@@ -532,7 +532,7 @@ them if it cannot find either.
 - A torch in the runner's free hand, throwing embers, guttering — and the light in the cave gutters with it. Its flame is dragged about as you move, and it throws a small warm glow round you
 - Wall torches either side of the portals and the prizes in the hidden rooms
 - Portals that breathe: motes drift out of the way in, and get drawn into the exit
-- A background that sits back from the rock, sliding a little slower as you move (parallax)
+- A background that sits well back from the rock, sliding slower as you move (parallax), with a slanted red hologram halfway between: "N biological entities detected", counting every creature alive on the floor plus you while you're out of the shop; it flips and turns green at zero
 - The map only keeps what you had a line on: a wall hides its far side from the fog of war for good
 - Destructible pixel terrain: explosions and drilling shots eat everything except the outer border
 - Guns and mods to find, with a drag-and-drop screen for building them

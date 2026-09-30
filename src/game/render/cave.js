@@ -12,6 +12,7 @@ import { themeFor } from '../../data/themes.js';
 import { gunAccent } from '../../spells/guns.js';
 import { MODS, famCol } from '../../spells/mods.js';
 import { FIRE_COLS } from '../../world/fire.js';
+import { BG_PAR, drawHolo } from './holo.js';
 
 // The cave behind everything: the background (with parallax), the shop's back wall, the
 // decoration layer and the rock (the visible part only), and the burning pixels over them
@@ -19,15 +20,15 @@ import { FIRE_COLS } from '../../world/fire.js';
 export function drawTerrain(W, G, F) {
   const { vw, vh } = F;
   // background and terrain (visible part only)
-  // The background sits further back: it slides PARALLAX as far as the terrain does, so
+  // The background sits further back: it slides BG_PAR as far as the terrain does, so
   // it is shifted by the rest of the camera move. It still covers the view at every edge,
   // because the shift only ever pushes it toward the camera.
-  const PARALLAX = 0.8;
-  const bgox = W.camX * (1 - PARALLAX), bgoy = W.camY * (1 - PARALLAX);
+  const bgox = W.camX * (1 - BG_PAR), bgoy = W.camY * (1 - BG_PAR);
   const bcx = W.camX - bgox, bcy = W.camY - bgoy;
   const bx0 = clamp(Math.floor(bcx / BCELL), 0, BW - 1), by0 = clamp(Math.floor(bcy / BCELL), 0, BH - 1);
   const bx1 = clamp(Math.ceil((bcx + vw) / BCELL) + 1, 1, BW), by1 = clamp(Math.ceil((bcy + vh) / BCELL) + 1, 1, BH);
   G.ctx.drawImage(G.bg, bx0, by0, bx1 - bx0, by1 - by0, bx0 * BCELL + bgox, by0 * BCELL + bgoy, (bx1 - bx0) * BCELL, (by1 - by0) * BCELL);
+  drawHolo(W, G, F);                        // the hologram, halfway back (holo.js)
   // the shop's back wall
   if (W.camY + vh > SHOP_Y) {
     G.ctx.fillStyle = '#241f28';

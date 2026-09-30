@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v101 — the hologram
+Released 2026-09-30. A slanted, tiled red "N biological entities detected" hologram between the
+background and the rock (`src/game/render/holo.js`, count: `bioCount`), parallaxing halfway; green and
+inverted at zero. The background pushed further back (parallax 0.8 → 0.6).
+
 ## v100 — refactor Phases 4–5: type checking, notes next to the code
 Released 2026-09-30. `index.html` is the same as v99 apart from the version. Same game.
 
