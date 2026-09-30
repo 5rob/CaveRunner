@@ -5,6 +5,17 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v105 — hologram static, change glitch, silhouettes
+Released 2026-09-30.
+
+- The hologram is made once per frame into its own layer (`drawHolo`), which the fog swap and the
+  bloom reuse. Static runs through it: fine scan lines crawling down, rolling bands, dropouts (all
+  from `W.time` hashes, never `Math.random`).
+- When the number changes: a glitch (slices torn sideways, blocks of data dropping out, 0.45 s,
+  `holoGlitch`) and the glow flashes brighter.
+- Vines, chains, kelp and spider webs in front of the hologram are black silhouettes outside the
+  torchlight (the full fog three times over), and don't glow.
+
 ## v104 — the hologram ignores the torchlight's dark
 Released 2026-09-30. The hologram is darkened only by the fog of war, not by the dark outside your
 torchlight: `drawFog` also bakes a fog-of-war-only layer (`fogWarC`), and where the hologram shows

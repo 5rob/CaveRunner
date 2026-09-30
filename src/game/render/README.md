@@ -6,9 +6,9 @@
 | File | Holds |
 |---|---|
 | `draw.js` | `draw` and `drawCamera` (fills the view `dpr`, `playPx`, `vw`/`vh` and `pcx`/`pcy`; eases the camera) |
-| `light.js` (more) | `drawFog` also bakes the fog of war alone (`fogWarC`: never-seen ground, none of the torchlight's dark); where the hologram shows (`holoMask`, at 1/2 size) the fog drawn is that one, so the hologram is darkened only by the fog of war. `blurSlab` blurs both |
+| `light.js` (more) | `drawFog` also bakes the fog of war alone (`fogWarC`: never-seen ground, none of the torchlight's dark); where the hologram shows (`holoMask`, at 1/2 size) the fog drawn is that one, so the hologram is darkened only by the fog of war. `blurSlab` blurs both. Climbing props (`k === 'climb'`) and spider silk over the hologram are silhouettes (`holoSil`): full fog ×3, and cut from the bloom |
 | `fx.js` | The FX layer, over the finished picture: `drawFx` (the hologram's bloom: `holoFill` into a 1/4-size buffer, rock/decoration/shop wall/fog/below-the-floor cut out, blurred + brightened, added with `lighter`; Dev knobs `bloom`, `bloomBlur`, `bloomBright`), `drawBelow` (black below the level, `WH`) |
-| `holo.js` | `drawHolo` (the slanted "biological entities detected" tiles, count from `bioCount`; parallax `HOLO_PAR`, halfway between the background's `BG_PAR` and the rock), called by `drawTerrain` right after the background |
+| `holo.js` | the hologram, made once a frame into its own layer (static from `W.time` hashes; `holoGlitch` when the number changes), then `drawHolo` (the slanted "biological entities detected" tiles, count from `bioCount`; parallax `HOLO_PAR`, halfway between the background's `BG_PAR` and the rock), called by `drawTerrain` right after the background |
 | `cave.js` | `drawTerrain` (background with `BG_PAR`, the shop wall with the floor number, rock, burning pixels), `drawProps` (fills `TH`, `onView`; props, drips, ambience), `drawPortal`, `drawArrival`, `drawShop`, `drawLoot` (gold, guns, mods), `drawRooms` |
 | `effects.js` | `drawSmoke`, `drawTrail`, `drawSparks`, `drawMotes`, `drawFlashes` |
 | `actors.js` | `drawEnemies`, `drawJetFlame`, `drawAim` (fills `held`, `ax`/`ay`, `gy`; the Trajectory Sight line), `drawPlayer` (runner, gun, torch, crosshair, shield, ghost) |

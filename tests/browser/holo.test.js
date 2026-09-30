@@ -13,9 +13,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   page.on('pageerror', e => { fails++; console.log('PAGEERROR', e.message); });
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   await page.waitForTimeout(1200);
-  // a tall room, well above the shop
+  // a tall room, well above the shop (keep one creature aside, for the glitch check)
   await page.evaluate(() => {
-    const L = window.__lvl; window.DEV.zoom = 1;
+    const L = window.__lvl; window.DEV.zoom = 1; window.__spare = L.enemies.find(e => e.k.act !== 'nest');
     L.p.y = L.world.SHOP_Y - 900;
     L.sandbox({ w: 360, h: 320 });
   });
@@ -43,6 +43,18 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     return n / all;
   }, seen);
   const remembered = await bright(1), unseen = await bright(0);
+
+  // the number changing sets off the glitch, which dies away within half a second
+  const g = await page.evaluate(async () => {
+    const L = window.__lvl, frame = () => new Promise(r => requestAnimationFrame(r));
+    await frame(); const before = window.holoGlitch(L);
+    L.enemies.push(window.__spare); await frame(); await frame();
+    const after = window.holoGlitch(L);
+    await new Promise(r => setTimeout(r, 700)); await frame();
+    return { before, after, later: window.holoGlitch(L) };
+  });
+  check('a new creature glitches the hologram', g.before === 0 && g.after > 0.5, g);
+  check('and the glitch settles', g.later === 0, g);
   check('on remembered ground outside the torchlight it stays full bright red', remembered > 0.03, remembered);
   check('under the fog of war it is hidden', unseen < 0.002, unseen);
 
