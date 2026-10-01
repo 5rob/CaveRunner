@@ -58,6 +58,18 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('on remembered ground outside the torchlight it stays full bright red', remembered > 0.03, remembered);
   check('under the fog of war it is hidden', unseen < 0.002, unseen);
 
+  // it is drawn at the rock's pixel size (v115): its layer is the view in 2-unit pixels, a small
+  // part of the canvas
+  const sz = await page.evaluate(async () => {
+    const frame = () => new Promise(r => requestAnimationFrame(r));
+    DEV.holoAlpha = 1; await frame(); await frame();
+    const L = window.__lvl, c = document.querySelector('canvas.game');
+    const on = { w: window.holoGrid.w, h: window.holoGrid.h, vw: L.viewW, cw: c.width, ch: c.height };
+    return on;
+  });
+  check('the hologram layer is the view in rock-sized pixels', Math.abs(sz.w - (Math.ceil(sz.vw / 2) + 3)) <= 1, sz);
+  check('a small part of the canvas', sz.w * sz.h * 20 < sz.cw * sz.ch, sz);
+
   await browser.close();
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);

@@ -4,6 +4,9 @@
 // parallaxes halfway between the two (HOLO_PAR). At zero it flips (the top box an outline, the
 // bottom one solid) and turns green, with static running through it and a glitch when the number
 // changes. Its glow is the bloom in fx.js.
+// It is drawn at DEV.holoPx world units a pixel (the rock's, CELL, by default), on a grid of its own that
+// rides with it (holoGrid), and scaled up crisp: the pixel look is the point, and it is a
+// small part of the work full size was. Its fog swap (light.js) and bloom (fx.js) use the grid.
 
 import { CELL, CH, CW, PH, SHOP_FLOOR, SHOP_Y, WH, WW } from '../../core/consts.js';
 import { clamp } from '../../core/util.js';
@@ -19,7 +22,7 @@ const PERIOD_X = 150, PERIOD_Y = 171;          // one tile to the next
 const PAD = 7.5, TXT_PAD = 7.5;                // number padding; the words' padding
 const LINE = 1.5;                              // outline width
 const SLANT = -0.3;                            // radians
-const RES = 4;                                 // tile canvas pixels per world unit
+const RES = 1;                                 // tile canvas pixels per world unit (2 a layer pixel)
 
 /** @type {{ key: string, pat: CanvasPattern | null }} */
 const cache = { key: '', pat: null };
@@ -66,7 +69,7 @@ function tilePattern(ctx, n) {
 }
 
 // the static and the glitch (seconds, world units, css px)
-const SCAN = 3, SCAN_SPEED = 6;                // fine scan lines: spacing, crawl speed
+const SCAN_SPEED = 6;                          // scan lines crawl (they are 1 layer pixel, every other one)
 const BANDS = 3, BAND_SPEED = 45;              // rolling bands
 const GLITCH_T = 0.45;                         // how long the glitch runs when the number changes
 
@@ -76,6 +79,34 @@ const hash = n => { const v = Math.sin(n * 12.9898) * 43758.5453; return v - Mat
 
 /** @type {{ c: HTMLCanvasElement | null, tmp: HTMLCanvasElement | null, n: number, gt: number }} */
 const L = { c: null, tmp: null, n: -1, gt: -99 };
+
+// The layer's grid for this frame: whole CELL-sized pixels fixed to the hologram (so they slide
+// with it, never swim), covering the view. ox/oy: how far the hologram has slid (world units);
+// gx0/gy0: the first pixel; lw x lh: the layer's size in pixels
+const LG = { px: CELL, ox: 0, oy: 0, gx0: 0, gy0: 0, lw: 1, lh: 1 };
+/** @param {World} W @param {DrawFrame} F */
+function setGrid(W, F) {
+  const P = LG.px = clamp(DEV.holoPx || CELL, 0.5, 8);
+  LG.ox = W.camX * (1 - HOLO_PAR); LG.oy = W.camY * (1 - HOLO_PAR);
+  LG.gx0 = Math.floor((W.camX - LG.ox) / P) - 1; LG.gy0 = Math.floor((W.camY - LG.oy) / P) - 1;
+  LG.lw = Math.ceil(F.vw / P) + 3; LG.lh = Math.ceil(F.vh / P) + 3;
+}
+// The hologram's grid, for the passes that share it (the fog swap, the bloom): its size, the
+// world's transform into it, and laying a canvas of it over the picture (under the world's transform)
+export const holoGrid = {
+  get w() { return LG.lw; },
+  get h() { return LG.lh; },
+  get px() { return LG.px; },
+  /** @param {CanvasRenderingContext2D} x */
+  world: x => x.setTransform(1 / LG.px, 0, 0, 1 / LG.px, -LG.ox / LG.px - LG.gx0, -LG.oy / LG.px - LG.gy0),
+  /** @param {CanvasRenderingContext2D} ctx @param {CanvasImageSource} src @param {boolean} smooth */
+  place: (ctx, src, smooth) => {
+    const sm = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = smooth;
+    ctx.drawImage(src, 0, 0, LG.lw, LG.lh, LG.ox + LG.gx0 * LG.px, LG.oy + LG.gy0 * LG.px, LG.lw * LG.px, LG.lh * LG.px);
+    ctx.imageSmoothingEnabled = sm;
+  },
+};
 
 // How much of the change glitch is left: 1 the moment the number changes, down to 0
 /** @param {World} W */
@@ -99,7 +130,8 @@ function holoFill(ctx, W, F, n) {
   ctx.globalCompositeOperation = 'destination-out';
   const t = W.time, fl = Math.floor(t * 24);
   ctx.fillStyle = 'rgba(0,0,0,' + (0.3 + 0.15 * hash(fl)).toFixed(2) + ')';
-  for (let y = Math.floor((ly - R) / SCAN) * SCAN + (t * SCAN_SPEED) % SCAN; y < ly + R; y += SCAN) ctx.fillRect(lx - R, y, R * 2, 0.8);
+  const P = LG.px, SCAN = 2 * P;
+  for (let y = Math.floor((ly - R) / SCAN) * SCAN + (t * SCAN_SPEED) % SCAN; y < ly + R; y += SCAN) ctx.fillRect(lx - R, y, R * 2, P);
   for (let k = 0; k < BANDS; k++) {
     const y = ly - R + ((t * BAND_SPEED * (0.7 + 0.3 * k) + k * 173) % (R * 2)), hh = 4 + 10 * hash(k * 7.1);
     ctx.fillStyle = 'rgba(0,0,0,' + (0.25 + 0.4 * hash(fl * 3 + k)).toFixed(2) + ')';
@@ -111,7 +143,7 @@ function holoFill(ctx, W, F, n) {
 
 // The change glitch, in screen space on the layer: slices of it torn sideways and blocks of data
 // dropping out, strongest the moment the number changes
-/** @param {CanvasRenderingContext2D} lc @param {HTMLCanvasElement} C @param {number} g @param {number} t @param {number} dpr */
+/** @param {CanvasRenderingContext2D} lc @param {HTMLCanvasElement} C @param {number} g @param {number} t @param {number} dpr layer pixels per css px */
 function glitch(lc, C, g, t, dpr) {
   const T = L.tmp = sizedCanvas(L.tmp, C.width, C.height), tc = T.getContext('2d');
   if (!tc) return;
@@ -139,17 +171,19 @@ export function drawHolo(W, G, F) {
   const n = W.repo ? -2 : bioCount(W.enemies, !W.p.dead && W.p.y + PH <= SHOP_Y);
   if (n !== L.n) { if (L.n >= 0) L.gt = W.time; L.n = n; }
   if (L.gt > W.time) L.gt = -99;                // a new run: the clock started again
-  const C = L.c = sizedCanvas(L.c, G.c.width, G.c.height), lc = C.getContext('2d');
+  if (!(DEV.holoAlpha > 0)) { L.c = null; return; }   // switched off: none of the work
+  setGrid(W, F);
+  const C = L.c = sizedCanvas(L.c, LG.lw, LG.lh), lc = C.getContext('2d');
   if (!lc) return;
   lc.setTransform(1, 0, 0, 1, 0, 0); lc.clearRect(0, 0, C.width, C.height);
-  lc.setTransform(G.ctx.getTransform());
+  holoGrid.world(lc);
+  lc.imageSmoothingEnabled = true;              // the tile is sampled down smoothly; the layer goes up crisp
   holoFill(lc, W, F, n);
   const g = holoGlitch(W);
-  if (g > 0) glitch(lc, C, g, W.time, F.dpr);
+  if (g > 0) glitch(lc, C, g, W.time, 1 / (LG.px * W.unitPx));
   G.ctx.save();
-  G.ctx.setTransform(1, 0, 0, 1, 0, 0);
   G.ctx.globalAlpha = DEV.holoAlpha;
-  G.ctx.drawImage(C, 0, 0);
+  holoGrid.place(G.ctx, C, false);
   G.ctx.restore();
 }
 
@@ -161,9 +195,8 @@ export function drawHoloShop(W, G) {
   const ctx = G.ctx;
   ctx.save();
   ctx.beginPath(); ctx.rect(0, SHOP_Y, WW, SHOP_FLOOR * CELL - SHOP_Y); ctx.clip();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 0.3 * DEV.holoAlpha;
-  ctx.drawImage(L.c, 0, 0);
+  holoGrid.place(ctx, L.c, false);
   ctx.restore();
 }
 
@@ -175,18 +208,17 @@ export function sizedCanvas(c, w, h) {
   return o;
 }
 
-// The part of the hologram you could see, drawn into a (1/D of the canvas, already under the
-// world's transform shrunk by D): this frame's layer, with what's in front of it cut out (the
+// The part of the hologram you could see, drawn into a (a canvas of holoGrid's size, already
+// under holoGrid.world): this frame's layer, with what's in front of it cut out (the
 // decoration and the rock, the shop's wall, below the floor). Not the fog: the callers cut the
 // fog they want
-/** @param {CanvasRenderingContext2D} a @param {World} W @param {GameCtx} G @param {DrawFrame} F @param {number} alpha @param {number} D */
-export function holoMask(a, W, G, F, alpha, D) {
+/** @param {CanvasRenderingContext2D} a @param {World} W @param {GameCtx} G @param {DrawFrame} F @param {number} alpha */
+export function holoMask(a, W, G, F, alpha) {
   if (!L.c) return;
   a.save();
   a.setTransform(1, 0, 0, 1, 0, 0);
   a.globalCompositeOperation = 'source-over'; a.globalAlpha = alpha;
-  a.imageSmoothingEnabled = true;
-  a.drawImage(L.c, 0, 0, L.c.width / D, L.c.height / D);
+  a.drawImage(L.c, 0, 0);
   a.restore();
   a.globalCompositeOperation = 'destination-out';
   a.imageSmoothingEnabled = false;

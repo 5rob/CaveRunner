@@ -5,6 +5,19 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v115 — the hologram, its fog and the glows at the rock's pixel size
+Released 2026-10-01.
+
+- The battery: the hologram was made every frame at full canvas resolution (a tilted fill twice
+  the view, ~250 scan lines), its fog swap at 1/2 and its bloom at 1/4, about 85% of the drawing.
+  Now all three work on one grid of `DEV.holoPx` world units a pixel (default 2, the rock's),
+  fixed to the hologram so its pixels slide with it (`holoGrid` in `holo.js`), scaled up crisp.
+  At 2 the small words go to pixel squiggles (the number reads); 1 keeps them readable.
+- `holoAlpha` 0 now skips the hologram's work entirely (it used to build the layer and hide it).
+- `drawGlows` draws the glows into a rock-pixel layer and adds it once (`DEV.pixelFx`: 1 crisp,
+  0 smooth; the fog swap too). Glowing particles stay full size.
+- Software-rendered, flying through a cave: ~69ms a frame -> ~20ms (24 at `holoPx` 1).
+
 ## v114 — a quick Bag with a big gun
 Released 2026-10-01.
 
