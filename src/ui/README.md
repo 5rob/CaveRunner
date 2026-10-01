@@ -40,7 +40,8 @@ CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).
   `input.current.ctlH`. `deckLayout` places the round `.dbtn`s: the four guns (`.slot`, `.on` = held,
   hold for its card) on an arc round the right stick; the Bag (`.weapon`, 🎒) mirrors the last gun on
   the left; the map (`.mapbtn`, 🗺️) above it. Gold (`.gold`, `fmtGold`: `1234` → `1.2kg`, thousands
-  truncated) sits in the gap at the bottom, `pointer-events:none`; it updates because gold changes
+  truncated) sits top centre, `pointer-events:none`, with the debt under it in full (`-64,000,000,000g owed`,
+  not `fmtGold`) and `DueClock` under that, all centred (`topgold` checks them at phone widths); it updates because gold changes
   call `input.current.notify()` (re-renders `App`). The Dev button is a bare ⚙️
   (`.devbtn`); Restart is inside the Dev panel (`.dbg.restart`).
 - **Perks: a column over the map button** (`.perkcol`, `PERK_PIP`/`PERK_GAP`/`PERK_TOP` in `app.js`):

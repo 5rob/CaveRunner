@@ -3,7 +3,7 @@
 | File | Holds |
 |---|---|
 | `themes.js` | `THEMES` (the 12 floor palettes), `themeFor(floor)`, `DECOR`/`decorFor` (five decorations per theme, indexed like `THEMES`), `AMBIENCE` (per theme *name*: noise bed, drone, one-shot rates) |
-| `creatures.js` | `CREATURES` (the 16 types), `CREATURE_IDS`, `ROSTERS` + `rosterFor(floor, rnd)` (who lives on floors 1–10), `enemyFor(id, floor)` (one creature's floor-scaled stats, the `e.k` every enemy carries), `HUNTERS`, `NATURAL_ONLY` |
+| `creatures.js` | `CREATURES` (the 16 types), `CREATURE_IDS`, `ROSTERS` + `rosterFor(floor, rnd)` (who lives on floors 1–10), `enemyFor(id, floor)` (one creature's floor-scaled stats, the `e.k` every enemy carries), `goldScale(floor)` (the floor's gold lift, shared by kill gold and the heal), `healPrice(bought, floor)` (the shop heal: free, then `HEAL_PRICE` × `HEAL_MUL` each time, × `goldScale`), `HUNTERS`, `NATURAL_ONLY` |
 | `perks.js` | `PERKS` (31), `PERK_IDS`, `perkBag(owned)` (folds the owned list into one bag of multipliers and flags) |
 
 ## Rules

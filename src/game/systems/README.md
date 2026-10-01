@@ -31,8 +31,9 @@ the frame; most of its parts live with their system.
 
 - **Terrain changes draw through `G.tctx`/`G.dctx`** (the recorder's wrapped contexts), and
   `dig`/`unDeco`/`explode` zero `W.fuel` and the fire timer for what they clear. `dig`/`explode`
-  count gold-seam pixels and call `dropOre` (coins worth `ORE_GOLD` × floor lift × `W.pb.gold`,
-  fractions kept in `W.oreBank`).
+  count gold-seam pixels and call `dropOre` (gold worth `ORE_GOLD` × floor lift × `W.pb.gold`, spilled as nuggets by
+  `spillGold`, fractions kept in `W.oreBank`). Loose gold (`W.coins`) moves by `stepNugget` and
+  `collideNuggets` (`world/nuggets.js`) in `stepPickups`, unless it is flying to you (`g.fly`).
 - **`W.zfx` is written by `decorStep` and read by the *next* frame's steering** (`slow`, `slick`,
   `climb`, `rev`, `web`, `webMul`, `arch`, `surface`). Climbing = on a climbable and **not** jetting
   (hang, fuel comes back, the stick climbs at `CLIMB`). On a web line or an arch you run *along* it;
