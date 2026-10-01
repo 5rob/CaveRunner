@@ -66,5 +66,21 @@ check('the real build is diagnosed as recharge-bound', a.limit.key === 'rech');
 check('and it finds a real improvement', a.tips.length && a.tips[0].gain > 2, a.tips[0] && a.tips[0].gain.toFixed(2));
 check('fast enough to run on every edit', ms < 60, ms + 'ms');
 
+// --- without the tips (the Bag, while they're parked): the same dmg/s line, none of the work ---
+const ids = Object.keys(MODS);
+const big = gun(Array.from({ length: 26 }, (_, i) => ids[(i * 7) % ids.length]));
+const bigBag = Array.from({ length: 40 }, (_, i) => ids[(i * 3) % ids.length]);
+let t1 = Date.now();
+const full = buildAdvice(big, bigBag);
+const msFull = Date.now() - t1;
+t1 = Date.now();
+const lite = buildAdvice(big, bigBag, false);
+const msLite = Date.now() - t1;
+check('without tips: the same dmg/s and the same limit',
+  lite.now.dps === full.now.dps && lite.limit.text === full.limit.text, [lite.now.dps, lite.limit.key]);
+check('and no tips', lite.tips.length === 0);
+check('and a small part of the time (a 26-slot gun, a 40-mod bag)', msLite * 5 < msFull + 5,
+  { msFull, msLite });
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

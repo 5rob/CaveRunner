@@ -151,8 +151,9 @@ export function gunRate(gun) {
 // how many promising mods get the full every-slot treatment
 export const SHORTLIST = 14;
 
-/** @param {Gun} gun @param {string[]} bag the mod ids you carry */
-export function buildAdvice(gun, bag) {
+/** @param {Gun} gun @param {string[]} bag the mod ids you carry @param {boolean} [withTips] false: only the dmg/s and
+ * the limit (the swap tips are most of the work, a long wait on a phone with a big gun) */
+export function buildAdvice(gun, bag, withTips = true) {
   const now = gunRate(gun);
   let limit;
   if (!now.shots) limit = { key: 'none', text: 'Nothing on this gun fires — it needs a shot mod' };
@@ -168,7 +169,7 @@ export function buildAdvice(gun, bag) {
 
   const tips = [];
   const score = (/** @type {(string | null)[]} */ slots) => gunRate(Object.assign({}, gun, { slots })).dps;
-  if (now.shots) {
+  if (now.shots && withTips) {
     const seen = {};
     const pool = bag.filter(id => !seen[id] && (seen[id] = 1));
     // With a hundred-odd mods to hand, trying every one in every slot is far too much
