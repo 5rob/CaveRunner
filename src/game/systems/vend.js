@@ -2,15 +2,16 @@
 // The level vending machines on the shop's back wall. The level above the shop is bought on
 // credit from one (LVL_BUY goes on your debt, LO.debt, not your gold) and sold back to the other
 // once no biological entities are left in it (LVL_SELL pays the debt off, and a thousand to you).
-// It must be repaid by LO.due: five real days (DEADLINE_MS), counted down on the buy machine. Buying teleports the level
+// It must be repaid by LO.due: an hour (dueMs: floor 1 a Dev knob, DEADLINE_MS after), counted down on the buy machine. Buying teleports the level
 // in over the shop, selling teleports it away and puts the next floor's level up for sale.
 // Without one the cave is solid dark rock (BED) and the shop's roof is sealed (voidCave).
 
 import { SFX } from '../../audio/sfx.js';
 import {
-  BED, BRICK, CELL, CH, CW, DEADLINE_MS, LVL_BUY, LVL_SELL, SHOP_FLOOR, SHOP_ROOF, SHOP_TOP, SHOP_Y, VEND_BUY_X, VEND_SELL_X
+  BED, BRICK, CELL, CH, CW, LVL_BUY, LVL_SELL, SHOP_FLOOR, SHOP_ROOF, SHOP_TOP, SHOP_Y, VEND_BUY_X, VEND_SELL_X
 } from '../../core/consts.js';
 import { bioCount } from '../../creatures/common.js';
+import { dueMs } from '../../dev/knobs.js';
 import { fireNew } from '../../world/fire.js';
 import { fogStart } from '../../world/vision.js';
 import { paintFog } from './fog.js';
@@ -58,7 +59,7 @@ export function vendUse(W, G, kind, LO) {
   if (W.warp) return;
   if (kind === 'buy' && !W.hasLvl) {
     LO.debt = (LO.debt || 0) + LVL_BUY;       // your wallet is yours: the level goes on your debt
-    LO.due = Date.now() + DEADLINE_MS;        // five real days to repay it, on the device's clock
+    LO.due = Date.now() + dueMs(W.floor);     // an hour to repay it (floor 1: Dev's knob), on the device's clock
     W.hasLvl = true;
     W.warp = { dir: 'in', t: 0, done: false, bolts: [] };
     toast(W, 'Level ' + W.floor + ' bought on credit');

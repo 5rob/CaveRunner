@@ -358,6 +358,7 @@ interface DevKnobs {
   bagSpeed: number;
   holoAlpha: number; bloom: number; bloomBlur: number; bloomBright: number;
   holoMin: number; holoMax: number; holoFade: number; holoC1x: number; holoC1y: number; holoC2x: number; holoC2y: number;
+  due1: number;
   [k: string]: any;
 }
 /** one Dev panel row (DEV_META) */

@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v116</title>
+<title>CaveRunner v117</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -508,12 +508,75 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v116';</script>
+<script>const VERSION = 'v117';</script>
 <script>
 (() => {
   // src/ui/h.js
   var { useRef, useEffect, useState, useMemo } = React;
   var h = React.createElement;
+
+  // src/core/consts.js
+  var CELL = 2;
+  var CW = 640, CH = 1600;
+  var WW = CW * CELL, WH = CH * CELL;
+  var BW = CW / 4, BH = CH / 4;
+  var BCELL = WW / BW;
+  var VIEW_W = 360;
+  var VIEW_MIN_H = 340;
+  var ROCK = 1, BRICK = 2, BED = 3;
+  var GRAVITY = 1400;
+  var WALK = 150, GROUND_ACC = 1400, AIR_ACC = 600;
+  var JET = 240, JET_ACC = 900;
+  var CLIMB = 90;
+  var WEB_HAND = 3;
+  var DEAD = 0.12;
+  var AIM_DEAD = 0.35;
+  var KNOB = 0.38;
+  var AIM_RING = AIM_DEAD * 0.72 + KNOB;
+  var PW = 12, PH = 22;
+  var FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
+  var PLAYER_HP = 100;
+  var START_GOLD = 40;
+  var COIN_PULL = 36;
+  var ENEMY_COUNT = 80;
+  var MOD_DROPS = 7;
+  var GUN_DROPS = 5;
+  var PICKUP_GAP = 260;
+  var PATROL_R = 70;
+  var PICKUP_COOL = 2;
+  var SHOP_FLOOR = CH - 10;
+  var SHOP_H = 48;
+  var SHOP_TOP = SHOP_FLOOR - SHOP_H;
+  var SHOP_ROOF = 6;
+  var SHOP_Y = SHOP_TOP * CELL;
+  var VEND_BUY_X = 180, VEND_SELL_X = 280;
+  var LVL_BUY = 64e9, LVL_SELL = 64000001e3;
+  var DEADLINE_MS = 60 * 60 * 1e3;
+  var FOG = 8;
+  var FOG_U = FOG * CELL;
+  var FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
+  var MINI_D = 4;
+  var MMW = Math.ceil(CW / MINI_D), MMH = Math.ceil(CH / MINI_D);
+  var SIGHT = 200;
+  var LAMP_REACH = 1.15;
+  var FOG_DIM = 0.85;
+  var FOG_DARK = 0.99;
+  var COL = {
+    text: "#e9ecf2",
+    muted: "rgba(233,236,242,0.55)",
+    barBg: "rgba(255,255,255,0.12)",
+    player: "#ff5a36",
+    visor: "#17222e",
+    bullet: "#ffc93c",
+    flame: "#ff8a1f",
+    flame2: "#ffe066",
+    enemy: "#b57cff",
+    eye: "#f4f0ff",
+    smoke: "#9aa3ad",
+    hp: "#46c48c",
+    grenade: "#7cc04f",
+    portal: "#5ee0a0"
+  };
 
   // src/core/util.js
   var HEX_RE = /^#[0-9a-f]{6}$/i;
@@ -642,7 +705,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     holoC1x: 0.25,
     holoC1y: 1,
     holoC2x: 0.5,
-    holoC2y: 0
+    holoC2y: 0,
+    due1: 60
   };
   var DEV_META = [
     { k: "zoom", g: "view", label: "Camera zoom", min: 0.3, max: 3, step: 0.05 },
@@ -683,6 +747,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "holoC1y", g: "holoflash", label: "Fade curve point 1 y", min: -0.5, max: 1.5, step: 0.01, type: "curve" },
     { k: "holoC2x", g: "holoflash", label: "Fade curve point 2 x", min: 0, max: 1, step: 0.01, type: "curve" },
     { k: "holoC2y", g: "holoflash", label: "Fade curve point 2 y", min: -0.5, max: 1.5, step: 0.01, type: "curve" },
+    { k: "due1", g: "level", label: "Time to repay level 1 (minutes)", min: 0.1, max: 1440, step: 1 },
     { k: "bagSpeed", g: "ui", label: "Bag fire preview speed (×real time)", min: 0.05, max: 5, step: 0.05 }
   ];
   var DEV_GROUPS = [
@@ -926,6 +991,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   ]);
   var DEV_KEY = "caverunner-dev";
   var DEV = Object.assign({}, DEV_DEFAULTS);
+  var dueMs = (floor) => floor === 1 ? DEV.due1 * 6e4 : DEADLINE_MS;
   (() => {
     try {
       const raw = localStorage.getItem(DEV_KEY);
@@ -4548,69 +4614,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     };
   })();
-
-  // src/core/consts.js
-  var CELL = 2;
-  var CW = 640, CH = 1600;
-  var WW = CW * CELL, WH = CH * CELL;
-  var BW = CW / 4, BH = CH / 4;
-  var BCELL = WW / BW;
-  var VIEW_W = 360;
-  var VIEW_MIN_H = 340;
-  var ROCK = 1, BRICK = 2, BED = 3;
-  var GRAVITY = 1400;
-  var WALK = 150, GROUND_ACC = 1400, AIR_ACC = 600;
-  var JET = 240, JET_ACC = 900;
-  var CLIMB = 90;
-  var WEB_HAND = 3;
-  var DEAD = 0.12;
-  var AIM_DEAD = 0.35;
-  var KNOB = 0.38;
-  var AIM_RING = AIM_DEAD * 0.72 + KNOB;
-  var PW = 12, PH = 22;
-  var FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
-  var PLAYER_HP = 100;
-  var START_GOLD = 40;
-  var COIN_PULL = 36;
-  var ENEMY_COUNT = 80;
-  var MOD_DROPS = 7;
-  var GUN_DROPS = 5;
-  var PICKUP_GAP = 260;
-  var PATROL_R = 70;
-  var PICKUP_COOL = 2;
-  var SHOP_FLOOR = CH - 10;
-  var SHOP_H = 48;
-  var SHOP_TOP = SHOP_FLOOR - SHOP_H;
-  var SHOP_ROOF = 6;
-  var SHOP_Y = SHOP_TOP * CELL;
-  var VEND_BUY_X = 180, VEND_SELL_X = 280;
-  var LVL_BUY = 64e9, LVL_SELL = 64000001e3;
-  var DEADLINE_MS = 60 * 60 * 1e3;
-  var FOG = 8;
-  var FOG_U = FOG * CELL;
-  var FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
-  var MINI_D = 4;
-  var MMW = Math.ceil(CW / MINI_D), MMH = Math.ceil(CH / MINI_D);
-  var SIGHT = 200;
-  var LAMP_REACH = 1.15;
-  var FOG_DIM = 0.85;
-  var FOG_DARK = 0.99;
-  var COL = {
-    text: "#e9ecf2",
-    muted: "rgba(233,236,242,0.55)",
-    barBg: "rgba(255,255,255,0.12)",
-    player: "#ff5a36",
-    visor: "#17222e",
-    bullet: "#ffc93c",
-    flame: "#ff8a1f",
-    flame2: "#ffe066",
-    enemy: "#b57cff",
-    eye: "#f4f0ff",
-    smoke: "#9aa3ad",
-    hp: "#46c48c",
-    grenade: "#7cc04f",
-    portal: "#5ee0a0"
-  };
 
   // src/data/perks.js
   var PERKS = {
@@ -15413,7 +15416,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (W.warp) return;
     if (kind === "buy" && !W.hasLvl) {
       LO.debt = (LO.debt || 0) + LVL_BUY;
-      LO.due = Date.now() + DEADLINE_MS;
+      LO.due = Date.now() + dueMs(W.floor);
       W.hasLvl = true;
       W.warp = { dir: "in", t: 0, done: false, bolts: [] };
       toast(W, "Level " + W.floor + " bought on credit");

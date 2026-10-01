@@ -4,6 +4,7 @@
 // Every table registers its rows before DEV is built from the defaults below, so they all
 // live here for now (REFACTOR.md, D11).
 
+import { DEADLINE_MS } from '../core/consts.js';
 import { HEX_RE, hexMix, hsvAdjust } from '../core/util.js';
 
 // ---- dev settings ----
@@ -16,7 +17,8 @@ import { HEX_RE, hexMix, hsvAdjust } from '../core/util.js';
 export const DEV_DEFAULTS = { zoom: 1.6, torch: 0.5, fogDark: 0.99, fogDim: 0.85, move: 1, sputDip: 45, aggro: 0.6, loseAggro: 2, aimDist: 44, bhPull: 65, bhSpeed: 50, vol: 1, amb: 0.4, jetVol: 0.2,
   vSpell: 0.6, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vDrip: 1, vStep: 1, vUi: 1, bagSpeed: 1,
   holoAlpha: 1, bloom: 0.8, bloomBlur: 8, bloomBright: 1.3, pixelFx: 1, holoPx: 2,
-  holoMin: 0, holoMax: 1, holoFade: 3, holoC1x: 0.25, holoC1y: 1, holoC2x: 0.5, holoC2y: 0 };
+  holoMin: 0, holoMax: 1, holoFade: 3, holoC1x: 0.25, holoC1y: 1, holoC2x: 0.5, holoC2y: 0,
+  due1: 60 };
 // g: the collapsible group the knob sits in on the Dev panel (DEV_GROUPS gives the order)
 /** @type {DevRow[]} */
 export const DEV_META = [
@@ -58,6 +60,7 @@ export const DEV_META = [
   { k: 'holoC1y',   g: 'holoflash', label: 'Fade curve point 1 y', min: -0.5, max: 1.5, step: 0.01, type: 'curve' },
   { k: 'holoC2x',   g: 'holoflash', label: 'Fade curve point 2 x', min: 0, max: 1, step: 0.01, type: 'curve' },
   { k: 'holoC2y',   g: 'holoflash', label: 'Fade curve point 2 y', min: -0.5, max: 1.5, step: 0.01, type: 'curve' },
+  { k: 'due1',      g: 'level', label: 'Time to repay level 1 (minutes)', min: 0.1, max: 1440, step: 1 },
   { k: 'bagSpeed',  g: 'ui',    label: 'Bag fire preview speed (×real time)', min: 0.05, max: 5, step: 0.05 },
 ];
 export const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['fx', 'Hologram & glow'], ['holoflash', 'Hologram flash (on a kill)'], ['player', 'Player'],
@@ -318,6 +321,9 @@ export const FIRE_KNOBS = rangeKnobs('fire', [
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);
+// how long you get to repay a level bought on credit (ms): floor 1's is the Dev knob, the rest an hour
+/** @param {number} floor */
+export const dueMs = floor => floor === 1 ? DEV.due1 * 60000 : DEADLINE_MS;
 (() => { try {
   const raw = localStorage.getItem(DEV_KEY);
   if (raw) { const o = JSON.parse(raw); for (const k in DEV_DEFAULTS) {

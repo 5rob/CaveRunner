@@ -9,7 +9,7 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
-- **Released: v116** on `main`, 2026-10-02: the hologram rests dark and flashes on a kill (Dev → Hologram flash, with a fade-curve editor). Before it, v115 on 2026-10-01 (history in `CHANGELOG.md`). The last three were the
+- **Released: v117** on `main`, 2026-10-02: a Dev knob for level 1's repay time (`DEV.due1`, minutes). v116: the hologram rests dark and flashes on a kill (Dev → Hologram flash, with a fade-curve editor). Before it, v115 on 2026-10-01 (history in `CHANGELOG.md`). The last three were the
   owner's lag and battery complaints: v113 the camera eases by time, not per frame (it jittered you
   in fast flight on the phone; confirmed fixed); v114 the Bag works out its dmg/s line once per build,
   without the parked swap tips (a drag cost ~380ms with a big gun); v115 the hologram, its fog swap,
