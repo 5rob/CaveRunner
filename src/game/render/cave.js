@@ -210,6 +210,11 @@ export function drawShop(W, G, F) {
       G.ctx.globalAlpha = 1; G.ctx.fillStyle = COL.hp;
       G.ctx.fillRect(it.x - 7, it.y - 2.5 + bob, 14, 5);
       G.ctx.fillRect(it.x - 2.5, it.y - 7 + bob, 5, 14);
+      G.ctx.fillStyle = COL.bullet;
+      G.ctx.font = '600 9px system-ui, sans-serif';
+      G.ctx.textAlign = 'center';
+      G.ctx.fillText(it.price ? it.price + 'g' : 'Free', it.x, it.y - 13 + bob);
+      G.ctx.textAlign = 'left';
     } else if (it.kind === 'gun') {
       G.ctx.globalAlpha = 0.22; G.ctx.fillStyle = gunAccent(it.gun);
       G.ctx.beginPath(); G.ctx.arc(it.x, it.y + bob, 14, 0, Math.PI * 2); G.ctx.fill();

@@ -116,13 +116,24 @@ export function rosterFor(floor, rnd) {
   return out;
 }
 
+// how much more gold is worth on a floor: a kill's reward, and the shop heal's price, both lift by it
+/** @param {number} floor */
+export const goldScale = floor => 1 + (floor - 1) * 0.30;
+
+// the shop heal: the first on a floor is free, then HEAL_PRICE, times HEAL_MUL for each one after,
+// all lifted by the floor like the kill gold. A new floor's shop starts the count again
+export const HEAL_PRICE = 100, HEAL_MUL = 1.75;
+/** @param {number} bought heals already bought on this floor @param {number} floor */
+export const healPrice = (bought, floor) => bought <= 0 ? 0
+  : Math.round(HEAL_PRICE * Math.pow(HEAL_MUL, bought - 1) * goldScale(floor) / 5) * 5;
+
 // One floor's worth of one creature: the type's own numbers, lifted by the floor it
 // belongs to. Health climbs hardest, gold next, damage least — a floor 10 enemy is
 // worth a lot more than it hurts, or the shop heal would never keep up.
 /** @param {string} id @param {number} floor @returns {CreatureKind} */
 export function enemyFor(id, floor) {
   const c = CREATURES[id];
-  const hp = 1 + (floor - 1) * 0.35, dmg = 1 + (floor - 1) * 0.16, gold = 1 + (floor - 1) * 0.30;
+  const hp = 1 + (floor - 1) * 0.35, dmg = 1 + (floor - 1) * 0.16, gold = goldScale(floor);
   return { id, name: c.name, body: c.body, act: c.act, col: c.col,
     hp: Math.max(1, Math.round(c.hp * hp)),
     dmg: Math.max(1, Math.round(c.dmg * dmg)),

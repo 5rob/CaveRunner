@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v109</title>
+<title>CaveRunner v110</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -496,7 +496,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v109';</script>
+<script>const VERSION = 'v110';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -5704,9 +5704,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     while (out.length < n && pool.length) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
     return out;
   }
+  var goldScale = (floor) => 1 + (floor - 1) * 0.3;
+  var HEAL_PRICE = 100, HEAL_MUL = 1.75;
+  var healPrice = (bought, floor) => bought <= 0 ? 0 : Math.round(HEAL_PRICE * Math.pow(HEAL_MUL, bought - 1) * goldScale(floor) / 5) * 5;
   function enemyFor(id, floor) {
     const c = CREATURES[id];
-    const hp = 1 + (floor - 1) * 0.35, dmg = 1 + (floor - 1) * 0.16, gold = 1 + (floor - 1) * 0.3;
+    const hp = 1 + (floor - 1) * 0.35, dmg = 1 + (floor - 1) * 0.16, gold = goldScale(floor);
     return {
       id,
       name: c.name,
@@ -7603,6 +7606,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         alive: Array.isArray(L2.alive) ? L2.alive : null,
         sold: Array.isArray(L2.sold) ? L2.sold : [],
         rooms: Array.isArray(L2.rooms) ? L2.rooms : [],
+        heals: Math.max(0, Math.floor(Number(L2.heals) || 0)),
         pickups: Array.isArray(L2.pickups) ? L2.pickups.map((q) => {
           if (!q || typeof q !== "object") return null;
           if (q.kind === "mod") return MODS[q.id] ? q : null;
@@ -12416,6 +12420,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         G.ctx.fillStyle = COL.hp;
         G.ctx.fillRect(it.x - 7, it.y - 2.5 + bob, 14, 5);
         G.ctx.fillRect(it.x - 2.5, it.y - 7 + bob, 5, 14);
+        G.ctx.fillStyle = COL.bullet;
+        G.ctx.font = "600 9px system-ui, sans-serif";
+        G.ctx.textAlign = "center";
+        G.ctx.fillText(it.price ? it.price + "g" : "Free", it.x, it.y - 13 + bob);
+        G.ctx.textAlign = "left";
       } else if (it.kind === "gun") {
         G.ctx.globalAlpha = 0.22;
         G.ctx.fillStyle = gunAccent(it.gun);
@@ -13129,7 +13138,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     const shelf = (SHOP_FLOOR - 13) * CELL;
     const gunShop = isGunShop(floor);
-    stock.push({ kind: "heal", x: arrival.x + 62, y: shelf, price: 0, sold: false });
+    stock.push({ kind: "heal", x: arrival.x + 62, y: shelf, price: 0, sold: false, bought: 0 });
     const PLINTH_GAP = 64;
     for (let i = 0; i < items; i++) {
       const x = WW / 2 + (i - (items - 1) / 2) * PLINTH_GAP;
@@ -15011,6 +15020,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       back.sold.forEach((i) => {
         if (level.stock[i]) level.stock[i].sold = true;
       });
+      const heal = level.stock.find((it) => it.kind === "heal");
+      if (heal && back.heals) {
+        heal.bought = back.heals;
+        heal.price = healPrice(back.heals, W.floor);
+      }
       back.rooms.forEach((i) => {
         if (level.rooms && level.rooms[i]) level.rooms[i].taken = true;
       });
@@ -15135,6 +15149,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         owned: W.levelOwned,
         alive: W.enemies.map((e) => e.sid),
         sold: W.stock.map((it, i) => it.sold ? i : -1).filter((i) => i >= 0),
+        heals: (W.stock.find((it) => it.kind === "heal") || { bought: 0 }).bought || 0,
         rooms: W.rooms.map((r, i) => r.taken ? i : -1).filter((i) => i >= 0),
         pickups: pk
       }
@@ -16797,7 +16812,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       break;
     }
     const nearKey = !near ? -1 : near.src + ":" + (near.src === "vend" ? near.kind : near.src === "shop" ? W.stock.indexOf(near.it) : near.src === "room" ? W.rooms.indexOf(near.r) : W.pickups.indexOf(near.q));
-    const label = !near ? null : near.src === "vend" ? vendLabel(W, near.kind) : near.src === "shop" ? near.it.kind === "heal" ? { text: "Full heal", price: 0, can: W.p.hp < MHP } : near.it.kind === "gun" ? {
+    const label = !near ? null : near.src === "vend" ? vendLabel(W, near.kind) : near.src === "shop" ? near.it.kind === "heal" ? { text: "Full heal", price: near.it.price, can: W.p.hp < MHP && LO.gold >= near.it.price } : near.it.kind === "gun" ? {
       text: near.it.gun.name,
       gun: near.it.gun,
       price: near.it.price,
@@ -16834,9 +16849,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       else if (near.src === "shop") {
         const it = near.it;
         if (it.kind === "heal") {
-          if (W.p.hp < MHP) {
+          if (W.p.hp >= MHP) {
+            toast(W, "Already at full health");
+            SFX.ui("poor");
+          } else if (LO.gold < it.price) {
+            toast(W, "Not enough gold");
+            SFX.ui("poor");
+          } else {
+            LO.gold -= it.price;
             W.p.hp = MHP;
-            it.sold = true;
+            it.bought = (it.bought || 0) + 1;
+            it.price = healPrice(it.bought, W.floor);
             toast(W, "Patched up");
             SFX.ui("heal");
           }

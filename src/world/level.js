@@ -487,10 +487,10 @@ export function makeLevel(seed, floor, owned) {
   }
   const shelf = (SHOP_FLOOR - 13) * CELL;
   const gunShop = isGunShop(floor);
-  // the free heal, just along from the portal you arrive through. Far enough along that
+  // the heal (free the first time, dearer each time after: healPrice), just along from the portal you arrive through. Far enough along that
   // you are not standing on it the moment you land. The two level vending machines come
   // next along the wall (VEND_BUY_X, VEND_SELL_X)
-  stock.push({ kind: 'heal', x: arrival.x + 62, y: shelf, price: 0, sold: false });
+  stock.push({ kind: 'heal', x: arrival.x + 62, y: shelf, price: 0, sold: false, bought: 0 });
   const PLINTH_GAP = 64;                 // world units between the ones in the row
   for (let i = 0; i < items; i++) {
     const x = WW / 2 + (i - (items - 1) / 2) * PLINTH_GAP;

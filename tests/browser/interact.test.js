@@ -82,7 +82,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   const healUp = async () => page.evaluate(async () => {
     const { p, stock } = window.__lvl;
     const heal = stock.find(s => s.kind === 'heal');
-    p.x = heal.x - 6; p.y = heal.y + 4; p.vx = 0; p.vy = 0; p.hp = 10;
+    p.x = heal.x - 6; p.y = heal.y + 4; p.vx = 0; p.vy = 0; p.hp = 10; heal.price = 0;   // free every time here (a heal after the first costs gold)
     const g = window.__in.current.loadout.guns[0];
     // ready to fire on the next drag: full mana and its clocks cleared, so a slow starter
     // gun mid-recharge from an earlier check doesn't read as "didn't fire"
@@ -117,6 +117,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     const { pickups, p } = window.__lvl;
     const LO = window.__in.current.loadout;
     LO.bag.length = 0;
+    window.__lvl.stock.find(s => s.kind === 'heal').sold = true;   // the heal never sells out now: shelve it so the ground pickup wins
     const mod = pickups.find(q => q.kind === 'mod' && !q.taken);
     mod.x = p.x + 6; mod.y = p.y + 11; mod.cool = 0;
     await new Promise(r => setTimeout(r, 200));

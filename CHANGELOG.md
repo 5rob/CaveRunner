@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v110 — the shop heal can be bought again
+Released 2026-10-01.
+
+- The shop heal no longer sells out: the first on a floor is free, then 100g, x1.75 each time after
+  (`healPrice`, `HEAL_PRICE`/`HEAL_MUL` in `data/creatures.js`), lifted by the floor like kill gold
+  (`goldScale`, now shared with `enemyFor`). The count is the heal plinth's `bought`, saved as
+  `level.heals`; a new floor's shop starts it at 0. The plinth shows its price (or Free).
+
 ## v109 — an hour to pay; standable plinths; bedrock shop floor
 Released 2026-10-01.
 

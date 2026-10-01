@@ -4,6 +4,7 @@
 
 import { SFX } from '../../audio/sfx.js';
 import { COIN_PULL, PH, PICKUP_COOL, SHOP_Y } from '../../core/consts.js';
+import { healPrice } from '../../data/creatures.js';
 import { PERKS } from '../../data/perks.js';
 import { MODS } from '../../spells/mods.js';
 import { paintFog } from './fog.js';
@@ -97,7 +98,7 @@ export function stepPickups(W, G, F) {
   const label = !near ? null
     : near.src === 'vend' ? vendLabel(W, near.kind)
     : near.src === 'shop'
-      ? (near.it.kind === 'heal' ? { text: 'Full heal', price: 0, can: W.p.hp < MHP }
+      ? (near.it.kind === 'heal' ? { text: 'Full heal', price: near.it.price, can: W.p.hp < MHP && LO.gold >= near.it.price }
         : near.it.kind === 'gun' ? { text: near.it.gun.name, gun: near.it.gun,
             price: near.it.price, can: LO.gold >= near.it.price }
         : { text: MODS[near.it.id].name, id: near.it.id, price: near.it.price,
@@ -142,7 +143,15 @@ export function stepPickups(W, G, F) {
     else if (near.src === 'shop') {
       const it = near.it;
       if (it.kind === 'heal') {
-        if (W.p.hp < MHP) { W.p.hp = MHP; it.sold = true; toast(W, 'Patched up'); SFX.ui('heal'); }
+        if (W.p.hp >= MHP) { toast(W, 'Already at full health'); SFX.ui('poor'); }
+        else if (LO.gold < it.price) { toast(W, 'Not enough gold'); SFX.ui('poor'); }
+        else {
+          LO.gold -= it.price;
+          W.p.hp = MHP;
+          it.bought = (it.bought || 0) + 1;      // never sells out, just dearer: healPrice
+          it.price = healPrice(it.bought, W.floor);
+          toast(W, 'Patched up'); SFX.ui('heal');
+        }
       } else if (LO.gold < it.price) {
         toast(W, 'Not enough gold');
         SFX.ui('poor');

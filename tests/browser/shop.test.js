@@ -42,8 +42,17 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   let btn = await page.evaluate(() => { const b = document.querySelector('.pbuy'); return b && b.textContent; });
   check('standing on the heal shows a prompt', !!btn && /Full heal/.test(btn), btn);
   await interact();
-  st = await page.evaluate(() => ({ hp: window.__lvl.p.hp, sold: window.__lvl.stock[0].sold }));
-  check('the heal restores full health and is used up', st.hp === 100 && st.sold === true, st);
+  st = await page.evaluate(() => ({ hp: window.__lvl.p.hp, sold: window.__lvl.stock[0].sold, price: window.__lvl.stock[0].price,
+    gold: window.__in.current.loadout.gold }));
+  check('the first heal is free and restores full health', st.hp === 100 && st.gold === 40, st);
+  check('it stays on sale, now for 100g', st.sold === false && st.price === 100, st);
+  // the second: costs 100, the third goes up
+  await page.evaluate(() => { window.__lvl.p.hp = 40; window.__in.current.loadout.gold = 500; window.__in.current.sig = ''; });
+  await page.waitForTimeout(220);
+  await interact();
+  st = await page.evaluate(() => ({ hp: window.__lvl.p.hp, price: window.__lvl.stock[0].price, gold: window.__in.current.loadout.gold }));
+  check('the second heal costs 100g and the next more', st.hp === 100 && st.gold === 400 && st.price > 100, st);
+  await page.evaluate(() => { window.__in.current.loadout.gold = 40; });
 
   // buy a mod
   await goTo(1);

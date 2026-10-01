@@ -73,6 +73,7 @@ export function readSave(raw) {
       alive: Array.isArray(L.alive) ? L.alive : null,
       sold: Array.isArray(L.sold) ? L.sold : [],
       rooms: Array.isArray(L.rooms) ? L.rooms : [],
+      heals: Math.max(0, Math.floor(Number(L.heals) || 0)),
       pickups: Array.isArray(L.pickups) ? L.pickups.map(q => {
         if (!q || typeof q !== 'object') return null;
         if (q.kind === 'mod') return MODS[q.id] ? q : null;

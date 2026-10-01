@@ -277,7 +277,7 @@ interface Pickup {
   cool?: number;              // just dropped or swapped: not takeable yet
 }
 /** a shop plinth (makeLevel's stock) */
-interface StockItem { kind: string; x: number; y: number; price: number; sold: boolean; id?: string; gun?: Gun }
+interface StockItem { kind: string; x: number; y: number; price: number; sold: boolean; id?: string; gun?: Gun; bought?: number /* the heal: times bought this floor */ }
 /** a hidden prize room */
 interface Room { kind: string; id?: string; x: number; y: number; taken: boolean; built: boolean }
 /** a rat nest as ratNests makes it (world/nests.js) */
@@ -339,7 +339,7 @@ interface SaveData {
 }
 /** the cave part of a save */
 interface SavedLevel {
-  seed: number; owned: string[]; alive: number[] | null; sold: number[]; rooms: number[];
+  seed: number; owned: string[]; alive: number[] | null; sold: number[]; rooms: number[]; heals?: number;
   pickups: Pickup[] | null;
 }
 

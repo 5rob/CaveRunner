@@ -5,6 +5,7 @@
 import { SFX } from '../../audio/sfx.js';
 import { CH, CW, MINI_D, MMH, MMW, SHOP_Y } from '../../core/consts.js';
 import { plantWhite } from '../../creatures/jelly.js';
+import { healPrice } from '../../data/creatures.js';
 import { fireNew } from '../../world/fire.js';
 import { makeLevel } from '../../world/level.js';
 import { fogStart, nestFog } from '../../world/vision.js';
@@ -27,6 +28,8 @@ export function enterLevel(W, G, back, keep) {
   if (back) {
     if (back.alive) { const live = new Set(back.alive); level.enemies = level.enemies.filter(e => live.has(e.sid)); }
     back.sold.forEach(i => { if (level.stock[i]) level.stock[i].sold = true; });
+    const heal = level.stock.find(it => it.kind === 'heal');
+    if (heal && back.heals) { heal.bought = back.heals; heal.price = healPrice(back.heals, W.floor); }
     back.rooms.forEach(i => { if (level.rooms && level.rooms[i]) level.rooms[i].taken = true; });
     if (back.pickups) level.pickups = back.pickups;
   }
