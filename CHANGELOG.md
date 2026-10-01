@@ -5,6 +5,19 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v109 — an hour to pay; standable plinths; bedrock shop floor
+Released 2026-10-01.
+
+- The repayment deadline is an hour (`DEADLINE_MS`), shown at the top under the debt too
+  ("Settlement due 00:59:59", `DueClock`; blinks in the last five minutes). `countdown` drops the days
+  under a day.
+- A save with 64B+ gold and no debt (an older page loaded a v107 save, dropped the debt and paid
+  out the whole sale) gets the level's price taken back off.
+- The shop's floor is bedrock (`BED`, painted as the brick): it can't be dug or blown through.
+- Item plinths' feet are one-way ledges (`ledgeUnder`): land on a hidden room's altar with the rock
+  dug from under it; the altar stays (and stays standable) once its prize is taken.
+- The background hologram's tiles are half as far apart (`PERIOD_X`/`PERIOD_Y` 150 x 171).
+
 ## v108 — repossession
 Released 2026-10-01.
 

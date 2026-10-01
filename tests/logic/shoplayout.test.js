@@ -90,6 +90,14 @@ check('and usually four different names by luck of the roll',
   named / gunShops.length > 0.7, `${named}/${gunShops.length} shop rows have four distinct names`);
 check('the heal is free', shops.every(s => s.heal.price === 0 && s.heal.sold === false));
 
+// ---- the shop floor can't be dug (v109): bedrock all the way across ----
+{
+  const lv = makeLevel(5, 1, []);
+  let bad = 0;
+  for (let y = SHOP_FLOOR; y < SHOP_FLOOR + 4; y++) for (let x = 0; x < CW; x++) if (lv.mat[y * CW + x] !== g.BED) bad++;
+  check('the shop floor is bedrock', bad === 0, bad);
+}
+
 // ---- the level vending machines (v106): way in, heal, buy, sell, left to right, with room ----
 // a machine's screen is 72 wide: at least 16 of clear wall either side of each
 const { VEND_BUY_X, VEND_SELL_X } = g;

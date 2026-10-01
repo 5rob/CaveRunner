@@ -446,6 +446,10 @@ export function makeLevel(seed, floor, owned) {
     }
   }
 
+  // the shop's floor can't be dug or blown through: bedrock, painted as the brick above
+  for (let cy = SHOP_FLOOR; cy < SHOP_FLOOR + 4; cy++)
+    for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BED;
+
   // the rat nests' mounds: fresh-dug earth, not moss
   for (const n of nests) for (const i of n.mound) {
     if (mat[i] !== ROCK) continue;

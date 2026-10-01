@@ -72,6 +72,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .gold span{font-size:12px;font-weight:700;color:#c9a24a}
 .gold .debt{font-size:14px;color:#ff4a4a}
 .gold .debt span{font-size:10px;color:#d06060;margin-left:3px}
+.gold .due{font:600 10px system-ui,sans-serif;color:#d06060;letter-spacing:.04em;text-transform:uppercase}
+.gold .due b{font:800 13px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ff4a4a;letter-spacing:0}
+.gold .due.late b{animation:dueblink 1s steps(2) infinite}
+@keyframes dueblink{50%{opacity:.35}}
 /* the perks you have found: a column going up from above the map button, wrapping inwards */
 .perkcol{position:absolute;display:flex;flex-direction:column-reverse;flex-wrap:wrap;
   align-content:flex-start;gap:6px;pointer-events:none;z-index:4}

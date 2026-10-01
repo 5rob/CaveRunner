@@ -6,7 +6,7 @@
 import { SFX } from '../../audio/sfx.js';
 import {
   AIR_ACC, CELL, CLIMB, COL, DEAD, FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART, GRAVITY, GROUND_ACC, JET,
-  JET_ACC, PH, PW, WALK, WEB_HAND, WH
+  JET_ACC, PH, PW, SHOP_FLOOR, WALK, WEB_HAND, WH
 } from '../../core/consts.js';
 import { approach, clamp } from '../../core/util.js';
 import { activePerks, perkBag } from '../../data/perks.js';
@@ -211,6 +211,7 @@ export function movePlayer(W, G, F) {
       if (!moved) { W.p.vx = 0; break; }
     }
   }
+  const y0 = W.p.y;
   n = Math.ceil(Math.abs(W.p.vy * dt));
   if (n > 0) {
     const sy = W.p.vy * dt / n;
@@ -223,6 +224,8 @@ export function movePlayer(W, G, F) {
       break;
     }
   }
+  // an item plinth's foot is a ledge: falling onto it you land (rising, you pass up through)
+  if (W.p.vy >= 0) { const top = ledgeUnder(W, y0 + PH, W.p.y + PH); if (top !== null) { W.p.y = top - PH; W.p.vy = 0; } }
   // stick to the ground when walking down slopes
   if (wasGround && !jet && W.p.vy >= 0 && W.p.kick <= 0 && !boxHit(W, W.p.x, W.p.y + 1)) {
     for (let dn = 1; dn <= 6; dn++) {
@@ -234,7 +237,7 @@ export function movePlayer(W, G, F) {
     for (let up = 1; up <= 40; up++) if (!boxHit(W, W.p.x, W.p.y - up)) { W.p.y -= up; break; }
   }
   if (W.p.y > WH) { W.p.x = W.start.x; W.p.y = W.start.y; W.p.vx = 0; W.p.vy = 0; }
-  W.p.onGround = boxHit(W, W.p.x, W.p.y + 0.5);
+  W.p.onGround = boxHit(W, W.p.x, W.p.y + 0.5) || (W.p.vy >= 0 && ledgeUnder(W, W.p.y + PH - 0.01, W.p.y + PH + 0.5) !== null);
   // footsteps and landings, in the sound of whatever you're standing on
   if (!W.p.dead) {
     if (W.p.onGround && !wasGround && fallV > 200) SFX.fx('land', null, null, { v: fallV, s: W.zfx.surface });
@@ -283,4 +286,20 @@ export function stepTorch(W, F) {
   W.leanX += W.leanVX * dt; W.leanY += W.leanVY * dt;
   // the glow gets its own quicker, deeper flicker on top of flick (the map light is untouched)
   W.glowN += (Math.random() - 0.5) * 6 * dt; W.glowN *= 0.9;
+}
+
+// The item plinths' feet, as one-way ledges: the hidden rooms' altars (so a prize whose rock
+// you dug away still has something to land on) and the shop's plinths. The top of the first one
+// your feet crossed going down from f0 to f1 under you, or null
+/** @param {World} W @param {number} f0 @param {number} f1 @returns {number | null} */
+export function ledgeUnder(W, f0, f1) {
+  const x0 = W.p.x, x1 = W.p.x + PW;
+  let best = null;
+  /** @param {number} cx @param {number} hw @param {number} top */
+  const at = (cx, hw, top) => {
+    if (x1 > cx - hw && x0 < cx + hw && f0 <= top + 0.01 && f1 >= top && (best === null || top < best)) best = top;
+  };
+  for (const r of W.rooms) at(r.x, 12, r.y + 14);
+  for (const it of W.stock || []) at(it.x, 11, SHOP_FLOOR * CELL - 5);
+  return best;
 }

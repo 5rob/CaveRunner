@@ -5,6 +5,7 @@
 
 import { AIM_DEAD, AIM_RING, DEAD, KNOB } from '../core/consts.js';
 import { mixHex } from '../core/util.js';
+import { countdown } from '../core/util.js';
 import { h, useEffect, useRef, useState } from './h.js';
 
 // Gold for the deck readout: a bare number under 1000, and above that truncated (not rounded)
@@ -21,6 +22,16 @@ export function fmtGold(g) {
     if (g >= n) return (Math.floor(g / (n / 10)) / 10).toString() + units[i];
   }
   return String(g);
+}
+
+// The debt's repayment deadline under the debt at the top, ticking every second on its own
+// (real time, the device clock: LO.due)
+/** @param {{ due: number }} props */
+export function DueClock({ due }) {
+  const [, tick] = useState(0);
+  useEffect(() => { const id = setInterval(() => tick(n => n + 1), 1000); return () => clearInterval(id); }, []);
+  const left = due - Date.now();
+  return h('div', { className: 'due' + (left < 5 * 60 * 1000 ? ' late' : '') }, 'Settlement due ', h('b', null, countdown(left)));
 }
 
 // Where the round deck buttons sit, in css px relative to the sticks row's top-left (the

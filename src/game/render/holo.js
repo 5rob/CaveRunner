@@ -15,7 +15,7 @@ export const HOLO_PAR = (1 + BG_PAR) / 2;      // the hologram: halfway to the r
 
 // the tile, in world units: the boxes, and the grid they repeat on (PERIOD_X x PERIOD_Y)
 const BOX_W = 96, TOP_H = 66, BOT_H = 60;      // the solid box, the outlined box under it
-const PERIOD_X = 300, PERIOD_Y = 342;          // one tile to the next
+const PERIOD_X = 150, PERIOD_Y = 171;          // one tile to the next
 const PAD = 7.5, TXT_PAD = 7.5;                // number padding; the words' padding
 const LINE = 1.5;                              // outline width
 const SLANT = -0.3;                            // radians
@@ -30,7 +30,7 @@ function tilePattern(ctx, n) {
   const key = String(n);
   if (cache.key === key && cache.pat) return cache.pat;
   // n < 0: the level has been repossessed (REPOSSESSED in a box wide enough for it)
-  const zero = n === 0, repo = n < 0, hue = zero ? '#00ff3c' : '#ff0000', bw = repo ? 200 : BOX_W;
+  const zero = n === 0, repo = n < 0, hue = zero ? '#00ff3c' : '#ff0000', bw = repo ? 140 : BOX_W;
   const c = document.createElement('canvas');
   c.width = PERIOD_X * RES; c.height = PERIOD_Y * RES;
   const t = c.getContext('2d');
