@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v112</title>
+<title>CaveRunner v113</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -497,7 +497,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v112';</script>
+<script>const VERSION = 'v113';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -15980,7 +15980,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ax: 0,
       ay: 0,
       gy: 0,
-      cw: 0
+      cw: 0,
+      snapX: 0,
+      snapY: 0
     };
     drawCamera(W, G, F);
     drawTerrain(W, G, F);
@@ -16001,9 +16003,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     drawSparks(W, G);
     drawMotes(W, G, F);
     drawFlashes(W, G);
+    G.ctx.translate(F.snapX, F.snapY);
     drawJetFlame(W, G, F);
     drawAim(W, G, F);
     drawPlayer(W, G, F);
+    G.ctx.translate(-F.snapX, -F.snapY);
     drawFog(W, G, F);
     drawGlows(W, G, F);
     drawWarp(W, G, F);
@@ -16040,15 +16044,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         W.camX = tx;
         W.camY = ty;
         W.camReady = true;
+        W.camT = W.time;
       }
-      W.camX += (tx - W.camX) * 0.15;
-      W.camY += (ty - W.camY) * 0.15;
+      const cdt = clamp(W.time - W.camT, 0, 0.1);
+      W.camT = W.time;
+      const ease = 1 - Math.pow(0.85, cdt * 60);
+      W.camX += (tx - W.camX) * ease;
+      W.camY += (ty - W.camY) * ease;
     }
     G.ctx.setTransform(1, 0, 0, 1, 0, 0);
     G.ctx.imageSmoothingEnabled = false;
     G.ctx.fillStyle = "rgb(" + themeFor(W.floor).bg.join(",") + ")";
     G.ctx.fillRect(0, 0, G.c.width, G.c.height);
-    G.ctx.setTransform(s, 0, 0, s, -Math.round(W.camX * s), -Math.round(W.camY * s));
+    const ox = Math.round(W.camX * s), oy = Math.round(W.camY * s);
+    G.ctx.setTransform(s, 0, 0, s, -ox, -oy);
+    F.snapX = (Math.round((W.p.x - W.camX) * s) + ox) / s - W.p.x;
+    F.snapY = (Math.round((W.p.y - W.camY) * s) + oy) / s - W.p.y;
   }
 
   // src/game/systems/fields.js
@@ -17373,6 +17384,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       camX: 0,
       camY: 0,
       camReady: false,
+      camT: 0,
       unitPx: 1,
       // css pixels per world unit, set while drawing
       viewW: VIEW_W,

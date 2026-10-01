@@ -33,7 +33,7 @@ export function draw(W, G) {
   // onView, drawAim the gun in hand (held), the aim (ax/ay) and the gun's height (gy), drawHud
   // the canvas width in css px (cw)
   const F = { dpr: 0, playPx: 0, vw: 0, vh: 0, pcx: 0, pcy: 0, TH: null, onView: null, held: null, ax: 0, ay: 0,
-    gy: 0, cw: 0 };
+    gy: 0, cw: 0, snapX: 0, snapY: 0 };
   drawCamera(W, G, F);                      // the view, the camera, the canvas cleared; fills dpr … pcy
   drawTerrain(W, G, F);                     // background, shop wall, rock, burning pixels (cave.js)
   drawProps(W, G, F);                       // props, drips, ambience; fills TH, onView (cave.js)
@@ -53,9 +53,11 @@ export function draw(W, G) {
   drawSparks(W, G);                         // sparks and debris (effects.js)
   drawMotes(W, G, F);                       // magic motes (effects.js)
   drawFlashes(W, G);                        // explosion flashes (effects.js)
+  G.ctx.translate(F.snapX, F.snapY);        // you, steady on screen (see drawCamera)
   drawJetFlame(W, G, F);                    // the jet flame (actors.js)
   drawAim(W, G, F);                         // the aim line; fills held, ax/ay, gy (actors.js)
   drawPlayer(W, G, F);                      // you, gun, torch, crosshair, shield, ghost (actors.js)
+  G.ctx.translate(-F.snapX, -F.snapY);
   drawFog(W, G, F);                         // line of sight lifts the fog; the fog (light.js)
   drawGlows(W, G, F);                       // light over the fog (light.js)
   drawWarp(W, G, F);                        // a level teleporting in or out: flash, crackle (vend.js)
@@ -95,14 +97,24 @@ export function drawCamera(W, G, F) {
   } else {
     const tx = vw >= WW ? (WW - vw) / 2 : clamp(pcx - vw / 2, 0, WW - vw);
     const ty = clamp(pcy - vhp * 0.55, 0, Math.max(0, WH - vhp));
-    if (!W.camReady) { W.camX = tx; W.camY = ty; W.camReady = true; }
-    W.camX += (tx - W.camX) * 0.15;
-    W.camY += (ty - W.camY) * 0.15;
+    if (!W.camReady) { W.camX = tx; W.camY = ty; W.camReady = true; W.camT = W.time; }
+    // eased by the sim's clock, not per frame: 15% of the way each 60th of a second. Per frame,
+    // how far it trailed you hung on each frame's length, so an uneven frame jerked you on screen
+    const cdt = clamp(W.time - W.camT, 0, 0.1);
+    W.camT = W.time;
+    const ease = 1 - Math.pow(0.85, cdt * 60);
+    W.camX += (tx - W.camX) * ease;
+    W.camY += (ty - W.camY) * ease;
   }
 
   G.ctx.setTransform(1, 0, 0, 1, 0, 0);
   G.ctx.imageSmoothingEnabled = false;
   G.ctx.fillStyle = 'rgb(' + themeFor(W.floor).bg.join(',') + ')';
   G.ctx.fillRect(0, 0, G.c.width, G.c.height);
-  G.ctx.setTransform(s, 0, 0, s, -Math.round(W.camX * s), -Math.round(W.camY * s));
+  const ox = Math.round(W.camX * s), oy = Math.round(W.camY * s);
+  G.ctx.setTransform(s, 0, 0, s, -ox, -oy);
+  // the world sits on whole pixels, so you'd hop a pixel against the screen as the rounding
+  // flips: this nudge (under a pixel) puts you where your distance from the camera says
+  F.snapX = (Math.round((W.p.x - W.camX) * s) + ox) / s - W.p.x;
+  F.snapY = (Math.round((W.p.y - W.camY) * s) + oy) / s - W.p.y;
 }
