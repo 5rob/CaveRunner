@@ -9,8 +9,15 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
-- **Released: v100** (Phases 4–5: type checking, docs) on `main`, 2026-09-30. `index.html` is
-  byte-identical to v99 (Phase 3, which the owner play-tested: "plays great") apart from the version.
+- **Released: v115** on `main`, 2026-10-01 (history in `CHANGELOG.md`). The last three were the
+  owner's lag and battery complaints: v113 the camera eases by time, not per frame (it jittered you
+  in fast flight on the phone; confirmed fixed); v114 the Bag works out its dmg/s line once per build,
+  without the parked swap tips (a drag cost ~380ms with a big gun); v115 the hologram, its fog swap,
+  its bloom and the glows draw at the rock's pixel size (`DEV.holoPx`, `DEV.pixelFx`): ~69ms a frame
+  to ~20ms software-rendered. The owner may paste a Dev report with the look they settle on.
+- **Measuring render cost:** a PC's GPU hides it. Launch Chromium with `--disable-gpu
+  --disable-gpu-compositing` and phone size (412x880, dpr 2.625), then time frames with steps
+  switched off one at a time; seed `Math.random` in an init script so old and new builds draw the same cave.
 - Tests: logic 33/33 and `smoke` green on every Phase 5 commit and on the v100 release; the last full browser run was green
   after re-runs of known flakes (end of P3.5).
 - `.claude/` is untracked on purpose (it holds an API token): never commit it.
@@ -27,7 +34,7 @@ That list is the to-do the refactor left (nothing in it was fixed in passing). T
 - **Flaky browser checks** (timing or chance; each passes alone): `jelly` spit group (fails on v96 too),
   `sound` portalOut, `torch` falloff/flicker, `lightning` fork, `trigger` explosion carrier (wall-clock
   waits: make it frame-counted), `fog` "next floor is dark again" and "flying on reveals more",
-  `everymod` telecast, `rats`, `save`, `archvine`, `decor` vine, `t1spells` bubble, `compare`. Worth
+  `everymod` telecast, `rats`, `save`, `nuggets` "settle on the floor" (fails on v114 too), `archvine`, `decor` vine, `t1spells` bubble, `compare`. Worth
   making them frame-counted / seeded. `shoplayout` and `perks` logic suites run close to the 30s cap.
 - Smaller: `paint()` has no callers, `W.best` is written and never read, a static field cast just before
   the portal carries on to the next floor, a replay's reveal uses the live rock, a few comments sit above
