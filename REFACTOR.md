@@ -1001,7 +1001,8 @@ commit. List them here for after.
   anchor and get checked a moment later), but one field meaning two things. `Prop.on` stays typed as the arch; the vent
   line has a `@ts-expect-error`. Fix after the refactor: a vent field of its own (`roar`).
 
-- **Flakes from before the refactor** (moved here from HANDOVER in P5.4, so this is the one list): `everymod`
+- **Flakes from before the refactor** (moved here from HANDOVER in P5.4, so this is the one list): `nuggets` "they
+  settle on the floor, not in it" (v112's suite; ~1 in 3, fails on v114 too: the worst nugget sits ~0.02 in), `everymod`
   (telecast), `trigger` (double trigger), `compare` (a found gun that happens not to differ in regen, so "less regen
   is red" finds nothing; seen once in the v47 run), `fog` "the next floor is dark again" (~1 in 4–5 runs a new floor
   starts with a few cave cells lit up the shaft; fails on v56 too, seed-dependent), `lightning` "a fork hits a

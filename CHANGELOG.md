@@ -5,6 +5,16 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v116 — the hologram flashes on a kill
+Released 2026-10-02.
+
+- The hologram rests at brightness 0 (`DEV.holoMin`) and a kill (the count going down) throws it up
+  to `DEV.holoMax`, fading back over `DEV.holoFade` seconds along a bezier curve
+  (`bezierFade` in `core/util.js`; control points `holoC1x`..`holoC2y`, shaped on the Dev panel's
+  `FadeCurve`). One multiplier (`holoBright()`, times `holoAlpha`) over the layer, its fog swap and
+  its bloom; at 0 none of the three run. Repossessed, it stays lit.
+- Software-rendered, the sandbox room: ~19ms a frame lit, 16.7 (the 60fps cap) dark.
+
 ## v115 — the hologram, its fog and the glows at the rock's pixel size
 Released 2026-10-01.
 

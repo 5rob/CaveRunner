@@ -19,5 +19,18 @@ const dead = L.enemies.map(e => Object.assign({}, e, { dead: true }));
 check('everything dead and you in the shop: zero', bioCount(dead, false) === 0);
 check('an empty floor with you out: one', bioCount([], true) === 1);
 
+// the flash on a kill (v116): it rests dark, and fades along a bezier curve from full to nothing
+const { bezierFade, DEV_DEFAULTS } = G;
+check('it rests at brightness 0 (no hologram work at all)', DEV_DEFAULTS.holoMin === 0 && DEV_DEFAULTS.holoMax > 0);
+check('the fade starts full and ends at nothing', bezierFade(0, 0.25, 1, 0.5, 0) === 1 && bezierFade(1, 0.25, 1, 0.5, 0) === 0);
+const lin = [0.1, 0.3, 0.5, 0.9].map(u => bezierFade(u, 1 / 3, 2 / 3, 2 / 3, 1 / 3));
+check('handles on the straight line: a straight fade', lin.every((v, i) => Math.abs(v - (1 - [0.1, 0.3, 0.5, 0.9][i])) < 0.002), lin);
+const curve = [];
+for (let u = 0; u <= 1.0001; u += 0.05) curve.push(bezierFade(u, 0.25, 1, 0.5, 0));
+check('the default only ever falls', curve.every((v, i) => i === 0 || v <= curve[i - 1] + 1e-9), curve.map(v => v.toFixed(2)));
+check('and holds bright at first', curve[2] > 0.9, curve[2]);
+check('a handle above the top overshoots', Math.max(...[0.1, 0.2, 0.3].map(u => bezierFade(u, 0.2, 1.5, 0.6, 0))) > 1);
+check('past the end it stays at 0, before the start at 1', bezierFade(5, 0.25, 1, 0.5, 0) === 0 && bezierFade(-1, 0.25, 1, 0.5, 0) === 1);
+
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

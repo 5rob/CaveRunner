@@ -89,3 +89,18 @@ export function countdown(ms) {
 }
 /** @param {number} n */
 const pad2 = n => String(n).padStart(2, '0');
+
+// A fade shaped by a bezier curve (the hologram's flash): from (0, 1) to (1, 0), bent by two control
+// points (x1, y1) and (x2, y2) like CSS's cubic-bezier, the x's kept in 0..1. Returns the curve's
+// height at time fraction u (1 at the start, 0 at the end; a y outside 0..1 overshoots)
+/** @param {number} u @param {number} x1 @param {number} y1 @param {number} x2 @param {number} y2 */
+export function bezierFade(u, x1, y1, x2, y2) {
+  if (!(u > 0)) return 1;
+  if (u >= 1) return 0;
+  x1 = clamp(x1, 0, 1); x2 = clamp(x2, 0, 1);
+  /** @param {number} s @param {number} a @param {number} b @param {number} p0 @param {number} p3 */
+  const at = (s, a, b, p0, p3) => { const r = 1 - s; return r * r * r * p0 + 3 * r * r * s * a + 3 * r * s * s * b + s * s * s * p3; };
+  let lo = 0, hi = 1, s = u;                     // x rises with s (x's in 0..1): find the s with x = u
+  for (let i = 0; i < 30; i++) { s = (lo + hi) / 2; if (at(s, x1, x2, 0, 1) < u) lo = s; else hi = s; }
+  return at(s, y1, y2, 1, 0);
+}

@@ -5,7 +5,7 @@
 
 import { FH, FOG_U, FW, WH } from '../../core/consts.js';
 import { DEV } from '../../dev/knobs.js';
-import { holoGlitch, holoGrid, holoMask, sizedCanvas } from './holo.js';
+import { holoBright, holoGlitch, holoGrid, holoMask, sizedCanvas } from './holo.js';
 import { fogWarC, holoSil } from './light.js';
 
 const GLITCH_FLASH = 1.5;                      // the glow's flash when the number changes (×)
@@ -19,14 +19,14 @@ const buf = { a: null, b: null };
 // laid over smooth: it's a glow
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawFx(W, G, F) {
-  if (!(DEV.bloom > 0) || !(DEV.holoAlpha > 0)) return;
+  if (!(DEV.bloom > 0) || !(holoBright() > 0)) return;
   const w = holoGrid.w, h = holoGrid.h;
   const A = buf.a = sizedCanvas(buf.a, w, h), B = buf.b = sizedCanvas(buf.b, w, h);
   const a = A.getContext('2d'), b = B.getContext('2d');
   if (!a || !b) return;
   a.setTransform(1, 0, 0, 1, 0, 0); a.clearRect(0, 0, w, h);
   holoGrid.world(a);
-  holoMask(a, W, G, F, DEV.holoAlpha);
+  holoMask(a, W, G, F, holoBright());
   // and the fog of war (only: the dark outside your torchlight doesn't dim the hologram)
   const war = fogWarC();
   if (war && (!G.RPV || G.RPV.fog)) {

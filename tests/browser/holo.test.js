@@ -15,7 +15,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.waitForTimeout(1200);
   // a tall room, well above the shop (keep one creature aside, for the glitch check)
   await page.evaluate(() => {
-    const L = window.__lvl; window.DEV.zoom = 1; window.__spare = L.enemies.find(e => e.k.act !== 'nest');
+    const L = window.__lvl; window.DEV.zoom = 1; window.DEV.holoMin = 1; window.__spare = L.enemies.find(e => e.k.act !== 'nest');
     L.p.y = L.world.SHOP_Y - 900;
     L.sandbox({ w: 360, h: 320 });
   });
@@ -69,6 +69,26 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   });
   check('the hologram layer is the view in rock-sized pixels', Math.abs(sz.w - (Math.ceil(sz.vw / 2) + 3)) <= 1, sz);
   check('a small part of the canvas', sz.w * sz.h * 20 < sz.cw * sz.ch, sz);
+
+  // the flash (v116): at rest (brightness 0) none of it is drawn; a kill lights it to full and
+  // it fades back out over DEV.holoFade seconds
+  const fl = await page.evaluate(async () => {
+    const L = window.__lvl, frame = () => new Promise(r => requestAnimationFrame(r));
+    DEV.holoMin = 0; DEV.holoMax = 1; DEV.holoFade = 0.6;
+    for (let i = 0; i < 60 && window.holoBright() > 0; i++) await frame();
+    const rest = window.holoBright();
+    const live = L.enemies.find(e => !e.dead && e.k.act !== 'nest');
+    if (!live) return { rest, none: true };
+    L.enemies.splice(L.enemies.indexOf(live), 1);
+    await frame(); await frame();
+    const lit = window.holoBright();
+    const t0 = performance.now(); let mid = 1;
+    for (let i = 0; i < 200 && window.holoBright() > 0; i++) { await frame(); if (performance.now() - t0 < 300) mid = window.holoBright(); }
+    return { rest, lit, mid, after: window.holoBright(), secs: (performance.now() - t0) / 1000 };
+  });
+  check('at rest it is off', fl.rest === 0, fl);
+  check('a kill lights it up', fl.lit > 0.9, fl);
+  check('and it fades back to off', fl.after === 0 && fl.secs < 2, fl);
 
   await browser.close();
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
