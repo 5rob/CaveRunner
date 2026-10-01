@@ -79,12 +79,13 @@ export function mixHex(a, b, t) {
   return 'rgb(' + r + ',' + g + ',' + bl + ')';
 }
 
-// A countdown for a deadline: ms left -> "4d 23:59:59", or "OVERDUE" once it has passed
+// A countdown for a deadline: ms left -> "00:59:59" ("4d 23:59:59" past a day), "OVERDUE" once passed
 /** @param {number} ms */
 export function countdown(ms) {
   if (ms <= 0) return 'OVERDUE';
   const s = Math.floor(ms / 1000);
-  return Math.floor(s / 86400) + 'd ' + pad2(Math.floor(s / 3600) % 24) + ':' + pad2(Math.floor(s / 60) % 60) + ':' + pad2(s % 60);
+  const d = Math.floor(s / 86400);
+  return (d ? d + 'd ' : '') + pad2(Math.floor(s / 3600) % 24) + ':' + pad2(Math.floor(s / 60) % 60) + ':' + pad2(s % 60);
 }
 /** @param {number} n */
 const pad2 = n => String(n).padStart(2, '0');

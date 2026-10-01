@@ -4,8 +4,8 @@ A jetpack cave platformer prototype that runs in the browser. You start in a
 shop room with nothing above it. On its back wall, past the free heal, stand
 two vending machines: the green one sells you a freshly generated destructible
 level for 64,000,000,000 gold on credit (it goes on a debt shown in red under
-your gold, and you have five real days to repay it: the buy machine counts
-the deadline down, even while the game is closed; miss it and the level is
+your gold, and you have one real hour to repay it: the buy machine and the
+"settlement due" clock at the top count it down, even while the game is closed; miss it and the level is
 repossessed, the alarms go off, and ten seconds later the shop floor fills with
 fire), and it
 teleports in over the shop in a flash and a crackle of lightning. Climb to the

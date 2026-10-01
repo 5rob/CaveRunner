@@ -41,9 +41,12 @@ export function cleanLoadout(lo) {
     perks: (Array.isArray(lo.perks) ? lo.perks : []).filter(id => PERKS[id]),
     perksOff: (Array.isArray(lo.perksOff) ? lo.perksOff : []).filter(i => Number.isInteger(i) && i >= 0),
     // v106 put a bought level's price on your gold (it went negative); now it's a debt of its own
-    gold: num(lo.gold, START_GOLD) < 0 ? Math.max(0, num(lo.gold, 0) + LVL_BUY) : num(lo.gold, START_GOLD),
+    // and an older page loading a v107 save dropped the debt and then paid out the whole sale: a
+    // pile of gold that size with no debt is that, so the level's price comes back off it
+    gold: num(lo.gold, START_GOLD) < 0 ? Math.max(0, num(lo.gold, 0) + LVL_BUY)
+      : num(lo.gold, START_GOLD) >= LVL_BUY && !(num(lo.debt, 0) > 0) ? num(lo.gold, 0) - LVL_BUY : num(lo.gold, START_GOLD),
     debt: Math.max(0, num(lo.debt, 0)) || (num(lo.gold, 0) < 0 ? LVL_BUY : 0),
-    // the repayment deadline; a debt from before v107 had none: it gets its five days from now
+    // the repayment deadline; a debt from before v107 had none: it gets its hour from now
     due: num(lo.due, 0) || (num(lo.debt, 0) > 0 || num(lo.gold, 0) < 0 ? Date.now() + DEADLINE_MS : 0),
     maxBonus: Math.max(0, num(lo.maxBonus, 0)),
     usedLives: Math.max(0, num(lo.usedLives, 0)),

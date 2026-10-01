@@ -13,7 +13,7 @@ import { GunCard, ModCard, PerkCard } from './cards.js';
 import { DevPanel, SpawnGun } from './devpanel.js';
 import { Editor, GunIcon } from './editor.js';
 import { h, useEffect, useRef, useState } from './h.js';
-import { RKey, Stick, deckLayout, fmtGold, holdPress } from './hud.js';
+import { DueClock, RKey, Stick, deckLayout, fmtGold, holdPress } from './hud.js';
 import { GunSwap } from './swap.js';
 import { Witness } from './witness.js';
 
@@ -215,10 +215,11 @@ export function App() {
             : (prompt.id || prompt.gun || prompt.perk || prompt.heart) ? 'free' : prompt.text))) : null,
       // one gear in the top-right opens the Dev panel; Restart now lives inside it.
       // gold, top centre: "g" not "gold", truncated to k/M/B (1234 -> 1.2k). Under it in red, what
-      // you owe the company for the level you're on
+      // you owe the company for the level you're on, and the time left to settle it
       h('div', { className: 'gold' },
         h('div', { className: 'purse' }, fmtGold(LO.gold), h('span', null, 'g')),
-        LO.debt > 0 ? h('div', { className: 'debt' }, '-' + fmtGold(LO.debt), h('span', null, 'g owed')) : null),
+        LO.debt > 0 ? h('div', { className: 'debt' }, '-' + fmtGold(LO.debt), h('span', null, 'g owed')) : null,
+        LO.debt > 0 && LO.due ? h(DueClock, { due: LO.due }) : null),
       h('button', { className: 'devbtn', title: 'Dev tools',
         onPointerDown: e => { e.preventDefault(); setDevOpen(true); } }, '⚙️'),
       confirmAt != null ? h('div', { className: 'confirm' },

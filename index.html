@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v108</title>
+<title>CaveRunner v109</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -80,6 +80,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .gold span{font-size:12px;font-weight:700;color:#c9a24a}
 .gold .debt{font-size:14px;color:#ff4a4a}
 .gold .debt span{font-size:10px;color:#d06060;margin-left:3px}
+.gold .due{font:600 10px system-ui,sans-serif;color:#d06060;letter-spacing:.04em;text-transform:uppercase}
+.gold .due b{font:800 13px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ff4a4a;letter-spacing:0}
+.gold .due.late b{animation:dueblink 1s steps(2) infinite}
+@keyframes dueblink{50%{opacity:.35}}
 /* the perks you have found: a column going up from above the map button, wrapping inwards */
 .perkcol{position:absolute;display:flex;flex-direction:column-reverse;flex-wrap:wrap;
   align-content:flex-start;gap:6px;pointer-events:none;z-index:4}
@@ -492,7 +496,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v108';</script>
+<script>const VERSION = 'v109';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -566,7 +570,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function countdown(ms) {
     if (ms <= 0) return "OVERDUE";
     const s = Math.floor(ms / 1e3);
-    return Math.floor(s / 86400) + "d " + pad2(Math.floor(s / 3600) % 24) + ":" + pad2(Math.floor(s / 60) % 60) + ":" + pad2(s % 60);
+    const d = Math.floor(s / 86400);
+    return (d ? d + "d " : "") + pad2(Math.floor(s / 3600) % 24) + ":" + pad2(Math.floor(s / 60) % 60) + ":" + pad2(s % 60);
   }
   var pad2 = (n) => String(n).padStart(2, "0");
 
@@ -4530,7 +4535,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var SHOP_Y = SHOP_TOP * CELL;
   var VEND_BUY_X = 180, VEND_SELL_X = 280;
   var LVL_BUY = 64e9, LVL_SELL = 64000001e3;
-  var DEADLINE_MS = 5 * 24 * 60 * 60 * 1e3;
+  var DEADLINE_MS = 60 * 60 * 1e3;
   var FOG = 8;
   var FOG_U = FOG * CELL;
   var FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
@@ -7561,9 +7566,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       perks: (Array.isArray(lo.perks) ? lo.perks : []).filter((id) => PERKS[id]),
       perksOff: (Array.isArray(lo.perksOff) ? lo.perksOff : []).filter((i) => Number.isInteger(i) && i >= 0),
       // v106 put a bought level's price on your gold (it went negative); now it's a debt of its own
-      gold: num2(lo.gold, START_GOLD) < 0 ? Math.max(0, num2(lo.gold, 0) + LVL_BUY) : num2(lo.gold, START_GOLD),
+      // and an older page loading a v107 save dropped the debt and then paid out the whole sale: a
+      // pile of gold that size with no debt is that, so the level's price comes back off it
+      gold: num2(lo.gold, START_GOLD) < 0 ? Math.max(0, num2(lo.gold, 0) + LVL_BUY) : num2(lo.gold, START_GOLD) >= LVL_BUY && !(num2(lo.debt, 0) > 0) ? num2(lo.gold, 0) - LVL_BUY : num2(lo.gold, START_GOLD),
       debt: Math.max(0, num2(lo.debt, 0)) || (num2(lo.gold, 0) < 0 ? LVL_BUY : 0),
-      // the repayment deadline; a debt from before v107 had none: it gets its five days from now
+      // the repayment deadline; a debt from before v107 had none: it gets its hour from now
       due: num2(lo.due, 0) || (num2(lo.debt, 0) > 0 || num2(lo.gold, 0) < 0 ? Date.now() + DEADLINE_MS : 0),
       maxBonus: Math.max(0, num2(lo.maxBonus, 0)),
       usedLives: Math.max(0, num2(lo.usedLives, 0)),
@@ -7818,6 +7825,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
     }
+    const y0 = W.p.y;
     n = Math.ceil(Math.abs(W.p.vy * dt));
     if (n > 0) {
       const sy = W.p.vy * dt / n;
@@ -7831,6 +7839,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (boxHit(W, W.p.x, W.p.y)) W.p.y -= sy;
         W.p.vy = 0;
         break;
+      }
+    }
+    if (W.p.vy >= 0) {
+      const top = ledgeUnder(W, y0 + PH, W.p.y + PH);
+      if (top !== null) {
+        W.p.y = top - PH;
+        W.p.vy = 0;
       }
     }
     if (wasGround && !jet && W.p.vy >= 0 && W.p.kick <= 0 && !boxHit(W, W.p.x, W.p.y + 1)) {
@@ -7854,7 +7869,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       W.p.vx = 0;
       W.p.vy = 0;
     }
-    W.p.onGround = boxHit(W, W.p.x, W.p.y + 0.5);
+    W.p.onGround = boxHit(W, W.p.x, W.p.y + 0.5) || W.p.vy >= 0 && ledgeUnder(W, W.p.y + PH - 0.01, W.p.y + PH + 0.5) !== null;
     if (!W.p.dead) {
       if (W.p.onGround && !wasGround && fallV > 200) SFX.fx("land", null, null, { v: fallV, s: W.zfx.surface });
       if (W.p.onGround && Math.abs(W.p.vx) > 40) {
@@ -7907,6 +7922,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.leanY += W.leanVY * dt;
     W.glowN += (Math.random() - 0.5) * 6 * dt;
     W.glowN *= 0.9;
+  }
+  function ledgeUnder(W, f0, f1) {
+    const x0 = W.p.x, x1 = W.p.x + PW;
+    let best = null;
+    const at = (cx, hw, top) => {
+      if (x1 > cx - hw && x0 < cx + hw && f0 <= top + 0.01 && f1 >= top && (best === null || top < best)) best = top;
+    };
+    for (const r of W.rooms) at(r.x, 12, r.y + 14);
+    for (const it of W.stock || []) at(it.x, 11, SHOP_FLOOR * CELL - 5);
+    return best;
   }
 
   // src/art/sprites.js
@@ -12021,7 +12046,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var BG_PAR = 0.6;
   var HOLO_PAR = (1 + BG_PAR) / 2;
   var BOX_W = 96, TOP_H = 66, BOT_H = 60;
-  var PERIOD_X = 300, PERIOD_Y = 342;
+  var PERIOD_X = 150, PERIOD_Y = 171;
   var PAD = 7.5, TXT_PAD = 7.5;
   var LINE = 1.5;
   var SLANT = -0.3;
@@ -12030,7 +12055,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function tilePattern(ctx, n) {
     const key = String(n);
     if (cache.key === key && cache.pat) return cache.pat;
-    const zero = n === 0, repo = n < 0, hue = zero ? "#00ff3c" : "#ff0000", bw = repo ? 200 : BOX_W;
+    const zero = n === 0, repo = n < 0, hue = zero ? "#00ff3c" : "#ff0000", bw = repo ? 140 : BOX_W;
     const c = document.createElement("canvas");
     c.width = PERIOD_X * RES;
     c.height = PERIOD_Y * RES;
@@ -12483,12 +12508,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function drawRooms(W, G, F) {
     const { vw, vh } = F;
     for (const r of W.rooms) {
-      if (r.taken) continue;
       if (r.y > W.camY + vh + 40 || r.y < W.camY - 40 || r.x < W.camX - 40 || r.x > W.camX + vw + 40) continue;
       const bob = Math.sin(W.time * 2 + r.x) * 2.5;
       G.ctx.fillStyle = "#4a4550";
       G.ctx.fillRect(r.x - 12, r.y + 14, 24, 5);
       G.ctx.fillRect(r.x - 7, r.y + 5, 14, 10);
+      if (r.taken) continue;
       if (r.kind === "perk") {
         const pk = PERKS[r.id], col = pk.tint || COL.portal;
         G.ctx.globalAlpha = 0.22 + 0.12 * Math.sin(W.time * 3);
@@ -13069,6 +13094,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         d[i * 4 + 3] = 255;
       }
     }
+    for (let cy = SHOP_FLOOR; cy < SHOP_FLOOR + 4; cy++)
+      for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BED;
     for (const n of nests) for (const i of n.mound) {
       if (mat[i] !== ROCK) continue;
       const r1 = hash3(i % CW * 3 + 5, (i / CW | 0) * 7 + 1), c = mix([92, 70, 48], [128, 98, 66], r1);
@@ -18814,6 +18841,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return String(g);
   }
+  function DueClock({ due }) {
+    const [, tick] = useState(0);
+    useEffect(() => {
+      const id = setInterval(() => tick((n) => n + 1), 1e3);
+      return () => clearInterval(id);
+    }, []);
+    const left = due - Date.now();
+    return h("div", { className: "due" + (left < 5 * 60 * 1e3 ? " late" : "") }, "Settlement due ", h("b", null, countdown(left)));
+  }
   function deckLayout(W, size, n) {
     n = n || 4;
     const g = (W - 2 * size) / 3;
@@ -20027,12 +20063,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ) : null,
         // one gear in the top-right opens the Dev panel; Restart now lives inside it.
         // gold, top centre: "g" not "gold", truncated to k/M/B (1234 -> 1.2k). Under it in red, what
-        // you owe the company for the level you're on
+        // you owe the company for the level you're on, and the time left to settle it
         h(
           "div",
           { className: "gold" },
           h("div", { className: "purse" }, fmtGold(LO.gold), h("span", null, "g")),
-          LO.debt > 0 ? h("div", { className: "debt" }, "-" + fmtGold(LO.debt), h("span", null, "g owed")) : null
+          LO.debt > 0 ? h("div", { className: "debt" }, "-" + fmtGold(LO.debt), h("span", null, "g owed")) : null,
+          LO.debt > 0 && LO.due ? h(DueClock, { due: LO.due }) : null
         ),
         h("button", {
           className: "devbtn",

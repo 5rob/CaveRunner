@@ -292,12 +292,12 @@ export function drawRooms(W, G, F) {
   const { vw, vh } = F;
   // the hidden rooms' prizes on their altars: a glowing perk sigil, or the +25 heart
   for (const r of W.rooms) {
-    if (r.taken) continue;
     if (r.y > W.camY + vh + 40 || r.y < W.camY - 40 || r.x < W.camX - 40 || r.x > W.camX + vw + 40) continue;
     const bob = Math.sin(W.time * 2 + r.x) * 2.5;
-    G.ctx.fillStyle = '#4a4550';
+    G.ctx.fillStyle = '#4a4550';             // the altar stays when its prize is taken: you can stand on it
     G.ctx.fillRect(r.x - 12, r.y + 14, 24, 5);
     G.ctx.fillRect(r.x - 7, r.y + 5, 14, 10);
+    if (r.taken) continue;
     if (r.kind === 'perk') {
       const pk = PERKS[r.id], col = pk.tint || COL.portal;
       G.ctx.globalAlpha = 0.22 + 0.12 * Math.sin(W.time * 3);
