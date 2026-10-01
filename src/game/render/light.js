@@ -13,7 +13,7 @@ import { fogLit } from '../systems/fog.js';
 import { plantGlow } from '../systems/plantglow.js';
 import { torchHand } from '../systems/player.js';
 import { solidCell } from '../systems/terrain.js';
-import { holoMask, sizedCanvas } from './holo.js';
+import { holoGrid, holoMask, sizedCanvas } from './holo.js';
 
 // The fog of war alone (never-seen ground; none of the dark outside your torchlight), baked and
 // blurred beside the full fog: the hologram is darkened by this one only. Made on first use
@@ -21,9 +21,8 @@ import { holoMask, sizedCanvas } from './holo.js';
 const war = { c: null, img: null, blur: null, mask: null, over: null, sil: null, dark: null };
 /** the blurred fog-of-war-only canvas (FW x FH), or null before the first frame */
 export const fogWarC = () => war.blur;
-/** this frame's silhouettes over the hologram (1/2 of the canvas), or null: fx.js keeps the bloom off them */
+/** this frame's silhouettes over the hologram (holoGrid's size), or null: fx.js keeps the bloom off them */
 export const holoSil = () => war.sil;
-const HOLO_D = 2;                              // the hologram's fog swap works at 1/2 size
 
 // Blur a slab of a fog canvas into its blurred copy (at source size: cheap). The blur sees nothing
 // past the level, which thinned the fog to a see-through strip down both sides, so the sharp edge
@@ -117,20 +116,20 @@ export function drawFog(W, G, F) {
       return;
     }
     // Where the hologram shows, it takes only the fog of war, not the dark outside your
-    // torchlight: at half size, the full fog with the hologram's visible part cut out of it, and
-    // the fog of war alone laid under that hole; then that over the picture
-    const w = Math.max(1, Math.ceil(G.c.width / HOLO_D)), h = Math.max(1, Math.ceil(G.c.height / HOLO_D));
+    // torchlight: on the hologram's pixel grid (holoGrid), the full fog with the hologram's
+    // visible part cut out of it, and the fog of war alone laid under that hole; then that over
+    // the picture (crisp, or smooth with DEV.pixelFx off)
+    const w = holoGrid.w, h = holoGrid.h;
     // The vines, chains and spider webs in front of it are silhouettes instead: they keep the
     // full fog, three times over, so out of the torchlight they go black against it
     const M = war.mask = sizedCanvas(war.mask, w, h), O = war.over = sizedCanvas(war.over, w, h);
     const S = war.sil = sizedCanvas(war.sil, w, h), E = war.dark = sizedCanvas(war.dark, w, h);
     const mc = M.getContext('2d'), oc = O.getContext('2d'), scx = S.getContext('2d'), ec = E.getContext('2d');
     if (!mc || !oc || !scx || !ec) return;
-    const m = G.ctx.getTransform();
-    const world = x => x.setTransform(m.a / HOLO_D, 0, 0, m.d / HOLO_D, m.e / HOLO_D, m.f / HOLO_D);
+    const world = holoGrid.world;
     const flat = x => x.setTransform(1, 0, 0, 1, 0, 0);
     for (const x of [mc, oc, scx, ec]) { flat(x); x.clearRect(0, 0, w, h); world(x); }
-    holoMask(mc, W, G, F, 1, HOLO_D);
+    holoMask(mc, W, G, F, 1);
     for (const pr of W.props)
       if (pr.k === 'climb' && pr.x + pr.r > W.camX - 70 && pr.x + pr.l < W.camX + vw + 70 &&
         pr.y + pr.b > W.camY - 90 && pr.y + pr.t0 < W.camY + vh + 90) drawProp(scx, pr, W.time, F.TH);
@@ -158,18 +157,20 @@ export function drawFog(W, G, F) {
     flat(oc);
     oc.globalCompositeOperation = 'source-over';
     oc.drawImage(E, 0, 0); oc.drawImage(E, 0, 0);
-    G.ctx.save();
-    G.ctx.setTransform(1, 0, 0, 1, 0, 0);
-    G.ctx.imageSmoothingEnabled = true;
-    G.ctx.drawImage(O, 0, 0, w * HOLO_D, h * HOLO_D);
-    G.ctx.restore();
-    G.ctx.imageSmoothingEnabled = false;
+    holoGrid.place(G.ctx, O, !(DEV.pixelFx > 0));
   }
 }
 
+// the glows' layer: the rock's pixel grid over the view (made on first use)
+/** @type {{ c: HTMLCanvasElement | null }} */
+const glow = { c: null };
+
 // Light over the fog, only where it has lifted (fogLit): wall torches, glowing props, the
-// jellies' glow and their plant glow, glowing shots, fire, burning creatures and you, glowing
-// particles, the hand torch's glow; then the wall torches themselves
+// jellies' glow and their plant glow, glowing shots, fire, burning creatures and you, the hand
+// torch's glow; then glowing particles; then the wall torches themselves. The glows are drawn
+// at the rock's pixel size into their own layer (G.ctx is swapped for it meanwhile, so
+// plantGlow's drawing lands there too) and added over the picture in one go, crisp or smooth
+// (DEV.pixelFx); the particles are too small for that and go straight on
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawGlows(W, G, F) {
   const { vw, vh, pcx, pcy, TH, onView, ax } = F;
@@ -178,6 +179,16 @@ export function drawGlows(W, G, F) {
   // brightens; the map lighting under it is unchanged. The glow gutters on its own,
   // quicker and deeper than the lamp.
   G.ctx.globalCompositeOperation = 'lighter';
+  const main = G.ctx;
+  const gx0 = Math.floor(W.camX / CELL) - 1, gy0 = Math.floor(W.camY / CELL) - 1;
+  const lw = Math.ceil(vw / CELL) + 3, lh = Math.ceil(vh / CELL) + 3;
+  const GC = glow.c = sizedCanvas(glow.c, lw, lh), low = GC.getContext('2d');
+  if (low) {
+    low.setTransform(1, 0, 0, 1, 0, 0); low.clearRect(0, 0, lw, lh);
+    low.setTransform(1 / CELL, 0, 0, 1 / CELL, -gx0, -gy0);
+    low.globalCompositeOperation = 'lighter';
+    G.ctx = low;
+  }
   const gl = clamp(0.82 + W.glowN + 0.08 * Math.sin(W.time * 23) + 0.06 * Math.sin(W.time * 37), 0.5, 1.1);
   const scOn = sc => !(sc.y > W.camY + vh + 30 || sc.y < W.camY - 30 || sc.x < W.camX - 30 || sc.x > W.camX + vw + 30) &&
     fogLit(W, sc.x, sc.y);
@@ -235,17 +246,23 @@ export function drawGlows(W, G, F) {
     if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(W, pr.x, pr.y + pr.len))
       glowAt(G.ctx, pr.x, pr.y + pr.len, 16, 0.2 * W.flick, '255,130,50');
   if (W.p.burn > 0 && !W.p.dead) glowAt(G.ctx, W.p.x + PW / 2, W.p.y + PH / 2, 22, 0.25 * W.flick, '255,130,50');
+  if (!W.p.dead) {
+    const th = torchHand(W), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
+    glowAt(G.ctx, gfx, gfy, 70 * (0.9 + 0.1 * gl), 0.2 * gl, '255,150,60');            // the second light
+    glowAt(G.ctx, gfx + W.leanX * 0.5, gfy + W.leanY * 0.5, 12, 0.5 * gl, '255,190,90');   // the halo
+  }
+  if (low) {                                // the layer, added over the picture
+    G.ctx = main;
+    main.imageSmoothingEnabled = !(DEV.pixelFx > 0);
+    main.drawImage(GC, 0, 0, lw, lh, gx0 * CELL, gy0 * CELL, lw * CELL, lh * CELL);
+    main.imageSmoothingEnabled = false;
+  }
   for (const list of [W.dparts, W.amb]) for (const q of list) {
     if (!q.glow || !onView(q.x, q.y, 10) || !fogLit(W, q.x, q.y)) continue;
     G.ctx.globalAlpha = Math.min(1, q.life / (q.max * 0.3));
     G.ctx.fillStyle = q.c; G.ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
   }
   G.ctx.globalAlpha = 1;
-  if (!W.p.dead) {
-    const th = torchHand(W), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
-    glowAt(G.ctx, gfx, gfy, 70 * (0.9 + 0.1 * gl), 0.2 * gl, '255,150,60');            // the second light
-    glowAt(G.ctx, gfx + W.leanX * 0.5, gfy + W.leanY * 0.5, 12, 0.5 * gl, '255,190,90');   // the halo
-  }
   G.ctx.globalCompositeOperation = 'source-over';
   for (const sc of W.sconces) if (scOn(sc)) drawSconce(G.ctx, sc.x, sc.y, W.time, sc.ph);
 }

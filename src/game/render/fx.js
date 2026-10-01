@@ -5,10 +5,9 @@
 
 import { FH, FOG_U, FW, WH } from '../../core/consts.js';
 import { DEV } from '../../dev/knobs.js';
-import { holoGlitch, holoMask, sizedCanvas } from './holo.js';
+import { holoGlitch, holoGrid, holoMask, sizedCanvas } from './holo.js';
 import { fogWarC, holoSil } from './light.js';
 
-const D = 4;                                   // the bloom buffers are 1/D of the canvas
 const GLITCH_FLASH = 1.5;                      // the glow's flash when the number changes (×)
 
 /** @type {{ a: HTMLCanvasElement | null, b: HTMLCanvasElement | null }} */
@@ -16,18 +15,18 @@ const buf = { a: null, b: null };
 
 // The hologram's bloom: the parts of it you can actually see (not behind rock, the shop wall
 // or the fog of war), brightened, blurred and added over everything, so its light spills round the
-// rock, the creatures and you
+// rock, the creatures and you. Worked out on the hologram's own pixel grid (holoGrid), and
+// laid over smooth: it's a glow
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawFx(W, G, F) {
   if (!(DEV.bloom > 0) || !(DEV.holoAlpha > 0)) return;
-  const w = Math.max(1, Math.ceil(G.c.width / D)), h = Math.max(1, Math.ceil(G.c.height / D));
+  const w = holoGrid.w, h = holoGrid.h;
   const A = buf.a = sizedCanvas(buf.a, w, h), B = buf.b = sizedCanvas(buf.b, w, h);
   const a = A.getContext('2d'), b = B.getContext('2d');
   if (!a || !b) return;
-  const m = G.ctx.getTransform();              // the world's transform, shrunk into the buffer
   a.setTransform(1, 0, 0, 1, 0, 0); a.clearRect(0, 0, w, h);
-  a.setTransform(m.a / D, 0, 0, m.d / D, m.e / D, m.f / D);
-  holoMask(a, W, G, F, DEV.holoAlpha, D);
+  holoGrid.world(a);
+  holoMask(a, W, G, F, DEV.holoAlpha);
   // and the fog of war (only: the dark outside your torchlight doesn't dim the hologram)
   const war = fogWarC();
   if (war && (!G.RPV || G.RPV.fog)) {
@@ -35,20 +34,18 @@ export function drawFx(W, G, F) {
     a.drawImage(war, 0, 0, FW, FH, 0, 0, FW * FOG_U, FH * FOG_U);
   }
   const sil = holoSil();                       // the silhouettes in front don't glow
-  if (sil) { a.setTransform(1, 0, 0, 1, 0, 0); a.globalCompositeOperation = 'destination-out'; a.drawImage(sil, 0, 0, w, h); }
+  if (sil) { a.setTransform(1, 0, 0, 1, 0, 0); a.globalCompositeOperation = 'destination-out'; a.drawImage(sil, 0, 0); }
   a.globalCompositeOperation = 'source-over';
   // blur (and brighten) at the small size, then lay it over the picture as light
   b.setTransform(1, 0, 0, 1, 0, 0); b.clearRect(0, 0, w, h);
-  b.filter = 'blur(' + (DEV.bloomBlur * F.dpr / D).toFixed(2) + 'px) brightness(' + DEV.bloomBright + ')';
+  b.filter = 'blur(' + (DEV.bloomBlur / (holoGrid.px * W.unitPx)).toFixed(2) + 'px) brightness(' + DEV.bloomBright + ')';   // the knob is css px
   b.drawImage(A, 0, 0);
   b.filter = 'none';
   G.ctx.save();
-  G.ctx.setTransform(1, 0, 0, 1, 0, 0);
   // the number changing flashes the glow brighter for a moment
   let k = DEV.bloom * (1 + GLITCH_FLASH * holoGlitch(W));
   G.ctx.globalCompositeOperation = 'lighter';
-  G.ctx.imageSmoothingEnabled = true;
-  while (k > 0.001) { G.ctx.globalAlpha = Math.min(1, k); G.ctx.drawImage(B, 0, 0, w * D, h * D); k -= 1; }
+  while (k > 0.001) { G.ctx.globalAlpha = Math.min(1, k); holoGrid.place(G.ctx, B, true); k -= 1; }
   G.ctx.restore();
 }
 

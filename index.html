@@ -605,7 +605,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     holoAlpha: 1,
     bloom: 0.8,
     bloomBlur: 8,
-    bloomBright: 1.3
+    bloomBright: 1.3,
+    pixelFx: 1,
+    holoPx: 2
   };
   var DEV_META = [
     { k: "zoom", g: "view", label: "Camera zoom", min: 0.3, max: 3, step: 0.05 },
@@ -635,6 +637,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "bloom", g: "fx", label: "Hologram glow strength", min: 0, max: 2, step: 0.05 },
     { k: "bloomBlur", g: "fx", label: "Hologram glow size (px)", min: 0, max: 40, step: 1 },
     { k: "bloomBright", g: "fx", label: "Hologram glow brighten", min: 0.5, max: 3, step: 0.05 },
+    { k: "holoPx", g: "fx", label: "Hologram pixel size (2 = rock size)", min: 0.5, max: 8, step: 0.5 },
+    { k: "pixelFx", g: "fx", label: "Pixelated light & fog (0 smooth, 1 pixel)", min: 0, max: 1, step: 1 },
     { k: "bagSpeed", g: "ui", label: "Bag fire preview speed (×real time)", min: 0.05, max: 5, step: 0.05 }
   ];
   var DEV_GROUPS = [
@@ -3502,83 +3506,83 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       [1, 2.76, 5.4].forEach((m, i) => tone(dest, "sine", f * m, f * m, t, dur / (i + 1), peak / (i + 1), 2e-3));
     }
     const VOICE = {
-      magic(d, t, P, V2, D2) {
-        tone(d, "triangle", 950 * P, 380 * P, t, 0.13 * D2, 0.5 * V2);
-        tone(d, "square", 475 * P, 190 * P, t, 0.09 * D2, 0.1 * V2);
-        hiss(d, t, 0.07 * D2, 0.25 * V2, "bandpass", 2600 * P, 1200 * P, 1.2);
+      magic(d, t, P, V2, D) {
+        tone(d, "triangle", 950 * P, 380 * P, t, 0.13 * D, 0.5 * V2);
+        tone(d, "square", 475 * P, 190 * P, t, 0.09 * D, 0.1 * V2);
+        hiss(d, t, 0.07 * D, 0.25 * V2, "bandpass", 2600 * P, 1200 * P, 1.2);
       },
-      pierce(d, t, P, V2, D2) {
-        tone(d, "sawtooth", 1500 * P, 500 * P, t, 0.1 * D2, 0.22 * V2);
-        hiss(d, t, 0.15 * D2, 0.35 * V2, "highpass", 5e3, 2500, 0.7);
+      pierce(d, t, P, V2, D) {
+        tone(d, "sawtooth", 1500 * P, 500 * P, t, 0.1 * D, 0.22 * V2);
+        hiss(d, t, 0.15 * D, 0.35 * V2, "highpass", 5e3, 2500, 0.7);
         tone(d, "sine", 2400 * P, 2300 * P, t, 0.05, 0.18 * V2);
       },
-      heavy(d, t, P, V2, D2) {
-        tone(d, "sine", 170 * P, 50 * P, t, 0.28 * D2, 0.9 * V2, 3e-3);
-        tone(d, "square", 85 * P, 42 * P, t, 0.16 * D2, 0.12 * V2);
-        hiss(d, t, 0.14 * D2, 0.5 * V2, "lowpass", 900, 200, 0.8);
+      heavy(d, t, P, V2, D) {
+        tone(d, "sine", 170 * P, 50 * P, t, 0.28 * D, 0.9 * V2, 3e-3);
+        tone(d, "square", 85 * P, 42 * P, t, 0.16 * D, 0.12 * V2);
+        hiss(d, t, 0.14 * D, 0.5 * V2, "lowpass", 900, 200, 0.8);
       },
-      energy(d, t, P, V2, D2) {
-        tone(d, "sine", 260 * P, 380 * P, t, 0.3 * D2, 0.6 * V2, 0.02, [16, 30 * P]);
-        tone(d, "square", 130 * P, 190 * P, t, 0.22 * D2, 0.07 * V2);
-        hiss(d, t, 0.2 * D2, 0.15 * V2, "bandpass", 800 * P, 1600 * P, 3);
+      energy(d, t, P, V2, D) {
+        tone(d, "sine", 260 * P, 380 * P, t, 0.3 * D, 0.6 * V2, 0.02, [16, 30 * P]);
+        tone(d, "square", 130 * P, 190 * P, t, 0.22 * D, 0.07 * V2);
+        hiss(d, t, 0.2 * D, 0.15 * V2, "bandpass", 800 * P, 1600 * P, 3);
       },
-      scatter(d, t, P, V2, D2) {
-        hiss(d, t, 0.2 * D2, 0.9 * V2, "lowpass", 3e3, 500, 0.8);
-        tone(d, "square", 150 * P, 55 * P, t, 0.12 * D2, 0.22 * V2);
+      scatter(d, t, P, V2, D) {
+        hiss(d, t, 0.2 * D, 0.9 * V2, "lowpass", 3e3, 500, 0.8);
+        tone(d, "square", 150 * P, 55 * P, t, 0.12 * D, 0.22 * V2);
         hiss(d, t, 0.05, 0.35 * V2, "highpass", 4e3, 4e3, 0.7);
       },
-      bubble(d, t, P, V2, D2) {
-        tone(d, "sine", 320 * P, 1e3 * P, t, 0.09 * D2, 0.55 * V2, 4e-3);
-        tone(d, "sine", 480 * P, 1400 * P, t + 0.05, 0.07 * D2, 0.3 * V2, 4e-3);
+      bubble(d, t, P, V2, D) {
+        tone(d, "sine", 320 * P, 1e3 * P, t, 0.09 * D, 0.55 * V2, 4e-3);
+        tone(d, "sine", 480 * P, 1400 * P, t + 0.05, 0.07 * D, 0.3 * V2, 4e-3);
       },
-      saw(d, t, P, V2, D2) {
-        tone(d, "square", 1900 * P, 1500 * P, t, 0.16 * D2, 0.1 * V2);
-        tone(d, "square", 2470 * P, 2e3 * P, t, 0.16 * D2, 0.08 * V2);
-        hiss(d, t, 0.18 * D2, 0.45 * V2, "bandpass", 6e3, 3500, 4);
+      saw(d, t, P, V2, D) {
+        tone(d, "square", 1900 * P, 1500 * P, t, 0.16 * D, 0.1 * V2);
+        tone(d, "square", 2470 * P, 2e3 * P, t, 0.16 * D, 0.08 * V2);
+        hiss(d, t, 0.18 * D, 0.45 * V2, "bandpass", 6e3, 3500, 4);
         hiss(d, t, 0.1, 0.3 * V2, "lowpass", 700, 300, 1, true);
       },
-      lob(d, t, P, V2, D2) {
-        tone(d, "sine", 240 * P, 85 * P, t, 0.16 * D2, 0.8 * V2, 3e-3);
+      lob(d, t, P, V2, D) {
+        tone(d, "sine", 240 * P, 85 * P, t, 0.16 * D, 0.8 * V2, 3e-3);
         hiss(d, t, 0.1, 0.35 * V2, "lowpass", 1400, 300);
-        tone(d, "triangle", 120 * P, 60 * P, t, 0.2 * D2, 0.22 * V2);
+        tone(d, "triangle", 120 * P, 60 * P, t, 0.2 * D, 0.22 * V2);
       },
-      fire(d, t, P, V2, D2) {
-        hiss(d, t, 0.38 * D2, 0.7 * V2, "bandpass", 500 * P, 2400 * P, 1.4, false, 0.04);
-        hiss(d, t, 0.3 * D2, 0.7 * V2, "bandpass", 3e3, 2e3, 1, true);
-        tone(d, "sine", 110 * P, 60 * P, t, 0.3 * D2, 0.35 * V2, 0.02);
+      fire(d, t, P, V2, D) {
+        hiss(d, t, 0.38 * D, 0.7 * V2, "bandpass", 500 * P, 2400 * P, 1.4, false, 0.04);
+        hiss(d, t, 0.3 * D, 0.7 * V2, "bandpass", 3e3, 2e3, 1, true);
+        tone(d, "sine", 110 * P, 60 * P, t, 0.3 * D, 0.35 * V2, 0.02);
       },
-      thunder(d, t, P, V2, D2) {
-        hiss(d, t, 0.28 * D2, 1 * V2, "highpass", 1400, 900, 0.7, true);
-        zap(d, t, 0.14 * D2, 0.14 * V2, 2600 * P, 200 * P);
-        tone(d, "sine", 70, 40, t, 0.3 * D2, 0.6 * V2, 3e-3);
+      thunder(d, t, P, V2, D) {
+        hiss(d, t, 0.28 * D, 1 * V2, "highpass", 1400, 900, 0.7, true);
+        zap(d, t, 0.14 * D, 0.14 * V2, 2600 * P, 200 * P);
+        tone(d, "sine", 70, 40, t, 0.3 * D, 0.6 * V2, 3e-3);
       },
       // Black Hole: a deep falling sub, two low saws beating against each other, a slow
       // inward rush of air and a spit of crackle — and it keeps it up while it lives (loop)
-      void(d, t, P, V2, D2) {
-        tone(d, "sine", 80, 30, t, 1 * D2, 0.9 * V2, 0.03);
+      void(d, t, P, V2, D) {
+        tone(d, "sine", 80, 30, t, 1 * D, 0.9 * V2, 0.03);
         const f = lp(d, 320);
-        tone(f, "sawtooth", 55, 41, t, 0.9 * D2, 0.2 * V2, 0.05);
-        tone(f, "sawtooth", 56.7, 42, t, 0.9 * D2, 0.2 * V2, 0.05);
-        hiss(d, t, 0.9 * D2, 0.6 * V2, "bandpass", 1700, 900, 0.9, true);
+        tone(f, "sawtooth", 55, 41, t, 0.9 * D, 0.2 * V2, 0.05);
+        tone(f, "sawtooth", 56.7, 42, t, 0.9 * D, 0.2 * V2, 0.05);
+        hiss(d, t, 0.9 * D, 0.6 * V2, "bandpass", 1700, 900, 0.9, true);
         hiss(d, t, 0.55, 0.3 * V2, "bandpass", 300, 2400, 2, false, 0.35);
       },
-      dig(d, t, P, V2, D2) {
-        hiss(d, t, 0.12 * D2, 0.7 * V2, "lowpass", 1200, 300, 1, true);
-        hiss(d, t, 0.08 * D2, 0.4 * V2, "lowpass", 800, 200);
+      dig(d, t, P, V2, D) {
+        hiss(d, t, 0.12 * D, 0.7 * V2, "lowpass", 1200, 300, 1, true);
+        hiss(d, t, 0.08 * D, 0.4 * V2, "lowpass", 800, 200);
         tone(d, "square", 120 * P, 70 * P, t, 0.08, 0.15 * V2);
       },
-      beam(d, t, P, V2, D2) {
-        tone(lp(d, 2400), "sawtooth", 650 * P, 520 * P, t, 0.22 * D2, 0.3 * V2, 5e-3, [34, 40 * P]);
-        tone(d, "sine", 1300 * P, 1100 * P, t, 0.2 * D2, 0.28 * V2);
-        hiss(d, t, 0.18 * D2, 0.2 * V2, "bandpass", 3e3 * P, 1200 * P, 5);
+      beam(d, t, P, V2, D) {
+        tone(lp(d, 2400), "sawtooth", 650 * P, 520 * P, t, 0.22 * D, 0.3 * V2, 5e-3, [34, 40 * P]);
+        tone(d, "sine", 1300 * P, 1100 * P, t, 0.2 * D, 0.28 * V2);
+        hiss(d, t, 0.18 * D, 0.2 * V2, "bandpass", 3e3 * P, 1200 * P, 5);
       },
-      spore(d, t, P, V2, D2) {
-        hiss(d, t, 0.18 * D2, 0.45 * V2, "bandpass", 1300 * P, 700 * P, 2.5, false, 0.02);
-        hiss(d, t + 0.07, 0.14 * D2, 0.3 * V2, "bandpass", 1700 * P, 900 * P, 2.5, false, 0.02);
+      spore(d, t, P, V2, D) {
+        hiss(d, t, 0.18 * D, 0.45 * V2, "bandpass", 1300 * P, 700 * P, 2.5, false, 0.02);
+        hiss(d, t + 0.07, 0.14 * D, 0.3 * V2, "bandpass", 1700 * P, 900 * P, 2.5, false, 0.02);
         tone(d, "sine", 520 * P, 720 * P, t, 0.12, 0.12 * V2);
       },
-      crystal(d, t, P, V2, D2) {
-        bell(d, 1250 * P, t, 0.7 * D2, 0.35 * V2);
+      crystal(d, t, P, V2, D) {
+        bell(d, 1250 * P, t, 0.7 * D, 0.35 * V2);
         hiss(d, t, 0.04, 0.2 * V2, "highpass", 7e3, 7e3);
       },
       aura(d, t, P, V2) {
@@ -3592,12 +3596,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (r.v === "none") return;
       const d = out(x, y, r.v === "void" ? 1.3 : 0.6, x == null, null, knob("vSpell"));
       if (!d) return;
-      const t0 = ac.currentTime + (delay || 0), P = r.pitch * rnd2(0.95, 1.05), V2 = r.vol * 0.55, D2 = r.dur;
-      for (let k = 0; k < r.n; k++) VOICE[r.v](d, t0 + k * 0.018, P * (1 + k * 0.04), V2 / (1 + k * 0.6), D2);
-      if (r.wob) tone(d, "sine", 700 * P, 500 * P, t0, 0.22 * D2, 0.13 * V2, 0.01, [9, 60]);
+      const t0 = ac.currentTime + (delay || 0), P = r.pitch * rnd2(0.95, 1.05), V2 = r.vol * 0.55, D = r.dur;
+      for (let k = 0; k < r.n; k++) VOICE[r.v](d, t0 + k * 0.018, P * (1 + k * 0.04), V2 / (1 + k * 0.6), D);
+      if (r.wob) tone(d, "sine", 700 * P, 500 * P, t0, 0.22 * D, 0.13 * V2, 0.01, [9, 60]);
       if (r.grit) hiss(d, t0, 0.1, 0.3 * V2, "lowpass", 900, 250, 1, true);
       if (r.bright) tone(d, "square", 3200, 3e3, t0, 0.03, 0.1 * V2);
-      if (r.boing) tone(d, "triangle", 500 * P, 1100 * P, t0 + 0.08 * D2, 0.07, 0.16 * V2);
+      if (r.boing) tone(d, "triangle", 500 * P, 1100 * P, t0 + 0.08 * D, 0.07, 0.16 * V2);
     }
     function cast2(shots, x, y) {
       const seen = {};
@@ -5012,13 +5016,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return null;
   }
-  function ratSpread(e, others, D2) {
+  function ratSpread(e, others, D) {
     let x = 0, y = 0;
     for (const o of others) {
       if (o === e) continue;
       const dx = e.x - o.x, dy = e.y - o.y, d = Math.hypot(dx, dy);
-      if (d >= D2) continue;
-      const f = 1 - d / D2;
+      if (d >= D) continue;
+      const f = 1 - d / D;
       if (d > 0.01) {
         x += dx / d * f;
         y += dy / d * f;
@@ -6792,10 +6796,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       },
       fissure(cx, cy, side) {
-        const glow = T.moss[1], halo = T.moss[0];
+        const glow2 = T.moss[1], halo = T.moss[0];
         let x = side ? cx + side : cx, y = side ? cy : cy + 1;
         for (let k = 0; k < 10 + R() * 10; k++) {
-          tset(x, y, glow);
+          tset(x, y, glow2);
           if (side) {
             tset(x, y - 1, halo);
             tset(x, y + 1, halo);
@@ -11256,10 +11260,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       } else {
         const R = e.roam || (e.roam = {});
         roamStep(R, e, dt, Math.random, "ra");
-        const D2 = e.spread || (e.spread = kr("raSpread")), sp = ratSpread(e, W.enemies.filter((o) => o.ra && o.ra.mode !== "tunnel" && Math.abs(o.x - e.x) < D2 && Math.abs(o.y - e.y) < D2), D2);
-        R.rx += sp.x * D2 * 1.5 * dt;
-        R.ry += sp.y * D2 * 1.5 * dt;
-        goal = { x: R.rx + sp.x * D2, y: R.ry + sp.y * D2 };
+        const D = e.spread || (e.spread = kr("raSpread")), sp = ratSpread(e, W.enemies.filter((o) => o.ra && o.ra.mode !== "tunnel" && Math.abs(o.x - e.x) < D && Math.abs(o.y - e.y) < D), D);
+        R.rx += sp.x * D * 1.5 * dt;
+        R.ry += sp.y * D * 1.5 * dt;
+        goal = { x: R.rx + sp.x * D, y: R.ry + sp.y * D };
         jump = false;
       }
     }
@@ -12193,7 +12197,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var PAD = 7.5, TXT_PAD = 7.5;
   var LINE = 1.5;
   var SLANT = -0.3;
-  var RES = 4;
+  var RES = 1;
   var cache = { key: "", pat: null };
   function tilePattern(ctx, n) {
     const key = String(n);
@@ -12245,7 +12249,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (cache.pat) cache.pat.setTransform(new DOMMatrix().scale(1 / RES));
     return cache.pat;
   }
-  var SCAN = 3, SCAN_SPEED = 6;
+  var SCAN_SPEED = 6;
   var BANDS = 3, BAND_SPEED = 45;
   var GLITCH_T = 0.45;
   var hash = (n) => {
@@ -12253,6 +12257,36 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return v - Math.floor(v);
   };
   var L = { c: null, tmp: null, n: -1, gt: -99 };
+  var LG = { px: CELL, ox: 0, oy: 0, gx0: 0, gy0: 0, lw: 1, lh: 1 };
+  function setGrid(W, F) {
+    const P = LG.px = clamp(DEV.holoPx || CELL, 0.5, 8);
+    LG.ox = W.camX * (1 - HOLO_PAR);
+    LG.oy = W.camY * (1 - HOLO_PAR);
+    LG.gx0 = Math.floor((W.camX - LG.ox) / P) - 1;
+    LG.gy0 = Math.floor((W.camY - LG.oy) / P) - 1;
+    LG.lw = Math.ceil(F.vw / P) + 3;
+    LG.lh = Math.ceil(F.vh / P) + 3;
+  }
+  var holoGrid = {
+    get w() {
+      return LG.lw;
+    },
+    get h() {
+      return LG.lh;
+    },
+    get px() {
+      return LG.px;
+    },
+    /** @param {CanvasRenderingContext2D} x */
+    world: (x) => x.setTransform(1 / LG.px, 0, 0, 1 / LG.px, -LG.ox / LG.px - LG.gx0, -LG.oy / LG.px - LG.gy0),
+    /** @param {CanvasRenderingContext2D} ctx @param {CanvasImageSource} src @param {boolean} smooth */
+    place: (ctx, src, smooth) => {
+      const sm = ctx.imageSmoothingEnabled;
+      ctx.imageSmoothingEnabled = smooth;
+      ctx.drawImage(src, 0, 0, LG.lw, LG.lh, LG.ox + LG.gx0 * LG.px, LG.oy + LG.gy0 * LG.px, LG.lw * LG.px, LG.lh * LG.px);
+      ctx.imageSmoothingEnabled = sm;
+    }
+  };
   var holoGlitch = (W) => Math.max(0, Math.min(1, 1 - (W.time - L.gt) / GLITCH_T));
   function holoFill(ctx, W, F, n) {
     const pat = tilePattern(ctx, n);
@@ -12269,7 +12303,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.globalCompositeOperation = "destination-out";
     const t = W.time, fl = Math.floor(t * 24);
     ctx.fillStyle = "rgba(0,0,0," + (0.3 + 0.15 * hash(fl)).toFixed(2) + ")";
-    for (let y = Math.floor((ly - R) / SCAN) * SCAN + t * SCAN_SPEED % SCAN; y < ly + R; y += SCAN) ctx.fillRect(lx - R, y, R * 2, 0.8);
+    const P = LG.px, SCAN = 2 * P;
+    for (let y = Math.floor((ly - R) / SCAN) * SCAN + t * SCAN_SPEED % SCAN; y < ly + R; y += SCAN) ctx.fillRect(lx - R, y, R * 2, P);
     for (let k = 0; k < BANDS; k++) {
       const y = ly - R + (t * BAND_SPEED * (0.7 + 0.3 * k) + k * 173) % (R * 2), hh = 4 + 10 * hash(k * 7.1);
       ctx.fillStyle = "rgba(0,0,0," + (0.25 + 0.4 * hash(fl * 3 + k)).toFixed(2) + ")";
@@ -12308,18 +12343,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       L.n = n;
     }
     if (L.gt > W.time) L.gt = -99;
-    const C = L.c = sizedCanvas(L.c, G.c.width, G.c.height), lc = C.getContext("2d");
+    if (!(DEV.holoAlpha > 0)) {
+      L.c = null;
+      return;
+    }
+    setGrid(W, F);
+    const C = L.c = sizedCanvas(L.c, LG.lw, LG.lh), lc = C.getContext("2d");
     if (!lc) return;
     lc.setTransform(1, 0, 0, 1, 0, 0);
     lc.clearRect(0, 0, C.width, C.height);
-    lc.setTransform(G.ctx.getTransform());
+    holoGrid.world(lc);
+    lc.imageSmoothingEnabled = true;
     holoFill(lc, W, F, n);
     const g = holoGlitch(W);
-    if (g > 0) glitch(lc, C, g, W.time, F.dpr);
+    if (g > 0) glitch(lc, C, g, W.time, 1 / (LG.px * W.unitPx));
     G.ctx.save();
-    G.ctx.setTransform(1, 0, 0, 1, 0, 0);
     G.ctx.globalAlpha = DEV.holoAlpha;
-    G.ctx.drawImage(C, 0, 0);
+    holoGrid.place(G.ctx, C, false);
     G.ctx.restore();
   }
   function drawHoloShop(W, G) {
@@ -12329,9 +12369,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.beginPath();
     ctx.rect(0, SHOP_Y, WW, SHOP_FLOOR * CELL - SHOP_Y);
     ctx.clip();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 0.3 * DEV.holoAlpha;
-    ctx.drawImage(L.c, 0, 0);
+    holoGrid.place(ctx, L.c, false);
     ctx.restore();
   }
   function sizedCanvas(c, w, h3) {
@@ -12342,14 +12381,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return o;
   }
-  function holoMask(a, W, G, F, alpha, D2) {
+  function holoMask(a, W, G, F, alpha) {
     if (!L.c) return;
     a.save();
     a.setTransform(1, 0, 0, 1, 0, 0);
     a.globalCompositeOperation = "source-over";
     a.globalAlpha = alpha;
-    a.imageSmoothingEnabled = true;
-    a.drawImage(L.c, 0, 0, L.c.width / D2, L.c.height / D2);
+    a.drawImage(L.c, 0, 0);
     a.restore();
     a.globalCompositeOperation = "destination-out";
     a.imageSmoothingEnabled = false;
@@ -12804,8 +12842,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         let clear = true;
         for (let k = 2; k <= 22 && clear; k += 2) if (!open(sx + nx * k, sy + ny * k)) clear = false;
         if (!clear) continue;
-        const ang = Math.atan2(-ny, -nx) + (rnd2() - 0.5) * 1.3, D2 = 20 + rnd2() * 14, rr2 = 5 + Math.floor(rnd2() * 3);
-        const cx = Math.round(sx + Math.cos(ang) * D2), cy = Math.round(sy + Math.sin(ang) * D2);
+        const ang = Math.atan2(-ny, -nx) + (rnd2() - 0.5) * 1.3, D = 20 + rnd2() * 14, rr2 = 5 + Math.floor(rnd2() * 3);
+        const cx = Math.round(sx + Math.cos(ang) * D), cy = Math.round(sy + Math.sin(ang) * D);
         if (cy > SHOP_TOP - SHOP_ROOF - 14 || !allRock(cx, cy, rr2 + 5)) continue;
         if (keep2.some((k) => Math.hypot(k.x - cx, k.y - cy) < k.r + rr2 || Math.hypot(k.x - sx, k.y - sy) < k.r)) continue;
         if (nests.some((n) => Math.hypot(n.x - cx, n.y - cy) < 50 || Math.hypot(n.mouth.x - sx, n.mouth.y - sy) < 40)) continue;
@@ -13497,7 +13535,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (const pr of plants) drawProp(G.pgCtx, pr, W.time, TH);
       pd = G.pgCtx.getImageData(0, 0, w, h3).data;
     }
-    const T = W.img.data, D2 = W.dimg ? W.dimg.data : null, A = G.pgArt;
+    const T = W.img.data, D = W.dimg ? W.dimg.data : null, A = G.pgArt;
     for (let y = 0; y < h3; y++) for (let x = 0; x < w; x++) {
       const si = ((by0 + y) * CW + bx0 + x) * 4, o = (y * w + x) * 4;
       let r = 0, g = 0, b = 0, a = 0;
@@ -13506,11 +13544,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         g = T[si + 1];
         b = T[si + 2];
         a = 255;
-      } else if (D2 && D2[si + 3]) {
-        r = D2[si];
-        g = D2[si + 1];
-        b = D2[si + 2];
-        a = D2[si + 3];
+      } else if (D && D[si + 3]) {
+        r = D[si];
+        g = D[si + 1];
+        b = D[si + 2];
+        a = D[si + 3];
       }
       if (pd && pd[o + 3]) {
         const pa = pd[o + 3] / 255;
@@ -13562,7 +13600,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var war = { c: null, img: null, blur: null, mask: null, over: null, sil: null, dark: null };
   var fogWarC = () => war.blur;
   var holoSil = () => war.sil;
-  var HOLO_D = 2;
   function blurSlab(src, dst, fx0, fy0, fx1, fy1) {
     const ew = fx1 - fx0, eh = fy1 - fy0;
     dst.clearRect(fx0, fy0, ew, eh);
@@ -13632,20 +13669,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         G.ctx.imageSmoothingEnabled = false;
         return;
       }
-      const w = Math.max(1, Math.ceil(G.c.width / HOLO_D)), h3 = Math.max(1, Math.ceil(G.c.height / HOLO_D));
+      const w = holoGrid.w, h3 = holoGrid.h;
       const M = war.mask = sizedCanvas(war.mask, w, h3), O = war.over = sizedCanvas(war.over, w, h3);
       const S = war.sil = sizedCanvas(war.sil, w, h3), E = war.dark = sizedCanvas(war.dark, w, h3);
       const mc = M.getContext("2d"), oc = O.getContext("2d"), scx = S.getContext("2d"), ec = E.getContext("2d");
       if (!mc || !oc || !scx || !ec) return;
-      const m = G.ctx.getTransform();
-      const world = (x) => x.setTransform(m.a / HOLO_D, 0, 0, m.d / HOLO_D, m.e / HOLO_D, m.f / HOLO_D);
+      const world = holoGrid.world;
       const flat = (x) => x.setTransform(1, 0, 0, 1, 0, 0);
       for (const x of [mc, oc, scx, ec]) {
         flat(x);
         x.clearRect(0, 0, w, h3);
         world(x);
       }
-      holoMask(mc, W, G, F, 1, HOLO_D);
+      holoMask(mc, W, G, F, 1);
       for (const pr of W.props)
         if (pr.k === "climb" && pr.x + pr.r > W.camX - 70 && pr.x + pr.l < W.camX + vw + 70 && pr.y + pr.b > W.camY - 90 && pr.y + pr.t0 < W.camY + vh + 90) drawProp(scx, pr, W.time, F.TH);
       scx.strokeStyle = "#000";
@@ -13694,17 +13730,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       oc.globalCompositeOperation = "source-over";
       oc.drawImage(E, 0, 0);
       oc.drawImage(E, 0, 0);
-      G.ctx.save();
-      G.ctx.setTransform(1, 0, 0, 1, 0, 0);
-      G.ctx.imageSmoothingEnabled = true;
-      G.ctx.drawImage(O, 0, 0, w * HOLO_D, h3 * HOLO_D);
-      G.ctx.restore();
-      G.ctx.imageSmoothingEnabled = false;
+      holoGrid.place(G.ctx, O, !(DEV.pixelFx > 0));
     }
   }
+  var glow = { c: null };
   function drawGlows(W, G, F) {
     const { vw, vh, pcx, pcy, TH, onView, ax } = F;
     G.ctx.globalCompositeOperation = "lighter";
+    const main = G.ctx;
+    const gx0 = Math.floor(W.camX / CELL) - 1, gy0 = Math.floor(W.camY / CELL) - 1;
+    const lw = Math.ceil(vw / CELL) + 3, lh = Math.ceil(vh / CELL) + 3;
+    const GC = glow.c = sizedCanvas(glow.c, lw, lh), low = GC.getContext("2d");
+    if (low) {
+      low.setTransform(1, 0, 0, 1, 0, 0);
+      low.clearRect(0, 0, lw, lh);
+      low.setTransform(1 / CELL, 0, 0, 1 / CELL, -gx0, -gy0);
+      low.globalCompositeOperation = "lighter";
+      G.ctx = low;
+    }
     const gl = clamp(0.82 + W.glowN + 0.08 * Math.sin(W.time * 23) + 0.06 * Math.sin(W.time * 37), 0.5, 1.1);
     const scOn = (sc) => !(sc.y > W.camY + vh + 30 || sc.y < W.camY - 30 || sc.x < W.camX - 30 || sc.x > W.camX + vw + 30) && fogLit(W, sc.x, sc.y);
     for (const sc of W.sconces) {
@@ -13752,6 +13795,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(W, pr.x, pr.y + pr.len))
         glowAt(G.ctx, pr.x, pr.y + pr.len, 16, 0.2 * W.flick, "255,130,50");
     if (W.p.burn > 0 && !W.p.dead) glowAt(G.ctx, W.p.x + PW / 2, W.p.y + PH / 2, 22, 0.25 * W.flick, "255,130,50");
+    if (!W.p.dead) {
+      const th = torchHand(W), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
+      glowAt(G.ctx, gfx, gfy, 70 * (0.9 + 0.1 * gl), 0.2 * gl, "255,150,60");
+      glowAt(G.ctx, gfx + W.leanX * 0.5, gfy + W.leanY * 0.5, 12, 0.5 * gl, "255,190,90");
+    }
+    if (low) {
+      G.ctx = main;
+      main.imageSmoothingEnabled = !(DEV.pixelFx > 0);
+      main.drawImage(GC, 0, 0, lw, lh, gx0 * CELL, gy0 * CELL, lw * CELL, lh * CELL);
+      main.imageSmoothingEnabled = false;
+    }
     for (const list of [W.dparts, W.amb]) for (const q of list) {
       if (!q.glow || !onView(q.x, q.y, 10) || !fogLit(W, q.x, q.y)) continue;
       G.ctx.globalAlpha = Math.min(1, q.life / (q.max * 0.3));
@@ -13759,30 +13813,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       G.ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
     }
     G.ctx.globalAlpha = 1;
-    if (!W.p.dead) {
-      const th = torchHand(W), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
-      glowAt(G.ctx, gfx, gfy, 70 * (0.9 + 0.1 * gl), 0.2 * gl, "255,150,60");
-      glowAt(G.ctx, gfx + W.leanX * 0.5, gfy + W.leanY * 0.5, 12, 0.5 * gl, "255,190,90");
-    }
     G.ctx.globalCompositeOperation = "source-over";
     for (const sc of W.sconces) if (scOn(sc)) drawSconce(G.ctx, sc.x, sc.y, W.time, sc.ph);
   }
 
   // src/game/render/fx.js
-  var D = 4;
   var GLITCH_FLASH = 1.5;
   var buf = { a: null, b: null };
   function drawFx(W, G, F) {
     if (!(DEV.bloom > 0) || !(DEV.holoAlpha > 0)) return;
-    const w = Math.max(1, Math.ceil(G.c.width / D)), h3 = Math.max(1, Math.ceil(G.c.height / D));
+    const w = holoGrid.w, h3 = holoGrid.h;
     const A = buf.a = sizedCanvas(buf.a, w, h3), B = buf.b = sizedCanvas(buf.b, w, h3);
     const a = A.getContext("2d"), b = B.getContext("2d");
     if (!a || !b) return;
-    const m = G.ctx.getTransform();
     a.setTransform(1, 0, 0, 1, 0, 0);
     a.clearRect(0, 0, w, h3);
-    a.setTransform(m.a / D, 0, 0, m.d / D, m.e / D, m.f / D);
-    holoMask(a, W, G, F, DEV.holoAlpha, D);
+    holoGrid.world(a);
+    holoMask(a, W, G, F, DEV.holoAlpha);
     const war2 = fogWarC();
     if (war2 && (!G.RPV || G.RPV.fog)) {
       a.globalCompositeOperation = "destination-out";
@@ -13793,22 +13840,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (sil) {
       a.setTransform(1, 0, 0, 1, 0, 0);
       a.globalCompositeOperation = "destination-out";
-      a.drawImage(sil, 0, 0, w, h3);
+      a.drawImage(sil, 0, 0);
     }
     a.globalCompositeOperation = "source-over";
     b.setTransform(1, 0, 0, 1, 0, 0);
     b.clearRect(0, 0, w, h3);
-    b.filter = "blur(" + (DEV.bloomBlur * F.dpr / D).toFixed(2) + "px) brightness(" + DEV.bloomBright + ")";
+    b.filter = "blur(" + (DEV.bloomBlur / (holoGrid.px * W.unitPx)).toFixed(2) + "px) brightness(" + DEV.bloomBright + ")";
     b.drawImage(A, 0, 0);
     b.filter = "none";
     G.ctx.save();
-    G.ctx.setTransform(1, 0, 0, 1, 0, 0);
     let k = DEV.bloom * (1 + GLITCH_FLASH * holoGlitch(W));
     G.ctx.globalCompositeOperation = "lighter";
-    G.ctx.imageSmoothingEnabled = true;
     while (k > 1e-3) {
       G.ctx.globalAlpha = Math.min(1, k);
-      G.ctx.drawImage(B, 0, 0, w * D, h3 * D);
+      holoGrid.place(G.ctx, B, true);
       k -= 1;
     }
     G.ctx.restore();
