@@ -9,7 +9,7 @@
 // small part of the work full size was. Its fog swap (light.js) and bloom (fx.js) use the grid.
 
 import { CELL, CH, CW, PH, SHOP_FLOOR, SHOP_Y, WH, WW } from '../../core/consts.js';
-import { clamp } from '../../core/util.js';
+import { bezierFade, clamp } from '../../core/util.js';
 import { bioCount } from '../../creatures/common.js';
 import { DEV } from '../../dev/knobs.js';
 
@@ -77,8 +77,18 @@ const GLITCH_T = 0.45;                         // how long the glitch runs when 
 /** @param {number} n */
 const hash = n => { const v = Math.sin(n * 12.9898) * 43758.5453; return v - Math.floor(v); };
 
-/** @type {{ c: HTMLCanvasElement | null, tmp: HTMLCanvasElement | null, n: number, gt: number }} */
-const L = { c: null, tmp: null, n: -1, gt: -99 };
+/** @type {{ c: HTMLCanvasElement | null, tmp: HTMLCanvasElement | null, n: number, gt: number, ft: number, bri: number }} */
+const L = { c: null, tmp: null, n: -1, gt: -99, ft: -99, bri: 0 };
+
+// The flash on a kill: the hologram rests at DEV.holoMin and a kill throws it up to DEV.holoMax,
+// fading back over DEV.holoFade seconds along the Dev panel's curve. since: seconds since the kill
+/** @param {number} since */
+export function holoLevel(since) {
+  const lo = DEV.holoMin, hi = DEV.holoMax, u = since / Math.max(0.01, DEV.holoFade);
+  return clamp(lo + (hi - lo) * bezierFade(u, DEV.holoC1x, DEV.holoC1y, DEV.holoC2x, DEV.holoC2y), 0, 1);
+}
+// this frame's brightness (the master knob times the flash): 0 means no hologram, fog swap or glow
+export const holoBright = () => L.bri;
 
 // The layer's grid for this frame: whole CELL-sized pixels fixed to the hologram (so they slide
 // with it, never swim), covering the view. ox/oy: how far the hologram has slid (world units);
@@ -169,9 +179,16 @@ function glitch(lc, C, g, t, dpr) {
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawHolo(W, G, F) {
   const n = W.repo ? -2 : bioCount(W.enemies, !W.p.dead && W.p.y + PH <= SHOP_Y);
-  if (n !== L.n) { if (L.n >= 0) L.gt = W.time; L.n = n; }
+  if (n !== L.n) {
+    if (L.n >= 0) L.gt = W.time;
+    if (L.n > 0 && n < L.n) L.ft = W.time;      // fewer of them: a kill, so it flashes
+    L.n = n;
+  }
   if (L.gt > W.time) L.gt = -99;                // a new run: the clock started again
-  if (!(DEV.holoAlpha > 0)) { L.c = null; return; }   // switched off: none of the work
+  if (L.ft > W.time) L.ft = -99;
+  // repossessed: it stays lit, so you can read why
+  L.bri = DEV.holoAlpha * (W.repo ? Math.max(DEV.holoMax, DEV.holoMin) : holoLevel(W.time - L.ft));
+  if (!(L.bri > 0.002)) { L.bri = 0; L.c = null; return; }   // dark: none of the work
   setGrid(W, F);
   const C = L.c = sizedCanvas(L.c, LG.lw, LG.lh), lc = C.getContext('2d');
   if (!lc) return;
@@ -182,7 +199,7 @@ export function drawHolo(W, G, F) {
   const g = holoGlitch(W);
   if (g > 0) glitch(lc, C, g, W.time, 1 / (LG.px * W.unitPx));
   G.ctx.save();
-  G.ctx.globalAlpha = DEV.holoAlpha;
+  G.ctx.globalAlpha = L.bri;
   holoGrid.place(G.ctx, C, false);
   G.ctx.restore();
 }
@@ -195,7 +212,7 @@ export function drawHoloShop(W, G) {
   const ctx = G.ctx;
   ctx.save();
   ctx.beginPath(); ctx.rect(0, SHOP_Y, WW, SHOP_FLOOR * CELL - SHOP_Y); ctx.clip();
-  ctx.globalAlpha = 0.3 * DEV.holoAlpha;
+  ctx.globalAlpha = 0.3 * L.bri;
   holoGrid.place(ctx, L.c, false);
   ctx.restore();
 }

@@ -357,10 +357,11 @@ interface DevKnobs {
   vEnemy: number; vEnemyFire: number; vWorld: number; vDrip: number; vStep: number; vUi: number;
   bagSpeed: number;
   holoAlpha: number; bloom: number; bloomBlur: number; bloomBright: number;
+  holoMin: number; holoMax: number; holoFade: number; holoC1x: number; holoC1y: number; holoC2x: number; holoC2y: number;
   [k: string]: any;
 }
 /** one Dev panel row (DEV_META) */
-interface DevRow { k: string; g: string; label: string; min?: number; max?: number; step?: number; type?: 'color' | 'slider' }
+interface DevRow { k: string; g: string; label: string; min?: number; max?: number; step?: number; type?: 'color' | 'slider' | 'curve' }
 
 // ---- the game (game/, layer 5) ----
 

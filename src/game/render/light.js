@@ -13,7 +13,7 @@ import { fogLit } from '../systems/fog.js';
 import { plantGlow } from '../systems/plantglow.js';
 import { torchHand } from '../systems/player.js';
 import { solidCell } from '../systems/terrain.js';
-import { holoGrid, holoMask, sizedCanvas } from './holo.js';
+import { holoBright, holoGrid, holoMask, sizedCanvas } from './holo.js';
 
 // The fog of war alone (never-seen ground; none of the dark outside your torchlight), baked and
 // blurred beside the full fog: the hologram is darkened by this one only. Made on first use
@@ -108,7 +108,7 @@ export function drawFog(W, G, F) {
     blurSlab(G.fogC, G.fbctx, fx0, fy0, fx1, fy1);
     blurSlab(war.c, wbctx, fx0, fy0, fx1, fy1);
     const sx = fx0 * FOG_U, sy = fy0 * FOG_U, sw = (fx1 - fx0) * FOG_U, sh = (fy1 - fy0) * FOG_U;
-    if (!(DEV.holoAlpha > 0)) {
+    if (!(holoBright() > 0)) {
       war.sil = null;
       G.ctx.imageSmoothingEnabled = true;     // the upscale further softens the edge
       G.ctx.drawImage(G.fogBlurC, fx0, fy0, fx1 - fx0, fy1 - fy0, sx, sy, sw, sh);

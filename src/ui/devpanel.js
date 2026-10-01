@@ -1,11 +1,12 @@
 // @ts-check
 // The Dev panel (the gear button): live-tweak knob rows by group (DevRow, DevPanel), the
-// live jellyfish box above the jelly colours (JellyPreview), and the Spawn gun box (SpawnGun).
+// live jellyfish box above the jelly colours (JellyPreview), the hologram flash's fade curve
+// (FadeCurve), and the Spawn gun box (SpawnGun).
 
 import { drawProp, rgbA } from '../art/props.js';
 import { glowAt } from '../art/sprites.js';
 import { CELL } from '../core/consts.js';
-import { hexArr, hexRgb, mix } from '../core/util.js';
+import { bezierFade, clamp, hexArr, hexRgb, mix } from '../core/util.js';
 import {
   drawJelly, jellyBell, jellyPal, jellyStep, plantGlowFill, plantWhite
 } from '../creatures/jelly.js';
@@ -151,12 +152,84 @@ export function JellyPreview() {
   return h('canvas', { ref, className: 'jellyprev' });
 }
 
+// The hologram flash's fade, as a curve you shape: brightness (top = on a kill, bottom = at rest)
+// over the fade's length, from the top left to the bottom right, bent by two handles. Drag
+// anywhere: the nearer handle follows. A dot runs along it at the real speed, and the red box
+// beside the axis shows the brightness it gives. Saves as DEV.holoC1x..holoC2y
+const FC = { x0: 12, x1: 188, top: 26, bot: 106, lo: -0.3, hi: 1.3 };   // the plot, in the svg's units
+const KEYS = [['holoC1x', 'holoC1y'], ['holoC2x', 'holoC2y']];
+/** @param {number} u */ const fcX = u => FC.x0 + u * (FC.x1 - FC.x0);
+/** @param {number} v */ const fcY = v => FC.bot - v * (FC.bot - FC.top);
+export function FadeCurve() {
+  const [, bump] = useState(0);
+  const svg = useRef(null), dot = useRef(null), lamp = useRef(null), drag = useRef(-1);
+  useEffect(() => {
+    let raf, t0 = performance.now(), seen = '';
+    const tick = now => {
+      raf = requestAnimationFrame(tick);
+      const key = DEV.holoMin + ',' + DEV.holoMax + ',' + DEV.holoFade;   // the boxes below changed: redraw the labels
+      if (key !== seen) { seen = key; bump(n => n + 1); }
+      const len = Math.max(0.05, DEV.holoFade), s = ((now - t0) / 1000) % (len + 0.6), u = Math.min(1, s / len);
+      const v = bezierFade(u, DEV.holoC1x, DEV.holoC1y, DEV.holoC2x, DEV.holoC2y);
+      const b = clamp(DEV.holoMin + (DEV.holoMax - DEV.holoMin) * v, 0, 1);
+      if (dot.current) { dot.current.setAttribute('cx', String(fcX(u))); dot.current.setAttribute('cy', String(fcY(v))); }
+      if (lamp.current) lamp.current.setAttribute('opacity', b.toFixed(3));
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  /** @param {PointerEvent} e */
+  const at = e => {
+    const s = svg.current, m = s && s.getScreenCTM();
+    if (!m) return null;
+    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+    return { u: clamp((p.x - FC.x0) / (FC.x1 - FC.x0), 0, 1), v: clamp((FC.bot - p.y) / (FC.bot - FC.top), FC.lo, FC.hi) };
+  };
+  /** @param {PointerEvent} e */
+  const move = e => {
+    const p = drag.current >= 0 && at(e);
+    if (!p) return;
+    const [kx, ky] = KEYS[drag.current];
+    devSet(kx, Math.round(p.u * 100) / 100); devSet(ky, Math.round(p.v * 100) / 100);
+    bump(n => n + 1);
+  };
+  const H = KEYS.map(([kx, ky]) => ({ x: fcX(DEV[kx]), y: fcY(DEV[ky]) }));
+  const P0 = { x: fcX(0), y: fcY(1) }, P3 = { x: fcX(1), y: fcY(0) };
+  const path = 'M' + P0.x + ' ' + P0.y + ' C' + H[0].x + ' ' + H[0].y + ' ' + H[1].x + ' ' + H[1].y + ' ' + P3.x + ' ' + P3.y;
+  const reset = () => { for (const [kx, ky] of KEYS) { devSet(kx, DEV_DEFAULTS[kx]); devSet(ky, DEV_DEFAULTS[ky]); } bump(n => n + 1); };
+  return h('div', { className: 'fadecurve' },
+    h('svg', { ref: svg, viewBox: '0 0 200 132', className: 'fcsvg',
+      onPointerDown: e => {
+        e.preventDefault();
+        const s = svg.current, m = s && s.getScreenCTM();
+        if (!m) return;
+        const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+        drag.current = Math.hypot(p.x - H[0].x, p.y - H[0].y) <= Math.hypot(p.x - H[1].x, p.y - H[1].y) ? 0 : 1;
+        s.setPointerCapture(e.pointerId);
+        move(e);
+      },
+      onPointerMove: move,
+      onPointerUp: () => { drag.current = -1; }, onPointerCancel: () => { drag.current = -1; } },
+      h('rect', { x: FC.x0, y: FC.top, width: FC.x1 - FC.x0, height: FC.bot - FC.top, className: 'fcbox' }),
+      h('text', { x: FC.x0 + 2, y: FC.top - 4, className: 'fctxt' }, 'kill: ' + DEV.holoMax),
+      h('text', { x: FC.x0 + 2, y: FC.bot + 12, className: 'fctxt' }, 'rest: ' + DEV.holoMin),
+      h('text', { x: FC.x1 - 2, y: FC.bot + 12, className: 'fctxt', textAnchor: 'end' }, DEV.holoFade + 's'),
+      h('line', { x1: P0.x, y1: P0.y, x2: H[0].x, y2: H[0].y, className: 'fcarm' }),
+      h('line', { x1: P3.x, y1: P3.y, x2: H[1].x, y2: H[1].y, className: 'fcarm' }),
+      h('path', { d: path, className: 'fcline' }),
+      h('circle', { ref: dot, r: 2.5, className: 'fcdot' }),
+      H.map((q, i) => h('circle', { key: i, cx: q.x, cy: q.y, r: 5, className: 'fchandle' })),
+      h('rect', { ref: lamp, x: FC.x1 - 22, y: 4, width: 20, height: 14, rx: 2, fill: '#ff0000' })),
+    h('button', { className: 'devreset fcreset', 'aria-label': 'Default curve', onPointerDown: e => { e.preventDefault(); reset(); } }, '↺'));
+}
+
 // One tweakable value in the dev panel: a labelled number box prefilled with the live
 // value, its default shown as the placeholder. Committing an empty box restores the
 // default; anything else is parsed, clamped to the knob's range and saved at once.
 /** @param {{ meta: DevRow }} props */
 export function DevRow({ meta }) {
   const [val, setVal] = useState(String(DEV[meta.k]));
+  if (meta.type === 'curve') return null;      // shaped on FadeCurve, not typed
   if (meta.type === 'slider') {
     // a slider: changes live as you drag, the number beside the label; ↺ puts the default back
     const set = v => { devSet(meta.k, v); setVal(String(v)); };
@@ -251,6 +324,7 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
             onPointerDown: e => { e.preventDefault(); toggleG(g); } },
             h('span', { className: 'devcaret' }, shut ? '▸' : '▾'), name),
           shut ? null : h('div', { className: 'devvars' },
+            g === 'holoflash' ? h(FadeCurve) : null,
             DEV_META.filter(m => m.g === g).map(m => h(DevRow, { key: m.k, meta: m }))));
       }),
       h('p', { className: 'devnote' },

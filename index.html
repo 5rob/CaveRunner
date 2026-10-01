@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v115</title>
+<title>CaveRunner v116</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -452,6 +452,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
    scroll through them, so every change shows as you make it */
 .jellyprev{position:sticky;top:-14px;z-index:2;display:block;width:100%;height:200px;margin:4px 0 6px;
   border-radius:10px;border:1px solid var(--ring);background:#0d0f14;box-shadow:0 6px 14px rgba(0,0,0,0.35)}
+/* the hologram flash's fade curve (FadeCurve): drag the handles; touch-action none so a drag
+   shapes it instead of scrolling the panel */
+.fadecurve{position:relative;margin:4px 0 8px}
+.fcsvg{display:block;width:100%;height:auto;touch-action:none;border-radius:10px;border:1px solid var(--ring);background:#0d0f14}
+.fcbox{fill:none;stroke:rgba(255,255,255,0.15);stroke-width:0.6}
+.fctxt{fill:#aab;font:600 7px system-ui,sans-serif}
+.fcarm{stroke:rgba(255,255,255,0.4);stroke-width:0.8;stroke-dasharray:2 2}
+.fcline{fill:none;stroke:#ff3030;stroke-width:1.6}
+.fcdot{fill:#fff}
+.fchandle{fill:#0d0f14;stroke:#5ad65a;stroke-width:1.6}
+.fcreset{display:block;margin:4px 0 0 auto}
 .devreset{flex:0 0 auto;width:34px;height:36px;border-radius:8px;border:1px solid var(--ring);
   background:var(--pad);color:var(--text);font-size:16px}
 .devrow input{width:92px;flex:0 0 auto;box-sizing:border-box;height:36px;border-radius:8px;
@@ -497,7 +508,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v115';</script>
+<script>const VERSION = 'v116';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -575,6 +586,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return (d ? d + "d " : "") + pad2(Math.floor(s / 3600) % 24) + ":" + pad2(Math.floor(s / 60) % 60) + ":" + pad2(s % 60);
   }
   var pad2 = (n) => String(n).padStart(2, "0");
+  function bezierFade(u, x1, y1, x2, y2) {
+    if (!(u > 0)) return 1;
+    if (u >= 1) return 0;
+    x1 = clamp(x1, 0, 1);
+    x2 = clamp(x2, 0, 1);
+    const at = (s2, a, b, p0, p3) => {
+      const r = 1 - s2;
+      return r * r * r * p0 + 3 * r * r * s2 * a + 3 * r * s2 * s2 * b + s2 * s2 * s2 * p3;
+    };
+    let lo = 0, hi = 1, s = u;
+    for (let i = 0; i < 30; i++) {
+      s = (lo + hi) / 2;
+      if (at(s, x1, x2, 0, 1) < u) lo = s;
+      else hi = s;
+    }
+    return at(s, y1, y2, 1, 0);
+  }
 
   // src/dev/knobs.js
   var DEV_DEFAULTS = {
@@ -607,7 +635,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     bloomBlur: 8,
     bloomBright: 1.3,
     pixelFx: 1,
-    holoPx: 2
+    holoPx: 2,
+    holoMin: 0,
+    holoMax: 1,
+    holoFade: 3,
+    holoC1x: 0.25,
+    holoC1y: 1,
+    holoC2x: 0.5,
+    holoC2y: 0
   };
   var DEV_META = [
     { k: "zoom", g: "view", label: "Camera zoom", min: 0.3, max: 3, step: 0.05 },
@@ -633,18 +668,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "vDrip", g: "sound", label: "Drips & trickles (×sound)", min: 0, max: 3, step: 0.05 },
     { k: "vStep", g: "sound", label: "Footsteps (×sound)", min: 0, max: 3, step: 0.05 },
     { k: "vUi", g: "sound", label: "UI & pickups (×sound)", min: 0, max: 3, step: 0.05 },
-    { k: "holoAlpha", g: "fx", label: "Hologram brightness", min: 0, max: 1, step: 0.05 },
+    { k: "holoAlpha", g: "fx", label: "Hologram master brightness", min: 0, max: 1, step: 0.05 },
     { k: "bloom", g: "fx", label: "Hologram glow strength", min: 0, max: 2, step: 0.05 },
     { k: "bloomBlur", g: "fx", label: "Hologram glow size (px)", min: 0, max: 40, step: 1 },
     { k: "bloomBright", g: "fx", label: "Hologram glow brighten", min: 0.5, max: 3, step: 0.05 },
     { k: "holoPx", g: "fx", label: "Hologram pixel size (2 = rock size)", min: 0.5, max: 8, step: 0.5 },
     { k: "pixelFx", g: "fx", label: "Pixelated light & fog (0 smooth, 1 pixel)", min: 0, max: 1, step: 1 },
+    // the flash on a kill: up to holoMax, back down to holoMin over holoFade seconds along the curve
+    // (its two control points: the curve editor on the panel, not boxes)
+    { k: "holoMin", g: "holoflash", label: "Brightness at rest", min: 0, max: 1, step: 0.05 },
+    { k: "holoMax", g: "holoflash", label: "Brightness on a kill", min: 0, max: 1, step: 0.05 },
+    { k: "holoFade", g: "holoflash", label: "Fade length (s)", min: 0.05, max: 20, step: 0.05 },
+    { k: "holoC1x", g: "holoflash", label: "Fade curve point 1 x", min: 0, max: 1, step: 0.01, type: "curve" },
+    { k: "holoC1y", g: "holoflash", label: "Fade curve point 1 y", min: -0.5, max: 1.5, step: 0.01, type: "curve" },
+    { k: "holoC2x", g: "holoflash", label: "Fade curve point 2 x", min: 0, max: 1, step: 0.01, type: "curve" },
+    { k: "holoC2y", g: "holoflash", label: "Fade curve point 2 y", min: -0.5, max: 1.5, step: 0.01, type: "curve" },
     { k: "bagSpeed", g: "ui", label: "Bag fire preview speed (×real time)", min: 0.05, max: 5, step: 0.05 }
   ];
   var DEV_GROUPS = [
     ["view", "Camera & aim"],
     ["light", "Torch & fog"],
     ["fx", "Hologram & glow"],
+    ["holoflash", "Hologram flash (on a kill)"],
     ["player", "Player"],
     ["enemy", "Enemies"],
     ["spider", "Spider"],
@@ -12256,7 +12301,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const v = Math.sin(n * 12.9898) * 43758.5453;
     return v - Math.floor(v);
   };
-  var L = { c: null, tmp: null, n: -1, gt: -99 };
+  var L = { c: null, tmp: null, n: -1, gt: -99, ft: -99, bri: 0 };
+  function holoLevel(since) {
+    const lo = DEV.holoMin, hi = DEV.holoMax, u = since / Math.max(0.01, DEV.holoFade);
+    return clamp(lo + (hi - lo) * bezierFade(u, DEV.holoC1x, DEV.holoC1y, DEV.holoC2x, DEV.holoC2y), 0, 1);
+  }
+  var holoBright = () => L.bri;
   var LG = { px: CELL, ox: 0, oy: 0, gx0: 0, gy0: 0, lw: 1, lh: 1 };
   function setGrid(W, F) {
     const P = LG.px = clamp(DEV.holoPx || CELL, 0.5, 8);
@@ -12340,10 +12390,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const n = W.repo ? -2 : bioCount(W.enemies, !W.p.dead && W.p.y + PH <= SHOP_Y);
     if (n !== L.n) {
       if (L.n >= 0) L.gt = W.time;
+      if (L.n > 0 && n < L.n) L.ft = W.time;
       L.n = n;
     }
     if (L.gt > W.time) L.gt = -99;
-    if (!(DEV.holoAlpha > 0)) {
+    if (L.ft > W.time) L.ft = -99;
+    L.bri = DEV.holoAlpha * (W.repo ? Math.max(DEV.holoMax, DEV.holoMin) : holoLevel(W.time - L.ft));
+    if (!(L.bri > 2e-3)) {
+      L.bri = 0;
       L.c = null;
       return;
     }
@@ -12358,7 +12412,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const g = holoGlitch(W);
     if (g > 0) glitch(lc, C, g, W.time, 1 / (LG.px * W.unitPx));
     G.ctx.save();
-    G.ctx.globalAlpha = DEV.holoAlpha;
+    G.ctx.globalAlpha = L.bri;
     holoGrid.place(G.ctx, C, false);
     G.ctx.restore();
   }
@@ -12369,7 +12423,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.beginPath();
     ctx.rect(0, SHOP_Y, WW, SHOP_FLOOR * CELL - SHOP_Y);
     ctx.clip();
-    ctx.globalAlpha = 0.3 * DEV.holoAlpha;
+    ctx.globalAlpha = 0.3 * L.bri;
     holoGrid.place(ctx, L.c, false);
     ctx.restore();
   }
@@ -13662,7 +13716,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       blurSlab(G.fogC, G.fbctx, fx0, fy0, fx1, fy1);
       blurSlab(war.c, wbctx, fx0, fy0, fx1, fy1);
       const sx = fx0 * FOG_U, sy = fy0 * FOG_U, sw = (fx1 - fx0) * FOG_U, sh = (fy1 - fy0) * FOG_U;
-      if (!(DEV.holoAlpha > 0)) {
+      if (!(holoBright() > 0)) {
         war.sil = null;
         G.ctx.imageSmoothingEnabled = true;
         G.ctx.drawImage(G.fogBlurC, fx0, fy0, fx1 - fx0, fy1 - fy0, sx, sy, sw, sh);
@@ -13821,7 +13875,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var GLITCH_FLASH = 1.5;
   var buf = { a: null, b: null };
   function drawFx(W, G, F) {
-    if (!(DEV.bloom > 0) || !(DEV.holoAlpha > 0)) return;
+    if (!(DEV.bloom > 0) || !(holoBright() > 0)) return;
     const w = holoGrid.w, h3 = holoGrid.h;
     const A = buf.a = sizedCanvas(buf.a, w, h3), B = buf.b = sizedCanvas(buf.b, w, h3);
     const a = A.getContext("2d"), b = B.getContext("2d");
@@ -13829,7 +13883,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     a.setTransform(1, 0, 0, 1, 0, 0);
     a.clearRect(0, 0, w, h3);
     holoGrid.world(a);
-    holoMask(a, W, G, F, DEV.holoAlpha);
+    holoMask(a, W, G, F, holoBright());
     const war2 = fogWarC();
     if (war2 && (!G.RPV || G.RPV.fog)) {
       a.globalCompositeOperation = "destination-out";
@@ -18584,8 +18638,104 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }, []);
     return h("canvas", { ref, className: "jellyprev" });
   }
+  var FC = { x0: 12, x1: 188, top: 26, bot: 106, lo: -0.3, hi: 1.3 };
+  var KEYS = [["holoC1x", "holoC1y"], ["holoC2x", "holoC2y"]];
+  var fcX = (u) => FC.x0 + u * (FC.x1 - FC.x0);
+  var fcY = (v) => FC.bot - v * (FC.bot - FC.top);
+  function FadeCurve() {
+    const [, bump] = useState(0);
+    const svg = useRef(null), dot = useRef(null), lamp = useRef(null), drag = useRef(-1);
+    useEffect(() => {
+      let raf, t0 = performance.now(), seen = "";
+      const tick = (now) => {
+        raf = requestAnimationFrame(tick);
+        const key = DEV.holoMin + "," + DEV.holoMax + "," + DEV.holoFade;
+        if (key !== seen) {
+          seen = key;
+          bump((n) => n + 1);
+        }
+        const len = Math.max(0.05, DEV.holoFade), s = (now - t0) / 1e3 % (len + 0.6), u = Math.min(1, s / len);
+        const v = bezierFade(u, DEV.holoC1x, DEV.holoC1y, DEV.holoC2x, DEV.holoC2y);
+        const b = clamp(DEV.holoMin + (DEV.holoMax - DEV.holoMin) * v, 0, 1);
+        if (dot.current) {
+          dot.current.setAttribute("cx", String(fcX(u)));
+          dot.current.setAttribute("cy", String(fcY(v)));
+        }
+        if (lamp.current) lamp.current.setAttribute("opacity", b.toFixed(3));
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }, []);
+    const at = (e) => {
+      const s = svg.current, m = s && s.getScreenCTM();
+      if (!m) return null;
+      const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+      return { u: clamp((p.x - FC.x0) / (FC.x1 - FC.x0), 0, 1), v: clamp((FC.bot - p.y) / (FC.bot - FC.top), FC.lo, FC.hi) };
+    };
+    const move = (e) => {
+      const p = drag.current >= 0 && at(e);
+      if (!p) return;
+      const [kx, ky] = KEYS[drag.current];
+      devSet(kx, Math.round(p.u * 100) / 100);
+      devSet(ky, Math.round(p.v * 100) / 100);
+      bump((n) => n + 1);
+    };
+    const H = KEYS.map(([kx, ky]) => ({ x: fcX(DEV[kx]), y: fcY(DEV[ky]) }));
+    const P0 = { x: fcX(0), y: fcY(1) }, P3 = { x: fcX(1), y: fcY(0) };
+    const path = "M" + P0.x + " " + P0.y + " C" + H[0].x + " " + H[0].y + " " + H[1].x + " " + H[1].y + " " + P3.x + " " + P3.y;
+    const reset = () => {
+      for (const [kx, ky] of KEYS) {
+        devSet(kx, DEV_DEFAULTS[kx]);
+        devSet(ky, DEV_DEFAULTS[ky]);
+      }
+      bump((n) => n + 1);
+    };
+    return h(
+      "div",
+      { className: "fadecurve" },
+      h(
+        "svg",
+        {
+          ref: svg,
+          viewBox: "0 0 200 132",
+          className: "fcsvg",
+          onPointerDown: (e) => {
+            e.preventDefault();
+            const s = svg.current, m = s && s.getScreenCTM();
+            if (!m) return;
+            const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+            drag.current = Math.hypot(p.x - H[0].x, p.y - H[0].y) <= Math.hypot(p.x - H[1].x, p.y - H[1].y) ? 0 : 1;
+            s.setPointerCapture(e.pointerId);
+            move(e);
+          },
+          onPointerMove: move,
+          onPointerUp: () => {
+            drag.current = -1;
+          },
+          onPointerCancel: () => {
+            drag.current = -1;
+          }
+        },
+        h("rect", { x: FC.x0, y: FC.top, width: FC.x1 - FC.x0, height: FC.bot - FC.top, className: "fcbox" }),
+        h("text", { x: FC.x0 + 2, y: FC.top - 4, className: "fctxt" }, "kill: " + DEV.holoMax),
+        h("text", { x: FC.x0 + 2, y: FC.bot + 12, className: "fctxt" }, "rest: " + DEV.holoMin),
+        h("text", { x: FC.x1 - 2, y: FC.bot + 12, className: "fctxt", textAnchor: "end" }, DEV.holoFade + "s"),
+        h("line", { x1: P0.x, y1: P0.y, x2: H[0].x, y2: H[0].y, className: "fcarm" }),
+        h("line", { x1: P3.x, y1: P3.y, x2: H[1].x, y2: H[1].y, className: "fcarm" }),
+        h("path", { d: path, className: "fcline" }),
+        h("circle", { ref: dot, r: 2.5, className: "fcdot" }),
+        H.map((q, i) => h("circle", { key: i, cx: q.x, cy: q.y, r: 5, className: "fchandle" })),
+        h("rect", { ref: lamp, x: FC.x1 - 22, y: 4, width: 20, height: 14, rx: 2, fill: "#ff0000" })
+      ),
+      h("button", { className: "devreset fcreset", "aria-label": "Default curve", onPointerDown: (e) => {
+        e.preventDefault();
+        reset();
+      } }, "↺")
+    );
+  }
   function DevRow({ meta }) {
     const [val, setVal] = useState(String(DEV[meta.k]));
+    if (meta.type === "curve") return null;
     if (meta.type === "slider") {
       const set = (v) => {
         devSet(meta.k, v);
@@ -18780,6 +18930,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             shut ? null : h(
               "div",
               { className: "devvars" },
+              g === "holoflash" ? h(FadeCurve) : null,
               DEV_META.filter((m) => m.g === g).map((m) => h(DevRow, { key: m.k, meta: m }))
             )
           );
