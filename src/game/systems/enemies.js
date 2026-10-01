@@ -10,6 +10,7 @@ import { COL, PH, PW } from '../../core/consts.js';
 import { HUNTERS } from '../../data/creatures.js';
 import { DEV, jcol, kr } from '../../dev/knobs.js';
 import { fireArea } from '../../world/fire.js';
+import { spillGold } from '../../world/nuggets.js';
 import { ACTS } from '../creatures/acts.js';
 import { ignite, youAlight } from './fire.js';
 import { burst, goo, splat } from './particles.js';
@@ -50,12 +51,10 @@ export function damageEnemy(W, j, dmg) {
   // a creature's own end (ACTS, D20): a nest showers its gold instead of the one coin
   const A = ACTS[e.k.act];
   if (A && A.die && A.die(W, e)) return;
-  W.coins.push({ x: e.x, y: e.ty,
-    amount: Math.round((e.k.gold + Math.floor(Math.random() * 3)) * W.pb.gold),
-    t: Math.random() * 6.28, vy: -60 - Math.random() * 40 });
+  // its gold, split into big, medium and small nuggets that add up to it
+  spillGold(W.coins, e.x, e.ty, Math.round((e.k.gold + Math.floor(Math.random() * 3)) * W.pb.gold));
   // a rat drops what it was carrying home
-  if (e.carry > 0) W.coins.push({ x: e.x, y: e.ty, amount: e.carry, t: Math.random() * 6.28,
-    vx: (Math.random() - 0.5) * 60, vy: -90 - Math.random() * 40 });
+  if (e.carry > 0) spillGold(W.coins, e.x, e.ty, e.carry, { vx: 30, vy: 110 });
 }
 
 // ---- the creatures (a part of step) ----

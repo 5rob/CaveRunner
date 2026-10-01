@@ -428,6 +428,7 @@ interface Arc { pts: Pt[]; col: string; w: number; t: number; max: number }
 interface Coin {
   x: number; y: number; amount: number; t: number;
   vx?: number; vy?: number; pop?: number; nopull?: number;
+  a?: number; ground?: number; fly?: boolean;   // world/nuggets.js: its turn, resting on rock, being pulled to you
 }
 /** a line at the bottom of the view */
 interface Toast { text: string; t: number }

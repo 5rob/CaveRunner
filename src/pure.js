@@ -23,6 +23,7 @@ export * from './world/fire.js';
 export * from './world/nav.js';
 export * from './world/zones.js';
 export * from './world/veins.js';
+export * from './world/nuggets.js';
 export * from './world/nests.js';
 export * from './world/strata.js';
 export * from './world/decorate.js';

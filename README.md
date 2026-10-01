@@ -180,7 +180,9 @@ but *changing* your setup — dragging mods, reordering guns — only works in t
 anywhere, with the Tinker perk); out in the cave the Bag is read-only. Enemies drop gold
 when they die, so a floor you clear pays for the next floor's shopping. **Gold seams** run
 through the rock here and there — dig or blast one open and bits of gold tumble out, more the
-more of the seam you take.
+more of the seam you take. Gold comes as **nuggets** in three sizes — small (1), medium (5) and
+big (25) — and a rich kill bursts into a mix of them that adds up to what it was worth. They
+bounce, roll down slopes and pile up beside each other rather than on one spot.
 
 A gun lying in the cave that you have never held **glows**, with sparks streaking out of it.
 One you swapped out and left on the ground doesn't, so you can tell new from discarded at a

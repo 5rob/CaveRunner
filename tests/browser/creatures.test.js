@@ -180,7 +180,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     let n = 0;
     const tick = () => {
       if (++n < 90 && !L.coins.length) return requestAnimationFrame(tick);
-      res({ id, want, floor: L.floor, paid: L.coins.length ? L.coins[0].amount : 0 });
+      res({ id, want, floor: L.floor, paid: L.coins.reduce((a, c) => a + c.amount, 0) });   // all its nuggets
     };
     requestAnimationFrame(tick);
   }));
