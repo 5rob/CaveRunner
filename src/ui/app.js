@@ -215,10 +215,10 @@ export function App() {
             : (prompt.id || prompt.gun || prompt.perk || prompt.heart) ? 'free' : prompt.text))) : null,
       // one gear in the top-right opens the Dev panel; Restart now lives inside it.
       // gold, top centre: "g" not "gold", truncated to k/M/B (1234 -> 1.2k). Under it in red, what
-      // you owe the company for the level you're on, and the time left to settle it
+      // you owe the company for the level you're on, in full (64,000,000,000), and the time left to settle it
       h('div', { className: 'gold' },
         h('div', { className: 'purse' }, fmtGold(LO.gold), h('span', null, 'g')),
-        LO.debt > 0 ? h('div', { className: 'debt' }, '-' + fmtGold(LO.debt), h('span', null, 'g owed')) : null,
+        LO.debt > 0 ? h('div', { className: 'debt' }, '-' + Math.trunc(LO.debt).toLocaleString('en-US'), h('span', null, 'g owed')) : null,
         LO.debt > 0 && LO.due ? h(DueClock, { due: LO.due }) : null),
       h('button', { className: 'devbtn', title: 'Dev tools',
         onPointerDown: e => { e.preventDefault(); setDevOpen(true); } }, '⚙️'),
