@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v111 — bigger gold, debt and clock at the top
+Released 2026-10-01.
+
+- The top readout is larger and centred: gold 24px (it had been shrunk to 14px by the shop's
+  `.purse` rule), debt 18px, settlement clock 16px. The debt shows in full (`-64,000,000,000g owed`),
+  not `fmtGold`'s 64B. `topgold` checks it at 360 and 412 wide.
+
 ## v110 — the shop heal can be bought again
 Released 2026-10-01.
 
