@@ -8,6 +8,14 @@ const check = (name, ok, got) => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${ok ? '' : ' -> ' + JSON.stringify(got)}`);
 };
 check('an hour', DEADLINE_MS === 3600000, DEADLINE_MS);
+// floor 1's time is a Dev knob (minutes), an hour by default; the other floors keep the hour
+{
+  const { DEV, dueMs } = require('../load');
+  check('floor 1: an hour by default', dueMs(1) === DEADLINE_MS, dueMs(1));
+  DEV.due1 = 5;
+  check('floor 1 follows the knob', dueMs(1) === 5 * 60000 && dueMs(2) === DEADLINE_MS, [dueMs(1), dueMs(2)]);
+  DEV.due1 = 60;
+}
 check('reads 01:00:00 at the start', countdown(DEADLINE_MS) === '01:00:00', countdown(DEADLINE_MS));
 check('a second later', countdown(DEADLINE_MS - 1000) === '00:59:59', countdown(DEADLINE_MS - 1000));
 check('hours, minutes, seconds', countdown(3723000) === '01:02:03', countdown(3723000));

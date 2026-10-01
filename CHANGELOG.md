@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v117 — a Dev knob for level 1's repay time
+Released 2026-10-02.
+
+- Dev → Level layout (floor 1) → "Time to repay level 1 (minutes)" (`DEV.due1`, default 60).
+  `dueMs(floor)` in `dev/knobs.js`: floor 1 the knob, the rest keep `DEADLINE_MS`. It sets the
+  deadline when you buy the level, so a level already bought keeps its clock.
+
 ## v116 — the hologram flashes on a kill
 Released 2026-10-02.
 
