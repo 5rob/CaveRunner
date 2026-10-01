@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v113</title>
+<title>CaveRunner v114</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -497,7 +497,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v113';</script>
+<script>const VERSION = 'v114';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -17953,7 +17953,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
   var SHORTLIST = 14;
-  function buildAdvice(gun, bag) {
+  function buildAdvice(gun, bag, withTips = true) {
     const now = gunRate(gun);
     let limit;
     if (!now.shots) limit = { key: "none", text: "Nothing on this gun fires — it needs a shot mod" };
@@ -17975,7 +17975,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     const tips = [];
     const score = (slots) => gunRate(Object.assign({}, gun, { slots })).dps;
-    if (now.shots) {
+    if (now.shots && withTips) {
       const seen = {};
       const pool = bag.filter((id) => !seen[id] && (seen[id] = 1));
       const probe = [0, gun.slots.indexOf(null) >= 0 ? gun.slots.indexOf(null) : gun.slots.length - 1].filter((v, i, a) => v >= 0 && a.indexOf(v) === i);
@@ -19563,6 +19563,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     const gsig = gun ? sel + "|" + gun.slots.join() + "|" + gun.multi + "|" + gun.shuffle + "|" + gun.castDelay + "|" + gun.recharge : "";
     if (!sim.current || sim.current.sig !== gsig) sim.current = gun ? Object.assign(fireSimNew(gun), { sig: gsig }) : null;
+    const adv = useMemo(
+      () => gun ? buildAdvice(gun, bagIds, SHOW_TIPS) : null,
+      [gsig, SHOW_TIPS ? bagIds.join() : ""]
+    );
     const card = shown ? h(
       "div",
       { key: "card" },
@@ -19604,8 +19608,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ),
       gun ? h("p", { className: "lab" }, gun.shuffle ? "On the gun — order is shuffled every recharge" : "On the gun — fires left to right, row by row") : null,
       gun ? h(SlotGrid, { gun, tile, sig: gsig, sim }) : null,
-      gun ? (() => {
-        const adv = buildAdvice(gun, bagIds);
+      gun && adv ? (() => {
         const apply = (t) => (e) => {
           e.preventDefault();
           if (t.kind === "move") {

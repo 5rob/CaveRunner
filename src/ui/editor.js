@@ -343,6 +343,10 @@ export function Editor({ input, close, refresh, canEdit }) {
   // restart the fire preview whenever the gun or its build changes
   const gsig = gun ? sel + '|' + gun.slots.join() + '|' + gun.multi + '|' + gun.shuffle + '|' + gun.castDelay + '|' + gun.recharge : '';
   if (!sim.current || sim.current.sig !== gsig) sim.current = gun ? Object.assign(fireSimNew(gun), { sig: gsig }) : null;
+  // the dmg/s line: worked out when the build changes, not on every touch (a drag re-renders
+  // per move); the swap tips, parked, aren't worked out at all
+  const adv = useMemo(() => gun ? buildAdvice(gun, bagIds, SHOW_TIPS) : null,
+    [gsig, SHOW_TIPS ? bagIds.join() : '']);
 
   const card = shown
     ? h('div', { key: 'card' },
@@ -375,8 +379,7 @@ export function Editor({ input, close, refresh, canEdit }) {
       ? 'On the gun — order is shuffled every recharge'
       : 'On the gun — fires left to right, row by row') : null,
     gun ? h(SlotGrid, { gun, tile, sig: gsig, sim }) : null,
-    gun ? (() => {
-      const adv = buildAdvice(gun, bagIds);
+    gun && adv ? (() => {
       const apply = t => e => {
         e.preventDefault();
         if (t.kind === 'move') {

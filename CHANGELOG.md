@@ -5,6 +5,16 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v114 — a quick Bag with a big gun
+Released 2026-10-01.
+
+- The Bag's dmg/s line re-ran the whole build advisor, parked swap tips included, on every render,
+  and a drag re-renders per move: with a 26-slot gun one drag cost ~380ms of script on a PC (far
+  more on a phone), and taps queued behind it (the "lag closing the Bag"). `buildAdvice(gun, bag,
+  withTips)`: the editor passes `SHOW_TIPS` and keeps the result in a `useMemo` on the build's sig.
+  The same drag now costs ~50ms. `bagspeed` (browser) times it; `advice` (logic) checks the
+  tipless answer matches.
+
 ## v113 — steady camera in fast flight
 Released 2026-10-01.
 

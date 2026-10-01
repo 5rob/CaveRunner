@@ -49,7 +49,9 @@ and `game/systems/shotlooks.js`.
   so a build that bleeds you dry isn't credited with damage you'd never live to deal. A new mod
   that spends something: make sure `gunRate` sees the cost. `buildAdvice` shortlists
   (`SHORTLIST`) because the editor calls it; if the editor is slow, look there. Its swap tips are
-  parked (`SHOW_TIPS = false`, `ui/editor.js`).
+  parked (`SHOW_TIPS = false`, `ui/editor.js`), so the editor calls it with `withTips` false (the
+  tips are nearly all its work) and only when the build changes (`useMemo` on the gun's sig: a
+  drag re-renders the Bag on every move; `bagspeed` times one).
 - **A new spell needs** a `NOITA_OF` entry (its Noita twin, or it never drops; `spells.test.js`
   checks every `ALL_IDS`), a `SPELL_VOICE` entry (`audio/recipes.js`, tested), a `MOD_PRICE`, and
   its flight in `tracePath` if it flies differently.
