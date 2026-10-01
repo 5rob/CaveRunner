@@ -12,6 +12,7 @@ import { pathLen, ratSpread, ratStep } from '../../creatures/rat.js';
 import { enemyFor } from '../../data/creatures.js';
 import { kr } from '../../dev/knobs.js';
 import { NAV, navField, navWay } from '../../world/nav.js';
+import { spillGold } from '../../world/nuggets.js';
 import { burst } from '../systems/particles.js';
 import { hurt } from '../systems/player.js';
 import { solidCell } from '../systems/terrain.js';
@@ -198,10 +199,7 @@ export function nestMove(W, G, e, C) {
 export function nestDie(W, e) {
   // a nest: its own gold and everything its rats brought home, in a little shower
   const all = Math.round(kr('raNestGold') * W.pb.gold) + e.nest.stash;
-  const n = Math.max(1, Math.min(14, Math.ceil(all / 8)));
-  for (let k = 0; k < n; k++)
-    W.coins.push({ x: e.x + (Math.random() - 0.5) * 8, y: e.y, amount: Math.floor(all / n) + (k < all % n ? 1 : 0),
-      t: Math.random() * 6.28, vx: (Math.random() - 0.5) * 100, vy: -80 - Math.random() * 80 });
+  spillGold(W.coins, e.x, e.y, all, { vx: 50, vy: 120 });
   SFX.fx('coinland', e.x, e.y);
   return true;
 }

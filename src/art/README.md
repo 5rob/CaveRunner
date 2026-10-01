@@ -2,7 +2,7 @@
 
 | File | Holds |
 |---|---|
-| `sprites.js` | `drawRunner`, `drawGun`, `drawGunGlow` (glow + streaks on a never-held ground gun), `drawFlame` (teardrops whose tip leans to `lx, ly`), `flameDrop`, `drawTorch`, `drawSconce`, `glowAt`, `GLOW_STREAKS` |
+| `sprites.js` | `drawRunner`, `drawGun`, `drawGunGlow` (glow + streaks on a never-held ground gun), `drawFlame` (teardrops whose tip leans to `lx, ly`), `flameDrop`, `drawTorch`, `drawSconce`, `glowAt`, `GLOW_STREAKS`, `drawNugget` (a lumpy gold rock, turned as it rolls) |
 | `props.js` | `drawProp` (every decoration prop), `drawArch` (arched vines), `propCol`, `propGlow` (the light lamps, vents, shards, eyes, dark matter and lava give off), `eyesAlpha`, `rgbA`/`rgbS`, `VENT_H` |
 
 Creature sprites live with their creature (`creatures/`). Everything draws at world scale.

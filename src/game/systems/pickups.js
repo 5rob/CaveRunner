@@ -6,6 +6,7 @@ import { SFX } from '../../audio/sfx.js';
 import { COIN_PULL, PH, PICKUP_COOL, SHOP_Y } from '../../core/consts.js';
 import { healPrice } from '../../data/creatures.js';
 import { PERKS } from '../../data/perks.js';
+import { collideNuggets, stepNugget } from '../../world/nuggets.js';
 import { MODS } from '../../spells/mods.js';
 import { paintFog } from './fog.js';
 import { toast } from './particles.js';
@@ -28,12 +29,16 @@ export function stepPickups(W, G, F) {
     if (q.cool > 0) q.cool -= dt;
   }
   // ---- gold ----
+  /** @param {number} x @param {number} y */
+  const solid = (x, y) => solidAt(W, x, y);
   for (let i = W.coins.length - 1; i >= 0; i--) {
     const g = W.coins[i];
     const dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;
     const pull = COIN_PULL * W.pb.goldPull;    // Attract Gold reaches further
     if (g.nopull > 0) g.nopull -= dt;        // gold a rat just knocked out of you flies clear first
+    g.fly = false;
     if (d < pull && !W.p.dead && !(g.nopull > 0)) {
+      g.fly = true;
       // inside the pull radius it flies to you, straight through rock
       const grab = 180 + 900 * (1 - d / pull);
       g.vx = (g.vx || 0) + (dx / d) * grab * dt * 6;
@@ -48,25 +53,11 @@ export function stepPickups(W, G, F) {
       }
       continue;
     }
-    if (g.pop) {
-      // knocked out of you: flies in an arc, bounces a few times and skids to a stop
-      g.vx *= Math.exp(-0.6 * dt);
-      g.vy += 420 * dt;
-      const nx = g.x + g.vx * dt, ny = g.y + g.vy * dt;
-      if (solidAt(W, nx, g.y)) g.vx *= -0.4; else g.x = nx;
-      if (solidAt(W, g.x, ny + 3)) {
-        if (g.vy > 70) { g.vy = -g.vy * 0.42; g.vx *= 0.7; SFX.fx('coinland', g.x, g.y); }
-        else { g.vy = 0; g.vx *= Math.exp(-8 * dt); if (Math.abs(g.vx) < 4) { g.vx = 0; g.pop = 0; } }
-      } else if (solidAt(W, g.x, ny - 3) && g.vy < 0) g.vy = 0;
-      else g.y = ny;
-      continue;
-    }
-    g.vx = (g.vx || 0) * 0.9;
-    g.vy += 320 * dt;
-    const nx = g.x + g.vx * dt, ny = g.y + g.vy * dt;
-    if (!solidAt(W, nx, g.y)) g.x = nx;
-    if (solidAt(W, g.x, ny + 3)) { if (g.vy > 60) SFX.fx('coinland', g.x, g.y); g.vy = 0; } else g.y = ny;
+    // loose: a nugget falls, bounces, rolls down the slope (world/nuggets.js)
+    if (stepNugget(g, dt, solid)) SFX.fx('coinland', g.x, g.y);
+    if (g.pop && g.ground && !g.vx) g.pop = 0;    // a coin knocked out of you has come to rest
   }
+  collideNuggets(W.coins, solid);              // and they push each other apart
 
   // ---- what you can interact with: a shop plinth, or something on the ground ----
   const inShop = W.p.y + PH > SHOP_Y;

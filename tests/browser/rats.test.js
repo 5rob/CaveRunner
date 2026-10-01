@@ -76,7 +76,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     rat.carry = 7; const c0 = L.coins.length;
     L.enemies.splice(L.enemies.indexOf(rat), 1); L.enemies.push(rat);
     rat.hp = 0.5; L.explode(rat.x, rat.y, 4, 5);
-    out.ratDrop = L.coins.slice(c0).map(c => c.amount);
+    out.ratDrop = L.coins.slice(c0).map(c => c.amount); out.ratOwn = rat.k.gold;
     // 5: broke, the bite is triple
     L.coins.length = 0;
     nest.nest.t = 0; nest.nest.max = 1;
@@ -125,7 +125,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the gold pops out over its head, away from you', r.coinSide === true && r.coinAway > 15, { side: r.coinSide, away: r.coinAway });
   check('the rat picks the gold up', r.carried === 5 && r.coinGone, { carried: r.carried });
   check('and takes it home to the nest', r.stash === 5 && r.carryAfter === 0, { stash: r.stash, carry: r.carryAfter });
-  check('a dead rat drops what it carried', r.ratDrop.includes(7) && r.ratDrop.length === 2, r.ratDrop);
+  // its own gold and the 7 it carried, both as nuggets
+  const dropSum = r.ratDrop.reduce((a, v) => a + v, 0) - 7;
+  check('a dead rat drops what it carried', dropSum >= r.ratOwn && dropSum <= r.ratOwn + 2 && r.ratDrop.length >= 2, r.ratDrop);
   check('broke, the bite is triple and nothing pops out', r.brokeHit === 12 && r.brokeCoins === 0, { hit: r.brokeHit, coins: r.brokeCoins });
   check('a dead nest pays 60 plus its stash', r.nestDead && r.nestGold === 71, r.nestGold);
   check('a shot lantern pops', r.lampGone === true, r.lampGone);

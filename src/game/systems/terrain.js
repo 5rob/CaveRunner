@@ -7,6 +7,7 @@
 import { SFX } from '../../audio/sfx.js';
 import { BED, BRICK, CELL, CH, CW, PH, PW } from '../../core/consts.js';
 import { clamp } from '../../core/util.js';
+import { spillGold } from '../../world/nuggets.js';
 import { ORE_GOLD } from '../../world/veins.js';
 import { losClear } from '../../world/vision.js';
 import { damageEnemy } from './enemies.js';
@@ -71,13 +72,10 @@ export function dig(W, G, x, y, R) {
 /** @param {World} W @param {number} x @param {number} y @param {number} n */
 export function dropOre(W, x, y, n) {
   W.oreBank += n * ORE_GOLD * (1 + (W.floor - 1) * 0.3) * W.pb.gold;
-  let bits = Math.min(12, Math.floor(W.oreBank / 2));
-  if (!bits) return;
-  const each = Math.floor(W.oreBank / bits);
-  W.oreBank -= each * bits;
-  for (let k = 0; k < bits; k++)
-    W.coins.push({ x: x + (Math.random() - 0.5) * 6, y, amount: each, t: Math.random() * 6.28,
-      vx: (Math.random() - 0.5) * 120, vy: -60 - Math.random() * 80 });
+  const amt = Math.floor(W.oreBank);
+  if (amt < 2) return;
+  W.oreBank -= amt;
+  spillGold(W.coins, x, y, amt, { vx: 60, vy: 100 });     // as nuggets, big ones when there's plenty
   SFX.fx('coinland', x, y);
 }
 // wipe the decoration layer inside a cleared circle, so baked rubble, beams and pillars

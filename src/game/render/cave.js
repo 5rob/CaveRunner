@@ -4,7 +4,7 @@
 // props, the two portals, the shop's stock, loot, and the hidden rooms' prizes
 
 import { drawProp, rgbA } from '../../art/props.js';
-import { drawGun, drawGunGlow } from '../../art/sprites.js';
+import { drawGun, drawGunGlow, drawNugget } from '../../art/sprites.js';
 import { BCELL, BH, BW, CELL, CH, COL, CW, SHOP_FLOOR, SHOP_Y, WW } from '../../core/consts.js';
 import { clamp, mix } from '../../core/util.js';
 import { PERKS } from '../../data/perks.js';
@@ -12,6 +12,7 @@ import { themeFor } from '../../data/themes.js';
 import { gunAccent } from '../../spells/guns.js';
 import { MODS, famCol } from '../../spells/mods.js';
 import { FIRE_COLS } from '../../world/fire.js';
+import { nugR } from '../../world/nuggets.js';
 import { BG_PAR, drawHolo } from './holo.js';
 
 // The cave behind everything: the background (with parallax), the shop's back wall, the
@@ -257,11 +258,7 @@ export function drawLoot(W, G, F) {
   // gold
   for (const g of W.coins) {
     if (g.y > W.camY + vh + 30 || g.y < W.camY - 30) continue;
-    const bob = Math.sin(W.time * 4 + g.t) * 1.5;
-    G.ctx.fillStyle = '#d8a52a';
-    G.ctx.beginPath(); G.ctx.ellipse(g.x, g.y + bob, 3.2, 4, 0, 0, Math.PI * 2); G.ctx.fill();
-    G.ctx.fillStyle = COL.flame2;
-    G.ctx.beginPath(); G.ctx.ellipse(g.x - 0.8, g.y - 0.8 + bob, 1.2, 1.8, 0, 0, Math.PI * 2); G.ctx.fill();
+    drawNugget(G.ctx, g.x, g.y, nugR(g.amount), g.t, g.a || 0);
   }
 
   // pickups

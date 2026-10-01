@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v111</title>
+<title>CaveRunner v112</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -497,7 +497,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v111';</script>
+<script>const VERSION = 'v112';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -5850,6 +5850,141 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { x: (F.x0 + i + 0.5) * NAV * CELL, y: (F.y0 + j + 0.5) * NAV * CELL, dist, air };
   }
 
+  // src/world/nuggets.js
+  var NUGGETS = [{ v: 25, r: 8.4 }, { v: 5, r: 6 }, { v: 1, r: 4 }];
+  var NUG_CAP = 20;
+  var NUG_GRAV = 420, NUG_ROLL = 260, NUG_BOUNCE = 0.35;
+  var nugR = (amount) => amount >= NUGGETS[0].v ? NUGGETS[0].r : amount >= NUGGETS[1].v ? NUGGETS[1].r : NUGGETS[2].r;
+  function splitGold(amount, rnd2) {
+    rnd2 = rnd2 || Math.random;
+    let rem = Math.max(0, Math.round(amount));
+    const out = [];
+    for (let s = 0; s < 2; s++) {
+      const v = NUGGETS[s].v;
+      let n = Math.floor(rem / v);
+      if (n > 0 && rnd2() < 0.5) n--;
+      for (let k = 0; k < n; k++) out.push(v);
+      rem -= n * v;
+    }
+    for (let k = 0; k < rem; k++) out.push(1);
+    while (out.length > NUG_CAP) {
+      const a = out.pop() || 0;
+      out[out.length - 1] += a;
+    }
+    return out;
+  }
+  function spillGold(list, x, y, amount, kick) {
+    const sx = kick && kick.vx != null ? kick.vx : 60, sy = kick && kick.vy != null ? kick.vy : 70;
+    for (const v of splitGold(amount)) {
+      list.push({
+        x: x + (Math.random() - 0.5) * 6,
+        y,
+        amount: v,
+        t: Math.random() * 6.28,
+        a: Math.random() * 6.28,
+        vx: (Math.random() - 0.5) * 2 * sx,
+        vy: -sy * (0.7 + Math.random() * 0.6)
+      });
+    }
+  }
+  function stepNugget(g, dt, solid) {
+    const r = nugR(g.amount);
+    g.vx = g.vx || 0;
+    g.vy = g.vy || 0;
+    for (let k = 0; k < 8 && solid(g.x, g.y); k++) g.y -= 2;
+    g.vy = Math.min(600, g.vy + NUG_GRAV * dt);
+    g.vx *= Math.exp(-0.4 * dt);
+    let hard = false;
+    if (g.vx) {
+      const sg = Math.sign(g.vx), nx = g.x + g.vx * dt;
+      if (!solid(nx + sg * r, g.y)) g.x = nx;
+      else if (!solid(nx + sg * r, g.y - 2) && !solid(nx, g.y - r - 2)) {
+        g.x = nx;
+        g.y -= 2;
+      } else g.vx = -g.vx * 0.3;
+    }
+    const ny = g.y + g.vy * dt;
+    let ground = false;
+    if (g.vy >= 0 && solid(g.x, ny + r)) {
+      if (g.vy > 80) {
+        hard = true;
+        g.vy = -g.vy * NUG_BOUNCE;
+        g.vx *= 0.8;
+      } else g.vy = 0;
+      for (let k = 0; k < 6 && solid(g.x, g.y + r); k++) g.y -= 1;
+      ground = true;
+    } else if (g.vy < 0 && solid(g.x, ny - r)) g.vy = 0;
+    else g.y = ny;
+    if (!ground && g.vy >= 0 && g.vy < 80 && solid(g.x, g.y + r + 2.5)) ground = true;
+    if (ground && g.vy >= 0) {
+      const L2 = solid(g.x - r, g.y + r + 1.5), R = solid(g.x + r, g.y + r + 1.5);
+      if (!L2 && R) g.vx -= NUG_ROLL * dt;
+      else if (L2 && !R) g.vx += NUG_ROLL * dt;
+      else if (!L2 && !R) g.vx += (g.t > 3.14 ? 1 : -1) * NUG_ROLL * dt;
+      else {
+        g.vx *= Math.exp(-7 * dt);
+        if (Math.abs(g.vx) < 2) g.vx = 0;
+      }
+      g.ground = 1;
+    } else g.ground = 0;
+    g.a = (g.a || 0) + g.vx * dt / r;
+    return hard;
+  }
+  function collideNuggets(list, solid) {
+    const n = list.length;
+    if (n < 2) return;
+    const ord = list.slice().sort((a, b) => a.x - b.x);
+    const reach = NUGGETS[0].r * 2;
+    for (let i = 0; i < n; i++) {
+      const a = ord[i];
+      if (a.fly) continue;
+      const ra = nugR(a.amount);
+      for (let j = i + 1; j < n; j++) {
+        const b = ord[j];
+        if (b.x - a.x >= reach) break;
+        if (b.fly) continue;
+        const min = ra + nugR(b.amount);
+        let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
+        if (d >= min) continue;
+        if (d < 0.01) {
+          const ang = (a.t + b.t) * 3.7;
+          dx = Math.cos(ang);
+          dy = -Math.abs(Math.sin(ang));
+          d = 1;
+        }
+        const nx = dx / d, ny = dy / d, push = min - d;
+        let wa = 0.5, wb = 0.5;
+        if (ny > 0.85 && b.ground) {
+          wa = 1;
+          wb = 0;
+          a.ground = 1;
+        } else if (ny < -0.85 && a.ground) {
+          wa = 0;
+          wb = 1;
+          b.ground = 1;
+        }
+        const ax = a.x - nx * push * wa, ay = a.y - ny * push * wa;
+        const bx = b.x + nx * push * wb, by = b.y + ny * push * wb;
+        if (!solid(ax, ay)) {
+          a.x = ax;
+          a.y = ay;
+        }
+        if (!solid(bx, by)) {
+          b.x = bx;
+          b.y = by;
+        }
+        const rv = ((b.vx || 0) - (a.vx || 0)) * nx + ((b.vy || 0) - (a.vy || 0)) * ny;
+        if (rv < 0) {
+          const imp = -rv;
+          a.vx = (a.vx || 0) - nx * imp * wa;
+          a.vy = (a.vy || 0) - ny * imp * wa;
+          b.vx = (b.vx || 0) + nx * imp * wb;
+          b.vy = (b.vy || 0) + ny * imp * wb;
+        }
+      }
+    }
+  }
+
   // src/world/veins.js
   var ORE_GOLD = 0.25;
   function goldVeins(mat, seed, floor) {
@@ -8135,6 +8270,40 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.stroke();
     }
     ctx.restore();
+  }
+  function drawNugget(ctx, x, y, r, seed, ang) {
+    const N = 7, pts = [];
+    for (let i = 0; i < N; i++) {
+      const h3 = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
+      const k = 0.72 + 0.34 * (h3 - Math.floor(h3));
+      const a = ang + i / N * Math.PI * 2;
+      pts.push([x + Math.cos(a) * r * k, y + Math.sin(a) * r * k * 0.86]);
+    }
+    const path = () => {
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < N; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      ctx.closePath();
+    };
+    path();
+    ctx.fillStyle = "#7a4e10";
+    ctx.fill();
+    ctx.save();
+    ctx.translate(-0.35, -0.35);
+    path();
+    ctx.fillStyle = "#d8a52a";
+    ctx.fill();
+    ctx.restore();
+    ctx.save();
+    path();
+    ctx.clip();
+    ctx.fillStyle = "#ffd95a";
+    ctx.beginPath();
+    ctx.ellipse(x - r * 0.25, y - r * 0.4, r * 0.62, r * 0.38, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = "#fff6c8";
+    ctx.fillRect(x - r * 0.42, y - r * 0.55, Math.max(0.7, r * 0.26), Math.max(0.7, r * 0.26));
   }
 
   // src/art/props.js
@@ -10526,21 +10695,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     e.dead = true;
     const A = ACTS[e.k.act];
     if (A && A.die && A.die(W, e)) return;
-    W.coins.push({
-      x: e.x,
-      y: e.ty,
-      amount: Math.round((e.k.gold + Math.floor(Math.random() * 3)) * W.pb.gold),
-      t: Math.random() * 6.28,
-      vy: -60 - Math.random() * 40
-    });
-    if (e.carry > 0) W.coins.push({
-      x: e.x,
-      y: e.ty,
-      amount: e.carry,
-      t: Math.random() * 6.28,
-      vx: (Math.random() - 0.5) * 60,
-      vy: -90 - Math.random() * 40
-    });
+    spillGold(W.coins, e.x, e.ty, Math.round((e.k.gold + Math.floor(Math.random() * 3)) * W.pb.gold));
+    if (e.carry > 0) spillGold(W.coins, e.x, e.ty, e.carry, { vx: 30, vy: 110 });
   }
   function stepEnemies(W, G, F) {
     const { dt, pcx, pcy } = F;
@@ -10694,19 +10850,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function dropOre(W, x, y, n) {
     W.oreBank += n * ORE_GOLD * (1 + (W.floor - 1) * 0.3) * W.pb.gold;
-    let bits = Math.min(12, Math.floor(W.oreBank / 2));
-    if (!bits) return;
-    const each = Math.floor(W.oreBank / bits);
-    W.oreBank -= each * bits;
-    for (let k = 0; k < bits; k++)
-      W.coins.push({
-        x: x + (Math.random() - 0.5) * 6,
-        y,
-        amount: each,
-        t: Math.random() * 6.28,
-        vx: (Math.random() - 0.5) * 120,
-        vy: -60 - Math.random() * 80
-      });
+    const amt = Math.floor(W.oreBank);
+    if (amt < 2) return;
+    W.oreBank -= amt;
+    spillGold(W.coins, x, y, amt, { vx: 60, vy: 100 });
     SFX.fx("coinland", x, y);
   }
   function unDeco(W, G, cx0, cy0, rc, minX, minY, maxX, maxY) {
@@ -11244,16 +11391,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function nestDie(W, e) {
     const all = Math.round(kr("raNestGold") * W.pb.gold) + e.nest.stash;
-    const n = Math.max(1, Math.min(14, Math.ceil(all / 8)));
-    for (let k = 0; k < n; k++)
-      W.coins.push({
-        x: e.x + (Math.random() - 0.5) * 8,
-        y: e.y,
-        amount: Math.floor(all / n) + (k < all % n ? 1 : 0),
-        t: Math.random() * 6.28,
-        vx: (Math.random() - 0.5) * 100,
-        vy: -80 - Math.random() * 80
-      });
+    spillGold(W.coins, e.x, e.y, all, { vx: 50, vy: 120 });
     SFX.fx("coinland", e.x, e.y);
     return true;
   }
@@ -12474,15 +12612,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const { vw, vh } = F;
     for (const g of W.coins) {
       if (g.y > W.camY + vh + 30 || g.y < W.camY - 30) continue;
-      const bob = Math.sin(W.time * 4 + g.t) * 1.5;
-      G.ctx.fillStyle = "#d8a52a";
-      G.ctx.beginPath();
-      G.ctx.ellipse(g.x, g.y + bob, 3.2, 4, 0, 0, Math.PI * 2);
-      G.ctx.fill();
-      G.ctx.fillStyle = COL.flame2;
-      G.ctx.beginPath();
-      G.ctx.ellipse(g.x - 0.8, g.y - 0.8 + bob, 1.2, 1.8, 0, 0, Math.PI * 2);
-      G.ctx.fill();
+      drawNugget(G.ctx, g.x, g.y, nugR(g.amount), g.t, g.a || 0);
     }
     for (const q of W.pickups) {
       const qy = q.y + Math.sin(W.time * 2 + q.t) * 3;
@@ -16737,12 +16867,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       if (q.cool > 0) q.cool -= dt;
     }
+    const solid = (x, y) => solidAt(W, x, y);
     for (let i = W.coins.length - 1; i >= 0; i--) {
       const g = W.coins[i];
       const dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;
       const pull = COIN_PULL * W.pb.goldPull;
       if (g.nopull > 0) g.nopull -= dt;
+      g.fly = false;
       if (d < pull && !W.p.dead && !(g.nopull > 0)) {
+        g.fly = true;
         const grab = 180 + 900 * (1 - d / pull);
         g.vx = (g.vx || 0) + dx / d * grab * dt * 6;
         g.vy += dy / d * grab * dt * 6;
@@ -16758,38 +16891,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         continue;
       }
-      if (g.pop) {
-        g.vx *= Math.exp(-0.6 * dt);
-        g.vy += 420 * dt;
-        const nx2 = g.x + g.vx * dt, ny2 = g.y + g.vy * dt;
-        if (solidAt(W, nx2, g.y)) g.vx *= -0.4;
-        else g.x = nx2;
-        if (solidAt(W, g.x, ny2 + 3)) {
-          if (g.vy > 70) {
-            g.vy = -g.vy * 0.42;
-            g.vx *= 0.7;
-            SFX.fx("coinland", g.x, g.y);
-          } else {
-            g.vy = 0;
-            g.vx *= Math.exp(-8 * dt);
-            if (Math.abs(g.vx) < 4) {
-              g.vx = 0;
-              g.pop = 0;
-            }
-          }
-        } else if (solidAt(W, g.x, ny2 - 3) && g.vy < 0) g.vy = 0;
-        else g.y = ny2;
-        continue;
-      }
-      g.vx = (g.vx || 0) * 0.9;
-      g.vy += 320 * dt;
-      const nx = g.x + g.vx * dt, ny = g.y + g.vy * dt;
-      if (!solidAt(W, nx, g.y)) g.x = nx;
-      if (solidAt(W, g.x, ny + 3)) {
-        if (g.vy > 60) SFX.fx("coinland", g.x, g.y);
-        g.vy = 0;
-      } else g.y = ny;
+      if (stepNugget(g, dt, solid)) SFX.fx("coinland", g.x, g.y);
+      if (g.pop && g.ground && !g.vx) g.pop = 0;
     }
+    collideNuggets(W.coins, solid);
     const inShop = W.p.y + PH > SHOP_Y;
     let near = null;
     const vend = vendNear(W, pcx, pcy);
@@ -17117,7 +17222,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (W.ore) W.ore[i] = 0;
         W.fire.fuel[i] = 0;
         W.fire.t[i] = 0;
-        if (y < fr) {
+        const ramp = o.ramp && x > x1 - (x1 - x0) / 3 && y >= fr - (x - (x1 - (x1 - x0) / 3));
+        if (y < fr && !ramp) {
           W.mat[i] = 0;
           d[k + 3] = 0;
         } else {

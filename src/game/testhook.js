@@ -10,6 +10,7 @@
 //                        the centre x, the floor's top y, and the room's left/right edges.
 //                        o: { w, h } room size in world units (default 300 x 200);
 //                        o.roof: a solid brick roof over the room (something to hang things off).
+//                        o.ramp: a 45° brick ramp up to the right wall over the room's right third.
 //   __lvl.placeProp(pr, x, y)  a copy of prop `pr` (take one off a real floor so its shape
 //                        is honest) set down at (x, y), anchored to the cell below; returns it.
 //   __lvl.nextFloor()    straight on to the next floor's level, bought (the exit portal only takes
@@ -46,7 +47,8 @@ export function testHook(W, g) {
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
       const i = y * CW + x, k = i * 4;
       dd[k + 3] = 0; if (W.ore) W.ore[i] = 0; W.fire.fuel[i] = 0; W.fire.t[i] = 0;
-      if (y < fr) { W.mat[i] = 0; d[k + 3] = 0; }
+      const ramp = o.ramp && x > x1 - (x1 - x0) / 3 && y >= fr - (x - (x1 - (x1 - x0) / 3));
+      if (y < fr && !ramp) { W.mat[i] = 0; d[k + 3] = 0; }
       else { W.mat[i] = BRICK; d[k] = 132; d[k + 1] = 99; d[k + 2] = 71; d[k + 3] = 255; }
     }
     if (o.roof) for (let y = Math.max(0, y0 - 6); y < y0; y++) for (let x = x0; x <= x1; x++) {

@@ -5,6 +5,16 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v112 — gold nuggets
+Released 2026-10-01.
+
+- Gold is nuggets now (`world/nuggets.js`, drawn by `drawNugget`): big 25, medium 5, small 1. Every drop
+  (a kill, a rat's load, a nest, a gold seam) goes through `spillGold`/`splitGold`: as many big ones
+  as fit, sometimes one fewer, then medium the same way, small for the change; it adds up exactly.
+- Loose nuggets have physics (`stepNugget`: fall, bounce, roll downhill, hop pixel steps) and push
+  each other apart (`collideNuggets`; one resting on the rock holds still under one on top). The old
+  bob and the rat's separate `pop` arc are gone. `sandbox({ ramp: true })` for the browser suite.
+
 ## v111 — bigger gold, debt and clock at the top
 Released 2026-10-01.
 
