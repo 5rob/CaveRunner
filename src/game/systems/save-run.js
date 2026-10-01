@@ -14,6 +14,7 @@ export function saveRun(W, G) {
   const data = { ver: VERSION, floor: W.floor, hasLvl: W.hasLvl, hp: W.p.hp, loadout: G.input.current.loadout,
     level: { seed: W.levelSeed, owned: W.levelOwned, alive: W.enemies.map(e => e.sid),
       sold: W.stock.map((it, i) => (it.sold ? i : -1)).filter(i => i >= 0),
+      heals: (W.stock.find(it => it.kind === 'heal') || { bought: 0 }).bought || 0,
       rooms: W.rooms.map((r, i) => (r.taken ? i : -1)).filter(i => i >= 0),
       pickups: pk } };
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (_) {}

@@ -1,7 +1,7 @@
 # CaveRunner
 
 A jetpack cave platformer prototype that runs in the browser. You start in a
-shop room with nothing above it. On its back wall, past the free heal, stand
+shop room with nothing above it. On its back wall, past the heal, stand
 two vending machines: the green one sells you a freshly generated destructible
 level for 64,000,000,000 gold on credit (it goes on a debt shown in red under
 your gold, and you have one real hour to repay it: the buy machine and the
@@ -160,7 +160,10 @@ is worth comparing before you commit.
 
 Every floor starts in an enclosed room spanning the width of the level, with one
 hole in the roof leading up into the cave. You arrive at the far left, beside the
-portal you came in through, and the free full heal is right there with you.
+portal you came in through, and the full heal is right there with you. The first
+heal on a floor is free; after that it costs 100 gold, and each one after costs
+1.75 times the last (100, 175, 305, 535…). Deeper floors raise the price the same
+way they raise what enemies pay out. A new floor's shop starts it free again.
 
 The four things for sale sit together in one row across the middle of the room,
 close enough to read all four without walking between them. Odd floors sell mods.
