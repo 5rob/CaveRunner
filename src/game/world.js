@@ -28,7 +28,7 @@ export function makeWorld() {
     levelT: 0,                      // seconds on this floor (the floor's name card)
     best: 0,                        // the highest you've climbed on this floor
     // the camera: draw() eases it toward you, so step() reads last frame's
-    camX: 0, camY: 0, camReady: false,
+    camX: 0, camY: 0, camReady: false, camT: 0,
     unitPx: 1,                      // css pixels per world unit, set while drawing
     viewW: VIEW_W, viewH: VIEW_MIN_H,   // the view in world units, set while drawing
     // one flicker number drives the flame and the lamp, so the light breathes with the fire

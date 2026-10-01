@@ -34,6 +34,10 @@ The order in `draw`: `drawCamera`, `drawTerrain`, `drawProps`, `drawPortal`, `dr
 - **The camera frames the play area above the controls**: `playPx = c.height − ctlH·dpr` (App
   measures `input.current.ctlH`); the whole canvas is still drawn. Toasts and radar markers use
   `playPx` too. `DEV.zoom` scales it all.
+- **The camera eases by time, never per frame** (`W.camT`: 15% per 60th of a second). Per frame, a
+  phone's uneven frames jittered you against the screen in fast flight (v113, the `camera` suite).
+  You are drawn nudged by `F.snapX`/`snapY` (under a pixel) so the world's pixel rounding doesn't
+  hop you either: anything drawn as part of you goes between that translate and its undo in `draw`.
 - **The HUD lives on the thumbsticks** (`ui/README.md`). `drawHud` writes
   `input.current.hud = { hp, low, fuel, empty, mana, rech, cast, recharging, hasGun }` (0–1) every
   frame: `rech = 1 − rechT/(effRecharge·W.pb.rech)`, `cast = 1 − delayT/delayMax` (`delayMax` is set in

@@ -466,7 +466,7 @@ interface World {
   ghost: Ghost | null;
   zfx: Zfx;
   time: number; levelT: number; best: number;
-  camX: number; camY: number; camReady: boolean; unitPx: number; viewW: number; viewH: number;
+  camX: number; camY: number; camReady: boolean; camT: number; unitPx: number; viewW: number; viewH: number;
   flick: number; torchR: number; visPts: number[]; leanX: number; leanY: number; glowN: number;
   mat: Uint8Array; img: ImageData; dimg: ImageData; ore: Uint8Array; burrow: Uint8Array | null; terrainV: number;
   floor: number;
@@ -588,7 +588,7 @@ interface StepFrame { dt: number; LO: Loadout; MHP: number; pcx: number; pcy: nu
 interface DrawFrame {
   dpr: number; playPx: number; vw: number; vh: number; pcx: number; pcy: number;
   TH: Theme; onView: ((x: number, y: number, m?: number) => boolean) | null;
-  held: Gun | null; ax: number; ay: number; gy: number; cw: number;
+  held: Gun | null; ax: number; ay: number; gy: number; cw: number; snapX: number; snapY: number;
 }
 /** stepEnemies' per-enemy object `C` (systems/enemies.js, D20): refilled for each creature */
 interface EnemyCtx {

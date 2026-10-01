@@ -5,6 +5,17 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v113 — steady camera in fast flight
+Released 2026-10-01.
+
+- The camera eased 15% toward you *per frame*, so how far it trailed you hung on each frame's
+  length: on a phone (uneven frames, the odd dropped one) you jittered against the screen flying
+  fast sideways, up to ~10 device px. It now eases by the sim's clock (`W.camT`; 15% per 60th of a
+  second, so at an even 60fps it is as before).
+- You are drawn nudged under a pixel (`F.snapX`/`snapY`, round `drawJetFlame`/`drawAim`/`drawPlayer`)
+  so your place on screen follows your distance from the camera, not the world's pixel rounding.
+- `camera` (browser) flies across a sandbox with a jittery, dropping frame clock at 60 and 120Hz.
+
 ## v112 — gold nuggets
 Released 2026-10-01.
 
