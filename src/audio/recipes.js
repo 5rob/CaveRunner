@@ -89,7 +89,7 @@ export const AMB_EVENTS = ['drip', 'critter', 'wind', 'trickle', 'rumble', 'crea
 // Which Dev volume knob each SFX.fx sound answers to (anything not listed is world/props).
 /** @type {Record<string, string>} */
 export const FX_VOL = { step: 'vStep', land: 'vStep', ignite: 'jetVol',
-  open: 'vUi', close: 'vUi', switch: 'vUi', ready: 'vUi', prompt: 'vUi', place: 'vUi', coinland: 'vUi',
+  open: 'vUi', close: 'vUi', switch: 'vUi', ready: 'vUi', prompt: 'vUi', reelThud: 'vUi', reelTick: 'vUi', place: 'vUi', coinland: 'vUi',
   crit: 'vSpell', chainhop: 'vSpell', split: 'vSpell', cluster: 'vSpell', refresh: 'vSpell', drain: 'vSpell',
   gspend: 'vSpell', saws: 'vSpell', warp: 'vSpell', healtick: 'vSpell', shieldUp: 'vSpell', ghost: 'vSpell',
   absorb: 'vEnemyFire', fizzle: 'vEnemyFire', drip: 'vDrip', sizzle: 'vDrip', splash: 'vDrip' };

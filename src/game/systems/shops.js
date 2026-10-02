@@ -7,15 +7,17 @@
 
 import { SFX } from '../../audio/sfx.js';
 import { CELL, SHOP_FLOOR, SHOP_Y, WW } from '../../core/consts.js';
+import { solidAt } from './terrain.js';
 
 export const MACHINE_W = 56, MACHINE_H = 84;                   // a machine's cabinet (world units)
 export const MACHINE_TOP = SHOP_FLOOR * CELL - MACHINE_H;      // its top
 export const CHUTE_Y = SHOP_FLOOR * CELL - 14;           // where a bought thing comes out
 
-/** @typedef {{ x: number, icon: string, hue: string, label: string }} ShopMachine */
+/** @typedef {{ x: number, icon: string, hue: string, label: string }} ShopMachine  icon: an emoji, or 'gun' for the gun sprite */
 /** @type {Record<string, ShopMachine>} */
 export const SHOPS = {
-  mods: { x: WW / 2, icon: '⚙️', hue: '#4fe3ff', label: 'Tap R to shop' },
+  mods: { x: WW / 2 + 110, icon: '⚙️', hue: '#4fe3ff', label: 'Tap R to shop' },
+  guns: { x: WW / 2, icon: 'gun', hue: '#ff9a3c', label: 'Tap R to shop' },
 };
 
 // the machine you're standing at, if any
@@ -44,19 +46,21 @@ export function stepShops(W, G, F) {
     const m = SHOPS[d.shop];
     if (m) {
       const side = F.pcx < m.x ? -1 : 1;
-      W.pickups.push({ kind: 'mod', id: d.id, x: m.x, y: CHUTE_Y, t: 0,
-        vx: side * (95 + Math.random() * 30), vy: -200 - Math.random() * 40, cool: 1 });
+      const fly = { x: m.x, y: CHUTE_Y, t: 0, vx: side * (95 + Math.random() * 30), vy: -200 - Math.random() * 40, cool: 1 };
+      W.pickups.push(d.gun ? { kind: 'gun', gun: d.gun, ...fly } : { kind: 'mod', id: d.id, ...fly });
       SFX.fx('prompt');
     }
   }
-  const floor = SHOP_FLOOR * CELL - 9;
+  // anything thrown (a bought thing, an elite's crystal) falls until it rests on rock, 9 above it
   for (const q of W.pickups) {
     if (q.vy === undefined) continue;
-    q.vy += 900 * F.dt;
-    q.x += (q.vx || 0) * F.dt; q.y += q.vy * F.dt;
+    q.vy = Math.min(600, q.vy + 900 * F.dt);
+    const nx = q.x + (q.vx || 0) * F.dt;
+    if (!solidAt(W, nx, q.y)) q.x = nx; else q.vx = 0;
+    q.y += q.vy * F.dt;
     q.cool = 0.2;
-    if (q.y >= floor && q.vy > 0) {
-      q.y = floor;
+    if (q.vy > 0 && solidAt(W, q.x, q.y + 9)) {
+      for (let k = 0; k < 20 && solidAt(W, q.x, q.y + 8); k++) q.y -= 1;
       if (q.vy > 120) { q.vy *= -0.35; q.vx = (q.vx || 0) * 0.6; }   // one little bounce
       else { delete q.vy; delete q.vx; q.cool = 0; q.t = W.time; }
     }

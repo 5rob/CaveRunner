@@ -5,6 +5,22 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v119 — the gun vending machine, elites, crystals at the top
+Released 2026-10-02.
+
+- A second machine (`SHOPS.guns`, the gun sprite as its hologram) with its own menu
+  (`ui/gunshop.js` `GunVend`, in `SHOP_MENUS`): three guns of the floor's pool (`LO.gunShop`,
+  `spells/gunshop.js`) as slot-machine reels on the left with prices (`shopGunPrice`: `gunPrice` ×
+  level), the selected gun's card on the right, and Buy selected / Reroll (gold, `rerollPrice`, ×1.6
+  each use on the floor) / Boosted (red crystals, `boostCost` = uses + 1: 1–3 levels deeper,
+  `boostGun`). Reels stop one at a time, overshoot, thud (`reelThud`/`reelTick`); a boosted roll
+  spins faster with red sparks streaming past. A bought gun pops out of the chute (GunSwap as usual).
+- The cave's guns are red crystals now too (12 a floor).
+- Elites (`eliteOf`, `ELITE_CHANCE` 5%): ×2.5 health, ×1.5 damage, ×4 gold, gold-tinted with a glow,
+  and they drop a red crystal that falls to the floor (thrown pickups now land on any rock).
+- The stick navigation is a shared hook (`useMenuNav`); `CrystalIcon` moved to `ui/hud.js`.
+- The top bar shows the red crystals you carry, beside your gold.
+
 ## v118 — the mod vending machine and red crystals
 Released 2026-10-02.
 

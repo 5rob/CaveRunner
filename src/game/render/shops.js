@@ -3,6 +3,7 @@
 // in front of the glass as a flickering hologram in the machine's hue, and the chute at the bottom
 // a bought thing pops out of. Drawn with the shop's stock, before the fog.
 
+import { drawGun } from '../../art/sprites.js';
 import { CELL, SHOP_FLOOR } from '../../core/consts.js';
 import { MACHINE_H, MACHINE_TOP, MACHINE_W, SHOPS } from '../systems/shops.js';
 
@@ -25,9 +26,14 @@ function holoIcon(icon, hue) {
   const B = document.createElement('canvas'); B.width = B.height = S;
   const a = A.getContext('2d'), b = B.getContext('2d');
   if (!a || !b) return B;
-  a.font = ICON * RES * 0.86 + 'px system-ui, "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
-  a.textAlign = 'center'; a.textBaseline = 'middle';
-  a.fillText(icon, S / 2, S / 2 + ICON * RES * 0.04);
+  if (icon === 'gun') {                    // the gun sprite, filling the icon's width
+    const sc = ICON * RES / 22;
+    drawGun(a, S / 2 - 3.85 * sc, S / 2 + 1 * sc, 0, sc, '#ffffff');
+  } else {
+    a.font = ICON * RES * 0.86 + 'px system-ui, "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+    a.textAlign = 'center'; a.textBaseline = 'middle';
+    a.fillText(icon, S / 2, S / 2 + ICON * RES * 0.04);
+  }
   a.globalCompositeOperation = 'source-atop';
   a.globalAlpha = 0.78; a.fillStyle = hue; a.fillRect(0, 0, S, S);
   a.globalAlpha = 1; a.globalCompositeOperation = 'destination-out'; a.fillStyle = 'rgba(0,0,0,0.45)';

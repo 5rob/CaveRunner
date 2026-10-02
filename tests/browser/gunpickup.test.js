@@ -9,6 +9,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   page.on('pageerror', e => { fails++; console.log('PAGEERROR', e.message); });
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   await page.waitForTimeout(1200);
+  // the cave has red crystals, not guns: lay a few guns about for the test
+  await page.evaluate(() => { const L = window.__lvl; for (let i = 0; i < 3; i++) L.pickups.push({ kind: 'gun', gun: makeGun(Math.random, 1), x: 300 + i * 300, y: 200, t: 0 }); });
   await page.evaluate(() => { window.__lvl.p.x = 30; });      // away from the shop plinths
   await page.waitForTimeout(200);
   const LO = () => page.evaluate(() => {
@@ -85,7 +87,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   const before = await LO();
   const foundName = await page.evaluate(async () => {
     const { pickups, p } = window.__lvl;
-    const gp = pickups.find(q => q.kind === 'gun');
+    const gp = (pickups.find(q => q.kind === 'gun') || (pickups.push({ kind: 'gun', gun: makeGun(Math.random, 1), x: 0, y: 0, t: 0 }), pickups[pickups.length - 1]));
     gp.x = p.x + 6; gp.y = p.y + 11;
     await new Promise(r => setTimeout(r, 250));
     return gp.gun.name;
@@ -139,7 +141,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   // --- 5. leaving one alone ---
   await page.evaluate(async () => {
     const { pickups, p } = window.__lvl;
-    const gp = pickups.find(q => q.kind === 'gun');
+    const gp = (pickups.find(q => q.kind === 'gun') || (pickups.push({ kind: 'gun', gun: makeGun(Math.random, 1), x: 0, y: 0, t: 0 }), pickups[pickups.length - 1]));
     // stands in for walking onto a different gun: the one just dropped is still
     // inside its two-second cooldown, which is what stops its card reappearing on its own
     gp.cool = 0; gp.x = p.x + 6; gp.y = p.y + 11;
@@ -174,7 +176,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       const L = window.__in.current.loadout;
       L.guns[0] = mk('Thunderous Obliterator');
       L.guns[1] = mk('Cataclysmic Devastator');
-      const gp = window.__lvl.pickups.find(q => q.kind === 'gun');
+      const gp = (window.__lvl.pickups.find(q => q.kind === 'gun') || (window.__lvl.pickups.push({ kind: 'gun', gun: makeGun(Math.random, 1), x: 0, y: 0, t: 0 }), window.__lvl.pickups[window.__lvl.pickups.length - 1]));
       gp.gun = mk('Apocalyptic Annihilator');
       gp.cool = 0; gp.taken = false;
       gp.x = window.__lvl.p.x + 6; gp.y = window.__lvl.p.y + 11;

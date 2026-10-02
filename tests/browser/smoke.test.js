@@ -11,6 +11,8 @@ const check = (name, ok, extra) => { if (!ok) fails++; console.log(`${ok ? 'ok  
   page.on('console', m => { if (m.type() === 'error') errors.push('CONSOLE: ' + m.text()); });
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   await page.waitForTimeout(1200);
+  // the cave has red crystals, not guns: lay a few guns about for the test
+  await page.evaluate(() => { const L = window.__lvl; for (let i = 0; i < 3; i++) L.pickups.push({ kind: 'gun', gun: makeGun(Math.random, 1), x: 300 + i * 300, y: 200, t: 0 }); });
 
   // --- shooting: hold the right stick and watch mana drain / bullets appear ---
   const shot = await page.evaluate(async () => {

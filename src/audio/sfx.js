@@ -502,7 +502,7 @@ export const SFX = (() => {
   // a material, a strength). Each has its own minimum gap so a burst of them can't pile up.
   const FX_GAP = { whoosh: 140, step: 60, land: 90, fizzle: 70, absorb: 80, crit: 60, chainhop: 50, coverHit: 60,
     coinland: 60, healtick: 350, drip: 90, sizzle: 90, splash: 110, sparks: 120, steam: 200, whirl: 400,
-    prompt: 150, place: 60, switch: 80, ready: 150, shatter: 40, ignite: 300, open: 150, close: 150 };
+    prompt: 150, reelThud: 60, reelTick: 45, place: 60, switch: 80, ready: 150, shatter: 40, ignite: 300, open: 150, close: 150 };
   // a footstep or landing, by what you're standing on
   function surfaceHit(d, t, surf, v) {
     switch (surf) {
@@ -583,6 +583,10 @@ export const SFX = (() => {
     ready(d, t) { tone(d, 'triangle', 1320 * rnd(0.98, 1.02), 1320, t, 0.04, 0.07); tone(d, 'triangle', 1760 * rnd(0.98, 1.02), 1760, t + 0.045, 0.06, 0.06); },
     open(d, t) { hiss(d, t, rnd(0.1, 0.15), 0.18, 'bandpass', rnd(900, 1300), rnd(2200, 2800), 1.5, false, 0.03); tone(d, 'sine', 700, 900, t, 0.04, 0.06); },
     close(d, t) { hiss(d, t, rnd(0.1, 0.15), 0.18, 'bandpass', rnd(2200, 2800), rnd(900, 1300), 1.5, false, 0.03); tone(d, 'sine', 900, 700, t, 0.04, 0.06); },
+    // a slot-machine reel locking into place (the gun machine): a low thump and a latch click
+    reelThud(d, t) { tone(d, 'sine', rnd(110, 130), 45, t, 0.16, 0.9, 0.003); hiss(d, t, 0.05, 0.35, 'lowpass', 700, 200, 1); tone(d, 'square', rnd(1500, 1800), 1200, t + 0.01, 0.02, 0.06); },
+    // a reel spinning past one gun
+    reelTick(d, t) { tone(d, 'triangle', rnd(2200, 2600), 1800, t, 0.015, 0.05); },
     place(d, t) { tone(d, 'triangle', rnd(850, 1000), 700, t, 0.03, 0.12); tone(d, 'sine', rnd(180, 220), 120, t, 0.06, 0.25); },
     prompt(d, t) { tone(d, 'sine', 1047 * rnd(0.98, 1.02), 1047, t, 0.06, 0.07); tone(d, 'sine', 1568, 1568, t + 0.05, 0.08, 0.05); },
     // something breaking. a = what it's made of

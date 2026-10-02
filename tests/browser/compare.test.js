@@ -9,6 +9,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   page.on('pageerror', e => { fails++; console.log('PAGEERROR', e.message); });
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   await page.waitForTimeout(1200);
+  // the cave has red crystals, not guns: lay a few guns about for the test
+  await page.evaluate(() => { const L = window.__lvl; for (let i = 0; i < 3; i++) L.pickups.push({ kind: 'gun', gun: makeGun(Math.random, 1), x: 300 + i * 300, y: 200, t: 0 }); });
   await page.evaluate(() => { window.__lvl.p.x = 30; });
 
   // a known matchup: the found gun is better at some things, worse at others
