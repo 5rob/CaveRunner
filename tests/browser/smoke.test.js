@@ -36,7 +36,7 @@ const check = (name, ok, extra) => { if (!ok) fails++; console.log(`${ok ? 'ok  
     const { pickups, p } = window.__lvl;
     const LO = window.__in.current.loadout;
     LO.bag.length = 0;
-    const mod = pickups.find(q => q.kind === 'mod');
+    const mod = (pickups.push({ kind: 'mod', id: 'bolt', x: 0, y: 0, t: 0 }), pickups[pickups.length - 1]);   // the cave has red crystals, not mods
     mod.x = p.x + 6; mod.y = p.y + 11;                  // drop it on the player's head
     mod.cool = 0;
     await new Promise(r => setTimeout(r, 150));

@@ -24,6 +24,7 @@ import { drawBelow, drawFx } from './fx.js';
 import { drawFog, drawGlows } from './light.js';
 import { drawBeams, drawFields, drawShots } from './looks.js';
 import { drawHud, drawMap, drawMessages, drawRadar, drawReticule } from './overlay.js';
+import { drawShops } from './shops.js';
 import { drawRepo, drawVend, drawWarp } from './vend.js';
 
 /** @param {World} W @param {GameCtx} G */
@@ -47,6 +48,7 @@ export function draw(W, G) {
   drawArrival(W, G, F);                     // the way in (cave.js)
   drawShop(W, G, F);                        // the shop's stock (cave.js)
   drawVend(W, G, F);                        // the level vending machines (vend.js)
+  drawShops(W, G, F);                       // the shop's vending machines (shops.js)
   drawLoot(W, G, F);                        // gold, guns and mods lying about (cave.js)
   drawRooms(W, G, F);                       // the hidden rooms' prizes (cave.js)
   drawTrail(W, G);                          // Levitation Trail (effects.js)

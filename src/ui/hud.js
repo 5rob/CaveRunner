@@ -155,6 +155,8 @@ export function Stick({ size, kind, input, refresh }) {
       const side = input.current.confirmAim;
       input.current.confirmAim = null;
       if (side) act[side]();
+    } else if (right && stayed.current && input.current.menuTap) {
+      input.current.menuTap();              // a vending machine's menu is up: R presses its highlight
     } else if (right && stayed.current && input.current.perkTap) {
       input.current.perkTap();              // a perk card is up: R switches it
     } else if (right && stayed.current) {

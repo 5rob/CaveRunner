@@ -494,3 +494,40 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .confirmRow button{height:40px;padding:0 16px;border-radius:20px;font:600 13px system-ui,sans-serif}
 .confirmRow .cancel{background:var(--pad);color:var(--text);border:1px solid var(--ring)}
 .confirmRow .go{background:#c2401f;color:#fff;border:1px solid #c2401f}
+
+/* ---- a vending machine's menu (ui/vendshop.js): always dark, over the view down to the sticks ---- */
+.vshop{position:fixed;z-index:26;left:0;right:0;top:0;display:flex;flex-direction:column;gap:8px;
+  box-sizing:border-box;padding:calc(10px + env(safe-area-inset-top)) 10px 8px;
+  background:#0a0c10;color:#e9ecf2}
+.vtop,.vbot{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:7px}
+.vhead{display:flex;align-items:center;gap:10px}
+.vhead b{font:800 16px system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;flex:1}
+.vgold{font:700 14px system-ui,sans-serif;color:#ffc93c}
+.vgold i{font-style:normal;font-weight:500;margin-left:1px}
+.vclose{width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,0.25);background:none;
+  color:#e9ecf2;font-size:20px;line-height:1;cursor:pointer}
+.vgrid{flex:1;min-height:0;overflow-y:auto;border-radius:10px;background:rgba(255,255,255,0.04);padding:6px 8px 8px}
+.vtier+.vtier{margin-top:14px}
+.vtlab{font:600 9px system-ui,sans-serif;color:rgba(233,236,242,0.55);text-transform:uppercase;
+  letter-spacing:.06em;margin:0 0 4px 2px}
+.vcells{display:grid;grid-template-columns:repeat(auto-fill,minmax(32px,1fr));gap:4px}
+.vcell{aspect-ratio:1;border-radius:7px;border:1.5px solid;display:flex;align-items:center;justify-content:center;
+  font-size:16px;line-height:1;background:rgba(255,255,255,0.06);cursor:pointer;touch-action:pan-y}
+.vcell.empty{border:1px dashed rgba(255,255,255,0.12);background:none;cursor:default}
+.vcell.sel{background:rgba(255,255,255,0.2);box-shadow:inset 0 0 0 1.5px currentColor}
+.vcell.fresh{animation:vfresh 1.2s ease-out}
+@keyframes vfresh{0%{transform:scale(1.6);box-shadow:0 0 18px 6px #ff3040}100%{transform:scale(1)}}
+.navon{outline:2px solid #fff;outline-offset:2px;box-shadow:0 0 12px rgba(255,255,255,0.5)}
+.vunlock{align-self:center;display:flex;align-items:center;gap:8px;height:44px;padding:0 18px;border-radius:22px;
+  border:1.5px solid #c8202c;background:rgba(160,20,40,0.22);color:#fff;font:700 15px system-ui,sans-serif;cursor:pointer}
+.vunlock.cant{opacity:.45}
+.vcard{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.vcard .pop.ingame{position:static;background:none;border:0;box-shadow:none;padding:0;max-height:none;overflow:visible}
+.vmsg{font:700 13px system-ui,sans-serif;color:#ffc93c;text-align:center}
+.vhint{color:rgba(233,236,242,0.6);font-size:13px;text-align:center;margin:18px 0 0}
+.vbuy{display:flex;align-items:center;justify-content:space-between;gap:10px;height:50px;padding:0 18px;
+  border-radius:12px;border:1.5px solid #4fe3ff;background:rgba(79,227,255,0.14);color:#e9ecf2;cursor:pointer}
+.vbuy b{font:800 15px system-ui,sans-serif;letter-spacing:.03em}
+.vbuy span{font:700 15px system-ui,sans-serif;color:#ffc93c}
+.vbuy.cant{opacity:.45}
+.crystalcard .pglyph{background:none;border:0}

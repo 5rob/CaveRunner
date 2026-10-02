@@ -29,7 +29,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     I.loadout.gold = 777; I.loadout.bag.push('homing', 'bounce'); I.loadout.sel = 1;
     L.p.hp = 42;
     const killed = L.enemies.splice(0, 2).map(e => e.sid);
-    const sold = L.stock.findIndex(it => it.kind === 'mod');
+    const sold = L.stock.findIndex(it => it.kind === 'heal');
     L.stock[sold].sold = true;
     I.saveRun();
     return { seed: L.seed, enemies: L.enemies.map(e => e.sid), killed, sold,

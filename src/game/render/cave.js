@@ -4,7 +4,7 @@
 // props, the two portals, the shop's stock, loot, and the hidden rooms' prizes
 
 import { drawProp, rgbA } from '../../art/props.js';
-import { drawGun, drawGunGlow, drawNugget } from '../../art/sprites.js';
+import { CRYSTAL_PAL, CRYSTAL_R, drawGun, drawGunGlow, drawNugget } from '../../art/sprites.js';
 import { BCELL, BH, BW, CELL, CH, COL, CW, SHOP_FLOOR, SHOP_Y, WW } from '../../core/consts.js';
 import { clamp, mix } from '../../core/util.js';
 import { PERKS } from '../../data/perks.js';
@@ -270,6 +270,12 @@ export function drawLoot(W, G, F) {
       // out and left on the ground doesn't, so you can tell new from discarded at a glance
       if (!q.old) drawGunGlow(G.ctx, q.x, qy, W.time, q.t);
       drawGun(G.ctx, q.x - 5, qy + 1, -0.22, 0.85, gunAccent(q.gun));
+    } else if (q.kind === 'crystal') {
+      // a red crystal: a big dark red nugget, with a faint red glow round it
+      G.ctx.globalAlpha = 0.18 + 0.08 * Math.sin(W.time * 3 + q.t); G.ctx.fillStyle = '#ff2030';
+      G.ctx.beginPath(); G.ctx.arc(q.x, qy, CRYSTAL_R + 4, 0, Math.PI * 2); G.ctx.fill();
+      G.ctx.globalAlpha = 1;
+      drawNugget(G.ctx, q.x, qy, CRYSTAL_R, q.t * 7, 0, CRYSTAL_PAL);
     } else {
       const m = MODS[q.id];
       G.ctx.globalAlpha = 0.22; G.ctx.fillStyle = famCol(q.id);

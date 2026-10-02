@@ -16,7 +16,7 @@ const bare = PERK_IDS.filter(k => !PERKS[k].name || !PERKS[k].glyph || !PERKS[k]
 check('every perk has a name, a glyph and a line explaining it', bare.length === 0, bare);
 const names = PERK_IDS.map(k => PERKS[k].name);
 check('no two perks share a name', new Set(names).size === names.length);
-check('there are thirty-one of them', PERK_IDS.length === 31, PERK_IDS.length);
+check('there are thirty of them', PERK_IDS.length === 30, PERK_IDS.length);
 
 // ---- the bag ----
 const bag = perkBag([]);
@@ -137,14 +137,8 @@ for (let seed = 1; seed <= 20; seed++) {
 console.log(`  ${loot} pickups over 20 floors, ${hanging} of them with nothing under them`);
 check('every pickup in the cave is sitting on something', hanging === 0, `${hanging} in mid air`);
 
-// ---- Extra Item in Holy Mountain opens a wider shop ----
-const four = makeLevel(3, 1).stock.length;
-const five = makeLevel(3, 1, ['holyitem']).stock.length;
-check('a shop offers four things', four === 5, `${four} with the free heal`);   // 4 + the heal
-check('and five with Extra Item in Holy Mountain', five === 6, `${five} with the free heal`);
-const xs = makeLevel(3, 1, ['holyitem']).stock.filter(s => s.kind !== 'heal').map(s => Math.round(s.x));
-check('the wider row is still centred on the room',
-  Math.abs((xs[0] + xs[xs.length - 1]) / 2 - (CW / 2) * CELL) < 1, xs);
+// Extra Item in Holy Mountain went with the shop's plinths (the vending machine sells mods now)
+check('Extra Item in Holy Mountain is gone', !g.PERKS.holyitem);
 
 console.log(fails ? `\n${fails} FAILED` : '\nperks: all checks passed');
 process.exit(fails ? 1 : 0);

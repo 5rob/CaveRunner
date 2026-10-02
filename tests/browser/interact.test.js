@@ -118,7 +118,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     const LO = window.__in.current.loadout;
     LO.bag.length = 0;
     window.__lvl.stock.find(s => s.kind === 'heal').sold = true;   // the heal never sells out now: shelve it so the ground pickup wins
-    const mod = pickups.find(q => q.kind === 'mod' && !q.taken);
+    const mod = (pickups.push({ kind: 'mod', id: 'bolt', x: 0, y: 0, t: 0 }), pickups[pickups.length - 1]);   // the cave has red crystals, not mods
     mod.x = p.x + 6; mod.y = p.y + 11; mod.cool = 0;
     await new Promise(r => setTimeout(r, 200));
     const cardShown = !!document.querySelector('.pop.ingame');
@@ -151,21 +151,19 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     .find(x => /Leave/.test(x.textContent)).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
   await page.waitForTimeout(200);
 
-  // ---- 6. no Buy button anywhere, but buying in the shop still works via interact ----
+  // ---- 6. no Buy button anywhere; the shop's machine opens with an interact ----
   check('there is no .buy button in the page', (await page.$('.buy')) === null);
+  // the shop's vending machine: an interact opens its menu (buying there: vendshop.test.js)
   const shopRes = await page.evaluate(async () => {
-    const { p, stock } = window.__lvl;
-    const mod = stock.find(s => s.kind === 'mod' && !s.sold);
-    p.x = mod.x - 6; p.y = mod.y + 4; p.vx = 0; p.vy = 0;
-    window.__in.current.loadout.gold = 999;
+    const { p } = window.__lvl;
+    p.x = SHOPS.mods.x - 6; p.y = window.__lvl.world.SHOP_FLOOR * window.__lvl.world.CELL - 22; p.vx = 0; p.vy = 0;
     window.__in.current.sig = '';
     await new Promise(r => setTimeout(r, 250));
-    const bagBefore = window.__in.current.loadout.bag.length;
     window.__in.current.interact = true;
     await new Promise(r => setTimeout(r, 200));
-    return { bagBefore, bagAfter: window.__in.current.loadout.bag.length, sold: mod.sold, id: mod.id };
+    return { open: !!document.querySelector('.vshop'), paused: window.__in.current.paused };
   });
-  check('buying in the shop works via interact', shopRes.sold && shopRes.bagAfter === shopRes.bagBefore + 1, shopRes);
+  check('an interact at the vending machine opens its menu', shopRes.open && shopRes.paused, shopRes);
 
   console.log(fails ? `\n${fails} failed` : '\nall good');
   await browser.close();

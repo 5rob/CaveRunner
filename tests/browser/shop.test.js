@@ -18,7 +18,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     py: window.__lvl.p.y, shopY: window.__lvl.world.SHOP_Y,
   }));
   check('starts on floor 1 inside the shop', st.floor === 1 && st.inShop === true, st);
-  check('shop has a heal and 4 mods', st.stock.length === 5 && st.stock[0] === 'heal', st.stock);
+  check('shop has the heal on its plinth (mods: the vending machine)', st.stock.length === 1 && st.stock[0] === 'heal', st.stock);
   check('spawns below the shop ceiling', st.py > st.shopY, { py: st.py, shopY: st.shopY });
   check('starts with some gold', st.gold === 40, st.gold);
   await page.screenshot({ path: path.join(__dirname, '..', 'build', 'shop_room.png') });
@@ -54,26 +54,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the second heal costs 100g and the next more', st.hp === 100 && st.gold === 400 && st.price > 100, st);
   await page.evaluate(() => { window.__in.current.loadout.gold = 40; });
 
-  // buy a mod
-  await goTo(1);
-  const item1 = await page.evaluate(() => ({ id: window.__lvl.stock[1].id, price: window.__lvl.stock[1].price }));
-  await page.evaluate(() => { window.__in.current.loadout.gold = 500; window.__in.current.sig = ''; });
-  await page.waitForTimeout(220);
-  await interact();
-  st = await page.evaluate(() => ({ gold: window.__in.current.loadout.gold,
-    bag: window.__in.current.loadout.bag.slice(), sold: window.__lvl.stock[1].sold }));
-  check('buying takes the gold', st.gold === 500 - item1.price, { st, item1 });
-  check('the mod lands in the bag', st.bag.includes(item1.id), st.bag);
-  check('the stock is marked sold', st.sold === true, st);
-
-  // can't afford it
-  await goTo(2);
-  await page.evaluate(() => { window.__in.current.loadout.gold = 0; window.__in.current.sig = ''; });
-  await page.waitForTimeout(250);
-  const cant = await page.evaluate(() => { const b = document.querySelector('.pbuy'); return b && b.className; });
-  check('unaffordable stock is shown greyed', /cant/.test(cant || ''), cant);
-  await interact();
-  check('and cannot be bought', (await page.evaluate(() => window.__lvl.stock[2].sold)) === false);
+  // mods are bought from the vending machine now: vendshop.test.js
 
   // enemies drop gold
   st = await page.evaluate(async () => {
@@ -86,7 +67,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     window.__lvl.bullets.push({ x: e.x, y: e.ty, vx: 60, vy: 0, life: 1, dmg: 5, size: 3,
       col: '#fff', spin: 0, homing: 0, bounce: 0, pierce: 0, explode: 0, grav: 0, accel: 0, bore: 0, hit: null });
     await new Promise(r => setTimeout(r, 200));
-    await new Promise(r => setTimeout(r, 900));
+    await new Promise(r => setTimeout(r, 2000));
     return { gold: LO.gold, left: coins.length };
   });
   check('a dead enemy pays out gold', st.gold > 0, st);
@@ -128,7 +109,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the portal takes you back to the shop', st.back.floor === st.before.floor && st.back.inShop && st.back.py > st.shopY && st.back.has, st.back);
   check('the next floor', st.floor === st.before.floor + 1, st);
   check('you are in the new shop', st.inShop === true && st.py > st.shopY, st);
-  check('the new shop is fully stocked', st.stock === 5, st);
+  check('the new shop has its heal', st.stock === 1, st);
   check('the new floor has enemies', st.enemies > 0, st.enemies);
   check('you keep your mods and gold', st.bag === st.before.bag && st.gold === st.before.gold, st);
   check('and your damage carries over', st.hp === 55, st.hp);

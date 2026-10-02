@@ -142,7 +142,7 @@ Mods and guns in the cave sit on a floor of their own now, not floating in place
 
 The middle of the right stick is a dead zone: drag out past it to aim and fire,
 tap it without leaving it and you interact with whatever you are standing at.
-That one button buys from a shop plinth and picks up guns and mods in the cave.
+That one button uses the shop's heal and machines and picks up guns and crystals in the cave.
 
 Walking over something no longer takes it. You get its card instead — a slim panel
 that floats just above the item with the price built into it — so you can read a mod
@@ -165,17 +165,19 @@ heal on a floor is free; after that it costs 100 gold, and each one after costs
 1.75 times the last (100, 175, 305, 535…). Deeper floors raise the price the same
 way they raise what enemies pay out. A new floor's shop starts it free again.
 
-The four things for sale sit together in one row across the middle of the room,
-close enough to read all four without walking between them. Odd floors sell mods.
-**Even floors sell guns instead** — four freshly rolled
-ones, priced on what they can actually do: slots, how fast they cycle, mana, and
-whether they fire in the order you set them. Buying one equips it straight away — into
-an empty slot, or in place of the gun you are holding, with the old one parked on the
-plinth so you can grab it back if you change your mind.
+Mods come from the **vending machine** in the middle of the room, the one with a
+flickering ⚙️ hologram on its glass. Stand at it and "Tap R to shop" opens its menu over
+the screen (the game pauses). The top half is your **collection**: a cell for every mod,
+grouped by rarity, empty until you unlock it. Under it, the **red crystal** button: hand
+over a crystal and it unlocks a random mod you don't have yet, from the drop table of the
+floor that crystal came from. The collection is kept for good — a new run keeps it. The
+bottom half shows the selected mod's card and **Dispense selected** with its price: buy a
+copy and the menu closes and the mod pops out of the bottom of the machine onto the floor,
+for you to pick up. Tap things directly, or use the sticks: the left stick moves the
+highlight, a tap on the right stick presses it (keyboard: arrows, and R, F or Enter).
 
-Stand on any plinth and its card appears with the **Buy** price built in — a mod's
-effect and stats, or a gun's stat sheet compared against the one you are holding —
-so you can read what you are buying before paying for it. Which spells turn up follows Noita's own spawn table, deeper floors handing out rarer ones — and the very strongest (Black Hole and friends) never appear before floor 4. Your **Bag** opens anywhere,
+**Red crystals** lie about the cave where mods used to: a big dark-red nugget with white
+glints. Stand at one and tap the right stick to pocket it. Which spells turn up follows Noita's own spawn table, deeper floors handing out rarer ones — and the very strongest (Black Hole and friends) never appear before floor 4. Your **Bag** opens anywhere,
 but *changing* your setup — dragging mods, reordering guns — only works in the shop (or
 anywhere, with the Tinker perk); out in the cave the Bag is read-only. Enemies drop gold
 when they die, so a floor you clear pays for the next floor's shopping. **Gold seams** run
@@ -219,8 +221,7 @@ you — it only raises the ceiling. On floor 1 the two rooms are split between t
 of cave: one is somewhere in the built-up parts and the other in the natural parts, and
 which is which is a coin toss each cave.
 
-A couple of perks reach into other systems: Extra Item in Holy Mountain makes the shop
-offer five things instead of four, and Tinker with Wands Everywhere lets you *edit* your
+A couple of perks reach into other systems: Tinker with Wands Everywhere lets you *edit* your
 setup anywhere, not just in the shop. Trajectory Sight is what draws the dotted aim line
 that shows where your next shot flies — without it, you aim by feel. The line fades in as
 you push the right stick: invisible at the centre, full strength at the trigger ring.
@@ -565,7 +566,7 @@ them if it cannot find either.
 - Creature stats and gold scale with the floor they belong to, so the same enemy gets harder as you climb
 - Enemies with health bars, drawn in their own colours so you can read what is shooting you
 - A gun you just swapped out and dropped stays quiet for two seconds, so you can squeeze past it in a tunnel
-- Mods in the wild are rare, so the shop is the reliable place to stock up
+- Red crystals in the cave unlock mods for good at the shop's vending machine, which then sells copies
 - Restart asks before it wipes the run
 - A death replay: the last 10 seconds before you died and 3 after, with scrubbing, slow motion, a fog toggle, pan and pinch-zoom
 - A DEBUG shelf with one of every mod, for trying builds out

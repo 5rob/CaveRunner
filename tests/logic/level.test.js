@@ -44,7 +44,7 @@ for (let seed = 1; seed <= 20; seed++) {
   if (minY <= 40) reach++;
   // the map is four times the area it was, so count what actually got scattered on it
   // and how much of it you can walk or fly to from the shop
-  mods += pickups.filter(q => q.kind === 'mod').length;
+  mods += pickups.filter(q => q.kind === 'crystal').length;   // red crystals took the mods' place
   guns += pickups.filter(q => q.kind === 'gun').length;
   foes += enemies.length;
   // Loot sits on the ground now, so it sits at the bottom of whatever pocket it was put
@@ -90,15 +90,14 @@ for (let seed = 1; seed <= 20; seed++) {
   // the room itself is clear, full width, and the stock sits on the floor
   let blocked = 0;
   for (let cy = SHOP_TOP; cy < SHOP_FLOOR; cy++) for (let cx = 4; cx < CW - 4; cx++) if (mat[cy * CW + cx]) blocked++;
-  const stockOk = stock.length === 5 && stock[0].kind === 'heal' &&
-    stock.slice(1).every(it => it.kind === 'mod' && it.price > 0) &&
-    new Set(stock.slice(1).map(i => i.id)).size === 4 &&
+  // just the heal now: mods come from the vending machine (game/systems/shops.js)
+  const stockOk = stock.length === 1 && stock[0].kind === 'heal' &&
     stock.every(it => it.y / CELL > SHOP_TOP && it.y / CELL < SHOP_FLOOR);
   if (!blocked && stockOk) roomOk++;
   if (seed <= 3) console.log(`seed ${seed}: exit x=${shopExit} roofOpening=${holes}px roomBlocked=${blocked} top=${minY} stock=${stock.map(i=>i.kind==='heal'?'heal':i.id+'/'+i.price).join(' ')}`);
 }
 console.log(`\nmap ${CW}x${CH} cells (${CW * CELL}x${CH * CELL} world units)`);
-console.log(`per level, averaged over ${n} seeds: ${(mods / n).toFixed(1)} mods (want ${MOD_DROPS}), ` +
+console.log(`per level, averaged over ${n} seeds: ${(mods / n).toFixed(1)} crystals (want ${MOD_DROPS}), ` +
   `${(guns / n).toFixed(1)} guns (want ${GUN_DROPS}), ${(foes / n).toFixed(1)} enemies`);
 console.log(`${pkReach}/${pkTotal} pickups and ${foeReach} enemies sit in the region you can reach from the shop; ` +
   `the furthest pickup is ${(spread / n * 100).toFixed(0)}% of the map's height up`);

@@ -12,9 +12,7 @@ import { NATURAL_ONLY, enemyFor, rosterFor } from '../data/creatures.js';
 import { PERK_IDS } from '../data/perks.js';
 import { themeFor } from '../data/themes.js';
 import { kr } from '../dev/knobs.js';
-import { GUN_LV_MAX, gunLevel, gunPrice, isGunShop, makeGun } from '../spells/guns.js';
-import { priceOf } from '../spells/mods.js';
-import { rollMod } from '../spells/spawn.js';
+import { gunLevel, makeGun } from '../spells/guns.js';
 import { decorate } from './decorate.js';
 import { ratNests } from './nests.js';
 import { paveWorks, strataCave, timberWorks } from './strata.js';
@@ -473,36 +471,14 @@ export function makeLevel(seed, floor, owned) {
   const start = { x: startCX * CELL, y: SHOP_FLOOR * CELL - PH };
   const arrival = { x: (startCX + 3) * CELL, y: (SHOP_FLOOR - 13) * CELL };
 
-  // shop stock: the free heal, and the four things you came for. The four sit in one row
-  // across the middle of the room so you can read them all without walking the width of
-  // it; the heal stays on its own beside the portal you arrive through, where you land.
+  // shop stock: just the heal now, beside the portal you arrive through, where you land. Mods
+  // are bought from the vending machine in the middle of the room (game/systems/shops.js)
   const stock = [];
-  const offer = [], taken = {};
-  // five things for sale if you are carrying Extra Item in Holy Mountain, four otherwise
-  const items = have.has('holyitem') ? 5 : 4;
-  for (let i = 0; i < items; i++) {
-    const id = rollMod(rnd, floor, taken);
-    taken[id] = 1;
-    offer.push(id);
-  }
   const shelf = (SHOP_FLOOR - 13) * CELL;
-  const gunShop = isGunShop(floor);
   // the heal (free the first time, dearer each time after: healPrice), just along from the portal you arrive through. Far enough along that
   // you are not standing on it the moment you land. The two level vending machines come
   // next along the wall (VEND_BUY_X, VEND_SELL_X)
   stock.push({ kind: 'heal', x: arrival.x + 62, y: shelf, price: 0, sold: false, bought: 0 });
-  const PLINTH_GAP = 64;                 // world units between the ones in the row
-  for (let i = 0; i < items; i++) {
-    const x = WW / 2 + (i - (items - 1) / 2) * PLINTH_GAP;
-    if (gunShop) {
-      // shop guns are the floor's own level
-      const gun = makeGun(rnd, Math.min(GUN_LV_MAX, floor));
-      stock.push({ kind: 'gun', gun, x, y: shelf, price: gunPrice(gun), sold: false });
-    } else {
-      const id = offer[i];
-      stock.push({ kind: 'mod', id, x, y: shelf, price: priceOf(id), sold: false });
-    }
-  }
   const portal = { x: WW / 2 - 10, y: 34 * CELL - 30, w: 20, h: 30 };
 
   // enemies in open spaces. Each one is drawn off this floor's roster, so the mix you
@@ -547,8 +523,8 @@ export function makeLevel(seed, floor, owned) {
         t: 0.5 + (n.x % 7) * 0.4, stash: 0, max: 0 } });
   }
 
-  // guns and mods to find: the higher up the cave, the better the roll.
-  // Half the mods there used to be, and they have to sit far enough apart that the
+  // guns and red crystals to find: the higher up the cave, the better the roll.
+  // Half the mods there used to be (crystals now), and they have to sit far enough apart that the
   // few of them are spread over the whole cave rather than bunched in one corner.
   const pickups = [];
   // the first floor under a spot, so a pickup sits on the ground rather than hanging in
@@ -571,7 +547,8 @@ export function makeLevel(seed, floor, owned) {
       pickups.push({ kind: 'gun', x, y, gun: makeGun(rnd, gunLevel(floor, rnd)), t: rnd() * 6.28 });
     } else {
       modsLeft--;
-      pickups.push({ kind: 'mod', x, y, id: rollMod(rnd, floor), t: rnd() * 6.28 });
+      // not a mod: a red crystal, which the shop's machine turns into an unlock off this floor's table
+      pickups.push({ kind: 'crystal', x, y, floor, t: rnd() * 6.28 });
     }
   }
 

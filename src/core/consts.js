@@ -41,7 +41,7 @@ export const COIN_PULL = 36;         // gold within this many units flies to you
 // how many enemies a floor gets before the floor lift. What they are and how hard
 // they hit is the roster's business now — see CREATURES.
 export const ENEMY_COUNT = 80;
-export const MOD_DROPS = 7;          // mods lying in the cave: half what it used to be
+export const MOD_DROPS = 7;          // red crystals lying in the cave (they were mods: game/systems/shops.js)
 export const GUN_DROPS = 5;          // guns lying in the cave, unchanged
 export const PICKUP_GAP = 260;       // and no two of them closer than this
 export const PATROL_R = 70;          // how far an enemy will drift from where it spawned

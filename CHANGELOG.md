@@ -5,6 +5,21 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v118 — the mod vending machine and red crystals
+Released 2026-10-02.
+
+- The shop's plinths of mods (or guns, on even floors) are gone; only the heal is left on one. In
+  their place a vending machine in the middle of the room, a flickering ⚙️ hologram on its glass
+  (`game/systems/shops.js`, `render/shops.js`). "Tap R to shop" opens its menu (`ui/vendshop.js`):
+  the collection (every mod by rarity, empty cells until unlocked), the red crystal button (a
+  crystal unlocks a mod you don't own off its floor's drop table: `crystalRoll`), and "Dispense
+  selected" (buys a copy, `MOD_PRICE`; it pops out of the machine's chute onto the floor).
+- The collection is kept across runs (`caverunner-collection` in localStorage, `loadCollection`).
+- The cave's 7 mods are red crystals now (`kind: 'crystal'`, `floor`); carried in `LO.crystals`.
+- The menu is generic: a `ShopDef` per machine (`ui/modshop.js`, `SHOP_DEFS`), so a gun or perk
+  machine is a `SHOPS` entry and a def. The left stick moves the highlight, a right-stick tap presses it.
+- Extra Item in Holy Mountain is gone with the plinths (30 perks); `gunshop` suite removed.
+
 ## v117 — a Dev knob for level 1's repay time
 Released 2026-10-02.
 

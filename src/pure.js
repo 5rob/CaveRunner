@@ -18,6 +18,7 @@ export * from './spells/cast.js';
 export * from './spells/trace.js';
 export * from './spells/advisor.js';
 export * from './spells/bagsim.js';
+export * from './spells/collection.js';
 export * from './world/vision.js';
 export * from './world/fire.js';
 export * from './world/nav.js';
