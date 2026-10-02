@@ -11,7 +11,7 @@
 import { drawRunner, pixelSprite } from '../art/sprites.js';
 import { SFX } from '../audio/sfx.js';
 import { COIN_PULL, FUEL_REGEN, PH, PW, WALK } from '../core/consts.js';
-import { DEV } from '../dev/knobs.js';
+import { DEV, carrotAt } from '../dev/knobs.js';
 import { PERKS, PERK_IDS, ROMAN, STAT_KEYS, STAT_PERKS, SUIT_LEN, SUIT_SLOTS, activePerks, fitsSlot, perkBag } from '../data/perks.js';
 import { PerkCard } from './cards.js';
 import { WitnessGallery } from './clips.js';
@@ -154,6 +154,7 @@ export function ExoSuit({ input, close, refresh, canEdit, tabs }) {
     fuel: [Math.round(100 * P.fuel) + '%', P.fuel !== 1 ? pct(P.fuel) : ''],
     refuel: [Math.round(100 * FUEL_REGEN * P.refuel) + '%/s', P.refuel !== 1 ? pct(P.refuel) : ''],
     pull: [String(Math.round(COIN_PULL * P.goldPull)), P.goldPull !== 1 ? pct(P.goldPull) : ''],
+    carrot: [P.carrot ? ROMAN[P.carrot - 1] : '—', P.carrot ? 'view ' + pct(carrotAt('caCam', P.carrot)) : ''],
   };
   /** @param {number} i @param {string} [cls] */
   const slotEl = (i, cls) => {

@@ -92,6 +92,9 @@ export const STAT_PERKS = {
             say: v => 'The tank refills ' + Math.round((v - 1) * 100) + '% faster.' },
   pull:   { name: 'Gold Vacuum', glyph: '⊛', tint: '#ffc93c', field: 'goldPull', vals: [1.3, 1.6, 2, 2.5, 3],
             say: v => 'Gold flies to you from ' + Math.round((v - 1) * 100) + '% further away.' },
+  // the level itself (1-5): each thing it stretches has a Dev min (none fitted) and max (level V), carrotAt
+  carrot: { name: 'Carrot', glyph: '⌖', tint: '#ff8c2a', field: 'carrot', vals: [1, 2, 3, 4, 5],
+            say: v => 'Carrot ' + ROMAN[v - 1] + ' of V: the camera pulls back, the torch reaches further, the aim line runs longer — and creatures notice you from further off.' },
 };
 export const STAT_KEYS = Object.keys(STAT_PERKS);
 export const STAT_PRICE = [60, 140, 260, 420, 650];   // gold at the perk machine, by level
@@ -137,7 +140,7 @@ export function perkBag(ids) {
     delay: 1, rech: 1, walk: 1, jet: 1, hpMul: 1, hpAdd: 0, heal: 1, gold: 1, goldPull: 1,
     shield: 0, lives: 0, ghost: 0, homing: 0, trail: 0, contact: 0, close: 0, invis: 0,
     repel: 0, seeAll: 0, radarEnemy: 0, radarItem: 0, radarWand: 0, tinker: 0,
-    extraItem: 0, pinpointer: 0, trajectory: 0, fuel: 1, refuel: 1 };
+    extraItem: 0, pinpointer: 0, trajectory: 0, fuel: 1, refuel: 1, carrot: 0 };
   for (const id of ids || []) {
     const k = PERKS[id];
     if (!k) continue;
@@ -150,6 +153,7 @@ export function perkBag(ids) {
     P.bounce += k.bounce || 0; P.crit += k.crit || 0; P.hpAdd += k.hpAdd || 0;
     P.lives += k.lives || 0; P.ghost += k.ghost || 0;
     P.homing = Math.max(P.homing, k.homing || 0);
+    P.carrot = Math.max(P.carrot, k.carrot || 0);
     for (const f of ['shield', 'trail', 'contact', 'close', 'invis', 'repel', 'seeAll',
       'radarEnemy', 'radarItem', 'radarWand', 'tinker', 'extraItem', 'pinpointer', 'trajectory'])
       if (k[f]) P[f] = 1;

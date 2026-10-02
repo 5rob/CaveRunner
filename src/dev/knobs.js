@@ -83,7 +83,7 @@ export const DEV_META = [
   { k: 'bagSpeed',  g: 'ui',    label: 'Bag fire preview speed (×real time)', min: 0.05, max: 5, step: 0.05 },
 ];
 export const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['fx', 'Hologram & glow'], ['holoflash', 'Hologram flash (on a kill)'], ['player', 'Player'],
-  ['enemy', 'Enemies'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['arch', 'Arched vines'], ['fire', 'Fire']];
+  ['enemy', 'Enemies'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['arch', 'Arched vines'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults.
 export function devReport() {
@@ -230,7 +230,10 @@ export const RA_KNOBS = rangeKnobs('rat', [
 export const kru = (k, u) => { const a = DEV[k + 'Lo'], b = DEV[k + 'Hi']; return a + u * (b - a); };
 /** @type {(k: string, rnd?: Rnd) => number} */
 export const kr = (k, rnd) => kru(k, (rnd || Math.random)());
-export const spr = kr;                                  // the spider's code calls it this
+export const spr = kr;
+// a Carrot knob at suit level lvl (0 none … 5 = Carrot V): its min, its max, or evenly between
+/** @param {string} k @param {number} lvl */
+export const carrotAt = (k, lvl) => kru(k, Math.max(0, Math.min(1, (lvl || 0) / 5)));                                  // the spider's code calls it this
 
 // Colour knobs: the same idea as a range, for colours. Each part has a colour A and a
 // colour B, and each creature wears a blend somewhere between them, picked once when it
@@ -337,6 +340,14 @@ export const FIRE_KNOBS = rangeKnobs('fire', [
   ['fireYouDps', 'Your burn damage per s',            0, 40, 0.5,    5, 8],
   ['firePlant',  'Vines burn up at (px/s)',           1, 200, 1,     5, 25],
   ['fireArch',   'Arched vines burn along at (px/s)', 1, 400, 1,     5, 25],
+]);
+// The Carrot stat (an Exo Suit stat perk): one level, 0-5, stretching several reaches at once.
+// Each is a multiplier: min = no Carrot fitted, max = Carrot V, levels in between evenly (carrotAt).
+export const CARROT_KNOBS = rangeKnobs('carrot', [
+  ['caCam',   'Camera distance (×)',       0.3, 3, 0.05,  1, 1.35],
+  ['caTorch', 'Torchlight reach (×)',      0.3, 4, 0.05,  1, 1.5],
+  ['caAggro', 'Enemy aggro distance (×)',  0.3, 4, 0.05,  1, 1.25],
+  ['caAim',   'Aim line length (×)',       0.3, 4, 0.05,  1, 2],
 ]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */

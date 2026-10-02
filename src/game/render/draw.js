@@ -13,7 +13,7 @@
 import { PH, PW, VIEW_MIN_H, VIEW_W, WH, WW } from '../../core/consts.js';
 import { clamp } from '../../core/util.js';
 import { themeFor } from '../../data/themes.js';
-import { DEV } from '../../dev/knobs.js';
+import { DEV, carrotAt } from '../../dev/knobs.js';
 import { drawSilk } from '../creatures/spider.js';
 import { drawAim, drawEnemies, drawJetFlame, drawPlayer } from './actors.js';
 import {
@@ -86,7 +86,8 @@ export function drawCamera(W, G, F) {
   // part above them: scale and frame to that, but still draw (and cull) the full canvas
   const ctlPx = Math.min(G.c.height * 0.8, (G.RPV ? G.RPV.panelH || 0 : G.input.current.ctlH || 0) * dpr);   // a replay: its panel
   const playPx = F.playPx = G.c.height - ctlPx;
-  const s = Math.min(G.c.width / VIEW_W, playPx / VIEW_MIN_H) * DEV.zoom * (G.RPV ? G.RPV.zoom : 1), vw = F.vw = G.c.width / s, vh = F.vh = G.c.height / s;
+  // the Carrot stat pulls the live camera back (a replay keeps the viewer's own zoom)
+  const s = Math.min(G.c.width / VIEW_W, playPx / VIEW_MIN_H) * DEV.zoom * (G.RPV ? G.RPV.zoom : 1 / carrotAt('caCam', W.pb.carrot)), vw = F.vw = G.c.width / s, vh = F.vh = G.c.height / s;
   const vhp = playPx / s;
   W.unitPx = s / dpr;
   const pcx = F.pcx = W.p.x + PW / 2, pcy = F.pcy = W.p.y + PH / 2;
