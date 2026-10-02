@@ -2,7 +2,10 @@
 
 `save.js`: `SAVE_KEY` (`caverunner-save` in localStorage), `GUN_DEFAULTS`, `readSave`,
 `cleanLoadout`, `cleanGun` (pure, tested), `loadSave`, `clearSave`. Writing the save is
-`saveRun` (`game/systems/save-run.js`).
+`saveRun` (`game/systems/save-run.js`). `cleanPerks` fits a perk once at most (v129: a second copy in
+the suit goes back to the carried ones). The unlock collections have their own keys, untouched by
+`clearSave`: `COLLECTION_KEY` (mods: **emptied on death**, `hurt` in `game/systems/player.js`, v129) and
+`PERK_COLLECTION_KEY` (perks: kept across runs).
 
 `clips.js`: the saved death replays, in IndexedDB (`CLIP_DB` = `caverunner-clips`; localStorage is
 far too small): `clipList` (the gallery's `ClipMeta` cards, newest first), `clipGet` (unpacks one),

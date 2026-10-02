@@ -38,7 +38,8 @@ the store `save/clips.js`.
   `input.current.witness` = the live `Clip` (`{ t0, t1, death }` and the recorder's own arrays).
   `recReset` in `enterLevel` clears it.
 - **Playing:** `App` opens `Witness`, which sets `input.current.replay = { t, speed, playing, fog,
-  follow, zoom, cx, cy, unit, panelH, loop, clip }`. While set, the loop skips `step()`, plays the
+  follow, zoom, cx, cy, unit, panelH, loop, clip, full, bio }` (`full`: exporting, drawn on the whole
+  screen; `bio`: the hologram's count from the nearest snapshot, which keeps `bio` = `holoCount`). While set, the loop skips `step()`, plays the
   clip's sounds (`rpSound`: one-shots the clock passed, loops as the snapshot had them, heard from
   where you were; silent on a scrub) and calls
   `drawReplay`: it rebuilds terrain on its own canvases (`RT.tC`/`RT.dC`, from the base + patches ≤ t;

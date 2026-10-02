@@ -8,6 +8,9 @@
 
 ## Rules
 
+- **Floor 2's palette is Dev knobs** (v129, `L2_LOOK`, group Level 2): `themeFor` builds Coal seams from
+  them (cached per change; at the defaults it returns `THEMES[1]` itself). `activePerks` counts a
+  perk once (no doubling up).
 - **A floor's identity is the floor number, not the seed.** `themeFor(floor)` and
   `rosterFor(floor)` depend on the floor alone: floors 1–10 have the same palette and creatures
   on every run. That is the feature (the player learns floor 3). Only past floor 10 does
