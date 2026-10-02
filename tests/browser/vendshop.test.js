@@ -103,6 +103,13 @@ const DIR = path.join(__dirname, '..', 'build');
   rg = await ring();
   check('aimed just beside a button it snaps on: highlighted', (await focus()) === 'close', await focus());
   check('pulled a little towards its middle, not jumped there', rg.x > near.x + 1 && rg.x < xr.cx - 5, { rg: rg.x, near: near.x, mid: xr.cx });
+  // the Dev knobs: no pull leaves it where you aim (still on the button), a thicker line
+  await page.evaluate(() => { DEV.snapPull = 0; DEV.ptrLine = 2; });
+  await page.mouse.move(hN.x + 0.5, hN.y); await page.mouse.move(hN.x, hN.y); await page.waitForTimeout(100);
+  rg = await ring();
+  check('Dev: snap pull 0 leaves it where you aim, still counted on the button', Math.abs(rg.x - near.x) < 1.5 && (await focus()) === 'close', { rg: rg.x, near: near.x });
+  check('Dev: ring line width', rg.border === 2, rg.border);
+  await page.evaluate(() => { DEV.snapPull = DEV_DEFAULTS.snapPull; DEV.ptrLine = DEV_DEFAULTS.ptrLine; });
   const far = { x: xr.l - 60, y: xr.b + 60 }, hF = holdFor(far);
   await page.mouse.move(hF.x, hF.y); await page.waitForTimeout(100);
   rg = await ring();

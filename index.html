@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v122</title>
+<title>CaveRunner v123</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -628,7 +628,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v122';</script>
+<script>const VERSION = 'v123';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -826,7 +826,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     holoC1y: 1,
     holoC2x: 0.5,
     holoC2y: 0,
-    due1: 60
+    due1: 60,
+    ptrStart: 0.12,
+    ptrReach: 1,
+    ptrSize: 1,
+    ptrLine: 0.75,
+    snapR: 28,
+    snapPull: 0.3,
+    snapHit: 10
   };
   var DEV_META = [
     { k: "zoom", g: "view", label: "Camera zoom", min: 0.3, max: 3, step: 0.05 },
@@ -868,6 +875,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "holoC2x", g: "holoflash", label: "Fade curve point 2 x", min: 0, max: 1, step: 0.01, type: "curve" },
     { k: "holoC2y", g: "holoflash", label: "Fade curve point 2 y", min: -0.5, max: 1.5, step: 0.01, type: "curve" },
     { k: "due1", g: "level", label: "Time to repay level 1 (minutes)", min: 0.1, max: 1440, step: 1 },
+    // the vending menus' right-stick pointer (ui/vendshop.js useMenuNav, menuPointer, snapTo)
+    { k: "ptrStart", g: "menuptr", label: "Stick push before the pointer comes out (of its reach)", min: 0, max: 0.9, step: 0.01 },
+    { k: "ptrReach", g: "menuptr", label: "Pointer reach (× distance to the far screen corner)", min: 0.2, max: 3, step: 0.05 },
+    { k: "ptrSize", g: "menuptr", label: "Ring size (× the knob)", min: 0.2, max: 3, step: 0.05 },
+    { k: "ptrLine", g: "menuptr", label: "Ring line width (px)", min: 0.25, max: 4, step: 0.25 },
+    { k: "snapR", g: "menuptr", label: "Snap reach (px from a button’s edge)", min: 0, max: 120, step: 1 },
+    { k: "snapPull", g: "menuptr", label: "Snap pull (0 none, 1 right onto its middle)", min: 0, max: 1, step: 0.01 },
+    { k: "snapHit", g: "menuptr", label: "Counts as on a button within (px of its edge)", min: 0, max: 60, step: 1 },
     { k: "bagSpeed", g: "ui", label: "Bag fire preview speed (×real time)", min: 0.05, max: 5, step: 0.05 }
   ];
   var DEV_GROUPS = [
@@ -884,6 +899,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ["bh", "Black Hole tweaks"],
     ["sound", "Sound"],
     ["ui", "Bag screen"],
+    ["menuptr", "Menu pointer & snapping"],
     ["level", "Level layout (floor 1)"],
     ["arch", "Arched vines"],
     ["fire", "Fire"]
@@ -19778,7 +19794,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ];
     return h("div", { className: "crysrow", "aria-label": red + " red crystals, " + green + " green crystals" }, bits(red, "red"), bits(green, "green"));
   }
-  var MENU_PTR = 0.12;
   function Stick({ size, kind, input, refresh }) {
     const [knob2, setKnob] = useState({ x: 0, y: 0, jet: false });
     const [gauge, setGauge] = useState({ ring: 1, fuel: 1, empty: false, dry: true });
@@ -19867,7 +19882,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         input.current.confirmAim = null;
         if (side) act[side]();
       } else if (right && input.current.menuTap) {
-        if (peak.current <= MENU_PTR) input.current.menuTap();
+        if (peak.current <= DEV.ptrStart) input.current.menuTap();
       } else if (right && stayed.current && input.current.perkTap) {
         input.current.perkTap();
       } else if (right && stayed.current) {
@@ -20782,14 +20797,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       let raf, dir = "", next = 0, moved = false, over = "";
       const tick = () => {
         const S = input.current.right, K = input.current.keys, R = ring.current;
-        if (S.active && S.cx !== void 0 && (moved || S.mag > MENU_PTR)) {
+        if (S.active && S.cx !== void 0 && (moved || S.mag > DEV.ptrStart)) {
           moved = true;
           const raw = menuPointer(S, window.innerWidth, window.innerHeight);
           const snap = root.current ? snapTo(root.current, raw) : { x: raw.x, y: raw.y, nav: "" };
           if (R) {
-            const d = KNOB * (S.size || 100);
+            const d = KNOB * (S.size || 100) * DEV.ptrSize;
             R.style.display = "block";
             R.style.width = R.style.height = d + "px";
+            R.style.borderWidth = DEV.ptrLine + "px";
             R.style.transform = "translate(" + (snap.x - d / 2) + "px," + (snap.y - d / 2) + "px)";
           }
           over = snap.nav;
@@ -20833,7 +20849,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }, [focus]);
     return h("div", { className: "mptr", ref: ring, "aria-hidden": true });
   }
-  var SNAP_R = 28, SNAP_HIT = 10, SNAP_PULL = 0.3;
   function snapTo(root, p) {
     const els = Array.from(root.querySelectorAll("[data-nav]"));
     let best = null, bd = Infinity, br = null;
@@ -20853,14 +20868,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         br = r;
       }
     }
-    if (!best || !br || bd > SNAP_R) return { x: p.x, y: p.y, nav: "" };
-    const k = SNAP_PULL * (1 - bd / SNAP_R), cx = br.left + br.width / 2, cy = br.top + br.height / 2;
-    return { x: p.x + (cx - p.x) * k, y: p.y + (cy - p.y) * k, nav: bd <= SNAP_HIT ? best.dataset.nav || "" : "" };
+    const R = DEV.snapR;
+    if (!best || !br || bd > R) return { x: p.x, y: p.y, nav: best && bd <= DEV.snapHit ? best.dataset.nav || "" : "" };
+    const k = R > 0 ? DEV.snapPull * (1 - bd / R) : 0, cx = br.left + br.width / 2, cy = br.top + br.height / 2;
+    return { x: p.x + (cx - p.x) * k, y: p.y + (cy - p.y) * k, nav: bd <= DEV.snapHit ? best.dataset.nav || "" : "" };
   }
   function menuPointer(L2, W, H) {
     const cx = L2.cx || 0, cy = L2.cy || 0;
     const far = Math.max(Math.hypot(cx, cy), Math.hypot(W - cx, cy), Math.hypot(cx, H - cy), Math.hypot(W - cx, H - cy));
-    const d = Math.min(1, L2.mag) * far;
+    const d = Math.min(1, L2.mag) * far * DEV.ptrReach;
     return { x: Math.max(0, Math.min(W, cx + L2.nx * d)), y: Math.max(0, Math.min(H, cy + L2.ny * d)) };
   }
   function VendShop({ def, input, close }) {

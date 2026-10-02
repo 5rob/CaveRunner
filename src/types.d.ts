@@ -372,6 +372,7 @@ interface DevKnobs {
   holoAlpha: number; bloom: number; bloomBlur: number; bloomBright: number;
   holoMin: number; holoMax: number; holoFade: number; holoC1x: number; holoC1y: number; holoC2x: number; holoC2y: number;
   due1: number;
+  ptrStart: number; ptrReach: number; ptrSize: number; ptrLine: number; snapR: number; snapPull: number; snapHit: number;
   [k: string]: any;
 }
 /** one Dev panel row (DEV_META) */

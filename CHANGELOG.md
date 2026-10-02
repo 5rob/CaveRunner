@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v123 — Dev knobs for the menu pointer
+Released 2026-10-02.
+
+- Dev → **Menu pointer & snapping** (`g: 'menuptr'`): `ptrStart` (stick push before the ring comes out,
+  0.12; a tap under it presses the lit button), `ptrReach` (× the far-corner distance, 1), `ptrSize` (×
+  the knob, 1), `ptrLine` (ring px, 0.75), `snapR` (28px), `snapPull` (0.3), `snapHit` (10px). They
+  replace `MENU_PTR` and the `SNAP_*` constants.
+
 ## v122 — Questions Later; the pointer moves to the right stick, with a snap
 Released 2026-10-02.
 
