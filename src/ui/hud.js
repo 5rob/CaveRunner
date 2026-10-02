@@ -4,6 +4,7 @@
 // buttons' layout, the gold readout, and holdPress (tap vs hold).
 
 import { CRYSTAL_PAL, GREEN_PAL } from '../art/sprites.js';
+import { DEV } from '../dev/knobs.js';
 import { AIM_DEAD, AIM_RING, DEAD, KNOB } from '../core/consts.js';
 import { mixHex } from '../core/util.js';
 import { countdown } from '../core/util.js';
@@ -107,9 +108,6 @@ export function CrystalRow({ red, green }) {
   return h('div', { className: 'crysrow', 'aria-label': red + ' red crystals, ' + green + ' green crystals' }, bits(red, 'red'), bits(green, 'green'));
 }
 
-// in a vending machine's menu the right stick pushed past this (of its reach) is a pointer, not a tap
-export const MENU_PTR = 0.12;
-
 /** @param {{ size: number, kind: 'left' | 'right', input: { current: GameInput }, refresh: () => void }} props */
 export function Stick({ size, kind, input, refresh }) {
   const [knob, setKnob] = useState({ x: 0, y: 0, jet: false });
@@ -143,7 +141,7 @@ export function Stick({ size, kind, input, refresh }) {
   // stays true until release is an interact; a drag out (even one that comes back to
   // centre) sets it false the moment it first crosses AIM_DEAD, and stays false.
   const stayed = useRef(true);
-  const peak = useRef(0);               // the furthest this touch has pushed (a menu's pointer: MENU_PTR)
+  const peak = useRef(0);               // the furthest this touch has pushed (a menu pointer past DEV.ptrStart)
 
   const right = kind === 'right';
   const update = e => {
@@ -192,7 +190,7 @@ export function Stick({ size, kind, input, refresh }) {
     } else if (right && input.current.menuTap) {
       // a vending machine's menu is up: a tap presses its highlight; a drag was its pointer, and
       // letting go of that is the menu's own business (useMenuNav)
-      if (peak.current <= MENU_PTR) input.current.menuTap();
+      if (peak.current <= DEV.ptrStart) input.current.menuTap();   // past it: the pointer (Dev → Menu pointer)
     } else if (right && stayed.current && input.current.perkTap) {
       input.current.perkTap();              // a perk card is up: R switches it
     } else if (right && stayed.current) {

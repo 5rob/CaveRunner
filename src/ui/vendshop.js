@@ -9,7 +9,8 @@
 
 import { SFX } from '../audio/sfx.js';
 import { KNOB } from '../core/consts.js';
-import { MENU_PTR, fmtGold } from './hud.js';
+import { DEV } from '../dev/knobs.js';
+import { fmtGold } from './hud.js';
 import { h, useEffect, useRef, useState } from './h.js';
 
 /**
@@ -70,14 +71,15 @@ export function useMenuNav(input, root, focus, setFocus, press) {
     let raf, dir = '', next = 0, moved = false, over = '';
     const tick = () => {
       const S = input.current.right, K = input.current.keys, R = ring.current;
-      if (S.active && S.cx !== undefined && (moved || S.mag > MENU_PTR)) {
+      if (S.active && S.cx !== undefined && (moved || S.mag > DEV.ptrStart)) {
         moved = true;
         const raw = menuPointer(S, window.innerWidth, window.innerHeight);
         const snap = root.current ? snapTo(root.current, raw) : { x: raw.x, y: raw.y, nav: '' };
         if (R) {
-          const d = KNOB * (S.size || 100);
+          const d = KNOB * (S.size || 100) * DEV.ptrSize;
           R.style.display = 'block';
           R.style.width = R.style.height = d + 'px';
+          R.style.borderWidth = DEV.ptrLine + 'px';
           R.style.transform = 'translate(' + (snap.x - d / 2) + 'px,' + (snap.y - d / 2) + 'px)';
         }
         over = snap.nav;
@@ -113,9 +115,9 @@ export function useMenuNav(input, root, focus, setFocus, press) {
 }
 
 // The pointer's gentle snap: the nearest button (a [data-nav] in this menu, not scrolled out of
-// sight) within SNAP_R px of its edge pulls the point a little towards its middle (up to SNAP_PULL
-// of the way, more the closer it is), and counts as under the pointer within SNAP_HIT px
-export const SNAP_R = 28, SNAP_HIT = 10, SNAP_PULL = 0.3;
+// sight) within DEV.snapR px of its edge pulls the point a little towards its middle (up to
+// DEV.snapPull of the way, more the closer it is), and counts as under the pointer within
+// DEV.snapHit px (all on the Dev panel: Menu pointer & snapping)
 /** @param {HTMLElement} root @param {Pt} p @returns {{ x: number, y: number, nav: string }} */
 export function snapTo(root, p) {
   /** @type {HTMLElement[]} */
@@ -134,9 +136,10 @@ export function snapTo(root, p) {
     const d = Math.hypot(dx, dy);
     if (d < bd) { bd = d; best = e; br = r; }
   }
-  if (!best || !br || bd > SNAP_R) return { x: p.x, y: p.y, nav: '' };
-  const k = SNAP_PULL * (1 - bd / SNAP_R), cx = br.left + br.width / 2, cy = br.top + br.height / 2;
-  return { x: p.x + (cx - p.x) * k, y: p.y + (cy - p.y) * k, nav: bd <= SNAP_HIT ? best.dataset.nav || '' : '' };
+  const R = DEV.snapR;
+  if (!best || !br || bd > R) return { x: p.x, y: p.y, nav: best && bd <= DEV.snapHit ? best.dataset.nav || '' : '' };
+  const k = R > 0 ? DEV.snapPull * (1 - bd / R) : 0, cx = br.left + br.width / 2, cy = br.top + br.height / 2;
+  return { x: p.x + (cx - p.x) * k, y: p.y + (cy - p.y) * k, nav: bd <= DEV.snapHit ? best.dataset.nav || '' : '' };
 }
 
 // Where the menus' pointer is for a stick: out from the stick's centre along its direction, the
@@ -145,7 +148,7 @@ export function snapTo(root, p) {
 export function menuPointer(L, W, H) {
   const cx = L.cx || 0, cy = L.cy || 0;
   const far = Math.max(Math.hypot(cx, cy), Math.hypot(W - cx, cy), Math.hypot(cx, H - cy), Math.hypot(W - cx, H - cy));
-  const d = Math.min(1, L.mag) * far;
+  const d = Math.min(1, L.mag) * far * DEV.ptrReach;   // Dev → Menu pointer: reach
   return { x: Math.max(0, Math.min(W, cx + L.nx * d)), y: Math.max(0, Math.min(H, cy + L.ny * d)) };
 }
 
