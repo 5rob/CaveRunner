@@ -39,94 +39,190 @@ export function drawGun(ctx, x, y, ang, sc, accent) {
   ctx.restore();
 }
 
-// The runner: jetpack on the back, sealed helmet, legs that actually move.
-/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} w @param {number} hh @param {number} face @param {number} gait @param {boolean} air @param {number} jet @param {boolean} flash */
-export function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash) {
-  const suit = flash ? '#ffffff' : '#ff5a36';
-  const dark = flash ? '#d8dde6' : '#c33a1f';
-  ctx.save();
-  ctx.translate(x + w / 2, y);
-  ctx.scale(face, 1);
-  // jetpack
-  ctx.fillStyle = '#2b3039';
-  rr(ctx, -6.2, 6.5, 4.4, 9, 1.6); ctx.fill();
-  ctx.fillStyle = '#ff8a1f';
-  rr(ctx, -5.6, 8.4, 3.2, 1.4, 0.6); ctx.fill();
-  ctx.fillStyle = '#1b1f26';
-  rr(ctx, -5.4, 15, 3, 2.2, 0.8); ctx.fill();
-  if (jet > 0) {                                  // the nozzle glows when it is lit
-    ctx.fillStyle = COL.flame2;
-    rr(ctx, -5.2, 16.4, 2.6, 1.6, 0.8); ctx.fill();
-  }
-  // legs: a stride on the ground, tucked up in the air
-  ctx.fillStyle = dark;
-  const swing = air ? -1.4 : gait * 2.6;
-  const lift = air ? 2 : 0;
-  rr(ctx, -3.4 + swing, 15.5 - lift * 0.5, 3, 6.5 - lift, 1.2); ctx.fill();
-  rr(ctx, 0.4 - swing, 15.5 - lift, 3, 6.5 - lift * 0.6, 1.2); ctx.fill();
-  ctx.fillStyle = '#24282f';                      // boots
-  rr(ctx, -3.6 + swing, 20.2 - lift * 1.2, 3.6, 1.8, 0.7); ctx.fill();
-  rr(ctx, 0.2 - swing, 20.2 - lift * 1.4, 3.6, 1.8, 0.7); ctx.fill();
-  // torso
-  ctx.fillStyle = suit;
-  rr(ctx, -3.8, 6, 7.6, 10.5, 2.6); ctx.fill();
-  ctx.fillStyle = dark;
-  rr(ctx, -3.8, 12.4, 7.6, 2.2, 1); ctx.fill();   // belt
-  // arm reaching for the gun
-  ctx.fillStyle = suit;
-  rr(ctx, 1, 8.4, 5, 2.8, 1.3); ctx.fill();
-  // helmet
-  ctx.fillStyle = flash ? '#ffffff' : '#d7dbe3';
-  ctx.beginPath(); ctx.arc(0, 4.4, 4.6, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#1d2733';                      // visor
-  rr(ctx, -0.6, 1.9, 4.6, 4.2, 1.8); ctx.fill();
-  ctx.fillStyle = 'rgba(126,214,255,0.75)';       // glint
-  rr(ctx, 1.4, 2.7, 1.8, 1.4, 0.6); ctx.fill();
-  ctx.restore();
+// ---- the runner: a white-suited astronaut, arms and legs jointed at the elbow and knee ----
+// One painter (paintBody) draws the body from a pose: where the head, chest, hip, shoulders,
+// hips, elbows, hands, knees and feet are, in world units. The living runner works its pose out
+// (runnerPose: the feet from the stride, knees and elbows by two-bone reach, hands on the gun
+// and the torch); the corpse takes its pose straight off the ragdoll's joints, so the dead body
+// is the same astronaut as the live one. In game it's drawn into a small layer at DEV.runnerPx
+// world units a pixel and scaled up crisp (pixelSprite), like the hologram.
+const SUIT = { white: '#eef1f6', shade: '#aab2c0', dark: '#7a8393', boot: '#4e5566', visor: '#121a28',
+  glint: '#8fe0ff', rim: '#d9a441', pack: '#dde2ea', light: '#ff8a1f', panel: '#5d6676' };
+const FLASH = { white: '#ffb0a8', shade: '#f08a80', dark: '#c25a50', boot: '#7a3a36', visor: '#3a1418',
+  glint: '#ffd0c8', rim: '#ffb0a8', pack: '#ffb8b0', light: '#ffffff', panel: '#a04a44' };
+export const THIGH = 3, SHIN = 3, UPPER = 2.7, FORE = 2.6;   // bone lengths (world units)
+
+/** @typedef {{ x: number, y: number }} P2 */
+/** @typedef {{ face: number, head: P2, chest: P2, hip: P2, sh: P2[], hp: P2[], el: P2[], ha: P2[], kn: P2[], ft: P2[] }} BodyPose  [0] = the far limb, [1] = the near one */
+
+// Two-bone reach: the middle joint (elbow, knee) of a limb rooted at a with bones l1, l2 whose end
+// wants to be at t (or as near as it reaches: e). bend picks the side it folds to (+1 / -1).
+/** @param {P2} a @param {P2} t @param {number} l1 @param {number} l2 @param {number} bend @returns {{ j: P2, e: P2 }} */
+export function reach(a, t, l1, l2, bend) {
+  const dx = t.x - a.x, dy = t.y - a.y, d0 = Math.hypot(dx, dy) || 1e-6;
+  const d = Math.max(Math.abs(l1 - l2) + 0.01, Math.min(l1 + l2 - 0.01, d0));
+  const base = Math.atan2(dy, dx), k = Math.acos(Math.max(-1, Math.min(1, (l1 * l1 + d * d - l2 * l2) / (2 * l1 * d))));
+  const ang = base + bend * k;
+  return { j: { x: a.x + Math.cos(ang) * l1, y: a.y + Math.sin(ang) * l1 }, e: { x: a.x + dx / d0 * d, y: a.y + dy / d0 * d } };
 }
 
-// The runner dead: the same parts as drawRunner, laid along the ragdoll's joints
-// (world/ragdoll.js RAG_POSE): jetpack and torso turned with the spine, the head with the
-// neck, legs and the arm as bent limbs.
-/** @param {CanvasRenderingContext2D} ctx @param {import('../world/ragdoll.js').Ragdoll} R */
-export function drawRagdoll(ctx, R) {
-  const J = R.joints, f = R.face, suit = '#ff5a36', dark = '#c33a1f';
-  // a part drawn in the sprite's own coordinates, pinned at joint a and turned so the sprite's
-  // "down" points from a to b; (px, py) is where joint a sits in the sprite
+// The live runner's pose. (x, y) the runner box's top-left, w wide; gait the stride's phase
+// (radians, null standing); air: off the ground; hands: where the near (gun) and far (torch) hands
+// want to be, world units (none: resting). The sprite's own numbers face right, y from its top.
+/** @param {number} x @param {number} y @param {number} w @param {number} face @param {number | null} gait @param {boolean} air @param {{ gun?: P2 | null, torch?: P2 | null }} [hands] @returns {BodyPose} */
+export function runnerPose(x, y, w, face, gait, air, hands) {
+  const cx = x + w / 2, f = face || 1;
+  /** @param {number} lx @param {number} ly @returns {P2} */
+  const at = (lx, ly) => ({ x: cx + lx * f, y: y + ly });
+  const hp = [at(-0.9, 15.4), at(0.9, 15.4)];
+  // the feet: a stride (each foot swings forward lifted, comes back planted), tucked in the air, else apart
+  /** @type {P2[]} */
+  let ft;
+  if (air) ft = [at(-2.1, 20.2), at(1.6, 19.4)];
+  else if (gait != null) ft = [0, Math.PI].map((o, i) => {
+    const ph = gait + o, fx = -Math.cos(ph) * 3.4, lift = Math.max(0, Math.sin(ph)) * 2.2;
+    return at(fx + (i ? 0.5 : -0.5), 21 - lift);
+  });
+  else ft = [at(-1.7, 21), at(1.7, 21)];
+  const kn = hp.map((h, i) => reach(h, ft[i], THIGH, SHIN, -f).j);   // knees fold forward
+  const sh = [at(-1.1, 9.6), at(1.1, 9.6)];
+  const H = hands || {};
+  const want = [H.torch ? { x: H.torch.x, y: H.torch.y + 1.5 } : at(-2.4, 13.6), H.gun || at(3.4, 12.6)];
+  /** @type {P2[]} */
+  const el = [], ha = [];
+  for (let i = 0; i < 2; i++) {
+    // an elbow folds whichever way puts it lower (arms hang, they don't wing up)
+    const a = reach(sh[i], want[i], UPPER, FORE, 1), b = reach(sh[i], want[i], UPPER, FORE, -1);
+    const r = a.j.y >= b.j.y ? a : b;
+    el.push(r.j); ha.push(r.e);
+  }
+  return { face: f, head: at(0, 5), chest: at(0, 10), hip: at(0, 15.4), sh, hp, el, ha, kn, ft };
+}
+
+// The body from a pose (world units). held: drawn between the body and the near arm (the gun, so
+// the hand closes over it). jet: the backpack's nozzle glows. flash: hit (washed red).
+/** @param {CanvasRenderingContext2D} ctx @param {BodyPose} P @param {number} jet @param {boolean} flash @param {((c: CanvasRenderingContext2D) => void) | null} [held] */
+export function paintBody(ctx, P, jet, flash, held) {
+  const C = flash ? FLASH : SUIT, f = P.face;
+  ctx.save();
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  /** @param {P2} a @param {P2} b @param {string} col @param {number} w */
+  const seg = (a, b, col, w) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); };
+  // a part drawn in the sprite's own numbers, pinned at a (the sprite's (px, py)) and turned so its
+  // "down" points from a to b
+  /** @param {P2} a @param {P2} b @param {number} px @param {number} py @param {() => void} art */
   const along = (a, b, px, py, art) => {
-    const A = J[a], B = J[b];
     ctx.save();
-    ctx.translate(A.x, A.y);
-    ctx.rotate(Math.atan2(B.y - A.y, B.x - A.x) - Math.PI / 2);
+    ctx.translate(a.x, a.y);
+    ctx.rotate(Math.atan2(b.y - a.y, b.x - a.x) - Math.PI / 2);
     ctx.scale(f, 1);
     ctx.translate(-px, -py);
     art();
     ctx.restore();
   };
-  const limb = (pts, col, w) => {
-    ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.beginPath(); ctx.moveTo(J[pts[0]].x, J[pts[0]].y);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(J[pts[i]].x, J[pts[i]].y);
-    ctx.stroke();
+  // a limb's bone: a darker edge round it first, so it reads against the white suit behind it
+  /** @param {P2} a @param {P2} b @param {string} col @param {number} w */
+  const bone = (a, b, col, w) => { seg(a, b, C.dark, w + 1); seg(a, b, col, w); };
+  /** @param {number} i @param {string} col */
+  const leg = (i, col) => {
+    bone(P.hp[i], P.kn[i], col, 2.3); bone(P.kn[i], P.ft[i], col, 2.1);
+    // the boot: from the heel forward, square to the shin
+    const sx = P.ft[i].x - P.kn[i].x, sy = P.ft[i].y - P.kn[i].y, sl = Math.hypot(sx, sy) || 1;
+    const tx = sy / sl * f, ty = -sx / sl * f;
+    seg({ x: P.ft[i].x - tx * 0.5, y: P.ft[i].y - ty * 0.5 }, { x: P.ft[i].x + tx * 1.5, y: P.ft[i].y + ty * 1.5 }, C.boot, 2.2);
   };
-  const boot = j => { ctx.fillStyle = '#24282f'; ctx.beginPath(); ctx.arc(J[j].x, J[j].y, 1.5, 0, Math.PI * 2); ctx.fill(); };
-  along(1, 2, 0, 8.5, () => {                      // the jetpack, on the back
-    ctx.fillStyle = '#2b3039'; rr(ctx, -6.2, 6.5, 4.4, 9, 1.6); ctx.fill();
-    ctx.fillStyle = '#ff8a1f'; rr(ctx, -5.6, 8.4, 3.2, 1.4, 0.6); ctx.fill();
-    ctx.fillStyle = '#1b1f26'; rr(ctx, -5.4, 15, 3, 2.2, 0.8); ctx.fill();
+  /** @param {number} i @param {string} col @param {string} glove */
+  const arm = (i, col, glove) => {
+    bone(P.sh[i], P.el[i], col, 2); bone(P.el[i], P.ha[i], col, 1.8);
+    ctx.fillStyle = glove; ctx.beginPath(); ctx.arc(P.ha[i].x, P.ha[i].y, 1.25, 0, Math.PI * 2); ctx.fill();
+  };
+  arm(0, C.shade, C.dark);                                  // the far arm, in shadow
+  leg(0, C.shade);                                          // the far leg
+  along(P.chest, P.hip, 0, 10, () => {                      // the backpack
+    ctx.fillStyle = C.pack; rr(ctx, -6.4, 7.6, 4, 8.4, 1.2); ctx.fill();
+    ctx.fillStyle = C.shade; ctx.fillRect(-6.4, 13.6, 4, 1.2);
+    ctx.fillStyle = C.light; ctx.fillRect(-5.6, 9, 1.2, 1.2);
+    ctx.fillStyle = C.panel; rr(ctx, -5.8, 15.6, 2.8, 1.8, 0.6); ctx.fill();
+    if (jet > 0) { ctx.fillStyle = COL.flame2; rr(ctx, -5.6, 16.6, 2.4, 1.4, 0.6); ctx.fill(); }
   });
-  limb([2, 3, 4], dark, 3); boot(4);              // the far leg
-  along(1, 2, 0, 8.5, () => {                      // the torso and belt
-    ctx.fillStyle = suit; rr(ctx, -3.8, 6, 7.6, 10.5, 2.6); ctx.fill();
-    ctx.fillStyle = dark; rr(ctx, -3.8, 12.4, 7.6, 2.2, 1); ctx.fill();
+  along(P.chest, P.hip, 0, 10, () => {                      // the torso: chest box, belt
+    ctx.fillStyle = C.white; rr(ctx, -3.3, 7.8, 6.6, 8.6, 2.2); ctx.fill();
+    ctx.fillStyle = C.shade; ctx.fillRect(-3.3, 9.4, 1.4, 6);
+    ctx.fillStyle = C.panel; ctx.fillRect(0.3, 10.4, 2.4, 2);
+    ctx.fillStyle = '#4fd2ff'; ctx.fillRect(0.6, 10.8, 0.9, 0.9);
+    ctx.fillStyle = '#ff5a4a'; ctx.fillRect(1.6, 10.8, 0.9, 0.9);
+    ctx.fillStyle = C.dark; ctx.fillRect(-3.3, 14.2, 6.6, 1.2);
   });
-  limb([2, 5, 6], dark, 3); boot(6);              // the near leg
-  limb([1, 7], suit, 2.8);                         // the arm
-  along(0, 1, 0, 4.4, () => {                      // the helmet
-    ctx.fillStyle = '#d7dbe3'; ctx.beginPath(); ctx.arc(0, 4.4, 4.6, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#1d2733'; rr(ctx, -0.6, 1.9, 4.6, 4.2, 1.8); ctx.fill();
-    ctx.fillStyle = 'rgba(126,214,255,0.75)'; rr(ctx, 1.4, 2.7, 1.8, 1.4, 0.6); ctx.fill();
+  leg(1, C.white);                                          // the near leg
+  along(P.head, P.chest, 0, 5, () => {                      // the helmet
+    ctx.fillStyle = C.white; ctx.beginPath(); ctx.arc(0, 4.6, 4.9, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = C.shade; ctx.beginPath(); ctx.arc(0, 4.6, 4.9, Math.PI * 0.55, Math.PI * 1.15); ctx.lineTo(0, 4.6); ctx.fill();
+    ctx.fillStyle = C.rim; rr(ctx, -0.4, 1.6, 5, 5.6, 2.2); ctx.fill();
+    ctx.fillStyle = C.visor; rr(ctx, 0.2, 2.2, 4.2, 4.4, 1.8); ctx.fill();
+    ctx.fillStyle = C.glint; ctx.fillRect(2.4, 2.8, 1.2, 1.2);
+    ctx.fillStyle = C.shade; ctx.fillRect(-3.4, 8.6, 6.4, 1);  // the neck ring
   });
+  if (held) held(ctx);
+  arm(1, C.white, C.shade);                                 // the near arm, over the gun
+  ctx.restore();
+}
+
+// The runner (also the Exo Suit tab's portrait). gait: the stride's phase in radians, or null
+// standing; hands: where the gun and torch hands go (world units); held: the gun, under the hand.
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} w @param {number} hh @param {number} face @param {number | null} gait @param {boolean} air @param {number} jet @param {boolean} flash @param {{ gun?: P2 | null, torch?: P2 | null }} [hands] @param {((c: CanvasRenderingContext2D) => void) | null} [held] */
+export function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash, hands, held) {
+  paintBody(ctx, runnerPose(x, y, w, face, gait, air, hands), jet, flash, held);
+}
+
+// The corpse's pose, off the ragdoll's joints (world/ragdoll.js RAG_POSE). A replay saved before
+// the ragdoll had elbows and a second hand (8 joints) gets them made up.
+/** @param {import('../world/ragdoll.js').Ragdoll} R @returns {BodyPose} */
+export function ragPose(R) {
+  const J = R.joints;
+  /** @param {P2} a @param {P2} b @returns {P2} */
+  const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 + 0.6 });
+  const ha0 = J[10] || J[7], el1 = J[8] || mid(J[1], J[7]), el0 = J[9] || mid(J[1], ha0);
+  return { face: R.face, head: J[0], chest: J[1], hip: J[2], sh: [J[1], J[1]], hp: [J[2], J[2]],
+    el: [el0, el1], ha: [ha0, J[7]], kn: [J[3], J[5]], ft: [J[4], J[6]] };
+}
+
+// The runner dead: the same body, laid along the ragdoll
+/** @param {CanvasRenderingContext2D} ctx @param {import('../world/ragdoll.js').Ragdoll} R */
+export function drawRagdoll(ctx, R) { paintBody(ctx, ragPose(R), 0, false, null); }
+
+// ---- pixel sprites ----
+// Draw `paint` (world units) into a small layer at px world units a pixel, its grid pinned at
+// (x0, y0) so it rides with the sprite rather than crawling over it; make every pixel solid or
+// clear (no soft edges), give it a dark one-pixel outline (line), and lay it down scaled up crisp.
+/** @type {{ c: HTMLCanvasElement | null, x: CanvasRenderingContext2D | null }} */
+const PIX = { c: null, x: null };
+/** @param {CanvasRenderingContext2D} ctx @param {number} x0 @param {number} y0 @param {number} w @param {number} h @param {number} px @param {boolean} line @param {(c: CanvasRenderingContext2D) => void} paint */
+export function pixelSprite(ctx, x0, y0, w, h, px, line, paint) {
+  const cw = Math.ceil(w / px), ch = Math.ceil(h / px);
+  if (!PIX.c) { PIX.c = document.createElement('canvas'); PIX.x = PIX.c.getContext('2d', { willReadFrequently: true }); }
+  const c = PIX.c, t = PIX.x;
+  if (!t) return;
+  if (c.width < cw || c.height < ch) { c.width = Math.max(c.width, cw); c.height = Math.max(c.height, ch); }
+  t.setTransform(1, 0, 0, 1, 0, 0);
+  t.clearRect(0, 0, c.width, c.height);
+  t.setTransform(1 / px, 0, 0, 1 / px, -x0 / px, -y0 / px);
+  paint(t);
+  t.setTransform(1, 0, 0, 1, 0, 0);
+  const im = t.getImageData(0, 0, cw, ch), d = im.data, n = cw * ch;
+  const on = new Uint8Array(n);
+  for (let i = 0; i < n; i++) { if (d[i * 4 + 3] >= 100) { on[i] = 1; d[i * 4 + 3] = 255; } else d[i * 4 + 3] = 0; }
+  if (line) for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+    const i = y * cw + x;
+    if (on[i]) continue;
+    if ((x > 0 && on[i - 1]) || (x < cw - 1 && on[i + 1]) || (y > 0 && on[i - cw]) || (y < ch - 1 && on[i + cw])) {
+      d[i * 4] = 14; d[i * 4 + 1] = 17; d[i * 4 + 2] = 26; d[i * 4 + 3] = 255;
+    }
+  }
+  t.putImageData(im, 0, 0);
+  const sm = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(c, 0, 0, cw, ch, x0, y0, cw * px, ch * px);
+  ctx.imageSmoothingEnabled = sm;
 }
 
 // The torch in the runner's free hand. `flick` is the very same number the lamp is drawn

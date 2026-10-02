@@ -2,7 +2,7 @@
 
 | File | Holds |
 |---|---|
-| `sprites.js` | `drawRunner`, `drawRagdoll` (the same parts laid along the corpse's joints: torso and jetpack turned with the spine, helmet with the neck, bent limbs; drawn solid, not faded), `drawGun`, `drawGunGlow` (glow + streaks on a never-held ground gun), `drawFlame` (teardrops whose tip leans to `lx, ly`), `flameDrop`, `drawTorch`, `drawSconce`, `glowAt`, `GLOW_STREAKS`, `drawNugget` (a lumpy gold rock, turned as it rolls) |
+| `sprites.js` | The astronaut: `paintBody` (one body from a pose: far arm and leg in shade, backpack, torso, near leg, helmet, the `held` gun hook, near arm; limbs are bones with a darker edge), `runnerPose` (the live pose: feet from the stride phase, knees and elbows by `reach`, a two-bone solve; hands on the gun and the torch), `drawRunner`, `ragPose`/`drawRagdoll` (the same body off the ragdoll's joints; an old 8-joint replay gets elbows made up), `pixelSprite` (draw into a small layer at `px` world units a pixel on a grid pinned to the sprite, every pixel solid or clear, a dark outline, scaled up crisp: the player and the gun on top of it, `DEV.runnerPx`/`runnerLine`), `drawGun`, `drawGunGlow` (glow + streaks on a never-held ground gun), `drawFlame` (teardrops whose tip leans to `lx, ly`), `flameDrop`, `drawTorch`, `drawSconce`, `glowAt`, `GLOW_STREAKS`, `drawNugget` (a lumpy gold rock, turned as it rolls) |
 | `props.js` | `drawProp` (every decoration prop), `drawArch` (arched vines), `propCol`, `propGlow` (the light lamps, vents, shards, eyes, dark matter and lava give off), `eyesAlpha`, `rgbA`/`rgbS`, `VENT_H` |
 
 Creature sprites live with their creature (`creatures/`). Everything draws at world scale.

@@ -432,7 +432,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .devvars{display:flex;flex-direction:column;gap:10px;padding:4px 0 12px}
 .devgroup{border-top:1px solid var(--ring)}
 .devghead{display:flex;align-items:center;gap:8px;width:100%;height:40px;padding:0;border:0;background:none;
-  color:var(--text);font:700 13px system-ui,sans-serif;text-align:left}
+  color:var(--text);font:700 13px system-ui,sans-serif;text-align:left;position:relative;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.devghead::after{content:'';position:absolute;left:0;bottom:4px;height:2px;width:0;background:#5ab8ff;opacity:0}
+.devghead.holding::after{opacity:1;width:100%;transition:width var(--hold,400ms) linear}
 .devcaret{width:12px;color:var(--muted)}
 .spawnpanel .spawngo{margin-top:12px;width:100%}
 .devrow{display:flex;align-items:center;justify-content:space-between;gap:10px}

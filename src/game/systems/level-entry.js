@@ -27,6 +27,7 @@ export function enterLevel(W, G, back, keep) {
   level.enemies.forEach((e, i) => { e.sid = i; });
   if (back) {
     if (back.alive) { const live = new Set(back.alive); level.enemies = level.enemies.filter(e => live.has(e.sid)); }
+    if (back.brood) for (const [sid, left] of back.brood) { const e = level.enemies.find(q => q.sid === sid); if (e && e.nest) e.nest.left = left; }
     back.sold.forEach(i => { if (level.stock[i]) level.stock[i].sold = true; });
     const heal = level.stock.find(it => it.kind === 'heal');
     if (heal && back.heals) { heal.bought = back.heals; heal.price = healPrice(back.heals, W.floor); }
@@ -48,9 +49,8 @@ export function enterLevel(W, G, back, keep) {
   W.dparts.length = W.amb.length = W.clouds.length = W.rings.length = W.devils.length = 0;
   W.zfx = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
   {
-    const pcx0 = W.portal.x + W.portal.w / 2, pcy0 = W.portal.y + W.portal.h / 2;
-    W.sconces = [[pcx0 - 26, pcy0 - 2], [pcx0 + 26, pcy0 - 2],
-      [W.arrival.x - 26, W.arrival.y - 2], [W.arrival.x + 26, W.arrival.y - 2]];
+    // the prize rooms' wall torches (the portals are teleporter pads with their own light: render/pads.js)
+    W.sconces = [];
     for (const r of W.rooms) W.sconces.push([r.x - 28, r.y - 2], [r.x + 28, r.y - 2]);
     W.sconces = W.sconces.map(([x, y], i) => ({ x, y, ph: i * 1.7 }));
   }

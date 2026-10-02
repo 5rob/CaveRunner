@@ -4,7 +4,7 @@
 // with the torch, the crosshair, Permanent Shield and Angry Ghost (the spider's silk, drawn just
 // before the creatures, is drawSilk in game/creatures/spider.js)
 
-import { drawGun, drawRagdoll, drawRunner, drawTorch } from '../../art/sprites.js';
+import { drawGun, drawRagdoll, drawRunner, drawTorch, pixelSprite } from '../../art/sprites.js';
 import { COL, PH, PW } from '../../core/consts.js';
 import { drawEnemy } from '../../creatures/draw.js';
 import { ELITE_TINT } from '../../data/creatures.js';
@@ -121,13 +121,36 @@ export function drawPlayer(W, G, F) {
   // player
   const flashing = W.p.hitT > 0 && Math.floor(W.p.hitT * 30) % 2 === 0;
   const running = W.p.onGround && Math.abs(W.p.vx) > 15;
-  const gait = running ? Math.sin(W.time * 15) : 0;
+  const gait = running ? W.time * 13 : null;
+  // the body at DEV.runnerPx world units a pixel, scaled up crisp (pixelSprite, on a grid that
+  // rides with you); 0 draws it smooth. The gun is its own layer on top (same grid), turning as it aims
+  const px = DEV.runnerPx, line = DEV.runnerLine > 0;
   // dead: the ragdoll (from the frame after the death; drawn without the snap nudge, it's in the world)
-  if (W.p.dead && W.p.rag) { G.ctx.translate(-F.snapX, -F.snapY); drawRagdoll(G.ctx, W.p.rag); G.ctx.translate(F.snapX, F.snapY); }
-  else drawRunner(G.ctx, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing);
-  if (!W.p.dead) drawGun(G.ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
-  // the torch, in the hand the gun is not in
-  if (!W.p.dead) { const th = torchHand(W); drawTorch(G.ctx, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.torchP, W.leanX, W.leanY, W.time); }
+  if (W.p.dead && W.p.rag) {
+    G.ctx.translate(-F.snapX, -F.snapY);
+    const R = W.p.rag;
+    if (px > 0) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const j of R.joints) { x0 = Math.min(x0, j.x); y0 = Math.min(y0, j.y); x1 = Math.max(x1, j.x); y1 = Math.max(y1, j.y); }
+      const hip = R.joints[2];            // the grid rides with the hip
+      const ox = hip.x - Math.ceil((hip.x - x0 + 9) / px) * px, oy = hip.y - Math.ceil((hip.y - y0 + 9) / px) * px;
+      pixelSprite(G.ctx, ox, oy, x1 + 9 - ox, y1 + 9 - oy, px, line, c => drawRagdoll(c, R));
+    } else drawRagdoll(G.ctx, R);
+    G.ctx.translate(F.snapX, F.snapY);
+  } else {
+    const th = torchHand(W);
+    const hands = { gun: { x: pcx + ax * 2.5, y: gy }, torch: th };
+    /** @param {CanvasRenderingContext2D} c */
+    const body = c => drawRunner(c, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing, hands);
+    /** @param {CanvasRenderingContext2D} c */
+    const gun = c => drawGun(c, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
+    if (px > 0) {
+      pixelSprite(G.ctx, W.p.x - 14, W.p.y - 8, PW + 28, PH + 16, px, line, body);
+      pixelSprite(G.ctx, W.p.x - 14, W.p.y - 8, PW + 28, PH + 16, px, false, gun);
+    } else { body(G.ctx); gun(G.ctx); }
+    // the torch, in the hand the gun is not in
+    drawTorch(G.ctx, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.torchP, W.leanX, W.leanY, W.time);
+  }
   // a small aim crosshair at DEV.aimDist out, rotating round you with the aim: a "+"
   // with the centre cut out (two short verticals, two short horizontals), drawn as thin
   // as the thumbstick lines (~1.5 css px, so 1.5/unitPx world units, whatever the zoom)

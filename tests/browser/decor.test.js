@@ -39,7 +39,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     return L.sconces.filter(s => Math.hypot(s.x - a.x, s.y - a.y) > 60)
       .map(s => seen[Math.floor((s.y - 6) / FOG_U) * FW + Math.floor(s.x / FOG_U)]);
   });
-  check('wall torches out in the cave are hidden by the fog on arrival', tf.length >= 4 && tf.every(v => !v), tf);
+  check('wall torches out in the cave are hidden by the fog on arrival', tf.length >= 2 && tf.every(v => !v), tf);
 
   // ---- every theme gets its props, and each one draws ----
   const per = {};

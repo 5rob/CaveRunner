@@ -5,6 +5,29 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v125 — the astronaut, teleporter pads, a steel shop, a steady count
+Released 2026-10-02.
+
+- **You're a white-suited astronaut in pixels** (`art/sprites.js`): one `paintBody` from a pose,
+  big helmet with a gold-rimmed visor, backpack, chest panel; arms and legs are two bones each,
+  knees and elbows solved by `reach` (`runnerPose`: feet from the stride, hands on the gun and the
+  torch). Drawn by `pixelSprite` at `DEV.runnerPx` (1 world unit a pixel) on a grid riding with
+  you, solid pixels, a dark outline (`runnerLine`); the gun is its own pixel layer on top, aiming as before.
+- **The ragdoll has elbows and both hands** (11 joints, `RAG_BRACE`), drawn as the same astronaut
+  (`ragPose`; old 8-joint replays get elbows made up).
+- **The portals are teleporter pads** (`render/pads.js`): a platform, a blue beam fading upward,
+  rising specks, and blue lightning off the pad (the warp's `drawBolt`). No wall torches by them now;
+  the way-in motes rise off the pad in blue. "Find the exit pad at the top".
+- **The shop is steel** whatever the floor (`shopPanel`: roof with ceiling lights, deck floor, side
+  columns; the back wall's panels, rivets and lit rail in `drawTerrain`).
+- **Vending machines left to right: mods, guns, perks.**
+- **The hologram's count only goes down**: it went back up as nests let new rats out. A nest now
+  holds a fixed brood (`nest.left`, Dev `raBrood` 4–6) counted while inside (`bioCount`); the
+  autosave keeps it (`brood`). Selling needs the nests emptied or destroyed.
+- Dev: `enemies` / `enemiesUp` (how many a new level gets), `lvlReward` (`lvlSell`), `runnerPx`,
+  `runnerLine`, `raBrood`. The Dev panel's group headers open on a **press and hold**
+  (`DevGroupHead`), and the jellyfish preview sits inside the Jellyfish colours group.
+
 ## v124 — saved death replays, video export, the ragdoll
 Released 2026-10-02.
 

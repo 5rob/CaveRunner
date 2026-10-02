@@ -14,7 +14,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.goto('file://' + path.join(DIR, 'test.html'));
   await page.waitForTimeout(1600);
 
-  // the arrival portal breathes motes out, and there are wall torches either side of it
+  // the arrival pad gives off motes; it's a teleporter with its own light now, no wall torches (v125)
   const scen = await page.evaluate(() => {
     const L = window.__lvl, a = L.arrival;
     const out = L.motes.filter(q => q.kind === 'out');
@@ -23,7 +23,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   });
   check('the way-in portal is giving off motes', scen.out > 10, scen);
   check('and they die before drifting far', scen.far < 60, scen.far);
-  check('a torch on each side of the way in', scen.byArrival === 2, scen);
+  check('no wall torches by the way-in pad', scen.byArrival === 0, scen);
   await page.screenshot({ path: path.join(DIR, 'arrival_portal.png') });
 
   // fire a Black Hole, then park it in the open and feed it an enemy and an enemy shot
@@ -78,8 +78,18 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.tap('.devbtn');
   await page.waitForTimeout(250);
   check('knobs start folded away in their groups', (await page.$$('.devrow')).length === 0);
+  // a Dev group header opens on a press-and-hold (DevGroupHead), not a tap
+  const holdHead = async g => {
+    await page.evaluate(g => document.querySelector('.devghead[data-g=' + g + ']').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 50, clientY: 50 })), g);
+    await page.waitForTimeout(await page.evaluate(() => HOLD_MS) + 150);
+    await page.evaluate(g => document.querySelector('.devghead[data-g=' + g + ']').dispatchEvent(new PointerEvent('pointerup', { bubbles: true })), g);
+  };
   await page.tap('.devghead[data-g=bh]');
+  await page.waitForTimeout(600);
+  check('a quick tap on a group header leaves it shut', (await page.$$('.devrow')).length === 0);
+  await holdHead('bh');
   await page.waitForTimeout(150);
+  check('a press-and-hold opens it', (await page.$$('.devrow')).length > 0);
   const labels = await page.$$eval('.devrow label', ls => ls.map(l => l.textContent));
   check('Dev panel has the Black Hole pull range knob', labels.includes('Black Hole max pull range'), labels);
   check('and the travel speed knob', labels.includes('Black Hole travel speed'));

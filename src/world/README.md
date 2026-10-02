@@ -4,7 +4,7 @@ All pure: the logic suites call these directly.
 
 | File | Holds |
 |---|---|
-| `level.js` | `makeLevel(seed, floor, owned)`: one floor whole (terrain, shop, prize rooms, enemies, pickups, decoration, gold seams, nests, `fuel`, `zone`); `ROOM_HW`/`ROOM_HH` |
+| `level.js` | `makeLevel(seed, floor, owned)`: one floor whole (terrain, shop, prize rooms, enemies (`DEV.enemies` + `DEV.enemiesUp` a floor), pickups, decoration, gold seams, nests (each with its brood `left`), `fuel`, `zone`); `shopPanel(cx, cy)` (the shop shell's steel, whatever the theme: roof with ceiling lights, deck floor, side columns); `ROOM_HW`/`ROOM_HH` |
 | `strata.js` | Floor 1's layered cave: `strataCave`, `paveWorks`, and the timber: `timberWorks`, `timberFrame` |
 | `zones.js` | Floor 1's built-up vs natural zones: `builtAt(zone, wx, wy)`; `boxReach` (runner-box flood that keeps the main route open) |
 | `decorate.js` | `decorate` (the theme's `DECOR`: bakes and props), `cullDecor`, `propAnchored`, `archCurve`/`archNear`/`archAt`, `PLANTS`, `GROVES`, `DECOR_DENSITY`, `PROP_BOX`, `PROP_DMG` |
@@ -13,7 +13,7 @@ All pure: the logic suites call these directly.
 | `nests.js` | `ratNests` (floor 1: a mound, a bending tunnel, a room in the rock) |
 | `nav.js` | `navField` (Dijkstra out from a goal over `NAV` = 4px cells that fit a rat), `navWay` (next waypoint; extends through air to a landing) |
 | `vision.js` | `rayDist`, `losClear`, `visPoly` (`VIS_RAYS`), the fog memory `fogReveal`, `fogStart`, `nestFog` |
-| `ragdoll.js` | Your corpse: `ragNew` (eight joints in the sprite's pose, `RAG_POSE`, tipping over), `ragStep` (gravity, `RAG_SUB` substeps, sticks `RAG_STICKS`, the rock via a `solid(x, y)` test, floor friction, goes `still` after a second at rest), `ragPush` (a blast throws it), `ragHip`; `RAG_SLUMP` (it topples by itself for 1.5s, or a balanced sit never falls) |
+| `ragdoll.js` | Your corpse: `ragNew` (eleven joints in the sprite's pose, `RAG_POSE`: head, chest, hip, knees, feet, elbows, hands; tipping over), `ragStep` (gravity, `RAG_SUB` substeps, sticks `RAG_STICKS` (from `RAG_BRACE` on only braces), the rock via a `solid(x, y)` test, floor friction, goes `still` after a second at rest), `ragPush` (a blast throws it), `ragHip`; `RAG_SLUMP` (it topples by itself for 1.5s, or a balanced sit never falls) |
 | `fire.js` | The fire engine: `fireNew`, `fireLight`, `fireArea`, `fireNear`, `fireDouse`, `fireStep`; `FUEL_*`, `FIRE_*`, `FLAMMABLE`, `FIRE_WET` |
 
 ## Rules: generation

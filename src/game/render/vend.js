@@ -7,9 +7,9 @@
 // shop, the sweep and the crackle (drawWarp, after the fog).
 
 import { countdown } from '../../core/util.js';
-import { CELL, LVL_BUY, LVL_SELL, SHOP_FLOOR, SHOP_Y, VEND_BUY_X, VEND_SELL_X } from '../../core/consts.js';
+import { CELL, LVL_BUY, SHOP_FLOOR, SHOP_Y, VEND_BUY_X, VEND_SELL_X } from '../../core/consts.js';
 import { drawHoloShop } from './holo.js';
-import { canSell, REPO_ALARM, REPO_FIRE, REPO_JET, ROOF_Y, VEND_H, VEND_TOP, VEND_W, WARP_SWAP } from '../systems/vend.js';
+import { canSell, lvlSell, REPO_ALARM, REPO_FIRE, REPO_JET, ROOF_Y, VEND_H, VEND_TOP, VEND_W, WARP_SWAP } from '../systems/vend.js';
 import { drawBolt } from './looks.js';
 
 export const HOLO_GREEN = '#00ff3c', HOLO_RED = '#ff0000';   // the background hologram's two hues
@@ -163,7 +163,7 @@ export function drawVend(W, G, F) {
   else machine(G.ctx, W, 'buy', VEND_BUY_X, !W.hasLvl && !busy, HOLO_GREEN,
     ['BUY', lv], [commas(LVL_BUY) + ' G.', '(credit', 'available)']);
   machine(G.ctx, W, 'sell', VEND_SELL_X, W.hasLvl && !busy, canSell(W) ? HOLO_GREEN : HOLO_RED,
-    ['SELL', lv], [commas(LVL_SELL) + ' G.', '(no biological', 'entities accepted)']);
+    ['SELL', lv], [commas(lvlSell()) + ' G.', '(no biological', 'entities accepted)']);
 }
 
 // The teleport over the shop (after the fog, so it shows over the dark): a glow building along the

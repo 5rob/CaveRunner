@@ -14,6 +14,7 @@ import { MODS, famCol } from '../../spells/mods.js';
 import { FIRE_COLS } from '../../world/fire.js';
 import { nugR } from '../../world/nuggets.js';
 import { BG_PAR, drawHolo } from './holo.js';
+import { drawPad } from './pads.js';
 
 // The cave behind everything: the background (with parallax), the shop's back wall, the
 // decoration layer and the rock (the visible part only), and the burning pixels over them
@@ -32,12 +33,20 @@ export function drawTerrain(W, G, F) {
   drawHolo(W, G, F);                        // the hologram, halfway back (holo.js)
   // the shop's back wall
   if (W.camY + vh > SHOP_Y) {
-    G.ctx.fillStyle = '#241f28';
-    G.ctx.fillRect(0, SHOP_Y, WW, (SHOP_FLOOR * CELL) - SHOP_Y);
-    G.ctx.fillStyle = 'rgba(255,255,255,0.03)';
-    for (let bx = 0; bx < WW; bx += 24)
-      for (let by = SHOP_Y; by < SHOP_FLOOR * CELL; by += 12)
-        G.ctx.fillRect(bx + ((by / 12) % 2) * 12, by, 11, 11);
+    // steel panels: seams every 64, a rail with a lit line along it, a darker skirting
+    const wb = SHOP_FLOOR * CELL, wh = wb - SHOP_Y, rail = SHOP_Y + Math.round(wh * 0.64);
+    G.ctx.fillStyle = '#161b24';
+    G.ctx.fillRect(0, SHOP_Y, WW, wh);
+    G.ctx.fillStyle = '#1b212c'; G.ctx.fillRect(0, SHOP_Y, WW, 10);
+    G.ctx.fillStyle = '#10141b'; G.ctx.fillRect(0, wb - 10, WW, 10);
+    for (let bx = 0; bx < WW; bx += 64) {
+      G.ctx.fillStyle = '#0c1016'; G.ctx.fillRect(bx, SHOP_Y, 1.5, wh);
+      G.ctx.fillStyle = 'rgba(255,255,255,0.035)'; G.ctx.fillRect(bx + 1.5, SHOP_Y, 1, wh);
+      G.ctx.fillStyle = '#262e3a';                         // rivets top and bottom of each panel
+      for (const ry of [SHOP_Y + 14, rail - 6, rail + 8, wb - 14]) { G.ctx.fillRect(bx + 5, ry, 1.5, 1.5); G.ctx.fillRect(bx + 57.5, ry, 1.5, 1.5); }
+    }
+    G.ctx.fillStyle = '#222a36'; G.ctx.fillRect(0, rail, WW, 3);
+    G.ctx.fillStyle = 'rgba(90,200,255,0.28)'; G.ctx.fillRect(0, rail + 1, WW, 0.8);
     G.ctx.fillStyle = 'rgba(233,236,242,0.30)';
     G.ctx.font = '600 11px system-ui, sans-serif';
     G.ctx.textAlign = 'center';
@@ -139,43 +148,17 @@ export function drawProps(W, G, F) {
 // The exit portal
 /** @param {World} W @param {GameCtx} G */
 export function drawPortal(W, G) {
-  // exit portal: a glowing pool with a slow swirl of dashes round its rim
-  const pulse = 0.55 + 0.25 * Math.sin(W.time * 3);
-  const pcxE = W.portal.x + W.portal.w / 2, pcyE = W.portal.y + W.portal.h / 2;
-  G.ctx.globalAlpha = pulse * 0.35;
-  G.ctx.fillStyle = COL.portal;
-  G.ctx.beginPath(); G.ctx.ellipse(pcxE, pcyE, W.portal.w, W.portal.h * 0.75, 0, 0, Math.PI * 2); G.ctx.fill();
-  G.ctx.globalAlpha = pulse;
-  G.ctx.beginPath(); G.ctx.ellipse(pcxE, pcyE, W.portal.w / 2, W.portal.h / 2, 0, 0, Math.PI * 2); G.ctx.fill();
-  G.ctx.globalAlpha = 0.9;
-  G.ctx.fillStyle = '#d8fff0';
-  G.ctx.beginPath(); G.ctx.ellipse(pcxE, pcyE, W.portal.w * 0.22, W.portal.h * 0.26, 0, 0, Math.PI * 2); G.ctx.fill();
-  G.ctx.globalAlpha = 0.6;
-  G.ctx.strokeStyle = '#c8ffe4'; G.ctx.lineWidth = 1.2;
-  G.ctx.setLineDash([3, 5]); G.ctx.lineDashOffset = W.time * 12;
-  G.ctx.beginPath(); G.ctx.ellipse(pcxE, pcyE, W.portal.w * 0.62, W.portal.h * 0.6, 0, 0, Math.PI * 2); G.ctx.stroke();
-  G.ctx.setLineDash([]);
-  G.ctx.globalAlpha = 1;
+  // the exit: a teleporter pad on its ledge (its light is drawPads, after the fog)
+  if (W.hasLvl) drawPad(G.ctx, W.portal.x + W.portal.w / 2, W.portal.y + W.portal.h, W.time);
 }
 
-// The portal you arrived through, as scenery ("WAY IN")
+// The pad you arrived on, as scenery ("WAY IN")
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawArrival(W, G, F) {
   const { vh } = F;
-  // the portal you arrived through: scenery only
   if (W.arrival.y < W.camY + vh + 40 && W.arrival.y > W.camY - 40) {
-    const sway = 0.5 + 0.18 * Math.sin(W.time * 1.6);
-    G.ctx.fillStyle = '#4a4550';
-    G.ctx.fillRect(W.arrival.x - 16, W.arrival.y + 12, 32, 5);
-    G.ctx.globalAlpha = 0.22 * sway;
-    G.ctx.fillStyle = COL.enemy;
-    G.ctx.beginPath(); G.ctx.ellipse(W.arrival.x, W.arrival.y, 17, 21, 0, 0, Math.PI * 2); G.ctx.fill();
-    G.ctx.globalAlpha = 0.5 * sway;
-    G.ctx.beginPath(); G.ctx.ellipse(W.arrival.x, W.arrival.y, 10, 14, 0, 0, Math.PI * 2); G.ctx.fill();
-    G.ctx.globalAlpha = 1;
-    G.ctx.strokeStyle = '#6c6480'; G.ctx.lineWidth = 2.5;
-    G.ctx.beginPath(); G.ctx.ellipse(W.arrival.x, W.arrival.y, 13, 17, 0, 0, Math.PI * 2); G.ctx.stroke();
-    G.ctx.fillStyle = 'rgba(233,236,242,0.34)';
+    drawPad(G.ctx, W.arrival.x, SHOP_FLOOR * CELL, W.time);
+    G.ctx.fillStyle = 'rgba(160,215,255,0.4)';
     G.ctx.font = '600 7px system-ui, sans-serif';
     G.ctx.textAlign = 'center';
     G.ctx.fillText('WAY IN', W.arrival.x, W.arrival.y - 22);

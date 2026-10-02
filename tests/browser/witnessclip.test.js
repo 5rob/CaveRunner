@@ -59,7 +59,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the sounds are recorded (the blast, the death)', r.boomHeard && r.dieHeard, [r.boomHeard, r.dieHeard]);
   check('the death replay is offered', r.ready);
 
-  // the dead body is drawn solid: the red suit shows strong at the chest (it used to be drawn at 35%)
+  // the dead body is drawn solid: the white suit shows bright at the chest (it used to be drawn at 35%)
   const red = await page.evaluate(() => {
     const L = window.__lvl, c = document.querySelector('canvas.game'), x = c.getContext('2d');
     const s = L.light.s, j = L.p.rag.joints;
@@ -67,11 +67,11 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     for (const k of [1, 2]) {
       const px = Math.round((j[k].x - L.light.cam.x) * s), py = Math.round((j[k].y - L.light.cam.y) * s);
       const d = x.getImageData(px - 2, py - 2, 5, 5).data;
-      for (let i = 0; i < d.length; i += 4) best = Math.max(best, d[i] - d[i + 2]);
+      for (let i = 0; i < d.length; i += 4) best = Math.max(best, Math.min(d[i], d[i + 1], d[i + 2]));
     }
     return best;
   });
-  check('the body is drawn solid (red suit shows strong)', red > 90, red);
+  check('the body is drawn solid (white suit shows bright)', red > 170, red);
 
   // ---- Save ----
   await page.tap('.witnessbtn'); await page.waitForTimeout(300);

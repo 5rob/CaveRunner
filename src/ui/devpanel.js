@@ -1,6 +1,7 @@
 // @ts-check
 // The Dev panel (the gear button): live-tweak knob rows by group (DevRow, DevPanel), the
-// live jellyfish box above the jelly colours (JellyPreview), the hologram flash's fade curve
+// live jellyfish box at the top of the jelly colours group (JellyPreview), the group headers
+// that open and shut on a press-and-hold (DevGroupHead), the hologram flash's fade curve
 // (FadeCurve), and the Spawn gun box (SpawnGun).
 
 import { drawProp, rgbA } from '../art/props.js';
@@ -266,6 +267,30 @@ export function DevRow({ meta }) {
   );
 }
 
+// A group's header: press and hold it (HOLD_MS) to open or shut the group, so a finger scrolling
+// the panel can't flip one by landing on it. A bar fills along it while held; moving the finger
+// off (or more than HOLD_SLOP px) lets go without flipping it.
+export const HOLD_MS = 400, HOLD_SLOP = 10;
+/** @param {{ g: string, name: string, shut: boolean, toggle: (g: string) => void }} props */
+export function DevGroupHead({ g, name, shut, toggle }) {
+  const [held, setHeld] = useState(false);
+  const T = useRef({ id: 0, x: 0, y: 0 });
+  const stop = () => { clearTimeout(T.current.id); T.current.id = 0; setHeld(false); };
+  useEffect(() => () => clearTimeout(T.current.id), []);
+  return h('button', { className: 'devghead' + (shut ? '' : ' open') + (held ? ' holding' : ''), 'data-g': g,
+    style: { '--hold': HOLD_MS + 'ms' },
+    onPointerDown: e => {
+      T.current.x = e.clientX; T.current.y = e.clientY;
+      clearTimeout(T.current.id);
+      setHeld(true);
+      T.current.id = setTimeout(() => { T.current.id = 0; setHeld(false); toggle(g); }, HOLD_MS);
+    },
+    onPointerMove: e => { if (T.current.id && Math.hypot(e.clientX - T.current.x, e.clientY - T.current.y) > HOLD_SLOP) stop(); },
+    onPointerUp: stop, onPointerCancel: stop, onPointerLeave: stop,
+    onContextMenu: e => e.preventDefault() },
+    h('span', { className: 'devcaret' }, shut ? '▸' : '▾'), name);
+}
+
 // The dev window: it pauses the run but the game keeps drawing behind a light backdrop,
 // so the look-of-it knobs (zoom, torch, fog) preview live as you type. Holds the toggle
 // buttons — "All mods" is the old DEBUG shelf — and the saved, persisted variables.
@@ -319,11 +344,9 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
       DEV_GROUPS.map(([g, name]) => {
         const shut = !openG[g];
         return h('div', { key: g, className: 'devgroup' },
-          g === 'jellycol' ? h(JellyPreview) : null,          // the live jelly its colours paint
-          h('button', { className: 'devghead' + (shut ? '' : ' open'), 'data-g': g,
-            onPointerDown: e => { e.preventDefault(); toggleG(g); } },
-            h('span', { className: 'devcaret' }, shut ? '▸' : '▾'), name),
+          h(DevGroupHead, { g, name, shut, toggle: toggleG }),
           shut ? null : h('div', { className: 'devvars' },
+            g === 'jellycol' ? h(JellyPreview) : null,        // the live jelly its colours paint
             g === 'holoflash' ? h(FadeCurve) : null,
             DEV_META.filter(m => m.g === g).map(m => h(DevRow, { key: m.k, meta: m }))));
       }),

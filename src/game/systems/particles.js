@@ -5,7 +5,7 @@
 // (stepMotes).
 
 import { SFX } from '../../audio/sfx.js';
-import { COL, PH } from '../../core/consts.js';
+import { CELL, COL, PH, SHOP_FLOOR } from '../../core/consts.js';
 import { solidAt } from './terrain.js';
 
 /** @param {World} W @param {string} text */
@@ -99,15 +99,15 @@ export function stepMotes(W, F) {
       const life = 1.4 + Math.random() * 0.8;
       W.motes.push({ kind: 'in', x: ex + Math.cos(a) * rr, y: ey + Math.sin(a) * rr * 0.9,
         tx: ex, ty: ey, vx: 0, vy: 0, life, max: life, age: 0, ph: Math.random() * 6.28,
-        s: 1 + Math.random() * 1.4, c: Math.random() < 0.4 ? '#c8ffe4' : COL.portal });
+        s: 1 + Math.random() * 1.4, c: Math.random() < 0.4 ? '#d8f0ff' : '#5ab8ff' });
     }
-    if (Math.abs(W.arrival.y - W.p.y) < 500) { // the way in: breathed out, drifting away
-      const a = Math.random() * 6.28, sp = 10 + Math.random() * 16;
-      W.motes.push({ kind: 'out', x: W.arrival.x + (Math.random() - 0.5) * 12,
-        y: W.arrival.y + (Math.random() - 0.5) * 18, ox: W.arrival.x, oy: W.arrival.y,
-        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 4, life: 4, max: 4, age: 0,
+    if (Math.abs(W.arrival.y - W.p.y) < 500) { // the way in: rising off the pad, drifting away
+      const fy = SHOP_FLOOR * CELL - 3;
+      W.motes.push({ kind: 'out', x: W.arrival.x + (Math.random() - 0.5) * 22,
+        y: fy, ox: W.arrival.x, oy: fy,
+        vx: (Math.random() - 0.5) * 8, vy: -12 - Math.random() * 14, life: 4, max: 4, age: 0,
         ph: Math.random() * 6.28, fade: 34 + Math.random() * 18,
-        s: 1 + Math.random() * 1.3, c: Math.random() < 0.4 ? '#e6d4ff' : COL.enemy });
+        s: 1 + Math.random() * 1.3, c: Math.random() < 0.4 ? '#d8f0ff' : '#5ab8ff' });
     }
   }
   for (let i = W.motes.length - 1; i >= 0; i--) {

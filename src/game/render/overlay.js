@@ -114,7 +114,7 @@ export function drawMessages(W, G, F) {
     G.ctx.font = '700 22px system-ui, sans-serif';
     G.ctx.fillText(themeFor(W.floor).name, cw / 2, 196);
     G.ctx.font = '500 14px system-ui, sans-serif';
-    G.ctx.fillText('Find the green exit at the top', cw / 2, 218);
+    G.ctx.fillText('Find the exit pad at the top', cw / 2, 218);
     G.ctx.fillText('Clear it, then sell it back in the shop', cw / 2, 236);
     G.ctx.globalAlpha = 1;
   }
