@@ -17,7 +17,7 @@ React without JSX (`h(...)`), off the global React the page loads from a CDN. Ev
 | `modshop.js` | `modShop` (the mods' `ShopDef`), `SHOP_DEFS` (by `SHOPS` key), `CrystalIcon` |
 | `gunshop.js` | `GunVend`: the gun machine's menu (three `Reel`s of `LO.gunShop`, the selected `GunCard`, Buy / Reroll / Boosted; reels stop one at a time, `REEL_*`; `Sparks` on a boosted spin). `SHOP_MENUS` (in `modshop.js`) maps each `SHOPS` key to its menu; `useMenuNav` (vendshop.js) is the shared stick/key handling |
 | `exosuit.js` | `Bag` (the Bag's three tabs, `.btabs`: the `Editor`, which takes a `tabs` element to put at its foot, the Exo Suit, and Witness = `WitnessGallery`; `tab0` picks the one it opens on), `ExoSuit` (portrait, stats, `SUIT_SLOTS` slots `[data-xslot]`, the perk grid `.xperk`; drag a carried perk to a slot, a slot to a slot or off; tap for `PerkCard`; sets `perksDirty`) |
-| `devpanel.js` | `DevPanel`, `DevRow`, `JellyPreview` (runs the real `jellyStep`/`drawJelly`), `SpawnGun` |
+| `devpanel.js` | `DevPanel`, `DevGroupHead` (a group header: press and hold `HOLD_MS` to open/shut it, a bar fills while held; moving `HOLD_SLOP` px or letting go cancels, so scrolling can't flip one), `DevRow`, `JellyPreview` (runs the real `jellyStep`/`drawJelly`), `SpawnGun` |
 
 CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).
 
@@ -96,7 +96,7 @@ CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).
   refused (a WebView can), it shows the text in a box to long-press. **Spawn gun** (`.dbg.spawngun`)
   sets `input.current.spawnGun = level`; step drops `caveGun(level)` in front of you. **New cave**
   (`.dbg.newcave`) → `input.current.newCave`. **All mods** (`.dbg`) flips `LO.debug`.
-  `JellyPreview` sits sticky above the jelly colour rows.
+  `JellyPreview` sits at the top of the Jellyfish colours group, folded away with it.
 - **Death:** "Tap the right stick to restart"; the **WITNESS YOURSELF** button (`.witnessbtn`) opens
   `Witness`; `.app.witnessing` hides the controls (and the gold). A saved replay (`playClip`: the
   gallery's tap) closes the Bag, plays in the same `Witness`, and Close reopens the Bag on its Witness

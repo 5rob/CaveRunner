@@ -1,6 +1,6 @@
 // @ts-check
-// The runner's corpse: a rough ragdoll. Eight joints (head, chest, hip, two knees, two feet, a
-// hand) held together by sticks, under gravity, against the rock. Pure: the Game hands it a
+// The runner's corpse: a rough ragdoll. Eleven joints (head, chest, hip, two knees, two feet, two
+// elbows, two hands) held together by sticks, under gravity, against the rock. Pure: the Game hands it a
 // `solid(x, y)` test (game/systems/player.js corpseStep) and draws it with drawRagdoll
 // (art/sprites.js). Positions are world units; the pose it starts in is the sprite's.
 
@@ -8,17 +8,22 @@ import { GRAVITY } from '../core/consts.js';
 
 // the joints where the sprite has them (x from the sprite's centre, facing right; y from its top)
 export const RAG_POSE = [
-  [0, 4.4],      // 0 head (the helmet's centre)
-  [0, 8.5],      // 1 chest
-  [0, 15],       // 2 hip
-  [-1.9, 18.2],  // 3 back knee
-  [-1.9, 21.2],  // 4 back foot
-  [1.9, 18.2],   // 5 front knee
-  [1.9, 21.2],   // 6 front foot
-  [5.5, 9.8],    // 7 hand
+  [0, 5],        // 0 head (the helmet's centre)
+  [0, 10],       // 1 chest (the shoulders)
+  [0, 15.4],     // 2 hip
+  [-1.2, 18.4],  // 3 back knee
+  [-1.7, 21],    // 4 back foot
+  [1.8, 18.2],   // 5 front knee
+  [1.7, 21],     // 6 front foot
+  [4.6, 11.6],   // 7 front hand (the gun's)
+  [2.2, 12.2],   // 8 front elbow
+  [-2.1, 12.4],  // 9 back elbow
+  [-3.6, 11],    // 10 back hand (the torch's)
 ];
-// the sticks between them; [0, 2] keeps the neck from folding flat
-export const RAG_STICKS = [[0, 1], [1, 2], [2, 3], [3, 4], [2, 5], [5, 6], [1, 7], [0, 2], [1, 3], [1, 5]];
+// the sticks between them; [0, 2] keeps the neck from folding flat. The ones from RAG_BRACE on
+// are only braces: they stop the legs folding up into the chest
+export const RAG_STICKS = [[0, 1], [1, 2], [2, 3], [3, 4], [2, 5], [5, 6], [1, 8], [8, 7], [1, 9], [9, 10], [0, 2], [1, 3], [1, 5]];
+export const RAG_BRACE = 11;
 export const RAG_SUB = 4;          // substeps a frame, so a hard push can't carry a joint through a thin wall
 export const RAG_ITER = 3;         // passes over the sticks each substep
 export const RAG_VMAX = 900;       // the fastest a joint may go (units/s)
@@ -39,7 +44,7 @@ export function ragNew(x, y, w, face, vx, vy, rnd) {
     // the top goes with the shove more than the feet do, so the body turns over
     const up = 1 - py / 22;
     const tipX = (rnd() - 0.5) * 50 - face * 25;
-    return { x: cx + px * face, y: y + py, vx: vx * (0.85 + 0.4 * up) + tipX * up + (i === 7 ? (rnd() - 0.5) * 80 : 0),
+    return { x: cx + px * face, y: y + py, vx: vx * (0.85 + 0.4 * up) + tipX * up + (i === 7 || i === 10 ? (rnd() - 0.5) * 80 : 0),
       vy: vy - (sp > 250 ? 60 * up : 0), ox: 0, oy: 0, g: 0 };
   });
   const len = RAG_STICKS.map(([a, b]) => Math.hypot(joints[a].x - joints[b].x, joints[a].y - joints[b].y));
@@ -83,7 +88,7 @@ export function ragStep(R, dt, solid) {
         const a = J[RAG_STICKS[k][0]], b = J[RAG_STICKS[k][1]];
         const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1e-6;
         // the cross-braces ([1, 3], [1, 5]) only stop the legs folding up into the chest
-        if (k >= 8 && d >= R.len[k]) continue;
+        if (k >= RAG_BRACE && d >= R.len[k]) continue;
         const f = (d - R.len[k]) / d * 0.5;
         a.x += dx * f; a.y += dy * f; b.x -= dx * f; b.y -= dy * f;
       }

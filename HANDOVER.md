@@ -9,7 +9,14 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
-- **Released: v124** on `main`, 2026-10-02: saved death replays (the Bag's Witness tab: play,
+- **Released: v125** on `main`, 2026-10-02: the player as a pixel astronaut with jointed limbs
+  (`art/sprites.js` `paintBody`/`runnerPose`/`pixelSprite`), the ragdoll with elbows, teleporter pads
+  for both portals (`render/pads.js`), a steel shop (`shopPanel`), machines left to right mods/guns/perks,
+  a hologram count that only goes down (nests hold a fixed brood, `nest.left`), Dev knobs for the enemy
+  count and the level reward, press-and-hold Dev group headers. The owner may paste Dev numbers for
+  the astronaut (`runnerPx`, `runnerLine`). The owner's reference picture never arrived in the session:
+  the look is from "a white-dressed astronaut, pixel style".
+- **v124** on `main`, 2026-10-02: saved death replays (the Bag's Witness tab: play,
   rename, delete), the replay's sound, **Export video** (MP4 with sound into Movies/CaveRunner via
   a new app bridge, `window.CaveApp`: **the APK must be reinstalled once** for saving videos; ffmpeg.wasm
   converts if the phone can't record MP4), and the corpse as a ragdoll (`world/ragdoll.js`).

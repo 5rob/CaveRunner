@@ -15,10 +15,10 @@ export const CHUTE_Y = SHOP_FLOOR * CELL - 14;           // where a bought thing
 
 /** @typedef {{ x: number, icon: string, hue: string, label: string }} ShopMachine  icon: an emoji, or 'gun' for the gun sprite */
 /** @type {Record<string, ShopMachine>} */
-export const SHOPS = {
-  mods: { x: WW / 2 + 110, icon: '⚙️', hue: '#4fe3ff', label: 'Tap R to shop' },
+export const SHOPS = {                                   // left to right: mods, guns, perks
+  mods: { x: WW / 2 - 110, icon: '⚙️', hue: '#4fe3ff', label: 'Tap R to shop' },
   guns: { x: WW / 2, icon: 'gun', hue: '#ff9a3c', label: 'Tap R to shop' },
-  perks: { x: WW / 2 - 110, icon: '✦', hue: '#3dff7a', label: 'Tap R to shop' },
+  perks: { x: WW / 2 + 110, icon: '✦', hue: '#3dff7a', label: 'Tap R to shop' },
 };
 
 // the machine you're standing at, if any

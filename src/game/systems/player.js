@@ -124,6 +124,26 @@ export function corpseStep(W, dt) {
 }
 
 // ---- moving you (a part of step) ----
+// Hanging from a web line or an arched vine (direction ux, uy): does a push (nx, ny at strength
+// mag) let go? Any push mostly across the line, in any direction (more than LINE_OFF of it), or
+// one along it past an end you're at (atA: the start, atB: the end). Before v125 only pushing
+// down let go, so pushing sideways off a steep line, or off its end, left you stuck on it.
+export const LINE_OFF = 0.75;
+/** @param {number} nx @param {number} ny @param {number} mag @param {number} ux @param {number} uy @param {boolean} atA @param {boolean} atB */
+export function lineLetGo(nx, ny, mag, ux, uy, atA, atB) {
+  if (mag <= 0.5) return false;
+  const along = nx * ux + ny * uy, across = Math.abs(nx * uy - ny * ux);
+  return across > LINE_OFF || (atB && along > 0.3) || (atA && along < -0.3);
+}
+
+// letting go of a line: no grabbing one again for a moment, and the push carries you off it
+/** @param {World} W @param {{ nx: number, ny: number }} L @param {number} mag */
+function letGo(W, L, mag) {
+  W.webLetGo = 0.35;
+  W.p.vx = L.nx * mag * WALK * W.pb.walk * DEV.move * 0.8;
+  W.p.vy = Math.max(-90, L.ny * mag * 90);
+}
+
 // The stick (or the keys), the jetpack and its fuel, steering (walking, flying, climbing a
 // vine, an arched vine or a web line), moving against the pixel terrain, and your footsteps.
 /** @param {World} W @param {GameCtx} G @param {StepFrame} F */
@@ -195,12 +215,14 @@ export function movePlayer(W, G, F) {
     if (W.zfx.rev) W.p.vy -= GRAVITY * W.zfx.rev * dt;          // dark matter lifts you
   } else if (climbing && W.zfx.arch && W.p.kick <= 0) {
     // hanging from an arched vine: the stick runs you along its curve, hands on it. Push
-    // down (not along it) to let go.
+    // off it (any way across it, or past an end) to let go (lineLetGo).
     const ar = W.zfx.arch, hy = W.p.y + WEB_HAND, q = archNear(ar, pcx0, hy);
     const a = ar.arc[q.k], b = ar.arc[q.k + 1], ul = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
     const ux = (b[0] - a[0]) / ul, uy = (b[1] - a[1]) / ul;
     const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
-    if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) { W.webLetGo = 0.35; W.p.vy = 40; }
+    const A0 = ar.arc[0], A1 = ar.arc[ar.arc.length - 1];
+    const atA = Math.hypot(q.x - ar.x - A0[0], q.y - ar.y - A0[1]) < 1.5, atB = Math.hypot(q.x - ar.x - A1[0], q.y - ar.y - A1[1]) < 1.5;
+    if (lineLetGo(L.nx, L.ny, mag, ux, uy, atA, atB)) letGo(W, L, mag);
     else {
       const v = along * (ar.climb || (ar.climb = kr('arClimb'))) * tied;
       W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
@@ -208,11 +230,13 @@ export function movePlayer(W, G, F) {
     }
   } else if (climbing && W.zfx.web && W.p.kick <= 0) {
     // hanging from a spider's web line: the stick runs you along it, hands on the line.
-    // Push down (not along it) to let go.
+    // Push off it (any way across it, or past an end) to let go (lineLetGo).
     const ln = W.zfx.web, wl = Math.hypot(ln.b0x - ln.a0x, ln.b0y - ln.a0y) || 1;
     let ux = (ln.b0x - ln.a0x) / wl, uy = (ln.b0y - ln.a0y) / wl;
     const along = mag > 0 ? (L.nx * ux + L.ny * uy) * mag : 0;
-    if (mag > 0.5 && L.ny > 0.7 && Math.abs(along) < 0.5) { W.webLetGo = 0.35; W.p.vy = 40; }
+    const e = webNear(ln, pcx0, W.p.y + WEB_HAND);
+    const atA = Math.hypot(e.x - ln.a0x, e.y - ln.a0y) < 1.5, atB = Math.hypot(e.x - ln.b0x, e.y - ln.b0y) < 1.5;
+    if (lineLetGo(L.nx, L.ny, mag, ux, uy, atA, atB)) letGo(W, L, mag);
     else {
       const v = along * (ln.climb || (ln.climb = spr('webClimb'))) * tied, hy = W.p.y + WEB_HAND, q = webNear(ln, pcx0, hy);
       W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);

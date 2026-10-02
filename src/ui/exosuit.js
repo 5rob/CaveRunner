@@ -8,9 +8,10 @@
 // off the slots to take it out. A tap on any perk shows its card. Editing is gated like the Bag's
 // (canEdit: in the shop, or with Tinker).
 
-import { drawRunner } from '../art/sprites.js';
+import { drawRunner, pixelSprite } from '../art/sprites.js';
 import { SFX } from '../audio/sfx.js';
 import { COIN_PULL, FUEL_REGEN, PH, PW, WALK } from '../core/consts.js';
+import { DEV } from '../dev/knobs.js';
 import { PERKS, PERK_IDS, ROMAN, STAT_KEYS, STAT_PERKS, SUIT_LEN, SUIT_SLOTS, activePerks, fitsSlot, perkBag } from '../data/perks.js';
 import { PerkCard } from './cards.js';
 import { WitnessGallery } from './clips.js';
@@ -66,7 +67,9 @@ function Portrait() {
       ctx.beginPath(); ctx.moveTo(PW / 2 - 3, PH - 2); ctx.lineTo(PW / 2 + 3, PH - 2); ctx.lineTo(PW / 2, PH + 4 + jet * 6); ctx.fill();
       ctx.fillStyle = '#fff1c4';
       ctx.beginPath(); ctx.moveTo(PW / 2 - 1.5, PH - 2); ctx.lineTo(PW / 2 + 1.5, PH - 2); ctx.lineTo(PW / 2, PH + 1 + jet * 3); ctx.fill();
-      drawRunner(ctx, 0, 0, PW, PH, 1, t * 0.6, true, jet, false);
+      // the same pixel astronaut as in the cave (DEV.runnerPx; 0 smooth)
+      if (DEV.runnerPx > 0) pixelSprite(ctx, -8, -4, PW + 16, PH + 8, DEV.runnerPx, DEV.runnerLine > 0, c => drawRunner(c, 0, 0, PW, PH, 1, null, true, jet, false));
+      else drawRunner(ctx, 0, 0, PW, PH, 1, null, true, jet, false);
       ctx.restore();
       raf = requestAnimationFrame(frame);
     };

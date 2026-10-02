@@ -57,8 +57,10 @@ Invisibility). `hunting = chaser && e.aggro`. Shooters and turrets gate *firing*
 - **Jelly:** spits from its head when `S.inRange && S.aimed` with a line of sight; the spit copies
   its colours (`jellyPal`). On each pulse the Game calls `puffSpores(W, e)` (`systems/ambience.js`).
   `natural` is the `env.stay` it gets on zoned floors. Its plant glow is `systems/plantglow.js`.
-- **Rats:** a nest lets one out (`spawnRat`) when you're within `wake`, its timer is up and fewer
-  than `max` are out. `ratFrame` picks the goal in order: carrying → home; a loose coin within
+- **Rats:** a nest lets one out (`spawnRat`) when you're within `wake`, its timer is up, fewer
+  than `max` are out and it has any left (`nest.left`, a fixed brood rolled in `makeLevel` from
+  `raBrood`; `bioCount` counts them, so the hologram's number only goes down; the autosave keeps
+  each nest's brood plus its rats out, which aren't saved). `ratFrame` picks the goal in order: carrying → home; a loose coin within
   `raSmell` → the coin; hunting → your feet; else roam round the mouth. A bite (`raBite`, ×`raBroke`
   if you have no gold) knocks a `raSteal` coin out of you (`pop` physics, `nopull`). `ratSolid` =
   rock + `W.burrow` (every nest room/tunnel), so rats run over holes and only go in by tunnel mode.

@@ -15,6 +15,10 @@
   (use `jcol` for any jelly colour).
 - Witness (`g: 'witness'`): `witPad` (how far past your path a saved replay keeps, so how far its
   camera may stray, world units, 80) and `witKbps` (the exported video's bitrate, 6000).
+- Level (`g: 'level'`): `due1` (floor 1's repay time, minutes), `enemies` (creatures a new level
+  gets on floor 1, `ENEMY_COUNT`) and `enemiesUp` (more each floor, 12), `lvlReward` (what selling
+  pays on top of the debt, 1000). Player: `runnerPx` (the astronaut's pixel size in world units, 1;
+  0 smooth), `runnerLine` (its dark outline). Rats: `raBrood` (rats a nest holds in all, 4–6).
 - The menus' pointer (`g: 'menuptr'`): `ptrStart`, `ptrReach`, `ptrSize`, `ptrLine`, `snapR`, `snapPull`,
   `snapHit` (read live by `ui/vendshop.js` and the right `Stick`).
 - The tables: `SP_KNOBS` (spider + web lines), `JE_KNOBS`, `JE_COLS` (jellyfish), `RA_KNOBS` (rats

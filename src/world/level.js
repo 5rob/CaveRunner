@@ -4,13 +4,13 @@
 // perks owned make the same cave.
 
 import {
-  BED, BH, BRICK, BW, CELL, CH, CW, ENEMY_COUNT, GUN_DROPS, MOD_DROPS, PH, PICKUP_GAP, ROCK,
+  BED, BH, BRICK, BW, CELL, CH, CW, GUN_DROPS, MOD_DROPS, PH, PICKUP_GAP, ROCK,
   SHOP_FLOOR, SHOP_ROOF, SHOP_TOP, WW
 } from '../core/consts.js';
 import { mix } from '../core/util.js';
 import { ELITE_CHANCE, NATURAL_ONLY, eliteOf, enemyFor, rosterFor } from '../data/creatures.js';
 import { themeFor } from '../data/themes.js';
-import { kr } from '../dev/knobs.js';
+import { DEV, kr, kru } from '../dev/knobs.js';
 import { decorate } from './decorate.js';
 import { ratNests } from './nests.js';
 import { paveWorks, strataCave, timberWorks } from './strata.js';
@@ -19,6 +19,32 @@ import { boxReach } from './zones.js';
 
 // a prize room's half-size in world units, shell included (makeLevel's rx/ry + sh, in pixels)
 export const ROOM_HW = 23 * CELL, ROOM_HH = 15 * CELL;                   // gold per vein pixel dug out (before the floor's lift)
+
+// The shop's shell, one terrain pixel at (cx, cy): dark steel panels with seams and rivets, a
+// strip of ceiling lights under the roof, a bright-edged deck plate for the floor, steel columns
+// for the side walls. Pure, so a test can check it
+/** @param {number} cx @param {number} cy @returns {number[]} */
+export function shopPanel(cx, cy) {
+  const top = SHOP_TOP - SHOP_ROOF;
+  if (cy < SHOP_FLOOR && (cx < 3 || cx >= CW - 3)) {                    // the side walls
+    if (cx === 2 || cx === CW - 3) return [92, 102, 118];
+    return (cy % 12 === 0) ? [26, 30, 38] : [50, 57, 70];
+  }
+  if (cy < SHOP_TOP) {                                                  // the roof
+    const r = cy - top;
+    if (r === 0) return [74, 82, 98];
+    if (r === SHOP_ROOF - 1) return cx % 16 < 11 ? [130, 222, 255] : [40, 54, 70];   // the lights
+    if (r === SHOP_ROOF - 2) return [29, 34, 43];
+    if (cx % 24 === 0) return [24, 28, 36];
+    if (r === 2 && (cx % 24 === 3 || cx % 24 === 21)) return [96, 108, 124];
+    return [42, 48, 59];
+  }
+  const f = cy - SHOP_FLOOR;                                            // the floor
+  if (f === 0) return cx % 20 === 0 ? [70, 78, 92] : [150, 162, 180];
+  if (f === 1) return cx % 40 === 20 || cx % 40 === 21 ? [100, 210, 255] : [72, 81, 96];
+  if (f < 4) return cx % 20 === 0 ? [28, 32, 40] : [46, 52, 63];
+  return [20, 23, 29];
+}
 
 /** @param {number} seed @param {number} floor @param {string[]} [owned] perks you hold (unused since the room holds a green crystal) @returns {Level} */
 export function makeLevel(seed, floor, owned) {
@@ -432,7 +458,15 @@ export function makeLevel(seed, floor, owned) {
     }
   }
 
-  // the shop's floor can't be dug or blown through: bedrock, painted as the brick above
+  // the shop's shell is high-tech, whatever the floor's theme: steel roof, floor and walls
+  for (let cy = SHOP_TOP - SHOP_ROOF; cy < CH; cy++)
+    for (let cx = 0; cx < CW; cx++) {
+      const i = cy * CW + cx;
+      if (!mat[i]) continue;
+      const c = shopPanel(cx, cy), j = (hash(cx * 5 + 1, cy * 3 + 2) - 0.5) * 4;
+      d[i * 4] = c[0] + j; d[i * 4 + 1] = c[1] + j; d[i * 4 + 2] = c[2] + j; d[i * 4 + 3] = 255;
+    }
+  // the shop's floor can't be dug or blown through: bedrock, painted as the steel above
   for (let cy = SHOP_FLOOR; cy < SHOP_FLOOR + 4; cy++)
     for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BED;
 
@@ -482,7 +516,7 @@ export function makeLevel(seed, floor, owned) {
   };
   const enemies = [];
   const roster = rosterFor(floor, rnd);
-  const wanted = Math.min(136, ENEMY_COUNT + (floor - 1) * 12);
+  const wanted = Math.min(Math.max(136, DEV.enemies), DEV.enemies + (floor - 1) * DEV.enemiesUp);
   // a creature that only lives in the natural zones (the jellies: the built-up corridors are
   // too tight to swim) and was rolled for a built-up spot keeps its turn for the next spot,
   // so the floor's mix stays the same
@@ -509,7 +543,7 @@ export function makeLevel(seed, floor, owned) {
       hx: x, hy: y, tgt: null, rest: 0, k, touch: 0, charge: 0,
       nest: { path: n.path.map(q => ({ x: (q.x + 0.5) * CELL, y: (q.y + 0.5) * CELL })),
         mouth: { x: (n.mouth.x + 0.5) * CELL, y: (n.mouth.y + 0.5) * CELL }, built: n.built,
-        t: 0.5 + (n.x % 7) * 0.4, stash: 0, max: 0 } });
+        t: 0.5 + (n.x % 7) * 0.4, stash: 0, max: 0, left: Math.round(kru('raBrood', hash(n.x * 3 + 11, n.y * 5 + 7))) } });
   }
 
   // guns and red crystals to find: the higher up the cave, the better the roll.

@@ -108,6 +108,29 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     stick(0, 0);
     for (let i = 0; i < 30; i++) await frame();
     out.letGo = !L.zfx.web && p.y > wy + 20;
+    // v125: any push off a line lets go. Sideways off a hanging (upright) line...
+    L.webs.length = 0;
+    const vxl = room.x;
+    L.webs.push({ ax: vxl, ay: room.y - 160, bx: vxl, by: room.y - 40, a0x: vxl, a0y: room.y - 160, b0x: vxl, b0y: room.y - 40, ain: null, bin: null, owner: null });
+    stick(0, 0);
+    for (let i = 0; i < 40; i++) { await frame(); if (i < 20) { p.x = vxl - PW / 2; p.y = room.y - 110; p.vx = 0; p.vy = 0; } }
+    out.vLatched = !!L.zfx.web;
+    stick(1, 0);
+    for (let i = 0; i < 25; i++) await frame();
+    out.sideOff = !L.zfx.web && p.x + PW / 2 > vxl + 10;
+    out.sideDx = Math.round(p.x + PW / 2 - vxl);
+    stick(0, 0);
+    // ...and off the end of a level one, by running along it past the end
+    L.webs.length = 0;
+    const ey = room.y - 70, eEnd = room.x;
+    L.webs.push({ ax: room.l + 20, ay: ey, bx: eEnd, by: ey, a0x: room.l + 20, a0y: ey, b0x: eEnd, b0y: ey, ain: null, bin: null, owner: null });
+    for (let i = 0; i < 40; i++) { await frame(); if (i < 20) { p.x = eEnd - 50; p.y = ey + 1; p.vx = 0; p.vy = 0; } }
+    out.eLatched = !!L.zfx.web;
+    stick(1, 0);
+    const t1 = performance.now(); while (performance.now() - t1 < 1500) await frame();
+    out.endOff = !L.zfx.web && p.x + PW / 2 > eEnd + 5;
+    out.endDx = Math.round(p.x + PW / 2 - eEnd);
+    stick(0, 0);
     // slowed pushing through: jet sideways, held in place inside vertical lines, and read
     // the speed you're allowed to reach
     const through = async lines => {
@@ -138,6 +161,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('touch a web line and you hang from it like a vine', r.latched && !r.hangFell, { latched: r.latched, hangY: r.hangY });
   check('the stick runs you along it, staying on the line', r.along > 25 && Math.abs(r.alongDy) < 8, { along: r.along, dy: r.alongDy });
   check('pushing down lets go', r.letGo);
+  check('pushing sideways off an upright line lets go too', r.vLatched && r.sideOff, { latched: r.vLatched, dx: r.sideDx });
+  check('and running off the end of a line drops you off it', r.eLatched && r.endOff, { latched: r.eLatched, dx: r.endDx });
   check('each line you push through slows you (×' + 0.8 + ' each)', r.w2.n === 2 && Math.abs(r.w2.vx / r.w0.vx - 0.64) < 0.08, { w0: r.w0, w2: r.w2 });
 
   await browser.close();

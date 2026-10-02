@@ -4,7 +4,7 @@
 // Every table registers its rows before DEV is built from the defaults below, so they all
 // live here for now (REFACTOR.md, D11).
 
-import { DEADLINE_MS } from '../core/consts.js';
+import { DEADLINE_MS, ENEMY_COUNT, LVL_SELL, LVL_BUY } from '../core/consts.js';
 import { HEX_RE, hexMix, hsvAdjust } from '../core/util.js';
 
 // ---- dev settings ----
@@ -18,7 +18,8 @@ export const DEV_DEFAULTS = { zoom: 1.6, torch: 0.5, fogDark: 0.99, fogDim: 0.85
   vSpell: 0.6, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vDrip: 1, vStep: 1, vUi: 1, bagSpeed: 1,
   holoAlpha: 1, bloom: 0.8, bloomBlur: 8, bloomBright: 1.3, pixelFx: 1, holoPx: 2,
   holoMin: 0, holoMax: 1, holoFade: 3, holoC1x: 0.25, holoC1y: 1, holoC2x: 0.5, holoC2y: 0,
-  due1: 60,
+  due1: 60, enemies: ENEMY_COUNT, enemiesUp: 12, lvlReward: LVL_SELL - LVL_BUY,
+  runnerPx: 1, runnerLine: 1,
   ptrStart: 0.12, ptrReach: 1, ptrSize: 1, ptrLine: 0.75, snapR: 28, snapPull: 0.3, snapHit: 10,
   witPad: 80, witKbps: 6000 };
 // g: the collapsible group the knob sits in on the Dev panel (DEV_GROUPS gives the order)
@@ -63,6 +64,11 @@ export const DEV_META = [
   { k: 'holoC2x',   g: 'holoflash', label: 'Fade curve point 2 x', min: 0, max: 1, step: 0.01, type: 'curve' },
   { k: 'holoC2y',   g: 'holoflash', label: 'Fade curve point 2 y', min: -0.5, max: 1.5, step: 0.01, type: 'curve' },
   { k: 'due1',      g: 'level', label: 'Time to repay level 1 (minutes)', min: 0.1, max: 1440, step: 1 },
+  { k: 'enemies',   g: 'level', label: 'Enemies on floor 1 (next level made)', min: 0, max: 400, step: 1 },
+  { k: 'enemiesUp', g: 'level', label: 'More enemies each floor after', min: 0, max: 60, step: 1 },
+  { k: 'lvlReward', g: 'level', label: 'Level reward: yours after the debt is paid (gold)', min: 0, max: 1000000, step: 100 },
+  { k: 'runnerPx',  g: 'player', label: 'Player pixel size (world units, 0 = smooth)', min: 0, max: 3, step: 0.25 },
+  { k: 'runnerLine', g: 'player', label: 'Player dark outline (0 off, 1 on)', min: 0, max: 1, step: 1 },
   // the vending menus' right-stick pointer (ui/vendshop.js useMenuNav, menuPointer, snapTo)
   { k: 'ptrStart',  g: 'menuptr', label: 'Stick push before the pointer comes out (of its reach)', min: 0, max: 0.9, step: 0.01 },
   { k: 'ptrReach',  g: 'menuptr', label: 'Pointer reach (× distance to the far screen corner)', min: 0.2, max: 3, step: 0.05 },
@@ -208,7 +214,8 @@ export const RA_KNOBS = rangeKnobs('rat', [
   ['raPopX',     'Stolen gold: sideways throw',       0, 400, 5,     70, 100],
   ['raPopY',     'Stolen gold: upward throw',         0, 600, 5,     200, 250],
   ['raSmell',    'Goes for loose gold within',        0, 600, 5,     150, 220],
-  ['raMax',      'Rats per nest',                     1, 20, 1,      3, 7],
+  ['raMax',      'Rats out of a nest at once',        1, 20, 1,      3, 7],
+  ['raBrood',    'Rats a nest holds in all',          0, 60, 1,      4, 6],
   ['raSpawn',    'Secs between rats from a nest',     0.5, 60, 0.5,  6, 12],
   ['raWake',     'Nests and rats wake within',        100, 2000, 10, 480, 560],
   ['raNestRest', 'Secs a rat stays in the nest',      0, 20, 0.5,    2, 6],

@@ -36,7 +36,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     const mouth = { x: nx, y: room.y - 3.5 };
     const nest = { x: nx, y: ny, ty: ny, r: k.r, phase: 0, hp: k.hp, hpMax: k.hp, cd: 0, flash: 0, lx: 0, ly: 1,
       hx: nx, hy: ny, tgt: null, rest: 0, k, touch: 0, charge: 0,
-      nest: { path: [{ x: nx, y: ny }, { x: nx + 4, y: room.y + 4 }, mouth], mouth, t: 0, stash: 0, max: 0 } };
+      nest: { path: [{ x: nx, y: ny }, { x: nx + 4, y: room.y + 4 }, mouth], mouth, t: 0, stash: 0, max: 0, left: 99 } };
     L.enemies.push(nest);
     p.x = room.l + 30; p.y = room.y - 22.5; p.hp = 100;
     // 1: rats come out, up to its max and no more

@@ -212,7 +212,14 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   // the Dev panel: a colour picker per part, A and B, that sets the knob and resets
   await page.tap('.devbtn');
   await page.waitForTimeout(250);
-  await page.tap('.devghead[data-g=jellycol]');
+  // a Dev group header opens on a press-and-hold (DevGroupHead), not a tap
+  const holdHead = async g => {
+    await page.evaluate(g => document.querySelector('.devghead[data-g=' + g + ']').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 50, clientY: 50 })), g);
+    await page.waitForTimeout(await page.evaluate(() => HOLD_MS) + 150);
+    await page.evaluate(g => document.querySelector('.devghead[data-g=' + g + ']').dispatchEvent(new PointerEvent('pointerup', { bubbles: true })), g);
+  };
+  check('the live jellyfish is folded away with its group', !(await page.$('.jellyprev')));
+  await holdHead('jellycol');
   await page.waitForTimeout(150);
   const pickers = await page.$$('.devrow input[type=color]');
   const want = await page.evaluate(() => DEV_META.filter(m => m.g === 'jellycol' && m.type === 'color').length);
@@ -236,9 +243,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   });
   const order = await page.evaluate(() => {
     const pv = document.querySelector('.jellyprev'), hd = document.querySelector('.devghead[data-g=jellycol]');
-    return !!pv && !!hd && !!(pv.compareDocumentPosition(hd) & Node.DOCUMENT_POSITION_FOLLOWING);
+    return !!pv && !!hd && hd.parentNode.contains(pv) && !!(pv.compareDocumentPosition(hd) & Node.DOCUMENT_POSITION_PRECEDING);
   });
-  check('a live jellyfish box sits above the Jellyfish colours section', order);
+  check('a live jellyfish box sits inside the Jellyfish colours group, under its header', order);
   await page.waitForTimeout(600);
   const p0 = await prev();
   check('it draws a green jellyfish', p0 && p0.lit > 200 && p0.green > 40, p0);

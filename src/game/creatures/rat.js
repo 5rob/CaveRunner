@@ -180,15 +180,15 @@ export function ratMove(W, G, e, C) {
 /** @param {World} W @param {GameCtx} G @param {Enemy} e @param {EnemyCtx} C */
 export function nestMove(W, G, e, C) {
   const { dt, dist } = C;
-  // lets a rat out now and then, while it has fewer than its max alive; only while
-  // you're near enough for it to matter
+  // lets a rat out now and then, while it has fewer than its max alive and any left inside;
+  // only while you're near enough for it to matter
   const N = e.nest;
   if (!N.max) { N.max = Math.round(kr('raMax')); N.wake = kr('raWake'); }
-  if (dist < N.wake && (N.t -= dt) <= 0) {
+  if (N.left > 0 && dist < N.wake && (N.t -= dt) <= 0) {
     N.t = kr('raSpawn');
     let out = 0;
     for (const r of W.enemies) if (r.home === e) out++;
-    if (out < N.max) spawnRat(W, e);
+    if (out < N.max) { spawnRat(W, e); N.left--; }
   }
   e.chill = 1; e.ty = e.y;
   return true;
