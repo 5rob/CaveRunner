@@ -19,7 +19,7 @@ const DIR = path.join(__dirname, '..', 'build');
   const s0 = await page.evaluate(() => ({ kinds: [...new Set(window.__lvl.pickups.map(q => q.kind))],
     n: window.__lvl.pickups.length, elites: window.__lvl.enemies.filter(e => e.k.elite).length }));
   check('the cave has only red crystals lying about (no guns, no mods)', s0.kinds.length === 1 && s0.kinds[0] === 'crystal', s0);
-  check('a few elites on the floor', s0.elites >= 1, s0.elites);
+  // (how many elites a floor gets is the logic suite's: a random cave can have none)
 
   const MX = await page.evaluate(() => SHOPS.guns.x);
   await page.evaluate(x => { const L = window.__lvl; L.p.x = x - 6; L.p.vx = 0; window.__in.current.sig = ''; }, MX);
@@ -96,7 +96,8 @@ const DIR = path.join(__dirname, '..', 'build');
 
   // an elite in a sandbox dies and drops a crystal that falls to the floor
   st = await page.evaluate(async () => {
-    const L = window.__lvl, e = L.enemies.find(e => e.k.elite), room = L.sandbox();
+    const L = window.__lvl, e = L.enemies.find(e => e.k.elite) || Object.assign(L.enemies.find(e => !e.nest), {}), room = L.sandbox();
+    if (!e.k.elite) e.k = eliteOf(e.k);                  // no elite in this cave: make one
     if (!L.enemies.includes(e)) L.enemies.push(e);         // the sandbox clears its box
     const i = L.enemies.indexOf(e);
     e.x = room.x + 60; e.y = e.ty = room.y - 40; e.hp = 0.001;

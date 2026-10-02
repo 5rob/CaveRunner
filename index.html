@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v120</title>
+<title>CaveRunner v121</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -619,13 +619,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .xmsg{margin-top:4px}
 .xstats{grid-template-columns:1fr}
 .xtop .xport{width:84px;height:84px}
+/* the menus' left-stick pointer (vendshop.js useMenuNav): a second knob, a very thin ring, no fill */
+.mptr{position:fixed;left:0;top:0;z-index:40;display:none;box-sizing:border-box;border-radius:50%;
+  border:0.75px solid rgba(255,255,255,0.95);pointer-events:none;will-change:transform}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v120';</script>
+<script>const VERSION = 'v121';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -19815,6 +19818,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       st.mag = mag;
       st.dy = dy;
       st.on = mag > thresh;
+      st.cx = r.left + rad;
+      st.cy = r.top + rad;
+      st.size = r.width;
       setKnob({ x: nx * cl, y: ny * cl, jet: kind === "left" && dy < 0 && mag > DEAD });
     };
     const down = (e) => {
@@ -20720,7 +20726,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/ui/vendshop.js
-  var NAV_MAG = 0.55, REPEAT_0 = 0.38, REPEAT = 0.17;
+  var REPEAT_0 = 0.38, REPEAT = 0.17;
   function navStep(root, cur, dx, dy) {
     const els = Array.from(root.querySelectorAll("[data-nav]"));
     const here = els.find((e) => e.dataset.nav === cur);
@@ -20741,7 +20747,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return best;
   }
   function useMenuNav(input, root, focus, setFocus, press) {
-    const pressRef = useRef(press), focusRef = useRef(focus);
+    const pressRef = useRef(press), focusRef = useRef(focus), ring = useRef(null);
     pressRef.current = press;
     focusRef.current = focus;
     useEffect(() => {
@@ -20751,27 +20757,51 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       };
     }, []);
     useEffect(() => {
-      let raf, dir = "", next = 0;
+      let raf, dir = "", next = 0, was = false, over = "";
+      const navAt = (x, y) => {
+        const el = document.elementFromPoint(x, y);
+        const n = el && el.closest ? el.closest("[data-nav]") : null;
+        return n && root.current && root.current.contains(n) ? n.dataset.nav || "" : "";
+      };
       const tick = () => {
-        const L2 = input.current.left, K = input.current.keys;
-        let dx = 0, dy = 0;
-        if (L2.active && L2.mag > NAV_MAG) {
-          if (Math.abs(L2.nx) > Math.abs(L2.ny)) dx = Math.sign(L2.nx);
-          else dy = Math.sign(L2.ny);
-        } else if (K.a || K.d || K.w || K.s) {
-          dx = (K.d ? 1 : 0) - (K.a ? 1 : 0);
-          dy = (K.s ? 1 : 0) - (K.w ? 1 : 0);
-          if (dx) dy = 0;
-        }
-        const d = dx + "," + dy, now = performance.now() / 1e3;
-        if (!dx && !dy) dir = "";
-        else if (d !== dir || now >= next) {
-          next = now + (d !== dir ? REPEAT_0 : REPEAT);
-          dir = d;
-          const to = root.current && navStep(root.current, focusRef.current, dx, dy);
-          if (to) {
-            setFocus(to);
+        const L2 = input.current.left, K = input.current.keys, R = ring.current;
+        if (L2.active && L2.cx !== void 0) {
+          const p = menuPointer(L2, window.innerWidth, window.innerHeight);
+          if (R) {
+            const d = KNOB * (L2.size || 100);
+            R.style.display = "block";
+            R.style.width = R.style.height = d + "px";
+            R.style.transform = "translate(" + (p.x - d / 2) + "px," + (p.y - d / 2) + "px)";
+          }
+          over = navAt(p.x, p.y);
+          if (over && over !== focusRef.current) {
+            setFocus(over);
             SFX.fx("prompt");
+          }
+          was = true;
+        } else {
+          if (was) {
+            was = false;
+            if (R) R.style.display = "none";
+            if (over) pressRef.current(over);
+            over = "";
+          }
+          let dx = 0, dy = 0;
+          if (K.a || K.d || K.w || K.s) {
+            dx = (K.d ? 1 : 0) - (K.a ? 1 : 0);
+            dy = (K.s ? 1 : 0) - (K.w ? 1 : 0);
+            if (dx) dy = 0;
+          }
+          const d = dx + "," + dy, now = performance.now() / 1e3;
+          if (!dx && !dy) dir = "";
+          else if (d !== dir || now >= next) {
+            next = now + (d !== dir ? REPEAT_0 : REPEAT);
+            dir = d;
+            const to = root.current && navStep(root.current, focusRef.current, dx, dy);
+            if (to) {
+              setFocus(to);
+              SFX.fx("prompt");
+            }
           }
         }
         raf = requestAnimationFrame(tick);
@@ -20783,6 +20813,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const el = root.current && root.current.querySelector('[data-nav="' + focus + '"]');
       if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
     }, [focus]);
+    return h("div", { className: "mptr", ref: ring, "aria-hidden": true });
+  }
+  function menuPointer(L2, W, H) {
+    const cx = L2.cx || 0, cy = L2.cy || 0;
+    const far = Math.max(Math.hypot(cx, cy), Math.hypot(W - cx, cy), Math.hypot(cx, H - cy), Math.hypot(W - cx, H - cy));
+    const d = Math.min(1, L2.mag) * far;
+    return { x: Math.max(0, Math.min(W, cx + L2.nx * d)), y: Math.max(0, Math.min(H, cy + L2.ny * d)) };
   }
   function VendShop({ def, input, close }) {
     const firstOwned = () => {
@@ -20839,7 +20876,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       bump((n2) => n2 + 1);
     };
-    useMenuNav(input, root, focus, setFocus, press);
+    const ptr = useMenuNav(input, root, focus, setFocus, press);
     const navCls = (key, cls) => cls + (focus === key ? " navon" : "");
     const tap = (key) => (e) => {
       e.preventDefault();
@@ -20850,6 +20887,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return h(
       "div",
       { className: "vshop", ref: root, style: { bottom: (input.current.ctlH || 0) + "px" } },
+      ptr,
       h(
         "div",
         { className: "vtop" },
@@ -21123,7 +21161,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       bump((n) => n + 1);
     };
-    useMenuNav(input, root, focus, setFocus, press);
+    const ptr = useMenuNav(input, root, focus, setFocus, press);
     const navCls = (key, cls) => cls + (focus === key ? " navon" : "");
     const tap = (key) => (e) => {
       e.preventDefault();
@@ -21135,6 +21173,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return h(
       "div",
       { className: "vshop gshop", ref: root, style: { bottom: (input.current.ctlH || 0) + "px" } },
+      ptr,
       h(
         "div",
         { className: "vhead" },

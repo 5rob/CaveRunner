@@ -161,6 +161,7 @@ export function Stick({ size, kind, input, refresh }) {
     }
     const st = input.current[kind];
     st.active = true; st.nx = nx; st.ny = ny; st.mag = mag; st.dy = dy; st.on = mag > thresh;
+    st.cx = r.left + rad; st.cy = r.top + rad; st.size = r.width;
     setKnob({ x: nx * cl, y: ny * cl, jet: kind === 'left' && dy < 0 && mag > DEAD });
   };
   const down = e => {

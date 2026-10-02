@@ -71,16 +71,57 @@ const DIR = path.join(__dirname, '..', 'build');
   // to Dispense; a right-stick tap presses it
   const focus = () => page.evaluate(() => { const e = document.querySelector('.vshop .navon'); return e && e.getAttribute('data-nav'); });
   check('the highlight is on the mod just unlocked', (await focus()) === 't:' + got, await focus());
-  const push = async (nx, ny) => {
-    await page.evaluate(([nx, ny]) => Object.assign(window.__in.current.left, { active: true, nx, ny, mag: 1, on: true }), [nx, ny]);
-    await page.waitForTimeout(120);
-    await page.evaluate(() => Object.assign(window.__in.current.left, { active: false, mag: 0, on: false }));
-    await page.waitForTimeout(60);
+  // the left stick is a pointer: drag it with the real mouse and a thin ring travels out, the
+  // stick's range mapped onto the distance to the furthest screen corner; it highlights what it's
+  // over, and letting go there presses it
+  const stick = await page.evaluate(() => { const r = document.querySelectorAll('.sticks .stick')[0].getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2, rad: r.width / 2, size: r.width, W: innerWidth, H: innerHeight, knob: KNOB }; });
+  const center = sel => page.evaluate(s => { const r = document.querySelector(s).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, sel);
+  // where on the stick to hold so the pointer lands on t
+  const holdFor = t => {
+    const far = Math.max(Math.hypot(stick.x, stick.y), Math.hypot(stick.W - stick.x, stick.y), Math.hypot(stick.x, stick.H - stick.y), Math.hypot(stick.W - stick.x, stick.H - stick.y));
+    const vx = t.x - stick.x, vy = t.y - stick.y, d = Math.hypot(vx, vy), mag = d / far, off = mag * stick.rad * 0.72;
+    return { x: stick.x + vx / d * off, y: stick.y + vy / d * off };
   };
-  await push(0, 1);
-  check('left stick down: the unlock button', (await focus()) === 'unlock', await focus());
-  await push(0, 1);
-  check('down again: Dispense selected', (await focus()) === 'buy', await focus());
+  const ring = () => page.evaluate(() => { const e = document.querySelector('.mptr'), r = e.getBoundingClientRect(), cs = getComputedStyle(e);
+    return { shown: cs.display !== 'none', x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, border: parseFloat(cs.borderTopWidth), bg: cs.backgroundColor }; });
+  await page.mouse.move(stick.x, stick.y); await page.mouse.down();
+  const tBuy = await center('.vbuy'), hBuy = holdFor(tBuy);
+  for (let i = 1; i <= 6; i++) await page.mouse.move(stick.x + (hBuy.x - stick.x) * i / 6, stick.y + (hBuy.y - stick.y) * i / 6);
+  await page.waitForTimeout(120);
+  let rg = await ring();
+  check('dragging the left stick puts out a pointer ring', rg.shown, rg);
+  check('it travels out to the target, several times further than the knob', Math.hypot(rg.x - tBuy.x, rg.y - tBuy.y) < 6 &&
+    Math.hypot(rg.x - stick.x, rg.y - stick.y) > 3 * Math.hypot(hBuy.x - stick.x, hBuy.y - stick.y), { rg, tBuy, hBuy });
+  check('a very thin ring, no fill, the knob size', rg.border <= 1 && (rg.bg === 'rgba(0, 0, 0, 0)' || rg.bg === 'transparent') && Math.abs(rg.w - stick.size * stick.knob) < 1.5, rg);
+  check('what it is over is highlighted', (await focus()) === 'buy', await focus());
+  await page.screenshot({ path: path.join(DIR, 'vendshop_pointer.png') });
+  // the pointer is held inside the screen: full tilt towards a far corner stops at the edge
+  await page.mouse.move(stick.x - stick.rad * 0.72, stick.y - stick.rad * 0.72);
+  await page.waitForTimeout(80);
+  rg = await ring();
+  check('pushed to the limit it stops at the screen edge', rg.x >= -1 && rg.y >= -1 && (rg.x < 2 || rg.y < 2), rg);
+  // let go over nothing: nothing is pressed, the highlight stays
+  await page.mouse.move(stick.x + 2, stick.y + 2);
+  await page.waitForTimeout(60);
+  await page.mouse.up(); await page.waitForTimeout(100);
+  check('let go over nothing: the ring goes, the menu stays', !(await ring()).shown && await page.evaluate(() => !!document.querySelector('.vshop')));
+  // let go over the unlock button: it's pressed (the second crystal goes)
+  const hUn = holdFor(await center('.vunlock'));
+  await page.mouse.move(stick.x, stick.y); await page.mouse.down();
+  for (let i = 1; i <= 6; i++) await page.mouse.move(stick.x + (hUn.x - stick.x) * i / 6, stick.y + (hUn.y - stick.y) * i / 6);
+  await page.waitForTimeout(100);
+  await page.mouse.up(); await page.waitForTimeout(150);
+  st = await page.evaluate(() => ({ c: window.__in.current.collection.length, left: window.__in.current.loadout.crystals.length }));
+  check('let go over a button: it is pressed (the unlock)', st.c === 2 && st.left === 0, st);
+  // select the first mod again (a tap on its cell), then the arrow keys step down to Dispense
+  await page.evaluate(id => document.querySelector('.vcell[data-id="' + id + '"]').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true })), got);
+  await page.waitForTimeout(80);
+  await page.keyboard.down('ArrowDown'); await page.waitForTimeout(60); await page.keyboard.up('ArrowDown');
+  await page.waitForTimeout(60);
+  await page.keyboard.down('ArrowDown'); await page.waitForTimeout(60); await page.keyboard.up('ArrowDown');
+  await page.waitForTimeout(60);
+  check('the arrow keys still step the highlight (to Dispense)', (await focus()) === 'buy', await focus());
   const price = await page.evaluate(id => priceOf(id), got);
   line = await page.evaluate(() => document.querySelector('.vbuy').textContent);
   check('it shows the selected mod\'s price', line === 'Dispense selected' + price + 'g', line);

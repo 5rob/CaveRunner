@@ -521,7 +521,9 @@ interface Player {
 }
 
 /** one thumbstick's state, written by the Stick (ui/hud.js), read by step */
-interface StickState { active: boolean; nx: number; ny: number; mag: number; dy: number; on: boolean }
+interface StickState { active: boolean; nx: number; ny: number; mag: number; dy: number; on: boolean;
+  cx?: number; cy?: number; size?: number;   // where the stick sits on screen (css px), for the menus' pointer (useMenuNav)
+}
 /** the gauges draw() hands the sticks each frame (all 0..1) */
 interface Hud { hp: number; low: boolean; fuel: number; empty: boolean; mana: number; rech: number; cast: number; recharging: boolean; hasGun: boolean }
 /** what the pickup panel shows (pickups.js): the item near you */

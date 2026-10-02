@@ -190,7 +190,7 @@ export function GunVend({ input, close }) {
     else if (key.startsWith('g:') && !spinning) { setSel(Number(key.slice(2))); setMsg(''); SFX.fx('switch'); }
     bump(n => n + 1);
   };
-  useMenuNav(input, root, focus, setFocus, press);
+  const ptr = useMenuNav(input, root, focus, setFocus, press);
 
   /** @param {string} key @param {string} cls */
   const navCls = (key, cls) => cls + (focus === key ? ' navon' : '');
@@ -200,6 +200,7 @@ export function GunVend({ input, close }) {
   const onLand = i => setLanded(n => Math.max(n, i + 1));
   const held = LO.guns[LO.sel];
   return h('div', { className: 'vshop gshop', ref: root, style: { bottom: (input.current.ctlH || 0) + 'px' } },
+    ptr,
     h('div', { className: 'vhead' },
       h('b', null, 'Guns'),
       h('span', { className: 'vcrys' }, h(CrystalIcon, { size: 18 }), crystals.length),

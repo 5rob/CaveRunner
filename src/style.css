@@ -611,3 +611,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .xmsg{margin-top:4px}
 .xstats{grid-template-columns:1fr}
 .xtop .xport{width:84px;height:84px}
+/* the menus' left-stick pointer (vendshop.js useMenuNav): a second knob, a very thin ring, no fill */
+.mptr{position:fixed;left:0;top:0;z-index:40;display:none;box-sizing:border-box;border-radius:50%;
+  border:0.75px solid rgba(255,255,255,0.95);pointer-events:none;will-change:transform}
