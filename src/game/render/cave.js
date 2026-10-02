@@ -254,11 +254,11 @@ export function drawLoot(W, G, F) {
       if (!q.old) drawGunGlow(G.ctx, q.x, qy, W.time, q.t);
       drawGun(G.ctx, q.x - 5, qy + 1, -0.22, 0.85, gunAccent(q.gun));
     } else if (q.kind === 'crystal') {
-      // a red crystal: a big dark red nugget, with a faint red glow round it
-      G.ctx.globalAlpha = 0.18 + 0.08 * Math.sin(W.time * 3 + q.t); G.ctx.fillStyle = '#ff2030';
+      // a red crystal: a big dark red nugget, with a faint red glow round it (a green one: green)
+      G.ctx.globalAlpha = 0.18 + 0.08 * Math.sin(W.time * 3 + q.t); G.ctx.fillStyle = q.green ? '#30ff70' : '#ff2030';
       G.ctx.beginPath(); G.ctx.arc(q.x, qy, CRYSTAL_R + 4, 0, Math.PI * 2); G.ctx.fill();
       G.ctx.globalAlpha = 1;
-      drawNugget(G.ctx, q.x, qy, CRYSTAL_R, q.t * 7, 0, CRYSTAL_PAL);
+      drawNugget(G.ctx, q.x, qy, CRYSTAL_R, q.t * 7, 0, q.green ? GREEN_PAL : CRYSTAL_PAL);
     } else if (q.kind === 'perk') {
       // a perk to carry: its sigil in a ring of its colour
       const pk = PERKS[q.id], col = pk.tint || COL.portal;

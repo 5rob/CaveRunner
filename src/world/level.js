@@ -8,7 +8,7 @@ import {
   SHOP_FLOOR, SHOP_ROOF, SHOP_TOP, WW
 } from '../core/consts.js';
 import { mix } from '../core/util.js';
-import { ELITE_CHANCE, NATURAL_ONLY, eliteOf, enemyFor, rosterFor } from '../data/creatures.js';
+import { NATURAL_ONLY, eliteOf, enemyFor, rosterFor } from '../data/creatures.js';
 import { themeFor } from '../data/themes.js';
 import { DEV, kr, kru } from '../dev/knobs.js';
 import { decorate } from './decorate.js';
@@ -514,7 +514,7 @@ export function makeLevel(seed, floor, owned) {
       }
     return true;
   };
-  const enemies = [];
+  const enemies = [], rolls = [];
   const roster = rosterFor(floor, rnd);
   const wanted = Math.min(Math.max(136, DEV.enemies), DEV.enemies + (floor - 1) * DEV.enemiesUp);
   // a creature that only lives in the natural zones (the jellies: the built-up corridors are
@@ -531,11 +531,19 @@ export function makeLevel(seed, floor, owned) {
     waiting = null;
     if (NATURAL_ONLY[k.act] && built(cx, cy)) { if (++waits < 300) waiting = k; continue; }
     waits = 0;
-    if (rnd() < ELITE_CHANCE) k = eliteOf(k);   // a few elites: gold, tougher, carrying a crystal
+    rolls.push(rnd());                           // for picking the elites after (one roll each, as ever)
     enemies.push({ x, y, ty: y, r: k.r, phase: rnd() * 6.28, hp: k.hp, hpMax: k.hp,
       cd: 1 + rnd() * 2, flash: 0, lx: 0, ly: 1, hx: x, hy: y, tgt: null, rest: rnd() * 3,
       k, touch: 0, charge: 0 });
   }
+  // the elites: the Dev count (rolled from the seed, not the cave's stream, so the cave stays the
+  // same), the creatures with the lowest rolls, each sitting at its roll in the knobs' ranges
+  const eliteU = (/** @type {number} */ n) => { const v = Math.sin(seed * 12.9898 + floor * 78.233 + n * 37.719) * 43758.5453; return v - Math.floor(v); };
+  const nElite = Math.round(kru('elCount', eliteU(0)));
+  rolls.map((v, i) => [v, i]).sort((a, b) => a[0] - b[0]).slice(0, nElite).forEach(([, i], j) => {
+    const e = enemies[i];
+    e.k = eliteOf(e.k, eliteU(j + 1)); e.r = e.k.r; e.hp = e.hpMax = e.k.hp;
+  });
   // the nests, as creatures that never move: in world units, the path room → mouth
   for (const n of nests) {
     const k = enemyFor('pesa', floor), x = n.x * CELL, y = n.y * CELL;

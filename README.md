@@ -212,7 +212,8 @@ goes faster, with red sparks streaming past.
 **Red crystals** lie about the cave where guns and mods used to: a big dark-red nugget with
 white glints. Stand at one and tap the right stick to pocket it. **Elite** creatures — a few
 on every floor, tinted gold with a glow — are tougher, hit harder, drop four times the gold
-and a red crystal. The crystals you carry show at the top as a row of red and green crystal silhouettes, under
+and a pile of crystals: three to five red and a green one. One tap pockets every crystal in reach.
+(Dev → Elites sets how many a floor gets, how tough and big they are, their tint and glow, and what they drop.) The crystals you carry show at the top as a row of red and green crystal silhouettes, under
 your gold and above the debt. Which spells turn up follows Noita's own spawn table, deeper floors handing out rarer ones — and the very strongest (Black Hole and friends) never appear before floor 4. Your **Bag** opens anywhere,
 but *changing* your setup — dragging mods, reordering guns — only works in the shop (or
 anywhere, with the Tinker perk); out in the cave the Bag is read-only. Enemies drop gold
@@ -241,6 +242,7 @@ pink, orange, gold (level 10). Its card reads `Lv N` too.
 Every floor also hides one small room, built brick-lined like the shop, carved out of the
 cave and connected back to the main route by a tunnel — you have to find it. On its altar
 sits a **green crystal**: tap the right stick to pocket it. (The +25 health heart room is gone.)
+Elites drop green crystals too.
 
 Green crystals buy perks at the **perk machine** in the shop, the one with a green ✦ hologram,
 left of the gun machine. It works like the mod machine: hand over a green crystal to unlock a
@@ -622,5 +624,7 @@ them if it cannot find either.
 - A death replay: the last 10 seconds before you died and 3 after, with sound, scrubbing, slow motion, a fog toggle, pan and pinch-zoom; save it to the Bag's Witness tab, or export it as an MP4
 - Your body falls like a rag doll when you die, and blasts throw it
 - A DEBUG shelf with one of every mod, for trying builds out
-- 30 perks and 25 stat perks (five stats, five levels), unlocked with green crystals (one hidden in a brick-lined room on every floor) at the perk machine, bought for gold and fitted to the Exo Suit
+- 30 perks and 30 stat perks (six stats, five levels, Carrot among them: see further), unlocked with green crystals (one hidden in a brick-lined room on every floor, more from elites) at the perk machine, bought for gold and fitted to the Exo Suit
+- Elite creatures on every floor: tougher, glowing, and worth gold plus a pile of red and green crystals
+- Vines and web lines give: they sag, bend as you fly through, dip when you hang on, and hanging vines swing
 - Loot in the cave sits on the ground now, not floating in place

@@ -24,7 +24,7 @@ the frame; most of its parts live with their system.
 | `plantglow.js` | `plantGlow` (the jelly's glow on plants, drawn after the fog) |
 | `level-entry.js` | `enterLevel(W, G, back, keep)`: makes (or rebuilds a saved) level, resets the world, canvases, fog, sconces (the prize rooms' only: the portals are pads), the recorder; puts back a saved nest's brood; `keep` leaves you (and the stock) where you are for a teleport; `miniEdges` (the map outline cells) |
 | `vend.js` | The level vending machines: `vendNear`/`vendLabel`/`vendUse` (via `stepPickups`), `canSell` (no `bioCount`), `lvlSell` (what selling pays: `LVL_BUY` + `DEV.lvlReward`), `stepWarp` (the teleport: swap at `WARP_SWAP`, the bolts), `voidCave` (no level: BED above the roof, the roof sealed), `stepRepo` (the deadline passed: repossession, the alarm, the fire; `REPO_WARP`/`REPO_ALARM`/`REPO_FIRE`) |
-| `shops.js` | The shop's vending machines (`SHOPS`: x, icon, hue, label; three machines left to right: mods, guns, perks; another machine is a `SHOPS` entry and a `SHOP_MENUS` line in `ui/modshop.js`): `shopNear`/`shopUse` (opens `input.current.shopOpen`; checked after the ground pickups so a dispensed mod can be taken), `stepShops` (in `stepPickups`: `input.current.dispense` — a mod, gun or perk — pops out of the chute; anything thrown with a `vy` (that, an elite's red crystal) flies and lands on rock) |
+| `shops.js` | The shop's vending machines (`SHOPS`: x, icon, hue, label; three machines left to right: mods, guns, perks; another machine is a `SHOPS` entry and a `SHOP_MENUS` line in `ui/modshop.js`): `shopNear`/`shopUse` (opens `input.current.shopOpen`; checked after the ground pickups so a dispensed mod can be taken), `stepShops` (in `stepPickups`: `input.current.dispense` — a mod, gun or perk — pops out of the chute; anything thrown with a `vy` (that, an elite's crystals) flies and lands on rock) |
 | `recorder.js` | The death replay's recorder (snapshots, terrain, fog and every sound) and player (any `Clip`: the live one or a saved one), `clipKeep`/`clipThumb`/`clipFromSaved` (saved clips) (`replay/README.md`) |
 | `save-run.js` | `saveRun` (`save/README.md`) |
 
@@ -56,6 +56,8 @@ the frame; most of its parts live with their system.
   `input.current.found`, which opens `GunSwap` (owner's choice). A bought gun drops at the plinth, so
   the same chooser handles it. **Dead + interact tap = restart** (`input.current.requestRestart`),
   checked before the pickup handling.
+- **Crystals:** a `crystal` pickup is red, or green with `green: true` (an elite's drop). Tapping one takes
+  every crystal in reach (an elite's pile): reds to `LO.crystals`, greens to `LO.greens`.
 - **Jetpack cough:** below `SPUTTER_FUEL` (0.25) `sputterStep` cuts the jet for 0.04–0.17s at random,
   more often the drier it is. `W.p.jet` stays the stick; `W.p.flame` is 0 during a cut and is what the
   flame, smoke, glow, Levitation Trail and jet loop read. A cut: no lift, `vy += DEV.sputDip`, grey

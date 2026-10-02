@@ -4,7 +4,7 @@
 // richer; the cave's pickups all red crystals.
 const G = require('../load');
 const { newOffer, rollOffer, shopGun, shopGunPrice, rerollPrice, boostCost, gunPrice, makeGun, GUN_OFFER,
-  eliteOf, enemyFor, makeLevel, MOD_DROPS, GUN_DROPS, ELITE_CHANCE } = G;
+  eliteOf, enemyFor, makeLevel, MOD_DROPS, GUN_DROPS } = G;
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
 let s = 11;
@@ -36,16 +36,35 @@ check('a boosted reroll rolls all three boosted', o.guns.every(g => g.boosted));
 
 // elites
 const k = enemyFor('hiisi' in G.CREATURES ? 'hiisi' : Object.keys(G.CREATURES)[0], 3), e = eliteOf(k);
-check('an elite is tougher, hits harder, pays more', e.hp > k.hp && e.dmg >= k.dmg && e.gold > k.gold && e.elite, { k: [k.hp, k.dmg, k.gold], e: [e.hp, e.dmg, e.gold] });
+check('an elite is tougher and hits harder', e.hp > k.hp && e.dmg >= k.dmg && e.elite, { k: [k.hp, k.dmg], e: [e.hp, e.dmg] });
+check('and pays more: gold, red and green crystals (Dev → Elites, rolled when it dies)', G.DEV.elGoldLo > 1 && G.DEV.elRedLo >= 1 && G.DEV.elGreenLo >= 1);
+check('its knobs are on the Dev panel in their own group', G.DEV_GROUPS.some(g => g[0] === 'elite') &&
+  ['elCount', 'elHp', 'elDmg', 'elGold', 'elRed', 'elGreen', 'elScale', 'elTintAmt', 'elGlow', 'elGlowR', 'elTint'].every(k => G.DEV_META.some(m => m.k === k + 'Lo' && m.g === 'elite')));
+{
+  const sizes = [0.5, 1, 2].map(s => { G.DEV.elScaleLo = G.DEV.elScaleHi = s; return eliteOf(k).r; });
+  G.DEV.elScaleLo = G.DEV_DEFAULTS.elScaleLo; G.DEV.elScaleHi = G.DEV_DEFAULTS.elScaleHi;
+  check('the size knob scales it', sizes[0] === k.r * 0.5 && sizes[2] === k.r * 2, sizes);
+}
 check('its colours are tinted, the kind itself untouched', e.col.a !== k.col.a && !k.elite);
-let elites = 0, foes = 0, other = 0, crystals = 0;
+let elites = 0, foes = 0, other = 0, crystals = 0, inRange = 0;
 for (let seed = 1; seed <= 6; seed++) {
-  const lv = makeLevel(seed * 97, 2);
-  elites += lv.enemies.filter(x => x.k.elite).length; foes += lv.enemies.length;
+  const lv = makeLevel(seed * 97, 2), n = lv.enemies.filter(x => x.k.elite).length;
+  if (n >= G.DEV.elCountLo && n <= G.DEV.elCountHi) inRange++;
+  elites += n; foes += lv.enemies.length;
   other += lv.pickups.filter(q => q.kind !== 'crystal').length;
   crystals += lv.pickups.length;
 }
-check('a few elites per floor', elites / 6 >= 2 && elites / foes < ELITE_CHANCE * 2, { perFloor: elites / 6, share: elites / foes });
+check('the Dev count of elites per floor', inRange === 6 && elites / foes < 0.1, { perFloor: elites / 6, share: elites / foes });
+{
+  G.DEV.elCountLo = G.DEV.elCountHi = 7;
+  const a = makeLevel(5, 3), b = makeLevel(5, 3);
+  G.DEV.elCountLo = G.DEV.elCountHi = 0;
+  const c = makeLevel(5, 3);
+  G.DEV.elCountLo = G.DEV_DEFAULTS.elCountLo; G.DEV.elCountHi = G.DEV_DEFAULTS.elCountHi;
+  check('set to 7: seven, the same ones each time; set to 0: none', a.enemies.filter(x => x.k.elite).length === 7 &&
+    a.enemies.map(x => !!x.k.elite).join() === b.enemies.map(x => !!x.k.elite).join() && c.enemies.every(x => !x.k.elite));
+  check('the elite count leaves the cave itself alone', a.enemies.map(x => x.x + ',' + x.y).join() === c.enemies.map(x => x.x + ',' + x.y).join());
+}
 check('the cave hands out only red crystals', other === 0, other);
 check('as many as the guns and mods there were', crystals / 6 > (MOD_DROPS + GUN_DROPS) * 0.8, crystals / 6);
 

@@ -126,7 +126,8 @@ interface CreatureKind {
   hp: number; dmg: number; bspd: number; gold: number; range: number; cd: number;
   tele: number; shots: number; r: number; spd: number; aggro: number;
   kp: string | null; glow: string | null;
-  elite?: boolean;            // an elite (eliteOf): boosted, gold-tinted, drops a red crystal
+  elite?: boolean;            // an elite (eliteOf): boosted, tinted, drops gold and red and green crystals
+  eu?: number; r0?: number; col0?: CreatureType['col']; tintKey?: string;   // an elite: its roll, its kind's size and colours, the tint it has
   // no `fire`: enemyFor doesn't copy CreatureType's (REFACTOR.md, Found along the way)
 }
 
@@ -283,6 +284,7 @@ interface Prop {
 interface Pickup {
   kind: 'mod' | 'gun' | 'heart' | 'perk' | 'heal' | 'crystal';
   floor?: number;             // a red crystal: the floor it came from (its unlock's drop table)
+  green?: boolean;            // a crystal: a green one (an elite's drop; the perk machine's currency)
   vx?: number; vy?: number;   // popping out of a vending machine's chute (game/systems/shops.js) until it lands
   x: number; y: number; t: number;
   id?: string;                // a mod's or perk's id

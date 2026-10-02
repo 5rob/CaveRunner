@@ -19,13 +19,16 @@
   gets on floor 1, `ENEMY_COUNT`) and `enemiesUp` (more each floor, 12), `lvlReward` (what selling
   pays on top of the debt, 1000). Player: `runnerPx` (the astronaut's pixel size in world units, 1;
   0 smooth), `runnerLine` (its dark outline). Rats: `raBrood` (rats a nest holds in all, 4–6).
+- Elites (`g: 'elite'`, `ELITE_KNOBS` + `ELITE_COLS`): `elCount` (per floor), `elHp`, `elDmg`, `elGold`, `elRed`,
+  `elGreen`, `elScale`, `elTintAmt`, `elGlow`, `elGlowR`, `elTint` (colour). Each elite sits at one roll `k.eu`
+  in the looks and toughness ranges (size and tint update live); the rewards roll when it dies.
 - Sway (`g: 'sway'`): `webSag`, `bendK`/`bendDamp`/`bendPush`/`bendGrab`/`bendDip`/`bendMax` (web lines and
   arches), `vineGrav`/`vineDamp`/`vinePush`/`vineMax` (hanging vines): `world/sway.js`.
 - Carrot (`g: 'carrot'`, `CARROT_KNOBS`): `caCam`, `caTorch`, `caAggro`, `caAim`, each a min (no Carrot
   fitted) / max (Carrot V) multiplier; `carrotAt(k, W.pb.carrot)` is the value at a level.
 - The menus' pointer (`g: 'menuptr'`): `ptrStart`, `ptrReach`, `ptrSize`, `ptrLine`, `snapR`, `snapPull`,
   `snapHit` (read live by `ui/vendshop.js` and the right `Stick`).
-- The tables: `SP_KNOBS` (spider + web lines), `JE_KNOBS`, `JE_COLS` (jellyfish), `RA_KNOBS` (rats
+- The tables: `ELITE_KNOBS`, `ELITE_COLS` (elites), `SP_KNOBS` (spider + web lines), `JE_KNOBS`, `JE_COLS` (jellyfish), `RA_KNOBS` (rats
   and nests), `LV_KNOBS` (floor-1 layout, lanterns), `ARCH_KNOBS` (arched vines), `FIRE_KNOBS`.
 
 ## Rules

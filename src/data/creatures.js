@@ -4,6 +4,7 @@
 // picked by the floor number, never the seed.
 
 import { mixHex } from '../core/util.js';
+import { kcol, kru } from '../dev/knobs.js';
 
 // ---- creatures ----
 // Who lives on a floor. Floors 1-10 each own a fixed roster of 2-6 of these, and the
@@ -146,17 +147,21 @@ export function enemyFor(id, floor) {
   };
 }
 // ---- elites ----
-// A few creatures on every floor are elites: tougher, harder hitting, tinted gold, and worth
-// ELITE_GOLD times the gold plus a red crystal when they die (enemies.js damageEnemy)
-export const ELITE_CHANCE = 0.05, ELITE_HP = 2.5, ELITE_DMG = 1.5, ELITE_GOLD = 4;
-export const ELITE_TINT = '#ffc93c';
-// an elite's stats: a copy of the kind, boosted, its colours pulled towards gold
-/** @param {CreatureKind} k @returns {CreatureKind} */
-export function eliteOf(k) {
-  const t = (/** @type {string} */ c) => mixHex(c, ELITE_TINT, 0.45);
-  return Object.assign({}, k, { elite: true,
-    hp: Math.round(k.hp * ELITE_HP), dmg: Math.max(1, Math.round(k.dmg * ELITE_DMG)), gold: Math.round(k.gold * ELITE_GOLD),
-    col: { a: t(k.col.a), b: t(k.col.b), c: t(k.col.c), eye: k.col.eye } });
+// A few creatures on every floor are elites (Dev → Elites: how many, how tough, how they look):
+// tougher, harder hitting, bigger, tinted and glowing, and when they die worth more gold plus red
+// and green crystals (enemies.js damageEnemy). u (0-1) is where this one sits in each min-max.
+// an elite's stats: a copy of the kind, boosted, its colours pulled towards the tint
+/** @param {CreatureKind} k @param {number} [u] @returns {CreatureKind} */
+export function eliteOf(k, u = 0.5) {
+  return Object.assign({}, k, { elite: true, eu: u, r0: k.r, col0: k.col,
+    hp: Math.round(k.hp * kru('elHp', u)), dmg: Math.max(1, Math.round(k.dmg * kru('elDmg', u))),
+    r: k.r * kru('elScale', u), col: eliteCol(k.col, u) });
+}
+// a kind's colours tinted the way elite u is now (the enemy loop re-tints live as the knobs move)
+/** @param {CreatureKind['col']} c @param {number} u @returns {CreatureKind['col']} */
+export function eliteCol(c, u) {
+  const tint = kcol('elTint', u), a = kru('elTintAmt', u), t = (/** @type {string} */ x) => mixHex(x, tint, a);
+  return { a: t(c.a), b: t(c.b), c: t(c.c), eye: c.eye };
 }
 
 // the acts that hunt you: they notice you on a sightline within their aggro reach, keep
