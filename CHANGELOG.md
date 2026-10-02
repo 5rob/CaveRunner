@@ -5,6 +5,15 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v121 — the menus' left-stick pointer
+Released 2026-10-02.
+
+- In a vending machine's menu the left stick is a pointer (`useMenuNav`, `menuPointer` in
+  `ui/vendshop.js`): dragging it shows a second knob, a 0.75px ring with no fill (`.mptr`), at the
+  stick's centre plus its direction × its 0..1 × the distance to the furthest screen corner, held
+  inside the window. It lights the `[data-nav]` it's over and presses it on release. The stick
+  publishes its centre and size (`StickState.cx/cy/size`). The arrow keys still step.
+
 ## v120 — the perk machine, green crystals, the Exo Suit
 Released 2026-10-02.
 

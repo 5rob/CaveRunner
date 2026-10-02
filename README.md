@@ -173,8 +173,11 @@ over a crystal and it unlocks a random mod you don't have yet, from the drop tab
 floor that crystal came from. The collection is kept for good — a new run keeps it. The
 bottom half shows the selected mod's card and **Dispense selected** with its price: buy a
 copy and the menu closes and the mod pops out of the bottom of the machine onto the floor,
-for you to pick up. Tap things directly, or use the sticks: the left stick moves the
-highlight, a tap on the right stick presses it (keyboard: arrows, and R, F or Enter).
+for you to pick up. Tap things directly, or use the sticks: in a machine's menu the left stick
+is a **pointer** — drag it and a thin ring pushes out from the knob and travels much further
+than your thumb (the stick's full reach takes it to the far corner of the screen, and it stops
+at the edge). Whatever it's over lights up; let go over a button to press it. A tap on the
+right stick presses the lit button too (keyboard: arrows to step, and R, F or Enter).
 
 Guns come from the second machine, in the middle of the room, with a gun hologram. Its menu offers **three
 guns** from the floor's pool, stacked on the left with their prices (worked out from their
