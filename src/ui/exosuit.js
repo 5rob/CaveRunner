@@ -1,5 +1,6 @@
 // @ts-check
-// The Bag's tabs (Bag: Guns & Mods = the Editor, and the Exo Suit) and the Exo Suit itself: your
+// The Bag's tabs (Bag: Guns & Mods = the Editor, the Exo Suit, and Witness = the saved deaths,
+// ui/clips.js) and the Exo Suit itself: your
 // portrait (the runner, hovering), your money, the suit's stats each with its own slot for that
 // stat's perks (STAT_PERKS), the SUIT_SLOTS general perk slots (LO.suit holds both: the perks that count), and every perk in a grid: the ones you carry (LO.perks, with how many) bright,
 // the ones you could buy dim, the ones not unlocked yet locked. Drag a carried perk onto a slot to
@@ -12,6 +13,7 @@ import { SFX } from '../audio/sfx.js';
 import { COIN_PULL, FUEL_REGEN, PH, PW, WALK } from '../core/consts.js';
 import { PERKS, PERK_IDS, ROMAN, STAT_KEYS, STAT_PERKS, SUIT_LEN, SUIT_SLOTS, activePerks, fitsSlot, perkBag } from '../data/perks.js';
 import { PerkCard } from './cards.js';
+import { WitnessGallery } from './clips.js';
 import { Editor } from './editor.js';
 import { h, useEffect, useRef, useState } from './h.js';
 import { CrystalIcon, fmtGold } from './hud.js';
@@ -20,16 +22,17 @@ const SLOP = 8;                 // px a press may wander and still be a tap
 /** @type {{ id: string, x: number, y: number } | null} */
 const NO_DRAG = null;
 
-/** @typedef {{ input: { current: GameInput }, close: () => void, refresh: () => void, canEdit: boolean }} BagProps */
+/** @typedef {{ input: { current: GameInput }, close: () => void, refresh: () => void, canEdit: boolean, tab0?: string, play?: (m: ClipMeta) => void }} BagProps */
 
-// The Bag: its two tabs along the bottom
+// The Bag: its three tabs along the bottom (tab0: the one it opens on)
 /** @param {BagProps} props */
 export function Bag(props) {
-  const [tab, setTab] = useState('guns');
+  const [tab, setTab] = useState(props.tab0 || 'guns');
   const tabs = h('div', { className: 'btabs' },
-    [['guns', 'Guns & Mods'], ['suit', 'Exo Suit']].map(([k, label]) => h('button', {
+    [['guns', 'Guns & Mods'], ['suit', 'Exo Suit'], ['witness', 'Witness']].map(([k, label]) => h('button', {
         key: k, className: 'btab' + (tab === k ? ' on' : ''), 'data-tab': k,
         onPointerDown: e => { e.preventDefault(); if (tab !== k) { setTab(k); SFX.fx('switch'); } } }, label)));
+  if (tab === 'witness') return h(WitnessGallery, { input: props.input, close: props.close, tabs, play: props.play || (() => {}) });
   return tab === 'guns' ? h(Editor, Object.assign({}, props, { tabs })) : h(ExoSuit, Object.assign({}, props, { tabs }));
 }
 

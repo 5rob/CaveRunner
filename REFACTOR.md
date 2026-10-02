@@ -965,8 +965,9 @@ commit. List them here for after.
 - **Found in P3.1 (the Game map):** `paint()` (Game.js ~845) has no callers. `total` is set by
   `enterLevel` and read by nobody. `enterLevel` empties every list but `fields`, `beams` (and
   `toasts`, on purpose), so a static field cast just before the portal carries on on the next
-  floor at the same coordinates. In a replay, `draw()`'s `visPoly`/`fogReveal` use the *live*
-  `mat` (today's rock), not the rock at the replay's time. `draw()` changes the world (fog
+  floor at the same coordinates. ~~In a replay, `draw()`'s `visPoly`/`fogReveal` use the *live*
+  `mat` (today's rock), not the rock at the replay's time.~~ Fixed in v124: a replay swaps in
+  `RT.mat`, the rock as of its time. `draw()` changes the world (fog
   memory, camera, `Math.random` draws), see the map.
 - **The `shoplayout` logic suite takes ~26 s of its 30 s cap** (`LOGIC_CAP` in `tests/run.js`),
   and `perks` ~24 s. Not the refactor (the loader costs ~0.15 s), but on a busy PC they could

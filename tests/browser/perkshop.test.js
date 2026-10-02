@@ -74,7 +74,7 @@ const DIR = path.join(__dirname, '..', 'build');
   // the Exo Suit: the Bag's second tab
   await page.tap('.weapon');
   await page.waitForTimeout(250);
-  check('the Bag has tabs along the bottom', await page.evaluate(() => document.querySelectorAll('.btabs .btab').length === 2));
+  check('the Bag has tabs along the bottom', await page.evaluate(() => document.querySelectorAll('.btabs .btab').length === 3));   // Guns & Mods, Exo Suit, Witness
   await down('.btab[data-tab="suit"]');
   await page.waitForTimeout(250);
   st = await page.evaluate(() => ({ suit: !!document.querySelector('.exosuit'), slots: document.querySelectorAll('.xslot').length,

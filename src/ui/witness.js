@@ -1,17 +1,23 @@
 // @ts-check
-// Witness: the death replay's screen (the controls; the Game draws the scene).
+// Witness: the death replay's screen (the controls; the Game draws the scene): the live death's
+// replay or a saved one (ui/clips.js), with Save (keep it in the Bag's Witness tab) and Video.
 
 import { clamp } from '../core/util.js';
+import { exportClip } from './clips.js';
 import { h, useEffect, useRef, useState } from './h.js';
 
 // ---- the death replay's screen ("Witness yourself"): the recorded scene fills the view — drag
 // to pan, pinch (or the wheel) to zoom — with a scrub bar and the controls along the bottom.
 // The Game draws it (drawReplay); this only moves input.current.replay's clock and camera.
 export const RP_SPEEDS = [0.25, 0.5, 1, 2];
-/** @param {{ input: { current: GameInput }, close: () => void }} props */
-export function Witness({ input, close }) {
-  const V = input.current.replay, W = input.current.witness;
+/** @param {{ input: { current: GameInput }, close: () => void, saved?: ClipMeta | null }} props */
+export function Witness({ input, close, saved }) {
+  const V = input.current.replay, W = V.clip;
   const [, bump] = useState(0);
+  const [keep, setKeep] = useState(W.id ? 'saved' : '');       // '', 'saving', 'saved', 'failed'
+  const [exp, setExp] = useState(null);                         // the export under way: { phase, frac }
+  const [msg, setMsg] = useState('');
+  const ctl = useRef({ cancelled: false });
   const redo = () => bump(n => n + 1);
   const scrub = useRef(null), pts = useRef(new Map()), pinch = useRef(null), dragging = useRef(false);
   useEffect(() => {                  // the clock and the scrub bar follow the playback
@@ -33,6 +39,7 @@ export function Witness({ input, close }) {
   // the scene: one finger (or the mouse) drags the camera, two pinch-zoom and drag
   const down = e => {
     e.preventDefault();
+    if (exp) return;                 // the framing holds while a video records
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
     pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     pinch.current = null;
@@ -55,13 +62,27 @@ export function Witness({ input, close }) {
     if (!V.follow) redo();
   };
   const up = e => { pts.current.delete(e.pointerId); pinch.current = null; };
-  const tap = f => e => { e.preventDefault(); f(); redo(); };
+  const tap = f => e => { e.preventDefault(); if (!exp) { f(); redo(); } };
+  const save = async () => {
+    if (keep === 'saving' || keep === 'saved' || !input.current.saveClip) return;
+    setKeep('saving');
+    const m = await input.current.saveClip(W);
+    if (m) { W.id = m.id; setKeep('saved'); setMsg('Saved to the Bag’s Witness tab'); } else { setKeep('failed'); setMsg('Couldn’t save it (out of space?)'); }
+  };
+  const video = async () => {
+    if (exp) return;
+    ctl.current = { cancelled: false };
+    setMsg(''); setExp({ phase: 'rec', frac: 0 });
+    const r = await exportClip(V, saved ? saved.name : 'death', s => setExp(s), ctl.current);
+    setExp(null); setMsg(r.msg);
+  };
   const rel = V.t - W.death, frac = (V.t - W.t0) / span;
   const atEnd = V.t >= W.t1 - 1e-6;
   return h('div', { className: 'witness' },
     h('div', { className: 'wscene', onPointerDown: down, onPointerMove: move, onPointerUp: up, onPointerCancel: up,
         onWheel: e => { V.zoom = clamp(V.zoom * Math.exp(-e.deltaY * 0.0015), 0.4, 4); } },
-      h('div', { className: 'wtitle' }, 'WITNESS YOURSELF')),
+      h('div', { className: 'wtitle' }, saved ? saved.name : 'WITNESS YOURSELF'),
+      msg ? h('div', { className: 'wmsg', onPointerDown: e => { e.stopPropagation(); setMsg(''); } }, msg) : null),
     h('div', { className: 'wpanel', ref: el => { if (el) V.panelH = el.getBoundingClientRect().height; } },
       h('div', { className: 'wscrub', ref: scrub,
           onPointerDown: e => { e.preventDefault(); dragging.current = true;
@@ -87,5 +108,15 @@ export function Witness({ input, close }) {
         h('button', { className: 'wfog' + (V.fog ? ' on' : ''), onPointerDown: tap(() => { V.fog = !V.fog; }) }, 'Fog'),
         h('button', { className: 'wfollow' + (V.follow ? ' on' : ''), onPointerDown: tap(() => { V.follow = true; V.zoom = 1; }) },
           'Follow'),
-        h('button', { className: 'wclose', onPointerDown: e => { e.preventDefault(); close(); } }, 'Close'))));
+        h('button', { className: 'wclose', onPointerDown: e => { e.preventDefault(); if (!exp) close(); } }, 'Close')),
+      h('div', { className: 'wrow' },
+        saved ? null : h('button', { className: 'wsave' + (keep === 'saved' ? ' on' : ''), onPointerDown: tap(save) },
+          keep === 'saving' ? 'Saving…' : keep === 'saved' ? 'Saved ✓' : '💾 Save'),
+        h('button', { className: 'wvideo', onPointerDown: tap(video) }, '🎬 Export video')),
+      exp ? h('div', { className: 'wexp' },
+        h('span', null, (exp.phase === 'rec' ? 'Recording ' : exp.phase === 'convert' ? 'Converting (ffmpeg) ' : 'Saving ') +
+          Math.round(exp.frac * 100) + '%'),
+        h('div', { className: 'wexpbar' }, h('i', { style: { width: (exp.frac * 100) + '%' } })),
+        exp.phase === 'rec' ? h('button', { className: 'wcancel', onPointerDown: e => { e.preventDefault(); ctl.current.cancelled = true; } }, 'Cancel') : null)
+        : null));
 }

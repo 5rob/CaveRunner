@@ -7,6 +7,7 @@ import { SFX } from '../audio/sfx.js';
 import { START_GOLD } from '../core/consts.js';
 import { PERKS, SUIT_LEN, activePerks, perkBag } from '../data/perks.js';
 import { Game } from '../game/Game.js';
+import { clipGet } from '../save/clips.js';
 import { clearSave, loadCollection, loadPerkCollection, loadSave } from '../save/save.js';
 import { startingGuns } from '../spells/guns.js';
 import { GunCard, ModCard, PerkCard } from './cards.js';
@@ -52,6 +53,8 @@ export function App() {
   const [devOpen, setDevOpen] = useState(false);
   const [spawnOpen, setSpawnOpen] = useState(false);
   const [witnessOpen, setWitnessOpen] = useState(false);
+  const [savedClip, setSavedClip] = useState(null);   // the saved replay playing (its ClipMeta), from the Bag's Witness tab
+  const [bagTab, setBagTab] = useState('guns');
   const [gunInfo, setGunInfo] = useState(-1);
   const [held, setHeld] = useState(-1);
   const [perkInfo, setPerkInfo] = useState(-1);   // the perk whose card is up (its place among the fitted ones)
@@ -180,17 +183,32 @@ export function App() {
   // the death replay: offered once the recording has run on past the death (input.current.witness)
   const witness = input.current.witness;
   const openWitness = () => {
-    input.current.replay = { t: witness.t0, speed: 1, playing: true, loop: true, fog: true, follow: true, zoom: 1, cx: 0, cy: 0, unit: 1 };
+    input.current.replay = { t: witness.t0, speed: 1, playing: true, loop: true, fog: true, follow: true, zoom: 1, cx: 0, cy: 0, unit: 1,
+      clip: witness };
+    setSavedClip(null);
     setWitnessOpen(true);
   };
-  const closeWitness = () => { input.current.replay = null; setWitnessOpen(false); };
+  // a saved one, from the Bag's Witness tab: it plays full screen, and Close goes back to the tab
+  /** @param {ClipMeta} m */
+  const playClip = async m => {
+    const S = await clipGet(m.id);
+    if (!S || !input.current.clipFromSaved) return;
+    const C = input.current.clipFromSaved(S);
+    C.id = m.id; C.name = m.name;
+    input.current.replay = { t: C.t0, speed: 1, playing: true, loop: true, fog: true, follow: true, zoom: 1, cx: 0, cy: 0, unit: 1, clip: C };
+    setSavedClip(m); setEdit(false); setWitnessOpen(true);
+  };
+  const closeWitness = () => {
+    input.current.replay = null; setWitnessOpen(false);
+    if (savedClip) { setSavedClip(null); setBagTab('witness'); setEdit(true); }
+  };
 
   return h('div', { className: 'app' + (witnessOpen ? ' witnessing' : '') },
     h('div', { className: 'view' },
       h(Game, { key: run, input }),
       witness && !witnessOpen ? h('button', { className: 'witnessbtn',
         onPointerDown: e => { e.preventDefault(); openWitness(); } }, 'WITNESS YOURSELF') : null,
-      witnessOpen && witness ? h(Witness, { input, close: closeWitness }) : null,
+      witnessOpen && input.current.replay ? h(Witness, { key: savedClip ? savedClip.id : 'live', input, close: closeWitness, saved: savedClip }) : null,
       // The item's card and its buy/take line are one panel now, grown up from the
       // bottom: the info you're reading and the price you're paying sit together.
       // The panel is pointer-events:none so a tap still reaches the sticks underneath;
@@ -266,7 +284,7 @@ export function App() {
             className: 'dbtn weapon' + (canEdit ? '' : ' locked'), style: btnAt(deck.bag),
             title: canEdit ? 'Bag: guns & mods' : 'Bag: guns & mods (edit in the shop or with Tinker)',
             'aria-label': 'Bag',
-            onPointerDown: e => { e.preventDefault(); setMapOpen(false); setEdit(true); } },
+            onPointerDown: e => { e.preventDefault(); setMapOpen(false); setBagTab('guns'); setEdit(true); } },
           h('span', { className: 'emo' }, '🎒'),
           LO.bag.length ? h('b', { className: 'badge' }, LO.bag.length) : null),
         h('button', {
@@ -288,7 +306,7 @@ export function App() {
           : null
       )
     ),
-    edit ? h(Bag, { input, refresh, canEdit, close: () => setEdit(false) }) : null,
+    edit ? h(Bag, { key: bagTab, input, refresh, canEdit, close: () => setEdit(false), tab0: bagTab, play: playClip }) : null,
     devOpen ? h(DevPanel, { input, refresh, close: () => setDevOpen(false),
       onRestart: () => { setDevOpen(false); setConfirmAt(performance.now()); },
       onSpawnGun: () => { setDevOpen(false); setSpawnOpen(true); } }) : null,

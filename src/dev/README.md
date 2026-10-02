@@ -13,6 +13,8 @@
 - Colour knobs: `colourKnobs(group, rows)` (A = `k+'Lo'`, B = `k+'Hi'`, `'#rrggbb'`); `kcol(k, u)`
   blends A→B; `jcol(k, u)` blends then applies the jelly's master `jeHue`/`jeSat`/`jeBri` sliders
   (use `jcol` for any jelly colour).
+- Witness (`g: 'witness'`): `witPad` (how far past your path a saved replay keeps, so how far its
+  camera may stray, world units, 80) and `witKbps` (the exported video's bitrate, 6000).
 - The menus' pointer (`g: 'menuptr'`): `ptrStart`, `ptrReach`, `ptrSize`, `ptrLine`, `snapR`, `snapPull`,
   `snapHit` (read live by `ui/vendshop.js` and the right `Stick`).
 - The tables: `SP_KNOBS` (spider + web lines), `JE_KNOBS`, `JE_COLS` (jellyfish), `RA_KNOBS` (rats

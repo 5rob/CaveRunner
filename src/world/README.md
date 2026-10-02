@@ -13,6 +13,7 @@ All pure: the logic suites call these directly.
 | `nests.js` | `ratNests` (floor 1: a mound, a bending tunnel, a room in the rock) |
 | `nav.js` | `navField` (Dijkstra out from a goal over `NAV` = 4px cells that fit a rat), `navWay` (next waypoint; extends through air to a landing) |
 | `vision.js` | `rayDist`, `losClear`, `visPoly` (`VIS_RAYS`), the fog memory `fogReveal`, `fogStart`, `nestFog` |
+| `ragdoll.js` | Your corpse: `ragNew` (eight joints in the sprite's pose, `RAG_POSE`, tipping over), `ragStep` (gravity, `RAG_SUB` substeps, sticks `RAG_STICKS`, the rock via a `solid(x, y)` test, floor friction, goes `still` after a second at rest), `ragPush` (a blast throws it), `ragHip`; `RAG_SLUMP` (it topples by itself for 1.5s, or a balanced sit never falls) |
 | `fire.js` | The fire engine: `fireNew`, `fireLight`, `fireArea`, `fireNear`, `fireDouse`, `fireStep`; `FUEL_*`, `FIRE_*`, `FLAMMABLE`, `FIRE_WET` |
 
 ## Rules: generation

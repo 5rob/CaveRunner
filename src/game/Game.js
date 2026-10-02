@@ -13,7 +13,9 @@ import { paintFog } from './systems/fog.js';
 import { enterLevel } from './systems/level-entry.js';
 import { voidCave } from './systems/vend.js';
 import { applyPerks, hurt, maxHp, refreshBag } from './systems/player.js';
-import { drawReplay, recFrame, recSample, recWrap } from './systems/recorder.js';
+import {
+  clipFromSaved, clipKeep, drawReplay, recFrame, recSample, recSfxHook, recWrap, rpSound, rpSoundOff
+} from './systems/recorder.js';
 import { saveRun } from './systems/save-run.js';
 import { step } from './systems/step.js';
 import { dig, explode } from './systems/terrain.js';
@@ -78,13 +80,13 @@ export function Game({ input }) {
     // RP_AFTER more seconds and stops.
     const RP_ARR = { bullets: W.bullets, enemyShots: W.enemyShots, smoke: W.smoke, sparks: W.sparks, flashes: W.flashes, coins: W.coins, fields: W.fields, beams: W.beams, arcs: W.arcs, torchP: W.torchP, motes: W.motes,
       burns: W.burns, webs: W.webs, silk: W.silk, strings: W.strings, dparts: W.dparts, amb: W.amb, clouds: W.clouds, rings: W.rings, devils: W.devils };
-    const REC = { t: 0, acc: 0, snaps: [], patches: [], dirty: [], fogLog: [], tBase: null, dBase: null,
+    const REC = { t: 0, acc: 0, snaps: [], patches: [], dirty: [], fogLog: [], sfx: [], tBase: null, dBase: null,
       fogBase: null, fogPrev: null, deathT: -1, done: false };
 
     // ---- the replay's player (drawReplay, systems/recorder.js): rebuilds the terrain and fog for
     // time T on RT's canvases and draws the recorded scene through draw() itself, swapped in for
     // the live world and swapped back after ----
-    const RT = { tC: null, dC: null, n: 0, at: -1, fog: null, fireT: null };
+    const RT = { tC: null, dC: null, n: 0, at: -1, fog: null, fireT: null, clip: null, mat: null, loops: new Map() };
     // the fire's dirty boxes on the two terrain canvases (put back once a frame, see flushFire)
     const fireBox = { t: [CW, CH, -1, -1], d: [CW, CH, -1, -1] };
     // a spider's web line under a rat's feet counts as ground: rats run along webs
@@ -100,6 +102,10 @@ export function Game({ input }) {
       RP_ARR, rid: new WeakMap(), ridN: 0,  // the recorder's lists (W's own arrays) and each thing's replay id
       RPV: null };                          // while draw() is drawing a replay frame: the view
     recWrap(G);                             // before anything draws on tctx/dctx
+    recSfxHook(G);                          // and note the sounds it makes
+    // the Witness screen keeps a clip, and plays a stored one, through these
+    input.current.saveClip = C => clipKeep(W, G, C);
+    input.current.clipFromSaved = clipFromSaved;
 
     // the browser tests' way in (game/testhook.js): only on the test page, which sets the flag
     if (window.__TEST) window.__lvl = testHook(W, { tctx, dctx, paintFog: () => paintFog(W, G), hurt: (n) => hurt(W, G, n), maxHp: () => maxHp(W, G), dig: (x, y, R) => dig(W, G, x, y, R), explode: (x, y, R, splash, hot) => explode(W, G, x, y, R, splash, hot), recSample: () => recSample(W, G),
@@ -155,17 +161,21 @@ export function Game({ input }) {
       const dt = Math.max(0, Math.min(0.033, (t - last) / 1000));
       last = t;
       const rv = input.current.replay;
-      if (rv && REC.done) {                   // the death replay: its own clock, the world stays put
+      if (rv && rv.clip) {                    // a death replay (this one, or a saved one): its own clock, the world stays put
+        const prev = rv.t;
         if (rv.playing) {
           rv.t += dt * rv.speed;
-          const wit = input.current.witness;
+          const wit = rv.clip;
           if (rv.t >= wit.t1) {                  // the end: round again, or stop there
             if (rv.loop) rv.t = wit.t0; else { rv.t = wit.t1; rv.playing = false; }
           }
         }
+        rpSound(G, rv, prev);
         SFX.tick();
         drawReplay(W, G, rv);
+        if (rv.onFrame) rv.onFrame(c, rv.playPx || c.height);
       } else {
+        if (RT.loops.size) rpSoundOff(G);
         if (input.current.perksDirty) { input.current.perksDirty = false; applyPerks(W, G); }
         if (!input.current.paused) { step(W, G, dt); recFrame(W, G, dt); }
         SFX.tick();
@@ -176,6 +186,7 @@ export function Game({ input }) {
     raf = requestAnimationFrame(loop);
     return () => {
       cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('resize', resize);
+      rpSoundOff(G);
       clearInterval(saveTick);
       if (W.jetLoop) W.jetLoop.stop();
       if (W.portalLoop) W.portalLoop.stop();

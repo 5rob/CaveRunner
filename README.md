@@ -121,6 +121,9 @@ of war has lifted, so it fills in as you explore. Tap the button again to close 
 
 ## Witness yourself
 
+When you die your body goes limp and falls like a rag doll: it slumps to the floor, or is
+thrown through the air if a blast caught you (and a blast after you're dead still throws it).
+
 When you die, the game keeps running for three more seconds, then a **WITNESS YOURSELF**
 button comes up on the death screen. It replays the last **10 seconds before your death and
 the 3 after it**, drawn exactly as the game draws it: creatures, shots, fire, digging and all.
@@ -132,9 +135,23 @@ the 3 after it**, drawn exactly as the game draws it: creatures, shots, fire, di
 - **Fog** turns the fog of war on or off, so you can see what was coming at you in the dark.
 - Drag to move the camera, pinch (or the mouse wheel) to zoom. **Follow** puts it back on you.
 - **Close** goes back to the death screen, where a tap on the right stick restarts as usual.
+- It plays the sounds too, as they happened.
+- **💾 Save** keeps it, to watch again later (see below).
+- **🎬 Export video** plays it once from the start, just as you've set it up (where the camera
+  is or whether it follows you, the zoom, the speed, fog on or off), records it with its sound,
+  and saves an MP4 to the phone, in **Movies/CaveRunner**. (Saving videos needs the app from
+  the releases page as of v124; if your phone can't record MP4 itself, the video is converted
+  with ffmpeg, which downloads once, about 30 MB.)
 
 Only the area round you is recorded (about a screen and a half each way), so if you pan far
 off, the cave is there but the creatures aren't.
+
+**Saved deaths** are in the Bag, on its third tab, **Witness**: a picture of each (the moment
+you died), its floor, length and size. Tap the picture to play it full screen, with the same
+controls (and Export video); Close brings you back to the tab. **✏️ Rename** and **🗑️** (delete,
+after a "Delete?") are under each one. A saved death keeps only what's round your path, so it
+stays small (around half a megabyte to a couple of megabytes); you can drag the camera off
+you only a little way (Dev → Witness sets how far, and the exported video's quality).
 
 ## Picking things up
 
@@ -590,7 +607,8 @@ them if it cannot find either.
 - A gun you just swapped out and dropped stays quiet for two seconds, so you can squeeze past it in a tunnel
 - Red crystals in the cave unlock mods for good at the shop's vending machine, which then sells copies
 - Restart asks before it wipes the run
-- A death replay: the last 10 seconds before you died and 3 after, with scrubbing, slow motion, a fog toggle, pan and pinch-zoom
+- A death replay: the last 10 seconds before you died and 3 after, with sound, scrubbing, slow motion, a fog toggle, pan and pinch-zoom; save it to the Bag's Witness tab, or export it as an MP4
+- Your body falls like a rag doll when you die, and blasts throw it
 - A DEBUG shelf with one of every mod, for trying builds out
 - 30 perks and 25 stat perks (five stats, five levels), unlocked with green crystals (one hidden in a brick-lined room on every floor) at the perk machine, bought for gold and fitted to the Exo Suit
 - Loot in the cave sits on the ground now, not floating in place

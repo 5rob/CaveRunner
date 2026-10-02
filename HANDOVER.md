@@ -9,7 +9,13 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
-- **Released: v123** on `main`, 2026-10-02. v118–v123: three shop vending machines (mods v118, guns v119, perks v120: `game/systems/shops.js`, `ui/vendshop.js`, `ui/gunshop.js`), red/green crystals in place of cave loot, elites, the Exo Suit tab in the Bag with stat perks, the menus' right-stick pointer with snapping (v121–v122, Dev knobs v123), the Questions Later auto-fire mod (v122) (CHANGELOG). v117: a Dev knob for level 1's repay time (`DEV.due1`, minutes). v116: the hologram rests dark and flashes on a kill (Dev → Hologram flash, with a fade-curve editor). Before it, v115 on 2026-10-01 (history in `CHANGELOG.md`). The last three were the
+- **Released: v124** on `main`, 2026-10-02: saved death replays (the Bag's Witness tab: play,
+  rename, delete), the replay's sound, **Export video** (MP4 with sound into Movies/CaveRunner via
+  a new app bridge, `window.CaveApp`: **the APK must be reinstalled once** for saving videos; ffmpeg.wasm
+  converts if the phone can't record MP4), and the corpse as a ragdoll (`world/ragdoll.js`).
+  `replay/README.md` has how it fits. Untested on the phone itself: MediaRecorder's MP4 in the
+  WebView, and the bridge (CI builds the Java; nothing here compiles Android).
+- **v123** on `main`, 2026-10-02. v118–v123: three shop vending machines (mods v118, guns v119, perks v120: `game/systems/shops.js`, `ui/vendshop.js`, `ui/gunshop.js`), red/green crystals in place of cave loot, elites, the Exo Suit tab in the Bag with stat perks, the menus' right-stick pointer with snapping (v121–v122, Dev knobs v123), the Questions Later auto-fire mod (v122) (CHANGELOG). v117: a Dev knob for level 1's repay time (`DEV.due1`, minutes). v116: the hologram rests dark and flashes on a kill (Dev → Hologram flash, with a fade-curve editor). Before it, v115 on 2026-10-01 (history in `CHANGELOG.md`). The last three were the
   owner's lag and battery complaints: v113 the camera eases by time, not per frame (it jittered you
   in fast flight on the phone; confirmed fixed); v114 the Bag works out its dmg/s line once per build,
   without the parked swap tips (a drag cost ~380ms with a big gun); v115 the hologram, its fog swap,
@@ -37,7 +43,7 @@ That list is the to-do the refactor left (nothing in it was fixed in passing). T
   `everymod` telecast, `rats`, `save`, `nuggets` "settle on the floor" (fails on v114 too), `archvine`, `decor` vine, `t1spells` bubble, `compare`, and the logic `spider` "every roaming spider moves about" on real caves (1 of 119 barely moves since v120's one-room caves: make it seeded or sandboxed). Worth
   making them frame-counted / seeded. `shoplayout` and `perks` logic suites run close to the 30s cap.
 - Smaller: `paint()` has no callers, `W.best` is written and never read, a static field cast just before
-  the portal carries on to the next floor, a replay's reveal uses the live rock, a few comments sit above
+  the portal carries on to the next floor, a few comments sit above
   the wrong code (listed there).
 
 ## The Android app
@@ -59,5 +65,4 @@ find playwright-core in `node_modules/` and the installed Chrome by themselves (
   machinery exists (`payload` on a shot, `firePayload`), so it's a small job.
 - Noita spell categories only partly mined: Material spells (none), Divide By N, the Requirement spells.
 - More perks, or Noita's perk reroll (skipped on purpose for now).
-- Death replay: saving replays to watch later, and a "killed by …" caption (needs the source plumbed
-  through `hurt`).
+- Death replay: a "killed by …" caption (needs the source plumbed through `hurt`). (Saving replays: v124.)

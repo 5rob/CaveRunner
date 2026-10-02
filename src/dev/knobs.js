@@ -19,7 +19,8 @@ export const DEV_DEFAULTS = { zoom: 1.6, torch: 0.5, fogDark: 0.99, fogDim: 0.85
   holoAlpha: 1, bloom: 0.8, bloomBlur: 8, bloomBright: 1.3, pixelFx: 1, holoPx: 2,
   holoMin: 0, holoMax: 1, holoFade: 3, holoC1x: 0.25, holoC1y: 1, holoC2x: 0.5, holoC2y: 0,
   due1: 60,
-  ptrStart: 0.12, ptrReach: 1, ptrSize: 1, ptrLine: 0.75, snapR: 28, snapPull: 0.3, snapHit: 10 };
+  ptrStart: 0.12, ptrReach: 1, ptrSize: 1, ptrLine: 0.75, snapR: 28, snapPull: 0.3, snapHit: 10,
+  witPad: 80, witKbps: 6000 };
 // g: the collapsible group the knob sits in on the Dev panel (DEV_GROUPS gives the order)
 /** @type {DevRow[]} */
 export const DEV_META = [
@@ -70,10 +71,13 @@ export const DEV_META = [
   { k: 'snapR',     g: 'menuptr', label: 'Snap reach (px from a button’s edge)', min: 0, max: 120, step: 1 },
   { k: 'snapPull',  g: 'menuptr', label: 'Snap pull (0 none, 1 right onto its middle)', min: 0, max: 1, step: 0.01 },
   { k: 'snapHit',   g: 'menuptr', label: 'Counts as on a button within (px of its edge)', min: 0, max: 60, step: 1 },
+  // a saved death replay keeps only what's round your path: this far past it the camera may still go
+  { k: 'witPad',    g: 'witness', label: 'Saved replay: how far the camera may stray from you (world units)', min: 0, max: 300, step: 10 },
+  { k: 'witKbps',   g: 'witness', label: 'Exported video quality (kbit/s)', min: 500, max: 20000, step: 500 },
   { k: 'bagSpeed',  g: 'ui',    label: 'Bag fire preview speed (×real time)', min: 0.05, max: 5, step: 0.05 },
 ];
 export const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['fx', 'Hologram & glow'], ['holoflash', 'Hologram flash (on a kill)'], ['player', 'Player'],
-  ['enemy', 'Enemies'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['level', 'Level layout (floor 1)'], ['arch', 'Arched vines'], ['fire', 'Fire']];
+  ['enemy', 'Enemies'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['arch', 'Arched vines'], ['fire', 'Fire']];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults.
 export function devReport() {

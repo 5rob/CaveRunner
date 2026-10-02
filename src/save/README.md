@@ -4,6 +4,11 @@
 `cleanLoadout`, `cleanGun` (pure, tested), `loadSave`, `clearSave`. Writing the save is
 `saveRun` (`game/systems/save-run.js`).
 
+`clips.js`: the saved death replays, in IndexedDB (`CLIP_DB` = `caverunner-clips`; localStorage is
+far too small): `clipList` (the gallery's `ClipMeta` cards, newest first), `clipGet` (unpacks one),
+`clipPut` (packs it: `clipPack`, gzipped JSON, `replay/clip.js`; `meta.bytes` is the packed size),
+`clipRename`, `clipDelete`, `clipName`. Every call resolves (null / false / []) rather than throws.
+
 ## Rules
 
 - **Old saves are forgiven**: unknown mod/perk ids are dropped, missing gun fields filled from
