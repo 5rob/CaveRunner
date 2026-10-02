@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v123</title>
+<title>CaveRunner v124</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -474,7 +474,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .witnessbtn{position:absolute;left:50%;top:238px;transform:translateX(-50%);z-index:7;white-space:nowrap;
   background:rgba(20,6,6,0.78);border:1.5px solid #ff4a3a;color:#ffd9d4;border-radius:24px;padding:12px 20px;
   font:800 14px system-ui,sans-serif;letter-spacing:0.18em;box-shadow:0 0 18px rgba(255,74,58,0.35)}
-.app.witnessing .controls,.app.witnessing .devbtn,.app.witnessing .buypanel{visibility:hidden}
+.app.witnessing .controls,.app.witnessing .devbtn,.app.witnessing .buypanel,.app.witnessing .gold{visibility:hidden}
 .witness{position:fixed;inset:0;z-index:28;display:flex;flex-direction:column}
 .wscene{flex:1 1 auto;position:relative;touch-action:none}
 .wtitle{position:absolute;top:14px;left:0;right:0;text-align:center;pointer-events:none;
@@ -494,6 +494,37 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .wrow button.on{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}
 .wrow .wclose{margin-left:auto}
 .wtime{margin-left:auto;font:600 13px ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.wrow .wsave,.wrow .wvideo{flex:1}
+.wmsg{position:absolute;top:40px;left:16px;right:16px;text-align:center;padding:8px 12px;border-radius:12px;
+  background:rgba(10,12,16,0.85);color:#e9ecf2;font:600 13px system-ui,sans-serif}
+.wexp{position:absolute;left:0;right:0;bottom:0;top:0;background:rgba(10,12,16,0.94);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;font:700 14px system-ui,sans-serif}
+.wpanel{position:relative}
+.wexpbar{width:70%;height:6px;border-radius:3px;background:rgba(255,255,255,0.18);overflow:hidden}
+.wexpbar i{display:block;height:100%;background:#ff8a1f}
+.wcancel{height:34px;padding:0 16px;border-radius:17px;border:1px solid rgba(255,255,255,0.3);background:none;color:#e9ecf2;
+  font:600 13px system-ui,sans-serif}
+/* the Bag's Witness tab: the saved deaths (ui/clips.js) */
+.wgal{flex:1 1 auto;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;
+  align-content:start;padding-bottom:6px}
+.wempty{grid-column:1/-1;color:var(--muted);font-size:13px;text-align:center;margin:30px 10px}
+.wclip{display:flex;flex-direction:column;border-radius:12px;border:1px solid var(--ring);background:var(--pad);overflow:hidden}
+.wthumbimg{position:relative;aspect-ratio:4/5;background:#0a1018;overflow:hidden}
+.wthumbimg img{width:100%;height:100%;object-fit:cover;display:block}
+.wplayicon{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;
+  background:rgba(0,0,0,0.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;pointer-events:none}
+.wcinfo,.wrename{display:flex;flex-direction:column;gap:3px;padding:6px 7px 7px}
+.wname{font:700 12.5px system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wrename .wname{white-space:normal}
+.wmeta{font-size:11px;color:var(--muted)}
+.wcbtns{display:flex;gap:5px;margin-top:3px}
+.wcbtns button{flex:1;height:32px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);color:var(--text);
+  font:600 12px system-ui,sans-serif;padding:0 4px}
+.wcbtns .wdelask{flex:0 0 38px}
+.wcbtns .wdel{background:#c8202c;border-color:#c8202c;color:#fff}
+.wcbtns .wok{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}
+.wrename input{height:32px;border-radius:8px;border:1px solid var(--ring);background:var(--bg);color:var(--text);
+  font:600 13px system-ui,sans-serif;padding:0 8px;min-width:0;user-select:text;-webkit-user-select:text}
 .confirm{position:fixed;inset:0;z-index:29;display:flex;align-items:center;justify-content:center;padding:24px}
 .confirmCard{position:relative;z-index:30;background:var(--btn);border:1px solid var(--ring);border-radius:14px;
   padding:18px 20px;max-width:260px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.4)}
@@ -628,7 +659,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v123';</script>
+<script>const VERSION = 'v124';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -833,7 +864,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ptrLine: 0.75,
     snapR: 28,
     snapPull: 0.3,
-    snapHit: 10
+    snapHit: 10,
+    witPad: 80,
+    witKbps: 6e3
   };
   var DEV_META = [
     { k: "zoom", g: "view", label: "Camera zoom", min: 0.3, max: 3, step: 0.05 },
@@ -883,6 +916,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "snapR", g: "menuptr", label: "Snap reach (px from a button’s edge)", min: 0, max: 120, step: 1 },
     { k: "snapPull", g: "menuptr", label: "Snap pull (0 none, 1 right onto its middle)", min: 0, max: 1, step: 0.01 },
     { k: "snapHit", g: "menuptr", label: "Counts as on a button within (px of its edge)", min: 0, max: 60, step: 1 },
+    // a saved death replay keeps only what's round your path: this far past it the camera may still go
+    { k: "witPad", g: "witness", label: "Saved replay: how far the camera may stray from you (world units)", min: 0, max: 300, step: 10 },
+    { k: "witKbps", g: "witness", label: "Exported video quality (kbit/s)", min: 500, max: 2e4, step: 500 },
     { k: "bagSpeed", g: "ui", label: "Bag fire preview speed (×real time)", min: 0.05, max: 5, step: 0.05 }
   ];
   var DEV_GROUPS = [
@@ -900,6 +936,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ["sound", "Sound"],
     ["ui", "Bag screen"],
     ["menuptr", "Menu pointer & snapping"],
+    ["witness", "Witness (death replays)"],
     ["level", "Level layout (floor 1)"],
     ["arch", "Arched vines"],
     ["fire", "Fire"]
@@ -3598,7 +3635,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/audio/sfx.js
   var SFX = (() => {
-    let ac = null, master = null, sfxBus = null, ambBus = null, noiseBuf = null, crackBuf = null;
+    let ac = null, master = null, sfxBus = null, ambBus = null, noiseBuf = null, crackBuf = null, comp = null, tap = null;
     let voices = 0, hooked = false;
     const MAX_VOICES = 28, HEAR = 650;
     const gates = {};
@@ -3628,7 +3665,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           const AC = window.AudioContext || window.webkitAudioContext;
           if (!AC) return;
           ac = new AC();
-          const comp = ac.createDynamicsCompressor();
+          comp = ac.createDynamicsCompressor();
           comp.threshold.value = -16;
           comp.knee.value = 12;
           comp.ratio.value = 5;
@@ -4766,6 +4803,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ambTick: safe(ambTick),
       env: safe(envSound),
       stats,
+      // everything you hear, as a stream as well (the Witness video export records it); null without sound
+      stream: () => {
+        try {
+          if (!ac || !ac.createMediaStreamDestination) return null;
+          if (!tap) {
+            tap = ac.createMediaStreamDestination();
+            comp.connect(tap);
+          }
+          if (ac.state === "suspended") ac.resume();
+          return tap.stream;
+        } catch (_) {
+          return null;
+        }
+      },
       get ready() {
         return !!live();
       },
@@ -5193,13 +5244,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const s = surfNormal(e.x, e.y, r + CELL, solidCell2);
       if (!s || s.d >= r) continue;
       hit = true;
-      const ox = s.d > 0.5 ? s.px : s.x, oy = s.d > 0.5 ? s.py : s.y;
-      e.x += ox * (r - s.d);
-      e.y += oy * (r - s.d);
-      const into = V2.vx * ox + V2.vy * oy;
+      const ox2 = s.d > 0.5 ? s.px : s.x, oy2 = s.d > 0.5 ? s.py : s.y;
+      e.x += ox2 * (r - s.d);
+      e.y += oy2 * (r - s.d);
+      const into = V2.vx * ox2 + V2.vy * oy2;
       if (into < 0) {
-        V2.vx -= (1 + bounce) * into * ox;
-        V2.vy -= (1 + bounce) * into * oy;
+        V2.vx -= (1 + bounce) * into * ox2;
+        V2.vy -= (1 + bounce) * into * oy2;
       }
     }
     return hit;
@@ -5272,8 +5323,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let k = 1; k <= 16 && ok; k++) {
         const t = T * k / 16, px = x0 + vx * t, py = y0 + vy * t + 0.5 * RAT.fall * t * t;
         if (Math.hypot(px - goal.x, py - goal.y) < RAT.hold + 3) break;
-        for (const [ox, oy] of [[0, 0], [2.5, 0], [-2.5, 0], [0, 2.5], [0, -2.5]])
-          if (solidCell2(Math.floor((px + ox) / CELL), Math.floor((py + oy) / CELL))) {
+        for (const [ox2, oy2] of [[0, 0], [2.5, 0], [-2.5, 0], [0, 2.5], [0, -2.5]])
+          if (solidCell2(Math.floor((px + ox2) / CELL), Math.floor((py + oy2) / CELL))) {
             ok = false;
             break;
           }
@@ -5515,28 +5566,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S.on -= dt;
     const n = Math.max(1, Math.ceil(dist / RAT.step));
     for (let i = 0; i < n; i++) {
-      const st = dist / n, tx = -S.ny * S.side, ty = S.nx * S.side;
-      e.x += tx * st;
+      const st = dist / n, tx2 = -S.ny * S.side, ty = S.nx * S.side;
+      e.x += tx2 * st;
       e.y += ty * st;
       if (!surfSeat(e, S, solidCell2, st * 2, RAT.hold, RAT.feel)) {
         e.x -= S.nx * st * 2;
         e.y -= S.ny * st * 2;
         if (!surfSeat(e, S, solidCell2, st * 2, RAT.hold, RAT.feel)) {
           S.mode = "air";
-          S.vx = tx * S.spd * 0.5;
+          S.vx = tx2 * S.spd * 0.5;
           S.vy = 0;
           break;
         }
       }
       if (S.py > RAT.ceil) {
         S.mode = "air";
-        S.vx = tx * S.spd * 0.3;
+        S.vx = tx2 * S.spd * 0.3;
         S.vy = 0;
         S.noSide = S.side;
         S.noT = 1.5;
         break;
       }
-      if (Math.abs(tx) > 0.2) S.face = tx > 0 ? 1 : -1;
+      if (Math.abs(tx2) > 0.2) S.face = tx2 > 0 ? 1 : -1;
       if (!goal) continue;
       const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy) || 1;
       if (gd < S.arrive || (-S.ny * gx + S.nx * gy) * S.side < 0) {
@@ -6028,8 +6079,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/world/nav.js
   var NAV = 4;
-  function navField(solid, tx, ty, R, onWeb) {
-    const gi = Math.floor(tx / CELL / NAV), gj = Math.floor(ty / CELL / NAV);
+  function navField(solid, tx2, ty, R, onWeb) {
+    const gi = Math.floor(tx2 / CELL / NAV), gj = Math.floor(ty / CELL / NAV);
     const x0 = gi - R, y0 = gj - R, w = 2 * R + 1, n = w * w;
     const open = new Uint8Array(n), surf = new Uint8Array(n);
     const sol = (i, j) => solid((x0 + i) * NAV + 2, (y0 + j) * NAV + 2);
@@ -6276,6 +6327,140 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/world/ragdoll.js
+  var RAG_POSE = [
+    [0, 4.4],
+    // 0 head (the helmet's centre)
+    [0, 8.5],
+    // 1 chest
+    [0, 15],
+    // 2 hip
+    [-1.9, 18.2],
+    // 3 back knee
+    [-1.9, 21.2],
+    // 4 back foot
+    [1.9, 18.2],
+    // 5 front knee
+    [1.9, 21.2],
+    // 6 front foot
+    [5.5, 9.8]
+    // 7 hand
+  ];
+  var RAG_STICKS = [[0, 1], [1, 2], [2, 3], [3, 4], [2, 5], [5, 6], [1, 7], [0, 2], [1, 3], [1, 5]];
+  var RAG_SUB = 4;
+  var RAG_ITER = 3;
+  var RAG_VMAX = 900;
+  var RAG_FRICTION = 0.01;
+  var RAG_SLUMP = 1.5;
+  var RAG_DRAG = 0.4;
+  function ragNew(x, y, w, face, vx, vy, rnd2) {
+    rnd2 = rnd2 || Math.random;
+    const cx = x + w / 2, sp = Math.hypot(vx, vy);
+    const joints = RAG_POSE.map(([px, py], i) => {
+      const up = 1 - py / 22;
+      const tipX = (rnd2() - 0.5) * 50 - face * 25;
+      return {
+        x: cx + px * face,
+        y: y + py,
+        vx: vx * (0.85 + 0.4 * up) + tipX * up + (i === 7 ? (rnd2() - 0.5) * 80 : 0),
+        vy: vy - (sp > 250 ? 60 * up : 0),
+        ox: 0,
+        oy: 0,
+        g: 0
+      };
+    });
+    const len = RAG_STICKS.map(([a, b]) => Math.hypot(joints[a].x - joints[b].x, joints[a].y - joints[b].y));
+    const tip = rnd2() < 0.75 ? -(face || 1) : face || 1;
+    return { face: face || 1, joints, len, rest: 0, still: false, tip, age: 0 };
+  }
+  function collide(j, solid, fr) {
+    if (!solid(j.x, j.y)) return;
+    if (!solid(j.ox, j.y)) {
+      j.x = j.ox;
+      return;
+    }
+    if (!solid(j.x, j.oy)) {
+      if (j.y > j.oy) j.g = 1;
+      j.y = j.oy;
+      j.x = j.ox + (j.x - j.ox) * fr;
+      return;
+    }
+    j.x = j.ox;
+    j.y = j.oy;
+    if (solid(j.x, j.y)) j.y -= 1;
+  }
+  function ragStep(R, dt, solid) {
+    if (R.still || dt <= 0) return;
+    const h3 = dt / RAG_SUB, J = R.joints, fr = Math.pow(RAG_FRICTION, h3), drag = Math.pow(RAG_DRAG, h3);
+    R.age += dt;
+    const slump = R.age < RAG_SLUMP ? R.tip * 420 * h3 : 0;
+    for (let s = 0; s < RAG_SUB; s++) {
+      J[0].vx += slump;
+      J[1].vx += slump * 0.5;
+      J[2].vx -= slump * 0.75;
+      for (const j of J) {
+        j.ox = j.x;
+        j.oy = j.y;
+        j.g = 0;
+        j.vy += GRAVITY * h3;
+        j.vx *= drag;
+        j.vy *= drag;
+        const v = Math.hypot(j.vx, j.vy);
+        if (v > RAG_VMAX) {
+          j.vx *= RAG_VMAX / v;
+          j.vy *= RAG_VMAX / v;
+        }
+        j.x += j.vx * h3;
+        j.y += j.vy * h3;
+        collide(j, solid, fr);
+      }
+      for (let it = 0; it < RAG_ITER; it++) {
+        for (let k = 0; k < RAG_STICKS.length; k++) {
+          const a = J[RAG_STICKS[k][0]], b = J[RAG_STICKS[k][1]];
+          const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1e-6;
+          if (k >= 8 && d >= R.len[k]) continue;
+          const f = (d - R.len[k]) / d * 0.5;
+          a.x += dx * f;
+          a.y += dy * f;
+          b.x -= dx * f;
+          b.y -= dy * f;
+        }
+        for (const j of J) collide(j, solid, 1);
+      }
+      for (const j of J) {
+        j.vx = (j.x - j.ox) / h3;
+        j.vy = (j.y - j.oy) / h3;
+      }
+    }
+    let fast = 0;
+    for (const j of J) fast = Math.max(fast, Math.abs(j.vx) + Math.abs(j.vy));
+    R.rest = fast < 8 ? R.rest + dt : 0;
+    if (R.rest > 1) {
+      R.still = true;
+      for (const j of J) {
+        j.vx = 0;
+        j.vy = 0;
+      }
+    }
+  }
+  function ragPush(R, x, y, rad, power) {
+    const P = power || 500;
+    let hit = false;
+    for (const j of R.joints) {
+      const dx = j.x - x, dy = j.y - y, d = Math.hypot(dx, dy);
+      if (d >= rad) continue;
+      const f = 1 - d / rad;
+      j.vx += dx / (d || 1) * P * f;
+      j.vy += dy / (d || 1) * P * f - 150 * f;
+      hit = true;
+    }
+    if (hit) {
+      R.still = false;
+      R.rest = 0;
+    }
+  }
+  var ragHip = (R) => R.joints[2];
+
   // src/world/veins.js
   var ORE_GOLD = 0.25;
   function goldVeins(mat, seed, floor) {
@@ -6366,13 +6551,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1;
     const dtx = dx ? Math.abs(CELL / dx) : Infinity;
     const dty = dy ? Math.abs(CELL / dy) : Infinity;
-    let tx = dx ? dx > 0 ? ((cx + 1) * CELL - x) / dx : (cx * CELL - x) / dx : Infinity;
+    let tx2 = dx ? dx > 0 ? ((cx + 1) * CELL - x) / dx : (cx * CELL - x) / dx : Infinity;
     let ty = dy ? dy > 0 ? ((cy + 1) * CELL - y) / dy : (cy * CELL - y) / dy : Infinity;
     let t = 0;
     for (; ; ) {
-      if (tx < ty) {
-        t = tx;
-        tx += dtx;
+      if (tx2 < ty) {
+        t = tx2;
+        tx2 += dtx;
         cx += sx;
       } else {
         t = ty;
@@ -7137,9 +7322,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (hgt < 24) return false;
         const bone = [214, 206, 184], H = Math.min(hgt - 2, 36);
         for (let k = 0; k < 4; k++) {
-          const a = 16 - k * 3, b = H - k * 5, ox = cx + k * 4 - 6, f = 0.78 - k * 0.1;
+          const a = 16 - k * 3, b = H - k * 5, ox2 = cx + k * 4 - 6, f = 0.78 - k * 0.1;
           for (let t = 0; t <= 60; t++) {
-            const th = Math.PI * t / 60, x = ox + Math.cos(th) * a, y = cy - Math.sin(th) * b;
+            const th = Math.PI * t / 60, x = ox2 + Math.cos(th) * a, y = cy - Math.sin(th) * b;
             dset(Math.round(x), Math.round(y), jit(shade(bone, f), 8));
             dset(Math.round(x) + 1, Math.round(y), jit(shade(bone, f * 0.85), 8));
           }
@@ -8190,14 +8375,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (keep2.some((k) => Math.hypot(k.x - cx, k.y - cy) < k.r + rr2 || Math.hypot(k.x - sx, k.y - sy) < k.r)) continue;
         if (nests.some((n) => Math.hypot(n.x - cx, n.y - cy) < 50 || Math.hypot(n.mouth.x - sx, n.mouth.y - sy) < 40)) continue;
         const M = 4 + rnd2() * 1.5;
-        const tx = sx + nx * (M - 0.5), ty = sy + ny * (M - 0.5);
-        const L2 = Math.hypot(tx - cx, ty - cy), px = -(ty - cy) / L2, py = (tx - cx) / L2;
+        const tx2 = sx + nx * (M - 0.5), ty = sy + ny * (M - 0.5);
+        const L2 = Math.hypot(tx2 - cx, ty - cy), px = -(ty - cy) / L2, py = (tx2 - cx) / L2;
         const amp = (4 + rnd2() * 4) * (rnd2() < 0.5 ? -1 : 1), waves = 1 + rnd2() * 0.8, steps = Math.ceil(L2 * 2);
         const path = [];
         let buried = true;
         for (let k = 0; k <= steps; k++) {
           const t = k / steps, w = amp * Math.sin(t * Math.PI * waves) * Math.sin(t * Math.PI);
-          const qx = cx + (tx - cx) * t + px * w, qy = cy + (ty - cy) * t + py * w;
+          const qx = cx + (tx2 - cx) * t + px * w, qy = cy + (ty - cy) * t + py * w;
           path.push({ x: qx, y: qy });
           if (Math.hypot(qx - sx, qy - sy) > 6 && Math.hypot(qx - cx, qy - cy) > rr2 && !allRock(qx, qy, 3)) {
             buried = false;
@@ -8224,8 +8409,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
         };
         for (const q of path) cut(q.x, q.y);
-        cut(tx + nx, ty + ny);
-        const mouth = { x: tx + nx * 2.5, y: ty + ny * 2.5 };
+        cut(tx2 + nx, ty + ny);
+        const mouth = { x: tx2 + nx * 2.5, y: ty + ny * 2.5 };
         path.push(mouth);
         const thin = path.filter((q, i) => i % 3 === 0 || i === path.length - 1);
         nests.push({ x: cx, y: cy, r: rr2, path: thin, mouth, built: wantBuilt, mound, nx, ny });
@@ -8389,16 +8574,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     const routePath = [];
     const spineBuilt = [];
-    const worm = (x, y, tx, ty, r, maxSteps, keep3, spine) => {
-      let ang = tx !== null ? Math.atan2(ty - y, tx - x) : rnd2() * Math.PI * 2;
+    const worm = (x, y, tx2, ty, r, maxSteps, keep3, spine) => {
+      let ang = tx2 !== null ? Math.atan2(ty - y, tx2 - x) : rnd2() * Math.PI * 2;
       for (let s = 0; s < maxSteps; s++) {
         if (spine && built(x, y)) spineBuilt.push({ x, y, r: Math.min(r, 7) - 1 });
         else {
           disc(x, y, r, 0);
           if (keep3) keep3.push({ x, y, r: r - 1 });
         }
-        if (tx !== null && Math.hypot(tx - x, ty - y) < 3) break;
-        const want = tx !== null ? Math.atan2(ty - y, tx - x) : ang;
+        if (tx2 !== null && Math.hypot(tx2 - x, ty - y) < 3) break;
+        const want = tx2 !== null ? Math.atan2(ty - y, tx2 - x) : ang;
         let diff = want - ang;
         while (diff > Math.PI) diff -= 2 * Math.PI;
         while (diff < -Math.PI) diff += 2 * Math.PI;
@@ -8959,8 +9144,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return st.cut > 0;
   }
   var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
+  function corpseStep(W, dt) {
+    const p = W.p;
+    if (!p.rag) p.rag = ragNew(p.x, p.y, PW, p.face || 1, p.vx, p.vy);
+    ragStep(p.rag, dt, (x, y) => solidAt(W, x, y));
+    const hip = ragHip(p.rag);
+    p.x = hip.x - PW / 2;
+    p.y = hip.y - 15;
+    p.vx = hip.vx;
+    p.vy = hip.vy;
+    p.flame = 0;
+    p.jet = 0;
+    p.onGround = false;
+  }
   function movePlayer(W, G, F) {
     const { dt } = F;
+    if (W.p.dead) {
+      corpseStep(W, dt);
+      return;
+    }
+    if (W.p.rag) W.p.rag = null;
     let L2 = G.input.current.left;
     if (!L2.active) {
       const keys = G.input.current.keys;
@@ -9281,14 +9484,79 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.fill();
     ctx.restore();
   }
-  function flameDrop(ctx, bx, by, tx, ty, r) {
-    const dx = tx - bx, dy = ty - by, L2 = Math.hypot(dx, dy) || 1, ux = dx / L2, uy = dy / L2;
+  function drawRagdoll(ctx, R) {
+    const J = R.joints, f = R.face, suit = "#ff5a36", dark = "#c33a1f";
+    const along = (a, b, px, py, art) => {
+      const A = J[a], B = J[b];
+      ctx.save();
+      ctx.translate(A.x, A.y);
+      ctx.rotate(Math.atan2(B.y - A.y, B.x - A.x) - Math.PI / 2);
+      ctx.scale(f, 1);
+      ctx.translate(-px, -py);
+      art();
+      ctx.restore();
+    };
+    const limb = (pts, col, w) => {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = w;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(J[pts[0]].x, J[pts[0]].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(J[pts[i]].x, J[pts[i]].y);
+      ctx.stroke();
+    };
+    const boot = (j) => {
+      ctx.fillStyle = "#24282f";
+      ctx.beginPath();
+      ctx.arc(J[j].x, J[j].y, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    };
+    along(1, 2, 0, 8.5, () => {
+      ctx.fillStyle = "#2b3039";
+      rr(ctx, -6.2, 6.5, 4.4, 9, 1.6);
+      ctx.fill();
+      ctx.fillStyle = "#ff8a1f";
+      rr(ctx, -5.6, 8.4, 3.2, 1.4, 0.6);
+      ctx.fill();
+      ctx.fillStyle = "#1b1f26";
+      rr(ctx, -5.4, 15, 3, 2.2, 0.8);
+      ctx.fill();
+    });
+    limb([2, 3, 4], dark, 3);
+    boot(4);
+    along(1, 2, 0, 8.5, () => {
+      ctx.fillStyle = suit;
+      rr(ctx, -3.8, 6, 7.6, 10.5, 2.6);
+      ctx.fill();
+      ctx.fillStyle = dark;
+      rr(ctx, -3.8, 12.4, 7.6, 2.2, 1);
+      ctx.fill();
+    });
+    limb([2, 5, 6], dark, 3);
+    boot(6);
+    limb([1, 7], suit, 2.8);
+    along(0, 1, 0, 4.4, () => {
+      ctx.fillStyle = "#d7dbe3";
+      ctx.beginPath();
+      ctx.arc(0, 4.4, 4.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#1d2733";
+      rr(ctx, -0.6, 1.9, 4.6, 4.2, 1.8);
+      ctx.fill();
+      ctx.fillStyle = "rgba(126,214,255,0.75)";
+      rr(ctx, 1.4, 2.7, 1.8, 1.4, 0.6);
+      ctx.fill();
+    });
+  }
+  function flameDrop(ctx, bx, by, tx2, ty, r) {
+    const dx = tx2 - bx, dy = ty - by, L2 = Math.hypot(dx, dy) || 1, ux = dx / L2, uy = dy / L2;
     const px = -uy, py = ux, a = Math.atan2(py, px);
     ctx.beginPath();
-    ctx.moveTo(tx, ty);
+    ctx.moveTo(tx2, ty);
     ctx.quadraticCurveTo(bx + px * r * 1.15 + ux * L2 * 0.35, by + py * r * 1.15 + uy * L2 * 0.35, bx + px * r, by + py * r);
     ctx.arc(bx, by, r, a, a + Math.PI);
-    ctx.quadraticCurveTo(bx - px * r * 1.15 + ux * L2 * 0.35, by - py * r * 1.15 + uy * L2 * 0.35, tx, ty);
+    ctx.quadraticCurveTo(bx - px * r * 1.15 + ux * L2 * 0.35, by - py * r * 1.15 + uy * L2 * 0.35, tx2, ty);
     ctx.fill();
   }
   function drawFlame(ctx, fx, fy, lx, ly, s, flick, time) {
@@ -9917,20 +10185,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.ellipse(x, y - 1.5, 4, 2.5, 0, 0, 6.29);
         ctx.fill();
         const ext = Math.max(4, pr.ext || 0), a = pr.aimA != null ? pr.aimA : pr.ang;
-        const tx = x + Math.cos(a) * ext, ty = y - 2 + Math.sin(a) * ext;
+        const tx2 = x + Math.cos(a) * ext, ty = y - 2 + Math.sin(a) * ext;
         const wob = Math.sin(time * 5 + pr.seed * 9) * ext * 0.2;
-        const mx = (x + tx) / 2 + Math.cos(a + 1.57) * wob, my = (y + ty) / 2 + Math.sin(a + 1.57) * wob;
+        const mx = (x + tx2) / 2 + Math.cos(a + 1.57) * wob, my = (y + ty) / 2 + Math.sin(a + 1.57) * wob;
         ctx.strokeStyle = "#3e2066";
         ctx.lineWidth = 2.6;
         ctx.beginPath();
         ctx.moveTo(x, y - 2);
-        ctx.quadraticCurveTo(mx, my, tx, ty);
+        ctx.quadraticCurveTo(mx, my, tx2, ty);
         ctx.stroke();
         ctx.strokeStyle = rgbA(T.moss[1], 0.8);
         ctx.lineWidth = 0.8;
         ctx.beginPath();
-        ctx.moveTo((mx + tx) / 2, (my + ty) / 2);
-        ctx.lineTo(tx, ty);
+        ctx.moveTo((mx + tx2) / 2, (my + ty) / 2);
+        ctx.lineTo(tx2, ty);
         ctx.stroke();
         break;
       }
@@ -10223,8 +10491,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate((S ? S.hd : -Math.PI / 2) + Math.PI / 2);
-    const bell = (k, oy, lap) => {
-      const w = B.w * k, h3 = B.h * k, rw = B.rw * k, top = B.top * k + oy, rim = B.rim * k + oy;
+    const bell = (k, oy2, lap) => {
+      const w = B.w * k, h3 = B.h * k, rw = B.rw * k, top = B.top * k + oy2, rim = B.rim * k + oy2;
       ctx.beginPath();
       ctx.moveTo(-rw, rim);
       ctx.bezierCurveTo(-w * 1.08, rim - h3 * 0.5, -w * 0.72, top, 0, top);
@@ -10777,8 +11045,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (pr.ext > 0 && !was) SFX.fx("lash", pr.x, pr.y);
           pr.aimA = pr.ang + Math.sin(pr.t * 0.7) * 0.3;
           if (me && pr.ext > 18 && pr.cd <= 0) {
-            const tx = pr.x + Math.cos(pr.aimA) * pr.ext, ty = pr.y - 2 + Math.sin(pr.aimA) * pr.ext;
-            const vx = tx - pr.x, vy = ty - pr.y + 2, t = clamp(((pcx - pr.x) * vx + (pcy - pr.y + 2) * vy) / (vx * vx + vy * vy), 0, 1);
+            const tx2 = pr.x + Math.cos(pr.aimA) * pr.ext, ty = pr.y - 2 + Math.sin(pr.aimA) * pr.ext;
+            const vx = tx2 - pr.x, vy = ty - pr.y + 2, t = clamp(((pcx - pr.x) * vx + (pcy - pr.y + 2) * vy) / (vx * vx + vy * vy), 0, 1);
             if (Math.hypot(pr.x + vx * t - pcx, pr.y - 2 + vy * t - pcy) < 10) {
               hurt(W, G, PROP_DMG.tendril);
               pr.cd = 0.8;
@@ -11424,8 +11692,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let i = 0; i < n && S.mode !== "shoot"; i++) {
       const st = dist / n;
       if (S.mode === "surf") {
-        const tx = -S.ny * S.side, ty = S.nx * S.side;
-        e.x += tx * st;
+        const tx2 = -S.ny * S.side, ty = S.nx * S.side;
+        e.x += tx2 * st;
         e.y += ty * st;
         if (!spiderSeat(e, S, solidCell2, st * 2)) {
           e.x -= S.nx * st * 2;
@@ -11539,8 +11807,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           return;
         }
         if (tryLine() || tryShoot("line")) return;
-        const da = Math.hypot(goal.x - L2.ax, goal.y - L2.ay), db = Math.hypot(goal.x - L2.bx, goal.y - L2.by);
-        S.dir = db < da ? 1 : -1;
+        const da = Math.hypot(goal.x - L2.ax, goal.y - L2.ay), db2 = Math.hypot(goal.x - L2.bx, goal.y - L2.by);
+        S.dir = db2 < da ? 1 : -1;
         S.go = true;
       }
     }
@@ -11723,10 +11991,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
 
   // src/game/systems/enemies.js
-  function fireEnemyShot(W, e, tx, ty) {
+  function fireEnemyShot(W, e, tx2, ty) {
     const k = e.k;
-    if (!lineOfSight(W, e.x, e.ty, tx, ty)) return;
-    const base = Math.atan2(ty - e.ty, tx - e.x);
+    if (!lineOfSight(W, e.x, e.ty, tx2, ty)) return;
+    const base = Math.atan2(ty - e.ty, tx2 - e.x);
     SFX.creature(k, "fire", e.x, e.ty);
     for (let s = 0; s < k.shots; s++) {
       const cone = k.shots > 1 ? (s - (k.shots - 1) / 2) * 0.15 : 0;
@@ -12045,7 +12313,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       W.p.vx += nx * 500 * f;
       W.p.vy += ny * 500 * f - 150 * f;
       W.p.kick = 0.25;
-    }
+    } else if (W.p.dead && W.p.rag) ragPush(W.p.rag, x, y, reach);
   }
 
   // src/game/systems/particles.js
@@ -12971,7 +13239,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     const reach = sh.reach != null ? sh.reach : 10;
     let x = x0 + nx * reach, y = y0 + ny * reach;
-    const ox = x, oy = y;
+    const ox2 = x, oy2 = y;
     let vx = nx * sh.speed, vy = ny * sh.speed;
     let life = Math.min(sh.life, 2.5), bounce = sh.bounce || 0;
     let age = 0, lock = false;
@@ -13212,11 +13480,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function drawPlayer(W, G, F) {
     const { pcx, pcy, held, ax, ay, gy } = F;
-    if (W.p.dead) G.ctx.globalAlpha = 0.35;
     const flashing = W.p.hitT > 0 && Math.floor(W.p.hitT * 30) % 2 === 0;
     const running = W.p.onGround && Math.abs(W.p.vx) > 15;
     const gait = running ? Math.sin(W.time * 15) : 0;
-    drawRunner(G.ctx, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing);
+    if (W.p.dead && W.p.rag) {
+      G.ctx.translate(-F.snapX, -F.snapY);
+      drawRagdoll(G.ctx, W.p.rag);
+      G.ctx.translate(F.snapX, F.snapY);
+    } else drawRunner(G.ctx, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing);
     if (!W.p.dead) drawGun(G.ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
     if (!W.p.dead) {
       const th = torchHand(W);
@@ -13375,12 +13646,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function holoFill(ctx, W, F, n) {
     const pat = tilePattern(ctx, n);
     if (!pat) return;
-    const ox = W.camX * (1 - HOLO_PAR), oy = W.camY * (1 - HOLO_PAR);
+    const ox2 = W.camX * (1 - HOLO_PAR), oy2 = W.camY * (1 - HOLO_PAR);
     const cx = W.camX + F.vw / 2, cy = W.camY + F.vh / 2, R = Math.hypot(F.vw, F.vh) / 2 + 10;
     ctx.save();
-    ctx.translate(ox, oy);
+    ctx.translate(ox2, oy2);
     ctx.rotate(SLANT);
-    const dx = cx - ox, dy = cy - oy, c = Math.cos(-SLANT), s = Math.sin(-SLANT);
+    const dx = cx - ox2, dy = cy - oy2, c = Math.cos(-SLANT), s = Math.sin(-SLANT);
     const lx = dx * c - dy * s, ly = dx * s + dy * c;
     ctx.fillStyle = pat;
     ctx.fillRect(lx - R, ly - R, R * 2, R * 2);
@@ -14752,18 +15023,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       );
       dot(b.x, b.y, s * 1.3, b.col, 0.25);
     } else if (L2 === "lance") {
-      const len = 12 + s * 2, tx = b.x - ux * len, ty = b.y - uy * len;
+      const len = 12 + s * 2, tx2 = b.x - ux * len, ty = b.y - uy * len;
       G.ctx.globalAlpha = 0.3;
       G.ctx.strokeStyle = b.col;
       G.ctx.lineWidth = s * 2.4;
       G.ctx.beginPath();
-      G.ctx.moveTo(tx, ty);
+      G.ctx.moveTo(tx2, ty);
       G.ctx.lineTo(b.x, b.y);
       G.ctx.stroke();
       G.ctx.globalAlpha = 1;
       G.ctx.lineWidth = s * 0.8;
       G.ctx.beginPath();
-      G.ctx.moveTo(tx, ty);
+      G.ctx.moveTo(tx2, ty);
       G.ctx.lineTo(b.x, b.y);
       G.ctx.stroke();
       G.ctx.strokeStyle = "#ffffff";
@@ -14997,10 +15268,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const cy = f.y - f.r * 0.85, t = Math.min(1, (f.max - f.life) * 3, f.life * 2);
       G.ctx.globalAlpha = 0.85 * t;
       for (let k = 0; k < 7; k++) {
-        const ox = (k - 3) * f.r * 0.28, oy = Math.sin(k * 1.7 + W.time * 0.8) * 2.5;
+        const ox2 = (k - 3) * f.r * 0.28, oy2 = Math.sin(k * 1.7 + W.time * 0.8) * 2.5;
         G.ctx.fillStyle = k % 2 ? "#3a3e4a" : "#4c5160";
         G.ctx.beginPath();
-        G.ctx.arc(f.x + ox, cy + oy, f.r * (0.22 + 0.08 * Math.sin(k * 2.3)), 0, 6.283);
+        G.ctx.arc(f.x + ox2, cy + oy2, f.r * (0.22 + 0.08 * Math.sin(k * 2.3)), 0, 6.283);
         G.ctx.fill();
       }
       G.ctx.globalAlpha = 0.35 * t;
@@ -15236,7 +15507,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "props"
   ];
   var RP_NUMS = ["time", "flick", "leanX", "leanY", "glowN"];
-  var RP_DEEP = { sp: 1, ra: 1, je: 1, nest: 1, shot: 1, tent: 1, trail: 1, aim: 1 };
+  var RP_DEEP = { sp: 1, ra: 1, je: 1, nest: 1, shot: 1, tent: 1, trail: 1, aim: 1, rag: 1, joints: 1 };
   var RP_LERP = {
     x: 1,
     y: 1,
@@ -15360,6 +15631,438 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return out;
   }
 
+  // src/replay/clip.js
+  var CLIP_V = 1;
+  var WIT_HX = VIEW_W / 2 + 20, WIT_HY = 420;
+  var SHOT_SND = [
+    "sid",
+    "still",
+    "r",
+    "beam",
+    "speed",
+    "size",
+    "count",
+    "dmg",
+    "homing",
+    "spiral",
+    "orbit",
+    "boomer",
+    "pong",
+    "explode",
+    "bore",
+    "eat",
+    "cluster",
+    "pierce",
+    "crit",
+    "bounce"
+  ];
+  var SCENE_KEYS = [
+    "floor",
+    "hasLvl",
+    "portal",
+    "arrival",
+    "stock",
+    "rooms",
+    "sconces",
+    "warp",
+    "repo",
+    "pb",
+    "plantW",
+    "themeName"
+  ];
+  function sfxArgs(name, a) {
+    if (name === "cast") {
+      const shots = (a[0] || []).map((sh) => {
+        const o = {};
+        for (const k of SHOT_SND) if (sh[k] !== void 0) o[k] = sh[k];
+        return o;
+      });
+      return [shots, a[1], a[2]];
+    }
+    return a.map((v) => v && typeof v === "object" ? Object.assign({}, v) : v);
+  }
+  var SAFE_BIG = 8e4;
+  function clipSafe(v, memo, top) {
+    if (v === null || typeof v !== "object") return typeof v === "function" || typeof v === "symbol" ? void 0 : v;
+    memo = memo || /* @__PURE__ */ new Map();
+    if (memo.has(v)) return memo.get(v);
+    if (ArrayBuffer.isView(v)) {
+      const keep2 = top || v.byteLength <= SAFE_BIG ? v : null;
+      memo.set(v, keep2);
+      return keep2;
+    }
+    if (Array.isArray(v)) {
+      const out2 = [];
+      memo.set(v, out2);
+      for (const x of v) {
+        const c = clipSafe(x, memo);
+        out2.push(c === void 0 ? null : c);
+      }
+      return out2;
+    }
+    if (v instanceof Map) {
+      const out2 = /* @__PURE__ */ new Map();
+      memo.set(v, out2);
+      for (const [k, x] of v) {
+        const c = clipSafe(x, memo);
+        if (c !== void 0) out2.set(k, c);
+      }
+      return out2;
+    }
+    if (v instanceof Set) {
+      const out2 = /* @__PURE__ */ new Set();
+      memo.set(v, out2);
+      for (const x of v) {
+        const c = clipSafe(x, memo);
+        if (c !== void 0) out2.add(c);
+      }
+      return out2;
+    }
+    const pr = Object.getPrototypeOf(v);
+    if (pr !== Object.prototype && pr !== null && !(v instanceof Date)) {
+      if (typeof Node !== "undefined" && v instanceof Node) {
+        memo.set(v, null);
+        return null;
+      }
+      if (typeof AudioNode !== "undefined" && v instanceof AudioNode) {
+        memo.set(v, null);
+        return null;
+      }
+      if (typeof CanvasRenderingContext2D !== "undefined" && v instanceof CanvasRenderingContext2D) {
+        memo.set(v, null);
+        return null;
+      }
+    }
+    if (v instanceof Date) return v;
+    const out = {};
+    memo.set(v, out);
+    for (const k in v) {
+      const c = clipSafe(v[k], memo);
+      if (c !== void 0) out[k] = c;
+    }
+    return out;
+  }
+  function clipPath(snaps) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const s of snaps) {
+      const x = s.p.x + PW / 2, y = s.p.y + PH / 2;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+    return [x0, y0, x1, y1];
+  }
+  var ox = (o) => o.x !== void 0 ? o.x : o.a0x !== void 0 ? o.a0x : o.ax;
+  var oy = (o) => o.ty !== void 0 ? o.ty : o.y !== void 0 ? o.y : o.a0y !== void 0 ? o.a0y : o.ay;
+  function clipCrop(C, o) {
+    const snaps = C.snaps.filter((s) => s.t >= C.t0 - 0.06 && s.t <= C.t1 + 0.06);
+    const [px0, py0, px1, py1] = clipPath(snaps);
+    const pad = Math.max(0, o.pad);
+    const lim = [Math.max(0, px0 - pad), Math.max(0, py0 - pad), Math.min(WW, px1 + pad), Math.min(WH, py1 + pad)];
+    const wx0 = Math.max(0, lim[0] - WIT_HX), wy0 = Math.max(0, lim[1] - WIT_HY);
+    const wx1 = Math.min(WW, lim[2] + WIT_HX), wy1 = Math.min(WH, lim[3] + WIT_HY);
+    const bx = Math.floor(wx0 / CELL), by = Math.floor(wy0 / CELL);
+    const bw = Math.min(CW, Math.ceil(wx1 / CELL)) - bx, bh = Math.min(CH, Math.ceil(wy1 / CELL)) - by;
+    const fx = Math.floor(bx / FOG), fy = Math.floor(by / FOG);
+    const fw = Math.min(FW, Math.ceil((bx + bw) / FOG)) - fx, fh = Math.min(FH, Math.ceil((by + bh) / FOG)) - fy;
+    const inBox = (x, y, m) => x === void 0 || x > wx0 - m && x < wx1 + m && y > wy0 - m && y < wy1 + m;
+    const memo = /* @__PURE__ */ new Map();
+    const outSnaps = snaps.map((s) => {
+      const S = { t: s.t, p: null, ghost: null };
+      for (const k in s) {
+        if (k === "t") continue;
+        if (RP_LISTS.includes(k)) S[k] = clipSafe(s[k].filter((e) => inBox(ox(e), oy(e), k === "props" ? 120 : 40)), memo);
+        else if (k === "fire") {
+          const keep2 = [];
+          for (let n = 0; n < s.fire.length; n++) {
+            const i = s.fire[n], x = i % CW, y = i / CW | 0;
+            if (x >= bx && x < bx + bw && y >= by && y < by + bh) keep2.push(n);
+          }
+          S.fire = Int32Array.from(keep2, (n) => s.fire[n]);
+          S.fireT = Uint16Array.from(keep2, (n) => s.fireT[n]);
+        } else if (k !== "fireT") S[k] = clipSafe(s[k], memo);
+      }
+      return S;
+    });
+    const patches = [];
+    for (const P of C.patches) {
+      if (P.t > C.t1 + 0.06) continue;
+      const x0 = Math.max(P.x, bx), y0 = Math.max(P.y, by), x1 = Math.min(P.x + P.w, bx + bw), y1 = Math.min(P.y + P.h, by + bh);
+      if (x1 <= x0 || y1 <= y0) continue;
+      patches.push({ t: P.t, c: P.c, x: x0, y: y0, w: x1 - x0, h: y1 - y0, px: rpCut(P.px, P.w, x0 - P.x, y0 - P.y, x1 - x0, y1 - y0) });
+    }
+    const fogBase = new Uint8Array(fw * fh);
+    for (let r = 0; r < fh; r++) fogBase.set(C.fogBase.subarray((fy + r) * FW + fx, (fy + r) * FW + fx + fw), r * fw);
+    const log = [];
+    for (let n = 0; n < C.fogLog.length; n += 3) {
+      if (C.fogLog[n] > C.t1 + 0.06) break;
+      const i = C.fogLog[n + 1], cx = i % FW, cy = i / FW | 0;
+      if (cx >= fx && cx < fx + fw && cy >= fy && cy < fy + fh) log.push(C.fogLog[n], i, C.fogLog[n + 2]);
+    }
+    const sfx = clipSafe((C.sfx || []).filter((e) => e[0] >= C.t0 - 0.06 && e[0] <= C.t1 + 0.06), memo);
+    return {
+      v: CLIP_V,
+      t0: C.t0,
+      t1: C.t1,
+      death: C.death,
+      lim,
+      box: [bx, by, bw, bh],
+      fbox: [fx, fy, fw, fh],
+      tBase: rpCut(C.tBase, CW, bx, by, bw, bh),
+      dBase: C.dBase ? rpCut(C.dBase, CW, bx, by, bw, bh) : null,
+      fogBase,
+      fogLog: Float64Array.from(log),
+      patches,
+      snaps: outSnaps,
+      sfx,
+      scene: clipSafe(o.scene, memo),
+      bg: o.bg,
+      bgW: o.bgW || 0,
+      bgH: o.bgH || 0
+    };
+  }
+  function clipHydrate(S) {
+    const [bx, by, bw, bh] = S.box, [fx, fy, fw, fh] = S.fbox;
+    const tBase = new Uint8ClampedArray(CW * CH * 4);
+    rpPaste(tBase, CW, { x: bx, y: by, w: bw, h: bh, px: S.tBase });
+    let dBase = null;
+    if (S.dBase) {
+      dBase = new Uint8ClampedArray(CW * CH * 4);
+      rpPaste(dBase, CW, { x: bx, y: by, w: bw, h: bh, px: S.dBase });
+    }
+    const fogBase = new Uint8Array(FW * FH);
+    for (let r = 0; r < fh; r++) fogBase.set(S.fogBase.subarray(r * fw, (r + 1) * fw), (fy + r) * FW + fx);
+    return {
+      t0: S.t0,
+      t1: S.t1,
+      death: S.death,
+      snaps: S.snaps,
+      patches: S.patches,
+      tBase,
+      dBase,
+      fogBase,
+      fogLog: S.fogLog,
+      sfx: S.sfx || [],
+      scene: S.scene,
+      lim: S.lim,
+      bgPx: S.bg,
+      bgW: S.bgW,
+      bgH: S.bgH
+    };
+  }
+  function clipBytes(S) {
+    let n = S.tBase.length + (S.dBase ? S.dBase.length : 0) + S.fogBase.length + S.fogLog.length * 8 + (S.bg ? S.bg.length : 0);
+    for (const P of S.patches) n += P.px.length + 40;
+    const seen = /* @__PURE__ */ new Set();
+    const walk = (v) => {
+      if (v === null || typeof v !== "object") {
+        n += 8;
+        return;
+      }
+      if (seen.has(v)) return;
+      seen.add(v);
+      if (ArrayBuffer.isView(v)) {
+        n += v.byteLength;
+        return;
+      }
+      if (v instanceof Map || v instanceof Set) {
+        for (const x of v.values()) walk(x);
+        return;
+      }
+      for (const k in v) {
+        n += k.length;
+        walk(v[k]);
+      }
+    };
+    walk(S.snaps);
+    walk(S.sfx);
+    walk(S.scene);
+    return n;
+  }
+  var TYPED = { Uint8Array, Uint8ClampedArray, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Float32Array, Float64Array };
+  function toB64(u) {
+    let s = "";
+    for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768));
+    return btoa(s);
+  }
+  function fromB64(b) {
+    const s = atob(b), u = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+    return u;
+  }
+  function clipEnc(v) {
+    const count = /* @__PURE__ */ new Map();
+    const scan = (x) => {
+      if (x === null || typeof x !== "object" || ArrayBuffer.isView(x)) return;
+      const n = count.get(x) || 0;
+      count.set(x, n + 1);
+      if (n) return;
+      if (x instanceof Map) {
+        for (const [k, y] of x) {
+          scan(k);
+          scan(y);
+        }
+        return;
+      }
+      if (x instanceof Set) {
+        for (const y of x) scan(y);
+        return;
+      }
+      for (const k in x) scan(x[k]);
+    };
+    scan(v);
+    const ids = /* @__PURE__ */ new Map();
+    const enc = (x) => {
+      if (typeof x === "number") return Number.isFinite(x) ? Number.isInteger(x) ? x : Math.round(x * 1e3) / 1e3 : { $n: String(x) };
+      if (x === null || typeof x !== "object") return x === void 0 ? null : x;
+      if (ArrayBuffer.isView(x)) return { $t: x.constructor.name, d: toB64(new Uint8Array(x.buffer, x.byteOffset, x.byteLength)) };
+      if (ids.has(x)) return { $ref: ids.get(x) };
+      const shared = count.get(x) > 1, id = ids.size;
+      if (shared) ids.set(x, id);
+      let o;
+      if (x instanceof Map) o = { $M: [...x].map(([k, y]) => [enc(k), enc(y)]) };
+      else if (x instanceof Set) o = { $S: [...x].map(enc) };
+      else if (Array.isArray(x)) o = shared ? { $A: x.map(enc) } : x.map(enc);
+      else {
+        o = {};
+        for (const k in x) o[k] = enc(x[k]);
+      }
+      if (shared) o.$id = id;
+      return o;
+    };
+    return enc(v);
+  }
+  function clipDec(v) {
+    const ids = /* @__PURE__ */ new Map();
+    const dec = (x) => {
+      if (x === null || typeof x !== "object") return x;
+      if (Array.isArray(x)) return x.map(dec);
+      if (x.$n !== void 0) return Number(x.$n);
+      if (x.$t) {
+        const u = fromB64(x.d), T = TYPED[x.$t] || Uint8Array;
+        return new T(u.buffer, 0, u.byteLength / (T.BYTES_PER_ELEMENT || 1));
+      }
+      if (x.$ref !== void 0) return ids.get(x.$ref);
+      let o;
+      if (x.$M) {
+        o = /* @__PURE__ */ new Map();
+        if (x.$id !== void 0) ids.set(x.$id, o);
+        for (const [k, y] of x.$M) o.set(dec(k), dec(y));
+        return o;
+      }
+      if (x.$S) {
+        o = /* @__PURE__ */ new Set();
+        if (x.$id !== void 0) ids.set(x.$id, o);
+        for (const y of x.$S) o.add(dec(y));
+        return o;
+      }
+      if (x.$A) {
+        o = [];
+        if (x.$id !== void 0) ids.set(x.$id, o);
+        for (const y of x.$A) o.push(dec(y));
+        return o;
+      }
+      o = {};
+      if (x.$id !== void 0) ids.set(x.$id, o);
+      for (const k in x) if (k !== "$id") o[k] = dec(x[k]);
+      return o;
+    };
+    return dec(v);
+  }
+  async function clipPack(S) {
+    const json = new Blob([JSON.stringify(clipEnc(S))]);
+    return new Response(json.stream().pipeThrough(new CompressionStream("gzip"))).blob();
+  }
+  async function clipUnpack(b) {
+    const text = await new Response(b.stream().pipeThrough(new DecompressionStream("gzip"))).text();
+    return clipDec(JSON.parse(text));
+  }
+
+  // src/save/clips.js
+  var CLIP_DB = "caverunner-clips";
+  var dbP = null;
+  function db() {
+    if (dbP) return dbP;
+    dbP = new Promise((res) => {
+      try {
+        const rq = indexedDB.open(CLIP_DB, 1);
+        rq.onupgradeneeded = () => {
+          rq.result.createObjectStore("meta", { keyPath: "id" });
+          rq.result.createObjectStore("data", { keyPath: "id" });
+        };
+        rq.onsuccess = () => res(rq.result);
+        rq.onerror = () => res(null);
+      } catch (_) {
+        res(null);
+      }
+    });
+    return dbP;
+  }
+  async function tx(stores, mode, fn) {
+    const d = await db();
+    if (!d) return null;
+    return new Promise((res) => {
+      try {
+        const t = d.transaction(stores, mode);
+        const rq = fn(t);
+        t.oncomplete = () => res(rq ? rq.result : true);
+        t.onerror = t.onabort = () => res(null);
+      } catch (_) {
+        res(null);
+      }
+    });
+  }
+  async function clipList() {
+    const all = await tx(["meta"], "readonly", (t) => t.objectStore("meta").getAll());
+    return (all || []).sort((a, b) => b.date - a.date);
+  }
+  async function clipGet(id) {
+    const r = await tx(["data"], "readonly", (t) => t.objectStore("data").get(id));
+    if (!r || !r.gz) return null;
+    try {
+      return await clipUnpack(r.gz);
+    } catch (_) {
+      return null;
+    }
+  }
+  async function clipPut(meta, clip) {
+    let gz;
+    try {
+      gz = await clipPack(clip);
+    } catch (_) {
+      return false;
+    }
+    meta.bytes = gz.size;
+    try {
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+    } catch (_) {
+    }
+    const ok = await tx(["meta", "data"], "readwrite", (t) => {
+      t.objectStore("data").put({ id: meta.id, gz });
+      t.objectStore("meta").put(meta);
+    });
+    return !!ok;
+  }
+  async function clipRename(id, name) {
+    const m = await tx(["meta"], "readonly", (t) => t.objectStore("meta").get(id));
+    if (!m) return false;
+    m.name = name;
+    return !!await tx(["meta"], "readwrite", (t) => {
+      t.objectStore("meta").put(m);
+    });
+  }
+  async function clipDelete(id) {
+    return !!await tx(["meta", "data"], "readwrite", (t) => {
+      t.objectStore("meta").delete(id);
+      t.objectStore("data").delete(id);
+    });
+  }
+  function clipName(floor, date) {
+    const d = new Date(date), M = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return "Floor " + floor + " · " + d.getDate() + " " + M[d.getMonth()] + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+
   // src/game/systems/recorder.js
   function recWrap(G) {
     for (const [cx, which] of [[G.tctx, "t"], [G.dctx, "d"]]) {
@@ -15370,6 +16073,44 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (G.REC.tBase && !G.REC.done) G.REC.dirty.push([which, x, y, w, h3]);
       };
     }
+  }
+  var SFX_REC = ["cast", "hit", "rock", "bounce", "boom", "arc", "debris", "pop", "rustle", "fx", "creature", "ui", "env"];
+  var SFX0 = {};
+  var recG = null;
+  var liveLoops = /* @__PURE__ */ new Set();
+  var loopN = 0;
+  function recSfxHook(G) {
+    recG = G;
+    if (SFX0.loop) return;
+    const S = SFX;
+    const hearing = () => recG && recG.REC.tBase && !recG.REC.done && !recG.input.current.paused;
+    for (const k of SFX_REC) {
+      const f = SFX0[k] = S[k];
+      S[k] = function() {
+        const a = Array.prototype.slice.call(arguments);
+        if (hearing()) recG.REC.sfx.push([recG.REC.t, k, sfxArgs(k, a)]);
+        return f.apply(null, a);
+      };
+    }
+    const lf = SFX0.loop = S.loop;
+    S.loop = (kind) => {
+      const h3 = lf(kind);
+      if (!h3) return h3;
+      const set = h3.set, stop = h3.stop;
+      h3._k = kind;
+      h3._i = ++loopN;
+      h3.set = (level, x, y, pitch) => {
+        h3._s = [level, x, y, pitch];
+        h3._at = performance.now();
+        return set(level, x, y, pitch);
+      };
+      h3.stop = () => {
+        liveLoops.delete(h3);
+        return stop();
+      };
+      liveLoops.add(h3);
+      return h3;
+    };
   }
   var idOf = (W, G, o) => {
     let i = G.rid.get(o);
@@ -15383,6 +16124,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.REC.patches = [];
     G.REC.dirty = [];
     G.REC.fogLog = [];
+    G.REC.sfx = [];
     G.REC.tBase = W.img.data.slice();
     G.REC.dBase = W.dimg ? W.dimg.data.slice() : null;
     G.REC.fogBase = W.seen.slice();
@@ -15391,6 +16133,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.REC.done = false;
     G.RT.n = 0;
     G.RT.at = -1;
+    G.RT.clip = null;
     G.input.current.witness = null;
   }
   function recSample(W, G) {
@@ -15426,6 +16169,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     S.fire = Int32Array.from(fi);
     S.fireT = Uint16Array.from(fi, (i) => W.fire.t[i]);
+    const now = performance.now();
+    S.loops = [];
+    for (const h3 of liveLoops) if (h3._s && now - h3._at < 150) S.loops.push([h3._i, h3._k, h3._s[0], h3._s[1], h3._s[2], h3._s[3]]);
     G.REC.snaps.push(S);
     if (G.REC.dirty.length) {
       for (const [w, x, y, ww, hh] of rpMerge(G.REC.dirty, CW, CH)) {
@@ -15456,6 +16202,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       n += 3;
     }
     if (n) G.REC.fogLog.splice(0, n);
+    n = 0;
+    while (n < G.REC.sfx.length && G.REC.sfx[n][0] < cut) n++;
+    if (n) G.REC.sfx.splice(0, n);
   }
   function recFrame(W, G, dt) {
     if (G.REC.done || !G.REC.tBase) return;
@@ -15466,46 +16215,68 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     recSample(W, G);
     if (G.REC.deathT >= 0 && G.REC.t >= G.REC.deathT + RP_AFTER) {
       G.REC.done = true;
-      G.input.current.witness = { t0: Math.max(G.REC.snaps[0].t, G.REC.deathT - RP_BEFORE), t1: G.REC.t, death: G.REC.deathT };
+      const R = G.REC;
+      G.input.current.witness = {
+        t0: Math.max(R.snaps[0].t, R.deathT - RP_BEFORE),
+        t1: R.t,
+        death: R.deathT,
+        snaps: R.snaps,
+        patches: R.patches,
+        tBase: R.tBase,
+        dBase: R.dBase,
+        fogBase: R.fogBase,
+        fogLog: R.fogLog,
+        sfx: R.sfx
+      };
       G.input.current.notify();
     }
   }
-  function rpTerrain(W, G, T) {
-    if (!G.RT.tC) {
-      G.RT.tC = document.createElement("canvas");
-      G.RT.tC.width = CW;
-      G.RT.tC.height = CH;
-      G.RT.dC = document.createElement("canvas");
-      G.RT.dC.width = CW;
-      G.RT.dC.height = CH;
-      G.RT.fireT = new Uint16Array(CW * CH);
+  function rpTerrain(W, G, C, T) {
+    const RT = G.RT;
+    if (!RT.tC) {
+      RT.tC = document.createElement("canvas");
+      RT.tC.width = CW;
+      RT.tC.height = CH;
+      RT.dC = document.createElement("canvas");
+      RT.dC.width = CW;
+      RT.dC.height = CH;
+      RT.fireT = new Uint16Array(CW * CH);
+      RT.mat = new Uint8Array(CW * CH);
     }
-    const tc = G.RT.tC.getContext("2d"), dc = G.RT.dC.getContext("2d");
-    if (G.RT.at < 0 || G.RT.n > 0 && G.REC.patches[G.RT.n - 1].t > T) {
-      tc.putImageData(new ImageData(G.REC.tBase, CW, CH), 0, 0);
+    const tc = RT.tC.getContext("2d"), dc = RT.dC.getContext("2d");
+    if (RT.clip !== C || RT.at < 0 || RT.n > 0 && C.patches[RT.n - 1].t > T) {
+      RT.clip = C;
+      tc.putImageData(new ImageData(C.tBase, CW, CH), 0, 0);
       dc.clearRect(0, 0, CW, CH);
-      if (G.REC.dBase) dc.putImageData(new ImageData(G.REC.dBase, CW, CH), 0, 0);
-      G.RT.n = 0;
+      if (C.dBase) dc.putImageData(new ImageData(C.dBase, CW, CH), 0, 0);
+      for (let i = 0, k = 3; i < RT.mat.length; i++, k += 4) RT.mat[i] = C.tBase[k] ? 1 : 0;
+      RT.n = 0;
     }
-    while (G.RT.n < G.REC.patches.length && G.REC.patches[G.RT.n].t <= T) {
-      const P = G.REC.patches[G.RT.n++];
+    while (RT.n < C.patches.length && C.patches[RT.n].t <= T) {
+      const P = C.patches[RT.n++];
       (P.c === "t" ? tc : dc).putImageData(new ImageData(P.px, P.w, P.h), P.x, P.y);
+      if (P.c === "t") for (let r = 0; r < P.h; r++)
+        for (let c = 0, i = (P.y + r) * CW + P.x, k = r * P.w * 4 + 3; c < P.w; c++, i++, k += 4) RT.mat[i] = P.px[k] ? 1 : 0;
     }
-    G.RT.at = T;
-    if (!G.RT.fog || G.RT.fog.length !== G.REC.fogBase.length) G.RT.fog = new Uint8Array(G.REC.fogBase.length);
-    G.RT.fog.set(G.REC.fogBase);
-    const L2 = G.REC.fogLog;
-    for (let n = 0; n < L2.length && L2[n] <= T; n += 3) G.RT.fog[L2[n + 1]] = L2[n + 2];
+    RT.at = T;
+    if (!RT.fog || RT.fog.length !== C.fogBase.length) RT.fog = new Uint8Array(C.fogBase.length);
+    RT.fog.set(C.fogBase);
+    const L2 = C.fogLog;
+    for (let n = 0; n < L2.length && L2[n] <= T; n += 3) RT.fog[L2[n + 1]] = L2[n + 2];
   }
   function drawReplay(W, G, V2) {
-    const wit = G.input.current.witness;
-    V2.t = clamp(V2.t, wit.t0, wit.t1);
-    const F = rpFrame(G.REC.snaps, V2.t);
-    rpTerrain(W, G, V2.t);
+    const C = V2.clip;
+    V2.t = clamp(V2.t, C.t0, C.t1);
+    const F = rpFrame(C.snaps, V2.t);
+    rpTerrain(W, G, C, V2.t);
     if (!V2.fog) G.RT.fog.fill(1);
     if (V2.follow) {
       V2.cx = F.p.x + PW / 2;
       V2.cy = F.p.y + PH / 2;
+    } else if (C.lim) {
+      V2.zoom = Math.max(1, V2.zoom);
+      V2.cx = clamp(V2.cx, C.lim[0], C.lim[2]);
+      V2.cy = clamp(V2.cy, C.lim[1], C.lim[3]);
     }
     const near = F.near;
     for (let k = 0; k < near.fire.length; k++) G.RT.fireT[near.fire[k]] = near.fireT[k];
@@ -15535,14 +16306,27 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       visPts: W.visPts,
       viewW: W.viewW,
       viewH: W.viewH,
+      mat: W.mat,
+      deepFog: W.deepFog,
       p: Object.assign({}, W.p)
     };
+    const keepS = {}, scene = C.scene, LO = G.input.current.loadout, bg = G.bg;
+    if (scene) {
+      for (const k of SCENE_KEYS) {
+        keepS[k] = W[k];
+        W[k] = scene[k];
+      }
+      W.deepFog = null;
+      if (C.bgC) G.bg = C.bgC;
+      G.input.current.loadout = Object.assign({}, LO, { guns: [scene.held || null], sel: 0 });
+    }
     W.enemies = F.enemies;
     W.pickups = F.pickups;
     W.props = F.props;
     W.firePlants = [];
     W.fire = { list: near.fire, t: G.RT.fireT };
     W.seen = G.RT.fog;
+    W.mat = G.RT.mat;
     W.ghost = F.ghost;
     W.time = F.time;
     W.flick = F.flick;
@@ -15551,6 +16335,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.glowN = F.glowN;
     W.fireN = near.fireN;
     Object.assign(W.p, F.p);
+    if (!F.p.rag) W.p.rag = null;
     G.RPV = V2;
     try {
       draw(W, G);
@@ -15580,11 +16365,103 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         torchR: W.torchR,
         visPts: W.visPts,
         viewW: W.viewW,
-        viewH: W.viewH
+        viewH: W.viewH,
+        mat: W.mat,
+        deepFog: W.deepFog
       } = keep2);
+      for (const k in W.p) if (!(k in keep2.p)) delete W.p[k];
       Object.assign(W.p, keep2.p);
+      if (scene) {
+        for (const k of SCENE_KEYS) W[k] = keepS[k];
+        G.bg = bg;
+        G.input.current.loadout = LO;
+      }
       for (let k = 0; k < near.fire.length; k++) G.RT.fireT[near.fire[k]] = 0;
     }
+  }
+  function rpSound(G, V2, prev) {
+    const C = V2.clip;
+    if (!V2.playing || V2.mute || V2.t < prev || V2.t - prev > 0.5 || !C.sfx) return;
+    const { a } = rpAt(C.snaps, V2.t);
+    SFX.ear(a.p.x + PW / 2, a.p.y + PH / 2);
+    for (const e of C.sfx) if (e[0] > prev && e[0] <= V2.t) {
+      const f = SFX0[e[1]] || SFX[e[1]];
+      if (f) f.apply(null, e[2]);
+    }
+    for (const L2 of a.loops || []) {
+      let h3 = G.RT.loops.get(L2[0]);
+      if (!h3) {
+        h3 = (SFX0.loop || SFX.loop)(L2[1]);
+        if (!h3) continue;
+        G.RT.loops.set(L2[0], h3);
+      }
+      h3.set(L2[2], L2[3], L2[4], L2[5]);
+    }
+  }
+  function rpSoundOff(G) {
+    for (const h3 of G.RT.loops.values()) try {
+      h3.stop();
+    } catch (_) {
+    }
+    G.RT.loops.clear();
+  }
+  async function clipKeep(W, G, C) {
+    const scene = {};
+    for (const k of SCENE_KEYS) scene[k] = W[k];
+    const LO = G.input.current.loadout;
+    scene.held = LO.guns[LO.sel] || null;
+    const bg = G.bgctx.getImageData(0, 0, BW, BH).data;
+    const S = clipCrop(C, { pad: DEV.witPad, scene, bg, bgW: BW, bgH: BH });
+    const date = Date.now();
+    const meta = {
+      id: "c" + date.toString(36) + Math.floor(Math.random() * 1e4).toString(36),
+      name: clipName(W.floor, date),
+      date,
+      floor: W.floor,
+      secs: Math.round((C.t1 - C.t0) * 10) / 10,
+      bytes: 0,
+      thumb: clipThumb(W, G, C)
+    };
+    return await clipPut(meta, S) ? meta : null;
+  }
+  function clipThumb(W, G, C) {
+    try {
+      const live = G.input.current.replay;
+      const V2 = {
+        t: C.death + 0.3,
+        speed: 1,
+        playing: false,
+        fog: true,
+        follow: true,
+        zoom: 1,
+        cx: 0,
+        cy: 0,
+        clip: C,
+        panelH: live ? live.panelH : 0
+      };
+      drawReplay(W, G, V2);
+      G.RT.at = -1;
+      const ph = Math.max(1, Math.round(V2.playPx || G.c.height)), w = 200, h3 = Math.max(1, Math.round(w * Math.min(1.6, ph / G.c.width)));
+      const t = document.createElement("canvas");
+      t.width = w;
+      t.height = h3;
+      const sh = Math.min(ph, G.c.width * h3 / w), sy = Math.max(0, (ph - sh) / 2);
+      t.getContext("2d").drawImage(G.c, 0, sy, G.c.width, sh, 0, 0, w, h3);
+      return t.toDataURL("image/jpeg", 0.7);
+    } catch (_) {
+      return "";
+    }
+  }
+  function clipFromSaved(S) {
+    const C = clipHydrate(S);
+    if (C.bgPx && C.bgW) {
+      const c = document.createElement("canvas");
+      c.width = C.bgW;
+      c.height = C.bgH;
+      c.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(C.bgPx), C.bgW, C.bgH), 0, 0);
+      C.bgC = c;
+    }
+    return C;
   }
 
   // src/game/systems/level-entry.js
@@ -15708,9 +16585,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const ty = my * MINI_D + dy;
         if (ty >= CH) break;
         for (let dx = 0; dx < MINI_D; dx++) {
-          const tx = mx * MINI_D + dx;
-          if (tx >= CW) break;
-          if (W.mat[ty * CW + tx]) solid++;
+          const tx2 = mx * MINI_D + dx;
+          if (tx2 >= CW) break;
+          if (W.mat[ty * CW + tx2]) solid++;
           else open++;
         }
       }
@@ -16070,8 +16947,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       G.mini32.fill(0);
       for (let k2 = 0; k2 < W.miniEdgeIdx.length; k2++) {
         const i = W.miniEdgeIdx[k2];
-        const tx = i % MMW * MINI_D, ty = (i / MMW | 0) * MINI_D;
-        const fi = (ty / FOG | 0) * FW + (tx / FOG | 0);
+        const tx2 = i % MMW * MINI_D, ty = (i / MMW | 0) * MINI_D;
+        const fi = (ty / FOG | 0) * FW + (tx2 / FOG | 0);
         if (W.seen[fi]) G.mini32[i] = 3875536895;
       }
       G.mctx.putImageData(G.miniImg, 0, 0);
@@ -16656,11 +17533,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       W.camX = G.RPV.cx - vw / 2;
       W.camY = G.RPV.cy - vhp / 2;
       G.RPV.unit = W.unitPx;
+      G.RPV.playPx = playPx;
     } else {
-      const tx = vw >= WW ? (WW - vw) / 2 : clamp(pcx - vw / 2, 0, WW - vw);
+      const tx2 = vw >= WW ? (WW - vw) / 2 : clamp(pcx - vw / 2, 0, WW - vw);
       const ty = clamp(pcy - vhp * 0.55, 0, Math.max(0, WH - vhp));
       if (!W.camReady) {
-        W.camX = tx;
+        W.camX = tx2;
         W.camY = ty;
         W.camReady = true;
         W.camT = W.time;
@@ -16668,17 +17546,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const cdt = clamp(W.time - W.camT, 0, 0.1);
       W.camT = W.time;
       const ease = 1 - Math.pow(0.85, cdt * 60);
-      W.camX += (tx - W.camX) * ease;
+      W.camX += (tx2 - W.camX) * ease;
       W.camY += (ty - W.camY) * ease;
     }
     G.ctx.setTransform(1, 0, 0, 1, 0, 0);
     G.ctx.imageSmoothingEnabled = false;
     G.ctx.fillStyle = "rgb(" + themeFor(W.floor).bg.join(",") + ")";
     G.ctx.fillRect(0, 0, G.c.width, G.c.height);
-    const ox = Math.round(W.camX * s), oy = Math.round(W.camY * s);
-    G.ctx.setTransform(s, 0, 0, s, -ox, -oy);
-    F.snapX = (Math.round((W.p.x - W.camX) * s) + ox) / s - W.p.x;
-    F.snapY = (Math.round((W.p.y - W.camY) * s) + oy) / s - W.p.y;
+    const ox2 = Math.round(W.camX * s), oy2 = Math.round(W.camY * s);
+    G.ctx.setTransform(s, 0, 0, s, -ox2, -oy2);
+    F.snapX = (Math.round((W.p.x - W.camX) * s) + ox2) / s - W.p.x;
+    F.snapY = (Math.round((W.p.y - W.camY) * s) + oy2) / s - W.p.y;
   }
 
   // src/game/systems/fields.js
@@ -16943,16 +17821,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         b.explode = 0;
       }
     }
-    let ox = gx, oy = gy;
-    const clearSpot = (tx, ty) => {
+    let ox2 = gx, oy2 = gy;
+    const clearSpot = (tx2, ty) => {
       for (let k = 0; k <= 10; k++) {
         const t = k / 10;
-        const cx = tx + (gx - tx) * t, cy = ty + (gy - ty) * t;
+        const cx = tx2 + (gx - tx2) * t, cy = ty + (gy - ty) * t;
         if (!solidAt(W, cx, cy)) return [cx, cy];
       }
       return [gx, gy];
     };
-    if (acts.includes("far")) [ox, oy] = clearSpot(gx + nx * 95, gy + ny * 95);
+    if (acts.includes("far")) [ox2, oy2] = clearSpot(gx + nx * 95, gy + ny * 95);
     if (acts.includes("tele")) {
       let best = null, bd = 420;
       for (const e of W.enemies) {
@@ -16962,12 +17840,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           best = e;
         }
       }
-      if (best) [ox, oy] = clearSpot(best.x - nx * 14, best.ty - ny * 14);
+      if (best) [ox2, oy2] = clearSpot(best.x - nx * 14, best.ty - ny * 14);
     }
     const warp = acts.includes("warp");
-    if (warp || acts.includes("far") || acts.includes("tele")) SFX.fx("warp", ox, oy);
-    for (const sh of plan.shots) spawnShot(W, G, sh, ox, oy, base, bonus, warp, 30);
-    SFX.cast(plan.shots, ox === gx && oy === gy ? null : ox, oy);
+    if (warp || acts.includes("far") || acts.includes("tele")) SFX.fx("warp", ox2, oy2);
+    for (const sh of plan.shots) spawnShot(W, G, sh, ox2, oy2, base, bonus, warp, 30);
+    SFX.cast(plan.shots, ox2 === gx && oy2 === gy ? null : ox2, oy2);
     let kick = 0;
     for (const sh of plan.shots) kick += sh.recoil;
     if (kick && !W.p.dead) {
@@ -16979,41 +17857,41 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     g.delayMax = Math.max(g.delayT, 1e-3);
     if (plan.wrap) wrap();
   }
-  function spawnShot(W, G, sh, ox, oy, base, bonus, warp, fd) {
+  function spawnShot(W, G, sh, ox2, oy2, base, bonus, warp, fd) {
     if (sh.still) {
-      castField(W, G, sh, ox + Math.cos(base) * fd, oy + Math.sin(base) * fd, base);
+      castField(W, G, sh, ox2 + Math.cos(base) * fd, oy2 + Math.sin(base) * fd, base);
       return;
     }
     const n = Math.min(24, Math.max(1, Math.round(sh.count)));
     const off = (sh.ang || 0) * Math.PI / 180;
     const pd = W.pb.dmg;
     let pc = W.pb.crit;
-    if (W.pb.close && W.enemies.some((e) => Math.hypot(e.x - ox, e.ty - oy) < 56)) pc += 0.4;
+    if (W.pb.close && W.enemies.some((e) => Math.hypot(e.x - ox2, e.ty - oy2) < 56)) pc += 0.4;
     for (let i = 0; i < n; i++) {
       let a = base + off + (Math.random() - 0.5) * sh.spread * W.pb.spread * Math.PI / 180;
       if (sh.autoaim) {
         let best = null, bd = 320;
         for (const e of W.enemies) {
-          const d = Math.hypot(e.x - ox, e.ty - oy);
+          const d = Math.hypot(e.x - ox2, e.ty - oy2);
           if (d < bd) {
             bd = d;
             best = e;
           }
         }
-        if (best) a = Math.atan2(best.ty - oy, best.x - ox);
+        if (best) a = Math.atan2(best.ty - oy2, best.x - ox2);
       }
       if (sh.flat) a = Math.cos(a) >= 0 ? 0 : Math.PI;
       if (sh.beam) {
-        fireBeam(W, G, sh, ox, oy, Math.cos(a), Math.sin(a), bonus, pd, pc);
+        fireBeam(W, G, sh, ox2, oy2, Math.cos(a), Math.sin(a), bonus, pd, pc);
         continue;
       }
       const reach = sh.reach != null ? sh.reach : 10;
-      let bx = ox + Math.cos(a) * reach, by = oy + Math.sin(a) * reach;
+      let bx = ox2 + Math.cos(a) * reach, by = oy2 + Math.sin(a) * reach;
       if (warp) {
         for (let step2 = 0; step2 < 14; step2++) {
-          const tx = bx + Math.cos(a) * 10, ty = by + Math.sin(a) * 10;
-          if (solidAt(W, tx, ty)) break;
-          bx = tx;
+          const tx2 = bx + Math.cos(a) * 10, ty = by + Math.sin(a) * 10;
+          if (solidAt(W, tx2, ty)) break;
+          bx = tx2;
           by = ty;
         }
       }
@@ -18256,6 +19134,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         patches: [],
         dirty: [],
         fogLog: [],
+        sfx: [],
         tBase: null,
         dBase: null,
         fogBase: null,
@@ -18263,7 +19142,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         deathT: -1,
         done: false
       };
-      const RT = { tC: null, dC: null, n: 0, at: -1, fog: null, fireT: null };
+      const RT = { tC: null, dC: null, n: 0, at: -1, fog: null, fireT: null, clip: null, mat: null, loops: /* @__PURE__ */ new Map() };
       const fireBox = { t: [CW, CH, -1, -1], d: [CW, CH, -1, -1] };
       const ratOnWeb = onWebIn(W.webs);
       const G = {
@@ -18303,6 +19182,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         RPV: null
       };
       recWrap(G);
+      recSfxHook(G);
+      input.current.saveClip = (C) => clipKeep(W, G, C);
+      input.current.clipFromSaved = clipFromSaved;
       if (window.__TEST) window.__lvl = testHook(W, {
         tctx,
         dctx,
@@ -18384,10 +19266,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const dt = Math.max(0, Math.min(0.033, (t - last) / 1e3));
         last = t;
         const rv = input.current.replay;
-        if (rv && REC.done) {
+        if (rv && rv.clip) {
+          const prev = rv.t;
           if (rv.playing) {
             rv.t += dt * rv.speed;
-            const wit = input.current.witness;
+            const wit = rv.clip;
             if (rv.t >= wit.t1) {
               if (rv.loop) rv.t = wit.t0;
               else {
@@ -18396,9 +19279,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               }
             }
           }
+          rpSound(G, rv, prev);
           SFX.tick();
           drawReplay(W, G, rv);
+          if (rv.onFrame) rv.onFrame(c, rv.playPx || c.height);
         } else {
+          if (RT.loops.size) rpSoundOff(G);
           if (input.current.perksDirty) {
             input.current.perksDirty = false;
             applyPerks(W, G);
@@ -18417,6 +19303,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         cancelAnimationFrame(raf);
         ro.disconnect();
         window.removeEventListener("resize", resize);
+        rpSoundOff(G);
         clearInterval(saveTick);
         if (W.jetLoop) W.jetLoop.stop();
         if (W.portalLoop) W.portalLoop.stop();
@@ -19538,6 +20425,276 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
+  // src/ui/clips.js
+  var fmtBytes = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1e3)) + " kB";
+  function WitnessGallery({ close, tabs, play }) {
+    const [list, setList] = useState(null);
+    const [renaming, setRenaming] = useState("");
+    const [name, setName] = useState("");
+    const [asking, setAsking] = useState("");
+    const reload = () => clipList().then(setList);
+    useEffect(() => {
+      reload();
+    }, []);
+    const tap = (f) => (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      f();
+    };
+    const card = (m) => h(
+      "div",
+      { key: m.id, className: "wclip", "data-clip": m.id },
+      h(
+        "div",
+        {
+          className: "wthumbimg",
+          role: "button",
+          "aria-label": "Play " + m.name,
+          onPointerDown: tap(() => play(m))
+        },
+        m.thumb ? h("img", { src: m.thumb, alt: "" }) : null,
+        h("span", { className: "wplayicon" }, "▶")
+      ),
+      renaming === m.id ? h(
+        "div",
+        { className: "wrename" },
+        h("input", {
+          value: name,
+          maxLength: 40,
+          autoFocus: true,
+          onChange: (e) => setName(e.target.value),
+          onKeyDown: (e) => {
+            if (e.key === "Enter") e.target.blur();
+          }
+        }),
+        h(
+          "div",
+          { className: "wcbtns" },
+          h("button", { className: "wok", onPointerDown: tap(async () => {
+            const nm = name.trim() || m.name;
+            setRenaming("");
+            await clipRename(m.id, nm);
+            reload();
+          }) }, "Save"),
+          h("button", { onPointerDown: tap(() => setRenaming("")) }, "Cancel")
+        )
+      ) : asking === m.id ? h(
+        "div",
+        { className: "wrename" },
+        h("b", { className: "wname" }, "Delete “" + m.name + "”?"),
+        h(
+          "div",
+          { className: "wcbtns" },
+          h("button", { className: "wdel", onPointerDown: tap(async () => {
+            setAsking("");
+            await clipDelete(m.id);
+            reload();
+          }) }, "Delete"),
+          h("button", { onPointerDown: tap(() => setAsking("")) }, "Keep")
+        )
+      ) : h(
+        "div",
+        { className: "wcinfo" },
+        h("b", { className: "wname" }, m.name),
+        h("span", { className: "wmeta" }, "Floor " + m.floor + " · " + m.secs + "s · " + fmtBytes(m.bytes)),
+        h(
+          "div",
+          { className: "wcbtns" },
+          h("button", { className: "wren", "aria-label": "Rename", onPointerDown: tap(() => {
+            setName(m.name);
+            setRenaming(m.id);
+            setAsking("");
+          }) }, "✏️ Rename"),
+          h("button", { className: "wdelask", "aria-label": "Delete", onPointerDown: tap(() => {
+            setAsking(m.id);
+            setRenaming("");
+          }) }, "🗑️")
+        )
+      )
+    );
+    return h(
+      "div",
+      { className: "sheet witnessgal" },
+      h(
+        "div",
+        { className: "shead" },
+        h("h2", null, "Witness"),
+        h("button", { className: "done", onPointerDown: (e) => {
+          e.preventDefault();
+          close();
+        } }, "Done")
+      ),
+      h(
+        "div",
+        { className: "wgal scroll" },
+        list === null ? h("p", { className: "wempty" }, "Loading…") : !list.length ? h("p", { className: "wempty" }, "No saved deaths yet. When you die, tap WITNESS YOURSELF, then Save.") : list.map(card)
+      ),
+      tabs
+    );
+  }
+  var VIDEO_MIMES = [
+    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+    "video/mp4;codecs=avc1,mp4a",
+    "video/mp4;codecs=avc1,opus",
+    "video/mp4",
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm"
+  ];
+  var VIDEO_MAX = [1080, 1920];
+  function pickMime() {
+    if (typeof MediaRecorder === "undefined") return "";
+    for (const m of VIDEO_MIMES) {
+      try {
+        if (MediaRecorder.isTypeSupported(m)) return m;
+      } catch (_) {
+      }
+    }
+    return "";
+  }
+  var nextFrame = () => new Promise((r) => requestAnimationFrame(r));
+  async function exportClip(V2, name, onState, ctl) {
+    const C = V2.clip, mime = pickMime();
+    if (!mime || !HTMLCanvasElement.prototype.captureStream) return { ok: false, msg: "This device can’t record video." };
+    SFX.unlock();
+    const keep2 = { loop: V2.loop, playing: V2.playing, t: V2.t };
+    const out = document.createElement("canvas"), ctx = out.getContext("2d");
+    let rec = null;
+    try {
+      V2.playing = false;
+      V2.t = C.t0;
+      V2.loop = false;
+      V2.onFrame = (c, playPx) => {
+        if (!out.width) {
+          const k = Math.min(1, VIDEO_MAX[0] / c.width, VIDEO_MAX[1] / playPx);
+          out.width = Math.max(2, Math.round(c.width * k) & ~1);
+          out.height = Math.max(2, Math.round(playPx * k) & ~1);
+        }
+        ctx.drawImage(c, 0, 0, c.width, playPx, 0, 0, out.width, out.height);
+      };
+      for (let i = 0; i < 3 && !out.width; i++) await nextFrame();
+      if (!out.width) return { ok: false, msg: "The replay isn’t drawing." };
+      const vs = out.captureStream(30), as = SFX.stream();
+      const tracks = vs.getVideoTracks().concat(as ? as.getAudioTracks() : []);
+      rec = new MediaRecorder(new MediaStream(tracks), { mimeType: mime, videoBitsPerSecond: DEV.witKbps * 1e3, audioBitsPerSecond: 128e3 });
+      const chunks = [];
+      rec.ondataavailable = (e) => {
+        if (e.data && e.data.size) chunks.push(e.data);
+      };
+      const stopped = new Promise((r) => {
+        rec.onstop = r;
+      });
+      rec.start(500);
+      V2.t = C.t0;
+      V2.playing = true;
+      const span = C.t1 - C.t0, limit = performance.now() + (span / Math.max(0.05, V2.speed) + 10) * 1e3;
+      while (V2.playing && !ctl.cancelled && performance.now() < limit) {
+        onState({ phase: "rec", frac: (V2.t - C.t0) / span });
+        await nextFrame();
+      }
+      await nextFrame();
+      rec.stop();
+      await stopped;
+      rec = null;
+      V2.onFrame = null;
+      if (ctl.cancelled) return { ok: false, msg: "Cancelled." };
+      let blob = new Blob(chunks, { type: mime.split(";")[0] });
+      if (!/mp4/.test(mime)) blob = await toMp4(blob, (f) => onState({ phase: "convert", frac: f }));
+      onState({ phase: "save", frac: 1 });
+      return await saveVideo(blob, fileName(name) + ".mp4");
+    } catch (e) {
+      return { ok: false, msg: "Export failed: " + (e && e.message ? e.message : e) };
+    } finally {
+      V2.onFrame = null;
+      if (rec && rec.state !== "inactive") try {
+        rec.stop();
+      } catch (_) {
+      }
+      V2.loop = keep2.loop;
+      V2.playing = keep2.playing;
+      V2.t = keep2.t;
+    }
+  }
+  var fileName = (s) => ("CaveRunner " + (s || "death")).replace(/[^\w .·-]+/g, "").replace(/·/g, "-").replace(/\s+/g, " ").trim().slice(0, 60);
+  var FF_URL = "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/";
+  var FF_CORE = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/";
+  async function blobURL(url, type) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("fetch " + r.status);
+    return URL.createObjectURL(new Blob([await r.arrayBuffer()], { type }));
+  }
+  var loadScript = (src) => new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = () => res();
+    s.onerror = () => rej(new Error("could not load ffmpeg"));
+    document.head.appendChild(s);
+  });
+  async function toMp4(blob, onFrac) {
+    onFrac(0);
+    if (!window.FFmpegWASM) await loadScript(FF_URL + "ffmpeg.js");
+    const ff = new window.FFmpegWASM.FFmpeg();
+    ff.on("progress", (p) => onFrac(Math.max(0, Math.min(1, p.progress || 0))));
+    await ff.load({
+      classWorkerURL: await blobURL(FF_URL + "814.ffmpeg.js", "text/javascript"),
+      coreURL: await blobURL(FF_CORE + "ffmpeg-core.js", "text/javascript"),
+      wasmURL: await blobURL(FF_CORE + "ffmpeg-core.wasm", "application/wasm")
+    });
+    await ff.writeFile("in.webm", new Uint8Array(await blob.arrayBuffer()));
+    await ff.exec([
+      "-i",
+      "in.webm",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "veryfast",
+      "-pix_fmt",
+      "yuv420p",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "128k",
+      "-movflags",
+      "+faststart",
+      "out.mp4"
+    ]);
+    const data = await ff.readFile("out.mp4");
+    try {
+      ff.terminate();
+    } catch (_) {
+    }
+    return new Blob([data], { type: "video/mp4" });
+  }
+  function b64(u) {
+    let s = "";
+    for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768));
+    return btoa(s);
+  }
+  var SAVE_CHUNK = 3 * 131072;
+  async function saveVideo(blob, file) {
+    const A = window.CaveApp;
+    if (A && A.videoBegin) {
+      if (!A.videoBegin(file, blob.type || "video/mp4")) return { ok: false, msg: "Couldn’t save the video." };
+      const u = new Uint8Array(await blob.arrayBuffer());
+      for (let i = 0; i < u.length; i += SAVE_CHUNK) {
+        if (!A.videoChunk(b64(u.subarray(i, i + SAVE_CHUNK)))) return { ok: false, msg: "Couldn’t save the video." };
+        await new Promise((r) => setTimeout(r, 0));
+      }
+      const where = A.videoEnd();
+      return where ? { ok: true, msg: "Saved to " + where } : { ok: false, msg: "Couldn’t save the video." };
+    }
+    if (/; wv\)/.test(navigator.userAgent))
+      return { ok: false, msg: "Saving videos needs the new app: reinstall it from the releases page." };
+    const url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href = url;
+    a.download = file;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 6e4);
+    return { ok: true, msg: "Downloaded " + file };
+  }
+
   // src/spells/bagsim.js
   function castGroups(gun) {
     if (gun.shuffle) return null;
@@ -20457,11 +21614,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var SLOP = 8;
   var NO_DRAG = null;
   function Bag(props) {
-    const [tab, setTab] = useState("guns");
+    const [tab, setTab] = useState(props.tab0 || "guns");
     const tabs = h(
       "div",
       { className: "btabs" },
-      [["guns", "Guns & Mods"], ["suit", "Exo Suit"]].map(([k, label]) => h("button", {
+      [["guns", "Guns & Mods"], ["suit", "Exo Suit"], ["witness", "Witness"]].map(([k, label]) => h("button", {
         key: k,
         className: "btab" + (tab === k ? " on" : ""),
         "data-tab": k,
@@ -20474,6 +21631,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }, label))
     );
+    if (tab === "witness") return h(WitnessGallery, { input: props.input, close: props.close, tabs, play: props.play || (() => {
+    }) });
     return tab === "guns" ? h(Editor, Object.assign({}, props, { tabs })) : h(ExoSuit, Object.assign({}, props, { tabs }));
   }
   function Portrait() {
@@ -21468,9 +22627,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/ui/witness.js
   var RP_SPEEDS = [0.25, 0.5, 1, 2];
-  function Witness({ input, close }) {
-    const V2 = input.current.replay, W = input.current.witness;
+  function Witness({ input, close, saved }) {
+    const V2 = input.current.replay, W = V2.clip;
     const [, bump] = useState(0);
+    const [keep2, setKeep] = useState(W.id ? "saved" : "");
+    const [exp, setExp] = useState(null);
+    const [msg, setMsg] = useState("");
+    const ctl = useRef({ cancelled: false });
     const redo = () => bump((n) => n + 1);
     const scrub = useRef(null), pts = useRef(/* @__PURE__ */ new Map()), pinch = useRef(null), dragging = useRef(false);
     useEffect(() => {
@@ -21495,6 +22658,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     const down = (e) => {
       e.preventDefault();
+      if (exp) return;
       try {
         e.currentTarget.setPointerCapture(e.pointerId);
       } catch (_) {
@@ -21532,8 +22696,32 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     const tap = (f) => (e) => {
       e.preventDefault();
-      f();
-      redo();
+      if (!exp) {
+        f();
+        redo();
+      }
+    };
+    const save = async () => {
+      if (keep2 === "saving" || keep2 === "saved" || !input.current.saveClip) return;
+      setKeep("saving");
+      const m = await input.current.saveClip(W);
+      if (m) {
+        W.id = m.id;
+        setKeep("saved");
+        setMsg("Saved to the Bag’s Witness tab");
+      } else {
+        setKeep("failed");
+        setMsg("Couldn’t save it (out of space?)");
+      }
+    };
+    const video = async () => {
+      if (exp) return;
+      ctl.current = { cancelled: false };
+      setMsg("");
+      setExp({ phase: "rec", frac: 0 });
+      const r = await exportClip(V2, saved ? saved.name : "death", (s) => setExp(s), ctl.current);
+      setExp(null);
+      setMsg(r.msg);
     };
     const rel = V2.t - W.death, frac = (V2.t - W.t0) / span;
     const atEnd = V2.t >= W.t1 - 1e-6;
@@ -21552,7 +22740,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             V2.zoom = clamp(V2.zoom * Math.exp(-e.deltaY * 15e-4), 0.4, 4);
           }
         },
-        h("div", { className: "wtitle" }, "WITNESS YOURSELF")
+        h("div", { className: "wtitle" }, saved ? saved.name : "WITNESS YOURSELF"),
+        msg ? h("div", { className: "wmsg", onPointerDown: (e) => {
+          e.stopPropagation();
+          setMsg("");
+        } }, msg) : null
       ),
       h(
         "div",
@@ -21643,9 +22835,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ),
           h("button", { className: "wclose", onPointerDown: (e) => {
             e.preventDefault();
-            close();
+            if (!exp) close();
           } }, "Close")
-        )
+        ),
+        h(
+          "div",
+          { className: "wrow" },
+          saved ? null : h(
+            "button",
+            { className: "wsave" + (keep2 === "saved" ? " on" : ""), onPointerDown: tap(save) },
+            keep2 === "saving" ? "Saving…" : keep2 === "saved" ? "Saved ✓" : "💾 Save"
+          ),
+          h("button", { className: "wvideo", onPointerDown: tap(video) }, "🎬 Export video")
+        ),
+        exp ? h(
+          "div",
+          { className: "wexp" },
+          h("span", null, (exp.phase === "rec" ? "Recording " : exp.phase === "convert" ? "Converting (ffmpeg) " : "Saving ") + Math.round(exp.frac * 100) + "%"),
+          h("div", { className: "wexpbar" }, h("i", { style: { width: exp.frac * 100 + "%" } })),
+          exp.phase === "rec" ? h("button", { className: "wcancel", onPointerDown: (e) => {
+            e.preventDefault();
+            ctl.current.cancelled = true;
+          } }, "Cancel") : null
+        ) : null
       )
     );
   }
@@ -21705,6 +22917,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [devOpen, setDevOpen] = useState(false);
     const [spawnOpen, setSpawnOpen] = useState(false);
     const [witnessOpen, setWitnessOpen] = useState(false);
+    const [savedClip, setSavedClip] = useState(null);
+    const [bagTab, setBagTab] = useState("guns");
     const [gunInfo, setGunInfo] = useState(-1);
     const [held, setHeld] = useState(-1);
     const [perkInfo, setPerkInfo] = useState(-1);
@@ -21861,12 +23075,41 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const perkColH = perkPer * (PERK_PIP + PERK_GAP) - PERK_GAP;
     const witness = input.current.witness;
     const openWitness = () => {
-      input.current.replay = { t: witness.t0, speed: 1, playing: true, loop: true, fog: true, follow: true, zoom: 1, cx: 0, cy: 0, unit: 1 };
+      input.current.replay = {
+        t: witness.t0,
+        speed: 1,
+        playing: true,
+        loop: true,
+        fog: true,
+        follow: true,
+        zoom: 1,
+        cx: 0,
+        cy: 0,
+        unit: 1,
+        clip: witness
+      };
+      setSavedClip(null);
+      setWitnessOpen(true);
+    };
+    const playClip = async (m) => {
+      const S = await clipGet(m.id);
+      if (!S || !input.current.clipFromSaved) return;
+      const C = input.current.clipFromSaved(S);
+      C.id = m.id;
+      C.name = m.name;
+      input.current.replay = { t: C.t0, speed: 1, playing: true, loop: true, fog: true, follow: true, zoom: 1, cx: 0, cy: 0, unit: 1, clip: C };
+      setSavedClip(m);
+      setEdit(false);
       setWitnessOpen(true);
     };
     const closeWitness = () => {
       input.current.replay = null;
       setWitnessOpen(false);
+      if (savedClip) {
+        setSavedClip(null);
+        setBagTab("witness");
+        setEdit(true);
+      }
     };
     return h(
       "div",
@@ -21882,7 +23125,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             openWitness();
           }
         }, "WITNESS YOURSELF") : null,
-        witnessOpen && witness ? h(Witness, { input, close: closeWitness }) : null,
+        witnessOpen && input.current.replay ? h(Witness, { key: savedClip ? savedClip.id : "live", input, close: closeWitness, saved: savedClip }) : null,
         // The item's card and its buy/take line are one panel now, grown up from the
         // bottom: the info you're reading and the price you're paying sit together.
         // The panel is pointer-events:none so a tap still reaches the sticks underneath;
@@ -22024,6 +23267,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               onPointerDown: (e) => {
                 e.preventDefault();
                 setMapOpen(false);
+                setBagTab("guns");
                 setEdit(true);
               }
             },
@@ -22072,7 +23316,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ) : null
         )
       ),
-      edit ? h(Bag, { input, refresh, canEdit, close: () => setEdit(false) }) : null,
+      edit ? h(Bag, { key: bagTab, input, refresh, canEdit, close: () => setEdit(false), tab0: bagTab, play: playClip }) : null,
       devOpen ? h(DevPanel, {
         input,
         refresh,

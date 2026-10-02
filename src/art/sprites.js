@@ -85,6 +85,50 @@ export function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash) {
   ctx.restore();
 }
 
+// The runner dead: the same parts as drawRunner, laid along the ragdoll's joints
+// (world/ragdoll.js RAG_POSE): jetpack and torso turned with the spine, the head with the
+// neck, legs and the arm as bent limbs.
+/** @param {CanvasRenderingContext2D} ctx @param {import('../world/ragdoll.js').Ragdoll} R */
+export function drawRagdoll(ctx, R) {
+  const J = R.joints, f = R.face, suit = '#ff5a36', dark = '#c33a1f';
+  // a part drawn in the sprite's own coordinates, pinned at joint a and turned so the sprite's
+  // "down" points from a to b; (px, py) is where joint a sits in the sprite
+  const along = (a, b, px, py, art) => {
+    const A = J[a], B = J[b];
+    ctx.save();
+    ctx.translate(A.x, A.y);
+    ctx.rotate(Math.atan2(B.y - A.y, B.x - A.x) - Math.PI / 2);
+    ctx.scale(f, 1);
+    ctx.translate(-px, -py);
+    art();
+    ctx.restore();
+  };
+  const limb = (pts, col, w) => {
+    ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(J[pts[0]].x, J[pts[0]].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(J[pts[i]].x, J[pts[i]].y);
+    ctx.stroke();
+  };
+  const boot = j => { ctx.fillStyle = '#24282f'; ctx.beginPath(); ctx.arc(J[j].x, J[j].y, 1.5, 0, Math.PI * 2); ctx.fill(); };
+  along(1, 2, 0, 8.5, () => {                      // the jetpack, on the back
+    ctx.fillStyle = '#2b3039'; rr(ctx, -6.2, 6.5, 4.4, 9, 1.6); ctx.fill();
+    ctx.fillStyle = '#ff8a1f'; rr(ctx, -5.6, 8.4, 3.2, 1.4, 0.6); ctx.fill();
+    ctx.fillStyle = '#1b1f26'; rr(ctx, -5.4, 15, 3, 2.2, 0.8); ctx.fill();
+  });
+  limb([2, 3, 4], dark, 3); boot(4);              // the far leg
+  along(1, 2, 0, 8.5, () => {                      // the torso and belt
+    ctx.fillStyle = suit; rr(ctx, -3.8, 6, 7.6, 10.5, 2.6); ctx.fill();
+    ctx.fillStyle = dark; rr(ctx, -3.8, 12.4, 7.6, 2.2, 1); ctx.fill();
+  });
+  limb([2, 5, 6], dark, 3); boot(6);              // the near leg
+  limb([1, 7], suit, 2.8);                         // the arm
+  along(0, 1, 0, 4.4, () => {                      // the helmet
+    ctx.fillStyle = '#d7dbe3'; ctx.beginPath(); ctx.arc(0, 4.4, 4.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1d2733'; rr(ctx, -0.6, 1.9, 4.6, 4.2, 1.8); ctx.fill();
+    ctx.fillStyle = 'rgba(126,214,255,0.75)'; rr(ctx, 1.4, 2.7, 1.8, 1.4, 0.6); ctx.fill();
+  });
+}
+
 // The torch in the runner's free hand. `flick` is the very same number the lamp is drawn
 // with, so the flame and the light it throws gutter together and the cave reads as
 // torchlight rather than as a dimmer switch. The embers are the loop's particles.

@@ -466,7 +466,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .witnessbtn{position:absolute;left:50%;top:238px;transform:translateX(-50%);z-index:7;white-space:nowrap;
   background:rgba(20,6,6,0.78);border:1.5px solid #ff4a3a;color:#ffd9d4;border-radius:24px;padding:12px 20px;
   font:800 14px system-ui,sans-serif;letter-spacing:0.18em;box-shadow:0 0 18px rgba(255,74,58,0.35)}
-.app.witnessing .controls,.app.witnessing .devbtn,.app.witnessing .buypanel{visibility:hidden}
+.app.witnessing .controls,.app.witnessing .devbtn,.app.witnessing .buypanel,.app.witnessing .gold{visibility:hidden}
 .witness{position:fixed;inset:0;z-index:28;display:flex;flex-direction:column}
 .wscene{flex:1 1 auto;position:relative;touch-action:none}
 .wtitle{position:absolute;top:14px;left:0;right:0;text-align:center;pointer-events:none;
@@ -486,6 +486,37 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .wrow button.on{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}
 .wrow .wclose{margin-left:auto}
 .wtime{margin-left:auto;font:600 13px ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.wrow .wsave,.wrow .wvideo{flex:1}
+.wmsg{position:absolute;top:40px;left:16px;right:16px;text-align:center;padding:8px 12px;border-radius:12px;
+  background:rgba(10,12,16,0.85);color:#e9ecf2;font:600 13px system-ui,sans-serif}
+.wexp{position:absolute;left:0;right:0;bottom:0;top:0;background:rgba(10,12,16,0.94);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;font:700 14px system-ui,sans-serif}
+.wpanel{position:relative}
+.wexpbar{width:70%;height:6px;border-radius:3px;background:rgba(255,255,255,0.18);overflow:hidden}
+.wexpbar i{display:block;height:100%;background:#ff8a1f}
+.wcancel{height:34px;padding:0 16px;border-radius:17px;border:1px solid rgba(255,255,255,0.3);background:none;color:#e9ecf2;
+  font:600 13px system-ui,sans-serif}
+/* the Bag's Witness tab: the saved deaths (ui/clips.js) */
+.wgal{flex:1 1 auto;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;
+  align-content:start;padding-bottom:6px}
+.wempty{grid-column:1/-1;color:var(--muted);font-size:13px;text-align:center;margin:30px 10px}
+.wclip{display:flex;flex-direction:column;border-radius:12px;border:1px solid var(--ring);background:var(--pad);overflow:hidden}
+.wthumbimg{position:relative;aspect-ratio:4/5;background:#0a1018;overflow:hidden}
+.wthumbimg img{width:100%;height:100%;object-fit:cover;display:block}
+.wplayicon{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;
+  background:rgba(0,0,0,0.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;pointer-events:none}
+.wcinfo,.wrename{display:flex;flex-direction:column;gap:3px;padding:6px 7px 7px}
+.wname{font:700 12.5px system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wrename .wname{white-space:normal}
+.wmeta{font-size:11px;color:var(--muted)}
+.wcbtns{display:flex;gap:5px;margin-top:3px}
+.wcbtns button{flex:1;height:32px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);color:var(--text);
+  font:600 12px system-ui,sans-serif;padding:0 4px}
+.wcbtns .wdelask{flex:0 0 38px}
+.wcbtns .wdel{background:#c8202c;border-color:#c8202c;color:#fff}
+.wcbtns .wok{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}
+.wrename input{height:32px;border-radius:8px;border:1px solid var(--ring);background:var(--bg);color:var(--text);
+  font:600 13px system-ui,sans-serif;padding:0 8px;min-width:0;user-select:text;-webkit-user-select:text}
 .confirm{position:fixed;inset:0;z-index:29;display:flex;align-items:center;justify-content:center;padding:24px}
 .confirmCard{position:relative;z-index:30;background:var(--btn);border:1px solid var(--ring);border-radius:14px;
   padding:18px 20px;max-width:260px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.4)}

@@ -8,6 +8,7 @@ import { SFX } from '../../audio/sfx.js';
 import { BED, BRICK, CELL, CH, CW, PH, PW } from '../../core/consts.js';
 import { clamp } from '../../core/util.js';
 import { spillGold } from '../../world/nuggets.js';
+import { ragPush } from '../../world/ragdoll.js';
 import { ORE_GOLD } from '../../world/veins.js';
 import { losClear } from '../../world/vision.js';
 import { damageEnemy } from './enemies.js';
@@ -178,5 +179,5 @@ export function explode(W, G, x, y, R, splash, hot) {
     W.p.vx += nx * 500 * f;
     W.p.vy += ny * 500 * f - 150 * f;
     W.p.kick = 0.25;
-  }
+  } else if (W.p.dead && W.p.rag) ragPush(W.p.rag, x, y, reach);       // a blast throws the corpse
 }

@@ -10,7 +10,7 @@ import { DEV } from '../dev/knobs.js';
 // The engine. Nothing in here runs until the game calls it, and every call is wrapped so a
 // browser without Web Audio (or one that refuses it) just plays in silence.
 export const SFX = (() => {
-  let ac = null, master = null, sfxBus = null, ambBus = null, noiseBuf = null, crackBuf = null;
+  let ac = null, master = null, sfxBus = null, ambBus = null, noiseBuf = null, crackBuf = null, comp = null, tap = null;
   let voices = 0, hooked = false;
   const MAX_VOICES = 28, HEAR = 650;
   const gates = {};
@@ -35,7 +35,7 @@ export const SFX = (() => {
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return;
         ac = new AC();
-        const comp = ac.createDynamicsCompressor();
+        comp = ac.createDynamicsCompressor();
         comp.threshold.value = -16; comp.knee.value = 12; comp.ratio.value = 5;
         comp.attack.value = 0.003; comp.release.value = 0.25;
         master = ac.createGain(); master.gain.value = 1;
@@ -831,6 +831,15 @@ export const SFX = (() => {
     debris: safe(debris), pop: safe(pop), rustle: safe(rustle), fx: safe(fx), FX_NAMES: Object.keys(FX),
     creature: safe(creature), ui: safe(ui), loop: safe(loop), setAmbience: safe(setAmbience),
     ambTick: safe(ambTick), env: safe(envSound), stats,
+    // everything you hear, as a stream as well (the Witness video export records it); null without sound
+    stream: () => {
+      try {
+        if (!ac || !ac.createMediaStreamDestination) return null;
+        if (!tap) { tap = ac.createMediaStreamDestination(); comp.connect(tap); }
+        if (ac.state === 'suspended') ac.resume();
+        return tap.stream;
+      } catch (_) { return null; }
+    },
     get ready() { return !!live(); },
     get ambience() { return amb ? amb.name : null; },
     get loops() { return loops.size; },

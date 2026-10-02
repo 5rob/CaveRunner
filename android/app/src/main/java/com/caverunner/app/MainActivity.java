@@ -2,11 +2,20 @@ package com.caverunner.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.SharedPreferences;
+import android.media.MediaScannerConnection;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.MediaStore;
+import android.util.Base64;
 import android.view.View;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -89,6 +98,9 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false);
+
+        // the page's way to save a Witness video to the phone (window.CaveApp, ui/clips.js saveVideo)
+        web.addJavascriptInterface(new VideoSaver(), "CaveApp");
 
         immersive();
         web.loadUrl(LOCAL_URL);
@@ -236,6 +248,90 @@ public class MainActivity extends Activity {
         m = Pattern.compile("v?(\\d+)").matcher(s);
         if (m.find()) return Integer.parseInt(m.group(1));
         return 0;
+    }
+
+    // ---- saving a Witness video ---------------------------------------------
+
+    /**
+     * An exported death replay (an MP4 the page recorded) comes over in base64 pieces:
+     * videoBegin, videoChunk..., videoEnd. It's gathered in the cache, then put in
+     * Movies/CaveRunner where the gallery sees it (Android 10+), or the app's own Movies
+     * folder on older phones. videoEnd answers where it went, or "" if it failed.
+     */
+    class VideoSaver {
+        File tmp;
+        OutputStream out;
+        String name;
+
+        @JavascriptInterface
+        public boolean videoBegin(String n, String mime) {
+            try {
+                if (out != null) out.close();
+                name = n.replaceAll("[\\/:*?\"<>|]", "_");
+                if (!name.endsWith(".mp4")) name += ".mp4";
+                tmp = new File(getCacheDir(), "export.mp4");
+                out = new FileOutputStream(tmp);
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public boolean videoChunk(String b64) {
+            try {
+                out.write(Base64.decode(b64, Base64.DEFAULT));
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public String videoEnd() {
+            try {
+                out.close();
+                out = null;
+                String where;
+                if (Build.VERSION.SDK_INT >= 29) {
+                    ContentResolver cr = getContentResolver();
+                    ContentValues v = new ContentValues();
+                    v.put(MediaStore.Video.Media.DISPLAY_NAME, name);
+                    v.put(MediaStore.Video.Media.MIME_TYPE, "video/mp4");
+                    v.put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/CaveRunner");
+                    v.put(MediaStore.Video.Media.IS_PENDING, 1);
+                    Uri uri = cr.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, v);
+                    if (uri == null) throw new Exception("no media store");
+                    try (OutputStream o = cr.openOutputStream(uri); InputStream in = new FileInputStream(tmp)) {
+                        copy(in, o);
+                    }
+                    v.clear();
+                    v.put(MediaStore.Video.Media.IS_PENDING, 0);
+                    cr.update(uri, v, null, null);
+                    where = "Movies/CaveRunner/" + name;
+                } else {
+                    File dir = getExternalFilesDir(Environment.DIRECTORY_MOVIES);
+                    if (dir == null) throw new Exception("no storage");
+                    dir.mkdirs();
+                    File f = new File(dir, name);
+                    try (InputStream in = new FileInputStream(tmp); OutputStream o = new FileOutputStream(f)) {
+                        copy(in, o);
+                    }
+                    MediaScannerConnection.scanFile(MainActivity.this, new String[] { f.getAbsolutePath() }, null, null);
+                    where = f.getAbsolutePath();
+                }
+                tmp.delete();
+                return where;
+            } catch (Exception e) {
+                return "";
+            }
+        }
+    }
+
+    static void copy(InputStream in, OutputStream out) throws Exception {
+        byte[] buf = new byte[65536];
+        int n;
+        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
     }
 
     // ---- tiny IO helpers ---------------------------------------------------

@@ -11,11 +11,12 @@ React without JSX (`h(...)`), off the global React the page loads from a CDN. Ev
 | `cards.js` | `GunCard`, `ModCard`, `PerkCard`, `GUN_STATS` — the same cards in the build screen and in the shop/pickup panel (`ingame`) |
 | `editor.js` | The build screen (Bag): `Editor`, `GunStats`, `GunIcon`, `SlotGrid`, `ScrollBox`, `PULL_COL`, `GS_ROWS`, `LIVE_BAR`, `SHOW_TIPS` |
 | `swap.js` | `GunSwap`: the chooser when you take a gun (found or bought) |
-| `witness.js` | `Witness` (the death replay's controls), `RP_SPEEDS` |
+| `witness.js` | `Witness` (the death replay's controls, for the live clip or a saved one: `saved` is its `ClipMeta`; **💾 Save** → `input.current.saveClip`, **🎬 Export video** → `exportClip`), `RP_SPEEDS` |
+| `clips.js` | `WitnessGallery` (the Bag's Witness tab: `.wclip` cards, thumbnail → play, ✏️ Rename inline, 🗑️ then Delete), `exportClip` (plays the replay once from the start as set up, copies the play area each frame (`V.onFrame`) into a canvas, `captureStream` + `SFX.stream()` into a `MediaRecorder`; MP4 if `pickMime` finds one, else WebM through `toMp4`, ffmpeg.wasm from jsdelivr), `saveVideo` (the app's `window.CaveApp` bridge, or a download), `fileName` |
 | `vendshop.js` | `VendShop`: a vending machine's menu for any `ShopDef` (collection grid in groups, unlock button, the selected card, "Dispense selected"), `useMenuNav` (the right stick is a pointer past `MENU_PTR`: `menuPointer` maps it out to the furthest screen corner, `snapTo` pulls it gently onto the nearest button, a thin ring `.mptr` shows it, it lights that `[data-nav]` and presses it on release; a plain tap `input.current.menuTap` presses the lit one: right-stick tap, r/f/enter; arrows step with `navStep`) |
 | `modshop.js` | `modShop` (the mods' `ShopDef`), `SHOP_DEFS` (by `SHOPS` key), `CrystalIcon` |
 | `gunshop.js` | `GunVend`: the gun machine's menu (three `Reel`s of `LO.gunShop`, the selected `GunCard`, Buy / Reroll / Boosted; reels stop one at a time, `REEL_*`; `Sparks` on a boosted spin). `SHOP_MENUS` (in `modshop.js`) maps each `SHOPS` key to its menu; `useMenuNav` (vendshop.js) is the shared stick/key handling |
-| `exosuit.js` | `Bag` (the Bag's two tabs, `.btabs`: the `Editor`, which takes a `tabs` element to put at its foot, and the Exo Suit), `ExoSuit` (portrait, stats, `SUIT_SLOTS` slots `[data-xslot]`, the perk grid `.xperk`; drag a carried perk to a slot, a slot to a slot or off; tap for `PerkCard`; sets `perksDirty`) |
+| `exosuit.js` | `Bag` (the Bag's three tabs, `.btabs`: the `Editor`, which takes a `tabs` element to put at its foot, the Exo Suit, and Witness = `WitnessGallery`; `tab0` picks the one it opens on), `ExoSuit` (portrait, stats, `SUIT_SLOTS` slots `[data-xslot]`, the perk grid `.xperk`; drag a carried perk to a slot, a slot to a slot or off; tap for `PerkCard`; sets `perksDirty`) |
 | `devpanel.js` | `DevPanel`, `DevRow`, `JellyPreview` (runs the real `jellyStep`/`drawJelly`), `SpawnGun` |
 
 CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).
@@ -97,4 +98,8 @@ CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).
   (`.dbg.newcave`) → `input.current.newCave`. **All mods** (`.dbg`) flips `LO.debug`.
   `JellyPreview` sits sticky above the jelly colour rows.
 - **Death:** "Tap the right stick to restart"; the **WITNESS YOURSELF** button (`.witnessbtn`) opens
-  `Witness`; `.app.witnessing` hides the controls.
+  `Witness`; `.app.witnessing` hides the controls (and the gold). A saved replay (`playClip`: the
+  gallery's tap) closes the Bag, plays in the same `Witness`, and Close reopens the Bag on its Witness
+  tab (`bagTab`).
+- **Exporting a video**: the scene doesn't take drags while it records (the framing holds); the
+  video is only the canvas's play area, so the panel and its progress bar never show in it.

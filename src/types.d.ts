@@ -369,6 +369,7 @@ interface DevKnobs {
   vol: number; amb: number; jetVol: number; vSpell: number; vBoom: number; vHit: number;
   vEnemy: number; vEnemyFire: number; vWorld: number; vDrip: number; vStep: number; vUi: number;
   bagSpeed: number;
+  witPad: number; witKbps: number;
   holoAlpha: number; bloom: number; bloomBlur: number; bloomBright: number;
   holoMin: number; holoMax: number; holoFade: number; holoC1x: number; holoC1y: number; holoC2x: number; holoC2y: number;
   due1: number;
@@ -520,6 +521,7 @@ interface Player {
   dead: boolean; kick: number; shieldReady: boolean; shieldT: number; jx: number; jy: number;
   aim: { on: boolean; show: boolean; nx: number; ny: number; vis?: number };   // vis: the aim line's fade with the push
   burn?: number; burnAcc?: number;
+  rag?: import('./world/ragdoll.js').Ragdoll | null;   // dead: the body (corpseStep)
 }
 
 /** one thumbstick's state, written by the Stick (ui/hud.js), read by step */
@@ -536,12 +538,41 @@ interface Prompt {
   green?: number;             // a green crystal (the hidden room's prize): the floor it came from
   shop?: string;              // a vending machine's menu (SHOPS key): no card, just the line
 }
-/** the death replay's span, once recorded: from t0 to t1, the death at `death` (REC's clock) */
-interface Witness { t0: number; t1: number; death: number }
+/** the death replay's span, once recorded: from t0 to t1, the death at `death` (REC's clock): the clip itself */
+type Witness = Clip;
+/** a death replay to play (systems/recorder.js drawReplay): the live one (REC's own arrays) or a saved one
+ * blown back up (replay/clip.js clipHydrate), which brings its floor (`scene`), camera limits and background */
+interface Clip {
+  t0: number; t1: number; death: number;
+  snaps: RpSnap[]; patches: RpPatch[];
+  tBase: Uint8ClampedArray<ArrayBuffer>; dBase: Uint8ClampedArray<ArrayBuffer> | null;
+  fogBase: Uint8Array; fogLog: ArrayLike<number>;
+  sfx: any[];                 // [t, SFX name, args] (recorder.js recSfx)
+  scene?: Record<string, any> | null;   // saved: the floor's SCENE_KEYS and `held`
+  lim?: number[] | null;      // saved: where the camera's centre may go [x0, y0, x1, y1]
+  bgPx?: Uint8ClampedArray | null; bgW?: number; bgH?: number;   // saved: the background's pixels
+  bgC?: HTMLCanvasElement | null;   // and on a canvas, once played
+  id?: string; name?: string;
+}
+/** a clip as stored (replay/clip.js clipCrop): cut to a box round your path */
+interface SavedClip {
+  v: number; t0: number; t1: number; death: number; lim: number[];
+  box: number[]; fbox: number[];
+  tBase: Uint8ClampedArray<ArrayBuffer>; dBase: Uint8ClampedArray<ArrayBuffer> | null;
+  fogBase: Uint8Array; fogLog: Float64Array; patches: RpPatch[]; snaps: RpSnap[]; sfx: any[];
+  scene: Record<string, any>; bg: Uint8ClampedArray | null; bgW: number; bgH: number;
+}
+/** a saved clip's card in the gallery (save/clips.js) */
+interface ClipMeta { id: string; name: string; date: number; floor: number; secs: number; bytes: number; thumb: string }
 /** the replay's view (App's Witness sets it; draw() reads it as G.RPV) */
 interface ReplayView {
   t: number; speed: number; playing: boolean; fog: boolean; follow: boolean; loop?: boolean;
   zoom: number; cx: number; cy: number; unit?: number; panelH?: number;
+  clip: Clip;                 // what's playing
+  playPx?: number;            // the play area's height in canvas px (drawCamera sets it)
+  onFrame?: ((c: HTMLCanvasElement, playPx: number) => void) | null;   // each drawn frame (the video export)
+  st?: number;                // the clock at the last sound check (rpSound)
+  mute?: boolean;
 }
 /** App's input ref: the React bridge (ui/app.js makes it, Game and the systems read and write it) */
 interface GameInput {
@@ -560,6 +591,8 @@ interface GameInput {
   mouse: { x: number; y: number; inside: boolean; down: boolean };
   // set as it runs
   hud?: Hud; witness?: Witness | null; replay?: ReplayView | null; spawnGun?: number;
+  saveClip?: (C: Clip) => Promise<ClipMeta | null>;   // Game: keep a death replay (systems/recorder.js clipKeep)
+  clipFromSaved?: (S: SavedClip) => Clip;            // Game: a stored clip ready to play
   requestRestart?: () => void; promptBottom?: number; newCave?: boolean; ctlH?: number;
   mapOpen?: boolean; floor?: number; saveRun?: () => void;
   perkCollection: string[];   // the perks unlocked at the perk machine, across runs
@@ -576,11 +609,15 @@ interface Recorder {
   tBase: Uint8ClampedArray<ArrayBuffer> | null; dBase: Uint8ClampedArray<ArrayBuffer> | null;
   fogBase: Uint8Array | null; fogPrev: Uint8Array | null;
   deathT: number; done: boolean;
+  sfx: any[];                 // the sounds made: [t, SFX name, args]
 }
 /** the replay's player: its own terrain canvases and fog (rpTerrain) */
 interface ReplayPlayer {
   tC: HTMLCanvasElement | null; dC: HTMLCanvasElement | null; n: number; at: number;
   fog: Uint8Array | null; fireT: Uint16Array | null;
+  clip: Clip | null;          // the clip the canvases were built for
+  mat: Uint8Array | null;     // the rock at the replay's time, from the terrain's pixels (solid where opaque)
+  loops: Map<number, any>;    // the sound loops playing for the replay, by recorded id
 }
 
 /**

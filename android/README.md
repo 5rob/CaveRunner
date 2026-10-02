@@ -53,7 +53,9 @@ Pages URL (also playable in a phone browser):
 ## Notes
 
 - Updating the **game** never touches the shell. You only reinstall the APK if
-  the shell code itself changes (rare). The committed debug keystore means a new
+  the shell code itself changes (rare; last: v124 added `VideoSaver`, the `window.CaveApp` bridge
+  that saves an exported Witness video into Movies/CaveRunner — `videoBegin`, `videoChunk` (base64
+  pieces), `videoEnd`; an older shell just says to reinstall). The committed debug keystore means a new
   shell installs in place without losing your saved game.
 - Offline / away from a signal: the app just plays the version it has and checks
   again next time it can reach Pages.

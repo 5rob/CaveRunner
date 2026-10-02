@@ -12,3 +12,8 @@ declare const VERSION: string;
 interface Window { webkitAudioContext?: typeof AudioContext }
 // the browser test page's hooks (tests/build.js sets __TEST; src/game/testhook.js makes __lvl)
 interface Window { __TEST?: boolean; __TEST_VOID?: boolean; __lvl?: any; __in?: any }
+// the Android app's bridge (android/.../MainActivity.java VideoSaver): an exported Witness video, in
+// base64 pieces, into the phone's Movies/CaveRunner. Missing in a browser and in an older app.
+interface Window { CaveApp?: { videoBegin(name: string, mime: string): boolean; videoChunk(b64: string): boolean; videoEnd(): string } }
+// ffmpeg.wasm's UMD build, loaded from the CDN only if a video has to be converted (ui/clips.js toMp4)
+interface Window { FFmpegWASM?: any }

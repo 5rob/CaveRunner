@@ -5,6 +5,28 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v124 — saved death replays, video export, the ragdoll
+Released 2026-10-02.
+
+- **Your corpse is a ragdoll** (`world/ragdoll.js`: eight joints, sticks, the rock, floor friction,
+  `RAG_SLUMP` so it topples rather than sits), drawn solid with the runner's parts (`drawRagdoll`);
+  it used to freeze at 35% alpha. Dead, `movePlayer` runs `corpseStep` and you follow the hip; a
+  blast after death throws it (`explode` → `ragPush`). The replay copies it (`rag`, `joints` in `RP_DEEP`).
+- **The replay has sound**: `recSfxHook` wraps `SFX`'s one-shots and loops once for the page, the
+  recorder keeps `REC.sfx` and each snapshot's loops; `rpSound` plays them as the clock passes.
+- **Saved replays**: the live replay is a `Clip` now (`input.current.witness`, `V.clip`); **💾 Save**
+  (`clipKeep`) cuts it to the box round your path plus `DEV.witPad` (`clipCrop`), with the floor's
+  `SCENE_KEYS`, the gun in hand and the background, packs it (gzipped JSON, `clipPack`: ~0.5–1.5 MB
+  for 13s, from ~8 MB) into IndexedDB (`save/clips.js`) with a thumbnail of the death. The Bag's
+  third tab **Witness** (`WitnessGallery`) lists them: tap to play full screen (camera held inside
+  what was kept), ✏️ Rename, 🗑️ Delete.
+- **🎬 Export video** (`exportClip`): plays it once as set up, records the play area and the sound
+  (`SFX.stream()`), MP4 straight from `MediaRecorder` or WebM → MP4 with ffmpeg.wasm; saved through
+  the app's new bridge (`VideoSaver`, reinstall the APK once) or downloaded in a browser.
+- A replay now sees the rock as it was (`RT.mat` from the terrain's pixels), not today's.
+- Dev → **Witness (death replays)**: `witPad` (80), `witKbps` (6000).
+- The gold no longer shows over the replay.
+
 ## v123 — Dev knobs for the menu pointer
 Released 2026-10-02.
 

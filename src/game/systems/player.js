@@ -13,9 +13,10 @@ import { activePerks, perkBag } from '../../data/perks.js';
 import { DEV, kr, spr } from '../../dev/knobs.js';
 import { clearSave } from '../../save/save.js';
 import { archNear } from '../../world/decorate.js';
+import { ragHip, ragNew, ragStep } from '../../world/ragdoll.js';
 import { paintFog } from './fog.js';
 import { burst, toast } from './particles.js';
-import { boxHit } from './terrain.js';
+import { boxHit, solidAt } from './terrain.js';
 import { webNear } from './webs.js';
 
 // ---- perks ----
@@ -110,12 +111,26 @@ export function sputterStep(st, dt, fuel, on, rnd) {
 // the stick when nothing is pushing it (step() steers you with this once you are dead)
 export const NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
 
+// ---- dead: the body is a ragdoll (world/ragdoll.js) that falls, slumps and is thrown about by
+// blasts (explode pushes it); you (W.p) follow its hip, so the camera and the recorder do too ----
+/** @param {World} W @param {number} dt */
+export function corpseStep(W, dt) {
+  const p = W.p;
+  if (!p.rag) p.rag = ragNew(p.x, p.y, PW, p.face || 1, p.vx, p.vy);
+  ragStep(p.rag, dt, (x, y) => solidAt(W, x, y));
+  const hip = ragHip(p.rag);
+  p.x = hip.x - PW / 2; p.y = hip.y - 15; p.vx = hip.vx; p.vy = hip.vy;
+  p.flame = 0; p.jet = 0; p.onGround = false;
+}
+
 // ---- moving you (a part of step) ----
 // The stick (or the keys), the jetpack and its fuel, steering (walking, flying, climbing a
 // vine, an arched vine or a web line), moving against the pixel terrain, and your footsteps.
 /** @param {World} W @param {GameCtx} G @param {StepFrame} F */
 export function movePlayer(W, G, F) {
   const { dt } = F;
+  if (W.p.dead) { corpseStep(W, dt); return; }
+  if (W.p.rag) W.p.rag = null;
   // movement: thumbstick first, otherwise keyboard (full strength)
   let L = G.input.current.left;
   if (!L.active) {

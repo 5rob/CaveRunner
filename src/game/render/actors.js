@@ -4,7 +4,7 @@
 // with the torch, the crosshair, Permanent Shield and Angry Ghost (the spider's silk, drawn just
 // before the creatures, is drawSilk in game/creatures/spider.js)
 
-import { drawGun, drawRunner, drawTorch } from '../../art/sprites.js';
+import { drawGun, drawRagdoll, drawRunner, drawTorch } from '../../art/sprites.js';
 import { COL, PH, PW } from '../../core/consts.js';
 import { drawEnemy } from '../../creatures/draw.js';
 import { ELITE_TINT } from '../../data/creatures.js';
@@ -119,11 +119,12 @@ export function drawAim(W, G, F) {
 export function drawPlayer(W, G, F) {
   const { pcx, pcy, held, ax, ay, gy } = F;
   // player
-  if (W.p.dead) G.ctx.globalAlpha = 0.35;
   const flashing = W.p.hitT > 0 && Math.floor(W.p.hitT * 30) % 2 === 0;
   const running = W.p.onGround && Math.abs(W.p.vx) > 15;
   const gait = running ? Math.sin(W.time * 15) : 0;
-  drawRunner(G.ctx, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing);
+  // dead: the ragdoll (from the frame after the death; drawn without the snap nudge, it's in the world)
+  if (W.p.dead && W.p.rag) { G.ctx.translate(-F.snapX, -F.snapY); drawRagdoll(G.ctx, W.p.rag); G.ctx.translate(F.snapX, F.snapY); }
+  else drawRunner(G.ctx, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing);
   if (!W.p.dead) drawGun(G.ctx, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
   // the torch, in the hand the gun is not in
   if (!W.p.dead) { const th = torchHand(W); drawTorch(G.ctx, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.torchP, W.leanX, W.leanY, W.time); }
