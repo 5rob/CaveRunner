@@ -61,6 +61,7 @@ interface Gun {
   manaMax: number; manaRegen: number;
   spread: number; speedMul: number; multi: number; shuffle: boolean;
   slots: (string | null)[];   // mod ids, null for an empty slot
+  boosted?: boolean;          // rolled by the gun machine's crystal reroll (spells/gunshop.js boostGun)
   hue?: number;               // its colour; a gun without one (an old save, a preview) hashes its name (gunHue)
   // Always there on a gun in play; optional only because the gun makers build the object
   // first and fill these in after (makeGun sets mana, resetGun the rest):
@@ -124,6 +125,7 @@ interface CreatureKind {
   hp: number; dmg: number; bspd: number; gold: number; range: number; cd: number;
   tele: number; shots: number; r: number; spd: number; aggro: number;
   kp: string | null; glow: string | null;
+  elite?: boolean;            // an elite (eliteOf): boosted, gold-tinted, drops a red crystal
   // no `fire`: enemyFor doesn't copy CreatureType's (REFACTOR.md, Found along the way)
 }
 
@@ -331,9 +333,12 @@ interface Loadout {
   due?: number;               // when it must be repaid: Date.now() ms, the device's clock (0 = no debt)
   maxBonus: number;           // the +25 hearts: raises max health only
   usedLives: number;
+  gunShop?: GunOffer;         // the gun machine's offer on this floor (spells/gunshop.js)
   crystals?: number[];        // red crystals carried: the floor each came from (game/systems/shops.js)
   debug: boolean;             // Dev → All mods
 }
+/** the gun machine's offer (spells/gunshop.js): a sold gun is null; the reroll counts are this floor's */
+interface GunOffer { floor: number; guns: (Gun | null)[]; rerolls: number; boosts: number }
 /** a save read back: readSave (save/save.js) */
 interface SaveData {
   loadout: Loadout; floor: number; hp: number | null;
@@ -551,7 +556,7 @@ interface GameInput {
   collection: string[];       // the mods unlocked, kept across runs (save/save.js loadCollection)
   shopOpen?: string | null;   // a vending machine's menu is up: its SHOPS key (game/systems/shops.js)
   menuTap?: (() => void) | null;   // a menu is up: a right-stick tap (or r/f/enter) confirms in it
-  dispense?: { shop: string, id: string } | null;   // bought: the machine pops it out (stepShops)
+  dispense?: { shop: string, id?: string, gun?: Gun } | null;   // bought: the machine pops it out (stepShops)
 }
 
 /** the death replay's recorder (systems/recorder.js) */

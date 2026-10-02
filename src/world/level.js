@@ -8,11 +8,10 @@ import {
   SHOP_FLOOR, SHOP_ROOF, SHOP_TOP, WW
 } from '../core/consts.js';
 import { mix } from '../core/util.js';
-import { NATURAL_ONLY, enemyFor, rosterFor } from '../data/creatures.js';
+import { ELITE_CHANCE, NATURAL_ONLY, eliteOf, enemyFor, rosterFor } from '../data/creatures.js';
 import { PERK_IDS } from '../data/perks.js';
 import { themeFor } from '../data/themes.js';
 import { kr } from '../dev/knobs.js';
-import { gunLevel, makeGun } from '../spells/guns.js';
 import { decorate } from './decorate.js';
 import { ratNests } from './nests.js';
 import { paveWorks, strataCave, timberWorks } from './strata.js';
@@ -505,10 +504,11 @@ export function makeLevel(seed, floor, owned) {
     const x = cx * CELL, y = cy * CELL;
     if (Math.hypot(x - start.x, y - start.y) < 200) continue;
     if (enemies.some(e => Math.hypot(e.x - x, e.y - y) < 90)) continue;
-    const k = waiting || enemyFor(roster[Math.floor(rnd() * roster.length)], floor);
+    let k = waiting || enemyFor(roster[Math.floor(rnd() * roster.length)], floor);
     waiting = null;
     if (NATURAL_ONLY[k.act] && built(cx, cy)) { if (++waits < 300) waiting = k; continue; }
     waits = 0;
+    if (rnd() < ELITE_CHANCE) k = eliteOf(k);   // a few elites: gold, tougher, carrying a crystal
     enemies.push({ x, y, ty: y, r: k.r, phase: rnd() * 6.28, hp: k.hp, hpMax: k.hp,
       cd: 1 + rnd() * 2, flash: 0, lx: 0, ly: 1, hx: x, hy: y, tgt: null, rest: rnd() * 3,
       k, touch: 0, charge: 0 });
@@ -542,14 +542,11 @@ export function makeLevel(seed, floor, owned) {
     const x = cx * CELL, y = (gy + 1) * CELL - 9;
     if (Math.hypot(x - start.x, y - start.y) < 200) continue;
     if (pickups.some(q => Math.hypot(q.x - x, q.y - y) < PICKUP_GAP)) continue;
-    if (gunsLeft && (!modsLeft || rnd() < gunsLeft / (gunsLeft + modsLeft))) {
-      gunsLeft--;
-      pickups.push({ kind: 'gun', x, y, gun: makeGun(rnd, gunLevel(floor, rnd)), t: rnd() * 6.28 });
-    } else {
-      modsLeft--;
-      // not a mod: a red crystal, which the shop's machine turns into an unlock off this floor's table
-      pickups.push({ kind: 'crystal', x, y, floor, t: rnd() * 6.28 });
-    }
+    // not guns or mods any more: red crystals (the shop's machines turn them into unlocks and
+    // boosted rerolls). Still counted as the two kinds, so the spread over the cave is the same
+    if (gunsLeft && (!modsLeft || rnd() < gunsLeft / (gunsLeft + modsLeft))) gunsLeft--;
+    else modsLeft--;
+    pickups.push({ kind: 'crystal', x, y, floor, t: rnd() * 6.28 });
   }
 
   // pass 2 and 3: decoration, on its own random stream so the cave above is untouched

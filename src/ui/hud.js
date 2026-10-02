@@ -80,6 +80,18 @@ export function RKey() {
     h('text', { x: 15, y: 15, textAnchor: 'middle', dominantBaseline: 'central', fill: '#fff',
       fontSize: 14, fontWeight: 300, fontFamily: 'system-ui, sans-serif' }, 'R'));
 }
+// A red crystal: gold's lumpy nugget, bigger, dark red, white glints (CRYSTAL_PAL in art/sprites.js)
+/** @param {{ size?: number }} props */
+export function CrystalIcon({ size }) {
+  const s = size || 26;
+  return h('svg', { className: 'crystal', viewBox: '0 0 24 24', width: s, height: s, 'aria-hidden': true },
+    h('path', { d: 'M12 2.5 L19.5 6 L21.5 13 L17 20.5 L8.5 21.5 L3 15.5 L4 7.5 Z', fill: '#2a0306' }),
+    h('path', { d: 'M12 3.6 L18.8 6.7 L20.4 13 L16.4 19.6 L8.9 20.5 L4 15.1 L5 8 Z', fill: '#6e0a12' }),
+    h('path', { d: 'M5.6 8.4 L12 4.4 L17.6 7.3 L13.5 11.5 L7 12.2 Z', fill: '#a3162a' }),
+    h('rect', { x: 7.4, y: 7.2, width: 2.6, height: 2.6, fill: '#fff' }),
+    h('rect', { x: 14.2, y: 13.6, width: 1.5, height: 1.5, fill: '#fff' }));
+}
+
 /** @param {{ size: number, kind: 'left' | 'right', input: { current: GameInput }, refresh: () => void }} props */
 export function Stick({ size, kind, input, refresh }) {
   const [knob, setKnob] = useState({ x: 0, y: 0, jet: false });

@@ -53,6 +53,9 @@ export function damageEnemy(W, j, dmg) {
   if (A && A.die && A.die(W, e)) return;
   // its gold, split into big, medium and small nuggets that add up to it
   spillGold(W.coins, e.x, e.ty, Math.round((e.k.gold + Math.floor(Math.random() * 3)) * W.pb.gold));
+  // an elite also drops a red crystal, thrown up out of it
+  if (e.k.elite) W.pickups.push({ kind: 'crystal', x: e.x, y: e.ty, floor: W.floor, t: Math.random() * 6.28,
+    vx: (Math.random() - 0.5) * 80, vy: -160, cool: 1 });
   // a rat drops what it was carrying home
   if (e.carry > 0) spillGold(W.coins, e.x, e.ty, e.carry, { vx: 30, vy: 110 });
 }

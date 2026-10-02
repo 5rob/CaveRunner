@@ -3,6 +3,8 @@
 // (ROSTERS, rosterFor) and one creature's floor-scaled stats (enemyFor). A floor's roster is
 // picked by the floor number, never the seed.
 
+import { mixHex } from '../core/util.js';
+
 // ---- creatures ----
 // Who lives on a floor. Floors 1-10 each own a fixed roster of 2-6 of these, and the
 // roster is the same on every run, so the thing that killed you on floor 6 is the
@@ -143,6 +145,20 @@ export function enemyFor(id, floor) {
     r: c.r, spd: c.spd, aggro: c.aggro || 300, kp: c.kp || null, glow: c.glow || null,
   };
 }
+// ---- elites ----
+// A few creatures on every floor are elites: tougher, harder hitting, tinted gold, and worth
+// ELITE_GOLD times the gold plus a red crystal when they die (enemies.js damageEnemy)
+export const ELITE_CHANCE = 0.05, ELITE_HP = 2.5, ELITE_DMG = 1.5, ELITE_GOLD = 4;
+export const ELITE_TINT = '#ffc93c';
+// an elite's stats: a copy of the kind, boosted, its colours pulled towards gold
+/** @param {CreatureKind} k @returns {CreatureKind} */
+export function eliteOf(k) {
+  const t = (/** @type {string} */ c) => mixHex(c, ELITE_TINT, 0.45);
+  return Object.assign({}, k, { elite: true,
+    hp: Math.round(k.hp * ELITE_HP), dmg: Math.max(1, Math.round(k.dmg * ELITE_DMG)), gold: Math.round(k.gold * ELITE_GOLD),
+    col: { a: t(k.col.a), b: t(k.col.b), c: t(k.col.c), eye: k.col.eye } });
+}
+
 // the acts that hunt you: they notice you on a sightline within their aggro reach, keep
 // coming, and only lose you far away (see the enemy loop)
 /** @type {Record<string, number>} */

@@ -13,10 +13,9 @@ import { GunCard, ModCard, PerkCard } from './cards.js';
 import { DevPanel, SpawnGun } from './devpanel.js';
 import { Editor, GunIcon } from './editor.js';
 import { h, useEffect, useRef, useState } from './h.js';
-import { DueClock, RKey, Stick, deckLayout, fmtGold, holdPress } from './hud.js';
-import { CrystalIcon, SHOP_DEFS } from './modshop.js';
+import { CrystalIcon, DueClock, RKey, Stick, deckLayout, fmtGold, holdPress } from './hud.js';
+import { SHOP_MENUS } from './modshop.js';
 import { GunSwap } from './swap.js';
-import { VendShop } from './vendshop.js';
 import { Witness } from './witness.js';
 
 // the perk column over the map button: a pip's size and gap, and how close to the top of the
@@ -229,7 +228,8 @@ export function App() {
       // gold, top centre: "g" not "gold", truncated to k/M/B (1234 -> 1.2k). Under it in red, what
       // you owe the company for the level you're on, in full (64,000,000,000), and the time left to settle it
       h('div', { className: 'gold' },
-        h('div', { className: 'purse' }, fmtGold(LO.gold), h('span', null, 'g')),
+        h('div', { className: 'purse' }, fmtGold(LO.gold), h('span', null, 'g'),
+          h('span', { className: 'crys' }, h(CrystalIcon, { size: 15 }), (LO.crystals || []).length)),
         LO.debt > 0 ? h('div', { className: 'debt' }, '-' + Math.trunc(LO.debt).toLocaleString('en-US'), h('span', null, 'g owed')) : null,
         LO.debt > 0 && LO.due ? h(DueClock, { due: LO.due }) : null),
       h('button', { className: 'devbtn', title: 'Dev tools',
@@ -301,7 +301,7 @@ export function App() {
       onRestart: () => { setDevOpen(false); setConfirmAt(performance.now()); },
       onSpawnGun: () => { setDevOpen(false); setSpawnOpen(true); } }) : null,
     spawnOpen ? h(SpawnGun, { input, close: () => setSpawnOpen(false) }) : null,
-    shopOpen && SHOP_DEFS[shopOpen] ? h(VendShop, { key: shopOpen, def: SHOP_DEFS[shopOpen](input), input, close: closeShop }) : null,
+    shopOpen && SHOP_MENUS[shopOpen] ? h(SHOP_MENUS[shopOpen], { key: shopOpen, input, close: closeShop }) : null,
     found ? h(GunSwap, { input, refresh, onDone: () => { setGunInfo(-1); refresh(); } }) : null,
     perkInfo >= 0 && PERKS[LO.perks[perkInfo]]
       ? h('div', null,

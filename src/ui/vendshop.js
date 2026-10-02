@@ -50,6 +50,45 @@ export function navStep(root, cur, dx, dy) {
   return best;
 }
 
+// A machine menu's stick and key handling, for every menu: the right stick's tap (and r/f/enter)
+// presses the highlighted button (`press(focus)`), the left stick or the arrow keys move the
+// highlight (navStep: once on pointing, again if held), and the highlight is kept in view.
+// `press` and `focus` are read through refs, so the hooks always see the latest render's
+/** @param {{ current: GameInput }} input @param {{ current: HTMLElement | null }} root @param {string} focus @param {(f: string) => void} setFocus @param {(key: string) => void} press */
+export function useMenuNav(input, root, focus, setFocus, press) {
+  const pressRef = useRef(press), focusRef = useRef(focus);
+  pressRef.current = press; focusRef.current = focus;
+  useEffect(() => {
+    input.current.menuTap = () => pressRef.current(focusRef.current);
+    return () => { input.current.menuTap = null; };
+  }, []);
+  useEffect(() => {
+    let raf, dir = '', next = 0;
+    const tick = () => {
+      const L = input.current.left, K = input.current.keys;
+      let dx = 0, dy = 0;
+      if (L.active && L.mag > NAV_MAG) {
+        if (Math.abs(L.nx) > Math.abs(L.ny)) dx = Math.sign(L.nx); else dy = Math.sign(L.ny);
+      } else if (K.a || K.d || K.w || K.s) { dx = (K.d ? 1 : 0) - (K.a ? 1 : 0); dy = (K.s ? 1 : 0) - (K.w ? 1 : 0); if (dx) dy = 0; }
+      const d = dx + ',' + dy, now = performance.now() / 1000;
+      if (!dx && !dy) dir = '';
+      else if (d !== dir || now >= next) {
+        next = now + (d !== dir ? REPEAT_0 : REPEAT);
+        dir = d;
+        const to = root.current && navStep(root.current, focusRef.current, dx, dy);
+        if (to) { setFocus(to); SFX.fx('prompt'); }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  useEffect(() => {
+    const el = root.current && root.current.querySelector('[data-nav="' + focus + '"]');
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+  }, [focus]);
+}
+
 /** @param {{ def: ShopDef, input: { current: GameInput }, close: () => void }} props */
 export function VendShop({ def, input, close }) {
   const firstOwned = () => { for (const g of def.groups) for (const id of g.ids) if (def.owned(id)) return id; return null; };
@@ -83,41 +122,7 @@ export function VendShop({ def, input, close }) {
     else if (key.startsWith('t:')) { setSel(key.slice(2)); setMsg(''); SFX.fx('switch'); }
     bump(n => n + 1);
   };
-  // the right stick's tap (and r/f/enter) presses the highlighted button; read through a ref so
-  // the hook always sees this render's state
-  const pressRef = useRef(press), focusRef = useRef(focus);
-  pressRef.current = press; focusRef.current = focus;
-  useEffect(() => {
-    input.current.menuTap = () => pressRef.current(focusRef.current);
-    return () => { input.current.menuTap = null; };
-  }, []);
-  // the left stick (or the arrow keys) moves the highlight: once on pointing, again if held
-  useEffect(() => {
-    let raf, dir = '', next = 0;
-    const tick = () => {
-      const L = input.current.left, K = input.current.keys;
-      let dx = 0, dy = 0;
-      if (L.active && L.mag > NAV_MAG) {
-        if (Math.abs(L.nx) > Math.abs(L.ny)) dx = Math.sign(L.nx); else dy = Math.sign(L.ny);
-      } else if (K.a || K.d || K.w || K.s) { dx = (K.d ? 1 : 0) - (K.a ? 1 : 0); dy = (K.s ? 1 : 0) - (K.w ? 1 : 0); if (dx) dy = 0; }
-      const d = dx + ',' + dy, now = performance.now() / 1000;
-      if (!dx && !dy) dir = '';
-      else if (d !== dir || now >= next) {
-        next = now + (d !== dir ? REPEAT_0 : REPEAT);
-        dir = d;
-        const to = root.current && navStep(root.current, focusRef.current, dx, dy);
-        if (to) { setFocus(to); SFX.fx('prompt'); }
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-  // keep the highlighted cell in view as it moves through the grid
-  useEffect(() => {
-    const el = root.current && root.current.querySelector('[data-nav="' + focus + '"]');
-    if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
-  }, [focus]);
+  useMenuNav(input, root, focus, setFocus, press);
 
   /** @param {string} key @param {string} cls */
   const navCls = (key, cls) => cls + (focus === key ? ' navon' : '');

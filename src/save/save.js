@@ -51,6 +51,10 @@ export function cleanLoadout(lo) {
     maxBonus: Math.max(0, num(lo.maxBonus, 0)),
     usedLives: Math.max(0, num(lo.usedLives, 0)),
     // red crystals carried: the floor each came from (the shop's machine turns one into an unlock)
+    // the gun machine's offer: its guns cleaned like yours (a sold one stays null)
+    gunShop: lo.gunShop && typeof lo.gunShop === 'object' && Array.isArray(lo.gunShop.guns)
+      ? { floor: num(lo.gunShop.floor, 0), guns: lo.gunShop.guns.map(cleanGun), rerolls: Math.max(0, num(lo.gunShop.rerolls, 0)),
+          boosts: Math.max(0, num(lo.gunShop.boosts, 0)) } : undefined,
     crystals: (Array.isArray(lo.crystals) ? lo.crystals : []).filter(f => Number.isInteger(f) && f > 0),
     debug: !!lo.debug,
   };

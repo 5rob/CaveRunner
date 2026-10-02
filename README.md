@@ -165,7 +165,7 @@ heal on a floor is free; after that it costs 100 gold, and each one after costs
 1.75 times the last (100, 175, 305, 535…). Deeper floors raise the price the same
 way they raise what enemies pay out. A new floor's shop starts it free again.
 
-Mods come from the **vending machine** in the middle of the room, the one with a
+Mods come from the **vending machine** just right of the middle of the room, the one with a
 flickering ⚙️ hologram on its glass. Stand at it and "Tap R to shop" opens its menu over
 the screen (the game pauses). The top half is your **collection**: a cell for every mod,
 grouped by rarity, empty until you unlock it. Under it, the **red crystal** button: hand
@@ -176,8 +176,19 @@ copy and the menu closes and the mod pops out of the bottom of the machine onto 
 for you to pick up. Tap things directly, or use the sticks: the left stick moves the
 highlight, a tap on the right stick presses it (keyboard: arrows, and R, F or Enter).
 
-**Red crystals** lie about the cave where mods used to: a big dark-red nugget with white
-glints. Stand at one and tap the right stick to pocket it. Which spells turn up follows Noita's own spawn table, deeper floors handing out rarer ones — and the very strongest (Black Hole and friends) never appear before floor 4. Your **Bag** opens anywhere,
+Guns come from the second machine, in the middle of the room, with a gun hologram. Its menu offers **three
+guns** from the floor's pool, stacked on the left with their prices (worked out from their
+rolled stats and their level); the selected one's full stat sheet and mod grid is on the
+right. **Buy selected** pops it out of the machine onto the floor. **Reroll** spins all three
+again for gold, dearer each time on the same floor; **Boosted** spins them for red crystals
+(one, then two, then three… on a floor) and rolls guns from deeper levels with better stats.
+The guns spin like slot-machine reels and lock in one at a time with a thud; a boosted spin
+goes faster, with red sparks streaming past.
+
+**Red crystals** lie about the cave where guns and mods used to: a big dark-red nugget with
+white glints. Stand at one and tap the right stick to pocket it. **Elite** creatures — a few
+on every floor, tinted gold with a glow — are tougher, hit harder, drop four times the gold
+and a red crystal. The crystals you carry are counted at the top, next to your gold. Which spells turn up follows Noita's own spawn table, deeper floors handing out rarer ones — and the very strongest (Black Hole and friends) never appear before floor 4. Your **Bag** opens anywhere,
 but *changing* your setup — dragging mods, reordering guns — only works in the shop (or
 anywhere, with the Tinker perk); out in the cave the Bag is read-only. Enemies drop gold
 when they die, so a floor you clear pays for the next floor's shopping. **Gold seams** run

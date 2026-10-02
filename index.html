@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v118</title>
+<title>CaveRunner v119</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -539,13 +539,44 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .vbuy span{font:700 15px system-ui,sans-serif;color:#ffc93c}
 .vbuy.cant{opacity:.45}
 .crystalcard .pglyph{background:none;border:0}
+/* the red crystals you carry, beside your gold at the top */
+.gold .crys{display:inline-flex;align-items:center;gap:2px;margin-left:9px;font-size:.8em;color:#ff6a78}
+.gold .crys svg{display:block}
+.vcrys{display:inline-flex;align-items:center;gap:3px;font:700 14px system-ui,sans-serif;color:#ff6a78}
+
+/* ---- the gun machine's menu (ui/gunshop.js) ---- */
+.gmid{flex:1;min-height:0;display:flex;gap:10px}
+.greels{position:relative;flex:0 0 38%;display:flex;flex-direction:column;justify-content:space-around;gap:6px}
+.greel{display:flex;flex-direction:column;align-items:stretch;gap:3px;border-radius:12px;padding:5px;cursor:pointer;
+  border:1.5px solid rgba(255,255,255,0.12)}
+.greel.sel{border-color:#ff9a3c;background:rgba(255,154,60,0.1)}
+.greelwin{position:relative;height:64px;overflow:hidden;border-radius:9px;background:#05070a;
+  box-shadow:inset 0 10px 10px -6px rgba(0,0,0,0.9),inset 0 -10px 10px -6px rgba(0,0,0,0.9)}
+.gstrip{will-change:transform}
+.greelwin.spinning .gstrip{filter:blur(0.6px)}
+.gitem{height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.gitem .gicon{width:64px;height:32px}
+.gitem span{font:700 10px system-ui,sans-serif}
+.gitem.sold b{font:800 13px system-ui,sans-serif;color:rgba(233,236,242,0.35);letter-spacing:.1em}
+.gthud{position:absolute;inset:0;pointer-events:none;border-radius:9px;animation:gthud .35s ease-out forwards}
+@keyframes gthud{0%{box-shadow:inset 0 0 0 2px #fff;background:rgba(255,255,255,0.18)}100%{box-shadow:inset 0 0 0 0 transparent;background:transparent}}
+.gprice{text-align:center;font:700 13px system-ui,sans-serif;color:#ffc93c}
+.gsparks{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.gcard{flex:1;min-width:0;overflow-y:auto}
+.gcard .pop.ingame{position:static;background:none;border:0;box-shadow:none;padding:0;max-height:none;overflow:visible}
+.gbtns{display:flex;flex-direction:column;gap:7px}
+.grow{display:flex;gap:7px}
+.grow .vbuy{flex:1;height:46px;padding:0 12px}
+.greroll{border-color:#ffc93c;background:rgba(255,201,60,0.12)}
+.gboost{border-color:#c8202c;background:rgba(160,20,40,0.25)}
+.gcost{display:inline-flex;align-items:center;gap:2px;color:#ff6a78 !important}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v118';</script>
+<script>const VERSION = 'v119';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -3206,6 +3237,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     switch: "vUi",
     ready: "vUi",
     prompt: "vUi",
+    reelThud: "vUi",
+    reelTick: "vUi",
     place: "vUi",
     coinland: "vUi",
     crit: "vSpell",
@@ -4091,6 +4124,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       steam: 200,
       whirl: 400,
       prompt: 150,
+      reelThud: 60,
+      reelTick: 45,
       place: 60,
       switch: 80,
       ready: 150,
@@ -4195,6 +4230,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       close(d, t) {
         hiss(d, t, rnd2(0.1, 0.15), 0.18, "bandpass", rnd2(2200, 2800), rnd2(900, 1300), 1.5, false, 0.03);
         tone(d, "sine", 900, 700, t, 0.04, 0.06);
+      },
+      // a slot-machine reel locking into place (the gun machine): a low thump and a latch click
+      reelThud(d, t) {
+        tone(d, "sine", rnd2(110, 130), 45, t, 0.16, 0.9, 3e-3);
+        hiss(d, t, 0.05, 0.35, "lowpass", 700, 200, 1);
+        tone(d, "square", rnd2(1500, 1800), 1200, t + 0.01, 0.02, 0.06);
+      },
+      // a reel spinning past one gun
+      reelTick(d, t) {
+        tone(d, "triangle", rnd2(2200, 2600), 1800, t, 0.015, 0.05);
       },
       place(d, t) {
         tone(d, "triangle", rnd2(850, 1e3), 700, t, 0.03, 0.12);
@@ -5813,6 +5858,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       kp: c.kp || null,
       glow: c.glow || null
     };
+  }
+  var ELITE_CHANCE = 0.05, ELITE_HP = 2.5, ELITE_DMG = 1.5, ELITE_GOLD = 4;
+  var ELITE_TINT = "#ffc93c";
+  function eliteOf(k) {
+    const t = (c) => mixHex(c, ELITE_TINT, 0.45);
+    return Object.assign({}, k, {
+      elite: true,
+      hp: Math.round(k.hp * ELITE_HP),
+      dmg: Math.max(1, Math.round(k.dmg * ELITE_DMG)),
+      gold: Math.round(k.gold * ELITE_GOLD),
+      col: { a: t(k.col.a), b: t(k.col.b), c: t(k.col.c), eye: k.col.eye }
+    });
   }
   var HUNTERS = { chase: 1, bomb: 1, spider: 1, jelly: 1, rat: 1 };
   var NATURAL_ONLY = { jelly: 1 };
@@ -7796,6 +7853,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       maxBonus: Math.max(0, num2(lo.maxBonus, 0)),
       usedLives: Math.max(0, num2(lo.usedLives, 0)),
       // red crystals carried: the floor each came from (the shop's machine turns one into an unlock)
+      // the gun machine's offer: its guns cleaned like yours (a sold one stays null)
+      gunShop: lo.gunShop && typeof lo.gunShop === "object" && Array.isArray(lo.gunShop.guns) ? {
+        floor: num2(lo.gunShop.floor, 0),
+        guns: lo.gunShop.guns.map(cleanGun),
+        rerolls: Math.max(0, num2(lo.gunShop.rerolls, 0)),
+        boosts: Math.max(0, num2(lo.gunShop.boosts, 0))
+      } : void 0,
       crystals: (Array.isArray(lo.crystals) ? lo.crystals : []).filter((f) => Number.isInteger(f) && f > 0),
       debug: !!lo.debug
     };
@@ -10808,6 +10872,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const A = ACTS[e.k.act];
     if (A && A.die && A.die(W, e)) return;
     spillGold(W.coins, e.x, e.ty, Math.round((e.k.gold + Math.floor(Math.random() * 3)) * W.pb.gold));
+    if (e.k.elite) W.pickups.push({
+      kind: "crystal",
+      x: e.x,
+      y: e.ty,
+      floor: W.floor,
+      t: Math.random() * 6.28,
+      vx: (Math.random() - 0.5) * 80,
+      vy: -160,
+      cool: 1
+    });
     if (e.carry > 0) spillGold(W.coins, e.x, e.ty, e.carry, { vx: 30, vy: 110 });
   }
   function stepEnemies(W, G, F) {
@@ -12127,6 +12201,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const e of W.enemies) {
       const ey = e.ty;
       if (ey > W.camY + vh + 20 || ey < W.camY - 20 || e.x < W.camX - 20 || e.x > W.camX + vw + 20) continue;
+      if (e.k.elite) {
+        G.ctx.globalAlpha = 0.22 + 0.1 * Math.sin(W.time * 4 + e.x);
+        G.ctx.fillStyle = ELITE_TINT;
+        G.ctx.beginPath();
+        G.ctx.arc(e.x, ey, e.r + 6, 0, Math.PI * 2);
+        G.ctx.fill();
+        G.ctx.globalAlpha = 1;
+      }
       drawEnemy(G.ctx, e, W.time);
       if ((e.home || e.nest) && e.hp >= e.hpMax) continue;
       const hw = 20, hx = e.x - hw / 2, hy = ey - e.r - 9;
@@ -13445,13 +13527,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const x = cx * CELL, y = cy * CELL;
       if (Math.hypot(x - start.x, y - start.y) < 200) continue;
       if (enemies.some((e) => Math.hypot(e.x - x, e.y - y) < 90)) continue;
-      const k = waiting || enemyFor(roster[Math.floor(rnd2() * roster.length)], floor);
+      let k = waiting || enemyFor(roster[Math.floor(rnd2() * roster.length)], floor);
       waiting = null;
       if (NATURAL_ONLY[k.act] && built(cx, cy)) {
         if (++waits < 300) waiting = k;
         continue;
       }
       waits = 0;
+      if (rnd2() < ELITE_CHANCE) k = eliteOf(k);
       enemies.push({
         x,
         y,
@@ -13515,13 +13598,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const x = cx * CELL, y = (gy + 1) * CELL - 9;
       if (Math.hypot(x - start.x, y - start.y) < 200) continue;
       if (pickups.some((q) => Math.hypot(q.x - x, q.y - y) < PICKUP_GAP)) continue;
-      if (gunsLeft && (!modsLeft || rnd2() < gunsLeft / (gunsLeft + modsLeft))) {
-        gunsLeft--;
-        pickups.push({ kind: "gun", x, y, gun: makeGun(rnd2, gunLevel(floor, rnd2)), t: rnd2() * 6.28 });
-      } else {
-        modsLeft--;
-        pickups.push({ kind: "crystal", x, y, floor, t: rnd2() * 6.28 });
-      }
+      if (gunsLeft && (!modsLeft || rnd2() < gunsLeft / (gunsLeft + modsLeft))) gunsLeft--;
+      else modsLeft--;
+      pickups.push({ kind: "crystal", x, y, floor, t: rnd2() * 6.28 });
     }
     const dimg = new ImageData(CW, CH);
     const fuel = new Uint8Array(CW * CH);
@@ -15829,7 +15908,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var MACHINE_TOP = SHOP_FLOOR * CELL - MACHINE_H;
   var CHUTE_Y = SHOP_FLOOR * CELL - 14;
   var SHOPS = {
-    mods: { x: WW / 2, icon: "⚙️", hue: "#4fe3ff", label: "Tap R to shop" }
+    mods: { x: WW / 2 + 110, icon: "⚙️", hue: "#4fe3ff", label: "Tap R to shop" },
+    guns: { x: WW / 2, icon: "gun", hue: "#ff9a3c", label: "Tap R to shop" }
   };
   function shopNear(W, pcx, pcy) {
     if (W.warp || W.repo || W.p.dead || pcy < SHOP_Y || pcy > SHOP_FLOOR * CELL) return null;
@@ -15847,28 +15927,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const m = SHOPS[d.shop];
       if (m) {
         const side = F.pcx < m.x ? -1 : 1;
-        W.pickups.push({
-          kind: "mod",
-          id: d.id,
-          x: m.x,
-          y: CHUTE_Y,
-          t: 0,
-          vx: side * (95 + Math.random() * 30),
-          vy: -200 - Math.random() * 40,
-          cool: 1
-        });
+        const fly = { x: m.x, y: CHUTE_Y, t: 0, vx: side * (95 + Math.random() * 30), vy: -200 - Math.random() * 40, cool: 1 };
+        W.pickups.push(d.gun ? { kind: "gun", gun: d.gun, ...fly } : { kind: "mod", id: d.id, ...fly });
         SFX.fx("prompt");
       }
     }
-    const floor = SHOP_FLOOR * CELL - 9;
     for (const q of W.pickups) {
       if (q.vy === void 0) continue;
-      q.vy += 900 * F.dt;
-      q.x += (q.vx || 0) * F.dt;
+      q.vy = Math.min(600, q.vy + 900 * F.dt);
+      const nx = q.x + (q.vx || 0) * F.dt;
+      if (!solidAt(W, nx, q.y)) q.x = nx;
+      else q.vx = 0;
       q.y += q.vy * F.dt;
       q.cool = 0.2;
-      if (q.y >= floor && q.vy > 0) {
-        q.y = floor;
+      if (q.vy > 0 && solidAt(W, q.x, q.y + 9)) {
+        for (let k = 0; k < 20 && solidAt(W, q.x, q.y + 8); k++) q.y -= 1;
         if (q.vy > 120) {
           q.vy *= -0.35;
           q.vx = (q.vx || 0) * 0.6;
@@ -15899,10 +15972,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     B.width = B.height = S;
     const a = A.getContext("2d"), b = B.getContext("2d");
     if (!a || !b) return B;
-    a.font = ICON * RES2 * 0.86 + 'px system-ui, "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
-    a.textAlign = "center";
-    a.textBaseline = "middle";
-    a.fillText(icon, S / 2, S / 2 + ICON * RES2 * 0.04);
+    if (icon === "gun") {
+      const sc = ICON * RES2 / 22;
+      drawGun(a, S / 2 - 3.85 * sc, S / 2 + 1 * sc, 0, sc, "#ffffff");
+    } else {
+      a.font = ICON * RES2 * 0.86 + 'px system-ui, "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+      a.textAlign = "center";
+      a.textBaseline = "middle";
+      a.fillText(icon, S / 2, S / 2 + ICON * RES2 * 0.04);
+    }
     a.globalCompositeOperation = "source-atop";
     a.globalAlpha = 0.78;
     a.fillStyle = hue;
@@ -19458,6 +19536,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }, "R")
     );
   }
+  function CrystalIcon({ size }) {
+    const s = size || 26;
+    return h(
+      "svg",
+      { className: "crystal", viewBox: "0 0 24 24", width: s, height: s, "aria-hidden": true },
+      h("path", { d: "M12 2.5 L19.5 6 L21.5 13 L17 20.5 L8.5 21.5 L3 15.5 L4 7.5 Z", fill: "#2a0306" }),
+      h("path", { d: "M12 3.6 L18.8 6.7 L20.4 13 L16.4 19.6 L8.9 20.5 L4 15.1 L5 8 Z", fill: "#6e0a12" }),
+      h("path", { d: "M5.6 8.4 L12 4.4 L17.6 7.3 L13.5 11.5 L7 12.2 Z", fill: "#a3162a" }),
+      h("rect", { x: 7.4, y: 7.2, width: 2.6, height: 2.6, fill: "#fff" }),
+      h("rect", { x: 14.2, y: 13.6, width: 1.5, height: 1.5, fill: "#fff" })
+    );
+  }
   function Stick({ size, kind, input, refresh }) {
     const [knob2, setKnob] = useState({ x: 0, y: 0, jet: false });
     const [gauge, setGauge] = useState({ ring: 1, fuel: 1, empty: false, dry: true });
@@ -20129,20 +20219,525 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return left.filter((id) => modWeight(id, floor) > 0).pop() || left[0];
   }
 
-  // src/ui/modshop.js
-  var TIER_NAME = ["", "Common", "Uncommon", "Rare", "Legendary"];
-  function CrystalIcon({ size }) {
-    const s = size || 26;
+  // src/spells/gunshop.js
+  var GUN_OFFER = 3;
+  var REROLL_BASE = 20, REROLL_GROW = 1.6;
+  var BOOST_UP = [1, 3];
+  var five = (v) => Math.max(5, Math.round(v / 5) * 5);
+  function boostGun(g) {
+    g.castDelay *= 0.8;
+    g.recharge *= 0.8;
+    g.spread *= 0.6;
+    g.manaMax = Math.round(g.manaMax * 1.25);
+    g.manaRegen = Math.round(g.manaRegen * 1.25);
+    g.cap = Math.min(25, g.cap + 1);
+    g.slots.push(null);
+    g.boosted = true;
+    g.mana = g.manaMax;
+    return resetGun(g);
+  }
+  function shopGun(rnd2, floor, boost) {
+    if (!boost) return makeGun(rnd2, gunLevel(floor, rnd2));
+    const lvl = Math.min(GUN_LV_MAX, Math.max(1, floor) + BOOST_UP[0] + Math.floor(rnd2() * (BOOST_UP[1] - BOOST_UP[0] + 1)));
+    return boostGun(makeGun(rnd2, lvl));
+  }
+  var shopGunPrice = (g) => five(gunPrice(g) * (1 + 0.15 * ((g.lvl || 1) - 1)) * (g.boosted ? 1.25 : 1));
+  var rerollPrice = (floor, n) => five(REROLL_BASE * (1 + (floor - 1) * 0.3) * Math.pow(REROLL_GROW, n));
+  var boostCost = (n) => n + 1;
+  function newOffer(rnd2, floor) {
+    return { floor, guns: Array.from({ length: GUN_OFFER }, () => shopGun(rnd2, floor, false)), rerolls: 0, boosts: 0 };
+  }
+  function rollOffer(rnd2, o, boost) {
+    o.guns = o.guns.map(() => shopGun(rnd2, o.floor, boost));
+  }
+
+  // src/ui/vendshop.js
+  var NAV_MAG = 0.55, REPEAT_0 = 0.38, REPEAT = 0.17;
+  function navStep(root, cur, dx, dy) {
+    const els = Array.from(root.querySelectorAll("[data-nav]"));
+    const here = els.find((e) => e.dataset.nav === cur);
+    if (!here) return els.length ? els[0].dataset.nav || null : null;
+    const c = here.getBoundingClientRect(), cx = c.left + c.width / 2, cy = c.top + c.height / 2;
+    let best = null, score = Infinity;
+    for (const e of els) {
+      if (e === here) continue;
+      const r = e.getBoundingClientRect(), vx = r.left + r.width / 2 - cx, vy = r.top + r.height / 2 - cy;
+      const along = vx * dx + vy * dy;
+      if (along <= 4) continue;
+      const s = along + Math.abs(vx * dy - vy * dx) * 2.5;
+      if (s < score) {
+        score = s;
+        best = e.dataset.nav || null;
+      }
+    }
+    return best;
+  }
+  function useMenuNav(input, root, focus, setFocus, press) {
+    const pressRef = useRef(press), focusRef = useRef(focus);
+    pressRef.current = press;
+    focusRef.current = focus;
+    useEffect(() => {
+      input.current.menuTap = () => pressRef.current(focusRef.current);
+      return () => {
+        input.current.menuTap = null;
+      };
+    }, []);
+    useEffect(() => {
+      let raf, dir = "", next = 0;
+      const tick = () => {
+        const L2 = input.current.left, K = input.current.keys;
+        let dx = 0, dy = 0;
+        if (L2.active && L2.mag > NAV_MAG) {
+          if (Math.abs(L2.nx) > Math.abs(L2.ny)) dx = Math.sign(L2.nx);
+          else dy = Math.sign(L2.ny);
+        } else if (K.a || K.d || K.w || K.s) {
+          dx = (K.d ? 1 : 0) - (K.a ? 1 : 0);
+          dy = (K.s ? 1 : 0) - (K.w ? 1 : 0);
+          if (dx) dy = 0;
+        }
+        const d = dx + "," + dy, now = performance.now() / 1e3;
+        if (!dx && !dy) dir = "";
+        else if (d !== dir || now >= next) {
+          next = now + (d !== dir ? REPEAT_0 : REPEAT);
+          dir = d;
+          const to = root.current && navStep(root.current, focusRef.current, dx, dy);
+          if (to) {
+            setFocus(to);
+            SFX.fx("prompt");
+          }
+        }
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }, []);
+    useEffect(() => {
+      const el = root.current && root.current.querySelector('[data-nav="' + focus + '"]');
+      if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
+    }, [focus]);
+  }
+  function VendShop({ def, input, close }) {
+    const firstOwned = () => {
+      for (const g of def.groups) for (const id of g.ids) if (def.owned(id)) return id;
+      return null;
+    };
+    const [sel, setSel] = useState(firstOwned);
+    const [focus, setFocus] = useState(() => sel ? "t:" + sel : "unlock");
+    const [fresh, setFresh] = useState("");
+    const [msg, setMsg] = useState("");
+    const [, bump] = useState(0);
+    const root = useRef(null);
+    const unlock = () => {
+      if (def.unlock.count() <= 0) {
+        SFX.ui("poor");
+        setMsg("No crystal to hand over");
+        return;
+      }
+      const id = def.unlock.run();
+      if (!id) {
+        SFX.ui("poor");
+        setMsg("Collection complete");
+        return;
+      }
+      SFX.ui("perk");
+      setSel(id);
+      setFocus("t:" + id);
+      setFresh(id);
+      setMsg("Unlocked " + def.tile(id).name);
+    };
+    const buy = () => {
+      if (!sel) {
+        SFX.ui("poor");
+        setMsg("Select something first");
+        return;
+      }
+      if (def.gold() < def.price(sel)) {
+        SFX.ui("poor");
+        setMsg("Not enough gold");
+        return;
+      }
+      SFX.ui("buy");
+      def.dispense(sel);
+      close();
+    };
+    const press = (key) => {
+      if (key === "close") close();
+      else if (key === "unlock") unlock();
+      else if (key === "buy") buy();
+      else if (key.startsWith("t:")) {
+        setSel(key.slice(2));
+        setMsg("");
+        SFX.fx("switch");
+      }
+      bump((n2) => n2 + 1);
+    };
+    useMenuNav(input, root, focus, setFocus, press);
+    const navCls = (key, cls) => cls + (focus === key ? " navon" : "");
+    const tap = (key) => (e) => {
+      e.preventDefault();
+      setFocus(key);
+      press(key);
+    };
+    const n = def.unlock.count(), price = sel ? def.price(sel) : 0, can = !!sel && def.gold() >= price;
     return h(
-      "svg",
-      { className: "crystal", viewBox: "0 0 24 24", width: s, height: s, "aria-hidden": true },
-      h("path", { d: "M12 2.5 L19.5 6 L21.5 13 L17 20.5 L8.5 21.5 L3 15.5 L4 7.5 Z", fill: "#2a0306" }),
-      h("path", { d: "M12 3.6 L18.8 6.7 L20.4 13 L16.4 19.6 L8.9 20.5 L4 15.1 L5 8 Z", fill: "#6e0a12" }),
-      h("path", { d: "M5.6 8.4 L12 4.4 L17.6 7.3 L13.5 11.5 L7 12.2 Z", fill: "#a3162a" }),
-      h("rect", { x: 7.4, y: 7.2, width: 2.6, height: 2.6, fill: "#fff" }),
-      h("rect", { x: 14.2, y: 13.6, width: 1.5, height: 1.5, fill: "#fff" })
+      "div",
+      { className: "vshop", ref: root, style: { bottom: (input.current.ctlH || 0) + "px" } },
+      h(
+        "div",
+        { className: "vtop" },
+        h(
+          "div",
+          { className: "vhead" },
+          h("b", null, def.title),
+          h("span", { className: "vgold" }, fmtGold(def.gold()), h("i", null, "g")),
+          h("button", { className: navCls("close", "vclose"), "data-nav": "close", onPointerDown: tap("close") }, "×")
+        ),
+        h(
+          "div",
+          { className: "vgrid scroll" },
+          def.groups.map((g) => h(
+            "div",
+            { key: g.label, className: "vtier" },
+            h("div", { className: "vtlab" }, g.label),
+            h(
+              "div",
+              { className: "vcells" },
+              g.ids.map((id) => {
+                if (!def.owned(id)) return h("div", { key: id, className: "vcell empty" });
+                const t = def.tile(id), key = "t:" + id;
+                return h(
+                  "div",
+                  {
+                    key: id,
+                    "data-nav": key,
+                    "data-id": id,
+                    title: t.name,
+                    className: navCls(key, "vcell") + (sel === id ? " sel" : "") + (fresh === id ? " fresh" : ""),
+                    style: { color: t.color, borderColor: t.color },
+                    onPointerDown: tap(key)
+                  },
+                  t.glyph
+                );
+              })
+            )
+          ))
+        ),
+        h(
+          "button",
+          {
+            className: navCls("unlock", "vunlock") + (n ? "" : " cant"),
+            "data-nav": "unlock",
+            onPointerDown: tap("unlock")
+          },
+          def.unlock.icon,
+          h("b", null, "×" + n)
+        )
+      ),
+      h(
+        "div",
+        { className: "vbot" },
+        h(
+          "div",
+          { className: "vcard" },
+          msg ? h("div", { className: "vmsg" }, msg) : null,
+          sel ? def.card(sel) : h("p", { className: "vhint" }, "Nothing unlocked yet: hand over a red crystal")
+        ),
+        h(
+          "button",
+          { className: navCls("buy", "vbuy") + (can ? "" : " cant"), "data-nav": "buy", onPointerDown: tap("buy") },
+          h("b", null, "Dispense selected"),
+          h("span", null, sel ? price + "g" : "—")
+        )
+      )
     );
   }
+
+  // src/ui/gunshop.js
+  var REEL_FILL = 5, REEL_SPEED = 12, REEL_BOOST = 17, REEL_STOP = 0.9, REEL_GAP = 0.45;
+  var OVER = 0.22, SETTLE = 0.18;
+  var NO_GUNS = [];
+  var NO_SPIN = null;
+  function ReelItem({ gun }) {
+    return h(
+      "div",
+      { className: "gitem" + (gun ? "" : " sold") },
+      gun ? h(GunIcon, { gun }) : h("b", null, "SOLD"),
+      gun ? h("span", { style: { color: gunLvCol(gun) || "#c9ccd4" } }, (gun.boosted ? "✦ " : "") + "Lv " + (gun.lvl || 1)) : null
+    );
+  }
+  function Reel({ gun, idx, spin, onLand }) {
+    const strip = useRef(null), win = useRef(null);
+    const [fill, setFill] = useState(NO_GUNS);
+    const [thud, setThud] = useState(0);
+    const on = !!spin && fill.length > 0;
+    useEffect(() => {
+      if (!spin) return;
+      const lvl = gun && gun.lvl || 1;
+      setFill(Array.from({ length: REEL_FILL }, () => makeGun(Math.random, lvl)));
+    }, [spin && spin.n]);
+    useEffect(() => {
+      if (!on || !strip.current || !win.current) return;
+      const H = win.current.clientHeight, K = REEL_FILL, speed = spin.boost ? REEL_BOOST : REEL_SPEED;
+      const stopAt = REEL_STOP * (spin.boost ? 0.8 : 1) + idx * REEL_GAP;
+      const t0 = performance.now();
+      let raf = 0, tick = -1, land = null, thudded = false;
+      const frame = () => {
+        const t = (performance.now() - t0) / 1e3;
+        let o;
+        if (!land) {
+          const raw = t * speed;
+          o = raw % K;
+          if (Math.floor(raw) !== tick) {
+            tick = Math.floor(raw);
+            SFX.fx("reelTick");
+          }
+          if (t >= stopAt && o >= K - 0.6) land = { o0: o, t, dur: 3 * (K + 1 + OVER - o) / speed };
+        }
+        if (land) {
+          const s = (t - land.t) / land.dur;
+          if (s < 1) o = land.o0 + (K + 1 + OVER - land.o0) * (1 - Math.pow(1 - s, 3));
+          else {
+            if (!thudded) {
+              thudded = true;
+              SFX.fx("reelThud");
+              setThud((n) => n + 1);
+            }
+            const b = Math.min(1, (t - land.t - land.dur) / SETTLE);
+            o = K + 1 + OVER * (1 - b * b * (3 - 2 * b));
+            if (b >= 1) {
+              strip.current.style.transform = "translateY(" + -(K + 1) * H + "px)";
+              onLand(idx);
+              return;
+            }
+          }
+        }
+        strip.current.style.transform = "translateY(" + -o * H + "px)";
+        raf = requestAnimationFrame(frame);
+      };
+      raf = requestAnimationFrame(frame);
+      return () => cancelAnimationFrame(raf);
+    }, [on, spin && spin.n]);
+    const items = on ? [...fill, fill[0], gun, fill[1]] : [gun];
+    return h(
+      "div",
+      { className: "greelwin" + (on ? " spinning" : ""), ref: win },
+      h(
+        "div",
+        { className: "gstrip", ref: strip, key: on ? "s" + spin.n : "still", style: on ? null : { transform: "none" } },
+        items.map((g, i) => h(ReelItem, { key: i, gun: g }))
+      ),
+      h("div", { className: "gthud", key: thud })
+    );
+  }
+  function Sparks({ on }) {
+    const ref = useRef(null), live = useRef(on);
+    live.current = on;
+    useEffect(() => {
+      if (!on) return;
+      const c = ref.current;
+      if (!c) return;
+      const dpr = window.devicePixelRatio || 1, W = c.clientWidth, H = c.clientHeight;
+      c.width = W * dpr;
+      c.height = H * dpr;
+      const ctx = c.getContext("2d");
+      if (!ctx) return;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const ps = [];
+      let raf = 0, last = performance.now();
+      const base = REEL_BOOST * 64 * 1.3;
+      const frame = () => {
+        const now = performance.now(), dt = Math.min(0.05, (now - last) / 1e3);
+        last = now;
+        if (live.current) for (let i = 0; i < 4; i++) {
+          const r = 1 + Math.random() * 2.5;
+          ps.push({ x: Math.random() * W, y: H + 10, r, v: base * (0.7 + r * 0.25) });
+        }
+        ctx.clearRect(0, 0, W, H);
+        ctx.globalCompositeOperation = "lighter";
+        for (let i = ps.length - 1; i >= 0; i--) {
+          const p = ps[i];
+          p.y -= p.v * dt;
+          if (p.y < -20) {
+            ps.splice(i, 1);
+            continue;
+          }
+          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4);
+          g.addColorStop(0, "rgba(255,90,90,0.95)");
+          g.addColorStop(0.35, "rgba(255,30,50,0.5)");
+          g.addColorStop(1, "rgba(255,0,30,0)");
+          ctx.fillStyle = g;
+          ctx.fillRect(p.x - p.r * 4, p.y - p.r * 10, p.r * 8, p.r * 14);
+          ctx.fillStyle = "rgba(255,230,230,0.9)";
+          ctx.fillRect(p.x - p.r * 0.4, p.y - p.r * 3, p.r * 0.8, p.r * 4);
+        }
+        if (live.current || ps.length) raf = requestAnimationFrame(frame);
+        else ctx.clearRect(0, 0, W, H);
+      };
+      raf = requestAnimationFrame(frame);
+      return () => cancelAnimationFrame(raf);
+    }, [on]);
+    return h("canvas", { className: "gsparks", ref });
+  }
+  function GunVend({ input, close }) {
+    const LO = input.current.loadout, floor = input.current.floor || 1;
+    const [o] = useState(() => {
+      if (!LO.gunShop || LO.gunShop.floor !== floor) LO.gunShop = newOffer(Math.random, floor);
+      return LO.gunShop;
+    });
+    const firstGun = () => Math.max(0, o.guns.findIndex(Boolean));
+    const [sel, setSel] = useState(firstGun);
+    const [focus, setFocus] = useState(() => o.guns.some(Boolean) ? "g:" + firstGun() : "reroll");
+    const [spin, setSpin] = useState(NO_SPIN);
+    const [landed, setLanded] = useState(0);
+    const [msg, setMsg] = useState("");
+    const [, bump] = useState(0);
+    const root = useRef(null);
+    const spinning = !!spin && landed < GUN_OFFER;
+    const crystals = LO.crystals || (LO.crystals = []);
+    const gun = o.guns[sel] || null;
+    const price = gun ? shopGunPrice(gun) : 0;
+    const rr2 = rerollPrice(floor, o.rerolls), bc = boostCost(o.boosts);
+    const reroll = (boost) => {
+      if (spinning) return;
+      if (boost) {
+        if (crystals.length < bc) {
+          SFX.ui("poor");
+          setMsg("Needs " + bc + " red crystal" + (bc > 1 ? "s" : ""));
+          return;
+        }
+        crystals.splice(0, bc);
+        o.boosts++;
+      } else {
+        if (LO.gold < rr2) {
+          SFX.ui("poor");
+          setMsg("Not enough gold");
+          return;
+        }
+        LO.gold -= rr2;
+        o.rerolls++;
+      }
+      rollOffer(Math.random, o, boost);
+      SFX.ui(boost ? "perk" : "buy");
+      setMsg("");
+      setLanded(0);
+      setSel(0);
+      setSpin((s) => ({ n: (s ? s.n : 0) + 1, boost }));
+      input.current.notify();
+    };
+    const buy = () => {
+      if (spinning) return;
+      if (!gun) {
+        SFX.ui("poor");
+        setMsg("Nothing to buy there");
+        return;
+      }
+      if (LO.gold < price) {
+        SFX.ui("poor");
+        setMsg("Not enough gold");
+        return;
+      }
+      LO.gold -= price;
+      input.current.dispense = { shop: "guns", gun };
+      o.guns[sel] = null;
+      SFX.ui("buy");
+      close();
+    };
+    const press = (key) => {
+      if (key === "close") close();
+      else if (key === "buy") buy();
+      else if (key === "reroll") reroll(false);
+      else if (key === "boost") reroll(true);
+      else if (key.startsWith("g:") && !spinning) {
+        setSel(Number(key.slice(2)));
+        setMsg("");
+        SFX.fx("switch");
+      }
+      bump((n) => n + 1);
+    };
+    useMenuNav(input, root, focus, setFocus, press);
+    const navCls = (key, cls) => cls + (focus === key ? " navon" : "");
+    const tap = (key) => (e) => {
+      e.preventDefault();
+      setFocus(key);
+      press(key);
+    };
+    const onLand = (i) => setLanded((n) => Math.max(n, i + 1));
+    const held = LO.guns[LO.sel];
+    return h(
+      "div",
+      { className: "vshop gshop", ref: root, style: { bottom: (input.current.ctlH || 0) + "px" } },
+      h(
+        "div",
+        { className: "vhead" },
+        h("b", null, "Guns"),
+        h("span", { className: "vcrys" }, h(CrystalIcon, { size: 18 }), crystals.length),
+        h("span", { className: "vgold" }, fmtGold(LO.gold), h("i", null, "g")),
+        h("button", { className: navCls("close", "vclose"), "data-nav": "close", onPointerDown: tap("close") }, "×")
+      ),
+      h(
+        "div",
+        { className: "gmid" },
+        h(
+          "div",
+          { className: "greels" },
+          o.guns.map((g, i) => h(
+            "div",
+            {
+              key: i,
+              "data-nav": "g:" + i,
+              onPointerDown: tap("g:" + i),
+              className: navCls("g:" + i, "greel") + (sel === i ? " sel" : "")
+            },
+            h(Reel, { gun: g, idx: i, spin, onLand }),
+            h("div", { className: "gprice" }, spinning && landed <= i ? "···" : g ? shopGunPrice(g) + "g" : "—")
+          )),
+          h(Sparks, { on: spinning && !!spin && spin.boost })
+        ),
+        h(
+          "div",
+          { className: "gcard scroll" },
+          spinning ? h("p", { className: "vhint" }, "Rolling…") : gun ? h(GunCard, {
+            gun,
+            label: gun.boosted ? "Boosted" : "For sale",
+            ingame: true,
+            flow: true,
+            compare: held,
+            compareName: held ? held.name : ""
+          }) : h("p", { className: "vhint" }, "Sold")
+        )
+      ),
+      msg ? h("div", { className: "vmsg" }, msg) : null,
+      h(
+        "div",
+        { className: "gbtns" },
+        h(
+          "button",
+          { className: navCls("buy", "vbuy") + (gun && !spinning && LO.gold >= price ? "" : " cant"), "data-nav": "buy", onPointerDown: tap("buy") },
+          h("b", null, "Buy selected"),
+          h("span", null, gun ? price + "g" : "—")
+        ),
+        h(
+          "div",
+          { className: "grow" },
+          h(
+            "button",
+            { className: navCls("reroll", "vbuy greroll") + (!spinning && LO.gold >= rr2 ? "" : " cant"), "data-nav": "reroll", onPointerDown: tap("reroll") },
+            h("b", null, "Reroll"),
+            h("span", null, rr2 + "g")
+          ),
+          h(
+            "button",
+            { className: navCls("boost", "vbuy gboost") + (!spinning && crystals.length >= bc ? "" : " cant"), "data-nav": "boost", onPointerDown: tap("boost") },
+            h("b", null, "Boosted"),
+            h("span", { className: "gcost" }, h(CrystalIcon, { size: 20 }), "×" + bc)
+          )
+        )
+      )
+    );
+  }
+
+  // src/ui/modshop.js
+  var TIER_NAME = ["", "Common", "Uncommon", "Rare", "Legendary"];
   function modShop(input) {
     const LO = () => input.current.loadout;
     return {
@@ -20174,6 +20769,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
   var SHOP_DEFS = { mods: modShop };
+  var SHOP_MENUS = {
+    mods: ({ input, close }) => h(VendShop, { def: modShop(input), input, close }),
+    guns: GunVend
+  };
 
   // src/ui/swap.js
   function GunSwap({ input, refresh, onDone }) {
@@ -20256,204 +20855,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           h("span", { className: "gname", style: g ? { color: gunColor(g) } : null }, g ? g.name : "Empty slot"),
           h("span", { className: "gsub" }, g ? g.slots.filter(Boolean).length + "/" + g.cap + " mods" : "hold to take")
         ))
-      )
-    );
-  }
-
-  // src/ui/vendshop.js
-  var NAV_MAG = 0.55, REPEAT_0 = 0.38, REPEAT = 0.17;
-  function navStep(root, cur, dx, dy) {
-    const els = Array.from(root.querySelectorAll("[data-nav]"));
-    const here = els.find((e) => e.dataset.nav === cur);
-    if (!here) return els.length ? els[0].dataset.nav || null : null;
-    const c = here.getBoundingClientRect(), cx = c.left + c.width / 2, cy = c.top + c.height / 2;
-    let best = null, score = Infinity;
-    for (const e of els) {
-      if (e === here) continue;
-      const r = e.getBoundingClientRect(), vx = r.left + r.width / 2 - cx, vy = r.top + r.height / 2 - cy;
-      const along = vx * dx + vy * dy;
-      if (along <= 4) continue;
-      const s = along + Math.abs(vx * dy - vy * dx) * 2.5;
-      if (s < score) {
-        score = s;
-        best = e.dataset.nav || null;
-      }
-    }
-    return best;
-  }
-  function VendShop({ def, input, close }) {
-    const firstOwned = () => {
-      for (const g of def.groups) for (const id of g.ids) if (def.owned(id)) return id;
-      return null;
-    };
-    const [sel, setSel] = useState(firstOwned);
-    const [focus, setFocus] = useState(() => sel ? "t:" + sel : "unlock");
-    const [fresh, setFresh] = useState("");
-    const [msg, setMsg] = useState("");
-    const [, bump] = useState(0);
-    const root = useRef(null);
-    const unlock = () => {
-      if (def.unlock.count() <= 0) {
-        SFX.ui("poor");
-        setMsg("No crystal to hand over");
-        return;
-      }
-      const id = def.unlock.run();
-      if (!id) {
-        SFX.ui("poor");
-        setMsg("Collection complete");
-        return;
-      }
-      SFX.ui("perk");
-      setSel(id);
-      setFocus("t:" + id);
-      setFresh(id);
-      setMsg("Unlocked " + def.tile(id).name);
-    };
-    const buy = () => {
-      if (!sel) {
-        SFX.ui("poor");
-        setMsg("Select something first");
-        return;
-      }
-      if (def.gold() < def.price(sel)) {
-        SFX.ui("poor");
-        setMsg("Not enough gold");
-        return;
-      }
-      SFX.ui("buy");
-      def.dispense(sel);
-      close();
-    };
-    const press = (key) => {
-      if (key === "close") close();
-      else if (key === "unlock") unlock();
-      else if (key === "buy") buy();
-      else if (key.startsWith("t:")) {
-        setSel(key.slice(2));
-        setMsg("");
-        SFX.fx("switch");
-      }
-      bump((n2) => n2 + 1);
-    };
-    const pressRef = useRef(press), focusRef = useRef(focus);
-    pressRef.current = press;
-    focusRef.current = focus;
-    useEffect(() => {
-      input.current.menuTap = () => pressRef.current(focusRef.current);
-      return () => {
-        input.current.menuTap = null;
-      };
-    }, []);
-    useEffect(() => {
-      let raf, dir = "", next = 0;
-      const tick = () => {
-        const L2 = input.current.left, K = input.current.keys;
-        let dx = 0, dy = 0;
-        if (L2.active && L2.mag > NAV_MAG) {
-          if (Math.abs(L2.nx) > Math.abs(L2.ny)) dx = Math.sign(L2.nx);
-          else dy = Math.sign(L2.ny);
-        } else if (K.a || K.d || K.w || K.s) {
-          dx = (K.d ? 1 : 0) - (K.a ? 1 : 0);
-          dy = (K.s ? 1 : 0) - (K.w ? 1 : 0);
-          if (dx) dy = 0;
-        }
-        const d = dx + "," + dy, now = performance.now() / 1e3;
-        if (!dx && !dy) dir = "";
-        else if (d !== dir || now >= next) {
-          next = now + (d !== dir ? REPEAT_0 : REPEAT);
-          dir = d;
-          const to = root.current && navStep(root.current, focusRef.current, dx, dy);
-          if (to) {
-            setFocus(to);
-            SFX.fx("prompt");
-          }
-        }
-        raf = requestAnimationFrame(tick);
-      };
-      raf = requestAnimationFrame(tick);
-      return () => cancelAnimationFrame(raf);
-    }, []);
-    useEffect(() => {
-      const el = root.current && root.current.querySelector('[data-nav="' + focus + '"]');
-      if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
-    }, [focus]);
-    const navCls = (key, cls) => cls + (focus === key ? " navon" : "");
-    const tap = (key) => (e) => {
-      e.preventDefault();
-      setFocus(key);
-      press(key);
-    };
-    const n = def.unlock.count(), price = sel ? def.price(sel) : 0, can = !!sel && def.gold() >= price;
-    return h(
-      "div",
-      { className: "vshop", ref: root, style: { bottom: (input.current.ctlH || 0) + "px" } },
-      h(
-        "div",
-        { className: "vtop" },
-        h(
-          "div",
-          { className: "vhead" },
-          h("b", null, def.title),
-          h("span", { className: "vgold" }, fmtGold(def.gold()), h("i", null, "g")),
-          h("button", { className: navCls("close", "vclose"), "data-nav": "close", onPointerDown: tap("close") }, "×")
-        ),
-        h(
-          "div",
-          { className: "vgrid scroll" },
-          def.groups.map((g) => h(
-            "div",
-            { key: g.label, className: "vtier" },
-            h("div", { className: "vtlab" }, g.label),
-            h(
-              "div",
-              { className: "vcells" },
-              g.ids.map((id) => {
-                if (!def.owned(id)) return h("div", { key: id, className: "vcell empty" });
-                const t = def.tile(id), key = "t:" + id;
-                return h(
-                  "div",
-                  {
-                    key: id,
-                    "data-nav": key,
-                    "data-id": id,
-                    title: t.name,
-                    className: navCls(key, "vcell") + (sel === id ? " sel" : "") + (fresh === id ? " fresh" : ""),
-                    style: { color: t.color, borderColor: t.color },
-                    onPointerDown: tap(key)
-                  },
-                  t.glyph
-                );
-              })
-            )
-          ))
-        ),
-        h(
-          "button",
-          {
-            className: navCls("unlock", "vunlock") + (n ? "" : " cant"),
-            "data-nav": "unlock",
-            onPointerDown: tap("unlock")
-          },
-          def.unlock.icon,
-          h("b", null, "×" + n)
-        )
-      ),
-      h(
-        "div",
-        { className: "vbot" },
-        h(
-          "div",
-          { className: "vcard" },
-          msg ? h("div", { className: "vmsg" }, msg) : null,
-          sel ? def.card(sel) : h("p", { className: "vhint" }, "Nothing unlocked yet: hand over a red crystal")
-        ),
-        h(
-          "button",
-          { className: navCls("buy", "vbuy") + (can ? "" : " cant"), "data-nav": "buy", onPointerDown: tap("buy") },
-          h("b", null, "Dispense selected"),
-          h("span", null, sel ? price + "g" : "—")
-        )
       )
     );
   }
@@ -20939,7 +21340,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h(
           "div",
           { className: "gold" },
-          h("div", { className: "purse" }, fmtGold(LO.gold), h("span", null, "g")),
+          h(
+            "div",
+            { className: "purse" },
+            fmtGold(LO.gold),
+            h("span", null, "g"),
+            h("span", { className: "crys" }, h(CrystalIcon, { size: 15 }), (LO.crystals || []).length)
+          ),
           LO.debt > 0 ? h("div", { className: "debt" }, "-" + Math.trunc(LO.debt).toLocaleString("en-US"), h("span", null, "g owed")) : null,
           LO.debt > 0 && LO.due ? h(DueClock, { due: LO.due }) : null
         ),
@@ -21085,7 +21492,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }) : null,
       spawnOpen ? h(SpawnGun, { input, close: () => setSpawnOpen(false) }) : null,
-      shopOpen && SHOP_DEFS[shopOpen] ? h(VendShop, { key: shopOpen, def: SHOP_DEFS[shopOpen](input), input, close: closeShop }) : null,
+      shopOpen && SHOP_MENUS[shopOpen] ? h(SHOP_MENUS[shopOpen], { key: shopOpen, input, close: closeShop }) : null,
       found ? h(GunSwap, { input, refresh, onDone: () => {
         setGunInfo(-1);
         refresh();
