@@ -61,7 +61,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     const { enemies, coins, p } = window.__lvl;
     const LO = window.__in.current.loadout;
     LO.gold = 0;
-    const e = enemies[0];
+    const e = enemies.find(e => !e.k.elite && !e.nest) || enemies[0];   // an elite spills 4× the gold, further than the pull
     e.x = p.x; e.y = p.y - 40; e.ty = e.y;      // bring one down to us and kill it
     e.hp = 0.0001;
     window.__lvl.bullets.push({ x: e.x, y: e.ty, vx: 60, vy: 0, life: 1, dmg: 5, size: 3,

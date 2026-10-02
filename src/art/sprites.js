@@ -227,3 +227,5 @@ export function drawNugget(ctx, x, y, r, seed, ang, pal) {
 export const NUGGET_PAL = ['#7a4e10', '#d8a52a', '#ffd95a', '#fff6c8'];
 // the red crystal: gold's shape, dark red, white highlights, and how big it is
 export const CRYSTAL_PAL = ['#2a0306', '#6e0a12', '#a3162a', '#ffffff'], CRYSTAL_R = 11;
+// the green crystal (the hidden room's prize, the perk machine's currency): the same, green
+export const GREEN_PAL = ['#03240c', '#0b6a26', '#1fae46', '#ffffff'];

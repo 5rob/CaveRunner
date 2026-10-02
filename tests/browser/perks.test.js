@@ -17,15 +17,12 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   await page.waitForTimeout(1200);
 
-  // ---- 1. a fresh floor has exactly one perk room and one heart room ----
+  // ---- 1. a fresh floor has one hidden room, a green crystal on its altar (no heart room) ----
   const rooms = await page.evaluate(() => window.__lvl.rooms);
-  check('there are exactly two rooms', Array.isArray(rooms) && rooms.length === 2, rooms);
-  const perkRoom = rooms.find(r => r.kind === 'perk');
-  const heartRoom = rooms.find(r => r.kind === 'heart');
-  check('one of them is a perk room', !!perkRoom, rooms);
-  check('the other is a heart room', !!heartRoom, rooms);
-  check('the perk room offers a real perk id', typeof perkRoom.id === 'string' && perkRoom.id.length > 0, perkRoom);
-  check('neither room starts taken', perkRoom.taken === false && heartRoom.taken === false, rooms);
+  check('there is exactly one room', Array.isArray(rooms) && rooms.length === 1, rooms);
+  const perkRoom = rooms[0];
+  check('its prize is a green crystal', perkRoom.kind === 'green', rooms);
+  check('it does not start taken', perkRoom.taken === false, rooms);
 
   // ---- 2. starting state: no perks, and a neutral bag gives 100 max hp ----
   const start = await page.evaluate(() => ({
@@ -61,36 +58,26 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     L.pickups.length = 0; L.enemies.length = 0; L.enemyShots.length = 0;
   });
 
-  // ---- 3. collecting the perk ----
+  // ---- 3. the room's green crystal ----
   await takeRoom(perkRoom.x, perkRoom.y);
-  const afterPerk = await page.evaluate(() => ({
-    perks: window.__in.current.loadout.perks,
-    roomTaken: window.__lvl.rooms.find(r => r.kind === 'perk').taken,
-    pips: document.querySelectorAll('.perkpip').length,
-  }));
-  check('the perk id ends up in the loadout', afterPerk.perks.length === 1 && afterPerk.perks[0] === perkRoom.id, afterPerk);
-  check('the room is marked taken', afterPerk.roomTaken === true, afterPerk.roomTaken);
-  check('a perk pip appears in the DOM, one per held perk', afterPerk.pips === afterPerk.perks.length, afterPerk);
+  const got = await page.evaluate(() => ({ greens: (window.__in.current.loadout.greens || []).length, taken: window.__lvl.rooms[0].taken }));
+  check('taking it pockets a green crystal', got.greens === 1 && got.taken, got);
 
-  // ---- 4. collecting the heart raises the cap but never heals ----
-  // clear the floor of anything that could shoot the player while it is pinned on the
-  // altar, so the only thing that can move hp here is the heart itself
-  const before = await page.evaluate(() => {
-    const L = window.__lvl;
-    L.enemies.length = 0; L.enemyShots.length = 0;
-    L.p.hp = 50;
-    return { hp: L.p.hp, maxHp: L.maxHp() };
+  // ---- 4. a perk counts only fitted to the suit; Extra Health comes full ----
+  const fit = await page.evaluate(async () => {
+    const L = window.__lvl, LO = window.__in.current.loadout;
+    LO.perks.push('health');
+    await new Promise(r => setTimeout(r, 100));
+    const carried = { max: L.maxHp(), pips: document.querySelectorAll('.perkpip').length };
+    L.p.hp = 80;
+    LO.perks.splice(LO.perks.indexOf('health'), 1); LO.suit[0] = 'health';
+    window.__in.current.perksDirty = true; window.__in.current.notify();
+    await new Promise(r => setTimeout(r, 150));
+    return { carried, max: L.maxHp(), hp: L.p.hp, pips: document.querySelectorAll('.perkpip').length };
   });
-  check('hp was set below max to make the heal-check meaningful', before.hp === 50, before);
-  await takeRoom(heartRoom.x, heartRoom.y);
-  const afterHeart = await page.evaluate(() => ({
-    maxHp: window.__lvl.maxHp(),
-    hp: window.__lvl.p.hp,
-    roomTaken: window.__lvl.rooms.find(r => r.kind === 'heart').taken,
-  }));
-  check('max health rises by exactly 25', afterHeart.maxHp === before.maxHp + 25, { before: before.maxHp, after: afterHeart.maxHp });
-  check('current hp is untouched, not topped up', afterHeart.hp === 50, afterHeart.hp);
-  check('the heart room is marked taken', afterHeart.roomTaken === true, afterHeart.roomTaken);
+  check('carried, a perk does nothing', fit.carried.max === 100 && fit.carried.pips === 0, fit);
+  check('fitted, it counts: max health 150, the extra comes full', fit.max === 150 && fit.hp === 130, fit);
+  check('and its pip shows in the column', fit.pips === 1, fit);
 
   console.log(fails ? `\n${fails} failed` : '\nall good');
   await browser.close();

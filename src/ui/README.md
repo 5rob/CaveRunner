@@ -15,6 +15,7 @@ React without JSX (`h(...)`), off the global React the page loads from a CDN. Ev
 | `vendshop.js` | `VendShop`: a vending machine's menu for any `ShopDef` (collection grid in groups, unlock button, the selected card, "Dispense selected"), `navStep` (the left stick moves the highlight to the nearest `[data-nav]` that way; `input.current.menuTap` presses it: right-stick tap, r/f/enter) |
 | `modshop.js` | `modShop` (the mods' `ShopDef`), `SHOP_DEFS` (by `SHOPS` key), `CrystalIcon` |
 | `gunshop.js` | `GunVend`: the gun machine's menu (three `Reel`s of `LO.gunShop`, the selected `GunCard`, Buy / Reroll / Boosted; reels stop one at a time, `REEL_*`; `Sparks` on a boosted spin). `SHOP_MENUS` (in `modshop.js`) maps each `SHOPS` key to its menu; `useMenuNav` (vendshop.js) is the shared stick/key handling |
+| `exosuit.js` | `Bag` (the Bag's two tabs, `.btabs`: the `Editor`, which takes a `tabs` element to put at its foot, and the Exo Suit), `ExoSuit` (portrait, stats, `SUIT_SLOTS` slots `[data-xslot]`, the perk grid `.xperk`; drag a carried perk to a slot, a slot to a slot or off; tap for `PerkCard`; sets `perksDirty`) |
 | `devpanel.js` | `DevPanel`, `DevRow`, `JellyPreview` (runs the real `jellyStep`/`drawJelly`), `SpawnGun` |
 
 CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).

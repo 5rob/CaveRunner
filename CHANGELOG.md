@@ -5,6 +5,27 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v120 — the perk machine, green crystals, the Exo Suit
+Released 2026-10-02.
+
+- A third machine (`SHOPS.perks`, a green ✦ hologram, left of the guns): the mods' menu with a
+  `perkShop` def (`ui/modshop.js`): a green crystal unlocks a perk you don't have (`perkRoll`;
+  kept across runs, `caverunner-perkcollection`), gold (`PERK_PRICE` 200) dispenses a copy that
+  pops out as a `perk` pickup. `ShopDef.unlock.name` names the crystal.
+- One hidden room a floor, its altar holding a green crystal (`kind: 'green'`, `LO.greens`); the
+  heart room is gone. Old saves' perk and heart rooms still work.
+- Perks are carried (`LO.perks`) and count only fitted to the Exo Suit's `SUIT_SLOTS` (6,
+  `LO.suit`; `activePerks`). A pre-suit save's switched-on perks are fitted (`cleanPerks`).
+  Fitting runs `applyPerks` (the extra health comes full, the eye lights the floor, the ghost).
+  The perk column shows the fitted ones; the on/off toggle is gone.
+- The Bag has tabs along the bottom (`ui/exosuit.js` `Bag`): Guns & Mods (the Editor) and the Exo
+  Suit (portrait, stats, six slots, the perk grid; drag to fit, tap for the card).
+- Stat perks (`STAT_PERKS`, ids `st_<stat><1-5>`): Max Health, Movement Speed, Jetpack Fuel (`pb.fuel`:
+  the tank drains slower), Jetpack Recharge (`pb.refuel`), Gold Vacuum, five levels each, priced
+  `STAT_PRICE` 60–650g. The suit (`SUIT_LEN` 11) has a slot per stat beside its row (`fitsSlot`: stat
+  perks only there, the rest only in the six). `perkRoll` unlocks a stat's levels in order.
+- The top bar shows the crystals as a row of red and green silhouettes under the gold (`CrystalRow`).
+
 ## v119 — the gun vending machine, elites, crystals at the top
 Released 2026-10-02.
 

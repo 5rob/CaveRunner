@@ -4,7 +4,7 @@
 // props, the two portals, the shop's stock, loot, and the hidden rooms' prizes
 
 import { drawProp, rgbA } from '../../art/props.js';
-import { CRYSTAL_PAL, CRYSTAL_R, drawGun, drawGunGlow, drawNugget } from '../../art/sprites.js';
+import { CRYSTAL_PAL, CRYSTAL_R, GREEN_PAL, drawGun, drawGunGlow, drawNugget } from '../../art/sprites.js';
 import { BCELL, BH, BW, CELL, CH, COL, CW, SHOP_FLOOR, SHOP_Y, WW } from '../../core/consts.js';
 import { clamp, mix } from '../../core/util.js';
 import { PERKS } from '../../data/perks.js';
@@ -276,6 +276,17 @@ export function drawLoot(W, G, F) {
       G.ctx.beginPath(); G.ctx.arc(q.x, qy, CRYSTAL_R + 4, 0, Math.PI * 2); G.ctx.fill();
       G.ctx.globalAlpha = 1;
       drawNugget(G.ctx, q.x, qy, CRYSTAL_R, q.t * 7, 0, CRYSTAL_PAL);
+    } else if (q.kind === 'perk') {
+      // a perk to carry: its sigil in a ring of its colour
+      const pk = PERKS[q.id], col = pk.tint || COL.portal;
+      G.ctx.globalAlpha = 0.22; G.ctx.fillStyle = col;
+      G.ctx.beginPath(); G.ctx.arc(q.x, qy, 12, 0, Math.PI * 2); G.ctx.fill();
+      G.ctx.globalAlpha = 1; G.ctx.strokeStyle = col; G.ctx.lineWidth = 1.2;
+      G.ctx.beginPath(); G.ctx.arc(q.x, qy, 9, 0, Math.PI * 2); G.ctx.stroke();
+      G.ctx.fillStyle = col; G.ctx.font = '700 12px system-ui, sans-serif';
+      G.ctx.textAlign = 'center'; G.ctx.textBaseline = 'middle';
+      G.ctx.fillText(pk.glyph, q.x, qy + 0.5);
+      G.ctx.textAlign = 'left'; G.ctx.textBaseline = 'alphabetic';
     } else {
       const m = MODS[q.id];
       G.ctx.globalAlpha = 0.22; G.ctx.fillStyle = famCol(q.id);
@@ -306,7 +317,14 @@ export function drawRooms(W, G, F) {
     G.ctx.fillRect(r.x - 12, r.y + 14, 24, 5);
     G.ctx.fillRect(r.x - 7, r.y + 5, 14, 10);
     if (r.taken) continue;
-    if (r.kind === 'perk') {
+    if (r.kind === 'green') {
+      // a green crystal on the altar, glowing
+      G.ctx.globalAlpha = 0.22 + 0.12 * Math.sin(W.time * 3);
+      G.ctx.fillStyle = '#30ff70';
+      G.ctx.beginPath(); G.ctx.arc(r.x, r.y + bob, 17, 0, Math.PI * 2); G.ctx.fill();
+      G.ctx.globalAlpha = 1;
+      drawNugget(G.ctx, r.x, r.y + bob, CRYSTAL_R, r.x * 0.37, 0, GREEN_PAL);
+    } else if (r.kind === 'perk' && r.id) {
       const pk = PERKS[r.id], col = pk.tint || COL.portal;
       G.ctx.globalAlpha = 0.22 + 0.12 * Math.sin(W.time * 3);
       G.ctx.fillStyle = col;

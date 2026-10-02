@@ -17,11 +17,11 @@ import { h, useEffect, useRef, useState } from './h.js';
  *   title: string,
  *   groups: { label: string, ids: string[] }[],
  *   owned: (id: string) => boolean,
- *   tile: (id: string) => { glyph: string, color: string, name: string },
+ *   tile: (id: string) => { glyph: string, color: string, name: string, mark?: string },
  *   card: (id: string) => any,
  *   price: (id: string) => number,
  *   gold: () => number,
- *   unlock: { icon: any, count: () => number, run: () => string | null },
+ *   unlock: { name: string, icon: any, count: () => number, run: () => string | null },
  *   dispense: (id: string) => void,
  * }} ShopDef
  */
@@ -100,7 +100,7 @@ export function VendShop({ def, input, close }) {
   const root = useRef(null);
 
   const unlock = () => {
-    if (def.unlock.count() <= 0) { SFX.ui('poor'); setMsg('No crystal to hand over'); return; }
+    if (def.unlock.count() <= 0) { SFX.ui('poor'); setMsg('No ' + def.unlock.name + ' to hand over'); return; }
     const id = def.unlock.run();
     if (!id) { SFX.ui('poor'); setMsg('Collection complete'); return; }
     SFX.ui('perk');
@@ -145,14 +145,14 @@ export function VendShop({ def, input, close }) {
               return h('div', { key: id, 'data-nav': key, 'data-id': id, title: t.name,
                   className: navCls(key, 'vcell') + (sel === id ? ' sel' : '') + (fresh === id ? ' fresh' : ''),
                   style: { color: t.color, borderColor: t.color }, onPointerDown: tap(key) },
-                t.glyph);
+                t.glyph, t.mark ? h('i', { className: 'vmark' }, t.mark) : null);
             }))))),
       h('button', { className: navCls('unlock', 'vunlock') + (n ? '' : ' cant'), 'data-nav': 'unlock',
           onPointerDown: tap('unlock') },
         def.unlock.icon, h('b', null, '×' + n))),
     h('div', { className: 'vbot' },
       h('div', { className: 'vcard' }, msg ? h('div', { className: 'vmsg' }, msg) : null,
-        sel ? def.card(sel) : h('p', { className: 'vhint' }, 'Nothing unlocked yet: hand over a red crystal')),
+        sel ? def.card(sel) : h('p', { className: 'vhint' }, 'Nothing unlocked yet: hand over a ' + def.unlock.name)),
       h('button', { className: navCls('buy', 'vbuy') + (can ? '' : ' cant'), 'data-nav': 'buy', onPointerDown: tap('buy') },
         h('b', null, 'Dispense selected'), h('span', null, sel ? price + 'g' : '—'))));
 }

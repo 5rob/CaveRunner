@@ -3,6 +3,7 @@
 // mana + recharge + cast delay on the right), the R key of the buy line, the round deck
 // buttons' layout, the gold readout, and holdPress (tap vs hold).
 
+import { CRYSTAL_PAL, GREEN_PAL } from '../art/sprites.js';
 import { AIM_DEAD, AIM_RING, DEAD, KNOB } from '../core/consts.js';
 import { mixHex } from '../core/util.js';
 import { countdown } from '../core/util.js';
@@ -81,15 +82,29 @@ export function RKey() {
       fontSize: 14, fontWeight: 300, fontFamily: 'system-ui, sans-serif' }, 'R'));
 }
 // A red crystal: gold's lumpy nugget, bigger, dark red, white glints (CRYSTAL_PAL in art/sprites.js)
-/** @param {{ size?: number }} props */
-export function CrystalIcon({ size }) {
-  const s = size || 26;
+/** @param {{ size?: number, green?: boolean }} props */
+export function CrystalIcon({ size, green }) {
+  const s = size || 26, P = green ? GREEN_PAL : CRYSTAL_PAL;
   return h('svg', { className: 'crystal', viewBox: '0 0 24 24', width: s, height: s, 'aria-hidden': true },
-    h('path', { d: 'M12 2.5 L19.5 6 L21.5 13 L17 20.5 L8.5 21.5 L3 15.5 L4 7.5 Z', fill: '#2a0306' }),
-    h('path', { d: 'M12 3.6 L18.8 6.7 L20.4 13 L16.4 19.6 L8.9 20.5 L4 15.1 L5 8 Z', fill: '#6e0a12' }),
-    h('path', { d: 'M5.6 8.4 L12 4.4 L17.6 7.3 L13.5 11.5 L7 12.2 Z', fill: '#a3162a' }),
+    h('path', { d: 'M12 2.5 L19.5 6 L21.5 13 L17 20.5 L8.5 21.5 L3 15.5 L4 7.5 Z', fill: P[0] }),
+    h('path', { d: 'M12 3.6 L18.8 6.7 L20.4 13 L16.4 19.6 L8.9 20.5 L4 15.1 L5 8 Z', fill: P[1] }),
+    h('path', { d: 'M5.6 8.4 L12 4.4 L17.6 7.3 L13.5 11.5 L7 12.2 Z', fill: P[2] }),
     h('rect', { x: 7.4, y: 7.2, width: 2.6, height: 2.6, fill: '#fff' }),
     h('rect', { x: 14.2, y: 13.6, width: 1.5, height: 1.5, fill: '#fff' }));
+}
+
+// The crystals you carry, under your gold: a row of crystal silhouettes in their colours, red
+// then green, wrapping; past CRYS_MAX of a colour the rest is a +N
+export const CRYS_MAX = 24;
+/** @param {{ red: number, green: number }} props */
+export function CrystalRow({ red, green }) {
+  if (!red && !green) return null;
+  /** @param {number} n @param {string} cls */
+  const bits = (n, cls) => [
+    ...Array.from({ length: Math.min(n, CRYS_MAX) }, (_, i) => h('svg', { key: cls + i, className: 'cbit ' + cls, viewBox: '0 0 24 24', 'aria-hidden': true },
+      h('path', { d: 'M12 2.5 L19.5 6 L21.5 13 L17 20.5 L8.5 21.5 L3 15.5 L4 7.5 Z' }))),
+    n > CRYS_MAX ? h('b', { key: cls + '+', className: 'cmore ' + cls }, '+' + (n - CRYS_MAX)) : null];
+  return h('div', { className: 'crysrow', 'aria-label': red + ' red crystals, ' + green + ' green crystals' }, bits(red, 'red'), bits(green, 'green'));
 }
 
 /** @param {{ size: number, kind: 'left' | 'right', input: { current: GameInput }, refresh: () => void }} props */

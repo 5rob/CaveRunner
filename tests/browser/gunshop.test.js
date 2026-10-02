@@ -72,10 +72,10 @@ const DIR = path.join(__dirname, '..', 'build');
   await page.screenshot({ path: path.join(DIR, 'gunshop_boost.png') });
   await page.waitForTimeout(2500);
   st = await page.evaluate(() => ({ c: window.__in.current.loadout.crystals.length, guns: window.__in.current.loadout.gunShop.guns.map(g => ({ lvl: g.lvl, b: !!g.boosted })),
-    cost: document.querySelector('.gboost .gcost').textContent, top: document.querySelector('.gold .crys').textContent }));
+    cost: document.querySelector('.gboost .gcost').textContent, top: document.querySelectorAll('.gold .crysrow .cbit.red').length }));
   check('the first boosted reroll costs one crystal, the next two', st.c === 3 && st.cost === '×2', st);
   check('boosted guns: deeper levels, marked boosted', st.guns.every(g => g.b && g.lvl >= 2), st.guns);
-  check('the top bar counts your crystals', st.top === '3', st.top);
+  check('the top bar shows a red silhouette per crystal', st.top === 3, st.top);
 
   // buy the selected (the first): gold taken, menu shut, the gun pops out onto the floor
   const buy = await page.evaluate(() => { const g = window.__in.current.loadout.gunShop.guns[0]; return { name: g.name, price: shopGunPrice(g), gold: window.__in.current.loadout.gold }; });

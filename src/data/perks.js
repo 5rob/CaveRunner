@@ -74,14 +74,58 @@ export const PERKS = {
   sight:    { name: 'Trajectory Sight', glyph: '⋯', tint: '#7ad7ff', trajectory: 1,
               info: 'Shows where your next shot flies — the dotted aim line, mods and all.' },
 };
+
+// ---- stat perks ----
+// One perk per suit stat, in five levels: each fits only that stat's slot on the Exo Suit
+// (STAT_KEYS, after the SUIT_SLOTS general ones). Ids are st_<stat><level>: st_hp3. Values climb
+// a little faster than evenly; prices (STAT_PRICE) climb faster still.
+export const ROMAN = ['I', 'II', 'III', 'IV', 'V'];
+/** @type {Record<string, { name: string, glyph: string, tint: string, field: string, vals: number[], say: (v: number) => string }>} */
+export const STAT_PERKS = {
+  hp:     { name: 'Max Health', glyph: '♥', tint: '#ff5a6e', field: 'hpAdd', vals: [20, 40, 65, 95, 130],
+            say: v => v + ' more maximum health, and it comes full.' },
+  walk:   { name: 'Movement Speed', glyph: '➤', tint: '#6db8ff', field: 'walk', vals: [1.08, 1.16, 1.25, 1.35, 1.5],
+            say: v => 'Walk and fly ' + Math.round((v - 1) * 100) + '% faster.' },
+  fuel:   { name: 'Jetpack Fuel', glyph: '▮', tint: '#ff9a2e', field: 'fuel', vals: [1.15, 1.3, 1.5, 1.75, 2],
+            say: v => 'A tank ' + Math.round((v - 1) * 100) + '% bigger: the jetpack runs that much longer.' },
+  refuel: { name: 'Jetpack Recharge', glyph: '↺', tint: '#ffd35a', field: 'refuel', vals: [1.15, 1.3, 1.5, 1.75, 2],
+            say: v => 'The tank refills ' + Math.round((v - 1) * 100) + '% faster.' },
+  pull:   { name: 'Gold Vacuum', glyph: '⊛', tint: '#ffc93c', field: 'goldPull', vals: [1.3, 1.6, 2, 2.5, 3],
+            say: v => 'Gold flies to you from ' + Math.round((v - 1) * 100) + '% further away.' },
+};
+export const STAT_KEYS = Object.keys(STAT_PERKS);
+export const STAT_PRICE = [60, 140, 260, 420, 650];   // gold at the perk machine, by level
+for (const s of STAT_KEYS) {
+  const S = STAT_PERKS[s];
+  S.vals.forEach((v, i) => {
+    PERKS['st_' + s + (i + 1)] = { name: S.name + ' ' + ROMAN[i], glyph: S.glyph, tint: S.tint, stat: s, tier: i + 1,
+      [S.field]: v, info: S.say(v) + ' Fits the suit’s ' + S.name + ' slot.' };
+  });
+}
 export const PERK_IDS = Object.keys(PERKS);
 
-// The perks that count: the ones you carry minus those you've switched off (LO.perksOff holds
-// their places in LO.perks, so two of the same perk switch separately)
-/** @param {{ perks?: string[], perksOff?: number[] }} lo @returns {string[]} */
+// Perks are things you carry (LO.perks: bought from the perk machine, picked up) and they only
+// count once fitted to one of the Exo Suit's SUIT_SLOTS (LO.suit, the Bag's second tab)
+export const SUIT_SLOTS = 6;
+// LO.suit: the SUIT_SLOTS general slots (any perk but a stat one), then one slot per STAT_KEYS
+// stat (only that stat's perks)
+export const SUIT_LEN = SUIT_SLOTS + STAT_KEYS.length;
+// can perk `id` go in suit slot `i`?
+/** @param {string} id @param {number} i */
+export function fitsSlot(id, i) {
+  const k = PERKS[id];
+  if (!k) return false;
+  return i < SUIT_SLOTS ? !k.stat : k.stat === STAT_KEYS[i - SUIT_SLOTS];
+}
+// what the perk machine asks for a copy of one (game/systems/shops.js, ui/modshop.js perkShop)
+export const PERK_PRICE = 200;
+/** @param {string} id */
+export const perkPrice = id => (PERKS[id] && PERKS[id].tier ? STAT_PRICE[PERKS[id].tier - 1] : PERK_PRICE);
+
+// The perks that count: the ones fitted to the suit
+/** @param {{ suit?: (string | null)[] }} lo @returns {string[]} */
 export function activePerks(lo) {
-  const off = lo.perksOff || [];
-  return (lo.perks || []).filter((_, i) => !off.includes(i));
+  return (lo.suit || []).filter(id => id && PERKS[id]);
 }
 
 // Everything the perks you are carrying add up to. Multipliers multiply, flags stick,
@@ -93,7 +137,7 @@ export function perkBag(ids) {
     delay: 1, rech: 1, walk: 1, jet: 1, hpMul: 1, hpAdd: 0, heal: 1, gold: 1, goldPull: 1,
     shield: 0, lives: 0, ghost: 0, homing: 0, trail: 0, contact: 0, close: 0, invis: 0,
     repel: 0, seeAll: 0, radarEnemy: 0, radarItem: 0, radarWand: 0, tinker: 0,
-    extraItem: 0, pinpointer: 0, trajectory: 0 };
+    extraItem: 0, pinpointer: 0, trajectory: 0, fuel: 1, refuel: 1 };
   for (const id of ids || []) {
     const k = PERKS[id];
     if (!k) continue;
@@ -101,6 +145,7 @@ export function perkBag(ids) {
     P.recoil *= k.recoil || 1; P.delay *= k.delay || 1; P.rech *= k.rech || 1;
     P.walk *= k.walk || 1; P.jet *= k.jet || 1; P.hpMul *= k.hpMul || 1;
     P.heal *= k.heal || 1; P.gold *= k.gold || 1; P.goldPull *= k.goldPull || 1;
+    P.fuel *= k.fuel || 1; P.refuel *= k.refuel || 1;
     if (k.mana === 0) P.mana = 0; else P.mana *= k.mana || 1;
     P.bounce += k.bounce || 0; P.crit += k.crit || 0; P.hpAdd += k.hpAdd || 0;
     P.lives += k.lives || 0; P.ghost += k.ghost || 0;

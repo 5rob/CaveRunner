@@ -4,7 +4,7 @@
 // store. Uses the page's VERSION global to decide whether the exact cave comes back.
 
 import { DEADLINE_MS, LVL_BUY, START_GOLD } from '../core/consts.js';
-import { PERKS } from '../data/perks.js';
+import { PERKS, SUIT_LEN, SUIT_SLOTS, fitsSlot } from '../data/perks.js';
 import { resetGun } from '../spells/guns.js';
 import { MODS } from '../spells/mods.js';
 
@@ -27,6 +27,18 @@ export function cleanGun(g) {
   out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
   return resetGun(out);
 }
+/** @param {any} lo whatever the store held @returns {{ perks: string[], suit: (string | null)[] }} */
+export function cleanPerks(lo) {
+  const carried = (Array.isArray(lo.perks) ? lo.perks : []).filter(id => PERKS[id]);
+  if (Array.isArray(lo.suit)) {
+    const suit = Array.from({ length: SUIT_LEN }, (_, i) => (fitsSlot(lo.suit[i], i) ? lo.suit[i] : null));
+    return { perks: carried, suit };
+  }
+  const off = Array.isArray(lo.perksOff) ? lo.perksOff : [];
+  const on = carried.filter((_, i) => !off.includes(i)), rest = carried.filter((_, i) => off.includes(i));
+  const suit = Array.from({ length: SUIT_LEN }, (_, i) => (i < SUIT_SLOTS && on[i]) || null);
+  return { perks: rest.concat(on.slice(SUIT_SLOTS)), suit };
+}
 /** @param {any} lo whatever the store held @returns {Loadout | null} */
 export function cleanLoadout(lo) {
   lo = lo && typeof lo === 'object' ? lo : {};
@@ -38,8 +50,9 @@ export function cleanLoadout(lo) {
   return {
     guns, sel,
     bag: (Array.isArray(lo.bag) ? lo.bag : []).filter(id => MODS[id]),
-    perks: (Array.isArray(lo.perks) ? lo.perks : []).filter(id => PERKS[id]),
-    perksOff: (Array.isArray(lo.perksOff) ? lo.perksOff : []).filter(i => Number.isInteger(i) && i >= 0),
+    // perks carried (LO.perks) and fitted to the Exo Suit (LO.suit). A save from before the suit:
+    // its switched-on perks go in the slots, as many as fit, the rest are carried
+    ...cleanPerks(lo),
     // v106 put a bought level's price on your gold (it went negative); now it's a debt of its own
     // and an older page loading a v107 save dropped the debt and then paid out the whole sale: a
     // pile of gold that size with no debt is that, so the level's price comes back off it
@@ -55,6 +68,7 @@ export function cleanLoadout(lo) {
     gunShop: lo.gunShop && typeof lo.gunShop === 'object' && Array.isArray(lo.gunShop.guns)
       ? { floor: num(lo.gunShop.floor, 0), guns: lo.gunShop.guns.map(cleanGun), rerolls: Math.max(0, num(lo.gunShop.rerolls, 0)),
           boosts: Math.max(0, num(lo.gunShop.boosts, 0)) } : undefined,
+    greens: (Array.isArray(lo.greens) ? lo.greens : []).filter(f => Number.isInteger(f) && f > 0),
     crystals: (Array.isArray(lo.crystals) ? lo.crystals : []).filter(f => Number.isInteger(f) && f > 0),
     debug: !!lo.debug,
   };
@@ -83,6 +97,7 @@ export function readSave(raw) {
       pickups: Array.isArray(L.pickups) ? L.pickups.map(q => {
         if (!q || typeof q !== 'object') return null;
         if (q.kind === 'mod') return MODS[q.id] ? q : null;
+        if (q.kind === 'perk') return PERKS[q.id] ? q : null;
         if (q.kind === 'crystal') return Number.isInteger(q.floor) && q.floor > 0 ? q : null;
         if (q.kind === 'gun') { const gun = cleanGun(q.gun); return gun ? Object.assign({}, q, { gun }) : null; }
         return null;
@@ -108,3 +123,16 @@ export function readCollection(raw) {
 export const loadCollection = () => { try { return readCollection(localStorage.getItem(COLLECTION_KEY)); } catch (_) { return []; } };
 /** @param {string[]} ids */
 export const saveCollection = ids => { try { localStorage.setItem(COLLECTION_KEY, JSON.stringify(ids)); } catch (_) {} };
+
+// the perks unlocked at the perk machine, kept across runs the same way
+export const PERK_COLLECTION_KEY = 'caverunner-perkcollection';
+/** @param {string | null} raw @returns {string[]} */
+export function readPerkCollection(raw) {
+  let s;
+  try { s = JSON.parse(raw); } catch (_) { return []; }
+  return Array.isArray(s) ? [...new Set(s.filter(id => typeof id === 'string' && PERKS[id]))] : [];
+}
+/** @type {() => string[]} */
+export const loadPerkCollection = () => { try { return readPerkCollection(localStorage.getItem(PERK_COLLECTION_KEY)); } catch (_) { return []; } };
+/** @param {string[]} ids */
+export const savePerkCollection = ids => { try { localStorage.setItem(PERK_COLLECTION_KEY, JSON.stringify(ids)); } catch (_) {} };

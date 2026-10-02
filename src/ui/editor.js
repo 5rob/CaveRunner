@@ -180,8 +180,8 @@ export function ScrollBox({ cls, drop, children }) {
 // tip buttons don't. buildAdvice and the tip code are kept; flip this to bring them back.
 export const SHOW_TIPS = false;
 
-/** @param {{ input: { current: GameInput }, close: () => void, refresh: () => void, canEdit: boolean }} props */
-export function Editor({ input, close, refresh, canEdit }) {
+/** @param {{ input: { current: GameInput }, close: () => void, refresh: () => void, canEdit: boolean, tabs?: any }} props */
+export function Editor({ input, close, refresh, canEdit, tabs }) {
   const LO = input.current.loadout;
   useEffect(() => { SFX.fx('open'); return () => SFX.fx('close'); }, []);
   const [sel, setSel] = useState(LO.sel);
@@ -425,6 +425,7 @@ export function Editor({ input, close, refresh, canEdit }) {
     drag && drag.armed ? h('div', { className: 'ghost',
       style: { left: drag.x, top: drag.y, borderColor: famCol(drag.id), color: famCol(drag.id) } },
       MODS[drag.id].glyph) : null,
+    tabs || null,
     card
   );
 }

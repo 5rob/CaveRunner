@@ -8,9 +8,7 @@ import { healPrice } from '../../data/creatures.js';
 import { PERKS } from '../../data/perks.js';
 import { collideNuggets, stepNugget } from '../../world/nuggets.js';
 import { MODS } from '../../spells/mods.js';
-import { paintFog } from './fog.js';
 import { toast } from './particles.js';
-import { maxHp, refreshBag } from './player.js';
 import { solidAt } from './terrain.js';
 import { MACHINE_TOP, SHOPS, shopNear, shopUse, stepShops } from './shops.js';
 import { VEND_TOP, vendLabel, vendNear, vendUse } from './vend.js';
@@ -100,12 +98,13 @@ export function stepPickups(W, G, F) {
         : { text: MODS[near.it.id].name, id: near.it.id, price: near.it.price,
             can: LO.gold >= near.it.price })
       : near.src === 'room'
-        ? (near.r.kind === 'perk'
-            ? { text: PERKS[near.r.id].name, perk: near.r.id, price: 0, can: true }
-            : { text: '+25 Max Health', heart: true, price: 0, can: true })
+        ? (near.r.kind === 'green' ? { text: 'Green crystal', green: W.floor, price: 0, can: true, found: true }
+          : near.r.kind === 'perk' && near.r.id ? { text: PERKS[near.r.id].name, perk: near.r.id, price: 0, can: true }
+          : { text: '+25 Max Health', heart: true, price: 0, can: true })
       // things on the ground are always yours for the taking — the price is what
       // the "For sale"/"Found" split cares about, not whether you're allowed to
       : (near.q.kind === 'gun' ? { text: near.q.gun.name, gun: near.q.gun, price: 0, can: true, found: true }
+        : near.q.kind === 'perk' ? { text: PERKS[near.q.id].name, perk: near.q.id, price: 0, can: true, found: true }
         : near.q.kind === 'crystal' ? { text: 'Red crystal', crystal: near.q.floor, price: 0, can: true, found: true }
         : { text: MODS[near.q.id].name, id: near.q.id, price: 0, can: true, found: true });
   // where the item sits on screen, so the panel can float its bottom edge just above
@@ -170,19 +169,16 @@ export function stepPickups(W, G, F) {
       }
     } else if (near.src === 'room') {
       const r = near.r;
-      if (r.kind === 'perk') {
-        const before = maxHp(W, G);
-        (LO.perks || (LO.perks = [])).push(r.id);
-        refreshBag(W, G);
-        const after = maxHp(W, G);
-        if (after > before) W.p.hp += after - before;   // Extra Health comes full
-        W.p.hp = Math.min(W.p.hp, after);                 // Glass Cannon trims it
-        if (W.pb.seeAll) { W.seen.fill(2); paintFog(W, G); }  // All-Seeing Eye lights it up now
-        if (W.pb.ghost && !W.ghost) W.ghost = { x: pcx, y: pcy, cd: 0 };
+      if (r.kind === 'green') {                       // a green crystal: the perk machine's currency
+        (LO.greens || (LO.greens = [])).push(W.floor);
+        toast(W, 'Green crystal');
+        SFX.ui('perk');
+      } else if (r.kind === 'perk' && r.id) {         // (an older save's perk altar) carried, not fitted
+        LO.perks.push(r.id);
         toast(W, 'Perk: ' + PERKS[r.id].name);
         SFX.ui('perk');
       } else {
-        LO.maxBonus = (LO.maxBonus || 0) + 25;        // the heart raises the cap, no heal
+        LO.maxBonus = (LO.maxBonus || 0) + 25;        // (an older save's heart) the cap goes up, no heal
         toast(W, '+25 Max Health');
         SFX.ui('heart');
       }
@@ -196,6 +192,12 @@ export function stepPickups(W, G, F) {
         q.taken = true; q.cool = PICKUP_COOL;
         toast(W, 'Picked up ' + MODS[q.id].name);
         SFX.ui('mod');
+      } else if (q.kind === 'perk') {
+        // a perk is carried: fit it to the Exo Suit in the Bag to make it count
+        LO.perks.push(q.id);
+        q.taken = true;
+        toast(W, 'Perk: ' + PERKS[q.id].name + ' (fit it in the Bag)');
+        SFX.ui('perk');
       } else if (q.kind === 'crystal') {
         // a red crystal goes in your pocket: the shop's machine turns it into an unlock
         (LO.crystals || (LO.crystals = [])).push(q.floor || W.floor);

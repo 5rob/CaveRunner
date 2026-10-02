@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v119</title>
+<title>CaveRunner v120</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -539,9 +539,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .vbuy span{font:700 15px system-ui,sans-serif;color:#ffc93c}
 .vbuy.cant{opacity:.45}
 .crystalcard .pglyph{background:none;border:0}
-/* the red crystals you carry, beside your gold at the top */
-.gold .crys{display:inline-flex;align-items:center;gap:2px;margin-left:9px;font-size:.8em;color:#ff6a78}
-.gold .crys svg{display:block}
 .vcrys{display:inline-flex;align-items:center;gap:3px;font:700 14px system-ui,sans-serif;color:#ff6a78}
 
 /* ---- the gun machine's menu (ui/gunshop.js) ---- */
@@ -570,13 +567,65 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .greroll{border-color:#ffc93c;background:rgba(255,201,60,0.12)}
 .gboost{border-color:#c8202c;background:rgba(160,20,40,0.25)}
 .gcost{display:inline-flex;align-items:center;gap:2px;color:#ff6a78 !important}
+.perkhint{margin:0;font-size:12px;color:rgba(233,236,242,0.6)}
+
+/* ---- the Bag's tabs, and the Exo Suit (ui/exosuit.js) ---- */
+.btabs{flex:0 0 auto;display:flex;gap:6px;margin-top:8px}
+.btab{flex:1;height:42px;border-radius:12px;border:1px solid var(--ring);background:var(--pad);color:var(--muted);
+  font:700 13px system-ui,sans-serif;letter-spacing:.03em}
+.btab.on{background:var(--btn);color:var(--text);border-color:var(--text)}
+.xtop{display:flex;gap:10px;align-items:flex-start;margin-bottom:6px}
+.xport{flex:0 0 auto;width:92px;height:92px;border-radius:12px;border:1px solid var(--ring)}
+.xstats{flex:1;min-width:0;display:grid;grid-template-columns:1fr 1fr;gap:3px 10px}
+.xstat{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:12px;color:var(--muted);
+  border-bottom:1px solid var(--pad);padding:1px 0}
+.xstat b{color:var(--text);font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;gap:2px}
+.xstat.xgold b{color:#c99a1c}
+.xstat.xdebt b{color:#e24a2c}
+.xstat.small{font-size:11px}
+.xslots{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:6px}
+.xslot{aspect-ratio:1;border-radius:12px;border:1.5px dashed var(--ring);background:var(--pad);
+  display:flex;align-items:center;justify-content:center;font-size:22px;touch-action:none}
+.xslot.full{border-style:solid;background:var(--btn);box-shadow:inset 0 0 0 1px currentColor}
+.xgrid{flex:1 1 0;min-height:60px;overflow-y:auto;border-radius:9px;background:var(--pad);padding:6px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:6px;align-content:start}
+.xperk{position:relative;aspect-ratio:1;border-radius:10px;border:1.5px solid;background:var(--btn);
+  display:flex;align-items:center;justify-content:center;font-size:19px;touch-action:pan-y}
+.xperk.none{opacity:.45;border-style:dashed}
+.xperk.locked{opacity:.3;border-style:dashed;filter:grayscale(1)}
+.xperk i{position:absolute;right:3px;bottom:1px;font:700 9px system-ui,sans-serif;font-style:normal;color:var(--text)}
+.xperk u{position:absolute;right:2px;top:1px;font-size:9px;text-decoration:none}
+/* the crystals you carry: silhouettes under the gold (hud.js CrystalRow) */
+.crysrow{display:flex;flex-wrap:wrap;justify-content:center;gap:1px 2px;max-width:170px;margin:1px auto 2px}
+.crysrow .cbit{width:11px;height:11px;display:block}
+.crysrow .cbit.red{fill:#e8283c;filter:drop-shadow(0 0 2px rgba(255,40,60,0.6))}
+.crysrow .cbit.green{fill:#2fe56c;filter:drop-shadow(0 0 2px rgba(40,255,100,0.6))}
+.crysrow .cmore{font:700 10px system-ui,sans-serif;line-height:11px}
+.crysrow .cmore.red{color:#ff6a78}
+.crysrow .cmore.green{color:#5dff8f}
+.vmark{position:absolute;right:2px;bottom:1px;font:700 8px system-ui,sans-serif;font-style:normal;color:currentColor}
+.vcell{position:relative}
+/* the Exo Suit's stat rows: a slot for that stat's perks, its name, now, and what perks add */
+.xrows{display:flex;flex-direction:column;gap:4px;margin-bottom:6px}
+.xrow{display:flex;align-items:center;gap:8px;font-size:12.5px}
+.xrow .xslot.stat{flex:0 0 34px;width:34px;height:34px;aspect-ratio:auto;border-radius:9px;font-size:16px}
+.xrow .xrl{flex:1;font-weight:700;white-space:nowrap}
+.xrow b{font-variant-numeric:tabular-nums;color:var(--text)}
+.xrow i{flex:0 0 42px;text-align:right;font-style:normal;font-weight:700;color:#3fb85f;font-size:11px}
+.xslot{position:relative}
+.xslot i{position:absolute;right:3px;bottom:1px;font:700 8px system-ui,sans-serif;font-style:normal}
+.xslot.ok{border-color:#3fb85f;border-style:solid;box-shadow:0 0 0 2px rgba(63,184,95,0.35)}
+.xperk em{position:absolute;left:3px;bottom:1px;font:700 8px system-ui,sans-serif;font-style:normal}
+.xmsg{margin-top:4px}
+.xstats{grid-template-columns:1fr}
+.xtop .xport{width:84px;height:84px}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v119';</script>
+<script>const VERSION = 'v120';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -4917,10 +4966,77 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       info: "Shows where your next shot flies — the dotted aim line, mods and all."
     }
   };
+  var ROMAN = ["I", "II", "III", "IV", "V"];
+  var STAT_PERKS = {
+    hp: {
+      name: "Max Health",
+      glyph: "♥",
+      tint: "#ff5a6e",
+      field: "hpAdd",
+      vals: [20, 40, 65, 95, 130],
+      say: (v) => v + " more maximum health, and it comes full."
+    },
+    walk: {
+      name: "Movement Speed",
+      glyph: "➤",
+      tint: "#6db8ff",
+      field: "walk",
+      vals: [1.08, 1.16, 1.25, 1.35, 1.5],
+      say: (v) => "Walk and fly " + Math.round((v - 1) * 100) + "% faster."
+    },
+    fuel: {
+      name: "Jetpack Fuel",
+      glyph: "▮",
+      tint: "#ff9a2e",
+      field: "fuel",
+      vals: [1.15, 1.3, 1.5, 1.75, 2],
+      say: (v) => "A tank " + Math.round((v - 1) * 100) + "% bigger: the jetpack runs that much longer."
+    },
+    refuel: {
+      name: "Jetpack Recharge",
+      glyph: "↺",
+      tint: "#ffd35a",
+      field: "refuel",
+      vals: [1.15, 1.3, 1.5, 1.75, 2],
+      say: (v) => "The tank refills " + Math.round((v - 1) * 100) + "% faster."
+    },
+    pull: {
+      name: "Gold Vacuum",
+      glyph: "⊛",
+      tint: "#ffc93c",
+      field: "goldPull",
+      vals: [1.3, 1.6, 2, 2.5, 3],
+      say: (v) => "Gold flies to you from " + Math.round((v - 1) * 100) + "% further away."
+    }
+  };
+  var STAT_KEYS = Object.keys(STAT_PERKS);
+  var STAT_PRICE = [60, 140, 260, 420, 650];
+  for (const s of STAT_KEYS) {
+    const S = STAT_PERKS[s];
+    S.vals.forEach((v, i) => {
+      PERKS["st_" + s + (i + 1)] = {
+        name: S.name + " " + ROMAN[i],
+        glyph: S.glyph,
+        tint: S.tint,
+        stat: s,
+        tier: i + 1,
+        [S.field]: v,
+        info: S.say(v) + " Fits the suit’s " + S.name + " slot."
+      };
+    });
+  }
   var PERK_IDS = Object.keys(PERKS);
+  var SUIT_SLOTS = 6;
+  var SUIT_LEN = SUIT_SLOTS + STAT_KEYS.length;
+  function fitsSlot(id, i) {
+    const k = PERKS[id];
+    if (!k) return false;
+    return i < SUIT_SLOTS ? !k.stat : k.stat === STAT_KEYS[i - SUIT_SLOTS];
+  }
+  var PERK_PRICE = 200;
+  var perkPrice = (id) => PERKS[id] && PERKS[id].tier ? STAT_PRICE[PERKS[id].tier - 1] : PERK_PRICE;
   function activePerks(lo) {
-    const off = lo.perksOff || [];
-    return (lo.perks || []).filter((_, i) => !off.includes(i));
+    return (lo.suit || []).filter((id) => id && PERKS[id]);
   }
   function perkBag(ids) {
     const P = {
@@ -4956,7 +5072,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       tinker: 0,
       extraItem: 0,
       pinpointer: 0,
-      trajectory: 0
+      trajectory: 0,
+      fuel: 1,
+      refuel: 1
     };
     for (const id of ids || []) {
       const k = PERKS[id];
@@ -4973,6 +5091,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       P.heal *= k.heal || 1;
       P.gold *= k.gold || 1;
       P.goldPull *= k.goldPull || 1;
+      P.fuel *= k.fuel || 1;
+      P.refuel *= k.refuel || 1;
       if (k.mana === 0) P.mana = 0;
       else P.mana *= k.mana || 1;
       P.bounce += k.bounce || 0;
@@ -7830,6 +7950,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
     return resetGun(out);
   }
+  function cleanPerks(lo) {
+    const carried = (Array.isArray(lo.perks) ? lo.perks : []).filter((id) => PERKS[id]);
+    if (Array.isArray(lo.suit)) {
+      const suit2 = Array.from({ length: SUIT_LEN }, (_, i) => fitsSlot(lo.suit[i], i) ? lo.suit[i] : null);
+      return { perks: carried, suit: suit2 };
+    }
+    const off = Array.isArray(lo.perksOff) ? lo.perksOff : [];
+    const on = carried.filter((_, i) => !off.includes(i)), rest = carried.filter((_, i) => off.includes(i));
+    const suit = Array.from({ length: SUIT_LEN }, (_, i) => i < SUIT_SLOTS && on[i] || null);
+    return { perks: rest.concat(on.slice(SUIT_SLOTS)), suit };
+  }
   function cleanLoadout(lo) {
     lo = lo && typeof lo === "object" ? lo : {};
     const guns = [0, 1, 2, 3].map((i) => cleanGun((lo.guns || [])[i]));
@@ -7841,8 +7972,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       guns,
       sel,
       bag: (Array.isArray(lo.bag) ? lo.bag : []).filter((id) => MODS[id]),
-      perks: (Array.isArray(lo.perks) ? lo.perks : []).filter((id) => PERKS[id]),
-      perksOff: (Array.isArray(lo.perksOff) ? lo.perksOff : []).filter((i) => Number.isInteger(i) && i >= 0),
+      // perks carried (LO.perks) and fitted to the Exo Suit (LO.suit). A save from before the suit:
+      // its switched-on perks go in the slots, as many as fit, the rest are carried
+      ...cleanPerks(lo),
       // v106 put a bought level's price on your gold (it went negative); now it's a debt of its own
       // and an older page loading a v107 save dropped the debt and then paid out the whole sale: a
       // pile of gold that size with no debt is that, so the level's price comes back off it
@@ -7860,6 +7992,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         rerolls: Math.max(0, num2(lo.gunShop.rerolls, 0)),
         boosts: Math.max(0, num2(lo.gunShop.boosts, 0))
       } : void 0,
+      greens: (Array.isArray(lo.greens) ? lo.greens : []).filter((f) => Number.isInteger(f) && f > 0),
       crystals: (Array.isArray(lo.crystals) ? lo.crystals : []).filter((f) => Number.isInteger(f) && f > 0),
       debug: !!lo.debug
     };
@@ -7894,6 +8027,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         pickups: Array.isArray(L2.pickups) ? L2.pickups.map((q) => {
           if (!q || typeof q !== "object") return null;
           if (q.kind === "mod") return MODS[q.id] ? q : null;
+          if (q.kind === "perk") return PERKS[q.id] ? q : null;
           if (q.kind === "crystal") return Number.isInteger(q.floor) && q.floor > 0 ? q : null;
           if (q.kind === "gun") {
             const gun = cleanGun(q.gun);
@@ -7941,6 +8075,767 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     } catch (_) {
     }
   };
+  var PERK_COLLECTION_KEY = "caverunner-perkcollection";
+  function readPerkCollection(raw) {
+    let s;
+    try {
+      s = JSON.parse(raw);
+    } catch (_) {
+      return [];
+    }
+    return Array.isArray(s) ? [...new Set(s.filter((id) => typeof id === "string" && PERKS[id]))] : [];
+  }
+  var loadPerkCollection = () => {
+    try {
+      return readPerkCollection(localStorage.getItem(PERK_COLLECTION_KEY));
+    } catch (_) {
+      return [];
+    }
+  };
+  var savePerkCollection = (ids) => {
+    try {
+      localStorage.setItem(PERK_COLLECTION_KEY, JSON.stringify(ids));
+    } catch (_) {
+    }
+  };
+
+  // src/world/nests.js
+  function ratNests(mat, rnd2, zone, keep2, nb, nw) {
+    const inb = (x, y) => x >= 4 && y >= 4 && x < CW - 4 && y < CH - 4;
+    const rock = (x, y) => {
+      x = Math.round(x);
+      y = Math.round(y);
+      return inb(x, y) && mat[y * CW + x] === ROCK;
+    };
+    const open = (x, y) => {
+      x = Math.round(x);
+      y = Math.round(y);
+      return inb(x, y) && !mat[y * CW + x];
+    };
+    const isBuilt = (x, y) => !!zone && zone[Math.round(y) * CW + Math.round(x)] === 1;
+    const allRock = (x, y, r) => {
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++)
+        if (dx * dx + dy * dy <= r * r && !rock(x + dx, y + dy)) return false;
+      return true;
+    };
+    const nests = [];
+    const make = (wantBuilt) => {
+      for (let a = 0; a < 400; a++) {
+        const x = 8 + Math.floor(rnd2() * (CW - 16)), y = 60 + Math.floor(rnd2() * (SHOP_TOP - SHOP_ROOF - 110));
+        if (!open(x, y) || isBuilt(x, y) !== wantBuilt) continue;
+        let sx = x, sy = y, found = false;
+        const dir = rnd2() < 0.33 ? rnd2() < 0.5 ? -1 : 1 : 0;
+        for (let k = 0; k < 30; k++) {
+          const nx2 = dir ? sx + dir : sx, ny2 = dir ? sy : sy + 1;
+          if (!inb(nx2, ny2)) break;
+          if (mat[ny2 * CW + nx2]) {
+            found = rock(nx2, ny2);
+            break;
+          }
+          sx = nx2;
+          sy = ny2;
+        }
+        if (!found) continue;
+        let nx = 0, ny = 0;
+        for (let dy = -5; dy <= 5; dy++) for (let dx = -5; dx <= 5; dx++)
+          if (dx * dx + dy * dy <= 25 && inb(sx + dx, sy + dy) && mat[(sy + dy) * CW + sx + dx]) {
+            nx -= dx;
+            ny -= dy;
+          }
+        const nl = Math.hypot(nx, ny);
+        if (nl < 1e-6) continue;
+        nx /= nl;
+        ny /= nl;
+        if (ny > 0.35) continue;
+        let clear = true;
+        for (let k = 2; k <= 22 && clear; k += 2) if (!open(sx + nx * k, sy + ny * k)) clear = false;
+        if (!clear) continue;
+        const ang = Math.atan2(-ny, -nx) + (rnd2() - 0.5) * 1.3, D = 20 + rnd2() * 14, rr2 = 5 + Math.floor(rnd2() * 3);
+        const cx = Math.round(sx + Math.cos(ang) * D), cy = Math.round(sy + Math.sin(ang) * D);
+        if (cy > SHOP_TOP - SHOP_ROOF - 14 || !allRock(cx, cy, rr2 + 5)) continue;
+        if (keep2.some((k) => Math.hypot(k.x - cx, k.y - cy) < k.r + rr2 || Math.hypot(k.x - sx, k.y - sy) < k.r)) continue;
+        if (nests.some((n) => Math.hypot(n.x - cx, n.y - cy) < 50 || Math.hypot(n.mouth.x - sx, n.mouth.y - sy) < 40)) continue;
+        const M = 4 + rnd2() * 1.5;
+        const tx = sx + nx * (M - 0.5), ty = sy + ny * (M - 0.5);
+        const L2 = Math.hypot(tx - cx, ty - cy), px = -(ty - cy) / L2, py = (tx - cx) / L2;
+        const amp = (4 + rnd2() * 4) * (rnd2() < 0.5 ? -1 : 1), waves = 1 + rnd2() * 0.8, steps = Math.ceil(L2 * 2);
+        const path = [];
+        let buried = true;
+        for (let k = 0; k <= steps; k++) {
+          const t = k / steps, w = amp * Math.sin(t * Math.PI * waves) * Math.sin(t * Math.PI);
+          const qx = cx + (tx - cx) * t + px * w, qy = cy + (ty - cy) * t + py * w;
+          path.push({ x: qx, y: qy });
+          if (Math.hypot(qx - sx, qy - sy) > 6 && Math.hypot(qx - cx, qy - cy) > rr2 && !allRock(qx, qy, 3)) {
+            buried = false;
+            break;
+          }
+        }
+        if (!buried) continue;
+        const mound = [];
+        const mx = sx - nx * 1.5, my = sy - ny * 1.5, Mr = Math.ceil(M + 2);
+        for (let dy = -Mr; dy <= Mr; dy++) for (let dx = -Mr; dx <= Mr; dx++) {
+          const X = Math.round(mx) + dx, Y = Math.round(my) + dy;
+          if (!inb(X, Y) || Math.hypot(X - mx, Y - my) > M) continue;
+          if (!mat[Y * CW + X]) mat[Y * CW + X] = ROCK;
+          if (mat[Y * CW + X] === ROCK) mound.push(Y * CW + X);
+        }
+        for (let dy = -rr2 - 2; dy <= rr2 + 2; dy++) for (let dx = -rr2 - 2; dx <= rr2 + 2; dx++) {
+          const a2 = Math.atan2(dy, dx), wob = rr2 * (0.8 + 0.25 * Math.sin(a2 * 3 + cx) + 0.12 * Math.sin(a2 * 5 + cy));
+          if (Math.hypot(dx, dy * 1.25) <= wob) mat[(cy + dy) * CW + cx + dx] = 0;
+        }
+        const cut = (qx, qy) => {
+          for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+            const X = Math.round(qx + dx), Y = Math.round(qy + dy);
+            if (inb(X, Y) && Math.hypot(X - qx, Y - qy) <= 1.6) mat[Y * CW + X] = 0;
+          }
+        };
+        for (const q of path) cut(q.x, q.y);
+        cut(tx + nx, ty + ny);
+        const mouth = { x: tx + nx * 2.5, y: ty + ny * 2.5 };
+        path.push(mouth);
+        const thin = path.filter((q, i) => i % 3 === 0 || i === path.length - 1);
+        nests.push({ x: cx, y: cy, r: rr2, path: thin, mouth, built: wantBuilt, mound, nx, ny });
+        return true;
+      }
+      return false;
+    };
+    for (let i = 0; i < nb; i++) make(true);
+    for (let i = 0; i < nw; i++) make(false);
+    return nests;
+  }
+
+  // src/world/zones.js
+  function boxReach(mat, x, y) {
+    const PWc = 6, PHc = 11;
+    const free = new Uint8Array(CW * CH), ok = new Uint8Array(CW * CH);
+    for (let cx = 0; cx < CW; cx++) {
+      let run = 0;
+      for (let cy = CH - 1; cy >= 0; cy--) {
+        run = mat[cy * CW + cx] ? 0 : run + 1;
+        if (run >= PHc) free[cy * CW + cx] = 1;
+      }
+    }
+    for (let cy = 0; cy < CH; cy++) {
+      let run = 0;
+      for (let cx = CW - 1; cx >= 0; cx--) {
+        run = free[cy * CW + cx] ? run + 1 : 0;
+        if (run >= PWc) ok[cy * CW + cx] = 1;
+      }
+    }
+    const s0 = y * CW + x;
+    let top = false;
+    if (!ok[s0]) return { ok, top };
+    const st = new Int32Array(CW * CH);
+    let n = 0;
+    ok[s0] = 2;
+    st[n++] = s0;
+    while (n) {
+      const i = st[--n];
+      if (i < 40 * CW) top = true;
+      const x0 = i % CW;
+      if (x0 > 0 && ok[i - 1] === 1) {
+        ok[i - 1] = 2;
+        st[n++] = i - 1;
+      }
+      if (x0 < CW - 1 && ok[i + 1] === 1) {
+        ok[i + 1] = 2;
+        st[n++] = i + 1;
+      }
+      if (i >= CW && ok[i - CW] === 1) {
+        ok[i - CW] = 2;
+        st[n++] = i - CW;
+      }
+      if (i < CW * (CH - 1) && ok[i + CW] === 1) {
+        ok[i + CW] = 2;
+        st[n++] = i + CW;
+      }
+    }
+    return { ok, top };
+  }
+  function builtAt(zone, wx, wy) {
+    if (!zone) return false;
+    const x = Math.floor(wx / CELL), y = Math.floor(wy / CELL);
+    return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
+  }
+
+  // src/world/level.js
+  var ROOM_HW = 23 * CELL, ROOM_HH = 15 * CELL;
+  function makeLevel(seed, floor, owned) {
+    floor = floor || 1;
+    const hash4 = (x, y) => {
+      let v = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 982451653) | 0;
+      v = Math.imul(v ^ v >>> 13, 1274126177);
+      v ^= v >>> 16;
+      return (v >>> 0) / 4294967296;
+    };
+    const vn = (x, y) => {
+      const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+      const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+      const a = hash4(xi, yi), b = hash4(xi + 1, yi), c = hash4(xi, yi + 1), d2 = hash4(xi + 1, yi + 1);
+      return a + (b - a) * u + (c - a) * v + (a - b - c + d2) * u * v;
+    };
+    const fbm = (x, y) => 0.55 * vn(x, y) + 0.3 * vn(x * 2 + 17, y * 2 + 31) + 0.15 * vn(x * 4 + 53, y * 4 + 7);
+    let rs = seed % 2147483646 + 1;
+    const rnd2 = () => (rs = rs * 16807 % 2147483647) / 2147483647;
+    for (let i = 0; i < 12; i++) rnd2();
+    const mat = new Uint8Array(CW * CH);
+    const inside = (x, y) => x >= 0 && y >= 0 && x < CW && y < CH;
+    const disc = (ex, ey, r, v) => {
+      const r2 = r * r;
+      for (let y = Math.floor(ey - r); y <= Math.ceil(ey + r); y++)
+        for (let x = Math.floor(ex - r); x <= Math.ceil(ex + r); x++)
+          if (inside(x, y) && (x - ex) * (x - ex) + (y - ey) * (y - ey) <= r2) mat[y * CW + x] = v;
+    };
+    const lattice = (step2, fn) => {
+      const gw = Math.ceil(CW / step2) + 2, gh = Math.ceil(CH / step2) + 2;
+      const g = new Float32Array(gw * gh);
+      for (let j = 0; j < gh; j++)
+        for (let i = 0; i < gw; i++) g[j * gw + i] = fn(i * step2, j * step2);
+      return { g, gw, inv: 1 / step2 };
+    };
+    const at = (L2, x, y) => {
+      const fx = x * L2.inv, fy = y * L2.inv;
+      const xi = fx | 0, yi = fy | 0, u = fx - xi, v = fy - yi, i = yi * L2.gw + xi;
+      const a = L2.g[i], b = L2.g[i + 1], c = L2.g[i + L2.gw], d2 = L2.g[i + L2.gw + 1];
+      return a + (b - a) * u + (c - a) * v + (a - b - c + d2) * u * v;
+    };
+    const layered = floor === 1;
+    const openL = lattice(8, (x, y) => fbm(x / 160 + 500, y / 160 + 500));
+    const pocketL = lattice(4, (x, y) => fbm(x / 60, y / 60));
+    const tunnelL = lattice(4, (x, y) => fbm(x / 90 + 200, y / 90 + 200));
+    for (let cy = 0; cy < CH; cy++) {
+      for (let cx = 0; cx < CW; cx++) {
+        const open = Math.min(1, Math.max(0, (at(openL, cx, cy) - 0.42) / 0.16));
+        const pocket = at(pocketL, cx, cy) < 0.34 + 0.24 * open;
+        const tunnel = Math.abs(at(tunnelL, cx, cy) - 0.5) < 0.018 + 0.018 * open;
+        mat[cy * CW + cx] = pocket || tunnel ? 0 : ROCK;
+      }
+    }
+    let zone = null;
+    if (layered) {
+      const zs = kr("lvZoneSize", rnd2), share = kr("lvZoneShare", rnd2), rag = kr("lvZoneRag", rnd2), ph = rnd2() * 100;
+      const zoneL = lattice(8, (x, y) => fbm(x / zs + 1300 + ph, y / zs + 1300));
+      const warpX = lattice(4, (x, y) => vn(x / 14 + 1700, y / 14 + 1700));
+      const warpY = lattice(4, (x, y) => vn(x / 14 + 1900, y / 14 + 1900));
+      const vals = [];
+      for (let y = 0; y < SHOP_TOP - SHOP_ROOF; y += 8) for (let x = 0; x < CW; x += 8) vals.push(at(zoneL, x, y));
+      vals.sort((a, b) => a - b);
+      const thr = share <= 0 ? Infinity : share >= 1 ? -Infinity : vals[Math.min(vals.length - 1, Math.floor((1 - share) * vals.length))];
+      zone = new Uint8Array(CW * CH);
+      for (let y = 0; y < SHOP_FLOOR; y++) for (let x = 0; x < CW; x++) {
+        const wx = Math.max(0, Math.min(CW - 1, x + rag * (2 * at(warpX, x, y) - 1)));
+        const wy = Math.max(0, Math.min(CH - 1, y + rag * (2 * at(warpY, x, y) - 1)));
+        if (at(zoneL, wx, wy) > thr) zone[y * CW + x] = 1;
+      }
+    }
+    const built = (x, y) => {
+      if (!zone) return false;
+      x = Math.round(x);
+      y = Math.round(y);
+      return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
+    };
+    const shopExit = 40 + Math.floor(rnd2() * (CW - 80));
+    const lay = layered ? new Uint8Array(CW * CH) : null;
+    const strata = layered ? strataCave(lay, rnd2, { vn, fbm, ok: built }, shopExit) : null;
+    const points = [{ x: shopExit, y: SHOP_TOP - 30 }];
+    const hops = 12;
+    for (let i = 1; i <= hops; i++) {
+      points.push({ x: 40 + rnd2() * (CW - 80), y: CH - 26 - (CH - 60) * i / (hops + 1) + (rnd2() - 0.5) * 40 });
+    }
+    points.push({ x: CW / 2, y: 22 });
+    const blob = (ex, ey, r) => {
+      const r2 = r * 1.3;
+      for (let y = Math.floor(ey - r2); y <= ey + r2; y++)
+        for (let x = Math.floor(ex - r2); x <= ex + r2; x++) {
+          if (!inside(x, y)) continue;
+          const a = Math.atan2(y - ey, x - ex);
+          const wob = r * (0.75 + 0.5 * vn(Math.cos(a) * 1.5 + ex, Math.sin(a) * 1.5 + ey));
+          if (Math.hypot(x - ex, (y - ey) * 1.4) <= wob) mat[y * CW + x] = 0;
+        }
+    };
+    const routePath = [];
+    const spineBuilt = [];
+    const worm = (x, y, tx, ty, r, maxSteps, keep3, spine) => {
+      let ang = tx !== null ? Math.atan2(ty - y, tx - x) : rnd2() * Math.PI * 2;
+      for (let s = 0; s < maxSteps; s++) {
+        if (spine && built(x, y)) spineBuilt.push({ x, y, r: Math.min(r, 7) - 1 });
+        else {
+          disc(x, y, r, 0);
+          if (keep3) keep3.push({ x, y, r: r - 1 });
+        }
+        if (tx !== null && Math.hypot(tx - x, ty - y) < 3) break;
+        const want = tx !== null ? Math.atan2(ty - y, tx - x) : ang;
+        let diff = want - ang;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+        ang += diff * 0.12 + (rnd2() - 0.5) * 0.9;
+        x += Math.cos(ang) * 1.5;
+        y += Math.sin(ang) * 1.5;
+        x = Math.max(6, Math.min(CW - 7, x));
+        y = Math.max(6, Math.min(CH - 12, y));
+      }
+    };
+    for (let i = 1; i < points.length - 1; i++) {
+      if (rnd2() < 0.7) blob(points[i].x, points[i].y, 16 + rnd2() * 30);
+    }
+    const side = [];
+    for (let i = 0; i < 48; i++) {
+      worm(10 + rnd2() * (CW - 20), 20 + rnd2() * (CH - 60), null, null, 5 + rnd2() * 6, 40 + rnd2() * 150, side);
+    }
+    for (const c of side) if (!built(c.x, c.y)) routePath.push(c);
+    if (layered) {
+      for (let i = 0; i < SHOP_FLOOR * CW; i++) if (zone[i]) mat[i] = lay[i];
+      for (const c of strata.routePath) if (built(c.x, c.y)) routePath.push(c);
+    }
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i], b = points[i + 1];
+      const r = rnd2() < 0.4 ? 7 + rnd2() * 2 : 11 + rnd2() * 6;
+      worm(a.x, a.y, b.x, b.y, r, 2e3, routePath, true);
+    }
+    const works = strata ? strata.works.filter((w) => built(w.x0, w.fy - 4) && built(w.x1, w.fy - 4) && built((w.x0 + w.x1) / 2, w.cy + 2)) : [];
+    const vaults = strata ? strata.vaults.filter((v) => built(v.a, v.y) && built(v.b, v.y) && built(v.px, v.py)) : [];
+    const src = new Uint8Array(CW * CH), col = new Uint8Array(CW);
+    for (let pass = 0; pass < 4; pass++) {
+      src.set(mat);
+      for (let cy = 1; cy < CH - 1; cy++) {
+        const r0 = (cy - 1) * CW, r1 = cy * CW, r2 = (cy + 1) * CW;
+        for (let cx = 0; cx < CW; cx++)
+          col[cx] = (src[r0 + cx] ? 1 : 0) + (src[r1 + cx] ? 1 : 0) + (src[r2 + cx] ? 1 : 0);
+        for (let cx = 1; cx < CW - 1; cx++)
+          mat[r1 + cx] = col[cx - 1] + col[cx] + col[cx + 1] >= 5 ? ROCK : 0;
+      }
+    }
+    for (const c of routePath) disc(c.x, c.y, c.r, 0);
+    paveWorks(mat, works, vn);
+    for (let cy = SHOP_FLOOR; cy < CH; cy++) for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = ROCK;
+    const carve = (ex, ey, rx, ry, maxY) => {
+      for (let y = Math.max(0, ey - ry); y <= Math.min(maxY, ey + ry); y++)
+        for (let x = Math.max(0, ex - rx); x <= Math.min(CW - 1, ex + rx); x++) {
+          const dx = (x - ex) / rx, dy = (y - ey) / ry;
+          if (dx * dx + dy * dy <= 1) mat[y * CW + x] = 0;
+        }
+    };
+    carve(CW / 2, 22, 40, 16, CH);
+    const emptyRatio = (x0, y0, w, hh) => {
+      let e = 0, n = 0;
+      for (let y = y0; y < y0 + hh; y++)
+        for (let x = x0; x < x0 + w; x++) {
+          n++;
+          if (inside(x, y) && !mat[y * CW + x]) e++;
+        }
+      return e / n;
+    };
+    const slab = (x0, y0, w, hh) => {
+      for (let y = y0; y < y0 + hh; y++)
+        for (let x = x0; x < x0 + w; x++) if (inside(x, y)) mat[y * CW + x] = BRICK;
+    };
+    let ledges = 0;
+    for (let a = 0; a < 2400 && ledges < 120; a++) {
+      const x = 10 + Math.floor(rnd2() * (CW - 20)), y = 20 + Math.floor(rnd2() * (SHOP_TOP - 50));
+      if (mat[y * CW + x] || built(x, y)) continue;
+      const dir = rnd2() < 0.5 ? -1 : 1;
+      let wx = x, dist = 0;
+      while (dist < 50 && inside(wx, y) && !mat[y * CW + wx]) {
+        wx += dir;
+        dist++;
+      }
+      if (dist >= 50 || dist < 8) continue;
+      const len = Math.min(dist + 4, 14 + Math.floor(rnd2() * 26));
+      const x0 = dir < 0 ? wx - 3 : wx - len + 4;
+      if (emptyRatio(dir < 0 ? wx + 1 : x0, y - 12, len - 4, 12) < 0.9) continue;
+      if (built(x0, y) || built(x0 + len, y)) continue;
+      slab(x0, y, len, 4);
+      ledges++;
+    }
+    for (let i = 0; i < 36; i++) {
+      const fw = 30 + Math.floor(rnd2() * 40), fh = 20 + Math.floor(rnd2() * 20);
+      const fx = 8 + Math.floor(rnd2() * (CW - 16 - fw)), fy = 60 + Math.floor(rnd2() * (SHOP_TOP - 120));
+      if (built(fx, fy) || built(fx + fw, fy) || built(fx, fy + fh) || built(fx + fw, fy + fh)) continue;
+      const rockRatio = 1 - emptyRatio(fx, fy, fw, fh);
+      if (rockRatio < 0.25 || rockRatio > 0.85) continue;
+      const gap = Math.floor(rnd2() * 4);
+      slab(fx, fy, fw, 4);
+      slab(fx, fy + fh - 4, fw, 4);
+      slab(fx, fy, 4, fh);
+      slab(fx + fw - 4, fy, 4, fh);
+      if (gap === 0) for (let y = fy; y < fy + 4; y++) for (let x = fx + 8; x < fx + 22; x++) mat[y * CW + x] = 0;
+      if (gap === 1) for (let y = fy + 4; y < fy + fh - 4; y++) for (let x = fx; x < fx + 4; x++) mat[y * CW + x] = 0;
+      if (gap === 2) for (let y = fy + 4; y < fy + fh - 4; y++) for (let x = fx + fw - 4; x < fx + fw; x++) mat[y * CW + x] = 0;
+    }
+    let floats = 0;
+    for (let a = 0; a < 1600 && floats < 40; a++) {
+      const len = 18 + Math.floor(rnd2() * 22);
+      const x0 = 8 + Math.floor(rnd2() * (CW - 16 - len)), y0 = 40 + Math.floor(rnd2() * (SHOP_TOP - 80));
+      if (built(x0 - 12, y0) || built(x0 + len + 12, y0)) continue;
+      if (emptyRatio(x0 - 12, y0 - 18, len + 24, 34) < 0.98) continue;
+      slab(x0, y0, len, 4);
+      floats++;
+    }
+    for (const c of routePath) disc(c.x, c.y, Math.min(c.r, 7), 0);
+    for (let cy = SHOP_TOP; cy < SHOP_FLOOR; cy++)
+      for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = 0;
+    for (let cy = SHOP_TOP - SHOP_ROOF; cy < SHOP_TOP; cy++)
+      for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BRICK;
+    for (let cy = SHOP_FLOOR; cy < SHOP_FLOOR + 4; cy++)
+      for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BRICK;
+    for (let cy = SHOP_TOP - SHOP_ROOF - 26; cy < SHOP_TOP; cy++)
+      for (let cx = shopExit - 9; cx <= shopExit + 9; cx++)
+        if (inside(cx, cy)) mat[cy * CW + cx] = 0;
+    slab(CW / 2 - 24, 34, 48, 3);
+    const rect = (x0, y0, w, h3, v) => {
+      for (let y = y0; y < y0 + h3; y++)
+        for (let x = x0; x < x0 + w; x++) if (inside(x, y)) mat[y * CW + x] = v;
+    };
+    const tunnelTo = (x0, y0, x1, y1, r) => {
+      const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0)));
+      for (let i = 0; i <= n; i++) disc(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, r, 0);
+    };
+    const makeRoom = (want) => {
+      for (let tries = 0; tries < 80; tries++) {
+        const v = !layered || want ? vaults.shift() : null;
+        const p0 = v ? { x: v.px, y: v.py } : points[1 + Math.floor(rnd2() * (points.length - 2))];
+        const a = rnd2() * Math.PI * 2, d2 = 50 + rnd2() * 100;
+        const ex = v ? v.x : Math.round(Math.max(40, Math.min(CW - 40, p0.x + Math.cos(a) * d2)));
+        const ey = v ? v.y : Math.round(Math.max(70, Math.min(SHOP_TOP - 70, p0.y + Math.sin(a) * d2)));
+        const rx = 20, ry = 12, sh = 3;
+        if (layered && !v && tries < 79 && [[0, 0], [-rx, -ry], [rx, -ry], [-rx, ry], [rx, ry]].some(([dx, dy]) => built(ex + dx, ey + dy) !== !!want)) continue;
+        rect(ex - rx - sh, ey - ry - sh, (rx + sh) * 2, (ry + sh) * 2, BRICK);
+        rect(ex - rx, ey - ry, rx * 2, ry * 2, 0);
+        const back = Math.atan2(p0.y - ey, p0.x - ex);
+        tunnelTo(ex + Math.cos(back) * (rx - 2), ey + Math.sin(back) * (ry - 2), p0.x, p0.y, 7);
+        rect(ex - rx, ey - ry, rx * 2, ry * 2, 0);
+        return { x: ex * CELL, y: ey * CELL };
+      }
+      return null;
+    };
+    const perkRoom = makeRoom(layered ? rnd2() < 0.5 : false);
+    for (const c of routePath)
+      if (c.y < SHOP_TOP - SHOP_ROOF - 9) disc(c.x, c.y, Math.min(c.r, 7), 0);
+    if (layered) {
+      const sx = 17, sy = SHOP_FLOOR - 12;
+      let R = boxReach(mat, sx, sy);
+      if (!R.top && spineBuilt.length) {
+        for (const c of spineBuilt) {
+          disc(c.x, c.y, c.r + 1, 0);
+          routePath.push(c);
+        }
+        R = boxReach(mat, sx, sy);
+      }
+      if (!R.top) {
+        const E = boxReach(mat, CW / 2 - 3, 20);
+        const prev = new Int32Array(CW * CH).fill(-1), q = new Int32Array(CW * CH);
+        let h3 = 0, t = 0, hit = -1;
+        for (let i = 0; i < CW * CH; i++) if (R.ok[i] === 2) {
+          prev[i] = i;
+          q[t++] = i;
+        }
+        while (h3 < t && hit < 0) {
+          const i = q[h3++], x = i % CW, y = i / CW | 0;
+          if (E.ok[i] === 2) {
+            hit = i;
+            break;
+          }
+          for (const j of [x > 4 ? i - 1 : -1, x < CW - 11 ? i + 1 : -1, y > 4 ? i - CW : -1, y < SHOP_TOP - SHOP_ROOF - 16 ? i + CW : -1])
+            if (j >= 0 && prev[j] < 0) {
+              prev[j] = i;
+              q[t++] = j;
+            }
+        }
+        for (let i = hit, k = 0; i >= 0 && prev[i] !== i; i = prev[i], k++)
+          if (k % 3 === 0) {
+            const x = i % CW, y = i / CW | 0;
+            disc(x + 3, y + 5, 7, 0);
+            routePath.push({ x: x + 3, y: y + 5, r: 6 });
+          }
+        R = boxReach(mat, sx, sy);
+      }
+      for (const r of [perkRoom]) {
+        if (!r) continue;
+        const cx = Math.round(r.x / CELL), cy = Math.round(r.y / CELL);
+        let got = false;
+        for (let dy = -5; dy <= 5 && !got; dy++) for (let dx = -5; dx <= 5; dx++) if (R.ok[(cy + dy) * CW + cx + dx] === 2) {
+          got = true;
+          break;
+        }
+        if (got) continue;
+        let bi = -1, bd = Infinity;
+        for (let i = 0; i < (SHOP_TOP - SHOP_ROOF - 14) * CW; i++) {
+          if (R.ok[i] !== 2) continue;
+          const d2 = (i % CW - cx) ** 2 + ((i / CW | 0) - cy) ** 2;
+          if (d2 < bd) {
+            bd = d2;
+            bi = i;
+          }
+        }
+        if (bi >= 0) tunnelTo(cx, cy, bi % CW + 3, (bi / CW | 0) + 5, 7);
+      }
+    }
+    for (let cy = SHOP_TOP - SHOP_ROOF; cy < SHOP_TOP; cy++)
+      for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BRICK;
+    for (let cy = SHOP_TOP - SHOP_ROOF - 26; cy < SHOP_TOP; cy++)
+      for (let cx = shopExit - 9; cx <= shopExit + 9; cx++)
+        if (inside(cx, cy)) mat[cy * CW + cx] = 0;
+    let nests = [];
+    if (layered) {
+      let ns = Math.imul(seed | 0, 48271) + 7 >>> 0;
+      ns = ns % 2147483646 + 1;
+      const nr = () => (ns = ns * 16807 % 2147483647) / 2147483647;
+      for (let i = 0; i < 8; i++) nr();
+      const nk = [
+        { x: CW / 2, y: 22, r: 70 },
+        { x: shopExit, y: SHOP_TOP - 30, r: 50 },
+        ...[perkRoom].filter(Boolean).map((r) => ({ x: r.x / CELL, y: r.y / CELL, r: 45 }))
+      ];
+      nests = ratNests(mat, nr, zone, nk, Math.round(kr("raNests", nr)), Math.round(kr("raNestsWild", nr)));
+    }
+    const nearNest = (cx, cy) => nests.some((n) => Math.hypot(n.x - cx, n.y - cy) < 20 || Math.hypot(n.mouth.x - cx, n.mouth.y - cy) < 10);
+    const rooms = [];
+    if (perkRoom) rooms.push({ kind: "green", x: perkRoom.x, y: perkRoom.y, taken: false, built: built(perkRoom.x / CELL, perkRoom.y / CELL) });
+    for (let cy = 0; cy < CH; cy++)
+      for (let cx = 0; cx < CW; cx++)
+        if (cx < 3 || cx >= CW - 3 || cy < 3 || cy >= CH - 3) mat[cy * CW + cx] = BED;
+    const T = themeFor(floor);
+    const tintL = lattice(4, (x, y) => fbm(x / 6 + 100, y / 6 + 100));
+    const img = new ImageData(CW, CH);
+    const d = img.data;
+    for (let cy = 0; cy < CH; cy++) {
+      for (let cx = 0; cx < CW; cx++) {
+        const i = cy * CW + cx, m = mat[i];
+        if (!m) continue;
+        const r1 = hash4(cx * 7 + 3, cy * 13 + 5);
+        let c;
+        if (m === ROCK) {
+          const exposed = cy > 1 && (mat[i - CW] === 0 || mat[i - 2 * CW] === 0);
+          c = exposed ? mix(T.moss[0], T.moss[1], r1) : mix(T.rock[0], T.rock[1], at(tintL, cx, cy));
+        } else if (m === BRICK) {
+          const k = cx + cy % 2 * 3;
+          if (k % 6 === 0) c = T.mortar;
+          else {
+            c = mix(T.brick[0], T.brick[1], hash4(Math.floor(k / 6), cy));
+            if (cy > 0 && mat[i - CW] === 0) c = c.map((v) => v * 1.18);
+          }
+        } else {
+          c = mix(T.bed[0], T.bed[1], r1);
+        }
+        const j = (r1 - 0.5) * 10;
+        d[i * 4] = c[0] + j;
+        d[i * 4 + 1] = c[1] + j;
+        d[i * 4 + 2] = c[2] + j;
+        d[i * 4 + 3] = 255;
+      }
+    }
+    for (let cy = SHOP_FLOOR; cy < SHOP_FLOOR + 4; cy++)
+      for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BED;
+    for (const n of nests) for (const i of n.mound) {
+      if (mat[i] !== ROCK) continue;
+      const r1 = hash4(i % CW * 3 + 5, (i / CW | 0) * 7 + 1), c = mix([92, 70, 48], [128, 98, 66], r1);
+      d[i * 4] = c[0];
+      d[i * 4 + 1] = c[1];
+      d[i * 4 + 2] = c[2];
+    }
+    const bgImg = new ImageData(BW, BH);
+    for (let y = 0; y < BH; y++)
+      for (let x = 0; x < BW; x++) {
+        const t = Math.pow(fbm(x / 10 + 300, y / 10 + 300), 1.6);
+        const c = mix(T.bg, T.bg2, Math.min(1, t * 1.3));
+        const big = fbm(x / 34 + 700, y / 34 + 500);
+        const shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
+        const j = (hash4(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
+        bgImg.data[k] = c[0] * shade + j;
+        bgImg.data[k + 1] = c[1] * shade + j;
+        bgImg.data[k + 2] = c[2] * shade + j;
+        bgImg.data[k + 3] = 255;
+      }
+    const startCX = 14;
+    const start = { x: startCX * CELL, y: SHOP_FLOOR * CELL - PH };
+    const arrival = { x: (startCX + 3) * CELL, y: (SHOP_FLOOR - 13) * CELL };
+    const stock = [];
+    const shelf = (SHOP_FLOOR - 13) * CELL;
+    stock.push({ kind: "heal", x: arrival.x + 62, y: shelf, price: 0, sold: false, bought: 0 });
+    const portal = { x: WW / 2 - 10, y: 34 * CELL - 30, w: 20, h: 30 };
+    const clear = (cx, cy, r) => {
+      for (let dy = -r; dy <= r; dy++)
+        for (let dx = -r; dx <= r; dx++) {
+          if (dx * dx + dy * dy > r * r) continue;
+          const x = cx + dx, y = cy + dy;
+          if (x < 0 || y < 0 || x >= CW || y >= CH || mat[y * CW + x]) return false;
+        }
+      return true;
+    };
+    const enemies = [];
+    const roster = rosterFor(floor, rnd2);
+    const wanted = Math.min(136, ENEMY_COUNT + (floor - 1) * 12);
+    let waiting = null, waits = 0;
+    for (let a = 0; a < 2e4 && enemies.length < wanted; a++) {
+      const cx = 8 + Math.floor(rnd2() * (CW - 16)), cy = 50 + Math.floor(rnd2() * (SHOP_TOP - 70));
+      if (!clear(cx, cy, 8) || nearNest(cx, cy)) continue;
+      const x = cx * CELL, y = cy * CELL;
+      if (Math.hypot(x - start.x, y - start.y) < 200) continue;
+      if (enemies.some((e) => Math.hypot(e.x - x, e.y - y) < 90)) continue;
+      let k = waiting || enemyFor(roster[Math.floor(rnd2() * roster.length)], floor);
+      waiting = null;
+      if (NATURAL_ONLY[k.act] && built(cx, cy)) {
+        if (++waits < 300) waiting = k;
+        continue;
+      }
+      waits = 0;
+      if (rnd2() < ELITE_CHANCE) k = eliteOf(k);
+      enemies.push({
+        x,
+        y,
+        ty: y,
+        r: k.r,
+        phase: rnd2() * 6.28,
+        hp: k.hp,
+        hpMax: k.hp,
+        cd: 1 + rnd2() * 2,
+        flash: 0,
+        lx: 0,
+        ly: 1,
+        hx: x,
+        hy: y,
+        tgt: null,
+        rest: rnd2() * 3,
+        k,
+        touch: 0,
+        charge: 0
+      });
+    }
+    for (const n of nests) {
+      const k = enemyFor("pesa", floor), x = n.x * CELL, y = n.y * CELL;
+      enemies.push({
+        x,
+        y,
+        ty: y,
+        r: k.r,
+        phase: 0,
+        hp: k.hp,
+        hpMax: k.hp,
+        cd: 0,
+        flash: 0,
+        lx: 0,
+        ly: 1,
+        hx: x,
+        hy: y,
+        tgt: null,
+        rest: 0,
+        k,
+        touch: 0,
+        charge: 0,
+        nest: {
+          path: n.path.map((q) => ({ x: (q.x + 0.5) * CELL, y: (q.y + 0.5) * CELL })),
+          mouth: { x: (n.mouth.x + 0.5) * CELL, y: (n.mouth.y + 0.5) * CELL },
+          built: n.built,
+          t: 0.5 + n.x % 7 * 0.4,
+          stash: 0,
+          max: 0
+        }
+      });
+    }
+    const pickups = [];
+    let gunsLeft = GUN_DROPS, modsLeft = MOD_DROPS;
+    for (let a = 0; a < 2e4 && gunsLeft + modsLeft > 0; a++) {
+      const cx = 8 + Math.floor(rnd2() * (CW - 16)), cy = 30 + Math.floor(rnd2() * (SHOP_TOP - 60));
+      if (!clear(cx, cy, 6) || nearNest(cx, cy)) continue;
+      let gy = cy;
+      while (gy - cy < 6 && !mat[(gy + 1) * CW + cx]) gy++;
+      if (!mat[(gy + 1) * CW + cx]) continue;
+      const x = cx * CELL, y = (gy + 1) * CELL - 9;
+      if (Math.hypot(x - start.x, y - start.y) < 200) continue;
+      if (pickups.some((q) => Math.hypot(q.x - x, q.y - y) < PICKUP_GAP)) continue;
+      if (gunsLeft && (!modsLeft || rnd2() < gunsLeft / (gunsLeft + modsLeft))) gunsLeft--;
+      else modsLeft--;
+      pickups.push({ kind: "crystal", x, y, floor, t: rnd2() * 6.28 });
+    }
+    const dimg = new ImageData(CW, CH);
+    const fuel = new Uint8Array(CW * CH);
+    if (strata) timberWorks(mat, dimg, works, T, rnd2, fuel, built);
+    const keep2 = [
+      { x: start.x, y: start.y, r: 40 },
+      { x: arrival.x, y: arrival.y, r: 50 },
+      { x: portal.x + portal.w / 2, y: portal.y + portal.h / 2, r: 50 },
+      ...rooms.map((r) => ({ x: r.x, y: r.y, r: 70 })),
+      ...pickups.map((q) => ({ x: q.x, y: q.y, r: 22 })),
+      ...nests.map((n) => ({ x: n.mouth.x * CELL, y: n.mouth.y * CELL, r: 18 }))
+    ];
+    const deco = decorate(mat, img, dimg, bgImg, floor, seed, keep2, fuel, zone);
+    const ore = goldVeins(mat, seed, floor);
+    for (let i = 0; i < ore.length; i++) {
+      if (!ore[i] || mat[i] !== ROCK) {
+        ore[i] = 0;
+        continue;
+      }
+      fuel[i] = 0;
+      const r1 = hash4(i % CW * 5 + 11, (i / CW | 0) * 3 + 7), k = i * 4;
+      const glint = r1 > 0.9 ? 1.25 : 0.8 + r1 * 0.3;
+      d[k] = Math.min(255, 222 * glint);
+      d[k + 1] = Math.min(255, 168 * glint);
+      d[k + 2] = 48 * glint;
+      d[k + 3] = 255;
+    }
+    for (const n of nests) {
+      const R = n.r + 3, clear2 = (x, y) => {
+        const i = y * CW + x;
+        if (x < 0 || y < 0 || x >= CW || y >= CH || mat[i]) return;
+        dimg.data[i * 4 + 3] = 0;
+        fuel[i] = 0;
+      };
+      for (let y = n.y - R; y <= n.y + R; y++) for (let x = n.x - R; x <= n.x + R; x++) clear2(x, y);
+      for (const q of n.path) for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) clear2(Math.round(q.x) + dx, Math.round(q.y) + dy);
+    }
+    return {
+      mat,
+      img,
+      bgImg,
+      dimg,
+      ore,
+      fuel,
+      props: deco.props,
+      amb: deco.amb,
+      start,
+      portal,
+      enemies,
+      pickups,
+      stock,
+      shopExit,
+      arrival,
+      rooms,
+      roster,
+      theme: T.name,
+      works,
+      zone,
+      nests
+    };
+  }
+
+  // src/game/systems/fog.js
+  var fogLit = (W, x, y) => {
+    const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
+    if (W.deepFog && W.deepFog[cy * FW + cx]) return W.seen[cy * FW + cx] > 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx >= 0 && ny >= 0 && nx < FW && ny < FH && W.seen[ny * FW + nx]) return true;
+    }
+    return false;
+  };
+  var roomSeen = (W, r) => {
+    for (let y = r.y - ROOM_HH; y <= r.y + ROOM_HH; y += FOG_U)
+      for (let x = r.x - ROOM_HW; x <= r.x + ROOM_HW; x += FOG_U) {
+        const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
+        if (W.seen[cy * FW + cx]) return true;
+      }
+    return false;
+  };
+  function paintFog(W, G) {
+    const d = G.fogImg.data, dim = Math.round(255 * FOG_DIM), dark = Math.round(255 * FOG_DARK);
+    for (let i = 0, k = 0; i < FW * FH; i++, k += 4) {
+      d[k] = 9;
+      d[k + 1] = 10;
+      d[k + 2] = 14;
+      d[k + 3] = W.seen[i] === 2 ? 0 : W.seen[i] ? dim : dark;
+    }
+  }
+  var seenAt = (W, x, y) => W.seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)] !== 0;
 
   // src/game/systems/webs.js
   var webNear = (L2, x, y) => {
@@ -7958,6 +8853,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.pb = perkBag(activePerks(G.input.current.loadout));
   };
   var maxHp = (W, G) => W.pb.maxHp + (G.input.current.loadout.maxBonus || 0);
+  function applyPerks(W, G) {
+    const before = maxHp(W, G);
+    refreshBag(W, G);
+    const after = maxHp(W, G);
+    if (after > before) W.p.hp += after - before;
+    W.p.hp = Math.min(W.p.hp, after);
+    if (W.pb.seeAll) {
+      W.seen.fill(2);
+      paintFog(W, G);
+    }
+    if (W.pb.ghost && !W.ghost) W.ghost = { x: W.p.x, y: W.p.y, cd: 0 };
+  }
   function hurt(W, G, n) {
     if (W.p.dead || n <= 0) return;
     if (W.pb.shield && W.p.shieldReady) {
@@ -8059,13 +8966,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         });
     }
     if (jet) {
-      W.p.fuel -= FUEL_DRAIN * (0.5 + 0.5 * mag) * dt;
+      W.p.fuel -= FUEL_DRAIN * (0.5 + 0.5 * mag) * dt / W.pb.fuel;
       if (W.p.fuel <= 0) {
         W.p.fuel = 0;
         W.p.empty = true;
       }
     } else if (W.p.onGround || climbing) {
-      W.p.fuel = Math.min(1, W.p.fuel + FUEL_REGEN * dt);
+      W.p.fuel = Math.min(1, W.p.fuel + FUEL_REGEN * W.pb.refuel * dt);
     }
     const pcx0 = W.p.x + PW / 2;
     W.p.kick -= dt;
@@ -8481,6 +9388,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var NUGGET_PAL = ["#7a4e10", "#d8a52a", "#ffd95a", "#fff6c8"];
   var CRYSTAL_PAL = ["#2a0306", "#6e0a12", "#a3162a", "#ffffff"], CRYSTAL_R = 11;
+  var GREEN_PAL = ["#03240c", "#0b6a26", "#1fae46", "#ffffff"];
 
   // src/art/props.js
   var rgbA = (c, a) => "rgba(" + (c[0] | 0) + "," + (c[1] | 0) + "," + (c[2] | 0) + "," + (a == null ? 1 : a) + ")";
@@ -10296,60 +11204,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         } else fireEnemyShot(W, e, pcx, pcy);
       }
     }
-  }
-
-  // src/world/zones.js
-  function boxReach(mat, x, y) {
-    const PWc = 6, PHc = 11;
-    const free = new Uint8Array(CW * CH), ok = new Uint8Array(CW * CH);
-    for (let cx = 0; cx < CW; cx++) {
-      let run = 0;
-      for (let cy = CH - 1; cy >= 0; cy--) {
-        run = mat[cy * CW + cx] ? 0 : run + 1;
-        if (run >= PHc) free[cy * CW + cx] = 1;
-      }
-    }
-    for (let cy = 0; cy < CH; cy++) {
-      let run = 0;
-      for (let cx = CW - 1; cx >= 0; cx--) {
-        run = free[cy * CW + cx] ? run + 1 : 0;
-        if (run >= PWc) ok[cy * CW + cx] = 1;
-      }
-    }
-    const s0 = y * CW + x;
-    let top = false;
-    if (!ok[s0]) return { ok, top };
-    const st = new Int32Array(CW * CH);
-    let n = 0;
-    ok[s0] = 2;
-    st[n++] = s0;
-    while (n) {
-      const i = st[--n];
-      if (i < 40 * CW) top = true;
-      const x0 = i % CW;
-      if (x0 > 0 && ok[i - 1] === 1) {
-        ok[i - 1] = 2;
-        st[n++] = i - 1;
-      }
-      if (x0 < CW - 1 && ok[i + 1] === 1) {
-        ok[i + 1] = 2;
-        st[n++] = i + 1;
-      }
-      if (i >= CW && ok[i - CW] === 1) {
-        ok[i - CW] = 2;
-        st[n++] = i - CW;
-      }
-      if (i < CW * (CH - 1) && ok[i + CW] === 1) {
-        ok[i + CW] = 2;
-        st[n++] = i + CW;
-      }
-    }
-    return { ok, top };
-  }
-  function builtAt(zone, wx, wy) {
-    if (!zone) return false;
-    const x = Math.floor(wx / CELL), y = Math.floor(wy / CELL);
-    return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
   }
 
   // src/game/creatures/jelly.js
@@ -12865,6 +13719,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         G.ctx.fill();
         G.ctx.globalAlpha = 1;
         drawNugget(G.ctx, q.x, qy, CRYSTAL_R, q.t * 7, 0, CRYSTAL_PAL);
+      } else if (q.kind === "perk") {
+        const pk = PERKS[q.id], col = pk.tint || COL.portal;
+        G.ctx.globalAlpha = 0.22;
+        G.ctx.fillStyle = col;
+        G.ctx.beginPath();
+        G.ctx.arc(q.x, qy, 12, 0, Math.PI * 2);
+        G.ctx.fill();
+        G.ctx.globalAlpha = 1;
+        G.ctx.strokeStyle = col;
+        G.ctx.lineWidth = 1.2;
+        G.ctx.beginPath();
+        G.ctx.arc(q.x, qy, 9, 0, Math.PI * 2);
+        G.ctx.stroke();
+        G.ctx.fillStyle = col;
+        G.ctx.font = "700 12px system-ui, sans-serif";
+        G.ctx.textAlign = "center";
+        G.ctx.textBaseline = "middle";
+        G.ctx.fillText(pk.glyph, q.x, qy + 0.5);
+        G.ctx.textAlign = "left";
+        G.ctx.textBaseline = "alphabetic";
       } else {
         const m = MODS[q.id];
         G.ctx.globalAlpha = 0.22;
@@ -12899,7 +13773,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       G.ctx.fillRect(r.x - 12, r.y + 14, 24, 5);
       G.ctx.fillRect(r.x - 7, r.y + 5, 14, 10);
       if (r.taken) continue;
-      if (r.kind === "perk") {
+      if (r.kind === "green") {
+        G.ctx.globalAlpha = 0.22 + 0.12 * Math.sin(W.time * 3);
+        G.ctx.fillStyle = "#30ff70";
+        G.ctx.beginPath();
+        G.ctx.arc(r.x, r.y + bob, 17, 0, Math.PI * 2);
+        G.ctx.fill();
+        G.ctx.globalAlpha = 1;
+        drawNugget(G.ctx, r.x, r.y + bob, CRYSTAL_R, r.x * 0.37, 0, GREEN_PAL);
+      } else if (r.kind === "perk" && r.id) {
         const pk = PERKS[r.id], col = pk.tint || COL.portal;
         G.ctx.globalAlpha = 0.22 + 0.12 * Math.sin(W.time * 3);
         G.ctx.fillStyle = col;
@@ -12997,700 +13879,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     G.ctx.globalAlpha = 1;
   }
-
-  // src/world/nests.js
-  function ratNests(mat, rnd2, zone, keep2, nb, nw) {
-    const inb = (x, y) => x >= 4 && y >= 4 && x < CW - 4 && y < CH - 4;
-    const rock = (x, y) => {
-      x = Math.round(x);
-      y = Math.round(y);
-      return inb(x, y) && mat[y * CW + x] === ROCK;
-    };
-    const open = (x, y) => {
-      x = Math.round(x);
-      y = Math.round(y);
-      return inb(x, y) && !mat[y * CW + x];
-    };
-    const isBuilt = (x, y) => !!zone && zone[Math.round(y) * CW + Math.round(x)] === 1;
-    const allRock = (x, y, r) => {
-      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++)
-        if (dx * dx + dy * dy <= r * r && !rock(x + dx, y + dy)) return false;
-      return true;
-    };
-    const nests = [];
-    const make = (wantBuilt) => {
-      for (let a = 0; a < 400; a++) {
-        const x = 8 + Math.floor(rnd2() * (CW - 16)), y = 60 + Math.floor(rnd2() * (SHOP_TOP - SHOP_ROOF - 110));
-        if (!open(x, y) || isBuilt(x, y) !== wantBuilt) continue;
-        let sx = x, sy = y, found = false;
-        const dir = rnd2() < 0.33 ? rnd2() < 0.5 ? -1 : 1 : 0;
-        for (let k = 0; k < 30; k++) {
-          const nx2 = dir ? sx + dir : sx, ny2 = dir ? sy : sy + 1;
-          if (!inb(nx2, ny2)) break;
-          if (mat[ny2 * CW + nx2]) {
-            found = rock(nx2, ny2);
-            break;
-          }
-          sx = nx2;
-          sy = ny2;
-        }
-        if (!found) continue;
-        let nx = 0, ny = 0;
-        for (let dy = -5; dy <= 5; dy++) for (let dx = -5; dx <= 5; dx++)
-          if (dx * dx + dy * dy <= 25 && inb(sx + dx, sy + dy) && mat[(sy + dy) * CW + sx + dx]) {
-            nx -= dx;
-            ny -= dy;
-          }
-        const nl = Math.hypot(nx, ny);
-        if (nl < 1e-6) continue;
-        nx /= nl;
-        ny /= nl;
-        if (ny > 0.35) continue;
-        let clear = true;
-        for (let k = 2; k <= 22 && clear; k += 2) if (!open(sx + nx * k, sy + ny * k)) clear = false;
-        if (!clear) continue;
-        const ang = Math.atan2(-ny, -nx) + (rnd2() - 0.5) * 1.3, D = 20 + rnd2() * 14, rr2 = 5 + Math.floor(rnd2() * 3);
-        const cx = Math.round(sx + Math.cos(ang) * D), cy = Math.round(sy + Math.sin(ang) * D);
-        if (cy > SHOP_TOP - SHOP_ROOF - 14 || !allRock(cx, cy, rr2 + 5)) continue;
-        if (keep2.some((k) => Math.hypot(k.x - cx, k.y - cy) < k.r + rr2 || Math.hypot(k.x - sx, k.y - sy) < k.r)) continue;
-        if (nests.some((n) => Math.hypot(n.x - cx, n.y - cy) < 50 || Math.hypot(n.mouth.x - sx, n.mouth.y - sy) < 40)) continue;
-        const M = 4 + rnd2() * 1.5;
-        const tx = sx + nx * (M - 0.5), ty = sy + ny * (M - 0.5);
-        const L2 = Math.hypot(tx - cx, ty - cy), px = -(ty - cy) / L2, py = (tx - cx) / L2;
-        const amp = (4 + rnd2() * 4) * (rnd2() < 0.5 ? -1 : 1), waves = 1 + rnd2() * 0.8, steps = Math.ceil(L2 * 2);
-        const path = [];
-        let buried = true;
-        for (let k = 0; k <= steps; k++) {
-          const t = k / steps, w = amp * Math.sin(t * Math.PI * waves) * Math.sin(t * Math.PI);
-          const qx = cx + (tx - cx) * t + px * w, qy = cy + (ty - cy) * t + py * w;
-          path.push({ x: qx, y: qy });
-          if (Math.hypot(qx - sx, qy - sy) > 6 && Math.hypot(qx - cx, qy - cy) > rr2 && !allRock(qx, qy, 3)) {
-            buried = false;
-            break;
-          }
-        }
-        if (!buried) continue;
-        const mound = [];
-        const mx = sx - nx * 1.5, my = sy - ny * 1.5, Mr = Math.ceil(M + 2);
-        for (let dy = -Mr; dy <= Mr; dy++) for (let dx = -Mr; dx <= Mr; dx++) {
-          const X = Math.round(mx) + dx, Y = Math.round(my) + dy;
-          if (!inb(X, Y) || Math.hypot(X - mx, Y - my) > M) continue;
-          if (!mat[Y * CW + X]) mat[Y * CW + X] = ROCK;
-          if (mat[Y * CW + X] === ROCK) mound.push(Y * CW + X);
-        }
-        for (let dy = -rr2 - 2; dy <= rr2 + 2; dy++) for (let dx = -rr2 - 2; dx <= rr2 + 2; dx++) {
-          const a2 = Math.atan2(dy, dx), wob = rr2 * (0.8 + 0.25 * Math.sin(a2 * 3 + cx) + 0.12 * Math.sin(a2 * 5 + cy));
-          if (Math.hypot(dx, dy * 1.25) <= wob) mat[(cy + dy) * CW + cx + dx] = 0;
-        }
-        const cut = (qx, qy) => {
-          for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
-            const X = Math.round(qx + dx), Y = Math.round(qy + dy);
-            if (inb(X, Y) && Math.hypot(X - qx, Y - qy) <= 1.6) mat[Y * CW + X] = 0;
-          }
-        };
-        for (const q of path) cut(q.x, q.y);
-        cut(tx + nx, ty + ny);
-        const mouth = { x: tx + nx * 2.5, y: ty + ny * 2.5 };
-        path.push(mouth);
-        const thin = path.filter((q, i) => i % 3 === 0 || i === path.length - 1);
-        nests.push({ x: cx, y: cy, r: rr2, path: thin, mouth, built: wantBuilt, mound, nx, ny });
-        return true;
-      }
-      return false;
-    };
-    for (let i = 0; i < nb; i++) make(true);
-    for (let i = 0; i < nw; i++) make(false);
-    return nests;
-  }
-
-  // src/world/level.js
-  var ROOM_HW = 23 * CELL, ROOM_HH = 15 * CELL;
-  function makeLevel(seed, floor, owned) {
-    floor = floor || 1;
-    const have = new Set(owned || []);
-    const hash4 = (x, y) => {
-      let v = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 982451653) | 0;
-      v = Math.imul(v ^ v >>> 13, 1274126177);
-      v ^= v >>> 16;
-      return (v >>> 0) / 4294967296;
-    };
-    const vn = (x, y) => {
-      const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
-      const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
-      const a = hash4(xi, yi), b = hash4(xi + 1, yi), c = hash4(xi, yi + 1), d2 = hash4(xi + 1, yi + 1);
-      return a + (b - a) * u + (c - a) * v + (a - b - c + d2) * u * v;
-    };
-    const fbm = (x, y) => 0.55 * vn(x, y) + 0.3 * vn(x * 2 + 17, y * 2 + 31) + 0.15 * vn(x * 4 + 53, y * 4 + 7);
-    let rs = seed % 2147483646 + 1;
-    const rnd2 = () => (rs = rs * 16807 % 2147483647) / 2147483647;
-    for (let i = 0; i < 12; i++) rnd2();
-    const mat = new Uint8Array(CW * CH);
-    const inside = (x, y) => x >= 0 && y >= 0 && x < CW && y < CH;
-    const disc = (ex, ey, r, v) => {
-      const r2 = r * r;
-      for (let y = Math.floor(ey - r); y <= Math.ceil(ey + r); y++)
-        for (let x = Math.floor(ex - r); x <= Math.ceil(ex + r); x++)
-          if (inside(x, y) && (x - ex) * (x - ex) + (y - ey) * (y - ey) <= r2) mat[y * CW + x] = v;
-    };
-    const lattice = (step2, fn) => {
-      const gw = Math.ceil(CW / step2) + 2, gh = Math.ceil(CH / step2) + 2;
-      const g = new Float32Array(gw * gh);
-      for (let j = 0; j < gh; j++)
-        for (let i = 0; i < gw; i++) g[j * gw + i] = fn(i * step2, j * step2);
-      return { g, gw, inv: 1 / step2 };
-    };
-    const at = (L2, x, y) => {
-      const fx = x * L2.inv, fy = y * L2.inv;
-      const xi = fx | 0, yi = fy | 0, u = fx - xi, v = fy - yi, i = yi * L2.gw + xi;
-      const a = L2.g[i], b = L2.g[i + 1], c = L2.g[i + L2.gw], d2 = L2.g[i + L2.gw + 1];
-      return a + (b - a) * u + (c - a) * v + (a - b - c + d2) * u * v;
-    };
-    const layered = floor === 1;
-    const openL = lattice(8, (x, y) => fbm(x / 160 + 500, y / 160 + 500));
-    const pocketL = lattice(4, (x, y) => fbm(x / 60, y / 60));
-    const tunnelL = lattice(4, (x, y) => fbm(x / 90 + 200, y / 90 + 200));
-    for (let cy = 0; cy < CH; cy++) {
-      for (let cx = 0; cx < CW; cx++) {
-        const open = Math.min(1, Math.max(0, (at(openL, cx, cy) - 0.42) / 0.16));
-        const pocket = at(pocketL, cx, cy) < 0.34 + 0.24 * open;
-        const tunnel = Math.abs(at(tunnelL, cx, cy) - 0.5) < 0.018 + 0.018 * open;
-        mat[cy * CW + cx] = pocket || tunnel ? 0 : ROCK;
-      }
-    }
-    let zone = null;
-    if (layered) {
-      const zs = kr("lvZoneSize", rnd2), share = kr("lvZoneShare", rnd2), rag = kr("lvZoneRag", rnd2), ph = rnd2() * 100;
-      const zoneL = lattice(8, (x, y) => fbm(x / zs + 1300 + ph, y / zs + 1300));
-      const warpX = lattice(4, (x, y) => vn(x / 14 + 1700, y / 14 + 1700));
-      const warpY = lattice(4, (x, y) => vn(x / 14 + 1900, y / 14 + 1900));
-      const vals = [];
-      for (let y = 0; y < SHOP_TOP - SHOP_ROOF; y += 8) for (let x = 0; x < CW; x += 8) vals.push(at(zoneL, x, y));
-      vals.sort((a, b) => a - b);
-      const thr = share <= 0 ? Infinity : share >= 1 ? -Infinity : vals[Math.min(vals.length - 1, Math.floor((1 - share) * vals.length))];
-      zone = new Uint8Array(CW * CH);
-      for (let y = 0; y < SHOP_FLOOR; y++) for (let x = 0; x < CW; x++) {
-        const wx = Math.max(0, Math.min(CW - 1, x + rag * (2 * at(warpX, x, y) - 1)));
-        const wy = Math.max(0, Math.min(CH - 1, y + rag * (2 * at(warpY, x, y) - 1)));
-        if (at(zoneL, wx, wy) > thr) zone[y * CW + x] = 1;
-      }
-    }
-    const built = (x, y) => {
-      if (!zone) return false;
-      x = Math.round(x);
-      y = Math.round(y);
-      return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
-    };
-    const shopExit = 40 + Math.floor(rnd2() * (CW - 80));
-    const lay = layered ? new Uint8Array(CW * CH) : null;
-    const strata = layered ? strataCave(lay, rnd2, { vn, fbm, ok: built }, shopExit) : null;
-    const points = [{ x: shopExit, y: SHOP_TOP - 30 }];
-    const hops = 12;
-    for (let i = 1; i <= hops; i++) {
-      points.push({ x: 40 + rnd2() * (CW - 80), y: CH - 26 - (CH - 60) * i / (hops + 1) + (rnd2() - 0.5) * 40 });
-    }
-    points.push({ x: CW / 2, y: 22 });
-    const blob = (ex, ey, r) => {
-      const r2 = r * 1.3;
-      for (let y = Math.floor(ey - r2); y <= ey + r2; y++)
-        for (let x = Math.floor(ex - r2); x <= ex + r2; x++) {
-          if (!inside(x, y)) continue;
-          const a = Math.atan2(y - ey, x - ex);
-          const wob = r * (0.75 + 0.5 * vn(Math.cos(a) * 1.5 + ex, Math.sin(a) * 1.5 + ey));
-          if (Math.hypot(x - ex, (y - ey) * 1.4) <= wob) mat[y * CW + x] = 0;
-        }
-    };
-    const routePath = [];
-    const spineBuilt = [];
-    const worm = (x, y, tx, ty, r, maxSteps, keep3, spine) => {
-      let ang = tx !== null ? Math.atan2(ty - y, tx - x) : rnd2() * Math.PI * 2;
-      for (let s = 0; s < maxSteps; s++) {
-        if (spine && built(x, y)) spineBuilt.push({ x, y, r: Math.min(r, 7) - 1 });
-        else {
-          disc(x, y, r, 0);
-          if (keep3) keep3.push({ x, y, r: r - 1 });
-        }
-        if (tx !== null && Math.hypot(tx - x, ty - y) < 3) break;
-        const want = tx !== null ? Math.atan2(ty - y, tx - x) : ang;
-        let diff = want - ang;
-        while (diff > Math.PI) diff -= 2 * Math.PI;
-        while (diff < -Math.PI) diff += 2 * Math.PI;
-        ang += diff * 0.12 + (rnd2() - 0.5) * 0.9;
-        x += Math.cos(ang) * 1.5;
-        y += Math.sin(ang) * 1.5;
-        x = Math.max(6, Math.min(CW - 7, x));
-        y = Math.max(6, Math.min(CH - 12, y));
-      }
-    };
-    for (let i = 1; i < points.length - 1; i++) {
-      if (rnd2() < 0.7) blob(points[i].x, points[i].y, 16 + rnd2() * 30);
-    }
-    const side = [];
-    for (let i = 0; i < 48; i++) {
-      worm(10 + rnd2() * (CW - 20), 20 + rnd2() * (CH - 60), null, null, 5 + rnd2() * 6, 40 + rnd2() * 150, side);
-    }
-    for (const c of side) if (!built(c.x, c.y)) routePath.push(c);
-    if (layered) {
-      for (let i = 0; i < SHOP_FLOOR * CW; i++) if (zone[i]) mat[i] = lay[i];
-      for (const c of strata.routePath) if (built(c.x, c.y)) routePath.push(c);
-    }
-    for (let i = 0; i < points.length - 1; i++) {
-      const a = points[i], b = points[i + 1];
-      const r = rnd2() < 0.4 ? 7 + rnd2() * 2 : 11 + rnd2() * 6;
-      worm(a.x, a.y, b.x, b.y, r, 2e3, routePath, true);
-    }
-    const works = strata ? strata.works.filter((w) => built(w.x0, w.fy - 4) && built(w.x1, w.fy - 4) && built((w.x0 + w.x1) / 2, w.cy + 2)) : [];
-    const vaults = strata ? strata.vaults.filter((v) => built(v.a, v.y) && built(v.b, v.y) && built(v.px, v.py)) : [];
-    const src = new Uint8Array(CW * CH), col = new Uint8Array(CW);
-    for (let pass = 0; pass < 4; pass++) {
-      src.set(mat);
-      for (let cy = 1; cy < CH - 1; cy++) {
-        const r0 = (cy - 1) * CW, r1 = cy * CW, r2 = (cy + 1) * CW;
-        for (let cx = 0; cx < CW; cx++)
-          col[cx] = (src[r0 + cx] ? 1 : 0) + (src[r1 + cx] ? 1 : 0) + (src[r2 + cx] ? 1 : 0);
-        for (let cx = 1; cx < CW - 1; cx++)
-          mat[r1 + cx] = col[cx - 1] + col[cx] + col[cx + 1] >= 5 ? ROCK : 0;
-      }
-    }
-    for (const c of routePath) disc(c.x, c.y, c.r, 0);
-    paveWorks(mat, works, vn);
-    for (let cy = SHOP_FLOOR; cy < CH; cy++) for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = ROCK;
-    const carve = (ex, ey, rx, ry, maxY) => {
-      for (let y = Math.max(0, ey - ry); y <= Math.min(maxY, ey + ry); y++)
-        for (let x = Math.max(0, ex - rx); x <= Math.min(CW - 1, ex + rx); x++) {
-          const dx = (x - ex) / rx, dy = (y - ey) / ry;
-          if (dx * dx + dy * dy <= 1) mat[y * CW + x] = 0;
-        }
-    };
-    carve(CW / 2, 22, 40, 16, CH);
-    const emptyRatio = (x0, y0, w, hh) => {
-      let e = 0, n = 0;
-      for (let y = y0; y < y0 + hh; y++)
-        for (let x = x0; x < x0 + w; x++) {
-          n++;
-          if (inside(x, y) && !mat[y * CW + x]) e++;
-        }
-      return e / n;
-    };
-    const slab = (x0, y0, w, hh) => {
-      for (let y = y0; y < y0 + hh; y++)
-        for (let x = x0; x < x0 + w; x++) if (inside(x, y)) mat[y * CW + x] = BRICK;
-    };
-    let ledges = 0;
-    for (let a = 0; a < 2400 && ledges < 120; a++) {
-      const x = 10 + Math.floor(rnd2() * (CW - 20)), y = 20 + Math.floor(rnd2() * (SHOP_TOP - 50));
-      if (mat[y * CW + x] || built(x, y)) continue;
-      const dir = rnd2() < 0.5 ? -1 : 1;
-      let wx = x, dist = 0;
-      while (dist < 50 && inside(wx, y) && !mat[y * CW + wx]) {
-        wx += dir;
-        dist++;
-      }
-      if (dist >= 50 || dist < 8) continue;
-      const len = Math.min(dist + 4, 14 + Math.floor(rnd2() * 26));
-      const x0 = dir < 0 ? wx - 3 : wx - len + 4;
-      if (emptyRatio(dir < 0 ? wx + 1 : x0, y - 12, len - 4, 12) < 0.9) continue;
-      if (built(x0, y) || built(x0 + len, y)) continue;
-      slab(x0, y, len, 4);
-      ledges++;
-    }
-    for (let i = 0; i < 36; i++) {
-      const fw = 30 + Math.floor(rnd2() * 40), fh = 20 + Math.floor(rnd2() * 20);
-      const fx = 8 + Math.floor(rnd2() * (CW - 16 - fw)), fy = 60 + Math.floor(rnd2() * (SHOP_TOP - 120));
-      if (built(fx, fy) || built(fx + fw, fy) || built(fx, fy + fh) || built(fx + fw, fy + fh)) continue;
-      const rockRatio = 1 - emptyRatio(fx, fy, fw, fh);
-      if (rockRatio < 0.25 || rockRatio > 0.85) continue;
-      const gap = Math.floor(rnd2() * 4);
-      slab(fx, fy, fw, 4);
-      slab(fx, fy + fh - 4, fw, 4);
-      slab(fx, fy, 4, fh);
-      slab(fx + fw - 4, fy, 4, fh);
-      if (gap === 0) for (let y = fy; y < fy + 4; y++) for (let x = fx + 8; x < fx + 22; x++) mat[y * CW + x] = 0;
-      if (gap === 1) for (let y = fy + 4; y < fy + fh - 4; y++) for (let x = fx; x < fx + 4; x++) mat[y * CW + x] = 0;
-      if (gap === 2) for (let y = fy + 4; y < fy + fh - 4; y++) for (let x = fx + fw - 4; x < fx + fw; x++) mat[y * CW + x] = 0;
-    }
-    let floats = 0;
-    for (let a = 0; a < 1600 && floats < 40; a++) {
-      const len = 18 + Math.floor(rnd2() * 22);
-      const x0 = 8 + Math.floor(rnd2() * (CW - 16 - len)), y0 = 40 + Math.floor(rnd2() * (SHOP_TOP - 80));
-      if (built(x0 - 12, y0) || built(x0 + len + 12, y0)) continue;
-      if (emptyRatio(x0 - 12, y0 - 18, len + 24, 34) < 0.98) continue;
-      slab(x0, y0, len, 4);
-      floats++;
-    }
-    for (const c of routePath) disc(c.x, c.y, Math.min(c.r, 7), 0);
-    for (let cy = SHOP_TOP; cy < SHOP_FLOOR; cy++)
-      for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = 0;
-    for (let cy = SHOP_TOP - SHOP_ROOF; cy < SHOP_TOP; cy++)
-      for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BRICK;
-    for (let cy = SHOP_FLOOR; cy < SHOP_FLOOR + 4; cy++)
-      for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BRICK;
-    for (let cy = SHOP_TOP - SHOP_ROOF - 26; cy < SHOP_TOP; cy++)
-      for (let cx = shopExit - 9; cx <= shopExit + 9; cx++)
-        if (inside(cx, cy)) mat[cy * CW + cx] = 0;
-    slab(CW / 2 - 24, 34, 48, 3);
-    const rect = (x0, y0, w, h3, v) => {
-      for (let y = y0; y < y0 + h3; y++)
-        for (let x = x0; x < x0 + w; x++) if (inside(x, y)) mat[y * CW + x] = v;
-    };
-    const tunnelTo = (x0, y0, x1, y1, r) => {
-      const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0)));
-      for (let i = 0; i <= n; i++) disc(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, r, 0);
-    };
-    const makeRoom = (want) => {
-      for (let tries = 0; tries < 80; tries++) {
-        const v = !layered || want ? vaults.shift() : null;
-        const p0 = v ? { x: v.px, y: v.py } : points[1 + Math.floor(rnd2() * (points.length - 2))];
-        const a = rnd2() * Math.PI * 2, d2 = 50 + rnd2() * 100;
-        const ex = v ? v.x : Math.round(Math.max(40, Math.min(CW - 40, p0.x + Math.cos(a) * d2)));
-        const ey = v ? v.y : Math.round(Math.max(70, Math.min(SHOP_TOP - 70, p0.y + Math.sin(a) * d2)));
-        const rx = 20, ry = 12, sh = 3;
-        if (layered && !v && tries < 79 && [[0, 0], [-rx, -ry], [rx, -ry], [-rx, ry], [rx, ry]].some(([dx, dy]) => built(ex + dx, ey + dy) !== !!want)) continue;
-        rect(ex - rx - sh, ey - ry - sh, (rx + sh) * 2, (ry + sh) * 2, BRICK);
-        rect(ex - rx, ey - ry, rx * 2, ry * 2, 0);
-        const back = Math.atan2(p0.y - ey, p0.x - ex);
-        tunnelTo(ex + Math.cos(back) * (rx - 2), ey + Math.sin(back) * (ry - 2), p0.x, p0.y, 7);
-        rect(ex - rx, ey - ry, rx * 2, ry * 2, 0);
-        return { x: ex * CELL, y: ey * CELL };
-      }
-      return null;
-    };
-    const heartBuilt = layered ? rnd2() < 0.5 : false;
-    const perkRoom = makeRoom(!heartBuilt);
-    const heartRoom = makeRoom(heartBuilt);
-    for (const c of routePath)
-      if (c.y < SHOP_TOP - SHOP_ROOF - 9) disc(c.x, c.y, Math.min(c.r, 7), 0);
-    if (layered) {
-      const sx = 17, sy = SHOP_FLOOR - 12;
-      let R = boxReach(mat, sx, sy);
-      if (!R.top && spineBuilt.length) {
-        for (const c of spineBuilt) {
-          disc(c.x, c.y, c.r + 1, 0);
-          routePath.push(c);
-        }
-        R = boxReach(mat, sx, sy);
-      }
-      if (!R.top) {
-        const E = boxReach(mat, CW / 2 - 3, 20);
-        const prev = new Int32Array(CW * CH).fill(-1), q = new Int32Array(CW * CH);
-        let h3 = 0, t = 0, hit = -1;
-        for (let i = 0; i < CW * CH; i++) if (R.ok[i] === 2) {
-          prev[i] = i;
-          q[t++] = i;
-        }
-        while (h3 < t && hit < 0) {
-          const i = q[h3++], x = i % CW, y = i / CW | 0;
-          if (E.ok[i] === 2) {
-            hit = i;
-            break;
-          }
-          for (const j of [x > 4 ? i - 1 : -1, x < CW - 11 ? i + 1 : -1, y > 4 ? i - CW : -1, y < SHOP_TOP - SHOP_ROOF - 16 ? i + CW : -1])
-            if (j >= 0 && prev[j] < 0) {
-              prev[j] = i;
-              q[t++] = j;
-            }
-        }
-        for (let i = hit, k = 0; i >= 0 && prev[i] !== i; i = prev[i], k++)
-          if (k % 3 === 0) {
-            const x = i % CW, y = i / CW | 0;
-            disc(x + 3, y + 5, 7, 0);
-            routePath.push({ x: x + 3, y: y + 5, r: 6 });
-          }
-        R = boxReach(mat, sx, sy);
-      }
-      for (const r of [perkRoom, heartRoom]) {
-        if (!r) continue;
-        const cx = Math.round(r.x / CELL), cy = Math.round(r.y / CELL);
-        let got = false;
-        for (let dy = -5; dy <= 5 && !got; dy++) for (let dx = -5; dx <= 5; dx++) if (R.ok[(cy + dy) * CW + cx + dx] === 2) {
-          got = true;
-          break;
-        }
-        if (got) continue;
-        let bi = -1, bd = Infinity;
-        for (let i = 0; i < (SHOP_TOP - SHOP_ROOF - 14) * CW; i++) {
-          if (R.ok[i] !== 2) continue;
-          const d2 = (i % CW - cx) ** 2 + ((i / CW | 0) - cy) ** 2;
-          if (d2 < bd) {
-            bd = d2;
-            bi = i;
-          }
-        }
-        if (bi >= 0) tunnelTo(cx, cy, bi % CW + 3, (bi / CW | 0) + 5, 7);
-      }
-    }
-    for (let cy = SHOP_TOP - SHOP_ROOF; cy < SHOP_TOP; cy++)
-      for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BRICK;
-    for (let cy = SHOP_TOP - SHOP_ROOF - 26; cy < SHOP_TOP; cy++)
-      for (let cx = shopExit - 9; cx <= shopExit + 9; cx++)
-        if (inside(cx, cy)) mat[cy * CW + cx] = 0;
-    let nests = [];
-    if (layered) {
-      let ns = Math.imul(seed | 0, 48271) + 7 >>> 0;
-      ns = ns % 2147483646 + 1;
-      const nr = () => (ns = ns * 16807 % 2147483647) / 2147483647;
-      for (let i = 0; i < 8; i++) nr();
-      const nk = [
-        { x: CW / 2, y: 22, r: 70 },
-        { x: shopExit, y: SHOP_TOP - 30, r: 50 },
-        ...[perkRoom, heartRoom].filter(Boolean).map((r) => ({ x: r.x / CELL, y: r.y / CELL, r: 45 }))
-      ];
-      nests = ratNests(mat, nr, zone, nk, Math.round(kr("raNests", nr)), Math.round(kr("raNestsWild", nr)));
-    }
-    const nearNest = (cx, cy) => nests.some((n) => Math.hypot(n.x - cx, n.y - cy) < 20 || Math.hypot(n.mouth.x - cx, n.mouth.y - cy) < 10);
-    let perkId = null;
-    if (perkRoom) {
-      const fresh = PERK_IDS.filter((k) => !have.has(k));
-      const pool = fresh.length ? fresh : PERK_IDS;
-      perkId = pool[Math.floor(rnd2() * pool.length)];
-    }
-    const rooms = [];
-    if (perkRoom) rooms.push({ kind: "perk", id: perkId, x: perkRoom.x, y: perkRoom.y, taken: false, built: built(perkRoom.x / CELL, perkRoom.y / CELL) });
-    if (heartRoom) rooms.push({ kind: "heart", x: heartRoom.x, y: heartRoom.y, taken: false, built: built(heartRoom.x / CELL, heartRoom.y / CELL) });
-    for (let cy = 0; cy < CH; cy++)
-      for (let cx = 0; cx < CW; cx++)
-        if (cx < 3 || cx >= CW - 3 || cy < 3 || cy >= CH - 3) mat[cy * CW + cx] = BED;
-    const T = themeFor(floor);
-    const tintL = lattice(4, (x, y) => fbm(x / 6 + 100, y / 6 + 100));
-    const img = new ImageData(CW, CH);
-    const d = img.data;
-    for (let cy = 0; cy < CH; cy++) {
-      for (let cx = 0; cx < CW; cx++) {
-        const i = cy * CW + cx, m = mat[i];
-        if (!m) continue;
-        const r1 = hash4(cx * 7 + 3, cy * 13 + 5);
-        let c;
-        if (m === ROCK) {
-          const exposed = cy > 1 && (mat[i - CW] === 0 || mat[i - 2 * CW] === 0);
-          c = exposed ? mix(T.moss[0], T.moss[1], r1) : mix(T.rock[0], T.rock[1], at(tintL, cx, cy));
-        } else if (m === BRICK) {
-          const k = cx + cy % 2 * 3;
-          if (k % 6 === 0) c = T.mortar;
-          else {
-            c = mix(T.brick[0], T.brick[1], hash4(Math.floor(k / 6), cy));
-            if (cy > 0 && mat[i - CW] === 0) c = c.map((v) => v * 1.18);
-          }
-        } else {
-          c = mix(T.bed[0], T.bed[1], r1);
-        }
-        const j = (r1 - 0.5) * 10;
-        d[i * 4] = c[0] + j;
-        d[i * 4 + 1] = c[1] + j;
-        d[i * 4 + 2] = c[2] + j;
-        d[i * 4 + 3] = 255;
-      }
-    }
-    for (let cy = SHOP_FLOOR; cy < SHOP_FLOOR + 4; cy++)
-      for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BED;
-    for (const n of nests) for (const i of n.mound) {
-      if (mat[i] !== ROCK) continue;
-      const r1 = hash4(i % CW * 3 + 5, (i / CW | 0) * 7 + 1), c = mix([92, 70, 48], [128, 98, 66], r1);
-      d[i * 4] = c[0];
-      d[i * 4 + 1] = c[1];
-      d[i * 4 + 2] = c[2];
-    }
-    const bgImg = new ImageData(BW, BH);
-    for (let y = 0; y < BH; y++)
-      for (let x = 0; x < BW; x++) {
-        const t = Math.pow(fbm(x / 10 + 300, y / 10 + 300), 1.6);
-        const c = mix(T.bg, T.bg2, Math.min(1, t * 1.3));
-        const big = fbm(x / 34 + 700, y / 34 + 500);
-        const shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
-        const j = (hash4(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
-        bgImg.data[k] = c[0] * shade + j;
-        bgImg.data[k + 1] = c[1] * shade + j;
-        bgImg.data[k + 2] = c[2] * shade + j;
-        bgImg.data[k + 3] = 255;
-      }
-    const startCX = 14;
-    const start = { x: startCX * CELL, y: SHOP_FLOOR * CELL - PH };
-    const arrival = { x: (startCX + 3) * CELL, y: (SHOP_FLOOR - 13) * CELL };
-    const stock = [];
-    const shelf = (SHOP_FLOOR - 13) * CELL;
-    stock.push({ kind: "heal", x: arrival.x + 62, y: shelf, price: 0, sold: false, bought: 0 });
-    const portal = { x: WW / 2 - 10, y: 34 * CELL - 30, w: 20, h: 30 };
-    const clear = (cx, cy, r) => {
-      for (let dy = -r; dy <= r; dy++)
-        for (let dx = -r; dx <= r; dx++) {
-          if (dx * dx + dy * dy > r * r) continue;
-          const x = cx + dx, y = cy + dy;
-          if (x < 0 || y < 0 || x >= CW || y >= CH || mat[y * CW + x]) return false;
-        }
-      return true;
-    };
-    const enemies = [];
-    const roster = rosterFor(floor, rnd2);
-    const wanted = Math.min(136, ENEMY_COUNT + (floor - 1) * 12);
-    let waiting = null, waits = 0;
-    for (let a = 0; a < 2e4 && enemies.length < wanted; a++) {
-      const cx = 8 + Math.floor(rnd2() * (CW - 16)), cy = 50 + Math.floor(rnd2() * (SHOP_TOP - 70));
-      if (!clear(cx, cy, 8) || nearNest(cx, cy)) continue;
-      const x = cx * CELL, y = cy * CELL;
-      if (Math.hypot(x - start.x, y - start.y) < 200) continue;
-      if (enemies.some((e) => Math.hypot(e.x - x, e.y - y) < 90)) continue;
-      let k = waiting || enemyFor(roster[Math.floor(rnd2() * roster.length)], floor);
-      waiting = null;
-      if (NATURAL_ONLY[k.act] && built(cx, cy)) {
-        if (++waits < 300) waiting = k;
-        continue;
-      }
-      waits = 0;
-      if (rnd2() < ELITE_CHANCE) k = eliteOf(k);
-      enemies.push({
-        x,
-        y,
-        ty: y,
-        r: k.r,
-        phase: rnd2() * 6.28,
-        hp: k.hp,
-        hpMax: k.hp,
-        cd: 1 + rnd2() * 2,
-        flash: 0,
-        lx: 0,
-        ly: 1,
-        hx: x,
-        hy: y,
-        tgt: null,
-        rest: rnd2() * 3,
-        k,
-        touch: 0,
-        charge: 0
-      });
-    }
-    for (const n of nests) {
-      const k = enemyFor("pesa", floor), x = n.x * CELL, y = n.y * CELL;
-      enemies.push({
-        x,
-        y,
-        ty: y,
-        r: k.r,
-        phase: 0,
-        hp: k.hp,
-        hpMax: k.hp,
-        cd: 0,
-        flash: 0,
-        lx: 0,
-        ly: 1,
-        hx: x,
-        hy: y,
-        tgt: null,
-        rest: 0,
-        k,
-        touch: 0,
-        charge: 0,
-        nest: {
-          path: n.path.map((q) => ({ x: (q.x + 0.5) * CELL, y: (q.y + 0.5) * CELL })),
-          mouth: { x: (n.mouth.x + 0.5) * CELL, y: (n.mouth.y + 0.5) * CELL },
-          built: n.built,
-          t: 0.5 + n.x % 7 * 0.4,
-          stash: 0,
-          max: 0
-        }
-      });
-    }
-    const pickups = [];
-    let gunsLeft = GUN_DROPS, modsLeft = MOD_DROPS;
-    for (let a = 0; a < 2e4 && gunsLeft + modsLeft > 0; a++) {
-      const cx = 8 + Math.floor(rnd2() * (CW - 16)), cy = 30 + Math.floor(rnd2() * (SHOP_TOP - 60));
-      if (!clear(cx, cy, 6) || nearNest(cx, cy)) continue;
-      let gy = cy;
-      while (gy - cy < 6 && !mat[(gy + 1) * CW + cx]) gy++;
-      if (!mat[(gy + 1) * CW + cx]) continue;
-      const x = cx * CELL, y = (gy + 1) * CELL - 9;
-      if (Math.hypot(x - start.x, y - start.y) < 200) continue;
-      if (pickups.some((q) => Math.hypot(q.x - x, q.y - y) < PICKUP_GAP)) continue;
-      if (gunsLeft && (!modsLeft || rnd2() < gunsLeft / (gunsLeft + modsLeft))) gunsLeft--;
-      else modsLeft--;
-      pickups.push({ kind: "crystal", x, y, floor, t: rnd2() * 6.28 });
-    }
-    const dimg = new ImageData(CW, CH);
-    const fuel = new Uint8Array(CW * CH);
-    if (strata) timberWorks(mat, dimg, works, T, rnd2, fuel, built);
-    const keep2 = [
-      { x: start.x, y: start.y, r: 40 },
-      { x: arrival.x, y: arrival.y, r: 50 },
-      { x: portal.x + portal.w / 2, y: portal.y + portal.h / 2, r: 50 },
-      ...rooms.map((r) => ({ x: r.x, y: r.y, r: 70 })),
-      ...pickups.map((q) => ({ x: q.x, y: q.y, r: 22 })),
-      ...nests.map((n) => ({ x: n.mouth.x * CELL, y: n.mouth.y * CELL, r: 18 }))
-    ];
-    const deco = decorate(mat, img, dimg, bgImg, floor, seed, keep2, fuel, zone);
-    const ore = goldVeins(mat, seed, floor);
-    for (let i = 0; i < ore.length; i++) {
-      if (!ore[i] || mat[i] !== ROCK) {
-        ore[i] = 0;
-        continue;
-      }
-      fuel[i] = 0;
-      const r1 = hash4(i % CW * 5 + 11, (i / CW | 0) * 3 + 7), k = i * 4;
-      const glint = r1 > 0.9 ? 1.25 : 0.8 + r1 * 0.3;
-      d[k] = Math.min(255, 222 * glint);
-      d[k + 1] = Math.min(255, 168 * glint);
-      d[k + 2] = 48 * glint;
-      d[k + 3] = 255;
-    }
-    for (const n of nests) {
-      const R = n.r + 3, clear2 = (x, y) => {
-        const i = y * CW + x;
-        if (x < 0 || y < 0 || x >= CW || y >= CH || mat[i]) return;
-        dimg.data[i * 4 + 3] = 0;
-        fuel[i] = 0;
-      };
-      for (let y = n.y - R; y <= n.y + R; y++) for (let x = n.x - R; x <= n.x + R; x++) clear2(x, y);
-      for (const q of n.path) for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) clear2(Math.round(q.x) + dx, Math.round(q.y) + dy);
-    }
-    return {
-      mat,
-      img,
-      bgImg,
-      dimg,
-      ore,
-      fuel,
-      props: deco.props,
-      amb: deco.amb,
-      start,
-      portal,
-      enemies,
-      pickups,
-      stock,
-      shopExit,
-      arrival,
-      rooms,
-      roster,
-      theme: T.name,
-      works,
-      zone,
-      nests
-    };
-  }
-
-  // src/game/systems/fog.js
-  var fogLit = (W, x, y) => {
-    const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
-    if (W.deepFog && W.deepFog[cy * FW + cx]) return W.seen[cy * FW + cx] > 0;
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-      const nx = cx + dx, ny = cy + dy;
-      if (nx >= 0 && ny >= 0 && nx < FW && ny < FH && W.seen[ny * FW + nx]) return true;
-    }
-    return false;
-  };
-  var roomSeen = (W, r) => {
-    for (let y = r.y - ROOM_HH; y <= r.y + ROOM_HH; y += FOG_U)
-      for (let x = r.x - ROOM_HW; x <= r.x + ROOM_HW; x += FOG_U) {
-        const cx = clamp(Math.floor(x / FOG_U), 0, FW - 1), cy = clamp(Math.floor(y / FOG_U), 0, FH - 1);
-        if (W.seen[cy * FW + cx]) return true;
-      }
-    return false;
-  };
-  function paintFog(W, G) {
-    const d = G.fogImg.data, dim = Math.round(255 * FOG_DIM), dark = Math.round(255 * FOG_DARK);
-    for (let i = 0, k = 0; i < FW * FH; i++, k += 4) {
-      d[k] = 9;
-      d[k + 1] = 10;
-      d[k + 2] = 14;
-      d[k + 3] = W.seen[i] === 2 ? 0 : W.seen[i] ? dim : dark;
-    }
-  }
-  var seenAt = (W, x, y) => W.seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)] !== 0;
 
   // src/game/systems/plantglow.js
   function plantGlow(W, G, e, TH) {
@@ -15909,7 +16097,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var CHUTE_Y = SHOP_FLOOR * CELL - 14;
   var SHOPS = {
     mods: { x: WW / 2 + 110, icon: "⚙️", hue: "#4fe3ff", label: "Tap R to shop" },
-    guns: { x: WW / 2, icon: "gun", hue: "#ff9a3c", label: "Tap R to shop" }
+    guns: { x: WW / 2, icon: "gun", hue: "#ff9a3c", label: "Tap R to shop" },
+    perks: { x: WW / 2 - 110, icon: "✦", hue: "#3dff7a", label: "Tap R to shop" }
   };
   function shopNear(W, pcx, pcy) {
     if (W.warp || W.repo || W.p.dead || pcy < SHOP_Y || pcy > SHOP_FLOOR * CELL) return null;
@@ -15928,7 +16117,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (m) {
         const side = F.pcx < m.x ? -1 : 1;
         const fly = { x: m.x, y: CHUTE_Y, t: 0, vx: side * (95 + Math.random() * 30), vy: -200 - Math.random() * 40, cool: 1 };
-        W.pickups.push(d.gun ? { kind: "gun", gun: d.gun, ...fly } : { kind: "mod", id: d.id, ...fly });
+        W.pickups.push(d.gun ? { kind: "gun", gun: d.gun, ...fly } : d.perk ? { kind: "perk", id: d.perk, ...fly } : { kind: "mod", id: d.id, ...fly });
         SFX.fx("prompt");
       }
     }
@@ -15976,6 +16165,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const sc = ICON * RES2 / 22;
       drawGun(a, S / 2 - 3.85 * sc, S / 2 + 1 * sc, 0, sc, "#ffffff");
     } else {
+      a.fillStyle = "#ffffff";
       a.font = ICON * RES2 * 0.86 + 'px system-ui, "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
       a.textAlign = "center";
       a.textBaseline = "middle";
@@ -17338,7 +17528,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       id: near.it.id,
       price: near.it.price,
       can: LO.gold >= near.it.price
-    } : near.src === "room" ? near.r.kind === "perk" ? { text: PERKS[near.r.id].name, perk: near.r.id, price: 0, can: true } : { text: "+25 Max Health", heart: true, price: 0, can: true } : near.q.kind === "gun" ? { text: near.q.gun.name, gun: near.q.gun, price: 0, can: true, found: true } : near.q.kind === "crystal" ? { text: "Red crystal", crystal: near.q.floor, price: 0, can: true, found: true } : { text: MODS[near.q.id].name, id: near.q.id, price: 0, can: true, found: true };
+    } : near.src === "room" ? near.r.kind === "green" ? { text: "Green crystal", green: W.floor, price: 0, can: true, found: true } : near.r.kind === "perk" && near.r.id ? { text: PERKS[near.r.id].name, perk: near.r.id, price: 0, can: true } : { text: "+25 Max Health", heart: true, price: 0, can: true } : near.q.kind === "gun" ? { text: near.q.gun.name, gun: near.q.gun, price: 0, can: true, found: true } : near.q.kind === "perk" ? { text: PERKS[near.q.id].name, perk: near.q.id, price: 0, can: true, found: true } : near.q.kind === "crystal" ? { text: "Red crystal", crystal: near.q.floor, price: 0, can: true, found: true } : { text: MODS[near.q.id].name, id: near.q.id, price: 0, can: true, found: true };
     let pbottom = 12;
     if (near) {
       const iy = near.src === "vend" ? VEND_TOP : near.src === "shopvend" ? MACHINE_TOP : near.src === "shop" ? near.it.y : near.src === "room" ? near.r.y : near.q.y;
@@ -17398,18 +17588,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       } else if (near.src === "room") {
         const r = near.r;
-        if (r.kind === "perk") {
-          const before = maxHp(W, G);
-          (LO.perks || (LO.perks = [])).push(r.id);
-          refreshBag(W, G);
-          const after = maxHp(W, G);
-          if (after > before) W.p.hp += after - before;
-          W.p.hp = Math.min(W.p.hp, after);
-          if (W.pb.seeAll) {
-            W.seen.fill(2);
-            paintFog(W, G);
-          }
-          if (W.pb.ghost && !W.ghost) W.ghost = { x: pcx, y: pcy, cd: 0 };
+        if (r.kind === "green") {
+          (LO.greens || (LO.greens = [])).push(W.floor);
+          toast(W, "Green crystal");
+          SFX.ui("perk");
+        } else if (r.kind === "perk" && r.id) {
+          LO.perks.push(r.id);
           toast(W, "Perk: " + PERKS[r.id].name);
           SFX.ui("perk");
         } else {
@@ -17426,6 +17610,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           q.cool = PICKUP_COOL;
           toast(W, "Picked up " + MODS[q.id].name);
           SFX.ui("mod");
+        } else if (q.kind === "perk") {
+          LO.perks.push(q.id);
+          q.taken = true;
+          toast(W, "Perk: " + PERKS[q.id].name + " (fit it in the Bag)");
+          SFX.ui("perk");
         } else if (q.kind === "crystal") {
           (LO.crystals || (LO.crystals = [])).push(q.floor || W.floor);
           q.taken = true;
@@ -18176,7 +18365,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         } else {
           if (input.current.perksDirty) {
             input.current.perksDirty = false;
-            refreshBag(W, G);
+            applyPerks(W, G);
           }
           if (!input.current.paused) {
             step(W, G, dt);
@@ -18715,11 +18904,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ingame ? null : h("div", { className: "pdemo" }, demo)
     );
   }
-  function PerkCard({ id, ingame, flow }) {
+  function PerkCard({ id, ingame, flow, top, onClose }) {
     const pk = PERKS[id];
     return h(
       "div",
-      { className: "pop scroll" + (ingame ? " ingame" : "") + (flow ? " flow" : "") },
+      { className: "pop scroll" + (ingame ? " ingame" : "") + (flow ? " flow" : "") + (top ? " top" : "") },
       h(
         "div",
         { className: "phead" },
@@ -18728,8 +18917,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           "div",
           { className: "ptitle" },
           h("b", { style: { color: pk.tint } }, pk.name),
-          h("span", null, "Perk · rest of the run")
-        )
+          h("span", null, "Perk · counts while fitted to your Exo Suit")
+        ),
+        onClose ? h("button", {
+          className: "pclose",
+          onPointerDown: (e) => {
+            e.preventDefault();
+            onClose();
+          }
+        }, "×") : null
       ),
       h("p", { className: "pinfo" }, pk.info)
     );
@@ -19536,17 +19732,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }, "R")
     );
   }
-  function CrystalIcon({ size }) {
-    const s = size || 26;
+  function CrystalIcon({ size, green }) {
+    const s = size || 26, P = green ? GREEN_PAL : CRYSTAL_PAL;
     return h(
       "svg",
       { className: "crystal", viewBox: "0 0 24 24", width: s, height: s, "aria-hidden": true },
-      h("path", { d: "M12 2.5 L19.5 6 L21.5 13 L17 20.5 L8.5 21.5 L3 15.5 L4 7.5 Z", fill: "#2a0306" }),
-      h("path", { d: "M12 3.6 L18.8 6.7 L20.4 13 L16.4 19.6 L8.9 20.5 L4 15.1 L5 8 Z", fill: "#6e0a12" }),
-      h("path", { d: "M5.6 8.4 L12 4.4 L17.6 7.3 L13.5 11.5 L7 12.2 Z", fill: "#a3162a" }),
+      h("path", { d: "M12 2.5 L19.5 6 L21.5 13 L17 20.5 L8.5 21.5 L3 15.5 L4 7.5 Z", fill: P[0] }),
+      h("path", { d: "M12 3.6 L18.8 6.7 L20.4 13 L16.4 19.6 L8.9 20.5 L4 15.1 L5 8 Z", fill: P[1] }),
+      h("path", { d: "M5.6 8.4 L12 4.4 L17.6 7.3 L13.5 11.5 L7 12.2 Z", fill: P[2] }),
       h("rect", { x: 7.4, y: 7.2, width: 2.6, height: 2.6, fill: "#fff" }),
       h("rect", { x: 14.2, y: 13.6, width: 1.5, height: 1.5, fill: "#fff" })
     );
+  }
+  var CRYS_MAX = 24;
+  function CrystalRow({ red, green }) {
+    if (!red && !green) return null;
+    const bits = (n, cls) => [
+      ...Array.from({ length: Math.min(n, CRYS_MAX) }, (_, i) => h(
+        "svg",
+        { key: cls + i, className: "cbit " + cls, viewBox: "0 0 24 24", "aria-hidden": true },
+        h("path", { d: "M12 2.5 L19.5 6 L21.5 13 L17 20.5 L8.5 21.5 L3 15.5 L4 7.5 Z" })
+      )),
+      n > CRYS_MAX ? h("b", { key: cls + "+", className: "cmore " + cls }, "+" + (n - CRYS_MAX)) : null
+    ];
+    return h("div", { className: "crysrow", "aria-label": red + " red crystals, " + green + " green crystals" }, bits(red, "red"), bits(green, "green"));
   }
   function Stick({ size, kind, input, refresh }) {
     const [knob2, setKnob] = useState({ x: 0, y: 0, jet: false });
@@ -19919,7 +20128,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
   var SHOW_TIPS = false;
-  function Editor({ input, close, refresh, canEdit }) {
+  function Editor({ input, close, refresh, canEdit, tabs }) {
     const LO = input.current.loadout;
     useEffect(() => {
       SFX.fx("open");
@@ -20025,7 +20234,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (g) resetGun(g);
       refresh();
     };
-    const SLOP = 7;
+    const SLOP2 = 7;
     const startDrag = (id, from) => (e) => {
       e.preventDefault();
       const sx = e.clientX, sy = e.clientY;
@@ -20035,14 +20244,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         from: d.from,
         x: ev.clientX,
         y: ev.clientY,
-        armed: d.armed || Math.hypot(ev.clientX - sx, ev.clientY - sy) > SLOP
+        armed: d.armed || Math.hypot(ev.clientX - sx, ev.clientY - sy) > SLOP2
       });
       const up = (ev) => {
         window.removeEventListener("pointermove", move);
         window.removeEventListener("pointerup", up);
         window.removeEventListener("pointercancel", up);
         setDrag(null);
-        if (Math.hypot(ev.clientX - sx, ev.clientY - sy) <= SLOP) setInfo((cur) => cur === id ? null : id);
+        if (Math.hypot(ev.clientX - sx, ev.clientY - sy) <= SLOP2) setInfo((cur) => cur === id ? null : id);
         else drop(ev.clientX, ev.clientY, id, from);
       };
       window.addEventListener("pointermove", move);
@@ -20196,7 +20405,262 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         },
         MODS[drag.id].glyph
       ) : null,
+      tabs || null,
       card
+    );
+  }
+
+  // src/ui/exosuit.js
+  var SLOP = 8;
+  var NO_DRAG = null;
+  function Bag(props) {
+    const [tab, setTab] = useState("guns");
+    const tabs = h(
+      "div",
+      { className: "btabs" },
+      [["guns", "Guns & Mods"], ["suit", "Exo Suit"]].map(([k, label]) => h("button", {
+        key: k,
+        className: "btab" + (tab === k ? " on" : ""),
+        "data-tab": k,
+        onPointerDown: (e) => {
+          e.preventDefault();
+          if (tab !== k) {
+            setTab(k);
+            SFX.fx("switch");
+          }
+        }
+      }, label))
+    );
+    return tab === "guns" ? h(Editor, Object.assign({}, props, { tabs })) : h(ExoSuit, Object.assign({}, props, { tabs }));
+  }
+  function Portrait() {
+    const ref = useRef(null);
+    useEffect(() => {
+      const c = ref.current;
+      if (!c) return;
+      const dpr = window.devicePixelRatio || 1, S = 92;
+      c.width = S * dpr;
+      c.height = S * dpr;
+      const ctx = c.getContext("2d");
+      if (!ctx) return;
+      let raf = 0;
+      const t0 = performance.now();
+      const frame = () => {
+        const t = (performance.now() - t0) / 1e3, sc = 2.7;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const g = ctx.createRadialGradient(S / 2, S * 0.45, 4, S / 2, S / 2, S * 0.7);
+        g.addColorStop(0, "#22344a");
+        g.addColorStop(1, "#0a1018");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, S, S);
+        ctx.fillStyle = "rgba(120,200,255,0.05)";
+        for (let y = t * 12 % 4; y < S; y += 4) ctx.fillRect(0, y, S, 1);
+        const bob = Math.sin(t * 2.2) * 2.5, jet = 0.55 + 0.45 * Math.abs(Math.sin(t * 17) * Math.sin(t * 5.3));
+        ctx.save();
+        ctx.translate(S / 2 - PW * sc / 2, S / 2 - PH * sc / 2 + bob - 4);
+        ctx.scale(sc, sc);
+        ctx.fillStyle = "#ffb347";
+        ctx.beginPath();
+        ctx.moveTo(PW / 2 - 3, PH - 2);
+        ctx.lineTo(PW / 2 + 3, PH - 2);
+        ctx.lineTo(PW / 2, PH + 4 + jet * 6);
+        ctx.fill();
+        ctx.fillStyle = "#fff1c4";
+        ctx.beginPath();
+        ctx.moveTo(PW / 2 - 1.5, PH - 2);
+        ctx.lineTo(PW / 2 + 1.5, PH - 2);
+        ctx.lineTo(PW / 2, PH + 1 + jet * 3);
+        ctx.fill();
+        drawRunner(ctx, 0, 0, PW, PH, 1, t * 0.6, true, jet, false);
+        ctx.restore();
+        raf = requestAnimationFrame(frame);
+      };
+      raf = requestAnimationFrame(frame);
+      return () => cancelAnimationFrame(raf);
+    }, []);
+    return h("canvas", { className: "xport", ref });
+  }
+  function ExoSuit({ input, close, refresh, canEdit, tabs }) {
+    const LO = input.current.loadout;
+    if (!LO.suit) LO.suit = [];
+    while (LO.suit.length < SUIT_LEN) LO.suit.push(null);
+    const suit = LO.suit;
+    const [msg, setMsg] = useState("");
+    const [info, setInfo] = useState("");
+    const [drag, setDrag] = useState(NO_DRAG);
+    const P = perkBag(activePerks(LO));
+    const maxHp2 = P.maxHp + (LO.maxBonus || 0);
+    const hud = input.current.hud;
+    const hp = Math.round((hud ? hud.hp : 1) * maxHp2);
+    const press = (id, slot, movable) => (e) => {
+      e.preventDefault();
+      const sx = e.clientX, sy = e.clientY;
+      let armed = false;
+      const move = (ev) => {
+        if (!armed && movable && canEdit && Math.hypot(ev.clientX - sx, ev.clientY - sy) > SLOP) armed = true;
+        if (armed) setDrag({ id, x: ev.clientX, y: ev.clientY });
+      };
+      const up = (ev) => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        window.removeEventListener("pointercancel", up);
+        setDrag(null);
+        if (!armed) {
+          setInfo(id);
+          return;
+        }
+        const under = document.elementFromPoint(ev.clientX, ev.clientY);
+        const el = under && under.closest ? under.closest("[data-xslot]") : null;
+        const to = el ? Number(el.dataset.xslot) : -1;
+        const no = () => {
+          SFX.ui("poor");
+          setMsg(PERKS[id].stat ? PERKS[id].name + " fits only the " + STAT_PERKS[PERKS[id].stat].name + " slot" : "Stat slots take only their stat’s perks");
+        };
+        if (to >= 0 && !fitsSlot(id, to)) {
+          no();
+          return;
+        }
+        if (slot >= 0 && to >= 0 && suit[to] && !fitsSlot(suit[to], slot)) {
+          no();
+          return;
+        }
+        setMsg("");
+        if (slot < 0 && to >= 0) {
+          const k = LO.perks.indexOf(id);
+          if (k < 0) return;
+          LO.perks.splice(k, 1);
+          if (suit[to]) LO.perks.push(suit[to]);
+          suit[to] = id;
+          SFX.ui("perk");
+        } else if (slot >= 0 && to >= 0 && to !== slot) {
+          const a = suit[to];
+          suit[to] = suit[slot];
+          suit[slot] = a;
+          SFX.fx("place");
+        } else if (slot >= 0 && to < 0) {
+          LO.perks.push(id);
+          suit[slot] = null;
+          SFX.fx("place");
+        } else return;
+        input.current.perksDirty = true;
+        refresh();
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+      window.addEventListener("pointercancel", up);
+    };
+    const stat = (label, value, cls) => h("div", { className: "xstat" + (cls ? " " + cls : "") }, h("span", null, label), h("b", null, value));
+    const pct = (m) => (m >= 1 ? "+" : "−") + Math.round(Math.abs(m - 1) * 100) + "%";
+    const SV = {
+      hp: [hp + " / " + maxHp2, maxHp2 > 100 ? "+" + (maxHp2 - 100) : ""],
+      walk: [String(Math.round(WALK * P.walk)), P.walk !== 1 ? pct(P.walk) : ""],
+      fuel: [Math.round(100 * P.fuel) + "%", P.fuel !== 1 ? pct(P.fuel) : ""],
+      refuel: [Math.round(100 * FUEL_REGEN * P.refuel) + "%/s", P.refuel !== 1 ? pct(P.refuel) : ""],
+      pull: [String(Math.round(COIN_PULL * P.goldPull)), P.goldPull !== 1 ? pct(P.goldPull) : ""]
+    };
+    const slotEl = (i, cls) => {
+      const id = suit[i];
+      return h(
+        "div",
+        {
+          key: i,
+          "data-xslot": i,
+          className: "xslot" + (cls ? " " + cls : "") + (id ? " full" : "") + (drag && fitsSlot(drag.id, i) ? " ok" : ""),
+          style: id ? { color: PERKS[id].tint, borderColor: PERKS[id].tint } : null,
+          onPointerDown: id ? press(id, i, true) : void 0
+        },
+        id ? PERKS[id].glyph : "",
+        id && PERKS[id].tier ? h("i", null, ROMAN[PERKS[id].tier - 1]) : null
+      );
+    };
+    const unlocked = input.current.perkCollection || [];
+    return h(
+      "div",
+      { className: "sheet exosuit" },
+      h(
+        "div",
+        { className: "shead" },
+        h("h2", null, "Exo Suit"),
+        h("span", { className: "purse" }, LO.gold + "g"),
+        h("button", { className: "done", onPointerDown: (e) => {
+          e.preventDefault();
+          close();
+        } }, "Done")
+      ),
+      h(
+        "div",
+        { className: "xtop" },
+        h(Portrait),
+        h(
+          "div",
+          { className: "xstats" },
+          stat("Gold", fmtGold(LO.gold) + "g", "xgold"),
+          LO.debt ? stat("Owed", fmtGold(LO.debt) + "g", "xdebt") : null,
+          h(
+            "div",
+            { className: "xstat xcrys" },
+            h("span", null, "Crystals"),
+            h("b", null, h(CrystalIcon, { size: 14 }), (LO.crystals || []).length, " ", h(CrystalIcon, { size: 14, green: true }), (LO.greens || []).length)
+          ),
+          stat("Floor", input.current.floor || 1),
+          P.lives ? stat("Extra lives", Math.max(0, P.lives - (LO.usedLives || 0))) : null
+        )
+      ),
+      h(
+        "div",
+        { className: "xrows" },
+        STAT_KEYS.map((k, j) => h(
+          "div",
+          { key: k, className: "xrow" },
+          slotEl(SUIT_SLOTS + j, "stat"),
+          h("span", { className: "xrl", style: { color: STAT_PERKS[k].tint } }, STAT_PERKS[k].glyph, " ", STAT_PERKS[k].name),
+          h("b", null, SV[k][0]),
+          h("i", null, SV[k][1])
+        ))
+      ),
+      h("p", { className: "lab" }, "Perk slots — " + suit.slice(0, SUIT_SLOTS).filter(Boolean).length + " of " + SUIT_SLOTS + " fitted"),
+      h("div", { className: "xslots" }, suit.slice(0, SUIT_SLOTS).map((_, i) => slotEl(i))),
+      h("p", { className: "lab" }, "Perks — drag one you carry onto a slot"),
+      h(
+        "div",
+        { className: "xgrid scroll" },
+        PERK_IDS.map((id) => {
+          const n = LO.perks.filter((p) => p === id).length, pk = PERKS[id];
+          const state = n ? "have" : unlocked.includes(id) ? "none" : "locked";
+          return h(
+            "div",
+            {
+              key: id,
+              "data-perk": id,
+              className: "xperk " + state,
+              title: pk.name,
+              style: { color: pk.tint, borderColor: pk.tint },
+              onPointerDown: press(id, -1, n > 0)
+            },
+            pk.glyph,
+            pk.tier ? h("em", null, ROMAN[pk.tier - 1]) : null,
+            n > 1 ? h("i", null, "×" + n) : null,
+            state === "locked" ? h("u", null, "🔒") : null
+          );
+        })
+      ),
+      msg ? h("div", { className: "vmsg xmsg" }, msg) : null,
+      h("div", { className: "info" }, canEdit ? "Tap a perk to see what it does. Drag it off a slot to take it out." : "Locked — the suit can only be changed in the shop, or anywhere with the Tinker perk."),
+      tabs,
+      drag ? h(
+        "div",
+        { className: "ghost", style: { left: drag.x, top: drag.y, borderColor: PERKS[drag.id].tint, color: PERKS[drag.id].tint } },
+        PERKS[drag.id].glyph
+      ) : null,
+      info ? h(
+        "div",
+        { key: "card" },
+        h("div", { className: "shade", onPointerDown: (e) => {
+          e.preventDefault();
+          setInfo("");
+        } }),
+        h(PerkCard, { id: info, top: true, onClose: () => setInfo("") })
+      ) : null
     );
   }
 
@@ -20217,6 +20681,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (r <= 0 && modWeight(id, floor) > 0) return id;
     }
     return left.filter((id) => modWeight(id, floor) > 0).pop() || left[0];
+  }
+  function perkRoll(rnd2, owned) {
+    const left = PERK_IDS.filter((id) => !owned.includes(id) && (!PERKS[id].tier || PERKS[id].tier === 1 || owned.includes("st_" + PERKS[id].stat + (PERKS[id].tier - 1))));
+    return left.length ? left[Math.floor(rnd2() * left.length)] : null;
   }
 
   // src/spells/gunshop.js
@@ -20330,7 +20798,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const unlock = () => {
       if (def.unlock.count() <= 0) {
         SFX.ui("poor");
-        setMsg("No crystal to hand over");
+        setMsg("No " + def.unlock.name + " to hand over");
         return;
       }
       const id = def.unlock.run();
@@ -20416,7 +20884,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                     style: { color: t.color, borderColor: t.color },
                     onPointerDown: tap(key)
                   },
-                  t.glyph
+                  t.glyph,
+                  t.mark ? h("i", { className: "vmark" }, t.mark) : null
                 );
               })
             )
@@ -20440,7 +20909,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           "div",
           { className: "vcard" },
           msg ? h("div", { className: "vmsg" }, msg) : null,
-          sel ? def.card(sel) : h("p", { className: "vhint" }, "Nothing unlocked yet: hand over a red crystal")
+          sel ? def.card(sel) : h("p", { className: "vhint" }, "Nothing unlocked yet: hand over a " + def.unlock.name)
         ),
         h(
           "button",
@@ -20749,6 +21218,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       price: (id) => priceOf(id),
       gold: () => LO().gold,
       unlock: {
+        name: "red crystal",
         icon: h(CrystalIcon, { size: 28 }),
         count: () => (LO().crystals || []).length,
         run: () => {
@@ -20768,10 +21238,50 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     };
   }
-  var SHOP_DEFS = { mods: modShop };
+  function perkShop(input) {
+    const LO = () => input.current.loadout;
+    return {
+      title: "Perks",
+      groups: [
+        { label: "Perks", ids: PERK_IDS.filter((id) => !PERKS[id].stat) },
+        ...STAT_KEYS.map((s) => ({ label: STAT_PERKS[s].name, ids: PERK_IDS.filter((id) => PERKS[id].stat === s) }))
+      ],
+      owned: (id) => input.current.perkCollection.includes(id),
+      tile: (id) => ({
+        glyph: PERKS[id].glyph,
+        color: PERKS[id].tint,
+        name: PERKS[id].name,
+        mark: PERKS[id].tier ? ROMAN[PERKS[id].tier - 1] : void 0
+      }),
+      card: (id) => h(PerkCard, { id, ingame: true, flow: true }),
+      price: (id) => perkPrice(id),
+      gold: () => LO().gold,
+      unlock: {
+        name: "green crystal",
+        icon: h(CrystalIcon, { size: 28, green: true }),
+        count: () => (LO().greens || []).length,
+        run: () => {
+          const gr = LO().greens || [];
+          if (!gr.length) return null;
+          const id = perkRoll(Math.random, input.current.perkCollection);
+          if (!id) return null;
+          gr.shift();
+          input.current.perkCollection.push(id);
+          savePerkCollection(input.current.perkCollection);
+          return id;
+        }
+      },
+      dispense: (id) => {
+        LO().gold -= perkPrice(id);
+        input.current.dispense = { shop: "perks", perk: id };
+      }
+    };
+  }
+  var SHOP_DEFS = { mods: modShop, perks: perkShop };
   var SHOP_MENUS = {
     mods: ({ input, close }) => h(VendShop, { def: modShop(input), input, close }),
-    guns: GunVend
+    guns: GunVend,
+    perks: ({ input, close }) => h(VendShop, { def: perkShop(input), input, close })
   };
 
   // src/ui/swap.js
@@ -21058,6 +21568,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         gold: START_GOLD,
         debug: false,
         perks: [],
+        suit: Array(SUIT_LEN).fill(null),
         maxBonus: 0,
         usedLives: 0
       },
@@ -21079,6 +21590,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       // raised while paused, shown by the loop when it resumes
       collection: loadCollection(),
       // the mods unlocked, across runs
+      perkCollection: loadPerkCollection(),
+      // and the perks
       shopOpen: null,
       menuTap: null,
       dispense: null,
@@ -21130,6 +21643,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         gold: START_GOLD,
         debug: false,
         perks: [],
+        suit: Array(SUIT_LEN).fill(null),
         maxBonus: 0,
         usedLives: 0
       };
@@ -21235,19 +21749,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const perkB = perkBag(activePerks(LO));
     const canEdit = inShop || perkB.tinker;
     const heldGun = input.current.loadout.guns[input.current.loadout.sel];
-    const perkOn = (i) => !(LO.perksOff || []).includes(i);
-    const togglePerk = () => {
-      const L2 = input.current.loadout, i = perkInfo;
-      if (i < 0) return;
-      const off = L2.perksOff || (L2.perksOff = []);
-      const j = off.indexOf(i);
-      if (j >= 0) off.splice(j, 1);
-      else off.push(i);
-      input.current.perksDirty = true;
-      SFX.fx("switch");
-      refresh();
-    };
-    input.current.perkTap = perkInfo >= 0 ? togglePerk : null;
+    const fitted = activePerks(LO);
+    input.current.perkTap = null;
     const deck = deckLayout(vw, size, LO.guns.length);
     const btnAt = (pt) => ({
       width: deck.btn,
@@ -21300,18 +21803,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           },
           prompt.id ? h(ModCard, { id: prompt.id, ingame: true }) : null,
           prompt.perk ? h(PerkCard, { id: prompt.perk, ingame: true }) : null,
-          prompt.crystal ? h(
+          prompt.crystal || prompt.green ? h(
             "div",
             { className: "pop scroll ingame crystalcard" },
             h(
               "div",
               { className: "phead" },
-              h("div", { className: "pglyph" }, h(CrystalIcon, { size: 28 })),
+              h("div", { className: "pglyph" }, h(CrystalIcon, { size: 28, green: !!prompt.green })),
               h(
                 "div",
                 { className: "ptitle" },
-                h("b", null, "Red crystal"),
-                h("span", null, "From floor " + prompt.crystal + " · unlocks a mod at the shop")
+                h("b", null, prompt.green ? "Green crystal" : "Red crystal"),
+                h("span", null, prompt.green ? "Unlocks a perk at the shop" : "From floor " + prompt.crystal + " · unlocks a mod, or boosts a gun reroll, at the shop")
               )
             )
           ) : null,
@@ -21331,7 +21834,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               "aria-label": "Tap the right stick to " + (prompt.price ? "buy for " + prompt.price + "g" : "take")
             },
             h(RKey),
-            h("b", null, prompt.price ? prompt.price + "g" : prompt.id || prompt.gun || prompt.perk || prompt.heart || prompt.crystal ? "free" : prompt.text)
+            h("b", null, prompt.price ? prompt.price + "g" : prompt.id || prompt.gun || prompt.perk || prompt.heart || prompt.crystal || prompt.green ? "free" : prompt.text)
           )
         ) : null,
         // one gear in the top-right opens the Dev panel; Restart now lives inside it.
@@ -21340,13 +21843,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h(
           "div",
           { className: "gold" },
-          h(
-            "div",
-            { className: "purse" },
-            fmtGold(LO.gold),
-            h("span", null, "g"),
-            h("span", { className: "crys" }, h(CrystalIcon, { size: 15 }), (LO.crystals || []).length)
-          ),
+          h("div", { className: "purse" }, fmtGold(LO.gold), h("span", null, "g")),
+          h(CrystalRow, { red: (LO.crystals || []).length, green: (LO.greens || []).length }),
           LO.debt > 0 ? h("div", { className: "debt" }, "-" + Math.trunc(LO.debt).toLocaleString("en-US"), h("span", null, "g owed")) : null,
           LO.debt > 0 && LO.due ? h(DueClock, { due: LO.due }) : null
         ),
@@ -21451,19 +21949,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ),
           // the perks you carry: a column going up from above the map, wrapping into a new
           // column further in. Tap one for its card
-          LO.perks && LO.perks.length ? h(
+          fitted.length ? h(
             "div",
             { className: "perkcol", style: {
               left: Math.round(deck.map.x - PERK_PIP / 2),
               top: Math.round(deck.map.y - deck.btn / 2 - 8 - perkColH),
               height: perkColH
             } },
-            LO.perks.map((id, i) => PERKS[id] ? h(
+            fitted.map((id, i) => PERKS[id] ? h(
               "button",
               {
                 key: i,
                 "data-i": i,
-                className: "perkpip" + (perkOn(i) ? "" : " off") + (perkInfo === i ? " sel" : ""),
+                className: "perkpip" + (perkInfo === i ? " sel" : ""),
                 title: PERKS[id].name,
                 style: { color: PERKS[id].tint },
                 onPointerDown: (e) => {
@@ -21477,7 +21975,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ) : null
         )
       ),
-      edit ? h(Editor, { input, refresh, canEdit, close: () => setEdit(false) }) : null,
+      edit ? h(Bag, { input, refresh, canEdit, close: () => setEdit(false) }) : null,
       devOpen ? h(DevPanel, {
         input,
         refresh,
@@ -21497,7 +21995,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         setGunInfo(-1);
         refresh();
       } }) : null,
-      perkInfo >= 0 && PERKS[LO.perks[perkInfo]] ? h(
+      perkInfo >= 0 && PERKS[fitted[perkInfo]] ? h(
         "div",
         null,
         // the shade stops above the controls, so the right stick can still be tapped
@@ -21512,18 +22010,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }),
         h(
           "div",
-          { className: "perkinfo" + (perkOn(perkInfo) ? "" : " off") },
-          h(PerkCard, { id: LO.perks[perkInfo], ingame: true }),
-          h(
-            "div",
-            { className: "pbuy perktoggle", onPointerDown: (e) => {
-              e.preventDefault();
-              togglePerk();
-            } },
-            h(RKey),
-            h("b", null, "Tap R to toggle on / off"),
-            h("i", null, perkOn(perkInfo) ? "ON" : "OFF")
-          )
+          { className: "perkinfo" },
+          h(PerkCard, { id: fitted[perkInfo], ingame: true }),
+          h("p", { className: "perkhint" }, "Fitted to your Exo Suit: change it in the Bag")
         )
       ) : null,
       gunInfo >= 0 && LO.guns[gunInfo] ? h(

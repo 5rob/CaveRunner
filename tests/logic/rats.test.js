@@ -81,8 +81,9 @@ for (let seed = 1; seed <= 8; seed++) {
   }
   // the heart and the perk: one in each kind of zone
   const hr = lv.rooms.find(r => r.kind === 'heart'), pr = lv.rooms.find(r => r.kind === 'perk');
-  if (hr && pr && hr.built !== pr.built) roomsSplit++;
-  if (hr && hr.built) heartBuilt++;
+  // one room now: which kind of zone it's in is a coin toss
+  if (lv.rooms.length === 1) roomsSplit++;
+  if (lv.rooms[0] && lv.rooms[0].built) heartBuilt++;
   // lanterns through the built-up zones
   const lamps = lv.props.filter(p => p.k === 'lamp' && (p.st === 'lantern' || p.st === 'hanglamp'));
   lanterns += lamps.length;
@@ -99,8 +100,8 @@ check('the tunnel is thinner than you', thin >= total * 0.95, { thin, total });
 check('the fog never lifts off a nest room from outside', fogged === total, { fogged, total });
 check('the burrow is a real open tunnel, not painted over', unpainted === total, { unpainted, total });
 check('every nest has a mound at its mouth', mounded === total, { mounded, total });
-check('the heart and perk rooms are in different kinds of zone', roomsSplit === levels, { roomsSplit, levels });
-check('and which one gets the built-up zone is a coin toss', heartBuilt > 0 && heartBuilt < levels, heartBuilt);
+check('one hidden room per floor', roomsSplit === levels, { roomsSplit, levels });
+check('and whether it is in a built-up zone is a coin toss', heartBuilt > 0 && heartBuilt < levels, heartBuilt);
 check('lanterns hang all through the built-up zones', lanterns / levels >= 25 && lampBuilt >= lanterns * 0.97, { per: lanterns / levels, lampBuilt, lanterns });
 check('and they are spread out', apart === levels);
 {
