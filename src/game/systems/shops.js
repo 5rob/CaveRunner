@@ -18,6 +18,7 @@ export const CHUTE_Y = SHOP_FLOOR * CELL - 14;           // where a bought thing
 export const SHOPS = {
   mods: { x: WW / 2 + 110, icon: '⚙️', hue: '#4fe3ff', label: 'Tap R to shop' },
   guns: { x: WW / 2, icon: 'gun', hue: '#ff9a3c', label: 'Tap R to shop' },
+  perks: { x: WW / 2 - 110, icon: '✦', hue: '#3dff7a', label: 'Tap R to shop' },
 };
 
 // the machine you're standing at, if any
@@ -47,7 +48,7 @@ export function stepShops(W, G, F) {
     if (m) {
       const side = F.pcx < m.x ? -1 : 1;
       const fly = { x: m.x, y: CHUTE_Y, t: 0, vx: side * (95 + Math.random() * 30), vy: -200 - Math.random() * 40, cool: 1 };
-      W.pickups.push(d.gun ? { kind: 'gun', gun: d.gun, ...fly } : { kind: 'mod', id: d.id, ...fly });
+      W.pickups.push(d.gun ? { kind: 'gun', gun: d.gun, ...fly } : d.perk ? { kind: 'perk', id: d.perk, ...fly } : { kind: 'mod', id: d.id, ...fly });
       SFX.fx('prompt');
     }
   }

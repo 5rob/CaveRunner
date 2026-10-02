@@ -171,14 +171,16 @@ export function ModCard({ id, onClose, ingame, top, flow }) {
 
 // The card that comes up standing on a perk altar, so you know what you're taking before
 // you take it. A perk is permanent, so this is the only look you get.
-/** @param {{ id: string, ingame?: boolean, flow?: boolean }} props */
-export function PerkCard({ id, ingame, flow }) {
+/** @param {{ id: string, ingame?: boolean, flow?: boolean, top?: boolean, onClose?: () => void }} props */
+export function PerkCard({ id, ingame, flow, top, onClose }) {
   const pk = PERKS[id];
-  return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') + (flow ? ' flow' : '') },
+  return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') + (flow ? ' flow' : '') + (top ? ' top' : '') },
     h('div', { className: 'phead' },
       h('div', { className: 'pglyph', style: { borderColor: pk.tint, color: pk.tint } }, pk.glyph),
       h('div', { className: 'ptitle' },
         h('b', { style: { color: pk.tint } }, pk.name),
-        h('span', null, 'Perk · rest of the run'))),
+        h('span', null, 'Perk · counts while fitted to your Exo Suit')),
+      onClose ? h('button', { className: 'pclose',
+        onPointerDown: e => { e.preventDefault(); onClose(); } }, '×') : null),
     h('p', { className: 'pinfo' }, pk.info));
 }

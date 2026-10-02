@@ -9,7 +9,6 @@ import {
 } from '../core/consts.js';
 import { mix } from '../core/util.js';
 import { ELITE_CHANCE, NATURAL_ONLY, eliteOf, enemyFor, rosterFor } from '../data/creatures.js';
-import { PERK_IDS } from '../data/perks.js';
 import { themeFor } from '../data/themes.js';
 import { kr } from '../dev/knobs.js';
 import { decorate } from './decorate.js';
@@ -21,11 +20,9 @@ import { boxReach } from './zones.js';
 // a prize room's half-size in world units, shell included (makeLevel's rx/ry + sh, in pixels)
 export const ROOM_HW = 23 * CELL, ROOM_HH = 15 * CELL;                   // gold per vein pixel dug out (before the floor's lift)
 
-/** @param {number} seed @param {number} floor @param {string[]} [owned] perks you hold (the perk room skips them) @returns {Level} */
+/** @param {number} seed @param {number} floor @param {string[]} [owned] perks you hold (unused since the room holds a green crystal) @returns {Level} */
 export function makeLevel(seed, floor, owned) {
   floor = floor || 1;
-  const have = new Set(owned || []);     // perks you are already carrying, so a room is
-                                         // never a wasted trip if it can help it
   const hash = (x, y) => {
     let v = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 982451653)) | 0;
     v = Math.imul(v ^ (v >>> 13), 1274126177);
@@ -286,7 +283,7 @@ export function makeLevel(seed, floor, owned) {
   slab(CW / 2 - 24, 34, 48, 3);
 
   // ---- hidden rooms ----
-  // One perk and one heart, each cut out of whatever rock is there and lined with brick
+  // One room (there were two: a perk and a heart), cut out of whatever rock is there and lined with brick
   // the way the shop is, so it reads as somewhere somebody built. The tunnel runs back to
   // a point on the main route, which is the only thing in a level guaranteed to be
   // reachable — a room carved into the rock on its own would be a room nobody ever finds.
@@ -324,9 +321,8 @@ export function makeLevel(seed, floor, owned) {
     }
     return null;
   };
-  const heartBuilt = layered ? rnd() < 0.5 : false;
-  const perkRoom = makeRoom(!heartBuilt);
-  const heartRoom = makeRoom(heartBuilt);
+  // on a zoned floor, which kind of zone it's in is a coin toss
+  const perkRoom = makeRoom(layered ? rnd() < 0.5 : false);
   // and clear the route again: a room's shell is solid brick and can land straight across
   // the one tunnel the whole level hangs off. Above the shop only, or the same pass would
   // punch extra holes in the shop roof, which is laid down after the first one.
@@ -361,7 +357,7 @@ export function makeLevel(seed, floor, owned) {
         if (k % 3 === 0) { const x = i % CW, y = (i / CW) | 0; disc(x + 3, y + 5, 7, 0); routePath.push({ x: x + 3, y: y + 5, r: 6 }); }
       R = boxReach(mat, sx, sy);
     }
-    for (const r of [perkRoom, heartRoom]) {
+    for (const r of [perkRoom]) {
       if (!r) continue;
       const cx = Math.round(r.x / CELL), cy = Math.round(r.y / CELL);
       let got = false;
@@ -393,20 +389,13 @@ export function makeLevel(seed, floor, owned) {
     const nr = () => (ns = (ns * 16807) % 2147483647) / 2147483647;
     for (let i = 0; i < 8; i++) nr();
     const nk = [{ x: CW / 2, y: 22, r: 70 }, { x: shopExit, y: SHOP_TOP - 30, r: 50 },
-      ...[perkRoom, heartRoom].filter(Boolean).map(r => ({ x: r.x / CELL, y: r.y / CELL, r: 45 }))];
+      ...[perkRoom].filter(Boolean).map(r => ({ x: r.x / CELL, y: r.y / CELL, r: 45 }))];
     nests = ratNests(mat, nr, zone, nk, Math.round(kr('raNests', nr)), Math.round(kr('raNestsWild', nr)));
   }
   const nearNest = (cx, cy) => nests.some(n => Math.hypot(n.x - cx, n.y - cy) < 20 || Math.hypot(n.mouth.x - cx, n.mouth.y - cy) < 10);
-  // which perk is in it: anything you have not got, if the run of the pool allows
-  let perkId = null;
-  if (perkRoom) {
-    const fresh = PERK_IDS.filter(k => !have.has(k));
-    const pool = fresh.length ? fresh : PERK_IDS;
-    perkId = pool[Math.floor(rnd() * pool.length)];
-  }
+  // its prize: a green crystal on the altar (the perk machine turns it into an unlock)
   const rooms = [];
-  if (perkRoom) rooms.push({ kind: 'perk', id: perkId, x: perkRoom.x, y: perkRoom.y, taken: false, built: built(perkRoom.x / CELL, perkRoom.y / CELL) });
-  if (heartRoom) rooms.push({ kind: 'heart', x: heartRoom.x, y: heartRoom.y, taken: false, built: built(heartRoom.x / CELL, heartRoom.y / CELL) });
+  if (perkRoom) rooms.push({ kind: 'green', x: perkRoom.x, y: perkRoom.y, taken: false, built: built(perkRoom.x / CELL, perkRoom.y / CELL) });
 
   // unbreakable border
   for (let cy = 0; cy < CH; cy++)

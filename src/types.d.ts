@@ -232,6 +232,7 @@ interface NestState {
 /** a perk: one entry of PERKS. Its numbers fold into a PerkBag */
 interface Perk extends Partial<Omit<PerkBag, 'maxHp'>> {   // dmg, speed, shield, …: the bag fields it moves
   name: string; glyph: string; tint: string; info: string;
+  stat?: string; tier?: number;   // a stat perk (STAT_PERKS): which stat, and its level 1-5
 }
 /** every perk you own folded into one bag: perkBag (data/perks.js), W.pb */
 interface PerkBag {
@@ -241,6 +242,7 @@ interface PerkBag {
   ghost: number; homing: number; trail: number; contact: number; close: number; invis: number;
   repel: number; seeAll: number; radarEnemy: number; radarItem: number; radarWand: number;
   tinker: number; extraItem: number; pinpointer: number; trajectory: number;
+  fuel: number; refuel: number;   // the jetpack's tank (drains slower) and how fast it refills (stat perks)
   // always there on a bag perkBag returns; optional only because it is filled in after the rest
   maxHp?: number;
 }
@@ -326,8 +328,10 @@ interface Loadout {
   guns: (Gun | null)[];       // four slots
   sel: number;                // the held one
   bag: string[];              // mod ids not on a gun
-  perks: string[];
-  perksOff?: number[];        // places in `perks` switched off (activePerks)
+  perks: string[];            // perks carried, not fitted (the Bag's Exo Suit tab)
+  suit?: (string | null)[];   // the Exo Suit's SUIT_SLOTS: the perks that count (activePerks)
+  perksOff?: number[];        // before the suit: places in `perks` switched off (cleanPerks reads it once)
+  greens?: number[];          // green crystals carried: the floor each came from (the perk machine)
   gold: number;
   debt?: number;              // owed to the company for the level you're on (game/systems/vend.js)
   due?: number;               // when it must be repaid: Date.now() ms, the device's clock (0 = no debt)
@@ -525,6 +529,7 @@ interface Prompt {
   text: string; price: number; can: boolean;
   id?: string; gun?: Gun; perk?: string; heart?: boolean; found?: boolean;
   crystal?: number;           // a red crystal: the floor it came from
+  green?: number;             // a green crystal (the hidden room's prize): the floor it came from
   shop?: string;              // a vending machine's menu (SHOPS key): no card, just the line
 }
 /** the death replay's span, once recorded: from t0 to t1, the death at `death` (REC's clock) */
@@ -553,10 +558,11 @@ interface GameInput {
   hud?: Hud; witness?: Witness | null; replay?: ReplayView | null; spawnGun?: number;
   requestRestart?: () => void; promptBottom?: number; newCave?: boolean; ctlH?: number;
   mapOpen?: boolean; floor?: number; saveRun?: () => void;
+  perkCollection: string[];   // the perks unlocked at the perk machine, across runs
   collection: string[];       // the mods unlocked, kept across runs (save/save.js loadCollection)
   shopOpen?: string | null;   // a vending machine's menu is up: its SHOPS key (game/systems/shops.js)
   menuTap?: (() => void) | null;   // a menu is up: a right-stick tap (or r/f/enter) confirms in it
-  dispense?: { shop: string, id?: string, gun?: Gun } | null;   // bought: the machine pops it out (stepShops)
+  dispense?: { shop: string, id?: string, gun?: Gun, perk?: string } | null;   // bought: the machine pops it out (stepShops)
 }
 
 /** the death replay's recorder (systems/recorder.js) */

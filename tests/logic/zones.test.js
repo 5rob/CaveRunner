@@ -46,7 +46,7 @@ check('old workings all sit in built-up zones', lv.every(L => L.works.every(w =>
   [DEV.lvZoneShareLo, DEV.lvZoneShareHi] = was;
   check('Dev share 0: no built-up zone', none.every(L => shareOf(L) === 0), none.map(shareOf));
   check('Dev share 1: all built-up', all.every(L => shareOf(L) === 1), all.map(shareOf));
-  check('and both still reach the exit with both rooms', [...none, ...all].every(L => reachTop(L) && L.rooms.length === 2));
+  check('and both still reach the exit with the room', [...none, ...all].every(L => reachTop(L) && L.rooms.length === 1));
 }
 
 // ---- jellies keep to the natural zones ----

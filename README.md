@@ -54,7 +54,7 @@ swaps all have small UI sounds. Volume knobs are in the ⚙️ panel under Sound
 explosions, bullet hits, enemy fire, creature voices, world/props, drips, footsteps and UI.
 
 **Your run saves itself.** Every couple of seconds, and whenever you put the app away, the
-run is saved: floor, guns, bag, perks, gold and health, and the cave itself — what you have
+run is saved: floor, guns, bag, perks and suit, gold and health, and the cave itself — what you have
 killed, bought and picked up stays gone. Close the app and reopen it to carry on where you
 were (at the floor's entrance). Updates keep the save: you come back on the same floor with
 all your gear, in a freshly generated cave. Dying or Restart wipes it.
@@ -115,7 +115,7 @@ The map button opens the map over the whole play area (the run pauses while it's
 cave you have uncovered, drawn as white outlines over a see-through black (the cave shows
 faintly behind it), with a white-rimmed yellow dot for where you are. Loot you have seen and
 not picked up is marked: **green dots for mods, yellow dots for guns** (a hollow yellow ring for
-a gun you swapped out and left). A perk room or +25 health room you have found is **outlined
+a gun you swapped out and left). The hidden room, once found, is **outlined
 in yellow**, with an **X** through it once you've taken its prize. It only shows what the fog
 of war has lifted, so it fills in as you explore. Tap the button again to close it.
 
@@ -188,7 +188,8 @@ goes faster, with red sparks streaming past.
 **Red crystals** lie about the cave where guns and mods used to: a big dark-red nugget with
 white glints. Stand at one and tap the right stick to pocket it. **Elite** creatures — a few
 on every floor, tinted gold with a glow — are tougher, hit harder, drop four times the gold
-and a red crystal. The crystals you carry are counted at the top, next to your gold. Which spells turn up follows Noita's own spawn table, deeper floors handing out rarer ones — and the very strongest (Black Hole and friends) never appear before floor 4. Your **Bag** opens anywhere,
+and a red crystal. The crystals you carry show at the top as a row of red and green crystal silhouettes, under
+your gold and above the debt. Which spells turn up follows Noita's own spawn table, deeper floors handing out rarer ones — and the very strongest (Black Hole and friends) never appear before floor 4. Your **Bag** opens anywhere,
 but *changing* your setup — dragging mods, reordering guns — only works in the shop (or
 anywhere, with the Tinker perk); out in the cave the Bag is read-only. Enemies drop gold
 when they die, so a floor you clear pays for the next floor's shopping. **Gold seams** run
@@ -213,24 +214,30 @@ pink, orange, gold (level 10). Its card reads `Lv N` too.
 
 ## Perks
 
-Every floor also hides two small rooms, built brick-lined like the shop, carved out of
-the cave and connected back to the main route by a tunnel — you have to find them.
+Every floor also hides one small room, built brick-lined like the shop, carved out of the
+cave and connected back to the main route by a tunnel — you have to find it. On its altar
+sits a **green crystal**: tap the right stick to pocket it. (The +25 health heart room is gone.)
 
-One holds a perk on an altar. Walk onto it and a card describes the upgrade; tap the
-right stick's dead zone (or F) to take it, same as any other pickup. There are 31 perks,
-copied from Noita — Glass Cannon, Extra Health, Faster Wands, Homing Shots, Unlimited
-Spells, Permanent Shield, Pinpointer, Trajectory Sight (draws the dotted aim line for the
-next shot), Angry Ghost, Attract Gold, radars and Invisibility among them — and once
-taken, a perk lasts the rest of the run: until you die or hit
-Restart. A perk room never offers one you already hold. What you've collected shows as a
-column of icons going up from above the map button to near the top of the screen (then a new
-column starts further in). Tap one to pause and see its card (tap another to switch to it); tap R (the right stick, or the R key) to switch that
-perk off or on again. A switched-off perk's icon fades.
+Green crystals buy perks at the **perk machine** in the shop, the one with a green ✦ hologram,
+left of the gun machine. It works like the mod machine: hand over a green crystal to unlock a
+random perk you haven't got (kept for good, across runs), then **Dispense selected** buys a
+copy for gold and pops it out onto the floor. There are 30 perks copied from Noita (200g each) —
+Glass Cannon, Extra Health, Faster Wands, Homing Shots, Unlimited Spells, Permanent Shield,
+Pinpointer, Trajectory Sight, Angry Ghost, Attract Gold, radars and Invisibility among them —
+and 25 **stat perks**: Max Health, Movement Speed, Jetpack Fuel, Jetpack Recharge and Gold
+Vacuum, each in five levels (I–V, 60g up to 650g). A crystal only unlocks a stat perk's next
+level once you have the one below it.
 
-The other room holds a heart that raises your maximum health by 25. It does not heal
-you — it only raises the ceiling. On floor 1 the two rooms are split between the two kinds
-of cave: one is somewhere in the built-up parts and the other in the natural parts, and
-which is which is a coin toss each cave.
+A perk you pick up is carried, and only counts once it's fitted to your **Exo Suit**. The Bag
+has two tabs along the bottom: **Guns & Mods** and **Exo Suit**. The Exo Suit shows your
+portrait (the runner hovering on its jet), your money and crystals, your **stats** — max health,
+movement speed, jetpack fuel, jetpack recharge, gold vacuum — each with a slot beside it that
+takes only that stat's perks, **six perk slots** for the rest, and every perk in a grid: the ones you
+carry lit (with how many), the ones you've unlocked but don't carry faded, the rest locked.
+Drag a carried perk onto a slot to fit it, a fitted one to another slot to swap, or off the
+slots to take it out again. Tap any perk to see its card. The suit is locked outside the
+shop: change it there (or anywhere, with Tinker). The fitted perks show as a column of icons going
+up from above the map button; tap one for its card.
 
 A couple of perks reach into other systems: Tinker with Wands Everywhere lets you *edit* your
 setup anywhere, not just in the shop. Trajectory Sight is what draws the dotted aim line
@@ -581,6 +588,5 @@ them if it cannot find either.
 - Restart asks before it wipes the run
 - A death replay: the last 10 seconds before you died and 3 after, with scrubbing, slow motion, a fog toggle, pan and pinch-zoom
 - A DEBUG shelf with one of every mod, for trying builds out
-- 31 perks, hidden one to a brick-lined room on every floor, permanent for the run and shown as icons above the sticks
-- A second hidden room per floor holding a +25 max health heart (it raises the ceiling, doesn't heal)
+- 30 perks and 25 stat perks (five stats, five levels), unlocked with green crystals (one hidden in a brick-lined room on every floor) at the perk machine, bought for gold and fitted to the Exo Suit
 - Loot in the cave sits on the ground now, not floating in place

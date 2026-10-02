@@ -48,7 +48,7 @@ check('floor 1 built-up zones have far more long level floors than the old noise
 check('floor 2 still uses the old cave (no workings)', f2.works.length === 0);
 
 // the hidden rooms land in their vaults
-check('both hidden rooms made on every seed', lvl.every(L => L.rooms.length === 2), lvl.map(L => L.rooms.length));
+check('the hidden room made on every seed', lvl.every(L => L.rooms.length === 1), lvl.map(L => L.rooms.length));
 
 // old workings: levelled, paved, timbered
 const worksN = lvl.map(L => L.works.length);

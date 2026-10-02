@@ -30,6 +30,7 @@ function holoIcon(icon, hue) {
     const sc = ICON * RES / 22;
     drawGun(a, S / 2 - 3.85 * sc, S / 2 + 1 * sc, 0, sc, '#ffffff');
   } else {
+    a.fillStyle = '#ffffff';                // a plain glyph (not an emoji) takes the hue below
     a.font = ICON * RES * 0.86 + 'px system-ui, "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
     a.textAlign = 'center'; a.textBaseline = 'middle';
     a.fillText(icon, S / 2, S / 2 + ICON * RES * 0.04);

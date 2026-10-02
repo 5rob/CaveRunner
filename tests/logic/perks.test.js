@@ -16,7 +16,7 @@ const bare = PERK_IDS.filter(k => !PERKS[k].name || !PERKS[k].glyph || !PERKS[k]
 check('every perk has a name, a glyph and a line explaining it', bare.length === 0, bare);
 const names = PERK_IDS.map(k => PERKS[k].name);
 check('no two perks share a name', new Set(names).size === names.length);
-check('there are thirty of them', PERK_IDS.length === 30, PERK_IDS.length);
+check('thirty, and the 25 stat perks', PERK_IDS.length === 55, PERK_IDS.length);
 
 // ---- the bag ----
 const bag = perkBag([]);
@@ -59,10 +59,10 @@ let perks = 0, hearts = 0, unreachable = 0, unknown = 0, owned = 0, buried = 0, 
 for (let seed = 1; seed <= 20; seed++) {
   const lv = makeLevel(seed, 1);
   const { mat, rooms, start } = lv;
-  if (!rooms || rooms.length !== 2) { fails++; console.log(`FAIL seed ${seed}: ${rooms ? rooms.length : 0} rooms`); continue; }
-  const perk = rooms.find(r => r.kind === 'perk'), heart = rooms.find(r => r.kind === 'heart');
-  if (perk) perks++; if (heart) hearts++;
-  if (perk && !PERK_IDS.includes(perk.id)) unknown++;
+  // one room now, its prize a green crystal (the perk machine's currency); the heart room is gone
+  if (!rooms || rooms.length !== 1) { fails++; console.log(`FAIL seed ${seed}: ${rooms ? rooms.length : 0} rooms`); continue; }
+  if (rooms[0].kind === 'green') perks++;
+  if (rooms.some(r => r.kind === 'heart')) hearts++;
 
   // the player fits where the room's prize is, and the cell under it is solid
   for (const r of rooms) {
@@ -111,18 +111,11 @@ for (let seed = 1; seed <= 20; seed++) {
     if (!got) unreachable++;
   }
 
-  // and the perk in it is not one you are already carrying
-  const lv2 = makeLevel(seed, 1, [perk.id]);          // that one is already yours
-  const p2 = lv2.rooms.find(r => r.kind === 'perk');
-  if (p2.id === perk.id) owned++;
 }
-check('every floor has a perk room', perks === 20, `${perks}/20`);
-check('every floor has a heart room', hearts === 20, `${hearts}/20`);
-check('and the perk in it is always one of the table', unknown === 0, `${unknown} unknown`);
+check('every floor has one room, with a green crystal', perks === 20, `${perks}/20`);
+check('and no heart room', hearts === 0, `${hearts}/20`);
 check('nothing is buried in the room: the middle of it is open', buried === 0, `${buried} solid cells there`);
-check('both rooms can be reached from the shop', unreachable === 0, `${unreachable} rooms walled off`);
-check('and a room never offers a perk you already have',
-  owned === 0, `${owned}/20 offered one that was excluded`);
+check('the room can be reached from the shop', unreachable === 0, `${unreachable} rooms walled off`);
 
 // ---- loot sits on the ground ----
 let hanging = 0, loot = 0;

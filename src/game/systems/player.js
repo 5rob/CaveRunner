@@ -13,6 +13,7 @@ import { activePerks, perkBag } from '../../data/perks.js';
 import { DEV, kr, spr } from '../../dev/knobs.js';
 import { clearSave } from '../../save/save.js';
 import { archNear } from '../../world/decorate.js';
+import { paintFog } from './fog.js';
 import { burst, toast } from './particles.js';
 import { boxHit } from './terrain.js';
 import { webNear } from './webs.js';
@@ -26,6 +27,20 @@ export const refreshBag = (W, G) => { W.pb = perkBag(activePerks(G.input.current
 // the true maximum health: the perk bag's answer plus the running +25 per heart room.
 /** @param {World} W @param {GameCtx} G */
 export const maxHp = (W, G) => W.pb.maxHp + (G.input.current.loadout.maxBonus || 0);
+
+// The suit changed (a perk fitted or taken out): the perk bag again, and what a change does at once:
+// a higher cap comes full (Extra Health), a lower one trims you (Glass Cannon), All-Seeing Eye
+// lights the floor, the ghost turns up
+/** @param {World} W @param {GameCtx} G */
+export function applyPerks(W, G) {
+  const before = maxHp(W, G);
+  refreshBag(W, G);
+  const after = maxHp(W, G);
+  if (after > before) W.p.hp += after - before;
+  W.p.hp = Math.min(W.p.hp, after);
+  if (W.pb.seeAll) { W.seen.fill(2); paintFog(W, G); }
+  if (W.pb.ghost && !W.ghost) W.ghost = { x: W.p.x, y: W.p.y, cd: 0 };
+}
 
 /** @param {World} W @param {GameCtx} G @param {number} n */
 export function hurt(W, G, n) {
@@ -138,10 +153,10 @@ export function movePlayer(W, G, F) {
         r: 2.5 + Math.random() * 2, life: 0.7 + Math.random() * 0.4, max: 1.1, c: '#6f767e', a: 0.8 });
   }
   if (jet) {
-    W.p.fuel -= FUEL_DRAIN * (0.5 + 0.5 * mag) * dt;
+    W.p.fuel -= FUEL_DRAIN * (0.5 + 0.5 * mag) * dt / W.pb.fuel;    // a bigger tank (Jetpack Fuel) drains slower
     if (W.p.fuel <= 0) { W.p.fuel = 0; W.p.empty = true; }
   } else if (W.p.onGround || climbing) {
-    W.p.fuel = Math.min(1, W.p.fuel + FUEL_REGEN * dt);
+    W.p.fuel = Math.min(1, W.p.fuel + FUEL_REGEN * W.pb.refuel * dt);
   }
 
   // ---- steering ----
