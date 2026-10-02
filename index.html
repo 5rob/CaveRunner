@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v127</title>
+<title>CaveRunner v128</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -662,7 +662,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v127';</script>
+<script>const VERSION = 'v128';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -964,6 +964,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ["holoflash", "Hologram flash (on a kill)"],
     ["player", "Player"],
     ["enemy", "Enemies"],
+    ["elite", "Elites"],
     ["spider", "Spider"],
     ["rat", "Rats & nests"],
     ["jelly", "Jellyfish"],
@@ -1175,6 +1176,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ["lvZoneShare", "Built-up share of the map (0-1)", 0, 1, 0.05, 0.4, 0.55],
     ["lvZoneRag", "Zone edge raggedness (px)", 0, 60, 1, 8, 18],
     ["lvLamps", "Lanterns in the built-up zones", 0, 150, 1, 40, 55]
+  ]);
+  var ELITE_KNOBS = rangeKnobs("elite", [
+    ["elCount", "Elites per floor", 0, 40, 1, 2, 4],
+    ["elHp", "Health (× a normal one)", 0.5, 10, 0.1, 2.5, 2.5],
+    ["elDmg", "Damage (× a normal one)", 0.5, 10, 0.1, 1.5, 1.5],
+    ["elGold", "Gold reward (× a normal one)", 0, 20, 0.5, 4, 4],
+    ["elRed", "Red crystals dropped", 0, 20, 1, 3, 5],
+    ["elGreen", "Green crystals dropped", 0, 10, 1, 1, 1],
+    ["elScale", "Size (× a normal one)", 0.5, 3, 0.05, 1, 1],
+    ["elTintAmt", "Tint strength (0 none, 1 all tint)", 0, 1, 0.05, 0.45, 0.45],
+    ["elGlow", "Highlight glow strength", 0, 1, 0.01, 0.22, 0.22],
+    ["elGlowR", "Highlight glow size (past its body)", 0, 40, 1, 6, 6]
+  ]);
+  var ELITE_COLS = colourKnobs("elite", [
+    ["elTint", "Tint and glow colour", "#ffc93c", "#ffc93c", "tint"]
   ]);
   var ARCH_KNOBS = rangeKnobs("arch", [
     ["arVines", "Arched vine clusters per floor", 0, 40, 0.5, 9, 13],
@@ -6123,17 +6139,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       glow: c.glow || null
     };
   }
-  var ELITE_CHANCE = 0.05, ELITE_HP = 2.5, ELITE_DMG = 1.5, ELITE_GOLD = 4;
-  var ELITE_TINT = "#ffc93c";
-  function eliteOf(k) {
-    const t = (c) => mixHex(c, ELITE_TINT, 0.45);
+  function eliteOf(k, u = 0.5) {
     return Object.assign({}, k, {
       elite: true,
-      hp: Math.round(k.hp * ELITE_HP),
-      dmg: Math.max(1, Math.round(k.dmg * ELITE_DMG)),
-      gold: Math.round(k.gold * ELITE_GOLD),
-      col: { a: t(k.col.a), b: t(k.col.b), c: t(k.col.c), eye: k.col.eye }
+      eu: u,
+      r0: k.r,
+      col0: k.col,
+      hp: Math.round(k.hp * kru("elHp", u)),
+      dmg: Math.max(1, Math.round(k.dmg * kru("elDmg", u))),
+      r: k.r * kru("elScale", u),
+      col: eliteCol(k.col, u)
     });
+  }
+  function eliteCol(c, u) {
+    const tint = kcol("elTint", u), a = kru("elTintAmt", u), t = (x) => mixHex(x, tint, a);
+    return { a: t(c.a), b: t(c.b), c: t(c.c), eye: c.eye };
   }
   var HUNTERS = { chase: 1, bomb: 1, spider: 1, jelly: 1, rat: 1 };
   var NATURAL_ONLY = { jelly: 1 };
@@ -9069,7 +9089,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       return true;
     };
-    const enemies = [];
+    const enemies = [], rolls = [];
     const roster = rosterFor(floor, rnd2);
     const wanted = Math.min(Math.max(136, DEV.enemies), DEV.enemies + (floor - 1) * DEV.enemiesUp);
     let waiting = null, waits = 0;
@@ -9086,7 +9106,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         continue;
       }
       waits = 0;
-      if (rnd2() < ELITE_CHANCE) k = eliteOf(k);
+      rolls.push(rnd2());
       enemies.push({
         x,
         y,
@@ -9108,6 +9128,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         charge: 0
       });
     }
+    const eliteU = (n) => {
+      const v = Math.sin(seed * 12.9898 + floor * 78.233 + n * 37.719) * 43758.5453;
+      return v - Math.floor(v);
+    };
+    const nElite = Math.round(kru("elCount", eliteU(0)));
+    rolls.map((v, i) => [v, i]).sort((a, b) => a[0] - b[0]).slice(0, nElite).forEach(([, i], j) => {
+      const e = enemies[i];
+      e.k = eliteOf(e.k, eliteU(j + 1));
+      e.r = e.k.r;
+      e.hp = e.hpMax = e.k.hp;
+    });
     for (const n of nests) {
       const k = enemyFor("pesa", floor), x = n.x * CELL, y = n.y * CELL;
       enemies.push({
@@ -12374,6 +12405,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       });
     }
   }
+  function eliteLive(e, k) {
+    e.r = k.r = (k.r0 || k.r) * kru("elScale", k.eu || 0);
+    const key = DEV.elTintLo + DEV.elTintHi + DEV.elTintAmtLo + "," + DEV.elTintAmtHi;
+    if (k.col0 && k.tintKey !== key) {
+      k.tintKey = key;
+      k.col = eliteCol(k.col0, k.eu || 0);
+    }
+  }
   function damageEnemy(W, j, dmg) {
     const e = W.enemies[j];
     e.hp -= dmg;
@@ -12389,17 +12428,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     e.dead = true;
     const A = ACTS[e.k.act];
     if (A && A.die && A.die(W, e)) return;
-    spillGold(W.coins, e.x, e.ty, Math.round((e.k.gold + Math.floor(Math.random() * 3)) * W.pb.gold));
-    if (e.k.elite) W.pickups.push({
-      kind: "crystal",
-      x: e.x,
-      y: e.ty,
-      floor: W.floor,
-      t: Math.random() * 6.28,
-      vx: (Math.random() - 0.5) * 80,
-      vy: -160,
-      cool: 1
-    });
+    spillGold(W.coins, e.x, e.ty, Math.round((e.k.gold + Math.floor(Math.random() * 3)) * (e.k.elite ? kr("elGold") : 1) * W.pb.gold));
+    if (e.k.elite) {
+      const reds = Math.round(kr("elRed")), greens = Math.round(kr("elGreen"));
+      for (let n = 0; n < reds + greens; n++)
+        W.pickups.push({
+          kind: "crystal",
+          green: n >= reds || void 0,
+          x: e.x,
+          y: e.ty,
+          floor: W.floor,
+          t: Math.random() * 6.28,
+          vx: (Math.random() - 0.5) * 140,
+          vy: -140 - Math.random() * 80,
+          cool: 1
+        });
+    }
     if (e.carry > 0) spillGold(W.coins, e.x, e.ty, e.carry, { vx: 30, vy: 110 });
   }
   function stepEnemies(W, G, F) {
@@ -12408,6 +12452,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let i = W.enemies.length - 1; i >= 0; i--) {
       const e = W.enemies[i], k = e.k;
       const A = ACTS[k.act] || ACTS.chase;
+      if (k.elite) eliteLive(e, k);
       e.flash -= dt;
       e.cd -= dt;
       e.touch -= dt;
@@ -13724,12 +13769,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const ey = e.ty;
       if (ey > W.camY + vh + 20 || ey < W.camY - 20 || e.x < W.camX - 20 || e.x > W.camX + vw + 20) continue;
       if (e.k.elite) {
-        G.ctx.globalAlpha = 0.22 + 0.1 * Math.sin(W.time * 4 + e.x);
-        G.ctx.fillStyle = ELITE_TINT;
-        G.ctx.beginPath();
-        G.ctx.arc(e.x, ey, e.r + 6, 0, Math.PI * 2);
-        G.ctx.fill();
-        G.ctx.globalAlpha = 1;
+        const u = e.k.eu || 0, a = kru("elGlow", u);
+        if (a > 0) {
+          G.ctx.globalAlpha = Math.max(0, Math.min(1, a + a * 0.45 * Math.sin(W.time * 4 + e.x)));
+          G.ctx.fillStyle = kcol("elTint", u);
+          G.ctx.beginPath();
+          G.ctx.arc(e.x, ey, e.r + kru("elGlowR", u), 0, Math.PI * 2);
+          G.ctx.fill();
+          G.ctx.globalAlpha = 1;
+        }
       }
       drawEnemy(G.ctx, e, W.time);
       if ((e.home || e.nest) && e.hp >= e.hpMax) continue;
@@ -15399,12 +15447,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         drawGun(G.ctx, q.x - 5, qy + 1, -0.22, 0.85, gunAccent(q.gun));
       } else if (q.kind === "crystal") {
         G.ctx.globalAlpha = 0.18 + 0.08 * Math.sin(W.time * 3 + q.t);
-        G.ctx.fillStyle = "#ff2030";
+        G.ctx.fillStyle = q.green ? "#30ff70" : "#ff2030";
         G.ctx.beginPath();
         G.ctx.arc(q.x, qy, CRYSTAL_R + 4, 0, Math.PI * 2);
         G.ctx.fill();
         G.ctx.globalAlpha = 1;
-        drawNugget(G.ctx, q.x, qy, CRYSTAL_R, q.t * 7, 0, CRYSTAL_PAL);
+        drawNugget(G.ctx, q.x, qy, CRYSTAL_R, q.t * 7, 0, q.green ? GREEN_PAL : CRYSTAL_PAL);
       } else if (q.kind === "perk") {
         const pk = PERKS[q.id], col = pk.tint || COL.portal;
         G.ctx.globalAlpha = 0.22;
@@ -17041,7 +17089,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   // src/game/systems/save-run.js
   function saveRun(W, G) {
     if (W.p.dead) return;
-    const pk = W.pickups.filter((q) => !q.taken && (q.kind === "mod" || q.kind === "gun" || q.kind === "crystal")).map((q) => q.kind === "mod" ? { kind: "mod", id: q.id, x: q.x, y: q.y, t: q.t } : q.kind === "crystal" ? { kind: "crystal", floor: q.floor, x: q.x, y: q.y, t: q.t } : { kind: "gun", gun: q.gun, x: q.x, y: q.y, t: q.t, old: !!q.old });
+    const pk = W.pickups.filter((q) => !q.taken && (q.kind === "mod" || q.kind === "gun" || q.kind === "crystal")).map((q) => q.kind === "mod" ? { kind: "mod", id: q.id, x: q.x, y: q.y, t: q.t } : q.kind === "crystal" ? { kind: "crystal", floor: q.floor, x: q.x, y: q.y, t: q.t, green: q.green || void 0 } : { kind: "gun", gun: q.gun, x: q.x, y: q.y, t: q.t, old: !!q.old });
     const data = {
       ver: VERSION,
       floor: W.floor,
@@ -18890,7 +18938,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       id: near.it.id,
       price: near.it.price,
       can: LO.gold >= near.it.price
-    } : near.src === "room" ? near.r.kind === "green" ? { text: "Green crystal", green: W.floor, price: 0, can: true, found: true } : near.r.kind === "perk" && near.r.id ? { text: PERKS[near.r.id].name, perk: near.r.id, price: 0, can: true } : { text: "+25 Max Health", heart: true, price: 0, can: true } : near.q.kind === "gun" ? { text: near.q.gun.name, gun: near.q.gun, price: 0, can: true, found: true } : near.q.kind === "perk" ? { text: PERKS[near.q.id].name, perk: near.q.id, price: 0, can: true, found: true } : near.q.kind === "crystal" ? { text: "Red crystal", crystal: near.q.floor, price: 0, can: true, found: true } : { text: MODS[near.q.id].name, id: near.q.id, price: 0, can: true, found: true };
+    } : near.src === "room" ? near.r.kind === "green" ? { text: "Green crystal", green: W.floor, price: 0, can: true, found: true } : near.r.kind === "perk" && near.r.id ? { text: PERKS[near.r.id].name, perk: near.r.id, price: 0, can: true } : { text: "+25 Max Health", heart: true, price: 0, can: true } : near.q.kind === "gun" ? { text: near.q.gun.name, gun: near.q.gun, price: 0, can: true, found: true } : near.q.kind === "perk" ? { text: PERKS[near.q.id].name, perk: near.q.id, price: 0, can: true, found: true } : near.q.kind === "crystal" && near.q.green ? { text: "Green crystal", green: near.q.floor || W.floor, price: 0, can: true, found: true } : near.q.kind === "crystal" ? { text: "Red crystal", crystal: near.q.floor, price: 0, can: true, found: true } : { text: MODS[near.q.id].name, id: near.q.id, price: 0, can: true, found: true };
     let pbottom = 12;
     if (near) {
       const iy = near.src === "vend" ? VEND_TOP : near.src === "shopvend" ? MACHINE_TOP : near.src === "shop" ? near.it.y : near.src === "room" ? near.r.y : near.q.y;
@@ -18978,10 +19026,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           toast(W, "Perk: " + PERKS[q.id].name + " (fit it in the Bag)");
           SFX.ui("perk");
         } else if (q.kind === "crystal") {
-          (LO.crystals || (LO.crystals = [])).push(q.floor || W.floor);
-          q.taken = true;
-          toast(W, "Red crystal");
-          SFX.ui("mod");
+          let reds = 0, greens = 0;
+          for (const c of W.pickups) {
+            if (c.kind !== "crystal" || c.taken || c.cool > 0 || Math.abs(c.x - pcx) > 18 || Math.abs(c.y - pcy) > 20) continue;
+            if (c.green) {
+              (LO.greens || (LO.greens = [])).push(c.floor || W.floor);
+              greens++;
+            } else {
+              (LO.crystals || (LO.crystals = [])).push(c.floor || W.floor);
+              reds++;
+            }
+            c.taken = true;
+          }
+          toast(W, [reds ? reds > 1 ? reds + " red crystals" : "Red crystal" : "", greens ? greens > 1 ? greens + " green crystals" : "Green crystal" : ""].filter(Boolean).join(" + "));
+          SFX.ui(greens ? "perk" : "mod");
         } else {
           G.input.current.found = q;
         }

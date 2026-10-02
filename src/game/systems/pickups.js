@@ -105,6 +105,7 @@ export function stepPickups(W, G, F) {
       // the "For sale"/"Found" split cares about, not whether you're allowed to
       : (near.q.kind === 'gun' ? { text: near.q.gun.name, gun: near.q.gun, price: 0, can: true, found: true }
         : near.q.kind === 'perk' ? { text: PERKS[near.q.id].name, perk: near.q.id, price: 0, can: true, found: true }
+        : near.q.kind === 'crystal' && near.q.green ? { text: 'Green crystal', green: near.q.floor || W.floor, price: 0, can: true, found: true }
         : near.q.kind === 'crystal' ? { text: 'Red crystal', crystal: near.q.floor, price: 0, can: true, found: true }
         : { text: MODS[near.q.id].name, id: near.q.id, price: 0, can: true, found: true });
   // where the item sits on screen, so the panel can float its bottom edge just above
@@ -199,11 +200,18 @@ export function stepPickups(W, G, F) {
         toast(W, 'Perk: ' + PERKS[q.id].name + ' (fit it in the Bag)');
         SFX.ui('perk');
       } else if (q.kind === 'crystal') {
-        // a red crystal goes in your pocket: the shop's machine turns it into an unlock
-        (LO.crystals || (LO.crystals = [])).push(q.floor || W.floor);
-        q.taken = true;
-        toast(W, 'Red crystal');
-        SFX.ui('mod');
+        // a crystal goes in your pocket (a red one: the shop's machine turns it into an unlock; a
+        // green one: the perk machine's). One tap takes every crystal in reach (an elite drops a pile)
+        let reds = 0, greens = 0;
+        for (const c of W.pickups) {
+          if (c.kind !== 'crystal' || c.taken || c.cool > 0 || Math.abs(c.x - pcx) > 18 || Math.abs(c.y - pcy) > 20) continue;
+          if (c.green) { (LO.greens || (LO.greens = [])).push(c.floor || W.floor); greens++; }
+          else { (LO.crystals || (LO.crystals = [])).push(c.floor || W.floor); reds++; }
+          c.taken = true;
+        }
+        toast(W, [reds ? (reds > 1 ? reds + ' red crystals' : 'Red crystal') : '', greens ? (greens > 1 ? greens + ' green crystals' : 'Green crystal') : '']
+          .filter(Boolean).join(' + '));
+        SFX.ui(greens ? 'perk' : 'mod');
       } else {
         // a gun opens the chooser: compare it with yours and pick the slot to swap
         G.input.current.found = q;

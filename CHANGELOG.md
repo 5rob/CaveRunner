@@ -5,6 +5,21 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v128 — elites drop crystal piles, and a Dev group for them
+Released 2026-10-03.
+
+- **An elite drops red and green crystals** (`damageEnemy`): `elRed` reds and `elGreen` greens (3–5
+  and 1), thrown out of it; a dropped green is a `crystal` pickup with `green: true` (drawn green,
+  saved with the level). **One tap takes every crystal in reach** (an elite's pile), reds to
+  `LO.crystals`, greens to `LO.greens`.
+- **Dev → Elites** (`ELITE_KNOBS`, `ELITE_COLS`, all min/max): elites per floor (`elCount`, 2–4: replaces
+  `ELITE_CHANCE`'s 5%), health, damage, gold reward, red and green crystals, size, tint strength, tint
+  and glow colour, glow strength and size. `ELITE_HP`/`ELITE_DMG`/`ELITE_GOLD`/`ELITE_TINT` are gone.
+  `makeLevel` still rolls once per creature (so caves are unchanged) and makes elites of the
+  `elCount` lowest rolls, the count and each elite's place in the ranges (`k.eu`) hashed from the
+  seed. Size and tint follow the knobs live (`eliteLive` in the enemy loop); health and damage are
+  set when the floor is made; gold and crystals are rolled when one dies.
+
 ## v127 — vines and webs that give
 Released 2026-10-02.
 

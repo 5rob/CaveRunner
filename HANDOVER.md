@@ -9,7 +9,10 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
-- **Released: v127** on `main`, 2026-10-02: vines and web lines give (`world/sway.js`: one spring per
+- **Released: v128** on `main`, 2026-10-03: elites drop a pile of red and green crystals (one tap
+  takes the pile) and have a Dev group, **Elites** (count per floor, health, damage, gold, crystals,
+  size, tint, glow). The owner may paste Dev numbers for it.
+- **v127** on `main`, 2026-10-02: vines and web lines give (`world/sway.js`: one spring per
   line, a pendulum per hanging vine; Dev group **Vines & webs: sway**). v126: the **Carrot** suit stat
   (camera, torch, aggro, aim line; Dev group **Carrot**, min = none fitted, max = Carrot V). The owner may
   paste Dev numbers for either.

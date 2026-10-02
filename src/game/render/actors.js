@@ -7,8 +7,7 @@
 import { drawGun, drawRagdoll, drawRunner, drawTorch, pixelSprite } from '../../art/sprites.js';
 import { COL, PH, PW } from '../../core/consts.js';
 import { drawEnemy } from '../../creatures/draw.js';
-import { ELITE_TINT } from '../../data/creatures.js';
-import { DEV, carrotAt, jcol } from '../../dev/knobs.js';
+import { DEV, carrotAt, jcol, kcol, kru } from '../../dev/knobs.js';
 import { planCast } from '../../spells/cast.js';
 import { gunAccent } from '../../spells/guns.js';
 import { bhSp, tracePath } from '../../spells/trace.js';
@@ -23,11 +22,14 @@ export function drawEnemies(W, G, F) {
   for (const e of W.enemies) {
     const ey = e.ty;
     if (ey > W.camY + vh + 20 || ey < W.camY - 20 || e.x < W.camX - 20 || e.x > W.camX + vw + 20) continue;
-    if (e.k.elite) {                       // an elite: a gold glow behind it
-      G.ctx.globalAlpha = 0.22 + 0.1 * Math.sin(W.time * 4 + e.x);
-      G.ctx.fillStyle = ELITE_TINT;
-      G.ctx.beginPath(); G.ctx.arc(e.x, ey, e.r + 6, 0, Math.PI * 2); G.ctx.fill();
-      G.ctx.globalAlpha = 1;
+    if (e.k.elite) {                       // an elite: a glow behind it in its tint (Dev → Elites)
+      const u = e.k.eu || 0, a = kru('elGlow', u);
+      if (a > 0) {
+        G.ctx.globalAlpha = Math.max(0, Math.min(1, a + a * 0.45 * Math.sin(W.time * 4 + e.x)));
+        G.ctx.fillStyle = kcol('elTint', u);
+        G.ctx.beginPath(); G.ctx.arc(e.x, ey, e.r + kru('elGlowR', u), 0, Math.PI * 2); G.ctx.fill();
+        G.ctx.globalAlpha = 1;
+      }
     }
     drawEnemy(G.ctx, e, W.time);
     if ((e.home || e.nest) && e.hp >= e.hpMax) continue;   // rats and nests: a bar only once hurt

@@ -97,7 +97,7 @@ export const DEV_META = [
   { k: 'bagSpeed',  g: 'ui',    label: 'Bag fire preview speed (×real time)', min: 0.05, max: 5, step: 0.05 },
 ];
 export const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['fx', 'Hologram & glow'], ['holoflash', 'Hologram flash (on a kill)'], ['player', 'Player'],
-  ['enemy', 'Enemies'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
+  ['enemy', 'Enemies'], ['elite', 'Elites'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults.
 export function devReport() {
@@ -328,6 +328,24 @@ export const LV_KNOBS = rangeKnobs('level', [
 // Arched vines (v87): a long vine hung between two ceiling spots over an open pocket, sagging
 // between them, thick with leaves and dangling strands. Rolled per floor / per arch with the
 // decoration's own random stream. Sizes are terrain pixels (the runner is 6 wide, 11 tall).
+// Elites: a few boosted creatures a floor (data/creatures.js eliteOf; world/level.js picks them).
+// Each elite rolls once where it sits in its looks and toughness (u), so min to max spans the elites
+// on a floor; the rewards are rolled fresh when one dies.
+export const ELITE_KNOBS = rangeKnobs('elite', [
+  ['elCount',   'Elites per floor',                       0, 40, 1,      2, 4],
+  ['elHp',      'Health (× a normal one)',                0.5, 10, 0.1,  2.5, 2.5],
+  ['elDmg',     'Damage (× a normal one)',                0.5, 10, 0.1,  1.5, 1.5],
+  ['elGold',    'Gold reward (× a normal one)',           0, 20, 0.5,    4, 4],
+  ['elRed',     'Red crystals dropped',                   0, 20, 1,      3, 5],
+  ['elGreen',   'Green crystals dropped',                 0, 10, 1,      1, 1],
+  ['elScale',   'Size (× a normal one)',                  0.5, 3, 0.05,  1, 1],
+  ['elTintAmt', 'Tint strength (0 none, 1 all tint)',     0, 1, 0.05,    0.45, 0.45],
+  ['elGlow',    'Highlight glow strength',                0, 1, 0.01,    0.22, 0.22],
+  ['elGlowR',   'Highlight glow size (past its body)',    0, 40, 1,      6, 6],
+]);
+export const ELITE_COLS = colourKnobs('elite', [
+  ['elTint', 'Tint and glow colour', '#ffc93c', '#ffc93c', 'tint'],
+]);
 export const ARCH_KNOBS = rangeKnobs('arch', [
   ['arVines',   'Arched vine clusters per floor',      0, 40, 0.5,   9, 13],
   ['arCluster', 'Arches per cluster',                  1, 8, 0.1,    1.5, 3.5],

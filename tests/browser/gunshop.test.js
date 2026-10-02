@@ -2,7 +2,7 @@
 // gun hologram; its menu offers three guns of the floor's pool with prices; Reroll costs gold and
 // gets dearer; the boosted reroll costs red crystals (1, then 2) and rolls deeper, boosted guns;
 // the reels stop one at a time; Buy selected pops the gun out onto the floor. Also: an elite
-// creature drops a red crystal when it dies, and the top bar counts your crystals.
+// creature drops red and green crystals when it dies (one tap takes the pile), and the top bar counts your crystals.
 const { launch } = require('../chromium');
 const path = require('path');
 let fails = 0;
@@ -94,20 +94,34 @@ const DIR = path.join(__dirname, '..', 'build');
   check('the gun landed on the floor beside the machine', !!q && !q.fly && Math.abs(q.x - MX) > 25, { q, MX });
   await page.screenshot({ path: path.join(DIR, 'gunshop_dropped.png') });
 
-  // an elite in a sandbox dies and drops a crystal that falls to the floor
+  // an elite in a sandbox dies and drops red and green crystals that fall to the floor; one tap takes them all
   st = await page.evaluate(async () => {
+    DEV.elRedLo = DEV.elRedHi = 3; DEV.elGreenLo = DEV.elGreenHi = 1;
     const L = window.__lvl, e = L.enemies.find(e => e.k.elite) || Object.assign(L.enemies.find(e => !e.nest), {}), room = L.sandbox();
     if (!e.k.elite) e.k = eliteOf(e.k);                  // no elite in this cave: make one
     if (!L.enemies.includes(e)) L.enemies.push(e);         // the sandbox clears its box
     const i = L.enemies.indexOf(e);
     e.x = room.x + 60; e.y = e.ty = room.y - 40; e.hp = 0.001;
-    const n0 = L.pickups.filter(q => q.kind === 'crystal').length;
+    const n0 = L.pickups.length;
     damageEnemy(L, i, 5);
-    const q = L.pickups[L.pickups.length - 1];
-    for (let k = 0; k < 40 && q.vy !== undefined; k++) await new Promise(r => setTimeout(r, 50));
-    return { more: L.pickups.filter(q => q.kind === 'crystal').length - n0, rest: q.vy === undefined, dy: Math.round(room.y - q.y) };
+    const drop = L.pickups.slice(n0);
+    for (let k = 0; k < 60 && drop.some(q => q.vy !== undefined); k++) await new Promise(r => setTimeout(r, 50));
+    const out = { reds: drop.filter(q => q.kind === 'crystal' && !q.green).length, greens: drop.filter(q => q.kind === 'crystal' && q.green).length,
+      rest: drop.every(q => q.vy === undefined), dy: drop.map(q => Math.round(room.y - q.y)) };
+    // stand by the pile and tap: every crystal in reach
+    const LO = window.__in.current.loadout, r0 = (LO.crystals || []).length, g0 = (LO.greens || []).length;
+    const mx = drop.reduce((s, q) => s + q.x, 0) / drop.length;
+    for (const q of drop) q.x = mx + (q.x - mx) * 0.2;   // close together, as a pile you can stand in
+    L.p.x = mx - 6; L.p.y = room.y - 22.5; L.p.vx = L.p.vy = 0;
+    for (let k = 0; k < 5; k++) await new Promise(requestAnimationFrame);
+    window.__in.current.interact = true;
+    for (let k = 0; k < 5; k++) await new Promise(requestAnimationFrame);
+    out.tookReds = (LO.crystals || []).length - r0; out.tookGreens = (LO.greens || []).length - g0;
+    out.taken = drop.every(q => q.taken);
+    return out;
   });
-  check('an elite drops a red crystal that comes to rest on the floor', st.more === 1 && st.rest && st.dy >= 0 && st.dy < 20, st);
+  check('an elite drops red and green crystals that come to rest on the floor', st.reds === 3 && st.greens === 1 && st.rest && st.dy.every(d => d >= 0 && d < 20), st);
+  check('one tap takes the whole pile, reds and greens', st.tookReds === 3 && st.tookGreens === 1 && st.taken, st);
 
   await browser.close();
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');

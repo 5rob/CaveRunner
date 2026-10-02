@@ -10,7 +10,7 @@ export function saveRun(W, G) {
   if (W.p.dead) return;
   const pk = W.pickups.filter(q => !q.taken && (q.kind === 'mod' || q.kind === 'gun' || q.kind === 'crystal'))
     .map(q => (q.kind === 'mod' ? { kind: 'mod', id: q.id, x: q.x, y: q.y, t: q.t }
-      : q.kind === 'crystal' ? { kind: 'crystal', floor: q.floor, x: q.x, y: q.y, t: q.t }
+      : q.kind === 'crystal' ? { kind: 'crystal', floor: q.floor, x: q.x, y: q.y, t: q.t, green: q.green || undefined }
       : { kind: 'gun', gun: q.gun, x: q.x, y: q.y, t: q.t, old: !!q.old }));
   const data = { ver: VERSION, floor: W.floor, hasLvl: W.hasLvl, hp: W.p.hp, loadout: G.input.current.loadout,
     level: { seed: W.levelSeed, owned: W.levelOwned, alive: W.enemies.map(e => e.sid),

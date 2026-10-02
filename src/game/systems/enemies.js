@@ -7,8 +7,8 @@
 
 import { SFX } from '../../audio/sfx.js';
 import { COL, PH, PW } from '../../core/consts.js';
-import { HUNTERS } from '../../data/creatures.js';
-import { DEV, carrotAt, jcol, kr } from '../../dev/knobs.js';
+import { HUNTERS, eliteCol } from '../../data/creatures.js';
+import { DEV, carrotAt, jcol, kr, kru } from '../../dev/knobs.js';
 import { fireArea } from '../../world/fire.js';
 import { spillGold } from '../../world/nuggets.js';
 import { ACTS } from '../creatures/acts.js';
@@ -38,6 +38,13 @@ export function fireEnemyShot(W, e, tx, ty) {
       col: k.col.a, dmg: k.dmg, size: k.body === 'blob' ? 4 : 3, fire: k.fire });
   }
 }
+// an elite's size and colours follow the Dev knobs as they move (its roll k.eu stays)
+/** @param {Enemy} e @param {CreatureKind} k */
+function eliteLive(e, k) {
+  e.r = k.r = (k.r0 || k.r) * kru('elScale', k.eu || 0);
+  const key = DEV.elTintLo + DEV.elTintHi + DEV.elTintAmtLo + ',' + DEV.elTintAmtHi;
+  if (k.col0 && k.tintKey !== key) { k.tintKey = key; k.col = eliteCol(k.col0, k.eu || 0); }
+}
 /** @param {World} W @param {number} j @param {number} dmg */
 export function damageEnemy(W, j, dmg) {
   const e = W.enemies[j];
@@ -52,10 +59,15 @@ export function damageEnemy(W, j, dmg) {
   const A = ACTS[e.k.act];
   if (A && A.die && A.die(W, e)) return;
   // its gold, split into big, medium and small nuggets that add up to it
-  spillGold(W.coins, e.x, e.ty, Math.round((e.k.gold + Math.floor(Math.random() * 3)) * W.pb.gold));
-  // an elite also drops a red crystal, thrown up out of it
-  if (e.k.elite) W.pickups.push({ kind: 'crystal', x: e.x, y: e.ty, floor: W.floor, t: Math.random() * 6.28,
-    vx: (Math.random() - 0.5) * 80, vy: -160, cool: 1 });
+  // (an elite's times the Dev gold reward)
+  spillGold(W.coins, e.x, e.ty, Math.round((e.k.gold + Math.floor(Math.random() * 3)) * (e.k.elite ? kr('elGold') : 1) * W.pb.gold));
+  // an elite also drops red and green crystals (Dev → Elites), thrown up out of it
+  if (e.k.elite) {
+    const reds = Math.round(kr('elRed')), greens = Math.round(kr('elGreen'));
+    for (let n = 0; n < reds + greens; n++)
+      W.pickups.push({ kind: 'crystal', green: n >= reds || undefined, x: e.x, y: e.ty, floor: W.floor, t: Math.random() * 6.28,
+        vx: (Math.random() - 0.5) * 140, vy: -140 - Math.random() * 80, cool: 1 });
+  }
   // a rat drops what it was carrying home
   if (e.carry > 0) spillGold(W.coins, e.x, e.ty, e.carry, { vx: 30, vy: 110 });
 }
@@ -77,6 +89,7 @@ export function stepEnemies(W, G, F) {
     const e = W.enemies[i], k = e.k;
     // its act's hooks (ACTS, D20); an act not in the table moves like a chaser
     const A = ACTS[k.act] || ACTS.chase;
+    if (k.elite) eliteLive(e, k);
     e.flash -= dt;
     e.cd -= dt;
     e.touch -= dt;
