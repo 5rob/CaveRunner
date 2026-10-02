@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v117</title>
+<title>CaveRunner v118</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -502,13 +502,50 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .confirmRow button{height:40px;padding:0 16px;border-radius:20px;font:600 13px system-ui,sans-serif}
 .confirmRow .cancel{background:var(--pad);color:var(--text);border:1px solid var(--ring)}
 .confirmRow .go{background:#c2401f;color:#fff;border:1px solid #c2401f}
+
+/* ---- a vending machine's menu (ui/vendshop.js): always dark, over the view down to the sticks ---- */
+.vshop{position:fixed;z-index:26;left:0;right:0;top:0;display:flex;flex-direction:column;gap:8px;
+  box-sizing:border-box;padding:calc(10px + env(safe-area-inset-top)) 10px 8px;
+  background:#0a0c10;color:#e9ecf2}
+.vtop,.vbot{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:7px}
+.vhead{display:flex;align-items:center;gap:10px}
+.vhead b{font:800 16px system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;flex:1}
+.vgold{font:700 14px system-ui,sans-serif;color:#ffc93c}
+.vgold i{font-style:normal;font-weight:500;margin-left:1px}
+.vclose{width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,0.25);background:none;
+  color:#e9ecf2;font-size:20px;line-height:1;cursor:pointer}
+.vgrid{flex:1;min-height:0;overflow-y:auto;border-radius:10px;background:rgba(255,255,255,0.04);padding:6px 8px 8px}
+.vtier+.vtier{margin-top:14px}
+.vtlab{font:600 9px system-ui,sans-serif;color:rgba(233,236,242,0.55);text-transform:uppercase;
+  letter-spacing:.06em;margin:0 0 4px 2px}
+.vcells{display:grid;grid-template-columns:repeat(auto-fill,minmax(32px,1fr));gap:4px}
+.vcell{aspect-ratio:1;border-radius:7px;border:1.5px solid;display:flex;align-items:center;justify-content:center;
+  font-size:16px;line-height:1;background:rgba(255,255,255,0.06);cursor:pointer;touch-action:pan-y}
+.vcell.empty{border:1px dashed rgba(255,255,255,0.12);background:none;cursor:default}
+.vcell.sel{background:rgba(255,255,255,0.2);box-shadow:inset 0 0 0 1.5px currentColor}
+.vcell.fresh{animation:vfresh 1.2s ease-out}
+@keyframes vfresh{0%{transform:scale(1.6);box-shadow:0 0 18px 6px #ff3040}100%{transform:scale(1)}}
+.navon{outline:2px solid #fff;outline-offset:2px;box-shadow:0 0 12px rgba(255,255,255,0.5)}
+.vunlock{align-self:center;display:flex;align-items:center;gap:8px;height:44px;padding:0 18px;border-radius:22px;
+  border:1.5px solid #c8202c;background:rgba(160,20,40,0.22);color:#fff;font:700 15px system-ui,sans-serif;cursor:pointer}
+.vunlock.cant{opacity:.45}
+.vcard{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.vcard .pop.ingame{position:static;background:none;border:0;box-shadow:none;padding:0;max-height:none;overflow:visible}
+.vmsg{font:700 13px system-ui,sans-serif;color:#ffc93c;text-align:center}
+.vhint{color:rgba(233,236,242,0.6);font-size:13px;text-align:center;margin:18px 0 0}
+.vbuy{display:flex;align-items:center;justify-content:space-between;gap:10px;height:50px;padding:0 18px;
+  border-radius:12px;border:1.5px solid #4fe3ff;background:rgba(79,227,255,0.14);color:#e9ecf2;cursor:pointer}
+.vbuy b{font:800 15px system-ui,sans-serif;letter-spacing:.03em}
+.vbuy span{font:700 15px system-ui,sans-serif;color:#ffc93c}
+.vbuy.cant{opacity:.45}
+.crystalcard .pglyph{background:none;border:0}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v117';</script>
+<script>const VERSION = 'v118';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -4690,13 +4727,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       hpAdd: 50,
       info: "50 more maximum health, and it comes full."
     },
-    holyitem: {
-      name: "Extra Item in Holy Mountain",
-      glyph: "♦",
-      tint: "#ffc93c",
-      extraItem: 1,
-      info: "Every shop offers five things instead of four."
-    },
     life: {
       name: "Extra Life",
       glyph: "♥",
@@ -7765,6 +7795,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       due: num2(lo.due, 0) || (num2(lo.debt, 0) > 0 || num2(lo.gold, 0) < 0 ? Date.now() + DEADLINE_MS : 0),
       maxBonus: Math.max(0, num2(lo.maxBonus, 0)),
       usedLives: Math.max(0, num2(lo.usedLives, 0)),
+      // red crystals carried: the floor each came from (the shop's machine turns one into an unlock)
+      crystals: (Array.isArray(lo.crystals) ? lo.crystals : []).filter((f) => Number.isInteger(f) && f > 0),
       debug: !!lo.debug
     };
   }
@@ -7798,6 +7830,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         pickups: Array.isArray(L2.pickups) ? L2.pickups.map((q) => {
           if (!q || typeof q !== "object") return null;
           if (q.kind === "mod") return MODS[q.id] ? q : null;
+          if (q.kind === "crystal") return Number.isInteger(q.floor) && q.floor > 0 ? q : null;
           if (q.kind === "gun") {
             const gun = cleanGun(q.gun);
             return gun ? Object.assign({}, q, { gun }) : null;
@@ -7818,6 +7851,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var clearSave = () => {
     try {
       localStorage.removeItem(SAVE_KEY);
+    } catch (_) {
+    }
+  };
+  var COLLECTION_KEY = "caverunner-collection";
+  function readCollection(raw) {
+    let s;
+    try {
+      s = JSON.parse(raw);
+    } catch (_) {
+      return [];
+    }
+    return Array.isArray(s) ? [...new Set(s.filter((id) => typeof id === "string" && MODS[id]))] : [];
+  }
+  var loadCollection = () => {
+    try {
+      return readCollection(localStorage.getItem(COLLECTION_KEY));
+    } catch (_) {
+      return [];
+    }
+  };
+  var saveCollection = (ids) => {
+    try {
+      localStorage.setItem(COLLECTION_KEY, JSON.stringify(ids));
     } catch (_) {
     }
   };
@@ -8323,7 +8379,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     ctx.restore();
   }
-  function drawNugget(ctx, x, y, r, seed, ang) {
+  function drawNugget(ctx, x, y, r, seed, ang, pal) {
+    const P = pal || NUGGET_PAL;
     const N = 7, pts = [];
     for (let i = 0; i < N; i++) {
       const h3 = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
@@ -8338,25 +8395,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.closePath();
     };
     path();
-    ctx.fillStyle = "#7a4e10";
+    ctx.fillStyle = P[0];
     ctx.fill();
     ctx.save();
     ctx.translate(-0.35, -0.35);
     path();
-    ctx.fillStyle = "#d8a52a";
+    ctx.fillStyle = P[1];
     ctx.fill();
     ctx.restore();
     ctx.save();
     path();
     ctx.clip();
-    ctx.fillStyle = "#ffd95a";
+    ctx.fillStyle = P[2];
     ctx.beginPath();
     ctx.ellipse(x - r * 0.25, y - r * 0.4, r * 0.62, r * 0.38, -0.3, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-    ctx.fillStyle = "#fff6c8";
+    ctx.fillStyle = P[3];
     ctx.fillRect(x - r * 0.42, y - r * 0.55, Math.max(0.7, r * 0.26), Math.max(0.7, r * 0.26));
+    if (pal) ctx.fillRect(x + r * 0.2, y + r * 0.1, Math.max(0.6, r * 0.14), Math.max(0.6, r * 0.14));
   }
+  var NUGGET_PAL = ["#7a4e10", "#d8a52a", "#ffd95a", "#fff6c8"];
+  var CRYSTAL_PAL = ["#2a0306", "#6e0a12", "#a3162a", "#ffffff"], CRYSTAL_R = 11;
 
   // src/art/props.js
   var rgbA = (c, a) => "rgba(" + (c[0] | 0) + "," + (c[1] | 0) + "," + (c[2] | 0) + "," + (a == null ? 1 : a) + ")";
@@ -12715,6 +12775,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (q.kind === "gun") {
         if (!q.old) drawGunGlow(G.ctx, q.x, qy, W.time, q.t);
         drawGun(G.ctx, q.x - 5, qy + 1, -0.22, 0.85, gunAccent(q.gun));
+      } else if (q.kind === "crystal") {
+        G.ctx.globalAlpha = 0.18 + 0.08 * Math.sin(W.time * 3 + q.t);
+        G.ctx.fillStyle = "#ff2030";
+        G.ctx.beginPath();
+        G.ctx.arc(q.x, qy, CRYSTAL_R + 4, 0, Math.PI * 2);
+        G.ctx.fill();
+        G.ctx.globalAlpha = 1;
+        drawNugget(G.ctx, q.x, qy, CRYSTAL_R, q.t * 7, 0, CRYSTAL_PAL);
       } else {
         const m = MODS[q.id];
         G.ctx.globalAlpha = 0.22;
@@ -12958,7 +13026,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function makeLevel(seed, floor, owned) {
     floor = floor || 1;
     const have = new Set(owned || []);
-    const hash3 = (x, y) => {
+    const hash4 = (x, y) => {
       let v = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 982451653) | 0;
       v = Math.imul(v ^ v >>> 13, 1274126177);
       v ^= v >>> 16;
@@ -12967,7 +13035,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const vn = (x, y) => {
       const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
       const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
-      const a = hash3(xi, yi), b = hash3(xi + 1, yi), c = hash3(xi, yi + 1), d2 = hash3(xi + 1, yi + 1);
+      const a = hash4(xi, yi), b = hash4(xi + 1, yi), c = hash4(xi, yi + 1), d2 = hash4(xi + 1, yi + 1);
       return a + (b - a) * u + (c - a) * v + (a - b - c + d2) * u * v;
     };
     const fbm = (x, y) => 0.55 * vn(x, y) + 0.3 * vn(x * 2 + 17, y * 2 + 31) + 0.15 * vn(x * 4 + 53, y * 4 + 7);
@@ -13307,7 +13375,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let cx = 0; cx < CW; cx++) {
         const i = cy * CW + cx, m = mat[i];
         if (!m) continue;
-        const r1 = hash3(cx * 7 + 3, cy * 13 + 5);
+        const r1 = hash4(cx * 7 + 3, cy * 13 + 5);
         let c;
         if (m === ROCK) {
           const exposed = cy > 1 && (mat[i - CW] === 0 || mat[i - 2 * CW] === 0);
@@ -13316,7 +13384,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           const k = cx + cy % 2 * 3;
           if (k % 6 === 0) c = T.mortar;
           else {
-            c = mix(T.brick[0], T.brick[1], hash3(Math.floor(k / 6), cy));
+            c = mix(T.brick[0], T.brick[1], hash4(Math.floor(k / 6), cy));
             if (cy > 0 && mat[i - CW] === 0) c = c.map((v) => v * 1.18);
           }
         } else {
@@ -13333,7 +13401,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BED;
     for (const n of nests) for (const i of n.mound) {
       if (mat[i] !== ROCK) continue;
-      const r1 = hash3(i % CW * 3 + 5, (i / CW | 0) * 7 + 1), c = mix([92, 70, 48], [128, 98, 66], r1);
+      const r1 = hash4(i % CW * 3 + 5, (i / CW | 0) * 7 + 1), c = mix([92, 70, 48], [128, 98, 66], r1);
       d[i * 4] = c[0];
       d[i * 4 + 1] = c[1];
       d[i * 4 + 2] = c[2];
@@ -13345,7 +13413,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const c = mix(T.bg, T.bg2, Math.min(1, t * 1.3));
         const big = fbm(x / 34 + 700, y / 34 + 500);
         const shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
-        const j = (hash3(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
+        const j = (hash4(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
         bgImg.data[k] = c[0] * shade + j;
         bgImg.data[k + 1] = c[1] * shade + j;
         bgImg.data[k + 2] = c[2] * shade + j;
@@ -13355,27 +13423,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const start = { x: startCX * CELL, y: SHOP_FLOOR * CELL - PH };
     const arrival = { x: (startCX + 3) * CELL, y: (SHOP_FLOOR - 13) * CELL };
     const stock = [];
-    const offer = [], taken = {};
-    const items = have.has("holyitem") ? 5 : 4;
-    for (let i = 0; i < items; i++) {
-      const id = rollMod(rnd2, floor, taken);
-      taken[id] = 1;
-      offer.push(id);
-    }
     const shelf = (SHOP_FLOOR - 13) * CELL;
-    const gunShop = isGunShop(floor);
     stock.push({ kind: "heal", x: arrival.x + 62, y: shelf, price: 0, sold: false, bought: 0 });
-    const PLINTH_GAP = 64;
-    for (let i = 0; i < items; i++) {
-      const x = WW / 2 + (i - (items - 1) / 2) * PLINTH_GAP;
-      if (gunShop) {
-        const gun = makeGun(rnd2, Math.min(GUN_LV_MAX, floor));
-        stock.push({ kind: "gun", gun, x, y: shelf, price: gunPrice(gun), sold: false });
-      } else {
-        const id = offer[i];
-        stock.push({ kind: "mod", id, x, y: shelf, price: priceOf(id), sold: false });
-      }
-    }
     const portal = { x: WW / 2 - 10, y: 34 * CELL - 30, w: 20, h: 30 };
     const clear = (cx, cy, r) => {
       for (let dy = -r; dy <= r; dy++)
@@ -13471,7 +13520,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         pickups.push({ kind: "gun", x, y, gun: makeGun(rnd2, gunLevel(floor, rnd2)), t: rnd2() * 6.28 });
       } else {
         modsLeft--;
-        pickups.push({ kind: "mod", x, y, id: rollMod(rnd2, floor), t: rnd2() * 6.28 });
+        pickups.push({ kind: "crystal", x, y, floor, t: rnd2() * 6.28 });
       }
     }
     const dimg = new ImageData(CW, CH);
@@ -13493,7 +13542,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         continue;
       }
       fuel[i] = 0;
-      const r1 = hash3(i % CW * 5 + 11, (i / CW | 0) * 3 + 7), k = i * 4;
+      const r1 = hash4(i % CW * 5 + 11, (i / CW | 0) * 3 + 7), k = i * 4;
       const glint = r1 > 0.9 ? 1.25 : 0.8 + r1 * 0.3;
       d[k] = Math.min(255, 222 * glint);
       d[k + 1] = Math.min(255, 168 * glint);
@@ -15370,7 +15419,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   // src/game/systems/save-run.js
   function saveRun(W, G) {
     if (W.p.dead) return;
-    const pk = W.pickups.filter((q) => !q.taken && (q.kind === "mod" || q.kind === "gun")).map((q) => q.kind === "mod" ? { kind: "mod", id: q.id, x: q.x, y: q.y, t: q.t } : { kind: "gun", gun: q.gun, x: q.x, y: q.y, t: q.t, old: !!q.old });
+    const pk = W.pickups.filter((q) => !q.taken && (q.kind === "mod" || q.kind === "gun" || q.kind === "crystal")).map((q) => q.kind === "mod" ? { kind: "mod", id: q.id, x: q.x, y: q.y, t: q.t } : q.kind === "crystal" ? { kind: "crystal", floor: q.floor, x: q.x, y: q.y, t: q.t } : { kind: "gun", gun: q.gun, x: q.x, y: q.y, t: q.t, old: !!q.old });
     const data = {
       ver: VERSION,
       floor: W.floor,
@@ -15775,22 +15824,186 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
-  // src/game/render/vend.js
-  var HOLO_GREEN = "#00ff3c", HOLO_RED = "#ff0000";
-  var SW = 72, TOP_H2 = 26, GAP = 2, BOT_H2 = 32, SH = TOP_H2 + GAP + BOT_H2;
-  var PAD2 = 4, LINE2 = 1.2, GLOW = 6, RES2 = 4;
+  // src/game/systems/shops.js
+  var MACHINE_W = 56, MACHINE_H = 84;
+  var MACHINE_TOP = SHOP_FLOOR * CELL - MACHINE_H;
+  var CHUTE_Y = SHOP_FLOOR * CELL - 14;
+  var SHOPS = {
+    mods: { x: WW / 2, icon: "⚙️", hue: "#4fe3ff", label: "Tap R to shop" }
+  };
+  function shopNear(W, pcx, pcy) {
+    if (W.warp || W.repo || W.p.dead || pcy < SHOP_Y || pcy > SHOP_FLOOR * CELL) return null;
+    for (const k in SHOPS) if (Math.abs(pcx - SHOPS[k].x) < MACHINE_W / 2 + 2) return k;
+    return null;
+  }
+  function shopUse(G, kind) {
+    G.input.current.shopOpen = kind;
+    SFX.ui("mod");
+  }
+  function stepShops(W, G, F) {
+    const d = G.input.current.dispense;
+    if (d) {
+      G.input.current.dispense = null;
+      const m = SHOPS[d.shop];
+      if (m) {
+        const side = F.pcx < m.x ? -1 : 1;
+        W.pickups.push({
+          kind: "mod",
+          id: d.id,
+          x: m.x,
+          y: CHUTE_Y,
+          t: 0,
+          vx: side * (95 + Math.random() * 30),
+          vy: -200 - Math.random() * 40,
+          cool: 1
+        });
+        SFX.fx("prompt");
+      }
+    }
+    const floor = SHOP_FLOOR * CELL - 9;
+    for (const q of W.pickups) {
+      if (q.vy === void 0) continue;
+      q.vy += 900 * F.dt;
+      q.x += (q.vx || 0) * F.dt;
+      q.y += q.vy * F.dt;
+      q.cool = 0.2;
+      if (q.y >= floor && q.vy > 0) {
+        q.y = floor;
+        if (q.vy > 120) {
+          q.vy *= -0.35;
+          q.vx = (q.vx || 0) * 0.6;
+        } else {
+          delete q.vy;
+          delete q.vx;
+          q.cool = 0;
+          q.t = W.time;
+        }
+      }
+    }
+  }
+
+  // src/game/render/shops.js
+  var ICON = 30, GLOW = 8, RES2 = 4;
   var hash2 = (n) => {
     const v = Math.sin(n * 12.9898) * 43758.5453;
     return v - Math.floor(v);
   };
-  var commas = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   var cache2 = /* @__PURE__ */ new Map();
+  function holoIcon(icon, hue) {
+    const key = icon + hue, got = cache2.get(key);
+    if (got) return got;
+    const S = (ICON + GLOW * 2) * RES2;
+    const A = document.createElement("canvas");
+    A.width = A.height = S;
+    const B = document.createElement("canvas");
+    B.width = B.height = S;
+    const a = A.getContext("2d"), b = B.getContext("2d");
+    if (!a || !b) return B;
+    a.font = ICON * RES2 * 0.86 + 'px system-ui, "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+    a.textAlign = "center";
+    a.textBaseline = "middle";
+    a.fillText(icon, S / 2, S / 2 + ICON * RES2 * 0.04);
+    a.globalCompositeOperation = "source-atop";
+    a.globalAlpha = 0.78;
+    a.fillStyle = hue;
+    a.fillRect(0, 0, S, S);
+    a.globalAlpha = 1;
+    a.globalCompositeOperation = "destination-out";
+    a.fillStyle = "rgba(0,0,0,0.45)";
+    for (let y = 0; y < S; y += RES2 * 1.5) a.fillRect(0, y, S, RES2 * 0.5);
+    b.shadowColor = hue;
+    b.shadowBlur = GLOW * RES2 * 0.6;
+    b.drawImage(A, 0, 0);
+    b.shadowBlur = 0;
+    b.drawImage(A, 0, 0);
+    cache2.set(key, B);
+    return B;
+  }
+  function drawShops(W, G, F) {
+    if (MACHINE_TOP > W.camY + F.vh + 10 || MACHINE_TOP + MACHINE_H < W.camY - 10) return;
+    const ctx = G.ctx, y = MACHINE_TOP, fy = SHOP_FLOOR * CELL, t = W.time;
+    for (const k in SHOPS) {
+      const m = SHOPS[k], x = m.x - MACHINE_W / 2;
+      if (x > W.camX + F.vw + 20 || x + MACHINE_W < W.camX - 20) continue;
+      ctx.fillStyle = "#171a21";
+      ctx.fillRect(x, y, MACHINE_W, MACHINE_H);
+      ctx.fillStyle = "#252a35";
+      ctx.fillRect(x, y, 5, MACHINE_H);
+      ctx.fillRect(x + MACHINE_W - 5, y, 5, MACHINE_H);
+      ctx.fillStyle = "#323948";
+      ctx.fillRect(x - 2, y - 1, MACHINE_W + 4, 5);
+      ctx.fillRect(x - 3, fy - 5, MACHINE_W + 6, 5);
+      ctx.fillStyle = m.hue;
+      ctx.globalAlpha = 0.5 + 0.2 * Math.sin(t * 3 + m.x);
+      ctx.fillRect(x + 5, y + 6, 1, MACHINE_H - 14);
+      ctx.fillRect(x + MACHINE_W - 6, y + 6, 1, MACHINE_H - 14);
+      ctx.globalAlpha = 1;
+      const gx = x + 8, gy = y + 7, gw = MACHINE_W - 16, gh = 42;
+      ctx.fillStyle = "#05070a";
+      ctx.fillRect(gx, gy, gw, gh);
+      ctx.fillStyle = "rgba(255,255,255,0.05)";
+      ctx.beginPath();
+      ctx.moveTo(gx + gw * 0.55, gy);
+      ctx.lineTo(gx + gw, gy);
+      ctx.lineTo(gx + gw, gy + gh * 0.35);
+      ctx.closePath();
+      ctx.fill();
+      const py = gy + gh + 3;
+      ctx.fillStyle = "#2a303c";
+      ctx.fillRect(x + 10, py, MACHINE_W - 20, 2);
+      ctx.fillStyle = m.hue;
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(x + 12, py + 0.5, MACHINE_W - 24, 1);
+      ctx.globalAlpha = 1;
+      const cy = fy - 22;
+      ctx.fillStyle = "#0a0c10";
+      ctx.fillRect(x + 12, cy, MACHINE_W - 24, 12);
+      ctx.fillStyle = "#2c323e";
+      ctx.fillRect(x + 12, cy, MACHINE_W - 24, 3);
+      ctx.fillStyle = m.hue;
+      ctx.globalAlpha = 0.35;
+      ctx.fillRect(x + 12, cy + 11, MACHINE_W - 24, 1);
+      ctx.globalAlpha = 1;
+      const f = Math.floor(t * 14) + m.x;
+      const drop = hash2(f) < 0.07, jit = hash2(f * 1.3) < 0.1 ? (hash2(f * 2.1) - 0.5) * 3 : 0;
+      const alpha = drop ? 0.25 : 0.82 + 0.15 * hash2(f * 0.7);
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.12;
+      ctx.fillStyle = m.hue;
+      const ix = m.x - ICON / 2, iy = gy + (gh - ICON) / 2 - 2;
+      ctx.beginPath();
+      ctx.moveTo(x + 14, py);
+      ctx.lineTo(x + MACHINE_W - 14, py);
+      ctx.lineTo(ix + ICON, iy + ICON);
+      ctx.lineTo(ix, iy + ICON);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(holoIcon(m.icon, m.hue), ix - GLOW + jit, iy - GLOW + Math.sin(t * 2) * 1.2, ICON + GLOW * 2, ICON + GLOW * 2);
+      const band = iy + (t * 16 + m.x) % (ICON + 16) - 8;
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = alpha * 0.2;
+      ctx.fillRect(ix, Math.max(iy, band), ICON, Math.max(0, Math.min(5, iy + ICON - band)));
+      ctx.restore();
+    }
+  }
+
+  // src/game/render/vend.js
+  var HOLO_GREEN = "#00ff3c", HOLO_RED = "#ff0000";
+  var SW = 72, TOP_H2 = 26, GAP = 2, BOT_H2 = 32, SH = TOP_H2 + GAP + BOT_H2;
+  var PAD2 = 4, LINE2 = 1.2, GLOW2 = 6, RES3 = 4;
+  var hash3 = (n) => {
+    const v = Math.sin(n * 12.9898) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  var commas = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  var cache3 = /* @__PURE__ */ new Map();
   function screen(top, bot, hue) {
     const key = top.join("|") + "/" + bot.join("|") + hue;
-    const got = cache2.get(key);
+    const got = cache3.get(key);
     if (got) return got;
-    if (cache2.size > 12) cache2.clear();
-    const w = (SW + GLOW * 2) * RES2, h3 = (SH + GLOW * 2) * RES2;
+    if (cache3.size > 12) cache3.clear();
+    const w = (SW + GLOW2 * 2) * RES3, h3 = (SH + GLOW2 * 2) * RES3;
     const A = document.createElement("canvas");
     A.width = w;
     A.height = h3;
@@ -15800,8 +16013,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     B.height = h3;
     const b = B.getContext("2d");
     if (!t || !b) return B;
-    t.scale(RES2, RES2);
-    t.translate(GLOW, GLOW);
+    t.scale(RES3, RES3);
+    t.translate(GLOW2, GLOW2);
     t.fillStyle = hue;
     t.fillRect(0, 0, SW, TOP_H2);
     t.strokeStyle = hue;
@@ -15826,14 +16039,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     t.fillStyle = "rgba(0,0,0,0.3)";
     for (let y = 0; y < SH; y += 1.5) t.fillRect(0, y, SW, 0.5);
     b.shadowColor = hue;
-    b.shadowBlur = GLOW * RES2 * 0.7;
+    b.shadowBlur = GLOW2 * RES3 * 0.7;
     b.drawImage(A, 0, 0);
     b.shadowBlur = 0;
     b.drawImage(A, 0, 0);
-    b.scale(RES2, RES2);
-    b.translate(GLOW, GLOW);
+    b.scale(RES3, RES3);
+    b.translate(GLOW2, GLOW2);
     stack(b, top, 0, TOP_H2, "900", true);
-    cache2.set(key, B);
+    cache3.set(key, B);
     return B;
   }
   var V = { buy: { on: null, t: -99 }, sell: { on: null, t: -99 } };
@@ -15861,7 +16074,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.fillRect(x + 6, y + 6, 1, VEND_H - 14);
     ctx.fillRect(x + VEND_W - 7, y + 6, 1, VEND_H - 14);
     for (let i = 0; i < 5; i++) {
-      ctx.globalAlpha = on ? hash2(Math.floor(W.time * 3) + i * 7 + cx) < 0.6 ? 0.9 : 0.25 : 0.1;
+      ctx.globalAlpha = on ? hash3(Math.floor(W.time * 3) + i * 7 + cx) < 0.6 ? 0.9 : 0.25 : 0.1;
       ctx.fillRect(x + 10 + i * 4, y + 1, 2, 1.5);
     }
     ctx.globalAlpha = 1;
@@ -15888,13 +16101,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.globalAlpha = on ? 0.7 : 0.1;
     ctx.fillRect(x + 13, py + 7, 14, 1);
     for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) {
-      ctx.globalAlpha = on && hash2(Math.floor(W.time * 2) * 5 + r * 4 + c + cx) < 0.3 ? 0.9 : on ? 0.3 : 0.08;
+      ctx.globalAlpha = on && hash3(Math.floor(W.time * 2) * 5 + r * 4 + c + cx) < 0.3 ? 0.9 : on ? 0.3 : 0.08;
       ctx.fillRect(x + 34 + c * 4, py + 5 + r * 3.5, 2.5, 2.5);
     }
     ctx.globalAlpha = 1;
     const sx = cx - SW / 2, sy = y + 6;
     let alpha = 0, squeeze = 1;
-    if (on) alpha = since < 0.4 ? hash2(Math.floor(since * 40)) < since / 0.4 ? 1 : 0.15 : 0.88 + 0.1 * hash2(Math.floor(W.time * 20) + cx);
+    if (on) alpha = since < 0.4 ? hash3(Math.floor(since * 40)) < since / 0.4 ? 1 : 0.15 : 0.88 + 0.1 * hash3(Math.floor(W.time * 20) + cx);
     else if (since < 0.25) {
       alpha = 1;
       squeeze = Math.max(0.02, 1 - since / 0.2);
@@ -15915,7 +16128,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.translate(0, mid);
     ctx.scale(1, squeeze);
     ctx.translate(0, -mid);
-    ctx.drawImage(img, sx - GLOW, sy - GLOW, SW + GLOW * 2, SH + GLOW * 2);
+    ctx.drawImage(img, sx - GLOW2, sy - GLOW2, SW + GLOW2 * 2, SH + GLOW2 * 2);
     const band = sy + (W.time * 18 + cx) % (SH + 20) - 10;
     ctx.globalCompositeOperation = "lighter";
     ctx.globalAlpha = alpha * 0.18;
@@ -16041,7 +16254,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (R.t >= REPO_FIRE) {
       const ft = R.t - REPO_FIRE, H = fy - top, fl = Math.floor(W.time * 20);
       for (let x = j0; x < x1; x += REPO_JET) {
-        const h3 = Math.min(H, ft * 110) * (0.75 + 0.25 * hash2(fl + x * 0.13)), w = 7 + 10 * Math.min(1, ft / 3);
+        const h3 = Math.min(H, ft * 110) * (0.75 + 0.25 * hash3(fl + x * 0.13)), w = 7 + 10 * Math.min(1, ft / 3);
         const g = ctx.createLinearGradient(0, fy, 0, fy - h3);
         g.addColorStop(0, "rgba(255,250,210,0.95)");
         g.addColorStop(0.25, "rgba(255,200,60,0.85)");
@@ -16050,12 +16263,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.fillStyle = g;
         ctx.beginPath();
         ctx.moveTo(x - 3, fy);
-        ctx.quadraticCurveTo(x - w, fy - h3 * 0.5, x + (hash2(fl + x) - 0.5) * 8, fy - h3);
+        ctx.quadraticCurveTo(x - w, fy - h3 * 0.5, x + (hash3(fl + x) - 0.5) * 8, fy - h3);
         ctx.quadraticCurveTo(x + w, fy - h3 * 0.5, x + 3, fy);
         ctx.closePath();
         ctx.fill();
       }
-      const eng = Math.min(0.75, Math.max(0, (ft - 1.5) / 4)) * (0.85 + 0.15 * hash2(fl * 1.7));
+      const eng = Math.min(0.75, Math.max(0, (ft - 1.5) / 4)) * (0.85 + 0.15 * hash3(fl * 1.7));
       if (eng > 0) {
         const g = ctx.createLinearGradient(0, fy, 0, top);
         g.addColorStop(0, "rgba(255,160,40," + eng.toFixed(3) + ")");
@@ -16099,6 +16312,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     drawArrival(W, G, F);
     drawShop(W, G, F);
     drawVend(W, G, F);
+    drawShops(W, G, F);
     drawLoot(W, G, F);
     drawRooms(W, G, F);
     drawTrail(W, G);
@@ -16972,6 +17186,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   // src/game/systems/pickups.js
   function stepPickups(W, G, F) {
     const { dt, LO, MHP, pcx, pcy } = F;
+    stepShops(W, G, F);
     for (let i = W.pickups.length - 1; i >= 0; i--) {
       const q = W.pickups[i];
       if (q.taken) {
@@ -17024,14 +17239,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       near = { src: "pickup", q };
       break;
     }
+    if (!near) {
+      const kind = shopNear(W, pcx, pcy);
+      if (kind) near = { src: "shopvend", kind };
+    }
     if (!near) for (const r of W.rooms) {
       if (r.taken) continue;
       if (Math.abs(r.x - pcx) > 20 || Math.abs(r.y - pcy) > 26) continue;
       near = { src: "room", r };
       break;
     }
-    const nearKey = !near ? -1 : near.src + ":" + (near.src === "vend" ? near.kind : near.src === "shop" ? W.stock.indexOf(near.it) : near.src === "room" ? W.rooms.indexOf(near.r) : W.pickups.indexOf(near.q));
-    const label = !near ? null : near.src === "vend" ? vendLabel(W, near.kind) : near.src === "shop" ? near.it.kind === "heal" ? { text: "Full heal", price: near.it.price, can: W.p.hp < MHP && LO.gold >= near.it.price } : near.it.kind === "gun" ? {
+    const nearKey = !near ? -1 : near.src + ":" + (near.src === "vend" || near.src === "shopvend" ? near.kind : near.src === "shop" ? W.stock.indexOf(near.it) : near.src === "room" ? W.rooms.indexOf(near.r) : W.pickups.indexOf(near.q));
+    const label = !near ? null : near.src === "vend" ? vendLabel(W, near.kind) : near.src === "shopvend" ? { text: SHOPS[near.kind].label, price: 0, can: true, shop: near.kind } : near.src === "shop" ? near.it.kind === "heal" ? { text: "Full heal", price: near.it.price, can: W.p.hp < MHP && LO.gold >= near.it.price } : near.it.kind === "gun" ? {
       text: near.it.gun.name,
       gun: near.it.gun,
       price: near.it.price,
@@ -17041,10 +17260,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       id: near.it.id,
       price: near.it.price,
       can: LO.gold >= near.it.price
-    } : near.src === "room" ? near.r.kind === "perk" ? { text: PERKS[near.r.id].name, perk: near.r.id, price: 0, can: true } : { text: "+25 Max Health", heart: true, price: 0, can: true } : near.q.kind === "gun" ? { text: near.q.gun.name, gun: near.q.gun, price: 0, can: true, found: true } : { text: MODS[near.q.id].name, id: near.q.id, price: 0, can: true, found: true };
+    } : near.src === "room" ? near.r.kind === "perk" ? { text: PERKS[near.r.id].name, perk: near.r.id, price: 0, can: true } : { text: "+25 Max Health", heart: true, price: 0, can: true } : near.q.kind === "gun" ? { text: near.q.gun.name, gun: near.q.gun, price: 0, can: true, found: true } : near.q.kind === "crystal" ? { text: "Red crystal", crystal: near.q.floor, price: 0, can: true, found: true } : { text: MODS[near.q.id].name, id: near.q.id, price: 0, can: true, found: true };
     let pbottom = 12;
     if (near) {
-      const iy = near.src === "vend" ? VEND_TOP : near.src === "shop" ? near.it.y : near.src === "room" ? near.r.y : near.q.y;
+      const iy = near.src === "vend" ? VEND_TOP : near.src === "shopvend" ? MACHINE_TOP : near.src === "shop" ? near.it.y : near.src === "room" ? near.r.y : near.q.y;
       const dprc = window.devicePixelRatio || 1;
       pbottom = Math.round(Math.max(10, G.c.height / dprc - (iy - 16 - W.camY) * W.unitPx));
     }
@@ -17065,6 +17284,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (G.input.current.interact && near) {
       G.input.current.interact = false;
       if (near.src === "vend") vendUse(W, G, near.kind, LO);
+      else if (near.src === "shopvend") shopUse(G, near.kind);
       else if (near.src === "shop") {
         const it = near.it;
         if (it.kind === "heal") {
@@ -17127,6 +17347,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           q.taken = true;
           q.cool = PICKUP_COOL;
           toast(W, "Picked up " + MODS[q.id].name);
+          SFX.ui("mod");
+        } else if (q.kind === "crystal") {
+          (LO.crystals || (LO.crystals = [])).push(q.floor || W.floor);
+          q.taken = true;
+          toast(W, "Red crystal");
           SFX.ui("mod");
         } else {
           G.input.current.found = q;
@@ -19314,6 +19539,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const side = input.current.confirmAim;
         input.current.confirmAim = null;
         if (side) act[side]();
+      } else if (right && stayed.current && input.current.menuTap) {
+        input.current.menuTap();
       } else if (right && stayed.current && input.current.perkTap) {
         input.current.perkTap();
       } else if (right && stayed.current) {
@@ -19883,6 +20110,71 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
+  // src/spells/collection.js
+  function modTiers() {
+    return [1, 2, 3, 4].map((tier) => ({ tier, ids: ALL_IDS.filter((id) => tierOf(id) === tier) }));
+  }
+  function crystalRoll(rnd2, floor, owned) {
+    const have = new Set(owned);
+    const left = ALL_IDS.filter((id) => !have.has(id));
+    if (!left.length) return null;
+    let total = 0;
+    for (const id of left) total += modWeight(id, floor);
+    if (total <= 0) return left[Math.floor(rnd2() * left.length)];
+    let r = rnd2() * total;
+    for (const id of left) {
+      r -= modWeight(id, floor);
+      if (r <= 0 && modWeight(id, floor) > 0) return id;
+    }
+    return left.filter((id) => modWeight(id, floor) > 0).pop() || left[0];
+  }
+
+  // src/ui/modshop.js
+  var TIER_NAME = ["", "Common", "Uncommon", "Rare", "Legendary"];
+  function CrystalIcon({ size }) {
+    const s = size || 26;
+    return h(
+      "svg",
+      { className: "crystal", viewBox: "0 0 24 24", width: s, height: s, "aria-hidden": true },
+      h("path", { d: "M12 2.5 L19.5 6 L21.5 13 L17 20.5 L8.5 21.5 L3 15.5 L4 7.5 Z", fill: "#2a0306" }),
+      h("path", { d: "M12 3.6 L18.8 6.7 L20.4 13 L16.4 19.6 L8.9 20.5 L4 15.1 L5 8 Z", fill: "#6e0a12" }),
+      h("path", { d: "M5.6 8.4 L12 4.4 L17.6 7.3 L13.5 11.5 L7 12.2 Z", fill: "#a3162a" }),
+      h("rect", { x: 7.4, y: 7.2, width: 2.6, height: 2.6, fill: "#fff" }),
+      h("rect", { x: 14.2, y: 13.6, width: 1.5, height: 1.5, fill: "#fff" })
+    );
+  }
+  function modShop(input) {
+    const LO = () => input.current.loadout;
+    return {
+      title: "Mods",
+      groups: modTiers().map((g) => ({ label: TIER_NAME[g.tier], ids: g.ids })),
+      owned: (id) => input.current.collection.includes(id),
+      tile: (id) => ({ glyph: MODS[id].glyph, color: famCol(id), name: MODS[id].name }),
+      card: (id) => h(ModCard, { id, ingame: true, flow: true }),
+      price: (id) => priceOf(id),
+      gold: () => LO().gold,
+      unlock: {
+        icon: h(CrystalIcon, { size: 28 }),
+        count: () => (LO().crystals || []).length,
+        run: () => {
+          const cr = LO().crystals || [];
+          if (!cr.length) return null;
+          const id = crystalRoll(Math.random, cr[0], input.current.collection);
+          if (!id) return null;
+          cr.shift();
+          input.current.collection.push(id);
+          saveCollection(input.current.collection);
+          return id;
+        }
+      },
+      dispense: (id) => {
+        LO().gold -= priceOf(id);
+        input.current.dispense = { shop: "mods", id };
+      }
+    };
+  }
+  var SHOP_DEFS = { mods: modShop };
+
   // src/ui/swap.js
   function GunSwap({ input, refresh, onDone }) {
     const LO = input.current.loadout;
@@ -19964,6 +20256,204 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           h("span", { className: "gname", style: g ? { color: gunColor(g) } : null }, g ? g.name : "Empty slot"),
           h("span", { className: "gsub" }, g ? g.slots.filter(Boolean).length + "/" + g.cap + " mods" : "hold to take")
         ))
+      )
+    );
+  }
+
+  // src/ui/vendshop.js
+  var NAV_MAG = 0.55, REPEAT_0 = 0.38, REPEAT = 0.17;
+  function navStep(root, cur, dx, dy) {
+    const els = Array.from(root.querySelectorAll("[data-nav]"));
+    const here = els.find((e) => e.dataset.nav === cur);
+    if (!here) return els.length ? els[0].dataset.nav || null : null;
+    const c = here.getBoundingClientRect(), cx = c.left + c.width / 2, cy = c.top + c.height / 2;
+    let best = null, score = Infinity;
+    for (const e of els) {
+      if (e === here) continue;
+      const r = e.getBoundingClientRect(), vx = r.left + r.width / 2 - cx, vy = r.top + r.height / 2 - cy;
+      const along = vx * dx + vy * dy;
+      if (along <= 4) continue;
+      const s = along + Math.abs(vx * dy - vy * dx) * 2.5;
+      if (s < score) {
+        score = s;
+        best = e.dataset.nav || null;
+      }
+    }
+    return best;
+  }
+  function VendShop({ def, input, close }) {
+    const firstOwned = () => {
+      for (const g of def.groups) for (const id of g.ids) if (def.owned(id)) return id;
+      return null;
+    };
+    const [sel, setSel] = useState(firstOwned);
+    const [focus, setFocus] = useState(() => sel ? "t:" + sel : "unlock");
+    const [fresh, setFresh] = useState("");
+    const [msg, setMsg] = useState("");
+    const [, bump] = useState(0);
+    const root = useRef(null);
+    const unlock = () => {
+      if (def.unlock.count() <= 0) {
+        SFX.ui("poor");
+        setMsg("No crystal to hand over");
+        return;
+      }
+      const id = def.unlock.run();
+      if (!id) {
+        SFX.ui("poor");
+        setMsg("Collection complete");
+        return;
+      }
+      SFX.ui("perk");
+      setSel(id);
+      setFocus("t:" + id);
+      setFresh(id);
+      setMsg("Unlocked " + def.tile(id).name);
+    };
+    const buy = () => {
+      if (!sel) {
+        SFX.ui("poor");
+        setMsg("Select something first");
+        return;
+      }
+      if (def.gold() < def.price(sel)) {
+        SFX.ui("poor");
+        setMsg("Not enough gold");
+        return;
+      }
+      SFX.ui("buy");
+      def.dispense(sel);
+      close();
+    };
+    const press = (key) => {
+      if (key === "close") close();
+      else if (key === "unlock") unlock();
+      else if (key === "buy") buy();
+      else if (key.startsWith("t:")) {
+        setSel(key.slice(2));
+        setMsg("");
+        SFX.fx("switch");
+      }
+      bump((n2) => n2 + 1);
+    };
+    const pressRef = useRef(press), focusRef = useRef(focus);
+    pressRef.current = press;
+    focusRef.current = focus;
+    useEffect(() => {
+      input.current.menuTap = () => pressRef.current(focusRef.current);
+      return () => {
+        input.current.menuTap = null;
+      };
+    }, []);
+    useEffect(() => {
+      let raf, dir = "", next = 0;
+      const tick = () => {
+        const L2 = input.current.left, K = input.current.keys;
+        let dx = 0, dy = 0;
+        if (L2.active && L2.mag > NAV_MAG) {
+          if (Math.abs(L2.nx) > Math.abs(L2.ny)) dx = Math.sign(L2.nx);
+          else dy = Math.sign(L2.ny);
+        } else if (K.a || K.d || K.w || K.s) {
+          dx = (K.d ? 1 : 0) - (K.a ? 1 : 0);
+          dy = (K.s ? 1 : 0) - (K.w ? 1 : 0);
+          if (dx) dy = 0;
+        }
+        const d = dx + "," + dy, now = performance.now() / 1e3;
+        if (!dx && !dy) dir = "";
+        else if (d !== dir || now >= next) {
+          next = now + (d !== dir ? REPEAT_0 : REPEAT);
+          dir = d;
+          const to = root.current && navStep(root.current, focusRef.current, dx, dy);
+          if (to) {
+            setFocus(to);
+            SFX.fx("prompt");
+          }
+        }
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }, []);
+    useEffect(() => {
+      const el = root.current && root.current.querySelector('[data-nav="' + focus + '"]');
+      if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
+    }, [focus]);
+    const navCls = (key, cls) => cls + (focus === key ? " navon" : "");
+    const tap = (key) => (e) => {
+      e.preventDefault();
+      setFocus(key);
+      press(key);
+    };
+    const n = def.unlock.count(), price = sel ? def.price(sel) : 0, can = !!sel && def.gold() >= price;
+    return h(
+      "div",
+      { className: "vshop", ref: root, style: { bottom: (input.current.ctlH || 0) + "px" } },
+      h(
+        "div",
+        { className: "vtop" },
+        h(
+          "div",
+          { className: "vhead" },
+          h("b", null, def.title),
+          h("span", { className: "vgold" }, fmtGold(def.gold()), h("i", null, "g")),
+          h("button", { className: navCls("close", "vclose"), "data-nav": "close", onPointerDown: tap("close") }, "×")
+        ),
+        h(
+          "div",
+          { className: "vgrid scroll" },
+          def.groups.map((g) => h(
+            "div",
+            { key: g.label, className: "vtier" },
+            h("div", { className: "vtlab" }, g.label),
+            h(
+              "div",
+              { className: "vcells" },
+              g.ids.map((id) => {
+                if (!def.owned(id)) return h("div", { key: id, className: "vcell empty" });
+                const t = def.tile(id), key = "t:" + id;
+                return h(
+                  "div",
+                  {
+                    key: id,
+                    "data-nav": key,
+                    "data-id": id,
+                    title: t.name,
+                    className: navCls(key, "vcell") + (sel === id ? " sel" : "") + (fresh === id ? " fresh" : ""),
+                    style: { color: t.color, borderColor: t.color },
+                    onPointerDown: tap(key)
+                  },
+                  t.glyph
+                );
+              })
+            )
+          ))
+        ),
+        h(
+          "button",
+          {
+            className: navCls("unlock", "vunlock") + (n ? "" : " cant"),
+            "data-nav": "unlock",
+            onPointerDown: tap("unlock")
+          },
+          def.unlock.icon,
+          h("b", null, "×" + n)
+        )
+      ),
+      h(
+        "div",
+        { className: "vbot" },
+        h(
+          "div",
+          { className: "vcard" },
+          msg ? h("div", { className: "vmsg" }, msg) : null,
+          sel ? def.card(sel) : h("p", { className: "vhint" }, "Nothing unlocked yet: hand over a red crystal")
+        ),
+        h(
+          "button",
+          { className: navCls("buy", "vbuy") + (can ? "" : " cant"), "data-nav": "buy", onPointerDown: tap("buy") },
+          h("b", null, "Dispense selected"),
+          h("span", null, sel ? price + "g" : "—")
+        )
       )
     );
   }
@@ -20186,6 +20676,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       // legacy hooks still read (harmlessly) by Stick
       pendingToast: null,
       // raised while paused, shown by the loop when it resumes
+      collection: loadCollection(),
+      // the mods unlocked, across runs
+      shopOpen: null,
+      menuTap: null,
+      dispense: null,
       keys: { w: false, a: false, s: false, d: false },
       mouse: { x: 0, y: 0, inside: false, down: false }
     });
@@ -20208,7 +20703,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     input.current.notify = refresh;
     const found = input.current.found;
     input.current.mapOpen = mapOpen;
-    input.current.paused = edit || !!found || devOpen || spawnOpen || mapOpen || witnessOpen || perkInfo >= 0;
+    const shopOpen = input.current.shopOpen;
+    input.current.paused = edit || !!found || devOpen || spawnOpen || mapOpen || witnessOpen || perkInfo >= 0 || !!shopOpen;
+    const closeShop = () => {
+      input.current.shopOpen = null;
+      input.current.sig = "";
+      refresh();
+    };
     const LO = input.current.loadout;
     const select = (i) => {
       const L2 = input.current.loadout;
@@ -20233,6 +20734,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       };
       input.current.sig = "";
       input.current.found = null;
+      input.current.shopOpen = null;
       input.current.witness = null;
       input.current.replay = null;
       setWitnessOpen(false);
@@ -20292,10 +20794,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           e.preventDefault();
           if (input.current.inShop || perkBag(activePerks(input.current.loadout)).tinker) setEdit((v) => !v);
         }
+        if ((k === "r" || k === "f" || k === "enter") && input.current.menuTap) {
+          input.current.menuTap();
+          return;
+        }
         if (k === "r" && input.current.perkTap) input.current.perkTap();
         if (k === "f") input.current.interact = true;
         if (k === "m") setMapOpen((v) => !v);
-        if (k === "escape") setEdit(false);
+        if (k === "escape") {
+          setEdit(false);
+          if (input.current.shopOpen) {
+            input.current.shopOpen = null;
+            input.current.sig = "";
+            refresh();
+          }
+        }
       };
       const kd = key(true), ku = key(false);
       const blur = () => {
@@ -20375,7 +20888,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         // buying and taking a mod is a tap on the right stick's dead zone (or the f key),
         // taken straight. A gun on the ground opens the swap chooser instead, so the panel
         // hides while that is up (the game pauses behind it).
-        prompt && !found ? h(
+        prompt && !found && !shopOpen ? h(
           "div",
           {
             className: "buypanel",
@@ -20386,6 +20899,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           },
           prompt.id ? h(ModCard, { id: prompt.id, ingame: true }) : null,
           prompt.perk ? h(PerkCard, { id: prompt.perk, ingame: true }) : null,
+          prompt.crystal ? h(
+            "div",
+            { className: "pop scroll ingame crystalcard" },
+            h(
+              "div",
+              { className: "phead" },
+              h("div", { className: "pglyph" }, h(CrystalIcon, { size: 28 })),
+              h(
+                "div",
+                { className: "ptitle" },
+                h("b", null, "Red crystal"),
+                h("span", null, "From floor " + prompt.crystal + " · unlocks a mod at the shop")
+              )
+            )
+          ) : null,
           prompt.gun ? h(GunCard, {
             gun: prompt.gun,
             label: prompt.found ? "Found" : "For sale",
@@ -20402,7 +20930,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               "aria-label": "Tap the right stick to " + (prompt.price ? "buy for " + prompt.price + "g" : "take")
             },
             h(RKey),
-            h("b", null, prompt.price ? prompt.price + "g" : prompt.id || prompt.gun || prompt.perk || prompt.heart ? "free" : prompt.text)
+            h("b", null, prompt.price ? prompt.price + "g" : prompt.id || prompt.gun || prompt.perk || prompt.heart || prompt.crystal ? "free" : prompt.text)
           )
         ) : null,
         // one gear in the top-right opens the Dev panel; Restart now lives inside it.
@@ -20557,6 +21085,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }) : null,
       spawnOpen ? h(SpawnGun, { input, close: () => setSpawnOpen(false) }) : null,
+      shopOpen && SHOP_DEFS[shopOpen] ? h(VendShop, { key: shopOpen, def: SHOP_DEFS[shopOpen](input), input, close: closeShop }) : null,
       found ? h(GunSwap, { input, refresh, onDone: () => {
         setGunInfo(-1);
         refresh();

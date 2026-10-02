@@ -14,12 +14,14 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
     // put every mod in the game on a plinth in turn and measure the card
     const worst = await page.evaluate(async () => {
-      const { stock, p } = window.__lvl;
+      const { pickups, p } = window.__lvl;
+      // a mod lying at your feet (the shop's plinths are gone; the cave has crystals)
+      const q = { kind: 'mod', id: 'bolt', x: 0, y: 0, t: 0, cool: 0 };
+      pickups.push(q);
       const ids = Object.keys(MODS);
       const out = [];
       for (const id of ids) {
-        stock[1].kind = 'mod'; stock[1].id = id; stock[1].sold = false;
-        p.x = stock[1].x - 6; p.y = stock[1].y + 4; p.vx = 0; p.vy = 0;
+        q.id = id; q.x = p.x + 6; q.y = p.y + 11; p.vx = 0; p.vy = 0;
         window.__in.current.sig = '';
         await new Promise(r => requestAnimationFrame(r));
         await new Promise(r => setTimeout(r, 90));

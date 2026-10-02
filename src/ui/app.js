@@ -7,14 +7,16 @@ import { SFX } from '../audio/sfx.js';
 import { START_GOLD } from '../core/consts.js';
 import { PERKS, activePerks, perkBag } from '../data/perks.js';
 import { Game } from '../game/Game.js';
-import { clearSave, loadSave } from '../save/save.js';
+import { clearSave, loadCollection, loadSave } from '../save/save.js';
 import { startingGuns } from '../spells/guns.js';
 import { GunCard, ModCard, PerkCard } from './cards.js';
 import { DevPanel, SpawnGun } from './devpanel.js';
 import { Editor, GunIcon } from './editor.js';
 import { h, useEffect, useRef, useState } from './h.js';
 import { DueClock, RKey, Stick, deckLayout, fmtGold, holdPress } from './hud.js';
+import { CrystalIcon, SHOP_DEFS } from './modshop.js';
 import { GunSwap } from './swap.js';
+import { VendShop } from './vendshop.js';
 import { Witness } from './witness.js';
 
 // the perk column over the map button: a pip's size and gap, and how close to the top of the
@@ -34,6 +36,8 @@ export function App() {
     found: null,                // a gun on the ground, waiting on the swap chooser
     confirmAct: null, confirmAim: null,   // legacy hooks still read (harmlessly) by Stick
     pendingToast: null,         // raised while paused, shown by the loop when it resumes
+    collection: loadCollection(),   // the mods unlocked, across runs
+    shopOpen: null, menuTap: null, dispense: null,
     keys: { w: false, a: false, s: false, d: false },
     mouse: { x: 0, y: 0, inside: false, down: false },
   });
@@ -59,7 +63,9 @@ export function App() {
   input.current.notify = refresh;
   const found = input.current.found;
   input.current.mapOpen = mapOpen;
-  input.current.paused = edit || !!found || devOpen || spawnOpen || mapOpen || witnessOpen || perkInfo >= 0;
+  const shopOpen = input.current.shopOpen;
+  input.current.paused = edit || !!found || devOpen || spawnOpen || mapOpen || witnessOpen || perkInfo >= 0 || !!shopOpen;
+  const closeShop = () => { input.current.shopOpen = null; input.current.sig = ''; refresh(); };
 
   const LO = input.current.loadout;
   // read through the ref: after a Restart the loadout object is replaced, and a
@@ -75,6 +81,7 @@ export function App() {
       perks: [], maxBonus: 0, usedLives: 0 };
     input.current.sig = '';
     input.current.found = null;
+    input.current.shopOpen = null;
     input.current.witness = null; input.current.replay = null;
     setWitnessOpen(false);
     setGunInfo(-1);
@@ -127,10 +134,11 @@ export function App() {
       if (k >= '1' && k <= '4') select(Number(k) - 1);
       if (k === 'e' || k === 'tab') { e.preventDefault();
         if (input.current.inShop || perkBag(activePerks(input.current.loadout)).tinker) setEdit(v => !v); }
+      if ((k === 'r' || k === 'f' || k === 'enter') && input.current.menuTap) { input.current.menuTap(); return; }
       if (k === 'r' && input.current.perkTap) input.current.perkTap();
       if (k === 'f') input.current.interact = true;
       if (k === 'm') setMapOpen(v => !v);
-      if (k === 'escape') setEdit(false);
+      if (k === 'escape') { setEdit(false); if (input.current.shopOpen) { input.current.shopOpen = null; input.current.sig = ''; refresh(); } }
     };
     const kd = key(true), ku = key(false);
     const blur = () => {
@@ -199,11 +207,15 @@ export function App() {
       // buying and taking a mod is a tap on the right stick's dead zone (or the f key),
       // taken straight. A gun on the ground opens the swap chooser instead, so the panel
       // hides while that is up (the game pauses behind it).
-      prompt && !found ? h('div', { className: 'buypanel',
+      prompt && !found && !shopOpen ? h('div', { className: 'buypanel',
         style: { bottom: (input.current.promptBottom || 12) + 'px',
           maxHeight: 'calc(100% - ' + ((input.current.promptBottom || 12) + 12) + 'px)' } },
         prompt.id ? h(ModCard, { id: prompt.id, ingame: true }) : null,
         prompt.perk ? h(PerkCard, { id: prompt.perk, ingame: true }) : null,
+        prompt.crystal ? h('div', { className: 'pop scroll ingame crystalcard' },
+          h('div', { className: 'phead' }, h('div', { className: 'pglyph' }, h(CrystalIcon, { size: 28 })),
+            h('div', { className: 'ptitle' }, h('b', null, 'Red crystal'),
+              h('span', null, 'From floor ' + prompt.crystal + ' · unlocks a mod at the shop')))) : null,
         prompt.gun ? h(GunCard, { gun: prompt.gun, label: prompt.found ? 'Found' : 'For sale',
           ingame: true, compare: heldGun, compareName: heldGun ? heldGun.name : '' }) : null,
         // shop stock is "Buy <price>"; anything you pick up for free is just "Take" —
@@ -212,7 +224,7 @@ export function App() {
             'aria-label': 'Tap the right stick to ' + (prompt.price ? 'buy for ' + prompt.price + 'g' : 'take') },
           h(RKey),
           h('b', null, prompt.price ? prompt.price + 'g'
-            : (prompt.id || prompt.gun || prompt.perk || prompt.heart) ? 'free' : prompt.text))) : null,
+            : (prompt.id || prompt.gun || prompt.perk || prompt.heart || prompt.crystal) ? 'free' : prompt.text))) : null,
       // one gear in the top-right opens the Dev panel; Restart now lives inside it.
       // gold, top centre: "g" not "gold", truncated to k/M/B (1234 -> 1.2k). Under it in red, what
       // you owe the company for the level you're on, in full (64,000,000,000), and the time left to settle it
@@ -289,6 +301,7 @@ export function App() {
       onRestart: () => { setDevOpen(false); setConfirmAt(performance.now()); },
       onSpawnGun: () => { setDevOpen(false); setSpawnOpen(true); } }) : null,
     spawnOpen ? h(SpawnGun, { input, close: () => setSpawnOpen(false) }) : null,
+    shopOpen && SHOP_DEFS[shopOpen] ? h(VendShop, { key: shopOpen, def: SHOP_DEFS[shopOpen](input), input, close: closeShop }) : null,
     found ? h(GunSwap, { input, refresh, onDone: () => { setGunInfo(-1); refresh(); } }) : null,
     perkInfo >= 0 && PERKS[LO.perks[perkInfo]]
       ? h('div', null,

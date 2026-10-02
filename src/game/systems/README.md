@@ -24,6 +24,7 @@ the frame; most of its parts live with their system.
 | `plantglow.js` | `plantGlow` (the jelly's glow on plants, drawn after the fog) |
 | `level-entry.js` | `enterLevel(W, G, back, keep)`: makes (or rebuilds a saved) level, resets the world, canvases, fog, sconces, the recorder; `keep` leaves you (and the stock) where you are for a teleport; `miniEdges` (the map outline cells) |
 | `vend.js` | The level vending machines: `vendNear`/`vendLabel`/`vendUse` (via `stepPickups`), `canSell` (no `bioCount`), `stepWarp` (the teleport: swap at `WARP_SWAP`, the bolts), `voidCave` (no level: BED above the roof, the roof sealed), `stepRepo` (the deadline passed: repossession, the alarm, the fire; `REPO_WARP`/`REPO_ALARM`/`REPO_FIRE`) |
+| `shops.js` | The shop's vending machines (`SHOPS`: x, icon, hue, label; the mod machine first, guns and perks meant to follow): `shopNear`/`shopUse` (opens `input.current.shopOpen`; checked after the ground pickups so a dispensed mod can be taken), `stepShops` (in `stepPickups`: `input.current.dispense` pops out of the chute, flies and lands) |
 | `recorder.js` | The death replay's recorder and player (`replay/README.md`) |
 | `save-run.js` | `saveRun` (`save/README.md`) |
 

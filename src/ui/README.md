@@ -12,6 +12,8 @@ React without JSX (`h(...)`), off the global React the page loads from a CDN. Ev
 | `editor.js` | The build screen (Bag): `Editor`, `GunStats`, `GunIcon`, `SlotGrid`, `ScrollBox`, `PULL_COL`, `GS_ROWS`, `LIVE_BAR`, `SHOW_TIPS` |
 | `swap.js` | `GunSwap`: the chooser when you take a gun (found or bought) |
 | `witness.js` | `Witness` (the death replay's controls), `RP_SPEEDS` |
+| `vendshop.js` | `VendShop`: a vending machine's menu for any `ShopDef` (collection grid in groups, unlock button, the selected card, "Dispense selected"), `navStep` (the left stick moves the highlight to the nearest `[data-nav]` that way; `input.current.menuTap` presses it: right-stick tap, r/f/enter) |
+| `modshop.js` | `modShop` (the mods' `ShopDef`), `SHOP_DEFS` (by `SHOPS` key), `CrystalIcon` |
 | `devpanel.js` | `DevPanel`, `DevRow`, `JellyPreview` (runs the real `jellyStep`/`drawJelly`), `SpawnGun` |
 
 CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).

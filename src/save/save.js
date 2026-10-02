@@ -50,6 +50,8 @@ export function cleanLoadout(lo) {
     due: num(lo.due, 0) || (num(lo.debt, 0) > 0 || num(lo.gold, 0) < 0 ? Date.now() + DEADLINE_MS : 0),
     maxBonus: Math.max(0, num(lo.maxBonus, 0)),
     usedLives: Math.max(0, num(lo.usedLives, 0)),
+    // red crystals carried: the floor each came from (the shop's machine turns one into an unlock)
+    crystals: (Array.isArray(lo.crystals) ? lo.crystals : []).filter(f => Number.isInteger(f) && f > 0),
     debug: !!lo.debug,
   };
 }
@@ -77,6 +79,7 @@ export function readSave(raw) {
       pickups: Array.isArray(L.pickups) ? L.pickups.map(q => {
         if (!q || typeof q !== 'object') return null;
         if (q.kind === 'mod') return MODS[q.id] ? q : null;
+        if (q.kind === 'crystal') return Number.isInteger(q.floor) && q.floor > 0 ? q : null;
         if (q.kind === 'gun') { const gun = cleanGun(q.gun); return gun ? Object.assign({}, q, { gun }) : null; }
         return null;
       }).filter(Boolean) : null,
@@ -87,3 +90,17 @@ export function readSave(raw) {
 /** @type {() => SaveData | null} */
 export const loadSave = () => { try { return readSave(localStorage.getItem(SAVE_KEY)); } catch (_) { return null; } };
 export const clearSave = () => { try { localStorage.removeItem(SAVE_KEY); } catch (_) {} };
+
+// ---- the mod collection: the mods you have unlocked, kept across runs (a new run keeps it)
+// under its own key, never cleared by clearSave ----
+export const COLLECTION_KEY = 'caverunner-collection';
+/** @param {string | null} raw @returns {string[]} */
+export function readCollection(raw) {
+  let s;
+  try { s = JSON.parse(raw); } catch (_) { return []; }
+  return Array.isArray(s) ? [...new Set(s.filter(id => typeof id === 'string' && MODS[id]))] : [];
+}
+/** @type {() => string[]} */
+export const loadCollection = () => { try { return readCollection(localStorage.getItem(COLLECTION_KEY)); } catch (_) { return []; } };
+/** @param {string[]} ids */
+export const saveCollection = ids => { try { localStorage.setItem(COLLECTION_KEY, JSON.stringify(ids)); } catch (_) {} };

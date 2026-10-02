@@ -12,6 +12,7 @@ import { paintFog } from './fog.js';
 import { toast } from './particles.js';
 import { maxHp, refreshBag } from './player.js';
 import { solidAt } from './terrain.js';
+import { MACHINE_TOP, SHOPS, shopNear, shopUse, stepShops } from './shops.js';
 import { VEND_TOP, vendLabel, vendNear, vendUse } from './vend.js';
 
 // ---- pickups, gold and the interact tap (a part of step) ----
@@ -20,6 +21,7 @@ import { VEND_TOP, vendLabel, vendNear, vendUse } from './vend.js';
 /** @param {World} W @param {GameCtx} G @param {StepFrame} F */
 export function stepPickups(W, G, F) {
   const { dt, LO, MHP, pcx, pcy } = F;
+  stepShops(W, G, F);                   // a bought thing popping out of a vending machine
   // ---- pickups: just cooldown upkeep and clearing what was taken. Whether one is
   // near enough to show its card, and whether you actually take it, is decided
   // below together with the shop — both go through the same interact tap now. ----
@@ -76,6 +78,8 @@ export function stepPickups(W, G, F) {
     near = { src: 'pickup', q };
     break;
   }
+  // a shop vending machine (after the pickups, so a mod it just popped out can be taken)
+  if (!near) { const kind = shopNear(W, pcx, pcy); if (kind) near = { src: 'shopvend', kind }; }
   // the hidden rooms' prizes: a perk on its altar, or the +25 heart
   if (!near) for (const r of W.rooms) {
     if (r.taken) continue;
@@ -84,10 +88,11 @@ export function stepPickups(W, G, F) {
     break;
   }
   const nearKey = !near ? -1 : near.src + ':' +
-    (near.src === 'vend' ? near.kind : near.src === 'shop' ? W.stock.indexOf(near.it)
+    (near.src === 'vend' || near.src === 'shopvend' ? near.kind : near.src === 'shop' ? W.stock.indexOf(near.it)
       : near.src === 'room' ? W.rooms.indexOf(near.r) : W.pickups.indexOf(near.q));
   const label = !near ? null
     : near.src === 'vend' ? vendLabel(W, near.kind)
+    : near.src === 'shopvend' ? { text: SHOPS[near.kind].label, price: 0, can: true, shop: near.kind }
     : near.src === 'shop'
       ? (near.it.kind === 'heal' ? { text: 'Full heal', price: near.it.price, can: W.p.hp < MHP && LO.gold >= near.it.price }
         : near.it.kind === 'gun' ? { text: near.it.gun.name, gun: near.it.gun,
@@ -101,6 +106,7 @@ export function stepPickups(W, G, F) {
       // things on the ground are always yours for the taking — the price is what
       // the "For sale"/"Found" split cares about, not whether you're allowed to
       : (near.q.kind === 'gun' ? { text: near.q.gun.name, gun: near.q.gun, price: 0, can: true, found: true }
+        : near.q.kind === 'crystal' ? { text: 'Red crystal', crystal: near.q.floor, price: 0, can: true, found: true }
         : { text: MODS[near.q.id].name, id: near.q.id, price: 0, can: true, found: true });
   // where the item sits on screen, so the panel can float its bottom edge just above
   // it (the plinth/pickup) rather than covering it. camY/unitPx are last frame's, from
@@ -109,7 +115,7 @@ export function stepPickups(W, G, F) {
   // `bottom`. Bucketed into the sig so the panel re-lays-out as the camera settles.
   let pbottom = 12;
   if (near) {
-    const iy = near.src === 'vend' ? VEND_TOP : near.src === 'shop' ? near.it.y : near.src === 'room' ? near.r.y : near.q.y;
+    const iy = near.src === 'vend' ? VEND_TOP : near.src === 'shopvend' ? MACHINE_TOP : near.src === 'shop' ? near.it.y : near.src === 'room' ? near.r.y : near.q.y;
     const dprc = window.devicePixelRatio || 1;
     pbottom = Math.round(Math.max(10, G.c.height / dprc - (iy - 16 - W.camY) * W.unitPx));
   }
@@ -131,6 +137,7 @@ export function stepPickups(W, G, F) {
   if (G.input.current.interact && near) {
     G.input.current.interact = false;
     if (near.src === 'vend') vendUse(W, G, near.kind, LO);
+    else if (near.src === 'shopvend') shopUse(G, near.kind);
     else if (near.src === 'shop') {
       const it = near.it;
       if (it.kind === 'heal') {
@@ -188,6 +195,12 @@ export function stepPickups(W, G, F) {
         LO.bag.push(q.id);
         q.taken = true; q.cool = PICKUP_COOL;
         toast(W, 'Picked up ' + MODS[q.id].name);
+        SFX.ui('mod');
+      } else if (q.kind === 'crystal') {
+        // a red crystal goes in your pocket: the shop's machine turns it into an unlock
+        (LO.crystals || (LO.crystals = [])).push(q.floor || W.floor);
+        q.taken = true;
+        toast(W, 'Red crystal');
         SFX.ui('mod');
       } else {
         // a gun opens the chooser: compare it with yours and pick the slot to swap

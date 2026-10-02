@@ -201,9 +201,11 @@ export function drawGunGlow(ctx, x, y, time, seed) {
 }
 
 // A gold nugget: a lumpy rock shape (its outline fixed by `seed`), turned by `ang` as it rolls,
-// lit from above whichever way up it is: a dark rim, the gold, a bright face up top and a glint
-/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} r @param {number} seed @param {number} ang */
-export function drawNugget(ctx, x, y, r, seed, ang) {
+// lit from above whichever way up it is: a dark rim, the gold, a bright face up top and a glint.
+// `pal` recolours it (rim, body, face, glint): the red crystal is a big one in CRYSTAL_PAL
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} r @param {number} seed @param {number} ang @param {string[]} [pal] */
+export function drawNugget(ctx, x, y, r, seed, ang, pal) {
+  const P = pal || NUGGET_PAL;
   const N = 7, pts = [];
   for (let i = 0; i < N; i++) {
     const h = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
@@ -212,12 +214,16 @@ export function drawNugget(ctx, x, y, r, seed, ang) {
     pts.push([x + Math.cos(a) * r * k, y + Math.sin(a) * r * k * 0.86]);
   }
   const path = () => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < N; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); };
-  path(); ctx.fillStyle = '#7a4e10'; ctx.fill();
-  ctx.save(); ctx.translate(-0.35, -0.35); path(); ctx.fillStyle = '#d8a52a'; ctx.fill(); ctx.restore();
+  path(); ctx.fillStyle = P[0]; ctx.fill();
+  ctx.save(); ctx.translate(-0.35, -0.35); path(); ctx.fillStyle = P[1]; ctx.fill(); ctx.restore();
   ctx.save(); path(); ctx.clip();
-  ctx.fillStyle = '#ffd95a';
+  ctx.fillStyle = P[2];
   ctx.beginPath(); ctx.ellipse(x - r * 0.25, y - r * 0.4, r * 0.62, r * 0.38, -0.3, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
-  ctx.fillStyle = '#fff6c8';
+  ctx.fillStyle = P[3];
   ctx.fillRect(x - r * 0.42, y - r * 0.55, Math.max(0.7, r * 0.26), Math.max(0.7, r * 0.26));
+  if (pal) ctx.fillRect(x + r * 0.2, y + r * 0.1, Math.max(0.6, r * 0.14), Math.max(0.6, r * 0.14));   // a second glint
 }
+export const NUGGET_PAL = ['#7a4e10', '#d8a52a', '#ffd95a', '#fff6c8'];
+// the red crystal: gold's shape, dark red, white highlights, and how big it is
+export const CRYSTAL_PAL = ['#2a0306', '#6e0a12', '#a3162a', '#ffffff'], CRYSTAL_R = 11;

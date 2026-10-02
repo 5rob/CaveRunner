@@ -269,7 +269,9 @@ interface Prop {
 
 /** a thing on the ground: a mod, a gun, a heart */
 interface Pickup {
-  kind: 'mod' | 'gun' | 'heart' | 'perk' | 'heal';
+  kind: 'mod' | 'gun' | 'heart' | 'perk' | 'heal' | 'crystal';
+  floor?: number;             // a red crystal: the floor it came from (its unlock's drop table)
+  vx?: number; vy?: number;   // popping out of a vending machine's chute (game/systems/shops.js) until it lands
   x: number; y: number; t: number;
   id?: string;                // a mod's or perk's id
   gun?: Gun;
@@ -329,6 +331,7 @@ interface Loadout {
   due?: number;               // when it must be repaid: Date.now() ms, the device's clock (0 = no debt)
   maxBonus: number;           // the +25 hearts: raises max health only
   usedLives: number;
+  crystals?: number[];        // red crystals carried: the floor each came from (game/systems/shops.js)
   debug: boolean;             // Dev → All mods
 }
 /** a save read back: readSave (save/save.js) */
@@ -516,6 +519,8 @@ interface Hud { hp: number; low: boolean; fuel: number; empty: boolean; mana: nu
 interface Prompt {
   text: string; price: number; can: boolean;
   id?: string; gun?: Gun; perk?: string; heart?: boolean; found?: boolean;
+  crystal?: number;           // a red crystal: the floor it came from
+  shop?: string;              // a vending machine's menu (SHOPS key): no card, just the line
 }
 /** the death replay's span, once recorded: from t0 to t1, the death at `death` (REC's clock) */
 interface Witness { t0: number; t1: number; death: number }
@@ -543,6 +548,10 @@ interface GameInput {
   hud?: Hud; witness?: Witness | null; replay?: ReplayView | null; spawnGun?: number;
   requestRestart?: () => void; promptBottom?: number; newCave?: boolean; ctlH?: number;
   mapOpen?: boolean; floor?: number; saveRun?: () => void;
+  collection: string[];       // the mods unlocked, kept across runs (save/save.js loadCollection)
+  shopOpen?: string | null;   // a vending machine's menu is up: its SHOPS key (game/systems/shops.js)
+  menuTap?: (() => void) | null;   // a menu is up: a right-stick tap (or r/f/enter) confirms in it
+  dispense?: { shop: string, id: string } | null;   // bought: the machine pops it out (stepShops)
 }
 
 /** the death replay's recorder (systems/recorder.js) */

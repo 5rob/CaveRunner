@@ -33,8 +33,6 @@ export const PERKS = {
               info: 'The nearest creatures are marked at the edge of the screen.' },
   health:   { name: 'Extra Health', glyph: '✚', tint: '#46c48c', hpAdd: 50,
               info: '50 more maximum health, and it comes full.' },
-  holyitem: { name: 'Extra Item in Holy Mountain', glyph: '♦', tint: '#ffc93c', extraItem: 1,
-              info: 'Every shop offers five things instead of four.' },
   life:     { name: 'Extra Life', glyph: '♥', tint: '#ff5a36', lives: 1,
               info: 'You get back up once, at full health, the first time you are killed.' },
   knock:    { name: 'Extra Knockback on Spells', glyph: '⟫', tint: '#e88a3c', recoil: 1.5,
