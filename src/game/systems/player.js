@@ -11,7 +11,7 @@ import {
 import { approach, clamp } from '../../core/util.js';
 import { activePerks, perkBag } from '../../data/perks.js';
 import { DEV, kr, spr } from '../../dev/knobs.js';
-import { clearSave } from '../../save/save.js';
+import { clearSave, saveCollection } from '../../save/save.js';
 import { archNear } from '../../world/decorate.js';
 import { ragHip, ragNew, ragStep } from '../../world/ragdoll.js';
 import { hangRootX, hangRootY, swings } from '../../world/sway.js';
@@ -74,6 +74,8 @@ export function hurt(W, G, n) {
     W.strings.length = 0;
     SFX.ui('die');
     clearSave();                          // a death is final: reopening starts a new run
+    // and the mods you unlocked go with it (the perks you unlocked stay)
+    if (G.input.current.collection) { G.input.current.collection.length = 0; saveCollection([]); }
   }
 }
 

@@ -99,14 +99,24 @@ export function makeLevel(seed, floor, owned) {
   // stitched along the zone edge, which a small warp roughs up and the smoothing pass melts.
   // Every other floor is the natural cave alone, until it gets its own treatment.
   const layered = floor === 1;
-  const openL = lattice(8, (x, y) => fbm(x / 160 + 500, y / 160 + 500));
-  const pocketL = lattice(4, (x, y) => fbm(x / 60, y / 60));
-  const tunnelL = lattice(4, (x, y) => fbm(x / 90 + 200, y / 90 + 200));
+  // Floor 2's Dev knobs (L2_KNOBS, v129), rolled once on a generator of their own so the cave's
+  // own rolls don't move: at the defaults (min = max) it is the cave it always was. Elsewhere: d.
+  let ks = (Math.imul(seed | 0, 48271) >>> 0) % 2147483646 + 1;
+  const krnd = () => (ks = (ks * 16807) % 2147483647) / 2147483647;
+  /** @param {string} k @param {number} d */
+  const K2 = (k, d) => (floor === 2 ? kr(k, krnd) : d);
+  const sc = K2('l2Scale', 1), openT = K2('l2Open', 0.42), pk0 = K2('l2Pocket', 0.34), pk1 = K2('l2PocketOpen', 0.24);
+  const tw = K2('l2Tunnel', 0.018), hopsN = Math.round(K2('l2Hops', 12)), routeW = K2('l2RouteW', 1), blobK = K2('l2Blob', 1);
+  const wormN = Math.round(K2('l2Worms', 48)), wormL = K2('l2WormLen', 1), wormW = K2('l2WormW', 1), smoothN = Math.round(K2('l2Smooth', 4));
+  const ledgeN = Math.round(K2('l2Ledges', 120)), frameN = Math.round(K2('l2Frames', 36)), floatN = Math.round(K2('l2Floats', 40));
+  const openL = lattice(8, (x, y) => fbm(x / (160 * sc) + 500, y / (160 * sc) + 500));
+  const pocketL = lattice(4, (x, y) => fbm(x / (60 * sc), y / (60 * sc)));
+  const tunnelL = lattice(4, (x, y) => fbm(x / (90 * sc) + 200, y / (90 * sc) + 200));
   for (let cy = 0; cy < CH; cy++) {
     for (let cx = 0; cx < CW; cx++) {
-      const open = Math.min(1, Math.max(0, (at(openL, cx, cy) - 0.42) / 0.16));
-      const pocket = at(pocketL, cx, cy) < 0.34 + 0.24 * open;
-      const tunnel = Math.abs(at(tunnelL, cx, cy) - 0.5) < 0.018 + 0.018 * open;
+      const open = Math.min(1, Math.max(0, (at(openL, cx, cy) - openT) / 0.16));
+      const pocket = at(pocketL, cx, cy) < pk0 + pk1 * open;
+      const tunnel = Math.abs(at(tunnelL, cx, cy) - 0.5) < tw + tw * open;
       mat[cy * CW + cx] = pocket || tunnel ? 0 : ROCK;
     }
   }
@@ -143,7 +153,7 @@ export function makeLevel(seed, floor, owned) {
   const lay = layered ? new Uint8Array(CW * CH) : null;
   const strata = layered ? strataCave(lay, rnd, { vn, fbm, ok: built }, shopExit) : null;
   const points = [{ x: shopExit, y: SHOP_TOP - 30 }];
-  const hops = 12;                                       // the cave is twice as tall now
+  const hops = hopsN;                                    // the cave is twice as tall now (12)
   for (let i = 1; i <= hops; i++) {
     points.push({ x: 40 + rnd() * (CW - 80), y: CH - 26 - (CH - 60) * i / (hops + 1) + (rnd() - 0.5) * 40 });
   }
@@ -183,12 +193,12 @@ export function makeLevel(seed, floor, owned) {
     }
   };
   for (let i = 1; i < points.length - 1; i++) {
-    if (rnd() < 0.7) blob(points[i].x, points[i].y, 16 + rnd() * 30);
+    if (rnd() < 0.7) blob(points[i].x, points[i].y, (16 + rnd() * 30) * blobK);
   }
   // side branches and dead ends (natural zones only: they're cut before the stitch)
   const side = [];
-  for (let i = 0; i < 48; i++) {
-    worm(10 + rnd() * (CW - 20), 20 + rnd() * (CH - 60), null, null, 5 + rnd() * 6, 40 + rnd() * 150, side);
+  for (let i = 0; i < wormN; i++) {
+    worm(10 + rnd() * (CW - 20), 20 + rnd() * (CH - 60), null, null, (5 + rnd() * 6) * wormW, (40 + rnd() * 150) * wormL, side);
   }
   for (const c of side) if (!built(c.x, c.y)) routePath.push(c);
   // the stitch: built-up zones take the layered cave, with its own links through them
@@ -198,7 +208,7 @@ export function makeLevel(seed, floor, owned) {
   }
   for (let i = 0; i < points.length - 1; i++) {
     const a = points[i], b = points[i + 1];
-    const r = rnd() < 0.4 ? 7 + rnd() * 2 : 11 + rnd() * 6;   // tight ones are still snug, but you fit
+    const r = (rnd() < 0.4 ? 7 + rnd() * 2 : 11 + rnd() * 6) * routeW;   // tight ones are still snug, but you fit
     worm(a.x, a.y, b.x, b.y, r, 2000, routePath, true);
   }
   // the built-up bits that survived the stitch whole: old workings and the vaults
@@ -209,7 +219,7 @@ export function makeLevel(seed, floor, owned) {
   // 3. smooth everything into natural shapes. Same 3x3 majority as always, but the
   //    column sums are shared along the row instead of re-read nine times a pixel.
   const src = new Uint8Array(CW * CH), col = new Uint8Array(CW);
-  for (let pass = 0; pass < 4; pass++) {
+  for (let pass = 0; pass < smoothN; pass++) {
     src.set(mat);
     for (let cy = 1; cy < CH - 1; cy++) {
       const r0 = (cy - 1) * CW, r1 = cy * CW, r2 = (cy + 1) * CW;
@@ -247,7 +257,7 @@ export function makeLevel(seed, floor, owned) {
   // 4. built ledges sticking out of cave walls
   // (natural zones only: in a built-up zone the ledges are the layers, and these read as hovering)
   let ledges = 0;
-  for (let a = 0; a < 2400 && ledges < 120; a++) {
+  for (let a = 0; a < Math.max(2400, ledgeN * 20) && ledges < ledgeN; a++) {
     const x = 10 + Math.floor(rnd() * (CW - 20)), y = 20 + Math.floor(rnd() * (SHOP_TOP - 50));
     if (mat[y * CW + x] || built(x, y)) continue;
     const dir = rnd() < 0.5 ? -1 : 1;
@@ -263,7 +273,7 @@ export function makeLevel(seed, floor, owned) {
   }
 
   // 5. old brick frames half buried in the rock
-  for (let i = 0; i < 36; i++) {
+  for (let i = 0; i < frameN; i++) {
     const fw = 30 + Math.floor(rnd() * 40), fh = 20 + Math.floor(rnd() * 20);
     const fx = 8 + Math.floor(rnd() * (CW - 16 - fw)), fy = 60 + Math.floor(rnd() * (SHOP_TOP - 120));
     if (built(fx, fy) || built(fx + fw, fy) || built(fx, fy + fh) || built(fx + fw, fy + fh)) continue;
@@ -281,7 +291,7 @@ export function makeLevel(seed, floor, owned) {
 
   // 6. a few floating platforms in the big open spaces
   let floats = 0;
-  for (let a = 0; a < 1600 && floats < 40; a++) {
+  for (let a = 0; a < Math.max(1600, floatN * 40) && floats < floatN; a++) {
     const len = 18 + Math.floor(rnd() * 22);
     const x0 = 8 + Math.floor(rnd() * (CW - 16 - len)), y0 = 40 + Math.floor(rnd() * (SHOP_TOP - 80));
     if (built(x0 - 12, y0) || built(x0 + len + 12, y0)) continue;

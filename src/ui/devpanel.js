@@ -340,7 +340,9 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
         h('button', { className: 'dbg spawngun',
           onPointerDown: e => { e.preventDefault(); onSpawnGun(); } }, 'Spawn gun'),
         h('button', { className: 'dbg newcave',
-          onPointerDown: e => { e.preventDefault(); input.current.newCave = true; close(); } }, 'New cave')),
+          onPointerDown: e => { e.preventDefault(); input.current.newCave = true; close(); } }, 'New cave'),
+        h('button', { className: 'dbg floor2',
+          onPointerDown: e => { e.preventDefault(); input.current.newCave = 2; close(); } }, 'Floor 2')),
       DEV_GROUPS.map(([g, name]) => {
         const shut = !openG[g];
         return h('div', { key: g, className: 'devgroup' },

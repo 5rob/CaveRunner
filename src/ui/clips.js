@@ -73,29 +73,32 @@ export function pickMime() {
 const nextFrame = () => new Promise(r => requestAnimationFrame(r));
 
 // Plays the replay from the start as it's set up now (where the camera is or follows, the speed,
-// the fog), records the play area and the sound, and saves an MP4. onState gets the progress
+// the fog), records the whole screen (V.full: the video is the device's shape) and the sound, and saves an MP4. onState gets the progress
 // ({ phase: 'rec' | 'convert' | 'save', frac }); cancel() stops it early, saving nothing.
 /** @param {ReplayView} V @param {string} name @param {(s: { phase: string, frac: number }) => void} onState @param {{ cancelled: boolean }} ctl @returns {Promise<{ ok: boolean, msg: string }>} */
 export async function exportClip(V, name, onState, ctl) {
   const C = V.clip, mime = pickMime();
   if (!mime || !HTMLCanvasElement.prototype.captureStream) return { ok: false, msg: 'This device can’t record video.' };
   SFX.unlock();
-  const keep = { loop: V.loop, playing: V.playing, t: V.t };
+  const keep = { loop: V.loop, playing: V.playing, t: V.t, full: V.full };
   const out = document.createElement('canvas'), ctx = out.getContext('2d');
+  let sized = false;                           // (a new canvas is already 300 x 150: size it on the first frame)
   /** @type {MediaRecorder | null} */
   let rec = null;
   try {
-    // the copy canvas: the play area (above the replay's panel), scaled down to what an encoder takes
-    V.playing = false; V.t = C.t0; V.loop = false;
+    // the copy canvas: the whole screen (the panel is left out of the drawing while V.full), scaled
+    // down to what an encoder takes
+    V.playing = false; V.t = C.t0; V.loop = false; V.full = true;
     V.onFrame = (c, playPx) => {
-      if (!out.width) {
+      if (!sized) {
+        sized = true;
         const k = Math.min(1, VIDEO_MAX[0] / c.width, VIDEO_MAX[1] / playPx);
         out.width = Math.max(2, Math.round(c.width * k) & ~1); out.height = Math.max(2, Math.round(playPx * k) & ~1);
       }
       ctx.drawImage(c, 0, 0, c.width, playPx, 0, 0, out.width, out.height);
     };
-    for (let i = 0; i < 3 && !out.width; i++) await nextFrame();
-    if (!out.width) return { ok: false, msg: 'The replay isn’t drawing.' };
+    for (let i = 0; i < 3 && !sized; i++) await nextFrame();
+    if (!sized) return { ok: false, msg: 'The replay isn’t drawing.' };
     const vs = out.captureStream(30), as = SFX.stream();
     const tracks = vs.getVideoTracks().concat(as ? as.getAudioTracks() : []);
     rec = new MediaRecorder(new MediaStream(tracks), { mimeType: mime, videoBitsPerSecond: DEV.witKbps * 1000, audioBitsPerSecond: 128000 });
@@ -122,7 +125,7 @@ export async function exportClip(V, name, onState, ctl) {
   } finally {
     V.onFrame = null;
     if (rec && rec.state !== 'inactive') try { rec.stop(); } catch (_) {}
-    V.loop = keep.loop; V.playing = keep.playing; V.t = keep.t;
+    V.loop = keep.loop; V.playing = keep.playing; V.t = keep.t; V.full = keep.full;
   }
 }
 // a name that's safe as a file name

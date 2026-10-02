@@ -92,9 +92,65 @@ export const hangRootX = pr => (pr.on && pr.on.wx ? tent(pr.u || 0, pr.on.wu == 
 export const hangRootY = pr => (pr.on && pr.on.wy ? tent(pr.u || 0, pr.on.wu == null ? 0.5 : pr.on.wu) * pr.on.wy : 0);
 /** @param {Prop} pr @param {number} y */
 export function hangX(pr, y) {
-  const rx = hangRootX(pr);
-  if (!pr.sw) return rx;
-  return rx + Math.sin(pr.sw) * Math.max(0, Math.min(pr.len || 0, y - pr.y - hangRootY(pr)));
+  if (!pr.sw && !pr.tl) return hangRootX(pr);
+  return vinePt(pr, Math.max(0, Math.min(pr.len || 0, y - pr.y - hangRootY(pr)))).x;
+}
+
+// The tail of a swinging vine (v129): below the joint (depth sj: your hands while you hold it) the
+// vine is a few links (tl: their ends, from the vine's origin) that hang off it under gravity, so
+// the part below your grip trails and bends instead of turning stiff with the rest. Above the
+// joint it is still the one straight piece turned by sw.
+/** the joint, from the vine's origin @param {Prop} pr */
+export function vineJoint(pr) {
+  const a = pr.sw || 0, j = pr.sj == null ? (pr.len || 0) * 0.5 : pr.sj;
+  return { x: hangRootX(pr) + Math.sin(a) * j, y: hangRootY(pr) + Math.cos(a) * j };
+}
+// one step of the tail: n links (verlet: gravity g, damping D a second), each (len − sj) / n long,
+// hung off the joint wherever it has moved to. False once it hangs still under a still vine (and
+// then it's dropped, so the vine sleeps).
+/** @param {Prop} pr @param {number} n @param {number} g @param {number} D @param {number} dt */
+export function tailStep(pr, n, g, D, dt) {
+  n = Math.max(1, Math.round(n));
+  dt = Math.min(dt, 1 / 30);
+  const J = vineJoint(pr), j = pr.sj == null ? (pr.len || 0) * 0.5 : pr.sj, seg = Math.max(0.5, ((pr.len || 0) - j) / n);
+  let p = pr.tl, q = pr.tq;
+  if (!p || !q || p.length !== 2 * n) {          // new (or the link count changed): straight down from the joint
+    p = []; for (let i = 1; i <= n; i++) p.push(J.x, J.y + seg * i);
+    q = p.slice();
+  }
+  const keep = Math.max(0, 1 - D * dt);
+  let moving = 0;
+  for (let i = 0; i < p.length; i += 2) {
+    const vx = (p[i] - q[i]) * keep, vy = (p[i + 1] - q[i + 1]) * keep;
+    q[i] = p[i]; q[i + 1] = p[i + 1];
+    p[i] += vx; p[i + 1] += vy + g * dt * dt;
+  }
+  for (let it = 0; it < 4; it++) {                // each link back to its length (the joint doesn't give)
+    let ax = J.x, ay = J.y;
+    for (let i = 0; i < p.length; i += 2) {
+      const dx = p[i] - ax, dy = p[i + 1] - ay, d = Math.hypot(dx, dy) || 1e-6, e = (d - seg) / d;
+      if (i === 0) { p[i] -= dx * e; p[i + 1] -= dy * e; }
+      else { p[i] -= dx * e * 0.5; p[i + 1] -= dy * e * 0.5; p[i - 2] += dx * e * 0.5; p[i - 1] += dy * e * 0.5; }
+      ax = p[i]; ay = p[i + 1];
+    }
+  }
+  for (let i = 0; i < p.length; i += 2) {
+    moving += Math.abs(p[i] - q[i]) + Math.abs(p[i + 1] - q[i + 1]);
+    moving += Math.abs(p[i] - J.x) * 0.02;         // still out to one side: not settled yet
+  }
+  if (!pr.sw && !pr.swv && moving < 0.02) { pr.tl = undefined; pr.tq = undefined; return false; }
+  pr.tl = p; pr.tq = q;
+  return true;
+}
+// a point k down a hanging vine, from its origin: the straight piece to the joint, then the tail
+/** @param {Prop} pr @param {number} k */
+export function vinePt(pr, k) {
+  const a = pr.sw || 0, rx = hangRootX(pr), ry = hangRootY(pr), p = pr.tl;
+  const j = pr.sj == null ? (pr.len || 0) * 0.5 : pr.sj;
+  if (!p || k <= j) return { x: rx + Math.sin(a) * k, y: ry + Math.cos(a) * k };
+  const n = p.length / 2, seg = Math.max(0.5, ((pr.len || 0) - j) / n), t = Math.min(n, (k - j) / seg), i = Math.min(n - 1, Math.floor(t)), f = t - i;
+  const J = vineJoint(pr), ax = i ? p[2 * i - 2] : J.x, ay = i ? p[2 * i - 1] : J.y;
+  return { x: ax + (p[2 * i] - ax) * f, y: ay + (p[2 * i + 1] - ay) * f };
 }
 // can this prop swing? (a hanging vine, chain, root, strand — not an arch, not a frozen fall)
 /** @param {Prop} pr */

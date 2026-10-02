@@ -64,7 +64,9 @@ export function stepRequests(W, G, F) {
   if (G.input.current.pendingToast) { toast(W, G.input.current.pendingToast); G.input.current.pendingToast = null; }
   G.input.current.floor = W.floor;
   if (G.input.current.newCave) {                // Dev → New cave: this floor again, freshly rolled
+    const go = G.input.current.newCave;         // (Dev → Floor 2: that floor instead)
     G.input.current.newCave = false;
+    if (typeof go === 'number') W.floor = go;
     enterLevel(W, G);
     if (!W.hasLvl) voidCave(W, G);
     toast(W, 'New cave');

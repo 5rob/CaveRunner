@@ -23,7 +23,7 @@ export const DEV_DEFAULTS = { zoom: 1.6, torch: 0.5, fogDark: 0.99, fogDim: 0.85
   ptrStart: 0.12, ptrReach: 1, ptrSize: 1, ptrLine: 0.75, snapR: 28, snapPull: 0.3, snapHit: 10,
   witPad: 80, witKbps: 6000,
   webSag: 0.03, bendK: 140, bendDamp: 5, bendPush: 0.3, bendGrab: 0.35, bendDip: 5, bendMax: 14,
-  vineGrav: 1, vineDamp: 1.2, vinePush: 0.6, vineMax: 0.9 };
+  vineGrav: 1, vineDamp: 1.2, vinePush: 0.6, vineMax: 0.9, vineLinks: 4, vineTailDamp: 1.5 };
 // g: the collapsible group the knob sits in on the Dev panel (DEV_GROUPS gives the order)
 /** @type {DevRow[]} */
 export const DEV_META = [
@@ -94,10 +94,12 @@ export const DEV_META = [
   { k: 'vineDamp',  g: 'sway', label: 'Hanging vines: settling (higher = settles sooner)', min: 0, max: 10, step: 0.1 },
   { k: 'vinePush',  g: 'sway', label: 'Hanging vines: push from flying through (× your speed)', min: 0, max: 2, step: 0.05 },
   { k: 'vineMax',   g: 'sway', label: 'Hanging vines: widest swing (radians)', min: 0, max: 1.5, step: 0.05 },
+  { k: 'vineLinks', g: 'sway', label: 'Hanging vines: links below your grip (more = floppier)', min: 1, max: 8, step: 1 },
+  { k: 'vineTailDamp', g: 'sway', label: 'Hanging vines: the part below your grip settles (higher = sooner)', min: 0, max: 10, step: 0.1 },
   { k: 'bagSpeed',  g: 'ui',    label: 'Bag fire preview speed (×real time)', min: 0.05, max: 5, step: 0.05 },
 ];
 export const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['fx', 'Hologram & glow'], ['holoflash', 'Hologram flash (on a kill)'], ['player', 'Player'],
-  ['enemy', 'Enemies'], ['elite', 'Elites'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
+  ['enemy', 'Enemies'], ['elite', 'Elites'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['level2', 'Level 2: layout & look'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults.
 export function devReport() {
@@ -346,6 +348,43 @@ export const ELITE_KNOBS = rangeKnobs('elite', [
 export const ELITE_COLS = colourKnobs('elite', [
   ['elTint', 'Tint and glow colour', '#ffc93c', '#ffc93c', 'tint'],
 ]);
+// Floor 2 (Coal seams, v129): the natural noise cave, every number of it. Ranges like floor 1's,
+// rolled once per cave on a generator of their own (makeLevel), so with min = max at the
+// defaults it is exactly the cave it always was. A change shows on the next cave: Dev → New cave
+// (or Floor 2, to go there).
+export const L2_KNOBS = rangeKnobs('level2', [
+  ['l2Scale',   'Cave feature size (×)',                     0.3, 3, 0.05,   1, 1],
+  ['l2Open',    'Vast areas: threshold (lower = more of them)', 0.1, 0.8, 0.01, 0.42, 0.42],
+  ['l2Pocket',  'Open pockets: how much (0-1)',              0, 0.8, 0.01,   0.34, 0.34],
+  ['l2PocketOpen', 'Open pockets: extra in vast areas',      0, 0.6, 0.01,   0.24, 0.24],
+  ['l2Tunnel',  'Noise tunnels: width',                      0, 0.08, 0.002, 0.018, 0.018],
+  ['l2Hops',    'Main route: chambers along it',             4, 30, 1,       12, 12],
+  ['l2RouteW',  'Main route: width (×, 1 = as tight as it goes)', 1, 2.5, 0.05, 1, 1],
+  ['l2Blob',    'Chambers: size (×)',                        0, 3, 0.05,     1, 1],
+  ['l2Worms',   'Side tunnels and dead ends',                0, 150, 1,      48, 48],
+  ['l2WormLen', 'Side tunnels: length (×)',                  0.2, 4, 0.05,   1, 1],
+  ['l2WormW',   'Side tunnels: width (×)',                   0.5, 2.5, 0.05, 1, 1],
+  ['l2Smooth',  'Smoothing passes (rounder rock)',           0, 8, 1,        4, 4],
+  ['l2Ledges',  'Built ledges off the walls',                0, 400, 1,      120, 120],
+  ['l2Frames',  'Old brick frames in the rock',              0, 120, 1,      36, 36],
+  ['l2Floats',  'Floating platforms',                        0, 150, 1,      40, 40],
+]);
+// and its look: the palette (the Coal seams theme, data/themes.js themeFor) and how much decoration
+/** @type {[key: string, label: string, def: string][]} */
+export const L2_LOOK = [
+  ['l2Bg',     'Background (far)',   '#0c0d11'], ['l2Bg2',    'Background (near)', '#1c1e24'],
+  ['l2Rock1',  'Rock (dark)',        '#2c2c32'], ['l2Rock2',  'Rock (light)',      '#4a4a52'],
+  ['l2Moss1',  'Moss (dark)',        '#2e4a34'], ['l2Moss2',  'Moss (light)',      '#54744a'],
+  ['l2Brick1', 'Brick (dark)',       '#403e42'], ['l2Brick2', 'Brick (light)',     '#605c62'],
+  ['l2Mortar', 'Mortar',             '#262428'],
+  ['l2Bed1',   'Bedrock (dark)',     '#18181c'], ['l2Bed2',   'Bedrock (light)',   '#28282e'],
+];
+for (const [k, label, def] of L2_LOOK) {
+  DEV_DEFAULTS[k] = def;
+  DEV_META.push({ k, g: 'level2', label: 'Colour: ' + label, type: 'color' });
+}
+DEV_DEFAULTS.l2Decor = 1;
+DEV_META.push({ k: 'l2Decor', g: 'level2', label: 'Decoration amount (× beams, carts, soot, lanterns, picks)', min: 0, max: 4, step: 0.05 });
 export const ARCH_KNOBS = rangeKnobs('arch', [
   ['arVines',   'Arched vine clusters per floor',      0, 40, 0.5,   9, 13],
   ['arCluster', 'Arches per cluster',                  1, 8, 0.1,    1.5, 3.5],

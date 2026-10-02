@@ -20,7 +20,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
   const r = await page.evaluate(async () => {
     const L = window.__lvl, W = L.world, p = L.p, PW = 12, PH = 22, WEB_HAND = 3;
-    for (const k of ['webSag', 'bendK', 'bendDamp', 'bendPush', 'bendGrab', 'bendDip', 'bendMax', 'vineGrav', 'vineDamp', 'vinePush', 'vineMax']) DEV[k] = DEV_DEFAULTS[k];
+    for (const k of ['webSag', 'bendK', 'bendDamp', 'bendPush', 'bendGrab', 'bendDip', 'bendMax', 'vineGrav', 'vineDamp', 'vinePush', 'vineMax', 'vineLinks', 'vineTailDamp']) DEV[k] = DEV_DEFAULTS[k];
     const frame = () => new Promise(requestAnimationFrame);
     const frames = async n => { for (let i = 0; i < n; i++) await frame(); };
     const stick = (nx, ny) => { window.__in.current.left = nx || ny ? { active: true, nx, ny, mag: 1, dy: ny } : { active: false, nx: 0, ny: 0, mag: 0, dy: 0 }; };
@@ -91,7 +91,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     out.pastFrames = n; out.pastSw = +swMost.toFixed(3); out.swungYourWay = firstSign > 0;
     stick(0, 0);
     p.x = room.l + 30; p.y = room.y - 12; p.vx = 0; p.vy = 0;
-    out.vineSettled = await until(() => !vine.sw && !vine.swv, 900);
+    out.vineSettled = await until(() => !vine.sw && !vine.swv && !vine.tl, 900);
 
     // grab it on the move: you swing on it and it settles under its root
     vine = mkVine();
@@ -112,6 +112,22 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     await frames(40);
     out.vineLeft = L.zfx.climb !== vine && Math.abs(pc().x - room.x) > 20;
     stick(0, 0);
+
+    // v129: grab it near the top on the move: the part below your hands trails, not stiff in line
+    vine = mkVine();
+    p.x = room.x - PW / 2; p.y = top + 10 - WEB_HAND; p.vx = 160; p.vy = 0; p.fuel = 1;
+    let tailBend = 0, tailHeld = 0, shot = false;
+    for (let i = 0; i < 150; i++) {
+      await frame();
+      if (L.zfx.climb === vine && p.swing) tailHeld++;
+      if (vine.tl) {
+        const end = vinePt(vine, vine.len), rigid = Math.sin(vine.sw || 0) * vine.len;
+        const bend = Math.abs(end.x - rigid);
+        if (bend > tailBend) tailBend = bend;
+        if (!shot && bend > 10) { shot = true; window.__shotNow = true; }
+      }
+    }
+    out.tailHeld = tailHeld; out.tailBend = +tailBend.toFixed(1); out.tailJoint = vine.sj;
 
     // ---- an arched vine: drop onto it ----
     room = L.sandbox({ w: 400, h: 200, roof: true });
@@ -151,6 +167,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the vine hangs through your hands as you swing', r.vineOnHands < 4, r.vineOnHands);
   check('the swing dies away under its root, still holding on', r.swingRest < 3 && r.stillOn, r);
   check('the jetpack still takes you off it', r.vineLeft);
+  check('grabbed near its top and swung, the vine below your hands trails (not stiff)', r.tailHeld > 60 && r.tailBend > 8 && r.tailJoint < 20, r);
   check('an arched vine: drop onto it and you hang on', r.archHeld, r);
   check('it dips and settles at the dip, your hands on it', r.archDipMost > dip * 0.8 && Math.abs(r.archRest - dip) < 0.5 && r.archHands < 6, r);
   check('no page errors', errs.length === 0, errs.slice(0, 3));

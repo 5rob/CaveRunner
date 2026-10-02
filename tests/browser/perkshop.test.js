@@ -105,6 +105,22 @@ const DIR = path.join(__dirname, '..', 'build');
   await page.waitForTimeout(100);
   check('and it counts (the HUD column shows it)', await page.evaluate(() => document.querySelectorAll('.perkpip').length === 1));
   await page.screenshot({ path: path.join(DIR, 'exosuit_fitted.png') });
+  // a second copy can't go in too: the fitted one shows in use and won't drag into another slot
+  await page.evaluate(id => { window.__in.current.loadout.perks.push(id); window.__in.current.notify(); }, pid);
+  await page.waitForTimeout(150);
+  check('a fitted perk shows in use in the grid', await page.evaluate(id => document.querySelector('.xperk[data-perk="' + id + '"]').classList.contains('inuse'), pid));
+  const si2 = await page.evaluate(([id, s0]) => { for (let i = 0; i < SUIT_LEN; i++) if (i !== s0 && fitsSlot(id, i)) return i; return -1; }, [pid, si]);
+  if (si2 >= 0) {
+    const slot2 = await page.evaluate(i => { const r = document.querySelector('[data-xslot="' + i + '"]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }, si2);
+    await dragTo(tile, slot2);
+    // (an in-use perk doesn't drag: the press was a tap, which shows its card; close it)
+    await page.evaluate(() => { const sh = document.querySelector('.exosuit .shade'); if (sh) sh.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true })); });
+    await page.waitForTimeout(100);
+  }
+  st = await page.evaluate(() => ({ suit: window.__in.current.loadout.suit.slice(), perks: window.__in.current.loadout.perks.slice() }));
+  check('and a second copy is not fitted', st.suit.filter(x => x === pid).length === 1 && st.perks.filter(x => x === pid).length === 1, st);
+  await page.evaluate(id => { const P = window.__in.current.loadout.perks; P.splice(P.indexOf(id), 1); window.__in.current.notify(); }, pid);
+  await page.waitForTimeout(150);
   // drag it off again
   await dragTo(slot, tile);
   st = await page.evaluate(() => ({ suit: window.__in.current.loadout.suit.slice(), perks: window.__in.current.loadout.perks.slice() }));

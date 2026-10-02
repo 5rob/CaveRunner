@@ -125,10 +125,10 @@ export const PERK_PRICE = 200;
 /** @param {string} id */
 export const perkPrice = id => (PERKS[id] && PERKS[id].tier ? STAT_PRICE[PERKS[id].tier - 1] : PERK_PRICE);
 
-// The perks that count: the ones fitted to the suit
+// The perks that count: the ones fitted to the suit, each once (no doubling up: v129)
 /** @param {{ suit?: (string | null)[] }} lo @returns {string[]} */
 export function activePerks(lo) {
-  return (lo.suit || []).filter(id => id && PERKS[id]);
+  return (lo.suit || []).filter((id, i, a) => id && PERKS[id] && a.indexOf(id) === i);
 }
 
 // Everything the perks you are carrying add up to. Multipliers multiply, flags stick,

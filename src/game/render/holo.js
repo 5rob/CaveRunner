@@ -173,12 +173,16 @@ function glitch(lc, C, g, t, dpr) {
   lc.globalCompositeOperation = 'source-over';
 }
 
+// the hologram's number: the creatures left (you too, out of the shop), or -2 once repossessed
+/** @param {World} W */
+export const holoCount = W => (W.repo ? -2 : bioCount(W.enemies, !W.p.dead && W.p.y + PH <= SHOP_Y));
+
 // The hologram for this frame, made once into its own layer (the canvas's size, screen space)
 // and drawn from there: right after the background, before the shop wall and the rock (so rock
 // and the shop cover it). The fog swap (light.js) and the bloom (fx.js) reuse the layer
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawHolo(W, G, F) {
-  const n = W.repo ? -2 : bioCount(W.enemies, !W.p.dead && W.p.y + PH <= SHOP_Y);
+  const n = G.RPV && G.RPV.bio != null ? G.RPV.bio : holoCount(W);
   if (n !== L.n) {
     if (L.n >= 0) L.gt = W.time;
     if (L.n > 0 && n < L.n) L.ft = W.time;      // fewer of them: a kill, so it flashes

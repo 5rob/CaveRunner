@@ -6,7 +6,7 @@
 import { BH, BRICK, BW, CELL, CH, CW, ROCK, SHOP_TOP } from '../core/consts.js';
 import { mix } from '../core/util.js';
 import { decorFor, themeFor } from '../data/themes.js';
-import { kr } from '../dev/knobs.js';
+import { DEV, kr } from '../dev/knobs.js';
 import { FUEL_GRASS, FUEL_MOSS, FUEL_WOOD } from './fire.js';
 import { tent } from './sway.js';
 import { timberFrame } from './strata.js';
@@ -340,7 +340,7 @@ export function decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel, zone) {
     }
   };
   function place(it) {
-    const want = it.n * DECOR_DENSITY, got = [];
+    const want = it.n * DECOR_DENSITY * (floor === 2 ? DEV.l2Decor : 1), got = [];   // floor 2: its Dev knob
     const pool = it.at === 'surf' ? null : it.at === 'flat' || it.at === 'pit' ? sites.floor : sites[it.at];
     for (let a = 0; a < want * 40 && got.length < want; a++) {
       let at = it.at, i, side = 0;

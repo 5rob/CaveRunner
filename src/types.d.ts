@@ -278,6 +278,7 @@ interface Prop {
   climb?: number;             // an arch: its climbing speed, rolled when you first hang on it
   // giving (world/sway.js): an arch's bend (as a WebLine's), a hanging vine's swing angle and speed
   wx?: number; wy?: number; wvx?: number; wvy?: number; wu?: number; wh?: boolean; sw?: number; swv?: number;
+  sj?: number; tl?: number[]; tq?: number[];   // a swung vine's joint depth and its tail's link ends (now, last step)
 }
 
 /** a thing on the ground: a mod, a gun, a heart */
@@ -578,6 +579,8 @@ interface ClipMeta { id: string; name: string; date: number; floor: number; secs
 /** the replay's view (App's Witness sets it; draw() reads it as G.RPV) */
 interface ReplayView {
   t: number; speed: number; playing: boolean; fog: boolean; follow: boolean; loop?: boolean;
+  full?: boolean;             // exporting: drawn on the whole screen (the video is the screen's shape), not just above the panel
+  bio?: number;               // the hologram's number at this moment of the replay (from the snapshot)
   zoom: number; cx: number; cy: number; unit?: number; panelH?: number;
   clip: Clip;                 // what's playing
   playPx?: number;            // the play area's height in canvas px (drawCamera sets it)
@@ -604,7 +607,7 @@ interface GameInput {
   hud?: Hud; witness?: Witness | null; replay?: ReplayView | null; spawnGun?: number;
   saveClip?: (C: Clip) => Promise<ClipMeta | null>;   // Game: keep a death replay (systems/recorder.js clipKeep)
   clipFromSaved?: (S: SavedClip) => Clip;            // Game: a stored clip ready to play
-  requestRestart?: () => void; promptBottom?: number; newCave?: boolean; ctlH?: number;
+  requestRestart?: () => void; promptBottom?: number; newCave?: boolean | number; ctlH?: number;   // newCave (Dev): true = this floor again, a number = go to that floor
   mapOpen?: boolean; floor?: number; saveRun?: () => void;
   perkCollection: string[];   // the perks unlocked at the perk machine, across runs
   collection: string[];       // the mods unlocked, kept across runs (save/save.js loadCollection)

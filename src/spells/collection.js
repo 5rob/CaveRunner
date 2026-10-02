@@ -1,6 +1,6 @@
 // @ts-check
 // The mod collection the vending machine sells from (ui/vendshop.js, game/systems/shops.js):
-// which mods you have unlocked is kept across runs (save/save.js: loadCollection), and a red
+// which mods you have unlocked is kept for the run (save/save.js: loadCollection; a death empties it), and a red
 // crystal found in the cave unlocks one more, rolled off the drop table of the floor it came from.
 
 import { PERKS, PERK_IDS } from '../data/perks.js';

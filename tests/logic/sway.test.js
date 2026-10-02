@@ -3,7 +3,7 @@
 // settles and never passes its widest; a web line sags at rest and runs anchor to anchor;
 // an arch and a hanging vine are found where they're bent and swung to.
 const G = require('../load');
-const { tent, bendStep, bendPush, bendAwake, swingStep, webAt, webNearU, archNear, archAt, archCurve, hangX } = G;
+const { tent, bendStep, bendPush, bendAwake, swingStep, webAt, webNearU, archNear, archAt, archCurve, hangX, tailStep, vinePt } = G;
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
 const dt = 1 / 60;
@@ -77,9 +77,33 @@ check('tent: 0 at the ends, 1 at its peak', tent(0, 0.3) === 0 && tent(1, 0.3) =
   check('a swung vine is across by sin(sw) × depth', Math.abs(hangX(pr, 40) - Math.sin(0.5) * 40) < 1e-9 && hangX(pr, 0) === 0 && Math.abs(hangX(pr, 99) - Math.sin(0.5) * 50) < 1e-9);
 }
 
+// v129: held near its top and swung, the part below your grip trails (bends) instead of staying
+// in line with it, keeps its length, and sleeps (dropped) once the vine is still again
+{
+  const pr = { x: 0, y: 0, len: 80, sj: 10, sw: 0, swv: 0 };
+  let bend = 0, worst = 0;
+  for (let i = 0; i < 120; i++) {
+    pr.sw = 0.6 * Math.sin(i * dt * 5); pr.swv = 1;     // the grip swinging it to and fro
+    tailStep(pr, 3, 1400, 1.5, dt);
+    const end = vinePt(pr, 80), rigid = Math.sin(pr.sw) * 80;
+    bend = Math.max(bend, Math.abs(end.x - rigid));
+    let L = 0, a = vinePt(pr, 10);
+    for (let k = 1; k <= 3; k++) { const b = vinePt(pr, 10 + k * 70 / 3); L += Math.hypot(b.x - a.x, b.y - a.y); a = b; }
+    worst = Math.max(worst, Math.abs(L - 70));
+  }
+  check('held near the top and swung, its bottom trails, not in line', bend > 8, bend);
+  check('the tail keeps its length', worst < 1.5, worst);
+  const j = vinePt(pr, 10);
+  check('the vine is joined at your grip', Math.abs(j.x - Math.sin(pr.sw) * 10) < 1e-9 && Math.abs(j.y - Math.cos(pr.sw) * 10) < 1e-9, j);
+  pr.sw = 0; pr.swv = 0;
+  let n = 0;
+  while (tailStep(pr, 3, 1400, 1.5, dt) && n < 3000) n++;
+  check('let go: the tail settles straight down and sleeps', !pr.tl && n < 2000 && Math.abs(vinePt(pr, 80).x) < 1e-9, n);
+}
+
 // the knobs are on the Dev panel in their own group
 {
-  const keys = ['webSag', 'bendK', 'bendDamp', 'bendPush', 'bendGrab', 'bendDip', 'bendMax', 'vineGrav', 'vineDamp', 'vinePush', 'vineMax'];
+  const keys = ['webSag', 'bendK', 'bendDamp', 'bendPush', 'bendGrab', 'bendDip', 'bendMax', 'vineGrav', 'vineDamp', 'vinePush', 'vineMax', 'vineLinks', 'vineTailDamp'];
   check('sway knobs: each has a default and a Dev row', keys.every(k => typeof G.DEV_DEFAULTS[k] === 'number' && G.DEV_META.some(m => m.k === k && m.g === 'sway')));
   check('and the group is listed', G.DEV_GROUPS.some(g => g[0] === 'sway'));
 }
