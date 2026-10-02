@@ -13,7 +13,7 @@ import { themeFor } from '../../data/themes.js';
 import { DEV, kr, spr } from '../../dev/knobs.js';
 import { PLANTS, PROP_DMG, archNear, propAnchored } from '../../world/decorate.js';
 import { FIRE_COLS } from '../../world/fire.js';
-import { bendAwake, bendPush, bendStep, hangRootX, hangRootY, hangX, swingStep, swings, webNearU } from '../../world/sway.js';
+import { bendAwake, bendPush, bendStep, hangRootX, hangRootY, hangX, swingStep, swings, tailStep, webNearU } from '../../world/sway.js';
 import { stepAmbience } from './ambience.js';
 import { damageEnemy } from './enemies.js';
 import { ignite, setAlight, youAlight } from './fire.js';
@@ -38,7 +38,7 @@ export function blowProp(W, G, pr) {
 /** @param {World} W @param {Prop} pr @param {number} pad */
 // (a hanging vine is where its swing, and the arch it hangs off, have carried it at your height)
 export const pOver = (W, pr, pad) => {
-  const sx = pr.sw || pr.on ? hangX(pr, W.p.y + PH / 2) : 0, sy = pr.on ? hangRootY(pr) : 0;
+  const sx = pr.sw || pr.on || pr.tl ? hangX(pr, W.p.y + PH / 2) : 0, sy = pr.on ? hangRootY(pr) : 0;
   return W.p.x + PW > pr.x + sx + pr.l - pad && W.p.x < pr.x + sx + pr.r + pad &&
     W.p.y + PH > pr.y + sy + pr.t0 - pad && W.p.y < pr.y + sy + pr.b + pad;
 };
@@ -207,6 +207,7 @@ export function decorStep(W, G, dt, pcx, pcy) {
             const Lh = clamp(W.p.y + WEB_HAND - pr.y - hangRootY(pr), 6, pr.len);
             pr.sw = clamp(Math.asin(clamp((pcx - pr.x - hangRootX(pr)) / Lh, -1, 1)), -DEV.vineMax, DEV.vineMax);
             pr.swv = W.p.vx / Lh;
+            pr.sj = Lh;                        // the joint at your hands: below it the tail hangs free
           } else {
             // brushed past (or pushed across while hanging on): it swings the way you went
             if (me && pOver(W, pr, 1)) {
@@ -215,6 +216,7 @@ export function decorStep(W, G, dt, pcx, pcy) {
             }
             if (pr.sw || pr.swv) swingStep(pr, pr.len * 0.6, GRAVITY * DEV.vineGrav, DEV.vineDamp, DEV.vineMax, dt);
           }
+          if (pr.sw || pr.swv || pr.tl) tailStep(pr, DEV.vineLinks, GRAVITY, DEV.vineTailDamp, dt);
         }
         if (me && pOver(W, pr, 0)) z.climb = pr;
         if (me && PLANTS[pr.st] && pOver(W, pr, 1)) W.plantsNow.add(pr);

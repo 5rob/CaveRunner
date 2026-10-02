@@ -14,6 +14,7 @@ import {
 } from '../../replay/replay.js';
 import { clipName, clipPut } from '../../save/clips.js';
 import { draw } from '../render/draw.js';
+import { holoCount } from '../render/holo.js';
 
 // every partial put on the two terrain canvases (dig, blast, burn, paint) lands in REC.dirty:
 // Game wraps their putImageData once, as soon as G is made, before anything draws on them
@@ -95,7 +96,7 @@ export function recSample(W, G) {
     return out;
   };
   const S = { t: G.REC.t, time: W.time, flick: W.flick, leanX: W.leanX, leanY: W.leanY, glowN: W.glowN, fireN: W.fireN, p: rpClone(W.p),
-    ghost: W.ghost ? rpClone(W.ghost) : null };
+    ghost: W.ghost ? rpClone(W.ghost) : null, bio: holoCount(W) };   // the hologram's number (the snapshot only holds what's near)
   for (const k in G.RP_ARR) S[k] = grab(G.RP_ARR[k], 40);
   S.enemies = grab(W.enemies, 40, 'ty'); S.pickups = grab(W.pickups, 40); S.props = grab(W.props, 120);
   // the burning pixels in the box, and how much fuel each has left
@@ -204,6 +205,7 @@ export function drawReplay(W, G, V) {
     V.cx = clamp(V.cx, C.lim[0], C.lim[2]); V.cy = clamp(V.cy, C.lim[1], C.lim[3]);
   }
   const near = F.near;
+  V.bio = near.bio;                      // the hologram shows the count as it was (holo.js)
   for (let k = 0; k < near.fire.length; k++) G.RT.fireT[near.fire[k]] = near.fireT[k];
   // swap the recording in
   const keepL = {};

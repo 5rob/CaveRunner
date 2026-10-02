@@ -1,7 +1,7 @@
 // @ts-check
 // The mod vending machine's ShopDef (ui/vendshop.js): the collection is every mod that can drop,
-// by rarity; a red crystal unlocks one off its floor's drop table (crystalRoll), kept across runs
-// (saveCollection); "Dispense selected" buys a copy, popped out of the machine (stepShops).
+// by rarity; a red crystal unlocks one off its floor's drop table (crystalRoll), kept for the run
+// (saveCollection; a death empties it); "Dispense selected" buys a copy, popped out of the machine (stepShops).
 
 import { PERKS, PERK_IDS, ROMAN, STAT_KEYS, STAT_PERKS, perkPrice } from '../data/perks.js';
 import { saveCollection, savePerkCollection } from '../save/save.js';

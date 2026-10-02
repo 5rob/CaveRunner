@@ -30,14 +30,19 @@ export function cleanGun(g) {
 /** @param {any} lo whatever the store held @returns {{ perks: string[], suit: (string | null)[] }} */
 export function cleanPerks(lo) {
   const carried = (Array.isArray(lo.perks) ? lo.perks : []).filter(id => PERKS[id]);
+  // a perk is fitted once at most (v129): a second copy in the suit goes back to the carried ones
   if (Array.isArray(lo.suit)) {
     const suit = Array.from({ length: SUIT_LEN }, (_, i) => (fitsSlot(lo.suit[i], i) ? lo.suit[i] : null));
+    suit.forEach((id, i) => { if (id && suit.indexOf(id) !== i) { carried.push(id); suit[i] = null; } });
     return { perks: carried, suit };
   }
   const off = Array.isArray(lo.perksOff) ? lo.perksOff : [];
   const on = carried.filter((_, i) => !off.includes(i)), rest = carried.filter((_, i) => off.includes(i));
-  const suit = Array.from({ length: SUIT_LEN }, (_, i) => (i < SUIT_SLOTS && on[i]) || null);
-  return { perks: rest.concat(on.slice(SUIT_SLOTS)), suit };
+  const fit = on.filter((id, i) => on.indexOf(id) === i).slice(0, SUIT_SLOTS);
+  const left = on.slice();
+  for (const id of fit) left.splice(left.indexOf(id), 1);
+  const suit = Array.from({ length: SUIT_LEN }, (_, i) => (i < SUIT_SLOTS && fit[i]) || null);
+  return { perks: rest.concat(left), suit };
 }
 /** @param {any} lo whatever the store held @returns {Loadout | null} */
 export function cleanLoadout(lo) {
@@ -111,8 +116,8 @@ export function readSave(raw) {
 export const loadSave = () => { try { return readSave(localStorage.getItem(SAVE_KEY)); } catch (_) { return null; } };
 export const clearSave = () => { try { localStorage.removeItem(SAVE_KEY); } catch (_) {} };
 
-// ---- the mod collection: the mods you have unlocked, kept across runs (a new run keeps it)
-// under its own key, never cleared by clearSave ----
+// ---- the mod collection: the mods you have unlocked this run, under its own key (not cleared by
+// clearSave; a death empties it, game/systems/player.js) ----
 export const COLLECTION_KEY = 'caverunner-collection';
 /** @param {string | null} raw @returns {string[]} */
 export function readCollection(raw) {
@@ -125,7 +130,7 @@ export const loadCollection = () => { try { return readCollection(localStorage.g
 /** @param {string[]} ids */
 export const saveCollection = ids => { try { localStorage.setItem(COLLECTION_KEY, JSON.stringify(ids)); } catch (_) {} };
 
-// the perks unlocked at the perk machine, kept across runs the same way
+// the perks unlocked at the perk machine, kept across runs (a death keeps them)
 export const PERK_COLLECTION_KEY = 'caverunner-perkcollection';
 /** @param {string | null} raw @returns {string[]} */
 export function readPerkCollection(raw) {

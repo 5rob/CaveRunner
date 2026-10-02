@@ -9,7 +9,15 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
-- **Released: v128** on `main`, 2026-10-03: elites drop a pile of red and green crystals (one tap
+- **Released: v129** on `main`, 2026-10-03: a swung vine trails below your grip (a tail of verlet
+  links, `world/sway.js` `tailStep`/`vinePt`; Dev `vineLinks`, `vineTailDamp`); Witness export fixed (it
+  was always 300 × 150: now the screen's shape) and the replay's hologram shows the count of that
+  moment (`bio` per snapshot); mods unlocked reset on death (perks stay); one of each perk in the
+  suit; **Dev → Level 2: layout & look** (floor 2's cave numbers, palette, decoration; **Floor 2**
+  button). The owner may paste Dev numbers for floor 2. Noticed, not fixed: on floor 2, seed 5
+  (`makeLevel(5, 2)`) the runner-box flood from the shop doesn't reach the top (v128 too): only
+  floor 1 has the "way through" repair.
+- **v128** on `main`, 2026-10-03: elites drop a pile of red and green crystals (one tap
   takes the pile) and have a Dev group, **Elites** (count per floor, health, damage, gold, crystals,
   size, tint, glow). The owner may paste Dev numbers for it.
 - **v127** on `main`, 2026-10-02: vines and web lines give (`world/sway.js`: one spring per

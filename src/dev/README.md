@@ -24,6 +24,11 @@
   in the looks and toughness ranges (size and tint update live); the rewards roll when it dies.
 - Sway (`g: 'sway'`): `webSag`, `bendK`/`bendDamp`/`bendPush`/`bendGrab`/`bendDip`/`bendMax` (web lines and
   arches), `vineGrav`/`vineDamp`/`vinePush`/`vineMax` (hanging vines): `world/sway.js`.
+- Level 2 (`g: 'level2'`, v129): `L2_KNOBS` (floor 2's noise cave, all ranges; `makeLevel` rolls them on
+  its own generator, `K2`, so the defaults are exactly the old cave), `L2_LOOK` (its palette, colour
+  pickers, defaults = Coal seams; `data/themes.js` `themeFor` builds the theme from them), `l2Decor`
+  (× decoration, `decorate`). Changes show on the next cave; **Floor 2** on the panel goes there.
+- Sway also has `vineLinks` (links in a swung vine's tail) and `vineTailDamp`.
 - Carrot (`g: 'carrot'`, `CARROT_KNOBS`): `caCam`, `caTorch`, `caAggro`, `caAim`, each a min (no Carrot
   fitted) / max (Carrot V) multiplier; `carrotAt(k, W.pb.carrot)` is the value at a level.
 - The menus' pointer (`g: 'menuptr'`): `ptrStart`, `ptrReach`, `ptrSize`, `ptrLine`, `snapR`, `snapPull`,

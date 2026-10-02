@@ -5,6 +5,29 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v129 — vines that trail, Witness fixes, one of each perk, mods reset on death, Dev for floor 2
+Released 2026-10-03.
+
+- **A swung vine has a tail** (`world/sway.js` `tailStep`/`vinePt`/`vineJoint`): above the joint
+  (`sj`: your grip while held) it's the one straight piece turned by `sw`; below it, `vineLinks` (4)
+  verlet links (`tl`/`tq`) hang off the joint under gravity, damped by `vineTailDamp`, so grabbing near
+  the top no longer swings the bottom stiff in line. Drawn through `vinePt` (no more canvas rotate);
+  `hangX` follows it. The tail is dropped once still, so the vine sleeps.
+- **Witness export is the screen's shape**: the copy canvas started 300 × 150 (a new canvas's size), so
+  the "size it on the first frame" check never fired and every video was 300 × 150. And while exporting
+  the replay draws on the whole screen (`V.full`), not just above the panel.
+- **The replay's hologram counts what it counted then**: each snapshot keeps `bio` (`holoCount`, the
+  whole floor), and `drawHolo` shows `G.RPV.bio` in a replay (it counted only the creatures recorded
+  near you). Older saved clips fall back to the old count.
+- **Mods unlocked reset on death** (`hurt` empties `collection` and its store); perks unlocked stay.
+- **One of each perk in the suit**: `activePerks` counts a perk once; `cleanPerks` sends a second
+  fitted copy back to the carried ones; the Exo Suit grid shows a fitted perk ticked and faded
+  (`.xperk.inuse`) and won't fit a second copy.
+- **Dev → Level 2: layout & look** (`L2_KNOBS`, `L2_LOOK`, `l2Decor`): every number of floor 2's
+  noise cave as a min/max range (rolled on their own generator: at the defaults the caves are exactly
+  v128's, pinned in `level2.test.js`), its palette as colour pickers (`themeFor` builds Coal seams
+  from them), and a decoration multiplier. **Dev → Floor 2** (`newCave = 2`) goes there.
+
 ## v128 — elites drop crystal piles, and a Dev group for them
 Released 2026-10-03.
 

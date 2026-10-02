@@ -141,7 +141,7 @@ the 3 after it**, drawn exactly as the game draws it: creatures, shots, fire, di
 - **💾 Save** keeps it, to watch again later (see below).
 - **🎬 Export video** plays it once from the start, just as you've set it up (where the camera
   is or whether it follows you, the zoom, the speed, fog on or off), records it with its sound,
-  and saves an MP4 to the phone, in **Movies/CaveRunner**. (Saving videos needs the app from
+  and saves an MP4 to the phone, in **Movies/CaveRunner**, the shape of your screen. (Saving videos needs the app from
   the releases page as of v124; if your phone can't record MP4 itself, the video is converted
   with ffmpeg, which downloads once, about 30 MB.)
 
@@ -190,7 +190,7 @@ flickering ⚙️ hologram on its glass. Stand at it and "Tap R to shop" opens i
 the screen (the game pauses). The top half is your **collection**: a cell for every mod,
 grouped by rarity, empty until you unlock it. Under it, the **red crystal** button: hand
 over a crystal and it unlocks a random mod you don't have yet, from the drop table of the
-floor that crystal came from. The collection is kept for good — a new run keeps it. The
+floor that crystal came from. The collection lasts the run: dying empties it (unlocked perks stay). The
 bottom half shows the selected mod's card and **Dispense selected** with its price: buy a
 copy and the menu closes and the mod pops out of the bottom of the machine onto the floor,
 for you to pick up. Tap things directly, or use the sticks: in a machine's menu the **right
@@ -262,7 +262,8 @@ movement speed, jetpack fuel, jetpack recharge, gold vacuum — each with a slot
 takes only that stat's perks, **six perk slots** for the rest, and every perk in a grid: the ones you
 carry lit (with how many), the ones you've unlocked but don't carry faded, the rest locked.
 Drag a carried perk onto a slot to fit it, a fitted one to another slot to swap, or off the
-slots to take it out again. Tap any perk to see its card. The suit is locked outside the
+slots to take it out again. Each perk fits once: one already fitted shows ticked and faded, and a
+second copy can't go in another slot. Tap any perk to see its card. The suit is locked outside the
 shop: change it there (or anywhere, with Tinker). The fitted perks show as a column of icons going
 up from above the map button; tap one for its card.
 
@@ -343,7 +344,8 @@ also gets **arched vines** of that plant across its open pockets.
 Vines and web lines give a little. Web lines sag. Fly through a web line or an arched vine and it
 bends the way you went, wobbles, then settles. Drop onto one and it dips under you and you bob on
 it. Brush past a hanging vine and it swings. Grab one while you're moving and you swing back and
-forth on it until it settles. The jetpack always takes you off.
+forth on it until it settles; hold it near the top and the rest of it trails and bends below
+your hands. The jetpack always takes you off.
 
 | Cave | Scenery |
 |---|---|
@@ -602,6 +604,7 @@ them if it cannot find either.
 - Wall torches either side of the prizes in the hidden rooms
 - Teleporter pads for the way in and the exit: a beam of blue light fading upward, specks rising in it, lightning crackling off the pad
 - Dev knobs for how many enemies a new level gets (and how many more each floor) and the level's sell reward
+- Dev → Level 2: floor 2's cave shape (feature size, vast areas, pockets, tunnels, the main route, chambers, side tunnels, smoothing, ledges, frames, platforms), its colours and how much decoration it gets; Dev → Floor 2 takes you there
 - A background that sits well back from the rock, sliding slower as you move (parallax), with a big slanted bright-red hologram halfway between, drawn in chunky pixels like the rock, whose light blooms over the cave: "N biological entities detected", counting every creature alive on the floor plus you while you're out of the shop; it flips and turns green at zero. It rests dark and flashes up on every kill, fading out over a few seconds (Dev → Hologram flash: brightness at rest and on a kill, fade length, and a curve to shape the fade)
 - The map only keeps what you had a line on: a wall hides its far side from the fog of war for good
 - Destructible pixel terrain: explosions and drilling shots eat everything except the outer border

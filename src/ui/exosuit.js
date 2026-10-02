@@ -118,6 +118,8 @@ export function ExoSuit({ input, close, refresh, canEdit, tabs }) {
       const no = () => { SFX.ui('poor'); setMsg(PERKS[id].stat ? PERKS[id].name + ' fits only the ' + STAT_PERKS[PERKS[id].stat].name + ' slot'
         : 'Stat slots take only their stat’s perks'); };
       if (to >= 0 && !fitsSlot(id, to)) { no(); return; }
+      // one of each in the suit: a perk already fitted can't go in a second slot
+      if (slot < 0 && to >= 0 && suit.includes(id)) { SFX.ui('poor'); setMsg(PERKS[id].name + ' is already fitted'); return; }
       if (slot >= 0 && to >= 0 && suit[to] && !fitsSlot(suit[to], slot)) { no(); return; }
       setMsg('');
       if (slot < 0 && to >= 0) {                 // fit it: one off the carried pile, the old one back
@@ -187,17 +189,18 @@ export function ExoSuit({ input, close, refresh, canEdit, tabs }) {
         h('b', null, SV[k][0]), h('i', null, SV[k][1])))),
     h('p', { className: 'lab' }, 'Perk slots — ' + suit.slice(0, SUIT_SLOTS).filter(Boolean).length + ' of ' + SUIT_SLOTS + ' fitted'),
     h('div', { className: 'xslots' }, suit.slice(0, SUIT_SLOTS).map((_, i) => slotEl(i))),
-    h('p', { className: 'lab' }, 'Perks — drag one you carry onto a slot'),
+    h('p', { className: 'lab' }, 'Perks — drag one you carry onto a slot (one of each)'),
     h('div', { className: 'xgrid scroll' },
       PERK_IDS.map(id => {
-        const n = LO.perks.filter(p => p === id).length, pk = PERKS[id];
-        const state = n ? 'have' : unlocked.includes(id) ? 'none' : 'locked';
+        const n = LO.perks.filter(p => p === id).length, pk = PERKS[id], on = suit.includes(id);
+        // fitted already: shown in use, and no second copy can be fitted (v129)
+        const state = on ? 'inuse' : n ? 'have' : unlocked.includes(id) ? 'none' : 'locked';
         return h('div', { key: id, 'data-perk': id, className: 'xperk ' + state, title: pk.name,
-            style: { color: pk.tint, borderColor: pk.tint }, onPointerDown: press(id, -1, n > 0) },
+            style: { color: pk.tint, borderColor: pk.tint }, onPointerDown: press(id, -1, n > 0 && !on) },
           pk.glyph,
           pk.tier ? h('em', null, ROMAN[pk.tier - 1]) : null,
           n > 1 ? h('i', null, '×' + n) : null,
-          state === 'locked' ? h('u', null, '🔒') : null);
+          state === 'locked' ? h('u', null, '🔒') : on ? h('u', null, '✓') : null);
       })),
     msg ? h('div', { className: 'vmsg xmsg' }, msg) : null,
     h('div', { className: 'info' }, canEdit

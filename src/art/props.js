@@ -4,7 +4,7 @@
 
 import { glowAt } from './sprites.js';
 import { mix } from '../core/util.js';
-import { hangRootX, hangRootY, swings, tent } from '../world/sway.js';
+import { swings, tent, vinePt } from '../world/sway.js';
 
 // ---- drawing the props ----
 /** @type {(c: ArrayLike<number>, a?: number) => string} */
@@ -72,12 +72,10 @@ export function drawProp(ctx, pr, time, T) {
   switch (pr.k) {
     case 'climb': {
       if (pr.arc) { drawArch(ctx, pr, time, T); break; }
-      // swinging (and hung off an arch that's bending): the whole vine turned about its root
-      if (swings(pr) && (pr.sw || pr.on)) {
-        ctx.translate(x + hangRootX(pr), y + hangRootY(pr));
-        if (pr.sw) ctx.rotate(-pr.sw);
-        ctx.translate(-x, -y);
-      }
+      // swinging (and hung off an arch that's bending): straight to the joint, then its tail
+      // (world/sway.js vinePt); px/py: where the vine is k down it
+      const bent = swings(pr) && !!(pr.sw || pr.on || pr.tl);
+      const px = k => (bent ? x + vinePt(pr, k).x : x), py = k => (bent ? y + vinePt(pr, k).y : y + k);
       const len = pr.len, sw = st === 'kelp' ? 5 : st === 'chain' ? 0.8 : 1.6;
       const off = k => Math.sin(time * (st === 'kelp' ? 1.6 : 1.1) + pr.seed * 6 + k * 0.08) * sw * (k / len);
       if (st === 'icefall') {
@@ -92,8 +90,8 @@ export function drawProp(ctx, pr, time, T) {
       if (st === 'chain') {
         ctx.strokeStyle = '#6f635a'; ctx.lineWidth = 0.9;
         for (let k = 0; k < len; k += 3.2) {
-          const lx = x + off(k), vert = Math.round(k / 3.2) % 2 === 0;
-          ctx.beginPath(); ctx.ellipse(lx, y + k + 1.6, vert ? 1 : 1.8, vert ? 2 : 1.1, 0, 0, 6.29); ctx.stroke();
+          const lx = px(k + 1.6) + off(k), vert = Math.round(k / 3.2) % 2 === 0;
+          ctx.beginPath(); ctx.ellipse(lx, py(k + 1.6), vert ? 1 : 1.8, vert ? 2 : 1.1, 0, 0, 6.29); ctx.stroke();
         }
         break;
       }
@@ -101,25 +99,25 @@ export function drawProp(ctx, pr, time, T) {
         for (let s = -1; s <= 1; s++) {
           ctx.strokeStyle = rgbA(T.moss[1], 0.45 + 0.15 * s); ctx.lineWidth = 0.6;
           const l = len * (0.75 + 0.2 * Math.sin(s * 3 + pr.seed * 9));
-          ctx.beginPath(); ctx.moveTo(x + s * 1.6, y);
-          for (let k = 0; k <= l; k += 4) ctx.lineTo(x + s * 1.6 + off(k) + Math.sin(k * 0.3 + s) * 0.6, y + k);
+          ctx.beginPath(); ctx.moveTo(px(0) + s * 1.6, py(0));
+          for (let k = 0; k <= l; k += 4) ctx.lineTo(px(k) + s * 1.6 + off(k) + Math.sin(k * 0.3 + s) * 0.6, py(k));
           ctx.stroke();
           ctx.fillStyle = rgbA(T.moss[1], 0.8);
-          ctx.beginPath(); ctx.arc(x + s * 1.6 + off(l), y + l, 1, 0, 6.29); ctx.fill();
+          ctx.beginPath(); ctx.arc(px(l) + s * 1.6 + off(l), py(l), 1, 0, 6.29); ctx.fill();
         }
         break;
       }
       const col = st === 'root' ? mix(T.moss[0], [200, 190, 160], 0.4) : T.moss[0];
       ctx.strokeStyle = rgbA(col); ctx.lineWidth = st === 'root' ? 2.2 : st === 'kelp' ? 1.8 : 1.3;
-      ctx.beginPath(); ctx.moveTo(x, y);
-      for (let k = 0; k <= len; k += 3) ctx.lineTo(x + off(k) + (st === 'root' ? Math.sin(k * 0.4 + pr.seed * 5) * 0.8 : 0), y + k);
+      ctx.beginPath(); ctx.moveTo(px(0), py(0));
+      for (let k = 0; k <= len; k += 3) ctx.lineTo(px(k) + off(k) + (st === 'root' ? Math.sin(k * 0.4 + pr.seed * 5) * 0.8 : 0), py(k));
       ctx.stroke();
       ctx.fillStyle = rgbA(T.moss[1]);
       for (let k = 4, s = 1; k < len; k += st === 'kelp' ? 7 : 5, s = -s) {
-        const lx = x + off(k);
-        if (st === 'root') { ctx.fillRect(lx - 1.4, y + k, 2.8, 1.4); continue; }
+        const lx = px(k) + off(k);
+        if (st === 'root') { ctx.fillRect(lx - 1.4, py(k), 2.8, 1.4); continue; }
         ctx.beginPath();
-        ctx.ellipse(lx + s * 2, y + k, st === 'kelp' ? 3 : 1.8, 0.9, s * 0.5, 0, 6.29); ctx.fill();
+        ctx.ellipse(lx + s * 2, py(k), st === 'kelp' ? 3 : 1.8, 0.9, s * 0.5, 0, 6.29); ctx.fill();
       }
       break;
     }

@@ -39,6 +39,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     out.meanGap = dts.reduce((a, b) => a + b, 0) / Math.max(1, dts.length);
     out.hasEnemy = R.snaps[R.snaps.length - 1].enemies.length === 1;
     out.hasPlayer = !!R.snaps[R.snaps.length - 1].p;
+    out.bioSnap = R.snaps[R.snaps.length - 1].bio; out.bioLive = holoCount(L);
     // live for 11.5s of game time (the window is 10.5)
     const t0 = R.t;
     await frames(2000, () => R.t - t0 > 11.5);
@@ -65,6 +66,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('about 20 a second', Math.abs(r.meanGap - 0.05) < 0.012, r.meanGap);
   check('the creature is in the snapshot', r.hasEnemy);
   check('you are in the snapshot', r.hasPlayer);
+  check('the snapshot keeps the hologram count (the whole floor, not just what is near)', r.bioSnap === r.bioLive, [r.bioSnap, r.bioLive]);
   check('while alive, only ~10.5s is kept', r.keptSpan > 10 && r.keptSpan < 10.7, r.keptSpan);
   check('old terrain patches fold into the base', r.patchesOld === 0, r.patchesOld);
   check('a dig makes a patch', r.patchB);
@@ -95,6 +97,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     V.playing = false; V.t = W.t0; await frame(); await frame();
     const A = window.__holes.A, B = window.__holes.B;
     out.startA = alphaAt(A.x, A.y); out.startB = alphaAt(B.x, B.y);
+    out.bioStart = [V.bio, rpFrame(W.snaps, W.t0).near.bio];
     V.t = W.t1; await frame(); await frame();
     out.endA = alphaAt(A.x, A.y); out.endB = alphaAt(B.x, B.y);
     V.t = W.t0; await frame(); await frame();
@@ -108,6 +111,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   }).catch(e => ({ err: e.message }));
   check('the replay screen opens', q.open, q);
   check('the sticks are hidden under it', q.controlsHidden);
+  check('the hologram shows the count as it was then', q.bioStart && typeof q.bioStart[0] === 'number' && q.bioStart[0] === q.bioStart[1], q.bioStart);
   check('it plays', q.playing);
   check('start of replay: old hole A is there', q.startA === 0, q.startA);
   check('start of replay: hole B not dug yet', q.startB === 255, q.startB);

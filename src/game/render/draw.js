@@ -84,7 +84,7 @@ export function drawCamera(W, G, F) {
   const dpr = F.dpr = window.devicePixelRatio || 1;
   // the controls overlay the bottom of the canvas (see-through), so the play area is the
   // part above them: scale and frame to that, but still draw (and cull) the full canvas
-  const ctlPx = Math.min(G.c.height * 0.8, (G.RPV ? G.RPV.panelH || 0 : G.input.current.ctlH || 0) * dpr);   // a replay: its panel
+  const ctlPx = Math.min(G.c.height * 0.8, (G.RPV ? (G.RPV.full ? 0 : G.RPV.panelH || 0) : G.input.current.ctlH || 0) * dpr);   // a replay: its panel
   const playPx = F.playPx = G.c.height - ctlPx;
   // the Carrot stat pulls the live camera back (a replay keeps the viewer's own zoom)
   const s = Math.min(G.c.width / VIEW_W, playPx / VIEW_MIN_H) * DEV.zoom * (G.RPV ? G.RPV.zoom : 1 / carrotAt('caCam', W.pb.carrot)), vw = F.vw = G.c.width / s, vh = F.vh = G.c.height / s;

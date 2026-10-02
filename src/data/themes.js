@@ -2,6 +2,9 @@
 // What each floor looks and sounds like: its palette (THEMES), its five decorations (DECOR)
 // and its ambience (AMBIENCE). All picked by the floor number, never the seed.
 
+import { hexArr } from '../core/util.js';
+import { DEV, L2_LOOK } from '../dev/knobs.js';
+
 // ---- level themes ----
 // One palette per floor, picked by the floor number rather than rolled with the seed.
 // So floor 3 is the same frozen cave on every run and every restart, which is the
@@ -46,7 +49,30 @@ export const THEMES = [
     rock: [[42, 38, 58], [70, 64, 94]],    moss: [[72, 180, 190], [130, 230, 236]],
     brick: [[56, 48, 78], [88, 76, 116]],  mortar: [32, 28, 46], bed: [[18, 16, 28], [34, 30, 48]] },
 ];
-export const themeFor = (/** @type {number} */ floor) => THEMES[(Math.max(1, floor) - 1) % THEMES.length];
+// Coal seams (floor 2) wears the Dev panel's colours (L2_LOOK, group "Level 2"; their defaults are
+// its palette above), made into a theme once per change
+/** @type {Record<string, [keyof Theme, number?]>} */
+const L2_FIELD = { l2Bg: ['bg'], l2Bg2: ['bg2'], l2Rock1: ['rock', 0], l2Rock2: ['rock', 1], l2Moss1: ['moss', 0], l2Moss2: ['moss', 1],
+  l2Brick1: ['brick', 0], l2Brick2: ['brick', 1], l2Mortar: ['mortar'], l2Bed1: ['bed', 0], l2Bed2: ['bed', 1] };
+const L2 = { key: '', theme: THEMES[1] }, L2_DEF = L2_LOOK.map(r => r[2]).join();
+/** @param {number} floor @returns {Theme} */
+export function themeFor(floor) {
+  const T = THEMES[(Math.max(1, floor) - 1) % THEMES.length];
+  if (T !== THEMES[1]) return T;
+  const key = L2_LOOK.map(r => DEV[r[0]]).join();
+  if (key === L2_DEF) return T;                  // at the defaults: the palette itself
+  if (key !== L2.key) {
+    /** @type {any} */
+    const t = { ...T, rock: T.rock.slice(), moss: T.moss.slice(), brick: T.brick.slice(), bed: T.bed.slice() };
+    for (const [k] of L2_LOOK) {
+      const v = DEV[k], f = L2_FIELD[k];
+      if (typeof v !== 'string' || !/^#[0-9a-f]{6}$/i.test(v) || !f) continue;
+      if (f[1] == null) t[f[0]] = hexArr(v); else t[f[0]][f[1]] = hexArr(v);
+    }
+    L2.key = key; L2.theme = t;
+  }
+  return L2.theme;
+}
 
 // ---- level decoration: pass 2 (baked pixels) and pass 3 (props) ----
 // Every floor's theme gets five decorations. They come in three sorts:

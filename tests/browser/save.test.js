@@ -70,11 +70,19 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('update: gear kept, removed mod dropped', up.gold === 777 && up.bag === 'homing,bounce', up);
   check('update: fresh cave', up.seed !== oldSeed, up);
 
-  // dying wipes it
+  // dying wipes it, and the mods unlocked this run; the perks unlocked stay
+  await page.evaluate(() => {
+    window.__in.current.collection.push('homing'); localStorage.setItem('caverunner-collection', '["homing"]');
+    window.__in.current.perkCollection.push('glass'); localStorage.setItem('caverunner-perkcollection', '["glass"]');
+  });
   await page.evaluate(() => window.__lvl.hurt(1e6));
   await page.waitForTimeout(200);
-  const dead = await page.evaluate(() => ({ dead: window.__lvl.p.dead, save: localStorage.getItem('caverunner-save') }));
+  const dead = await page.evaluate(() => ({ dead: window.__lvl.p.dead, save: localStorage.getItem('caverunner-save'),
+    mods: window.__in.current.collection.length, modStore: localStorage.getItem('caverunner-collection'),
+    perks: window.__in.current.perkCollection.length, perkStore: localStorage.getItem('caverunner-perkcollection') }));
   check('death wipes the save', dead.dead && dead.save === null, dead);
+  check('death empties the mods unlocked', dead.mods === 0 && dead.modStore === '[]', dead);
+  check('but keeps the perks unlocked', dead.perks === 1 && dead.perkStore === '["glass"]', dead);
   await page.waitForTimeout(2300);
   check('a dead run is not re-saved', await page.evaluate(() => localStorage.getItem('caverunner-save')) === null);
   await page.reload();

@@ -156,7 +156,11 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   });
   console.log('     (this Chrome records ' + (mime || 'no MP4: the export would go through ffmpeg') + ')');
   if (mime) {
-    await page.evaluate(() => { window.__in.current.replay.speed = 2; });
+    await page.evaluate(() => {
+      window.__in.current.replay.speed = 2;
+      const cs = HTMLCanvasElement.prototype.captureStream;
+      HTMLCanvasElement.prototype.captureStream = function (...a) { window.__vidSize = [this.width, this.height]; return cs.apply(this, a); };
+    });
     const dl = page.waitForEvent('download', { timeout: 60000 }).catch(() => null);
     await page.tap('.wvideo');
     await page.waitForTimeout(300);
@@ -164,6 +168,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     check('the export shows its progress', during);
     const d = await dl;
     check('a video file comes out', !!d);
+    const shape = await page.evaluate(() => ({ v: window.__vidSize, s: [innerWidth, innerHeight] }));
+    check('the video is the shape of the screen', !!shape.v && Math.abs(shape.v[0] / shape.v[1] - shape.s[0] / shape.s[1]) < 0.01, shape);
     if (d) {
       const f = path.join(__dirname, '..', 'build', 'witness-export.mp4');
       await d.saveAs(f);

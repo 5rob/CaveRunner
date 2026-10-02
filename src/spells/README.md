@@ -9,7 +9,7 @@
 | `trace.js` | `tracePath` (flies a shot forward for the aim line), and the flight helpers the bullet loop shares: `driftStep`, `wigTurn`, `bhSp` |
 | `advisor.js` | `gunRate`, `buildAdvice` (`SHORTLIST`), `modPreview`/`previewPlan` (a mod card's use-example) |
 | `bagsim.js` | The bag screen's pure side: `castGroups`, `pullSteps`, `groupStats`, the trigger-held preview `fireSimNew`/`fireSimStep`/`fireSimGauges`, `statQual`, `gunModDeltas` |
-| `collection.js` | The vending machine's collection: `modTiers` (every `ALL_IDS` mod by `MOD_TIER`, the grid's groups), `crystalRoll(rnd, floor, owned)` (a red crystal's unlock: the floor's `modWeight` table minus what you own, then anything you don't, then null). Stored across runs by `save/save.js` (`loadCollection`/`saveCollection`) |
+| `collection.js` | The vending machine's collection: `modTiers` (every `ALL_IDS` mod by `MOD_TIER`, the grid's groups), `crystalRoll(rnd, floor, owned)` (a red crystal's unlock: the floor's `modWeight` table minus what you own, then anything you don't, then null). Stored (emptied when you die) by `save/save.js` (`loadCollection`/`saveCollection`) |
 | `gunshop.js` | The gun machine's offer: `newOffer`/`rollOffer` (`GUN_OFFER` guns), `shopGun` (the floor's `gunLevel`, or boosted: `BOOST_UP` deeper + `boostGun`), `shopGunPrice`, `rerollPrice(floor, n)`, `boostCost(n)` |
 
 The game side of casting (spawning shots, the bullet loop, fields and beams) is in
