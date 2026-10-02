@@ -8,6 +8,7 @@ import { SFX } from '../../audio/sfx.js';
 import { PH, PW } from '../../core/consts.js';
 import { spiderStep } from '../../creatures/spider.js';
 import { spr } from '../../dev/knobs.js';
+import { webNearU, webPath } from '../../world/sway.js';
 import { burst } from '../systems/particles.js';
 import { lineOfSight, solidAt, solidCell } from '../systems/terrain.js';
 
@@ -18,8 +19,16 @@ export function spiderMove(W, G, e, C) {
   const { dt, dx, dy, dist, sees, hunting, pcx, pcy } = C, k = e.k;
   // only on rock and its own lines (spiderStep); strings you when it has a clear line
   const cold = e.chill && e.chill < 1 ? e.chill : 1;
+  // on a line it rides the sag and bend (world/sway.js), which spiderStep doesn't know about:
+  // take last frame's off first, then put this frame's on after
+  if (e.wox || e.woy) { e.x -= e.wox || 0; e.y -= e.woy || 0; e.wox = e.woy = 0; }
   if (spiderStep(e, { solidCell: (cx, cy) => solidCell(W, cx, cy), webs: W.webs, hunting, goal: { x: pcx, y: pcy }, rnd: Math.random,
     speedMul: cold }, dt) === 'web') SFX.fx('lash', e.x, e.y);
+  if (e.sp && e.sp.mode === 'line' && e.sp.line) {
+    const L = e.sp.line, q = webNearU(L, e.x, e.y);
+    e.wox = q.x - (L.a0x + (L.b0x - L.a0x) * q.u); e.woy = q.y - (L.a0y + (L.b0y - L.a0y) * q.u);
+    e.x += e.wox; e.y += e.woy;
+  }
   e.silkT = (e.silkT || 0) - dt;
   const S = e.sp;
   if (hunting && e.silkT <= 0 && S && (S.mode === 'surf' || S.mode === 'line') &&
@@ -85,7 +94,7 @@ export function drawSilk(W, G) {
   G.ctx.strokeStyle = '#eef0f6';
   G.ctx.globalAlpha = 0.55; G.ctx.lineWidth = 0.7;
   G.ctx.beginPath();
-  for (const L of W.webs) { G.ctx.moveTo(L.a0x, L.a0y); G.ctx.lineTo(L.b0x, L.b0y); }
+  for (const L of W.webs) webPath(G.ctx, L);
   for (const e of W.enemies) {
     const sh = e.sp && e.sp.mode === 'shoot' && e.sp.shot;
     if (sh) { G.ctx.moveTo(sh.ax0, sh.ay0); G.ctx.lineTo(sh.x + sh.dx * Math.min(sh.t, sh.len), sh.y + sh.dy * Math.min(sh.t, sh.len)); }

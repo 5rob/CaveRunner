@@ -21,7 +21,9 @@ export const DEV_DEFAULTS = { zoom: 1.6, torch: 0.5, fogDark: 0.99, fogDim: 0.85
   due1: 60, enemies: ENEMY_COUNT, enemiesUp: 12, lvlReward: LVL_SELL - LVL_BUY,
   runnerPx: 1, runnerLine: 1,
   ptrStart: 0.12, ptrReach: 1, ptrSize: 1, ptrLine: 0.75, snapR: 28, snapPull: 0.3, snapHit: 10,
-  witPad: 80, witKbps: 6000 };
+  witPad: 80, witKbps: 6000,
+  webSag: 0.03, bendK: 140, bendDamp: 5, bendPush: 0.3, bendGrab: 0.35, bendDip: 5, bendMax: 14,
+  vineGrav: 1, vineDamp: 1.2, vinePush: 0.6, vineMax: 0.9 };
 // g: the collapsible group the knob sits in on the Dev panel (DEV_GROUPS gives the order)
 /** @type {DevRow[]} */
 export const DEV_META = [
@@ -80,10 +82,22 @@ export const DEV_META = [
   // a saved death replay keeps only what's round your path: this far past it the camera may still go
   { k: 'witPad',    g: 'witness', label: 'Saved replay: how far the camera may stray from you (world units)', min: 0, max: 300, step: 10 },
   { k: 'witKbps',   g: 'witness', label: 'Exported video quality (kbit/s)', min: 500, max: 20000, step: 500 },
+  // vines and web lines that give (world/sway.js): lines bend on one spring, hanging vines swing
+  { k: 'webSag',    g: 'sway', label: 'Web line sag at rest (× its width)', min: 0, max: 0.3, step: 0.005 },
+  { k: 'bendK',     g: 'sway', label: 'Lines: springiness (higher = quicker wobble)', min: 10, max: 600, step: 5 },
+  { k: 'bendDamp',  g: 'sway', label: 'Lines: settling (higher = settles sooner)', min: 0, max: 30, step: 0.5 },
+  { k: 'bendPush',  g: 'sway', label: 'Lines: push from flying through (× your speed)', min: 0, max: 1, step: 0.05 },
+  { k: 'bendGrab',  g: 'sway', label: 'Lines: bounce when you grab one (× your speed)', min: 0, max: 1, step: 0.05 },
+  { k: 'bendDip',   g: 'sway', label: 'Lines: dip under your weight (world units)', min: 0, max: 30, step: 0.5 },
+  { k: 'bendMax',   g: 'sway', label: 'Lines: most they bend (world units)', min: 0, max: 60, step: 1 },
+  { k: 'vineGrav',  g: 'sway', label: 'Hanging vines: swing pull (× gravity)', min: 0, max: 3, step: 0.05 },
+  { k: 'vineDamp',  g: 'sway', label: 'Hanging vines: settling (higher = settles sooner)', min: 0, max: 10, step: 0.1 },
+  { k: 'vinePush',  g: 'sway', label: 'Hanging vines: push from flying through (× your speed)', min: 0, max: 2, step: 0.05 },
+  { k: 'vineMax',   g: 'sway', label: 'Hanging vines: widest swing (radians)', min: 0, max: 1.5, step: 0.05 },
   { k: 'bagSpeed',  g: 'ui',    label: 'Bag fire preview speed (×real time)', min: 0.05, max: 5, step: 0.05 },
 ];
 export const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['fx', 'Hologram & glow'], ['holoflash', 'Hologram flash (on a kill)'], ['player', 'Player'],
-  ['enemy', 'Enemies'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['arch', 'Arched vines'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
+  ['enemy', 'Enemies'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults.
 export function devReport() {

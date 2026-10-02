@@ -97,12 +97,14 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     p.x = room.x - 6; p.y = wy - 3 + 4; p.vx = 0; p.vy = 0;
     for (let i = 0; i < 60; i++) await frame();
     out.latched = !!L.zfx.web;
-    out.hangY = Math.round(p.y - wy);
-    out.hangFell = p.y > wy + 10;
+    // the line sags and dips under you (world/sway.js): measured from the line as it is now, hands to line
+    const off = () => Math.round(p.y + 3 - webNearU(web, p.x + 6, p.y + 3).y);
+    out.hangY = off();
+    out.hangFell = off() > 10;
     const hx0 = p.x;
     stick(1, 0);
     const t0 = performance.now(); while (performance.now() - t0 < 500) await frame();
-    out.along = Math.round(p.x - hx0); out.alongDy = Math.round(p.y - wy);
+    out.along = Math.round(p.x - hx0); out.alongDy = off();
     stick(0, 1);
     for (let i = 0; i < 40; i++) await frame();
     stick(0, 0);

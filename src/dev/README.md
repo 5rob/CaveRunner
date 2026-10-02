@@ -19,6 +19,8 @@
   gets on floor 1, `ENEMY_COUNT`) and `enemiesUp` (more each floor, 12), `lvlReward` (what selling
   pays on top of the debt, 1000). Player: `runnerPx` (the astronaut's pixel size in world units, 1;
   0 smooth), `runnerLine` (its dark outline). Rats: `raBrood` (rats a nest holds in all, 4–6).
+- Sway (`g: 'sway'`): `webSag`, `bendK`/`bendDamp`/`bendPush`/`bendGrab`/`bendDip`/`bendMax` (web lines and
+  arches), `vineGrav`/`vineDamp`/`vinePush`/`vineMax` (hanging vines): `world/sway.js`.
 - Carrot (`g: 'carrot'`, `CARROT_KNOBS`): `caCam`, `caTorch`, `caAggro`, `caAim`, each a min (no Carrot
   fitted) / max (Carrot V) multiplier; `carrotAt(k, W.pb.carrot)` is the value at a level.
 - The menus' pointer (`g: 'menuptr'`): `ptrStart`, `ptrReach`, `ptrSize`, `ptrLine`, `snapR`, `snapPull`,

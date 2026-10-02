@@ -65,6 +65,10 @@ the frame; most of its parts live with their system.
   `fireBlast` runs in `explode` unless `splash` (`hot` = 0.9 chance); creatures and you catch off
   burning pixels (`e.burn`/`p.burn`, damage in chunks), `FIRE_WET` surfaces put you out; Stillness and
   Thundercloud douse (`fireDouse`) every 0.15s. **Fire must not reveal fog** (`world/README.md`).
+- **Lines and vines give** (`world/sway.js`): `decorStep` steps an arch's and a web line's bend
+  (`lineSway`: held = `W.zfx.climb` is it and no jet) and a hanging vine's swing; `movePlayer` swings you
+  on a hanging vine when the stick isn't pushing across (`W.p.swing`, then the vine follows you).
+  Anything that finds a line uses `webNear`/`archNear`/`pOver`, which include the bend and swing.
 - **Footsteps:** cadence `|vx|/40` per second on the ground, `land` when falling faster than 200,
   both voiced by `W.zfx.surface`.
 - **Motes** (`W.motes`, drawn additive): `drift` (Black Hole trail), `in` (pulled into the exit

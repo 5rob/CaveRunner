@@ -133,6 +133,7 @@ interface CreatureKind {
 /** a creature in the level: makeLevel's enemies, then the enemy loop's own fields */
 interface Enemy {
   x: number; y: number; ty: number; r: number; phase: number;
+  wox?: number; woy?: number;   // a spider on a web line: the sag and bend it rides (game/creatures/spider.js)
   hp: number; hpMax: number; cd: number; flash: number;
   lx: number; ly: number; hx: number; hy: number;
   tgt: Pt | null; rest: number; touch: number; charge: number;
@@ -168,6 +169,8 @@ interface WebLine {
   owner: Enemy;
   // rolled once per line when you first touch it (decorStep)
   slow?: number; grab?: number; climb?: number;
+  // giving (world/sway.js): its sag at rest, its bend (wx, wy) peaking at wu, the bend's speed, held last frame
+  sag?: number; wx?: number; wy?: number; wvx?: number; wvy?: number; wu?: number; wh?: boolean;
 }
 /** a line being shot (e.sp.shot) */
 interface SpiderShot {
@@ -272,6 +275,8 @@ interface Prop {
   warn?: boolean; ring?: number; heard?: number; hurt?: number; hs?: number; sq?: number;
   stand?: number; grab?: number; ang?: number; aimA?: number; ext?: number;
   climb?: number;             // an arch: its climbing speed, rolled when you first hang on it
+  // giving (world/sway.js): an arch's bend (as a WebLine's), a hanging vine's swing angle and speed
+  wx?: number; wy?: number; wvx?: number; wvy?: number; wu?: number; wh?: boolean; sw?: number; swv?: number;
 }
 
 /** a thing on the ground: a mod, a gun, a heart */
@@ -524,6 +529,7 @@ interface Player {
   dead: boolean; kick: number; shieldReady: boolean; shieldT: number; jx: number; jy: number;
   aim: { on: boolean; show: boolean; nx: number; ny: number; vis?: number };   // vis: the aim line's fade with the push
   burn?: number; burnAcc?: number;
+  swing?: number;   // 1 while you swing on a hanging vine this frame (movePlayer): the vine follows you
   rag?: import('./world/ragdoll.js').Ragdoll | null;   // dead: the body (corpseStep)
 }
 

@@ -8,6 +8,7 @@ import { drawSconce, glowAt } from '../../art/sprites.js';
 import { CELL, CW, FH, FOG_U, FW, LAMP_REACH, PH, PW, SIGHT } from '../../core/consts.js';
 import { clamp, hexRgb } from '../../core/util.js';
 import { DEV, carrotAt, jcol, kru } from '../../dev/knobs.js';
+import { webPath } from '../../world/sway.js';
 import { VIS_RAYS, fogReveal, visPoly } from '../../world/vision.js';
 import { fogLit } from '../systems/fog.js';
 import { plantGlow } from '../systems/plantglow.js';
@@ -135,7 +136,7 @@ export function drawFog(W, G, F) {
         pr.y + pr.b > W.camY - 90 && pr.y + pr.t0 < W.camY + vh + 90) drawProp(scx, pr, W.time, F.TH);
     scx.strokeStyle = '#000'; scx.lineWidth = 1; scx.lineCap = 'round';
     scx.beginPath();
-    for (const Ln of W.webs) { scx.moveTo(Ln.a0x, Ln.a0y); scx.lineTo(Ln.b0x, Ln.b0y); }
+    for (const Ln of W.webs) webPath(scx, Ln);
     for (const b of W.silk) { scx.moveTo(b.ax, b.ay); scx.lineTo(b.x, b.y); }
     for (const e of W.enemies) {
       const sh = e.sp && e.sp.mode === 'shoot' && e.sp.shot;

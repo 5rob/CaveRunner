@@ -4,6 +4,7 @@
 
 import { glowAt } from './sprites.js';
 import { mix } from '../core/util.js';
+import { hangRootX, hangRootY, swings, tent } from '../world/sway.js';
 
 // ---- drawing the props ----
 /** @type {(c: ArrayLike<number>, a?: number) => string} */
@@ -25,7 +26,10 @@ export function propCol(pr, T) {
 export function drawArch(ctx, pr, time, T) {
   const A = pr.arc, n = A.length - 1, x = pr.x, y = pr.y;
   const col = pr.st === 'root' ? mix(T.moss[0], [200, 190, 160], 0.4) : T.moss[0];
-  const sway = k => Math.sin(time * 0.9 + pr.seed * 6 + k * 0.35) * 0.8 * Math.sin(Math.PI * k / n);
+  // the breeze, and the bend from you (world/sway.js: none at the ends)
+  const pu = pr.wu == null ? 0.5 : pr.wu, wx = pr.wx || 0, wy = pr.wy || 0;
+  const sway = k => Math.sin(time * 0.9 + pr.seed * 6 + k * 0.35) * 0.8 * Math.sin(Math.PI * k / n) + tent(k / n, pu) * wy;
+  const bendX = k => tent(k / n, pu) * wx;
   const gone = k => pr.burn && k / n > pr.u0 && k / n < pr.u1;
   const fr = v => v - Math.floor(v);
   for (let s = 0; s < pr.thick; s++) {
@@ -36,7 +40,7 @@ export function drawArch(ctx, pr, time, T) {
     for (let k = 0; k <= n; k++) {
       if (gone(k)) { pen = false; continue; }
       const tw = pr.thick > 1 ? Math.sin(k * 1.3 + s * 2.1 + pr.seed * 9) * 0.9 : 0;
-      const px = x + A[k][0], py = y + A[k][1] + sway(k) + tw;
+      const px = x + A[k][0] + bendX(k), py = y + A[k][1] + sway(k) + tw;
       if (pen) ctx.lineTo(px, py); else ctx.moveTo(px, py);
       pen = true;
     }
@@ -49,7 +53,7 @@ export function drawArch(ctx, pr, time, T) {
     for (let j = 0; j < 3; j++) {
       const h = fr(Math.sin(k * 12.9898 + j * 78.233 + pr.seed * 437) * 43758.5);
       const t = (j + h) / 3, s = (k + j) % 2 ? 1 : -1;
-      const lx = x + A[k][0] + (A[k + 1][0] - A[k][0]) * t;
+      const lx = x + A[k][0] + (A[k + 1][0] - A[k][0]) * t + bendX(k + t);
       const ly = y + A[k][1] + (A[k + 1][1] - A[k][1]) * t + sway(k + t) + 1 + h * 1.5;
       ctx.beginPath();
       ctx.ellipse(lx + s * (1 + h), ly, 1.9, 0.9, s * (0.5 + h * 0.6), 0, 6.29); ctx.fill();
@@ -68,6 +72,12 @@ export function drawProp(ctx, pr, time, T) {
   switch (pr.k) {
     case 'climb': {
       if (pr.arc) { drawArch(ctx, pr, time, T); break; }
+      // swinging (and hung off an arch that's bending): the whole vine turned about its root
+      if (swings(pr) && (pr.sw || pr.on)) {
+        ctx.translate(x + hangRootX(pr), y + hangRootY(pr));
+        if (pr.sw) ctx.rotate(-pr.sw);
+        ctx.translate(-x, -y);
+      }
       const len = pr.len, sw = st === 'kelp' ? 5 : st === 'chain' ? 0.8 : 1.6;
       const off = k => Math.sin(time * (st === 'kelp' ? 1.6 : 1.1) + pr.seed * 6 + k * 0.08) * sw * (k / len);
       if (st === 'icefall') {

@@ -8,6 +8,7 @@ import { mix } from '../core/util.js';
 import { decorFor, themeFor } from '../data/themes.js';
 import { kr } from '../dev/knobs.js';
 import { FUEL_GRASS, FUEL_MOSS, FUEL_WOOD } from './fire.js';
+import { tent } from './sway.js';
 import { timberFrame } from './strata.js';
 
 // v59: three times as much of everything as v58 had, and vines come in clumps and groves
@@ -53,25 +54,29 @@ export function archCurve(ax, ay, bx, by, slack, n) {
   }
   return pts;
 }
-// the nearest point on arched vine pr to (x, y): { x, y, d, k } (k = the segment it's on)
-/** @param {{ x: number, y: number, arc?: number[][] }} pr an arched vine @param {number} x @param {number} y */
+// the nearest point on arched vine pr to (x, y), bent as it is now (world/sway.js):
+// { x, y, d, k, u } (k = the segment it's on, u = how far along the whole vine)
+/** @param {{ x: number, y: number, arc?: number[][], wx?: number, wy?: number, wu?: number }} pr an arched vine @param {number} x @param {number} y */
 export function archNear(pr, x, y) {
-  const A = pr.arc;
-  let best = null;
+  const A = pr.arc, n = A.length - 1, bx0 = pr.wx || 0, by0 = pr.wy || 0, pu = pr.wu == null ? 0.5 : pr.wu;
+  let best = null, ax = 0, ay = 0;
   for (let k = 0; k + 1 < A.length; k++) {
-    const ax = pr.x + A[k][0], ay = pr.y + A[k][1], bx = pr.x + A[k + 1][0], by = pr.y + A[k + 1][1];
+    if (k === 0) { const t = tent(0, pu); ax = pr.x + A[0][0] + t * bx0; ay = pr.y + A[0][1] + t * by0; }
+    const t = tent((k + 1) / n, pu), bx = pr.x + A[k + 1][0] + t * bx0, by = pr.y + A[k + 1][1] + t * by0;
     const vx = bx - ax, vy = by - ay, ll = vx * vx + vy * vy || 1;
     const u = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / ll));
     const qx = ax + vx * u, qy = ay + vy * u, d = Math.hypot(qx - x, qy - y);
-    if (!best || d < best.d) best = { x: qx, y: qy, d, k };
+    if (!best || d < best.d) best = { x: qx, y: qy, d, k, u: (k + u) / n };
+    ax = bx; ay = by;
   }
   return best;
 }
-// a point on arched vine pr (world units) at fraction u of the way along its points
-/** @param {{ x: number, y: number, arc?: number[][] }} pr an arched vine @param {number} u */
+// a point on arched vine pr (world units, bent as it is now) at fraction u of the way along its points
+/** @param {{ x: number, y: number, arc?: number[][], wx?: number, wy?: number, wu?: number }} pr an arched vine @param {number} u */
 export function archAt(pr, u) {
   const A = pr.arc, f = Math.max(0, Math.min(1, u)) * (A.length - 1), k = Math.min(A.length - 2, Math.floor(f)), t = f - k;
-  return { x: pr.x + A[k][0] + (A[k + 1][0] - A[k][0]) * t, y: pr.y + A[k][1] + (A[k + 1][1] - A[k][1]) * t };
+  const b = tent(Math.max(0, Math.min(1, u)), pr.wu == null ? 0.5 : pr.wu);
+  return { x: pr.x + A[k][0] + (A[k + 1][0] - A[k][0]) * t + b * (pr.wx || 0), y: pr.y + A[k][1] + (A[k + 1][1] - A[k][1]) * t + b * (pr.wy || 0) };
 }
 
 /**

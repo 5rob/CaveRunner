@@ -338,6 +338,11 @@ it hurts if it lands on you. Wall torches and lanterns glow through the dark
 even before you reach them. Every floor with hanging plants (vines, mycelium, roots, kelp)
 also gets **arched vines** of that plant across its open pockets.
 
+Vines and web lines give a little. Web lines sag. Fly through a web line or an arched vine and it
+bends the way you went, wobbles, then settles. Drop onto one and it dips under you and you bob on
+it. Brush past a hanging vine and it swings. Grab one while you're moving and you swing back and
+forth on it until it settles. The jetpack always takes you off.
+
 | Cave | Scenery |
 |---|---|
 | Mossy caves | Overgrown groves thick with **vines** you can hang on (no jetting = you hold on and your fuel refills; push the stick to climb), **long arched vines** slung across the open pockets, thick with leaves and trailing strands (hang on and the stick runs you along the arch; push off it any way, or past its end, to drop), dripping water, moss and rubble, glowing spores |
