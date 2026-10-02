@@ -233,7 +233,7 @@ export function planCast(g, others) {
 // what the gun actually does with the mods on it right now
 /** @param {Gun} g */
 export function gunPassives(g) {
-  let rech = 0, rechMul = 1, manaMax = 0, manaRegen = 0;
+  let rech = 0, rechMul = 1, manaMax = 0, manaRegen = 0, auto = false;
   for (const id of g.slots) {
     if (!id) continue;
     const m = MODS[id];
@@ -241,6 +241,7 @@ export function gunPassives(g) {
     if (m.rechMul) rechMul *= m.rechMul;
     if (m.manaMax) manaMax += m.manaMax;
     if (m.manaRegen) manaRegen += m.manaRegen;
+    if (m.auto) auto = true;
   }
-  return { rech, rechMul, manaMax, manaRegen };
+  return { rech, rechMul, manaMax, manaRegen, auto };
 }

@@ -42,6 +42,7 @@ export function modPreview(id) {
 
   if (m.kind === 'passive') {
     const a = ref(['bolt']), b = ref([id, 'bolt']);
+    if (m.auto) rows.push(['fires', 'on its own, all the time']);
     push('recharge', effRecharge(a), effRecharge(b), 's');
     push('mana', a.manaMax + gunPassives(a).manaMax, b.manaMax + gunPassives(b).manaMax);
     push('mana regen', a.manaRegen + gunPassives(a).manaRegen,

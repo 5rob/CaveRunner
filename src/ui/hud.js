@@ -107,6 +107,9 @@ export function CrystalRow({ red, green }) {
   return h('div', { className: 'crysrow', 'aria-label': red + ' red crystals, ' + green + ' green crystals' }, bits(red, 'red'), bits(green, 'green'));
 }
 
+// in a vending machine's menu the right stick pushed past this (of its reach) is a pointer, not a tap
+export const MENU_PTR = 0.12;
+
 /** @param {{ size: number, kind: 'left' | 'right', input: { current: GameInput }, refresh: () => void }} props */
 export function Stick({ size, kind, input, refresh }) {
   const [knob, setKnob] = useState({ x: 0, y: 0, jet: false });
@@ -140,6 +143,7 @@ export function Stick({ size, kind, input, refresh }) {
   // stays true until release is an interact; a drag out (even one that comes back to
   // centre) sets it false the moment it first crosses AIM_DEAD, and stays false.
   const stayed = useRef(true);
+  const peak = useRef(0);               // the furthest this touch has pushed (a menu's pointer: MENU_PTR)
 
   const right = kind === 'right';
   const update = e => {
@@ -153,6 +157,7 @@ export function Stick({ size, kind, input, refresh }) {
     const mag = cl / maxD;
     const thresh = right ? AIM_DEAD : 0.15;
     if (right && mag > AIM_DEAD) stayed.current = false;
+    peak.current = Math.max(peak.current, mag);
     // A card is up: left picks up, right leaves, and the one you are pointing at is the
     // one lit. Inside the dead zone neither is lit, because you have not chosen yet.
     if (right && input.current.confirmAct) {
@@ -168,6 +173,7 @@ export function Stick({ size, kind, input, refresh }) {
     if (pid.current !== null) return;
     pid.current = e.pointerId;
     stayed.current = true;
+    peak.current = 0;
     try { ref.current.setPointerCapture(e.pointerId); } catch (_) {}
     update(e);
   };
@@ -183,8 +189,10 @@ export function Stick({ size, kind, input, refresh }) {
       const side = input.current.confirmAim;
       input.current.confirmAim = null;
       if (side) act[side]();
-    } else if (right && stayed.current && input.current.menuTap) {
-      input.current.menuTap();              // a vending machine's menu is up: R presses its highlight
+    } else if (right && input.current.menuTap) {
+      // a vending machine's menu is up: a tap presses its highlight; a drag was its pointer, and
+      // letting go of that is the menu's own business (useMenuNav)
+      if (peak.current <= MENU_PTR) input.current.menuTap();
     } else if (right && stayed.current && input.current.perkTap) {
       input.current.perkTap();              // a perk card is up: R switches it
     } else if (right && stayed.current) {

@@ -9,7 +9,7 @@
 
 import { SFX } from '../audio/sfx.js';
 import { KNOB } from '../core/consts.js';
-import { fmtGold } from './hud.js';
+import { MENU_PTR, fmtGold } from './hud.js';
 import { h, useEffect, useRef, useState } from './h.js';
 
 /**
@@ -51,12 +51,12 @@ export function navStep(root, cur, dx, dy) {
   return best;
 }
 
-// A machine menu's stick and key handling, for every menu. The left stick is a pointer: drag it
+// A machine menu's stick and key handling, for every menu. The right stick is a pointer: drag it
 // and a second knob, a thin ring, pushes out from it, travelling an exaggerated amount (menuPointer:
 // the stick's 0..full range maps to 0..the distance to the furthest screen corner, capped at the
-// window's edge); whatever button it's over is highlighted, and letting go over one presses it.
-// A tap on the right stick (and r/f/enter) presses the highlighted button; the arrow keys step
-// the highlight (navStep). `press` and `focus` are read through refs, so the hooks always see the
+// window's edge), snapping gently onto the nearest button (snapTo); whatever it's over is
+// highlighted, and letting go over one presses it. A tap on the right stick without dragging (and
+// r/f/enter) presses the highlighted button; the arrow keys step the highlight (navStep). `press` and `focus` are read through refs, so the hooks always see the
 // latest render's. Returns the pointer ring, for the menu to put in its tree.
 /** @param {{ current: GameInput }} input @param {{ current: HTMLElement | null }} root @param {string} focus @param {(f: string) => void} setFocus @param {(key: string) => void} press */
 export function useMenuNav(input, root, focus, setFocus, press) {
@@ -67,31 +67,24 @@ export function useMenuNav(input, root, focus, setFocus, press) {
     return () => { input.current.menuTap = null; };
   }, []);
   useEffect(() => {
-    let raf, dir = '', next = 0, was = false, over = '';
-    // the [data-nav] under a screen point, inside this menu
-    /** @param {number} x @param {number} y */
-    const navAt = (x, y) => {
-      const el = document.elementFromPoint(x, y);
-      /** @type {HTMLElement | null} */
-      const n = el && el.closest ? el.closest('[data-nav]') : null;
-      return n && root.current && root.current.contains(n) ? n.dataset.nav || '' : '';
-    };
+    let raf, dir = '', next = 0, moved = false, over = '';
     const tick = () => {
-      const L = input.current.left, K = input.current.keys, R = ring.current;
-      if (L.active && L.cx !== undefined) {
-        const p = menuPointer(L, window.innerWidth, window.innerHeight);
+      const S = input.current.right, K = input.current.keys, R = ring.current;
+      if (S.active && S.cx !== undefined && (moved || S.mag > MENU_PTR)) {
+        moved = true;
+        const raw = menuPointer(S, window.innerWidth, window.innerHeight);
+        const snap = root.current ? snapTo(root.current, raw) : { x: raw.x, y: raw.y, nav: '' };
         if (R) {
-          const d = KNOB * (L.size || 100);
+          const d = KNOB * (S.size || 100);
           R.style.display = 'block';
           R.style.width = R.style.height = d + 'px';
-          R.style.transform = 'translate(' + (p.x - d / 2) + 'px,' + (p.y - d / 2) + 'px)';
+          R.style.transform = 'translate(' + (snap.x - d / 2) + 'px,' + (snap.y - d / 2) + 'px)';
         }
-        over = navAt(p.x, p.y);
+        over = snap.nav;
         if (over && over !== focusRef.current) { setFocus(over); SFX.fx('prompt'); }
-        was = true;
-      } else {
-        if (was) {                              // let go: press what the pointer was over
-          was = false;
+      } else if (!S.active) {
+        if (moved) {                            // let go: press what the pointer was over
+          moved = false;
           if (R) R.style.display = 'none';
           if (over) pressRef.current(over);
           over = '';
@@ -117,6 +110,33 @@ export function useMenuNav(input, root, focus, setFocus, press) {
     if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
   }, [focus]);
   return h('div', { className: 'mptr', ref: ring, 'aria-hidden': true });
+}
+
+// The pointer's gentle snap: the nearest button (a [data-nav] in this menu, not scrolled out of
+// sight) within SNAP_R px of its edge pulls the point a little towards its middle (up to SNAP_PULL
+// of the way, more the closer it is), and counts as under the pointer within SNAP_HIT px
+export const SNAP_R = 28, SNAP_HIT = 10, SNAP_PULL = 0.3;
+/** @param {HTMLElement} root @param {Pt} p @returns {{ x: number, y: number, nav: string }} */
+export function snapTo(root, p) {
+  /** @type {HTMLElement[]} */
+  const els = Array.from(root.querySelectorAll('[data-nav]'));
+  let best = null, bd = Infinity, br = null;
+  for (const e of els) {
+    const r = e.getBoundingClientRect();
+    if (!r.width) continue;
+    /** @type {HTMLElement | null} */
+    const box = e.parentElement && e.parentElement.closest ? e.parentElement.closest('.scroll') : null;
+    if (box) {                                   // scrolled out of its box: not there
+      const b = box.getBoundingClientRect(), mx = r.left + r.width / 2, my = r.top + r.height / 2;
+      if (mx < b.left || mx > b.right || my < b.top || my > b.bottom) continue;
+    }
+    const dx = Math.max(r.left - p.x, 0, p.x - r.right), dy = Math.max(r.top - p.y, 0, p.y - r.bottom);
+    const d = Math.hypot(dx, dy);
+    if (d < bd) { bd = d; best = e; br = r; }
+  }
+  if (!best || !br || bd > SNAP_R) return { x: p.x, y: p.y, nav: '' };
+  const k = SNAP_PULL * (1 - bd / SNAP_R), cx = br.left + br.width / 2, cy = br.top + br.height / 2;
+  return { x: p.x + (cx - p.x) * k, y: p.y + (cy - p.y) * k, nav: bd <= SNAP_HIT ? best.dataset.nav || '' : '' };
 }
 
 // Where the menus' pointer is for a stick: out from the stick's centre along its direction, the
