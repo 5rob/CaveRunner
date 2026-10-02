@@ -47,6 +47,7 @@ interface Mod {
   manaMul?: number; hp?: number; act?: string;
   // what it does to the gun from anywhere on it (gunPassives)
   rech?: number; rechMul?: number; manaMax?: number; manaRegen?: number;
+  auto?: number;              // passive: the gun fires on its own (Questions Later)
   // a trigger variant (TRIG_VARIANTS): its base spell, kind, how many casts it carries
   trig?: TrigKind; draw?: number; base?: string; mark?: string; timer?: number;
 }

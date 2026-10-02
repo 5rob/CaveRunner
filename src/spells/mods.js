@@ -112,6 +112,9 @@ export const MODS = {
               info: '-0.33s recharge', rech: -0.33 },
   battery:  { name: 'Mana Battery', kind: 'passive', glyph: '▮', col: '#46c48c', mana: 0,
               info: '+60 mana, +30 regen', manaMax: 60, manaRegen: 30 },
+  // ours: the gun fires on its own, as if you never let go of the trigger (gunPassives().auto, aimAndCast)
+  auto:     { name: 'Questions Later', kind: 'passive', glyph: '⇶', col: '#46c48c', mana: 0,
+              info: 'Auto fire: the gun shoots on its own, as if you were holding the trigger down. Aim to steer it', auto: 1 },
 
   // ---- shots (Noita "Projectile" spells) ----
   // Noita's Magic Arrow: a green glowing arrow on a long shallow arc, shedding green
@@ -386,7 +389,7 @@ export const FAMILY_OF = {
   homing: 'path', seeker: 'path', bounce: 'path', pierce: 'path', borer: 'path',
   tight: 'pattern', scatter: 'pattern', double: 'pattern', triple: 'pattern', quad: 'pattern',
   fast: 'upkeep', trigger: 'upkeep', cold: 'upkeep', recharge: 'upkeep',
-  cheap: 'upkeep', battery: 'upkeep',
+  cheap: 'upkeep', battery: 'upkeep', auto: 'upkeep',
   arrow: 'shots', missile: 'shots', fball: 'shots', fbolt: 'shots', bubble: 'shots',
   spit: 'shots', eorb: 'shots', esph: 'shots', zap: 'shots', chain: 'shots', void: 'shots',
   digbolt: 'shots', glance: 'shots', plasma: 'shots', ldrill: 'shots', cross: 'shots',
@@ -428,7 +431,7 @@ export const MOD_PRICE = {
   dmg_up: 30, heavy: 40, light: 30, speed: 25, accel: 35, homing: 70, seeker: 90,
   bounce: 25, pierce: 85, tight: 15, scatter: 35, big: 30, range: 30, brief: 20,
   tip: 55, borer: 25, fast: 30, over: 45, double: 45, triple: 60, quad: 75, cheap: 40,
-  saw: 80, trigger: 35, over_heat: 45, cold: 60, recharge: 50, battery: 50,
+  saw: 80, trigger: 35, over_heat: 45, cold: 60, recharge: 50, battery: 50, auto: 70,
   arrow: 25, missile: 60, fball: 55, fbolt: 40, bubble: 15, spit: 15, eorb: 45, esph: 30,
   zap: 70, chain: 75, void: 110, digbolt: 20, glance: 55, plasma: 80, ldrill: 35,
   cross: 65, pollen: 20, disc: 40, nuke: 150, meteor: 120, tele: 45, teleshort: 30, boom: 55, brim: 20,
@@ -454,7 +457,7 @@ export const MOD_TIER = {
   disc: 2, glance: 2, ldrill: 2, crystal: 2, dormant: 2, boomer: 2, spiral: 2,
   pong: 2, autoaim: 2, nearhome: 2, flat: 2, crit: 2, split: 2, bboom: 2, refresh: 2,
   warpcast: 2, trifur: 2, alpha: 2, gamma: 2, scatter: 2, homing: 3, tip: 3, triple: 3,
-  over_heat: 3, recharge: 3, battery: 3, saw: 3, missile: 3, fball: 3, zap: 3, chain: 3,
+  over_heat: 3, recharge: 3, battery: 3, auto: 2, saw: 3, missile: 3, fball: 3, zap: 3, chain: 3,
   cross: 3, plasma: 3, boom: 3, stillc: 3, shieldc: 3, vigour: 3, vacfield: 3, orbit: 3,
   eater: 3, lust: 3, cluster: 3, manapow: 3, bpower: 3, gpower: 3, telecast: 3, tau: 3,
   mu: 3, phi: 3, sigma: 3, seeker: 4, pierce: 4, quad: 4, cold: 4, void: 4, nuke: 4,

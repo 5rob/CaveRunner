@@ -5,6 +5,17 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v122 — Questions Later; the pointer moves to the right stick, with a snap
+Released 2026-10-02.
+
+- New passive mod **Questions Later** (`auto`, ⇶, 70g, tier 2, drops on every floor: `OURS_AUTO`): the
+  held gun fires as if the trigger were held (`gunPassives().auto`, `aimAndCast`), aimed where the
+  right stick points or the way you face.
+- The menus' pointer is the right stick now (`useMenuNav`): it comes out once the stick is pushed
+  past `MENU_PTR` (0.12); a plain tap still presses the lit button (`Stick`'s `peak`). A gentle snap
+  (`snapTo`): the nearest visible button within `SNAP_R` 28px pulls the ring up to `SNAP_PULL` 0.3 of
+  the way to its middle and counts as under it within `SNAP_HIT` 10px.
+
 ## v121 — the menus' left-stick pointer
 Released 2026-10-02.
 

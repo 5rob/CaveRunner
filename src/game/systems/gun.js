@@ -217,5 +217,7 @@ export function aimAndCast(W, G, F) {
     g.mana = Math.min(g.manaMax + pas.manaMax, g.mana + (g.manaRegen + pas.manaRegen) * dt);
   }
   const gun = LO.guns[LO.sel];
-  if (R.on && gun && gun.delayT <= 0 && gun.rechT <= 0) cast(W, G, gun, gx, gy, R.nx, R.ny);
+  // Questions Later: the trigger is always down, aimed where you aim (or the way you face)
+  const auto = !!gun && !W.p.dead && gunPassives(gun).auto;
+  if ((R.on || auto) && gun && gun.delayT <= 0 && gun.rechT <= 0) cast(W, G, gun, gx, gy, R.nx, R.ny);
 }

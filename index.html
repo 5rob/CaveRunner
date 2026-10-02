@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v121</title>
+<title>CaveRunner v122</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -628,7 +628,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v121';</script>
+<script>const VERSION = 'v122';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -1632,6 +1632,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       info: "+60 mana, +30 regen",
       manaMax: 60,
       manaRegen: 30
+    },
+    // ours: the gun fires on its own, as if you never let go of the trigger (gunPassives().auto, aimAndCast)
+    auto: {
+      name: "Questions Later",
+      kind: "passive",
+      glyph: "⇶",
+      col: "#46c48c",
+      mana: 0,
+      info: "Auto fire: the gun shoots on its own, as if you were holding the trigger down. Aim to steer it",
+      auto: 1
     },
     // ---- shots (Noita "Projectile" spells) ----
     // Noita's Magic Arrow: a green glowing arrow on a long shallow arc, shedding green
@@ -2779,6 +2789,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     recharge: "upkeep",
     cheap: "upkeep",
     battery: "upkeep",
+    auto: "upkeep",
     arrow: "shots",
     missile: "shots",
     fball: "shots",
@@ -2905,6 +2916,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     cold: 60,
     recharge: 50,
     battery: 50,
+    auto: 70,
     arrow: 25,
     missile: 60,
     fball: 55,
@@ -3050,6 +3062,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     over_heat: 3,
     recharge: 3,
     battery: 3,
+    auto: 2,
     saw: 3,
     missile: 3,
     fball: 3,
@@ -7609,7 +7622,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ZETA: ["2,5,10", "0.2,0.4,0.5"],
     // ours alone: no Noita twin
     OURS_COLD: ["3,4,5,6", "0.2,0.3,0.4,0.5"],
-    OURS_BATTERY: ["2,3,4,5,6", "0.3,0.4,0.5,0.5,0.5"]
+    OURS_BATTERY: ["2,3,4,5,6", "0.3,0.4,0.5,0.5,0.5"],
+    OURS_AUTO: ["0,1,2,3,4,5,6", "0.4,0.4,0.4,0.4,0.4,0.4,0.4"]
   };
   var NOITA_OF = {
     bolt: "LIGHT_BULLET",
@@ -7647,6 +7661,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     cold: "OURS_COLD",
     recharge: "RECHARGE",
     battery: "OURS_BATTERY",
+    auto: "OURS_AUTO",
     arrow: "BULLET",
     missile: "ROCKET",
     fball: "FIREBALL",
@@ -12895,7 +12910,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
   function gunPassives(g) {
-    let rech = 0, rechMul = 1, manaMax = 0, manaRegen = 0;
+    let rech = 0, rechMul = 1, manaMax = 0, manaRegen = 0, auto = false;
     for (const id of g.slots) {
       if (!id) continue;
       const m = MODS[id];
@@ -12903,8 +12918,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (m.rechMul) rechMul *= m.rechMul;
       if (m.manaMax) manaMax += m.manaMax;
       if (m.manaRegen) manaRegen += m.manaRegen;
+      if (m.auto) auto = true;
     }
-    return { rech, rechMul, manaMax, manaRegen };
+    return { rech, rechMul, manaMax, manaRegen, auto };
   }
 
   // src/spells/trace.js
@@ -17099,7 +17115,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       g.mana = Math.min(g.manaMax + pas.manaMax, g.mana + (g.manaRegen + pas.manaRegen) * dt);
     }
     const gun = LO.guns[LO.sel];
-    if (R.on && gun && gun.delayT <= 0 && gun.rechT <= 0) cast(W, G, gun, gx, gy, R.nx, R.ny);
+    const auto = !!gun && !W.p.dead && gunPassives(gun).auto;
+    if ((R.on || auto) && gun && gun.delayT <= 0 && gun.rechT <= 0) cast(W, G, gun, gx, gy, R.nx, R.ny);
   }
 
   // src/game/systems/bullets.js
@@ -18452,6 +18469,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const ref = (slots) => previewGun(slots, REF);
     if (m.kind === "passive") {
       const a2 = ref(["bolt"]), b2 = ref([id, "bolt"]);
+      if (m.auto) rows.push(["fires", "on its own, all the time"]);
       push("recharge", effRecharge(a2), effRecharge(b2), "s");
       push("mana", a2.manaMax + gunPassives(a2).manaMax, b2.manaMax + gunPassives(b2).manaMax);
       push(
@@ -19760,6 +19778,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ];
     return h("div", { className: "crysrow", "aria-label": red + " red crystals, " + green + " green crystals" }, bits(red, "red"), bits(green, "green"));
   }
+  var MENU_PTR = 0.12;
   function Stick({ size, kind, input, refresh }) {
     const [knob2, setKnob] = useState({ x: 0, y: 0, jet: false });
     const [gauge, setGauge] = useState({ ring: 1, fuel: 1, empty: false, dry: true });
@@ -19792,6 +19811,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const ref = useRef(null);
     const pid = useRef(null);
     const stayed = useRef(true);
+    const peak = useRef(0);
     const right = kind === "right";
     const update = (e) => {
       const r = ref.current.getBoundingClientRect();
@@ -19804,6 +19824,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const mag = cl / maxD;
       const thresh = right ? AIM_DEAD : 0.15;
       if (right && mag > AIM_DEAD) stayed.current = false;
+      peak.current = Math.max(peak.current, mag);
       if (right && input.current.confirmAct) {
         const side = mag > AIM_DEAD ? nx < 0 ? "take" : "leave" : null;
         if (input.current.confirmAim !== side) {
@@ -19827,6 +19848,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (pid.current !== null) return;
       pid.current = e.pointerId;
       stayed.current = true;
+      peak.current = 0;
       try {
         ref.current.setPointerCapture(e.pointerId);
       } catch (_) {
@@ -19844,8 +19866,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const side = input.current.confirmAim;
         input.current.confirmAim = null;
         if (side) act[side]();
-      } else if (right && stayed.current && input.current.menuTap) {
-        input.current.menuTap();
+      } else if (right && input.current.menuTap) {
+        if (peak.current <= MENU_PTR) input.current.menuTap();
       } else if (right && stayed.current && input.current.perkTap) {
         input.current.perkTap();
       } else if (right && stayed.current) {
@@ -20757,31 +20779,27 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       };
     }, []);
     useEffect(() => {
-      let raf, dir = "", next = 0, was = false, over = "";
-      const navAt = (x, y) => {
-        const el = document.elementFromPoint(x, y);
-        const n = el && el.closest ? el.closest("[data-nav]") : null;
-        return n && root.current && root.current.contains(n) ? n.dataset.nav || "" : "";
-      };
+      let raf, dir = "", next = 0, moved = false, over = "";
       const tick = () => {
-        const L2 = input.current.left, K = input.current.keys, R = ring.current;
-        if (L2.active && L2.cx !== void 0) {
-          const p = menuPointer(L2, window.innerWidth, window.innerHeight);
+        const S = input.current.right, K = input.current.keys, R = ring.current;
+        if (S.active && S.cx !== void 0 && (moved || S.mag > MENU_PTR)) {
+          moved = true;
+          const raw = menuPointer(S, window.innerWidth, window.innerHeight);
+          const snap = root.current ? snapTo(root.current, raw) : { x: raw.x, y: raw.y, nav: "" };
           if (R) {
-            const d = KNOB * (L2.size || 100);
+            const d = KNOB * (S.size || 100);
             R.style.display = "block";
             R.style.width = R.style.height = d + "px";
-            R.style.transform = "translate(" + (p.x - d / 2) + "px," + (p.y - d / 2) + "px)";
+            R.style.transform = "translate(" + (snap.x - d / 2) + "px," + (snap.y - d / 2) + "px)";
           }
-          over = navAt(p.x, p.y);
+          over = snap.nav;
           if (over && over !== focusRef.current) {
             setFocus(over);
             SFX.fx("prompt");
           }
-          was = true;
-        } else {
-          if (was) {
-            was = false;
+        } else if (!S.active) {
+          if (moved) {
+            moved = false;
             if (R) R.style.display = "none";
             if (over) pressRef.current(over);
             over = "";
@@ -20814,6 +20832,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
     }, [focus]);
     return h("div", { className: "mptr", ref: ring, "aria-hidden": true });
+  }
+  var SNAP_R = 28, SNAP_HIT = 10, SNAP_PULL = 0.3;
+  function snapTo(root, p) {
+    const els = Array.from(root.querySelectorAll("[data-nav]"));
+    let best = null, bd = Infinity, br = null;
+    for (const e of els) {
+      const r = e.getBoundingClientRect();
+      if (!r.width) continue;
+      const box = e.parentElement && e.parentElement.closest ? e.parentElement.closest(".scroll") : null;
+      if (box) {
+        const b = box.getBoundingClientRect(), mx = r.left + r.width / 2, my = r.top + r.height / 2;
+        if (mx < b.left || mx > b.right || my < b.top || my > b.bottom) continue;
+      }
+      const dx = Math.max(r.left - p.x, 0, p.x - r.right), dy = Math.max(r.top - p.y, 0, p.y - r.bottom);
+      const d = Math.hypot(dx, dy);
+      if (d < bd) {
+        bd = d;
+        best = e;
+        br = r;
+      }
+    }
+    if (!best || !br || bd > SNAP_R) return { x: p.x, y: p.y, nav: "" };
+    const k = SNAP_PULL * (1 - bd / SNAP_R), cx = br.left + br.width / 2, cy = br.top + br.height / 2;
+    return { x: p.x + (cx - p.x) * k, y: p.y + (cy - p.y) * k, nav: bd <= SNAP_HIT ? best.dataset.nav || "" : "" };
   }
   function menuPointer(L2, W, H) {
     const cx = L2.cx || 0, cy = L2.cy || 0;

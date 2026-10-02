@@ -71,10 +71,10 @@ const DIR = path.join(__dirname, '..', 'build');
   // to Dispense; a right-stick tap presses it
   const focus = () => page.evaluate(() => { const e = document.querySelector('.vshop .navon'); return e && e.getAttribute('data-nav'); });
   check('the highlight is on the mod just unlocked', (await focus()) === 't:' + got, await focus());
-  // the left stick is a pointer: drag it with the real mouse and a thin ring travels out, the
+  // the right stick is a pointer: drag it with the real mouse and a thin ring travels out, the
   // stick's range mapped onto the distance to the furthest screen corner; it highlights what it's
   // over, and letting go there presses it
-  const stick = await page.evaluate(() => { const r = document.querySelectorAll('.sticks .stick')[0].getBoundingClientRect();
+  const stick = await page.evaluate(() => { const r = document.querySelectorAll('.sticks .stick')[1].getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2, rad: r.width / 2, size: r.width, W: innerWidth, H: innerHeight, knob: KNOB }; });
   const center = sel => page.evaluate(s => { const r = document.querySelector(s).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, sel);
   // where on the stick to hold so the pointer lands on t
@@ -90,12 +90,23 @@ const DIR = path.join(__dirname, '..', 'build');
   for (let i = 1; i <= 6; i++) await page.mouse.move(stick.x + (hBuy.x - stick.x) * i / 6, stick.y + (hBuy.y - stick.y) * i / 6);
   await page.waitForTimeout(120);
   let rg = await ring();
-  check('dragging the left stick puts out a pointer ring', rg.shown, rg);
-  check('it travels out to the target, several times further than the knob', Math.hypot(rg.x - tBuy.x, rg.y - tBuy.y) < 6 &&
+  check('dragging the right stick puts out a pointer ring', rg.shown, rg);
+  check('it travels out to the target, several times further than the knob', Math.hypot(rg.x - tBuy.x, rg.y - tBuy.y) < 30 &&
     Math.hypot(rg.x - stick.x, rg.y - stick.y) > 3 * Math.hypot(hBuy.x - stick.x, hBuy.y - stick.y), { rg, tBuy, hBuy });
   check('a very thin ring, no fill, the knob size', rg.border <= 1 && (rg.bg === 'rgba(0, 0, 0, 0)' || rg.bg === 'transparent') && Math.abs(rg.w - stick.size * stick.knob) < 1.5, rg);
   check('what it is over is highlighted', (await focus()) === 'buy', await focus());
   await page.screenshot({ path: path.join(DIR, 'vendshop_pointer.png') });
+  // a gentle snap: aimed just outside the close button, it still lands on it, pulled a little towards its middle
+  const xr = await page.evaluate(() => { const r = document.querySelector('.vclose').getBoundingClientRect(); return { l: r.left, t: r.top, b: r.bottom, cx: r.left + r.width / 2, cy: r.top + r.height / 2 }; });
+  const near = { x: xr.l - 6, y: xr.cy }, hN = holdFor(near);
+  await page.mouse.move(hN.x, hN.y); await page.waitForTimeout(100);
+  rg = await ring();
+  check('aimed just beside a button it snaps on: highlighted', (await focus()) === 'close', await focus());
+  check('pulled a little towards its middle, not jumped there', rg.x > near.x + 1 && rg.x < xr.cx - 5, { rg: rg.x, near: near.x, mid: xr.cx });
+  const far = { x: xr.l - 60, y: xr.b + 60 }, hF = holdFor(far);
+  await page.mouse.move(hF.x, hF.y); await page.waitForTimeout(100);
+  rg = await ring();
+  check('well away from anything it does not snap', Math.hypot(rg.x - far.x, rg.y - far.y) < 2, { rg, far });
   // the pointer is held inside the screen: full tilt towards a far corner stops at the edge
   await page.mouse.move(stick.x - stick.rad * 0.72, stick.y - stick.rad * 0.72);
   await page.waitForTimeout(80);
@@ -131,7 +142,8 @@ const DIR = path.join(__dirname, '..', 'build');
   await page.evaluate(() => { window.__in.current.loadout.gold = 0; window.__in.current.menuTap(); });
   await page.waitForTimeout(80);
   check('without the gold it stays open', await page.evaluate(() => !!document.querySelector('.vshop')));
-  await page.evaluate(() => { window.__in.current.loadout.gold = 1000; window.__in.current.menuTap(); });
+  await page.evaluate(() => { window.__in.current.loadout.gold = 1000; });
+  await page.mouse.move(stick.x, stick.y); await page.mouse.down(); await page.mouse.up();   // a tap on the right stick presses the highlight
   await page.waitForTimeout(100);
   st = await page.evaluate(() => ({ open: !!document.querySelector('.vshop'), gold: window.__in.current.loadout.gold, paused: window.__in.current.paused }));
   check('Dispense: the menu closes and the gold is taken', !st.open && !st.paused && st.gold === 1000 - price, st);
