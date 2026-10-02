@@ -7,7 +7,7 @@ import { drawProp, propGlow } from '../../art/props.js';
 import { drawSconce, glowAt } from '../../art/sprites.js';
 import { CELL, CW, FH, FOG_U, FW, LAMP_REACH, PH, PW, SIGHT } from '../../core/consts.js';
 import { clamp, hexRgb } from '../../core/util.js';
-import { DEV, jcol, kru } from '../../dev/knobs.js';
+import { DEV, carrotAt, jcol, kru } from '../../dev/knobs.js';
 import { VIS_RAYS, fogReveal, visPoly } from '../../world/vision.js';
 import { fogLit } from '../systems/fog.js';
 import { plantGlow } from '../systems/plantglow.js';
@@ -57,7 +57,7 @@ export function drawFog(W, G, F) {
   // lamp does not itself stop at walls; it is the *reveal* that respects them, so what
   // you have already uncovered round a corner still lights up. `flick` is the flame's
   // own number, so both the reach and the brightness breathe exactly as the fire does.
-  const sight = SIGHT * DEV.torch;                       // dev knob scales the whole bubble
+  const sight = SIGHT * DEV.torch * carrotAt('caTorch', W.pb.carrot);   // dev knob and Carrot scale the whole bubble
   W.torchR = clamp(sight * LAMP_REACH * (0.5 + 0.55 * W.flick), 120, 1400);
   W.visPts = visPoly(pcx, pcy, sight, (cx, cy) => solidCell(W, cx, cy), VIS_RAYS);
   fogReveal(W.seen, pcx, pcy, sight, W.visPts, VIS_RAYS);   // line of sight lifts the fog

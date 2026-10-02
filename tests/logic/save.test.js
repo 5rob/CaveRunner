@@ -22,7 +22,7 @@ check('same version keeps the floor', s.floor === 4, s.floor);
 check('keeps hp', s.hp === 60, s.hp);
 check('keeps gold', s.loadout.gold === 321, s.loadout.gold);
 check('keeps the bag', s.loadout.bag.join() === 'bolt,homing', s.loadout.bag);
-check('keeps perks (a pre-suit save: fitted to the suit)', s.loadout.suit.join() === 'eye,,,,,,,,,,' && s.loadout.perks.length === 0, s.loadout);
+check('keeps perks (a pre-suit save: fitted to the suit)', s.loadout.suit.join() === 'eye,,,,,,,,,,,' && s.loadout.perks.length === 0, s.loadout);
 check('keeps sel', s.loadout.sel === 1, s.loadout.sel);
 check('keeps max bonus', s.loadout.maxBonus === 25);
 check('same version keeps the cave', s.level && s.level.seed === 12345, s.level);

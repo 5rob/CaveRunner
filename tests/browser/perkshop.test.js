@@ -79,7 +79,7 @@ const DIR = path.join(__dirname, '..', 'build');
   await page.waitForTimeout(250);
   st = await page.evaluate(() => ({ suit: !!document.querySelector('.exosuit'), slots: document.querySelectorAll('.xslot').length,
     port: !!document.querySelector('canvas.xport'), grid: document.querySelectorAll('.xperk').length, have: document.querySelectorAll('.xperk.have').length }));
-  check('the Exo Suit: portrait, six perk slots and five stat slots, every perk in the grid', st.suit && st.port && st.slots === 11 && st.grid === await page.evaluate(() => PERK_IDS.length), st);
+  check('the Exo Suit: portrait, six perk slots and six stat slots, every perk in the grid', st.suit && st.port && st.slots === 12 && st.grid === await page.evaluate(() => PERK_IDS.length), st);
   check('the carried one is lit', st.have === 1, st.have);
   await page.screenshot({ path: path.join(DIR, 'exosuit.png') });
 

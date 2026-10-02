@@ -8,7 +8,7 @@
 import { SFX } from '../../audio/sfx.js';
 import { COL, PH, PW } from '../../core/consts.js';
 import { HUNTERS } from '../../data/creatures.js';
-import { DEV, jcol, kr } from '../../dev/knobs.js';
+import { DEV, carrotAt, jcol, kr } from '../../dev/knobs.js';
 import { fireArea } from '../../world/fire.js';
 import { spillGold } from '../../world/nuggets.js';
 import { ACTS } from '../creatures/acts.js';
@@ -100,7 +100,7 @@ export function stepEnemies(W, G, F) {
     const chaser = HUNTERS[k.act] && !W.p.dead;
     // a reworked creature rolls its own aggro reach from its knobs, once a second
     if (k.kp && ((e.aggroT = (e.aggroT || 0) - dt) <= 0)) { e.aggroM = kr(k.kp + 'Aggro'); e.aggroT = 1; }
-    const reach = k.aggro * sees * DEV.aggro * (k.kp ? e.aggroM : 1);
+    const reach = k.aggro * sees * DEV.aggro * carrotAt('caAggro', W.pb.carrot) * (k.kp ? e.aggroM : 1);
     if (chaser) {
       if (!e.aggro) { if (dist < reach && lineOfSight(W, e.x, e.ty, pcx, pcy)) { e.aggro = true; SFX.creature(k, 'alert', e.x, e.ty); } }
       else if (dist > reach * DEV.loseAggro) e.aggro = false;

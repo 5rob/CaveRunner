@@ -41,8 +41,9 @@ export const wigTurn = (amp, age, dt) => wigAng(amp, age) - (age - dt > 1e-9 ? w
  * @param {{ x: number, ty: number }[] | null} enemies what homing and Pollen lock onto
  * @param {number[]} out filled with x, y, x, y, … and returned
  * @param {Pt | null} [home] where a boomerang comes back to (you)
+ * @param {number} [far] stretches how far the line runs (the Carrot stat)
  */
-export function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
+export function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home, far = 1) {
   const dt = 1 / 60;
   if (sh.flat) { nx = nx >= 0 ? 1 : -1; ny = 0; }
   if (sh.beam) {                       // a beam is a straight line, drawn to whatever stops it
@@ -59,11 +60,11 @@ export function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home) {
   let x = x0 + nx * reach, y = y0 + ny * reach;
   const ox = x, oy = y;
   let vx = nx * sh.speed, vy = ny * sh.speed;
-  let life = Math.min(sh.life, 2.5), bounce = sh.bounce || 0;
+  let life = Math.min(sh.life, 2.5 * far), bounce = sh.bounce || 0;
   let age = 0, lock = false;
   out.length = 0;
   out.push(x, y);
-  for (let i = 0; i < 110 && life > 0; i++) {
+  for (let i = 0, n = 110 * far; i < n && life > 0; i++) {
     life -= dt; age += dt;
     if (sh.grav) vy += sh.grav * dt;
     if (sh.drag) { const k = Math.exp(-sh.drag * dt); vx *= k; vy *= k; }

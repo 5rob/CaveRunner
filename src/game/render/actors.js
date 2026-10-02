@@ -8,7 +8,7 @@ import { drawGun, drawRagdoll, drawRunner, drawTorch, pixelSprite } from '../../
 import { COL, PH, PW } from '../../core/consts.js';
 import { drawEnemy } from '../../creatures/draw.js';
 import { ELITE_TINT } from '../../data/creatures.js';
-import { DEV, jcol } from '../../dev/knobs.js';
+import { DEV, carrotAt, jcol } from '../../dev/knobs.js';
 import { planCast } from '../../spells/cast.js';
 import { gunAccent } from '../../spells/guns.js';
 import { bhSp, tracePath } from '../../spells/trace.js';
@@ -98,7 +98,7 @@ export function drawAim(W, G, F) {
       for (const off of cone) {
         const a = Math.atan2(R.ny, R.nx) + off * Math.PI / 180;
         tracePath(tsh, pcx, gy, Math.cos(a), Math.sin(a), (x, y) => solidAt(W, x, y), W.enemies, G.aimPath,
-          { x: pcx, y: gy });
+          { x: pcx, y: gy }, carrotAt('caAim', W.pb.carrot));
         G.ctx.fillStyle = sh.col;
         const edge = off !== 0;
         const size = edge ? 1.6 : 2.4;

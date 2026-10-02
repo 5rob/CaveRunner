@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v126 — the Carrot stat
+Released 2026-10-02.
+
+- **Carrot**, a sixth Exo Suit stat (`STAT_PERKS.carrot`, `pb.carrot` = its level 0–5): it stretches
+  the camera distance, the torch's reach, enemy aggro distance and the Trajectory Sight line.
+  Each has a Dev min (none fitted) and max (Carrot V) in the new **Carrot** group (`CARROT_KNOBS`,
+  `carrotAt(k, level)`); defaults 1→1.35, 1→1.5, 1→1.25, 1→2. `tracePath` takes a `far` stretch.
+
 ## v125 — the astronaut, teleporter pads, a steel shop, a steady count
 Released 2026-10-02.
 

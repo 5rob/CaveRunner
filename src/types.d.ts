@@ -244,6 +244,7 @@ interface PerkBag {
   ghost: number; homing: number; trail: number; contact: number; close: number; invis: number;
   repel: number; seeAll: number; radarEnemy: number; radarItem: number; radarWand: number;
   tinker: number; extraItem: number; pinpointer: number; trajectory: number;
+  carrot: number;   // the Carrot stat's level, 0-5 (carrotAt turns it into each multiplier)
   fuel: number; refuel: number;   // the jetpack's tank (drains slower) and how fast it refills (stat perks)
   // always there on a bag perkBag returns; optional only because it is filled in after the rest
   maxHp?: number;

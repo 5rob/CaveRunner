@@ -248,8 +248,9 @@ random perk you haven't got (kept for good, across runs), then **Dispense select
 copy for gold and pops it out onto the floor. There are 30 perks copied from Noita (200g each) —
 Glass Cannon, Extra Health, Faster Wands, Homing Shots, Unlimited Spells, Permanent Shield,
 Pinpointer, Trajectory Sight, Angry Ghost, Attract Gold, radars and Invisibility among them —
-and 25 **stat perks**: Max Health, Movement Speed, Jetpack Fuel, Jetpack Recharge and Gold
-Vacuum, each in five levels (I–V, 60g up to 650g). A crystal only unlocks a stat perk's next
+and 30 **stat perks**: Max Health, Movement Speed, Jetpack Fuel, Jetpack Recharge, Gold
+Vacuum and **Carrot** (you see further: the camera pulls back, the torch reaches further and the
+aim line runs longer, but creatures notice you from further off), each in five levels (I–V, 60g up to 650g). A crystal only unlocks a stat perk's next
 level once you have the one below it.
 
 A perk you pick up is carried, and only counts once it's fitted to your **Exo Suit**. The Bag
