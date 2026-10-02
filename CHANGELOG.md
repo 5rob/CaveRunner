@@ -24,6 +24,8 @@ Released 2026-10-02.
 - **The hologram's count only goes down**: it went back up as nests let new rats out. A nest now
   holds a fixed brood (`nest.left`, Dev `raBrood` 4–6) counted while inside (`bioCount`); the
   autosave keeps it (`brood`). Selling needs the nests emptied or destroyed.
+- **Lines don't trap you**: on a web line or an arched vine, any push mostly across it (any way,
+  not only down), or along it past an end, lets go (`lineLetGo`, `LINE_OFF`), and the push carries you off.
 - Dev: `enemies` / `enemiesUp` (how many a new level gets), `lvlReward` (`lvlSell`), `runnerPx`,
   `runnerLine`, `raBrood`. The Dev panel's group headers open on a **press and hold**
   (`DevGroupHead`), and the jellyfish preview sits inside the Jellyfish colours group.

@@ -339,7 +339,7 @@ also gets **arched vines** of that plant across its open pockets.
 
 | Cave | Scenery |
 |---|---|
-| Mossy caves | Overgrown groves thick with **vines** you can hang on (no jetting = you hold on and your fuel refills; push the stick to climb), **long arched vines** slung across the open pockets, thick with leaves and trailing strands (hang on and the stick runs you along the arch; push down to drop), dripping water, moss and rubble, glowing spores |
+| Mossy caves | Overgrown groves thick with **vines** you can hang on (no jetting = you hold on and your fuel refills; push the stick to climb), **long arched vines** slung across the open pockets, thick with leaves and trailing strands (hang on and the stick runs you along the arch; push off it any way, or past its end, to drop), dripping water, moss and rubble, glowing spores |
 | Coal seams | **Minecarts that explode when shot** (a very big blast), rusty lanterns, soot falling, pit props, old pickaxes |
 | Frozen deep | **Icicles that drop when you walk under them**, **slippery ice**, **snow drifts that slow you**, frozen waterfalls to hang on, icy wind |
 | Ember halls | **Lava drips** and **fire vents** that burn, **obsidian spikes**, ash piles, drifting embers |
@@ -368,7 +368,7 @@ Sixteen of them, named after Noita's, and they do not all behave the same way:
   on the other side and running over it. The lines stay, so a spider's corner of the
   cave fills with web — and you can use them too: brush one and you grab it like a
   vine, hang there getting your fuel back, climb along it with the stick, and push
-  down to let go. Pushing through web slows you (×0.7 for each line you touch). Up close it bites; from range it shoots a string that sticks to
+  off it any way (or run off its end) to let go. Pushing through web slows you (×0.7 for each line you touch). Up close it bites; from range it shoots a string that sticks to
   you — each one stuck on slows you (×0.7), until you pull far enough away to snap it.
 - **The jellyfish** (Myrkkymeduusa) drifts through the open cave, glowing a poison
   green that lights the rock round it. It swims in pulses: a push along wherever its
