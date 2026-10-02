@@ -7,7 +7,7 @@ the frame; most of its parts live with their system.
 |---|---|
 | `step.js` | `step(W, G, dt)`: makes `F` and calls, in order: `stepRequests` (clock, Dev asks; New cave ends the frame), `stepPerks`, `movePlayer`, `atPortal` (fills `pcx`/`pcy`; the exit takes you back to the shop and ends the frame), `aimAndCast`, `stepBullets`, `stepSound`, `stepFields`, `stepPickups`, `stepWarp`, `stepRepo`, `stepToasts`, `decorStep`, `stepEnemies`, `stepGhost`, `fireFrame`, `stepTrail`, `stepParticles`, `W.best`, `stepTorch`, `stepMotes` |
 | `terrain.js` | Questions: `solidCell`, `solidAt`, `boxHit`, `lineOfSight`, `enemyAt`. Changes: `dig`, `unDeco`, `paint`, `explode`, `dropOre` |
-| `player.js` | `refreshBag`, `maxHp`, `hurt`, `torchHand`, the jetpack's cough `sputterStep`/`SPUTTER_FUEL`, `NO_INPUT`, `movePlayer` (stick, jetpack, steering, climbing, the move, footsteps; dead, it runs `corpseStep`: the ragdoll, `world/ragdoll.js`, which you follow), `stepTorch` |
+| `player.js` | `refreshBag`, `maxHp`, `hurt`, `torchHand`, the jetpack's cough `sputterStep`/`SPUTTER_FUEL`, `NO_INPUT`, `lineLetGo`/`LINE_OFF` (hanging from a web line or arched vine: any push mostly across it, or past an end, lets go; `letGo` carries you off), `movePlayer` (stick, jetpack, steering, climbing, the move, footsteps; dead, it runs `corpseStep`: the ragdoll, `world/ragdoll.js`, which you follow), `stepTorch` |
 | `gun.js` | `cast` (one pull through `planCast`), `spawnShot`, `releaseAt`/`firePayload` (a trigger's payload), `aimAndCast` (aim, Pinpointer, facing, gun clocks, the trigger) |
 | `bullets.js` | `stepBullets` (the bullet loop), `critRoll`, `shove`, `spray`, `explodeCross`, `teleportTo` |
 | `fields.js` | `castField`, `fireBeam`, `throwEmbers`, `fieldPayload`, `stepFields` |

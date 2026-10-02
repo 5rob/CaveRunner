@@ -13,7 +13,8 @@ release loop, testing), then the README of the `src/` folder you're working in.
   (`art/sprites.js` `paintBody`/`runnerPose`/`pixelSprite`), the ragdoll with elbows, teleporter pads
   for both portals (`render/pads.js`), a steel shop (`shopPanel`), machines left to right mods/guns/perks,
   a hologram count that only goes down (nests hold a fixed brood, `nest.left`), Dev knobs for the enemy
-  count and the level reward, press-and-hold Dev group headers. The owner may paste Dev numbers for
+  count and the level reward, press-and-hold Dev group headers, and any push off a web line or arched
+  vine lets go (`lineLetGo`). The owner may paste Dev numbers for
   the astronaut (`runnerPx`, `runnerLine`). The owner's reference picture never arrived in the session:
   the look is from "a white-dressed astronaut, pixel style".
 - **v124** on `main`, 2026-10-02: saved death replays (the Bag's Witness tab: play,
@@ -37,6 +38,9 @@ release loop, testing), then the README of the `src/` folder you're working in.
 
 ## What's next: REFACTOR.md → "Found along the way"
 
+- **`shop` browser suite fails on v124 and v125 alike** (not a flake): "the coin is gone once
+  collected" (a coin left lying) and so "you keep your mods and gold". Not looked into yet.
+
 That list is the to-do the refactor left (nothing in it was fixed in passing). The main ones:
 
 - **Stendari's bomb never sets anything alight**: `enemyFor` (`src/data/creatures.js`) doesn't copy
@@ -47,7 +51,7 @@ That list is the to-do the refactor left (nothing in it was fixed in passing). T
 - **Flaky browser checks** (timing or chance; each passes alone): `jelly` spit group (fails on v96 too),
   `sound` portalOut, `torch` falloff/flicker, `lightning` fork, `trigger` explosion carrier (wall-clock
   waits: make it frame-counted), `fog` "next floor is dark again" and "flying on reveals more",
-  `everymod` telecast, `rats`, `save`, `nuggets` "settle on the floor" (fails on v114 too), `archvine`, `decor` vine, `t1spells` bubble, `compare`, and the logic `spider` "every roaming spider moves about" on real caves (1 of 119 barely moves since v120's one-room caves: make it seeded or sandboxed). Worth
+  `everymod` telecast, `rats`, `save`, `vendshop` arrow-key step, `nuggets` "settle on the floor" (fails on v114 too), `archvine`, `decor` vine, `t1spells` bubble, `compare`, and the logic `spider` "every roaming spider moves about" on real caves (1 of 119 barely moves since v120's one-room caves: make it seeded or sandboxed). Worth
   making them frame-counted / seeded. `shoplayout` and `perks` logic suites run close to the 30s cap.
 - Smaller: `paint()` has no callers, `W.best` is written and never read, a static field cast just before
   the portal carries on to the next floor, a few comments sit above
