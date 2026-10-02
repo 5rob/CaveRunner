@@ -9,7 +9,11 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
-- **Released: v125** on `main`, 2026-10-02: the player as a pixel astronaut with jointed limbs
+- **Released: v127** on `main`, 2026-10-02: vines and web lines give (`world/sway.js`: one spring per
+  line, a pendulum per hanging vine; Dev group **Vines & webs: sway**). v126: the **Carrot** suit stat
+  (camera, torch, aggro, aim line; Dev group **Carrot**, min = none fitted, max = Carrot V). The owner may
+  paste Dev numbers for either.
+- **v125** on `main`, 2026-10-02: the player as a pixel astronaut with jointed limbs
   (`art/sprites.js` `paintBody`/`runnerPose`/`pixelSprite`), the ragdoll with elbows, teleporter pads
   for both portals (`render/pads.js`), a steel shop (`shopPanel`), machines left to right mods/guns/perks,
   a hologram count that only goes down (nests hold a fixed brood, `nest.left`), Dev knobs for the enemy

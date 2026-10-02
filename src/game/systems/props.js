@@ -10,9 +10,10 @@ import { CELL, CH, CW, GRAVITY, PH, PW, WEB_HAND, WH } from '../../core/consts.j
 import { clamp } from '../../core/util.js';
 import { HUNTERS } from '../../data/creatures.js';
 import { themeFor } from '../../data/themes.js';
-import { kr, spr } from '../../dev/knobs.js';
+import { DEV, kr, spr } from '../../dev/knobs.js';
 import { PLANTS, PROP_DMG, archNear, propAnchored } from '../../world/decorate.js';
 import { FIRE_COLS } from '../../world/fire.js';
+import { bendAwake, bendPush, bendStep, hangRootX, hangRootY, hangX, swingStep, swings, webNearU } from '../../world/sway.js';
 import { stepAmbience } from './ambience.js';
 import { damageEnemy } from './enemies.js';
 import { ignite, setAlight, youAlight } from './fire.js';
@@ -35,8 +36,24 @@ export function blowProp(W, G, pr) {
 
 // ---- decoration, pass 3: the props at work ----
 /** @param {World} W @param {Prop} pr @param {number} pad */
-export const pOver = (W, pr, pad) => W.p.x + PW > pr.x + pr.l - pad && W.p.x < pr.x + pr.r + pad &&
-  W.p.y + PH > pr.y + pr.t0 - pad && W.p.y < pr.y + pr.b + pad;
+// (a hanging vine is where its swing, and the arch it hangs off, have carried it at your height)
+export const pOver = (W, pr, pad) => {
+  const sx = pr.sw || pr.on ? hangX(pr, W.p.y + PH / 2) : 0, sy = pr.on ? hangRootY(pr) : 0;
+  return W.p.x + PW > pr.x + sx + pr.l - pad && W.p.x < pr.x + sx + pr.r + pad &&
+    W.p.y + PH > pr.y + sy + pr.t0 - pad && W.p.y < pr.y + sy + pr.b + pad;
+};
+// A line that gives (a web line, an arched vine: world/sway.js), once a frame: held, it dips under
+// you at your hands (u along it), with a bounce from how fast you grabbed it; let go or pushed,
+// it springs back and sleeps once still
+/** @param {World} W @param {Prop | WebLine} o @param {boolean} held @param {number} u @param {number} dt */
+function lineSway(W, o, held, u, dt) {
+  if (held) {
+    if (!o.wh) { o.wvx = (o.wvx || 0) + W.p.vx * DEV.bendGrab; o.wvy = (o.wvy || 0) + W.p.vy * DEV.bendGrab; }
+    o.wu = clamp(u, 0.05, 0.95);
+  }
+  o.wh = held;
+  if (held || bendAwake(o)) bendStep(o, 0, held ? DEV.bendDip : 0, DEV.bendK, DEV.bendDamp, DEV.bendMax, dt);
+}
 // a loud noise: every creature within earshot comes looking, and shooters get ready
 /** @param {World} W @param {number} x @param {number} y */
 export function alertAt(W, x, y) {
@@ -171,12 +188,33 @@ export function decorStep(W, G, dt, pcx, pcy) {
     switch (pr.k) {
       case 'climb':
         if (pr.arc) {                          // an arched vine: latch on like a web line
+          const held = me && W.zfx.climb === pr && !W.p.jet;
+          lineSway(W, pr, held, held ? archNear(pr, pcx, W.p.y + WEB_HAND).u : 0, dt);
           if (!me || !pOver(W, pr, 0)) break;
-          const R = pr.grab || (pr.grab = kr('arGrab'));
-          const d = archNear(pr, pcx, W.p.y + WEB_HAND).d, d2 = archNear(pr, pcx, pcy).d;
-          if (Math.min(d, d2) < R + 3) W.plantsNow.add(pr);
+          // held, it can bend away faster than you follow on a long frame: hold on further out
+          const R = (pr.grab || (pr.grab = kr('arGrab'))) + (held ? DEV.bendMax : 0);
+          const q = archNear(pr, pcx, W.p.y + WEB_HAND), d = q.d, d2 = archNear(pr, pcx, pcy).d;
+          if (Math.min(d, d2) < R + 3) {
+            W.plantsNow.add(pr);
+            if (!held) bendPush(pr, q.u, W.p.vx, W.p.vy, DEV.bendPush, dt);   // flying through: it gives
+          }
           if (d <= R && (!z.arch || d < z.archD)) { z.arch = pr; z.archD = d; }
           break;
+        }
+        if (swings(pr)) {
+          if (me && W.p.swing && W.zfx.climb === pr) {
+            // you swing on it (movePlayer): it hangs through your hands
+            const Lh = clamp(W.p.y + WEB_HAND - pr.y - hangRootY(pr), 6, pr.len);
+            pr.sw = clamp(Math.asin(clamp((pcx - pr.x - hangRootX(pr)) / Lh, -1, 1)), -DEV.vineMax, DEV.vineMax);
+            pr.swv = W.p.vx / Lh;
+          } else {
+            // brushed past (or pushed across while hanging on): it swings the way you went
+            if (me && pOver(W, pr, 1)) {
+              const k = Math.min(1, 10 * dt);
+              pr.swv = (pr.swv || 0) + (W.p.vx * DEV.vinePush / Math.max(12, pr.len) - (pr.swv || 0)) * k;
+            }
+            if (pr.sw || pr.swv) swingStep(pr, pr.len * 0.6, GRAVITY * DEV.vineGrav, DEV.vineDamp, DEV.vineMax, dt);
+          }
         }
         if (me && pOver(W, pr, 0)) z.climb = pr;
         if (me && PLANTS[pr.st] && pOver(W, pr, 1)) W.plantsNow.add(pr);
@@ -360,17 +398,24 @@ export function decorStep(W, G, dt, pcx, pcy) {
     SFX.rustle(pcx, pcy, str, style || (pr && pr.st) || 'vine');
   }
   W.plantsLast = new Set(W.plantsNow);
+  // web lines give: a little sag at rest, a dip under you while you hang on, a wobble after
+  for (const L of W.webs) {
+    L.sag = DEV.webSag * Math.abs(L.b0x - L.a0x);
+    const held = !W.p.dead && W.zfx.web === L && W.zfx.climb === L && !W.p.jet;
+    lineSway(W, L, held, held ? webNearU(L, pcx, W.p.y + WEB_HAND).u : 0, dt);
+  }
   // spider web lines: each one you're touching slows you, and like a vine you latch on
   // to the nearest (unless you've just let go of one)
   if (!W.p.dead) {
     let wd = Infinity;
     for (const L of W.webs) {
-      const R = L.grab || (L.grab = spr('webGrab'));
-      if (pcx < Math.min(L.a0x, L.b0x) - R || pcx > Math.max(L.a0x, L.b0x) + R ||
-          pcy < Math.min(L.a0y, L.b0y) - R - PH / 2 || pcy > Math.max(L.a0y, L.b0y) + R + PH / 2) continue;
+      const R = (L.grab || (L.grab = spr('webGrab'))) + (L.wh ? DEV.bendMax : 0), give = (L.sag || 0) + DEV.bendMax;
+      if (pcx < Math.min(L.a0x, L.b0x) - R - give || pcx > Math.max(L.a0x, L.b0x) + R + give ||
+          pcy < Math.min(L.a0y, L.b0y) - R - give - PH / 2 || pcy > Math.max(L.a0y, L.b0y) + R + give + PH / 2) continue;
       const d = webDist(L, pcx, W.p.y + WEB_HAND);
       const d2 = webDist(L, pcx, pcy);
       if (Math.min(d, d2) > R) continue;
+      if (!L.wh) bendPush(L, webNearU(L, pcx, pcy).u, W.p.vx, W.p.vy, DEV.bendPush, dt);   // flying through: it gives
       z.webs++;
       z.webMul *= L.slow || (L.slow = spr('webSlow'));
       if (d <= R && d < wd) { wd = d; z.web = L; }

@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v126</title>
+<title>CaveRunner v127</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -662,7 +662,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v126';</script>
+<script>const VERSION = 'v127';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -874,7 +874,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     snapPull: 0.3,
     snapHit: 10,
     witPad: 80,
-    witKbps: 6e3
+    witKbps: 6e3,
+    webSag: 0.03,
+    bendK: 140,
+    bendDamp: 5,
+    bendPush: 0.3,
+    bendGrab: 0.35,
+    bendDip: 5,
+    bendMax: 14,
+    vineGrav: 1,
+    vineDamp: 1.2,
+    vinePush: 0.6,
+    vineMax: 0.9
   };
   var DEV_META = [
     { k: "zoom", g: "view", label: "Camera zoom", min: 0.3, max: 3, step: 0.05 },
@@ -932,6 +943,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     // a saved death replay keeps only what's round your path: this far past it the camera may still go
     { k: "witPad", g: "witness", label: "Saved replay: how far the camera may stray from you (world units)", min: 0, max: 300, step: 10 },
     { k: "witKbps", g: "witness", label: "Exported video quality (kbit/s)", min: 500, max: 2e4, step: 500 },
+    // vines and web lines that give (world/sway.js): lines bend on one spring, hanging vines swing
+    { k: "webSag", g: "sway", label: "Web line sag at rest (× its width)", min: 0, max: 0.3, step: 5e-3 },
+    { k: "bendK", g: "sway", label: "Lines: springiness (higher = quicker wobble)", min: 10, max: 600, step: 5 },
+    { k: "bendDamp", g: "sway", label: "Lines: settling (higher = settles sooner)", min: 0, max: 30, step: 0.5 },
+    { k: "bendPush", g: "sway", label: "Lines: push from flying through (× your speed)", min: 0, max: 1, step: 0.05 },
+    { k: "bendGrab", g: "sway", label: "Lines: bounce when you grab one (× your speed)", min: 0, max: 1, step: 0.05 },
+    { k: "bendDip", g: "sway", label: "Lines: dip under your weight (world units)", min: 0, max: 30, step: 0.5 },
+    { k: "bendMax", g: "sway", label: "Lines: most they bend (world units)", min: 0, max: 60, step: 1 },
+    { k: "vineGrav", g: "sway", label: "Hanging vines: swing pull (× gravity)", min: 0, max: 3, step: 0.05 },
+    { k: "vineDamp", g: "sway", label: "Hanging vines: settling (higher = settles sooner)", min: 0, max: 10, step: 0.1 },
+    { k: "vinePush", g: "sway", label: "Hanging vines: push from flying through (× your speed)", min: 0, max: 2, step: 0.05 },
+    { k: "vineMax", g: "sway", label: "Hanging vines: widest swing (radians)", min: 0, max: 1.5, step: 0.05 },
     { k: "bagSpeed", g: "ui", label: "Bag fire preview speed (×real time)", min: 0.05, max: 5, step: 0.05 }
   ];
   var DEV_GROUPS = [
@@ -952,6 +975,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ["witness", "Witness (death replays)"],
     ["level", "Level layout (floor 1)"],
     ["arch", "Arched vines"],
+    ["sway", "Vines & webs: sway"],
     ["fire", "Fire"],
     ["carrot", "Carrot (suit stat)"]
   ];
@@ -6712,6 +6736,86 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return ticks;
   }
 
+  // src/world/sway.js
+  var tent = (u, pu) => u <= pu ? pu > 0 ? u / pu : 0 : pu < 1 ? (1 - u) / (1 - pu) : 0;
+  function bendStep(o, tx2, ty, K, D, max, dt) {
+    let x = o.wx || 0, y = o.wy || 0, vx = o.wvx || 0, vy = o.wvy || 0;
+    dt = Math.min(dt, 1 / 30);
+    vx += (-K * (x - tx2) - D * vx) * dt;
+    vy += (-K * (y - ty) - D * vy) * dt;
+    x += vx * dt;
+    y += vy * dt;
+    const m = Math.hypot(x, y);
+    if (m > max) {
+      x *= max / m;
+      y *= max / m;
+      const out = (vx * x + vy * y) / (max * max);
+      if (out > 0) {
+        vx -= out * x;
+        vy -= out * y;
+      }
+    }
+    const still = !tx2 && !ty && Math.abs(x) + Math.abs(y) < 0.05 && Math.abs(vx) + Math.abs(vy) < 0.5;
+    o.wx = still ? 0 : x;
+    o.wy = still ? 0 : y;
+    o.wvx = still ? 0 : vx;
+    o.wvy = still ? 0 : vy;
+    return !still;
+  }
+  function bendPush(o, u, vx, vy, share, dt) {
+    o.wu = Math.max(0.05, Math.min(0.95, u));
+    const k = Math.min(1, 10 * dt);
+    o.wvx = (o.wvx || 0) + (vx * share - (o.wvx || 0)) * k;
+    o.wvy = (o.wvy || 0) + (vy * share - (o.wvy || 0)) * k;
+  }
+  var bendAwake = (o) => !!(o.wx || o.wy || o.wvx || o.wvy);
+  function swingStep(o, L2, g, D, max, dt) {
+    let a = o.sw || 0, v = o.swv || 0;
+    dt = Math.min(dt, 1 / 30);
+    v += (-(g / Math.max(2, L2)) * Math.sin(a) - D * v) * dt;
+    a += v * dt;
+    if (a > max) {
+      a = max;
+      if (v > 0) v = 0;
+    } else if (a < -max) {
+      a = -max;
+      if (v < 0) v = 0;
+    }
+    const still = Math.abs(a) < 2e-3 && Math.abs(v) < 0.01;
+    o.sw = still ? 0 : a;
+    o.swv = still ? 0 : v;
+    return !still;
+  }
+  function webAt(L2, u) {
+    const t = tent(u, L2.wu == null ? 0.5 : L2.wu), s = 4 * u * (1 - u) * (L2.sag || 0);
+    return { x: L2.a0x + (L2.b0x - L2.a0x) * u + t * (L2.wx || 0), y: L2.a0y + (L2.b0y - L2.a0y) * u + s + t * (L2.wy || 0) };
+  }
+  function webNearU(L2, x, y) {
+    const vx = L2.b0x - L2.a0x, vy = L2.b0y - L2.a0y, ll = vx * vx + vy * vy || 1;
+    const u = Math.max(0, Math.min(1, ((x - L2.a0x) * vx + (y - L2.a0y) * vy) / ll));
+    const q = webAt(L2, u);
+    return { x: q.x, y: q.y, u };
+  }
+  function webPath(ctx, L2) {
+    ctx.moveTo(L2.a0x, L2.a0y);
+    if (!L2.sag && !bendAwake(L2)) {
+      ctx.lineTo(L2.b0x, L2.b0y);
+      return;
+    }
+    for (let k = 1; k <= 8; k++) {
+      const q = webAt(L2, k / 8);
+      ctx.lineTo(q.x, q.y);
+    }
+  }
+  var hangRootX = (pr) => pr.on && pr.on.wx ? tent(pr.u || 0, pr.on.wu == null ? 0.5 : pr.on.wu) * pr.on.wx : 0;
+  var hangRootY = (pr) => pr.on && pr.on.wy ? tent(pr.u || 0, pr.on.wu == null ? 0.5 : pr.on.wu) * pr.on.wy : 0;
+  function hangX(pr, y) {
+    const rx = hangRootX(pr);
+    if (!pr.sw) return rx;
+    return rx + Math.sin(pr.sw) * Math.max(0, Math.min(pr.len || 0, y - pr.y - hangRootY(pr)));
+  }
+  var swings = (pr) => pr.k === "climb" && !pr.arc && !!pr.len && pr.st !== "icefall";
+
   // src/world/strata.js
   function timberFrame(mat, set, R, T, xa, xb, y, old, fy, maxH) {
     const solid = (x, yy) => x < 0 || yy < 0 || x >= CW || yy >= CH || mat[yy * CW + x] !== 0;
@@ -7161,20 +7265,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return pts;
   }
   function archNear(pr, x, y) {
-    const A = pr.arc;
-    let best = null;
+    const A = pr.arc, n = A.length - 1, bx0 = pr.wx || 0, by0 = pr.wy || 0, pu = pr.wu == null ? 0.5 : pr.wu;
+    let best = null, ax = 0, ay = 0;
     for (let k = 0; k + 1 < A.length; k++) {
-      const ax = pr.x + A[k][0], ay = pr.y + A[k][1], bx = pr.x + A[k + 1][0], by = pr.y + A[k + 1][1];
+      if (k === 0) {
+        const t2 = tent(0, pu);
+        ax = pr.x + A[0][0] + t2 * bx0;
+        ay = pr.y + A[0][1] + t2 * by0;
+      }
+      const t = tent((k + 1) / n, pu), bx = pr.x + A[k + 1][0] + t * bx0, by = pr.y + A[k + 1][1] + t * by0;
       const vx = bx - ax, vy = by - ay, ll = vx * vx + vy * vy || 1;
       const u = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / ll));
       const qx = ax + vx * u, qy = ay + vy * u, d = Math.hypot(qx - x, qy - y);
-      if (!best || d < best.d) best = { x: qx, y: qy, d, k };
+      if (!best || d < best.d) best = { x: qx, y: qy, d, k, u: (k + u) / n };
+      ax = bx;
+      ay = by;
     }
     return best;
   }
   function archAt(pr, u) {
     const A = pr.arc, f = Math.max(0, Math.min(1, u)) * (A.length - 1), k = Math.min(A.length - 2, Math.floor(f)), t = f - k;
-    return { x: pr.x + A[k][0] + (A[k + 1][0] - A[k][0]) * t, y: pr.y + A[k][1] + (A[k + 1][1] - A[k][1]) * t };
+    const b = tent(Math.max(0, Math.min(1, u)), pr.wu == null ? 0.5 : pr.wu);
+    return { x: pr.x + A[k][0] + (A[k + 1][0] - A[k][0]) * t + b * (pr.wx || 0), y: pr.y + A[k][1] + (A[k + 1][1] - A[k][1]) * t + b * (pr.wy || 0) };
   }
   function decorate(mat, img, dimg, bgImg, floor, seed, keep2, fuel, zone) {
     let rs = (Math.imul(seed | 0, 7919) + floor * 104729 >>> 0) % 2147483646 + 1;
@@ -9134,11 +9246,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var seenAt = (W, x, y) => W.seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)] !== 0;
 
   // src/game/systems/webs.js
-  var webNear = (L2, x, y) => {
-    const vx = L2.b0x - L2.a0x, vy = L2.b0y - L2.a0y, ll = vx * vx + vy * vy || 1;
-    const u = Math.max(0, Math.min(1, ((x - L2.a0x) * vx + (y - L2.a0y) * vy) / ll));
-    return { x: L2.a0x + vx * u, y: L2.a0y + vy * u };
-  };
+  var webNear = (L2, x, y) => webNearU(L2, x, y);
   var webDist = (L2, x, y) => {
     const q = webNear(L2, x, y);
     return Math.hypot(q.x - x, q.y - y);
@@ -9340,7 +9448,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     } else {
       const target = mag > 0 ? L2.nx * mag * WALK * W.pb.walk * DEV.move * W.zfx.slow * tied : 0;
-      W.p.vx = approach(W.p.vx, target, (W.p.onGround ? GROUND_ACC * (W.zfx.slick ? 0.08 : 1) : AIR_ACC) * dt * k);
+      const cp = W.zfx.climb, vine = cp && "k" in cp && swings(cp) ? cp : null;
+      W.p.swing = 0;
+      if (vine && climbing && W.p.kick <= 0 && !W.p.onGround && Math.abs(target) < WALK * 0.25) {
+        const hy = W.p.y + WEB_HAND, Lh = clamp(hy - vine.y - hangRootY(vine), 6, vine.len);
+        const s = clamp((pcx0 - vine.x - hangRootX(vine)) / Lh, -1, 1), a = Math.asin(s);
+        W.p.vx += (-GRAVITY * DEV.vineGrav * s * Math.sqrt(1 - s * s) - DEV.vineDamp * W.p.vx) * dt;
+        if (Math.abs(a) > DEV.vineMax && W.p.vx * a > 0) W.p.vx = 0;
+        W.p.swing = 1;
+      } else W.p.vx = approach(W.p.vx, target, (W.p.onGround ? GROUND_ACC * (W.zfx.slick ? 0.08 : 1) : AIR_ACC) * dt * k);
       if (climbing && W.p.kick <= 0) W.p.vy = approach(W.p.vy, mag > 0 ? L2.ny * mag * CLIMB * tied : 0, 1800 * dt);
       else W.p.vy = Math.min(W.p.vy + GRAVITY * dt * (1 - 2 * W.zfx.rev), 900);
     }
@@ -9911,7 +10027,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function drawArch(ctx, pr, time, T) {
     const A = pr.arc, n = A.length - 1, x = pr.x, y = pr.y;
     const col = pr.st === "root" ? mix(T.moss[0], [200, 190, 160], 0.4) : T.moss[0];
-    const sway = (k) => Math.sin(time * 0.9 + pr.seed * 6 + k * 0.35) * 0.8 * Math.sin(Math.PI * k / n);
+    const pu = pr.wu == null ? 0.5 : pr.wu, wx = pr.wx || 0, wy = pr.wy || 0;
+    const sway = (k) => Math.sin(time * 0.9 + pr.seed * 6 + k * 0.35) * 0.8 * Math.sin(Math.PI * k / n) + tent(k / n, pu) * wy;
+    const bendX = (k) => tent(k / n, pu) * wx;
     const gone = (k) => pr.burn && k / n > pr.u0 && k / n < pr.u1;
     const fr = (v) => v - Math.floor(v);
     for (let s = 0; s < pr.thick; s++) {
@@ -9925,7 +10043,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           continue;
         }
         const tw = pr.thick > 1 ? Math.sin(k * 1.3 + s * 2.1 + pr.seed * 9) * 0.9 : 0;
-        const px = x + A[k][0], py = y + A[k][1] + sway(k) + tw;
+        const px = x + A[k][0] + bendX(k), py = y + A[k][1] + sway(k) + tw;
         if (pen) ctx.lineTo(px, py);
         else ctx.moveTo(px, py);
         pen = true;
@@ -9938,7 +10056,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let j = 0; j < 3; j++) {
         const h3 = fr(Math.sin(k * 12.9898 + j * 78.233 + pr.seed * 437) * 43758.5);
         const t = (j + h3) / 3, s = (k + j) % 2 ? 1 : -1;
-        const lx = x + A[k][0] + (A[k + 1][0] - A[k][0]) * t;
+        const lx = x + A[k][0] + (A[k + 1][0] - A[k][0]) * t + bendX(k + t);
         const ly = y + A[k][1] + (A[k + 1][1] - A[k][1]) * t + sway(k + t) + 1 + h3 * 1.5;
         ctx.beginPath();
         ctx.ellipse(lx + s * (1 + h3), ly, 1.9, 0.9, s * (0.5 + h3 * 0.6), 0, 6.29);
@@ -9965,6 +10083,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (pr.arc) {
           drawArch(ctx, pr, time, T);
           break;
+        }
+        if (swings(pr) && (pr.sw || pr.on)) {
+          ctx.translate(x + hangRootX(pr), y + hangRootY(pr));
+          if (pr.sw) ctx.rotate(-pr.sw);
+          ctx.translate(-x, -y);
         }
         const len = pr.len, sw = st === "kelp" ? 5 : st === "chain" ? 0.8 : 1.6;
         const off = (k) => Math.sin(time * (st === "kelp" ? 1.6 : 1.1) + pr.seed * 6 + k * 0.08) * sw * (k / len);
@@ -10828,7 +10951,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       burst(W, pr.x, pr.y - 6, 14, "#b6e36a");
     }
   }
-  var pOver = (W, pr, pad) => W.p.x + PW > pr.x + pr.l - pad && W.p.x < pr.x + pr.r + pad && W.p.y + PH > pr.y + pr.t0 - pad && W.p.y < pr.y + pr.b + pad;
+  var pOver = (W, pr, pad) => {
+    const sx = pr.sw || pr.on ? hangX(pr, W.p.y + PH / 2) : 0, sy = pr.on ? hangRootY(pr) : 0;
+    return W.p.x + PW > pr.x + sx + pr.l - pad && W.p.x < pr.x + sx + pr.r + pad && W.p.y + PH > pr.y + sy + pr.t0 - pad && W.p.y < pr.y + sy + pr.b + pad;
+  };
+  function lineSway(W, o, held, u, dt) {
+    if (held) {
+      if (!o.wh) {
+        o.wvx = (o.wvx || 0) + W.p.vx * DEV.bendGrab;
+        o.wvy = (o.wvy || 0) + W.p.vy * DEV.bendGrab;
+      }
+      o.wu = clamp(u, 0.05, 0.95);
+    }
+    o.wh = held;
+    if (held || bendAwake(o)) bendStep(o, 0, held ? DEV.bendDip : 0, DEV.bendK, DEV.bendDamp, DEV.bendMax, dt);
+  }
   function alertAt(W, x, y) {
     W.rings.push({ x, y, t: 0 });
     for (const e of W.enemies) {
@@ -11020,15 +11157,33 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       switch (pr.k) {
         case "climb":
           if (pr.arc) {
+            const held = me && W.zfx.climb === pr && !W.p.jet;
+            lineSway(W, pr, held, held ? archNear(pr, pcx, W.p.y + WEB_HAND).u : 0, dt);
             if (!me || !pOver(W, pr, 0)) break;
-            const R = pr.grab || (pr.grab = kr("arGrab"));
-            const d = archNear(pr, pcx, W.p.y + WEB_HAND).d, d2 = archNear(pr, pcx, pcy).d;
-            if (Math.min(d, d2) < R + 3) W.plantsNow.add(pr);
+            const R = (pr.grab || (pr.grab = kr("arGrab"))) + (held ? DEV.bendMax : 0);
+            const q = archNear(pr, pcx, W.p.y + WEB_HAND), d = q.d, d2 = archNear(pr, pcx, pcy).d;
+            if (Math.min(d, d2) < R + 3) {
+              W.plantsNow.add(pr);
+              if (!held) bendPush(pr, q.u, W.p.vx, W.p.vy, DEV.bendPush, dt);
+            }
             if (d <= R && (!z.arch || d < z.archD)) {
               z.arch = pr;
               z.archD = d;
             }
             break;
+          }
+          if (swings(pr)) {
+            if (me && W.p.swing && W.zfx.climb === pr) {
+              const Lh = clamp(W.p.y + WEB_HAND - pr.y - hangRootY(pr), 6, pr.len);
+              pr.sw = clamp(Math.asin(clamp((pcx - pr.x - hangRootX(pr)) / Lh, -1, 1)), -DEV.vineMax, DEV.vineMax);
+              pr.swv = W.p.vx / Lh;
+            } else {
+              if (me && pOver(W, pr, 1)) {
+                const k = Math.min(1, 10 * dt);
+                pr.swv = (pr.swv || 0) + (W.p.vx * DEV.vinePush / Math.max(12, pr.len) - (pr.swv || 0)) * k;
+              }
+              if (pr.sw || pr.swv) swingStep(pr, pr.len * 0.6, GRAVITY * DEV.vineGrav, DEV.vineDamp, DEV.vineMax, dt);
+            }
           }
           if (me && pOver(W, pr, 0)) z.climb = pr;
           if (me && PLANTS[pr.st] && pOver(W, pr, 1)) W.plantsNow.add(pr);
@@ -11322,14 +11477,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       SFX.rustle(pcx, pcy, str, style || pr && pr.st || "vine");
     }
     W.plantsLast = new Set(W.plantsNow);
+    for (const L2 of W.webs) {
+      L2.sag = DEV.webSag * Math.abs(L2.b0x - L2.a0x);
+      const held = !W.p.dead && W.zfx.web === L2 && W.zfx.climb === L2 && !W.p.jet;
+      lineSway(W, L2, held, held ? webNearU(L2, pcx, W.p.y + WEB_HAND).u : 0, dt);
+    }
     if (!W.p.dead) {
       let wd = Infinity;
       for (const L2 of W.webs) {
-        const R = L2.grab || (L2.grab = spr("webGrab"));
-        if (pcx < Math.min(L2.a0x, L2.b0x) - R || pcx > Math.max(L2.a0x, L2.b0x) + R || pcy < Math.min(L2.a0y, L2.b0y) - R - PH / 2 || pcy > Math.max(L2.a0y, L2.b0y) + R + PH / 2) continue;
+        const R = (L2.grab || (L2.grab = spr("webGrab"))) + (L2.wh ? DEV.bendMax : 0), give = (L2.sag || 0) + DEV.bendMax;
+        if (pcx < Math.min(L2.a0x, L2.b0x) - R - give || pcx > Math.max(L2.a0x, L2.b0x) + R + give || pcy < Math.min(L2.a0y, L2.b0y) - R - give - PH / 2 || pcy > Math.max(L2.a0y, L2.b0y) + R + give + PH / 2) continue;
         const d = webDist(L2, pcx, W.p.y + WEB_HAND);
         const d2 = webDist(L2, pcx, pcy);
         if (Math.min(d, d2) > R) continue;
+        if (!L2.wh) bendPush(L2, webNearU(L2, pcx, pcy).u, W.p.vx, W.p.vy, DEV.bendPush, dt);
         z.webs++;
         z.webMul *= L2.slow || (L2.slow = spr("webSlow"));
         if (d <= R && d < wd) {
@@ -12068,6 +12229,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function spiderMove(W, G, e, C) {
     const { dt, dx, dy, dist, sees, hunting, pcx, pcy } = C, k = e.k;
     const cold = e.chill && e.chill < 1 ? e.chill : 1;
+    if (e.wox || e.woy) {
+      e.x -= e.wox || 0;
+      e.y -= e.woy || 0;
+      e.wox = e.woy = 0;
+    }
     if (spiderStep(e, {
       solidCell: (cx, cy) => solidCell(W, cx, cy),
       webs: W.webs,
@@ -12076,6 +12242,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       rnd: Math.random,
       speedMul: cold
     }, dt) === "web") SFX.fx("lash", e.x, e.y);
+    if (e.sp && e.sp.mode === "line" && e.sp.line) {
+      const L2 = e.sp.line, q = webNearU(L2, e.x, e.y);
+      e.wox = q.x - (L2.a0x + (L2.b0x - L2.a0x) * q.u);
+      e.woy = q.y - (L2.a0y + (L2.b0y - L2.a0y) * q.u);
+      e.x += e.wox;
+      e.y += e.woy;
+    }
     e.silkT = (e.silkT || 0) - dt;
     const S = e.sp;
     if (hunting && e.silkT <= 0 && S && (S.mode === "surf" || S.mode === "line") && dist < (e.silkR || (e.silkR = spr("spSilk"))) * sees && dist > e.r + 24) {
@@ -12142,10 +12315,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.ctx.globalAlpha = 0.55;
     G.ctx.lineWidth = 0.7;
     G.ctx.beginPath();
-    for (const L2 of W.webs) {
-      G.ctx.moveTo(L2.a0x, L2.a0y);
-      G.ctx.lineTo(L2.b0x, L2.b0y);
-    }
+    for (const L2 of W.webs) webPath(G.ctx, L2);
     for (const e of W.enemies) {
       const sh = e.sp && e.sp.mode === "shoot" && e.sp.shot;
       if (sh) {
@@ -15577,10 +15747,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       scx.lineWidth = 1;
       scx.lineCap = "round";
       scx.beginPath();
-      for (const Ln of W.webs) {
-        scx.moveTo(Ln.a0x, Ln.a0y);
-        scx.lineTo(Ln.b0x, Ln.b0y);
-      }
+      for (const Ln of W.webs) webPath(scx, Ln);
       for (const b of W.silk) {
         scx.moveTo(b.ax, b.ay);
         scx.lineTo(b.x, b.y);

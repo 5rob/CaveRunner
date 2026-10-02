@@ -5,6 +5,21 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v127 — vines and webs that give
+Released 2026-10-02.
+
+- **Web lines, arched vines and hanging vines move** (`world/sway.js`, looks only: no rope physics).
+  A line (web line, arch) bends as one damped spring, its bend (`wx`/`wy`) peaking where you touched it
+  (`wu`), straight from each end to there (a tent, so it goes taut in a V under you). Web lines sag at
+  rest (`L.sag`). Flying through pushes it your way (`bendPush`); grabbing one bounces it
+  (`lineSway` in `decorStep`), and held it settles at a dip under your weight. A hanging vine is a
+  pendulum (`sw`/`swv`, drawn as the whole vine turned about its root): brushed past it swings;
+  held with the stick not pushing across, you swing on it (`movePlayer`, sideways only) and it hangs
+  through your hands. Everything that finds a line (`webNear`, `archNear`/`archAt`, `pOver`,
+  spiders riding a line) finds it where it's drawn. Only what you touch wakes; it sleeps once still.
+- Dev group **Vines & webs: sway** (11 knobs: sag, springiness, settling, push, grab bounce, dip,
+  most bend; vine swing pull, settling, push, widest swing).
+
 ## v126 — the Carrot stat
 Released 2026-10-02.
 

@@ -14,6 +14,7 @@ import { DEV, kr, spr } from '../../dev/knobs.js';
 import { clearSave } from '../../save/save.js';
 import { archNear } from '../../world/decorate.js';
 import { ragHip, ragNew, ragStep } from '../../world/ragdoll.js';
+import { hangRootX, hangRootY, swings } from '../../world/sway.js';
 import { paintFog } from './fog.js';
 import { burst, toast } from './particles.js';
 import { boxHit, solidAt } from './terrain.js';
@@ -245,7 +246,17 @@ export function movePlayer(W, G, F) {
   } else {
     // decoration underfoot: snow, slime and puddles slow you, ice takes your grip away
     const target = mag > 0 ? L.nx * mag * WALK * W.pb.walk * DEV.move * W.zfx.slow * tied : 0;
-    W.p.vx = approach(W.p.vx, target, (W.p.onGround ? GROUND_ACC * (W.zfx.slick ? 0.08 : 1) : AIR_ACC) * dt * k);
+    // hanging off a vine, the stick not pushing across: you swing on it like a pendulum about its
+    // root (sideways only: the stick still climbs you), until it settles (world/sway.js)
+    const cp = W.zfx.climb, vine = cp && 'k' in cp && swings(cp) ? cp : null;
+    W.p.swing = 0;
+    if (vine && climbing && W.p.kick <= 0 && !W.p.onGround && Math.abs(target) < WALK * 0.25) {
+      const hy = W.p.y + WEB_HAND, Lh = clamp(hy - vine.y - hangRootY(vine), 6, vine.len);
+      const s = clamp((pcx0 - vine.x - hangRootX(vine)) / Lh, -1, 1), a = Math.asin(s);
+      W.p.vx += (-GRAVITY * DEV.vineGrav * s * Math.sqrt(1 - s * s) - DEV.vineDamp * W.p.vx) * dt;
+      if (Math.abs(a) > DEV.vineMax && W.p.vx * a > 0) W.p.vx = 0;   // the widest it swings
+      W.p.swing = 1;
+    } else W.p.vx = approach(W.p.vx, target, (W.p.onGround ? GROUND_ACC * (W.zfx.slick ? 0.08 : 1) : AIR_ACC) * dt * k);
     if (climbing && W.p.kick <= 0) W.p.vy = approach(W.p.vy, mag > 0 ? L.ny * mag * CLIMB * tied : 0, 1800 * dt);
     else W.p.vy = Math.min(W.p.vy + GRAVITY * dt * (1 - 2 * W.zfx.rev), 900);   // dark matter flips it
   }
