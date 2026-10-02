@@ -7,7 +7,7 @@ React without JSX (`h(...)`), off the global React the page loads from a CDN. Ev
 |---|---|
 | `h.js` | `h` (`React.createElement`), `useRef`/`useEffect`/`useState`/`useMemo` |
 | `app.js` | `App`: the loadout, the input ref shared with the Game (`input.current`: `GameInput` in `types.d.ts`), the canvas, the sticks, the deck buttons, every overlay, the key handler |
-| `hud.js` | `Stick` (thumbsticks + gauge rings), `RKey`, `GAUGE_R`/`GAUGE_C`/`GAUGE_COL`, `healthCol`, `holdPress` (tap vs hold), `deckLayout`, `fmtGold` |
+| `hud.js` | `Stick` (thumbsticks + gauge rings; publishes its centre and size for the menu pointer, and keeps the touch's `peak` push), `RKey`, `CrystalIcon` (red or `green`), `CrystalRow` (the top bar's crystal silhouettes, `CRYS_MAX` a colour then +N), `GAUGE_R`/`GAUGE_C`/`GAUGE_COL`, `healthCol`, `holdPress` (tap vs hold), `deckLayout`, `fmtGold` |
 | `cards.js` | `GunCard`, `ModCard`, `PerkCard`, `GUN_STATS` — the same cards in the build screen and in the shop/pickup panel (`ingame`) |
 | `editor.js` | The build screen (Bag): `Editor`, `GunStats`, `GunIcon`, `SlotGrid`, `ScrollBox`, `PULL_COL`, `GS_ROWS`, `LIVE_BAR`, `SHOW_TIPS` |
 | `swap.js` | `GunSwap`: the chooser when you take a gun (found or bought) |
@@ -45,17 +45,17 @@ CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).
   hold for its card) on an arc round the right stick; the Bag (`.weapon`, 🎒) mirrors the last gun on
   the left; the map (`.mapbtn`, 🗺️) above it. Gold (`.gold`, `fmtGold`: `1234` → `1.2kg`, thousands
   truncated) sits top centre, `pointer-events:none`, with the debt under it in full (`-64,000,000,000g owed`,
-  not `fmtGold`) and `DueClock` under that, all centred (`topgold` checks them at phone widths); it updates because gold changes
+  not `fmtGold`) and `DueClock` under that, with `CrystalRow` (red and green silhouettes) between the gold and the debt, all centred (`topgold` checks them at phone widths); it updates because gold changes
   call `input.current.notify()` (re-renders `App`). The Dev button is a bare ⚙️
   (`.devbtn`); Restart is inside the Dev panel (`.dbg.restart`).
 - **Perks: a column over the map button** (`.perkcol`, `PERK_PIP`/`PERK_GAP`/`PERK_TOP` in `app.js`):
   bottom up from just above `.mapbtn` to `PERK_TOP` px from the top of the screen, then a column further in.
   With a card up, the shade sits over the column: its tap finds a `.perkpip` under the finger
   (`elementsFromPoint`) and switches the card to it. Tap a pip: `perkInfo` (pauses),
-  a `.perkinfo` card (always dark) with an R line. R switches it: `input.current.perkTap` is set while
-  the card is up and `Stick`'s dead-zone tap, the `r` key and the line call it. Off perks are places
-  in `LO.perksOff`; every perk bag is `perkBag(activePerks(LO))`; `perksDirty` has Game re-add the
-  bag. The card's shade stops at the controls so the right stick stays tappable.
+  a `.perkinfo` card (always dark) saying it's fitted to the Exo Suit. The column shows only the
+  perks fitted to the suit (`activePerks(LO)`: `LO.suit`); carried ones (`LO.perks`) don't count.
+  There's no on/off toggle any more (v120): fitting and taking out happen in the Bag's Exo Suit tab,
+  which sets `perksDirty` (Game runs `applyPerks`). The card's shade stops at the controls.
 - **The Bag always opens; editing is gated**: `canEdit = inShop || Tinker`. Read-only hides drop,
   gun reorder, Sort and the tips, and the footer says "Viewing only…"; tapping a mod still shows it.
   (The `e`/`tab` key opens it only where you can edit.)
@@ -69,6 +69,12 @@ CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).
   right stick) except its stat list `.prows` (max ~3 rows, 60px, scrolls). `.buypanel .pop` strips the
   inner card's frame and wins over `.pop.ingame` on source order: **keep the `.buypanel` block after
   `.pop.ingame` in the CSS**. `ModCard` drops its use-example (`.pdemo`) when `ingame`.
+- **Vending machine menus** (`SHOP_MENUS` in `modshop.js`: `VendShop` for mods and perks, `GunVend` for
+  guns) cover the view down to the sticks (`.vshop`, always dark) and pause the game. Every button in
+  one has `data-nav`. `useMenuNav`: the right stick is a pointer past `DEV.ptrStart` (a thin `.mptr`
+  ring, `menuPointer` × `DEV.ptrReach`, `snapTo` with `DEV.snapR/snapPull/snapHit`), pressing what
+  it's over on release; a plain right-stick tap (`Stick` checks `peak`) or r/f/enter presses the lit
+  one (`input.current.menuTap`); arrows step (`navStep`).
 - **Mods are taken with a tap, guns open `GunSwap`** (hold a slot to swap, or "Leave it"; the owner
   asked to keep this chooser). The old ModFound overlay is gone; `Stick` still writes `confirmAim` and
   reads `confirmAct`, but nothing sets `confirmAct` any more, so a dead-zone tap just sets
