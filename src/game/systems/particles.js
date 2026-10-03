@@ -7,6 +7,7 @@
 import { SFX } from '../../audio/sfx.js';
 import { CELL, COL, PH, SHOP_FLOOR } from '../../core/consts.js';
 import { nearExit } from '../world.js';
+import { jetNozzle } from './player.js';
 import { solidAt } from './terrain.js';
 
 /** @param {World} W @param {string} text */
@@ -51,14 +52,15 @@ export function stepToasts(W, F) {
 // goo drop) and blast flash moved on and aged.
 /** @param {World} W @param {StepFrame} F */
 export function stepParticles(W, F) {
-  const { dt, pcx } = F;
+  const { dt } = F;
   if (W.p.flame > 0) {
     let fx = -W.p.jx, fy = -W.p.jy + 0.8;
     const fl = Math.hypot(fx, fy) || 1; fx /= fl; fy /= fl;
     W.smokeAcc += dt * (25 + 35 * W.p.flame);
     while (W.smokeAcc >= 1) {
       W.smokeAcc--;
-      W.smoke.push({ x: pcx + (Math.random() - 0.5) * 5, y: W.p.y + PH + 3,
+      const nz = jetNozzle(W);                 // out of the backpack's nozzle, after the flame
+      W.smoke.push({ x: nz.x + fx * 6 + (Math.random() - 0.5) * 3, y: nz.y + fy * 6 + 1,
         vx: fx * 50 + (Math.random() - 0.5) * 20, vy: fy * 50 + (Math.random() - 0.5) * 20,
         r: 1.5 + Math.random(), life: 0.9, max: 0.9, jet: true });
     }

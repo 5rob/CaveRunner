@@ -67,7 +67,7 @@ on the same network; if it stops answering, `ipconfig` and update this line). Ru
    `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN` and the app offers the update.
    (No artifact publish; `https://claude.ai/artifact/2rarFzJoTseCKXhTPwMyLT` and `serve.js` are fallbacks.)
 
-**Current version: v130** (release channel `main`). **The version number is not optional.** The app offers an update only when `version.txt` (made by CI
+**Current version: v131** (release channel `main`; v131 waits on the owner's OK of its screenshots before it goes onto `main`). **The version number is not optional.** The app offers an update only when `version.txt` (made by CI
 from `index.html`'s `const VERSION`) is newer: no bump, no prompt, and the owner debugs a fixed bug.
 One place: `export const VERSION = 'vNN';` in `src/version.js` (that shape, single quotes: the check
 parses `VERSION = 'v(\d+)'`); the build writes it as an un-bundled `<script>` line and fills `<title>`

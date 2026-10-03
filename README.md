@@ -605,7 +605,7 @@ them if it cannot find either.
 - Large randomly generated caves with cramped and open areas, winding tunnels, built ledges and half-buried brick frames
 - Fog of war: the cave starts dark and you reveal it by exploring — only what the torch could actually see, never what was round a corner — with what you have seen kept as a faint map behind you
 - A torch in the runner's free hand, a chunky pixel flame licking and breaking off at the top, throwing embers, guttering — and the light in the cave gutters with it. Its flame is dragged about as you move, and it throws a small warm glow round you
-- The jetpack's flame and smoke in the same chunky pixels: a licking fire, not a cone
+- The jetpack's flame and smoke in the same chunky pixels, out of the bottom of the backpack: a licking fire, not a cone
 - Wall torches either side of the prizes in the hidden rooms
 - Teleporter pads for the way in and three exits along the top: a beam of blue light fading upward, specks rising in it, lightning crackling off a pad when it's used
 - Dev knobs for how many enemies a new level gets (and how many more each floor), the level's sell reward, and how fast the debt, reward and kill gold climb floor by floor

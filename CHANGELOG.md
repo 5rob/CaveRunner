@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v131 — the jet flame comes out of the backpack
+Not yet released (waiting on the owner's OK of the screenshots).
+
+- **The jetpack's flame and smoke come out of the backpack's nozzle** (`jetNozzle`, `NOZZLE_X`/`NOZZLE_Y`
+  in `game/systems/player.js`: behind you, the foot of the pack), not from between your feet; the flame's
+  base is slimmed to the nozzle's width (`jetFlame`). `pixelfx` checks it sits on your back's side facing
+  either way.
+
 ## v130 — the floor menu, levels made ahead, three exits, pixel flames
 Released 2026-10-03 (after the owner's OK of the screenshots).
 

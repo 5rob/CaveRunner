@@ -11,7 +11,7 @@ import { DEV, carrotAt, jcol, kcol, kru } from '../../dev/knobs.js';
 import { planCast } from '../../spells/cast.js';
 import { gunAccent } from '../../spells/guns.js';
 import { bhSp, tracePath } from '../../spells/trace.js';
-import { torchHand } from '../systems/player.js';
+import { jetNozzle, torchHand } from '../systems/player.js';
 import { solidAt } from '../systems/terrain.js';
 
 // The creatures in view, each with a health bar (rats and nests only once hurt)
@@ -40,16 +40,15 @@ export function drawEnemies(W, G, F) {
   }
 }
 
-// The jetpack's flame, pointing away from the thrust: a licking fire (jetFlame), on the player's
+// The jetpack's flame, out of the backpack's nozzle (jetNozzle) pointing away from the thrust: a licking fire (jetFlame), on the player's
 // pixel grid (DEV.runnerPx, like the gun and torch; 0 smooth)
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawJetFlame(W, G, F) {
-  const { pcx } = F;
   if (W.p.flame > 0) {
     let fx = -W.p.jx, fy = -W.p.jy + 0.8;
     const fl = Math.hypot(fx, fy) || 1; fx /= fl; fy /= fl;
     const len = 6 + W.p.flame * 16 + Math.random() * 3;
-    const bx = pcx, by = W.p.y + PH - 2, px = DEV.runnerPx;
+    const nz = jetNozzle(W), bx = nz.x, by = nz.y, px = DEV.runnerPx;   // the backpack's nozzle
     /** @param {CanvasRenderingContext2D} c */
     const paint = c => jetFlame(c, bx, by, fx, fy, len, W.time);
     if (px > 0) {
