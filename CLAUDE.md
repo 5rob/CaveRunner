@@ -64,15 +64,22 @@ on the same network; if it stops answering, `ipconfig` and update this line). Ru
    `main` only) deploys Pages and rebuilds the APK. A branch + merge is fine.
 6. **Confirm it landed** (public API, no token): `.../actions/runs?per_page=5`, `.../runs/<id>/jobs`
    for the failed step, `.../check-runs/<job-id>/annotations` for the error (logs need auth); then
-   `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN` and the app offers the update.
+   `https://5rob.github.io/CaveRunner/version.txt` shows the new `<number> vX.Y.Z` and the app offers the update.
    (No artifact publish; `https://claude.ai/artifact/2rarFzJoTseCKXhTPwMyLT` and `serve.js` are fallbacks.)
 
-**Current version: v131** (release channel `main`). **The version number is not optional.** The app offers an update only when `version.txt` (made by CI
-from `index.html`'s `const VERSION`) is newer: no bump, no prompt, and the owner debugs a fixed bug.
-One place: `export const VERSION = 'vNN';` in `src/version.js` (that shape, single quotes: the check
-parses `VERSION = 'v(\d+)'`); the build writes it as an un-bundled `<script>` line and fills `<title>`
-(`{{VERSION}}` in `src/shell.html`). It's on screen: how the owner says which build they see. Bump
-before you push to `main`, never after.
+**Current version: v0.0.132** (release channel `main`). **The version number is not optional.**
+It's **major.minor.patch** (since v0.0.132; before it a single `vNN`, up to v131): the owner's
+grouping — a **major release** bumps X, a **major update** Y, a **minor update** Z (reset the parts
+after the one you bump). Ask the owner which kind a release is if it isn't obvious; small fixes and
+tweaks are a minor update. The app offers an update only when `version.txt` is newer: no bump, no
+prompt, and the owner debugs a fixed bug. One place: `export const VERSION = 'vX.Y.Z';` in
+`src/version.js` (that shape, single quotes, each part under 1000). The build writes it as an
+un-bundled `<script>` line, fills `<title>` (`{{VERSION}}` in `src/shell.html`), and works out the
+**update number** X × 1,000,000 + Y × 1,000 + Z (0.0.132 → 132, 0.1.0 → 1000) into a comment
+`<!-- VERSION = 'v132' -->`: the shape an app installed before semver parses (`VERSION = 'v(\d+)'`),
+so it keeps updating. CI writes `version.txt` as `132 v0.0.132` (old apps read the first number).
+`tests/logic/version.test.js` runs the old app's reading against the built page. It's on screen: how
+the owner says which build they see. Bump before you push to `main`, never after.
 
 ## The Android app
 

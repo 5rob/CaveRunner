@@ -31,7 +31,8 @@ jobs:
         run: |
           mkdir -p _site
           cp index.html _site/index.html
-          node -e "const fs=require('fs');const m=fs.readFileSync('index.html','utf8').match(/VERSION\s*=\s*'(v\d+)'/);fs.writeFileSync('_site/version.txt',(m?m[1]:'v0')+'\n');"
+          # "<update number> <label>", e.g. "132 v0.0.132": an app from before semver reads the first number
+          node -e "const fs=require('fs');const s=fs.readFileSync('index.html','utf8');const n=s.match(/VERSION\s*=\s*'v(\d+)'/);const v=s.match(/VERSION\s*=\s*'(v\d+\.\d+\.\d+)'/);fs.writeFileSync('_site/version.txt',(n?n[1]:'0')+' '+(v?v[1]:'')+'\n');"
           echo "Published version:"; cat _site/version.txt
       - uses: actions/upload-pages-artifact@v3
         with:

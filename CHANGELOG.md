@@ -5,6 +5,15 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.132 — version numbers are major.minor.patch
+Released 2026-10-03.
+
+- **The version is `vX.Y.Z`** (major release, major update, minor update), carrying on from v131 as
+  v0.0.132. The app compares an update number, X × 1,000,000 + Y × 1,000 + Z (`tools/build.js` `code`),
+  written into the page as `<!-- VERSION = 'v132' -->` and into `version.txt` as `132 v0.0.132`, so the
+  app already installed (which reads a plain number) keeps updating. The app's `verNum` reads semver
+  first now, and its prompt shows `v0.0.132` (`verLabel`; needs the new APK, optional). Suite `version`.
+
 ## v131 — the jet flame comes out of the backpack
 Released 2026-10-03 (after the owner's OK of the screenshots).
 
