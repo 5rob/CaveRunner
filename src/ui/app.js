@@ -8,7 +8,7 @@ import { START_GOLD } from '../core/consts.js';
 import { PERKS, SUIT_LEN, activePerks, perkBag } from '../data/perks.js';
 import { Game } from '../game/Game.js';
 import { clipGet } from '../save/clips.js';
-import { clearSave, loadCollection, loadPerkCollection, loadSave } from '../save/save.js';
+import { clearSave, loadCollection, loadPerkCollection, loadSave, saveCollection } from '../save/save.js';
 import { startingGuns } from '../spells/guns.js';
 import { GunCard, ModCard, PerkCard } from './cards.js';
 import { DevPanel, SpawnGun } from './devpanel.js';
@@ -80,6 +80,8 @@ export function App() {
   };
   const restart = () => {
     clearSave();
+    // a new run, like a death: the mods unlocked go (the perks unlocked stay)
+    input.current.collection.length = 0; saveCollection([]);
     input.current.saved = null;
     input.current.loadout = { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false,
       perks: [], suit: Array(SUIT_LEN).fill(null), maxBonus: 0, usedLives: 0 };

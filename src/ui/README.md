@@ -49,7 +49,7 @@ CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).
   truncated) sits top centre, `pointer-events:none`, with the debt under it in full (`-64,000,000,000g owed`,
   not `fmtGold`) and `DueClock` under that, with `CrystalRow` (red and green silhouettes) between the gold and the debt, all centred (`topgold` checks them at phone widths); it updates because gold changes
   call `input.current.notify()` (re-renders `App`). The Dev button is a bare ⚙️
-  (`.devbtn`); Restart is inside the Dev panel (`.dbg.restart`).
+  (`.devbtn`); Restart is inside the Dev panel (`.dbg.restart`); like a death it empties the mods unlocked (`collection`), not the perks.
 - **Perks: a column over the map button** (`.perkcol`, `PERK_PIP`/`PERK_GAP`/`PERK_TOP` in `app.js`):
   bottom up from just above `.mapbtn` to `PERK_TOP` px from the top of the screen, then a column further in.
   With a card up, the shade sits over the column: its tap finds a `.perkpip` under the finger

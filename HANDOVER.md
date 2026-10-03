@@ -9,7 +9,9 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
-- **Released: v0.0.132** on `main`, 2026-10-03: version numbers are now **major.minor.patch**
+- **Released: v0.0.133** on `main`, 2026-10-03: Dev → Restart run empties the mods unlocked, like a
+  death (perks unlocked stay).
+- **v0.0.132** on `main`, 2026-10-03: version numbers are now **major.minor.patch**
   (`vX.Y.Z`; CLAUDE.md has how the update number keeps the installed app updating). The APK's update
   prompt label is tidier with the new APK (reinstall optional: the old one updates fine, showing
   "132 v0.0.132"). Next release: ask which part to bump if it isn't clearly a minor update.
