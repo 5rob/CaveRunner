@@ -46,6 +46,9 @@ export function shopPanel(cx, cy) {
   return [20, 23, 29];
 }
 
+// the exit teleporters' rooms along the top of the cave, evenly spaced across it (terrain cells)
+export const EXIT_X = [CW / 6, CW / 2, CW * 5 / 6].map(Math.round);
+
 /** @param {number} seed @param {number} floor @param {string[]} [owned] perks you hold (unused since the room holds a green crystal) @returns {Level} */
 export function makeLevel(seed, floor, owned) {
   floor = floor || 1;
@@ -315,8 +318,11 @@ export function makeLevel(seed, floor, owned) {
     for (let cx = shopExit - 9; cx <= shopExit + 9; cx++)
       if (inside(cx, cy)) mat[cy * CW + cx] = 0;
 
-  // exit ledge
-  slab(CW / 2 - 24, 34, 48, 3);
+  // the three exits along the top, evenly spaced (EXIT_X), each a room with a ledge for its pad, joined
+  // by a passage so the main route's end at the middle one reaches the other two. Carved after the
+  // ledges and platforms, so none lands across the passage
+  for (let x = EXIT_X[0]; x <= EXIT_X[EXIT_X.length - 1]; x += 3) carve(x, 20 + Math.round(4 * Math.sin(x / 19)), 9, 10, CH);
+  for (const ex of EXIT_X) { carve(ex, 22, 40, 16, CH); slab(ex - 24, 34, 48, 3); }
 
   // ---- hidden rooms ----
   // One room (there were two: a perk and a heart), cut out of whatever rock is there and lined with brick
@@ -424,7 +430,7 @@ export function makeLevel(seed, floor, owned) {
     ns = ns % 2147483646 + 1;
     const nr = () => (ns = (ns * 16807) % 2147483647) / 2147483647;
     for (let i = 0; i < 8; i++) nr();
-    const nk = [{ x: CW / 2, y: 22, r: 70 }, { x: shopExit, y: SHOP_TOP - 30, r: 50 },
+    const nk = [...EXIT_X.map(x => ({ x, y: 22, r: 70 })), { x: shopExit, y: SHOP_TOP - 30, r: 50 },
       ...[perkRoom].filter(Boolean).map(r => ({ x: r.x / CELL, y: r.y / CELL, r: 45 }))];
     nests = ratNests(mat, nr, zone, nk, Math.round(kr('raNests', nr)), Math.round(kr('raNestsWild', nr)));
   }
@@ -511,7 +517,8 @@ export function makeLevel(seed, floor, owned) {
   // you are not standing on it the moment you land. The two level vending machines come
   // next along the wall (VEND_BUY_X, VEND_SELL_X)
   stock.push({ kind: 'heal', x: arrival.x + 62, y: shelf, price: 0, sold: false, bought: 0 });
-  const portal = { x: WW / 2 - 10, y: 34 * CELL - 30, w: 20, h: 30 };
+  const portals = EXIT_X.map(ex => ({ x: ex * CELL - 10, y: 34 * CELL - 30, w: 20, h: 30 }));
+  const portal = portals[1];                            // the middle one (the main route ends there)
 
   // enemies in open spaces. Each one is drawn off this floor's roster, so the mix you
   // meet is the floor's own and stays the same run to run.
@@ -595,7 +602,7 @@ export function makeLevel(seed, floor, owned) {
   const fuel = new Uint8Array(CW * CH);                 // what burns, and how (see fireStep)
   if (strata) timberWorks(mat, dimg, works, T, rnd, fuel, built);
   const keep = [{ x: start.x, y: start.y, r: 40 }, { x: arrival.x, y: arrival.y, r: 50 },
-    { x: portal.x + portal.w / 2, y: portal.y + portal.h / 2, r: 50 },
+    ...portals.map(q => ({ x: q.x + q.w / 2, y: q.y + q.h / 2, r: 50 })),
     ...rooms.map(r => ({ x: r.x, y: r.y, r: 70 })), ...pickups.map(q => ({ x: q.x, y: q.y, r: 22 })),
     ...nests.map(n => ({ x: n.mouth.x * CELL, y: n.mouth.y * CELL, r: 18 }))];
   const deco = decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel, zone);
@@ -621,6 +628,6 @@ export function makeLevel(seed, floor, owned) {
     for (const q of n.path) for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) clear(Math.round(q.x) + dx, Math.round(q.y) + dy);
   }
 
-  return { mat, img, bgImg, dimg, ore, fuel, props: deco.props, amb: deco.amb, start, portal, enemies, pickups, stock, shopExit, arrival,
+  return { mat, img, bgImg, dimg, ore, fuel, props: deco.props, amb: deco.amb, start, portal, portals, enemies, pickups, stock, shopExit, arrival,
     rooms, roster, theme: T.name, works, zone, nests };
 }

@@ -14,6 +14,7 @@ import { MODS, famCol } from '../../spells/mods.js';
 import { FIRE_COLS } from '../../world/fire.js';
 import { nugR } from '../../world/nuggets.js';
 import { BG_PAR, drawHolo } from './holo.js';
+import { exits } from '../world.js';
 import { drawPad } from './pads.js';
 
 // The cave behind everything: the background (with parallax), the shop's back wall, the
@@ -145,11 +146,11 @@ export function drawProps(W, G, F) {
   G.ctx.globalAlpha = 1;
 }
 
-// The exit portal
+// The exit portals along the top
 /** @param {World} W @param {GameCtx} G */
 export function drawPortal(W, G) {
-  // the exit: a teleporter pad on its ledge (its light is drawPads, after the fog)
-  if (W.hasLvl) drawPad(G.ctx, W.portal.x + W.portal.w / 2, W.portal.y + W.portal.h, W.time);
+  // each exit: a teleporter pad on its ledge (its light is drawPads, after the fog)
+  if (W.hasLvl) for (const q of exits(W)) drawPad(G.ctx, q.x + q.w / 2, q.y + q.h, W.time);
 }
 
 // The pad you arrived on, as scenery ("WAY IN")

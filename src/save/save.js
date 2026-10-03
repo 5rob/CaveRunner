@@ -3,7 +3,7 @@
 // (maybe from an older version) into a loadout that loads; loadSave / clearSave touch the
 // store. Uses the page's VERSION global to decide whether the exact cave comes back.
 
-import { DEADLINE_MS, LVL_BUY, START_GOLD } from '../core/consts.js';
+import { DEADLINE_MS, OLD_LVL_BUY, START_GOLD } from '../core/consts.js';
 import { PERKS, SUIT_LEN, SUIT_SLOTS, fitsSlot } from '../data/perks.js';
 import { resetGun } from '../spells/guns.js';
 import { MODS } from '../spells/mods.js';
@@ -61,11 +61,12 @@ export function cleanLoadout(lo) {
     // v106 put a bought level's price on your gold (it went negative); now it's a debt of its own
     // and an older page loading a v107 save dropped the debt and then paid out the whole sale: a
     // pile of gold that size with no debt is that, so the level's price comes back off it
-    gold: num(lo.gold, START_GOLD) < 0 ? Math.max(0, num(lo.gold, 0) + LVL_BUY)
-      : num(lo.gold, START_GOLD) >= LVL_BUY && !(num(lo.debt, 0) > 0) ? num(lo.gold, 0) - LVL_BUY : num(lo.gold, START_GOLD),
-    debt: Math.max(0, num(lo.debt, 0)) || (num(lo.gold, 0) < 0 ? LVL_BUY : 0),
+    gold: num(lo.gold, START_GOLD) < 0 ? Math.max(0, num(lo.gold, 0) + OLD_LVL_BUY)
+      : num(lo.gold, START_GOLD) >= OLD_LVL_BUY && !(num(lo.debt, 0) > 0) ? num(lo.gold, 0) - OLD_LVL_BUY : num(lo.gold, START_GOLD),
+    debt: Math.max(0, num(lo.debt, 0)) || (num(lo.gold, 0) < 0 ? OLD_LVL_BUY : 0),
     // the repayment deadline; a debt from before v107 had none: it gets its hour from now
     due: num(lo.due, 0) || (num(lo.debt, 0) > 0 || num(lo.gold, 0) < 0 ? Date.now() + DEADLINE_MS : 0),
+    soldTop: Math.max(0, Math.floor(num(lo.soldTop, 0))),   // the highest floor sold this run (data/levels.js)
     maxBonus: Math.max(0, num(lo.maxBonus, 0)),
     usedLives: Math.max(0, num(lo.usedLives, 0)),
     // red crystals carried: the floor each came from (the shop's machine turns one into an unlock)

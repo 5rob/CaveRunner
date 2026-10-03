@@ -16,7 +16,7 @@ export const SHOT_SND = ['sid', 'still', 'r', 'beam', 'speed', 'size', 'count', 
   'boomer', 'pong', 'explode', 'bore', 'eat', 'cluster', 'pierce', 'crit', 'bounce'];
 // the world's fields draw() reads that belong to the floor, not the moment: a saved clip carries
 // its own (the player swaps them in, so the clip plays on any floor)
-export const SCENE_KEYS = ['floor', 'hasLvl', 'portal', 'arrival', 'stock', 'rooms', 'sconces', 'warp', 'repo', 'pb',
+export const SCENE_KEYS = ['floor', 'hasLvl', 'portal', 'portals', 'arrival', 'stock', 'rooms', 'sconces', 'warp', 'repo', 'pb',
   'plantW', 'themeName'];
 
 // a sound call's arguments as they'll be kept: a cast's shots cut to what its sound reads,

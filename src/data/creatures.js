@@ -4,7 +4,7 @@
 // picked by the floor number, never the seed.
 
 import { mixHex } from '../core/util.js';
-import { kcol, kru } from '../dev/knobs.js';
+import { DEV, kcol, kru } from '../dev/knobs.js';
 
 // ---- creatures ----
 // Who lives on a floor. Floors 1-10 each own a fixed roster of 2-6 of these, and the
@@ -121,7 +121,8 @@ export function rosterFor(floor, rnd) {
 
 // how much more gold is worth on a floor: a kill's reward, and the shop heal's price, both lift by it
 /** @param {number} floor */
-export const goldScale = floor => 1 + (floor - 1) * 0.30;
+// (exponential: × DEV.killGrow, 1.35, each floor up, so a high floor's kills keep up with its level's price)
+export const goldScale = floor => Math.pow(DEV.killGrow, Math.max(0, floor - 1));
 
 // the shop heal: the first on a floor is free, then HEAL_PRICE, times HEAL_MUL for each one after,
 // all lifted by the floor like the kill gold. A new floor's shop starts the count again

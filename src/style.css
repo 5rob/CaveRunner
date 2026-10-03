@@ -567,6 +567,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .crystalcard .pglyph{background:none;border:0}
 .vcrys{display:inline-flex;align-items:center;gap:3px;font:700 14px system-ui,sans-serif;color:#ff6a78}
 
+/* ---- the level buy machine's floor menu (ui/levelshop.js) ---- */
+.lvlist{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px;border-radius:10px;
+  background:rgba(255,255,255,0.04);padding:6px}
+.lvrow{position:relative;display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;flex:0 0 auto;
+  border:1.5px solid rgba(0,255,60,0.45);background:rgba(0,255,60,0.06);cursor:pointer;touch-action:pan-y}
+.lvrow.sel{background:rgba(0,255,60,0.18);border-color:#00ff3c;box-shadow:inset 0 0 0 1px #00ff3c}
+.lvrow.locked{border-color:rgba(255,255,255,0.14);background:rgba(255,255,255,0.03);border-style:dashed}
+.lvrow.locked .lvn,.lvrow.locked .lvnums{opacity:.45}
+.lvrow.locked.sel{background:rgba(255,255,255,0.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,0.4)}
+.lvn{flex:0 0 72px;display:flex;flex-direction:column;gap:2px}
+.lvn b{font:900 17px system-ui,sans-serif;letter-spacing:.03em;color:#7dffa0}
+.lvn span{font:600 10px system-ui,sans-serif;color:rgba(233,236,242,0.6)}
+.lvnums{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;font:600 11px system-ui,sans-serif}
+.lvnums div{display:flex;align-items:baseline;gap:5px;white-space:nowrap}
+.lvnums span{color:rgba(233,236,242,0.55);font-weight:500}
+.lvnums em{font-style:normal;font-variant-numeric:tabular-nums;color:#e9ecf2;overflow:hidden;text-overflow:ellipsis}
+.lvnums em.lvdebt{color:#ff5a4a}
+.lvnums em.lvgain{color:#ffc93c}
+.lvtag{position:absolute;right:8px;top:6px;display:flex;gap:4px;font-size:11px}
+.lvtag i{font-style:normal}
+.lvsold{font:700 10px system-ui,sans-serif;color:#7dffa0}
+.lvsum{flex:0 0 auto;display:flex;flex-direction:column;gap:7px}
+.lvhint{margin:0;font-size:12px}
+
 /* ---- the gun machine's menu (ui/gunshop.js) ---- */
 .gmid{flex:1;min-height:0;display:flex;gap:10px}
 .greels{position:relative;flex:0 0 38%;display:flex;flex-direction:column;justify-content:space-around;gap:6px}
@@ -613,10 +637,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .xslot{aspect-ratio:1;border-radius:12px;border:1.5px dashed var(--ring);background:var(--pad);
   display:flex;align-items:center;justify-content:center;font-size:22px;touch-action:none}
 .xslot.full{border-style:solid;background:var(--btn);box-shadow:inset 0 0 0 1px currentColor}
-.xgrid{flex:1 1 0;min-height:60px;overflow-y:auto;border-radius:9px;background:var(--pad);padding:6px;
+/* the perk grid: a ScrollBox (editor.js) like the Bag's mods, a perk you can drag takes the touch */
+.xgridW{flex:1 1 0;min-height:60px}
+.xgrid{overflow-y:auto;border-radius:9px;background:var(--pad);padding:6px;
   display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:6px;align-content:start}
 .xperk{position:relative;aspect-ratio:1;border-radius:10px;border:1.5px solid;background:var(--btn);
   display:flex;align-items:center;justify-content:center;font-size:19px;touch-action:pan-y}
+.xperk.grab{touch-action:none;cursor:grab}
 .xperk.none{opacity:.45;border-style:dashed}
 .xperk.locked{opacity:.3;border-style:dashed;filter:grayscale(1)}
 .xperk.inuse{opacity:.35;filter:grayscale(.6)}

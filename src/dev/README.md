@@ -16,8 +16,9 @@
 - Witness (`g: 'witness'`): `witPad` (how far past your path a saved replay keeps, so how far its
   camera may stray, world units, 80) and `witKbps` (the exported video's bitrate, 6000).
 - Level (`g: 'level'`): `due1` (floor 1's repay time, minutes), `enemies` (creatures a new level
-  gets on floor 1, `ENEMY_COUNT`) and `enemiesUp` (more each floor, 12), `lvlReward` (what selling
-  pays on top of the debt, 1000). Player: `runnerPx` (the astronaut's pixel size in world units, 1;
+  gets on floor 1, `ENEMY_COUNT`) and `enemiesUp` (more each floor, 12), `lvlBonus` (what selling
+  floor 1 pays on top of the debt, 1,000; it was `lvlReward`, renamed in v130), `lvlGrow` (the debt × per floor, 3; floor 1's is `LVL_BUY`, a
+  billion), `rewardGrow` (the reward × per floor, 2: 1,000, 2,000, 4,000…), `killGrow` (kill gold × per floor, 1.35: `goldScale`). Player: `runnerPx` (the astronaut's pixel size in world units, 1;
   0 smooth), `runnerLine` (its dark outline). Rats: `raBrood` (rats a nest holds in all, 4–6).
 - Elites (`g: 'elite'`, `ELITE_KNOBS` + `ELITE_COLS`): `elCount` (per floor), `elHp`, `elDmg`, `elGold`, `elRed`,
   `elGreen`, `elScale`, `elTintAmt`, `elGlow`, `elGlowR`, `elTint` (colour). Each elite sits at one roll `k.eu`

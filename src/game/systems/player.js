@@ -188,7 +188,7 @@ export function movePlayer(W, G, F) {
     for (let i = 0; i < 3; i++)
       W.smoke.push({ x: W.p.x + PW / 2 + (Math.random() - 0.5) * 6, y: W.p.y + PH + 2,
         vx: (Math.random() - 0.5) * 40, vy: 20 + Math.random() * 30,
-        r: 2.5 + Math.random() * 2, life: 0.7 + Math.random() * 0.4, max: 1.1, c: '#6f767e', a: 0.8 });
+        r: 2.5 + Math.random() * 2, life: 0.7 + Math.random() * 0.4, max: 1.1, c: '#6f767e', a: 0.8, jet: true });
   }
   if (jet) {
     W.p.fuel -= FUEL_DRAIN * (0.5 + 0.5 * mag) * dt / W.pb.fuel;    // a bigger tank (Jetpack Fuel) drains slower

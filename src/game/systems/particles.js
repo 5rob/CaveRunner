@@ -6,6 +6,7 @@
 
 import { SFX } from '../../audio/sfx.js';
 import { CELL, COL, PH, SHOP_FLOOR } from '../../core/consts.js';
+import { nearExit } from '../world.js';
 import { solidAt } from './terrain.js';
 
 /** @param {World} W @param {string} text */
@@ -59,7 +60,7 @@ export function stepParticles(W, F) {
       W.smokeAcc--;
       W.smoke.push({ x: pcx + (Math.random() - 0.5) * 5, y: W.p.y + PH + 3,
         vx: fx * 50 + (Math.random() - 0.5) * 20, vy: fy * 50 + (Math.random() - 0.5) * 20,
-        r: 1.5 + Math.random(), life: 0.9, max: 0.9 });
+        r: 1.5 + Math.random(), life: 0.9, max: 0.9, jet: true });
     }
   }
   for (let i = W.smoke.length - 1; i >= 0; i--) {
@@ -93,8 +94,8 @@ export function stepMotes(W, F) {
   W.portalAcc += dt;
   while (W.portalAcc > 0.05) {
     W.portalAcc -= 0.05;
-    const ex = W.portal.x + W.portal.w / 2, ey = W.portal.y + W.portal.h / 2;
-    if (Math.abs(ey - W.p.y) < 500) {        // the exit: scattered round it, drawn in
+    const P = nearExit(W, W.p.x), ex = P.x + P.w / 2, ey = P.y + P.h / 2;
+    if (W.hasLvl && Math.abs(ey - W.p.y) < 500) {   // the nearest exit: scattered round it, drawn in
       const a = Math.random() * 6.28, rr = 30 + Math.random() * 38;
       const life = 1.4 + Math.random() * 0.8;
       W.motes.push({ kind: 'in', x: ex + Math.cos(a) * rr, y: ey + Math.sin(a) * rr * 0.9,

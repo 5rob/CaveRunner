@@ -1,29 +1,33 @@
 // @ts-check
-// The two portals as teleporter pads: the exit on its ledge at the top of the cave, the way in on
-// the shop floor. drawPad (before the fog, from drawPortal / drawArrival in cave.js) is the
-// hardware: a metal platform with a lit emitter strip; drawPads (after drawGlows) is the light: a
-// blue beam fading off upward, specks rising in it, and lightning crackling up off the pad (the
-// warp's bolts, drawBolt), only where the fog says the pad has been seen. Screen-steady hashes
-// of W.time only, never Math.random (draw shares the simulation's stream).
+// The portals as teleporter pads: the three exits on their ledges along the top of the cave, the
+// way in on the shop floor. drawPad (before the fog, from drawPortal / drawArrival in cave.js) is
+// the hardware: a metal platform with a lit emitter strip; drawPads (after drawGlows) is the light: a
+// blue beam fading off upward, specks rising in it, and, for ZAP_T after the pad is used
+// (W.padZap, set as you go through: step.js atPortal), lightning crackling up off it (the warp's
+// bolts, drawBolt), only where the fog says the pad has been seen. Screen-steady hashes of W.time
+// only, never Math.random (draw shares the simulation's stream).
 
 import { CELL, SHOP_FLOOR } from '../../core/consts.js';
 import { fogLit } from '../systems/fog.js';
+import { exits } from '../world.js';
 import { drawBolt } from './looks.js';
 
 export const PAD_W = 30;                       // the platform's width (world units)
 export const BEAM_H = 64;                      // how far up the beam fades out
 const BOLT_T = 0.09;                           // one bolt slot (seconds)
-const BOLT_CHANCE = 0.4;                       // a slot's chance of a bolt
+const BOLT_CHANCE = 0.4;                       // a slot's chance of a bolt (just used; it thins out)
+export const ZAP_T = 1.4;                      // how long a pad crackles after it's used (seconds)
 
 // a steady pseudo-random 0..1 for n
 /** @param {number} n */
 const hs = n => { const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return v - Math.floor(v); };
 
-// where the pads stand: centre x, and the floor y they sit on
+// where the pads stand: centre x, the floor y they sit on, and a seed (the way in 1, the exits 2, 3, 4:
+// W.padZap's keys)
 /** @param {World} W */
 export const padSpots = W => {
   const out = [{ x: W.arrival.x, y: SHOP_FLOOR * CELL, seed: 1 }];
-  if (W.hasLvl) out.push({ x: W.portal.x + W.portal.w / 2, y: W.portal.y + W.portal.h, seed: 2 });
+  if (W.hasLvl) exits(W).forEach((q, i) => out.push({ x: q.x + q.w / 2, y: q.y + q.h, seed: 2 + i }));
   return out;
 };
 
@@ -78,11 +82,14 @@ export function drawPads(W, G, F) {
       ctx.fillRect(sx - 0.6, P.y - 2 - u * BEAM_H * 0.9, 1.2, 1.2);
     }
     ctx.restore();
-    // lightning up off the pad: a few slots of bolts at a time, each a jagged line up into the beam
+    // lightning up off the pad, only just after it's used: a few slots of bolts at a time, each a
+    // jagged line up into the beam, fewer as the zap fades
+    const zap = 1 - (t - ((W.padZap && W.padZap[P.seed]) ?? -99)) / ZAP_T;
+    if (zap <= 0 || zap > 1) continue;
     const n0 = Math.floor(t / BOLT_T);
     for (let n = n0 - 2; n <= n0; n++) {
       const s = n * 7.13 + P.seed * 101;
-      if (hs(s) > BOLT_CHANCE) continue;
+      if (hs(s) > (0.35 + 0.65 * zap) * BOLT_CHANCE * 2) continue;
       const age = (t - n * BOLT_T) / (BOLT_T * 3);
       let bx = P.x + (hs(s + 1) - 0.5) * (PAD_W - 6), by = P.y - 1;
       const up = BEAM_H * (0.3 + 0.5 * hs(s + 2)), steps = 6;

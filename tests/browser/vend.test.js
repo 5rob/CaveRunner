@@ -1,8 +1,9 @@
 // The level vending machines (src/game/systems/vend.js): a run starts with no level (solid dark
-// over a sealed shop roof); the buy machine sells it on credit (gold goes negative) and it
-// teleports in; the exit portal drops you back in the shop; the sell machine is red and refuses
-// while anything biological is left, then pays LVL_SELL and the level teleports away; the buy
-// machine then offers the next floor's.
+// over a sealed shop roof, no ambience); the buy machine opens the floor menu (ui/levelshop.js:
+// floor 1 for sale, floor 2 locked), and the level bought on credit teleports in, made ahead by the
+// worker (game/levelgen.js); the exit portal drops you back in the shop; the sell machine is red and
+// refuses while anything biological is left, then pays LVL_SELL and the level teleports away; the
+// menu then sells floor 2 too, its debt the exponential lvlBuy(2).
 const { launch } = require('../chromium');
 const path = require('path');
 let fails = 0;
@@ -47,12 +48,37 @@ const DIR = path.join(__dirname, '..', 'build');
   check('the buy machine offers "Tap R to buy"', s.prompt === 'Tap R to buy' && s.can, s.prompt);
   await page.screenshot({ path: path.join(DIR, 'vend_start.png') });
 
+  check('no level: no ambience', await page.evaluate(() => SFX.ambience === null), await page.evaluate(() => SFX.ambience));
+  // the worker makes floor 1's level meanwhile
+  let made = false;
+  for (let i = 0; i < 100 && !made; i++) { made = await page.evaluate(() => !!LVLGEN.ready); if (!made) await page.waitForTimeout(100); }
+  check('the worker made floor 1 ahead of time', made && await page.evaluate(() => LVLGEN.ready.floor === 1 && !LVLGEN.broken),
+    await page.evaluate(() => ({ broken: LVLGEN.broken, pend: !!LVLGEN.pend })));
+
   await tap();
+  await page.waitForTimeout(300);
+  const menu = () => page.evaluate(() => Array.from(document.querySelectorAll('.lvshop .lvrow')).map(r => ({ f: Number(r.dataset.floor), locked: r.classList.contains('locked') })));
+  let rows = await menu();
+  check('the tap opens the floor menu', rows.length >= 3, rows);
+  check('floor 1 for sale, floor 2 and up locked', rows[0] && !rows[0].locked && rows.slice(1).every(r => r.locked), rows);
+  check('the game pauses under it', await page.evaluate(() => window.__in.current.paused));
+  await page.screenshot({ path: path.join(DIR, 'vend_menu.png') });
+  // a locked floor won't buy
+  await page.locator('.lvshop .lvrow[data-floor="2"]').dispatchEvent('pointerdown');
+  await page.locator('.lvshop .vbuy').dispatchEvent('pointerdown');
+  await page.waitForTimeout(150);
+  check('a locked floor stays unbought', await page.evaluate(() => !!document.querySelector('.lvshop') && !window.__lvl.hasLvl));
+  await page.locator('.lvshop .lvrow[data-floor="1"]').dispatchEvent('pointerdown');
+  await page.locator('.lvshop .vbuy').dispatchEvent('pointerdown');
   await page.waitForTimeout(700);
   await page.screenshot({ path: path.join(DIR, 'vend_flash.png') });
+  check('the menu closed', await page.evaluate(() => !document.querySelector('.lvshop')));
   check('the teleport ran out', await waitWarp());
   s = await state();
   check('bought: the level is here', s.has && s.open > 10000 && s.enemies > 20, { open: s.open, enemies: s.enemies });
+  check('it was the worker level', await page.evaluate(() => LVLGEN.made === 1), await page.evaluate(() => LVLGEN.made));
+  check('drawn in all the way (bottom to top)', await page.evaluate(() => window.__lvl.reveal === 0));
+  check('the floor ambience is on', await page.evaluate(() => !!SFX.ambience || !SFX.ready));
   check('the roof has its hole again', s.roofHole > 0, s.roofHole);
   check('the price went on your debt, not your gold', s.gold === gold0 && s.debt === X.LVL_BUY, s);
   check('the debt shows in red at the top', await page.evaluate(() => { const d = document.querySelector('.gold .debt'); return !!d && d.getBoundingClientRect().top < 100; }));
@@ -66,10 +92,20 @@ const DIR = path.join(__dirname, '..', 'build');
   await page.screenshot({ path: path.join(DIR, 'vend_bought.png') });
 
   // the exit portal drops you back in the shop, the level still there
-  await page.evaluate(() => { const L = window.__lvl, P = L.portal; L.p.x = P.x + P.w / 2 - 6; L.p.y = P.y + P.h / 2 - 11; L.p.vx = L.p.vy = 0; });
+  check('three exits, evenly spaced across the top', await page.evaluate(() => {
+    const P = window.__lvl.portals, c = P.map(q => q.x + q.w / 2);
+    return P.length === 3 && Math.abs((c[1] - c[0]) - (c[2] - c[1])) < 4 && P.every(q => q.y === P[0].y);
+  }));
+  // stand beside the left exit a moment (a screenshot of it, its pad lit, no crackle until used)
+  await page.evaluate(() => { const L = window.__lvl, P = L.portals[0]; L.p.x = P.x + 40; L.p.y = P.y + P.h - 22; L.p.vx = L.p.vy = 0; L.toasts.length = 0; L.levelT = 99; });
+  await page.waitForTimeout(900);
+  await page.screenshot({ path: path.join(DIR, 'vend_exit.png') });
+  check('an exit pad does not crackle before it is used', await page.evaluate(() => !(window.__lvl.padZap[2] > 0)));
+  await page.evaluate(() => { const L = window.__lvl, P = L.portals[2]; L.p.x = P.x + P.w / 2 - 6; L.p.y = P.y + P.h / 2 - 11; L.p.vx = L.p.vy = 0; });
   await page.waitForTimeout(300);
   s = await state();
-  check('the exit portal takes you back to the shop', s.py > await page.evaluate(() => window.__lvl.world.SHOP_Y) && s.floor === 1 && s.has, s);
+  check('an exit portal takes you back to the shop', s.py > await page.evaluate(() => window.__lvl.world.SHOP_Y) && s.floor === 1 && s.has, s);
+  check('and both its pads crackle', await page.evaluate(() => { const L = window.__lvl; return L.time - L.padZap[4] < 1 && L.time - L.padZap[1] < 1; }));
 
   // the sell machine refuses while anything biological is left
   await standAt(X.sell);
@@ -93,7 +129,7 @@ const DIR = path.join(__dirname, '..', 'build');
   check('the teleport ran out again', await waitWarp());
   s = await state();
   check('sold: the level is gone', !s.has && s.open === 0 && s.enemies === 0 && s.roofHole === 0, s);
-  check('debt paid off, and 1000 to you', s.gold === gold0 + 1000 && s.debt === 0, s);
+  check('debt paid off, and the reward (1,000) to you', s.gold === gold0 + 1000 && s.debt === 0, s);
   check('and no deadline any more', !(await page.evaluate(() => window.__in.current.loadout.due)));
   check('the debt line is gone', await page.evaluate(() => !document.querySelector('.gold .debt')));
   check('and the next floor is up for sale', s.floor === 2, s.floor);
@@ -101,7 +137,19 @@ const DIR = path.join(__dirname, '..', 'build');
   await page.waitForTimeout(200);
   s = await state();
   check('the buy machine is back on', s.prompt === 'Tap R to buy', s.prompt);
+  check('sold once: floor 2 is for sale', await page.evaluate(() => window.__in.current.loadout.soldTop === 1));
+  await tap();
+  await page.waitForTimeout(300);
+  rows = await menu();
+  check('the menu sells floors 1 and 2, floor 3 locked', rows.length >= 3 && !rows[0].locked && !rows[1].locked && rows[2].locked, rows);
   await page.screenshot({ path: path.join(DIR, 'vend_next.png') });
+  await page.locator('.lvshop .lvrow[data-floor="2"]').dispatchEvent('pointerdown');
+  await page.locator('.lvshop .vbuy').dispatchEvent('pointerdown');
+  await page.waitForTimeout(300);
+  check('the teleport ran out (floor 2)', await waitWarp());
+  s = await state();
+  const X2 = await page.evaluate(() => ({ b2: lvlBuy(2), s2: lvlSell(2) }));
+  check('floor 2 bought: its debt is bigger, exponentially', s.has && s.floor === 2 && s.debt === X2.b2 && X2.b2 === X.LVL_BUY * 3 && X2.s2 > X.LVL_SELL, { s, X2 });
 
   console.log(fails ? `\n${fails} failed` : '\nall good');
   await browser.close();

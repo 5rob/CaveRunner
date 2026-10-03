@@ -22,6 +22,7 @@ import { maxHp, movePlayer, stepTorch } from './player.js';
 import { decorStep } from './props.js';
 import { saveRun } from './save-run.js';
 import { stepRepo, stepWarp, voidCave } from './vend.js';
+import { exits, nearExit } from '../world.js';
 
 /** @param {World} W @param {GameCtx} G @param {number} dt */
 export function step(W, G, dt) {
@@ -93,13 +94,14 @@ export function stepPerks(W, G, F) {
 }
 
 // Where you are now you've moved (F.pcx/F.pcy, your centre: the rest of the frame works
-// from it), and the exit: step into it and it drops you back in the shop (the level stays:
+// from it), and the exits (three along the top): step into one and it drops you back in the shop (the level stays:
 // sell it at the vending machine once it's clear). True when you went through: that frame ends there.
 /** @param {World} W @param {GameCtx} G @param {StepFrame} F */
 export function atPortal(W, G, F) {
   const pcx = F.pcx = W.p.x + PW / 2, pcy = F.pcy = W.p.y + PH / 2;
-  if (!W.p.dead && W.hasLvl && pcx > W.portal.x && pcx < W.portal.x + W.portal.w &&
-      pcy > W.portal.y && pcy < W.portal.y + W.portal.h) {
+  const at = W.hasLvl && !W.p.dead ? exits(W).findIndex(q => pcx > q.x && pcx < q.x + q.w && pcy > q.y && pcy < q.y + q.h) : -1;
+  if (at >= 0) {
+    W.padZap[2 + at] = W.padZap[1] = W.time;    // both pads crackle (render/pads.js)
     W.p.x = W.start.x; W.p.y = W.start.y; W.p.vx = 0; W.p.vy = 0;
     W.p.fuel = 1; W.p.empty = false;
     W.camReady = false;
@@ -129,9 +131,10 @@ export function stepSound(W, F) {
     if (h) h.set(0.5, b.x, b.y);
   }
   for (const [b, h] of W.bhLoops) if (!W.bullets.includes(b)) { h.stop(); W.bhLoops.delete(b); }
-  SFX.ambTick(dt);
+  if (W.hasLvl) SFX.ambTick(dt);              // no level: no drips, no creatures in the dark
   if (!W.portalLoop && SFX.ready) W.portalLoop = SFX.loop('portal');
-  if (W.portalLoop) W.portalLoop.set(0.55, W.portal.x + W.portal.w / 2, W.portal.y + W.portal.h / 2);
+  const ex = nearExit(W, pcx);
+  if (W.portalLoop) W.portalLoop.set(W.hasLvl ? 0.55 : 0, ex.x + ex.w / 2, ex.y + ex.h / 2);
   if (W.matterProps.length) {
     let best = null, bd = 300;
     for (const pr of W.matterProps) { const d = Math.hypot(pr.x - pcx, pr.y - pcy); if (!pr.gone && d < bd) { bd = d; best = pr; } }

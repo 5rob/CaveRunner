@@ -1,19 +1,25 @@
 // @ts-check
-// The level vending machines on the shop's back wall. The level above the shop is bought on
-// credit from one (LVL_BUY goes on your debt, LO.debt, not your gold) and sold back to the other
-// once no biological entities are left in it (lvlSell(): the debt paid off, and DEV.lvlReward, a thousand, to you).
-// It must be repaid by LO.due: an hour (dueMs: floor 1 a Dev knob, DEADLINE_MS after), counted down on the buy machine. Buying teleports the level
-// in over the shop, selling teleports it away and puts the next floor's level up for sale.
-// Without one the cave is solid dark rock (BED) and the shop's roof is sealed (voidCave).
+// The level vending machines on the shop's back wall. A level is bought on credit from one: its tap
+// opens the floor menu (ui/levelshop.js; input.current.shopOpen = 'levels'), which hands back
+// input.current.buyFloor, and lvlBuy(floor) goes on your debt (LO.debt, not your gold). It is sold back
+// to the other once no biological entities are left in it (lvlSell(floor): the debt paid off, the
+// reward to you, both climbing exponentially with the floor: data/levels.js). Floor N is for sale only
+// once floor N - 1 has been sold this run (LO.soldTop). It must be repaid by LO.due: an hour
+// (dueMs: floor 1 a Dev knob, DEADLINE_MS after), counted down on the buy machine. Buying teleports
+// the level in over the shop, selling teleports it away. Without one the cave is solid dark rock
+// (BED) and the shop's roof is sealed (voidCave), and the next floor's level is made off the main
+// thread meanwhile (game/levelgen.js), so the flash doesn't freeze; it's drawn in from the bottom up.
 
 import { SFX } from '../../audio/sfx.js';
 import {
-  BED, BRICK, CELL, CH, CW, LVL_BUY, SHOP_FLOOR, SHOP_ROOF, SHOP_TOP, SHOP_Y, VEND_BUY_X, VEND_SELL_X
+  BED, BRICK, CELL, CH, CW, SHOP_FLOOR, SHOP_ROOF, SHOP_TOP, SHOP_Y, VEND_BUY_X, VEND_SELL_X
 } from '../../core/consts.js';
 import { bioCount } from '../../creatures/common.js';
-import { DEV, dueMs } from '../../dev/knobs.js';
+import { LVL_MENU_MAX, canBuyFloor, lvlBuy, lvlReward } from '../../data/levels.js';
+import { dueMs } from '../../dev/knobs.js';
 import { fireNew } from '../../world/fire.js';
 import { fogStart } from '../../world/vision.js';
+import { levelPending, preLevel, takeLevel } from '../levelgen.js';
 import { paintFog } from './fog.js';
 import { enterLevel, miniEdges } from './level-entry.js';
 import { jag } from './lightning.js';
@@ -28,6 +34,8 @@ export const REPO_WARP = 3, REPO_ALARM = 5.6, REPO_FIRE = REPO_ALARM + 10;
 export const REPO_JET = 40;       // world units between the fire jets in the shop floor
 export const WARP_SWAP = 0.6;     // seconds from the tap to the flash (the screen goes dark first)
 export const WARP_END = 2.4;      // and to the end of the crackle
+export const WARP_WAIT = 6;       // the longest the dark waits for a level still being made (then it's made here)
+export const REVEAL_T = 0.7;      // seconds to draw a bought level's rock in, bottom to top
 export const ROOF_Y = (SHOP_TOP - SHOP_ROOF) * CELL;   // the top of the shop's roof
 export const VEND_W = 60, VEND_H = 84;                 // a machine's cabinet (world units)
 export const VEND_TOP = SHOP_FLOOR * CELL - VEND_H;    // its top
@@ -41,9 +49,6 @@ export function vendNear(W, pcx, pcy) {
   return null;
 }
 
-// what the sell machine pays: the price, and the reward on top (Dev: lvlReward, a thousand)
-export const lvlSell = () => LVL_BUY + DEV.lvlReward;
-
 // can the level be sold? Not while anything biological is left in it
 /** @param {World} W */
 export const canSell = W => W.hasLvl && bioCount(W.enemies, false) === 0;
@@ -56,21 +61,20 @@ export function vendLabel(W, kind) {
     : { text: 'Biological entities detected', price: 0, can: false };
 }
 
-// a tap at a machine
+// a tap at a machine: the buy machine opens its floor menu (App pauses the game), the sell machine sells
 /** @param {World} W @param {GameCtx} G @param {'buy' | 'sell'} kind @param {Loadout} LO */
 export function vendUse(W, G, kind, LO) {
   if (W.warp) return;
   if (kind === 'buy' && !W.hasLvl) {
-    LO.debt = (LO.debt || 0) + LVL_BUY;       // your wallet is yours: the level goes on your debt
-    LO.due = Date.now() + dueMs(W.floor);     // an hour to repay it (floor 1: Dev's knob), on the device's clock
-    W.hasLvl = true;
-    W.warp = { dir: 'in', t: 0, done: false, bolts: [] };
-    toast(W, 'Level ' + W.floor + ' bought on credit');
-    SFX.ui('buy');
+    G.input.current.shopOpen = 'levels';
+    SFX.ui('mod');
   } else if (kind === 'sell' && W.hasLvl) {
     if (!canSell(W)) { toast(W, 'No biological entities accepted'); SFX.ui('poor'); return; }
-    LO.gold += lvlSell() - (LO.debt || 0);    // the debt paid off out of the sale, the rest is yours
+    // the sale pays the debt off and the rest is yours: the reward (always the reward, so a debt run up
+    // at another price, before v130's or under other Dev knobs, can't eat your gold)
+    LO.gold += lvlReward(W.floor);
     LO.debt = 0; LO.due = 0;
+    LO.soldTop = Math.max(LO.soldTop || 0, W.floor);  // the floor above is for sale now
     W.hasLvl = false;
     W.warp = { dir: 'out', t: 0, done: false, bolts: [] };
     toast(W, 'Level ' + W.floor + ' sold');
@@ -78,13 +82,37 @@ export function vendUse(W, G, kind, LO) {
   }
 }
 
+// The floor menu's answer (input.current.buyFloor): that floor's level, bought on credit
+/** @param {World} W @param {GameCtx} G @param {number} floor @param {Loadout} LO */
+export function buyLevel(W, G, floor, LO) {
+  if (W.warp || W.hasLvl || W.repo || !canBuyFloor(LO.soldTop || 0, floor)) return false;
+  if (floor !== W.floor) { W.floor = floor; W.levelSeed = 1 + Math.floor(Math.random() * 2147483000); }
+  preLevel(W.floor, W.levelSeed);             // already made (or on its way) for the likely floor
+  LO.debt = (LO.debt || 0) + lvlBuy(floor);   // your wallet is yours: the level goes on your debt
+  LO.due = Date.now() + dueMs(floor);         // an hour to repay it (floor 1: Dev's knob), on the device's clock
+  W.hasLvl = true;
+  W.warp = { dir: 'in', t: 0, done: false, bolts: [] };
+  toast(W, 'Level ' + floor + ' bought on credit');
+  SFX.ui('buy');
+  G.input.current.notify();
+  return true;
+}
+
 // The teleport, a part of step: the machine's screen goes dark, then at WARP_SWAP the flash, and
-// the level arrives (revealed from its seed) or goes (and the next floor's is made, hidden). Bolts
-// crackle along the roof and up into the cave for a second after
+// the level arrives (made ahead by the worker, or here if it isn't) or goes. Bolts crackle along
+// the roof and up into the cave for a second after
 /** @param {World} W @param {GameCtx} G @param {StepFrame} F */
 export function stepWarp(W, G, F) {
+  const ask = G.input.current.buyFloor;
+  if (ask) { G.input.current.buyFloor = 0; buyLevel(W, G, ask, F.LO); }
+  stepReveal(W, G, F);
   const w = W.warp;
   if (!w) return;
+  // arriving: the dark holds while the worker is still making it (up to WARP_WAIT)
+  if (!w.done && w.dir === 'in' && w.t + F.dt >= WARP_SWAP && levelPending(W.floor) && (w.wait = (w.wait || 0) + F.dt) < WARP_WAIT) {
+    for (let i = w.bolts.length - 1; i >= 0; i--) if ((w.bolts[i].t += F.dt) >= w.bolts[i].max) w.bolts.splice(i, 1);
+    return;
+  }
   const t0 = w.t;
   w.t += F.dt;
   if (!w.done && w.t >= WARP_SWAP) {
@@ -92,8 +120,17 @@ export function stepWarp(W, G, F) {
     if (w.dir === 'repo') {                  // taken back: you land in the shop, the cave goes
       W.p.x = W.start.x; W.p.y = W.start.y; W.p.vx = W.p.vy = 0; W.camReady = false;
       W.hasLvl = false; voidCave(W, G);
-    } else if (w.dir === 'in') enterLevel(W, G, { seed: W.levelSeed, owned: W.levelOwned, alive: null, sold: [], rooms: [], pickups: null }, 'shop');
-    else { W.floor++; enterLevel(W, G, undefined, 'you'); voidCave(W, G); }
+    } else if (w.dir === 'in') {
+      const got = takeLevel(W.floor);
+      if (got) W.levelSeed = got.seed;
+      enterLevel(W, G, { seed: W.levelSeed, owned: [], alive: null, sold: [], rooms: [], pickups: null }, 'shop', got ? got.level : undefined);
+    } else {                                 // sold: the cave goes, and the floor above is up next
+      W.floor = Math.min(LVL_MENU_MAX, (G.input.current.loadout.soldTop || 0) + 1);
+      W.levelSeed = 1 + Math.floor(Math.random() * 2147483000);
+      const heal = W.stock.find(it => it.kind === 'heal');
+      if (heal) { heal.bought = 0; heal.price = 0; }   // a new floor's shop: the first heal is free again
+      voidCave(W, G);
+    }
     SFX.fx('levelWarp');
     const x0 = W.camX, x1 = W.camX + W.viewW;
     for (let i = 0; i < 26; i++) burst(W, x0 + Math.random() * (x1 - x0), ROOF_Y - Math.random() * 6, 3, Math.random() < 0.5 ? '#eafff0' : '#6dffa0');
@@ -117,6 +154,26 @@ export function stepWarp(W, G, F) {
   }
   for (let i = w.bolts.length - 1; i >= 0; i--) if ((w.bolts[i].t += F.dt) >= w.bolts[i].max) w.bolts.splice(i, 1);
   if (w.t >= WARP_END && !w.bolts.length) W.warp = null;
+}
+
+// A bought level's rock and decoration go onto their canvases a band at a time, bottom to top
+// (W.reveal: the row drawn down to so far), so the flash doesn't upload the whole cave in one
+// frame. Bands go round the recorder (a whole-width ImageData of the rows, not a dirty rect): the
+// death replay already starts from the whole level (recReset)
+/** @param {World} W @param {GameCtx} G @param {StepFrame} F */
+export function stepReveal(W, G, F) {
+  if (!W.reveal) return;
+  const y1 = W.reveal, y0 = Math.max(0, Math.floor(y1 - CH * Math.max(F.dt, 1 / 120) / REVEAL_T));
+  putRows(W, G, y0, y1);
+  W.reveal = y0;
+}
+
+// rows y0..y1 of the terrain and the decoration onto their canvases
+/** @param {World} W @param {GameCtx} G @param {number} y0 @param {number} y1 */
+export function putRows(W, G, y0, y1) {
+  if (y1 <= y0) return;
+  G.tctx.putImageData(new ImageData(W.img.data.subarray(y0 * CW * 4, y1 * CW * 4), CW, y1 - y0), 0, y0);
+  if (W.dimg) G.dctx.putImageData(new ImageData(W.dimg.data.subarray(y0 * CW * 4, y1 * CW * 4), CW, y1 - y0), 0, y0);
 }
 
 // No level: everything above the shop's roof becomes solid dark bedrock, the hole in the roof is
@@ -155,10 +212,13 @@ export function voidCave(W, G) {
   W.burrow = null; W.deepFog = null; W.navYou.F = null;
   W.terrainV++;
   W.levelT = 99;                            // no floor name card for a cave that isn't there
+  W.reveal = 0;
+  SFX.setAmbience(null);                    // no cave, no drips or creatures in the dark
   G.tctx.putImageData(W.img, 0, 0);
   G.dctx.putImageData(W.dimg, 0, 0);
   miniEdges(W);
   W.seen = fogStart(); paintFog(W, G);
+  preLevel(W.floor, W.levelSeed);           // the floor up for sale, made off the main thread meanwhile
 }
 
 // in the shop (or its roof), so it stays when the cave goes

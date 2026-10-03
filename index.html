@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v129</title>
+<title>CaveRunner v130</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -575,6 +575,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .crystalcard .pglyph{background:none;border:0}
 .vcrys{display:inline-flex;align-items:center;gap:3px;font:700 14px system-ui,sans-serif;color:#ff6a78}
 
+/* ---- the level buy machine's floor menu (ui/levelshop.js) ---- */
+.lvlist{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px;border-radius:10px;
+  background:rgba(255,255,255,0.04);padding:6px}
+.lvrow{position:relative;display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;flex:0 0 auto;
+  border:1.5px solid rgba(0,255,60,0.45);background:rgba(0,255,60,0.06);cursor:pointer;touch-action:pan-y}
+.lvrow.sel{background:rgba(0,255,60,0.18);border-color:#00ff3c;box-shadow:inset 0 0 0 1px #00ff3c}
+.lvrow.locked{border-color:rgba(255,255,255,0.14);background:rgba(255,255,255,0.03);border-style:dashed}
+.lvrow.locked .lvn,.lvrow.locked .lvnums{opacity:.45}
+.lvrow.locked.sel{background:rgba(255,255,255,0.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,0.4)}
+.lvn{flex:0 0 72px;display:flex;flex-direction:column;gap:2px}
+.lvn b{font:900 17px system-ui,sans-serif;letter-spacing:.03em;color:#7dffa0}
+.lvn span{font:600 10px system-ui,sans-serif;color:rgba(233,236,242,0.6)}
+.lvnums{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;font:600 11px system-ui,sans-serif}
+.lvnums div{display:flex;align-items:baseline;gap:5px;white-space:nowrap}
+.lvnums span{color:rgba(233,236,242,0.55);font-weight:500}
+.lvnums em{font-style:normal;font-variant-numeric:tabular-nums;color:#e9ecf2;overflow:hidden;text-overflow:ellipsis}
+.lvnums em.lvdebt{color:#ff5a4a}
+.lvnums em.lvgain{color:#ffc93c}
+.lvtag{position:absolute;right:8px;top:6px;display:flex;gap:4px;font-size:11px}
+.lvtag i{font-style:normal}
+.lvsold{font:700 10px system-ui,sans-serif;color:#7dffa0}
+.lvsum{flex:0 0 auto;display:flex;flex-direction:column;gap:7px}
+.lvhint{margin:0;font-size:12px}
+
 /* ---- the gun machine's menu (ui/gunshop.js) ---- */
 .gmid{flex:1;min-height:0;display:flex;gap:10px}
 .greels{position:relative;flex:0 0 38%;display:flex;flex-direction:column;justify-content:space-around;gap:6px}
@@ -621,10 +645,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .xslot{aspect-ratio:1;border-radius:12px;border:1.5px dashed var(--ring);background:var(--pad);
   display:flex;align-items:center;justify-content:center;font-size:22px;touch-action:none}
 .xslot.full{border-style:solid;background:var(--btn);box-shadow:inset 0 0 0 1px currentColor}
-.xgrid{flex:1 1 0;min-height:60px;overflow-y:auto;border-radius:9px;background:var(--pad);padding:6px;
+/* the perk grid: a ScrollBox (editor.js) like the Bag's mods, a perk you can drag takes the touch */
+.xgridW{flex:1 1 0;min-height:60px}
+.xgrid{overflow-y:auto;border-radius:9px;background:var(--pad);padding:6px;
   display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:6px;align-content:start}
 .xperk{position:relative;aspect-ratio:1;border-radius:10px;border:1.5px solid;background:var(--btn);
   display:flex;align-items:center;justify-content:center;font-size:19px;touch-action:pan-y}
+.xperk.grab{touch-action:none;cursor:grab}
 .xperk.none{opacity:.45;border-style:dashed}
 .xperk.locked{opacity:.3;border-style:dashed;filter:grayscale(1)}
 .xperk.inuse{opacity:.35;filter:grayscale(.6)}
@@ -663,7 +690,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v129';</script>
+<script>const VERSION = 'v130';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -705,7 +732,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var SHOP_ROOF = 6;
   var SHOP_Y = SHOP_TOP * CELL;
   var VEND_BUY_X = 180, VEND_SELL_X = 280;
-  var LVL_BUY = 64e9, LVL_SELL = 64000001e3;
+  var LVL_BUY = 1e9, LVL_SELL = 1000001e3;
+  var OLD_LVL_BUY = 64e9;
   var DEADLINE_MS = 60 * 60 * 1e3;
   var FOG = 8;
   var FOG_U = FOG * CELL;
@@ -864,7 +892,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     due1: 60,
     enemies: ENEMY_COUNT,
     enemiesUp: 12,
-    lvlReward: LVL_SELL - LVL_BUY,
+    lvlBonus: LVL_SELL - LVL_BUY,
+    lvlGrow: 3,
+    rewardGrow: 2,
+    killGrow: 1.35,
     runnerPx: 1,
     runnerLine: 1,
     ptrStart: 0.12,
@@ -932,7 +963,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "due1", g: "level", label: "Time to repay level 1 (minutes)", min: 0.1, max: 1440, step: 1 },
     { k: "enemies", g: "level", label: "Enemies on floor 1 (next level made)", min: 0, max: 400, step: 1 },
     { k: "enemiesUp", g: "level", label: "More enemies each floor after", min: 0, max: 60, step: 1 },
-    { k: "lvlReward", g: "level", label: "Level reward: yours after the debt is paid (gold)", min: 0, max: 1e6, step: 100 },
+    { k: "lvlBonus", g: "level", label: "Level reward: yours after the debt is paid (gold)", min: 0, max: 1e6, step: 100 },
+    { k: "lvlGrow", g: "level", label: "Level price (debt): × each floor up", min: 1, max: 10, step: 0.05 },
+    { k: "rewardGrow", g: "level", label: "Level reward: × each floor up", min: 1, max: 20, step: 0.05 },
+    { k: "killGrow", g: "level", label: "Kill gold: × each floor up", min: 1, max: 4, step: 0.05 },
     { k: "runnerPx", g: "player", label: "Player pixel size (world units, 0 = smooth)", min: 0, max: 3, step: 0.25 },
     { k: "runnerLine", g: "player", label: "Player dark outline (0 off, 1 on)", min: 0, max: 1, step: 1 },
     // the vending menus' right-stick pointer (ui/vendshop.js useMenuNav, menuPointer, snapTo)
@@ -3940,59 +3974,59 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       [1, 2.76, 5.4].forEach((m, i) => tone(dest, "sine", f * m, f * m, t, dur / (i + 1), peak / (i + 1), 2e-3));
     }
     const VOICE = {
-      magic(d, t, P, V2, D) {
-        tone(d, "triangle", 950 * P, 380 * P, t, 0.13 * D, 0.5 * V2);
-        tone(d, "square", 475 * P, 190 * P, t, 0.09 * D, 0.1 * V2);
-        hiss(d, t, 0.07 * D, 0.25 * V2, "bandpass", 2600 * P, 1200 * P, 1.2);
+      magic(d, t, P2, V2, D) {
+        tone(d, "triangle", 950 * P2, 380 * P2, t, 0.13 * D, 0.5 * V2);
+        tone(d, "square", 475 * P2, 190 * P2, t, 0.09 * D, 0.1 * V2);
+        hiss(d, t, 0.07 * D, 0.25 * V2, "bandpass", 2600 * P2, 1200 * P2, 1.2);
       },
-      pierce(d, t, P, V2, D) {
-        tone(d, "sawtooth", 1500 * P, 500 * P, t, 0.1 * D, 0.22 * V2);
+      pierce(d, t, P2, V2, D) {
+        tone(d, "sawtooth", 1500 * P2, 500 * P2, t, 0.1 * D, 0.22 * V2);
         hiss(d, t, 0.15 * D, 0.35 * V2, "highpass", 5e3, 2500, 0.7);
-        tone(d, "sine", 2400 * P, 2300 * P, t, 0.05, 0.18 * V2);
+        tone(d, "sine", 2400 * P2, 2300 * P2, t, 0.05, 0.18 * V2);
       },
-      heavy(d, t, P, V2, D) {
-        tone(d, "sine", 170 * P, 50 * P, t, 0.28 * D, 0.9 * V2, 3e-3);
-        tone(d, "square", 85 * P, 42 * P, t, 0.16 * D, 0.12 * V2);
+      heavy(d, t, P2, V2, D) {
+        tone(d, "sine", 170 * P2, 50 * P2, t, 0.28 * D, 0.9 * V2, 3e-3);
+        tone(d, "square", 85 * P2, 42 * P2, t, 0.16 * D, 0.12 * V2);
         hiss(d, t, 0.14 * D, 0.5 * V2, "lowpass", 900, 200, 0.8);
       },
-      energy(d, t, P, V2, D) {
-        tone(d, "sine", 260 * P, 380 * P, t, 0.3 * D, 0.6 * V2, 0.02, [16, 30 * P]);
-        tone(d, "square", 130 * P, 190 * P, t, 0.22 * D, 0.07 * V2);
-        hiss(d, t, 0.2 * D, 0.15 * V2, "bandpass", 800 * P, 1600 * P, 3);
+      energy(d, t, P2, V2, D) {
+        tone(d, "sine", 260 * P2, 380 * P2, t, 0.3 * D, 0.6 * V2, 0.02, [16, 30 * P2]);
+        tone(d, "square", 130 * P2, 190 * P2, t, 0.22 * D, 0.07 * V2);
+        hiss(d, t, 0.2 * D, 0.15 * V2, "bandpass", 800 * P2, 1600 * P2, 3);
       },
-      scatter(d, t, P, V2, D) {
+      scatter(d, t, P2, V2, D) {
         hiss(d, t, 0.2 * D, 0.9 * V2, "lowpass", 3e3, 500, 0.8);
-        tone(d, "square", 150 * P, 55 * P, t, 0.12 * D, 0.22 * V2);
+        tone(d, "square", 150 * P2, 55 * P2, t, 0.12 * D, 0.22 * V2);
         hiss(d, t, 0.05, 0.35 * V2, "highpass", 4e3, 4e3, 0.7);
       },
-      bubble(d, t, P, V2, D) {
-        tone(d, "sine", 320 * P, 1e3 * P, t, 0.09 * D, 0.55 * V2, 4e-3);
-        tone(d, "sine", 480 * P, 1400 * P, t + 0.05, 0.07 * D, 0.3 * V2, 4e-3);
+      bubble(d, t, P2, V2, D) {
+        tone(d, "sine", 320 * P2, 1e3 * P2, t, 0.09 * D, 0.55 * V2, 4e-3);
+        tone(d, "sine", 480 * P2, 1400 * P2, t + 0.05, 0.07 * D, 0.3 * V2, 4e-3);
       },
-      saw(d, t, P, V2, D) {
-        tone(d, "square", 1900 * P, 1500 * P, t, 0.16 * D, 0.1 * V2);
-        tone(d, "square", 2470 * P, 2e3 * P, t, 0.16 * D, 0.08 * V2);
+      saw(d, t, P2, V2, D) {
+        tone(d, "square", 1900 * P2, 1500 * P2, t, 0.16 * D, 0.1 * V2);
+        tone(d, "square", 2470 * P2, 2e3 * P2, t, 0.16 * D, 0.08 * V2);
         hiss(d, t, 0.18 * D, 0.45 * V2, "bandpass", 6e3, 3500, 4);
         hiss(d, t, 0.1, 0.3 * V2, "lowpass", 700, 300, 1, true);
       },
-      lob(d, t, P, V2, D) {
-        tone(d, "sine", 240 * P, 85 * P, t, 0.16 * D, 0.8 * V2, 3e-3);
+      lob(d, t, P2, V2, D) {
+        tone(d, "sine", 240 * P2, 85 * P2, t, 0.16 * D, 0.8 * V2, 3e-3);
         hiss(d, t, 0.1, 0.35 * V2, "lowpass", 1400, 300);
-        tone(d, "triangle", 120 * P, 60 * P, t, 0.2 * D, 0.22 * V2);
+        tone(d, "triangle", 120 * P2, 60 * P2, t, 0.2 * D, 0.22 * V2);
       },
-      fire(d, t, P, V2, D) {
-        hiss(d, t, 0.38 * D, 0.7 * V2, "bandpass", 500 * P, 2400 * P, 1.4, false, 0.04);
+      fire(d, t, P2, V2, D) {
+        hiss(d, t, 0.38 * D, 0.7 * V2, "bandpass", 500 * P2, 2400 * P2, 1.4, false, 0.04);
         hiss(d, t, 0.3 * D, 0.7 * V2, "bandpass", 3e3, 2e3, 1, true);
-        tone(d, "sine", 110 * P, 60 * P, t, 0.3 * D, 0.35 * V2, 0.02);
+        tone(d, "sine", 110 * P2, 60 * P2, t, 0.3 * D, 0.35 * V2, 0.02);
       },
-      thunder(d, t, P, V2, D) {
+      thunder(d, t, P2, V2, D) {
         hiss(d, t, 0.28 * D, 1 * V2, "highpass", 1400, 900, 0.7, true);
-        zap(d, t, 0.14 * D, 0.14 * V2, 2600 * P, 200 * P);
+        zap(d, t, 0.14 * D, 0.14 * V2, 2600 * P2, 200 * P2);
         tone(d, "sine", 70, 40, t, 0.3 * D, 0.6 * V2, 3e-3);
       },
       // Black Hole: a deep falling sub, two low saws beating against each other, a slow
       // inward rush of air and a spit of crackle — and it keeps it up while it lives (loop)
-      void(d, t, P, V2, D) {
+      void(d, t, P2, V2, D) {
         tone(d, "sine", 80, 30, t, 1 * D, 0.9 * V2, 0.03);
         const f = lp(d, 320);
         tone(f, "sawtooth", 55, 41, t, 0.9 * D, 0.2 * V2, 0.05);
@@ -4000,27 +4034,27 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         hiss(d, t, 0.9 * D, 0.6 * V2, "bandpass", 1700, 900, 0.9, true);
         hiss(d, t, 0.55, 0.3 * V2, "bandpass", 300, 2400, 2, false, 0.35);
       },
-      dig(d, t, P, V2, D) {
+      dig(d, t, P2, V2, D) {
         hiss(d, t, 0.12 * D, 0.7 * V2, "lowpass", 1200, 300, 1, true);
         hiss(d, t, 0.08 * D, 0.4 * V2, "lowpass", 800, 200);
-        tone(d, "square", 120 * P, 70 * P, t, 0.08, 0.15 * V2);
+        tone(d, "square", 120 * P2, 70 * P2, t, 0.08, 0.15 * V2);
       },
-      beam(d, t, P, V2, D) {
-        tone(lp(d, 2400), "sawtooth", 650 * P, 520 * P, t, 0.22 * D, 0.3 * V2, 5e-3, [34, 40 * P]);
-        tone(d, "sine", 1300 * P, 1100 * P, t, 0.2 * D, 0.28 * V2);
-        hiss(d, t, 0.18 * D, 0.2 * V2, "bandpass", 3e3 * P, 1200 * P, 5);
+      beam(d, t, P2, V2, D) {
+        tone(lp(d, 2400), "sawtooth", 650 * P2, 520 * P2, t, 0.22 * D, 0.3 * V2, 5e-3, [34, 40 * P2]);
+        tone(d, "sine", 1300 * P2, 1100 * P2, t, 0.2 * D, 0.28 * V2);
+        hiss(d, t, 0.18 * D, 0.2 * V2, "bandpass", 3e3 * P2, 1200 * P2, 5);
       },
-      spore(d, t, P, V2, D) {
-        hiss(d, t, 0.18 * D, 0.45 * V2, "bandpass", 1300 * P, 700 * P, 2.5, false, 0.02);
-        hiss(d, t + 0.07, 0.14 * D, 0.3 * V2, "bandpass", 1700 * P, 900 * P, 2.5, false, 0.02);
-        tone(d, "sine", 520 * P, 720 * P, t, 0.12, 0.12 * V2);
+      spore(d, t, P2, V2, D) {
+        hiss(d, t, 0.18 * D, 0.45 * V2, "bandpass", 1300 * P2, 700 * P2, 2.5, false, 0.02);
+        hiss(d, t + 0.07, 0.14 * D, 0.3 * V2, "bandpass", 1700 * P2, 900 * P2, 2.5, false, 0.02);
+        tone(d, "sine", 520 * P2, 720 * P2, t, 0.12, 0.12 * V2);
       },
-      crystal(d, t, P, V2, D) {
-        bell(d, 1250 * P, t, 0.7 * D, 0.35 * V2);
+      crystal(d, t, P2, V2, D) {
+        bell(d, 1250 * P2, t, 0.7 * D, 0.35 * V2);
         hiss(d, t, 0.04, 0.2 * V2, "highpass", 7e3, 7e3);
       },
-      aura(d, t, P, V2) {
-        [1, 1.26, 1.5].forEach((m) => tone(d, "sine", 330 * P * m, 333 * P * m, t, 0.9, 0.16 * V2, 0.25));
+      aura(d, t, P2, V2) {
+        [1, 1.26, 1.5].forEach((m) => tone(d, "sine", 330 * P2 * m, 333 * P2 * m, t, 0.9, 0.16 * V2, 0.25));
         hiss(d, t, 0.8, 0.1 * V2, "highpass", 6e3, 9e3, 0.7, false, 0.3);
       },
       none() {
@@ -4030,12 +4064,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (r.v === "none") return;
       const d = out(x, y, r.v === "void" ? 1.3 : 0.6, x == null, null, knob("vSpell"));
       if (!d) return;
-      const t0 = ac.currentTime + (delay || 0), P = r.pitch * rnd2(0.95, 1.05), V2 = r.vol * 0.55, D = r.dur;
-      for (let k = 0; k < r.n; k++) VOICE[r.v](d, t0 + k * 0.018, P * (1 + k * 0.04), V2 / (1 + k * 0.6), D);
-      if (r.wob) tone(d, "sine", 700 * P, 500 * P, t0, 0.22 * D, 0.13 * V2, 0.01, [9, 60]);
+      const t0 = ac.currentTime + (delay || 0), P2 = r.pitch * rnd2(0.95, 1.05), V2 = r.vol * 0.55, D = r.dur;
+      for (let k = 0; k < r.n; k++) VOICE[r.v](d, t0 + k * 0.018, P2 * (1 + k * 0.04), V2 / (1 + k * 0.6), D);
+      if (r.wob) tone(d, "sine", 700 * P2, 500 * P2, t0, 0.22 * D, 0.13 * V2, 0.01, [9, 60]);
       if (r.grit) hiss(d, t0, 0.1, 0.3 * V2, "lowpass", 900, 250, 1, true);
       if (r.bright) tone(d, "square", 3200, 3e3, t0, 0.03, 0.1 * V2);
-      if (r.boing) tone(d, "triangle", 500 * P, 1100 * P, t0 + 0.08 * D, 0.07, 0.16 * V2);
+      if (r.boing) tone(d, "triangle", 500 * P2, 1100 * P2, t0 + 0.08 * D, 0.07, 0.16 * V2);
     }
     function cast2(shots, x, y) {
       const seen = {};
@@ -4077,14 +4111,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     function boom(x, y, R) {
       const big = R >= 40;
       if (!gate(big ? "bigboom" : "boom", big ? 60 : 30)) return;
-      const s = clampS(R / 30, 0.3, 3.2), P = rnd2(0.82, 1.18), L3 = rnd2(0.85, 1.2);
+      const s = clampS(R / 30, 0.3, 3.2), P2 = rnd2(0.82, 1.18), L3 = rnd2(0.85, 1.2);
       const d = out(x, y, 0.8 + 0.6 * s * L3, big, null, knob("vBoom"));
       if (!d) return;
       const t = ac.currentTime;
-      hiss(d, t, (0.25 + 0.45 * s) * L3, rnd2(0.8, 1), "lowpass", 2600 / Math.pow(s, 0.4) * P, rnd2(110, 200), rnd2(0.5, 1));
-      tone(d, "sine", 95 / Math.pow(s, 0.2) * P, rnd2(26, 36), t, (0.3 + 0.4 * s) * L3, 0.9, 3e-3);
+      hiss(d, t, (0.25 + 0.45 * s) * L3, rnd2(0.8, 1), "lowpass", 2600 / Math.pow(s, 0.4) * P2, rnd2(110, 200), rnd2(0.5, 1));
+      tone(d, "sine", 95 / Math.pow(s, 0.2) * P2, rnd2(26, 36), t, (0.3 + 0.4 * s) * L3, 0.9, 3e-3);
       if (R >= 18 && Math.random() < 0.85) hiss(d, t + rnd2(0.02, 0.08), (0.4 + 0.5 * s) * L3, rnd2(0.3, 0.5), "bandpass", rnd2(2e3, 3e3), rnd2(900, 1500), 0.8, true);
-      if (R >= 60) hiss(d, t + 0.1, 1.6 * L3, 0.5, "lowpass", 300 * P, 80, 0.7, false, 0.2);
+      if (R >= 60) hiss(d, t + 0.1, 1.6 * L3, 0.5, "lowpass", 300 * P2, 80, 0.7, false, 0.2);
     }
     function debris(x, y) {
       const d = out(x, y, 1.2, false, null, knob("vBoom"));
@@ -4099,8 +4133,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     function pop(x, y) {
       const d = out(x, y, 1.2, false, null, knob("vBoom"));
       if (!d) return;
-      const t = ac.currentTime, P = rnd2(0.8, 1.25);
-      tone(d, "sine", 220 * P, 55 * P, t, rnd2(0.12, 0.2), 0.7, 3e-3);
+      const t = ac.currentTime, P2 = rnd2(0.8, 1.25);
+      tone(d, "sine", 220 * P2, 55 * P2, t, rnd2(0.12, 0.2), 0.7, 3e-3);
       hiss(d, t, rnd2(0.06, 0.12), 0.6, "bandpass", rnd2(600, 1300), rnd2(250, 500), rnd2(1.5, 3));
       hiss(d, t + rnd2(0.03, 0.08), rnd2(0.6, 1.1), rnd2(0.12, 0.2), "highpass", rnd2(2500, 4e3), rnd2(5e3, 7e3), 0.7, false, rnd2(0.08, 0.2));
       for (let i = 0; i < 3; i++) tone(d, "sine", rnd2(250, 500), rnd2(500, 1e3), t + rnd2(0.05, 0.3), 0.05, 0.1, 4e-3);
@@ -4138,7 +4172,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (what === "hurt" && !gate("churt", 90)) return;
       if (what === "idle" && !gate("idle", 250)) return;
       if (what === "fire" && !gate("cfire", 60)) return;
-      const { v, pitch: P } = creatureSound(k);
+      const { v, pitch: P2 } = creatureSound(k);
       const long = what === "die" || what === "alert" || what === "charge";
       const d = out(
         x,
@@ -4156,12 +4190,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const bloop = (tt, f, pk2) => tone(d, "sine", f, f * 2.4, tt, 0.07, pk2, 4e-3);
       const squelch = (pk2) => {
         hiss(d, t, 0.22, pk2, "lowpass", 1400, 200, 2);
-        tone(d, "sine", 260 * P, 60 * P, t, 0.22, pk2 * 0.8);
+        tone(d, "sine", 260 * P2, 60 * P2, t, 0.22, pk2 * 0.8);
       };
       if (what === "charge") {
         const dur = extra || 0.5;
-        tone(d, "sine", 380 * P, 1700 * P, t, dur, 0.28, dur * 0.8);
-        tone(d, "square", 190 * P, 850 * P, t, dur, 0.04, dur * 0.8);
+        tone(d, "sine", 380 * P2, 1700 * P2, t, dur, 0.28, dur * 0.8);
+        tone(d, "square", 190 * P2, 850 * P2, t, dur, 0.04, dur * 0.8);
         return;
       }
       if (what === "fire") {
@@ -4180,13 +4214,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           hiss(d, t, 0.18, 0.35, "bandpass", 900, 400, 2);
           return;
         }
-        tone(d, "square", 900 * P * R, 300 * P, t, 0.1, 0.2);
+        tone(d, "square", 900 * P2 * R, 300 * P2, t, 0.1, 0.2);
         hiss(d, t, 0.06, 0.3, "bandpass", 2e3, 900, 1.2);
         return;
       }
       if (what === "bite") {
         hiss(d, t, 0.09, 0.6, "lowpass", 1600, 400, 1.5, true);
-        tone(d, "triangle", 220 * P, 110 * P, t, 0.1, 0.35);
+        tone(d, "triangle", 220 * P2, 110 * P2, t, 0.1, 0.35);
         return;
       }
       if (what === "fuse") {
@@ -4199,47 +4233,47 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       switch (v) {
         case "gibber": {
           if (die) {
-            tone(d, "square", 600 * P, 120 * P, t, 0.35, 0.18, 5e-3, [30, 60]);
+            tone(d, "square", 600 * P2, 120 * P2, t, 0.35, 0.18, 5e-3, [30, 60]);
             hiss(d, t, 0.2, 0.25, "bandpass", 1200, 500, 2);
             break;
           }
           if (hurtS) {
-            tone(d, "square", 700 * P * R, 420 * P, t, 0.07, 0.14);
+            tone(d, "square", 700 * P2 * R, 420 * P2, t, 0.07, 0.14);
             break;
           }
           const n = alert ? 2 : 1 + Math.floor(Math.random() * 3);
           for (let i = 0; i < n; i++) {
-            const f = rnd2(380, 680) * P, tt = t + i * 0.09;
-            tone(lp(d, 2400), "square", f, alert ? f * 1.6 : f * rnd2(0.8, 1.2), tt, 0.08, pk * 0.35, 5e-3, [22, 40 * P]);
+            const f = rnd2(380, 680) * P2, tt = t + i * 0.09;
+            tone(lp(d, 2400), "square", f, alert ? f * 1.6 : f * rnd2(0.8, 1.2), tt, 0.08, pk * 0.35, 5e-3, [22, 40 * P2]);
           }
           break;
         }
         case "chitter": {
           if (die) {
-            clicks(8, 0.025, 3200 * P, 0.4);
+            clicks(8, 0.025, 3200 * P2, 0.4);
             squelch(0.4);
             break;
           }
-          clicks(hurtS ? 3 : alert ? 7 : 3, 0.028, 3500 * P * R, pk * 1.4);
-          if (alert) tone(d, "triangle", 1800 * P, 2600 * P, t, 0.12, 0.08);
+          clicks(hurtS ? 3 : alert ? 7 : 3, 0.028, 3500 * P2 * R, pk * 1.4);
+          if (alert) tone(d, "triangle", 1800 * P2, 2600 * P2, t, 0.12, 0.08);
           break;
         }
         case "growl": {
           const g = lp(d, 520);
           const len = die ? 0.7 : alert ? 0.55 : hurtS ? 0.18 : 0.35;
-          tone(g, "sawtooth", 95 * P * R, (die ? 45 : 75) * P, t, len, pk * 0.7, 0.04, [13, 9]);
-          tone(g, "sawtooth", 97.5 * P * R, (die ? 46 : 77) * P, t, len, pk * 0.5, 0.04);
+          tone(g, "sawtooth", 95 * P2 * R, (die ? 45 : 75) * P2, t, len, pk * 0.7, 0.04, [13, 9]);
+          tone(g, "sawtooth", 97.5 * P2 * R, (die ? 46 : 77) * P2, t, len, pk * 0.5, 0.04);
           hiss(d, t, len, pk * 0.35, "lowpass", 500, 250, 1, false, 0.04);
           break;
         }
         case "slither": {
           if (die) {
-            tone(d, "sine", 1400 * P, 300 * P, t, 0.4, 0.2, 0.01, [18, 50]);
+            tone(d, "sine", 1400 * P2, 300 * P2, t, 0.4, 0.2, 0.01, [18, 50]);
             squelch(0.4);
             break;
           }
           hiss(d, t, alert ? 0.4 : 0.25, pk, "bandpass", 1800 * R, 900, 3, false, 0.03);
-          if (alert || hurtS) tone(d, "sine", 900 * P, 1500 * P, t, 0.15, 0.12, 0.01, [20, 60]);
+          if (alert || hurtS) tone(d, "sine", 900 * P2, 1500 * P2, t, 0.15, 0.12, 0.01, [20, 60]);
           break;
         }
         case "ember":
@@ -4248,11 +4282,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         case "gurgle": {
           if (die) {
             squelch(0.6);
-            bloop(t + 0.05, 180 * P, 0.25);
+            bloop(t + 0.05, 180 * P2, 0.25);
             break;
           }
           const n = alert ? 4 : 2;
-          for (let i = 0; i < n; i++) bloop(t + i * rnd2(0.05, 0.1), rnd2(160, 320) * P, pk * 0.7);
+          for (let i = 0; i < n; i++) bloop(t + i * rnd2(0.05, 0.1), rnd2(160, 320) * P2, pk * 0.7);
           break;
         }
         case "spore":
@@ -5266,7 +5300,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return (lo.suit || []).filter((id, i, a) => id && PERKS[id] && a.indexOf(id) === i);
   }
   function perkBag(ids) {
-    const P = {
+    const P2 = {
       dmg: 1,
       speed: 1,
       spread: 1,
@@ -5307,29 +5341,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const id of ids || []) {
       const k = PERKS[id];
       if (!k) continue;
-      P.dmg *= k.dmg || 1;
-      P.speed *= k.speed || 1;
-      P.spread *= k.spread || 1;
-      P.recoil *= k.recoil || 1;
-      P.delay *= k.delay || 1;
-      P.rech *= k.rech || 1;
-      P.walk *= k.walk || 1;
-      P.jet *= k.jet || 1;
-      P.hpMul *= k.hpMul || 1;
-      P.heal *= k.heal || 1;
-      P.gold *= k.gold || 1;
-      P.goldPull *= k.goldPull || 1;
-      P.fuel *= k.fuel || 1;
-      P.refuel *= k.refuel || 1;
-      if (k.mana === 0) P.mana = 0;
-      else P.mana *= k.mana || 1;
-      P.bounce += k.bounce || 0;
-      P.crit += k.crit || 0;
-      P.hpAdd += k.hpAdd || 0;
-      P.lives += k.lives || 0;
-      P.ghost += k.ghost || 0;
-      P.homing = Math.max(P.homing, k.homing || 0);
-      P.carrot = Math.max(P.carrot, k.carrot || 0);
+      P2.dmg *= k.dmg || 1;
+      P2.speed *= k.speed || 1;
+      P2.spread *= k.spread || 1;
+      P2.recoil *= k.recoil || 1;
+      P2.delay *= k.delay || 1;
+      P2.rech *= k.rech || 1;
+      P2.walk *= k.walk || 1;
+      P2.jet *= k.jet || 1;
+      P2.hpMul *= k.hpMul || 1;
+      P2.heal *= k.heal || 1;
+      P2.gold *= k.gold || 1;
+      P2.goldPull *= k.goldPull || 1;
+      P2.fuel *= k.fuel || 1;
+      P2.refuel *= k.refuel || 1;
+      if (k.mana === 0) P2.mana = 0;
+      else P2.mana *= k.mana || 1;
+      P2.bounce += k.bounce || 0;
+      P2.crit += k.crit || 0;
+      P2.hpAdd += k.hpAdd || 0;
+      P2.lives += k.lives || 0;
+      P2.ghost += k.ghost || 0;
+      P2.homing = Math.max(P2.homing, k.homing || 0);
+      P2.carrot = Math.max(P2.carrot, k.carrot || 0);
       for (const f of [
         "shield",
         "trail",
@@ -5346,10 +5380,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         "pinpointer",
         "trajectory"
       ])
-        if (k[f]) P[f] = 1;
+        if (k[f]) P2[f] = 1;
     }
-    P.maxHp = Math.max(10, Math.round((PLAYER_HP + P.hpAdd) * P.hpMul));
-    return P;
+    P2.maxHp = Math.max(10, Math.round((PLAYER_HP + P2.hpAdd) * P2.hpMul));
+    return P2;
   }
 
   // src/creatures/common.js
@@ -5510,30 +5544,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return { x, y };
   }
-  function pathAt(P, d) {
-    for (let i = 1; i < P.length; i++) {
-      const a = P[i - 1], b = P[i], l = Math.hypot(b.x - a.x, b.y - a.y);
-      if (d <= l || i === P.length - 1) {
+  function pathAt(P2, d) {
+    for (let i = 1; i < P2.length; i++) {
+      const a = P2[i - 1], b = P2[i], l = Math.hypot(b.x - a.x, b.y - a.y);
+      if (d <= l || i === P2.length - 1) {
         const u = l ? Math.max(0, Math.min(1, d / l)) : 0;
         return { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u, dx: (b.x - a.x) / (l || 1), dy: (b.y - a.y) / (l || 1) };
       }
       d -= l;
     }
-    return { x: P[0].x, y: P[0].y, dx: 0, dy: -1 };
+    return { x: P2[0].x, y: P2[0].y, dx: 0, dy: -1 };
   }
-  var pathLen = (P) => {
+  var pathLen = (P2) => {
     let l = 0;
-    for (let i = 1; i < P.length; i++) l += Math.hypot(P[i].x - P[i - 1].x, P[i].y - P[i - 1].y);
+    for (let i = 1; i < P2.length; i++) l += Math.hypot(P2[i].x - P2[i - 1].x, P2[i].y - P2[i - 1].y);
     return l;
   };
   function ratStep(e, env, dt) {
     const { solidCell: solidCell2, rnd: rnd2 } = env;
     const S = e.ra || (e.ra = { mode: "air", vx: 0, vy: 0, nx: 0, ny: -1, on: 0, rest: rnd2() * 0.3, side: 1, face: 1, s: 0, dir: 1, wait: 0 });
     const goal = env.goal;
-    const P = env.path, speed = (env.speed || kr("raSpeed", rnd2)) * (env.speedMul || 1);
+    const P2 = env.path, speed = (env.speed || kr("raSpeed", rnd2)) * (env.speedMul || 1);
     if (S.noT > 0) S.noT -= dt;
     if (S.mode === "tunnel") {
-      if (!P) {
+      if (!P2) {
         S.mode = "air";
         S.vx = S.vy = 0;
         return null;
@@ -5542,18 +5576,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         S.wait -= dt;
         return null;
       }
-      const L3 = S.len || (S.len = pathLen(P));
+      const L3 = S.len || (S.len = pathLen(P2));
       S.s += S.dir * speed * RAT.tunnel * dt;
       if (S.s <= 0) {
         S.s = 0;
         S.dir = 1;
         S.wait = kr("raNestRest", rnd2);
-        e.x = P[0].x;
-        e.y = P[0].y;
+        e.x = P2[0].x;
+        e.y = P2[0].y;
         return "home";
       }
       if (S.s >= L3) {
-        const m = P[P.length - 1];
+        const m = P2[P2.length - 1];
         e.x = m.x;
         e.y = m.y;
         S.mode = "surf";
@@ -5565,7 +5599,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         return "out";
       }
-      const q = pathAt(P, S.s);
+      const q = pathAt(P2, S.s);
       e.x = q.x;
       e.y = q.y;
       S.face = q.dx * S.dir >= 0 ? 1 : -1;
@@ -5573,11 +5607,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S.ny = -1;
       return null;
     }
-    if (env.home && P) {
-      const m = P[P.length - 1];
+    if (env.home && P2) {
+      const m = P2[P2.length - 1];
       if (Math.hypot(m.x - e.x, m.y - e.y) < 12) {
         S.mode = "tunnel";
-        S.len = pathLen(P);
+        S.len = pathLen(P2);
         S.s = S.len;
         S.dir = -1;
         S.wait = 0;
@@ -6185,7 +6219,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     while (out.length < n && pool.length) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
     return out;
   }
-  var goldScale = (floor) => 1 + (floor - 1) * 0.3;
+  var goldScale = (floor) => Math.pow(DEV.killGrow, Math.max(0, floor - 1));
   var HEAL_PRICE = 100, HEAL_MUL = 1.75;
   var healPrice = (bought, floor) => bought <= 0 ? 0 : Math.round(HEAL_PRICE * Math.pow(HEAL_MUL, bought - 1) * goldScale(floor) / 5) * 5;
   function enemyFor(id, floor) {
@@ -6481,6 +6515,407 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/world/fire.js
+  var FLAMMABLE = { vine: 1, myc: 1 };
+  var FIRE_WET = { puddle: 1, snow: 1, ice: 1, slime: 1 };
+  var FIRE_COLS = ["#ffe07a", "#ff9a2e", "#f0561c", "#8a2a14"];
+  var FUEL_GRASS = 1, FUEL_MOSS = 2, FUEL_WOOD = 3;
+  var FIRE_TICK = 0.05;
+  var FIRE_MAX = 5e3;
+  var FIRE_CATCH = [0, 1, 0.6, 0.45];
+  var FIRE_KNOB = [null, "fireGrass", "fireMoss", "fireWood"];
+  var FIRE_UPW = (dy) => dy < 0 ? 1 : dy === 0 ? 0.9 : 0.35;
+  var FIRE_NB = [];
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++)
+    if (dx || dy) FIRE_NB.push([dy * CW + dx, FIRE_UPW(dy) * (Math.max(Math.abs(dx), Math.abs(dy)) === 2 ? 0.3 : 1)]);
+  function fireNew(fuel) {
+    return { fuel, t: new Uint16Array(fuel.length), list: [], acc: 0 };
+  }
+  function fireLight(F, i, rnd2) {
+    const kind = F.fuel[i];
+    if (!kind || F.t[i] || F.list.length >= FIRE_MAX) return false;
+    F.t[i] = Math.max(1, Math.round(kr(FIRE_KNOB[kind], rnd2) / FIRE_TICK));
+    F.list.push(i);
+    return true;
+  }
+  function fireDouse(F, x, y, r) {
+    const cx0 = x / CELL, cy0 = y / CELL, rc = r / CELL;
+    const x0 = Math.max(0, Math.floor(cx0 - rc)), x1 = Math.min(CW - 1, Math.ceil(cx0 + rc));
+    const y0 = Math.max(0, Math.floor(cy0 - rc)), y1 = Math.min(CH - 1, Math.ceil(cy0 + rc));
+    let n = 0;
+    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
+      const i = cy * CW + cx;
+      if (F.t[i] && Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) {
+        F.t[i] = 0;
+        n++;
+      }
+    }
+    return n;
+  }
+  function fireArea(F, x, y, r, chance, rnd2) {
+    rnd2 = rnd2 || Math.random;
+    const cx0 = x / CELL, cy0 = y / CELL, rc = r / CELL;
+    const x0 = Math.max(0, Math.floor(cx0 - rc)), x1 = Math.min(CW - 1, Math.ceil(cx0 + rc));
+    const y0 = Math.max(0, Math.floor(cy0 - rc)), y1 = Math.min(CH - 1, Math.ceil(cy0 + rc));
+    let n = 0;
+    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
+      const i = cy * CW + cx;
+      if (!F.fuel[i] || F.t[i] || Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc || rnd2() >= chance) continue;
+      if (fireLight(F, i, rnd2)) n++;
+    }
+    return n;
+  }
+  function fireNear(F, x, y, r) {
+    const cx0 = Math.floor(x / CELL), cy0 = Math.floor(y / CELL), rc = Math.ceil(r / CELL);
+    for (let cy = Math.max(0, cy0 - rc); cy <= Math.min(CH - 1, cy0 + rc); cy++)
+      for (let cx = Math.max(0, cx0 - rc); cx <= Math.min(CW - 1, cx0 + rc); cx++)
+        if (F.t[cy * CW + cx]) return true;
+    return false;
+  }
+  function fireStep(F, dt, out, rnd2) {
+    rnd2 = rnd2 || Math.random;
+    F.acc = Math.min(F.acc + dt, FIRE_TICK * 4);
+    let ticks = 0;
+    while (F.acc >= FIRE_TICK) {
+      F.acc -= FIRE_TICK;
+      ticks++;
+      const L3 = F.list, n0 = L3.length, sp = kr("fireSpread", rnd2), N = F.fuel.length;
+      let w = 0;
+      for (let k = 0; k < n0; k++) {
+        const i = L3[k];
+        if (!F.t[i]) continue;
+        for (const [o, w2] of FIRE_NB) {
+          const j = i + o;
+          if (j >= 0 && j < N && F.fuel[j] && !F.t[j] && rnd2() < sp * w2 * FIRE_CATCH[F.fuel[j]]) fireLight(F, j, rnd2);
+        }
+        if (--F.t[i] === 0) {
+          const kind = F.fuel[i];
+          F.fuel[i] = 0;
+          if (out) out(i, kind);
+        } else L3[w++] = i;
+      }
+      for (let k = n0; k < L3.length; k++) L3[w++] = L3[k];
+      L3.length = w;
+    }
+    return ticks;
+  }
+
+  // src/world/vision.js
+  var VIS_RAYS = 160;
+  function fogReveal(seen, wx, wy, r, pts, rays) {
+    const cx = wx / FOG_U, cy = wy / FOG_U, cr = r / FOG_U, r2 = cr * cr;
+    const x0 = Math.max(0, Math.floor(cx - cr)), x1 = Math.min(FW - 1, Math.ceil(cx + cr));
+    const y0 = Math.max(0, Math.floor(cy - cr)), y1 = Math.min(FH - 1, Math.ceil(cy + cr));
+    let n = 0;
+    for (let y = y0; y <= y1; y++) {
+      const row = y * FW, dy = y + 0.5 - cy, dy2 = dy * dy;
+      for (let x = x0; x <= x1; x++) {
+        if (seen[row + x]) continue;
+        const dx = x + 0.5 - cx;
+        if (dx * dx + dy2 > r2) continue;
+        const d = Math.sqrt(dx * dx + dy2) * FOG_U;
+        const t = (Math.atan2(dy, dx) / (Math.PI * 2) + 1) % 1 * rays;
+        const i0 = Math.floor(t), i1 = (i0 + 1) % rays;
+        const a = Math.hypot(pts[i0 * 2] - wx, pts[i0 * 2 + 1] - wy);
+        const b = Math.hypot(pts[i1 * 2] - wx, pts[i1 * 2 + 1] - wy);
+        if (d > Math.min(a, b)) continue;
+        seen[row + x] = 1;
+        n++;
+      }
+    }
+    return n;
+  }
+  function fogStart() {
+    const seen = new Uint8Array(FW * FH);
+    for (let y = Math.floor((SHOP_TOP - SHOP_ROOF) / FOG); y < FH; y++)
+      for (let x = 0; x < FW; x++) seen[y * FW + x] = 2;
+    return seen;
+  }
+  function nestFog(nests) {
+    const m = new Uint8Array(FW * FH);
+    for (const n of nests || []) {
+      const R = n.r + 2;
+      for (let y = Math.floor((n.y - R) / FOG); y <= Math.floor((n.y + R) / FOG); y++)
+        for (let x = Math.floor((n.x - R) / FOG); x <= Math.floor((n.x + R) / FOG); x++)
+          if (x >= 0 && y >= 0 && x < FW && y < FH) m[y * FW + x] = 1;
+    }
+    return m;
+  }
+  function rayDist(x, y, dx, dy, r, solidCell2) {
+    let cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+    const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1;
+    const dtx = dx ? Math.abs(CELL / dx) : Infinity;
+    const dty = dy ? Math.abs(CELL / dy) : Infinity;
+    let tx2 = dx ? dx > 0 ? ((cx + 1) * CELL - x) / dx : (cx * CELL - x) / dx : Infinity;
+    let ty = dy ? dy > 0 ? ((cy + 1) * CELL - y) / dy : (cy * CELL - y) / dy : Infinity;
+    let t = 0;
+    for (; ; ) {
+      if (tx2 < ty) {
+        t = tx2;
+        tx2 += dtx;
+        cx += sx;
+      } else {
+        t = ty;
+        ty += dty;
+        cy += sy;
+      }
+      if (t >= r) return r;
+      if (solidCell2(cx, cy)) return t;
+    }
+  }
+  function losClear(x0, y0, x1, y1, solidCell2) {
+    const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy);
+    if (d < 1e-3) return true;
+    return rayDist(x0, y0, dx / d, dy / d, d, solidCell2) >= d - 1e-3;
+  }
+  function visPoly(cx, cy, r, solidCell2, rays) {
+    const pts = [];
+    for (let i = 0; i < rays; i++) {
+      const a = i / rays * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
+      const d = rayDist(cx, cy, dx, dy, r, solidCell2);
+      pts.push(cx + dx * d, cy + dy * d);
+    }
+    return pts;
+  }
+
+  // src/game/world.js
+  var exits = (W) => W.portals && W.portals.length ? W.portals : [W.portal];
+  var nearExit = (W, x) => {
+    let best = W.portal, bd = Infinity;
+    for (const q of exits(W)) {
+      const d = Math.abs(q.x + q.w / 2 - x);
+      if (d < bd) {
+        bd = d;
+        best = q;
+      }
+    }
+    return best;
+  };
+  function makeWorld() {
+    return {
+      // ---- you ----
+      p: {
+        x: 0,
+        y: 0,
+        vx: 0,
+        vy: 0,
+        onGround: false,
+        face: 1,
+        jet: 0,
+        fuel: 1,
+        empty: false,
+        sput: false,
+        flame: 0,
+        cough: 0,
+        hp: PLAYER_HP,
+        hitT: 0,
+        dead: false,
+        kick: 0,
+        shieldReady: true,
+        shieldT: 0,
+        // Permanent Shield: up, and its recharge clock
+        jx: 0,
+        jy: 0,
+        aim: { on: false, show: false, nx: 1, ny: 0 }
+      },
+      pb: perkBag([]),
+      // what the perks you carry add up to (refreshBag)
+      ghost: null,
+      // the Angry Ghost companion, if owned
+      // what the props did to you this frame (slowed, slick, holding a vine, gravity flipped),
+      // read by next frame's steering; decorStep makes a new one each frame
+      zfx: { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 },
+      // ---- the clock, the camera, the torch ----
+      time: 0,
+      // seconds of play (step adds dt)
+      levelT: 0,
+      // seconds on this floor (the floor's name card)
+      best: 0,
+      // the highest you've climbed on this floor
+      // the camera: draw() eases it toward you, so step() reads last frame's
+      camX: 0,
+      camY: 0,
+      camReady: false,
+      camT: 0,
+      unitPx: 1,
+      // css pixels per world unit, set while drawing
+      viewW: VIEW_W,
+      viewH: VIEW_MIN_H,
+      // the view in world units, set while drawing
+      // one flicker number drives the flame and the lamp, so the light breathes with the fire
+      flick: 1,
+      torchR: SIGHT,
+      // how far the lamp reaches this frame
+      visPts: [],
+      // the line-of-sight fan from you, this frame
+      leanX: 0,
+      leanY: 0,
+      // the hand torch's flame lean (sprung, trails behind you)
+      glowN: 0,
+      // the torch glow's flicker
+      // ---- terrain ----
+      mat: null,
+      img: null,
+      // the rock: solid cells, and its pixels (drawn to the terrain canvas)
+      dimg: null,
+      // the decoration layer's pixels (walk-through: moss, beams, rubble)
+      ore: null,
+      // gold seams in the rock (per terrain pixel)
+      // rat burrows (a mask over each nest's room and tunnel), and the rock's change count
+      // (the rats' way-finding fields rebuild when it moves; see ratSolid / navFor)
+      burrow: null,
+      terrainV: 0,
+      // ---- the floor's layout (enterLevel sets all of these) ----
+      floor: 1,
+      // the level above the shop is bought from the vending machine and sold back (vend.js): false
+      // while there isn't one (the cave is solid dark, the roof sealed); warp is the teleport under way
+      hasLvl: false,
+      warp: null,
+      reveal: 0,
+      // a bought level's rock drawn in down to this row so far (vend.js stepReveal)
+      repo: null,
+      // the repayment deadline passed: the level is taken back, then the fire
+      start: void 0,
+      portal: void 0,
+      arrival: void 0,
+      // where you come in, the way out
+      portals: [],
+      // the exits along the top (portal is the middle one): exits(W)
+      padZap: {},
+      // when each teleporter pad was last used (W.time, by padSpots seed): it crackles a moment
+      stock: void 0,
+      // the shop's plinths
+      zone: null,
+      // built-up vs natural, per terrain pixel (floor 1)
+      rooms: [],
+      // the perk room and the heart room
+      sconces: [],
+      // wall torches: by the portals and the prizes
+      levelSeed: 0,
+      levelOwned: [],
+      // what made this cave, for the autosave
+      roster: [],
+      themeName: "",
+      // this floor's creatures, and its palette
+      total: void 0,
+      // how many creatures the floor started with
+      miniEdgeIdx: [],
+      // the map's wall-outline cells
+      matterProps: [],
+      // the dark matter props (their hum)
+      ambKinds: [],
+      // the theme's ambience particle kinds
+      plantW: 255,
+      // the jellies' plant glow: this floor's white point
+      // ---- what's in it: new lists from each floor (and swapped for the recorded ones while
+      // the death replay draws a frame) ----
+      enemies: void 0,
+      // the creatures, nests included
+      pickups: void 0,
+      // loot on the ground: mods, guns, hearts
+      props: [],
+      // the decoration that does things (see DECOR): plants, lamps, carts…
+      // ---- the fog of war ----
+      seen: fogStart(),
+      // per fog cell: 0 never been, 1 been (draw() lifts it), 2 never fogged (the shop)
+      deepFog: null,
+      // the fog cells over the rat nests' rooms (no soft edge there)
+      // ---- fire (v86, see fireStep): what's alight in the cave, the plants and carts it can
+      // take, the burning pixels on view this frame (for the glow after the fog), its crackle ----
+      fire: fireNew(new Uint8Array(CW * CH)),
+      firePlants: [],
+      fireArches: [],
+      fireCarts: [],
+      // what can burn (fireList, rebuilt when the props change)
+      firePropN: -1,
+      firePropLast: null,
+      // how fireList notices the props changed
+      fireLoop: null,
+      // the crackle, at the nearest blaze
+      fireN: 0,
+      // burning pixels on view (the glow's strength)
+      fireVis: [],
+      // and which ones, for the glow after the fog
+      // ---- the run's lists: kept for the whole run, emptied by enterLevel (not fields, beams,
+      // toasts), and never replaced: the recorder's RP_ARR holds them by reference ----
+      bullets: [],
+      enemyShots: [],
+      // your shots, and the creatures'
+      fields: [],
+      beams: [],
+      // static projectiles, and instant beam streaks
+      arcs: [],
+      // lightning forks: jagged lines that flash and fade
+      coins: [],
+      toasts: [],
+      // the messages at the bottom of the view
+      smoke: [],
+      sparks: [],
+      flashes: [],
+      torchP: [],
+      // the embers the torch throws off
+      // soft magic particles: the Black Hole's trail ('drift'), motes sucked into the exit
+      // portal ('in') and motes wafting out of the arrival portal ('out')
+      motes: [],
+      burns: [],
+      // the fire trail (Levitation Trail), if owned
+      // the spiders' silk: webs are the lines they travel on (they stay), silk the strings in
+      // flight at you, strings the ones stuck to you (each slows you; pull one too long, it snaps)
+      webs: [],
+      silk: [],
+      strings: [],
+      // the decoration's particles (glow dots, drips, embers), the theme's ambience, spore
+      // clouds, noise rings and dust devils
+      dparts: [],
+      amb: [],
+      clouds: [],
+      rings: [],
+      devils: [],
+      // ---- frame-to-frame counters and sound loops (each kept by the one part of step() that
+      // uses it) ----
+      // sound: the jetpack's roar, each live Black Hole's drone, the low-health heartbeat,
+      // the exit portal's hum and the dark matter's
+      jetLoop: null,
+      beatT: 0,
+      wasEmpty: false,
+      jetSt: { cut: 0, onT: 0, start: false },
+      // the jet's cough clock and how long it's been held
+      bhLoops: /* @__PURE__ */ new Map(),
+      portalLoop: null,
+      matterLoop: null,
+      wasJet: false,
+      stepT: 0,
+      lastNear: "",
+      // the footstep clock; what you were last standing by
+      portalAcc: 0,
+      // the exit portal's motes, spawned by the clock
+      // the hand torch's flame lean velocity (a sprung offset dragged opposite to how you move,
+      // the same way the jet flame swings), and the torch's flicker and ember clocks
+      leanVX: 0,
+      leanVY: 0,
+      flickN: 0,
+      torchT: 0,
+      torchAcc: 0,
+      smokeAcc: 0,
+      // the jetpack's smoke
+      webCheck: 0,
+      // which web line step() checks this frame (a few per frame)
+      webLetGo: 0,
+      // pushed off a web or arch: don't grab one again yet
+      // decorStep: the plants you're brushing (and last frame's), the rustle pause, its frame
+      // count, the drip-damage clock
+      plantsNow: /* @__PURE__ */ new Set(),
+      plantsLast: /* @__PURE__ */ new Set(),
+      rustle: { t: 0 },
+      decoFrame: 0,
+      dripHurt: 0,
+      oreBank: 0,
+      // the loose change from gold seams dug out
+      navYou: {}
+      // the shared way-to-you field the hunting rats follow (see navFor)
+    };
+  }
+
   // src/world/ragdoll.js
   var RAG_POSE = [
     [0, 5],
@@ -6605,14 +7040,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
   function ragPush(R, x, y, rad, power) {
-    const P = power || 500;
+    const P2 = power || 500;
     let hit = false;
     for (const j of R.joints) {
       const dx = j.x - x, dy = j.y - y, d = Math.hypot(dx, dy);
       if (d >= rad) continue;
       const f = 1 - d / rad;
-      j.vx += dx / (d || 1) * P * f;
-      j.vy += dy / (d || 1) * P * f - 150 * f;
+      j.vx += dx / (d || 1) * P2 * f;
+      j.vy += dy / (d || 1) * P2 * f - 150 * f;
       hit = true;
     }
     if (hit) {
@@ -6664,169 +7099,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     return ore;
-  }
-
-  // src/world/vision.js
-  var VIS_RAYS = 160;
-  function fogReveal(seen, wx, wy, r, pts, rays) {
-    const cx = wx / FOG_U, cy = wy / FOG_U, cr = r / FOG_U, r2 = cr * cr;
-    const x0 = Math.max(0, Math.floor(cx - cr)), x1 = Math.min(FW - 1, Math.ceil(cx + cr));
-    const y0 = Math.max(0, Math.floor(cy - cr)), y1 = Math.min(FH - 1, Math.ceil(cy + cr));
-    let n = 0;
-    for (let y = y0; y <= y1; y++) {
-      const row = y * FW, dy = y + 0.5 - cy, dy2 = dy * dy;
-      for (let x = x0; x <= x1; x++) {
-        if (seen[row + x]) continue;
-        const dx = x + 0.5 - cx;
-        if (dx * dx + dy2 > r2) continue;
-        const d = Math.sqrt(dx * dx + dy2) * FOG_U;
-        const t = (Math.atan2(dy, dx) / (Math.PI * 2) + 1) % 1 * rays;
-        const i0 = Math.floor(t), i1 = (i0 + 1) % rays;
-        const a = Math.hypot(pts[i0 * 2] - wx, pts[i0 * 2 + 1] - wy);
-        const b = Math.hypot(pts[i1 * 2] - wx, pts[i1 * 2 + 1] - wy);
-        if (d > Math.min(a, b)) continue;
-        seen[row + x] = 1;
-        n++;
-      }
-    }
-    return n;
-  }
-  function fogStart() {
-    const seen = new Uint8Array(FW * FH);
-    for (let y = Math.floor((SHOP_TOP - SHOP_ROOF) / FOG); y < FH; y++)
-      for (let x = 0; x < FW; x++) seen[y * FW + x] = 2;
-    return seen;
-  }
-  function nestFog(nests) {
-    const m = new Uint8Array(FW * FH);
-    for (const n of nests || []) {
-      const R = n.r + 2;
-      for (let y = Math.floor((n.y - R) / FOG); y <= Math.floor((n.y + R) / FOG); y++)
-        for (let x = Math.floor((n.x - R) / FOG); x <= Math.floor((n.x + R) / FOG); x++)
-          if (x >= 0 && y >= 0 && x < FW && y < FH) m[y * FW + x] = 1;
-    }
-    return m;
-  }
-  function rayDist(x, y, dx, dy, r, solidCell2) {
-    let cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
-    const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1;
-    const dtx = dx ? Math.abs(CELL / dx) : Infinity;
-    const dty = dy ? Math.abs(CELL / dy) : Infinity;
-    let tx2 = dx ? dx > 0 ? ((cx + 1) * CELL - x) / dx : (cx * CELL - x) / dx : Infinity;
-    let ty = dy ? dy > 0 ? ((cy + 1) * CELL - y) / dy : (cy * CELL - y) / dy : Infinity;
-    let t = 0;
-    for (; ; ) {
-      if (tx2 < ty) {
-        t = tx2;
-        tx2 += dtx;
-        cx += sx;
-      } else {
-        t = ty;
-        ty += dty;
-        cy += sy;
-      }
-      if (t >= r) return r;
-      if (solidCell2(cx, cy)) return t;
-    }
-  }
-  function losClear(x0, y0, x1, y1, solidCell2) {
-    const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy);
-    if (d < 1e-3) return true;
-    return rayDist(x0, y0, dx / d, dy / d, d, solidCell2) >= d - 1e-3;
-  }
-  function visPoly(cx, cy, r, solidCell2, rays) {
-    const pts = [];
-    for (let i = 0; i < rays; i++) {
-      const a = i / rays * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
-      const d = rayDist(cx, cy, dx, dy, r, solidCell2);
-      pts.push(cx + dx * d, cy + dy * d);
-    }
-    return pts;
-  }
-
-  // src/world/fire.js
-  var FLAMMABLE = { vine: 1, myc: 1 };
-  var FIRE_WET = { puddle: 1, snow: 1, ice: 1, slime: 1 };
-  var FIRE_COLS = ["#ffe07a", "#ff9a2e", "#f0561c", "#8a2a14"];
-  var FUEL_GRASS = 1, FUEL_MOSS = 2, FUEL_WOOD = 3;
-  var FIRE_TICK = 0.05;
-  var FIRE_MAX = 5e3;
-  var FIRE_CATCH = [0, 1, 0.6, 0.45];
-  var FIRE_KNOB = [null, "fireGrass", "fireMoss", "fireWood"];
-  var FIRE_UPW = (dy) => dy < 0 ? 1 : dy === 0 ? 0.9 : 0.35;
-  var FIRE_NB = [];
-  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++)
-    if (dx || dy) FIRE_NB.push([dy * CW + dx, FIRE_UPW(dy) * (Math.max(Math.abs(dx), Math.abs(dy)) === 2 ? 0.3 : 1)]);
-  function fireNew(fuel) {
-    return { fuel, t: new Uint16Array(fuel.length), list: [], acc: 0 };
-  }
-  function fireLight(F, i, rnd2) {
-    const kind = F.fuel[i];
-    if (!kind || F.t[i] || F.list.length >= FIRE_MAX) return false;
-    F.t[i] = Math.max(1, Math.round(kr(FIRE_KNOB[kind], rnd2) / FIRE_TICK));
-    F.list.push(i);
-    return true;
-  }
-  function fireDouse(F, x, y, r) {
-    const cx0 = x / CELL, cy0 = y / CELL, rc = r / CELL;
-    const x0 = Math.max(0, Math.floor(cx0 - rc)), x1 = Math.min(CW - 1, Math.ceil(cx0 + rc));
-    const y0 = Math.max(0, Math.floor(cy0 - rc)), y1 = Math.min(CH - 1, Math.ceil(cy0 + rc));
-    let n = 0;
-    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
-      const i = cy * CW + cx;
-      if (F.t[i] && Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) {
-        F.t[i] = 0;
-        n++;
-      }
-    }
-    return n;
-  }
-  function fireArea(F, x, y, r, chance, rnd2) {
-    rnd2 = rnd2 || Math.random;
-    const cx0 = x / CELL, cy0 = y / CELL, rc = r / CELL;
-    const x0 = Math.max(0, Math.floor(cx0 - rc)), x1 = Math.min(CW - 1, Math.ceil(cx0 + rc));
-    const y0 = Math.max(0, Math.floor(cy0 - rc)), y1 = Math.min(CH - 1, Math.ceil(cy0 + rc));
-    let n = 0;
-    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
-      const i = cy * CW + cx;
-      if (!F.fuel[i] || F.t[i] || Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) > rc || rnd2() >= chance) continue;
-      if (fireLight(F, i, rnd2)) n++;
-    }
-    return n;
-  }
-  function fireNear(F, x, y, r) {
-    const cx0 = Math.floor(x / CELL), cy0 = Math.floor(y / CELL), rc = Math.ceil(r / CELL);
-    for (let cy = Math.max(0, cy0 - rc); cy <= Math.min(CH - 1, cy0 + rc); cy++)
-      for (let cx = Math.max(0, cx0 - rc); cx <= Math.min(CW - 1, cx0 + rc); cx++)
-        if (F.t[cy * CW + cx]) return true;
-    return false;
-  }
-  function fireStep(F, dt, out, rnd2) {
-    rnd2 = rnd2 || Math.random;
-    F.acc = Math.min(F.acc + dt, FIRE_TICK * 4);
-    let ticks = 0;
-    while (F.acc >= FIRE_TICK) {
-      F.acc -= FIRE_TICK;
-      ticks++;
-      const L3 = F.list, n0 = L3.length, sp = kr("fireSpread", rnd2), N = F.fuel.length;
-      let w = 0;
-      for (let k = 0; k < n0; k++) {
-        const i = L3[k];
-        if (!F.t[i]) continue;
-        for (const [o, w2] of FIRE_NB) {
-          const j = i + o;
-          if (j >= 0 && j < N && F.fuel[j] && !F.t[j] && rnd2() < sp * w2 * FIRE_CATCH[F.fuel[j]]) fireLight(F, j, rnd2);
-        }
-        if (--F.t[i] === 0) {
-          const kind = F.fuel[i];
-          F.fuel[i] = 0;
-          if (out) out(i, kind);
-        } else L3[w++] = i;
-      }
-      for (let k = n0; k < L3.length; k++) L3[w++] = L3[k];
-      L3.length = w;
-    }
-    return ticks;
   }
 
   // src/world/sway.js
@@ -8515,10 +8787,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       // v106 put a bought level's price on your gold (it went negative); now it's a debt of its own
       // and an older page loading a v107 save dropped the debt and then paid out the whole sale: a
       // pile of gold that size with no debt is that, so the level's price comes back off it
-      gold: num2(lo.gold, START_GOLD) < 0 ? Math.max(0, num2(lo.gold, 0) + LVL_BUY) : num2(lo.gold, START_GOLD) >= LVL_BUY && !(num2(lo.debt, 0) > 0) ? num2(lo.gold, 0) - LVL_BUY : num2(lo.gold, START_GOLD),
-      debt: Math.max(0, num2(lo.debt, 0)) || (num2(lo.gold, 0) < 0 ? LVL_BUY : 0),
+      gold: num2(lo.gold, START_GOLD) < 0 ? Math.max(0, num2(lo.gold, 0) + OLD_LVL_BUY) : num2(lo.gold, START_GOLD) >= OLD_LVL_BUY && !(num2(lo.debt, 0) > 0) ? num2(lo.gold, 0) - OLD_LVL_BUY : num2(lo.gold, START_GOLD),
+      debt: Math.max(0, num2(lo.debt, 0)) || (num2(lo.gold, 0) < 0 ? OLD_LVL_BUY : 0),
       // the repayment deadline; a debt from before v107 had none: it gets its hour from now
       due: num2(lo.due, 0) || (num2(lo.debt, 0) > 0 || num2(lo.gold, 0) < 0 ? Date.now() + DEADLINE_MS : 0),
+      soldTop: Math.max(0, Math.floor(num2(lo.soldTop, 0))),
+      // the highest floor sold this run (data/levels.js)
       maxBonus: Math.max(0, num2(lo.maxBonus, 0)),
       usedLives: Math.max(0, num2(lo.usedLives, 0)),
       // red crystals carried: the floor each came from (the shop's machine turns one into an unlock)
@@ -8819,6 +9093,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (f < 4) return cx % 20 === 0 ? [28, 32, 40] : [46, 52, 63];
     return [20, 23, 29];
   }
+  var EXIT_X = [CW / 6, CW / 2, CW * 5 / 6].map(Math.round);
   function makeLevel(seed, floor, owned) {
     floor = floor || 1;
     const hash4 = (x, y) => {
@@ -9047,7 +9322,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let cy = SHOP_TOP - SHOP_ROOF - 26; cy < SHOP_TOP; cy++)
       for (let cx = shopExit - 9; cx <= shopExit + 9; cx++)
         if (inside(cx, cy)) mat[cy * CW + cx] = 0;
-    slab(CW / 2 - 24, 34, 48, 3);
+    for (let x = EXIT_X[0]; x <= EXIT_X[EXIT_X.length - 1]; x += 3) carve(x, 20 + Math.round(4 * Math.sin(x / 19)), 9, 10, CH);
+    for (const ex of EXIT_X) {
+      carve(ex, 22, 40, 16, CH);
+      slab(ex - 24, 34, 48, 3);
+    }
     const rect = (x0, y0, w, h3, v) => {
       for (let y = y0; y < y0 + h3; y++)
         for (let x = x0; x < x0 + w; x++) if (inside(x, y)) mat[y * CW + x] = v;
@@ -9148,7 +9427,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const nr = () => (ns = ns * 16807 % 2147483647) / 2147483647;
       for (let i = 0; i < 8; i++) nr();
       const nk = [
-        { x: CW / 2, y: 22, r: 70 },
+        ...EXIT_X.map((x) => ({ x, y: 22, r: 70 })),
         { x: shopExit, y: SHOP_TOP - 30, r: 50 },
         ...[perkRoom].filter(Boolean).map((r) => ({ x: r.x / CELL, y: r.y / CELL, r: 45 }))
       ];
@@ -9223,12 +9502,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         bgImg.data[k + 3] = 255;
       }
     const startCX = 14;
-    const start = { x: startCX * CELL, y: SHOP_FLOOR * CELL - PH };
+    const start2 = { x: startCX * CELL, y: SHOP_FLOOR * CELL - PH };
     const arrival = { x: (startCX + 3) * CELL, y: (SHOP_FLOOR - 13) * CELL };
     const stock = [];
     const shelf = (SHOP_FLOOR - 13) * CELL;
     stock.push({ kind: "heal", x: arrival.x + 62, y: shelf, price: 0, sold: false, bought: 0 });
-    const portal = { x: WW / 2 - 10, y: 34 * CELL - 30, w: 20, h: 30 };
+    const portals = EXIT_X.map((ex) => ({ x: ex * CELL - 10, y: 34 * CELL - 30, w: 20, h: 30 }));
+    const portal = portals[1];
     const clear = (cx, cy, r) => {
       for (let dy = -r; dy <= r; dy++)
         for (let dx = -r; dx <= r; dx++) {
@@ -9246,7 +9526,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const cx = 8 + Math.floor(rnd2() * (CW - 16)), cy = 50 + Math.floor(rnd2() * (SHOP_TOP - 70));
       if (!clear(cx, cy, 8) || nearNest(cx, cy)) continue;
       const x = cx * CELL, y = cy * CELL;
-      if (Math.hypot(x - start.x, y - start.y) < 200) continue;
+      if (Math.hypot(x - start2.x, y - start2.y) < 200) continue;
       if (enemies.some((e) => Math.hypot(e.x - x, e.y - y) < 90)) continue;
       let k = waiting || enemyFor(roster[Math.floor(rnd2() * roster.length)], floor);
       waiting = null;
@@ -9329,7 +9609,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       while (gy - cy < 6 && !mat[(gy + 1) * CW + cx]) gy++;
       if (!mat[(gy + 1) * CW + cx]) continue;
       const x = cx * CELL, y = (gy + 1) * CELL - 9;
-      if (Math.hypot(x - start.x, y - start.y) < 200) continue;
+      if (Math.hypot(x - start2.x, y - start2.y) < 200) continue;
       if (pickups.some((q) => Math.hypot(q.x - x, q.y - y) < PICKUP_GAP)) continue;
       if (gunsLeft && (!modsLeft || rnd2() < gunsLeft / (gunsLeft + modsLeft))) gunsLeft--;
       else modsLeft--;
@@ -9339,9 +9619,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const fuel = new Uint8Array(CW * CH);
     if (strata) timberWorks(mat, dimg, works, T, rnd2, fuel, built);
     const keep2 = [
-      { x: start.x, y: start.y, r: 40 },
+      { x: start2.x, y: start2.y, r: 40 },
       { x: arrival.x, y: arrival.y, r: 50 },
-      { x: portal.x + portal.w / 2, y: portal.y + portal.h / 2, r: 50 },
+      ...portals.map((q) => ({ x: q.x + q.w / 2, y: q.y + q.h / 2, r: 50 })),
       ...rooms.map((r) => ({ x: r.x, y: r.y, r: 70 })),
       ...pickups.map((q) => ({ x: q.x, y: q.y, r: 22 })),
       ...nests.map((n) => ({ x: n.mouth.x * CELL, y: n.mouth.y * CELL, r: 18 }))
@@ -9380,8 +9660,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       fuel,
       props: deco.props,
       amb: deco.amb,
-      start,
+      start: start2,
       portal,
+      portals,
       enemies,
       pickups,
       stock,
@@ -9579,7 +9860,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           life: 0.7 + Math.random() * 0.4,
           max: 1.1,
           c: "#6f767e",
-          a: 0.8
+          a: 0.8,
+          jet: true
         });
     }
     if (jet) {
@@ -9875,8 +10157,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return { face: f, head: at(0, 5), chest: at(0, 10), hip: at(0, 15.4), sh, hp, el, ha, kn, ft };
   }
-  function paintBody(ctx, P, jet, flash, held) {
-    const C = flash ? FLASH : SUIT, f = P.face;
+  function paintBody(ctx, P2, jet, flash, held) {
+    const C = flash ? FLASH : SUIT, f = P2.face;
     ctx.save();
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -9902,23 +10184,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       seg(a, b, col, w);
     };
     const leg = (i, col) => {
-      bone(P.hp[i], P.kn[i], col, 2.3);
-      bone(P.kn[i], P.ft[i], col, 2.1);
-      const sx = P.ft[i].x - P.kn[i].x, sy = P.ft[i].y - P.kn[i].y, sl = Math.hypot(sx, sy) || 1;
+      bone(P2.hp[i], P2.kn[i], col, 2.3);
+      bone(P2.kn[i], P2.ft[i], col, 2.1);
+      const sx = P2.ft[i].x - P2.kn[i].x, sy = P2.ft[i].y - P2.kn[i].y, sl = Math.hypot(sx, sy) || 1;
       const tx2 = sy / sl * f, ty = -sx / sl * f;
-      seg({ x: P.ft[i].x - tx2 * 0.5, y: P.ft[i].y - ty * 0.5 }, { x: P.ft[i].x + tx2 * 1.5, y: P.ft[i].y + ty * 1.5 }, C.boot, 2.2);
+      seg({ x: P2.ft[i].x - tx2 * 0.5, y: P2.ft[i].y - ty * 0.5 }, { x: P2.ft[i].x + tx2 * 1.5, y: P2.ft[i].y + ty * 1.5 }, C.boot, 2.2);
     };
     const arm = (i, col, glove) => {
-      bone(P.sh[i], P.el[i], col, 2);
-      bone(P.el[i], P.ha[i], col, 1.8);
+      bone(P2.sh[i], P2.el[i], col, 2);
+      bone(P2.el[i], P2.ha[i], col, 1.8);
       ctx.fillStyle = glove;
       ctx.beginPath();
-      ctx.arc(P.ha[i].x, P.ha[i].y, 1.25, 0, Math.PI * 2);
+      ctx.arc(P2.ha[i].x, P2.ha[i].y, 1.25, 0, Math.PI * 2);
       ctx.fill();
     };
     arm(0, C.shade, C.dark);
     leg(0, C.shade);
-    along(P.chest, P.hip, 0, 10, () => {
+    along(P2.chest, P2.hip, 0, 10, () => {
       ctx.fillStyle = C.pack;
       rr(ctx, -6.4, 7.6, 4, 8.4, 1.2);
       ctx.fill();
@@ -9935,7 +10217,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.fill();
       }
     });
-    along(P.chest, P.hip, 0, 10, () => {
+    along(P2.chest, P2.hip, 0, 10, () => {
       ctx.fillStyle = C.white;
       rr(ctx, -3.3, 7.8, 6.6, 8.6, 2.2);
       ctx.fill();
@@ -9951,7 +10233,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.fillRect(-3.3, 14.2, 6.6, 1.2);
     });
     leg(1, C.white);
-    along(P.head, P.chest, 0, 5, () => {
+    along(P2.head, P2.chest, 0, 5, () => {
       ctx.fillStyle = C.white;
       ctx.beginPath();
       ctx.arc(0, 4.6, 4.9, 0, Math.PI * 2);
@@ -10041,6 +10323,56 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.drawImage(c, 0, 0, cw, ch, x0, y0, cw * px, ch * px);
     ctx.imageSmoothingEnabled = sm;
   }
+  var PIX2 = { c: null, x: null };
+  function pixelSoft(ctx, x0, y0, w, h3, px, paint2) {
+    const cw = Math.ceil(w / px), ch = Math.ceil(h3 / px);
+    if (!PIX2.c) {
+      PIX2.c = document.createElement("canvas");
+      PIX2.x = PIX2.c.getContext("2d");
+    }
+    const c = PIX2.c, t = PIX2.x;
+    if (!t || cw < 1 || ch < 1) return;
+    if (c.width < cw || c.height < ch) {
+      c.width = Math.max(c.width, cw);
+      c.height = Math.max(c.height, ch);
+    }
+    t.setTransform(1, 0, 0, 1, 0, 0);
+    t.clearRect(0, 0, cw + 1, ch + 1);
+    t.setTransform(1 / px, 0, 0, 1 / px, -x0 / px, -y0 / px);
+    paint2(t);
+    t.setTransform(1, 0, 0, 1, 0, 0);
+    const sm = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(c, 0, 0, cw, ch, x0, y0, cw * px, ch * px);
+    ctx.imageSmoothingEnabled = sm;
+  }
+  function jetFlame(ctx, bx, by, ux, uy, len, time) {
+    const nx = -uy, ny = ux;
+    const at = (k, side) => [bx + ux * len * k + nx * side, by + uy * len * k + ny * side];
+    const layers = [["#d8381a", 1, 3.6], [COL.flame, 0.82, 2.8], [COL.flame2, 0.55, 1.9], ["#fff6d8", 0.28, 1.1]];
+    for (const [col, k, r] of layers) {
+      ctx.fillStyle = String(col);
+      const kk = Number(k), rr2 = Number(r);
+      const wob = Math.sin(time * 31 + kk * 5) * 0.9 * kk;
+      const [tx2, ty] = at(kk * (0.9 + 0.12 * Math.sin(time * 23 + kk * 7)), wob);
+      flameDrop(ctx, bx, by, tx2, ty, rr2);
+      if (kk < 0.5) continue;
+      for (const side of [-1, 1]) {
+        const lick = 0.45 + 0.4 * Math.abs(Math.sin(time * (17 + side * 4) + kk * 3 + side));
+        const [sx, sy] = at(kk * lick, side * rr2 * 0.9 + Math.sin(time * 13 + side) * 0.8);
+        flameDrop(ctx, bx + nx * side * rr2 * 0.4, by + ny * side * rr2 * 0.4, sx, sy, rr2 * 0.5);
+      }
+    }
+    for (let i = 0; i < 3; i++) {
+      const u = (time * 4.1 + i / 3) % 1, rr2 = 1.6 * (1 - u);
+      if (rr2 < 0.45) continue;
+      const [x, y] = at(0.8 + 0.6 * u, Math.sin(time * 19 + i * 2.3) * 2.2 * u);
+      ctx.fillStyle = u < 0.4 ? COL.flame2 : COL.flame;
+      ctx.beginPath();
+      ctx.arc(x, y, rr2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
   function flameDrop(ctx, bx, by, tx2, ty, r) {
     const dx = tx2 - bx, dy = ty - by, L3 = Math.hypot(dx, dy) || 1, ux = dx / L3, uy = dy / L3;
     const px = -uy, py = ux, a = Math.atan2(py, px);
@@ -10071,7 +10403,41 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.fillStyle = g;
     ctx.fillRect(x - r, y - r, r * 2, r * 2);
   }
-  function drawTorch(ctx, x, y, face, flick, embers, lx, ly, time) {
+  var TONGUES = [[-1.3, 11.7, 0.62, 0], [0.2, 15.3, 0.92, 2.1], [1.4, 13.1, 0.7, 4.4]];
+  function torchFlame(ctx, fx, fy, lx, ly, flick, time) {
+    const h3 = 10 * (0.82 + 0.22 * flick);
+    const tipX = (k, sw = 0) => fx + lx * k + sw;
+    const layers = [["#d8381a", 1], [COL.flame, 0.78], [COL.flame2, 0.5], ["#fff6d8", 0.24]];
+    layers.forEach(([col, sc], li) => {
+      ctx.fillStyle = String(col);
+      const s = Number(sc), r = 3 * s + 0.4;
+      const bh = h3 * 0.55 * s * (0.9 + 0.12 * Math.sin(time * 9.7));
+      flameDrop(ctx, fx, fy, tipX(0.5, Math.sin(time * 7.3) * 0.5), fy - bh + ly * 0.5, r);
+      if (li === 3) return;
+      for (const [ox2, beat, th, ph] of TONGUES) {
+        const lick = 0.55 + 0.45 * Math.abs(Math.sin(time * beat + ph)) * (0.8 + 0.2 * Math.sin(time * 3.1 + ph));
+        const tt = h3 * th * lick * s;
+        flameDrop(
+          ctx,
+          fx + ox2 * s,
+          fy - 0.6,
+          tipX(tt / h3, Math.sin(time * (beat * 0.6) + ph) * 1.1 * s) + ox2 * 0.5 * s,
+          fy - tt + ly * (tt / h3),
+          Math.max(0.6, r * 0.55)
+        );
+      }
+    });
+    for (let k = 0; k < 2; k++) {
+      const u = (time * 2.3 + k * 0.5) % 1, rr2 = 1.5 * (1 - u);
+      if (rr2 < 0.45) continue;
+      const y = fy - h3 * (0.75 + 0.75 * u) + ly * (1 + u), x = tipX(1 + u * 0.6, Math.sin(time * 6 + k * 3) * 1.2);
+      ctx.fillStyle = u < 0.45 ? COL.flame2 : COL.flame;
+      ctx.beginPath();
+      ctx.arc(x, y, rr2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  function drawTorch(ctx, x, y, face, flick, lx, ly, time) {
     const fx = x + face * 1.6, fy = y - 7;
     ctx.save();
     ctx.lineCap = "round";
@@ -10087,12 +10453,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.moveTo(x, y + 2.5);
     ctx.lineTo(fx, fy);
     ctx.stroke();
-    drawFlame(ctx, fx, fy - 1, lx, ly, 1, flick, time);
+    torchFlame(ctx, fx, fy - 0.5, lx, ly, flick, time);
     ctx.restore();
+  }
+  function torchEmbers(ctx, embers, px) {
     for (const q of embers) {
       ctx.globalAlpha = Math.max(0, q.life / q.max) * 0.85;
       ctx.fillStyle = q.c;
-      ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
+      if (px > 0) {
+        const s = Math.max(px, Math.round(q.s / px) * px);
+        ctx.fillRect(Math.floor(q.x / px) * px, Math.floor(q.y / px) * px, s, s);
+      } else ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
     }
     ctx.globalAlpha = 1;
   }
@@ -10145,7 +10516,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.restore();
   }
   function drawNugget(ctx, x, y, r, seed, ang, pal) {
-    const P = pal || NUGGET_PAL;
+    const P2 = pal || NUGGET_PAL;
     const N = 7, pts = [];
     for (let i = 0; i < N; i++) {
       const h3 = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
@@ -10160,23 +10531,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.closePath();
     };
     path();
-    ctx.fillStyle = P[0];
+    ctx.fillStyle = P2[0];
     ctx.fill();
     ctx.save();
     ctx.translate(-0.35, -0.35);
     path();
-    ctx.fillStyle = P[1];
+    ctx.fillStyle = P2[1];
     ctx.fill();
     ctx.restore();
     ctx.save();
     path();
     ctx.clip();
-    ctx.fillStyle = P[2];
+    ctx.fillStyle = P2[2];
     ctx.beginPath();
     ctx.ellipse(x - r * 0.25, y - r * 0.4, r * 0.62, r * 0.38, -0.3, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-    ctx.fillStyle = P[3];
+    ctx.fillStyle = P2[3];
     ctx.fillRect(x - r * 0.42, y - r * 0.55, Math.max(0.7, r * 0.26), Math.max(0.7, r * 0.26));
     if (pal) ctx.fillRect(x + r * 0.2, y + r * 0.1, Math.max(0.6, r * 0.14), Math.max(0.6, r * 0.14));
   }
@@ -10754,9 +11125,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/creatures/jelly.js
   function jellyPal(u) {
-    const P = {};
-    for (const [k, , , , f] of JE_COLS) P[f] = jcol(k, u);
-    return P;
+    const P2 = {};
+    for (const [k, , , , f] of JE_COLS) P2[f] = jcol(k, u);
+    return P2;
   }
   var JELLY = { hitR: 0.8 };
   function jellyBell(r, s, q) {
@@ -10954,11 +11325,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return any;
   }
   function drawJelly(ctx, x, y, r, time, phase, flash, col, S) {
-    const P = jellyPal(S ? S.u.col : 0.5);
+    const P2 = jellyPal(S ? S.u.col : 0.5);
     const sh = Math.max(0, Math.min(1, (S ? S.shape : 0) + 0.05 * Math.sin(time * 2.2 + phase)));
     const B = jellyBell(r, sh, S ? kru("jeSquash", S.u.sq) : 1);
     if (S) {
-      ctx.fillStyle = flash ? "#ffffff" : P.tent;
+      ctx.fillStyle = flash ? "#ffffff" : P2.tent;
       ctx.globalAlpha = 0.6;
       for (const T of S.tent) {
         const n = T.length, L3 = [], R = [];
@@ -10969,8 +11340,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           L3.push({ x: T[j].x - dy / d * hw, y: T[j].y + dx / d * hw });
           R.push({ x: T[j].x + dy / d * hw, y: T[j].y - dx / d * hw });
         }
-        const side = (P2, back) => {
-          const Q = back ? P2.slice().reverse() : P2;
+        const side = (P3, back) => {
+          const Q = back ? P3.slice().reverse() : P3;
           ctx.lineTo(Q[0].x, Q[0].y);
           for (let j = 1; j < n - 1; j++) ctx.quadraticCurveTo(Q[j].x, Q[j].y, (Q[j].x + Q[j + 1].x) / 2, (Q[j].y + Q[j + 1].y) / 2);
           ctx.lineTo(Q[n - 1].x, Q[n - 1].y);
@@ -11000,23 +11371,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.closePath();
     };
     const g = ctx.createLinearGradient(0, B.top, 0, B.rim);
-    g.addColorStop(0, flash ? "#ffffff" : P.top);
-    g.addColorStop(0.55, flash ? "#ffffff" : P.body);
-    g.addColorStop(1, flash ? "#f4f0ff" : P.rim);
+    g.addColorStop(0, flash ? "#ffffff" : P2.top);
+    g.addColorStop(0.55, flash ? "#ffffff" : P2.body);
+    g.addColorStop(1, flash ? "#f4f0ff" : P2.rim);
     ctx.globalAlpha = 0.8;
     ctx.fillStyle = g;
     bell(1, 0, r * 0.2 * (1 - 0.5 * sh));
     ctx.fill();
     ctx.globalAlpha = 0.85;
-    ctx.strokeStyle = flash ? "#ffffff" : P.edge;
+    ctx.strokeStyle = flash ? "#ffffff" : P2.edge;
     ctx.lineWidth = r * 0.08;
     ctx.stroke();
     ctx.globalAlpha = 0.28;
-    ctx.fillStyle = flash ? "#ffffff" : P.inner;
+    ctx.fillStyle = flash ? "#ffffff" : P2.inner;
     bell(0.6, -B.h * 0.06, 0);
     ctx.fill();
     ctx.globalAlpha = 0.55 + 0.45 * sh;
-    ctx.strokeStyle = flash ? "#ffffff" : P.loops;
+    ctx.strokeStyle = flash ? "#ffffff" : P2.loops;
     ctx.lineWidth = r * 0.08;
     const gy = (B.top + B.rim) / 2 + B.h * 0.12;
     for (let i = 0; i < 4; i++) {
@@ -11026,7 +11397,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.stroke();
     }
     ctx.globalAlpha = 0.3;
-    ctx.fillStyle = P.shine;
+    ctx.fillStyle = P2.shine;
     ctx.beginPath();
     ctx.ellipse(-B.w * 0.32, B.top + B.h * 0.24, B.w * 0.16, B.h * 0.09, -0.5, 0, Math.PI * 2);
     ctx.fill();
@@ -12074,19 +12445,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (lineOfSight(W, hx, hy, pcx, pcy)) {
         e.cd = kr("jeShotCd");
         const a = Math.atan2(pcy - hy, pcx - hx) + (Math.random() * 2 - 1) * kr("jeSpread") * Math.PI / 180;
-        const v = kr("jeShotSpd"), P = jellyPal(S.u.col);
+        const v = kr("jeShotSpd"), P2 = jellyPal(S.u.col);
         W.enemyShots.push({
           x: hx,
           y: hy,
           vx: Math.cos(a) * v,
           vy: Math.sin(a) * v,
           life: 3,
-          col: P.spit,
-          edge: P.spitEdge,
-          shine: P.spitShine,
-          dripCol: P.drip,
-          dripCol2: P.drip2,
-          glow: hexRgb(P.glow),
+          col: P2.spit,
+          edge: P2.spitEdge,
+          shine: P2.spitShine,
+          dripCol: P2.drip,
+          dripCol2: P2.drip2,
+          glow: hexRgb(P2.glow),
           dmg: Math.round(kr("jeShotDmg")),
           size: kr("jeShotSize"),
           goo: 1,
@@ -12941,7 +13312,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           vy: fy * 50 + (Math.random() - 0.5) * 20,
           r: 1.5 + Math.random(),
           life: 0.9,
-          max: 0.9
+          max: 0.9,
+          jet: true
         });
       }
     }
@@ -12979,8 +13351,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.portalAcc += dt;
     while (W.portalAcc > 0.05) {
       W.portalAcc -= 0.05;
-      const ex = W.portal.x + W.portal.w / 2, ey = W.portal.y + W.portal.h / 2;
-      if (Math.abs(ey - W.p.y) < 500) {
+      const P2 = nearExit(W, W.p.x), ex = P2.x + P2.w / 2, ey = P2.y + P2.h / 2;
+      if (W.hasLvl && Math.abs(ey - W.p.y) < 500) {
         const a = Math.random() * 6.28, rr2 = 30 + Math.random() * 38;
         const life = 1.4 + Math.random() * 0.8;
         W.motes.push({
@@ -13072,11 +13444,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return o.F;
   }
   function spawnRat(W, n) {
-    const k = enemyFor("rotta", W.floor), P = n.nest.path, m = n.nest.mouth;
+    const k = enemyFor("rotta", W.floor), P2 = n.nest.path, m = n.nest.mouth;
     const e = {
-      x: P[0].x,
-      y: P[0].y,
-      ty: P[0].y,
+      x: P2[0].x,
+      y: P2[0].y,
+      ty: P2[0].y,
       r: k.r,
       phase: Math.random() * 6.28,
       hp: 1,
@@ -13093,7 +13465,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       touch: 0,
       charge: 0,
       home: n,
-      path: P,
+      path: P2,
       carry: 0
     };
     e.ra = { mode: "tunnel", vx: 0, vy: 0, nx: 0, ny: -1, on: 0, rest: 0, side: 1, face: 1, s: 0, dir: 1, wait: 0 };
@@ -13570,7 +13942,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
   function planCast(g, others) {
-    const start = g.idx, mods = [], defs = [];
+    const start2 = g.idx, mods = [], defs = [];
     const holds = [];
     let addTrig = null;
     let multi = g.multi, cost = 0, manaMul = 1, ran = false, wrapped = 0;
@@ -13747,7 +14119,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return {
       shots,
       defs,
-      start,
+      start: start2,
       cost: cost * manaMul,
       acts,
       hp,
@@ -13948,19 +14320,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       fx /= fl;
       fy /= fl;
       const len = 6 + W.p.flame * 16 + Math.random() * 3;
-      const bx = pcx, by = W.p.y + PH - 2;
-      G.ctx.fillStyle = COL.flame;
-      G.ctx.beginPath();
-      G.ctx.moveTo(bx - 4, by);
-      G.ctx.lineTo(bx + 4, by);
-      G.ctx.lineTo(bx + fx * len, by + fy * len);
-      G.ctx.fill();
-      G.ctx.fillStyle = COL.flame2;
-      G.ctx.beginPath();
-      G.ctx.moveTo(bx - 2, by);
-      G.ctx.lineTo(bx + 2, by);
-      G.ctx.lineTo(bx + fx * len * 0.55, by + fy * len * 0.55);
-      G.ctx.fill();
+      const bx = pcx, by = W.p.y + PH - 2, px = DEV.runnerPx;
+      const paint2 = (c) => jetFlame(c, bx, by, fx, fy, len, W.time);
+      if (px > 0) {
+        const R = len + 8, ox2 = W.p.x - 14, oy2 = W.p.y - 8;
+        const x0 = ox2 + Math.floor((bx - R - ox2) / px) * px, y0 = oy2 + Math.floor((by - R - oy2) / px) * px;
+        pixelSprite(G.ctx, x0, y0, R * 2 + px, R * 2 + px, px, false, paint2);
+      } else paint2(G.ctx);
     }
   }
   function drawAim(W, G, F) {
@@ -14078,7 +14444,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         body(G.ctx);
         gun(G.ctx);
       }
-      drawTorch(G.ctx, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.torchP, W.leanX, W.leanY, W.time);
+      const torch = (c) => drawTorch(c, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.leanX, W.leanY, W.time);
+      if (px > 0) {
+        const ox2 = W.p.x - 14, oy2 = W.p.y - 8;
+        const x0 = ox2 + Math.floor((th.x - 14 - ox2) / px) * px, y0 = oy2 + Math.floor((th.y - 30 - oy2) / px) * px;
+        pixelSprite(G.ctx, x0, y0, 28 + px, 38 + px, px, false, torch);
+      } else torch(G.ctx);
+      torchEmbers(G.ctx, W.torchP, px);
     }
     if (!W.p.dead) {
       const cxp = pcx + ax * DEV.aimDist, cyp = gy + ay * DEV.aimDist;
@@ -14201,13 +14573,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var holoBright = () => L.bri;
   var LG = { px: CELL, ox: 0, oy: 0, gx0: 0, gy0: 0, lw: 1, lh: 1 };
   function setGrid(W, F) {
-    const P = LG.px = clamp(DEV.holoPx || CELL, 0.5, 8);
+    const P2 = LG.px = clamp(DEV.holoPx || CELL, 0.5, 8);
     LG.ox = W.camX * (1 - HOLO_PAR);
     LG.oy = W.camY * (1 - HOLO_PAR);
-    LG.gx0 = Math.floor((W.camX - LG.ox) / P) - 1;
-    LG.gy0 = Math.floor((W.camY - LG.oy) / P) - 1;
-    LG.lw = Math.ceil(F.vw / P) + 3;
-    LG.lh = Math.ceil(F.vh / P) + 3;
+    LG.gx0 = Math.floor((W.camX - LG.ox) / P2) - 1;
+    LG.gy0 = Math.floor((W.camY - LG.oy) / P2) - 1;
+    LG.lw = Math.ceil(F.vw / P2) + 3;
+    LG.lh = Math.ceil(F.vh / P2) + 3;
   }
   var holoGrid = {
     get w() {
@@ -14245,8 +14617,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.globalCompositeOperation = "destination-out";
     const t = W.time, fl = Math.floor(t * 24);
     ctx.fillStyle = "rgba(0,0,0," + (0.3 + 0.15 * hash(fl)).toFixed(2) + ")";
-    const P = LG.px, SCAN = 2 * P;
-    for (let y = Math.floor((ly - R) / SCAN) * SCAN + t * SCAN_SPEED % SCAN; y < ly + R; y += SCAN) ctx.fillRect(lx - R, y, R * 2, P);
+    const P2 = LG.px, SCAN = 2 * P2;
+    for (let y = Math.floor((ly - R) / SCAN) * SCAN + t * SCAN_SPEED % SCAN; y < ly + R; y += SCAN) ctx.fillRect(lx - R, y, R * 2, P2);
     for (let k = 0; k < BANDS; k++) {
       const y = ly - R + (t * BAND_SPEED * (0.7 + 0.3 * k) + k * 173) % (R * 2), hh = 4 + 10 * hash(k * 7.1);
       ctx.fillStyle = "rgba(0,0,0," + (0.25 + 0.4 * hash(fl * 3 + k)).toFixed(2) + ")";
@@ -15285,13 +15657,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var BEAM_H = 64;
   var BOLT_T = 0.09;
   var BOLT_CHANCE = 0.4;
+  var ZAP_T = 1.4;
   var hs = (n) => {
     const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
     return v - Math.floor(v);
   };
   var padSpots = (W) => {
     const out = [{ x: W.arrival.x, y: SHOP_FLOOR * CELL, seed: 1 }];
-    if (W.hasLvl) out.push({ x: W.portal.x + W.portal.w / 2, y: W.portal.y + W.portal.h, seed: 2 });
+    if (W.hasLvl) exits(W).forEach((q, i) => out.push({ x: q.x + q.w / 2, y: q.y + q.h, seed: 2 + i }));
     return out;
   };
   function drawPad(ctx, x, fy, time) {
@@ -15321,45 +15694,47 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function drawPads(W, G, F) {
     const ctx = G.ctx, t = W.time;
-    for (const P of padSpots(W)) {
-      if (P.y < W.camY - 10 || P.y - BEAM_H > W.camY + F.vh || P.x < W.camX - 40 || P.x > W.camX + F.vw + 40) continue;
-      if (!fogLit(W, P.x, P.y - 6)) continue;
-      const pulse = 0.85 + 0.15 * Math.sin(t * 2.4 + P.seed);
+    for (const P2 of padSpots(W)) {
+      if (P2.y < W.camY - 10 || P2.y - BEAM_H > W.camY + F.vh || P2.x < W.camX - 40 || P2.x > W.camX + F.vw + 40) continue;
+      if (!fogLit(W, P2.x, P2.y - 6)) continue;
+      const pulse = 0.85 + 0.15 * Math.sin(t * 2.4 + P2.seed);
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
       for (const [wf, a, hf] of [[0.95, 0.16, 1], [0.66, 0.2, 0.8], [0.34, 0.28, 0.6]]) {
-        const h3 = BEAM_H * hf, g = ctx.createLinearGradient(0, P.y, 0, P.y - h3);
+        const h3 = BEAM_H * hf, g = ctx.createLinearGradient(0, P2.y, 0, P2.y - h3);
         g.addColorStop(0, "rgba(90,185,255," + (a * pulse).toFixed(3) + ")");
         g.addColorStop(0.5, "rgba(70,150,255," + (a * 0.35 * pulse).toFixed(3) + ")");
         g.addColorStop(1, "rgba(60,120,255,0)");
         ctx.fillStyle = g;
-        ctx.fillRect(P.x - PAD_W * wf / 2, P.y - h3, PAD_W * wf, h3);
+        ctx.fillRect(P2.x - PAD_W * wf / 2, P2.y - h3, PAD_W * wf, h3);
       }
-      const fg = ctx.createRadialGradient(P.x, P.y, 0, P.x, P.y, PAD_W);
+      const fg = ctx.createRadialGradient(P2.x, P2.y, 0, P2.x, P2.y, PAD_W);
       fg.addColorStop(0, "rgba(90,185,255," + (0.25 * pulse).toFixed(3) + ")");
       fg.addColorStop(1, "rgba(90,185,255,0)");
       ctx.fillStyle = fg;
-      ctx.fillRect(P.x - PAD_W, P.y - PAD_W, PAD_W * 2, PAD_W * 2);
+      ctx.fillRect(P2.x - PAD_W, P2.y - PAD_W, PAD_W * 2, PAD_W * 2);
       for (let i = 0; i < 10; i++) {
-        const sp = 14 + hs(i * 3 + P.seed) * 22, u = (t * sp / BEAM_H + hs(i * 7 + P.seed * 13)) % 1;
-        const sx = P.x + (hs(i * 11 + P.seed) - 0.5) * PAD_W * 0.8 + Math.sin(t * 2 + i) * 1.2;
+        const sp = 14 + hs(i * 3 + P2.seed) * 22, u = (t * sp / BEAM_H + hs(i * 7 + P2.seed * 13)) % 1;
+        const sx = P2.x + (hs(i * 11 + P2.seed) - 0.5) * PAD_W * 0.8 + Math.sin(t * 2 + i) * 1.2;
         ctx.globalAlpha = (1 - u) * 0.8;
-        ctx.fillStyle = hs(i + P.seed * 5) < 0.4 ? "#e6f6ff" : "#6cc4ff";
-        ctx.fillRect(sx - 0.6, P.y - 2 - u * BEAM_H * 0.9, 1.2, 1.2);
+        ctx.fillStyle = hs(i + P2.seed * 5) < 0.4 ? "#e6f6ff" : "#6cc4ff";
+        ctx.fillRect(sx - 0.6, P2.y - 2 - u * BEAM_H * 0.9, 1.2, 1.2);
       }
       ctx.restore();
+      const zap = 1 - (t - ((W.padZap && W.padZap[P2.seed]) ?? -99)) / ZAP_T;
+      if (zap <= 0 || zap > 1) continue;
       const n0 = Math.floor(t / BOLT_T);
       for (let n = n0 - 2; n <= n0; n++) {
-        const s = n * 7.13 + P.seed * 101;
-        if (hs(s) > BOLT_CHANCE) continue;
+        const s = n * 7.13 + P2.seed * 101;
+        if (hs(s) > (0.35 + 0.65 * zap) * BOLT_CHANCE * 2) continue;
         const age = (t - n * BOLT_T) / (BOLT_T * 3);
-        let bx = P.x + (hs(s + 1) - 0.5) * (PAD_W - 6), by = P.y - 1;
+        let bx = P2.x + (hs(s + 1) - 0.5) * (PAD_W - 6), by = P2.y - 1;
         const up = BEAM_H * (0.3 + 0.5 * hs(s + 2)), steps = 6;
         const pts = [{ x: bx, y: by }];
         for (let k = 1; k <= steps; k++) {
           bx += (hs(s + 3 + k) - 0.5) * 7;
           by -= up / steps;
-          bx = Math.max(P.x - PAD_W / 2, Math.min(P.x + PAD_W / 2, bx));
+          bx = Math.max(P2.x - PAD_W / 2, Math.min(P2.x + PAD_W / 2, bx));
           pts.push({ x: bx, y: by });
         }
         drawBolt(G, pts, "#7cc8ff", 0.9, Math.max(0, 1 - age));
@@ -15497,7 +15872,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.ctx.globalAlpha = 1;
   }
   function drawPortal(W, G) {
-    if (W.hasLvl) drawPad(G.ctx, W.portal.x + W.portal.w / 2, W.portal.y + W.portal.h, W.time);
+    if (W.hasLvl) for (const q of exits(W)) drawPad(G.ctx, q.x + q.w / 2, q.y + q.h, W.time);
   }
   function drawArrival(W, G, F) {
     const { vh } = F;
@@ -15707,14 +16082,36 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/game/render/effects.js
   function drawSmoke(W, G) {
+    const px = DEV.runnerPx;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const puff = (c, m) => {
+      c.fillStyle = m.c || COL.smoke;
+      c.globalAlpha = Math.max(0, m.life / m.max) * (m.a || 0.5);
+      c.beginPath();
+      c.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+      c.fill();
+    };
     for (const m of W.smoke) {
-      G.ctx.fillStyle = m.c || COL.smoke;
-      G.ctx.globalAlpha = Math.max(0, m.life / m.max) * (m.a || 0.5);
-      G.ctx.beginPath();
-      G.ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
-      G.ctx.fill();
+      if (m.jet && px > 0) {
+        x0 = Math.min(x0, m.x - m.r);
+        y0 = Math.min(y0, m.y - m.r);
+        x1 = Math.max(x1, m.x + m.r);
+        y1 = Math.max(y1, m.y + m.r);
+        continue;
+      }
+      puff(G.ctx, m);
     }
     G.ctx.globalAlpha = 1;
+    if (x1 > x0 && x1 - x0 < 600 && y1 - y0 < 600) {
+      const gx = Math.floor(x0 / px) * px, gy = Math.floor(y0 / px) * px;
+      pixelSoft(G.ctx, gx, gy, x1 - gx + px, y1 - gy + px, px, (c) => {
+        for (const m of W.smoke) if (m.jet) puff(c, m);
+        c.globalAlpha = 1;
+      });
+    } else if (x1 > x0) {
+      for (const m of W.smoke) if (m.jet) puff(G.ctx, m);
+      G.ctx.globalAlpha = 1;
+    }
   }
   function drawTrail(W, G) {
     for (const bn of W.burns) {
@@ -16121,6 +16518,79 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.ctx.fillRect(W.camX - 10, WH, F.vw + 20, W.camY + F.vh - WH + 10);
   }
 
+  // src/data/levels.js
+  var LVL_MENU_MAX = 12;
+  var lvlBuy = (floor = 1) => Math.round(LVL_BUY * Math.pow(DEV.lvlGrow, Math.max(0, floor - 1)));
+  var lvlSell = (floor = 1) => lvlBuy(floor) + Math.round(DEV.lvlBonus * Math.pow(DEV.rewardGrow, Math.max(0, floor - 1)));
+  var lvlReward = (floor = 1) => lvlSell(floor) - lvlBuy(floor);
+  var canBuyFloor = (soldTop, floor) => floor >= 1 && floor <= (soldTop || 0) + 1;
+  var menuFloors = (soldTop) => {
+    const n = Math.min(LVL_MENU_MAX, Math.max(3, (soldTop || 0) + 2));
+    return Array.from({ length: n }, (_, i) => i + 1);
+  };
+
+  // src/game/levelgen.js
+  var LVLGEN = { src: "", worker: null, broken: false, n: 0, pend: null, ready: null, made: 0 };
+  var P = LVLGEN;
+  var setBundle = (src) => {
+    P.src = src || "";
+  };
+  function levelWorker() {
+    const S = self;
+    S.onmessage = (e) => {
+      const { id, floor, seed, dev } = e.data;
+      Object.assign(DEV, JSON.parse(dev));
+      const level = makeLevel(seed, floor, []);
+      S.postMessage({ id, level });
+    };
+  }
+  var PRELUDE = "var VERSION=" + JSON.stringify(typeof VERSION === "string" ? VERSION : "v0") + ";self.window=self;self.React={createElement:function(){return null},createContext:function(){return {}}};self.ReactDOM={createRoot:function(){return {render:function(){}}}};self.document={getElementById:function(){return null},currentScript:null};\n";
+  function start() {
+    if (P.worker || P.broken) return P.worker;
+    try {
+      if (!P.src || typeof Worker === "undefined" || typeof Blob === "undefined") throw new Error("no worker");
+      const url = URL.createObjectURL(new Blob([PRELUDE + P.src], { type: "text/javascript" }));
+      const w = new Worker(url);
+      w.onmessage = (e) => {
+        const { id, level } = e.data;
+        if (!P.pend || P.pend.id !== id) return;
+        P.ready = { floor: P.pend.floor, seed: P.pend.seed, dev: P.pend.dev, level };
+        P.pend = null;
+      };
+      w.onerror = () => {
+        P.broken = true;
+        P.pend = null;
+        try {
+          w.terminate();
+        } catch (_) {
+        }
+        P.worker = null;
+      };
+      P.worker = w;
+    } catch (_) {
+      P.broken = true;
+    }
+    return P.worker;
+  }
+  function preLevel(floor, seed) {
+    const dev = JSON.stringify(DEV);
+    if (P.ready && P.ready.floor === floor && P.ready.dev === dev) return;
+    if (P.pend && P.pend.floor === floor && P.pend.dev === dev) return;
+    const w = start();
+    if (!w) return;
+    P.ready = null;
+    P.pend = { id: ++P.n, floor, seed, dev };
+    w.postMessage({ id: P.pend.id, floor, seed, dev });
+  }
+  function takeLevel(floor) {
+    const r = P.ready;
+    if (!r || r.floor !== floor || r.dev !== JSON.stringify(DEV)) return null;
+    P.ready = null;
+    P.made++;
+    return { seed: r.seed, level: r.level };
+  }
+  var levelPending = (floor) => !!P.pend && P.pend.floor === floor && !P.broken;
+
   // src/replay/replay.js
   var RP_HZ = 20;
   var RP_BEFORE = 10;
@@ -16250,8 +16720,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let r = 0; r < h3; r++) out.set(data.subarray(((y + r) * W + x) * 4, ((y + r) * W + x + w) * 4), r * w * 4);
     return out;
   }
-  function rpPaste(data, W, P) {
-    for (let r = 0; r < P.h; r++) data.set(P.px.subarray(r * P.w * 4, (r + 1) * P.w * 4), ((P.y + r) * W + P.x) * 4);
+  function rpPaste(data, W, P2) {
+    for (let r = 0; r < P2.h; r++) data.set(P2.px.subarray(r * P2.w * 4, (r + 1) * P2.w * 4), ((P2.y + r) * W + P2.x) * 4);
   }
   function rpMerge(rects, W, H) {
     const out = [];
@@ -16306,6 +16776,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "floor",
     "hasLvl",
     "portal",
+    "portals",
     "arrival",
     "stock",
     "rooms",
@@ -16432,11 +16903,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return S;
     });
     const patches = [];
-    for (const P of C.patches) {
-      if (P.t > C.t1 + 0.06) continue;
-      const x0 = Math.max(P.x, bx), y0 = Math.max(P.y, by), x1 = Math.min(P.x + P.w, bx + bw), y1 = Math.min(P.y + P.h, by + bh);
+    for (const P2 of C.patches) {
+      if (P2.t > C.t1 + 0.06) continue;
+      const x0 = Math.max(P2.x, bx), y0 = Math.max(P2.y, by), x1 = Math.min(P2.x + P2.w, bx + bw), y1 = Math.min(P2.y + P2.h, by + bh);
       if (x1 <= x0 || y1 <= y0) continue;
-      patches.push({ t: P.t, c: P.c, x: x0, y: y0, w: x1 - x0, h: y1 - y0, px: rpCut(P.px, P.w, x0 - P.x, y0 - P.y, x1 - x0, y1 - y0) });
+      patches.push({ t: P2.t, c: P2.c, x: x0, y: y0, w: x1 - x0, h: y1 - y0, px: rpCut(P2.px, P2.w, x0 - P2.x, y0 - P2.y, x1 - x0, y1 - y0) });
     }
     const fogBase = new Uint8Array(fw * fh);
     for (let r = 0; r < fh; r++) fogBase.set(C.fogBase.subarray((fy + r) * FW + fx, (fy + r) * FW + fx + fw), r * fw);
@@ -16499,7 +16970,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function clipBytes(S) {
     let n = S.tBase.length + (S.dBase ? S.dBase.length : 0) + S.fogBase.length + S.fogLog.length * 8 + (S.bg ? S.bg.length : 0);
-    for (const P of S.patches) n += P.px.length + 40;
+    for (const P2 of S.patches) n += P2.px.length + 40;
     const seen = /* @__PURE__ */ new Set();
     const walk = (v) => {
       if (v === null || typeof v !== "object") {
@@ -16839,8 +17310,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (n) G.REC.snaps.splice(0, n);
     n = 0;
     while (n < G.REC.patches.length && G.REC.patches[n].t < cut) {
-      const P = G.REC.patches[n++], base = P.c === "t" ? G.REC.tBase : G.REC.dBase;
-      if (base) rpPaste(base, CW, P);
+      const P2 = G.REC.patches[n++], base = P2.c === "t" ? G.REC.tBase : G.REC.dBase;
+      if (base) rpPaste(base, CW, P2);
     }
     if (n) G.REC.patches.splice(0, n);
     n = 0;
@@ -16900,10 +17371,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       RT.n = 0;
     }
     while (RT.n < C.patches.length && C.patches[RT.n].t <= T) {
-      const P = C.patches[RT.n++];
-      (P.c === "t" ? tc : dc).putImageData(new ImageData(P.px, P.w, P.h), P.x, P.y);
-      if (P.c === "t") for (let r = 0; r < P.h; r++)
-        for (let c = 0, i = (P.y + r) * CW + P.x, k = r * P.w * 4 + 3; c < P.w; c++, i++, k += 4) RT.mat[i] = P.px[k] ? 1 : 0;
+      const P2 = C.patches[RT.n++];
+      (P2.c === "t" ? tc : dc).putImageData(new ImageData(P2.px, P2.w, P2.h), P2.x, P2.y);
+      if (P2.c === "t") for (let r = 0; r < P2.h; r++)
+        for (let c = 0, i = (P2.y + r) * CW + P2.x, k = r * P2.w * 4 + 3; c < P2.w; c++, i++, k += 4) RT.mat[i] = P2.px[k] ? 1 : 0;
     }
     RT.at = T;
     if (!RT.fog || RT.fog.length !== C.fogBase.length) RT.fog = new Uint8Array(C.fogBase.length);
@@ -17113,11 +17584,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/game/systems/level-entry.js
-  function enterLevel(W, G, back, keep2) {
+  function enterLevel(W, G, back, keep2, pre) {
     refreshBag(W, G);
     W.levelSeed = back ? back.seed : 1 + Math.floor(Math.random() * 2147483e3);
     W.levelOwned = back ? back.owned : (G.input.current.loadout.perks || []).slice();
-    const level = makeLevel(W.levelSeed, W.floor, W.levelOwned);
+    const level = pre || makeLevel(W.levelSeed, W.floor, W.levelOwned);
     level.enemies.forEach((e, i) => {
       e.sid = i;
     });
@@ -17153,6 +17624,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     miniEdges(W);
     W.start = level.start;
     W.portal = level.portal;
+    W.portals = level.portals || [level.portal];
     W.arrival = level.arrival;
     W.enemies = level.enemies;
     W.pickups = level.pickups;
@@ -17163,7 +17635,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.ambKinds = level.amb || [];
     W.dimg = level.dimg;
     W.plantW = plantWhite(W.img.data, W.dimg && W.dimg.data);
-    G.dctx.putImageData(W.dimg, 0, 0);
+    W.reveal = keep2 === "shop" ? Math.max(0, SHOP_TOP - SHOP_ROOF - 60) : 0;
+    if (!W.reveal) G.dctx.putImageData(W.dimg, 0, 0);
     W.dparts.length = W.amb.length = W.clouds.length = W.rings.length = W.devils.length = 0;
     W.zfx = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
     {
@@ -17197,7 +17670,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.firePropN = -1;
     W.p.burn = 0;
     W.p.burnAcc = 0;
-    G.tctx.putImageData(W.img, 0, 0);
+    if (W.reveal) putRows(W, G, W.reveal, CH);
+    else G.tctx.putImageData(W.img, 0, 0);
     G.bgctx.putImageData(level.bgImg, 0, 0);
     if (!keep2) {
       W.p.x = W.start.x;
@@ -17274,6 +17748,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var REPO_JET = 40;
   var WARP_SWAP = 0.6;
   var WARP_END = 2.4;
+  var WARP_WAIT = 6;
+  var REVEAL_T = 0.7;
   var ROOF_Y = (SHOP_TOP - SHOP_ROOF) * CELL;
   var VEND_W = 60, VEND_H = 84;
   var VEND_TOP = SHOP_FLOOR * CELL - VEND_H;
@@ -17283,7 +17759,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (Math.abs(pcx - VEND_SELL_X) < 30 && W.hasLvl) return "sell";
     return null;
   }
-  var lvlSell = () => LVL_BUY + DEV.lvlReward;
   var canSell = (W) => W.hasLvl && bioCount(W.enemies, false) === 0;
   function vendLabel(W, kind) {
     if (kind === "buy") return { text: "Tap R to buy", price: 0, can: true };
@@ -17292,30 +17767,53 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function vendUse(W, G, kind, LO) {
     if (W.warp) return;
     if (kind === "buy" && !W.hasLvl) {
-      LO.debt = (LO.debt || 0) + LVL_BUY;
-      LO.due = Date.now() + dueMs(W.floor);
-      W.hasLvl = true;
-      W.warp = { dir: "in", t: 0, done: false, bolts: [] };
-      toast(W, "Level " + W.floor + " bought on credit");
-      SFX.ui("buy");
+      G.input.current.shopOpen = "levels";
+      SFX.ui("mod");
     } else if (kind === "sell" && W.hasLvl) {
       if (!canSell(W)) {
         toast(W, "No biological entities accepted");
         SFX.ui("poor");
         return;
       }
-      LO.gold += lvlSell() - (LO.debt || 0);
+      LO.gold += lvlReward(W.floor);
       LO.debt = 0;
       LO.due = 0;
+      LO.soldTop = Math.max(LO.soldTop || 0, W.floor);
       W.hasLvl = false;
       W.warp = { dir: "out", t: 0, done: false, bolts: [] };
       toast(W, "Level " + W.floor + " sold");
       SFX.ui("buy");
     }
   }
+  function buyLevel(W, G, floor, LO) {
+    if (W.warp || W.hasLvl || W.repo || !canBuyFloor(LO.soldTop || 0, floor)) return false;
+    if (floor !== W.floor) {
+      W.floor = floor;
+      W.levelSeed = 1 + Math.floor(Math.random() * 2147483e3);
+    }
+    preLevel(W.floor, W.levelSeed);
+    LO.debt = (LO.debt || 0) + lvlBuy(floor);
+    LO.due = Date.now() + dueMs(floor);
+    W.hasLvl = true;
+    W.warp = { dir: "in", t: 0, done: false, bolts: [] };
+    toast(W, "Level " + floor + " bought on credit");
+    SFX.ui("buy");
+    G.input.current.notify();
+    return true;
+  }
   function stepWarp(W, G, F) {
+    const ask = G.input.current.buyFloor;
+    if (ask) {
+      G.input.current.buyFloor = 0;
+      buyLevel(W, G, ask, F.LO);
+    }
+    stepReveal(W, G, F);
     const w = W.warp;
     if (!w) return;
+    if (!w.done && w.dir === "in" && w.t + F.dt >= WARP_SWAP && levelPending(W.floor) && (w.wait = (w.wait || 0) + F.dt) < WARP_WAIT) {
+      for (let i = w.bolts.length - 1; i >= 0; i--) if ((w.bolts[i].t += F.dt) >= w.bolts[i].max) w.bolts.splice(i, 1);
+      return;
+    }
     const t0 = w.t;
     w.t += F.dt;
     if (!w.done && w.t >= WARP_SWAP) {
@@ -17327,10 +17825,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         W.camReady = false;
         W.hasLvl = false;
         voidCave(W, G);
-      } else if (w.dir === "in") enterLevel(W, G, { seed: W.levelSeed, owned: W.levelOwned, alive: null, sold: [], rooms: [], pickups: null }, "shop");
-      else {
-        W.floor++;
-        enterLevel(W, G, void 0, "you");
+      } else if (w.dir === "in") {
+        const got = takeLevel(W.floor);
+        if (got) W.levelSeed = got.seed;
+        enterLevel(W, G, { seed: W.levelSeed, owned: [], alive: null, sold: [], rooms: [], pickups: null }, "shop", got ? got.level : void 0);
+      } else {
+        W.floor = Math.min(LVL_MENU_MAX, (G.input.current.loadout.soldTop || 0) + 1);
+        W.levelSeed = 1 + Math.floor(Math.random() * 2147483e3);
+        const heal = W.stock.find((it) => it.kind === "heal");
+        if (heal) {
+          heal.bought = 0;
+          heal.price = 0;
+        }
         voidCave(W, G);
       }
       SFX.fx("levelWarp");
@@ -17356,6 +17862,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     for (let i = w.bolts.length - 1; i >= 0; i--) if ((w.bolts[i].t += F.dt) >= w.bolts[i].max) w.bolts.splice(i, 1);
     if (w.t >= WARP_END && !w.bolts.length) W.warp = null;
+  }
+  function stepReveal(W, G, F) {
+    if (!W.reveal) return;
+    const y1 = W.reveal, y0 = Math.max(0, Math.floor(y1 - CH * Math.max(F.dt, 1 / 120) / REVEAL_T));
+    putRows(W, G, y0, y1);
+    W.reveal = y0;
+  }
+  function putRows(W, G, y0, y1) {
+    if (y1 <= y0) return;
+    G.tctx.putImageData(new ImageData(W.img.data.subarray(y0 * CW * 4, y1 * CW * 4), CW, y1 - y0), 0, y0);
+    if (W.dimg) G.dctx.putImageData(new ImageData(W.dimg.data.subarray(y0 * CW * 4, y1 * CW * 4), CW, y1 - y0), 0, y0);
   }
   function voidCave(W, G) {
     const top = SHOP_TOP - SHOP_ROOF, d = W.img.data, dd = W.dimg.data;
@@ -17396,11 +17913,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.navYou.F = null;
     W.terrainV++;
     W.levelT = 99;
+    W.reveal = 0;
+    SFX.setAmbience(null);
     G.tctx.putImageData(W.img, 0, 0);
     G.dctx.putImageData(W.dimg, 0, 0);
     miniEdges(W);
     W.seen = fogStart();
     paintFog(W, G);
+    preLevel(W.floor, W.levelSeed);
   }
   var keep = (q) => q.y >= SHOP_Y - 12;
   function stepRepo(W, G, F) {
@@ -17975,6 +18495,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function drawVend(W, G, F) {
     if (VEND_TOP > W.camY + F.vh + 10 || VEND_TOP + VEND_H < W.camY - 10) return;
     const lv = "LVL " + W.floor, busy = !!W.warp, due = G.input.current.loadout.due || 0;
+    const hi = (G.input.current.loadout.soldTop || 0) + 1;
     drawHoloShop(W, G);
     if (W.repo) {
       const left = REPO_FIRE - W.repo.t;
@@ -18001,8 +18522,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       VEND_BUY_X,
       !W.hasLvl && !busy,
       HOLO_GREEN,
-      ["BUY", lv],
-      [commas(LVL_BUY) + " G.", "(credit", "available)"]
+      ["BUY", "LEVELS"],
+      [hi > 1 ? "LVL 1–" + hi : "LVL 1", "(credit", "available)"]
     );
     machine(
       G.ctx,
@@ -18012,7 +18533,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       W.hasLvl && !busy,
       canSell(W) ? HOLO_GREEN : HOLO_RED,
       ["SELL", lv],
-      [commas(lvlSell()) + " G.", "(no biological", "entities accepted)"]
+      [commas(lvlSell(W.floor)) + " G.", "(no biological", "entities accepted)"]
     );
   }
   function drawWarp(W, G, F) {
@@ -19270,7 +19791,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function atPortal(W, G, F) {
     const pcx = F.pcx = W.p.x + PW / 2, pcy = F.pcy = W.p.y + PH / 2;
-    if (!W.p.dead && W.hasLvl && pcx > W.portal.x && pcx < W.portal.x + W.portal.w && pcy > W.portal.y && pcy < W.portal.y + W.portal.h) {
+    const at = W.hasLvl && !W.p.dead ? exits(W).findIndex((q) => pcx > q.x && pcx < q.x + q.w && pcy > q.y && pcy < q.y + q.h) : -1;
+    if (at >= 0) {
+      W.padZap[2 + at] = W.padZap[1] = W.time;
       W.p.x = W.start.x;
       W.p.y = W.start.y;
       W.p.vx = 0;
@@ -19310,9 +19833,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h3.stop();
       W.bhLoops.delete(b);
     }
-    SFX.ambTick(dt);
+    if (W.hasLvl) SFX.ambTick(dt);
     if (!W.portalLoop && SFX.ready) W.portalLoop = SFX.loop("portal");
-    if (W.portalLoop) W.portalLoop.set(0.55, W.portal.x + W.portal.w / 2, W.portal.y + W.portal.h / 2);
+    const ex = nearExit(W, pcx);
+    if (W.portalLoop) W.portalLoop.set(W.hasLvl ? 0.55 : 0, ex.x + ex.w / 2, ex.y + ex.h / 2);
     if (W.matterProps.length) {
       let best = null, bd = 300;
       for (const pr of W.matterProps) {
@@ -19507,226 +20031,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       rt: { get: () => g.RT, configurable: true }
     });
     return W;
-  }
-
-  // src/game/world.js
-  function makeWorld() {
-    return {
-      // ---- you ----
-      p: {
-        x: 0,
-        y: 0,
-        vx: 0,
-        vy: 0,
-        onGround: false,
-        face: 1,
-        jet: 0,
-        fuel: 1,
-        empty: false,
-        sput: false,
-        flame: 0,
-        cough: 0,
-        hp: PLAYER_HP,
-        hitT: 0,
-        dead: false,
-        kick: 0,
-        shieldReady: true,
-        shieldT: 0,
-        // Permanent Shield: up, and its recharge clock
-        jx: 0,
-        jy: 0,
-        aim: { on: false, show: false, nx: 1, ny: 0 }
-      },
-      pb: perkBag([]),
-      // what the perks you carry add up to (refreshBag)
-      ghost: null,
-      // the Angry Ghost companion, if owned
-      // what the props did to you this frame (slowed, slick, holding a vine, gravity flipped),
-      // read by next frame's steering; decorStep makes a new one each frame
-      zfx: { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 },
-      // ---- the clock, the camera, the torch ----
-      time: 0,
-      // seconds of play (step adds dt)
-      levelT: 0,
-      // seconds on this floor (the floor's name card)
-      best: 0,
-      // the highest you've climbed on this floor
-      // the camera: draw() eases it toward you, so step() reads last frame's
-      camX: 0,
-      camY: 0,
-      camReady: false,
-      camT: 0,
-      unitPx: 1,
-      // css pixels per world unit, set while drawing
-      viewW: VIEW_W,
-      viewH: VIEW_MIN_H,
-      // the view in world units, set while drawing
-      // one flicker number drives the flame and the lamp, so the light breathes with the fire
-      flick: 1,
-      torchR: SIGHT,
-      // how far the lamp reaches this frame
-      visPts: [],
-      // the line-of-sight fan from you, this frame
-      leanX: 0,
-      leanY: 0,
-      // the hand torch's flame lean (sprung, trails behind you)
-      glowN: 0,
-      // the torch glow's flicker
-      // ---- terrain ----
-      mat: null,
-      img: null,
-      // the rock: solid cells, and its pixels (drawn to the terrain canvas)
-      dimg: null,
-      // the decoration layer's pixels (walk-through: moss, beams, rubble)
-      ore: null,
-      // gold seams in the rock (per terrain pixel)
-      // rat burrows (a mask over each nest's room and tunnel), and the rock's change count
-      // (the rats' way-finding fields rebuild when it moves; see ratSolid / navFor)
-      burrow: null,
-      terrainV: 0,
-      // ---- the floor's layout (enterLevel sets all of these) ----
-      floor: 1,
-      // the level above the shop is bought from the vending machine and sold back (vend.js): false
-      // while there isn't one (the cave is solid dark, the roof sealed); warp is the teleport under way
-      hasLvl: false,
-      warp: null,
-      repo: null,
-      // the repayment deadline passed: the level is taken back, then the fire
-      start: void 0,
-      portal: void 0,
-      arrival: void 0,
-      // where you come in, the way out
-      stock: void 0,
-      // the shop's plinths
-      zone: null,
-      // built-up vs natural, per terrain pixel (floor 1)
-      rooms: [],
-      // the perk room and the heart room
-      sconces: [],
-      // wall torches: by the portals and the prizes
-      levelSeed: 0,
-      levelOwned: [],
-      // what made this cave, for the autosave
-      roster: [],
-      themeName: "",
-      // this floor's creatures, and its palette
-      total: void 0,
-      // how many creatures the floor started with
-      miniEdgeIdx: [],
-      // the map's wall-outline cells
-      matterProps: [],
-      // the dark matter props (their hum)
-      ambKinds: [],
-      // the theme's ambience particle kinds
-      plantW: 255,
-      // the jellies' plant glow: this floor's white point
-      // ---- what's in it: new lists from each floor (and swapped for the recorded ones while
-      // the death replay draws a frame) ----
-      enemies: void 0,
-      // the creatures, nests included
-      pickups: void 0,
-      // loot on the ground: mods, guns, hearts
-      props: [],
-      // the decoration that does things (see DECOR): plants, lamps, carts…
-      // ---- the fog of war ----
-      seen: fogStart(),
-      // per fog cell: 0 never been, 1 been (draw() lifts it), 2 never fogged (the shop)
-      deepFog: null,
-      // the fog cells over the rat nests' rooms (no soft edge there)
-      // ---- fire (v86, see fireStep): what's alight in the cave, the plants and carts it can
-      // take, the burning pixels on view this frame (for the glow after the fog), its crackle ----
-      fire: fireNew(new Uint8Array(CW * CH)),
-      firePlants: [],
-      fireArches: [],
-      fireCarts: [],
-      // what can burn (fireList, rebuilt when the props change)
-      firePropN: -1,
-      firePropLast: null,
-      // how fireList notices the props changed
-      fireLoop: null,
-      // the crackle, at the nearest blaze
-      fireN: 0,
-      // burning pixels on view (the glow's strength)
-      fireVis: [],
-      // and which ones, for the glow after the fog
-      // ---- the run's lists: kept for the whole run, emptied by enterLevel (not fields, beams,
-      // toasts), and never replaced: the recorder's RP_ARR holds them by reference ----
-      bullets: [],
-      enemyShots: [],
-      // your shots, and the creatures'
-      fields: [],
-      beams: [],
-      // static projectiles, and instant beam streaks
-      arcs: [],
-      // lightning forks: jagged lines that flash and fade
-      coins: [],
-      toasts: [],
-      // the messages at the bottom of the view
-      smoke: [],
-      sparks: [],
-      flashes: [],
-      torchP: [],
-      // the embers the torch throws off
-      // soft magic particles: the Black Hole's trail ('drift'), motes sucked into the exit
-      // portal ('in') and motes wafting out of the arrival portal ('out')
-      motes: [],
-      burns: [],
-      // the fire trail (Levitation Trail), if owned
-      // the spiders' silk: webs are the lines they travel on (they stay), silk the strings in
-      // flight at you, strings the ones stuck to you (each slows you; pull one too long, it snaps)
-      webs: [],
-      silk: [],
-      strings: [],
-      // the decoration's particles (glow dots, drips, embers), the theme's ambience, spore
-      // clouds, noise rings and dust devils
-      dparts: [],
-      amb: [],
-      clouds: [],
-      rings: [],
-      devils: [],
-      // ---- frame-to-frame counters and sound loops (each kept by the one part of step() that
-      // uses it) ----
-      // sound: the jetpack's roar, each live Black Hole's drone, the low-health heartbeat,
-      // the exit portal's hum and the dark matter's
-      jetLoop: null,
-      beatT: 0,
-      wasEmpty: false,
-      jetSt: { cut: 0, onT: 0, start: false },
-      // the jet's cough clock and how long it's been held
-      bhLoops: /* @__PURE__ */ new Map(),
-      portalLoop: null,
-      matterLoop: null,
-      wasJet: false,
-      stepT: 0,
-      lastNear: "",
-      // the footstep clock; what you were last standing by
-      portalAcc: 0,
-      // the exit portal's motes, spawned by the clock
-      // the hand torch's flame lean velocity (a sprung offset dragged opposite to how you move,
-      // the same way the jet flame swings), and the torch's flicker and ember clocks
-      leanVX: 0,
-      leanVY: 0,
-      flickN: 0,
-      torchT: 0,
-      torchAcc: 0,
-      smokeAcc: 0,
-      // the jetpack's smoke
-      webCheck: 0,
-      // which web line step() checks this frame (a few per frame)
-      webLetGo: 0,
-      // pushed off a web or arch: don't grab one again yet
-      // decorStep: the plants you're brushing (and last frame's), the rustle pause, its frame
-      // count, the drip-damage clock
-      plantsNow: /* @__PURE__ */ new Set(),
-      plantsLast: /* @__PURE__ */ new Set(),
-      rustle: { t: 0 },
-      decoFrame: 0,
-      dripHurt: 0,
-      oreBank: 0,
-      // the loose change from gold seams dug out
-      navYou: {}
-      // the shared way-to-you field the hunting rats follow (see navFor)
-    };
   }
 
   // src/game/Game.js
@@ -20537,10 +20841,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const glowC = document.createElement("canvas"), glowCtx = glowC.getContext("2d");
       const tufts = Array.from({ length: WU }, () => ({ h: Math.random() < 0.15 ? 0 : 1 + Math.floor(Math.random() * 3), c: Math.random() }));
       const vines = [{ k: "climb", st: "vine", x: 11, y: 0, len: 34, seed: 0.37 }, { k: "climb", st: "vine", x: WU - 13, y: 0, len: 27, seed: 0.81 }];
-      const drop = (x, y, vx, vy, P, g) => {
+      const drop = (x, y, vx, vy, P2, g) => {
         if (drops.length < 120) {
           const l = 0.5 + Math.random() * 0.5;
-          drops.push({ x, y, vx, vy, g, life: l, max: l, c: Math.random() < 0.35 ? P.drip2 : P.drip, s: 1.1 + Math.random() * 0.8 });
+          drops.push({ x, y, vx, vy, g, life: l, max: l, c: Math.random() < 0.35 ? P2.drip2 : P2.drip, s: 1.1 + Math.random() * 0.8 });
         }
       };
       const tick = (now) => {
@@ -20564,7 +20868,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           S.roamSpd = 0;
         }
         const pulse = jellyStep(e, { solidCell: solid, hunting: false, goal: null, rnd: Math.random }, dt) === "pulse";
-        const P = jellyPal(e.je.u.col);
+        const P2 = jellyPal(e.je.u.col);
         if (pulse) {
           const S2 = e.je, B = jellyBell(e.r, S2.shape, kru("jeSquash", S2.u.sq)), c0 = Math.cos(S2.hd), s0 = Math.sin(S2.hd);
           for (let i = 0, n = Math.round(kr("jeSpores")); i < n && spores.length < 80; i++) {
@@ -20612,12 +20916,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (glob) {
           glob.x += glob.vx * dt;
           glob.y += glob.vy * dt;
-          for (glob.da += glob.drip * dt; glob.da >= 1; glob.da--) drop(glob.x, glob.y + glob.size * 0.5, glob.vx * 0.08, 8 + Math.random() * 18, P, glob.g);
+          for (glob.da += glob.drip * dt; glob.da >= 1; glob.da--) drop(glob.x, glob.y + glob.size * 0.5, glob.vx * 0.08, 8 + Math.random() * 18, P2, glob.g);
           if (solid(Math.floor(glob.x / CELL), Math.floor(glob.y / CELL))) {
             const sp = Math.hypot(glob.vx, glob.vy) || 1;
             for (let i = 0; i < glob.n; i++) {
               const a2 = Math.random() * 6.28, v = glob.sv * (0.4 + Math.random() * 0.6);
-              drop(glob.x - glob.vx * dt, glob.y - glob.vy * dt, Math.cos(a2) * v - glob.vx / sp * v * 0.5, Math.sin(a2) * v - glob.vy / sp * v * 0.5 - v * 0.3, P, glob.g);
+              drop(glob.x - glob.vx * dt, glob.y - glob.vy * dt, Math.cos(a2) * v - glob.vx / sp * v * 0.5, Math.sin(a2) * v - glob.vy / sp * v * 0.5 - v * 0.3, P2, glob.g);
             }
             glob = null;
           }
@@ -20668,15 +20972,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.save();
           ctx.translate(glob.x, glob.y);
           ctx.rotate(Math.atan2(glob.vy, glob.vx));
-          ctx.fillStyle = P.spitEdge;
+          ctx.fillStyle = P2.spitEdge;
           ctx.beginPath();
           ctx.ellipse(0, 0, z * 1.45, z * 1.05, 0, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillStyle = P.spit;
+          ctx.fillStyle = P2.spit;
           ctx.beginPath();
           ctx.ellipse(-z * 0.08, 0, z * 1.2, z * 0.82, 0, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillStyle = P.spitShine;
+          ctx.fillStyle = P2.spitShine;
           ctx.beginPath();
           ctx.arc(z * 0.3, -z * 0.28, z * 0.32, 0, Math.PI * 2);
           ctx.fill();
@@ -20689,7 +20993,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = "lighter";
-        const u = e.je.u, a = kru("jeGlow", u.glow) * (1 + kru("jeFlare", u.flare) * e.je.shape), rgb = hexRgb(P.glow);
+        const u = e.je.u, a = kru("jeGlow", u.glow) * (1 + kru("jeFlare", u.flare) * e.je.shape), rgb = hexRgb(P2.glow);
         glowAt(ctx, e.x, e.y, kru("jeGlowR", u.glowR), a, rgb);
         glowAt(ctx, e.x, e.y, e.r * 1.6, a * 1.4, rgb);
         if (glob) glowAt(ctx, glob.x, glob.y, glob.size * 6, 0.3, rgb);
@@ -20714,7 +21018,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           strength: kru("jePlantGlow", u.plant),
           t: t * kru("jePlantTwinkle", u.plant),
           size: kru("jePlantSize", u.plant),
-          rgb: hexArr(P.glow)
+          rgb: hexArr(P2.glow)
         })) {
           glowCtx.putImageData(out, 0, 0);
           ctx.imageSmoothingEnabled = true;
@@ -21488,7 +21792,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S.pull = 0;
       shuffleOrder(g);
     };
-    const start = g.idx;
+    const start2 = g.idx;
     const plan = planCast(g);
     if (!plan.shots.length) {
       wrap();
@@ -21500,9 +21804,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return;
     }
     S.mana -= plan.cost;
-    const end = plan.wrap || g.idx <= start ? g.order.length : g.idx;
+    const end = plan.wrap || g.idx <= start2 ? g.order.length : g.idx;
     const slots = [];
-    for (let i = start; i < end; i++) if (g.slots[g.order[i]]) slots.push(g.order[i]);
+    for (let i = start2; i < end; i++) if (g.slots[g.order[i]]) slots.push(g.order[i]);
     const casts = (id) => MODS[id].kind === "shot" || MODS[id].kind === "static";
     while (slots.length && !casts(g.slots[slots[slots.length - 1]])) slots.pop();
     S.lit = { slots, pull: S.pull, t: Math.max(0.1, Math.min(plan.delay, 0.45)) };
@@ -21629,13 +21933,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
   function CrystalIcon({ size, green }) {
-    const s = size || 26, P = green ? GREEN_PAL : CRYSTAL_PAL;
+    const s = size || 26, P2 = green ? GREEN_PAL : CRYSTAL_PAL;
     return h(
       "svg",
       { className: "crystal", viewBox: "0 0 24 24", width: s, height: s, "aria-hidden": true },
-      h("path", { d: "M12 2.5 L19.5 6 L21.5 13 L17 20.5 L8.5 21.5 L3 15.5 L4 7.5 Z", fill: P[0] }),
-      h("path", { d: "M12 3.6 L18.8 6.7 L20.4 13 L16.4 19.6 L8.9 20.5 L4 15.1 L5 8 Z", fill: P[1] }),
-      h("path", { d: "M5.6 8.4 L12 4.4 L17.6 7.3 L13.5 11.5 L7 12.2 Z", fill: P[2] }),
+      h("path", { d: "M12 2.5 L19.5 6 L21.5 13 L17 20.5 L8.5 21.5 L3 15.5 L4 7.5 Z", fill: P2[0] }),
+      h("path", { d: "M12 3.6 L18.8 6.7 L20.4 13 L16.4 19.6 L8.9 20.5 L4 15.1 L5 8 Z", fill: P2[1] }),
+      h("path", { d: "M5.6 8.4 L12 4.4 L17.6 7.3 L13.5 11.5 L7 12.2 Z", fill: P2[2] }),
       h("rect", { x: 7.4, y: 7.2, width: 2.6, height: 2.6, fill: "#fff" }),
       h("rect", { x: 14.2, y: 13.6, width: 1.5, height: 1.5, fill: "#fff" })
     );
@@ -22393,8 +22697,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [msg, setMsg] = useState("");
     const [info, setInfo] = useState("");
     const [drag, setDrag] = useState(NO_DRAG);
-    const P = perkBag(activePerks(LO));
-    const maxHp2 = P.maxHp + (LO.maxBonus || 0);
+    const P2 = perkBag(activePerks(LO));
+    const maxHp2 = P2.maxHp + (LO.maxBonus || 0);
     const hud = input.current.hud;
     const hp = Math.round((hud ? hud.hp : 1) * maxHp2);
     const press = (id, slot, movable) => (e) => {
@@ -22411,7 +22715,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         window.removeEventListener("pointercancel", up);
         setDrag(null);
         if (!armed) {
-          setInfo(id);
+          if (ev.type === "pointerup" && Math.hypot(ev.clientX - sx, ev.clientY - sy) <= SLOP) setInfo(id);
           return;
         }
         const under = document.elementFromPoint(ev.clientX, ev.clientY);
@@ -22463,11 +22767,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const pct = (m) => (m >= 1 ? "+" : "−") + Math.round(Math.abs(m - 1) * 100) + "%";
     const SV = {
       hp: [hp + " / " + maxHp2, maxHp2 > 100 ? "+" + (maxHp2 - 100) : ""],
-      walk: [String(Math.round(WALK * P.walk)), P.walk !== 1 ? pct(P.walk) : ""],
-      fuel: [Math.round(100 * P.fuel) + "%", P.fuel !== 1 ? pct(P.fuel) : ""],
-      refuel: [Math.round(100 * FUEL_REGEN * P.refuel) + "%/s", P.refuel !== 1 ? pct(P.refuel) : ""],
-      pull: [String(Math.round(COIN_PULL * P.goldPull)), P.goldPull !== 1 ? pct(P.goldPull) : ""],
-      carrot: [P.carrot ? ROMAN[P.carrot - 1] : "—", P.carrot ? "view " + pct(carrotAt("caCam", P.carrot)) : ""]
+      walk: [String(Math.round(WALK * P2.walk)), P2.walk !== 1 ? pct(P2.walk) : ""],
+      fuel: [Math.round(100 * P2.fuel) + "%", P2.fuel !== 1 ? pct(P2.fuel) : ""],
+      refuel: [Math.round(100 * FUEL_REGEN * P2.refuel) + "%/s", P2.refuel !== 1 ? pct(P2.refuel) : ""],
+      pull: [String(Math.round(COIN_PULL * P2.goldPull)), P2.goldPull !== 1 ? pct(P2.goldPull) : ""],
+      carrot: [P2.carrot ? ROMAN[P2.carrot - 1] : "—", P2.carrot ? "view " + pct(carrotAt("caCam", P2.carrot)) : ""]
     };
     const slotEl = (i, cls) => {
       const id = suit[i];
@@ -22514,7 +22818,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             h("b", null, h(CrystalIcon, { size: 14 }), (LO.crystals || []).length, " ", h(CrystalIcon, { size: 14, green: true }), (LO.greens || []).length)
           ),
           stat("Floor", input.current.floor || 1),
-          P.lives ? stat("Extra lives", Math.max(0, P.lives - (LO.usedLives || 0))) : null
+          P2.lives ? stat("Extra lives", Math.max(0, P2.lives - (LO.usedLives || 0))) : null
         )
       ),
       h(
@@ -22533,17 +22837,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h("div", { className: "xslots" }, suit.slice(0, SUIT_SLOTS).map((_, i) => slotEl(i))),
       h("p", { className: "lab" }, "Perks — drag one you carry onto a slot (one of each)"),
       h(
-        "div",
-        { className: "xgrid scroll" },
+        ScrollBox,
+        { cls: "xgrid" },
         PERK_IDS.map((id) => {
           const n = LO.perks.filter((p) => p === id).length, pk = PERKS[id], on = suit.includes(id);
           const state = on ? "inuse" : n ? "have" : unlocked.includes(id) ? "none" : "locked";
+          const grab = n > 0 && !on && canEdit;
           return h(
             "div",
             {
               key: id,
               "data-perk": id,
-              className: "xperk " + state,
+              className: "xperk " + state + (grab ? " grab" : ""),
               title: pk.name,
               style: { color: pk.tint, borderColor: pk.tint },
               onPointerDown: press(id, -1, n > 0 && !on)
@@ -23170,6 +23475,112 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
+  // src/ui/levelshop.js
+  var full = (n) => Math.round(n).toLocaleString("en-US");
+  var repayText = (floor) => {
+    const m = Math.round(dueMs(floor) / 6e4);
+    return m >= 120 ? Math.round(m / 60) + " hours" : m + " min";
+  };
+  function LevelVend({ input, close }) {
+    const LO = input.current.loadout, top = LO.soldTop || 0;
+    const floors = menuFloors(top);
+    const best = Math.min(top + 1, floors[floors.length - 1]);
+    const [sel, setSel] = useState(() => {
+      const f = input.current.floor || best;
+      return canBuyFloor(top, f) ? f : best;
+    });
+    const [focus, setFocus] = useState("buy");
+    const [msg, setMsg] = useState("");
+    const root = useRef(null);
+    const can = canBuyFloor(top, sel);
+    const buy = () => {
+      if (!can) {
+        SFX.ui("poor");
+        setMsg("Sell level " + (sel - 1) + " first");
+        return;
+      }
+      input.current.buyFloor = sel;
+      close();
+    };
+    const press = (key) => {
+      if (key === "close") close();
+      else if (key === "buy") buy();
+      else if (key.startsWith("f:")) {
+        setSel(Number(key.slice(2)));
+        setMsg("");
+        SFX.fx("switch");
+      }
+    };
+    const ptr = useMenuNav(input, root, focus, setFocus, press);
+    const navCls = (key, cls) => cls + (focus === key ? " navon" : "");
+    const tap = (key) => (e) => {
+      e.preventDefault();
+      setFocus(key);
+      press(key);
+    };
+    return h(
+      "div",
+      { className: "vshop lvshop", ref: root, style: { bottom: (input.current.ctlH || 0) + "px" } },
+      ptr,
+      h(
+        "div",
+        { className: "vhead" },
+        h("b", null, "Levels"),
+        h("span", { className: "vgold" }, fmtGold(LO.gold), h("i", null, "g")),
+        h("button", { className: navCls("close", "vclose"), "data-nav": "close", onPointerDown: tap("close") }, "×")
+      ),
+      h(
+        "div",
+        { className: "lvlist scroll" },
+        floors.map((f) => {
+          const open = canBuyFloor(top, f), key = "f:" + f, T = THEMES[(f - 1) % THEMES.length];
+          return h(
+            "div",
+            {
+              key: f,
+              "data-nav": key,
+              "data-floor": f,
+              className: navCls(key, "lvrow") + (sel === f ? " sel" : "") + (open ? "" : " locked"),
+              onPointerDown: tap(key)
+            },
+            h("div", { className: "lvn" }, h("b", null, "LVL " + f), h("span", null, T.name)),
+            h(
+              "div",
+              { className: "lvnums" },
+              h("div", null, h("span", null, "Debt"), h("em", { className: "lvdebt" }, full(lvlBuy(f)) + "g")),
+              h("div", null, h("span", null, "Sells for"), h("em", null, full(lvlSell(f)) + "g")),
+              h(
+                "div",
+                null,
+                h("span", null, "Reward"),
+                h("em", { className: "lvgain" }, "+" + full(lvlReward(f)) + "g"),
+                h("span", null, "Kills"),
+                h("em", { className: "lvgain" }, "×" + goldScale(f).toFixed(2))
+              )
+            ),
+            h(
+              "div",
+              { className: "lvtag" },
+              f <= top ? h("i", { className: "lvsold" }, "✓ sold") : null,
+              open ? null : h("i", { className: "lvlock" }, "🔒")
+            )
+          );
+        })
+      ),
+      h(
+        "div",
+        { className: "lvsum" },
+        msg ? h("div", { className: "vmsg" }, msg) : h("p", { className: "vhint lvhint" }, can ? "Repay within " + repayText(sel) + ", or it is repossessed. Sell it back once nothing biological is left." : "Locked: sell level " + (sel - 1) + " first to buy level " + sel + " on credit."),
+        h(
+          "button",
+          { className: navCls("buy", "vbuy") + (can ? "" : " cant"), "data-nav": "buy", onPointerDown: tap("buy") },
+          h("b", null, "Buy LVL " + sel + " on credit"),
+          h("span", null, full(lvlBuy(sel)) + "g")
+        )
+      )
+    );
+  }
+
   // src/ui/modshop.js
   var TIER_NAME = ["", "Common", "Uncommon", "Rare", "Legendary"];
   function modShop(input) {
@@ -23246,7 +23657,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var SHOP_MENUS = {
     mods: ({ input, close }) => h(VendShop, { def: modShop(input), input, close }),
     guns: GunVend,
-    perks: ({ input, close }) => h(VendShop, { def: perkShop(input), input, close })
+    perks: ({ input, close }) => h(VendShop, { def: perkShop(input), input, close }),
+    levels: LevelVend
+    // the level buy machine's floor menu (not a SHOPS machine: game/systems/vend.js)
   };
 
   // src/ui/swap.js
@@ -23376,18 +23789,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       pinch.current = null;
     };
     const move = (e) => {
-      const P = pts.current, q = P.get(e.pointerId);
+      const P2 = pts.current, q = P2.get(e.pointerId);
       if (!q) return;
       const u = V2.unit || 1;
-      if (P.size === 1) {
+      if (P2.size === 1) {
         V2.cx -= (e.clientX - q.x) / u;
         V2.cy -= (e.clientY - q.y) / u;
         V2.follow = false;
       }
       q.x = e.clientX;
       q.y = e.clientY;
-      if (P.size >= 2) {
-        const [a, b] = [...P.values()];
+      if (P2.size >= 2) {
+        const [a, b] = [...P2.values()];
         const d = Math.hypot(a.x - b.x, a.y - b.y) || 1, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, L3 = pinch.current;
         if (L3) {
           V2.zoom = clamp(V2.zoom * d / L3.d, 0.4, 4);
@@ -24082,7 +24495,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/main.js
-  ReactDOM.createRoot(document.getElementById("root")).render(h(App));
+  if (typeof document === "undefined" || !document.getElementById("root")) {
+    if ("importScripts" in globalThis) levelWorker();
+  } else {
+    setBundle(document.currentScript ? document.currentScript.textContent || "" : "");
+    ReactDOM.createRoot(document.getElementById("root")).render(h(App));
+  }
 })();
 </script>
 </body>

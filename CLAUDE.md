@@ -19,6 +19,20 @@ you could just try. Don't ask permission for the obvious next step.
 
 **Don't stress about polish** unless they ask for it. Working beats tidy.
 
+**Design work gets their approval before it ships.** Anything they'll *see* — a new look, a menu
+or screen, an animation, an effect, a layout — goes to them as **screenshots first** (send the files
+with SendUserFile; phone size, 412×880, the real game via a browser suite or a probe), with a line
+on what each shows. Then **wait for their feedback or OK** and do a round of changes if they ask,
+*before* it goes onto `main`. Build it to show it, yes (that's the fast iteration above), but don't
+release design they haven't seen. Logic, fixes and plumbing don't need this; looks do.
+
+**Finish every task with the docs up to date, unasked.** A fresh session must be able to pick up
+from the files alone, and the owner shouldn't have to ask for it. Before calling a task done:
+`HANDOVER.md` (where things stand, what's released, what's waiting on the owner), `CHANGELOG.md`,
+the README of every `src/` folder you touched (new files, new rules), the version line below,
+`README.md` for player-facing changes, and anything in `REFACTOR.md`'s **Found along the way**
+you fixed or found. It's part of the task, not an extra.
+
 Their words, from the first session:
 
 > This is just a fun personal project, so don't focus on production level
@@ -43,7 +57,9 @@ on the same network; if it stops answering, `ipconfig` and update this line). Ru
 
 1. Change `src/` (the folder READMEs say where things are and the rules there).
 2. Test: `node tests/run.js` (see **Testing**). Add a suite for anything new.
-3. Bump the version in `src/version.js` (below). 4. Update `README.md` for player-facing changes.
+3. **Looks changed? Screenshots to the owner, and their OK** before going on (above).
+4. Bump the version in `src/version.js` (below), and **update the docs** (above: HANDOVER, CHANGELOG,
+   the folder READMEs, `README.md` for player-facing changes).
 5. Commit, then **get it onto `main`** — that is the release: CI (`.github/workflows/android.yml`, on
    `main` only) deploys Pages and rebuilds the APK. A branch + merge is fine.
 6. **Confirm it landed** (public API, no token): `.../actions/runs?per_page=5`, `.../runs/<id>/jobs`
@@ -51,7 +67,7 @@ on the same network; if it stops answering, `ipconfig` and update this line). Ru
    `https://5rob.github.io/CaveRunner/version.txt` shows the new `vNN` and the app offers the update.
    (No artifact publish; `https://claude.ai/artifact/2rarFzJoTseCKXhTPwMyLT` and `serve.js` are fallbacks.)
 
-**Current version: v129** (release channel `main`). **The version number is not optional.** The app offers an update only when `version.txt` (made by CI
+**Current version: v130** (release channel `main`). **The version number is not optional.** The app offers an update only when `version.txt` (made by CI
 from `index.html`'s `const VERSION`) is newer: no bump, no prompt, and the owner debugs a fixed bug.
 One place: `export const VERSION = 'vNN';` in `src/version.js` (that shape, single quotes: the check
 parses `VERSION = 'v(\d+)'`); the build writes it as an un-bundled `<script>` line and fills `<title>`

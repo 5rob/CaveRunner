@@ -5,7 +5,8 @@ The only layer (with `ui/`) that isn't pure. May import every layer above it, ne
 | Path | Holds |
 |---|---|
 | `Game.js` | The canvas component: makes `W` and `G`, the listeners (mouse, resize, save), the loop (`step` + `recFrame` + `draw`, or `drawReplay` while a replay plays; `SFX.tick()` every frame), and the React bridge. Its own `h`/`useRef`/`useEffect` off the global React (D13: it can't import `ui/h.js`; esbuild prints them `h2`/`useRef2`/`useEffect2`) |
-| `world.js` | `makeWorld()`: `W`, the live level's state as one object — every field is listed there |
+| `world.js` | `makeWorld()`: `W`, the live level's state as one object — every field is listed there. `exits(W)` (the three exit portals, `W.portals`; an old saved replay has only `W.portal`), `nearExit(W, x)` |
+| `levelgen.js` | The next level made off the main thread (v130): `preLevel(floor, seed)` asks a Web Worker running this same bundle (main.js keeps its script text, `setBundle`; inside a worker it calls `levelWorker()` instead of mounting; stand-ins for React/document/VERSION in `PRELUDE`; the Dev knobs go with each ask), `takeLevel(floor)` hands it over once, `levelPending`. No Worker or it fails: the warp makes the level itself. `LVLGEN` is its state (the suites read `made`) |
 | `testhook.js` | `testHook(W, …)`: `window.__lvl` for the browser suites (= `W` + `sandbox`, `placeProp`, some of Game's functions, the old names), only when the page sets `window.__TEST` |
 | `systems/` | One frame of the simulation, by job: see `systems/README.md` |
 | `render/` | One frame of the picture: see `render/README.md` |

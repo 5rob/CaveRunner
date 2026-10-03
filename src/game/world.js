@@ -9,6 +9,18 @@ import { perkBag } from '../data/perks.js';
 import { fireNew } from '../world/fire.js';
 import { fogStart } from '../world/vision.js';
 
+// the exit portals along the top (a saved replay from before v130 has only the one)
+/** @param {World} W */
+export const exits = W => (W.portals && W.portals.length ? W.portals : [W.portal]);
+
+// the exit nearest x
+/** @param {World} W @param {number} x */
+export const nearExit = (W, x) => {
+  let best = W.portal, bd = Infinity;
+  for (const q of exits(W)) { const d = Math.abs(q.x + q.w / 2 - x); if (d < bd) { bd = d; best = q; } }
+  return best;
+};
+
 /** @returns {World} */
 export function makeWorld() {
   return {
@@ -51,8 +63,11 @@ export function makeWorld() {
     // the level above the shop is bought from the vending machine and sold back (vend.js): false
     // while there isn't one (the cave is solid dark, the roof sealed); warp is the teleport under way
     hasLvl: false, warp: null,
+    reveal: 0,                      // a bought level's rock drawn in down to this row so far (vend.js stepReveal)
     repo: null,                     // the repayment deadline passed: the level is taken back, then the fire
     start: undefined, portal: undefined, arrival: undefined,   // where you come in, the way out
+    portals: [],                    // the exits along the top (portal is the middle one): exits(W)
+    padZap: {},                     // when each teleporter pad was last used (W.time, by padSpots seed): it crackles a moment
     stock: undefined,               // the shop's plinths
     zone: null,                     // built-up vs natural, per terrain pixel (floor 1)
     rooms: [],                      // the perk room and the heart room

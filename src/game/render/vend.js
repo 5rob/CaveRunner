@@ -7,9 +7,10 @@
 // shop, the sweep and the crackle (drawWarp, after the fog).
 
 import { countdown } from '../../core/util.js';
-import { CELL, LVL_BUY, SHOP_FLOOR, SHOP_Y, VEND_BUY_X, VEND_SELL_X } from '../../core/consts.js';
+import { CELL, SHOP_FLOOR, SHOP_Y, VEND_BUY_X, VEND_SELL_X } from '../../core/consts.js';
+import { lvlSell } from '../../data/levels.js';
 import { drawHoloShop } from './holo.js';
-import { canSell, lvlSell, REPO_ALARM, REPO_FIRE, REPO_JET, ROOF_Y, VEND_H, VEND_TOP, VEND_W, WARP_SWAP } from '../systems/vend.js';
+import { canSell, REPO_ALARM, REPO_FIRE, REPO_JET, ROOF_Y, VEND_H, VEND_TOP, VEND_W, WARP_SWAP } from '../systems/vend.js';
 import { drawBolt } from './looks.js';
 
 export const HOLO_GREEN = '#00ff3c', HOLO_RED = '#ff0000';   // the background hologram's two hues
@@ -149,6 +150,7 @@ function machine(ctx, W, kind, cx, on, hue, top, bot) {
 export function drawVend(W, G, F) {
   if (VEND_TOP > W.camY + F.vh + 10 || VEND_TOP + VEND_H < W.camY - 10) return;
   const lv = 'LVL ' + W.floor, busy = !!W.warp, due = G.input.current.loadout.due || 0;
+  const hi = (G.input.current.loadout.soldTop || 0) + 1;      // the highest floor for sale
   drawHoloShop(W, G);
   if (W.repo) {                                // repossessed: both screens count down the incineration
     const left = REPO_FIRE - W.repo.t;
@@ -161,9 +163,9 @@ export function drawVend(W, G, F) {
   if (W.hasLvl && due) machine(G.ctx, W, 'buy', VEND_BUY_X, !busy, HOLO_RED,
     [countdown(due - Date.now())], ['debt repayment', 'deadline', lv]);
   else machine(G.ctx, W, 'buy', VEND_BUY_X, !W.hasLvl && !busy, HOLO_GREEN,
-    ['BUY', lv], [commas(LVL_BUY) + ' G.', '(credit', 'available)']);
+    ['BUY', 'LEVELS'], [hi > 1 ? 'LVL 1–' + hi : 'LVL 1', '(credit', 'available)']);
   machine(G.ctx, W, 'sell', VEND_SELL_X, W.hasLvl && !busy, canSell(W) ? HOLO_GREEN : HOLO_RED,
-    ['SELL', lv], [commas(lvlSell()) + ' G.', '(no biological', 'entities accepted)']);
+    ['SELL', lv], [commas(lvlSell(W.floor)) + ' G.', '(no biological', 'entities accepted)']);
 }
 
 // The teleport over the shop (after the fog, so it shows over the dark): a glow building along the

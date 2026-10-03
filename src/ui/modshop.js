@@ -9,6 +9,7 @@ import { crystalRoll, modTiers, perkRoll } from '../spells/collection.js';
 import { MODS, famCol, priceOf } from '../spells/mods.js';
 import { ModCard, PerkCard } from './cards.js';
 import { GunVend } from './gunshop.js';
+import { LevelVend } from './levelshop.js';
 import { h } from './h.js';
 import { CrystalIcon } from './hud.js';
 import { VendShop } from './vendshop.js';
@@ -96,4 +97,5 @@ export const SHOP_MENUS = {
   mods: ({ input, close }) => h(VendShop, { def: modShop(input), input, close }),
   guns: GunVend,
   perks: ({ input, close }) => h(VendShop, { def: perkShop(input), input, close }),
+  levels: LevelVend,                   // the level buy machine's floor menu (not a SHOPS machine: game/systems/vend.js)
 };
