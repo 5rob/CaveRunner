@@ -668,6 +668,12 @@ export const SFX = (() => {
       hiss(d, t, rnd(0.3, 0.5), rnd(0.35, 0.5), 'bandpass', rnd(280, 450), rnd(1300, 2200), 0.7, false, rnd(0.03, 0.08));
       hiss(d, t + rnd(0.03, 0.08), rnd(0.2, 0.35), 0.25, 'highpass', rnd(2200, 3000), 3600, 0.7, true);
     },
+    // a fluorescent tube catching: a click and a short mains buzz
+    tube(d, t) {
+      hiss(d, t, 0.02, 0.5, 'highpass', 3000, 2500, 0.8, true);
+      tone(d, 'square', rnd(98, 102), rnd(98, 102), t, rnd(0.06, 0.14), 0.05, 0.002);
+      tone(d, 'sine', rnd(195, 205), rnd(195, 205), t, rnd(0.08, 0.16), 0.08, 0.002);
+    },
     coinland(d, t) { tone(d, 'sine', rnd(2600, 3600), rnd(2600, 3600), t, 0.04, 0.08, 0.002); },
   };
   /** @param {string} name @param {number | null} [x] @param {number | null} [y] no x: at you @param {number | string | { v: number, s?: string }} [a] what the recipe takes (a size, a material, a landing) */

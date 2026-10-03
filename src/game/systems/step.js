@@ -18,6 +18,7 @@ import { aimAndCast } from './gun.js';
 import { enterLevel } from './level-entry.js';
 import { stepMotes, stepParticles, stepToasts, toast } from './particles.js';
 import { stepPickups } from './pickups.js';
+import { stepLights } from './shoplights.js';
 import { maxHp, movePlayer, stepTorch } from './player.js';
 import { decorStep } from './props.js';
 import { saveRun } from './save-run.js';
@@ -40,6 +41,7 @@ export function step(W, G, dt) {
   stepFields(W, G, F);                      // static fields and beams (fields.js)
   stepPickups(W, G, F);                     // pickups, gold, the card, the interact tap (pickups.js)
   stepWarp(W, G, F);                        // a level teleporting in or out (vend.js)
+  stepLights(W, F);                         // a new run's dark shop lighting up (shoplights.js)
   stepRepo(W, G, F);                        // the repayment deadline passed: repossession, fire (vend.js)
   stepToasts(W, F);                         // messages fading (particles.js)
   decorStep(W, G, dt, F.pcx, F.pcy);        // props, plants, webs, what you stand in (props.js)

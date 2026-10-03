@@ -11,6 +11,7 @@ import { draw } from './render/draw.js';
 import { ignite, setAlight, youAlight } from './systems/fire.js';
 import { paintFog } from './systems/fog.js';
 import { enterLevel } from './systems/level-entry.js';
+import { shopDarkStart } from './systems/shoplights.js';
 import { voidCave } from './systems/vend.js';
 import { applyPerks, hurt, maxHp, refreshBag } from './systems/player.js';
 import {
@@ -120,7 +121,11 @@ export function Game({ input }) {
         W.hasLvl = sv.hasLvl;
         enterLevel(W, G, sv.level);
         if (sv.hp) W.p.hp = Math.min(sv.hp, maxHp(W, G));
-      } else enterLevel(W, G);
+      } else {
+        enterLevel(W, G);
+        // a new run: the shop dark, the way in crackling (the test page skips it unless it asks)
+        if (!window.__TEST || window.__TEST_INTRO) shopDarkStart(W);
+      }
       if (!W.hasLvl) voidCave(W, G);            // a run starts with no level: buy one in the shop
     }
     const saveNow = () => saveRun(W, G);         // one function, so pagehide's listener comes off again

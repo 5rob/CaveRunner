@@ -456,6 +456,8 @@ interface Field {
 interface Beam { x: number; y: number; nx: number; ny: number; len: number; col: string; w: number; t: number; look: string | null }
 /** a lightning fork (addArc) */
 interface Arc { pts: Pt[]; col: string; w: number; t: number; max: number }
+/** a new run's shop lights (world/shoplights.js): start = W.time on arrival, on = when each section's tubes switched on (-1 not yet), zap = the next crackle sound's time */
+interface ShopLights { start: number; on: number[]; zap: number }
 /** gold on the ground */
 interface Coin {
   x: number; y: number; amount: number; t: number;
@@ -506,6 +508,7 @@ interface World {
   hasLvl: boolean; warp: Warp | null;
   padZap: Record<number, number>;   // when each teleporter pad (padSpots seed) was last used: it crackles a moment (render/pads.js)
   reveal: number;             // a bought level's rock is drawn onto its canvas down to this row so far (0: all of it): vend.js stepReveal
+  shopLit: ShopLights | null;   // a new run's dark shop lighting up a section at a time (world/shoplights.js); null = all lit
   repo: { t: number; hurtT: number; sndT: number } | null;   // the deadline passed: repossession, then the fire (vend.js)
   start: Pt; portal: Level['portal']; portals: Level['portals']; arrival: Pt; stock: StockItem[];
   zone: Uint8Array | null; rooms: Room[];

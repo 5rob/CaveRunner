@@ -32,13 +32,16 @@ export function splitGold(amount, rnd) {
   return out;
 }
 
+// a spilled nugget can't be picked up for this long (s): close by, you'd take it before it was ever drawn
+export const SPILL_WAIT = 0.25;
+
 // throw an amount's nuggets out of a point into the list: a little spray, up and to the sides
 /** @param {Coin[]} list @param {number} x @param {number} y @param {number} amount @param {{ vx?: number, vy?: number }} [kick] spread and upward speed */
 export function spillGold(list, x, y, amount, kick) {
   const sx = kick && kick.vx != null ? kick.vx : 60, sy = kick && kick.vy != null ? kick.vy : 70;
   for (const v of splitGold(amount)) {
     list.push({ x: x + (Math.random() - 0.5) * 6, y, amount: v, t: Math.random() * 6.28, a: Math.random() * 6.28,
-      vx: (Math.random() - 0.5) * 2 * sx, vy: -sy * (0.7 + Math.random() * 0.6) });
+      vx: (Math.random() - 0.5) * 2 * sx, vy: -sy * (0.7 + Math.random() * 0.6), nopull: SPILL_WAIT });
   }
 }
 

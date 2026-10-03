@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.135</title>
-<!-- VERSION = 'v135' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.136</title>
+<!-- VERSION = 'v136' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -691,7 +691,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.135';</script>
+<script>const VERSION = 'v0.0.136';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -732,7 +732,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var SHOP_TOP = SHOP_FLOOR - SHOP_H;
   var SHOP_ROOF = 6;
   var SHOP_Y = SHOP_TOP * CELL;
-  var VEND_BUY_X = 180, VEND_SELL_X = 280;
+  var SHOP_SLOT = 120;
+  var ARRIVAL_X = 66, HEAL_X = 124;
+  var VEND_BUY_X = 210, VEND_SELL_X = VEND_BUY_X + SHOP_SLOT;
+  var SHOP_MACHINE_X = [VEND_BUY_X + 2 * SHOP_SLOT, VEND_BUY_X + 3 * SHOP_SLOT, VEND_BUY_X + 4 * SHOP_SLOT];
   var LVL_BUY = 1e9, LVL_SELL = 1000001e3;
   var OLD_LVL_BUY = 64e9;
   var DEADLINE_MS = 60 * 60 * 1e3;
@@ -4678,6 +4681,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         hiss(d, t, rnd2(0.3, 0.5), rnd2(0.35, 0.5), "bandpass", rnd2(280, 450), rnd2(1300, 2200), 0.7, false, rnd2(0.03, 0.08));
         hiss(d, t + rnd2(0.03, 0.08), rnd2(0.2, 0.35), 0.25, "highpass", rnd2(2200, 3e3), 3600, 0.7, true);
       },
+      // a fluorescent tube catching: a click and a short mains buzz
+      tube(d, t) {
+        hiss(d, t, 0.02, 0.5, "highpass", 3e3, 2500, 0.8, true);
+        tone(d, "square", rnd2(98, 102), rnd2(98, 102), t, rnd2(0.06, 0.14), 0.05, 2e-3);
+        tone(d, "sine", rnd2(195, 205), rnd2(195, 205), t, rnd2(0.08, 0.16), 0.08, 2e-3);
+      },
       coinland(d, t) {
         tone(d, "sine", rnd2(2600, 3600), rnd2(2600, 3600), t, 0.04, 0.08, 2e-3);
       }
@@ -6404,6 +6413,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return out;
   }
+  var SPILL_WAIT = 0.25;
   function spillGold(list, x, y, amount, kick) {
     const sx = kick && kick.vx != null ? kick.vx : 60, sy = kick && kick.vy != null ? kick.vy : 70;
     for (const v of splitGold(amount)) {
@@ -6414,7 +6424,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         t: Math.random() * 6.28,
         a: Math.random() * 6.28,
         vx: (Math.random() - 0.5) * 2 * sx,
-        vy: -sy * (0.7 + Math.random() * 0.6)
+        vy: -sy * (0.7 + Math.random() * 0.6),
+        nopull: SPILL_WAIT
       });
     }
   }
@@ -6782,6 +6793,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       // where you come in, the way out
       portals: [],
       // the exits along the top (portal is the middle one): exits(W)
+      shopLit: null,
+      // a new run's dark shop, lighting up as you go (world/shoplights.js; null = lit)
       padZap: {},
       // when each teleporter pad was last used (W.time, by padSpots seed): it crackles a moment
       stock: void 0,
@@ -9502,12 +9515,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         bgImg.data[k + 2] = c[2] * shade + j;
         bgImg.data[k + 3] = 255;
       }
-    const startCX = 14;
-    const start2 = { x: startCX * CELL, y: SHOP_FLOOR * CELL - PH };
-    const arrival = { x: (startCX + 3) * CELL, y: (SHOP_FLOOR - 13) * CELL };
+    const start2 = { x: ARRIVAL_X - 6, y: SHOP_FLOOR * CELL - PH };
+    const arrival = { x: ARRIVAL_X, y: (SHOP_FLOOR - 13) * CELL };
     const stock = [];
     const shelf = (SHOP_FLOOR - 13) * CELL;
-    stock.push({ kind: "heal", x: arrival.x + 62, y: shelf, price: 0, sold: false, bought: 0 });
+    stock.push({ kind: "heal", x: HEAL_X, y: shelf, price: 0, sold: false, bought: 0 });
     const portals = EXIT_X.map((ex) => ({ x: ex * CELL - 10, y: 34 * CELL - 30, w: 20, h: 30 }));
     const portal = portals[1];
     const clear = (cx, cy, r) => {
@@ -9929,7 +9941,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     paintBody(ctx, ragPose(R), 0, false, null);
   }
   var PIX = { c: null, x: null };
-  function pixelSprite(ctx, x0, y0, w, h3, px, line, paint2) {
+  function pixelSprite(ctx, x0, y0, w, h3, px, line, paint3) {
     const cw = Math.ceil(w / px), ch = Math.ceil(h3 / px);
     if (!PIX.c) {
       PIX.c = document.createElement("canvas");
@@ -9944,7 +9956,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     t.setTransform(1, 0, 0, 1, 0, 0);
     t.clearRect(0, 0, c.width, c.height);
     t.setTransform(1 / px, 0, 0, 1 / px, -x0 / px, -y0 / px);
-    paint2(t);
+    paint3(t);
     t.setTransform(1, 0, 0, 1, 0, 0);
     const im = t.getImageData(0, 0, cw, ch), d = im.data, n = cw * ch;
     const on = new Uint8Array(n);
@@ -9971,7 +9983,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.imageSmoothingEnabled = sm;
   }
   var PIX2 = { c: null, x: null };
-  function pixelSoft(ctx, x0, y0, w, h3, px, paint2) {
+  function pixelSoft(ctx, x0, y0, w, h3, px, paint3) {
     const cw = Math.ceil(w / px), ch = Math.ceil(h3 / px);
     if (!PIX2.c) {
       PIX2.c = document.createElement("canvas");
@@ -9986,7 +9998,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     t.setTransform(1, 0, 0, 1, 0, 0);
     t.clearRect(0, 0, cw + 1, ch + 1);
     t.setTransform(1 / px, 0, 0, 1 / px, -x0 / px, -y0 / px);
-    paint2(t);
+    paint3(t);
     t.setTransform(1, 0, 0, 1, 0, 0);
     const sm = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = false;
@@ -10417,8 +10429,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.scale(1, -1);
         }
         const base = st === "obsidian" ? [44, 28, 48] : st === "salt" ? [226, 220, 198] : [222, 212, 188];
-        const hs2 = [[-4, 7], [0, 10], [4, 6]];
-        for (const [dx, hgt] of hs2) {
+        const hs5 = [[-4, 7], [0, 10], [4, 6]];
+        for (const [dx, hgt] of hs5) {
           ctx.fillStyle = rgbA(base);
           tri(x + dx - 2.4, y, x + dx + 2.4, y, x + dx, y - hgt);
           ctx.fillStyle = st === "obsidian" ? "rgba(200,110,255,0.55)" : "rgba(255,255,255,0.45)";
@@ -14324,12 +14336,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       fy /= fl;
       const len = 6 + W.p.flame * 16 + Math.random() * 3;
       const nz = jetNozzle(W), bx = nz.x, by = nz.y, px = DEV.runnerPx;
-      const paint2 = (c) => jetFlame(c, bx, by, fx, fy, len, W.time);
+      const paint3 = (c) => jetFlame(c, bx, by, fx, fy, len, W.time);
       if (px > 0) {
         const R = len + 8, ox2 = W.p.x - 14, oy2 = W.p.y - 8;
         const x0 = ox2 + Math.floor((bx - R - ox2) / px) * px, y0 = oy2 + Math.floor((by - R - oy2) / px) * px;
-        pixelSprite(G.ctx, x0, y0, R * 2 + px, R * 2 + px, px, false, paint2);
-      } else paint2(G.ctx);
+        pixelSprite(G.ctx, x0, y0, R * 2 + px, R * 2 + px, px, false, paint3);
+      } else paint3(G.ctx);
     }
   }
   function drawAim(W, G, F) {
@@ -14499,6 +14511,116 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       G.ctx.fillRect(W.ghost.x - 3, W.ghost.y + gb - 1, 1.6, 2.4);
       G.ctx.fillRect(W.ghost.x + 1.4, W.ghost.y + gb - 1, 1.6, 2.4);
     }
+  }
+
+  // src/art/sign.js
+  var hs = (n) => {
+    const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  var LETTERS = {
+    T: { w: 0.8, s: [[0, 0.02, 0.8, 0], [0.4, 0, 0.42, 1]] },
+    E: { w: 0.62, s: [[0.62, 0, 0.02, 0.02, 0, 1, 0.64, 0.98], [0.02, 0.5, 0.5, 0.48]] },
+    L: { w: 0.58, s: [[0.02, 0, 0, 1, 0.6, 0.98]] },
+    P: { w: 0.64, s: [[0.02, 1, 0, 0, 0.5, 0.02, 0.66, 0.22, 0.6, 0.44, 0.38, 0.52, 0.02, 0.52]] },
+    O: { w: 0.78, s: [[0.4, 0, 0.12, 0.1, 0, 0.5, 0.12, 0.9, 0.4, 1, 0.68, 0.9, 0.8, 0.5, 0.68, 0.1, 0.38, 0.02]] },
+    R: { w: 0.66, s: [[0.02, 1, 0, 0, 0.5, 0.02, 0.66, 0.22, 0.6, 0.44, 0.38, 0.52, 0.02, 0.52], [0.3, 0.52, 0.68, 1]] }
+  };
+  function paint2(ctx, text, x, y, h3, gap) {
+    let at = x, n = 0;
+    for (const ch of text) {
+      const L3 = LETTERS[ch];
+      if (!L3) {
+        at += h3 * 0.5;
+        continue;
+      }
+      for (const st of L3.s) {
+        ctx.beginPath();
+        for (let i = 0; i < st.length; i += 2, n++) {
+          const px = at + st[i] * h3 + (hs(n * 3.1 + 1) - 0.5) * h3 * 0.14, py = y + st[i + 1] * h3 + (hs(n * 5.7 + 2) - 0.5) * h3 * 0.14;
+          if (i) ctx.lineTo(px, py);
+          else ctx.moveTo(px, py);
+        }
+        ctx.stroke();
+      }
+      at += (L3.w + gap) * h3 * (0.94 + 0.12 * hs(n + 0.5));
+    }
+    return at - x;
+  }
+  function paintW(text, h3, gap) {
+    let w = 0, n = 0;
+    for (const ch of text) {
+      const L3 = LETTERS[ch];
+      if (!L3) {
+        w += h3 * 0.5;
+        continue;
+      }
+      for (const st of L3.s) n += st.length / 2;
+      w += (L3.w + gap) * h3 * (0.94 + 0.12 * hs(n + 0.5));
+    }
+    return w;
+  }
+  function drawTeleSign(ctx, cx, cy) {
+    ctx.save();
+    const pw = 78, ph = 20, px = cx - pw / 2 + 6, py = cy - ph / 2 - 2;
+    ctx.fillStyle = "#4a4740";
+    ctx.fillRect(px - 1, py - 1, pw + 2, ph + 2);
+    ctx.fillStyle = "#d8d0b6";
+    ctx.fillRect(px, py, pw, ph);
+    ctx.fillStyle = "#ebe4cc";
+    ctx.fillRect(px, py, pw, 2);
+    ctx.fillStyle = "#b5ab8f";
+    ctx.fillRect(px, py + ph - 2, pw, 2);
+    ctx.fillStyle = "#2a2f3a";
+    ctx.font = '900 15px "Arial Black", Impact, system-ui, sans-serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("PRINTER", px + pw / 2, py + ph / 2 + 1, pw - 6);
+    ctx.fillStyle = "#7a7465";
+    ctx.fillRect(px + 2, py + ph / 2 - 1, 2, 2);
+    ctx.fillRect(px + pw - 4, py + ph / 2 - 1, 2, 2);
+    const bw = 72, bh = 17;
+    ctx.translate(cx - 13, cy + 7);
+    ctx.rotate(-0.11);
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.fillRect(-bw / 2 + 1.5, -bh / 2 + 2, bw, bh);
+    ctx.fillStyle = "#7b5532";
+    ctx.fillRect(-bw / 2, -bh / 2, bw, bh);
+    for (let i = 0; i < 9; i++) {
+      const gy = -bh / 2 + 1 + hs(i * 4.3) * (bh - 2), gx = -bw / 2 + hs(i * 7.9) * 20, gl = 30 + hs(i * 2.2) * 45;
+      ctx.fillStyle = i % 3 ? "rgba(60,36,18,0.45)" : "rgba(160,118,74,0.35)";
+      ctx.fillRect(gx, gy, Math.min(gl, bw / 2 - gx), 0.8);
+    }
+    ctx.fillStyle = "rgba(55,32,15,0.6)";
+    ctx.beginPath();
+    ctx.ellipse(bw / 2 - 16, 4, 3, 1.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#9a6d43";
+    ctx.fillRect(-bw / 2, -bh / 2, bw, 1.2);
+    ctx.fillStyle = "#4e3420";
+    ctx.fillRect(-bw / 2, bh / 2 - 1.2, bw, 1.2);
+    ctx.fillStyle = "#5d3f24";
+    ctx.fillRect(-bw / 2, -bh / 2, 1.2, bh);
+    ctx.fillRect(bw / 2 - 1.2, -bh / 2, 1.2, bh);
+    for (const nx of [-bw / 2 + 4, bw / 2 - 4]) {
+      ctx.fillStyle = "#3b3b40";
+      ctx.beginPath();
+      ctx.arc(nx, 0.5, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#a9adb5";
+      ctx.fillRect(nx - 0.9, -0.4, 1, 1);
+    }
+    const lh = 10, gap = 0.18, tw = paintW("TELEPORTER", lh, gap), s = Math.min(1, (bw - 10) / tw);
+    ctx.scale(s, 1);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "rgba(30,18,8,0.5)";
+    ctx.lineWidth = 2.6;
+    paint2(ctx, "TELEPORTER", -tw / 2 + 0.6, -lh / 2 + 0.8, lh, gap);
+    ctx.strokeStyle = "#f1ead8";
+    ctx.lineWidth = 2;
+    paint2(ctx, "TELEPORTER", -tw / 2, -lh / 2, lh, gap);
+    ctx.restore();
   }
 
   // src/game/render/holo.js
@@ -15661,7 +15783,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var BOLT_T = 0.09;
   var BOLT_CHANCE = 0.4;
   var ZAP_T = 1.4;
-  var hs = (n) => {
+  var hs2 = (n) => {
     const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
     return v - Math.floor(v);
   };
@@ -15717,10 +15839,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.fillStyle = fg;
       ctx.fillRect(P2.x - PAD_W, P2.y - PAD_W, PAD_W * 2, PAD_W * 2);
       for (let i = 0; i < 10; i++) {
-        const sp = 14 + hs(i * 3 + P2.seed) * 22, u = (t * sp / BEAM_H + hs(i * 7 + P2.seed * 13)) % 1;
-        const sx = P2.x + (hs(i * 11 + P2.seed) - 0.5) * PAD_W * 0.8 + Math.sin(t * 2 + i) * 1.2;
+        const sp = 14 + hs2(i * 3 + P2.seed) * 22, u = (t * sp / BEAM_H + hs2(i * 7 + P2.seed * 13)) % 1;
+        const sx = P2.x + (hs2(i * 11 + P2.seed) - 0.5) * PAD_W * 0.8 + Math.sin(t * 2 + i) * 1.2;
         ctx.globalAlpha = (1 - u) * 0.8;
-        ctx.fillStyle = hs(i + P2.seed * 5) < 0.4 ? "#e6f6ff" : "#6cc4ff";
+        ctx.fillStyle = hs2(i + P2.seed * 5) < 0.4 ? "#e6f6ff" : "#6cc4ff";
         ctx.fillRect(sx - 0.6, P2.y - 2 - u * BEAM_H * 0.9, 1.2, 1.2);
       }
       ctx.restore();
@@ -15729,13 +15851,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const n0 = Math.floor(t / BOLT_T);
       for (let n = n0 - 2; n <= n0; n++) {
         const s = n * 7.13 + P2.seed * 101;
-        if (hs(s) > (0.35 + 0.65 * zap) * BOLT_CHANCE * 2) continue;
+        if (hs2(s) > (0.35 + 0.65 * zap) * BOLT_CHANCE * 2) continue;
         const age = (t - n * BOLT_T) / (BOLT_T * 3);
-        let bx = P2.x + (hs(s + 1) - 0.5) * (PAD_W - 6), by = P2.y - 1;
-        const up = BEAM_H * (0.3 + 0.5 * hs(s + 2)), steps = 6;
+        let bx = P2.x + (hs2(s + 1) - 0.5) * (PAD_W - 6), by = P2.y - 1;
+        const up = BEAM_H * (0.3 + 0.5 * hs2(s + 2)), steps = 6;
         const pts = [{ x: bx, y: by }];
         for (let k = 1; k <= steps; k++) {
-          bx += (hs(s + 3 + k) - 0.5) * 7;
+          bx += (hs2(s + 3 + k) - 0.5) * 7;
           by -= up / steps;
           bx = Math.max(P2.x - PAD_W / 2, Math.min(P2.x + PAD_W / 2, bx));
           pts.push({ x: bx, y: by });
@@ -15881,11 +16003,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const { vh } = F;
     if (W.arrival.y < W.camY + vh + 40 && W.arrival.y > W.camY - 40) {
       drawPad(G.ctx, W.arrival.x, SHOP_FLOOR * CELL, W.time);
-      G.ctx.fillStyle = "rgba(160,215,255,0.4)";
-      G.ctx.font = "600 7px system-ui, sans-serif";
-      G.ctx.textAlign = "center";
-      G.ctx.fillText("WAY IN", W.arrival.x, W.arrival.y - 22);
-      G.ctx.textAlign = "left";
+      drawTeleSign(G.ctx, W.arrival.x - 6, SHOP_FLOOR * CELL - 64);
     }
   }
   function drawShop(W, G, F) {
@@ -16167,6 +16285,65 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.ctx.globalAlpha = 1;
   }
 
+  // src/world/shoplights.js
+  var LIGHT_WAIT = 2;
+  var LIGHT_REST = 3;
+  var LIGHT_RUN = 0.22;
+  var TUBE_MAX = 1.6;
+  var FIRST_X = 76;
+  var FIRST_TRIGGER = HEAL_X - 22;
+  var PAD_LIT = 56;
+  var MACHINES = 6;
+  var LIGHT_X = [FIRST_X];
+  for (let x = VEND_BUY_X; x < WW; x += SHOP_SLOT) LIGHT_X.push(x);
+  var lightsNew = (time) => ({ start: time, on: LIGHT_X.map(() => -1), zap: time });
+  var hs3 = (n) => {
+    const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  function tubeLevel(age, seed) {
+    if (age < 0) return 0;
+    const dur = 0.55 + 0.9 * hs3(seed * 7.1 + 1);
+    if (age >= dur) return 1;
+    let t = 0;
+    for (let n = 0; n < 60; n++) {
+      const len = 0.03 + 0.13 * hs3(seed * 13.7 + n * 3.1);
+      if (age < t + len) {
+        const warm = t / dur;
+        const lit = n < 3 ? n === 1 : hs3(seed * 5.3 + n * 9.7) < 0.2 + 0.65 * warm;
+        return lit ? 0.45 + 0.55 * hs3(seed + n * 1.9) : 0.06;
+      }
+      t += len;
+    }
+    return 1;
+  }
+  var sectionLevel = (L3, i, time) => L3.on[i] < 0 ? 0 : tubeLevel(time - L3.on[i], i + 1);
+  var halfW = (i) => i === 0 ? 68 : SHOP_SLOT / 2 - 12;
+  function shopDark(L3, x, time) {
+    let best = 0;
+    for (let i = 0; i < LIGHT_X.length; i++) {
+      if (L3.on[i] < 0) continue;
+      const d = Math.abs(x - LIGHT_X[i]) - halfW(i);
+      const pool = d <= 0 ? 1 : d >= 30 ? 0 : 1 - d / 30;
+      best = Math.max(best, pool * sectionLevel(L3, i, time));
+    }
+    return 1 - best;
+  }
+  function lightsStep(L3, time, pcx, inShop) {
+    const lit = [];
+    const on = (i, at) => {
+      if (L3.on[i] < 0) {
+        L3.on[i] = at;
+        lit.push(i);
+      }
+    };
+    if (time - L3.start >= LIGHT_WAIT) on(0, L3.start + LIGHT_WAIT);
+    const k = L3.on.indexOf(-1), latest = Math.max(...L3.on), perks = L3.on[MACHINES - 1];
+    if (k > 0 && time - latest >= LIGHT_RUN && (pcx >= (k === 1 ? FIRST_TRIGGER : LIGHT_X[k - 1] - 20) || perks >= 0 && time - perks >= LIGHT_REST || !inShop)) on(k, time);
+    const done = L3.on.every((t) => t >= 0 && time - t >= TUBE_MAX);
+    return { lit, done };
+  }
+
   // src/game/systems/plantglow.js
   function plantGlow(W, G, e, TH) {
     const u = e.je.u, reach2 = kru("jeGlowR", u.glowR) * kru("jePlantReach", u.plant);
@@ -16290,6 +16467,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const fdat = G.fogImg.data, wdat = war.img.data;
       const dim = Math.round(255 * DEV.fogDim), dark = Math.round(255 * DEV.fogDark);
       const lr2 = W.torchR * W.torchR;
+      const shopL = G.RPV ? null : W.shopLit, shopRow = Math.floor(SHOP_Y / FOG_U) - 1;
       const fx0 = clamp(Math.floor(W.camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(W.camY / FOG_U) - 1, 0, FH - 1);
       const fx1 = clamp(Math.ceil((W.camX + vw) / FOG_U) + 2, 1, FW), fy1 = clamp(Math.ceil((W.camY + vh) / FOG_U) + 2, 1, FH);
       for (let cy = fy0; cy < fy1; cy++) {
@@ -16305,6 +16483,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           let s = W.seen[i];
           if (!s && !(W.deepFog && W.deepFog[i]) && (cx > 0 && W.seen[i - 1] || cx < FW - 1 && W.seen[i + 1] || cy > 0 && W.seen[i - FW] || cy < FH - 1 && W.seen[i + FW] || cx > 0 && cy > 0 && W.seen[i - FW - 1] || cx < FW - 1 && cy > 0 && W.seen[i - FW + 1] || cx > 0 && cy < FH - 1 && W.seen[i + FW - 1] || cx < FW - 1 && cy < FH - 1 && W.seen[i + FW + 1])) s = 1;
           let a = s === 2 ? 0 : s ? dim : dark;
+          if (s === 2 && shopL && cy >= shopRow) {
+            const wx = (cx + 0.5) * FOG_U, pd = Math.hypot(wx - W.arrival.x, (cy + 0.5) * FOG_U - W.arrival.y);
+            a = Math.round(dark * shopDark(shopL, wx, W.time) * (pd < PAD_LIT ? 0.3 + 0.7 * pd / PAD_LIT : 1));
+          }
           wdat[k + 3] = s ? 0 : dark;
           if (s && a) {
             const ddx = (cx + 0.5) * FOG_U - pcx, dd2 = ddx * ddx + ddy * ddy;
@@ -18181,9 +18363,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var CHUTE_Y = SHOP_FLOOR * CELL - 14;
   var SHOPS = {
     // left to right: mods, guns, perks
-    mods: { x: WW / 2 - 110, icon: "⚙️", hue: "#4fe3ff", label: "Tap R to shop" },
-    guns: { x: WW / 2, icon: "gun", hue: "#ff9a3c", label: "Tap R to shop" },
-    perks: { x: WW / 2 + 110, icon: "✦", hue: "#3dff7a", label: "Tap R to shop" }
+    mods: { x: SHOP_MACHINE_X[0], icon: "⚙️", hue: "#4fe3ff", label: "Tap R to shop" },
+    guns: { x: SHOP_MACHINE_X[1], icon: "gun", hue: "#ff9a3c", label: "Tap R to shop" },
+    perks: { x: SHOP_MACHINE_X[2], icon: "✦", hue: "#3dff7a", label: "Tap R to shop" }
   };
   function shopNear(W, pcx, pcy) {
     if (W.warp || W.repo || W.p.dead || pcy < SHOP_Y || pcy > SHOP_FLOOR * CELL) return null;
@@ -18339,6 +18521,70 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.fillRect(ix, Math.max(iy, band), ICON, Math.max(0, Math.min(5, iy + ICON - band)));
       ctx.restore();
     }
+  }
+
+  // src/game/render/shoplights.js
+  var TUBE_W = 40;
+  var hs4 = (n) => {
+    const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  function drawTubes(W, G, F) {
+    const { vw, vh } = F, ctx = G.ctx, fy = SHOP_FLOOR * CELL, L3 = G.RPV ? null : W.shopLit;
+    if (SHOP_Y > W.camY + vh || fy < W.camY) return;
+    ctx.save();
+    for (let i = 0; i < LIGHT_X.length; i++) {
+      const x = LIGHT_X[i];
+      if (x + 80 < W.camX || x - 80 > W.camX + vw) continue;
+      const lv = L3 ? sectionLevel(L3, i, W.time) : 1, seen = L3 ? 1 - shopDark(L3, x, W.time) : 1;
+      const y = SHOP_Y + 1;
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = Math.max(0.15, seen);
+      ctx.fillStyle = "#20242c";
+      ctx.fillRect(x - TUBE_W / 2 - 3, y, TUBE_W + 6, 3);
+      ctx.fillStyle = "#3a404c";
+      ctx.fillRect(x - TUBE_W / 2 - 3, y + 3, 2, 2);
+      ctx.fillRect(x + TUBE_W / 2 + 1, y + 3, 2, 2);
+      const on = L3 ? L3.on[i] >= 0 : true;
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = lv > 0.2 ? `rgb(${Math.round(150 + 105 * lv)},${Math.round(165 + 90 * lv)},${Math.round(180 + 75 * lv)})` : "#363b44";
+      ctx.globalAlpha = lv > 0.2 ? 1 : Math.max(0.15, seen);
+      ctx.fillRect(x - TUBE_W / 2, y + 3, TUBE_W, 2);
+      if (on && lv <= 0.2) {
+        ctx.fillStyle = "rgba(255,170,190,0.8)";
+        ctx.fillRect(x - TUBE_W / 2, y + 3, 3, 2);
+        ctx.fillRect(x + TUBE_W / 2 - 3, y + 3, 3, 2);
+      }
+      if (lv <= 0.2) continue;
+      ctx.globalCompositeOperation = "lighter";
+      const halo = ctx.createRadialGradient(x, y + 4, 2, x, y + 4, 34);
+      halo.addColorStop(0, `rgba(210,235,255,${0.32 * lv})`);
+      halo.addColorStop(1, "rgba(210,235,255,0)");
+      ctx.fillStyle = halo;
+      ctx.fillRect(x - 36, y - 2, 72, 40);
+      const cone = ctx.createLinearGradient(0, y + 5, 0, fy);
+      cone.addColorStop(0, `rgba(200,230,255,${0.1 * lv})`);
+      cone.addColorStop(1, "rgba(200,230,255,0)");
+      ctx.fillStyle = cone;
+      ctx.beginPath();
+      ctx.moveTo(x - TUBE_W / 2, y + 5);
+      ctx.lineTo(x + TUBE_W / 2, y + 5);
+      ctx.lineTo(x + TUBE_W / 2 + 26, fy);
+      ctx.lineTo(x - TUBE_W / 2 - 26, fy);
+      ctx.closePath();
+      ctx.fill();
+    }
+    if (L3) {
+      const ax = W.arrival.x, ay = fy - 20, fl = 0.75 + 0.25 * hs4(Math.floor(W.time * 20));
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = 1;
+      const g = ctx.createRadialGradient(ax, ay, 4, ax, ay, 70);
+      g.addColorStop(0, `rgba(90,170,255,${0.4 * fl})`);
+      g.addColorStop(1, "rgba(90,170,255,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(ax - 70, ay - 70, 140, 140);
+    }
+    ctx.restore();
   }
 
   // src/art/pixfont.js
@@ -18849,6 +19095,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.ctx.translate(-F.snapX, -F.snapY);
     drawFog(W, G, F);
     drawGlows(W, G, F);
+    drawTubes(W, G, F);
     drawPads(W, G, F);
     drawWarp(W, G, F);
     drawRepo(W, G, F);
@@ -18901,6 +19148,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.ctx.setTransform(s, 0, 0, s, -ox2, -oy2);
     F.snapX = (Math.round((W.p.x - W.camX) * s) + ox2) / s - W.p.x;
     F.snapY = (Math.round((W.p.y - W.camY) * s) + oy2) / s - W.p.y;
+  }
+
+  // src/game/systems/shoplights.js
+  function shopDarkStart(W) {
+    W.shopLit = lightsNew(W.time);
+    W.padZap[1] = W.time;
+  }
+  function stepLights(W, F) {
+    const L3 = W.shopLit;
+    if (!L3) return;
+    const { dt, pcx } = F, t = W.time;
+    if (t - L3.start < LIGHT_WAIT) {
+      W.padZap[1] = t - 0.2;
+      if (t >= L3.zap) {
+        SFX.fx("sparks", W.arrival.x, W.arrival.y);
+        L3.zap = t + 0.18 + 0.3 * (t * 7.3 % 1);
+      }
+    }
+    const { done } = lightsStep(L3, t, pcx, W.p.y + PH > SHOP_Y);
+    for (let i = 0; i < LIGHT_X.length; i++) {
+      if (L3.on[i] < 0 || t - L3.on[i] > 2) continue;
+      if (sectionLevel(L3, i, t) > 0.3 && !(sectionLevel(L3, i, t - dt) > 0.3)) SFX.fx("tube", LIGHT_X[i], SHOP_Y + 4);
+    }
+    if (done) W.shopLit = null;
   }
 
   // src/game/systems/fields.js
@@ -19911,6 +20182,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     stepFields(W, G, F);
     stepPickups(W, G, F);
     stepWarp(W, G, F);
+    stepLights(W, F);
     stepRepo(W, G, F);
     stepToasts(W, F);
     decorStep(W, G, dt, F.pcx, F.pcy);
@@ -20354,7 +20626,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           W.hasLvl = sv.hasLvl;
           enterLevel(W, G, sv.level);
           if (sv.hp) W.p.hp = Math.min(sv.hp, maxHp(W, G));
-        } else enterLevel(W, G);
+        } else {
+          enterLevel(W, G);
+          if (!window.__TEST || window.__TEST_INTRO) shopDarkStart(W);
+        }
         if (!W.hasLvl) voidCave(W, G);
       }
       const saveNow = () => saveRun(W, G);

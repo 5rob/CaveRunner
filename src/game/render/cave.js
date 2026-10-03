@@ -4,6 +4,7 @@
 // props, the two portals, the shop's stock, loot, and the hidden rooms' prizes
 
 import { drawProp, rgbA } from '../../art/props.js';
+import { drawTeleSign } from '../../art/sign.js';
 import { CRYSTAL_PAL, CRYSTAL_R, GREEN_PAL, drawGun, drawGunGlow, drawNugget } from '../../art/sprites.js';
 import { BCELL, BH, BW, CELL, CH, COL, CW, SHOP_FLOOR, SHOP_Y, WW } from '../../core/consts.js';
 import { clamp, mix } from '../../core/util.js';
@@ -153,17 +154,13 @@ export function drawPortal(W, G) {
   if (W.hasLvl) for (const q of exits(W)) drawPad(G.ctx, q.x + q.w / 2, q.y + q.h, W.time);
 }
 
-// The pad you arrived on, as scenery ("WAY IN")
+// The pad you arrived on, as scenery, and its sign (art/sign.js)
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawArrival(W, G, F) {
   const { vh } = F;
   if (W.arrival.y < W.camY + vh + 40 && W.arrival.y > W.camY - 40) {
     drawPad(G.ctx, W.arrival.x, SHOP_FLOOR * CELL, W.time);
-    G.ctx.fillStyle = 'rgba(160,215,255,0.4)';
-    G.ctx.font = '600 7px system-ui, sans-serif';
-    G.ctx.textAlign = 'center';
-    G.ctx.fillText('WAY IN', W.arrival.x, W.arrival.y - 22);
-    G.ctx.textAlign = 'left';
+    drawTeleSign(G.ctx, W.arrival.x - 6, SHOP_FLOOR * CELL - 64);   // TELEPORTER, nailed over PRINTER
   }
 }
 

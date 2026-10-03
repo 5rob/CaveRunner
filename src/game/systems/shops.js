@@ -6,7 +6,7 @@
 // The mod machine is the first; a gun shop and a perk shop are meant to be more entries here.
 
 import { SFX } from '../../audio/sfx.js';
-import { CELL, SHOP_FLOOR, SHOP_Y, WW } from '../../core/consts.js';
+import { CELL, SHOP_FLOOR, SHOP_MACHINE_X, SHOP_Y } from '../../core/consts.js';
 import { solidAt } from './terrain.js';
 
 export const MACHINE_W = 56, MACHINE_H = 84;                   // a machine's cabinet (world units)
@@ -16,9 +16,9 @@ export const CHUTE_Y = SHOP_FLOOR * CELL - 14;           // where a bought thing
 /** @typedef {{ x: number, icon: string, hue: string, label: string }} ShopMachine  icon: an emoji, or 'gun' for the gun sprite */
 /** @type {Record<string, ShopMachine>} */
 export const SHOPS = {                                   // left to right: mods, guns, perks
-  mods: { x: WW / 2 - 110, icon: '⚙️', hue: '#4fe3ff', label: 'Tap R to shop' },
-  guns: { x: WW / 2, icon: 'gun', hue: '#ff9a3c', label: 'Tap R to shop' },
-  perks: { x: WW / 2 + 110, icon: '✦', hue: '#3dff7a', label: 'Tap R to shop' },
+  mods: { x: SHOP_MACHINE_X[0], icon: '⚙️', hue: '#4fe3ff', label: 'Tap R to shop' },
+  guns: { x: SHOP_MACHINE_X[1], icon: 'gun', hue: '#ff9a3c', label: 'Tap R to shop' },
+  perks: { x: SHOP_MACHINE_X[2], icon: '✦', hue: '#3dff7a', label: 'Tap R to shop' },
 };
 
 // the machine you're standing at, if any
