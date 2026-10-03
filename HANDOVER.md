@@ -9,7 +9,11 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
-- **Released: v0.0.135** on `main`, 2026-10-03 (the owner OK'd the screenshots): in the Exo Suit's
+- **Released: v0.0.136** on `main`, 2026-10-03 (the owner OK'd the screenshots): a new run's dark shop
+  lighting up a section at a time (`world/shoplights.js`), the pad centred under a TELEPORTER plank nailed
+  over PRINTER, the heal just past it and the machines evenly spaced (`SHOP_SLOT`), and kill/dig gold
+  waiting 0.25 s (`SPILL_WAIT`).
+- **v0.0.135** on `main`, 2026-10-03 (the owner OK'd the screenshots): in the Exo Suit's
   perk grid a perk not unlocked yet is a blank tile in its place, nothing to tap (`.xperk.locked`).
 - **v0.0.134** on `main`, 2026-10-03 (the owner OK'd the screenshots): the sell machine is
   lit green from the start and glitches to red with its fine print half a second after a buy; both

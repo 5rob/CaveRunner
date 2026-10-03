@@ -5,9 +5,10 @@
 
 import { drawProp, propGlow } from '../../art/props.js';
 import { drawSconce, glowAt } from '../../art/sprites.js';
-import { CELL, CW, FH, FOG_U, FW, LAMP_REACH, PH, PW, SIGHT } from '../../core/consts.js';
+import { CELL, CW, FH, FOG_U, FW, LAMP_REACH, PH, PW, SHOP_Y, SIGHT } from '../../core/consts.js';
 import { clamp, hexRgb } from '../../core/util.js';
 import { DEV, carrotAt, jcol, kru } from '../../dev/knobs.js';
+import { PAD_LIT, shopDark } from '../../world/shoplights.js';
 import { webPath } from '../../world/sway.js';
 import { VIS_RAYS, fogReveal, visPoly } from '../../world/vision.js';
 import { fogLit } from '../systems/fog.js';
@@ -72,6 +73,7 @@ export function drawFog(W, G, F) {
     const fdat = G.fogImg.data, wdat = war.img.data;
     const dim = Math.round(255 * DEV.fogDim), dark = Math.round(255 * DEV.fogDark);
     const lr2 = W.torchR * W.torchR;
+    const shopL = G.RPV ? null : W.shopLit, shopRow = Math.floor(SHOP_Y / FOG_U) - 1;
     const fx0 = clamp(Math.floor(W.camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(W.camY / FOG_U) - 1, 0, FH - 1);
     const fx1 = clamp(Math.ceil((W.camX + vw) / FOG_U) + 2, 1, FW), fy1 = clamp(Math.ceil((W.camY + vh) / FOG_U) + 2, 1, FH);
     for (let cy = fy0; cy < fy1; cy++) {
@@ -89,6 +91,11 @@ export function drawFog(W, G, F) {
             (cx > 0 && cy > 0 && W.seen[i - FW - 1]) || (cx < FW - 1 && cy > 0 && W.seen[i - FW + 1]) ||
             (cx > 0 && cy < FH - 1 && W.seen[i + FW - 1]) || (cx < FW - 1 && cy < FH - 1 && W.seen[i + FW + 1]))) s = 1;
         let a = s === 2 ? 0 : s ? dim : dark;
+        // a new run's shop, dark but for the sections lit so far, the teleporter's glow and your torch
+        if (s === 2 && shopL && cy >= shopRow) {
+          const wx = (cx + 0.5) * FOG_U, pd = Math.hypot(wx - W.arrival.x, (cy + 0.5) * FOG_U - W.arrival.y);
+          a = Math.round(dark * shopDark(shopL, wx, W.time) * (pd < PAD_LIT ? 0.3 + 0.7 * pd / PAD_LIT : 1));
+        }
         wdat[k + 3] = s ? 0 : dark;          // the fog of war alone
         if (s && a) {                        // the lamp only reaches ground the fog has lifted
           const ddx = (cx + 0.5) * FOG_U - pcx, dd2 = ddx * ddx + ddy * ddy;

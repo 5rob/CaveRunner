@@ -57,7 +57,13 @@ export const SHOP_Y = SHOP_TOP * CELL;        // world y of the ceiling, for "am
 // the two level vending machines on the shop's back wall, past the way in and the heal (centre x,
 // world units; a screen is 72 wide), and their prices:
 // a level costs LVL_BUY on credit and sells back for LVL_SELL, a thousand more (floor 1: data/levels.js climbs from there)
-export const VEND_BUY_X = 180, VEND_SELL_X = 280;
+// SHOP_SLOT apart, as are the shop's three machines after them (SHOP_MACHINE_X: mods, guns, perks): one
+// light section each when a new run's dark shop lights up (world/shoplights.js)
+export const SHOP_SLOT = 120;
+// the way in's pad (centre x), under its sign (art/sign.js: from about 12 to 106), and the heal just past it
+export const ARRIVAL_X = 66, HEAL_X = 124;
+export const VEND_BUY_X = 210, VEND_SELL_X = VEND_BUY_X + SHOP_SLOT;
+export const SHOP_MACHINE_X = [VEND_BUY_X + 2 * SHOP_SLOT, VEND_BUY_X + 3 * SHOP_SLOT, VEND_BUY_X + 4 * SHOP_SLOT];
 export const LVL_BUY = 1000000000, LVL_SELL = 1000001000;
 export const OLD_LVL_BUY = 64000000000;   // what a level cost before v130 (save/save.js mends saves from v106/v107 by it)
 // and it must be repaid within an hour of buying the level (real time, the device clock, ms)

@@ -4,7 +4,7 @@
 // perks owned make the same cave.
 
 import {
-  BED, BH, BRICK, BW, CELL, CH, CW, GUN_DROPS, MOD_DROPS, PH, PICKUP_GAP, ROCK,
+  ARRIVAL_X, BED, BH, BRICK, BW, CELL, CH, CW, GUN_DROPS, MOD_DROPS, PH, PICKUP_GAP, ROCK, HEAL_X,
   SHOP_FLOOR, SHOP_ROOF, SHOP_TOP, WW
 } from '../core/consts.js';
 import { mix } from '../core/util.js';
@@ -505,9 +505,9 @@ export function makeLevel(seed, floor, owned) {
       bgImg.data[k] = c[0] * shade + j; bgImg.data[k + 1] = c[1] * shade + j; bgImg.data[k + 2] = c[2] * shade + j; bgImg.data[k + 3] = 255;
     }
 
-  const startCX = 14;                                  // far left of the shop room
-  const start = { x: startCX * CELL, y: SHOP_FLOOR * CELL - PH };
-  const arrival = { x: (startCX + 3) * CELL, y: (SHOP_FLOOR - 13) * CELL };
+  // the way in near the left of the shop room, under its sign (ARRIVAL_X): you stand on it
+  const start = { x: ARRIVAL_X - 6, y: SHOP_FLOOR * CELL - PH };
+  const arrival = { x: ARRIVAL_X, y: (SHOP_FLOOR - 13) * CELL };
 
   // shop stock: just the heal now, beside the portal you arrive through, where you land. Mods
   // are bought from the vending machine in the middle of the room (game/systems/shops.js)
@@ -516,7 +516,7 @@ export function makeLevel(seed, floor, owned) {
   // the heal (free the first time, dearer each time after: healPrice), just along from the portal you arrive through. Far enough along that
   // you are not standing on it the moment you land. The two level vending machines come
   // next along the wall (VEND_BUY_X, VEND_SELL_X)
-  stock.push({ kind: 'heal', x: arrival.x + 62, y: shelf, price: 0, sold: false, bought: 0 });
+  stock.push({ kind: 'heal', x: HEAL_X, y: shelf, price: 0, sold: false, bought: 0 });
   const portals = EXIT_X.map(ex => ({ x: ex * CELL - 10, y: 34 * CELL - 30, w: 20, h: 30 }));
   const portal = portals[1];                            // the middle one (the main route ends there)
 

@@ -67,6 +67,7 @@ export function makeWorld() {
     repo: null,                     // the repayment deadline passed: the level is taken back, then the fire
     start: undefined, portal: undefined, arrival: undefined,   // where you come in, the way out
     portals: [],                    // the exits along the top (portal is the middle one): exits(W)
+    shopLit: null,                  // a new run's dark shop, lighting up as you go (world/shoplights.js; null = lit)
     padZap: {},                     // when each teleporter pad was last used (W.time, by padSpots seed): it crackles a moment
     stock: undefined,               // the shop's plinths
     zone: null,                     // built-up vs natural, per terrain pixel (floor 1)

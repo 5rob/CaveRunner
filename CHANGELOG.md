@@ -5,6 +5,27 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.136 — the dark shop, the TELEPORTER sign, gold you can see
+Released 2026-10-03 (after the owner's OK of the screenshots).
+
+- **A new run starts in a dark shop** (`world/shoplights.js`, `game/systems/shoplights.js`,
+  `game/render/shoplights.js`): the way in crackles blue (and fizzes) while only it and your torch light
+  anything; after 2 s the ceiling tube over the teleporter and heal stutters on like a fluorescent tube
+  (a click each time it catches, sound `tube`); each time you reach the middle of the last lit section
+  the next one flickers on, one vending machine each; the perk section on 3 s (or you leave the shop),
+  the rest of the hall comes on in a run. The dark is `drawFog`'s (`fogDark × shopDark`). Every shop now
+  has the tubes on its ceiling. Not on a save's reload; the test page only with `window.__TEST_INTRO`.
+- **The shop's layout moved along** (`core/consts.js`): the way in's pad centred under its sign
+  (`ARRIVAL_X` 66, was 34), the heal just past the sign (`HEAL_X` 124, was 96), then the machines evenly
+  spaced, `SHOP_SLOT` (120) apart: buy 210, sell 330, mods 450, guns 570, perks 690 (were 180, 280, 530,
+  640, 750), so each light section reveals one. The first section (`FIRST_X` 76) covers the pad, sign and heal.
+- **The way in's sign** (`art/sign.js`): "TELEPORTER" painted by hand on a plank nailed at a slant over
+  the machine's old "PRINTER" plate (its top and "ER" still showing), the pad centred under the plate.
+  "WAY IN" is gone.
+- **Gold knocked loose by a kill or a dig waits 0.25 s** (`SPILL_WAIT`, as `nopull`) before it flies to
+  you: close by, it used to be taken before it was ever drawn (you heard it, never saw it).
+- Suites `shoplights` (logic and browser).
+
 ## v0.0.135 — locked perks give nothing away
 Released 2026-10-03 (after the owner's OK of the screenshots).
 

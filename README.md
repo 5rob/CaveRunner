@@ -184,13 +184,18 @@ is worth comparing before you commit.
 
 Every floor starts in an enclosed room spanning the width of the level, with one
 hole in the roof leading up into the cave. You arrive at the far left, on the
-teleporter pad you came in through, and the full heal is right there with you. The first
+teleporter pad you came in through (a plank nailed over its old "PRINTER" plate says
+TELEPORTER), and the full heal is right there with you. A new run starts with the shop dark:
+the teleporter crackles blue, your torch shows what's near, and after two seconds the ceiling tube
+over the teleporter and heal stutters on. Each time you walk into the last lit section, the next
+one along flickers on, one vending machine at a time (they stand evenly spaced), and once you
+reach the perk machine the rest of the hall comes on. The first
 heal on a floor is free; after that it costs 100 gold, and each one after costs
 1.75 times the last (100, 175, 305, 535…). Deeper floors raise the price the same
 way they raise what enemies pay out. A new floor's shop starts it free again.
 
 The three vending machines run left to right: mods, guns, perks.
-Mods come from the **vending machine** just left of the middle of the room, the one with a
+Mods come from the **vending machine** past the sell machine, the one with a
 flickering ⚙️ hologram on its glass. Stand at it and "Tap R to shop" opens its menu over
 the screen (the game pauses). The top half is your **collection**: a cell for every mod,
 grouped by rarity, empty until you unlock it. Under it, the **red crystal** button: hand
@@ -622,7 +627,7 @@ them if it cannot find either.
 - A trajectory aim line — unlocked by the Trajectory Sight perk — that simulates the next shot for real: gravity, acceleration, homing, ricochets, drilling and spread
 - A full-screen map (map button, pauses the run): the revealed cave drawn as white outlines, with a yellow dot for your position
 - Recoil that shoves you around, which the jetpack can work with
-- Gold that flies to you once you are close enough (a short range for now)
+- Gold that flies to you once you are close enough (a short range for now); gold just knocked loose by a kill or a dig waits a quarter of a second first, so you see it
 - A black arcade control deck: mono type, scanlines, and two rings on the right stick — the dead zone and the full throw
 - Picking a mod up is one tap — its card shows while you stand next to it, and a tap drops it straight in your bag; a gun opens a compare-and-swap chooser so you can pick which of your four slots it takes
 - Jetpack with fuel that refills on the ground; upward thrust is instant

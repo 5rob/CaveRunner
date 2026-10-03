@@ -26,6 +26,7 @@ import { drawBeams, drawFields, drawShots } from './looks.js';
 import { drawHud, drawMap, drawMessages, drawRadar, drawReticule } from './overlay.js';
 import { drawPads } from './pads.js';
 import { drawShops } from './shops.js';
+import { drawTubes } from './shoplights.js';
 import { drawRepo, drawVend, drawWarp } from './vend.js';
 
 /** @param {World} W @param {GameCtx} G */
@@ -63,6 +64,7 @@ export function draw(W, G) {
   G.ctx.translate(-F.snapX, -F.snapY);
   drawFog(W, G, F);                         // line of sight lifts the fog; the fog (light.js)
   drawGlows(W, G, F);                       // light over the fog (light.js)
+  drawTubes(W, G, F);                       // the shop's ceiling tubes and their light (shoplights.js)
   drawPads(W, G, F);                        // the teleporter pads' beams and lightning (pads.js)
   drawWarp(W, G, F);                        // a level teleporting in or out: flash, crackle (vend.js)
   drawRepo(W, G, F);                        // repossessed: red lights, then the fire jets (vend.js)
