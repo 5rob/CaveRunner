@@ -6,7 +6,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v0.0.136 — the dark shop, the TELEPORTER sign, gold you can see
-Not released yet: waiting on the owner's OK of the screenshots.
+Released 2026-10-03 (after the owner's OK of the screenshots).
 
 - **A new run starts in a dark shop** (`world/shoplights.js`, `game/systems/shoplights.js`,
   `game/render/shoplights.js`): the way in crackles blue (and fizzes) while only it and your torch light
