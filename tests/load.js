@@ -25,7 +25,7 @@ class ImageData { constructor(w, h) { this.width = w; this.height = h; this.data
 const React = { createElement: () => {} };
 const ReactDOM = { createRoot: () => ({ render: () => {} }) };
 const document = { getElementById: () => null };
-const VERSION = /VERSION = '(v\d+)';/.exec(read(path.join(SRC, 'version.js')))[1];
+const VERSION = /VERSION = '(v\d+\.\d+\.\d+)';/.exec(read(path.join(SRC, 'version.js')))[1];
 
 const mod = { exports: {} };
 new Function('module', 'exports', 'require', 'ImageData', 'React', 'ReactDOM', 'document', 'VERSION', code)(
