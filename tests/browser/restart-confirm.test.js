@@ -1,6 +1,6 @@
 // Restart now asks for confirmation. Prove three things by measurement:
 //  1. a single tap on Restart never restarts the run on its own.
-//  2. confirming (after the gate) does restart.
+//  2. confirming (after the gate) does restart, emptying the mods unlocked (the perks unlocked stay).
 //  3. the very tap that opens the confirm cannot also land on the Yes button
 //     and action it — the same physical gesture can't both open and confirm.
 const { launch } = require('../chromium');
@@ -47,6 +47,11 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('Cancel keeps the run', st.marker === 'run-a', st);
 
   // --- 2. confirming after the gate does restart ---
+  // (with mods and perks unlocked at the machines: a new run empties the mods, keeps the perks, like a death)
+  await page.evaluate(() => {
+    window.__in.current.collection.push('bolt', 'bounce'); saveCollection(window.__in.current.collection);
+    window.__in.current.perkCollection.push('sight');
+  });
   await restart();
   await page.waitForTimeout(500);           // clear of the anti-double-fire gate
   await page.tap('.confirmRow .go');
@@ -55,6 +60,10 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('confirming restarts the run', st.marker === null, st);
   check('confirming closes the confirm', st.confirmOpen === false, st);
   check('a fresh run has its starting guns back', st.guns === 2, st);
+  const un = await page.evaluate(() => ({ mods: window.__in.current.collection.length, stored: loadCollection().length,
+    perks: window.__in.current.perkCollection.includes('sight') }));
+  check('Restart empties the mods unlocked (and their store)', un.mods === 0 && un.stored === 0, un);
+  check('but keeps the perks unlocked', un.perks, un);
 
   // --- 3. the tap that opens the confirm cannot also land on Yes ---
   // Simulate the double-fire this project has actually hit before: two

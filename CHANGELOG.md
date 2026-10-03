@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.133 — Restart empties the mods unlocked
+Released 2026-10-03.
+
+- **Dev → Restart run starts clean like a death**: `restart` (`ui/app.js`) empties the mods unlocked
+  (`collection` and its store); the perks unlocked stay, as on a death. `restart-confirm` checks it.
+
 ## v0.0.132 — version numbers are major.minor.patch
 Released 2026-10-03.
 
