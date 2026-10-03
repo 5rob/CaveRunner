@@ -256,7 +256,8 @@ export function jetFlame(ctx, bx, by, ux, uy, len, time) {
   const nx = -uy, ny = ux;                         // across the flame
   /** @param {number} k along @param {number} side across @returns {[number, number]} */
   const at = (k, side) => [bx + ux * len * k + nx * side, by + uy * len * k + ny * side];
-  const layers = [['#d8381a', 1, 3.6], [COL.flame, 0.82, 2.8], [COL.flame2, 0.55, 1.9], ['#fff6d8', 0.28, 1.1]];
+  // base radii as wide as the backpack's nozzle
+  const layers = [['#d8381a', 1, 2.5], [COL.flame, 0.82, 1.95], [COL.flame2, 0.55, 1.35], ['#fff6d8', 0.28, 0.8]];
   for (const [col, k, r] of layers) {
     ctx.fillStyle = String(col);
     const kk = Number(k), rr = Number(r);

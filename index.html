@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v130</title>
+<title>CaveRunner v131</title>
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -690,7 +690,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v130';</script>
+<script>const VERSION = 'v131';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -6916,190 +6916,634 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
 
-  // src/world/ragdoll.js
-  var RAG_POSE = [
-    [0, 5],
-    // 0 head (the helmet's centre)
-    [0, 10],
-    // 1 chest (the shoulders)
-    [0, 15.4],
-    // 2 hip
-    [-1.2, 18.4],
-    // 3 back knee
-    [-1.7, 21],
-    // 4 back foot
-    [1.8, 18.2],
-    // 5 front knee
-    [1.7, 21],
-    // 6 front foot
-    [4.6, 11.6],
-    // 7 front hand (the gun's)
-    [2.2, 12.2],
-    // 8 front elbow
-    [-2.1, 12.4],
-    // 9 back elbow
-    [-3.6, 11]
-    // 10 back hand (the torch's)
-  ];
-  var RAG_STICKS = [[0, 1], [1, 2], [2, 3], [3, 4], [2, 5], [5, 6], [1, 8], [8, 7], [1, 9], [9, 10], [0, 2], [1, 3], [1, 5]];
-  var RAG_BRACE = 11;
-  var RAG_SUB = 4;
-  var RAG_ITER = 3;
-  var RAG_VMAX = 900;
-  var RAG_FRICTION = 0.01;
-  var RAG_SLUMP = 1.5;
-  var RAG_DRAG = 0.4;
-  function ragNew(x, y, w, face, vx, vy, rnd2) {
-    rnd2 = rnd2 || Math.random;
-    const cx = x + w / 2, sp = Math.hypot(vx, vy);
-    const joints = RAG_POSE.map(([px, py], i) => {
-      const up = 1 - py / 22;
-      const tipX = (rnd2() - 0.5) * 50 - face * 25;
-      return {
-        x: cx + px * face,
-        y: y + py,
-        vx: vx * (0.85 + 0.4 * up) + tipX * up + (i === 7 || i === 10 ? (rnd2() - 0.5) * 80 : 0),
-        vy: vy - (sp > 250 ? 60 * up : 0),
-        ox: 0,
-        oy: 0,
-        g: 0
-      };
-    });
-    const len = RAG_STICKS.map(([a, b]) => Math.hypot(joints[a].x - joints[b].x, joints[a].y - joints[b].y));
-    const tip = rnd2() < 0.75 ? -(face || 1) : face || 1;
-    return { face: face || 1, joints, len, rest: 0, still: false, tip, age: 0 };
+  // src/spells/spawn.js
+  var NOITA_SPAWN = {
+    LIGHT_BULLET: ["0,1,2", "2,1,0.5"],
+    LIGHT_BULLET_TRIGGER: ["0,1,2,3", "1,0.5,0.5,0.5"],
+    LIGHT_BULLET_TRIGGER_2: ["2,3,5,6,10", "1,0.5,1,1,0.2"],
+    LIGHT_BULLET_TIMER: ["1,2,3", "0.5,0.5,0.75"],
+    BULLET: ["1,2,3,4,5", "1,1,1,0.8,0.5"],
+    BULLET_TRIGGER: ["1,2,3,4,5", "0.5,0.5,0.5,0.6,0.5"],
+    BULLET_TIMER: ["2,3,4,5,6", "0.5,0.5,0.5,0.5,0.6"],
+    HEAVY_BULLET: ["1,2,3,4,5,6", "0.5,1,1,1,1,1"],
+    SLOW_BULLET: ["1,2,3,4", "1,1,1,1"],
+    SLOW_BULLET_TRIGGER: ["1,2,3,4,5", "0.5,0.5,0.5,0.5,1"],
+    SLOW_BULLET_TIMER: ["1,2,3,4,5,6", "0.5,0.5,0.5,0.5,1,1"],
+    BLACK_HOLE: ["0,2,4,5", "0.8,0.8,0.8,0.8"],
+    BLACK_HOLE_DEATH_TRIGGER: ["2,4,5,6", "0.5,0.5,0.5,0.5"],
+    SPITTER: ["0,1,2,3", "1,1,1,0.5"],
+    SPITTER_TIMER: ["0,1,2,3", "0.5,0.5,0.5,1"],
+    BUBBLESHOT: ["0,1,2,3", "1,0.6,1,0.5"],
+    BUBBLESHOT_TRIGGER: ["1,2,3", "0.5,0.5,1"],
+    DISC_BULLET: ["0,2,4", "1,1,0.6"],
+    BOUNCY_ORB: ["0,2,4", "1,1,1"],
+    BOUNCY_ORB_TIMER: ["0,2,4", "0.5,0.5,0.5"],
+    RUBBER_BALL: ["0,1,6", "1,1,0.2"],
+    POLLEN: ["0,1,3,4", "0.6,1,1,0.6"],
+    LANCE: ["1,2,5,6", "0.9,1,0.8,1"],
+    ROCKET: ["1,2,3,4,5", "1,1,1,0.5,0.3"],
+    GRENADE: ["0,1,2,3,4", "1,1,0.5,0.25,0.2"],
+    GRENADE_TRIGGER: ["0,1,2,3,4,5", "0.5,0.5,0.2,0.5,0.5,1"],
+    MINE: ["1,3,4,6", "1,0.75,1,0.5"],
+    MINE_DEATH_TRIGGER: ["2,6", "1,1"],
+    PIPE_BOMB: ["2,3,4", "1,1,0.6"],
+    PIPE_BOMB_DEATH_TRIGGER: ["2,3,4,5", "0.6,0.8,1,0.8"],
+    LIGHTNING: ["1,2,5,6", "1,0.9,0.7,1"],
+    LASER_EMITTER: ["1,2,3,4", "0.2,0.8,1,0.5"],
+    DIGGER: ["1,2", "1,0.5"],
+    CHAINSAW: ["0,2", "1,1"],
+    LUMINOUS_DRILL: ["0,2,10", "1,1,0.1"],
+    LASER_LUMINOUS_DRILL: ["0,2,6,10", "1,1,0.2,0.1"],
+    CHAIN_BOLT: ["0,4,5,6", "0.75,1,0.8,0.6"],
+    FIREBALL: ["0,3,4,6", "1,0.7,1,0.5"],
+    METEOR: ["4,5,6,10", "0.6,0.6,0.7,0.5"],
+    BUCKSHOT: ["0,1,2,3,4", "1,1,0.9,0.9,0.6"],
+    BOMB: ["0,1,2,3,4,5,6", "1,1,1,1,0.5,0.5,0.1"],
+    DEATH_CROSS: ["1,2,3,4,5,6", "1,0.8,0.6,0.5,0.5,0.3"],
+    NUKE: ["1,5,6,10", "0.3,1,1,0.2"],
+    TELEPORT_PROJECTILE: ["0,1,2,4,5,6", "0.6,0.6,0.6,0.4,0.4,0.4"],
+    TELEPORT_PROJECTILE_SHORT: ["0,1,2,4,5,6", "0.6,0.6,0.6,0.4,0.4,0.4"],
+    PURPLE_EXPLOSION_FIELD: ["0,1,2,4,5,6", "0.7,1,0.7,0.5,0.5,0.3"],
+    LONG_DISTANCE_CAST: ["0,1,2,4,5,6", "0.6,0.7,0.8,0.6,0.3,0.4"],
+    TELEPORT_CAST: ["1,2,4,5,6", "0.6,0.6,0.6,0.8,1"],
+    SUPER_TELEPORT_CAST: ["2,4,5,6", "0.2,0.6,0.8,0.8"],
+    BURST_2: ["0,1,2,3,4,5,6", "0.8,0.8,0.8,0.8,0.8,0.8,0.8"],
+    BURST_3: ["1,2,3,4,5,6", "0.7,0.7,0.7,0.7,0.7,0.7"],
+    BURST_4: ["2,3,4,5,6", "0.4,0.5,0.6,0.6,0.6"],
+    BURST_8: ["5,6,10", "0.1,0.1,0.5"],
+    BURST_X: ["5,6,10", "0.1,0.1,0.5"],
+    SCATTER_3: ["0,1,2,3", "0.6,0.7,0.7,0.8"],
+    I_SHAPE: ["1,2,3", "0.4,0.5,0.3"],
+    Y_SHAPE: ["0,1,2,3", "0.8,0.5,0.4,0.3"],
+    W_SHAPE: ["2,3,4,5,6", "0.4,0.3,0.5,0.3,0.3"],
+    SPREAD_REDUCE: ["1,2,3,4,5,6", "0.8,0.8,0.8,0.8,0.7,0.6"],
+    HEAVY_SPREAD: ["0,1,2,4,5,6", "0.6,0.7,0.8,0.8,0.8,0.6"],
+    RECHARGE: ["1,2,3,4,5,6", "0.8,0.9,1,0.8,0.9,1"],
+    LIFETIME: ["3,4,5,6,10", "0.5,0.5,0.5,0.75,0.1"],
+    LIFETIME_DOWN: ["3,4,5,6,10", "0.5,0.5,0.75,0.5,0.1"],
+    MANA_REDUCE: ["1,2,3,4,5,6", "0.7,0.9,1,1,1,1"],
+    BLOOD_MAGIC: ["5,6,10", "0.3,0.7,0.5"],
+    MONEY_MAGIC: ["3,5,6,10", "0.2,0.8,0.3,0.5"],
+    BLOOD_TO_POWER: ["2,5,6,10", "0.2,0.8,0.2,0.5"],
+    QUANTUM_SPLIT: ["2,3,4,5,6", "0.5,0.6,0.5,0.5,1"],
+    GRAVITY: ["2,3,4,5,6", "0.5,0.4,0.4,0.3,0.3"],
+    GRAVITY_ANTI: ["2,3,4,5,6", "0.5,0.4,0.4,0.3,0.3"],
+    PINGPONG_PATH: ["1,3,5", "0.4,0.5,0.4"],
+    HORIZONTAL_ARC: ["1,3,5", "0.4,0.4,0.4"],
+    ORBIT_SHOT: ["1,2,3,4", "0.2,0.4,0.4,0.3"],
+    SPIRALING_SHOT: ["1,2,3,4", "0.2,0.3,0.4,0.5"],
+    BOUNCE: ["2,3,4,6", "1,1,0.4,0.2"],
+    HOMING: ["1,2,3,4,5,6", "0.1,0.4,0.4,0.4,0.4,0.4"],
+    HOMING_SHORT: ["1,2,3,4,5,6", "0.4,0.8,1,0.4,0.3,0.1"],
+    HOMING_SHOOTER: ["2,3,4,6", "0.2,0.3,0.2,0.2"],
+    AUTOAIM: ["2,3,4,5,6", "0.4,0.4,0.4,0.4,0.4"],
+    HOMING_ACCELERATING: ["1,2,3,4", "0.1,0.3,0.3,0.5"],
+    PIERCING_SHOT: ["2,3,4,5,6", "0.4,0.5,0.6,0.6,0.4"],
+    CLIPPING_SHOT: ["2,3,4,5,6", "0.2,0.3,0.6,0.4,0.6"],
+    DAMAGE: ["1,2,3,4,5", "0.6,0.6,0.8,0.6,0.6"],
+    DAMAGE_RANDOM: ["3,4,5", "0.7,0.6,0.6"],
+    BLOODLUST: ["1,3,4,5,6", "0.2,0.3,0.6,0.7,0.3"],
+    DAMAGE_FOREVER: ["2,3,4,5,6,10", "0.2,0.3,0.6,0.5,0.2,0.2"],
+    CRITICAL_HIT: ["1,2,3,4,5", "0.5,0.6,0.6,0.7,0.6"],
+    HEAVY_SHOT: ["2,3,4", "0.4,0.4,0.5"],
+    LIGHT_SHOT: ["2,3,4", "0.3,0.5,0.4"],
+    KNOCKBACK: ["3,5", "0.7,0.6"],
+    RECOIL: ["2,4", "0.6,0.7"],
+    RECOIL_DAMPER: ["3,6", "0.6,0.7"],
+    SPEED: ["1,2,3", "1,0.5,0.5"],
+    ACCELERATING_SHOT: ["2,3,4", "0.5,0.4,1"],
+    EXPLOSIVE_PROJECTILE: ["2,3,4", "1,1,0.8"],
+    CLUSTERMOD: ["1,2,3", "0.5,1,0.6"],
+    EXPLOSION: ["0,2,4,5", "0.5,1,1,0.7"],
+    FIRE_BLAST: ["0,1,3,5", "0.5,0.7,0.6,0.4"],
+    FREEZE_FIELD: ["0,2,4,5", "0.3,0.6,0.7,0.3"],
+    REGENERATION_FIELD: ["1,2,3,4", "0.3,0.3,0.4,0.3"],
+    SHIELD_FIELD: ["2,3,4,5,6", "0.3,0.3,0.4,0.5,0.3"],
+    VACUUM_ENTITIES: ["2,3,5,6", "0.3,0.7,0.3,0.4"],
+    CLOUD_THUNDER: ["0,1,2,3,4,5", "0.3,0.3,0.2,0.3,0.4,0.5"],
+    MATTER_EATER: ["1,2,4,5,10", "0.1,0.9,0.1,0.2,0.2"],
+    BOUNCE_EXPLOSION: ["2,3,4,5", "0.2,0.6,0.8,0.8"],
+    ALL_DISCS: ["0,6,10", "0.1,0.05,1"],
+    RESET: ["10", "1"],
+    ADD_TRIGGER: ["3,4,5,10", "0.3,0.6,0.6,1"],
+    ADD_TIMER: ["3,4,5,10", "0.3,0.6,0.6,1"],
+    ADD_DEATH_TRIGGER: ["3,4,5,10", "0.3,0.6,0.6,1"],
+    ALPHA: ["5,6,10", "0.1,0.2,1"],
+    GAMMA: ["5,6,10", "0.1,0.2,1"],
+    TAU: ["5,6,10", "0.1,0.2,1"],
+    OMEGA: ["5,6,10", "0.1,0.1,1"],
+    MU: ["5,6,10", "0.1,0.2,1"],
+    PHI: ["5,6,10", "0.1,0.2,1"],
+    SIGMA: ["4,5,10", "0.1,0.2,1"],
+    ZETA: ["2,5,10", "0.2,0.4,0.5"],
+    // ours alone: no Noita twin
+    OURS_COLD: ["3,4,5,6", "0.2,0.3,0.4,0.5"],
+    OURS_BATTERY: ["2,3,4,5,6", "0.3,0.4,0.5,0.5,0.5"],
+    OURS_AUTO: ["0,1,2,3,4,5,6", "0.4,0.4,0.4,0.4,0.4,0.4,0.4"]
+  };
+  var NOITA_OF = {
+    bolt: "LIGHT_BULLET",
+    spark: "LIGHT_BULLET",
+    slug: "HEAVY_BULLET",
+    buck: "BUCKSHOT",
+    lance: "LANCE",
+    orb: "RUBBER_BALL",
+    saw: "CHAINSAW",
+    blast: "BOMB",
+    dmg_up: "DAMAGE",
+    heavy: "HEAVY_SHOT",
+    light: "LIGHT_SHOT",
+    speed: "SPEED",
+    accel: "ACCELERATING_SHOT",
+    homing: "HOMING",
+    seeker: "HOMING_ACCELERATING",
+    bounce: "BOUNCE",
+    pierce: "PIERCING_SHOT",
+    tight: "SPREAD_REDUCE",
+    scatter: "SCATTER_3",
+    big: "DAMAGE",
+    range: "LIFETIME",
+    brief: "LIFETIME_DOWN",
+    tip: "EXPLOSIVE_PROJECTILE",
+    borer: "CLIPPING_SHOT",
+    fast: "RECHARGE",
+    over: "HEAVY_SHOT",
+    double: "BURST_2",
+    triple: "BURST_3",
+    quad: "BURST_4",
+    cheap: "MANA_REDUCE",
+    trigger: "RECHARGE",
+    over_heat: "DAMAGE_RANDOM",
+    cold: "OURS_COLD",
+    recharge: "RECHARGE",
+    battery: "OURS_BATTERY",
+    auto: "OURS_AUTO",
+    arrow: "BULLET",
+    missile: "ROCKET",
+    fball: "FIREBALL",
+    fbolt: "GRENADE",
+    bubble: "BUBBLESHOT",
+    spit: "SPITTER",
+    eorb: "SLOW_BULLET",
+    esph: "BOUNCY_ORB",
+    zap: "LIGHTNING",
+    chain: "CHAIN_BOLT",
+    void: "BLACK_HOLE",
+    digbolt: "DIGGER",
+    glance: "LANCE",
+    plasma: "LASER_EMITTER",
+    ldrill: "LUMINOUS_DRILL",
+    cross: "DEATH_CROSS",
+    pollen: "POLLEN",
+    disc: "DISC_BULLET",
+    nuke: "NUKE",
+    meteor: "METEOR",
+    tele: "TELEPORT_PROJECTILE",
+    teleshort: "TELEPORT_PROJECTILE_SHORT",
+    boom: "EXPLOSION",
+    brim: "FIRE_BLAST",
+    crystal: "MINE",
+    dormant: "PIPE_BOMB",
+    stillc: "FREEZE_FIELD",
+    shieldc: "SHIELD_FIELD",
+    vigour: "REGENERATION_FIELD",
+    storm: "CLOUD_THUNDER",
+    vacfield: "VACUUM_ENTITIES",
+    glitter: "PURPLE_EXPLOSION_FIELD",
+    refresh: "RESET",
+    blood: "BLOOD_MAGIC",
+    bpower: "BLOOD_TO_POWER",
+    gpower: "MONEY_MAGIC",
+    farcast: "LONG_DISTANCE_CAST",
+    telecast: "TELEPORT_CAST",
+    warpcast: "SUPER_TELEPORT_CAST",
+    sawstorm: "ALL_DISCS",
+    knock: "KNOCKBACK",
+    kick: "RECOIL",
+    damper: "RECOIL_DAMPER",
+    crit: "CRITICAL_HIT",
+    gravmod: "GRAVITY",
+    float: "GRAVITY_ANTI",
+    boomer: "HOMING_SHOOTER",
+    spiral: "SPIRALING_SHOT",
+    pong: "PINGPONG_PATH",
+    orbit: "ORBIT_SHOT",
+    autoaim: "AUTOAIM",
+    nearhome: "HOMING_SHORT",
+    flat: "HORIZONTAL_ARC",
+    eater: "MATTER_EATER",
+    lust: "BLOODLUST",
+    manapow: "DAMAGE_FOREVER",
+    split: "QUANTUM_SPLIT",
+    cluster: "CLUSTERMOD",
+    bboom: "BOUNCE_EXPLOSION",
+    hspread: "HEAVY_SPREAD",
+    oct: "BURST_8",
+    myriad: "BURST_X",
+    bifur: "Y_SHAPE",
+    trifur: "W_SHAPE",
+    behind: "I_SHAPE",
+    alpha: "ALPHA",
+    gamma: "GAMMA",
+    tau: "TAU",
+    omega: "OMEGA",
+    phi: "PHI",
+    sigma: "SIGMA",
+    mu: "MU",
+    zeta: "ZETA",
+    addtrig: "ADD_TRIGGER",
+    addtimer: "ADD_TIMER",
+    adddeath: "ADD_DEATH_TRIGGER",
+    bolt_t: "LIGHT_BULLET_TRIGGER",
+    bolt_tt: "LIGHT_BULLET_TRIGGER_2",
+    arrow_t: "BULLET_TRIGGER",
+    fbolt_t: "GRENADE_TRIGGER",
+    bubble_t: "BUBBLESHOT_TRIGGER",
+    eorb_t: "SLOW_BULLET_TRIGGER",
+    crystal_t: "MINE_DEATH_TRIGGER",
+    dormant_t: "PIPE_BOMB_DEATH_TRIGGER",
+    bolt_ti: "LIGHT_BULLET_TIMER",
+    arrow_ti: "BULLET_TIMER",
+    spit_ti: "SPITTER_TIMER",
+    esph_ti: "BOUNCY_ORB_TIMER",
+    eorb_ti: "SLOW_BULLET_TIMER",
+    ldrill_ti: "LASER_LUMINOUS_DRILL",
+    void_d: "BLACK_HOLE_DEATH_TRIGGER"
+  };
+  var floorTier = (floor) => floor > 10 ? 10 : Math.max(0, (floor - 1) * 6 / 9);
+  function noitaP(id, tier) {
+    const row = NOITA_SPAWN[NOITA_OF[id]];
+    if (!row) return 0;
+    const lv = row[0].split(",").map(Number), pr = row[1].split(",").map(Number);
+    const k = lv.indexOf(tier);
+    return k < 0 ? 0 : pr[k];
   }
-  function collide(j, solid, fr) {
-    if (!solid(j.x, j.y)) return;
-    if (!solid(j.ox, j.y)) {
-      j.x = j.ox;
-      return;
-    }
-    if (!solid(j.x, j.oy)) {
-      if (j.y > j.oy) j.g = 1;
-      j.y = j.oy;
-      j.x = j.ox + (j.x - j.ox) * fr;
-      return;
-    }
-    j.x = j.ox;
-    j.y = j.oy;
-    if (solid(j.x, j.y)) j.y -= 1;
+  var TIER_FLOOR = { 4: 4 };
+  function modWeight(id, floor) {
+    const t = floorTier(floor);
+    if (floor < (TIER_FLOOR[tierOf(id)] || 0)) return 0;
+    if (t >= 10) return Math.max(noitaP(id, 10), noitaP(id, 6));
+    const a = Math.floor(t), f = t - a;
+    return noitaP(id, a) * (1 - f) + noitaP(id, a + 1) * f;
   }
-  function ragStep(R, dt, solid) {
-    if (R.still || dt <= 0) return;
-    const h3 = dt / RAG_SUB, J = R.joints, fr = Math.pow(RAG_FRICTION, h3), drag = Math.pow(RAG_DRAG, h3);
-    R.age += dt;
-    const slump = R.age < RAG_SLUMP ? R.tip * 420 * h3 : 0;
-    for (let s = 0; s < RAG_SUB; s++) {
-      J[0].vx += slump;
-      J[1].vx += slump * 0.5;
-      J[2].vx -= slump * 0.75;
-      for (const j of J) {
-        j.ox = j.x;
-        j.oy = j.y;
-        j.g = 0;
-        j.vy += GRAVITY * h3;
-        j.vx *= drag;
-        j.vy *= drag;
-        const v = Math.hypot(j.vx, j.vy);
-        if (v > RAG_VMAX) {
-          j.vx *= RAG_VMAX / v;
-          j.vy *= RAG_VMAX / v;
-        }
-        j.x += j.vx * h3;
-        j.y += j.vy * h3;
-        collide(j, solid, fr);
-      }
-      for (let it = 0; it < RAG_ITER; it++) {
-        for (let k = 0; k < RAG_STICKS.length; k++) {
-          const a = J[RAG_STICKS[k][0]], b = J[RAG_STICKS[k][1]];
-          const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1e-6;
-          if (k >= RAG_BRACE && d >= R.len[k]) continue;
-          const f = (d - R.len[k]) / d * 0.5;
-          a.x += dx * f;
-          a.y += dy * f;
-          b.x -= dx * f;
-          b.y -= dy * f;
-        }
-        for (const j of J) collide(j, solid, 1);
-      }
-      for (const j of J) {
-        j.vx = (j.x - j.ox) / h3;
-        j.vy = (j.y - j.oy) / h3;
-      }
+  function rollMod(rnd2, floor, skip) {
+    let total = 0;
+    for (const id of ALL_IDS) if (!skip || !skip[id]) total += modWeight(id, floor);
+    let r = rnd2() * total;
+    for (const id of ALL_IDS) {
+      if (skip && skip[id]) continue;
+      r -= modWeight(id, floor);
+      if (r <= 0) return id;
     }
-    let fast = 0;
-    for (const j of J) fast = Math.max(fast, Math.abs(j.vx) + Math.abs(j.vy));
-    R.rest = fast < 8 ? R.rest + dt : 0;
-    if (R.rest > 1) {
-      R.still = true;
-      for (const j of J) {
-        j.vx = 0;
-        j.vy = 0;
-      }
-    }
+    return "bolt";
   }
-  function ragPush(R, x, y, rad, power) {
-    const P2 = power || 500;
-    let hit = false;
-    for (const j of R.joints) {
-      const dx = j.x - x, dy = j.y - y, d = Math.hypot(dx, dy);
-      if (d >= rad) continue;
-      const f = 1 - d / rad;
-      j.vx += dx / (d || 1) * P2 * f;
-      j.vy += dy / (d || 1) * P2 * f - 150 * f;
-      hit = true;
-    }
-    if (hit) {
-      R.still = false;
-      R.rest = 0;
-    }
-  }
-  var ragHip = (R) => R.joints[2];
 
-  // src/world/veins.js
-  var ORE_GOLD = 0.25;
-  function goldVeins(mat, seed, floor) {
-    let rs = (seed * 7919 + 12345) % 2147483647 || 1;
-    const rnd2 = () => (rs = rs * 16807 % 2147483647) / 2147483647;
-    const ore = new Uint8Array(CW * CH);
-    const n = Math.min(18, 7 + floor);
-    const maxY = SHOP_TOP - SHOP_ROOF - 6;
-    const rockAt = (x, y) => x >= 4 && y >= 4 && x < CW - 4 && y < maxY && mat[y * CW + x] === ROCK;
-    const nearOpen = (x, y, r) => {
-      for (let d = 2; d <= r; d += 2)
-        for (let k = 0; k < 8; k++) {
-          const a = k * Math.PI / 4, px = Math.round(x + Math.cos(a) * d), py = Math.round(y + Math.sin(a) * d);
-          if (px >= 0 && py >= 0 && px < CW && py < CH && !mat[py * CW + px]) return true;
-        }
-      return false;
-    };
-    for (let v = 0; v < n; v++) {
-      let x = 0, y = 0, ok = false;
-      for (let tries = 0; tries < 200 && !ok; tries++) {
-        x = 6 + Math.floor(rnd2() * (CW - 12));
-        y = 6 + Math.floor(rnd2() * (maxY - 12));
-        ok = rockAt(x, y) && rockAt(x + 3, y) && rockAt(x - 3, y) && rockAt(x, y + 3) && rockAt(x, y - 3) && nearOpen(x, y, 16);
-      }
-      if (!ok) continue;
-      let a = rnd2() * Math.PI * 2;
-      const len = 18 + Math.floor(rnd2() * 40);
-      for (let st = 0; st < len; st++) {
-        const r = rnd2() < 0.2 ? 2 : 1;
-        for (let dy = -r; dy <= r; dy++)
-          for (let dx = -r; dx <= r; dx++) {
-            if (dx * dx + dy * dy > r * r + 0.5) continue;
-            const px = Math.round(x) + dx, py = Math.round(y) + dy;
-            if (rockAt(px, py)) ore[py * CW + px] = 1;
-          }
-        a += (rnd2() - 0.5) * 0.9;
-        x += Math.cos(a) * 1.2;
-        y += Math.sin(a) * 1.2;
-        if (!rockAt(Math.round(x), Math.round(y))) break;
-      }
-    }
-    return ore;
+  // src/spells/guns.js
+  var hueFromName = (name) => {
+    let h3 = 0;
+    for (let i = 0; i < name.length; i++) h3 = h3 * 31 + name.charCodeAt(i) >>> 0;
+    return h3 % 360;
+  };
+  var gunHue = (g) => g && g.hue != null ? g.hue : hueFromName(g ? g.name : "");
+  var gunColor = (g) => "hsl(" + gunHue(g) + ", var(--gun-s), var(--gun-l))";
+  function gunPrice(g) {
+    const rate = 1 / Math.max(0.05, g.castDelay) + 1 / Math.max(0.1, g.recharge);
+    const v = g.cap * 20 + rate * 7 + g.manaMax * 0.1 + g.manaRegen * 0.3 + (g.multi - 1) * 45 + ((g.speedMul || 1) - 1) * 40 - g.spread * 3 + (g.shuffle ? -30 : 20);
+    return Math.max(45, Math.round(v / 5) * 5);
   }
+  var isGunShop = (floor) => floor % 2 === 0;
+  var GUN_A = [
+    "Rusty",
+    "Bone",
+    "Cracked",
+    "Copper",
+    "Glass",
+    "Ivory",
+    "Molten",
+    "Static",
+    "Hollow",
+    "Ember",
+    "Quartz",
+    "Iron",
+    "Pale",
+    "Gilded"
+  ];
+  var GUN_B = [
+    "Pistol",
+    "Repeater",
+    "Carbine",
+    "Scattergun",
+    "Lance",
+    "Sidearm",
+    "Blaster",
+    "Cannon",
+    "Spitter",
+    "Wand"
+  ];
+  function shuffleOrder(g) {
+    g.order = g.slots.map((_, i) => i);
+    if (g.shuffle) for (let i = g.order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [g.order[i], g.order[j]] = [g.order[j], g.order[i]];
+    }
+  }
+  function resetGun(g) {
+    g.idx = 0;
+    g.delayT = 0;
+    g.rechT = 0;
+    shuffleOrder(g);
+    return g;
+  }
+  var GUN_LV_MAX = 10;
+  var RARE_GUN = 0.2;
+  var GUN_RANGE = {
+    // [worst, best]
+    cap: [2, 25],
+    castDelay: [1.5, 0.01],
+    recharge: [1.5, 0.01],
+    manaMax: [50, 1e3],
+    manaRegen: [10, 500],
+    spread: [20, 0],
+    speedMul: [0.5, 2]
+  };
+  var GUN_LV_COL = [
+    "#9a9a9a",
+    "#d8d8d8",
+    "#5fd35f",
+    "#3fc9a8",
+    "#4aa3ff",
+    "#7a7aff",
+    "#b565ff",
+    "#ff5fcf",
+    "#ff9a2a",
+    "#ffd23c"
+  ];
+  var gunLvTier = (lvl) => Math.min(1, Math.max(0, (lvl - 1) / (GUN_LV_MAX - 1)));
+  function gunStat(rnd2, k, t) {
+    const [w, b] = GUN_RANGE[k];
+    const f = rnd2() * (1 - t) + rnd2() * 0.1 * t;
+    return b + (w - b) * f;
+  }
+  function gunLevel(floor, rnd2) {
+    const base = Math.min(GUN_LV_MAX, Math.max(1, floor));
+    if (base < GUN_LV_MAX && rnd2() < RARE_GUN) return base + 1 + Math.floor(rnd2() * (GUN_LV_MAX - base));
+    return base;
+  }
+  function caveGun(lvl, rnd2) {
+    return makeGun(rnd2, Math.min(GUN_LV_MAX, Math.max(1, Math.floor(lvl))));
+  }
+  function makeGun(rnd2, lvl) {
+    const t = gunLvTier(lvl);
+    const cap = Math.max(2, Math.min(25, Math.round(gunStat(rnd2, "cap", t))));
+    const g = {
+      name: GUN_A[Math.floor(rnd2() * GUN_A.length)] + " " + GUN_B[Math.floor(rnd2() * GUN_B.length)],
+      lvl,
+      cap,
+      castDelay: gunStat(rnd2, "castDelay", t),
+      recharge: gunStat(rnd2, "recharge", t),
+      manaMax: Math.round(gunStat(rnd2, "manaMax", t)),
+      manaRegen: Math.round(gunStat(rnd2, "manaRegen", t)),
+      spread: gunStat(rnd2, "spread", t),
+      speedMul: gunStat(rnd2, "speedMul", t),
+      multi: rnd2() < 0.1 + t * 0.4 ? 2 : 1,
+      shuffle: rnd2() < 0.5 * (1 - t),
+      slots: new Array(cap).fill(null),
+      hue: Math.floor(rnd2() * 360)
+    };
+    const used = 1 + Math.floor(rnd2() * Math.min(cap, 2 + t * 3));
+    const spots = g.slots.map((_, i) => i).sort(() => rnd2() - 0.5).slice(0, used);
+    const asFloor = 1 + t * 5;
+    spots.forEach((slot, n) => {
+      g.slots[slot] = n === 0 ? SEED_SHOTS[Math.floor(rnd2() * SEED_SHOTS.length)] : rollMod(rnd2, asFloor);
+    });
+    if (!g.slots.some((id) => id && MODS[id].kind === "shot")) g.slots[spots[0]] = "bolt";
+    g.mana = g.manaMax;
+    return resetGun(g);
+  }
+  function startingGuns() {
+    const pistol = resetGun({
+      name: "Scratch Pistol",
+      cap: 3,
+      castDelay: 0.32,
+      recharge: 1.7,
+      manaMax: 90,
+      manaRegen: 22,
+      spread: 5,
+      multi: 1,
+      shuffle: false,
+      mana: 90,
+      speedMul: 1,
+      slots: ["bolt", null, null],
+      hue: Math.floor(Math.random() * 360)
+    });
+    const pickaxe = resetGun({
+      name: "Pick Axe",
+      cap: 1,
+      castDelay: 0.05,
+      recharge: 1,
+      manaMax: 120,
+      manaRegen: 60,
+      spread: 0,
+      multi: 1,
+      shuffle: false,
+      mana: 120,
+      speedMul: 1,
+      slots: ["saw"],
+      hue: 20
+    });
+    return [pistol, pickaxe, null, null];
+  }
+  var gunLvCol = (g) => g && g.lvl ? GUN_LV_COL[Math.min(GUN_LV_MAX, g.lvl) - 1] : null;
+  function gunAccent(g) {
+    if (g && g.lvl) return gunLvCol(g);
+    if (g) {
+      for (const id of g.slots) if (id && MODS[id].kind === "shot") return famCol(id);
+    }
+    return COL.bullet;
+  }
+
+  // src/save/save.js
+  var SAVE_KEY = "caverunner-save";
+  var GUN_DEFAULTS = {
+    name: "Gun",
+    castDelay: 0.2,
+    recharge: 0.5,
+    manaMax: 100,
+    manaRegen: 30,
+    spread: 0,
+    multi: 1,
+    shuffle: false,
+    speedMul: 1,
+    hue: 0
+  };
+  function cleanGun(g) {
+    if (!g || typeof g !== "object" || !Array.isArray(g.slots) || !g.slots.length) return null;
+    const out = Object.assign({}, GUN_DEFAULTS, g);
+    out.slots = g.slots.map((id) => id && MODS[id] ? id : null);
+    out.cap = out.slots.length;
+    out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
+    return resetGun(out);
+  }
+  function cleanPerks(lo) {
+    const carried = (Array.isArray(lo.perks) ? lo.perks : []).filter((id) => PERKS[id]);
+    if (Array.isArray(lo.suit)) {
+      const suit2 = Array.from({ length: SUIT_LEN }, (_, i) => fitsSlot(lo.suit[i], i) ? lo.suit[i] : null);
+      suit2.forEach((id, i) => {
+        if (id && suit2.indexOf(id) !== i) {
+          carried.push(id);
+          suit2[i] = null;
+        }
+      });
+      return { perks: carried, suit: suit2 };
+    }
+    const off = Array.isArray(lo.perksOff) ? lo.perksOff : [];
+    const on = carried.filter((_, i) => !off.includes(i)), rest = carried.filter((_, i) => off.includes(i));
+    const fit = on.filter((id, i) => on.indexOf(id) === i).slice(0, SUIT_SLOTS);
+    const left = on.slice();
+    for (const id of fit) left.splice(left.indexOf(id), 1);
+    const suit = Array.from({ length: SUIT_LEN }, (_, i) => i < SUIT_SLOTS && fit[i] || null);
+    return { perks: rest.concat(left), suit };
+  }
+  function cleanLoadout(lo) {
+    lo = lo && typeof lo === "object" ? lo : {};
+    const guns = [0, 1, 2, 3].map((i) => cleanGun((lo.guns || [])[i]));
+    if (!guns.some(Boolean)) return null;
+    const num2 = (v, d) => Number.isFinite(v) ? v : d;
+    let sel = num2(lo.sel, 0);
+    if (!guns[sel]) sel = guns.findIndex(Boolean);
+    return {
+      guns,
+      sel,
+      bag: (Array.isArray(lo.bag) ? lo.bag : []).filter((id) => MODS[id]),
+      // perks carried (LO.perks) and fitted to the Exo Suit (LO.suit). A save from before the suit:
+      // its switched-on perks go in the slots, as many as fit, the rest are carried
+      ...cleanPerks(lo),
+      // v106 put a bought level's price on your gold (it went negative); now it's a debt of its own
+      // and an older page loading a v107 save dropped the debt and then paid out the whole sale: a
+      // pile of gold that size with no debt is that, so the level's price comes back off it
+      gold: num2(lo.gold, START_GOLD) < 0 ? Math.max(0, num2(lo.gold, 0) + OLD_LVL_BUY) : num2(lo.gold, START_GOLD) >= OLD_LVL_BUY && !(num2(lo.debt, 0) > 0) ? num2(lo.gold, 0) - OLD_LVL_BUY : num2(lo.gold, START_GOLD),
+      debt: Math.max(0, num2(lo.debt, 0)) || (num2(lo.gold, 0) < 0 ? OLD_LVL_BUY : 0),
+      // the repayment deadline; a debt from before v107 had none: it gets its hour from now
+      due: num2(lo.due, 0) || (num2(lo.debt, 0) > 0 || num2(lo.gold, 0) < 0 ? Date.now() + DEADLINE_MS : 0),
+      soldTop: Math.max(0, Math.floor(num2(lo.soldTop, 0))),
+      // the highest floor sold this run (data/levels.js)
+      maxBonus: Math.max(0, num2(lo.maxBonus, 0)),
+      usedLives: Math.max(0, num2(lo.usedLives, 0)),
+      // red crystals carried: the floor each came from (the shop's machine turns one into an unlock)
+      // the gun machine's offer: its guns cleaned like yours (a sold one stays null)
+      gunShop: lo.gunShop && typeof lo.gunShop === "object" && Array.isArray(lo.gunShop.guns) ? {
+        floor: num2(lo.gunShop.floor, 0),
+        guns: lo.gunShop.guns.map(cleanGun),
+        rerolls: Math.max(0, num2(lo.gunShop.rerolls, 0)),
+        boosts: Math.max(0, num2(lo.gunShop.boosts, 0))
+      } : void 0,
+      greens: (Array.isArray(lo.greens) ? lo.greens : []).filter((f) => Number.isInteger(f) && f > 0),
+      crystals: (Array.isArray(lo.crystals) ? lo.crystals : []).filter((f) => Number.isInteger(f) && f > 0),
+      debug: !!lo.debug
+    };
+  }
+  function readSave(raw) {
+    let s;
+    try {
+      s = JSON.parse(raw);
+    } catch (_) {
+      return null;
+    }
+    if (!s || typeof s !== "object") return null;
+    const loadout = cleanLoadout(s.loadout);
+    if (!loadout) return null;
+    const floor = Math.max(1, Math.floor(Number(s.floor) || 1));
+    const out = {
+      loadout,
+      floor,
+      hp: Number.isFinite(s.hp) && s.hp > 0 ? s.hp : null,
+      level: null,
+      hasLvl: s.hasLvl !== false
+    };
+    const L3 = s.level;
+    if (s.ver === VERSION && L3 && Number.isFinite(L3.seed)) {
+      out.level = {
+        seed: L3.seed,
+        owned: (Array.isArray(L3.owned) ? L3.owned : []).filter((id) => PERKS[id]),
+        alive: Array.isArray(L3.alive) ? L3.alive : null,
+        sold: Array.isArray(L3.sold) ? L3.sold : [],
+        rooms: Array.isArray(L3.rooms) ? L3.rooms : [],
+        heals: Math.max(0, Math.floor(Number(L3.heals) || 0)),
+        brood: Array.isArray(L3.brood) ? L3.brood.filter((b) => Array.isArray(b) && Number.isInteger(b[0]) && Number.isInteger(b[1]) && b[1] >= 0) : [],
+        pickups: Array.isArray(L3.pickups) ? L3.pickups.map((q) => {
+          if (!q || typeof q !== "object") return null;
+          if (q.kind === "mod") return MODS[q.id] ? q : null;
+          if (q.kind === "perk") return PERKS[q.id] ? q : null;
+          if (q.kind === "crystal") return Number.isInteger(q.floor) && q.floor > 0 ? q : null;
+          if (q.kind === "gun") {
+            const gun = cleanGun(q.gun);
+            return gun ? Object.assign({}, q, { gun }) : null;
+          }
+          return null;
+        }).filter(Boolean) : null
+      };
+    }
+    return out;
+  }
+  var loadSave = () => {
+    try {
+      return readSave(localStorage.getItem(SAVE_KEY));
+    } catch (_) {
+      return null;
+    }
+  };
+  var clearSave = () => {
+    try {
+      localStorage.removeItem(SAVE_KEY);
+    } catch (_) {
+    }
+  };
+  var COLLECTION_KEY = "caverunner-collection";
+  function readCollection(raw) {
+    let s;
+    try {
+      s = JSON.parse(raw);
+    } catch (_) {
+      return [];
+    }
+    return Array.isArray(s) ? [...new Set(s.filter((id) => typeof id === "string" && MODS[id]))] : [];
+  }
+  var loadCollection = () => {
+    try {
+      return readCollection(localStorage.getItem(COLLECTION_KEY));
+    } catch (_) {
+      return [];
+    }
+  };
+  var saveCollection = (ids) => {
+    try {
+      localStorage.setItem(COLLECTION_KEY, JSON.stringify(ids));
+    } catch (_) {
+    }
+  };
+  var PERK_COLLECTION_KEY = "caverunner-perkcollection";
+  function readPerkCollection(raw) {
+    let s;
+    try {
+      s = JSON.parse(raw);
+    } catch (_) {
+      return [];
+    }
+    return Array.isArray(s) ? [...new Set(s.filter((id) => typeof id === "string" && PERKS[id]))] : [];
+  }
+  var loadPerkCollection = () => {
+    try {
+      return readPerkCollection(localStorage.getItem(PERK_COLLECTION_KEY));
+    } catch (_) {
+      return [];
+    }
+  };
+  var savePerkCollection = (ids) => {
+    try {
+      localStorage.setItem(PERK_COLLECTION_KEY, JSON.stringify(ids));
+    } catch (_) {
+    }
+  };
 
   // src/world/sway.js
   var tent = (u, pu) => u <= pu ? pu > 0 ? u / pu : 0 : pu < 1 ? (1 - u) / (1 - pu) : 0;
@@ -8282,634 +8726,146 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return false;
   }
 
-  // src/spells/spawn.js
-  var NOITA_SPAWN = {
-    LIGHT_BULLET: ["0,1,2", "2,1,0.5"],
-    LIGHT_BULLET_TRIGGER: ["0,1,2,3", "1,0.5,0.5,0.5"],
-    LIGHT_BULLET_TRIGGER_2: ["2,3,5,6,10", "1,0.5,1,1,0.2"],
-    LIGHT_BULLET_TIMER: ["1,2,3", "0.5,0.5,0.75"],
-    BULLET: ["1,2,3,4,5", "1,1,1,0.8,0.5"],
-    BULLET_TRIGGER: ["1,2,3,4,5", "0.5,0.5,0.5,0.6,0.5"],
-    BULLET_TIMER: ["2,3,4,5,6", "0.5,0.5,0.5,0.5,0.6"],
-    HEAVY_BULLET: ["1,2,3,4,5,6", "0.5,1,1,1,1,1"],
-    SLOW_BULLET: ["1,2,3,4", "1,1,1,1"],
-    SLOW_BULLET_TRIGGER: ["1,2,3,4,5", "0.5,0.5,0.5,0.5,1"],
-    SLOW_BULLET_TIMER: ["1,2,3,4,5,6", "0.5,0.5,0.5,0.5,1,1"],
-    BLACK_HOLE: ["0,2,4,5", "0.8,0.8,0.8,0.8"],
-    BLACK_HOLE_DEATH_TRIGGER: ["2,4,5,6", "0.5,0.5,0.5,0.5"],
-    SPITTER: ["0,1,2,3", "1,1,1,0.5"],
-    SPITTER_TIMER: ["0,1,2,3", "0.5,0.5,0.5,1"],
-    BUBBLESHOT: ["0,1,2,3", "1,0.6,1,0.5"],
-    BUBBLESHOT_TRIGGER: ["1,2,3", "0.5,0.5,1"],
-    DISC_BULLET: ["0,2,4", "1,1,0.6"],
-    BOUNCY_ORB: ["0,2,4", "1,1,1"],
-    BOUNCY_ORB_TIMER: ["0,2,4", "0.5,0.5,0.5"],
-    RUBBER_BALL: ["0,1,6", "1,1,0.2"],
-    POLLEN: ["0,1,3,4", "0.6,1,1,0.6"],
-    LANCE: ["1,2,5,6", "0.9,1,0.8,1"],
-    ROCKET: ["1,2,3,4,5", "1,1,1,0.5,0.3"],
-    GRENADE: ["0,1,2,3,4", "1,1,0.5,0.25,0.2"],
-    GRENADE_TRIGGER: ["0,1,2,3,4,5", "0.5,0.5,0.2,0.5,0.5,1"],
-    MINE: ["1,3,4,6", "1,0.75,1,0.5"],
-    MINE_DEATH_TRIGGER: ["2,6", "1,1"],
-    PIPE_BOMB: ["2,3,4", "1,1,0.6"],
-    PIPE_BOMB_DEATH_TRIGGER: ["2,3,4,5", "0.6,0.8,1,0.8"],
-    LIGHTNING: ["1,2,5,6", "1,0.9,0.7,1"],
-    LASER_EMITTER: ["1,2,3,4", "0.2,0.8,1,0.5"],
-    DIGGER: ["1,2", "1,0.5"],
-    CHAINSAW: ["0,2", "1,1"],
-    LUMINOUS_DRILL: ["0,2,10", "1,1,0.1"],
-    LASER_LUMINOUS_DRILL: ["0,2,6,10", "1,1,0.2,0.1"],
-    CHAIN_BOLT: ["0,4,5,6", "0.75,1,0.8,0.6"],
-    FIREBALL: ["0,3,4,6", "1,0.7,1,0.5"],
-    METEOR: ["4,5,6,10", "0.6,0.6,0.7,0.5"],
-    BUCKSHOT: ["0,1,2,3,4", "1,1,0.9,0.9,0.6"],
-    BOMB: ["0,1,2,3,4,5,6", "1,1,1,1,0.5,0.5,0.1"],
-    DEATH_CROSS: ["1,2,3,4,5,6", "1,0.8,0.6,0.5,0.5,0.3"],
-    NUKE: ["1,5,6,10", "0.3,1,1,0.2"],
-    TELEPORT_PROJECTILE: ["0,1,2,4,5,6", "0.6,0.6,0.6,0.4,0.4,0.4"],
-    TELEPORT_PROJECTILE_SHORT: ["0,1,2,4,5,6", "0.6,0.6,0.6,0.4,0.4,0.4"],
-    PURPLE_EXPLOSION_FIELD: ["0,1,2,4,5,6", "0.7,1,0.7,0.5,0.5,0.3"],
-    LONG_DISTANCE_CAST: ["0,1,2,4,5,6", "0.6,0.7,0.8,0.6,0.3,0.4"],
-    TELEPORT_CAST: ["1,2,4,5,6", "0.6,0.6,0.6,0.8,1"],
-    SUPER_TELEPORT_CAST: ["2,4,5,6", "0.2,0.6,0.8,0.8"],
-    BURST_2: ["0,1,2,3,4,5,6", "0.8,0.8,0.8,0.8,0.8,0.8,0.8"],
-    BURST_3: ["1,2,3,4,5,6", "0.7,0.7,0.7,0.7,0.7,0.7"],
-    BURST_4: ["2,3,4,5,6", "0.4,0.5,0.6,0.6,0.6"],
-    BURST_8: ["5,6,10", "0.1,0.1,0.5"],
-    BURST_X: ["5,6,10", "0.1,0.1,0.5"],
-    SCATTER_3: ["0,1,2,3", "0.6,0.7,0.7,0.8"],
-    I_SHAPE: ["1,2,3", "0.4,0.5,0.3"],
-    Y_SHAPE: ["0,1,2,3", "0.8,0.5,0.4,0.3"],
-    W_SHAPE: ["2,3,4,5,6", "0.4,0.3,0.5,0.3,0.3"],
-    SPREAD_REDUCE: ["1,2,3,4,5,6", "0.8,0.8,0.8,0.8,0.7,0.6"],
-    HEAVY_SPREAD: ["0,1,2,4,5,6", "0.6,0.7,0.8,0.8,0.8,0.6"],
-    RECHARGE: ["1,2,3,4,5,6", "0.8,0.9,1,0.8,0.9,1"],
-    LIFETIME: ["3,4,5,6,10", "0.5,0.5,0.5,0.75,0.1"],
-    LIFETIME_DOWN: ["3,4,5,6,10", "0.5,0.5,0.75,0.5,0.1"],
-    MANA_REDUCE: ["1,2,3,4,5,6", "0.7,0.9,1,1,1,1"],
-    BLOOD_MAGIC: ["5,6,10", "0.3,0.7,0.5"],
-    MONEY_MAGIC: ["3,5,6,10", "0.2,0.8,0.3,0.5"],
-    BLOOD_TO_POWER: ["2,5,6,10", "0.2,0.8,0.2,0.5"],
-    QUANTUM_SPLIT: ["2,3,4,5,6", "0.5,0.6,0.5,0.5,1"],
-    GRAVITY: ["2,3,4,5,6", "0.5,0.4,0.4,0.3,0.3"],
-    GRAVITY_ANTI: ["2,3,4,5,6", "0.5,0.4,0.4,0.3,0.3"],
-    PINGPONG_PATH: ["1,3,5", "0.4,0.5,0.4"],
-    HORIZONTAL_ARC: ["1,3,5", "0.4,0.4,0.4"],
-    ORBIT_SHOT: ["1,2,3,4", "0.2,0.4,0.4,0.3"],
-    SPIRALING_SHOT: ["1,2,3,4", "0.2,0.3,0.4,0.5"],
-    BOUNCE: ["2,3,4,6", "1,1,0.4,0.2"],
-    HOMING: ["1,2,3,4,5,6", "0.1,0.4,0.4,0.4,0.4,0.4"],
-    HOMING_SHORT: ["1,2,3,4,5,6", "0.4,0.8,1,0.4,0.3,0.1"],
-    HOMING_SHOOTER: ["2,3,4,6", "0.2,0.3,0.2,0.2"],
-    AUTOAIM: ["2,3,4,5,6", "0.4,0.4,0.4,0.4,0.4"],
-    HOMING_ACCELERATING: ["1,2,3,4", "0.1,0.3,0.3,0.5"],
-    PIERCING_SHOT: ["2,3,4,5,6", "0.4,0.5,0.6,0.6,0.4"],
-    CLIPPING_SHOT: ["2,3,4,5,6", "0.2,0.3,0.6,0.4,0.6"],
-    DAMAGE: ["1,2,3,4,5", "0.6,0.6,0.8,0.6,0.6"],
-    DAMAGE_RANDOM: ["3,4,5", "0.7,0.6,0.6"],
-    BLOODLUST: ["1,3,4,5,6", "0.2,0.3,0.6,0.7,0.3"],
-    DAMAGE_FOREVER: ["2,3,4,5,6,10", "0.2,0.3,0.6,0.5,0.2,0.2"],
-    CRITICAL_HIT: ["1,2,3,4,5", "0.5,0.6,0.6,0.7,0.6"],
-    HEAVY_SHOT: ["2,3,4", "0.4,0.4,0.5"],
-    LIGHT_SHOT: ["2,3,4", "0.3,0.5,0.4"],
-    KNOCKBACK: ["3,5", "0.7,0.6"],
-    RECOIL: ["2,4", "0.6,0.7"],
-    RECOIL_DAMPER: ["3,6", "0.6,0.7"],
-    SPEED: ["1,2,3", "1,0.5,0.5"],
-    ACCELERATING_SHOT: ["2,3,4", "0.5,0.4,1"],
-    EXPLOSIVE_PROJECTILE: ["2,3,4", "1,1,0.8"],
-    CLUSTERMOD: ["1,2,3", "0.5,1,0.6"],
-    EXPLOSION: ["0,2,4,5", "0.5,1,1,0.7"],
-    FIRE_BLAST: ["0,1,3,5", "0.5,0.7,0.6,0.4"],
-    FREEZE_FIELD: ["0,2,4,5", "0.3,0.6,0.7,0.3"],
-    REGENERATION_FIELD: ["1,2,3,4", "0.3,0.3,0.4,0.3"],
-    SHIELD_FIELD: ["2,3,4,5,6", "0.3,0.3,0.4,0.5,0.3"],
-    VACUUM_ENTITIES: ["2,3,5,6", "0.3,0.7,0.3,0.4"],
-    CLOUD_THUNDER: ["0,1,2,3,4,5", "0.3,0.3,0.2,0.3,0.4,0.5"],
-    MATTER_EATER: ["1,2,4,5,10", "0.1,0.9,0.1,0.2,0.2"],
-    BOUNCE_EXPLOSION: ["2,3,4,5", "0.2,0.6,0.8,0.8"],
-    ALL_DISCS: ["0,6,10", "0.1,0.05,1"],
-    RESET: ["10", "1"],
-    ADD_TRIGGER: ["3,4,5,10", "0.3,0.6,0.6,1"],
-    ADD_TIMER: ["3,4,5,10", "0.3,0.6,0.6,1"],
-    ADD_DEATH_TRIGGER: ["3,4,5,10", "0.3,0.6,0.6,1"],
-    ALPHA: ["5,6,10", "0.1,0.2,1"],
-    GAMMA: ["5,6,10", "0.1,0.2,1"],
-    TAU: ["5,6,10", "0.1,0.2,1"],
-    OMEGA: ["5,6,10", "0.1,0.1,1"],
-    MU: ["5,6,10", "0.1,0.2,1"],
-    PHI: ["5,6,10", "0.1,0.2,1"],
-    SIGMA: ["4,5,10", "0.1,0.2,1"],
-    ZETA: ["2,5,10", "0.2,0.4,0.5"],
-    // ours alone: no Noita twin
-    OURS_COLD: ["3,4,5,6", "0.2,0.3,0.4,0.5"],
-    OURS_BATTERY: ["2,3,4,5,6", "0.3,0.4,0.5,0.5,0.5"],
-    OURS_AUTO: ["0,1,2,3,4,5,6", "0.4,0.4,0.4,0.4,0.4,0.4,0.4"]
-  };
-  var NOITA_OF = {
-    bolt: "LIGHT_BULLET",
-    spark: "LIGHT_BULLET",
-    slug: "HEAVY_BULLET",
-    buck: "BUCKSHOT",
-    lance: "LANCE",
-    orb: "RUBBER_BALL",
-    saw: "CHAINSAW",
-    blast: "BOMB",
-    dmg_up: "DAMAGE",
-    heavy: "HEAVY_SHOT",
-    light: "LIGHT_SHOT",
-    speed: "SPEED",
-    accel: "ACCELERATING_SHOT",
-    homing: "HOMING",
-    seeker: "HOMING_ACCELERATING",
-    bounce: "BOUNCE",
-    pierce: "PIERCING_SHOT",
-    tight: "SPREAD_REDUCE",
-    scatter: "SCATTER_3",
-    big: "DAMAGE",
-    range: "LIFETIME",
-    brief: "LIFETIME_DOWN",
-    tip: "EXPLOSIVE_PROJECTILE",
-    borer: "CLIPPING_SHOT",
-    fast: "RECHARGE",
-    over: "HEAVY_SHOT",
-    double: "BURST_2",
-    triple: "BURST_3",
-    quad: "BURST_4",
-    cheap: "MANA_REDUCE",
-    trigger: "RECHARGE",
-    over_heat: "DAMAGE_RANDOM",
-    cold: "OURS_COLD",
-    recharge: "RECHARGE",
-    battery: "OURS_BATTERY",
-    auto: "OURS_AUTO",
-    arrow: "BULLET",
-    missile: "ROCKET",
-    fball: "FIREBALL",
-    fbolt: "GRENADE",
-    bubble: "BUBBLESHOT",
-    spit: "SPITTER",
-    eorb: "SLOW_BULLET",
-    esph: "BOUNCY_ORB",
-    zap: "LIGHTNING",
-    chain: "CHAIN_BOLT",
-    void: "BLACK_HOLE",
-    digbolt: "DIGGER",
-    glance: "LANCE",
-    plasma: "LASER_EMITTER",
-    ldrill: "LUMINOUS_DRILL",
-    cross: "DEATH_CROSS",
-    pollen: "POLLEN",
-    disc: "DISC_BULLET",
-    nuke: "NUKE",
-    meteor: "METEOR",
-    tele: "TELEPORT_PROJECTILE",
-    teleshort: "TELEPORT_PROJECTILE_SHORT",
-    boom: "EXPLOSION",
-    brim: "FIRE_BLAST",
-    crystal: "MINE",
-    dormant: "PIPE_BOMB",
-    stillc: "FREEZE_FIELD",
-    shieldc: "SHIELD_FIELD",
-    vigour: "REGENERATION_FIELD",
-    storm: "CLOUD_THUNDER",
-    vacfield: "VACUUM_ENTITIES",
-    glitter: "PURPLE_EXPLOSION_FIELD",
-    refresh: "RESET",
-    blood: "BLOOD_MAGIC",
-    bpower: "BLOOD_TO_POWER",
-    gpower: "MONEY_MAGIC",
-    farcast: "LONG_DISTANCE_CAST",
-    telecast: "TELEPORT_CAST",
-    warpcast: "SUPER_TELEPORT_CAST",
-    sawstorm: "ALL_DISCS",
-    knock: "KNOCKBACK",
-    kick: "RECOIL",
-    damper: "RECOIL_DAMPER",
-    crit: "CRITICAL_HIT",
-    gravmod: "GRAVITY",
-    float: "GRAVITY_ANTI",
-    boomer: "HOMING_SHOOTER",
-    spiral: "SPIRALING_SHOT",
-    pong: "PINGPONG_PATH",
-    orbit: "ORBIT_SHOT",
-    autoaim: "AUTOAIM",
-    nearhome: "HOMING_SHORT",
-    flat: "HORIZONTAL_ARC",
-    eater: "MATTER_EATER",
-    lust: "BLOODLUST",
-    manapow: "DAMAGE_FOREVER",
-    split: "QUANTUM_SPLIT",
-    cluster: "CLUSTERMOD",
-    bboom: "BOUNCE_EXPLOSION",
-    hspread: "HEAVY_SPREAD",
-    oct: "BURST_8",
-    myriad: "BURST_X",
-    bifur: "Y_SHAPE",
-    trifur: "W_SHAPE",
-    behind: "I_SHAPE",
-    alpha: "ALPHA",
-    gamma: "GAMMA",
-    tau: "TAU",
-    omega: "OMEGA",
-    phi: "PHI",
-    sigma: "SIGMA",
-    mu: "MU",
-    zeta: "ZETA",
-    addtrig: "ADD_TRIGGER",
-    addtimer: "ADD_TIMER",
-    adddeath: "ADD_DEATH_TRIGGER",
-    bolt_t: "LIGHT_BULLET_TRIGGER",
-    bolt_tt: "LIGHT_BULLET_TRIGGER_2",
-    arrow_t: "BULLET_TRIGGER",
-    fbolt_t: "GRENADE_TRIGGER",
-    bubble_t: "BUBBLESHOT_TRIGGER",
-    eorb_t: "SLOW_BULLET_TRIGGER",
-    crystal_t: "MINE_DEATH_TRIGGER",
-    dormant_t: "PIPE_BOMB_DEATH_TRIGGER",
-    bolt_ti: "LIGHT_BULLET_TIMER",
-    arrow_ti: "BULLET_TIMER",
-    spit_ti: "SPITTER_TIMER",
-    esph_ti: "BOUNCY_ORB_TIMER",
-    eorb_ti: "SLOW_BULLET_TIMER",
-    ldrill_ti: "LASER_LUMINOUS_DRILL",
-    void_d: "BLACK_HOLE_DEATH_TRIGGER"
-  };
-  var floorTier = (floor) => floor > 10 ? 10 : Math.max(0, (floor - 1) * 6 / 9);
-  function noitaP(id, tier) {
-    const row = NOITA_SPAWN[NOITA_OF[id]];
-    if (!row) return 0;
-    const lv = row[0].split(",").map(Number), pr = row[1].split(",").map(Number);
-    const k = lv.indexOf(tier);
-    return k < 0 ? 0 : pr[k];
-  }
-  var TIER_FLOOR = { 4: 4 };
-  function modWeight(id, floor) {
-    const t = floorTier(floor);
-    if (floor < (TIER_FLOOR[tierOf(id)] || 0)) return 0;
-    if (t >= 10) return Math.max(noitaP(id, 10), noitaP(id, 6));
-    const a = Math.floor(t), f = t - a;
-    return noitaP(id, a) * (1 - f) + noitaP(id, a + 1) * f;
-  }
-  function rollMod(rnd2, floor, skip) {
-    let total = 0;
-    for (const id of ALL_IDS) if (!skip || !skip[id]) total += modWeight(id, floor);
-    let r = rnd2() * total;
-    for (const id of ALL_IDS) {
-      if (skip && skip[id]) continue;
-      r -= modWeight(id, floor);
-      if (r <= 0) return id;
-    }
-    return "bolt";
-  }
-
-  // src/spells/guns.js
-  var hueFromName = (name) => {
-    let h3 = 0;
-    for (let i = 0; i < name.length; i++) h3 = h3 * 31 + name.charCodeAt(i) >>> 0;
-    return h3 % 360;
-  };
-  var gunHue = (g) => g && g.hue != null ? g.hue : hueFromName(g ? g.name : "");
-  var gunColor = (g) => "hsl(" + gunHue(g) + ", var(--gun-s), var(--gun-l))";
-  function gunPrice(g) {
-    const rate = 1 / Math.max(0.05, g.castDelay) + 1 / Math.max(0.1, g.recharge);
-    const v = g.cap * 20 + rate * 7 + g.manaMax * 0.1 + g.manaRegen * 0.3 + (g.multi - 1) * 45 + ((g.speedMul || 1) - 1) * 40 - g.spread * 3 + (g.shuffle ? -30 : 20);
-    return Math.max(45, Math.round(v / 5) * 5);
-  }
-  var isGunShop = (floor) => floor % 2 === 0;
-  var GUN_A = [
-    "Rusty",
-    "Bone",
-    "Cracked",
-    "Copper",
-    "Glass",
-    "Ivory",
-    "Molten",
-    "Static",
-    "Hollow",
-    "Ember",
-    "Quartz",
-    "Iron",
-    "Pale",
-    "Gilded"
+  // src/world/ragdoll.js
+  var RAG_POSE = [
+    [0, 5],
+    // 0 head (the helmet's centre)
+    [0, 10],
+    // 1 chest (the shoulders)
+    [0, 15.4],
+    // 2 hip
+    [-1.2, 18.4],
+    // 3 back knee
+    [-1.7, 21],
+    // 4 back foot
+    [1.8, 18.2],
+    // 5 front knee
+    [1.7, 21],
+    // 6 front foot
+    [4.6, 11.6],
+    // 7 front hand (the gun's)
+    [2.2, 12.2],
+    // 8 front elbow
+    [-2.1, 12.4],
+    // 9 back elbow
+    [-3.6, 11]
+    // 10 back hand (the torch's)
   ];
-  var GUN_B = [
-    "Pistol",
-    "Repeater",
-    "Carbine",
-    "Scattergun",
-    "Lance",
-    "Sidearm",
-    "Blaster",
-    "Cannon",
-    "Spitter",
-    "Wand"
-  ];
-  function shuffleOrder(g) {
-    g.order = g.slots.map((_, i) => i);
-    if (g.shuffle) for (let i = g.order.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [g.order[i], g.order[j]] = [g.order[j], g.order[i]];
-    }
-  }
-  function resetGun(g) {
-    g.idx = 0;
-    g.delayT = 0;
-    g.rechT = 0;
-    shuffleOrder(g);
-    return g;
-  }
-  var GUN_LV_MAX = 10;
-  var RARE_GUN = 0.2;
-  var GUN_RANGE = {
-    // [worst, best]
-    cap: [2, 25],
-    castDelay: [1.5, 0.01],
-    recharge: [1.5, 0.01],
-    manaMax: [50, 1e3],
-    manaRegen: [10, 500],
-    spread: [20, 0],
-    speedMul: [0.5, 2]
-  };
-  var GUN_LV_COL = [
-    "#9a9a9a",
-    "#d8d8d8",
-    "#5fd35f",
-    "#3fc9a8",
-    "#4aa3ff",
-    "#7a7aff",
-    "#b565ff",
-    "#ff5fcf",
-    "#ff9a2a",
-    "#ffd23c"
-  ];
-  var gunLvTier = (lvl) => Math.min(1, Math.max(0, (lvl - 1) / (GUN_LV_MAX - 1)));
-  function gunStat(rnd2, k, t) {
-    const [w, b] = GUN_RANGE[k];
-    const f = rnd2() * (1 - t) + rnd2() * 0.1 * t;
-    return b + (w - b) * f;
-  }
-  function gunLevel(floor, rnd2) {
-    const base = Math.min(GUN_LV_MAX, Math.max(1, floor));
-    if (base < GUN_LV_MAX && rnd2() < RARE_GUN) return base + 1 + Math.floor(rnd2() * (GUN_LV_MAX - base));
-    return base;
-  }
-  function caveGun(lvl, rnd2) {
-    return makeGun(rnd2, Math.min(GUN_LV_MAX, Math.max(1, Math.floor(lvl))));
-  }
-  function makeGun(rnd2, lvl) {
-    const t = gunLvTier(lvl);
-    const cap = Math.max(2, Math.min(25, Math.round(gunStat(rnd2, "cap", t))));
-    const g = {
-      name: GUN_A[Math.floor(rnd2() * GUN_A.length)] + " " + GUN_B[Math.floor(rnd2() * GUN_B.length)],
-      lvl,
-      cap,
-      castDelay: gunStat(rnd2, "castDelay", t),
-      recharge: gunStat(rnd2, "recharge", t),
-      manaMax: Math.round(gunStat(rnd2, "manaMax", t)),
-      manaRegen: Math.round(gunStat(rnd2, "manaRegen", t)),
-      spread: gunStat(rnd2, "spread", t),
-      speedMul: gunStat(rnd2, "speedMul", t),
-      multi: rnd2() < 0.1 + t * 0.4 ? 2 : 1,
-      shuffle: rnd2() < 0.5 * (1 - t),
-      slots: new Array(cap).fill(null),
-      hue: Math.floor(rnd2() * 360)
-    };
-    const used = 1 + Math.floor(rnd2() * Math.min(cap, 2 + t * 3));
-    const spots = g.slots.map((_, i) => i).sort(() => rnd2() - 0.5).slice(0, used);
-    const asFloor = 1 + t * 5;
-    spots.forEach((slot, n) => {
-      g.slots[slot] = n === 0 ? SEED_SHOTS[Math.floor(rnd2() * SEED_SHOTS.length)] : rollMod(rnd2, asFloor);
-    });
-    if (!g.slots.some((id) => id && MODS[id].kind === "shot")) g.slots[spots[0]] = "bolt";
-    g.mana = g.manaMax;
-    return resetGun(g);
-  }
-  function startingGuns() {
-    const pistol = resetGun({
-      name: "Scratch Pistol",
-      cap: 3,
-      castDelay: 0.32,
-      recharge: 1.7,
-      manaMax: 90,
-      manaRegen: 22,
-      spread: 5,
-      multi: 1,
-      shuffle: false,
-      mana: 90,
-      speedMul: 1,
-      slots: ["bolt", null, null],
-      hue: Math.floor(Math.random() * 360)
-    });
-    const pickaxe = resetGun({
-      name: "Pick Axe",
-      cap: 1,
-      castDelay: 0.05,
-      recharge: 1,
-      manaMax: 120,
-      manaRegen: 60,
-      spread: 0,
-      multi: 1,
-      shuffle: false,
-      mana: 120,
-      speedMul: 1,
-      slots: ["saw"],
-      hue: 20
-    });
-    return [pistol, pickaxe, null, null];
-  }
-  var gunLvCol = (g) => g && g.lvl ? GUN_LV_COL[Math.min(GUN_LV_MAX, g.lvl) - 1] : null;
-  function gunAccent(g) {
-    if (g && g.lvl) return gunLvCol(g);
-    if (g) {
-      for (const id of g.slots) if (id && MODS[id].kind === "shot") return famCol(id);
-    }
-    return COL.bullet;
-  }
-
-  // src/save/save.js
-  var SAVE_KEY = "caverunner-save";
-  var GUN_DEFAULTS = {
-    name: "Gun",
-    castDelay: 0.2,
-    recharge: 0.5,
-    manaMax: 100,
-    manaRegen: 30,
-    spread: 0,
-    multi: 1,
-    shuffle: false,
-    speedMul: 1,
-    hue: 0
-  };
-  function cleanGun(g) {
-    if (!g || typeof g !== "object" || !Array.isArray(g.slots) || !g.slots.length) return null;
-    const out = Object.assign({}, GUN_DEFAULTS, g);
-    out.slots = g.slots.map((id) => id && MODS[id] ? id : null);
-    out.cap = out.slots.length;
-    out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
-    return resetGun(out);
-  }
-  function cleanPerks(lo) {
-    const carried = (Array.isArray(lo.perks) ? lo.perks : []).filter((id) => PERKS[id]);
-    if (Array.isArray(lo.suit)) {
-      const suit2 = Array.from({ length: SUIT_LEN }, (_, i) => fitsSlot(lo.suit[i], i) ? lo.suit[i] : null);
-      suit2.forEach((id, i) => {
-        if (id && suit2.indexOf(id) !== i) {
-          carried.push(id);
-          suit2[i] = null;
-        }
-      });
-      return { perks: carried, suit: suit2 };
-    }
-    const off = Array.isArray(lo.perksOff) ? lo.perksOff : [];
-    const on = carried.filter((_, i) => !off.includes(i)), rest = carried.filter((_, i) => off.includes(i));
-    const fit = on.filter((id, i) => on.indexOf(id) === i).slice(0, SUIT_SLOTS);
-    const left = on.slice();
-    for (const id of fit) left.splice(left.indexOf(id), 1);
-    const suit = Array.from({ length: SUIT_LEN }, (_, i) => i < SUIT_SLOTS && fit[i] || null);
-    return { perks: rest.concat(left), suit };
-  }
-  function cleanLoadout(lo) {
-    lo = lo && typeof lo === "object" ? lo : {};
-    const guns = [0, 1, 2, 3].map((i) => cleanGun((lo.guns || [])[i]));
-    if (!guns.some(Boolean)) return null;
-    const num2 = (v, d) => Number.isFinite(v) ? v : d;
-    let sel = num2(lo.sel, 0);
-    if (!guns[sel]) sel = guns.findIndex(Boolean);
-    return {
-      guns,
-      sel,
-      bag: (Array.isArray(lo.bag) ? lo.bag : []).filter((id) => MODS[id]),
-      // perks carried (LO.perks) and fitted to the Exo Suit (LO.suit). A save from before the suit:
-      // its switched-on perks go in the slots, as many as fit, the rest are carried
-      ...cleanPerks(lo),
-      // v106 put a bought level's price on your gold (it went negative); now it's a debt of its own
-      // and an older page loading a v107 save dropped the debt and then paid out the whole sale: a
-      // pile of gold that size with no debt is that, so the level's price comes back off it
-      gold: num2(lo.gold, START_GOLD) < 0 ? Math.max(0, num2(lo.gold, 0) + OLD_LVL_BUY) : num2(lo.gold, START_GOLD) >= OLD_LVL_BUY && !(num2(lo.debt, 0) > 0) ? num2(lo.gold, 0) - OLD_LVL_BUY : num2(lo.gold, START_GOLD),
-      debt: Math.max(0, num2(lo.debt, 0)) || (num2(lo.gold, 0) < 0 ? OLD_LVL_BUY : 0),
-      // the repayment deadline; a debt from before v107 had none: it gets its hour from now
-      due: num2(lo.due, 0) || (num2(lo.debt, 0) > 0 || num2(lo.gold, 0) < 0 ? Date.now() + DEADLINE_MS : 0),
-      soldTop: Math.max(0, Math.floor(num2(lo.soldTop, 0))),
-      // the highest floor sold this run (data/levels.js)
-      maxBonus: Math.max(0, num2(lo.maxBonus, 0)),
-      usedLives: Math.max(0, num2(lo.usedLives, 0)),
-      // red crystals carried: the floor each came from (the shop's machine turns one into an unlock)
-      // the gun machine's offer: its guns cleaned like yours (a sold one stays null)
-      gunShop: lo.gunShop && typeof lo.gunShop === "object" && Array.isArray(lo.gunShop.guns) ? {
-        floor: num2(lo.gunShop.floor, 0),
-        guns: lo.gunShop.guns.map(cleanGun),
-        rerolls: Math.max(0, num2(lo.gunShop.rerolls, 0)),
-        boosts: Math.max(0, num2(lo.gunShop.boosts, 0))
-      } : void 0,
-      greens: (Array.isArray(lo.greens) ? lo.greens : []).filter((f) => Number.isInteger(f) && f > 0),
-      crystals: (Array.isArray(lo.crystals) ? lo.crystals : []).filter((f) => Number.isInteger(f) && f > 0),
-      debug: !!lo.debug
-    };
-  }
-  function readSave(raw) {
-    let s;
-    try {
-      s = JSON.parse(raw);
-    } catch (_) {
-      return null;
-    }
-    if (!s || typeof s !== "object") return null;
-    const loadout = cleanLoadout(s.loadout);
-    if (!loadout) return null;
-    const floor = Math.max(1, Math.floor(Number(s.floor) || 1));
-    const out = {
-      loadout,
-      floor,
-      hp: Number.isFinite(s.hp) && s.hp > 0 ? s.hp : null,
-      level: null,
-      hasLvl: s.hasLvl !== false
-    };
-    const L3 = s.level;
-    if (s.ver === VERSION && L3 && Number.isFinite(L3.seed)) {
-      out.level = {
-        seed: L3.seed,
-        owned: (Array.isArray(L3.owned) ? L3.owned : []).filter((id) => PERKS[id]),
-        alive: Array.isArray(L3.alive) ? L3.alive : null,
-        sold: Array.isArray(L3.sold) ? L3.sold : [],
-        rooms: Array.isArray(L3.rooms) ? L3.rooms : [],
-        heals: Math.max(0, Math.floor(Number(L3.heals) || 0)),
-        brood: Array.isArray(L3.brood) ? L3.brood.filter((b) => Array.isArray(b) && Number.isInteger(b[0]) && Number.isInteger(b[1]) && b[1] >= 0) : [],
-        pickups: Array.isArray(L3.pickups) ? L3.pickups.map((q) => {
-          if (!q || typeof q !== "object") return null;
-          if (q.kind === "mod") return MODS[q.id] ? q : null;
-          if (q.kind === "perk") return PERKS[q.id] ? q : null;
-          if (q.kind === "crystal") return Number.isInteger(q.floor) && q.floor > 0 ? q : null;
-          if (q.kind === "gun") {
-            const gun = cleanGun(q.gun);
-            return gun ? Object.assign({}, q, { gun }) : null;
-          }
-          return null;
-        }).filter(Boolean) : null
+  var RAG_STICKS = [[0, 1], [1, 2], [2, 3], [3, 4], [2, 5], [5, 6], [1, 8], [8, 7], [1, 9], [9, 10], [0, 2], [1, 3], [1, 5]];
+  var RAG_BRACE = 11;
+  var RAG_SUB = 4;
+  var RAG_ITER = 3;
+  var RAG_VMAX = 900;
+  var RAG_FRICTION = 0.01;
+  var RAG_SLUMP = 1.5;
+  var RAG_DRAG = 0.4;
+  function ragNew(x, y, w, face, vx, vy, rnd2) {
+    rnd2 = rnd2 || Math.random;
+    const cx = x + w / 2, sp = Math.hypot(vx, vy);
+    const joints = RAG_POSE.map(([px, py], i) => {
+      const up = 1 - py / 22;
+      const tipX = (rnd2() - 0.5) * 50 - face * 25;
+      return {
+        x: cx + px * face,
+        y: y + py,
+        vx: vx * (0.85 + 0.4 * up) + tipX * up + (i === 7 || i === 10 ? (rnd2() - 0.5) * 80 : 0),
+        vy: vy - (sp > 250 ? 60 * up : 0),
+        ox: 0,
+        oy: 0,
+        g: 0
       };
-    }
-    return out;
+    });
+    const len = RAG_STICKS.map(([a, b]) => Math.hypot(joints[a].x - joints[b].x, joints[a].y - joints[b].y));
+    const tip = rnd2() < 0.75 ? -(face || 1) : face || 1;
+    return { face: face || 1, joints, len, rest: 0, still: false, tip, age: 0 };
   }
-  var loadSave = () => {
-    try {
-      return readSave(localStorage.getItem(SAVE_KEY));
-    } catch (_) {
-      return null;
+  function collide(j, solid, fr) {
+    if (!solid(j.x, j.y)) return;
+    if (!solid(j.ox, j.y)) {
+      j.x = j.ox;
+      return;
     }
-  };
-  var clearSave = () => {
-    try {
-      localStorage.removeItem(SAVE_KEY);
-    } catch (_) {
+    if (!solid(j.x, j.oy)) {
+      if (j.y > j.oy) j.g = 1;
+      j.y = j.oy;
+      j.x = j.ox + (j.x - j.ox) * fr;
+      return;
     }
-  };
-  var COLLECTION_KEY = "caverunner-collection";
-  function readCollection(raw) {
-    let s;
-    try {
-      s = JSON.parse(raw);
-    } catch (_) {
-      return [];
-    }
-    return Array.isArray(s) ? [...new Set(s.filter((id) => typeof id === "string" && MODS[id]))] : [];
+    j.x = j.ox;
+    j.y = j.oy;
+    if (solid(j.x, j.y)) j.y -= 1;
   }
-  var loadCollection = () => {
-    try {
-      return readCollection(localStorage.getItem(COLLECTION_KEY));
-    } catch (_) {
-      return [];
+  function ragStep(R, dt, solid) {
+    if (R.still || dt <= 0) return;
+    const h3 = dt / RAG_SUB, J = R.joints, fr = Math.pow(RAG_FRICTION, h3), drag = Math.pow(RAG_DRAG, h3);
+    R.age += dt;
+    const slump = R.age < RAG_SLUMP ? R.tip * 420 * h3 : 0;
+    for (let s = 0; s < RAG_SUB; s++) {
+      J[0].vx += slump;
+      J[1].vx += slump * 0.5;
+      J[2].vx -= slump * 0.75;
+      for (const j of J) {
+        j.ox = j.x;
+        j.oy = j.y;
+        j.g = 0;
+        j.vy += GRAVITY * h3;
+        j.vx *= drag;
+        j.vy *= drag;
+        const v = Math.hypot(j.vx, j.vy);
+        if (v > RAG_VMAX) {
+          j.vx *= RAG_VMAX / v;
+          j.vy *= RAG_VMAX / v;
+        }
+        j.x += j.vx * h3;
+        j.y += j.vy * h3;
+        collide(j, solid, fr);
+      }
+      for (let it = 0; it < RAG_ITER; it++) {
+        for (let k = 0; k < RAG_STICKS.length; k++) {
+          const a = J[RAG_STICKS[k][0]], b = J[RAG_STICKS[k][1]];
+          const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1e-6;
+          if (k >= RAG_BRACE && d >= R.len[k]) continue;
+          const f = (d - R.len[k]) / d * 0.5;
+          a.x += dx * f;
+          a.y += dy * f;
+          b.x -= dx * f;
+          b.y -= dy * f;
+        }
+        for (const j of J) collide(j, solid, 1);
+      }
+      for (const j of J) {
+        j.vx = (j.x - j.ox) / h3;
+        j.vy = (j.y - j.oy) / h3;
+      }
     }
-  };
-  var saveCollection = (ids) => {
-    try {
-      localStorage.setItem(COLLECTION_KEY, JSON.stringify(ids));
-    } catch (_) {
+    let fast = 0;
+    for (const j of J) fast = Math.max(fast, Math.abs(j.vx) + Math.abs(j.vy));
+    R.rest = fast < 8 ? R.rest + dt : 0;
+    if (R.rest > 1) {
+      R.still = true;
+      for (const j of J) {
+        j.vx = 0;
+        j.vy = 0;
+      }
     }
-  };
-  var PERK_COLLECTION_KEY = "caverunner-perkcollection";
-  function readPerkCollection(raw) {
-    let s;
-    try {
-      s = JSON.parse(raw);
-    } catch (_) {
-      return [];
-    }
-    return Array.isArray(s) ? [...new Set(s.filter((id) => typeof id === "string" && PERKS[id]))] : [];
   }
-  var loadPerkCollection = () => {
-    try {
-      return readPerkCollection(localStorage.getItem(PERK_COLLECTION_KEY));
-    } catch (_) {
-      return [];
+  function ragPush(R, x, y, rad, power) {
+    const P2 = power || 500;
+    let hit = false;
+    for (const j of R.joints) {
+      const dx = j.x - x, dy = j.y - y, d = Math.hypot(dx, dy);
+      if (d >= rad) continue;
+      const f = 1 - d / rad;
+      j.vx += dx / (d || 1) * P2 * f;
+      j.vy += dy / (d || 1) * P2 * f - 150 * f;
+      hit = true;
     }
-  };
-  var savePerkCollection = (ids) => {
-    try {
-      localStorage.setItem(PERK_COLLECTION_KEY, JSON.stringify(ids));
-    } catch (_) {
+    if (hit) {
+      R.still = false;
+      R.rest = 0;
     }
-  };
+  }
+  var ragHip = (R) => R.joints[2];
 
   // src/world/nests.js
   function ratNests(mat, rnd2, zone, keep2, nb, nw) {
@@ -9014,6 +8970,50 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let i = 0; i < nb; i++) make(true);
     for (let i = 0; i < nw; i++) make(false);
     return nests;
+  }
+
+  // src/world/veins.js
+  var ORE_GOLD = 0.25;
+  function goldVeins(mat, seed, floor) {
+    let rs = (seed * 7919 + 12345) % 2147483647 || 1;
+    const rnd2 = () => (rs = rs * 16807 % 2147483647) / 2147483647;
+    const ore = new Uint8Array(CW * CH);
+    const n = Math.min(18, 7 + floor);
+    const maxY = SHOP_TOP - SHOP_ROOF - 6;
+    const rockAt = (x, y) => x >= 4 && y >= 4 && x < CW - 4 && y < maxY && mat[y * CW + x] === ROCK;
+    const nearOpen = (x, y, r) => {
+      for (let d = 2; d <= r; d += 2)
+        for (let k = 0; k < 8; k++) {
+          const a = k * Math.PI / 4, px = Math.round(x + Math.cos(a) * d), py = Math.round(y + Math.sin(a) * d);
+          if (px >= 0 && py >= 0 && px < CW && py < CH && !mat[py * CW + px]) return true;
+        }
+      return false;
+    };
+    for (let v = 0; v < n; v++) {
+      let x = 0, y = 0, ok = false;
+      for (let tries = 0; tries < 200 && !ok; tries++) {
+        x = 6 + Math.floor(rnd2() * (CW - 12));
+        y = 6 + Math.floor(rnd2() * (maxY - 12));
+        ok = rockAt(x, y) && rockAt(x + 3, y) && rockAt(x - 3, y) && rockAt(x, y + 3) && rockAt(x, y - 3) && nearOpen(x, y, 16);
+      }
+      if (!ok) continue;
+      let a = rnd2() * Math.PI * 2;
+      const len = 18 + Math.floor(rnd2() * 40);
+      for (let st = 0; st < len; st++) {
+        const r = rnd2() < 0.2 ? 2 : 1;
+        for (let dy = -r; dy <= r; dy++)
+          for (let dx = -r; dx <= r; dx++) {
+            if (dx * dx + dy * dy > r * r + 0.5) continue;
+            const px = Math.round(x) + dx, py = Math.round(y) + dy;
+            if (rockAt(px, py)) ore[py * CW + px] = 1;
+          }
+        a += (rnd2() - 0.5) * 0.9;
+        x += Math.cos(a) * 1.2;
+        y += Math.sin(a) * 1.2;
+        if (!rockAt(Math.round(x), Math.round(y))) break;
+      }
+    }
+    return ore;
   }
 
   // src/world/zones.js
@@ -9706,360 +9706,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var seenAt = (W, x, y) => W.seen[clamp(Math.floor(y / FOG_U), 0, FH - 1) * FW + clamp(Math.floor(x / FOG_U), 0, FW - 1)] !== 0;
 
-  // src/game/systems/webs.js
-  var webNear = (L3, x, y) => webNearU(L3, x, y);
-  var webDist = (L3, x, y) => {
-    const q = webNear(L3, x, y);
-    return Math.hypot(q.x - x, q.y - y);
-  };
-
-  // src/game/systems/player.js
-  var refreshBag = (W, G) => {
-    W.pb = perkBag(activePerks(G.input.current.loadout));
-  };
-  var maxHp = (W, G) => W.pb.maxHp + (G.input.current.loadout.maxBonus || 0);
-  function applyPerks(W, G) {
-    const before = maxHp(W, G);
-    refreshBag(W, G);
-    const after = maxHp(W, G);
-    if (after > before) W.p.hp += after - before;
-    W.p.hp = Math.min(W.p.hp, after);
-    if (W.pb.seeAll) {
-      W.seen.fill(2);
-      paintFog(W, G);
-    }
-    if (W.pb.ghost && !W.ghost) W.ghost = { x: W.p.x, y: W.p.y, cd: 0 };
-  }
-  function hurt(W, G, n) {
-    if (W.p.dead || n <= 0) return;
-    if (W.pb.shield && W.p.shieldReady) {
-      W.p.shieldReady = false;
-      W.p.shieldT = 2.5;
-      burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 10, "#7ad7ff");
-      SFX.ui("shield");
-      return;
-    }
-    W.p.hp = Math.max(0, W.p.hp - n);
-    W.p.hitT = 0.3;
-    if (W.p.hp > 0) SFX.ui("hurt");
-    if (W.p.hp === 0) {
-      const LO = G.input.current.loadout;
-      if (W.pb.lives > (LO.usedLives || 0)) {
-        LO.usedLives = (LO.usedLives || 0) + 1;
-        W.p.hp = maxHp(W, G);
-        W.p.shieldReady = true;
-        W.p.shieldT = 0;
-        burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 24, "#ff5a36");
-        SFX.ui("revive");
-        toast(W, "Back from the dead");
-        G.input.current.notify();
-        return;
-      }
-      W.p.dead = true;
-      burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 24, COL.player);
-      W.strings.length = 0;
-      SFX.ui("die");
-      clearSave();
-      if (G.input.current.collection) {
-        G.input.current.collection.length = 0;
-        saveCollection([]);
-      }
-    }
-  }
-  var torchHand = (W) => {
-    const a = W.p.aim.show ? W.p.aim.nx : W.p.face;
-    return { x: W.p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: W.p.y + 9 };
-  };
-  var SPUTTER_FUEL = 0.25;
-  function sputterStep(st, dt, fuel, on, rnd2) {
-    rnd2 = rnd2 || Math.random;
-    st.start = false;
-    if (!on) {
-      st.cut = 0;
-      st.gap = 0;
-      st.onT = 0;
-      return false;
-    }
-    st.onT = (st.onT || 0) + dt;
-    st.cut = Math.max(0, (st.cut || 0) - dt);
-    st.gap = Math.max(0, (st.gap || 0) - dt);
-    if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
-      const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;
-      if (rnd2() < dt * (1 + 7 * w)) {
-        st.cut = 0.04 + rnd2() * (0.05 + 0.08 * w);
-        st.gap = st.cut + 0.1 + rnd2() * 0.2;
-        st.start = true;
-      }
-    }
-    return st.cut > 0;
-  }
-  var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
-  function corpseStep(W, dt) {
-    const p = W.p;
-    if (!p.rag) p.rag = ragNew(p.x, p.y, PW, p.face || 1, p.vx, p.vy);
-    ragStep(p.rag, dt, (x, y) => solidAt(W, x, y));
-    const hip = ragHip(p.rag);
-    p.x = hip.x - PW / 2;
-    p.y = hip.y - 15;
-    p.vx = hip.vx;
-    p.vy = hip.vy;
-    p.flame = 0;
-    p.jet = 0;
-    p.onGround = false;
-  }
-  var LINE_OFF = 0.75;
-  function lineLetGo(nx, ny, mag, ux, uy, atA, atB) {
-    if (mag <= 0.5) return false;
-    const along = nx * ux + ny * uy, across = Math.abs(nx * uy - ny * ux);
-    return across > LINE_OFF || atB && along > 0.3 || atA && along < -0.3;
-  }
-  function letGo(W, L3, mag) {
-    W.webLetGo = 0.35;
-    W.p.vx = L3.nx * mag * WALK * W.pb.walk * DEV.move * 0.8;
-    W.p.vy = Math.max(-90, L3.ny * mag * 90);
-  }
-  function movePlayer(W, G, F) {
-    const { dt } = F;
-    if (W.p.dead) {
-      corpseStep(W, dt);
-      return;
-    }
-    if (W.p.rag) W.p.rag = null;
-    let L3 = G.input.current.left;
-    if (!L3.active) {
-      const keys = G.input.current.keys;
-      const kx = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
-      if (kx || keys.w) {
-        const ny = keys.w ? -1 : 0, len = Math.hypot(kx, ny);
-        L3 = { active: true, nx: kx / len, ny: ny / len, mag: 1, dy: keys.w ? -1 : 1, on: true };
-      }
-    }
-    if (W.p.dead) L3 = NO_INPUT;
-    W.p.jx = L3.nx;
-    W.p.jy = L3.ny;
-    const raw = L3.active ? L3.mag : 0;
-    const mag = raw > DEAD ? (raw - DEAD) / (1 - DEAD) : 0;
-    const wantJet = mag > 0 && L3.dy < 0;
-    if (W.p.empty && W.p.fuel >= FUEL_RESTART) W.p.empty = false;
-    const jet = wantJet && !W.p.empty;
-    const climbing = W.zfx.climb && !jet && !W.p.dead;
-    W.p.jet = jet ? mag : 0;
-    W.p.sput = sputterStep(W.jetSt, dt, W.p.fuel, jet);
-    W.p.flame = W.p.sput ? 0 : W.p.jet;
-    if (W.p.sput) W.p.cough = 0.15;
-    else W.p.cough = Math.max(0, W.p.cough - dt);
-    if (W.jetSt.start) {
-      W.p.vy += DEV.sputDip;
-      for (let i = 0; i < 3; i++)
-        W.smoke.push({
-          x: W.p.x + PW / 2 + (Math.random() - 0.5) * 6,
-          y: W.p.y + PH + 2,
-          vx: (Math.random() - 0.5) * 40,
-          vy: 20 + Math.random() * 30,
-          r: 2.5 + Math.random() * 2,
-          life: 0.7 + Math.random() * 0.4,
-          max: 1.1,
-          c: "#6f767e",
-          a: 0.8,
-          jet: true
-        });
-    }
-    if (jet) {
-      W.p.fuel -= FUEL_DRAIN * (0.5 + 0.5 * mag) * dt / W.pb.fuel;
-      if (W.p.fuel <= 0) {
-        W.p.fuel = 0;
-        W.p.empty = true;
-      }
-    } else if (W.p.onGround || climbing) {
-      W.p.fuel = Math.min(1, W.p.fuel + FUEL_REGEN * W.pb.refuel * dt);
-    }
-    const pcx0 = W.p.x + PW / 2;
-    W.p.kick -= dt;
-    const k = W.p.kick > 0 ? 0.15 : 1;
-    const tied = W.strings.reduce((m, s) => m * s.slow, 1) * W.zfx.webMul;
-    W.webLetGo -= dt;
-    if (jet && W.p.sput) {
-      W.p.vx = approach(W.p.vx, L3.nx * mag * JET * W.pb.walk * DEV.move * tied, JET_ACC * dt * k);
-      W.p.vy = Math.min(W.p.vy + GRAVITY * dt, 900);
-    } else if (jet) {
-      W.p.vx = approach(W.p.vx, L3.nx * mag * JET * W.pb.walk * DEV.move * tied, JET_ACC * dt * k);
-      const ty = L3.ny * mag * JET * W.pb.jet * DEV.move * tied;
-      if (ty < W.p.vy && W.p.kick <= 0 && W.p.cough <= 0) W.p.vy = ty;
-      else W.p.vy = approach(W.p.vy, ty, JET_ACC * dt * k);
-      if (W.zfx.rev) W.p.vy -= GRAVITY * W.zfx.rev * dt;
-    } else if (climbing && W.zfx.arch && W.p.kick <= 0) {
-      const ar = W.zfx.arch, hy = W.p.y + WEB_HAND, q = archNear(ar, pcx0, hy);
-      const a = ar.arc[q.k], b = ar.arc[q.k + 1], ul = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
-      const ux = (b[0] - a[0]) / ul, uy = (b[1] - a[1]) / ul;
-      const along = mag > 0 ? (L3.nx * ux + L3.ny * uy) * mag : 0;
-      const A0 = ar.arc[0], A1 = ar.arc[ar.arc.length - 1];
-      const atA = Math.hypot(q.x - ar.x - A0[0], q.y - ar.y - A0[1]) < 1.5, atB = Math.hypot(q.x - ar.x - A1[0], q.y - ar.y - A1[1]) < 1.5;
-      if (lineLetGo(L3.nx, L3.ny, mag, ux, uy, atA, atB)) letGo(W, L3, mag);
-      else {
-        const v = along * (ar.climb || (ar.climb = kr("arClimb"))) * tied;
-        W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
-        W.p.vy = approach(W.p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
-      }
-    } else if (climbing && W.zfx.web && W.p.kick <= 0) {
-      const ln = W.zfx.web, wl = Math.hypot(ln.b0x - ln.a0x, ln.b0y - ln.a0y) || 1;
-      let ux = (ln.b0x - ln.a0x) / wl, uy = (ln.b0y - ln.a0y) / wl;
-      const along = mag > 0 ? (L3.nx * ux + L3.ny * uy) * mag : 0;
-      const e = webNear(ln, pcx0, W.p.y + WEB_HAND);
-      const atA = Math.hypot(e.x - ln.a0x, e.y - ln.a0y) < 1.5, atB = Math.hypot(e.x - ln.b0x, e.y - ln.b0y) < 1.5;
-      if (lineLetGo(L3.nx, L3.ny, mag, ux, uy, atA, atB)) letGo(W, L3, mag);
-      else {
-        const v = along * (ln.climb || (ln.climb = spr("webClimb"))) * tied, hy = W.p.y + WEB_HAND, q = webNear(ln, pcx0, hy);
-        W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
-        W.p.vy = approach(W.p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
-      }
-    } else {
-      const target = mag > 0 ? L3.nx * mag * WALK * W.pb.walk * DEV.move * W.zfx.slow * tied : 0;
-      const cp = W.zfx.climb, vine = cp && "k" in cp && swings(cp) ? cp : null;
-      W.p.swing = 0;
-      if (vine && climbing && W.p.kick <= 0 && !W.p.onGround && Math.abs(target) < WALK * 0.25) {
-        const hy = W.p.y + WEB_HAND, Lh = clamp(hy - vine.y - hangRootY(vine), 6, vine.len);
-        const s = clamp((pcx0 - vine.x - hangRootX(vine)) / Lh, -1, 1), a = Math.asin(s);
-        W.p.vx += (-GRAVITY * DEV.vineGrav * s * Math.sqrt(1 - s * s) - DEV.vineDamp * W.p.vx) * dt;
-        if (Math.abs(a) > DEV.vineMax && W.p.vx * a > 0) W.p.vx = 0;
-        W.p.swing = 1;
-      } else W.p.vx = approach(W.p.vx, target, (W.p.onGround ? GROUND_ACC * (W.zfx.slick ? 0.08 : 1) : AIR_ACC) * dt * k);
-      if (climbing && W.p.kick <= 0) W.p.vy = approach(W.p.vy, mag > 0 ? L3.ny * mag * CLIMB * tied : 0, 1800 * dt);
-      else W.p.vy = Math.min(W.p.vy + GRAVITY * dt * (1 - 2 * W.zfx.rev), 900);
-    }
-    const wasGround = W.p.onGround, fallV = W.p.vy;
-    let n = Math.ceil(Math.abs(W.p.vx * dt));
-    if (n > 0) {
-      const sx = W.p.vx * dt / n;
-      for (let i = 0; i < n; i++) {
-        if (!boxHit(W, W.p.x + sx, W.p.y)) {
-          W.p.x += sx;
-          continue;
-        }
-        let moved = false;
-        const maxUp = wasGround ? 6 : 3;
-        for (let up = 1; up <= maxUp; up++) {
-          if (!boxHit(W, W.p.x + sx, W.p.y - up)) {
-            W.p.x += sx;
-            W.p.y -= up;
-            moved = true;
-            break;
-          }
-        }
-        if (!moved) {
-          W.p.vx = 0;
-          break;
-        }
-      }
-    }
-    const y0 = W.p.y;
-    n = Math.ceil(Math.abs(W.p.vy * dt));
-    if (n > 0) {
-      const sy = W.p.vy * dt / n;
-      for (let i = 0; i < n; i++) {
-        if (!boxHit(W, W.p.x, W.p.y + sy)) {
-          W.p.y += sy;
-          continue;
-        }
-        if (sy > 0) W.p.y = Math.floor((W.p.y + sy + PH - 1e-3) / CELL) * CELL - PH;
-        else W.p.y = (Math.floor((W.p.y + sy) / CELL) + 1) * CELL;
-        if (boxHit(W, W.p.x, W.p.y)) W.p.y -= sy;
-        W.p.vy = 0;
-        break;
-      }
-    }
-    if (W.p.vy >= 0) {
-      const top = ledgeUnder(W, y0 + PH, W.p.y + PH);
-      if (top !== null) {
-        W.p.y = top - PH;
-        W.p.vy = 0;
-      }
-    }
-    if (wasGround && !jet && W.p.vy >= 0 && W.p.kick <= 0 && !boxHit(W, W.p.x, W.p.y + 1)) {
-      for (let dn = 1; dn <= 6; dn++) {
-        if (boxHit(W, W.p.x, W.p.y + dn + 1)) {
-          W.p.y += dn;
-          W.p.vy = 0;
-          break;
-        }
-      }
-    }
-    if (boxHit(W, W.p.x, W.p.y)) {
-      for (let up = 1; up <= 40; up++) if (!boxHit(W, W.p.x, W.p.y - up)) {
-        W.p.y -= up;
-        break;
-      }
-    }
-    if (W.p.y > WH) {
-      W.p.x = W.start.x;
-      W.p.y = W.start.y;
-      W.p.vx = 0;
-      W.p.vy = 0;
-    }
-    W.p.onGround = boxHit(W, W.p.x, W.p.y + 0.5) || W.p.vy >= 0 && ledgeUnder(W, W.p.y + PH - 0.01, W.p.y + PH + 0.5) !== null;
-    if (!W.p.dead) {
-      if (W.p.onGround && !wasGround && fallV > 200) SFX.fx("land", null, null, { v: fallV, s: W.zfx.surface });
-      if (W.p.onGround && Math.abs(W.p.vx) > 40) {
-        if ((W.stepT -= dt * Math.abs(W.p.vx) / 40) <= 0) {
-          W.stepT = 1;
-          SFX.fx("step", null, null, W.zfx.surface);
-        }
-      } else W.stepT = Math.min(W.stepT, 0.35);
-    }
-  }
-  function stepTorch(W, F) {
-    const { dt } = F;
-    W.torchT += dt;
-    W.flickN += (Math.random() - 0.5) * 2.6 * dt;
-    W.flickN *= 0.94;
-    W.flick = clamp(
-      0.94 + W.flickN + 0.04 * Math.sin(W.torchT * 11.3) + 0.025 * Math.sin(W.torchT * 19.7),
-      0.84,
-      1
-    );
-    W.torchAcc += dt;
-    while (W.torchAcc > 0.04) {
-      W.torchAcc -= 0.04;
-      const th = torchHand(W);
-      const life = 0.3 + Math.random() * 0.35;
-      W.torchP.push({
-        x: th.x + (Math.random() - 0.5) * 2,
-        y: th.y - 7,
-        vx: (Math.random() - 0.5) * 10 + W.p.vx * 0.15,
-        vy: -20 - Math.random() * 22,
-        life,
-        max: life,
-        s: 1 + Math.random() * 1.3,
-        c: Math.random() < 0.5 ? COL.flame2 : COL.flame
-      });
-      if (W.torchP.length > 60) W.torchP.shift();
-    }
-    for (let i = W.torchP.length - 1; i >= 0; i--) {
-      const q = W.torchP[i];
-      q.vy += 30 * dt;
-      q.vx *= 0.98;
-      q.x += q.vx * dt;
-      q.y += q.vy * dt;
-      if ((q.life -= dt) <= 0) W.torchP.splice(i, 1);
-    }
-    const wantX = clamp(-W.p.vx * 0.055, -11, 11), wantY = clamp(-W.p.vy * 0.03, -5, 7);
-    W.leanVX += ((wantX - W.leanX) * 90 - W.leanVX * 9) * dt;
-    W.leanVY += ((wantY - W.leanY) * 90 - W.leanVY * 9) * dt;
-    W.leanX += W.leanVX * dt;
-    W.leanY += W.leanVY * dt;
-    W.glowN += (Math.random() - 0.5) * 6 * dt;
-    W.glowN *= 0.9;
-  }
-  function ledgeUnder(W, f0, f1) {
-    const x0 = W.p.x, x1 = W.p.x + PW;
-    let best = null;
-    const at = (cx, hw, top) => {
-      if (x1 > cx - hw && x0 < cx + hw && f0 <= top + 0.01 && f1 >= top && (best === null || top < best)) best = top;
-    };
-    for (const r of W.rooms) at(r.x, 12, r.y + 14);
-    for (const it of W.stock || []) at(it.x, 11, SHOP_FLOOR * CELL - 5);
-    return best;
-  }
-
   // src/art/sprites.js
   function drawGun(ctx, x, y, ang, sc, accent) {
     ctx.save();
@@ -10349,7 +9995,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function jetFlame(ctx, bx, by, ux, uy, len, time) {
     const nx = -uy, ny = ux;
     const at = (k, side) => [bx + ux * len * k + nx * side, by + uy * len * k + ny * side];
-    const layers = [["#d8381a", 1, 3.6], [COL.flame, 0.82, 2.8], [COL.flame2, 0.55, 1.9], ["#fff6d8", 0.28, 1.1]];
+    const layers = [["#d8381a", 1, 2.5], [COL.flame, 0.82, 1.95], [COL.flame2, 0.55, 1.35], ["#fff6d8", 0.28, 0.8]];
     for (const [col, k, r] of layers) {
       ctx.fillStyle = String(col);
       const kk = Number(k), rr2 = Number(r);
@@ -11489,6 +11135,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (dv.life <= 0) W.devils.splice(i, 1);
     }
   }
+
+  // src/game/systems/webs.js
+  var webNear = (L3, x, y) => webNearU(L3, x, y);
+  var webDist = (L3, x, y) => {
+    const q = webNear(L3, x, y);
+    return Math.hypot(q.x - x, q.y - y);
+  };
 
   // src/game/systems/props.js
   function blowProp(W, G, pr) {
@@ -13246,6 +12899,355 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     } else if (W.p.dead && W.p.rag) ragPush(W.p.rag, x, y, reach2);
   }
 
+  // src/game/systems/player.js
+  var refreshBag = (W, G) => {
+    W.pb = perkBag(activePerks(G.input.current.loadout));
+  };
+  var maxHp = (W, G) => W.pb.maxHp + (G.input.current.loadout.maxBonus || 0);
+  function applyPerks(W, G) {
+    const before = maxHp(W, G);
+    refreshBag(W, G);
+    const after = maxHp(W, G);
+    if (after > before) W.p.hp += after - before;
+    W.p.hp = Math.min(W.p.hp, after);
+    if (W.pb.seeAll) {
+      W.seen.fill(2);
+      paintFog(W, G);
+    }
+    if (W.pb.ghost && !W.ghost) W.ghost = { x: W.p.x, y: W.p.y, cd: 0 };
+  }
+  function hurt(W, G, n) {
+    if (W.p.dead || n <= 0) return;
+    if (W.pb.shield && W.p.shieldReady) {
+      W.p.shieldReady = false;
+      W.p.shieldT = 2.5;
+      burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 10, "#7ad7ff");
+      SFX.ui("shield");
+      return;
+    }
+    W.p.hp = Math.max(0, W.p.hp - n);
+    W.p.hitT = 0.3;
+    if (W.p.hp > 0) SFX.ui("hurt");
+    if (W.p.hp === 0) {
+      const LO = G.input.current.loadout;
+      if (W.pb.lives > (LO.usedLives || 0)) {
+        LO.usedLives = (LO.usedLives || 0) + 1;
+        W.p.hp = maxHp(W, G);
+        W.p.shieldReady = true;
+        W.p.shieldT = 0;
+        burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 24, "#ff5a36");
+        SFX.ui("revive");
+        toast(W, "Back from the dead");
+        G.input.current.notify();
+        return;
+      }
+      W.p.dead = true;
+      burst(W, W.p.x + PW / 2, W.p.y + PH / 2, 24, COL.player);
+      W.strings.length = 0;
+      SFX.ui("die");
+      clearSave();
+      if (G.input.current.collection) {
+        G.input.current.collection.length = 0;
+        saveCollection([]);
+      }
+    }
+  }
+  var torchHand = (W) => {
+    const a = W.p.aim.show ? W.p.aim.nx : W.p.face;
+    return { x: W.p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: W.p.y + 9 };
+  };
+  var NOZZLE_X = 4.4, NOZZLE_Y = 17.6;
+  var jetNozzle = (W) => ({ x: W.p.x + PW / 2 - NOZZLE_X * (W.p.face || 1), y: W.p.y + NOZZLE_Y });
+  var SPUTTER_FUEL = 0.25;
+  function sputterStep(st, dt, fuel, on, rnd2) {
+    rnd2 = rnd2 || Math.random;
+    st.start = false;
+    if (!on) {
+      st.cut = 0;
+      st.gap = 0;
+      st.onT = 0;
+      return false;
+    }
+    st.onT = (st.onT || 0) + dt;
+    st.cut = Math.max(0, (st.cut || 0) - dt);
+    st.gap = Math.max(0, (st.gap || 0) - dt);
+    if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
+      const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;
+      if (rnd2() < dt * (1 + 7 * w)) {
+        st.cut = 0.04 + rnd2() * (0.05 + 0.08 * w);
+        st.gap = st.cut + 0.1 + rnd2() * 0.2;
+        st.start = true;
+      }
+    }
+    return st.cut > 0;
+  }
+  var NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
+  function corpseStep(W, dt) {
+    const p = W.p;
+    if (!p.rag) p.rag = ragNew(p.x, p.y, PW, p.face || 1, p.vx, p.vy);
+    ragStep(p.rag, dt, (x, y) => solidAt(W, x, y));
+    const hip = ragHip(p.rag);
+    p.x = hip.x - PW / 2;
+    p.y = hip.y - 15;
+    p.vx = hip.vx;
+    p.vy = hip.vy;
+    p.flame = 0;
+    p.jet = 0;
+    p.onGround = false;
+  }
+  var LINE_OFF = 0.75;
+  function lineLetGo(nx, ny, mag, ux, uy, atA, atB) {
+    if (mag <= 0.5) return false;
+    const along = nx * ux + ny * uy, across = Math.abs(nx * uy - ny * ux);
+    return across > LINE_OFF || atB && along > 0.3 || atA && along < -0.3;
+  }
+  function letGo(W, L3, mag) {
+    W.webLetGo = 0.35;
+    W.p.vx = L3.nx * mag * WALK * W.pb.walk * DEV.move * 0.8;
+    W.p.vy = Math.max(-90, L3.ny * mag * 90);
+  }
+  function movePlayer(W, G, F) {
+    const { dt } = F;
+    if (W.p.dead) {
+      corpseStep(W, dt);
+      return;
+    }
+    if (W.p.rag) W.p.rag = null;
+    let L3 = G.input.current.left;
+    if (!L3.active) {
+      const keys = G.input.current.keys;
+      const kx = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
+      if (kx || keys.w) {
+        const ny = keys.w ? -1 : 0, len = Math.hypot(kx, ny);
+        L3 = { active: true, nx: kx / len, ny: ny / len, mag: 1, dy: keys.w ? -1 : 1, on: true };
+      }
+    }
+    if (W.p.dead) L3 = NO_INPUT;
+    W.p.jx = L3.nx;
+    W.p.jy = L3.ny;
+    const raw = L3.active ? L3.mag : 0;
+    const mag = raw > DEAD ? (raw - DEAD) / (1 - DEAD) : 0;
+    const wantJet = mag > 0 && L3.dy < 0;
+    if (W.p.empty && W.p.fuel >= FUEL_RESTART) W.p.empty = false;
+    const jet = wantJet && !W.p.empty;
+    const climbing = W.zfx.climb && !jet && !W.p.dead;
+    W.p.jet = jet ? mag : 0;
+    W.p.sput = sputterStep(W.jetSt, dt, W.p.fuel, jet);
+    W.p.flame = W.p.sput ? 0 : W.p.jet;
+    if (W.p.sput) W.p.cough = 0.15;
+    else W.p.cough = Math.max(0, W.p.cough - dt);
+    if (W.jetSt.start) {
+      W.p.vy += DEV.sputDip;
+      for (let i = 0; i < 3; i++)
+        W.smoke.push({
+          x: jetNozzle(W).x + (Math.random() - 0.5) * 4,
+          y: W.p.y + NOZZLE_Y + 2,
+          vx: (Math.random() - 0.5) * 40,
+          vy: 20 + Math.random() * 30,
+          r: 2.5 + Math.random() * 2,
+          life: 0.7 + Math.random() * 0.4,
+          max: 1.1,
+          c: "#6f767e",
+          a: 0.8,
+          jet: true
+        });
+    }
+    if (jet) {
+      W.p.fuel -= FUEL_DRAIN * (0.5 + 0.5 * mag) * dt / W.pb.fuel;
+      if (W.p.fuel <= 0) {
+        W.p.fuel = 0;
+        W.p.empty = true;
+      }
+    } else if (W.p.onGround || climbing) {
+      W.p.fuel = Math.min(1, W.p.fuel + FUEL_REGEN * W.pb.refuel * dt);
+    }
+    const pcx0 = W.p.x + PW / 2;
+    W.p.kick -= dt;
+    const k = W.p.kick > 0 ? 0.15 : 1;
+    const tied = W.strings.reduce((m, s) => m * s.slow, 1) * W.zfx.webMul;
+    W.webLetGo -= dt;
+    if (jet && W.p.sput) {
+      W.p.vx = approach(W.p.vx, L3.nx * mag * JET * W.pb.walk * DEV.move * tied, JET_ACC * dt * k);
+      W.p.vy = Math.min(W.p.vy + GRAVITY * dt, 900);
+    } else if (jet) {
+      W.p.vx = approach(W.p.vx, L3.nx * mag * JET * W.pb.walk * DEV.move * tied, JET_ACC * dt * k);
+      const ty = L3.ny * mag * JET * W.pb.jet * DEV.move * tied;
+      if (ty < W.p.vy && W.p.kick <= 0 && W.p.cough <= 0) W.p.vy = ty;
+      else W.p.vy = approach(W.p.vy, ty, JET_ACC * dt * k);
+      if (W.zfx.rev) W.p.vy -= GRAVITY * W.zfx.rev * dt;
+    } else if (climbing && W.zfx.arch && W.p.kick <= 0) {
+      const ar = W.zfx.arch, hy = W.p.y + WEB_HAND, q = archNear(ar, pcx0, hy);
+      const a = ar.arc[q.k], b = ar.arc[q.k + 1], ul = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const ux = (b[0] - a[0]) / ul, uy = (b[1] - a[1]) / ul;
+      const along = mag > 0 ? (L3.nx * ux + L3.ny * uy) * mag : 0;
+      const A0 = ar.arc[0], A1 = ar.arc[ar.arc.length - 1];
+      const atA = Math.hypot(q.x - ar.x - A0[0], q.y - ar.y - A0[1]) < 1.5, atB = Math.hypot(q.x - ar.x - A1[0], q.y - ar.y - A1[1]) < 1.5;
+      if (lineLetGo(L3.nx, L3.ny, mag, ux, uy, atA, atB)) letGo(W, L3, mag);
+      else {
+        const v = along * (ar.climb || (ar.climb = kr("arClimb"))) * tied;
+        W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
+        W.p.vy = approach(W.p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
+      }
+    } else if (climbing && W.zfx.web && W.p.kick <= 0) {
+      const ln = W.zfx.web, wl = Math.hypot(ln.b0x - ln.a0x, ln.b0y - ln.a0y) || 1;
+      let ux = (ln.b0x - ln.a0x) / wl, uy = (ln.b0y - ln.a0y) / wl;
+      const along = mag > 0 ? (L3.nx * ux + L3.ny * uy) * mag : 0;
+      const e = webNear(ln, pcx0, W.p.y + WEB_HAND);
+      const atA = Math.hypot(e.x - ln.a0x, e.y - ln.a0y) < 1.5, atB = Math.hypot(e.x - ln.b0x, e.y - ln.b0y) < 1.5;
+      if (lineLetGo(L3.nx, L3.ny, mag, ux, uy, atA, atB)) letGo(W, L3, mag);
+      else {
+        const v = along * (ln.climb || (ln.climb = spr("webClimb"))) * tied, hy = W.p.y + WEB_HAND, q = webNear(ln, pcx0, hy);
+        W.p.vx = approach(W.p.vx, ux * v + (q.x - pcx0) * 14, 1800 * dt);
+        W.p.vy = approach(W.p.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
+      }
+    } else {
+      const target = mag > 0 ? L3.nx * mag * WALK * W.pb.walk * DEV.move * W.zfx.slow * tied : 0;
+      const cp = W.zfx.climb, vine = cp && "k" in cp && swings(cp) ? cp : null;
+      W.p.swing = 0;
+      if (vine && climbing && W.p.kick <= 0 && !W.p.onGround && Math.abs(target) < WALK * 0.25) {
+        const hy = W.p.y + WEB_HAND, Lh = clamp(hy - vine.y - hangRootY(vine), 6, vine.len);
+        const s = clamp((pcx0 - vine.x - hangRootX(vine)) / Lh, -1, 1), a = Math.asin(s);
+        W.p.vx += (-GRAVITY * DEV.vineGrav * s * Math.sqrt(1 - s * s) - DEV.vineDamp * W.p.vx) * dt;
+        if (Math.abs(a) > DEV.vineMax && W.p.vx * a > 0) W.p.vx = 0;
+        W.p.swing = 1;
+      } else W.p.vx = approach(W.p.vx, target, (W.p.onGround ? GROUND_ACC * (W.zfx.slick ? 0.08 : 1) : AIR_ACC) * dt * k);
+      if (climbing && W.p.kick <= 0) W.p.vy = approach(W.p.vy, mag > 0 ? L3.ny * mag * CLIMB * tied : 0, 1800 * dt);
+      else W.p.vy = Math.min(W.p.vy + GRAVITY * dt * (1 - 2 * W.zfx.rev), 900);
+    }
+    const wasGround = W.p.onGround, fallV = W.p.vy;
+    let n = Math.ceil(Math.abs(W.p.vx * dt));
+    if (n > 0) {
+      const sx = W.p.vx * dt / n;
+      for (let i = 0; i < n; i++) {
+        if (!boxHit(W, W.p.x + sx, W.p.y)) {
+          W.p.x += sx;
+          continue;
+        }
+        let moved = false;
+        const maxUp = wasGround ? 6 : 3;
+        for (let up = 1; up <= maxUp; up++) {
+          if (!boxHit(W, W.p.x + sx, W.p.y - up)) {
+            W.p.x += sx;
+            W.p.y -= up;
+            moved = true;
+            break;
+          }
+        }
+        if (!moved) {
+          W.p.vx = 0;
+          break;
+        }
+      }
+    }
+    const y0 = W.p.y;
+    n = Math.ceil(Math.abs(W.p.vy * dt));
+    if (n > 0) {
+      const sy = W.p.vy * dt / n;
+      for (let i = 0; i < n; i++) {
+        if (!boxHit(W, W.p.x, W.p.y + sy)) {
+          W.p.y += sy;
+          continue;
+        }
+        if (sy > 0) W.p.y = Math.floor((W.p.y + sy + PH - 1e-3) / CELL) * CELL - PH;
+        else W.p.y = (Math.floor((W.p.y + sy) / CELL) + 1) * CELL;
+        if (boxHit(W, W.p.x, W.p.y)) W.p.y -= sy;
+        W.p.vy = 0;
+        break;
+      }
+    }
+    if (W.p.vy >= 0) {
+      const top = ledgeUnder(W, y0 + PH, W.p.y + PH);
+      if (top !== null) {
+        W.p.y = top - PH;
+        W.p.vy = 0;
+      }
+    }
+    if (wasGround && !jet && W.p.vy >= 0 && W.p.kick <= 0 && !boxHit(W, W.p.x, W.p.y + 1)) {
+      for (let dn = 1; dn <= 6; dn++) {
+        if (boxHit(W, W.p.x, W.p.y + dn + 1)) {
+          W.p.y += dn;
+          W.p.vy = 0;
+          break;
+        }
+      }
+    }
+    if (boxHit(W, W.p.x, W.p.y)) {
+      for (let up = 1; up <= 40; up++) if (!boxHit(W, W.p.x, W.p.y - up)) {
+        W.p.y -= up;
+        break;
+      }
+    }
+    if (W.p.y > WH) {
+      W.p.x = W.start.x;
+      W.p.y = W.start.y;
+      W.p.vx = 0;
+      W.p.vy = 0;
+    }
+    W.p.onGround = boxHit(W, W.p.x, W.p.y + 0.5) || W.p.vy >= 0 && ledgeUnder(W, W.p.y + PH - 0.01, W.p.y + PH + 0.5) !== null;
+    if (!W.p.dead) {
+      if (W.p.onGround && !wasGround && fallV > 200) SFX.fx("land", null, null, { v: fallV, s: W.zfx.surface });
+      if (W.p.onGround && Math.abs(W.p.vx) > 40) {
+        if ((W.stepT -= dt * Math.abs(W.p.vx) / 40) <= 0) {
+          W.stepT = 1;
+          SFX.fx("step", null, null, W.zfx.surface);
+        }
+      } else W.stepT = Math.min(W.stepT, 0.35);
+    }
+  }
+  function stepTorch(W, F) {
+    const { dt } = F;
+    W.torchT += dt;
+    W.flickN += (Math.random() - 0.5) * 2.6 * dt;
+    W.flickN *= 0.94;
+    W.flick = clamp(
+      0.94 + W.flickN + 0.04 * Math.sin(W.torchT * 11.3) + 0.025 * Math.sin(W.torchT * 19.7),
+      0.84,
+      1
+    );
+    W.torchAcc += dt;
+    while (W.torchAcc > 0.04) {
+      W.torchAcc -= 0.04;
+      const th = torchHand(W);
+      const life = 0.3 + Math.random() * 0.35;
+      W.torchP.push({
+        x: th.x + (Math.random() - 0.5) * 2,
+        y: th.y - 7,
+        vx: (Math.random() - 0.5) * 10 + W.p.vx * 0.15,
+        vy: -20 - Math.random() * 22,
+        life,
+        max: life,
+        s: 1 + Math.random() * 1.3,
+        c: Math.random() < 0.5 ? COL.flame2 : COL.flame
+      });
+      if (W.torchP.length > 60) W.torchP.shift();
+    }
+    for (let i = W.torchP.length - 1; i >= 0; i--) {
+      const q = W.torchP[i];
+      q.vy += 30 * dt;
+      q.vx *= 0.98;
+      q.x += q.vx * dt;
+      q.y += q.vy * dt;
+      if ((q.life -= dt) <= 0) W.torchP.splice(i, 1);
+    }
+    const wantX = clamp(-W.p.vx * 0.055, -11, 11), wantY = clamp(-W.p.vy * 0.03, -5, 7);
+    W.leanVX += ((wantX - W.leanX) * 90 - W.leanVX * 9) * dt;
+    W.leanVY += ((wantY - W.leanY) * 90 - W.leanVY * 9) * dt;
+    W.leanX += W.leanVX * dt;
+    W.leanY += W.leanVY * dt;
+    W.glowN += (Math.random() - 0.5) * 6 * dt;
+    W.glowN *= 0.9;
+  }
+  function ledgeUnder(W, f0, f1) {
+    const x0 = W.p.x, x1 = W.p.x + PW;
+    let best = null;
+    const at = (cx, hw, top) => {
+      if (x1 > cx - hw && x0 < cx + hw && f0 <= top + 0.01 && f1 >= top && (best === null || top < best)) best = top;
+    };
+    for (const r of W.rooms) at(r.x, 12, r.y + 14);
+    for (const it of W.stock || []) at(it.x, 11, SHOP_FLOOR * CELL - 5);
+    return best;
+  }
+
   // src/game/systems/particles.js
   var toast = (W, text) => {
     W.toasts.push({ text, t: 2.2 });
@@ -13296,7 +13298,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let i = W.toasts.length - 1; i >= 0; i--) if ((W.toasts[i].t -= dt) <= 0) W.toasts.splice(i, 1);
   }
   function stepParticles(W, F) {
-    const { dt, pcx } = F;
+    const { dt } = F;
     if (W.p.flame > 0) {
       let fx = -W.p.jx, fy = -W.p.jy + 0.8;
       const fl = Math.hypot(fx, fy) || 1;
@@ -13305,9 +13307,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       W.smokeAcc += dt * (25 + 35 * W.p.flame);
       while (W.smokeAcc >= 1) {
         W.smokeAcc--;
+        const nz = jetNozzle(W);
         W.smoke.push({
-          x: pcx + (Math.random() - 0.5) * 5,
-          y: W.p.y + PH + 3,
+          x: nz.x + fx * 6 + (Math.random() - 0.5) * 3,
+          y: nz.y + fy * 6 + 1,
           vx: fx * 50 + (Math.random() - 0.5) * 20,
           vy: fy * 50 + (Math.random() - 0.5) * 20,
           r: 1.5 + Math.random(),
@@ -14313,14 +14316,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
   function drawJetFlame(W, G, F) {
-    const { pcx } = F;
     if (W.p.flame > 0) {
       let fx = -W.p.jx, fy = -W.p.jy + 0.8;
       const fl = Math.hypot(fx, fy) || 1;
       fx /= fl;
       fy /= fl;
       const len = 6 + W.p.flame * 16 + Math.random() * 3;
-      const bx = pcx, by = W.p.y + PH - 2, px = DEV.runnerPx;
+      const nz = jetNozzle(W), bx = nz.x, by = nz.y, px = DEV.runnerPx;
       const paint2 = (c) => jetFlame(c, bx, by, fx, fy, len, W.time);
       if (px > 0) {
         const R = len + 8, ox2 = W.p.x - 14, oy2 = W.p.y - 8;

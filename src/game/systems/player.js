@@ -87,6 +87,12 @@ export const torchHand = (W) => {
   return { x: W.p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: W.p.y + 9 };
 };
 
+// The jetpack's nozzle: the bottom of the backpack (art/sprites.js paintBody: the pack's panel at the
+// sprite's x −4.4, behind you, its foot 17.6 down from your top). The flame and its smoke come out here
+export const NOZZLE_X = 4.4, NOZZLE_Y = 17.6;
+/** @param {World} W @returns {{ x: number, y: number }} */
+export const jetNozzle = W => ({ x: W.p.x + PW / 2 - NOZZLE_X * (W.p.face || 1), y: W.p.y + NOZZLE_Y });
+
 // ---- the jetpack ----
 // Near the bottom of the tank the jet coughs: short random cut-outs, more often and a touch
 // longer the closer the tank is to dry. `st` keeps the cut-out clock and how long the jet
@@ -186,7 +192,7 @@ export function movePlayer(W, G, F) {
   if (W.jetSt.start) {
     W.p.vy += DEV.sputDip;
     for (let i = 0; i < 3; i++)
-      W.smoke.push({ x: W.p.x + PW / 2 + (Math.random() - 0.5) * 6, y: W.p.y + PH + 2,
+      W.smoke.push({ x: jetNozzle(W).x + (Math.random() - 0.5) * 4, y: W.p.y + NOZZLE_Y + 2,
         vx: (Math.random() - 0.5) * 40, vy: 20 + Math.random() * 30,
         r: 2.5 + Math.random() * 2, life: 0.7 + Math.random() * 0.4, max: 1.1, c: '#6f767e', a: 0.8, jet: true });
   }

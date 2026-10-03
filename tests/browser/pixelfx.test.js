@@ -1,7 +1,8 @@
 // v130: the hand torch's flame and the jetpack's flame and smoke on the player's pixel grid
 // (DEV.runnerPx, like the gun): in a sandbox, the torch and the jet are drawn as square pixels of
 // the flame colours, the flame moves frame to frame (it licks, it isn't one shape tilting), and
-// the jet smoke is blocky too. Screenshots: pixelfx_torch.png, pixelfx_jet.png (zoomed in).
+// the jet smoke is blocky too, and the jet comes out of the backpack (behind you), facing either
+// way. Screenshots: pixelfx_torch.png, pixelfx_jet.png, pixelfx_jet_right/left.png (zoomed in).
 const { launch } = require('../chromium');
 const path = require('path');
 const DIR = path.join(__dirname, '..', 'build');
@@ -70,6 +71,31 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the jet flame adds fire pixels', j.fire > t1.fire, [j.fire, t1.fire]);
   check('in square pixels too', j.blocky / j.fire > 0.6, j);
   check('the jet smoke is marked for the pixel layer', smoke > 3, smoke);
+  // the flame comes out of the backpack (jetNozzle), behind you, not from between the feet: the
+  // fire under your hips sits on your back's side, facing either way
+  const backSide = () => page.evaluate(() => {
+    const L = window.__lvl, cv = document.querySelector('canvas'), x = cv.getContext('2d');
+    const u = L.unitPx * (window.devicePixelRatio || 1), mid = L.p.x + PW / 2;
+    const x0 = Math.round((L.p.x - 30 - L.camX) * u), y0 = Math.round((L.p.y + 17 - L.camY) * u);
+    const w = Math.round(72 * u), h = Math.round(12 * u), d = x.getImageData(x0, y0, w, h).data;
+    let sx = 0, n = 0;
+    for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) {
+      const i = (yy * w + xx) * 4;
+      if (d[i] > 230 && d[i + 1] > 110 && d[i + 2] < 150) { sx += xx; n++; }
+    }
+    return { off: n ? (x0 + sx / n) / u + L.camX - mid : 0, n, face: L.p.face };
+  });
+  await page.evaluate(() => { window.__lvl.p.face = 1; window.__in.current.keys.d = false; });
+  await page.evaluate(r => { const L = window.__lvl; L.p.y = r.y - 70; L.p.vy = 0; L.p.vx = 0; L.p.fuel = 1; L.p.face = 1; }, room);
+  await page.waitForTimeout(80);
+  const R1 = await backSide();
+  await shot('pixelfx_jet_right.png');
+  await page.evaluate(r => { const L = window.__lvl; L.p.y = r.y - 70; L.p.vy = 0; L.p.vx = 0; L.p.fuel = 1; L.p.face = -1; L.p.aim.show = false; }, room);
+  await page.waitForTimeout(80);
+  const R2 = await backSide();
+  await shot('pixelfx_jet_left.png');
+  check('facing right, the flame comes out behind (left of centre)', R1.n > 20 && R1.face === 1 && R1.off < -1.5, R1);
+  check('facing left, behind is the right', R2.n > 20 && R2.face === -1 && R2.off > 1.5, R2);
   await page.evaluate(() => { window.__in.current.keys.w = false; });
 
   console.log(fails ? `\n${fails} failed` : '\nall good');
