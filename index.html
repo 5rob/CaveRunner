@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.133</title>
-<!-- VERSION = 'v133' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.134</title>
+<!-- VERSION = 'v134' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -691,7 +691,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.133';</script>
+<script>const VERSION = 'v0.0.134';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -18341,18 +18341,130 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/art/pixfont.js
+  var SRC = {
+    A: "#####|#...#|#...#|#####|#...#|#...#|#...#",
+    B: "####.|#...#|#...#|#####|#...#|#...#|#####",
+    C: "#####|#....|#....|#....|#....|#....|#####",
+    D: "####.|#...#|#...#|#...#|#...#|#...#|####.",
+    E: "#####|#....|#....|####.|#....|#....|#####",
+    F: "#####|#....|#....|####.|#....|#....|#....",
+    G: "#####|#....|#....|#..##|#...#|#...#|#####",
+    H: "#...#|#...#|#...#|#####|#...#|#...#|#...#",
+    I: "###|.#.|.#.|.#.|.#.|.#.|###",
+    J: "....#|....#|....#|....#|....#|#...#|#####",
+    K: "#...#|#..#.|#.#..|##...|#.#..|#..#.|#...#",
+    L: "#....|#....|#....|#....|#....|#....|#####",
+    M: "#...#|##.##|#.#.#|#.#.#|#...#|#...#|#...#",
+    N: "#...#|##..#|#.#.#|#..##|#...#|#...#|#...#",
+    O: "#####|#...#|#...#|#...#|#...#|#...#|#####",
+    P: "#####|#...#|#...#|#####|#....|#....|#....",
+    Q: "#####|#...#|#...#|#...#|#.#.#|#..#.|####.",
+    R: "#####|#...#|#...#|#####|#.#..|#..#.|#...#",
+    S: "#####|#....|#....|#####|....#|....#|#####",
+    T: "#####|..#..|..#..|..#..|..#..|..#..|..#..",
+    U: "#...#|#...#|#...#|#...#|#...#|#...#|#####",
+    V: "#...#|#...#|#...#|#...#|#...#|.#.#.|..#..",
+    W: "#...#|#...#|#...#|#.#.#|#.#.#|#.#.#|.#.#.",
+    X: "#...#|#...#|.#.#.|..#..|.#.#.|#...#|#...#",
+    Y: "#...#|#...#|.#.#.|..#..|..#..|..#..|..#..",
+    Z: "#####|....#|...#.|..#..|.#...|#....|#####",
+    a: ".....|.....|####.|....#|#####|#...#|#####",
+    b: "#....|#....|#####|#...#|#...#|#...#|#####",
+    c: "....|....|####|#...|#...|#...|####",
+    d: "....#|....#|#####|#...#|#...#|#...#|#####",
+    e: ".....|.....|#####|#...#|#####|#....|#####",
+    f: ".###|.#..|####|.#..|.#..|.#..|.#..",
+    g: ".....|.....|#####|#...#|#...#|#...#|#####|....#|#####",
+    h: "#....|#....|#####|#...#|#...#|#...#|#...#",
+    i: "#|.|#|#|#|#|#",
+    j: "...#|....|...#|...#|...#|...#|...#|...#|####",
+    k: "#...|#...|#..#|#.#.|##..|#.#.|#..#",
+    l: "#.|#.|#.|#.|#.|#.|##",
+    m: ".....|.....|####.|#.#.#|#.#.#|#.#.#|#.#.#",
+    n: ".....|.....|#####|#...#|#...#|#...#|#...#",
+    o: ".....|.....|#####|#...#|#...#|#...#|#####",
+    p: ".....|.....|#####|#...#|#...#|#...#|#####|#....|#....",
+    q: ".....|.....|#####|#...#|#...#|#...#|#####|....#|....#",
+    r: "....|....|####|#...|#...|#...|#...",
+    s: ".....|.....|#####|#....|#####|....#|#####",
+    t: ".#..|.#..|####|.#..|.#..|.#..|.###",
+    u: ".....|.....|#...#|#...#|#...#|#...#|#####",
+    v: ".....|.....|#...#|#...#|#...#|.#.#.|..#..",
+    w: ".....|.....|#...#|#.#.#|#.#.#|#.#.#|.#.#.",
+    x: ".....|.....|#...#|.#.#.|..#..|.#.#.|#...#",
+    y: ".....|.....|#...#|#...#|#...#|#...#|#####|....#|#####",
+    z: ".....|.....|#####|...#.|..#..|.#...|#####",
+    0: "#####|#...#|#...#|#...#|#...#|#...#|#####",
+    1: "..#..|.##..|..#..|..#..|..#..|..#..|.###.",
+    2: "#####|....#|....#|#####|#....|#....|#####",
+    3: "#####|....#|....#|.####|....#|....#|#####",
+    4: "#...#|#...#|#...#|#####|....#|....#|....#",
+    5: "#####|#....|#....|#####|....#|....#|#####",
+    6: "#####|#....|#....|#####|#...#|#...#|#####",
+    7: "#####|....#|....#|...#.|..#..|..#..|..#..",
+    8: "#####|#...#|#...#|#####|#...#|#...#|#####",
+    9: "#####|#...#|#...#|#####|....#|....#|#####",
+    " ": "...",
+    ".": ".|.|.|.|.|.|#",
+    ",": "..|..|..|..|..|.#|.#|#.",
+    ":": ".|.|#|.|.|#|.",
+    "*": ".....|#.#.#|.###.|#.#.#|.....",
+    "(": ".#|#.|#.|#.|#.|#.|.#",
+    ")": "#.|.#|.#|.#|.#|.#|#.",
+    "-": "...|...|...|###",
+    "–": "....|....|....|####",
+    "/": "....#|...#.|...#.|..#..|.#...|.#...|#....",
+    "!": "#|#|#|#|#|.|#",
+    "?": "#####|....#|...##|..#..|..#..|.....|..#.."
+  };
+  var GLYPHS = /* @__PURE__ */ new Map();
+  for (const [ch, src] of Object.entries(SRC)) {
+    const rows = src.split("|"), runs = [];
+    rows.forEach((row, r) => {
+      for (let c = 0; c < row.length; c++) {
+        if (row[c] !== "#") continue;
+        let e = c;
+        while (row[e + 1] === "#") e++;
+        runs.push([r, c, e - c + 1]);
+        c = e;
+      }
+    });
+    GLYPHS.set(ch, { w: rows[0].length, runs });
+  }
+  var pixHas = (s) => [...s].every((ch) => GLYPHS.has(ch));
+  function pixWidth(s, px, bold = 0) {
+    let w = 0;
+    for (const ch of s) w += ((GLYPHS.get(ch) || GLYPHS.get(" "))?.w || 3) + 1 + bold;
+    return Math.max(0, w - 1) * px;
+  }
+  function pixText(ctx, s, x, y, px, ph, bold = 0, snap = 4) {
+    const q = (v) => Math.round(v * snap) / snap, top = y - 7 * ph;
+    for (const ch of s) {
+      const g = GLYPHS.get(ch) || GLYPHS.get(" ");
+      if (!g) continue;
+      for (const [r, c, n] of g.runs) {
+        const x0 = q(x + c * px), y0 = q(top + r * ph);
+        ctx.fillRect(x0, y0, q(x + (c + n + bold) * px) - x0, q(top + (r + 1) * ph) - y0);
+      }
+      x += (g.w + 1 + bold) * px;
+    }
+  }
+
   // src/game/render/vend.js
   var HOLO_GREEN = "#00ff3c", HOLO_RED = "#ff0000";
   var SW = 72, TOP_H2 = 26, GAP = 2, BOT_H2 = 32, SH = TOP_H2 + GAP + BOT_H2;
   var PAD2 = 4, LINE2 = 1.2, GLOW2 = 6, RES3 = 4;
+  var TALL = 1.3;
   var hash3 = (n) => {
     const v = Math.sin(n * 12.9898) * 43758.5453;
     return v - Math.floor(v);
   };
   var commas = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   var cache3 = /* @__PURE__ */ new Map();
-  function screen(top, bot, hue) {
-    const key = top.join("|") + "/" + bot.join("|") + hue;
+  function screen(look) {
+    const { top, bot, hue, deal: deal2 } = look;
+    const key = (deal2 ? "D" + deal2 : "") + top.join("|") + "/" + bot.join("|") + hue;
     const got = cache3.get(key);
     if (got) return got;
     if (cache3.size > 12) cache3.clear();
@@ -18373,21 +18485,46 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     t.strokeStyle = hue;
     t.lineWidth = LINE2;
     t.strokeRect(LINE2 / 2, TOP_H2 + GAP + LINE2 / 2, SW - LINE2, BOT_H2 - LINE2);
-    const stack = (t2, lines, y0, hh, weight, cut) => {
-      const lh = (hh - PAD2 * 2) / lines.length;
-      let fs = lh * 0.9;
-      t2.font = weight + " " + fs + "px system-ui, sans-serif";
-      const wide = Math.max(...lines.map((s) => t2.measureText(s).width));
-      if (wide > SW - PAD2 * 2) fs *= (SW - PAD2 * 2) / wide;
-      t2.font = weight + " " + fs + "px system-ui, sans-serif";
+    const ink = (t2, cut) => {
       t2.globalCompositeOperation = cut ? "destination-out" : "source-over";
       t2.fillStyle = cut ? "#000" : hue;
-      t2.textBaseline = "middle";
-      t2.textAlign = "left";
-      lines.forEach((s, i) => t2.fillText(s, PAD2, y0 + PAD2 + lh * (i + 0.5)));
     };
-    stack(t, top, 0, TOP_H2, "900", true);
-    stack(t, bot, TOP_H2 + GAP, BOT_H2, "700", false);
+    const stack = (t2, lines, y0, hh, bold, cut) => {
+      const lh = (hh - PAD2 * 2) / lines.length;
+      const wide = Math.max(...lines.map((s) => pixWidth(s, 1, bold)));
+      const px = Math.min(lh / 9 / TALL, (SW - PAD2 * 2) / wide), ph = px * TALL;
+      ink(t2, cut);
+      lines.forEach((s, i) => pixText(t2, s, PAD2, y0 + PAD2 + lh * (i + 0.5) + 3.5 * ph, px, ph, bold, RES3));
+    };
+    const dealTop = (t2) => {
+      const B2 = 0.6, sm = 0.5, g1 = 2.2, g2 = 2;
+      const wv = Math.max(pixWidth("SELL", 1, B2), pixWidth(top[0], 1, B2)), wn = pixWidth(top[1], 1, B2), wl = pixWidth("lvl", 1, 0.5) * sm;
+      const px = Math.min((TOP_H2 - PAD2 * 2) / 7 / TALL, (SW - PAD2 * 2) / (wv + g1 + wl + g2 + wn)), ph = px * TALL;
+      const y = TOP_H2 / 2 + 3.5 * ph;
+      ink(t2, true);
+      pixText(t2, top[0], PAD2, y, px, ph, B2, RES3);
+      pixText(t2, top[1], PAD2 + (wv + g1 + wl + g2) * px, y, px, ph, B2, RES3);
+      t2.save();
+      t2.translate(PAD2 + (wv + g1) * px, y);
+      t2.transform(1, 0, -0.22, 1, 0, 0);
+      pixText(t2, "lvl", 0, 0, px * sm, ph * sm, 0.5, RES3);
+      t2.restore();
+    };
+    const dealBot = (t2) => {
+      const y0 = TOP_H2 + GAP + PAD2, B2 = 0.6;
+      const px = Math.min(1, (SW - PAD2 * 2) / pixWidth(typeof deal2 === "string" ? deal2 : bot[0], 1, B2)), ph = px * TALL, fx = 0.4, fh = fx * TALL;
+      ink(t2, false);
+      const base = y0 + 7 * ph;
+      pixText(t2, bot[0], PAD2, base, px, ph, B2, RES3);
+      bot.slice(1).forEach((line, i) => pixText(t2, line, PAD2, base + 3 + 7 * fh + i * 10 * fh, fx, fh, 0.4, RES3));
+    };
+    if (deal2) {
+      dealTop(t);
+      dealBot(t);
+    } else {
+      stack(t, top, 0, TOP_H2, 0.6, true);
+      stack(t, bot, TOP_H2 + GAP, BOT_H2, 0.5, false);
+    }
     t.globalCompositeOperation = "destination-out";
     t.fillStyle = "rgba(0,0,0,0.3)";
     for (let y = 0; y < SH; y += 1.5) t.fillRect(0, y, SW, 0.5);
@@ -18398,12 +18535,36 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     b.drawImage(A, 0, 0);
     b.scale(RES3, RES3);
     b.translate(GLOW2, GLOW2);
-    stack(b, top, 0, TOP_H2, "900", true);
+    if (deal2) dealTop(b);
+    else stack(b, top, 0, TOP_H2, 0.6, true);
     cache3.set(key, B);
     return B;
   }
   var V = { buy: { on: null, t: -99 }, sell: { on: null, t: -99 } };
-  function machine(ctx, W, kind, cx, on, hue, top, bot) {
+  var SELL_WAIT = 0.5, SELL_GLITCH = 0.5;
+  var SL = { lvl: null, t: -99, from: null, shown: null };
+  var deal = (verb, floor, price, hue, fine) => ({ hue, deal: commas(lvlSell(floor)) + " G.", top: [verb, String(floor).padStart(2, "0")], bot: [commas(price) + " G.", ...fine] });
+  function sellScreen(W) {
+    const lvl = W.hasLvl, look = lvl ? deal("SELL", W.floor, lvlSell(W.floor), canSell(W) ? HOLO_GREEN : HOLO_RED, ["*no biological", "entities accepted"]) : deal("SELL", W.floor, lvlSell(W.floor), HOLO_GREEN, []);
+    if (SL.lvl === null || SL.t > W.time) {
+      SL.lvl = lvl;
+      SL.t = -99;
+    }
+    if (SL.lvl !== lvl) {
+      SL.from = SL.shown || look;
+      SL.lvl = lvl;
+      SL.t = W.time;
+    }
+    const since = W.time - SL.t;
+    if (since < SELL_WAIT && SL.from) return { ...SL.from, from: null, k: 0 };
+    if (since < SELL_WAIT + SELL_GLITCH) return { ...look, from: SL.from, k: (since - SELL_WAIT) / SELL_GLITCH };
+    SL.shown = look;
+    return { ...look, from: null, k: 0 };
+  }
+  function machine(ctx, W, kind, cx, on, look, gl = null) {
+    const gf = Math.floor(W.time * 30);
+    let hue = look.hue;
+    if (gl && hash3(gf * 3.1 + cx) > gl.k) hue = gl.hue;
     const s = V[kind];
     if (s.on !== on || s.t > W.time) {
       s.t = s.on === null || s.t > W.time ? -99 : W.time;
@@ -18477,11 +18638,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.closePath();
     ctx.fill();
     ctx.globalAlpha = alpha;
-    const img = screen(top, bot, hue), mid = sy + SH / 2;
+    const img = screen(look), mid = sy + SH / 2;
     ctx.translate(0, mid);
     ctx.scale(1, squeeze);
     ctx.translate(0, -mid);
-    ctx.drawImage(img, sx - GLOW2, sy - GLOW2, SW + GLOW2 * 2, SH + GLOW2 * 2);
+    if (gl) glitch2(ctx, img, screen(gl), sx - GLOW2, sy - GLOW2, gl.k, gf, cx);
+    else ctx.drawImage(img, sx - GLOW2, sy - GLOW2, SW + GLOW2 * 2, SH + GLOW2 * 2);
     const band = sy + (W.time * 18 + cx) % (SH + 20) - 10;
     ctx.globalCompositeOperation = "lighter";
     ctx.globalAlpha = alpha * 0.18;
@@ -18495,17 +18657,43 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.globalAlpha = 1;
     }
   }
+  function glitch2(ctx, img, old, x, y, k, f, seed) {
+    const w = SW + GLOW2 * 2, h3 = SH + GLOW2 * 2, n = 3 + Math.floor(hash3(f + seed) * 9), rage = Math.sin(k * Math.PI);
+    let at = 0;
+    for (let i = 0; i < n; i++) {
+      const bh = i === n - 1 ? h3 - at : h3 / n * (0.4 + hash3(f * 5 + i * 1.7) * 1.2);
+      const src = hash3(f * 7 + i * 3.3 + seed) < k ? img : old;
+      const dx = hash3(f * 11 + i) < 0.45 ? (hash3(f * 13 + i * 2.9) - 0.5) * 22 * rage : 0;
+      const sy0 = at / h3 * src.height, sh0 = Math.max(1, Math.min(bh, h3 - at) / h3 * src.height);
+      if (dx && hash3(f * 17 + i) < 0.5) {
+        ctx.save();
+        ctx.globalAlpha *= 0.5;
+        ctx.globalCompositeOperation = "lighter";
+        ctx.drawImage(src === img ? old : img, 0, sy0, src.width, sh0, x - dx * 0.6, y + at, w, Math.min(bh, h3 - at));
+        ctx.restore();
+      }
+      ctx.drawImage(src, 0, sy0, src.width, sh0, x + dx, y + at, w, Math.min(bh, h3 - at));
+      at += bh;
+      if (at >= h3) break;
+    }
+    ctx.save();
+    ctx.fillStyle = "#ffffff";
+    for (let i = 0; i < 3; i++) if (hash3(f * 19 + i * 5 + seed) < 0.5 * rage) {
+      ctx.globalAlpha = 0.5 + 0.5 * hash3(f + i);
+      ctx.fillRect(x + GLOW2 - 4 + (hash3(f * 23 + i) - 0.5) * 10, y + GLOW2 + hash3(f * 29 + i * 7) * SH, SW + 8, 0.8);
+    }
+    ctx.restore();
+  }
   function drawVend(W, G, F) {
     if (VEND_TOP > W.camY + F.vh + 10 || VEND_TOP + VEND_H < W.camY - 10) return;
     const lv = "LVL " + W.floor, busy = !!W.warp, due = G.input.current.loadout.due || 0;
-    const hi = (G.input.current.loadout.soldTop || 0) + 1;
     drawHoloShop(W, G);
     if (W.repo) {
       const left = REPO_FIRE - W.repo.t;
       const top = [W.repo.t < REPO_ALARM ? "OVERDUE" : left > 0 ? "0:" + String(Math.ceil(left)).padStart(2, "0") : "BURN"];
       const bot = W.repo.t < REPO_ALARM ? ["debt defaulted", "level", "repossessed"] : ["incineration", "sequence", "initiated"];
-      machine(G.ctx, W, "buy", VEND_BUY_X, !busy, HOLO_RED, top, bot);
-      machine(G.ctx, W, "sell", VEND_SELL_X, W.repo.t >= REPO_ALARM, HOLO_RED, top, bot);
+      machine(G.ctx, W, "buy", VEND_BUY_X, !busy, { hue: HOLO_RED, top, bot });
+      machine(G.ctx, W, "sell", VEND_SELL_X, W.repo.t >= REPO_ALARM, { hue: HOLO_RED, top, bot });
       return;
     }
     if (W.hasLvl && due) machine(
@@ -18514,30 +18702,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       "buy",
       VEND_BUY_X,
       !busy,
-      HOLO_RED,
-      [countdown(due - Date.now())],
-      ["debt repayment", "deadline", lv]
+      { hue: HOLO_RED, top: [countdown(due - Date.now())], bot: ["debt repayment", "deadline", lv] }
     );
-    else machine(
-      G.ctx,
-      W,
-      "buy",
-      VEND_BUY_X,
-      !W.hasLvl && !busy,
-      HOLO_GREEN,
-      ["BUY", "LEVELS"],
-      [hi > 1 ? "LVL 1–" + hi : "LVL 1", "(credit", "available)"]
-    );
-    machine(
-      G.ctx,
-      W,
-      "sell",
-      VEND_SELL_X,
-      W.hasLvl && !busy,
-      canSell(W) ? HOLO_GREEN : HOLO_RED,
-      ["SELL", lv],
-      [commas(lvlSell(W.floor)) + " G.", "(no biological", "entities accepted)"]
-    );
+    else machine(G.ctx, W, "buy", VEND_BUY_X, !W.hasLvl && !busy, deal("BUY", W.floor, lvlBuy(W.floor), HOLO_GREEN, ["*credit available"]));
+    const sl = sellScreen(W);
+    machine(G.ctx, W, "sell", VEND_SELL_X, true, sl, sl.from && { ...sl.from, k: sl.k });
   }
   function drawWarp(W, G, F) {
     const w = W.warp;

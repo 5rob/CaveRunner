@@ -3,7 +3,8 @@
 // floor 1 for sale, floor 2 locked), and the level bought on credit teleports in, made ahead by the
 // worker (game/levelgen.js); the exit portal drops you back in the shop; the sell machine is red and
 // refuses while anything biological is left, then pays LVL_SELL and the level teleports away; the
-// menu then sells floor 2 too, its debt the exponential lvlBuy(2).
+// menu then sells floor 2 too, its debt the exponential lvlBuy(2). The sell machine is lit from the
+// start, green with no "biological" line; half a second after a buy it glitches to red with it.
 const { launch } = require('../chromium');
 const path = require('path');
 let fails = 0;
@@ -40,6 +41,9 @@ const DIR = path.join(__dirname, '..', 'build');
   let s = await state();
   check('a run starts with no level', !s.has && s.open === 0 && s.enemies === 0, s);
   check('and the shop roof sealed', s.roofHole === 0, s.roofHole);
+  const sellLook = () => page.evaluate(() => { const r = sellScreen(window.__lvl); return { hue: r.hue, text: r.top.concat(r.bot).join(' '), glitch: !!r.from, t: window.__lvl.time }; });
+  let sl = await sellLook();
+  check('the sell machine is lit green from the start, no "biological" line', sl.hue === '#00ff3c' && !/biological/.test(sl.text) && !sl.glitch, sl);
   let gold0 = s.gold;
 
   await standAt(X.buy);
@@ -69,8 +73,20 @@ const DIR = path.join(__dirname, '..', 'build');
   await page.waitForTimeout(150);
   check('a locked floor stays unbought', await page.evaluate(() => !!document.querySelector('.lvshop') && !window.__lvl.hasLvl));
   await page.locator('.lvshop .lvrow[data-floor="1"]').dispatchEvent('pointerdown');
+  const t0 = await page.evaluate(() => window.__lvl.time);
   await page.locator('.lvshop .vbuy').dispatchEvent('pointerdown');
-  await page.waitForTimeout(700);
+  // the sell screen: still green for SELL_WAIT, glitches, then red with the biological line
+  let green = 0, glitched = false, redAt = -1, shot = false;
+  for (let i = 0; i < 200 && redAt < 0; i++) {
+    sl = await sellLook();
+    if (sl.glitch) { glitched = true; if (!shot && sl.t - t0 > 0.7) { shot = true; await page.screenshot({ path: path.join(DIR, 'vend_glitch.png') }); } }
+    else if (sl.hue === '#00ff3c' && !/biological/.test(sl.text)) green = sl.t - t0;
+    else if (sl.hue === '#ff0000' && /biological/.test(sl.text)) redAt = sl.t - t0;
+    await page.waitForTimeout(15);
+  }
+  check('after the buy the sell screen stays green about half a second', green > 0.35, green);
+  check('then glitches', glitched);
+  check('and lands red, with "no biological entities accepted"', redAt > 0.9 && redAt < 1.6, redAt);
   await page.screenshot({ path: path.join(DIR, 'vend_flash.png') });
   check('the menu closed', await page.evaluate(() => !document.querySelector('.lvshop')));
   check('the teleport ran out', await waitWarp());

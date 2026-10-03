@@ -5,6 +5,21 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.134 — the vending machines' new screens
+Released 2026-10-03 (after the owner's OK of the screenshots).
+
+- **The sell machine is lit from the start**: green "SELL lvl 01" and its price, no fine print. Half a
+  second after a level is bought (`SELL_WAIT`) its screen glitches over `SELL_GLITCH` s (bands of the old
+  and new screen, torn sideways, a colour-split ghost, white tear lines: `glitch`, `sellScreen` in
+  `game/render/vend.js`) to red with "*no biological entities accepted"; and back the same way once sold.
+- **Both offers have a new layout** (`deal` screens): "BUY lvl 01" on one line (the verb and number big, "lvl"
+  small and leaning), the price in bold under it, fine print small below ("*credit available" on the buy
+  machine). Both machines share sizes and positions (the verb's room is SELL's; the price fitted to the sell
+  price). The buy machine shows the floor the menu would sell next (`W.floor`).
+- **A blocky terminal font** for every machine screen (`art/pixfont.js`: `pixText`, `pixWidth`, `pixHas`;
+  glyphs drawn as rects, the same on every phone, no font file). Suite `pixfont`; `vend` checks the sell
+  screen's timing.
+
 ## v0.0.133 — Restart empties the mods unlocked
 Released 2026-10-03.
 

@@ -2,13 +2,16 @@
 // The level vending machines (game/systems/vend.js): two tall tech cabinets on the shop's back
 // wall, each with a holographic screen stacked like the background hologram (a solid box with
 // the words cut out of it over an outlined one), green, or red while the level can't be sold.
-// A screen goes dark when its machine has nothing to offer, except that once the level is bought
+// A screen goes dark when its machine has nothing to offer, except that the sell machine is always lit:
+// green with no level ("SELL lvl 01", its price, no fine print), and SELL_WAIT after a level is bought it glitches (SELL_GLITCH) over
+// to the level's screen, red with "no biological entities accepted" (sellScreen). Once the level is bought
 // the buy machine counts down the debt's repayment deadline in red (real time, the device clock). And the teleport: the flash over the
 // shop, the sweep and the crackle (drawWarp, after the fog).
 
 import { countdown } from '../../core/util.js';
 import { CELL, SHOP_FLOOR, SHOP_Y, VEND_BUY_X, VEND_SELL_X } from '../../core/consts.js';
-import { lvlSell } from '../../data/levels.js';
+import { lvlBuy, lvlSell } from '../../data/levels.js';
+import { pixText, pixWidth } from '../../art/pixfont.js';
 import { drawHoloShop } from './holo.js';
 import { canSell, REPO_ALARM, REPO_FIRE, REPO_JET, ROOF_Y, VEND_H, VEND_TOP, VEND_W, WARP_SWAP } from '../systems/vend.js';
 import { drawBolt } from './looks.js';
@@ -18,6 +21,7 @@ export const HOLO_GREEN = '#00ff3c', HOLO_RED = '#ff0000';   // the background h
 // the screen, in world units: its width, the solid box, the gap, the outlined box
 const SW = 72, TOP_H = 26, GAP = 2, BOT_H = 32, SH = TOP_H + GAP + BOT_H;
 const PAD = 4, LINE = 1.2, GLOW = 6, RES = 4;
+const TALL = 1.3;                 // the terminal font's pixels: this much taller than wide
 
 // a steady pseudo-random 0..1 for n (draw() mustn't touch Math.random: it's the simulation's)
 /** @param {number} n */
@@ -32,10 +36,14 @@ const cache = new Map();
 
 // One screen, with its glow baked round it (GLOW each side): the top lines cut out of a solid
 // box, the bottom ones drawn inside an outlined box, each line fitted to the width, and fine
-// scan lines through it all
-/** @param {string[]} top @param {string[]} bot @param {string} hue */
-function screen(top, bot, hue) {
-  const key = top.join('|') + '/' + bot.join('|') + hue;
+// scan lines through it all, in the blocky terminal font (art/pixfont.js). A deal screen (look.deal:
+// the machines' offer) lays it out instead as "BUY lvl 01" on one line (the verb and number big,
+// "lvl" small and leaning, tucked up to the number), and under it the price in bold with any fine
+// print (bot's other lines) small below
+/** @param {VendLook} look */
+function screen(look) {
+  const { top, bot, hue, deal } = look;
+  const key = (deal ? 'D' + deal : '') + top.join('|') + '/' + bot.join('|') + hue;
   const got = cache.get(key);
   if (got) return got;
   if (cache.size > 12) cache.clear();       // the countdown makes a new screen every second
@@ -49,20 +57,41 @@ function screen(top, bot, hue) {
   t.fillStyle = hue; t.fillRect(0, 0, SW, TOP_H);
   t.strokeStyle = hue; t.lineWidth = LINE;
   t.strokeRect(LINE / 2, TOP_H + GAP + LINE / 2, SW - LINE, BOT_H - LINE);
-  /** @param {CanvasRenderingContext2D} t @param {string[]} lines @param {number} y0 @param {number} hh @param {string} weight @param {boolean} cut */
-  const stack = (t, lines, y0, hh, weight, cut) => {
+  /** @param {CanvasRenderingContext2D} t @param {boolean} cut */
+  const ink = (t, cut) => { t.globalCompositeOperation = cut ? 'destination-out' : 'source-over'; t.fillStyle = cut ? '#000' : hue; };
+  /** @param {CanvasRenderingContext2D} t @param {string[]} lines @param {number} y0 @param {number} hh @param {number} bold @param {boolean} cut */
+  const stack = (t, lines, y0, hh, bold, cut) => {
     const lh = (hh - PAD * 2) / lines.length;
-    let fs = lh * 0.9;
-    t.font = weight + ' ' + fs + 'px system-ui, sans-serif';
-    const wide = Math.max(...lines.map(s => t.measureText(s).width));
-    if (wide > SW - PAD * 2) fs *= (SW - PAD * 2) / wide;
-    t.font = weight + ' ' + fs + 'px system-ui, sans-serif';
-    t.globalCompositeOperation = cut ? 'destination-out' : 'source-over';
-    t.fillStyle = cut ? '#000' : hue; t.textBaseline = 'middle'; t.textAlign = 'left';
-    lines.forEach((s, i) => t.fillText(s, PAD, y0 + PAD + lh * (i + 0.5)));
+    const wide = Math.max(...lines.map(s => pixWidth(s, 1, bold)));
+    const px = Math.min(lh / 9 / TALL, (SW - PAD * 2) / wide), ph = px * TALL;
+    ink(t, cut);
+    lines.forEach((s, i) => pixText(t, s, PAD, y0 + PAD + lh * (i + 0.5) + 3.5 * ph, px, ph, bold, RES));
   };
-  stack(t, top, 0, TOP_H, '900', true);
-  stack(t, bot, TOP_H + GAP, BOT_H, '700', false);
+  /** @param {CanvasRenderingContext2D} t */
+  const dealTop = t => {
+    const B = 0.6, sm = 0.5, g1 = 2.2, g2 = 2;          // bold, "lvl"'s size, the gaps either side of it (big pixels)
+    // both machines alike: the verb's room is the longer verb's, the number's two digits
+    const wv = Math.max(pixWidth('SELL', 1, B), pixWidth(top[0], 1, B)), wn = pixWidth(top[1], 1, B), wl = pixWidth('lvl', 1, 0.5) * sm;
+    const px = Math.min((TOP_H - PAD * 2) / 7 / TALL, (SW - PAD * 2) / (wv + g1 + wl + g2 + wn)), ph = px * TALL;
+    const y = TOP_H / 2 + 3.5 * ph;
+    ink(t, true);
+    pixText(t, top[0], PAD, y, px, ph, B, RES);
+    pixText(t, top[1], PAD + (wv + g1 + wl + g2) * px, y, px, ph, B, RES);
+    t.save(); t.translate(PAD + (wv + g1) * px, y); t.transform(1, 0, -0.22, 1, 0, 0);   // "lvl" leans
+    pixText(t, 'lvl', 0, 0, px * sm, ph * sm, 0.5, RES);
+    t.restore();
+  };
+  /** @param {CanvasRenderingContext2D} t */
+  const dealBot = t => {
+    const y0 = TOP_H + GAP + PAD, B = 0.6;
+    const px = Math.min(1, (SW - PAD * 2) / pixWidth(typeof deal === 'string' ? deal : bot[0], 1, B)), ph = px * TALL, fx = 0.4, fh = fx * TALL;
+    ink(t, false);
+    const base = y0 + 7 * ph;
+    pixText(t, bot[0], PAD, base, px, ph, B, RES);
+    bot.slice(1).forEach((line, i) => pixText(t, line, PAD, base + 3 + 7 * fh + i * 10 * fh, fx, fh, 0.4, RES));
+  };
+  if (deal) { dealTop(t); dealBot(t); }
+  else { stack(t, top, 0, TOP_H, 0.6, true); stack(t, bot, TOP_H + GAP, BOT_H, 0.5, false); }
   t.globalCompositeOperation = 'destination-out'; t.fillStyle = 'rgba(0,0,0,0.3)';
   for (let y = 0; y < SH; y += 1.5) t.fillRect(0, y, SW, 0.5);
   b.shadowColor = hue; b.shadowBlur = GLOW * RES * 0.7;
@@ -71,7 +100,7 @@ function screen(top, bot, hue) {
   b.drawImage(A, 0, 0);
   // the glow filled the cut-out words back in: cut them again so they're clean holes
   b.scale(RES, RES); b.translate(GLOW, GLOW);
-  stack(b, top, 0, TOP_H, '900', true);
+  if (deal) dealTop(b); else stack(b, top, 0, TOP_H, 0.6, true);
   cache.set(key, B);
   return B;
 }
@@ -80,9 +109,41 @@ function screen(top, bot, hue) {
 /** @type {Record<string, { on: boolean | null, t: number }>} */
 const V = { buy: { on: null, t: -99 }, sell: { on: null, t: -99 } };
 
-// One machine: the cabinet, and its screen on (flickering in), going off (a CRT squeeze), or dark
-/** @param {CanvasRenderingContext2D} ctx @param {World} W @param {'buy' | 'sell'} kind @param {number} cx @param {boolean} on @param {string} hue @param {string[]} top @param {string[]} bot */
-function machine(ctx, W, kind, cx, on, hue, top, bot) {
+// The sell machine's screen with no level, and the change to the level's screen once one is bought:
+// it holds SELL_WAIT seconds, then glitches over SELL_GLITCH seconds (and back the same way once sold)
+export const SELL_WAIT = 0.5, SELL_GLITCH = 0.5;
+/** @type {{ lvl: boolean | null, t: number, from: VendLook | null, shown: VendLook | null }} */
+const SL = { lvl: null, t: -99, from: null, shown: null };
+
+// a machine's offer: "BUY lvl 01" over the price, and the fine print
+/** @param {string} verb @param {number} floor @param {number} price @param {string} hue @param {string[]} fine @returns {VendLook} */
+// (the price is sized to fit the sell price, the longer, so both machines' prices are the same size)
+const deal = (verb, floor, price, hue, fine) =>
+  ({ hue, deal: commas(lvlSell(floor)) + ' G.', top: [verb, String(floor).padStart(2, '0')], bot: [commas(price) + ' G.', ...fine] });
+
+// what the sell machine shows this frame: its look, and while it changes over, the old one (from)
+// with how far through the glitch it is (k, 0..1)
+/** @param {World} W @returns {VendLook & { from: VendLook | null, k: number }} */
+export function sellScreen(W) {
+  const lvl = W.hasLvl, look = lvl
+    ? deal('SELL', W.floor, lvlSell(W.floor), canSell(W) ? HOLO_GREEN : HOLO_RED, ['*no biological', 'entities accepted'])
+    : deal('SELL', W.floor, lvlSell(W.floor), HOLO_GREEN, []);
+  if (SL.lvl === null || SL.t > W.time) { SL.lvl = lvl; SL.t = -99; }   // the first frame, or a replay: no change shown
+  if (SL.lvl !== lvl) { SL.from = SL.shown || look; SL.lvl = lvl; SL.t = W.time; }
+  const since = W.time - SL.t;
+  if (since < SELL_WAIT && SL.from) return { ...SL.from, from: null, k: 0 };
+  if (since < SELL_WAIT + SELL_GLITCH) return { ...look, from: SL.from, k: (since - SELL_WAIT) / SELL_GLITCH };
+  SL.shown = look;
+  return { ...look, from: null, k: 0 };
+}
+
+// One machine: the cabinet, and its screen on (flickering in), going off (a CRT squeeze), or dark,
+// or glitching over from another screen (gl: the old one and how far through, 0..1)
+/** @param {CanvasRenderingContext2D} ctx @param {World} W @param {'buy' | 'sell'} kind @param {number} cx @param {boolean} on @param {VendLook} look @param {(VendLook & { k: number }) | null} [gl] */
+function machine(ctx, W, kind, cx, on, look, gl = null) {
+  const gf = Math.floor(W.time * 30);         // the glitch's frame: a new jumble 30 times a second
+  let hue = look.hue;
+  if (gl && hash(gf * 3.1 + cx) > gl.k) hue = gl.hue;
   const s = V[kind];
   if (s.on !== on || s.t > W.time) { s.t = s.on === null || s.t > W.time ? -99 : W.time; s.on = on; }
   const since = W.time - s.t;
@@ -130,9 +191,10 @@ function machine(ctx, W, kind, cx, on, hue, top, bot) {
   ctx.fillStyle = hue;
   ctx.beginPath(); ctx.moveTo(x + 14, py); ctx.lineTo(x + VEND_W - 14, py); ctx.lineTo(sx + SW, sy + SH); ctx.lineTo(sx, sy + SH); ctx.closePath(); ctx.fill();
   ctx.globalAlpha = alpha;
-  const img = screen(top, bot, hue), mid = sy + SH / 2;
+  const img = screen(look), mid = sy + SH / 2;
   ctx.translate(0, mid); ctx.scale(1, squeeze); ctx.translate(0, -mid);
-  ctx.drawImage(img, sx - GLOW, sy - GLOW, SW + GLOW * 2, SH + GLOW * 2);
+  if (gl) glitch(ctx, img, screen(gl), sx - GLOW, sy - GLOW, gl.k, gf, cx);
+  else ctx.drawImage(img, sx - GLOW, sy - GLOW, SW + GLOW * 2, SH + GLOW * 2);
   // a band of brighter light rolling down it
   const band = sy + ((W.time * 18 + cx) % (SH + 20)) - 10;
   ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = alpha * 0.18; ctx.fillStyle = hue;
@@ -145,27 +207,54 @@ function machine(ctx, W, kind, cx, on, hue, top, bot) {
   }
 }
 
+// A screen glitching from one image to another: cut into bands, each band the old image or the
+// new (more of the new as k goes 0 → 1), the worst of it torn sideways, a ghost of the other hue
+// split off it, and thin white tear lines; all from screen-steady hashes of the glitch frame f
+/** @param {CanvasRenderingContext2D} ctx @param {HTMLCanvasElement} img @param {HTMLCanvasElement} old @param {number} x @param {number} y @param {number} k @param {number} f @param {number} seed */
+function glitch(ctx, img, old, x, y, k, f, seed) {
+  const w = SW + GLOW * 2, h = SH + GLOW * 2, n = 3 + Math.floor(hash(f + seed) * 9), rage = Math.sin(k * Math.PI);
+  let at = 0;
+  for (let i = 0; i < n; i++) {
+    const bh = i === n - 1 ? h - at : h / n * (0.4 + hash(f * 5 + i * 1.7) * 1.2);
+    const src = hash(f * 7 + i * 3.3 + seed) < k ? img : old;
+    const dx = hash(f * 11 + i) < 0.45 ? (hash(f * 13 + i * 2.9) - 0.5) * 22 * rage : 0;
+    const sy0 = at / h * src.height, sh0 = Math.max(1, Math.min(bh, h - at) / h * src.height);
+    if (dx && hash(f * 17 + i) < 0.5) {       // a colour-split ghost of the other image
+      ctx.save(); ctx.globalAlpha *= 0.5; ctx.globalCompositeOperation = 'lighter';
+      ctx.drawImage(src === img ? old : img, 0, sy0, src.width, sh0, x - dx * 0.6, y + at, w, Math.min(bh, h - at));
+      ctx.restore();
+    }
+    ctx.drawImage(src, 0, sy0, src.width, sh0, x + dx, y + at, w, Math.min(bh, h - at));
+    at += bh;
+    if (at >= h) break;
+  }
+  ctx.save(); ctx.fillStyle = '#ffffff';
+  for (let i = 0; i < 3; i++) if (hash(f * 19 + i * 5 + seed) < 0.5 * rage) {
+    ctx.globalAlpha = 0.5 + 0.5 * hash(f + i);
+    ctx.fillRect(x + GLOW - 4 + (hash(f * 23 + i) - 0.5) * 10, y + GLOW + hash(f * 29 + i * 7) * SH, SW + 8, 0.8);
+  }
+  ctx.restore();
+}
+
 // The two machines, drawn with the shop's stock (before the fog)
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawVend(W, G, F) {
   if (VEND_TOP > W.camY + F.vh + 10 || VEND_TOP + VEND_H < W.camY - 10) return;
   const lv = 'LVL ' + W.floor, busy = !!W.warp, due = G.input.current.loadout.due || 0;
-  const hi = (G.input.current.loadout.soldTop || 0) + 1;      // the highest floor for sale
   drawHoloShop(W, G);
   if (W.repo) {                                // repossessed: both screens count down the incineration
     const left = REPO_FIRE - W.repo.t;
     const top = [W.repo.t < REPO_ALARM ? 'OVERDUE' : left > 0 ? '0:' + String(Math.ceil(left)).padStart(2, '0') : 'BURN'];
     const bot = W.repo.t < REPO_ALARM ? ['debt defaulted', 'level', 'repossessed'] : ['incineration', 'sequence', 'initiated'];
-    machine(G.ctx, W, 'buy', VEND_BUY_X, !busy, HOLO_RED, top, bot);
-    machine(G.ctx, W, 'sell', VEND_SELL_X, W.repo.t >= REPO_ALARM, HOLO_RED, top, bot);
+    machine(G.ctx, W, 'buy', VEND_BUY_X, !busy, { hue: HOLO_RED, top, bot });
+    machine(G.ctx, W, 'sell', VEND_SELL_X, W.repo.t >= REPO_ALARM, { hue: HOLO_RED, top, bot });
     return;
   }
-  if (W.hasLvl && due) machine(G.ctx, W, 'buy', VEND_BUY_X, !busy, HOLO_RED,
-    [countdown(due - Date.now())], ['debt repayment', 'deadline', lv]);
-  else machine(G.ctx, W, 'buy', VEND_BUY_X, !W.hasLvl && !busy, HOLO_GREEN,
-    ['BUY', 'LEVELS'], [hi > 1 ? 'LVL 1–' + hi : 'LVL 1', '(credit', 'available)']);
-  machine(G.ctx, W, 'sell', VEND_SELL_X, W.hasLvl && !busy, canSell(W) ? HOLO_GREEN : HOLO_RED,
-    ['SELL', lv], [commas(lvlSell(W.floor)) + ' G.', '(no biological', 'entities accepted)']);
+  if (W.hasLvl && due) machine(G.ctx, W, 'buy', VEND_BUY_X, !busy,
+    { hue: HOLO_RED, top: [countdown(due - Date.now())], bot: ['debt repayment', 'deadline', lv] });
+  else machine(G.ctx, W, 'buy', VEND_BUY_X, !W.hasLvl && !busy, deal('BUY', W.floor, lvlBuy(W.floor), HOLO_GREEN, ['*credit available']));
+  const sl = sellScreen(W);
+  machine(G.ctx, W, 'sell', VEND_SELL_X, true, sl, sl.from && { ...sl.from, k: sl.k });
 }
 
 // The teleport over the shop (after the fog, so it shows over the dark): a glow building along the

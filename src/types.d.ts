@@ -17,6 +17,8 @@ interface Spot { x: number; y: number; r: number }
 type Rnd = () => number;
 /** an `ImageData`, or the stand-in tests/load.js gives the logic suites under Node */
 interface Pixels { width: number; height: number; data: Uint8ClampedArray }
+/** a level vending machine's screen: its hue and the lines cut out of the top box / written in the bottom one; deal: laid out as an offer, top [verb, "01"] and bot [price, ...fine print], the price sized to fit the text in deal (game/render/vend.js) */
+interface VendLook { hue: string; top: string[]; bot: string[]; deal?: string }
 
 // ---- spells and guns (spells/) ----
 

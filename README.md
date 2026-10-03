@@ -14,7 +14,8 @@ teleports in over the shop in a flash and a crackle of lightning, drawn in from 
 built in the background while the shop stood empty, so there's no freeze at the flash). A floor is for
 sale only once you've sold the one below it in this run; the rest show locked. Climb to one of the
 three exits spread along the top (teleporter pads: blue light rising off them, lightning crackling up
-the moment you use one) and it drops you back in the shop. The other machine buys
+the moment you use one) and it drops you back in the shop. The other machine (lit green from the start; half a second
+after you buy, its screen glitches to red and adds its fine print) buys
 the level back for its debt plus a reward (1,000 gold on floor 1, doubling each floor up: 2,000, 4,000, 8,000…;
 kills pay more on higher floors too), but its screen stays red until no biological
 entities are left in it (including the rats still inside their nests); sell it and it teleports away, leaving
@@ -607,6 +608,7 @@ them if it cannot find either.
 - A torch in the runner's free hand, a chunky pixel flame licking and breaking off at the top, throwing embers, guttering — and the light in the cave gutters with it. Its flame is dragged about as you move, and it throws a small warm glow round you
 - The jetpack's flame and smoke in the same chunky pixels, out of the bottom of the backpack: a licking fire, not a cone
 - Wall torches either side of the prizes in the hidden rooms
+- The vending machines' screens in a blocky terminal font: "BUY lvl 01" / "SELL lvl 01", the price in bold, fine print under it
 - Teleporter pads for the way in and three exits along the top: a beam of blue light fading upward, specks rising in it, lightning crackling off a pad when it's used
 - Dev knobs for how many enemies a new level gets (and how many more each floor), the level's sell reward, and how fast the debt, reward and kill gold climb floor by floor
 - Dev → Level 2: floor 2's cave shape (feature size, vast areas, pockets, tunnels, the main route, chambers, side tunnels, smoothing, ledges, frames, platforms), its colours and how much decoration it gets; Dev → Floor 2 takes you there
