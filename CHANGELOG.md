@@ -6,7 +6,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v130 — the floor menu, levels made ahead, three exits, pixel flames
-Not yet released (waiting on the owner's OK of the screenshots).
+Released 2026-10-03 (after the owner's OK of the screenshots).
 
 - **The buy machine opens a full-screen floor menu** (`ui/levelshop.js` `LevelVend`, `SHOP_MENUS.levels`,
   the stick pointer like the other machines): each floor's debt, sale price, reward and kill gold. Floor 1

@@ -9,17 +9,16 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
-- **v130 built, NOT released** (branch `refactor`, 2026-10-03): waiting on the owner's OK of the
-  screenshots (the floor menu, the pixel torch and jet flame, the perk grid, an exit) before it goes onto
-  `main` (CLAUDE.md: design gets approval first). What's in it: the buy machine's full-screen floor menu
-  (`ui/levelshop.js`; floor N for sale once N − 1 is sold this run, `LO.soldTop`), an exponential economy
-  (`data/levels.js`: debt 1 billion × 3 a floor, reward 1,000 doubling a floor, kill gold × 1.35 a floor; all Dev
-  knobs in Level), the next level made by a Web Worker while the shop stands empty (`game/levelgen.js`;
-  flash lag 1117 → 67 ms at CPU ÷4) and drawn in bottom-up, no level sounds without a level, three exits
-  along the top, pads that crackle only when used, pixel flames for the torch and jet (and blocky jet
-  smoke), and the Exo Suit's perk grid as a ScrollBox. CHANGELOG has the details. If the owner asks for
-  changes, they go in v130 before release (the version isn't on `main` yet).
-- **Released: v129** on `main`, 2026-10-03: a swung vine trails below your grip (a tail of verlet
+- **Released: v130** on `main`, 2026-10-03 (the owner OK'd the screenshots first): the buy machine's
+  full-screen floor menu (`ui/levelshop.js`; floor N for sale once N − 1 is sold this run, `LO.soldTop`), an
+  exponential economy (`data/levels.js`: debt 1 billion × 3 a floor, reward 1,000 doubling a floor, kill gold
+  × 1.35 a floor; all Dev knobs in Level), the next level made by a Web Worker while the shop stands empty
+  (`game/levelgen.js`; flash lag 1117 → 67 ms at CPU ÷4) and drawn in bottom-up, no level sounds without a
+  level, three exits along the top, pads that crackle only when used, pixel flames for the torch and jet
+  (and blocky jet smoke), and the Exo Suit's perk grid as a ScrollBox. CHANGELOG has the details. Untested
+  on the phone itself: the Web Worker in the app's WebView (if it fails, the warp makes the level itself,
+  with the old freeze). The owner may paste Dev numbers for the economy.
+- **v129** on `main`, 2026-10-03: a swung vine trails below your grip (a tail of verlet
   links, `world/sway.js` `tailStep`/`vinePt`; Dev `vineLinks`, `vineTailDamp`); Witness export fixed (it
   was always 300 × 150: now the screen's shape) and the replay's hologram shows the count of that
   moment (`bio` per snapshot); mods unlocked reset on death (perks stay); one of each perk in the
