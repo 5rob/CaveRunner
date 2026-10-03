@@ -645,7 +645,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   display:flex;align-items:center;justify-content:center;font-size:19px;touch-action:pan-y}
 .xperk.grab{touch-action:none;cursor:grab}
 .xperk.none{opacity:.45;border-style:dashed}
-.xperk.locked{opacity:.3;border-style:dashed;filter:grayscale(1)}
+.xperk.locked{opacity:.3;border-style:dashed;border-color:var(--text);pointer-events:none}
 .xperk.inuse{opacity:.35;filter:grayscale(.6)}
 .xperk i{position:absolute;right:3px;bottom:1px;font:700 9px system-ui,sans-serif;font-style:normal;color:var(--text)}
 .xperk u{position:absolute;right:2px;top:1px;font-size:9px;text-decoration:none}

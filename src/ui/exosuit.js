@@ -198,12 +198,15 @@ export function ExoSuit({ input, close, refresh, canEdit, tabs }) {
         const state = on ? 'inuse' : n ? 'have' : unlocked.includes(id) ? 'none' : 'locked';
         // one you can drag takes the touch (the bar scrolls); the rest let a swipe scroll the grid
         const grab = n > 0 && !on && canEdit;
+        // not unlocked yet: a blank tile in its place, nothing given away (no glyph, tint, tier or card) and
+        // nothing to press (pointer-events off, so a swipe on it still scrolls the grid)
+        if (state === 'locked') return h('div', { key: id, 'data-perk': id, className: 'xperk locked' });
         return h('div', { key: id, 'data-perk': id, className: 'xperk ' + state + (grab ? ' grab' : ''), title: pk.name,
             style: { color: pk.tint, borderColor: pk.tint }, onPointerDown: press(id, -1, n > 0 && !on) },
           pk.glyph,
           pk.tier ? h('em', null, ROMAN[pk.tier - 1]) : null,
           n > 1 ? h('i', null, '×' + n) : null,
-          state === 'locked' ? h('u', null, '🔒') : on ? h('u', null, '✓') : null);
+          on ? h('u', null, '✓') : null);
       })),
     msg ? h('div', { className: 'vmsg xmsg' }, msg) : null,
     h('div', { className: 'info' }, canEdit

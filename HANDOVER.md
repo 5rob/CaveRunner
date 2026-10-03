@@ -9,7 +9,9 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
-- **Released: v0.0.134** on `main`, 2026-10-03 (the owner OK'd the screenshots): the sell machine is
+- **Released: v0.0.135** on `main`, 2026-10-03 (the owner OK'd the screenshots): in the Exo Suit's
+  perk grid a perk not unlocked yet is a blank tile in its place, nothing to tap (`.xperk.locked`).
+- **v0.0.134** on `main`, 2026-10-03 (the owner OK'd the screenshots): the sell machine is
   lit green from the start and glitches to red with its fine print half a second after a buy; both
   machines' offers read "BUY/SELL lvl 01" + price + fine print, in a blocky terminal font (`art/pixfont.js`).
 - **v0.0.133** on `main`, 2026-10-03: Dev → Restart run empties the mods unlocked, like a

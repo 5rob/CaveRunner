@@ -1009,7 +1009,8 @@ commit. List them here for after.
   starts with a few cave cells lit up the shaft; fails on v56 too, seed-dependent), `lightning` "a fork hits a
   creature off to the side" (~1 in 5–8: the fork roll is random and the target bobs near the edge of its 90 reach;
   seen v78/v79, not a spider bug), `torch` "light moves with it" (flicker-range sensitive, v50), `jelly` spit (~1 in 3,
-  on v87 and v96 code as well). All pass alone.
+  on v87 and v96 code as well), `perkshop` "tapping a perk shows its card" (once in v0.0.135's run, then passed:
+  the carried perk's tile may sit off the grid's scrolled view). All pass alone.
 - **Stale code comments found in P5.1** (left, docs-only phase): `game/systems/shotlooks.js`' header says the draw side
   (`drawLook`) "is still in Game's draw()" and `lightning.js`' says the arcs are drawn "in Game's draw()": both are in
   `game/render/looks.js` now. `replay/replay.js`' header says "the recorder and player live in the Game for now" (they're
