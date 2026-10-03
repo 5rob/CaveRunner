@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.135 — locked perks give nothing away
+Released 2026-10-03 (after the owner's OK of the screenshots).
+
+- **The Exo Suit's perk grid hides perks not unlocked yet**: each is a blank dashed tile in its own place
+  (no glyph, tint, tier, name or lock), and takes no touch (`pointer-events:none`: no card; a swipe on it
+  still scrolls the grid). The grid keeps the perks' own order. Suite `perklocked`.
+
 ## v0.0.134 — the vending machines' new screens
 Released 2026-10-03 (after the owner's OK of the screenshots).
 

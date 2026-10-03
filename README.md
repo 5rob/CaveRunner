@@ -265,7 +265,8 @@ has two tabs along the bottom: **Guns & Mods** and **Exo Suit**. The Exo Suit sh
 portrait (the runner hovering on its jet), your money and crystals, your **stats** — max health,
 movement speed, jetpack fuel, jetpack recharge, gold vacuum — each with a slot beside it that
 takes only that stat's perks, **six perk slots** for the rest, and every perk in a grid: the ones you
-carry lit (with how many), the ones you've unlocked but don't carry faded, the rest locked.
+carry lit (with how many), the ones you've unlocked but don't carry faded, the rest blank tiles in their place (nothing
+given away until you unlock them).
 Drag a carried perk onto a slot to fit it, a fitted one to another slot to swap, or off the
 slots to take it out again. Each perk fits once: one already fitted shows ticked and faded, and a
 second copy can't go in another slot. Tap any perk to see its card. The suit is locked outside the
