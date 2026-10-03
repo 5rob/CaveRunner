@@ -13,7 +13,7 @@ release loop, testing), then the README of the `src/` folder you're working in.
   screenshots (the floor menu, the pixel torch and jet flame, the perk grid, an exit) before it goes onto
   `main` (CLAUDE.md: design gets approval first). What's in it: the buy machine's full-screen floor menu
   (`ui/levelshop.js`; floor N for sale once N − 1 is sold this run, `LO.soldTop`), an exponential economy
-  (`data/levels.js`: debt 1 billion × 3 a floor, reward 10,000 × 3 a floor, kill gold × 1.35 a floor; all Dev
+  (`data/levels.js`: debt 1 billion × 3 a floor, reward 1,000 doubling a floor, kill gold × 1.35 a floor; all Dev
   knobs in Level), the next level made by a Web Worker while the shop stands empty (`game/levelgen.js`;
   flash lag 1117 → 67 ms at CPU ÷4) and drawn in bottom-up, no level sounds without a level, three exits
   along the top, pads that crackle only when used, pixel flames for the torch and jet (and blocky jet

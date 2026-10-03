@@ -51,7 +51,8 @@ DEV.enemies = 5;
 const few = makeLevel(4242, 1).enemies.filter(e => !e.nest).length;
 DEV.enemies = was;
 check('the enemies knob sets how many a new level gets', few === 5, few);
-check('the reward defaults to ten thousand', DEV_DEFAULTS.lvlBonus === LVL_SELL - LVL_BUY && lvlSell() === LVL_SELL);
+check('the reward defaults to a thousand, doubling a floor', DEV_DEFAULTS.lvlBonus === LVL_SELL - LVL_BUY && lvlSell() === LVL_SELL &&
+  [1, 2, 3, 4].map(f => G.lvlReward(f)).join() === '1000,2000,4000,8000');
 DEV.lvlBonus = 250000;
 check('and the sell price follows the knob', lvlSell() === LVL_BUY + 250000);
 DEV.lvlBonus = DEV_DEFAULTS.lvlBonus;

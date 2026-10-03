@@ -18,7 +18,7 @@ export const DEV_DEFAULTS = { zoom: 1.6, torch: 0.5, fogDark: 0.99, fogDim: 0.85
   vSpell: 0.6, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vDrip: 1, vStep: 1, vUi: 1, bagSpeed: 1,
   holoAlpha: 1, bloom: 0.8, bloomBlur: 8, bloomBright: 1.3, pixelFx: 1, holoPx: 2,
   holoMin: 0, holoMax: 1, holoFade: 3, holoC1x: 0.25, holoC1y: 1, holoC2x: 0.5, holoC2y: 0,
-  due1: 60, enemies: ENEMY_COUNT, enemiesUp: 12, lvlBonus: LVL_SELL - LVL_BUY, lvlGrow: 3, rewardGrow: 3, killGrow: 1.35,
+  due1: 60, enemies: ENEMY_COUNT, enemiesUp: 12, lvlBonus: LVL_SELL - LVL_BUY, lvlGrow: 3, rewardGrow: 2, killGrow: 1.35,
   runnerPx: 1, runnerLine: 1,
   ptrStart: 0.12, ptrReach: 1, ptrSize: 1, ptrLine: 0.75, snapR: 28, snapPull: 0.3, snapHit: 10,
   witPad: 80, witKbps: 6000,

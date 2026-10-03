@@ -56,9 +56,9 @@ export const SHOP_ROOF = 6;                   // roof thickness
 export const SHOP_Y = SHOP_TOP * CELL;        // world y of the ceiling, for "am I in the shop?"
 // the two level vending machines on the shop's back wall, past the way in and the heal (centre x,
 // world units; a screen is 72 wide), and their prices:
-// a level costs LVL_BUY on credit and sells back for LVL_SELL, ten thousand more (floor 1: data/levels.js climbs from there)
+// a level costs LVL_BUY on credit and sells back for LVL_SELL, a thousand more (floor 1: data/levels.js climbs from there)
 export const VEND_BUY_X = 180, VEND_SELL_X = 280;
-export const LVL_BUY = 1000000000, LVL_SELL = 1000010000;
+export const LVL_BUY = 1000000000, LVL_SELL = 1000001000;
 export const OLD_LVL_BUY = 64000000000;   // what a level cost before v130 (save/save.js mends saves from v106/v107 by it)
 // and it must be repaid within an hour of buying the level (real time, the device clock, ms)
 export const DEADLINE_MS = 60 * 60 * 1000;

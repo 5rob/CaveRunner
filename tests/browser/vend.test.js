@@ -129,7 +129,7 @@ const DIR = path.join(__dirname, '..', 'build');
   check('the teleport ran out again', await waitWarp());
   s = await state();
   check('sold: the level is gone', !s.has && s.open === 0 && s.enemies === 0 && s.roofHole === 0, s);
-  check('debt paid off, and the reward (10,000) to you', s.gold === gold0 + 10000 && s.debt === 0, s);
+  check('debt paid off, and the reward (1,000) to you', s.gold === gold0 + 1000 && s.debt === 0, s);
   check('and no deadline any more', !(await page.evaluate(() => window.__in.current.loadout.due)));
   check('the debt line is gone', await page.evaluate(() => !document.querySelector('.gold .debt')));
   check('and the next floor is up for sale', s.floor === 2, s.floor);

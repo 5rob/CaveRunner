@@ -13,8 +13,8 @@ Not yet released (waiting on the owner's OK of the screenshots).
   is always for sale; floor N once N − 1 has been sold this run (`LO.soldTop`, saved; a new run clears it).
   The menu hands back `input.current.buyFloor`; `buyLevel` puts it on the debt and starts the warp.
 - **Exponential economy** (`data/levels.js`): the debt starts at a billion (`LVL_BUY`, was 64 billion) × 3
-  a floor (`lvlGrow`); the reward on top starts at 10,000 (`lvlBonus`, was `lvlReward` 1,000: renamed so
-  the new default reaches a phone that saved the old) × 3 a floor (`rewardGrow`); kill gold and the heal
+  a floor (`lvlGrow`); the reward on top starts at 1,000 (`lvlBonus`, was `lvlReward`) and doubles a floor
+  (`rewardGrow`, 2: 1,000, 2,000, 4,000, 8,000…); kill gold and the heal
   × 1.35 a floor (`killGrow`, `goldScale`, was +30% a floor). A sale always pays the reward and clears
   the debt (an old 64-billion debt can't eat your gold). Old-save mending keeps the old price (`OLD_LVL_BUY`).
 - **No freeze at the buy flash** (`game/levelgen.js`): while there's no level, a Web Worker running the

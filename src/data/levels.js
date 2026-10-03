@@ -14,7 +14,7 @@ export const LVL_MENU_MAX = 12;   // the menu lists floors up to this (or the ne
 /** @param {number} [floor] */
 export const lvlBuy = (floor = 1) => Math.round(LVL_BUY * Math.pow(DEV.lvlGrow, Math.max(0, floor - 1)));
 
-// what selling it pays: its price back, and the reward on top (Dev: lvlBonus on floor 1, 10,000, × rewardGrow, 3, a floor)
+// what selling it pays: its price back, and the reward on top (Dev: lvlBonus on floor 1, 1,000, × rewardGrow, 2, a floor: 1,000, 2,000, 4,000, 8,000…)
 /** @param {number} [floor] */
 export const lvlSell = (floor = 1) => lvlBuy(floor) + Math.round(DEV.lvlBonus * Math.pow(DEV.rewardGrow, Math.max(0, floor - 1)));
 

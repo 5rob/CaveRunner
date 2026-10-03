@@ -15,7 +15,7 @@ built in the background while the shop stood empty, so there's no freeze at the 
 sale only once you've sold the one below it in this run; the rest show locked. Climb to one of the
 three exits spread along the top (teleporter pads: blue light rising off them, lightning crackling up
 the moment you use one) and it drops you back in the shop. The other machine buys
-the level back for its debt plus a reward (10,000 gold on floor 1, three times more each floor up:
+the level back for its debt plus a reward (1,000 gold on floor 1, doubling each floor up: 2,000, 4,000, 8,000…;
 kills pay more on higher floors too), but its screen stays red until no biological
 entities are left in it (including the rats still inside their nests); sell it and it teleports away, leaving
 your debt paid and the reward in your pocket, and the next floor unlocked in the menu. You keep your
