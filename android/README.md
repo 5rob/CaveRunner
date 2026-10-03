@@ -41,11 +41,13 @@ and *downloaded* copies get the local-React rewrite.
 
 Same as before, but the delivery is Pages instead of the artifact:
 
-1. Edit `index.html`, bump the version in both places (`<title>` and
-   `const VERSION`).
+1. Edit `src/`, bump `VERSION = 'vX.Y.Z'` in `src/version.js` (the build fills the page; CLAUDE.md
+   has the update number the app compares: X × 1,000,000 + Y × 1,000 + Z, in `version.txt` as
+   `132 v0.0.132`, which an app from before v0.0.132 reads too).
 2. `node tests/run.js`.
 3. Push to **`main`**. CI redeploys Pages within a minute.
-4. Next time you open the app it says "Update available (vNN)" → **Update**.
+4. Next time you open the app it says "Update available (v0.0.132)" → **Update** (an APK from
+   before v0.0.132 shows "132 v0.0.132": it works the same; reinstalling the APK tidies the label).
 
 Pages URL (also playable in a phone browser):
 **https://5rob.github.io/CaveRunner/**

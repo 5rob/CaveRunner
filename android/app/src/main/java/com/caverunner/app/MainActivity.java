@@ -186,7 +186,7 @@ public class MainActivity extends Activity {
                 int local = prefs().getInt("version", readLocalVersion());
                 int skipped = prefs().getInt("skip", -1);
                 if (remote > local && remote != skipped) {
-                    runOnUiThread(() -> promptUpdate(remote, remoteRaw));
+                    runOnUiThread(() -> promptUpdate(remote, verLabel(remoteRaw)));
                 }
             } catch (Exception e) {
                 // Offline or PC/Pages unreachable — keep the version we have.
@@ -241,9 +241,18 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Pull the integer out of "v48" or "const VERSION = 'v48';". 0 if none. */
+    /** What to call a version in the prompt: "v0.0.132" out of "132 v0.0.132", else as it came. */
+    static String verLabel(String s) {
+        Matcher m = Pattern.compile("v\\d+\\.\\d+\\.\\d+").matcher(s);
+        return m.find() ? m.group() : s;
+    }
+
+    /** The update number: from "v0.0.132" (major x 1,000,000 + minor x 1,000 + patch), else the integer
+     *  out of "132 v0.0.132", "v48" or "<!-- VERSION = 'v132' -->" / "const VERSION = 'v48';". 0 if none. */
     static int verNum(String s) {
-        Matcher m = Pattern.compile("VERSION\\s*=\\s*'v(\\d+)'").matcher(s);
+        Matcher m = Pattern.compile("v(\\d+)\\.(\\d+)\\.(\\d+)").matcher(s);
+        if (m.find()) return Integer.parseInt(m.group(1)) * 1000000 + Integer.parseInt(m.group(2)) * 1000 + Integer.parseInt(m.group(3));
+        m = Pattern.compile("VERSION\\s*=\\s*'v(\\d+)'").matcher(s);
         if (m.find()) return Integer.parseInt(m.group(1));
         m = Pattern.compile("v?(\\d+)").matcher(s);
         if (m.find()) return Integer.parseInt(m.group(1));
