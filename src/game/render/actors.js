@@ -4,7 +4,7 @@
 // with the torch, the crosshair, Permanent Shield and Angry Ghost (the spider's silk, drawn just
 // before the creatures, is drawSilk in game/creatures/spider.js)
 
-import { drawGun, drawRagdoll, drawRunner, drawTorch, pixelSprite } from '../../art/sprites.js';
+import { drawGun, drawRagdoll, drawRunner, drawTorch, jetFlame, pixelSprite, torchEmbers } from '../../art/sprites.js';
 import { COL, PH, PW } from '../../core/consts.js';
 import { drawEnemy } from '../../creatures/draw.js';
 import { DEV, carrotAt, jcol, kcol, kru } from '../../dev/knobs.js';
@@ -40,20 +40,23 @@ export function drawEnemies(W, G, F) {
   }
 }
 
-// The jetpack's flame, pointing away from the thrust
+// The jetpack's flame, pointing away from the thrust: a licking fire (jetFlame), on the player's
+// pixel grid (DEV.runnerPx, like the gun and torch; 0 smooth)
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawJetFlame(W, G, F) {
   const { pcx } = F;
-  // jet flame
   if (W.p.flame > 0) {
     let fx = -W.p.jx, fy = -W.p.jy + 0.8;
     const fl = Math.hypot(fx, fy) || 1; fx /= fl; fy /= fl;
     const len = 6 + W.p.flame * 16 + Math.random() * 3;
-    const bx = pcx, by = W.p.y + PH - 2;
-    G.ctx.fillStyle = COL.flame;
-    G.ctx.beginPath(); G.ctx.moveTo(bx - 4, by); G.ctx.lineTo(bx + 4, by); G.ctx.lineTo(bx + fx * len, by + fy * len); G.ctx.fill();
-    G.ctx.fillStyle = COL.flame2;
-    G.ctx.beginPath(); G.ctx.moveTo(bx - 2, by); G.ctx.lineTo(bx + 2, by); G.ctx.lineTo(bx + fx * len * 0.55, by + fy * len * 0.55); G.ctx.fill();
+    const bx = pcx, by = W.p.y + PH - 2, px = DEV.runnerPx;
+    /** @param {CanvasRenderingContext2D} c */
+    const paint = c => jetFlame(c, bx, by, fx, fy, len, W.time);
+    if (px > 0) {
+      const R = len + 8, ox = W.p.x - 14, oy = W.p.y - 8;     // on the body's grid (drawPlayer)
+      const x0 = ox + Math.floor((bx - R - ox) / px) * px, y0 = oy + Math.floor((by - R - oy) / px) * px;
+      pixelSprite(G.ctx, x0, y0, R * 2 + px, R * 2 + px, px, false, paint);
+    } else paint(G.ctx);
   }
 }
 
@@ -150,8 +153,15 @@ export function drawPlayer(W, G, F) {
       pixelSprite(G.ctx, W.p.x - 14, W.p.y - 8, PW + 28, PH + 16, px, line, body);
       pixelSprite(G.ctx, W.p.x - 14, W.p.y - 8, PW + 28, PH + 16, px, false, gun);
     } else { body(G.ctx); gun(G.ctx); }
-    // the torch, in the hand the gun is not in
-    drawTorch(G.ctx, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.torchP, W.leanX, W.leanY, W.time);
+    // the torch, in the hand the gun is not in: on the same pixel grid, its embers loose on it
+    /** @param {CanvasRenderingContext2D} c */
+    const torch = c => drawTorch(c, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.leanX, W.leanY, W.time);
+    if (px > 0) {
+      const ox = W.p.x - 14, oy = W.p.y - 8;
+      const x0 = ox + Math.floor((th.x - 14 - ox) / px) * px, y0 = oy + Math.floor((th.y - 30 - oy) / px) * px;
+      pixelSprite(G.ctx, x0, y0, 28 + px, 38 + px, px, false, torch);
+    } else torch(G.ctx);
+    torchEmbers(G.ctx, W.torchP, px);
   }
   // a small aim crosshair at DEV.aimDist out, rotating round you with the aim: a "+"
   // with the centre cut out (two short verticals, two short horizontals), drawn as thin

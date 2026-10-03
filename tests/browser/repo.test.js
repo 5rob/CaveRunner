@@ -23,6 +23,9 @@ const DIR = path.join(__dirname, '..', 'build');
   await page.evaluate(() => { window.__lvl.p.x = VEND_BUY_X - 6; });
   await page.waitForTimeout(250);
   await page.evaluate(() => { window.__in.current.interact = true; });
+  // the tap opens the floor menu (ui/levelshop.js): buy floor 1 from it
+  await until(() => !!document.querySelector('.lvshop'), 20);
+  await page.locator('.lvshop .vbuy').dispatchEvent('pointerdown');
   check('bought', await until(() => window.__lvl.hasLvl && !window.__lvl.warp, 60));
   await page.evaluate(() => { const L = window.__lvl; L.sandbox(); L.p.hp = 100; });
 

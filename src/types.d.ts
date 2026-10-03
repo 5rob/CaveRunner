@@ -318,7 +318,8 @@ interface Level {
   props: Prop[];
   amb: string[];              // the theme's ambience particle kinds
   start: Pt;
-  portal: { x: number; y: number; w: number; h: number };
+  portal: { x: number; y: number; w: number; h: number };   // the middle exit (portals[1])
+  portals: { x: number; y: number; w: number; h: number }[];   // the exits along the top, left to right (EXIT_X)
   arrival: Pt;
   enemies: Enemy[]; pickups: Pickup[]; stock: StockItem[]; rooms: Room[];
   shopExit: number;
@@ -346,6 +347,7 @@ interface Loadout {
   gold: number;
   debt?: number;              // owed to the company for the level you're on (game/systems/vend.js)
   due?: number;               // when it must be repaid: Date.now() ms, the device's clock (0 = no debt)
+  soldTop?: number;           // the highest floor sold this run: floors up to one above it are for sale (data/levels.js)
   maxBonus: number;           // the +25 hearts: raises max health only
   usedLives: number;
   gunShop?: GunOffer;         // the gun machine's offer on this floor (spells/gunshop.js)
@@ -383,7 +385,7 @@ interface DevKnobs {
   witPad: number; witKbps: number;
   holoAlpha: number; bloom: number; bloomBlur: number; bloomBright: number;
   holoMin: number; holoMax: number; holoFade: number; holoC1x: number; holoC1y: number; holoC2x: number; holoC2y: number;
-  due1: number; enemies: number; enemiesUp: number; lvlReward: number; runnerPx: number; runnerLine: number;
+  due1: number; enemies: number; enemiesUp: number; lvlBonus: number; lvlGrow: number; rewardGrow: number; killGrow: number; runnerPx: number; runnerLine: number;
   ptrStart: number; ptrReach: number; ptrSize: number; ptrLine: number; snapR: number; snapPull: number; snapHit: number;
   [k: string]: any;
 }
@@ -486,6 +488,7 @@ interface Zfx {
 /** the level teleporting in (bought) or out (sold): game/systems/vend.js */
 interface Warp {
   dir: 'in' | 'out' | 'repo'; t: number; done: boolean;   // done: the swap (at WARP_SWAP) has happened
+  wait?: number;              // arriving: how long the dark has held for the worker's level (WARP_WAIT)
   bolts: { pts: Pt[]; t: number; max: number }[];     // the crackle over the shop roof
 }
 interface World {
@@ -499,8 +502,10 @@ interface World {
   mat: Uint8Array; img: ImageData; dimg: ImageData; ore: Uint8Array; burrow: Uint8Array | null; terrainV: number;
   floor: number;
   hasLvl: boolean; warp: Warp | null;
+  padZap: Record<number, number>;   // when each teleporter pad (padSpots seed) was last used: it crackles a moment (render/pads.js)
+  reveal: number;             // a bought level's rock is drawn onto its canvas down to this row so far (0: all of it): vend.js stepReveal
   repo: { t: number; hurtT: number; sndT: number } | null;   // the deadline passed: repossession, then the fire (vend.js)
-  start: Pt; portal: Level['portal']; arrival: Pt; stock: StockItem[];
+  start: Pt; portal: Level['portal']; portals: Level['portals']; arrival: Pt; stock: StockItem[];
   zone: Uint8Array | null; rooms: Room[];
   sconces: any[];             // Sconce[]: enterLevel builds [x, y] pairs first and maps them after
   levelSeed: number; levelOwned: string[]; roster: string[]; themeName: string; total: number;
@@ -611,7 +616,8 @@ interface GameInput {
   mapOpen?: boolean; floor?: number; saveRun?: () => void;
   perkCollection: string[];   // the perks unlocked at the perk machine, across runs
   collection: string[];       // the mods unlocked, kept across runs (save/save.js loadCollection)
-  shopOpen?: string | null;   // a vending machine's menu is up: its SHOPS key (game/systems/shops.js)
+  shopOpen?: string | null;   // a vending machine's menu is up: its SHOPS key (game/systems/shops.js), or 'levels' (the buy machine)
+  buyFloor?: number;          // the level menu's choice: step buys that floor's level (vend.js buyLevel)
   menuTap?: (() => void) | null;   // a menu is up: a right-stick tap (or r/f/enter) confirms in it
   dispense?: { shop: string, id?: string, gun?: Gun, perk?: string } | null;   // bought: the machine pops it out (stepShops)
 }

@@ -225,6 +225,60 @@ export function pixelSprite(ctx, x0, y0, w, h, px, line, paint) {
   ctx.imageSmoothingEnabled = sm;
 }
 
+// pixelSprite without the cut-off: `paint` drawn small (one canvas pixel per px world units) and
+// scaled up crisp, see-through parts kept see-through (smoke). Its own canvas
+/** @type {{ c: HTMLCanvasElement | null, x: CanvasRenderingContext2D | null }} */
+export const PIX2 = { c: null, x: null };
+/** @param {CanvasRenderingContext2D} ctx @param {number} x0 @param {number} y0 @param {number} w @param {number} h @param {number} px @param {(c: CanvasRenderingContext2D) => void} paint */
+export function pixelSoft(ctx, x0, y0, w, h, px, paint) {
+  const cw = Math.ceil(w / px), ch = Math.ceil(h / px);
+  if (!PIX2.c) { PIX2.c = document.createElement('canvas'); PIX2.x = PIX2.c.getContext('2d'); }
+  const c = PIX2.c, t = PIX2.x;
+  if (!t || cw < 1 || ch < 1) return;
+  if (c.width < cw || c.height < ch) { c.width = Math.max(c.width, cw); c.height = Math.max(c.height, ch); }
+  t.setTransform(1, 0, 0, 1, 0, 0);
+  t.clearRect(0, 0, cw + 1, ch + 1);
+  t.setTransform(1 / px, 0, 0, 1 / px, -x0 / px, -y0 / px);
+  paint(t);
+  t.setTransform(1, 0, 0, 1, 0, 0);
+  const sm = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(c, 0, 0, cw, ch, x0, y0, cw * px, ch * px);
+  ctx.imageSmoothingEnabled = sm;
+}
+
+// The jetpack's flame from the nozzle (bx, by), out along (ux, uy) for len: a fire, not a
+// triangle. A flickering body in four layers (deep orange edge to a white core), two tongues either
+// side licking on their own beats, and sparks of flame breaking off its tip. For pixelSprite
+// (actors.js drawJetFlame). Steady hashes of time only (draw shares the simulation's Math.random)
+/** @param {CanvasRenderingContext2D} ctx @param {number} bx @param {number} by @param {number} ux @param {number} uy @param {number} len @param {number} time */
+export function jetFlame(ctx, bx, by, ux, uy, len, time) {
+  const nx = -uy, ny = ux;                         // across the flame
+  /** @param {number} k along @param {number} side across @returns {[number, number]} */
+  const at = (k, side) => [bx + ux * len * k + nx * side, by + uy * len * k + ny * side];
+  const layers = [['#d8381a', 1, 3.6], [COL.flame, 0.82, 2.8], [COL.flame2, 0.55, 1.9], ['#fff6d8', 0.28, 1.1]];
+  for (const [col, k, r] of layers) {
+    ctx.fillStyle = String(col);
+    const kk = Number(k), rr = Number(r);
+    const wob = Math.sin(time * 31 + kk * 5) * 0.9 * kk;
+    const [tx, ty] = at(kk * (0.9 + 0.12 * Math.sin(time * 23 + kk * 7)), wob);
+    flameDrop(ctx, bx, by, tx, ty, rr);
+    if (kk < 0.5) continue;
+    for (const side of [-1, 1]) {                  // the side tongues
+      const lick = 0.45 + 0.4 * Math.abs(Math.sin(time * (17 + side * 4) + kk * 3 + side));
+      const [sx, sy] = at(kk * lick, side * rr * 0.9 + Math.sin(time * 13 + side) * 0.8);
+      flameDrop(ctx, bx + nx * side * rr * 0.4, by + ny * side * rr * 0.4, sx, sy, rr * 0.5);
+    }
+  }
+  for (let i = 0; i < 3; i++) {                     // flame breaking off the tip
+    const u = (time * 4.1 + i / 3) % 1, rr = 1.6 * (1 - u);
+    if (rr < 0.45) continue;
+    const [x, y] = at(0.8 + 0.6 * u, Math.sin(time * 19 + i * 2.3) * 2.2 * u);
+    ctx.fillStyle = u < 0.4 ? COL.flame2 : COL.flame;
+    ctx.beginPath(); ctx.arc(x, y, rr, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
 // The torch in the runner's free hand. `flick` is the very same number the lamp is drawn
 // with, so the flame and the light it throws gutter together and the cave reads as
 // torchlight rather than as a dimmer switch. The embers are the loop's particles.
@@ -268,11 +322,47 @@ export function glowAt(ctx, x, y, r, a, rgb) {
   ctx.fillRect(x - r, y - r, r * 2, r * 2);
 }
 
-// The torch in the runner's free hand. `flick` is the very same number the lamp is drawn
-// with, so the flame and the light it throws gutter together and the cave reads as
-// torchlight rather than as a dimmer switch. (lx, ly) drags the flame about as you move.
-/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} face @param {number} flick @param {Particle[]} embers @param {number} lx @param {number} ly @param {number} time */
-export function drawTorch(ctx, x, y, face, flick, embers, lx, ly, time) {
+// The hand torch's flame: not one smooth drop but a fire. A short body, three tongues licking up off
+// it each on its own beat (taller, shorter, swaying), and two licks breaking off the top and rising
+// as they shrink, in four layers from a deep orange edge to a white core. Meant to be drawn through
+// pixelSprite (actors.js), where the licks read as pixel flames. (lx, ly) drags it as you move;
+// `flick` is the lamp's own number, so the flame and its light gutter together.
+const TONGUES = [[-1.3, 11.7, 0.62, 0], [0.2, 15.3, 0.92, 2.1], [1.4, 13.1, 0.7, 4.4]];   // x, beat, height, phase
+/** @param {CanvasRenderingContext2D} ctx @param {number} fx @param {number} fy @param {number} lx @param {number} ly @param {number} flick @param {number} time */
+export function torchFlame(ctx, fx, fy, lx, ly, flick, time) {
+  const h = 10 * (0.82 + 0.22 * flick);
+  /** @param {number} k how far up (0 base, 1 tip) @param {number} [sw] its own sway */
+  const tipX = (k, sw = 0) => fx + lx * k + sw;
+  const layers = [['#d8381a', 1], [COL.flame, 0.78], [COL.flame2, 0.5], ['#fff6d8', 0.24]];
+  layers.forEach(([col, sc], li) => {
+    ctx.fillStyle = String(col);
+    const s = Number(sc), r = 3 * s + 0.4;
+    // the body
+    const bh = h * 0.55 * s * (0.9 + 0.12 * Math.sin(time * 9.7));
+    flameDrop(ctx, fx, fy, tipX(0.5, Math.sin(time * 7.3) * 0.5), fy - bh + ly * 0.5, r);
+    if (li === 3) return;
+    // the tongues, each rising and falling on its own beat
+    for (const [ox, beat, th, ph] of TONGUES) {
+      const lick = 0.55 + 0.45 * Math.abs(Math.sin(time * beat + ph)) * (0.8 + 0.2 * Math.sin(time * 3.1 + ph));
+      const tt = h * th * lick * s;
+      flameDrop(ctx, fx + ox * s, fy - 0.6, tipX(tt / h, Math.sin(time * (beat * 0.6) + ph) * 1.1 * s) + ox * 0.5 * s,
+        fy - tt + ly * (tt / h), Math.max(0.6, r * 0.55));
+    }
+  });
+  // licks breaking off the top, rising and shrinking
+  for (let k = 0; k < 2; k++) {
+    const u = (time * 2.3 + k * 0.5) % 1, rr = 1.5 * (1 - u);
+    if (rr < 0.45) continue;
+    const y = fy - h * (0.75 + 0.75 * u) + ly * (1 + u), x = tipX(1 + u * 0.6, Math.sin(time * 6 + k * 3) * 1.2);
+    ctx.fillStyle = u < 0.45 ? COL.flame2 : COL.flame;
+    ctx.beginPath(); ctx.arc(x, y, rr, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+// The torch in the runner's free hand: the stick and the flame (embers: torchEmbers, drawn apart so
+// they can leave the pixel layer's box). (lx, ly) drags the flame about as you move.
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} face @param {number} flick @param {number} lx @param {number} ly @param {number} time */
+export function drawTorch(ctx, x, y, face, flick, lx, ly, time) {
   const fx = x + face * 1.6, fy = y - 7;           // the flame rides above the fist
   ctx.save();
   ctx.lineCap = 'round';
@@ -280,12 +370,18 @@ export function drawTorch(ctx, x, y, face, flick, embers, lx, ly, time) {
   ctx.beginPath(); ctx.moveTo(x, y + 2.5); ctx.lineTo(fx, fy); ctx.stroke();
   ctx.strokeStyle = '#8a6b45'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(x, y + 2.5); ctx.lineTo(fx, fy); ctx.stroke();
-  drawFlame(ctx, fx, fy - 1, lx, ly, 1, flick, time);
+  torchFlame(ctx, fx, fy - 0.5, lx, ly, flick, time);
   ctx.restore();
+}
+
+// The torch's embers (the loop's particles), as squares on the pixel grid `px` (0: anywhere)
+/** @param {CanvasRenderingContext2D} ctx @param {Particle[]} embers @param {number} px */
+export function torchEmbers(ctx, embers, px) {
   for (const q of embers) {
     ctx.globalAlpha = Math.max(0, q.life / q.max) * 0.85;
     ctx.fillStyle = q.c;
-    ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
+    if (px > 0) { const s = Math.max(px, Math.round(q.s / px) * px); ctx.fillRect(Math.floor(q.x / px) * px, Math.floor(q.y / px) * px, s, s); }
+    else ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
   }
   ctx.globalAlpha = 1;
 }

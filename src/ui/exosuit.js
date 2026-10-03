@@ -3,7 +3,8 @@
 // ui/clips.js) and the Exo Suit itself: your
 // portrait (the runner, hovering), your money, the suit's stats each with its own slot for that
 // stat's perks (STAT_PERKS), the SUIT_SLOTS general perk slots (LO.suit holds both: the perks that count), and every perk in a grid: the ones you carry (LO.perks, with how many) bright,
-// the ones you could buy dim, the ones not unlocked yet locked. Drag a carried perk onto a slot to
+// the ones you could buy dim, the ones not unlocked yet locked (a ScrollBox: drag the bar to scroll, as the
+// Bag's mods). Drag a carried perk onto a slot to
 // fit it (what was there goes back to the carried ones), a fitted one to another slot to swap, or
 // off the slots to take it out. A tap on any perk shows its card. Editing is gated like the Bag's
 // (canEdit: in the shop, or with Tinker).
@@ -15,7 +16,7 @@ import { DEV, carrotAt } from '../dev/knobs.js';
 import { PERKS, PERK_IDS, ROMAN, STAT_KEYS, STAT_PERKS, SUIT_LEN, SUIT_SLOTS, activePerks, fitsSlot, perkBag } from '../data/perks.js';
 import { PerkCard } from './cards.js';
 import { WitnessGallery } from './clips.js';
-import { Editor } from './editor.js';
+import { Editor, ScrollBox } from './editor.js';
 import { h, useEffect, useRef, useState } from './h.js';
 import { CrystalIcon, fmtGold } from './hud.js';
 
@@ -110,7 +111,7 @@ export function ExoSuit({ input, close, refresh, canEdit, tabs }) {
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
       setDrag(null);
-      if (!armed) { setInfo(id); return; }
+      if (!armed) { if (ev.type === 'pointerup' && Math.hypot(ev.clientX - sx, ev.clientY - sy) <= SLOP) setInfo(id); return; }
       const under = document.elementFromPoint(ev.clientX, ev.clientY);
       /** @type {HTMLElement | null} */
       const el = under && under.closest ? under.closest('[data-xslot]') : null;
@@ -190,12 +191,14 @@ export function ExoSuit({ input, close, refresh, canEdit, tabs }) {
     h('p', { className: 'lab' }, 'Perk slots — ' + suit.slice(0, SUIT_SLOTS).filter(Boolean).length + ' of ' + SUIT_SLOTS + ' fitted'),
     h('div', { className: 'xslots' }, suit.slice(0, SUIT_SLOTS).map((_, i) => slotEl(i))),
     h('p', { className: 'lab' }, 'Perks — drag one you carry onto a slot (one of each)'),
-    h('div', { className: 'xgrid scroll' },
+    h(ScrollBox, { cls: 'xgrid' },
       PERK_IDS.map(id => {
         const n = LO.perks.filter(p => p === id).length, pk = PERKS[id], on = suit.includes(id);
         // fitted already: shown in use, and no second copy can be fitted (v129)
         const state = on ? 'inuse' : n ? 'have' : unlocked.includes(id) ? 'none' : 'locked';
-        return h('div', { key: id, 'data-perk': id, className: 'xperk ' + state, title: pk.name,
+        // one you can drag takes the touch (the bar scrolls); the rest let a swipe scroll the grid
+        const grab = n > 0 && !on && canEdit;
+        return h('div', { key: id, 'data-perk': id, className: 'xperk ' + state + (grab ? ' grab' : ''), title: pk.name,
             style: { color: pk.tint, borderColor: pk.tint }, onPointerDown: press(id, -1, n > 0 && !on) },
           pk.glyph,
           pk.tier ? h('em', null, ROMAN[pk.tier - 1]) : null,

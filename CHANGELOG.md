@@ -5,6 +5,36 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v130 — the floor menu, levels made ahead, three exits, pixel flames
+Not yet released (waiting on the owner's OK of the screenshots).
+
+- **The buy machine opens a full-screen floor menu** (`ui/levelshop.js` `LevelVend`, `SHOP_MENUS.levels`,
+  the stick pointer like the other machines): each floor's debt, sale price, reward and kill gold. Floor 1
+  is always for sale; floor N once N − 1 has been sold this run (`LO.soldTop`, saved; a new run clears it).
+  The menu hands back `input.current.buyFloor`; `buyLevel` puts it on the debt and starts the warp.
+- **Exponential economy** (`data/levels.js`): the debt starts at a billion (`LVL_BUY`, was 64 billion) × 3
+  a floor (`lvlGrow`); the reward on top starts at 10,000 (`lvlBonus`, was `lvlReward` 1,000: renamed so
+  the new default reaches a phone that saved the old) × 3 a floor (`rewardGrow`); kill gold and the heal
+  × 1.35 a floor (`killGrow`, `goldScale`, was +30% a floor). A sale always pays the reward and clears
+  the debt (an old 64-billion debt can't eat your gold). Old-save mending keeps the old price (`OLD_LVL_BUY`).
+- **No freeze at the buy flash** (`game/levelgen.js`): while there's no level, a Web Worker running the
+  same bundle makes the floor up for sale; the warp takes it, waiting in the dark up to `WARP_WAIT` if it's
+  still coming, or makes it itself if there's no worker. Then its rock goes onto the canvases a band a
+  frame from the bottom up (`stepReveal`). Worst frame at the flash with the CPU slowed 4×: 1117 ms → 67 ms.
+  A sale no longer makes (and throws away) the next floor's level: the cave is voided in place.
+- **No level, no level sounds**: ambience off in `voidCave` (`SFX.setAmbience(null)`), no ambience
+  one-shots, the exit's hum silent.
+- **Three exits along the top** (`EXIT_X`, `W.portals`, `exits`/`nearExit`), evenly spaced, joined by a
+  passage. Floor 2's pinned cave hashes moved (`level2.test.js`).
+- **Teleporter pads crackle only when used** (`W.padZap`, `ZAP_T`): going through an exit sets off it and
+  the way-in pad.
+- **Pixel flames**: the hand torch (`torchFlame`: tongues on their own beats, licks breaking off) and the
+  jetpack's flame (`jetFlame`) through `pixelSprite`, the jet smoke through `pixelSoft`, all on the
+  player's grid (`DEV.runnerPx`). Suite `pixelfx`.
+- **The Exo Suit's perk grid is a ScrollBox** like the Bag's mods: a grab bar, a perk you can fit takes the
+  touch (drags without the grid scrolling), the rest let a swipe scroll; a cancelled press opens no card.
+  Suite `perkgrid`.
+
 ## v129 — vines that trail, Witness fixes, one of each perk, mods reset on death, Dev for floor 2
 Released 2026-10-03.
 

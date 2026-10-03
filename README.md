@@ -3,18 +3,22 @@
 A jetpack cave platformer prototype that runs in the browser. You play a little
 white-suited astronaut, drawn in crisp chunky pixels, with arms and legs that bend at the
 elbow and knee. You start in a high-tech steel shop room with nothing above it. On its back wall, past the heal, stand
-two vending machines: the green one sells you a freshly generated destructible
-level for 64,000,000,000 gold on credit (it goes on a debt shown in red under
+two vending machines: the green one opens a full-screen menu of floors, and sells you a freshly
+generated destructible level of the one you pick on credit: floor 1 for 1,000,000,000 gold, each floor
+up three times the last (it goes on a debt shown in red under
 your gold, and you have one real hour to repay it: the buy machine and the
 "settlement due" clock at the top count it down, even while the game is closed; miss it and the level is
 repossessed, the alarms go off, and ten seconds later the shop floor fills with
 fire), and it
-teleports in over the shop in a flash and a crackle of lightning. Climb to the
-exit at the top (a teleporter pad: blue light rising off it, lightning crackling up) and it
-drops you back in the shop. The other machine buys
-the level back for 64,000,001,000 (the reward on top of the debt is a Dev knob), but its screen stays red until no biological
+teleports in over the shop in a flash and a crackle of lightning, drawn in from the bottom up (it was
+built in the background while the shop stood empty, so there's no freeze at the flash). A floor is for
+sale only once you've sold the one below it in this run; the rest show locked. Climb to one of the
+three exits spread along the top (teleporter pads: blue light rising off them, lightning crackling up
+the moment you use one) and it drops you back in the shop. The other machine buys
+the level back for its debt plus a reward (10,000 gold on floor 1, three times more each floor up:
+kills pay more on higher floors too), but its screen stays red until no biological
 entities are left in it (including the rats still inside their nests); sell it and it teleports away, leaving
-your debt paid and 1,000 up, and the machine next to it offers the next level. You keep your
+your debt paid and the reward in your pocket, and the next floor unlocked in the menu. You keep your
 guns, mods and gold; the cave and the loot are new every time.
 
 **Every floor keeps its identity.** Floor 3 is always the frozen one and always
@@ -600,10 +604,11 @@ them if it cannot find either.
 - A colour scheme per floor that stays with that floor run to run, so you can tell where you are at a glance
 - Large randomly generated caves with cramped and open areas, winding tunnels, built ledges and half-buried brick frames
 - Fog of war: the cave starts dark and you reveal it by exploring — only what the torch could actually see, never what was round a corner — with what you have seen kept as a faint map behind you
-- A torch in the runner's free hand, throwing embers, guttering — and the light in the cave gutters with it. Its flame is dragged about as you move, and it throws a small warm glow round you
+- A torch in the runner's free hand, a chunky pixel flame licking and breaking off at the top, throwing embers, guttering — and the light in the cave gutters with it. Its flame is dragged about as you move, and it throws a small warm glow round you
+- The jetpack's flame and smoke in the same chunky pixels: a licking fire, not a cone
 - Wall torches either side of the prizes in the hidden rooms
-- Teleporter pads for the way in and the exit: a beam of blue light fading upward, specks rising in it, lightning crackling off the pad
-- Dev knobs for how many enemies a new level gets (and how many more each floor) and the level's sell reward
+- Teleporter pads for the way in and three exits along the top: a beam of blue light fading upward, specks rising in it, lightning crackling off a pad when it's used
+- Dev knobs for how many enemies a new level gets (and how many more each floor), the level's sell reward, and how fast the debt, reward and kill gold climb floor by floor
 - Dev → Level 2: floor 2's cave shape (feature size, vast areas, pockets, tunnels, the main route, chambers, side tunnels, smoothing, ledges, frames, platforms), its colours and how much decoration it gets; Dev → Floor 2 takes you there
 - A background that sits well back from the rock, sliding slower as you move (parallax), with a big slanted bright-red hologram halfway between, drawn in chunky pixels like the rock, whose light blooms over the cave: "N biological entities detected", counting every creature alive on the floor plus you while you're out of the shop; it flips and turns green at zero. It rests dark and flashes up on every kill, fading out over a few seconds (Dev → Hologram flash: brightness at rest and on a kill, fade length, and a curve to shape the fade)
 - The map only keeps what you had a line on: a wall hides its far side from the fog of war for good

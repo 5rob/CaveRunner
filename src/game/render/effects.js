@@ -2,18 +2,40 @@
 // Particles and effects of draw() (render/draw.js), each a part it calls in order with its frame
 // object F (REFACTOR.md D19): smoke, Levitation Trail, sparks, motes, explosion flashes
 
+import { pixelSoft } from '../../art/sprites.js';
 import { COL } from '../../core/consts.js';
+import { DEV } from '../../dev/knobs.js';
 
-// Smoke: the jetpack's (grey puffs when it sputters), the fire's, blasts', vents' and shot trails'
+// Smoke: the jetpack's (grey puffs when it sputters), the fire's, blasts', vents' and shot trails'.
+// The jetpack's (m.jet) is drawn on the player's pixel grid (DEV.runnerPx, pixelSoft: see-through kept)
 /** @param {World} W @param {GameCtx} G */
 export function drawSmoke(W, G) {
-  // smoke
+  const px = DEV.runnerPx;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  /** @param {CanvasRenderingContext2D} c @param {Particle} m */
+  const puff = (c, m) => {
+    c.fillStyle = m.c || COL.smoke;
+    c.globalAlpha = Math.max(0, m.life / m.max) * (m.a || 0.5);
+    c.beginPath(); c.arc(m.x, m.y, m.r, 0, Math.PI * 2); c.fill();
+  };
   for (const m of W.smoke) {
-    G.ctx.fillStyle = m.c || COL.smoke;
-    G.ctx.globalAlpha = Math.max(0, m.life / m.max) * (m.a || 0.5);
-    G.ctx.beginPath(); G.ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2); G.ctx.fill();
+    if (m.jet && px > 0) {
+      x0 = Math.min(x0, m.x - m.r); y0 = Math.min(y0, m.y - m.r); x1 = Math.max(x1, m.x + m.r); y1 = Math.max(y1, m.y + m.r);
+      continue;
+    }
+    puff(G.ctx, m);
   }
   G.ctx.globalAlpha = 1;
+  if (x1 > x0 && x1 - x0 < 600 && y1 - y0 < 600) {
+    const gx = Math.floor(x0 / px) * px, gy = Math.floor(y0 / px) * px;
+    pixelSoft(G.ctx, gx, gy, x1 - gx + px, y1 - gy + px, px, c => {
+      for (const m of W.smoke) if (m.jet) puff(c, m);
+      c.globalAlpha = 1;
+    });
+  } else if (x1 > x0) {                       // spread too far for one layer: drawn smooth
+    for (const m of W.smoke) if (m.jet) puff(G.ctx, m);
+    G.ctx.globalAlpha = 1;
+  }
 }
 
 // Levitation Trail: the fire you left behind, still burning
