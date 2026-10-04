@@ -6,7 +6,8 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v0.0.141 — a new map, pins, and a guide hologram in a longer hall
-Built 2026-10-04, **awaiting the owner's OK of the screenshots** (not on `main` yet).
+Released 2026-10-05 (after the owner's OK of the screenshots; a minor update). The guide greets every
+new run, after a death too (owner).
 
 - **The map, rebuilt** (`ui/map.js`, owner: other UI got in the way and the outline lines broke up into
   pixels). A full-screen React screen (`MapScreen`): a picture of the floor as it was made — decoration
