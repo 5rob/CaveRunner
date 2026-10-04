@@ -465,7 +465,8 @@ White Hole; they're still in the code, `startingGuns`, and the browser tests sta
 
 Standing next to a gun on the ground shows its card. A tap opens the chooser: it pauses the
 game and shows what you found with a big square button for each of your four slots across the
-bottom, and the two guns sharing the rest of the screen, so you can read either one's mods without scrolling. Tap a slot to compare that gun,
+bottom, and the two guns sharing the rest of the screen, so you can read either one's mods without scrolling. A gun's mods show as the same square tiles as the
+Bag's; tap one (here, at the gun machine or in the Bag) for that mod's card. Tap a slot to compare that gun,
 hold one to swap it out — whatever it replaces is left on the ground where you found the new
 one. The found gun's stats are coloured against whichever of your guns you last tapped (your
 held gun to start with), green for better and red for worse, counting a smaller cast delay,

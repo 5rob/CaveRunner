@@ -319,6 +319,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .dmark.yes{color:#3aa76d}
 .dmark.no{color:#d5563a}
 .dtiles{display:flex;gap:4px;flex-wrap:wrap}
+/* a gun card's mods: the Bag's square tiles (v0.0.144); .tap ones open the mod's card (ModPop, over everything) */
+.gmods{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:5px}
+.gmods .tile{width:auto;height:auto;aspect-ratio:1;cursor:default;touch-action:auto}
+.gmods .tile.tap{cursor:pointer;pointer-events:auto;touch-action:manipulation}
+.pop.ingame .gmods .tile{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.2)}
+.pop.ingame .gmods .tn{color:rgba(233,236,242,0.7)}
+.pop.split .gmods{grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:4px}
+.modpop .shade{z-index:40}
+.modpop .pop{z-index:41}
 .dtile{border:1px solid;border-radius:6px;padding:2px 6px;display:flex;align-items:center;gap:4px}
 .dtile b{font-size:12px;line-height:1}
 .dtile i{font-style:normal;font:600 10px system-ui,sans-serif;color:var(--text);opacity:.8}
@@ -368,7 +377,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .pop.split .gstats .st{padding:2px 7px;font-size:10px}
 /* a shorter screen: the stats two across, a short one three, so they still fit without scrolling */
 @media (max-height:860px){.pop.split .gstats{grid-template-columns:1fr 1fr}}
-@media (max-height:700px){.pop.split .gstats{grid-template-columns:1fr 1fr 1fr}.pop.split .gstats .st{padding:2px 5px;font-size:9px;white-space:nowrap;overflow:hidden}}
+@media (max-height:700px){.pop.split .gmods{grid-template-columns:repeat(auto-fill,minmax(33px,1fr))}.pop.split .gmods .tn{font-size:7px}.pop.split .gstats{grid-template-columns:1fr 1fr 1fr}.pop.split .gstats .st{padding:2px 5px;font-size:9px;white-space:nowrap;overflow:hidden}}
 .pop.split .gstats .st b{font-size:11px}
 .pop.split .st.up b{color:var(--good)}
 .pop.split .st.down b{color:var(--bad)}

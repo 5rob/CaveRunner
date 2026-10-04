@@ -45,12 +45,12 @@ export function GunSwap({ input, refresh, onDone }) {
       h('h2', null, 'Gun on the ground'),
       h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); leave(); } }, 'Leave it')
     ),
-    h(GunCard, { gun: found.gun, label: 'Found', flow: true, split: true, mark: 'found',
+    h(GunCard, { gun: found.gun, label: 'Found', flow: true, split: true, mark: 'found', tapMods: true,
       compare: baseGun,
       compareName: baseGun ? 'slot ' + (base + 1) + ', ' + baseGun.name : '' }),
     baseGun
       ? h(GunCard, { gun: baseGun, label: 'Slot ' + (base + 1) + ' \u00b7 yours', flow: true,
-          split: true, mark: 'mine', compare: found.gun, compareName: found.gun.name })
+          split: true, mark: 'mine', tapMods: true, compare: found.gun, compareName: found.gun.name })
       : h('p', { className: 'lab mine' }, base >= 0
           ? 'Slot ' + (base + 1) + ' is empty' : 'No guns to compare it with'),
     h('p', { className: 'lab hint' }, 'Hold a slot to swap it \u00b7 tap to compare it'),

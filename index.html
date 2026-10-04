@@ -328,6 +328,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .dmark.yes{color:#3aa76d}
 .dmark.no{color:#d5563a}
 .dtiles{display:flex;gap:4px;flex-wrap:wrap}
+/* a gun card's mods: the Bag's square tiles (v0.0.144); .tap ones open the mod's card (ModPop, over everything) */
+.gmods{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:5px}
+.gmods .tile{width:auto;height:auto;aspect-ratio:1;cursor:default;touch-action:auto}
+.gmods .tile.tap{cursor:pointer;pointer-events:auto;touch-action:manipulation}
+.pop.ingame .gmods .tile{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.2)}
+.pop.ingame .gmods .tn{color:rgba(233,236,242,0.7)}
+.pop.split .gmods{grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:4px}
+.modpop .shade{z-index:40}
+.modpop .pop{z-index:41}
 .dtile{border:1px solid;border-radius:6px;padding:2px 6px;display:flex;align-items:center;gap:4px}
 .dtile b{font-size:12px;line-height:1}
 .dtile i{font-style:normal;font:600 10px system-ui,sans-serif;color:var(--text);opacity:.8}
@@ -377,7 +386,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .pop.split .gstats .st{padding:2px 7px;font-size:10px}
 /* a shorter screen: the stats two across, a short one three, so they still fit without scrolling */
 @media (max-height:860px){.pop.split .gstats{grid-template-columns:1fr 1fr}}
-@media (max-height:700px){.pop.split .gstats{grid-template-columns:1fr 1fr 1fr}.pop.split .gstats .st{padding:2px 5px;font-size:9px;white-space:nowrap;overflow:hidden}}
+@media (max-height:700px){.pop.split .gmods{grid-template-columns:repeat(auto-fill,minmax(33px,1fr))}.pop.split .gmods .tn{font-size:7px}.pop.split .gstats{grid-template-columns:1fr 1fr 1fr}.pop.split .gstats .st{padding:2px 5px;font-size:9px;white-space:nowrap;overflow:hidden}}
 .pop.split .gstats .st b{font-size:11px}
 .pop.split .st.up b{color:var(--good)}
 .pop.split .st.down b{color:var(--bad)}
@@ -22272,7 +22281,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       fmt: (v) => v ? "in order" : "shuffle"
     }
   ];
-  function GunCard({ gun, label, onClose, ingame, flow, split, mark, compare, compareName }) {
+  function ModPop({ id, close }) {
+    return ReactDOM.createPortal(h(
+      "div",
+      { className: "modpop" },
+      h("div", { className: "shade", onPointerDown: (e) => {
+        e.preventDefault();
+        close();
+      } }),
+      h(ModCard, { id, onClose: close, top: true })
+    ), document.body);
+  }
+  function GunCard({ gun, label, onClose, ingame, flow, split, mark, compare, compareName, tapMods }) {
+    const [info, setInfo] = useState(null);
     const vs = compare && compare !== gun ? compare : null;
     const stats = GUN_STATS.map((st) => {
       const v = st.get(gun);
@@ -22329,20 +22350,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         { className: "pdemo" },
         h(
           "div",
-          { className: "dtiles" },
-          gun.slots.map((id, i) => id ? h(
-            "div",
-            {
-              key: i,
-              className: "dtile",
-              style: { borderColor: famCol(id), color: famCol(id) }
-            },
-            h("b", null, MODS[id].glyph),
-            h("i", null, MODS[id].name)
-          ) : h("div", { key: i, className: "dtile off" }, h("i", null, "empty")))
+          { className: "gmods" },
+          gun.slots.map((id, i) => {
+            const m = id ? MODS[id] : null;
+            return h(
+              "div",
+              {
+                key: i,
+                "data-mod": id || void 0,
+                className: "tile" + (m ? "" : " hole") + (m && m.kind === "shot" ? " shot" : "") + (m && tapMods ? " tap" : ""),
+                style: m ? { borderColor: famCol(id), color: famCol(id) } : null,
+                onPointerDown: m && tapMods ? (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setInfo(id);
+                } : void 0
+              },
+              h("span", { className: "tg" }, m ? m.glyph : ""),
+              m ? h("span", { className: "tn" }, m.name) : null,
+              m && m.mark ? h("span", { className: "tmark" }, m.mark) : null
+            );
+          })
         ),
-        split && gun.slots.some(Boolean) ? null : h("span", { className: "dnote" }, gun.slots.some(Boolean) ? "cast left to right" : "nothing fitted yet")
-      )
+        split && gun.slots.some(Boolean) ? null : h("span", { className: "dnote" }, gun.slots.some(Boolean) ? "cast left to right" + (tapMods ? " · tap one for its card" : "") : "nothing fitted yet")
+      ),
+      info && MODS[info] ? h(ModPop, { id: info, close: () => setInfo(null) }) : null
     );
   }
   function ModCard({ id, onClose, ingame, top, flow }) {
@@ -25695,6 +25727,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             label: free && sel === 0 ? "Free" : gun.boosted ? "Boosted" : "For sale",
             ingame: true,
             flow: true,
+            tapMods: true,
             compare: held,
             compareName: held ? held.name : ""
           }) : h("p", { className: "vhint" }, "Sold")
@@ -25959,6 +25992,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         flow: true,
         split: true,
         mark: "found",
+        tapMods: true,
         compare: baseGun,
         compareName: baseGun ? "slot " + (base + 1) + ", " + baseGun.name : ""
       }),
@@ -25968,6 +26002,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         flow: true,
         split: true,
         mark: "mine",
+        tapMods: true,
         compare: found.gun,
         compareName: found.gun.name
       }) : h("p", { className: "lab mine" }, base >= 0 ? "Slot " + (base + 1) + " is empty" : "No guns to compare it with"),
@@ -26704,6 +26739,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h(GunCard, {
           gun: LO.guns[gunInfo],
           label: "Slot " + (gunInfo + 1),
+          tapMods: true,
           onClose: () => setGunInfo(-1)
         })
       ) : null

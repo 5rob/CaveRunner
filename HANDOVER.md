@@ -13,7 +13,8 @@ release loop, testing), then the README of the `src/` folder you're working in.
   under its light, dust (not green spores) only inside the light cones, and the guide turns rude only once
   you walk out of its pool of light to the right (at a run it was skipped unseen); the gun pickup's slots a
   full-width row of squares with the cards splitting the rest; a new run's teleporter charging for a
-  second before you come through in a flash, the tube over it on a second later.
+  second before you come through in a flash, the tube over it on a second later; gun cards' mods as the Bag's
+  square tiles, a tap showing the mod's card.
 - **Released: v0.0.143** on `main`, 2026-10-05: the guide's starter gun casts one shot and recharges in 0.5 s.
 - **Released: v0.0.142** on `main`, 2026-10-05 (the owner OK'd the screenshots; a minor update): a new run
   starts with no guns and no gold; the gun machine gives a Scratch Pistol free while you have no gun; the

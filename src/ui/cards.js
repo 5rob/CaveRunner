@@ -8,7 +8,7 @@ import { modPreview } from '../spells/advisor.js';
 import { effRecharge, gunPassives } from '../spells/cast.js';
 import { gunColor, gunLvCol } from '../spells/guns.js';
 import { MODS, famCol, famOf } from '../spells/mods.js';
-import { h } from './h.js';
+import { h, useState } from './h.js';
 
 // The same detail card is used by the build screen and by the shop, so what you
 // read standing on a plinth is exactly what you get once you own it.
@@ -29,11 +29,22 @@ export const GUN_STATS = [
     get: g => (g.shuffle ? 0 : 1), fmt: v => (v ? 'in order' : 'shuffle') },
 ];
 
-// One card for a gun: its rolled stats and the mods sitting on it.
+// A mod's card over everything, the shade behind it closing it: a portal to the page, so the card it
+// was opened from (a gun card: a pickup, the gun machine, the Bag) neither clips nor restyles it
+/** @param {{ id: string, close: () => void }} props */
+export function ModPop({ id, close }) {
+  return ReactDOM.createPortal(h('div', { className: 'modpop' },
+    h('div', { className: 'shade', onPointerDown: e => { e.preventDefault(); close(); } }),
+    h(ModCard, { id, onClose: close, top: true })), document.body);
+}
+
+// One card for a gun: its rolled stats and the mods sitting on it, as the square tiles the Bag uses
+// (v0.0.144, owner; `tapMods`: tapping one shows its card, ModPop).
 // `split` is the gun-pickup variant: the stats collapse to wrapping chips and the
 // card becomes a flex column, so the mod row at the bottom never gets pushed off.
-/** @param {{ gun: Gun, label?: string, onClose?: () => void, ingame?: boolean, flow?: boolean, split?: boolean, mark?: string, compare?: Gun | null, compareName?: string }} props */
-export function GunCard({ gun, label, onClose, ingame, flow, split, mark, compare, compareName }) {
+/** @param {{ gun: Gun, label?: string, onClose?: () => void, ingame?: boolean, flow?: boolean, split?: boolean, mark?: string, compare?: Gun | null, compareName?: string, tapMods?: boolean }} props */
+export function GunCard({ gun, label, onClose, ingame, flow, split, mark, compare, compareName, tapMods }) {
+  const [info, setInfo] = useState(null);       // the mod whose card is up (tapMods)
   const vs = compare && compare !== gun ? compare : null;
   const stats = GUN_STATS.map(st => {
     const v = st.get(gun);
@@ -63,15 +74,21 @@ export function GunCard({ gun, label, onClose, ingame, flow, split, mark, compar
           stats.map(r => h('div', { className: 'prow' + r.cls, key: r.st.k },
             h('span', null, r.st.label), h('b', null, r.st.fmt(r.v))))),
     h('div', { className: 'pdemo' },
-      h('div', { className: 'dtiles' },
-        gun.slots.map((id, i) => id
-          ? h('div', { key: i, className: 'dtile',
-              style: { borderColor: famCol(id), color: famCol(id) } },
-            h('b', null, MODS[id].glyph), h('i', null, MODS[id].name))
-          : h('div', { key: i, className: 'dtile off' }, h('i', null, 'empty')))),
+      h('div', { className: 'gmods' },
+        gun.slots.map((id, i) => {
+          const m = id ? MODS[id] : null;
+          return h('div', { key: i, 'data-mod': id || undefined,
+              className: 'tile' + (m ? '' : ' hole') + (m && m.kind === 'shot' ? ' shot' : '') + (m && tapMods ? ' tap' : ''),
+              style: m ? { borderColor: famCol(id), color: famCol(id) } : null,
+              onPointerDown: m && tapMods ? e => { e.preventDefault(); e.stopPropagation(); setInfo(id); } : undefined },
+            h('span', { className: 'tg' }, m ? m.glyph : ''),
+            m ? h('span', { className: 'tn' }, m.name) : null,
+            m && m.mark ? h('span', { className: 'tmark' }, m.mark) : null);
+        })),
       split && gun.slots.some(Boolean) ? null       // the split view needs the height more
         : h('span', { className: 'dnote' }, gun.slots.some(Boolean)
-          ? 'cast left to right' : 'nothing fitted yet'))
+          ? 'cast left to right' + (tapMods ? ' · tap one for its card' : '') : 'nothing fitted yet')),
+    info && MODS[info] ? h(ModPop, { id: info, close: () => setInfo(null) }) : null
   );
 }
 
