@@ -6,7 +6,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v0.0.137 — the Gravity Gun, path mods that work, crystals like gold, burning elites
-Built 2026-10-04 (awaiting the owner's OK of the screenshots).
+Released 2026-10-04 (after the owner's OK of the screenshots).
 
 - **No perk column on the play screen** (the Exo Suit tab shows what's fitted): `.perkcol`, `.perkpip`,
   the perk card and `perkTap` are gone; `perkcol.test.js` deleted.
