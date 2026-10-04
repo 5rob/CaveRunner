@@ -205,7 +205,7 @@ the light over it snaps on — and a little see-through blue hologram of you is 
 waving, with bright distortion bars rolling over it. A speech box over it types out a welcome
 (Dev → Guide hologram: how fast it types), then it hands you a starter kit out of its body one
 thing at a time — 150 gold, two red crystals and a green one, Buzzsaw, Bolt and Double Cast,
-and a level 5 gun with three slots that fires in order — and glitches away. Walk through it
+and a level 5 gun with three slots that fires in order, one shot a cast, recharging in half a second — and glitches away. Walk through it
 before it's done and it glitches, says something rude and vanishes without the kit. Then the
 rest of the hall lights up as you go, one vending machine at a time (they stand evenly spaced),
 and once you reach the perk machine the rest comes on. The first
