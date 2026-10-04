@@ -1,11 +1,13 @@
 // @ts-check
 // The shop's vending machines (game/systems/shops.js): a dark cabinet each, with its icon floating
 // in front of the glass as a flickering hologram in the machine's hue, and the chute at the bottom
-// a bought thing pops out of. Drawn with the shop's stock, before the fog.
+// a bought thing pops out of. A crystal machine (v0.0.138) has a slot in its crystal's colour and a row
+// of chase lights on its cap; taking a crystal it shakes faster and faster and the lights race
+// (W.machines[k].t). Drawn with the shop's stock, before the fog.
 
 import { drawGun } from '../../art/sprites.js';
 import { CELL, SHOP_FLOOR } from '../../core/consts.js';
-import { MACHINE_H, MACHINE_TOP, MACHINE_W, SHOPS } from '../systems/shops.js';
+import { CYCLE, MACHINE_H, MACHINE_TOP, MACHINE_W, SHOPS, SLOT_Y, shakePhase } from '../systems/shops.js';
 
 const ICON = 30, GLOW = 8, RES = 4;        // the hologram's size, its glow, and its pixels per unit
 
@@ -53,12 +55,17 @@ export function drawShops(W, G, F) {
   for (const k in SHOPS) {
     const m = SHOPS[k], x = m.x - MACHINE_W / 2;
     if (x > W.camX + F.vw + 20 || x + MACHINE_W < W.camX - 20) continue;
+    // a crystal machine at work: u 0..1 through its shake
+    const M = W.machines[k], busy = !!(m.takes && M && M.t >= 0), u = busy ? Math.min(1, M.t / CYCLE) : 0;
+    const ph = busy ? shakePhase(M.t) : 0;
+    ctx.save();
+    if (busy) ctx.translate(Math.sin(ph * 6.283) * (0.4 + 1.8 * u), Math.sin(ph * 4.1) * 0.5 * u);
     // the cabinet: body, pillars, cap, foot
     ctx.fillStyle = '#171a21'; ctx.fillRect(x, y, MACHINE_W, MACHINE_H);
     ctx.fillStyle = '#252a35'; ctx.fillRect(x, y, 5, MACHINE_H); ctx.fillRect(x + MACHINE_W - 5, y, 5, MACHINE_H);
     ctx.fillStyle = '#323948'; ctx.fillRect(x - 2, y - 1, MACHINE_W + 4, 5); ctx.fillRect(x - 3, fy - 5, MACHINE_W + 6, 5);
     // neon edge strips in the hue
-    ctx.fillStyle = m.hue; ctx.globalAlpha = 0.5 + 0.2 * Math.sin(t * 3 + m.x);
+    ctx.fillStyle = m.hue; ctx.globalAlpha = busy ? 0.45 + 0.5 * (Math.sin(ph * 6.283) > 0 ? 1 : 0) : 0.5 + 0.2 * Math.sin(t * 3 + m.x);
     ctx.fillRect(x + 5, y + 6, 1, MACHINE_H - 14); ctx.fillRect(x + MACHINE_W - 6, y + 6, 1, MACHINE_H - 14);
     ctx.globalAlpha = 1;
     // the glass
@@ -84,10 +91,26 @@ export function drawShops(W, G, F) {
     ctx.beginPath(); ctx.moveTo(x + 14, py); ctx.lineTo(x + MACHINE_W - 14, py); ctx.lineTo(ix + ICON, iy + ICON); ctx.lineTo(ix, iy + ICON); ctx.closePath(); ctx.fill();
     ctx.globalAlpha = alpha;
     ctx.drawImage(holoIcon(m.icon, m.hue), ix - GLOW + jit, iy - GLOW + Math.sin(t * 2) * 1.2, ICON + GLOW * 2, ICON + GLOW * 2);
+    if (busy) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.15 + 0.35 * u; ctx.fillStyle = m.hue; ctx.fillRect(gx, gy, gw, gh); ctx.globalCompositeOperation = 'source-over'; }
     // a band of brighter light rolling down it
     const band = iy + ((t * 16 + m.x) % (ICON + 16)) - 8;
     ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = alpha * 0.2;
     ctx.fillRect(ix, Math.max(iy, band), ICON, Math.max(0, Math.min(5, iy + ICON - band)));
+    ctx.restore();
+    if (m.takes) {
+      const col = m.takes === 'green' ? '#3dff7a' : '#ff3a4a';
+      // the slot a crystal goes into, rimmed in its colour
+      ctx.fillStyle = '#05070a'; ctx.fillRect(m.x - 7, SLOT_Y - 2, 14, 4);
+      ctx.fillStyle = col; ctx.globalAlpha = 0.55 + 0.3 * Math.sin(t * 4 + m.x); ctx.fillRect(m.x - 8, SLOT_Y - 3, 16, 1); ctx.fillRect(m.x - 8, SLOT_Y + 2, 16, 1);
+      // the chase lights along the cap: one lit dot strolling across, racing while it works
+      const N = 8, pos = busy ? ph * 2 : t * 1.5;
+      for (let i = 0; i < N; i++) {
+        const lit = busy && u > 0.8 ? (Math.floor(ph * 2) % 2 === 0 ? 1 : 0.15) : Math.max(0.15, 1 - ((pos - i) % N + N) % N * 0.45);
+        ctx.globalAlpha = lit; ctx.fillStyle = lit > 0.5 ? '#ffffff' : col;
+        ctx.fillRect(x + 4 + i * (MACHINE_W - 8) / N + 1, y, 3, 2);
+      }
+      ctx.globalAlpha = 1;
+    }
     ctx.restore();
   }
 }

@@ -5,6 +5,29 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.138 — crystals are rocks, the machines eat them
+Released 2026-10-04 (after the owner's OK of the screenshots).
+
+- **You can't pick crystals up** (`game/systems/pickups.js`: the fly-to-you is gone). A loose crystal is a
+  rock: it falls, bounces, rolls and bumps other crystals (`world/nuggets.js` `stepNugget`/`collideNuggets`,
+  now taking a radius, `CRYS_R` 8), and walking into it shoves it (`shoveNugget`: out of your box, given
+  your speed). A hidden room's green crystal still drops off its altar once you're near.
+- **The Gravity Gun drags crystals** (`game/systems/fields.js`): inside a White Hole a crystal is steered to
+  its middle and held up (`q.hold`: no gravity), but it moves through `stepCrystals`, so it bumps into rock
+  rather than passing through it like other loot.
+- **Crystal machines** (`game/systems/shops.js`: `SHOPS[k].takes`, `stepCrystals`, `intakeOf`,
+  `machineRoll`, `shakePhase`, `CYCLE` 2.4 s): the mod machine takes red, the perk machine green. One that
+  comes within `INTAKE_X` flies into the slot (`SLOT_Y`, `q.into`); each machine works one at a time
+  (`W.machines[k]`: `n` queued, `t` into the shake): faster and faster shaking and chase lights, reel
+  ticks, then it pops out a new unlock off the current floor's drop table (`crystalRoll`/`perkRoll`, saved
+  to the collection; everything unlocked: one you have). Drawn in `render/shops.js` (a slot in the crystal's
+  colour, cap lights, the glass flaring).
+- **Their menus are archived**: `shopNear` skips a machine with `takes`; `ui/vendshop.js`/`ui/modshop.js` are
+  untouched (drop `takes` to bring one back). The gun machine keeps its menu; its Boosted spin needs carried
+  red crystals, which only old saves have now.
+- Tests: `crystalmachine` (new: sandbox push/hold/drag, the machines); `vendshop`/`perkshop` open the
+  archived menus directly; `perks` expects the altar crystal to drop loose.
+
 ## v0.0.137 — the Gravity Gun, path mods that work, crystals like gold, burning elites
 Released 2026-10-04 (after the owner's OK of the screenshots).
 

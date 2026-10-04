@@ -155,15 +155,15 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
   // ---- 6. no Buy button anywhere; the shop's machine opens with an interact ----
   check('there is no .buy button in the page', (await page.$('.buy')) === null);
-  // the shop's vending machine: an interact opens its menu (buying there: vendshop.test.js)
+  // the shop's gun machine: an interact opens its menu (the mod and perk machines have none since v0.0.138)
   const shopRes = await page.evaluate(async () => {
     const { p } = window.__lvl;
-    p.x = SHOPS.mods.x - 6; p.y = window.__lvl.world.SHOP_FLOOR * window.__lvl.world.CELL - 22; p.vx = 0; p.vy = 0;
+    p.x = SHOPS.guns.x - 6; p.y = window.__lvl.world.SHOP_FLOOR * window.__lvl.world.CELL - 22; p.vx = 0; p.vy = 0;
     window.__in.current.sig = '';
     await new Promise(r => setTimeout(r, 250));
     window.__in.current.interact = true;
     await new Promise(r => setTimeout(r, 200));
-    return { open: !!document.querySelector('.vshop'), paused: window.__in.current.paused };
+    return { open: window.__in.current.shopOpen === 'guns', paused: window.__in.current.paused };
   });
   check('an interact at the vending machine opens its menu', shopRes.open && shopRes.paused, shopRes);
 

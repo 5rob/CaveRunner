@@ -189,9 +189,18 @@ export function stepFields(W, G, F) {
         if (d < reach) { const s = Math.min(d, sp(d) * dt); g.x += dx / d * s; g.y += dy / d * s; g.vy = 0; g.vx = 0; g.ground = 0; }
       }
       for (const q of W.pickups) {
-        if (q.taken || q.fly) continue;
+        if (q.taken || q.fly || q.into) continue;
         const dx = f.x - q.x, dy = f.y - q.y, d = Math.hypot(dx, dy) || 1;
-        if (d < reach) { const s = Math.min(d, sp(d) * dt); q.x += dx / d * s; q.y += dy / d * s; }
+        if (d >= reach) continue;
+        if (q.kind === 'crystal') {
+          // a crystal is a rock (v0.0.138): steered to the middle, held up, but it bumps into rock on
+          // the way (stepCrystals moves it), so the Gravity Gun drags it round corners, not through them
+          const v = Math.min(sp(d), d * 10), k = Math.min(1, 10 * dt);
+          q.vx = (q.vx || 0) + (dx / d * v - (q.vx || 0)) * k; q.vy = (q.vy || 0) + (dy / d * v - (q.vy || 0)) * k;
+          q.hold = 0.12;
+          continue;
+        }
+        const s = Math.min(d, sp(d) * dt); q.x += dx / d * s; q.y += dy / d * s;
       }
       // specks gathered from round its edge, drawn in (like the old portal's)
       for (let n = Math.floor((f.mAcc = (f.mAcc || 0) + dt * 45)); n > 0; n--) {

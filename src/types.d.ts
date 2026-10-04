@@ -296,7 +296,10 @@ interface Pickup {
   taken?: boolean; old?: boolean;
   cool?: number;              // just dropped or swapped: not takeable yet
   nopull?: number;            // a crystal: seconds before it may fly to you (an elite's pile, SPILL_WAIT)
-  fly?: boolean; fvy?: number; // a crystal flying to you (fvy: its upward speed, so stepShops leaves it be)
+  fly?: boolean; fvy?: number; // a crystal flying into its machine (fvy: its upward speed)
+  a?: number; ground?: number; // a crystal: its turn as it rolls, resting on rock (world/nuggets.js)
+  into?: string;              // a crystal: the SHOPS machine sucking it in
+  hold?: number;              // a crystal: seconds left of a White Hole's grip (no gravity meanwhile)
 }
 /** a shop plinth (makeLevel's stock) */
 interface StockItem { kind: string; x: number; y: number; price: number; sold: boolean; id?: string; gun?: Gun; bought?: number /* the heal: times bought this floor */ }
@@ -481,6 +484,8 @@ interface Arc { pts: Pt[]; col: string; w: number; t: number; max: number }
 /** a new run's shop lights (world/shoplights.js): start = W.time on arrival, on = when each section's tubes switched on (-1 not yet), zap = the next crackle sound's time */
 interface ShopLights { start: number; on: number[]; zap: number }
 /** gold on the ground */
+/** anything world/nuggets.js moves: gold, and crystals (v0.0.138) */
+interface Nug { x: number; y: number; vx?: number; vy?: number; t?: number; a?: number; ground?: number; fly?: boolean; amount?: number }
 interface Coin {
   x: number; y: number; amount: number; t: number;
   vx?: number; vy?: number; pop?: number; nopull?: number;
@@ -530,6 +535,7 @@ interface World {
   hasLvl: boolean; warp: Warp | null;
   padZap: Record<number, number>;   // when each teleporter pad (padSpots seed) was last used: it crackles a moment (render/pads.js)
   reveal: number;             // a bought level's rock is drawn onto its canvas down to this row so far (0: all of it): vend.js stepReveal
+  machines: Record<string, { n: number, t: number }>;   // the crystal machines (game/systems/shops.js): crystals in, and the shake (t, -1 idle)
   shopLit: ShopLights | null;   // a new run's dark shop lighting up a section at a time (world/shoplights.js); null = all lit
   repo: { t: number; hurtT: number; sndT: number } | null;   // the deadline passed: repossession, then the fire (vend.js)
   start: Pt; portal: Level['portal']; portals: Level['portals']; arrival: Pt; stock: StockItem[];

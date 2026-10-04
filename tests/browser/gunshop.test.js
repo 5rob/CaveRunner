@@ -94,7 +94,7 @@ const DIR = path.join(__dirname, '..', 'build');
   check('the gun landed on the floor beside the machine', !!q && !q.fly && Math.abs(q.x - MX) > 25, { q, MX });
   await page.screenshot({ path: path.join(DIR, 'gunshop_dropped.png') });
 
-  // an elite in a sandbox dies and drops red and green crystals that fall to the floor; they fly to you like gold
+  // an elite in a sandbox dies and drops red and green crystals that fall to the floor; you can't take them (v0.0.138)
   st = await page.evaluate(async () => {
     DEV.elRedLo = DEV.elRedHi = 3; DEV.elGreenLo = DEV.elGreenHi = 1;
     const L = window.__lvl, e = L.enemies.find(e => e.k.elite) || Object.assign(L.enemies.find(e => !e.nest), {}), room = L.sandbox();
@@ -107,20 +107,21 @@ const DIR = path.join(__dirname, '..', 'build');
     L.p.x = room.l + 10;                                   // stand well clear while it falls
     damageEnemy(L, i, 5);
     const drop = L.pickups.slice(n0);
-    for (let k = 0; k < 60 && drop.some(q => q.vy !== undefined); k++) await new Promise(r => setTimeout(r, 50));
+    const still = () => drop.every(q => q.ground && Math.abs(q.vy || 0) < 1 && Math.abs(q.vx || 0) < 1);
+    for (let k = 0; k < 80 && !still(); k++) await new Promise(r => setTimeout(r, 50));
     const out = { reds: drop.filter(q => q.kind === 'crystal' && !q.green).length, greens: drop.filter(q => q.kind === 'crystal' && q.green).length,
-      rest: drop.every(q => q.vy === undefined || q.taken), dy: drop.map(q => Math.round(room.y - q.y)) };
-    // stand by the pile: every crystal in reach flies in, no tap
+      rest: still(), dy: drop.map(q => Math.round(room.y - q.y)) };
+    // stand by the pile: nothing is taken
     const mx = drop.reduce((s, q) => s + q.x, 0) / drop.length;
     for (const q of drop) q.x = mx + (q.x - mx) * 0.2;   // close together, as a pile you can stand in
     L.p.x = mx - 6; L.p.y = room.y - 22.5; L.p.vx = L.p.vy = 0;
-    for (let k = 0; k < 40 && !drop.every(q => q.taken); k++) await new Promise(requestAnimationFrame);
+    for (let k = 0; k < 40; k++) await new Promise(requestAnimationFrame);
     out.tookReds = (LO.crystals || []).length - r0; out.tookGreens = (LO.greens || []).length - g0;
-    out.taken = drop.every(q => q.taken);
+    out.taken = drop.some(q => q.taken);
     return out;
   });
   check('an elite drops red and green crystals that come to rest on the floor', st.reds === 3 && st.greens === 1 && st.rest && st.dy.every(d => d >= 0 && d < 20), st);
-  check('the whole pile flies to you, reds and greens', st.tookReds === 3 && st.tookGreens === 1 && st.taken, st);
+  check('standing in the pile takes none of it', st.tookReds === 0 && st.tookGreens === 0 && !st.taken, st);
 
   await browser.close();
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');

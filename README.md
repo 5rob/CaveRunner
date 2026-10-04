@@ -167,7 +167,8 @@ Mods and guns in the cave sit on a floor of their own now, not floating in place
 The middle of the right stick is a dead zone: drag out past it to aim and fire,
 tap it without leaving it and you interact with whatever you are standing at.
 That one button uses the shop's heal and machines and picks up guns and mods in the cave.
-Crystals need no tap: like gold, they fly to you once you're close.
+Crystals can't be picked up: they're rocks you shove along by walking into them, or carry with the
+Gravity Gun, into the shop's crystal machines.
 
 Walking over something no longer takes it. You get its card instead — a slim panel
 that floats just above the item with the price built into it — so you can read a mod
@@ -196,15 +197,14 @@ heal on a floor is free; after that it costs 100 gold, and each one after costs
 way they raise what enemies pay out. A new floor's shop starts it free again.
 
 The three vending machines run left to right: mods, guns, perks.
-Mods come from the **vending machine** past the sell machine, the one with a
-flickering ⚙️ hologram on its glass. Stand at it and "Tap R to shop" opens its menu over
-the screen (the game pauses). The top half is your **collection**: a cell for every mod,
-grouped by rarity, empty until you unlock it. Under it, the **red crystal** button: hand
-over a crystal and it unlocks a random mod you don't have yet, from the drop table of the
-floor that crystal came from. The collection lasts the run: dying empties it (unlocked perks stay). The
-bottom half shows the selected mod's card and **Dispense selected** with its price: buy a
-copy and the menu closes and the mod pops out of the bottom of the machine onto the floor,
-for you to pick up. Tap things directly, or use the sticks: in a machine's menu the **right
+The **mod machine** past the sell machine (a flickering ⚙️ hologram, a red-rimmed slot) and the
+**perk machine** (a green ✦, a green slot) are **crystal machines**: they have no menu. Bring a red
+crystal near the mod machine, or a green one near the perk machine, and it's sucked in; the
+machine's lights race and it shakes faster and faster for a couple of seconds, then pops out a mod
+(or perk) you hadn't unlocked yet, from the floor you're on's drop table, now unlocked, for you to
+pick up. Several crystals queue up. Mods unlocked last the run: dying empties them (unlocked perks
+stay). (Their old menus are kept, switched off, in case they come back.) The gun machine still has its
+menu. Tap things directly, or use the sticks: in a machine's menu the **right
 stick is a pointer** — drag it and a thin ring pushes out from the knob and travels much further
 than your thumb (the stick's full reach takes it to the far corner of the screen, and it stops
 at the edge). It snaps gently onto the nearest button. Whatever it's over lights up; let go
@@ -222,14 +222,15 @@ goes faster, with red sparks streaming past.
 
 **Red crystals** lie about the cave where guns and mods used to: a big dark-red nugget with
 white glints, shedding little sparkles that drift off on the cave's breeze (and trail behind it
-when it moves). Walk close and it flies to you like gold. **Elite** creatures — a few
+when it moves). You can't pick it up: walk into it and it rolls along ahead of you, or grab it
+with the **Gravity Gun** (its White Hole holds it up and drags it wherever you aim), and get it
+to the mod machine. **Elite** creatures — a few
 on every floor, tinted gold with a glow — are tougher, hit harder, drop four times the gold
-and a pile of crystals: three to five red and a green one, which fly to you once you're near. Elites
+and a pile of crystals: three to five red and a green one. Elites
 burn: fire particles stream off their bodies and trail behind them as they move (Dev → Elites: flames
 shapes it: a colour gradient you edit by placing and dragging stops, an opacity-over-life curve, the
 flame's length, wavyness, air resistance and more).
-(Dev → Elites sets how many a floor gets, how tough and big they are, their tint and glow, and what they drop.) The crystals you carry show at the top as a row of red and green crystal silhouettes, under
-your gold and above the debt. Which spells turn up follows Noita's own spawn table, deeper floors handing out rarer ones — and the very strongest (Black Hole and friends) never appear before floor 4. Your **Bag** opens anywhere,
+(Dev → Elites sets how many a floor gets, how tough and big they are, their tint and glow, and what they drop.) (Crystals carried from an older save still show at the top as red and green silhouettes, and the gun machine's Boosted spin still spends them.) Which spells turn up follows Noita's own spawn table, deeper floors handing out rarer ones — and the very strongest (Black Hole and friends) never appear before floor 4. Your **Bag** opens anywhere,
 but *changing* your setup — dragging mods, reordering guns — only works in the shop (or
 anywhere, with the Tinker perk); out in the cave the Bag is read-only. Enemies drop gold
 when they die, so a floor you clear pays for the next floor's shopping. **Gold seams** run
@@ -256,13 +257,12 @@ pink, orange, gold (level 10). Its card reads `Lv N` too.
 
 Every floor also hides one small room, built brick-lined like the shop, carved out of the
 cave and connected back to the main route by a tunnel — you have to find it. On its altar
-sits a **green crystal**: walk up to it and it flies to you. (The +25 health heart room is gone.)
+sits a **green crystal**: walk up to it and it drops off the altar, for you to push or drag to the perk machine. (The +25 health heart room is gone.)
 Elites drop green crystals too.
 
-Green crystals buy perks at the **perk machine** in the shop, the one with a green ✦ hologram,
-left of the gun machine. It works like the mod machine: hand over a green crystal to unlock a
-random perk you haven't got (kept for good, across runs), then **Dispense selected** buys a
-copy for gold and pops it out onto the floor. There are 30 perks copied from Noita (200g each) —
+Green crystals turn into perks at the **perk machine** in the shop, the one with a green ✦ hologram,
+right of the gun machine: get one near it and it's sucked in, and after the shake it pops out a
+random perk you haven't got (kept for good, across runs). There are 30 perks copied from Noita (200g each) —
 Glass Cannon, Extra Health, Faster Wands, Homing Shots, Unlimited Spells, Permanent Shield,
 Pinpointer, Trajectory Sight, Angry Ghost, Attract Gold, radars and Invisibility among them —
 and 30 **stat perks**: Max Health, Movement Speed, Jetpack Fuel, Jetpack Recharge, Gold
@@ -649,7 +649,7 @@ them if it cannot find either.
 - Creature stats and gold scale with the floor they belong to, so the same enemy gets harder as you climb
 - Enemies with health bars, drawn in their own colours so you can read what is shooting you
 - A gun you just swapped out and dropped stays quiet for two seconds, so you can squeeze past it in a tunnel
-- Red crystals in the cave unlock mods for good at the shop's vending machine, which then sells copies
+- Red crystals in the cave: push them or drag them with the Gravity Gun into the shop's mod machine, which shakes and pops out a new mod
 - Restart asks before it wipes the run
 - A death replay: the last 10 seconds before you died and 3 after, with sound, scrubbing, slow motion, a fog toggle, pan and pinch-zoom; save it to the Bag's Witness tab, or export it as an MP4
 - Your body falls like a rag doll when you die, and blasts throw it

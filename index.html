@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.137</title>
-<!-- VERSION = 'v137' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.138</title>
+<!-- VERSION = 'v138' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -676,7 +676,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.137';</script>
+<script>const VERSION = 'v0.0.138';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -6518,8 +6518,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       });
     }
   }
-  function stepNugget(g, dt, solid) {
-    const r = nugR(g.amount);
+  function stepNugget(g, dt, solid, rad) {
+    const r = rad || nugR(g.amount || 0);
     g.vx = g.vx || 0;
     g.vy = g.vy || 0;
     for (let k = 0; k < 8 && solid(g.x, g.y); k++) g.y -= 2;
@@ -6561,24 +6561,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     g.a = (g.a || 0) + g.vx * dt / r;
     return hard;
   }
-  function collideNuggets(list, solid) {
+  function collideNuggets(list, solid, rOf) {
+    const rad = rOf || ((g) => nugR(g.amount || 0));
     const n = list.length;
     if (n < 2) return;
     const ord = list.slice().sort((a, b) => a.x - b.x);
-    const reach2 = NUGGETS[0].r * 2;
+    const reach2 = list.reduce((m, g) => Math.max(m, rad(g)), 0) * 2;
     for (let i = 0; i < n; i++) {
       const a = ord[i];
       if (a.fly) continue;
-      const ra = nugR(a.amount);
+      const ra = rad(a);
       for (let j = i + 1; j < n; j++) {
         const b = ord[j];
         if (b.x - a.x >= reach2) break;
         if (b.fly) continue;
-        const min = ra + nugR(b.amount);
+        const min = ra + rad(b);
         let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
         if (d >= min) continue;
         if (d < 0.01) {
-          const ang = (a.t + b.t) * 3.7;
+          const ang = ((a.t || 0) + (b.t || 0)) * 3.7;
           dx = Math.cos(ang);
           dy = -Math.abs(Math.sin(ang));
           d = 1;
@@ -6614,6 +6615,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
     }
+  }
+  function shoveNugget(g, r, box, vx, vy, solid) {
+    const cx = Math.max(box.x, Math.min(g.x, box.x + box.w)), cy = Math.max(box.y, Math.min(g.y, box.y + box.h));
+    let dx = g.x - cx, dy = g.y - cy, d = Math.hypot(dx, dy), push;
+    if (d >= r) return false;
+    if (d < 0.01) {
+      const L3 = g.x - box.x, R = box.x + box.w - g.x, T = g.y - box.y, B = box.y + box.h - g.y, m = Math.min(L3, R, T, B);
+      dx = m === L3 ? -1 : m === R ? 1 : 0;
+      dy = dx ? 0 : m === T ? -1 : 1;
+      d = 1;
+      push = m + r;
+    } else push = r - d;
+    const ux = dx / d, uy = dy / d, x = g.x + ux * push, y = g.y + uy * push;
+    if (!solid(x + ux * r, y + uy * r)) {
+      g.x = x;
+      g.y = y;
+    }
+    const vn = vx * ux + vy * uy, gn = (g.vx || 0) * ux + (g.vy || 0) * uy;
+    if (vn > gn) {
+      g.vx = (g.vx || 0) + ux * (vn - gn) * 1.1;
+      g.vy = (g.vy || 0) + uy * (vn - gn) * 1.1;
+    }
+    return true;
   }
 
   // src/world/fire.js
@@ -6882,6 +6906,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       // where you come in, the way out
       portals: [],
       // the exits along the top (portal is the middle one): exits(W)
+      machines: {},
+      // the crystal machines: crystals sucked in, the shake (game/systems/shops.js)
       shopLit: null,
       // a new run's dark shop, lighting up as you go (world/shoplights.js; null = lit)
       padZap: {},
@@ -16533,13 +16559,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       drawNugget(G.ctx, g.x, g.y, nugR(g.amount), g.t, g.a || 0);
     }
     for (const q of W.pickups) {
-      const qy = q.y + Math.sin(W.time * 2 + q.t) * 3;
+      const qy = q.kind === "crystal" ? q.y : q.y + Math.sin(W.time * 2 + q.t) * 3;
       if (qy > W.camY + vh + 30 || qy < W.camY - 30 || q.x < W.camX - 30 || q.x > W.camX + vw + 30) continue;
       if (q.kind === "gun") {
         if (!q.old) drawGunGlow(G.ctx, q.x, qy, W.time, q.t);
         drawGun(G.ctx, q.x - 5, qy + 1, -0.22, 0.85, gunAccent(q.gun));
       } else if (q.kind === "crystal") {
-        drawNugget(G.ctx, q.x, qy, CRYSTAL_R, q.t * 7, 0, q.green ? GREEN_PAL : CRYSTAL_PAL);
+        drawNugget(G.ctx, q.x, qy, CRYSTAL_R, q.t * 7, q.a || 0, q.green ? GREEN_PAL : CRYSTAL_PAL);
       } else if (q.kind === "perk") {
         const pk = PERKS[q.id], col = pk.tint || COL.portal;
         G.ctx.globalAlpha = 0.22;
@@ -18791,19 +18817,42 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/spells/collection.js
+  function modTiers() {
+    return [1, 2, 3, 4].map((tier) => ({ tier, ids: ALL_IDS.filter((id) => tierOf(id) === tier) }));
+  }
+  function crystalRoll(rnd2, floor, owned) {
+    const have = new Set(owned);
+    const left = ALL_IDS.filter((id) => !have.has(id));
+    if (!left.length) return null;
+    let total = 0;
+    for (const id of left) total += modWeight(id, floor);
+    if (total <= 0) return left[Math.floor(rnd2() * left.length)];
+    let r = rnd2() * total;
+    for (const id of left) {
+      r -= modWeight(id, floor);
+      if (r <= 0 && modWeight(id, floor) > 0) return id;
+    }
+    return left.filter((id) => modWeight(id, floor) > 0).pop() || left[0];
+  }
+  function perkRoll(rnd2, owned) {
+    const left = PERK_IDS.filter((id) => !owned.includes(id) && (!PERKS[id].tier || PERKS[id].tier === 1 || owned.includes("st_" + PERKS[id].stat + (PERKS[id].tier - 1))));
+    return left.length ? left[Math.floor(rnd2() * left.length)] : null;
+  }
+
   // src/game/systems/shops.js
   var MACHINE_W = 56, MACHINE_H = 84;
   var MACHINE_TOP = SHOP_FLOOR * CELL - MACHINE_H;
   var CHUTE_Y = SHOP_FLOOR * CELL - 14;
   var SHOPS = {
     // left to right: mods, guns, perks
-    mods: { x: SHOP_MACHINE_X[0], icon: "⚙️", hue: "#4fe3ff", label: "Tap R to shop" },
+    mods: { x: SHOP_MACHINE_X[0], icon: "⚙️", hue: "#4fe3ff", label: "Tap R to shop", takes: "red" },
     guns: { x: SHOP_MACHINE_X[1], icon: "gun", hue: "#ff9a3c", label: "Tap R to shop" },
-    perks: { x: SHOP_MACHINE_X[2], icon: "✦", hue: "#3dff7a", label: "Tap R to shop" }
+    perks: { x: SHOP_MACHINE_X[2], icon: "✦", hue: "#3dff7a", label: "Tap R to shop", takes: "green" }
   };
   function shopNear(W, pcx, pcy) {
     if (W.warp || W.repo || W.p.dead || pcy < SHOP_Y || pcy > SHOP_FLOOR * CELL) return null;
-    for (const k in SHOPS) if (Math.abs(pcx - SHOPS[k].x) < MACHINE_W / 2 + 2) return k;
+    for (const k in SHOPS) if (!SHOPS[k].takes && Math.abs(pcx - SHOPS[k].x) < MACHINE_W / 2 + 2) return k;
     return null;
   }
   function shopUse(G, kind) {
@@ -18822,8 +18871,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         SFX.fx("prompt");
       }
     }
+    stepCrystals(W, G, F);
     for (const q of W.pickups) {
-      if (q.vy === void 0) continue;
+      if (q.vy === void 0 || q.kind === "crystal") continue;
       q.vy = Math.min(600, q.vy + 900 * F.dt);
       const nx = q.x + (q.vx || 0) * F.dt;
       if (!solidAt(W, nx, q.y)) q.x = nx;
@@ -18842,6 +18892,124 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           q.t = W.time;
         }
       }
+    }
+  }
+  var CRYS_R = 8;
+  var CYCLE = 2.4;
+  var SLOT_Y = MACHINE_TOP + 52;
+  var INTAKE_X = MACHINE_W / 2 + 26, INTAKE_TOP = MACHINE_TOP - 26;
+  var SHAKE_F0 = 3, SHAKE_F1 = 30;
+  var shakePhase = (t) => SHAKE_F0 * t + SHAKE_F1 * CYCLE * Math.pow(Math.min(1, t / CYCLE), 3) / 3;
+  function intakeOf(q) {
+    if (q.y < INTAKE_TOP || q.y > SHOP_FLOOR * CELL + 4) return null;
+    for (const k in SHOPS) {
+      const m = SHOPS[k];
+      if (m.takes && m.takes === "green" === !!q.green && Math.abs(q.x - m.x) < INTAKE_X) return k;
+    }
+    return null;
+  }
+  function machineRoll(W, G, k) {
+    const inp = G.input.current;
+    if (SHOPS[k].takes === "green") {
+      const id2 = perkRoll(Math.random, inp.perkCollection);
+      if (id2) {
+        inp.perkCollection.push(id2);
+        savePerkCollection(inp.perkCollection);
+        return { kind: "perk", id: id2 };
+      }
+      const have2 = inp.perkCollection;
+      return have2.length ? { kind: "perk", id: have2[Math.floor(Math.random() * have2.length)] } : null;
+    }
+    const id = crystalRoll(Math.random, W.floor, inp.collection);
+    if (id) {
+      inp.collection.push(id);
+      saveCollection(inp.collection);
+      return { kind: "mod", id };
+    }
+    const pool = inp.collection.filter((m) => modWeight(m, W.floor) > 0);
+    const have = pool.length ? pool : inp.collection;
+    return have.length ? { kind: "mod", id: have[Math.floor(Math.random() * have.length)] } : null;
+  }
+  function stepCrystals(W, G, F) {
+    const dt = F.dt;
+    const solid = (x, y) => solidAt(W, x, y);
+    const free = [];
+    for (const q of W.pickups) {
+      if (q.kind !== "crystal" || q.taken) continue;
+      if (q.into) {
+        const m = SHOPS[q.into], dx = m.x - q.x, dy = SLOT_Y - q.y, d = Math.hypot(dx, dy) || 1;
+        const grab = 400 + 900 * Math.max(0, 1 - d / 80);
+        q.vx = (q.vx || 0) + dx / d * grab * dt * 6;
+        q.fvy = (q.fvy || 0) + dy / d * grab * dt * 6;
+        q.vx *= 0.86;
+        q.fvy *= 0.86;
+        const ox2 = q.x, oy2 = q.y;
+        q.x += q.vx * dt;
+        q.y += q.fvy * dt;
+        crystalMotes(W, q.x, q.y, !!q.green, dt, Math.hypot(q.x - ox2, q.y - oy2), ox2, oy2);
+        if (d < 7) {
+          q.taken = true;
+          const M = W.machines[q.into] || (W.machines[q.into] = { n: 0, t: -1 });
+          M.n++;
+          burst(W, m.x, SLOT_Y, 8, q.green ? "#3dff7a" : "#ff4a5a");
+          SFX.ui(q.green ? "perk" : "mod");
+        }
+        continue;
+      }
+      if (q.nopull > 0) q.nopull -= dt;
+      if (q.hold > 0) {
+        q.hold -= dt;
+        q.vy = (q.vy || 0) - NUG_GRAV * dt;
+      }
+      stepNugget(q, dt, solid, CRYS_R);
+      if (!W.p.dead) shoveNugget(q, CRYS_R, { x: W.p.x, y: W.p.y, w: PW, h: PH }, W.p.vx, W.p.vy, solid);
+      const k = !(q.nopull > 0) && !W.warp ? intakeOf(q) : null;
+      if (k) {
+        q.into = k;
+        q.fvy = q.vy || 0;
+        delete q.vy;
+        q.hold = 0;
+        SFX.fx("prompt");
+        continue;
+      }
+      crystalMotes(W, q.x, q.y, !!q.green, dt, 0);
+      free.push(q);
+    }
+    collideNuggets(free, solid, () => CRYS_R);
+    for (const k in SHOPS) {
+      const m = SHOPS[k], M = W.machines[k];
+      if (!m.takes || !M) continue;
+      if (M.t < 0 && M.n > 0) {
+        M.n--;
+        M.t = 0;
+      }
+      if (M.t < 0) continue;
+      const t0 = M.t;
+      M.t += dt;
+      if (Math.floor(shakePhase(M.t)) !== Math.floor(shakePhase(t0))) SFX.fx("reelTick");
+      if (M.t < CYCLE) continue;
+      M.t = -1;
+      const got = machineRoll(W, G, k);
+      if (!got) {
+        toast(W, "Nothing left to unlock");
+        continue;
+      }
+      const side = F.pcx < m.x ? -1 : 1;
+      W.pickups.push({
+        kind: got.kind,
+        id: got.id,
+        x: m.x,
+        y: CHUTE_Y,
+        t: 0,
+        vx: side * (95 + Math.random() * 30),
+        vy: -200 - Math.random() * 40,
+        cool: 1
+      });
+      toast(W, "Unlocked " + (got.kind === "perk" ? PERKS[got.id].name : MODS[got.id].name));
+      burst(W, m.x, CHUTE_Y, 14, m.hue);
+      SFX.fx("reelThud");
+      SFX.fx("prompt");
+      G.input.current.notify();
     }
   }
 
@@ -18894,6 +19062,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const k in SHOPS) {
       const m = SHOPS[k], x = m.x - MACHINE_W / 2;
       if (x > W.camX + F.vw + 20 || x + MACHINE_W < W.camX - 20) continue;
+      const M = W.machines[k], busy = !!(m.takes && M && M.t >= 0), u = busy ? Math.min(1, M.t / CYCLE) : 0;
+      const ph = busy ? shakePhase(M.t) : 0;
+      ctx.save();
+      if (busy) ctx.translate(Math.sin(ph * 6.283) * (0.4 + 1.8 * u), Math.sin(ph * 4.1) * 0.5 * u);
       ctx.fillStyle = "#171a21";
       ctx.fillRect(x, y, MACHINE_W, MACHINE_H);
       ctx.fillStyle = "#252a35";
@@ -18903,7 +19075,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.fillRect(x - 2, y - 1, MACHINE_W + 4, 5);
       ctx.fillRect(x - 3, fy - 5, MACHINE_W + 6, 5);
       ctx.fillStyle = m.hue;
-      ctx.globalAlpha = 0.5 + 0.2 * Math.sin(t * 3 + m.x);
+      ctx.globalAlpha = busy ? 0.45 + 0.5 * (Math.sin(ph * 6.283) > 0 ? 1 : 0) : 0.5 + 0.2 * Math.sin(t * 3 + m.x);
       ctx.fillRect(x + 5, y + 6, 1, MACHINE_H - 14);
       ctx.fillRect(x + MACHINE_W - 6, y + 6, 1, MACHINE_H - 14);
       ctx.globalAlpha = 1;
@@ -18949,10 +19121,35 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.fill();
       ctx.globalAlpha = alpha;
       ctx.drawImage(holoIcon(m.icon, m.hue), ix - GLOW + jit, iy - GLOW + Math.sin(t * 2) * 1.2, ICON + GLOW * 2, ICON + GLOW * 2);
+      if (busy) {
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = 0.15 + 0.35 * u;
+        ctx.fillStyle = m.hue;
+        ctx.fillRect(gx, gy, gw, gh);
+        ctx.globalCompositeOperation = "source-over";
+      }
       const band = iy + (t * 16 + m.x) % (ICON + 16) - 8;
       ctx.globalCompositeOperation = "lighter";
       ctx.globalAlpha = alpha * 0.2;
       ctx.fillRect(ix, Math.max(iy, band), ICON, Math.max(0, Math.min(5, iy + ICON - band)));
+      ctx.restore();
+      if (m.takes) {
+        const col = m.takes === "green" ? "#3dff7a" : "#ff3a4a";
+        ctx.fillStyle = "#05070a";
+        ctx.fillRect(m.x - 7, SLOT_Y - 2, 14, 4);
+        ctx.fillStyle = col;
+        ctx.globalAlpha = 0.55 + 0.3 * Math.sin(t * 4 + m.x);
+        ctx.fillRect(m.x - 8, SLOT_Y - 3, 16, 1);
+        ctx.fillRect(m.x - 8, SLOT_Y + 2, 16, 1);
+        const N = 8, pos = busy ? ph * 2 : t * 1.5;
+        for (let i = 0; i < N; i++) {
+          const lit = busy && u > 0.8 ? Math.floor(ph * 2) % 2 === 0 ? 1 : 0.15 : Math.max(0.15, 1 - ((pos - i) % N + N) % N * 0.45);
+          ctx.globalAlpha = lit;
+          ctx.fillStyle = lit > 0.5 ? "#ffffff" : col;
+          ctx.fillRect(x + 4 + i * (MACHINE_W - 8) / N + 1, y, 3, 2);
+        }
+        ctx.globalAlpha = 1;
+      }
       ctx.restore();
     }
   }
@@ -20105,13 +20302,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
         }
         for (const q of W.pickups) {
-          if (q.taken || q.fly) continue;
+          if (q.taken || q.fly || q.into) continue;
           const dx = f.x - q.x, dy = f.y - q.y, d = Math.hypot(dx, dy) || 1;
-          if (d < reach2) {
-            const s = Math.min(d, sp(d) * dt);
-            q.x += dx / d * s;
-            q.y += dy / d * s;
+          if (d >= reach2) continue;
+          if (q.kind === "crystal") {
+            const v = Math.min(sp(d), d * 10), k = Math.min(1, 10 * dt);
+            q.vx = (q.vx || 0) + (dx / d * v - (q.vx || 0)) * k;
+            q.vy = (q.vy || 0) + (dy / d * v - (q.vy || 0)) * k;
+            q.hold = 0.12;
+            continue;
           }
+          const s = Math.min(d, sp(d) * dt);
+          q.x += dx / d * s;
+          q.y += dy / d * s;
         }
         for (let n = Math.floor(f.mAcc = (f.mAcc || 0) + dt * 45); n > 0; n--) {
           f.mAcc--;
@@ -20539,38 +20742,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         r.taken = true;
         W.pickups.push({ kind: "crystal", green: true, x: r.x, y: r.y, floor: W.floor, t: 0 });
       }
-    }
-    for (let i = W.pickups.length - 1; i >= 0; i--) {
-      const q = W.pickups[i];
-      if (q.kind !== "crystal" || q.taken) continue;
-      if (q.nopull > 0) q.nopull -= dt;
-      const dx = pcx - q.x, dy = pcy - q.y, d = Math.hypot(dx, dy) || 1;
-      const was = q.fly;
-      if (!q.fly && !W.p.dead && !(q.nopull > 0) && d < pull) {
-        q.fly = true;
-        delete q.vy;
-        q.vx = 0;
-        q.fvy = 0;
-      }
-      if (q.fly) {
-        const grab = 180 + 900 * Math.max(0, 1 - d / pull);
-        q.vx = (q.vx || 0) + dx / d * grab * dt * 6;
-        q.fvy = (q.fvy || 0) + dy / d * grab * dt * 6;
-        q.vx *= 0.88;
-        q.fvy *= 0.88;
-        const ox2 = q.x, oy2 = q.y;
-        q.x += q.vx * dt;
-        q.y += q.fvy * dt;
-        crystalMotes(W, q.x, q.y, !!q.green, dt, Math.hypot(q.x - ox2, q.y - oy2), ox2, oy2);
-        if (d < 12) {
-          if (q.green) (LO.greens || (LO.greens = [])).push(q.floor || W.floor);
-          else (LO.crystals || (LO.crystals = [])).push(q.floor || W.floor);
-          q.taken = true;
-          toast(W, q.green ? "Green crystal" : "Red crystal");
-          SFX.ui(q.green ? "perk" : "mod");
-          G.input.current.notify();
-        }
-      } else if (!was) crystalMotes(W, q.x, q.y + Math.sin(W.time * 2 + q.t) * 3, !!q.green, dt, 0);
     }
     const inShop = W.p.y + PH > SHOP_Y;
     let near = null;
@@ -24172,29 +24343,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h(PerkCard, { id: info, top: true, onClose: () => setInfo("") })
       ) : null
     );
-  }
-
-  // src/spells/collection.js
-  function modTiers() {
-    return [1, 2, 3, 4].map((tier) => ({ tier, ids: ALL_IDS.filter((id) => tierOf(id) === tier) }));
-  }
-  function crystalRoll(rnd2, floor, owned) {
-    const have = new Set(owned);
-    const left = ALL_IDS.filter((id) => !have.has(id));
-    if (!left.length) return null;
-    let total = 0;
-    for (const id of left) total += modWeight(id, floor);
-    if (total <= 0) return left[Math.floor(rnd2() * left.length)];
-    let r = rnd2() * total;
-    for (const id of left) {
-      r -= modWeight(id, floor);
-      if (r <= 0 && modWeight(id, floor) > 0) return id;
-    }
-    return left.filter((id) => modWeight(id, floor) > 0).pop() || left[0];
-  }
-  function perkRoll(rnd2, owned) {
-    const left = PERK_IDS.filter((id) => !owned.includes(id) && (!PERKS[id].tier || PERKS[id].tier === 1 || owned.includes("st_" + PERKS[id].stat + (PERKS[id].tier - 1))));
-    return left.length ? left[Math.floor(rnd2() * left.length)] : null;
   }
 
   // src/spells/gunshop.js

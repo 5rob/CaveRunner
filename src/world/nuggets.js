@@ -46,10 +46,11 @@ export function spillGold(list, x, y, amount, kick) {
 }
 
 // one nugget against the rock for a frame: gravity, a bounce on landing, rolling down a slope,
-// stepping over a pixel-high bump. Returns true on a hard landing (for the clink)
-/** @param {Coin} g @param {number} dt @param {(x: number, y: number) => boolean} solid */
-export function stepNugget(g, dt, solid) {
-  const r = nugR(g.amount);
+// stepping over a pixel-high bump. Returns true on a hard landing (for the clink). Crystals use it
+// too, with their own radius `rad` (v0.0.138: they're rocks you push about, game/systems/shops.js)
+/** @param {Nug} g @param {number} dt @param {(x: number, y: number) => boolean} solid @param {number} [rad] */
+export function stepNugget(g, dt, solid, rad) {
+  const r = rad || nugR(g.amount || 0);
   g.vx = g.vx || 0; g.vy = g.vy || 0;
   // buried (the rock moved, or it was spilled into a wall): up and out
   for (let k = 0; k < 8 && solid(g.x, g.y); k++) g.y -= 2;
@@ -90,24 +91,25 @@ export function stepNugget(g, dt, solid) {
 
 // nuggets push each other apart (one resting on the rock gives less), and trade the speed they
 // close at, so a heap slumps and spreads instead of piling into one spot
-/** @param {Coin[]} list @param {(x: number, y: number) => boolean} solid */
-export function collideNuggets(list, solid) {
+/** @param {Nug[]} list @param {(x: number, y: number) => boolean} solid @param {(b: Nug) => number} [rOf] a body's radius (crystals) */
+export function collideNuggets(list, solid, rOf) {
+  const rad = rOf || (g => nugR(g.amount || 0));
   const n = list.length;
   if (n < 2) return;
   const ord = list.slice().sort((a, b) => a.x - b.x);
-  const reach = NUGGETS[0].r * 2;
+  const reach = list.reduce((m, g) => Math.max(m, rad(g)), 0) * 2;
   for (let i = 0; i < n; i++) {
     const a = ord[i];
     if (a.fly) continue;
-    const ra = nugR(a.amount);
+    const ra = rad(a);
     for (let j = i + 1; j < n; j++) {
       const b = ord[j];
       if (b.x - a.x >= reach) break;
       if (b.fly) continue;
-      const min = ra + nugR(b.amount);
+      const min = ra + rad(b);
       let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
       if (d >= min) continue;
-      if (d < 0.01) { const ang = (a.t + b.t) * 3.7; dx = Math.cos(ang); dy = -Math.abs(Math.sin(ang)); d = 1; }
+      if (d < 0.01) { const ang = ((a.t || 0) + (b.t || 0)) * 3.7; dx = Math.cos(ang); dy = -Math.abs(Math.sin(ang)); d = 1; }
       const nx = dx / d, ny = dy / d, push = min - d;
       // one resting on another that sits on the rock: the lower one is as good as rock, the upper
       // one takes the whole push (and so rolls off it, or rests on it); side by side they share it
@@ -126,4 +128,24 @@ export function collideNuggets(list, solid) {
       }
     }
   }
+}
+
+// a round body of radius r shoved out of a box (you: x, y its top left, w by h) moving at (vx, vy):
+// pushed clear the shortest way and given at least the box's speed that way, so walking into a
+// crystal rolls it ahead of you. Never into rock (it stays put then). Returns true if it touched
+/** @param {Nug} g @param {number} r @param {{ x: number, y: number, w: number, h: number }} box @param {number} vx @param {number} vy @param {(x: number, y: number) => boolean} solid */
+export function shoveNugget(g, r, box, vx, vy, solid) {
+  const cx = Math.max(box.x, Math.min(g.x, box.x + box.w)), cy = Math.max(box.y, Math.min(g.y, box.y + box.h));
+  let dx = g.x - cx, dy = g.y - cy, d = Math.hypot(dx, dy), push;
+  if (d >= r) return false;
+  if (d < 0.01) {                          // its middle inside the box: out the nearest side
+    const L = g.x - box.x, R = box.x + box.w - g.x, T = g.y - box.y, B = box.y + box.h - g.y, m = Math.min(L, R, T, B);
+    dx = m === L ? -1 : m === R ? 1 : 0; dy = dx ? 0 : m === T ? -1 : 1;
+    d = 1; push = m + r;
+  } else push = r - d;
+  const ux = dx / d, uy = dy / d, x = g.x + ux * push, y = g.y + uy * push;
+  if (!solid(x + ux * r, y + uy * r)) { g.x = x; g.y = y; }
+  const vn = vx * ux + vy * uy, gn = (g.vx || 0) * ux + (g.vy || 0) * uy;
+  if (vn > gn) { g.vx = (g.vx || 0) + ux * (vn - gn) * 1.1; g.vy = (g.vy || 0) + uy * (vn - gn) * 1.1; }
+  return true;
 }

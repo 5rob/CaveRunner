@@ -244,7 +244,7 @@ export function drawLoot(W, G, F) {
 
   // pickups
   for (const q of W.pickups) {
-    const qy = q.y + Math.sin(W.time * 2 + q.t) * 3;
+    const qy = q.kind === 'crystal' ? q.y : q.y + Math.sin(W.time * 2 + q.t) * 3;   // a crystal is a rock: no bob
     if (qy > W.camY + vh + 30 || qy < W.camY - 30 || q.x < W.camX - 30 || q.x > W.camX + vw + 30) continue;
     if (q.kind === 'gun') {
       // a gun you've never held glows, with sparks streaking out of it; one you swapped
@@ -252,8 +252,9 @@ export function drawLoot(W, G, F) {
       if (!q.old) drawGunGlow(G.ctx, q.x, qy, W.time, q.t);
       drawGun(G.ctx, q.x - 5, qy + 1, -0.22, 0.85, gunAccent(q.gun));
     } else if (q.kind === 'crystal') {
-      // a red crystal: a big dark red nugget shedding sparkles on the breeze (crystalMotes; a green one: green)
-      drawNugget(G.ctx, q.x, qy, CRYSTAL_R, q.t * 7, 0, q.green ? GREEN_PAL : CRYSTAL_PAL);
+      // a red crystal: a big dark red nugget shedding sparkles on the breeze (crystalMotes; a green one: green),
+      // turned as it rolls
+      drawNugget(G.ctx, q.x, qy, CRYSTAL_R, q.t * 7, q.a || 0, q.green ? GREEN_PAL : CRYSTAL_PAL);
     } else if (q.kind === 'perk') {
       // a perk to carry: its sigil in a ring of its colour
       const pk = PERKS[q.id], col = pk.tint || COL.portal;
@@ -296,7 +297,7 @@ export function drawRooms(W, G, F) {
     G.ctx.fillRect(r.x - 7, r.y + 5, 14, 10);
     if (r.taken) continue;
     if (r.kind === 'green') {
-      // a green crystal on the altar, shedding sparkles (crystalMotes); it comes to you once you're near
+      // a green crystal on the altar, shedding sparkles (crystalMotes); it drops off the altar once you're near
       drawNugget(G.ctx, r.x, r.y + bob, CRYSTAL_R, r.x * 0.37, 0, GREEN_PAL);
     } else if (r.kind === 'perk' && r.id) {
       const pk = PERKS[r.id], col = pk.tint || COL.portal;

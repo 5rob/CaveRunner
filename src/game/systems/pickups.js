@@ -59,7 +59,8 @@ export function stepPickups(W, G, F) {
   }
   collideNuggets(W.coins, solid);              // and they push each other apart
 
-  // ---- crystals: collected like gold (v0.0.137; no card, no tap) ----
+  // ---- crystals: you can't carry them (v0.0.138): they're rocks you push, or drag with the Gravity
+  // Gun, into their machine (stepCrystals in shops.js) ----
   // A green crystal on a hidden room's altar comes off it as a loose crystal once you're in reach.
   const pull = COIN_PULL * W.pb.goldPull;
   for (const r of W.rooms) {
@@ -69,31 +70,6 @@ export function stepPickups(W, G, F) {
       r.taken = true;
       W.pickups.push({ kind: 'crystal', green: true, x: r.x, y: r.y, floor: W.floor, t: 0 });
     }
-  }
-  for (let i = W.pickups.length - 1; i >= 0; i--) {
-    const q = W.pickups[i];
-    if (q.kind !== 'crystal' || q.taken) continue;
-    if (q.nopull > 0) q.nopull -= dt;           // an elite's pile is thrown clear first (SPILL_WAIT)
-    const dx = pcx - q.x, dy = pcy - q.y, d = Math.hypot(dx, dy) || 1;
-    const was = q.fly;
-    if (!q.fly && !W.p.dead && !(q.nopull > 0) && d < pull) { q.fly = true; delete q.vy; q.vx = 0; q.fvy = 0; }
-    if (q.fly) {
-      // flies to you straight through rock, gold's pull
-      const grab = 180 + 900 * Math.max(0, 1 - d / pull);
-      q.vx = (q.vx || 0) + (dx / d) * grab * dt * 6; q.fvy = (q.fvy || 0) + (dy / d) * grab * dt * 6;
-      q.vx *= 0.88; q.fvy *= 0.88;
-      const ox = q.x, oy = q.y;
-      q.x += q.vx * dt; q.y += q.fvy * dt;
-      crystalMotes(W, q.x, q.y, !!q.green, dt, Math.hypot(q.x - ox, q.y - oy), ox, oy);
-      if (d < 12) {
-        if (q.green) (LO.greens || (LO.greens = [])).push(q.floor || W.floor);
-        else (LO.crystals || (LO.crystals = [])).push(q.floor || W.floor);
-        q.taken = true;
-        toast(W, q.green ? 'Green crystal' : 'Red crystal');
-        SFX.ui(q.green ? 'perk' : 'mod');
-        G.input.current.notify();
-      }
-    } else if (!was) crystalMotes(W, q.x, q.y + Math.sin(W.time * 2 + q.t) * 3, !!q.green, dt, 0);
   }
 
   // ---- what you can interact with: a shop plinth, or something on the ground ----
