@@ -352,19 +352,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .weapon.locked{opacity:.45}
 .pop.flow{position:static;max-height:none;box-shadow:none;margin-bottom:2px}
 .spacer{flex:1 1 auto;min-height:6px}
-/* gun pickup: the two cards share what is left over. Head and mod row are fixed,
-   only the stat chips give way, so neither gun's mods can fall off the bottom. */
+/* gun pickup: the slot buttons a full-width row of squares at the bottom (owner, v0.0.144), and the
+   two cards share what is left over equally. Head and mod row are fixed, only the stat chips give way
+   (they scroll), so neither gun's mods can fall off the bottom. */
 .swapsheet{gap:6px}
-.pop.split{display:flex;flex-direction:column;flex:0 1 auto;min-height:0;overflow:hidden;
+.pop.split{display:flex;flex-direction:column;flex:1 1 0;min-height:0;overflow:hidden;
   padding:9px 11px 10px;margin-bottom:0}
 .pop.split .phead{flex:0 0 auto}
 .pop.split .pglyph{width:32px;height:32px;font-size:16px;border-radius:9px}
 .pop.split .ptitle b{font-size:14.5px}
 .pop.split .ptitle span{font-size:10px}
 .pop.split .vs{flex:0 0 auto;margin:5px 0 0}
-.pop.split .gstats{flex:0 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+.pop.split .gstats{flex:0 1 auto;min-height:0;overflow-y:auto;display:grid;grid-template-columns:1fr;align-content:start;-webkit-overflow-scrolling:touch;
   margin:7px 0 0;gap:4px}
 .pop.split .gstats .st{padding:2px 7px;font-size:10px}
+/* a shorter screen: the stats two across, a short one three, so they still fit without scrolling */
+@media (max-height:860px){.pop.split .gstats{grid-template-columns:1fr 1fr}}
+@media (max-height:700px){.pop.split .gstats{grid-template-columns:1fr 1fr 1fr}.pop.split .gstats .st{padding:2px 5px;font-size:9px;white-space:nowrap;overflow:hidden}}
 .pop.split .gstats .st b{font-size:11px}
 .pop.split .st.up b{color:var(--good)}
 .pop.split .st.down b{color:var(--bad)}
@@ -378,7 +382,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* keeps the slot row down by the thumb when there is space, and costs nothing when there is not */
 .swapsheet>.lab.hint{margin-top:auto;padding-top:4px}
 .swaprow{display:flex;gap:6px;margin-top:4px;flex:0 0 auto}
-.swaprow .gtab{position:relative;height:62px;padding-top:6px}
+.swaprow .gtab{position:relative;flex:1 1 0;aspect-ratio:1;height:auto;padding-top:6px}
+.swaprow .gtab .gname{font-size:13px}
+.swaprow .gtab .gsub{font-size:11px}
 .gtab.holding,.slot.holding{background:linear-gradient(to right,#ff8a1f 0%,#ff8a1f 100%);
   background-size:100% 100%;animation:fill .45s linear forwards;color:#12141a}
 @keyframes fill{from{background-size:0% 100%}to{background-size:100% 100%}}

@@ -13,7 +13,8 @@
 import { SHOP_MACHINE_X, SHOP_SLOT, WW } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
 
-export const LIGHT_WAIT = 2;          // seconds from arriving to the first tubes
+export const ARRIVE_T = 1;            // v0.0.144: a new run's teleporter charges this long before you come through it
+export const LIGHT_WAIT = 2;          // seconds from the run starting to the first tubes: you're in for a second (ARRIVE_T + 1)
 export const LIGHT_REST = 3;          // the perk section on this long: the rest of the hall comes on
 export const LIGHT_RUN = 0.22;        // and one more section every this many seconds
 export const TUBE_MAX = 1.6;          // no tube takes longer than this to settle

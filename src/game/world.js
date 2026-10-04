@@ -70,6 +70,7 @@ export function makeWorld() {
     machines: {},                   // the crystal machines: crystals sucked in, the shake (game/systems/shops.js)
     demo: {},                       // and their hologram demo, playing while you stand near (stepDemo there)
     shopLit: null,                  // a new run's dark shop, lighting up as you go (world/shoplights.js; null = lit)
+    intro: null,                    // a new run's teleporter charging before you come through (game/systems/shoplights.js)
     guide: null,                    // a new run's guide hologram (world/guide.js)
     pins: [],                       // pins dropped on this floor's map (ui/map.js)
     padZap: {},                     // when each teleporter pad was last used (W.time, by padSpots seed): it crackles a moment

@@ -197,7 +197,7 @@ hole in the roof leading up into the cave. You arrive at the far left, on the
 teleporter pad you came in through (a plank nailed over its old "PRINTER" plate says
 TELEPORTER). Everything else stands at the far right end: the full heal, then the machines out
 to the end wall, with an empty hall between. A new run starts with the shop dark:
-the teleporter crackles blue, your torch shows what's near, and after two seconds the ceiling tube
+the teleporter charges up for a second and you come through it in a flash of lightning; it crackles blue, your torch shows what's near, and a second after you're in the ceiling tube
 over the teleporter stutters on. Each tube throws a pool of light with dark between (your torch only
 takes the edge off it), with dust hanging in each cone of light. Each time you walk into the last lit section, the next
 one along flickers on just before you reach the dark. Once the dark stretch ahead is well on screen,
@@ -464,8 +464,8 @@ with the pistol, a **Pick Axe** — one slot, a **Buzzsaw** — and the **Gravit
 White Hole; they're still in the code, `startingGuns`, and the browser tests start with them.)
 
 Standing next to a gun on the ground shows its card. A tap opens the chooser: it pauses the
-game and shows what you found with a button for each of your four slots, both guns laid out
-at once so you can read either one's mods without scrolling. Tap a slot to compare that gun,
+game and shows what you found with a big square button for each of your four slots across the
+bottom, and the two guns sharing the rest of the screen, so you can read either one's mods without scrolling. Tap a slot to compare that gun,
 hold one to swap it out — whatever it replaces is left on the ground where you found the new
 one. The found gun's stats are coloured against whichever of your guns you last tapped (your
 held gun to start with), green for better and red for worse, counting a smaller cast delay,

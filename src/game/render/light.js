@@ -14,6 +14,7 @@ import { VIS_RAYS, fogReveal, visPoly } from '../../world/vision.js';
 import { fogLit } from '../systems/fog.js';
 import { plantGlow } from '../systems/plantglow.js';
 import { torchHand } from '../systems/player.js';
+import { introHeld } from '../systems/shoplights.js';
 import { solidCell } from '../systems/terrain.js';
 import { holoBright, holoGrid, holoMask, sizedCanvas } from './holo.js';
 
@@ -61,6 +62,7 @@ export function drawFog(W, G, F) {
   // own number, so both the reach and the brightness breathe exactly as the fire does.
   const sight = SIGHT * DEV.torch * carrotAt('caTorch', W.pb.carrot);   // dev knob and Carrot scale the whole bubble
   W.torchR = clamp(sight * LAMP_REACH * (0.5 + 0.55 * W.flick), 120, 1400);
+  const away = introHeld(W);                 // a new run, not through the teleporter yet: no torch
   W.visPts = visPoly(pcx, pcy, sight, (cx, cy) => solidCell(W, cx, cy), VIS_RAYS);
   fogReveal(W.seen, pcx, pcy, sight, W.visPts, VIS_RAYS);   // line of sight lifts the fog
   if (!G.RPV || G.RPV.fog) {                                 // a replay can turn the fog off
@@ -99,7 +101,7 @@ export function drawFog(W, G, F) {
           a = Math.round(dark * shopDark(shopL, wx, W.time) * (pd < PAD_LIT ? 0.3 + 0.7 * pd / PAD_LIT : 1));
         }
         wdat[k + 3] = s ? 0 : dark;          // the fog of war alone
-        if (s && a) {                        // the lamp only reaches ground the fog has lifted
+        if (s && a && !away) {               // the lamp only reaches ground the fog has lifted
           const ddx = (cx + 0.5) * FOG_U - pcx, dd2 = ddx * ddx + ddy * ddy;
           if (dd2 < lr2) {
             const t = Math.sqrt(dd2) / W.torchR;               // 0 at your feet, 1 at the edge
@@ -256,7 +258,7 @@ export function drawGlows(W, G, F) {
     if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(W, pr.x, pr.y + pr.len))
       glowAt(G.ctx, pr.x, pr.y + pr.len, 16, 0.2 * W.flick, '255,130,50');
   if (W.p.burn > 0 && !W.p.dead) glowAt(G.ctx, W.p.x + PW / 2, W.p.y + PH / 2, 22, 0.25 * W.flick, '255,130,50');
-  if (!W.p.dead) {
+  if (!W.p.dead && !introHeld(W)) {
     const th = torchHand(W), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
     glowAt(G.ctx, gfx, gfy, 70 * (0.9 + 0.1 * gl), 0.2 * gl, '255,150,60');            // the second light
     glowAt(G.ctx, gfx + W.leanX * 0.5, gfy + W.leanY * 0.5, 12, 0.5 * gl, '255,190,90');   // the halo

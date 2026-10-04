@@ -209,6 +209,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       const sh = document.querySelector('.sheet');
       return { V, out, found: card('.pop.found'), mine: card('.pop.mine'),
         sheetScroll: sh.scrollHeight - sh.clientHeight,
+        tabs: [...document.querySelectorAll('.swaprow .gtab')].map(t => { const r = t.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right), Math.round(r.height)]; }),
+        cards: ['.pop.found', '.pop.mine'].map(s => Math.round(document.querySelector(s).getBoundingClientRect().height)),
         swaprowBottom: Math.round(document.querySelector('.swaprow').getBoundingClientRect().bottom) };
     });
     const tag = vp.width + 'x' + vp.height;
@@ -226,6 +228,11 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       fit.sheetScroll === 0 && fit.found.cardScroll === 0 && fit.mine.cardScroll === 0 &&
       fit.found.statScroll === 0 && fit.mine.statScroll === 0,
       { sheet: fit.sheetScroll, found: fit.found.statScroll, mine: fit.mine.statScroll });
+    // v0.0.144 (owner): the slots a full-width row of squares; the two cards split the rest equally
+    const tw = fit.tabs.map(t => t[1] - t[0]);
+    check(`${tag}: the slot buttons are squares across the whole width`, fit.tabs.length === 4 && fit.tabs[0][0] <= 14 && fit.tabs[3][1] >= vp.width - 14
+      && fit.tabs.every((t, i) => Math.abs(tw[i] - t[2]) <= 1), fit.tabs);
+    check(`${tag}: the two cards the same height`, Math.abs(fit.cards[0] - fit.cards[1]) <= 1, fit.cards);
     check(`${tag}: the slot row sits at the bottom, in reach`,
       fit.swaprowBottom > vp.height - 40 && fit.swaprowBottom <= vp.height, fit.swaprowBottom);
     await pg.screenshot({ path: path.join(__dirname, '..', 'build', 'gun_swap_' + tag + '.png') });

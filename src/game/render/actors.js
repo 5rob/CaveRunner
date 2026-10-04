@@ -14,6 +14,7 @@ import { planCast } from '../../spells/cast.js';
 import { gunAccent } from '../../spells/guns.js';
 import { bhSp, tracePath } from '../../spells/trace.js';
 import { jetNozzle, torchHand } from '../systems/player.js';
+import { introHeld } from '../systems/shoplights.js';
 import { solidAt } from '../systems/terrain.js';
 
 // The elites' flames (stepEliteFire): each speck a square on the player's pixel grid, its colour
@@ -152,6 +153,7 @@ export function drawAim(W, G, F) {
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawPlayer(W, G, F) {
   const { pcx, pcy, held, ax, ay, gy } = F;
+  if (introHeld(W)) return;                 // a new run: not through the teleporter yet
   // player
   const flashing = W.p.hitT > 0 && Math.floor(W.p.hitT * 30) % 2 === 0;
   const running = W.p.onGround && Math.abs(W.p.vx) > 15;

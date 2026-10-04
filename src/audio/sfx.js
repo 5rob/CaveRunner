@@ -549,6 +549,14 @@ export const SFX = (() => {
       for (let i = 0; i < 4; i++) bell(d, notes[Math.floor(Math.random() * notes.length)] * 2, t + 0.12 + i * rnd(0.06, 0.1), 0.6, 0.06);
       tone(d, 'sine', rnd(180, 220), rnd(450, 550), t, 0.5, 0.15, 0.1);
     },
+    // a teleporter charging up (a new run, the second before you come through): a whine climbing, a
+    // swelling hum and crackle that gets busier
+    padCharge(d, t) {
+      tone(d, 'sine', rnd(140, 170), rnd(1100, 1300), t, 1.0, 0.16, 0.6);
+      tone(d, 'triangle', rnd(55, 65), rnd(90, 110), t, 1.0, 0.35, 0.8);
+      hiss(d, t, 1.0, 0.25, 'bandpass', 600, 3200, 2, false, 0.8);
+      for (let i = 0; i < 7; i++) zap(d, t + 0.25 + 0.75 * Math.pow(i / 7, 0.7), rnd(0.03, 0.08), 0.06 + 0.02 * i, rnd(2500, 4500), rnd(300, 900));
+    },
     // the shop's emergency alarm: a two-tone klaxon, once a cycle
     alarm(d, t) {
       tone(d, 'square', 620, 620, t, 0.32, 0.05, 0.02);
