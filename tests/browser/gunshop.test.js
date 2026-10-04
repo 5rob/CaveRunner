@@ -1,6 +1,6 @@
 // The gun vending machine (src/ui/gunshop.js, spells/gunshop.js): it stands in the shop with the
 // gun hologram; its menu offers three guns of the floor's pool with prices; Reroll costs gold and
-// gets dearer; the boosted reroll costs red crystals (1, then 2) and rolls deeper, boosted guns;
+// gets dearer; no boosted reroll (gone in v0.0.140);
 // the reels stop one at a time; Buy selected pops the gun out onto the floor. Also: an elite
 // creature drops red and green crystals when it dies (one tap takes the pile), and the top bar counts your crystals.
 const { launch } = require('../chromium');
@@ -61,21 +61,8 @@ const DIR = path.join(__dirname, '..', 'build');
   await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(DIR, 'gunshop_landed.png') });
 
-  // boosted: needs a crystal; then 1, then 2
-  await down('.gboost');
-  await page.waitForTimeout(100);
-  check('no crystals: the boosted reroll refuses', await page.evaluate(() => window.__in.current.loadout.gunShop.boosts === 0));
-  await page.evaluate(() => { window.__in.current.loadout.crystals = [1, 1, 1, 1]; window.__in.current.notify(); });
-  await page.waitForTimeout(50);
-  await down('.gboost');
-  await page.waitForTimeout(500);
-  await page.screenshot({ path: path.join(DIR, 'gunshop_boost.png') });
-  await page.waitForTimeout(2500);
-  st = await page.evaluate(() => ({ c: window.__in.current.loadout.crystals.length, guns: window.__in.current.loadout.gunShop.guns.map(g => ({ lvl: g.lvl, b: !!g.boosted })),
-    cost: document.querySelector('.gboost .gcost').textContent, top: document.querySelectorAll('.gold .crysrow .cbit.red').length }));
-  check('the first boosted reroll costs one crystal, the next two', st.c === 3 && st.cost === '×2', st);
-  check('boosted guns: deeper levels, marked boosted', st.guns.every(g => g.b && g.lvl >= 2), st.guns);
-  check('the top bar shows a red silhouette per crystal', st.top === 3, st.top);
+  // no Boosted reroll any more (v0.0.140: crystals can't be carried)
+  check('there is no Boosted button', await page.evaluate(() => !document.querySelector('.gboost') && !document.querySelector('.vcrys')));
 
   // buy the selected (the first): gold taken, menu shut, the gun pops out onto the floor
   const buy = await page.evaluate(() => { const g = window.__in.current.loadout.gunShop.guns[0]; return { name: g.name, price: shopGunPrice(g), gold: window.__in.current.loadout.gold }; });

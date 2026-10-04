@@ -67,7 +67,7 @@ on the same network; if it stops answering, `ipconfig` and update this line). Ru
    `https://5rob.github.io/CaveRunner/version.txt` shows the new `<number> vX.Y.Z` and the app offers the update.
    (No artifact publish; `https://claude.ai/artifact/2rarFzJoTseCKXhTPwMyLT` and `serve.js` are fallbacks.)
 
-**Current version: v0.0.139** (release channel `main`). **The version number is not optional.**
+**Current version: v0.0.140** (release channel `main`). **The version number is not optional.**
 It's **major.minor.patch** (since v0.0.132; before it a single `vNN`, up to v131): the owner's
 grouping — a **major release** bumps X, a **major update** Y, a **minor update** Z (reset the parts
 after the one you bump). Ask the owner which kind a release is if it isn't obvious; small fixes and
