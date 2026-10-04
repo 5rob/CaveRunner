@@ -9,6 +9,13 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
+- **v0.0.142, waiting on the owner's OK of the screenshots** (on `refactor`, not on `main` yet): a new run
+  starts with no guns and no gold; the gun machine gives a Scratch Pistol free while you have no gun; the
+  crystal machines play a hologram demo of a crystal going in (red/green showing through) until a real one
+  has (`LO.fed`); the guide's kit has 2 red crystals; the guide jumps out only once its dark spot is
+  `DEV.guideIn` (50) on screen; the gun and mod machines swapped (guns, mods, perks). Note: without the
+  Pick Axe and Gravity Gun a new run can't dig or drag crystals until it finds the mods (owner's call).
+  The browser test page still starts with the old kit (`window.__TEST_EMPTY` for the real start).
 - **Released: v0.0.141** on `main`, 2026-10-05 (the owner OK'd the screenshots; a minor update): the
   new full-screen map with pan/zoom, machine squares and emoji pins (pin button on the map screen only:
   `ui/map.js`), the shop's heal and machines moved to the far right with pools of light under the tubes
@@ -120,7 +127,7 @@ That list is the to-do the refactor left (nothing in it was fixed in passing). T
 - **Flaky browser checks** (timing or chance; each passes alone): `jelly` spit group (fails on v96 too),
   `sound` portalOut, `torch` falloff/flicker, `lightning` fork, `trigger` explosion carrier (wall-clock
   waits: make it frame-counted), `fog` "next floor is dark again" and "flying on reveals more",
-  `everymod` telecast, `rats`, `save`, `vendshop` arrow-key step, `nuggets` "settle on the floor" (fails on v114 too), `archvine`, `decor` vine, `t1spells` bubble, `compare`, and the logic `spider` "every roaming spider moves about" on real caves (1 of 119 barely moves since v120's one-room caves: make it seeded or sandboxed). Worth
+  `everymod` telecast, `rats`, `save`, `vendshop` arrow-key step, `nuggets` "settle on the floor" (fails on v114 too), `map` "the rest black" (random caves: sometimes the walk up stops low; 5 fails in a row once, then 6 passes), `archvine`, `decor` vine, `t1spells` bubble, `compare`, and the logic `spider` "every roaming spider moves about" on real caves (1 of 119 barely moves since v120's one-room caves: make it seeded or sandboxed). Worth
   making them frame-counted / seeded. `shoplayout` and `perks` logic suites run close to the 30s cap.
 - Smaller: `paint()` has no callers, `W.best` is written and never read, a static field cast just before
   the portal carries on to the next floor, a few comments sit above

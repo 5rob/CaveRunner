@@ -95,8 +95,8 @@ check('every joint is on a stick', RAG_POSE.every((_, i) => RAG_STICKS.some(s =>
   check('a light touch on the stick never lets go', !lineLetGo(1, 0, 0.3, 0, 1, true, true));
 }
 
-// ---- the vending machines, left to right: mods, guns, perks ----
-check('vending machines run mods, guns, perks left to right', SHOPS.mods.x < SHOPS.guns.x && SHOPS.guns.x < SHOPS.perks.x, [SHOPS.mods.x, SHOPS.guns.x, SHOPS.perks.x]);
+// ---- the vending machines, left to right: guns, mods, perks (v0.0.142) ----
+check('vending machines run guns, mods, perks left to right', SHOPS.guns.x < SHOPS.mods.x && SHOPS.mods.x < SHOPS.perks.x, [SHOPS.guns.x, SHOPS.mods.x, SHOPS.perks.x]);
 
 // ---- the teleporter pads: the way in on the shop floor, the exit under its portal, only with a level ----
 {

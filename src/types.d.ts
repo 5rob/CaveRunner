@@ -360,6 +360,7 @@ interface Loadout {
   usedLives: number;
   gunShop?: GunOffer;         // the gun machine's offer on this floor (spells/gunshop.js)
   crystals?: number[];        // red crystals carried: the floor each came from (game/systems/shops.js)
+  fed?: string[];             // the crystal machines a real crystal has gone into this run (SHOPS keys): no more demo there
   debug: boolean;             // Dev → All mods
 }
 /** the gun machine's offer (spells/gunshop.js): a sold gun is null; the reroll counts are this floor's */
@@ -394,7 +395,7 @@ interface DevKnobs {
   witPad: number; witKbps: number;
   holoAlpha: number; bloom: number; bloomBlur: number; bloomBright: number;
   holoMin: number; holoMax: number; holoFade: number; holoC1x: number; holoC1y: number; holoC2x: number; holoC2y: number;
-  guideCps: number; guideWait: number; shopGap: number; shopTorch: number;
+  guideCps: number; guideWait: number; guideIn: number; shopGap: number; shopTorch: number;
   due1: number; enemies: number; enemiesUp: number; lvlBonus: number; lvlGrow: number; rewardGrow: number; killGrow: number; runnerPx: number; runnerLine: number;
   ptrStart: number; ptrReach: number; ptrSize: number; ptrLine: number; snapR: number; snapPull: number; snapHit: number;
   [k: string]: any;
@@ -542,6 +543,7 @@ interface World {
   padZap: Record<number, number>;   // when each teleporter pad (padSpots seed) was last used: it crackles a moment (render/pads.js)
   reveal: number;             // a bought level's rock is drawn onto its canvas down to this row so far (0: all of it): vend.js stepReveal
   machines: Record<string, { n: number, t: number }>;   // the crystal machines (game/systems/shops.js): crystals in, and the shake (t, -1 idle)
+  demo: Record<string, { t: number, side: number }>;    // a crystal machine's hologram demo while you're near (stepDemo): t into it, the side its crystal shows on
   shopLit: ShopLights | null;   // a new run's dark shop lighting up a section at a time (world/shoplights.js); null = all lit
   guide: Guide | null;        // a new run's guide hologram (world/guide.js); null: none this floor
   pins: MapPin[];             // the pins dropped on this floor's map (ui/map.js)

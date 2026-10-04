@@ -9,7 +9,6 @@ import { SUIT_LEN, activePerks, perkBag } from '../data/perks.js';
 import { Game } from '../game/Game.js';
 import { clipGet } from '../save/clips.js';
 import { clearSave, loadCollection, loadPerkCollection, loadSave, saveCollection } from '../save/save.js';
-import { startingGuns } from '../spells/guns.js';
 import { GunCard, ModCard, PerkCard } from './cards.js';
 import { DevPanel, SpawnGun } from './devpanel.js';
 import { Bag } from './exosuit.js';
@@ -28,7 +27,7 @@ export function App() {
   /** @type {{ current: GameInput }} */
   const input = useRef({
     left: blank(), right: blank(),
-    loadout: saved ? saved.loadout : { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false,
+    loadout: saved ? saved.loadout : { guns: [null, null, null, null], bag: [], sel: 0, gold: START_GOLD, debug: false,
       perks: [], suit: Array(SUIT_LEN).fill(null), maxBonus: 0, usedLives: 0 },
     saved,                      // handed to Game once, to rebuild the floor
     paused: false, notify: () => {}, inShop: true, prompt: null, interact: false, sig: '',
@@ -83,7 +82,7 @@ export function App() {
     // a new run, like a death: the mods unlocked go (the perks unlocked stay)
     input.current.collection.length = 0; saveCollection([]);
     input.current.saved = null;
-    input.current.loadout = { guns: startingGuns(), bag: [], sel: 0, gold: START_GOLD, debug: false,
+    input.current.loadout = { guns: [null, null, null, null], bag: [], sel: 0, gold: START_GOLD, debug: false,
       perks: [], suit: Array(SUIT_LEN).fill(null), maxBonus: 0, usedLives: 0 };
     input.current.sig = '';
     input.current.found = null;

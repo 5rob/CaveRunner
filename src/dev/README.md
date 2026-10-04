@@ -16,7 +16,8 @@
 - Torch & fog also has the shop hall's `shopGap` (how dark between its ceiling lights, 0.9) and `shopTorch`
   (how much of that your torch lifts, 0.45), v0.0.141 (`world/shoplights.js` `shopDark`, `render/light.js`).
 - Guide hologram (`g: 'guide'`, v0.0.141, `world/guide.js`): `guideCps` (its box types this many letters a
-  second, 30) and `guideWait` (the pause after each box, s, plus a little per letter, 1.4).
+  second, 30), `guideWait` (the pause after each box, s, plus a little per letter, 1.4) and `guideIn` (v0.0.142: how
+  far inside the screen's right edge its dark spot must be before its light comes on, world units, 50).
 - Witness (`g: 'witness'`): `witPad` (how far past your path a saved replay keeps, so how far its
   camera may stray, world units, 80) and `witKbps` (the exported video's bitrate, 6000).
 - Level (`g: 'level'`): `due1` (floor 1's repay time, minutes), `enemies` (creatures a new level

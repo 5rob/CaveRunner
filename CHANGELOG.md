@@ -5,6 +5,29 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.142 — empty hands, a free pistol, the crystal machines show how
+Awaiting the owner's OK of the screenshots (a minor update).
+
+- **A new run starts with no guns and no gold** (`START_GOLD` 0; `App`'s new loadout is four empty
+  slots). The Scratch Pistol is `scratchPistol()`; `startingGuns()` stays for the tests, and the browser
+  test page still starts with it and 40 gold (`testhook.js`; `window.__TEST_EMPTY` for the real start).
+  A save with no guns is a run now (`cleanLoadout` wants a guns array, `sel` 0). No gun in hand draws
+  none (`render/actors.js`).
+- **The gun machine's first gun is a free Scratch Pistol** while you have no gun (`ui/gunshop.js`:
+  "FREE", "Take it"); it stands in front of the offer's first gun, which is still there once you have one.
+- **The crystal machines show how** (`stepDemo`/`demoAt`/`demoPos` in `game/systems/shops.js`,
+  `drawDemo` in `render/shops.js`): standing within 100 of the nearer one that no real crystal has gone
+  into this run (`LO.fed`, saved), a hologram crystal in the guide's look (its pass is now `holoPass`,
+  shared) with its own red or green showing through (owner) glitches in on the floor beside it, on your
+  side, sits, is sucked into the slot, a flash, 2 s, again.
+- **The guide's kit: 2 red crystals** (was 3).
+- **The guide waits until it's on screen**: measured at Carrot 0 (the view 225 wide), it jumped out ~27
+  in from the right edge with its light mostly off screen. Now its dark spot must be `DEV.guideIn` (50,
+  Dev → Guide hologram) in first, or you within `GUIDE_NEAR` (30, was 70); `GUIDE_GONE_X` is gone.
+- **Gun and mod machines swapped** (owner): left to right guns, mods, perks.
+- Tests: `emptystart` (browser: empty start, the free pistol, the demo with screenshots); `guide`
+  (both) and `runner`, `shoplights` logic updated.
+
 ## v0.0.141 — a new map, pins, and a guide hologram in a longer hall
 Released 2026-10-05 (after the owner's OK of the screenshots; a minor update). The guide greets every
 new run, after a death too (owner).

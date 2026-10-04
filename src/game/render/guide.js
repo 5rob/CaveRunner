@@ -68,9 +68,26 @@ export function drawGuide(W, G, F) {
   const hands = waving ? { gun: { x: cx + f * (1.1 + Math.cos(wa) * 5.6), y: by + 9.6 + Math.sin(wa) * 5.6 } } : undefined;
   drawRunner(x, bx, by, PW, 22, f, null, true, 0, false, hands);
   x.setTransform(1, 0, 0, 1, 0, 0);
-  // into a hologram: blue by brightness, every other line thinner, two bright bars rolling down it
-  // that tear it sideways, and glitches that rip rows across and drop some out
   const { gl, a } = glitchOf(g, t);
+  holoPass(x, cw, ch, t, gl);
+  const ctx = G.ctx;
+  ctx.save();
+  // the projector's light on the floor under it, and a soft glow round it
+  const floorY = SHOP_FLOOR * CELL;
+  holoLight(ctx, m.x, m.y, floorY, a);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 0.85 * a;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(c, 0, 0, cw, ch, x0, y0, cw * px, ch * px);
+  ctx.restore();
+}
+
+// The guide's hologram look, for anything drawn into a small layer x (cw × ch pixels): blue by
+// brightness, every other line thinner, two bright bars rolling down it that tear it sideways, and
+// glitches (gl 0-1) that rip rows across and drop some out. Rewrites x in place. The crystal machines'
+// demo (render/shops.js) uses it too
+/** @param {CanvasRenderingContext2D} x @param {number} cw @param {number} ch @param {number} t @param {number} gl */
+export function holoPass(x, cw, ch, t, gl) {
   const src = x.getImageData(0, 0, cw, ch), d = src.data, out = x.createImageData(cw, ch), o = out.data;
   const fr = Math.floor(t * 30), scan = Math.floor(t * 8) % 2;
   const bars = [((t * 0.9) % 1.6) - 0.3, ((t * 0.9 + 0.8) % 1.6) - 0.3].map(v => v * ch);
@@ -107,24 +124,21 @@ export function drawGuide(W, G, F) {
     }
   }
   x.putImageData(out, 0, 0);
-  const ctx = G.ctx;
-  ctx.save();
-  // the projector's light on the floor under it, and a soft glow round it
-  const floorY = SHOP_FLOOR * CELL;
+}
+
+// A hologram's light (additive, a its strength): a pool on the floor under x and a soft glow round
+// (x, y); r scales both (1 = the guide's). Leaves ctx in 'lighter'
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} floorY @param {number} a @param {number} [r] */
+export function holoLight(ctx, x, y, floorY, a, r = 1) {
   ctx.globalCompositeOperation = 'lighter';
   ctx.globalAlpha = 0.5 * a;
-  const pool = ctx.createRadialGradient(m.x, floorY, 0, m.x, floorY, 16);
+  const pool = ctx.createRadialGradient(x, floorY, 0, x, floorY, 16 * r);
   pool.addColorStop(0, 'rgba(110,200,255,0.55)'); pool.addColorStop(1, 'rgba(110,200,255,0)');
   ctx.fillStyle = pool;
-  ctx.beginPath(); ctx.ellipse(m.x, floorY, 16, 3.5, 0, 0, Math.PI * 2); ctx.fill();
-  const glow = ctx.createRadialGradient(m.x, m.y, 2, m.x, m.y, 26);
+  ctx.beginPath(); ctx.ellipse(x, floorY, 16 * r, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+  const glow = ctx.createRadialGradient(x, y, 2, x, y, 26 * r);
   glow.addColorStop(0, 'rgba(90,180,255,0.22)'); glow.addColorStop(1, 'rgba(90,180,255,0)');
-  ctx.fillStyle = glow; ctx.fillRect(m.x - 26, m.y - 26, 52, 52);
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.globalAlpha = 0.85 * a;
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(c, 0, 0, cw, ch, x0, y0, cw * px, ch * px);
-  ctx.restore();
+  ctx.fillStyle = glow; ctx.fillRect(x - 26 * r, y - 26 * r, 52 * r, 52 * r);
 }
 
 // Lines of `text` (its own line breaks kept) no wider than w, in the context's font

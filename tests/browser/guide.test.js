@@ -1,6 +1,6 @@
 // v0.0.141: a new run's guide hologram (world/guide.js). Walk right out of the dark teleporter end:
-// once the teleporter is off screen the hall ahead snaps on and the guide is there, waving; its box
-// types the welcome, then it hands out the starter kit (150 gold, 3 red + 1 green crystal, Buzzsaw,
+// once its spot is well on screen (DEV.guideIn; v0.0.142) the hall ahead snaps on and the guide is there,
+// waving; its box types the welcome, then it hands out the starter kit (150 gold, 2 red + 1 green crystal, Buzzsaw,
 // Bolt, Double Cast, a level 5 gun with 3 slots that doesn't shuffle) and goes; the hall past it
 // lights only after. Run through it while it talks: it glitches, says the rude line, gives nothing.
 // Screenshots: guide-*.png (phone size).
@@ -13,7 +13,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   const browser = await launch();
   const open = async () => {
     const ctx = await browser.newContext({ viewport: { width: 412, height: 880 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2.625 });
-    await ctx.addInitScript(() => { window.__TEST_INTRO = true; window.__TEST_VOID = true; });
+    await ctx.addInitScript(() => { window.__TEST_INTRO = true; window.__TEST_VOID = true; window.__TEST_EMPTY = true; });
     const page = await ctx.newPage();
     page.on('pageerror', e => { fails++; console.log('PAGEERROR', e.message); });
     await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
@@ -39,7 +39,10 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     check('the heal and machines stand at the far right, the way in where it was', W0.ARRIVAL_X === 66 && W0.heal > 500 && W0.perks + 40 < W0.WW, W0);
     await walkIn(page);
     s = await g(page);
-    check('it jumps out once the teleporter is off screen or you near the dark', s.st === 'appear' && (s.camX > 100 || s.pcx >= s.x - 70), s);
+    // v0.0.142 (owner): it came only ~27 units in from the right edge (the screen 225 wide at Carrot 0),
+    // its light mostly off screen: now its dark spot is DEV.guideIn (50) in first
+    const vw = await page.evaluate(() => { const c = document.querySelector('canvas'); return c.width / (window.devicePixelRatio || 1) / window.__lvl.unitPx; });
+    check('it jumps out once its dark spot is well on screen', s.st === 'appear' && s.x + 45 <= s.camX + vw, { ...s, vw, inFromEdge: s.camX + vw - s.x });
     check('right in front of you, under the next light, in the empty hall', s.x > s.pcx + 20 && s.x - s.pcx < 100 && s.x < W0.heal - 40, s);
     const litNow = s.on.filter(v => v >= 0).length;
     check('the hall where it stands snaps on, and no further', litNow >= 2 && s.hold === s.on.indexOf(-1), s);
@@ -74,7 +77,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
         guns: P.filter(q => q.kind === 'gun').map(q => ({ lvl: q.gun.lvl, cap: q.gun.cap, slots: q.gun.slots.length, shuffle: q.gun.shuffle, empty: q.gun.slots.every(x => !x) })) };
     });
     check('150 gold', kit.gold === 150, kit.gold);
-    check('3 red crystals and a green', kit.red === 3 && kit.green === 1, kit);
+    check('2 red crystals and a green', kit.red === 2 && kit.green === 1, kit);
     check('Buzzsaw, Bolt and Double Cast', JSON.stringify(kit.mods) === JSON.stringify(['bolt', 'double', 'saw']), kit.mods);
     check('a level 5 gun, 3 slots, in order', kit.guns.length === 1 && kit.guns[0].lvl === 5 && kit.guns[0].cap === 3 && kit.guns[0].slots === 3 && !kit.guns[0].shuffle && kit.guns[0].empty, kit.guns);
     // the hall lights on as you go once it's gone

@@ -928,6 +928,9 @@ commit. List them here for after.
   reprint) against v96.
   P1.6 run: `fog` "flying on reveals more" ("186 -> 154 cave cells") failed once in the full
   run, passed alone. The P1.6 bundle is statement-identical to P1.5's, so chance/load again.
+  v0.0.142: `map` "the map shows what you saw, the rest black" failed 5 runs in a row (0.90–0.93 black),
+  then passed 6 of 6 on the same tree: random caves where the walk up stops low. Seed it or make the
+  walk reach a set height.
   End of Phase 2: `decor` "a vine holds you where you grabbed it" (y 1381 → 1356) failed once
   in the full run, passed alone; a new name on the list. `torch` "brighter frames…" again.
   P3.4 (after the fire): `jelly` (browser) "saturation 0 greys it out" failed once in the full run, passed 3 of 3

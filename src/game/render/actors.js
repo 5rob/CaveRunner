@@ -180,8 +180,8 @@ export function drawPlayer(W, G, F) {
     const gun = c => drawGun(c, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
     if (px > 0) {
       pixelSprite(G.ctx, W.p.x - 14, W.p.y - 8, PW + 28, PH + 16, px, line, body);
-      pixelSprite(G.ctx, W.p.x - 14, W.p.y - 8, PW + 28, PH + 16, px, false, gun);
-    } else { body(G.ctx); gun(G.ctx); }
+      if (held) pixelSprite(G.ctx, W.p.x - 14, W.p.y - 8, PW + 28, PH + 16, px, false, gun);
+    } else { body(G.ctx); if (held) gun(G.ctx); }   // no gun yet (a new run's empty hands): none drawn
     // the torch, in the hand the gun is not in: on the same pixel grid, its embers loose on it
     /** @param {CanvasRenderingContext2D} c */
     const torch = c => drawTorch(c, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.leanX, W.leanY, W.time);

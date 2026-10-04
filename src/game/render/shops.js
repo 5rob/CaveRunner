@@ -3,11 +3,14 @@
 // in front of the glass as a flickering hologram in the machine's hue, and the chute at the bottom
 // a bought thing pops out of. A crystal machine (v0.0.138) has a slot in its crystal's colour and a row
 // of chase lights on its cap; taking a crystal it shakes faster and faster and the lights race
-// (W.machines[k].t). Drawn with the shop's stock, before the fog.
+// (W.machines[k].t). Drawn with the shop's stock, before the fog. drawDemo (v0.0.142): a crystal
+// machine's hologram demo of a crystal going in (W.demo, stepDemo), in the guide's blue (render/guide.js).
 
-import { drawGun } from '../../art/sprites.js';
+import { CRYSTAL_R, drawGun, drawNugget } from '../../art/sprites.js';
 import { CELL, SHOP_FLOOR } from '../../core/consts.js';
-import { CYCLE, MACHINE_H, MACHINE_TOP, MACHINE_W, SHOPS, SLOT_Y, shakePhase } from '../systems/shops.js';
+import { DEV } from '../../dev/knobs.js';
+import { CYCLE, MACHINE_H, MACHINE_TOP, MACHINE_W, SHOPS, SLOT_Y, demoAt, demoPos, shakePhase } from '../systems/shops.js';
+import { holoLight, holoPass } from './guide.js';
 
 const ICON = 30, GLOW = 8, RES = 4;        // the hologram's size, its glow, and its pixels per unit
 
@@ -111,6 +114,77 @@ export function drawShops(W, G, F) {
       }
       ctx.globalAlpha = 1;
     }
+    ctx.restore();
+  }
+}
+
+/** @type {{ c: HTMLCanvasElement | null, x: CanvasRenderingContext2D | null }} */
+const DL = { c: null, x: null };
+const DEMO_BOX = 30;                         // the demo crystal's layer (world units)
+// the demo crystal is drawn light (the hologram is blue by brightness: the real dark red came out a murky blue)
+const DEMO_PAL = ['#56687a', '#a9bccc', '#e4f0f8', '#ffffff'];
+const DEMO_TINT = 0.72;                      // how much of the crystal's own red or green shows through the hologram's blue
+
+// A crystal machine's demo (game/systems/shops.js stepDemo): its crystal as a hologram, the guide's
+// look (holoPass), glitching in on the floor beside the machine, a faint beam back to the machine
+// projecting it, then sucked up into the slot with a trail of specks, and a flash as it goes in
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
+export function drawDemo(W, G, F) {
+  if (G.RPV) return;
+  for (const k in W.demo) {
+    const m = SHOPS[k], d = W.demo[k];
+    if (!m || m.x < W.camX - 80 || m.x > W.camX + F.vw + 80) continue;
+    const { ph, u } = demoAt(d.t);
+    if (ph === 'gap') continue;
+    const ctx = G.ctx, t = W.time, floorY = SHOP_FLOOR * CELL;
+    ctx.save();
+    if (ph === 'flash') {
+      // it's in: a blue flash at the slot
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 1 - u;
+      const r = 5 + 12 * u, g = ctx.createRadialGradient(m.x, SLOT_Y, 0, m.x, SLOT_Y, r);
+      g.addColorStop(0, 'rgba(190,235,255,0.9)'); g.addColorStop(1, 'rgba(90,180,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(m.x - r, SLOT_Y - r, r * 2, r * 2);
+      ctx.restore();
+      continue;
+    }
+    const p = demoPos(m.x, d.side, ph === 'suck' ? u : 0);
+    // glitching in, then a small stutter now and then, like the guide
+    const gl = ph === 'in' ? 1 - u : hash(Math.floor(t * 6) + m.x) < 0.06 ? 0.35 : 0;
+    const a = ph === 'in' ? (hash(Math.floor(t * 40) + m.x) < u + 0.2 ? 1 : 0.15) : 1;
+    // the machine projecting it: a faint beam from beside its slot
+    const bx = m.x + d.side * 8;
+    ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.1 * a; ctx.fillStyle = '#6ec8ff';
+    ctx.beginPath(); ctx.moveTo(bx, SLOT_Y - 1); ctx.lineTo(p.x, p.y - 8 * p.s); ctx.lineTo(p.x, p.y + 8 * p.s); ctx.lineTo(bx, SLOT_Y + 1); ctx.closePath(); ctx.fill();
+    holoLight(ctx, p.x, p.y, floorY, a * (ph === 'suck' ? 1 - u : 1), 0.7);
+    // the trail as it's drawn in
+    if (ph === 'suck') {
+      ctx.fillStyle = '#9fe0ff';
+      for (let i = 1; i <= 5; i++) {
+        const q = demoPos(m.x, d.side, Math.max(0, u - i * 0.07));
+        ctx.globalAlpha = 0.5 * (1 - i / 6);
+        ctx.fillRect(q.x - 0.7 + Math.sin(t * 30 + i) * 1.5, q.y - 0.7 + Math.cos(t * 23 + i) * 1.5, 1.4, 1.4);
+      }
+    }
+    // the crystal, through the hologram pass
+    const px = DEV.runnerPx > 0 ? DEV.runnerPx : 1;
+    const x0 = Math.round(p.x - DEMO_BOX / 2), y0 = Math.round(p.y - DEMO_BOX / 2), cw = Math.ceil(DEMO_BOX / px);
+    if (!DL.c) { DL.c = document.createElement('canvas'); DL.x = DL.c.getContext('2d', { willReadFrequently: true }); }
+    const c = DL.c, x = DL.x;
+    if (!x) { ctx.restore(); continue; }
+    if (c.width !== cw || c.height !== cw) { c.width = cw; c.height = cw; }
+    x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, cw, cw);
+    x.setTransform(1 / px, 0, 0, 1 / px, -x0 / px, -y0 / px);
+    drawNugget(x, p.x, p.y, CRYSTAL_R * p.s, 2.7, ph === 'suck' ? u * u * 5 : 0, DEMO_PAL);
+    x.setTransform(1, 0, 0, 1, 0, 0);
+    holoPass(x, cw, cw, t + m.x, gl);
+    // its own colour coming through the blue (owner: so you know which crystal to bring)
+    x.globalCompositeOperation = 'source-atop'; x.globalAlpha = DEMO_TINT;
+    x.fillStyle = m.takes === 'green' ? '#2dff6a' : '#ff3048'; x.fillRect(0, 0, cw, cw);
+    x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 0.85 * a;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(c, 0, 0, cw, cw, x0, y0, cw * px, cw * px);
     ctx.restore();
   }
 }

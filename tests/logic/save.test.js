@@ -15,7 +15,10 @@ const run = (extra) => JSON.stringify(Object.assign({ ver: VERSION, floor: 4, hp
 
 check('garbage is no save', readSave('not json') === null);
 check('null is no save', readSave(null) === null);
-check('no guns is no save', readSave(JSON.stringify({ loadout: { guns: [null, null] } })) === null);
+check('no guns array is no save', readSave(JSON.stringify({ loadout: { gold: 5 } })) === null);
+// v0.0.142: a new run starts with no guns, so a save with none is a run
+const empty = readSave(JSON.stringify({ loadout: { guns: [null, null, null, null], sel: 2 } }));
+check('empty hands are a save (a new run starts that way)', !!empty && empty.loadout.guns.length === 4 && empty.loadout.sel === 0, empty && empty.loadout);
 
 let s = readSave(run());
 check('same version keeps the floor', s.floor === 4, s.floor);

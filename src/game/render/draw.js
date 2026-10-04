@@ -27,7 +27,7 @@ import { drawFog, drawGlows } from './light.js';
 import { drawBeams, drawFields, drawShots } from './looks.js';
 import { drawHud, drawMessages, drawRadar, drawReticule } from './overlay.js';
 import { drawPads } from './pads.js';
-import { drawShops } from './shops.js';
+import { drawDemo, drawShops } from './shops.js';
 import { drawTubes } from './shoplights.js';
 import { drawRepo, drawVend, drawWarp } from './vend.js';
 
@@ -53,6 +53,7 @@ export function draw(W, G) {
   drawShop(W, G, F);                        // the shop's stock (cave.js)
   drawVend(W, G, F);                        // the level vending machines (vend.js)
   drawShops(W, G, F);                       // the shop's vending machines (shops.js)
+  drawDemo(W, G, F);                        // a crystal machine's hologram demo (shops.js)
   drawGuide(W, G, F);                       // a new run's guide hologram (guide.js)
   drawLoot(W, G, F);                        // gold, guns and mods lying about (cave.js)
   drawRooms(W, G, F);                       // the hidden rooms' prizes (cave.js)
