@@ -199,14 +199,14 @@ TELEPORTER). Everything else stands at the far right end: the full heal, then th
 to the end wall, with an empty hall between. A new run starts with the shop dark:
 the teleporter crackles blue, your torch shows what's near, and after two seconds the ceiling tube
 over the teleporter stutters on. Each tube throws a pool of light with dark between (your torch only
-takes the edge off it). Each time you walk into the last lit section, the next
+takes the edge off it), with dust hanging in each cone of light. Each time you walk into the last lit section, the next
 one along flickers on just before you reach the dark. Once the dark stretch ahead is well on screen,
 the light over it snaps on — and a little see-through blue hologram of you is hovering right under it,
 waving, with bright distortion bars rolling over it. A speech box over it types out a welcome
 (Dev → Guide hologram: how fast it types), then it hands you a starter kit out of its body one
 thing at a time — 150 gold, two red crystals and a green one, Buzzsaw, Bolt and Double Cast,
-and a level 5 gun with three slots that fires in order, one shot a cast, recharging in half a second — and glitches away. Walk through it
-before it's done and it glitches, says something rude and vanishes without the kit. Then the
+and a level 5 gun with three slots that fires in order, one shot a cast, recharging in half a second — and glitches away. Walk on out of
+its pool of light before it's done and it glitches, says something rude and vanishes without the kit. Then the
 rest of the hall lights up as you go, one vending machine at a time (they stand evenly spaced),
 and once you reach the perk machine the rest comes on. The first
 heal on a floor is free; after that it costs 100 gold, and each one after costs

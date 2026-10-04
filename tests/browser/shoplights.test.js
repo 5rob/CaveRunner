@@ -80,6 +80,13 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await shot('7-sign');
   const sign = await bright(20, -84, 100, -50);
   check('the sign over the way in shows', sign > 150, sign);
+  // v0.0.144: the heal under its light, dust in the cones, none of the cave's spores in the shop
+  await goTo(await page.evaluate(() => HEAL_X - 40));
+  await page.waitForTimeout(2500);
+  const amb = await page.evaluate(() => { const L = window.__lvl, fy = L.world.SHOP_FLOOR * L.world.CELL;
+    return { inShop: L.amb.filter(q => q.y >= L.world.SHOP_Y && q.y <= fy).length, kinds: L.ambKinds }; });
+  check("none of the floor's ambience (the green spores) in the shop", amb.inShop === 0, amb);
+  await shot('8-heal-dust');
   await browser.close();
   console.log(fails ? fails + ' failed' : 'all ok');
   process.exit(fails ? 1 : 0);

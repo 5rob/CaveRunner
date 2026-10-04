@@ -6,10 +6,11 @@
 // hall like the background's hologram). A speech box over it types the welcome a letter at a time
 // (Dev → Guide: the speed), then it hands out a starter kit one thing at a time (GUIDE_GIFTS) and
 // glitches away. Run through it before it's done and it glitches, says GUIDE_RUDE instead and goes
-// without the kit. Pure: game/systems/guide.js steps it (the gifts, the lights, the sounds),
+// without the kit (since v0.0.144: once you're past the right edge of its pool of light, not just past it,
+// which at a run left no time to see it). Pure: game/systems/guide.js steps it (the gifts, the lights, the sounds),
 // game/render/guide.js draws it.
 
-import { LIGHT_X } from './shoplights.js';
+import { LIGHT_X, poolEdge } from './shoplights.js';
 
 export const GUIDE_PAR = 0.8;          // its parallax: the hologram layer's (render/holo.js HOLO_PAR)
 export const GUIDE_UNDER = 20;         // it stands this far short of the middle of the first dark section (under its tube's near end)
@@ -71,6 +72,12 @@ export function typedAt(text, t, cps) {
 /** how long a box stays once typed @param {string} text @param {number} wait */
 export const pageHold = (text, wait) => wait + text.length * 0.012;
 
+/** the right edge of the pool of light it stands in (world x): past it, you've walked off on it @param {Guide} g */
+export function guideLitEdge(g) {
+  const mid = g.x + GUIDE_UNDER;
+  return mid + poolEdge(Math.max(0, LIGHT_X.indexOf(mid)));
+}
+
 /** @returns {Guide} */
 export const guideNew = () => ({ st: 'wait', t: 0, x: 0, cam0: 0, page: 0, say: '', gift: 0, hold: 2 });
 
@@ -101,8 +108,8 @@ export function guideStep(g, dt, I) {
     }
     return ev;
   }
-  // through it before it has finished: rude
-  if ((g.st === 'appear' || g.st === 'wave' || g.st === 'talk') && I.inShop && I.pcx >= guideX(g, I.camX) - 3) {
+  // out of its pool of light, on to the right, before it has finished: rude
+  if ((g.st === 'appear' || g.st === 'wave' || g.st === 'talk') && I.inShop && I.pcx > guideLitEdge(g)) {
     g.say = GUIDE_RUDE; go('rude'); ev.push({ k: 'rude' });
     return ev;
   }

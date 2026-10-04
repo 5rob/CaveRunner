@@ -9,6 +9,9 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
+- **v0.0.144, waiting on the owner's OK of the screenshot** (on `refactor`, not on `main`): the heal centred
+  under its light, dust (not green spores) only inside the light cones, and the guide turns rude only once
+  you walk out of its pool of light to the right (at a run it was skipped unseen).
 - **Released: v0.0.143** on `main`, 2026-10-05: the guide's starter gun casts one shot and recharges in 0.5 s.
 - **Released: v0.0.142** on `main`, 2026-10-05 (the owner OK'd the screenshots; a minor update): a new run
   starts with no guns and no gold; the gun machine gives a Scratch Pistol free while you have no gun; the

@@ -17,7 +17,7 @@ the frame; most of its parts live with their system.
 | `pickups.js` | `stepPickups`: ground pickups, shop stock, room prizes, gold (a room's green crystal comes off its altar; crystals themselves move in `shops.js`), the card that shows, the interact tap |
 | `props.js` | `decorStep` (anchors, falling, shootable props, drips, plants and web lines under you → `W.zfx`, rustles; with `pOver`, `alertAt`, `shatter`, `popLamp`, `landProp`, `spawnDrip`, `MATERIAL`, `DRIP_RATE`), `blowProp` |
 | `fire.js` | The fire's Game side: `fireFrame`, `ignite`, `fireBlast`, `setAlight`, `youAlight`, `fireOut`/`flushFire`, `catchPlant`/`catchArch`/`burnWeb`, `fireList`, `stepTrail` (Levitation Trail) |
-| `ambience.js` | `spore`, `puffSpores`, `stepAmbience`, `AMB_RATE`/`AMB_MAX` |
+| `ambience.js` | `spore`, `puffSpores`, `stepAmbience`, `AMB_RATE`/`AMB_MAX`; none of it in the shop room (v0.0.144: the green spores showed in the tubes' light) |
 | `particles.js` | `burst`, `goo`, `splat`, `toast`, `stepToasts`, `stepParticles`, `stepMotes` (also a White Hole's `'in'` motes, `q.f` = the field, and crystals' `'breeze'` motes), `crystalMotes`, `stepEliteFire` (the elites' flames, `W.eliteFx`, `ELITE_FX_MAX`) |
 | `fog.js` | `fogLit`, `roomSeen`, `seenAt`, `paintFog` |
 | `webs.js` | `webNear`, `webDist` |

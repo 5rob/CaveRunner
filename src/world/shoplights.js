@@ -60,6 +60,8 @@ export const sectionLevel = (L, i, time) => (L.on[i] < 0 ? 0 : tubeLevel(time - 
 /** half the width a section lights fully @param {number} i */
 const halfW = i => (i === 0 ? 50 : 30);
 export const POOL_FADE = 16;          // a pool of light fades out over this past its edge (so it ends where the tube's cone meets the floor)
+/** how far out from section i's middle its pool of light ends (fully faded) @param {number} i */
+export const poolEdge = i => halfW(i) + POOL_FADE;
 
 // How dark the shop is at world x (1 = unlit, 0 = in full light): the best of the sections'
 // light pools, each fully lit under its tube and fading out over POOL_FADE past its edge. Since

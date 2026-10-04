@@ -5,6 +5,18 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.144 — the heal under its light, dust in the cones, the guide's rude line at the light's edge
+Awaiting the owner's OK of the screenshots (a minor update).
+
+- **The heal** stands centred under its tube (`HEAL_X` 566 → 556, `LIGHT_X[4]`).
+- **The guide turns rude only once you walk out of its pool of light** to the right (`guideLitEdge`:
+  its section's middle + `poolEdge`, 46), not as you pass it: walking right at full speed it had turned
+  rude while still invisible, so it was skipped unseen.
+- **Dust in the light cones** (`coneDust` in `render/shoplights.js`), dust-coloured, only ever inside
+  a cone; the floor's ambience (floor 1's green spores) no longer spawns or drifts in the shop room.
+- Tests: `guide` (logic: the edge; browser: a full-speed walk sees it before it turns rude),
+  `shoplights` (the heal under its light; no ambience in the shop; screenshot `shoplights-8-heal-dust`).
+
 ## v0.0.143 — the guide's gun: one shot a cast, 0.5 s recharge
 Released 2026-10-05 (owner's ask; a minor update). The starter kit's level 5 gun now always casts one
 shot (`multi` 1) and recharges in 0.5 s (`GUIDE_GIFTS`' gun takes `multi` and `recharge`; `giveGift` sets them).
