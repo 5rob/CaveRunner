@@ -59,7 +59,7 @@ the frame; most of its parts live with their system.
   checked before the pickup handling.
 - **Crystals:** a `crystal` pickup is red, or green with `green: true`. You can't take one (v0.0.138):
   it's a body (`stepCrystals`) you push, or drag with a White Hole, into its machine. `LO.crystals`/`LO.greens`
-  only hold what an older save carried (the gun machine's Boosted spin spends reds).
+  only hold what an older save carried (nothing spends them now).
 - **Jetpack cough:** below `SPUTTER_FUEL` (0.25) `sputterStep` cuts the jet for 0.04–0.17s at random,
   more often the drier it is. `W.p.jet` stays the stick; `W.p.flame` is 0 during a cut and is what the
   flame, smoke, glow, Levitation Trail and jet loop read. A cut: no lift, `vy += DEV.sputDip`, grey

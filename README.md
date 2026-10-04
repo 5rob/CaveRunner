@@ -197,7 +197,7 @@ heal on a floor is free; after that it costs 100 gold, and each one after costs
 way they raise what enemies pay out. A new floor's shop starts it free again.
 
 The three vending machines run left to right: mods, guns, perks.
-The **mod machine** past the sell machine (a flickering ⚙️ hologram, a red-rimmed slot) and the
+The **mod machine** past the sell machine (a flickering red ⚙️ hologram, a red-rimmed slot) and the
 **perk machine** (a green ✦, a green slot) are **crystal machines**: they have no menu. Bring a red
 crystal near the mod machine, or a green one near the perk machine, and it's sucked in; the
 machine's lights race and it shakes faster and faster for a couple of seconds, then pops out a mod
@@ -211,14 +211,12 @@ at the edge). It snaps gently onto the nearest button. Whatever it's over lights
 over a button to press it. A plain tap on the right stick presses the lit button (keyboard:
 arrows to step, and R, F or Enter).
 
-Guns come from the second machine, in the middle of the room, with a gun hologram. Its menu offers **three
+Guns come from the second machine, in the middle of the room, with a gold gun hologram. Its menu offers **three
 guns** from the floor's pool, stacked on the left with their prices (worked out from their
 rolled stats and their level); the selected one's full stat sheet and mod grid is on the
 right. **Buy selected** pops it out of the machine onto the floor. **Reroll** spins all three
-again for gold, dearer each time on the same floor; **Boosted** spins them for red crystals
-(one, then two, then three… on a floor) and rolls guns from deeper levels with better stats.
-The guns spin like slot-machine reels and lock in one at a time with a thud; a boosted spin
-goes faster, with red sparks streaming past.
+again for gold, dearer each time on the same floor.
+The guns spin like slot-machine reels and lock in one at a time with a thud.
 
 **Red crystals** lie about the cave where guns and mods used to: a big dark-red nugget with
 white glints, shedding little sparkles that drift off on the cave's breeze (and trail behind it
@@ -230,7 +228,7 @@ and a pile of crystals: three to five red and a green one. Elites
 burn: fire particles stream off their bodies and trail behind them as they move (Dev → Elites: flames
 shapes it: a colour gradient you edit by placing and dragging stops, an opacity-over-life curve, the
 flame's length, wavyness, air resistance and more).
-(Dev → Elites sets how many a floor gets, how tough and big they are, their tint and glow, and what they drop.) (Crystals carried from an older save still show at the top as red and green silhouettes, and the gun machine's Boosted spin still spends them.) Which spells turn up follows Noita's own spawn table, deeper floors handing out rarer ones — and the very strongest (Black Hole and friends) never appear before floor 4. Your **Bag** opens anywhere,
+(Dev → Elites sets how many a floor gets, how tough and big they are, their tint and glow, and what they drop.) (Crystals carried from an older save still show at the top as red and green silhouettes.) Which spells turn up follows Noita's own spawn table, deeper floors handing out rarer ones — and the very strongest (Black Hole and friends) never appear before floor 4. Your **Bag** opens anywhere,
 but *changing* your setup — dragging mods, reordering guns — only works in the shop (or
 anywhere, with the Tinker perk); out in the cave the Bag is read-only. Enemies drop gold
 when they die, so a floor you clear pays for the next floor's shopping. **Gold seams** run

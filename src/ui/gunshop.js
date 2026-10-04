@@ -2,18 +2,17 @@
 // GunVend: the gun vending machine's menu (game/systems/shops.js opens it). Three guns on offer
 // (LO.gunShop, spells/gunshop.js), stacked on the left as slot-machine reels with their prices
 // under them; the selected gun's full card (stats and its mod grid) on the right; and at the
-// bottom Buy selected, Reroll (gold, dearer each use on the floor) and the crystal-boosted reroll
-// (red crystals, one more each use: deeper levels, boosted stats). A reroll spins the reels and
-// stops them one at a time, each overshooting and thudding into place; a boosted one spins faster
-// with red sparks streaming past. Sticks: useMenuNav (ui/vendshop.js).
+// bottom Buy selected and Reroll (gold, dearer each use on the floor; the red-crystal Boosted reroll
+// went in v0.0.140: crystals can't be carried). A reroll spins the reels and stops them one at a
+// time, each overshooting and thudding into place. Sticks: useMenuNav (ui/vendshop.js).
 
 import { SFX } from '../audio/sfx.js';
 import { gunLvCol, gunColor, makeGun } from '../spells/guns.js';
-import { GUN_OFFER, boostCost, newOffer, rerollPrice, rollOffer, shopGunPrice } from '../spells/gunshop.js';
+import { GUN_OFFER, newOffer, rerollPrice, rollOffer, shopGunPrice } from '../spells/gunshop.js';
 import { GunCard } from './cards.js';
 import { GunIcon } from './editor.js';
 import { h, useEffect, useRef, useState } from './h.js';
-import { CrystalIcon, fmtGold } from './hud.js';
+import { fmtGold } from './hud.js';
 import { useMenuNav } from './vendshop.js';
 
 // the reels: fillers on a strip, items per second, when each stops (the first, then the gap),
@@ -85,54 +84,6 @@ function Reel({ gun, idx, spin, onLand }) {
     h('div', { className: 'gthud', key: thud }));
 }
 
-// Red sparks streaming up past the reels (a boosted reroll), a little faster than the reels so
-// they read as nearer; the big ones fastest. Runs while `on`, then lets the last ones fly out
-/** @param {{ on: boolean }} props */
-function Sparks({ on }) {
-  const ref = useRef(null), live = useRef(on);
-  live.current = on;
-  useEffect(() => {
-    if (!on) return;
-    const c = ref.current;
-    if (!c) return;
-    const dpr = window.devicePixelRatio || 1, W = c.clientWidth, H = c.clientHeight;
-    c.width = W * dpr; c.height = H * dpr;
-    const ctx = c.getContext('2d');
-    if (!ctx) return;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    /** @type {{ x: number, y: number, r: number, v: number }[]} */
-    const ps = [];
-    let raf = 0, last = performance.now();
-    const base = REEL_BOOST * 64 * 1.3;           // px/s: the reels' speed and a third
-    const frame = () => {
-      const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
-      if (live.current) for (let i = 0; i < 4; i++) {
-        const r = 1 + Math.random() * 2.5;
-        ps.push({ x: Math.random() * W, y: H + 10, r, v: base * (0.7 + r * 0.25) });
-      }
-      ctx.clearRect(0, 0, W, H);
-      ctx.globalCompositeOperation = 'lighter';
-      for (let i = ps.length - 1; i >= 0; i--) {
-        const p = ps[i];
-        p.y -= p.v * dt;
-        if (p.y < -20) { ps.splice(i, 1); continue; }
-        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4);
-        g.addColorStop(0, 'rgba(255,90,90,0.95)'); g.addColorStop(0.35, 'rgba(255,30,50,0.5)'); g.addColorStop(1, 'rgba(255,0,30,0)');
-        ctx.fillStyle = g;
-        ctx.fillRect(p.x - p.r * 4, p.y - p.r * 10, p.r * 8, p.r * 14);
-        ctx.fillStyle = 'rgba(255,230,230,0.9)';
-        ctx.fillRect(p.x - p.r * 0.4, p.y - p.r * 3, p.r * 0.8, p.r * 4);
-      }
-      if (live.current || ps.length) raf = requestAnimationFrame(frame);
-      else ctx.clearRect(0, 0, W, H);
-    };
-    raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
-  }, [on]);
-  return h('canvas', { className: 'gsparks', ref });
-}
-
 /** @param {{ input: { current: GameInput }, close: () => void }} props */
 export function GunVend({ input, close }) {
   const LO = input.current.loadout, floor = input.current.floor || 1;
@@ -150,25 +101,18 @@ export function GunVend({ input, close }) {
   const [, bump] = useState(0);
   const root = useRef(null);
   const spinning = !!spin && landed < GUN_OFFER;
-  const crystals = LO.crystals || (LO.crystals = []);
   const gun = o.guns[sel] || null;
   const price = gun ? shopGunPrice(gun) : 0;
-  const rr = rerollPrice(floor, o.rerolls), bc = boostCost(o.boosts);
+  const rr = rerollPrice(floor, o.rerolls);
 
-  /** @param {boolean} boost */
-  const reroll = boost => {
+  const reroll = () => {
     if (spinning) return;
-    if (boost) {
-      if (crystals.length < bc) { SFX.ui('poor'); setMsg('Needs ' + bc + ' red crystal' + (bc > 1 ? 's' : '')); return; }
-      crystals.splice(0, bc); o.boosts++;
-    } else {
-      if (LO.gold < rr) { SFX.ui('poor'); setMsg('Not enough gold'); return; }
-      LO.gold -= rr; o.rerolls++;
-    }
-    rollOffer(Math.random, o, boost);
-    SFX.ui(boost ? 'perk' : 'buy');
+    if (LO.gold < rr) { SFX.ui('poor'); setMsg('Not enough gold'); return; }
+    LO.gold -= rr; o.rerolls++;
+    rollOffer(Math.random, o, false);
+    SFX.ui('buy');
     setMsg(''); setLanded(0); setSel(0);
-    setSpin(s => ({ n: (s ? s.n : 0) + 1, boost }));
+    setSpin(s => ({ n: (s ? s.n : 0) + 1, boost: false }));
     input.current.notify();
   };
   const buy = () => {
@@ -185,8 +129,7 @@ export function GunVend({ input, close }) {
   const press = key => {
     if (key === 'close') close();
     else if (key === 'buy') buy();
-    else if (key === 'reroll') reroll(false);
-    else if (key === 'boost') reroll(true);
+    else if (key === 'reroll') reroll();
     else if (key.startsWith('g:') && !spinning) { setSel(Number(key.slice(2))); setMsg(''); SFX.fx('switch'); }
     bump(n => n + 1);
   };
@@ -203,7 +146,6 @@ export function GunVend({ input, close }) {
     ptr,
     h('div', { className: 'vhead' },
       h('b', null, 'Guns'),
-      h('span', { className: 'vcrys' }, h(CrystalIcon, { size: 18 }), crystals.length),
       h('span', { className: 'vgold' }, fmtGold(LO.gold), h('i', null, 'g')),
       h('button', { className: navCls('close', 'vclose'), 'data-nav': 'close', onPointerDown: tap('close') }, '×')),
     h('div', { className: 'gmid' },
@@ -211,8 +153,7 @@ export function GunVend({ input, close }) {
         o.guns.map((g, i) => h('div', { key: i, 'data-nav': 'g:' + i, onPointerDown: tap('g:' + i),
             className: navCls('g:' + i, 'greel') + (sel === i ? ' sel' : '') },
           h(Reel, { gun: g, idx: i, spin, onLand }),
-          h('div', { className: 'gprice' }, spinning && landed <= i ? '···' : g ? shopGunPrice(g) + 'g' : '—'))),
-        h(Sparks, { on: spinning && !!spin && spin.boost })),
+          h('div', { className: 'gprice' }, spinning && landed <= i ? '···' : g ? shopGunPrice(g) + 'g' : '—')))),
       h('div', { className: 'gcard scroll' },
         spinning ? h('p', { className: 'vhint' }, 'Rolling…')
           : gun ? h(GunCard, { gun, label: gun.boosted ? 'Boosted' : 'For sale', ingame: true, flow: true,
@@ -224,7 +165,5 @@ export function GunVend({ input, close }) {
         h('b', null, 'Buy selected'), h('span', null, gun ? price + 'g' : '—')),
       h('div', { className: 'grow' },
         h('button', { className: navCls('reroll', 'vbuy greroll') + (!spinning && LO.gold >= rr ? '' : ' cant'), 'data-nav': 'reroll', onPointerDown: tap('reroll') },
-          h('b', null, 'Reroll'), h('span', null, rr + 'g')),
-        h('button', { className: navCls('boost', 'vbuy gboost') + (!spinning && crystals.length >= bc ? '' : ' cant'), 'data-nav': 'boost', onPointerDown: tap('boost') },
-          h('b', null, 'Boosted'), h('span', { className: 'gcost' }, h(CrystalIcon, { size: 20 }), '×' + bc)))));
+          h('b', null, 'Reroll'), h('span', null, rr + 'g')))));
 }

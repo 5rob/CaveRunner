@@ -601,7 +601,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .grow{display:flex;gap:7px}
 .grow .vbuy{flex:1;height:46px;padding:0 12px}
 .greroll{border-color:#ffc93c;background:rgba(255,201,60,0.12)}
-.gboost{border-color:#c8202c;background:rgba(160,20,40,0.25)}
 .gcost{display:inline-flex;align-items:center;gap:2px;color:#ff6a78 !important}
 
 /* ---- the Bag's tabs, and the Exo Suit (ui/exosuit.js) ---- */

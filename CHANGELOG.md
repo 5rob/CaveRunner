@@ -5,6 +5,15 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.140 — a red mod machine, a gold gun machine, no Boosted reroll
+Released 2026-10-04 (after the owner's OK of the screenshots).
+
+- The mod machine's hue (`SHOPS.mods.hue`) is crystal red `#ff3a4a` (was blue), the gun machine's gold
+  `#ffd95a` (was orange; the gold nuggets' own colour, `NUGGET_PAL`): hologram, edge strips, emitter.
+- The gun machine's red-crystal **Boosted** reroll is gone (`ui/gunshop.js`: the button, the crystal count,
+  the red `Sparks`, `.gboost`). The pure boost helpers in `spells/gunshop.js` (`boostGun`, `boostCost`,
+  `shopGun`'s `boost`) stay, unused by the game. `gunshop` checks there's no Boosted button.
+
 ## v0.0.139 — the mod machine can repeat
 Released 2026-10-04 (logic only: the owner's call in chat).
 
