@@ -17380,9 +17380,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (g.st === "leave") return { gl: 0.4 + g.t / LEAVE_T, a: Math.max(0, 1 - g.t / LEAVE_T) * (hash2(Math.floor(time * 30)) < 0.7 ? 1 : 0.3) };
     return { gl: hash2(Math.floor(time * 6) + 9) < 0.06 ? 0.35 : 0, a: 1 };
   }
+  function guideShown(W) {
+    const g = W.guide;
+    if (!g || g.st === "wait" || g.st === "gone") return false;
+    if (!W.shopLit) return true;
+    let i = 0;
+    for (let k = 1; k < LIGHT_X.length; k++) if (Math.abs(LIGHT_X[k] - g.x) < Math.abs(LIGHT_X[i] - g.x)) i = k;
+    return sectionLevel(W.shopLit, i, W.time) > 0.3;
+  }
   function drawGuide(W, G, F) {
     const g = W.guide;
-    if (!g || G.RPV || g.st === "wait" || g.st === "gone") return;
+    if (!g || G.RPV || !guideShown(W)) return;
     const t = W.time, m = guideMid(W, g);
     if (m.x < W.camX - 40 || m.x > W.camX + F.vw + 40) return;
     const px = DEV.runnerPx > 0 ? DEV.runnerPx : 1;
@@ -17492,7 +17500,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function drawGuideTalk(W, G, F) {
     const g = W.guide;
-    if (!g || G.RPV) return;
+    if (!g || G.RPV || !guideShown(W)) return;
     const sp = guideSpeech(g, DEV.guideCps);
     if (!sp.text) return;
     const ctx = G.ctx, dpr = F.dpr, cw = G.c.width / dpr, u = W.unitPx;

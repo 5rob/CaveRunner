@@ -33,7 +33,8 @@ Built 2026-10-04, **awaiting the owner's OK of the screenshots** (not on `main` 
 - **The guide hologram** (`world/guide.js`, `game/systems/guide.js`, `game/render/guide.js`): on a new
   run, once the teleporter is off screen the hall ahead snaps on (`lightNear`) and a little see-through
   blue you hovers there, just inside the dark under the tube that snaps on (`guideSpot`: 20 short of the
-  first held section's middle; it also jumps out if you come within `GUIDE_NEAR` of it first), in the hologram layer's parallax, waving, distortion bars rolling over it. A speech
+  first held section's middle; it also jumps out if you come within `GUIDE_NEAR` of it first), invisible until the
+  tube over it is lit (`guideShown`: it blinks in with the tube's stutter), in the hologram layer's parallax, waving, distortion bars rolling over it. A speech
   box types the owner's welcome a letter at a time (Dev → **Guide hologram**: `guideCps`, `guideWait`),
   then it throws out the starter kit one thing at a time (150 gold, 3 red + 1 green crystal, Buzzsaw,
   Bolt, Double Cast, a level 5 gun cut to 3 empty slots, not shuffled) and glitches away. Pass through it

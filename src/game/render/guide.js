@@ -10,6 +10,7 @@ import { CELL, PW, SHOP_FLOOR } from '../../core/consts.js';
 import { clamp } from '../../core/util.js';
 import { DEV } from '../../dev/knobs.js';
 import { APPEAR_T, LEAVE_T, guideSpeech } from '../../world/guide.js';
+import { LIGHT_X, sectionLevel } from '../../world/shoplights.js';
 import { GUIDE_FEET, guideMid } from '../systems/guide.js';
 
 /** @param {number} n */
@@ -29,10 +30,22 @@ function glitchOf(g, time) {
   return { gl: hash(Math.floor(time * 6) + 9) < 0.06 ? 0.35 : 0, a: 1 };
 }
 
+// Is it showing? Only while the tube over it is lit (owner): it isn't there in the dark, and as the tube
+// stutters on it blinks in with it
+/** @param {World} W */
+export function guideShown(W) {
+  const g = W.guide;
+  if (!g || g.st === 'wait' || g.st === 'gone') return false;
+  if (!W.shopLit) return true;
+  let i = 0;
+  for (let k = 1; k < LIGHT_X.length; k++) if (Math.abs(LIGHT_X[k] - g.x) < Math.abs(LIGHT_X[i] - g.x)) i = k;
+  return sectionLevel(W.shopLit, i, W.time) > 0.3;
+}
+
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawGuide(W, G, F) {
   const g = W.guide;
-  if (!g || G.RPV || g.st === 'wait' || g.st === 'gone') return;
+  if (!g || G.RPV || !guideShown(W)) return;
   const t = W.time, m = guideMid(W, g);
   if (m.x < W.camX - 40 || m.x > W.camX + F.vw + 40) return;
   const px = DEV.runnerPx > 0 ? DEV.runnerPx : 1;
@@ -134,7 +147,7 @@ export function wrapLines(ctx, text, w) {
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawGuideTalk(W, G, F) {
   const g = W.guide;
-  if (!g || G.RPV) return;
+  if (!g || G.RPV || !guideShown(W)) return;
   const sp = guideSpeech(g, DEV.guideCps);
   if (!sp.text) return;
   const ctx = G.ctx, dpr = F.dpr, cw = G.c.width / dpr, u = W.unitPx;

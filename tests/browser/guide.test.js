@@ -43,7 +43,12 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     check('right in front of you, under the next light, in the empty hall', s.x > s.pcx + 20 && s.x - s.pcx < 100 && s.x < W0.heal - 40, s);
     const litNow = s.on.filter(v => v >= 0).length;
     check('the hall where it stands snaps on, and no further', litNow >= 2 && s.hold === s.on.indexOf(-1), s);
-    await page.waitForTimeout(140);
+    // invisible until the tube over it comes on, then it blinks in with the tube's stutter
+    const shown = await page.evaluate(() => guideShown(window.__lvl));
+    check('invisible the moment the light starts (the tube starts off)', !shown);
+    let seenAt = -1;
+    for (let i = 0; i < 80 && seenAt < 0; i++) { if (await page.evaluate(() => guideShown(window.__lvl))) seenAt = i; else await page.waitForTimeout(15); }
+    check('there once the tube over it is lit', seenAt >= 0, seenAt);
     await shot('1-appear');
     s = await until(page, q => q.st === 'talk' && q.t > 0);
     await page.waitForTimeout(1600);
