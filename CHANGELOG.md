@@ -6,7 +6,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v0.0.138 — crystals are rocks, the machines eat them
-Awaiting the owner's OK of the screenshots (not on `main` yet).
+Released 2026-10-04 (after the owner's OK of the screenshots).
 
 - **You can't pick crystals up** (`game/systems/pickups.js`: the fly-to-you is gone). A loose crystal is a
   rock: it falls, bounces, rolls and bumps other crystals (`world/nuggets.js` `stepNugget`/`collideNuggets`,
