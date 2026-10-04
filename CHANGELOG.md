@@ -6,7 +6,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v0.0.142 — empty hands, a free pistol, the crystal machines show how
-Awaiting the owner's OK of the screenshots (a minor update).
+Released 2026-10-05 (after the owner's OK of the screenshots; a minor update).
 
 - **A new run starts with no guns and no gold** (`START_GOLD` 0; `App`'s new loadout is four empty
   slots). The Scratch Pistol is `scratchPistol()`; `startingGuns()` stays for the tests, and the browser

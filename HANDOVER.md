@@ -9,7 +9,7 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
-- **v0.0.142, waiting on the owner's OK of the screenshots** (on `refactor`, not on `main` yet): a new run
+- **Released: v0.0.142** on `main`, 2026-10-05 (the owner OK'd the screenshots; a minor update): a new run
   starts with no guns and no gold; the gun machine gives a Scratch Pistol free while you have no gun; the
   crystal machines play a hologram demo of a crystal going in (red/green showing through) until a real one
   has (`LO.fed`); the guide's kit has 2 red crystals; the guide jumps out only once its dark spot is
