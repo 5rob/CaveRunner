@@ -5,7 +5,7 @@
 // game/render/ and game/creatures/ (REFACTOR.md, Phase 3).
 
 import { SFX } from '../audio/sfx.js';
-import { BH, BW, CH, CW, FH, FW, MMH, MMW } from '../core/consts.js';
+import { BH, BW, CH, CW, FH, FW, PH, PW } from '../core/consts.js';
 import { onWebIn } from './creatures/rat.js';
 import { draw } from './render/draw.js';
 import { ignite, setAlight, youAlight } from './systems/fire.js';
@@ -50,14 +50,10 @@ export function Game({ input }) {
     const fogBlurC = document.createElement('canvas');
     fogBlurC.width = FW; fogBlurC.height = FH;
     const fbctx = fogBlurC.getContext('2d');
-    // the minimap: an MMW x MMH canvas of white cave outlines, smooth-scaled into the
-    // bottom-left of the view. miniEdgeIdx lists the wall-outline cells (static per floor);
-    // each frame only the ones the fog has revealed are painted white, the rest cleared.
-    const miniC = document.createElement('canvas');
-    miniC.width = MMW; miniC.height = MMH;
-    const mctx = miniC.getContext('2d');
-    const miniImg = new ImageData(MMW, MMH);
-    const mini32 = new Uint32Array(miniImg.data.buffer);
+    // the map's picture of the floor, a pixel per terrain pixel, made as each floor is entered
+    // (level-entry.js mapPicture); the map screen (ui/map.js) shows it under the fog memory
+    const mapC = document.createElement('canvas');
+    mapC.width = CW; mapC.height = CH;
 
     // ---- level decoration (see DECOR): the decoration layer's canvas and the plant glow's
     // scratch. The props, their particles, decorStep's counters and what they did to you are in W.
@@ -98,7 +94,7 @@ export function Game({ input }) {
     // the mouse and the aim line's scratch
     /** @type {GameCtx} */
     const G = { input, c, ctx, terrain, tctx, bg, bgctx, fogC, fctx, fogImg, fogBlurC, fbctx,
-      miniC, mctx, miniImg, mini32, decoC, dctx, REC, RT, fireBox, ratOnWeb, mouse, aimPath,
+      mapC, decoC, dctx, REC, RT, fireBox, ratOnWeb, mouse, aimPath,
       pgArt: null, pgC: null, pgCtx: null, pgGlow, pgGlowCtx,
       RP_ARR, rid: new WeakMap(), ridN: 0,  // the recorder's lists (W's own arrays) and each thing's replay id
       RPV: null };                          // while draw() is drawing a replay frame: the view
@@ -107,6 +103,9 @@ export function Game({ input }) {
     // the Witness screen keeps a clip, and plays a stored one, through these
     input.current.saveClip = C => clipKeep(W, G, C);
     input.current.clipFromSaved = clipFromSaved;
+    // the map screen reads the floor through this, and drops its pins with the other
+    input.current.mapView = () => ({ img: mapC, seen: W.seen, x: W.p.x + PW / 2, y: W.p.y + PH / 2, face: W.p.face, pins: W.pins });
+    input.current.dropPin = e => { W.pins.push({ x: W.p.x + PW / 2, y: W.p.y + PH / 2, e }); saveRun(W, G); };
 
     // the browser tests' way in (game/testhook.js): only on the test page, which sets the flag
     if (window.__TEST) window.__lvl = testHook(W, { tctx, dctx, paintFog: () => paintFog(W, G), hurt: (n) => hurt(W, G, n), maxHp: () => maxHp(W, G), dig: (x, y, R) => dig(W, G, x, y, R), explode: (x, y, R, splash, hot) => explode(W, G, x, y, R, splash, hot), recSample: () => recSample(W, G),

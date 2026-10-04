@@ -60,9 +60,11 @@ export const SHOP_Y = SHOP_TOP * CELL;        // world y of the ceiling, for "am
 // SHOP_SLOT apart, as are the shop's three machines after them (SHOP_MACHINE_X: mods, guns, perks): one
 // light section each when a new run's dark shop lights up (world/shoplights.js)
 export const SHOP_SLOT = 120;
-// the way in's pad (centre x), under its sign (art/sign.js: from about 12 to 106), and the heal just past it
-export const ARRIVAL_X = 66, HEAL_X = 124;
-export const VEND_BUY_X = 210, VEND_SELL_X = VEND_BUY_X + SHOP_SLOT;
+// the way in's pad (centre x), under its sign (art/sign.js: from about 12 to 106). Since v0.0.141 everything
+// else stands at the far right of the shop (the heal, then the machines out to the end wall), with an empty
+// hallway between where the guide hologram greets a new run (world/guide.js)
+export const ARRIVAL_X = 66, HEAL_X = 590;
+export const VEND_BUY_X = 676, VEND_SELL_X = VEND_BUY_X + SHOP_SLOT;
 export const SHOP_MACHINE_X = [VEND_BUY_X + 2 * SHOP_SLOT, VEND_BUY_X + 3 * SHOP_SLOT, VEND_BUY_X + 4 * SHOP_SLOT];
 export const LVL_BUY = 1000000000, LVL_SELL = 1000001000;
 export const OLD_LVL_BUY = 64000000000;   // what a level cost before v130 (save/save.js mends saves from v106/v107 by it)
@@ -76,11 +78,6 @@ export const DEADLINE_MS = 60 * 60 * 1000;
 export const FOG = 8;                         // terrain pixels per fog cell
 export const FOG_U = FOG * CELL;              // world units per fog cell
 export const FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
-// the minimap samples the real terrain at a finer grid than the fog: a cell is an
-// outline if a wall passes through it (has both rock and open), which traces every wall
-// continuously instead of the scatter you get detecting edges at the coarse fog grid.
-export const MINI_D = 4;                      // terrain pixels per minimap cell
-export const MMW = Math.ceil(CW / MINI_D), MMH = Math.ceil(CH / MINI_D);
 export const SIGHT = 200;                     // how far the torch reaches: line of sight out to
                                        // here lifts the fog, and the lamp then lights the
                                        // ground it lifted. A cell this close and in view is

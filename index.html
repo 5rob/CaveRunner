@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.140</title>
-<!-- VERSION = 'v140' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.141</title>
+<!-- VERSION = 'v141' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -669,13 +669,34 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* the menus' left-stick pointer (vendshop.js useMenuNav): a second knob, a very thin ring, no fill */
 .mptr{position:fixed;left:0;top:0;z-index:40;display:none;box-sizing:border-box;border-radius:50%;
   border:0.75px solid rgba(255,255,255,0.95);pointer-events:none;will-change:transform}
+/* the map (ui/map.js, v0.0.141): full screen over everything but the map and pin buttons, which stay
+   where your thumb is (.sticks rises over it; the sticks and the other buttons hide) */
+.mapscreen{position:fixed;inset:0;z-index:11;background:#05070a}
+.mapcanvas{display:block;width:100%;height:100%;touch-action:none}
+.app.mapping .sticks,.app.pinning .sticks{z-index:12}
+.app.mapping .stick,.app.mapping .slots,.app.mapping .weapon{visibility:hidden}
+.dbtn.pinbtn.holding{background:radial-gradient(circle,rgba(255,138,31,0.55) 0%,rgba(255,138,31,0) 70%)}
+/* the pin picker over the pin button: the pins used before, then + for a new one */
+.pinpick{position:absolute;z-index:6;transform:translateY(-100%);box-sizing:border-box;width:min(276px,calc(100vw - 16px));
+  padding:10px;border-radius:14px;background:rgba(14,18,26,0.94);border:1px solid rgba(255,255,255,0.22);
+  box-shadow:0 6px 18px rgba(0,0,0,0.5);pointer-events:auto;color:#e9ecf2;font-family:system-ui,sans-serif}
+.pingrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.pinopt{aspect-ratio:1;min-width:0;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);
+  color:#fff;font-size:22px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;touch-action:none}
+.pinopt.on{border:2px solid #ff8a1f;background:rgba(255,138,31,0.18)}
+.pinopt.pinadd{font:300 26px system-ui,sans-serif;color:rgba(255,255,255,0.8);border-style:dashed}
+.pinnew{display:flex;gap:6px;margin-top:8px}
+.pinnew input{flex:1;min-width:0;height:36px;border-radius:9px;border:1px solid rgba(255,255,255,0.3);background:#0a0d13;
+  color:#fff;font-size:18px;padding:0 10px}
+.pinnew button{height:36px;padding:0 14px;border-radius:9px;border:none;background:#ff8a1f;color:#12141a;font:700 13px system-ui,sans-serif}
+.pinhint{margin-top:8px;font-size:11px;color:rgba(233,236,242,0.6);text-align:center}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.140';</script>
+<script>const VERSION = 'v0.0.141';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -717,8 +738,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var SHOP_ROOF = 6;
   var SHOP_Y = SHOP_TOP * CELL;
   var SHOP_SLOT = 120;
-  var ARRIVAL_X = 66, HEAL_X = 124;
-  var VEND_BUY_X = 210, VEND_SELL_X = VEND_BUY_X + SHOP_SLOT;
+  var ARRIVAL_X = 66, HEAL_X = 590;
+  var VEND_BUY_X = 676, VEND_SELL_X = VEND_BUY_X + SHOP_SLOT;
   var SHOP_MACHINE_X = [VEND_BUY_X + 2 * SHOP_SLOT, VEND_BUY_X + 3 * SHOP_SLOT, VEND_BUY_X + 4 * SHOP_SLOT];
   var LVL_BUY = 1e9, LVL_SELL = 1000001e3;
   var OLD_LVL_BUY = 64e9;
@@ -726,8 +747,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var FOG = 8;
   var FOG_U = FOG * CELL;
   var FW = Math.ceil(CW / FOG), FH = Math.ceil(CH / FOG);
-  var MINI_D = 4;
-  var MMW = Math.ceil(CW / MINI_D), MMH = Math.ceil(CH / MINI_D);
   var SIGHT = 200;
   var LAMP_REACH = 1.15;
   var FOG_DIM = 0.85;
@@ -772,8 +791,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const mx = Math.max(r, g, b), d = mx - Math.min(r, g, b);
     let h3 = !d ? 0 : mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
     h3 = ((h3 * 60 + hue) % 360 + 360) % 360;
-    const S = Math.min(1, (mx ? d / mx : 0) * sat), V2 = Math.min(1, mx * bri);
-    const c = V2 * S, x = c * (1 - Math.abs(h3 / 60 % 2 - 1)), m = V2 - c;
+    const S2 = Math.min(1, (mx ? d / mx : 0) * sat), V2 = Math.min(1, mx * bri);
+    const c = V2 * S2, x = c * (1 - Math.abs(h3 / 60 % 2 - 1)), m = V2 - c;
     const [R, G, B] = h3 < 60 ? [c, x, 0] : h3 < 120 ? [x, c, 0] : h3 < 180 ? [0, c, x] : h3 < 240 ? [0, x, c] : h3 < 300 ? [x, 0, c] : [c, 0, x];
     const to = (q) => Math.round((q + m) * 255);
     return "#" + (1 << 24 | to(R) << 16 | to(G) << 8 | to(B)).toString(16).slice(1);
@@ -877,6 +896,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     holoC1y: 1,
     holoC2x: 0.5,
     holoC2y: 0,
+    guideCps: 30,
+    guideWait: 1.4,
     due1: 60,
     enemies: ENEMY_COUNT,
     enemiesUp: 12,
@@ -948,6 +969,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "holoC1y", g: "holoflash", label: "Fade curve point 1 y", min: -0.5, max: 1.5, step: 0.01, type: "curve" },
     { k: "holoC2x", g: "holoflash", label: "Fade curve point 2 x", min: 0, max: 1, step: 0.01, type: "curve" },
     { k: "holoC2y", g: "holoflash", label: "Fade curve point 2 y", min: -0.5, max: 1.5, step: 0.01, type: "curve" },
+    // a new run's guide hologram (world/guide.js): how fast its speech box types, and the pause after each box
+    { k: "guideCps", g: "guide", label: "Typing speed (letters a second)", min: 2, max: 200, step: 1 },
+    { k: "guideWait", g: "guide", label: "Pause after each box (s, + a little per letter)", min: 0, max: 10, step: 0.1 },
     { k: "due1", g: "level", label: "Time to repay level 1 (minutes)", min: 0.1, max: 1440, step: 1 },
     { k: "enemies", g: "level", label: "Enemies on floor 1 (next level made)", min: 0, max: 400, step: 1 },
     { k: "enemiesUp", g: "level", label: "More enemies each floor after", min: 0, max: 60, step: 1 },
@@ -989,6 +1013,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ["light", "Torch & fog"],
     ["fx", "Hologram & glow"],
     ["holoflash", "Hologram flash (on a kill)"],
+    ["guide", "Guide hologram (new run)"],
     ["player", "Player"],
     ["enemy", "Enemies"],
     ["elite", "Elites"],
@@ -4546,8 +4571,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           tone(d, "sine", rnd2(90, 120), 60, t, 0.04, 0.2 * v);
       }
     }
-    function tinkles(d, t, n, lo, hi, pk, spread) {
-      for (let i = 0; i < n; i++) tone(d, "sine", rnd2(lo, hi), rnd2(lo, hi) * rnd2(0.9, 1.05), t + rnd2(0, spread), rnd2(0.04, 0.12), pk * rnd2(0.5, 1), 2e-3);
+    function tinkles(d, t, n, lo, hi, pk, spread2) {
+      for (let i = 0; i < n; i++) tone(d, "sine", rnd2(lo, hi), rnd2(lo, hi) * rnd2(0.9, 1.05), t + rnd2(0, spread2), rnd2(0.04, 0.12), pk * rnd2(0.5, 1), 2e-3);
     }
     const FX = {
       // stepping into the exit: the air is drawn in, a falling shimmer, and a soft whump
@@ -5371,16 +5396,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var STAT_KEYS = Object.keys(STAT_PERKS);
   var STAT_PRICE = [60, 140, 260, 420, 650];
   for (const s of STAT_KEYS) {
-    const S = STAT_PERKS[s];
-    S.vals.forEach((v, i) => {
+    const S2 = STAT_PERKS[s];
+    S2.vals.forEach((v, i) => {
       PERKS["st_" + s + (i + 1)] = {
-        name: S.name + " " + ROMAN[i],
-        glyph: S.glyph,
-        tint: S.tint,
+        name: S2.name + " " + ROMAN[i],
+        glyph: S2.glyph,
+        tint: S2.tint,
         stat: s,
         tier: i + 1,
-        [S.field]: v,
-        info: S.say(v) + " Fits the suit’s " + S.name + " slot."
+        [S2.field]: v,
+        info: S2.say(v) + " Fits the suit’s " + S2.name + " slot."
       };
     });
   }
@@ -5557,7 +5582,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const l = Math.hypot(nx, ny);
     return l < 1e-6 ? { x: px, y: py, d, px, py } : { x: nx / l, y: ny / l, d, px, py };
   }
-  function surfSeat(e, S, solidCell2, maxMove, hold, feel) {
+  function surfSeat(e, S2, solidCell2, maxMove, hold, feel) {
     let n = surfNormal(e.x, e.y, feel, solidCell2);
     if (!n) return false;
     if (n.d < hold) {
@@ -5570,9 +5595,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       e.x -= n.x * m;
       e.y -= n.y * m;
     }
-    S.nx = n.x;
-    S.ny = n.y;
-    S.py = n.py;
+    S2.nx = n.x;
+    S2.ny = n.y;
+    S2.py = n.py;
     return true;
   }
   function bioCount(enemies, youOut) {
@@ -5591,9 +5616,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const n = surfNormal(x, y, RAT.hold + 5, solidCell2);
     return n && n.py <= RAT.ceil || !!(onWeb && onWeb(x, y));
   }
-  function ratJump(e, S, goal, env, rnd2) {
+  function ratJump(e, S2, goal, env, rnd2) {
     const solidCell2 = env.solidCell, gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
-    const v = kr("raJump", rnd2), cap = v * 1.4, x0 = e.x + S.nx * 1.5, y0 = e.y + S.ny * 1.5;
+    const v = kr("raJump", rnd2), cap = v * 1.4, x0 = e.x + S2.nx * 1.5, y0 = e.y + S2.ny * 1.5;
     for (const T of [Math.max(0.18, Math.min(0.6, gd / v)), 0.4, 0.55, 0.7]) {
       let vx = gx / T, vy = gy / T - 0.5 * RAT.fall * T;
       const sp = Math.hypot(vx, vy);
@@ -5612,14 +5637,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
       }
       if (!ok) continue;
-      S.vx = vx;
-      S.vy = vy;
+      S2.vx = vx;
+      S2.vy = vy;
       e.x = x0;
       e.y = y0;
-      S.mode = "air";
-      S.on = 0;
-      S.rest = 0.05;
-      if (Math.abs(S.vx) > 1) S.face = S.vx > 0 ? 1 : -1;
+      S2.mode = "air";
+      S2.on = 0;
+      S2.rest = 0.05;
+      if (Math.abs(S2.vx) > 1) S2.face = S2.vx > 0 ? 1 : -1;
       return "jump";
     }
     return null;
@@ -5660,80 +5685,80 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
   function ratStep(e, env, dt) {
     const { solidCell: solidCell2, rnd: rnd2 } = env;
-    const S = e.ra || (e.ra = { mode: "air", vx: 0, vy: 0, nx: 0, ny: -1, on: 0, rest: rnd2() * 0.3, side: 1, face: 1, s: 0, dir: 1, wait: 0 });
+    const S2 = e.ra || (e.ra = { mode: "air", vx: 0, vy: 0, nx: 0, ny: -1, on: 0, rest: rnd2() * 0.3, side: 1, face: 1, s: 0, dir: 1, wait: 0 });
     const goal = env.goal;
     const P2 = env.path, speed = (env.speed || kr("raSpeed", rnd2)) * (env.speedMul || 1);
-    if (S.noT > 0) S.noT -= dt;
-    if (S.mode === "tunnel") {
+    if (S2.noT > 0) S2.noT -= dt;
+    if (S2.mode === "tunnel") {
       if (!P2) {
-        S.mode = "air";
-        S.vx = S.vy = 0;
+        S2.mode = "air";
+        S2.vx = S2.vy = 0;
         return null;
       }
-      if (S.wait > 0) {
-        S.wait -= dt;
+      if (S2.wait > 0) {
+        S2.wait -= dt;
         return null;
       }
-      const L3 = S.len || (S.len = pathLen(P2));
-      S.s += S.dir * speed * RAT.tunnel * dt;
-      if (S.s <= 0) {
-        S.s = 0;
-        S.dir = 1;
-        S.wait = kr("raNestRest", rnd2);
+      const L3 = S2.len || (S2.len = pathLen(P2));
+      S2.s += S2.dir * speed * RAT.tunnel * dt;
+      if (S2.s <= 0) {
+        S2.s = 0;
+        S2.dir = 1;
+        S2.wait = kr("raNestRest", rnd2);
         e.x = P2[0].x;
         e.y = P2[0].y;
         return "home";
       }
-      if (S.s >= L3) {
+      if (S2.s >= L3) {
         const m = P2[P2.length - 1];
         e.x = m.x;
         e.y = m.y;
-        S.mode = "surf";
-        S.on = 0;
-        S.rest = 0.05 + rnd2() * 0.2;
-        if (!surfSeat(e, S, solidCell2, RAT.hold, RAT.hold, RAT.feel)) {
-          S.mode = "air";
-          S.vx = S.vy = 0;
+        S2.mode = "surf";
+        S2.on = 0;
+        S2.rest = 0.05 + rnd2() * 0.2;
+        if (!surfSeat(e, S2, solidCell2, RAT.hold, RAT.hold, RAT.feel)) {
+          S2.mode = "air";
+          S2.vx = S2.vy = 0;
         }
         return "out";
       }
-      const q = pathAt(P2, S.s);
+      const q = pathAt(P2, S2.s);
       e.x = q.x;
       e.y = q.y;
-      S.face = q.dx * S.dir >= 0 ? 1 : -1;
-      S.nx = 0;
-      S.ny = -1;
+      S2.face = q.dx * S2.dir >= 0 ? 1 : -1;
+      S2.nx = 0;
+      S2.ny = -1;
       return null;
     }
     if (env.home && P2) {
       const m = P2[P2.length - 1];
       if (Math.hypot(m.x - e.x, m.y - e.y) < 12) {
-        S.mode = "tunnel";
-        S.len = pathLen(P2);
-        S.s = S.len;
-        S.dir = -1;
-        S.wait = 0;
-        S.vx = S.vy = 0;
+        S2.mode = "tunnel";
+        S2.len = pathLen(P2);
+        S2.s = S2.len;
+        S2.dir = -1;
+        S2.wait = 0;
+        S2.vx = S2.vy = 0;
         return null;
       }
     }
-    if (env.follow && goal && S.mode !== "air") {
-      if (S.mode !== "path") {
-        S.mode = "path";
-        S.vx = S.vy = 0;
+    if (env.follow && goal && S2.mode !== "air") {
+      if (S2.mode !== "path") {
+        S2.mode = "path";
+        S2.vx = S2.vy = 0;
       }
       const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy), go = Math.min(gd, speed * dt);
       const rock = (x, y) => solidCell2(Math.floor(x / CELL), Math.floor(y / CELL));
       if (!ratFooting(e.x, e.y, solidCell2, env.onWeb)) {
-        S.mode = "air";
-        S.vx = gd ? gx / gd * speed * 0.4 : 0;
-        S.vy = 0;
+        S2.mode = "air";
+        S2.vx = gd ? gx / gd * speed * 0.4 : 0;
+        S2.vy = 0;
         return null;
       }
       if (env.air && gd > RAT.hold + 2) {
         const f = Math.min(gd, 6) / gd;
         if (!ratFooting(e.x + gx * f, e.y + gy * f, solidCell2, env.onWeb)) {
-          const j = ratJump(e, S, goal, env, rnd2);
+          const j = ratJump(e, S2, goal, env, rnd2);
           if (j) return j;
         }
       }
@@ -5753,19 +5778,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             moved = true;
           } else break;
           if (!ratFooting(e.x, e.y, solidCell2, env.onWeb)) {
-            S.mode = "air";
-            S.vx = gx / gd * speed * 0.6;
-            S.vy = 0;
+            S2.mode = "air";
+            S2.vx = gx / gd * speed * 0.6;
+            S2.vy = 0;
             return null;
           }
         }
-        if (Math.abs(gx) > 0.5) S.face = gx > 0 ? 1 : -1;
-        S.blockT = moved ? 0 : (S.blockT || 0) + dt;
-        if (S.blockT > 0.3) {
-          S.blockT = 0;
-          S.mode = "air";
-          S.vx = (rnd2() - 0.5) * 120;
-          S.vy = -160;
+        if (Math.abs(gx) > 0.5) S2.face = gx > 0 ? 1 : -1;
+        S2.blockT = moved ? 0 : (S2.blockT || 0) + dt;
+        if (S2.blockT > 0.3) {
+          S2.blockT = 0;
+          S2.mode = "air";
+          S2.vx = (rnd2() - 0.5) * 120;
+          S2.vy = -160;
           return null;
         }
       }
@@ -5779,33 +5804,33 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           e.x -= n2.px * m;
           e.y -= n2.py * m;
         }
-        S.nx = n2.x;
-        S.ny = n2.y;
-        S.py = n2.py;
+        S2.nx = n2.x;
+        S2.ny = n2.y;
+        S2.py = n2.py;
       } else {
-        S.nx = 0;
-        S.ny = -1;
-        S.py = -1;
+        S2.nx = 0;
+        S2.ny = -1;
+        S2.py = -1;
       }
       return null;
     }
-    if (S.mode === "path") {
-      S.mode = "air";
-      S.vx = S.vy = 0;
+    if (S2.mode === "path") {
+      S2.mode = "air";
+      S2.vx = S2.vy = 0;
     }
-    if (S.mode === "air") {
-      S.vy = Math.min(S.vy + RAT.fall * dt, 600);
-      const n2 = Math.max(1, Math.ceil(Math.hypot(S.vx, S.vy) * dt / RAT.step));
+    if (S2.mode === "air") {
+      S2.vy = Math.min(S2.vy + RAT.fall * dt, 600);
+      const n2 = Math.max(1, Math.ceil(Math.hypot(S2.vx, S2.vy) * dt / RAT.step));
       for (let i = 0; i < n2; i++) {
-        e.x += S.vx * dt / n2;
-        e.y += S.vy * dt / n2;
+        e.x += S2.vx * dt / n2;
+        e.y += S2.vy * dt / n2;
         if (e.y > CH * CELL) {
           e.y = CH * CELL;
           break;
         }
-        if (S.vy > 0 && env.follow && env.onWeb && env.onWeb(e.x, e.y)) {
-          S.mode = "path";
-          S.vx = S.vy = 0;
+        if (S2.vy > 0 && env.follow && env.onWeb && env.onWeb(e.x, e.y)) {
+          S2.mode = "path";
+          S2.vx = S2.vy = 0;
           return "land";
         }
         const s = surfNormal(e.x, e.y, RAT.hold + 0.5, solidCell2);
@@ -5813,110 +5838,110 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (s.py > RAT.ceil) {
           e.x += s.px * (RAT.hold + 0.5 - s.d);
           e.y += s.py * (RAT.hold + 0.5 - s.d);
-          S.vy = Math.max(S.vy, 0);
-          S.vx *= 0.5;
+          S2.vy = Math.max(S2.vy, 0);
+          S2.vx *= 0.5;
           continue;
         }
-        surfSeat(e, S, solidCell2, RAT.hold, RAT.hold, RAT.feel);
-        S.mode = "surf";
-        S.vx = S.vy = 0;
-        S.on = 0;
-        S.rest = Math.min(S.rest, 0.05);
+        surfSeat(e, S2, solidCell2, RAT.hold, RAT.hold, RAT.feel);
+        S2.mode = "surf";
+        S2.vx = S2.vy = 0;
+        S2.on = 0;
+        S2.rest = Math.min(S2.rest, 0.05);
         return "land";
       }
       return null;
     }
-    if (!surfNormal(e.x, e.y, RAT.hold + 2, solidCell2) || S.py > RAT.ceil) {
-      S.mode = "air";
-      S.vx = S.vy = 0;
+    if (!surfNormal(e.x, e.y, RAT.hold + 2, solidCell2) || S2.py > RAT.ceil) {
+      S2.mode = "air";
+      S2.vx = S2.vy = 0;
       return null;
     }
-    if (S.on <= 0) {
-      if ((S.rest -= dt) > 0) return null;
-      S.on = kr(env.hunting ? "raHuntOn" : "raRoamOn", rnd2);
-      S.spd = speed;
-      S.arrive = env.arrive != null ? env.arrive : 3;
-      S.dot = kr("raDot", rnd2);
+    if (S2.on <= 0) {
+      if ((S2.rest -= dt) > 0) return null;
+      S2.on = kr(env.hunting ? "raHuntOn" : "raRoamOn", rnd2);
+      S2.spd = speed;
+      S2.arrive = env.arrive != null ? env.arrive : 3;
+      S2.dot = kr("raDot", rnd2);
       const j = decide();
       if (j) return j;
-      if (S.on <= 0) {
-        S.rest = env.hunting ? 0.03 : 0.1 + rnd2() * 0.2;
+      if (S2.on <= 0) {
+        S2.rest = env.hunting ? 0.03 : 0.1 + rnd2() * 0.2;
         return null;
       }
     }
-    const dist = S.spd * Math.min(dt, S.on);
-    S.on -= dt;
+    const dist = S2.spd * Math.min(dt, S2.on);
+    S2.on -= dt;
     const n = Math.max(1, Math.ceil(dist / RAT.step));
     for (let i = 0; i < n; i++) {
-      const st = dist / n, tx2 = -S.ny * S.side, ty = S.nx * S.side;
+      const st = dist / n, tx2 = -S2.ny * S2.side, ty = S2.nx * S2.side;
       e.x += tx2 * st;
       e.y += ty * st;
-      if (!surfSeat(e, S, solidCell2, st * 2, RAT.hold, RAT.feel)) {
-        e.x -= S.nx * st * 2;
-        e.y -= S.ny * st * 2;
-        if (!surfSeat(e, S, solidCell2, st * 2, RAT.hold, RAT.feel)) {
-          S.mode = "air";
-          S.vx = tx2 * S.spd * 0.5;
-          S.vy = 0;
+      if (!surfSeat(e, S2, solidCell2, st * 2, RAT.hold, RAT.feel)) {
+        e.x -= S2.nx * st * 2;
+        e.y -= S2.ny * st * 2;
+        if (!surfSeat(e, S2, solidCell2, st * 2, RAT.hold, RAT.feel)) {
+          S2.mode = "air";
+          S2.vx = tx2 * S2.spd * 0.5;
+          S2.vy = 0;
           break;
         }
       }
-      if (S.py > RAT.ceil) {
-        S.mode = "air";
-        S.vx = tx2 * S.spd * 0.3;
-        S.vy = 0;
-        S.noSide = S.side;
-        S.noT = 1.5;
+      if (S2.py > RAT.ceil) {
+        S2.mode = "air";
+        S2.vx = tx2 * S2.spd * 0.3;
+        S2.vy = 0;
+        S2.noSide = S2.side;
+        S2.noT = 1.5;
         break;
       }
-      if (Math.abs(tx2) > 0.2) S.face = tx2 > 0 ? 1 : -1;
+      if (Math.abs(tx2) > 0.2) S2.face = tx2 > 0 ? 1 : -1;
       if (!goal) continue;
       const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy) || 1;
-      if (gd < S.arrive || (-S.ny * gx + S.nx * gy) * S.side < 0) {
-        S.on = 0;
+      if (gd < S2.arrive || (-S2.ny * gx + S2.nx * gy) * S2.side < 0) {
+        S2.on = 0;
         break;
       }
-      const high = (gx * S.nx + gy * S.ny) / gd >= S.dot;
-      if (high && !S.high) {
-        S.high = true;
+      const high = (gx * S2.nx + gy * S2.ny) / gd >= S2.dot;
+      if (high && !S2.high) {
+        S2.high = true;
         const j = decide();
         if (j) return j;
-        if (S.on <= 0) break;
-      } else if (!high) S.high = false;
+        if (S2.on <= 0) break;
+      } else if (!high) S2.high = false;
     }
-    if (S.on <= 0 && S.rest <= 0) S.rest = kr(env.hunting ? "raHuntOff" : "raRoamOff", rnd2);
+    if (S2.on <= 0 && S2.rest <= 0) S2.rest = kr(env.hunting ? "raHuntOff" : "raRoamOff", rnd2);
     return null;
     function decide() {
       if (!goal) {
-        S.on = 0;
+        S2.on = 0;
         return null;
       }
       const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
-      if (gd < S.arrive) {
-        S.on = 0;
+      if (gd < S2.arrive) {
+        S2.on = 0;
         return null;
       }
-      const dx = gx / gd, dy = gy / gd, t = -S.ny * dx + S.nx * dy;
-      const barred = S.noT > 0 && (t > 0 ? 1 : -1) === S.noSide;
-      if ((barred || env.jump !== false && dx * S.nx + dy * S.ny >= S.dot) && gd < kr("raJumpR", rnd2)) {
-        const j = ratJump(e, S, goal, env, rnd2);
+      const dx = gx / gd, dy = gy / gd, t = -S2.ny * dx + S2.nx * dy;
+      const barred = S2.noT > 0 && (t > 0 ? 1 : -1) === S2.noSide;
+      if ((barred || env.jump !== false && dx * S2.nx + dy * S2.ny >= S2.dot) && gd < kr("raJumpR", rnd2)) {
+        const j = ratJump(e, S2, goal, env, rnd2);
         if (j) return j;
       }
       if (barred) {
-        S.side = -S.noSide;
+        S2.side = -S2.noSide;
         return null;
       }
       if (Math.abs(t) * gd < 2) {
-        S.on = 0;
+        S2.on = 0;
         return null;
       }
-      S.side = t > 0 ? 1 : -1;
+      S2.side = t > 0 ? 1 : -1;
       return null;
     }
   }
-  function drawRat(ctx, x, y, r, time, phase, flash, col, S, carry) {
-    const air = !S || S.mode === "air", nx = air ? 0 : S.nx, ny = air ? -1 : S.ny, f = S ? S.face : 1;
-    const moving = S && (S.on > 0 || S.mode === "air" || S.mode === "path" || S.mode === "tunnel" && !(S.wait > 0));
+  function drawRat(ctx, x, y, r, time, phase, flash, col, S2, carry) {
+    const air = !S2 || S2.mode === "air", nx = air ? 0 : S2.nx, ny = air ? -1 : S2.ny, f = S2 ? S2.face : 1;
+    const moving = S2 && (S2.on > 0 || S2.mode === "air" || S2.mode === "path" || S2.mode === "tunnel" && !(S2.wait > 0));
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(Math.atan2(nx, -ny));
@@ -6909,6 +6934,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       // the crystal machines: crystals sucked in, the shake (game/systems/shops.js)
       shopLit: null,
       // a new run's dark shop, lighting up as you go (world/shoplights.js; null = lit)
+      guide: null,
+      // a new run's guide hologram (world/guide.js)
+      pins: [],
+      // pins dropped on this floor's map (ui/map.js)
       padZap: {},
       // when each teleporter pad was last used (W.time, by padSpots seed): it crackles a moment
       stock: void 0,
@@ -6927,8 +6956,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       // this floor's creatures, and its palette
       total: void 0,
       // how many creatures the floor started with
-      miniEdgeIdx: [],
-      // the map's wall-outline cells
       matterProps: [],
       // the dark matter props (their hum)
       ambKinds: [],
@@ -7630,7 +7657,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             return gun ? Object.assign({}, q, { gun }) : null;
           }
           return null;
-        }).filter(Boolean) : null
+        }).filter(Boolean) : null,
+        // the map's pins (v0.0.141): a spot and one character
+        pins: Array.isArray(L3.pins) ? L3.pins.filter((q) => q && Number.isFinite(q.x) && Number.isFinite(q.y) && typeof q.e === "string" && q.e).map((q) => ({ x: q.x, y: q.y, e: q.e })) : []
       };
     }
     return out;
@@ -9246,7 +9275,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var EXIT_X = [CW / 6, CW / 2, CW * 5 / 6].map(Math.round);
   function makeLevel(seed, floor, owned) {
     floor = floor || 1;
-    const hash4 = (x, y) => {
+    const hash5 = (x, y) => {
       let v = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 982451653) | 0;
       v = Math.imul(v ^ v >>> 13, 1274126177);
       v ^= v >>> 16;
@@ -9255,7 +9284,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const vn = (x, y) => {
       const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
       const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
-      const a = hash4(xi, yi), b = hash4(xi + 1, yi), c = hash4(xi, yi + 1), d2 = hash4(xi + 1, yi + 1);
+      const a = hash5(xi, yi), b = hash5(xi + 1, yi), c = hash5(xi, yi + 1), d2 = hash5(xi + 1, yi + 1);
       return a + (b - a) * u + (c - a) * v + (a - b - c + d2) * u * v;
     };
     const fbm = (x, y) => 0.55 * vn(x, y) + 0.3 * vn(x * 2 + 17, y * 2 + 31) + 0.15 * vn(x * 4 + 53, y * 4 + 7);
@@ -9597,7 +9626,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let cx = 0; cx < CW; cx++) {
         const i = cy * CW + cx, m = mat[i];
         if (!m) continue;
-        const r1 = hash4(cx * 7 + 3, cy * 13 + 5);
+        const r1 = hash5(cx * 7 + 3, cy * 13 + 5);
         let c;
         if (m === ROCK) {
           const exposed = cy > 1 && (mat[i - CW] === 0 || mat[i - 2 * CW] === 0);
@@ -9606,7 +9635,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           const k = cx + cy % 2 * 3;
           if (k % 6 === 0) c = T.mortar;
           else {
-            c = mix(T.brick[0], T.brick[1], hash4(Math.floor(k / 6), cy));
+            c = mix(T.brick[0], T.brick[1], hash5(Math.floor(k / 6), cy));
             if (cy > 0 && mat[i - CW] === 0) c = c.map((v) => v * 1.18);
           }
         } else {
@@ -9623,7 +9652,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let cx = 0; cx < CW; cx++) {
         const i = cy * CW + cx;
         if (!mat[i]) continue;
-        const c = shopPanel(cx, cy), j = (hash4(cx * 5 + 1, cy * 3 + 2) - 0.5) * 4;
+        const c = shopPanel(cx, cy), j = (hash5(cx * 5 + 1, cy * 3 + 2) - 0.5) * 4;
         d[i * 4] = c[0] + j;
         d[i * 4 + 1] = c[1] + j;
         d[i * 4 + 2] = c[2] + j;
@@ -9633,7 +9662,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BED;
     for (const n of nests) for (const i of n.mound) {
       if (mat[i] !== ROCK) continue;
-      const r1 = hash4(i % CW * 3 + 5, (i / CW | 0) * 7 + 1), c = mix([92, 70, 48], [128, 98, 66], r1);
+      const r1 = hash5(i % CW * 3 + 5, (i / CW | 0) * 7 + 1), c = mix([92, 70, 48], [128, 98, 66], r1);
       d[i * 4] = c[0];
       d[i * 4 + 1] = c[1];
       d[i * 4 + 2] = c[2];
@@ -9645,7 +9674,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const c = mix(T.bg, T.bg2, Math.min(1, t * 1.3));
         const big = fbm(x / 34 + 700, y / 34 + 500);
         const shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
-        const j = (hash4(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
+        const j = (hash5(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
         bgImg.data[k] = c[0] * shade + j;
         bgImg.data[k + 1] = c[1] * shade + j;
         bgImg.data[k + 2] = c[2] * shade + j;
@@ -9745,7 +9774,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           t: 0.5 + n.x % 7 * 0.4,
           stash: 0,
           max: 0,
-          left: Math.round(kru("raBrood", hash4(n.x * 3 + 11, n.y * 5 + 7)))
+          left: Math.round(kru("raBrood", hash5(n.x * 3 + 11, n.y * 5 + 7)))
         }
       });
     }
@@ -9783,7 +9812,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         continue;
       }
       fuel[i] = 0;
-      const r1 = hash4(i % CW * 5 + 11, (i / CW | 0) * 3 + 7), k = i * 4;
+      const r1 = hash5(i % CW * 5 + 11, (i / CW | 0) * 3 + 7), k = i * 4;
       const glint = r1 > 0.9 ? 1.25 : 0.8 + r1 * 0.3;
       d[k] = Math.min(255, 222 * glint);
       d[k + 1] = Math.min(255, 168 * glint);
@@ -10932,9 +10961,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function jellyStep(e, env, dt) {
     const { solidCell: solidCell2, rnd: rnd2 } = env;
-    let S = e.je;
-    if (!S) {
-      S = e.je = {
+    let S2 = e.je;
+    if (!S2) {
+      S2 = e.je = {
         hd: -Math.PI / 2 + (rnd2() - 0.5) * 0.6,
         vx: 0,
         vy: 0,
@@ -10952,56 +10981,56 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let i = 0; i < nt; i++) {
         const T = [], nv = Math.max(2, Math.round(kr("jeVerts", rnd2)));
         for (let j = 0; j < nv; j++) T.push({ x: NaN, y: NaN });
-        S.tent.push(T);
+        S2.tent.push(T);
       }
     }
     const mul = env.speedMul || 1;
     let hunt = !!(env.hunting && env.goal);
-    S.t += dt;
-    roamStep(S, e, dt, rnd2, "je", env.stay);
+    S2.t += dt;
+    roamStep(S2, e, dt, rnd2, "je", env.stay);
     const lost = !!(env.stay && !env.stay(e.x, e.y));
     if (lost) hunt = false;
-    if (hunt && !S.range) S.range = kr("jeRange", rnd2);
-    if (!hunt) S.range = 0;
-    const goal = hunt ? env.goal : lost ? { x: e.hx, y: e.hy } : { x: S.rx, y: S.ry };
+    if (hunt && !S2.range) S2.range = kr("jeRange", rnd2);
+    if (!hunt) S2.range = 0;
+    const goal = hunt ? env.goal : lost ? { x: e.hx, y: e.hy } : { x: S2.rx, y: S2.ry };
     const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
-    const range = S.range * (env.rangeMul || 1);
+    const range = S2.range * (env.rangeMul || 1);
     const want = !hunt && gd < 12 ? -Math.PI / 2 : Math.atan2(gy, gx);
-    S.hd = turnToward(S.hd, want, S.turn * Math.PI / 180 * mul * dt);
-    const off = Math.abs(angDiff(want, S.hd)) * 180 / Math.PI;
-    S.inRange = hunt && gd < range;
-    S.aimed = hunt && off < S.aimTol;
+    S2.hd = turnToward(S2.hd, want, S2.turn * Math.PI / 180 * mul * dt);
+    const off = Math.abs(angDiff(want, S2.hd)) * 180 / Math.PI;
+    S2.inRange = hunt && gd < range;
+    S2.aimed = hunt && off < S2.aimTol;
     let out = null;
-    if (S.push > 0) {
-      const a = S.pushA * mul * Math.min(dt, S.push);
-      S.vx += Math.cos(S.hd) * a;
-      S.vy += Math.sin(S.hd) * a;
-      S.push -= dt;
-    } else if ((S.rest -= dt) <= 0) {
-      const v = (hunt ? gd > range : gd > 10) && off < S.tol ? kr(hunt ? "jeHuntPush" : "jeRoamPush", rnd2) : 0;
-      const dg = Math.max(0.1, S.drag), glide = Math.min(gd, 160, Math.max(20, v / dg));
-      const stay = env.stay, out0 = stay && !lost && !stay(e.x + Math.cos(S.hd) * glide + S.vx / dg, e.y + Math.sin(S.hd) * glide + S.vy / dg);
+    if (S2.push > 0) {
+      const a = S2.pushA * mul * Math.min(dt, S2.push);
+      S2.vx += Math.cos(S2.hd) * a;
+      S2.vy += Math.sin(S2.hd) * a;
+      S2.push -= dt;
+    } else if ((S2.rest -= dt) <= 0) {
+      const v = (hunt ? gd > range : gd > 10) && off < S2.tol ? kr(hunt ? "jeHuntPush" : "jeRoamPush", rnd2) : 0;
+      const dg = Math.max(0.1, S2.drag), glide = Math.min(gd, 160, Math.max(20, v / dg));
+      const stay = env.stay, out0 = stay && !lost && !stay(e.x + Math.cos(S2.hd) * glide + S2.vx / dg, e.y + Math.sin(S2.hd) * glide + S2.vy / dg);
       if (v > 0 && !out0) {
         const pt = kr("jePushT", rnd2);
-        S.push = pt;
-        S.pushA = v / Math.max(pt, 1e-3);
-        S.vref = Math.max(v, 1);
-        S.rest = kr(hunt ? "jeHuntRest" : "jeRoamRest", rnd2);
+        S2.push = pt;
+        S2.pushA = v / Math.max(pt, 1e-3);
+        S2.vref = Math.max(v, 1);
+        S2.rest = kr(hunt ? "jeHuntRest" : "jeRoamRest", rnd2);
         feel(hunt);
         out = "pulse";
-      } else S.rest = 0.05 + rnd2() * 0.1;
+      } else S2.rest = 0.05 + rnd2() * 0.1;
     }
-    const k = Math.exp(-S.drag * dt);
-    S.vx *= k;
-    S.vy = S.vy * k + S.sink * dt;
-    flyMove(e, S, dt, e.r * JELLY.hitR, solidCell2, S.bounce);
-    const f = Math.min(1, Math.hypot(S.vx, S.vy) / S.vref);
-    S.shape = 1 - Math.pow(1 - f, kru("jeThin", S.u.thin));
-    const B = jellyBell(e.r, S.shape, kru("jeSquash", S.u.sq));
-    const c = Math.cos(S.hd), s = Math.sin(S.hd), n = S.tent.length;
-    const len = kru("jeTentLen", S.u.len), wave = kru("jeWave", S.u.wave), sag = kru("jeSag", S.u.sag);
+    const k = Math.exp(-S2.drag * dt);
+    S2.vx *= k;
+    S2.vy = S2.vy * k + S2.sink * dt;
+    flyMove(e, S2, dt, e.r * JELLY.hitR, solidCell2, S2.bounce);
+    const f = Math.min(1, Math.hypot(S2.vx, S2.vy) / S2.vref);
+    S2.shape = 1 - Math.pow(1 - f, kru("jeThin", S2.u.thin));
+    const B = jellyBell(e.r, S2.shape, kru("jeSquash", S2.u.sq));
+    const c = Math.cos(S2.hd), s = Math.sin(S2.hd), n = S2.tent.length;
+    const len = kru("jeTentLen", S2.u.len), wave = kru("jeWave", S2.u.wave), sag = kru("jeSag", S2.u.sag);
     for (let i = 0; i < n; i++) {
-      const T = S.tent[i], seg = len / (T.length - 1);
+      const T = S2.tent[i], seg = len / (T.length - 1);
       const lx = n > 1 ? (i / (n - 1) - 0.5) * 1.4 * B.rw : 0;
       T[0].x = e.x - lx * s - B.rim * c;
       T[0].y = e.y + lx * c - B.rim * s;
@@ -11011,7 +11040,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       for (let j = 1; j < T.length; j++) {
         const q = T[j], pq = T[j - 1];
-        const sw = Math.sin(S.t * 3.1 + i * 0.5 - j * 0.9) * wave * dt * j / (T.length - 1);
+        const sw = Math.sin(S2.t * 3.1 + i * 0.5 - j * 0.9) * wave * dt * j / (T.length - 1);
         q.x -= s * sw;
         q.y += c * sw + sag * dt;
         const dx = q.x - pq.x, dy = q.y - pq.y, d = Math.hypot(dx, dy) || 1;
@@ -11021,13 +11050,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return out;
     function feel(h3) {
-      S.turn = kr("jeTurn", rnd2);
-      S.tol = kr("jePushTol", rnd2);
-      S.drag = kr("jeDrag", rnd2);
-      S.sink = kr("jeSink", rnd2);
-      S.bounce = kr("jeBounce", rnd2);
-      S.aimTol = kr("jeAimTol", rnd2);
-      S.range = h3 ? kr("jeRange", rnd2) : 0;
+      S2.turn = kr("jeTurn", rnd2);
+      S2.tol = kr("jePushTol", rnd2);
+      S2.drag = kr("jeDrag", rnd2);
+      S2.sink = kr("jeSink", rnd2);
+      S2.bounce = kr("jeBounce", rnd2);
+      S2.aimTol = kr("jeAimTol", rnd2);
+      S2.range = h3 ? kr("jeRange", rnd2) : 0;
     }
   }
   function segHitsBox(ax, ay, bx, by, x0, y0, x1, y1) {
@@ -11047,9 +11076,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     return clip(-dx, ax - x0) && clip(dx, x1 - ax) && clip(-dy, ay - y0) && clip(dy, y1 - ay);
   }
-  function tentacleTouch(S, x0, y0, x1, y1) {
-    if (!S || !S.tent) return null;
-    for (const T of S.tent) for (let j = 1; j < T.length; j++) {
+  function tentacleTouch(S2, x0, y0, x1, y1) {
+    if (!S2 || !S2.tent) return null;
+    for (const T of S2.tent) for (let j = 1; j < T.length; j++) {
       const a = T[j - 1], b = T[j];
       if (!isNaN(a.x) && segHitsBox(a.x, a.y, b.x, b.y, x0, y0, x1, y1)) return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
     }
@@ -11119,14 +11148,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return any;
   }
-  function drawJelly(ctx, x, y, r, time, phase, flash, col, S) {
-    const P2 = jellyPal(S ? S.u.col : 0.5);
-    const sh = Math.max(0, Math.min(1, (S ? S.shape : 0) + 0.05 * Math.sin(time * 2.2 + phase)));
-    const B = jellyBell(r, sh, S ? kru("jeSquash", S.u.sq) : 1);
-    if (S) {
+  function drawJelly(ctx, x, y, r, time, phase, flash, col, S2) {
+    const P2 = jellyPal(S2 ? S2.u.col : 0.5);
+    const sh = Math.max(0, Math.min(1, (S2 ? S2.shape : 0) + 0.05 * Math.sin(time * 2.2 + phase)));
+    const B = jellyBell(r, sh, S2 ? kru("jeSquash", S2.u.sq) : 1);
+    if (S2) {
       ctx.fillStyle = flash ? "#ffffff" : P2.tent;
       ctx.globalAlpha = 0.6;
-      for (const T of S.tent) {
+      for (const T of S2.tent) {
         const n = T.length, L3 = [], R = [];
         for (let j = 0; j < n; j++) {
           const a = T[Math.max(0, j - 1)], b = T[Math.min(n - 1, j + 1)];
@@ -11152,7 +11181,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate((S ? S.hd : -Math.PI / 2) + Math.PI / 2);
+    ctx.rotate((S2 ? S2.hd : -Math.PI / 2) + Math.PI / 2);
     const bell = (k, oy2, lap) => {
       const w = B.w * k, h3 = B.h * k, rw = B.rw * k, top = B.top * k + oy2, rim = B.rim * k + oy2;
       ctx.beginPath();
@@ -11217,12 +11246,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   });
   function puffSpores(W, e) {
     if (e.x < W.camX - 150 || e.x > W.camX + W.viewW + 150 || e.y < W.camY - 150 || e.y > W.camY + W.viewH + 150) return;
-    const S = e.je, B = jellyBell(e.r, S.shape, kru("jeSquash", S.u.sq));
-    const c = Math.cos(S.hd), sn = Math.sin(S.hd), n = Math.round(kr("jeSpores"));
+    const S2 = e.je, B = jellyBell(e.r, S2.shape, kru("jeSquash", S2.u.sq));
+    const c = Math.cos(S2.hd), sn = Math.sin(S2.hd), n = Math.round(kr("jeSpores"));
     for (let i = 0; i < n && W.amb.length < 500; i++) {
       const lx = (Math.random() * 2 - 1) * B.rw * 0.7;
       const q = spore(W, e.x - lx * sn - B.rim * c, e.y + lx * c - B.rim * sn, Math.random());
-      const a = S.hd + Math.PI + (Math.random() * 2 - 1) * kr("jeSporeSpread") * Math.PI / 180, v = kr("jeSporeSpd");
+      const a = S2.hd + Math.PI + (Math.random() * 2 - 1) * kr("jeSporeSpread") * Math.PI / 180, v = kr("jeSporeSpd");
       q.kx = Math.cos(a) * v;
       q.ky = Math.sin(a) * v;
       q.kd = kr("jeSporeDrag");
@@ -12231,23 +12260,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       rangeMul: sees,
       stay: W.zone ? ((x, y) => natural(W, x, y)) : null
     }, dt) === "pulse") puffSpores(W, e);
-    const S = e.je;
+    const S2 = e.je;
     if (!W.p.dead && e.touch <= 0 && dist < 180) {
-      const t = tentacleTouch(S, W.p.x, W.p.y, W.p.x + PW, W.p.y + PH);
+      const t = tentacleTouch(S2, W.p.x, W.p.y, W.p.x + PW, W.p.y + PH);
       if (t) {
         hurt(W, G, Math.round(kr("jeBite")));
         e.touch = kr("jeBiteCd");
-        burst(W, t.x, t.y, 5, jellyPal(S.u.col).tent);
+        burst(W, t.x, t.y, 5, jellyPal(S2.u.col).tent);
         SFX.creature(k, "bite", t.x, t.y);
       }
     }
-    if (hunting && S.inRange && S.aimed && e.cd <= 0) {
+    if (hunting && S2.inRange && S2.aimed && e.cd <= 0) {
       e.cd = 0.25;
-      const hx = e.x + Math.cos(S.hd) * e.r * 0.9, hy = e.y + Math.sin(S.hd) * e.r * 0.9;
+      const hx = e.x + Math.cos(S2.hd) * e.r * 0.9, hy = e.y + Math.sin(S2.hd) * e.r * 0.9;
       if (lineOfSight(W, hx, hy, pcx, pcy)) {
         e.cd = kr("jeShotCd");
         const a = Math.atan2(pcy - hy, pcx - hx) + (Math.random() * 2 - 1) * kr("jeSpread") * Math.PI / 180;
-        const v = kr("jeShotSpd"), P2 = jellyPal(S.u.col);
+        const v = kr("jeShotSpd"), P2 = jellyPal(S2.u.col);
         W.enemyShots.push({
           x: hx,
           y: hy,
@@ -12276,8 +12305,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/creatures/spider.js
   var SPIDER = { hold: 6, feel: 14, step: 1.5, fall: 900 };
-  function spiderSeat(e, S, solidCell2, maxMove) {
-    return surfSeat(e, S, solidCell2, maxMove, SPIDER.hold, SPIDER.feel);
+  function spiderSeat(e, S2, solidCell2, maxMove) {
+    return surfSeat(e, S2, solidCell2, maxMove, SPIDER.hold, SPIDER.feel);
   }
   var segNear = (L3, x, y) => {
     const vx = L3.bx - L3.ax, vy = L3.by - L3.ay, ll = vx * vx + vy * vy || 1;
@@ -12294,7 +12323,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function spiderStep(e, env, dt) {
     const { solidCell: solidCell2, webs, rnd: rnd2 } = env;
-    const S = e.sp || (e.sp = {
+    const S2 = e.sp || (e.sp = {
       mode: "fall",
       vy: 0,
       nx: 0,
@@ -12311,38 +12340,38 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ra: rnd2() * 6.28,
       high: false
     });
-    S.webT = (S.webT || 0) - dt;
-    roamStep(S, e, dt, rnd2, "sp");
-    const goal = env.hunting ? env.goal : { x: S.rx, y: S.ry };
+    S2.webT = (S2.webT || 0) - dt;
+    roamStep(S2, e, dt, rnd2, "sp");
+    const goal = env.hunting ? env.goal : { x: S2.rx, y: S2.ry };
     let out = null;
-    if (S.mode === "fall") {
-      S.vy = Math.min(S.vy + SPIDER.fall * dt, 600);
-      const n2 = Math.max(1, Math.ceil(S.vy * dt / SPIDER.step));
+    if (S2.mode === "fall") {
+      S2.vy = Math.min(S2.vy + SPIDER.fall * dt, 600);
+      const n2 = Math.max(1, Math.ceil(S2.vy * dt / SPIDER.step));
       for (let i = 0; i < n2; i++) {
-        e.y += S.vy * dt / n2;
+        e.y += S2.vy * dt / n2;
         if (e.y > CH * CELL) {
           e.y = CH * CELL;
           break;
         }
         if (surfNormal(e.x, e.y, SPIDER.hold + 1, solidCell2)) {
-          spiderSeat(e, S, solidCell2, SPIDER.hold);
-          S.mode = "surf";
-          S.vy = 0;
-          S.on = 0;
-          S.rest = 0.1;
+          spiderSeat(e, S2, solidCell2, SPIDER.hold);
+          S2.mode = "surf";
+          S2.vy = 0;
+          S2.on = 0;
+          S2.rest = 0.1;
           break;
         }
       }
       return null;
     }
-    if (S.mode === "shoot") {
-      const sh = S.shot;
+    if (S2.mode === "shoot") {
+      const sh = S2.shot;
       sh.t += sh.spd * dt;
       if (sh.t < sh.len) return null;
       const hx = sh.x + sh.dx * sh.len, hy = sh.y + sh.dy * sh.len;
       const inx = hx + sh.dx * 1.2, iny = hy + sh.dy * 1.2;
-      S.mode = sh.from;
-      S.shot = null;
+      S2.mode = sh.from;
+      S2.shot = null;
       if (!solidCell2(Math.floor(inx / CELL), Math.floor(iny / CELL))) return null;
       const L3 = {
         ax: sh.x,
@@ -12360,109 +12389,109 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       webs.push(L3);
       const mine = webs.filter((w) => w.owner === e);
       if (mine.length > Math.round(spr("spMaxLines", rnd2))) {
-        const old = mine.find((w) => w !== S.line);
+        const old = mine.find((w) => w !== S2.line);
         if (old) webs.splice(webs.indexOf(old), 1);
       }
-      S.mode = "line";
-      S.line = L3;
-      S.u = 0;
-      S.dir = 1;
+      S2.mode = "line";
+      S2.line = L3;
+      S2.u = 0;
+      S2.dir = 1;
       return "web";
     }
-    if (S.mode === "line" && webs.indexOf(S.line) < 0) {
-      S.mode = "fall";
-      S.line = null;
-      S.vy = 0;
+    if (S2.mode === "line" && webs.indexOf(S2.line) < 0) {
+      S2.mode = "fall";
+      S2.line = null;
+      S2.vy = 0;
       return null;
     }
-    if (S.mode === "surf" && !surfNormal(e.x, e.y, SPIDER.hold + 2, solidCell2)) {
-      S.mode = "fall";
-      S.vy = 0;
+    if (S2.mode === "surf" && !surfNormal(e.x, e.y, SPIDER.hold + 2, solidCell2)) {
+      S2.mode = "fall";
+      S2.vy = 0;
       return null;
     }
-    if (S.on <= 0) {
-      if ((S.rest -= dt) > 0) return null;
-      S.on = spr(env.hunting ? "spHuntOn" : "spRoamOn", rnd2);
-      S.spd = env.speed || spr("spSpeed", rnd2);
-      S.arrive = env.hunting ? spr("spArrive", rnd2) : 3;
-      S.dot = spr("spDot", rnd2);
+    if (S2.on <= 0) {
+      if ((S2.rest -= dt) > 0) return null;
+      S2.on = spr(env.hunting ? "spHuntOn" : "spRoamOn", rnd2);
+      S2.spd = env.speed || spr("spSpeed", rnd2);
+      S2.arrive = env.hunting ? spr("spArrive", rnd2) : 3;
+      S2.dot = spr("spDot", rnd2);
       decide();
-      if (S.mode === "shoot") return null;
-      if (S.on <= 0) {
-        S.rest = 0.1 + rnd2() * 0.2;
+      if (S2.mode === "shoot") return null;
+      if (S2.on <= 0) {
+        S2.rest = 0.1 + rnd2() * 0.2;
         return null;
       }
     }
-    if (S.mode === "shoot") return null;
-    const speed = (S.spd || spr("spSpeed", rnd2)) * (env.speedMul || 1);
-    const dist = speed * Math.min(dt, S.on);
-    S.on -= dt;
+    if (S2.mode === "shoot") return null;
+    const speed = (S2.spd || spr("spSpeed", rnd2)) * (env.speedMul || 1);
+    const dist = speed * Math.min(dt, S2.on);
+    S2.on -= dt;
     const n = Math.max(1, Math.ceil(dist / SPIDER.step));
-    for (let i = 0; i < n && S.mode !== "shoot"; i++) {
+    for (let i = 0; i < n && S2.mode !== "shoot"; i++) {
       const st = dist / n;
-      if (S.mode === "surf") {
-        const tx2 = -S.ny * S.side, ty = S.nx * S.side;
+      if (S2.mode === "surf") {
+        const tx2 = -S2.ny * S2.side, ty = S2.nx * S2.side;
         e.x += tx2 * st;
         e.y += ty * st;
-        if (!spiderSeat(e, S, solidCell2, st * 2)) {
-          e.x -= S.nx * st * 2;
-          e.y -= S.ny * st * 2;
-          if (!spiderSeat(e, S, solidCell2, st * 2)) {
-            S.mode = "fall";
-            S.vy = 0;
+        if (!spiderSeat(e, S2, solidCell2, st * 2)) {
+          e.x -= S2.nx * st * 2;
+          e.y -= S2.ny * st * 2;
+          if (!spiderSeat(e, S2, solidCell2, st * 2)) {
+            S2.mode = "fall";
+            S2.vy = 0;
             break;
           }
         }
         const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy) || 1;
-        const high = (gx * S.nx + gy * S.ny) / gd >= S.dot;
-        if (high && !S.high) {
-          S.high = true;
+        const high = (gx * S2.nx + gy * S2.ny) / gd >= S2.dot;
+        if (high && !S2.high) {
+          S2.high = true;
           decide();
-        } else if (!high) S.high = false;
-        if (gd < (S.arrive || 3) || (-S.ny * gx + S.nx * gy) * S.side < 0) {
-          S.on = 0;
+        } else if (!high) S2.high = false;
+        if (gd < (S2.arrive || 3) || (-S2.ny * gx + S2.nx * gy) * S2.side < 0) {
+          S2.on = 0;
           break;
         }
-      } else if (S.mode === "line") {
-        const L3 = S.line, len = Math.hypot(L3.bx - L3.ax, L3.by - L3.ay) || 1;
-        const ux = (L3.bx - L3.ax) / len * S.dir, uy = (L3.by - L3.ay) / len * S.dir;
-        if (!S.go && (goal.x - e.x) * ux + (goal.y - e.y) * uy <= 0) {
-          S.on = 0;
+      } else if (S2.mode === "line") {
+        const L3 = S2.line, len = Math.hypot(L3.bx - L3.ax, L3.by - L3.ay) || 1;
+        const ux = (L3.bx - L3.ax) / len * S2.dir, uy = (L3.by - L3.ay) / len * S2.dir;
+        if (!S2.go && (goal.x - e.x) * ux + (goal.y - e.y) * uy <= 0) {
+          S2.on = 0;
           break;
         }
-        S.u += S.dir * st / len;
-        if (S.u >= 1 || S.u <= 0) {
-          S.u = S.u >= 1 ? 1 : 0;
-          e.x = S.u ? L3.bx : L3.ax;
-          e.y = S.u ? L3.by : L3.ay;
-          S.mode = "surf";
-          S.line = null;
-          S.go = false;
-          if (!spiderSeat(e, S, solidCell2, SPIDER.hold)) {
-            S.mode = "fall";
-            S.vy = 0;
+        S2.u += S2.dir * st / len;
+        if (S2.u >= 1 || S2.u <= 0) {
+          S2.u = S2.u >= 1 ? 1 : 0;
+          e.x = S2.u ? L3.bx : L3.ax;
+          e.y = S2.u ? L3.by : L3.ay;
+          S2.mode = "surf";
+          S2.line = null;
+          S2.go = false;
+          if (!spiderSeat(e, S2, solidCell2, SPIDER.hold)) {
+            S2.mode = "fall";
+            S2.vy = 0;
             break;
           }
           decide();
           continue;
         }
-        e.x = L3.ax + (L3.bx - L3.ax) * S.u;
-        e.y = L3.ay + (L3.by - L3.ay) * S.u;
+        e.x = L3.ax + (L3.bx - L3.ax) * S2.u;
+        e.y = L3.ay + (L3.by - L3.ay) * S2.u;
       }
     }
-    if (S.on <= 0 && S.rest <= 0) S.rest = spr(env.hunting ? "spHuntOff" : "spRoamOff", rnd2);
+    if (S2.on <= 0 && S2.rest <= 0) S2.rest = spr(env.hunting ? "spHuntOff" : "spRoamOff", rnd2);
     return out;
     function decide() {
       const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
-      if (gd < (S.arrive || 3)) {
-        S.on = 0;
+      if (gd < (S2.arrive || 3)) {
+        S2.on = 0;
         return;
       }
       const dx = gx / gd, dy = gy / gd;
       const tryLine = () => {
         let best = null, bd = spr("spGrab", rnd2);
         for (const L3 of webs) {
-          if (L3 === S.line) continue;
+          if (L3 === S2.line) continue;
           const q = segNear(L3, e.x, e.y);
           if (q.d > bd) continue;
           const len = Math.hypot(L3.bx - L3.ax, L3.by - L3.ay) || 1;
@@ -12473,73 +12502,73 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           bd = q.d;
         }
         if (!best) return false;
-        S.mode = "line";
-        S.line = best.L;
-        S.u = best.u;
-        S.dir = best.dir;
+        S2.mode = "line";
+        S2.line = best.L;
+        S2.u = best.u;
+        S2.dir = best.dir;
         e.x = best.L.ax + (best.L.bx - best.L.ax) * best.u;
         e.y = best.L.ay + (best.L.by - best.L.ay) * best.u;
         return true;
       };
       const tryShoot = (from) => {
-        if (S.webT > 0 || !env.hunting && gd < 40) return false;
+        if (S2.webT > 0 || !env.hunting && gd < 40) return false;
         const a = spiderAim(e.x, e.y, dx, dy, env.reach || spr("spWeb", rnd2), solidCell2);
         if (!a) return false;
         let ax0 = e.x, ay0 = e.y, ain = null;
         if (from === "surf") {
-          const d = rayDist(e.x, e.y, -S.nx, -S.ny, SPIDER.feel + 4, solidCell2);
-          ax0 = e.x - S.nx * d;
-          ay0 = e.y - S.ny * d;
-          ain = { x: e.x - S.nx * (d + 1.2), y: e.y - S.ny * (d + 1.2) };
+          const d = rayDist(e.x, e.y, -S2.nx, -S2.ny, SPIDER.feel + 4, solidCell2);
+          ax0 = e.x - S2.nx * d;
+          ay0 = e.y - S2.ny * d;
+          ain = { x: e.x - S2.nx * (d + 1.2), y: e.y - S2.ny * (d + 1.2) };
         }
-        S.webT = spr(env.hunting ? "spHuntWeb" : "spRoamWeb", rnd2);
-        S.shot = { spd: spr("spLineSpd", rnd2), x: e.x, y: e.y, dx: a.dx, dy: a.dy, len: a.len, t: 0, from, ax0, ay0, ain };
-        S.mode = "shoot";
+        S2.webT = spr(env.hunting ? "spHuntWeb" : "spRoamWeb", rnd2);
+        S2.shot = { spd: spr("spLineSpd", rnd2), x: e.x, y: e.y, dx: a.dx, dy: a.dy, len: a.len, t: 0, from, ax0, ay0, ain };
+        S2.mode = "shoot";
         return true;
       };
-      if (S.mode === "surf") {
-        const dot = dx * S.nx + dy * S.ny;
-        S.high = dot >= (S.dot || 0.6);
-        if (S.high && (tryLine() || tryShoot("surf"))) return;
-        const t = -S.ny * dx + S.nx * dy;
+      if (S2.mode === "surf") {
+        const dot = dx * S2.nx + dy * S2.ny;
+        S2.high = dot >= (S2.dot || 0.6);
+        if (S2.high && (tryLine() || tryShoot("surf"))) return;
+        const t = -S2.ny * dx + S2.nx * dy;
         if (Math.abs(t) * gd < 4) {
-          S.on = 0;
+          S2.on = 0;
           return;
         }
-        S.side = t > 0 ? 1 : -1;
-      } else if (S.mode === "line") {
-        const L3 = S.line, len = Math.hypot(L3.bx - L3.ax, L3.by - L3.ay) || 1;
+        S2.side = t > 0 ? 1 : -1;
+      } else if (S2.mode === "line") {
+        const L3 = S2.line, len = Math.hypot(L3.bx - L3.ax, L3.by - L3.ay) || 1;
         const al = ((L3.bx - L3.ax) * dx + (L3.by - L3.ay) * dy) / len;
-        S.go = false;
+        S2.go = false;
         if (Math.abs(al) > 0.3) {
-          S.dir = al > 0 ? 1 : -1;
+          S2.dir = al > 0 ? 1 : -1;
           return;
         }
         if (tryLine() || tryShoot("line")) return;
         const da = Math.hypot(goal.x - L3.ax, goal.y - L3.ay), db2 = Math.hypot(goal.x - L3.bx, goal.y - L3.by);
-        S.dir = db2 < da ? 1 : -1;
-        S.go = true;
+        S2.dir = db2 < da ? 1 : -1;
+        S2.go = true;
       }
     }
   }
-  function drawSpider(ctx, x, y, r, time, phase, flash, col, S) {
+  function drawSpider(ctx, x, y, r, time, phase, flash, col, S2) {
     let nx = 0, ny = -1, side = 1, moving = false;
-    if (S) {
-      if (S.mode === "line" && S.line) {
-        const L3 = S.line, len = Math.hypot(L3.bx - L3.ax, L3.by - L3.ay) || 1;
+    if (S2) {
+      if (S2.mode === "line" && S2.line) {
+        const L3 = S2.line, len = Math.hypot(L3.bx - L3.ax, L3.by - L3.ay) || 1;
         nx = -(L3.by - L3.ay) / len;
         ny = (L3.bx - L3.ax) / len;
         if (ny > 0) {
           nx = -nx;
           ny = -ny;
         }
-        side = S.dir * (L3.bx - L3.ax >= 0 ? 1 : -1);
-      } else if (S.mode === "surf" || S.mode === "shoot") {
-        nx = S.nx;
-        ny = S.ny;
-        side = S.side;
+        side = S2.dir * (L3.bx - L3.ax >= 0 ? 1 : -1);
+      } else if (S2.mode === "surf" || S2.mode === "shoot") {
+        nx = S2.nx;
+        ny = S2.ny;
+        side = S2.side;
       }
-      moving = S.on > 0 && S.mode !== "shoot";
+      moving = S2.on > 0 && S2.mode !== "shoot";
     }
     ctx.save();
     ctx.translate(x, y);
@@ -12606,8 +12635,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       e.y += e.woy;
     }
     e.silkT = (e.silkT || 0) - dt;
-    const S = e.sp;
-    if (hunting && e.silkT <= 0 && S && (S.mode === "surf" || S.mode === "line") && dist < (e.silkR || (e.silkR = spr("spSilk"))) * sees && dist > e.r + 24) {
+    const S2 = e.sp;
+    if (hunting && e.silkT <= 0 && S2 && (S2.mode === "surf" || S2.mode === "line") && dist < (e.silkR || (e.silkR = spr("spSilk"))) * sees && dist > e.r + 24) {
       e.silkT = 0.4;
       if (lineOfSight(W, e.x, e.y, pcx, pcy)) {
         e.silkT = spr("spSilkCd");
@@ -13700,33 +13729,33 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.enemies.push(e);
     return e;
   }
-  function unstick(W, e, S, home) {
+  function unstick(W, e, S2, home) {
     e.stN = (e.stN || 0) + 1;
     if (e.stN >= 3 && home) {
       burst(W, e.x, e.y, 6, "#6a5a48");
-      S.mode = "tunnel";
-      S.len = pathLen(e.path);
-      S.s = S.len * 0.7;
-      S.dir = -1;
-      S.wait = 0;
+      S2.mode = "tunnel";
+      S2.len = pathLen(e.path);
+      S2.s = S2.len * 0.7;
+      S2.dir = -1;
+      S2.wait = 0;
       e.stN = 0;
     } else if (e.stN >= 3) {
       e.giveUp = 4;
       e.aggro = false;
       e.stN = 0;
     } else {
-      S.mode = "air";
-      S.vx = (Math.random() < 0.5 ? -1 : 1) * (60 + Math.random() * 80);
-      S.vy = -150 - Math.random() * 120;
-      e.x += S.nx * 1.5;
-      e.y += S.ny * 1.5;
+      S2.mode = "air";
+      S2.vx = (Math.random() < 0.5 ? -1 : 1) * (60 + Math.random() * 80);
+      S2.vy = -150 - Math.random() * 120;
+      e.x += S2.nx * 1.5;
+      e.y += S2.ny * 1.5;
     }
   }
   function ratFrame(W, G, e, dt, dist, hunting, pcx, pcy) {
     const N = e.home && !e.home.dead ? e.home : null, k = e.k;
     const wake = N ? N.nest.wake || 520 : 520;
-    const S = e.ra;
-    if (dist > wake * 1.3 && S && S.mode !== "air") return;
+    const S2 = e.ra;
+    if (dist > wake * 1.3 && S2 && S2.mode !== "air") return;
     let goal = null, home = false, fast = false, jump = true, want = null;
     if (e.giveUp > 0) e.giveUp -= dt;
     if (e.carry > 0 && N) {
@@ -13766,7 +13795,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (!e.arrive || Math.random() < dt) e.arrive = kr("raArrive");
     let way = goal, follow = false, air = false;
-    if (fast && S && S.mode !== "tunnel") {
+    if (fast && S2 && S2.mode !== "tunnel") {
       const F = home ? navFor(W, N.nest, goal, 100) : want ? navFor(W, want, goal, 36) : navFor(W, W.navYou, goal, 56);
       const w = F && navWay(F, e.x, e.y, 1);
       if (w) {
@@ -13782,7 +13811,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       } else if (w && (e.bestT += dt) > 4) {
         e.bestT = 0;
         e.bestD = w.dist;
-        unstick(W, e, S, home);
+        unstick(W, e, S2, home);
       }
     }
     const cold = e.chill && e.chill < 1 ? e.chill : 1;
@@ -13800,10 +13829,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       arrive: way === goal && !want && hunting ? e.arrive : 3,
       jump
     }, dt);
-    if (fast && (S.mode === "surf" || S.mode === "path")) {
+    if (fast && (S2.mode === "surf" || S2.mode === "path")) {
       e.stT = (e.stT || 0) + dt;
       if (e.stT > 1.2) {
-        if (Math.hypot(e.x - (e.stX || 0), e.y - (e.stY || 0)) < 6 && Math.hypot(goal.x - e.x, goal.y - e.y) > 14) unstick(W, e, S, home);
+        if (Math.hypot(e.x - (e.stX || 0), e.y - (e.stY || 0)) < 6 && Math.hypot(goal.x - e.x, goal.y - e.y) > 14) unstick(W, e, S2, home);
         else if (!(e.bestT > 0)) e.stN = 0;
         e.stT = 0;
         e.stX = e.x;
@@ -14183,11 +14212,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const pas = gunPassives(g);
     return Math.max(MIN_RECH, (g.recharge + pas.rech) * pas.rechMul);
   }
-  function blankShot(sm, spread) {
+  function blankShot(sm, spread2) {
     return {
       dmg: sm.dmg || 0,
       speed: sm.speed || 0,
-      spread: (sm.spread || 0) + spread,
+      spread: (sm.spread || 0) + spread2,
       size: sm.size || 2,
       life: sm.life || 1,
       count: sm.count || 1,
@@ -14260,7 +14289,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const start2 = g.idx, mods = [], defs = [];
     const holds = [];
     let addTrig = null;
-    let multi = g.multi, cost = 0, manaMul = 1, ran = false, wrapped = 0;
+    let multi = g.multi, cost2 = 0, manaMul = 1, ran = false, wrapped = 0;
     let delay = g.castDelay;
     let form = null, hp = 0;
     const acts = [];
@@ -14330,7 +14359,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (!id) continue;
         const m = MODS[id];
         if (m.kind === "passive") continue;
-        cost += m.mana || 0;
+        cost2 += m.mana || 0;
         if (m.hp) hp += m.hp;
         if (m.manaMul) manaMul *= m.manaMul;
         timing(m);
@@ -14371,7 +14400,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const m = MODS[id];
       if (m.kind === "passive") continue;
       if (m.kind === "mod" || m.kind === "util") {
-        cost += m.mana || 0;
+        cost2 += m.mana || 0;
         if (m.hp) hp += m.hp;
         if (m.act) acts.push(m.act);
         if (m.manaMul) manaMul *= m.manaMul;
@@ -14405,7 +14434,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         continue;
       }
       defs.push(m);
-      cost += m.mana;
+      cost2 += m.mana;
       timing(m);
       const kind = m.trig || m.kind === "shot" && addTrig || null;
       if (m.kind === "shot") addTrig = null;
@@ -14435,7 +14464,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       shots,
       defs,
       start: start2,
-      cost: cost * manaMul,
+      cost: cost2 * manaMul,
       acts,
       hp,
       delay: Math.max(MIN_CAST, delay),
@@ -16749,11 +16778,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var LIGHT_RUN = 0.22;
   var TUBE_MAX = 1.6;
   var FIRST_X = 76;
-  var FIRST_TRIGGER = HEAL_X - 22;
+  var FIRST_TRIGGER = 100;
   var PAD_LIT = 56;
-  var MACHINES = 6;
   var LIGHT_X = [FIRST_X];
-  for (let x = VEND_BUY_X; x < WW; x += SHOP_SLOT) LIGHT_X.push(x);
+  for (let x = FIRST_X + SHOP_SLOT; x < WW; x += SHOP_SLOT) LIGHT_X.push(x);
+  var PERK_I = LIGHT_X.indexOf(SHOP_MACHINE_X[2]);
   var lightsNew = (time) => ({ start: time, on: LIGHT_X.map(() => -1), zap: time });
   var hs3 = (n) => {
     const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
@@ -16787,7 +16816,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return 1 - best;
   }
-  function lightsStep(L3, time, pcx, inShop) {
+  function lightsStep(L3, time, pcx, inShop, hold = Infinity) {
     const lit = [];
     const on = (i, at) => {
       if (L3.on[i] < 0) {
@@ -16796,10 +16825,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     };
     if (time - L3.start >= LIGHT_WAIT) on(0, L3.start + LIGHT_WAIT);
-    const k = L3.on.indexOf(-1), latest = Math.max(...L3.on), perks = L3.on[MACHINES - 1];
-    if (k > 0 && time - latest >= LIGHT_RUN && (pcx >= (k === 1 ? FIRST_TRIGGER : LIGHT_X[k - 1] - 20) || perks >= 0 && time - perks >= LIGHT_REST || !inShop)) on(k, time);
+    const k = L3.on.indexOf(-1), latest = Math.max(...L3.on), perks = L3.on[PERK_I];
+    if (k > 0 && k < hold && time - latest >= LIGHT_RUN && (pcx >= (k === 1 ? FIRST_TRIGGER : LIGHT_X[k - 1] - 20) || perks >= 0 && time - perks >= LIGHT_REST || !inShop)) on(k, time);
     const done = L3.on.every((t) => t >= 0 && time - t >= TUBE_MAX);
     return { lit, done };
+  }
+  function lightNear(L3, x, time) {
+    const lit = [];
+    for (let i = 0; i < LIGHT_X.length; i++)
+      if (L3.on[i] < 0 && Math.abs(LIGHT_X[i] - x) < halfW(i) + 30) {
+        L3.on[i] = time;
+        lit.push(i);
+      }
+    return lit;
   }
 
   // src/game/systems/plantglow.js
@@ -16971,8 +17009,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       const w = holoGrid.w, h3 = holoGrid.h;
       const M = war.mask = sizedCanvas(war.mask, w, h3), O = war.over = sizedCanvas(war.over, w, h3);
-      const S = war.sil = sizedCanvas(war.sil, w, h3), E = war.dark = sizedCanvas(war.dark, w, h3);
-      const mc = M.getContext("2d"), oc = O.getContext("2d"), scx = S.getContext("2d"), ec = E.getContext("2d");
+      const S2 = war.sil = sizedCanvas(war.sil, w, h3), E = war.dark = sizedCanvas(war.dark, w, h3);
+      const mc = M.getContext("2d"), oc = O.getContext("2d"), scx = S2.getContext("2d"), ec = E.getContext("2d");
       if (!mc || !oc || !scx || !ec) return;
       const world = holoGrid.world;
       const flat = (x) => x.setTransform(1, 0, 0, 1, 0, 0);
@@ -17007,7 +17045,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       scx.globalCompositeOperation = "source-over";
       flat(mc);
       mc.globalCompositeOperation = "destination-out";
-      mc.drawImage(S, 0, 0);
+      mc.drawImage(S2, 0, 0);
       mc.globalCompositeOperation = "source-over";
       oc.imageSmoothingEnabled = true;
       ec.imageSmoothingEnabled = true;
@@ -17015,7 +17053,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ec.drawImage(G.fogBlurC, fx0, fy0, fx1 - fx0, fy1 - fy0, sx, sy, sw, sh);
       flat(ec);
       ec.globalCompositeOperation = "destination-in";
-      ec.drawImage(S, 0, 0);
+      ec.drawImage(S2, 0, 0);
       ec.globalCompositeOperation = "source-over";
       flat(oc);
       oc.globalCompositeOperation = "destination-out";
@@ -17161,6 +17199,338 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.ctx.fillRect(W.camX - 10, WH, F.vw + 20, W.camY + F.vh - WH + 10);
   }
 
+  // src/world/guide.js
+  var GUIDE_PAR = 0.8;
+  var GUIDE_GONE_X = ARRIVAL_X + 40;
+  var GUIDE_AHEAD = 0.72;
+  var GUIDE_MIN_X = 220, GUIDE_MAX_X = 470;
+  var APPEAR_T = 0.35;
+  var WAVE_T = 1.1;
+  var GIFT_GAP = 0.45;
+  var LEAVE_T = 0.7;
+  var RUDE_HOLD = 1.6;
+  var GUIDE_PAGES = [
+    "Welcome real person. You must be exhausted from your spaceship journey to get here. It must be difficult to recall specifics about why you came here, right? You'll need to wait for the Coriolis effect to wear off.",
+    "Although I can tell you right now for free what the answer will be..... money. Everyone comes through here looking to get rich and make it big!",
+    "They say it's simple. Buy a SOL, clean it up a bit and SELL it back to them for a profit! It's like printing money!",
+    "They even front you the money for all sales.\nOf course you'd physically travel here from another place to take advantage of an opportunity like that!",
+    "Anyway, Welcome to your SOL Hub. Behind me is everything you'll need to make your fortune.",
+    "Enjoy your Slice Of Life.",
+    "And here is something to get you started..."
+  ];
+  var GUIDE_RUDE = "Rude. Yeh OK have fun! Remember, you definitely have everything you need!";
+  var GUIDE_GIFTS = [
+    { gold: 150 },
+    { crystal: "red" },
+    { crystal: "red" },
+    { crystal: "red" },
+    { crystal: "green" },
+    { mod: "saw" },
+    { mod: "bolt" },
+    { mod: "double" },
+    { gun: { lvl: 5, cap: 3 } }
+    // non-shuffle, empty
+  ];
+  var cost = (ch, cps) => (1 + (/[.!?]/.test(ch) ? 7 : /[,\n]/.test(ch) ? 3 : 0)) / Math.max(1, cps);
+  function typeTime(text, cps) {
+    let t = 0;
+    for (const ch of text) t += cost(ch, cps);
+    return t;
+  }
+  function typedAt(text, t, cps) {
+    let n = 0, at = 0;
+    for (const ch of text) {
+      at += 1 / Math.max(1, cps);
+      if (at > t) return n;
+      n++;
+      at += cost(ch, cps) - 1 / Math.max(1, cps);
+    }
+    return n;
+  }
+  var pageHold = (text, wait) => wait + text.length * 0.012;
+  var guideNew = () => ({ st: "wait", t: 0, x: 0, cam0: 0, page: 0, say: "", gift: 0, hold: 2 });
+  var guideX = (g, camX) => g.x + (camX - g.cam0) * (1 - GUIDE_PAR);
+  function guideStep(g, dt, I) {
+    const ev = [];
+    const go = (st) => {
+      g.st = st;
+      g.t = 0;
+    };
+    if (g.st === "gone") return ev;
+    g.t += dt;
+    if (g.st === "wait") {
+      if (I.camX > GUIDE_GONE_X) {
+        g.x = Math.max(GUIDE_MIN_X, Math.min(GUIDE_MAX_X, I.camX + I.vw * GUIDE_AHEAD));
+        g.cam0 = I.camX;
+        go("appear");
+        ev.push({ k: "appear" });
+      }
+      return ev;
+    }
+    if ((g.st === "appear" || g.st === "wave" || g.st === "talk") && I.inShop && I.pcx >= guideX(g, I.camX) - 3) {
+      g.say = GUIDE_RUDE;
+      go("rude");
+      ev.push({ k: "rude" });
+      return ev;
+    }
+    if (g.st === "appear" && g.t >= APPEAR_T) go("wave");
+    else if (g.st === "wave" && g.t >= WAVE_T) {
+      g.page = 0;
+      g.say = GUIDE_PAGES[0];
+      go("talk");
+      ev.push({ k: "talk" });
+    } else if (g.st === "talk" && g.t >= typeTime(g.say, I.cps) + pageHold(g.say, I.wait)) {
+      if (g.page < GUIDE_PAGES.length - 1) {
+        g.page++;
+        g.say = GUIDE_PAGES[g.page];
+        g.t = 0;
+        ev.push({ k: "talk" });
+      } else {
+        g.gift = 0;
+        go("give");
+      }
+    } else if (g.st === "give") {
+      while (g.gift < GUIDE_GIFTS.length && g.t >= g.gift * GIFT_GAP) ev.push({ k: "gift", gift: GUIDE_GIFTS[g.gift++] });
+      if (g.gift >= GUIDE_GIFTS.length && g.t >= g.gift * GIFT_GAP) {
+        go("leave");
+        ev.push({ k: "leave" });
+      }
+    } else if (g.st === "rude" && g.t >= typeTime(g.say, I.cps) + RUDE_HOLD) {
+      go("leave");
+      ev.push({ k: "leave" });
+    } else if (g.st === "leave" && g.t >= LEAVE_T) {
+      go("gone");
+      g.say = "";
+      g.hold = Infinity;
+      ev.push({ k: "gone" });
+    }
+    return ev;
+  }
+  function guideSpeech(g, cps) {
+    if (g.st === "talk" || g.st === "rude") return { text: g.say, n: typedAt(g.say, g.t, cps) };
+    if (g.st === "give" || g.st === "leave" && g.say) return { text: g.say, n: g.say.length };
+    return { text: "", n: 0 };
+  }
+
+  // src/game/systems/guide.js
+  var GUIDE_FEET = 9;
+  var guideMid = (W, g) => ({ x: guideX(g, W.camX), y: SHOP_FLOOR * CELL - GUIDE_FEET - 12 });
+  function stepGuide(W, G, F) {
+    const g = W.guide;
+    if (!g || g.st === "gone") return;
+    if (!W.camReady || !W.unitPx) return;
+    const vw = G.c.width / (window.devicePixelRatio || 1) / W.unitPx;
+    const cps = DEV.guideCps, before = g.st === "talk" || g.st === "rude" ? typedAt(g.say, g.t, cps) : -1;
+    const ev = guideStep(g, F.dt, { pcx: F.pcx, camX: W.camX, vw, inShop: W.p.y + PH > SHOP_Y, cps, wait: DEV.guideWait });
+    const m = guideMid(W, g);
+    for (const e of ev) {
+      if (e.k === "appear") {
+        if (W.shopLit) {
+          lightNear(W.shopLit, g.x, W.time);
+          g.hold = W.shopLit.on.indexOf(-1) < 0 ? Infinity : W.shopLit.on.indexOf(-1);
+        }
+        SFX.fx("sparks", m.x, m.y);
+        SFX.fx("warp", m.x, m.y);
+      } else if (e.k === "rude") {
+        SFX.fx("sparks", m.x, m.y);
+        SFX.fx("fizzle", m.x, m.y);
+      } else if (e.k === "leave") SFX.fx("warp", m.x, m.y);
+      else if (e.k === "gift" && e.gift) giveGift(W, F, e.gift, m.x, m.y);
+    }
+    if (before >= 0 && (g.st === "talk" || g.st === "rude") && typedAt(g.say, g.t, cps) > before && /\S/.test(g.say[before] || ""))
+      SFX.fx("reelTick", m.x, m.y);
+  }
+  function giveGift(W, F, gift, x, y) {
+    const side = F.pcx < x ? -1 : 1;
+    const fly = { x, y, t: 0, vx: side * (55 + Math.random() * 70), vy: -170 - Math.random() * 60 };
+    if (gift.gold) spillGold(W.coins, x, y, gift.gold, { vx: 70, vy: 150 });
+    else if (gift.crystal) W.pickups.push({ kind: "crystal", green: gift.crystal === "green" || void 0, floor: W.floor, ...fly, nopull: 0.6 });
+    else if (gift.mod) W.pickups.push({ kind: "mod", id: gift.mod, ...fly, cool: 1 });
+    else if (gift.gun) {
+      const gun = makeGun(Math.random, gift.gun.lvl);
+      gun.cap = gift.gun.cap;
+      gun.slots = new Array(gift.gun.cap).fill(null);
+      gun.shuffle = false;
+      W.pickups.push({ kind: "gun", gun: resetGun(gun), ...fly, cool: 1 });
+    }
+    burst(W, x, y, 10, "#7fd8ff");
+    SFX.fx("prompt", x, y);
+  }
+
+  // src/game/render/guide.js
+  var hash2 = (n) => {
+    const v = Math.sin(n * 12.9898 + 4.1414) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  var S = { c: null, x: null };
+  var BOX_W2 = 34, BOX_H = 38;
+  function glitchOf(g, time) {
+    if (g.st === "appear") return { gl: 1 - g.t / APPEAR_T, a: hash2(Math.floor(time * 40)) < g.t / APPEAR_T + 0.2 ? 1 : 0.15 };
+    if (g.st === "rude") return { gl: 0.55 + 0.45 * hash2(Math.floor(time * 20)), a: hash2(Math.floor(time * 25) + 3) < 0.85 ? 1 : 0.3 };
+    if (g.st === "leave") return { gl: 0.4 + g.t / LEAVE_T, a: Math.max(0, 1 - g.t / LEAVE_T) * (hash2(Math.floor(time * 30)) < 0.7 ? 1 : 0.3) };
+    return { gl: hash2(Math.floor(time * 6) + 9) < 0.06 ? 0.35 : 0, a: 1 };
+  }
+  function drawGuide(W, G, F) {
+    const g = W.guide;
+    if (!g || G.RPV || g.st === "wait" || g.st === "gone") return;
+    const t = W.time, m = guideMid(W, g);
+    if (m.x < W.camX - 40 || m.x > W.camX + F.vw + 40) return;
+    const px = DEV.runnerPx > 0 ? DEV.runnerPx : 1;
+    const bob = Math.sin(t * 2.2) * 1.5;
+    const feet = SHOP_FLOOR * CELL - GUIDE_FEET + bob, bx = m.x - PW / 2, by = feet - 21;
+    const x0 = Math.round(m.x - BOX_W2 / 2), y0 = Math.round(by - 8);
+    const cw = Math.ceil(BOX_W2 / px), ch = Math.ceil(BOX_H / px);
+    if (!S.c) {
+      S.c = document.createElement("canvas");
+      S.x = S.c.getContext("2d", { willReadFrequently: true });
+    }
+    const c = S.c, x = S.x;
+    if (!x) return;
+    if (c.width !== cw || c.height !== ch) {
+      c.width = cw;
+      c.height = ch;
+    }
+    x.setTransform(1, 0, 0, 1, 0, 0);
+    x.clearRect(0, 0, cw, ch);
+    x.setTransform(1 / px, 0, 0, 1 / px, -x0 / px, -y0 / px);
+    const f = F.pcx < m.x ? -1 : 1, cx = bx + PW / 2;
+    const waving = g.st === "appear" || g.st === "wave" || g.st === "give" || g.st === "leave" || g.st === "talk" && g.page === 0 && g.t < 2.5;
+    const sw = Math.sin(t * 9), wa = -0.45 - 0.55 * (0.5 + 0.5 * sw);
+    const hands = waving ? { gun: { x: cx + f * (1.1 + Math.cos(wa) * 5.6), y: by + 9.6 + Math.sin(wa) * 5.6 } } : void 0;
+    drawRunner(x, bx, by, PW, 22, f, null, true, 0, false, hands);
+    x.setTransform(1, 0, 0, 1, 0, 0);
+    const { gl, a } = glitchOf(g, t);
+    const src = x.getImageData(0, 0, cw, ch), d = src.data, out = x.createImageData(cw, ch), o = out.data;
+    const fr = Math.floor(t * 30), scan = Math.floor(t * 8) % 2;
+    const bars = [t * 0.9 % 1.6 - 0.3, (t * 0.9 + 0.8) % 1.6 - 0.3].map((v) => v * ch);
+    for (let y = 0; y < ch; y++) {
+      let shift = 0, lift = 0;
+      for (const b of bars) {
+        const dy = Math.abs(y - b);
+        if (dy < 2.5) {
+          lift = Math.max(lift, 1 - dy / 2.5);
+          shift += Math.round((hash2(fr + y) - 0.5) * 3);
+        }
+      }
+      if (gl > 0 && hash2(fr * 3 + Math.floor(y / 3)) < gl * 0.6) shift += Math.round((hash2(fr * 7 + y) - 0.5) * 14 * gl);
+      const drop = gl > 0 && hash2(fr * 5 + y * 3) < gl * 0.25;
+      const thin = (y + scan) % 2 ? 0.75 : 1;
+      for (let xx = 0; xx < cw; xx++) {
+        const sx = xx - shift;
+        if (sx < 0 || sx >= cw || drop) continue;
+        const i = (y * cw + sx) * 4, j = (y * cw + xx) * 4;
+        if (d[i + 3] < 100) continue;
+        const L3 = (d[i] + d[i + 1] + d[i + 2]) / 765;
+        o[j] = Math.min(255, 10 + L3 * 125 + lift * 200);
+        o[j + 1] = Math.min(255, 110 + L3 * 145 + lift * 100);
+        o[j + 2] = 255;
+        o[j + 3] = Math.min(255, (70 + L3 * 185 + lift * 60) * thin);
+      }
+    }
+    if (gl > 0.3) {
+      const k = Math.round((hash2(fr + 77) - 0.5) * 6 * gl);
+      for (let y = 0; y < ch; y++) for (let xx = 0; xx < cw; xx++) {
+        const sx = xx - k, j = (y * cw + xx) * 4;
+        if (sx < 0 || sx >= cw || o[j + 3]) continue;
+        const i = (y * cw + sx) * 4;
+        if (d[i + 3] >= 100) {
+          o[j] = 255;
+          o[j + 1] = 70;
+          o[j + 2] = 110;
+          o[j + 3] = 120 * gl;
+        }
+      }
+    }
+    x.putImageData(out, 0, 0);
+    const ctx = G.ctx;
+    ctx.save();
+    const floorY = SHOP_FLOOR * CELL;
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.5 * a;
+    const pool = ctx.createRadialGradient(m.x, floorY, 0, m.x, floorY, 16);
+    pool.addColorStop(0, "rgba(110,200,255,0.55)");
+    pool.addColorStop(1, "rgba(110,200,255,0)");
+    ctx.fillStyle = pool;
+    ctx.beginPath();
+    ctx.ellipse(m.x, floorY, 16, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const glow2 = ctx.createRadialGradient(m.x, m.y, 2, m.x, m.y, 26);
+    glow2.addColorStop(0, "rgba(90,180,255,0.22)");
+    glow2.addColorStop(1, "rgba(90,180,255,0)");
+    ctx.fillStyle = glow2;
+    ctx.fillRect(m.x - 26, m.y - 26, 52, 52);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = 0.85 * a;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(c, 0, 0, cw, ch, x0, y0, cw * px, ch * px);
+    ctx.restore();
+  }
+  function wrapLines(ctx, text, w) {
+    const out = [];
+    for (const para of text.split("\n")) {
+      let line = "";
+      for (const word of para.split(" ")) {
+        const tryL = line ? line + " " + word : word;
+        if (line && ctx.measureText(tryL).width > w) {
+          out.push(line);
+          line = word;
+        } else line = tryL;
+      }
+      out.push(line);
+    }
+    return out;
+  }
+  function drawGuideTalk(W, G, F) {
+    const g = W.guide;
+    if (!g || G.RPV) return;
+    const sp = guideSpeech(g, DEV.guideCps);
+    if (!sp.text) return;
+    const ctx = G.ctx, dpr = F.dpr, cw = G.c.width / dpr, u = W.unitPx;
+    const m = guideMid(W, g), t = W.time;
+    const rude = g.st === "rude" || g.st === "leave" && g.say.startsWith("Rude");
+    const jit = rude ? (hash2(Math.floor(t * 30)) - 0.5) * 4 : 0;
+    const sx = (m.x - W.camX) * u + jit, sy = (m.y - 20 - W.camY) * u;
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.globalAlpha = g.st === "leave" ? Math.max(0, 1 - g.t / LEAVE_T) : 1;
+    const fs = 13, lh = 17, pad = 9;
+    ctx.font = "500 " + fs + "px system-ui, sans-serif";
+    const bw = Math.min(250, cw - 24), lines = wrapLines(ctx, sp.text, bw - pad * 2);
+    let shown = 0;
+    for (let i = 0, left2 = sp.n; i < lines.length && left2 > 0; i++) {
+      shown++;
+      left2 -= lines[i].length + 1;
+    }
+    const bh = Math.max(1, shown) * lh + pad * 2 - 3;
+    const bx = clamp(sx - bw / 2, 10, cw - bw - 10), by = Math.max(8, sy - 10 - bh);
+    ctx.fillStyle = "rgba(6,20,38,0.9)";
+    ctx.strokeStyle = rude && hash2(Math.floor(t * 18)) < 0.6 ? "#ff6a7a" : "#7fd8ff";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bw, bh, 7);
+    const tx2 = clamp(sx, bx + 14, bx + bw - 14);
+    ctx.moveTo(tx2 - 7, by + bh);
+    ctx.lineTo(clamp(sx, tx2 - 12, tx2 + 12), Math.min(sy - 2, by + bh + 10));
+    ctx.lineTo(tx2 + 7, by + bh);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "rgba(6,20,38,0.9)";
+    ctx.fillRect(tx2 - 6, by + bh - 2, 12, 3);
+    ctx.fillStyle = "#d8f3ff";
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+    let left = sp.n;
+    lines.forEach((ln, i) => {
+      if (left <= 0) return;
+      const s = ln.slice(0, left);
+      ctx.fillText(s, bx + pad, by + pad + i * lh);
+      if (left <= ln.length && sp.n < sp.text.length && Math.floor(t * 3) % 2 === 0)
+        ctx.fillRect(bx + pad + ctx.measureText(s).width + 1, by + pad + i * lh + 1, 6, fs - 1);
+      left -= ln.length + 1;
+    });
+    ctx.restore();
+  }
+
   // src/data/levels.js
   var LVL_MENU_MAX = 12;
   var lvlBuy = (floor = 1) => Math.round(LVL_BUY * Math.pow(DEV.lvlGrow, Math.max(0, floor - 1)));
@@ -17179,12 +17549,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     P.src = src || "";
   };
   function levelWorker() {
-    const S = self;
-    S.onmessage = (e) => {
+    const S2 = self;
+    S2.onmessage = (e) => {
       const { id, floor, seed, dev } = e.data;
       Object.assign(DEV, JSON.parse(dev));
       const level = makeLevel(seed, floor, []);
-      S.postMessage({ id, level });
+      S2.postMessage({ id, level });
     };
   }
   var PRELUDE = "var VERSION=" + JSON.stringify(typeof VERSION === "string" ? VERSION : "v0") + ";self.window=self;self.React={createElement:function(){return null},createContext:function(){return {}}};self.ReactDOM={createRoot:function(){return {render:function(){}}}};self.document={getElementById:function(){return null},currentScript:null};\n";
@@ -17529,21 +17899,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const inBox = (x, y, m) => x === void 0 || x > wx0 - m && x < wx1 + m && y > wy0 - m && y < wy1 + m;
     const memo = /* @__PURE__ */ new Map();
     const outSnaps = snaps.map((s) => {
-      const S = { t: s.t, p: null, ghost: null };
+      const S2 = { t: s.t, p: null, ghost: null };
       for (const k in s) {
         if (k === "t") continue;
-        if (RP_LISTS.includes(k)) S[k] = clipSafe(s[k].filter((e) => inBox(ox(e), oy(e), k === "props" ? 120 : 40)), memo);
+        if (RP_LISTS.includes(k)) S2[k] = clipSafe(s[k].filter((e) => inBox(ox(e), oy(e), k === "props" ? 120 : 40)), memo);
         else if (k === "fire") {
           const keep2 = [];
           for (let n = 0; n < s.fire.length; n++) {
             const i = s.fire[n], x = i % CW, y = i / CW | 0;
             if (x >= bx && x < bx + bw && y >= by && y < by + bh) keep2.push(n);
           }
-          S.fire = Int32Array.from(keep2, (n) => s.fire[n]);
-          S.fireT = Uint16Array.from(keep2, (n) => s.fireT[n]);
-        } else if (k !== "fireT") S[k] = clipSafe(s[k], memo);
+          S2.fire = Int32Array.from(keep2, (n) => s.fire[n]);
+          S2.fireT = Uint16Array.from(keep2, (n) => s.fireT[n]);
+        } else if (k !== "fireT") S2[k] = clipSafe(s[k], memo);
       }
-      return S;
+      return S2;
     });
     const patches = [];
     for (const P2 of C.patches) {
@@ -17582,38 +17952,38 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       bgH: o.bgH || 0
     };
   }
-  function clipHydrate(S) {
-    const [bx, by, bw, bh] = S.box, [fx, fy, fw, fh] = S.fbox;
+  function clipHydrate(S2) {
+    const [bx, by, bw, bh] = S2.box, [fx, fy, fw, fh] = S2.fbox;
     const tBase = new Uint8ClampedArray(CW * CH * 4);
-    rpPaste(tBase, CW, { x: bx, y: by, w: bw, h: bh, px: S.tBase });
+    rpPaste(tBase, CW, { x: bx, y: by, w: bw, h: bh, px: S2.tBase });
     let dBase = null;
-    if (S.dBase) {
+    if (S2.dBase) {
       dBase = new Uint8ClampedArray(CW * CH * 4);
-      rpPaste(dBase, CW, { x: bx, y: by, w: bw, h: bh, px: S.dBase });
+      rpPaste(dBase, CW, { x: bx, y: by, w: bw, h: bh, px: S2.dBase });
     }
     const fogBase = new Uint8Array(FW * FH);
-    for (let r = 0; r < fh; r++) fogBase.set(S.fogBase.subarray(r * fw, (r + 1) * fw), (fy + r) * FW + fx);
+    for (let r = 0; r < fh; r++) fogBase.set(S2.fogBase.subarray(r * fw, (r + 1) * fw), (fy + r) * FW + fx);
     return {
-      t0: S.t0,
-      t1: S.t1,
-      death: S.death,
-      snaps: S.snaps,
-      patches: S.patches,
+      t0: S2.t0,
+      t1: S2.t1,
+      death: S2.death,
+      snaps: S2.snaps,
+      patches: S2.patches,
       tBase,
       dBase,
       fogBase,
-      fogLog: S.fogLog,
-      sfx: S.sfx || [],
-      scene: S.scene,
-      lim: S.lim,
-      bgPx: S.bg,
-      bgW: S.bgW,
-      bgH: S.bgH
+      fogLog: S2.fogLog,
+      sfx: S2.sfx || [],
+      scene: S2.scene,
+      lim: S2.lim,
+      bgPx: S2.bg,
+      bgW: S2.bgW,
+      bgH: S2.bgH
     };
   }
-  function clipBytes(S) {
-    let n = S.tBase.length + (S.dBase ? S.dBase.length : 0) + S.fogBase.length + S.fogLog.length * 8 + (S.bg ? S.bg.length : 0);
-    for (const P2 of S.patches) n += P2.px.length + 40;
+  function clipBytes(S2) {
+    let n = S2.tBase.length + (S2.dBase ? S2.dBase.length : 0) + S2.fogBase.length + S2.fogLog.length * 8 + (S2.bg ? S2.bg.length : 0);
+    for (const P2 of S2.patches) n += P2.px.length + 40;
     const seen = /* @__PURE__ */ new Set();
     const walk = (v) => {
       if (v === null || typeof v !== "object") {
@@ -17635,9 +18005,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         walk(v[k]);
       }
     };
-    walk(S.snaps);
-    walk(S.sfx);
-    walk(S.scene);
+    walk(S2.snaps);
+    walk(S2.sfx);
+    walk(S2.scene);
     return n;
   }
   var TYPED = { Uint8Array, Uint8ClampedArray, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Float32Array, Float64Array };
@@ -17730,8 +18100,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     return dec(v);
   }
-  async function clipPack(S) {
-    const json = new Blob([JSON.stringify(clipEnc(S))]);
+  async function clipPack(S2) {
+    const json = new Blob([JSON.stringify(clipEnc(S2))]);
     return new Response(json.stream().pipeThrough(new CompressionStream("gzip"))).blob();
   }
   async function clipUnpack(b) {
@@ -17842,18 +18212,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function recSfxHook(G) {
     recG = G;
     if (SFX0.loop) return;
-    const S = SFX;
+    const S2 = SFX;
     const hearing = () => recG && recG.REC.tBase && !recG.REC.done && !recG.input.current.paused;
     for (const k of SFX_REC) {
-      const f = SFX0[k] = S[k];
-      S[k] = function() {
+      const f = SFX0[k] = S2[k];
+      S2[k] = function() {
         const a = Array.prototype.slice.call(arguments);
         if (hearing()) recG.REC.sfx.push([recG.REC.t, k, sfxArgs(k, a)]);
         return f.apply(null, a);
       };
     }
-    const lf = SFX0.loop = S.loop;
-    S.loop = (kind) => {
+    const lf = SFX0.loop = S2.loop;
+    S2.loop = (kind) => {
       const h3 = lf(kind);
       if (!h3) return h3;
       const set = h3.set, stop = h3.stop;
@@ -17907,7 +18277,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       return out;
     };
-    const S = {
+    const S2 = {
       t: G.REC.t,
       time: W.time,
       flick: W.flick,
@@ -17919,21 +18289,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ghost: W.ghost ? rpClone(W.ghost) : null,
       bio: holoCount(W)
     };
-    for (const k in G.RP_ARR) S[k] = grab(G.RP_ARR[k], 40);
-    S.enemies = grab(W.enemies, 40, "ty");
-    S.pickups = grab(W.pickups, 40);
-    S.props = grab(W.props, 120);
+    for (const k in G.RP_ARR) S2[k] = grab(G.RP_ARR[k], 40);
+    S2.enemies = grab(W.enemies, 40, "ty");
+    S2.pickups = grab(W.pickups, 40);
+    S2.props = grab(W.props, 120);
     const fi = [];
     for (const i of W.fire.list) {
       const x = i % CW * CELL, y = (i / CW | 0) * CELL;
       if (Math.abs(x - pcx) < RP_W && Math.abs(y - pcy) < RP_H) fi.push(i);
     }
-    S.fire = Int32Array.from(fi);
-    S.fireT = Uint16Array.from(fi, (i) => W.fire.t[i]);
+    S2.fire = Int32Array.from(fi);
+    S2.fireT = Uint16Array.from(fi, (i) => W.fire.t[i]);
     const now = performance.now();
-    S.loops = [];
-    for (const h3 of liveLoops) if (h3._s && now - h3._at < 150) S.loops.push([h3._i, h3._k, h3._s[0], h3._s[1], h3._s[2], h3._s[3]]);
-    G.REC.snaps.push(S);
+    S2.loops = [];
+    for (const h3 of liveLoops) if (h3._s && now - h3._at < 150) S2.loops.push([h3._i, h3._k, h3._s[0], h3._s[1], h3._s[2], h3._s[3]]);
+    G.REC.snaps.push(S2);
     if (G.REC.dirty.length) {
       for (const [w, x, y, ww, hh] of rpMerge(G.REC.dirty, CW, CH)) {
         const src = w === "t" ? W.img : W.dimg;
@@ -18173,7 +18543,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const LO = G.input.current.loadout;
     scene.held = LO.guns[LO.sel] || null;
     const bg = G.bgctx.getImageData(0, 0, BW, BH).data;
-    const S = clipCrop(C, { pad: DEV.witPad, scene, bg, bgW: BW, bgH: BH });
+    const S2 = clipCrop(C, { pad: DEV.witPad, scene, bg, bgW: BW, bgH: BH });
     const date = Date.now();
     const meta = {
       id: "c" + date.toString(36) + Math.floor(Math.random() * 1e4).toString(36),
@@ -18184,7 +18554,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       bytes: 0,
       thumb: clipThumb(W, G, C)
     };
-    return await clipPut(meta, S) ? meta : null;
+    return await clipPut(meta, S2) ? meta : null;
   }
   function clipThumb(W, G, C) {
     try {
@@ -18214,8 +18584,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return "";
     }
   }
-  function clipFromSaved(S) {
-    const C = clipHydrate(S);
+  function clipFromSaved(S2) {
+    const C = clipHydrate(S2);
     if (C.bgPx && C.bgW) {
       const c = document.createElement("canvas");
       c.width = C.bgW;
@@ -18264,7 +18634,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.mat = level.mat;
     W.img = level.img;
     W.ore = level.ore || null;
-    miniEdges(W);
     W.start = level.start;
     W.portal = level.portal;
     W.portals = level.portals || [level.portal];
@@ -18278,6 +18647,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.ambKinds = level.amb || [];
     W.dimg = level.dimg;
     W.plantW = plantWhite(W.img.data, W.dimg && W.dimg.data);
+    mapPicture(W, G);
+    W.pins = back ? (back.pins || []).slice() : keep2 ? W.pins.filter((q) => q.y >= SHOP_Y) : [];
     W.reveal = keep2 === "shop" ? Math.max(0, SHOP_TOP - SHOP_ROOF - 60) : 0;
     if (!W.reveal) G.dctx.putImageData(W.dimg, 0, 0);
     W.dparts.length = W.amb.length = W.clouds.length = W.rings.length = W.devils.length = 0;
@@ -18341,22 +18712,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.matterProps = W.props.filter((pr) => pr.k === "matter");
     if (!keep2) setTimeout(() => SFX.fx("portalOut", W.arrival.x, W.arrival.y), 260);
   }
-  function miniEdges(W) {
-    W.miniEdgeIdx = [];
-    for (let my = 0; my < MMH; my++) for (let mx = 0; mx < MMW; mx++) {
-      let solid = 0, open = 0;
-      for (let dy = 0; dy < MINI_D; dy++) {
-        const ty = my * MINI_D + dy;
-        if (ty >= CH) break;
-        for (let dx = 0; dx < MINI_D; dx++) {
-          const tx2 = mx * MINI_D + dx;
-          if (tx2 >= CW) break;
-          if (W.mat[ty * CW + tx2]) solid++;
-          else open++;
-        }
-      }
-      if (solid && open) W.miniEdgeIdx.push(my * MMW + mx);
+  var scratch = null;
+  function mapPicture(W, G) {
+    const c = G.mapC, x = c.getContext("2d");
+    if (!scratch) {
+      scratch = document.createElement("canvas");
+      scratch.width = CW;
+      scratch.height = CH;
     }
+    const sx = scratch.getContext("2d");
+    if (!x || !sx) return;
+    x.globalCompositeOperation = "source-over";
+    if (W.dimg) x.putImageData(W.dimg, 0, 0);
+    else x.clearRect(0, 0, CW, CH);
+    sx.putImageData(W.img, 0, 0);
+    x.drawImage(scratch, 0, 0);
+    x.globalCompositeOperation = "destination-over";
+    x.fillStyle = "rgb(" + themeFor(W.floor).bg.map((c2) => Math.round(c2 * 1.7)).join(",") + ")";
+    x.fillRect(0, 0, CW, CH);
+    x.globalCompositeOperation = "source-over";
   }
 
   // src/game/systems/save-run.js
@@ -18377,6 +18751,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         heals: (W.stock.find((it) => it.kind === "heal") || { bought: 0 }).bought || 0,
         rooms: W.rooms.map((r, i) => r.taken ? i : -1).filter((i) => i >= 0),
         pickups: pk,
+        pins: W.pins,
         // each nest's rats still inside, and the ones out (a rat isn't saved: it goes back in)
         brood: W.enemies.filter((e) => e.nest).map((e) => [e.sid, e.nest.left + W.enemies.filter((r) => r.home === e && !r.dead).length])
       }
@@ -18561,7 +18936,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     SFX.setAmbience(null);
     G.tctx.putImageData(W.img, 0, 0);
     G.dctx.putImageData(W.dimg, 0, 0);
-    miniEdges(W);
+    mapPicture(W, G);
+    W.pins = W.pins.filter((q) => q.y >= SHOP_Y);
     W.seen = fogStart();
     paintFog(W, G);
     preLevel(W.floor, W.levelSeed);
@@ -18752,67 +19128,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         G.ctx.lineTo(mx, my + 15);
         G.ctx.stroke();
       }
-    }
-  }
-  function drawMap(W, G, F) {
-    const { dpr, playPx } = F;
-    if (G.input.current.mapOpen) {
-      G.mini32.fill(0);
-      for (let k2 = 0; k2 < W.miniEdgeIdx.length; k2++) {
-        const i = W.miniEdgeIdx[k2];
-        const tx2 = i % MMW * MINI_D, ty = (i / MMW | 0) * MINI_D;
-        const fi = (ty / FOG | 0) * FW + (tx2 / FOG | 0);
-        if (W.seen[fi]) G.mini32[i] = 3875536895;
-      }
-      G.mctx.putImageData(G.miniImg, 0, 0);
-      const pw = G.c.width / dpr, ph = playPx / dpr, pad = 10;
-      G.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      G.ctx.fillStyle = "rgba(0,0,0,0.8)";
-      G.ctx.fillRect(0, 0, pw, ph);
-      const k = Math.min((pw - 2 * pad) / MMW, (ph - 2 * pad) / MMH);
-      const mw = MMW * k, mh = MMH * k, mx0 = (pw - mw) / 2, my0 = (ph - mh) / 2;
-      G.ctx.imageSmoothingEnabled = true;
-      G.ctx.drawImage(G.miniC, 0, 0, MMW, MMH, mx0, my0, mw, mh);
-      const wW = CW * CELL, wH = CH * CELL;
-      const mX = (x) => mx0 + x / wW * mw, mY = (y) => my0 + y / wH * mh;
-      G.ctx.strokeStyle = "#ffd23c";
-      G.ctx.lineWidth = 1.5;
-      for (const r of W.rooms) {
-        if (!roomSeen(W, r)) continue;
-        const x0 = mX(r.x - ROOM_HW), y0 = mY(r.y - ROOM_HH), x1 = mX(r.x + ROOM_HW), y1 = mY(r.y + ROOM_HH);
-        G.ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
-        if (r.taken) {
-          const ix = (x1 - x0) * 0.25, iy = (y1 - y0) * 0.2;
-          G.ctx.beginPath();
-          G.ctx.moveTo(x0 + ix, y0 + iy);
-          G.ctx.lineTo(x1 - ix, y1 - iy);
-          G.ctx.moveTo(x1 - ix, y0 + iy);
-          G.ctx.lineTo(x0 + ix, y1 - iy);
-          G.ctx.stroke();
-        }
-      }
-      for (const q of W.pickups) {
-        if (q.taken || !fogLit(W, q.x, q.y)) continue;
-        const col = q.kind === "gun" ? "#ffd23c" : "#46e07a";
-        G.ctx.beginPath();
-        G.ctx.arc(mX(q.x), mY(q.y), 2.6, 0, Math.PI * 2);
-        if (q.old) {
-          G.ctx.strokeStyle = col;
-          G.ctx.lineWidth = 1.2;
-          G.ctx.stroke();
-        } else {
-          G.ctx.fillStyle = col;
-          G.ctx.fill();
-        }
-      }
-      G.ctx.fillStyle = "#ffd23c";
-      G.ctx.strokeStyle = "#fff";
-      G.ctx.lineWidth = 1.5;
-      G.ctx.beginPath();
-      G.ctx.arc(mX(W.p.x + PW / 2), mY(W.p.y + PH / 2), 4, 0, Math.PI * 2);
-      G.ctx.fill();
-      G.ctx.stroke();
-      G.ctx.imageSmoothingEnabled = false;
     }
   }
 
@@ -19010,7 +19325,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/game/render/shops.js
   var ICON = 30, GLOW = 8, RES2 = 4;
-  var hash2 = (n) => {
+  var hash3 = (n) => {
     const v = Math.sin(n * 12.9898) * 43758.5453;
     return v - Math.floor(v);
   };
@@ -19018,31 +19333,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function holoIcon(icon, hue) {
     const key = icon + hue, got = cache2.get(key);
     if (got) return got;
-    const S = (ICON + GLOW * 2) * RES2;
+    const S2 = (ICON + GLOW * 2) * RES2;
     const A = document.createElement("canvas");
-    A.width = A.height = S;
+    A.width = A.height = S2;
     const B = document.createElement("canvas");
-    B.width = B.height = S;
+    B.width = B.height = S2;
     const a = A.getContext("2d"), b = B.getContext("2d");
     if (!a || !b) return B;
     if (icon === "gun") {
       const sc = ICON * RES2 / 22;
-      drawGun(a, S / 2 - 3.85 * sc, S / 2 + 1 * sc, 0, sc, "#ffffff");
+      drawGun(a, S2 / 2 - 3.85 * sc, S2 / 2 + 1 * sc, 0, sc, "#ffffff");
     } else {
       a.fillStyle = "#ffffff";
       a.font = ICON * RES2 * 0.86 + 'px system-ui, "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
       a.textAlign = "center";
       a.textBaseline = "middle";
-      a.fillText(icon, S / 2, S / 2 + ICON * RES2 * 0.04);
+      a.fillText(icon, S2 / 2, S2 / 2 + ICON * RES2 * 0.04);
     }
     a.globalCompositeOperation = "source-atop";
     a.globalAlpha = 0.78;
     a.fillStyle = hue;
-    a.fillRect(0, 0, S, S);
+    a.fillRect(0, 0, S2, S2);
     a.globalAlpha = 1;
     a.globalCompositeOperation = "destination-out";
     a.fillStyle = "rgba(0,0,0,0.45)";
-    for (let y = 0; y < S; y += RES2 * 1.5) a.fillRect(0, y, S, RES2 * 0.5);
+    for (let y = 0; y < S2; y += RES2 * 1.5) a.fillRect(0, y, S2, RES2 * 0.5);
     b.shadowColor = hue;
     b.shadowBlur = GLOW * RES2 * 0.6;
     b.drawImage(A, 0, 0);
@@ -19101,8 +19416,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.fillRect(x + 12, cy + 11, MACHINE_W - 24, 1);
       ctx.globalAlpha = 1;
       const f = Math.floor(t * 14) + m.x;
-      const drop = hash2(f) < 0.07, jit = hash2(f * 1.3) < 0.1 ? (hash2(f * 2.1) - 0.5) * 3 : 0;
-      const alpha = drop ? 0.25 : 0.82 + 0.15 * hash2(f * 0.7);
+      const drop = hash3(f) < 0.07, jit = hash3(f * 1.3) < 0.1 ? (hash3(f * 2.1) - 0.5) * 3 : 0;
+      const alpha = drop ? 0.25 : 0.82 + 0.15 * hash3(f * 0.7);
       ctx.save();
       ctx.globalAlpha = alpha * 0.12;
       ctx.fillStyle = m.hue;
@@ -19328,7 +19643,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var SW = 72, TOP_H2 = 26, GAP = 2, BOT_H2 = 32, SH = TOP_H2 + GAP + BOT_H2;
   var PAD2 = 4, LINE2 = 1.2, GLOW2 = 6, RES3 = 4;
   var TALL = 1.3;
-  var hash3 = (n) => {
+  var hash4 = (n) => {
     const v = Math.sin(n * 12.9898) * 43758.5453;
     return v - Math.floor(v);
   };
@@ -19436,7 +19751,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function machine(ctx, W, kind, cx, on, look, gl = null) {
     const gf = Math.floor(W.time * 30);
     let hue = look.hue;
-    if (gl && hash3(gf * 3.1 + cx) > gl.k) hue = gl.hue;
+    if (gl && hash4(gf * 3.1 + cx) > gl.k) hue = gl.hue;
     const s = V[kind];
     if (s.on !== on || s.t > W.time) {
       s.t = s.on === null || s.t > W.time ? -99 : W.time;
@@ -19460,7 +19775,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.fillRect(x + 6, y + 6, 1, VEND_H - 14);
     ctx.fillRect(x + VEND_W - 7, y + 6, 1, VEND_H - 14);
     for (let i = 0; i < 5; i++) {
-      ctx.globalAlpha = on ? hash3(Math.floor(W.time * 3) + i * 7 + cx) < 0.6 ? 0.9 : 0.25 : 0.1;
+      ctx.globalAlpha = on ? hash4(Math.floor(W.time * 3) + i * 7 + cx) < 0.6 ? 0.9 : 0.25 : 0.1;
       ctx.fillRect(x + 10 + i * 4, y + 1, 2, 1.5);
     }
     ctx.globalAlpha = 1;
@@ -19487,13 +19802,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.globalAlpha = on ? 0.7 : 0.1;
     ctx.fillRect(x + 13, py + 7, 14, 1);
     for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) {
-      ctx.globalAlpha = on && hash3(Math.floor(W.time * 2) * 5 + r * 4 + c + cx) < 0.3 ? 0.9 : on ? 0.3 : 0.08;
+      ctx.globalAlpha = on && hash4(Math.floor(W.time * 2) * 5 + r * 4 + c + cx) < 0.3 ? 0.9 : on ? 0.3 : 0.08;
       ctx.fillRect(x + 34 + c * 4, py + 5 + r * 3.5, 2.5, 2.5);
     }
     ctx.globalAlpha = 1;
     const sx = cx - SW / 2, sy = y + 6;
     let alpha = 0, squeeze = 1;
-    if (on) alpha = since < 0.4 ? hash3(Math.floor(since * 40)) < since / 0.4 ? 1 : 0.15 : 0.88 + 0.1 * hash3(Math.floor(W.time * 20) + cx);
+    if (on) alpha = since < 0.4 ? hash4(Math.floor(since * 40)) < since / 0.4 ? 1 : 0.15 : 0.88 + 0.1 * hash4(Math.floor(W.time * 20) + cx);
     else if (since < 0.25) {
       alpha = 1;
       squeeze = Math.max(0.02, 1 - since / 0.2);
@@ -19530,14 +19845,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
   function glitch2(ctx, img, old, x, y, k, f, seed) {
-    const w = SW + GLOW2 * 2, h3 = SH + GLOW2 * 2, n = 3 + Math.floor(hash3(f + seed) * 9), rage = Math.sin(k * Math.PI);
+    const w = SW + GLOW2 * 2, h3 = SH + GLOW2 * 2, n = 3 + Math.floor(hash4(f + seed) * 9), rage = Math.sin(k * Math.PI);
     let at = 0;
     for (let i = 0; i < n; i++) {
-      const bh = i === n - 1 ? h3 - at : h3 / n * (0.4 + hash3(f * 5 + i * 1.7) * 1.2);
-      const src = hash3(f * 7 + i * 3.3 + seed) < k ? img : old;
-      const dx = hash3(f * 11 + i) < 0.45 ? (hash3(f * 13 + i * 2.9) - 0.5) * 22 * rage : 0;
+      const bh = i === n - 1 ? h3 - at : h3 / n * (0.4 + hash4(f * 5 + i * 1.7) * 1.2);
+      const src = hash4(f * 7 + i * 3.3 + seed) < k ? img : old;
+      const dx = hash4(f * 11 + i) < 0.45 ? (hash4(f * 13 + i * 2.9) - 0.5) * 22 * rage : 0;
       const sy0 = at / h3 * src.height, sh0 = Math.max(1, Math.min(bh, h3 - at) / h3 * src.height);
-      if (dx && hash3(f * 17 + i) < 0.5) {
+      if (dx && hash4(f * 17 + i) < 0.5) {
         ctx.save();
         ctx.globalAlpha *= 0.5;
         ctx.globalCompositeOperation = "lighter";
@@ -19550,9 +19865,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     ctx.save();
     ctx.fillStyle = "#ffffff";
-    for (let i = 0; i < 3; i++) if (hash3(f * 19 + i * 5 + seed) < 0.5 * rage) {
-      ctx.globalAlpha = 0.5 + 0.5 * hash3(f + i);
-      ctx.fillRect(x + GLOW2 - 4 + (hash3(f * 23 + i) - 0.5) * 10, y + GLOW2 + hash3(f * 29 + i * 7) * SH, SW + 8, 0.8);
+    for (let i = 0; i < 3; i++) if (hash4(f * 19 + i * 5 + seed) < 0.5 * rage) {
+      ctx.globalAlpha = 0.5 + 0.5 * hash4(f + i);
+      ctx.fillRect(x + GLOW2 - 4 + (hash4(f * 23 + i) - 0.5) * 10, y + GLOW2 + hash4(f * 29 + i * 7) * SH, SW + 8, 0.8);
     }
     ctx.restore();
   }
@@ -19649,7 +19964,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (R.t >= REPO_FIRE) {
       const ft = R.t - REPO_FIRE, H = fy - top, fl = Math.floor(W.time * 20);
       for (let x = j0; x < x1; x += REPO_JET) {
-        const h3 = Math.min(H, ft * 110) * (0.75 + 0.25 * hash3(fl + x * 0.13)), w = 7 + 10 * Math.min(1, ft / 3);
+        const h3 = Math.min(H, ft * 110) * (0.75 + 0.25 * hash4(fl + x * 0.13)), w = 7 + 10 * Math.min(1, ft / 3);
         const g = ctx.createLinearGradient(0, fy, 0, fy - h3);
         g.addColorStop(0, "rgba(255,250,210,0.95)");
         g.addColorStop(0.25, "rgba(255,200,60,0.85)");
@@ -19658,12 +19973,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.fillStyle = g;
         ctx.beginPath();
         ctx.moveTo(x - 3, fy);
-        ctx.quadraticCurveTo(x - w, fy - h3 * 0.5, x + (hash3(fl + x) - 0.5) * 8, fy - h3);
+        ctx.quadraticCurveTo(x - w, fy - h3 * 0.5, x + (hash4(fl + x) - 0.5) * 8, fy - h3);
         ctx.quadraticCurveTo(x + w, fy - h3 * 0.5, x + 3, fy);
         ctx.closePath();
         ctx.fill();
       }
-      const eng = Math.min(0.75, Math.max(0, (ft - 1.5) / 4)) * (0.85 + 0.15 * hash3(fl * 1.7));
+      const eng = Math.min(0.75, Math.max(0, (ft - 1.5) / 4)) * (0.85 + 0.15 * hash4(fl * 1.7));
       if (eng > 0) {
         const g = ctx.createLinearGradient(0, fy, 0, top);
         g.addColorStop(0, "rgba(255,160,40," + eng.toFixed(3) + ")");
@@ -19708,6 +20023,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     drawShop(W, G, F);
     drawVend(W, G, F);
     drawShops(W, G, F);
+    drawGuide(W, G, F);
     drawLoot(W, G, F);
     drawRooms(W, G, F);
     drawTrail(W, G);
@@ -19731,8 +20047,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     drawHud(W, G, F);
     drawRadar(W, G, F);
     drawMessages(W, G, F);
+    drawGuideTalk(W, G, F);
     drawReticule(G);
-    drawMap(W, G, F);
   }
   function drawCamera(W, G, F) {
     const dpr = F.dpr = window.devicePixelRatio || 1;
@@ -19780,6 +20096,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function shopDarkStart(W) {
     W.shopLit = lightsNew(W.time);
     W.padZap[1] = W.time;
+    W.guide = guideNew();
   }
   function stepLights(W, F) {
     const L3 = W.shopLit;
@@ -19792,7 +20109,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         L3.zap = t + 0.18 + 0.3 * (t * 7.3 % 1);
       }
     }
-    const { done } = lightsStep(L3, t, pcx, W.p.y + PH > SHOP_Y);
+    const { done } = lightsStep(L3, t, pcx, W.p.y + PH > SHOP_Y, W.guide ? W.guide.hold : Infinity);
     for (let i = 0; i < LIGHT_X.length; i++) {
       if (L3.on[i] < 0 || t - L3.on[i] > 2) continue;
       if (sectionLevel(L3, i, t) > 0.3 && !(sectionLevel(L3, i, t - dt) > 0.3)) SFX.fx("tube", LIGHT_X[i], SHOP_Y + 4);
@@ -19815,15 +20132,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       wrap();
       return;
     }
-    const cost = W.pb.mana === 0 ? 0 : plan.cost;
-    if (g.mana < cost) {
+    const cost2 = W.pb.mana === 0 ? 0 : plan.cost;
+    if (g.mana < cost2) {
       g.idx = plan.start;
       g.delayT = 0.12;
       g.delayMax = 0.12;
       SFX.ui("empty");
       return;
     }
-    g.mana -= cost;
+    g.mana -= cost2;
     const base = Math.atan2(ny, nx);
     const acts = plan.acts || [];
     let bonus = 0;
@@ -20881,6 +21198,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     stepFields(W, G, F);
     stepPickups(W, G, F);
     stepWarp(W, G, F);
+    stepGuide(W, G, F);
     stepLights(W, F);
     stepRepo(W, G, F);
     stepToasts(W, F);
@@ -21202,12 +21520,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       fogBlurC.width = FW;
       fogBlurC.height = FH;
       const fbctx = fogBlurC.getContext("2d");
-      const miniC = document.createElement("canvas");
-      miniC.width = MMW;
-      miniC.height = MMH;
-      const mctx = miniC.getContext("2d");
-      const miniImg = new ImageData(MMW, MMH);
-      const mini32 = new Uint32Array(miniImg.data.buffer);
+      const mapC = document.createElement("canvas");
+      mapC.width = CW;
+      mapC.height = CH;
       const pgGlow = document.createElement("canvas"), pgGlowCtx = pgGlow.getContext("2d");
       const decoC = document.createElement("canvas");
       decoC.width = CW;
@@ -21269,10 +21584,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         fogImg,
         fogBlurC,
         fbctx,
-        miniC,
-        mctx,
-        miniImg,
-        mini32,
+        mapC,
         decoC,
         dctx,
         REC,
@@ -21296,6 +21608,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       recSfxHook(G);
       input.current.saveClip = (C) => clipKeep(W, G, C);
       input.current.clipFromSaved = clipFromSaved;
+      input.current.mapView = () => ({ img: mapC, seen: W.seen, x: W.p.x + PW / 2, y: W.p.y + PH / 2, face: W.p.face, pins: W.pins });
+      input.current.dropPin = (e) => {
+        W.pins.push({ x: W.p.x + PW / 2, y: W.p.y + PH / 2, e });
+        saveRun(W, G);
+      };
       if (window.__TEST) window.__lvl = testHook(W, {
         tctx,
         dctx,
@@ -21551,11 +21868,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var shotPellets = (sh) => Math.max(1, Math.round(sh.count || 1)) + (sh.payload || []).reduce((t, ps) => t + shotPellets(ps), 0);
   function gunRate(gun) {
     const g = resetGun(Object.assign({}, gun, { slots: gun.slots.slice() }));
-    let cast2 = 0, dmg = 0, cost = 0, shots = 0, blood = 0;
+    let cast2 = 0, dmg = 0, cost2 = 0, shots = 0, blood = 0;
     for (let guard = 0; guard < 16; guard++) {
       const p = planCast(g);
       cast2 += p.delay;
-      cost += p.cost;
+      cost2 += p.cost;
       blood += p.hp || 0;
       for (const sh of p.shots) {
         shots += shotCount(sh);
@@ -21567,7 +21884,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const cycle = Math.max(1e-3, cast2 + rech);
     const pas = gunPassives(gun);
     const regen = gun.manaRegen + pas.manaRegen;
-    const manaPerSec = cost / cycle;
+    const manaPerSec = cost2 / cycle;
     const sustain = manaPerSec > regen ? regen / manaPerSec : 1;
     const hpPerSec = blood / cycle;
     const bleed = hpPerSec > HP_BUDGET ? HP_BUDGET / hpPerSec : 1;
@@ -22007,20 +22324,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         const sc = cw / WU;
         HU = ch / sc;
-        const S = e.je;
-        if (S) {
-          S.rx = WU / 2 + Math.cos(t * 0.55) * WU * 0.24;
-          S.ry = (HU - LEDGE) * 0.36 + Math.sin(t * 0.8) * 5;
-          S.roamR = 1e9;
-          S.roamSpd = 0;
+        const S2 = e.je;
+        if (S2) {
+          S2.rx = WU / 2 + Math.cos(t * 0.55) * WU * 0.24;
+          S2.ry = (HU - LEDGE) * 0.36 + Math.sin(t * 0.8) * 5;
+          S2.roamR = 1e9;
+          S2.roamSpd = 0;
         }
         const pulse = jellyStep(e, { solidCell: solid, hunting: false, goal: null, rnd: Math.random }, dt) === "pulse";
         const P2 = jellyPal(e.je.u.col);
         if (pulse) {
-          const S2 = e.je, B = jellyBell(e.r, S2.shape, kru("jeSquash", S2.u.sq)), c0 = Math.cos(S2.hd), s0 = Math.sin(S2.hd);
+          const S22 = e.je, B = jellyBell(e.r, S22.shape, kru("jeSquash", S22.u.sq)), c0 = Math.cos(S22.hd), s0 = Math.sin(S22.hd);
           for (let i = 0, n = Math.round(kr("jeSpores")); i < n && spores.length < 80; i++) {
             const lx = (Math.random() * 2 - 1) * B.rw * 0.7, r = Math.random();
-            const a2 = S2.hd + Math.PI + (Math.random() * 2 - 1) * kr("jeSporeSpread") * Math.PI / 180, v = kr("jeSporeSpd");
+            const a2 = S22.hd + Math.PI + (Math.random() * 2 - 1) * kr("jeSporeSpread") * Math.PI / 180, v = kr("jeSporeSpd");
             spores.push({
               x: e.x - lx * s0 - B.rim * c0,
               y: e.y + lx * c0 - B.rim * s0,
@@ -23235,17 +23552,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const max = gun.manaMax + gunPassives(gun).manaMax;
     return { g, max, mana: max, delayT: 0, delayMax: 0, rechT: 0, rechLen: 0, pull: 0, lit: null, fired: 0 };
   }
-  function fireSimStep(S, dt) {
-    const g = S.g, pas = gunPassives(g);
-    S.delayT -= dt;
-    S.rechT -= dt;
-    S.mana = Math.min(S.max, S.mana + (g.manaRegen + pas.manaRegen) * dt);
-    if (S.lit && (S.lit.t -= dt) <= 0) S.lit = null;
-    if (S.delayT > 0 || S.rechT > 0) return;
+  function fireSimStep(S2, dt) {
+    const g = S2.g, pas = gunPassives(g);
+    S2.delayT -= dt;
+    S2.rechT -= dt;
+    S2.mana = Math.min(S2.max, S2.mana + (g.manaRegen + pas.manaRegen) * dt);
+    if (S2.lit && (S2.lit.t -= dt) <= 0) S2.lit = null;
+    if (S2.delayT > 0 || S2.rechT > 0) return;
     const wrap = () => {
       g.idx = 0;
-      S.rechT = S.rechLen = effRecharge(g);
-      S.pull = 0;
+      S2.rechT = S2.rechLen = effRecharge(g);
+      S2.pull = 0;
       shuffleOrder(g);
     };
     const start2 = g.idx;
@@ -23254,28 +23571,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       wrap();
       return;
     }
-    if (S.mana < plan.cost) {
+    if (S2.mana < plan.cost) {
       g.idx = plan.start;
-      S.delayT = S.delayMax = 0.12;
+      S2.delayT = S2.delayMax = 0.12;
       return;
     }
-    S.mana -= plan.cost;
+    S2.mana -= plan.cost;
     const end = plan.wrap || g.idx <= start2 ? g.order.length : g.idx;
     const slots = [];
     for (let i = start2; i < end; i++) if (g.slots[g.order[i]]) slots.push(g.order[i]);
     const casts = (id) => MODS[id].kind === "shot" || MODS[id].kind === "static";
     while (slots.length && !casts(g.slots[slots[slots.length - 1]])) slots.pop();
-    S.lit = { slots, pull: S.pull, t: Math.max(0.1, Math.min(plan.delay, 0.45)) };
-    S.pull++;
-    S.fired++;
-    S.delayT = S.delayMax = plan.delay;
+    S2.lit = { slots, pull: S2.pull, t: Math.max(0.1, Math.min(plan.delay, 0.45)) };
+    S2.pull++;
+    S2.fired++;
+    S2.delayT = S2.delayMax = plan.delay;
     if (plan.wrap) wrap();
   }
-  function fireSimGauges(S) {
+  function fireSimGauges(S2) {
     return {
-      mana: S.max > 0 ? Math.max(0, S.mana / S.max) : 0,
-      castDelay: S.delayT > 0 && S.delayMax ? Math.max(0, 1 - S.delayT / S.delayMax) : 1,
-      recharge: S.rechT > 0 && S.rechLen ? Math.max(0, 1 - S.rechT / S.rechLen) : 1
+      mana: S2.max > 0 ? Math.max(0, S2.mana / S2.max) : 0,
+      castDelay: S2.delayT > 0 && S2.delayMax ? Math.max(0, 1 - S2.delayT / S2.delayMax) : 1,
+      recharge: S2.rechT > 0 && S2.rechLen ? Math.max(0, 1 - S2.rechT / S2.rechLen) : 1
     };
   }
   function statQual(k, v) {
@@ -23369,7 +23686,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const last = guns[n - 1];
     const bag = { x: W - last.x, y: last.y };
     const map = { x: bag.x, y: bag.y - btn - DECK_GAP - 2 };
-    return { btn, R, rc, guns, bag, map };
+    const pin = { x: W - map.x, y: map.y };
+    return { btn, R, rc, guns, bag, map, pin };
   }
   var GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
   var GAUGE_COL = { mana: "#ffc93c", rech: "#7ad7ff", cast: "#c58cff", fuel: "#ff9a2e" };
@@ -23628,9 +23946,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     useEffect(() => {
       let raf;
       const loop = () => {
-        const S = sim.current;
-        if (S) {
-          const gg = fireSimGauges(S);
+        const S2 = sim.current;
+        if (S2) {
+          const gg = fireSimGauges(S2);
           for (const k in LIVE_BAR) if (bars.current[k]) bars.current[k].style.width = (gg[k] * 100).toFixed(1) + "%";
         }
         raf = requestAnimationFrame(loop);
@@ -23699,14 +24017,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     useEffect(() => {
       let raf, last = performance.now(), prev = null;
       const loop = (now) => {
-        const S = sim.current;
+        const S2 = sim.current;
         const dt = Math.min(0.1, (now - last) / 1e3) * DEV.bagSpeed;
         last = now;
-        if (S) {
-          for (let t = dt; t > 0; t -= 0.01) fireSimStep(S, Math.min(0.01, t));
-          if (S.lit !== prev) {
-            prev = S.lit;
-            setLit(S.lit);
+        if (S2) {
+          for (let t = dt; t > 0; t -= 0.01) fireSimStep(S2, Math.min(0.01, t));
+          if (S2.lit !== prev) {
+            prev = S2.lit;
+            setLit(S2.lit);
           }
         }
         raf = requestAnimationFrame(loop);
@@ -24105,9 +24423,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     useEffect(() => {
       const c = ref.current;
       if (!c) return;
-      const dpr = window.devicePixelRatio || 1, S = 92;
-      c.width = S * dpr;
-      c.height = S * dpr;
+      const dpr = window.devicePixelRatio || 1, S2 = 92;
+      c.width = S2 * dpr;
+      c.height = S2 * dpr;
       const ctx = c.getContext("2d");
       if (!ctx) return;
       let raf = 0;
@@ -24115,16 +24433,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const frame = () => {
         const t = (performance.now() - t0) / 1e3, sc = 2.7;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        const g = ctx.createRadialGradient(S / 2, S * 0.45, 4, S / 2, S / 2, S * 0.7);
+        const g = ctx.createRadialGradient(S2 / 2, S2 * 0.45, 4, S2 / 2, S2 / 2, S2 * 0.7);
         g.addColorStop(0, "#22344a");
         g.addColorStop(1, "#0a1018");
         ctx.fillStyle = g;
-        ctx.fillRect(0, 0, S, S);
+        ctx.fillRect(0, 0, S2, S2);
         ctx.fillStyle = "rgba(120,200,255,0.05)";
-        for (let y = t * 12 % 4; y < S; y += 4) ctx.fillRect(0, y, S, 1);
+        for (let y = t * 12 % 4; y < S2; y += 4) ctx.fillRect(0, y, S2, 1);
         const bob = Math.sin(t * 2.2) * 2.5, jet = 0.55 + 0.45 * Math.abs(Math.sin(t * 17) * Math.sin(t * 5.3));
         ctx.save();
-        ctx.translate(S / 2 - PW * sc / 2, S / 2 - PH * sc / 2 + bob - 4);
+        ctx.translate(S2 / 2 - PW * sc / 2, S2 / 2 - PH * sc / 2 + bob - 4);
         ctx.scale(sc, sc);
         ctx.fillStyle = "#ffb347";
         ctx.beginPath();
@@ -24340,6 +24658,301 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
+  // src/ui/map.js
+  var PIN_KEY = "caverunner-pins";
+  var PIN_DEFAULTS = ["📍", "⭐", "💀", "💰", "❓", "🏠"];
+  var PIN_MAX = 23;
+  var ZOOM_MAX = 8;
+  function loadPins() {
+    try {
+      const v = JSON.parse(localStorage.getItem(PIN_KEY) || "null");
+      if (Array.isArray(v) && v.every((s) => typeof s === "string" && s)) return v.slice(0, PIN_MAX);
+    } catch (_) {
+    }
+    return PIN_DEFAULTS.slice();
+  }
+  var savePins = (list) => {
+    try {
+      localStorage.setItem(PIN_KEY, JSON.stringify(list.slice(0, PIN_MAX)));
+    } catch (_) {
+    }
+  };
+  function firstChar(s) {
+    const t = (s || "").trim();
+    if (!t) return "";
+    if (Intl.Segmenter) for (const g of new Intl.Segmenter(void 0, { granularity: "grapheme" }).segment(t)) return g.segment;
+    return Array.from(t)[0];
+  }
+  var usePin = (list, e) => [e, ...list.filter((q) => q !== e)].slice(0, PIN_MAX);
+  var FIT_PAD = 14;
+  var fitView = (w, hh) => {
+    const k = (hh - 2 * FIT_PAD) / CH;
+    return { k, ox: (w - CW * k) / 2, oy: FIT_PAD, k0: k };
+  };
+  function keepOn(v, w, hh) {
+    v.k = clamp(v.k, v.k0 * 0.6, v.k0 * ZOOM_MAX);
+    const pw = CW * v.k, ph = CH * v.k, m = 60;
+    v.ox = clamp(v.ox, Math.min(m - pw, (w - pw) / 2), Math.max(w - m, (w - pw) / 2));
+    v.oy = clamp(v.oy, Math.min(m - ph, (hh - ph) / 2), Math.max(hh - m, (hh - ph) / 2));
+  }
+  var tell = (c, v) => {
+    c.dataset.view = v.k.toFixed(4) + " " + v.ox.toFixed(1) + " " + v.oy.toFixed(1);
+  };
+  var MAP_MARKS = [
+    { x: ARRIVAL_X, w: 44, col: "#4f9dff", name: "teleporter" },
+    { x: HEAL_X, w: 26, col: "#ff6fae", name: "heal" },
+    { x: VEND_BUY_X, w: MACHINE_W, col: "#36e3e3", name: "buy" },
+    { x: VEND_SELL_X, w: MACHINE_W, col: "#b07cff", name: "sell" },
+    ...Object.keys(SHOPS).map((k) => ({ x: SHOPS[k].x, w: MACHINE_W, col: SHOPS[k].hue, name: k }))
+  ];
+  var MAP_SPREAD = 2;
+  function spread(seen) {
+    const a = new Uint8Array(FW * FH), b = new Uint8Array(FW * FH), R = MAP_SPREAD;
+    for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+      if (!seen[y * FW + x]) continue;
+      for (let dx = Math.max(0, x - R); dx <= Math.min(FW - 1, x + R); dx++) a[y * FW + dx] = 1;
+    }
+    for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+      if (!a[y * FW + x]) continue;
+      for (let dy = Math.max(0, y - R); dy <= Math.min(FH - 1, y + R); dy++) b[dy * FW + x] = 1;
+    }
+    return b;
+  }
+  function helmet(x, cx, cy, s, face) {
+    const r = s / 2, f = face < 0 ? -1 : 1;
+    x.save();
+    x.translate(cx, cy);
+    x.fillStyle = "rgba(0,0,0,0.55)";
+    x.beginPath();
+    x.arc(0, 1.5, r + 2, 0, Math.PI * 2);
+    x.fill();
+    x.fillStyle = "#eef1f6";
+    x.beginPath();
+    x.arc(0, 0, r, 0, Math.PI * 2);
+    x.fill();
+    x.fillStyle = "#aab2c0";
+    x.beginPath();
+    x.arc(0, 0, r, f > 0 ? Math.PI * 0.55 : -Math.PI * 0.15, f > 0 ? Math.PI * 1.15 : Math.PI * 0.45);
+    x.lineTo(0, 0);
+    x.fill();
+    x.scale(f, 1);
+    x.fillStyle = "#d9a441";
+    x.beginPath();
+    x.roundRect(-r * 0.12, -r * 0.62, r * 1.02, r * 1.15, r * 0.45);
+    x.fill();
+    x.fillStyle = "#121a28";
+    x.beginPath();
+    x.roundRect(r * 0.02, -r * 0.5, r * 0.85, r * 0.9, r * 0.38);
+    x.fill();
+    x.fillStyle = "#8fe0ff";
+    x.fillRect(r * 0.45, -r * 0.38, r * 0.24, r * 0.24);
+    x.restore();
+  }
+  function MapScreen({ input }) {
+    const cv = useRef(null);
+    const view = useRef(null);
+    useEffect(() => {
+      const c = cv.current;
+      const ctx = c.getContext("2d");
+      const fogC = document.createElement("canvas");
+      fogC.width = FW;
+      fogC.height = FH;
+      const fx = fogC.getContext("2d");
+      if (!ctx || !fx) return;
+      let raf = 0, alive = true;
+      const size = () => {
+        const dpr = window.devicePixelRatio || 1, w = c.clientWidth, hh = c.clientHeight;
+        c.width = Math.round(w * dpr);
+        c.height = Math.round(hh * dpr);
+        if (!view.current) view.current = fitView(w, hh);
+        else {
+          view.current.k0 = (hh - 2 * FIT_PAD) / CH;
+          keepOn(view.current, w, hh);
+        }
+      };
+      size();
+      const frame = () => {
+        if (!alive) return;
+        raf = requestAnimationFrame(frame);
+        const M = input.current.mapView && input.current.mapView();
+        const v = view.current;
+        if (!M || !v) return;
+        tell(c, v);
+        const dpr = window.devicePixelRatio || 1, w = c.clientWidth, hh = c.clientHeight;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.fillStyle = "#05070a";
+        ctx.fillRect(0, 0, w, hh);
+        ctx.imageSmoothingEnabled = v.k < 1;
+        ctx.drawImage(M.img, v.ox, v.oy, CW * v.k, CH * v.k);
+        const lift = spread(M.seen);
+        const im = fx.createImageData(FW, FH), d = im.data;
+        for (let i = 0; i < FW * FH; i++) {
+          d[i * 4 + 3] = lift[i] ? 0 : 255;
+          d[i * 4] = 5;
+          d[i * 4 + 1] = 7;
+          d[i * 4 + 2] = 10;
+        }
+        fx.putImageData(im, 0, 0);
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(fogC, v.ox, v.oy, FW * FOG * v.k, FH * FOG * v.k);
+        const sp = (wx, wy) => ({ x: v.ox + wx / CELL * v.k, y: v.oy + wy / CELL * v.k });
+        const me = sp(M.x, M.y), pulse = performance.now() / 900 % 1;
+        ctx.strokeStyle = "rgba(255,255,255," + (0.7 * (1 - pulse)).toFixed(2) + ")";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(me.x, me.y, 9 + pulse * 14, 0, Math.PI * 2);
+        ctx.stroke();
+        const fy = SHOP_FLOOR * CELL;
+        for (const m of MAP_MARKS) {
+          const a = sp(m.x - m.w / 2, fy - m.w), b = sp(m.x + m.w / 2, fy);
+          ctx.fillStyle = m.col;
+          ctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
+          ctx.strokeStyle = "rgba(0,0,0,0.6)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(a.x + 0.5, a.y + 0.5, b.x - a.x - 1, b.y - a.y - 1);
+        }
+        helmet(ctx, me.x, me.y, 16, M.face);
+        ctx.font = '20px system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        for (const q of M.pins) {
+          const p = sp(q.x, q.y);
+          ctx.shadowColor = "rgba(0,0,0,0.8)";
+          ctx.shadowBlur = 4;
+          ctx.fillStyle = "#fff";
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillText(q.e, p.x, p.y - 6);
+        }
+        ctx.shadowBlur = 0;
+      };
+      frame();
+      const ro = new ResizeObserver(size);
+      ro.observe(c);
+      return () => {
+        alive = false;
+        cancelAnimationFrame(raf);
+        ro.disconnect();
+      };
+    }, []);
+    const pts = useRef(/* @__PURE__ */ new Map());
+    const down = (e) => {
+      e.preventDefault();
+      const c = cv.current;
+      try {
+        c.setPointerCapture(e.pointerId);
+      } catch (_) {
+      }
+      pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    };
+    const move = (e) => {
+      const P2 = pts.current, v = view.current, was = P2.get(e.pointerId);
+      if (!was || !v) return;
+      const before = [...P2.values()].map((p) => ({ ...p }));
+      P2.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const after = [...P2.values()];
+      if (after.length === 1) {
+        v.ox += e.clientX - was.x;
+        v.oy += e.clientY - was.y;
+      } else {
+        const [a0, b0] = before, [a1, b1] = after;
+        const d0 = Math.hypot(a0.x - b0.x, a0.y - b0.y) || 1, d1 = Math.hypot(a1.x - b1.x, a1.y - b1.y) || 1;
+        const m0 = { x: (a0.x + b0.x) / 2, y: (a0.y + b0.y) / 2 }, m1 = { x: (a1.x + b1.x) / 2, y: (a1.y + b1.y) / 2 };
+        const k = clamp(v.k * d1 / d0, v.k0 * 0.6, v.k0 * ZOOM_MAX), r = k / v.k;
+        v.ox = m1.x - (m0.x - v.ox) * r;
+        v.oy = m1.y - (m0.y - v.oy) * r;
+        v.k = k;
+      }
+      const c = cv.current;
+      keepOn(v, c.clientWidth, c.clientHeight);
+    };
+    const up = (e) => {
+      pts.current.delete(e.pointerId);
+    };
+    const wheel = (e) => {
+      const c = cv.current;
+      const v = view.current;
+      if (!v) return;
+      const k = clamp(v.k * Math.exp(-e.deltaY * 15e-4), v.k0 * 0.6, v.k0 * ZOOM_MAX), r = k / v.k;
+      v.ox = e.clientX - (e.clientX - v.ox) * r;
+      v.oy = e.clientY - (e.clientY - v.oy) * r;
+      v.k = k;
+      keepOn(v, c.clientWidth, c.clientHeight);
+    };
+    return h(
+      "div",
+      { className: "mapscreen" },
+      h("canvas", {
+        ref: cv,
+        className: "mapcanvas",
+        onPointerDown: down,
+        onPointerMove: move,
+        onPointerUp: up,
+        onPointerCancel: up,
+        onWheel: wheel
+      })
+    );
+  }
+  function PinPicker({ pins, cur, pick, style }) {
+    const [adding, setAdding] = useState(false);
+    const [txt, setTxt] = useState("");
+    const box = useRef(null);
+    useEffect(() => {
+      if (adding && box.current) box.current.focus();
+    }, [adding]);
+    const add = () => {
+      const e = firstChar(txt);
+      if (e) pick(e);
+      setTxt("");
+      setAdding(false);
+    };
+    return h(
+      "div",
+      { className: "pinpick", style },
+      h(
+        "div",
+        { className: "pingrid" },
+        pins.map((e) => h("button", {
+          key: e,
+          className: "pinopt" + (e === cur ? " on" : ""),
+          "data-pin": e,
+          onPointerDown: (ev) => {
+            ev.preventDefault();
+            pick(e);
+          }
+        }, e)),
+        h("button", {
+          className: "pinopt pinadd",
+          "aria-label": "New pin",
+          onPointerDown: (ev) => {
+            ev.preventDefault();
+            setAdding((v) => !v);
+          }
+        }, "+")
+      ),
+      adding ? h(
+        "form",
+        { className: "pinnew", onSubmit: (ev) => {
+          ev.preventDefault();
+          add();
+        } },
+        h("input", {
+          ref: box,
+          value: txt,
+          placeholder: "One character or emoji",
+          "aria-label": "New pin",
+          onChange: (ev) => setTxt(firstChar(ev.target.value))
+        }),
+        h("button", { type: "submit", onPointerDown: (ev) => {
+          ev.preventDefault();
+          add();
+        } }, "Add")
+      ) : null,
+      h("div", { className: "pinhint" }, "Hold the pin button to drop it here")
+    );
+  }
+
   // src/spells/gunshop.js
   var GUN_OFFER = 3;
   var REROLL_BASE = 20, REROLL_GROW = 1.6;
@@ -24406,13 +25019,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     useEffect(() => {
       let raf, dir = "", next = 0, moved = false, over = "";
       const tick = () => {
-        const S = input.current.right, K = input.current.keys, R = ring.current;
-        if (S.active && S.cx !== void 0 && (moved || S.mag > DEV.ptrStart)) {
+        const S2 = input.current.right, K = input.current.keys, R = ring.current;
+        if (S2.active && S2.cx !== void 0 && (moved || S2.mag > DEV.ptrStart)) {
           moved = true;
-          const raw = menuPointer(S, window.innerWidth, window.innerHeight);
+          const raw = menuPointer(S2, window.innerWidth, window.innerHeight);
           const snap = root.current ? snapTo(root.current, raw) : { x: raw.x, y: raw.y, nav: "" };
           if (R) {
-            const d = KNOB * (S.size || 100) * DEV.ptrSize;
+            const d = KNOB * (S2.size || 100) * DEV.ptrSize;
             R.style.display = "block";
             R.style.width = R.style.height = d + "px";
             R.style.borderWidth = DEV.ptrLine + "px";
@@ -24423,7 +25036,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             setFocus(over);
             SFX.fx("prompt");
           }
-        } else if (!S.active) {
+        } else if (!S2.active) {
           if (moved) {
             moved = false;
             if (R) R.style.display = "none";
@@ -25399,6 +26012,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [size, setSize] = useState(150);
     const [vw, setVw] = useState(window.innerWidth);
     const [mapOpen, setMapOpen] = useState(false);
+    const [pins, setPins] = useState(loadPins);
+    const [pinOpen, setPinOpen] = useState(false);
+    const [pinHeld, setPinHeld] = useState(false);
     const ctlRef = useRef(null);
     const sticksRef = useRef(null);
     const [run, setRun] = useState(0);
@@ -25574,9 +26190,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       setWitnessOpen(true);
     };
     const playClip = async (m) => {
-      const S = await clipGet(m.id);
-      if (!S || !input.current.clipFromSaved) return;
-      const C = input.current.clipFromSaved(S);
+      const S2 = await clipGet(m.id);
+      if (!S2 || !input.current.clipFromSaved) return;
+      const C = input.current.clipFromSaved(S2);
       C.id = m.id;
       C.name = m.name;
       input.current.replay = { t: C.t0, speed: 1, playing: true, loop: true, fog: true, follow: true, zoom: 1, cx: 0, cy: 0, unit: 1, clip: C };
@@ -25593,9 +26209,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         setEdit(true);
       }
     };
+    const pickPin = (e) => {
+      const L3 = usePin(pins, e);
+      setPins(L3);
+      savePins(L3);
+      setPinOpen(false);
+    };
+    const dropPin = () => {
+      if (!input.current.dropPin) return;
+      input.current.dropPin(pins[0]);
+      SFX.fx("place");
+      setPinOpen(false);
+    };
     return h(
       "div",
-      { className: "app" + (witnessOpen ? " witnessing" : "") },
+      { className: "app" + (witnessOpen ? " witnessing" : "") + (mapOpen ? " mapping" : "") + (mapOpen && pinOpen ? " pinning" : "") },
       h(
         "div",
         { className: "view" },
@@ -25697,6 +26325,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           )
         ) : null
       ),
+      mapOpen ? h(MapScreen, { input }) : null,
       h(
         "div",
         { className: "controls", ref: ctlRef },
@@ -25751,10 +26380,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               onPointerDown: (e) => {
                 e.preventDefault();
                 setMapOpen((v) => !v);
+                setPinOpen(false);
               }
             },
             h("span", { className: "emo" }, "🗺️")
-          )
+          ),
+          // the pin button, opposite the map and only on the map screen (owner): tap for the picker,
+          // hold to drop the pin where you are
+          mapOpen ? h(
+            "button",
+            {
+              className: "dbtn pinbtn" + (pinOpen ? " on" : "") + (pinHeld ? " holding" : ""),
+              style: btnAt(deck.pin),
+              title: "Pins: tap to choose, hold to drop",
+              "aria-label": "Pin",
+              onPointerDown: holdPress(() => setPinOpen((v) => !v), dropPin, setPinHeld)
+            },
+            h("span", { className: "emo" }, pins[0])
+          ) : null,
+          mapOpen && pinOpen ? h(PinPicker, {
+            pins,
+            cur: pins[0],
+            pick: pickPin,
+            style: { right: Math.max(8, Math.round(vw - deck.pin.x - deck.btn / 2)), top: Math.round(deck.pin.y - deck.btn / 2 - 8) }
+          }) : null
         )
       ),
       edit ? h(Bag, { key: bagTab, input, refresh, canEdit, close: () => setEdit(false), tab0: bagTab, play: playClip }) : null,

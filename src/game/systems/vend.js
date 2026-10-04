@@ -21,7 +21,7 @@ import { fireNew } from '../../world/fire.js';
 import { fogStart } from '../../world/vision.js';
 import { levelPending, preLevel, takeLevel } from '../levelgen.js';
 import { paintFog } from './fog.js';
-import { enterLevel, miniEdges } from './level-entry.js';
+import { enterLevel, mapPicture } from './level-entry.js';
 import { jag } from './lightning.js';
 import { burst, toast } from './particles.js';
 import { youAlight } from './fire.js';
@@ -216,7 +216,8 @@ export function voidCave(W, G) {
   SFX.setAmbience(null);                    // no cave, no drips or creatures in the dark
   G.tctx.putImageData(W.img, 0, 0);
   G.dctx.putImageData(W.dimg, 0, 0);
-  miniEdges(W);
+  mapPicture(W, G);
+  W.pins = W.pins.filter(q => q.y >= SHOP_Y);    // the shop's pins stay
   W.seen = fogStart(); paintFog(W, G);
   preLevel(W.floor, W.levelSeed);           // the floor up for sale, made off the main thread meanwhile
 }

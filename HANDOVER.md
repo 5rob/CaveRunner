@@ -9,6 +9,14 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
+- **v0.0.141 built on branch `refactor`, awaiting the owner's OK of the screenshots** (not on `main`):
+  the new full-screen map with pan/zoom and emoji pins (`ui/map.js`), the shop's heal and machines moved
+  to the far right, and a new run's guide hologram that welcomes you and hands out a starter kit (or
+  goes off in a huff if you walk through it: `world/guide.js`). Also ask the owner: is this a minor
+  update (v0.0.141) or a major one (v0.1.0)? And should the guide greet every new run (it does now,
+  like the dark shop), or only the first ever? Not saved: closing the app mid-welcome loses the kit.
+  The old map's loot dots and prize-room outlines went with it (the owner asked for picture + fog +
+  helmet + pins only).
 - **Released: v0.0.140** on `main`, 2026-10-04 (the owner OK'd the screenshots): the mod machine glows
   crystal red, the gun machine gold, and the gun machine's red-crystal Boosted reroll is gone.
 - **v0.0.139** on `main`, 2026-10-04: the mod machine rolls any mod off the floor's table, repeats

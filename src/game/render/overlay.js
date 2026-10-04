@@ -1,17 +1,15 @@
 // @ts-check
 // What draw() (render/draw.js) puts over the picture in screen space, each a part it calls in
 // order with its frame object F (REFACTOR.md D19): the HUD (the version, the sticks' gauges),
-// the radar perks' markers, messages, the mouse reticule and the map. A death replay stops
+// the radar perks' markers, messages and the mouse reticule. A death replay stops
 // before these (draw's `if (G.RPV) return;`)
 
-import { CELL, CH, COL, CW, FOG, FW, MINI_D, MMH, MMW, PH, PW } from '../../core/consts.js';
+import { COL } from '../../core/consts.js';
 import { clamp } from '../../core/util.js';
 import { PERKS } from '../../data/perks.js';
 import { themeFor } from '../../data/themes.js';
 import { effRecharge, gunPassives } from '../../spells/cast.js';
-import { ROOM_HH, ROOM_HW } from '../../world/level.js';
 import { REPO_ALARM, REPO_FIRE } from '../systems/vend.js';
-import { fogLit, roomSeen } from '../systems/fog.js';
 import { maxHp } from '../systems/player.js';
 
 // The HUD, in screen space: fills in F.cw (the canvas width in css px) for the parts after it,
@@ -161,65 +159,5 @@ export function drawReticule(G) {
       G.ctx.moveTo(mx, my + 5); G.ctx.lineTo(mx, my + 15);
       G.ctx.stroke();
     }
-  }
-}
-
-// The map, while it is open (the run is paused): the cave you've seen as outlines, the prize
-// rooms you've found, loot you've seen, and you
-/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
-export function drawMap(W, G, F) {
-  const { dpr, playPx } = F;
-  // ---- the map (toggled by the map button; the run is paused while it is up) ----
-  // Covers the whole play area above the controls on solid black: the revealed cave as
-  // white outlines, fitted and centred, with a yellow dot for you. Only outline cells the
-  // fog has revealed are painted; the source is finer than the display and smooth-scaled,
-  // so the walls read as continuous lines, not a scatter.
-  if (G.input.current.mapOpen) {
-    G.mini32.fill(0);
-    for (let k = 0; k < W.miniEdgeIdx.length; k++) {
-      const i = W.miniEdgeIdx[k];
-      const tx = (i % MMW) * MINI_D, ty = ((i / MMW) | 0) * MINI_D;
-      const fi = ((ty / FOG) | 0) * FW + ((tx / FOG) | 0);
-      if (W.seen[fi]) G.mini32[i] = 0xe6ffffff;            // white, ~0.9 alpha
-    }
-    G.mctx.putImageData(G.miniImg, 0, 0);
-    const pw = G.c.width / dpr, ph = playPx / dpr, pad = 10;
-    G.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    G.ctx.fillStyle = 'rgba(0,0,0,0.8)';            // a touch see-through, so the cave shows behind
-    G.ctx.fillRect(0, 0, pw, ph);
-    const k = Math.min((pw - 2 * pad) / MMW, (ph - 2 * pad) / MMH);
-    const mw = MMW * k, mh = MMH * k, mx0 = (pw - mw) / 2, my0 = (ph - mh) / 2;
-    G.ctx.imageSmoothingEnabled = true;
-    G.ctx.drawImage(G.miniC, 0, 0, MMW, MMH, mx0, my0, mw, mh);
-    const wW = CW * CELL, wH = CH * CELL;
-    const mX = x => mx0 + (x / wW) * mw, mY = y => my0 + (y / wH) * mh;
-    // the prize rooms you've found: a yellow outline, crossed out once you've had the prize
-    G.ctx.strokeStyle = '#ffd23c'; G.ctx.lineWidth = 1.5;
-    for (const r of W.rooms) {
-      if (!roomSeen(W, r)) continue;
-      const x0 = mX(r.x - ROOM_HW), y0 = mY(r.y - ROOM_HH), x1 = mX(r.x + ROOM_HW), y1 = mY(r.y + ROOM_HH);
-      G.ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
-      if (r.taken) {
-        const ix = (x1 - x0) * 0.25, iy = (y1 - y0) * 0.2;
-        G.ctx.beginPath();
-        G.ctx.moveTo(x0 + ix, y0 + iy); G.ctx.lineTo(x1 - ix, y1 - iy);
-        G.ctx.moveTo(x1 - ix, y0 + iy); G.ctx.lineTo(x0 + ix, y1 - iy);
-        G.ctx.stroke();
-      }
-    }
-    // loot you've seen and left: green for mods, yellow for guns (a ring if you threw it back)
-    for (const q of W.pickups) {
-      if (q.taken || !fogLit(W, q.x, q.y)) continue;
-      const col = q.kind === 'gun' ? '#ffd23c' : '#46e07a';
-      G.ctx.beginPath(); G.ctx.arc(mX(q.x), mY(q.y), 2.6, 0, Math.PI * 2);
-      if (q.old) { G.ctx.strokeStyle = col; G.ctx.lineWidth = 1.2; G.ctx.stroke(); }
-      else { G.ctx.fillStyle = col; G.ctx.fill(); }
-    }
-    // you: a bigger dot with a white rim, so it can't be mistaken for a gun
-    G.ctx.fillStyle = '#ffd23c'; G.ctx.strokeStyle = '#fff'; G.ctx.lineWidth = 1.5;
-    G.ctx.beginPath();
-    G.ctx.arc(mX(W.p.x + PW / 2), mY(W.p.y + PH / 2), 4, 0, Math.PI * 2);
-    G.ctx.fill(); G.ctx.stroke();
-    G.ctx.imageSmoothingEnabled = false;
   }
 }

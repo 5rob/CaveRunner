@@ -4,7 +4,8 @@
 // swapped into W. It calls its parts one after another, back to front, handing each the frame
 // object F (REFACTOR.md D19); the parts live in render/ by theme: cave.js (the rock and what
 // sits on it), effects.js (particles), actors.js (creatures and you), looks.js (shots and
-// fields), light.js (the fog and the light over it), overlay.js (HUD, messages, the map); and
+// fields), light.js (the fog and the light over it), overlay.js (HUD, messages), guide.js (a new
+// run's guide hologram); and
 // the spider's silk (drawSilk) with the spider, in game/creatures/spider.js.
 // drawCamera, the frame's own part, is here.
 // It is not only a picture, so keep its order: it draws from the sim's Math.random stream,
@@ -21,9 +22,10 @@ import {
 } from './cave.js';
 import { drawFlashes, drawMotes, drawSmoke, drawSparks, drawTrail } from './effects.js';
 import { drawBelow, drawFx } from './fx.js';
+import { drawGuide, drawGuideTalk } from './guide.js';
 import { drawFog, drawGlows } from './light.js';
 import { drawBeams, drawFields, drawShots } from './looks.js';
-import { drawHud, drawMap, drawMessages, drawRadar, drawReticule } from './overlay.js';
+import { drawHud, drawMessages, drawRadar, drawReticule } from './overlay.js';
 import { drawPads } from './pads.js';
 import { drawShops } from './shops.js';
 import { drawTubes } from './shoplights.js';
@@ -51,6 +53,7 @@ export function draw(W, G) {
   drawShop(W, G, F);                        // the shop's stock (cave.js)
   drawVend(W, G, F);                        // the level vending machines (vend.js)
   drawShops(W, G, F);                       // the shop's vending machines (shops.js)
+  drawGuide(W, G, F);                       // a new run's guide hologram (guide.js)
   drawLoot(W, G, F);                        // gold, guns and mods lying about (cave.js)
   drawRooms(W, G, F);                       // the hidden rooms' prizes (cave.js)
   drawTrail(W, G);                          // Levitation Trail (effects.js)
@@ -74,8 +77,8 @@ export function draw(W, G) {
   drawHud(W, G, F);                         // the version, the sticks' gauges; fills cw (overlay.js)
   drawRadar(W, G, F);                       // radar perks (overlay.js)
   drawMessages(W, G, F);                    // toasts, the floor name, death / all clear (overlay.js)
+  drawGuideTalk(W, G, F);                   // the guide's speech box (guide.js)
   drawReticule(G);                          // the mouse reticule (overlay.js)
-  drawMap(W, G, F);                         // the map, when open (overlay.js)
 }
 
 // The view for this frame (F.dpr, F.playPx: the play area above the controls, F.vw/F.vh: the

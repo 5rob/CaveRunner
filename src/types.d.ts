@@ -375,6 +375,7 @@ interface SavedLevel {
   seed: number; owned: string[]; alive: number[] | null; sold: number[]; rooms: number[]; heals?: number;
   brood?: [number, number][];  // each nest's sid and the rats it still holds (its rats out go back in)
   pickups: Pickup[] | null;
+  pins?: MapPin[];            // the map's pins (v0.0.141)
 }
 
 // ---- the Dev panel (dev/knobs.js) ----
@@ -393,6 +394,7 @@ interface DevKnobs {
   witPad: number; witKbps: number;
   holoAlpha: number; bloom: number; bloomBlur: number; bloomBright: number;
   holoMin: number; holoMax: number; holoFade: number; holoC1x: number; holoC1y: number; holoC2x: number; holoC2y: number;
+  guideCps: number; guideWait: number;
   due1: number; enemies: number; enemiesUp: number; lvlBonus: number; lvlGrow: number; rewardGrow: number; killGrow: number; runnerPx: number; runnerLine: number;
   ptrStart: number; ptrReach: number; ptrSize: number; ptrLine: number; snapR: number; snapPull: number; snapHit: number;
   [k: string]: any;
@@ -483,6 +485,10 @@ interface Beam { x: number; y: number; nx: number; ny: number; len: number; col:
 interface Arc { pts: Pt[]; col: string; w: number; t: number; max: number }
 /** a new run's shop lights (world/shoplights.js): start = W.time on arrival, on = when each section's tubes switched on (-1 not yet), zap = the next crackle sound's time */
 interface ShopLights { start: number; on: number[]; zap: number }
+/** a new run's guide hologram (world/guide.js): its state and t seconds in it, x where it appeared (cam0: the camera's left edge then: it slides with the hologram layer), the box it's on (page, say), gifts handed out, and the light section it holds the hall at */
+interface Guide { st: 'wait' | 'appear' | 'wave' | 'talk' | 'give' | 'rude' | 'leave' | 'gone'; t: number; x: number; cam0: number; page: number; say: string; gift: number; hold: number }
+/** a pin dropped on the map (ui/map.js): where, and its emoji */
+interface MapPin { x: number; y: number; e: string }
 /** gold on the ground */
 /** anything world/nuggets.js moves: gold, and crystals (v0.0.138) */
 interface Nug { x: number; y: number; vx?: number; vy?: number; t?: number; a?: number; ground?: number; fly?: boolean; amount?: number }
@@ -537,12 +543,14 @@ interface World {
   reveal: number;             // a bought level's rock is drawn onto its canvas down to this row so far (0: all of it): vend.js stepReveal
   machines: Record<string, { n: number, t: number }>;   // the crystal machines (game/systems/shops.js): crystals in, and the shake (t, -1 idle)
   shopLit: ShopLights | null;   // a new run's dark shop lighting up a section at a time (world/shoplights.js); null = all lit
+  guide: Guide | null;        // a new run's guide hologram (world/guide.js); null: none this floor
+  pins: MapPin[];             // the pins dropped on this floor's map (ui/map.js)
   repo: { t: number; hurtT: number; sndT: number } | null;   // the deadline passed: repossession, then the fire (vend.js)
   start: Pt; portal: Level['portal']; portals: Level['portals']; arrival: Pt; stock: StockItem[];
   zone: Uint8Array | null; rooms: Room[];
   sconces: any[];             // Sconce[]: enterLevel builds [x, y] pairs first and maps them after
   levelSeed: number; levelOwned: string[]; roster: string[]; themeName: string; total: number;
-  miniEdgeIdx: number[]; matterProps: Prop[]; ambKinds: string[]; plantW: number;
+  matterProps: Prop[]; ambKinds: string[]; plantW: number;
   enemies: Enemy[]; pickups: Pickup[]; props: Prop[];
   seen: Uint8Array; deepFog: Uint8Array | null;
   fire: FireState;
@@ -626,6 +634,8 @@ interface ReplayView {
   st?: number;                // the clock at the last sound check (rpSound)
   mute?: boolean;
 }
+/** what the map screen (ui/map.js) draws: the floor's picture, the fog memory, you, the pins */
+interface MapView { img: HTMLCanvasElement; seen: Uint8Array; x: number; y: number; face: number; pins: MapPin[] }
 /** App's input ref: the React bridge (ui/app.js makes it, Game and the systems read and write it) */
 interface GameInput {
   left: StickState; right: StickState;
@@ -646,6 +656,8 @@ interface GameInput {
   clipFromSaved?: (S: SavedClip) => Clip;            // Game: a stored clip ready to play
   requestRestart?: () => void; promptBottom?: number; newCave?: boolean | number; ctlH?: number;   // newCave (Dev): true = this floor again, a number = go to that floor
   mapOpen?: boolean; floor?: number; saveRun?: () => void;
+  mapView?: () => MapView;    // Game: what the map screen draws (ui/map.js)
+  dropPin?: (e: string) => void;   // Game: a pin with that emoji where you stand
   perkCollection: string[];   // the perks unlocked at the perk machine, across runs
   collection: string[];       // the mods unlocked, kept across runs (save/save.js loadCollection)
   shopOpen?: string | null;   // a vending machine's menu is up: its SHOPS key (game/systems/shops.js), or 'levels' (the buy machine)
@@ -684,7 +696,7 @@ interface GameCtx {
   bg: HTMLCanvasElement; bgctx: CanvasRenderingContext2D;
   fogC: HTMLCanvasElement; fctx: CanvasRenderingContext2D; fogImg: ImageData;
   fogBlurC: HTMLCanvasElement; fbctx: CanvasRenderingContext2D;
-  miniC: HTMLCanvasElement; mctx: CanvasRenderingContext2D; miniImg: ImageData; mini32: Uint32Array;
+  mapC: HTMLCanvasElement;    // the map's picture: this floor as it was made, rock and decoration (level-entry.js mapPicture)
   decoC: HTMLCanvasElement; dctx: CanvasRenderingContext2D;
   REC: Recorder; RT: ReplayPlayer;
   fireBox: { t: number[]; d: number[] };

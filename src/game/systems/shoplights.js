@@ -5,13 +5,16 @@
 
 import { SFX } from '../../audio/sfx.js';
 import { PH, SHOP_Y } from '../../core/consts.js';
+import { guideNew } from '../../world/guide.js';
 import { LIGHT_WAIT, LIGHT_X, lightsNew, lightsStep, sectionLevel } from '../../world/shoplights.js';
 
-// a new run starts here: in the dark, the teleporter crackling (Game.js, a run with no save)
+// a new run starts here: in the dark, the teleporter crackling, the guide waiting down the hall
+// (Game.js, a run with no save; game/systems/guide.js)
 /** @param {World} W */
 export function shopDarkStart(W) {
   W.shopLit = lightsNew(W.time);
   W.padZap[1] = W.time;
+  W.guide = guideNew();
 }
 
 /** @param {World} W @param {StepFrame} F */
@@ -24,7 +27,7 @@ export function stepLights(W, F) {
     W.padZap[1] = t - 0.2;
     if (t >= L.zap) { SFX.fx('sparks', W.arrival.x, W.arrival.y); L.zap = t + 0.18 + 0.3 * ((t * 7.3) % 1); }
   }
-  const { done } = lightsStep(L, t, pcx, W.p.y + PH > SHOP_Y);
+  const { done } = lightsStep(L, t, pcx, W.p.y + PH > SHOP_Y, W.guide ? W.guide.hold : Infinity);
   // a click each time a starting tube flickers on
   for (let i = 0; i < LIGHT_X.length; i++) {
     if (L.on[i] < 0 || t - L.on[i] > 2) continue;

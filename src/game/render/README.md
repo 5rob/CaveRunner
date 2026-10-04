@@ -18,14 +18,14 @@
 | `actors.js` | `drawEnemies` (ends with `drawEliteFire`: the elites' flames over the creatures, `lighter`, colour/opacity from `art/ramps.js`), `drawJetFlame` (`jetFlame` out of `jetNozzle`, the backpack's foot, through `pixelSprite` on the body's grid), `drawAim` (fills `held`, `ax`/`ay`, `gy`; the Trajectory Sight line), `drawPlayer` (runner, gun, torch — `drawTorch`/`torchFlame` through `pixelSprite` too, `torchEmbers` snapped to the grid — crosshair, shield, ghost). All at `DEV.runnerPx` |
 | `looks.js` | `drawFields`, `drawShots`, `drawBeams`, and the looks: `drawLook` (a shot's sprite), `drawFieldLook`, `drawWhiteHole` (the White Hole: no circle, a tiny white-and-blue hole), `drawBolt` (a lightning line) |
 | `light.js` | `drawFog` (line of sight, `fogReveal`, the fog bake and blur), `drawGlows` (every light over the fog, `fogLit`-gated, drawn into a rock-pixel layer and added in one go, crisp or smooth by `DEV.pixelFx`; glowing particles go straight on; then the sconces) |
-| `overlay.js` (screen space) | `drawHud` (the version; publishes `input.current.hud`), `drawRadar`, `drawMessages`, `drawReticule`, `drawMap` |
+| `overlay.js` (screen space) | `drawHud` (the version; publishes `input.current.hud`), `drawRadar`, `drawMessages`, `drawReticule` |
+| `guide.js` | A new run's guide hologram: `drawGuide` (after `drawShops`: you, drawn by `drawRunner` facing you and waving, made a see-through blue by brightness in its own small layer, scan lines, two bright distortion bars that tear it sideways, glitches as it comes, goes or turns rude; a projector glow under it) and `drawGuideTalk` (after `drawMessages`, screen space: the speech box, growing upward as it types, a caret, a tail to it; shaking with a red edge when rude); `wrapLines`. Not in a replay |
 
 The order in `draw`: `drawCamera`, `drawTerrain`, `drawProps`, `drawPortal`, `drawSmoke`,
 `drawFields`, `drawSilk` (`game/creatures/spider.js`), `drawEnemies`, `drawShots`, `drawBeams`,
-`drawArrival`, `drawShop`, `drawLoot`, `drawRooms`, `drawTrail`, `drawSparks`, `drawMotes`,
+`drawArrival`, `drawShop`, `drawVend`, `drawShops`, `drawGuide`, `drawLoot`, `drawRooms`, `drawTrail`, `drawSparks`, `drawMotes`,
 `drawFlashes`, `drawJetFlame`, `drawAim`, `drawPlayer`, `drawFog`, `drawGlows`, `drawTubes`, `drawPads`, `drawWarp`, `drawRepo`, `drawFx`, `drawBelow`, then
-`if (G.RPV) return;` (a replay has no HUD), `drawHud`, `drawRadar`, `drawMessages`, `drawReticule`,
-`drawMap`.
+`if (G.RPV) return;` (a replay has no HUD), `drawHud`, `drawRadar`, `drawMessages`, `drawGuideTalk`, `drawReticule`.
 
 ## Rules
 
@@ -52,12 +52,8 @@ The order in `draw`: `drawCamera`, `drawTerrain`, `drawProps`, `drawPortal`, `dr
 - **Shots:** `drawLook(b)` draws a shot's own look and returns false to fall back to the streak; a
   `hidden` bullet (Buzzsaw) isn't drawn. The Black Hole draws its haze + starry core (core = `b.eat`,
   so the drawn core and the dig can't drift apart).
-- **The map** (`drawMap`) is a toggle (`input.current.mapOpen`: the 🗺️ button or `M`, which also
-  pauses), drawn last over the play area on `rgba(0,0,0,0.8)`, fitted and centred. It samples the real
-  rock in `MINI_D` (4px) blocks: `enterLevel` lists the outline cells (`W.miniEdgeIdx`: blocks holding
-  both rock and open), and each frame only those whose fog cell is seen are painted into `G.mini32`,
-  blitted with image smoothing on so walls read as lines. Marks: `fogLit` pickups as dots (mods green,
-  guns yellow, `old` guns a hollow ring), seen rooms outlined yellow (X when taken), you a yellow dot
-  with a white rim.
+- **The map** isn't drawn here since v0.0.141: it's a React screen, `ui/map.js` (`MapScreen`), drawing
+  `G.mapC` (made as the floor is entered, `systems/level-entry.js` `mapPicture`) through
+  `input.current.mapView`.
 - A replay frame (`G.RPV`): camera from the view, the play area above the replay panel, terrain from
   `G.RT`, no aim line, the fog overlay only when the viewer's fog toggle is on.

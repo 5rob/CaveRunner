@@ -35,6 +35,7 @@ export * from './world/level.js';
 export * from './world/ragdoll.js';
 export * from './world/sway.js';
 export * from './world/shoplights.js';
+export * from './world/guide.js';
 export * from './creatures/common.js';
 export * from './creatures/spider.js';
 export * from './creatures/rat.js';

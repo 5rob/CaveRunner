@@ -5,6 +5,37 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.141 — a new map, pins, and a guide hologram in a longer hall
+Built 2026-10-04, **awaiting the owner's OK of the screenshots** (not on `main` yet).
+
+- **The map, rebuilt** (`ui/map.js`, owner: other UI got in the way and the outline lines broke up into
+  pixels). A full-screen React screen (`MapScreen`): a picture of the floor as it was made — decoration
+  with the rock over it on the floor's dark, a pixel a terrain pixel (`mapPicture` in
+  `game/systems/level-entry.js`, into `G.mapC`, at each `enterLevel` and `voidCave`) — fitted to the
+  screen's height, under the fog memory (only seen ground shows; it spreads 2 cells into the rock round
+  what you saw, `spread`, or walls stayed black), with your helmet where you are, and the shop's machines
+  as coloured squares (owner: `MAP_MARKS`; teleporter blue, heal pink, buy cyan, sell violet, mods red,
+  guns gold, perks green). The open air is drawn a little lighter than the fog. One
+  finger pans, two pinch to zoom (a wheel too). It covers everything but the map button (still under
+  your thumb, to shut it) and the pin button. The old canvas map is gone (`drawMap`, `miniEdges`,
+  `W.miniEdgeIdx`, `G.miniC`…, `MINI_D`/`MMW`/`MMH`), and with it the loot dots and room outlines.
+- **Pins**: on the map screen only (owner), the pin button mirrors the map button on the right (`deckLayout` `pin`). Tap: a grid of pins
+  used before (last first; localStorage `caverunner-pins`) and **+** (a box taking one character, an
+  emoji counting as one: `firstChar`); hold: drops the chosen pin where you stand (`W.pins`, saved with
+  the floor). Pins stand on their spot on the map.
+- **The shop hall**: the heal and every machine moved to the far right (`HEAL_X` 590, `VEND_BUY_X` 676 …
+  perks at 1156); the teleporter and its sign stay. The light sections run `SHOP_SLOT` apart from the
+  teleporter's to the end wall (`LIGHT_X`), each machine the middle of one.
+- **The guide hologram** (`world/guide.js`, `game/systems/guide.js`, `game/render/guide.js`): on a new
+  run, once the teleporter is off screen the hall ahead snaps on (`lightNear`) and a little see-through
+  blue you hovers there in the hologram layer's parallax, waving, distortion bars rolling over it. A speech
+  box types the owner's welcome a letter at a time (Dev → **Guide hologram**: `guideCps`, `guideWait`),
+  then it throws out the starter kit one thing at a time (150 gold, 3 red + 1 green crystal, Buzzsaw,
+  Bolt, Double Cast, a level 5 gun cut to 3 empty slots, not shuffled) and glitches away. Pass through it
+  before that: it glitches, types "Rude. Yeh OK have fun!…" and goes, no kit. The hall past it stays dark
+  until it's gone (`lightsStep`'s `hold`). New suites: `guide` (logic and browser); `map` rewritten;
+  `shoplights` (both) and `shoplayout` follow the new hall.
+
 ## v0.0.140 — a red mod machine, a gold gun machine, no Boosted reroll
 Released 2026-10-04 (after the owner's OK of the screenshots).
 

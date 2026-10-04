@@ -109,6 +109,9 @@ export function readSave(raw) {
         if (q.kind === 'gun') { const gun = cleanGun(q.gun); return gun ? Object.assign({}, q, { gun }) : null; }
         return null;
       }).filter(Boolean) : null,
+      // the map's pins (v0.0.141): a spot and one character
+      pins: Array.isArray(L.pins) ? L.pins.filter(q => q && Number.isFinite(q.x) && Number.isFinite(q.y) && typeof q.e === 'string' && q.e)
+        .map(q => ({ x: q.x, y: q.y, e: q.e })) : [],
     };
   }
   return out;

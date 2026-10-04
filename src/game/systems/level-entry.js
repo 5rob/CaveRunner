@@ -3,9 +3,10 @@
 // the fog and the recorder for it.
 
 import { SFX } from '../../audio/sfx.js';
-import { CH, CW, MINI_D, MMH, MMW, SHOP_ROOF, SHOP_TOP, SHOP_Y } from '../../core/consts.js';
+import { CH, CW, SHOP_ROOF, SHOP_TOP, SHOP_Y } from '../../core/consts.js';
 import { plantWhite } from '../../creatures/jelly.js';
 import { healPrice } from '../../data/creatures.js';
+import { themeFor } from '../../data/themes.js';
 import { fireNew } from '../../world/fire.js';
 import { makeLevel } from '../../world/level.js';
 import { fogStart, nestFog } from '../../world/vision.js';
@@ -42,12 +43,14 @@ export function enterLevel(W, G, back, keep, pre) {
     level.pickups = level.pickups.concat(W.pickups.filter(q => !q.taken && q.y >= SHOP_Y));
   }
   W.mat = level.mat; W.img = level.img; W.ore = level.ore || null;
-  miniEdges(W);
   W.start = level.start; W.portal = level.portal; W.portals = level.portals || [level.portal]; W.arrival = level.arrival;
   W.enemies = level.enemies; W.pickups = level.pickups; W.stock = level.stock;
   W.rooms = level.rooms || []; W.zone = level.zone || null;
   W.props = level.props || []; W.ambKinds = level.amb || []; W.dimg = level.dimg;
   W.plantW = plantWhite(W.img.data, W.dimg && W.dimg.data);    // the jellies' plant glow keys off this
+  mapPicture(W, G);                           // the map: the floor as it is now, before anything digs it
+  // the map's pins: a saved floor's come back; otherwise only those in the shop stay (it doesn't move)
+  W.pins = back ? (back.pins || []).slice() : keep ? W.pins.filter(q => q.y >= SHOP_Y) : [];
   // teleporting in: the shop and a little above it now, the rest a band a frame (stepReveal)
   W.reveal = keep === 'shop' ? Math.max(0, SHOP_TOP - SHOP_ROOF - 60) : 0;
   if (!W.reveal) G.dctx.putImageData(W.dimg, 0, 0);
@@ -105,23 +108,24 @@ export function enterLevel(W, G, back, keep, pre) {
   if (!keep) setTimeout(() => SFX.fx('portalOut', W.arrival.x, W.arrival.y), 260);
 }
 
-// The minimap outlines for this floor: scan the real terrain in MINI_D x MINI_D blocks;
-// a block is an outline if a wall runs through it (it holds both rock and open), which
-// traces the cave walls continuously at a much finer grain than the fog grid.
-/** @param {World} W */
-export function miniEdges(W) {
-  W.miniEdgeIdx = [];
-  for (let my = 0; my < MMH; my++) for (let mx = 0; mx < MMW; mx++) {
-    let solid = 0, open = 0;
-    for (let dy = 0; dy < MINI_D; dy++) {
-      const ty = my * MINI_D + dy;
-      if (ty >= CH) break;
-      for (let dx = 0; dx < MINI_D; dx++) {
-        const tx = mx * MINI_D + dx;
-        if (tx >= CW) break;
-        if (W.mat[ty * CW + tx]) solid++; else open++;
-      }
-    }
-    if (solid && open) W.miniEdgeIdx.push(my * MMW + mx);
-  }
+// The map's picture of this floor (v0.0.141, ui/map.js shows it): one pixel per terrain pixel, the
+// decoration with the rock over it (as drawTerrain lays them) on the floor's dark (lifted a little, so
+// explored air stands apart from the map's fog). Made once as the
+// floor is entered, so the map is the cave as it was made, not as it's been dug
+/** @type {HTMLCanvasElement | null} */
+let scratch = null;
+/** @param {World} W @param {GameCtx} G */
+export function mapPicture(W, G) {
+  const c = G.mapC, x = c.getContext('2d');
+  if (!scratch) { scratch = document.createElement('canvas'); scratch.width = CW; scratch.height = CH; }
+  const sx = scratch.getContext('2d');
+  if (!x || !sx) return;
+  x.globalCompositeOperation = 'source-over';
+  if (W.dimg) x.putImageData(W.dimg, 0, 0); else x.clearRect(0, 0, CW, CH);
+  sx.putImageData(W.img, 0, 0);
+  x.drawImage(scratch, 0, 0);
+  x.globalCompositeOperation = 'destination-over';
+  x.fillStyle = 'rgb(' + themeFor(W.floor).bg.map(c => Math.round(c * 1.7)).join(',') + ')';   // the air a touch lighter than the fog
+  x.fillRect(0, 0, CW, CH);
+  x.globalCompositeOperation = 'source-over';
 }

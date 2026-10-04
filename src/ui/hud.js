@@ -44,7 +44,7 @@ export function DueClock({ due }) {
 // The bag mirrors the last gun on the left, and the map button sits straight above the bag, the
 // same size. Returns centres plus the button diameter.
 export const DECK_PUSH = 14, DECK_GAP = 6, DECK_MAX = 64;
-/** @param {number} W the row's width @param {number} size a stick's @param {number} [n] guns @returns {{ btn: number, R: number, rc: Pt, guns: Pt[], bag: Pt, map: Pt }} */
+/** @param {number} W the row's width @param {number} size a stick's @param {number} [n] guns @returns {{ btn: number, R: number, rc: Pt, guns: Pt[], bag: Pt, map: Pt, pin: Pt }} */
 export function deckLayout(W, size, n) {
   n = n || 4;
   const g = (W - 2 * size) / 3;
@@ -69,7 +69,8 @@ export function deckLayout(W, size, n) {
   const last = guns[n - 1];
   const bag = { x: W - last.x, y: last.y };
   const map = { x: bag.x, y: bag.y - btn - DECK_GAP - 2 };
-  return { btn, R, rc, guns, bag, map };
+  const pin = { x: W - map.x, y: map.y };               // the pin button mirrors the map (v0.0.141)
+  return { btn, R, rc, guns, bag, map, pin };
 }
 
 // the circumference of the gauge ring (r=46 in a 0..100 viewBox), used to turn a 0..1

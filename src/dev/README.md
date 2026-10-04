@@ -13,6 +13,8 @@
 - Colour knobs: `colourKnobs(group, rows)` (A = `k+'Lo'`, B = `k+'Hi'`, `'#rrggbb'`); `kcol(k, u)`
   blends A→B; `jcol(k, u)` blends then applies the jelly's master `jeHue`/`jeSat`/`jeBri` sliders
   (use `jcol` for any jelly colour).
+- Guide hologram (`g: 'guide'`, v0.0.141, `world/guide.js`): `guideCps` (its box types this many letters a
+  second, 30) and `guideWait` (the pause after each box, s, plus a little per letter, 1.4).
 - Witness (`g: 'witness'`): `witPad` (how far past your path a saved replay keeps, so how far its
   camera may stray, world units, 80) and `witKbps` (the exported video's bitrate, 6000).
 - Level (`g: 'level'`): `due1` (floor 1's repay time, minutes), `enemies` (creatures a new level
