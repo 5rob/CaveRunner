@@ -17,6 +17,9 @@
 //                        you back to the shop now: game/systems/vend.js sells and buys levels).
 //   See "Test mechanics in a sandbox" in CLAUDE.md for when to use these.
 //
+// The test page starts with the level bought (window.__TEST_VOID: not) and the pre-v0.0.142 kit,
+// three guns and 40 gold (window.__TEST_EMPTY: a new run's empty hands).
+//
 // Nothing here changes game logic. If a test needs to reach something new, add it here rather
 // than reaching into the game from the test.
 
@@ -24,6 +27,7 @@ import {
   BRICK, CELL, CH, CW, FH, FOG, FOG_U, FW, PH, PW, SHOP_FLOOR, SHOP_ROOF, SHOP_TOP, SHOP_Y,
   SIGHT, WH, WW
 } from '../core/consts.js';
+import { startingGuns } from '../spells/guns.js';
 import { fogReveal, losClear, visPoly } from '../world/vision.js';
 
 // g: what the suites reach that isn't world state: the two terrain canvases' contexts (the
@@ -35,6 +39,10 @@ export function testHook(W, g) {
   // the test page starts with the level already bought, so the suites have a cave to test (a run
   // in the game starts with none: buy it in the shop). window.__TEST_VOID: start the game's way
   if (!window.__TEST_VOID) W.hasLvl = true;
+  // and with the old starting kit (a new run has no guns or gold since v0.0.142: most suites need
+  // something to shoot). window.__TEST_EMPTY: start empty, the game's way
+  const LO = window.__in && window.__in.current.loadout;
+  if (LO && !window.__TEST_EMPTY && !LO.guns.some(Boolean)) { LO.guns = startingGuns(); LO.sel = 0; LO.gold = 40; }
   // A clean test room carved into the live level, far from the exit portal and above the shop.
   const sandbox = o => {
     o = o || {};

@@ -23,7 +23,7 @@ export function stepGuide(W, G, F) {
   if (!W.camReady || !W.unitPx) return;      // nothing drawn yet: the view isn't known
   const vw = G.c.width / (window.devicePixelRatio || 1) / W.unitPx;
   const cps = DEV.guideCps, before = g.st === 'talk' || g.st === 'rude' ? typedAt(g.say, g.t, cps) : -1;
-  const ev = guideStep(g, F.dt, { pcx: F.pcx, camX: W.camX, vw, inShop: W.p.y + PH > SHOP_Y, cps, wait: DEV.guideWait });
+  const ev = guideStep(g, F.dt, { pcx: F.pcx, camX: W.camX, vw, inShop: W.p.y + PH > SHOP_Y, cps, wait: DEV.guideWait, seen: DEV.guideIn });
   const m = guideMid(W, g);
   for (const e of ev) {
     if (e.k === 'appear') {

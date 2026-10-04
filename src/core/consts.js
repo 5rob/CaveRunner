@@ -35,7 +35,7 @@ export const AIM_RING = AIM_DEAD * 0.72 + KNOB;
 export const PW = 12, PH = 22;
 export const FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
 export const PLAYER_HP = 100;
-export const START_GOLD = 40;
+export const START_GOLD = 0;          // a new run starts with no gold and no guns (v0.0.142; it was 40 and three guns)
 
 export const COIN_PULL = 36;         // gold within this many units flies to you
 // how many enemies a floor gets before the floor lift. What they are and how hard
@@ -57,7 +57,7 @@ export const SHOP_Y = SHOP_TOP * CELL;        // world y of the ceiling, for "am
 // the two level vending machines on the shop's back wall, past the way in and the heal (centre x,
 // world units; a screen is 72 wide), and their prices:
 // a level costs LVL_BUY on credit and sells back for LVL_SELL, a thousand more (floor 1: data/levels.js climbs from there)
-// SHOP_SLOT apart, as are the shop's three machines after them (SHOP_MACHINE_X: mods, guns, perks): one
+// SHOP_SLOT apart, as are the shop's three machines after them (SHOP_MACHINE_X: guns, mods, perks): one
 // light section each when a new run's dark shop lights up (world/shoplights.js)
 export const SHOP_SLOT = 120;
 // the way in's pad (centre x), under its sign (art/sign.js: from about 12 to 106). Since v0.0.141 everything

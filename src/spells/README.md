@@ -4,7 +4,7 @@
 |---|---|
 | `mods.js` | `MODS` (every spell, a plain object; `off: 1` = kept but never handed out), `FAMILIES`/`FAMILY_OF`/`famCol` (the 8 colour families), `MOD_PRICE`, `MOD_TIER`/`tierOf` (rarity 1–4), `TRIG_KINDS`/`TRIG_VARIANTS` (the trigger variants), `ALL_IDS`, `SHOT_IDS`, `SEED_SHOTS`, `VACUUM_WAIT`, `TIMER_ADD` |
 | `spawn.js` | Which spell a floor hands you: `NOITA_SPAWN`, `NOITA_OF`, `floorTier`, `TIER_FLOOR`, `modWeight(id, floor)`, `rollMod` |
-| `guns.js` | `makeGun(rnd, lvl)`, `caveGun`, `gunLevel`, `startingGuns`, `GUN_RANGE`, `gunStat`, `gunLvTier`, `RARE_GUN`, `resetGun`, `shuffleOrder`, `gunPrice`, the colours (`gunColor`, `gunAccent`, `GUN_LV_COL`) |
+| `guns.js` | `makeGun(rnd, lvl)`, `caveGun`, `gunLevel`, `scratchPistol`, `startingGuns`, `GUN_RANGE`, `gunStat`, `gunLvTier`, `RARE_GUN`, `resetGun`, `shuffleOrder`, `gunPrice`, the colours (`gunColor`, `gunAccent`, `GUN_LV_COL`) |
 | `cast.js` | **`planCast(g, others)`, the heart of the game**: what one pull of the trigger fires. `blankShot` (every field a shot has), `effRecharge`, `gunPassives`, `MIN_CAST`/`MIN_RECH` |
 | `paths.js` | **The flight paths** (v0.0.137): `pathStep(o, dt, env)` moves a shot, a moving field or the aim line's pretend shot by Boomerang (`BOOM_*`), Ping-Pong (`PONG_T`), Spiral Arc (`spiralOff`, `SPIRAL_*`), Orbiting Arc (`ORBIT_*`), Follow Me (`FOLLOW_AHEAD`) and a field's homing, returning extra movement `[ex, ey]` on top of `v·dt`; `hasPath`, `FIELD_SPEED`, `SEEK_ACC` |
 | `trace.js` | `tracePath` (flies a shot forward for the aim line), and the flight helpers the bullet loop shares: `driftStep`, `wigTurn`, `bhSp` |
@@ -86,7 +86,9 @@ and `game/systems/shotlooks.js`.
   rolls level 1 anywhere in the range, level 10 in the best tenth. Cave guns are the floor's level,
   or with `RARE_GUN` (0.2) a level from floor+1 to 10; shop guns the floor's. `g.lvl` is saved and
   colours the gun (`GUN_LV_COL`); starter guns have no `lvl`.
-- **Starter guns:** `startingGuns()` = `[Scratch Pistol (selected), Pick Axe, Gravity Gun, null]`
+- **Starter guns:** since v0.0.142 a new run starts with **none** (and 0 gold, `START_GOLD`): the gun machine gives a
+  `scratchPistol()` free while you have no gun (`ui/gunshop.js`). `startingGuns()` (the old start, kept for the tests
+  and the browser test page) = `[Scratch Pistol (selected), Pick Axe, Gravity Gun, null]`
   (the Gravity Gun, v0.0.137: `['follow', 'vacfield']`, a White Hole hovering ahead of your gun) (owner's
   order). The pistol is deliberately worse than any floor-1 find. The Pick Axe holds one Buzzsaw
   (`saw`): a melee slice, `speed: 0`, `reach: 5`, `size: 15`, `eat: 14` (digs its radius every frame,

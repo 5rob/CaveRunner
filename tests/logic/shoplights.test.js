@@ -9,7 +9,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
 // ---- the machines: SHOP_SLOT apart, each the middle of a light section ----
 const xs = [VEND_BUY_X, VEND_SELL_X, ...SHOP_MACHINE_X];
-check('buy, sell, mods, guns, perks, evenly spaced', xs.every((x, i) => !i || x - xs[i - 1] === SHOP_SLOT), xs);
+check('buy, sell, guns, mods, perks, evenly spaced', xs.every((x, i) => !i || x - xs[i - 1] === SHOP_SLOT), xs);
 check('each one under its own light', xs.every(x => LIGHT_X.includes(x)), LIGHT_X);
 // v0.0.141: they stand at the far right, the heal just before them, an empty hall from the way in
 check('the machines out to the end wall', SHOP_MACHINE_X[2] + 30 < WW && SHOP_MACHINE_X[2] + SHOP_SLOT > WW - 40, SHOP_MACHINE_X);

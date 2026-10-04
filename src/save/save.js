@@ -48,10 +48,10 @@ export function cleanPerks(lo) {
 export function cleanLoadout(lo) {
   lo = lo && typeof lo === 'object' ? lo : {};
   const guns = [0, 1, 2, 3].map(i => cleanGun((lo.guns || [])[i]));
-  if (!guns.some(Boolean)) return null;               // nothing to fight with: not a usable save
+  if (!Array.isArray(lo.guns)) return null;           // not a loadout (no guns at all is fine: a new run starts empty)
   const num = (v, d) => (Number.isFinite(v) ? v : d);
   let sel = num(lo.sel, 0);
-  if (!guns[sel]) sel = guns.findIndex(Boolean);
+  if (!guns[sel]) sel = Math.max(0, guns.findIndex(Boolean));
   return {
     guns, sel,
     bag: (Array.isArray(lo.bag) ? lo.bag : []).filter(id => MODS[id]),
@@ -76,6 +76,7 @@ export function cleanLoadout(lo) {
           boosts: Math.max(0, num(lo.gunShop.boosts, 0)) } : undefined,
     greens: (Array.isArray(lo.greens) ? lo.greens : []).filter(f => Number.isInteger(f) && f > 0),
     crystals: (Array.isArray(lo.crystals) ? lo.crystals : []).filter(f => Number.isInteger(f) && f > 0),
+    fed: (Array.isArray(lo.fed) ? lo.fed : []).filter(k => typeof k === 'string'),
     debug: !!lo.debug,
   };
 }

@@ -594,6 +594,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .gthud{position:absolute;inset:0;pointer-events:none;border-radius:9px;animation:gthud .35s ease-out forwards}
 @keyframes gthud{0%{box-shadow:inset 0 0 0 2px #fff;background:rgba(255,255,255,0.18)}100%{box-shadow:inset 0 0 0 0 transparent;background:transparent}}
 .gprice{text-align:center;font:700 13px system-ui,sans-serif;color:#ffc93c}
+.gprice.free{color:#6dff9a}
 .gsparks{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .gcard{flex:1;min-width:0;overflow-y:auto}
 .gcard .pop.ingame{position:static;background:none;border:0;box-shadow:none;padding:0;max-height:none;overflow:visible}

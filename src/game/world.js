@@ -68,6 +68,7 @@ export function makeWorld() {
     start: undefined, portal: undefined, arrival: undefined,   // where you come in, the way out
     portals: [],                    // the exits along the top (portal is the middle one): exits(W)
     machines: {},                   // the crystal machines: crystals sucked in, the shake (game/systems/shops.js)
+    demo: {},                       // and their hologram demo, playing while you stand near (stepDemo there)
     shopLit: null,                  // a new run's dark shop, lighting up as you go (world/shoplights.js; null = lit)
     guide: null,                    // a new run's guide hologram (world/guide.js)
     pins: [],                       // pins dropped on this floor's map (ui/map.js)

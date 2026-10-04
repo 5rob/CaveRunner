@@ -5,9 +5,11 @@
 // bottom Buy selected and Reroll (gold, dearer each use on the floor; the red-crystal Boosted reroll
 // went in v0.0.140: crystals can't be carried). A reroll spins the reels and stops them one at a
 // time, each overshooting and thudding into place. Sticks: useMenuNav (ui/vendshop.js).
+// Since v0.0.142 a new run starts with no guns: while you have none, the first reel is a Scratch
+// Pistol, free (it stands in front of the offer's first gun, which comes back once you have a gun).
 
 import { SFX } from '../audio/sfx.js';
-import { gunLvCol, gunColor, makeGun } from '../spells/guns.js';
+import { gunLvCol, gunColor, makeGun, scratchPistol } from '../spells/guns.js';
 import { GUN_OFFER, newOffer, rerollPrice, rollOffer, shopGunPrice } from '../spells/gunshop.js';
 import { GunCard } from './cards.js';
 import { GunIcon } from './editor.js';
@@ -92,17 +94,23 @@ export function GunVend({ input, close }) {
     if (!LO.gunShop || LO.gunShop.floor !== floor) LO.gunShop = newOffer(Math.random, floor);
     return LO.gunShop;
   });
-  const firstGun = () => Math.max(0, o.guns.findIndex(Boolean));
+  // no gun to your name: the first one's a Scratch Pistol, free
+  const [pistol] = useState(scratchPistol);
+  const free = !LO.guns.some(Boolean);
+  const guns = free ? [pistol, ...o.guns.slice(1)] : o.guns;
+  /** @param {number} i */
+  const priceOf = i => (free && i === 0 ? 0 : guns[i] ? shopGunPrice(guns[i]) : 0);
+  const firstGun = () => Math.max(0, guns.findIndex(Boolean));
   const [sel, setSel] = useState(firstGun);
-  const [focus, setFocus] = useState(() => (o.guns.some(Boolean) ? 'g:' + firstGun() : 'reroll'));
+  const [focus, setFocus] = useState(() => (guns.some(Boolean) ? 'g:' + firstGun() : 'reroll'));
   const [spin, setSpin] = useState(NO_SPIN);
   const [landed, setLanded] = useState(0);
   const [msg, setMsg] = useState('');
   const [, bump] = useState(0);
   const root = useRef(null);
   const spinning = !!spin && landed < GUN_OFFER;
-  const gun = o.guns[sel] || null;
-  const price = gun ? shopGunPrice(gun) : 0;
+  const gun = guns[sel] || null;
+  const price = priceOf(sel);
   const rr = rerollPrice(floor, o.rerolls);
 
   const reroll = () => {
@@ -121,7 +129,7 @@ export function GunVend({ input, close }) {
     if (LO.gold < price) { SFX.ui('poor'); setMsg('Not enough gold'); return; }
     LO.gold -= price;
     input.current.dispense = { shop: 'guns', gun };
-    o.guns[sel] = null;
+    if (!(free && sel === 0)) o.guns[sel] = null;     // the free pistol isn't the offer's: it stays up while you have no gun
     SFX.ui('buy');
     close();
   };
@@ -150,19 +158,19 @@ export function GunVend({ input, close }) {
       h('button', { className: navCls('close', 'vclose'), 'data-nav': 'close', onPointerDown: tap('close') }, '×')),
     h('div', { className: 'gmid' },
       h('div', { className: 'greels' },
-        o.guns.map((g, i) => h('div', { key: i, 'data-nav': 'g:' + i, onPointerDown: tap('g:' + i),
+        guns.map((g, i) => h('div', { key: i, 'data-nav': 'g:' + i, onPointerDown: tap('g:' + i),
             className: navCls('g:' + i, 'greel') + (sel === i ? ' sel' : '') },
           h(Reel, { gun: g, idx: i, spin, onLand }),
-          h('div', { className: 'gprice' }, spinning && landed <= i ? '···' : g ? shopGunPrice(g) + 'g' : '—')))),
+          h('div', { className: 'gprice' + (free && i === 0 ? ' free' : '') }, spinning && landed <= i ? '···' : !g ? '—' : free && i === 0 ? 'FREE' : priceOf(i) + 'g')))),
       h('div', { className: 'gcard scroll' },
         spinning ? h('p', { className: 'vhint' }, 'Rolling…')
-          : gun ? h(GunCard, { gun, label: gun.boosted ? 'Boosted' : 'For sale', ingame: true, flow: true,
+          : gun ? h(GunCard, { gun, label: free && sel === 0 ? 'Free' : gun.boosted ? 'Boosted' : 'For sale', ingame: true, flow: true,
               compare: held, compareName: held ? held.name : '' })
           : h('p', { className: 'vhint' }, 'Sold'))),
     msg ? h('div', { className: 'vmsg' }, msg) : null,
     h('div', { className: 'gbtns' },
       h('button', { className: navCls('buy', 'vbuy') + (gun && !spinning && LO.gold >= price ? '' : ' cant'), 'data-nav': 'buy', onPointerDown: tap('buy') },
-        h('b', null, 'Buy selected'), h('span', null, gun ? price + 'g' : '—')),
+        h('b', null, free && sel === 0 ? 'Take it' : 'Buy selected'), h('span', null, !gun ? '—' : free && sel === 0 ? 'FREE' : price + 'g')),
       h('div', { className: 'grow' },
         h('button', { className: navCls('reroll', 'vbuy greroll') + (!spinning && LO.gold >= rr ? '' : ' cant'), 'data-nav': 'reroll', onPointerDown: tap('reroll') },
           h('b', null, 'Reroll'), h('span', null, rr + 'g')))));

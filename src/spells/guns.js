@@ -123,14 +123,19 @@ export function makeGun(rnd, lvl) {
   return resetGun(g);
 }
 
+// The Scratch Pistol is a weak backup on purpose: slow, thirsty and single-shot, so anything you find
+// on floor 1 is an upgrade over it. Since v0.0.142 a new run starts with no guns: the gun machine
+// gives this one away free while you have none (ui/gunshop.js)
+/** @returns {Gun} */
+export const scratchPistol = () => resetGun({ name: 'Scratch Pistol', cap: 3, castDelay: 0.32, recharge: 1.7,
+    manaMax: 90, manaRegen: 22, spread: 5, multi: 1, shuffle: false, mana: 90, speedMul: 1,
+    slots: ['bolt', null, null], hue: Math.floor(Math.random() * 360) });
+
+// The old starting guns (before v0.0.142 a new run started with these; now with none): the tests build loadouts from them
 /** @returns {(Gun | null)[]} */
 export function startingGuns() {
   // [Scratch Pistol (selected), Pick Axe, Gravity Gun, empty]
-  // The Scratch Pistol is a weak backup on purpose: slow, thirsty and single-shot, so
-  // anything you find on floor 1 is an upgrade over it. It's first in line (selected).
-  const pistol = resetGun({ name: 'Scratch Pistol', cap: 3, castDelay: 0.32, recharge: 1.7,
-    manaMax: 90, manaRegen: 22, spread: 5, multi: 1, shuffle: false, mana: 90, speedMul: 1,
-    slots: ['bolt', null, null], hue: Math.floor(Math.random() * 360) });
+  const pistol = scratchPistol();
   // The Pick Axe holds a Buzzsaw: no travel, a big circular slice right in front that chews
   // rock and shreds anything close. Buzzsaw zeroes cast delay, so recharge (1s) sets the swing.
   const pickaxe = resetGun({ name: 'Pick Axe', cap: 1, castDelay: 0.05, recharge: 1.0,

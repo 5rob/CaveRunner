@@ -200,11 +200,11 @@ to the end wall, with an empty hall between. A new run starts with the shop dark
 the teleporter crackles blue, your torch shows what's near, and after two seconds the ceiling tube
 over the teleporter stutters on. Each tube throws a pool of light with dark between (your torch only
 takes the edge off it). Each time you walk into the last lit section, the next
-one along flickers on just before you reach the dark. Once the teleporter has gone off the screen,
-the light ahead snaps on — and a little see-through blue hologram of you is hovering right under it,
+one along flickers on just before you reach the dark. Once the dark stretch ahead is well on screen,
+the light over it snaps on — and a little see-through blue hologram of you is hovering right under it,
 waving, with bright distortion bars rolling over it. A speech box over it types out a welcome
 (Dev → Guide hologram: how fast it types), then it hands you a starter kit out of its body one
-thing at a time — 150 gold, three red crystals and a green one, Buzzsaw, Bolt and Double Cast,
+thing at a time — 150 gold, two red crystals and a green one, Buzzsaw, Bolt and Double Cast,
 and a level 5 gun with three slots that fires in order — and glitches away. Walk through it
 before it's done and it glitches, says something rude and vanishes without the kit. Then the
 rest of the hall lights up as you go, one vending machine at a time (they stand evenly spaced),
@@ -213,15 +213,17 @@ heal on a floor is free; after that it costs 100 gold, and each one after costs
 1.75 times the last (100, 175, 305, 535…). Deeper floors raise the price the same
 way they raise what enemies pay out. A new floor's shop starts it free again.
 
-The three vending machines run left to right: mods, guns, perks.
-The **mod machine** past the sell machine (a flickering red ⚙️ hologram, a red-rimmed slot) and the
+The three vending machines run left to right: guns, mods, perks.
+The **mod machine** past the gun machine (a flickering red ⚙️ hologram, a red-rimmed slot) and the
 **perk machine** (a green ✦, a green slot) are **crystal machines**: they have no menu. Bring a red
 crystal near the mod machine, or a green one near the perk machine, and it's sucked in; the
 machine's lights race and it shakes faster and faster for a couple of seconds, then pops out a mod
 from the floor you're on's drop table, by its odds (it can be one you already have; a new one is
 unlocked), or a perk you've never had (perks are one of a kind: never given twice), for you to pick up. Several crystals queue up. Mods unlocked last the run: dying empties them (unlocked perks
-stay). (Their old menus are kept, switched off, in case they come back.) The gun machine still has its
-menu. Tap things directly, or use the sticks: in a machine's menu the **right
+stay). (Their old menus are kept, switched off, in case they come back.) Until a real crystal has gone
+into one this run, standing near it plays a little blue hologram of how: a crystal blinks in on the
+floor beside it and is sucked into the slot, again every couple of seconds. The gun machine still has its
+menu; while you have no gun at all, its first gun is a **Scratch Pistol**, free. Tap things directly, or use the sticks: in a machine's menu the **right
 stick is a pointer** — drag it and a thin ring pushes out from the knob and travels much further
 than your thumb (the stick's full reach takes it to the far corner of the screen, and it stops
 at the edge). It snaps gently onto the nearest button. Whatever it's over lights up; let go
@@ -276,7 +278,7 @@ sits a **green crystal**: walk up to it and it drops off the altar, for you to p
 Elites drop green crystals too.
 
 Green crystals turn into perks at the **perk machine** in the shop, the one with a green ✦ hologram,
-right of the gun machine: get one near it and it's sucked in, and after the shake it pops out a
+right of the mod machine: get one near it and it's sucked in, and after the shake it pops out a
 random perk you haven't got (kept for good, across runs). There are 30 perks copied from Noita (200g each) —
 Glass Cannon, Extra Health, Faster Wands, Homing Shots, Unlimited Spells, Permanent Shield,
 Pinpointer, Trajectory Sight, Angry Ghost, Attract Gold, radars and Invisibility among them —
@@ -455,12 +457,11 @@ also hold more of them.
 
 Guns work like Noita wands. Each one is rolled at random with its own capacity,
 cast delay, recharge time, mana pool, spread and shot speed, and some of them
-shuffle their firing order. You carry up to four. You start with a weak **Scratch Pistol**
-in hand and a **Pick Axe** in the second slot — a one-slot gun holding a **Buzzsaw**, which
-cuts a big circle right in front of you: no travel, it just carves a slice into the rock (or
-anything close) and chews terrain. Anything you find on floor 1 beats the pistol. The third slot
-holds the **Gravity Gun**: Follow Me then a White Hole, so a small white hole hovers just ahead of
-your gun and drags whatever it holds wherever you aim.
+shuffle their firing order. You carry up to four. A new run starts with **no guns and no gold**:
+the guide's kit has a gun, and while you have none the gun machine gives away a weak **Scratch
+Pistol** (one Bolt) free. Anything you find on floor 1 beats the pistol. (Before v0.0.142 you started
+with the pistol, a **Pick Axe** — one slot, a **Buzzsaw** — and the **Gravity Gun**, Follow Me then a
+White Hole; they're still in the code, `startingGuns`, and the browser tests start with them.)
 
 Standing next to a gun on the ground shows its card. A tap opens the chooser: it pauses the
 game and shows what you found with a button for each of your four slots, both guns laid out

@@ -63,7 +63,7 @@ const tell = (c, v) => { c.dataset.view = v.k.toFixed(4) + ' ' + v.ox.toFixed(1)
 
 // The shop's machines on the map (owner, v0.0.141): a coloured square each, standing on the shop floor,
 // left to right: the teleporter (blue), the heal (pink), buy a level (cyan), sell it (violet), then the
-// mod, gun and perk machines in their own hues (SHOPS)
+// gun, mod and perk machines in their own hues (SHOPS)
 /** @type {{ x: number, w: number, col: string, name: string }[]} */
 export const MAP_MARKS = [
   { x: ARRIVAL_X, w: 44, col: '#4f9dff', name: 'teleporter' }, { x: HEAL_X, w: 26, col: '#ff6fae', name: 'heal' },

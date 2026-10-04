@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.141</title>
-<!-- VERSION = 'v141' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.142</title>
+<!-- VERSION = 'v142' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -603,6 +603,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .gthud{position:absolute;inset:0;pointer-events:none;border-radius:9px;animation:gthud .35s ease-out forwards}
 @keyframes gthud{0%{box-shadow:inset 0 0 0 2px #fff;background:rgba(255,255,255,0.18)}100%{box-shadow:inset 0 0 0 0 transparent;background:transparent}}
 .gprice{text-align:center;font:700 13px system-ui,sans-serif;color:#ffc93c}
+.gprice.free{color:#6dff9a}
 .gsparks{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .gcard{flex:1;min-width:0;overflow-y:auto}
 .gcard .pop.ingame{position:static;background:none;border:0;box-shadow:none;padding:0;max-height:none;overflow:visible}
@@ -696,7 +697,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.141';</script>
+<script>const VERSION = 'v0.0.142';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -724,7 +725,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var PW = 12, PH = 22;
   var FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
   var PLAYER_HP = 100;
-  var START_GOLD = 40;
+  var START_GOLD = 0;
   var COIN_PULL = 36;
   var ENEMY_COUNT = 80;
   var MOD_DROPS = 7;
@@ -898,6 +899,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     holoC2y: 0,
     guideCps: 30,
     guideWait: 1.4,
+    guideIn: 50,
     shopGap: 0.9,
     shopTorch: 0.45,
     due1: 60,
@@ -976,6 +978,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     // a new run's guide hologram (world/guide.js): how fast its speech box types, and the pause after each box
     { k: "guideCps", g: "guide", label: "Typing speed (letters a second)", min: 2, max: 200, step: 1 },
     { k: "guideWait", g: "guide", label: "Pause after each box (s, + a little per letter)", min: 0, max: 10, step: 0.1 },
+    // how far on screen (world units in from the right edge; the screen is ~225 wide) its dark spot must be before its light snaps on
+    { k: "guideIn", g: "guide", label: "On screen before its light comes on (units in)", min: 0, max: 200, step: 5 },
     { k: "due1", g: "level", label: "Time to repay level 1 (minutes)", min: 0.1, max: 1440, step: 1 },
     { k: "enemies", g: "level", label: "Enemies on floor 1 (next level made)", min: 0, max: 400, step: 1 },
     { k: "enemiesUp", g: "level", label: "More enemies each floor after", min: 0, max: 60, step: 1 },
@@ -6936,6 +6940,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       // the exits along the top (portal is the middle one): exits(W)
       machines: {},
       // the crystal machines: crystals sucked in, the shake (game/systems/shops.js)
+      demo: {},
+      // and their hologram demo, playing while you stand near (stepDemo there)
       shopLit: null,
       // a new run's dark shop, lighting up as you go (world/shoplights.js; null = lit)
       guide: null,
@@ -7486,22 +7492,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     g.mana = g.manaMax;
     return resetGun(g);
   }
+  var scratchPistol = () => resetGun({
+    name: "Scratch Pistol",
+    cap: 3,
+    castDelay: 0.32,
+    recharge: 1.7,
+    manaMax: 90,
+    manaRegen: 22,
+    spread: 5,
+    multi: 1,
+    shuffle: false,
+    mana: 90,
+    speedMul: 1,
+    slots: ["bolt", null, null],
+    hue: Math.floor(Math.random() * 360)
+  });
   function startingGuns() {
-    const pistol = resetGun({
-      name: "Scratch Pistol",
-      cap: 3,
-      castDelay: 0.32,
-      recharge: 1.7,
-      manaMax: 90,
-      manaRegen: 22,
-      spread: 5,
-      multi: 1,
-      shuffle: false,
-      mana: 90,
-      speedMul: 1,
-      slots: ["bolt", null, null],
-      hue: Math.floor(Math.random() * 360)
-    });
+    const pistol = scratchPistol();
     const pickaxe = resetGun({
       name: "Pick Axe",
       cap: 1,
@@ -7588,10 +7595,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function cleanLoadout(lo) {
     lo = lo && typeof lo === "object" ? lo : {};
     const guns = [0, 1, 2, 3].map((i) => cleanGun((lo.guns || [])[i]));
-    if (!guns.some(Boolean)) return null;
+    if (!Array.isArray(lo.guns)) return null;
     const num2 = (v, d) => Number.isFinite(v) ? v : d;
     let sel = num2(lo.sel, 0);
-    if (!guns[sel]) sel = guns.findIndex(Boolean);
+    if (!guns[sel]) sel = Math.max(0, guns.findIndex(Boolean));
     return {
       guns,
       sel,
@@ -7620,6 +7627,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       } : void 0,
       greens: (Array.isArray(lo.greens) ? lo.greens : []).filter((f) => Number.isInteger(f) && f > 0),
       crystals: (Array.isArray(lo.crystals) ? lo.crystals : []).filter((f) => Number.isInteger(f) && f > 0),
+      fed: (Array.isArray(lo.fed) ? lo.fed : []).filter((k) => typeof k === "string"),
       debug: !!lo.debug
     };
   }
@@ -14918,10 +14926,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const gun = (c) => drawGun(c, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
       if (px > 0) {
         pixelSprite(G.ctx, W.p.x - 14, W.p.y - 8, PW + 28, PH + 16, px, line, body);
-        pixelSprite(G.ctx, W.p.x - 14, W.p.y - 8, PW + 28, PH + 16, px, false, gun);
+        if (held) pixelSprite(G.ctx, W.p.x - 14, W.p.y - 8, PW + 28, PH + 16, px, false, gun);
       } else {
         body(G.ctx);
-        gun(G.ctx);
+        if (held) gun(G.ctx);
       }
       const torch = (c) => drawTorch(c, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.leanX, W.leanY, W.time);
       if (px > 0) {
@@ -17209,9 +17217,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/world/guide.js
   var GUIDE_PAR = 0.8;
-  var GUIDE_GONE_X = ARRIVAL_X + 40;
   var GUIDE_UNDER = 20;
-  var GUIDE_NEAR = 70;
+  var GUIDE_NEAR = 30;
   var guideSpot = (g) => LIGHT_X[Math.min(g.hold, LIGHT_X.length - 1)] - GUIDE_UNDER;
   var APPEAR_T = 0.35;
   var WAVE_T = 1.1;
@@ -17230,7 +17237,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var GUIDE_RUDE = "Rude. Yeh OK have fun! Remember, you definitely have everything you need!";
   var GUIDE_GIFTS = [
     { gold: 150 },
-    { crystal: "red" },
     { crystal: "red" },
     { crystal: "red" },
     { crystal: "green" },
@@ -17269,7 +17275,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     g.t += dt;
     if (g.st === "wait") {
       const x = guideSpot(g);
-      if (I.camX > GUIDE_GONE_X || I.pcx >= x - GUIDE_NEAR) {
+      if (x + I.seen <= I.camX + I.vw || I.pcx >= x - GUIDE_NEAR) {
         g.x = x;
         g.cam0 = I.camX;
         go("appear");
@@ -17331,7 +17337,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!W.camReady || !W.unitPx) return;
     const vw = G.c.width / (window.devicePixelRatio || 1) / W.unitPx;
     const cps = DEV.guideCps, before = g.st === "talk" || g.st === "rude" ? typedAt(g.say, g.t, cps) : -1;
-    const ev = guideStep(g, F.dt, { pcx: F.pcx, camX: W.camX, vw, inShop: W.p.y + PH > SHOP_Y, cps, wait: DEV.guideWait });
+    const ev = guideStep(g, F.dt, { pcx: F.pcx, camX: W.camX, vw, inShop: W.p.y + PH > SHOP_Y, cps, wait: DEV.guideWait, seen: DEV.guideIn });
     const m = guideMid(W, g);
     for (const e of ev) {
       if (e.k === "appear") {
@@ -17418,6 +17424,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     drawRunner(x, bx, by, PW, 22, f, null, true, 0, false, hands);
     x.setTransform(1, 0, 0, 1, 0, 0);
     const { gl, a } = glitchOf(g, t);
+    holoPass(x, cw, ch, t, gl);
+    const ctx = G.ctx;
+    ctx.save();
+    const floorY = SHOP_FLOOR * CELL;
+    holoLight(ctx, m.x, m.y, floorY, a);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = 0.85 * a;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(c, 0, 0, cw, ch, x0, y0, cw * px, ch * px);
+    ctx.restore();
+  }
+  function holoPass(x, cw, ch, t, gl) {
     const src = x.getImageData(0, 0, cw, ch), d = src.data, out = x.createImageData(cw, ch), o = out.data;
     const fr = Math.floor(t * 30), scan = Math.floor(t * 8) % 2;
     const bars = [t * 0.9 % 1.6 - 0.3, (t * 0.9 + 0.8) % 1.6 - 0.3].map((v) => v * ch);
@@ -17460,28 +17478,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     x.putImageData(out, 0, 0);
-    const ctx = G.ctx;
-    ctx.save();
-    const floorY = SHOP_FLOOR * CELL;
+  }
+  function holoLight(ctx, x, y, floorY, a, r = 1) {
     ctx.globalCompositeOperation = "lighter";
     ctx.globalAlpha = 0.5 * a;
-    const pool = ctx.createRadialGradient(m.x, floorY, 0, m.x, floorY, 16);
+    const pool = ctx.createRadialGradient(x, floorY, 0, x, floorY, 16 * r);
     pool.addColorStop(0, "rgba(110,200,255,0.55)");
     pool.addColorStop(1, "rgba(110,200,255,0)");
     ctx.fillStyle = pool;
     ctx.beginPath();
-    ctx.ellipse(m.x, floorY, 16, 3.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, floorY, 16 * r, 3.5, 0, 0, Math.PI * 2);
     ctx.fill();
-    const glow2 = ctx.createRadialGradient(m.x, m.y, 2, m.x, m.y, 26);
+    const glow2 = ctx.createRadialGradient(x, y, 2, x, y, 26 * r);
     glow2.addColorStop(0, "rgba(90,180,255,0.22)");
     glow2.addColorStop(1, "rgba(90,180,255,0)");
     ctx.fillStyle = glow2;
-    ctx.fillRect(m.x - 26, m.y - 26, 52, 52);
-    ctx.globalCompositeOperation = "source-over";
-    ctx.globalAlpha = 0.85 * a;
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(c, 0, 0, cw, ch, x0, y0, cw * px, ch * px);
-    ctx.restore();
+    ctx.fillRect(x - 26 * r, y - 26 * r, 52 * r, 52 * r);
   }
   function wrapLines(ctx, text, w) {
     const out = [];
@@ -19177,9 +19189,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var MACHINE_TOP = SHOP_FLOOR * CELL - MACHINE_H;
   var CHUTE_Y = SHOP_FLOOR * CELL - 14;
   var SHOPS = {
-    // left to right: mods, guns, perks
-    mods: { x: SHOP_MACHINE_X[0], icon: "⚙️", hue: "#ff3a4a", label: "Tap R to shop", takes: "red" },
-    guns: { x: SHOP_MACHINE_X[1], icon: "gun", hue: "#ffd95a", label: "Tap R to shop" },
+    // left to right: guns, mods, perks (owner, v0.0.142: guns and mods swapped)
+    mods: { x: SHOP_MACHINE_X[1], icon: "⚙️", hue: "#ff3a4a", label: "Tap R to shop", takes: "red" },
+    guns: { x: SHOP_MACHINE_X[0], icon: "gun", hue: "#ffd95a", label: "Tap R to shop" },
     perks: { x: SHOP_MACHINE_X[2], icon: "✦", hue: "#3dff7a", label: "Tap R to shop", takes: "green" }
   };
   function shopNear(W, pcx, pcy) {
@@ -19260,6 +19272,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function stepCrystals(W, G, F) {
     const dt = F.dt;
+    stepDemo(W, G, F);
     const solid = (x, y) => solidAt(W, x, y);
     const free = [];
     for (const q of W.pickups) {
@@ -19277,6 +19290,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         crystalMotes(W, q.x, q.y, !!q.green, dt, Math.hypot(q.x - ox2, q.y - oy2), ox2, oy2);
         if (d < 7) {
           q.taken = true;
+          const LO = G.input.current.loadout;
+          if (!LO.fed) LO.fed = [];
+          if (!LO.fed.includes(q.into)) LO.fed.push(q.into);
           const M = W.machines[q.into] || (W.machines[q.into] = { n: 0, t: -1 });
           M.n++;
           burst(W, m.x, SLOT_Y, 8, q.green ? "#3dff7a" : "#ff4a5a");
@@ -19338,6 +19354,42 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       SFX.fx("reelThud");
       SFX.fx("prompt");
       G.input.current.notify();
+    }
+  }
+  var DEMO_NEAR = 100;
+  var DEMO_SIDE = MACHINE_W / 2 + 18;
+  var DEMO_IN = 0.45, DEMO_SIT = 0.9, DEMO_SUCK = 0.55, DEMO_FLASH = 0.3, DEMO_GAP = 2;
+  var DEMO_LOOP = DEMO_IN + DEMO_SIT + DEMO_SUCK + DEMO_FLASH + DEMO_GAP;
+  function demoAt(t) {
+    let r = (t % DEMO_LOOP + DEMO_LOOP) % DEMO_LOOP;
+    const parts = [["in", DEMO_IN], ["sit", DEMO_SIT], ["suck", DEMO_SUCK], ["flash", DEMO_FLASH]];
+    for (const [ph, len] of parts) {
+      if (r < len) return { ph, u: r / len };
+      r -= len;
+    }
+    return { ph: "gap", u: r / DEMO_GAP };
+  }
+  function demoPos(mx, side, u) {
+    const k = u * u, x0 = mx + side * DEMO_SIDE, y0 = SHOP_FLOOR * CELL - CRYS_R - 1;
+    return { x: x0 + (mx - x0) * k, y: y0 + (SLOT_Y - y0) * Math.sqrt(k) - Math.sin(k * Math.PI) * 6, s: 1 - 0.55 * k };
+  }
+  function stepDemo(W, G, F) {
+    const fed = G.input.current.loadout.fed || [];
+    const here = !W.p.dead && !W.warp && W.p.y + PH > SHOP_Y;
+    let near = "";
+    for (const k in SHOPS) if (SHOPS[k].takes && (!near || Math.abs(F.pcx - SHOPS[k].x) < Math.abs(F.pcx - SHOPS[near].x))) near = k;
+    for (const k in SHOPS) {
+      const m = SHOPS[k];
+      if (!m.takes) continue;
+      if (!here || k !== near || fed.includes(k) || Math.abs(F.pcx - m.x) > DEMO_NEAR) {
+        delete W.demo[k];
+        continue;
+      }
+      const side = F.pcx < m.x ? -1 : 1;
+      const D = W.demo[k] || (W.demo[k] = { t: 0, side });
+      const t0 = D.t;
+      D.t += F.dt;
+      if (Math.floor(D.t / DEMO_LOOP) !== Math.floor(t0 / DEMO_LOOP)) D.side = side;
     }
   }
 
@@ -19478,6 +19530,87 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         ctx.globalAlpha = 1;
       }
+      ctx.restore();
+    }
+  }
+  var DL = { c: null, x: null };
+  var DEMO_BOX = 30;
+  var DEMO_PAL = ["#56687a", "#a9bccc", "#e4f0f8", "#ffffff"];
+  var DEMO_TINT = 0.72;
+  function drawDemo(W, G, F) {
+    if (G.RPV) return;
+    for (const k in W.demo) {
+      const m = SHOPS[k], d = W.demo[k];
+      if (!m || m.x < W.camX - 80 || m.x > W.camX + F.vw + 80) continue;
+      const { ph, u } = demoAt(d.t);
+      if (ph === "gap") continue;
+      const ctx = G.ctx, t = W.time, floorY = SHOP_FLOOR * CELL;
+      ctx.save();
+      if (ph === "flash") {
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = 1 - u;
+        const r = 5 + 12 * u, g = ctx.createRadialGradient(m.x, SLOT_Y, 0, m.x, SLOT_Y, r);
+        g.addColorStop(0, "rgba(190,235,255,0.9)");
+        g.addColorStop(1, "rgba(90,180,255,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(m.x - r, SLOT_Y - r, r * 2, r * 2);
+        ctx.restore();
+        continue;
+      }
+      const p = demoPos(m.x, d.side, ph === "suck" ? u : 0);
+      const gl = ph === "in" ? 1 - u : hash3(Math.floor(t * 6) + m.x) < 0.06 ? 0.35 : 0;
+      const a = ph === "in" ? hash3(Math.floor(t * 40) + m.x) < u + 0.2 ? 1 : 0.15 : 1;
+      const bx = m.x + d.side * 8;
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = 0.1 * a;
+      ctx.fillStyle = "#6ec8ff";
+      ctx.beginPath();
+      ctx.moveTo(bx, SLOT_Y - 1);
+      ctx.lineTo(p.x, p.y - 8 * p.s);
+      ctx.lineTo(p.x, p.y + 8 * p.s);
+      ctx.lineTo(bx, SLOT_Y + 1);
+      ctx.closePath();
+      ctx.fill();
+      holoLight(ctx, p.x, p.y, floorY, a * (ph === "suck" ? 1 - u : 1), 0.7);
+      if (ph === "suck") {
+        ctx.fillStyle = "#9fe0ff";
+        for (let i = 1; i <= 5; i++) {
+          const q = demoPos(m.x, d.side, Math.max(0, u - i * 0.07));
+          ctx.globalAlpha = 0.5 * (1 - i / 6);
+          ctx.fillRect(q.x - 0.7 + Math.sin(t * 30 + i) * 1.5, q.y - 0.7 + Math.cos(t * 23 + i) * 1.5, 1.4, 1.4);
+        }
+      }
+      const px = DEV.runnerPx > 0 ? DEV.runnerPx : 1;
+      const x0 = Math.round(p.x - DEMO_BOX / 2), y0 = Math.round(p.y - DEMO_BOX / 2), cw = Math.ceil(DEMO_BOX / px);
+      if (!DL.c) {
+        DL.c = document.createElement("canvas");
+        DL.x = DL.c.getContext("2d", { willReadFrequently: true });
+      }
+      const c = DL.c, x = DL.x;
+      if (!x) {
+        ctx.restore();
+        continue;
+      }
+      if (c.width !== cw || c.height !== cw) {
+        c.width = cw;
+        c.height = cw;
+      }
+      x.setTransform(1, 0, 0, 1, 0, 0);
+      x.clearRect(0, 0, cw, cw);
+      x.setTransform(1 / px, 0, 0, 1 / px, -x0 / px, -y0 / px);
+      drawNugget(x, p.x, p.y, CRYSTAL_R * p.s, 2.7, ph === "suck" ? u * u * 5 : 0, DEMO_PAL);
+      x.setTransform(1, 0, 0, 1, 0, 0);
+      holoPass(x, cw, cw, t + m.x, gl);
+      x.globalCompositeOperation = "source-atop";
+      x.globalAlpha = DEMO_TINT;
+      x.fillStyle = m.takes === "green" ? "#2dff6a" : "#ff3048";
+      x.fillRect(0, 0, cw, cw);
+      x.globalCompositeOperation = "source-over";
+      x.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 0.85 * a;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(c, 0, 0, cw, cw, x0, y0, cw * px, cw * px);
       ctx.restore();
     }
   }
@@ -20048,6 +20181,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     drawShop(W, G, F);
     drawVend(W, G, F);
     drawShops(W, G, F);
+    drawDemo(W, G, F);
     drawGuide(W, G, F);
     drawLoot(W, G, F);
     drawRooms(W, G, F);
@@ -21401,6 +21535,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function testHook(W, g) {
     const { tctx, dctx, paintFog: paintFog2 } = g;
     if (!window.__TEST_VOID) W.hasLvl = true;
+    const LO = window.__in && window.__in.current.loadout;
+    if (LO && !window.__TEST_EMPTY && !LO.guns.some(Boolean)) {
+      LO.guns = startingGuns();
+      LO.sel = 0;
+      LO.gold = 40;
+    }
     const sandbox = (o) => {
       o = o || {};
       const w = o.w || 300, h3 = o.h || 200;
@@ -25348,17 +25488,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (!LO.gunShop || LO.gunShop.floor !== floor) LO.gunShop = newOffer(Math.random, floor);
       return LO.gunShop;
     });
-    const firstGun = () => Math.max(0, o.guns.findIndex(Boolean));
+    const [pistol] = useState(scratchPistol);
+    const free = !LO.guns.some(Boolean);
+    const guns = free ? [pistol, ...o.guns.slice(1)] : o.guns;
+    const priceOf2 = (i) => free && i === 0 ? 0 : guns[i] ? shopGunPrice(guns[i]) : 0;
+    const firstGun = () => Math.max(0, guns.findIndex(Boolean));
     const [sel, setSel] = useState(firstGun);
-    const [focus, setFocus] = useState(() => o.guns.some(Boolean) ? "g:" + firstGun() : "reroll");
+    const [focus, setFocus] = useState(() => guns.some(Boolean) ? "g:" + firstGun() : "reroll");
     const [spin, setSpin] = useState(NO_SPIN);
     const [landed, setLanded] = useState(0);
     const [msg, setMsg] = useState("");
     const [, bump] = useState(0);
     const root = useRef(null);
     const spinning = !!spin && landed < GUN_OFFER;
-    const gun = o.guns[sel] || null;
-    const price = gun ? shopGunPrice(gun) : 0;
+    const gun = guns[sel] || null;
+    const price = priceOf2(sel);
     const rr2 = rerollPrice(floor, o.rerolls);
     const reroll = () => {
       if (spinning) return;
@@ -25391,7 +25535,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       LO.gold -= price;
       input.current.dispense = { shop: "guns", gun };
-      o.guns[sel] = null;
+      if (!(free && sel === 0)) o.guns[sel] = null;
       SFX.ui("buy");
       close();
     };
@@ -25432,7 +25576,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h(
           "div",
           { className: "greels" },
-          o.guns.map((g, i) => h(
+          guns.map((g, i) => h(
             "div",
             {
               key: i,
@@ -25441,7 +25585,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               className: navCls("g:" + i, "greel") + (sel === i ? " sel" : "")
             },
             h(Reel, { gun: g, idx: i, spin, onLand }),
-            h("div", { className: "gprice" }, spinning && landed <= i ? "···" : g ? shopGunPrice(g) + "g" : "—")
+            h("div", { className: "gprice" + (free && i === 0 ? " free" : "") }, spinning && landed <= i ? "···" : !g ? "—" : free && i === 0 ? "FREE" : priceOf2(i) + "g")
           ))
         ),
         h(
@@ -25449,7 +25593,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           { className: "gcard scroll" },
           spinning ? h("p", { className: "vhint" }, "Rolling…") : gun ? h(GunCard, {
             gun,
-            label: gun.boosted ? "Boosted" : "For sale",
+            label: free && sel === 0 ? "Free" : gun.boosted ? "Boosted" : "For sale",
             ingame: true,
             flow: true,
             compare: held,
@@ -25464,8 +25608,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h(
           "button",
           { className: navCls("buy", "vbuy") + (gun && !spinning && LO.gold >= price ? "" : " cant"), "data-nav": "buy", onPointerDown: tap("buy") },
-          h("b", null, "Buy selected"),
-          h("span", null, gun ? price + "g" : "—")
+          h("b", null, free && sel === 0 ? "Take it" : "Buy selected"),
+          h("span", null, !gun ? "—" : free && sel === 0 ? "FREE" : price + "g")
         ),
         h(
           "div",
@@ -25998,7 +26142,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       left: blank(),
       right: blank(),
       loadout: saved ? saved.loadout : {
-        guns: startingGuns(),
+        guns: [null, null, null, null],
         bag: [],
         sel: 0,
         gold: START_GOLD,
@@ -26079,7 +26223,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       saveCollection([]);
       input.current.saved = null;
       input.current.loadout = {
-        guns: startingGuns(),
+        guns: [null, null, null, null],
         bag: [],
         sel: 0,
         gold: START_GOLD,
