@@ -59,7 +59,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   st = await state();
   check('confirming restarts the run', st.marker === null, st);
   check('confirming closes the confirm', st.confirmOpen === false, st);
-  check('a fresh run has its starting guns back', st.guns === 2, st);
+  check('a fresh run has its three starting guns back', st.guns === 3, st);
   const un = await page.evaluate(() => ({ mods: window.__in.current.collection.length, stored: loadCollection().length,
     perks: window.__in.current.perkCollection.includes('sight') }));
   check('Restart empties the mods unlocked (and their store)', un.mods === 0 && un.stored === 0, un);

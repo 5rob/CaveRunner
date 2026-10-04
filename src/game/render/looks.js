@@ -174,6 +174,38 @@ export function drawLook(W, G, b) {
   return true;
 }
 
+// The White Hole (v0.0.137): the Black Hole's look turned inside out and very small: a pale blue
+// haze round a white-hot core with blue stars wheeling in it, fading in and out with its life.
+// Its size follows its radius (Enlarge / Shrink).
+/** @param {World} W @param {GameCtx} G @param {Field} f */
+export function drawWhiteHole(W, G, f) {
+  const core = Math.max(1.5, f.r * 0.055), fade = Math.min(1, (f.max - f.life) * 8, f.life * 5);
+  const beat = 1 + 0.08 * Math.sin(W.time * 9 + f.x), R = core * 3 * beat;
+  G.ctx.save();
+  G.ctx.globalCompositeOperation = 'lighter';
+  const g = G.ctx.createRadialGradient(f.x, f.y, core * 0.6, f.x, f.y, R);
+  g.addColorStop(0, 'rgba(200,236,255,' + (0.8 * fade) + ')');
+  g.addColorStop(0.35, 'rgba(110,190,255,' + (0.35 * fade) + ')');
+  g.addColorStop(1, 'rgba(60,140,255,0)');
+  G.ctx.fillStyle = g;
+  G.ctx.beginPath(); G.ctx.arc(f.x, f.y, R, 0, Math.PI * 2); G.ctx.fill();
+  G.ctx.globalAlpha = fade;
+  G.ctx.fillStyle = '#ffffff';
+  G.ctx.beginPath(); G.ctx.arc(f.x, f.y, core, 0, Math.PI * 2); G.ctx.fill();
+  for (let k = 0; k < 6; k++) {           // blue stars wheeling round the core
+    const tw = Math.sin(W.time * 8 + k * 1.7);
+    if (tw < 0.1) continue;
+    const ang = k * 2.4 - W.time * (2 + (k % 3)), rad = core * (1.1 + ((k * 0.37) % 0.9));
+    G.ctx.globalAlpha = tw * fade;
+    G.ctx.fillStyle = k % 2 ? '#7cc4ff' : '#c8ecff';
+    G.ctx.fillRect(f.x + Math.cos(ang) * rad - 0.4, f.y + Math.sin(ang) * rad - 0.4, 0.8, 0.8);
+  }
+  G.ctx.globalAlpha = 0.7 * fade;
+  G.ctx.strokeStyle = '#8fd0ff'; G.ctx.lineWidth = 0.6;
+  G.ctx.beginPath(); G.ctx.arc(f.x, f.y, core * 1.15, 0, Math.PI * 2); G.ctx.stroke();
+  G.ctx.restore();
+}
+
 // v96: what sits in the middle of a field (or over it)
 /** @param {World} W @param {GameCtx} G @param {Field} f @param {number} beat */
 export function drawFieldLook(W, G, f, beat) {
@@ -247,6 +279,7 @@ export function drawFields(W, G, F) {
   // static fields
   for (const f of W.fields) {
     if (f.y > W.camY + vh + f.r || f.y < W.camY - f.r) continue;
+    if (f.field === 'vacuum') { drawWhiteHole(W, G, f); continue; }   // no circle: its motes show its reach
     const t = f.life / f.max;
     const beat = 0.75 + 0.25 * Math.sin(W.time * (f.field === 'mine' ? 7 : 3));
     G.ctx.globalAlpha = 0.14 * beat * (f.field === 'mine' || f.field === 'dormant' ? 2 : 1);

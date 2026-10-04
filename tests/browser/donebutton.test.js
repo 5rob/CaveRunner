@@ -37,7 +37,7 @@ async function run(label, opts, useTap) {
   st = await page.evaluate(() => ({ marker: window.__lvl.marker || null,
     bag: window.__in.current.loadout.bag.length, guns: window.__in.current.loadout.guns.filter(Boolean).length }));
   check(`${label}: Restart starts a new run`, st.marker === null, st);
-  check(`${label}: Restart resets the loadout`, st.bag === 0 && st.guns === 2, st);
+  check(`${label}: Restart resets the loadout`, st.bag === 0 && st.guns === 3, st);
 
   // and the keyboard route in/out of the sheet
   if (!useTap) {

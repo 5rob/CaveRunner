@@ -125,6 +125,7 @@ export function makeGun(rnd, lvl) {
 
 /** @returns {(Gun | null)[]} */
 export function startingGuns() {
+  // [Scratch Pistol (selected), Pick Axe, Gravity Gun, empty]
   // The Scratch Pistol is a weak backup on purpose: slow, thirsty and single-shot, so
   // anything you find on floor 1 is an upgrade over it. It's first in line (selected).
   const pistol = resetGun({ name: 'Scratch Pistol', cap: 3, castDelay: 0.32, recharge: 1.7,
@@ -135,7 +136,12 @@ export function startingGuns() {
   const pickaxe = resetGun({ name: 'Pick Axe', cap: 1, castDelay: 0.05, recharge: 1.0,
     manaMax: 120, manaRegen: 60, spread: 0, multi: 1, shuffle: false, mana: 120, speedMul: 1,
     slots: ['saw'], hue: 20 });
-  return [pistol, pickaxe, null, null];
+  // The Gravity Gun (v0.0.137): Follow Me then a White Hole, so the white hole hovers just ahead of
+  // your gun and drags whatever it holds wherever you aim; a fresh one about every second
+  const gravity = resetGun({ name: 'Gravity Gun', cap: 2, castDelay: 0.3, recharge: 0.6,
+    manaMax: 200, manaRegen: 70, spread: 0, multi: 1, shuffle: false, mana: 200, speedMul: 1,
+    slots: ['follow', 'vacfield'], hue: 200 });
+  return [pistol, pickaxe, gravity, null];
 }
 
 // the colour a gun wears: its level's colour, or (starter guns, which have no level)

@@ -109,6 +109,7 @@ export function makeWorld() {
     toasts: [],                     // the messages at the bottom of the view
     smoke: [], sparks: [], flashes: [],
     torchP: [],                     // the embers the torch throws off
+    eliteFx: [],                    // the elites' flames (stepEliteFire)
     // soft magic particles: the Black Hole's trail ('drift'), motes sucked into the exit
     // portal ('in') and motes wafting out of the arrival portal ('out')
     motes: [],

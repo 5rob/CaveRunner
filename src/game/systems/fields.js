@@ -4,7 +4,8 @@
 // frame (stepFields, a part of step()).
 
 import { SFX } from '../../audio/sfx.js';
-import { VACUUM_WAIT } from '../../spells/mods.js';
+import { VAC_PULL } from '../../spells/mods.js';
+import { FIELD_SPEED, FOLLOW_AHEAD, hasPath, pathStep } from '../../spells/paths.js';
 import { FIRE_COLS, fireDouse } from '../../world/fire.js';
 import { critRoll, shove } from './bullets.js';
 import { damageEnemy } from './enemies.js';
@@ -13,6 +14,7 @@ import { addArc } from './lightning.js';
 import { burst } from './particles.js';
 import { glowDot, rnd } from './shotlooks.js';
 import { dig, enemyAt, explode, solidAt } from './terrain.js';
+import { PH, PW } from '../../core/consts.js';
 
 // A beam is instant: it walks a line, damages what it touches and leaves a streak.
 /** @param {World} W @param {GameCtx} G @param {Shot} sh @param {number} x @param {number} y @param {number} nx @param {number} ny @param {number} bonus @param {number} pd @param {number} pc */
@@ -55,8 +57,8 @@ export function throwEmbers(W, x, y, n) {
 }
 
 // Static projectiles: they sit where you cast them and work over time.
-/** @param {World} W @param {GameCtx} G @param {Shot} sh @param {number} x @param {number} y @param {number} ang */
-export function castField(W, G, sh, x, y, ang) {
+/** @param {World} W @param {GameCtx} G @param {Shot} sh @param {number} x @param {number} y @param {number} ang @param {Bullet | Field | null} [from] a trigger's carrier (an orbit circles it) */
+export function castField(W, G, sh, x, y, ang, from) {
   const pay = sh.payload && sh.payload.length ? sh.payload : null;
   if (sh.field === 'explode') {
     explode(W, G, x, y, sh.r, undefined, sh.fire);
@@ -64,8 +66,33 @@ export function castField(W, G, sh, x, y, ang) {
     if (pay) releaseAt(W, G, pay, x, y, Math.cos(ang || 0), Math.sin(ang || 0), sh.col);
     return;
   }
-  W.fields.push({ x, y, r: sh.r, field: sh.field, life: sh.life, max: sh.life,
-    col: sh.col, dmg: sh.dmg || 1, tick: 0, payload: pay, ang: ang || 0, trig: sh.trig });
+  // a path mod (Follow Me, Boomerang, Orbit…) sets a field moving: it carries on working as it goes
+  const f = { x, y, r: sh.r, field: sh.field, life: sh.life, max: sh.life,
+    col: sh.col, dmg: sh.dmg || 1, tick: 0, payload: pay, ang: ang || 0, trig: sh.trig,
+    still: 1, age: 0, born: sh.life, vx: 0, vy: 0, boomer: sh.boomer, pong: sh.pong, spiral: sh.spiral,
+    orbit: sh.orbit, follow: sh.follow, homing: sh.homing, homeR: sh.homeR, anc: anchorOf(from) };
+  if (hasPath(f)) { f.vx = Math.cos(ang || 0) * FIELD_SPEED; f.vy = Math.sin(ang || 0) * FIELD_SPEED; }
+  W.fields.push(f);
+}
+
+// What a trigger's payload orbits: its carrier while that's still about, then the spot it had
+// got to, carried on by the carrier's momentum (pathEnv moves it). null: you.
+/** @param {Bullet | Field | null | undefined} from @returns {Anchor | null} */
+export const anchorOf = from => from ? { x: from.x, y: from.y, vx: from.vx || 0, vy: from.vy || 0, of: from } : null;
+// the world a mover's path needs (spells/paths.js): you, the spot ahead of your gun, its anchor
+// moved on a frame, and the creatures
+/** @param {World} W @param {Mover & { anc?: Anchor | null }} o @param {number} dt @returns {PathEnv} */
+export function pathEnv(W, o, dt) {
+  const home = { x: W.p.x + PW / 2, y: W.p.y + PH * 0.4 };
+  const aim = W.p.aim || { nx: W.p.face || 1, ny: 0 };
+  const ahead = { x: home.x + aim.nx * FOLLOW_AHEAD, y: home.y + aim.ny * FOLLOW_AHEAD };
+  const a = o.anc;
+  if (a) {
+    const of = a.of;
+    if (of && (W.bullets.some(b => b === of) || W.fields.some(x => x === of))) { a.x = of.x; a.y = of.y; a.vx = of.vx || 0; a.vy = of.vy || 0; }
+    else { a.of = null; a.x += a.vx * dt; a.y += a.vy * dt; const k = Math.exp(-0.8 * dt); a.vx *= k; a.vy *= k; }
+  }
+  return { home, ahead, anchor: a, enemies: W.enemies };
 }
 
 // a crystal "with Trigger" casts what it carries when it goes off
@@ -73,7 +100,7 @@ export function castField(W, G, sh, x, y, ang) {
 export const fieldPayload = (W, G, f) => {
   if (!f.payload) return;
   const list = f.payload; f.payload = null;
-  releaseAt(W, G, list, f.x, f.y, Math.cos(f.ang), Math.sin(f.ang), f.col);
+  releaseAt(W, G, list, f.x, f.y, Math.cos(f.ang), Math.sin(f.ang), f.col, f);
 };
 
 // ---- static fields (a part of step) ----
@@ -86,6 +113,13 @@ export function stepFields(W, G, F) {
   for (let i = W.fields.length - 1; i >= 0; i--) {
     const f = W.fields[i];
     f.life -= dt; f.tick -= dt;
+    // moving: a path mod's (spells/paths.js); a field passes through rock
+    if (hasPath(f)) {
+      f.age = (f.age || 0) + dt;
+      const [ex, ey] = pathStep(f, dt, pathEnv(W, f, dt));
+      f.x += (f.vx || 0) * dt + ex; f.y += (f.vy || 0) * dt + ey;
+      if (f.caught) f.life = Math.min(f.life, 0);
+    }
     const near = j => Math.hypot(W.enemies[j].x - f.x, W.enemies[j].ty - f.y) < f.r;
     if (f.field === 'slow' || f.field === 'storm') {
       // Stillness frosts and the thundercloud's rain soaks: any fire under them goes out
@@ -134,19 +168,38 @@ export function stepFields(W, G, F) {
         SFX.arc(sx, sy, true);
       }
     } else if (f.field === 'vacuum') {
-      // Noita's Vacuum Field: a blink after it appears, everything in reach is warped
-      // straight to the middle, through walls — creatures, shots (theirs and yours),
-      // gold and loot. Once, then it's gone.
-      if (!f.done && f.max - f.life >= VACUUM_WAIT) {
-        f.done = true;
-        const inR = (x, y) => Math.hypot(x - f.x, y - f.y) < f.r;
-        for (const e of W.enemies) if (inR(e.x, e.ty)) { e.y += f.y - e.ty; e.x = f.x; e.tgt = null; }
-        for (const b of W.bullets) if (inR(b.x, b.y)) { b.x = f.x; b.y = f.y; }
-        for (const b of W.enemyShots) if (inR(b.x, b.y)) { b.x = f.x; b.y = f.y; }
-        for (const g of W.coins) if (inR(g.x, g.y)) { g.x = f.x; g.y = f.y; }
-        for (const q of W.pickups) if (!q.taken && inR(q.x, q.y)) { q.x = f.x; q.y = f.y; }
-        burst(W, f.x, f.y, 14, f.col);
-        SFX.fx('warp', f.x, f.y);
+      // White Hole (Noita's Vacuum Field, v0.0.137): a strong steady pull into its middle for its
+      // whole life, through walls, harming nothing: creatures, shots (theirs), gold and loot.
+      // Stronger the closer in, and held at the middle. Motes are drawn into it (stepMotes 'in').
+      const reach = f.r;
+      /** @param {number} d */
+      const sp = d => VAC_PULL * (0.35 + 0.65 * (1 - d / reach));
+      for (const e of W.enemies) {
+        const dx = f.x - e.x, dy = f.y - e.ty, d = Math.hypot(dx, dy) || 1;
+        if (d < reach) { const s = Math.min(d, sp(d) * dt); e.x += dx / d * s; e.y += dy / d * s; e.tgt = null; }
+      }
+      for (const b of W.enemyShots) {
+        const dx = f.x - b.x, dy = f.y - b.y, d = Math.hypot(dx, dy) || 1;
+        if (d < reach) {                     // hauled in and slowed, so it settles rather than swinging through
+          const k = Math.exp(-4 * dt); b.vx = b.vx * k + dx / d * 900 * dt; b.vy = b.vy * k + dy / d * 900 * dt;
+        }
+      }
+      for (const g of W.coins) {
+        const dx = f.x - g.x, dy = f.y - g.y, d = Math.hypot(dx, dy) || 1;
+        if (d < reach) { const s = Math.min(d, sp(d) * dt); g.x += dx / d * s; g.y += dy / d * s; g.vy = 0; g.vx = 0; g.ground = 0; }
+      }
+      for (const q of W.pickups) {
+        if (q.taken || q.fly) continue;
+        const dx = f.x - q.x, dy = f.y - q.y, d = Math.hypot(dx, dy) || 1;
+        if (d < reach) { const s = Math.min(d, sp(d) * dt); q.x += dx / d * s; q.y += dy / d * s; }
+      }
+      // specks gathered from round its edge, drawn in (like the old portal's)
+      for (let n = Math.floor((f.mAcc = (f.mAcc || 0) + dt * 45)); n > 0; n--) {
+        f.mAcc--;
+        const a = Math.random() * 6.283, rr = reach * (0.7 + Math.random() * 0.3), life = 0.9 + Math.random() * 0.6;
+        W.motes.push({ kind: 'in', x: f.x + Math.cos(a) * rr, y: f.y + Math.sin(a) * rr, tx: f.x, ty: f.y, f,
+          vx: 0, vy: 0, life, max: life, age: 0, ph: Math.random() * 6.28,
+          s: 0.8 + Math.random() * 1.1, c: Math.random() < 0.45 ? '#ffffff' : Math.random() < 0.6 ? '#9fd8ff' : '#4aa8ff' });
       }
     } else if (f.field === 'glitter') {
       if (f.tick <= 0) {

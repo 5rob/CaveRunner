@@ -57,7 +57,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       if (L.mat[Math.floor(y / L.world.CELL) * L.world.CW + Math.floor(x / L.world.CELL)]) return true; return false; })();
     out.floorGap = Math.round(room.y - (p.y + 22));
 
-    // 4: Vacuum Field snaps a creature, a coin and an enemy shot into its middle
+    // 4: the White Hole (was Vacuum Field, v0.0.137) pulls a creature, a coin and an enemy shot
+    // into its middle: steadily, not a snap, and it harms nothing
     room = L.sandbox({ w: 400, h: 240 });
     const proto = makeLevel(5, 1).enemies[0];
     const e = Object.assign({}, proto, { x: room.x + 40, y: room.y - 150, ty: room.y - 150, hp: 999, max: 999, tgt: null, aggro: false });
@@ -65,11 +66,13 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     L.enemies.push(e);
     const c = { x: room.x - 30, y: room.y - 150, amount: 1, t: 0, vy: 0 }; L.coins.push(c);
     const s = { x: room.x, y: room.y - 200, vx: 0, vy: 0, life: 9, col: '#fff', dmg: 0, size: 3 }; L.enemyShots.push(s);
-    L.fields.push({ x: room.x, y: room.y - 150, r: 64, field: 'vacuum', life: 0.33, max: 0.33, col: '#b57cff', dmg: 1, tick: 0, payload: null, ang: 0 });
+    L.fields.push({ x: room.x, y: room.y - 150, r: 64, field: 'vacuum', life: 1.2, max: 1.2, col: '#9fd8ff', dmg: 1, tick: 0, payload: null, ang: 0, vx: 0, vy: 0, age: 0 });
     const f = L.fields[L.fields.length - 1];
     await frames(3);
-    out.vacEarly = Math.round(e.x - f.x);                // not yet: it waits a blink
-    await frames(40, () => f.done);                    // the frame it snaps (things fall/fly on after)
+    out.vacEarly = Math.round(e.x - f.x);                // a few frames in: on its way, not there
+    out.motes = L.motes.filter(q => q.f === f).length;    // specks drawn in from its edge
+    await frames(45);
+    out.hp = e.hp;
     out.vac = { e: Math.round(Math.hypot(e.x - f.x, e.ty - f.y)), c: Math.round(Math.hypot(c.x - f.x, c.y - f.y)),
       s: L.enemyShots.includes(s) ? Math.round(Math.hypot(s.x - f.x, s.y - f.y)) : 'gone' };
     await frames(40, () => !L.fields.includes(f));
@@ -96,11 +99,13 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('Small Teleport Bolt is a short hop', r.shortHop > 40 && r.shortHop < r.longHop / 2, { short: r.shortHop, long: r.longHop });
   check('teleporting at the floor never puts you in rock', !r.inRock, r);
   check('you land at the floor, not somewhere else', r.floorGap >= -1 && r.floorGap < 20, r.floorGap);
-  check('Vacuum Field waits a blink', r.vacEarly > 20, r.vacEarly);
-  check('then the creature is in its middle', r.vac.e < 3, r.vac);
-  check('so is the coin', r.vac.c < 3, r.vac);
-  check('and the enemy shot', r.vac.s === 'gone' || r.vac.s < 12, r.vac);
-  check('and it is over quickly', r.vac.gone, r.vac);
+  check('White Hole pulls, it does not snap', r.vacEarly > 20 && r.vacEarly < 40, r.vacEarly);
+  check('specks are drawn in from its edge', r.motes > 0, r.motes);
+  check('then the creature is held in its middle', r.vac.e < 4, r.vac);
+  check('unharmed', r.hp === 999, r.hp);
+  check('so is the coin', r.vac.c < 4, r.vac);
+  check('and the enemy shot is hauled in close', r.vac.s === 'gone' || r.vac.s < 30, r.vac);
+  check('and it is gone after its 1.2s', r.vac.gone, r.vac);
   check('digging a gold seam drops gold', r.digCoins > 0, r);
   check('blasting one does too', r.blastCoins > 0, r);
   check('the gold is real money', r.coinGold > 0, r);

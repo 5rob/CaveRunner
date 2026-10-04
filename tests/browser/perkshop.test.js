@@ -26,13 +26,13 @@ const DIR = path.join(__dirname, '..', 'build');
     const pin = () => { L.p.x = r.x - 4; L.p.y = r.y - 8; L.p.vx = L.p.vy = 0; };
     pin(); window.__in.current.sig = '';
     for (let i = 0; i < 12; i++) { pin(); await new Promise(res => requestAnimationFrame(res)); }
-    const card = !!document.querySelector('.crystalcard');
-    for (let i = 0; i < 8; i++) { pin(); window.__in.current.interact = true; await new Promise(res => requestAnimationFrame(res)); }
+    const card = !!document.querySelector('.buypanel');
+    for (let i = 0; i < 30 && !(window.__in.current.loadout.greens || []).length; i++) { pin(); await new Promise(res => requestAnimationFrame(res)); }
     await new Promise(res => setTimeout(res, 150));
     return { card, greens: (window.__in.current.loadout.greens || []).length, taken: r.taken,
       top: document.querySelectorAll('.gold .crysrow .cbit.green').length };
   });
-  check('its card shows, a tap pockets it', st.card && st.greens === 1 && st.taken, st);
+  check('no card: it flies off the altar into your pocket', !st.card && st.greens === 1 && st.taken, st);
   check('the top bar shows a green silhouette', st.top === 1, st.top);
 
   // the machine
@@ -103,7 +103,7 @@ const DIR = path.join(__dirname, '..', 'build');
   st = await page.evaluate(() => ({ suit: window.__in.current.loadout.suit.slice(), perks: window.__in.current.loadout.perks.slice() }));
   check('dragged onto a slot that takes it: fitted, no longer carried', st.suit[si] === pid && !st.perks.includes(pid), st);
   await page.waitForTimeout(100);
-  check('and it counts (the HUD column shows it)', await page.evaluate(() => document.querySelectorAll('.perkpip').length === 1));
+  check('and it counts (fitted in the suit)', await page.evaluate(() => (window.__in.current.loadout.suit || []).filter(Boolean).length === 1));
   await page.screenshot({ path: path.join(DIR, 'exosuit_fitted.png') });
   // a second copy can't go in too: the fitted one shows in use and won't drag into another slot
   await page.evaluate(id => { window.__in.current.loadout.perks.push(id); window.__in.current.notify(); }, pid);

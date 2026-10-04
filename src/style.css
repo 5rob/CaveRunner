@@ -57,7 +57,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .dbtn.on{border:2.5px solid var(--ctl-hot)}
 .dbtn.empty{border-style:dotted;opacity:.45;cursor:default}
 .dbtn .gicon{width:92%;height:auto;pointer-events:none}
-.dbtn .emo{font-size:20px;line-height:1;pointer-events:none}
+.dbtn .emo{font-size:27px;line-height:1;pointer-events:none}
 .dbtn .badge{position:absolute;right:-4px;top:-4px;margin:0;font:700 10px ui-monospace,monospace;
   color:#fff;opacity:1;text-shadow:0 1px 2px #000}
 .toolbar{display:flex;align-items:center;justify-content:space-between;padding:0 8px;height:36px}
@@ -77,28 +77,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .gold .due b{font:800 16px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ff4a4a;letter-spacing:0}
 .gold .due.late b{animation:dueblink 1s steps(2) infinite}
 @keyframes dueblink{50%{opacity:.35}}
-/* the perks you have found: a column going up from above the map button, wrapping inwards */
-.perkcol{position:absolute;display:flex;flex-direction:column-reverse;flex-wrap:wrap;
-  align-content:flex-start;gap:6px;pointer-events:none;z-index:4}
-.perkpip{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;padding:0;margin:0;
-  justify-content:center;font-size:19px;line-height:1;box-sizing:border-box;pointer-events:auto;
-  border:1.5px solid currentColor;background:rgba(0,0,0,0.45);font-family:inherit;cursor:pointer}
-.perkpip.off{opacity:.35;border-style:dashed}
-.perkpip.sel{box-shadow:0 0 0 2px #fff}
-/* a perk's card, tapped from the column: the game pauses behind it */
-/* always dark, like the shop panel, so the R and the words read in either theme */
-.perkinfo{position:fixed;z-index:28;left:10px;right:10px;top:calc(10px + env(safe-area-inset-top));
-  box-sizing:border-box;display:flex;flex-direction:column;gap:9px;
-  background:rgba(18,20,26,0.95);border:1px solid rgba(255,255,255,0.18);border-radius:15px;
-  padding:11px 12px 12px;color:#e9ecf2;box-shadow:0 12px 40px rgba(0,0,0,0.35)}
-.perkinfo .pop.ingame{position:static;background:none;border:0;box-shadow:none;padding:0;margin:0;
-  max-height:none;overflow:visible}
-.perktoggle{cursor:pointer;margin-top:2px}
-.perktoggle b{color:#e9ecf2;font-size:14px}
-.perktoggle i{font-style:normal;font:700 12px ui-monospace,monospace;padding:2px 7px;border-radius:6px;
-  background:#57d267;color:#000}
-.perkinfo.off .perktoggle i{background:#6b6f78;color:#fff}
-.perkinfo.off .ptitle b{text-decoration:line-through}
 .num{position:absolute;top:2px;left:5px;font:600 10px ui-monospace,monospace;color:var(--ctl-dim)}
 .ico{position:absolute;left:50%;top:56%;transform:translate(-50%,-50%)}
 .ico.gun{width:18px;height:5px;border-radius:1px;background:var(--ctl-hot)}
@@ -458,6 +436,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .fcdot{fill:#fff}
 .fchandle{fill:#0d0f14;stroke:#5ad65a;stroke-width:1.6}
 .fcreset{display:block;margin:4px 0 0 auto}
+/* Dev → Elites: flames: the live preview, the gradient bar and the opacity ramp */
+.flameprev{position:sticky;top:-14px;z-index:2;display:block;width:100%;height:150px;margin:4px 0 6px;
+  border-radius:10px;border:1px solid var(--ring);background:#0d0f14}
+.devlbl{margin:8px 0 2px;font:600 12px system-ui,sans-serif;color:var(--text)}
+.gradedit,.rampedit{position:relative;margin:2px 0 8px}
+.gradsel{display:flex;align-items:center;gap:8px;margin-top:4px;font:12px system-ui,sans-serif;color:var(--text)}
+.gradsel span{flex:1}
+.gradsel .devreset{width:auto;min-width:34px;padding:0 10px}
+.gradsel input[type=color]{width:40px;height:28px;padding:0;border:0;background:none}
 .devreset{flex:0 0 auto;width:34px;height:36px;border-radius:8px;border:1px solid var(--ring);
   background:var(--pad);color:var(--text);font-size:16px}
 .devrow input{width:92px;flex:0 0 auto;box-sizing:border-box;height:36px;border-radius:8px;
@@ -564,7 +551,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .vbuy b{font:800 15px system-ui,sans-serif;letter-spacing:.03em}
 .vbuy span{font:700 15px system-ui,sans-serif;color:#ffc93c}
 .vbuy.cant{opacity:.45}
-.crystalcard .pglyph{background:none;border:0}
 .vcrys{display:inline-flex;align-items:center;gap:3px;font:700 14px system-ui,sans-serif;color:#ff6a78}
 
 /* ---- the level buy machine's floor menu (ui/levelshop.js) ---- */
@@ -617,7 +603,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .greroll{border-color:#ffc93c;background:rgba(255,201,60,0.12)}
 .gboost{border-color:#c8202c;background:rgba(160,20,40,0.25)}
 .gcost{display:inline-flex;align-items:center;gap:2px;color:#ff6a78 !important}
-.perkhint{margin:0;font-size:12px;color:rgba(233,236,242,0.6)}
 
 /* ---- the Bag's tabs, and the Exo Suit (ui/exosuit.js) ---- */
 .btabs{flex:0 0 auto;display:flex;gap:6px;margin-top:8px}

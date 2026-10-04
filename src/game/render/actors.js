@@ -5,7 +5,9 @@
 // before the creatures, is drawSilk in game/creatures/spider.js)
 
 import { drawGun, drawRagdoll, drawRunner, drawTorch, jetFlame, pixelSprite, torchEmbers } from '../../art/sprites.js';
+import { gradLut, lutAt, rampLut } from '../../art/ramps.js';
 import { COL, PH, PW } from '../../core/consts.js';
+import { hexRgb } from '../../core/util.js';
 import { drawEnemy } from '../../creatures/draw.js';
 import { DEV, carrotAt, jcol, kcol, kru } from '../../dev/knobs.js';
 import { planCast } from '../../spells/cast.js';
@@ -13,6 +15,28 @@ import { gunAccent } from '../../spells/guns.js';
 import { bhSp, tracePath } from '../../spells/trace.js';
 import { jetNozzle, torchHand } from '../systems/player.js';
 import { solidAt } from '../systems/terrain.js';
+
+// The elites' flames (stepEliteFire): each speck a square on the player's pixel grid, its colour
+// along the gradient and its opacity along the ramp (Dev → Elites: flames), added on as light
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
+export function drawEliteFire(W, G, F) {
+  if (!W.eliteFx.length) return;
+  const { vw, vh } = F;
+  const cols = gradLut(DEV.elFxGrad), alpha = rampLut(DEV.elFxAlpha), px = DEV.runnerPx || 0;
+  G.ctx.globalCompositeOperation = 'lighter';
+  for (const q of W.eliteFx) {
+    if (q.y > W.camY + vh + 10 || q.y < W.camY - 10 || q.x < W.camX - 10 || q.x > W.camX + vw + 10) continue;
+    const t = 1 - q.life / q.max, a = lutAt(alpha, t);
+    if (a <= 0.01) continue;
+    G.ctx.globalAlpha = a;
+    G.ctx.fillStyle = lutAt(cols, t);
+    const s = px ? Math.max(px, Math.round(q.s / px) * px) : q.s;
+    const x = px ? Math.round(q.x / px) * px : q.x, y = px ? Math.round(q.y / px) * px : q.y;
+    G.ctx.fillRect(x - s / 2, y - s / 2, s, s);
+  }
+  G.ctx.globalCompositeOperation = 'source-over';
+  G.ctx.globalAlpha = 1;
+}
 
 // The creatures in view, each with a health bar (rats and nests only once hurt)
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
@@ -22,13 +46,18 @@ export function drawEnemies(W, G, F) {
   for (const e of W.enemies) {
     const ey = e.ty;
     if (ey > W.camY + vh + 20 || ey < W.camY - 20 || e.x < W.camX - 20 || e.x > W.camX + vw + 20) continue;
-    if (e.k.elite) {                       // an elite: a glow behind it in its tint (Dev → Elites)
-      const u = e.k.eu || 0, a = kru('elGlow', u);
-      if (a > 0) {
-        G.ctx.globalAlpha = Math.max(0, Math.min(1, a + a * 0.45 * Math.sin(W.time * 4 + e.x)));
-        G.ctx.fillStyle = kcol('elTint', u);
-        G.ctx.beginPath(); G.ctx.arc(e.x, ey, e.r + kru('elGlowR', u), 0, Math.PI * 2); G.ctx.fill();
-        G.ctx.globalAlpha = 1;
+    if (e.k.elite) {
+      // an elite: a soft glow behind it in its tint (Dev → Elites), strongest at its middle and
+      // fading to nothing at its edge (v0.0.137: it was a flat disc with a hard rim)
+      const u = e.k.eu || 0, a = Math.max(0, Math.min(1, kru('elGlow', u) * (1 + 0.45 * Math.sin(W.time * 4 + e.x))));
+      const R = e.r + kru('elGlowR', u);
+      if (a > 0 && R > 0) {
+        const rgb = hexRgb(kcol('elTint', u)), g = G.ctx.createRadialGradient(e.x, ey, 0, e.x, ey, R);
+        g.addColorStop(0, 'rgba(' + rgb + ',' + a + ')');
+        g.addColorStop(0.45, 'rgba(' + rgb + ',' + (a * 0.55) + ')');
+        g.addColorStop(1, 'rgba(' + rgb + ',0)');
+        G.ctx.fillStyle = g;
+        G.ctx.beginPath(); G.ctx.arc(e.x, ey, R, 0, Math.PI * 2); G.ctx.fill();
       }
     }
     drawEnemy(G.ctx, e, W.time);
@@ -38,6 +67,7 @@ export function drawEnemies(W, G, F) {
     G.ctx.fillStyle = e.je ? jcol('jeColBody', e.je.u.col) : e.k.col.a;
     G.ctx.fillRect(hx, hy, hw * Math.max(0, e.hp / e.hpMax), 3);
   }
+  drawEliteFire(W, G, F);                  // the elites' flames, over the creatures (light added on)
 }
 
 // The jetpack's flame, out of the backpack's nozzle (jetNozzle) pointing away from the thrust: a licking fire (jetFlame), on the player's

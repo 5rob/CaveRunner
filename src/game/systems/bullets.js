@@ -6,9 +6,11 @@ import { SFX } from '../../audio/sfx.js';
 import { CELL, PH, PW, WH, WW } from '../../core/consts.js';
 import { angDiff, clamp, turn } from '../../core/util.js';
 import { DEV } from '../../dev/knobs.js';
+import { hasPath, pathStep } from '../../spells/paths.js';
 import { DRIFT_ACC, DRIFT_CHASE, DRIFT_R, driftStep, wigTurn } from '../../spells/trace.js';
 import { damageEnemy } from './enemies.js';
 import { ignite, setAlight } from './fire.js';
+import { pathEnv } from './fields.js';
 import { firePayload } from './gun.js';
 import { addArc, lightningStep } from './lightning.js';
 import { burst } from './particles.js';
@@ -90,13 +92,11 @@ export function stepBullets(W, G, F) {
     if (b.vmax) { const v = Math.hypot(b.vx, b.vy); if (v > b.vmax) { b.vx *= b.vmax / v; b.vy *= b.vmax / v; } }
     if (b.wig) turn(b, wigTurn(b.wig, b.age, dt));
     if (b.look) shotTrail(W, b, dt);
-    // paths: each one bends the velocity, and tracePath draws the same bends
-    if (b.spiral) turn(b, b.spiral * dt);
-    if (b.pong && Math.floor(b.age / 0.45) % 2 === 1) { b.vx = -b.vx; b.vy = -b.vy; b.age += dt; }
-    if (b.orbit) turn(b, b.orbit * dt);
-    if (b.boomer) {
-      const want = Math.atan2(W.p.y + PH / 2 - b.y, W.p.x + PW / 2 - b.x);
-      turn(b, clamp(angDiff(want, Math.atan2(b.vy, b.vx)), -b.boomer * dt, b.boomer * dt));
+    // paths (spells/paths.js): Boomerang, Ping-Pong, Spiral, Orbit, Follow Me; tracePath flies the same
+    let ex = 0, ey = 0;
+    if (hasPath(b)) {
+      [ex, ey] = pathStep(b, dt, pathEnv(W, b, dt));
+      if (b.caught) dead = true;                      // a boomerang back in your hand
     }
     if (b.eat) dig(W, G, b.x, b.y, b.eat);
     if (b.fire) ignite(W, G, b.x, b.y, b.size + 2, 0.5);     // a fire spell lights what it flies through
@@ -177,9 +177,9 @@ export function stepBullets(W, G, F) {
         b.vx = Math.cos(ang) * sp; b.vy = Math.sin(ang) * sp;
       }
     }
-    const sn = Math.max(1, Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2));
+    const sn = Math.max(1, Math.ceil(Math.hypot(b.vx * dt + ex, b.vy * dt + ey) / 2));
     for (let st = 0; st < sn && !dead && !boom; st++) {
-      const nx = b.x + b.vx * dt / sn, ny = b.y + b.vy * dt / sn;
+      const nx = b.x + (b.vx * dt + ex) / sn, ny = b.y + (b.vy * dt + ey) / sn;
       const j = enemyAt(W, nx, ny, b.size + 1);
       if (j >= 0 && !(b.hit && b.hit.has(W.enemies[j]))) {
         const e = W.enemies[j];

@@ -8,7 +8,7 @@ import { AIM_DEAD, PH } from '../../core/consts.js';
 import { effRecharge, gunPassives, planCast } from '../../spells/cast.js';
 import { shuffleOrder } from '../../spells/guns.js';
 import { bhSp } from '../../spells/trace.js';
-import { castField, fireBeam } from './fields.js';
+import { anchorOf, castField, fireBeam } from './fields.js';
 import { burst } from './particles.js';
 import { hurt } from './player.js';
 import { lineOfSight, solidAt } from './terrain.js';
@@ -98,9 +98,9 @@ export function cast(W, G, g, gx, gy, nx, ny) {
 // its own function because a trigger's payload comes through here too, from
 // wherever the carrier stopped. `fd` is how far ahead of the origin a static field
 // lands: a barrel's length out of the gun, and nothing at all off a trigger.
-/** @param {World} W @param {GameCtx} G @param {Shot} sh @param {number} ox @param {number} oy @param {number} base @param {number} bonus @param {boolean} warp @param {number} fd */
-export function spawnShot(W, G, sh, ox, oy, base, bonus, warp, fd) {
-  if (sh.still) { castField(W, G, sh, ox + Math.cos(base) * fd, oy + Math.sin(base) * fd, base); return; }
+/** @param {World} W @param {GameCtx} G @param {Shot} sh @param {number} ox @param {number} oy @param {number} base @param {number} bonus @param {boolean} warp @param {number} fd @param {Bullet | Field | null} [from] a trigger's carrier (what an orbit circles) */
+export function spawnShot(W, G, sh, ox, oy, base, bonus, warp, fd, from) {
+  if (sh.still) { castField(W, G, sh, ox + Math.cos(base) * fd, oy + Math.sin(base) * fd, base, from); return; }
   const n = Math.min(24, Math.max(1, Math.round(sh.count)));
   const off = (sh.ang || 0) * Math.PI / 180;
   // perk touches: Glass/Concentrated damage, Critical/Close-Call chance, Faster
@@ -136,7 +136,7 @@ export function spawnShot(W, G, sh, ox, oy, base, bonus, warp, fd) {
       homing: Math.max(sh.homing, W.pb.homing), bounce: sh.bounce + W.pb.bounce, pierce: sh.pierce,
       explode: sh.explode, grav: sh.grav, accel: sh.accel, bore: sh.bore, hit: null,
       knock: sh.knock, crit: sh.crit + pc, boomer: sh.boomer, spiral: sh.spiral,
-      pong: sh.pong, orbit: sh.orbit, homeR: sh.homeR, eat: sh.eat, pull: sh.pull,
+      pong: sh.pong, orbit: sh.orbit, follow: sh.follow, anc: anchorOf(from), homeR: sh.homeR, eat: sh.eat, pull: sh.pull,
       split: sh.split, cluster: sh.cluster, bounceFx: sh.bounceFx,
       friendly: sh.friendly, chain: sh.chain, fuse: sh.fuse,
       payload: sh.payload && sh.payload.length ? sh.payload : null, hidden: sh.hidden, arc: sh.arc,
@@ -157,16 +157,16 @@ export function firePayload(W, G, b) {
   b.payload = null;
   const sp = Math.hypot(b.vx, b.vy);
   const nx = sp ? b.vx / sp : Math.cos(b.ang || 0), ny = sp ? b.vy / sp : Math.sin(b.ang || 0);
-  releaseAt(W, G, list, b.x, b.y, nx, ny, b.col);
+  releaseAt(W, G, list, b.x, b.y, nx, ny, b.col, b);
 }
-/** @param {World} W @param {GameCtx} G @param {Shot[]} list @param {number} x @param {number} y @param {number} nx @param {number} ny @param {string} col */
-export function releaseAt(W, G, list, x, y, nx, ny, col) {
+/** @param {World} W @param {GameCtx} G @param {Shot[]} list @param {number} x @param {number} y @param {number} nx @param {number} ny @param {string} col @param {Bullet | Field | null} [from] the carrier */
+export function releaseAt(W, G, list, x, y, nx, ny, col, from) {
   const x0 = x, y0 = y;
   // it may have stopped inside the rock, so back up along its own track until
   // there is open ground for the payload to come out into
   for (let k = 0; k < 6 && solidAt(W, x + nx * 10, y + ny * 10); k++) { x -= nx * 4; y -= ny * 4; }
   const base = Math.atan2(ny, nx);
-  for (const sh of list) spawnShot(W, G, sh, x, y, base, 0, false, 0);
+  for (const sh of list) spawnShot(W, G, sh, x, y, base, 0, false, 0, from);
   SFX.cast(list, x0, y0);
   burst(W, x0, y0, 5, col);
 }

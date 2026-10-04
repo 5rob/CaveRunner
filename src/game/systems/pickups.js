@@ -8,7 +8,7 @@ import { healPrice } from '../../data/creatures.js';
 import { PERKS } from '../../data/perks.js';
 import { collideNuggets, stepNugget } from '../../world/nuggets.js';
 import { MODS } from '../../spells/mods.js';
-import { toast } from './particles.js';
+import { crystalMotes, toast } from './particles.js';
 import { solidAt } from './terrain.js';
 import { MACHINE_TOP, SHOPS, shopNear, shopUse, stepShops } from './shops.js';
 import { VEND_TOP, vendLabel, vendNear, vendUse } from './vend.js';
@@ -59,6 +59,43 @@ export function stepPickups(W, G, F) {
   }
   collideNuggets(W.coins, solid);              // and they push each other apart
 
+  // ---- crystals: collected like gold (v0.0.137; no card, no tap) ----
+  // A green crystal on a hidden room's altar comes off it as a loose crystal once you're in reach.
+  const pull = COIN_PULL * W.pb.goldPull;
+  for (const r of W.rooms) {
+    if (r.taken || r.kind !== 'green') continue;
+    crystalMotes(W, r.x, r.y, true, dt, 0);
+    if (!W.p.dead && Math.hypot(pcx - r.x, pcy - r.y) < pull) {
+      r.taken = true;
+      W.pickups.push({ kind: 'crystal', green: true, x: r.x, y: r.y, floor: W.floor, t: 0 });
+    }
+  }
+  for (let i = W.pickups.length - 1; i >= 0; i--) {
+    const q = W.pickups[i];
+    if (q.kind !== 'crystal' || q.taken) continue;
+    if (q.nopull > 0) q.nopull -= dt;           // an elite's pile is thrown clear first (SPILL_WAIT)
+    const dx = pcx - q.x, dy = pcy - q.y, d = Math.hypot(dx, dy) || 1;
+    const was = q.fly;
+    if (!q.fly && !W.p.dead && !(q.nopull > 0) && d < pull) { q.fly = true; delete q.vy; q.vx = 0; q.fvy = 0; }
+    if (q.fly) {
+      // flies to you straight through rock, gold's pull
+      const grab = 180 + 900 * Math.max(0, 1 - d / pull);
+      q.vx = (q.vx || 0) + (dx / d) * grab * dt * 6; q.fvy = (q.fvy || 0) + (dy / d) * grab * dt * 6;
+      q.vx *= 0.88; q.fvy *= 0.88;
+      const ox = q.x, oy = q.y;
+      q.x += q.vx * dt; q.y += q.fvy * dt;
+      crystalMotes(W, q.x, q.y, !!q.green, dt, Math.hypot(q.x - ox, q.y - oy), ox, oy);
+      if (d < 12) {
+        if (q.green) (LO.greens || (LO.greens = [])).push(q.floor || W.floor);
+        else (LO.crystals || (LO.crystals = [])).push(q.floor || W.floor);
+        q.taken = true;
+        toast(W, q.green ? 'Green crystal' : 'Red crystal');
+        SFX.ui(q.green ? 'perk' : 'mod');
+        G.input.current.notify();
+      }
+    } else if (!was) crystalMotes(W, q.x, q.y + Math.sin(W.time * 2 + q.t) * 3, !!q.green, dt, 0);
+  }
+
   // ---- what you can interact with: a shop plinth, or something on the ground ----
   const inShop = W.p.y + PH > SHOP_Y;
   let near = null;                      // { src: 'shop', it } or { src: 'pickup', q }, or a vending machine
@@ -71,7 +108,7 @@ export function stepPickups(W, G, F) {
     break;
   }
   if (!near) for (const q of W.pickups) {
-    if (q.cool > 0) continue;
+    if (q.cool > 0 || q.kind === 'crystal') continue;     // crystals fly to you, like gold
     if (Math.abs(q.x - pcx) > 18 || Math.abs(q.y - pcy) > 20) continue;
     near = { src: 'pickup', q };
     break;
@@ -80,7 +117,7 @@ export function stepPickups(W, G, F) {
   if (!near) { const kind = shopNear(W, pcx, pcy); if (kind) near = { src: 'shopvend', kind }; }
   // the hidden rooms' prizes: a perk on its altar, or the +25 heart
   if (!near) for (const r of W.rooms) {
-    if (r.taken) continue;
+    if (r.taken || r.kind === 'green') continue;
     if (Math.abs(r.x - pcx) > 20 || Math.abs(r.y - pcy) > 26) continue;
     near = { src: 'room', r };
     break;
@@ -98,15 +135,12 @@ export function stepPickups(W, G, F) {
         : { text: MODS[near.it.id].name, id: near.it.id, price: near.it.price,
             can: LO.gold >= near.it.price })
       : near.src === 'room'
-        ? (near.r.kind === 'green' ? { text: 'Green crystal', green: W.floor, price: 0, can: true, found: true }
-          : near.r.kind === 'perk' && near.r.id ? { text: PERKS[near.r.id].name, perk: near.r.id, price: 0, can: true }
+        ? (near.r.kind === 'perk' && near.r.id ? { text: PERKS[near.r.id].name, perk: near.r.id, price: 0, can: true }
           : { text: '+25 Max Health', heart: true, price: 0, can: true })
       // things on the ground are always yours for the taking — the price is what
       // the "For sale"/"Found" split cares about, not whether you're allowed to
       : (near.q.kind === 'gun' ? { text: near.q.gun.name, gun: near.q.gun, price: 0, can: true, found: true }
         : near.q.kind === 'perk' ? { text: PERKS[near.q.id].name, perk: near.q.id, price: 0, can: true, found: true }
-        : near.q.kind === 'crystal' && near.q.green ? { text: 'Green crystal', green: near.q.floor || W.floor, price: 0, can: true, found: true }
-        : near.q.kind === 'crystal' ? { text: 'Red crystal', crystal: near.q.floor, price: 0, can: true, found: true }
         : { text: MODS[near.q.id].name, id: near.q.id, price: 0, can: true, found: true });
   // where the item sits on screen, so the panel can float its bottom edge just above
   // it (the plinth/pickup) rather than covering it. camY/unitPx are last frame's, from
@@ -170,11 +204,7 @@ export function stepPickups(W, G, F) {
       }
     } else if (near.src === 'room') {
       const r = near.r;
-      if (r.kind === 'green') {                       // a green crystal: the perk machine's currency
-        (LO.greens || (LO.greens = [])).push(W.floor);
-        toast(W, 'Green crystal');
-        SFX.ui('perk');
-      } else if (r.kind === 'perk' && r.id) {         // (an older save's perk altar) carried, not fitted
+      if (r.kind === 'perk' && r.id) {         // (an older save's perk altar) carried, not fitted
         LO.perks.push(r.id);
         toast(W, 'Perk: ' + PERKS[r.id].name);
         SFX.ui('perk');
@@ -199,19 +229,6 @@ export function stepPickups(W, G, F) {
         q.taken = true;
         toast(W, 'Perk: ' + PERKS[q.id].name + ' (fit it in the Bag)');
         SFX.ui('perk');
-      } else if (q.kind === 'crystal') {
-        // a crystal goes in your pocket (a red one: the shop's machine turns it into an unlock; a
-        // green one: the perk machine's). One tap takes every crystal in reach (an elite drops a pile)
-        let reds = 0, greens = 0;
-        for (const c of W.pickups) {
-          if (c.kind !== 'crystal' || c.taken || c.cool > 0 || Math.abs(c.x - pcx) > 18 || Math.abs(c.y - pcy) > 20) continue;
-          if (c.green) { (LO.greens || (LO.greens = [])).push(c.floor || W.floor); greens++; }
-          else { (LO.crystals || (LO.crystals = [])).push(c.floor || W.floor); reds++; }
-          c.taken = true;
-        }
-        toast(W, [reds ? (reds > 1 ? reds + ' red crystals' : 'Red crystal') : '', greens ? (greens > 1 ? greens + ' green crystals' : 'Green crystal') : '']
-          .filter(Boolean).join(' + '));
-        SFX.ui(greens ? 'perk' : 'mod');
       } else {
         // a gun opens the chooser: compare it with yours and pick the slot to swap
         G.input.current.found = q;

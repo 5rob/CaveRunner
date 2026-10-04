@@ -5,6 +5,49 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.137 — the Gravity Gun, path mods that work, crystals like gold, burning elites
+Released 2026-10-04 (after the owner's OK of the screenshots).
+
+- **No perk column on the play screen** (the Exo Suit tab shows what's fitted): `.perkcol`, `.perkpip`,
+  the perk card and `perkTap` are gone; `perkcol.test.js` deleted.
+- **Bigger deck buttons** (`ui/hud.js` `deckLayout`): the gun arc sits `DECK_PUSH` (14) px further out
+  from the right stick and each button is as big as fits with `DECK_GAP` (6) px between (46 → 62 px on
+  a 412-wide phone, max `DECK_MAX` 64); the bag and map match it, the map `DECK_GAP` + 2 above the bag.
+- **Crystals are collected like gold** (`game/systems/pickups.js`): no card, no tap; within gold's pull
+  (`COIN_PULL × goldPull`) one flies to you through rock; an elite's pile waits `SPILL_WAIT` (`nopull`);
+  a hidden room's green crystal comes off its altar as a loose crystal once you're in reach. Their round
+  glow is gone: `crystalMotes` (`particles.js`) sheds specks (`'breeze'` motes) that rise and drift on a
+  slow cave breeze, and a trail along the way while one flies.
+- **Flight paths rebuilt, one shared function** (`spells/paths.js` `pathStep`, used by the bullet loop,
+  moving fields and `tracePath`): Boomerang turns for home at half its flight time and is caught (gone)
+  back at you; Ping-Pong reverses out `PONG_T`, back half that, on again (it used to flip every frame);
+  Spiral Arc is a widening side-to-side swing along the aim (`spiralOff`; it was an offset orbit); Orbiting
+  Arc circles what cast it at `ORBIT_R` (your gun, or a trigger's carrier while it lasts, then the spot it
+  reached drifting on with its momentum: `anchorOf`/`pathEnv` in `fields.js`, `from` through
+  `releaseAt`/`spawnShot`/`castField`).
+- **New mods**: **Follow Me** (`follow`, Homing aimed at you; a field hovers `FOLLOW_AHEAD` ahead of your
+  gun), **Enlarge**/**Shrink** (`grow`/`shrink`: × / ÷ 1.5 size and every radius, `sizeBy`), **Longer
+  Flight**/**Shorter Flight** (`lifeup`/`lifedn`: × / ÷ 1.5 flight time).
+- **Static fields move under path mods** (`castField`: `FIELD_SPEED` along the aim, steering with
+  `SEEK_ACC`), through rock, still working as they go.
+- **Vacuum Field is the White Hole**: a steady pull (`VAC_PULL`, stronger further in, holding things in
+  the middle) for 1.2 s, harmless, through walls; creatures, their shots (slowed so they settle), gold,
+  loot. No circle: a tiny white-and-blue black hole (`drawWhiteHole`, `render/looks.js`) with specks
+  drawn into it (the old portal's `'in'` motes, following a moving hole). `VACUUM_WAIT` is gone.
+- **The Gravity Gun**, a third starting gun (`startingGuns`): Follow Me + White Hole. A save from before
+  keeps its guns: Dev → Restart run to get it.
+- **Elites burn** (`stepEliteFire` in `particles.js`, `drawEliteFire` in `render/actors.js`, over the
+  creatures): fire specks from the body, carrying the elite's speed and losing it to air resistance (a
+  trail), rising and swinging. **Dev → Elites: flames**: range knobs (rate, length, rise, wavyness and its
+  rate, air resistance, size, spawn spread), a gradient editor (`GradEditor`: tap the bar to add a stop,
+  drag, pick its colour, delete) and an opacity-over-life B-spline (`RampEditor`: tap to add a point,
+  drag, delete), with a live preview (`FlamePreview`). Kept as strings (`DEV.elFxGrad`, `DEV.elFxAlpha`;
+  `art/ramps.js`); the Dev store now accepts such strings.
+- **The elite's glow is a soft radial gradient** (`drawEnemies`), strongest in the middle and fading to
+  nothing at `e.r + elGlowR`: it was a flat disc with a hard rim (the owner: "lose the big circle").
+- Suites: logic `paths`, `ramps`; browser `paths` (sandboxed: boomerang, orbit, ping-pong, spiral,
+  the Gravity Gun), `elitefx`; `teleport`, `vendshop`, `gunshop`, `perkshop`, `perks`, `cast` updated.
+
 ## v0.0.136 — the dark shop, the TELEPORTER sign, gold you can see
 Released 2026-10-03 (after the owner's OK of the screenshots).
 

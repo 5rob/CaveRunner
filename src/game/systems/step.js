@@ -16,7 +16,7 @@ import { stepFields } from './fields.js';
 import { fireFrame, stepTrail } from './fire.js';
 import { aimAndCast } from './gun.js';
 import { enterLevel } from './level-entry.js';
-import { stepMotes, stepParticles, stepToasts, toast } from './particles.js';
+import { stepEliteFire, stepMotes, stepParticles, stepToasts, toast } from './particles.js';
 import { stepPickups } from './pickups.js';
 import { stepLights } from './shoplights.js';
 import { maxHp, movePlayer, stepTorch } from './player.js';
@@ -46,6 +46,7 @@ export function step(W, G, dt) {
   stepToasts(W, F);                         // messages fading (particles.js)
   decorStep(W, G, dt, F.pcx, F.pcy);        // props, plants, webs, what you stand in (props.js)
   stepEnemies(W, G, F);                     // the creatures and their shots (enemies.js)
+  stepEliteFire(W, F);                      // the elites' flames (particles.js)
   stepGhost(W, F);                          // Angry Ghost
   fireFrame(W, G, dt, F.pcx, F.pcy);        // fire: the cave's, the creatures', yours (fire.js)
   stepTrail(W, F);                          // Levitation Trail (fire.js)
