@@ -82,7 +82,7 @@ interface Shot {
   dmg: number; speed: number; spread: number; size: number; life: number; count: number;
   bounce: number; pierce: number; explode: number; grav: number; homing: number; accel: number;
   bore: number; recoil: number; col: string; knock: number; crit: number; boomer: number;
-  spiral: number; pong: number; orbit: number; autoaim: number; homeR: number; flat: number;
+  spiral: number; pong: number; orbit: number; follow: number; autoaim: number; homeR: number; flat: number;
   eat: number; pull: number; split: number; cluster: number;
   bounceFx: any;              // a modifier's (unused today: always null)
   friendly: number; chain: number; fuse: number; beam: number;
@@ -140,6 +140,7 @@ interface Enemy {
   hp: number; hpMax: number; cd: number; flash: number;
   lx: number; ly: number; hx: number; hy: number;
   tgt: Pt | null; rest: number; touch: number; charge: number;
+  fxAcc?: number; fxPx?: number; fxPy?: number;   // an elite's flames: specks owed, where it was last frame
   k: CreatureKind;
   nest?: NestState;           // a rat nest
   sid?: number;               // its index on the floor (the autosave)
@@ -294,6 +295,8 @@ interface Pickup {
   gun?: Gun;
   taken?: boolean; old?: boolean;
   cool?: number;              // just dropped or swapped: not takeable yet
+  nopull?: number;            // a crystal: seconds before it may fly to you (an elite's pile, SPILL_WAIT)
+  fly?: boolean; fvy?: number; // a crystal flying to you (fvy: its upward speed, so stepShops leaves it be)
 }
 /** a shop plinth (makeLevel's stock) */
 interface StockItem { kind: string; x: number; y: number; price: number; sold: boolean; id?: string; gun?: Gun; bought?: number /* the heal: times bought this floor */ }
@@ -392,7 +395,7 @@ interface DevKnobs {
   [k: string]: any;
 }
 /** one Dev panel row (DEV_META) */
-interface DevRow { k: string; g: string; label: string; min?: number; max?: number; step?: number; type?: 'color' | 'slider' | 'curve' }
+interface DevRow { k: string; g: string; label: string; min?: number; max?: number; step?: number; type?: 'color' | 'slider' | 'curve' | 'grad' | 'ramp' }
 
 // ---- the game (game/, layer 5) ----
 
@@ -408,7 +411,7 @@ interface Bullet {
   bore: number; hit: Set<Enemy> | null; age: number;   // hit: what it has already struck (pierce)
   // spawnShot's (the ghost's shots have knock, crit and born too)
   knock?: number; crit?: number; boomer?: number; spiral?: number;
-  pong?: number; orbit?: number; homeR?: number; eat?: number; pull?: number; split?: number;
+  pong?: number; orbit?: number; follow?: number; anc?: Anchor | null; homeR?: number; eat?: number; pull?: number; split?: number;
   cluster?: number; bounceFx?: any; friendly?: number; chain?: number; fuse?: number;
   payload?: Shot[] | null; hidden?: number; arc?: number; drift?: number; pop?: number; tele?: number;
   fire?: number; drag?: number; bounceE?: number; pit?: number; wig?: number; look?: string | null;
@@ -418,6 +421,7 @@ interface Bullet {
   // set as it flies
   ang?: number; struck?: number; propHit?: Set<Prop>; lock?: Enemy | null; arcT?: number;
   ax?: number; ay?: number; da?: number; grind?: number; trail?: Pt[];
+  back?: number; pdir?: number; oa?: number; or0?: number; osp?: number; caught?: number;   // its path (spells/paths.js)
 }
 
 /** a sound loop (SFX.loop): set it every frame or it fades */
@@ -450,8 +454,26 @@ interface Field {
   col: string; dmg: number; tick: number; payload: Shot[] | null; ang: number; trig: TrigKind | null;
   near?: boolean;             // a mine: a creature close (it blinks faster)
   dT?: number;                // Stillness, a storm: until they next douse the fire under them
-  done?: boolean;             // a vacuum: has pulled everything in
+  mAcc?: number;              // a White Hole: motes owed
+  // moving (a path mod on it, spells/paths.js): as a Mover, plus what an orbit circles
+  still?: number; age: number; born?: number; vx: number; vy: number;
+  boomer?: number; pong?: number; spiral?: number; orbit?: number; follow?: number; homing?: number; homeR?: number;
+  back?: number; pdir?: number; oa?: number; or0?: number; osp?: number; caught?: number; anc?: Anchor | null;
 }
+/** a gradient's stop and a ramp's control point (art/ramps.js) */
+interface GradStop { t: number; c: string }
+interface RampPt { x: number; y: number }
+/** the path mods a shot or field can carry (spells/paths.js) */
+interface PathMods { boomer?: number; pong?: number; spiral?: number; orbit?: number; follow?: number; homing?: number; still?: number }
+/** anything pathStep moves: a shot, a field, the aim line's pretend shot; the rest is its path state */
+interface Mover extends PathMods {
+  x: number; y: number; vx: number; vy: number; age: number; born?: number; life?: number; homeR?: number; ang?: number;
+  back?: number; pdir?: number; oa?: number; or0?: number; osp?: number; caught?: number;
+}
+/** what an orbit circles: a trigger's carrier while it lasts (of), then where it had got to, drifting on */
+interface Anchor { x: number; y: number; vx: number; vy: number; of: Bullet | Field | null }
+/** the world a path reads (pathEnv in game/systems/fields.js, or tracePath's own) */
+interface PathEnv { home: Pt; ahead: Pt; anchor: Pt | null; enemies?: { x: number, ty: number }[] }
 /** an instant beam streak */
 interface Beam { x: number; y: number; nx: number; ny: number; len: number; col: string; w: number; t: number; look: string | null }
 /** a lightning fork (addArc) */
@@ -521,7 +543,7 @@ interface World {
   firePlants: Prop[]; fireArches: Prop[]; fireCarts: Prop[];
   firePropN: number; firePropLast: Prop | null; fireLoop: SoundLoop; fireN: number; fireVis: number[];
   bullets: Bullet[]; enemyShots: EnemyShot[]; fields: Field[]; beams: Beam[]; arcs: Arc[]; coins: Coin[];
-  toasts: Toast[]; smoke: Particle[]; sparks: Particle[]; flashes: Flash[]; torchP: Particle[]; motes: Particle[];
+  toasts: Toast[]; smoke: Particle[]; sparks: Particle[]; flashes: Flash[]; torchP: Particle[]; eliteFx: Particle[]; motes: Particle[];
   burns: Particle[]; webs: WebLine[]; silk: Silk[]; strings: SilkString[];
   dparts: Particle[]; amb: Particle[]; clouds: Cloud[]; rings: Ring[]; devils: Devil[];
   jetLoop: SoundLoop; beatT: number; wasEmpty: boolean;
@@ -606,7 +628,6 @@ interface GameInput {
   paused: boolean; notify: () => void; inShop: boolean;
   prompt: Prompt | null; interact: boolean; sig: string;
   perksDirty?: boolean;       // a perk was switched: Game re-adds the bag before the next step
-  perkTap?: (() => void) | null;   // a perk card is up: a right-stick tap switches it instead
   found: Pickup | null;
   // legacy: a two-way confirm the right stick answered by pointing (Stick still reads them; nothing sets them)
   confirmAct: Record<string, () => void> | null; confirmAim: string | null;

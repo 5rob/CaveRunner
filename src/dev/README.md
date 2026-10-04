@@ -23,6 +23,11 @@
 - Elites (`g: 'elite'`, `ELITE_KNOBS` + `ELITE_COLS`): `elCount` (per floor), `elHp`, `elDmg`, `elGold`, `elRed`,
   `elGreen`, `elScale`, `elTintAmt`, `elGlow`, `elGlowR`, `elTint` (colour). Each elite sits at one roll `k.eu`
   in the looks and toughness ranges (size and tint update live); the rewards roll when it dies.
+- Elites: flames (`g: 'elitefx'`, `ELITE_FX_KNOBS`, v0.0.137): `elFxRate`, `elFxLife` (length of fire), `elFxRise`,
+  `elFxWave`/`elFxWaveHz` (wavyness), `elFxDrag` (air resistance), `elFxSize`, `elFxBody` (spawn spread), all
+  ranges rolled per particle; `elFxGrad` (colour over life) and `elFxAlpha` (opacity over life) are **strings**
+  (`art/ramps.js`) shaped on the panel's `GradEditor` and `RampEditor` (`type: 'grad' | 'ramp'` rows draw nothing
+  themselves). The store accepts a string knob when its default isn't a colour.
 - Sway (`g: 'sway'`): `webSag`, `bendK`/`bendDamp`/`bendPush`/`bendGrab`/`bendDip`/`bendMax` (web lines and
   arches), `vineGrav`/`vineDamp`/`vinePush`/`vineMax` (hanging vines): `world/sway.js`.
 - Level 2 (`g: 'level2'`, v129): `L2_KNOBS` (floor 2's noise cave, all ranges; `makeLevel` rolls them on

@@ -18,7 +18,7 @@ React without JSX (`h(...)`), off the global React the page loads from a CDN. Ev
 | `gunshop.js` | `GunVend`: the gun machine's menu (three `Reel`s of `LO.gunShop`, the selected `GunCard`, Buy / Reroll / Boosted; reels stop one at a time, `REEL_*`; `Sparks` on a boosted spin). `SHOP_MENUS` (in `modshop.js`) maps each `SHOPS` key to its menu; `useMenuNav` (vendshop.js) is the shared stick/key handling |
 | `levelshop.js` | `LevelVend`: the level buy machine's floor menu (`SHOP_MENUS.levels`; a `.lvrow[data-floor]` per floor with its debt, sale, reward and kill multiplier, locked ones dashed with 🔒, sold ones ticked; "Buy LVL N on credit" sets `input.current.buyFloor` and closes; `useMenuNav` for the stick and keys) |
 | `exosuit.js` | `Bag` (the Bag's three tabs, `.btabs`: the `Editor`, which takes a `tabs` element to put at its foot, the Exo Suit, and Witness = `WitnessGallery`; `tab0` picks the one it opens on), `ExoSuit` (portrait, stats, `SUIT_SLOTS` slots `[data-xslot]`, the perk grid `.xperk` in a `ScrollBox` (a perk you can fit is `.grab`, `touch-action:none`; the rest `pan-y`; a cancelled press opens no card); drag a carried perk to a slot, a slot to a slot or off; tap for `PerkCard`; sets `perksDirty`; one of each: a fitted perk is `.xperk.inuse`, ticked, and won't drag into a second slot; a perk not unlocked is `.xperk.locked`: a blank tile in its own place, no glyph/tint/title, `pointer-events:none`) |
-| `devpanel.js` | `DevPanel`, `DevGroupHead` (a group header: press and hold `HOLD_MS` to open/shut it, a bar fills while held; moving `HOLD_SLOP` px or letting go cancels, so scrolling can't flip one), `DevRow`, `JellyPreview` (runs the real `jellyStep`/`drawJelly`), `SpawnGun` |
+| `devpanel.js` | `FlamePreview`, `GradEditor` (tap the bar: a stop; drag; colour; delete), `RampEditor` (the opacity B-spline: tap to add, drag, delete) for Dev → Elites: flames; `DevPanel`, `DevGroupHead` (a group header: press and hold `HOLD_MS` to open/shut it, a bar fills while held; moving `HOLD_SLOP` px or letting go cancels, so scrolling can't flip one), `DevRow`, `JellyPreview` (runs the real `jellyStep`/`drawJelly`), `SpawnGun` |
 
 CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).
 
@@ -44,20 +44,14 @@ CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).
 - **See-through deck:** `.view` fills the screen and `.controls` float over its bottom with no
   background (pointer events only on `.stick`/`.dbtn`); App measures their height into
   `input.current.ctlH`. `deckLayout` places the round `.dbtn`s: the four guns (`.slot`, `.on` = held,
-  hold for its card) on an arc round the right stick; the Bag (`.weapon`, 🎒) mirrors the last gun on
+  hold for its card) on an arc round the right stick, `DECK_PUSH` px out and as big as fits with `DECK_GAP`
+  px between (v0.0.137; capped `DECK_MAX`), the bag and map the same size; the Bag (`.weapon`, 🎒) mirrors the last gun on
   the left; the map (`.mapbtn`, 🗺️) above it. Gold (`.gold`, `fmtGold`: `1234` → `1.2kg`, thousands
   truncated) sits top centre, `pointer-events:none`, with the debt under it in full (`-64,000,000,000g owed`,
   not `fmtGold`) and `DueClock` under that, with `CrystalRow` (red and green silhouettes) between the gold and the debt, all centred (`topgold` checks them at phone widths); it updates because gold changes
   call `input.current.notify()` (re-renders `App`). The Dev button is a bare ⚙️
   (`.devbtn`); Restart is inside the Dev panel (`.dbg.restart`); like a death it empties the mods unlocked (`collection`), not the perks.
-- **Perks: a column over the map button** (`.perkcol`, `PERK_PIP`/`PERK_GAP`/`PERK_TOP` in `app.js`):
-  bottom up from just above `.mapbtn` to `PERK_TOP` px from the top of the screen, then a column further in.
-  With a card up, the shade sits over the column: its tap finds a `.perkpip` under the finger
-  (`elementsFromPoint`) and switches the card to it. Tap a pip: `perkInfo` (pauses),
-  a `.perkinfo` card (always dark) saying it's fitted to the Exo Suit. The column shows only the
-  perks fitted to the suit (`activePerks(LO)`: `LO.suit`); carried ones (`LO.perks`) don't count.
-  There's no on/off toggle any more (v120): fitting and taking out happen in the Bag's Exo Suit tab,
-  which sets `perksDirty` (Game runs `applyPerks`). The card's shade stops at the controls.
+- **No perk column on the play screen** (removed v0.0.137, the owner's call: the Exo Suit tab shows them).
 - **The Bag always opens; editing is gated**: `canEdit = inShop || Tinker`. Read-only hides drop,
   gun reorder, Sort and the tips, and the footer says "Viewing only…"; tapping a mod still shows it.
   (The `e`/`tab` key opens it only where you can edit.)

@@ -10,7 +10,7 @@ import { COL, PH, PW } from '../../core/consts.js';
 import { HUNTERS, eliteCol } from '../../data/creatures.js';
 import { DEV, carrotAt, jcol, kr, kru } from '../../dev/knobs.js';
 import { fireArea } from '../../world/fire.js';
-import { spillGold } from '../../world/nuggets.js';
+import { SPILL_WAIT, spillGold } from '../../world/nuggets.js';
 import { ACTS } from '../creatures/acts.js';
 import { ignite, youAlight } from './fire.js';
 import { burst, goo, splat } from './particles.js';
@@ -66,7 +66,7 @@ export function damageEnemy(W, j, dmg) {
     const reds = Math.round(kr('elRed')), greens = Math.round(kr('elGreen'));
     for (let n = 0; n < reds + greens; n++)
       W.pickups.push({ kind: 'crystal', green: n >= reds || undefined, x: e.x, y: e.ty, floor: W.floor, t: Math.random() * 6.28,
-        vx: (Math.random() - 0.5) * 140, vy: -140 - Math.random() * 80, cool: 1 });
+        vx: (Math.random() - 0.5) * 140, vy: -140 - Math.random() * 80, cool: 1, nopull: SPILL_WAIT });
   }
   // a rat drops what it was carrying home
   if (e.carry > 0) spillGold(W.coins, e.x, e.ty, e.carry, { vx: 30, vy: 110 });

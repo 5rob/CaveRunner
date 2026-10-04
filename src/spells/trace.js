@@ -6,6 +6,7 @@
 import { angDiff } from '../core/util.js';
 import { DEV } from '../dev/knobs.js';
 import { MODS } from './mods.js';
+import { FOLLOW_AHEAD, hasPath, pathStep } from './paths.js';
 
 // Black Hole travel speed from the Dev knob, as a multiplier so speed mods still stack
 export const bhSp = (/** @type {{ pull: number }} */ sh) => sh.pull ? DEV.bhSpeed / MODS.void.speed : 1;
@@ -40,10 +41,10 @@ export const wigTurn = (amp, age, dt) => wigAng(amp, age) - (age - dt > 1e-9 ? w
  * @param {(x: number, y: number) => unknown} solid is there rock here
  * @param {{ x: number, ty: number }[] | null} enemies what homing and Pollen lock onto
  * @param {number[]} out filled with x, y, x, y, … and returned
- * @param {Pt | null} [home] where a boomerang comes back to (you)
+ * @param {Pt | null} [home0] where a boomerang comes back to and an orbit circles (you; default x0, y0)
  * @param {number} [far] stretches how far the line runs (the Carrot stat)
  */
-export function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home, far = 1) {
+export function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home0, far = 1) {
   const dt = 1 / 60;
   if (sh.flat) { nx = nx >= 0 ? 1 : -1; ny = 0; }
   if (sh.beam) {                       // a beam is a straight line, drawn to whatever stops it
@@ -62,6 +63,14 @@ export function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home, far = 1
   let vx = nx * sh.speed, vy = ny * sh.speed;
   let life = Math.min(sh.life, 2.5 * far), bounce = sh.bounce || 0;
   let age = 0, lock = false;
+  // the pretend shot's path (spells/paths.js), from your gun at x0, y0
+  const home = home0 || { x: x0, y: y0 };
+  /** @type {PathEnv} */
+  const env = { home, ahead: { x: home.x + nx * FOLLOW_AHEAD, y: home.y + ny * FOLLOW_AHEAD }, anchor: null };
+  /** @type {Mover} */
+  const mv = { x, y, vx, vy, age: 0, born: sh.life, boomer: sh.boomer, pong: sh.pong, spiral: sh.spiral,
+    orbit: sh.orbit, follow: sh.follow };
+  const pathed = hasPath(mv);
   out.length = 0;
   out.push(x, y);
   for (let i = 0, n = 110 * far; i < n && life > 0; i++) {
@@ -73,12 +82,14 @@ export function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home, far = 1
     // the same bends the live bullets get, so the line stays honest
     const swing = by => { const sp = Math.hypot(vx, vy), a = Math.atan2(vy, vx) + by;
       vx = Math.cos(a) * sp; vy = Math.sin(a) * sp; };
-    if (sh.spiral) swing(sh.spiral * dt);
     if (sh.wig) swing(wigTurn(sh.wig, age, dt));
-    if (sh.orbit) swing(sh.orbit * dt);
-    if (sh.pong && Math.floor(age / 0.45) % 2 === 1) { vx = -vx; vy = -vy; age += dt; }
-    if (sh.boomer && home) swing(Math.max(-sh.boomer * dt, Math.min(sh.boomer * dt,
-      angDiff(Math.atan2(home.y - y, home.x - x), Math.atan2(vy, vx)))));
+    let ex = 0, ey = 0;
+    if (pathed) {
+      mv.x = x; mv.y = y; mv.vx = vx; mv.vy = vy; mv.age = age; mv.life = life;
+      [ex, ey] = pathStep(mv, dt, env);
+      vx = mv.vx; vy = mv.vy; life = Math.min(Math.max(life, mv.life || 0), 2.5 * far - age);
+      if (mv.caught) { out.push(x, y); break; }
+    }
     if (sh.drift && !lock) {             // Pollen: drags to a stop, then floats up
       const d = driftStep(vx, vy, dt); vx = d[0]; vy = d[1];
       if (enemies) for (const e of enemies) if (Math.hypot(e.x - x, e.ty - y) < (sh.homeR || DRIFT_R)) lock = true;
@@ -103,10 +114,10 @@ export function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home, far = 1
         vx = Math.cos(ang) * sp; vy = Math.sin(ang) * sp;
       }
     }
-    const n = Math.max(1, Math.ceil(Math.hypot(vx, vy) * dt / 3));
+    const n = Math.max(1, Math.ceil(Math.hypot(vx * dt + ex, vy * dt + ey) / 3));
     let stop = false;
     for (let st = 0; st < n; st++) {
-      const ax = x + vx * dt / n, ay = y + vy * dt / n;
+      const ax = x + (vx * dt + ex) / n, ay = y + (vy * dt + ey) / n;
       if (solid(ax, ay)) {
         if (sh.bore > 0 || sh.eat > 0) { x = ax; y = ay; continue; }
         if (bounce > 0) {

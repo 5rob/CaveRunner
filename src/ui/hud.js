@@ -38,20 +38,29 @@ export function DueClock({ due }) {
 
 // Where the round deck buttons sit, in css px relative to the sticks row's top-left (the
 // row is W wide, the two sticks `size` across, spaced evenly). The gun buttons ride an arc
-// centred on the right stick: from the top of the gap between the sticks, clockwise over
-// the top, to near the right edge. The bag mirrors the last gun on the left, and the map
-// button sits straight above the bag. Returns centres plus the button diameter.
+// centred on the right stick, DECK_PUSH px further out than the old gold spot, from the top of
+// the gap between the sticks, clockwise over the top, to near the right edge; each button is as
+// big as fits with DECK_GAP px between neighbours (v0.0.137: they were 46px with wide gaps).
+// The bag mirrors the last gun on the left, and the map button sits straight above the bag, the
+// same size. Returns centres plus the button diameter.
+export const DECK_PUSH = 14, DECK_GAP = 6, DECK_MAX = 64;
 /** @param {number} W the row's width @param {number} size a stick's @param {number} [n] guns @returns {{ btn: number, R: number, rc: Pt, guns: Pt[], bag: Pt, map: Pt }} */
 export function deckLayout(W, size, n) {
   n = n || 4;
   const g = (W - 2 * size) / 3;
   const rc = { x: 2 * g + 1.5 * size, y: size / 2 };
-  const btn = Math.round(Math.max(34, Math.min(46, size * 0.24)));
   const sx = W / 2, sy = size * 0.05 + 10;             // the old gold spot
-  const R = Math.max(Math.hypot(sx - rc.x, sy - rc.y), size / 2 + btn / 2 + 4);
   const a0 = Math.atan2(sy - rc.y, sx - rc.x);
-  const xmax = W - btn / 2 - 4;
-  const a1 = Math.max(a0 + 0.3, -Math.acos(Math.max(-1, Math.min(1, (xmax - rc.x) / R))));
+  let btn = Math.round(Math.max(34, Math.min(46, size * 0.24))), R = 0, a1 = a0;
+  // the button size sets how far round the arc may run (the last one stays on screen), and the
+  // arc's spacing sets the size: a few rounds settle it
+  for (let k = 0; k < 6; k++) {
+    R = Math.max(Math.hypot(sx - rc.x, sy - rc.y), size / 2 + btn / 2 + 4) + DECK_PUSH;
+    const xmax = W - btn / 2 - 4;
+    a1 = Math.max(a0 + 0.3, -Math.acos(Math.max(-1, Math.min(1, (xmax - rc.x) / R))));
+    const chord = n > 1 ? 2 * R * Math.sin((a1 - a0) / (n - 1) / 2) : DECK_MAX;
+    btn = Math.round(Math.max(34, Math.min(DECK_MAX, chord - DECK_GAP)));
+  }
   const guns = [];
   for (let i = 0; i < n; i++) {
     const a = a0 + (a1 - a0) * (n > 1 ? i / (n - 1) : 0);
@@ -59,7 +68,7 @@ export function deckLayout(W, size, n) {
   }
   const last = guns[n - 1];
   const bag = { x: W - last.x, y: last.y };
-  const map = { x: bag.x, y: bag.y - btn - 8 };
+  const map = { x: bag.x, y: bag.y - btn - DECK_GAP - 2 };
   return { btn, R, rc, guns, bag, map };
 }
 
@@ -191,8 +200,6 @@ export function Stick({ size, kind, input, refresh }) {
       // a vending machine's menu is up: a tap presses its highlight; a drag was its pointer, and
       // letting go of that is the menu's own business (useMenuNav)
       if (peak.current <= DEV.ptrStart) input.current.menuTap();   // past it: the pointer (Dev → Menu pointer)
-    } else if (right && stayed.current && input.current.perkTap) {
-      input.current.perkTap();              // a perk card is up: R switches it
     } else if (right && stayed.current) {
       input.current.interact = true;
     }

@@ -68,16 +68,16 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     const L = window.__lvl, LO = window.__in.current.loadout;
     LO.perks.push('health');
     await new Promise(r => setTimeout(r, 100));
-    const carried = { max: L.maxHp(), pips: document.querySelectorAll('.perkpip').length };
+    const carried = { max: L.maxHp() };
     L.p.hp = 80;
     LO.perks.splice(LO.perks.indexOf('health'), 1); LO.suit[0] = 'health';
     window.__in.current.perksDirty = true; window.__in.current.notify();
     await new Promise(r => setTimeout(r, 150));
     return { carried, max: L.maxHp(), hp: L.p.hp, pips: document.querySelectorAll('.perkpip').length };
   });
-  check('carried, a perk does nothing', fit.carried.max === 100 && fit.carried.pips === 0, fit);
+  check('carried, a perk does nothing', fit.carried.max === 100, fit);
   check('fitted, it counts: max health 150, the extra comes full', fit.max === 150 && fit.hp === 130, fit);
-  check('and its pip shows in the column', fit.pips === 1, fit);
+  check('no perk column on the HUD (v0.0.137: the Bag has them)', fit.pips === 0, fit);
 
   console.log(fails ? `\n${fails} failed` : '\nall good');
   await browser.close();

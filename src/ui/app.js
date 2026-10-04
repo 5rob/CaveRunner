@@ -5,7 +5,7 @@
 
 import { SFX } from '../audio/sfx.js';
 import { START_GOLD } from '../core/consts.js';
-import { PERKS, SUIT_LEN, activePerks, perkBag } from '../data/perks.js';
+import { SUIT_LEN, activePerks, perkBag } from '../data/perks.js';
 import { Game } from '../game/Game.js';
 import { clipGet } from '../save/clips.js';
 import { clearSave, loadCollection, loadPerkCollection, loadSave, saveCollection } from '../save/save.js';
@@ -15,14 +15,11 @@ import { DevPanel, SpawnGun } from './devpanel.js';
 import { Bag } from './exosuit.js';
 import { GunIcon } from './editor.js';
 import { h, useEffect, useRef, useState } from './h.js';
-import { CrystalIcon, CrystalRow, DueClock, RKey, Stick, deckLayout, fmtGold, holdPress } from './hud.js';
+import { CrystalRow, DueClock, RKey, Stick, deckLayout, fmtGold, holdPress } from './hud.js';
 import { SHOP_MENUS } from './modshop.js';
 import { GunSwap } from './swap.js';
 import { Witness } from './witness.js';
 
-// the perk column over the map button: a pip's size and gap, and how close to the top of the
-// screen a column may grow before the next one starts
-const PERK_PIP = 36, PERK_GAP = 6, PERK_TOP = 70;
 
 export function App() {
   const blank = () => ({ active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false });
@@ -57,7 +54,6 @@ export function App() {
   const [bagTab, setBagTab] = useState('guns');
   const [gunInfo, setGunInfo] = useState(-1);
   const [held, setHeld] = useState(-1);
-  const [perkInfo, setPerkInfo] = useState(-1);   // the perk whose card is up (its place among the fitted ones)
   // null when closed; a timestamp (from the tap that opened it) while open, so
   // the Restart button's own tap can't also land on the Yes button underneath —
   // see the guard on the confirm button below
@@ -68,7 +64,7 @@ export function App() {
   const found = input.current.found;
   input.current.mapOpen = mapOpen;
   const shopOpen = input.current.shopOpen;
-  input.current.paused = edit || !!found || devOpen || spawnOpen || mapOpen || witnessOpen || perkInfo >= 0 || !!shopOpen;
+  input.current.paused = edit || !!found || devOpen || spawnOpen || mapOpen || witnessOpen || !!shopOpen;
   const closeShop = () => { input.current.shopOpen = null; input.current.sig = ''; refresh(); };
 
   const LO = input.current.loadout;
@@ -91,7 +87,6 @@ export function App() {
     input.current.witness = null; input.current.replay = null;
     setWitnessOpen(false);
     setGunInfo(-1);
-    setPerkInfo(-1);
     setEdit(false);
     setRun(r => r + 1);
   };
@@ -141,7 +136,6 @@ export function App() {
       if (k === 'e' || k === 'tab') { e.preventDefault();
         if (input.current.inShop || perkBag(activePerks(input.current.loadout)).tinker) setEdit(v => !v); }
       if ((k === 'r' || k === 'f' || k === 'enter') && input.current.menuTap) { input.current.menuTap(); return; }
-      if (k === 'r' && input.current.perkTap) input.current.perkTap();
       if (k === 'f') input.current.interact = true;
       if (k === 'm') setMapOpen(v => !v);
       if (k === 'escape') { setEdit(false); if (input.current.shopOpen) { input.current.shopOpen = null; input.current.sig = ''; refresh(); } }
@@ -169,18 +163,9 @@ export function App() {
   const perkB = perkBag(activePerks(LO));
   const canEdit = inShop || perkB.tinker;      // Tinker with Wands Everywhere frees the editor
   const heldGun = input.current.loadout.guns[input.current.loadout.sel];
-  // the perks fitted to the Exo Suit (the Bag's second tab): the column, and a card for one tapped
-  const fitted = activePerks(LO);
-  input.current.perkTap = null;
   const deck = deckLayout(vw, size, LO.guns.length);
   const btnAt = pt => ({ width: deck.btn, height: deck.btn,
     left: Math.round(pt.x - deck.btn / 2), top: Math.round(pt.y - deck.btn / 2) });
-  // the perk column runs from just above the map button up to near the top of the screen
-  const sticksTop = sticksRef.current ? sticksRef.current.getBoundingClientRect().top
-    : window.innerHeight - (input.current.ctlH || 0);
-  const perkRoom = sticksTop + deck.map.y - deck.btn / 2 - 8 - PERK_TOP;
-  const perkPer = Math.max(1, Math.floor((perkRoom + PERK_GAP) / (PERK_PIP + PERK_GAP)));
-  const perkColH = perkPer * (PERK_PIP + PERK_GAP) - PERK_GAP;
 
   // the death replay: offered once the recording has run on past the death (input.current.witness)
   const witness = input.current.witness;
@@ -222,11 +207,6 @@ export function App() {
           maxHeight: 'calc(100% - ' + ((input.current.promptBottom || 12) + 12) + 'px)' } },
         prompt.id ? h(ModCard, { id: prompt.id, ingame: true }) : null,
         prompt.perk ? h(PerkCard, { id: prompt.perk, ingame: true }) : null,
-        prompt.crystal || prompt.green ? h('div', { className: 'pop scroll ingame crystalcard' },
-          h('div', { className: 'phead' }, h('div', { className: 'pglyph' }, h(CrystalIcon, { size: 28, green: !!prompt.green })),
-            h('div', { className: 'ptitle' }, h('b', null, prompt.green ? 'Green crystal' : 'Red crystal'),
-              h('span', null, prompt.green ? 'Unlocks a perk at the shop'
-                : 'From floor ' + prompt.crystal + ' · unlocks a mod, or boosts a gun reroll, at the shop')))) : null,
         prompt.gun ? h(GunCard, { gun: prompt.gun, label: prompt.found ? 'Found' : 'For sale',
           ingame: true, compare: heldGun, compareName: heldGun ? heldGun.name : '' }) : null,
         // shop stock is "Buy <price>"; anything you pick up for free is just "Take" —
@@ -235,7 +215,7 @@ export function App() {
             'aria-label': 'Tap the right stick to ' + (prompt.price ? 'buy for ' + prompt.price + 'g' : 'take') },
           h(RKey),
           h('b', null, prompt.price ? prompt.price + 'g'
-            : (prompt.id || prompt.gun || prompt.perk || prompt.heart || prompt.crystal || prompt.green) ? 'free' : prompt.text))) : null,
+            : (prompt.id || prompt.gun || prompt.perk || prompt.heart) ? 'free' : prompt.text))) : null,
       // one gear in the top-right opens the Dev panel; Restart now lives inside it.
       // gold, top centre: "g" not "gold", truncated to k/M/B (1234 -> 1.2k). Under it in red, what
       // you owe the company for the level you're on, in full (64,000,000,000), and the time left to settle it
@@ -293,19 +273,7 @@ export function App() {
             className: 'dbtn mapbtn' + (mapOpen ? ' on' : ''), style: btnAt(deck.map),
             title: 'Map', 'aria-label': 'Map',
             onPointerDown: e => { e.preventDefault(); setMapOpen(v => !v); } },
-          h('span', { className: 'emo' }, '🗺️')),
-        // the perks you carry: a column going up from above the map, wrapping into a new
-        // column further in. Tap one for its card
-        fitted.length
-          ? h('div', { className: 'perkcol', style: {
-                left: Math.round(deck.map.x - PERK_PIP / 2),
-                top: Math.round(deck.map.y - deck.btn / 2 - 8 - perkColH), height: perkColH } },
-              fitted.map((id, i) => PERKS[id] ? h('button', {
-                  key: i, 'data-i': i, className: 'perkpip' + (perkInfo === i ? ' sel' : ''),
-                  title: PERKS[id].name, style: { color: PERKS[id].tint },
-                  onPointerDown: e => { e.preventDefault(); setMapOpen(false); setPerkInfo(i); } },
-                PERKS[id].glyph) : null))
-          : null
+          h('span', { className: 'emo' }, '🗺️'))
       )
     ),
     edit ? h(Bag, { key: bagTab, input, refresh, canEdit, close: () => setEdit(false), tab0: bagTab, play: playClip }) : null,
@@ -315,20 +283,6 @@ export function App() {
     spawnOpen ? h(SpawnGun, { input, close: () => setSpawnOpen(false) }) : null,
     shopOpen && SHOP_MENUS[shopOpen] ? h(SHOP_MENUS[shopOpen], { key: shopOpen, input, close: closeShop }) : null,
     found ? h(GunSwap, { input, refresh, onDone: () => { setGunInfo(-1); refresh(); } }) : null,
-    perkInfo >= 0 && PERKS[fitted[perkInfo]]
-      ? h('div', null,
-          // the shade stops above the controls, so the right stick can still be tapped
-          h('div', { className: 'shade', style: { bottom: (input.current.ctlH || 0) + 'px' },
-            onPointerDown: e => {
-              // the shade lies over the perk column: a tap on another perk opens that one
-              e.preventDefault();
-              const pip = document.elementsFromPoint(e.clientX, e.clientY).find(el => el.classList.contains('perkpip'));
-              setPerkInfo(pip ? Number(pip.getAttribute('data-i')) : -1);
-            } }),
-          h('div', { className: 'perkinfo' },
-            h(PerkCard, { id: fitted[perkInfo], ingame: true }),
-            h('p', { className: 'perkhint' }, 'Fitted to your Exo Suit: change it in the Bag')))
-      : null,
     gunInfo >= 0 && LO.guns[gunInfo]
       ? h('div', null,
           h('div', { className: 'shade', onPointerDown: e => { e.preventDefault(); setGunInfo(-1); } }),

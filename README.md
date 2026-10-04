@@ -166,7 +166,8 @@ Mods and guns in the cave sit on a floor of their own now, not floating in place
 
 The middle of the right stick is a dead zone: drag out past it to aim and fire,
 tap it without leaving it and you interact with whatever you are standing at.
-That one button uses the shop's heal and machines and picks up guns and crystals in the cave.
+That one button uses the shop's heal and machines and picks up guns and mods in the cave.
+Crystals need no tap: like gold, they fly to you once you're close.
 
 Walking over something no longer takes it. You get its card instead — a slim panel
 that floats just above the item with the price built into it — so you can read a mod
@@ -220,9 +221,13 @@ The guns spin like slot-machine reels and lock in one at a time with a thud; a b
 goes faster, with red sparks streaming past.
 
 **Red crystals** lie about the cave where guns and mods used to: a big dark-red nugget with
-white glints. Stand at one and tap the right stick to pocket it. **Elite** creatures — a few
+white glints, shedding little sparkles that drift off on the cave's breeze (and trail behind it
+when it moves). Walk close and it flies to you like gold. **Elite** creatures — a few
 on every floor, tinted gold with a glow — are tougher, hit harder, drop four times the gold
-and a pile of crystals: three to five red and a green one. One tap pockets every crystal in reach.
+and a pile of crystals: three to five red and a green one, which fly to you once you're near. Elites
+burn: fire particles stream off their bodies and trail behind them as they move (Dev → Elites: flames
+shapes it: a colour gradient you edit by placing and dragging stops, an opacity-over-life curve, the
+flame's length, wavyness, air resistance and more).
 (Dev → Elites sets how many a floor gets, how tough and big they are, their tint and glow, and what they drop.) The crystals you carry show at the top as a row of red and green crystal silhouettes, under
 your gold and above the debt. Which spells turn up follows Noita's own spawn table, deeper floors handing out rarer ones — and the very strongest (Black Hole and friends) never appear before floor 4. Your **Bag** opens anywhere,
 but *changing* your setup — dragging mods, reordering guns — only works in the shop (or
@@ -251,7 +256,7 @@ pink, orange, gold (level 10). Its card reads `Lv N` too.
 
 Every floor also hides one small room, built brick-lined like the shop, carved out of the
 cave and connected back to the main route by a tunnel — you have to find it. On its altar
-sits a **green crystal**: tap the right stick to pocket it. (The +25 health heart room is gone.)
+sits a **green crystal**: walk up to it and it flies to you. (The +25 health heart room is gone.)
 Elites drop green crystals too.
 
 Green crystals buy perks at the **perk machine** in the shop, the one with a green ✦ hologram,
@@ -275,8 +280,8 @@ given away until you unlock them).
 Drag a carried perk onto a slot to fit it, a fitted one to another slot to swap, or off the
 slots to take it out again. Each perk fits once: one already fitted shows ticked and faded, and a
 second copy can't go in another slot. Tap any perk to see its card. The suit is locked outside the
-shop: change it there (or anywhere, with Tinker). The fitted perks show as a column of icons going
-up from above the map button; tap one for its card.
+shop: change it there (or anywhere, with Tinker). The Exo Suit tab is where you see what's fitted
+(there's no perk column on the play screen any more).
 
 A couple of perks reach into other systems: Tinker with Wands Everywhere lets you *edit* your
 setup anywhere, not just in the shop. Trajectory Sight is what draws the dotted aim line
@@ -438,7 +443,9 @@ cast delay, recharge time, mana pool, spread and shot speed, and some of them
 shuffle their firing order. You carry up to four. You start with a weak **Scratch Pistol**
 in hand and a **Pick Axe** in the second slot — a one-slot gun holding a **Buzzsaw**, which
 cuts a big circle right in front of you: no travel, it just carves a slice into the rock (or
-anything close) and chews terrain. Anything you find on floor 1 beats the pistol.
+anything close) and chews terrain. Anything you find on floor 1 beats the pistol. The third slot
+holds the **Gravity Gun**: Follow Me then a White Hole, so a small white hole hovers just ahead of
+your gun and drags whatever it holds wherever you aim.
 
 Standing next to a gun on the ground shows its card. A tap opens the chooser: it pauses the
 game and shows what you found with a button for each of your four slots, both guns laid out
@@ -537,12 +544,19 @@ a cave shooter. They come in a few shapes:
   proximity mine; Dormant Crystal sits harmless until another blast reaches it; Circle
   of Stillness leaves enemies crawling; Circle of Shielding swallows their fire; Circle
   of Vigour heals you while you stand in it; Thundercloud and Glittering Field cover an area.
-  **Vacuum Field** is over in a blink: a moment after it appears, every creature, shot, coin
-  and loose item within reach snaps into its middle, straight through walls. They take a cast slot like a shot does.
-- **Modifiers** change the shots drawn after them, as always. Nine of the new ones bend
-  the flight path — Boomerang, Spiral Arc, Ping-Pong, Orbiting Arc, Gravity, Anti-Gravity,
-  Horizontal Path, Auto-Aim, Short-range Homing — and the aim line draws every one of
-  them properly, so you can see what a path mod will do before you fire it.
+  **White Hole** (Noita's Vacuum Field) is a tiny white-and-blue hole, with specks being drawn
+  into it, that pulls every creature, their shots, coins and loose items within reach hard into its
+  middle and holds them there, straight through walls, harming nothing. They take a cast slot like a shot does.
+- **Modifiers** change the shots drawn after them, as always. Several bend the flight path,
+  and the aim line draws every one of them properly: **Boomerang** flies out and, halfway through
+  its flight, turns and comes back into your hand; **Ping-Pong** snaps back a little and on again;
+  **Spiral Arc** swings side to side in a widening wave along its line; **Orbiting Arc** circles
+  whatever cast it (your gun, or a trigger spell's carrier as it flies on); **Follow Me** is Homing
+  aimed at you. Gravity, Anti-Gravity, Horizontal Path, Auto-Aim and Short-range Homing too. Path
+  mods work on static fields as well: put one before a field and the field moves (Follow Me makes it
+  hover just ahead of your gun). **Enlarge** / **Shrink** make a shot or field 1.5× bigger or smaller,
+  with every radius it works over (blasts, fields, pulls, digging); **Longer Flight** / **Shorter
+  Flight** 1.5× its flight time. Each pair undoes the other.
 - **Utility** does something to the world or to you. Wand Refresh skips the next recharge. Long-Distance Cast, Teleporting
   Cast and Warp Cast move where the shot starts. Blood Magic, Blood To Power and Gold
   To Power buy power with health or gold.

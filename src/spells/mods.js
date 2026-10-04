@@ -2,6 +2,12 @@
 // Every spell (MODS), the colour families the UI groups them by, shop prices, rarity
 // tiers, and the Noita-style trigger variants built from the base spells.
 
+// Enlarge / Shrink: the shot's size and every radius it works over
+/** @param {Shot} s @param {number} k */
+export const sizeBy = (s, k) => {
+  s.size *= k; s.r *= k; s.explode *= k; s.pull *= k; s.eat *= k; s.bore *= k; s.pit *= k; s.pop *= k;
+};
+
 // ---- mods ----
 // 'shot' mods are the projectiles. 'mod' mods change the shots cast AFTER them in
 // the list, so the order you arrange them in is the whole game. 'passive' mods
@@ -81,6 +87,17 @@ export const MODS = {
              info: 'x2 size, x1.3 damage', f: s => { s.size *= 2; s.dmg *= 1.3; s.recoil += 20; } },
   range:   { name: 'Long Range', kind: 'mod', glyph: '⟶', col: '#e9ecf2', mana: 30, d: 0.2,
              info: 'x2.5 flight time', f: s => { s.life *= 2.5; } },
+  // v0.0.137: matched pairs, each the other's exact undo (×1.5 and ÷1.5)
+  lifeup:  { name: 'Longer Flight', kind: 'mod', glyph: '⧗', col: '#e9ecf2', mana: 10, d: 0.05,
+             info: 'x1.5 flight time (a field lasts longer too)', f: s => { s.life *= 1.5; } },
+  lifedn:  { name: 'Shorter Flight', kind: 'mod', glyph: '⧖', col: '#e9ecf2', mana: 3, d: -0.05,
+             info: '÷1.5 flight time (a field goes sooner too)', f: s => { s.life /= 1.5; } },
+  grow:    { name: 'Enlarge', kind: 'mod', glyph: '⊞', col: '#ff7ac8', mana: 8, d: 0.05,
+             info: 'x1.5 size: the shot, and every radius it works over (blasts, fields, pulls, digging)',
+             f: s => { sizeBy(s, 1.5); } },
+  shrink:  { name: 'Shrink', kind: 'mod', glyph: '⊟', col: '#ff7ac8', mana: 4, d: -0.03,
+             info: '÷1.5 size: the shot, and every radius it works over (blasts, fields, pulls, digging)',
+             f: s => { sizeBy(s, 1 / 1.5); } },
   brief:   { name: 'Short Fuse', kind: 'mod', glyph: '⟜', col: '#e9ecf2', mana: 8, d: -0.22,
              info: 'x0.45 flight time, fast cast', f: s => { s.life *= 0.45; } },
   tip:     { name: 'Explosive Tip', kind: 'mod', glyph: '✸', col: '#ff8a1f', mana: 28, d: 0.3,
@@ -244,9 +261,10 @@ export const MODS = {
   storm:   { name: 'Thundercloud', kind: 'static', glyph: '⛈', col: '#a8e4ff', mana: 34,
              info: 'A dark cloud that rains lightning over everything under it, and its rain puts out fires',
              field: 'storm', r: 50, life: 6, delay: 0.4 },
-  vacfield:{ name: 'Vacuum Field', kind: 'static', glyph: '⊗', col: '#b57cff', mana: 50,
-             info: 'A blink after it appears, everything close by (creatures, shots, gold, loot) snaps into its middle. Walls don\'t stop it',
-             field: 'vacuum', r: 64, life: 0.33, delay: 0.17 },
+  // Noita's Vacuum Field, renamed (v0.0.137): a steady strong pull, not a snap, and harmless
+  vacfield:{ name: 'White Hole', kind: 'static', glyph: '⊗', col: '#9fd8ff', mana: 40,
+             info: 'A tiny white hole that pulls everything close by (creatures, their shots, gold, loot) hard into its middle and holds it there. Harms nothing; walls don\'t stop it',
+             field: 'vacuum', r: 64, life: 1.2, delay: 0.17 },
   glitter: { name: 'Glittering Field', kind: 'static', glyph: '❃', col: '#ffe066', mana: 36,
              info: 'Small blasts going off all over a wide patch',
              field: 'glitter', r: 64, life: 4, delay: 0.4 },
@@ -287,13 +305,16 @@ export const MODS = {
   float:   { name: 'Anti-Gravity', kind: 'mod', glyph: '⇑', col: '#63c8ff', mana: 3, d: 0.02,
              info: 'Lifts the shot as it flies', f: s => { s.grav -= 340; } },
   boomer:  { name: 'Boomerang', kind: 'mod', glyph: '↩', col: '#b57cff', mana: 8, d: 0.05,
-             info: 'Curves back round towards you', f: s => { s.boomer += 3.2; s.life *= 1.5; } },
+             info: 'Flies out, and halfway through its flight turns and comes back to you', f: s => { s.boomer += 3.2; s.life *= 1.5; } },
   spiral:  { name: 'Spiral Arc', kind: 'mod', glyph: '⟳', col: '#b57cff', mana: 5, d: 0.04,
-             info: 'Corkscrews through the air', f: s => { s.spiral += 5.5; } },
+             info: 'Swings side to side in a widening wave as it flies on', f: s => { s.spiral += 5.5; } },
   pong:    { name: 'Ping-Pong Path', kind: 'mod', glyph: '⇄', col: '#b57cff', mana: 6, d: 0.05,
-             info: 'Flies out, snaps back, and does it again', f: s => { s.pong += 4; s.life *= 1.4; } },
+             info: 'Flies out, snaps back a little, and on again', f: s => { s.pong += 4; s.life *= 1.4; } },
+  follow:  { name: 'Follow Me', kind: 'mod', glyph: '⇜', col: '#b57cff', mana: 10, d: 0.04,
+             info: 'Homing, but on you: a shot curves back round to you; a field hovers just ahead of your gun',
+             f: s => { s.follow += 4; } },
   orbit:   { name: 'Orbiting Arc', kind: 'mod', glyph: '◴', col: '#b57cff', mana: 9, d: 0.06,
-             info: 'Circles the spot it was cast at', f: s => { s.orbit += 3.4; s.life *= 1.6; } },
+             info: 'Circles whatever cast it: your gun, or a trigger spell\'s carrier as it flies', f: s => { s.orbit += 3.4; s.life *= 1.6; } },
   autoaim: { name: 'Auto-Aim', kind: 'mod', glyph: '✢', col: '#b57cff', mana: 7, d: 0.03,
              info: 'Snaps onto the nearest enemy the moment it leaves the barrel',
              f: s => { s.autoaim = 1; } },
@@ -386,7 +407,7 @@ export const FAMILY_OF = {
   orb: 'shots', blast: 'shots', saw: 'shots',
   dmg_up: 'dmg', heavy: 'dmg', big: 'dmg', over: 'dmg', over_heat: 'dmg', tip: 'dmg',
   speed: 'vel', light: 'vel', accel: 'vel', range: 'vel', brief: 'vel',
-  homing: 'path', seeker: 'path', bounce: 'path', pierce: 'path', borer: 'path',
+  homing: 'path', seeker: 'path', follow: 'path', lifeup: 'vel', lifedn: 'vel', grow: 'pattern', shrink: 'pattern', bounce: 'path', pierce: 'path', borer: 'path',
   tight: 'pattern', scatter: 'pattern', double: 'pattern', triple: 'pattern', quad: 'pattern',
   fast: 'upkeep', trigger: 'upkeep', cold: 'upkeep', recharge: 'upkeep',
   cheap: 'upkeep', battery: 'upkeep', auto: 'upkeep',
@@ -418,7 +439,7 @@ export const FIELD_WHAT = {
   shield: 'swallows enemy fire crossing it',
   heal: 'heals you while you stand in it',
   storm: 'strikes random spots inside with lightning',
-  vacuum: 'snaps everything close by into the middle',
+  vacuum: 'pulls everything close by into its middle',
   glitter: 'small blasts going off all over it',
 };
 export const famOf = (/** @type {string} */ id) => FAMILIES[FAMILY_OF[id]] || FAMILIES.shots;
@@ -428,6 +449,7 @@ export const famCol = (/** @type {string} */ id) => famOf(id).col;
 /** @type {Record<string, number>} */
 export const MOD_PRICE = {
   bolt: 20, spark: 12, slug: 40, buck: 35, lance: 45, orb: 30, blast: 45,
+  follow: 35, lifeup: 25, lifedn: 15, grow: 30, shrink: 20,
   dmg_up: 30, heavy: 40, light: 30, speed: 25, accel: 35, homing: 70, seeker: 90,
   bounce: 25, pierce: 85, tight: 15, scatter: 35, big: 30, range: 30, brief: 20,
   tip: 55, borer: 25, fast: 30, over: 45, double: 45, triple: 60, quad: 75, cheap: 40,
@@ -449,6 +471,7 @@ export const MOD_PRICE = {
 // this, so early floors offer workhorses and the Greek letters stay a find.
 /** @type {Record<string, number>} */
 export const MOD_TIER = {
+  lifeup: 1, lifedn: 1, grow: 1, shrink: 1, follow: 2,
   bolt: 1, spark: 1, buck: 1, tight: 1, fast: 1, cheap: 1, spit: 1, bubble: 1, pollen: 1,
   digbolt: 1, arrow: 1, brim: 1, hspread: 1, damper: 1, knock: 1, kick: 1,
   gravmod: 1, float: 1, farcast: 1, bifur: 1, behind: 1, dmg_up: 1, speed: 1, brief: 1,
@@ -497,7 +520,7 @@ export const TRIG_VARIANTS = [
   ['void_d',    'void',    'expire', { name: 'Black Hole With Death Trigger' }],
 ];
 export const TIMER_ADD = 0.33;                 // how long Add Timer waits
-export const VACUUM_WAIT = 0.13;               // Vacuum Field: 8 frames, then everything snaps in
+export const VAC_PULL = 260;                   // White Hole: units/s it hauls things in at its edge (faster further in)
 for (const [id, base, trig, extra] of TRIG_VARIANTS) {
   const m = MODS[base], k = TRIG_KINDS[trig];
   MODS[id] = Object.assign({}, m, {

@@ -29,11 +29,12 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('four gun buttons', deck.guns.length === 4, deck.guns.length);
   check('they sit on an arc centred on the right stick',
     Math.max(...dists) - Math.min(...dists) < 2, dists.map(Math.round));
+  // v0.0.137: the arc is pushed out from the right stick, so its start sits a little left of centre
   check('the arc starts in the gap between the sticks',
-    Math.abs(deck.guns[0].x - deck.W / 2) < 3, Math.round(deck.guns[0].x));
+    Math.abs(deck.guns[0].x - deck.W / 2) < 25, Math.round(deck.guns[0].x));
   check('and ends near the right edge, on screen',
     deck.guns[3].x > deck.W * 0.85 && deck.guns[3].x + deck.guns[3].w / 2 <= deck.W, Math.round(deck.guns[3].x));
-  check('guns you hold show their icon', deck.icons === 2, deck.icons);
+  check('guns you hold show their icon (pistol, pick axe, Gravity Gun)', deck.icons === 3, deck.icons);
   check('the bag mirrors the last gun',
     Math.abs(deck.bag.x - (deck.W - deck.guns[3].x)) < 2 && Math.abs(deck.bag.y - deck.guns[3].y) < 2, deck.bag);
   check('the map button sits straight above the bag',

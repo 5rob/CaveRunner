@@ -10,15 +10,15 @@ the frame; most of its parts live with their system.
 | `player.js` | `refreshBag`, `maxHp`, `hurt`, `torchHand`, `jetNozzle` (the backpack's nozzle, `NOZZLE_X`/`NOZZLE_Y`: where the jet flame and its smoke come out), the jetpack's cough `sputterStep`/`SPUTTER_FUEL`, `NO_INPUT`, `lineLetGo`/`LINE_OFF` (hanging from a web line or arched vine: any push mostly across it, or past an end, lets go; `letGo` carries you off), `movePlayer` (stick, jetpack, steering, climbing, the move, footsteps; dead, it runs `corpseStep`: the ragdoll, `world/ragdoll.js`, which you follow), `stepTorch` |
 | `gun.js` | `cast` (one pull through `planCast`), `spawnShot`, `releaseAt`/`firePayload` (a trigger's payload), `aimAndCast` (aim, Pinpointer, facing, gun clocks, the trigger) |
 | `bullets.js` | `stepBullets` (the bullet loop), `critRoll`, `shove`, `spray`, `explodeCross`, `teleportTo` |
-| `fields.js` | `castField`, `fireBeam`, `throwEmbers`, `fieldPayload`, `stepFields` |
+| `fields.js` | `castField` (a path mod sets a field moving), `fireBeam`, `throwEmbers`, `fieldPayload`, `stepFields` (the White Hole's pull, `VAC_PULL`, and its motes), `anchorOf`/`pathEnv` (what `pathStep` reads: you, the spot ahead of your gun, an orbit's anchor moved on) |
 | `shotlooks.js` | What a shot sheds: `shotTrail`, `shotBounce`, `shotDeath`, `shotGrind`, `glowDot`, `rnd` |
 | `lightning.js` | `jag`, `addArc`, `lightningStep` (a bolt's forks) |
 | `enemies.js` | `stepEnemies` (the shared part of the enemy loop, `game/creatures/README.md`), `damageEnemy`, `fireEnemyShot` |
-| `pickups.js` | `stepPickups`: ground pickups, shop stock, room prizes, gold, the card that shows, the interact tap |
+| `pickups.js` | `stepPickups`: ground pickups, shop stock, room prizes, gold, crystals (fly to you like gold, v0.0.137: no card, no tap; a room's green one comes off its altar), the card that shows, the interact tap |
 | `props.js` | `decorStep` (anchors, falling, shootable props, drips, plants and web lines under you → `W.zfx`, rustles; with `pOver`, `alertAt`, `shatter`, `popLamp`, `landProp`, `spawnDrip`, `MATERIAL`, `DRIP_RATE`), `blowProp` |
 | `fire.js` | The fire's Game side: `fireFrame`, `ignite`, `fireBlast`, `setAlight`, `youAlight`, `fireOut`/`flushFire`, `catchPlant`/`catchArch`/`burnWeb`, `fireList`, `stepTrail` (Levitation Trail) |
 | `ambience.js` | `spore`, `puffSpores`, `stepAmbience`, `AMB_RATE`/`AMB_MAX` |
-| `particles.js` | `burst`, `goo`, `splat`, `toast`, `stepToasts`, `stepParticles`, `stepMotes` |
+| `particles.js` | `burst`, `goo`, `splat`, `toast`, `stepToasts`, `stepParticles`, `stepMotes` (also a White Hole's `'in'` motes, `q.f` = the field, and crystals' `'breeze'` motes), `crystalMotes`, `stepEliteFire` (the elites' flames, `W.eliteFx`, `ELITE_FX_MAX`) |
 | `fog.js` | `fogLit`, `roomSeen`, `seenAt`, `paintFog` |
 | `webs.js` | `webNear`, `webDist` |
 | `plantglow.js` | `plantGlow` (the jelly's glow on plants, drawn after the fog) |

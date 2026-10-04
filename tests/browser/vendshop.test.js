@@ -173,18 +173,17 @@ const DIR = path.join(__dirname, '..', 'build');
   await page.waitForTimeout(200);
   check('picked up into the bag', await page.evaluate(id => window.__in.current.loadout.bag.includes(id), got));
 
-  // a crystal in the cave is taken with a tap
+  // a crystal in the cave flies to you like gold (v0.0.137): no card, no tap
   st = await page.evaluate(async () => {
     const L = window.__lvl, q = L.pickups.find(q => q.kind === 'crystal');
     const before = window.__in.current.loadout.crystals.length;
     L.p.x = q.x - 6; L.p.y = q.y - 13; L.p.vx = L.p.vy = 0; window.__in.current.sig = '';
     await new Promise(r => setTimeout(r, 250));
-    const card = !!document.querySelector('.crystalcard');
-    window.__in.current.interact = true;
+    const card = !!document.querySelector('.buypanel');
     await new Promise(r => setTimeout(r, 200));
     return { card, before, after: window.__in.current.loadout.crystals.length, taken: !L.pickups.includes(q) };
   });
-  check('standing at a crystal shows its card; a tap takes it', st.card && st.after === st.before + 1 && st.taken, st);
+  check('standing at a crystal: no card, it is collected by itself', !st.card && st.after === st.before + 1 && st.taken, st);
 
   await browser.close();
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');

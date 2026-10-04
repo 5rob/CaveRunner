@@ -102,7 +102,7 @@ export const DEV_META = [
   { k: 'bagSpeed',  g: 'ui',    label: 'Bag fire preview speed (×real time)', min: 0.05, max: 5, step: 0.05 },
 ];
 export const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['fx', 'Hologram & glow'], ['holoflash', 'Hologram flash (on a kill)'], ['player', 'Player'],
-  ['enemy', 'Enemies'], ['elite', 'Elites'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['level2', 'Level 2: layout & look'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
+  ['enemy', 'Enemies'], ['elite', 'Elites'], ['elitefx', 'Elites: flames'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['level2', 'Level 2: layout & look'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults.
 export function devReport() {
@@ -351,6 +351,25 @@ export const ELITE_KNOBS = rangeKnobs('elite', [
 export const ELITE_COLS = colourKnobs('elite', [
   ['elTint', 'Tint and glow colour', '#ffc93c', '#ffc93c', 'tint'],
 ]);
+// The elites' flames (v0.0.137): each elite gives off fire particles from its body, the torch's
+// flame turned into a spawner. Every number a range rolled per particle; the colour over a
+// particle's life is a gradient (elFxGrad) and its opacity a B-spline ramp (elFxAlpha), both
+// shaped on the panel's editors (ui/devpanel.js GradEditor, RampEditor) and kept as strings
+// (art/ramps.js). Rate 0 turns them off.
+export const ELITE_FX_KNOBS = rangeKnobs('elitefx', [
+  ['elFxRate',  'Particles a second (0 = off)',             0, 300, 1,     70, 100],
+  ['elFxLife',  'Length of fire (s a particle lives)',      0.05, 3, 0.05, 0.35, 0.7],
+  ['elFxRise',  'Rise speed',                               0, 200, 1,     22, 40],
+  ['elFxWave',  'Wavyness (side-to-side, units/s)',         0, 100, 1,     8, 20],
+  ['elFxWaveHz', 'Wavyness: swings a second',               0, 20, 0.1,    3, 6],
+  ['elFxDrag',  'Air resistance (how fast it sheds the elite\'s speed)', 0, 20, 0.1, 2.5, 4],
+  ['elFxSize',  'Particle size',                            0.5, 6, 0.1,   1.5, 2.5],
+  ['elFxBody',  'Spawn spread (0 middle, 1 its edge)',      0, 1.5, 0.05,  0.7, 1.1],
+]);
+DEV_DEFAULTS.elFxGrad = '0:#ffffff 0.18:#fff0a0 0.45:#ff9a2a 0.75:#d0301a 1:#401018';
+DEV_DEFAULTS.elFxAlpha = '0:0 0.08:1 0.55:0.85 1:0';
+DEV_META.push({ k: 'elFxGrad', g: 'elitefx', label: 'Colour over life (gradient)', type: 'grad' },
+  { k: 'elFxAlpha', g: 'elitefx', label: 'Opacity over life (ramp)', type: 'ramp' });
 // Floor 2 (Coal seams, v129): the natural noise cave, every number of it. Ranges like floor 1's,
 // rolled once per cave on a generator of their own (makeLevel), so with min = max at the
 // defaults it is exactly the cave it always was. A change shows on the next cave: Dev → New cave
@@ -433,7 +452,9 @@ export const dueMs = floor => floor === 1 ? DEV.due1 * 60000 : DEADLINE_MS;
   const raw = localStorage.getItem(DEV_KEY);
   if (raw) { const o = JSON.parse(raw); for (const k in DEV_DEFAULTS) {
     const d = DEV_DEFAULTS[k], v = o[k];                      // numbers, or '#rrggbb' colours
-    if (typeof d === 'number' ? typeof v === 'number' && isFinite(v) : typeof v === 'string' && HEX_RE.test(v)) DEV[k] = v;
+    // numbers, '#rrggbb' colours, or a gradient / ramp string ("0:#ffffff 1:#401018", "0:0 1:1")
+    if (typeof d === 'number' ? typeof v === 'number' && isFinite(v)
+      : typeof v === 'string' && (HEX_RE.test(d) ? HEX_RE.test(v) : /^[\d.:#a-f\s]+$/i.test(v) && v.includes(':'))) DEV[k] = v;
   } }
 } catch (_) {} })();
 /** @param {string} k @param {number | string} v */

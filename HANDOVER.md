@@ -9,6 +9,17 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
+- **Waiting on the owner: v0.0.137** (built on `refactor`, 2026-10-04, **not on `main`**: screenshots
+  sent, needs their OK, and their word on the version kind — minor update assumed). No perk column on
+  the HUD; bigger gun/bag/map buttons; crystals fly to you like gold and shed breeze sparkles; flight
+  paths rebuilt in one place (`spells/paths.js`: Boomerang returns, Ping-Pong, Spiral, Orbit round its
+  caster or a trigger's carrier) and working on moving fields; new mods Follow Me, Enlarge/Shrink,
+  Longer/Shorter Flight; Vacuum Field → **White Hole** (steady harmless pull, tiny white-blue look, specks
+  drawn in); the **Gravity Gun** as a third starter (old saves: Dev → Restart run); elites burn, with
+  **Dev → Elites: flames** (gradient editor, opacity B-spline, length, wavyness, air resistance…). The
+  owner may paste Dev numbers for the flames. Not done: flames off creatures' appendages (body only),
+  and the flames aren't in death replays. An orbit cast standing on the floor clips the floor (the
+  circle is 26 units; your gun is ~13 above your feet).
 - **Released: v0.0.136** on `main`, 2026-10-03 (the owner OK'd the screenshots): a new run's dark shop
   lighting up a section at a time (`world/shoplights.js`), the pad centred under a TELEPORTER plank nailed
   over PRINTER, the heal just past it and the machines evenly spaced (`SHOP_SLOT`), and kill/dig gold

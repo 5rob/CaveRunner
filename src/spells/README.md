@@ -6,6 +6,7 @@
 | `spawn.js` | Which spell a floor hands you: `NOITA_SPAWN`, `NOITA_OF`, `floorTier`, `TIER_FLOOR`, `modWeight(id, floor)`, `rollMod` |
 | `guns.js` | `makeGun(rnd, lvl)`, `caveGun`, `gunLevel`, `startingGuns`, `GUN_RANGE`, `gunStat`, `gunLvTier`, `RARE_GUN`, `resetGun`, `shuffleOrder`, `gunPrice`, the colours (`gunColor`, `gunAccent`, `GUN_LV_COL`) |
 | `cast.js` | **`planCast(g, others)`, the heart of the game**: what one pull of the trigger fires. `blankShot` (every field a shot has), `effRecharge`, `gunPassives`, `MIN_CAST`/`MIN_RECH` |
+| `paths.js` | **The flight paths** (v0.0.137): `pathStep(o, dt, env)` moves a shot, a moving field or the aim line's pretend shot by Boomerang (`BOOM_*`), Ping-Pong (`PONG_T`), Spiral Arc (`spiralOff`, `SPIRAL_*`), Orbiting Arc (`ORBIT_*`), Follow Me (`FOLLOW_AHEAD`) and a field's homing, returning extra movement `[ex, ey]` on top of `v·dt`; `hasPath`, `FIELD_SPEED`, `SEEK_ACC` |
 | `trace.js` | `tracePath` (flies a shot forward for the aim line), and the flight helpers the bullet loop shares: `driftStep`, `wigTurn`, `bhSp` |
 | `advisor.js` | `gunRate`, `buildAdvice` (`SHORTLIST`), `modPreview`/`previewPlan` (a mod card's use-example) |
 | `bagsim.js` | The bag screen's pure side: `castGroups`, `pullSteps`, `groupStats`, the trigger-held preview `fireSimNew`/`fireSimStep`/`fireSimGauges`, `statQual`, `gunModDeltas` |
@@ -41,6 +42,14 @@ and `game/systems/shotlooks.js`.
 - **Cast delay vs recharge.** Cast delay adds up in draw order, and a few mods (Buzzsaw's
   `setDelay: 0`) *reset* it rather than subtract, so position matters. Recharge counts every slot.
   `effRecharge(g)` is the one true answer.
+- **Flight paths are one function** (`pathStep`, `paths.js`): the bullet loop, `stepFields` (a field with
+  a path mod moves) and `tracePath` all call it, so a path changed there changes all three. Its world
+  (`PathEnv`: you, the spot ahead of your gun, an orbit's anchor, the creatures) comes from `pathEnv`
+  (`game/systems/fields.js`) in the game and from the gun's spot in `tracePath`. An orbit circles your
+  gun, or a trigger payload's carrier (`anc`, from `anchorOf(from)`: `from` is passed through
+  `firePayload` → `releaseAt` → `spawnShot` → `castField`). A boomerang's life is stretched (to
+  `BOOM_MAX` × its flight) until it's back; it's caught (gone) within `BOOM_CATCH`.
+- **Enlarge / Shrink** go through `sizeBy` (mods.js): a new radius field on a shot belongs there too.
 - **The aim line must stay honest.** Anything that changes how a bullet flies goes in the bullet
   loop (`stepBullets`, `game/systems/bullets.js`) *and* in `tracePath`, or the line lies; there's a
   test per path mod (`tests/logic/aimline.test.js`). Mirrored today: `drag`, `bounceE`, `wig`,
@@ -77,7 +86,8 @@ and `game/systems/shotlooks.js`.
   rolls level 1 anywhere in the range, level 10 in the best tenth. Cave guns are the floor's level,
   or with `RARE_GUN` (0.2) a level from floor+1 to 10; shop guns the floor's. `g.lvl` is saved and
   colours the gun (`GUN_LV_COL`); starter guns have no `lvl`.
-- **Starter guns:** `startingGuns()` = `[Scratch Pistol (selected), Pick Axe, null, null]` (owner's
+- **Starter guns:** `startingGuns()` = `[Scratch Pistol (selected), Pick Axe, Gravity Gun, null]`
+  (the Gravity Gun, v0.0.137: `['follow', 'vacfield']`, a White Hole hovering ahead of your gun) (owner's
   order). The pistol is deliberately worse than any floor-1 find. The Pick Axe holds one Buzzsaw
   (`saw`): a melee slice, `speed: 0`, `reach: 5`, `size: 15`, `eat: 14` (digs its radius every frame,
   whether or not its centre is in rock), `hidden: 1`, `setDelay: 0`.

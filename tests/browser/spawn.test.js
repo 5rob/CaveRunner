@@ -20,7 +20,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     onPlinth: !!document.querySelector('.buypanel'),
   }));
   let a = await at();
-  check('spawns at the far left of the shop', a.px < 60, a);
+  check('spawns at the left of the shop, on the pad before the heal (v0.0.136 moved the pad to x 66)', a.px < a.firstPlinth && Math.abs(a.px + 6 - a.arrival.x) < 10, a);
   check('and on the shop floor', a.py > a.shopY, { py: a.py, shopY: a.shopY });
   check('clear of the first plinth', a.firstPlinth - a.px > 60, { spawn: a.px, plinth: a.firstPlinth });
   check('so nothing is being offered on arrival', a.onPlinth === false);
@@ -33,7 +33,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     await new Promise(r => setTimeout(r, 500));
   });
   const b = await at();
-  check('next floor spawns at the far left too', b.floor === 2 && b.px < 60, b);
+  check('next floor spawns there too', b.floor === 2 && b.px < b.firstPlinth, b);
   check('with its own arrival portal', Math.abs(b.arrival.x - b.px) < 40, b.arrival);
   console.log(fails ? `\n${fails} failed` : '\nall good');
   await browser.close();

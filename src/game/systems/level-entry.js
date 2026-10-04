@@ -92,7 +92,7 @@ export function enterLevel(W, G, back, keep, pre) {
   }
   W.bullets.length = W.enemyShots.length = W.smoke.length = 0;
   W.sparks.length = W.flashes.length = W.coins.length = W.arcs.length = 0;
-  W.torchP.length = 0; W.motes.length = 0;
+  W.torchP.length = 0; W.motes.length = 0; W.eliteFx.length = 0;
   if (!keep) W.camReady = false;
   W.best = 0;
   W.levelT = 0;                             // the floor's name card gets its three seconds

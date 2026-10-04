@@ -75,6 +75,7 @@ export function drawMotes(W, G, F) {
     if (q.kind === 'in') a = Math.min(1, q.age / 0.6) * 0.9;              // fade in, never pop
     else if (q.kind === 'out') a = Math.min(1, q.age / 0.3) *
       Math.max(0, 1 - Math.hypot(q.x - q.ox, q.y - q.oy) / q.fade) * 0.9;  // fade with distance
+    else if (q.kind === 'breeze') a = Math.min(1, q.age / 0.15) * Math.max(0, q.life / q.max) * 0.95;   // a crystal's: a quick fade in
     else a = Math.max(0, q.life / q.max) * 0.9;
     G.ctx.globalAlpha = a;
     G.ctx.fillStyle = q.c;

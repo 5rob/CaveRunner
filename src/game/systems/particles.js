@@ -6,6 +6,7 @@
 
 import { SFX } from '../../audio/sfx.js';
 import { CELL, COL, PH, SHOP_FLOOR } from '../../core/consts.js';
+import { kr } from '../../dev/knobs.js';
 import { nearExit } from '../world.js';
 import { jetNozzle } from './player.js';
 import { solidAt } from './terrain.js';
@@ -87,6 +88,25 @@ export function stepParticles(W, F) {
   }
 }
 
+// A crystal's sparkle (v0.0.137, in place of its round glow): specks shed off it that float up
+// and away on the breeze, and, while it flies, a trail along the way it came (`moved` units
+// since last frame, from ox, oy). Drawn as light with the other motes.
+export const CRYS_MOTES = 7, CRYS_TRAIL = 2.5;      // specks a second at rest; a trail speck per this many units
+/** @param {World} W @param {number} x @param {number} y @param {boolean} green @param {number} dt @param {number} moved @param {number} [ox] @param {number} [oy] */
+export function crystalMotes(W, x, y, green, dt, moved, ox, oy) {
+  const cols = green ? ['#30ff70', '#8affb0', '#e0ffe8'] : ['#ff2a3a', '#ff7a88', '#ffe0e4'];
+  /** @param {number} px @param {number} py @param {number} life @param {number} sp */
+  const add = (px, py, life, sp) => W.motes.push({ kind: 'breeze', x: px, y: py,
+    vx: (Math.random() - 0.5) * sp, vy: -4 - Math.random() * 8 * sp / 10, life, max: life, age: 0,
+    ph: Math.random() * 6.28, s: 0.8 + Math.random() * 0.9, c: cols[Math.random() < 0.55 ? 0 : Math.random() < 0.7 ? 1 : 2] });
+  if (Math.random() < CRYS_MOTES * dt) add(x + (Math.random() - 0.5) * 7, y + (Math.random() - 0.5) * 7, 1.1 + Math.random() * 0.9, 10);
+  if (moved > 0 && ox != null && oy != null)
+    for (let k = 0, n = Math.min(8, Math.ceil(moved / CRYS_TRAIL)); k < n; k++) {
+      const t = Math.random();
+      add(ox + (x - ox) * t + (Math.random() - 0.5) * 3, oy + (y - oy) * t + (Math.random() - 0.5) * 3, 0.45 + Math.random() * 0.45, 6);
+    }
+}
+
 // ---- portal motes (a part of step) ----
 // Motes drawn into the exit and breathed out of the way in, and every mote's drift (Black
 // Hole's trail too), capped at 400.
@@ -117,6 +137,7 @@ export function stepMotes(W, F) {
     const q = W.motes[i];
     q.age += dt;
     if (q.kind === 'in') {
+      if (q.f) { q.tx = q.f.x; q.ty = q.f.y; }    // a White Hole's: it may be moving
       // accelerate toward the centre, with a sideways wobble so it spirals in unevenly
       const dx = q.tx - q.x, dy = q.ty - q.y, d = Math.hypot(dx, dy) || 1;
       const pullF = 70 + 260 * q.age;
@@ -131,6 +152,12 @@ export function stepMotes(W, F) {
       q.vx *= 1 - 0.4 * dt; q.vy *= 1 - 0.4 * dt;
       q.x += q.vx * dt; q.y += q.vy * dt;
       if (Math.hypot(q.x - q.ox, q.y - q.oy) > q.fade) q.life = 0;
+    } else if (q.kind === 'breeze') {
+      // a crystal's speck: the cave's slow breeze carries it sideways as it rises, wavering
+      const wind = 9 + Math.sin(W.time * 0.35) * 6;
+      q.vx += ((wind - q.vx) * 0.8 + Math.sin(q.age * 3 + q.ph) * 14) * dt;
+      q.vy = q.vy * (1 - 0.6 * dt) - 3 * dt;
+      q.x += q.vx * dt; q.y += q.vy * dt;
     } else {
       q.vx *= 1 - 1.8 * dt; q.vy = q.vy * (1 - 1.8 * dt) - 6 * dt;
       q.x += q.vx * dt; q.y += q.vy * dt;
@@ -138,4 +165,41 @@ export function stepMotes(W, F) {
     if ((q.life -= dt) <= 0) W.motes.splice(i, 1);
   }
   if (W.motes.length > 400) W.motes.splice(0, W.motes.length - 400);
+}
+
+// ---- the elites' flames (a part of step, v0.0.137) ----
+// Every elite gives off fire from its body, the torch's flame as a spawner (Dev → Elites: flames,
+// every number rolled per particle): each speck starts somewhere in its body with the elite's own
+// speed, sheds that speed to air resistance (so a moving elite leaves a trail), rises, and swings
+// side to side. Its colour and opacity over its life come from the gradient and ramp (drawn by
+// drawEliteFire). Capped at ELITE_FX_MAX.
+export const ELITE_FX_MAX = 700;
+/** @param {World} W @param {StepFrame} F */
+export function stepEliteFire(W, F) {
+  const { dt } = F;
+  if (dt <= 0) return;
+  for (const e of W.enemies) {
+    if (!e.k.elite) continue;
+    const vx = e.fxPx != null ? (e.x - e.fxPx) / dt : 0, vy = e.fxPy != null ? (e.ty - e.fxPy) / dt : 0;
+    e.fxPx = e.x; e.fxPy = e.ty;
+    e.fxAcc = (e.fxAcc || 0) + kr('elFxRate') * dt;
+    for (; e.fxAcc >= 1; e.fxAcc--) {
+      const a = Math.random() * Math.PI * 2, rr = e.r * kr('elFxBody') * Math.sqrt(Math.random());
+      const life = kr('elFxLife');
+      W.eliteFx.push({ x: e.x + Math.cos(a) * rr, y: e.ty + Math.sin(a) * rr,
+        vx: Math.max(-400, Math.min(400, vx)), vy: Math.max(-400, Math.min(400, vy)), life, max: life,
+        rise: kr('elFxRise'), wave: kr('elFxWave'), hz: kr('elFxWaveHz'), drag: kr('elFxDrag'),
+        s: kr('elFxSize'), ph: Math.random() * 6.283, age: 0 });
+    }
+  }
+  for (let i = W.eliteFx.length - 1; i >= 0; i--) {
+    const q = W.eliteFx[i];
+    q.age += dt;
+    const k = Math.exp(-q.drag * dt);
+    q.vx *= k; q.vy *= k;
+    q.x += (q.vx + Math.sin(q.age * q.hz * 6.283 + q.ph) * q.wave) * dt;
+    q.y += (q.vy - q.rise) * dt;
+    if ((q.life -= dt) <= 0) W.eliteFx.splice(i, 1);
+  }
+  if (W.eliteFx.length > ELITE_FX_MAX) W.eliteFx.splice(0, W.eliteFx.length - ELITE_FX_MAX);
 }

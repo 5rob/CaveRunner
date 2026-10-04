@@ -2,10 +2,11 @@
 // The Dev panel (the gear button): live-tweak knob rows by group (DevRow, DevPanel), the
 // live jellyfish box at the top of the jelly colours group (JellyPreview), the group headers
 // that open and shut on a press-and-hold (DevGroupHead), the hologram flash's fade curve
-// (FadeCurve), and the Spawn gun box (SpawnGun).
+// (FadeCurve), the elites' flames (FlamePreview, GradEditor, RampEditor), and the Spawn gun box (SpawnGun).
 
 import { drawProp, rgbA } from '../art/props.js';
 import { glowAt } from '../art/sprites.js';
+import { bspline, gradAt, gradLut, gradStr, lutAt, parseGrad, parseRamp, rampAt, rampLut, rampStr } from '../art/ramps.js';
 import { CELL } from '../core/consts.js';
 import { bezierFade, clamp, hexArr, hexRgb, mix } from '../core/util.js';
 import {
@@ -224,13 +225,195 @@ export function FadeCurve() {
     h('button', { className: 'devreset fcreset', 'aria-label': 'Default curve', onPointerDown: e => { e.preventDefault(); reset(); } }, '↺'));
 }
 
+// ---- Dev → Elites: flames (v0.0.137) ----
+// The point under a pointer in an svg's own units
+/** @param {SVGSVGElement} s @param {PointerEvent} e */
+const svgPt = (s, e) => { const m = s && s.getScreenCTM(); return m ? new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()) : null; };
+const toHex = (/** @type {number[]} */ c) => '#' + c.map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+
+// A little elite on fire: a body drifting side to side so the trail shows, throwing the real
+// flames (stepEliteFire's rules, the live knobs) and drawn the game's way (drawEliteFire's rules)
+export function FlamePreview() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const c = ref.current;
+    if (!c || !c.getContext) return;
+    const ctx = c.getContext('2d');
+    /** @type {Particle[]} */
+    const fx = [];
+    const e = { x: 60, ty: 56, r: 7, fxAcc: 0, px: 60, py: 56 };
+    let raf, last = performance.now(), t = 0;
+    const tick = now => {
+      raf = requestAnimationFrame(tick);
+      const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt;
+      const cw = c.clientWidth, ch = c.clientHeight, dpr = window.devicePixelRatio || 1;
+      if (c.width !== Math.round(cw * dpr)) { c.width = Math.round(cw * dpr); c.height = Math.round(ch * dpr); }
+      const sc = c.height / 80, wu = c.width / sc;          // 80 world units tall, as wide as it is
+      e.x = wu / 2 + Math.sin(t * 0.9) * wu * 0.3; e.ty = 56 + Math.sin(t * 1.7) * 5;
+      const vx = (e.x - e.px) / (dt || 1), vy = (e.ty - e.py) / (dt || 1); e.px = e.x; e.py = e.ty;
+      for (e.fxAcc += kr('elFxRate') * dt; e.fxAcc >= 1; e.fxAcc--) {
+        const a = Math.random() * 6.283, rr = e.r * kr('elFxBody') * Math.sqrt(Math.random()), life = kr('elFxLife');
+        fx.push({ x: e.x + Math.cos(a) * rr, y: e.ty + Math.sin(a) * rr, vx, vy, life, max: life, rise: kr('elFxRise'),
+          wave: kr('elFxWave'), hz: kr('elFxWaveHz'), drag: kr('elFxDrag'), s: kr('elFxSize'), ph: Math.random() * 6.283, age: 0 });
+      }
+      for (let i = fx.length - 1; i >= 0; i--) {
+        const q = fx[i]; q.age += dt;
+        const k = Math.exp(-q.drag * dt); q.vx *= k; q.vy *= k;
+        q.x += (q.vx + Math.sin(q.age * q.hz * 6.283 + q.ph) * q.wave) * dt; q.y += (q.vy - q.rise) * dt;
+        if ((q.life -= dt) <= 0) fx.splice(i, 1);
+      }
+      if (fx.length > 500) fx.splice(0, fx.length - 500);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = '#0d0f14'; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.setTransform(sc, 0, 0, sc, 0, 0);
+      const cols = gradLut(DEV.elFxGrad), al = rampLut(DEV.elFxAlpha);
+      ctx.globalCompositeOperation = 'lighter';
+      for (const q of fx) {
+        const u = 1 - q.life / q.max, a = lutAt(al, u);
+        if (a <= 0.01) continue;
+        ctx.globalAlpha = a; ctx.fillStyle = lutAt(cols, u);
+        ctx.fillRect(Math.round(q.x) - q.s / 2, Math.round(q.y) - q.s / 2, q.s, q.s);
+      }
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+      ctx.fillStyle = '#5a4a6a'; ctx.beginPath(); ctx.arc(e.x, e.ty, e.r, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.fillRect(e.x - 3, e.ty - 2, 2, 2); ctx.fillRect(e.x + 1, e.ty - 2, 2, 2);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return h('canvas', { ref, className: 'flameprev' });
+}
+
+// The flames' colour over a particle's life: a bar showing the gradient, its stops as handles
+// under it. Drag a handle sideways to move it; tap the bar to add a stop there (in the colour it
+// already is); tap a handle to pick its colour or delete it. Saves DEV.elFxGrad (art/ramps.js).
+export function GradEditor() {
+  const [, bump] = useState(0);
+  const [sel, setSel] = useState(-1);
+  const svg = useRef(null), drag = useRef(-1);
+  const G = parseGrad(DEV.elFxGrad);
+  const save = (/** @type {GradStop[]} */ g, /** @type {number} */ keep) => {
+    const s = g[keep], out = g.slice().sort((a, b) => a.t - b.t);
+    devSet('elFxGrad', gradStr(out)); setSel(s ? out.indexOf(s) : -1); bump(n => n + 1);
+    return s ? out.indexOf(s) : -1;
+  };
+  const X0 = 8, X1 = 192, tOf = (/** @type {number} */ x) => clamp((x - X0) / (X1 - X0), 0, 1);
+  return h('div', { className: 'gradedit' },
+    h('svg', { ref: svg, viewBox: '0 0 200 44', className: 'fcsvg',
+      onPointerDown: e => {
+        e.preventDefault();
+        const p = svgPt(svg.current, e);
+        if (!p) return;
+        let i = -1, bd = 7;
+        G.forEach((s, k) => { const d = Math.abs(X0 + s.t * (X1 - X0) - p.x); if (p.y > 22 && d < bd) { bd = d; i = k; } });
+        if (i < 0) {                                  // a new stop, the colour the bar already is there
+          const t = tOf(p.x);
+          G.push({ t, c: toHex(gradAt(G, t)) });
+          i = save(G, G.length - 1);
+        } else setSel(i);
+        drag.current = i;
+        svg.current.setPointerCapture(e.pointerId);
+      },
+      onPointerMove: e => {
+        if (drag.current < 0) return;
+        const p = svgPt(svg.current, e);
+        if (!p) return;
+        G[drag.current].t = tOf(p.x);
+        drag.current = save(G, drag.current);
+      },
+      onPointerUp: () => { drag.current = -1; }, onPointerCancel: () => { drag.current = -1; } },
+      h('defs', null, h('linearGradient', { id: 'elfxg', x1: 0, x2: 1, y1: 0, y2: 0 },
+        G.map((s, k) => h('stop', { key: k, offset: s.t, stopColor: s.c })))),
+      h('rect', { x: X0, y: 4, width: X1 - X0, height: 18, rx: 3, fill: 'url(#elfxg)' }),
+      G.map((s, k) => { const x = X0 + s.t * (X1 - X0);
+        return h('path', { key: k, d: 'M' + x + ' 24 l5 8 v8 h-10 v-8 z', fill: s.c,
+          stroke: k === sel ? '#fff' : 'rgba(255,255,255,0.45)', strokeWidth: k === sel ? 1.6 : 0.8 }); })),
+    sel >= 0 && G[sel] ? h('div', { className: 'gradsel' },
+      h('span', null, 'Stop at ' + Math.round(G[sel].t * 100) + '%'),
+      h('input', { type: 'color', value: G[sel].c, onChange: e => { G[sel].c = e.target.value; save(G, sel); } }),
+      G.length > 1 ? h('button', { className: 'devreset', onPointerDown: e => { e.preventDefault();
+        G.splice(sel, 1); devSet('elFxGrad', gradStr(G)); setSel(-1); bump(n => n + 1); } }, 'Delete') : null) : null,
+    h('div', { className: 'gradsel' }, h('span', null, sel >= 0 ? '' : 'Tap the bar to add a stop, drag one to move it'),
+      h('button', { className: 'devreset', 'aria-label': 'Default gradient', onPointerDown: e => { e.preventDefault();
+        devSet('elFxGrad', DEV_DEFAULTS.elFxGrad); setSel(-1); bump(n => n + 1); } }, '↺')));
+}
+
+// The flames' opacity over a particle's life: a B-spline through draggable control points (life
+// left to right, opacity bottom to top), the dashed line joining them, and a dot running along it
+// at the real speed. Drag a point; tap empty space to add one there; tap a point to select it and
+// Delete. Saves DEV.elFxAlpha (art/ramps.js).
+export function RampEditor() {
+  const [, bump] = useState(0);
+  const [sel, setSel] = useState(-1);
+  const svg = useRef(null), drag = useRef(-1), dot = useRef(null);
+  const R = parseRamp(DEV.elFxAlpha);
+  const B = { x0: 10, x1: 190, top: 8, bot: 98 };
+  const px = (/** @type {number} */ x) => B.x0 + x * (B.x1 - B.x0), py = (/** @type {number} */ y) => B.bot - y * (B.bot - B.top);
+  useEffect(() => {
+    let raf, t0 = performance.now();
+    const tick = now => {
+      raf = requestAnimationFrame(tick);
+      const len = Math.max(0.05, (DEV.elFxLifeLo + DEV.elFxLifeHi) / 2), u = (((now - t0) / 1000) % (len + 0.4)) / len;
+      if (dot.current && u <= 1) { dot.current.setAttribute('cx', String(px(u))); dot.current.setAttribute('cy', String(py(rampAt(parseRamp(DEV.elFxAlpha), u)))); }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  const save = (/** @type {RampPt[]} */ r, /** @type {number} */ keep) => {
+    const p = r[keep], out = r.slice().sort((a, b) => a.x - b.x);
+    devSet('elFxAlpha', rampStr(out)); setSel(p ? out.indexOf(p) : -1); bump(n => n + 1);
+    return p ? out.indexOf(p) : -1;
+  };
+  const at = e => { const p = svgPt(svg.current, e); return p && { x: clamp((p.x - B.x0) / (B.x1 - B.x0), 0, 1), y: clamp((B.bot - p.y) / (B.bot - B.top), 0, 1), sx: p.x, sy: p.y }; };
+  const curve = bspline(R);
+  let d = '';
+  for (let i = 0; i < curve.length; i += 2) d += (i ? ' L' : 'M') + px(curve[i]).toFixed(1) + ' ' + py(curve[i + 1]).toFixed(1);
+  return h('div', { className: 'rampedit' },
+    h('svg', { ref: svg, viewBox: '0 0 200 112', className: 'fcsvg',
+      onPointerDown: e => {
+        e.preventDefault();
+        const p = at(e);
+        if (!p) return;
+        let i = -1, bd = 9;
+        R.forEach((q, k) => { const dd = Math.hypot(px(q.x) - p.sx, py(q.y) - p.sy); if (dd < bd) { bd = dd; i = k; } });
+        if (i < 0) { R.push({ x: p.x, y: p.y }); i = save(R, R.length - 1); }
+        else setSel(i);
+        drag.current = i;
+        svg.current.setPointerCapture(e.pointerId);
+      },
+      onPointerMove: e => {
+        if (drag.current < 0) return;
+        const p = at(e);
+        if (!p) return;
+        R[drag.current].x = p.x; R[drag.current].y = p.y;
+        drag.current = save(R, drag.current);
+      },
+      onPointerUp: () => { drag.current = -1; }, onPointerCancel: () => { drag.current = -1; } },
+      h('rect', { x: B.x0, y: B.top, width: B.x1 - B.x0, height: B.bot - B.top, className: 'fcbox' }),
+      h('text', { x: B.x0 + 2, y: B.top + 7, className: 'fctxt' }, 'opaque'),
+      h('text', { x: B.x0 + 2, y: B.bot + 10, className: 'fctxt' }, 'born'),
+      h('text', { x: B.x1 - 2, y: B.bot + 10, className: 'fctxt', textAnchor: 'end' }, 'gone'),
+      h('polyline', { points: R.map(q => px(q.x) + ',' + py(q.y)).join(' '), className: 'fcarm', fill: 'none' }),
+      h('path', { d, className: 'fcline' }),
+      h('circle', { ref: dot, r: 2.5, className: 'fcdot', cx: -10, cy: -10 }),
+      R.map((q, k) => h('circle', { key: k, cx: px(q.x), cy: py(q.y), r: 4.5, className: 'fchandle',
+        style: k === sel ? { stroke: '#fff' } : null }))),
+    h('div', { className: 'gradsel' },
+      sel >= 0 && R[sel] ? h('span', null, 'Point: life ' + Math.round(R[sel].x * 100) + '%, opacity ' + Math.round(R[sel].y * 100) + '%')
+        : h('span', null, 'Tap to add a point, drag to move'),
+      sel >= 0 && R.length > 2 ? h('button', { className: 'devreset', onPointerDown: e => { e.preventDefault();
+        R.splice(sel, 1); devSet('elFxAlpha', rampStr(R)); setSel(-1); bump(n => n + 1); } }, 'Delete') : null,
+      h('button', { className: 'devreset', 'aria-label': 'Default ramp', onPointerDown: e => { e.preventDefault();
+        devSet('elFxAlpha', DEV_DEFAULTS.elFxAlpha); setSel(-1); bump(n => n + 1); } }, '↺')));
+}
+
 // One tweakable value in the dev panel: a labelled number box prefilled with the live
 // value, its default shown as the placeholder. Committing an empty box restores the
 // default; anything else is parsed, clamped to the knob's range and saved at once.
 /** @param {{ meta: DevRow }} props */
 export function DevRow({ meta }) {
   const [val, setVal] = useState(String(DEV[meta.k]));
-  if (meta.type === 'curve') return null;      // shaped on FadeCurve, not typed
+  if (meta.type === 'curve' || meta.type === 'grad' || meta.type === 'ramp') return null;   // shaped on their editors, not typed
   if (meta.type === 'slider') {
     // a slider: changes live as you drag, the number beside the label; ↺ puts the default back
     const set = v => { devSet(meta.k, v); setVal(String(v)); };
@@ -350,6 +533,8 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
           shut ? null : h('div', { className: 'devvars' },
             g === 'jellycol' ? h(JellyPreview) : null,        // the live jelly its colours paint
             g === 'holoflash' ? h(FadeCurve) : null,
+            g === 'elitefx' ? [h(FlamePreview, { key: 'fp' }), h('p', { key: 'gl', className: 'devlbl' }, 'Colour over life'), h(GradEditor, { key: 'ge' }),
+              h('p', { key: 'rl', className: 'devlbl' }, 'Opacity over life'), h(RampEditor, { key: 're' })] : null,
             DEV_META.filter(m => m.g === g).map(m => h(DevRow, { key: m.k, meta: m }))));
       }),
       h('p', { className: 'devnote' },

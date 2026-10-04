@@ -11,8 +11,11 @@ const check = (name, ok, x) => {
 check('pull range knob exists', DEV_META.some(m => m.k === 'bhPull') && DEV.bhPull === DEV_DEFAULTS.bhPull);
 check('travel speed knob exists', DEV_META.some(m => m.k === 'bhSpeed') && DEV.bhSpeed === DEV_DEFAULTS.bhSpeed);
 check('every knob sits in a Dev panel group', DEV_META.every(m => DEV_GROUPS.some(g => g[0] === m.g)));
-check('every knob has a default (a number, or a #rrggbb colour for a colour knob)', DEV_META.every(m =>
-  m.type === 'color' ? /^#[0-9a-f]{6}$/.test(DEV_DEFAULTS[m.k]) : typeof DEV_DEFAULTS[m.k] === 'number'));
+check('every knob has a default (a number, a #rrggbb colour for a colour knob, a gradient/ramp string for those)', DEV_META.every(m =>
+  m.type === 'color' ? /^#[0-9a-f]{6}$/.test(DEV_DEFAULTS[m.k])
+    : m.type === 'grad' ? /^(\s*[\d.]+:#[0-9a-f]{6}\s*)+$/i.test(DEV_DEFAULTS[m.k])
+    : m.type === 'ramp' ? /^(\s*[\d.]+:[\d.]+\s*)+$/.test(DEV_DEFAULTS[m.k])
+    : typeof DEV_DEFAULTS[m.k] === 'number'));
 DEV.bhSpeed = MODS.void.speed;
 check('the mod own speed leaves shots alone', bhSp({ pull: 70 }) === 1 && bhSp({}) === 1);
 DEV.bhSpeed = MODS.void.speed / 2;
