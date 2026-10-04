@@ -19,7 +19,9 @@ far too small): `clipList` (the gallery's `ClipMeta` cards, newest first), `clip
   `cleanLoadout`**, or it is dropped on load.
 - The save holds the cave's `seed` and the perks owned on entry (`owned`: `makeLevel` reads it, so
   the same seed needs the same list), the alive enemies' `sid`s (tagged by index in `enterLevel`),
-  sold stock and taken rooms by index, and the ground pickups whole (guns get swapped on the ground).
+  sold stock and taken rooms by index, and the ground pickups whole (guns get swapped on the ground),
+  and the map's pins (`pins`: `{ x, y, e }`, v0.0.141). A new run's guide hologram isn't saved: a run
+  put back from a save has none (the kit is lost if the app closes before it's handed out).
 - **The cave only comes back when `ver === VERSION`**; after an update, gear + floor + hp survive on
   a fresh cave (the generator may have changed). You always respawn at the floor start (dug terrain
   isn't saved).

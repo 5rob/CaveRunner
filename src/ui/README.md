@@ -7,7 +7,8 @@ React without JSX (`h(...)`), off the global React the page loads from a CDN. Ev
 |---|---|
 | `h.js` | `h` (`React.createElement`), `useRef`/`useEffect`/`useState`/`useMemo` |
 | `app.js` | `App`: the loadout, the input ref shared with the Game (`input.current`: `GameInput` in `types.d.ts`), the canvas, the sticks, the deck buttons, every overlay, the key handler |
-| `hud.js` | `Stick` (thumbsticks + gauge rings; publishes its centre and size for the menu pointer, and keeps the touch's `peak` push), `RKey`, `CrystalIcon` (red or `green`), `CrystalRow` (the top bar's crystal silhouettes, `CRYS_MAX` a colour then +N), `GAUGE_R`/`GAUGE_C`/`GAUGE_COL`, `healthCol`, `holdPress` (tap vs hold), `deckLayout`, `fmtGold` |
+| `map.js` | The map (v0.0.141): `MapScreen` (full screen `.mapscreen`, its own canvas and rAF while open: `input.current.mapView()`'s picture, fitted to the height (`fitView`, `FIT_PAD`), the fog memory over it (a pixel a fog cell, smoothed, grown `MAP_SPREAD` cells by `spread`: the memory only lifts air and wall faces, so this shows the rock round what you saw), the shop's machines as coloured squares (`MAP_MARKS`: teleporter, heal, buy, sell, then `SHOPS` in their hues), your `helmet`, the pins standing on their spots; one pointer pans, two pinch round their middle, a wheel zooms, `keepOn` keeps some of it on screen, `ZOOM_MAX`; the view is on the canvas's `data-view` for the suite), `PinPicker` (`.pinpick`: the pins, last used first, `.pinopt[data-pin]`, then `.pinadd` (+) opening a one-character box, `firstChar`: a whole emoji counts as one), `loadPins`/`savePins` (localStorage `PIN_KEY`, `PIN_DEFAULTS`, `PIN_MAX`), `usePin` |
+| `hud.js` | `Stick` (thumbsticks + gauge rings; publishes its centre and size for the menu pointer, and keeps the touch's `peak` push), `RKey`, `CrystalIcon` (red or `green`), `CrystalRow` (the top bar's crystal silhouettes, `CRYS_MAX` a colour then +N), `GAUGE_R`/`GAUGE_C`/`GAUGE_COL`, `healthCol`, `holdPress` (tap vs hold), `deckLayout` (`pin`: the pin button, mirroring `map`), `fmtGold` |
 | `cards.js` | `GunCard`, `ModCard`, `PerkCard`, `GUN_STATS` — the same cards in the build screen and in the shop/pickup panel (`ingame`) |
 | `editor.js` | The build screen (Bag): `Editor`, `GunStats`, `GunIcon`, `SlotGrid`, `ScrollBox`, `PULL_COL`, `GS_ROWS`, `LIVE_BAR`, `SHOW_TIPS` |
 | `swap.js` | `GunSwap`: the chooser when you take a gun (found or bought) |
@@ -46,11 +47,16 @@ CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).
   `input.current.ctlH`. `deckLayout` places the round `.dbtn`s: the four guns (`.slot`, `.on` = held,
   hold for its card) on an arc round the right stick, `DECK_PUSH` px out and as big as fits with `DECK_GAP`
   px between (v0.0.137; capped `DECK_MAX`), the bag and map the same size; the Bag (`.weapon`, 🎒) mirrors the last gun on
-  the left; the map (`.mapbtn`, 🗺️) above it. Gold (`.gold`, `fmtGold`: `1234` → `1.2kg`, thousands
+  the left; the map (`.mapbtn`, 🗺️) above it; the pin button (`.pinbtn`, the chosen pin) mirrors the map on the right, **only while the map is open** (owner). Gold (`.gold`, `fmtGold`: `1234` → `1.2kg`, thousands
   truncated) sits top centre, `pointer-events:none`, with the debt under it in full (`-64,000,000,000g owed`,
   not `fmtGold`) and `DueClock` under that, with `CrystalRow` (red and green silhouettes) between the gold and the debt, all centred (`topgold` checks them at phone widths); it updates because gold changes
   call `input.current.notify()` (re-renders `App`). The Dev button is a bare ⚙️
   (`.devbtn`); Restart is inside the Dev panel (`.dbg.restart`); like a death it empties the mods unlocked (`collection`), not the perks.
+- **The map covers everything but its own button and the pin button** (v0.0.141, the owner: other UI
+  got in the way). `.mapscreen` is `position:fixed` at z-index 11 in the page's root; `.app.mapping`
+  raises `.sticks` (where the deck buttons live) to 12 and hides the sticks, guns and bag, so the map
+  button is still under your thumb to shut it. The pin picker raises `.sticks` the same way
+  (`.app.pinning`). The pin button is `holdPress`: tap = picker, hold = drop (`input.current.dropPin`).
 - **No perk column on the play screen** (removed v0.0.137, the owner's call: the Exo Suit tab shows them).
 - **The Bag always opens; editing is gated**: `canEdit = inShop || Tinker`. Read-only hides drop,
   gun reorder, Sort and the tips, and the footer says "Viewing only…"; tapping a mod still shows it.

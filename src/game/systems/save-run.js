@@ -18,6 +18,7 @@ export function saveRun(W, G) {
       heals: (W.stock.find(it => it.kind === 'heal') || { bought: 0 }).bought || 0,
       rooms: W.rooms.map((r, i) => (r.taken ? i : -1)).filter(i => i >= 0),
       pickups: pk,
+      pins: W.pins,
       // each nest's rats still inside, and the ones out (a rat isn't saved: it goes back in)
       brood: W.enemies.filter(e => e.nest).map(e => [e.sid, e.nest.left + W.enemies.filter(r => r.home === e && !r.dead).length]) } };
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (_) {}

@@ -21,12 +21,10 @@ const shopOf = ({ floor, lv }) => {
 const shops = levels.map(shopOf);
 
 // ---- the heal ----
-check('the heal sits by the portal you arrive through',
-  shops.every(s => Math.abs(s.heal.x - s.lv.arrival.x) < 90),
-  shops.map(s => Math.round(Math.abs(s.heal.x - s.lv.arrival.x))).filter(d => d >= 90));
-check('it does not sit on the portal itself',
-  shops.every(s => Math.abs(s.heal.x - s.lv.arrival.x) > 34),
-  shops.map(s => Math.round(Math.abs(s.heal.x - s.lv.arrival.x))).filter(d => d <= 34));
+// v0.0.141: it moved down the hall with the machines (the guide hologram's hall is between)
+check('the heal stands down the hall, past the empty stretch from the way in',
+  shops.every(s => s.heal.x - s.lv.arrival.x > 400),
+  shops.map(s => Math.round(s.heal.x - s.lv.arrival.x)).filter(d => d <= 400));
 check('and you do not spawn standing on it',
   shops.every(s => s.heal.x - s.lv.start.x > 60),
   shops.map(s => Math.round(s.heal.x - s.lv.start.x)).filter(d => d <= 60));

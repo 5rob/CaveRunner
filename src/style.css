@@ -660,3 +660,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* the menus' left-stick pointer (vendshop.js useMenuNav): a second knob, a very thin ring, no fill */
 .mptr{position:fixed;left:0;top:0;z-index:40;display:none;box-sizing:border-box;border-radius:50%;
   border:0.75px solid rgba(255,255,255,0.95);pointer-events:none;will-change:transform}
+/* the map (ui/map.js, v0.0.141): full screen over everything but the map and pin buttons, which stay
+   where your thumb is (.sticks rises over it; the sticks and the other buttons hide) */
+.mapscreen{position:fixed;inset:0;z-index:11;background:#05070a}
+.mapcanvas{display:block;width:100%;height:100%;touch-action:none}
+.app.mapping .sticks,.app.pinning .sticks{z-index:12}
+.app.mapping .stick,.app.mapping .slots,.app.mapping .weapon{visibility:hidden}
+.dbtn.pinbtn.holding{background:radial-gradient(circle,rgba(255,138,31,0.55) 0%,rgba(255,138,31,0) 70%)}
+/* the pin picker over the pin button: the pins used before, then + for a new one */
+.pinpick{position:absolute;z-index:6;transform:translateY(-100%);box-sizing:border-box;width:min(276px,calc(100vw - 16px));
+  padding:10px;border-radius:14px;background:rgba(14,18,26,0.94);border:1px solid rgba(255,255,255,0.22);
+  box-shadow:0 6px 18px rgba(0,0,0,0.5);pointer-events:auto;color:#e9ecf2;font-family:system-ui,sans-serif}
+.pingrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.pinopt{aspect-ratio:1;min-width:0;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);
+  color:#fff;font-size:22px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;touch-action:none}
+.pinopt.on{border:2px solid #ff8a1f;background:rgba(255,138,31,0.18)}
+.pinopt.pinadd{font:300 26px system-ui,sans-serif;color:rgba(255,255,255,0.8);border-style:dashed}
+.pinnew{display:flex;gap:6px;margin-top:8px}
+.pinnew input{flex:1;min-width:0;height:36px;border-radius:9px;border:1px solid rgba(255,255,255,0.3);background:#0a0d13;
+  color:#fff;font-size:18px;padding:0 10px}
+.pinnew button{height:36px;padding:0 14px;border-radius:9px;border:none;background:#ff8a1f;color:#12141a;font:700 13px system-ui,sans-serif}
+.pinhint{margin-top:8px;font-size:11px;color:rgba(233,236,242,0.6);text-align:center}

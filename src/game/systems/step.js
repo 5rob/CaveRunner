@@ -15,6 +15,7 @@ import { stepEnemies } from './enemies.js';
 import { stepFields } from './fields.js';
 import { fireFrame, stepTrail } from './fire.js';
 import { aimAndCast } from './gun.js';
+import { stepGuide } from './guide.js';
 import { enterLevel } from './level-entry.js';
 import { stepEliteFire, stepMotes, stepParticles, stepToasts, toast } from './particles.js';
 import { stepPickups } from './pickups.js';
@@ -41,6 +42,7 @@ export function step(W, G, dt) {
   stepFields(W, G, F);                      // static fields and beams (fields.js)
   stepPickups(W, G, F);                     // pickups, gold, the card, the interact tap (pickups.js)
   stepWarp(W, G, F);                        // a level teleporting in or out (vend.js)
+  stepGuide(W, G, F);                       // a new run's guide hologram (guide.js)
   stepLights(W, F);                         // a new run's dark shop lighting up (shoplights.js)
   stepRepo(W, G, F);                        // the repayment deadline passed: repossession, fire (vend.js)
   stepToasts(W, F);                         // messages fading (particles.js)

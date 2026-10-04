@@ -9,6 +9,14 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
+- **Released: v0.0.141** on `main`, 2026-10-05 (the owner OK'd the screenshots; a minor update): the
+  new full-screen map with pan/zoom, machine squares and emoji pins (pin button on the map screen only:
+  `ui/map.js`), the shop's heal and machines moved to the far right with pools of light under the tubes
+  and dark between (Dev → Torch & fog: `shopGap`, `shopTorch`), and the guide hologram that welcomes
+  **every new run, deaths included (owner)** and hands out a starter kit, or goes off in a huff if you
+  walk through it (`world/guide.js`; invisible until the tube over it lights). Not saved: closing the app
+  mid-welcome loses the kit. The old map's loot dots and prize-room outlines are gone (owner: picture +
+  fog + helmet + pins). The owner may paste Dev numbers for the hall's dark or the guide's typing.
 - **Released: v0.0.140** on `main`, 2026-10-04 (the owner OK'd the screenshots): the mod machine glows
   crystal red, the gun machine gold, and the gun machine's red-crystal Boosted reroll is gone.
 - **v0.0.139** on `main`, 2026-10-04: the mod machine rolls any mod off the floor's table, repeats

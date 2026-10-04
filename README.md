@@ -2,7 +2,8 @@
 
 A jetpack cave platformer prototype that runs in the browser. You play a little
 white-suited astronaut, drawn in crisp chunky pixels, with arms and legs that bend at the
-elbow and knee. You start in a high-tech steel shop room with nothing above it. On its back wall, past the heal, stand
+elbow and knee. You start in a high-tech steel shop room with nothing above it (a new run is met by a
+hologram guide with a starter kit). On its back wall, down the hall past the heal, stand
 two vending machines: the green one opens a full-screen menu of floors, and sells you a freshly
 generated destructible level of the one you pick on credit: floor 1 for 1,000,000,000 gold, each floor
 up three times the last (it goes on a debt shown in red under
@@ -80,7 +81,8 @@ all your gear, in a freshly generated cave. Dying or Restart wipes it.
 | Gun details | Hold a gun button | — |
 | Reorder guns | Hold and drag a gun button in the build screen | — |
 | Bag: guns & mods screen (open anywhere) | Tap the backpack button | E |
-| Map (pauses the run) | Tap the map button, again to close | M |
+| Map (pauses the run) | Tap the map button, again to close; on the map drag to pan, pinch to zoom | M |
+| Pins (on the map) | Tap the pin button to choose one; hold it to drop it where you stand | — |
 
 The controls float over the bottom of the screen and are see-through — outlines only, no
 fills — so the cave carries on underneath them. The game frames itself to the area above
@@ -118,13 +120,19 @@ across the shop's back wall, the version sits top-left, and your gold reads at t
 the gap between the two sticks — a `g`, with thousands shortened to a `k` (so `1234` shows as
 `1.2kg`).
 
-The map button opens the map over the whole play area (the run pauses while it's up): the
-cave you have uncovered, drawn as white outlines over a see-through black (the cave shows
-faintly behind it), with a white-rimmed yellow dot for where you are. Loot you have seen and
-not picked up is marked: **green dots for mods, yellow dots for guns** (a hollow yellow ring for
-a gun you swapped out and left). The hidden room, once found, is **outlined
-in yellow**, with an **X** through it once you've taken its prize. It only shows what the fog
-of war has lifted, so it fills in as you explore. Tap the button again to close it.
+The map button opens the map over the whole screen (the run pauses while it's up): a picture
+of the whole floor as it was when it was made — the rock and its decoration in their own
+colours — fitted to the screen's height, with the fog of war over it, so only the parts
+you've explored show. Your helmet marks where you are, and along the shop at the bottom coloured
+squares mark the teleporter (blue), the heal (pink), the level machines (cyan buy, violet sell) and
+the mod, gun and perk machines (red, gold, green). It's a map, not a live view: digging
+doesn't change it. Drag with one finger to pan, pinch with two to zoom. Nothing else covers it:
+the map button stays right where your thumb was, so tap it again to close.
+
+On the map, the **pin button** sits opposite the map button (it's only there on the map). Tap it for a grid of pins — the ones you've
+used before, then **+**, which opens a box for a new one: any single character, a letter, a
+number, a symbol or an emoji. Pick one and the button shows it; **hold** the button to drop
+that pin where you stand. Pins show on the map, standing on their spot.
 
 ## Witness yourself
 
@@ -187,11 +195,20 @@ is worth comparing before you commit.
 Every floor starts in an enclosed room spanning the width of the level, with one
 hole in the roof leading up into the cave. You arrive at the far left, on the
 teleporter pad you came in through (a plank nailed over its old "PRINTER" plate says
-TELEPORTER), and the full heal is right there with you. A new run starts with the shop dark:
+TELEPORTER). Everything else stands at the far right end: the full heal, then the machines out
+to the end wall, with an empty hall between. A new run starts with the shop dark:
 the teleporter crackles blue, your torch shows what's near, and after two seconds the ceiling tube
-over the teleporter and heal stutters on. Each time you walk into the last lit section, the next
-one along flickers on, one vending machine at a time (they stand evenly spaced), and once you
-reach the perk machine the rest of the hall comes on. The first
+over the teleporter stutters on. Each tube throws a pool of light with dark between (your torch only
+takes the edge off it). Each time you walk into the last lit section, the next
+one along flickers on just before you reach the dark. Once the teleporter has gone off the screen,
+the light ahead snaps on — and a little see-through blue hologram of you is hovering right under it,
+waving, with bright distortion bars rolling over it. A speech box over it types out a welcome
+(Dev → Guide hologram: how fast it types), then it hands you a starter kit out of its body one
+thing at a time — 150 gold, three red crystals and a green one, Buzzsaw, Bolt and Double Cast,
+and a level 5 gun with three slots that fires in order — and glitches away. Walk through it
+before it's done and it glitches, says something rude and vanishes without the kit. Then the
+rest of the hall lights up as you go, one vending machine at a time (they stand evenly spaced),
+and once you reach the perk machine the rest comes on. The first
 heal on a floor is free; after that it costs 100 gold, and each one after costs
 1.75 times the last (100, 175, 305, 535…). Deeper floors raise the price the same
 way they raise what enemies pay out. A new floor's shop starts it free again.
@@ -637,7 +654,7 @@ them if it cannot find either.
 - 118 mods: shots, static fields, path modifiers, trigger and timer spells, and utility casts
 - A build advisor that measures your damage per second, names the limiting factor and offers one-tap fixes
 - A trajectory aim line — unlocked by the Trajectory Sight perk — that simulates the next shot for real: gravity, acceleration, homing, ricochets, drilling and spread
-- A full-screen map (map button, pauses the run): the revealed cave drawn as white outlines, with a yellow dot for your position
+- A full-screen map (map button, pauses the run): the floor's picture under the fog of war, your helmet where you are, drag to pan and pinch to zoom, and emoji pins you drop with the pin button
 - Recoil that shoves you around, which the jetpack can work with
 - Gold that flies to you once you are close enough (a short range for now); gold just knocked loose by a kill or a dig waits a quarter of a second first, so you see it
 - A black arcade control deck: mono type, scanlines, and two rings on the right stick — the dead zone and the full throw

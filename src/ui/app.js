@@ -16,6 +16,7 @@ import { Bag } from './exosuit.js';
 import { GunIcon } from './editor.js';
 import { h, useEffect, useRef, useState } from './h.js';
 import { CrystalRow, DueClock, RKey, Stick, deckLayout, fmtGold, holdPress } from './hud.js';
+import { MapScreen, PinPicker, loadPins, savePins, usePin } from './map.js';
 import { SHOP_MENUS } from './modshop.js';
 import { GunSwap } from './swap.js';
 import { Witness } from './witness.js';
@@ -43,6 +44,9 @@ export function App() {
   const [size, setSize] = useState(150);
   const [vw, setVw] = useState(window.innerWidth);
   const [mapOpen, setMapOpen] = useState(false);
+  const [pins, setPins] = useState(loadPins);      // the pin picker's pins, last used first (ui/map.js)
+  const [pinOpen, setPinOpen] = useState(false);
+  const [pinHeld, setPinHeld] = useState(false);
   const ctlRef = useRef(null);
   const sticksRef = useRef(null);
   const [run, setRun] = useState(0);
@@ -190,7 +194,17 @@ export function App() {
     if (savedClip) { setSavedClip(null); setBagTab('witness'); setEdit(true); }
   };
 
-  return h('div', { className: 'app' + (witnessOpen ? ' witnessing' : '') },
+  // the pin button: the chosen pin is the first in the list; picking one moves it there
+  /** @param {string} e */
+  const pickPin = e => { const L = usePin(pins, e); setPins(L); savePins(L); setPinOpen(false); };
+  const dropPin = () => {
+    if (!input.current.dropPin) return;
+    input.current.dropPin(pins[0]);
+    SFX.fx('place');
+    setPinOpen(false);
+  };
+
+  return h('div', { className: 'app' + (witnessOpen ? ' witnessing' : '') + (mapOpen ? ' mapping' : '') + (mapOpen && pinOpen ? ' pinning' : '') },
     h('div', { className: 'view' },
       h(Game, { key: run, input }),
       witness && !witnessOpen ? h('button', { className: 'witnessbtn',
@@ -244,6 +258,7 @@ export function App() {
                 restart();
               } }, 'Yes, restart')))) : null
     ),
+    mapOpen ? h(MapScreen, { input }) : null,
     h('div', { className: 'controls', ref: ctlRef },
       h('div', { className: 'sticks', ref: sticksRef },
         h(Stick, { size, kind: 'left', input, refresh }),
@@ -272,8 +287,17 @@ export function App() {
         h('button', {
             className: 'dbtn mapbtn' + (mapOpen ? ' on' : ''), style: btnAt(deck.map),
             title: 'Map', 'aria-label': 'Map',
-            onPointerDown: e => { e.preventDefault(); setMapOpen(v => !v); } },
-          h('span', { className: 'emo' }, '🗺️'))
+            onPointerDown: e => { e.preventDefault(); setMapOpen(v => !v); setPinOpen(false); } },
+          h('span', { className: 'emo' }, '🗺️')),
+        // the pin button, opposite the map and only on the map screen (owner): tap for the picker,
+        // hold to drop the pin where you are
+        mapOpen ? h('button', {
+            className: 'dbtn pinbtn' + (pinOpen ? ' on' : '') + (pinHeld ? ' holding' : ''), style: btnAt(deck.pin),
+            title: 'Pins: tap to choose, hold to drop', 'aria-label': 'Pin',
+            onPointerDown: holdPress(() => setPinOpen(v => !v), dropPin, setPinHeld) },
+          h('span', { className: 'emo' }, pins[0])) : null,
+        mapOpen && pinOpen ? h(PinPicker, { pins, cur: pins[0], pick: pickPin,
+          style: { right: Math.max(8, Math.round(vw - deck.pin.x - deck.btn / 2)), top: Math.round(deck.pin.y - deck.btn / 2 - 8) } }) : null
       )
     ),
     edit ? h(Bag, { key: bagTab, input, refresh, canEdit, close: () => setEdit(false), tab0: bagTab, play: playClip }) : null,

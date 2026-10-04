@@ -69,6 +69,8 @@ export function makeWorld() {
     portals: [],                    // the exits along the top (portal is the middle one): exits(W)
     machines: {},                   // the crystal machines: crystals sucked in, the shake (game/systems/shops.js)
     shopLit: null,                  // a new run's dark shop, lighting up as you go (world/shoplights.js; null = lit)
+    guide: null,                    // a new run's guide hologram (world/guide.js)
+    pins: [],                       // pins dropped on this floor's map (ui/map.js)
     padZap: {},                     // when each teleporter pad was last used (W.time, by padSpots seed): it crackles a moment
     stock: undefined,               // the shop's plinths
     zone: null,                     // built-up vs natural, per terrain pixel (floor 1)
@@ -77,7 +79,6 @@ export function makeWorld() {
     levelSeed: 0, levelOwned: [],   // what made this cave, for the autosave
     roster: [], themeName: '',      // this floor's creatures, and its palette
     total: undefined,               // how many creatures the floor started with
-    miniEdgeIdx: [],                // the map's wall-outline cells
     matterProps: [],                // the dark matter props (their hum)
     ambKinds: [],                   // the theme's ambience particle kinds
     plantW: 255,                    // the jellies' plant glow: this floor's white point

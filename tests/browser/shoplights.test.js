@@ -30,6 +30,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   const until = async t => { for (let i = 0; i < 100; i++) { if ((await state()).t >= t) return true; await page.waitForTimeout(50); } return false; };
   const goTo = x => page.evaluate(x => { const L = window.__lvl; L.p.x = x - 6; L.p.vx = 0; }, x);
 
+  // the guide hologram holds the hall's lights until it has spoken: that's guide.test.js; here, no guide
+  await page.evaluate(() => { window.__lvl.guide = null; });
   await until(0.8);
   let s = await state();
   check('a new run starts with the shop dark', !!s.on && s.on.every(v => v < 0), s.on);
@@ -43,30 +45,31 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await shot('2-flicker');
   await until(4.2);
   const lit = await bright(180, -90, 205, -10);
-  check('lighting the teleporter and heal, not past them', lit < dark * 1.3, { dark, lit });
-  const near = await bright(125, -90, 150, -10);
-  check('lighting the teleporter and heal', near > dark * 1.4, { dark, near });
+  check('lighting the teleporter, not past it', lit < dark * 1.3, { dark, lit });
+  const near = await bright(115, -90, 140, -10);
+  check('lighting the teleporter', near > dark * 1.4, { dark, near });
   s = await state();
   check('but not the next section while you stand on the pad', s.on[1] < 0, s.on);
   await shot('3-first');
   // walk on, one section at a time
   const LIGHT_X = await page.evaluate(() => LIGHT_X);
-  await goTo(await page.evaluate(() => HEAL_X));
+  await goTo(await page.evaluate(() => FIRST_TRIGGER + 4));
   await until((await state()).t + 0.3);
   s = await state();
-  check('into the heal: the buy machine’s section comes on', s.on[1] >= 0 && s.on[2] < 0, s.on);
+  check('off the pad: the next stretch of hall comes on', s.on[1] >= 0 && s.on[2] < 0, s.on);
   await page.waitForTimeout(250);
   await shot('4-buy');
   await goTo(LIGHT_X[1]);
   await until((await state()).t + 1.6);
   s = await state();
-  check('at the buy machine: the sell machine’s, and only that', s.on[2] >= 0 && s.on[3] < 0, s.on);
+  check('at its middle: the next one, and only that', s.on[2] >= 0 && s.on[3] < 0, s.on);
   await shot('5-sell');
-  for (let i = 2; i <= 5; i++) { await goTo(LIGHT_X[i]); await until((await state()).t + 0.4); }
+  const PI = await page.evaluate(() => LIGHT_X.indexOf(SHOP_MACHINE_X[2]));
+  for (let i = 2; i <= PI; i++) { await goTo(LIGHT_X[i]); await until((await state()).t + 0.4); }
+  s = await state();
+  check('on along to the perk machine', !s.on || s.on[PI] >= 0, s.on);   // (null: the whole hall's already on)
   await until((await state()).t + 1.4);
   await shot('6-perks');
-  s = await state();
-  check('on along to the perk machine', s.on && s.on[5] >= 0, s.on);
   // the rest of the hall comes on by itself, then the shop is back to normal
   let done = false;
   for (let i = 0; i < 80 && !done; i++) { await page.waitForTimeout(100); done = !(await state()).on; }

@@ -13,19 +13,19 @@
 | `vend.js` | `drawVend` (the two level vending machines, after `drawShop`: cabinet, and a screen cached per text + hue with its glow baked in; flicker-in on, CRT squeeze off; the sell machine is always lit: every screen in the terminal font (`art/pixfont.js`); both offers are `deal` screens ("BUY lvl 01": verb and number big, "lvl" small and leaning; the price bold, fine print small under it); `sellScreen` gives green with no fine print with no level, and `SELL_WAIT` (0.5 s) after a buy or sale `glitch`es over `SELL_GLITCH` s to the new screen, red "no biological entities accepted" once bought) and `drawWarp` (the teleport's flash, sweep and bolts, after `drawGlows`), `drawRepo` (after it: the repossession's grates, red lights, fire jets); `holo.js` `drawHoloShop` puts REPOSSESSED on the shop wall |
 | `shops.js` | `drawShops` (after `drawVend`): each `SHOPS` machine's cabinet, its chute, and its icon as a flickering hologram (the emoji washed in the hue, scan lines, glow; cached per icon + hue) |
 | `pads.js` | The teleporter pads (the way in, seed 1, and the three exits, seeds 2–4; `padSpots`): `drawPad` (the platform, from `drawPortal`/`drawArrival`, before the fog) and `drawPads` (after `drawGlows`, `fogLit`-gated: the blue beam fading off upward, rising specks, and for `ZAP_T` after a pad is used (`W.padZap[seed]`, set by `atPortal`) lightning up off it via `drawBolt`; all from `W.time` hashes) |
-| `shoplights.js` | `drawTubes` (after `drawGlows`): a ceiling tube over each `LIGHT_X` section, lit by `sectionLevel` (steady when `W.shopLit` is null), its halo and cone of light; in the dark shop the teleporter's blue glow. The dark itself is `drawFog`'s: shop cells take `fogDark × shopDark`, lifted round the pad (`PAD_LIT`) and by your torch |
+| `shoplights.js` | `drawTubes` (after `drawGlows`): a ceiling tube over each `LIGHT_X` section, lit by `sectionLevel` (steady when `W.shopLit` is null), its halo, cone of light and pool on the floor; in the dark shop the teleporter's blue glow. The dark itself is `drawFog`'s: shop cells take `fogDark × shopDark` (always: pools under the tubes, `DEV.shopGap` between), lifted round the pad (`PAD_LIT`, dark shop only) and by your torch (only `DEV.shopTorch` of it in the hall) |
 | `effects.js` | `drawSmoke` (the jetpack's, `m.jet`, through `pixelSoft` at `DEV.runnerPx`: blocky, see-through kept), `drawTrail`, `drawSparks`, `drawMotes`, `drawFlashes` |
 | `actors.js` | `drawEnemies` (ends with `drawEliteFire`: the elites' flames over the creatures, `lighter`, colour/opacity from `art/ramps.js`), `drawJetFlame` (`jetFlame` out of `jetNozzle`, the backpack's foot, through `pixelSprite` on the body's grid), `drawAim` (fills `held`, `ax`/`ay`, `gy`; the Trajectory Sight line), `drawPlayer` (runner, gun, torch — `drawTorch`/`torchFlame` through `pixelSprite` too, `torchEmbers` snapped to the grid — crosshair, shield, ghost). All at `DEV.runnerPx` |
 | `looks.js` | `drawFields`, `drawShots`, `drawBeams`, and the looks: `drawLook` (a shot's sprite), `drawFieldLook`, `drawWhiteHole` (the White Hole: no circle, a tiny white-and-blue hole), `drawBolt` (a lightning line) |
 | `light.js` | `drawFog` (line of sight, `fogReveal`, the fog bake and blur), `drawGlows` (every light over the fog, `fogLit`-gated, drawn into a rock-pixel layer and added in one go, crisp or smooth by `DEV.pixelFx`; glowing particles go straight on; then the sconces) |
-| `overlay.js` (screen space) | `drawHud` (the version; publishes `input.current.hud`), `drawRadar`, `drawMessages`, `drawReticule`, `drawMap` |
+| `overlay.js` (screen space) | `drawHud` (the version; publishes `input.current.hud`), `drawRadar`, `drawMessages`, `drawReticule` |
+| `guide.js` | A new run's guide hologram, shown only while the tube over it is lit (`guideShown`: invisible in the dark, blinking in with the tube's stutter; the box too): `drawGuide` (after `drawShops`: you, drawn by `drawRunner` facing you and waving, made a see-through blue by brightness in its own small layer, scan lines, two bright distortion bars that tear it sideways, glitches as it comes, goes or turns rude; a projector glow under it) and `drawGuideTalk` (after `drawMessages`, screen space: the speech box, growing upward as it types, a caret, a tail to it; shaking with a red edge when rude); `wrapLines`. Not in a replay |
 
 The order in `draw`: `drawCamera`, `drawTerrain`, `drawProps`, `drawPortal`, `drawSmoke`,
 `drawFields`, `drawSilk` (`game/creatures/spider.js`), `drawEnemies`, `drawShots`, `drawBeams`,
-`drawArrival`, `drawShop`, `drawLoot`, `drawRooms`, `drawTrail`, `drawSparks`, `drawMotes`,
+`drawArrival`, `drawShop`, `drawVend`, `drawShops`, `drawGuide`, `drawLoot`, `drawRooms`, `drawTrail`, `drawSparks`, `drawMotes`,
 `drawFlashes`, `drawJetFlame`, `drawAim`, `drawPlayer`, `drawFog`, `drawGlows`, `drawTubes`, `drawPads`, `drawWarp`, `drawRepo`, `drawFx`, `drawBelow`, then
-`if (G.RPV) return;` (a replay has no HUD), `drawHud`, `drawRadar`, `drawMessages`, `drawReticule`,
-`drawMap`.
+`if (G.RPV) return;` (a replay has no HUD), `drawHud`, `drawRadar`, `drawMessages`, `drawGuideTalk`, `drawReticule`.
 
 ## Rules
 
@@ -52,12 +52,8 @@ The order in `draw`: `drawCamera`, `drawTerrain`, `drawProps`, `drawPortal`, `dr
 - **Shots:** `drawLook(b)` draws a shot's own look and returns false to fall back to the streak; a
   `hidden` bullet (Buzzsaw) isn't drawn. The Black Hole draws its haze + starry core (core = `b.eat`,
   so the drawn core and the dig can't drift apart).
-- **The map** (`drawMap`) is a toggle (`input.current.mapOpen`: the 🗺️ button or `M`, which also
-  pauses), drawn last over the play area on `rgba(0,0,0,0.8)`, fitted and centred. It samples the real
-  rock in `MINI_D` (4px) blocks: `enterLevel` lists the outline cells (`W.miniEdgeIdx`: blocks holding
-  both rock and open), and each frame only those whose fog cell is seen are painted into `G.mini32`,
-  blitted with image smoothing on so walls read as lines. Marks: `fogLit` pickups as dots (mods green,
-  guns yellow, `old` guns a hollow ring), seen rooms outlined yellow (X when taken), you a yellow dot
-  with a white rim.
+- **The map** isn't drawn here since v0.0.141: it's a React screen, `ui/map.js` (`MapScreen`), drawing
+  `G.mapC` (made as the floor is entered, `systems/level-entry.js` `mapPicture`) through
+  `input.current.mapView`.
 - A replay frame (`G.RPV`): camera from the view, the play area above the replay panel, terrain from
   `G.RT`, no aim line, the fog overlay only when the viewer's fog toggle is on.
