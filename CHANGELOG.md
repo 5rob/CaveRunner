@@ -5,6 +5,15 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.139 — the mod machine can repeat
+Released 2026-10-04 (logic only: the owner's call in chat).
+
+- The mod machine pops out any mod off the current floor's drop table by its odds (`rollMod`), ones you
+  have included, so it may repeat; a new one is unlocked ("Unlocked X"), a repeat just names it. Perks
+  stay one of a kind (owner): the perk machine only gives a perk you've never unlocked (`perkRoll`), and
+  with none left the crystal gives nothing ("No perks left"). `machineRoll` in `game/systems/shops.js`.
+- `crystalmachine` checks both.
+
 ## v0.0.138 — crystals are rocks, the machines eat them
 Released 2026-10-04 (after the owner's OK of the screenshots).
 
