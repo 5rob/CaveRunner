@@ -39,8 +39,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     check('the heal and machines stand at the far right, the way in where it was', W0.ARRIVAL_X === 66 && W0.heal > 500 && W0.perks + 40 < W0.WW, W0);
     await walkIn(page);
     s = await g(page);
-    check('it jumps out once the teleporter is off screen', s.st === 'appear' && s.camX > 100, s);
-    check('ahead of you, in the empty hall', s.x > s.pcx + 20 && s.x < W0.heal - 40, s);
+    check('it jumps out once the teleporter is off screen or you near the dark', s.st === 'appear' && (s.camX > 100 || s.pcx >= s.x - 70), s);
+    check('right in front of you, under the next light, in the empty hall', s.x > s.pcx + 20 && s.x - s.pcx < 100 && s.x < W0.heal - 40, s);
     const litNow = s.on.filter(v => v >= 0).length;
     check('the hall where it stands snaps on, and no further', litNow >= 2 && s.hold === s.on.indexOf(-1), s);
     await page.waitForTimeout(140);

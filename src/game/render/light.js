@@ -91,9 +91,11 @@ export function drawFog(W, G, F) {
             (cx > 0 && cy > 0 && W.seen[i - FW - 1]) || (cx < FW - 1 && cy > 0 && W.seen[i - FW + 1]) ||
             (cx > 0 && cy < FH - 1 && W.seen[i + FW - 1]) || (cx < FW - 1 && cy < FH - 1 && W.seen[i + FW + 1]))) s = 1;
         let a = s === 2 ? 0 : s ? dim : dark;
-        // a new run's shop, dark but for the sections lit so far, the teleporter's glow and your torch
-        if (s === 2 && shopL && cy >= shopRow) {
-          const wx = (cx + 0.5) * FOG_U, pd = Math.hypot(wx - W.arrival.x, (cy + 0.5) * FOG_U - W.arrival.y);
+        // the shop: pools of light under its ceiling tubes, dark between (DEV.shopGap); a new run's, dark
+        // but for the sections lit so far, the teleporter's glow and your torch
+        const hall = s === 2 && cy >= shopRow;
+        if (hall) {
+          const wx = (cx + 0.5) * FOG_U, pd = shopL ? Math.hypot(wx - W.arrival.x, (cy + 0.5) * FOG_U - W.arrival.y) : PAD_LIT;
           a = Math.round(dark * shopDark(shopL, wx, W.time) * (pd < PAD_LIT ? 0.3 + 0.7 * pd / PAD_LIT : 1));
         }
         wdat[k + 3] = s ? 0 : dark;          // the fog of war alone
@@ -102,7 +104,7 @@ export function drawFog(W, G, F) {
           if (dd2 < lr2) {
             const t = Math.sqrt(dd2) / W.torchR;               // 0 at your feet, 1 at the edge
             const lift = t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45;
-            a = a * (1 - lift);
+            a = a * (1 - lift * (hall ? DEV.shopTorch : 1));   // in the shop hall it only takes the edge off (the tubes light it)
           }
         }
         fdat[k + 3] = a;

@@ -42,10 +42,15 @@ export function drawTubes(W, G, F) {
     halo.addColorStop(0, `rgba(210,235,255,${0.32 * lv})`); halo.addColorStop(1, 'rgba(210,235,255,0)');
     ctx.fillStyle = halo; ctx.fillRect(x - 36, y - 2, 72, 40);
     const cone = ctx.createLinearGradient(0, y + 5, 0, fy);
-    cone.addColorStop(0, `rgba(200,230,255,${0.1 * lv})`); cone.addColorStop(1, 'rgba(200,230,255,0)');
+    cone.addColorStop(0, `rgba(200,230,255,${0.2 * lv})`); cone.addColorStop(1, `rgba(200,230,255,${0.04 * lv})`);
     ctx.fillStyle = cone;
     ctx.beginPath(); ctx.moveTo(x - TUBE_W / 2, y + 5); ctx.lineTo(x + TUBE_W / 2, y + 5);
     ctx.lineTo(x + TUBE_W / 2 + 26, fy); ctx.lineTo(x - TUBE_W / 2 - 26, fy); ctx.closePath(); ctx.fill();
+    // the pool it throws on the floor
+    const pool = ctx.createRadialGradient(x, fy, 2, x, fy, TUBE_W / 2 + 26);
+    pool.addColorStop(0, `rgba(210,235,255,${0.22 * lv})`); pool.addColorStop(1, 'rgba(210,235,255,0)');
+    ctx.fillStyle = pool;
+    ctx.beginPath(); ctx.ellipse(x, fy, TUBE_W / 2 + 26, 7, 0, 0, Math.PI * 2); ctx.fill();
   }
   // the dark shop: the teleporter throws its blue about, flickering with the crackle
   if (L) {

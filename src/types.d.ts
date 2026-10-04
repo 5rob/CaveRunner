@@ -394,7 +394,7 @@ interface DevKnobs {
   witPad: number; witKbps: number;
   holoAlpha: number; bloom: number; bloomBlur: number; bloomBright: number;
   holoMin: number; holoMax: number; holoFade: number; holoC1x: number; holoC1y: number; holoC2x: number; holoC2y: number;
-  guideCps: number; guideWait: number;
+  guideCps: number; guideWait: number; shopGap: number; shopTorch: number;
   due1: number; enemies: number; enemiesUp: number; lvlBonus: number; lvlGrow: number; rewardGrow: number; killGrow: number; runnerPx: number; runnerLine: number;
   ptrStart: number; ptrReach: number; ptrSize: number; ptrLine: number; snapR: number; snapPull: number; snapHit: number;
   [k: string]: any;

@@ -11,6 +11,7 @@
 // (lightsStep's hold), and its own section snaps on when it jumps out (lightNear).
 
 import { SHOP_MACHINE_X, SHOP_SLOT, WW } from '../core/consts.js';
+import { DEV } from '../dev/knobs.js';
 
 export const LIGHT_WAIT = 2;          // seconds from arriving to the first tubes
 export const LIGHT_REST = 3;          // the perk section on this long: the rest of the hall comes on
@@ -57,18 +58,23 @@ export function tubeLevel(age, seed) {
 export const sectionLevel = (L, i, time) => (L.on[i] < 0 ? 0 : tubeLevel(time - L.on[i], i + 1));
 
 /** half the width a section lights fully @param {number} i */
-const halfW = i => (i === 0 ? 68 : SHOP_SLOT / 2 - 12);
+const halfW = i => (i === 0 ? 50 : 30);
+export const POOL_FADE = 16;          // a pool of light fades out over this past its edge (so it ends where the tube's cone meets the floor)
 
 // How dark the shop is at world x (1 = unlit, 0 = in full light): the best of the sections'
-// light pools, each fully lit across its middle and fading out over 30 units past its edge
-/** @param {ShopLights} L @param {number} x @param {number} time */
+// light pools, each fully lit under its tube and fading out over POOL_FADE past its edge. Since
+// v0.0.141 the hall stays that way once lit (owner: darker between the lights): between two lit pools
+// it's DEV.shopGap dark, and L null (the normal, lit shop) is every section on
+/** @param {ShopLights | null} L @param {number} x @param {number} time */
 export function shopDark(L, x, time) {
   let best = 0;
   for (let i = 0; i < LIGHT_X.length; i++) {
-    if (L.on[i] < 0) continue;
-    const d = Math.abs(x - LIGHT_X[i]) - halfW(i);
-    const pool = d <= 0 ? 1 : d >= 30 ? 0 : 1 - d / 30;
-    best = Math.max(best, pool * sectionLevel(L, i, time));
+    const lv = !L ? 1 : L.on[i] < 0 ? 0 : sectionLevel(L, i, time);
+    if (!lv) continue;
+    const dx = Math.abs(x - LIGHT_X[i]), d = dx - halfW(i);
+    const pool = d <= 0 ? 1 : d >= POOL_FADE ? 0 : 1 - d / POOL_FADE;
+    const amb = dx <= Math.max(SHOP_SLOT / 2 + 4, halfW(i) + POOL_FADE) ? 1 - DEV.shopGap : 0;
+    best = Math.max(best, Math.max(pool, amb) * lv);
   }
   return 1 - best;
 }
@@ -98,6 +104,6 @@ export function lightsStep(L, time, pcx, inShop, hold = Infinity) {
 export function lightNear(L, x, time) {
   const lit = [];
   for (let i = 0; i < LIGHT_X.length; i++)
-    if (L.on[i] < 0 && Math.abs(LIGHT_X[i] - x) < halfW(i) + 30) { L.on[i] = time; lit.push(i); }
+    if (L.on[i] < 0 && Math.abs(LIGHT_X[i] - x) < halfW(i) + POOL_FADE) { L.on[i] = time; lit.push(i); }
   return lit;
 }

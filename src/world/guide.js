@@ -1,7 +1,8 @@
 // @ts-check
 // The guide (v0.0.141): a new run's welcome. You walk out of the dark teleporter end of the shop;
-// once the teleporter has left the screen the next stretch of hall snaps on and a little hologram of
-// you is hovering there, waving (it sits in the hologram layer: GUIDE_PAR, so it drifts against the
+// once the teleporter has left the screen (or you're about to walk into the dark) the light over the
+// next stretch of hall snaps on and a little hologram of you is hovering right under it, just inside
+// what was dark, waving (it sits in the hologram layer: GUIDE_PAR, so it drifts against the
 // hall like the background's hologram). A speech box over it types the welcome a letter at a time
 // (Dev → Guide: the speed), then it hands out a starter kit one thing at a time (GUIDE_GIFTS) and
 // glitches away. Run through it before it's done and it glitches, says GUIDE_RUDE instead and goes
@@ -9,11 +10,14 @@
 // game/render/guide.js draws it.
 
 import { ARRIVAL_X } from '../core/consts.js';
+import { LIGHT_X } from './shoplights.js';
 
 export const GUIDE_PAR = 0.8;          // its parallax: the hologram layer's (render/holo.js HOLO_PAR)
 export const GUIDE_GONE_X = ARRIVAL_X + 40;   // the teleporter and its sign end here: once the view starts past it, it jumps out
-export const GUIDE_AHEAD = 0.72;       // where it appears: this far across the view (so 0.22 of it in front of you)
-export const GUIDE_MIN_X = 220, GUIDE_MAX_X = 470;   // and never outside the empty hall
+export const GUIDE_UNDER = 20;         // it stands this far short of the middle of the first dark section (under its tube's near end)
+export const GUIDE_NEAR = 70;          // or it jumps out as you come this close to it, whatever the screen shows
+/** where it stands: just inside the first section the lights are holding dark (g.hold) @param {Guide} g */
+export const guideSpot = g => LIGHT_X[Math.min(g.hold, LIGHT_X.length - 1)] - GUIDE_UNDER;
 export const APPEAR_T = 0.35;          // the glitch in (s)
 export const WAVE_T = 1.1;             // waving before it speaks
 export const GIFT_GAP = 0.45;          // one gift every this long
@@ -86,9 +90,10 @@ export function guideStep(g, dt, I) {
   if (g.st === 'gone') return ev;
   g.t += dt;
   if (g.st === 'wait') {
-    // the teleporter has left the screen: it jumps out, ahead of you in the hall
-    if (I.camX > GUIDE_GONE_X) {
-      g.x = Math.max(GUIDE_MIN_X, Math.min(GUIDE_MAX_X, I.camX + I.vw * GUIDE_AHEAD));
+    // the teleporter has left the screen, or you're nearly at the dark: it jumps out, just ahead
+    const x = guideSpot(g);
+    if (I.camX > GUIDE_GONE_X || I.pcx >= x - GUIDE_NEAR) {
+      g.x = x;
       g.cam0 = I.camX;
       go('appear'); ev.push({ k: 'appear' });
     }

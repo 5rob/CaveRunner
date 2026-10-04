@@ -58,6 +58,15 @@ check('the rest of the hall comes on by itself, and it’s done', done && L.on.e
   check('fly out of the shop: the rest comes on', d, M.on);
 }
 
+// ---- v0.0.141: pools of light under the tubes, dark between (DEV.shopGap), the lit shop too ----
+{
+  const under = shopDark(null, LIGHT_X[4], 0), between = shopDark(null, (LIGHT_X[4] + LIGHT_X[5]) / 2, 0);
+  check('the lit hall: full light under each tube', under === 0, under);
+  check('and dark between them', Math.abs(between - G.DEV.shopGap) < 1e-9 && G.DEV.shopGap >= 0.7, between);
+  check('every machine stands in a full pool', [VEND_BUY_X, VEND_SELL_X, ...SHOP_MACHINE_X].every(x => shopDark(null, x - 26, 0) === 0 && shopDark(null, x + 26, 0) === 0));
+  check('the heal too', shopDark(null, HEAL_X - 13, 0) === 0 && shopDark(null, HEAL_X + 13, 0) === 0, HEAL_X);
+}
+
 // ---- the guide holds the hall (world/guide.js) ----
 {
   const M = lightsNew(0); let u = 0;

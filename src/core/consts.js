@@ -63,7 +63,7 @@ export const SHOP_SLOT = 120;
 // the way in's pad (centre x), under its sign (art/sign.js: from about 12 to 106). Since v0.0.141 everything
 // else stands at the far right of the shop (the heal, then the machines out to the end wall), with an empty
 // hallway between where the guide hologram greets a new run (world/guide.js)
-export const ARRIVAL_X = 66, HEAL_X = 590;
+export const ARRIVAL_X = 66, HEAL_X = 566;
 export const VEND_BUY_X = 676, VEND_SELL_X = VEND_BUY_X + SHOP_SLOT;
 export const SHOP_MACHINE_X = [VEND_BUY_X + 2 * SHOP_SLOT, VEND_BUY_X + 3 * SHOP_SLOT, VEND_BUY_X + 4 * SHOP_SLOT];
 export const LVL_BUY = 1000000000, LVL_SELL = 1000001000;

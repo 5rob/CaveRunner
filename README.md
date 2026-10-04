@@ -198,9 +198,10 @@ teleporter pad you came in through (a plank nailed over its old "PRINTER" plate 
 TELEPORTER). Everything else stands at the far right end: the full heal, then the machines out
 to the end wall, with an empty hall between. A new run starts with the shop dark:
 the teleporter crackles blue, your torch shows what's near, and after two seconds the ceiling tube
-over the teleporter stutters on. Each time you walk into the last lit section, the next
+over the teleporter stutters on. Each tube throws a pool of light with dark between (your torch only
+takes the edge off it). Each time you walk into the last lit section, the next
 one along flickers on just before you reach the dark. Once the teleporter has gone off the screen,
-the stretch ahead snaps on — and a little see-through blue hologram of you is hovering there,
+the light ahead snaps on — and a little see-through blue hologram of you is hovering right under it,
 waving, with bright distortion bars rolling over it. A speech box over it types out a welcome
 (Dev → Guide hologram: how fast it types), then it hands you a starter kit out of its body one
 thing at a time — 150 gold, three red crystals and a green one, Buzzsaw, Bolt and Double Cast,

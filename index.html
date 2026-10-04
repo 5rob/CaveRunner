@@ -738,7 +738,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var SHOP_ROOF = 6;
   var SHOP_Y = SHOP_TOP * CELL;
   var SHOP_SLOT = 120;
-  var ARRIVAL_X = 66, HEAL_X = 590;
+  var ARRIVAL_X = 66, HEAL_X = 566;
   var VEND_BUY_X = 676, VEND_SELL_X = VEND_BUY_X + SHOP_SLOT;
   var SHOP_MACHINE_X = [VEND_BUY_X + 2 * SHOP_SLOT, VEND_BUY_X + 3 * SHOP_SLOT, VEND_BUY_X + 4 * SHOP_SLOT];
   var LVL_BUY = 1e9, LVL_SELL = 1000001e3;
@@ -898,6 +898,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     holoC2y: 0,
     guideCps: 30,
     guideWait: 1.4,
+    shopGap: 0.9,
+    shopTorch: 0.45,
     due1: 60,
     enemies: ENEMY_COUNT,
     enemiesUp: 12,
@@ -936,6 +938,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "torch", g: "light", label: "Torch fall-off distance", min: 0.2, max: 5, step: 0.05 },
     { k: "fogDark", g: "light", label: "Fog of war darkness", min: 0, max: 1, step: 0.01 },
     { k: "fogDim", g: "light", label: "Outside-torchlight darkness", min: 0, max: 1, step: 0.01 },
+    { k: "shopGap", g: "light", label: "Shop hall: darkness between the ceiling lights", min: 0, max: 1, step: 0.05 },
+    { k: "shopTorch", g: "light", label: "Shop hall: how much your torch lifts its dark (1 = all)", min: 0, max: 1, step: 0.05 },
     { k: "move", g: "player", label: "Base movement speed", min: 0.2, max: 5, step: 0.05 },
     { k: "sputDip", g: "player", label: "Jet sputter drop", min: 0, max: 300, step: 5 },
     { k: "aggro", g: "enemy", label: "Enemy aggro distance", min: 0.2, max: 5, step: 0.05 },
@@ -16805,14 +16809,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return 1;
   }
   var sectionLevel = (L3, i, time) => L3.on[i] < 0 ? 0 : tubeLevel(time - L3.on[i], i + 1);
-  var halfW = (i) => i === 0 ? 68 : SHOP_SLOT / 2 - 12;
+  var halfW = (i) => i === 0 ? 50 : 30;
+  var POOL_FADE = 16;
   function shopDark(L3, x, time) {
     let best = 0;
     for (let i = 0; i < LIGHT_X.length; i++) {
-      if (L3.on[i] < 0) continue;
-      const d = Math.abs(x - LIGHT_X[i]) - halfW(i);
-      const pool = d <= 0 ? 1 : d >= 30 ? 0 : 1 - d / 30;
-      best = Math.max(best, pool * sectionLevel(L3, i, time));
+      const lv = !L3 ? 1 : L3.on[i] < 0 ? 0 : sectionLevel(L3, i, time);
+      if (!lv) continue;
+      const dx = Math.abs(x - LIGHT_X[i]), d = dx - halfW(i);
+      const pool = d <= 0 ? 1 : d >= POOL_FADE ? 0 : 1 - d / POOL_FADE;
+      const amb = dx <= Math.max(SHOP_SLOT / 2 + 4, halfW(i) + POOL_FADE) ? 1 - DEV.shopGap : 0;
+      best = Math.max(best, Math.max(pool, amb) * lv);
     }
     return 1 - best;
   }
@@ -16833,7 +16840,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function lightNear(L3, x, time) {
     const lit = [];
     for (let i = 0; i < LIGHT_X.length; i++)
-      if (L3.on[i] < 0 && Math.abs(LIGHT_X[i] - x) < halfW(i) + 30) {
+      if (L3.on[i] < 0 && Math.abs(LIGHT_X[i] - x) < halfW(i) + POOL_FADE) {
         L3.on[i] = time;
         lit.push(i);
       }
@@ -16979,8 +16986,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           let s = W.seen[i];
           if (!s && !(W.deepFog && W.deepFog[i]) && (cx > 0 && W.seen[i - 1] || cx < FW - 1 && W.seen[i + 1] || cy > 0 && W.seen[i - FW] || cy < FH - 1 && W.seen[i + FW] || cx > 0 && cy > 0 && W.seen[i - FW - 1] || cx < FW - 1 && cy > 0 && W.seen[i - FW + 1] || cx > 0 && cy < FH - 1 && W.seen[i + FW - 1] || cx < FW - 1 && cy < FH - 1 && W.seen[i + FW + 1])) s = 1;
           let a = s === 2 ? 0 : s ? dim : dark;
-          if (s === 2 && shopL && cy >= shopRow) {
-            const wx = (cx + 0.5) * FOG_U, pd = Math.hypot(wx - W.arrival.x, (cy + 0.5) * FOG_U - W.arrival.y);
+          const hall = s === 2 && cy >= shopRow;
+          if (hall) {
+            const wx = (cx + 0.5) * FOG_U, pd = shopL ? Math.hypot(wx - W.arrival.x, (cy + 0.5) * FOG_U - W.arrival.y) : PAD_LIT;
             a = Math.round(dark * shopDark(shopL, wx, W.time) * (pd < PAD_LIT ? 0.3 + 0.7 * pd / PAD_LIT : 1));
           }
           wdat[k + 3] = s ? 0 : dark;
@@ -16989,7 +16997,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             if (dd2 < lr2) {
               const t = Math.sqrt(dd2) / W.torchR;
               const lift = t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45;
-              a = a * (1 - lift);
+              a = a * (1 - lift * (hall ? DEV.shopTorch : 1));
             }
           }
           fdat[k + 3] = a;
@@ -17202,8 +17210,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   // src/world/guide.js
   var GUIDE_PAR = 0.8;
   var GUIDE_GONE_X = ARRIVAL_X + 40;
-  var GUIDE_AHEAD = 0.72;
-  var GUIDE_MIN_X = 220, GUIDE_MAX_X = 470;
+  var GUIDE_UNDER = 20;
+  var GUIDE_NEAR = 70;
+  var guideSpot = (g) => LIGHT_X[Math.min(g.hold, LIGHT_X.length - 1)] - GUIDE_UNDER;
   var APPEAR_T = 0.35;
   var WAVE_T = 1.1;
   var GIFT_GAP = 0.45;
@@ -17259,8 +17268,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (g.st === "gone") return ev;
     g.t += dt;
     if (g.st === "wait") {
-      if (I.camX > GUIDE_GONE_X) {
-        g.x = Math.max(GUIDE_MIN_X, Math.min(GUIDE_MAX_X, I.camX + I.vw * GUIDE_AHEAD));
+      const x = guideSpot(g);
+      if (I.camX > GUIDE_GONE_X || I.pcx >= x - GUIDE_NEAR) {
+        g.x = x;
         g.cam0 = I.camX;
         go("appear");
         ev.push({ k: "appear" });
@@ -19504,8 +19514,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.fillStyle = halo;
       ctx.fillRect(x - 36, y - 2, 72, 40);
       const cone = ctx.createLinearGradient(0, y + 5, 0, fy);
-      cone.addColorStop(0, `rgba(200,230,255,${0.1 * lv})`);
-      cone.addColorStop(1, "rgba(200,230,255,0)");
+      cone.addColorStop(0, `rgba(200,230,255,${0.2 * lv})`);
+      cone.addColorStop(1, `rgba(200,230,255,${0.04 * lv})`);
       ctx.fillStyle = cone;
       ctx.beginPath();
       ctx.moveTo(x - TUBE_W / 2, y + 5);
@@ -19513,6 +19523,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.lineTo(x + TUBE_W / 2 + 26, fy);
       ctx.lineTo(x - TUBE_W / 2 - 26, fy);
       ctx.closePath();
+      ctx.fill();
+      const pool = ctx.createRadialGradient(x, fy, 2, x, fy, TUBE_W / 2 + 26);
+      pool.addColorStop(0, `rgba(210,235,255,${0.22 * lv})`);
+      pool.addColorStop(1, "rgba(210,235,255,0)");
+      ctx.fillStyle = pool;
+      ctx.beginPath();
+      ctx.ellipse(x, fy, TUBE_W / 2 + 26, 7, 0, 0, Math.PI * 2);
       ctx.fill();
     }
     if (L3) {

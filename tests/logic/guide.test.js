@@ -2,7 +2,7 @@
 // time, the welcome then the kit, and the rude line (no kit) when you run through it.
 const G = require('../load');
 const { guideNew, guideStep, guideX, guideSpeech, typedAt, typeTime, GUIDE_PAGES, GUIDE_RUDE, GUIDE_GIFTS,
-  GUIDE_GONE_X, GUIDE_PAR } = G;
+  GUIDE_GONE_X, GUIDE_PAR, GUIDE_NEAR, LIGHT_X, guideSpot } = G;
 
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
@@ -29,6 +29,7 @@ const I = (o = {}) => ({ pcx: 160, camX: 50, vw: 225, inShop: true, cps: 30, wai
   ev = guideStep(g, 1 / 60, I({ camX: GUIDE_GONE_X + 1, pcx: GUIDE_GONE_X + 113 }));
   check('jumps out once it is off screen', g.st === 'appear' && ev[0].k === 'appear', ev);
   check('ahead of you', g.x > GUIDE_GONE_X + 113 + 20, g.x);
+  check('just inside the first dark section, under its tube', g.x === LIGHT_X[2] - 20 && g.x === guideSpot(g), g.x);
   check('and drifts with the hologram layer', guideX(g, g.cam0 + 100) === g.x + 100 * (1 - GUIDE_PAR));
   const all = [];
   let t = 0;
@@ -38,6 +39,15 @@ const I = (o = {}) => ({ pcx: 160, camX: 50, vw: 225, inShop: true, cps: 30, wai
   check('then hands out the whole kit, in order', JSON.stringify(gifts) === JSON.stringify(GUIDE_GIFTS), gifts.length);
   check('and goes, letting the hall light', g.st === 'gone' && g.hold === Infinity, { st: g.st, t });
   check('nothing to say once gone', guideSpeech(g, 30).text === '');
+}
+
+// ---- zoomed out (the teleporter still on screen): it jumps out as you come near the dark anyway ----
+{
+  const g = guideNew(), x = guideSpot(g);
+  guideStep(g, 1 / 60, I({ camX: 0, pcx: x - GUIDE_NEAR - 2 }));
+  check('not yet', g.st === 'wait');
+  guideStep(g, 1 / 60, I({ camX: 0, pcx: x - GUIDE_NEAR + 1 }));
+  check('then, just in front of you', g.st === 'appear' && g.x === x, g);
 }
 
 // ---- run through it ----

@@ -23,12 +23,17 @@ Built 2026-10-04, **awaiting the owner's OK of the screenshots** (not on `main` 
   used before (last first; localStorage `caverunner-pins`) and **+** (a box taking one character, an
   emoji counting as one: `firstChar`); hold: drops the chosen pin where you stand (`W.pins`, saved with
   the floor). Pins stand on their spot on the map.
-- **The shop hall**: the heal and every machine moved to the far right (`HEAL_X` 590, `VEND_BUY_X` 676 …
+- **The shop hall**: the heal and every machine moved to the far right (`HEAL_X` 566, `VEND_BUY_X` 676 …
   perks at 1156); the teleporter and its sign stay. The light sections run `SHOP_SLOT` apart from the
-  teleporter's to the end wall (`LIGHT_X`), each machine the middle of one.
+  teleporter's to the end wall (`LIGHT_X`), each machine the middle of one. **Pools of light** (owner:
+  darker between the lights): each tube lights ±30 fading over 16 (`POOL_FADE`, where its cone meets the
+  floor), and between pools it's `DEV.shopGap` (0.9) dark, the lit shop too (`shopDark(null, …)`); your
+  torch only lifts `DEV.shopTorch` (0.45) of the hall's dark; brighter cones and a pool on the floor
+  (`render/shoplights.js`). Dev → Torch & fog has both knobs.
 - **The guide hologram** (`world/guide.js`, `game/systems/guide.js`, `game/render/guide.js`): on a new
   run, once the teleporter is off screen the hall ahead snaps on (`lightNear`) and a little see-through
-  blue you hovers there in the hologram layer's parallax, waving, distortion bars rolling over it. A speech
+  blue you hovers there, just inside the dark under the tube that snaps on (`guideSpot`: 20 short of the
+  first held section's middle; it also jumps out if you come within `GUIDE_NEAR` of it first), in the hologram layer's parallax, waving, distortion bars rolling over it. A speech
   box types the owner's welcome a letter at a time (Dev → **Guide hologram**: `guideCps`, `guideWait`),
   then it throws out the starter kit one thing at a time (150 gold, 3 red + 1 green crystal, Buzzsaw,
   Bolt, Double Cast, a level 5 gun cut to 3 empty slots, not shuffled) and glitches away. Pass through it

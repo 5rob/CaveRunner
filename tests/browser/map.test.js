@@ -43,8 +43,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('tapping a gun button holds it', await page.evaluate(() => window.__in.current.loadout.sel) === 1);
 
   // ---- the map, explored partway: carried up a real path through the cave (a flood fill from the
-  // shop to the highest open spot you fit through), a frame a step, so the fog lifts as it does in play ----
-  const walked = await page.evaluate(async () => {
+  // shop to the highest open spot you fit through), a frame a step, so the fog lifts as it does in play.
+  // Caves are random: one whose way up is short is rolled again (Dev → New cave), a few times at most ----
+  const plan = () => page.evaluate(() => {
     const L = window.__lvl, D = 4, gw = Math.floor(CW / D), gh = Math.floor(CH / D);
     const fits = (gx, gy) => { for (let y = gy * D - 10; y <= gy * D + 1; y++) for (let x = gx * D - 3; x <= gx * D + 3; x++) if (x < 0 || y < 0 || x >= CW || y >= CH || L.mat[y * CW + x]) return false; return true; };
     const s0 = { x: Math.round((L.p.x + PW / 2) / CELL / D), y: Math.round((L.p.y + PH - 2) / CELL / D) };
@@ -62,8 +63,15 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     }
     const path = [];
     for (let i = best; i >= 0; i = prev[i]) path.push(i);
-    path.reverse();
-    const go = path;
+    window.__walk = path.reverse();
+    return path.length;
+  });
+  for (let i = 0; i < 6 && await plan() < 150; i++) {
+    await page.evaluate(() => { window.__in.current.newCave = true; });
+    await page.waitForTimeout(400);
+  }
+  const walked = await page.evaluate(async () => {
+    const L = window.__lvl, D = 4, gw = Math.floor(CW / D), go = window.__walk;
     for (let k = 0; k < go.length; k += 2) {
       const i = go[k];
       L.p.x = (i % gw) * D * CELL - PW / 2; L.p.y = ((i / gw) | 0) * D * CELL - PH; L.p.vx = L.p.vy = 0;
