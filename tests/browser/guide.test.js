@@ -74,12 +74,13 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       return { gold: L.coins.reduce((a, c) => a + c.amount, 0) + window.__in.current.loadout.gold - START_GOLD,
         red: P.filter(q => q.kind === 'crystal' && !q.green).length, green: P.filter(q => q.kind === 'crystal' && q.green).length,
         mods: P.filter(q => q.kind === 'mod').map(q => q.id).sort(),
-        guns: P.filter(q => q.kind === 'gun').map(q => ({ lvl: q.gun.lvl, cap: q.gun.cap, slots: q.gun.slots.length, shuffle: q.gun.shuffle, empty: q.gun.slots.every(x => !x) })) };
+        guns: P.filter(q => q.kind === 'gun').map(q => ({ lvl: q.gun.lvl, cap: q.gun.cap, slots: q.gun.slots.length, shuffle: q.gun.shuffle, multi: q.gun.multi, recharge: q.gun.recharge, empty: q.gun.slots.every(x => !x) })) };
     });
     check('150 gold', kit.gold === 150, kit.gold);
     check('2 red crystals and a green', kit.red === 2 && kit.green === 1, kit);
     check('Buzzsaw, Bolt and Double Cast', JSON.stringify(kit.mods) === JSON.stringify(['bolt', 'double', 'saw']), kit.mods);
-    check('a level 5 gun, 3 slots, in order', kit.guns.length === 1 && kit.guns[0].lvl === 5 && kit.guns[0].cap === 3 && kit.guns[0].slots === 3 && !kit.guns[0].shuffle && kit.guns[0].empty, kit.guns);
+    check('a level 5 gun, 3 slots, in order', kit.guns.length === 1 && kit.guns[0].lvl === 5 && kit.guns[0].cap === 3 && kit.guns[0].slots === 3 && !kit.guns[0].shuffle && kit.guns[0].empty
+      && kit.guns[0].multi === 1 && kit.guns[0].recharge === 0.5, kit.guns);
     // the hall lights on as you go once it's gone
     await page.evaluate(() => { window.__in.current.keys.d = true; });
     s = await until(page, q => q.on[q.on.length - 1] >= 0 || q.pcx > 1100, 300);

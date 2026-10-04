@@ -17,7 +17,7 @@ check('the script, as the owner wrote it', GUIDE_PAGES[0].startsWith('Welcome re
   && GUIDE_PAGES[5] === 'Enjoy your Slice Of Life.' && GUIDE_PAGES[6].startsWith('And here is something to get you started'));
 check('the kit: 150 gold, 2 red (v0.0.142), 1 green, Buzzsaw, Bolt, Double Cast, a level 5 gun of 3 slots',
   JSON.stringify(GUIDE_GIFTS) === JSON.stringify([{ gold: 150 }, { crystal: 'red' }, { crystal: 'red' }, { crystal: 'green' },
-    { mod: 'saw' }, { mod: 'bolt' }, { mod: 'double' }, { gun: { lvl: 5, cap: 3 } }]));
+    { mod: 'saw' }, { mod: 'bolt' }, { mod: 'double' }, { gun: { lvl: 5, cap: 3, multi: 1, recharge: 0.5 } }]));
 
 // ---- the whole welcome, standing still ----
 const I = (o = {}) => ({ pcx: 160, camX: 50, vw: 225, inShop: true, cps: 30, wait: 1.4, seen: 50, ...o });

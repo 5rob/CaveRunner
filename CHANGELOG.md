@@ -5,6 +5,10 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.143 — the guide's gun: one shot a cast, 0.5 s recharge
+Released 2026-10-05 (owner's ask; a minor update). The starter kit's level 5 gun now always casts one
+shot (`multi` 1) and recharges in 0.5 s (`GUIDE_GIFTS`' gun takes `multi` and `recharge`; `giveGift` sets them).
+
 ## v0.0.142 — empty hands, a free pistol, the crystal machines show how
 Released 2026-10-05 (after the owner's OK of the screenshots; a minor update).
 

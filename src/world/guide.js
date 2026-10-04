@@ -37,14 +37,14 @@ export const GUIDE_PAGES = [
 ];
 export const GUIDE_RUDE = 'Rude. Yeh OK have fun! Remember, you definitely have everything you need!';
 
-/** @typedef {{ gold?: number, crystal?: 'red' | 'green', mod?: string, gun?: { lvl: number, cap: number } }} GuideGift */
+/** @typedef {{ gold?: number, crystal?: 'red' | 'green', mod?: string, gun?: { lvl: number, cap: number, multi: number, recharge: number } }} GuideGift */
 // the starter kit, in the order it comes out
 /** @type {GuideGift[]} */
 export const GUIDE_GIFTS = [
   { gold: 150 },
   { crystal: 'red' }, { crystal: 'red' }, { crystal: 'green' },
   { mod: 'saw' }, { mod: 'bolt' }, { mod: 'double' },
-  { gun: { lvl: 5, cap: 3 } },                         // non-shuffle, empty
+  { gun: { lvl: 5, cap: 3, multi: 1, recharge: 0.5 } },   // non-shuffle, empty, 1 shot a cast, 0.5 s recharge (owner, v0.0.143)
 ];
 
 // Typing: a letter every 1/cps s, with a beat after a stop (each of "....." too) and a shorter one

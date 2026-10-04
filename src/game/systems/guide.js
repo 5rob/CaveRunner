@@ -51,9 +51,10 @@ function giveGift(W, F, gift, x, y) {
   else if (gift.crystal) W.pickups.push({ kind: 'crystal', green: gift.crystal === 'green' || undefined, floor: W.floor, ...fly, nopull: 0.6 });
   else if (gift.mod) W.pickups.push({ kind: 'mod', id: gift.mod, ...fly, cool: 1 });
   else if (gift.gun) {
-    // a level-N gun cut down to the slots asked for, empty, firing in order
+    // a level-N gun cut down to the slots asked for, empty, firing in order, its shots a cast and recharge set
     const gun = makeGun(Math.random, gift.gun.lvl);
     gun.cap = gift.gun.cap; gun.slots = new Array(gift.gun.cap).fill(null); gun.shuffle = false;
+    gun.multi = gift.gun.multi; gun.recharge = gift.gun.recharge;
     W.pickups.push({ kind: 'gun', gun: resetGun(gun), ...fly, cool: 1 });
   }
   burst(W, x, y, 10, '#7fd8ff');
