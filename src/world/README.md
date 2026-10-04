@@ -9,7 +9,7 @@ All pure: the logic suites call these directly.
 | `zones.js` | Floor 1's built-up vs natural zones: `builtAt(zone, wx, wy)`; `boxReach` (runner-box flood that keeps the main route open) |
 | `decorate.js` | `decorate` (the theme's `DECOR`: bakes and props), `cullDecor`, `propAnchored`, `archCurve`/`archNear`/`archAt`, `PLANTS`, `GROVES`, `DECOR_DENSITY`, `PROP_BOX`, `PROP_DMG` |
 | `veins.js` | `goldVeins` (gold seams, rock only), `ORE_GOLD` |
-| `nuggets.js` | gold as nuggets: `splitGold` (a drop into big 25 / medium 5 / small 1, adding up exactly, at most `NUG_CAP`), `spillGold` (each nugget waits `SPILL_WAIT`, 0.25 s, as `nopull` before it can fly to you: close by, it was taken before it was ever drawn), `nugR`; their physics: `stepNugget` (fall, bounce, roll downhill) and `collideNuggets` (push apart) |
+| `nuggets.js` | gold as nuggets: `splitGold` (a drop into big 25 / medium 5 / small 1, adding up exactly, at most `NUG_CAP`), `spillGold` (each nugget waits `SPILL_WAIT`, 0.25 s, as `nopull` before it can fly to you: close by, it was taken before it was ever drawn), `nugR`; their physics: `stepNugget` (fall, bounce, roll downhill) and `collideNuggets` (push apart), both taking a radius for crystals (v0.0.138), and `shoveNugget` (a body pushed out of a moving box: you shoving a crystal) |
 | `nests.js` | `ratNests` (floor 1: a mound, a bending tunnel, a room in the rock) |
 | `nav.js` | `navField` (Dijkstra out from a goal over `NAV` = 4px cells that fit a rat), `navWay` (next waypoint; extends through air to a landing) |
 | `vision.js` | `rayDist`, `losClear`, `visPoly` (`VIS_RAYS`), the fog memory `fogReveal`, `fogStart`, `nestFog` |

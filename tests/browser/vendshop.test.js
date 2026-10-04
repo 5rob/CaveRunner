@@ -1,5 +1,5 @@
-// The mod vending machine (src/game/systems/shops.js, src/ui/vendshop.js, src/ui/modshop.js): it
-// stands in the shop and says "Tap R to shop"; the tap opens its menu (the game pauses), the
+// The mod vending machine's menu (src/ui/vendshop.js, src/ui/modshop.js), archived since v0.0.138
+// (the machine takes crystals now: crystalmachine.test.js); opened directly here (the game pauses), the
 // collection starts empty, a red crystal unlocks a mod off its floor's table (kept in localStorage),
 // the left stick moves the highlight and the right stick's tap presses it, and "Dispense selected"
 // takes the gold, closes the menu and pops the mod out onto the floor, where it can be taken.
@@ -30,11 +30,7 @@ const DIR = path.join(__dirname, '..', 'build');
   const MX = await page.evaluate(() => SHOPS.mods.x);
   await page.evaluate(x => { const L = window.__lvl; L.p.x = x - 6; L.p.vx = 0; window.__in.current.sig = ''; }, MX);
   await page.waitForTimeout(300);
-  let line = await page.evaluate(() => { const b = document.querySelector('.pbuy'); return b && b.textContent; });
-  check('standing at it says "Tap R to shop"', /Tap R to shop$/.test(line || ''), line);
-  await page.screenshot({ path: path.join(DIR, 'vendshop_machine.png') });
-
-  await page.evaluate(() => { window.__in.current.interact = true; });
+  await page.evaluate(() => { window.__in.current.shopOpen = 'mods'; window.__in.current.notify(); });
   await page.waitForTimeout(250);
   let st = await page.evaluate(() => ({ open: !!document.querySelector('.vshop'), paused: window.__in.current.paused,
     cells: document.querySelectorAll('.vcell').length, empty: document.querySelectorAll('.vcell.empty').length, all: ALL_IDS.length,
@@ -173,7 +169,7 @@ const DIR = path.join(__dirname, '..', 'build');
   await page.waitForTimeout(200);
   check('picked up into the bag', await page.evaluate(id => window.__in.current.loadout.bag.includes(id), got));
 
-  // a crystal in the cave flies to you like gold (v0.0.137): no card, no tap
+  // a crystal in the cave isn't yours to take (v0.0.138): no card, nothing collected
   st = await page.evaluate(async () => {
     const L = window.__lvl, q = L.pickups.find(q => q.kind === 'crystal');
     const before = window.__in.current.loadout.crystals.length;
@@ -183,7 +179,7 @@ const DIR = path.join(__dirname, '..', 'build');
     await new Promise(r => setTimeout(r, 200));
     return { card, before, after: window.__in.current.loadout.crystals.length, taken: !L.pickups.includes(q) };
   });
-  check('standing at a crystal: no card, it is collected by itself', !st.card && st.after === st.before + 1 && st.taken, st);
+  check('standing at a crystal: no card, nothing collected', !st.card && st.after === st.before && !st.taken, st);
 
   await browser.close();
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');

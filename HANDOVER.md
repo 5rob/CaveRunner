@@ -9,6 +9,12 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
+- **v0.0.138 waits on the owner's OK** (screenshots sent; on branch `refactor`, not on `main`):
+  crystals can't be picked up, they're rocks you push or drag with the Gravity Gun; the mod machine eats
+  red ones and the perk machine green ones, shakes faster and faster and pops out a new unlock off the
+  floor's table (`game/systems/shops.js` `stepCrystals`). Their menus are archived (`takes` on a `SHOPS`
+  entry; drop it to bring the menu back). Open question for the owner: the gun machine's Boosted spin still
+  wants carried red crystals, which nobody gets any more.
 - **Released: v0.0.137** on `main`, 2026-10-04 (the owner OK'd the screenshots). No perk column on
   the HUD; bigger gun/bag/map buttons; crystals fly to you like gold and shed breeze sparkles; flight
   paths rebuilt in one place (`spells/paths.js`: Boomerang returns, Ping-Pong, Spiral, Orbit round its

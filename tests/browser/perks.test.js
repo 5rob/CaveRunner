@@ -60,8 +60,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
   // ---- 3. the room's green crystal ----
   await takeRoom(perkRoom.x, perkRoom.y);
-  const got = await page.evaluate(() => ({ greens: (window.__in.current.loadout.greens || []).length, taken: window.__lvl.rooms[0].taken }));
-  check('taking it pockets a green crystal', got.greens === 1 && got.taken, got);
+  const got = await page.evaluate(() => ({ greens: (window.__in.current.loadout.greens || []).length, taken: window.__lvl.rooms[0].taken,
+    loose: window.__lvl.pickups.some(q => q.kind === 'crystal' && q.green) }));
+  check('near it, it drops off the altar as a loose crystal (not pocketed, v0.0.138)', got.greens === 0 && got.taken && got.loose, got);
 
   // ---- 4. a perk counts only fitted to the suit; Extra Health comes full ----
   const fit = await page.evaluate(async () => {

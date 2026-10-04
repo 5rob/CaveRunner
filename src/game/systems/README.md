@@ -14,7 +14,7 @@ the frame; most of its parts live with their system.
 | `shotlooks.js` | What a shot sheds: `shotTrail`, `shotBounce`, `shotDeath`, `shotGrind`, `glowDot`, `rnd` |
 | `lightning.js` | `jag`, `addArc`, `lightningStep` (a bolt's forks) |
 | `enemies.js` | `stepEnemies` (the shared part of the enemy loop, `game/creatures/README.md`), `damageEnemy`, `fireEnemyShot` |
-| `pickups.js` | `stepPickups`: ground pickups, shop stock, room prizes, gold, crystals (fly to you like gold, v0.0.137: no card, no tap; a room's green one comes off its altar), the card that shows, the interact tap |
+| `pickups.js` | `stepPickups`: ground pickups, shop stock, room prizes, gold (a room's green crystal comes off its altar; crystals themselves move in `shops.js`), the card that shows, the interact tap |
 | `props.js` | `decorStep` (anchors, falling, shootable props, drips, plants and web lines under you → `W.zfx`, rustles; with `pOver`, `alertAt`, `shatter`, `popLamp`, `landProp`, `spawnDrip`, `MATERIAL`, `DRIP_RATE`), `blowProp` |
 | `fire.js` | The fire's Game side: `fireFrame`, `ignite`, `fireBlast`, `setAlight`, `youAlight`, `fireOut`/`flushFire`, `catchPlant`/`catchArch`/`burnWeb`, `fireList`, `stepTrail` (Levitation Trail) |
 | `ambience.js` | `spore`, `puffSpores`, `stepAmbience`, `AMB_RATE`/`AMB_MAX` |
@@ -24,7 +24,7 @@ the frame; most of its parts live with their system.
 | `plantglow.js` | `plantGlow` (the jelly's glow on plants, drawn after the fog) |
 | `level-entry.js` | `enterLevel(W, G, back, keep)`: makes (or rebuilds a saved) level, resets the world, canvases, fog, sconces (the prize rooms' only: the portals are pads), the recorder; puts back a saved nest's brood; `keep` leaves you (and the stock) where you are for a teleport; `miniEdges` (the map outline cells) |
 | `vend.js` | The level vending machines: `vendNear`/`vendLabel`/`vendUse` (via `stepPickups`: the buy machine opens the floor menu, `shopOpen = 'levels'`, `ui/levelshop.js`; the sell machine pays `lvlReward(floor)` and raises `LO.soldTop`), `buyLevel` (the menu's `input.current.buyFloor`, read at the top of `stepWarp`: `lvlBuy(floor)` on the debt), `canSell` (no `bioCount`), `stepWarp` (the teleport: swap at `WARP_SWAP`, held up to `WARP_WAIT` while the worker is still making the level; takes it with `takeLevel`; a sale voids the cave in place and sets the next floor and seed), `stepReveal`/`putRows` (a bought level's rock onto its canvases a band a frame, bottom up, `W.reveal`, `REVEAL_T`; whole-width ImageData rows, so not recorded as patches), `voidCave` (no level: BED above the roof, the roof sealed, ambience off, `preLevel` for the floor up for sale), `voidCave` (no level: BED above the roof, the roof sealed), `stepRepo` (the deadline passed: repossession, the alarm, the fire; `REPO_WARP`/`REPO_ALARM`/`REPO_FIRE`) |
-| `shops.js` | The shop's vending machines (`SHOPS`: x, icon, hue, label; three machines left to right: mods, guns, perks; another machine is a `SHOPS` entry and a `SHOP_MENUS` line in `ui/modshop.js`): `shopNear`/`shopUse` (opens `input.current.shopOpen`; checked after the ground pickups so a dispensed mod can be taken), `stepShops` (in `stepPickups`: `input.current.dispense` — a mod, gun or perk — pops out of the chute; anything thrown with a `vy` (that, an elite's crystals) flies and lands on rock) |
+| `shops.js` | The shop's vending machines (`SHOPS`: x, icon, hue, label; three machines left to right: mods, guns, perks; another machine is a `SHOPS` entry and a `SHOP_MENUS` line in `ui/modshop.js`): `shopNear`/`shopUse` (opens `input.current.shopOpen`; checked after the ground pickups so a dispensed mod can be taken), `stepShops` (in `stepPickups`: `input.current.dispense` — a mod, gun or perk — pops out of the chute; anything thrown with a `vy` flies and lands on rock); **crystal machines** (v0.0.138, `takes: 'red' | 'green'`: mods and perks, no menu, `shopNear` skips them): `stepCrystals` (crystals as rocks, `stepNugget` with `CRYS_R`, shoved by you with `shoveNugget`, held by a White Hole's `q.hold`; within `intakeOf` one flies into `SLOT_Y`; `W.machines[k]` queues them, `CYCLE` s of `shakePhase` then `machineRoll` pops a new unlock) |
 | `shoplights.js` | `shopDarkStart` (Game.js, a run with no save; the test page only with `window.__TEST_INTRO`) and `stepLights` (`W.shopLit`, `world/shoplights.js`: the way in crackles until the first tubes, a `tube` click as each tube flickers on, `W.shopLit = null` once all are on) |
 | `recorder.js` | The death replay's recorder (snapshots, terrain, fog and every sound) and player (any `Clip`: the live one or a saved one), `clipKeep`/`clipThumb`/`clipFromSaved` (saved clips) (`replay/README.md`) |
 | `save-run.js` | `saveRun` (`save/README.md`) |
@@ -57,8 +57,9 @@ the frame; most of its parts live with their system.
   `input.current.found`, which opens `GunSwap` (owner's choice). A bought gun drops at the plinth, so
   the same chooser handles it. **Dead + interact tap = restart** (`input.current.requestRestart`),
   checked before the pickup handling.
-- **Crystals:** a `crystal` pickup is red, or green with `green: true` (an elite's drop). Tapping one takes
-  every crystal in reach (an elite's pile): reds to `LO.crystals`, greens to `LO.greens`.
+- **Crystals:** a `crystal` pickup is red, or green with `green: true`. You can't take one (v0.0.138):
+  it's a body (`stepCrystals`) you push, or drag with a White Hole, into its machine. `LO.crystals`/`LO.greens`
+  only hold what an older save carried (the gun machine's Boosted spin spends reds).
 - **Jetpack cough:** below `SPUTTER_FUEL` (0.25) `sputterStep` cuts the jet for 0.04–0.17s at random,
   more often the drier it is. `W.p.jet` stays the stick; `W.p.flame` is 0 during a cut and is what the
   flame, smoke, glow, Levitation Trail and jet loop read. A cut: no lift, `vy += DEV.sputDip`, grey

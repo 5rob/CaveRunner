@@ -1,8 +1,8 @@
 // The perk vending machine and the Exo Suit (src/ui/modshop.js perkShop, src/ui/exosuit.js): the
-// floor has one hidden room with a green crystal on its altar (no heart room); a green crystal
-// unlocks a perk at the machine (kept across runs), gold dispenses a copy that pops out and is
+// floor has one hidden room with a green crystal on its altar (no heart room), which drops off it
+// as a loose crystal (v0.0.138); in the menu (archived, opened directly) a green crystal unlocks a perk (kept across runs), gold dispenses a copy that pops out and is
 // carried; the Bag's second tab is the Exo Suit: drag a carried perk onto a slot and it counts,
-// drag it off and it doesn't; a tap shows its card; the top bar counts green crystals.
+// drag it off and it doesn't; a tap shows its card.
 const { launch } = require('../chromium');
 const path = require('path');
 let fails = 0;
@@ -27,20 +27,20 @@ const DIR = path.join(__dirname, '..', 'build');
     pin(); window.__in.current.sig = '';
     for (let i = 0; i < 12; i++) { pin(); await new Promise(res => requestAnimationFrame(res)); }
     const card = !!document.querySelector('.buypanel');
-    for (let i = 0; i < 30 && !(window.__in.current.loadout.greens || []).length; i++) { pin(); await new Promise(res => requestAnimationFrame(res)); }
+    for (let i = 0; i < 30 && !r.taken; i++) { pin(); await new Promise(res => requestAnimationFrame(res)); }
     await new Promise(res => setTimeout(res, 150));
     return { card, greens: (window.__in.current.loadout.greens || []).length, taken: r.taken,
-      top: document.querySelectorAll('.gold .crysrow .cbit.green').length };
+      loose: L.pickups.filter(q => q.kind === 'crystal' && q.green).length };
   });
-  check('no card: it flies off the altar into your pocket', !st.card && st.greens === 1 && st.taken, st);
-  check('the top bar shows a green silhouette', st.top === 1, st.top);
+  check('no card: it drops off the altar as a loose crystal, not into your pocket', !st.card && st.greens === 0 && st.taken &&
+    st.loose === 1, st);
 
   // the machine
   const MX = await page.evaluate(() => SHOPS.perks.x);
   await page.evaluate(x => { const L = window.__lvl; L.p.x = x - 6; L.p.y = L.world.SHOP_FLOOR * L.world.CELL - 22; L.p.vx = L.p.vy = 0; window.__in.current.sig = ''; }, MX);
   await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(DIR, 'perkshop_machine.png') });
-  await page.evaluate(() => { window.__in.current.loadout.gold = 1000; window.__in.current.interact = true; });
+  await page.evaluate(() => { const c = window.__in.current; c.loadout.gold = 1000; c.loadout.greens = [1]; c.shopOpen = 'perks'; c.notify(); });   // the menu is archived (v0.0.138): opened directly
   await page.waitForTimeout(250);
   st = await page.evaluate(() => ({ open: !!document.querySelector('.vshop'), title: document.querySelector('.vhead b').textContent,
     cells: document.querySelectorAll('.vcell').length, empty: document.querySelectorAll('.vcell.empty').length, all: PERK_IDS.length }));
