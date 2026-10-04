@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.138</title>
-<!-- VERSION = 'v138' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.139</title>
+<!-- VERSION = 'v139' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -676,7 +676,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.138';</script>
+<script>const VERSION = 'v0.0.139';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -18912,23 +18912,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const inp = G.input.current;
     if (SHOPS[k].takes === "green") {
       const id2 = perkRoll(Math.random, inp.perkCollection);
-      if (id2) {
-        inp.perkCollection.push(id2);
-        savePerkCollection(inp.perkCollection);
-        return { kind: "perk", id: id2 };
-      }
-      const have2 = inp.perkCollection;
-      return have2.length ? { kind: "perk", id: have2[Math.floor(Math.random() * have2.length)] } : null;
+      if (!id2) return null;
+      inp.perkCollection.push(id2);
+      savePerkCollection(inp.perkCollection);
+      return { kind: "perk", id: id2, fresh: true };
     }
-    const id = crystalRoll(Math.random, W.floor, inp.collection);
-    if (id) {
+    const id = rollMod(Math.random, W.floor);
+    if (!id) return null;
+    const fresh = !inp.collection.includes(id);
+    if (fresh) {
       inp.collection.push(id);
       saveCollection(inp.collection);
-      return { kind: "mod", id };
     }
-    const pool = inp.collection.filter((m) => modWeight(m, W.floor) > 0);
-    const have = pool.length ? pool : inp.collection;
-    return have.length ? { kind: "mod", id: have[Math.floor(Math.random() * have.length)] } : null;
+    return { kind: "mod", id, fresh };
   }
   function stepCrystals(W, G, F) {
     const dt = F.dt;
@@ -18991,7 +18987,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       M.t = -1;
       const got = machineRoll(W, G, k);
       if (!got) {
-        toast(W, "Nothing left to unlock");
+        toast(W, "No perks left");
         continue;
       }
       const side = F.pcx < m.x ? -1 : 1;
@@ -19005,7 +19001,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         vy: -200 - Math.random() * 40,
         cool: 1
       });
-      toast(W, "Unlocked " + (got.kind === "perk" ? PERKS[got.id].name : MODS[got.id].name));
+      toast(W, (got.fresh ? "Unlocked " : "") + (got.kind === "perk" ? PERKS[got.id].name : MODS[got.id].name));
       burst(W, m.x, CHUTE_Y, 14, m.hue);
       SFX.fx("reelThud");
       SFX.fx("prompt");

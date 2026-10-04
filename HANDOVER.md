@@ -9,7 +9,11 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
-- **Released: v0.0.138** on `main`, 2026-10-04 (the owner OK'd the screenshots):
+- **Released: v0.0.139** on `main`, 2026-10-04: the mod machine rolls any mod off the floor's table, repeats
+  included; perks stay one of a kind (never given twice; the perk collection is kept across runs, so a
+  perk once had never comes from the machine again: ask the owner if that's wrong for later runs). Still
+  open: the gun machine's Boosted spin wants carried red crystals, which nobody gets any more.
+- **v0.0.138** on `main`, 2026-10-04 (the owner OK'd the screenshots):
   crystals can't be picked up, they're rocks you push or drag with the Gravity Gun; the mod machine eats
   red ones and the perk machine green ones, shakes faster and faster and pops out a new unlock off the
   floor's table (`game/systems/shops.js` `stepCrystals`). Their menus are archived (`takes` on a `SHOPS`

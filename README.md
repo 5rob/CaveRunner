@@ -201,8 +201,8 @@ The **mod machine** past the sell machine (a flickering ⚙️ hologram, a red-r
 **perk machine** (a green ✦, a green slot) are **crystal machines**: they have no menu. Bring a red
 crystal near the mod machine, or a green one near the perk machine, and it's sucked in; the
 machine's lights race and it shakes faster and faster for a couple of seconds, then pops out a mod
-(or perk) you hadn't unlocked yet, from the floor you're on's drop table, now unlocked, for you to
-pick up. Several crystals queue up. Mods unlocked last the run: dying empties them (unlocked perks
+from the floor you're on's drop table, by its odds (it can be one you already have; a new one is
+unlocked), or a perk you've never had (perks are one of a kind: never given twice), for you to pick up. Several crystals queue up. Mods unlocked last the run: dying empties them (unlocked perks
 stay). (Their old menus are kept, switched off, in case they come back.) The gun machine still has its
 menu. Tap things directly, or use the sticks: in a machine's menu the **right
 stick is a pointer** — drag it and a thin ring pushes out from the knob and travels much further

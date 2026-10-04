@@ -7,15 +7,15 @@
 // menu code is all still there, ui/vendshop.js + ui/modshop.js; drop `takes` to bring one back). A
 // crystal of its colour that comes near (you can't carry them: you push them, or drag them with the
 // Gravity Gun) is sucked in, the machine's lights speed up and it shakes faster and faster for CYCLE
-// seconds, then pops out a new unlock off the floor's drop table (stepCrystals).
+// seconds, then pops out a mod off the floor's drop table (repeats allowed) or a perk you've never had (stepCrystals).
 
 import { SFX } from '../../audio/sfx.js';
 import { CELL, PH, PW, SHOP_FLOOR, SHOP_MACHINE_X, SHOP_Y } from '../../core/consts.js';
 import { PERKS } from '../../data/perks.js';
 import { saveCollection, savePerkCollection } from '../../save/save.js';
-import { crystalRoll, perkRoll } from '../../spells/collection.js';
+import { perkRoll } from '../../spells/collection.js';
 import { MODS } from '../../spells/mods.js';
-import { modWeight } from '../../spells/spawn.js';
+import { rollMod } from '../../spells/spawn.js';
 import { NUG_GRAV, collideNuggets, shoveNugget, stepNugget } from '../../world/nuggets.js';
 import { burst, crystalMotes, toast } from './particles.js';
 import { solidAt } from './terrain.js';
@@ -101,22 +101,23 @@ export function intakeOf(q) {
   return null;
 }
 
-// what a machine pops out for a crystal: a new unlock (a mod off the floor's drop table, or a perk),
-// added to the collection; once everything is unlocked, one you have (a mod off the floor's table)
-/** @param {World} W @param {GameCtx} G @param {string} k @returns {{ kind: 'mod' | 'perk', id: string } | null} */
+// what a machine pops out for a crystal (v0.0.139): any mod off the floor's drop table by its odds
+// (rollMod), whether you have it or not, so mods may repeat (a new one is unlocked); a perk is one of
+// a kind, never given twice: one you haven't unlocked (perkRoll), null once there are none left
+/** @param {World} W @param {GameCtx} G @param {string} k @returns {{ kind: 'mod' | 'perk', id: string, fresh: boolean } | null} */
 export function machineRoll(W, G, k) {
   const inp = G.input.current;
   if (SHOPS[k].takes === 'green') {
     const id = perkRoll(Math.random, inp.perkCollection);
-    if (id) { inp.perkCollection.push(id); savePerkCollection(inp.perkCollection); return { kind: 'perk', id }; }
-    const have = inp.perkCollection;
-    return have.length ? { kind: 'perk', id: have[Math.floor(Math.random() * have.length)] } : null;
+    if (!id) return null;
+    inp.perkCollection.push(id); savePerkCollection(inp.perkCollection);
+    return { kind: 'perk', id, fresh: true };
   }
-  const id = crystalRoll(Math.random, W.floor, inp.collection);
-  if (id) { inp.collection.push(id); saveCollection(inp.collection); return { kind: 'mod', id }; }
-  const pool = inp.collection.filter(m => modWeight(m, W.floor) > 0);
-  const have = pool.length ? pool : inp.collection;
-  return have.length ? { kind: 'mod', id: have[Math.floor(Math.random() * have.length)] } : null;
+  const id = rollMod(Math.random, W.floor);
+  if (!id) return null;
+  const fresh = !inp.collection.includes(id);
+  if (fresh) { inp.collection.push(id); saveCollection(inp.collection); }
+  return { kind: 'mod', id, fresh };
 }
 
 // A part of stepShops: the crystals. Loose ones are rocks (world/nuggets.js: they fall, roll, bump
@@ -171,11 +172,11 @@ export function stepCrystals(W, G, F) {
     if (M.t < CYCLE) continue;
     M.t = -1;
     const got = machineRoll(W, G, k);
-    if (!got) { toast(W, 'Nothing left to unlock'); continue; }
+    if (!got) { toast(W, 'No perks left'); continue; }
     const side = F.pcx < m.x ? -1 : 1;
     W.pickups.push({ kind: got.kind, id: got.id, x: m.x, y: CHUTE_Y, t: 0,
       vx: side * (95 + Math.random() * 30), vy: -200 - Math.random() * 40, cool: 1 });
-    toast(W, 'Unlocked ' + (got.kind === 'perk' ? PERKS[got.id].name : MODS[got.id].name));
+    toast(W, (got.fresh ? 'Unlocked ' : '') + (got.kind === 'perk' ? PERKS[got.id].name : MODS[got.id].name));
     burst(W, m.x, CHUTE_Y, 14, m.hue);
     SFX.fx('reelThud'); SFX.fx('prompt');
     G.input.current.notify();

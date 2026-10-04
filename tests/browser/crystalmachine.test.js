@@ -121,6 +121,25 @@ const DIR = path.join(__dirname, '..', 'build');
   });
   check('a green crystal into the perk machine pops out a new perk', st.perk && st.coll.length === 1 && st.coll[0] === st.perk, st);
 
+  // v0.0.139: a mod may repeat (every mod unlocked: it still pops one), a perk never does
+  await page.evaluate(() => { window.__lvl.pickups.length = 0; const c = window.__in.current.collection; c.length = 0; c.push(...ALL_IDS); });
+  await put('mods', false, 40);
+  st = await page.evaluate(async () => {
+    const L = window.__lvl;
+    for (let i = 0; i < 600 && !L.pickups.some(q => q.kind === 'mod'); i++) await new Promise(r => requestAnimationFrame(r));
+    const q = L.pickups.find(q => q.kind === 'mod');
+    return { mod: q && q.id, n: window.__in.current.collection.length, all: ALL_IDS.length };
+  });
+  check('with every mod unlocked, a red crystal still pops one out (a repeat)', !!st.mod && st.n === st.all, st);
+  await page.evaluate(() => { window.__lvl.pickups.length = 0; const c = window.__in.current.perkCollection; c.length = 0; c.push(...PERK_IDS); });
+  await put('perks', true, -40);
+  st = await page.evaluate(async () => {
+    const L = window.__lvl;
+    for (let i = 0; i < 300 && (L.pickups.some(q => q.kind === 'crystal') || L.machines.perks.t >= 0); i++) await new Promise(r => requestAnimationFrame(r));
+    return { perk: L.pickups.some(q => q.kind === 'perk'), idle: L.machines.perks.t < 0 };
+  });
+  check('with every perk had, a green crystal pops no perk (one of a kind)', st.idle && !st.perk, st);
+
   // a crystal held up by a White Hole in the shop (by the gun machine, which takes none)
   await page.evaluate(() => {
     const L = window.__lvl, m = SHOPS.guns, fy = L.world.SHOP_FLOOR * L.world.CELL;
