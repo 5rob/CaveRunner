@@ -15,7 +15,7 @@ release loop, testing), then the README of the `src/` folder you're working in.
   paths rebuilt in one place (`spells/paths.js`: Boomerang returns, Ping-Pong, Spiral, Orbit round its
   caster or a trigger's carrier) and working on moving fields; new mods Follow Me, Enlarge/Shrink,
   Longer/Shorter Flight; Vacuum Field → **White Hole** (steady harmless pull, tiny white-blue look, specks
-  drawn in); the **Gravity Gun** as a third starter (old saves: Dev → Restart run); elites burn, with
+  drawn in); the elite glow a soft radial fade, not a disc (owner's first feedback); the **Gravity Gun** as a third starter (old saves: Dev → Restart run); elites burn, with
   **Dev → Elites: flames** (gradient editor, opacity B-spline, length, wavyness, air resistance…). The
   owner may paste Dev numbers for the flames. Not done: flames off creatures' appendages (body only),
   and the flames aren't in death replays. An orbit cast standing on the floor clips the floor (the

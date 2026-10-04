@@ -43,6 +43,8 @@ Built 2026-10-04 (awaiting the owner's OK of the screenshots).
   drag, pick its colour, delete) and an opacity-over-life B-spline (`RampEditor`: tap to add a point,
   drag, delete), with a live preview (`FlamePreview`). Kept as strings (`DEV.elFxGrad`, `DEV.elFxAlpha`;
   `art/ramps.js`); the Dev store now accepts such strings.
+- **The elite's glow is a soft radial gradient** (`drawEnemies`), strongest in the middle and fading to
+  nothing at `e.r + elGlowR`: it was a flat disc with a hard rim (the owner: "lose the big circle").
 - Suites: logic `paths`, `ramps`; browser `paths` (sandboxed: boomerang, orbit, ping-pong, spiral,
   the Gravity Gun), `elitefx`; `teleport`, `vendshop`, `gunshop`, `perkshop`, `perks`, `cast` updated.
 

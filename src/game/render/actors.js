@@ -7,6 +7,7 @@
 import { drawGun, drawRagdoll, drawRunner, drawTorch, jetFlame, pixelSprite, torchEmbers } from '../../art/sprites.js';
 import { gradLut, lutAt, rampLut } from '../../art/ramps.js';
 import { COL, PH, PW } from '../../core/consts.js';
+import { hexRgb } from '../../core/util.js';
 import { drawEnemy } from '../../creatures/draw.js';
 import { DEV, carrotAt, jcol, kcol, kru } from '../../dev/knobs.js';
 import { planCast } from '../../spells/cast.js';
@@ -45,13 +46,18 @@ export function drawEnemies(W, G, F) {
   for (const e of W.enemies) {
     const ey = e.ty;
     if (ey > W.camY + vh + 20 || ey < W.camY - 20 || e.x < W.camX - 20 || e.x > W.camX + vw + 20) continue;
-    if (e.k.elite) {                       // an elite: a glow behind it in its tint (Dev → Elites)
-      const u = e.k.eu || 0, a = kru('elGlow', u);
-      if (a > 0) {
-        G.ctx.globalAlpha = Math.max(0, Math.min(1, a + a * 0.45 * Math.sin(W.time * 4 + e.x)));
-        G.ctx.fillStyle = kcol('elTint', u);
-        G.ctx.beginPath(); G.ctx.arc(e.x, ey, e.r + kru('elGlowR', u), 0, Math.PI * 2); G.ctx.fill();
-        G.ctx.globalAlpha = 1;
+    if (e.k.elite) {
+      // an elite: a soft glow behind it in its tint (Dev → Elites), strongest at its middle and
+      // fading to nothing at its edge (v0.0.137: it was a flat disc with a hard rim)
+      const u = e.k.eu || 0, a = Math.max(0, Math.min(1, kru('elGlow', u) * (1 + 0.45 * Math.sin(W.time * 4 + e.x))));
+      const R = e.r + kru('elGlowR', u);
+      if (a > 0 && R > 0) {
+        const rgb = hexRgb(kcol('elTint', u)), g = G.ctx.createRadialGradient(e.x, ey, 0, e.x, ey, R);
+        g.addColorStop(0, 'rgba(' + rgb + ',' + a + ')');
+        g.addColorStop(0.45, 'rgba(' + rgb + ',' + (a * 0.55) + ')');
+        g.addColorStop(1, 'rgba(' + rgb + ',0)');
+        G.ctx.fillStyle = g;
+        G.ctx.beginPath(); G.ctx.arc(e.x, ey, R, 0, Math.PI * 2); G.ctx.fill();
       }
     }
     drawEnemy(G.ctx, e, W.time);
