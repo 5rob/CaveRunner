@@ -1,5 +1,5 @@
 // v129 floor 2's Dev knobs (dev/knobs.js L2_KNOBS, L2_LOOK, l2Decor): at their defaults floor 2
-// is the cave it was before them (hashes pinned from v130: v128's cave plus the three exits along the top); they reach floor 2 only; turned,
+// is the cave it was before them (hashes pinned from v0.0.145: v128's cave plus the three exits along the top, the shop's way up over the buy machine); they reach floor 2 only; turned,
 // the cave opens up or closes in, the main route still runs shop to exit, the decoration
 // thins out, and the palette follows the colour knobs.
 const G = require('../load');
@@ -11,9 +11,9 @@ const open = m => { let n = 0; for (let i = 0; i < m.length; i++) if (!m[i]) n++
 const reset = () => { for (const k in DEV_DEFAULTS) if (/^l2/.test(k)) DEV[k] = DEV_DEFAULTS[k]; };
 reset();
 
-// at the defaults: the same caves as v130 (v128's, with the exits along the top)
-check('defaults: floor 2 is the cave it was (seed 3)', hashMat(makeLevel(3, 2).mat) === -1476989531);
-check('defaults: floor 2 is the cave it was (seed 77)', hashMat(makeLevel(77, 2).mat) === -286057203);
+// at the defaults: the same caves as v0.0.145 (v128's, with the exits along the top and the way up over the buy machine)
+check('defaults: floor 2 is the cave it was (seed 3)', hashMat(makeLevel(3, 2).mat) === 1829628063);
+check('defaults: floor 2 is the cave it was (seed 77)', hashMat(makeLevel(77, 2).mat) === -1597281538);
 check('defaults: the palette is Coal seams\'', JSON.stringify(themeFor(2)) === JSON.stringify(THEMES[1]));
 
 // only floor 2 feels them

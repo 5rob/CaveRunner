@@ -5,7 +5,7 @@
 
 import {
   ARRIVAL_X, BED, BH, BRICK, BW, CELL, CH, CW, GUN_DROPS, MOD_DROPS, PH, PICKUP_GAP, ROCK, HEAL_X,
-  SHOP_FLOOR, SHOP_ROOF, SHOP_TOP, WW
+  SHOP_FLOOR, SHOP_ROOF, SHOP_TOP, VEND_BUY_X, WW
 } from '../core/consts.js';
 import { mix } from '../core/util.js';
 import { NATURAL_ONLY, eliteOf, enemyFor, rosterFor } from '../data/creatures.js';
@@ -151,7 +151,10 @@ export function makeLevel(seed, floor, owned) {
 
   // 2. main route from bottom to top: chambers linked by winding tunnels
   //    that are always wide enough to fly through (side pockets still need blasting)
-  const shopExit = 40 + Math.floor(rnd() * (CW - 80));   // the one way out of the shop
+  // the one way out of the shop, straight over the buy machine so it's easy to find (owner, v0.0.145; it
+  // was anywhere along the roof). The roll it was is still made, so the rest of each seed's cave stays put
+  rnd();
+  const shopExit = Math.round(VEND_BUY_X / CELL);
   // the built-up cave is built whole in its own buffer, and stitched in below
   const lay = layered ? new Uint8Array(CW * CH) : null;
   const strata = layered ? strataCave(lay, rnd, { vn, fbm, ok: built }, shopExit) : null;

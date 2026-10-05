@@ -5,6 +5,16 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.145 — the way up out of the shop over the buy machine
+Awaiting the owner's OK of the screenshots (a minor update).
+
+- **The shop's one hole in the roof is always straight over the buy machine** (owner: so it's obvious
+  to find); it was anywhere along the roof. `makeLevel` still makes the old roll, so the rest of each
+  seed's cave is the same apart from the route's first stretch up from the hole.
+- Tests: `shopexit` (new; logic: floors 1–3, every seed, one hole centred on `VEND_BUY_X`; browser: jet
+  straight up from the machine into the cave, screenshots `shopexit-*.png`); `level2`'s pinned floor-2
+  hashes re-pinned (the shaft moved).
+
 ## v0.0.144 — the heal under its light, dust in the cones, the guide's rude line, gun pickup, the arrival
 Released 2026-10-05 (after the owner's OK of the screenshots; a minor update).
 

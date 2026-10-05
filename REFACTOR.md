@@ -890,6 +890,13 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
 Bugs, oddities and "this should be better" spotted mid-move. Don't fix them in a refactor
 commit. List them here for after.
 
+- **v0.0.145 reshuffled the floor-1 caves (the shop's way up moved over the buy machine), and two
+  chance-based logic checks now land on the wrong side.** Not regressions, each measured:
+  `strata` "workings have a level floor on one row" (seeds 1–12: 41/52 vs the 85% bar; v0.0.144 had
+  45/52; on seeds 13–40 it's 109/117 now vs 107/118 before). `rats` "the fog never lifts off a nest
+  room from outside" (111/112: seed 682's nest at 499,1369 has a tunnel running dead straight up, so
+  you see down it into the room; the sightline check beside it allows 5%, this one 0%). Fix: make
+  the nest tunnel always bend (`world/nests.js`), and pool `strata` over more seeds or loosen to 80%.
 - **Pure code below `makeLevel`.** `tracePath` (~7041 in `src/main.js`) sits *between*
   `makeLevel` and `Game`, and `drawGunGlow` (~11388) sits *after* `Game`, among the UI.
   CLAUDE.md used to say "everything above `makeLevel` is pure"; the loader cuts at
