@@ -866,10 +866,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function bezierFade(u, x1, y1, x2, y2) {
     if (!(u > 0)) return 1;
     if (u >= 1) return 0;
-    return bezierAt(u, 1, x1, y1, x2, y2, 0);
-  }
-  function bezierAt(u, y0, x1, y1, x2, y2, y3) {
-    u = clamp(u, 0, 1);
     x1 = clamp(x1, 0, 1);
     x2 = clamp(x2, 0, 1);
     const at = (s2, a, b, p0, p3) => {
@@ -882,7 +878,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (at(s, x1, x2, 0, 1) < u) lo = s;
       else hi = s;
     }
-    return at(s, y1, y2, y0, y3);
+    return at(s, y1, y2, 1, 0);
   }
 
   // src/dev/knobs.js
@@ -1072,8 +1068,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ["witness", "Witness (death replays)"],
     ["level", "Level layout (floor 1)"],
     ["level2", "Level 2: layout & look"],
-    ["l2dark", "Level 2: dark zones"],
-    ["l2boom", "Level 2: destruction"],
     ["arch", "Arched vines"],
     ["sway", "Vines & webs: sway"],
     ["fire", "Fire"],
@@ -1308,22 +1302,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "elFxAlpha", g: "elitefx", label: "Opacity over life (ramp)", type: "ramp" }
   );
   var L2_KNOBS = rangeKnobs("level2", [
-    ["l2Rooms", "Rooms (how many it tries to fit)", 4, 120, 1, 70, 80],
-    ["l2Big", "Large rooms: share (0-1)", 0, 1, 0.05, 0.3, 0.3],
-    ["l2SmallW", "Small rooms: width (px)", 20, 140, 2, 48, 80],
-    ["l2SmallH", "Small rooms: height (px)", 18, 90, 2, 32, 48],
-    ["l2BigW", "Large rooms: width (px)", 50, 400, 2, 110, 200],
-    ["l2BigH", "Large rooms: height (px)", 30, 200, 2, 60, 108],
-    ["l2Gap", "Rock between rooms, at least (px)", 4, 80, 1, 12, 16],
-    ["l2Hall", "Galleries (level corridors): height (px)", 13, 40, 1, 16, 20],
-    ["l2Shaft", "Shafts (upright corridors): width (px)", 10, 40, 2, 14, 18],
-    ["l2Ledge", "Shafts: a ledge every (px)", 10, 200, 2, 28, 36],
-    ["l2Loops", "Extra links (loops, 0-1)", 0, 1, 0.05, 0.35, 0.35],
-    ["l2Course", "Cut stone: course height (px)", 3, 12, 1, 6, 6],
-    ["l2Block", "Cut stone: block length (px)", 4, 40, 1, 14, 14],
-    ["l2Mason", "Cut stone: how deep into the rock (px)", 0, 30, 1, 6, 6],
-    ["l2Furn", "Room kits: furniture amount (×)", 0, 3, 0.05, 1, 1],
-    ["l2Bones", "Room kits: skeletal remains (×)", 0, 3, 0.05, 1, 1]
+    ["l2Scale", "Cave feature size (×)", 0.3, 3, 0.05, 1, 1],
+    ["l2Open", "Vast areas: threshold (lower = more of them)", 0.1, 0.8, 0.01, 0.42, 0.42],
+    ["l2Pocket", "Open pockets: how much (0-1)", 0, 0.8, 0.01, 0.34, 0.34],
+    ["l2PocketOpen", "Open pockets: extra in vast areas", 0, 0.6, 0.01, 0.24, 0.24],
+    ["l2Tunnel", "Noise tunnels: width", 0, 0.08, 2e-3, 0.018, 0.018],
+    ["l2Hops", "Main route: chambers along it", 4, 30, 1, 12, 12],
+    ["l2RouteW", "Main route: width (×, 1 = as tight as it goes)", 1, 2.5, 0.05, 1, 1],
+    ["l2Blob", "Chambers: size (×)", 0, 3, 0.05, 1, 1],
+    ["l2Worms", "Side tunnels and dead ends", 0, 150, 1, 48, 48],
+    ["l2WormLen", "Side tunnels: length (×)", 0.2, 4, 0.05, 1, 1],
+    ["l2WormW", "Side tunnels: width (×)", 0.5, 2.5, 0.05, 1, 1],
+    ["l2Smooth", "Smoothing passes (rounder rock)", 0, 8, 1, 4, 4],
+    ["l2Ledges", "Built ledges off the walls", 0, 400, 1, 120, 120],
+    ["l2Frames", "Old brick frames in the rock", 0, 120, 1, 36, 36],
+    ["l2Floats", "Floating platforms", 0, 150, 1, 40, 40]
   ]);
   var L2_LOOK = [
     ["l2Bg", "Background (far)", "#0c0d11"],
@@ -1343,70 +1336,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     DEV_META.push({ k, g: "level2", label: "Colour: " + label, type: "color" });
   }
   DEV_DEFAULTS.l2Decor = 1;
-  DEV_META.push({ k: "l2Decor", g: "level2", label: "Decoration amount (× the room kits, all of it; 0 = bare tomb)", min: 0, max: 4, step: 0.05 });
-  function curveKnobs(g, p, label, lo, hi, def) {
-    const rows = [
-      ["0", "start y", def.y0, lo, hi],
-      ["C1x", "point 1 x", def.x1, 0, 1],
-      ["C1y", "point 1 y", def.y1, lo, hi],
-      ["C2x", "point 2 x", def.x2, 0, 1],
-      ["C2y", "point 2 y", def.y2, lo, hi],
-      ["1", "end y", def.y3, lo, hi]
-    ];
-    for (const [s, what, v, min, max] of rows) {
-      DEV_DEFAULTS[p + s] = v;
-      DEV_META.push({ k: p + s, g, label: label + ": " + what, min, max, step: 0.01, type: "curve" });
-    }
-    CURVES.push({ g, p, label, lo, hi });
-  }
-  var CURVES = [];
-  var kcurve = (p) => ({ y0: DEV[p + "0"], x1: DEV[p + "C1x"], y1: DEV[p + "C1y"], x2: DEV[p + "C2x"], y2: DEV[p + "C2y"], y3: DEV[p + "1"] });
-  DEV_DEFAULTS.l2bMaxDist = 200;
-  DEV_DEFAULTS.l2bCount = 60;
-  DEV_DEFAULTS.l2bFire = 30;
-  DEV_DEFAULTS.l2bJitter = 0;
-  DEV_DEFAULTS.l2bClear = 4;
-  DEV_META.push(
-    { k: "l2bMaxDist", g: "l2boom", label: "Reach: most distance from a dark zone (px)", min: 1, max: 1600, step: 5 },
-    { k: "l2bCount", g: "l2boom", label: "Number of explosions", min: 0, max: 2e3, step: 1 },
-    { k: "l2bFire", g: "l2boom", label: "Explosions that cause fire (%)", min: 0, max: 100, step: 1 },
-    { k: "l2bJitter", g: "l2boom", label: "Extra position randomness (± px)", min: 0, max: 100, step: 1 },
-    { k: "l2bClear", g: "l2boom", label: "Clearance from terrain (px)", min: 0, max: 60, step: 1 }
-  );
-  var L2B_KNOBS = rangeKnobs("l2boom", [
-    ["l2bSize", "Explosion size (px radius)", 1, 120, 1, 6, 18]
-  ]);
-  curveKnobs("l2boom", "l2bDen", "Destruction amount (Y) by distance from a dark zone (X)", 0, 1, { y0: 1, x1: 0.25, y1: 1, x2: 0.5, y2: 0, y3: 0 });
-  curveKnobs("l2boom", "l2bScale", "Size × (Y, 0-2) by distance from a dark zone (X)", 0, 2, { y0: 1.6, x1: 0.33, y1: 1.3, x2: 0.66, y2: 0.8, y3: 0.5 });
-  var L2D_KNOBS = rangeKnobs("l2dark", [
-    ["l2dCount", "Dark zones on the floor", 0, 8, 1, 2, 3],
-    ["l2dSize", "Dark zone size (radius, px)", 20, 160, 1, 60, 88],
-    ["l2dOpen", "Share of a zone that ends up open (small alien tunnels fill it to this)", 0, 0.9, 0.01, 0.42, 0.5]
-  ]);
-  DEV_DEFAULTS.l2dRough = 0.6;
-  DEV_DEFAULTS.l2dFringe = 30;
-  DEV_META.push(
-    { k: "l2dRough", g: "l2dark", label: "Rough cave walls inside (0 = smooth)", min: 0, max: 2, step: 0.05 },
-    { k: "l2dFringe", g: "l2dark", label: "Ragged fringe round a zone: width (px)", min: 0, max: 120, step: 1 }
-  );
-  DEV_DEFAULTS.l2dSpace = 120;
-  DEV_DEFAULTS.l2dShop = 140;
-  DEV_DEFAULTS.l2dTop = 120;
-  DEV_DEFAULTS.l2dSilk = 1;
-  DEV_DEFAULTS.l2dDark = 0.94;
-  DEV_DEFAULTS.l2dEdge = 1.2;
-  DEV_DEFAULTS.l2dHolo = 0.4;
-  DEV_DEFAULTS.l2dBack = 0.3;
-  DEV_META.push(
-    { k: "l2dSpace", g: "l2dark", label: "Zones apart, at least (px, plus half their sizes)", min: 0, max: 800, step: 5 },
-    { k: "l2dShop", g: "l2dark", label: "Kept away from the shop (px above its roof)", min: 0, max: 600, step: 5 },
-    { k: "l2dTop", g: "l2dark", label: "Kept away from the exits (px from the top)", min: 0, max: 600, step: 5 },
-    { k: "l2dSilk", g: "l2dark", label: "Silk: how thick (×)", min: 0, max: 4, step: 0.05 },
-    { k: "l2dDark", g: "l2dark", label: "Darkness (0 = none, 1 = pitch black)", min: 0, max: 1, step: 0.01 },
-    { k: "l2dEdge", g: "l2dark", label: "Edge softness (fog cells of blur)", min: 0, max: 6, step: 0.1 },
-    { k: "l2dHolo", g: "l2dark", label: "Hologram through the silk (0 = hidden, diffused)", min: 0, max: 1, step: 0.01 },
-    { k: "l2dBack", g: "l2dark", label: "Silk backlight (how much of it shows in the dark)", min: 0, max: 1, step: 0.01 }
-  );
+  DEV_META.push({ k: "l2Decor", g: "level2", label: "Decoration amount (× beams, carts, soot, lanterns, picks)", min: 0, max: 4, step: 0.05 });
   var ARCH_KNOBS = rangeKnobs("arch", [
     ["arVines", "Arched vine clusters per floor", 0, 40, 0.5, 9, 13],
     ["arCluster", "Arches per cluster", 1, 8, 0.1, 1.5, 3.5],
@@ -4200,83 +4130,83 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       [1, 2.76, 5.4].forEach((m, i) => tone(dest, "sine", f * m, f * m, t, dur / (i + 1), peak / (i + 1), 2e-3));
     }
     const VOICE = {
-      magic(d, t, P2, V2, D2) {
-        tone(d, "triangle", 950 * P2, 380 * P2, t, 0.13 * D2, 0.5 * V2);
-        tone(d, "square", 475 * P2, 190 * P2, t, 0.09 * D2, 0.1 * V2);
-        hiss(d, t, 0.07 * D2, 0.25 * V2, "bandpass", 2600 * P2, 1200 * P2, 1.2);
+      magic(d, t, P2, V2, D) {
+        tone(d, "triangle", 950 * P2, 380 * P2, t, 0.13 * D, 0.5 * V2);
+        tone(d, "square", 475 * P2, 190 * P2, t, 0.09 * D, 0.1 * V2);
+        hiss(d, t, 0.07 * D, 0.25 * V2, "bandpass", 2600 * P2, 1200 * P2, 1.2);
       },
-      pierce(d, t, P2, V2, D2) {
-        tone(d, "sawtooth", 1500 * P2, 500 * P2, t, 0.1 * D2, 0.22 * V2);
-        hiss(d, t, 0.15 * D2, 0.35 * V2, "highpass", 5e3, 2500, 0.7);
+      pierce(d, t, P2, V2, D) {
+        tone(d, "sawtooth", 1500 * P2, 500 * P2, t, 0.1 * D, 0.22 * V2);
+        hiss(d, t, 0.15 * D, 0.35 * V2, "highpass", 5e3, 2500, 0.7);
         tone(d, "sine", 2400 * P2, 2300 * P2, t, 0.05, 0.18 * V2);
       },
-      heavy(d, t, P2, V2, D2) {
-        tone(d, "sine", 170 * P2, 50 * P2, t, 0.28 * D2, 0.9 * V2, 3e-3);
-        tone(d, "square", 85 * P2, 42 * P2, t, 0.16 * D2, 0.12 * V2);
-        hiss(d, t, 0.14 * D2, 0.5 * V2, "lowpass", 900, 200, 0.8);
+      heavy(d, t, P2, V2, D) {
+        tone(d, "sine", 170 * P2, 50 * P2, t, 0.28 * D, 0.9 * V2, 3e-3);
+        tone(d, "square", 85 * P2, 42 * P2, t, 0.16 * D, 0.12 * V2);
+        hiss(d, t, 0.14 * D, 0.5 * V2, "lowpass", 900, 200, 0.8);
       },
-      energy(d, t, P2, V2, D2) {
-        tone(d, "sine", 260 * P2, 380 * P2, t, 0.3 * D2, 0.6 * V2, 0.02, [16, 30 * P2]);
-        tone(d, "square", 130 * P2, 190 * P2, t, 0.22 * D2, 0.07 * V2);
-        hiss(d, t, 0.2 * D2, 0.15 * V2, "bandpass", 800 * P2, 1600 * P2, 3);
+      energy(d, t, P2, V2, D) {
+        tone(d, "sine", 260 * P2, 380 * P2, t, 0.3 * D, 0.6 * V2, 0.02, [16, 30 * P2]);
+        tone(d, "square", 130 * P2, 190 * P2, t, 0.22 * D, 0.07 * V2);
+        hiss(d, t, 0.2 * D, 0.15 * V2, "bandpass", 800 * P2, 1600 * P2, 3);
       },
-      scatter(d, t, P2, V2, D2) {
-        hiss(d, t, 0.2 * D2, 0.9 * V2, "lowpass", 3e3, 500, 0.8);
-        tone(d, "square", 150 * P2, 55 * P2, t, 0.12 * D2, 0.22 * V2);
+      scatter(d, t, P2, V2, D) {
+        hiss(d, t, 0.2 * D, 0.9 * V2, "lowpass", 3e3, 500, 0.8);
+        tone(d, "square", 150 * P2, 55 * P2, t, 0.12 * D, 0.22 * V2);
         hiss(d, t, 0.05, 0.35 * V2, "highpass", 4e3, 4e3, 0.7);
       },
-      bubble(d, t, P2, V2, D2) {
-        tone(d, "sine", 320 * P2, 1e3 * P2, t, 0.09 * D2, 0.55 * V2, 4e-3);
-        tone(d, "sine", 480 * P2, 1400 * P2, t + 0.05, 0.07 * D2, 0.3 * V2, 4e-3);
+      bubble(d, t, P2, V2, D) {
+        tone(d, "sine", 320 * P2, 1e3 * P2, t, 0.09 * D, 0.55 * V2, 4e-3);
+        tone(d, "sine", 480 * P2, 1400 * P2, t + 0.05, 0.07 * D, 0.3 * V2, 4e-3);
       },
-      saw(d, t, P2, V2, D2) {
-        tone(d, "square", 1900 * P2, 1500 * P2, t, 0.16 * D2, 0.1 * V2);
-        tone(d, "square", 2470 * P2, 2e3 * P2, t, 0.16 * D2, 0.08 * V2);
-        hiss(d, t, 0.18 * D2, 0.45 * V2, "bandpass", 6e3, 3500, 4);
+      saw(d, t, P2, V2, D) {
+        tone(d, "square", 1900 * P2, 1500 * P2, t, 0.16 * D, 0.1 * V2);
+        tone(d, "square", 2470 * P2, 2e3 * P2, t, 0.16 * D, 0.08 * V2);
+        hiss(d, t, 0.18 * D, 0.45 * V2, "bandpass", 6e3, 3500, 4);
         hiss(d, t, 0.1, 0.3 * V2, "lowpass", 700, 300, 1, true);
       },
-      lob(d, t, P2, V2, D2) {
-        tone(d, "sine", 240 * P2, 85 * P2, t, 0.16 * D2, 0.8 * V2, 3e-3);
+      lob(d, t, P2, V2, D) {
+        tone(d, "sine", 240 * P2, 85 * P2, t, 0.16 * D, 0.8 * V2, 3e-3);
         hiss(d, t, 0.1, 0.35 * V2, "lowpass", 1400, 300);
-        tone(d, "triangle", 120 * P2, 60 * P2, t, 0.2 * D2, 0.22 * V2);
+        tone(d, "triangle", 120 * P2, 60 * P2, t, 0.2 * D, 0.22 * V2);
       },
-      fire(d, t, P2, V2, D2) {
-        hiss(d, t, 0.38 * D2, 0.7 * V2, "bandpass", 500 * P2, 2400 * P2, 1.4, false, 0.04);
-        hiss(d, t, 0.3 * D2, 0.7 * V2, "bandpass", 3e3, 2e3, 1, true);
-        tone(d, "sine", 110 * P2, 60 * P2, t, 0.3 * D2, 0.35 * V2, 0.02);
+      fire(d, t, P2, V2, D) {
+        hiss(d, t, 0.38 * D, 0.7 * V2, "bandpass", 500 * P2, 2400 * P2, 1.4, false, 0.04);
+        hiss(d, t, 0.3 * D, 0.7 * V2, "bandpass", 3e3, 2e3, 1, true);
+        tone(d, "sine", 110 * P2, 60 * P2, t, 0.3 * D, 0.35 * V2, 0.02);
       },
-      thunder(d, t, P2, V2, D2) {
-        hiss(d, t, 0.28 * D2, 1 * V2, "highpass", 1400, 900, 0.7, true);
-        zap(d, t, 0.14 * D2, 0.14 * V2, 2600 * P2, 200 * P2);
-        tone(d, "sine", 70, 40, t, 0.3 * D2, 0.6 * V2, 3e-3);
+      thunder(d, t, P2, V2, D) {
+        hiss(d, t, 0.28 * D, 1 * V2, "highpass", 1400, 900, 0.7, true);
+        zap(d, t, 0.14 * D, 0.14 * V2, 2600 * P2, 200 * P2);
+        tone(d, "sine", 70, 40, t, 0.3 * D, 0.6 * V2, 3e-3);
       },
       // Black Hole: a deep falling sub, two low saws beating against each other, a slow
       // inward rush of air and a spit of crackle — and it keeps it up while it lives (loop)
-      void(d, t, P2, V2, D2) {
-        tone(d, "sine", 80, 30, t, 1 * D2, 0.9 * V2, 0.03);
+      void(d, t, P2, V2, D) {
+        tone(d, "sine", 80, 30, t, 1 * D, 0.9 * V2, 0.03);
         const f = lp(d, 320);
-        tone(f, "sawtooth", 55, 41, t, 0.9 * D2, 0.2 * V2, 0.05);
-        tone(f, "sawtooth", 56.7, 42, t, 0.9 * D2, 0.2 * V2, 0.05);
-        hiss(d, t, 0.9 * D2, 0.6 * V2, "bandpass", 1700, 900, 0.9, true);
+        tone(f, "sawtooth", 55, 41, t, 0.9 * D, 0.2 * V2, 0.05);
+        tone(f, "sawtooth", 56.7, 42, t, 0.9 * D, 0.2 * V2, 0.05);
+        hiss(d, t, 0.9 * D, 0.6 * V2, "bandpass", 1700, 900, 0.9, true);
         hiss(d, t, 0.55, 0.3 * V2, "bandpass", 300, 2400, 2, false, 0.35);
       },
-      dig(d, t, P2, V2, D2) {
-        hiss(d, t, 0.12 * D2, 0.7 * V2, "lowpass", 1200, 300, 1, true);
-        hiss(d, t, 0.08 * D2, 0.4 * V2, "lowpass", 800, 200);
+      dig(d, t, P2, V2, D) {
+        hiss(d, t, 0.12 * D, 0.7 * V2, "lowpass", 1200, 300, 1, true);
+        hiss(d, t, 0.08 * D, 0.4 * V2, "lowpass", 800, 200);
         tone(d, "square", 120 * P2, 70 * P2, t, 0.08, 0.15 * V2);
       },
-      beam(d, t, P2, V2, D2) {
-        tone(lp(d, 2400), "sawtooth", 650 * P2, 520 * P2, t, 0.22 * D2, 0.3 * V2, 5e-3, [34, 40 * P2]);
-        tone(d, "sine", 1300 * P2, 1100 * P2, t, 0.2 * D2, 0.28 * V2);
-        hiss(d, t, 0.18 * D2, 0.2 * V2, "bandpass", 3e3 * P2, 1200 * P2, 5);
+      beam(d, t, P2, V2, D) {
+        tone(lp(d, 2400), "sawtooth", 650 * P2, 520 * P2, t, 0.22 * D, 0.3 * V2, 5e-3, [34, 40 * P2]);
+        tone(d, "sine", 1300 * P2, 1100 * P2, t, 0.2 * D, 0.28 * V2);
+        hiss(d, t, 0.18 * D, 0.2 * V2, "bandpass", 3e3 * P2, 1200 * P2, 5);
       },
-      spore(d, t, P2, V2, D2) {
-        hiss(d, t, 0.18 * D2, 0.45 * V2, "bandpass", 1300 * P2, 700 * P2, 2.5, false, 0.02);
-        hiss(d, t + 0.07, 0.14 * D2, 0.3 * V2, "bandpass", 1700 * P2, 900 * P2, 2.5, false, 0.02);
+      spore(d, t, P2, V2, D) {
+        hiss(d, t, 0.18 * D, 0.45 * V2, "bandpass", 1300 * P2, 700 * P2, 2.5, false, 0.02);
+        hiss(d, t + 0.07, 0.14 * D, 0.3 * V2, "bandpass", 1700 * P2, 900 * P2, 2.5, false, 0.02);
         tone(d, "sine", 520 * P2, 720 * P2, t, 0.12, 0.12 * V2);
       },
-      crystal(d, t, P2, V2, D2) {
-        bell(d, 1250 * P2, t, 0.7 * D2, 0.35 * V2);
+      crystal(d, t, P2, V2, D) {
+        bell(d, 1250 * P2, t, 0.7 * D, 0.35 * V2);
         hiss(d, t, 0.04, 0.2 * V2, "highpass", 7e3, 7e3);
       },
       aura(d, t, P2, V2) {
@@ -4290,12 +4220,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (r.v === "none") return;
       const d = out(x, y, r.v === "void" ? 1.3 : 0.6, x == null, null, knob("vSpell"));
       if (!d) return;
-      const t0 = ac.currentTime + (delay || 0), P2 = r.pitch * rnd2(0.95, 1.05), V2 = r.vol * 0.55, D2 = r.dur;
-      for (let k = 0; k < r.n; k++) VOICE[r.v](d, t0 + k * 0.018, P2 * (1 + k * 0.04), V2 / (1 + k * 0.6), D2);
-      if (r.wob) tone(d, "sine", 700 * P2, 500 * P2, t0, 0.22 * D2, 0.13 * V2, 0.01, [9, 60]);
+      const t0 = ac.currentTime + (delay || 0), P2 = r.pitch * rnd2(0.95, 1.05), V2 = r.vol * 0.55, D = r.dur;
+      for (let k = 0; k < r.n; k++) VOICE[r.v](d, t0 + k * 0.018, P2 * (1 + k * 0.04), V2 / (1 + k * 0.6), D);
+      if (r.wob) tone(d, "sine", 700 * P2, 500 * P2, t0, 0.22 * D, 0.13 * V2, 0.01, [9, 60]);
       if (r.grit) hiss(d, t0, 0.1, 0.3 * V2, "lowpass", 900, 250, 1, true);
       if (r.bright) tone(d, "square", 3200, 3e3, t0, 0.03, 0.1 * V2);
-      if (r.boing) tone(d, "triangle", 500 * P2, 1100 * P2, t0 + 0.08 * D2, 0.07, 0.16 * V2);
+      if (r.boing) tone(d, "triangle", 500 * P2, 1100 * P2, t0 + 0.08 * D, 0.07, 0.16 * V2);
     }
     function cast2(shots, x, y) {
       const seen = {};
@@ -5766,13 +5696,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return null;
   }
-  function ratSpread(e, others, D2) {
+  function ratSpread(e, others, D) {
     let x = 0, y = 0;
     for (const o of others) {
       if (o === e) continue;
       const dx = e.x - o.x, dy = e.y - o.y, d = Math.hypot(dx, dy);
-      if (d >= D2) continue;
-      const f = 1 - d / D2;
+      if (d >= D) continue;
+      const f = 1 - d / D;
       if (d > 0.01) {
         x += dx / d * f;
         y += dy / d * f;
@@ -7086,13 +7016,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       // the shop's plinths
       zone: null,
       // built-up vs natural, per terrain pixel (floor 1)
-      tomb: null,
-      dark: [],
-      darkMask: null,
-      webbing: null,
-      darkShade: null,
-      webDirty: [],
-      // floor 2's rooms and corridors (world/tomb.js)
       rooms: [],
       // the perk room and the heart room
       sconces: [],
@@ -7877,11 +7800,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/world/sway.js
   var tent = (u, pu) => u <= pu ? pu > 0 ? u / pu : 0 : pu < 1 ? (1 - u) / (1 - pu) : 0;
-  function bendStep(o, tx2, ty, K, D2, max, dt) {
+  function bendStep(o, tx2, ty, K, D, max, dt) {
     let x = o.wx || 0, y = o.wy || 0, vx = o.wvx || 0, vy = o.wvy || 0;
     dt = Math.min(dt, 1 / 30);
-    vx += (-K * (x - tx2) - D2 * vx) * dt;
-    vy += (-K * (y - ty) - D2 * vy) * dt;
+    vx += (-K * (x - tx2) - D * vx) * dt;
+    vy += (-K * (y - ty) - D * vy) * dt;
     x += vx * dt;
     y += vy * dt;
     const m = Math.hypot(x, y);
@@ -7908,10 +7831,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     o.wvy = (o.wvy || 0) + (vy * share - (o.wvy || 0)) * k;
   }
   var bendAwake = (o) => !!(o.wx || o.wy || o.wvx || o.wvy);
-  function swingStep(o, L3, g, D2, max, dt) {
+  function swingStep(o, L3, g, D, max, dt) {
     let a = o.sw || 0, v = o.swv || 0;
     dt = Math.min(dt, 1 / 30);
-    v += (-(g / Math.max(2, L3)) * Math.sin(a) - D2 * v) * dt;
+    v += (-(g / Math.max(2, L3)) * Math.sin(a) - D * v) * dt;
     a += v * dt;
     if (a > max) {
       a = max;
@@ -7956,7 +7879,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const a = pr.sw || 0, j = pr.sj == null ? (pr.len || 0) * 0.5 : pr.sj;
     return { x: hangRootX(pr) + Math.sin(a) * j, y: hangRootY(pr) + Math.cos(a) * j };
   }
-  function tailStep(pr, n, g, D2, dt) {
+  function tailStep(pr, n, g, D, dt) {
     n = Math.max(1, Math.round(n));
     dt = Math.min(dt, 1 / 30);
     const J = vineJoint(pr), j = pr.sj == null ? (pr.len || 0) * 0.5 : pr.sj, seg = Math.max(0.5, ((pr.len || 0) - j) / n);
@@ -7966,7 +7889,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let i = 1; i <= n; i++) p.push(J.x, J.y + seg * i);
       q = p.slice();
     }
-    const keep2 = Math.max(0, 1 - D2 * dt);
+    const keep2 = Math.max(0, 1 - D * dt);
     let moving = 0;
     for (let i = 0; i < p.length; i += 2) {
       const vx = (p[i] - q[i]) * keep2, vy = (p[i + 1] - q[i + 1]) * keep2;
@@ -9248,8 +9171,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         let clear = true;
         for (let k = 2; k <= 22 && clear; k += 2) if (!open(sx + nx * k, sy + ny * k)) clear = false;
         if (!clear) continue;
-        const ang = Math.atan2(-ny, -nx) + (rnd2() - 0.5) * 1.3, D2 = 20 + rnd2() * 14, rr2 = 5 + Math.floor(rnd2() * 3);
-        const cx = Math.round(sx + Math.cos(ang) * D2), cy = Math.round(sy + Math.sin(ang) * D2);
+        const ang = Math.atan2(-ny, -nx) + (rnd2() - 0.5) * 1.3, D = 20 + rnd2() * 14, rr2 = 5 + Math.floor(rnd2() * 3);
+        const cx = Math.round(sx + Math.cos(ang) * D), cy = Math.round(sy + Math.sin(ang) * D);
         if (cy > SHOP_TOP - SHOP_ROOF - 14 || !allRock(cx, cy, rr2 + 5)) continue;
         if (keep2.some((k) => Math.hypot(k.x - cx, k.y - cy) < k.r + rr2 || Math.hypot(k.x - sx, k.y - sy) < k.r)) continue;
         if (nests.some((n) => Math.hypot(n.x - cx, n.y - cy) < 50 || Math.hypot(n.mouth.x - sx, n.mouth.y - sy) < 40)) continue;
@@ -9400,1218 +9323,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
   }
 
-  // src/world/dark.js
-  function darkZones(mat, tomb, seed, shopExit) {
-    let rs = (Math.imul(seed | 0, 22695477) + 777 >>> 0) % 2147483646 + 1;
-    const R = () => (rs = rs * 16807 % 2147483647) / 2147483647;
-    for (let i = 0; i < 9; i++) R();
-    const mask = new Uint8Array(CW * CH), web = new Uint8Array(CW * CH);
-    const zones = [];
-    const want = Math.round(kr("l2dCount", R)), space = DEV.l2dSpace, shopKeep = DEV.l2dShop, topKeep = DEV.l2dTop;
-    if (want <= 0) return { zones, mask, web, shade: new Uint8Array(0) };
-    const rooms = tomb.rooms;
-    const start2 = rooms.findIndex((r) => r.type === "vestibule");
-    const prev = new Int32Array(rooms.length).fill(-2);
-    const q = [start2];
-    prev[start2] = -1;
-    let end = -1;
-    while (q.length && end < 0) {
-      const i = q.shift();
-      if (rooms[i].type === "gate") {
-        end = i;
-        break;
-      }
-      for (const j of rooms[i].links) if (prev[j] === -2) {
-        prev[j] = i;
-        q.push(j);
-      }
-    }
-    const route = /* @__PURE__ */ new Set();
-    for (let i = end; i >= 0; i = prev[i]) route.add(i);
-    const keep2 = [];
-    for (const r of rooms) if (route.has(r.id) || r.type === "gate" || r.type === "vestibule" || r.id === tomb.prize) keep2.push({ x: r.x, y: r.y, w: r.w, h: r.h });
-    for (const c of tomb.corridors) if (route.has(c.a) && route.has(c.b)) keep2.push(c);
-    keep2.push({ x: 0, y: SHOP_TOP - SHOP_ROOF - shopKeep, w: CW, h: CH });
-    keep2.push({ x: 0, y: 0, w: CW, h: topKeep });
-    keep2.push({ x: shopExit - 40, y: SHOP_TOP - SHOP_ROOF - 120, w: 80, h: 120 });
-    const hits = (x, y, rad) => keep2.some((b) => {
-      const dx = Math.max(b.x - x, 0, x - b.x - b.w), dy = Math.max(b.y - y, 0, y - b.y - b.h);
-      return dx * dx + dy * dy < rad * rad;
-    });
-    const cand = rooms.filter((r) => !keep2.some((b) => b.x === r.x && b.y === r.y && b.w === r.w)).map((r) => ({ r, k: R() })).sort((a, b) => a.k - b.k).map((o) => o.r);
-    const routeOk = () => {
-      const m2 = Uint8Array.from(mat);
-      for (let i = 0; i < m2.length; i++) if (mask[i]) m2[i] = ROCK;
-      return boxReach(m2, 17, SHOP_TOP + 36).top;
-    };
-    const rougher = [];
-    for (const room of cand) {
-      if (zones.length >= want) break;
-      const rad = Math.round(kr("l2dSize", R)), cx = Math.round(room.cx), cy = Math.round(room.y + room.h / 2);
-      if (cx - rad * 1.35 < 6 || cx + rad * 1.35 > CW - 6 || cy - rad * 1.35 < topKeep) continue;
-      if (hits(cx, cy, rad * 1.35)) continue;
-      if (zones.some((z) => Math.hypot(z.cx - cx, z.cy - cy) < space + (z.r + rad) * 0.5)) continue;
-      const p1 = R() * 6.28, p2 = R() * 6.28, a1 = 0.18 + R() * 0.12, a2 = 0.08 + R() * 0.1;
-      const spokes = Array.from({ length: 56 }, () => (R() - 0.5) * 2);
-      const rag = (a) => {
-        const f = (a / 6.2832 + 1) % 1 * 56, k = Math.floor(f), t = f - k, u = spokes[k % 56], v = spokes[(k + 1) % 56];
-        return u + (v - u) * t * t * (3 - 2 * t);
-      };
-      const edge = (a) => rad * (1 + a1 * Math.sin(3 * a + p1) + a2 * Math.sin(5 * a + p2) + 0.16 * rag(a));
-      const id = zones.length + 1, x0 = Math.max(3, cx - Math.ceil(rad * 1.4)), x1 = Math.min(CW - 4, cx + Math.ceil(rad * 1.4));
-      const y0 = Math.max(3, cy - Math.ceil(rad * 1.4)), y1 = Math.min(SHOP_TOP - SHOP_ROOF - 4, cy + Math.ceil(rad * 1.4));
-      const snap = mat.slice(), msnap = mask.slice();
-      let n = 0;
-      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-        const i = y * CW + x;
-        if (mask[i] || mat[i] === BED) continue;
-        const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
-        if (Math.hypot(dx, dy) < edge(Math.atan2(dy, dx))) {
-          mask[i] = id;
-          n++;
-        }
-      }
-      const ring = [];
-      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-        const i = y * CW + x;
-        if (mask[i] !== id) continue;
-        if (!mask[i - 1] && !mat[i - 1] || !mask[i + 1] && !mat[i + 1] || !mask[i - CW] && !mat[i - CW] || !mask[i + CW] && !mat[i + CW])
-          ring.push({ x, y, a: Math.atan2(y + 0.5 - cy, x + 0.5 - cx) });
-      }
-      const entries = [], mouths = [];
-      const on = new Map(ring.map((p, k) => [p.y * CW + p.x, k])), done = new Uint8Array(ring.length);
-      for (let k = 0; k < ring.length; k++) {
-        if (done[k]) continue;
-        const comp = [], st = [k];
-        done[k] = 1;
-        while (st.length) {
-          const p = ring[st.pop()];
-          comp.push(p);
-          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-            const j = on.get((p.y + dy) * CW + p.x + dx);
-            if (j !== void 0 && !done[j]) {
-              done[j] = 1;
-              st.push(j);
-            }
-          }
-        }
-        comp.sort((p, q2) => p.a - q2.a);
-        for (let i = Math.floor(Math.min(comp.length, 24) / 2); i < comp.length; i += 24) entries.push(comp[i]);
-        for (let i = 0; i < comp.length; i += 3) mouths.push(comp[i]);
-      }
-      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-        const i = y * CW + x;
-        if (mask[i] === id) mat[i] = ROCK;
-      }
-      const digN = (ex, ey, r) => {
-        let c = 0;
-        for (let y = Math.floor(ey - r); y <= Math.ceil(ey + r); y++) for (let x = Math.floor(ex - r); x <= Math.ceil(ex + r); x++) {
-          const i = y * CW + x;
-          if (x > 0 && y > 0 && x < CW && y < CH && mask[i] === id && mat[i] && (x + 0.5 - ex) ** 2 + (y + 0.5 - ey) ** 2 <= r * r) {
-            mat[i] = 0;
-            c++;
-          }
-        }
-        return c;
-      };
-      const dig2 = (ex, ey, r) => {
-        digN(ex, ey, r);
-      };
-      const crx = Math.max(15, Math.round(rad * 0.38)), cry = Math.max(12, Math.round(rad * 0.26));
-      for (let y = cy - cry - 3; y <= cy + cry; y++) for (let x = cx - crx - 3; x <= cx + crx + 3; x++) {
-        const dx = (x + 0.5 - cx) / crx, dy = (y + 0.5 - cy) / cry, w = 1 + 0.12 * Math.sin(Math.atan2(dy, dx) * 4 + p1);
-        const i = y * CW + x;
-        if (mask[i] === id && dx * dx + Math.min(0, dy) ** 2 <= w * w && y < cy + cry) mat[i] = 0;
-      }
-      const worm = (sx, sy, tx2, ty, r, steps) => {
-        let x = sx, y = sy, ang = Math.atan2(ty - y, tx2 - x);
-        for (let s = 0; s < steps; s++) {
-          dig2(x, y, r);
-          if (Math.hypot(tx2 - x, ty - y) < 2) break;
-          let d = Math.atan2(ty - y, tx2 - x) - ang;
-          d -= Math.round(d / 6.2832) * 6.2832;
-          ang += d * 0.25 + (R() - 0.5) * 0.8;
-          if (mask[Math.floor(y + Math.sin(ang) * 1.5) * CW + Math.floor(x + Math.cos(ang) * 1.5)] !== id) ang = Math.atan2(ty - y, tx2 - x);
-          x += Math.cos(ang) * 1.5;
-          y += Math.sin(ang) * 1.5;
-        }
-      };
-      for (const p of mouths) dig2(p.x + 0.5, p.y + 0.5, 6);
-      for (const e of entries) worm(e.x, e.y, cx, cy, 6.5 + R() * 1.5, 900);
-      if (!entries.length) {
-        let best = null, bd = Infinity;
-        for (let y = Math.max(3, y0 - 40); y <= Math.min(CH - 4, y1 + 40); y++) for (let x = Math.max(3, x0 - 40); x <= Math.min(CW - 4, x1 + 40); x++) {
-          const i = y * CW + x;
-          if (mat[i] || mask[i]) continue;
-          const d = (x - cx) ** 2 + (y - cy) ** 2;
-          if (d < bd) {
-            bd = d;
-            best = { x, y };
-          }
-        }
-        if (best) {
-          for (let k = 0; k <= 1; k += 1 / Math.max(1, Math.sqrt(bd))) {
-            const x = cx + (best.x - cx) * k, y = cy + (best.y - cy) * k;
-            for (let yy = Math.floor(y - 7); yy <= y + 7; yy++) for (let xx = Math.floor(x - 7); xx <= x + 7; xx++) if ((xx - x) ** 2 + (yy - y) ** 2 <= 49 && mat[yy * CW + xx] !== BED) mat[yy * CW + xx] = 0;
-          }
-        }
-      }
-      const pockets = 2 + Math.floor(R() * 3);
-      for (let k = 0; k < pockets; k++) {
-        const a = R() * 6.28, d = rad * (0.45 + R() * 0.35);
-        worm(cx, cy, cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.8, 5 + R() * 2.5, 400);
-      }
-      let open = 0, tot = 0;
-      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-        const i = y * CW + x;
-        if (mask[i] === id) {
-          tot++;
-          if (!mat[i]) open++;
-        }
-      }
-      const goal = kr("l2dOpen", R) * tot;
-      for (let t = 0; t < 600 && open < goal; t++) {
-        const x = Math.floor(x0 + R() * (x1 - x0)), y = Math.floor(y0 + R() * (y1 - y0)), i = y * CW + x;
-        if (mask[i] !== id || mat[i]) continue;
-        let px = x + 0.5, py = y + 0.5, ang = R() * 6.28;
-        const r = 1.5 + R() * 1.5, len = 15 + Math.floor(R() * 45);
-        for (let st = 0; st < len; st++) {
-          open += digN(px, py, r);
-          ang += (R() - 0.5) * 0.9;
-          const nx = px + Math.cos(ang) * 1.5, ny = py + Math.sin(ang) * 1.5;
-          if (mask[Math.floor(ny) * CW + Math.floor(nx)] !== id) {
-            ang += 2.2;
-            continue;
-          }
-          px = nx;
-          py = ny;
-        }
-      }
-      const rough = Math.max(0, DEV.l2dRough), fx0 = cx - Math.round(crx * 0.8), fx1 = cx + Math.round(crx * 0.8), fl = cy + cry;
-      const flat = (x, y) => x >= fx0 && x <= fx1 && y >= fl - 13 && y <= fl;
-      const changed = [];
-      for (let pass = 0; pass < 2 && rough > 0; pass++) {
-        const src2 = mat.slice();
-        for (let y = y0 + 1; y < y1; y++) for (let x = x0 + 1; x < x1; x++) {
-          const i = y * CW + x;
-          if (mask[i] !== id || flat(x, y)) continue;
-          let nb = 0;
-          for (const j of [i - 1, i + 1, i - CW, i + CW, i - CW - 1, i - CW + 1, i + CW - 1, i + CW + 1]) if (src2[j]) nb++;
-          const v = cellNoise(x >> 1, y >> 1, seed + id * 7 + pass);
-          if (!src2[i] && nb >= 3 && v < 0.22 * rough) {
-            changed.push(i, mat[i]);
-            mat[i] = ROCK;
-          } else if (src2[i] && src2[i] !== BED && nb <= 5 && v > 1 - 0.3 * rough) {
-            changed.push(i, mat[i]);
-            mat[i] = 0;
-          }
-        }
-      }
-      const fromC = boxReach(mat, cx - 3, fl - 12);
-      const linked = (p) => {
-        for (let y = p.y - 18; y <= p.y + 8; y++) for (let x = p.x - 14; x <= p.x + 8; x++) if (x > 0 && y > 0 && x < CW && y < CH && fromC.ok[y * CW + x] === 2 && !mask[y * CW + x]) return true;
-        return false;
-      };
-      for (const e of entries) {
-        const p = { x: Math.round(e.x), y: Math.round(e.y) };
-        if (linked(p)) continue;
-        digN(p.x + 0.5, p.y + 0.5, 11);
-        const len = Math.hypot(cx - p.x, cy - p.y);
-        for (let k = 0; k <= len; k += 1.5) digN(p.x + (cx - p.x) * k / len, p.y + (cy - p.y) * k / len, 9);
-      }
-      if (!routeOk()) {
-        mat.set(snap);
-        mask.set(msnap);
-        continue;
-      }
-      rougher.push({ id, changed });
-      zones.push({
-        id: id - 1,
-        cx,
-        cy,
-        r: rad,
-        x0,
-        y0,
-        x1,
-        y1,
-        room: room.id,
-        cells: n,
-        doors: entries.map((e) => ({ x: Math.round(e.x), y: Math.round(e.y) })),
-        chamber: { x: cx, y: cy, rx: crx, ry: cry, floor: cy + cry }
-      });
-    }
-    if (zones.length) {
-      const reach2 = boxReach(mat, 17, SHOP_TOP + 36);
-      const near = (px, py, r) => {
-        for (let y = py - r; y <= py + r; y++) for (let x = px - r; x <= px + r; x++) if (x > 0 && y > 0 && x < CW && y < CH && reach2.ok[y * CW + x] === 2) return true;
-        return false;
-      };
-      for (const z of zones) {
-        const c = z.chamber;
-        let got = false;
-        for (let x = c.x - c.rx + 3; x < c.x + c.rx - 6 && !got; x++) for (let y = c.floor - 12; y >= c.floor - 16 && !got; y--) if (reach2.ok[y * CW + x] === 2) got = true;
-        if (got && z.doors.every((p) => near(p.x - 3, p.y - 6, 9))) continue;
-        const rb = rougher.find((q2) => q2.id === z.id + 1);
-        if (rb) for (let k = rb.changed.length - 2; k >= 0; k -= 2) mat[rb.changed[k]] = rb.changed[k + 1];
-      }
-    }
-    const dens = Math.max(0, DEV.l2dSilk);
-    for (const z of zones) {
-      const id = z.id + 1;
-      let open = 0;
-      for (let y = z.y0; y <= z.y1; y++) for (let x = z.x0; x <= z.x1; x++) {
-        const i = y * CW + x;
-        if (mask[i] !== id || mat[i]) continue;
-        open++;
-        let near = 9;
-        for (let d = 1; d <= 6 && near === 9; d++) if (mat[i - d] || mat[i + d] || mat[i - d * CW] || mat[i + d * CW]) near = d;
-        const fold = 0.5 + 0.25 * Math.sin(x * 0.21 + y * 0.07 + z.id * 2) + 0.25 * Math.sin(y * 0.17 - x * 0.05 + z.id);
-        const v = 30 + fold * 55 + Math.max(0, 7 - near) * 14 + R() * 8;
-        if (R() < Math.min(1, dens * (0.75 + 0.35 * fold))) web[i] = Math.min(255, Math.round(v));
-      }
-      const strands = Math.round(open * 0.09 * dens), grain = R() * 3.14;
-      for (let k = 0; k < strands; k++) {
-        let x = z.x0 + R() * (z.x1 - z.x0), y = z.y0 + R() * (z.y1 - z.y0);
-        if (mask[Math.floor(y) * CW + Math.floor(x)] !== id) continue;
-        const a = grain + (R() < 0.5 ? 0 : 1.2) + (R() - 0.5) * 0.5, len = 10 + R() * 40, v = 110 + Math.round(R() * 130), sag = (R() - 0.5) * 0.6;
-        for (let s = 0; s < len; s++) {
-          x += Math.cos(a);
-          y += Math.sin(a) + sag * (s / len - 0.5);
-          const i = Math.floor(y) * CW + Math.floor(x);
-          if (i < 0 || i >= CW * CH || mask[i] !== id || mat[i]) break;
-          web[i] = Math.max(web[i], v);
-        }
-      }
-    }
-    const shade = new Uint8Array(CW * CH), B = Math.max(1, DEV.l2dFringe);
-    for (let i = 0; i < CW * CH; i++) if (mask[i]) shade[i] = 255;
-    for (const z of zones) {
-      const id = z.id + 1, ext = Math.ceil(B * 1.7);
-      const bx0 = Math.max(3, z.x0 - ext), bx1 = Math.min(CW - 4, z.x1 + ext), by0 = Math.max(3, z.y0 - ext), by1 = Math.min(SHOP_TOP - SHOP_ROOF - 2, z.y1 + ext);
-      const w = bx1 - bx0 + 1, h3 = by1 - by0 + 1, dist = new Float32Array(w * h3).fill(1e9), q2 = [];
-      for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) if (mask[y * CW + x] === id) {
-        dist[(y - by0) * w + x - bx0] = 0;
-        q2.push((y - by0) * w + x - bx0);
-      }
-      for (let h0 = 0; h0 < q2.length; h0++) {
-        const k = q2[h0], x = k % w, y = k / w | 0, v = dist[k] + 1;
-        if (v > ext) continue;
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-          const nx = x + dx, ny = y + dy;
-          if (nx < 0 || ny < 0 || nx >= w || ny >= h3 || dist[ny * w + nx] <= v) continue;
-          dist[ny * w + nx] = v;
-          q2.push(ny * w + nx);
-        }
-      }
-      for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) {
-        const d = dist[(y - by0) * w + x - bx0], i = y * CW + x;
-        if (!d || d > ext || mask[i]) continue;
-        const n1 = valueNoise(x / 7, y / 7, seed + id * 13), n2 = valueNoise(x / 2.5, y / 2.5, seed + id * 31);
-        let t = 1 - d / B + (n1 - 0.5) * 0.9 + (n2 - 0.5) * 0.35;
-        if (n1 > 0.78 && d < B * 1.6) t = Math.max(t, (n1 - 0.78) * 3.5);
-        if (t > 0) shade[i] = Math.max(shade[i], Math.min(254, Math.round(255 * Math.min(1, t))));
-      }
-      const nT = Math.round(6 + z.r * 0.12);
-      for (let k = 0; k < nT; k++) {
-        const a = R() * 6.28;
-        let x = z.cx + Math.cos(a) * z.r * 0.9, y = z.cy + Math.sin(a) * z.r * 0.9, ang = a;
-        const len = B * (0.8 + R() * 1.2);
-        for (let st = 0; st < len + z.r; st++) {
-          ang += (R() - 0.5) * 0.7;
-          x += Math.cos(ang);
-          y += Math.sin(ang);
-          const xi = Math.floor(x), yi = Math.floor(y);
-          if (xi < 4 || yi < 4 || xi >= CW - 4 || yi >= SHOP_TOP - SHOP_ROOF - 2) break;
-          const i = yi * CW + xi;
-          if (mask[i]) continue;
-          const v = Math.round(230 * (1 - st / (len + z.r)));
-          for (const j of [i, i + 1, i + CW]) shade[j] = Math.max(shade[j], v);
-        }
-      }
-    }
-    for (let y = 4; y < SHOP_TOP - SHOP_ROOF - 8; y++) for (let x = 4; x < CW - 4; x++) {
-      const i = y * CW + x;
-      if (mask[i] || shade[i] < 170 || mat[i] !== ROCK) continue;
-      if (mat[i - 1] && mat[i + 1] && mat[i - CW] && mat[i + CW] || cellNoise(x >> 1, y >> 1, seed + 99) > (shade[i] - 170) / 140) continue;
-      mat[i] = 0;
-    }
-    for (let i = 0; i < CW * CH; i++) {
-      if (mask[i] || !shade[i] || mat[i]) continue;
-      const x = i % CW, y = i / CW | 0, t = shade[i] / 255;
-      if (R() < t * 0.95 * Math.min(1, dens)) web[i] = Math.round(40 + 180 * t * (0.5 + 0.5 * valueNoise(x / 3, y / 3, seed + 7)));
-    }
-    return { zones, mask, web, shade };
-  }
-  function cellNoise(x, y, s) {
-    let v = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 982451653) | 0;
-    v = Math.imul(v ^ v >>> 13, 1274126177);
-    return ((v ^ v >>> 16) >>> 0) / 4294967296;
-  }
-  function valueNoise(x, y, s) {
-    const xi = Math.floor(x), yi = Math.floor(y), u = x - xi, v = y - yi, su = u * u * (3 - 2 * u), sv = v * v * (3 - 2 * v);
-    const a = cellNoise(xi, yi, s), b = cellNoise(xi + 1, yi, s), c = cellNoise(xi, yi + 1, s), d = cellNoise(xi + 1, yi + 1, s);
-    return a + (b - a) * su + (c - a) * sv + (a - b - c + d) * su * sv;
-  }
-  function darkAt(level, wx, wy, cell) {
-    const m = level.darkMask;
-    if (!m) return -1;
-    const x = Math.floor(wx / cell), y = Math.floor(wy / cell);
-    if (x < 0 || y < 0 || x >= CW || y >= CH) return -1;
-    return m[y * CW + x] - 1;
-  }
-  function silkErase(web, cx, cy, r) {
-    if (!web) return null;
-    const x0 = Math.max(0, Math.floor(cx - r)), x1 = Math.min(CW - 1, Math.ceil(cx + r));
-    const y0 = Math.max(0, Math.floor(cy - r)), y1 = Math.min(CH - 1, Math.ceil(cy + r));
-    let hit = false;
-    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-      const i = y * CW + x;
-      if (web[i] && (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= r * r) {
-        web[i] = 0;
-        hit = true;
-      }
-    }
-    return hit ? { x0, y0, x1, y1 } : null;
-  }
-  function silkColour(v) {
-    const t = v / 255;
-    return [150 + 92 * t, 150 + 90 * t, 158 + 86 * t, Math.round(70 + 170 * t)];
-  }
-  function zoneRock(n) {
-    return mix([34, 30, 40], [58, 52, 66], n);
-  }
-
-  // src/world/tomb.js
-  var TOMB_TOP = 34;
-  var TOMB_BOTTOM = SHOP_TOP - SHOP_ROOF - 26;
-  var LOW = SHOP_TOP - SHOP_ROOF - 12;
-  var GATE_W = 72, GATE_H = 28, PAD_KEEP = 14;
-  var TOMB_TYPES = {
-    big: { hall: 3, library: 2, altar: 1, orrery: 1, pillars: 1.5 },
-    small: { shrine: 2, ossuary: 2, dorm: 2, store: 2, altar: 0.8 }
-  };
-  var TOMB_SHAPES = {
-    hall: ["rect", "octagon", "dome", "arch", "ziggurat"],
-    library: ["rect", "dome"],
-    altar: ["arch", "ziggurat"],
-    orrery: ["round"],
-    pillars: ["rect"],
-    shrine: ["arch", "dome", "octagon"],
-    ossuary: ["rect", "arch", "ziggurat"],
-    dorm: ["rect", "dome"],
-    store: ["rect", "octagon"],
-    gate: ["dome"],
-    vestibule: ["arch"]
-  };
-  function pickW(w, rnd2) {
-    let t = 0;
-    for (const k in w) t += w[k];
-    let u = rnd2() * t;
-    for (const k in w) {
-      u -= w[k];
-      if (u < 0) return k;
-    }
-    return Object.keys(w)[0];
-  }
-  function roomOpen(r, x, y) {
-    if (x < r.x || x >= r.x + r.w || y < r.y || y >= r.floor) return false;
-    const dx = Math.abs(x + 0.5 - r.cx), up = r.floor - (y + 0.5), hw = r.w / 2, h3 = r.h;
-    if (r.shape === "ziggurat") {
-      const n = h3 >= 48 ? 4 : 3, k = Math.min(n - 1, Math.floor(up / (h3 / n)));
-      return dx <= hw * (1 - 0.5 * k / (n - 1));
-    }
-    if (r.shape === "octagon") return hw - dx + Math.min(up, h3 - up) >= Math.min(hw, h3 / 2) * 0.55;
-    if (r.shape === "dome") {
-      const dh = Math.min(hw, h3 * 0.6), s = h3 - dh;
-      return up <= s || (dx / hw) ** 2 + ((up - s) / dh) ** 2 <= 1;
-    }
-    if (r.shape === "arch") {
-      const R = hw * 1.6, full2 = Math.sqrt(R * R - (R - hw) ** 2), ah = Math.min(full2, h3 * 0.65), s = h3 - ah, k = ah / full2;
-      return up <= s || (dx + R - hw) ** 2 + ((up - s) / k) ** 2 <= R * R;
-    }
-    if (r.shape === "round") {
-      const rad = Math.min(hw, h3 / 2);
-      return dx * dx + (up - h3 * 0.42) ** 2 <= rad * rad;
-    }
-    return true;
-  }
-  function roomPillars(r) {
-    if (r.type !== "pillars") return [];
-    const out = [], s = 18, pw = 4, gap = 15;
-    for (let k = 1; r.cx + k * s + pw / 2 < r.x + r.w - 10; k++) {
-      const y = k % 2 ? r.y : r.y + gap, h3 = r.h - gap;
-      for (const sx of [-1, 1]) out.push({ x: Math.round(r.cx + sx * k * s - pw / 2), y, w: pw, h: h3 });
-    }
-    return out;
-  }
-  function tombPlan(seed, shopExit, exitX) {
-    let rs = (Math.imul(seed | 0, 69069) + 12345 >>> 0) % 2147483646 + 1;
-    const rnd2 = () => (rs = rs * 16807 % 2147483647) / 2147483647;
-    for (let i = 0; i < 8; i++) rnd2();
-    const want = Math.round(kr("l2Rooms", rnd2)), bigShare = kr("l2Big", rnd2), gap = Math.round(kr("l2Gap", rnd2));
-    const C = Math.max(2, Math.round(kr("l2Course", rnd2))), loops = kr("l2Loops", rnd2);
-    const ledgeGap = Math.max(8, Math.round(kr("l2Ledge", rnd2)));
-    const block = Math.round(kr("l2Block", rnd2)), mason = Math.round(kr("l2Mason", rnd2));
-    const even = (v) => Math.max(2, Math.round(v / 2) * 2);
-    const snap = (v) => TOMB_TOP + Math.round((v - TOMB_TOP) / C) * C;
-    const rooms = [];
-    const add = (x, y, w, h3, type, shape, big) => {
-      const r = { id: rooms.length, x, y, w, h: h3, cx: x + w / 2, floor: y + h3, shape, type, big, links: [] };
-      rooms.push(r);
-      return r;
-    };
-    for (const ex of exitX) add(ex - GATE_W / 2, TOMB_TOP - GATE_H, GATE_W, GATE_H, "gate", "dome", true);
-    add(shopExit - 40, TOMB_BOTTOM - 36, 80, 36, "vestibule", "arch", true);
-    const gates = rooms.slice(0, exitX.length);
-    for (let a = 0; a < want * 40 && rooms.length < want + exitX.length + 1; a++) {
-      const big = rnd2() < bigShare;
-      const type = pickW(big ? TOMB_TYPES.big : TOMB_TYPES.small, rnd2);
-      const shapes = TOMB_SHAPES[type], shape = shapes[Math.floor(rnd2() * shapes.length)];
-      let w = even(kr(big ? "l2BigW" : "l2SmallW", rnd2)), h3 = Math.max(C * 3, Math.round(kr(big ? "l2BigH" : "l2SmallH", rnd2) / C) * C);
-      if (type === "orrery") {
-        h3 = Math.max(C * 3, Math.round(Math.min(w, h3 * 1.3) / C) * C);
-        w = even(h3);
-      }
-      if (type === "pillars" && (h3 < 42 || w < 70)) continue;
-      w = Math.min(w, CW - 16);
-      const x = 6 + 2 * Math.floor(rnd2() * (CW - 12 - w) / 2);
-      const lo = TOMB_TOP + gap + h3, floor = snap(lo + rnd2() * (LOW - lo));
-      if (floor > LOW || floor - h3 < TOMB_TOP + gap) continue;
-      const y = floor - h3;
-      if (rooms.some((o) => x < o.x + o.w + gap && o.x < x + w + gap && y < o.floor + gap && o.y < floor + gap)) continue;
-      add(x, y, w, h3, type, shape, big);
-    }
-    const padOk = (r, sx, sw) => r.type !== "gate" || Math.abs(sx - r.cx) >= PAD_KEEP + sw / 2;
-    const shaftX = (r, from, floor, sw) => {
-      const side = from < r.cx ? -1 : 1;
-      if (r.type === "gate") return r.cx + side * 24;
-      if (!floor) return r.cx;
-      return r.cx + side * (r.w / 2 - (sw || 16) / 2 - 1);
-    };
-    const floorOk = (r, sx, sw) => r.type === "gate" || Math.abs(sx - r.cx) >= r.w / 2 - sw / 2 - 3;
-    const route = (A, B, H, sw) => {
-      const segs = [];
-      const [U, D2] = A.floor <= B.y ? [A, B] : B.floor <= A.y ? [B, A] : [null, null];
-      const o0 = Math.max(A.x, B.x) + 4, o1 = Math.min(A.x + A.w, B.x + B.w) - 4;
-      if (U && o1 - o0 >= sw) {
-        const c = [shaftX(U, D2.cx, true, sw), shaftX(D2, U.cx), (o0 + o1) / 2, o0 + sw / 2, o1 - sw / 2].find((sx) => sx - sw / 2 >= o0 && sx + sw / 2 <= o1 && padOk(U, sx, sw) && padOk(D2, sx, sw) && floorOk(U, sx, sw));
-        if (c === void 0) return null;
-        const x = Math.round(c - sw / 2);
-        segs.push({ kind: "shaft", x, y: U.floor, w: sw, h: D2.y - U.floor, a: U.id, b: D2.id, ledges: [] });
-        return segs;
-      }
-      if (A.x + A.w <= B.x || B.x + B.w <= A.x) {
-        const [L3, R] = A.x < B.x ? [A, B] : [B, A];
-        const g = Math.min(A.floor, B.floor), low = A.floor > B.floor ? A : B;
-        const Hh = Math.min(H, Math.floor(Math.min(A.h, B.h) * 0.6));
-        if (Hh >= 13 && g - Hh >= low.floor - low.h * 0.6) {
-          segs.push({ kind: "gallery", x: L3.x + L3.w, y: g - Hh, w: R.x - L3.x - L3.w, h: Hh, a: L3.id, b: R.id, ledges: [] });
-          return segs;
-        }
-      }
-      let best = null, bestN = Infinity;
-      for (const [P2, Q] of [[A, B], [B, A]]) {
-        const Hh = Math.min(H, Math.floor(P2.h * 0.6));
-        if (Hh < 13) continue;
-        const top = P2.floor - Hh;
-        const above = Q.floor <= top, below = Q.y >= P2.floor;
-        if (!above && !below) continue;
-        const sx = shaftX(Q, P2.cx, above, sw);
-        if (sx + sw / 2 + 2 > P2.x && sx - sw / 2 - 2 < P2.x + P2.w) continue;
-        const right = sx > P2.cx, x0 = right ? P2.x + P2.w : Math.round(sx - sw / 2), x1 = right ? Math.round(sx + sw / 2) : P2.x;
-        const gal = { kind: "gallery", x: x0, y: top, w: x1 - x0, h: Hh, a: P2.id, b: Q.id, ledges: [] };
-        const sh = above ? { kind: "shaft", x: Math.round(sx - sw / 2), y: Q.floor, w: sw, h: P2.floor - Q.floor, a: Q.id, b: P2.id, ledges: [] } : { kind: "shaft", x: Math.round(sx - sw / 2), y: top, w: sw, h: Q.y - top, a: P2.id, b: Q.id, ledges: [] };
-        const n = gal.w + sh.h;
-        if (n < bestN) {
-          bestN = n;
-          best = [gal, sh];
-        }
-      }
-      return best;
-    };
-    const crossings = (segs, A, B) => {
-      let n = 0;
-      for (const o of rooms) {
-        if (o === A || o === B) continue;
-        if (segs.some((s) => s.x < o.x + o.w + 3 && o.x - 3 < s.x + s.w && s.y < o.floor + 3 && o.y - 3 < s.y + s.h)) n++;
-      }
-      return n;
-    };
-    const length = (segs) => segs.reduce((t, s) => t + (s.kind === "shaft" ? s.h : s.w), 0);
-    const N = rooms.length, up = rooms.map((_, i) => i);
-    const find = (i) => {
-      while (up[i] !== i) i = up[i] = up[up[i]];
-      return i;
-    };
-    for (const g of gates) up[find(g.id)] = find(gates[0].id);
-    const pairs = [];
-    for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
-      const A = rooms[i], B = rooms[j];
-      if (A.type === "gate" && B.type === "gate") continue;
-      const gx = Math.max(0, Math.max(A.x, B.x) - Math.min(A.x + A.w, B.x + B.w)), gy = Math.max(0, Math.max(A.y, B.y) - Math.min(A.floor, B.floor));
-      if (gx + gy > 320) continue;
-      const H = Math.round(kr("l2Hall", rnd2)), sw = even(kr("l2Shaft", rnd2));
-      const segs = route(A, B, H, sw);
-      if (!segs) continue;
-      const n = crossings(segs, A, B);
-      pairs.push({ A, B, segs, n, cost: length(segs) + 400 * n });
-    }
-    pairs.sort((p, q) => p.cost - q.cost);
-    const corridors = [];
-    const tH = 18;
-    corridors.push({ kind: "gallery", x: exitX[0], y: TOMB_TOP - tH, w: exitX[exitX.length - 1] - exitX[0], h: tH, a: gates[0].id, b: gates[gates.length - 1].id, ledges: [] });
-    const link = (p) => {
-      for (const s of p.segs) corridors.push(s);
-      p.A.links.push(p.B.id);
-      p.B.links.push(p.A.id);
-    };
-    const rest = [];
-    for (const p of pairs) {
-      const a = find(p.A.id), b = find(p.B.id);
-      if (a !== b) {
-        up[a] = b;
-        link(p);
-      } else rest.push(p);
-    }
-    for (const p of rest) if (!p.n && length(p.segs) < 140 && rnd2() < loops && !p.A.links.includes(p.B.id)) link(p);
-    const home = find(rooms[exitX.length].id);
-    const keep2 = rooms.filter((r) => find(r.id) === home);
-    const renum = new Map(keep2.map((r, i) => [r.id, i]));
-    for (const r of keep2) {
-      r.id = renum.get(r.id);
-      r.links = r.links.filter((i) => renum.has(i)).map((i) => renum.get(i));
-    }
-    for (const c of corridors) {
-      c.a = renum.has(c.a) ? renum.get(c.a) : -1;
-      c.b = renum.has(c.b) ? renum.get(c.b) : -1;
-    }
-    const kept = corridors.filter((c) => c.a >= 0 && c.b >= 0);
-    const cand = keep2.filter((r) => r.type === "altar");
-    const pool = cand.length ? cand : keep2.filter((r) => !r.big);
-    let prize = -1;
-    if (pool.length) {
-      const fewest = Math.min(...pool.map((r2) => r2.links.length)), alt = pool.filter((r2) => r2.links.length === fewest);
-      const r = alt[Math.floor(rnd2() * alt.length)];
-      if (r.type !== "altar") {
-        r.type = "altar";
-        r.shape = TOMB_SHAPES.altar[Math.floor(rnd2() * 2)];
-      }
-      prize = r.id;
-    }
-    return { rooms: keep2, corridors: kept, prize, course: C, block, mason, ledgeGap, mended: false };
-  }
-  function carveTomb(mat, t) {
-    for (const r of t.rooms) {
-      for (let y = r.y; y < r.floor; y++) for (let x = r.x; x < r.x + r.w; x++) if (roomOpen(r, x, y)) mat[y * CW + x] = 0;
-      for (const p of roomPillars(r)) for (let y = p.y; y < p.y + p.h; y++) for (let x = p.x; x < p.x + p.w; x++) mat[y * CW + x] = ROCK;
-    }
-    const open = (x, y) => !mat[y * CW + x];
-    const cut = (c) => {
-      for (let y = c.y; y < c.y + c.h; y++) for (let x = c.x; x < c.x + c.w; x++) mat[y * CW + x] = 0;
-    };
-    for (const c of t.corridors) {
-      cut(c);
-      const A = t.rooms[c.a], B = t.rooms[c.b];
-      if (c.kind === "gallery") {
-        const colOpen = (x) => {
-          for (let y = c.y; y < c.y + c.h; y++) if (!open(x, y)) return false;
-          return true;
-        };
-        const L3 = [A, B].find((q) => q.x + q.w === c.x), R = [A, B].find((q) => q.x === c.x + c.w);
-        if (L3) while (c.x > L3.x && !colOpen(c.x - 1)) {
-          c.x--;
-          c.w++;
-        }
-        if (R) while (c.x + c.w < R.x + R.w && !colOpen(c.x + c.w)) c.w++;
-      } else {
-        const rowOpen = (y) => {
-          for (let x = c.x; x < c.x + c.w; x++) if (!open(x, y)) return false;
-          return true;
-        };
-        const U = [A, B].find((q) => q.floor === c.y), D2 = [A, B].find((q) => q.y === c.y + c.h);
-        if (U) while (c.y > U.y && !rowOpen(c.y - 1)) {
-          c.y--;
-          c.h++;
-        }
-        if (D2) while (c.y + c.h < D2.floor && !rowOpen(c.y + c.h)) c.h++;
-      }
-      cut(c);
-    }
-    for (const c of t.corridors) {
-      if (c.kind !== "shaft" || c.h < t.ledgeGap * 1.5) continue;
-      const len = Math.max(3, Math.min(c.w - 8, Math.round(c.w * 0.35)));
-      let side = 0;
-      for (let y = c.y + c.h - t.ledgeGap; y > c.y + 12; y -= t.ledgeGap, side ^= 1) {
-        const wx = side ? c.x + c.w : c.x - 1;
-        let whole = true;
-        for (let k = -16; k <= 16 && whole; k++) {
-          if (mat[(y + k) * CW + wx] !== ROCK) whole = false;
-          for (let x = c.x; x < c.x + c.w && whole; x++) if (!open(x, y + k)) whole = false;
-        }
-        if (!whole) continue;
-        const x0 = side ? c.x + c.w - len : c.x;
-        for (let yy = y; yy < y + 3; yy++) for (let x = x0; x < x0 + len; x++) mat[yy * CW + x] = ROCK;
-        c.ledges.push({ x: x0, y, w: len, h: 3 });
-      }
-    }
-  }
-  function tombRoomAt(t, wx, wy, cell) {
-    if (!t) return null;
-    const x = wx / cell, y = wy / cell;
-    return t.rooms.find((r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.floor) || null;
-  }
-  function paintMasonry(mat, d, T, o) {
-    const Y1 = SHOP_TOP - SHOP_ROOF, D2 = Math.max(0, Math.round(o.depth)), C = o.course, B = Math.max(4, Math.round(o.block));
-    if (!D2) return;
-    const dist = new Uint8Array(CW * Y1).fill(255), q = new Int32Array(CW * Y1);
-    let h3 = 0, n = 0;
-    for (let y = 1; y < Y1 - 1; y++) for (let x = 1; x < CW - 1; x++) {
-      const i = y * CW + x;
-      if (!mat[i]) continue;
-      if (!mat[i - 1] || !mat[i + 1] || !mat[i - CW] || !mat[i + CW]) {
-        dist[i] = 1;
-        q[n++] = i;
-      }
-    }
-    while (h3 < n) {
-      const i = q[h3++], v = dist[i] + 1;
-      if (v > D2) continue;
-      for (const j of [i - 1, i + 1, i - CW, i + CW]) if (j >= 0 && j < CW * Y1 && mat[j] && dist[j] > v) {
-        dist[j] = v;
-        q[n++] = j;
-      }
-    }
-    const row = (y) => Math.floor((y - TOMB_TOP + C * 1e3) / C);
-    const cols = Math.ceil(CW / B) + 2, rows = Math.ceil(CH / C) + 1002;
-    const dressed = new Uint8Array(cols * rows);
-    const key = (x, y) => {
-      const r = row(y);
-      return r * cols + Math.floor((x + (r & 1) * (B >> 1)) / B);
-    };
-    for (let y = 0; y < Y1; y++) for (let x = 0; x < CW; x++) if (dist[y * CW + x] <= D2) dressed[key(x, y)] = 1;
-    const hash5 = (a, b) => {
-      let v = Math.imul(a, 374761393) + Math.imul(b, 668265263) + Math.imul(o.seed, 982451653) | 0;
-      v = Math.imul(v ^ v >>> 13, 1274126177);
-      return ((v ^ v >>> 16) >>> 0) / 4294967296;
-    };
-    for (let y = 1; y < Y1; y++) for (let x = 0; x < CW; x++) {
-      const i = y * CW + x;
-      if (mat[i] !== ROCK) continue;
-      const k = key(x, y);
-      if (!dressed[k]) continue;
-      const r = row(y), sx = x + (r & 1) * (B >> 1);
-      const mortar = (y - TOMB_TOP + C * 1e3) % C === C - 1 || sx % B === B - 1;
-      let c;
-      if (mortar) c = T.mortar;
-      else {
-        c = mix(T.brick[0], T.brick[1], hash5(k, 7));
-        if (!mat[i - CW]) c = c.map((v) => v * 1.3);
-        else if (y + 1 < CH && !mat[i + CW]) c = c.map((v) => v * 0.72);
-      }
-      const j = (hash5(x * 3 + 1, y * 5 + 2) - 0.5) * 8;
-      d[i * 4] = c[0] + j;
-      d[i * 4 + 1] = c[1] + j;
-      d[i * 4 + 2] = c[2] + j;
-    }
-  }
-
-  // src/world/furnish.js
-  var KIT_PAL = {
-    S: [158, 152, 170],
-    s: [112, 108, 126],
-    d: [66, 64, 78],
-    k: [16, 14, 20],
-    B: [226, 218, 194],
-    b: [164, 154, 128],
-    G: [222, 178, 74],
-    g: [150, 108, 48],
-    T: [78, 166, 152],
-    t: [44, 100, 96],
-    C: [132, 48, 62],
-    c: [84, 30, 44],
-    V: [92, 64, 130],
-    v: [58, 42, 88],
-    W: [124, 86, 52],
-    w: [82, 56, 34],
-    P: [206, 190, 146],
-    p: [150, 132, 96],
-    F: [255, 226, 130],
-    O: [236, 128, 44]
-  };
-  var BURNS = "WwCcVvPp";
-  var SKULL = [".BBB.", "BkBkB", "BBBBB", ".b.b."];
-  var BONES = ["B...bB", ".BBbB."];
-  var SKULLS = ["...BBB...", "..BkBkB..", ".BBbBBbB.", "BkBBkBBkB"];
-  var LYING = [".BB..b.b.b..", "BkBBBBBBBBBB", ".B...b.b.bBB"];
-  var SITTING = [".BB..", ".BkB.", "..B..", ".BBB.", ".BbBB", ".BB..", ".BBBB", ".B..B"];
-  var KNEEL = ["..BB..", "..BkB.", "..BB..", ".BBBBB", ".BB...", "BBBBB."];
-  var URN = [".dssd.", "..ss..", ".sSSs.", "sSTTSs", "sSSSSs", "sSggSs", ".sSSs.", "..dd.."];
-  var AMPHORA = ["..ss..", ".s..s.", ".sSSs.", "sSSSSs", "sSTTSs", "sSSSSs", ".sSSs.", ".sSSs.", "..ss..", "..dd.."];
-  var JAR = [".ss.", "sSSs", "sggs", "sSSs", ".ss."];
-  var CRATE = ["wwwwwww", "wWwWwWw", "wWWwWWw", "wWwWwWw", "wWWwWWw", "wwwwwww"];
-  var CHEST = ["wwwwwwww", "wWWGGWWw", "wwwGGwww", "wWWWWWWw", "wwwwwwww"];
-  var SCROLLS = ["..PpP..", ".PpPPp.", "PPpPpPP"];
-  var BOWL = ["gTTTg", ".ggg."];
-  var CANDLE = ["F", "O", "P", "P", "p"];
-  var IDOL = [
-    "..SSSS..",
-    ".SSSSSS.",
-    ".SkSSkS.",
-    "..SSSS..",
-    "...SS...",
-    ".SSSSSS.",
-    "SSsSSsSS",
-    "S.SSSS.S",
-    "S.SGGS.S",
-    "s.SSSS.s",
-    "..SSSS..",
-    "..SssS..",
-    "..S..S..",
-    "..S..S..",
-    "dddddddd",
-    "dssssssd",
-    "dddddddd"
-  ];
-  var SMALL_IDOL = [".SSSS.", "SkSSkS", ".SSSS.", "..SS..", "SSSSSS", ".SGGS.", ".SSSS.", ".S..S.", "dddddd", "dssssd"];
-  var GUARD = [
-    "...SSSS...",
-    "..SSSSSS..",
-    "..SkSSkS..",
-    "...SSSS...",
-    "....SS....",
-    ".SSSSSSSS.",
-    "SSSsSSsSSS",
-    "SS.SSSS.SS",
-    "Sg.SGGS.gS",
-    "S..SSSS..S",
-    "T..SSSS..T",
-    "T..SssS..T",
-    "T..S..S..T",
-    "T..S..S..T",
-    "T..S..S..T",
-    "T.SS..SS.T",
-    "dddddddddd",
-    "dssssssssd",
-    "dddddddddd"
-  ];
-  var GLYPHS = [
-    31727,
-    11962,
-    29671,
-    23497,
-    29847,
-    20345,
-    14734,
-    31599
-  ];
-  var glyphBit = (g, col, row) => GLYPHS[g % GLYPHS.length] >> col + 3 * row & 1;
-  var ACCENT = { altar: "G", gate: "T", vestibule: "T", hall: "C", library: "g", ossuary: "b", dorm: "V", store: "g", orrery: "G", pillars: "T", shrine: "G" };
-  function furnishTomb(mat, img, dimg, fuel, t, seed) {
-    let rs = (Math.imul(seed | 0, 40503) + 991 >>> 0) % 2147483646 + 1;
-    const R = () => (rs = rs * 16807 % 2147483647) / 2147483647;
-    for (let i = 0; i < 6; i++) R();
-    const all = DEV.l2Decor, Kf = kr("l2Furn", R) * all, Kb = kr("l2Bones", R) * all;
-    if (all <= 0) {
-      for (const r of t.rooms) r.kit = [];
-      return;
-    }
-    for (const r of t.rooms) furnishRoom(mat, img, dimg, fuel, r, seed, R, Kf, Kb, t.prize === r.id);
-    const dd = dimg.data;
-    const inRoom = (x, y) => t.rooms.some((r) => x >= r.x - 2 && x < r.x + r.w + 2 && y >= r.y - 2 && y <= r.floor + 2);
-    for (const c of t.corridors) {
-      if (c.kind !== "gallery") continue;
-      const fy = c.y + c.h - 1;
-      for (let x = c.x + 4; x < c.x + c.w - 10; x += 14) {
-        if (R() > 0.22 * Kb) continue;
-        const art = R() < 0.5 ? SKULL : R() < 0.5 ? BONES : LYING;
-        const w = art[0].length, h3 = art.length;
-        if (inRoom(x, fy) || inRoom(x + w, fy) || inRoom(x, fy - h3) || inRoom(x + w, fy - h3)) continue;
-        let ok = true;
-        for (let k = 0; k < w && ok; k++) if (fy + 1 >= CH || !mat[(fy + 1) * CW + x + k]) ok = false;
-        for (let j = 0; j < h3 && ok; j++) for (let k = 0; k < w; k++) if (mat[(fy - j) * CW + x + k]) ok = false;
-        if (!ok) continue;
-        for (let j = 0; j < h3; j++) for (let k = 0; k < w; k++) {
-          const ch = art[j][k];
-          if (ch === ".") continue;
-          const i = (fy - h3 + 1 + j) * CW + x + k, c0 = KIT_PAL[ch];
-          dd[i * 4] = c0[0];
-          dd[i * 4 + 1] = c0[1];
-          dd[i * 4 + 2] = c0[2];
-          dd[i * 4 + 3] = 255;
-        }
-      }
-    }
-  }
-  function furnishRoom(mat, img, dimg, fuel, r, seed, R, Kf, Kb, prize) {
-    const cx = r.cx, F = r.floor, dd = dimg.data, id = img.data, hw = Math.floor(r.w / 2);
-    const kit = r.kit = [];
-    const hash5 = (a, b) => {
-      let v = Math.imul(a, 374761393) + Math.imul(b, 668265263) + Math.imul(seed + r.id * 31, 982451653) | 0;
-      v = Math.imul(v ^ v >>> 13, 1274126177);
-      return ((v ^ v >>> 16) >>> 0) / 4294967296;
-    };
-    const inb = (x, y) => x >= 0 && y >= 0 && x < CW && y < CH;
-    const open = (x, y) => inb(x, y) && !mat[y * CW + x];
-    const solid = (x, y) => inb(x, y) && (mat[y * CW + x] === ROCK || mat[y * CW + x] === BRICK);
-    const rock = (x, y) => inb(x, y) && mat[y * CW + x] === ROCK;
-    const XR = (u) => cx + u, XL = (u) => cx - 1 - u, Y = (up) => F - 1 - up;
-    const pair = (u, up, ch, a) => {
-      const y = Y(up), xr = XR(u), xl = XL(u);
-      if (u < 0 || !open(xr, y) || !open(xl, y)) return;
-      const c = KIT_PAL[ch], j = (hash5(u * 7 + 1, up * 13 + 5) - 0.5) * 12, al = a == null ? 255 : a;
-      for (const x of [xr, xl]) {
-        const i = y * CW + x, k = i * 4;
-        dd[k] = c[0] + j;
-        dd[k + 1] = c[1] + j;
-        dd[k + 2] = c[2] + j;
-        dd[k + 3] = al;
-        if (fuel) fuel[i] = BURNS.includes(ch) ? FUEL_WOOD : 0;
-      }
-    };
-    const carve = (u, up, f, ch) => {
-      const y = Y(up), xr = XR(u), xl = XL(u);
-      if (u < 0 || !rock(xr, y) || !rock(xl, y)) return;
-      const c = ch ? KIT_PAL[ch] : null;
-      for (const x of [xr, xl]) {
-        const k = (y * CW + x) * 4;
-        for (let n2 = 0; n2 < 3; n2++) id[k + n2] = c ? (id[k + n2] * 0.35 + c[n2] * 0.65) * f : id[k + n2] * f;
-      }
-    };
-    const fits = (u0, up0, w, h3, ground) => {
-      if (u0 < 0 || up0 < 0) return false;
-      for (let up = up0; up < up0 + h3; up++) for (let u = u0; u < u0 + w; u++) if (!open(XR(u), Y(up)) || !open(XL(u), Y(up))) return false;
-      if (ground) {
-        for (let u = u0; u < u0 + w; u++) if (!solid(XR(u), Y(up0 - 1)) || !solid(XL(u), Y(up0 - 1))) return false;
-      }
-      return true;
-    };
-    const note = (name, u0, up0, w, h3) => kit.push({ id: name, x: XR(u0), y: Y(up0 + h3 - 1), w, h: h3, m: u0 > 0 });
-    const spr2 = (name, art, u0, up0, o) => {
-      o = o || {};
-      const h3 = art.length, w = art[0].length;
-      if (!fits(u0, up0, w, h3, !o.air && up0 === 0)) return false;
-      for (let row = 0; row < h3; row++) for (let col = 0; col < w; col++) {
-        const ch = art[row][o.flip ? w - 1 - col : col];
-        if (ch !== ".") pair(u0 + col, up0 + h3 - 1 - row, ch, o.a);
-      }
-      note(name, u0, up0, w, h3);
-      return true;
-    };
-    const sprC = (name, art, up0, o) => {
-      const h3 = art.length, w = art[0].length, hf = w >> 1;
-      if (!fits(0, up0, hf, h3, !(o && o.air) && up0 === 0)) return false;
-      for (let row = 0; row < h3; row++) for (let col = hf; col < w; col++) {
-        const ch = art[row][col];
-        if (ch !== ".") pair(col - hf, up0 + h3 - 1 - row, ch);
-      }
-      note(name, 0, up0, hf, h3);
-      return true;
-    };
-    const rect = (u0, up0, w, h3, ch) => {
-      for (let up = up0; up < up0 + h3; up++) for (let u = u0; u < u0 + w; u++) pair(u, up, ch);
-    };
-    const ceil = (u) => {
-      let up = 0;
-      while (up < r.h && open(XR(u), Y(up)) && open(XL(u), Y(up))) up++;
-      return up;
-    };
-    const roofed = (u, top) => solid(XR(u), Y(top)) && solid(XL(u), Y(top));
-    const wallAt = (up) => {
-      let u = 0;
-      while (u < hw + 2 && open(XR(u), Y(up)) && open(XL(u), Y(up))) u++;
-      return u;
-    };
-    const hang = (name, art, u0, len) => {
-      const w = art[0].length, hgt = art.length, top = ceil(u0 + (w >> 1));
-      const up0 = top - len - hgt;
-      if (up0 < 14 || !roofed(u0 + (w >> 1), top) || !fits(u0, up0, w, hgt + len)) return false;
-      for (let k = 0; k < len; k++) pair(u0 + (w >> 1), top - 1 - k, "d");
-      for (let row = 0; row < hgt; row++) for (let col = 0; col < w; col++) if (art[row][col] !== ".") pair(u0 + col, up0 + hgt - 1 - row, art[row][col]);
-      note(name, u0, up0, w, hgt + len);
-      return true;
-    };
-    const acc = ACCENT[r.type] || "T";
-    const H = ceil(0) || r.h;
-    for (let u = 0; u < hw; u++) {
-      if (!open(XR(u), Y(0)) || !open(XL(u), Y(0))) continue;
-      const m = u % 6;
-      carve(u, -1, m === 0 ? 0.6 : 1.05, m === 0 ? null : u % 12 < 6 ? acc : "s");
-      if (m === 3) carve(u, -2, 0.75, acc);
-    }
-    for (let up = 2; up < H - 3; up++) {
-      const e = wallAt(up), row = up % 6;
-      if (row === 5) continue;
-      const g = Math.floor(up / 6) + r.id * 3;
-      for (let k = 0; k < 3; k++) if (glyphBit(g, k, row)) carve(e + k, up, 0.5, (up / 6 | 0) % 2 ? acc : null);
-    }
-    for (let u = 0; u < hw; u++) {
-      const top = ceil(u);
-      if (top < 6 || top >= 400) continue;
-      carve(u, top, u % 4 < 2 ? 0.45 : 1, null);
-      carve(u, top + 1, 0.9, acc);
-    }
-    const scatter = (n2, from) => {
-      for (let i = 0; i < n2; i++) {
-        const art = R() < 0.4 ? SKULL : BONES, u0 = from + Math.floor(R() * Math.max(1, hw - from - 6));
-        spr2("bones", art, u0, 0, { flip: R() < 0.5 });
-      }
-    };
-    const n = (v) => Math.round(v);
-    const T = r.type;
-    if (H >= 40 && T !== "ossuary" && T !== "pillars" && T !== "gate") {
-      const pu = Math.round(H * 0.5), ph = Math.min(14, Math.round(H * 0.22));
-      let made = 0;
-      for (let u0 = 3; u0 + 10 < hw; u0 += 15) {
-        if (!fits(u0, pu, 10, ph)) continue;
-        for (let up = pu; up < pu + ph; up++) for (let u = u0; u < u0 + 10; u++) {
-          const edge = up === pu || up === pu + ph - 1 || u === u0 || u === u0 + 9;
-          pair(u, up, edge ? "s" : "d", edge ? 150 : 170);
-        }
-        for (let line = 0; line * 6 + 7 <= ph; line++) for (const [k, gx] of [[0, u0 + 2], [1, u0 + 6]]) {
-          const g = r.id * 3 + made * 7 + line * 2 + k;
-          for (let row = 0; row < 5; row++) for (let col = 0; col < 3; col++)
-            if (glyphBit(g, col, row)) pair(gx + col - (k ? 1 : 0), pu + ph - 2 - line * 6 - row, acc, 150);
-        }
-        note("relief", u0, pu, 10, ph);
-        made++;
-      }
-      const top = ceil(0), len = Math.max(4, Math.round(top * 0.25)), cy = top - len - 4;
-      if (top >= 50 && roofed(0, top) && fits(0, cy - 3, 6, 8)) {
-        for (let k = 0; k < len; k++) pair(0, top - 1 - k, "d");
-        for (let a = 0; a <= Math.PI; a += 0.15) pair(Math.floor(5 * Math.sin(a)), Math.round(cy + 2 * Math.cos(a)), "g");
-        pair(0, cy - 2, "G");
-        pair(1, cy - 2, "G");
-        pair(0, cy - 3, "T");
-        note("ring", 0, cy - 3, 6, len + 7);
-      }
-    }
-    if (T === "altar") {
-      if (!prize) {
-        const aw = [12, 9, 6].find((w) => fits(0, 0, w + 1, 12, true));
-        if (aw) {
-          rect(0, 0, aw, 3, "d");
-          rect(0, 3, aw - 2, 3, "s");
-          rect(0, 6, aw - 4, 4, "S");
-          rect(0, 9, aw - 4, 1, "G");
-          note("altar", 0, 0, aw, 10);
-          sprC("offering", ["gGGg", ".gg."], 10, { air: true });
-          if (aw >= 9) spr2("candle", CANDLE, aw - 6, 10, { air: true });
-        }
-      }
-      const iu = Math.max(prize ? 16 : 15, n(hw * 0.5));
-      if (!spr2("idol", IDOL, iu, 0) && !spr2("idol", SMALL_IDOL, iu, 0)) spr2("idol", SMALL_IDOL, Math.max(14, iu - 6), 0);
-      for (let k = 0; k < n(2 * Kb); k++) spr2("kneeling", KNEEL, (prize ? 15 : 13) + k * 8, 0, { flip: true }) || spr2("bones", SKULL, 15 + k * 8, 0);
-      if (Kf > 0.3) {
-        spr2("candle", CANDLE, iu - 3, 0);
-        spr2("candle", CANDLE, iu + 10, 0);
-      }
-      hang("censer", ["gGg", ".g."], Math.max(8, n(hw * 0.3)), 6);
-      scatter(n(Kb * hw / 30), iu + 8);
-    } else if (T === "library") {
-      const sh = Math.min(H - 6, 24);
-      let u0 = hw - 12, made = 0;
-      while (u0 > 10 && made < n(4 * Kf)) {
-        if (fits(u0, 0, 10, sh, true)) {
-          rect(u0, 0, 10, sh, "w");
-          for (let up = 2; up < sh - 1; up += 5) for (let u = u0 + 1; u < u0 + 9; u++) {
-            const hgt = 3 + (hash5(u, up) < 0.4 ? 0 : 0), col = "CVgTPc"[Math.floor(hash5(u * 3, up) * 6)];
-            for (let q = 0; q < hgt; q++) pair(u, up + q, hash5(u, up + 99) < 0.12 ? "w" : col);
-          }
-          note("shelf", u0, 0, 10, sh);
-          made++;
-          u0 -= 14;
-        } else u0 -= 3;
-      }
-      if (fits(0, 0, 5, 10, true)) {
-        rect(0, 0, 1, 6, "s");
-        rect(0, 6, 4, 1, "w");
-        rect(0, 7, 5, 1, "w");
-        rect(0, 8, 4, 1, "P");
-        pair(0, 8, "p");
-        note("lectern", 0, 0, 5, 9);
-      }
-      spr2("reader", SITTING, 6, 0, { flip: true });
-      for (let k = 0; k < n(2 * Kf); k++) spr2("scrolls", SCROLLS, 12 + Math.floor(R() * Math.max(1, hw - 24)), 0);
-      scatter(n(Kb * hw / 40), 8);
-    } else if (T === "ossuary") {
-      const top = Math.min(H - 4, 40);
-      for (let up = 3; up + 6 < top; up += 8) for (let u = 1; u + 7 < hw - 1; u += 8) {
-        if (!fits(u, up, 7, 7)) continue;
-        rect(u, up, 7, 7, "s");
-        rect(u + 1, up + 1, 5, 5, "k");
-        rect(u, up, 7, 1, "S");
-        if (hash5(u, up) < 0.85) for (let row = 0; row < 4; row++) for (let col = 0; col < 5; col++) {
-          const ch = SKULL[row][col];
-          if (ch !== ".") pair(u + 1 + col, up + 4 - row, ch);
-        }
-        note("niche", u, up, 7, 7);
-      }
-      sprC("skulls", SKULLS.map((s) => s + "."), 0);
-      for (let k = 0; k < n(3 * Kb); k++) spr2("skulls", SKULLS, 8 + Math.floor(R() * Math.max(1, hw - 18)), 0) || spr2("bones", BONES, 8 + k * 6, 0);
-      scatter(n(Kb * hw / 15), 4);
-    } else if (T === "dorm") {
-      let u0 = hw - 18, made = 0;
-      while (u0 > 0 && made < n(4 * Kf)) {
-        if (fits(u0, 0, 16, 6, true)) {
-          const bunk = (b) => {
-            rect(u0, b, 1, 3, "d");
-            rect(u0 + 15, b, 1, 3, "d");
-            rect(u0, b + 3, 16, 2, "s");
-            rect(u0 + 2, b + 5, 12, 1, "V");
-            if (R() < 0.7 * Kb) spr2("sleeper", LYING, u0 + 2, b + 5, { air: true, flip: R() < 0.5 });
-            else pair(u0 + 3, b + 6, "v");
-          };
-          bunk(0);
-          if (fits(u0, 12, 16, 8)) {
-            bunk(12);
-            rect(u0, 6, 1, 6, "d");
-            rect(u0 + 15, 6, 1, 6, "d");
-          }
-          note("bunk", u0, 0, 16, 6);
-          made++;
-          u0 -= 19;
-        } else u0 -= 3;
-      }
-      if (!made && fits(0, 0, 7, 6, true)) {
-        rect(6, 0, 1, 3, "d");
-        rect(0, 3, 7, 2, "s");
-        rect(0, 5, 5, 1, "V");
-        pair(4, 6, "v");
-        spr2("skull", SKULL, 1, 5, { air: true });
-        note("bunk", 0, 0, 7, 6);
-      }
-      spr2("chest", CHEST, Math.max(0, u0 + 4), 0) || sprC("chest", CHEST, 0);
-      scatter(n(Kb * hw / 30), 2);
-    } else if (T === "store") {
-      let u = 1;
-      const kinds = [URN, JAR, CRATE, AMPHORA, JAR, URN];
-      const su = Math.min(hw - 2, wallAt(12) - 2);
-      if (su > 6 && fits(0, 12, su, 1)) {
-        rect(0, 11, su, 1, "s");
-        rect(0, 12, su, 1, "S");
-        for (let k = 0; k < su - 3; k += 6) rect(k + 2, 6, 1, 5, "d");
-        for (let k = 1; k < su - 5; k += 5 + Math.floor(R() * 2)) if (R() < 0.8 * Kf) spr2(R() < 0.6 ? "jar" : "urn", R() < 0.6 ? JAR : URN, k, 13, { air: true });
-        note("shelf", 0, 11, su, 2);
-      }
-      while (u < hw - 3) {
-        if (R() > 0.9 * Math.min(1.1, Kf)) {
-          u += 3;
-          continue;
-        }
-        const art = kinds[Math.floor(R() * kinds.length)], w = art[0].length;
-        const name = art === CRATE ? "crate" : art === JAR ? "jar" : "urn";
-        if (spr2(name, art, u, 0)) {
-          if (art === CRATE && R() < 0.5) spr2("crate", CRATE, u, 6, { air: true });
-          else if (art === CRATE && R() < 0.6) spr2("jar", JAR, u + 1, 6, { air: true });
-          u += w + 1;
-        } else u += 2;
-      }
-      if (!kit.length) sprC("urn", AMPHORA, 0) || sprC("jar", JAR, 0);
-      scatter(n(Kb * hw / 50), 4);
-    } else if (T === "hall") {
-      if (fits(0, 0, 9, 16, true)) {
-        rect(0, 0, 9, 2, "d");
-        rect(0, 2, 5, 3, "s");
-        rect(4, 2, 1, 6, "S");
-        rect(0, 5, 4, 10, "s");
-        rect(0, 15, 4, 1, "G");
-        rect(3, 6, 1, 9, "S");
-        pair(1, 12, "T");
-        pair(0, 12, "T");
-        note("throne", 0, 0, 9, 16);
-        spr2("king", [".BB.", "BkkB", ".BB.", "BBBB", ".BB.", "B..B"], 0, 5, { air: true });
-      }
-      const tw = Math.min(28, hw - 24);
-      if (tw >= 10 && fits(14, 0, tw, 6, true)) {
-        rect(14, 4, tw, 2, "W");
-        rect(15, 0, 1, 4, "w");
-        rect(14 + tw - 2, 0, 1, 4, "w");
-        for (let u = 17; u < 14 + tw - 3; u += 5) rect(u, 6, 1, hash5(u, 1) < 0.5 ? 2 : 1, hash5(u, 2) < 0.5 ? "g" : "G");
-        note("table", 14, 0, tw, 6);
-        for (const bu of [11, 14 + tw + 1]) if (fits(bu, 0, 3, 3, true)) {
-          rect(bu, 0, 1, 2, "w");
-          rect(bu + 2, 0, 1, 2, "w");
-          rect(bu, 2, 3, 1, "W");
-          note("bench", bu, 0, 3, 3);
-          if (R() < Kb) spr2("diner", SITTING, bu - 1, 3, { air: true, flip: bu > 14 });
-        }
-      }
-      for (const f of [0.35, 0.75]) {
-        const bu = n(hw * f);
-        hang("banner", ["gGGGGg", "CCCCCC", "CcGGcC", "CCGGCC", "CcGGcC", "CCCCCC", "CCCCCC", "C.CC.C", "C....C"], bu, 3);
-      }
-      scatter(n(Kb * hw / 25), 6);
-    } else if (T === "orrery") {
-      const c = Math.max(10, Math.min(Math.round(H * 0.5), 30)), Rr = Math.max(6, Math.min(hw - 4, Math.round(H * 0.32), 22));
-      rect(0, 0, 4, 2, "d");
-      rect(0, 2, 1, c - 3, "s");
-      rect(0, 2, 2, 1, "s");
-      note("orrery", 0, 0, Rr, c + Rr);
-      const ring = (rx, ry, ch) => {
-        for (let a = -Math.PI / 2; a <= Math.PI / 2; a += 0.5 / Math.max(rx, ry)) {
-          const u = Math.floor(rx * Math.cos(a)), up = Math.round(c + ry * Math.sin(a));
-          if (u >= 0) pair(u, up, ch);
-        }
-      };
-      ring(Rr, Math.round(Rr * 0.32), "g");
-      ring(Math.round(Rr * 0.32), Rr, "G");
-      ring(Math.round(Rr * 0.7), Math.round(Rr * 0.7), "t");
-      for (let dy = -3; dy <= 3; dy++) for (let u = 0; u < 3; u++) if (u * u + dy * dy <= 9) pair(u, c + dy, dy < 0 && u < 2 ? "G" : "g");
-      const planets = [[Math.round(Rr * 0.85), 0, "T"], [Math.round(Rr * 0.55), Math.round(Rr * 0.6), "C"]];
-      for (const [pu, pu2, ch] of planets) {
-        pair(pu, c + pu2, ch);
-        pair(pu + 1, c + pu2, ch);
-        pair(pu, c + pu2 + 1, ch);
-        pair(pu + 1, c + pu2 + 1, ch);
-      }
-      for (const f of [0.55, 0.85]) hang("planet", [".TT.", "TttT", ".TT."], n(hw * f) - 2, 4 + n(f * 10));
-      scatter(n(Kb * hw / 30), Rr + 2);
-    } else if (T === "pillars") {
-      for (const p of roomPillars(r)) {
-        if (p.x < cx) continue;
-        for (let y = p.y + 2; y < p.y + p.h - 2; y++) {
-          const row = (y - p.y) % 6;
-          if (row === 5) continue;
-          const g = Math.floor((y - p.y) / 6) + p.x;
-          for (let k = 0; k < 3; k++) if (glyphBit(g, k, row)) carve(p.x - cx + k + 1, F - 1 - y, 0.45, g & 1 ? "T" : null);
-        }
-        if (p.y + p.h >= F) spr2("skulls", SKULL, p.x - cx + p.w + 2, 0);
-        else spr2("bowl", BOWL, p.x - cx, 0);
-      }
-      note("glyphs", 0, 0, 1, 1);
-      scatter(n(Kb * hw / 20), 2);
-    } else if (T === "shrine") {
-      const big = H >= 30;
-      sprC("statue", big ? IDOL : SMALL_IDOL, 0);
-      for (let dy = -6; dy <= 6; dy++) for (let u = 0; u <= 6; u++) {
-        const d2 = u * u + dy * dy;
-        if (d2 <= 36 && d2 >= 20) pair(u, (big ? IDOL : SMALL_IDOL).length + 6 + dy, "G", 120);
-      }
-      spr2("bowl", BOWL, (big ? 4 : 3) + 2, 0);
-      spr2("candle", CANDLE, big ? 11 : 9, 0);
-      for (let k = 0; k < Math.max(1, n(Kb)); k++) spr2("kneeling", KNEEL, 13 + k * 8, 0, { flip: true });
-      scatter(n(Kb * hw / 35), 20);
-    } else if (T === "gate") {
-      let ou = 8, oh = 0;
-      for (; ou < hw - 6; ou++) {
-        oh = Math.min(ceil(ou + 5) - 3, 22);
-        if (oh >= 10 && fits(ou, 0, 6, oh, true)) break;
-      }
-      if (ou < hw - 6) {
-        rect(ou, 0, 6, 2, "d");
-        rect(ou + 1, 2, 4, oh - 4, "s");
-        rect(ou + 2, oh - 2, 2, 2, "S");
-        for (let up = 4; up < oh - 4; up += 3) pair(ou + 2, up, "T");
-        note("obelisk", ou, 0, 6, oh);
-      }
-      spr2("skulls", SKULL, ou - 5, 0);
-    } else if (T === "vestibule") {
-      spr2("guardian", GUARD, 18, 0) || spr2("guardian", SMALL_IDOL, 18, 0);
-      spr2("bones", LYING, 30, 0);
-      scatter(n(Kb * 2), 14);
-    }
-  }
-
   // src/world/level.js
   var ROOM_HW = 23 * CELL, ROOM_HH = 15 * CELL;
   function shopPanel(cx, cy) {
@@ -10676,22 +9387,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return a + (b - a) * u + (c - a) * v + (a - b - c + d2) * u * v;
     };
     const layered = floor === 1;
-    const tomb = floor === 2;
-    const sc = 1, openT = 0.42, pk0 = 0.34, pk1 = 0.24, tw = 0.018, hopsN = 12, routeW = 1, blobK = 1;
-    const wormN = tomb ? 0 : 48, wormL = 1, wormW = 1, smoothN = tomb ? 0 : 4;
-    const ledgeN = tomb ? 0 : 120, frameN = tomb ? 0 : 36, floatN = tomb ? 0 : 40;
-    if (tomb) mat.fill(ROCK);
-    else {
-      const openL = lattice(8, (x, y) => fbm(x / (160 * sc) + 500, y / (160 * sc) + 500));
-      const pocketL = lattice(4, (x, y) => fbm(x / (60 * sc), y / (60 * sc)));
-      const tunnelL = lattice(4, (x, y) => fbm(x / (90 * sc) + 200, y / (90 * sc) + 200));
-      for (let cy = 0; cy < CH; cy++) {
-        for (let cx = 0; cx < CW; cx++) {
-          const open = Math.min(1, Math.max(0, (at(openL, cx, cy) - openT) / 0.16));
-          const pocket = at(pocketL, cx, cy) < pk0 + pk1 * open;
-          const tunnel = Math.abs(at(tunnelL, cx, cy) - 0.5) < tw + tw * open;
-          mat[cy * CW + cx] = pocket || tunnel ? 0 : ROCK;
-        }
+    let ks = (Math.imul(seed | 0, 48271) >>> 0) % 2147483646 + 1;
+    const krnd = () => (ks = ks * 16807 % 2147483647) / 2147483647;
+    const K2 = (k, d2) => floor === 2 ? kr(k, krnd) : d2;
+    const sc = K2("l2Scale", 1), openT = K2("l2Open", 0.42), pk0 = K2("l2Pocket", 0.34), pk1 = K2("l2PocketOpen", 0.24);
+    const tw = K2("l2Tunnel", 0.018), hopsN = Math.round(K2("l2Hops", 12)), routeW = K2("l2RouteW", 1), blobK = K2("l2Blob", 1);
+    const wormN = Math.round(K2("l2Worms", 48)), wormL = K2("l2WormLen", 1), wormW = K2("l2WormW", 1), smoothN = Math.round(K2("l2Smooth", 4));
+    const ledgeN = Math.round(K2("l2Ledges", 120)), frameN = Math.round(K2("l2Frames", 36)), floatN = Math.round(K2("l2Floats", 40));
+    const openL = lattice(8, (x, y) => fbm(x / (160 * sc) + 500, y / (160 * sc) + 500));
+    const pocketL = lattice(4, (x, y) => fbm(x / (60 * sc), y / (60 * sc)));
+    const tunnelL = lattice(4, (x, y) => fbm(x / (90 * sc) + 200, y / (90 * sc) + 200));
+    for (let cy = 0; cy < CH; cy++) {
+      for (let cx = 0; cx < CW; cx++) {
+        const open = Math.min(1, Math.max(0, (at(openL, cx, cy) - openT) / 0.16));
+        const pocket = at(pocketL, cx, cy) < pk0 + pk1 * open;
+        const tunnel = Math.abs(at(tunnelL, cx, cy) - 0.5) < tw + tw * open;
+        mat[cy * CW + cx] = pocket || tunnel ? 0 : ROCK;
       }
     }
     let zone = null;
@@ -10759,7 +9470,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         y = Math.max(6, Math.min(CH - 12, y));
       }
     };
-    for (let i = 1; !tomb && i < points.length - 1; i++) {
+    for (let i = 1; i < points.length - 1; i++) {
       if (rnd2() < 0.7) blob(points[i].x, points[i].y, (16 + rnd2() * 30) * blobK);
     }
     const side = [];
@@ -10771,7 +9482,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let i = 0; i < SHOP_FLOOR * CW; i++) if (zone[i]) mat[i] = lay[i];
       for (const c of strata.routePath) if (built(c.x, c.y)) routePath.push(c);
     }
-    for (let i = 0; !tomb && i < points.length - 1; i++) {
+    for (let i = 0; i < points.length - 1; i++) {
       const a = points[i], b = points[i + 1];
       const r = (rnd2() < 0.4 ? 7 + rnd2() * 2 : 11 + rnd2() * 6) * routeW;
       worm(a.x, a.y, b.x, b.y, r, 2e3, routePath, true);
@@ -10799,7 +9510,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (dx * dx + dy * dy <= 1) mat[y * CW + x] = 0;
         }
     };
-    if (!tomb) carve(CW / 2, 22, 40, 16, CH);
+    carve(CW / 2, 22, 40, 16, CH);
     const emptyRatio = (x0, y0, w, hh) => {
       let e = 0, n = 0;
       for (let y = y0; y < y0 + hh; y++)
@@ -10865,16 +9576,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let cy = SHOP_TOP - SHOP_ROOF - 26; cy < SHOP_TOP; cy++)
       for (let cx = shopExit - 9; cx <= shopExit + 9; cx++)
         if (inside(cx, cy)) mat[cy * CW + cx] = 0;
-    const tombData = tomb ? tombPlan(seed, shopExit, EXIT_X) : null;
-    if (tombData) carveTomb(mat, tombData);
-    const darkData = tombData ? darkZones(mat, tombData, seed, shopExit) : null;
-    if (tombData && darkData) for (const r of tombData.rooms) r.dark = darkData.mask[Math.round(r.y + r.h / 2) * CW + Math.round(r.cx)] - 1;
-    else {
-      for (let x = EXIT_X[0]; x <= EXIT_X[EXIT_X.length - 1]; x += 3) carve(x, 20 + Math.round(4 * Math.sin(x / 19)), 9, 10, CH);
-      for (const ex of EXIT_X) {
-        carve(ex, 22, 40, 16, CH);
-        slab(ex - 24, 34, 48, 3);
-      }
+    for (let x = EXIT_X[0]; x <= EXIT_X[EXIT_X.length - 1]; x += 3) carve(x, 20 + Math.round(4 * Math.sin(x / 19)), 9, 10, CH);
+    for (const ex of EXIT_X) {
+      carve(ex, 22, 40, 16, CH);
+      slab(ex - 24, 34, 48, 3);
     }
     const rect = (x0, y0, w, h3, v) => {
       for (let y = y0; y < y0 + h3; y++)
@@ -10902,8 +9607,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       return null;
     };
-    const prizeRoom = tombData && tombData.prize >= 0 ? tombData.rooms[tombData.prize] : null;
-    const perkRoom = tombData ? prizeRoom ? { x: prizeRoom.cx * CELL, y: prizeRoom.floor * CELL - 19 } : null : makeRoom(layered ? rnd2() < 0.5 : false);
+    const perkRoom = makeRoom(layered ? rnd2() < 0.5 : false);
     for (const c of routePath)
       if (c.y < SHOP_TOP - SHOP_ROOF - 9) disc(c.x, c.y, Math.min(c.r, 7), 0);
     if (layered) {
@@ -10965,10 +9669,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (bi >= 0) tunnelTo(cx, cy, bi % CW + 3, (bi / CW | 0) + 5, 7);
       }
     }
-    if (tombData && !boxReach(mat, 17, SHOP_FLOOR - 12).top) {
-      tombData.mended = true;
-      for (let cy = 20; cy < SHOP_TOP; cy++) for (let cx = shopExit - 8; cx <= shopExit + 8; cx++) mat[cy * CW + cx] = 0;
-    }
     for (let cy = SHOP_TOP - SHOP_ROOF; cy < SHOP_TOP; cy++)
       for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BRICK;
     for (let cy = SHOP_TOP - SHOP_ROOF - 26; cy < SHOP_TOP; cy++)
@@ -11023,7 +9723,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         d[i * 4 + 3] = 255;
       }
     }
-    if (tombData) paintMasonry(mat, d, T, { depth: tombData.mason, course: tombData.course, block: tombData.block, seed });
     for (let cy = SHOP_TOP - SHOP_ROOF; cy < CH; cy++)
       for (let cx = 0; cx < CW; cx++) {
         const i = cy * CW + cx;
@@ -11049,8 +9748,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const t = Math.pow(fbm(x / 10 + 300, y / 10 + 300), 1.6);
         const c = mix(T.bg, T.bg2, Math.min(1, t * 1.3));
         const big = fbm(x / 34 + 700, y / 34 + 500);
-        let shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
-        if (tomb && (y % 4 === 3 || (x + (y >> 2 & 1) * 3) % 6 === 5)) shade *= 0.7;
+        const shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
         const j = (hash5(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
         bgImg.data[k] = c[0] * shade + j;
         bgImg.data[k + 1] = c[1] * shade + j;
@@ -11181,37 +9879,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ...pickups.map((q) => ({ x: q.x, y: q.y, r: 22 })),
       ...nests.map((n) => ({ x: n.mouth.x * CELL, y: n.mouth.y * CELL, r: 18 }))
     ];
-    const deco = tombData ? { props: [], amb: [] } : decorate(mat, img, dimg, bgImg, floor, seed, keep2, fuel, zone);
-    if (tombData) furnishTomb(mat, img, dimg, fuel, tombData, seed);
-    if (darkData && darkData.zones.length) for (let i = 0; i < CW * CH; i++) {
-      const sh = darkData.shade[i];
-      if (!sh || darkData.mask[i]) continue;
-      const x = i % CW, y = i / CW | 0, t = sh / 255;
-      if (mat[i] === ROCK) {
-        const k = Math.min(1, t * (0.3 + 0.9 * hash5(x * 3 + 1, y * 7 + 4))), c = zoneRock(at(tintL, x, y));
-        for (let n = 0; n < 3; n++) d[i * 4 + n] = d[i * 4 + n] * (1 - k) + c[n] * k;
-      } else if (!mat[i] && darkData.web[i]) {
-        const s = silkColour(darkData.web[i]), a = s[3] / 255, b = dimg.data[i * 4 + 3] / 255, o = a + b * (1 - a);
-        for (let n = 0; n < 3; n++) dimg.data[i * 4 + n] = (s[n] * a + dimg.data[i * 4 + n] * b * (1 - a)) / o;
-        dimg.data[i * 4 + 3] = Math.round(o * 255);
-      }
-    }
-    if (darkData && darkData.zones.length) {
-      for (const r of tombData.rooms) if (r.kit) r.kit = r.kit.filter((k) => !darkData.mask[(k.y + (k.h >> 1)) * CW + k.x + (k.w >> 1)] && !darkData.mask[(k.y + (k.h >> 1)) * CW + 2 * Math.round(r.cx) - k.x - (k.w >> 1) - 1]);
-    }
-    if (darkData && darkData.zones.length) for (let i = 0; i < CW * CH; i++) {
-      if (!darkData.mask[i]) continue;
-      dimg.data[i * 4 + 3] = 0;
-      if (mat[i] !== ROCK) {
-        fuel[i] = 0;
-        continue;
-      }
-      const c = zoneRock(at(tintL, i % CW, i / CW | 0)), j = (hash5(i % CW * 3 + 7, (i / CW | 0) * 5 + 3) - 0.5) * 8;
-      d[i * 4] = c[0] + j;
-      d[i * 4 + 1] = c[1] + j;
-      d[i * 4 + 2] = c[2] + j;
-      fuel[i] = 0;
-    }
+    const deco = decorate(mat, img, dimg, bgImg, floor, seed, keep2, fuel, zone);
     const ore = goldVeins(mat, seed, floor);
     for (let i = 0; i < ore.length; i++) {
       if (!ore[i] || mat[i] !== ROCK) {
@@ -11258,12 +9926,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       theme: T.name,
       works,
       zone,
-      nests,
-      tomb: tombData,
-      dark: darkData ? darkData.zones : [],
-      darkMask: darkData && darkData.zones.length ? darkData.mask : null,
-      webbing: darkData && darkData.zones.length ? darkData.web : null,
-      darkShade: darkData && darkData.zones.length ? darkData.shade : null
+      nests
     };
   }
 
@@ -14450,8 +13113,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     G.tctx.putImageData(W.img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
     unDeco(W, G, cx0, cy0, rc, minX, minY, maxX, maxY);
-    const torn = silkErase(W.webbing, cx0, cy0, rc + 1.5);
-    if (torn) W.webDirty.push(torn);
     if (nOre) dropOre(W, x, y, nOre);
     if (W.burrow) {
       for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
@@ -15203,10 +13864,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       } else {
         const R = e.roam || (e.roam = {});
         roamStep(R, e, dt, Math.random, "ra");
-        const D2 = e.spread || (e.spread = kr("raSpread")), sp = ratSpread(e, W.enemies.filter((o) => o.ra && o.ra.mode !== "tunnel" && Math.abs(o.x - e.x) < D2 && Math.abs(o.y - e.y) < D2), D2);
-        R.rx += sp.x * D2 * 1.5 * dt;
-        R.ry += sp.y * D2 * 1.5 * dt;
-        goal = { x: R.rx + sp.x * D2, y: R.ry + sp.y * D2 };
+        const D = e.spread || (e.spread = kr("raSpread")), sp = ratSpread(e, W.enemies.filter((o) => o.ra && o.ra.mode !== "tunnel" && Math.abs(o.x - e.x) < D && Math.abs(o.y - e.y) < D), D);
+        R.rx += sp.x * D * 1.5 * dt;
+        R.ry += sp.y * D * 1.5 * dt;
+        goal = { x: R.rx + sp.x * D, y: R.ry + sp.y * D };
         jump = false;
       }
     }
@@ -16809,7 +15470,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return clamp(lo + (hi - lo) * bezierFade(u, DEV.holoC1x, DEV.holoC1y, DEV.holoC2x, DEV.holoC2y), 0, 1);
   }
   var holoBright = () => L.bri;
-  var holoLayer = () => L.c;
   var LG = { px: CELL, ox: 0, oy: 0, gx0: 0, gy0: 0, lw: 1, lh: 1 };
   function setGrid(W, F) {
     const P2 = LG.px = clamp(DEV.holoPx || CELL, 0.5, 8);
@@ -16829,10 +15489,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     },
     get px() {
       return LG.px;
-    },
-    /** where the layer lands, world units (Level 2's dark zones draw a shrunk copy there: render/dark.js) */
-    get rect() {
-      return { x: LG.ox + LG.gx0 * LG.px, y: LG.oy + LG.gy0 * LG.px, w: LG.lw * LG.px, h: LG.lh * LG.px };
     },
     /** @param {CanvasRenderingContext2D} x */
     world: (x) => x.setTransform(1 / LG.px, 0, 0, 1 / LG.px, -LG.ox / LG.px - LG.gx0, -LG.oy / LG.px - LG.gy0),
@@ -16961,197 +15617,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     a.fillRect(0, SHOP_Y, WW, SHOP_FLOOR * CELL - SHOP_Y);
     if (W.camY + F.vh > WH) a.fillRect(W.camX - 10, WH, F.vw + 20, W.camY + F.vh - WH + 10);
     a.globalCompositeOperation = "source-over";
-  }
-
-  // src/game/render/dark.js
-  var D = {
-    web: null,
-    webC: null,
-    zf: null,
-    zfFor: null,
-    m: null,
-    mImg: null,
-    mb: null,
-    haze: null,
-    back: null,
-    mt: null,
-    on: false,
-    fx0: 0,
-    fy0: 0,
-    fx1: 0,
-    fy1: 0,
-    bx0: 0,
-    by0: 0,
-    bx1: 0,
-    by1: 0,
-    light: new Float32Array(FW * FH)
-  };
-  var darkOn = () => D.on;
-  var darkFog = (i) => D.on && D.zf ? Math.min(1, D.zf[i] * 1.15) * Math.min(1, Math.max(0, DEV.l2dDark)) : 0;
-  function paintSilk(web, mask, c, x0, y0, x1, y1) {
-    const w = x1 - x0 + 1, h3 = y1 - y0 + 1, img = c.createImageData(w, h3), d = img.data;
-    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-      const v = mask[y * CW + x] ? web[y * CW + x] : 0;
-      if (!v) continue;
-      const s = silkColour(v), k = ((y - y0) * w + x - x0) * 4;
-      d[k] = s[0];
-      d[k + 1] = s[1];
-      d[k + 2] = s[2];
-      d[k + 3] = s[3];
-    }
-    c.putImageData(img, x0, y0);
-  }
-  function zoneField(shade) {
-    const zf = new Float32Array(FW * FH), n = 1 / (FOG_U / CELL) ** 2 / 255, s = FOG_U / CELL;
-    for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
-      const v = shade[y * CW + x];
-      if (v) zf[Math.floor(y / s) * FW + Math.floor(x / s)] += v * n;
-    }
-    return zf;
-  }
-  function addLight(x, y, r, w) {
-    const L3 = D.light, fx0 = Math.max(D.fx0, Math.floor((x - r) / FOG_U)), fx1 = Math.min(D.fx1 - 1, Math.floor((x + r) / FOG_U));
-    const fy0 = Math.max(D.fy0, Math.floor((y - r) / FOG_U)), fy1 = Math.min(D.fy1 - 1, Math.floor((y + r) / FOG_U));
-    for (let cy = fy0; cy <= fy1; cy++) for (let cx = fx0; cx <= fx1; cx++) {
-      const d = Math.hypot((cx + 0.5) * FOG_U - x, (cy + 0.5) * FOG_U - y);
-      if (d < r) L3[cy * FW + cx] += w * (1 - d / r);
-    }
-  }
-  function darkPrep(W, G, F) {
-    D.on = false;
-    if (!W.darkMask || !W.webbing || G.RPV || !W.dark.length) return;
-    const { vw, vh } = F, m = 24;
-    if (!W.dark.some((z) => z.x1 * CELL > W.camX - m && z.x0 * CELL < W.camX + vw + m && z.y1 * CELL > W.camY - m && z.y0 * CELL < W.camY + vh + m)) return;
-    if (D.web !== W.webbing || !D.webC) {
-      D.web = W.webbing;
-      D.webC = sizedCanvas(D.webC, CW, CH);
-      const c2 = D.webC.getContext("2d");
-      if (!c2) return;
-      c2.clearRect(0, 0, CW, CH);
-      for (const z of W.dark) paintSilk(W.webbing, W.darkMask, c2, z.x0, z.y0, z.x1, z.y1);
-      W.webDirty.length = 0;
-    }
-    if (W.webDirty.length) {
-      const c2 = D.webC.getContext("2d");
-      if (c2) for (const b2 of W.webDirty) {
-        c2.clearRect(b2.x0, b2.y0, b2.x1 - b2.x0 + 1, b2.y1 - b2.y0 + 1);
-        paintSilk(W.webbing, W.darkMask, c2, b2.x0, b2.y0, b2.x1, b2.y1);
-      }
-      W.webDirty.length = 0;
-    }
-    const shade = W.darkShade || W.darkMask;
-    if (D.zfFor !== shade || !D.zf) {
-      D.zf = zoneField(W.darkShade || W.darkMask.map((v) => v ? 255 : 0));
-      D.zfFor = shade;
-    }
-    const fx0 = D.fx0 = clamp(Math.floor(W.camX / FOG_U) - 2, 0, FW - 1), fy0 = D.fy0 = clamp(Math.floor(W.camY / FOG_U) - 2, 0, FH - 1);
-    const fx1 = D.fx1 = clamp(Math.ceil((W.camX + vw) / FOG_U) + 3, 1, FW), fy1 = D.fy1 = clamp(Math.ceil((W.camY + vh) / FOG_U) + 3, 1, FH);
-    for (let cy = fy0; cy < fy1; cy++) D.light.fill(0, cy * FW + fx0, cy * FW + fx1);
-    const fl = W.fire.list, st = Math.max(1, Math.ceil(fl.length / 300));
-    for (let k = 0; k < fl.length; k += st) {
-      const i = fl[k], x = (i % CW + 0.5) * CELL, y = ((i / CW | 0) + 0.5) * CELL;
-      if (x > W.camX - 60 && x < W.camX + vw + 60 && y > W.camY - 60 && y < W.camY + vh + 60) addLight(x, y, 56, 0.12 * st * W.flick);
-    }
-    for (const f of W.flashes) addLight(f.x, f.y, f.r * 3.5 + 30, 2 * (1 - f.t / 0.25));
-    for (const b2 of W.bullets) if (b2.light && !b2.hidden) addLight(b2.x, b2.y, (b2.lightR || 20) * 1.8, 1);
-    for (const e of W.enemies) if (e.burn > 0) addLight(e.x, e.ty, 60, 0.7);
-    if (W.p.burn > 0 && !W.p.dead) addLight(W.p.x + 6, W.p.y + 11, 60, 0.8);
-    const M = D.m = sizedCanvas(D.m, FW, FH), mc = M.getContext("2d");
-    D.mb = sizedCanvas(D.mb, FW, FH);
-    const bc = D.mb.getContext("2d");
-    if (!mc || !bc) return;
-    if (!D.mImg) D.mImg = mc.createImageData(FW, FH);
-    const md = D.mImg.data, dark = clamp(DEV.l2dDark, 0, 1), zf = D.zf;
-    for (let cy = fy0; cy < fy1; cy++) for (let cx = fx0; cx < fx1; cx++) {
-      const i = cy * FW + cx, k = i * 4;
-      md[k] = 2;
-      md[k + 1] = 2;
-      md[k + 2] = 4;
-      md[k + 3] = Math.round(255 * Math.min(1, zf[i] * 1.15) * dark * clamp(1 - D.light[i], 0, 1));
-    }
-    mc.putImageData(D.mImg, 0, 0, fx0, fy0, fx1 - fx0, fy1 - fy0);
-    bc.clearRect(fx0, fy0, fx1 - fx0, fy1 - fy0);
-    bc.filter = DEV.l2dEdge > 0 ? `blur(${DEV.l2dEdge}px)` : "none";
-    bc.drawImage(M, fx0, fy0, fx1 - fx0, fy1 - fy0, fx0, fy0, fx1 - fx0, fy1 - fy0);
-    bc.filter = "none";
-    D.on = true;
-    const s8 = FOG_U / CELL, pad = Math.ceil(DEV.l2dEdge * 2) + 1;
-    let bx0 = FW, by0 = FH, bx1 = 0, by1 = 0;
-    for (const z of W.dark) {
-      bx0 = Math.min(bx0, Math.floor(z.x0 / s8) - pad);
-      by0 = Math.min(by0, Math.floor(z.y0 / s8) - pad);
-      bx1 = Math.max(bx1, Math.ceil(z.x1 / s8) + pad);
-      by1 = Math.max(by1, Math.ceil(z.y1 / s8) + pad);
-    }
-    D.bx0 = Math.max(bx0, fx0);
-    D.by0 = Math.max(by0, fy0);
-    D.bx1 = Math.min(bx1, fx1);
-    D.by1 = Math.min(by1, fy1);
-    if (D.bx1 <= D.bx0 || D.by1 <= D.by0) {
-      D.on = false;
-      return;
-    }
-    const { bx0: a, by0: b, bx1: c, by1: d } = D, tw = (c - a) * s8, th = (d - b) * s8;
-    const T = D.mt = sizedCanvas(D.mt, tw, th), tc = T.getContext("2d");
-    if (!tc) {
-      D.on = false;
-      return;
-    }
-    tc.clearRect(0, 0, tw, th);
-    tc.imageSmoothingEnabled = true;
-    tc.drawImage(D.mb, a, b, c - a, d - b, 0, 0, tw, th);
-    const ctx = G.ctx;
-    ctx.save();
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(T, 0, 0, tw, th, a * FOG_U, b * FOG_U, (c - a) * FOG_U, (d - b) * FOG_U);
-    ctx.restore();
-  }
-  function drawDark(W, G, F) {
-    if (!D.on || !D.mt || !D.webC) return;
-    const ctx = G.ctx, { bx0, by0, bx1, by1 } = D, MT = D.mt;
-    const sx = bx0 * FOG_U, sy = by0 * FOG_U, sw = (bx1 - bx0) * FOG_U, sh = (by1 - by0) * FOG_U;
-    const s8 = FOG_U / CELL, tx0 = bx0 * s8, ty0 = by0 * s8, tw = (bx1 - bx0) * s8, th = (by1 - by0) * s8;
-    const B = D.back = sizedCanvas(D.back, tw, th), bc = B.getContext("2d");
-    if (!bc) return;
-    bc.globalAlpha = 1;
-    bc.fillStyle = "#050508";
-    bc.fillRect(0, 0, tw, th);
-    bc.globalAlpha = clamp(DEV.l2dBack, 0, 1);
-    bc.drawImage(D.webC, tx0, ty0, tw, th, 0, 0, tw, th);
-    const hl = holoLayer(), hb = holoBright() * DEV.l2dHolo;
-    if (hl && hb > 0.01) {
-      const hw = Math.max(1, Math.round(hl.width / 8)), hh = Math.max(1, Math.round(hl.height / 8));
-      const Hz = D.haze = sizedCanvas(D.haze, hw, hh), hc = Hz.getContext("2d");
-      if (hc) {
-        hc.clearRect(0, 0, hw, hh);
-        hc.imageSmoothingEnabled = true;
-        hc.drawImage(hl, 0, 0, hw, hh);
-        const g = holoGrid.rect;
-        bc.globalAlpha = clamp(hb, 0, 1);
-        bc.imageSmoothingEnabled = true;
-        bc.drawImage(Hz, 0, 0, hw, hh, g.x / CELL - tx0, g.y / CELL - ty0, g.w / CELL, g.h / CELL);
-      }
-    }
-    bc.globalAlpha = 1;
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    ctx.globalCompositeOperation = "source-atop";
-    ctx.drawImage(MT, 0, 0, MT.width, MT.height, sx, sy, sw, sh);
-    ctx.imageSmoothingEnabled = false;
-    ctx.globalCompositeOperation = "destination-over";
-    ctx.drawImage(B, 0, 0, tw, th, sx, sy, sw, sh);
-    ctx.restore();
-  }
-  function darkCut(c) {
-    if (!D.on || !D.mt) return;
-    const { bx0: fx0, by0: fy0, bx1: fx1, by1: fy1 } = D, MT = D.mt;
-    c.save();
-    c.globalCompositeOperation = "destination-out";
-    c.imageSmoothingEnabled = false;
-    c.drawImage(MT, 0, 0, MT.width, MT.height, fx0 * FOG_U, fy0 * FOG_U, (fx1 - fx0) * FOG_U, (fy1 - fy0) * FOG_U);
-    c.drawImage(MT, 0, 0, MT.width, MT.height, fx0 * FOG_U, fy0 * FOG_U, (fx1 - fx0) * FOG_U, (fy1 - fy0) * FOG_U);
-    c.restore();
   }
 
   // src/game/systems/lightning.js
@@ -18255,7 +16720,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const bx1 = clamp(Math.ceil((bcx + vw) / BCELL) + 1, 1, BW), by1 = clamp(Math.ceil((bcy + vh) / BCELL) + 1, 1, BH);
     G.ctx.drawImage(G.bg, bx0, by0, bx1 - bx0, by1 - by0, bx0 * BCELL + bgox, by0 * BCELL + bgoy, (bx1 - bx0) * BCELL, (by1 - by0) * BCELL);
     drawHolo(W, G, F);
-    darkPrep(W, G, F);
     if (W.camY + vh > SHOP_Y) {
       const wb = SHOP_FLOOR * CELL, wh = wb - SHOP_Y, rail = SHOP_Y + Math.round(wh * 0.64);
       G.ctx.fillStyle = "#161b24";
@@ -18682,7 +17146,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (const pr of plants) drawProp(G.pgCtx, pr, W.time, TH);
       pd = G.pgCtx.getImageData(0, 0, w, h3).data;
     }
-    const T = W.img.data, D2 = W.dimg ? W.dimg.data : null, A = G.pgArt;
+    const T = W.img.data, D = W.dimg ? W.dimg.data : null, A = G.pgArt;
     for (let y = 0; y < h3; y++) for (let x = 0; x < w; x++) {
       const si = ((by0 + y) * CW + bx0 + x) * 4, o = (y * w + x) * 4;
       let r = 0, g = 0, b = 0, a = 0;
@@ -18691,11 +17155,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         g = T[si + 1];
         b = T[si + 2];
         a = 255;
-      } else if (D2 && D2[si + 3]) {
-        r = D2[si];
-        g = D2[si + 1];
-        b = D2[si + 2];
-        a = D2[si + 3];
+      } else if (D && D[si + 3]) {
+        r = D[si];
+        g = D[si + 1];
+        b = D[si + 2];
+        a = D[si + 3];
       }
       if (pd && pd[o + 3]) {
         const pa = pd[o + 3] / 255;
@@ -18821,10 +17285,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               a = a * (1 - lift * (hall ? DEV.shopTorch : 1));
             }
           }
-          if (s) {
-            const z = darkFog(i);
-            if (z) a = Math.round(a * (1 - z));
-          }
           fdat[k + 3] = a;
         }
       }
@@ -18916,10 +17376,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       low.globalCompositeOperation = "lighter";
       G.ctx = low;
     }
-    if (!W.p.dead && !introHeld(W) && !HAND_TORCH) {
-      drawBeam(W, G, F);
-      if (low) darkCut(low);
-    }
     const gl = clamp(0.82 + W.glowN + 0.08 * Math.sin(W.time * 23) + 0.06 * Math.sin(W.time * 37), 0.5, 1.1);
     const scOn = (sc) => !(sc.y > W.camY + vh + 30 || sc.y < W.camY - 30 || sc.x < W.camX - 30 || sc.x > W.camX + vw + 30) && fogLit(W, sc.x, sc.y);
     for (const sc of W.sconces) {
@@ -18967,6 +17423,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(W, pr.x, pr.y + pr.len))
         glowAt(G.ctx, pr.x, pr.y + pr.len, 16, 0.2 * W.flick, "255,130,50");
     if (W.p.burn > 0 && !W.p.dead) glowAt(G.ctx, W.p.x + PW / 2, W.p.y + PH / 2, 22, 0.25 * W.flick, "255,130,50");
+    if (!W.p.dead && !introHeld(W) && !HAND_TORCH) drawBeam(W, G, F);
     if (!W.p.dead && !introHeld(W) && HAND_TORCH) {
       const th = torchHand(W), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
       glowAt(G.ctx, gfx, gfy, 70 * (0.9 + 0.1 * gl), 0.2 * gl, "255,150,60");
@@ -20416,11 +18873,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.stock = level.stock;
     W.rooms = level.rooms || [];
     W.zone = level.zone || null;
-    W.tomb = level.tomb || null;
-    W.dark = level.dark || [];
-    W.darkMask = level.darkMask || null;
-    W.webbing = level.webbing || null;
-    W.darkShade = level.darkShade || null;
     W.props = level.props || [];
     W.ambKinds = level.amb || [];
     W.dimg = level.dimg;
@@ -20433,7 +18885,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.zfx = { slow: 1, slick: 0, climb: null, rev: 0, web: null, webs: 0, webMul: 1 };
     {
       W.sconces = [];
-      if (!W.tomb) for (const r of W.rooms) W.sconces.push([r.x - 28, r.y - 2], [r.x + 28, r.y - 2]);
+      for (const r of W.rooms) W.sconces.push([r.x - 28, r.y - 2], [r.x + 28, r.y - 2]);
       W.sconces = W.sconces.map(([x, y], i) => ({ x, y, ph: i * 1.7 }));
     }
     W.roster = level.roster;
@@ -21134,10 +19586,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         continue;
       }
       const side = F.pcx < m.x ? -1 : 1;
-      const D2 = W.demo[k] || (W.demo[k] = { t: 0, side });
-      const t0 = D2.t;
-      D2.t += F.dt;
-      if (Math.floor(D2.t / DEMO_LOOP) !== Math.floor(t0 / DEMO_LOOP)) D2.side = side;
+      const D = W.demo[k] || (W.demo[k] = { t: 0, side });
+      const t0 = D.t;
+      D.t += F.dt;
+      if (Math.floor(D.t / DEMO_LOOP) !== Math.floor(t0 / DEMO_LOOP)) D.side = side;
     }
   }
 
@@ -21530,7 +19982,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "!": "#|#|#|#|#|.|#",
     "?": "#####|....#|...##|..#..|..#..|.....|..#.."
   };
-  var GLYPHS2 = /* @__PURE__ */ new Map();
+  var GLYPHS = /* @__PURE__ */ new Map();
   for (const [ch, src] of Object.entries(SRC)) {
     const rows = src.split("|"), runs = [];
     rows.forEach((row, r) => {
@@ -21542,18 +19994,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         c = e;
       }
     });
-    GLYPHS2.set(ch, { w: rows[0].length, runs });
+    GLYPHS.set(ch, { w: rows[0].length, runs });
   }
-  var pixHas = (s) => [...s].every((ch) => GLYPHS2.has(ch));
+  var pixHas = (s) => [...s].every((ch) => GLYPHS.has(ch));
   function pixWidth(s, px, bold = 0) {
     let w = 0;
-    for (const ch of s) w += ((GLYPHS2.get(ch) || GLYPHS2.get(" "))?.w || 3) + 1 + bold;
+    for (const ch of s) w += ((GLYPHS.get(ch) || GLYPHS.get(" "))?.w || 3) + 1 + bold;
     return Math.max(0, w - 1) * px;
   }
   function pixText(ctx, s, x, y, px, ph, bold = 0, snap = 4) {
     const q = (v) => Math.round(v * snap) / snap, top = y - 7 * ph;
     for (const ch of s) {
-      const g = GLYPHS2.get(ch) || GLYPHS2.get(" ");
+      const g = GLYPHS.get(ch) || GLYPHS.get(" ");
       if (!g) continue;
       for (const [r, c, n] of g.runs) {
         const x0 = q(x + c * px), y0 = q(top + r * ph);
@@ -21961,7 +20413,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     drawAim(W, G, F);
     drawPlayer(W, G, F);
     G.ctx.translate(-F.snapX, -F.snapY);
-    drawDark(W, G, F);
     drawFog(W, G, F);
     drawGlows(W, G, F);
     drawTubes(W, G, F);
@@ -24522,80 +22973,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       } }, "↺")
     );
   }
-  function CurveEdit({ p, label, lo, hi }) {
-    const [, bump] = useState(0);
-    const svg = useRef(null), drag = useRef(-1);
-    const cx = (u) => FC.x0 + u * (FC.x1 - FC.x0);
-    const cy = (v) => FC.bot - (v - lo) / (hi - lo) * (FC.bot - FC.top);
-    const K = [[null, p + "0", 0], [p + "C1x", p + "C1y"], [p + "C2x", p + "C2y"], [null, p + "1", 1]];
-    const H = K.map(([kx, ky, fx]) => ({ x: cx(kx ? DEV[kx] : Number(fx)), y: cy(DEV[ky]) }));
-    const at = (e) => {
-      const s = svg.current, m = s && s.getScreenCTM();
-      if (!m) return null;
-      const q = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
-      return { sx: q.x, sy: q.y, u: clamp((q.x - FC.x0) / (FC.x1 - FC.x0), 0, 1), v: clamp(lo + (FC.bot - q.y) / (FC.bot - FC.top) * (hi - lo), lo, hi) };
-    };
-    const move = (e) => {
-      const q = drag.current >= 0 && at(e);
-      if (!q) return;
-      const [kx, ky] = K[drag.current];
-      if (kx) devSet(String(kx), Math.round(q.u * 100) / 100);
-      devSet(String(ky), Math.round(q.v * 100) / 100);
-      bump((n) => n + 1);
-    };
-    const path = "M" + H[0].x + " " + H[0].y + " C" + H[1].x + " " + H[1].y + " " + H[2].x + " " + H[2].y + " " + H[3].x + " " + H[3].y;
-    const reset = () => {
-      for (const [kx, ky] of K) {
-        if (kx) devSet(String(kx), DEV_DEFAULTS[kx]);
-        devSet(String(ky), DEV_DEFAULTS[ky]);
-      }
-      bump((n) => n + 1);
-    };
-    return h(
-      "div",
-      { className: "fadecurve", "data-curve": p },
-      h("p", { className: "devlbl" }, label),
-      h(
-        "svg",
-        {
-          ref: svg,
-          viewBox: "0 0 200 132",
-          className: "fcsvg",
-          onPointerDown: (e) => {
-            e.preventDefault();
-            const q = at(e);
-            if (!q) return;
-            let best = 0;
-            H.forEach((c, i) => {
-              if (Math.hypot(q.sx - c.x, q.sy - c.y) < Math.hypot(q.sx - H[best].x, q.sy - H[best].y)) best = i;
-            });
-            drag.current = best;
-            svg.current.setPointerCapture(e.pointerId);
-            move(e);
-          },
-          onPointerMove: move,
-          onPointerUp: () => {
-            drag.current = -1;
-          },
-          onPointerCancel: () => {
-            drag.current = -1;
-          }
-        },
-        h("rect", { x: FC.x0, y: FC.top, width: FC.x1 - FC.x0, height: FC.bot - FC.top, className: "fcbox" }),
-        h("text", { x: FC.x0 + 2, y: FC.top - 4, className: "fctxt" }, "y " + hi),
-        h("text", { x: FC.x0 + 2, y: FC.bot + 12, className: "fctxt" }, "x 0, y " + lo),
-        h("text", { x: FC.x1 - 2, y: FC.bot + 12, className: "fctxt", textAnchor: "end" }, "x 1 (the reach)"),
-        h("line", { x1: H[0].x, y1: H[0].y, x2: H[1].x, y2: H[1].y, className: "fcarm" }),
-        h("line", { x1: H[3].x, y1: H[3].y, x2: H[2].x, y2: H[2].y, className: "fcarm" }),
-        h("path", { d: path, className: "fcline" }),
-        H.map((c, i) => h("circle", { key: i, cx: c.x, cy: c.y, r: 5, className: "fchandle" }))
-      ),
-      h("button", { className: "devreset fcreset", "aria-label": "Default curve", onPointerDown: (e) => {
-        e.preventDefault();
-        reset();
-      } }, "↺")
-    );
-  }
   var svgPt = (s, e) => {
     const m = s && s.getScreenCTM();
     return m ? new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()) : null;
@@ -25131,7 +23508,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               g === "jellycol" ? h(JellyPreview) : null,
               // the live jelly its colours paint
               g === "holoflash" ? h(FadeCurve) : null,
-              CURVES.filter((c) => c.g === g).map((c) => h(CurveEdit, { key: c.p, p: c.p, label: c.label, lo: c.lo, hi: c.hi })),
               g === "elitefx" ? [
                 h(FlamePreview, { key: "fp" }),
                 h("p", { key: "gl", className: "devlbl" }, "Colour over life"),
