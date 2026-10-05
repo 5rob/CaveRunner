@@ -15,6 +15,7 @@ import { decorate } from './decorate.js';
 import { ratNests } from './nests.js';
 import { paveWorks, strataCave, timberWorks } from './strata.js';
 import { goldVeins } from './veins.js';
+import { furnishTomb } from './furnish.js';
 import { carveTomb, paintMasonry, tombPlan } from './tomb.js';
 import { boxReach } from './zones.js';
 
@@ -628,7 +629,9 @@ export function makeLevel(seed, floor, owned) {
     ...portals.map(q => ({ x: q.x + q.w / 2, y: q.y + q.h / 2, r: 50 })),
     ...rooms.map(r => ({ x: r.x, y: r.y, r: 70 })), ...pickups.map(q => ({ x: q.x, y: q.y, r: 22 })),
     ...nests.map(n => ({ x: n.mouth.x * CELL, y: n.mouth.y * CELL, r: 18 }))];
-  const deco = decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel, zone);
+  // (the tomb: none of the theme's decoration; each room's own kit instead, furnish.js)
+  const deco = tombData ? { props: [], amb: [] } : decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel, zone);
+  if (tombData) furnishTomb(mat, img, dimg, fuel, tombData, seed);
   // gold seams, painted over whatever the decoration left on the rock
   const ore = goldVeins(mat, seed, floor);
   for (let i = 0; i < ore.length; i++) {

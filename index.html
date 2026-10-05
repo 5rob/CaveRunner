@@ -1317,7 +1317,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ["l2Loops", "Extra links (loops, 0-1)", 0, 1, 0.05, 0.35, 0.35],
     ["l2Course", "Cut stone: course height (px)", 3, 12, 1, 6, 6],
     ["l2Block", "Cut stone: block length (px)", 4, 40, 1, 14, 14],
-    ["l2Mason", "Cut stone: how deep into the rock (px)", 0, 30, 1, 6, 6]
+    ["l2Mason", "Cut stone: how deep into the rock (px)", 0, 30, 1, 6, 6],
+    ["l2Furn", "Room kits: furniture amount (×)", 0, 3, 0.05, 1, 1],
+    ["l2Bones", "Room kits: skeletal remains (×)", 0, 3, 0.05, 1, 1]
   ]);
   var L2_LOOK = [
     ["l2Bg", "Background (far)", "#0c0d11"],
@@ -1337,7 +1339,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     DEV_META.push({ k, g: "level2", label: "Colour: " + label, type: "color" });
   }
   DEV_DEFAULTS.l2Decor = 1;
-  DEV_META.push({ k: "l2Decor", g: "level2", label: "Decoration amount (× beams, carts, soot, lanterns, picks)", min: 0, max: 4, step: 0.05 });
+  DEV_META.push({ k: "l2Decor", g: "level2", label: "Decoration amount (× the room kits, all of it; 0 = bare tomb)", min: 0, max: 4, step: 0.05 });
   function curveKnobs(g, p, label, lo, hi, def) {
     const rows = [
       ["0", "start y", def.y0, lo, hi],
@@ -9407,13 +9409,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       add(x, y, w, h3, type, shape, big);
     }
     const padOk = (r, sx, sw) => r.type !== "gate" || Math.abs(sx - r.cx) >= PAD_KEEP + sw / 2;
-    const shaftX = (r, from) => r.type === "gate" ? r.cx + (from < r.cx ? -1 : 1) * 24 : r.cx;
+    const shaftX = (r, from, floor, sw) => {
+      const side = from < r.cx ? -1 : 1;
+      if (r.type === "gate") return r.cx + side * 24;
+      if (!floor) return r.cx;
+      return r.cx + side * (r.w / 2 - (sw || 16) / 2 - 1);
+    };
+    const floorOk = (r, sx, sw) => r.type === "gate" || Math.abs(sx - r.cx) >= r.w / 2 - sw / 2 - 3;
     const route = (A, B, H, sw) => {
       const segs = [];
       const [U, D] = A.floor <= B.y ? [A, B] : B.floor <= A.y ? [B, A] : [null, null];
       const o0 = Math.max(A.x, B.x) + 4, o1 = Math.min(A.x + A.w, B.x + B.w) - 4;
       if (U && o1 - o0 >= sw) {
-        const c = [shaftX(U, D.cx), shaftX(D, U.cx), (o0 + o1) / 2].find((sx) => sx - sw / 2 >= o0 && sx + sw / 2 <= o1 && padOk(U, sx, sw) && padOk(D, sx, sw));
+        const c = [shaftX(U, D.cx, true, sw), shaftX(D, U.cx), (o0 + o1) / 2, o0 + sw / 2, o1 - sw / 2].find((sx) => sx - sw / 2 >= o0 && sx + sw / 2 <= o1 && padOk(U, sx, sw) && padOk(D, sx, sw) && floorOk(U, sx, sw));
         if (c === void 0) return null;
         const x = Math.round(c - sw / 2);
         segs.push({ kind: "shaft", x, y: U.floor, w: sw, h: D.y - U.floor, a: U.id, b: D.id, ledges: [] });
@@ -9435,7 +9443,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const top = P2.floor - Hh;
         const above = Q.floor <= top, below = Q.y >= P2.floor;
         if (!above && !below) continue;
-        const sx = shaftX(Q, P2.cx);
+        const sx = shaftX(Q, P2.cx, above, sw);
         if (sx + sw / 2 + 2 > P2.x && sx - sw / 2 - 2 < P2.x + P2.w) continue;
         const right = sx > P2.cx, x0 = right ? P2.x + P2.w : Math.round(sx - sw / 2), x1 = right ? Math.round(sx + sw / 2) : P2.x;
         const gal = { kind: "gallery", x: x0, y: top, w: x1 - x0, h: Hh, a: P2.id, b: Q.id, ledges: [] };
@@ -9536,23 +9544,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           for (let y = c.y; y < c.y + c.h; y++) if (!open(x, y)) return false;
           return true;
         };
-        const L3 = A.x < B.x ? A : B, R = A.x < B.x ? B : A;
-        if (c.x === L3.x + L3.w) while (c.x > L3.x && !colOpen(c.x - 1)) {
+        const L3 = [A, B].find((q) => q.x + q.w === c.x), R = [A, B].find((q) => q.x === c.x + c.w);
+        if (L3) while (c.x > L3.x && !colOpen(c.x - 1)) {
           c.x--;
           c.w++;
         }
-        if (c.x + c.w === R.x) while (c.x + c.w < R.x + R.w && !colOpen(c.x + c.w)) c.w++;
+        if (R) while (c.x + c.w < R.x + R.w && !colOpen(c.x + c.w)) c.w++;
       } else {
         const rowOpen = (y) => {
           for (let x = c.x; x < c.x + c.w; x++) if (!open(x, y)) return false;
           return true;
         };
-        const U = A.y < B.y ? A : B, D = A.y < B.y ? B : A;
-        if (c.y === U.floor) while (c.y > U.y && !rowOpen(c.y - 1)) {
+        const U = [A, B].find((q) => q.floor === c.y), D = [A, B].find((q) => q.y === c.y + c.h);
+        if (U) while (c.y > U.y && !rowOpen(c.y - 1)) {
           c.y--;
           c.h++;
         }
-        if (c.y + c.h === D.y) while (c.y + c.h < D.floor && !rowOpen(c.y + c.h)) c.h++;
+        if (D) while (c.y + c.h < D.floor && !rowOpen(c.y + c.h)) c.h++;
       }
       cut(c);
     }
@@ -9631,6 +9639,503 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       d[i * 4] = c[0] + j;
       d[i * 4 + 1] = c[1] + j;
       d[i * 4 + 2] = c[2] + j;
+    }
+  }
+
+  // src/world/furnish.js
+  var KIT_PAL = {
+    S: [158, 152, 170],
+    s: [112, 108, 126],
+    d: [66, 64, 78],
+    k: [16, 14, 20],
+    B: [226, 218, 194],
+    b: [164, 154, 128],
+    G: [222, 178, 74],
+    g: [150, 108, 48],
+    T: [78, 166, 152],
+    t: [44, 100, 96],
+    C: [132, 48, 62],
+    c: [84, 30, 44],
+    V: [92, 64, 130],
+    v: [58, 42, 88],
+    W: [124, 86, 52],
+    w: [82, 56, 34],
+    P: [206, 190, 146],
+    p: [150, 132, 96],
+    F: [255, 226, 130],
+    O: [236, 128, 44]
+  };
+  var BURNS = "WwCcVvPp";
+  var SKULL = [".BBB.", "BkBkB", "BBBBB", ".b.b."];
+  var BONES = ["B...bB", ".BBbB."];
+  var SKULLS = ["...BBB...", "..BkBkB..", ".BBbBBbB.", "BkBBkBBkB"];
+  var LYING = [".BB..b.b.b..", "BkBBBBBBBBBB", ".B...b.b.bBB"];
+  var SITTING = [".BB..", ".BkB.", "..B..", ".BBB.", ".BbBB", ".BB..", ".BBBB", ".B..B"];
+  var KNEEL = ["..BB..", "..BkB.", "..BB..", ".BBBBB", ".BB...", "BBBBB."];
+  var URN = [".dssd.", "..ss..", ".sSSs.", "sSTTSs", "sSSSSs", "sSggSs", ".sSSs.", "..dd.."];
+  var AMPHORA = ["..ss..", ".s..s.", ".sSSs.", "sSSSSs", "sSTTSs", "sSSSSs", ".sSSs.", ".sSSs.", "..ss..", "..dd.."];
+  var JAR = [".ss.", "sSSs", "sggs", "sSSs", ".ss."];
+  var CRATE = ["wwwwwww", "wWwWwWw", "wWWwWWw", "wWwWwWw", "wWWwWWw", "wwwwwww"];
+  var CHEST = ["wwwwwwww", "wWWGGWWw", "wwwGGwww", "wWWWWWWw", "wwwwwwww"];
+  var SCROLLS = ["..PpP..", ".PpPPp.", "PPpPpPP"];
+  var BOWL = ["gTTTg", ".ggg."];
+  var CANDLE = ["F", "O", "P", "P", "p"];
+  var IDOL = [
+    "..SSSS..",
+    ".SSSSSS.",
+    ".SkSSkS.",
+    "..SSSS..",
+    "...SS...",
+    ".SSSSSS.",
+    "SSsSSsSS",
+    "S.SSSS.S",
+    "S.SGGS.S",
+    "s.SSSS.s",
+    "..SSSS..",
+    "..SssS..",
+    "..S..S..",
+    "..S..S..",
+    "dddddddd",
+    "dssssssd",
+    "dddddddd"
+  ];
+  var SMALL_IDOL = [".SSSS.", "SkSSkS", ".SSSS.", "..SS..", "SSSSSS", ".SGGS.", ".SSSS.", ".S..S.", "dddddd", "dssssd"];
+  var GUARD = [
+    "...SSSS...",
+    "..SSSSSS..",
+    "..SkSSkS..",
+    "...SSSS...",
+    "....SS....",
+    ".SSSSSSSS.",
+    "SSSsSSsSSS",
+    "SS.SSSS.SS",
+    "Sg.SGGS.gS",
+    "S..SSSS..S",
+    "T..SSSS..T",
+    "T..SssS..T",
+    "T..S..S..T",
+    "T..S..S..T",
+    "T..S..S..T",
+    "T.SS..SS.T",
+    "dddddddddd",
+    "dssssssssd",
+    "dddddddddd"
+  ];
+  var GLYPHS = [
+    31727,
+    11962,
+    29671,
+    23497,
+    29847,
+    20345,
+    14734,
+    31599
+  ];
+  var glyphBit = (g, col, row) => GLYPHS[g % GLYPHS.length] >> col + 3 * row & 1;
+  var ACCENT = { altar: "G", gate: "T", vestibule: "T", hall: "C", library: "g", ossuary: "b", dorm: "V", store: "g", orrery: "G", pillars: "T", shrine: "G" };
+  function furnishTomb(mat, img, dimg, fuel, t, seed) {
+    let rs = (Math.imul(seed | 0, 40503) + 991 >>> 0) % 2147483646 + 1;
+    const R = () => (rs = rs * 16807 % 2147483647) / 2147483647;
+    for (let i = 0; i < 6; i++) R();
+    const all = DEV.l2Decor, Kf = kr("l2Furn", R) * all, Kb = kr("l2Bones", R) * all;
+    if (all <= 0) {
+      for (const r of t.rooms) r.kit = [];
+      return;
+    }
+    for (const r of t.rooms) furnishRoom(mat, img, dimg, fuel, r, seed, R, Kf, Kb, t.prize === r.id);
+    const dd = dimg.data;
+    const inRoom = (x, y) => t.rooms.some((r) => x >= r.x - 2 && x < r.x + r.w + 2 && y >= r.y - 2 && y <= r.floor + 2);
+    for (const c of t.corridors) {
+      if (c.kind !== "gallery") continue;
+      const fy = c.y + c.h - 1;
+      for (let x = c.x + 4; x < c.x + c.w - 10; x += 14) {
+        if (R() > 0.22 * Kb) continue;
+        const art = R() < 0.5 ? SKULL : R() < 0.5 ? BONES : LYING;
+        const w = art[0].length, h3 = art.length;
+        if (inRoom(x, fy) || inRoom(x + w, fy) || inRoom(x, fy - h3) || inRoom(x + w, fy - h3)) continue;
+        let ok = true;
+        for (let k = 0; k < w && ok; k++) if (fy + 1 >= CH || !mat[(fy + 1) * CW + x + k]) ok = false;
+        for (let j = 0; j < h3 && ok; j++) for (let k = 0; k < w; k++) if (mat[(fy - j) * CW + x + k]) ok = false;
+        if (!ok) continue;
+        for (let j = 0; j < h3; j++) for (let k = 0; k < w; k++) {
+          const ch = art[j][k];
+          if (ch === ".") continue;
+          const i = (fy - h3 + 1 + j) * CW + x + k, c0 = KIT_PAL[ch];
+          dd[i * 4] = c0[0];
+          dd[i * 4 + 1] = c0[1];
+          dd[i * 4 + 2] = c0[2];
+          dd[i * 4 + 3] = 255;
+        }
+      }
+    }
+  }
+  function furnishRoom(mat, img, dimg, fuel, r, seed, R, Kf, Kb, prize) {
+    const cx = r.cx, F = r.floor, dd = dimg.data, id = img.data, hw = Math.floor(r.w / 2);
+    const kit = r.kit = [];
+    const hash5 = (a, b) => {
+      let v = Math.imul(a, 374761393) + Math.imul(b, 668265263) + Math.imul(seed + r.id * 31, 982451653) | 0;
+      v = Math.imul(v ^ v >>> 13, 1274126177);
+      return ((v ^ v >>> 16) >>> 0) / 4294967296;
+    };
+    const inb = (x, y) => x >= 0 && y >= 0 && x < CW && y < CH;
+    const open = (x, y) => inb(x, y) && !mat[y * CW + x];
+    const solid = (x, y) => inb(x, y) && (mat[y * CW + x] === ROCK || mat[y * CW + x] === BRICK);
+    const rock = (x, y) => inb(x, y) && mat[y * CW + x] === ROCK;
+    const XR = (u) => cx + u, XL = (u) => cx - 1 - u, Y = (up) => F - 1 - up;
+    const pair = (u, up, ch, a) => {
+      const y = Y(up), xr = XR(u), xl = XL(u);
+      if (u < 0 || !open(xr, y) || !open(xl, y)) return;
+      const c = KIT_PAL[ch], j = (hash5(u * 7 + 1, up * 13 + 5) - 0.5) * 12, al = a == null ? 255 : a;
+      for (const x of [xr, xl]) {
+        const i = y * CW + x, k = i * 4;
+        dd[k] = c[0] + j;
+        dd[k + 1] = c[1] + j;
+        dd[k + 2] = c[2] + j;
+        dd[k + 3] = al;
+        if (fuel) fuel[i] = BURNS.includes(ch) ? FUEL_WOOD : 0;
+      }
+    };
+    const carve = (u, up, f, ch) => {
+      const y = Y(up), xr = XR(u), xl = XL(u);
+      if (u < 0 || !rock(xr, y) || !rock(xl, y)) return;
+      const c = ch ? KIT_PAL[ch] : null;
+      for (const x of [xr, xl]) {
+        const k = (y * CW + x) * 4;
+        for (let n2 = 0; n2 < 3; n2++) id[k + n2] = c ? (id[k + n2] * 0.35 + c[n2] * 0.65) * f : id[k + n2] * f;
+      }
+    };
+    const fits = (u0, up0, w, h3, ground) => {
+      if (u0 < 0 || up0 < 0) return false;
+      for (let up = up0; up < up0 + h3; up++) for (let u = u0; u < u0 + w; u++) if (!open(XR(u), Y(up)) || !open(XL(u), Y(up))) return false;
+      if (ground) {
+        for (let u = u0; u < u0 + w; u++) if (!solid(XR(u), Y(up0 - 1)) || !solid(XL(u), Y(up0 - 1))) return false;
+      }
+      return true;
+    };
+    const note = (name, u0, up0, w, h3) => kit.push({ id: name, x: XR(u0), y: Y(up0 + h3 - 1), w, h: h3, m: u0 > 0 });
+    const spr2 = (name, art, u0, up0, o) => {
+      o = o || {};
+      const h3 = art.length, w = art[0].length;
+      if (!fits(u0, up0, w, h3, !o.air && up0 === 0)) return false;
+      for (let row = 0; row < h3; row++) for (let col = 0; col < w; col++) {
+        const ch = art[row][o.flip ? w - 1 - col : col];
+        if (ch !== ".") pair(u0 + col, up0 + h3 - 1 - row, ch, o.a);
+      }
+      note(name, u0, up0, w, h3);
+      return true;
+    };
+    const sprC = (name, art, up0, o) => {
+      const h3 = art.length, w = art[0].length, hf = w >> 1;
+      if (!fits(0, up0, hf, h3, !(o && o.air) && up0 === 0)) return false;
+      for (let row = 0; row < h3; row++) for (let col = hf; col < w; col++) {
+        const ch = art[row][col];
+        if (ch !== ".") pair(col - hf, up0 + h3 - 1 - row, ch);
+      }
+      note(name, 0, up0, hf, h3);
+      return true;
+    };
+    const rect = (u0, up0, w, h3, ch) => {
+      for (let up = up0; up < up0 + h3; up++) for (let u = u0; u < u0 + w; u++) pair(u, up, ch);
+    };
+    const ceil = (u) => {
+      let up = 0;
+      while (up < r.h && open(XR(u), Y(up)) && open(XL(u), Y(up))) up++;
+      return up;
+    };
+    const roofed = (u, top) => solid(XR(u), Y(top)) && solid(XL(u), Y(top));
+    const wallAt = (up) => {
+      let u = 0;
+      while (u < hw + 2 && open(XR(u), Y(up)) && open(XL(u), Y(up))) u++;
+      return u;
+    };
+    const hang = (name, art, u0, len) => {
+      const w = art[0].length, hgt = art.length, top = ceil(u0 + (w >> 1));
+      const up0 = top - len - hgt;
+      if (up0 < 14 || !roofed(u0 + (w >> 1), top) || !fits(u0, up0, w, hgt + len)) return false;
+      for (let k = 0; k < len; k++) pair(u0 + (w >> 1), top - 1 - k, "d");
+      for (let row = 0; row < hgt; row++) for (let col = 0; col < w; col++) if (art[row][col] !== ".") pair(u0 + col, up0 + hgt - 1 - row, art[row][col]);
+      note(name, u0, up0, w, hgt + len);
+      return true;
+    };
+    const acc = ACCENT[r.type] || "T";
+    const H = ceil(0) || r.h;
+    for (let u = 0; u < hw; u++) {
+      if (!open(XR(u), Y(0)) || !open(XL(u), Y(0))) continue;
+      const m = u % 6;
+      carve(u, -1, m === 0 ? 0.6 : 1.05, m === 0 ? null : u % 12 < 6 ? acc : "s");
+      if (m === 3) carve(u, -2, 0.75, acc);
+    }
+    for (let up = 2; up < H - 3; up++) {
+      const e = wallAt(up), row = up % 6;
+      if (row === 5) continue;
+      const g = Math.floor(up / 6) + r.id * 3;
+      for (let k = 0; k < 3; k++) if (glyphBit(g, k, row)) carve(e + k, up, 0.5, (up / 6 | 0) % 2 ? acc : null);
+    }
+    for (let u = 0; u < hw; u++) {
+      const top = ceil(u);
+      if (top < 6 || top >= 400) continue;
+      carve(u, top, u % 4 < 2 ? 0.45 : 1, null);
+      carve(u, top + 1, 0.9, acc);
+    }
+    const scatter = (n2, from) => {
+      for (let i = 0; i < n2; i++) {
+        const art = R() < 0.4 ? SKULL : BONES, u0 = from + Math.floor(R() * Math.max(1, hw - from - 6));
+        spr2("bones", art, u0, 0, { flip: R() < 0.5 });
+      }
+    };
+    const n = (v) => Math.round(v);
+    const T = r.type;
+    if (H >= 40 && T !== "ossuary" && T !== "pillars" && T !== "gate") {
+      const pu = Math.round(H * 0.5), ph = Math.min(14, Math.round(H * 0.22));
+      let made = 0;
+      for (let u0 = 3; u0 + 10 < hw; u0 += 15) {
+        if (!fits(u0, pu, 10, ph)) continue;
+        for (let up = pu; up < pu + ph; up++) for (let u = u0; u < u0 + 10; u++) {
+          const edge = up === pu || up === pu + ph - 1 || u === u0 || u === u0 + 9;
+          pair(u, up, edge ? "s" : "d", edge ? 150 : 170);
+        }
+        for (let line = 0; line * 6 + 7 <= ph; line++) for (const [k, gx] of [[0, u0 + 2], [1, u0 + 6]]) {
+          const g = r.id * 3 + made * 7 + line * 2 + k;
+          for (let row = 0; row < 5; row++) for (let col = 0; col < 3; col++)
+            if (glyphBit(g, col, row)) pair(gx + col - (k ? 1 : 0), pu + ph - 2 - line * 6 - row, acc, 150);
+        }
+        note("relief", u0, pu, 10, ph);
+        made++;
+      }
+      const top = ceil(0), len = Math.max(4, Math.round(top * 0.25)), cy = top - len - 4;
+      if (top >= 50 && roofed(0, top) && fits(0, cy - 3, 6, 8)) {
+        for (let k = 0; k < len; k++) pair(0, top - 1 - k, "d");
+        for (let a = 0; a <= Math.PI; a += 0.15) pair(Math.floor(5 * Math.sin(a)), Math.round(cy + 2 * Math.cos(a)), "g");
+        pair(0, cy - 2, "G");
+        pair(1, cy - 2, "G");
+        pair(0, cy - 3, "T");
+        note("ring", 0, cy - 3, 6, len + 7);
+      }
+    }
+    if (T === "altar") {
+      if (!prize) {
+        const aw = [12, 9, 6].find((w) => fits(0, 0, w + 1, 12, true));
+        if (aw) {
+          rect(0, 0, aw, 3, "d");
+          rect(0, 3, aw - 2, 3, "s");
+          rect(0, 6, aw - 4, 4, "S");
+          rect(0, 9, aw - 4, 1, "G");
+          note("altar", 0, 0, aw, 10);
+          sprC("offering", ["gGGg", ".gg."], 10, { air: true });
+          if (aw >= 9) spr2("candle", CANDLE, aw - 6, 10, { air: true });
+        }
+      }
+      const iu = Math.max(prize ? 16 : 15, n(hw * 0.5));
+      if (!spr2("idol", IDOL, iu, 0) && !spr2("idol", SMALL_IDOL, iu, 0)) spr2("idol", SMALL_IDOL, Math.max(14, iu - 6), 0);
+      for (let k = 0; k < n(2 * Kb); k++) spr2("kneeling", KNEEL, (prize ? 15 : 13) + k * 8, 0, { flip: true }) || spr2("bones", SKULL, 15 + k * 8, 0);
+      if (Kf > 0.3) {
+        spr2("candle", CANDLE, iu - 3, 0);
+        spr2("candle", CANDLE, iu + 10, 0);
+      }
+      hang("censer", ["gGg", ".g."], Math.max(8, n(hw * 0.3)), 6);
+      scatter(n(Kb * hw / 30), iu + 8);
+    } else if (T === "library") {
+      const sh = Math.min(H - 6, 24);
+      let u0 = hw - 12, made = 0;
+      while (u0 > 10 && made < n(4 * Kf)) {
+        if (fits(u0, 0, 10, sh, true)) {
+          rect(u0, 0, 10, sh, "w");
+          for (let up = 2; up < sh - 1; up += 5) for (let u = u0 + 1; u < u0 + 9; u++) {
+            const hgt = 3 + (hash5(u, up) < 0.4 ? 0 : 0), col = "CVgTPc"[Math.floor(hash5(u * 3, up) * 6)];
+            for (let q = 0; q < hgt; q++) pair(u, up + q, hash5(u, up + 99) < 0.12 ? "w" : col);
+          }
+          note("shelf", u0, 0, 10, sh);
+          made++;
+          u0 -= 14;
+        } else u0 -= 3;
+      }
+      if (fits(0, 0, 5, 10, true)) {
+        rect(0, 0, 1, 6, "s");
+        rect(0, 6, 4, 1, "w");
+        rect(0, 7, 5, 1, "w");
+        rect(0, 8, 4, 1, "P");
+        pair(0, 8, "p");
+        note("lectern", 0, 0, 5, 9);
+      }
+      spr2("reader", SITTING, 6, 0, { flip: true });
+      for (let k = 0; k < n(2 * Kf); k++) spr2("scrolls", SCROLLS, 12 + Math.floor(R() * Math.max(1, hw - 24)), 0);
+      scatter(n(Kb * hw / 40), 8);
+    } else if (T === "ossuary") {
+      const top = Math.min(H - 4, 40);
+      for (let up = 3; up + 6 < top; up += 8) for (let u = 1; u + 7 < hw - 1; u += 8) {
+        if (!fits(u, up, 7, 7)) continue;
+        rect(u, up, 7, 7, "s");
+        rect(u + 1, up + 1, 5, 5, "k");
+        rect(u, up, 7, 1, "S");
+        if (hash5(u, up) < 0.85) for (let row = 0; row < 4; row++) for (let col = 0; col < 5; col++) {
+          const ch = SKULL[row][col];
+          if (ch !== ".") pair(u + 1 + col, up + 4 - row, ch);
+        }
+        note("niche", u, up, 7, 7);
+      }
+      sprC("skulls", SKULLS.map((s) => s + "."), 0);
+      for (let k = 0; k < n(3 * Kb); k++) spr2("skulls", SKULLS, 8 + Math.floor(R() * Math.max(1, hw - 18)), 0) || spr2("bones", BONES, 8 + k * 6, 0);
+      scatter(n(Kb * hw / 15), 4);
+    } else if (T === "dorm") {
+      let u0 = hw - 18, made = 0;
+      while (u0 > 0 && made < n(4 * Kf)) {
+        if (fits(u0, 0, 16, 6, true)) {
+          const bunk = (b) => {
+            rect(u0, b, 1, 3, "d");
+            rect(u0 + 15, b, 1, 3, "d");
+            rect(u0, b + 3, 16, 2, "s");
+            rect(u0 + 2, b + 5, 12, 1, "V");
+            if (R() < 0.7 * Kb) spr2("sleeper", LYING, u0 + 2, b + 5, { air: true, flip: R() < 0.5 });
+            else pair(u0 + 3, b + 6, "v");
+          };
+          bunk(0);
+          if (fits(u0, 12, 16, 8)) {
+            bunk(12);
+            rect(u0, 6, 1, 6, "d");
+            rect(u0 + 15, 6, 1, 6, "d");
+          }
+          note("bunk", u0, 0, 16, 6);
+          made++;
+          u0 -= 19;
+        } else u0 -= 3;
+      }
+      if (!made && fits(0, 0, 7, 6, true)) {
+        rect(6, 0, 1, 3, "d");
+        rect(0, 3, 7, 2, "s");
+        rect(0, 5, 5, 1, "V");
+        pair(4, 6, "v");
+        spr2("skull", SKULL, 1, 5, { air: true });
+        note("bunk", 0, 0, 7, 6);
+      }
+      spr2("chest", CHEST, Math.max(0, u0 + 4), 0) || sprC("chest", CHEST, 0);
+      scatter(n(Kb * hw / 30), 2);
+    } else if (T === "store") {
+      let u = 1;
+      const kinds = [URN, JAR, CRATE, AMPHORA, JAR, URN];
+      const su = Math.min(hw - 2, wallAt(12) - 2);
+      if (su > 6 && fits(0, 12, su, 1)) {
+        rect(0, 11, su, 1, "s");
+        rect(0, 12, su, 1, "S");
+        for (let k = 0; k < su - 3; k += 6) rect(k + 2, 6, 1, 5, "d");
+        for (let k = 1; k < su - 5; k += 5 + Math.floor(R() * 2)) if (R() < 0.8 * Kf) spr2(R() < 0.6 ? "jar" : "urn", R() < 0.6 ? JAR : URN, k, 13, { air: true });
+        note("shelf", 0, 11, su, 2);
+      }
+      while (u < hw - 3) {
+        if (R() > 0.9 * Math.min(1.1, Kf)) {
+          u += 3;
+          continue;
+        }
+        const art = kinds[Math.floor(R() * kinds.length)], w = art[0].length;
+        const name = art === CRATE ? "crate" : art === JAR ? "jar" : "urn";
+        if (spr2(name, art, u, 0)) {
+          if (art === CRATE && R() < 0.5) spr2("crate", CRATE, u, 6, { air: true });
+          else if (art === CRATE && R() < 0.6) spr2("jar", JAR, u + 1, 6, { air: true });
+          u += w + 1;
+        } else u += 2;
+      }
+      if (!kit.length) sprC("urn", AMPHORA, 0) || sprC("jar", JAR, 0);
+      scatter(n(Kb * hw / 50), 4);
+    } else if (T === "hall") {
+      if (fits(0, 0, 9, 16, true)) {
+        rect(0, 0, 9, 2, "d");
+        rect(0, 2, 5, 3, "s");
+        rect(4, 2, 1, 6, "S");
+        rect(0, 5, 4, 10, "s");
+        rect(0, 15, 4, 1, "G");
+        rect(3, 6, 1, 9, "S");
+        pair(1, 12, "T");
+        pair(0, 12, "T");
+        note("throne", 0, 0, 9, 16);
+        spr2("king", [".BB.", "BkkB", ".BB.", "BBBB", ".BB.", "B..B"], 0, 5, { air: true });
+      }
+      const tw = Math.min(28, hw - 24);
+      if (tw >= 10 && fits(14, 0, tw, 6, true)) {
+        rect(14, 4, tw, 2, "W");
+        rect(15, 0, 1, 4, "w");
+        rect(14 + tw - 2, 0, 1, 4, "w");
+        for (let u = 17; u < 14 + tw - 3; u += 5) rect(u, 6, 1, hash5(u, 1) < 0.5 ? 2 : 1, hash5(u, 2) < 0.5 ? "g" : "G");
+        note("table", 14, 0, tw, 6);
+        for (const bu of [11, 14 + tw + 1]) if (fits(bu, 0, 3, 3, true)) {
+          rect(bu, 0, 1, 2, "w");
+          rect(bu + 2, 0, 1, 2, "w");
+          rect(bu, 2, 3, 1, "W");
+          note("bench", bu, 0, 3, 3);
+          if (R() < Kb) spr2("diner", SITTING, bu - 1, 3, { air: true, flip: bu > 14 });
+        }
+      }
+      for (const f of [0.35, 0.75]) {
+        const bu = n(hw * f);
+        hang("banner", ["gGGGGg", "CCCCCC", "CcGGcC", "CCGGCC", "CcGGcC", "CCCCCC", "CCCCCC", "C.CC.C", "C....C"], bu, 3);
+      }
+      scatter(n(Kb * hw / 25), 6);
+    } else if (T === "orrery") {
+      const c = Math.max(10, Math.min(Math.round(H * 0.5), 30)), Rr = Math.max(6, Math.min(hw - 4, Math.round(H * 0.32), 22));
+      rect(0, 0, 4, 2, "d");
+      rect(0, 2, 1, c - 3, "s");
+      rect(0, 2, 2, 1, "s");
+      note("orrery", 0, 0, Rr, c + Rr);
+      const ring = (rx, ry, ch) => {
+        for (let a = -Math.PI / 2; a <= Math.PI / 2; a += 0.5 / Math.max(rx, ry)) {
+          const u = Math.floor(rx * Math.cos(a)), up = Math.round(c + ry * Math.sin(a));
+          if (u >= 0) pair(u, up, ch);
+        }
+      };
+      ring(Rr, Math.round(Rr * 0.32), "g");
+      ring(Math.round(Rr * 0.32), Rr, "G");
+      ring(Math.round(Rr * 0.7), Math.round(Rr * 0.7), "t");
+      for (let dy = -3; dy <= 3; dy++) for (let u = 0; u < 3; u++) if (u * u + dy * dy <= 9) pair(u, c + dy, dy < 0 && u < 2 ? "G" : "g");
+      const planets = [[Math.round(Rr * 0.85), 0, "T"], [Math.round(Rr * 0.55), Math.round(Rr * 0.6), "C"]];
+      for (const [pu, pu2, ch] of planets) {
+        pair(pu, c + pu2, ch);
+        pair(pu + 1, c + pu2, ch);
+        pair(pu, c + pu2 + 1, ch);
+        pair(pu + 1, c + pu2 + 1, ch);
+      }
+      for (const f of [0.55, 0.85]) hang("planet", [".TT.", "TttT", ".TT."], n(hw * f) - 2, 4 + n(f * 10));
+      scatter(n(Kb * hw / 30), Rr + 2);
+    } else if (T === "pillars") {
+      for (const p of roomPillars(r)) {
+        if (p.x < cx) continue;
+        for (let y = p.y + 2; y < p.y + p.h - 2; y++) {
+          const row = (y - p.y) % 6;
+          if (row === 5) continue;
+          const g = Math.floor((y - p.y) / 6) + p.x;
+          for (let k = 0; k < 3; k++) if (glyphBit(g, k, row)) carve(p.x - cx + k + 1, F - 1 - y, 0.45, g & 1 ? "T" : null);
+        }
+        if (p.y + p.h >= F) spr2("skulls", SKULL, p.x - cx + p.w + 2, 0);
+        else spr2("bowl", BOWL, p.x - cx, 0);
+      }
+      note("glyphs", 0, 0, 1, 1);
+      scatter(n(Kb * hw / 20), 2);
+    } else if (T === "shrine") {
+      const big = H >= 30;
+      sprC("statue", big ? IDOL : SMALL_IDOL, 0);
+      for (let dy = -6; dy <= 6; dy++) for (let u = 0; u <= 6; u++) {
+        const d2 = u * u + dy * dy;
+        if (d2 <= 36 && d2 >= 20) pair(u, (big ? IDOL : SMALL_IDOL).length + 6 + dy, "G", 120);
+      }
+      spr2("bowl", BOWL, (big ? 4 : 3) + 2, 0);
+      spr2("candle", CANDLE, big ? 11 : 9, 0);
+      for (let k = 0; k < Math.max(1, n(Kb)); k++) spr2("kneeling", KNEEL, 13 + k * 8, 0, { flip: true });
+      scatter(n(Kb * hw / 35), 20);
+    } else if (T === "gate") {
+      let ou = 8, oh = 0;
+      for (; ou < hw - 6; ou++) {
+        oh = Math.min(ceil(ou + 5) - 3, 22);
+        if (oh >= 10 && fits(ou, 0, 6, oh, true)) break;
+      }
+      if (ou < hw - 6) {
+        rect(ou, 0, 6, 2, "d");
+        rect(ou + 1, 2, 4, oh - 4, "s");
+        rect(ou + 2, oh - 2, 2, 2, "S");
+        for (let up = 4; up < oh - 4; up += 3) pair(ou + 2, up, "T");
+        note("obelisk", ou, 0, 6, oh);
+      }
+      spr2("skulls", SKULL, ou - 5, 0);
+    } else if (T === "vestibule") {
+      spr2("guardian", GUARD, 18, 0) || spr2("guardian", SMALL_IDOL, 18, 0);
+      spr2("bones", LYING, 30, 0);
+      scatter(n(Kb * 2), 14);
     }
   }
 
@@ -10255,7 +10760,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ...pickups.map((q) => ({ x: q.x, y: q.y, r: 22 })),
       ...nests.map((n) => ({ x: n.mouth.x * CELL, y: n.mouth.y * CELL, r: 18 }))
     ];
-    const deco = decorate(mat, img, dimg, bgImg, floor, seed, keep2, fuel, zone);
+    const deco = tombData ? { props: [], amb: [] } : decorate(mat, img, dimg, bgImg, floor, seed, keep2, fuel, zone);
+    if (tombData) furnishTomb(mat, img, dimg, fuel, tombData, seed);
     const ore = goldVeins(mat, seed, floor);
     for (let i = 0; i < ore.length; i++) {
       if (!ore[i] || mat[i] !== ROCK) {
@@ -20360,7 +20866,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "!": "#|#|#|#|#|.|#",
     "?": "#####|....#|...##|..#..|..#..|.....|..#.."
   };
-  var GLYPHS = /* @__PURE__ */ new Map();
+  var GLYPHS2 = /* @__PURE__ */ new Map();
   for (const [ch, src] of Object.entries(SRC)) {
     const rows = src.split("|"), runs = [];
     rows.forEach((row, r) => {
@@ -20372,18 +20878,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         c = e;
       }
     });
-    GLYPHS.set(ch, { w: rows[0].length, runs });
+    GLYPHS2.set(ch, { w: rows[0].length, runs });
   }
-  var pixHas = (s) => [...s].every((ch) => GLYPHS.has(ch));
+  var pixHas = (s) => [...s].every((ch) => GLYPHS2.has(ch));
   function pixWidth(s, px, bold = 0) {
     let w = 0;
-    for (const ch of s) w += ((GLYPHS.get(ch) || GLYPHS.get(" "))?.w || 3) + 1 + bold;
+    for (const ch of s) w += ((GLYPHS2.get(ch) || GLYPHS2.get(" "))?.w || 3) + 1 + bold;
     return Math.max(0, w - 1) * px;
   }
   function pixText(ctx, s, x, y, px, ph, bold = 0, snap = 4) {
     const q = (v) => Math.round(v * snap) / snap, top = y - 7 * ph;
     for (const ch of s) {
-      const g = GLYPHS.get(ch) || GLYPHS.get(" ");
+      const g = GLYPHS2.get(ch) || GLYPHS2.get(" ");
       if (!g) continue;
       for (const [r, c, n] of g.runs) {
         const x0 = q(x + c * px), y0 = q(top + r * ph);

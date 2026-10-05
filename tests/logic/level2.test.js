@@ -20,10 +20,12 @@ reset();
 
 // decoration
 reset();
-const props = makeLevel(3, 2).props.length;
+// (since Level 2 stage 3 floor 2's decoration is the rooms' kits, baked into dimg: world/furnish.js)
+const painted = lv => { let n = 0; for (let i = 3; i < lv.dimg.data.length; i += 4) if (lv.dimg.data[i]) n++; return n; };
+const props = painted(makeLevel(3, 2));
 DEV.l2Decor = 0;
-const none = makeLevel(3, 2).props.length;
-check('decoration ×0: no props', none === 0 && props > 0, [props, none]);
+const none = painted(makeLevel(3, 2));
+check('decoration ×0: no decoration', none === 0 && props > 0, [props, none]);
 check('and floor 3 keeps its own', makeLevel(3, 3).props.length > 0);
 
 // the look

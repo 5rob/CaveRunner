@@ -43,7 +43,8 @@
   `l2Big` (share of large ones), `l2SmallW`/`l2SmallH`/`l2BigW`/`l2BigH` (sizes, rolled per room), `l2Gap` (rock
   between rooms), `l2Hall` (gallery height) and `l2Shaft` (shaft width), per corridor, `l2Ledge` (a shaft ledge
   every…), `l2Loops` (extra links), `l2Course`/`l2Block`/`l2Mason` (the cut stone: course height, block length,
-  depth into the rock). The noise-cave knobs it had before went with floor 2's noise cave, `L2_LOOK` (its palette, colour
+  depth into the rock), `l2Furn` and `l2Bones` (the room kits' furniture and skeletal remains, ×; Level 2 stage 3,
+  `world/furnish.js`). `l2Decor` is now × all of floor 2's kits (0 = a bare tomb). The noise-cave knobs it had before went with floor 2's noise cave, `L2_LOOK` (its palette, colour
   pickers, defaults = Coal seams; `data/themes.js` `themeFor` builds the theme from them), `l2Decor`
   (× decoration, `decorate`). Changes show on the next cave; **Floor 2** on the panel goes there.
 - Level 2: destruction (`g: 'l2boom'`, `world/byDistance.js` `destructionOpts`; not in the cave yet): `l2bMaxDist` (reach from a dark zone, px, 200), `l2bCount` (explosions, 60), `l2bFire` (% that cause fire, 30), `l2bSizeLo`/`Hi` (size range, px radius, 6–18: `L2B_KNOBS`), `l2bJitter` (± px, 0), `l2bClear` (open air round each, px, 4), and two curves: `l2bDen` (destruction amount by distance, 0..1) and `l2bScale` (size × by distance, 0..2).

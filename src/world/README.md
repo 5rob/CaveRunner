@@ -6,6 +6,7 @@ All pure: the logic suites call these directly.
 |---|---|
 | `level.js` | `makeLevel(seed, floor, owned)`: one floor whole (terrain, shop, prize rooms, enemies (`DEV.enemies` + `DEV.enemiesUp` a floor), pickups, decoration, gold seams, nests (each with its brood `left`), `fuel`, `zone`, `tomb` (floor 2's rooms and corridors, `tomb.js`; null elsewhere), and since v130 `portals`: three exits along the top at `EXIT_X` (1/6, 1/2, 5/6 across), each a room with a ledge, joined by a passage carved after the ledges and platforms; `portal` is the middle one; the shop's way up, `shopExit`, is always over the buy machine, `VEND_BUY_X`, since v0.0.145); also run off the main thread by `game/levelgen.js`, so it must stay plain data in, plain data out; `shopPanel(cx, cy)` (the shop shell's steel, whatever the theme: roof with ceiling lights, deck floor, side columns); `ROOM_HW`/`ROOM_HH` |
 | `tomb.js` | Floor 2's tomb (Level 2 stage 2): `tombPlan(seed, shopExit, exitX)` (the room list, then the corridors: `Tomb` in `types.d.ts`), `roomOpen(room, x, y)` (a pixel inside a room's shape), `roomPillars` (a pillar maze's pillars), `carveTomb(mat, plan)`, `tombRoomAt(tomb, wx, wy, CELL)` ("which room is this?", world units), `paintMasonry` (the cut-stone bake), `TOMB_TYPES`/`TOMB_SHAPES`, `TOMB_TOP` (34: the top gallery's floor, where the pads stand), `TOMB_BOTTOM` (the vestibule's floor = the top of the shop's shaft) |
+| `furnish.js` | Floor 2's room kits (Level 2 stage 3): `furnishTomb(mat, img, dimg, fuel, tomb, seed)` (every room furnished for its type, its pieces listed on `room.kit`; bones along the galleries), `KIT_PAL` (the kits' colours) |
 | `strata.js` | Floor 1's layered cave: `strataCave`, `paveWorks`, and the timber: `timberWorks`, `timberFrame` |
 | `zones.js` | Floor 1's built-up vs natural zones: `builtAt(zone, wx, wy)`; `boxReach` (runner-box flood that keeps the main route open) |
 | `decorate.js` | `decorate` (the theme's `DECOR`: bakes and props), `cullDecor`, `propAnchored`, `archCurve`/`archNear`/`archAt`, `PLANTS`, `GROVES`, `DECOR_DENSITY`, `PROP_BOX`, `PROP_DMG` |
@@ -78,6 +79,26 @@ All pure: the logic suites call these directly.
   **The level carries the plan**: `level.tomb` (`W.tomb` in the game; null on other floors), terrain pixels.
   The shop reaching the top is checked (`boxReach`); a plain shaft is the fallback (`tomb.mended`, never seen
   in the tests). All on the tomb's own random stream and the Dev knobs (`L2_KNOBS`): same seed + knobs, same tomb.
+- **Floor 2's decoration is the rooms' kits** (`furnish.js`, Level 2 stage 3); the theme's `DECOR` (coal mine:
+  beams, carts, soot, lanterns, picks) is not placed there, so floor 2 has **no props**. Everything is baked:
+  furniture, statues, skeletons in `dimg` (open cells only; wood, cloth and parchment pixels get `FUEL_WOOD`),
+  carvings in `img` (ROCK only): a floor mosaic, glyph columns up the walls, dentils under the roof, glyphs on
+  a pillar maze's pillars. Blasts and digs wipe it like any decoration (`unDeco`). **Mirrored**: every piece is
+  painted as a pixel pair about the room's middle, and only where it fits on both sides (open, standing on rock),
+  so a shaft hole on one side drops its twin too; the logic test checks every room's dimg is symmetric. Hung
+  things need the room's own roof over them (never up a shaft). Kits: altar (stepped altar with offering and
+  candles, idols, kneeling skeletons, a censer; the prize room keeps its middle for the game's altar), shrine
+  (statue under a halo ring, bowl, candle, kneelers), hall (throne, long tables, benches with seated skeletons,
+  banners), library (shelves of coloured spines, lectern, a reader, scroll piles), ossuary (framed skull niches
+  over the back wall, skull piles), dorm (stone bunks, one or two high, bedrolls, sleepers, chests), store (a
+  stone shelf of jars, urns, amphorae, crates on the floor), orrery (an armillary on a pedestal, hanging
+  planets), pillars (glyph-carved pillars, skulls and bowls), gate (obelisks by the pad), vestibule (guardians);
+  a tall room also gets inscribed relief tablets on its back wall and a great unlit ring hung from its roof.
+  Bones scatter everywhere. Candles are paint only: **no light-emitting props on floor 2** (darkness matters to
+  later stages). Its own RNG; knobs `l2Furn`, `l2Bones` (× each) and `l2Decor` (× all, 0 = bare tomb).
+- **Shafts meet a room's floor against its wall** (`shaftX`/`floorOk` in `tombPlan`), never in its middle,
+  so the kit's centrepiece has a floor; a corridor end goes on into the room it touches (matched by edge, not
+  by which room is higher: before stage 3 an L-shaft could miss its room and leave it sealed).
 - **Cut stone** (`paintMasonry`): rock within `l2Mason` px of open air, block by block (courses `l2Course`
   high, `l2Block` long, every other course offset half a block), is painted in the floor's brick and mortar
   colours (`L2_LOOK`), a lit edge on floors and a shadow under roofs; past it the raw rock. Only the paint: `mat`

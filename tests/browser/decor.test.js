@@ -51,7 +51,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       return { floor: L.floor, ids, amb: L.amb.length, want: decorFor(L.floor).filter(d => d.kind !== 'bake' && d.kind !== 'amb').map(d => d.id) };
     });
     per[f] = got;
-    check('floor ' + got.floor + ' has every prop kind its theme lists', got.want.every(id => got.ids[id] > 0), got.ids);
+    // (floor 2 is the tomb since Level 2 stage 3: no props, the rooms' kits are baked; tests/logic/furnish.test.js)
+    if (got.floor !== 2) check('floor ' + got.floor + ' has every prop kind its theme lists', got.want.every(id => got.ids[id] > 0), got.ids);
     // look at a prop on each floor
     const first = got.want[0];
     const at = await goTo(first, -30, 0);

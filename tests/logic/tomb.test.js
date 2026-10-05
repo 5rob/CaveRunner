@@ -89,9 +89,14 @@ check('floor 3 is the cave it was', hashMat(makeLevel(3, 3).mat) === 1829628063,
 }
 // the cut stone: rock next to a room is painted in the brick colours, rock far off isn't
 {
-  const T = a.tomb, r = T.rooms.find(q => q.type !== 'gate' && q.type !== 'vestibule'), d = a.img.data;
-  const i = r.floor * CW + Math.round(r.cx), lit = d[i * 4] + d[i * 4 + 1] + d[i * 4 + 2];
-  check('a room\'s floor is dressed stone, lit', a.mat[i] === ROCK && lit > 3 * 80, lit);
+  DEV.l2Decor = 0;                       // (the room kits inlay the floor: look at the bare stone)
+  const a0 = makeLevel(7, 2);
+  DEV.l2Decor = DEV_DEFAULTS.l2Decor;
+  const T = a0.tomb, r = T.rooms.find(q => q.type !== 'gate' && q.type !== 'vestibule'), d = a0.img.data;
+  let x0 = Math.round(r.cx);
+  while (!a0.mat[r.floor * CW + x0] || a0.mat[(r.floor - 1) * CW + x0]) x0++;
+  const i = r.floor * CW + x0, lit = d[i * 4] + d[i * 4 + 1] + d[i * 4 + 2];
+  check('a room\'s floor is dressed stone, lit', a0.mat[i] === ROCK && lit > 3 * 80, lit);
 }
 
 // the knobs

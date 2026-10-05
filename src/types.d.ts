@@ -315,7 +315,10 @@ interface TombRoom {
   type: string;               // gate (an exit hall) | vestibule (over the shop) | hall | library | altar | orrery | pillars | shrine | ossuary | dorm | store
   big: boolean;
   links: number[];            // the rooms a corridor joins it to
+  kit?: TombItem[];           // what furnishTomb put in it (world/furnish.js)
 }
+/** one piece of a room's kit: its id and the right-hand copy's box (terrain px); m: mirrored on the left too */
+interface TombItem { id: string; x: number; y: number; w: number; h: number; m: boolean }
 /** a corridor of the tomb: a level gallery or an upright shaft, the rect really cut (terrain pixels) */
 interface TombCorridor {
   kind: string;               // gallery | shaft

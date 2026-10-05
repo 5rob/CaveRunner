@@ -401,6 +401,8 @@ export const L2_KNOBS = rangeKnobs('level2', [
   ['l2Course',  'Cut stone: course height (px)',             3, 12, 1,       6, 6],
   ['l2Block',   'Cut stone: block length (px)',              4, 40, 1,       14, 14],
   ['l2Mason',   'Cut stone: how deep into the rock (px)',    0, 30, 1,       6, 6],
+  ['l2Furn',    'Room kits: furniture amount (×)',           0, 3, 0.05,     1, 1],
+  ['l2Bones',   'Room kits: skeletal remains (×)',           0, 3, 0.05,     1, 1],
 ]);
 // and its look: the palette (the Coal seams theme, data/themes.js themeFor) and how much decoration
 /** @type {[key: string, label: string, def: string][]} */
@@ -417,7 +419,7 @@ for (const [k, label, def] of L2_LOOK) {
   DEV_META.push({ k, g: 'level2', label: 'Colour: ' + label, type: 'color' });
 }
 DEV_DEFAULTS.l2Decor = 1;
-DEV_META.push({ k: 'l2Decor', g: 'level2', label: 'Decoration amount (× beams, carts, soot, lanterns, picks)', min: 0, max: 4, step: 0.05 });
+DEV_META.push({ k: 'l2Decor', g: 'level2', label: 'Decoration amount (× the room kits, all of it; 0 = bare tomb)', min: 0, max: 4, step: 0.05 });
 // Curve knobs: a cubic bezier from (0, start y) to (1, end y), bent by two control points, shaped
 // on the panel's CurveEdit (ui/devpanel.js; every row is type 'curve', so no boxes). curveKnobs(group,
 // p, label, lo, hi, def) registers p+'0' (start y), p+'C1x', p+'C1y', p+'C2x', p+'C2y', p+'1' (end y);

@@ -128,7 +128,17 @@ export function tombPlan(seed, shopExit, exitX) {
   /** @param {TombRoom} r @param {number} sx @param {number} sw a shaft at sx: clear of the pads? */
   const padOk = (r, sx, sw) => r.type !== 'gate' || Math.abs(sx - r.cx) >= PAD_KEEP + sw / 2;
   /** @param {TombRoom} r @param {number} from the other room's middle */
-  const shaftX = (r, from) => r.type === 'gate' ? r.cx + (from < r.cx ? -1 : 1) * 24 : r.cx;
+  // where a shaft meets room r: through its roof, the middle; through its floor, against the wall on the
+  // other room's side, so the floor stays whole for the room's kit (Stage 3)
+  /** @param {TombRoom} r @param {number} from @param {boolean} [floor] @param {number} [sw] */
+  const shaftX = (r, from, floor, sw) => {
+    const side = from < r.cx ? -1 : 1;
+    if (r.type === 'gate') return r.cx + side * 24;
+    if (!floor) return r.cx;
+    return r.cx + side * (r.w / 2 - (sw || 16) / 2 - 1);
+  };
+  /** @param {TombRoom} r @param {number} sx @param {number} sw a shaft through r's floor at sx: against a wall? */
+  const floorOk = (r, sx, sw) => r.type === 'gate' || Math.abs(sx - r.cx) >= r.w / 2 - sw / 2 - 3;
   /** @param {TombRoom} A @param {TombRoom} B @param {number} H @param {number} sw */
   const route = (A, B, H, sw) => {
     /** @type {TombCorridor[]} */
@@ -136,7 +146,7 @@ export function tombPlan(seed, shopExit, exitX) {
     const [U, D] = A.floor <= B.y ? [A, B] : B.floor <= A.y ? [B, A] : [null, null];
     const o0 = Math.max(A.x, B.x) + 4, o1 = Math.min(A.x + A.w, B.x + B.w) - 4;
     if (U && o1 - o0 >= sw) {                           // one over the other: a shaft
-      const c = [shaftX(U, D.cx), shaftX(D, U.cx), (o0 + o1) / 2].find(sx => sx - sw / 2 >= o0 && sx + sw / 2 <= o1 && padOk(U, sx, sw) && padOk(D, sx, sw));
+      const c = [shaftX(U, D.cx, true, sw), shaftX(D, U.cx), (o0 + o1) / 2, o0 + sw / 2, o1 - sw / 2].find(sx => sx - sw / 2 >= o0 && sx + sw / 2 <= o1 && padOk(U, sx, sw) && padOk(D, sx, sw) && floorOk(U, sx, sw));
       if (c === undefined) return null;
       const x = Math.round(c - sw / 2);
       segs.push({ kind: 'shaft', x, y: U.floor, w: sw, h: D.y - U.floor, a: U.id, b: D.id, ledges: [] });
@@ -159,7 +169,7 @@ export function tombPlan(seed, shopExit, exitX) {
       const top = P.floor - Hh;
       const above = Q.floor <= top, below = Q.y >= P.floor;
       if (!above && !below) continue;
-      const sx = shaftX(Q, P.cx);
+      const sx = shaftX(Q, P.cx, above, sw);
       if (sx + sw / 2 + 2 > P.x && sx - sw / 2 - 2 < P.x + P.w) continue;   // it must leave P sideways
       const right = sx > P.cx, x0 = right ? P.x + P.w : Math.round(sx - sw / 2), x1 = right ? Math.round(sx + sw / 2) : P.x;
       const gal = { kind: 'gallery', x: x0, y: top, w: x1 - x0, h: Hh, a: P.id, b: Q.id, ledges: [] };
@@ -254,14 +264,15 @@ export function carveTomb(mat, t) {
     const A = t.rooms[c.a], B = t.rooms[c.b];
     if (c.kind === 'gallery') {
       const colOpen = (/** @type {number} */ x) => { for (let y = c.y; y < c.y + c.h; y++) if (!open(x, y)) return false; return true; };
-      const L = A.x < B.x ? A : B, R = A.x < B.x ? B : A;
-      if (c.x === L.x + L.w) while (c.x > L.x && !colOpen(c.x - 1)) { c.x--; c.w++; }
-      if (c.x + c.w === R.x) while (c.x + c.w < R.x + R.w && !colOpen(c.x + c.w)) c.w++;
+      // (an end that meets a room's side goes on into it: the room whose right wall the left end is on, and so on)
+      const L = [A, B].find(q => q.x + q.w === c.x), R = [A, B].find(q => q.x === c.x + c.w);
+      if (L) while (c.x > L.x && !colOpen(c.x - 1)) { c.x--; c.w++; }
+      if (R) while (c.x + c.w < R.x + R.w && !colOpen(c.x + c.w)) c.w++;
     } else {
       const rowOpen = (/** @type {number} */ y) => { for (let x = c.x; x < c.x + c.w; x++) if (!open(x, y)) return false; return true; };
-      const U = A.y < B.y ? A : B, D = A.y < B.y ? B : A;
-      if (c.y === U.floor) while (c.y > U.y && !rowOpen(c.y - 1)) { c.y--; c.h++; }
-      if (c.y + c.h === D.y) while (c.y + c.h < D.floor && !rowOpen(c.y + c.h)) c.h++;
+      const U = [A, B].find(q => q.floor === c.y), D = [A, B].find(q => q.y === c.y + c.h);
+      if (U) while (c.y > U.y && !rowOpen(c.y - 1)) { c.y--; c.h++; }
+      if (D) while (c.y + c.h < D.floor && !rowOpen(c.y + c.h)) c.h++;
     }
     cut(c);
   }

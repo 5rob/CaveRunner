@@ -1,7 +1,7 @@
 // Level 2 stage 2: floor 2 as the tomb, in the real game at phone size. Goes to floor 2 (Dev → Floor 2),
 // checks the level carries its room list (W.tomb) and you can stand in its rooms, and takes the
 // owner's screenshots: the whole floor (full size, and with each room's type written on it), the
-// map screen with the fog lifted, a few rooms of different shapes and types at normal zoom, a
+// map screen with the fog lifted, one room of every type with its kit (Stage 3) and the prize room, a
 // gallery and a shaft. Shots go to tests/build/tomb-*.png (TOMB_SHOTS=<dir> to put them elsewhere).
 // Creatures are cleared for the shots (one kept, parked in the shop), so the rooms show.
 const { launch } = require('../chromium');
@@ -83,28 +83,30 @@ fs.mkdirSync(OUT, { recursive: true });
     }
   };
   // a few rooms, different shapes and types: the prize altar, a pillar maze, an orrery, then the biggest others
+  // one room of every type (the biggest, so its kit shows best; Stage 3), and the prize room. You stand a
+  // little left of the middle, so the centrepiece shows
   const picks = await page.evaluate(() => {
-    const T = window.__lvl.tomb, R = T.rooms.filter(r => r.type !== 'gate' && r.type !== 'vestibule'), out = [];
-    const take = f => { const r = R.find(q => f(q) && !out.includes(q)); if (r) out.push(r); };
-    take(r => r.id === T.prize);
-    take(r => r.type === 'pillars');
-    take(r => r.type === 'orrery');
-    for (const s of ['dome', 'ziggurat', 'octagon', 'arch', 'rect']) take(r => r.big && r.shape === s && !out.some(o => o.shape === s));
-    take(r => !r.big && r.shape === 'arch');
-    return out.slice(0, 6).map(r => ({ id: r.id, type: r.type, shape: r.shape, x: r.cx, y: r.floor, w: r.w, h: r.h }));
+    const T = window.__lvl.tomb, out = [];
+    for (const type of ['altar', 'shrine', 'hall', 'library', 'ossuary', 'dorm', 'store', 'orrery', 'pillars', 'vestibule', 'gate']) {
+      const R = T.rooms.filter(r => r.type === type && r.id !== T.prize).sort((a, b) => b.w * b.h - a.w * a.h);
+      if (R.length) out.push(R[0]);
+    }
+    if (T.prize >= 0) out.push(T.rooms[T.prize]);
+    return out.map(r => ({ id: r.id, type: r.type, shape: r.shape, x: r.cx, y: r.floor, w: r.w, h: r.h, prize: r.id === T.prize, kit: (r.kit || []).map(k => k.id) }));
   });
+  check('a room of every type to show', picks.length >= 11, picks.map(p => p.type));
   for (const [i, r] of picks.entries()) {
-    await standAt(r.x + (r.type === 'pillars' ? 0 : 0), r.y);
+    await standAt(r.x - Math.min(Math.round(r.w * 0.2), 24), r.y);
     const at = await page.evaluate(() => { const W = window.__lvl, q = tombRoomAt(W.tomb, W.p.x + 6, W.p.y + 11, W.world.CELL); return q ? q.id : -1; });
-    check(`you stand in room ${r.id} (${r.type}, ${r.shape})`, at === r.id, at);
-    await shot(`3-room${i + 1}-${r.type}-${r.shape}`);
+    check(`you stand in room ${r.id} (${r.type}, ${r.shape}) with its kit: ${[...new Set(r.kit)].join(' ')}`, at === r.id && r.kit.length > 0, at);
+    await shot(`3-${String(i + 1).padStart(2, '0')}-${r.prize ? 'prize-' : ''}${r.type}-${r.shape}`);
   }
   // a shaft with ledges, from inside, and a long gallery
   const runs = await page.evaluate(() => {
     const T = window.__lvl.tomb;
-    const sh = T.corridors.filter(c => c.kind === 'shaft' && c.ledges.length >= 2).sort((a, b) => b.h - a.h)[0];
+    const sh = T.corridors.filter(c => c.kind === 'shaft' && c.ledges.length).sort((a, b) => b.ledges.length - a.ledges.length || b.h - a.h)[0];
     const ga = T.corridors.filter(c => c.kind === 'gallery' && c.y > 60).sort((a, b) => b.w - a.w)[0];
-    return { sh: sh && { x: sh.x + sh.w / 2, y: sh.ledges[1].y, h: sh.h }, ga: ga && { x: ga.x + ga.w / 2, y: ga.y + ga.h, w: ga.w } };
+    return { sh: sh && { x: sh.x + sh.w / 2, y: sh.ledges[sh.ledges.length >> 1].y, h: sh.h }, ga: ga && { x: ga.x + ga.w / 2, y: ga.y + ga.h, w: ga.w } };
   });
   check('there is a shaft with ledges and a gallery to show', !!runs.sh && !!runs.ga, runs);
   if (runs.ga) { await standAt(runs.ga.x, runs.ga.y); await shot('4-gallery'); }

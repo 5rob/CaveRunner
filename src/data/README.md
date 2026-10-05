@@ -30,4 +30,6 @@
   only, never heal. `makeLevel(seed, floor, owned)` skips perks you already hold.
 - The aim line is a perk (`trajectory`, "Trajectory Sight"); don't confuse it with `pinpoint`
   (Pinpointer), which auto-aims at the nearest creature.
+- Floor 2's `DECOR` row (the coal mine's) is not placed since Level 2 stage 3: the tomb's rooms carry their
+  own kits (`world/furnish.js`). It stays for `decorFor`'s indexing.
 - A new theme needs an `AMBIENCE` entry (the sound suite checks) and a `DECOR` row.

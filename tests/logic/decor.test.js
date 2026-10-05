@@ -22,7 +22,8 @@ for (let floor = 1; floor <= 12; floor++) {
     const tag = 'floor ' + floor + ' seed ' + seed;
     const ids = new Set(lv.props.map(p => p.id));
     const want = decorFor(floor);
-    for (const d of want) {
+    // (floor 2 is the tomb since Level 2 stage 3: the rooms' kits, world/furnish.js, tests/logic/furnish.test.js)
+    for (const d of floor === 2 ? [] : want) {
       if (d.kind === 'amb') check(tag + ': ' + d.name + ' is in the ambience', lv.amb.includes(d.style));
       else if (d.kind !== 'bake') check(tag + ': ' + d.name + ' placed', ids.has(d.id), [...ids]);
     }
