@@ -9,6 +9,9 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
+- **Released: v0.0.146** on `main`, 2026-10-05 (the owner OK'd the screenshots; a minor update): a dark
+  shade under the controls (`ui/hud.js` `shadeAt`). **Level 2 work in progress on the `level2` branch**
+  (the tomb, its furnishing, dark zones under way): not released yet; see that branch's HANDOVER.
 - **Released: v0.0.145** on `main`, 2026-10-05 (the owner OK'd the screenshots; a minor update): the
   shop's way up always straight over the buy machine (`world/level.js`, `shopExit`); the hand torch archived
   (`HAND_TORCH`, kept for creatures later) for a light on the gun, a cone the way you aim, only with a gun in

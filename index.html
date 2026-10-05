@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.145</title>
-<!-- VERSION = 'v145' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.146</title>
+<!-- VERSION = 'v146' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -71,6 +71,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   color:#fff;opacity:1;text-shadow:0 1px 2px #000}
 .toolbar{display:flex;align-items:center;justify-content:space-between;padding:0 8px;height:36px}
 .sticks{display:flex;justify-content:space-evenly;position:relative;z-index:3}
+/* the shade under the controls: shadeAt (ui/hud.js) sets its top and the gradient's stops */
+.ctlshade{position:absolute;left:0;right:0;z-index:-1;pointer-events:none}
+.app.mapping .ctlshade,.app.pinning .ctlshade{visibility:hidden}
 /* gold readout in the gap between the sticks, level with their top halves. Sits on top
    of the deck (pointer-events:none so a tap still falls to a stick) and reads amber. */
 .gold{position:absolute;left:50%;top:calc(12px + env(safe-area-inset-top));transform:translateX(-50%);
@@ -717,7 +720,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.145';</script>
+<script>const VERSION = 'v0.0.146';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -24069,6 +24072,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const pin = { x: W - map.x, y: map.y };
     return { btn, R, rc, guns, bag, map, pin };
   }
+  function shadeAt(deck, size) {
+    const top = Math.round(deck.map.y - deck.btn / 2), mid = Math.round(size / 2 - top);
+    return {
+      top,
+      height: mid + size + 200,
+      background: "linear-gradient(to bottom, rgba(0,0,0,0) 0px, #000 " + mid + "px, #000 100%)"
+    };
+  }
   var GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
   var GAUGE_COL = { mana: "#ffc93c", rech: "#7ad7ff", cast: "#c58cff", fuel: "#ff9a2e" };
   function healthCol(frac) {
@@ -26719,6 +26730,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h(
           "div",
           { className: "sticks", ref: sticksRef },
+          // a dark shade under the controls (owner): clear at the map button's top, black by the
+          // sticks' middles and on down, so the sticks and buttons stand out from the cave
+          h("div", { className: "ctlshade", style: shadeAt(deck, size) }),
           h(Stick, { size, kind: "left", input, refresh }),
           h(Stick, { size, kind: "right", input, refresh }),
           // the gun buttons ride an arc round the right stick; tap to hold it, hold for its card
