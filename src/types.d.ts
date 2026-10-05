@@ -380,7 +380,12 @@ interface DarkZone {
   cells: number;              // how many terrain cells it covers
   doors: Pt[];                // where the tomb ran into it (each joined to the chamber by a tunnel)
   chamber: { x: number; y: number; rx: number; ry: number; floor: number };   // the open chamber in its middle (Stage 6's prize)
+  tunnels: DarkTunnel[];      // the second pass's small winding tunnels (the aliens' ways; a few the runner fits)
+  open: number;               // the share of its cells that ended up open (DEV.l2dOpen aims for it)
 }
+
+/** a dark zone's small tunnel (world/dark.js): its path every few px, how wide it was dug, and whether a 6 x 11 runner box fits through it */
+interface DarkTunnel { pts: Pt[]; w: number; fits: boolean }
 
 /** the fire's state: fireNew (world/fire.js) */
 interface FireState { fuel: Uint8Array; t: Uint16Array; list: number[]; acc: number }

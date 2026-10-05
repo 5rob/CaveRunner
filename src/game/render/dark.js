@@ -10,7 +10,9 @@
 //               and you are drawn over it
 //   drawDark    (just before drawFog) everything drawn in the zone is blacked by the mask (source-atop:
 //               only where something was drawn), then behind it (destination-over) the silk, faintly
-//               lit (DEV.l2dBack), a blurred haze of the hologram (DEV.l2dHolo), and near-black
+//               lit (DEV.l2dBack), the hologram's light diffused through it (DEV.l2dHolo: a wide soft glow,
+//               DEV.l2dHoloBlur, and a tighter one caught in the silk), and near-black
+//   darkBloomCut (drawFx) the zones cut out of the hologram's bloom (their glow is drawDark's)
 //   darkCut     (drawGlows) the gun light's beam cut out of the zones (electric light doesn't work there)
 // Nothing here lifts or writes the fog: the fog of war is drawn over all of it as ever.
 
@@ -22,9 +24,9 @@ import { holoBright, holoGrid, holoLayer, sizedCanvas } from './holo.js';
 
 /** @type {{ web: Uint8Array | null, webC: HTMLCanvasElement | null, zf: Float32Array | null, zfFor: Uint8Array | null,
  *  m: HTMLCanvasElement | null, mImg: ImageData | null, mb: HTMLCanvasElement | null, haze: HTMLCanvasElement | null,
- *  back: HTMLCanvasElement | null, mt: HTMLCanvasElement | null, on: boolean, fx0: number, fy0: number, fx1: number, fy1: number,
+ *  back: HTMLCanvasElement | null, glow: HTMLCanvasElement | null, mt: HTMLCanvasElement | null, on: boolean, fx0: number, fy0: number, fx1: number, fy1: number,
  *  bx0: number, by0: number, bx1: number, by1: number, light: Float32Array }} */
-const D = { web: null, webC: null, zf: null, zfFor: null, m: null, mImg: null, mb: null, haze: null, back: null, mt: null, on: false,
+const D = { web: null, webC: null, zf: null, zfFor: null, m: null, mImg: null, mb: null, haze: null, back: null, glow: null, mt: null, on: false,
   fx0: 0, fy0: 0, fx1: 0, fy1: 0, bx0: 0, by0: 0, bx1: 0, by1: 0, light: new Float32Array(FW * FH) };
 
 /** is the dark mask up this frame (a zone in view)? */
@@ -160,14 +162,30 @@ export function drawDark(W, G, F) {
   bc.drawImage(D.webC, tx0, ty0, tw, th, 0, 0, tw, th);
   const hl = holoLayer(), hb = holoBright() * DEV.l2dHolo;
   if (hl && hb > 0.01) {
-    // the hologram diffused by the silk: its layer shrunk small, drawn back up smooth
-    const hw = Math.max(1, Math.round(hl.width / 8)), hh = Math.max(1, Math.round(hl.height / 8));
+    // the hologram diffused by the silk, as light: its layer shrunk, then added (lighter) twice, a wide soft
+    // glow over the whole back (DEV.l2dHoloBlur) and a tighter one caught in the silk itself (only where
+    // there is silk, as thick as it is), so it shows as a glow through the threads, never as its shapes
+    const hw = Math.max(1, Math.round(hl.width / 4)), hh = Math.max(1, Math.round(hl.height / 4));
     const Hz = D.haze = sizedCanvas(D.haze, hw, hh), hc = Hz.getContext('2d');
-    if (hc) {
+    const Gl = D.glow = sizedCanvas(D.glow, tw, th), gc = Gl.getContext('2d');
+    if (hc && gc) {
       hc.clearRect(0, 0, hw, hh); hc.imageSmoothingEnabled = true; hc.drawImage(hl, 0, 0, hw, hh);
-      const g = holoGrid.rect;
-      bc.globalAlpha = clamp(hb, 0, 1); bc.imageSmoothingEnabled = true;
-      bc.drawImage(Hz, 0, 0, hw, hh, g.x / CELL - tx0, g.y / CELL - ty0, g.w / CELL, g.h / CELL);
+      const g = holoGrid.rect, gx = g.x / CELL - tx0, gy = g.y / CELL - ty0, gw = g.w / CELL, gh = g.h / CELL, bl = Math.max(0, DEV.l2dHoloBlur);
+      bc.globalCompositeOperation = 'lighter'; bc.imageSmoothingEnabled = true;
+      bc.filter = bl > 0 ? `blur(${bl}px)` : 'none';
+      bc.globalAlpha = clamp(hb * 0.6, 0, 1);
+      bc.drawImage(Hz, 0, 0, hw, hh, gx, gy, gw, gh);
+      bc.filter = 'none';
+      gc.globalCompositeOperation = 'source-over'; gc.clearRect(0, 0, tw, th); gc.imageSmoothingEnabled = true;
+      gc.filter = bl > 0 ? `blur(${(bl * 0.4).toFixed(2)}px)` : 'none';
+      gc.drawImage(Hz, 0, 0, hw, hh, gx, gy, gw, gh);
+      gc.filter = 'none';
+      gc.globalCompositeOperation = 'destination-in';
+      gc.drawImage(D.webC, tx0, ty0, tw, th, 0, 0, tw, th);
+      gc.globalCompositeOperation = 'source-over';
+      bc.globalAlpha = clamp(hb, 0, 1);
+      bc.drawImage(Gl, 0, 0);
+      bc.globalCompositeOperation = 'source-over';
     }
   }
   bc.globalAlpha = 1;
@@ -181,6 +199,18 @@ export function drawDark(W, G, F) {
   ctx.globalCompositeOperation = 'destination-over';
   ctx.drawImage(B, 0, 0, tw, th, sx, sy, sw, sh);
   ctx.restore();
+}
+
+/** (drawFx, the hologram's bloom, under the world's transform) the zones cut out of the bloom: in a zone its glow
+ * is drawDark's diffused one alone, not the sharp hologram's light over the silhouettes @param {CanvasRenderingContext2D} c */
+export function darkBloomCut(c) {
+  if (!D.on || !D.mt) return;
+  const { bx0, by0, bx1, by1 } = D, MT = D.mt;
+  c.save();
+  c.globalCompositeOperation = 'destination-out';
+  c.imageSmoothingEnabled = true;
+  c.drawImage(MT, 0, 0, MT.width, MT.height, bx0 * FOG_U, by0 * FOG_U, (bx1 - bx0) * FOG_U, (by1 - by0) * FOG_U);
+  c.restore();
 }
 
 /** (drawGlows, on its glow layer, after the beam) cut the gun light out of the zones @param {CanvasRenderingContext2D} c */

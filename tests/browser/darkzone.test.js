@@ -69,15 +69,15 @@ fs.mkdirSync(OUT, { recursive: true });
     requestAnimationFrame(loop);
     L.pickups.length = 0;
   });
-  const look = (wx, wy) => page.evaluate(([wx, wy]) => {
+  const look = (wx, wy, h = 10) => page.evaluate(([wx, wy, h]) => {
     const { cam, s } = window.__lvl.light, cv = document.querySelector('canvas.game');
-    const px = Math.round((wx - cam.x) * s), py = Math.round((wy - cam.y) * s), h = 10;
+    const px = Math.round((wx - cam.x) * s), py = Math.round((wy - cam.y) * s);
     if (px < h || py < h || px + h > cv.width || py + h > cv.height) return null;
     const d = cv.getContext('2d').getImageData(px - h, py - h, h * 2, h * 2).data;
     let sum = 0;
     for (let i = 0; i < d.length; i += 4) sum += (d[i] + d[i + 1] + d[i + 2]) / 3;
     return sum / (d.length / 4);
-  }, [wx, wy]);
+  }, [wx, wy, h]);
   const stand = async (x, y, nx, ny) => { await page.evaluate(([x, y, nx, ny]) => { window.__pin = { x, y }; window.__aim = { nx, ny }; }, [x, y, nx, ny]); await page.waitForTimeout(900); };
   await page.waitForTimeout(3000);           // outlast the floor's name card
 
@@ -136,7 +136,9 @@ fs.mkdirSync(OUT, { recursive: true });
   const bare = await look(ch.cx + 40, ch.cy);
   await page.evaluate(() => { DEV.l2dDark = DEV_DEFAULTS.l2dDark; });
   check('deep inside: the gun light adds nothing (aimed at a spot or away, the same)', Math.abs(deep - deepAway) < 4, { aimedAt: deep, aimedAway: deepAway });
-  check('and with the darkness off it would', bare - bareAway > 12 && deep < bare * 0.7, { aimedAt: bare, aimedAway: bareAway });
+  // (the spot lit by the gun is darker in the zone by most of what the gun adds; not a ratio: since round 2 the
+  // spot can sit on a bright silk strand, faintly backlit in the dark: DEV.l2dBack)
+  check('and with the darkness off it would', bare - bareAway > 12 && deep < bare - 10, { aimedAt: bare, aimedAway: bareAway, dark: deep });
   // fire in the dark: a patch of something that burns on the chamber floor, alight
   const firePatch = await page.evaluate(([tx, ty]) => {
     const W = window.__lvl, { CW, CELL } = W.world;
@@ -162,13 +164,62 @@ fs.mkdirSync(OUT, { recursive: true });
   await shot('5b-silk-darkness-off');
   await page.evaluate(() => { DEV.l2dDark = DEV_DEFAULTS.l2dDark; DEV.zoom = 1; });
 
+  // ---- the hologram through the silk: diffused (a soft glow), not sharp, and not just dimmed ----
+  // Its own light on screen = the frame with it at full brightness minus the frame with it off, along a
+  // strip across open air (rock and you are the same in both). Sharpness: the steepest steps along it.
+  const strip = (wx0, wx1, wy) => page.evaluate(([wx0, wx1, wy]) => {
+    const { cam, s } = window.__lvl.light, cv = document.querySelector('canvas.game');
+    const x0 = Math.max(0, Math.round((wx0 - cam.x) * s)), x1 = Math.min(cv.width - 1, Math.round((wx1 - cam.x) * s)), y = Math.round((wy - cam.y) * s);
+    const d = cv.getContext('2d').getImageData(x0, y - 1, x1 - x0, 3).data, out = [];
+    for (let x = 0; x < x1 - x0; x++) { let r = 0; for (let k = 0; k < 3; k++) r += d[(k * (x1 - x0) + x) * 4]; out.push(r / 3); }
+    return out;
+  }, [wx0, wx1, wy]);
+  const holoLight = async (wx0, wx1, wy) => {
+    await page.evaluate(() => { DEV.holoMin = DEV.holoMax = 1; });
+    await page.waitForTimeout(500);
+    const on = await strip(wx0, wx1, wy);
+    await page.evaluate(() => { DEV.holoMin = DEV.holoMax = 0; });
+    await page.waitForTimeout(500);
+    const off = await strip(wx0, wx1, wy);
+    const d = on.map((v, i) => Math.max(0, v - (off[i] || 0))), steps = [];
+    for (let i = 1; i < d.length; i++) steps.push(Math.abs(d[i] - d[i - 1]));
+    steps.sort((a, b) => b - a);
+    const top = steps.slice(0, Math.max(1, Math.round(steps.length * 0.03)));
+    return { mean: d.reduce((a, b) => a + b, 0) / Math.max(1, d.length), sharp: top.reduce((a, b) => a + b, 0) / top.length, n: d.length };
+  };
+  const CELL = await page.evaluate(() => window.__lvl.world.CELL);
+  // outside: a wide tomb room no zone reaches (the strip spans more than a tile of the hologram)
+  const hall = await page.evaluate(() => {
+    const W = window.__lvl, { CW, CELL } = W.world, sh = W.darkShade;
+    const clear = r => { for (let y = r.y - 30; y <= r.floor + 30; y++) for (let x = r.x - 30; x < r.x + r.w + 30; x++) if (sh && sh[y * CW + x]) return false; return true; };
+    const r = W.tomb.rooms.filter(r => r.dark < 0 && r.w >= 90 && r.h >= 30 && clear(r)).sort((a, b) => b.w - a.w)[0];
+    return r ? { x: r.cx * CELL - 6, y: r.floor * CELL - 22.5, x0: (r.x + 6) * CELL, x1: (r.x + r.w - 6) * CELL, wy: (r.floor - 20) * CELL } : null;
+  });
+  check('found a wide tomb room away from the zones', !!hall, hall);
+  if (hall) {
+    await page.evaluate(() => { const W = window.__lvl; W.fire.fuel.fill(0); W.fire.list.length = 0; });   // (the fire above: out)
+    await stand(hall.x, hall.y, 1, 0);
+    const out = await holoLight(hall.x0, hall.x1, hall.wy);
+    // inside: across the chamber, above your head
+    const c = ch.c, cy = (c.floor - 17) * CELL;
+    await stand(ch.x, ch.y, 1, 0);
+    const inn = await holoLight((c.x - c.rx + 4) * CELL, (c.x + c.rx - 4) * CELL, cy);
+    await page.evaluate(() => { DEV.l2dHolo = 0; });
+    const none = await holoLight((c.x - c.rx + 4) * CELL, (c.x + c.rx - 4) * CELL, cy);
+    await page.evaluate(() => { DEV.l2dHolo = DEV_DEFAULTS.l2dHolo; DEV.holoMin = DEV_DEFAULTS.holoMin; DEV.holoMax = DEV_DEFAULTS.holoMax; });
+    console.log('hologram light along a strip (red, device px): tomb', JSON.stringify(out), 'zone', JSON.stringify(inn), 'zone with l2dHolo 0', JSON.stringify(none));
+    check('the hologram is sharp in the tomb', out.sharp > 40, out);
+    check('in a zone it is diffused: far lower contrast than in the tomb', inn.sharp < out.sharp * 0.4, { zone: inn.sharp, tomb: out.sharp });
+    check('but it still glows there (not just dimmed away)', inn.mean > 4 && inn.mean > none.mean + 3, { glow: inn.mean, holoOff: none.mean });
+  }
+
   // ---- the sandbox: a room, its right half a dark zone; the gun light lights the left half only ----
   const room = await page.evaluate(() => {
     const W = window.__lvl, { CW, CH, CELL } = W.world, r = W.sandbox({ w: 360, h: 120 });
     const mask = new Uint8Array(CW * CH), x0 = Math.round(r.x / CELL) + 8, x1 = Math.round(r.r / CELL) + 6;
     const y0 = Math.round(r.y / CELL) - 70, y1 = Math.round(r.y / CELL) + 8;
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) mask[y * CW + x] = 1;
-    W.darkMask = mask; W.webbing = new Uint8Array(CW * CH);
+    W.darkMask = mask; W.darkShade = null; W.webbing = new Uint8Array(CW * CH);
     W.dark = [{ id: 0, cx: (x0 + x1) >> 1, cy: (y0 + y1) >> 1, r: 30, x0, y0, x1, y1, room: -1, cells: 0, chamber: { x: 0, y: 0, rx: 1, ry: 1, floor: 0 } }];
     for (let i = 0; i < W.seen.length; i++) if (W.seen[i] === 2) W.seen[i] = 1;     // remembered: only your light lights it
     W.fog.paint();

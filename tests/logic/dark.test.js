@@ -14,7 +14,8 @@ reset();
 
 const SEEDS = 20;
 let zones = 0, ms = 0, worst = 0;
-const bad = { shop: [], top: [], prize: [], apart: [], route: [], chamber: [], webOut: 0, mended: [] };
+const bad = { shop: [], top: [], prize: [], apart: [], route: [], chamber: [], webOut: 0, mended: [], rooms: [], floor: [], tunnelData: [], fitsWrong: [] };
+let tunnels = 0, fits = 0, openSum = 0, openN = 0;
 for (let seed = 1; seed <= SEEDS; seed++) {
   const t0 = Date.now(), lv = makeLevel(seed, 2), dt = Date.now() - t0;
   ms += dt; worst = Math.max(worst, dt);
@@ -45,6 +46,28 @@ for (let seed = 1; seed <= SEEDS; seed++) {
     if (!got || darkAt(lv, c.x * CELL, c.y * CELL, CELL) !== z.id) bad.chamber.push(`${seed}:${z.id}`);
   }
   for (let i = 0; i < CW * CH; i++) if (web[i] && (mat[i] || !lv.darkShade[i])) bad.webOut++;
+  // every tomb room no zone swallowed is still in reach of the shop (somewhere in its box: a zone may take part of it)
+  for (const r of tomb.rooms) {
+    if (r.dark >= 0) continue;
+    let got = false;
+    for (let y = r.y; y < r.floor && !got; y++) for (let x = r.x; x < r.x + r.w; x++) if (R.ok[y * CW + x] === 2) { got = true; break; }
+    if (!got) bad.rooms.push(seed + ':' + r.id);
+  }
+  for (const z of dark) {
+    const c = z.chamber;
+    // the chamber's floor flat for its prize: solid along its middle 80%, open over it
+    let rough = 0;
+    for (let x = c.x - Math.round(c.rx * 0.8); x <= c.x + Math.round(c.rx * 0.8); x++) if (!mat[c.floor * CW + x] || mat[(c.floor - 1) * CW + x]) rough++;
+    if (rough) bad.floor.push(seed + ':' + z.id + ':' + rough);
+    // the small tunnels: data on the zone, open where they ran, each flagged whether a 6 x 11 runner box fits
+    openSum += z.open; openN++;
+    for (const t of z.tunnels) {
+      tunnels++; if (t.fits) fits++;
+      if (!t.pts.length || typeof t.fits !== 'boolean' || !(t.w > 0) || t.pts.some(p => M[p.y * CW + p.x] !== z.id + 1)) bad.tunnelData.push(seed + ':' + z.id);
+      // a tunnel dug narrower than the runner (3 to 6 px) on its own can't fit it; one marked fits has room for the box over most of it
+      if (t.fits && t.w < 6) bad.fitsWrong.push(seed + ':' + z.id + ':w' + t.w);
+    }
+  }
 }
 console.log(`${SEEDS} floors: ${(zones / SEEDS).toFixed(1)} zones each; makeLevel ${(ms / SEEDS).toFixed(0)} ms average, ${worst} worst`);
 check('zones on most floors', zones >= SEEDS * 1.5, zones);
@@ -55,6 +78,12 @@ check('kept apart', !bad.apart.length, bad.apart);
 check('the shop reaches the top with every zone shut (the main route needs none)', !bad.route.length, bad.route);
 check('every zone\'s chamber is open, its own, and in reach of the shop', !bad.chamber.length, bad.chamber);
 check('the silk is only on open cells, in a zone or its fringe', bad.webOut === 0, bad.webOut);
+check('every tomb room a zone didn\'t swallow is still in reach of the shop', !bad.rooms.length, bad.rooms);
+check('each chamber\'s floor is flat (the prize goes there)', !bad.floor.length, bad.floor);
+console.log(`small tunnels: ${(tunnels / Math.max(1, openN)).toFixed(1)} a zone, ${fits} of ${tunnels} the runner fits; open share ${(openSum / Math.max(1, openN)).toFixed(2)} a zone`);
+check('zones are filled with small tunnels, most for the aliens alone, some the runner fits', tunnels >= openN * 4 && fits > 0 && fits < tunnels * 0.6, { tunnels, fits, zones: openN });
+check('each tunnel is on its zone with its data', !bad.tunnelData.length, bad.tunnelData.slice(0, 8));
+check('none dug narrower than the runner is marked as fitting it', !bad.fitsWrong.length, bad.fitsWrong.slice(0, 8));
 check('the tomb never needed its fallback shaft', !bad.mended.length, bad.mended);
 check('quick (under 1.5 s average)', ms / SEEDS < 1500, ms / SEEDS);
 
@@ -88,12 +117,17 @@ const small = makeLevel(6, 2).dark.reduce((t, q) => t + q.cells, 0) / Math.max(1
 reset();
 const big = a.dark.reduce((t, q) => t + q.cells, 0) / Math.max(1, a.dark.length);
 check('the size knob makes them smaller', small < big * 0.7, [small, big]);
+// the open share: the knob sets how much of a zone ends up open (the small tunnels fill it to that)
+const share = (lo, hi) => { DEV.l2dOpenLo = lo; DEV.l2dOpenHi = hi; let o = 0, n = 0, t = 0; for (const sd of [2, 4, 6]) for (const q of makeLevel(sd, 2).dark) { o += q.open; n++; t += q.tunnels.length; } reset(); return { open: o / Math.max(1, n), tunnels: t / Math.max(1, n) }; };
+const lo = share(0, 0), hi = share(0.8, 0.8);
+check('open share 0: no small tunnels', lo.tunnels === 0, lo);
+check('open share 0.8: about that much of a zone open, filled by tunnels', hi.open > 0.74 && hi.open < 0.9 && hi.tunnels > 10 && hi.open > lo.open + 0.1, { lo, hi });
 DEV.l2dSilk = 0;
 check('no silk at silk 0', !makeLevel(6, 2).webbing.some(v => v));
 reset();
 check('the group and its knobs are on the panel', DEV_GROUPS.some(g => g[0] === 'l2dark') &&
   L2D_KNOBS.every(r => DEV_META.some(m => m.k === r[0] + 'Lo' && m.g === 'l2dark')) &&
-  ['l2dSpace', 'l2dShop', 'l2dTop', 'l2dSilk', 'l2dDark', 'l2dEdge', 'l2dHolo', 'l2dBack'].every(k => DEV_META.some(m => m.k === k && m.g === 'l2dark')));
+  ['l2dSpace', 'l2dShop', 'l2dTop', 'l2dSilk', 'l2dDark', 'l2dEdge', 'l2dHolo', 'l2dHoloBlur', 'l2dBack', 'l2dRough', 'l2dFringe'].every(k => DEV_META.some(m => m.k === k && m.g === 'l2dark')));
 
 console.log(fails ? '\n' + fails + ' FAILED' : '\nall passed');
 process.exit(fails ? 1 : 0);

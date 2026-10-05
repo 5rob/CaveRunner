@@ -107,13 +107,23 @@ All pure: the logic suites call these directly.
   top (`l2dTop`), and `l2dSpace` (+ half their sizes) apart. Inside one the tomb is filled solid, then: a
   **chamber** in the middle (a lumpy dome over a flat floor: Stage 6's prize), every place the tomb ran into the
   zone (each stretch of ring cells touching open tomb) opened up and a **tunnel** wandering from it to the chamber
-  (it never leaves the zone, or the dig would break), and a few side pockets. **The main route never needs a
-  zone**: after each one the shop must still reach the top with every zone shut, or that zone is undone. The
+  (it never leaves the zone, or the dig would break; a door below the chamber's floor comes up beside it), and a
+  few side pockets. Round 2 (owner): the chamber's floor a solid flat slab; the walls made **rough** (`l2dRough`:
+  pushed in and out by noise up to 6 px × the knob, rock teeth off them, loose boulders, crumbs), never on the
+  **spine** (one runner-box way from each door to the chamber, kept clear); then a second pass of **small tunnels**
+  winding into the rock left until the zone's open share reaches `l2dOpen` (most 3–6 px, the aliens' alone; one in
+  four 9–13 px), each kept on the zone (`tunnels: { pts, w, fits }`, `fits`: a 6 × 11 box gets through; one dug
+  narrower never does) with the share in `open`. **The main route never needs a zone**: after each one the shop
+  must still reach the top with every zone shut, and every tomb room the shop reached before must still be
+  reached (somewhere in its box) with its chamber: if not the roughness is undone, then the zone. The
   level carries `dark` (`DarkZone`: centre, radius, box, the room it swallowed, `cells`, `doors`, `chamber`),
   `darkMask` (per cell: zone + 1) and `webbing` (the silk, per cell, 0 none, 1..255 thickness; open cells only,
   a sheet in slow folds, thicker on the walls, strands two ways, `l2dSilk`). Rooms get `dark` (the zone that took
   their middle, -1 none); kit pieces in a zone are dropped from `room.kit`; zone rock is repainted raw
-  (`zoneRock`), no cut stone, no kit. `distField` (`byDistance.js`) takes `darkMask` as its source.
+  (`zoneRock`), no cut stone, no kit. Round 2's **fringe** (`l2dFringe` px past the zone's rock):
+  `darkShade` (per cell, 255 in a zone, fading out ragged by noise, with tendrils and patches beyond), the cut
+  stone there blended towards the zone's rock and bitten into where it's thick, silk on its open cells (baked
+  into the decoration layer by `makeLevel`). The renderer darkens by `darkShade`. `distField` (`byDistance.js`) takes `darkMask` as its source.
   **Silk is a background layer, not `mat`**: creatures may walk on it later (Stage 7); explosions erase it
   (`silkErase` in `explode`, the hole repainted from `W.webDirty`). A blown hole isn't saved (a saved floor
   comes back from its seed with the silk whole).

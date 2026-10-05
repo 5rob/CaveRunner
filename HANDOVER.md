@@ -22,35 +22,32 @@ bump the version, before the next release.
    with skeletons everywhere; listed in `room.kit`. Candles are painted and UNLIT. Owner: "The tombs should be
    dark."
 
-**Stage 4, dark zones** (`src/world/dark.js`, `src/game/render/dark.js`). The first round is built
-(commit 700511b) and the owner sent feedback. **Round 2 was half done when work stopped:** its edits are in
-the last commit, untested and possibly broken. If they're broken, `git diff 700511b` shows them.
+**Stage 4, dark zones** (`src/world/dark.js`, `src/game/render/dark.js`). Round 1: commit 700511b. **Round 2 is
+built and tested, waiting on the owner's OK of the screenshots** (the PM sends them; `node tools/darkshots.js [dir]`
+retakes them: phone size, the same seed as the `darkzone` suite).
 
-What round 1 does:
-- Zones are placed off the main route, each with its own caves and a centre chamber.
-- A silk layer covers them (`webbing`, `silkErase`).
-- The gun light is off inside, everything shows as a silhouette, and fire still lights it.
-- Wall torches are removed from floor 2.
-- Data: `dark`, `darkMask`, `darkAt`. Dev group "Level 2: dark zones" (`l2d*`).
-- Tests: logic `dark`, browser `darkzone` and `darkperf`.
-
-The owner's round-2 asks, still to finish:
-- **Borders** ragged and gradual: tendrils and patches of silk and darkness reaching into the tomb, the stone
-  near the edge eaten into and webbed, an uneven, wider fade.
-- **The caves cut out inside** rough and irregular, not clean. Keep the chamber floor flat for the prize.
-- **Fill each zone's area:** a second pass of small winding tunnels. They may be narrower than the player (they
-  are for the aliens); note which ones the player fits through. Add a Dev knob for the share of a zone that is
-  open.
-- **Show the diffused hologram through the silk.** The owner asked for:
-  - a shot at an edge, sharp on the tomb side and diffused behind the silk;
-  - a shot inside at full hologram brightness, next to one with `l2dHolo` = 0;
-  - the effect reading as a soft glow, not just dimming;
-  - a browser test that the hologram has lower contrast inside zones.
-- **Retake the screenshots** (whole floor, edge, deep inside, fire, 2–3 border close-ups, the small tunnels,
-  the hologram shots) and send them to the owner for their OK.
+What it does:
+- Zones are placed off the main route, each with its own caves and a centre chamber; a silk layer covers them
+  (`webbing`, `silkErase`); the gun light is off inside, everything is a silhouette, fire still lights it; no
+  wall torches on floor 2. Data: `dark`, `darkMask`, `darkShade`, `darkAt`. Dev group "Level 2: dark zones" (`l2d*`).
+- Round 2:
+  - **Ragged, gradual borders**: a fringe (`l2dFringe` px) of darkness and silk past the zone's rock, noisy,
+    with tendrils and patches reaching into the tomb; the cut stone there overgrown and bitten into.
+  - **Rough caves inside**: walls pushed in and out by noise (`l2dRough`), rock teeth off the walls, loose
+    boulders, crumbs. The chamber's floor is a solid flat slab (doors below come up beside it, not through it).
+  - **Small tunnels** fill each zone up to an open share (`l2dOpen`, 0.65–0.75): most 3–6 px (aliens only), one in
+    four 9–13 px. Each is on the zone as `tunnels: { pts, w, fits }` (`fits`: a 6 × 11 runner box gets through).
+  - **The hologram through the silk** is a soft glow (`l2dHolo` 0.5, spread `l2dHoloBlur`), brighter on the silk
+    threads; sharp outside. The hologram's bloom no longer shines over the zones.
+  - **Fixed**: the round-2 rough walls could cut a tomb room off (the `tomb` suite's seed 15). Now each zone keeps a
+    runner-sized way from each door to the chamber clear of the roughness, and after each zone every tomb room the
+    shop reached before is checked (roughness undone, else no zone there).
+- Tests: logic `dark` (rooms reached, flat chamber floor, tunnels and the open-share knob), browser `darkzone`
+  (now also: the hologram is sharp in the tomb, low contrast but still glowing in a zone) and `darkperf`.
 - **Open questions for the owner:**
   - Should the exit pads keep glowing?
-  - With a zone on screen a frame costs about +25 ms on software rendering. Check how it plays on the phone.
+  - A zone on screen costs a few ms a frame (measured on a Mac: tomb ~17–22 ms, zone ~21–23 ms; round 1 measured
+    +25 ms on software rendering elsewhere). Check how it plays on the phone.
 
 **Still to do (stages 5–8; full detail in LEVEL2.md):**
 

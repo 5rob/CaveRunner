@@ -458,14 +458,14 @@ curveKnobs('l2boom', 'l2bScale', 'Size × (Y, 0-2) by distance from a dark zone 
 export const L2D_KNOBS = rangeKnobs('l2dark', [
   ['l2dCount', 'Dark zones on the floor', 0, 8, 1, 2, 3],
   ['l2dSize',  'Dark zone size (radius, px)', 20, 160, 1, 60, 88],
-  ['l2dOpen',  'Share of a zone that ends up open (small alien tunnels fill it to this)', 0, 0.9, 0.01, 0.42, 0.5],
+  ['l2dOpen',  'Share of a zone that ends up open (small alien tunnels fill it to this)', 0, 0.9, 0.01, 0.65, 0.75],
 ]);
-DEV_DEFAULTS.l2dRough = 0.6; DEV_DEFAULTS.l2dFringe = 30;
+DEV_DEFAULTS.l2dRough = 1; DEV_DEFAULTS.l2dFringe = 30;
 DEV_META.push(
   { k: 'l2dRough',  g: 'l2dark', label: 'Rough cave walls inside (0 = smooth)', min: 0, max: 2, step: 0.05 },
   { k: 'l2dFringe', g: 'l2dark', label: 'Ragged fringe round a zone: width (px)', min: 0, max: 120, step: 1 });
 DEV_DEFAULTS.l2dSpace = 120; DEV_DEFAULTS.l2dShop = 140; DEV_DEFAULTS.l2dTop = 120; DEV_DEFAULTS.l2dSilk = 1;
-DEV_DEFAULTS.l2dDark = 0.94; DEV_DEFAULTS.l2dEdge = 1.2; DEV_DEFAULTS.l2dHolo = 0.4; DEV_DEFAULTS.l2dBack = 0.3;
+DEV_DEFAULTS.l2dDark = 0.94; DEV_DEFAULTS.l2dEdge = 1.2; DEV_DEFAULTS.l2dHolo = 0.5; DEV_DEFAULTS.l2dBack = 0.3; DEV_DEFAULTS.l2dHoloBlur = 4;
 DEV_META.push(
   { k: 'l2dSpace', g: 'l2dark', label: 'Zones apart, at least (px, plus half their sizes)', min: 0, max: 800, step: 5 },
   { k: 'l2dShop',  g: 'l2dark', label: 'Kept away from the shop (px above its roof)', min: 0, max: 600, step: 5 },
@@ -474,6 +474,7 @@ DEV_META.push(
   { k: 'l2dDark',  g: 'l2dark', label: 'Darkness (0 = none, 1 = pitch black)', min: 0, max: 1, step: 0.01 },
   { k: 'l2dEdge',  g: 'l2dark', label: 'Edge softness (fog cells of blur)', min: 0, max: 6, step: 0.1 },
   { k: 'l2dHolo',  g: 'l2dark', label: 'Hologram through the silk (0 = hidden, diffused)', min: 0, max: 1, step: 0.01 },
+  { k: 'l2dHoloBlur', g: 'l2dark', label: 'How far the silk spreads the hologram\'s glow (terrain px of blur)', min: 0, max: 12, step: 0.5 },
   { k: 'l2dBack',  g: 'l2dark', label: 'Silk backlight (how much of it shows in the dark)', min: 0, max: 1, step: 0.01 });
 export const ARCH_KNOBS = rangeKnobs('arch', [
   ['arVines',   'Arched vine clusters per floor',      0, 40, 0.5,   9, 13],

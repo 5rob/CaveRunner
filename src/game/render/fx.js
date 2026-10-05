@@ -6,6 +6,7 @@
 import { FH, FOG_U, FW, WH } from '../../core/consts.js';
 import { DEV } from '../../dev/knobs.js';
 import { holoBright, holoGlitch, holoGrid, holoMask, sizedCanvas } from './holo.js';
+import { darkBloomCut } from './dark.js';
 import { fogWarC, holoSil } from './light.js';
 
 const GLITCH_FLASH = 1.5;                      // the glow's flash when the number changes (×)
@@ -33,6 +34,7 @@ export function drawFx(W, G, F) {
     a.globalCompositeOperation = 'destination-out'; a.imageSmoothingEnabled = true;
     a.drawImage(war, 0, 0, FW, FH, 0, 0, FW * FOG_U, FH * FOG_U);
   }
+  darkBloomCut(a);                             // (floor 2's dark zones glow their own, diffused way)
   const sil = holoSil();                       // the silhouettes in front don't glow
   if (sil) { a.setTransform(1, 0, 0, 1, 0, 0); a.globalCompositeOperation = 'destination-out'; a.drawImage(sil, 0, 0); }
   a.globalCompositeOperation = 'source-over';
