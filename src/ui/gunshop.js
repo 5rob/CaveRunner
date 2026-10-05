@@ -164,7 +164,7 @@ export function GunVend({ input, close }) {
           h('div', { className: 'gprice' + (free && i === 0 ? ' free' : '') }, spinning && landed <= i ? '···' : !g ? '—' : free && i === 0 ? 'FREE' : priceOf(i) + 'g')))),
       h('div', { className: 'gcard scroll' },
         spinning ? h('p', { className: 'vhint' }, 'Rolling…')
-          : gun ? h(GunCard, { gun, label: free && sel === 0 ? 'Free' : gun.boosted ? 'Boosted' : 'For sale', ingame: true, flow: true,
+          : gun ? h(GunCard, { gun, label: free && sel === 0 ? 'Free' : gun.boosted ? 'Boosted' : 'For sale', ingame: true, flow: true, tapMods: true,
               compare: held, compareName: held ? held.name : '' })
           : h('p', { className: 'vhint' }, 'Sold'))),
     msg ? h('div', { className: 'vmsg' }, msg) : null,

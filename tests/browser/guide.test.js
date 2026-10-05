@@ -98,7 +98,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     let s = await until(page, q => q.st === 'talk' && q.t > 1);
     await page.evaluate(() => { window.__in.current.keys.d = true; });
     s = await until(page, q => q.st === 'rude');
-    check('run through it while it talks: it turns rude', s.st === 'rude', s);
+    check('walk on out of its light while it talks: it turns rude', s.st === 'rude' && s.pcx > s.x + 20 + 30, s);
     await page.evaluate(() => { window.__in.current.keys.d = false; window.__lvl.p.vx = 0; });
     await page.waitForTimeout(1200);
     await shot('5-rude');
@@ -107,6 +107,23 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     s = await until(page, q => q.st === 'gone');
     const got = await page.evaluate(() => ({ p: window.__lvl.pickups.filter(q => q.kind === 'mod' || q.kind === 'gun').length, coins: window.__lvl.coins.length }));
     check('then goes without giving you anything', s.st === 'gone' && got.p === 0 && got.coins === 0, got);
+    await page.context().close();
+  }
+
+  // ---- v0.0.144: walking right at full speed the whole way: it's seen before it turns rude ----
+  {
+    const page = await open();
+    await until(page, q => q.t > 2.4);
+    await page.evaluate(() => { window.__in.current.keys.d = true; });
+    let shownAt = null, s;
+    for (let i = 0; i < 400; i++) {
+      s = await page.evaluate(() => { const L = window.__lvl, q = L.guide; return { st: q.st, shown: guideShown(L), pcx: L.p.x + 6, x: q.x }; });
+      if (s.shown && !shownAt) shownAt = s;
+      if (s.st === 'rude' || s.st === 'leave' || s.st === 'gone') break;
+      await page.waitForTimeout(10);
+    }
+    await page.evaluate(() => { window.__in.current.keys.d = false; });
+    check('at a run it shows, then turns rude as you leave its light', !!shownAt && shownAt.st !== 'rude' && s.st === 'rude', { shownAt, s });
     await page.context().close();
   }
 

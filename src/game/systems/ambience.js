@@ -4,6 +4,7 @@
 
 import { rgbA } from '../../art/props.js';
 import { jellyBell } from '../../creatures/jelly.js';
+import { CELL, SHOP_FLOOR, SHOP_Y } from '../../core/consts.js';
 import { themeFor } from '../../data/themes.js';
 import { kr, kru } from '../../dev/knobs.js';
 import { solidAt } from './terrain.js';
@@ -32,6 +33,11 @@ export function puffSpores(W, e) {
   }
 }
 
+// the shop is indoors: none of the floor's ambience in it (v0.0.144: the green spores showed in the tubes'
+// light); its own dust is render/shoplights.js's, inside the cones
+/** @param {number} y */
+const inShopRoom = y => y >= SHOP_Y && y <= SHOP_FLOOR * CELL;
+
 /** @param {World} W @param {number} dt */
 export function stepAmbience(W, dt) {
   const x0 = W.camX - 30, y0 = W.camY - 30, w = W.viewW + 60, h = W.viewH + 60;
@@ -52,7 +58,7 @@ export function stepAmbience(W, dt) {
       if (Math.random() >= want) break;
       want -= 1;
       const x = x0 + Math.random() * w, y = y0 + Math.random() * h;
-      if (solidAt(W, x, y)) continue;
+      if (solidAt(W, x, y) || inShopRoom(y)) continue;
       const r = Math.random();
       if (kind === 'spores') W.amb.push(spore(W, x, y, r));
       else if (kind === 'frost') {
@@ -72,7 +78,7 @@ export function stepAmbience(W, dt) {
       const k = Math.exp(-q.kd * dt); q.kx *= k; q.ky *= k;
     }
     q.x += q.vx * dt; q.y += q.vy * dt;
-    if (q.life <= 0 || solidAt(W, q.x, q.y) || q.x < x0 - 200 || q.x > x0 + w + 200 || q.y < y0 - 200 || q.y > y0 + h + 200) W.amb.splice(i, 1);
+    if (q.life <= 0 || solidAt(W, q.x, q.y) || inShopRoom(q.y) || q.x < x0 - 200 || q.x > x0 + w + 200 || q.y < y0 - 200 || q.y > y0 + h + 200) W.amb.splice(i, 1);
   }
   for (let i = W.devils.length - 1; i >= 0; i--) {
     const dv = W.devils[i];

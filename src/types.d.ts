@@ -544,6 +544,7 @@ interface World {
   reveal: number;             // a bought level's rock is drawn onto its canvas down to this row so far (0: all of it): vend.js stepReveal
   machines: Record<string, { n: number, t: number }>;   // the crystal machines (game/systems/shops.js): crystals in, and the shake (t, -1 idle)
   demo: Record<string, { t: number, side: number }>;    // a crystal machine's hologram demo while you're near (stepDemo): t into it, the side its crystal shows on
+  intro: { start: number, done: boolean } | null;   // a new run's teleporter charging (ARRIVE_T), then you come through (systems/shoplights.js stepIntro)
   shopLit: ShopLights | null;   // a new run's dark shop lighting up a section at a time (world/shoplights.js); null = all lit
   guide: Guide | null;        // a new run's guide hologram (world/guide.js); null: none this floor
   pins: MapPin[];             // the pins dropped on this floor's map (ui/map.js)

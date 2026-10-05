@@ -68,12 +68,24 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     const el = document.querySelector('.pop:not(.ingame)');
     return el && { title: el.querySelector('.ptitle b').textContent,
                    rows: [...el.querySelectorAll('.prow')].length,
-                   mods: [...el.querySelectorAll('.dtile')].map(t => t.textContent) };
+                   mods: [...el.querySelectorAll('.gmods .tile')].map(t => t.textContent) };
   });
   check('holding a slot shows that gun', card && card.title === 'Pick Axe', card && card.title);
   check('the card lists its stats', card && card.rows === 9, card && card.rows);
   check('and the mods fitted to it', card && card.mods.join(',').indexOf('Buzzsaw') >= 0, card && card.mods);
   check('holding did not change the selection', (await LO()).sel === 0, await LO());
+  // v0.0.144: its mods are the Bag's square tiles; tapping one shows that mod's card over it
+  const sq = await page.evaluate(() => [...document.querySelectorAll('.pop:not(.ingame) .gmods .tile')].map(t => { const r = t.getBoundingClientRect(); return Math.abs(r.width - r.height) < 1.5; }));
+  check('the mods are square tiles', sq.length > 0 && sq.every(Boolean), sq);
+  await page.tap('.pop:not(.ingame) .gmods .tile.tap');
+  await page.waitForTimeout(200);
+  const mc = await page.evaluate(() => { const el = document.querySelector('.modpop .pop'); return el && el.querySelector('.ptitle b').textContent; });
+  check('tapping one shows its card', mc === 'Buzzsaw', mc);
+  await page.screenshot({ path: path.join(__dirname, '..', 'build', 'gun_modtap.png') });
+  const vh = await page.evaluate(() => innerHeight);
+  await page.tap('.modpop .shade', { position: { x: 20, y: vh - 20 } });
+  await page.waitForTimeout(200);
+  check("tapping away closes just the mod's card", !(await page.$('.modpop')) && !!(await page.$('.pop:not(.ingame)')));
   await page.tap('.shade', { position: { x: 20, y: 20 } });
   await page.waitForTimeout(200);
   check('tapping away closes it', (await page.$('.pop:not(.ingame)')) === null);
@@ -197,7 +209,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       const card = sel => {
         const el = document.querySelector(sel);
         if (!el) return null;
-        const tiles = [...el.querySelectorAll('.dtile')].map(t => t.getBoundingClientRect());
+        const tiles = [...el.querySelectorAll('.gmods .tile')].map(t => t.getBoundingClientRect());
         const st = el.querySelector('.gstats');
         return { name: el.querySelector('.ptitle b').textContent, tiles: tiles.length,
           tilesIn: tiles.filter(r => r.bottom <= V.h + 0.5 && r.top >= -0.5 &&
@@ -209,6 +221,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       const sh = document.querySelector('.sheet');
       return { V, out, found: card('.pop.found'), mine: card('.pop.mine'),
         sheetScroll: sh.scrollHeight - sh.clientHeight,
+        tabs: [...document.querySelectorAll('.swaprow .gtab')].map(t => { const r = t.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right), Math.round(r.height)]; }),
+        cards: ['.pop.found', '.pop.mine'].map(s => Math.round(document.querySelector(s).getBoundingClientRect().height)),
         swaprowBottom: Math.round(document.querySelector('.swaprow').getBoundingClientRect().bottom) };
     });
     const tag = vp.width + 'x' + vp.height;
@@ -226,6 +240,11 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       fit.sheetScroll === 0 && fit.found.cardScroll === 0 && fit.mine.cardScroll === 0 &&
       fit.found.statScroll === 0 && fit.mine.statScroll === 0,
       { sheet: fit.sheetScroll, found: fit.found.statScroll, mine: fit.mine.statScroll });
+    // v0.0.144 (owner): the slots a full-width row of squares; the two cards split the rest equally
+    const tw = fit.tabs.map(t => t[1] - t[0]);
+    check(`${tag}: the slot buttons are squares across the whole width`, fit.tabs.length === 4 && fit.tabs[0][0] <= 14 && fit.tabs[3][1] >= vp.width - 14
+      && fit.tabs.every((t, i) => Math.abs(tw[i] - t[2]) <= 1), fit.tabs);
+    check(`${tag}: the two cards the same height`, Math.abs(fit.cards[0] - fit.cards[1]) <= 1, fit.cards);
     check(`${tag}: the slot row sits at the bottom, in reach`,
       fit.swaprowBottom > vp.height - 40 && fit.swaprowBottom <= vp.height, fit.swaprowBottom);
     await pg.screenshot({ path: path.join(__dirname, '..', 'build', 'gun_swap_' + tag + '.png') });
@@ -235,7 +254,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     const swapped = await pg.evaluate(() => {
       const el = document.querySelector('.pop.mine');
       const V = { h: innerHeight, w: innerWidth };
-      const tiles = [...el.querySelectorAll('.dtile')].map(r => r.getBoundingClientRect());
+      const tiles = [...el.querySelectorAll('.gmods .tile')].map(r => r.getBoundingClientRect());
       return { name: el.querySelector('.ptitle b').textContent,
         tilesIn: tiles.filter(r => r.bottom <= V.h + 0.5 && r.right <= V.w + 0.5).length };
     });

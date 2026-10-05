@@ -33,7 +33,7 @@ const DIR = path.join(__dirname, '..', 'build');
     const o = window.__in.current.loadout.gunShop;
     return { open: !!document.querySelector('.gshop'), reels: document.querySelectorAll('.greel').length,
       prices: [...document.querySelectorAll('.gprice')].map(e => e.textContent), want: o.guns.map(g => shopGunPrice(g) + 'g'),
-      lv: o.guns.map(g => g.lvl), card: !!document.querySelector('.gcard .pop .dtiles'), floor: o.floor };
+      lv: o.guns.map(g => g.lvl), card: !!document.querySelector('.gcard .pop .gmods'), floor: o.floor };
   });
   check('the menu opens with three guns', st.open && st.reels === 3, st);
   check('each priced under it', JSON.stringify(st.prices) === JSON.stringify(st.want), st);

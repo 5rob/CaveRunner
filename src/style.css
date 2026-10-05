@@ -319,10 +319,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .dmark.yes{color:#3aa76d}
 .dmark.no{color:#d5563a}
 .dtiles{display:flex;gap:4px;flex-wrap:wrap}
+/* a gun card's mods: the Bag's square tiles (v0.0.144); .tap ones open the mod's card (ModPop, over everything) */
+.gmods{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:5px}
+.gmods .tile{width:auto;height:auto;aspect-ratio:1;cursor:default;touch-action:auto}
+.gmods .tile.tap{cursor:pointer;pointer-events:auto;touch-action:manipulation}
+.pop.ingame .gmods .tile{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.2)}
+.pop.ingame .gmods .tn{color:rgba(233,236,242,0.7)}
+.pop.split .gmods{grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:4px}
+.modpop .shade{z-index:40}
+.modpop .pop{z-index:41}
 .dtile{border:1px solid;border-radius:6px;padding:2px 6px;display:flex;align-items:center;gap:4px}
 .dtile b{font-size:12px;line-height:1}
 .dtile i{font-style:normal;font:600 10px system-ui,sans-serif;color:var(--text);opacity:.8}
 .dtile.off{opacity:.42}
+/* a mod card's examples: the Bag's square tiles, a row of them (v0.0.144) */
+.dtiles .tile{width:50px;height:50px;cursor:default;touch-action:auto}
+.dtiles .tile.off{opacity:.42}
+.pop.ingame .dtiles .tile{background:rgba(255,255,255,0.06)}
+.pop.ingame .dtiles .tn{color:rgba(233,236,242,0.7)}
 .dnote{display:block;font-size:11px;color:var(--muted);margin-top:3px}
 /* the shop/pickup panel: the item's card and its buy/take line in one box, grown up
    from the bottom of the view. pointer-events:none so a tap falls through to the sticks —
@@ -352,19 +366,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .weapon.locked{opacity:.45}
 .pop.flow{position:static;max-height:none;box-shadow:none;margin-bottom:2px}
 .spacer{flex:1 1 auto;min-height:6px}
-/* gun pickup: the two cards share what is left over. Head and mod row are fixed,
-   only the stat chips give way, so neither gun's mods can fall off the bottom. */
+/* gun pickup: the slot buttons a full-width row of squares at the bottom (owner, v0.0.144), and the
+   two cards share what is left over equally. Head and mod row are fixed, only the stat chips give way
+   (they scroll), so neither gun's mods can fall off the bottom. */
 .swapsheet{gap:6px}
-.pop.split{display:flex;flex-direction:column;flex:0 1 auto;min-height:0;overflow:hidden;
+.pop.split{display:flex;flex-direction:column;flex:1 1 0;min-height:0;overflow:hidden;
   padding:9px 11px 10px;margin-bottom:0}
 .pop.split .phead{flex:0 0 auto}
 .pop.split .pglyph{width:32px;height:32px;font-size:16px;border-radius:9px}
 .pop.split .ptitle b{font-size:14.5px}
 .pop.split .ptitle span{font-size:10px}
 .pop.split .vs{flex:0 0 auto;margin:5px 0 0}
-.pop.split .gstats{flex:0 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+.pop.split .gstats{flex:0 1 auto;min-height:0;overflow-y:auto;display:grid;grid-template-columns:1fr;align-content:start;-webkit-overflow-scrolling:touch;
   margin:7px 0 0;gap:4px}
 .pop.split .gstats .st{padding:2px 7px;font-size:10px}
+/* a shorter screen: the stats two across, a short one three, so they still fit without scrolling */
+@media (max-height:860px){.pop.split .gstats{grid-template-columns:1fr 1fr}}
+@media (max-height:700px){.pop.split .gmods{grid-template-columns:repeat(auto-fill,minmax(33px,1fr))}.pop.split .gmods .tn{font-size:7px}.pop.split .gstats{grid-template-columns:1fr 1fr 1fr}.pop.split .gstats .st{padding:2px 5px;font-size:9px;white-space:nowrap;overflow:hidden}}
 .pop.split .gstats .st b{font-size:11px}
 .pop.split .st.up b{color:var(--good)}
 .pop.split .st.down b{color:var(--bad)}
@@ -378,7 +396,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* keeps the slot row down by the thumb when there is space, and costs nothing when there is not */
 .swapsheet>.lab.hint{margin-top:auto;padding-top:4px}
 .swaprow{display:flex;gap:6px;margin-top:4px;flex:0 0 auto}
-.swaprow .gtab{position:relative;height:62px;padding-top:6px}
+.swaprow .gtab{position:relative;flex:1 1 0;aspect-ratio:1;height:auto;padding-top:6px}
+.swaprow .gtab .gname{font-size:13px}
+.swaprow .gtab .gsub{font-size:11px}
 .gtab.holding,.slot.holding{background:linear-gradient(to right,#ff8a1f 0%,#ff8a1f 100%);
   background-size:100% 100%;animation:fill .45s linear forwards;color:#12141a}
 @keyframes fill{from{background-size:0% 100%}to{background-size:100% 100%}}

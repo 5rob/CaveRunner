@@ -19,7 +19,7 @@ import { stepGuide } from './guide.js';
 import { enterLevel } from './level-entry.js';
 import { stepEliteFire, stepMotes, stepParticles, stepToasts, toast } from './particles.js';
 import { stepPickups } from './pickups.js';
-import { stepLights } from './shoplights.js';
+import { introHeld, stepIntro, stepLights } from './shoplights.js';
 import { maxHp, movePlayer, stepTorch } from './player.js';
 import { decorStep } from './props.js';
 import { saveRun } from './save-run.js';
@@ -34,7 +34,8 @@ export function step(W, G, dt) {
   const F = { dt, LO: null, MHP: 0, pcx: 0, pcy: 0 };
   if (stepRequests(W, G, F)) return;        // the clock, Dev asks (New cave ends the frame)
   stepPerks(W, G, F);                       // the loadout, health against the perks
-  movePlayer(W, G, F);                      // the stick, jetpack, steering, the move (player.js)
+  stepIntro(W);                             // a new run: the teleporter charging, then you (shoplights.js)
+  if (!introHeld(W)) movePlayer(W, G, F);   // the stick, jetpack, steering, the move (player.js)
   if (atPortal(W, G, F)) return;            // where you are now; through the exit ends the frame
   aimAndCast(W, G, F);                      // aim, facing, gun clocks, the trigger (gun.js)
   stepBullets(W, G, F);                     // your shots in flight (bullets.js)

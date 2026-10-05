@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.143</title>
-<!-- VERSION = 'v143' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.144</title>
+<!-- VERSION = 'v144' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -328,10 +328,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .dmark.yes{color:#3aa76d}
 .dmark.no{color:#d5563a}
 .dtiles{display:flex;gap:4px;flex-wrap:wrap}
+/* a gun card's mods: the Bag's square tiles (v0.0.144); .tap ones open the mod's card (ModPop, over everything) */
+.gmods{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:5px}
+.gmods .tile{width:auto;height:auto;aspect-ratio:1;cursor:default;touch-action:auto}
+.gmods .tile.tap{cursor:pointer;pointer-events:auto;touch-action:manipulation}
+.pop.ingame .gmods .tile{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.2)}
+.pop.ingame .gmods .tn{color:rgba(233,236,242,0.7)}
+.pop.split .gmods{grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:4px}
+.modpop .shade{z-index:40}
+.modpop .pop{z-index:41}
 .dtile{border:1px solid;border-radius:6px;padding:2px 6px;display:flex;align-items:center;gap:4px}
 .dtile b{font-size:12px;line-height:1}
 .dtile i{font-style:normal;font:600 10px system-ui,sans-serif;color:var(--text);opacity:.8}
 .dtile.off{opacity:.42}
+/* a mod card's examples: the Bag's square tiles, a row of them (v0.0.144) */
+.dtiles .tile{width:50px;height:50px;cursor:default;touch-action:auto}
+.dtiles .tile.off{opacity:.42}
+.pop.ingame .dtiles .tile{background:rgba(255,255,255,0.06)}
+.pop.ingame .dtiles .tn{color:rgba(233,236,242,0.7)}
 .dnote{display:block;font-size:11px;color:var(--muted);margin-top:3px}
 /* the shop/pickup panel: the item's card and its buy/take line in one box, grown up
    from the bottom of the view. pointer-events:none so a tap falls through to the sticks —
@@ -361,19 +375,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .weapon.locked{opacity:.45}
 .pop.flow{position:static;max-height:none;box-shadow:none;margin-bottom:2px}
 .spacer{flex:1 1 auto;min-height:6px}
-/* gun pickup: the two cards share what is left over. Head and mod row are fixed,
-   only the stat chips give way, so neither gun's mods can fall off the bottom. */
+/* gun pickup: the slot buttons a full-width row of squares at the bottom (owner, v0.0.144), and the
+   two cards share what is left over equally. Head and mod row are fixed, only the stat chips give way
+   (they scroll), so neither gun's mods can fall off the bottom. */
 .swapsheet{gap:6px}
-.pop.split{display:flex;flex-direction:column;flex:0 1 auto;min-height:0;overflow:hidden;
+.pop.split{display:flex;flex-direction:column;flex:1 1 0;min-height:0;overflow:hidden;
   padding:9px 11px 10px;margin-bottom:0}
 .pop.split .phead{flex:0 0 auto}
 .pop.split .pglyph{width:32px;height:32px;font-size:16px;border-radius:9px}
 .pop.split .ptitle b{font-size:14.5px}
 .pop.split .ptitle span{font-size:10px}
 .pop.split .vs{flex:0 0 auto;margin:5px 0 0}
-.pop.split .gstats{flex:0 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+.pop.split .gstats{flex:0 1 auto;min-height:0;overflow-y:auto;display:grid;grid-template-columns:1fr;align-content:start;-webkit-overflow-scrolling:touch;
   margin:7px 0 0;gap:4px}
 .pop.split .gstats .st{padding:2px 7px;font-size:10px}
+/* a shorter screen: the stats two across, a short one three, so they still fit without scrolling */
+@media (max-height:860px){.pop.split .gstats{grid-template-columns:1fr 1fr}}
+@media (max-height:700px){.pop.split .gmods{grid-template-columns:repeat(auto-fill,minmax(33px,1fr))}.pop.split .gmods .tn{font-size:7px}.pop.split .gstats{grid-template-columns:1fr 1fr 1fr}.pop.split .gstats .st{padding:2px 5px;font-size:9px;white-space:nowrap;overflow:hidden}}
 .pop.split .gstats .st b{font-size:11px}
 .pop.split .st.up b{color:var(--good)}
 .pop.split .st.down b{color:var(--bad)}
@@ -387,7 +405,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* keeps the slot row down by the thumb when there is space, and costs nothing when there is not */
 .swapsheet>.lab.hint{margin-top:auto;padding-top:4px}
 .swaprow{display:flex;gap:6px;margin-top:4px;flex:0 0 auto}
-.swaprow .gtab{position:relative;height:62px;padding-top:6px}
+.swaprow .gtab{position:relative;flex:1 1 0;aspect-ratio:1;height:auto;padding-top:6px}
+.swaprow .gtab .gname{font-size:13px}
+.swaprow .gtab .gsub{font-size:11px}
 .gtab.holding,.slot.holding{background:linear-gradient(to right,#ff8a1f 0%,#ff8a1f 100%);
   background-size:100% 100%;animation:fill .45s linear forwards;color:#12141a}
 @keyframes fill{from{background-size:0% 100%}to{background-size:100% 100%}}
@@ -697,7 +717,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.143';</script>
+<script>const VERSION = 'v0.0.144';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -739,7 +759,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var SHOP_ROOF = 6;
   var SHOP_Y = SHOP_TOP * CELL;
   var SHOP_SLOT = 120;
-  var ARRIVAL_X = 66, HEAL_X = 566;
+  var ARRIVAL_X = 66, HEAL_X = 556;
   var VEND_BUY_X = 676, VEND_SELL_X = VEND_BUY_X + SHOP_SLOT;
   var SHOP_MACHINE_X = [VEND_BUY_X + 2 * SHOP_SLOT, VEND_BUY_X + 3 * SHOP_SLOT, VEND_BUY_X + 4 * SHOP_SLOT];
   var LVL_BUY = 1e9, LVL_SELL = 1000001e3;
@@ -4598,6 +4618,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         for (let i = 0; i < 4; i++) bell(d, notes[Math.floor(Math.random() * notes.length)] * 2, t + 0.12 + i * rnd2(0.06, 0.1), 0.6, 0.06);
         tone(d, "sine", rnd2(180, 220), rnd2(450, 550), t, 0.5, 0.15, 0.1);
       },
+      // a teleporter charging up (a new run, the second before you come through): a whine climbing, a
+      // swelling hum and crackle that gets busier
+      padCharge(d, t) {
+        tone(d, "sine", rnd2(140, 170), rnd2(1100, 1300), t, 1, 0.16, 0.6);
+        tone(d, "triangle", rnd2(55, 65), rnd2(90, 110), t, 1, 0.35, 0.8);
+        hiss(d, t, 1, 0.25, "bandpass", 600, 3200, 2, false, 0.8);
+        for (let i = 0; i < 7; i++) zap(d, t + 0.25 + 0.75 * Math.pow(i / 7, 0.7), rnd2(0.03, 0.08), 0.06 + 0.02 * i, rnd2(2500, 4500), rnd2(300, 900));
+      },
       // the shop's emergency alarm: a two-tone klaxon, once a cycle
       alarm(d, t) {
         tone(d, "square", 620, 620, t, 0.32, 0.05, 0.02);
@@ -6944,6 +6972,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       // and their hologram demo, playing while you stand near (stepDemo there)
       shopLit: null,
       // a new run's dark shop, lighting up as you go (world/shoplights.js; null = lit)
+      intro: null,
+      // a new run's teleporter charging before you come through (game/systems/shoplights.js)
       guide: null,
       // a new run's guide hologram (world/guide.js)
       pins: [],
@@ -11270,6 +11300,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       W.amb.push(q);
     }
   }
+  var inShopRoom = (y) => y >= SHOP_Y && y <= SHOP_FLOOR * CELL;
   function stepAmbience(W, dt) {
     const x0 = W.camX - 30, y0 = W.camY - 30, w = W.viewW + 60, h3 = W.viewH + 60;
     const T = themeFor(W.floor);
@@ -11288,7 +11319,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (Math.random() >= want) break;
         want -= 1;
         const x = x0 + Math.random() * w, y = y0 + Math.random() * h3;
-        if (solidAt(W, x, y)) continue;
+        if (solidAt(W, x, y) || inShopRoom(y)) continue;
         const r = Math.random();
         if (kind === "spores") W.amb.push(spore(W, x, y, r));
         else if (kind === "frost") {
@@ -11312,7 +11343,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       q.x += q.vx * dt;
       q.y += q.vy * dt;
-      if (q.life <= 0 || solidAt(W, q.x, q.y) || q.x < x0 - 200 || q.x > x0 + w + 200 || q.y < y0 - 200 || q.y > y0 + h3 + 200) W.amb.splice(i, 1);
+      if (q.life <= 0 || solidAt(W, q.x, q.y) || inShopRoom(q.y) || q.x < x0 - 200 || q.x > x0 + w + 200 || q.y < y0 - 200 || q.y > y0 + h3 + 200) W.amb.splice(i, 1);
     }
     for (let i = W.devils.length - 1; i >= 0; i--) {
       const dv = W.devils[i];
@@ -14752,6 +14783,241 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return out;
   }
 
+  // src/world/shoplights.js
+  var ARRIVE_T = 1;
+  var LIGHT_WAIT = 2;
+  var LIGHT_REST = 3;
+  var LIGHT_RUN = 0.22;
+  var TUBE_MAX = 1.6;
+  var FIRST_X = 76;
+  var FIRST_TRIGGER = 100;
+  var PAD_LIT = 56;
+  var LIGHT_X = [FIRST_X];
+  for (let x = FIRST_X + SHOP_SLOT; x < WW; x += SHOP_SLOT) LIGHT_X.push(x);
+  var PERK_I = LIGHT_X.indexOf(SHOP_MACHINE_X[2]);
+  var lightsNew = (time) => ({ start: time, on: LIGHT_X.map(() => -1), zap: time });
+  var hs = (n) => {
+    const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  function tubeLevel(age, seed) {
+    if (age < 0) return 0;
+    const dur = 0.55 + 0.9 * hs(seed * 7.1 + 1);
+    if (age >= dur) return 1;
+    let t = 0;
+    for (let n = 0; n < 60; n++) {
+      const len = 0.03 + 0.13 * hs(seed * 13.7 + n * 3.1);
+      if (age < t + len) {
+        const warm = t / dur;
+        const lit = n < 3 ? n === 1 : hs(seed * 5.3 + n * 9.7) < 0.2 + 0.65 * warm;
+        return lit ? 0.45 + 0.55 * hs(seed + n * 1.9) : 0.06;
+      }
+      t += len;
+    }
+    return 1;
+  }
+  var sectionLevel = (L3, i, time) => L3.on[i] < 0 ? 0 : tubeLevel(time - L3.on[i], i + 1);
+  var halfW = (i) => i === 0 ? 50 : 30;
+  var POOL_FADE = 16;
+  var poolEdge = (i) => halfW(i) + POOL_FADE;
+  function shopDark(L3, x, time) {
+    let best = 0;
+    for (let i = 0; i < LIGHT_X.length; i++) {
+      const lv = !L3 ? 1 : L3.on[i] < 0 ? 0 : sectionLevel(L3, i, time);
+      if (!lv) continue;
+      const dx = Math.abs(x - LIGHT_X[i]), d = dx - halfW(i);
+      const pool = d <= 0 ? 1 : d >= POOL_FADE ? 0 : 1 - d / POOL_FADE;
+      const amb = dx <= Math.max(SHOP_SLOT / 2 + 4, halfW(i) + POOL_FADE) ? 1 - DEV.shopGap : 0;
+      best = Math.max(best, Math.max(pool, amb) * lv);
+    }
+    return 1 - best;
+  }
+  function lightsStep(L3, time, pcx, inShop, hold = Infinity) {
+    const lit = [];
+    const on = (i, at) => {
+      if (L3.on[i] < 0) {
+        L3.on[i] = at;
+        lit.push(i);
+      }
+    };
+    if (time - L3.start >= LIGHT_WAIT) on(0, L3.start + LIGHT_WAIT);
+    const k = L3.on.indexOf(-1), latest = Math.max(...L3.on), perks = L3.on[PERK_I];
+    if (k > 0 && k < hold && time - latest >= LIGHT_RUN && (pcx >= (k === 1 ? FIRST_TRIGGER : LIGHT_X[k - 1] - 20) || perks >= 0 && time - perks >= LIGHT_REST || !inShop)) on(k, time);
+    const done = L3.on.every((t) => t >= 0 && time - t >= TUBE_MAX);
+    return { lit, done };
+  }
+  function lightNear(L3, x, time) {
+    const lit = [];
+    for (let i = 0; i < LIGHT_X.length; i++)
+      if (L3.on[i] < 0 && Math.abs(LIGHT_X[i] - x) < halfW(i) + POOL_FADE) {
+        L3.on[i] = time;
+        lit.push(i);
+      }
+    return lit;
+  }
+
+  // src/world/guide.js
+  var GUIDE_PAR = 0.8;
+  var GUIDE_UNDER = 20;
+  var GUIDE_NEAR = 30;
+  var guideSpot = (g) => LIGHT_X[Math.min(g.hold, LIGHT_X.length - 1)] - GUIDE_UNDER;
+  var APPEAR_T = 0.35;
+  var WAVE_T = 1.1;
+  var GIFT_GAP = 0.45;
+  var LEAVE_T = 0.7;
+  var RUDE_HOLD = 1.6;
+  var GUIDE_PAGES = [
+    "Welcome real person. You must be exhausted from your spaceship journey to get here. It must be difficult to recall specifics about why you came here, right? You'll need to wait for the Coriolis effect to wear off.",
+    "Although I can tell you right now for free what the answer will be..... money. Everyone comes through here looking to get rich and make it big!",
+    "They say it's simple. Buy a SOL, clean it up a bit and SELL it back to them for a profit! It's like printing money!",
+    "They even front you the money for all sales.\nOf course you'd physically travel here from another place to take advantage of an opportunity like that!",
+    "Anyway, Welcome to your SOL Hub. Behind me is everything you'll need to make your fortune.",
+    "Enjoy your Slice Of Life.",
+    "And here is something to get you started..."
+  ];
+  var GUIDE_RUDE = "Rude. Yeh OK have fun! Remember, you definitely have everything you need!";
+  var GUIDE_GIFTS = [
+    { gold: 150 },
+    { crystal: "red" },
+    { crystal: "red" },
+    { crystal: "green" },
+    { mod: "saw" },
+    { mod: "bolt" },
+    { mod: "double" },
+    { gun: { lvl: 5, cap: 3, multi: 1, recharge: 0.5 } }
+    // non-shuffle, empty, 1 shot a cast, 0.5 s recharge (owner, v0.0.143)
+  ];
+  var cost = (ch, cps) => (1 + (/[.!?]/.test(ch) ? 7 : /[,\n]/.test(ch) ? 3 : 0)) / Math.max(1, cps);
+  function typeTime(text, cps) {
+    let t = 0;
+    for (const ch of text) t += cost(ch, cps);
+    return t;
+  }
+  function typedAt(text, t, cps) {
+    let n = 0, at = 0;
+    for (const ch of text) {
+      at += 1 / Math.max(1, cps);
+      if (at > t) return n;
+      n++;
+      at += cost(ch, cps) - 1 / Math.max(1, cps);
+    }
+    return n;
+  }
+  var pageHold = (text, wait) => wait + text.length * 0.012;
+  function guideLitEdge(g) {
+    const mid = g.x + GUIDE_UNDER;
+    return mid + poolEdge(Math.max(0, LIGHT_X.indexOf(mid)));
+  }
+  var guideNew = () => ({ st: "wait", t: 0, x: 0, cam0: 0, page: 0, say: "", gift: 0, hold: 2 });
+  var guideX = (g, camX) => g.x + (camX - g.cam0) * (1 - GUIDE_PAR);
+  function guideStep(g, dt, I) {
+    const ev = [];
+    const go = (st) => {
+      g.st = st;
+      g.t = 0;
+    };
+    if (g.st === "gone") return ev;
+    g.t += dt;
+    if (g.st === "wait") {
+      const x = guideSpot(g);
+      if (x + I.seen <= I.camX + I.vw || I.pcx >= x - GUIDE_NEAR) {
+        g.x = x;
+        g.cam0 = I.camX;
+        go("appear");
+        ev.push({ k: "appear" });
+      }
+      return ev;
+    }
+    if ((g.st === "appear" || g.st === "wave" || g.st === "talk") && I.inShop && I.pcx > guideLitEdge(g)) {
+      g.say = GUIDE_RUDE;
+      go("rude");
+      ev.push({ k: "rude" });
+      return ev;
+    }
+    if (g.st === "appear" && g.t >= APPEAR_T) go("wave");
+    else if (g.st === "wave" && g.t >= WAVE_T) {
+      g.page = 0;
+      g.say = GUIDE_PAGES[0];
+      go("talk");
+      ev.push({ k: "talk" });
+    } else if (g.st === "talk" && g.t >= typeTime(g.say, I.cps) + pageHold(g.say, I.wait)) {
+      if (g.page < GUIDE_PAGES.length - 1) {
+        g.page++;
+        g.say = GUIDE_PAGES[g.page];
+        g.t = 0;
+        ev.push({ k: "talk" });
+      } else {
+        g.gift = 0;
+        go("give");
+      }
+    } else if (g.st === "give") {
+      while (g.gift < GUIDE_GIFTS.length && g.t >= g.gift * GIFT_GAP) ev.push({ k: "gift", gift: GUIDE_GIFTS[g.gift++] });
+      if (g.gift >= GUIDE_GIFTS.length && g.t >= g.gift * GIFT_GAP) {
+        go("leave");
+        ev.push({ k: "leave" });
+      }
+    } else if (g.st === "rude" && g.t >= typeTime(g.say, I.cps) + RUDE_HOLD) {
+      go("leave");
+      ev.push({ k: "leave" });
+    } else if (g.st === "leave" && g.t >= LEAVE_T) {
+      go("gone");
+      g.say = "";
+      g.hold = Infinity;
+      ev.push({ k: "gone" });
+    }
+    return ev;
+  }
+  function guideSpeech(g, cps) {
+    if (g.st === "talk" || g.st === "rude") return { text: g.say, n: typedAt(g.say, g.t, cps) };
+    if (g.st === "give" || g.st === "leave" && g.say) return { text: g.say, n: g.say.length };
+    return { text: "", n: 0 };
+  }
+
+  // src/game/systems/shoplights.js
+  function shopDarkStart(W) {
+    W.shopLit = lightsNew(W.time);
+    W.padZap[1] = W.time;
+    W.guide = guideNew();
+    W.intro = { start: W.time, done: false };
+    SFX.fx("padCharge", W.arrival.x, W.arrival.y);
+  }
+  var introHeld = (W) => !!W.intro && !W.intro.done;
+  function stepIntro(W) {
+    const I = W.intro;
+    if (!I) return;
+    const t = W.time - I.start;
+    if (!I.done && t >= ARRIVE_T) {
+      I.done = true;
+      W.p.x = W.start.x;
+      W.p.y = W.start.y;
+      W.p.vx = W.p.vy = 0;
+      W.padZap[1] = W.time;
+      const x = W.arrival.x, y = W.start.y + PH / 2;
+      for (let i = 0; i < 3; i++) burst(W, x, y, 8, i ? "#7cc8ff" : "#e8f7ff");
+      SFX.fx("portalOut", x, y);
+      SFX.fx("levelWarp", x, y);
+    }
+    if (t > ARRIVE_T + 1) W.intro = null;
+  }
+  function stepLights(W, F) {
+    const L3 = W.shopLit;
+    if (!L3) return;
+    const { dt, pcx } = F, t = W.time;
+    if (t - L3.start < LIGHT_WAIT) {
+      W.padZap[1] = t - 0.2;
+      if (t >= L3.zap) {
+        SFX.fx("sparks", W.arrival.x, W.arrival.y);
+        L3.zap = t + 0.18 + 0.3 * (t * 7.3 % 1);
+      }
+    }
+    const { done } = lightsStep(L3, t, pcx, W.p.y + PH > SHOP_Y, W.guide ? W.guide.hold : Infinity);
+    for (let i = 0; i < LIGHT_X.length; i++) {
+      if (L3.on[i] < 0 || t - L3.on[i] > 2) continue;
+      if (sectionLevel(L3, i, t) > 0.3 && !(sectionLevel(L3, i, t - dt) > 0.3)) SFX.fx("tube", LIGHT_X[i], SHOP_Y + 4);
+    }
+    if (done) W.shopLit = null;
+  }
+
   // src/game/render/actors.js
   function drawEliteFire(W, G, F) {
     if (!W.eliteFx.length) return;
@@ -14899,6 +15165,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function drawPlayer(W, G, F) {
     const { pcx, pcy, held, ax, ay, gy } = F;
+    if (introHeld(W)) return;
     const flashing = W.p.hitT > 0 && Math.floor(W.p.hitT * 30) % 2 === 0;
     const running = W.p.onGround && Math.abs(W.p.vx) > 15;
     const gait = running ? W.time * 13 : null;
@@ -14986,7 +15253,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/art/sign.js
-  var hs = (n) => {
+  var hs2 = (n) => {
     const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
     return v - Math.floor(v);
   };
@@ -15009,13 +15276,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (const st of L3.s) {
         ctx.beginPath();
         for (let i = 0; i < st.length; i += 2, n++) {
-          const px = at + st[i] * h3 + (hs(n * 3.1 + 1) - 0.5) * h3 * 0.14, py = y + st[i + 1] * h3 + (hs(n * 5.7 + 2) - 0.5) * h3 * 0.14;
+          const px = at + st[i] * h3 + (hs2(n * 3.1 + 1) - 0.5) * h3 * 0.14, py = y + st[i + 1] * h3 + (hs2(n * 5.7 + 2) - 0.5) * h3 * 0.14;
           if (i) ctx.lineTo(px, py);
           else ctx.moveTo(px, py);
         }
         ctx.stroke();
       }
-      at += (L3.w + gap) * h3 * (0.94 + 0.12 * hs(n + 0.5));
+      at += (L3.w + gap) * h3 * (0.94 + 0.12 * hs2(n + 0.5));
     }
     return at - x;
   }
@@ -15028,7 +15295,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         continue;
       }
       for (const st of L3.s) n += st.length / 2;
-      w += (L3.w + gap) * h3 * (0.94 + 0.12 * hs(n + 0.5));
+      w += (L3.w + gap) * h3 * (0.94 + 0.12 * hs2(n + 0.5));
     }
     return w;
   }
@@ -15059,7 +15326,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.fillStyle = "#7b5532";
     ctx.fillRect(-bw / 2, -bh / 2, bw, bh);
     for (let i = 0; i < 9; i++) {
-      const gy = -bh / 2 + 1 + hs(i * 4.3) * (bh - 2), gx = -bw / 2 + hs(i * 7.9) * 20, gl = 30 + hs(i * 2.2) * 45;
+      const gy = -bh / 2 + 1 + hs2(i * 4.3) * (bh - 2), gx = -bw / 2 + hs2(i * 7.9) * 20, gl = 30 + hs2(i * 2.2) * 45;
       ctx.fillStyle = i % 3 ? "rgba(60,36,18,0.45)" : "rgba(160,118,74,0.35)";
       ctx.fillRect(gx, gy, Math.min(gl, bw / 2 - gx), 0.8);
     }
@@ -16293,7 +16560,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var BOLT_T = 0.09;
   var BOLT_CHANCE = 0.4;
   var ZAP_T = 1.4;
-  var hs2 = (n) => {
+  var hs3 = (n) => {
     const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
     return v - Math.floor(v);
   };
@@ -16327,14 +16594,46 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.fillRect(l + 5 + i * (w - 10) / 3 - 0.75, fy + 1.4, 1.5, 1);
     }
   }
+  var FLASH_T = 0.4;
+  function padCharge(W) {
+    if (!W.intro) return { ch: 0, fl: 0 };
+    const t = W.time - W.intro.start;
+    return { ch: t < ARRIVE_T ? Math.max(0, t / ARRIVE_T) : 0, fl: t >= ARRIVE_T ? Math.max(0, 1 - (t - ARRIVE_T) / FLASH_T) : 0 };
+  }
   function drawPads(W, G, F) {
     const ctx = G.ctx, t = W.time;
     for (const P2 of padSpots(W)) {
       if (P2.y < W.camY - 10 || P2.y - BEAM_H > W.camY + F.vh || P2.x < W.camX - 40 || P2.x > W.camX + F.vw + 40) continue;
       if (!fogLit(W, P2.x, P2.y - 6)) continue;
-      const pulse = 0.85 + 0.15 * Math.sin(t * 2.4 + P2.seed);
+      const { ch, fl } = P2.seed === 1 ? padCharge(W) : { ch: 0, fl: 0 };
+      const pulse = (0.85 + 0.15 * Math.sin(t * (2.4 + 30 * ch * ch) + P2.seed)) * (1 + 2.2 * ch * ch);
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
+      if (ch > 0) {
+        for (let i = 0; i < 18; i++) {
+          const u = (hs3(i * 5.1) + t * (0.8 + 2.2 * ch)) % 1, ang = hs3(i * 2.3) * 6.283 + u * 3;
+          const r = (1 - u) * (26 + 30 * hs3(i * 9.7)), sx = P2.x + Math.cos(ang) * r, sy = P2.y - 14 + Math.sin(ang) * r * 0.75;
+          ctx.globalAlpha = Math.min(1, u * 3) * (0.4 + 0.6 * ch);
+          ctx.fillStyle = hs3(i * 1.7) < 0.4 ? "#e6f6ff" : "#6cc4ff";
+          ctx.fillRect(sx - 0.7, sy - 0.7, 1.4, 1.4);
+        }
+        ctx.globalAlpha = 1;
+        const cg = ctx.createRadialGradient(P2.x, P2.y - 12, 0, P2.x, P2.y - 12, 8 + 10 * ch);
+        cg.addColorStop(0, "rgba(220,245,255," + (0.5 * ch * ch).toFixed(3) + ")");
+        cg.addColorStop(1, "rgba(90,185,255,0)");
+        ctx.fillStyle = cg;
+        ctx.fillRect(P2.x - 20, P2.y - 32, 40, 40);
+      }
+      if (fl > 0) {
+        const fg2 = ctx.createRadialGradient(P2.x, P2.y - 12, 0, P2.x, P2.y - 12, 70);
+        fg2.addColorStop(0, "rgba(235,250,255," + (0.95 * fl).toFixed(3) + ")");
+        fg2.addColorStop(0.4, "rgba(120,200,255," + (0.45 * fl).toFixed(3) + ")");
+        fg2.addColorStop(1, "rgba(90,185,255,0)");
+        ctx.fillStyle = fg2;
+        ctx.fillRect(P2.x - 70, P2.y - 82, 140, 140);
+        ctx.fillStyle = "rgba(235,250,255," + (0.8 * fl * fl).toFixed(3) + ")";
+        ctx.fillRect(P2.x - 7 * fl - 2, P2.y - BEAM_H * 1.6, 14 * fl + 4, BEAM_H * 1.6);
+      }
       for (const [wf, a, hf] of [[0.95, 0.16, 1], [0.66, 0.2, 0.8], [0.34, 0.28, 0.6]]) {
         const h3 = BEAM_H * hf, g = ctx.createLinearGradient(0, P2.y, 0, P2.y - h3);
         g.addColorStop(0, "rgba(90,185,255," + (a * pulse).toFixed(3) + ")");
@@ -16349,10 +16648,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.fillStyle = fg;
       ctx.fillRect(P2.x - PAD_W, P2.y - PAD_W, PAD_W * 2, PAD_W * 2);
       for (let i = 0; i < 10; i++) {
-        const sp = 14 + hs2(i * 3 + P2.seed) * 22, u = (t * sp / BEAM_H + hs2(i * 7 + P2.seed * 13)) % 1;
-        const sx = P2.x + (hs2(i * 11 + P2.seed) - 0.5) * PAD_W * 0.8 + Math.sin(t * 2 + i) * 1.2;
+        const sp = 14 + hs3(i * 3 + P2.seed) * 22, u = (t * sp / BEAM_H + hs3(i * 7 + P2.seed * 13)) % 1;
+        const sx = P2.x + (hs3(i * 11 + P2.seed) - 0.5) * PAD_W * 0.8 + Math.sin(t * 2 + i) * 1.2;
         ctx.globalAlpha = (1 - u) * 0.8;
-        ctx.fillStyle = hs2(i + P2.seed * 5) < 0.4 ? "#e6f6ff" : "#6cc4ff";
+        ctx.fillStyle = hs3(i + P2.seed * 5) < 0.4 ? "#e6f6ff" : "#6cc4ff";
         ctx.fillRect(sx - 0.6, P2.y - 2 - u * BEAM_H * 0.9, 1.2, 1.2);
       }
       ctx.restore();
@@ -16361,13 +16660,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const n0 = Math.floor(t / BOLT_T);
       for (let n = n0 - 2; n <= n0; n++) {
         const s = n * 7.13 + P2.seed * 101;
-        if (hs2(s) > (0.35 + 0.65 * zap) * BOLT_CHANCE * 2) continue;
+        if (hs3(s) > (0.35 + 0.65 * zap) * BOLT_CHANCE * 2 * (ch > 0 ? 0.25 + 1.1 * ch : fl > 0 ? 1.25 : 1)) continue;
         const age = (t - n * BOLT_T) / (BOLT_T * 3);
-        let bx = P2.x + (hs2(s + 1) - 0.5) * (PAD_W - 6), by = P2.y - 1;
-        const up = BEAM_H * (0.3 + 0.5 * hs2(s + 2)), steps = 6;
+        let bx = P2.x + (hs3(s + 1) - 0.5) * (PAD_W - 6), by = P2.y - 1;
+        const up = BEAM_H * (0.3 + 0.5 * hs3(s + 2)), steps = 6;
         const pts = [{ x: bx, y: by }];
         for (let k = 1; k <= steps; k++) {
-          bx += (hs2(s + 3 + k) - 0.5) * 7;
+          bx += (hs3(s + 3 + k) - 0.5) * 7;
           by -= up / steps;
           bx = Math.max(P2.x - PAD_W / 2, Math.min(P2.x + PAD_W / 2, bx));
           pts.push({ x: bx, y: by });
@@ -16784,77 +17083,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.ctx.globalAlpha = 1;
   }
 
-  // src/world/shoplights.js
-  var LIGHT_WAIT = 2;
-  var LIGHT_REST = 3;
-  var LIGHT_RUN = 0.22;
-  var TUBE_MAX = 1.6;
-  var FIRST_X = 76;
-  var FIRST_TRIGGER = 100;
-  var PAD_LIT = 56;
-  var LIGHT_X = [FIRST_X];
-  for (let x = FIRST_X + SHOP_SLOT; x < WW; x += SHOP_SLOT) LIGHT_X.push(x);
-  var PERK_I = LIGHT_X.indexOf(SHOP_MACHINE_X[2]);
-  var lightsNew = (time) => ({ start: time, on: LIGHT_X.map(() => -1), zap: time });
-  var hs3 = (n) => {
-    const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
-    return v - Math.floor(v);
-  };
-  function tubeLevel(age, seed) {
-    if (age < 0) return 0;
-    const dur = 0.55 + 0.9 * hs3(seed * 7.1 + 1);
-    if (age >= dur) return 1;
-    let t = 0;
-    for (let n = 0; n < 60; n++) {
-      const len = 0.03 + 0.13 * hs3(seed * 13.7 + n * 3.1);
-      if (age < t + len) {
-        const warm = t / dur;
-        const lit = n < 3 ? n === 1 : hs3(seed * 5.3 + n * 9.7) < 0.2 + 0.65 * warm;
-        return lit ? 0.45 + 0.55 * hs3(seed + n * 1.9) : 0.06;
-      }
-      t += len;
-    }
-    return 1;
-  }
-  var sectionLevel = (L3, i, time) => L3.on[i] < 0 ? 0 : tubeLevel(time - L3.on[i], i + 1);
-  var halfW = (i) => i === 0 ? 50 : 30;
-  var POOL_FADE = 16;
-  function shopDark(L3, x, time) {
-    let best = 0;
-    for (let i = 0; i < LIGHT_X.length; i++) {
-      const lv = !L3 ? 1 : L3.on[i] < 0 ? 0 : sectionLevel(L3, i, time);
-      if (!lv) continue;
-      const dx = Math.abs(x - LIGHT_X[i]), d = dx - halfW(i);
-      const pool = d <= 0 ? 1 : d >= POOL_FADE ? 0 : 1 - d / POOL_FADE;
-      const amb = dx <= Math.max(SHOP_SLOT / 2 + 4, halfW(i) + POOL_FADE) ? 1 - DEV.shopGap : 0;
-      best = Math.max(best, Math.max(pool, amb) * lv);
-    }
-    return 1 - best;
-  }
-  function lightsStep(L3, time, pcx, inShop, hold = Infinity) {
-    const lit = [];
-    const on = (i, at) => {
-      if (L3.on[i] < 0) {
-        L3.on[i] = at;
-        lit.push(i);
-      }
-    };
-    if (time - L3.start >= LIGHT_WAIT) on(0, L3.start + LIGHT_WAIT);
-    const k = L3.on.indexOf(-1), latest = Math.max(...L3.on), perks = L3.on[PERK_I];
-    if (k > 0 && k < hold && time - latest >= LIGHT_RUN && (pcx >= (k === 1 ? FIRST_TRIGGER : LIGHT_X[k - 1] - 20) || perks >= 0 && time - perks >= LIGHT_REST || !inShop)) on(k, time);
-    const done = L3.on.every((t) => t >= 0 && time - t >= TUBE_MAX);
-    return { lit, done };
-  }
-  function lightNear(L3, x, time) {
-    const lit = [];
-    for (let i = 0; i < LIGHT_X.length; i++)
-      if (L3.on[i] < 0 && Math.abs(LIGHT_X[i] - x) < halfW(i) + POOL_FADE) {
-        L3.on[i] = time;
-        lit.push(i);
-      }
-    return lit;
-  }
-
   // src/game/systems/plantglow.js
   function plantGlow(W, G, e, TH) {
     const u = e.je.u, reach2 = kru("jeGlowR", u.glowR) * kru("jePlantReach", u.plant);
@@ -16965,6 +17193,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const { vw, vh, pcx, pcy } = F;
     const sight = SIGHT * DEV.torch * carrotAt("caTorch", W.pb.carrot);
     W.torchR = clamp(sight * LAMP_REACH * (0.5 + 0.55 * W.flick), 120, 1400);
+    const away = introHeld(W);
     W.visPts = visPoly(pcx, pcy, sight, (cx, cy) => solidCell(W, cx, cy), VIS_RAYS);
     fogReveal(W.seen, pcx, pcy, sight, W.visPts, VIS_RAYS);
     if (!G.RPV || G.RPV.fog) {
@@ -17000,7 +17229,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             a = Math.round(dark * shopDark(shopL, wx, W.time) * (pd < PAD_LIT ? 0.3 + 0.7 * pd / PAD_LIT : 1));
           }
           wdat[k + 3] = s ? 0 : dark;
-          if (s && a) {
+          if (s && a && !away) {
             const ddx = (cx + 0.5) * FOG_U - pcx, dd2 = ddx * ddx + ddy * ddy;
             if (dd2 < lr2) {
               const t = Math.sqrt(dd2) / W.torchR;
@@ -17146,7 +17375,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(W, pr.x, pr.y + pr.len))
         glowAt(G.ctx, pr.x, pr.y + pr.len, 16, 0.2 * W.flick, "255,130,50");
     if (W.p.burn > 0 && !W.p.dead) glowAt(G.ctx, W.p.x + PW / 2, W.p.y + PH / 2, 22, 0.25 * W.flick, "255,130,50");
-    if (!W.p.dead) {
+    if (!W.p.dead && !introHeld(W)) {
       const th = torchHand(W), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
       glowAt(G.ctx, gfx, gfy, 70 * (0.9 + 0.1 * gl), 0.2 * gl, "255,150,60");
       glowAt(G.ctx, gfx + W.leanX * 0.5, gfy + W.leanY * 0.5, 12, 0.5 * gl, "255,190,90");
@@ -17213,119 +17442,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (W.camY + F.vh <= WH) return;
     G.ctx.fillStyle = "#000";
     G.ctx.fillRect(W.camX - 10, WH, F.vw + 20, W.camY + F.vh - WH + 10);
-  }
-
-  // src/world/guide.js
-  var GUIDE_PAR = 0.8;
-  var GUIDE_UNDER = 20;
-  var GUIDE_NEAR = 30;
-  var guideSpot = (g) => LIGHT_X[Math.min(g.hold, LIGHT_X.length - 1)] - GUIDE_UNDER;
-  var APPEAR_T = 0.35;
-  var WAVE_T = 1.1;
-  var GIFT_GAP = 0.45;
-  var LEAVE_T = 0.7;
-  var RUDE_HOLD = 1.6;
-  var GUIDE_PAGES = [
-    "Welcome real person. You must be exhausted from your spaceship journey to get here. It must be difficult to recall specifics about why you came here, right? You'll need to wait for the Coriolis effect to wear off.",
-    "Although I can tell you right now for free what the answer will be..... money. Everyone comes through here looking to get rich and make it big!",
-    "They say it's simple. Buy a SOL, clean it up a bit and SELL it back to them for a profit! It's like printing money!",
-    "They even front you the money for all sales.\nOf course you'd physically travel here from another place to take advantage of an opportunity like that!",
-    "Anyway, Welcome to your SOL Hub. Behind me is everything you'll need to make your fortune.",
-    "Enjoy your Slice Of Life.",
-    "And here is something to get you started..."
-  ];
-  var GUIDE_RUDE = "Rude. Yeh OK have fun! Remember, you definitely have everything you need!";
-  var GUIDE_GIFTS = [
-    { gold: 150 },
-    { crystal: "red" },
-    { crystal: "red" },
-    { crystal: "green" },
-    { mod: "saw" },
-    { mod: "bolt" },
-    { mod: "double" },
-    { gun: { lvl: 5, cap: 3, multi: 1, recharge: 0.5 } }
-    // non-shuffle, empty, 1 shot a cast, 0.5 s recharge (owner, v0.0.143)
-  ];
-  var cost = (ch, cps) => (1 + (/[.!?]/.test(ch) ? 7 : /[,\n]/.test(ch) ? 3 : 0)) / Math.max(1, cps);
-  function typeTime(text, cps) {
-    let t = 0;
-    for (const ch of text) t += cost(ch, cps);
-    return t;
-  }
-  function typedAt(text, t, cps) {
-    let n = 0, at = 0;
-    for (const ch of text) {
-      at += 1 / Math.max(1, cps);
-      if (at > t) return n;
-      n++;
-      at += cost(ch, cps) - 1 / Math.max(1, cps);
-    }
-    return n;
-  }
-  var pageHold = (text, wait) => wait + text.length * 0.012;
-  var guideNew = () => ({ st: "wait", t: 0, x: 0, cam0: 0, page: 0, say: "", gift: 0, hold: 2 });
-  var guideX = (g, camX) => g.x + (camX - g.cam0) * (1 - GUIDE_PAR);
-  function guideStep(g, dt, I) {
-    const ev = [];
-    const go = (st) => {
-      g.st = st;
-      g.t = 0;
-    };
-    if (g.st === "gone") return ev;
-    g.t += dt;
-    if (g.st === "wait") {
-      const x = guideSpot(g);
-      if (x + I.seen <= I.camX + I.vw || I.pcx >= x - GUIDE_NEAR) {
-        g.x = x;
-        g.cam0 = I.camX;
-        go("appear");
-        ev.push({ k: "appear" });
-      }
-      return ev;
-    }
-    if ((g.st === "appear" || g.st === "wave" || g.st === "talk") && I.inShop && I.pcx >= guideX(g, I.camX) - 3) {
-      g.say = GUIDE_RUDE;
-      go("rude");
-      ev.push({ k: "rude" });
-      return ev;
-    }
-    if (g.st === "appear" && g.t >= APPEAR_T) go("wave");
-    else if (g.st === "wave" && g.t >= WAVE_T) {
-      g.page = 0;
-      g.say = GUIDE_PAGES[0];
-      go("talk");
-      ev.push({ k: "talk" });
-    } else if (g.st === "talk" && g.t >= typeTime(g.say, I.cps) + pageHold(g.say, I.wait)) {
-      if (g.page < GUIDE_PAGES.length - 1) {
-        g.page++;
-        g.say = GUIDE_PAGES[g.page];
-        g.t = 0;
-        ev.push({ k: "talk" });
-      } else {
-        g.gift = 0;
-        go("give");
-      }
-    } else if (g.st === "give") {
-      while (g.gift < GUIDE_GIFTS.length && g.t >= g.gift * GIFT_GAP) ev.push({ k: "gift", gift: GUIDE_GIFTS[g.gift++] });
-      if (g.gift >= GUIDE_GIFTS.length && g.t >= g.gift * GIFT_GAP) {
-        go("leave");
-        ev.push({ k: "leave" });
-      }
-    } else if (g.st === "rude" && g.t >= typeTime(g.say, I.cps) + RUDE_HOLD) {
-      go("leave");
-      ev.push({ k: "leave" });
-    } else if (g.st === "leave" && g.t >= LEAVE_T) {
-      go("gone");
-      g.say = "";
-      g.hold = Infinity;
-      ev.push({ k: "gone" });
-    }
-    return ev;
-  }
-  function guideSpeech(g, cps) {
-    if (g.st === "talk" || g.st === "rude") return { text: g.say, n: typedAt(g.say, g.t, cps) };
-    if (g.st === "give" || g.st === "leave" && g.say) return { text: g.say, n: g.say.length };
-    return { text: "", n: 0 };
   }
 
   // src/game/systems/guide.js
@@ -19623,6 +19739,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
     return v - Math.floor(v);
   };
+  var DUST_N = 14;
+  var DUST_COL = "226,214,188";
+  function coneDust(ctx, x, y0, fy, lv, t, i) {
+    const H = fy - y0 - 3;
+    ctx.fillStyle = "rgb(" + DUST_COL + ")";
+    for (let k = 0; k < DUST_N; k++) {
+      const s = i * 31 + k * 7.3, sp = 0.025 + 0.035 * hs4(s + 2);
+      const v = (hs4(s + 3) + t * sp) % 1;
+      const u = Math.max(-0.95, Math.min(0.95, (hs4(s + 1) * 2 - 1) * 0.85 + 0.12 * Math.sin(t * (0.3 + 0.4 * hs4(s + 4)) + s)));
+      const half = TUBE_W / 2 + 26 * v, px = x + u * half, py = y0 + v * H;
+      const a = lv * (1 - u * u) * Math.min(1, v * 6, (1 - v) * 6) * (0.35 + 0.5 * hs4(s + 5)) * (0.75 + 0.25 * Math.sin(t * 2 + s));
+      if (a <= 0.02) continue;
+      const sz = 0.6 + 0.6 * hs4(s + 6);
+      ctx.globalAlpha = a;
+      ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz);
+    }
+    ctx.globalAlpha = 1;
+  }
   function drawTubes(W, G, F) {
     const { vw, vh } = F, ctx = G.ctx, fy = SHOP_FLOOR * CELL, L3 = G.RPV ? null : W.shopLit;
     if (SHOP_Y > W.camY + vh || fy < W.camY) return;
@@ -19674,6 +19808,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.beginPath();
       ctx.ellipse(x, fy, TUBE_W / 2 + 26, 7, 0, 0, Math.PI * 2);
       ctx.fill();
+      coneDust(ctx, x, y + 5, fy, lv, W.time, i);
     }
     if (L3) {
       const ax = W.arrival.x, ay = fy - 20, fl = 0.75 + 0.25 * hs4(Math.floor(W.time * 20));
@@ -20251,31 +20386,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.ctx.setTransform(s, 0, 0, s, -ox2, -oy2);
     F.snapX = (Math.round((W.p.x - W.camX) * s) + ox2) / s - W.p.x;
     F.snapY = (Math.round((W.p.y - W.camY) * s) + oy2) / s - W.p.y;
-  }
-
-  // src/game/systems/shoplights.js
-  function shopDarkStart(W) {
-    W.shopLit = lightsNew(W.time);
-    W.padZap[1] = W.time;
-    W.guide = guideNew();
-  }
-  function stepLights(W, F) {
-    const L3 = W.shopLit;
-    if (!L3) return;
-    const { dt, pcx } = F, t = W.time;
-    if (t - L3.start < LIGHT_WAIT) {
-      W.padZap[1] = t - 0.2;
-      if (t >= L3.zap) {
-        SFX.fx("sparks", W.arrival.x, W.arrival.y);
-        L3.zap = t + 0.18 + 0.3 * (t * 7.3 % 1);
-      }
-    }
-    const { done } = lightsStep(L3, t, pcx, W.p.y + PH > SHOP_Y, W.guide ? W.guide.hold : Infinity);
-    for (let i = 0; i < LIGHT_X.length; i++) {
-      if (L3.on[i] < 0 || t - L3.on[i] > 2) continue;
-      if (sectionLevel(L3, i, t) > 0.3 && !(sectionLevel(L3, i, t - dt) > 0.3)) SFX.fx("tube", LIGHT_X[i], SHOP_Y + 4);
-    }
-    if (done) W.shopLit = null;
   }
 
   // src/game/systems/gun.js
@@ -21351,7 +21461,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const F = { dt, LO: null, MHP: 0, pcx: 0, pcy: 0 };
     if (stepRequests(W, G, F)) return;
     stepPerks(W, G, F);
-    movePlayer(W, G, F);
+    stepIntro(W);
+    if (!introHeld(W)) movePlayer(W, G, F);
     if (atPortal(W, G, F)) return;
     aimAndCast(W, G, F);
     stepBullets(W, G, F);
@@ -22175,7 +22286,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       fmt: (v) => v ? "in order" : "shuffle"
     }
   ];
-  function GunCard({ gun, label, onClose, ingame, flow, split, mark, compare, compareName }) {
+  function ModPop({ id, close }) {
+    return ReactDOM.createPortal(h(
+      "div",
+      { className: "modpop" },
+      h("div", { className: "shade", onPointerDown: (e) => {
+        e.preventDefault();
+        close();
+      } }),
+      h(ModCard, { id, onClose: close, top: true })
+    ), document.body);
+  }
+  function GunCard({ gun, label, onClose, ingame, flow, split, mark, compare, compareName, tapMods }) {
+    const [info, setInfo] = useState(null);
     const vs = compare && compare !== gun ? compare : null;
     const stats = GUN_STATS.map((st) => {
       const v = st.get(gun);
@@ -22232,20 +22355,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         { className: "pdemo" },
         h(
           "div",
-          { className: "dtiles" },
-          gun.slots.map((id, i) => id ? h(
-            "div",
-            {
-              key: i,
-              className: "dtile",
-              style: { borderColor: famCol(id), color: famCol(id) }
-            },
-            h("b", null, MODS[id].glyph),
-            h("i", null, MODS[id].name)
-          ) : h("div", { key: i, className: "dtile off" }, h("i", null, "empty")))
+          { className: "gmods" },
+          gun.slots.map((id, i) => {
+            const m = id ? MODS[id] : null;
+            return h(
+              "div",
+              {
+                key: i,
+                "data-mod": id || void 0,
+                className: "tile" + (m ? "" : " hole") + (m && m.kind === "shot" ? " shot" : "") + (m && tapMods ? " tap" : ""),
+                style: m ? { borderColor: famCol(id), color: famCol(id) } : null,
+                onPointerDown: m && tapMods ? (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setInfo(id);
+                } : void 0
+              },
+              h("span", { className: "tg" }, m ? m.glyph : ""),
+              m ? h("span", { className: "tn" }, m.name) : null,
+              m && m.mark ? h("span", { className: "tmark" }, m.mark) : null
+            );
+          })
         ),
-        split && gun.slots.some(Boolean) ? null : h("span", { className: "dnote" }, gun.slots.some(Boolean) ? "cast left to right" : "nothing fitted yet")
-      )
+        split && gun.slots.some(Boolean) ? null : h("span", { className: "dnote" }, gun.slots.some(Boolean) ? "cast left to right" + (tapMods ? " · tap one for its card" : "") : "nothing fitted yet")
+      ),
+      info && MODS[info] ? h(ModPop, { id: info, close: () => setInfo(null) }) : null
     );
   }
   function ModCard({ id, onClose, ingame, top, flow }) {
@@ -22256,11 +22390,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       "div",
       {
         key,
-        className: "dtile" + (faded ? " off" : ""),
+        className: "tile" + (faded ? " off" : "") + (MODS[did].kind === "shot" ? " shot" : ""),
         style: { borderColor: famCol(did), color: famCol(did) }
       },
-      h("b", null, MODS[did].glyph),
-      h("i", null, MODS[did].name)
+      h("span", { className: "tg" }, MODS[did].glyph),
+      h("span", { className: "tn" }, MODS[did].name)
     );
     const drow = (ok, tiles, note, key) => h(
       "div",
@@ -25598,6 +25732,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             label: free && sel === 0 ? "Free" : gun.boosted ? "Boosted" : "For sale",
             ingame: true,
             flow: true,
+            tapMods: true,
             compare: held,
             compareName: held ? held.name : ""
           }) : h("p", { className: "vhint" }, "Sold")
@@ -25862,6 +25997,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         flow: true,
         split: true,
         mark: "found",
+        tapMods: true,
         compare: baseGun,
         compareName: baseGun ? "slot " + (base + 1) + ", " + baseGun.name : ""
       }),
@@ -25871,6 +26007,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         flow: true,
         split: true,
         mark: "mine",
+        tapMods: true,
         compare: found.gun,
         compareName: found.gun.name
       }) : h("p", { className: "lab mine" }, base >= 0 ? "Slot " + (base + 1) + " is empty" : "No guns to compare it with"),
@@ -26607,6 +26744,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h(GunCard, {
           gun: LO.guns[gunInfo],
           label: "Slot " + (gunInfo + 1),
+          tapMods: true,
           onClose: () => setGunInfo(-1)
         })
       ) : null

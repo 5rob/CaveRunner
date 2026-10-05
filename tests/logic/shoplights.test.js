@@ -14,6 +14,7 @@ check('each one under its own light', xs.every(x => LIGHT_X.includes(x)), LIGHT_
 // v0.0.141: they stand at the far right, the heal just before them, an empty hall from the way in
 check('the machines out to the end wall', SHOP_MACHINE_X[2] + 30 < WW && SHOP_MACHINE_X[2] + SHOP_SLOT > WW - 40, SHOP_MACHINE_X);
 check('the heal just before the buy machine, far from the way in', HEAL_X > 500 && HEAL_X < VEND_BUY_X - 50, HEAL_X);
+check('the heal right under its light (v0.0.144)', LIGHT_X.includes(HEAL_X), HEAL_X);
 const PI = LIGHT_X.indexOf(SHOP_MACHINE_X[2]);
 
 // ---- a tube stutters on, then stays on ----

@@ -309,7 +309,7 @@ export function App() {
     gunInfo >= 0 && LO.guns[gunInfo]
       ? h('div', null,
           h('div', { className: 'shade', onPointerDown: e => { e.preventDefault(); setGunInfo(-1); } }),
-          h(GunCard, { gun: LO.guns[gunInfo], label: 'Slot ' + (gunInfo + 1),
+          h(GunCard, { gun: LO.guns[gunInfo], label: 'Slot ' + (gunInfo + 1), tapMods: true,
             onClose: () => setGunInfo(-1) }))
       : null
   );

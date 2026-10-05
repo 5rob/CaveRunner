@@ -6,8 +6,11 @@
 // (W.padZap, set as you go through: step.js atPortal), lightning crackling up off it (the warp's
 // bolts, drawBolt), only where the fog says the pad has been seen. Screen-steady hashes of W.time
 // only, never Math.random (draw shares the simulation's stream).
+// v0.0.144: a new run's way in charges for ARRIVE_T (W.intro): its beam swelling, light drawn in
+// towards it, the lightning busier and busier, then a flash as you come through (padCharge).
 
 import { CELL, SHOP_FLOOR } from '../../core/consts.js';
+import { ARRIVE_T } from '../../world/shoplights.js';
 import { fogLit } from '../systems/fog.js';
 import { exits } from '../world.js';
 import { drawBolt } from './looks.js';
@@ -50,6 +53,16 @@ export function drawPad(ctx, x, fy, time) {
   }
 }
 
+export const FLASH_T = 0.4;                    // the flash as you come through (s)
+// A new run's way in: how far through its charge (0-1, 0 when not charging) and how much of the
+// arrival flash is left (0-1)
+/** @param {World} W */
+export function padCharge(W) {
+  if (!W.intro) return { ch: 0, fl: 0 };
+  const t = W.time - W.intro.start;
+  return { ch: t < ARRIVE_T ? Math.max(0, t / ARRIVE_T) : 0, fl: t >= ARRIVE_T ? Math.max(0, 1 - (t - ARRIVE_T) / FLASH_T) : 0 };
+}
+
 // The light over the pads, after the fog: the beam, the specks, the bolts
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawPads(W, G, F) {
@@ -57,9 +70,34 @@ export function drawPads(W, G, F) {
   for (const P of padSpots(W)) {
     if (P.y < W.camY - 10 || P.y - BEAM_H > W.camY + F.vh || P.x < W.camX - 40 || P.x > W.camX + F.vw + 40) continue;
     if (!fogLit(W, P.x, P.y - 6)) continue;
-    const pulse = 0.85 + 0.15 * Math.sin(t * 2.4 + P.seed);
+    const { ch, fl } = P.seed === 1 ? padCharge(W) : { ch: 0, fl: 0 };
+    const pulse = (0.85 + 0.15 * Math.sin(t * (2.4 + 30 * ch * ch) + P.seed)) * (1 + 2.2 * ch * ch);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
+    if (ch > 0) {
+      // charging: light drawn in from all round, spiralling down into the pad faster and faster
+      for (let i = 0; i < 18; i++) {
+        const u = (hs(i * 5.1) + t * (0.8 + 2.2 * ch)) % 1, ang = hs(i * 2.3) * 6.283 + u * 3;
+        const r = (1 - u) * (26 + 30 * hs(i * 9.7)), sx = P.x + Math.cos(ang) * r, sy = P.y - 14 + Math.sin(ang) * r * 0.75;
+        ctx.globalAlpha = Math.min(1, u * 3) * (0.4 + 0.6 * ch);
+        ctx.fillStyle = hs(i * 1.7) < 0.4 ? '#e6f6ff' : '#6cc4ff';
+        ctx.fillRect(sx - 0.7, sy - 0.7, 1.4, 1.4);
+      }
+      ctx.globalAlpha = 1;
+      // a core gathering where you'll stand
+      const cg = ctx.createRadialGradient(P.x, P.y - 12, 0, P.x, P.y - 12, 8 + 10 * ch);
+      cg.addColorStop(0, 'rgba(220,245,255,' + (0.5 * ch * ch).toFixed(3) + ')'); cg.addColorStop(1, 'rgba(90,185,255,0)');
+      ctx.fillStyle = cg; ctx.fillRect(P.x - 20, P.y - 32, 40, 40);
+    }
+    if (fl > 0) {
+      // through: a white flash and a column of light where you now stand
+      const fg = ctx.createRadialGradient(P.x, P.y - 12, 0, P.x, P.y - 12, 70);
+      fg.addColorStop(0, 'rgba(235,250,255,' + (0.95 * fl).toFixed(3) + ')'); fg.addColorStop(0.4, 'rgba(120,200,255,' + (0.45 * fl).toFixed(3) + ')');
+      fg.addColorStop(1, 'rgba(90,185,255,0)');
+      ctx.fillStyle = fg; ctx.fillRect(P.x - 70, P.y - 82, 140, 140);
+      ctx.fillStyle = 'rgba(235,250,255,' + (0.8 * fl * fl).toFixed(3) + ')';
+      ctx.fillRect(P.x - 7 * fl - 2, P.y - BEAM_H * 1.6, 14 * fl + 4, BEAM_H * 1.6);
+    }
     // the beam: three widths, each fading off upward, so it's brightest in the middle and low down
     for (const [wf, a, hf] of [[0.95, 0.16, 1], [0.66, 0.2, 0.8], [0.34, 0.28, 0.6]]) {
       const h = BEAM_H * hf, g = ctx.createLinearGradient(0, P.y, 0, P.y - h);
@@ -89,7 +127,7 @@ export function drawPads(W, G, F) {
     const n0 = Math.floor(t / BOLT_T);
     for (let n = n0 - 2; n <= n0; n++) {
       const s = n * 7.13 + P.seed * 101;
-      if (hs(s) > (0.35 + 0.65 * zap) * BOLT_CHANCE * 2) continue;
+      if (hs(s) > (0.35 + 0.65 * zap) * BOLT_CHANCE * 2 * (ch > 0 ? 0.25 + 1.1 * ch : fl > 0 ? 1.25 : 1)) continue;
       const age = (t - n * BOLT_T) / (BOLT_T * 3);
       let bx = P.x + (hs(s + 1) - 0.5) * (PAD_W - 6), by = P.y - 1;
       const up = BEAM_H * (0.3 + 0.5 * hs(s + 2)), steps = 6;

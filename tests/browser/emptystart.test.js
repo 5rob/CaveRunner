@@ -48,6 +48,17 @@ const DIR = path.join(__dirname, '..', 'build');
   check('the first gun is free', st.prices[0] === 'FREE' && st.prices[1] === st.want1, st);
   check('"Take it"', st.buy === 'Take it', st);
   await shot('1-free');
+  // v0.0.144: its mods are square tiles; tapping one shows the mod's card over the menu
+  st = await page.evaluate(async () => {
+    document.querySelector('.gcard .gmods .tile.tap').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+    for (let i = 0; i < 5; i++) await new Promise(r => requestAnimationFrame(r));
+    const el = document.querySelector('.modpop .pop');
+    return { title: el && el.querySelector('.ptitle b').textContent, menu: !!document.querySelector('.gshop') };
+  });
+  check('tapping a mod on the gun shows its card, the menu still open', st.title === 'Bolt' && st.menu, st);
+  await shot('1b-modcard');
+  await page.evaluate(() => document.querySelector('.modpop .shade').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true })));
+  await frames(3);
   st = await page.evaluate(async () => {
     document.querySelector('.vbuy').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
     for (let i = 0; i < 40; i++) await new Promise(r => requestAnimationFrame(r));

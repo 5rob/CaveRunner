@@ -2,7 +2,7 @@
 // time, the welcome then the kit, and the rude line (no kit) when you run through it.
 const G = require('../load');
 const { guideNew, guideStep, guideX, guideSpeech, typedAt, typeTime, GUIDE_PAGES, GUIDE_RUDE, GUIDE_GIFTS,
-  GUIDE_PAR, GUIDE_NEAR, LIGHT_X, guideSpot } = G;
+  GUIDE_PAR, GUIDE_NEAR, LIGHT_X, guideSpot, guideLitEdge, POOL_FADE } = G;
 
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
@@ -61,8 +61,14 @@ const SPOT = LIGHT_X[2] - 20, ON = { camX: SPOT + 50 - 225, pcx: SPOT + 50 - 225
   guideStep(g, 1 / 60, I(ON));
   for (let i = 0; i < 200; i++) guideStep(g, 1 / 60, I(ON));
   check('talking', g.st === 'talk', g.st);
-  const ev = guideStep(g, 1 / 60, I({ camX: ON.camX, pcx: guideX(g, ON.camX) + 1 }));
-  check('run through it: rude', g.st === 'rude' && ev[0].k === 'rude' && g.say === GUIDE_RUDE, g.st);
+  // v0.0.144: walking through it isn't rude; walking out of its pool of light, on to the right, is
+  let ev = guideStep(g, 1 / 60, I({ camX: ON.camX, pcx: guideX(g, ON.camX) + 10 }));
+  check('walking through it is fine', g.st === 'talk' && !ev.length, g.st);
+  check("its pool of light ends where the tube's light does", guideLitEdge(g) === LIGHT_X[2] + 30 + POOL_FADE, guideLitEdge(g));
+  ev = guideStep(g, 1 / 60, I({ camX: ON.camX, pcx: guideLitEdge(g) }));
+  check('up to the edge of its light: still fine', g.st === 'talk' && !ev.length, g.st);
+  ev = guideStep(g, 1 / 60, I({ camX: ON.camX, pcx: guideLitEdge(g) + 1 }));
+  check('past it: rude', g.st === 'rude' && ev[0].k === 'rude' && g.say === GUIDE_RUDE, g.st);
   check('the rude line, typed', guideSpeech(g, 30).text === GUIDE_RUDE);
   const all = [];
   for (let i = 0; i < 2000 && g.st !== 'gone'; i++) all.push(...guideStep(g, 1 / 60, I({ pcx: 600, camX: 450 })));

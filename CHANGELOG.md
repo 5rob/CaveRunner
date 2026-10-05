@@ -5,6 +5,30 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.144 — the heal under its light, dust in the cones, the guide's rude line, gun pickup, the arrival
+Released 2026-10-05 (after the owner's OK of the screenshots; a minor update).
+
+- **The heal** stands centred under its tube (`HEAL_X` 566 → 556, `LIGHT_X[4]`).
+- **The guide turns rude only once you walk out of its pool of light** to the right (`guideLitEdge`:
+  its section's middle + `poolEdge`, 46), not as you pass it: walking right at full speed it had turned
+  rude while still invisible, so it was skipped unseen.
+- **Dust in the light cones** (`coneDust` in `render/shoplights.js`), dust-coloured, only ever inside
+  a cone; the floor's ambience (floor 1's green spores) no longer spawns or drifts in the shop room.
+- **Gun pickup** (`ui/swap.js`, `style.css`; owner): the slot buttons a full-width row of squares at
+  the bottom, the two cards splitting the rest equally; the stats one column on the owner's phone, two or
+  three across on shorter screens so nothing has to scroll.
+- **A new run's arrival** (owner): the teleporter charges for a second (`ARRIVE_T`, `W.intro`; you're
+  held, unseen, no torch; light spirals into the pad, the lightning builds, a rising `padCharge` sound),
+  then a flash and lightning and you're on the pad (`stepIntro`, `padCharge`/`FLASH_T` in
+  `render/pads.js`); a second later the tube over the teleporter flickers on (`LIGHT_WAIT` stays 2 s).
+- **A gun's mods as square tiles** (owner): every gun card (the pickup, the gun machine, the Bag's gun
+  card, the card by a gun on the ground) shows its slots as the Bag's square mod tiles, empty ones dashed;
+  tapping one (not on the ground card) opens that mod's card over everything (`ModPop` in `ui/cards.js`).
+  A mod card's examples ("modifiers go to its left"…) are square tiles too.
+- Tests: `intro` (new: held while charging, through at 1 s, the tube on a second later; screenshots),
+  `gunpickup` (square full-width slots, equal cards), `guide` (logic: the edge; browser: a full-speed walk sees it before it turns rude),
+  `shoplights` (the heal under its light; no ambience in the shop; screenshot `shoplights-8-heal-dust`).
+
 ## v0.0.143 — the guide's gun: one shot a cast, 0.5 s recharge
 Released 2026-10-05 (owner's ask; a minor update). The starter kit's level 5 gun now always casts one
 shot (`multi` 1) and recharges in 0.5 s (`GUIDE_GIFTS`' gun takes `multi` and `recharge`; `giveGift` sets them).

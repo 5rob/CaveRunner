@@ -13,7 +13,8 @@
 import { SHOP_MACHINE_X, SHOP_SLOT, WW } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
 
-export const LIGHT_WAIT = 2;          // seconds from arriving to the first tubes
+export const ARRIVE_T = 1;            // v0.0.144: a new run's teleporter charges this long before you come through it
+export const LIGHT_WAIT = 2;          // seconds from the run starting to the first tubes: you're in for a second (ARRIVE_T + 1)
 export const LIGHT_REST = 3;          // the perk section on this long: the rest of the hall comes on
 export const LIGHT_RUN = 0.22;        // and one more section every this many seconds
 export const TUBE_MAX = 1.6;          // no tube takes longer than this to settle
@@ -60,6 +61,8 @@ export const sectionLevel = (L, i, time) => (L.on[i] < 0 ? 0 : tubeLevel(time - 
 /** half the width a section lights fully @param {number} i */
 const halfW = i => (i === 0 ? 50 : 30);
 export const POOL_FADE = 16;          // a pool of light fades out over this past its edge (so it ends where the tube's cone meets the floor)
+/** how far out from section i's middle its pool of light ends (fully faded) @param {number} i */
+export const poolEdge = i => halfW(i) + POOL_FADE;
 
 // How dark the shop is at world x (1 = unlit, 0 = in full light): the best of the sections'
 // light pools, each fully lit under its tube and fading out over POOL_FADE past its edge. Since
