@@ -44,7 +44,7 @@ for (let seed = 1; seed <= SEEDS; seed++) {
     for (let x = c.x - c.rx + 3; x < c.x + c.rx - 6 && !got; x++) for (let y = c.floor - 12; y >= c.floor - 16 && !got; y--) if (R.ok[y * CW + x] === 2) got = true;
     if (!got || darkAt(lv, c.x * CELL, c.y * CELL, CELL) !== z.id) bad.chamber.push(`${seed}:${z.id}`);
   }
-  for (let i = 0; i < CW * CH; i++) if (web[i] && (mat[i] || !M[i])) bad.webOut++;
+  for (let i = 0; i < CW * CH; i++) if (web[i] && (mat[i] || !lv.darkShade[i])) bad.webOut++;
 }
 console.log(`${SEEDS} floors: ${(zones / SEEDS).toFixed(1)} zones each; makeLevel ${(ms / SEEDS).toFixed(0)} ms average, ${worst} worst`);
 check('zones on most floors', zones >= SEEDS * 1.5, zones);
@@ -54,7 +54,7 @@ check('never over the prize room', !bad.prize.length, bad.prize);
 check('kept apart', !bad.apart.length, bad.apart);
 check('the shop reaches the top with every zone shut (the main route needs none)', !bad.route.length, bad.route);
 check('every zone\'s chamber is open, its own, and in reach of the shop', !bad.chamber.length, bad.chamber);
-check('the silk is only on open cells in a zone', bad.webOut === 0, bad.webOut);
+check('the silk is only on open cells, in a zone or its fringe', bad.webOut === 0, bad.webOut);
 check('the tomb never needed its fallback shaft', !bad.mended.length, bad.mended);
 check('quick (under 1.5 s average)', ms / SEEDS < 1500, ms / SEEDS);
 

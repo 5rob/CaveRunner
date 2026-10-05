@@ -21,7 +21,7 @@ reset();
 // decoration
 reset();
 // (since Level 2 stage 3 floor 2's decoration is the rooms' kits, baked into dimg: world/furnish.js)
-const painted = lv => { let n = 0; for (let i = 3; i < lv.dimg.data.length; i += 4) if (lv.dimg.data[i]) n++; return n; };
+const painted = lv => { let n = 0; for (let i = 3; i < lv.dimg.data.length; i += 4) if (lv.dimg.data[i] && !(lv.darkShade && lv.darkShade[i >> 2])) n++; return n; };   // (not the dark zones' fringe silk)
 const props = painted(makeLevel(3, 2));
 DEV.l2Decor = 0;
 const none = painted(makeLevel(3, 2));

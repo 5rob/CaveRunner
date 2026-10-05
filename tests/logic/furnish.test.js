@@ -21,7 +21,7 @@ for (let seed = 1; seed <= SEEDS; seed++) {
   const { mat, dimg, tomb } = lv, dd = dimg.data;
   props += lv.props.length;
   for (let i = 0; i < CW * CH; i++) if (dd[i * 4 + 3] && mat[i]) inRock++;
-  const touched = r => { if (!lv.darkMask) return false; for (let y = r.y - 2; y <= r.floor + 2; y++) for (let x = r.x - 2; x < r.x + r.w + 2; x++) if (lv.darkMask[y * CW + x]) return true; return false; };
+  const touched = r => { if (!lv.darkShade) return false; for (let y = r.y - 2; y <= r.floor + 2; y++) for (let x = r.x - 2; x < r.x + r.w + 2; x++) if (lv.darkShade[y * CW + x]) return true; return false; };
   for (const r of tomb.rooms) {
     if (touched(r)) continue;            // a dark zone took some of it (Stage 4): tests/logic/dark.test.js
     rooms++;
@@ -53,7 +53,8 @@ check('floor 1 is what it was', hash(f1.img.data) === 1936234780 && f1.props.len
 check('floor 3 is what it was', hash(f3.img.data) === -672481880 && f3.props.length === 216, [hash(f3.img.data), f3.props.length]);
 
 // the knobs
-const count = lv => { let n = 0; for (let i = 3; i < lv.dimg.data.length; i += 4) if (lv.dimg.data[i]) n++; return n; };
+// (the dark zones' fringe silk is in the decoration layer too: not the rooms' kits, so not counted)
+const count = lv => { let n = 0; for (let i = 3; i < lv.dimg.data.length; i += 4) if (lv.dimg.data[i] && !(lv.darkShade && lv.darkShade[i >> 2])) n++; return n; };
 const base = count(a);
 DEV.l2Decor = 0;
 check('Decoration amount 0: a bare tomb', count(makeLevel(4, 2)) === 0);

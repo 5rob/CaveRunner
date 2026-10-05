@@ -41,7 +41,7 @@ for (let seed = 1; seed <= SEEDS; seed++) {
   if (!reach.top) noTop.push(seed);
   // (a room a dark zone took part of, Stage 4: what's left of it, anywhere in its box; a room it took the
   // middle of is the zone's now: tests/logic/dark.test.js)
-  const M = lv.darkMask, touched = r => { if (!M) return false; for (let y = r.y - 2; y <= r.floor + 2; y++) for (let x = r.x - 2; x < r.x + r.w + 2; x++) if (M[y * CW + x]) return true; return false; };
+  const M = lv.darkShade, touched = r => { if (!M) return false; for (let y = r.y - 2; y <= r.floor + 2; y++) for (let x = r.x - 2; x < r.x + r.w + 2; x++) if (M[y * CW + x]) return true; return false; };
   for (const r of R) {
     if (r.dark >= 0) continue;
     // somewhere along its floor, a box standing there is in reach
@@ -88,7 +88,7 @@ check('floor 3 is the cave it was', hashMat(makeLevel(3, 3).mat) === 1829628063,
   for (let y = 4; y < SHOP_FLOOR - 60; y++) for (let x = 4; x < CW - 4; x++) {
     if (a.mat[y * CW + x]) continue;
     if (Math.abs(x - a.shopExit) <= 9 && y > SHOP_FLOOR - 90) continue;     // the shop's own shaft
-    if (a.darkMask && a.darkMask[y * CW + x]) continue;             // a dark zone's own caves (Stage 4)
+    if (a.darkShade && a.darkShade[y * CW + x]) continue;           // a dark zone's own caves, or its fringe biting the stone (Stage 4)
     if (!T.rooms.some(r => roomOpen(r, x, y)) && !inC(x, y)) stray++;
   }
   check('no open pixel outside a room or a corridor', stray === 0, stray);

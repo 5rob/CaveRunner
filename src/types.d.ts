@@ -369,7 +369,8 @@ interface Level {
   tomb: Tomb | null;          // floor 2's rooms and corridors (world/tomb.js); null on other floors
   dark: DarkZone[];           // floor 2's dark zones (world/dark.js); [] elsewhere
   darkMask: Uint8Array | null;   // per terrain cell: dark zone number + 1, 0 outside (null: no zones)
-  webbing: Uint8Array | null;    // per terrain cell: the zones' silk, 0 none, 1..255 how thick (open cells)
+  webbing: Uint8Array | null;    // per terrain cell: the zones' silk, 0 none, 1..255 how thick (open cells; the fringe's too)
+  darkShade: Uint8Array | null;  // per terrain cell: how dark, 255 in a zone, fading out through its ragged fringe
 }
 /** a dark zone (world/dark.js darkZones), terrain px */
 interface DarkZone {
@@ -599,7 +600,7 @@ interface World {
   start: Pt; portal: Level['portal']; portals: Level['portals']; arrival: Pt; stock: StockItem[];
   zone: Uint8Array | null; rooms: Room[];
   tomb: Tomb | null;          // floor 2's room list and corridors (Level.tomb); null elsewhere
-  dark: DarkZone[]; darkMask: Uint8Array | null; webbing: Uint8Array | null;   // floor 2's dark zones (Level's)
+  dark: DarkZone[]; darkMask: Uint8Array | null; webbing: Uint8Array | null; darkShade: Uint8Array | null;   // floor 2's dark zones (Level's)
   webDirty: { x0: number; y0: number; x1: number; y1: number }[];   // silk blown away since the last frame (render/dark.js repaints)
   sconces: any[];             // Sconce[]: enterLevel builds [x, y] pairs first and maps them after
   levelSeed: number; levelOwned: string[]; roster: string[]; themeName: string; total: number;

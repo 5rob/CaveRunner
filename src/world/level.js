@@ -15,7 +15,7 @@ import { decorate } from './decorate.js';
 import { ratNests } from './nests.js';
 import { paveWorks, strataCave, timberWorks } from './strata.js';
 import { goldVeins } from './veins.js';
-import { darkZones, zoneRock } from './dark.js';
+import { darkZones, silkColour, zoneRock } from './dark.js';
 import { furnishTomb } from './furnish.js';
 import { carveTomb, paintMasonry, tombPlan } from './tomb.js';
 import { boxReach } from './zones.js';
@@ -636,6 +636,21 @@ export function makeLevel(seed, floor, owned) {
   // (the tomb: none of the theme's decoration; each room's own kit instead, furnish.js)
   const deco = tombData ? { props: [], amb: [] } : decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel, zone);
   if (tombData) furnishTomb(mat, img, dimg, fuel, tombData, seed);
+  // the fringe round a zone: the cut stone overgrown (blended toward the zone's rock, patchily) and its silk
+  // over whatever is painted there, in the decoration layer (so a blast tears it with the rest)
+  if (darkData && darkData.zones.length) for (let i = 0; i < CW * CH; i++) {
+    const sh = darkData.shade[i];
+    if (!sh || darkData.mask[i]) continue;
+    const x = i % CW, y = (i / CW) | 0, t = sh / 255;
+    if (mat[i] === ROCK) {
+      const k = Math.min(1, t * (0.3 + 0.9 * hash(x * 3 + 1, y * 7 + 4))), c = zoneRock(at(tintL, x, y));
+      for (let n = 0; n < 3; n++) d[i * 4 + n] = d[i * 4 + n] * (1 - k) + c[n] * k;
+    } else if (!mat[i] && darkData.web[i]) {
+      const s = silkColour(darkData.web[i]), a = s[3] / 255, b = dimg.data[i * 4 + 3] / 255, o = a + b * (1 - a);
+      for (let n = 0; n < 3; n++) dimg.data[i * 4 + n] = (s[n] * a + dimg.data[i * 4 + n] * b * (1 - a)) / o;
+      dimg.data[i * 4 + 3] = Math.round(o * 255);
+    }
+  }
   // inside a dark zone: no kit, no cut stone: raw rock in the zone's colours (and a room's kit list loses what went)
   if (darkData && darkData.zones.length) for (const r of tombData.rooms) if (r.kit) r.kit = r.kit.filter(k => !darkData.mask[(k.y + (k.h >> 1)) * CW + k.x + (k.w >> 1)] && !darkData.mask[(k.y + (k.h >> 1)) * CW + 2 * Math.round(r.cx) - k.x - (k.w >> 1) - 1]);
   if (darkData && darkData.zones.length) for (let i = 0; i < CW * CH; i++) {
@@ -669,5 +684,6 @@ export function makeLevel(seed, floor, owned) {
 
   return { mat, img, bgImg, dimg, ore, fuel, props: deco.props, amb: deco.amb, start, portal, portals, enemies, pickups, stock, shopExit, arrival,
     rooms, roster, theme: T.name, works, zone, nests, tomb: tombData,
-    dark: darkData ? darkData.zones : [], darkMask: darkData && darkData.zones.length ? darkData.mask : null, webbing: darkData && darkData.zones.length ? darkData.web : null };
+    dark: darkData ? darkData.zones : [], darkMask: darkData && darkData.zones.length ? darkData.mask : null, webbing: darkData && darkData.zones.length ? darkData.web : null,
+    darkShade: darkData && darkData.zones.length ? darkData.shade : null };
 }

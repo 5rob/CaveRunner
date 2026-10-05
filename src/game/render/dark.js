@@ -35,11 +35,11 @@ export const darkOn = () => D.on;
 export const darkFog = i => (D.on && D.zf ? Math.min(1, D.zf[i] * 1.15) * Math.min(1, Math.max(0, DEV.l2dDark)) : 0);
 
 // paint the silk canvas (terrain px) from W.webbing, whole or a box of it
-/** @param {Uint8Array} web @param {CanvasRenderingContext2D} c @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 */
-function paintSilk(web, c, x0, y0, x1, y1) {
+/** @param {Uint8Array} web @param {Uint8Array} mask @param {CanvasRenderingContext2D} c @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 */
+function paintSilk(web, mask, c, x0, y0, x1, y1) {
   const w = x1 - x0 + 1, h = y1 - y0 + 1, img = c.createImageData(w, h), d = img.data;
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-    const v = web[y * CW + x];
+    const v = mask[y * CW + x] ? web[y * CW + x] : 0;      // (the fringe's silk is baked into the decoration layer)
     if (!v) continue;
     const s = silkColour(v), k = ((y - y0) * w + x - x0) * 4;
     d[k] = s[0]; d[k + 1] = s[1]; d[k + 2] = s[2]; d[k + 3] = s[3];
@@ -47,11 +47,11 @@ function paintSilk(web, c, x0, y0, x1, y1) {
   c.putImageData(img, x0, y0);
 }
 
-// the zones' share of each fog cell (0..1), made once per floor
-/** @param {Uint8Array} mask */
-function zoneField(mask) {
-  const zf = new Float32Array(FW * FH), n = 1 / ((FOG_U / CELL) ** 2), s = FOG_U / CELL;
-  for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) if (mask[y * CW + x]) zf[Math.floor(y / s) * FW + Math.floor(x / s)] += n;
+// how dark each fog cell is (0..1: the zones' shade, their ragged fringe included), made once per floor
+/** @param {Uint8Array} shade */
+function zoneField(shade) {
+  const zf = new Float32Array(FW * FH), n = 1 / ((FOG_U / CELL) ** 2) / 255, s = FOG_U / CELL;
+  for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) { const v = shade[y * CW + x]; if (v) zf[Math.floor(y / s) * FW + Math.floor(x / s)] += v * n; }
   return zf;
 }
 
@@ -78,15 +78,16 @@ export function darkPrep(W, G, F) {
     const c = D.webC.getContext('2d');
     if (!c) return;
     c.clearRect(0, 0, CW, CH);
-    for (const z of W.dark) paintSilk(W.webbing, c, z.x0, z.y0, z.x1, z.y1);
+    for (const z of W.dark) paintSilk(W.webbing, W.darkMask, c, z.x0, z.y0, z.x1, z.y1);
     W.webDirty.length = 0;
   }
   if (W.webDirty.length) {
     const c = D.webC.getContext('2d');
-    if (c) for (const b of W.webDirty) { c.clearRect(b.x0, b.y0, b.x1 - b.x0 + 1, b.y1 - b.y0 + 1); paintSilk(W.webbing, c, b.x0, b.y0, b.x1, b.y1); }
+    if (c) for (const b of W.webDirty) { c.clearRect(b.x0, b.y0, b.x1 - b.x0 + 1, b.y1 - b.y0 + 1); paintSilk(W.webbing, W.darkMask, c, b.x0, b.y0, b.x1, b.y1); }
     W.webDirty.length = 0;
   }
-  if (D.zfFor !== W.darkMask || !D.zf) { D.zf = zoneField(W.darkMask); D.zfFor = W.darkMask; }
+  const shade = W.darkShade || W.darkMask;
+  if (D.zfFor !== shade || !D.zf) { D.zf = zoneField(W.darkShade || W.darkMask.map(v => (v ? 255 : 0))); D.zfFor = shade; }
   // the view's fog-cell slab
   const fx0 = D.fx0 = clamp(Math.floor(W.camX / FOG_U) - 2, 0, FW - 1), fy0 = D.fy0 = clamp(Math.floor(W.camY / FOG_U) - 2, 0, FH - 1);
   const fx1 = D.fx1 = clamp(Math.ceil((W.camX + vw) / FOG_U) + 3, 1, FW), fy1 = D.fy1 = clamp(Math.ceil((W.camY + vh) / FOG_U) + 3, 1, FH);

@@ -1380,8 +1380,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   curveKnobs("l2boom", "l2bScale", "Size × (Y, 0-2) by distance from a dark zone (X)", 0, 2, { y0: 1.6, x1: 0.33, y1: 1.3, x2: 0.66, y2: 0.8, y3: 0.5 });
   var L2D_KNOBS = rangeKnobs("l2dark", [
     ["l2dCount", "Dark zones on the floor", 0, 8, 1, 2, 3],
-    ["l2dSize", "Dark zone size (radius, px)", 20, 160, 1, 60, 88]
+    ["l2dSize", "Dark zone size (radius, px)", 20, 160, 1, 60, 88],
+    ["l2dOpen", "Share of a zone that ends up open (small alien tunnels fill it to this)", 0, 0.9, 0.01, 0.42, 0.5]
   ]);
+  DEV_DEFAULTS.l2dRough = 0.6;
+  DEV_DEFAULTS.l2dFringe = 30;
+  DEV_META.push(
+    { k: "l2dRough", g: "l2dark", label: "Rough cave walls inside (0 = smooth)", min: 0, max: 2, step: 0.05 },
+    { k: "l2dFringe", g: "l2dark", label: "Ragged fringe round a zone: width (px)", min: 0, max: 120, step: 1 }
+  );
   DEV_DEFAULTS.l2dSpace = 120;
   DEV_DEFAULTS.l2dShop = 140;
   DEV_DEFAULTS.l2dTop = 120;
@@ -7083,6 +7090,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       dark: [],
       darkMask: null,
       webbing: null,
+      darkShade: null,
       webDirty: [],
       // floor 2's rooms and corridors (world/tomb.js)
       rooms: [],
@@ -9400,7 +9408,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const mask = new Uint8Array(CW * CH), web = new Uint8Array(CW * CH);
     const zones = [];
     const want = Math.round(kr("l2dCount", R)), space = DEV.l2dSpace, shopKeep = DEV.l2dShop, topKeep = DEV.l2dTop;
-    if (want <= 0) return { zones, mask, web };
+    if (want <= 0) return { zones, mask, web, shade: new Uint8Array(0) };
     const rooms = tomb.rooms;
     const start2 = rooms.findIndex((r) => r.type === "vestibule");
     const prev = new Int32Array(rooms.length).fill(-2);
@@ -9436,6 +9444,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let i = 0; i < m2.length; i++) if (mask[i]) m2[i] = ROCK;
       return boxReach(m2, 17, SHOP_TOP + 36).top;
     };
+    const rougher = [];
     for (const room of cand) {
       if (zones.length >= want) break;
       const rad = Math.round(kr("l2dSize", R)), cx = Math.round(room.cx), cy = Math.round(room.y + room.h / 2);
@@ -9443,7 +9452,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (hits(cx, cy, rad * 1.35)) continue;
       if (zones.some((z) => Math.hypot(z.cx - cx, z.cy - cy) < space + (z.r + rad) * 0.5)) continue;
       const p1 = R() * 6.28, p2 = R() * 6.28, a1 = 0.18 + R() * 0.12, a2 = 0.08 + R() * 0.1;
-      const edge = (a) => rad * (1 + a1 * Math.sin(3 * a + p1) + a2 * Math.sin(5 * a + p2));
+      const spokes = Array.from({ length: 56 }, () => (R() - 0.5) * 2);
+      const rag = (a) => {
+        const f = (a / 6.2832 + 1) % 1 * 56, k = Math.floor(f), t = f - k, u = spokes[k % 56], v = spokes[(k + 1) % 56];
+        return u + (v - u) * t * t * (3 - 2 * t);
+      };
+      const edge = (a) => rad * (1 + a1 * Math.sin(3 * a + p1) + a2 * Math.sin(5 * a + p2) + 0.16 * rag(a));
       const id = zones.length + 1, x0 = Math.max(3, cx - Math.ceil(rad * 1.4)), x1 = Math.min(CW - 4, cx + Math.ceil(rad * 1.4));
       const y0 = Math.max(3, cy - Math.ceil(rad * 1.4)), y1 = Math.min(SHOP_TOP - SHOP_ROOF - 4, cy + Math.ceil(rad * 1.4));
       const snap = mat.slice(), msnap = mask.slice();
@@ -9489,11 +9503,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const i = y * CW + x;
         if (mask[i] === id) mat[i] = ROCK;
       }
-      const dig2 = (ex, ey, r) => {
+      const digN = (ex, ey, r) => {
+        let c = 0;
         for (let y = Math.floor(ey - r); y <= Math.ceil(ey + r); y++) for (let x = Math.floor(ex - r); x <= Math.ceil(ex + r); x++) {
           const i = y * CW + x;
-          if (x > 0 && y > 0 && x < CW && y < CH && mask[i] === id && (x + 0.5 - ex) ** 2 + (y + 0.5 - ey) ** 2 <= r * r) mat[i] = 0;
+          if (x > 0 && y > 0 && x < CW && y < CH && mask[i] === id && mat[i] && (x + 0.5 - ex) ** 2 + (y + 0.5 - ey) ** 2 <= r * r) {
+            mat[i] = 0;
+            c++;
+          }
         }
+        return c;
+      };
+      const dig2 = (ex, ey, r) => {
+        digN(ex, ey, r);
       };
       const crx = Math.max(15, Math.round(rad * 0.38)), cry = Math.max(12, Math.round(rad * 0.26));
       for (let y = cy - cry - 3; y <= cy + cry; y++) for (let x = cx - crx - 3; x <= cx + crx + 3; x++) {
@@ -9539,11 +9561,70 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const a = R() * 6.28, d = rad * (0.45 + R() * 0.35);
         worm(cx, cy, cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.8, 5 + R() * 2.5, 400);
       }
+      let open = 0, tot = 0;
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        const i = y * CW + x;
+        if (mask[i] === id) {
+          tot++;
+          if (!mat[i]) open++;
+        }
+      }
+      const goal = kr("l2dOpen", R) * tot;
+      for (let t = 0; t < 600 && open < goal; t++) {
+        const x = Math.floor(x0 + R() * (x1 - x0)), y = Math.floor(y0 + R() * (y1 - y0)), i = y * CW + x;
+        if (mask[i] !== id || mat[i]) continue;
+        let px = x + 0.5, py = y + 0.5, ang = R() * 6.28;
+        const r = 1.5 + R() * 1.5, len = 15 + Math.floor(R() * 45);
+        for (let st = 0; st < len; st++) {
+          open += digN(px, py, r);
+          ang += (R() - 0.5) * 0.9;
+          const nx = px + Math.cos(ang) * 1.5, ny = py + Math.sin(ang) * 1.5;
+          if (mask[Math.floor(ny) * CW + Math.floor(nx)] !== id) {
+            ang += 2.2;
+            continue;
+          }
+          px = nx;
+          py = ny;
+        }
+      }
+      const rough = Math.max(0, DEV.l2dRough), fx0 = cx - Math.round(crx * 0.8), fx1 = cx + Math.round(crx * 0.8), fl = cy + cry;
+      const flat = (x, y) => x >= fx0 && x <= fx1 && y >= fl - 13 && y <= fl;
+      const changed = [];
+      for (let pass = 0; pass < 2 && rough > 0; pass++) {
+        const src2 = mat.slice();
+        for (let y = y0 + 1; y < y1; y++) for (let x = x0 + 1; x < x1; x++) {
+          const i = y * CW + x;
+          if (mask[i] !== id || flat(x, y)) continue;
+          let nb = 0;
+          for (const j of [i - 1, i + 1, i - CW, i + CW, i - CW - 1, i - CW + 1, i + CW - 1, i + CW + 1]) if (src2[j]) nb++;
+          const v = cellNoise(x >> 1, y >> 1, seed + id * 7 + pass);
+          if (!src2[i] && nb >= 3 && v < 0.22 * rough) {
+            changed.push(i, mat[i]);
+            mat[i] = ROCK;
+          } else if (src2[i] && src2[i] !== BED && nb <= 5 && v > 1 - 0.3 * rough) {
+            changed.push(i, mat[i]);
+            mat[i] = 0;
+          }
+        }
+      }
+      const fromC = boxReach(mat, cx - 3, fl - 12);
+      const linked = (p) => {
+        for (let y = p.y - 18; y <= p.y + 8; y++) for (let x = p.x - 14; x <= p.x + 8; x++) if (x > 0 && y > 0 && x < CW && y < CH && fromC.ok[y * CW + x] === 2 && !mask[y * CW + x]) return true;
+        return false;
+      };
+      for (const e of entries) {
+        const p = { x: Math.round(e.x), y: Math.round(e.y) };
+        if (linked(p)) continue;
+        digN(p.x + 0.5, p.y + 0.5, 11);
+        const len = Math.hypot(cx - p.x, cy - p.y);
+        for (let k = 0; k <= len; k += 1.5) digN(p.x + (cx - p.x) * k / len, p.y + (cy - p.y) * k / len, 9);
+      }
       if (!routeOk()) {
         mat.set(snap);
         mask.set(msnap);
         continue;
       }
+      rougher.push({ id, changed });
       zones.push({
         id: id - 1,
         cx,
@@ -9558,6 +9639,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         doors: entries.map((e) => ({ x: Math.round(e.x), y: Math.round(e.y) })),
         chamber: { x: cx, y: cy, rx: crx, ry: cry, floor: cy + cry }
       });
+    }
+    if (zones.length) {
+      const reach2 = boxReach(mat, 17, SHOP_TOP + 36);
+      const near = (px, py, r) => {
+        for (let y = py - r; y <= py + r; y++) for (let x = px - r; x <= px + r; x++) if (x > 0 && y > 0 && x < CW && y < CH && reach2.ok[y * CW + x] === 2) return true;
+        return false;
+      };
+      for (const z of zones) {
+        const c = z.chamber;
+        let got = false;
+        for (let x = c.x - c.rx + 3; x < c.x + c.rx - 6 && !got; x++) for (let y = c.floor - 12; y >= c.floor - 16 && !got; y--) if (reach2.ok[y * CW + x] === 2) got = true;
+        if (got && z.doors.every((p) => near(p.x - 3, p.y - 6, 9))) continue;
+        const rb = rougher.find((q2) => q2.id === z.id + 1);
+        if (rb) for (let k = rb.changed.length - 2; k >= 0; k -= 2) mat[rb.changed[k]] = rb.changed[k + 1];
+      }
     }
     const dens = Math.max(0, DEV.l2dSilk);
     for (const z of zones) {
@@ -9587,7 +9683,74 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
     }
-    return { zones, mask, web };
+    const shade = new Uint8Array(CW * CH), B = Math.max(1, DEV.l2dFringe);
+    for (let i = 0; i < CW * CH; i++) if (mask[i]) shade[i] = 255;
+    for (const z of zones) {
+      const id = z.id + 1, ext = Math.ceil(B * 1.7);
+      const bx0 = Math.max(3, z.x0 - ext), bx1 = Math.min(CW - 4, z.x1 + ext), by0 = Math.max(3, z.y0 - ext), by1 = Math.min(SHOP_TOP - SHOP_ROOF - 2, z.y1 + ext);
+      const w = bx1 - bx0 + 1, h3 = by1 - by0 + 1, dist = new Float32Array(w * h3).fill(1e9), q2 = [];
+      for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) if (mask[y * CW + x] === id) {
+        dist[(y - by0) * w + x - bx0] = 0;
+        q2.push((y - by0) * w + x - bx0);
+      }
+      for (let h0 = 0; h0 < q2.length; h0++) {
+        const k = q2[h0], x = k % w, y = k / w | 0, v = dist[k] + 1;
+        if (v > ext) continue;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h3 || dist[ny * w + nx] <= v) continue;
+          dist[ny * w + nx] = v;
+          q2.push(ny * w + nx);
+        }
+      }
+      for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) {
+        const d = dist[(y - by0) * w + x - bx0], i = y * CW + x;
+        if (!d || d > ext || mask[i]) continue;
+        const n1 = valueNoise(x / 7, y / 7, seed + id * 13), n2 = valueNoise(x / 2.5, y / 2.5, seed + id * 31);
+        let t = 1 - d / B + (n1 - 0.5) * 0.9 + (n2 - 0.5) * 0.35;
+        if (n1 > 0.78 && d < B * 1.6) t = Math.max(t, (n1 - 0.78) * 3.5);
+        if (t > 0) shade[i] = Math.max(shade[i], Math.min(254, Math.round(255 * Math.min(1, t))));
+      }
+      const nT = Math.round(6 + z.r * 0.12);
+      for (let k = 0; k < nT; k++) {
+        const a = R() * 6.28;
+        let x = z.cx + Math.cos(a) * z.r * 0.9, y = z.cy + Math.sin(a) * z.r * 0.9, ang = a;
+        const len = B * (0.8 + R() * 1.2);
+        for (let st = 0; st < len + z.r; st++) {
+          ang += (R() - 0.5) * 0.7;
+          x += Math.cos(ang);
+          y += Math.sin(ang);
+          const xi = Math.floor(x), yi = Math.floor(y);
+          if (xi < 4 || yi < 4 || xi >= CW - 4 || yi >= SHOP_TOP - SHOP_ROOF - 2) break;
+          const i = yi * CW + xi;
+          if (mask[i]) continue;
+          const v = Math.round(230 * (1 - st / (len + z.r)));
+          for (const j of [i, i + 1, i + CW]) shade[j] = Math.max(shade[j], v);
+        }
+      }
+    }
+    for (let y = 4; y < SHOP_TOP - SHOP_ROOF - 8; y++) for (let x = 4; x < CW - 4; x++) {
+      const i = y * CW + x;
+      if (mask[i] || shade[i] < 170 || mat[i] !== ROCK) continue;
+      if (mat[i - 1] && mat[i + 1] && mat[i - CW] && mat[i + CW] || cellNoise(x >> 1, y >> 1, seed + 99) > (shade[i] - 170) / 140) continue;
+      mat[i] = 0;
+    }
+    for (let i = 0; i < CW * CH; i++) {
+      if (mask[i] || !shade[i] || mat[i]) continue;
+      const x = i % CW, y = i / CW | 0, t = shade[i] / 255;
+      if (R() < t * 0.95 * Math.min(1, dens)) web[i] = Math.round(40 + 180 * t * (0.5 + 0.5 * valueNoise(x / 3, y / 3, seed + 7)));
+    }
+    return { zones, mask, web, shade };
+  }
+  function cellNoise(x, y, s) {
+    let v = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 982451653) | 0;
+    v = Math.imul(v ^ v >>> 13, 1274126177);
+    return ((v ^ v >>> 16) >>> 0) / 4294967296;
+  }
+  function valueNoise(x, y, s) {
+    const xi = Math.floor(x), yi = Math.floor(y), u = x - xi, v = y - yi, su = u * u * (3 - 2 * u), sv = v * v * (3 - 2 * v);
+    const a = cellNoise(xi, yi, s), b = cellNoise(xi + 1, yi, s), c = cellNoise(xi, yi + 1, s), d = cellNoise(xi + 1, yi + 1, s);
+    return a + (b - a) * su + (c - a) * sv + (a - b - c + d) * su * sv;
   }
   function darkAt(level, wx, wy, cell) {
     const m = level.darkMask;
@@ -11020,6 +11183,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ];
     const deco = tombData ? { props: [], amb: [] } : decorate(mat, img, dimg, bgImg, floor, seed, keep2, fuel, zone);
     if (tombData) furnishTomb(mat, img, dimg, fuel, tombData, seed);
+    if (darkData && darkData.zones.length) for (let i = 0; i < CW * CH; i++) {
+      const sh = darkData.shade[i];
+      if (!sh || darkData.mask[i]) continue;
+      const x = i % CW, y = i / CW | 0, t = sh / 255;
+      if (mat[i] === ROCK) {
+        const k = Math.min(1, t * (0.3 + 0.9 * hash5(x * 3 + 1, y * 7 + 4))), c = zoneRock(at(tintL, x, y));
+        for (let n = 0; n < 3; n++) d[i * 4 + n] = d[i * 4 + n] * (1 - k) + c[n] * k;
+      } else if (!mat[i] && darkData.web[i]) {
+        const s = silkColour(darkData.web[i]), a = s[3] / 255, b = dimg.data[i * 4 + 3] / 255, o = a + b * (1 - a);
+        for (let n = 0; n < 3; n++) dimg.data[i * 4 + n] = (s[n] * a + dimg.data[i * 4 + n] * b * (1 - a)) / o;
+        dimg.data[i * 4 + 3] = Math.round(o * 255);
+      }
+    }
     if (darkData && darkData.zones.length) {
       for (const r of tombData.rooms) if (r.kit) r.kit = r.kit.filter((k) => !darkData.mask[(k.y + (k.h >> 1)) * CW + k.x + (k.w >> 1)] && !darkData.mask[(k.y + (k.h >> 1)) * CW + 2 * Math.round(r.cx) - k.x - (k.w >> 1) - 1]);
     }
@@ -11086,7 +11262,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       tomb: tombData,
       dark: darkData ? darkData.zones : [],
       darkMask: darkData && darkData.zones.length ? darkData.mask : null,
-      webbing: darkData && darkData.zones.length ? darkData.web : null
+      webbing: darkData && darkData.zones.length ? darkData.web : null,
+      darkShade: darkData && darkData.zones.length ? darkData.shade : null
     };
   }
 
@@ -16811,10 +16988,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
   var darkOn = () => D.on;
   var darkFog = (i) => D.on && D.zf ? Math.min(1, D.zf[i] * 1.15) * Math.min(1, Math.max(0, DEV.l2dDark)) : 0;
-  function paintSilk(web, c, x0, y0, x1, y1) {
+  function paintSilk(web, mask, c, x0, y0, x1, y1) {
     const w = x1 - x0 + 1, h3 = y1 - y0 + 1, img = c.createImageData(w, h3), d = img.data;
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-      const v = web[y * CW + x];
+      const v = mask[y * CW + x] ? web[y * CW + x] : 0;
       if (!v) continue;
       const s = silkColour(v), k = ((y - y0) * w + x - x0) * 4;
       d[k] = s[0];
@@ -16824,9 +17001,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     c.putImageData(img, x0, y0);
   }
-  function zoneField(mask) {
-    const zf = new Float32Array(FW * FH), n = 1 / (FOG_U / CELL) ** 2, s = FOG_U / CELL;
-    for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) if (mask[y * CW + x]) zf[Math.floor(y / s) * FW + Math.floor(x / s)] += n;
+  function zoneField(shade) {
+    const zf = new Float32Array(FW * FH), n = 1 / (FOG_U / CELL) ** 2 / 255, s = FOG_U / CELL;
+    for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
+      const v = shade[y * CW + x];
+      if (v) zf[Math.floor(y / s) * FW + Math.floor(x / s)] += v * n;
+    }
     return zf;
   }
   function addLight(x, y, r, w) {
@@ -16848,20 +17028,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const c2 = D.webC.getContext("2d");
       if (!c2) return;
       c2.clearRect(0, 0, CW, CH);
-      for (const z of W.dark) paintSilk(W.webbing, c2, z.x0, z.y0, z.x1, z.y1);
+      for (const z of W.dark) paintSilk(W.webbing, W.darkMask, c2, z.x0, z.y0, z.x1, z.y1);
       W.webDirty.length = 0;
     }
     if (W.webDirty.length) {
       const c2 = D.webC.getContext("2d");
       if (c2) for (const b2 of W.webDirty) {
         c2.clearRect(b2.x0, b2.y0, b2.x1 - b2.x0 + 1, b2.y1 - b2.y0 + 1);
-        paintSilk(W.webbing, c2, b2.x0, b2.y0, b2.x1, b2.y1);
+        paintSilk(W.webbing, W.darkMask, c2, b2.x0, b2.y0, b2.x1, b2.y1);
       }
       W.webDirty.length = 0;
     }
-    if (D.zfFor !== W.darkMask || !D.zf) {
-      D.zf = zoneField(W.darkMask);
-      D.zfFor = W.darkMask;
+    const shade = W.darkShade || W.darkMask;
+    if (D.zfFor !== shade || !D.zf) {
+      D.zf = zoneField(W.darkShade || W.darkMask.map((v) => v ? 255 : 0));
+      D.zfFor = shade;
     }
     const fx0 = D.fx0 = clamp(Math.floor(W.camX / FOG_U) - 2, 0, FW - 1), fy0 = D.fy0 = clamp(Math.floor(W.camY / FOG_U) - 2, 0, FH - 1);
     const fx1 = D.fx1 = clamp(Math.ceil((W.camX + vw) / FOG_U) + 3, 1, FW), fy1 = D.fy1 = clamp(Math.ceil((W.camY + vh) / FOG_U) + 3, 1, FH);
@@ -20239,6 +20420,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.dark = level.dark || [];
     W.darkMask = level.darkMask || null;
     W.webbing = level.webbing || null;
+    W.darkShade = level.darkShade || null;
     W.props = level.props || [];
     W.ambKinds = level.amb || [];
     W.dimg = level.dimg;
