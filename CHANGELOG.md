@@ -6,7 +6,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v0.0.144 — the heal under its light, dust in the cones, the guide's rude line, gun pickup, the arrival
-Awaiting the owner's OK of the screenshots (a minor update).
+Released 2026-10-05 (after the owner's OK of the screenshots; a minor update).
 
 - **The heal** stands centred under its tube (`HEAL_X` 566 → 556, `LIGHT_X[4]`).
 - **The guide turns rude only once you walk out of its pool of light** to the right (`guideLitEdge`:
@@ -24,6 +24,7 @@ Awaiting the owner's OK of the screenshots (a minor update).
 - **A gun's mods as square tiles** (owner): every gun card (the pickup, the gun machine, the Bag's gun
   card, the card by a gun on the ground) shows its slots as the Bag's square mod tiles, empty ones dashed;
   tapping one (not on the ground card) opens that mod's card over everything (`ModPop` in `ui/cards.js`).
+  A mod card's examples ("modifiers go to its left"…) are square tiles too.
 - Tests: `intro` (new: held while charging, through at 1 s, the tube on a second later; screenshots),
   `gunpickup` (square full-width slots, equal cards), `guide` (logic: the edge; browser: a full-speed walk sees it before it turns rude),
   `shoplights` (the heal under its light; no ambience in the shop; screenshot `shoplights-8-heal-dust`).

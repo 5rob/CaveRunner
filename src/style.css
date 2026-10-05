@@ -332,6 +332,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .dtile b{font-size:12px;line-height:1}
 .dtile i{font-style:normal;font:600 10px system-ui,sans-serif;color:var(--text);opacity:.8}
 .dtile.off{opacity:.42}
+/* a mod card's examples: the Bag's square tiles, a row of them (v0.0.144) */
+.dtiles .tile{width:50px;height:50px;cursor:default;touch-action:auto}
+.dtiles .tile.off{opacity:.42}
+.pop.ingame .dtiles .tile{background:rgba(255,255,255,0.06)}
+.pop.ingame .dtiles .tn{color:rgba(233,236,242,0.7)}
 .dnote{display:block;font-size:11px;color:var(--muted);margin-top:3px}
 /* the shop/pickup panel: the item's card and its buy/take line in one box, grown up
    from the bottom of the view. pointer-events:none so a tap falls through to the sticks —

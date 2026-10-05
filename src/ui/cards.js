@@ -97,10 +97,11 @@ export function ModCard({ id, onClose, ingame, top, flow }) {
   const m = MODS[id];
   const kind = famOf(id).name + (m.kind === 'passive' ? ' \u00b7 always on' : '');
   const rows = modPreview(id).rows;
+  // the examples' mods: the Bag's square tiles too (v0.0.144, owner)
   const dtile = (did, key, faded) => h('div', {
-      key, className: 'dtile' + (faded ? ' off' : ''),
+      key, className: 'tile' + (faded ? ' off' : '') + (MODS[did].kind === 'shot' ? ' shot' : ''),
       style: { borderColor: famCol(did), color: famCol(did) } },
-    h('b', null, MODS[did].glyph), h('i', null, MODS[did].name));
+    h('span', { className: 'tg' }, MODS[did].glyph), h('span', { className: 'tn' }, MODS[did].name));
   const drow = (ok, tiles, note, key) => h('div', { className: 'drow', key },
     h('span', { className: 'dmark ' + (ok ? 'yes' : 'no') }, ok ? '\u2713' : '\u2717'),
     h('div', null,
