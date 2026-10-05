@@ -1,5 +1,5 @@
 // v0.0.144: a new run's arrival. The teleporter charges for ARRIVE_T (1 s): you're not there yet (held,
-// not drawn, no torch), light spirals into the pad and the lightning gets busier; then a flash and
+// not drawn, no torch), light spirals into the pad (no lightning yet: v0.0.145); then a flash, the lightning, and
 // you're standing on it. A second later the tube over the teleporter flickers and comes on
 // (LIGHT_WAIT = ARRIVE_T + 1). Screenshots: intro-*.png (phone size).
 const { launch } = require('../chromium');
@@ -12,6 +12,16 @@ const DIR = path.join(__dirname, '..', 'build');
   const browser = await launch();
   const ctx = await browser.newContext({ viewport: { width: 412, height: 880 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2.625 });
   await ctx.addInitScript(() => { window.__TEST_INTRO = true; window.__TEST_VOID = true; window.__TEST_EMPTY = true; });
+  // count the pad's lightning (render/looks.js drawBolt strokes in '#7cc8ff'), while you're held and after
+  await ctx.addInitScript(() => {
+    window.__bolts = { held: 0, after: 0 };
+    const st = CanvasRenderingContext2D.prototype.stroke;
+    CanvasRenderingContext2D.prototype.stroke = function (...a) {
+      const L = window.__lvl;
+      if (this.strokeStyle === '#7cc8ff' && L && L.intro) window.__bolts[L.intro.done ? 'after' : 'held']++;
+      return st.apply(this, a);
+    };
+  });
   const page = await ctx.newPage();
   page.on('pageerror', e => { fails++; console.log('PAGEERROR', e.message); });
   await page.goto('file://' + path.join(DIR, 'test.html'));
@@ -35,6 +45,9 @@ const DIR = path.join(__dirname, '..', 'build');
   s = await at(1.05);
   await shot('3-flash');
   check('then you come through, on the pad', !s.held && s.done && Math.abs(s.x - s.sx) < 2, s);
+  s = await at(1.3);
+  const bolts = await page.evaluate(() => window.__bolts);
+  check('no lightning while it charges, only once you are through (v0.0.145, owner)', bolts.held === 0 && bolts.after > 0, bolts);
   s = await at(1.6);
   await shot('4-in');
   check('the tube over the teleporter still off a moment after', s.tube === 0 && s.on0 < 0, s);

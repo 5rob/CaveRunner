@@ -11,7 +11,8 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
 - **Waiting on the owner: v0.0.145** on branch `refactor` (screenshots sent, not on `main` yet): the
   shop's way up is always straight over the buy machine (`world/level.js`, `shopExit`); and the hand torch
-  archived (`HAND_TORCH`) for a light on the gun, a cone the way you aim (`render/light.js`, Dev knobs `beam*`). Once OK'd: merge
+  archived (`HAND_TORCH`) for a light on the gun, a cone the way you aim (`render/light.js`, Dev knobs `beam*`), only with a gun in hand; and a new run's
+  teleporter keeps its lightning until you've come through. Once OK'd: merge
   to `main`, confirm it landed, mark it released here and in CHANGELOG. The new caves tip two chance checks (`strata`, `rats`)
   over their bars: measured, not regressions (REFACTOR.md, Found along the way).
 - **Released: v0.0.144** on `main`, 2026-10-05 (the owner OK'd it): the heal centred
