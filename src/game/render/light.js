@@ -16,6 +16,7 @@ import { plantGlow } from '../systems/plantglow.js';
 import { HAND_TORCH, torchHand } from '../systems/player.js';
 import { introHeld } from '../systems/shoplights.js';
 import { solidCell } from '../systems/terrain.js';
+import { darkCut, darkFog } from './dark.js';
 import { holoBright, holoGrid, holoMask, sizedCanvas } from './holo.js';
 
 // The fog of war alone (never-seen ground; none of the dark outside your torchlight), baked and
@@ -130,6 +131,9 @@ export function drawFog(W, G, F) {
             a = a * (1 - lift * (hall ? DEV.shopTorch : 1));   // in the shop hall it only takes the edge off (the tubes light it)
           }
         }
+        // a dark zone (floor 2): seen ground there is left to render/dark.js (silhouettes on the silk);
+        // only never-seen ground keeps the fog of war
+        if (s) { const z = darkFog(i); if (z) a = Math.round(a * (1 - z)); }
         fdat[k + 3] = a;
       }
     }
@@ -222,6 +226,9 @@ export function drawGlows(W, G, F) {
     low.globalCompositeOperation = 'lighter';
     G.ctx = low;
   }
+  // the gun light first, so the dark zones can cut it out before anything else lights the layer (no
+  // electric light works in there: render/dark.js; fire and the rest are added after)
+  if (!W.p.dead && !introHeld(W) && !HAND_TORCH) { drawBeam(W, G, F); if (low) darkCut(low); }
   const gl = clamp(0.82 + W.glowN + 0.08 * Math.sin(W.time * 23) + 0.06 * Math.sin(W.time * 37), 0.5, 1.1);
   const scOn = sc => !(sc.y > W.camY + vh + 30 || sc.y < W.camY - 30 || sc.x < W.camX - 30 || sc.x > W.camX + vw + 30) &&
     fogLit(W, sc.x, sc.y);
@@ -279,7 +286,6 @@ export function drawGlows(W, G, F) {
     if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(W, pr.x, pr.y + pr.len))
       glowAt(G.ctx, pr.x, pr.y + pr.len, 16, 0.2 * W.flick, '255,130,50');
   if (W.p.burn > 0 && !W.p.dead) glowAt(G.ctx, W.p.x + PW / 2, W.p.y + PH / 2, 22, 0.25 * W.flick, '255,130,50');
-  if (!W.p.dead && !introHeld(W) && !HAND_TORCH) drawBeam(W, G, F);
   if (!W.p.dead && !introHeld(W) && HAND_TORCH) {
     const th = torchHand(W), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
     glowAt(G.ctx, gfx, gfy, 70 * (0.9 + 0.1 * gl), 0.2 * gl, '255,150,60');            // the second light

@@ -7,6 +7,7 @@
 import { SFX } from '../../audio/sfx.js';
 import { BED, BRICK, CELL, CH, CW, PH, PW } from '../../core/consts.js';
 import { clamp } from '../../core/util.js';
+import { silkErase } from '../../world/dark.js';
 import { spillGold } from '../../world/nuggets.js';
 import { ragPush } from '../../world/ragdoll.js';
 import { ORE_GOLD } from '../../world/veins.js';
@@ -147,6 +148,9 @@ export function explode(W, G, x, y, R, splash, hot) {
   }
   G.tctx.putImageData(W.img, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
   unDeco(W, G, cx0, cy0, rc, minX, minY, maxX, maxY);
+  // a blast tears the dark zones' silk (world/dark.js; render/dark.js repaints the hole)
+  const torn = silkErase(W.webbing, cx0, cy0, rc + 1.5);
+  if (torn) W.webDirty.push(torn);
   if (nOre) dropOre(W, x, y, nOre);
   if (W.burrow) for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++)
     if (Math.hypot(cx + 0.5 - cx0, cy + 0.5 - cy0) <= rc) W.burrow[cy * CW + cx] = 0;

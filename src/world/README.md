@@ -7,6 +7,7 @@ All pure: the logic suites call these directly.
 | `level.js` | `makeLevel(seed, floor, owned)`: one floor whole (terrain, shop, prize rooms, enemies (`DEV.enemies` + `DEV.enemiesUp` a floor), pickups, decoration, gold seams, nests (each with its brood `left`), `fuel`, `zone`, `tomb` (floor 2's rooms and corridors, `tomb.js`; null elsewhere), and since v130 `portals`: three exits along the top at `EXIT_X` (1/6, 1/2, 5/6 across), each a room with a ledge, joined by a passage carved after the ledges and platforms; `portal` is the middle one; the shop's way up, `shopExit`, is always over the buy machine, `VEND_BUY_X`, since v0.0.145); also run off the main thread by `game/levelgen.js`, so it must stay plain data in, plain data out; `shopPanel(cx, cy)` (the shop shell's steel, whatever the theme: roof with ceiling lights, deck floor, side columns); `ROOM_HW`/`ROOM_HH` |
 | `tomb.js` | Floor 2's tomb (Level 2 stage 2): `tombPlan(seed, shopExit, exitX)` (the room list, then the corridors: `Tomb` in `types.d.ts`), `roomOpen(room, x, y)` (a pixel inside a room's shape), `roomPillars` (a pillar maze's pillars), `carveTomb(mat, plan)`, `tombRoomAt(tomb, wx, wy, CELL)` ("which room is this?", world units), `paintMasonry` (the cut-stone bake), `TOMB_TYPES`/`TOMB_SHAPES`, `TOMB_TOP` (34: the top gallery's floor, where the pads stand), `TOMB_BOTTOM` (the vestibule's floor = the top of the shop's shaft) |
 | `furnish.js` | Floor 2's room kits (Level 2 stage 3): `furnishTomb(mat, img, dimg, fuel, tomb, seed)` (every room furnished for its type, its pieces listed on `room.kit`; bones along the galleries), `KIT_PAL` (the kits' colours) |
+| `dark.js` | Floor 2's dark zones (Level 2 stage 4): `darkZones(mat, tomb, seed, shopExit)` (places them, cuts the tomb out inside, carves the zone's own caves, spins the silk; returns `{ zones, mask, web }`), `darkAt(level or W, wx, wy, CELL)` (the zone a world point is in, -1 none), `silkErase(web, cx, cy, r)` (a disc of silk gone; the box it touched; `explode` calls it), `silkColour(v)`, `zoneRock(n)` |
 | `strata.js` | Floor 1's layered cave: `strataCave`, `paveWorks`, and the timber: `timberWorks`, `timberFrame` |
 | `zones.js` | Floor 1's built-up vs natural zones: `builtAt(zone, wx, wy)`; `boxReach` (runner-box flood that keeps the main route open) |
 | `decorate.js` | `decorate` (the theme's `DECOR`: bakes and props), `cullDecor`, `propAnchored`, `archCurve`/`archNear`/`archAt`, `PLANTS`, `GROVES`, `DECOR_DENSITY`, `PROP_BOX`, `PROP_DMG` |
@@ -99,6 +100,25 @@ All pure: the logic suites call these directly.
 - **Shafts meet a room's floor against its wall** (`shaftX`/`floorOk` in `tombPlan`), never in its middle,
   so the kit's centrepiece has a floor; a corridor end goes on into the room it touches (matched by edge, not
   by which room is higher: before stage 3 an L-shaft could miss its room and leave it sealed).
+- **Dark zones** (`dark.js`, Level 2 stage 4; how they look: `game/render/dark.js`). After the tomb is cut, a few
+  organic blobs (two slow waves round a circle, radius `l2dSize`, count `l2dCount`) are centred on tomb rooms,
+  never touching the main route (the rooms and corridors from the vestibule to the nearest exit hall by the
+  tomb's links), the exit halls, the vestibule, the prize room, the shop (`l2dShop` px above its roof) or the
+  top (`l2dTop`), and `l2dSpace` (+ half their sizes) apart. Inside one the tomb is filled solid, then: a
+  **chamber** in the middle (a lumpy dome over a flat floor: Stage 6's prize), every place the tomb ran into the
+  zone (each stretch of ring cells touching open tomb) opened up and a **tunnel** wandering from it to the chamber
+  (it never leaves the zone, or the dig would break), and a few side pockets. **The main route never needs a
+  zone**: after each one the shop must still reach the top with every zone shut, or that zone is undone. The
+  level carries `dark` (`DarkZone`: centre, radius, box, the room it swallowed, `cells`, `doors`, `chamber`),
+  `darkMask` (per cell: zone + 1) and `webbing` (the silk, per cell, 0 none, 1..255 thickness; open cells only,
+  a sheet in slow folds, thicker on the walls, strands two ways, `l2dSilk`). Rooms get `dark` (the zone that took
+  their middle, -1 none); kit pieces in a zone are dropped from `room.kit`; zone rock is repainted raw
+  (`zoneRock`), no cut stone, no kit. `distField` (`byDistance.js`) takes `darkMask` as its source.
+  **Silk is a background layer, not `mat`**: creatures may walk on it later (Stage 7); explosions erase it
+  (`silkErase` in `explode`, the hole repainted from `W.webDirty`). A blown hole isn't saved (a saved floor
+  comes back from its seed with the silk whole).
+- **No wall torches on floor 2** (owner, with Stage 4): the tomb is dark, nothing in it gives light but fire;
+  the prize room's sconces are left off (`level-entry.js`); candles are paint, unlit. The shop keeps its lights.
 - **Cut stone** (`paintMasonry`): rock within `l2Mason` px of open air, block by block (courses `l2Course`
   high, `l2Block` long, every other course offset half a block), is painted in the floor's brick and mortar
   colours (`L2_LOOK`), a lit edge on floors and a shadow under roofs; past it the raw rock. Only the paint: `mat`

@@ -23,6 +23,7 @@ import {
 import { drawFlashes, drawMotes, drawSmoke, drawSparks, drawTrail } from './effects.js';
 import { drawBelow, drawFx } from './fx.js';
 import { drawGuide, drawGuideTalk } from './guide.js';
+import { drawDark } from './dark.js';
 import { drawFog, drawGlows } from './light.js';
 import { drawBeams, drawFields, drawShots } from './looks.js';
 import { drawHud, drawMessages, drawRadar, drawReticule } from './overlay.js';
@@ -66,6 +67,7 @@ export function draw(W, G) {
   drawAim(W, G, F);                         // the aim line; fills held, ax/ay, gy (actors.js)
   drawPlayer(W, G, F);                      // you, gun, torch, crosshair, shield, ghost (actors.js)
   G.ctx.translate(-F.snapX, -F.snapY);
+  drawDark(W, G, F);                        // floor 2's dark zones: silhouettes on faint silk (dark.js)
   drawFog(W, G, F);                         // line of sight lifts the fog; the fog (light.js)
   drawGlows(W, G, F);                       // light over the fog (light.js)
   drawTubes(W, G, F);                       // the shop's ceiling tubes and their light (shoplights.js)

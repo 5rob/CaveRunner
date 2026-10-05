@@ -76,7 +76,7 @@ export function makeWorld() {
     padZap: {},                     // when each teleporter pad was last used (W.time, by padSpots seed): it crackles a moment
     stock: undefined,               // the shop's plinths
     zone: null,                     // built-up vs natural, per terrain pixel (floor 1)
-    tomb: null,                     // floor 2's rooms and corridors (world/tomb.js)
+    tomb: null, dark: [], darkMask: null, webbing: null, webDirty: [],                     // floor 2's rooms and corridors (world/tomb.js)
     rooms: [],                      // the perk room and the heart room
     sconces: [],                    // wall torches: by the portals and the prizes
     levelSeed: 0, levelOwned: [],   // what made this cave, for the autosave

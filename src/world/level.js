@@ -15,6 +15,7 @@ import { decorate } from './decorate.js';
 import { ratNests } from './nests.js';
 import { paveWorks, strataCave, timberWorks } from './strata.js';
 import { goldVeins } from './veins.js';
+import { darkZones, zoneRock } from './dark.js';
 import { furnishTomb } from './furnish.js';
 import { carveTomb, paintMasonry, tombPlan } from './tomb.js';
 import { boxReach } from './zones.js';
@@ -330,6 +331,9 @@ export function makeLevel(seed, floor, owned) {
   // whole plan is cut here, the shop's shaft opening into the vestibule's floor)
   const tombData = tomb ? tombPlan(seed, shopExit, EXIT_X) : null;
   if (tombData) carveTomb(mat, tombData);
+  // then the dark zones cut into it (Level 2 stage 4, dark.js): the tomb inside each gone, its own caves instead
+  const darkData = tombData ? darkZones(mat, tombData, seed, shopExit) : null;
+  if (tombData && darkData) for (const r of tombData.rooms) r.dark = darkData.mask[Math.round(r.y + r.h / 2) * CW + Math.round(r.cx)] - 1;
   else {
     for (let x = EXIT_X[0]; x <= EXIT_X[EXIT_X.length - 1]; x += 3) carve(x, 20 + Math.round(4 * Math.sin(x / 19)), 9, 10, CH);
     for (const ex of EXIT_X) { carve(ex, 22, 40, 16, CH); slab(ex - 24, 34, 48, 3); }
@@ -632,6 +636,15 @@ export function makeLevel(seed, floor, owned) {
   // (the tomb: none of the theme's decoration; each room's own kit instead, furnish.js)
   const deco = tombData ? { props: [], amb: [] } : decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel, zone);
   if (tombData) furnishTomb(mat, img, dimg, fuel, tombData, seed);
+  // inside a dark zone: no kit, no cut stone: raw rock in the zone's colours (and a room's kit list loses what went)
+  if (darkData && darkData.zones.length) for (const r of tombData.rooms) if (r.kit) r.kit = r.kit.filter(k => !darkData.mask[(k.y + (k.h >> 1)) * CW + k.x + (k.w >> 1)] && !darkData.mask[(k.y + (k.h >> 1)) * CW + 2 * Math.round(r.cx) - k.x - (k.w >> 1) - 1]);
+  if (darkData && darkData.zones.length) for (let i = 0; i < CW * CH; i++) {
+    if (!darkData.mask[i]) continue;
+    dimg.data[i * 4 + 3] = 0;
+    if (mat[i] !== ROCK) { fuel[i] = 0; continue; }
+    const c = zoneRock(at(tintL, i % CW, (i / CW) | 0)), j = (hash(i % CW * 3 + 7, ((i / CW) | 0) * 5 + 3) - 0.5) * 8;
+    d[i * 4] = c[0] + j; d[i * 4 + 1] = c[1] + j; d[i * 4 + 2] = c[2] + j; fuel[i] = 0;
+  }
   // gold seams, painted over whatever the decoration left on the rock
   const ore = goldVeins(mat, seed, floor);
   for (let i = 0; i < ore.length; i++) {
@@ -655,5 +668,6 @@ export function makeLevel(seed, floor, owned) {
   }
 
   return { mat, img, bgImg, dimg, ore, fuel, props: deco.props, amb: deco.amb, start, portal, portals, enemies, pickups, stock, shopExit, arrival,
-    rooms, roster, theme: T.name, works, zone, nests, tomb: tombData };
+    rooms, roster, theme: T.name, works, zone, nests, tomb: tombData,
+    dark: darkData ? darkData.zones : [], darkMask: darkData && darkData.zones.length ? darkData.mask : null, webbing: darkData && darkData.zones.length ? darkData.web : null };
 }

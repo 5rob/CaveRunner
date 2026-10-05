@@ -47,6 +47,11 @@
   `world/furnish.js`). `l2Decor` is now × all of floor 2's kits (0 = a bare tomb). The noise-cave knobs it had before went with floor 2's noise cave, `L2_LOOK` (its palette, colour
   pickers, defaults = Coal seams; `data/themes.js` `themeFor` builds the theme from them), `l2Decor`
   (× decoration, `decorate`). Changes show on the next cave; **Floor 2** on the panel goes there.
+- Level 2: dark zones (`g: 'l2dark'`, Level 2 stage 4, `world/dark.js`, `game/render/dark.js`): `l2dCount` and `l2dSize`
+  (ranges, `L2D_KNOBS`: how many, 2–3; radius px, 60–88), `l2dSpace` (apart, 120 px + half their sizes), `l2dShop` (140)
+  and `l2dTop` (120) (kept away from the shop and the exits), `l2dSilk` (× thickness, 1), `l2dDark` (0.94), `l2dEdge`
+  (soft edge, fog cells of blur, 1.2), `l2dHolo` (the hologram's haze through the silk, 0.4), `l2dBack` (how much of
+  the silk shows in the dark, 0.3).
 - Level 2: destruction (`g: 'l2boom'`, `world/byDistance.js` `destructionOpts`; not in the cave yet): `l2bMaxDist` (reach from a dark zone, px, 200), `l2bCount` (explosions, 60), `l2bFire` (% that cause fire, 30), `l2bSizeLo`/`Hi` (size range, px radius, 6–18: `L2B_KNOBS`), `l2bJitter` (± px, 0), `l2bClear` (open air round each, px, 4), and two curves: `l2bDen` (destruction amount by distance, 0..1) and `l2bScale` (size × by distance, 0..2).
 - Curve knobs: `curveKnobs(group, p, label, lo, hi, def)` registers `p+'0'` (start y), `p+'C1x'`, `p+'C1y'`, `p+'C2x'`, `p+'C2y'`, `p+'1'` (end y), all `type: 'curve'` (no boxes), and lists it in `CURVES` so the panel draws a `CurveEdit` for it in its group; `kcurve(p)` reads it as a `Curve` (`core/util.js` `bezierAt`). The hologram flash's `holoC*` predate it (fixed ends, `FadeCurve`).
 - Sway also has `vineLinks` (links in a swung vine's tail) and `vineTailDamp`.

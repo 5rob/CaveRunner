@@ -14,6 +14,7 @@ import { gunAccent } from '../../spells/guns.js';
 import { MODS, famCol } from '../../spells/mods.js';
 import { FIRE_COLS } from '../../world/fire.js';
 import { nugR } from '../../world/nuggets.js';
+import { darkPrep } from './dark.js';
 import { BG_PAR, drawHolo } from './holo.js';
 import { exits } from '../world.js';
 import { drawPad } from './pads.js';
@@ -33,6 +34,7 @@ export function drawTerrain(W, G, F) {
   const bx1 = clamp(Math.ceil((bcx + vw) / BCELL) + 1, 1, BW), by1 = clamp(Math.ceil((bcy + vh) / BCELL) + 1, 1, BH);
   G.ctx.drawImage(G.bg, bx0, by0, bx1 - bx0, by1 - by0, bx0 * BCELL + bgox, by0 * BCELL + bgoy, (bx1 - bx0) * BCELL, (by1 - by0) * BCELL);
   drawHolo(W, G, F);                        // the hologram, halfway back (holo.js)
+  darkPrep(W, G, F);                        // floor 2's dark zones: the silk, and their backs cut out (dark.js)
   // the shop's back wall
   if (W.camY + vh > SHOP_Y) {
     // steel panels: seams every 64, a rail with a lit line along it, a darker skirting

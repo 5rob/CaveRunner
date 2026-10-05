@@ -316,6 +316,7 @@ interface TombRoom {
   big: boolean;
   links: number[];            // the rooms a corridor joins it to
   kit?: TombItem[];           // what furnishTomb put in it (world/furnish.js)
+  dark?: number;              // the dark zone that swallowed its middle (-1 none; world/dark.js)
 }
 /** one piece of a room's kit: its id and the right-hand copy's box (terrain px); m: mirrored on the left too */
 interface TombItem { id: string; x: number; y: number; w: number; h: number; m: boolean }
@@ -366,6 +367,18 @@ interface Level {
   zone: Uint8Array | null;    // built-up vs natural, floor 1 only
   nests: NestSpot[];
   tomb: Tomb | null;          // floor 2's rooms and corridors (world/tomb.js); null on other floors
+  dark: DarkZone[];           // floor 2's dark zones (world/dark.js); [] elsewhere
+  darkMask: Uint8Array | null;   // per terrain cell: dark zone number + 1, 0 outside (null: no zones)
+  webbing: Uint8Array | null;    // per terrain cell: the zones' silk, 0 none, 1..255 how thick (open cells)
+}
+/** a dark zone (world/dark.js darkZones), terrain px */
+interface DarkZone {
+  id: number; cx: number; cy: number; r: number;
+  x0: number; y0: number; x1: number; y1: number;   // its box
+  room: number;               // the tomb room it swallowed (at its middle)
+  cells: number;              // how many terrain cells it covers
+  doors: Pt[];                // where the tomb ran into it (each joined to the chamber by a tunnel)
+  chamber: { x: number; y: number; rx: number; ry: number; floor: number };   // the open chamber in its middle (Stage 6's prize)
 }
 
 /** the fire's state: fireNew (world/fire.js) */
@@ -586,6 +599,8 @@ interface World {
   start: Pt; portal: Level['portal']; portals: Level['portals']; arrival: Pt; stock: StockItem[];
   zone: Uint8Array | null; rooms: Room[];
   tomb: Tomb | null;          // floor 2's room list and corridors (Level.tomb); null elsewhere
+  dark: DarkZone[]; darkMask: Uint8Array | null; webbing: Uint8Array | null;   // floor 2's dark zones (Level's)
+  webDirty: { x0: number; y0: number; x1: number; y1: number }[];   // silk blown away since the last frame (render/dark.js repaints)
   sconces: any[];             // Sconce[]: enterLevel builds [x, y] pairs first and maps them after
   levelSeed: number; levelOwned: string[]; roster: string[]; themeName: string; total: number;
   matterProps: Prop[]; ambKinds: string[]; plantW: number;

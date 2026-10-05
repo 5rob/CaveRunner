@@ -15,7 +15,7 @@ The only layer (with `ui/`) that isn't pure. May import every layer above it, ne
 ## The shapes (REFACTOR.md D15–D20)
 
 - **`W`** (the world): the level's simulation state — the player `W.p`, the perk bag `W.pb`, the
-  terrain (`W.mat`, `W.img`, `W.dimg`, `W.zone`, `W.fuel`; floor 2's room list `W.tomb`), fog memory `W.seen`, the lists
+  terrain (`W.mat`, `W.img`, `W.dimg`, `W.zone`, `W.fuel`; floor 2's room list `W.tomb` and dark zones `W.dark`, `W.darkMask`, `W.webbing`, `W.webDirty`), fog memory `W.seen`, the lists
   (`W.enemies`, `W.bullets`, `W.props`, …), camera, clocks, timers, sound loops. `enterLevel` replaces
   the level-scoped parts per floor; **lists are emptied in place, never replaced** (the recorder holds
   them by reference). `W` stays plain data.

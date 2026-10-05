@@ -114,7 +114,7 @@ export const DEV_META = [
   { k: 'bagSpeed',  g: 'ui',    label: 'Bag fire preview speed (×real time)', min: 0.05, max: 5, step: 0.05 },
 ];
 export const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['fx', 'Hologram & glow'], ['holoflash', 'Hologram flash (on a kill)'], ['guide', 'Guide hologram (new run)'], ['player', 'Player'],
-  ['enemy', 'Enemies'], ['elite', 'Elites'], ['elitefx', 'Elites: flames'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['level2', 'Level 2: layout & look'], ['l2boom', 'Level 2: destruction'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
+  ['enemy', 'Enemies'], ['elite', 'Elites'], ['elitefx', 'Elites: flames'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['level2', 'Level 2: layout & look'], ['l2dark', 'Level 2: dark zones'], ['l2boom', 'Level 2: destruction'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults.
 export function devReport() {
@@ -453,6 +453,23 @@ export const L2B_KNOBS = rangeKnobs('l2boom', [
 ]);
 curveKnobs('l2boom', 'l2bDen', 'Destruction amount (Y) by distance from a dark zone (X)', 0, 1, { y0: 1, x1: 0.25, y1: 1, x2: 0.5, y2: 0, y3: 0 });
 curveKnobs('l2boom', 'l2bScale', 'Size × (Y, 0-2) by distance from a dark zone (X)', 0, 2, { y0: 1.6, x1: 0.33, y1: 1.3, x2: 0.66, y2: 0.8, y3: 0.5 });
+// Level 2 stage 4: floor 2's dark zones (world/dark.js darkZones; their look: game/render/dark.js). Terrain px
+// for sizes; how many and how big are rolled per floor on the zones' own stream
+export const L2D_KNOBS = rangeKnobs('l2dark', [
+  ['l2dCount', 'Dark zones on the floor', 0, 8, 1, 2, 3],
+  ['l2dSize',  'Dark zone size (radius, px)', 20, 160, 1, 60, 88],
+]);
+DEV_DEFAULTS.l2dSpace = 120; DEV_DEFAULTS.l2dShop = 140; DEV_DEFAULTS.l2dTop = 120; DEV_DEFAULTS.l2dSilk = 1;
+DEV_DEFAULTS.l2dDark = 0.94; DEV_DEFAULTS.l2dEdge = 1.2; DEV_DEFAULTS.l2dHolo = 0.4; DEV_DEFAULTS.l2dBack = 0.3;
+DEV_META.push(
+  { k: 'l2dSpace', g: 'l2dark', label: 'Zones apart, at least (px, plus half their sizes)', min: 0, max: 800, step: 5 },
+  { k: 'l2dShop',  g: 'l2dark', label: 'Kept away from the shop (px above its roof)', min: 0, max: 600, step: 5 },
+  { k: 'l2dTop',   g: 'l2dark', label: 'Kept away from the exits (px from the top)', min: 0, max: 600, step: 5 },
+  { k: 'l2dSilk',  g: 'l2dark', label: 'Silk: how thick (×)', min: 0, max: 4, step: 0.05 },
+  { k: 'l2dDark',  g: 'l2dark', label: 'Darkness (0 = none, 1 = pitch black)', min: 0, max: 1, step: 0.01 },
+  { k: 'l2dEdge',  g: 'l2dark', label: 'Edge softness (fog cells of blur)', min: 0, max: 6, step: 0.1 },
+  { k: 'l2dHolo',  g: 'l2dark', label: 'Hologram through the silk (0 = hidden, diffused)', min: 0, max: 1, step: 0.01 },
+  { k: 'l2dBack',  g: 'l2dark', label: 'Silk backlight (how much of it shows in the dark)', min: 0, max: 1, step: 0.01 });
 export const ARCH_KNOBS = rangeKnobs('arch', [
   ['arVines',   'Arched vine clusters per floor',      0, 40, 0.5,   9, 13],
   ['arCluster', 'Arches per cluster',                  1, 8, 0.1,    1.5, 3.5],

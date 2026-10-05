@@ -39,9 +39,14 @@ for (let seed = 1; seed <= SEEDS; seed++) {
   // the reach: a runner-sized box from the shop
   const reach = boxReach(lv.mat, 17, SHOP_FLOOR - 12);
   if (!reach.top) noTop.push(seed);
+  // (a room a dark zone took part of, Stage 4: what's left of it, anywhere in its box; a room it took the
+  // middle of is the zone's now: tests/logic/dark.test.js)
+  const M = lv.darkMask, touched = r => { if (!M) return false; for (let y = r.y - 2; y <= r.floor + 2; y++) for (let x = r.x - 2; x < r.x + r.w + 2; x++) if (M[y * CW + x]) return true; return false; };
   for (const r of R) {
+    if (r.dark >= 0) continue;
     // somewhere along its floor, a box standing there is in reach
     let got = false;
+    if (touched(r)) { for (let y = r.y; y < r.floor && !got; y++) for (let x = r.x; x < r.x + r.w; x++) if (reach.ok[y * CW + x] === 2) { got = true; break; } }
     for (let x = r.x; x < r.x + r.w - 5 && !got; x++) for (let y = r.floor - 12; y >= r.floor - 16 && !got; y--) if (reach.ok[y * CW + x] === 2) got = true;
     if (!got) unreached.push(`${seed}:${r.id}/${r.type}/${r.shape}`);
   }
@@ -83,6 +88,7 @@ check('floor 3 is the cave it was', hashMat(makeLevel(3, 3).mat) === 1829628063,
   for (let y = 4; y < SHOP_FLOOR - 60; y++) for (let x = 4; x < CW - 4; x++) {
     if (a.mat[y * CW + x]) continue;
     if (Math.abs(x - a.shopExit) <= 9 && y > SHOP_FLOOR - 90) continue;     // the shop's own shaft
+    if (a.darkMask && a.darkMask[y * CW + x]) continue;             // a dark zone's own caves (Stage 4)
     if (!T.rooms.some(r => roomOpen(r, x, y)) && !inC(x, y)) stray++;
   }
   check('no open pixel outside a room or a corridor', stray === 0, stray);
@@ -92,7 +98,7 @@ check('floor 3 is the cave it was', hashMat(makeLevel(3, 3).mat) === 1829628063,
   DEV.l2Decor = 0;                       // (the room kits inlay the floor: look at the bare stone)
   const a0 = makeLevel(7, 2);
   DEV.l2Decor = DEV_DEFAULTS.l2Decor;
-  const T = a0.tomb, r = T.rooms.find(q => q.type !== 'gate' && q.type !== 'vestibule'), d = a0.img.data;
+  const T = a0.tomb, r = T.rooms.find(q => q.type !== 'gate' && q.type !== 'vestibule' && !(a0.darkMask && a0.darkMask[q.floor * CW + Math.round(q.cx)])), d = a0.img.data;
   let x0 = Math.round(r.cx);
   while (!a0.mat[r.floor * CW + x0] || a0.mat[(r.floor - 1) * CW + x0]) x0++;
   const i = r.floor * CW + x0, lit = d[i * 4] + d[i * 4 + 1] + d[i * 4 + 2];

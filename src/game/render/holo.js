@@ -89,6 +89,8 @@ export function holoLevel(since) {
 }
 // this frame's brightness (the master knob times the flash): 0 means no hologram, fog swap or glow
 export const holoBright = () => L.bri;
+/** this frame's hologram layer (null while it's dark) */
+export const holoLayer = () => L.c;
 
 // The layer's grid for this frame: whole CELL-sized pixels fixed to the hologram (so they slide
 // with it, never swim), covering the view. ox/oy: how far the hologram has slid (world units);
@@ -107,6 +109,8 @@ export const holoGrid = {
   get w() { return LG.lw; },
   get h() { return LG.lh; },
   get px() { return LG.px; },
+  /** where the layer lands, world units (Level 2's dark zones draw a shrunk copy there: render/dark.js) */
+  get rect() { return { x: LG.ox + LG.gx0 * LG.px, y: LG.oy + LG.gy0 * LG.px, w: LG.lw * LG.px, h: LG.lh * LG.px }; },
   /** @param {CanvasRenderingContext2D} x */
   world: x => x.setTransform(1 / LG.px, 0, 0, 1 / LG.px, -LG.ox / LG.px - LG.gx0, -LG.oy / LG.px - LG.gy0),
   /** @param {CanvasRenderingContext2D} ctx @param {CanvasImageSource} src @param {boolean} smooth */
