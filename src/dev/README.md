@@ -15,6 +15,9 @@
   (use `jcol` for any jelly colour).
 - Torch & fog also has the shop hall's `shopGap` (how dark between its ceiling lights, 0.9) and `shopTorch`
   (how much of that your torch lifts, 0.45), v0.0.141 (`world/shoplights.js` `shopDark`, `render/light.js`).
+- Torch & fog's gun light (v0.0.145): `beamDeg` (cone width, 50°), `beamReach` (× the sight radius, 2.2; in
+  the shop hall it reaches only the old torch's distance), `beamNear` (the glow round you, × the torch's
+  reach, 0.5), `beamGlow` (how bright the beam itself shows, 0.5). `torch` still sets the sight radius.
 - Guide hologram (`g: 'guide'`, v0.0.141, `world/guide.js`): `guideCps` (its box types this many letters a
   second, 30), `guideWait` (the pause after each box, s, plus a little per letter, 1.4) and `guideIn` (v0.0.142: how
   far inside the screen's right edge its dark spot must be before its light comes on, world units, 50).

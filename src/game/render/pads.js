@@ -7,12 +7,13 @@
 // bolts, drawBolt), only where the fog says the pad has been seen. Screen-steady hashes of W.time
 // only, never Math.random (draw shares the simulation's stream).
 // v0.0.144: a new run's way in charges for ARRIVE_T (W.intro): its beam swelling, light drawn in
-// towards it, the lightning busier and busier, then a flash as you come through (padCharge).
+// towards it, then a flash as you come through (padCharge), the lightning only from then (v0.0.145).
 
 import { CELL, SHOP_FLOOR } from '../../core/consts.js';
 import { ARRIVE_T } from '../../world/shoplights.js';
 import { fogLit } from '../systems/fog.js';
 import { exits } from '../world.js';
+import { introHeld } from '../systems/shoplights.js';
 import { drawBolt } from './looks.js';
 
 export const PAD_W = 30;                       // the platform's width (world units)
@@ -123,7 +124,7 @@ export function drawPads(W, G, F) {
     // lightning up off the pad, only just after it's used: a few slots of bolts at a time, each a
     // jagged line up into the beam, fewer as the zap fades
     const zap = 1 - (t - ((W.padZap && W.padZap[P.seed]) ?? -99)) / ZAP_T;
-    if (zap <= 0 || zap > 1) continue;
+    if (zap <= 0 || zap > 1 || (P.seed === 1 && introHeld(W))) continue;   // a new run's charge: no lightning until you're through (owner, v0.0.145)
     const n0 = Math.floor(t / BOLT_T);
     for (let n = n0 - 2; n <= n0; n++) {
       const s = n * 7.13 + P.seed * 101;

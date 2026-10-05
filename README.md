@@ -29,13 +29,13 @@ cave layout and the loot are rolled fresh, but who lives there and what it looks
 like are not. That is deliberate: you learn a floor, and the colour tells you
 where you are before you have read the number.
 
-The cave starts dark, and what lights it is the torch in your other hand. It lights a
-generous bubble around you — bright at your feet, guttering as it burns, fading out to
-black — and the cave beyond that bubble stays a real unknown. The torch only lights
+The cave starts dark, and what lights it is the light on your gun: a steady white cone
+thrown the way you aim, reaching well ahead of you (once you have a gun), with a small glow round you so you
+can see your feet — and the cave outside the cone stays a real unknown. The light only lights
 ground you have actually laid eyes on: line of sight is what lifts the dark, so a wall
 hides its far side until you go and look round it, and what you have already uncovered
 stays a faint map behind you for the rest of the floor. Enemies shoot further than the
-bubble reaches, so a dark corner is a real risk.
+light reaches, so a dark corner is a real risk.
 
 ## Play
 
@@ -642,7 +642,7 @@ them if it cannot find either.
 - A colour scheme per floor that stays with that floor run to run, so you can tell where you are at a glance
 - Large randomly generated caves with cramped and open areas, winding tunnels, built ledges and half-buried brick frames
 - Fog of war: the cave starts dark and you reveal it by exploring — only what the torch could actually see, never what was round a corner — with what you have seen kept as a faint map behind you
-- A torch in the runner's free hand, a chunky pixel flame licking and breaking off at the top, throwing embers, guttering — and the light in the cave gutters with it. Its flame is dragged about as you move, and it throws a small warm glow round you
+- A light on your gun (since v0.0.145): a cone of white light the way you aim, swinging after the aim, stopping at rock, and a small glow round you. (The old hand torch, a pixel flame with embers, is kept in the code for creatures later)
 - The jetpack's flame and smoke in the same chunky pixels, out of the bottom of the backpack: a licking fire, not a cone
 - Wall torches either side of the prizes in the hidden rooms
 - The vending machines' screens in a blocky terminal font: "BUY lvl 01" / "SELL lvl 01", the price in bold, fine print under it

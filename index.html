@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.144</title>
-<!-- VERSION = 'v144' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.145</title>
+<!-- VERSION = 'v145' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -717,7 +717,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.144';</script>
+<script>const VERSION = 'v0.0.145';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -922,6 +922,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     guideIn: 50,
     shopGap: 0.9,
     shopTorch: 0.45,
+    beamDeg: 50,
+    beamReach: 2.2,
+    beamNear: 0.5,
+    beamGlow: 0.5,
     due1: 60,
     enemies: ENEMY_COUNT,
     enemiesUp: 12,
@@ -962,6 +966,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "fogDim", g: "light", label: "Outside-torchlight darkness", min: 0, max: 1, step: 0.01 },
     { k: "shopGap", g: "light", label: "Shop hall: darkness between the ceiling lights", min: 0, max: 1, step: 0.05 },
     { k: "shopTorch", g: "light", label: "Shop hall: how much your torch lifts its dark (1 = all)", min: 0, max: 1, step: 0.05 },
+    { k: "beamDeg", g: "light", label: "Gun light: cone width (degrees)", min: 10, max: 160, step: 2 },
+    { k: "beamReach", g: "light", label: "Gun light: how far the cone reaches (× the old torch)", min: 1, max: 5, step: 0.1 },
+    { k: "beamNear", g: "light", label: "Gun light: the glow round you (× the old torch)", min: 0, max: 1, step: 0.05 },
+    { k: "beamGlow", g: "light", label: "Gun light: how bright the beam itself shows", min: 0, max: 1, step: 0.05 },
     { k: "move", g: "player", label: "Base movement speed", min: 0.2, max: 5, step: 0.05 },
     { k: "sputDip", g: "player", label: "Jet sputter drop", min: 0, max: 300, step: 5 },
     { k: "aggro", g: "enemy", label: "Enemy aggro distance", min: 0.2, max: 5, step: 0.05 },
@@ -6862,6 +6870,27 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return pts;
   }
+  function beamSide(ang, a) {
+    let off = ang - a;
+    off = Math.abs(off - Math.round(off / (Math.PI * 2)) * Math.PI * 2);
+    const half = DEV.beamDeg * Math.PI / 360, soft = half * 0.4;
+    return off < half ? 1 : off < half + soft ? 1 - (off - half) / soft : 0;
+  }
+  function beamLift(d, dx, dy, a, R, N) {
+    const round = d < N * 0.5 ? 1 : d < N ? 2 - 2 * d / N : 0, t = d / R;
+    if (!(t < 1)) return round;
+    return Math.max(round, beamSide(Math.atan2(dy, dx), a) * (t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45));
+  }
+  function beamFan(pts, cx, cy, r, a) {
+    const rays = pts.length / 2;
+    for (let i = 0; i < rays; i++) {
+      const dx = pts[2 * i] - cx, dy = pts[2 * i + 1] - cy, d = Math.hypot(dx, dy);
+      if (d <= r || beamSide(i / rays * Math.PI * 2, a) > 0) continue;
+      pts[2 * i] = cx + dx / d * r;
+      pts[2 * i + 1] = cy + dy / d * r;
+    }
+    return pts;
+  }
 
   // src/game/world.js
   var exits = (W) => W.portals && W.portals.length ? W.portals : [W.portal];
@@ -9396,7 +9425,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       y = Math.round(y);
       return x >= 0 && y >= 0 && x < CW && y < CH && zone[y * CW + x] === 1;
     };
-    const shopExit = 40 + Math.floor(rnd2() * (CW - 80));
+    rnd2();
+    const shopExit = Math.round(VEND_BUY_X / CELL);
     const lay = layered ? new Uint8Array(CW * CH) : null;
     const strata = layered ? strataCave(lay, rnd2, { vn, fbm, ok: built }, shopExit) : null;
     const points = [{ x: shopExit, y: SHOP_TOP - 30 }];
@@ -13174,6 +13204,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
   }
+  var HAND_TORCH = false;
   var torchHand = (W) => {
     const a = W.p.aim.show ? W.p.aim.nx : W.p.face;
     return { x: W.p.x + PW / 2 + (a >= 0 ? -5.5 : 5.5), y: W.p.y + 9 };
@@ -13427,6 +13458,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       1
     );
     W.torchAcc += dt;
+    if (!HAND_TORCH) W.torchAcc = 0;
     while (W.torchAcc > 0.04) {
       W.torchAcc -= 0.04;
       const th = torchHand(W);
@@ -15005,7 +15037,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const { dt, pcx } = F, t = W.time;
     if (t - L3.start < LIGHT_WAIT) {
       W.padZap[1] = t - 0.2;
-      if (t >= L3.zap) {
+      if (t >= L3.zap && !introHeld(W)) {
         SFX.fx("sparks", W.arrival.x, W.arrival.y);
         L3.zap = t + 0.18 + 0.3 * (t * 7.3 % 1);
       }
@@ -15188,7 +15220,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       G.ctx.translate(F.snapX, F.snapY);
     } else {
       const th = torchHand(W);
-      const hands = { gun: { x: pcx + ax * 2.5, y: gy }, torch: th };
+      const hands = { gun: { x: pcx + ax * 2.5, y: gy }, torch: HAND_TORCH ? th : held ? { x: pcx + ax * 7, y: gy + ay * 5 - 0.5 } : null };
       const body = (c) => drawRunner(c, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing, hands);
       const gun = (c) => drawGun(c, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
       if (px > 0) {
@@ -15199,12 +15231,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (held) gun(G.ctx);
       }
       const torch = (c) => drawTorch(c, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.leanX, W.leanY, W.time);
-      if (px > 0) {
+      if (HAND_TORCH && px > 0) {
         const ox2 = W.p.x - 14, oy2 = W.p.y - 8;
         const x0 = ox2 + Math.floor((th.x - 14 - ox2) / px) * px, y0 = oy2 + Math.floor((th.y - 30 - oy2) / px) * px;
         pixelSprite(G.ctx, x0, y0, 28 + px, 38 + px, px, false, torch);
-      } else torch(G.ctx);
-      torchEmbers(G.ctx, W.torchP, px);
+      } else if (HAND_TORCH) torch(G.ctx);
+      if (HAND_TORCH) torchEmbers(G.ctx, W.torchP, px);
     }
     if (!W.p.dead) {
       const cxp = pcx + ax * DEV.aimDist, cyp = gy + ay * DEV.aimDist;
@@ -16656,7 +16688,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       ctx.restore();
       const zap = 1 - (t - ((W.padZap && W.padZap[P2.seed]) ?? -99)) / ZAP_T;
-      if (zap <= 0 || zap > 1) continue;
+      if (zap <= 0 || zap > 1 || P2.seed === 1 && introHeld(W)) continue;
       const n0 = Math.floor(t / BOLT_T);
       for (let n = n0 - 2; n <= n0; n++) {
         const s = n * 7.13 + P2.seed * 101;
@@ -17176,6 +17208,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var war = { c: null, img: null, blur: null, mask: null, over: null, sil: null, dark: null };
   var fogWarC = () => war.blur;
   var holoSil = () => war.sil;
+  var beam = { a: null, t: 0, r: 0 };
+  function beamAim(W, G, F) {
+    const want = Math.atan2(F.ay, F.ax), dt = clamp(W.time - beam.t, 0, 0.1);
+    beam.t = W.time;
+    if (beam.a === null || G.RPV) return beam.a = want;
+    let d = want - beam.a;
+    d -= Math.round(d / (Math.PI * 2)) * Math.PI * 2;
+    return beam.a += d * (1 - Math.exp(-dt * 16));
+  }
   function blurSlab(src, dst, fx0, fy0, fx1, fy1) {
     const ew = fx1 - fx0, eh = fy1 - fy0;
     dst.clearRect(fx0, fy0, ew, eh);
@@ -17192,10 +17233,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function drawFog(W, G, F) {
     const { vw, vh, pcx, pcy } = F;
     const sight = SIGHT * DEV.torch * carrotAt("caTorch", W.pb.carrot);
-    W.torchR = clamp(sight * LAMP_REACH * (0.5 + 0.55 * W.flick), 120, 1400);
+    W.torchR = clamp(sight * LAMP_REACH * (HAND_TORCH ? 0.5 + 0.55 * W.flick : 1.05), 120, 1400);
+    const ba = beamAim(W, G, F);
     const away = introHeld(W);
-    W.visPts = visPoly(pcx, pcy, sight, (cx, cy) => solidCell(W, cx, cy), VIS_RAYS);
-    fogReveal(W.seen, pcx, pcy, sight, W.visPts, VIS_RAYS);
+    const far = HAND_TORCH || !F.held || F.pcy > SHOP_Y ? sight : sight * Math.max(1, DEV.beamReach);
+    beam.r = !F.held ? 0 : F.pcy > SHOP_Y ? W.torchR : W.torchR * far / sight;
+    W.visPts = visPoly(pcx, pcy, far, (cx, cy) => solidCell(W, cx, cy), VIS_RAYS);
+    if (far > sight) beamFan(W.visPts, pcx, pcy, sight, ba);
+    fogReveal(W.seen, pcx, pcy, far, W.visPts, VIS_RAYS);
     if (!G.RPV || G.RPV.fog) {
       if (!war.c) {
         war.c = sizedCanvas(null, FW, FH);
@@ -17206,7 +17251,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (!war.img) war.img = wctx.createImageData(FW, FH);
       const fdat = G.fogImg.data, wdat = war.img.data;
       const dim = Math.round(255 * DEV.fogDim), dark = Math.round(255 * DEV.fogDark);
-      const lr2 = W.torchR * W.torchR;
+      const lr2 = HAND_TORCH ? W.torchR * W.torchR : Math.max(beam.r, W.torchR * DEV.beamNear) ** 2;
       const shopL = G.RPV ? null : W.shopLit, shopRow = Math.floor(SHOP_Y / FOG_U) - 1;
       const fx0 = clamp(Math.floor(W.camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(W.camY / FOG_U) - 1, 0, FH - 1);
       const fx1 = clamp(Math.ceil((W.camX + vw) / FOG_U) + 2, 1, FW), fy1 = clamp(Math.ceil((W.camY + vh) / FOG_U) + 2, 1, FH);
@@ -17233,7 +17278,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             const ddx = (cx + 0.5) * FOG_U - pcx, dd2 = ddx * ddx + ddy * ddy;
             if (dd2 < lr2) {
               const t = Math.sqrt(dd2) / W.torchR;
-              const lift = t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45;
+              const lift = HAND_TORCH ? t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45 : beamLift(t * W.torchR, ddx, ddy, ba, beam.r, W.torchR * DEV.beamNear);
               a = a * (1 - lift * (hall ? DEV.shopTorch : 1));
             }
           }
@@ -17375,7 +17420,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(W, pr.x, pr.y + pr.len))
         glowAt(G.ctx, pr.x, pr.y + pr.len, 16, 0.2 * W.flick, "255,130,50");
     if (W.p.burn > 0 && !W.p.dead) glowAt(G.ctx, W.p.x + PW / 2, W.p.y + PH / 2, 22, 0.25 * W.flick, "255,130,50");
-    if (!W.p.dead && !introHeld(W)) {
+    if (!W.p.dead && !introHeld(W) && !HAND_TORCH) drawBeam(W, G, F);
+    if (!W.p.dead && !introHeld(W) && HAND_TORCH) {
       const th = torchHand(W), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
       glowAt(G.ctx, gfx, gfy, 70 * (0.9 + 0.1 * gl), 0.2 * gl, "255,150,60");
       glowAt(G.ctx, gfx + W.leanX * 0.5, gfy + W.leanY * 0.5, 12, 0.5 * gl, "255,190,90");
@@ -17395,6 +17441,39 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.ctx.globalAlpha = 1;
     G.ctx.globalCompositeOperation = "source-over";
     for (const sc of W.sconces) if (scOn(sc)) drawSconce(G.ctx, sc.x, sc.y, W.time, sc.ph);
+  }
+  function drawBeam(W, G, F) {
+    const c = G.ctx, a = beam.a === null ? Math.atan2(F.ay, F.ax) : beam.a, R = beam.r || W.torchR, g = DEV.beamGlow;
+    const ox2 = F.pcx + F.ax * 2.5 + Math.cos(a) * 9, oy2 = F.gy + Math.sin(a) * 9;
+    const pts = W.visPts;
+    if (!F.held) {
+      glowAt(c, F.pcx, F.pcy, W.torchR * DEV.beamNear, 0.06, "220,235,255");
+      return;
+    }
+    if (g > 0 && pts && pts.length > 4) {
+      c.save();
+      c.beginPath();
+      c.moveTo(pts[0], pts[1]);
+      for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]);
+      c.closePath();
+      c.clip();
+      const half = DEV.beamDeg * Math.PI / 360;
+      for (const k of [1.3, 1, 0.7]) {
+        const gr = c.createRadialGradient(ox2, oy2, 2, ox2, oy2, R);
+        gr.addColorStop(0, `rgba(225,240,255,${0.16 * g})`);
+        gr.addColorStop(0.45, `rgba(215,232,255,${0.07 * g})`);
+        gr.addColorStop(1, "rgba(210,230,255,0)");
+        c.fillStyle = gr;
+        c.beginPath();
+        c.moveTo(ox2, oy2);
+        c.arc(ox2, oy2, R, a - half * k, a + half * k);
+        c.closePath();
+        c.fill();
+      }
+      c.restore();
+    }
+    glowAt(c, ox2, oy2, 7, 0.5, "230,242,255");
+    glowAt(c, F.pcx, F.pcy, W.torchR * DEV.beamNear, 0.06, "220,235,255");
   }
 
   // src/game/render/fx.js

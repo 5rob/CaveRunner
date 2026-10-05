@@ -49,10 +49,11 @@ export function stepLights(W, F) {
   const L = W.shopLit;
   if (!L) return;
   const { dt, pcx } = F, t = W.time;
-  // the way in crackles the whole time it's dark (render/pads.js), with a fizz of sparks now and then
+  // the way in crackles the whole time it's dark (render/pads.js), with a fizz of sparks now and then: once
+  // you're through, not while it charges (v0.0.145)
   if (t - L.start < LIGHT_WAIT) {
     W.padZap[1] = t - 0.2;
-    if (t >= L.zap) { SFX.fx('sparks', W.arrival.x, W.arrival.y); L.zap = t + 0.18 + 0.3 * ((t * 7.3) % 1); }
+    if (t >= L.zap && !introHeld(W)) { SFX.fx('sparks', W.arrival.x, W.arrival.y); L.zap = t + 0.18 + 0.3 * ((t * 7.3) % 1); }
   }
   const { done } = lightsStep(L, t, pcx, W.p.y + PH > SHOP_Y, W.guide ? W.guide.hold : Infinity);
   // a click each time a starting tube flickers on

@@ -113,14 +113,15 @@ const OUT = path.join(__dirname, '..', 'build');
       if (solid(Math.floor(x / CELL), Math.floor(y / CELL))) { insideRock++; continue; }
       if (!light.losClear(px, py, x, y, solid)) blocked++;
     }
-    return { fresh, blocked, insideRock, furthest, sight: fog.SIGHT };
+    return { fresh, blocked, insideRock, furthest, sight: fog.SIGHT, reach: fog.SIGHT * Math.max(1, DEV.beamReach) };
   }, caveSpot);
   console.log(`  from a standstill, ${fov.fresh} cells went on the map, the furthest ${fov.furthest.toFixed(0)} ` +
     `units away of a ${fov.sight}-unit sight radius`);
   check('there was something to check', fov.fresh > 20, fov.fresh);
   check('not one of them was behind rock', fov.blocked === 0, `${fov.blocked} of ${fov.fresh}`);
-  check('and the map did not reach past the sight radius', fov.furthest <= fov.sight + 1,
-    `${fov.furthest.toFixed(1)} against ${fov.sight}`);
+  // v0.0.145: the gun light's cone uncovers further along it (DEV.beamReach × the sight radius)
+  check('and the map did not reach past the gun light reach', fov.furthest <= fov.reach + 1,
+    `${fov.furthest.toFixed(1)} against ${fov.reach}`);
   // A cell is sixteen world units across and the grid does not know where the rock inside
   // it is, so a cell straddling a wall is explored if any part of it was visible. Worth
   // printing, not worth asserting: the line of sight above is the property that matters.

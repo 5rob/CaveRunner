@@ -13,7 +13,7 @@ import { DEV, carrotAt, jcol, kcol, kru } from '../../dev/knobs.js';
 import { planCast } from '../../spells/cast.js';
 import { gunAccent } from '../../spells/guns.js';
 import { bhSp, tracePath } from '../../spells/trace.js';
-import { jetNozzle, torchHand } from '../systems/player.js';
+import { HAND_TORCH, jetNozzle, torchHand } from '../systems/player.js';
 import { introHeld } from '../systems/shoplights.js';
 import { solidAt } from '../systems/terrain.js';
 
@@ -175,7 +175,8 @@ export function drawPlayer(W, G, F) {
     G.ctx.translate(F.snapX, F.snapY);
   } else {
     const th = torchHand(W);
-    const hands = { gun: { x: pcx + ax * 2.5, y: gy }, torch: th };
+    // the hand torch archived (HAND_TORCH): the free hand steadies the gun, under its barrel
+    const hands = { gun: { x: pcx + ax * 2.5, y: gy }, torch: HAND_TORCH ? th : (held ? { x: pcx + ax * 7, y: gy + ay * 5 - 0.5 } : null) };
     /** @param {CanvasRenderingContext2D} c */
     const body = c => drawRunner(c, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing, hands);
     /** @param {CanvasRenderingContext2D} c */
@@ -184,15 +185,15 @@ export function drawPlayer(W, G, F) {
       pixelSprite(G.ctx, W.p.x - 14, W.p.y - 8, PW + 28, PH + 16, px, line, body);
       if (held) pixelSprite(G.ctx, W.p.x - 14, W.p.y - 8, PW + 28, PH + 16, px, false, gun);
     } else { body(G.ctx); if (held) gun(G.ctx); }   // no gun yet (a new run's empty hands): none drawn
-    // the torch, in the hand the gun is not in: on the same pixel grid, its embers loose on it
+    // the torch (archived: HAND_TORCH), in the hand the gun is not in: on the same pixel grid, its embers loose on it
     /** @param {CanvasRenderingContext2D} c */
     const torch = c => drawTorch(c, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.leanX, W.leanY, W.time);
-    if (px > 0) {
+    if (HAND_TORCH && px > 0) {
       const ox = W.p.x - 14, oy = W.p.y - 8;
       const x0 = ox + Math.floor((th.x - 14 - ox) / px) * px, y0 = oy + Math.floor((th.y - 30 - oy) / px) * px;
       pixelSprite(G.ctx, x0, y0, 28 + px, 38 + px, px, false, torch);
-    } else torch(G.ctx);
-    torchEmbers(G.ctx, W.torchP, px);
+    } else if (HAND_TORCH) torch(G.ctx);
+    if (HAND_TORCH) torchEmbers(G.ctx, W.torchP, px);
   }
   // a small aim crosshair at DEV.aimDist out, rotating round you with the aim: a "+"
   // with the centre cut out (two short verticals, two short horizontals), drawn as thin
