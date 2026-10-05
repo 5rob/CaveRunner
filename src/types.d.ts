@@ -305,6 +305,32 @@ interface Pickup {
 interface StockItem { kind: string; x: number; y: number; price: number; sold: boolean; id?: string; gun?: Gun; bought?: number /* the heal: times bought this floor */ }
 /** a hidden prize room */
 interface Room { kind: string; id?: string; x: number; y: number; taken: boolean; built: boolean }
+/** a room of floor 2's tomb (world/tomb.js tombPlan), terrain pixels: the box x..x+w, y..floor, symmetric about cx */
+interface TombRoom {
+  id: number;                 // its place in Tomb.rooms
+  x: number; y: number; w: number; h: number;
+  cx: number;                 // the middle (x + w/2): the room mirrors about it
+  floor: number;              // the first rock row under it (y + h)
+  shape: string;              // rect | ziggurat | octagon | dome | arch | round
+  type: string;               // gate (an exit hall) | vestibule (over the shop) | hall | library | altar | orrery | pillars | shrine | ossuary | dorm | store
+  big: boolean;
+  links: number[];            // the rooms a corridor joins it to
+}
+/** a corridor of the tomb: a level gallery or an upright shaft, the rect really cut (terrain pixels) */
+interface TombCorridor {
+  kind: string;               // gallery | shaft
+  x: number; y: number; w: number; h: number;
+  a: number; b: number;       // the rooms it joins (an L route is a gallery and a shaft, both with the same pair)
+  ledges: { x: number; y: number; w: number; h: number }[];   // a shaft's ledges (rock)
+}
+/** floor 2's tomb plan, on the level (Level.tomb) */
+interface Tomb {
+  rooms: TombRoom[]; corridors: TombCorridor[];
+  prize: number;              // the room holding the green crystal (-1 none)
+  course: number; block: number; mason: number;   // the cut stone's course height, block length, depth (px)
+  ledgeGap: number;
+  mended: boolean;            // the plan didn't reach the top and a plain shaft was cut (never seen)
+}
 /** a rat nest as ratNests makes it (world/nests.js) */
 interface NestSpot {
   x: number; y: number; r: number; path: Pt[]; mouth: Pt; built: boolean;
@@ -336,6 +362,7 @@ interface Level {
   works: Working[];
   zone: Uint8Array | null;    // built-up vs natural, floor 1 only
   nests: NestSpot[];
+  tomb: Tomb | null;          // floor 2's rooms and corridors (world/tomb.js); null on other floors
 }
 
 /** the fire's state: fireNew (world/fire.js) */
@@ -555,6 +582,7 @@ interface World {
   repo: { t: number; hurtT: number; sndT: number } | null;   // the deadline passed: repossession, then the fire (vend.js)
   start: Pt; portal: Level['portal']; portals: Level['portals']; arrival: Pt; stock: StockItem[];
   zone: Uint8Array | null; rooms: Room[];
+  tomb: Tomb | null;          // floor 2's room list and corridors (Level.tomb); null elsewhere
   sconces: any[];             // Sconce[]: enterLevel builds [x, y] pairs first and maps them after
   levelSeed: number; levelOwned: string[]; roster: string[]; themeName: string; total: number;
   matterProps: Prop[]; ambKinds: string[]; plantW: number;

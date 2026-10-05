@@ -15,6 +15,7 @@ import { decorate } from './decorate.js';
 import { ratNests } from './nests.js';
 import { paveWorks, strataCave, timberWorks } from './strata.js';
 import { goldVeins } from './veins.js';
+import { carveTomb, paintMasonry, tombPlan } from './tomb.js';
 import { boxReach } from './zones.js';
 
 // a prize room's half-size in world units, shell included (makeLevel's rx/ry + sh, in pixels)
@@ -102,16 +103,15 @@ export function makeLevel(seed, floor, owned) {
   // stitched along the zone edge, which a small warp roughs up and the smoothing pass melts.
   // Every other floor is the natural cave alone, until it gets its own treatment.
   const layered = floor === 1;
-  // Floor 2's Dev knobs (L2_KNOBS, v129), rolled once on a generator of their own so the cave's
-  // own rolls don't move: at the defaults (min = max) it is the cave it always was. Elsewhere: d.
-  let ks = (Math.imul(seed | 0, 48271) >>> 0) % 2147483646 + 1;
-  const krnd = () => (ks = (ks * 16807) % 2147483647) / 2147483647;
-  /** @param {string} k @param {number} d */
-  const K2 = (k, d) => (floor === 2 ? kr(k, krnd) : d);
-  const sc = K2('l2Scale', 1), openT = K2('l2Open', 0.42), pk0 = K2('l2Pocket', 0.34), pk1 = K2('l2PocketOpen', 0.24);
-  const tw = K2('l2Tunnel', 0.018), hopsN = Math.round(K2('l2Hops', 12)), routeW = K2('l2RouteW', 1), blobK = K2('l2Blob', 1);
-  const wormN = Math.round(K2('l2Worms', 48)), wormL = K2('l2WormLen', 1), wormW = K2('l2WormW', 1), smoothN = Math.round(K2('l2Smooth', 4));
-  const ledgeN = Math.round(K2('l2Ledges', 120)), frameN = Math.round(K2('l2Frames', 36)), floatN = Math.round(K2('l2Floats', 40));
+  // Floor 2 is the tomb (Level 2 stage 2, world/tomb.js): no noise cave, no worms, no smoothing, no
+  // ledges or frames; rooms planned first and the rock carved round them, after the shop is laid.
+  // (v129 gave floor 2's noise cave Dev knobs; they went with it. These are its numbers, for the rest.)
+  const tomb = floor === 2;
+  const sc = 1, openT = 0.42, pk0 = 0.34, pk1 = 0.24, tw = 0.018, hopsN = 12, routeW = 1, blobK = 1;
+  const wormN = tomb ? 0 : 48, wormL = 1, wormW = 1, smoothN = tomb ? 0 : 4;
+  const ledgeN = tomb ? 0 : 120, frameN = tomb ? 0 : 36, floatN = tomb ? 0 : 40;
+  if (tomb) mat.fill(ROCK);
+  else {
   const openL = lattice(8, (x, y) => fbm(x / (160 * sc) + 500, y / (160 * sc) + 500));
   const pocketL = lattice(4, (x, y) => fbm(x / (60 * sc), y / (60 * sc)));
   const tunnelL = lattice(4, (x, y) => fbm(x / (90 * sc) + 200, y / (90 * sc) + 200));
@@ -122,6 +122,7 @@ export function makeLevel(seed, floor, owned) {
       const tunnel = Math.abs(at(tunnelL, cx, cy) - 0.5) < tw + tw * open;
       mat[cy * CW + cx] = pocket || tunnel ? 0 : ROCK;
     }
+  }
   }
 
   // the zones: zone[i] = 1 where the map is built-up. The threshold is the share asked for,
@@ -198,7 +199,7 @@ export function makeLevel(seed, floor, owned) {
       x = Math.max(6, Math.min(CW - 7, x)); y = Math.max(6, Math.min(CH - 12, y));
     }
   };
-  for (let i = 1; i < points.length - 1; i++) {
+  for (let i = 1; !tomb && i < points.length - 1; i++) {
     if (rnd() < 0.7) blob(points[i].x, points[i].y, (16 + rnd() * 30) * blobK);
   }
   // side branches and dead ends (natural zones only: they're cut before the stitch)
@@ -212,7 +213,7 @@ export function makeLevel(seed, floor, owned) {
     for (let i = 0; i < SHOP_FLOOR * CW; i++) if (zone[i]) mat[i] = lay[i];
     for (const c of strata.routePath) if (built(c.x, c.y)) routePath.push(c);
   }
-  for (let i = 0; i < points.length - 1; i++) {
+  for (let i = 0; !tomb && i < points.length - 1; i++) {
     const a = points[i], b = points[i + 1];
     const r = (rnd() < 0.4 ? 7 + rnd() * 2 : 11 + rnd() * 6) * routeW;   // tight ones are still snug, but you fit
     worm(a.x, a.y, b.x, b.y, r, 2000, routePath, true);
@@ -247,7 +248,7 @@ export function makeLevel(seed, floor, owned) {
         if (dx * dx + dy * dy <= 1) mat[y * CW + x] = 0;
       }
   };
-  carve(CW / 2, 22, 40, 16, CH);
+  if (!tomb) carve(CW / 2, 22, 40, 16, CH);
 
   const emptyRatio = (x0, y0, w, hh) => {
     let e = 0, n = 0;
@@ -324,8 +325,14 @@ export function makeLevel(seed, floor, owned) {
   // the three exits along the top, evenly spaced (EXIT_X), each a room with a ledge for its pad, joined
   // by a passage so the main route's end at the middle one reaches the other two. Carved after the
   // ledges and platforms, so none lands across the passage
-  for (let x = EXIT_X[0]; x <= EXIT_X[EXIT_X.length - 1]; x += 3) carve(x, 20 + Math.round(4 * Math.sin(x / 19)), 9, 10, CH);
-  for (const ex of EXIT_X) { carve(ex, 22, 40, 16, CH); slab(ex - 24, 34, 48, 3); }
+  // (the tomb: its exit halls and the gallery joining them are rooms and a corridor of its plan, and the
+  // whole plan is cut here, the shop's shaft opening into the vestibule's floor)
+  const tombData = tomb ? tombPlan(seed, shopExit, EXIT_X) : null;
+  if (tombData) carveTomb(mat, tombData);
+  else {
+    for (let x = EXIT_X[0]; x <= EXIT_X[EXIT_X.length - 1]; x += 3) carve(x, 20 + Math.round(4 * Math.sin(x / 19)), 9, 10, CH);
+    for (const ex of EXIT_X) { carve(ex, 22, 40, 16, CH); slab(ex - 24, 34, 48, 3); }
+  }
 
   // ---- hidden rooms ----
   // One room (there were two: a perk and a heart), cut out of whatever rock is there and lined with brick
@@ -367,7 +374,10 @@ export function makeLevel(seed, floor, owned) {
     return null;
   };
   // on a zoned floor, which kind of zone it's in is a coin toss
-  const perkRoom = makeRoom(layered ? rnd() < 0.5 : false);
+  // (the tomb's prize room is one of its own: an altar room, the prize standing on its floor in the middle)
+  const prizeRoom = tombData && tombData.prize >= 0 ? tombData.rooms[tombData.prize] : null;
+  const perkRoom = tombData ? (prizeRoom ? { x: prizeRoom.cx * CELL, y: prizeRoom.floor * CELL - 19 } : null)
+    : makeRoom(layered ? rnd() < 0.5 : false);
   // and clear the route again: a room's shell is solid brick and can land straight across
   // the one tunnel the whole level hangs off. Above the shop only, or the same pass would
   // punch extra holes in the shop roof, which is laid down after the first one.
@@ -416,6 +426,12 @@ export function makeLevel(seed, floor, owned) {
       }
       if (bi >= 0) tunnelTo(cx, cy, bi % CW + 3, ((bi / CW) | 0) + 5, 7);
     }
+  }
+  // the tomb: its plan joins every room it kept to the shop and the top. Should that ever fail (it
+  // never has: tests/logic/tomb.test.js), a plain shaft from the shop's way up to the top gallery
+  if (tombData && !boxReach(mat, 17, SHOP_FLOOR - 12).top) {
+    tombData.mended = true;
+    for (let cy = 20; cy < SHOP_TOP; cy++) for (let cx = shopExit - 8; cx <= shopExit + 8; cx++) mat[cy * CW + cx] = 0;
   }
   // and lay the roof back down. A disc is round, so clearing the route anywhere near the
   // roof opens a few columns of it, and a shell across the shaft plugs it: either way the
@@ -477,6 +493,8 @@ export function makeLevel(seed, floor, owned) {
     }
   }
 
+  // the tomb's walls: cut stone wherever the rock meets a room or a corridor
+  if (tombData) paintMasonry(mat, d, T, { depth: tombData.mason, course: tombData.course, block: tombData.block, seed });
   // the shop's shell is high-tech, whatever the floor's theme: steel roof, floor and walls
   for (let cy = SHOP_TOP - SHOP_ROOF; cy < CH; cy++)
     for (let cx = 0; cx < CW; cx++) {
@@ -503,7 +521,9 @@ export function makeLevel(seed, floor, owned) {
       const c = mix(T.bg, T.bg2, Math.min(1, t * 1.3));
       // big, slow blotches of shadow over the pattern, so the back wall has some depth
       const big = fbm(x / 34 + 700, y / 34 + 500);
-      const shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
+      let shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
+      // the tomb's back wall: big dressed blocks, dark joints (a bg pixel is 4 terrain pixels)
+      if (tomb && (y % 4 === 3 || (x + ((y >> 2) & 1) * 3) % 6 === 5)) shade *= 0.7;
       const j = (hash(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
       bgImg.data[k] = c[0] * shade + j; bgImg.data[k + 1] = c[1] * shade + j; bgImg.data[k + 2] = c[2] * shade + j; bgImg.data[k + 3] = 255;
     }
@@ -632,5 +652,5 @@ export function makeLevel(seed, floor, owned) {
   }
 
   return { mat, img, bgImg, dimg, ore, fuel, props: deco.props, amb: deco.amb, start, portal, portals, enemies, pickups, stock, shopExit, arrival,
-    rooms, roster, theme: T.name, works, zone, nests };
+    rooms, roster, theme: T.name, works, zone, nests, tomb: tombData };
 }

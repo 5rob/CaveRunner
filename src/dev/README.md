@@ -38,8 +38,12 @@
   themselves). The store accepts a string knob when its default isn't a colour.
 - Sway (`g: 'sway'`): `webSag`, `bendK`/`bendDamp`/`bendPush`/`bendGrab`/`bendDip`/`bendMax` (web lines and
   arches), `vineGrav`/`vineDamp`/`vinePush`/`vineMax` (hanging vines): `world/sway.js`.
-- Level 2 (`g: 'level2'`, v129): `L2_KNOBS` (floor 2's noise cave, all ranges; `makeLevel` rolls them on
-  its own generator, `K2`, so the defaults are exactly the old cave), `L2_LOOK` (its palette, colour
+- Level 2 (`g: 'level2'`, v129): `L2_KNOBS`, since Level 2 stage 2 the tomb's layout (`world/tomb.js`
+  `tombPlan`, rolled on the tomb's own generator; terrain px): `l2Rooms` (rooms it tries to fit, 70–80),
+  `l2Big` (share of large ones), `l2SmallW`/`l2SmallH`/`l2BigW`/`l2BigH` (sizes, rolled per room), `l2Gap` (rock
+  between rooms), `l2Hall` (gallery height) and `l2Shaft` (shaft width), per corridor, `l2Ledge` (a shaft ledge
+  every…), `l2Loops` (extra links), `l2Course`/`l2Block`/`l2Mason` (the cut stone: course height, block length,
+  depth into the rock). The noise-cave knobs it had before went with floor 2's noise cave, `L2_LOOK` (its palette, colour
   pickers, defaults = Coal seams; `data/themes.js` `themeFor` builds the theme from them), `l2Decor`
   (× decoration, `decorate`). Changes show on the next cave; **Floor 2** on the panel goes there.
 - Level 2: destruction (`g: 'l2boom'`, `world/byDistance.js` `destructionOpts`; not in the cave yet): `l2bMaxDist` (reach from a dark zone, px, 200), `l2bCount` (explosions, 60), `l2bFire` (% that cause fire, 30), `l2bSizeLo`/`Hi` (size range, px radius, 6–18: `L2B_KNOBS`), `l2bJitter` (± px, 0), `l2bClear` (open air round each, px, 4), and two curves: `l2bDen` (destruction amount by distance, 0..1) and `l2bScale` (size × by distance, 0..2).

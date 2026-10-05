@@ -1,7 +1,6 @@
-// v129 floor 2's Dev knobs (dev/knobs.js L2_KNOBS, L2_LOOK, l2Decor): at their defaults floor 2
-// is the cave it was before them (hashes pinned from v0.0.145: v128's cave plus the three exits along the top, the shop's way up over the buy machine); they reach floor 2 only; turned,
-// the cave opens up or closes in, the main route still runs shop to exit, the decoration
-// thins out, and the palette follows the colour knobs.
+// v129 floor 2's Dev knobs (dev/knobs.js L2_KNOBS, L2_LOOK, l2Decor): they reach floor 2 only; the
+// decoration thins out, and the palette follows the colour knobs. (Floor 2's noise-cave knobs went
+// with the noise cave in Level 2 stage 2: L2_KNOBS is the tomb's layout now, tests/logic/tomb.test.js.)
 const G = require('../load');
 const { makeLevel, DEV, DEV_DEFAULTS, DEV_META, DEV_GROUPS, L2_KNOBS, L2_LOOK, THEMES, themeFor, hexArr, CW, CH, CELL } = G;
 let fails = 0;
@@ -11,51 +10,13 @@ const open = m => { let n = 0; for (let i = 0; i < m.length; i++) if (!m[i]) n++
 const reset = () => { for (const k in DEV_DEFAULTS) if (/^l2/.test(k)) DEV[k] = DEV_DEFAULTS[k]; };
 reset();
 
-// at the defaults: the same caves as v0.0.145 (v128's, with the exits along the top and the way up over the buy machine)
-check('defaults: floor 2 is the cave it was (seed 3)', hashMat(makeLevel(3, 2).mat) === 1829628063);
-check('defaults: floor 2 is the cave it was (seed 77)', hashMat(makeLevel(77, 2).mat) === -1597281538);
-check('defaults: the palette is Coal seams\'', JSON.stringify(themeFor(2)) === JSON.stringify(THEMES[1]));
-
-// only floor 2 feels them
+// floor 2 is the tomb since Level 2 stage 2 (world/tomb.js; its layout knobs: tests/logic/tomb.test.js).
+// The palette at its defaults is still Coal seams', and the other floors don't feel floor 2's knobs
+check('defaults: the palette is Coal seams\'',JSON.stringify(themeFor(2)) === JSON.stringify(THEMES[1]));
 const f1 = hashMat(makeLevel(3, 1).mat), f3 = hashMat(makeLevel(3, 3).mat);
-DEV.l2WormsLo = DEV.l2WormsHi = 140; DEV.l2OpenLo = DEV.l2OpenHi = 0.25;
+DEV.l2RoomsLo = DEV.l2RoomsHi = 20; DEV.l2GapLo = DEV.l2GapHi = 40;
 check('floor 1 and 3 don\'t feel them', hashMat(makeLevel(3, 1).mat) === f1 && hashMat(makeLevel(3, 3).mat) === f3);
 reset();
-const base2 = makeLevel(3, 2), base = open(base2.mat);
-DEV.l2WormsLo = DEV.l2WormsHi = 140; DEV.l2OpenLo = DEV.l2OpenHi = 0.25;
-const wide = makeLevel(3, 2);
-reset();
-DEV.l2WormsLo = DEV.l2WormsHi = 0; DEV.l2OpenLo = DEV.l2OpenHi = 0.7; DEV.l2PocketLo = DEV.l2PocketHi = 0.2;
-const tight = makeLevel(3, 2);
-check('more tunnels and vast areas: more open cave', open(wide.mat) > base + 0.03, [base, open(wide.mat)]);
-check('fewer: less open cave', open(tight.mat) < base - 0.03, [base, open(tight.mat)]);
-
-// the main route still runs from the shop to the exit, however tight (a 6 x 11 box flood fill)
-const reaches = lv => {
-  const { mat, start } = lv, pw = 6, ph = 11;
-  const fits = (x, y) => { for (let j = 0; j < ph; j++) for (let i = 0; i < pw; i++) { const xx = x + i, yy = y + j; if (xx < 0 || yy < 0 || xx >= CW || yy >= CH || mat[yy * CW + xx]) return false; } return true; };
-  const seen = new Uint8Array(CW * CH), q = [];
-  const sx = Math.round(start.x / CELL), sy = Math.round(start.y / CELL);
-  if (!fits(sx, sy)) return false;
-  q.push(sx, sy); seen[sy * CW + sx] = 1;
-  let minY = sy;
-  while (q.length) {
-    const y = q.pop(), x = q.pop();
-    if (y < minY) minY = y;
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const nx = x + dx, ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= CW || ny >= CH || seen[ny * CW + nx] || !fits(nx, ny)) continue;
-      seen[ny * CW + nx] = 1; q.push(nx, ny);
-    }
-  }
-  return minY <= 40;
-};
-check('defaults: the way up is there', reaches(base2));
-check('tight: the way up is still there', reaches(tight), [tight.start, tight.portal]);
-reset();
-DEV.l2SmoothLo = DEV.l2SmoothHi = 0; DEV.l2LedgesLo = DEV.l2LedgesHi = 400; DEV.l2FloatsLo = DEV.l2FloatsHi = 150;
-const rough = makeLevel(3, 2);
-check('rough and cluttered: the way up is still there', reaches(rough));
 
 // decoration
 reset();

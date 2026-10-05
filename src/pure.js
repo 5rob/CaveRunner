@@ -37,6 +37,7 @@ export * from './world/sway.js';
 export * from './world/shoplights.js';
 export * from './world/guide.js';
 export * from './world/byDistance.js';
+export * from './world/tomb.js';
 export * from './creatures/common.js';
 export * from './creatures/spider.js';
 export * from './creatures/rat.js';

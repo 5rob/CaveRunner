@@ -4,7 +4,8 @@ All pure: the logic suites call these directly.
 
 | File | Holds |
 |---|---|
-| `level.js` | `makeLevel(seed, floor, owned)`: one floor whole (terrain, shop, prize rooms, enemies (`DEV.enemies` + `DEV.enemiesUp` a floor), pickups, decoration, gold seams, nests (each with its brood `left`), `fuel`, `zone`, and since v130 `portals`: three exits along the top at `EXIT_X` (1/6, 1/2, 5/6 across), each a room with a ledge, joined by a passage carved after the ledges and platforms; `portal` is the middle one; the shop's way up, `shopExit`, is always over the buy machine, `VEND_BUY_X`, since v0.0.145); also run off the main thread by `game/levelgen.js`, so it must stay plain data in, plain data out; `shopPanel(cx, cy)` (the shop shell's steel, whatever the theme: roof with ceiling lights, deck floor, side columns); `ROOM_HW`/`ROOM_HH` |
+| `level.js` | `makeLevel(seed, floor, owned)`: one floor whole (terrain, shop, prize rooms, enemies (`DEV.enemies` + `DEV.enemiesUp` a floor), pickups, decoration, gold seams, nests (each with its brood `left`), `fuel`, `zone`, `tomb` (floor 2's rooms and corridors, `tomb.js`; null elsewhere), and since v130 `portals`: three exits along the top at `EXIT_X` (1/6, 1/2, 5/6 across), each a room with a ledge, joined by a passage carved after the ledges and platforms; `portal` is the middle one; the shop's way up, `shopExit`, is always over the buy machine, `VEND_BUY_X`, since v0.0.145); also run off the main thread by `game/levelgen.js`, so it must stay plain data in, plain data out; `shopPanel(cx, cy)` (the shop shell's steel, whatever the theme: roof with ceiling lights, deck floor, side columns); `ROOM_HW`/`ROOM_HH` |
+| `tomb.js` | Floor 2's tomb (Level 2 stage 2): `tombPlan(seed, shopExit, exitX)` (the room list, then the corridors: `Tomb` in `types.d.ts`), `roomOpen(room, x, y)` (a pixel inside a room's shape), `roomPillars` (a pillar maze's pillars), `carveTomb(mat, plan)`, `tombRoomAt(tomb, wx, wy, CELL)` ("which room is this?", world units), `paintMasonry` (the cut-stone bake), `TOMB_TYPES`/`TOMB_SHAPES`, `TOMB_TOP` (34: the top gallery's floor, where the pads stand), `TOMB_BOTTOM` (the vestibule's floor = the top of the shop's shaft) |
 | `strata.js` | Floor 1's layered cave: `strataCave`, `paveWorks`, and the timber: `timberWorks`, `timberFrame` |
 | `zones.js` | Floor 1's built-up vs natural zones: `builtAt(zone, wx, wy)`; `boxReach` (runner-box flood that keeps the main route open) |
 | `decorate.js` | `decorate` (the theme's `DECOR`: bakes and props), `cullDecor`, `propAnchored`, `archCurve`/`archNear`/`archAt`, `PLANTS`, `GROVES`, `DECOR_DENSITY`, `PROP_BOX`, `PROP_DMG` |
@@ -33,8 +34,8 @@ All pure: the logic suites call these directly.
   link if needed, and any hidden room the flood misses is dug to the nearest reached cell.
 - **Floor 1 is zoned** (`zone`, returned on the level; null elsewhere): a big fbm thresholded at
   the `lvZoneShare` quantile, edge warped by `lvZoneRag`. Built-up (`zone = 1`) takes `strataCave`'s
-  layered cave, natural keeps the noise cave with blobs, worms, ledges, frames, floats. Other
-  floors are the noise cave until the owner tailors each. `strataCave`: layers built bottom-up,
+  layered cave, natural keeps the noise cave with blobs, worms, ledges, frames, floats. Floor 2
+  is the tomb (below); other floors are the noise cave until the owner tailors each. `strataCave`: layers built bottom-up,
   every wall-bounded stretch gets a hole up, two **vaults** hold the hidden rooms, **old workings**
   are levelled + paved stretches; a slope pass lifts roofs where it's steep. Rooms on zoned floors:
   heart and perk room in different zone types (coin toss); rooms carry `built`.
@@ -59,6 +60,28 @@ All pure: the logic suites call these directly.
   (no sightline down it) and `nestFog` marks the fog cells over each room so the fog's soft edge
   never spreads into them: the room shows only once a real line of sight reaches it (you dig).
   Don't paint it over with rock colour (tried in v88–v92; the owner saw solid rock with a squiggle).
+- **Floor 2 is a tomb** (`tomb.js`, Level 2 stage 2): no natural cave anywhere on it. **Rooms first**: three
+  exit halls (`gate`, domes over the pads, joined by the top gallery) and the `vestibule` (over the shop's way up,
+  the shaft opening in its floor) are fixed; the rest are thrown in at random, big or small (`DEV.l2Big`), never
+  within `l2Gap` of another, each with a **type** (hall, library, altar, orrery, pillars; shrine, ossuary, dorm,
+  store: `TOMB_TYPES`) and a **shape** its type allows (`TOMB_SHAPES`: rect, ziggurat, octagon, dome, pointed
+  arch, round). **Every room is mirror-symmetric about its middle `cx`** and has a flat floor (Stage 3 mirrors
+  props on that): keep it so (the logic test checks every pixel). Floors are snapped to the stone courses.
+  **Then the corridors**: every pair of rooms gets a route (one over the other: a shaft; side by side with near
+  floors: a gallery; else an L, a gallery out of one room's side at its floor and a shaft into the other's
+  middle), a spanning tree (Kruskal, cheapest first, a route through a third room costing 400 more) joins them
+  all to the exits and the shop, then short clean extra links (`l2Loops`). A room the tree can't reach is left
+  as rock. Corridors are cut, then pushed into their rooms only until they meet open air (short doorways; the
+  rects on the plan grow to what was cut). Shafts never come up under a pad. **Shafts get ledges** (rock, every
+  `l2Ledge`, side to side, only where the wall behind is whole). The prize: an altar room with the fewest ways in
+  (a small room is made one if there's none); its green crystal stands on the floor in the middle.
+  **The level carries the plan**: `level.tomb` (`W.tomb` in the game; null on other floors), terrain pixels.
+  The shop reaching the top is checked (`boxReach`); a plain shaft is the fallback (`tomb.mended`, never seen
+  in the tests). All on the tomb's own random stream and the Dev knobs (`L2_KNOBS`): same seed + knobs, same tomb.
+- **Cut stone** (`paintMasonry`): rock within `l2Mason` px of open air, block by block (courses `l2Course`
+  high, `l2Block` long, every other course offset half a block), is painted in the floor's brick and mortar
+  colours (`L2_LOOK`), a lit edge on floors and a shadow under roofs; past it the raw rock. Only the paint: `mat`
+  stays ROCK (diggable, gold seams). The background gets dark block joints too.
 - **Decorate by distance** (`byDistance.js`): the caller hands a source mask (floor 2: its dark zones), the terrain and a seed or its own `rnd`; same inputs, same points, so it fits the own-RNG rule. Keep it generic (an options object); a new use is a new options set (Dev knobs + a curve or two), not a new scatter.
 - **Gold seams** mark ROCK only, above the shop, near open cave; dug-out ore pixels become coins in
   the game (`dropOre`, `game/systems/terrain.js`).

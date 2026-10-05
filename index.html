@@ -1304,21 +1304,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "elFxAlpha", g: "elitefx", label: "Opacity over life (ramp)", type: "ramp" }
   );
   var L2_KNOBS = rangeKnobs("level2", [
-    ["l2Scale", "Cave feature size (×)", 0.3, 3, 0.05, 1, 1],
-    ["l2Open", "Vast areas: threshold (lower = more of them)", 0.1, 0.8, 0.01, 0.42, 0.42],
-    ["l2Pocket", "Open pockets: how much (0-1)", 0, 0.8, 0.01, 0.34, 0.34],
-    ["l2PocketOpen", "Open pockets: extra in vast areas", 0, 0.6, 0.01, 0.24, 0.24],
-    ["l2Tunnel", "Noise tunnels: width", 0, 0.08, 2e-3, 0.018, 0.018],
-    ["l2Hops", "Main route: chambers along it", 4, 30, 1, 12, 12],
-    ["l2RouteW", "Main route: width (×, 1 = as tight as it goes)", 1, 2.5, 0.05, 1, 1],
-    ["l2Blob", "Chambers: size (×)", 0, 3, 0.05, 1, 1],
-    ["l2Worms", "Side tunnels and dead ends", 0, 150, 1, 48, 48],
-    ["l2WormLen", "Side tunnels: length (×)", 0.2, 4, 0.05, 1, 1],
-    ["l2WormW", "Side tunnels: width (×)", 0.5, 2.5, 0.05, 1, 1],
-    ["l2Smooth", "Smoothing passes (rounder rock)", 0, 8, 1, 4, 4],
-    ["l2Ledges", "Built ledges off the walls", 0, 400, 1, 120, 120],
-    ["l2Frames", "Old brick frames in the rock", 0, 120, 1, 36, 36],
-    ["l2Floats", "Floating platforms", 0, 150, 1, 40, 40]
+    ["l2Rooms", "Rooms (how many it tries to fit)", 4, 120, 1, 70, 80],
+    ["l2Big", "Large rooms: share (0-1)", 0, 1, 0.05, 0.3, 0.3],
+    ["l2SmallW", "Small rooms: width (px)", 20, 140, 2, 48, 80],
+    ["l2SmallH", "Small rooms: height (px)", 18, 90, 2, 32, 48],
+    ["l2BigW", "Large rooms: width (px)", 50, 400, 2, 110, 200],
+    ["l2BigH", "Large rooms: height (px)", 30, 200, 2, 60, 108],
+    ["l2Gap", "Rock between rooms, at least (px)", 4, 80, 1, 12, 16],
+    ["l2Hall", "Galleries (level corridors): height (px)", 13, 40, 1, 16, 20],
+    ["l2Shaft", "Shafts (upright corridors): width (px)", 10, 40, 2, 14, 18],
+    ["l2Ledge", "Shafts: a ledge every (px)", 10, 200, 2, 28, 36],
+    ["l2Loops", "Extra links (loops, 0-1)", 0, 1, 0.05, 0.35, 0.35],
+    ["l2Course", "Cut stone: course height (px)", 3, 12, 1, 6, 6],
+    ["l2Block", "Cut stone: block length (px)", 4, 40, 1, 14, 14],
+    ["l2Mason", "Cut stone: how deep into the rock (px)", 0, 30, 1, 6, 6]
   ]);
   var L2_LOOK = [
     ["l2Bg", "Background (far)", "#0c0d11"],
@@ -7052,6 +7051,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       // the shop's plinths
       zone: null,
       // built-up vs natural, per terrain pixel (floor 1)
+      tomb: null,
+      // floor 2's rooms and corridors (world/tomb.js)
       rooms: [],
       // the perk room and the heart room
       sconces: [],
@@ -9305,6 +9306,334 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return ore;
   }
 
+  // src/world/tomb.js
+  var TOMB_TOP = 34;
+  var TOMB_BOTTOM = SHOP_TOP - SHOP_ROOF - 26;
+  var LOW = SHOP_TOP - SHOP_ROOF - 12;
+  var GATE_W = 72, GATE_H = 28, PAD_KEEP = 14;
+  var TOMB_TYPES = {
+    big: { hall: 3, library: 2, altar: 1, orrery: 1, pillars: 1.5 },
+    small: { shrine: 2, ossuary: 2, dorm: 2, store: 2, altar: 0.8 }
+  };
+  var TOMB_SHAPES = {
+    hall: ["rect", "octagon", "dome", "arch", "ziggurat"],
+    library: ["rect", "dome"],
+    altar: ["arch", "ziggurat"],
+    orrery: ["round"],
+    pillars: ["rect"],
+    shrine: ["arch", "dome", "octagon"],
+    ossuary: ["rect", "arch", "ziggurat"],
+    dorm: ["rect", "dome"],
+    store: ["rect", "octagon"],
+    gate: ["dome"],
+    vestibule: ["arch"]
+  };
+  function pickW(w, rnd2) {
+    let t = 0;
+    for (const k in w) t += w[k];
+    let u = rnd2() * t;
+    for (const k in w) {
+      u -= w[k];
+      if (u < 0) return k;
+    }
+    return Object.keys(w)[0];
+  }
+  function roomOpen(r, x, y) {
+    if (x < r.x || x >= r.x + r.w || y < r.y || y >= r.floor) return false;
+    const dx = Math.abs(x + 0.5 - r.cx), up = r.floor - (y + 0.5), hw = r.w / 2, h3 = r.h;
+    if (r.shape === "ziggurat") {
+      const n = h3 >= 48 ? 4 : 3, k = Math.min(n - 1, Math.floor(up / (h3 / n)));
+      return dx <= hw * (1 - 0.5 * k / (n - 1));
+    }
+    if (r.shape === "octagon") return hw - dx + Math.min(up, h3 - up) >= Math.min(hw, h3 / 2) * 0.55;
+    if (r.shape === "dome") {
+      const dh = Math.min(hw, h3 * 0.6), s = h3 - dh;
+      return up <= s || (dx / hw) ** 2 + ((up - s) / dh) ** 2 <= 1;
+    }
+    if (r.shape === "arch") {
+      const R = hw * 1.6, full2 = Math.sqrt(R * R - (R - hw) ** 2), ah = Math.min(full2, h3 * 0.65), s = h3 - ah, k = ah / full2;
+      return up <= s || (dx + R - hw) ** 2 + ((up - s) / k) ** 2 <= R * R;
+    }
+    if (r.shape === "round") {
+      const rad = Math.min(hw, h3 / 2);
+      return dx * dx + (up - h3 * 0.42) ** 2 <= rad * rad;
+    }
+    return true;
+  }
+  function roomPillars(r) {
+    if (r.type !== "pillars") return [];
+    const out = [], s = 18, pw = 4, gap = 15;
+    for (let k = 1; r.cx + k * s + pw / 2 < r.x + r.w - 10; k++) {
+      const y = k % 2 ? r.y : r.y + gap, h3 = r.h - gap;
+      for (const sx of [-1, 1]) out.push({ x: Math.round(r.cx + sx * k * s - pw / 2), y, w: pw, h: h3 });
+    }
+    return out;
+  }
+  function tombPlan(seed, shopExit, exitX) {
+    let rs = (Math.imul(seed | 0, 69069) + 12345 >>> 0) % 2147483646 + 1;
+    const rnd2 = () => (rs = rs * 16807 % 2147483647) / 2147483647;
+    for (let i = 0; i < 8; i++) rnd2();
+    const want = Math.round(kr("l2Rooms", rnd2)), bigShare = kr("l2Big", rnd2), gap = Math.round(kr("l2Gap", rnd2));
+    const C = Math.max(2, Math.round(kr("l2Course", rnd2))), loops = kr("l2Loops", rnd2);
+    const ledgeGap = Math.max(8, Math.round(kr("l2Ledge", rnd2)));
+    const block = Math.round(kr("l2Block", rnd2)), mason = Math.round(kr("l2Mason", rnd2));
+    const even = (v) => Math.max(2, Math.round(v / 2) * 2);
+    const snap = (v) => TOMB_TOP + Math.round((v - TOMB_TOP) / C) * C;
+    const rooms = [];
+    const add = (x, y, w, h3, type, shape, big) => {
+      const r = { id: rooms.length, x, y, w, h: h3, cx: x + w / 2, floor: y + h3, shape, type, big, links: [] };
+      rooms.push(r);
+      return r;
+    };
+    for (const ex of exitX) add(ex - GATE_W / 2, TOMB_TOP - GATE_H, GATE_W, GATE_H, "gate", "dome", true);
+    add(shopExit - 40, TOMB_BOTTOM - 36, 80, 36, "vestibule", "arch", true);
+    const gates = rooms.slice(0, exitX.length);
+    for (let a = 0; a < want * 40 && rooms.length < want + exitX.length + 1; a++) {
+      const big = rnd2() < bigShare;
+      const type = pickW(big ? TOMB_TYPES.big : TOMB_TYPES.small, rnd2);
+      const shapes = TOMB_SHAPES[type], shape = shapes[Math.floor(rnd2() * shapes.length)];
+      let w = even(kr(big ? "l2BigW" : "l2SmallW", rnd2)), h3 = Math.max(C * 3, Math.round(kr(big ? "l2BigH" : "l2SmallH", rnd2) / C) * C);
+      if (type === "orrery") {
+        h3 = Math.max(C * 3, Math.round(Math.min(w, h3 * 1.3) / C) * C);
+        w = even(h3);
+      }
+      if (type === "pillars" && (h3 < 42 || w < 70)) continue;
+      w = Math.min(w, CW - 16);
+      const x = 6 + 2 * Math.floor(rnd2() * (CW - 12 - w) / 2);
+      const lo = TOMB_TOP + gap + h3, floor = snap(lo + rnd2() * (LOW - lo));
+      if (floor > LOW || floor - h3 < TOMB_TOP + gap) continue;
+      const y = floor - h3;
+      if (rooms.some((o) => x < o.x + o.w + gap && o.x < x + w + gap && y < o.floor + gap && o.y < floor + gap)) continue;
+      add(x, y, w, h3, type, shape, big);
+    }
+    const padOk = (r, sx, sw) => r.type !== "gate" || Math.abs(sx - r.cx) >= PAD_KEEP + sw / 2;
+    const shaftX = (r, from) => r.type === "gate" ? r.cx + (from < r.cx ? -1 : 1) * 24 : r.cx;
+    const route = (A, B, H, sw) => {
+      const segs = [];
+      const [U, D] = A.floor <= B.y ? [A, B] : B.floor <= A.y ? [B, A] : [null, null];
+      const o0 = Math.max(A.x, B.x) + 4, o1 = Math.min(A.x + A.w, B.x + B.w) - 4;
+      if (U && o1 - o0 >= sw) {
+        const c = [shaftX(U, D.cx), shaftX(D, U.cx), (o0 + o1) / 2].find((sx) => sx - sw / 2 >= o0 && sx + sw / 2 <= o1 && padOk(U, sx, sw) && padOk(D, sx, sw));
+        if (c === void 0) return null;
+        const x = Math.round(c - sw / 2);
+        segs.push({ kind: "shaft", x, y: U.floor, w: sw, h: D.y - U.floor, a: U.id, b: D.id, ledges: [] });
+        return segs;
+      }
+      if (A.x + A.w <= B.x || B.x + B.w <= A.x) {
+        const [L3, R] = A.x < B.x ? [A, B] : [B, A];
+        const g = Math.min(A.floor, B.floor), low = A.floor > B.floor ? A : B;
+        const Hh = Math.min(H, Math.floor(Math.min(A.h, B.h) * 0.6));
+        if (Hh >= 13 && g - Hh >= low.floor - low.h * 0.6) {
+          segs.push({ kind: "gallery", x: L3.x + L3.w, y: g - Hh, w: R.x - L3.x - L3.w, h: Hh, a: L3.id, b: R.id, ledges: [] });
+          return segs;
+        }
+      }
+      let best = null, bestN = Infinity;
+      for (const [P2, Q] of [[A, B], [B, A]]) {
+        const Hh = Math.min(H, Math.floor(P2.h * 0.6));
+        if (Hh < 13) continue;
+        const top = P2.floor - Hh;
+        const above = Q.floor <= top, below = Q.y >= P2.floor;
+        if (!above && !below) continue;
+        const sx = shaftX(Q, P2.cx);
+        if (sx + sw / 2 + 2 > P2.x && sx - sw / 2 - 2 < P2.x + P2.w) continue;
+        const right = sx > P2.cx, x0 = right ? P2.x + P2.w : Math.round(sx - sw / 2), x1 = right ? Math.round(sx + sw / 2) : P2.x;
+        const gal = { kind: "gallery", x: x0, y: top, w: x1 - x0, h: Hh, a: P2.id, b: Q.id, ledges: [] };
+        const sh = above ? { kind: "shaft", x: Math.round(sx - sw / 2), y: Q.floor, w: sw, h: P2.floor - Q.floor, a: Q.id, b: P2.id, ledges: [] } : { kind: "shaft", x: Math.round(sx - sw / 2), y: top, w: sw, h: Q.y - top, a: P2.id, b: Q.id, ledges: [] };
+        const n = gal.w + sh.h;
+        if (n < bestN) {
+          bestN = n;
+          best = [gal, sh];
+        }
+      }
+      return best;
+    };
+    const crossings = (segs, A, B) => {
+      let n = 0;
+      for (const o of rooms) {
+        if (o === A || o === B) continue;
+        if (segs.some((s) => s.x < o.x + o.w + 3 && o.x - 3 < s.x + s.w && s.y < o.floor + 3 && o.y - 3 < s.y + s.h)) n++;
+      }
+      return n;
+    };
+    const length = (segs) => segs.reduce((t, s) => t + (s.kind === "shaft" ? s.h : s.w), 0);
+    const N = rooms.length, up = rooms.map((_, i) => i);
+    const find = (i) => {
+      while (up[i] !== i) i = up[i] = up[up[i]];
+      return i;
+    };
+    for (const g of gates) up[find(g.id)] = find(gates[0].id);
+    const pairs = [];
+    for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
+      const A = rooms[i], B = rooms[j];
+      if (A.type === "gate" && B.type === "gate") continue;
+      const gx = Math.max(0, Math.max(A.x, B.x) - Math.min(A.x + A.w, B.x + B.w)), gy = Math.max(0, Math.max(A.y, B.y) - Math.min(A.floor, B.floor));
+      if (gx + gy > 320) continue;
+      const H = Math.round(kr("l2Hall", rnd2)), sw = even(kr("l2Shaft", rnd2));
+      const segs = route(A, B, H, sw);
+      if (!segs) continue;
+      const n = crossings(segs, A, B);
+      pairs.push({ A, B, segs, n, cost: length(segs) + 400 * n });
+    }
+    pairs.sort((p, q) => p.cost - q.cost);
+    const corridors = [];
+    const tH = 18;
+    corridors.push({ kind: "gallery", x: exitX[0], y: TOMB_TOP - tH, w: exitX[exitX.length - 1] - exitX[0], h: tH, a: gates[0].id, b: gates[gates.length - 1].id, ledges: [] });
+    const link = (p) => {
+      for (const s of p.segs) corridors.push(s);
+      p.A.links.push(p.B.id);
+      p.B.links.push(p.A.id);
+    };
+    const rest = [];
+    for (const p of pairs) {
+      const a = find(p.A.id), b = find(p.B.id);
+      if (a !== b) {
+        up[a] = b;
+        link(p);
+      } else rest.push(p);
+    }
+    for (const p of rest) if (!p.n && length(p.segs) < 140 && rnd2() < loops && !p.A.links.includes(p.B.id)) link(p);
+    const home = find(rooms[exitX.length].id);
+    const keep2 = rooms.filter((r) => find(r.id) === home);
+    const renum = new Map(keep2.map((r, i) => [r.id, i]));
+    for (const r of keep2) {
+      r.id = renum.get(r.id);
+      r.links = r.links.filter((i) => renum.has(i)).map((i) => renum.get(i));
+    }
+    for (const c of corridors) {
+      c.a = renum.has(c.a) ? renum.get(c.a) : -1;
+      c.b = renum.has(c.b) ? renum.get(c.b) : -1;
+    }
+    const kept = corridors.filter((c) => c.a >= 0 && c.b >= 0);
+    const cand = keep2.filter((r) => r.type === "altar");
+    const pool = cand.length ? cand : keep2.filter((r) => !r.big);
+    let prize = -1;
+    if (pool.length) {
+      const fewest = Math.min(...pool.map((r2) => r2.links.length)), alt = pool.filter((r2) => r2.links.length === fewest);
+      const r = alt[Math.floor(rnd2() * alt.length)];
+      if (r.type !== "altar") {
+        r.type = "altar";
+        r.shape = TOMB_SHAPES.altar[Math.floor(rnd2() * 2)];
+      }
+      prize = r.id;
+    }
+    return { rooms: keep2, corridors: kept, prize, course: C, block, mason, ledgeGap, mended: false };
+  }
+  function carveTomb(mat, t) {
+    for (const r of t.rooms) {
+      for (let y = r.y; y < r.floor; y++) for (let x = r.x; x < r.x + r.w; x++) if (roomOpen(r, x, y)) mat[y * CW + x] = 0;
+      for (const p of roomPillars(r)) for (let y = p.y; y < p.y + p.h; y++) for (let x = p.x; x < p.x + p.w; x++) mat[y * CW + x] = ROCK;
+    }
+    const open = (x, y) => !mat[y * CW + x];
+    const cut = (c) => {
+      for (let y = c.y; y < c.y + c.h; y++) for (let x = c.x; x < c.x + c.w; x++) mat[y * CW + x] = 0;
+    };
+    for (const c of t.corridors) {
+      cut(c);
+      const A = t.rooms[c.a], B = t.rooms[c.b];
+      if (c.kind === "gallery") {
+        const colOpen = (x) => {
+          for (let y = c.y; y < c.y + c.h; y++) if (!open(x, y)) return false;
+          return true;
+        };
+        const L3 = A.x < B.x ? A : B, R = A.x < B.x ? B : A;
+        if (c.x === L3.x + L3.w) while (c.x > L3.x && !colOpen(c.x - 1)) {
+          c.x--;
+          c.w++;
+        }
+        if (c.x + c.w === R.x) while (c.x + c.w < R.x + R.w && !colOpen(c.x + c.w)) c.w++;
+      } else {
+        const rowOpen = (y) => {
+          for (let x = c.x; x < c.x + c.w; x++) if (!open(x, y)) return false;
+          return true;
+        };
+        const U = A.y < B.y ? A : B, D = A.y < B.y ? B : A;
+        if (c.y === U.floor) while (c.y > U.y && !rowOpen(c.y - 1)) {
+          c.y--;
+          c.h++;
+        }
+        if (c.y + c.h === D.y) while (c.y + c.h < D.floor && !rowOpen(c.y + c.h)) c.h++;
+      }
+      cut(c);
+    }
+    for (const c of t.corridors) {
+      if (c.kind !== "shaft" || c.h < t.ledgeGap * 1.5) continue;
+      const len = Math.max(3, Math.min(c.w - 8, Math.round(c.w * 0.35)));
+      let side = 0;
+      for (let y = c.y + c.h - t.ledgeGap; y > c.y + 12; y -= t.ledgeGap, side ^= 1) {
+        const wx = side ? c.x + c.w : c.x - 1;
+        let whole = true;
+        for (let k = -16; k <= 16 && whole; k++) {
+          if (mat[(y + k) * CW + wx] !== ROCK) whole = false;
+          for (let x = c.x; x < c.x + c.w && whole; x++) if (!open(x, y + k)) whole = false;
+        }
+        if (!whole) continue;
+        const x0 = side ? c.x + c.w - len : c.x;
+        for (let yy = y; yy < y + 3; yy++) for (let x = x0; x < x0 + len; x++) mat[yy * CW + x] = ROCK;
+        c.ledges.push({ x: x0, y, w: len, h: 3 });
+      }
+    }
+  }
+  function tombRoomAt(t, wx, wy, cell) {
+    if (!t) return null;
+    const x = wx / cell, y = wy / cell;
+    return t.rooms.find((r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.floor) || null;
+  }
+  function paintMasonry(mat, d, T, o) {
+    const Y1 = SHOP_TOP - SHOP_ROOF, D = Math.max(0, Math.round(o.depth)), C = o.course, B = Math.max(4, Math.round(o.block));
+    if (!D) return;
+    const dist = new Uint8Array(CW * Y1).fill(255), q = new Int32Array(CW * Y1);
+    let h3 = 0, n = 0;
+    for (let y = 1; y < Y1 - 1; y++) for (let x = 1; x < CW - 1; x++) {
+      const i = y * CW + x;
+      if (!mat[i]) continue;
+      if (!mat[i - 1] || !mat[i + 1] || !mat[i - CW] || !mat[i + CW]) {
+        dist[i] = 1;
+        q[n++] = i;
+      }
+    }
+    while (h3 < n) {
+      const i = q[h3++], v = dist[i] + 1;
+      if (v > D) continue;
+      for (const j of [i - 1, i + 1, i - CW, i + CW]) if (j >= 0 && j < CW * Y1 && mat[j] && dist[j] > v) {
+        dist[j] = v;
+        q[n++] = j;
+      }
+    }
+    const row = (y) => Math.floor((y - TOMB_TOP + C * 1e3) / C);
+    const cols = Math.ceil(CW / B) + 2, rows = Math.ceil(CH / C) + 1002;
+    const dressed = new Uint8Array(cols * rows);
+    const key = (x, y) => {
+      const r = row(y);
+      return r * cols + Math.floor((x + (r & 1) * (B >> 1)) / B);
+    };
+    for (let y = 0; y < Y1; y++) for (let x = 0; x < CW; x++) if (dist[y * CW + x] <= D) dressed[key(x, y)] = 1;
+    const hash5 = (a, b) => {
+      let v = Math.imul(a, 374761393) + Math.imul(b, 668265263) + Math.imul(o.seed, 982451653) | 0;
+      v = Math.imul(v ^ v >>> 13, 1274126177);
+      return ((v ^ v >>> 16) >>> 0) / 4294967296;
+    };
+    for (let y = 1; y < Y1; y++) for (let x = 0; x < CW; x++) {
+      const i = y * CW + x;
+      if (mat[i] !== ROCK) continue;
+      const k = key(x, y);
+      if (!dressed[k]) continue;
+      const r = row(y), sx = x + (r & 1) * (B >> 1);
+      const mortar = (y - TOMB_TOP + C * 1e3) % C === C - 1 || sx % B === B - 1;
+      let c;
+      if (mortar) c = T.mortar;
+      else {
+        c = mix(T.brick[0], T.brick[1], hash5(k, 7));
+        if (!mat[i - CW]) c = c.map((v) => v * 1.3);
+        else if (y + 1 < CH && !mat[i + CW]) c = c.map((v) => v * 0.72);
+      }
+      const j = (hash5(x * 3 + 1, y * 5 + 2) - 0.5) * 8;
+      d[i * 4] = c[0] + j;
+      d[i * 4 + 1] = c[1] + j;
+      d[i * 4 + 2] = c[2] + j;
+    }
+  }
+
   // src/world/zones.js
   function boxReach(mat, x, y) {
     const PWc = 6, PHc = 11;
@@ -9423,22 +9752,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return a + (b - a) * u + (c - a) * v + (a - b - c + d2) * u * v;
     };
     const layered = floor === 1;
-    let ks = (Math.imul(seed | 0, 48271) >>> 0) % 2147483646 + 1;
-    const krnd = () => (ks = ks * 16807 % 2147483647) / 2147483647;
-    const K2 = (k, d2) => floor === 2 ? kr(k, krnd) : d2;
-    const sc = K2("l2Scale", 1), openT = K2("l2Open", 0.42), pk0 = K2("l2Pocket", 0.34), pk1 = K2("l2PocketOpen", 0.24);
-    const tw = K2("l2Tunnel", 0.018), hopsN = Math.round(K2("l2Hops", 12)), routeW = K2("l2RouteW", 1), blobK = K2("l2Blob", 1);
-    const wormN = Math.round(K2("l2Worms", 48)), wormL = K2("l2WormLen", 1), wormW = K2("l2WormW", 1), smoothN = Math.round(K2("l2Smooth", 4));
-    const ledgeN = Math.round(K2("l2Ledges", 120)), frameN = Math.round(K2("l2Frames", 36)), floatN = Math.round(K2("l2Floats", 40));
-    const openL = lattice(8, (x, y) => fbm(x / (160 * sc) + 500, y / (160 * sc) + 500));
-    const pocketL = lattice(4, (x, y) => fbm(x / (60 * sc), y / (60 * sc)));
-    const tunnelL = lattice(4, (x, y) => fbm(x / (90 * sc) + 200, y / (90 * sc) + 200));
-    for (let cy = 0; cy < CH; cy++) {
-      for (let cx = 0; cx < CW; cx++) {
-        const open = Math.min(1, Math.max(0, (at(openL, cx, cy) - openT) / 0.16));
-        const pocket = at(pocketL, cx, cy) < pk0 + pk1 * open;
-        const tunnel = Math.abs(at(tunnelL, cx, cy) - 0.5) < tw + tw * open;
-        mat[cy * CW + cx] = pocket || tunnel ? 0 : ROCK;
+    const tomb = floor === 2;
+    const sc = 1, openT = 0.42, pk0 = 0.34, pk1 = 0.24, tw = 0.018, hopsN = 12, routeW = 1, blobK = 1;
+    const wormN = tomb ? 0 : 48, wormL = 1, wormW = 1, smoothN = tomb ? 0 : 4;
+    const ledgeN = tomb ? 0 : 120, frameN = tomb ? 0 : 36, floatN = tomb ? 0 : 40;
+    if (tomb) mat.fill(ROCK);
+    else {
+      const openL = lattice(8, (x, y) => fbm(x / (160 * sc) + 500, y / (160 * sc) + 500));
+      const pocketL = lattice(4, (x, y) => fbm(x / (60 * sc), y / (60 * sc)));
+      const tunnelL = lattice(4, (x, y) => fbm(x / (90 * sc) + 200, y / (90 * sc) + 200));
+      for (let cy = 0; cy < CH; cy++) {
+        for (let cx = 0; cx < CW; cx++) {
+          const open = Math.min(1, Math.max(0, (at(openL, cx, cy) - openT) / 0.16));
+          const pocket = at(pocketL, cx, cy) < pk0 + pk1 * open;
+          const tunnel = Math.abs(at(tunnelL, cx, cy) - 0.5) < tw + tw * open;
+          mat[cy * CW + cx] = pocket || tunnel ? 0 : ROCK;
+        }
       }
     }
     let zone = null;
@@ -9506,7 +9835,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         y = Math.max(6, Math.min(CH - 12, y));
       }
     };
-    for (let i = 1; i < points.length - 1; i++) {
+    for (let i = 1; !tomb && i < points.length - 1; i++) {
       if (rnd2() < 0.7) blob(points[i].x, points[i].y, (16 + rnd2() * 30) * blobK);
     }
     const side = [];
@@ -9518,7 +9847,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let i = 0; i < SHOP_FLOOR * CW; i++) if (zone[i]) mat[i] = lay[i];
       for (const c of strata.routePath) if (built(c.x, c.y)) routePath.push(c);
     }
-    for (let i = 0; i < points.length - 1; i++) {
+    for (let i = 0; !tomb && i < points.length - 1; i++) {
       const a = points[i], b = points[i + 1];
       const r = (rnd2() < 0.4 ? 7 + rnd2() * 2 : 11 + rnd2() * 6) * routeW;
       worm(a.x, a.y, b.x, b.y, r, 2e3, routePath, true);
@@ -9546,7 +9875,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (dx * dx + dy * dy <= 1) mat[y * CW + x] = 0;
         }
     };
-    carve(CW / 2, 22, 40, 16, CH);
+    if (!tomb) carve(CW / 2, 22, 40, 16, CH);
     const emptyRatio = (x0, y0, w, hh) => {
       let e = 0, n = 0;
       for (let y = y0; y < y0 + hh; y++)
@@ -9612,10 +9941,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let cy = SHOP_TOP - SHOP_ROOF - 26; cy < SHOP_TOP; cy++)
       for (let cx = shopExit - 9; cx <= shopExit + 9; cx++)
         if (inside(cx, cy)) mat[cy * CW + cx] = 0;
-    for (let x = EXIT_X[0]; x <= EXIT_X[EXIT_X.length - 1]; x += 3) carve(x, 20 + Math.round(4 * Math.sin(x / 19)), 9, 10, CH);
-    for (const ex of EXIT_X) {
-      carve(ex, 22, 40, 16, CH);
-      slab(ex - 24, 34, 48, 3);
+    const tombData = tomb ? tombPlan(seed, shopExit, EXIT_X) : null;
+    if (tombData) carveTomb(mat, tombData);
+    else {
+      for (let x = EXIT_X[0]; x <= EXIT_X[EXIT_X.length - 1]; x += 3) carve(x, 20 + Math.round(4 * Math.sin(x / 19)), 9, 10, CH);
+      for (const ex of EXIT_X) {
+        carve(ex, 22, 40, 16, CH);
+        slab(ex - 24, 34, 48, 3);
+      }
     }
     const rect = (x0, y0, w, h3, v) => {
       for (let y = y0; y < y0 + h3; y++)
@@ -9643,7 +9976,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       return null;
     };
-    const perkRoom = makeRoom(layered ? rnd2() < 0.5 : false);
+    const prizeRoom = tombData && tombData.prize >= 0 ? tombData.rooms[tombData.prize] : null;
+    const perkRoom = tombData ? prizeRoom ? { x: prizeRoom.cx * CELL, y: prizeRoom.floor * CELL - 19 } : null : makeRoom(layered ? rnd2() < 0.5 : false);
     for (const c of routePath)
       if (c.y < SHOP_TOP - SHOP_ROOF - 9) disc(c.x, c.y, Math.min(c.r, 7), 0);
     if (layered) {
@@ -9705,6 +10039,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (bi >= 0) tunnelTo(cx, cy, bi % CW + 3, (bi / CW | 0) + 5, 7);
       }
     }
+    if (tombData && !boxReach(mat, 17, SHOP_FLOOR - 12).top) {
+      tombData.mended = true;
+      for (let cy = 20; cy < SHOP_TOP; cy++) for (let cx = shopExit - 8; cx <= shopExit + 8; cx++) mat[cy * CW + cx] = 0;
+    }
     for (let cy = SHOP_TOP - SHOP_ROOF; cy < SHOP_TOP; cy++)
       for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BRICK;
     for (let cy = SHOP_TOP - SHOP_ROOF - 26; cy < SHOP_TOP; cy++)
@@ -9759,6 +10097,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         d[i * 4 + 3] = 255;
       }
     }
+    if (tombData) paintMasonry(mat, d, T, { depth: tombData.mason, course: tombData.course, block: tombData.block, seed });
     for (let cy = SHOP_TOP - SHOP_ROOF; cy < CH; cy++)
       for (let cx = 0; cx < CW; cx++) {
         const i = cy * CW + cx;
@@ -9784,7 +10123,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const t = Math.pow(fbm(x / 10 + 300, y / 10 + 300), 1.6);
         const c = mix(T.bg, T.bg2, Math.min(1, t * 1.3));
         const big = fbm(x / 34 + 700, y / 34 + 500);
-        const shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
+        let shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
+        if (tomb && (y % 4 === 3 || (x + (y >> 2 & 1) * 3) % 6 === 5)) shade *= 0.7;
         const j = (hash5(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
         bgImg.data[k] = c[0] * shade + j;
         bgImg.data[k + 1] = c[1] * shade + j;
@@ -9962,7 +10302,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       theme: T.name,
       works,
       zone,
-      nests
+      nests,
+      tomb: tombData
     };
   }
 
@@ -18909,6 +19250,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.stock = level.stock;
     W.rooms = level.rooms || [];
     W.zone = level.zone || null;
+    W.tomb = level.tomb || null;
     W.props = level.props || [];
     W.ambKinds = level.amb || [];
     W.dimg = level.dimg;

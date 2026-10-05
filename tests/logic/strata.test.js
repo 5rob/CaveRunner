@@ -37,15 +37,15 @@ check('a floor-1 cave builds in well under a second', ms < 600, Math.round(ms));
 // layers: a column down the middle of the map crosses a stack of rock bands
 const bandN = lvl.map(L => [160, 320, 480].map(x => bands(L.mat, x)).reduce((a, b) => a + b) / 3);
 check('floor 1 is layered: 12+ rock bands down a column on average', bandN.every(n => n >= 12), bandN.map(n => n.toFixed(1)));
-const f2 = makeLevel(5, 2);
-// (v87: floor 1 is zoned, so this is per cell of built-up zone against per cell of floor 2)
+const f2 = makeLevel(5, 3);   // floor 3: the noise cave (floor 2 is the tomb since Level 2 stage 2)
+// (v87: floor 1 is zoned, so this is per cell of built-up zone against per cell of floor 3)
 const cave = (SHOP_TOP - 60) * (CW - 8);
 const share = L => { let b = 0; for (let y = 40; y < SHOP_TOP - 20; y++) for (let x = 4; x < CW - 4; x++) b += L.zone[y * CW + x]; return b / cave; };
 const flat1 = lvl.map(L => flatRuns(L.mat, L.zone) / share(L)), flat2 = flatRuns(f2.mat);
 const mean1 = flat1.reduce((a, b) => a + b) / flat1.length;
-check('floor 1 built-up zones have far more long level floors than the old noise cave (floor 2)',
+check('floor 1 built-up zones have far more long level floors than the old noise cave (floor 3)',
   mean1 > flat2 * 2 && flat1.every(n => n > flat2 * 1.5), { floor1: flat1.map(Math.round), floor2: flat2 });
-check('floor 2 still uses the old cave (no workings)', f2.works.length === 0);
+check('floor 3 still uses the old cave (no workings)', f2.works.length === 0);
 
 // the hidden rooms land in their vaults
 check('the hidden room made on every seed', lvl.every(L => L.rooms.length === 1), lvl.map(L => L.rooms.length));

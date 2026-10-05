@@ -382,26 +382,25 @@ DEV_DEFAULTS.elFxGrad = '0:#ffffff 0.18:#fff0a0 0.45:#ff9a2a 0.75:#d0301a 1:#401
 DEV_DEFAULTS.elFxAlpha = '0:0 0.08:1 0.55:0.85 1:0';
 DEV_META.push({ k: 'elFxGrad', g: 'elitefx', label: 'Colour over life (gradient)', type: 'grad' },
   { k: 'elFxAlpha', g: 'elitefx', label: 'Opacity over life (ramp)', type: 'ramp' });
-// Floor 2 (Coal seams, v129): the natural noise cave, every number of it. Ranges like floor 1's,
-// rolled once per cave on a generator of their own (makeLevel), so with min = max at the
-// defaults it is exactly the cave it always was. A change shows on the next cave: Dev → New cave
-// (or Floor 2, to go there).
+// Floor 2 (v129; the tomb since Level 2 stage 2, world/tomb.js): its layout's numbers, ranges like
+// floor 1's, rolled once per tomb on its own generator (room sizes and corridor widths per room and
+// corridor), so a seed plus the same knobs is the same tomb. Terrain pixels (a world unit is half one).
+// A change shows on the next cave: Dev → New cave (or Floor 2, to go there).
 export const L2_KNOBS = rangeKnobs('level2', [
-  ['l2Scale',   'Cave feature size (×)',                     0.3, 3, 0.05,   1, 1],
-  ['l2Open',    'Vast areas: threshold (lower = more of them)', 0.1, 0.8, 0.01, 0.42, 0.42],
-  ['l2Pocket',  'Open pockets: how much (0-1)',              0, 0.8, 0.01,   0.34, 0.34],
-  ['l2PocketOpen', 'Open pockets: extra in vast areas',      0, 0.6, 0.01,   0.24, 0.24],
-  ['l2Tunnel',  'Noise tunnels: width',                      0, 0.08, 0.002, 0.018, 0.018],
-  ['l2Hops',    'Main route: chambers along it',             4, 30, 1,       12, 12],
-  ['l2RouteW',  'Main route: width (×, 1 = as tight as it goes)', 1, 2.5, 0.05, 1, 1],
-  ['l2Blob',    'Chambers: size (×)',                        0, 3, 0.05,     1, 1],
-  ['l2Worms',   'Side tunnels and dead ends',                0, 150, 1,      48, 48],
-  ['l2WormLen', 'Side tunnels: length (×)',                  0.2, 4, 0.05,   1, 1],
-  ['l2WormW',   'Side tunnels: width (×)',                   0.5, 2.5, 0.05, 1, 1],
-  ['l2Smooth',  'Smoothing passes (rounder rock)',           0, 8, 1,        4, 4],
-  ['l2Ledges',  'Built ledges off the walls',                0, 400, 1,      120, 120],
-  ['l2Frames',  'Old brick frames in the rock',              0, 120, 1,      36, 36],
-  ['l2Floats',  'Floating platforms',                        0, 150, 1,      40, 40],
+  ['l2Rooms',   'Rooms (how many it tries to fit)',          4, 120, 1,      70, 80],
+  ['l2Big',     'Large rooms: share (0-1)',                  0, 1, 0.05,     0.3, 0.3],
+  ['l2SmallW',  'Small rooms: width (px)',                   20, 140, 2,     48, 80],
+  ['l2SmallH',  'Small rooms: height (px)',                  18, 90, 2,      32, 48],
+  ['l2BigW',    'Large rooms: width (px)',                   50, 400, 2,     110, 200],
+  ['l2BigH',    'Large rooms: height (px)',                  30, 200, 2,     60, 108],
+  ['l2Gap',     'Rock between rooms, at least (px)',         4, 80, 1,       12, 16],
+  ['l2Hall',    'Galleries (level corridors): height (px)',  13, 40, 1,      16, 20],
+  ['l2Shaft',   'Shafts (upright corridors): width (px)',    10, 40, 2,      14, 18],
+  ['l2Ledge',   'Shafts: a ledge every (px)',                10, 200, 2,     28, 36],
+  ['l2Loops',   'Extra links (loops, 0-1)',                  0, 1, 0.05,     0.35, 0.35],
+  ['l2Course',  'Cut stone: course height (px)',             3, 12, 1,       6, 6],
+  ['l2Block',   'Cut stone: block length (px)',              4, 40, 1,       14, 14],
+  ['l2Mason',   'Cut stone: how deep into the rock (px)',    0, 30, 1,       6, 6],
 ]);
 // and its look: the palette (the Coal seams theme, data/themes.js themeFor) and how much decoration
 /** @type {[key: string, label: string, def: string][]} */
