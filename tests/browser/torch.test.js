@@ -1,6 +1,6 @@
 // The torch. Three things, all of them measured off the real canvas rather than asserted
 // from the code: the light falls away with distance into the fog beyond its bubble, it
-// breathes with the flame, and it does not stop at walls (the reveal respects them, the
+// holds steady (v0.0.145: the gun light; the archived hand torch breathed with its flame), and it does not stop at walls (the reveal respects them, the
 // lamp lighting what has already been revealed does not).
 //
 // Every brightness here is read straight out of the game canvas at a world point, which is
@@ -203,6 +203,10 @@ const STEPS = [270, 220, 170, 120, 70];   // the distance the far point is read 
   console.log(`  over ${frames.length} frames the flame ran ${flickMin.toFixed(3)}..${flickMax.toFixed(3)}, ` +
     `so the light reached ${rMin.toFixed(0)}..${rMax.toFixed(0)} units`);
   check('the flame flickers', flickMax - flickMin > 0.04, { flickMin, flickMax });
+  // v0.0.145: the hand torch is archived (HAND_TORCH); the gun light is electric, so it holds steady
+  // while the flame's number (which the fires still read) goes on flickering
+  check('the gun light holds steady', rMax - rMin < 0.5, { rMin, rMax });
+  if (await page.evaluate(() => HAND_TORCH)) {
   check('and the light it casts moves with it', rMax - rMin > 8, { rMin, rMax });
 
   // the same flicker, in the pixels, which is the whole point of it
@@ -226,6 +230,7 @@ const STEPS = [270, 220, 170, 120, 70];   // the distance the far point is read 
   const corr = cov / Math.sqrt(vf * vb || 1);
   console.log(`  correlation between flame height and screen brightness: ${corr.toFixed(2)}`);
   check('and the brighter frames are the ones with the taller flame', corr > 0.3, +corr.toFixed(2));
+  }
 
   // ---- 3. a wall does not stop it ----
   // Line of sight is for the map and nothing else. A slab of rock 30 units to the player's

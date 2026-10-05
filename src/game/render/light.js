@@ -10,10 +10,10 @@ import { clamp, hexRgb } from '../../core/util.js';
 import { DEV, carrotAt, jcol, kru } from '../../dev/knobs.js';
 import { PAD_LIT, shopDark } from '../../world/shoplights.js';
 import { webPath } from '../../world/sway.js';
-import { VIS_RAYS, fogReveal, visPoly } from '../../world/vision.js';
+import { VIS_RAYS, beamFan, beamLift, fogReveal, visPoly } from '../../world/vision.js';
 import { fogLit } from '../systems/fog.js';
 import { plantGlow } from '../systems/plantglow.js';
-import { torchHand } from '../systems/player.js';
+import { HAND_TORCH, torchHand } from '../systems/player.js';
 import { introHeld } from '../systems/shoplights.js';
 import { solidCell } from '../systems/terrain.js';
 import { holoBright, holoGrid, holoMask, sizedCanvas } from './holo.js';
@@ -27,6 +27,20 @@ export const fogWarC = () => war.blur;
 /** this frame's silhouettes over the hologram (holoGrid's size), or null: fx.js keeps the bloom off them */
 export const holoSil = () => war.sil;
 
+// The gun light (v0.0.145; the hand torch is archived, systems/player.js HAND_TORCH): a steady white
+// cone out of the gun the way you aim (DEV.beamDeg wide), and a small glow round you (DEV.beamNear of
+// its reach) so you can see your feet. The cone swings after the aim rather than snapping (beam.a)
+/** @type {{ a: number | null, t: number, r: number }} */
+const beam = { a: null, t: 0, r: 0 };
+/** the beam's direction this frame (radians), eased toward the aim (F.ax/ay) @param {World} W @param {GameCtx} G @param {DrawFrame} F */
+function beamAim(W, G, F) {
+  const want = Math.atan2(F.ay, F.ax), dt = clamp(W.time - beam.t, 0, 0.1);
+  beam.t = W.time;
+  if (beam.a === null || G.RPV) return (beam.a = want);
+  let d = want - beam.a;
+  d -= Math.round(d / (Math.PI * 2)) * Math.PI * 2;
+  return (beam.a += d * (1 - Math.exp(-dt * 16)));
+}
 // Blur a slab of a fog canvas into its blurred copy (at source size: cheap). The blur sees nothing
 // past the level, which thinned the fog to a see-through strip down both sides, so the sharp edge
 // cells go back underneath
@@ -61,10 +75,17 @@ export function drawFog(W, G, F) {
   // you have already uncovered round a corner still lights up. `flick` is the flame's
   // own number, so both the reach and the brightness breathe exactly as the fire does.
   const sight = SIGHT * DEV.torch * carrotAt('caTorch', W.pb.carrot);   // dev knob and Carrot scale the whole bubble
-  W.torchR = clamp(sight * LAMP_REACH * (0.5 + 0.55 * W.flick), 120, 1400);
+  W.torchR = clamp(sight * LAMP_REACH * (HAND_TORCH ? 0.5 + 0.55 * W.flick : 1.05), 120, 1400);   // the gun light is steady
+  const ba = beamAim(W, G, F);
   const away = introHeld(W);                 // a new run, not through the teleporter yet: no torch
-  W.visPts = visPoly(pcx, pcy, sight, (cx, cy) => solidCell(W, cx, cy), VIS_RAYS);
-  fogReveal(W.seen, pcx, pcy, sight, W.visPts, VIS_RAYS);   // line of sight lifts the fog
+  // the gun light's cone reaches DEV.beamReach times as far, and uncovers the fog that far along it
+  const far = HAND_TORCH || F.pcy > SHOP_Y ? sight : sight * Math.max(1, DEV.beamReach);
+  // in the shop hall it reaches no further than the old torch did: the hall has its own lights (and a new
+  // run's dark hall comes on a section at a time)
+  beam.r = F.pcy > SHOP_Y ? W.torchR : W.torchR * far / sight;
+  W.visPts = visPoly(pcx, pcy, far, (cx, cy) => solidCell(W, cx, cy), VIS_RAYS);
+  if (far > sight) beamFan(W.visPts, pcx, pcy, sight, ba);
+  fogReveal(W.seen, pcx, pcy, far, W.visPts, VIS_RAYS);   // line of sight lifts the fog
   if (!G.RPV || G.RPV.fog) {                                 // a replay can turn the fog off
     // bake the visible slab of the overlay every frame: the base darkness is the fog
     // state, then the lamp brightens the cells the fog has already been lifted from
@@ -74,7 +95,7 @@ export function drawFog(W, G, F) {
     if (!war.img) war.img = wctx.createImageData(FW, FH);
     const fdat = G.fogImg.data, wdat = war.img.data;
     const dim = Math.round(255 * DEV.fogDim), dark = Math.round(255 * DEV.fogDark);
-    const lr2 = W.torchR * W.torchR;
+    const lr2 = HAND_TORCH ? W.torchR * W.torchR : beam.r * beam.r;
     const shopL = G.RPV ? null : W.shopLit, shopRow = Math.floor(SHOP_Y / FOG_U) - 1;
     const fx0 = clamp(Math.floor(W.camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(W.camY / FOG_U) - 1, 0, FH - 1);
     const fx1 = clamp(Math.ceil((W.camX + vw) / FOG_U) + 2, 1, FW), fy1 = clamp(Math.ceil((W.camY + vh) / FOG_U) + 2, 1, FH);
@@ -105,7 +126,7 @@ export function drawFog(W, G, F) {
           const ddx = (cx + 0.5) * FOG_U - pcx, dd2 = ddx * ddx + ddy * ddy;
           if (dd2 < lr2) {
             const t = Math.sqrt(dd2) / W.torchR;               // 0 at your feet, 1 at the edge
-            const lift = t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45;
+            const lift = HAND_TORCH ? (t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45) : beamLift(t * W.torchR, ddx, ddy, ba, beam.r, W.torchR * DEV.beamNear);
             a = a * (1 - lift * (hall ? DEV.shopTorch : 1));   // in the shop hall it only takes the edge off (the tubes light it)
           }
         }
@@ -258,7 +279,8 @@ export function drawGlows(W, G, F) {
     if (pr.burn && !pr.gone && onView(pr.x, pr.y + pr.len, 40) && fogLit(W, pr.x, pr.y + pr.len))
       glowAt(G.ctx, pr.x, pr.y + pr.len, 16, 0.2 * W.flick, '255,130,50');
   if (W.p.burn > 0 && !W.p.dead) glowAt(G.ctx, W.p.x + PW / 2, W.p.y + PH / 2, 22, 0.25 * W.flick, '255,130,50');
-  if (!W.p.dead && !introHeld(W)) {
+  if (!W.p.dead && !introHeld(W) && !HAND_TORCH) drawBeam(W, G, F);
+  if (!W.p.dead && !introHeld(W) && HAND_TORCH) {
     const th = torchHand(W), gfx = th.x + (ax >= 0 ? -1 : 1) * 1.6, gfy = th.y - 11;
     glowAt(G.ctx, gfx, gfy, 70 * (0.9 + 0.1 * gl), 0.2 * gl, '255,150,60');            // the second light
     glowAt(G.ctx, gfx + W.leanX * 0.5, gfy + W.leanY * 0.5, 12, 0.5 * gl, '255,190,90');   // the halo
@@ -277,4 +299,31 @@ export function drawGlows(W, G, F) {
   G.ctx.globalAlpha = 1;
   G.ctx.globalCompositeOperation = 'source-over';
   for (const sc of W.sconces) if (scOn(sc)) drawSconce(G.ctx, sc.x, sc.y, W.time, sc.ph);
+}
+
+// The gun light's beam itself, over the fog: a wedge out of the gun's muzzle, clipped to your line of
+// sight (W.visPts) so it stops on the rock, soft at its sides (three wedges, narrower and brighter),
+// fading with distance; a small glare at the lens
+/** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
+function drawBeam(W, G, F) {
+  const c = G.ctx, a = beam.a === null ? Math.atan2(F.ay, F.ax) : beam.a, R = beam.r || W.torchR, g = DEV.beamGlow;
+  const ox = F.pcx + F.ax * 2.5 + Math.cos(a) * 9, oy = F.gy + Math.sin(a) * 9;   // the muzzle (actors.js drawGun)
+  const pts = W.visPts;
+  if (g > 0 && pts && pts.length > 4) {
+    c.save();
+    c.beginPath(); c.moveTo(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]);
+    c.closePath(); c.clip();
+    const half = DEV.beamDeg * Math.PI / 360;
+    for (const k of [1.3, 1, 0.7]) {
+      const gr = c.createRadialGradient(ox, oy, 2, ox, oy, R);
+      gr.addColorStop(0, `rgba(225,240,255,${0.16 * g})`); gr.addColorStop(0.45, `rgba(215,232,255,${0.07 * g})`);
+      gr.addColorStop(1, 'rgba(210,230,255,0)');
+      c.fillStyle = gr;
+      c.beginPath(); c.moveTo(ox, oy); c.arc(ox, oy, R, a - half * k, a + half * k); c.closePath(); c.fill();
+    }
+    c.restore();
+  }
+  glowAt(c, ox, oy, 7, 0.5, '230,242,255');                                       // the lens
+  glowAt(c, F.pcx, F.pcy, W.torchR * DEV.beamNear, 0.06, '220,235,255');                  // the spill round you
 }

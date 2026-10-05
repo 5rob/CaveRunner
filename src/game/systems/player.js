@@ -79,6 +79,10 @@ export function hurt(W, G, n) {
   }
 }
 
+// The hand torch is archived (v0.0.145, owner: kept for creatures later): a light on the gun took its
+// place (render/light.js, the beam). true brings the flame, its embers and the round lamp back
+export const HAND_TORCH = false;
+
 // The torch hand: whichever one the gun is not in, so the two never sit on top of
 // each other. Aiming behind you swaps hands, the same way the gun does.
 /** @param {World} W */
@@ -335,6 +339,7 @@ export function stepTorch(W, F) {
   W.flick = clamp(0.94 + W.flickN + 0.04 * Math.sin(W.torchT * 11.3) + 0.025 * Math.sin(W.torchT * 19.7),
     0.84, 1);
   W.torchAcc += dt;
+  if (!HAND_TORCH) W.torchAcc = 0;          // archived: no flame, no embers
   while (W.torchAcc > 0.04) {
     W.torchAcc -= 0.04;
     const th = torchHand(W);

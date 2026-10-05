@@ -14,7 +14,8 @@ Creature sprites live with their creature (`creatures/`). Everything draws at wo
 
 - `drawProp` runs **before** the fog; `propGlow` adds light **after** it, only where `fogLit` says
   the ground is seen — except the eyes, which fade as you come close (`eyesAlpha`).
-- The hand torch: `drawFlame`'s lean is a spring toward "opposite your velocity" (`W.leanX`/`leanY`,
+- The hand torch (**archived** since v0.0.145, `HAND_TORCH` in `game/systems/player.js`: the gun light took
+  its place, `render/light.js`; the code stays for creatures later): `drawFlame`'s lean is a spring toward "opposite your velocity" (`W.leanX`/`leanY`,
   `stepTorch`); its halo, second light and the wall sconces are drawn after the fog with `lighter`,
   so the map lighting is untouched. Brightness follows `flick` (`world/README.md`).
 - Ground guns glow (`drawGunGlow`, before the gun sprite) unless `q.old` — set on the gun you swap

@@ -8,10 +8,19 @@ Names are as they were at the time (before the refactor Game's state had loose n
 ## v0.0.145 — the way up out of the shop over the buy machine
 Awaiting the owner's OK of the screenshots (a minor update).
 
+- **A light on the gun in place of the hand torch** (owner; the torch is archived for creatures later:
+  `HAND_TORCH` in `game/systems/player.js`, its code untouched). A steady white cone the way you aim
+  (`DEV.beamDeg` 50°), swinging after the aim, reaching `DEV.beamReach` (2.2) × the sight radius and
+  uncovering the fog that far along it (`beamFan`; elsewhere the old radius), stopping on rock; a small
+  glow round you (`beamNear`); the free hand steadies the gun. In the shop hall it reaches only as far as
+  the torch did (the hall has its own lights). Dev → Torch & fog: `beamDeg`, `beamReach`, `beamNear`, `beamGlow`.
+
 - **The shop's one hole in the roof is always straight over the buy machine** (owner: so it's obvious
   to find); it was anywhere along the roof. `makeLevel` still makes the old roll, so the rest of each
   seed's cave is the same apart from the route's first stretch up from the hole.
-- Tests: `shopexit` (new; logic: floors 1–3, every seed, one hole centred on `VEND_BUY_X`; browser: jet
+- Tests: `gunlight` (new; logic: the cone's shape and the fan; browser: lit ahead, dark behind, turns
+  with the aim, no embers; screenshots `gunlight-*.png`); `torch` (the light holds steady now), `fog` (the
+  map reaches the beam's reach); `shopexit` (new; logic: floors 1–3, every seed, one hole centred on `VEND_BUY_X`; browser: jet
   straight up from the machine into the cave, screenshots `shopexit-*.png`); `level2`'s pinned floor-2
   hashes re-pinned (the shaft moved).
 

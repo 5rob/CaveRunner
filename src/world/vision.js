@@ -1,9 +1,10 @@
 // @ts-check
 // What you can see: exact ray marching (rayDist, losClear), the visibility fan (visPoly)
-// and the fog-of-war memory it lifts (fogReveal, fogStart, nestFog). Exact on purpose: a
+// and the fog-of-war memory it lifts (fogReveal, fogStart, nestFog), and the gun light's shape (beamLift). Exact on purpose: a
 // fixed-step march jumps clean over a one-cell wall.
 
 import { CELL, FH, FOG, FOG_U, FW, SHOP_ROOF, SHOP_TOP } from '../core/consts.js';
+import { DEV } from '../dev/knobs.js';
 
 // What the map is allowed to remember is worked out as a fan of rays out from the player,
 // each stopping at the first wall: one ray per fog cell the fan crosses, so a shadow edge
@@ -108,6 +109,34 @@ export function visPoly(cx, cy, r, solidCell, rays) {
     const a = i / rays * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
     const d = rayDist(cx, cy, dx, dy, r, solidCell);
     pts.push(cx + dx * d, cy + dy * d);
+  }
+  return pts;
+}
+
+// The gun light's shape (v0.0.145, render/light.js): the cone out along the aim, soft at its sides, and
+// a small round glow round you
+/** how far off the beam's middle a direction is (0 inside the cone, 1 out past its soft edge) @param {number} ang @param {number} a */
+export function beamSide(ang, a) {
+  let off = ang - a;
+  off = Math.abs(off - Math.round(off / (Math.PI * 2)) * Math.PI * 2);
+  const half = DEV.beamDeg * Math.PI / 360, soft = half * 0.4;
+  return off < half ? 1 : off < half + soft ? 1 - (off - half) / soft : 0;
+}
+/** how much the gun light lifts the dark at a spot (0-1): d away from you, (dx, dy) toward it, a the
+ * beam's direction, R the cone's reach, N the round glow's @param {number} d @param {number} dx @param {number} dy @param {number} a @param {number} R @param {number} N */
+export function beamLift(d, dx, dy, a, R, N) {
+  const round = d < N * 0.5 ? 1 : d < N ? 2 - 2 * d / N : 0, t = d / R;
+  if (t >= 1) return round;
+  return Math.max(round, beamSide(Math.atan2(dy, dx), a) * (t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45));
+}
+/** the line-of-sight fan (visPoly's, out to the beam's reach) cut back to r everywhere outside the cone:
+ * so the beam uncovers the fog further than the glow round you does @param {number[]} pts @param {number} cx @param {number} cy @param {number} r @param {number} a */
+export function beamFan(pts, cx, cy, r, a) {
+  const rays = pts.length / 2;
+  for (let i = 0; i < rays; i++) {
+    const dx = pts[2 * i] - cx, dy = pts[2 * i + 1] - cy, d = Math.hypot(dx, dy);
+    if (d <= r || beamSide(i / rays * Math.PI * 2, a) > 0) continue;
+    pts[2 * i] = cx + dx / d * r; pts[2 * i + 1] = cy + dy / d * r;
   }
   return pts;
 }
