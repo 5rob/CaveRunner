@@ -6878,7 +6878,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function beamLift(d, dx, dy, a, R, N) {
     const round = d < N * 0.5 ? 1 : d < N ? 2 - 2 * d / N : 0, t = d / R;
-    if (t >= 1) return round;
+    if (!(t < 1)) return round;
     return Math.max(round, beamSide(Math.atan2(dy, dx), a) * (t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45));
   }
   function beamFan(pts, cx, cy, r, a) {
@@ -17236,8 +17236,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     W.torchR = clamp(sight * LAMP_REACH * (HAND_TORCH ? 0.5 + 0.55 * W.flick : 1.05), 120, 1400);
     const ba = beamAim(W, G, F);
     const away = introHeld(W);
-    const far = HAND_TORCH || F.pcy > SHOP_Y ? sight : sight * Math.max(1, DEV.beamReach);
-    beam.r = F.pcy > SHOP_Y ? W.torchR : W.torchR * far / sight;
+    const far = HAND_TORCH || !F.held || F.pcy > SHOP_Y ? sight : sight * Math.max(1, DEV.beamReach);
+    beam.r = !F.held ? 0 : F.pcy > SHOP_Y ? W.torchR : W.torchR * far / sight;
     W.visPts = visPoly(pcx, pcy, far, (cx, cy) => solidCell(W, cx, cy), VIS_RAYS);
     if (far > sight) beamFan(W.visPts, pcx, pcy, sight, ba);
     fogReveal(W.seen, pcx, pcy, far, W.visPts, VIS_RAYS);
@@ -17251,7 +17251,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (!war.img) war.img = wctx.createImageData(FW, FH);
       const fdat = G.fogImg.data, wdat = war.img.data;
       const dim = Math.round(255 * DEV.fogDim), dark = Math.round(255 * DEV.fogDark);
-      const lr2 = HAND_TORCH ? W.torchR * W.torchR : beam.r * beam.r;
+      const lr2 = HAND_TORCH ? W.torchR * W.torchR : Math.max(beam.r, W.torchR * DEV.beamNear) ** 2;
       const shopL = G.RPV ? null : W.shopLit, shopRow = Math.floor(SHOP_Y / FOG_U) - 1;
       const fx0 = clamp(Math.floor(W.camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(W.camY / FOG_U) - 1, 0, FH - 1);
       const fx1 = clamp(Math.ceil((W.camX + vw) / FOG_U) + 2, 1, FW), fy1 = clamp(Math.ceil((W.camY + vh) / FOG_U) + 2, 1, FH);
@@ -17446,6 +17446,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const c = G.ctx, a = beam.a === null ? Math.atan2(F.ay, F.ax) : beam.a, R = beam.r || W.torchR, g = DEV.beamGlow;
     const ox2 = F.pcx + F.ax * 2.5 + Math.cos(a) * 9, oy2 = F.gy + Math.sin(a) * 9;
     const pts = W.visPts;
+    if (!F.held) {
+      glowAt(c, F.pcx, F.pcy, W.torchR * DEV.beamNear, 0.06, "220,235,255");
+      return;
+    }
     if (g > 0 && pts && pts.length > 4) {
       c.save();
       c.beginPath();

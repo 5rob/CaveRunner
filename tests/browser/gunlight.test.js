@@ -1,6 +1,6 @@
 // v0.0.145: the hand torch is archived; a light on the gun throws a cone the way you aim. In a real
 // cave (it's about the fog and the dark, which a sandbox lifts): the cave ahead of the gun is lit, the
-// same distance behind you isn't; turn the aim and the light turns with it; no torch embers.
+// same distance behind you isn't; turn the aim and the light turns with it; no gun, no cone; no torch embers.
 // Screenshots: gunlight-*.png (phone size).
 const { launch } = require('../chromium');
 const path = require('path');
@@ -66,6 +66,12 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('aiming left: the light turns with it', R2 !== null && L2 !== null && L2 > R2 * 1.5, { right: R2, left: L2 });
   await aim(0.6, -0.8);
   await shot('3-up');
+  // no gun in hand (a new run's empty hands): no cone, only the glow round you
+  await page.evaluate(() => { window.__in.current.loadout.guns.length = 0; });
+  await aim(1, 0);
+  const R4 = await look(cx + 70, cy), L4 = await look(cx - 70, cy);
+  await shot('4-nogun');
+  check('no gun: no cone (right about as dark as left)', R4 !== null && L4 !== null && R4 < L4 * 1.3 + 2 && R4 < R1 * 0.6, { right: R4, left: L4, withGun: R1 });
   const e = await page.evaluate(() => window.__lvl.light.embers);
   check('no torch: no embers', e === 0, e);
   await browser.close();

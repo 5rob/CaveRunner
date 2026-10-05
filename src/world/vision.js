@@ -123,10 +123,10 @@ export function beamSide(ang, a) {
   return off < half ? 1 : off < half + soft ? 1 - (off - half) / soft : 0;
 }
 /** how much the gun light lifts the dark at a spot (0-1): d away from you, (dx, dy) toward it, a the
- * beam's direction, R the cone's reach, N the round glow's @param {number} d @param {number} dx @param {number} dy @param {number} a @param {number} R @param {number} N */
+ * beam's direction, R the cone's reach (0: no gun, no cone), N the round glow's @param {number} d @param {number} dx @param {number} dy @param {number} a @param {number} R @param {number} N */
 export function beamLift(d, dx, dy, a, R, N) {
   const round = d < N * 0.5 ? 1 : d < N ? 2 - 2 * d / N : 0, t = d / R;
-  if (t >= 1) return round;
+  if (!(t < 1)) return round;          // past its reach (or no cone at all, R 0)
   return Math.max(round, beamSide(Math.atan2(dy, dx), a) * (t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45));
 }
 /** the line-of-sight fan (visPoly's, out to the beam's reach) cut back to r everywhere outside the cone:

@@ -22,6 +22,7 @@ check('just past its side: soft, not a hard edge', soft > 0 && soft < 1, soft);
 check('well past its side: dark', beamLift(100, Math.cos(1), Math.sin(1), 0, R, N) === 0);
 check('it turns with the aim (aim up: up lit, right dark)',
   beamLift(100, 0, -1, -Math.PI / 2, R, N) === 1 && beamLift(100, 1, 0, -Math.PI / 2, R, N) === 0);
+check('no gun (reach 0): only the round glow', beamLift(100, 1, 0, 0, 0, N) === 0 && beamLift(20, 1, 0, 0, 0, N) === 1 && beamLift(0, 1, 0, 0, 0, N) === 1);
 check('the cone across the wrap (aim just under pi)', beamSide(-Math.PI + 0.05, Math.PI - 0.05) === 1);
 // the fan: 8 rays all 300 long round (0, 0), aiming right, cut back to 100 outside the cone
 const rays = 8, pts = [];

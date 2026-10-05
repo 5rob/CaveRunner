@@ -12,7 +12,8 @@ Awaiting the owner's OK of the screenshots (a minor update).
   `HAND_TORCH` in `game/systems/player.js`, its code untouched). A steady white cone the way you aim
   (`DEV.beamDeg` 50°), swinging after the aim, reaching `DEV.beamReach` (2.2) × the sight radius and
   uncovering the fog that far along it (`beamFan`; elsewhere the old radius), stopping on rock; a small
-  glow round you (`beamNear`); the free hand steadies the gun. In the shop hall it reaches only as far as
+  glow round you (`beamNear`); the free hand steadies the gun. No gun in hand (a new run's start): no cone,
+  only the glow (owner). In the shop hall it reaches only as far as
   the torch did (the hall has its own lights). Dev → Torch & fog: `beamDeg`, `beamReach`, `beamNear`, `beamGlow`.
 
 - **The shop's one hole in the roof is always straight over the buy machine** (owner: so it's obvious

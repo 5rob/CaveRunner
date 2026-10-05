@@ -30,7 +30,7 @@ like are not. That is deliberate: you learn a floor, and the colour tells you
 where you are before you have read the number.
 
 The cave starts dark, and what lights it is the light on your gun: a steady white cone
-thrown the way you aim, reaching well ahead of you, with a small glow round you so you
+thrown the way you aim, reaching well ahead of you (once you have a gun), with a small glow round you so you
 can see your feet — and the cave outside the cone stays a real unknown. The light only lights
 ground you have actually laid eyes on: line of sight is what lifts the dark, so a wall
 hides its far side until you go and look round it, and what you have already uncovered

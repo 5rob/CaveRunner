@@ -79,10 +79,10 @@ export function drawFog(W, G, F) {
   const ba = beamAim(W, G, F);
   const away = introHeld(W);                 // a new run, not through the teleporter yet: no torch
   // the gun light's cone reaches DEV.beamReach times as far, and uncovers the fog that far along it
-  const far = HAND_TORCH || F.pcy > SHOP_Y ? sight : sight * Math.max(1, DEV.beamReach);
+  const far = HAND_TORCH || !F.held || F.pcy > SHOP_Y ? sight : sight * Math.max(1, DEV.beamReach);
   // in the shop hall it reaches no further than the old torch did: the hall has its own lights (and a new
   // run's dark hall comes on a section at a time)
-  beam.r = F.pcy > SHOP_Y ? W.torchR : W.torchR * far / sight;
+  beam.r = !F.held ? 0 : F.pcy > SHOP_Y ? W.torchR : W.torchR * far / sight;
   W.visPts = visPoly(pcx, pcy, far, (cx, cy) => solidCell(W, cx, cy), VIS_RAYS);
   if (far > sight) beamFan(W.visPts, pcx, pcy, sight, ba);
   fogReveal(W.seen, pcx, pcy, far, W.visPts, VIS_RAYS);   // line of sight lifts the fog
@@ -95,7 +95,7 @@ export function drawFog(W, G, F) {
     if (!war.img) war.img = wctx.createImageData(FW, FH);
     const fdat = G.fogImg.data, wdat = war.img.data;
     const dim = Math.round(255 * DEV.fogDim), dark = Math.round(255 * DEV.fogDark);
-    const lr2 = HAND_TORCH ? W.torchR * W.torchR : beam.r * beam.r;
+    const lr2 = HAND_TORCH ? W.torchR * W.torchR : Math.max(beam.r, W.torchR * DEV.beamNear) ** 2;
     const shopL = G.RPV ? null : W.shopLit, shopRow = Math.floor(SHOP_Y / FOG_U) - 1;
     const fx0 = clamp(Math.floor(W.camX / FOG_U) - 1, 0, FW - 1), fy0 = clamp(Math.floor(W.camY / FOG_U) - 1, 0, FH - 1);
     const fx1 = clamp(Math.ceil((W.camX + vw) / FOG_U) + 2, 1, FW), fy1 = clamp(Math.ceil((W.camY + vh) / FOG_U) + 2, 1, FH);
@@ -301,7 +301,7 @@ export function drawGlows(W, G, F) {
   for (const sc of W.sconces) if (scOn(sc)) drawSconce(G.ctx, sc.x, sc.y, W.time, sc.ph);
 }
 
-// The gun light's beam itself, over the fog: a wedge out of the gun's muzzle, clipped to your line of
+// The gun light's beam itself, over the fog (only with a gun in hand, F.held; without one, just the glow round you): a wedge out of the gun's muzzle, clipped to your line of
 // sight (W.visPts) so it stops on the rock, soft at its sides (three wedges, narrower and brighter),
 // fading with distance; a small glare at the lens
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
@@ -309,6 +309,7 @@ function drawBeam(W, G, F) {
   const c = G.ctx, a = beam.a === null ? Math.atan2(F.ay, F.ax) : beam.a, R = beam.r || W.torchR, g = DEV.beamGlow;
   const ox = F.pcx + F.ax * 2.5 + Math.cos(a) * 9, oy = F.gy + Math.sin(a) * 9;   // the muzzle (actors.js drawGun)
   const pts = W.visPts;
+  if (!F.held) { glowAt(c, F.pcx, F.pcy, W.torchR * DEV.beamNear, 0.06, '220,235,255'); return; }   // no gun: no cone, only the glow
   if (g > 0 && pts && pts.length > 4) {
     c.save();
     c.beginPath(); c.moveTo(pts[0], pts[1]);
