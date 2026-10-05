@@ -5,7 +5,7 @@ No imports except each other. Everything else may use these.
 | File | Holds |
 |---|---|
 | `consts.js` | World size (`CELL`, `CW`/`CH`, `WW`, `VIEW_W`), tuning (`GRAVITY`, `WALK`, `JET`, `CLIMB`, `WEB_HAND`), the sticks (`DEAD`, `AIM_DEAD`, `KNOB`, `AIM_RING`), the shop room (`SHOP_*`; the way in `ARRIVAL_X` under its sign, the heal `HEAL_X` under its own tube; the machines `SHOP_SLOT` apart: `VEND_BUY_X`, `VEND_SELL_X`, `SHOP_MACHINE_X` for guns/mods/perks, one light section each), the fog grid (`FOG`, `FOG_U`, `FW`), the map grid (`MINI_D`, `MMW`/`MMH`), sight (`SIGHT`, `LAMP_REACH`, `FOG_DIM`, `FOG_DARK`), `COL` |
-| `util.js` | `rr` (rounded rect), `angDiff`/`turn`, `mix`/`mixHex`/`hexMix`/`hsvAdjust`/`hexRgb`, `approach`/`clamp` |
+| `util.js` | `rr` (rounded rect), `angDiff`/`turn`, `mix`/`mixHex`/`hexMix`/`hsvAdjust`/`hexRgb`, `approach`/`clamp`, `bezierFade` (the hologram flash, 1 to 0) and `bezierAt` (the same with free end points: a Dev curve knob's height at x) |
 
 `VERSION` is not here: it is `src/version.js`, read by the build (see CLAUDE.md).
 

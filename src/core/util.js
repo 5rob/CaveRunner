@@ -97,10 +97,18 @@ const pad2 = n => String(n).padStart(2, '0');
 export function bezierFade(u, x1, y1, x2, y2) {
   if (!(u > 0)) return 1;
   if (u >= 1) return 0;
+  return bezierAt(u, 1, x1, y1, x2, y2, 0);
+}
+// The same curve with its two ends free too: from (0, y0) to (1, y3), bent by (x1, y1) and (x2, y2)
+// (the x's kept in 0..1, so x only rises). Its height at x = u, u clamped to 0..1. The Dev panel's
+// curve knobs (a Curve: dev/knobs.js curveKnobs, read by world/byDistance.js curveAt)
+/** @param {number} u @param {number} y0 @param {number} x1 @param {number} y1 @param {number} x2 @param {number} y2 @param {number} y3 */
+export function bezierAt(u, y0, x1, y1, x2, y2, y3) {
+  u = clamp(u, 0, 1);
   x1 = clamp(x1, 0, 1); x2 = clamp(x2, 0, 1);
   /** @param {number} s @param {number} a @param {number} b @param {number} p0 @param {number} p3 */
   const at = (s, a, b, p0, p3) => { const r = 1 - s; return r * r * r * p0 + 3 * r * r * s * a + 3 * r * s * s * b + s * s * s * p3; };
   let lo = 0, hi = 1, s = u;                     // x rises with s (x's in 0..1): find the s with x = u
   for (let i = 0; i < 30; i++) { s = (lo + hi) / 2; if (at(s, x1, x2, 0, 1) < u) lo = s; else hi = s; }
-  return at(s, y1, y2, 1, 0);
+  return at(s, y1, y2, y0, y3);
 }

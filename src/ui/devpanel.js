@@ -2,7 +2,7 @@
 // The Dev panel (the gear button): live-tweak knob rows by group (DevRow, DevPanel), the
 // live jellyfish box at the top of the jelly colours group (JellyPreview), the group headers
 // that open and shut on a press-and-hold (DevGroupHead), the hologram flash's fade curve
-// (FadeCurve), the elites' flames (FlamePreview, GradEditor, RampEditor), and the Spawn gun box (SpawnGun).
+// (FadeCurve), any curve knob (CurveEdit), the elites' flames (FlamePreview, GradEditor, RampEditor), and the Spawn gun box (SpawnGun).
 
 import { drawProp, rgbA } from '../art/props.js';
 import { glowAt } from '../art/sprites.js';
@@ -15,7 +15,7 @@ import {
 import { enemyFor } from '../data/creatures.js';
 import { themeFor } from '../data/themes.js';
 import {
-  DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_META, devReport, devSet, kr, kru
+  CURVES, DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_META, devReport, devSet, kr, kru
 } from '../dev/knobs.js';
 import { h, useEffect, useRef, useState } from './h.js';
 
@@ -222,6 +222,61 @@ export function FadeCurve() {
       h('circle', { ref: dot, r: 2.5, className: 'fcdot' }),
       H.map((q, i) => h('circle', { key: i, cx: q.x, cy: q.y, r: 5, className: 'fchandle' })),
       h('rect', { ref: lamp, x: FC.x1 - 22, y: 4, width: 20, height: 14, rx: 2, fill: '#ff0000' })),
+    h('button', { className: 'devreset fcreset', 'aria-label': 'Default curve', onPointerDown: e => { e.preventDefault(); reset(); } }, '↺'));
+}
+
+// A curve knob (dev/knobs.js curveKnobs) shaped by hand: y over x = 0..1, from the start point on the
+// left to the end point on the right, bent by two handles. Drag anywhere: the nearest of the four
+// follows (the end points only up and down). Saves as DEV[p+'0'], p+'C1x'… p+'1'.
+/** @param {{ p: string, label: string, lo: number, hi: number }} props */
+export function CurveEdit({ p, label, lo, hi }) {
+  const [, bump] = useState(0);
+  const svg = useRef(null), drag = useRef(-1);
+  /** @param {number} u */ const cx = u => FC.x0 + u * (FC.x1 - FC.x0);
+  /** @param {number} v */ const cy = v => FC.bot - (v - lo) / (hi - lo) * (FC.bot - FC.top);
+  const K = [[null, p + '0', 0], [p + 'C1x', p + 'C1y'], [p + 'C2x', p + 'C2y'], [null, p + '1', 1]];
+  const H = K.map(([kx, ky, fx]) => ({ x: cx(kx ? DEV[kx] : Number(fx)), y: cy(DEV[ky]) }));
+  /** @param {PointerEvent} e */
+  const at = e => {
+    const s = svg.current, m = s && s.getScreenCTM();
+    if (!m) return null;
+    const q = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+    return { sx: q.x, sy: q.y, u: clamp((q.x - FC.x0) / (FC.x1 - FC.x0), 0, 1), v: clamp(lo + (FC.bot - q.y) / (FC.bot - FC.top) * (hi - lo), lo, hi) };
+  };
+  /** @param {PointerEvent} e */
+  const move = e => {
+    const q = drag.current >= 0 && at(e);
+    if (!q) return;
+    const [kx, ky] = K[drag.current];
+    if (kx) devSet(String(kx), Math.round(q.u * 100) / 100);
+    devSet(String(ky), Math.round(q.v * 100) / 100);
+    bump(n => n + 1);
+  };
+  const path = 'M' + H[0].x + ' ' + H[0].y + ' C' + H[1].x + ' ' + H[1].y + ' ' + H[2].x + ' ' + H[2].y + ' ' + H[3].x + ' ' + H[3].y;
+  const reset = () => { for (const [kx, ky] of K) { if (kx) devSet(String(kx), DEV_DEFAULTS[kx]); devSet(String(ky), DEV_DEFAULTS[ky]); } bump(n => n + 1); };
+  return h('div', { className: 'fadecurve', 'data-curve': p },
+    h('p', { className: 'devlbl' }, label),
+    h('svg', { ref: svg, viewBox: '0 0 200 132', className: 'fcsvg',
+      onPointerDown: e => {
+        e.preventDefault();
+        const q = at(e);
+        if (!q) return;
+        let best = 0;
+        H.forEach((c, i) => { if (Math.hypot(q.sx - c.x, q.sy - c.y) < Math.hypot(q.sx - H[best].x, q.sy - H[best].y)) best = i; });
+        drag.current = best;
+        svg.current.setPointerCapture(e.pointerId);
+        move(e);
+      },
+      onPointerMove: move,
+      onPointerUp: () => { drag.current = -1; }, onPointerCancel: () => { drag.current = -1; } },
+      h('rect', { x: FC.x0, y: FC.top, width: FC.x1 - FC.x0, height: FC.bot - FC.top, className: 'fcbox' }),
+      h('text', { x: FC.x0 + 2, y: FC.top - 4, className: 'fctxt' }, 'y ' + hi),
+      h('text', { x: FC.x0 + 2, y: FC.bot + 12, className: 'fctxt' }, 'x 0, y ' + lo),
+      h('text', { x: FC.x1 - 2, y: FC.bot + 12, className: 'fctxt', textAnchor: 'end' }, 'x 1 (the reach)'),
+      h('line', { x1: H[0].x, y1: H[0].y, x2: H[1].x, y2: H[1].y, className: 'fcarm' }),
+      h('line', { x1: H[3].x, y1: H[3].y, x2: H[2].x, y2: H[2].y, className: 'fcarm' }),
+      h('path', { d: path, className: 'fcline' }),
+      H.map((c, i) => h('circle', { key: i, cx: c.x, cy: c.y, r: 5, className: 'fchandle' }))),
     h('button', { className: 'devreset fcreset', 'aria-label': 'Default curve', onPointerDown: e => { e.preventDefault(); reset(); } }, '↺'));
 }
 
@@ -533,6 +588,7 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
           shut ? null : h('div', { className: 'devvars' },
             g === 'jellycol' ? h(JellyPreview) : null,        // the live jelly its colours paint
             g === 'holoflash' ? h(FadeCurve) : null,
+            CURVES.filter(c => c.g === g).map(c => h(CurveEdit, { key: c.p, p: c.p, label: c.label, lo: c.lo, hi: c.hi })),
             g === 'elitefx' ? [h(FlamePreview, { key: 'fp' }), h('p', { key: 'gl', className: 'devlbl' }, 'Colour over life'), h(GradEditor, { key: 'ge' }),
               h('p', { key: 'rl', className: 'devlbl' }, 'Opacity over life'), h(RampEditor, { key: 're' })] : null,
             DEV_META.filter(m => m.g === g).map(m => h(DevRow, { key: m.k, meta: m }))));

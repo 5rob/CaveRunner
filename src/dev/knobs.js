@@ -114,7 +114,7 @@ export const DEV_META = [
   { k: 'bagSpeed',  g: 'ui',    label: 'Bag fire preview speed (×real time)', min: 0.05, max: 5, step: 0.05 },
 ];
 export const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['fx', 'Hologram & glow'], ['holoflash', 'Hologram flash (on a kill)'], ['guide', 'Guide hologram (new run)'], ['player', 'Player'],
-  ['enemy', 'Enemies'], ['elite', 'Elites'], ['elitefx', 'Elites: flames'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['level2', 'Level 2: layout & look'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
+  ['enemy', 'Enemies'], ['elite', 'Elites'], ['elitefx', 'Elites: flames'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['level2', 'Level 2: layout & look'], ['l2boom', 'Level 2: destruction'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults.
 export function devReport() {
@@ -419,6 +419,39 @@ for (const [k, label, def] of L2_LOOK) {
 }
 DEV_DEFAULTS.l2Decor = 1;
 DEV_META.push({ k: 'l2Decor', g: 'level2', label: 'Decoration amount (× beams, carts, soot, lanterns, picks)', min: 0, max: 4, step: 0.05 });
+// Curve knobs: a cubic bezier from (0, start y) to (1, end y), bent by two control points, shaped
+// on the panel's CurveEdit (ui/devpanel.js; every row is type 'curve', so no boxes). curveKnobs(group,
+// p, label, lo, hi, def) registers p+'0' (start y), p+'C1x', p+'C1y', p+'C2x', p+'C2y', p+'1' (end y);
+// lo..hi is the y range the editor shows. kcurve(p) is the curve as plain numbers (core/util.js bezierAt).
+/** @param {string} g @param {string} p @param {string} label @param {number} lo @param {number} hi @param {Curve} def */
+export function curveKnobs(g, p, label, lo, hi, def) {
+  /** @type {[string, string, number, number, number][]} */
+  const rows = [['0', 'start y', def.y0, lo, hi], ['C1x', 'point 1 x', def.x1, 0, 1], ['C1y', 'point 1 y', def.y1, lo, hi],
+    ['C2x', 'point 2 x', def.x2, 0, 1], ['C2y', 'point 2 y', def.y2, lo, hi], ['1', 'end y', def.y3, lo, hi]];
+  for (const [s, what, v, min, max] of rows) {
+    DEV_DEFAULTS[p + s] = v;
+    DEV_META.push({ k: p + s, g, label: label + ': ' + what, min, max, step: 0.01, type: 'curve' });
+  }
+  CURVES.push({ g, p, label, lo, hi });
+}
+/** every curve knob, for the panel: its group, key prefix, label and y range @type {{ g: string, p: string, label: string, lo: number, hi: number }[]} */
+export const CURVES = [];
+/** @param {string} p @returns {Curve} */
+export const kcurve = p => ({ y0: DEV[p + '0'], x1: DEV[p + 'C1x'], y1: DEV[p + 'C1y'], x2: DEV[p + 'C2x'], y2: DEV[p + 'C2y'], y3: DEV[p + '1'] });
+// Level 2: destruction (world/byDistance.js, not in the cave yet): explosions scattered round the
+// dark zones, denser and bigger near them. Distances in terrain pixels. destructionOpts() reads them.
+DEV_DEFAULTS.l2bMaxDist = 200; DEV_DEFAULTS.l2bCount = 60; DEV_DEFAULTS.l2bFire = 30; DEV_DEFAULTS.l2bJitter = 0; DEV_DEFAULTS.l2bClear = 4;
+DEV_META.push(
+  { k: 'l2bMaxDist', g: 'l2boom', label: 'Reach: most distance from a dark zone (px)', min: 1, max: 1600, step: 5 },
+  { k: 'l2bCount',   g: 'l2boom', label: 'Number of explosions', min: 0, max: 2000, step: 1 },
+  { k: 'l2bFire',    g: 'l2boom', label: 'Explosions that cause fire (%)', min: 0, max: 100, step: 1 },
+  { k: 'l2bJitter',  g: 'l2boom', label: 'Extra position randomness (± px)', min: 0, max: 100, step: 1 },
+  { k: 'l2bClear',   g: 'l2boom', label: 'Clearance from terrain (px)', min: 0, max: 60, step: 1 });
+export const L2B_KNOBS = rangeKnobs('l2boom', [
+  ['l2bSize', 'Explosion size (px radius)', 1, 120, 1, 6, 18],
+]);
+curveKnobs('l2boom', 'l2bDen', 'Destruction amount (Y) by distance from a dark zone (X)', 0, 1, { y0: 1, x1: 0.25, y1: 1, x2: 0.5, y2: 0, y3: 0 });
+curveKnobs('l2boom', 'l2bScale', 'Size × (Y, 0-2) by distance from a dark zone (X)', 0, 2, { y0: 1.6, x1: 0.33, y1: 1.3, x2: 0.66, y2: 0.8, y3: 0.5 });
 export const ARCH_KNOBS = rangeKnobs('arch', [
   ['arVines',   'Arched vine clusters per floor',      0, 40, 0.5,   9, 13],
   ['arCluster', 'Arches per cluster',                  1, 8, 0.1,    1.5, 3.5],

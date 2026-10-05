@@ -400,6 +400,10 @@ interface DevKnobs {
   ptrStart: number; ptrReach: number; ptrSize: number; ptrLine: number; snapR: number; snapPull: number; snapHit: number;
   [k: string]: any;
 }
+/** a curve knob's shape (dev/knobs.js curveKnobs, core/util.js bezierAt): from (0, y0) to (1, y3), bent by (x1, y1) and (x2, y2) */
+interface Curve { y0: number; x1: number; y1: number; x2: number; y2: number; y3: number }
+/** one point scatterByDistance (world/byDistance.js) kept: grid cell, distance from the source, size, and a spare 0..1 roll (e.g. fire or not) */
+interface DistPoint { x: number; y: number; dist: number; size: number; roll: number }
 /** one Dev panel row (DEV_META) */
 interface DevRow { k: string; g: string; label: string; min?: number; max?: number; step?: number; type?: 'color' | 'slider' | 'curve' | 'grad' | 'ramp' }
 
