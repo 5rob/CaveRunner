@@ -14,7 +14,7 @@ import { DevPanel, SpawnGun } from './devpanel.js';
 import { Bag } from './exosuit.js';
 import { GunIcon } from './editor.js';
 import { h, useEffect, useRef, useState } from './h.js';
-import { CrystalRow, DueClock, RKey, Stick, deckLayout, fmtGold, holdPress } from './hud.js';
+import { CrystalRow, DueClock, RKey, Stick, deckLayout, fmtGold, holdPress, shadeAt } from './hud.js';
 import { MapScreen, PinPicker, loadPins, savePins, usePin } from './map.js';
 import { SHOP_MENUS } from './modshop.js';
 import { GunSwap } from './swap.js';
@@ -260,6 +260,9 @@ export function App() {
     mapOpen ? h(MapScreen, { input }) : null,
     h('div', { className: 'controls', ref: ctlRef },
       h('div', { className: 'sticks', ref: sticksRef },
+        // a dark shade under the controls (owner): clear at the map button's top, black by the
+        // sticks' middles and on down, so the sticks and buttons stand out from the cave
+        h('div', { className: 'ctlshade', style: shadeAt(deck, size) }),
         h(Stick, { size, kind: 'left', input, refresh }),
         h(Stick, { size, kind: 'right', input, refresh }),
         // the gun buttons ride an arc round the right stick; tap to hold it, hold for its card

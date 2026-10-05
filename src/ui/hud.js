@@ -73,6 +73,15 @@ export function deckLayout(W, size, n) {
   return { btn, R, rc, guns, bag, map, pin };
 }
 
+// The shade under the controls (owner, v0.0.146): see-through at the map button's top, black
+// by the sticks' middles and on down past the screen's bottom. Same coordinates as deckLayout.
+/** @param {{ btn: number, map: Pt }} deck @param {number} size a stick's @returns {Record<string, string|number>} */
+export function shadeAt(deck, size) {
+  const top = Math.round(deck.map.y - deck.btn / 2), mid = Math.round(size / 2 - top);
+  return { top, height: mid + size + 200,
+    background: 'linear-gradient(to bottom, rgba(0,0,0,0) 0px, #000 ' + mid + 'px, #000 100%)' };
+}
+
 // the circumference of the gauge ring (r=46 in a 0..100 viewBox), used to turn a 0..1
 // fraction into a stroke-dasharray so the ring is drawn only as far as the stat reaches
 export const GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
