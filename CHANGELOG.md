@@ -5,6 +5,15 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.146 — a dark shade under the controls
+Released 2026-10-05 (after the owner's OK of the screenshots; a minor update).
+
+- **A shade under the controls** (owner: so the sticks and buttons stand out): see-through at the map
+  button's top, black by the sticks' middles and on down (`.ctlshade`, `shadeAt` in `ui/hud.js`); taps go
+  through it; hidden on the map screen.
+- Tests: `ctlshade` (new; browser: where it starts and goes black, the sticks still on top; screenshots
+  `ctlshade_before.png` / `ctlshade_after.png`).
+
 ## v0.0.145 — the way up over the buy machine, the gun light, the teleporter's lightning
 Released 2026-10-05 (after the owner's OK of the screenshots; a minor update).
 
