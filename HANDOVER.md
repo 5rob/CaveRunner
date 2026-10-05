@@ -9,12 +9,12 @@ release loop, testing), then the README of the `src/` folder you're working in.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
-- **Waiting on the owner: v0.0.145** on branch `refactor` (screenshots sent, not on `main` yet): the
-  shop's way up is always straight over the buy machine (`world/level.js`, `shopExit`); and the hand torch
-  archived (`HAND_TORCH`) for a light on the gun, a cone the way you aim (`render/light.js`, Dev knobs `beam*`), only with a gun in hand; and a new run's
-  teleporter keeps its lightning until you've come through. Once OK'd: merge
-  to `main`, confirm it landed, mark it released here and in CHANGELOG. The new caves tip two chance checks (`strata`, `rats`)
-  over their bars: measured, not regressions (REFACTOR.md, Found along the way).
+- **Released: v0.0.145** on `main`, 2026-10-05 (the owner OK'd the screenshots; a minor update): the
+  shop's way up always straight over the buy machine (`world/level.js`, `shopExit`); the hand torch archived
+  (`HAND_TORCH`, kept for creatures later) for a light on the gun, a cone the way you aim, only with a gun in
+  hand (`render/light.js`, Dev → Torch & fog `beam*`; the owner may paste Dev numbers for it); a new run's
+  teleporter keeps its lightning until you've come through. The new caves tip two chance checks (`strata`,
+  `rats`) over their bars: measured, not regressions (REFACTOR.md, Found along the way).
 - **Released: v0.0.144** on `main`, 2026-10-05 (the owner OK'd it): the heal centred
   under its light, dust (not green spores) only inside the light cones, and the guide turns rude only once
   you walk out of its pool of light to the right (at a run it was skipped unseen); the gun pickup's slots a

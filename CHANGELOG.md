@@ -5,8 +5,8 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
-## v0.0.145 — the way up out of the shop over the buy machine
-Awaiting the owner's OK of the screenshots (a minor update).
+## v0.0.145 — the way up over the buy machine, the gun light, the teleporter's lightning
+Released 2026-10-05 (after the owner's OK of the screenshots; a minor update).
 
 - **A light on the gun in place of the hand torch** (owner; the torch is archived for creatures later:
   `HAND_TORCH` in `game/systems/player.js`, its code untouched). A steady white cone the way you aim
