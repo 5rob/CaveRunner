@@ -32,7 +32,7 @@ the zones (new knob `l2bBones`, 90). Floor build ~0.75 s average, 1.2 s worst ov
 Open: blasts land in tomb rooms near zones and wipe their kit (by design?); the map's rings are many small ones (60
 default) — the owner may want more/bigger.
 
-**Stage 5 round 2 (owner):** the blasts as a ring of damage round each zone: a gradient out 500 px from the zones' edges (`l2bMaxDist`), density 1 at the edge falling to 0 (`l2bDen` linear), size × 2 at the edge down to 0.25 (`l2bScale`), 420 blasts, and blasts anywhere in the ring, rock too (`l2bInRock` 1). ~1 s a floor. `tomb` and `darkzone` browser suites now run with `l2bCount` 0. Waiting on the owner's OK.
+**Stage 5 round 2 (owner):** the blasts as a ring of damage round each zone: a gradient out 100 px from the zones' edges (owner: 500 was far too much) (`l2bMaxDist`), density 1 at the edge falling to 0 (`l2bDen` linear), size × 2 at the edge down to 0.25 (`l2bScale`), 420 blasts, and blasts anywhere in the ring, rock too (`l2bInRock` 1). ~1 s a floor. `tomb` and `darkzone` browser suites now run with `l2bCount` 0. Waiting on the owner's OK.
 
 **Stage 4 round 6 (owner):** the look and the doubled size approved; near fire the silk's black lifts too (`render/dark.js`, the plain silk over the multiplied one by the fire's lift; `darkzone` checks it). Waiting on the owner's OK of that shot, then stage 5.
 
