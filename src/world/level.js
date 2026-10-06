@@ -616,7 +616,9 @@ export function makeLevel(seed, floor, owned) {
     /** @param {number} cx @param {number} cy @param {boolean} black */
     const alien = (cx, cy, black) => {
       const x = (cx + 0.5) * CELL, y = (cy + 0.5) * CELL;
-      enemies.push({ x, y, ty: y, r: ak.r, phase: ar() * 6.28, hp: ak.hp, hpMax: ak.hp, cd: 0, flash: 0, lx: 0, ly: 1,
+      // its size: rolled in alScale, leaning to the small end (alBias: most small, now and then a big one)
+      const sc = kru('alScale', Math.pow(ar(), kru('alBias', ar())));
+      enemies.push({ x, y, ty: y, r: ak.r * sc, phase: ar() * 6.28, hp: ak.hp, hpMax: ak.hp, cd: 0, flash: 0, lx: 0, ly: 1,
         hx: x, hy: y, tgt: null, rest: 0, k: ak, touch: 0, charge: 0,
         al: { rot: 0, px: 0, py: 0, walk: 0, black, z: black ? 0 : mask[cy * CW + cx], vx: 0, vy: 0, ha: ar() * 6.28, on: 0,
           rest: ar() * 0.6, spd: 0, pt: 0, fl: 0, fx: 0, fy: 0, sprint: false, dodge: 0, dA: 0 } });

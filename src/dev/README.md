@@ -45,7 +45,7 @@
   every…), `l2Loops` (extra links), `l2Course`/`l2Block`/`l2Mason` (the cut stone: course height, block length,
   depth into the rock), `l2Furn` and `l2Bones` (the room kits' furniture and skeletal remains, ×; Level 2 stage 3,
   `world/furnish.js`). `l2Decor` is now × all of floor 2's kits (0 = a bare tomb). The noise-cave knobs it had before went with floor 2's noise cave, `L2_LOOK` (its palette, colour
-  pickers, defaults = Coal seams; `data/themes.js` `themeFor` builds the theme from them), `l2Decor`
+  pickers, defaults = Tombs; `data/themes.js` `themeFor` builds the theme from them), `l2Decor`
   (× decoration, `decorate`). Changes show on the next cave; **Floor 2** on the panel goes there.
 - Level 2: dark zones (`g: 'l2dark'`, Level 2 stage 4, `world/dark.js`, `game/render/dark.js`): `l2dCount` and `l2dSize`
   (ranges, `L2D_KNOBS`: how many, 2–3; radius px, 60–88), `l2dSpace` (apart, 120 px + half their sizes), `l2dShop` (140)

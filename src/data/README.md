@@ -9,7 +9,7 @@
 
 ## Rules
 
-- **Floor 2's palette is Dev knobs** (v129, `L2_LOOK`, group Level 2): `themeFor` builds Coal seams from
+- **Floor 2's palette is Dev knobs** (v129, `L2_LOOK`, group Level 2): `themeFor` builds Tombs from
   them (cached per change; at the defaults it returns `THEMES[1]` itself). `activePerks` counts a
   perk once (no doubling up).
 - **A floor's identity is the floor number, not the seed.** `themeFor(floor)` and

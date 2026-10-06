@@ -404,7 +404,7 @@ export const L2_KNOBS = rangeKnobs('level2', [
   ['l2Furn',    'Room kits: furniture amount (×)',           0, 3, 0.05,     1, 1],
   ['l2Bones',   'Room kits: skeletal remains (×)',           0, 3, 0.05,     1, 1],
 ]);
-// and its look: the palette (the Coal seams theme, data/themes.js themeFor) and how much decoration
+// and its look: the palette (the Tombs theme, data/themes.js themeFor) and how much decoration
 /** @type {[key: string, label: string, def: string][]} */
 export const L2_LOOK = [
   ['l2Bg',     'Background (far)',   '#0c0d11'], ['l2Bg2',    'Background (near)', '#1c1e24'],
@@ -491,6 +491,8 @@ curveKnobs('l2dark', 'l2dFire', 'Fire lifts the black (Y, 1 = full colour) by di
 export const AL_KNOBS = rangeKnobs('l2alien', [
   ['alCount',   'Aliens per dark zone',                         0, 400, 1,     60, 120],
   ['alStrays',  'Strays per floor (black, outside the zones)',  0, 20, 1,      2, 4],
+  ['alScale',   'Size × (each one rolled in this range)',        0.2, 5, 0.05,  0.6, 2.4],
+  ['alBias',    'Size: lean to small (1 even; higher = more small, few big)', 1, 8, 0.1, 3, 4],
   ['alSpeed',   'Roaming: burst speed',                          10, 600, 5,    80, 240],
   ['alRoamOn',  'Roaming: burst length (s)',                     0.02, 3, 0.01, 0.15, 0.9],
   ['alRoamOff', 'Roaming: rest between (s)',                     0, 6, 0.05,    0.3, 2],

@@ -42,7 +42,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.waitForTimeout(400);
   const two = await page.evaluate(() => ({ floor: window.__lvl.floor, theme: window.__lvl.theme, bg: themeFor(2).bg.join(),
     dev: !!document.querySelector('.devpanel') }));
-  check('Floor 2 goes to floor 2', two.floor === 2 && two.theme === 'Coal seams' && !two.dev, two);
+  check('Floor 2 goes to floor 2', two.floor === 2 && two.theme === 'Tombs' && !two.dev, two);
   check('in its Dev colours', two.bg === '255,0,255', two.bg);
   await page.evaluate(() => { DEV.l2Bg = DEV_DEFAULTS.l2Bg; });
 

@@ -146,5 +146,10 @@ check('the Dev group "Level 2: aliens" is there', DEV_GROUPS.some(g => g[0] === 
   const a = makeLevel(4, 2).enemies.filter(e => e.k.act === 'alien').map(e => e.x + e.y).join();
   const b3 = makeLevel(4, 2).enemies.filter(e => e.k.act === 'alien').map(e => e.x + e.y).join();
   check('deterministic', a === b3);
+  // sizes (owner): rolled in alScale, mostly small, a few big ones
+  const k = enemyFor('alien', 2), sc = makeLevel(4, 2).enemies.filter(e => e.k.act === 'alien').map(e => e.r / k.r).sort((p, q) => p - q);
+  const lo = DEV.alScaleLo, hi = DEV.alScaleHi, mid = (lo + hi) / 2, big = sc.filter(v => v > mid).length / sc.length;
+  check('sizes vary inside alScale, mostly small with a few big', sc[0] >= lo - 1e-9 && sc[sc.length - 1] <= hi + 1e-9 && sc[sc.length >> 1] < mid && big > 0.03 && big < 0.3,
+    { min: sc[0].toFixed(2), median: sc[sc.length >> 1].toFixed(2), max: sc[sc.length - 1].toFixed(2), bigShare: big.toFixed(2) });
 }
 process.exit(fails ? 1 : 0);
