@@ -1538,7 +1538,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "l2dTorchHyst", g: "l2dark", label: "And comes back on this much nearer the edge (px, no strobing)", min: 0, max: 40, step: 1 }
   );
   DEV_DEFAULTS.l2dFlk = 1;
-  DEV_DEFAULTS.l2dFlkRate = 2.5;
+  DEV_DEFAULTS.l2dFlkRate = 0.9;
+  DEV_DEFAULTS.l2dFlkTears = 0.75;
+  DEV_DEFAULTS.l2dFlkDrops = 0.9;
   DEV_DEFAULTS.l2dFlkFlash = 1.6;
   DEV_DEFAULTS.l2dFlkGlitch = 10;
   DEV_DEFAULTS.l2dFlkNear = 40;
@@ -1547,7 +1549,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     // the hologram glitching while you're in or near a zone (world/holoflicker.js; owner, after v0.0.148)
     { k: "l2dFlk", g: "l2dark", label: "Hologram glitches in the zones (0 off, 1 on)", min: 0, max: 1, step: 1 },
     { k: "l2dFlkBase", g: "l2dark", label: "Glitch: the hologram between bursts (× its brightness; 0 = dark till a burst)", min: 0, max: 1, step: 0.05 },
-    { k: "l2dFlkRate", g: "l2dark", label: "Glitch: how often (bursts a second)", min: 0, max: 8, step: 0.1 },
+    { k: "l2dFlkRate", g: "l2dark", label: "Glitch: how often it blinks on bright (flashes a second)", min: 0, max: 8, step: 0.05 },
+    { k: "l2dFlkTears", g: "l2dark", label: "Glitch: how often it tears into slices (a second)", min: 0, max: 8, step: 0.05 },
+    { k: "l2dFlkDrops", g: "l2dark", label: "Glitch: how often it cuts out (a second)", min: 0, max: 8, step: 0.05 },
     { k: "l2dFlkFlash", g: "l2dark", label: "Glitch: flash brightness (× the hologram; past 1 brighter than it)", min: 0, max: 3, step: 0.05 },
     { k: "l2dFlkGlitch", g: "l2dark", label: "Glitch: tearing, how far the slices jump (terrain px; 0 none)", min: 0, max: 60, step: 1 },
     { k: "l2dFlkNear", g: "l2dark", label: "Glitch starts this near a zone (px outside its box)", min: 0, max: 200, step: 1 }
@@ -18124,7 +18128,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return (x >>> 0) / 4294967296;
   }
   function flickerStep(s, dt, near, k) {
-    if (!near || k.rate <= 0) {
+    const tears = k.glitch > 0 ? Math.max(0, k.tears) : 0, blink = Math.max(0, k.blink), drops = Math.max(0, k.drops);
+    const rate = blink + tears + drops;
+    if (!near || rate <= 0) {
       s.mode = 0;
       s.t = 0;
       s.mul = 1;
@@ -18143,10 +18149,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (s.t <= 0) {
       if (s.mode !== 0) {
         s.mode = 0;
-        s.t = (0.3 + R() * 1.4) / Math.max(0.05, k.rate);
+        s.t = (0.3 + R() * 1.4) / Math.max(0.05, rate);
       } else {
-        const u = R(), g = k.glitch > 0;
-        s.mode = u < 0.35 ? 1 : u < (g ? 0.7 : 1) ? 2 : 3;
+        const u = R() * rate;
+        s.mode = u < drops ? 1 : u < drops + blink ? 2 : 3;
         s.t = s.mode === 1 ? 0.04 + R() * 0.35 : s.mode === 2 ? 0.06 + R() * 0.3 : 0.08 + R() * 0.25;
       }
     }
@@ -18690,7 +18696,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     D.flT = W.time;
     const nr = Math.max(0, DEV.l2dFlkNear) * CELL, px = W.p.x + 6, py = W.p.y + 11;
     const near = !!DEV.l2dFlk && W.dark.some((z) => px > z.x0 * CELL - nr && px < (z.x1 + 1) * CELL + nr && py > z.y0 * CELL - nr && py < (z.y1 + 1) * CELL + nr);
-    const fk = flickerStep(D.flk, dt, near, { rate: DEV.l2dFlkRate, flash: DEV.l2dFlkFlash, glitch: DEV.l2dFlkGlitch });
+    const fk = flickerStep(D.flk, dt, near, { blink: DEV.l2dFlkRate, tears: DEV.l2dFlkTears, drops: DEV.l2dFlkDrops, flash: DEV.l2dFlkFlash, glitch: DEV.l2dFlkGlitch });
     holoKeep.on = near;
     const h0 = holoBright() * DEV.l2dHolo, hon = near ? Math.max(h0, clamp(DEV.l2dFlkBase, 0, 1) * DEV.l2dHolo) : h0;
     const hl = holoLayer(), hb = fk.mode === 2 ? Math.max(hon, DEV.l2dHolo) * fk.mul : hon * fk.mul;

@@ -293,7 +293,7 @@ export function darkPrep(W, G, F) {
   const dt = clamp(W.time - D.flT, 0, 0.1); D.flT = W.time;
   const nr = Math.max(0, DEV.l2dFlkNear) * CELL, px = W.p.x + 6, py = W.p.y + 11;
   const near = !!DEV.l2dFlk && W.dark.some(z => px > z.x0 * CELL - nr && px < (z.x1 + 1) * CELL + nr && py > z.y0 * CELL - nr && py < (z.y1 + 1) * CELL + nr);
-  const fk = flickerStep(D.flk, dt, near, { rate: DEV.l2dFlkRate, flash: DEV.l2dFlkFlash, glitch: DEV.l2dFlkGlitch });
+  const fk = flickerStep(D.flk, dt, near, { blink: DEV.l2dFlkRate, tears: DEV.l2dFlkTears, drops: DEV.l2dFlkDrops, flash: DEV.l2dFlkFlash, glitch: DEV.l2dFlkGlitch });
   holoKeep.on = near;   // (the layer made next frame even while the hologram is dark)
   // in or near a zone the hologram is on at DEV.l2dFlkBase between the glitches (or brighter, a kill's flash)
   const h0 = holoBright() * DEV.l2dHolo, hon = near ? Math.max(h0, clamp(DEV.l2dFlkBase, 0, 1) * DEV.l2dHolo) : h0;

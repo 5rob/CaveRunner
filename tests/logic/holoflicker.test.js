@@ -5,7 +5,7 @@ const G = require('../load');
 const { flickerNew, flickerStep, flickerSlices, DEV_DEFAULTS, DEV_META } = G;
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
-const k = { rate: DEV_DEFAULTS.l2dFlkRate, flash: DEV_DEFAULTS.l2dFlkFlash, glitch: DEV_DEFAULTS.l2dFlkGlitch };
+const k = { blink: DEV_DEFAULTS.l2dFlkRate, tears: DEV_DEFAULTS.l2dFlkTears, drops: DEV_DEFAULTS.l2dFlkDrops, flash: DEV_DEFAULTS.l2dFlkFlash, glitch: DEV_DEFAULTS.l2dFlkGlitch };
 
 let s = flickerNew();
 for (let i = 0; i < 300; i++) flickerStep(s, 1 / 60, false, k);
@@ -28,13 +28,19 @@ check('some frames off', a.off > 10, a.off);
 check('deterministic', a.out.join() === b.out.join());
 
 s = flickerNew();
-for (let i = 0; i < 600; i++) flickerStep(s, 1 / 60, true, { ...k, rate: 0 });
+for (let i = 0; i < 600; i++) flickerStep(s, 1 / 60, true, { ...k, blink: 0, tears: 0, drops: 0 });
 check('rate 0: steady', s.mode === 0 && s.mul === 1);
+// each rate on its own gives only its own kind of event (owner: separate knobs)
+for (const [key, mode] of [['drops', 1], ['blink', 2], ['tears', 3]]) {
+  s = flickerNew(); const seen = new Set();
+  for (let i = 0; i < 1200; i++) { flickerStep(s, 1 / 60, true, { ...k, blink: 0, tears: 0, drops: 0, [key]: 2 }); seen.add(s.mode); }
+  check(key + ' alone: only mode ' + mode, seen.has(mode) && [...seen].every(m => m === 0 || m === mode), [...seen]);
+}
 
 const sl = flickerSlices(1234, 10, 14);
 check('slices tile the layer', sl[0].y0 === 0 && Math.abs(sl[sl.length - 1].y1 - 1) < 1e-9 && sl.every((x, i) => !i || x.y0 === sl[i - 1].y1), sl.length);
 check('slices shift within the tear, some not at all', sl.every(x => Math.abs(x.dx) <= 10) && sl.some(x => x.dx === 0) && sl.some(x => x.dx !== 0));
-check('knobs on the panel', ['l2dFlk', 'l2dFlkBase', 'l2dFlkRate', 'l2dFlkFlash', 'l2dFlkGlitch', 'l2dFlkNear'].every(n => DEV_META.some(m => m.k === n && m.g === 'l2dark')));
+check('knobs on the panel', ['l2dFlk', 'l2dFlkBase', 'l2dFlkRate', 'l2dFlkTears', 'l2dFlkDrops', 'l2dFlkFlash', 'l2dFlkGlitch', 'l2dFlkNear'].every(n => DEV_META.some(m => m.k === n && m.g === 'l2dark')));
 
 console.log(fails ? `${fails} FAILED` : 'all ok');
 process.exit(fails ? 1 : 0);

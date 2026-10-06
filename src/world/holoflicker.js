@@ -2,7 +2,8 @@
 // Floor 2's dark zones: the hologram behind the silk glitching while you're in or near one (owner, after
 // v0.0.148: "flicker on and off randomly and glitch a lot in flashes", random backlight for the silk, the aliens
 // silhouetted against it). Pure: a little state machine stepped each drawn frame by game/render/dark.js, its
-// own random stream (no Math.random). Knobs: DEV.l2dFlk* (Dev → Level 2: dark zones).
+// own random stream (no Math.random). Knobs: DEV.l2dFlk* (Dev → Level 2: dark zones). Each kind of event has its
+// own rate (owner: "frequency of glitching and frequency of it randomly blinking on"), events a second.
 //   mode 0 steady: the hologram as it is (× 1); 1 dropout: off (× 0); 2 flash: a burst of bright frames,
 //   strobing between `flash` and dim; 3 glitch: the layer torn into horizontal slices, each shifted sideways
 // Out, per frame: `mul` (× the hologram's alpha; past 1 the extra is drawn again, lighter) and `tear` (the
@@ -25,20 +26,23 @@ export function flickerRnd(s) {
 /**
  * One frame. `near` false: back to steady at once (the hologram as it always was).
  * @param {HoloFlicker} s @param {number} dt @param {boolean} near
- * @param {{ rate: number, flash: number, glitch: number }} k rate: events a second; flash: a flash's brightness
- * (× the hologram's alpha 1, can pass 1); glitch: the most a slice shifts, terrain px
+ * @param {{ blink: number, tears: number, drops: number, flash: number, glitch: number }} k blink: flashes (blinking
+ * on) a second; tears: torn glitches a second; drops: dropouts a second; flash: a flash's brightness (× the
+ * hologram's alpha 1, can pass 1); glitch: the most a slice shifts, terrain px (0: no tearing)
  */
 export function flickerStep(s, dt, near, k) {
-  if (!near || k.rate <= 0) { s.mode = 0; s.t = 0; s.mul = 1; s.tear = 0; return s; }
+  const tears = k.glitch > 0 ? Math.max(0, k.tears) : 0, blink = Math.max(0, k.blink), drops = Math.max(0, k.drops);
+  const rate = blink + tears + drops;
+  if (!near || rate <= 0) { s.mode = 0; s.t = 0; s.mul = 1; s.tear = 0; return s; }
   if (s.hold) { s.mode = s.hold.mode; s.mul = s.hold.mul; s.tear = s.hold.tear; s.seed = s.hold.seed; return s; }
   const R = () => flickerRnd(s);
   s.t -= dt;
   if (s.t <= 0) {
-    if (s.mode !== 0) { s.mode = 0; s.t = (0.3 + R() * 1.4) / Math.max(0.05, k.rate); }   // a quiet spell, shorter at a higher rate
+    if (s.mode !== 0) { s.mode = 0; s.t = (0.3 + R() * 1.4) / Math.max(0.05, rate); }   // a quiet spell, shorter at a higher rate
     else {
-      // the next event: dropouts and flashes most, tearing when there's any glitch to it
-      const u = R(), g = k.glitch > 0;
-      s.mode = u < 0.35 ? 1 : u < (g ? 0.7 : 1) ? 2 : 3;
+      // the next event, each kind as likely as its share of the rates
+      const u = R() * rate;
+      s.mode = u < drops ? 1 : u < drops + blink ? 2 : 3;
       s.t = s.mode === 1 ? 0.04 + R() * 0.35 : s.mode === 2 ? 0.06 + R() * 0.3 : 0.08 + R() * 0.25;
     }
   }
