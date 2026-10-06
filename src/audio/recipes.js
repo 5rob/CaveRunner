@@ -71,7 +71,7 @@ export function shotSound(sh) {
 // Creatures speak by body, with a few overrides where the body alone would be wrong.
 /** @type {Record<string, string>} */
 export const BODY_VOICE = { drone: 'gibber', crawler: 'chitter', spider: 'chitter', worm: 'slither', blob: 'gurgle', jelly: 'gurgle', skull: 'rattle',
-  rat: 'chitter', nest: 'chitter' };
+  rat: 'chitter', nest: 'chitter', alien: 'chitter' };
 /** @type {Record<string, string>} */
 export const CREATURE_TONE = { lohkare: 'growl', hurtta: 'growl', jaatio: 'icy', tuli: 'ember', karpas: 'spore' };
 export const CREATURE_VOICES = ['gibber', 'chitter', 'slither', 'gurgle', 'rattle', 'growl', 'icy', 'ember', 'spore'];

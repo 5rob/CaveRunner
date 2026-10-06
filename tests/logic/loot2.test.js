@@ -22,8 +22,9 @@ for (const seed of SEEDS) {
   if (!m || !lv.dark.length) { bad.push([seed, 'no zones']); continue; }
   const outside = q => !sh[cell(lv, q.x, q.y - 3)];
   const nearPrize = q => lv.dark.some(z => z.prize && Math.hypot(q.x - z.prize.x, q.y - z.prize.y) < z.chamber.rx * CELL + 40);
-  // no creatures outside the zones (none at all yet: aliens come in stage 7)
-  if (lv.enemies.some(e => !m[cell(lv, e.x, e.y)])) bad.push([seed, 'creature outside']);
+  // no creatures outside the zones but the aliens' black strays (stage 7b)
+  if (lv.enemies.some(e => !(e.al && e.al.black) && !m[cell(lv, e.x, e.y)]))   // (the black strays live outside)
+    bad.push([seed, 'creature outside']);
   const spots = lv.tomb.loot;
   spotsN.push(spots.length);
   for (const s of spots) if (!outside(s) || !lv.mat[cell(lv, s.x, s.y + 1)] || lv.mat[cell(lv, s.x, s.y - 2)]) bad.push([seed, 'spot', s]);

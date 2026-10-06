@@ -62,7 +62,7 @@ export function drawEnemies(W, G, F) {
       }
     }
     drawEnemy(G.ctx, e, W.time);
-    if ((e.home || e.nest) && e.hp >= e.hpMax) continue;   // rats and nests: a bar only once hurt
+    if ((e.home || e.nest || e.al) && e.hp >= e.hpMax) continue;   // rats, nests and aliens: a bar only once hurt
     const hw = 20, hx = e.x - hw / 2, hy = ey - e.r - 9;
     G.ctx.fillStyle = COL.barBg; G.ctx.fillRect(hx, hy, hw, 3);
     G.ctx.fillStyle = e.je ? jcol('jeColBody', e.je.u.col) : e.k.col.a;

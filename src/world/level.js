@@ -606,6 +606,38 @@ export function makeLevel(seed, floor, owned) {
         t: 0.5 + (n.x % 7) * 0.4, stash: 0, max: 0, left: Math.round(kru('raBrood', hash(n.x * 3 + 11, n.y * 5 + 7))) } });
   }
 
+  // floor 2's aliens (Level 2 stage 7b, creatures/alien.js): alCount per dark zone in its open cells (the
+  // chamber, the tunnels), and alStrays black ones loose in the tomb outside every zone. Their own stream
+  // (the seed's), so the rest of the floor stays the same
+  if (wasteland && darkData) {
+    let as = (seed * 7919 + floor * 104729 + 17) % 2147483647 || 1;
+    const ar = () => (as = (as * 16807) % 2147483647) / 2147483647;
+    const ak = enemyFor('alien', floor), mask = darkData.mask;
+    /** @param {number} cx @param {number} cy @param {boolean} black */
+    const alien = (cx, cy, black) => {
+      const x = (cx + 0.5) * CELL, y = (cy + 0.5) * CELL;
+      enemies.push({ x, y, ty: y, r: ak.r, phase: ar() * 6.28, hp: ak.hp, hpMax: ak.hp, cd: 0, flash: 0, lx: 0, ly: 1,
+        hx: x, hy: y, tgt: null, rest: 0, k: ak, touch: 0, charge: 0,
+        al: { rot: 0, px: 0, py: 0, walk: 0, black, z: black ? 0 : mask[cy * CW + cx], vx: 0, vy: 0, ha: ar() * 6.28, on: 0,
+          rest: ar() * 0.6, spd: 0, pt: 0, fl: 0, fx: 0, fy: 0, sprint: false, dodge: 0, dA: 0 } });
+    };
+    /** @type {number[][]} */
+    const zcells = darkData.zones.map(() => []);
+    for (let i = 0; i < CW * CH; i++) if (mask[i] && !mat[i] && mask[i] <= zcells.length) zcells[mask[i] - 1].push(i);
+    for (const cells of zcells) {
+      if (!cells.length) continue;
+      const n = Math.round(kru('alCount', ar()));
+      for (let j = 0; j < n; j++) { const i = cells[Math.floor(ar() * cells.length)]; alien(i % CW, (i / CW) | 0, false); }
+    }
+    // strays: open tomb cells outside every zone, standing on rock, far from the start
+    const ns = Math.round(kru('alStrays', ar()));
+    for (let a = 0, got = 0; a < 4000 && got < ns; a++) {
+      const cx = 4 + Math.floor(ar() * (CW - 8)), cy = 40 + Math.floor(ar() * (SHOP_TOP - 60)), i = cy * CW + cx;
+      if (mat[i] || darkData.shade[i] || !mat[i + CW] || Math.hypot((cx + 0.5) * CELL - start.x, (cy + 0.5) * CELL - start.y) < 300) continue;
+      alien(cx, cy, true); got++;
+    }
+  }
+
   // guns and red crystals to find: the higher up the cave, the better the roll.
   // Half the mods there used to be (crystals now), and they have to sit far enough apart that the
   // few of them are spread over the whole cave rather than bunched in one corner.

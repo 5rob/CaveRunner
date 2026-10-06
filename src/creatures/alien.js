@@ -3,7 +3,11 @@
 // almost all of it one eyeball, its black pupil darting about until it locks onto you; three very thin
 // spider legs, equally spaced and aimed outwards, about one and a half body-widths long (owner: half of three),
 // tapering from the body's full width at the root to a thin tip. Out of its zone (a stray)
-// it is all black. Sprite only so far: the brain comes after the owner's OK of the look.
+// it is all black. The brain (stage 7b): alienStep, alienBoids, alienGrid / alienNear, below the sprite.
+
+import { CELL } from '../core/consts.js';
+import { kr } from '../dev/knobs.js';
+import { surfNormal, turnToward } from './common.js';
 
 // body geometry (world units; the skin's noise is skinTile): r is the body's radius (the helmet is ~5 across: r 2.6)
 export const ALIEN = { r: 2.6, leg: 1.5, knee: 0.55, lift: 0.35 };
@@ -138,4 +142,143 @@ export function drawAlien(ctx, x, y, r, time, phase, flash, col, S) {
     ctx.beginPath(); ctx.arc(-r * 0.32, -r * 0.34, r * 0.13, 0, Math.PI * 2); ctx.fill();
   }
   ctx.restore();
+}
+
+// ---- the brain (stage 7b; the owner's brief, LEVEL2.md) ----
+// Hundreds of them, in packs (boids: separation, alignment, cohesion with the neighbours within alBoidR),
+// roaming their zone in short bursts a bit faster than the spider, anywhere there is silk (the background)
+// or rock next to them. Never out of the zone (a stray excepted). Within alFleeR of any fire (a burning
+// cell, an explosion, a burning body: env.fireNear) one runs straight away, and the pack flows with it.
+// Only when you are in the dark (in a zone, no fire near you: env.youDark) does one come for you and
+// bite; in light it keeps alKeep away, so you have to corner them. The pupil darts about every 0.2-0.8 s
+// until you are in aggro reach, then stares at you. A stray (S.black, outside every zone) wanders until it
+// sees you, then sprints for the nearest zone (env.home) and turns normal inside. Pure: the world comes in
+// through env. Every number is a Dev range (AL_KNOBS, dev/knobs.js), rolled at use.
+
+// one alien's neighbours, from a bucket grid made once a frame (alienGrid: cell world units a bucket)
+/** @param {Enemy[]} list @param {number} cell @returns {AlienGrid} */
+export function alienGrid(list, cell) {
+  /** @type {Map<number, Enemy[]>} */
+  const m = new Map();
+  for (const e of list) {
+    const k = Math.floor(e.x / cell) * 4096 + Math.floor(e.y / cell);
+    const b = m.get(k);
+    if (b) b.push(e); else m.set(k, [e]);
+  }
+  return { cell, m };
+}
+// the ones within R of (x, y), into out (cleared), not counting `self`
+/** @param {AlienGrid} G @param {number} x @param {number} y @param {number} R @param {Enemy | null} self @param {Enemy[]} out */
+export function alienNear(G, x, y, R, self, out) {
+  out.length = 0;
+  const c = G.cell, x0 = Math.floor((x - R) / c), x1 = Math.floor((x + R) / c), y0 = Math.floor((y - R) / c), y1 = Math.floor((y + R) / c);
+  for (let bx = x0; bx <= x1; bx++) for (let by = y0; by <= y1; by++) {
+    const b = G.m.get(bx * 4096 + by);
+    if (!b) continue;
+    for (const e of b) if (e !== self && (e.x - x) ** 2 + (e.y - y) ** 2 < R * R) out.push(e);
+  }
+  return out;
+}
+
+// the boids' steer for one at (x, y) moving (vx, vy), from its neighbours (each with x, y and al.vx/vy)
+// within R: separation (away from each, stronger the nearer), alignment (toward their mean velocity, as a
+// unit), cohesion (toward their middle, / R); each × its weight. Unitless: the caller scales by a speed
+/** @param {number} x @param {number} y @param {number} vx @param {number} vy @param {{ x: number, y: number, al?: { vx?: number, vy?: number } }[]} nb
+ * @param {number} R @param {{ sep: number, ali: number, coh: number }} w @returns {{ x: number, y: number }} */
+export function alienBoids(x, y, vx, vy, nb, R, w) {
+  let sx = 0, sy = 0, ax = 0, ay = 0, cx = 0, cy = 0, n = 0;
+  for (const o of nb) {
+    const dx = x - o.x, dy = y - o.y, d = Math.hypot(dx, dy);
+    if (d >= R) continue;
+    n++;
+    if (d > 1e-6) { const f = 1 - d / R; sx += dx / d * f; sy += dy / d * f; }
+    ax += (o.al && o.al.vx) || 0; ay += (o.al && o.al.vy) || 0;
+    cx += o.x; cy += o.y;
+  }
+  if (!n) return { x: 0, y: 0 };
+  ax = ax / n - vx; ay = ay / n - vy;
+  const al = Math.hypot(ax, ay);
+  if (al > 1) { ax /= al; ay /= al; } else { ax = 0; ay = 0; }
+  cx = (cx / n - x) / R; cy = (cy / n - y) / R;
+  return { x: w.sep * sx + w.ali * ax + w.coh * cx, y: w.sep * sy + w.ali * ay + w.coh * cy };
+}
+
+/** a new alien's brain: z its zone (number + 1; 0 a stray) @param {number} z @param {Rnd} rnd @returns {AlienBrain} */
+export function alienBrain(z, rnd) {
+  return { rot: 0, px: 0, py: 0, walk: 0, black: !z, z, vx: 0, vy: 0, ha: rnd() * 6.28, on: 0, rest: rnd() * 0.6,
+    spd: 0, pt: 0, fl: 0, fx: 0, fy: 0, sprint: false, dodge: 0, dA: 0 };
+}
+
+// One frame of one alien. Moves e, updates e.al. Returns 'bite' when it bites you (the Game hurts you and
+// sets e.touch), 'home' the frame a stray gets into a zone, else null
+/** @param {Enemy} e @param {AlienEnv} env @param {number} dt @returns {string | null} */
+export function alienStep(e, env, dt) {
+  const { rnd } = env;
+  const S = e.al || (e.al = alienBrain(env.zone(e.x, e.y), rnd));
+  const open = (/** @type {number} */ x, /** @type {number} */ y) => !env.solidCell(Math.floor(x / CELL), Math.floor(y / CELL));
+  // where it may stand: open, in its own zone (a stray: anywhere), on silk or by rock
+  const walk = (/** @type {number} */ x, /** @type {number} */ y) => open(x, y) && (S.black || env.zone(x, y) === S.z) &&
+    (env.silk(x, y) || !!surfNormal(x, y, 8, env.solidCell));
+  // somewhere it shouldn't be (rock dug, pushed out): any open cell will do until it's back
+  const ok = walk(e.x, e.y) ? walk : open;
+  let out = null;
+  // the pupil: darts about, or stares at you within aggro reach
+  if (env.look) { const d = Math.hypot(env.you.x - e.x, env.you.y - e.y) || 1; S.px = (env.you.x - e.x) / d; S.py = (env.you.y - e.y) / d; S.pt = 0; }
+  else if ((S.pt -= dt) <= 0) { const a = rnd() * 6.28, m = Math.sqrt(rnd()); S.px = Math.cos(a) * m; S.py = Math.sin(a) * m; S.pt = 0.2 + rnd() * 0.6; }
+  // fire near: run straight away from it, for a moment after too
+  const f = env.fireNear(e.x, e.y, kr('alFleeR', rnd));
+  if (f) {
+    const dx = e.x - f.x, dy = e.y - f.y, d = Math.hypot(dx, dy);
+    if (d > 1e-6) { S.fx = dx / d; S.fy = dy / d; } else if (!S.fl) { S.fx = Math.cos(S.ha); S.fy = Math.sin(S.ha); }
+    S.fl = 0.4 + rnd() * 0.4;
+  }
+  S.fl = Math.max(0, S.fl - dt);
+  S.dodge = Math.max(0, S.dodge - dt);
+  let gx = 0, gy = 0, sp = 0, boid = 1;
+  const yx = env.you.x - e.x, yy = env.you.y - e.y, yd = Math.hypot(yx, yy) || 1;
+  if (S.black) {
+    // a stray: seen you, it sprints for the nearest zone
+    if (env.hunting) S.sprint = true;
+    const h = S.sprint ? env.home(e.x, e.y) : null;
+    if (h) { const dx = h.x - e.x, dy = h.y - e.y, d = Math.hypot(dx, dy) || 1; gx = dx / d; gy = dy / d; sp = kr('alFleeSpd', rnd); boid = 0; }
+  }
+  if (sp) S.on = 0;                             // (the stray's sprint)
+  else if (S.fl > 0) { gx = S.fx; gy = S.fy; sp = kr('alFleeSpd', rnd); }
+  else if (env.hunting && env.youDark && !S.black) { gx = yx / yd; gy = yy / yd; sp = kr('alHunt', rnd); boid = 0.4; }
+  else if (env.hunting && yd < kr('alKeep', rnd)) { gx = -yx / yd; gy = -yy / yd; sp = kr('alSpeed', rnd); }
+  else {
+    // roaming: bursts and rests, the heading wandering; never without a clock running
+    if (S.on > 0) S.on -= dt;
+    else if ((S.rest -= dt) <= 0) { S.on = kr('alRoamOn', rnd); S.rest = kr('alRoamOff', rnd); S.spd = kr('alSpeed', rnd); S.ha += (rnd() - 0.5) * 2.5; }
+    S.ha += (rnd() - 0.5) * 4 * dt;
+    if (S.on > 0) { gx = Math.cos(S.ha); gy = Math.sin(S.ha); sp = S.spd; } else boid = 0.3;
+  }
+  // blocked lately: go round (the heading turned aside a while)
+  if (S.dodge > 0 && sp) { const c = Math.cos(S.dA), s = Math.sin(S.dA), x = gx * c - gy * s; gy = gx * s + gy * c; gx = x; }
+  // the pack: boids over the neighbours
+  if (boid) {
+    const b = alienBoids(e.x, e.y, S.vx, S.vy, env.near, kr('alBoidR', rnd), { sep: kr('alSep', rnd), ali: kr('alAli', rnd), coh: kr('alCoh', rnd) });
+    const ref = Math.max(sp, 40) * boid;
+    gx = gx * sp + b.x * ref; gy = gy * sp + b.y * ref;
+  } else { gx *= sp; gy *= sp; }
+  const k = 1 - Math.exp(-8 * dt);
+  S.vx += (gx - S.vx) * k; S.vy += (gy - S.vy) * k;
+  // the move, in steps no longer than a cell; blocked: slide along, or turn back and go round
+  const n = Math.max(1, Math.ceil(Math.hypot(S.vx, S.vy) * dt / CELL));
+  for (let i = 0; i < n; i++) {
+    const nx = e.x + S.vx * dt / n, ny = e.y + S.vy * dt / n;
+    if (ok(nx, ny)) { e.x = nx; e.y = ny; continue; }
+    if (ok(nx, e.y)) { e.x = nx; S.vy *= -0.3; } else if (ok(e.x, ny)) { e.y = ny; S.vx *= -0.3; } else { S.vx *= -0.5; S.vy *= -0.5; }
+    if (!S.dodge) { S.dodge = 0.3 + rnd() * 0.5; S.dA = (rnd() < 0.5 ? -1 : 1) * (1.2 + rnd() * 0.8); S.ha += S.dA; }
+    break;
+  }
+  // a stray into a zone: one of them now
+  if (S.black) { const z = env.zone(e.x, e.y); if (z) { S.black = false; S.z = z; S.sprint = false; out = 'home'; } }
+  // the bite: in the dark, touching you
+  if (!S.black && env.hunting && env.youDark && yd < e.r + 8 && e.touch <= 0) out = 'bite';
+  // the look: underside to the nearest rock (0 free on the silk), legs at its speed
+  const sn = surfNormal(e.x, e.y, 8, env.solidCell);
+  S.rot = turnToward(S.rot, sn ? Math.atan2(sn.x, -sn.y) : 0, 10 * dt);
+  S.walk = Math.min(1, Math.hypot(S.vx, S.vy) / 120);
+  return out;
 }

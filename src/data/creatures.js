@@ -49,6 +49,11 @@ export const CREATURES = {
   hamahakki: { name: 'Hämähäkki', body: 'spider', act: 'spider', kp: 'sp', aggro: 300,
     col: { a: '#6a4a86', b: '#2b1d38', c: '#a077c4', eye: '#ffd98a' },
     hp: 4, dmg: 12, bspd: 0, range: 0, cd: 0, gold: 6, r: 9, spd: 260 },
+  // alien: the dark zones' packs (alienStep): roam the silk, flee fire, bite only in the dark. Floor 2's
+  // makeLevel spawns them per zone (alCount) plus a few black strays (alStrays); never off a roster
+  alien: { name: 'Alien', body: 'alien', act: 'alien', kp: 'al', aggro: 220, noRoster: 1,
+    col: { a: '#2a1f2e', b: '#120c14', c: '#e8e2d4', eye: '#050505' },
+    hp: 1, dmg: 4, bspd: 0, range: 0, cd: 0, gold: 1, r: 2.6, spd: 160 },
   // rat: runs the rock surfaces round its nest (ratStep), bites you and knocks gold out of
   // you, grabs any loose gold near it and carries it home. Its numbers are Dev knobs (DEV.ra*).
   // It is never rolled off a roster: rats only come out of nests.
@@ -168,7 +173,7 @@ export function eliteCol(c, u) {
 // the acts that hunt you: they notice you on a sightline within their aggro reach, keep
 // coming, and only lose you far away (see the enemy loop)
 /** @type {Record<string, number>} */
-export const HUNTERS = { chase: 1, bomb: 1, spider: 1, jelly: 1, rat: 1 };
+export const HUNTERS = { chase: 1, bomb: 1, spider: 1, jelly: 1, rat: 1, alien: 1 };
 
 // creatures (by act) that live only in the natural zones: spawned there, and they won't swim
 // out into a built-up zone (jellyStep's env.stay)

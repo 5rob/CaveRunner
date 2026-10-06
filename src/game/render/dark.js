@@ -22,7 +22,7 @@
 
 import { BCELL, BH, BW, CELL, CH, CW, FH, FOG_U, FW } from '../../core/consts.js';
 import { clamp } from '../../core/util.js';
-import { DEV, kcurve } from '../../dev/knobs.js';
+import { DEV, kcurve, kr } from '../../dev/knobs.js';
 import { curveFn } from '../../world/byDistance.js';
 import { silkColour, silkTint, tintRamp } from '../../world/dark.js';
 import { beamLift } from '../../world/vision.js';
@@ -175,6 +175,15 @@ export function darkPrep(W, G, F) {
   for (const f of W.flashes) addLift(f.x, f.y, R + f.r * 2, clamp(2 * (1 - f.t / 0.25), 0, 1));   // a blast: fire for a moment
   for (const e of W.enemies) if (e.burn > 0) addLift(e.x, e.ty, R, W.flick);
   if (W.p.burn > 0 && !W.p.dead) addLift(W.p.x + 6, W.p.y + 11, R, W.flick);
+  // a shot's own glow in a zone (stage 7b): a short, weak lift round each live bullet, so what's near it (the
+  // aliens) flashes into view as it passes (DEV.alGlimpse strength, alGlimpseR radius; rolled a frame)
+  if (W.bullets.length) {
+    const gR = kr('alGlimpseR'), gw = kr('alGlimpse'), mk = W.darkMask;
+    if (gR > 0 && gw > 0) for (const b of W.bullets) {
+      const cx = Math.floor(b.x / CELL), cy = Math.floor(b.y / CELL);
+      if (cx >= 0 && cx < CW && cy >= 0 && cy < CH && mk[cy * CW + cx]) addLift(b.x, b.y, gR, gw);
+    }
+  }
   // the torch, while it works, cuts through the black too (round 3: the stretch in before it fails), on what
   // you can see, never past where it fails
   const bm = D.beam, zd = D.zd, Tq = DEV.l2dTorchDepth;

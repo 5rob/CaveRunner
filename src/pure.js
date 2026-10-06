@@ -46,6 +46,7 @@ export * from './creatures/common.js';
 export * from './creatures/spider.js';
 export * from './creatures/rat.js';
 export * from './creatures/jelly.js';
+export * from './creatures/alien.js';
 export * from './creatures/classic.js';
 export * from './creatures/draw.js';
 export * from './art/sprites.js';

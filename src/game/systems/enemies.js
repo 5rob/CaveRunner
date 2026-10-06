@@ -121,7 +121,7 @@ export function stepEnemies(W, G, F) {
     const hunting = chaser && e.aggro;
     C.i = i; C.dx = dx; C.dy = dy; C.dist = dist; C.sees = sees; C.hunting = hunting;
     // the odd noise from anything near, seen or not: you hear the cave before you see it
-    if (dist < 380 && Math.random() < 0.07 * dt) SFX.creature(k, 'idle', e.x, e.ty);
+    if (dist < 380 && Math.random() < (k.act === 'alien' ? 0.004 : 0.07) * dt) SFX.creature(k, 'idle', e.x, e.ty);
     // the act's part before its move (ACTS, D20): a bomber's fuse
     if (A.pre) A.pre(W, G, e, C);
     // the act's move (ACTS, D20); true = it did its whole frame, nothing below runs for it

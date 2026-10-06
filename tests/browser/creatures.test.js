@@ -71,8 +71,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       floor: window.__lvl.floor, theme: window.__lvl.theme, roster: window.__lvl.roster.slice(),
       expectedTheme: themeFor(window.__lvl.floor).name,
       expectedRoster: rosterFor(window.__lvl.floor).slice(),
-      ids: [...new Set(window.__lvl.enemies.map(e => e.k.id))],
-      enemies: window.__lvl.enemies.length,
+      ids: [...new Set(window.__lvl.enemies.filter(e => e.k.act !== 'alien').map(e => e.k.id))],   // (floor 2's aliens: not off the roster)
+      enemies: window.__lvl.enemies.filter(e => e.k.act !== 'alien').length,
       charged: window.__lvl.enemies.some(e => e.k.act === 'turret' && e.k.tele > 0),
       chasers: window.__lvl.enemies.filter(e => e.k.act === 'chase' || e.k.act === 'bomb').length,
     }));

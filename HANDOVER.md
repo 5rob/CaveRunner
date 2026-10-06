@@ -22,6 +22,18 @@ bump the version, before the next release.
    with skeletons everywhere; listed in `room.kit`. Candles are painted and UNLIT. Owner: "The tombs should be
    dark."
 
+**Stage 7, the aliens — BUILT, AWAITING THE OWNER'S OK** (on `level2`). 7a the sprite (approved). 7b the
+behaviour: brain `alienStep` / `alienBoids` / `alienGrid` in `src/creatures/alien.js`, Game side
+`src/game/creatures/alien.js` (act `alien`, kind `alien`, kp `al`). Floor 2 spawns `alCount` (60–120) per zone in
+its open cells plus `alStrays` (2–4) black strays in the tomb (own stream). Packs roam the silk in bursts
+(boids), flee any fire within `alFleeR`, bite only when you're in the dark, keep `alKeep` off in light; strays
+sprint to the nearest zone once they see you and turn normal inside. A live bullet in a zone lifts the black a
+little round it (`alGlimpse`/`alGlimpseR`, `render/dark.js`). Dev group "Level 2: aliens" (`al*`). Suites
+`logic/alien`, `browser/alien` (sandbox flee), `browser/alienperf` (~280 aliens on the floor, ~74 near you: 27.3 ms
+a frame vs 26.0 without, software-rendered). Screenshots: `node tools/alienshots.js [outdir]`. Open: the bullet
+glimpse barely shows at the defaults (raise `alGlimpse`?); aliens have no hp bar until hurt; each drops a coin
+(hundreds per floor); far aliens (>700) think every 4th frame.
+
 **Stage 6, loot — BUILT, AWAITING THE OWNER'S OK** (on `level2`, `src/world/loot.js`, wired into `makeLevel` after
 the destruction): floor 2 (with zones) now has **no creatures** (before: the ordinary roster, ~92 of them, anywhere,
 zones included, plus elites); instead `floorLoot` picks half that many spots (46) by the enemies' spawn rules,

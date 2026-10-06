@@ -114,7 +114,7 @@ export const DEV_META = [
   { k: 'bagSpeed',  g: 'ui',    label: 'Bag fire preview speed (×real time)', min: 0.05, max: 5, step: 0.05 },
 ];
 export const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['fx', 'Hologram & glow'], ['holoflash', 'Hologram flash (on a kill)'], ['guide', 'Guide hologram (new run)'], ['player', 'Player'],
-  ['enemy', 'Enemies'], ['elite', 'Elites'], ['elitefx', 'Elites: flames'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['level2', 'Level 2: layout & look'], ['l2dark', 'Level 2: dark zones'], ['l2boom', 'Level 2: destruction'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
+  ['enemy', 'Enemies'], ['elite', 'Elites'], ['elitefx', 'Elites: flames'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['level2', 'Level 2: layout & look'], ['l2dark', 'Level 2: dark zones'], ['l2boom', 'Level 2: destruction'], ['l2alien', 'Level 2: aliens'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults.
 export function devReport() {
@@ -486,6 +486,28 @@ DEV_META.push(
   { k: 'l2dTorchDepth', g: 'l2dark', label: 'The torch fails this far in (px; just past the fade\'s end)', min: 0, max: 200, step: 1 },
   { k: 'l2dTorchHyst', g: 'l2dark', label: 'And comes back on this much nearer the edge (px, no strobing)', min: 0, max: 40, step: 1 });
 curveKnobs('l2dark', 'l2dFire', 'Fire lifts the black (Y, 1 = full colour) by distance to it (X, 0 to the max)', 0, 1, { y0: 1, x1: 0.35, y1: 1, x2: 0.55, y2: 0.1, y3: 0 });
+// Level 2 stage 7b: the dark zones' aliens (creatures/alien.js alienStep; spawned in world/level.js). World units
+// for reaches and speeds (CELL = 2 a terrain px)
+export const AL_KNOBS = rangeKnobs('l2alien', [
+  ['alCount',   'Aliens per dark zone',                         0, 400, 1,     60, 120],
+  ['alStrays',  'Strays per floor (black, outside the zones)',  0, 20, 1,      2, 4],
+  ['alSpeed',   'Roaming: burst speed',                          10, 600, 5,    80, 240],
+  ['alRoamOn',  'Roaming: burst length (s)',                     0.02, 3, 0.01, 0.15, 0.9],
+  ['alRoamOff', 'Roaming: rest between (s)',                     0, 6, 0.05,    0.3, 2],
+  ['alFleeSpd', 'Fleeing (and a stray sprinting home): speed',   10, 800, 5,    220, 320],
+  ['alFleeR',   'Flees from fire within (world units)',          0, 600, 5,     110, 140],
+  ['alHunt',    'Coming for you in the dark: speed',             10, 600, 5,    120, 200],
+  ['alKeep',    'In light: keeps this far from you',             0, 300, 5,     50, 80],
+  ['alAggro',   'Aggro distance (×enemy aggro)',                 0.1, 5, 0.05,  0.9, 1.1],
+  ['alBoidR',   'Pack: neighbours within',                       2, 80, 1,      14, 20],
+  ['alSep',     'Pack: separation weight',                       0, 5, 0.05,    1.2, 1.6],
+  ['alAli',     'Pack: alignment weight',                        0, 5, 0.05,    0.5, 0.8],
+  ['alCoh',     'Pack: cohesion weight',                         0, 5, 0.05,    0.4, 0.6],
+  ['alBite',    'Bite damage',                                   0, 100, 1,     3, 5],
+  ['alBiteCd',  'Secs between bites',                            0.1, 5, 0.05,  0.6, 1.2],
+  ['alGlimpse', 'A bullet lifts the black: strength (0-1)',      0, 1, 0.01,    0.35, 0.5],
+  ['alGlimpseR','A bullet lifts the black: radius (world units)',0, 200, 1,     22, 30],
+]);
 export const ARCH_KNOBS = rangeKnobs('arch', [
   ['arVines',   'Arched vine clusters per floor',      0, 40, 0.5,   9, 13],
   ['arCluster', 'Arches per cluster',                  1, 8, 0.1,    1.5, 3.5],

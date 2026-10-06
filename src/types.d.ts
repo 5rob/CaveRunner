@@ -146,7 +146,7 @@ interface Enemy {
   sid?: number;               // its index on the floor (the autosave)
   // the reworked creatures' brains, on the creature (made on their first step)
   sp?: SpiderBrain; je?: JellyBrain; ra?: RatBrain;
-  al?: { rot?: number; px?: number; py?: number; walk?: number; black?: boolean };   // the alien's look (creatures/alien.js)
+  al?: AlienBrain;            // the alien's brain and look (creatures/alien.js)
   aggro?: boolean; aggroT?: number; aggroM?: number; spotted?: boolean;
   dead?: boolean; chill?: number; burn?: number; burnAcc?: number; fuseT?: number;
   // a rat's jobs and fallbacks
@@ -193,6 +193,23 @@ interface SpiderBrain extends RoamState, SurfState {
 interface SpiderEnv {
   solidCell: SolidCell; webs: WebLine[]; goal: Pt; hunting: boolean; rnd: Rnd;
   speed?: number; reach?: number; speedMul?: number;
+}
+/** the alien's brain, `e.al` (alienStep, creatures/alien.js): the look (rot, px, py, walk, black) the sprite reads,
+ * z its zone (number + 1), its velocity, the roam burst (ha heading, on, rest, spd), pt the pupil's dart clock,
+ * fl/fx/fy fleeing fire, sprint (a stray running home), dodge/dA going round something in the way */
+interface AlienBrain {
+  rot: number; px: number; py: number; walk: number; black: boolean; z: number; vx: number; vy: number;
+  ha: number; on: number; rest: number; spd: number; pt: number; fl: number; fx: number; fy: number;
+  sprint: boolean; dodge: number; dA: number; skip?: number; acc?: number;
+}
+interface AlienGrid { cell: number; m: Map<number, Enemy[]> }
+/** what alienStep is handed: zone(x, y) the zone number + 1 there (0 none), silk(x, y), the neighbours,
+ * fireNear(x, y, R) the nearest fire within R, home(x, y) the nearest zone's middle, you, look (you in aggro
+ * reach), hunting (it has you), youDark (you in a zone with no fire near you) */
+interface AlienEnv {
+  solidCell: SolidCell; zone: (x: number, y: number) => number; silk: (x: number, y: number) => boolean;
+  near: Enemy[]; fireNear: (x: number, y: number, R: number) => Pt | null; home: (x: number, y: number) => Pt | null;
+  you: Pt; look: boolean; hunting: boolean; youDark: boolean; rnd: Rnd;
 }
 /** the rat's brain, `e.ra` (ratStep, creatures/rat.js) */
 interface RatBrain extends SurfState {
