@@ -890,6 +890,12 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
 Bugs, oddities and "this should be better" spotted mid-move. Don't fix them in a refactor
 commit. List them here for after.
 
+- **v0.0.147: browser `nuggets` "they settle on the floor, not in it" flaked** (drift 5–7 vs 1.5 in 2 of 4 runs; passed
+  alone otherwise). The nugget physics didn't change; the check counts frames, not seconds. Add to the known flakes;
+  making it time-based would settle it.
+- **v0.0.147: minecarts are first seen on floor 14 now.** They were only ever floor 2's (Coal seams) decoration,
+  and floor 2 is the tomb (no cave decoration). Browser `sound` now hops up to 14 floors to find one (fixed);
+  `decor` already went to floor 14. Whether minecarts should live somewhere earlier is the owner's call.
 - **v0.0.145 reshuffled the floor-1 caves (the shop's way up moved over the buy machine), and two
   chance-based logic checks now land on the wrong side.** Not regressions, each measured:
   `strata` "workings have a level floor on one row" (seeds 1–12: 41/52 vs the 85% bar; v0.0.144 had

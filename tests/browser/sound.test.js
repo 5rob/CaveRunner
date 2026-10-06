@@ -182,7 +182,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     return calls;
   }, kind);
   let cartR = null, podR = null;
-  for (let i = 0; i < 8 && !(cartR && podR); i++) {
+  for (let i = 0; i < 14 && !(cartR && podR); i++) {   // (minecarts: floor 14 now, floor 2 being the tomb)
     if (!cartR) cartR = await blow('barrel');
     if (!podR) podR = await blow('pod');
     if (!(cartR && podR)) await hop();

@@ -28,8 +28,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   const box = await page.evaluate(() => { const r = document.querySelector('.fadecurve[data-curve="l2bDen"] svg').getBoundingClientRect(); return { w: r.width, h: r.height }; });
   await page.tap('.fadecurve[data-curve="l2bDen"] svg', { position: { x: box.w * 188 / 200, y: box.h * 66 / 132 } });
   await page.waitForTimeout(150);
-  const after = await page.evaluate(() => ({ y3: DEV.l2bDen1, c2x: DEV.l2bDenC2x, c2y: DEV.l2bDenC2y }));
-  check('a tap by the end point moves it up (and only it)', after.y3 > 0.3 && after.y3 < 0.7 && after.c2x === 0.5 && after.c2y === 0, after);
+  const after = await page.evaluate(() => ({ y3: DEV.l2bDen1, c2x: DEV.l2bDenC2x, c2y: DEV.l2bDenC2y, d2x: DEV_DEFAULTS.l2bDenC2x, d2y: DEV_DEFAULTS.l2bDenC2y }));
+  check('a tap by the end point moves it up (and only it)', after.y3 > 0.3 && after.y3 < 0.7 && after.c2x === after.d2x && after.c2y === after.d2y, after);   // (the other handle stays at its default)
   await page.screenshot({ path: path.join(DIR, 'curveedit_dev.png') });
   await page.evaluate(() => { for (const k of Object.keys(DEV_DEFAULTS)) if (k.startsWith('l2b')) devSet(k, DEV_DEFAULTS[k]); localStorage.removeItem('caverunner-devgroups'); });
 

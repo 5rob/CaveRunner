@@ -333,13 +333,23 @@ spit from there. The built-up parts are **rat country**: rat nests are scattered
 through them (and a few turn up in the natural caves too) — rats are quick but die to a single hit, and each nest is a little winding tunnel to a hidden room you only see into once you dig a clear line to it — and old **lanterns** hang off
 the roof and the walls, giving off a little light. Shoot a lantern and it pops, throwing
 burning oil that sets fire to any grass, moss, vines or timber it lands on — so mind where
-you aim when the rats come, because parts of it are overgrown. The other floors are all
-natural cave for now; each one gets its own treatment later.
+you aim when the rats come, because parts of it are overgrown. **Floor 2 is the Tombs**: an ancient tomb of carved rooms, galleries and shafts, each
+room furnished for what it was — ossuaries, shrines, halls, stores — with skeletons everywhere
+and the candles long out. Parts of it have been swallowed by **dark zones**: rough caves and
+tunnels under a thick coat of silk, where your gun light flickers out, everything is a black
+silhouette against the blurred glow behind the silk, and only fire lights the way. Round each
+zone is a ring of old blast holes, scorched and streaked, with bones sticking out of the floors.
+Nothing lives in the tomb itself — just the gold and red crystals the dead left lying about —
+but each zone hides a prize in its middle (a stash of gold, red crystals or green ones), and is
+crawling with **aliens**: hundreds of eyeballs on three legs that pour away from fire and only
+come for you in the dark. A passing shot gives a glimpse of them; to clear them you have to bring
+fire in and corner them. Now and then a black one is found loose in the tomb, running home.
+The other floors are all natural cave for now; each one gets its own treatment later.
 
 | Floor | Cave | Who is in it |
 |---|---|---|
 | 1 | Mossy caves | Myrkkymeduusa, Hämähäkki, Rotta (from nests) |
-| 2 | Coal seams | Myrkkymeduusa, Hämähäkki, Hiisi |
+| 2 | Tombs | The aliens, in the dark zones only |
 | 3 | Frozen deep | Hiisi, Konna, Hämähäkki |
 | 4 | Ember halls | Hiisi, Mato, Limanuljaska, Kobold |
 | 5 | Fungal grotto | Hiisi, Kärpässieni, Hurtta, Limanuljaska |
@@ -397,7 +407,7 @@ your hands. The jetpack always takes you off.
 
 ## Creatures
 
-Sixteen of them, named after Noita's, and they do not all behave the same way:
+Sixteen of them named after Noita's, plus the Tombs' aliens, and they do not all behave the same way:
 
 - **Shooters** (Hiisi, Tappurahiisi, Chaingunner) hover around their
   patch and fire when they have a line on you. The Tappurahiisi throws a cone of
@@ -405,6 +415,9 @@ Sixteen of them, named after Noita's, and they do not all behave the same way:
 - **Turrets** (Snipuhiisi, Kärpässieni, Jäätiö, Elävät luut) never move. They have
   longer reach and more punch, and the ones worth worrying about show a ring that
   closes before they fire — break the line and the shot never comes.
+- **The aliens** live only in floor 2's dark zones: helmet-sized eyeballs on three thin legs, in
+  packs of hundreds that flow over the silk, scatter from fire and only bite when you're in the dark.
+  One or two hits kill one. A black one loose in the tomb is a stray: it sprints back to its zone.
 - **The spider** (Hämähäkki) lives on the rock and on its own silk. It scuttles
   along walls, floors and ceilings in quick darting bursts — lazy when it's alone,
   frantic once it has seen you — and crosses gaps by shooting a white line to the rock
