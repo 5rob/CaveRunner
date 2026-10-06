@@ -9,6 +9,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   page.on('pageerror', e => { fails++; console.log('PAGEERROR', e.message); });
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   await page.waitForTimeout(1200);
+  await page.evaluate(() => { window.__in.current.gunMenu = true; });   // the archived chooser (gunhold.test.js: the HUD hold)
   // the cave has red crystals, not guns: lay a few guns about for the test
   await page.evaluate(() => { const L = window.__lvl; for (let i = 0; i < 3; i++) L.pickups.push({ kind: 'gun', gun: makeGun(Math.random, 1), x: 300 + i * 300, y: 200, t: 0 }); });
   await page.evaluate(() => { window.__lvl.p.x = 30; });      // away from the shop plinths
@@ -62,18 +63,21 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   });
   check('gold at the old radius is no longer grabbed', noPull.gold === 0 && noPull.left === 1, noPull);
 
-  // --- 3. hold a weapon slot for its card ---
-  await hold('.slot', 1, 600);
+  // --- 3. tap the gun in hand for its card (v0.0.149: was a hold; a hold now takes or drops a gun, gunhold.test.js) ---
+  await page.tap('.slot >> nth=1');
+  await page.waitForTimeout(150);
+  await page.tap('.slot >> nth=1');
+  await page.waitForTimeout(200);
   let card = await page.evaluate(() => {
     const el = document.querySelector('.pop:not(.ingame)');
     return el && { title: el.querySelector('.ptitle b').textContent,
                    rows: [...el.querySelectorAll('.prow')].length,
                    mods: [...el.querySelectorAll('.gmods .tile')].map(t => t.textContent) };
   });
-  check('holding a slot shows that gun', card && card.title === 'Pick Axe', card && card.title);
+  check('tapping the gun in hand shows it', card && card.title === 'Pick Axe', card && card.title);
   check('the card lists its stats', card && card.rows === 9, card && card.rows);
   check('and the mods fitted to it', card && card.mods.join(',').indexOf('Buzzsaw') >= 0, card && card.mods);
-  check('holding did not change the selection', (await LO()).sel === 0, await LO());
+  check('the first tap selected it', (await LO()).sel === 1, await LO());
   // v0.0.144: its mods are the Bag's square tiles; tapping one shows that mod's card over it
   const sq = await page.evaluate(() => [...document.querySelectorAll('.pop:not(.ingame) .gmods .tile')].map(t => { const r = t.getBoundingClientRect(); return Math.abs(r.width - r.height) < 1.5; }));
   check('the mods are square tiles', sq.length > 0 && sq.every(Boolean), sq);
@@ -89,11 +93,10 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.tap('.shade', { position: { x: 20, y: 20 } });
   await page.waitForTimeout(200);
   check('tapping away closes it', (await page.$('.pop:not(.ingame)')) === null);
-  await page.tap('.slot >> nth=1');
-  await page.waitForTimeout(180);
-  check('a plain tap still selects', (await LO()).sel === 1, await LO());
   await page.tap('.slot >> nth=0');
-  await page.waitForTimeout(150);
+  await page.waitForTimeout(180);
+  check('a plain tap still selects', (await LO()).sel === 0, await LO());
+  check('and a tap on another slot opens no card', (await page.$('.pop:not(.ingame)')) === null);
 
   // --- 4. walking onto a gun shows its card; interacting opens the chooser ---
   const before = await LO();
@@ -179,7 +182,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     pg.on('pageerror', e => { fails++; console.log('PAGEERROR', e.message); });
     await pg.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
     await pg.waitForTimeout(1200);
-    await pg.evaluate(() => { window.__lvl.p.x = 30; });
+    await pg.evaluate(() => { window.__lvl.p.x = 30; window.__in.current.gunMenu = true; });
     await pg.evaluate(async () => {
       const ids = Object.keys(MODS).filter(i => MODS[i].name.length >= 10).slice(0, 8);
       const mk = name => resetGun({ name, cap: 8, castDelay: 0.2, recharge: 1, manaMax: 300,

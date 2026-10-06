@@ -14,6 +14,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   page.on('pageerror', e => { fails++; console.log('PAGEERROR', e.message); });
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   await page.waitForTimeout(800);
+  await page.evaluate(() => { window.__in.current.gunMenu = true; });   // the archived chooser (gunhold.test.js: the HUD hold)
 
   const r = await page.evaluate(async () => {
     const L = window.__lvl, p = L.p;

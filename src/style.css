@@ -770,3 +770,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .aubtns button{height:40px;min-width:90px;border-radius:10px;border:1px solid var(--ring);font-size:14px;font-weight:600;
   background:var(--pad);color:var(--text)}
 .aubtns .ausave{background:#2f8f5b;border-color:#2f8f5b;color:#fff}
+/* the HUD gun slots' hold (ui/gunhold.js): a ring fills round the slot over the hold time;
+   orange to take the gun on the ground, pale to lift this one out. The lifted gun follows the finger */
+.slot .holdring{position:absolute;inset:-5px;width:calc(100% + 10px);height:calc(100% + 10px);
+  transform:rotate(-90deg);pointer-events:none;overflow:visible}
+.slot .holdring circle{fill:none;stroke:#ff8a1f;stroke-width:3.5;stroke-linecap:round;
+  stroke-dasharray:100 100;stroke-dashoffset:100;animation:holdring .45s linear forwards}
+.slot.lift .holdring circle{stroke:#e8eef8}
+.slot.ringing.take{box-shadow:0 0 12px rgba(255,138,31,.7)}
+.slot.lifted{opacity:.45;border-style:dashed}
+@keyframes holdring{to{stroke-dashoffset:0}}
+.gundrag{position:fixed;z-index:60;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;
+  pointer-events:none;display:flex;align-items:center;justify-content:center;
+  background:rgba(18,20,26,.75);border:2px solid #ff8a1f;box-shadow:0 4px 14px rgba(0,0,0,.6)}
+.gundrag svg,.gundrag canvas,.gundrag img{max-width:46px;max-height:46px}

@@ -18,6 +18,7 @@ import { applyPerks, hurt, maxHp, refreshBag } from './systems/player.js';
 import {
   clipFromSaved, clipKeep, drawReplay, recFrame, recSample, recSfxHook, recWrap, rpSound, rpSoundOff
 } from './systems/recorder.js';
+import { dropGun, takeGun } from './systems/pickups.js';
 import { saveRun } from './systems/save-run.js';
 import { step } from './systems/step.js';
 import { dig, explode } from './systems/terrain.js';
@@ -111,6 +112,12 @@ export function Game({ input }) {
     // the map screen reads the floor through this, and drops its pins with the other
     input.current.mapView = () => ({ img: mapC, seen: W.seen, x: W.p.x + PW / 2, y: W.p.y + PH / 2, face: W.p.face, pins: W.pins,
       mini: miniC, mapN: G.mapN, aim: W.p.aim, viewW: W.viewW, foes: W.enemies, items: W.pickups });
+    // the HUD gun slots: hold one to take the gun in reach, or drag its gun out onto the ground
+    input.current.takeGun = i => takeGun(W, G, i);
+    input.current.dropGun = (i, sx, sy) => {
+      const r = c.getBoundingClientRect();
+      return dropGun(W, G, i, W.camX + (sx - r.left) / W.unitPx, W.camY + (sy - r.top) / W.unitPx);
+    };
     input.current.dropPin = e => { W.pins.push({ x: W.p.x + PW / 2, y: W.p.y + PH / 2, e }); saveRun(W, G); };
 
     // the browser tests' way in (game/testhook.js): only on the test page, which sets the flag

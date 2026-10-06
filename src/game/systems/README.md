@@ -54,9 +54,14 @@ the frame; most of its parts live with their system.
   Vacuum Field warps everything within `r` to its middle once, at `VACUUM_WAIT`, walls ignored.
 - **Pickups:** standing by one shows its card; the card's panel floats above the item
   (`input.current.promptBottom`, measured here from the last frame's camera). An interact tap on a
-  **mod** takes it at once (`LO.bag`, `q.taken`, `PICKUP_COOL`); on a **gun** sets
-  `input.current.found`, which opens `GunSwap` (owner's choice). A bought gun drops at the plinth, so
-  the same chooser handles it. **Dead + interact tap = restart** (`input.current.requestRestart`),
+  **mod** takes it at once (`LO.bag`, `q.taken`, `PICKUP_COOL`). A **gun** is taken by holding a HUD
+  gun slot (v0.0.149, owner): a gun in reach is published as `input.current.gunNear`; `takeGun(W, G, i)`
+  puts it in slot i (the slot's old gun stays on the ground in its place, `q.old`; empty-handed, you
+  hold it). `dropGun(W, G, i, x, y)` drops slot i's gun at world (x, y) settled onto the floor below,
+  or at your feet if that spot is rock or out of sight (`lineOfSight`); the gun in hand going → the
+  next one you have. Game wires both onto `input.current` (screen → world through the camera). The
+  interact tap on a gun only toasts now; with `input.current.gunMenu` (archived) it still sets
+  `input.current.found` → `GunSwap`. A bought gun drops at the plinth, so the same hold takes it. **Dead + interact tap = restart** (`input.current.requestRestart`),
   checked before the pickup handling.
 - **Crystals:** a `crystal` pickup is red, or green with `green: true`. You can't take one (v0.0.138):
   it's a body (`stepCrystals`) you push, or drag with a White Hole, into its machine. `LO.crystals`/`LO.greens`
