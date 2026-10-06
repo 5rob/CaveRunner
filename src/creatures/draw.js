@@ -2,6 +2,7 @@
 // drawEnemy: draws any creature by its body (e.k.body), plus the ring that warns of a
 // charged shot.
 
+import { drawAlien } from './alien.js';
 import { drawBlob, drawCrawler, drawDrone, drawSkull, drawWorm } from './classic.js';
 import { drawJelly } from './jelly.js';
 import { drawNest, drawRat } from './rat.js';
@@ -12,7 +13,8 @@ import { drawSpider } from './spider.js';
 export function drawEnemy(ctx, e, time) {
   const k = e.k, flash = e.flash > 0;
   const x = e.x, y = e.ty, r = e.r, lx = e.lx, ly = e.ly;
-  if (k.body === 'spider') drawSpider(ctx, x, y, r, time, e.phase, flash, k.col, e.sp);
+  if (k.body === 'alien') drawAlien(ctx, x, y, r, time, e.phase, flash, k.col, e.al);
+  else if (k.body === 'spider') drawSpider(ctx, x, y, r, time, e.phase, flash, k.col, e.sp);
   else if (k.body === 'rat') drawRat(ctx, x, y, r, time, e.phase, flash, k.col, e.ra, e.carry);
   else if (k.body === 'nest') drawNest(ctx, x, y, r, time, flash, k.col, e.nest);
   else if (k.body === 'jelly') drawJelly(ctx, x, y, r, time, e.phase, flash, k.col, e.je);

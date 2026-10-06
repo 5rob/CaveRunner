@@ -146,6 +146,7 @@ interface Enemy {
   sid?: number;               // its index on the floor (the autosave)
   // the reworked creatures' brains, on the creature (made on their first step)
   sp?: SpiderBrain; je?: JellyBrain; ra?: RatBrain;
+  al?: { rot?: number; px?: number; py?: number; walk?: number; black?: boolean };   // the alien's look (creatures/alien.js)
   aggro?: boolean; aggroT?: number; aggroM?: number; spotted?: boolean;
   dead?: boolean; chill?: number; burn?: number; burnAcc?: number; fuseT?: number;
   // a rat's jobs and fallbacks
