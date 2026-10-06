@@ -7,6 +7,12 @@ Names are as they were at the time (before the refactor Game's state had loose n
 
 ## Unreleased
 
+- **Collected mods stack** (owner, item 9): the Bag's "Collected mods" grid shows one tile per mod,
+  with a small numbered circle top right when you hold 2+ (`.tcount`). Dragging from a stack fits one
+  copy (the count drops; the tile goes at 0); a slot dragged back joins its stack; gun slots still hold
+  one each. Display only: `LO.bag` still holds one entry per copy, so saves are unchanged
+  (`stackBag`/`stackKey` in `spells/collection.js`; the key is the id today, ready for per-copy data
+  like a Discriminate target). Suite: `stacks` (browser), `collection` (logic).
 - **A modifier now affects only the next spell** (owner's decision): `[Damage Plus][Bolt][Bolt]`
   boosts only the first bolt; modifiers in a row all land on the next spell; inside a multicast or a
   trigger payload each spell gets only the modifiers right before it. Timing and mana unchanged.

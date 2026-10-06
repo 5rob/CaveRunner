@@ -273,6 +273,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .tg{font-size:17px;line-height:1}
 .tile{position:relative}
 .tmark{position:absolute;top:2px;right:4px;font:700 9px system-ui,sans-serif;line-height:1}
+.tcount{position:absolute;top:2px;right:2px;min-width:15px;height:15px;padding:0 3px;box-sizing:border-box;
+  border-radius:8px;background:currentColor;display:flex;align-items:center;justify-content:center;
+  pointer-events:none;font:800 9px system-ui,sans-serif;line-height:1}
+.tcount b{color:#111}
 .tn{font:500 8.5px system-ui,sans-serif;color:var(--muted);text-align:center;line-height:1.1;
   max-width:100%;padding:0 2px}
 .ghost{position:fixed;z-index:30;width:60px;height:56px;border-radius:9px;border:2px solid;
@@ -22664,6 +22668,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const left = PERK_IDS.filter((id) => !owned.includes(id) && (!PERKS[id].tier || PERKS[id].tier === 1 || owned.includes("st_" + PERKS[id].stat + (PERKS[id].tier - 1))));
     return left.length ? left[Math.floor(rnd2() * left.length)] : null;
   }
+  function stackKey(entry) {
+    return entry;
+  }
+  function stackBag(bag) {
+    const by = /* @__PURE__ */ new Map();
+    bag.forEach((id, i) => {
+      const key = stackKey(id);
+      const s = by.get(key);
+      if (s) s.n++;
+      else by.set(key, { key, id, i, n: 1 });
+    });
+    return [...by.values()];
+  }
 
   // src/game/systems/shops.js
   var MACHINE_W = 56, MACHINE_H = 84;
@@ -28168,7 +28185,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       window.addEventListener("pointerup", up);
       window.addEventListener("pointercancel", up);
     };
-    const tile = (id, from, key) => {
+    const tile = (id, from, key, n = 1) => {
       const m = id ? MODS[id] : null;
       return h(
         "div",
@@ -28182,7 +28199,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         },
         m ? h("span", { className: "tg" }, m.glyph) : h("span", { className: "tg" }, "+"),
         m ? h("span", { className: "tn" }, m.name) : null,
-        m && m.mark ? h("span", { className: "tmark" }, m.mark) : null
+        m && m.mark && n < 2 ? h("span", { className: "tmark" }, m.mark) : null,
+        n > 1 ? h("span", { className: "tcount", "data-n": n }, h("b", null, n)) : null
+        // a stack: how many copies
       );
     };
     const shown = info && MODS[info];
@@ -28272,7 +28291,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         "div",
         { className: "bagHead" },
         h("p", { className: "lab" }, LO.debug ? "Debug shelf — one of every mod, never used up" : "Collected mods" + (LO.bag.length ? "" : " — none yet, find them in the cave")),
-        canEdit && !LO.debug && LO.bag.length > 1 ? h("button", {
+        canEdit && !LO.debug && stackBag(LO.bag).length > 1 ? h("button", {
           className: "sortBag",
           onPointerDown: (e) => {
             e.preventDefault();
@@ -28283,7 +28302,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(
         ScrollBox,
         { cls: "bag" + (LO.debug ? " debug" : ""), drop: "bag" },
-        h("div", { className: "mgrid" }, bagIds.map((id, i) => tile(id, { type: "bag", i }, "b" + i)))
+        h("div", { className: "mgrid" }, LO.debug ? bagIds.map((id, i) => tile(id, { type: "bag", i }, "b" + i)) : stackBag(LO.bag).map((st) => tile(st.id, { type: "bag", i: st.i }, "s" + st.key, st.n)))
       ),
       // the gun buttons: a row under the mod grid (owner, item 4; they were a 2×2 by the stats)
       h(
