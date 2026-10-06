@@ -12,6 +12,7 @@ import {
 import { clamp } from '../core/util.js';
 import { MACHINE_W, SHOPS } from '../game/systems/shops.js';
 import { h, useEffect, useRef, useState } from './h.js';
+import { MAP_SPREAD, spread } from './minimap.js';
 
 export const PIN_KEY = 'caverunner-pins';
 export const PIN_DEFAULTS = ['📍', '⭐', '💀', '💰', '❓', '🏠'];
@@ -71,21 +72,8 @@ export const MAP_MARKS = [
   ...Object.keys(SHOPS).map(k => ({ x: SHOPS[k].x, w: MACHINE_W, col: SHOPS[k].hue, name: k })),
 ];
 
-// The fog memory grown by MAP_SPREAD cells each way (a square), for the map
-export const MAP_SPREAD = 2;
-/** @param {Uint8Array} seen @returns {Uint8Array} */
-export function spread(seen) {
-  const a = new Uint8Array(FW * FH), b = new Uint8Array(FW * FH), R = MAP_SPREAD;
-  for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
-    if (!seen[y * FW + x]) continue;
-    for (let dx = Math.max(0, x - R); dx <= Math.min(FW - 1, x + R); dx++) a[y * FW + dx] = 1;
-  }
-  for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
-    if (!a[y * FW + x]) continue;
-    for (let dy = Math.max(0, y - R); dy <= Math.min(FH - 1, y + R); dy++) b[dy * FW + x] = 1;
-  }
-  return b;
-}
+// The fog memory grown by MAP_SPREAD cells each way: spread, shared with the mini-map (minimap.js)
+export { MAP_SPREAD, spread };
 
 // Your helmet, size s css px, facing face: the white dome, the gold rim and dark visor on its front
 /** @param {CanvasRenderingContext2D} x @param {number} cx @param {number} cy @param {number} s @param {number} face */

@@ -16,7 +16,7 @@ const bare = PERK_IDS.filter(k => !PERKS[k].name || !PERKS[k].glyph || !PERKS[k]
 check('every perk has a name, a glyph and a line explaining it', bare.length === 0, bare);
 const names = PERK_IDS.map(k => PERKS[k].name);
 check('no two perks share a name', new Set(names).size === names.length);
-check('thirty-one (Fire Immunity, v0.0.148), and the 30 stat perks', PERK_IDS.length === 61, PERK_IDS.length);
+check('thirty-two (Fire Immunity, v0.0.148; Mini-map), and the 30 stat perks', PERK_IDS.length === 62, PERK_IDS.length);
 check('Fire Immunity: the perk bag carries it', perkBag(['fireimm']).fireImm === 1 && perkBag([]).fireImm === 0);
 check('Fire Immunity: youAlight never lights you with it', g.source.includes('if (W.p.dead || W.pb.fireImm) return;'));
 

@@ -135,4 +135,18 @@ export function mapPicture(W, G) {
   x.fillStyle = 'rgb(' + themeFor(W.floor).bg.map(c => Math.round(c * 1.7)).join(',') + ')';   // the air a touch lighter than the fog
   x.fillRect(0, 0, CW, CH);
   x.globalCompositeOperation = 'source-over';
+  miniPicture(W, G);
+}
+
+// The Mini-map perk's picture (ui/minimap.js, owner): rock black at 20%, air white at 25%, a pixel
+// per terrain pixel, the floor as made (like the map's). G.mapN counts them, so the mini-map sees a new one
+/** @param {World} W @param {GameCtx} G */
+function miniPicture(W, G) {
+  G.mapN++;
+  const x = G.miniC.getContext('2d');
+  if (!x) return;
+  const im = x.createImageData(CW, CH), d = new Uint32Array(im.data.buffer);
+  const rock = (51 << 24) >>> 0, air = ((64 << 24) | 0xffffff) >>> 0;   // little-endian RGBA: alpha is the top byte
+  for (let i = 0; i < CW * CH; i++) d[i] = W.mat[i] ? rock : air;
+  x.putImageData(im, 0, 0);
 }

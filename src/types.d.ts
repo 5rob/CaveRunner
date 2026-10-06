@@ -275,6 +275,7 @@ interface PerkBag {
   tinker: number; extraItem: number; pinpointer: number; trajectory: number;
   carrot: number;   // the Carrot stat's level, 0-5 (carrotAt turns it into each multiplier)
   fuel: number; refuel: number;   // the jetpack's tank (drains slower) and how fast it refills (stat perks)
+  minimap: number;                // Mini-map: the small map over the gun buttons (ui/minimap.js)
   fireImm: number;                // Fire Immunity: you never catch fire (youAlight)
   // always there on a bag perkBag returns; optional only because it is filled in after the rest
   maxHp?: number;
@@ -731,7 +732,9 @@ interface ReplayView {
   mute?: boolean;
 }
 /** what the map screen (ui/map.js) draws: the floor's picture, the fog memory, you, the pins */
-interface MapView { img: HTMLCanvasElement; seen: Uint8Array; x: number; y: number; face: number; pins: MapPin[] }
+interface MapView { img: HTMLCanvasElement; seen: Uint8Array; x: number; y: number; face: number; pins: MapPin[];
+  mini: HTMLCanvasElement; mapN: number;   // the mini-map's picture of the floor (rock black, air white) and a count of floors made
+  aim: { on: boolean; nx: number; ny: number }; viewW: number; foes: Enemy[]; items: Pickup[] }
 /** App's input ref: the React bridge (ui/app.js makes it, Game and the systems read and write it) */
 interface GameInput {
   left: StickState; right: StickState;
@@ -793,6 +796,7 @@ interface GameCtx {
   bgHi: HTMLCanvasElement; bgHiOn: boolean;   // the back wall at terrain resolution, when the floor has one (bgHi)
   fogC: HTMLCanvasElement; fctx: CanvasRenderingContext2D; fogImg: ImageData;
   fogBlurC: HTMLCanvasElement; fbctx: CanvasRenderingContext2D;
+  miniC: HTMLCanvasElement; mapN: number;   // the mini-map's picture (level-entry.js miniPicture) and a count of them made
   mapC: HTMLCanvasElement;    // the map's picture: this floor as it was made, rock and decoration (level-entry.js mapPicture)
   decoC: HTMLCanvasElement; dctx: CanvasRenderingContext2D;
   REC: Recorder; RT: ReplayPlayer;

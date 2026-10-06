@@ -73,6 +73,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .sticks{display:flex;justify-content:space-evenly;position:relative;z-index:3}
 /* the shade under the controls: shadeAt (ui/hud.js) sets its top and the gradient's stops */
 .ctlshade{position:absolute;left:0;right:0;z-index:-1;pointer-events:none}
+/* the Mini-map perk (ui/minimap.js): see-through, a very thin white outline; a tap zooms out */
+.controls .minimap{position:absolute;box-sizing:border-box;border:0.5px solid rgba(255,255,255,0.85);background:transparent;
+  pointer-events:auto;touch-action:none}
 .app.mapping .ctlshade,.app.pinning .ctlshade{visibility:hidden}
 /* gold readout in the gap between the sticks, level with their top halves. Sits on top
    of the deck (pointer-events:none so a tap still falls to a stick) and reads amber. */
@@ -5544,6 +5547,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       jet: 1.25,
       info: "A quarter more thrust out of the jetpack."
     },
+    minimap: {
+      name: "Mini-map",
+      glyph: "▦",
+      tint: "#e9ecf2",
+      minimap: 1,
+      info: "A small map of what you have seen, over the gun buttons: you, creatures nearby, crystals and your pins. Tap it to zoom out."
+    },
     fireimm: {
       name: "Fire Immunity",
       glyph: "♨",
@@ -5794,7 +5804,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       fuel: 1,
       refuel: 1,
       carrot: 0,
-      fireImm: 0
+      fireImm: 0,
+      minimap: 0
     };
     for (const id of ids || []) {
       const k = PERKS[id];
@@ -5837,7 +5848,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         "extraItem",
         "pinpointer",
         "trajectory",
-        "fireImm"
+        "fireImm",
+        "minimap"
       ])
         if (k[f]) P2[f] = 1;
     }
@@ -22308,6 +22320,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     x.fillStyle = "rgb(" + themeFor(W.floor).bg.map((c2) => Math.round(c2 * 1.7)).join(",") + ")";
     x.fillRect(0, 0, CW, CH);
     x.globalCompositeOperation = "source-over";
+    miniPicture(W, G);
+  }
+  function miniPicture(W, G) {
+    G.mapN++;
+    const x = G.miniC.getContext("2d");
+    if (!x) return;
+    const im = x.createImageData(CW, CH), d = new Uint32Array(im.data.buffer);
+    const rock = 51 << 24 >>> 0, air = (64 << 24 | 16777215) >>> 0;
+    for (let i = 0; i < CW * CH; i++) d[i] = W.mat[i] ? rock : air;
+    x.putImageData(im, 0, 0);
   }
 
   // src/game/systems/save-run.js
@@ -25341,6 +25363,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const mapC = document.createElement("canvas");
       mapC.width = CW;
       mapC.height = CH;
+      const miniC = document.createElement("canvas");
+      miniC.width = CW;
+      miniC.height = CH;
       const pgGlow = document.createElement("canvas"), pgGlowCtx = pgGlow.getContext("2d");
       const decoC = document.createElement("canvas");
       decoC.width = CW;
@@ -25405,6 +25430,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         fogBlurC,
         fbctx,
         mapC,
+        miniC,
+        mapN: 0,
         decoC,
         dctx,
         REC,
@@ -25428,7 +25455,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       recSfxHook(G);
       input.current.saveClip = (C) => clipKeep(W, G, C);
       input.current.clipFromSaved = clipFromSaved;
-      input.current.mapView = () => ({ img: mapC, seen: W.seen, x: W.p.x + PW / 2, y: W.p.y + PH / 2, face: W.p.face, pins: W.pins });
+      input.current.mapView = () => ({
+        img: mapC,
+        seen: W.seen,
+        x: W.p.x + PW / 2,
+        y: W.p.y + PH / 2,
+        face: W.p.face,
+        pins: W.pins,
+        mini: miniC,
+        mapN: G.mapN,
+        aim: W.p.aim,
+        viewW: W.viewW,
+        foes: W.enemies,
+        items: W.pickups
+      });
       input.current.dropPin = (e) => {
         W.pins.push({ x: W.p.x + PW / 2, y: W.p.y + PH / 2, e });
         saveRun(W, G);
@@ -28914,6 +28954,172 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
+  // src/ui/minimap.js
+  var MINI_ZOOMS = [1, 2, 4];
+  var MINI_PAD = 8;
+  var MINI_REACH = 1.3;
+  var MINI_EDGE = 9;
+  var MAP_SPREAD = 2;
+  function spread(seen) {
+    const a = new Uint8Array(FW * FH), b = new Uint8Array(FW * FH), R = MAP_SPREAD;
+    for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+      if (!seen[y * FW + x]) continue;
+      for (let dx = Math.max(0, x - R); dx <= Math.min(FW - 1, x + R); dx++) a[y * FW + dx] = 1;
+    }
+    for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+      if (!a[y * FW + x]) continue;
+      for (let dy = Math.max(0, y - R); dy <= Math.min(FH - 1, y + R); dy++) b[dy * FW + x] = 1;
+    }
+    return b;
+  }
+  function miniBox(deck, top) {
+    const xs = deck.guns.map((g) => g.x), ys = deck.guns.map((g) => g.y), r = deck.btn / 2;
+    const left = Math.min(...xs) - r, right = Math.max(...xs) + r, bottom = Math.min(...ys) - r - MINI_PAD;
+    return { left: Math.round(left), top: Math.round(top), width: Math.round(right - left), height: Math.max(40, Math.round(bottom - top)) };
+  }
+  var miniScale = (bw, viewW, z) => bw / (Math.max(1, viewW) * MINI_REACH) / MINI_ZOOMS[z % MINI_ZOOMS.length];
+  var miniAt = (wx, wy, cx, cy, k, bw, bh) => ({ x: bw / 2 + (wx - cx) * k, y: bh / 2 + (wy - cy) * k });
+  function edgeClamp(x, y, bw, bh, m) {
+    if (x >= m && x <= bw - m && y >= m && y <= bh - m) return { x, y, out: false };
+    const dx = x - bw / 2, dy = y - bh / 2, hx = bw / 2 - m, hy = bh / 2 - m;
+    const t = Math.min(dx ? hx / Math.abs(dx) : Infinity, dy ? hy / Math.abs(dy) : Infinity);
+    return { x: bw / 2 + dx * t, y: bh / 2 + dy * t, out: true };
+  }
+  function arrow(c, x, y, a) {
+    c.save();
+    c.translate(x, y);
+    c.rotate(a);
+    c.fillStyle = "#fff";
+    c.strokeStyle = "rgba(0,0,0,0.7)";
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(7, 0);
+    c.lineTo(-5, -5);
+    c.lineTo(-2.5, 0);
+    c.lineTo(-5, 5);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.restore();
+  }
+  function crystal(c, x, y, green) {
+    c.fillStyle = green ? "#5ef08a" : "#ff4d5e";
+    c.strokeStyle = "rgba(0,0,0,0.6)";
+    c.lineWidth = 0.8;
+    c.beginPath();
+    c.moveTo(x, y - 4);
+    c.lineTo(x + 2.6, y);
+    c.lineTo(x, y + 4);
+    c.lineTo(x - 2.6, y);
+    c.closePath();
+    c.fill();
+    c.stroke();
+  }
+  function MiniMap({ input, box }) {
+    const cv = useRef(null);
+    const [z, setZ] = useState(0);
+    const zr = useRef(0);
+    zr.current = z;
+    useEffect(() => {
+      const c = cv.current;
+      const ctx = c.getContext("2d");
+      const fogC = document.createElement("canvas");
+      fogC.width = FW;
+      fogC.height = FH;
+      const fx = fogC.getContext("2d");
+      const maskC = document.createElement("canvas");
+      maskC.width = CW;
+      maskC.height = CH;
+      const mx = maskC.getContext("2d");
+      if (!ctx || !fx || !mx) return;
+      let raf = 0, alive = true, lastN = -1, lastSeen = -1;
+      const remask = (M) => {
+        const lift = spread(M.seen), im = fx.createImageData(FW, FH), d = im.data;
+        for (let i = 0; i < FW * FH; i++) d[i * 4 + 3] = lift[i] ? 255 : 0;
+        fx.putImageData(im, 0, 0);
+        mx.globalCompositeOperation = "copy";
+        mx.drawImage(M.mini, 0, 0);
+        mx.globalCompositeOperation = "destination-in";
+        mx.imageSmoothingEnabled = true;
+        mx.drawImage(fogC, 0, 0, FW * FOG, FH * FOG);
+        mx.globalCompositeOperation = "source-over";
+      };
+      const frame = () => {
+        if (!alive) return;
+        raf = requestAnimationFrame(frame);
+        const M = input.current.mapView && input.current.mapView();
+        if (!M) return;
+        let n = 0;
+        for (let i = 0; i < M.seen.length; i++) n += M.seen[i] ? 1 : 0;
+        if (M.mapN !== lastN || n !== lastSeen) {
+          remask(M);
+          lastN = M.mapN;
+          lastSeen = n;
+        }
+        const dpr = window.devicePixelRatio || 1, bw = c.clientWidth, bh = c.clientHeight;
+        if (c.width !== Math.round(bw * dpr) || c.height !== Math.round(bh * dpr)) {
+          c.width = Math.round(bw * dpr);
+          c.height = Math.round(bh * dpr);
+        }
+        const k = miniScale(bw, M.viewW, zr.current);
+        c.dataset.k = k.toFixed(5);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, bw, bh);
+        const o = miniAt(0, 0, M.x, M.y, k, bw, bh);
+        ctx.imageSmoothingEnabled = k * CELL < 1;
+        ctx.drawImage(maskC, o.x, o.y, CW * CELL * k, CH * CELL * k);
+        for (const q of M.items) {
+          if (q.kind !== "crystal" || q.taken || q.fly) continue;
+          const cx = Math.floor(q.x / (FOG * CELL)), cy = Math.floor(q.y / (FOG * CELL));
+          if (cx < 0 || cy < 0 || cx >= FW || cy >= FH || !M.seen[cy * FW + cx]) continue;
+          const p = miniAt(q.x, q.y, M.x, M.y, k, bw, bh);
+          if (p.x > -4 && p.y > -4 && p.x < bw + 4 && p.y < bh + 4) crystal(ctx, p.x, p.y, !!q.green);
+        }
+        ctx.fillStyle = "#ff3b3b";
+        let foes = 0;
+        for (const e of M.foes) {
+          if (e.dead) continue;
+          const p = miniAt(e.x, e.y, M.x, M.y, k, bw, bh);
+          if (p.x < 0 || p.y < 0 || p.x > bw || p.y > bh) continue;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+          ctx.fill();
+          foes++;
+        }
+        c.dataset.foes = String(foes);
+        arrow(ctx, bw / 2, bh / 2, M.aim.on ? Math.atan2(M.aim.ny, M.aim.nx) : M.face < 0 ? Math.PI : 0);
+        ctx.font = '13px system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const at = [];
+        for (const q of M.pins) {
+          const p = miniAt(q.x, q.y, M.x, M.y, k, bw, bh), e = edgeClamp(p.x, p.y, bw, bh, MINI_EDGE);
+          ctx.globalAlpha = e.out ? 0.8 : 1;
+          ctx.fillText(q.e, e.x, e.y);
+          at.push(Math.round(e.x) + "," + Math.round(e.y) + (e.out ? ",out" : ""));
+        }
+        ctx.globalAlpha = 1;
+        c.dataset.pins = at.join(" ");
+      };
+      frame();
+      return () => {
+        alive = false;
+        cancelAnimationFrame(raf);
+      };
+    }, []);
+    return h("canvas", {
+      ref: cv,
+      className: "minimap",
+      "data-zoom": MINI_ZOOMS[z],
+      style: { left: box.left, top: box.top, width: box.width, height: box.height },
+      onPointerDown: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setZ((v) => (v + 1) % MINI_ZOOMS.length);
+      }
+    });
+  }
+
   // src/ui/map.js
   var PIN_KEY = "caverunner-pins";
   var PIN_DEFAULTS = ["📍", "⭐", "💀", "💰", "❓", "🏠"];
@@ -28961,19 +29167,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { x: VEND_SELL_X, w: MACHINE_W, col: "#b07cff", name: "sell" },
     ...Object.keys(SHOPS).map((k) => ({ x: SHOPS[k].x, w: MACHINE_W, col: SHOPS[k].hue, name: k }))
   ];
-  var MAP_SPREAD = 2;
-  function spread(seen) {
-    const a = new Uint8Array(FW * FH), b = new Uint8Array(FW * FH), R = MAP_SPREAD;
-    for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
-      if (!seen[y * FW + x]) continue;
-      for (let dx = Math.max(0, x - R); dx <= Math.min(FW - 1, x + R); dx++) a[y * FW + dx] = 1;
-    }
-    for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
-      if (!a[y * FW + x]) continue;
-      for (let dy = Math.max(0, y - R); dy <= Math.min(FH - 1, y + R); dy++) b[dy * FW + x] = 1;
-    }
-    return b;
-  }
   function helmet(x, cx, cy, s, face) {
     const r = s / 2, f = face < 0 ? -1 : 1;
     x.save();
@@ -30428,6 +30621,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const canEdit = inShop || perkB.tinker || !!LO.debugPerks;
     const heldGun = input.current.loadout.guns[input.current.loadout.sel];
     const deck = deckLayout(vw, size, LO.guns.length);
+    const sticksTop = sticksRef.current ? sticksRef.current.getBoundingClientRect().top : window.innerHeight - size;
+    const mini = perkB.minimap && !mapOpen ? miniBox(deck, window.innerHeight / 2 - sticksTop) : null;
     const btnAt = (pt) => ({
       width: deck.btn,
       height: deck.btn,
@@ -30598,6 +30793,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           // a dark shade under the controls (owner): clear at the map button's top, black by the
           // sticks' middles and on down, so the sticks and buttons stand out from the cave
           h("div", { className: "ctlshade", style: shadeAt(deck, size) }),
+          mini ? h(MiniMap, { input, box: mini }) : null,
           h(Stick, { size, kind: "left", input, refresh }),
           h(Stick, { size, kind: "right", input, refresh }),
           // the gun buttons ride an arc round the right stick; tap to hold it, hold for its card

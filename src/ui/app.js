@@ -16,6 +16,7 @@ import { GunIcon } from './editor.js';
 import { h, useEffect, useRef, useState } from './h.js';
 import { CrystalRow, DueClock, RKey, Stick, deckLayout, fmtGold, holdPress, shadeAt } from './hud.js';
 import { MapScreen, PinPicker, loadPins, savePins, usePin } from './map.js';
+import { MiniMap, miniBox } from './minimap.js';
 import { SHOP_MENUS } from './modshop.js';
 import { GunSwap } from './swap.js';
 import { Witness } from './witness.js';
@@ -167,6 +168,9 @@ export function App() {
   const canEdit = inShop || perkB.tinker || !!LO.debugPerks;   // Tinker with Wands Everywhere frees the editor (and Dev → All perks, to test perks anywhere)
   const heldGun = input.current.loadout.guns[input.current.loadout.sel];
   const deck = deckLayout(vw, size, LO.guns.length);
+  // the Mini-map perk's box: over the gun buttons, up to half the screen's height (sticks-row coordinates)
+  const sticksTop = sticksRef.current ? sticksRef.current.getBoundingClientRect().top : window.innerHeight - size;
+  const mini = perkB.minimap && !mapOpen ? miniBox(deck, window.innerHeight / 2 - sticksTop) : null;
   const btnAt = pt => ({ width: deck.btn, height: deck.btn,
     left: Math.round(pt.x - deck.btn / 2), top: Math.round(pt.y - deck.btn / 2) });
 
@@ -263,6 +267,7 @@ export function App() {
         // a dark shade under the controls (owner): clear at the map button's top, black by the
         // sticks' middles and on down, so the sticks and buttons stand out from the cave
         h('div', { className: 'ctlshade', style: shadeAt(deck, size) }),
+        mini ? h(MiniMap, { input, box: mini }) : null,
         h(Stick, { size, kind: 'left', input, refresh }),
         h(Stick, { size, kind: 'right', input, refresh }),
         // the gun buttons ride an arc round the right stick; tap to hold it, hold for its card
