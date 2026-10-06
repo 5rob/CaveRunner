@@ -7,6 +7,10 @@ Names are as they were at the time (before the refactor Game's state had loose n
 
 ## Unreleased
 
+- **Mini-map perk** (owner, LIST3 item 12): fitted in the Exo Suit, a see-through box with a thin white outline over the
+  gun buttons (their width, from just above them up to half the screen): what you have seen of the floor (rock black 20%,
+  air white 25%), you as a white arrow along the aim, red dots for creatures in it, tiny red/green crystals, your pins (an
+  off-box pin sticks to the edge its way). Tap: zoom out ×2, ×4, back. `ui/minimap.js`; suites `minimap` (logic + browser).
 - **A modifier now affects only the next spell** (owner's decision): `[Damage Plus][Bolt][Bolt]`
   boosts only the first bolt; modifiers in a row all land on the next spell; inside a multicast or a
   trigger payload each spell gets only the modifiers right before it. Timing and mana unchanged.

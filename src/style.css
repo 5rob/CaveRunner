@@ -64,6 +64,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .sticks{display:flex;justify-content:space-evenly;position:relative;z-index:3}
 /* the shade under the controls: shadeAt (ui/hud.js) sets its top and the gradient's stops */
 .ctlshade{position:absolute;left:0;right:0;z-index:-1;pointer-events:none}
+/* the Mini-map perk (ui/minimap.js): see-through, a very thin white outline; a tap zooms out */
+.controls .minimap{position:absolute;box-sizing:border-box;border:0.5px solid rgba(255,255,255,0.85);background:transparent;
+  pointer-events:auto;touch-action:none}
 .app.mapping .ctlshade,.app.pinning .ctlshade{visibility:hidden}
 /* gold readout in the gap between the sticks, level with their top halves. Sits on top
    of the deck (pointer-events:none so a tap still falls to a stick) and reads amber. */
