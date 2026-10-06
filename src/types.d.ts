@@ -353,7 +353,8 @@ type Noise2 = (x: number, y: number) => number;
 /** a new floor: makeLevel's return (world/level.js) */
 interface Level {
   mat: Uint8Array;            // per terrain cell: open or which rock
-  img: ImageData; bgImg: ImageData; dimg: ImageData;   // made with new ImageData (a stand-in under Node: tests/load.js)
+  img: ImageData; bgImg: ImageData; dimg: ImageData;
+  bgHi?: ImageData | null;     // floor 2: the back wall at terrain resolution (paintTombWall; bgImg its quarter-size copy)   // made with new ImageData (a stand-in under Node: tests/load.js)
   ore: Uint8Array; fuel: Uint8Array;
   props: Prop[];
   amb: string[];              // the theme's ambience particle kinds
@@ -760,6 +761,7 @@ interface GameCtx {
   c: HTMLCanvasElement; ctx: CanvasRenderingContext2D;
   terrain: HTMLCanvasElement; tctx: CanvasRenderingContext2D;
   bg: HTMLCanvasElement; bgctx: CanvasRenderingContext2D;
+  bgHi: HTMLCanvasElement; bgHiOn: boolean;   // the back wall at terrain resolution, when the floor has one (bgHi)
   fogC: HTMLCanvasElement; fctx: CanvasRenderingContext2D; fogImg: ImageData;
   fogBlurC: HTMLCanvasElement; fbctx: CanvasRenderingContext2D;
   mapC: HTMLCanvasElement;    // the map's picture: this floor as it was made, rock and decoration (level-entry.js mapPicture)

@@ -32,7 +32,9 @@ export function drawTerrain(W, G, F) {
   const bcx = W.camX - bgox, bcy = W.camY - bgoy;
   const bx0 = clamp(Math.floor(bcx / BCELL), 0, BW - 1), by0 = clamp(Math.floor(bcy / BCELL), 0, BH - 1);
   const bx1 = clamp(Math.ceil((bcx + vw) / BCELL) + 1, 1, BW), by1 = clamp(Math.ceil((bcy + vh) / BCELL) + 1, 1, BH);
-  G.ctx.drawImage(G.bg, bx0, by0, bx1 - bx0, by1 - by0, bx0 * BCELL + bgox, by0 * BCELL + bgoy, (bx1 - bx0) * BCELL, (by1 - by0) * BCELL);
+  // (floor 2: the back wall at terrain resolution, the same place on screen)
+  const hs = G.bgHiOn ? BCELL / CELL : 1;
+  G.ctx.drawImage(G.bgHiOn ? G.bgHi : G.bg, bx0 * hs, by0 * hs, (bx1 - bx0) * hs, (by1 - by0) * hs, bx0 * BCELL + bgox, by0 * BCELL + bgoy, (bx1 - bx0) * BCELL, (by1 - by0) * BCELL);
   drawHolo(W, G, F);                        // the hologram, halfway back (holo.js)
   darkPrep(W, G, F);                        // floor 2's dark zones: the silk, and their backs cut out (dark.js)
   // the shop's back wall

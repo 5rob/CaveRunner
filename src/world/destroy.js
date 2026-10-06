@@ -60,7 +60,7 @@ export const scorchWidth = r => Math.max(3, r * Math.max(0, DEV.l2bScorch) * 0.5
 
 /**
  * One blast on the floor's layers (terrain pixels). Returns how many rock pixels went.
- * @param {{ mat: Uint8Array, img: Pixels, dimg: Pixels, bgImg: Pixels, fuel: Uint8Array, web: Uint8Array | null }} L
+ * @param {{ mat: Uint8Array, img: Pixels, dimg: Pixels, bgImg: Pixels, fuel: Uint8Array, web: Uint8Array | null, bgHi?: Pixels | null }} L
  * @param {Blast} b @param {() => number} rnd
  */
 export function blastTerrain(L, b, rnd) {
@@ -88,6 +88,16 @@ export function blastTerrain(L, b, rnd) {
     if (dist > ring) continue;
     const f = dist <= b.r ? 0.55 + 0.25 * dist / b.r : 0.8 + 0.2 * (dist - b.r) / sw, k = (y * BWd + x) * 4;
     bd[k] *= f; bd[k + 1] *= f; bd[k + 2] *= f;
+  }
+  // and the back wall at terrain resolution, when the floor has one (the same soot, smooth)
+  if (L.bgHi) {
+    const hd = L.bgHi.data;
+    for (let y = Math.max(0, y0); y <= y1; y++) for (let x = Math.max(0, x0); x <= x1; x++) {
+      const dist = Math.hypot(x + 0.5 - b.x, y + 0.5 - b.y);
+      if (dist > ring) continue;
+      const f = dist <= b.r ? 0.55 + 0.25 * dist / b.r : 0.8 + 0.2 * (dist - b.r) / sw, k = (y * CW + x) * 4;
+      hd[k] *= f; hd[k + 1] *= f; hd[k + 2] *= f;
+    }
   }
   // the streaks: black rays straight out from the blast's centre in varying lengths and widths, darkest at the
   // lip and fading to nothing at the tip, soft across (owner, round 6). On rock and decoration only: the back
@@ -176,7 +186,7 @@ export function scatterBones(L, mask, n, rnd, keep) {
 
 /**
  * Floor 2's wasteland, whole: the blasts, their fire burnt out, then the bones. Its own random stream.
- * @param {{ mat: Uint8Array, img: Pixels, dimg: Pixels, bgImg: Pixels, fuel: Uint8Array, web: Uint8Array | null, ore?: Uint8Array | null }} L
+ * @param {{ mat: Uint8Array, img: Pixels, dimg: Pixels, bgImg: Pixels, fuel: Uint8Array, web: Uint8Array | null, ore?: Uint8Array | null, bgHi?: Pixels | null }} L
  * @param {Uint8Array} mask darkMask @param {number} seed @param {{ x: number, y: number, r: number }[]} keep world-unit keep-outs
  * @returns {{ blasts: Blast[], ticks: number, bones: number, gone: number }}
  */

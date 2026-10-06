@@ -225,7 +225,8 @@ export function darkPrep(W, G, F) {
   const wx0 = tx0 * CELL - bgox, wy0 = ty0 * CELL - bgoy, gx0 = clamp(Math.floor(wx0 / BCELL) - 2, 0, BW - 1), gy0 = clamp(Math.floor(wy0 / BCELL) - 2, 0, BH - 1);
   const gx1 = clamp(Math.ceil((wx0 + tw * CELL) / BCELL) + 2, 1, BW), gy1 = clamp(Math.ceil((wy0 + th * CELL) / BCELL) + 2, 1, BH);
   bc.imageSmoothingEnabled = true; bc.filter = blur; bc.globalAlpha = clamp(DEV.l2dBack, 0, 1);
-  bc.drawImage(G.bg, gx0, gy0, gx1 - gx0, gy1 - gy0, (gx0 * BCELL + bgox) / CELL - tx0, (gy0 * BCELL + bgoy) / CELL - ty0, (gx1 - gx0) * BCELL / CELL, (gy1 - gy0) * BCELL / CELL);
+  const hs = G.bgHiOn ? BCELL / CELL : 1;
+  bc.drawImage(G.bgHiOn ? G.bgHi : G.bg, gx0 * hs, gy0 * hs, (gx1 - gx0) * hs, (gy1 - gy0) * hs, (gx0 * BCELL + bgox) / CELL - tx0, (gy0 * BCELL + bgoy) / CELL - ty0, (gx1 - gx0) * BCELL / CELL, (gy1 - gy0) * BCELL / CELL);
   // the hologram over it, as bright as it is (× DEV.l2dHolo), blurred
   const hl = holoLayer(), hb = holoBright() * DEV.l2dHolo;
   if (hl && hb > 0.01) {

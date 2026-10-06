@@ -534,7 +534,8 @@ export function makeLevel(seed, floor, owned) {
     }
 
   // the tomb's own back wall: carved stone (tomb.js)
-  if (tomb) paintTombWall(bgImg, seed, fbm);
+  const bgHi = tomb ? new ImageData(CW, CH) : null;
+  if (bgHi) paintTombWall(bgHi, bgImg, seed, fbm);
 
   // the way in near the left of the shop room, under its sign (ARRIVAL_X): you stand on it
   const start = { x: ARRIVAL_X - 6, y: SHOP_FLOOR * CELL - PH };
@@ -666,7 +667,7 @@ export function makeLevel(seed, floor, owned) {
   if (tombData && darkData && darkData.zones.length) {
     // the zones' chambers kept too: a big blast just outside a zone would bite the prize's flat floor
     const keepB = keep.concat(darkData.zones.map(z => ({ x: z.chamber.x * CELL, y: z.chamber.y * CELL, r: (Math.max(z.chamber.rx, z.chamber.ry) + 6) * CELL })));
-    const boom = destroyFloor({ mat, img, dimg, bgImg, fuel, web: darkData.web }, darkData.mask, seed, keepB);
+    const boom = destroyFloor({ mat, img, dimg, bgImg, bgHi, fuel, web: darkData.web }, darkData.mask, seed, keepB);
     /** @param {number} x @param {number} y @param {number} w @param {number} h */
     const hit = (x, y, w, h) => boom.blasts.some(b => Math.hypot(b.x - Math.max(x, Math.min(b.x, x + w)), b.y - Math.max(y, Math.min(b.y, y + h))) < b.r);
     for (const r of tombData.rooms) if (r.kit) r.kit = r.kit.filter(k => !hit(k.x, k.y, k.w, k.h) && !hit(2 * Math.round(r.cx) - k.x - k.w, k.y, k.w, k.h));
@@ -702,7 +703,7 @@ export function makeLevel(seed, floor, owned) {
     for (const q of n.path) for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) clear(Math.round(q.x) + dx, Math.round(q.y) + dy);
   }
 
-  return { mat, img, bgImg, dimg, ore, fuel, props: deco.props, amb: deco.amb, start, portal, portals, enemies, pickups, coins, stock, shopExit, arrival,
+  return { mat, img, bgImg, bgHi, dimg, ore, fuel, props: deco.props, amb: deco.amb, start, portal, portals, enemies, pickups, coins, stock, shopExit, arrival,
     rooms, roster, theme: T.name, works, zone, nests, tomb: tombData,
     dark: darkData ? darkData.zones : [], darkMask: darkData && darkData.zones.length ? darkData.mask : null, webbing: darkData && darkData.zones.length ? darkData.web : null,
     darkShade: darkData && darkData.zones.length ? darkData.shade : null, darkDepth: darkData && darkData.zones.length ? darkData.depth : null };

@@ -92,6 +92,8 @@ export function enterLevel(W, G, back, keep, pre) {
   if (W.reveal) putRows(W, G, W.reveal, CH);
   else G.tctx.putImageData(W.img, 0, 0);
   G.bgctx.putImageData(level.bgImg, 0, 0);
+  G.bgHiOn = !!level.bgHi;
+  if (level.bgHi) { G.bgHi.width = level.bgHi.width; G.bgHi.height = level.bgHi.height; const hc = G.bgHi.getContext('2d'); if (hc) hc.putImageData(level.bgHi, 0, 0); }
   if (!keep) {
     W.p.x = W.start.x; W.p.y = W.start.y; W.p.vx = 0; W.p.vy = 0;
     W.p.fuel = 1; W.p.empty = false; W.p.kick = 0;
