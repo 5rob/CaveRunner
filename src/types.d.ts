@@ -82,7 +82,7 @@ interface Shot {
   dmg: number; speed: number; spread: number; size: number; life: number; count: number;
   bounce: number; pierce: number; explode: number; grav: number; homing: number; accel: number;
   bore: number; recoil: number; col: string; knock: number; crit: number; boomer: number;
-  spiral: number; pong: number; orbit: number; follow: number; autoaim: number; homeR: number; flat: number;
+  spiral: number; pong: number; orbit: number; follow: number; autoaim: number; assist: number; homeR: number; flat: number;
   eat: number; pull: number; split: number; cluster: number;
   bounceFx: any;              // a modifier's (unused today: always null)
   friendly: number; chain: number; fuse: number; beam: number;
@@ -669,6 +669,9 @@ interface Player {
   dead: boolean; kick: number; shieldReady: boolean; shieldT: number; jx: number; jy: number;
   aim: { on: boolean; show: boolean; nx: number; ny: number; vis?: number };   // vis: the aim line's fade with the push
   burn?: number; burnAcc?: number;
+  // Aim Assist's pointer this frame (systems/gun.js aimAndCast; drawn by render/overlay.js drawAssist):
+  // where it is, whether it's on a creature, and that creature's middle and radius
+  assist?: { x: number; y: number; snap: boolean; ex: number; ey: number; er: number };
   swing?: number;   // 1 while you swing on a hanging vine this frame (movePlayer): the vine follows you
   steer?: number;   // the left stick across × its push this frame (movePlayer): turns you on a vine
   rag?: import('./world/ragdoll.js').Ragdoll | null;   // dead: the body (corpseStep)

@@ -548,6 +548,22 @@ export const CARROT_KNOBS = rangeKnobs('carrot', [
   ['caAggro', 'Enemy aggro distance (×)',  0.3, 4, 0.05,  1, 1.25],
   ['caAim',   'Aim line length (×)',       0.3, 4, 0.05,  1, 2],
 ]);
+// Aim Assist (the 'aimassist' mod, LIST3 #10): the right stick drives a pointer out from your gun that
+// snaps onto creatures and fires once it's on one (spells/assist.js, game/systems/gun.js aimAndCast)
+Object.assign(DEV_DEFAULTS, { aaStart: 0.12, aaReach: 1, aaSnapR: 40, aaPull: 0.45, aaHit: 10, aaHold: 1.5,
+  aaDelay: 0.08, aaSize: 26, aaLine: 1.25, aaDot: 2 });
+DEV_META.push(
+  { k: 'aaStart', g: 'aimassist', label: 'Stick push before the pointer comes out (of its reach)', min: 0, max: 0.9, step: 0.01 },
+  { k: 'aaReach', g: 'aimassist', label: 'Pointer reach (× distance from the gun to the far screen corner)', min: 0.2, max: 3, step: 0.05 },
+  { k: 'aaSnapR', g: 'aimassist', label: 'Snap reach (world units from a creature’s edge)', min: 0, max: 200, step: 1 },
+  { k: 'aaPull',  g: 'aimassist', label: 'Snap pull (0 none, 1 right onto its middle)', min: 0, max: 1, step: 0.01 },
+  { k: 'aaHit',   g: 'aimassist', label: 'Counts as on a creature within (world units of its edge)', min: 0, max: 80, step: 1 },
+  { k: 'aaHold',  g: 'aimassist', label: 'Stickiness: stays on its creature out to this × the snap-on distance', min: 1, max: 4, step: 0.05 },
+  { k: 'aaDelay', g: 'aimassist', label: 'Fires this long after snapping on (s)', min: 0, max: 1, step: 0.01 },
+  { k: 'aaSize',  g: 'aimassist', label: 'Ring size (px across)', min: 6, max: 80, step: 1 },
+  { k: 'aaLine',  g: 'aimassist', label: 'Ring line width (px)', min: 0.25, max: 4, step: 0.25 },
+  { k: 'aaDot',   g: 'aimassist', label: 'Centre dot when snapped (px, 0 none)', min: 0, max: 6, step: 0.5 });
+DEV_GROUPS.push(['aimassist', 'Aim Assist']);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);

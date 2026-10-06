@@ -19,14 +19,14 @@
 | `actors.js` | `drawEnemies` (ends with `drawEliteFire`: the elites' flames over the creatures, `lighter`, colour/opacity from `art/ramps.js`), `drawJetFlame` (`jetFlame` out of `jetNozzle`, the backpack's foot, through `pixelSprite` on the body's grid), `drawAim` (fills `held`, `ax`/`ay`, `gy`; the Trajectory Sight line), `drawPlayer` (runner, gun, torch — `drawTorch`/`torchFlame` through `pixelSprite` too, `torchEmbers` snapped to the grid — crosshair, shield, ghost). All at `DEV.runnerPx` |
 | `looks.js` | `drawFields`, `drawShots`, `drawBeams`, and the looks: `drawLook` (a shot's sprite), `drawFieldLook`, `drawWhiteHole` (the White Hole: no circle, a tiny white-and-blue hole), `drawBolt` (a lightning line) |
 | `light.js` | `drawFog` (line of sight, `fogReveal`, the fog bake and blur), `drawGlows` (every light over the fog, `fogLit`-gated, drawn into a rock-pixel layer and added in one go, crisp or smooth by `DEV.pixelFx`; glowing particles go straight on; then the sconces). Since v0.0.145 the light you carry is the **gun light**: `beamAim` eases the cone after the aim (`F.ax`/`ay`), `drawFog` lifts the dark by `beamLift` out to `beam.r` (the old round lamp only with `HAND_TORCH`), and `drawBeam` (in `drawGlows`) draws the cone itself out of the muzzle, clipped to `W.visPts` so it stops on rock, plus the lens glare and a faint spill round you; no gun in hand (`F.held`): no cone, only the glow |
-| `overlay.js` (screen space) | `drawHud` (the version; publishes `input.current.hud`), `drawRadar`, `drawMessages`, `drawReticule` |
+| `overlay.js` (screen space) | `drawHud` (the version; publishes `input.current.hud`), `drawRadar`, `drawMessages`, `drawReticule`, `drawAssist` (Aim Assist's ring from `W.p.assist`, over the fog; amber round the creature when snapped) |
 | `guide.js` | A new run's guide hologram, shown only while the tube over it is lit (`guideShown`: invisible in the dark, blinking in with the tube's stutter; the box too): `drawGuide` (after `drawShops`: you, drawn by `drawRunner` facing you and waving, made a see-through blue by brightness in its own small layer, scan lines, two bright distortion bars that tear it sideways, glitches as it comes, goes or turns rude; a projector glow under it; the hologram pass and glow are `holoPass`/`holoLight`, shared with `shops.js` `drawDemo`) and `drawGuideTalk` (after `drawMessages`, screen space: the speech box, growing upward as it types, a caret, a tail to it; shaking with a red edge when rude); `wrapLines`. Not in a replay |
 
 The order in `draw`: `drawCamera`, `drawTerrain`, `drawProps`, `drawPortal`, `drawSmoke`,
 `drawFields`, `drawSilk` (`game/creatures/spider.js`), `drawEnemies`, `drawShots`, `drawBeams`,
 `drawArrival`, `drawShop`, `drawVend`, `drawShops`, `drawGuide`, `drawLoot`, `drawRooms`, `drawTrail`, `drawSparks`, `drawMotes`,
 `drawFlashes`, `drawJetFlame`, `drawAim`, `drawPlayer`, `drawDark`, `drawFog`, `drawGlows`, `drawTubes`, `drawPads`, `drawWarp`, `drawRepo`, `drawFx`, `drawBelow`, then
-`if (G.RPV) return;` (a replay has no HUD), `drawHud`, `drawRadar`, `drawMessages`, `drawGuideTalk`, `drawReticule`.
+`if (G.RPV) return;` (a replay has no HUD), `drawHud`, `drawRadar`, `drawMessages`, `drawGuideTalk`, `drawReticule`, `drawAssist`.
 
 ## Rules
 

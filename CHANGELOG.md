@@ -7,6 +7,11 @@ Names are as they were at the time (before the refactor Game's state had loose n
 
 ## Unreleased
 
+- **Aim Assist mod** (`aimassist`, LIST3 #10): with it on the gun in hand the aim stick drives a thin
+  pointer ring out from your gun (like the vending menus' pointer) that snaps onto creatures in sight and on
+  screen; on one it turns amber, the gun light swings onto it and the gun fires at it on its own (normal cast
+  delay, recharge and mana). No trigger ring on the stick, no aim line; letting go stops. Its own Dev group,
+  **Aim Assist** (reach, snap reach/pull/hit, stickiness, fire delay, ring size/line/dot).
 - **A modifier now affects only the next spell** (owner's decision): `[Damage Plus][Bolt][Bolt]`
   boosts only the first bolt; modifiers in a row all land on the next spell; inside a multicast or a
   trigger payload each spell gets only the modifiers right before it. Timing and mana unchanged.

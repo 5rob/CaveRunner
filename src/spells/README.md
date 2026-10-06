@@ -12,6 +12,7 @@
 | `bagsim.js` | The bag screen's pure side: `castGroups`, `pullSteps`, `groupStats`, the trigger-held preview `fireSimNew`/`fireSimStep`/`fireSimGauges`, `statQual`, `gunModDeltas` |
 | `collection.js` | The vending machine's collection: `modTiers` (every `ALL_IDS` mod by `MOD_TIER`, the grid's groups), `crystalRoll(rnd, floor, owned)` (a red crystal's unlock: the floor's `modWeight` table minus what you own, then anything you don't, then null). Stored (emptied when you die) by `save/save.js` (`loadCollection`/`saveCollection`) |
 | `gunshop.js` | The gun machine's offer: `newOffer`/`rollOffer` (`GUN_OFFER` guns), `shopGun` (the floor's `gunLevel`, or boosted: `BOOST_UP` deeper + `boostGun`), `shopGunPrice`, `rerollPrice(floor, n)`, `boostCost(n)` |
+| `assist.js` | Aim Assist's pure side (LIST3 #10): `hasAssist(g)` (the gun carries `aimassist`), `assistPointer` (stick push → a world point out from the gun, × `DEV.aaReach` of the far view corner, held in the view), `assistSnap` (the creature nearest the pointer by its edge: pulls within `aaSnapR`, ON within `aaHit`, the one it was on stays on to `aaHit × aaHold`) |
 
 The game side of casting (spawning shots, the bullet loop, fields and beams) is in
 `game/systems/` (`gun.js`, `bullets.js`, `fields.js`); a shot's look is `game/render/looks.js`
@@ -31,6 +32,9 @@ and `game/systems/shotlooks.js`.
   cleared; a payload does the same with its own `pm`. Modifiers with nothing after them in the
   pull are wasted; a multicast that wraps carries them to the first spell at the front. Timing
   (`d`, `setDelay`), mana, `hp`, `acts`, `multi`, `form` and Add Trigger are unchanged.
+- **Aim Assist** (`aimassist`, a `path`-family modifier; `assist: 1` on the next spell): while the gun in hand carries it
+  ANYWHERE, the right stick is a pointer (`aimAndCast`, game/systems/gun.js) and the whole pull aims at the
+  creature it's on (one aim per pull, so a spell sharing the pull goes the same way). It does nothing else to a shot.
 - **Copies (the Greek letters) are fiddly** (they are `off: 1` today, code and `spells.test.js`
   checks kept for bringing them back). They push ids into a queue drawn before the gun's own list,
   and must widen `multi` for themselves *and* their originals or the multicast limit eats them.

@@ -7,6 +7,7 @@
 import { COL } from '../../core/consts.js';
 import { clamp } from '../../core/util.js';
 import { PERKS } from '../../data/perks.js';
+import { DEV } from '../../dev/knobs.js';
 import { themeFor } from '../../data/themes.js';
 import { effRecharge, gunPassives } from '../../spells/cast.js';
 import { REPO_ALARM, REPO_FIRE } from '../systems/vend.js';
@@ -160,4 +161,31 @@ export function drawReticule(G) {
       G.ctx.stroke();
     }
   }
+}
+
+// Aim Assist's pointer (W.p.assist, set by systems/gun.js aimAndCast): the menus' thin ring, but in
+// the world, drawn over the fog so it reads in the dark. On a creature it closes round it and turns
+// the torch's amber, with a dot in its middle (Dev → Aim Assist: aaSize, aaLine, aaDot)
+/** @param {World} W @param {GameCtx} G */
+export function drawAssist(W, G) {
+  const A = W.p.assist;
+  if (!A || G.RPV) return;
+  const u = W.unitPx, x = (A.x - W.camX) * u, y = (A.y - W.camY) * u;
+  const r0 = DEV.aaSize / 2;
+  const c = G.ctx;
+  c.save();
+  if (A.snap) {
+    const ex = (A.ex - W.camX) * u, ey = (A.ey - W.camY) * u, r = Math.max(r0 * 0.7, A.er * u + 5);
+    for (const [w, col] of [[DEV.aaLine + 2, 'rgba(0,0,0,0.45)'], [DEV.aaLine, 'rgba(255,190,90,0.95)']]) {
+      c.strokeStyle = String(col); c.lineWidth = Number(w);
+      c.beginPath(); c.arc(ex, ey, r, 0, Math.PI * 2); c.stroke();
+    }
+    if (DEV.aaDot > 0) { c.fillStyle = 'rgba(255,190,90,0.95)'; c.beginPath(); c.arc(ex, ey, DEV.aaDot, 0, Math.PI * 2); c.fill(); }
+  } else {
+    for (const [w, col] of [[DEV.aaLine + 2, 'rgba(0,0,0,0.4)'], [DEV.aaLine, 'rgba(255,255,255,0.9)']]) {
+      c.strokeStyle = String(col); c.lineWidth = Number(w);
+      c.beginPath(); c.arc(x, y, r0, 0, Math.PI * 2); c.stroke();
+    }
+  }
+  c.restore();
 }
