@@ -31,10 +31,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       dead: ring(s[1], '.deadzone'), thr: ring(s[1], '.throw'),
       deadStyle: getComputedStyle(s[1].querySelector('.deadzone')).borderStyle,
       leftRings: s[0] ? s[0].querySelectorAll('.deadzone, .throw').length : -1,
-      // where the amber ring ought to be: the throw you have to make (AIM_DEAD of the
-      // knob's travel) plus one knob radius, so the knob's EDGE crosses it exactly as
-      // the trigger goes live
-      want: 2 * (AIM_DEAD * 0.72 * half + w(s[1].querySelector('.knob')) / 2),
+      // where the amber ring ought to be: out near the edge, Dev aimPad px in (LIST3 #8,
+      // core/consts.js triggerRing), the knob's EDGE crossing it exactly as the trigger goes live
+      want: triggerRing(w(s[1]), DEV.aimPad).ring * w(s[1]), half,
       // the panel is see-through now: its background alpha
       alpha: bg.length >= 4 ? +bg[3] : 1,
     };
@@ -101,14 +100,14 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
   // ---- 2. a drag beyond the dead zone: fires, and releasing out there does not interact ----
   await healUp();
-  res = await gesture([{ mag: 0.15, dy: 0 }, { mag: 0.7, dy: 0 }, { mag: 0.7, dy: 0 }], 60);
+  res = await gesture([{ mag: 0.15, dy: 0 }, { mag: 0.95, dy: 0 }, { mag: 0.95, dy: 0 }], 60);
   hp = await page.evaluate(() => window.__lvl.p.hp);
   check('dragging past the dead zone fires', res.peak > 0, res);
   check('releasing out there does not interact', hp === 10, hp);
 
   // ---- 3. drag out and back to centre: still does not interact ----
   await healUp();
-  res = await gesture([{ mag: 0.15, dy: 0 }, { mag: 0.7, dy: 0 }, { mag: 0.1, dy: 0 }], 60);
+  res = await gesture([{ mag: 0.15, dy: 0 }, { mag: 0.95, dy: 0 }, { mag: 0.1, dy: 0 }], 60);
   hp = await page.evaluate(() => window.__lvl.p.hp);
   check('it fired while it was out', res.peak > 0, res);
   check('coming back to centre before release still does not interact', hp === 10, hp);
