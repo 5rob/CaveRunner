@@ -23,7 +23,7 @@ Status: `todo` · `agent` (running, branch named) · `review` (screenshots sent,
 | 2 | Modifiers affect only the next spell | agent | ready | merged into `list3-small` (7661710): only planCast changed; suite `nextspell`. Wrap: a trailing modifier is wasted. Not done: a card example showing the spell after coming out bare (a look) |
 | 3 | Dev menu: modern, tabbed pages, collapsible groups | agent | review (merged into list3-small) | `DEV_TABS` in dev/knobs.js; suite `devpanel`; 4 shots sent |
 | 4 | Gun mod screen: gun buttons as a row under the mod grid; live window of the gun firing in time with the pull animation | agent | review (merged into list3-small) | `GunFire` in ui/editor.js, `bagsim` `S.shots`; suite `gunfire`; 3 shots sent |
-| 5 | Hold a HUD gun slot to equip a pickup there (replaces R/swap menu); hold with nothing to pick up = drag the gun out, drop on release; tap the equipped gun = its info card | agent | agent (worktree, from list3-small) |  |
+| 5 | Hold a HUD gun slot to equip a pickup there (replaces R/swap menu); hold with nothing to pick up = drag the gun out, drop on release; tap the equipped gun = its info card | agent | review (merged into list3-small) | `ui/gunhold.js`, `takeGun`/`dropGun` in systems/pickups.js; GunSwap archived (`input.current.gunMenu`); suite `gunhold`; 2 shots sent |
 | 6 | Audit: pin / trash icons + "Give Feedback" notes on mod & perk cards; Dev button copies all to clipboard for Claude Code | agent | review (merged into list3-small) | `save/audit.js` (localStorage `caverunner-audit`), cards.js toggles + notes screen, Dev "Copy audit"; suites `audit` (logic+browser); 3 shots sent. Skipped: pin/trash dots on Bag tiles |
 | 7 | Vines: keep facing unless you steer the other way | manager | ready | branch `list3-small` 7423885 (`W.p.steer`, gun.js facing) |
 | 8 | Right stick: trigger ring near the stick's edge, Dev padding from the edge | manager | review | branch `list3-small`; `triggerRing` in core/consts.js, Dev `aimPad` (10px, Player group); suite `trigring`; screenshot sent |
@@ -46,3 +46,4 @@ Status: `todo` · `agent` (running, branch named) · `review` (screenshots sent,
 - 2026-10-07: #10 merged, shots sent. #5 agent launched. Running: #5, #6, #9, #12. Next: #11 after #9.
 - 2026-10-07: #6 and #9 merged, shots sent. #11 agent launched. Running: #5, #11, #12.
 - 2026-10-07: #12 merged, shots sent. Running: #5, #11.
+- 2026-10-07: #5 merged, shots sent; `interact` suite updated for #8's ring. Running: #11.
