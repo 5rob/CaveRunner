@@ -91,6 +91,9 @@ export function holoLevel(since) {
 export const holoBright = () => L.bri;
 /** this frame's hologram layer (null while it's dark) */
 export const holoLayer = () => L.c;
+/** render/dark.js sets `on` while you're in or near a dark zone with its glitch on: the layer is made even while
+ * the hologram is dark (holoBright stays 0, so nothing else draws it), for the zones' backdrop to flash */
+export const holoKeep = { on: false };
 
 // The layer's grid for this frame: whole CELL-sized pixels fixed to the hologram (so they slide
 // with it, never swim), covering the view. ox/oy: how far the hologram has slid (world units);
@@ -196,7 +199,7 @@ export function drawHolo(W, G, F) {
   if (L.ft > W.time) L.ft = -99;
   // repossessed: it stays lit, so you can read why
   L.bri = DEV.holoAlpha * (W.repo ? Math.max(DEV.holoMax, DEV.holoMin) : holoLevel(W.time - L.ft));
-  if (!(L.bri > 0.002)) { L.bri = 0; L.c = null; return; }   // dark: none of the work
+  if (!(L.bri > 0.002)) { L.bri = 0; if (!holoKeep.on) { L.c = null; return; } }   // dark: none of the work (unless a zone wants it)
   setGrid(W, F);
   const C = L.c = sizedCanvas(L.c, LG.lw, LG.lh), lc = C.getContext('2d');
   if (!lc) return;
@@ -206,6 +209,7 @@ export function drawHolo(W, G, F) {
   holoFill(lc, W, F, n);
   const g = holoGlitch(W);
   if (g > 0) glitch(lc, C, g, W.time, 1 / (LG.px * W.unitPx));
+  if (!L.bri) return;
   G.ctx.save();
   G.ctx.globalAlpha = L.bri;
   holoGrid.place(G.ctx, C, false);

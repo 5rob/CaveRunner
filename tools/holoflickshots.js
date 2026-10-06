@@ -1,0 +1,122 @@
+// Screenshots of the hologram glitching in floor 2's dark zones (world/holoflicker.js) for the owner, phone size
+// (412 x 880 @2.625), the real game through the test page. Not a test: it stands you deep in a zone, past where
+// the torch fails, and takes a run of frames (the glitch is random: steady, dropouts, flashes, torn slices),
+// printing each frame's state. Same seed as tools/darkshots.js.
+//   node tools/holoflickshots.js [outdir] [frames]   (default tests/build/holoflick, 14 frames)
+const { launch } = require('../tests/chromium');
+const path = require('path');
+const fs = require('fs');
+
+const OUT = path.resolve(process.argv[2] || path.join(__dirname, '..', 'tests', 'build', 'holoflick'));
+const N = Number(process.argv[3]) || 14;
+fs.mkdirSync(OUT, { recursive: true });
+require('./build')();
+require('../tests/build')();
+
+(async () => {
+  const browser = await launch();
+  const ctx = await browser.newContext({ viewport: { width: 412, height: 880 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2.625 });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => console.log('PAGEERROR', e.message));
+  await page.goto('file://' + path.join(__dirname, '..', 'tests', 'build', 'test.html'));
+  for (let i = 0; i < 100 && !(await page.evaluate(() => window.__lvl && window.__lvl.p)); i++) await page.waitForTimeout(50);
+  await page.evaluate(() => { window.__lvl.guide = null; Math.random = (() => { let s = 11; return () => (s = (s * 16807) % 2147483647) / 2147483647; })(); window.__in.current.newCave = 2; });
+  for (let i = 0; i < 60 && !(await page.evaluate(() => window.__lvl.floor === 2 && window.__lvl.dark.length > 0)); i++) await page.waitForTimeout(100);
+  // a standing spot deep in a zone (past where the torch fails), nearest a zone's middle
+  const spot = await page.evaluate(() => {
+    const W = window.__lvl, { CW, CELL } = W.world, m = W.mat, dp = W.darkDepth, lo = DEV.l2dTorchDepth + 10, hi = lo + 60;
+    const free = (x, y) => { for (let j = 0; j < 11; j++) for (let i = 0; i < 6; i++) if (m[(y - j) * CW + x + i]) return false; return true; };
+    for (const z of W.dark) {
+      const mx = (z.x0 + z.x1) / 2, my = (z.y0 + z.y1) / 2;
+      let best = null, bd = 1e12;
+      for (let y = z.y0 + 12; y < z.y1; y++) for (let x = z.x0 + 2; x < z.x1 - 8; x++) {
+        const d = dp[(y - 5) * CW + x + 3];
+        if (d < lo || d > hi || m[y * CW + x] || !m[(y + 1) * CW + x] || !m[(y + 1) * CW + x + 5] || !free(x, y)) continue;
+        const e = (x - mx) ** 2 + (y - my) ** 2;
+        if (e < bd) { bd = e; best = { x: x * CELL, y: (y + 1) * CELL - 22 - 0.5, d }; }
+      }
+      if (best) return best;
+    }
+    return null;
+  });
+  if (!spot) { console.log('no spot deep in a zone'); await browser.close(); process.exit(1); }
+  await page.evaluate(([x, y]) => {
+    const L = window.__lvl;
+    window.__pin = { x, y };
+    const loop = () => {
+      L.p.x = window.__pin.x; L.p.y = window.__pin.y; L.p.vx = L.p.vy = 0; L.p.hp = 9999; L.enemyShots.length = 0;
+      window.__in.current.right = { active: true, on: false, nx: 1, ny: 0.1, mag: 0.2 };
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  }, [spot.x, spot.y]);
+  await page.waitForTimeout(3500);           // outlast the floor's name card and the torch failing
+  if (process.env.V2) return v2(page, browser);
+  const said = [];
+  // the knobs off first: the zone as it was
+  await page.evaluate(() => { DEV.l2dFlk = 0; });
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(OUT, 'item1-0-off.png') }); said.push('item1-0-off.png  the glitch switched off (l2dFlk 0): the zone as before');
+  await page.evaluate(() => { DEV.l2dFlk = 1; });
+  for (let k = 1; k <= N; k++) {
+    await page.waitForTimeout(60 + ((k * 137) % 170));
+    const f = await page.evaluate(() => { const s = holoFlk(); return { mode: s.mode, mul: s.mul, tear: s.tear }; });
+    const n = `item1-${k}.png`;
+    await page.screenshot({ path: path.join(OUT, n) });
+    said.push(`${n}  ${['steady', 'dropout', 'flash', 'torn'][f.mode]} (× ${f.mul.toFixed(2)}${f.tear ? ', tear ' + f.tear.toFixed(1) + ' px' : ''}; state just before the shot)`);
+  }
+  console.log(`deep in a zone, ${spot.d} px in\n` + said.join('\n'));
+  await browser.close();
+})();
+
+// V2=1: four labelled frames, the flicker held (HoloFlicker.hold) so each picture is the state it says: standing
+// in a zone where the silk is thickest round you, up to four aliens pinned near you. Files item1-v2-a..d.png
+async function v2(page, browser) {
+  const sp = await page.evaluate(() => {
+    const W = window.__lvl, { CW, CELL } = W.world, m = W.mat, dp = W.darkDepth, wb = W.webbing, lo = DEV.l2dTorchDepth + 6;
+    const free = (x, y) => { for (let j = 0; j < 11; j++) for (let i = 0; i < 6; i++) if (m[(y - j) * CW + x + i]) return false; return true; };
+    let best = null, bs = -1;
+    for (const z of W.dark) for (let y = z.y0 + 12; y < z.y1; y += 2) for (let x = z.x0 + 2; x < z.x1 - 8; x += 2) {
+      if (dp[(y - 5) * CW + x + 3] < lo || m[y * CW + x] || !m[(y + 1) * CW + x] || !m[(y + 1) * CW + x + 5] || !free(x, y)) continue;
+      let silk = 0;
+      for (let v = y - 60; v < y + 30; v += 3) for (let u = x - 70; u < x + 70; u += 3) if (u >= 0 && u < CW && v >= 0 && wb[v * CW + u]) silk++;
+      if (silk > bs) { bs = silk; best = { x: x * CELL, y: (y + 1) * CELL - 22 - 0.5, tx: x, ty: y, silk }; }
+    }
+    if (!best) return null;
+    // open spots for aliens round you (in the zone; in the air is fine: pinned)
+    const al = [], { tx, ty } = best;
+    for (const [dx, dy] of [[-40, -6], [30, -20], [-18, -34], [52, -4], [-60, -24], [14, -46], [40, -40], [-30, -50]]) {
+      const x = tx + dx, y = ty + dy;
+      if (x > 2 && x < CW - 2 && !m[y * CW + x] && !m[(y - 4) * CW + x] && W.darkMask[y * CW + x] && al.length < 4) al.push({ x: x * CELL, y: y * CELL });
+    }
+    window.__al = al;
+    return best;
+  });
+  if (!sp) { console.log('no spot'); await browser.close(); return; }
+  await page.evaluate(([x, y]) => {
+    window.__pin = { x, y };
+    const W = window.__lvl, als = W.enemies.filter(e => e.al).slice(0, window.__al.length);
+    const pin = () => {
+      als.forEach((e, k) => { const p = window.__al[k]; e.x = p.x; e.y = p.y; e.ty = p.y; e.hx = p.x; e.hy = p.y; e.vx = e.vy = 0; });
+      requestAnimationFrame(pin);
+    };
+    requestAnimationFrame(pin);
+    window.__nAl = als.length;
+  }, [sp.x, sp.y]);
+  await page.waitForTimeout(1200);
+  const said = [];
+  const frames = [
+    ['a', 'off (l2dFlk 0): the zone as before, black', () => { DEV.l2dFlk = 0; }],
+    ['b', 'dim base between bursts (× 1): the silk faintly backlit', () => { DEV.l2dFlk = 1; holoFlk().hold = { mode: 0, mul: 1, tear: 0, seed: 1 }; }],
+    ['c', 'full flash (× l2dFlkFlash): the silk backlit, the aliens silhouetted', () => { DEV.l2dFlk = 1; holoFlk().hold = { mode: 2, mul: DEV.l2dFlkFlash, tear: 0, seed: 1 }; }],
+    ['d', 'torn flash (× l2dFlkFlash, slices shifted up to l2dFlkGlitch px)', () => { DEV.l2dFlk = 1; holoFlk().hold = { mode: 3, mul: DEV.l2dFlkFlash, tear: DEV.l2dFlkGlitch, seed: 4242 }; }]];
+  for (const [n, what, fn] of frames) {
+    await page.evaluate(fn);
+    await page.waitForTimeout(250);
+    const f = `item1-v2-${n}.png`;
+    await page.screenshot({ path: path.join(OUT, f) }); said.push(`${f}  ${what}`);
+  }
+  await page.evaluate(() => { holoFlk().hold = null; });
+  console.log(`spot: ${sp.silk} silk samples round you, ${await page.evaluate(() => window.__nAl)} aliens pinned\n` + said.join('\n'));
+  await browser.close();
+}

@@ -1484,6 +1484,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "l2dTorchDepth", g: "l2dark", label: "The torch fails this far in (px; just past the fade's end)", min: 0, max: 200, step: 1 },
     { k: "l2dTorchHyst", g: "l2dark", label: "And comes back on this much nearer the edge (px, no strobing)", min: 0, max: 40, step: 1 }
   );
+  DEV_DEFAULTS.l2dFlk = 1;
+  DEV_DEFAULTS.l2dFlkRate = 2.5;
+  DEV_DEFAULTS.l2dFlkFlash = 1.6;
+  DEV_DEFAULTS.l2dFlkGlitch = 10;
+  DEV_DEFAULTS.l2dFlkNear = 40;
+  DEV_DEFAULTS.l2dFlkBase = 0.5;
+  DEV_META.push(
+    // the hologram glitching while you're in or near a zone (world/holoflicker.js; owner, after v0.0.148)
+    { k: "l2dFlk", g: "l2dark", label: "Hologram glitches in the zones (0 off, 1 on)", min: 0, max: 1, step: 1 },
+    { k: "l2dFlkBase", g: "l2dark", label: "Glitch: the hologram between bursts (× its brightness; 0 = dark till a burst)", min: 0, max: 1, step: 0.05 },
+    { k: "l2dFlkRate", g: "l2dark", label: "Glitch: how often (bursts a second)", min: 0, max: 8, step: 0.1 },
+    { k: "l2dFlkFlash", g: "l2dark", label: "Glitch: flash brightness (× the hologram; past 1 brighter than it)", min: 0, max: 3, step: 0.05 },
+    { k: "l2dFlkGlitch", g: "l2dark", label: "Glitch: tearing, how far the slices jump (terrain px; 0 none)", min: 0, max: 60, step: 1 },
+    { k: "l2dFlkNear", g: "l2dark", label: "Glitch starts this near a zone (px outside its box)", min: 0, max: 200, step: 1 }
+  );
   curveKnobs("l2dark", "l2dFire", "Fire lifts the black (Y, 1 = full colour) by distance to it (X, 0 to the max)", 0, 1, { y0: 1, x1: 0.35, y1: 1, x2: 0.55, y2: 0.1, y3: 0 });
   var AL_KNOBS = rangeKnobs("l2alien", [
     ["alCount", "Aliens per dark zone", 0, 400, 1, 30, 60],
@@ -17851,6 +17866,70 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (done) W.shopLit = null;
   }
 
+  // src/world/holoflicker.js
+  function flickerNew() {
+    return { mode: 0, t: 0, mul: 1, tear: 0, seed: 1, rng: 625341585 };
+  }
+  function flickerRnd(s) {
+    let x = s.rng | 0;
+    x ^= x << 13;
+    x ^= x >>> 17;
+    x ^= x << 5;
+    s.rng = x | 0;
+    return (x >>> 0) / 4294967296;
+  }
+  function flickerStep(s, dt, near, k) {
+    if (!near || k.rate <= 0) {
+      s.mode = 0;
+      s.t = 0;
+      s.mul = 1;
+      s.tear = 0;
+      return s;
+    }
+    if (s.hold) {
+      s.mode = s.hold.mode;
+      s.mul = s.hold.mul;
+      s.tear = s.hold.tear;
+      s.seed = s.hold.seed;
+      return s;
+    }
+    const R = () => flickerRnd(s);
+    s.t -= dt;
+    if (s.t <= 0) {
+      if (s.mode !== 0) {
+        s.mode = 0;
+        s.t = (0.3 + R() * 1.4) / Math.max(0.05, k.rate);
+      } else {
+        const u = R(), g = k.glitch > 0;
+        s.mode = u < 0.35 ? 1 : u < (g ? 0.7 : 1) ? 2 : 3;
+        s.t = s.mode === 1 ? 0.04 + R() * 0.35 : s.mode === 2 ? 0.06 + R() * 0.3 : 0.08 + R() * 0.25;
+      }
+    }
+    s.tear = 0;
+    if (s.mode === 0) s.mul = 1;
+    else if (s.mode === 1) s.mul = R() < 0.15 ? 0.5 : 0;
+    else if (s.mode === 2) s.mul = R() < 0.65 ? k.flash * (0.75 + R() * 0.25) : 0.15;
+    else {
+      s.mul = R() < 0.3 ? k.flash * 0.7 : 0.6 + R() * 0.6;
+      s.tear = k.glitch * (0.4 + R() * 0.6);
+      s.seed = 1 + Math.floor(R() * 1e6);
+    }
+    return s;
+  }
+  function flickerSlices(seed, tear, n) {
+    const s = flickerNew();
+    s.rng = seed * 2654435761 | 0 || 1;
+    const out = [];
+    let y = 0;
+    while (y < 1) {
+      const h3 = Math.min(1 - y, (0.3 + flickerRnd(s) * 1.7) / n);
+      const dx = flickerRnd(s) < 0.45 ? (flickerRnd(s) * 2 - 1) * tear : 0;
+      out.push({ y0: y, y1: y + h3, dx });
+      y += h3;
+    }
+    return out;
+  }
+
   // src/game/render/holo.js
   var BG_PAR = 0.6;
   var HOLO_PAR = (1 + BG_PAR) / 2;
@@ -17925,6 +18004,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var holoBright = () => L.bri;
   var holoLayer = () => L.c;
+  var holoKeep = { on: false };
   var LG = { px: CELL, ox: 0, oy: 0, gx0: 0, gy0: 0, lw: 1, lh: 1 };
   function setGrid(W, F2) {
     const P2 = LG.px = clamp(DEV.holoPx || CELL, 0.5, 8);
@@ -18021,8 +18101,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     L.bri = DEV.holoAlpha * (W.repo ? Math.max(DEV.holoMax, DEV.holoMin) : holoLevel(W.time - L.ft));
     if (!(L.bri > 2e-3)) {
       L.bri = 0;
-      L.c = null;
-      return;
+      if (!holoKeep.on) {
+        L.c = null;
+        return;
+      }
     }
     setGrid(W, F2);
     const C = L.c = sizedCanvas(L.c, LG.lw, LG.lh), lc = C.getContext("2d");
@@ -18034,6 +18116,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     holoFill(lc, W, F2, n);
     const g = holoGlitch(W);
     if (g > 0) glitch(lc, C, g, W.time, 1 / (LG.px * W.unitPx));
+    if (!L.bri) return;
     G.ctx.save();
     G.ctx.globalAlpha = L.bri;
     holoGrid.place(G.ctx, C, false);
@@ -18113,8 +18196,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     webL: null,
     lm: null,
     lmImg: null,
-    lt: null
+    lt: null,
+    flk: flickerNew(),
+    flT: 0,
+    hb: 0
   };
+  var holoFlk = () => D.flk;
   function darkBeam(a, r, n, x, y) {
     const b = D.beam;
     b.a = a;
@@ -18150,7 +18237,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var darkOn = () => D.on;
   function darkHides(x, y, R) {
-    if (!D.on || !D.zt || DEV.l2dDark < 1) return false;
+    if (!D.on || !D.zt || DEV.l2dDark < 1 || D.hb > 0.01) return false;
     const cx0 = Math.floor((x - R) / FOG_U) - 1, cx1 = Math.floor((x + R) / FOG_U) + 1;
     const cy0 = Math.floor((y - R) / FOG_U) - 1, cy1 = Math.floor((y + R) / FOG_U) + 1;
     if (cx0 < D.bx0 || cy0 < D.by0 || cx1 >= D.bx1 || cy1 >= D.by1) return false;
@@ -18354,13 +18441,32 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     bc.globalAlpha = clamp(DEV.l2dBack, 0, 1);
     const hs5 = G.bgHiOn ? BCELL / CELL : 1;
     bc.drawImage(D.bb, gx0 * hs5, gy0 * hs5, (gx1 - gx0) * hs5, (gy1 - gy0) * hs5, (gx0 * BCELL + bgox) / CELL - tx0, (gy0 * BCELL + bgoy) / CELL - ty0, (gx1 - gx0) * BCELL / CELL, (gy1 - gy0) * BCELL / CELL);
-    const hl = holoLayer(), hb = holoBright() * DEV.l2dHolo;
+    const dt = clamp(W.time - D.flT, 0, 0.1);
+    D.flT = W.time;
+    const nr = Math.max(0, DEV.l2dFlkNear) * CELL, px = W.p.x + 6, py = W.p.y + 11;
+    const near = !!DEV.l2dFlk && W.dark.some((z) => px > z.x0 * CELL - nr && px < (z.x1 + 1) * CELL + nr && py > z.y0 * CELL - nr && py < (z.y1 + 1) * CELL + nr);
+    const fk = flickerStep(D.flk, dt, near, { rate: DEV.l2dFlkRate, flash: DEV.l2dFlkFlash, glitch: DEV.l2dFlkGlitch });
+    holoKeep.on = near;
+    const h0 = holoBright() * DEV.l2dHolo, hon = near ? Math.max(h0, clamp(DEV.l2dFlkBase, 0, 1) * DEV.l2dHolo) : h0;
+    const hl = holoLayer(), hb = fk.mode === 2 ? Math.max(hon, DEV.l2dHolo) * fk.mul : hon * fk.mul;
+    D.hb = hl ? hb : 0;
     if (hl && hb > 0.01) {
-      const g = holoGrid.rect;
+      const g = holoGrid.rect, dx0 = g.x / CELL - tx0, dy0 = g.y / CELL - ty0, dw = g.w / CELL, dh = g.h / CELL;
       bc.filter = DEV.l2dHoloBlur && bl > 0 ? `blur(${bl}px)` : "none";
-      bc.globalAlpha = clamp(hb, 0, 1);
-      bc.drawImage(hl, 0, 0, hl.width, hl.height, g.x / CELL - tx0, g.y / CELL - ty0, g.w / CELL, g.h / CELL);
+      const sl = fk.tear > 0 ? flickerSlices(fk.seed, fk.tear, 14) : null;
+      for (let pass = 0; pass < 2; pass++) {
+        const a = pass ? hb - 1 : Math.min(1, hb);
+        if (a <= 0.01) break;
+        bc.globalAlpha = Math.min(1, a);
+        bc.globalCompositeOperation = pass ? "lighter" : "source-over";
+        if (!sl) bc.drawImage(hl, 0, 0, hl.width, hl.height, dx0, dy0, dw, dh);
+        else for (const b of sl) {
+          const sy = b.y0 * hl.height, sh = Math.max(1, (b.y1 - b.y0) * hl.height);
+          bc.drawImage(hl, 0, sy, hl.width, sh, dx0 + b.dx, dy0 + b.y0 * dh, dw, (b.y1 - b.y0) * dh);
+        }
+      }
       bc.filter = "none";
+      bc.globalCompositeOperation = "source-over";
     }
     bc.globalAlpha = 1;
     bc.globalCompositeOperation = "multiply";
