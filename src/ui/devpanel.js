@@ -17,6 +17,7 @@ import { themeFor } from '../data/themes.js';
 import {
   CURVES, DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_META, DEV_TABS, devReport, devSet, devTabOf, kr, kru
 } from '../dev/knobs.js';
+import { auditText, loadAudit } from '../save/audit.js';
 import { h, useEffect, useRef, useState } from './h.js';
 
 // A live jellyfish for Dev → Jellyfish colours: the real jellyStep and drawJelly in a
@@ -561,9 +562,10 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
     setOpenG(o);
     lsSet('caverunner-devgroups', o);
   };
-  const copyAll = () => {
+  /** @param {string} text @param {string} [what] */
+  const copyText = (text, what) => {
     blurBox();
-    const text = devReport();
+    if (!text) { setCopied({ text, ok: false, empty: true, what }); return; }
     const fallback = () => {
       let ok = false;
       try {
@@ -571,10 +573,10 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
         ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
         document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove();
       } catch (_) {}
-      setCopied({ text, ok });
+      setCopied({ text, ok, what });
     };
     try {
-      navigator.clipboard.writeText(text).then(() => setCopied({ text, ok: true }), fallback);
+      navigator.clipboard.writeText(text).then(() => setCopied({ text, ok: true, what }), fallback);
     } catch (_) { fallback(); }
   };
   const act = (/** @type {string} */ cls, /** @type {string} */ label, /** @type {() => void} */ fn) =>
@@ -602,10 +604,13 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
           act('newcave', 'New cave', () => { input.current.newCave = true; close(); }),
           act('floor2', 'Floor 2', () => { input.current.newCave = 2; close(); }),
           act('restart', 'Restart run', onRestart),
-          act('devcopy', 'Copy report', copyAll)),
-        copied ? h('p', { className: 'devnote devcopied' + (copied.ok ? ' ok' : '') }, copied.ok ? 'Copied — paste it to Claude.'
+          act('devcopy', 'Copy report', () => copyText(devReport())),
+          act('devaudit', 'Copy audit', () => copyText(auditText(loadAudit()), 'audit'))),
+        copied ? h('p', { className: 'devnote devcopied' + (copied.ok ? ' ok' : '') }, copied.empty
+          ? 'Nothing audited yet — pin, trash or give feedback on a mod or perk card first.'
+          : copied.ok ? (copied.what === 'audit' ? 'Audit copied — paste it into Claude Code.' : 'Copied — paste it to Claude.')
           : 'Could not reach the clipboard — press and hold the text below to copy it.') : null,
-        copied && !copied.ok ? h('textarea', { className: 'devcopytext', readOnly: true, value: copied.text }) : null,
+        copied && !copied.ok && !copied.empty ? h('textarea', { className: 'devcopytext', readOnly: true, value: copied.text }) : null,
         h('div', { className: 'devsearchw' },
           h('input', { className: 'devsearch', type: 'search', placeholder: 'Search knobs…', value: q,
             onChange: e => setQ(e.target.value) }),

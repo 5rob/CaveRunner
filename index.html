@@ -450,7 +450,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   color:var(--text);background:var(--pad);border:1px solid var(--ring)}
 .devbtns .dbg.on{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}
 .devbtns .dbg.restart{background:#b8381a;border-color:#b8381a;color:#fff}
-.devbtns .dbg.devcopy{grid-column:span 2;background:#1f6fb8;border-color:#1f6fb8;color:#fff}
+.devbtns .dbg.devaudit{background:#6a4bc4;border-color:#6a4bc4;color:#fff}
+.devbtns .dbg.devcopy{background:#1f6fb8;border-color:#1f6fb8;color:#fff}
 .devcopied{margin:0 0 8px}
 .devcopied.ok{color:#5ad65a}
 .devcopytext{width:100%;box-sizing:border-box;height:120px;margin:0 0 8px;font:12px ui-monospace,monospace;
@@ -753,6 +754,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   color:#fff;font-size:18px;padding:0 10px}
 .pinnew button{height:36px;padding:0 14px;border-radius:9px;border:none;background:#ff8a1f;color:#12141a;font:700 13px system-ui,sans-serif}
 .pinhint{margin-top:8px;font-size:11px;color:rgba(233,236,242,0.6);text-align:center}
+
+/* ---- the owner's audit on mod/perk cards (save/audit.js) ---- */
+.aumarks{display:flex;gap:6px;flex:0 0 auto}
+.aumark{width:36px;height:36px;border-radius:10px;border:1px dashed var(--ring);background:transparent;
+  font-size:17px;line-height:1;padding:0;opacity:.45;filter:grayscale(1)}
+.aumark.on{opacity:1;filter:none;border-style:solid;border-width:2px}
+.aumark.keep.on{border-color:#e0b43a;background:rgba(224,180,58,0.2)}
+.aumark.trash.on{border-color:#e05050;background:rgba(224,80,80,0.2)}
+.aufoot{display:flex;align-items:center;gap:9px;margin-top:10px;padding-top:9px;border-top:1px solid var(--pad)}
+.aufb{flex:0 0 auto;height:36px;padding:0 13px;border-radius:10px;border:1px solid var(--ring);
+  background:var(--pad);color:var(--text);font-size:13px;font-weight:600}
+.aupeek{flex:1 1 auto;min-width:0;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.autext{display:block;box-sizing:border-box;width:100%;height:150px;margin-top:10px;padding:9px;border-radius:10px;
+  border:1px solid var(--ring);background:var(--pad);color:var(--text);font-size:14px;line-height:1.4;font-family:inherit;resize:none}
+.aubtns{display:flex;gap:8px;justify-content:flex-end;margin-top:9px}
+.aubtns button{height:40px;min-width:90px;border-radius:10px;border:1px solid var(--ring);font-size:14px;font-weight:600;
+  background:var(--pad);color:var(--text)}
+.aubtns .ausave{background:#2f8f5b;border-color:#2f8f5b;color:#fff}
 </style>
 </head>
 <body>
@@ -25762,6 +25781,64 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { now, limit, tips: picked };
   }
 
+  // src/save/audit.js
+  var AUDIT_KEY = "caverunner-audit";
+  function cleanAudit(raw) {
+    const out = {};
+    if (!raw || typeof raw !== "object") return out;
+    for (const k of Object.keys(raw)) {
+      const e = raw[k];
+      if (!/^(mod|perk):/.test(k) || !e || typeof e !== "object") continue;
+      const mark = e.mark === "keep" || e.mark === "trash" ? e.mark : null;
+      const notes = typeof e.notes === "string" ? e.notes : "";
+      if (mark || notes.trim()) out[k] = { mark, notes };
+    }
+    return out;
+  }
+  function loadAudit() {
+    try {
+      return cleanAudit(JSON.parse(localStorage.getItem(AUDIT_KEY) || "null"));
+    } catch (_) {
+      return {};
+    }
+  }
+  function saveAudit(a) {
+    try {
+      localStorage.setItem(AUDIT_KEY, JSON.stringify(cleanAudit(a)));
+    } catch (_) {
+    }
+  }
+  var auditGet = (a, key) => a[key] || { mark: null, notes: "" };
+  function auditToggle(a, key, mark) {
+    const e = auditGet(a, key);
+    return cleanAudit(Object.assign({}, a, { [key]: { mark: e.mark === mark ? null : mark, notes: e.notes } }));
+  }
+  function auditNotes(a, key, notes) {
+    const e = auditGet(a, key);
+    return cleanAudit(Object.assign({}, a, { [key]: { mark: e.mark, notes } }));
+  }
+  var auditName = (key) => {
+    const [kind, id] = key.split(":");
+    const it = kind === "mod" ? MODS[id] : PERKS[id];
+    return it ? it.name : id + " (no longer in the game)";
+  };
+  function auditText(a) {
+    const keys = Object.keys(cleanAudit(a)).sort();
+    if (!keys.length) return "";
+    const line = (k) => {
+      const [kind, id] = k.split(":");
+      const n = a[k].notes.trim().replace(/\s*\n\s*/g, " / ");
+      return "- [" + kind + "] " + auditName(k) + " (`" + id + "`)" + (n ? " — " + n : "");
+    };
+    const sec = (title, ks) => ks.length ? ["", "## " + title, ...ks.map(line)] : [];
+    return [
+      "CaveRunner audit — work through these one at a time; ask me before deleting anything.",
+      ...sec("Remove (trash)", keys.filter((k) => a[k].mark === "trash")),
+      ...sec("Keep (pinned)", keys.filter((k) => a[k].mark === "keep")),
+      ...sec("Notes", keys.filter((k) => !a[k].mark && a[k].notes.trim()))
+    ].join("\n") + "\n";
+  }
+
   // src/ui/cards.js
   var GUN_STATS = [
     { k: "cap", label: "slots", better: 1, get: (g) => g.cap, fmt: (v) => String(v) },
@@ -25888,8 +25965,85 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       info && MODS[info] ? h(ModPop, { id: info, close: () => setInfo(null) }) : null
     );
   }
+  function useAudit(key) {
+    const [st, setSt] = useState(() => ({ key, e: auditGet(loadAudit(), key), fb: false }));
+    const cur = st.key === key ? st : { key, e: auditGet(loadAudit(), key), fb: false };
+    const commit = (fn) => {
+      const a = fn(loadAudit());
+      saveAudit(a);
+      setSt({ key, e: auditGet(a, key), fb: false });
+    };
+    const toggle = (m) => commit((a) => auditToggle(a, key, m));
+    const setNotes = (n) => commit((a) => auditNotes(a, key, n));
+    const setFb = (on) => setSt(Object.assign({}, cur, { fb: on }));
+    return { e: cur.e, fb: cur.fb, setFb, toggle, setNotes };
+  }
+  function AuditMarks({ au }) {
+    const b = (m, icon, label) => h("button", {
+      className: "aumark " + m + (au.e.mark === m ? " on" : ""),
+      "data-audit": m,
+      "aria-label": label,
+      "aria-pressed": au.e.mark === m,
+      onPointerDown: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        au.toggle(m);
+      }
+    }, icon);
+    return h("div", { className: "aumarks" }, b("keep", "📌", "Pin: keep"), b("trash", "🗑️", "Trash: remove"));
+  }
+  function AuditFoot({ au }) {
+    const n = au.e.notes.trim();
+    return h(
+      "div",
+      { className: "aufoot" },
+      h(
+        "button",
+        { className: "aufb", onPointerDown: (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          au.setFb(true);
+        } },
+        n ? "Edit feedback" : "Give Feedback"
+      ),
+      n ? h("span", { className: "aupeek" }, n) : null
+    );
+  }
+  function AuditText({ au, name, glyph, col, cls }) {
+    const [t, setT] = useState(au.e.notes);
+    return h(
+      "div",
+      { className: "pop scroll aufbpop" + cls },
+      h(
+        "div",
+        { className: "phead" },
+        h("div", { className: "pglyph", style: { borderColor: col, color: col } }, glyph),
+        h("div", { className: "ptitle" }, h("b", null, name), h("span", null, "Feedback · your notes"))
+      ),
+      h("textarea", {
+        className: "autext",
+        value: t,
+        autoFocus: true,
+        placeholder: "What should change about it?",
+        onChange: (e) => setT(e.target.value)
+      }),
+      h(
+        "div",
+        { className: "aubtns" },
+        h("button", { className: "aucancel", onPointerDown: (e) => {
+          e.preventDefault();
+          au.setFb(false);
+        } }, "Cancel"),
+        h("button", { className: "ausave", onPointerDown: (e) => {
+          e.preventDefault();
+          au.setNotes(t);
+        } }, "Save")
+      )
+    );
+  }
   function ModCard({ id, onClose, ingame, top, flow }) {
     const m = MODS[id];
+    const au = useAudit("mod:" + id);
     const kind = famOf(id).name + (m.kind === "passive" ? " · always on" : "");
     const rows = modPreview(id).rows;
     const dtile = (did, key, faded) => h(
@@ -26028,9 +26182,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         drow(false, [dtile("bolt", "c"), dtile(id, "d", true)], "too late — the bolt already fired", 2)
       ];
     }
+    const cls = (ingame ? " ingame" : "") + (top ? " top" : "") + (flow ? " flow" : "");
+    if (au.fb && !ingame) return h(AuditText, { au, name: m.name, glyph: m.glyph, col: famCol(id), cls });
     return h(
       "div",
-      { className: "pop scroll" + (ingame ? " ingame" : "") + (top ? " top" : "") + (flow ? " flow" : "") },
+      { className: "pop scroll" + cls },
       h(
         "div",
         { className: "phead" },
@@ -26041,6 +26197,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           h("b", null, m.name),
           h("span", null, kind + (m.mana ? " · " + m.mana + " mana" : ""))
         ),
+        ingame ? null : h(AuditMarks, { au }),
         onClose ? h("button", {
           className: "pclose",
           onPointerDown: (e) => {
@@ -26063,14 +26220,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ) : null,
       // the placement use-example is for the editor, where you're deciding where a mod
       // goes — the shop/pickup preview leaves it off and keeps the card compact.
-      ingame ? null : h("div", { className: "pdemo" }, demo)
+      ingame ? null : h("div", { className: "pdemo" }, demo),
+      ingame ? null : h(AuditFoot, { au })
     );
   }
   function PerkCard({ id, ingame, flow, top, onClose }) {
     const pk = PERKS[id];
+    const au = useAudit("perk:" + id);
+    const cls = (ingame ? " ingame" : "") + (flow ? " flow" : "") + (top ? " top" : "");
+    if (au.fb && !ingame) return h(AuditText, { au, name: pk.name, glyph: pk.glyph, col: pk.tint, cls });
     return h(
       "div",
-      { className: "pop scroll" + (ingame ? " ingame" : "") + (flow ? " flow" : "") + (top ? " top" : "") },
+      { className: "pop scroll" + cls },
       h(
         "div",
         { className: "phead" },
@@ -26081,6 +26242,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           h("b", { style: { color: pk.tint } }, pk.name),
           h("span", null, "Perk · counts while fitted to your Exo Suit")
         ),
+        ingame ? null : h(AuditMarks, { au }),
         onClose ? h("button", {
           className: "pclose",
           onPointerDown: (e) => {
@@ -26089,7 +26251,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
         }, "×") : null
       ),
-      h("p", { className: "pinfo" }, pk.info)
+      h("p", { className: "pinfo" }, pk.info),
+      ingame ? null : h(AuditFoot, { au })
     );
   }
 
@@ -26912,9 +27075,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       setOpenG(o);
       lsSet("caverunner-devgroups", o);
     };
-    const copyAll = () => {
+    const copyText = (text, what) => {
       blurBox();
-      const text = devReport();
+      if (!text) {
+        setCopied({ text, ok: false, empty: true, what });
+        return;
+      }
       const fallback = () => {
         let ok = false;
         try {
@@ -26928,10 +27094,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ta.remove();
         } catch (_) {
         }
-        setCopied({ text, ok });
+        setCopied({ text, ok, what });
       };
       try {
-        navigator.clipboard.writeText(text).then(() => setCopied({ text, ok: true }), fallback);
+        navigator.clipboard.writeText(text).then(() => setCopied({ text, ok: true, what }), fallback);
       } catch (_) {
         fallback();
       }
@@ -26993,10 +27159,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               close();
             }),
             act("restart", "Restart run", onRestart),
-            act("devcopy", "Copy report", copyAll)
+            act("devcopy", "Copy report", () => copyText(devReport())),
+            act("devaudit", "Copy audit", () => copyText(auditText(loadAudit()), "audit"))
           ),
-          copied ? h("p", { className: "devnote devcopied" + (copied.ok ? " ok" : "") }, copied.ok ? "Copied — paste it to Claude." : "Could not reach the clipboard — press and hold the text below to copy it.") : null,
-          copied && !copied.ok ? h("textarea", { className: "devcopytext", readOnly: true, value: copied.text }) : null,
+          copied ? h("p", { className: "devnote devcopied" + (copied.ok ? " ok" : "") }, copied.empty ? "Nothing audited yet — pin, trash or give feedback on a mod or perk card first." : copied.ok ? copied.what === "audit" ? "Audit copied — paste it into Claude Code." : "Copied — paste it to Claude." : "Could not reach the clipboard — press and hold the text below to copy it.") : null,
+          copied && !copied.ok && !copied.empty ? h("textarea", { className: "devcopytext", readOnly: true, value: copied.text }) : null,
           h(
             "div",
             { className: "devsearchw" },

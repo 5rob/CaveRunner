@@ -441,7 +441,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   color:var(--text);background:var(--pad);border:1px solid var(--ring)}
 .devbtns .dbg.on{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}
 .devbtns .dbg.restart{background:#b8381a;border-color:#b8381a;color:#fff}
-.devbtns .dbg.devcopy{grid-column:span 2;background:#1f6fb8;border-color:#1f6fb8;color:#fff}
+.devbtns .dbg.devaudit{background:#6a4bc4;border-color:#6a4bc4;color:#fff}
+.devbtns .dbg.devcopy{background:#1f6fb8;border-color:#1f6fb8;color:#fff}
 .devcopied{margin:0 0 8px}
 .devcopied.ok{color:#5ad65a}
 .devcopytext{width:100%;box-sizing:border-box;height:120px;margin:0 0 8px;font:12px ui-monospace,monospace;
@@ -744,3 +745,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   color:#fff;font-size:18px;padding:0 10px}
 .pinnew button{height:36px;padding:0 14px;border-radius:9px;border:none;background:#ff8a1f;color:#12141a;font:700 13px system-ui,sans-serif}
 .pinhint{margin-top:8px;font-size:11px;color:rgba(233,236,242,0.6);text-align:center}
+
+/* ---- the owner's audit on mod/perk cards (save/audit.js) ---- */
+.aumarks{display:flex;gap:6px;flex:0 0 auto}
+.aumark{width:36px;height:36px;border-radius:10px;border:1px dashed var(--ring);background:transparent;
+  font-size:17px;line-height:1;padding:0;opacity:.45;filter:grayscale(1)}
+.aumark.on{opacity:1;filter:none;border-style:solid;border-width:2px}
+.aumark.keep.on{border-color:#e0b43a;background:rgba(224,180,58,0.2)}
+.aumark.trash.on{border-color:#e05050;background:rgba(224,80,80,0.2)}
+.aufoot{display:flex;align-items:center;gap:9px;margin-top:10px;padding-top:9px;border-top:1px solid var(--pad)}
+.aufb{flex:0 0 auto;height:36px;padding:0 13px;border-radius:10px;border:1px solid var(--ring);
+  background:var(--pad);color:var(--text);font-size:13px;font-weight:600}
+.aupeek{flex:1 1 auto;min-width:0;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.autext{display:block;box-sizing:border-box;width:100%;height:150px;margin-top:10px;padding:9px;border-radius:10px;
+  border:1px solid var(--ring);background:var(--pad);color:var(--text);font-size:14px;line-height:1.4;font-family:inherit;resize:none}
+.aubtns{display:flex;gap:8px;justify-content:flex-end;margin-top:9px}
+.aubtns button{height:40px;min-width:90px;border-radius:10px;border:1px solid var(--ring);font-size:14px;font-weight:600;
+  background:var(--pad);color:var(--text)}
+.aubtns .ausave{background:#2f8f5b;border-color:#2f8f5b;color:#fff}

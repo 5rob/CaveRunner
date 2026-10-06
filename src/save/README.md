@@ -12,6 +12,13 @@ far too small): `clipList` (the gallery's `ClipMeta` cards, newest first), `clip
 `clipPut` (packs it: `clipPack`, gzipped JSON, `replay/clip.js`; `meta.bytes` is the packed size),
 `clipRename`, `clipDelete`, `clipName`. Every call resolves (null / false / []) rather than throws.
 
+`audit.js` (LIST3 #6): the owner's audit of mods and perks, localStorage `AUDIT_KEY` (`caverunner-audit`),
+kept across runs and deaths, never cleared by the game: `{ 'mod:<id>' | 'perk:<id>': { mark: 'keep' | 'trash' | null,
+notes } }`. `loadAudit`/`saveAudit` (try/catch), `cleanAudit` (drops junk and empty entries), `auditToggle`
+(keep and trash exclude each other), `auditNotes`, `auditText` (the Markdown "Copy audit" copies: header line,
+then Remove (trash) / Keep (pinned) / Notes, empty sections skipped). Tests: `tests/logic/audit.test.js`,
+`tests/browser/audit.test.js`.
+
 ## Rules
 
 - **Old saves are forgiven**: unknown mod/perk ids are dropped, missing gun fields filled from

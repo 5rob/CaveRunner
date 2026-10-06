@@ -21,7 +21,7 @@ const SHOTS = process.env.CAVERUNNER_SHOTS;
   const tabs = await page.$$eval('.devtab', b => b.map(x => x.getAttribute('data-t')));
   check('a tab per DEV_TABS entry', tabs.join() === (await page.evaluate(() => DEV_TABS.map(t => t[0]).join())), tabs);
   check('the actions are all there', (await page.$$eval('.devbtns .dbg', b => b.map(x => x.textContent))).join() ===
-    'All mods,All perks,Spawn gun,New cave,Floor 2,Restart run,Copy report');
+    'All mods,All perks,Spawn gun,New cave,Floor 2,Restart run,Copy report,Copy audit');
   check('the first tab shows only its groups, shut', (await page.$$eval('.devghead', b => b.map(x => x.getAttribute('data-g')))).join() ===
     (await page.evaluate(() => DEV_TABS[0][2].join())) && (await page.$$('.devrow')).length === 0);
   // every group of every tab appears on its tab
