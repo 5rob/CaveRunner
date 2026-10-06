@@ -30,7 +30,7 @@ Status: `todo` · `agent` (running, branch named) · `review` (screenshots sent,
 | 9 | Collected mods stack, count badge top-right; one per gun slot | agent | review (merged into list3-small) | `stackBag`/`stackKey` in spells/collection.js (display-only grouping, saves unchanged); suite `stacks`; 2 shots sent |
 | 10 | Aim Assist mod: pointer snaps to enemies, no trigger line, auto-fires when snapped; own Dev group | agent | review (merged into list3-small) | `spells/assist.js`, gun.js, overlay `drawAssist`; Dev group `aimassist` (Player tab); suites `aimassist` (logic+browser). Whole pull aims at the target (one aim per pull); 2 shots sent |
 | 11 | Discriminate mod: pointer sets a permanent target (enemy type / player / object) per copy, icon in the tile; its shot only affects that | agent | agent (worktree, from list3-small) | per-copy target in stackKey; shots stop at walls but don't dig |
-| 12 | Mini-map perk: box over the gun buttons, terrain/open fill, 3 zoom taps, edge-stuck pins, player arrow, red enemy dots, crystal icons | agent | agent (worktree, from list3-small) |  |
+| 12 | Mini-map perk: box over the gun buttons, terrain/open fill, 3 zoom taps, edge-stuck pins, player arrow, red enemy dots, crystal icons | agent | review (merged into list3-small) | perk `minimap` (`W.pb.minimap`), `ui/minimap.js`, `miniPicture` in level-entry; zoom 1 = 1.3× screen width (`MINI_REACH`); suites `minimap` (logic+browser); 2 shots sent; asked owner about a dark backing |
 
 ## Waves (one agent per file set at a time)
 - Wave 1 (parallel): 1 (game/render/dark.js), 2 (spells/), 3 (ui/devpanel.js), 4 (ui/editor.js). Manager: 7, 8.
@@ -45,3 +45,4 @@ Status: `todo` · `agent` (running, branch named) · `review` (screenshots sent,
 - 2026-10-07: #4 and #1 merged into list3-small, shots sent. #9 and #12 agents launched. Running: #6, #9, #10, #12. Waiting on owner: OKs for #1, #3, #4, #8.
 - 2026-10-07: #10 merged, shots sent. #5 agent launched. Running: #5, #6, #9, #12. Next: #11 after #9.
 - 2026-10-07: #6 and #9 merged, shots sent. #11 agent launched. Running: #5, #11, #12.
+- 2026-10-07: #12 merged, shots sent. Running: #5, #11.
