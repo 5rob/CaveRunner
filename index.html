@@ -22493,7 +22493,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const x = G.miniC.getContext("2d");
     if (!x) return;
     const im = x.createImageData(CW, CH), d = new Uint32Array(im.data.buffer);
-    const rock = 51 << 24 >>> 0, air = (64 << 24 | 16777215) >>> 0;
+    const rock = 51 << 24 >>> 0, air = (204 << 24 | 5263440) >>> 0;
     for (let i = 0; i < CW * CH; i++) d[i] = W.mat[i] ? rock : air;
     x.putImageData(im, 0, 0);
   }
@@ -29409,6 +29409,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         let foes = 0;
         for (const e of M.foes) {
           if (e.dead) continue;
+          const ex = Math.floor(e.x / (FOG * CELL)), ey = Math.floor(e.y / (FOG * CELL));
+          if (ex < 0 || ey < 0 || ex >= FW || ey >= FH || !M.seen[ey * FW + ex]) continue;
           const p = miniAt(e.x, e.y, M.x, M.y, k, bw, bh);
           if (p.x < 0 || p.y < 0 || p.x > bw || p.y > bh) continue;
           ctx.beginPath();

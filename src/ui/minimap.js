@@ -128,11 +128,13 @@ export function MiniMap({ input, box }) {
         const p = miniAt(q.x, q.y, M.x, M.y, k, bw, bh);
         if (p.x > -4 && p.y > -4 && p.x < bw + 4 && p.y < bh + 4) crystal(ctx, p.x, p.y, !!q.green);
       }
-      // creatures in the box
+      // creatures in the box, only in what you've explored (owner)
       ctx.fillStyle = '#ff3b3b';
       let foes = 0;
       for (const e of M.foes) {
         if (e.dead) continue;
+        const ex = Math.floor(e.x / (FOG * CELL)), ey = Math.floor(e.y / (FOG * CELL));
+        if (ex < 0 || ey < 0 || ex >= FW || ey >= FH || !M.seen[ey * FW + ex]) continue;
         const p = miniAt(e.x, e.y, M.x, M.y, k, bw, bh);
         if (p.x < 0 || p.y < 0 || p.x > bw || p.y > bh) continue;
         ctx.beginPath(); ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2); ctx.fill(); foes++;

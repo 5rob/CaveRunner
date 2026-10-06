@@ -55,6 +55,23 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     check('zoom 1', geo.zoom === '1', geo.zoom);
     check('the creature nearby is a dot', geo.foes >= 1, geo.foes);
   }
+  // a creature in a part you haven't explored shows no dot (owner)
+  const hidden = await page.evaluate(async () => {
+    const L = window.__lvl, { FW, FOG_U } = L.fog, e = L.enemies[0], at = window.__at;
+    if (!e) return null;
+    // buried in the rock under the floor: your sight never lifts the fog in there
+    const keep = { x: e.x, y: e.y, ty: e.ty, hx: e.hx, hy: e.hy };
+    Object.assign(e, { x: at.x + 20, y: at.y + 60, ty: at.y + 60, hx: at.x + 20, hy: at.y + 60, vx: 0, vy: 0 });
+    const i = Math.floor(e.ty / FOG_U) * FW + Math.floor(e.x / FOG_U), was = L.seen[i];
+    for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) L.seen[i + dy * FW + dx] = 0;
+    await new Promise(r => setTimeout(r, 300));
+    const n = +document.querySelector('.minimap').dataset.foes;
+    for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) L.seen[i + dy * FW + dx] = was;
+    Object.assign(e, keep);
+    await new Promise(r => setTimeout(r, 300));
+    return n;
+  });
+  check('a creature in unexplored rock shows no dot', hidden === 0, hidden);
   await page.evaluate(() => { window.__in.current.right = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false }; });
   await shot('zoom1');
 
@@ -85,10 +102,10 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('a third tap: back to zoom 1', z1.z === '1' && geo && Math.abs(z1.k - geo.k) < 1e-4, z1);
 
   // the gun buttons still work under it, and the map hides it
-  await page.evaluate(() => { const r = document.querySelector('.slots .slot').getBoundingClientRect(); window.__g = { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+  await page.evaluate(() => { const r = document.querySelectorAll('.slots .slot')[1].getBoundingClientRect(); window.__g = { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
   const g = await page.evaluate(() => window.__g);
   await page.touchscreen.tap(g.x, g.y); await page.waitForTimeout(150);
-  check('the first gun button still takes a tap', await page.evaluate(() => window.__in.current.loadout.sel === 0));
+  check('a gun button still takes a tap', await page.evaluate(() => window.__in.current.loadout.sel === 1));
   const mb = await page.evaluate(() => { const r = document.querySelector('.mapbtn').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
   await page.touchscreen.tap(mb.x, mb.y); await page.waitForTimeout(200);
   check('the map open: no mini-map over it', await page.evaluate(() => !document.querySelector('.minimap')));
