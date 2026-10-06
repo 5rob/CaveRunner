@@ -7,6 +7,7 @@ import { drawGun } from '../art/sprites.js';
 import { SFX } from '../audio/sfx.js';
 import { DEV } from '../dev/knobs.js';
 import { buildAdvice } from '../spells/advisor.js';
+import { stackBag } from '../spells/collection.js';
 import {
   fireSimGauges, fireSimNew, fireSimStep, gunModDeltas, pullSteps, statQual
 } from '../spells/bagsim.js';
@@ -418,7 +419,7 @@ export function Editor({ input, close, refresh, canEdit, tabs }) {
     window.addEventListener('pointercancel', up);
   };
 
-  const tile = (id, from, key) => {
+  const tile = (id, from, key, n = 1) => {
     const m = id ? MODS[id] : null;
     return h('div', {
         key,
@@ -430,7 +431,8 @@ export function Editor({ input, close, refresh, canEdit, tabs }) {
       },
       m ? h('span', { className: 'tg' }, m.glyph) : h('span', { className: 'tg' }, '+'),
       m ? h('span', { className: 'tn' }, m.name) : null,
-      m && m.mark ? h('span', { className: 'tmark' }, m.mark) : null
+      m && m.mark && n < 2 ? h('span', { className: 'tmark' }, m.mark) : null,
+      n > 1 ? h('span', { className: 'tcount', 'data-n': n }, h('b', null, n)) : null   // a stack: how many copies
     );
   };
 
@@ -511,10 +513,13 @@ export function Editor({ input, close, refresh, canEdit, tabs }) {
       h('p', { className: 'lab' }, LO.debug
         ? 'Debug shelf — one of every mod, never used up'
         : 'Collected mods' + (LO.bag.length ? '' : ' — none yet, find them in the cave')),
-      canEdit && !LO.debug && LO.bag.length > 1 ? h('button', { className: 'sortBag',
+      canEdit && !LO.debug && stackBag(LO.bag).length > 1 ? h('button', { className: 'sortBag',
           onPointerDown: e => { e.preventDefault(); sortBag(); } }, 'Sort') : null),
     h(ScrollBox, { cls: 'bag' + (LO.debug ? ' debug' : ''), drop: 'bag' },
-      h('div', { className: 'mgrid' }, bagIds.map((id, i) => tile(id, { type: 'bag', i }, 'b' + i)))
+      h('div', { className: 'mgrid' }, LO.debug
+        ? bagIds.map((id, i) => tile(id, { type: 'bag', i }, 'b' + i))
+        // one tile per stack (owner): a drag takes one copy out of it (its first, `i`)
+        : stackBag(LO.bag).map(st => tile(st.id, { type: 'bag', i: st.i }, 's' + st.key, st.n)))
     ),
     // the gun buttons: a row under the mod grid (owner, item 4; they were a 2×2 by the stats)
     h('div', { className: 'gtabs gunrow' },

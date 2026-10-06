@@ -36,5 +36,11 @@ check('the stored list reads back without junk or repeats',
   JSON.stringify(readCollection(JSON.stringify(['bolt', 'nope', 'bolt', 3, 'spark']))) === '["bolt","spark"]');
 check('a broken store is an empty collection', readCollection('{') .length === 0 && readCollection(null).length === 0);
 
+// the Bag's stacks (item 9): one per mod, first-seen order, `i` = its first copy in the bag
+const st = G.stackBag(['zap', 'bolt', 'zap', 'orb', 'zap', 'bolt']);
+check('stackBag groups copies, first-seen order',
+  JSON.stringify(st.map(s => [s.id, s.i, s.n])) === '[["zap",0,3],["bolt",1,2],["orb",3,1]]', st);
+check('an empty bag has no stacks', G.stackBag([]).length === 0);
+
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

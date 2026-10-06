@@ -264,6 +264,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .tg{font-size:17px;line-height:1}
 .tile{position:relative}
 .tmark{position:absolute;top:2px;right:4px;font:700 9px system-ui,sans-serif;line-height:1}
+.tcount{position:absolute;top:2px;right:2px;min-width:15px;height:15px;padding:0 3px;box-sizing:border-box;
+  border-radius:8px;background:currentColor;display:flex;align-items:center;justify-content:center;
+  pointer-events:none;font:800 9px system-ui,sans-serif;line-height:1}
+.tcount b{color:#111}
 .tn{font:500 8.5px system-ui,sans-serif;color:var(--muted);text-align:center;line-height:1.1;
   max-width:100%;padding:0 2px}
 .ghost{position:fixed;z-index:30;width:60px;height:56px;border-radius:9px;border:2px solid;
