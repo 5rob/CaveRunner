@@ -19,12 +19,12 @@ Status: `todo` · `agent` (running, branch named) · `review` (screenshots sent,
 
 | # | Item | Who | Status | Notes |
 |---|------|-----|--------|-------|
-| 1 | Dark zone: hologram flickers/glitches on and off in flashes (backlights silk, silhouettes aliens) | agent | agent (worktree) | look → screenshots |
+| 1 | Dark zone: hologram flickers/glitches on and off in flashes (backlights silk, silhouettes aliens) | agent | agent: shot round 2 | branch `worktree-agent-a96f70ce79903228c` b816d61; `world/holoflicker.js`, Dev `l2dFlk*` (Level 2: dark zones); first shots showed no silk/aliens, retaking |
 | 2 | Modifiers affect only the next spell | agent | ready | merged into `list3-small` (7661710): only planCast changed; suite `nextspell`. Wrap: a trailing modifier is wasted. Not done: a card example showing the spell after coming out bare (a look) |
-| 3 | Dev menu: modern, tabbed pages, collapsible groups | agent | agent (worktree) | look → screenshots |
+| 3 | Dev menu: modern, tabbed pages, collapsible groups | agent | review (merged into list3-small) | look → screenshots |
 | 4 | Gun mod screen: gun buttons as a row under the mod grid; live window of the gun firing in time with the pull animation | agent | agent (worktree) | look → screenshots |
 | 5 | Hold a HUD gun slot to equip a pickup there (replaces R/swap menu); hold with nothing to pick up = drag the gun out, drop on release; tap the equipped gun = its info card | agent | todo | after 8 (hud.js) |
-| 6 | Audit: pin / trash icons + "Give Feedback" notes on mod & perk cards; Dev button copies all to clipboard for Claude Code | agent | todo | after 3 (devpanel) |
+| 6 | Audit: pin / trash icons + "Give Feedback" notes on mod & perk cards; Dev button copies all to clipboard for Claude Code | agent | agent (worktree, from list3-small) | after 3 (devpanel) |
 | 7 | Vines: keep facing unless you steer the other way | manager | ready | branch `list3-small` 7423885 (`W.p.steer`, gun.js facing) |
 | 8 | Right stick: trigger ring near the stick's edge, Dev padding from the edge | manager | review | branch `list3-small`; `triggerRing` in core/consts.js, Dev `aimPad` (10px, Player group); suite `trigring`; screenshot sent |
 | 9 | Collected mods stack, count badge top-right; one per gun slot | agent | todo | after 4 (editor.js) |
@@ -41,3 +41,4 @@ Status: `todo` · `agent` (running, branch named) · `review` (screenshots sent,
 - 2026-10-07: list received, questions answered, tracker made.
 - 2026-10-07: wave 1 agents launched in worktrees (items 1, 2, 3, 4; 20–25 min boxes). Manager did 7 and 8 on branch `list3-small`; #8 screenshot sent.
 - 2026-10-07: #2 merged into `list3-small`. #10 Aim Assist agent launched.
+- 2026-10-07: #3 merged into list3-small, 4 shots sent. #6 agent launched. #1 agent retaking shots (needs silk + aliens in frame).
