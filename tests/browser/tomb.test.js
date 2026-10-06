@@ -22,7 +22,7 @@ fs.mkdirSync(OUT, { recursive: true });
   const shot = n => page.screenshot({ path: path.join(OUT, 'tomb-' + n + '.png') });
 
   // to floor 2, a fixed seed (the Dev button rolls a fresh one: pin it so the shots are the same tomb each run)
-  await page.evaluate(() => { Math.random = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })(); window.__in.current.newCave = 2; });
+  await page.evaluate(() => { Math.random = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })(); DEV.l2bCount = 0; window.__in.current.newCave = 2; });   // (no blasts: they wipe kits; destroy's own suites)
   let lvl = null;
   for (let i = 0; i < 40 && !(lvl && lvl.floor === 2 && lvl.tomb); i++) {
     await page.waitForTimeout(100);

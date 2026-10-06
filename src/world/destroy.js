@@ -36,7 +36,9 @@ export function destructionPlan(mat, mask, seed, keep) {
   const o = destructionOpts(), dist = distField(CW, CH, mask, o.maxDist);
   // inside a zone is not wasteland: those cells are never candidates
   for (let i = 0; i < CW * CH; i++) if (mask[i]) dist[i] = Infinity;
-  const pts = scatterByDistance({ ...o, w: CW, h: CH, dist, solid: mat, seed: (seed * 7919 + 5) % 2147483646 + 1 });
+  // (owner, round 2) a ring of damage round each zone: by default blasts land anywhere in the gradient, rock
+  // too (DEV.l2bInRock 0: only in open air, DEV.l2bClear from rock)
+  const pts = scatterByDistance({ ...o, w: CW, h: CH, dist, solid: DEV.l2bInRock ? undefined : mat, seed: (seed * 7919 + 5) % 2147483646 + 1 });
   const shopTop = SHOP_TOP - SHOP_ROOF;
   /** @type {Blast[]} */
   const out = [];

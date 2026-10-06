@@ -74,7 +74,7 @@ DEV.l2bCount = 0; DEV.l2bBones = 0;
 const bare = makeLevel(4, 2);
 check('Number of explosions 0 and bones 0: no wasteland', bare.tomb.boom.blasts === 0 && bare.tomb.boom.bones === 0 && bare.tomb.boom.gone === 0);
 reset();
-DEV.l2bCount = 200;
+DEV.l2bCount = DEV_DEFAULTS.l2bCount * 2;
 check('more explosions with the knob up', makeLevel(4, 2).tomb.boom.blasts > a.tomb.boom.blasts, [a.tomb.boom.blasts]);
 reset();
 check('the bones knob is on the panel', DEV_META.some(m => m.k === 'l2bBones' && m.g === 'l2boom'));

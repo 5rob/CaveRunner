@@ -441,19 +441,20 @@ export const CURVES = [];
 export const kcurve = p => ({ y0: DEV[p + '0'], x1: DEV[p + 'C1x'], y1: DEV[p + 'C1y'], x2: DEV[p + 'C2x'], y2: DEV[p + 'C2y'], y3: DEV[p + '1'] });
 // Level 2: destruction (world/destroy.js, Level 2 stage 5): explosions scattered round the
 // dark zones, denser and bigger near them, and bones across the wasteland. Distances in terrain pixels. destructionOpts() reads them.
-DEV_DEFAULTS.l2bMaxDist = 200; DEV_DEFAULTS.l2bCount = 60; DEV_DEFAULTS.l2bFire = 30; DEV_DEFAULTS.l2bJitter = 0; DEV_DEFAULTS.l2bClear = 4; DEV_DEFAULTS.l2bBones = 90;
+DEV_DEFAULTS.l2bMaxDist = 500; DEV_DEFAULTS.l2bCount = 420; DEV_DEFAULTS.l2bFire = 30; DEV_DEFAULTS.l2bJitter = 0; DEV_DEFAULTS.l2bClear = 4; DEV_DEFAULTS.l2bBones = 90; DEV_DEFAULTS.l2bInRock = 1;
 DEV_META.push(
   { k: 'l2bMaxDist', g: 'l2boom', label: 'Reach: most distance from a dark zone (px)', min: 1, max: 1600, step: 5 },
   { k: 'l2bCount',   g: 'l2boom', label: 'Number of explosions', min: 0, max: 2000, step: 1 },
   { k: 'l2bFire',    g: 'l2boom', label: 'Explosions that cause fire (%)', min: 0, max: 100, step: 1 },
   { k: 'l2bJitter',  g: 'l2boom', label: 'Extra position randomness (± px)', min: 0, max: 100, step: 1 },
-  { k: 'l2bClear',   g: 'l2boom', label: 'Clearance from terrain (px)', min: 0, max: 60, step: 1 },
+  { k: 'l2bInRock',  g: 'l2boom', label: 'Blasts anywhere in the ring, rock too (0: open air only)', min: 0, max: 1, step: 1 },
+  { k: 'l2bClear',   g: 'l2boom', label: 'Clearance from terrain, open air only (px)', min: 0, max: 60, step: 1 },
   { k: 'l2bBones',   g: 'l2boom', label: 'Bones and skulls in the ground, outside the zones', min: 0, max: 600, step: 1 });
 export const L2B_KNOBS = rangeKnobs('l2boom', [
   ['l2bSize', 'Explosion size (px radius)', 1, 120, 1, 6, 18],
 ]);
-curveKnobs('l2boom', 'l2bDen', 'Destruction amount (Y) by distance from a dark zone (X)', 0, 1, { y0: 1, x1: 0.25, y1: 1, x2: 0.5, y2: 0, y3: 0 });
-curveKnobs('l2boom', 'l2bScale', 'Size × (Y, 0-2) by distance from a dark zone (X)', 0, 2, { y0: 1.6, x1: 0.33, y1: 1.3, x2: 0.66, y2: 0.8, y3: 0.5 });
+curveKnobs('l2boom', 'l2bDen', 'Destruction amount (Y) by distance from a dark zone (X)', 0, 1, { y0: 1, x1: 0.33, y1: 0.67, x2: 0.66, y2: 0.33, y3: 0 });
+curveKnobs('l2boom', 'l2bScale', 'Size × (Y, 0-2) by distance from a dark zone (X)', 0, 2, { y0: 2, x1: 0.33, y1: 1.4, x2: 0.66, y2: 0.7, y3: 0.25 });
 // Level 2 stage 4: floor 2's dark zones (world/dark.js darkZones; their look: game/render/dark.js). Terrain px
 // for sizes; how many and how big are rolled per floor on the zones' own stream
 export const L2D_KNOBS = rangeKnobs('l2dark', [
