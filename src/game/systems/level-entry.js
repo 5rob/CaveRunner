@@ -46,7 +46,8 @@ export function enterLevel(W, G, back, keep, pre) {
   W.start = level.start; W.portal = level.portal; W.portals = level.portals || [level.portal]; W.arrival = level.arrival;
   W.enemies = level.enemies; W.pickups = level.pickups; W.stock = level.stock;
   W.rooms = level.rooms || []; W.zone = level.zone || null; W.tomb = level.tomb || null;
-  W.dark = level.dark || []; W.darkMask = level.darkMask || null; W.webbing = level.webbing || null; W.darkShade = level.darkShade || null;
+  W.dark = level.dark || []; W.darkMask = level.darkMask || null; W.webbing = level.webbing || null; W.darkShade = level.darkShade || null; W.darkDepth = level.darkDepth || null;
+  W.torchFail = { inside: false, t: 99 }; W.torchLit = 1;
   W.props = level.props || []; W.ambKinds = level.amb || []; W.dimg = level.dimg;
   W.plantW = plantWhite(W.img.data, W.dimg && W.dimg.data);    // the jellies' plant glow keys off this
   mapPicture(W, G);                           // the map: the floor as it is now, before anything digs it

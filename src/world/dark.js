@@ -6,7 +6,8 @@
 //               corridor or room it cut through, a few side pockets) and spin the silk. Plain data
 //   darkAt      which zone is a world point in (-1: none)
 //   silkErase   blow a hole in the silk (a disc), for explosions; returns the box it touched
-//   silkColour  a silk cell's colour (the game paints its canvas with it)
+//   silkColour  a silk cell's colour seen plainly (maps, probes); silkTint its multiply tint (the game's silk layer)
+//   torchStep / torchLit  the torch failing at a zone's edge (flickers out going in, back on coming out)
 //   zoneRock    the zone's rock colour (makeLevel repaints the cut rock with it)
 // All in terrain pixels. Same seed + knobs = same zones (their own random stream).
 
@@ -19,7 +20,7 @@ import { boxReach } from './zones.js';
  * Dark zones into mat (floor 2's tomb already cut): returns the zones, the per-cell mask (zone number
  * + 1, 0 outside) and the silk (0 none, else how thick/bright, 1..255; open cells only).
  * @param {Uint8Array} mat @param {Tomb} tomb @param {number} seed @param {number} shopExit
- * @returns {{ zones: DarkZone[], mask: Uint8Array, web: Uint8Array, shade: Uint8Array }}
+ * @returns {{ zones: DarkZone[], mask: Uint8Array, web: Uint8Array, shade: Uint8Array, depth: Uint8Array }}
  */
 export function darkZones(mat, tomb, seed, shopExit) {
   let rs = (Math.imul(seed | 0, 22695477) + 777 >>> 0) % 2147483646 + 1;
@@ -31,7 +32,7 @@ export function darkZones(mat, tomb, seed, shopExit) {
   /** @type {DarkZone[]} */
   const zones = [];
   const want = Math.round(kr('l2dCount', R)), space = DEV.l2dSpace, shopKeep = DEV.l2dShop, topKeep = DEV.l2dTop;
-  if (want <= 0) return { zones, mask, web, shade: new Uint8Array(0) };
+  if (want <= 0) return { zones, mask, web, shade: new Uint8Array(0), depth: new Uint8Array(0) };
   const rooms = tomb.rooms;
   // the main route: the rooms (and their corridors) from the vestibule to the nearest exit hall, by the tomb's links
   const start = rooms.findIndex(r => r.type === 'vestibule');
@@ -515,7 +516,39 @@ export function darkZones(mat, tomb, seed, shopExit) {
     const x = i % CW, y = (i / CW) | 0, t = shade[i] / 255;
     if (R() < t * 0.95 * Math.min(1, dens)) web[i] = Math.round(40 + 180 * t * (0.5 + 0.5 * valueNoise(x / 3, y / 3, seed + 7)));
   }
-  return { zones, mask, web, shade };
+  return { zones, mask, web, shade, depth: zoneDepth(mask) };
+}
+
+// how deep into a zone each cell is: px (4-way steps) from the nearest cell outside every zone, 0 outside, up
+// to 255 (round 3: the black fades in over DEV.l2dTintDepth of it; the torch fails at DEV.l2dTorchDepth)
+/** @param {Uint8Array} mask */
+export function zoneDepth(mask) {
+  const n = CW * CH, d = new Uint8Array(n), q = new Int32Array(n);
+  let qn = 0;
+  for (let i = 0; i < n; i++) {
+    if (!mask[i]) continue;
+    const x = i % CW;
+    if ((x > 0 && !mask[i - 1]) || (x < CW - 1 && !mask[i + 1]) || (i >= CW && !mask[i - CW]) || (i < n - CW && !mask[i + CW])) { d[i] = 1; q[qn++] = i; }
+  }
+  for (let h = 0; h < qn; h++) {
+    const i = q[h], x = i % CW, v = Math.min(255, d[i] + 1);
+    for (const j of [x > 0 ? i - 1 : -1, x < CW - 1 ? i + 1 : -1, i - CW, i + CW]) if (j >= 0 && j < n && mask[j] && !d[j]) { d[j] = v; q[qn++] = j; }
+  }
+  return d;
+}
+// how black a zone is at a depth (px): a smooth ramp in from its edge over DEV.l2dTintDepth, 0..1
+/** @param {number} depth */
+export function tintRamp(depth) {
+  const u = clamp01(depth / Math.max(1, DEV.l2dTintDepth));
+  return u * u * (3 - 2 * u);
+}
+/** @param {number} v */
+const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
+// the depth into a zone at world point (wx, wy) (0 outside, or no zones)
+/** @param {{ darkDepth: Uint8Array | null }} level @param {number} wx @param {number} wy @param {number} cell */
+export function darkDepthAt(level, wx, wy, cell) {
+  const m = level.darkDepth, x = Math.floor(wx / cell), y = Math.floor(wy / cell);
+  return m && x >= 0 && y >= 0 && x < CW && y < CH ? m[y * CW + x] : 0;
 }
 
 // a hash, 0..1, of a cell and a seed
@@ -562,6 +595,35 @@ export function silkErase(web, cx, cy, r) {
 export function silkColour(v) {
   const t = v / 255;
   return [150 + 92 * t, 150 + 90 * t, 158 + 86 * t, Math.round(70 + 170 * t)];
+}
+
+// the silk as a multiply tint over the back wall and the hologram (render/dark.js): near white where it is thin
+// (it hardly darkens), a cold grey-violet where it is thick; alpha with it (thin silk barely there)
+/** @param {number} v 1..255 @returns {number[]} r, g, b, a */
+export function silkTint(v) {
+  const t = v / 255;
+  return [Math.round(175 - 115 * t), Math.round(170 - 115 * t), Math.round(192 - 105 * t), Math.round(150 + 105 * t)];
+}
+
+// the torch failing in a dark zone (owner, round 3): once you are DEV.l2dTorchDepth px in (the tail of the black
+// fading in), the gun light and the glow round you flicker for TORCH_FLICKER s, then stay off; coming back out past
+// DEV.l2dTorchDepth - DEV.l2dTorchHyst px they flicker back on (the gap: standing on the line doesn't strobe).
+// s: { inside, t } (t: seconds since the last crossing; 99 at a floor's start). torchStep moves it on (depth: px
+// into the zone where you are); torchLit is how lit, 0 or 1, never random (a hash of the flicker's own clock, so
+// the simulation's Math.random stream is untouched)
+export const TORCH_FLICKER = 0.8;
+/** @param {{ inside: boolean, t: number }} s @param {number} depth @param {number} dt */
+export function torchStep(s, depth, dt) {
+  const T = DEV.l2dTorchDepth, inside = s.inside ? depth > T - Math.max(0, DEV.l2dTorchHyst) : depth >= T;
+  if (inside !== s.inside) { s.inside = inside; s.t = 0; } else s.t += dt;
+  return torchLit(s);
+}
+/** @param {{ inside: boolean, t: number }} s */
+export function torchLit(s) {
+  if (s.t >= TORCH_FLICKER) return s.inside ? 0 : 1;
+  const u = s.t / TORCH_FLICKER, k = Math.floor(s.t * 22), h = Math.sin(k * 12.9898 + 78.233) * 43758.5453, r = h - Math.floor(h);
+  const on = s.inside ? 1 - u * u : u * u;                 // going in: mostly on at first, dying; coming out: the other way
+  return r < on ? 1 : 0;
 }
 
 // the zone's rock: raw, darker than the tomb's, a little purple (the cut stone is gone)

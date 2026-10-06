@@ -22,8 +22,9 @@ bump the version, before the next release.
    with skeletons everywhere; listed in `room.kit`. Candles are painted and UNLIT. Owner: "The tombs should be
    dark."
 
-**Stage 4, dark zones** (`src/world/dark.js`, `src/game/render/dark.js`). Round 1: commit 700511b. **Round 2 is
-built and tested, waiting on the owner's OK of the screenshots** (the PM sends them; `node tools/darkshots.js [dir]`
+**Stage 4, dark zones** (`src/world/dark.js`, `src/game/render/dark.js`). Round 1: commit 700511b; round 2:
+0845a02. **Round 3 (the owner's compositing spec) is built and tested, waiting on the owner's OK of the
+screenshots** (the PM sends them; `node tools/darkshots.js [dir]`
 retakes them: phone size, the same seed as the `darkzone` suite).
 
 What it does:
@@ -37,17 +38,32 @@ What it does:
     boulders, crumbs. The chamber's floor is a solid flat slab (doors below come up beside it, not through it).
   - **Small tunnels** fill each zone up to an open share (`l2dOpen`, 0.65–0.75): most 3–6 px (aliens only), one in
     four 9–13 px. Each is on the zone as `tunnels: { pts, w, fits }` (`fits`: a 6 × 11 runner box gets through).
-  - **The hologram through the silk** is a soft glow (`l2dHolo` 0.5, spread `l2dHoloBlur`), brighter on the silk
-    threads; sharp outside. The hologram's bloom no longer shines over the zones.
+  - (Round 2's soft hologram glow is replaced by round 3's blur.)
   - **Fixed**: the round-2 rough walls could cut a tomb room off (the `tomb` suite's seed 15). Now each zone keeps a
     runner-sized way from each door to the chamber clear of the roughness, and after each zone every tomb room the
     shop reached before is checked (roughness undone, else no zone there).
-- Tests: logic `dark` (rooms reached, flat chamber floor, tunnels and the open-share knob), browser `darkzone`
-  (now also: the hologram is sharp in the tomb, low contrast but still glowing in a zone) and `darkperf`.
+- Round 3 (owner's compositing, bottom to top: back wall, hologram, silk, layer 4 (rock, props, creatures, loot,
+  you), fog of war; `game/render/dark.js`):
+  - In a zone the back wall (`l2dBack`) and the hologram (`l2dHolo`) are **blurred** (`l2dBlur`, frosted glass) and
+    the silk **multiplies** over them (`silkTint`: it darkens and tints, never lights). The fringe's silk is in this
+    layer too now (no longer painted into the decoration). The hologram's bloom is cut out of the zones.
+  - **Layer 4 goes black** inside, fading in with depth from the zone's edge (`darkDepth`, `tintRamp` over
+    `l2dTintDepth`, 40 px). **Fire** lifts it (`l2dFireR` px, falloff the `l2dFire` curve editor); so does the torch
+    while it works.
+  - **The torch fails**: `l2dTorchDepth` (36 px) in, the gun light and the glow round you flicker for 0.8 s and go out;
+    coming out past `l2dTorchDepth - l2dTorchHyst` (6 px gap) they flicker back on (`torchStep`/`torchLit`,
+    `W.torchFail`, `W.torchLit`; stepped in `stepTorch`). Its beam is cut where it fails.
+- Tests: logic `dark` (rooms reached, flat chamber floor, tunnels and the open-share knob; the tint ramp, depth,
+  the torch's flicker and gap), browser `darkzone` (silhouettes black deep in, colour back by a fire, the torch
+  lighting you in the stretch before it fails, flickering out and back, the silk never brightening, the hologram
+  blurred: lower contrast than in the tomb) and `darkperf`. `tests/build/dark-*.png` are the suite's shots;
+  `node tools/darkshots.js` the owner's set (with a walk-in sequence).
 - **Open questions for the owner:**
   - Should the exit pads keep glowing?
-  - A zone on screen costs a few ms a frame (measured on a Mac: tomb ~17–22 ms, zone ~21–23 ms; round 1 measured
-    +25 ms on software rendering elsewhere). Check how it plays on the phone.
+  - A zone on screen costs a few ms a frame (round 3, measured on a Mac: tomb ~25 ms, zone ~24 ms, zone off ~17;
+    round 1 measured +25 ms on software rendering elsewhere). Check how it plays on the phone.
+  - Round 3 choices to confirm: the back wall in a zone at 0.12 brightness (`l2dBack`; the fog's remembered dim
+    is lifted there); explosions count as fire for lifting the black (glowing shots don't).
 
 **Still to do (stages 5–8; full detail in LEVEL2.md):**
 

@@ -127,7 +127,28 @@ check('no silk at silk 0', !makeLevel(6, 2).webbing.some(v => v));
 reset();
 check('the group and its knobs are on the panel', DEV_GROUPS.some(g => g[0] === 'l2dark') &&
   L2D_KNOBS.every(r => DEV_META.some(m => m.k === r[0] + 'Lo' && m.g === 'l2dark')) &&
-  ['l2dSpace', 'l2dShop', 'l2dTop', 'l2dSilk', 'l2dDark', 'l2dEdge', 'l2dHolo', 'l2dHoloBlur', 'l2dBack', 'l2dRough', 'l2dFringe'].every(k => DEV_META.some(m => m.k === k && m.g === 'l2dark')));
+  ['l2dSpace', 'l2dShop', 'l2dTop', 'l2dSilk', 'l2dDark', 'l2dEdge', 'l2dHolo', 'l2dBlur', 'l2dBack', 'l2dRough', 'l2dFringe', 'l2dFireR', 'l2dTintDepth', 'l2dTorchDepth', 'l2dTorchHyst', 'l2dFire0', 'l2dFire1'].every(k => DEV_META.some(m => m.k === k && m.g === 'l2dark')));
+
+// round 3: the black fades in with depth, the torch fails near the end of the fade (and comes back with a gap)
+const { tintRamp, zoneDepth, darkDepthAt, torchStep, torchLit, TORCH_FLICKER } = G;
+let mono = true;
+for (let d = 0; d < 80; d++) if (tintRamp(d + 1) < tintRamp(d)) mono = false;
+check('the black tint rises steadily with depth, 0 at the edge, full by l2dTintDepth', mono && tintRamp(0) === 0 && tintRamp(DEV.l2dTintDepth) === 1 && tintRamp(DEV.l2dTintDepth / 2) > 0.3 && tintRamp(DEV.l2dTintDepth / 2) < 0.7);
+const dep = lv.darkDepth;
+let depOk = !!dep;
+for (let i = 0; dep && i < CW * CH; i++) if (!lv.darkMask[i] !== !dep[i]) { depOk = false; break; }
+check('darkDepth: 0 outside a zone, from 1 at its edge, deepest in its middle', depOk && darkDepthAt(lv, z.cx * CELL, z.cy * CELL, CELL) > 20 && darkDepthAt(lv, 100, (SHOP_FLOOR - 5) * CELL, CELL) === 0, darkDepthAt(lv, z.cx * CELL, z.cy * CELL, CELL));
+// walk in a step a frame, then stand, then back out: off once past l2dTorchDepth, after a flicker; back on outside
+const TQ = DEV.l2dTorchDepth, H = DEV.l2dTorchHyst, ts = { inside: false, t: 99 }, dt = 1 / 60;
+const run = (depth, n) => { const out = []; for (let k = 0; k < n; k++) out.push(torchStep(ts, depth, dt)); return out; };
+const short = run(TQ - 1, 60), flick = run(TQ + 1, Math.ceil(TORCH_FLICKER / dt)), blind = run(TQ + 1, 30);
+check("the torch works short of the trigger depth", short.every(v => v === 1));
+check('past it, it flickers (on and off) and goes out', flick.includes(0) && flick.includes(1) && blind.every(v => v === 0), flick.join(''));
+const hold = run(TQ - H + 1, 60);
+check('standing just inside the gap it stays out (no strobing)', hold.every(v => v === 0));
+const back = run(TQ - H - 1, Math.ceil(TORCH_FLICKER / dt)), lit = run(TQ - H - 1, 30);
+check('back out past the gap it flickers back on', back.includes(0) && back.includes(1) && lit.every(v => v === 1), back.join(''));
+check('the flicker is the same every time (no Math.random)', torchLit({ inside: true, t: 0.3 }) === torchLit({ inside: true, t: 0.3 }));
 
 console.log(fails ? '\n' + fails + ' FAILED' : '\nall passed');
 process.exit(fails ? 1 : 0);

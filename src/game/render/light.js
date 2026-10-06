@@ -16,7 +16,7 @@ import { plantGlow } from '../systems/plantglow.js';
 import { HAND_TORCH, torchHand } from '../systems/player.js';
 import { introHeld } from '../systems/shoplights.js';
 import { solidCell } from '../systems/terrain.js';
-import { darkCut, darkFog } from './dark.js';
+import { darkBeam, darkCut, darkFog } from './dark.js';
 import { holoBright, holoGrid, holoMask, sizedCanvas } from './holo.js';
 
 // The fog of war alone (never-seen ground; none of the dark outside your torchlight), baked and
@@ -84,6 +84,7 @@ export function drawFog(W, G, F) {
   // in the shop hall it reaches no further than the old torch did: the hall has its own lights (and a new
   // run's dark hall comes on a section at a time)
   beam.r = !F.held ? 0 : F.pcy > SHOP_Y ? W.torchR : W.torchR * far / sight;
+  darkBeam(ba, beam.r, W.torchR * DEV.beamNear, pcx, pcy);   // (the dark zones' black: the torch cuts through it while it works)
   W.visPts = visPoly(pcx, pcy, far, (cx, cy) => solidCell(W, cx, cy), VIS_RAYS);
   if (far > sight) beamFan(W.visPts, pcx, pcy, sight, ba);
   fogReveal(W.seen, pcx, pcy, far, W.visPts, VIS_RAYS);   // line of sight lifts the fog
@@ -123,7 +124,7 @@ export function drawFog(W, G, F) {
           a = Math.round(dark * shopDark(shopL, wx, W.time) * (pd < PAD_LIT ? 0.3 + 0.7 * pd / PAD_LIT : 1));
         }
         wdat[k + 3] = s ? 0 : dark;          // the fog of war alone
-        if (s && a && !away) {               // the lamp only reaches ground the fog has lifted
+        if (s && a && !away && W.torchLit > 0) {   // the lamp only reaches ground the fog has lifted (and fails in a dark zone)
           const ddx = (cx + 0.5) * FOG_U - pcx, dd2 = ddx * ddx + ddy * ddy;
           if (dd2 < lr2) {
             const t = Math.sqrt(dd2) / W.torchR;               // 0 at your feet, 1 at the edge
@@ -228,7 +229,8 @@ export function drawGlows(W, G, F) {
   }
   // the gun light first, so the dark zones can cut it out before anything else lights the layer (no
   // electric light works in there: render/dark.js; fire and the rest are added after)
-  if (!W.p.dead && !introHeld(W) && !HAND_TORCH) { drawBeam(W, G, F); if (low) darkCut(low); }
+  // (W.torchLit: the gun light and the glow round you fail in a dark zone, flickering: world/dark.js torchStep)
+  if (!W.p.dead && !introHeld(W) && !HAND_TORCH && W.torchLit > 0) { drawBeam(W, G, F); if (low) darkCut(low); }
   const gl = clamp(0.82 + W.glowN + 0.08 * Math.sin(W.time * 23) + 0.06 * Math.sin(W.time * 37), 0.5, 1.1);
   const scOn = sc => !(sc.y > W.camY + vh + 30 || sc.y < W.camY - 30 || sc.x < W.camX - 30 || sc.x > W.camX + vw + 30) &&
     fogLit(W, sc.x, sc.y);

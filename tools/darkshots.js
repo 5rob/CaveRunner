@@ -147,7 +147,50 @@ require('../tests/build')();
   });
   if (edge) {
     await stand(edge.x, edge.y, edge.dir, 0);
-    await shot('b-edge', 'at a zone\'s edge, standing in the tomb aiming in: the gun light dies at the ragged border, silk and dark reaching out');
+    await shot('b-edge', 'at a zone\'s edge, standing in the tomb aiming in: the black fading in with depth, the torch cut where it fails');
+    // walking in (round 3): standing spots at growing depth into the same zone, nearest the edge first. The black
+    // fades in with depth; the torch cuts through it until l2dTorchDepth, then flickers out
+    const atDepth = (lo, hi) => page.evaluate(([lo, hi, ex, ey]) => {
+      const W = window.__lvl, { CW, CELL } = W.world, m = W.mat, dp = W.darkDepth;
+      const free = (x, y) => { for (let j = 0; j < 11; j++) for (let i = 0; i < 6; i++) if (m[(y - j) * CW + x + i]) return false; return true; };
+      let best = null, bd = 1e9;
+      for (let y = Math.max(14, ey - 90); y < ey + 90; y++) for (let x = Math.max(4, ex - 90); x < Math.min(CW - 10, ex + 90); x++) {
+        const d = dp[(y - 5) * CW + x + 3];
+        if (d < lo || d > hi || m[y * CW + x] || !m[(y + 1) * CW + x] || !m[(y + 1) * CW + x + 5] || !free(x, y)) continue;
+        const e = (x - ex) ** 2 + (y - ey) ** 2;
+        if (e < bd) { bd = e; best = { x: x * CELL, y: (y + 1) * CELL - 22 - 0.5, d }; }
+      }
+      return best;
+    }, [lo, hi, edge.tx, edge.ty]);
+    const T = await page.evaluate(() => ({ tint: DEV.l2dTintDepth, torch: DEV.l2dTorchDepth }));
+    const steps = [['w1-fade-start', 3, 9, 'walking in 1: just inside the edge, the black only starting'],
+      ['w2-mid-fade', Math.round(T.tint * 0.4), Math.round(T.tint * 0.6), 'walking in 2: mid-fade, things half black'],
+      ['w3-black-torch-on', T.torch - 8, T.torch - 2, 'walking in 3: fully black but for what the torch still lights']];
+    for (const [n, lo, hi, what] of steps) {
+      const sp = await atDepth(lo, hi);
+      if (!sp) { console.log('no spot at depth', lo, hi); continue; }
+      await stand(sp.x, sp.y, edge.dir, 0.15, 900);
+      await shot(n, what + ` (${sp.d} px in)`);
+    }
+    const blind = await atDepth(T.torch + 6, T.torch + 30);
+    if (blind) {
+      await page.evaluate(([x, y]) => { window.__pin = { x, y }; }, [blind.x, blind.y]);
+      // (frames as they come: until there's one with the torch on and one with it off, at most 4)
+      const seen = new Set();
+      for (let k = 1, tries = 0; k <= 4 && tries < 40 && seen.size < 2; tries++) {
+        await page.waitForTimeout(15);
+        const t = await page.evaluate(() => ({ t: window.__lvl.torchFail.t, lit: window.__lvl.torchLit }));
+        if (t.t > 0.8) { if (seen.size || !t.lit) break; continue; }   // (not crossed yet: wait for it)
+        if (seen.has(t.lit) && k > 1) continue;
+        seen.add(t.lit);
+        const kk = k++;
+        await shot('w4-torch-flicker' + kk, `walking in 4.${kk}: past ${T.torch} px in (${blind.d}), the torch flickering: ${t.t.toFixed(2)} s, ${t.lit ? 'on' : 'off'} this frame`);
+      }
+      await page.waitForTimeout(1000);
+      await shot('w5-blind', 'walking in 5: the torch has failed, blind: only silhouettes against the silk');
+      await page.evaluate(([x, y]) => { window.__pin = { x, y }; }, [edge.x, edge.y]);
+      await page.waitForTimeout(1300);
+    }
   } else console.log('no edge spot found');
 
   // (c) deep in: the chamber's floor
@@ -163,7 +206,7 @@ require('../tests/build')();
     return { x: b.x * CELL - 6, y: (b.y + 1) * CELL - 22 - 0.5, tx: b.x, ty: b.y };
   });
   await stand(ch.x, ch.y, 1, 0);
-  await shot('c-deep', 'deep in zone 1\'s chamber: only silhouettes against the faint silk; the gun light does nothing');
+  await shot('c-deep', 'deep in zone 1\'s chamber, the torch failed: everything a black silhouette against the dark, silk-frosted back');
 
   // (d) fire in the chamber
   await page.evaluate(([tx, ty]) => {
@@ -172,7 +215,7 @@ require('../tests/build')();
     for (let k = 0; k < 4; k++) W.ignite((tx + 12 + k * 5) * CELL, (ty - 2) * CELL, 10, 1);
   }, [ch.tx, ch.ty]);
   await page.waitForTimeout(700);
-  await shot('d-fire', 'the same spot with a fire lit on the chamber floor: the firelight shows the rough walls round it');
+  await shot('d-fire', 'the same spot with a fire lit beside you: near it the black lifts, you and the rock round it regain colour');
   await page.evaluate(() => { const W = window.__lvl; W.fire.fuel.fill(0); W.fire.list.length = 0; });
   await page.waitForTimeout(1500);
 
@@ -222,10 +265,10 @@ require('../tests/build')();
   await dev({ holoMin: 1, holoMax: 1 });
   if (edge) {
     await stand(edge.x, edge.y, edge.dir, 0, 1500);
-    await shot('g-holo-edge', 'the hologram at full brightness at the edge: sharp in the tomb, a soft diffused glow behind the silk');
+    await shot('g-holo-edge', 'the hologram at full brightness at the edge: sharp in the tomb, blurred behind the silk, rock black against it');
   }
   await stand(ch.x, ch.y, 1, 0, 1500);
-  await shot('h-holo-inside', 'deep inside, the hologram at full brightness: its glow diffused through the silk');
+  await shot('h-holo-inside', 'deep inside, the hologram at full brightness: blurred (frosted) and multiplied by the silk, silhouettes against it');
   await dev({ l2dHolo: 0 });
   await page.waitForTimeout(600);
   await shot('i-holo-off', 'the same spot with l2dHolo = 0, for comparison');

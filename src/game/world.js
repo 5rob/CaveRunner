@@ -76,7 +76,7 @@ export function makeWorld() {
     padZap: {},                     // when each teleporter pad was last used (W.time, by padSpots seed): it crackles a moment
     stock: undefined,               // the shop's plinths
     zone: null,                     // built-up vs natural, per terrain pixel (floor 1)
-    tomb: null, dark: [], darkMask: null, webbing: null, darkShade: null, webDirty: [],                     // floor 2's rooms and corridors (world/tomb.js)
+    tomb: null, dark: [], darkMask: null, webbing: null, darkShade: null, darkDepth: null, webDirty: [],                     // floor 2's rooms and corridors (world/tomb.js)
     rooms: [],                      // the perk room and the heart room
     sconces: [],                    // wall torches: by the portals and the prizes
     levelSeed: 0, levelOwned: [],   // what made this cave, for the autosave
@@ -140,6 +140,7 @@ export function makeWorld() {
     // the same way the jet flame swings), and the torch's flicker and ember clocks
     leanVX: 0, leanVY: 0,
     flickN: 0, torchT: 0, torchAcc: 0,
+    torchFail: { inside: false, t: 99 }, torchLit: 1,   // the gun light failing in a dark zone (world/dark.js torchStep)
     smokeAcc: 0,                    // the jetpack's smoke
     webCheck: 0,                    // which web line step() checks this frame (a few per frame)
     webLetGo: 0,                    // pushed off a web or arch: don't grab one again yet
