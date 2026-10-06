@@ -19,14 +19,14 @@ Status: `todo` · `agent` (running, branch named) · `review` (screenshots sent,
 
 | # | Item | Who | Status | Notes |
 |---|------|-----|--------|-------|
-| 1 | Dark zone: hologram flickers/glitches on and off in flashes (backlights silk, silhouettes aliens) | agent | todo | look → screenshots |
-| 2 | Modifiers affect only the next spell | agent | todo | logic; planCast, tracePath, advisor, bagsim, tests |
-| 3 | Dev menu: modern, tabbed pages, collapsible groups | agent | todo | look → screenshots |
-| 4 | Gun mod screen: gun buttons as a row under the mod grid; live window of the gun firing in time with the pull animation | agent | todo | look → screenshots |
+| 1 | Dark zone: hologram flickers/glitches on and off in flashes (backlights silk, silhouettes aliens) | agent | agent (worktree) | look → screenshots |
+| 2 | Modifiers affect only the next spell | agent | todo | logic; planCast, tracePath, advisor, bagsim, tests — agent running (worktree) |
+| 3 | Dev menu: modern, tabbed pages, collapsible groups | agent | agent (worktree) | look → screenshots |
+| 4 | Gun mod screen: gun buttons as a row under the mod grid; live window of the gun firing in time with the pull animation | agent | agent (worktree) | look → screenshots |
 | 5 | Hold a HUD gun slot to equip a pickup there (replaces R/swap menu); hold with nothing to pick up = drag the gun out, drop on release; tap the equipped gun = its info card | agent | todo | after 8 (hud.js) |
 | 6 | Audit: pin / trash icons + "Give Feedback" notes on mod & perk cards; Dev button copies all to clipboard for Claude Code | agent | todo | after 3 (devpanel) |
-| 7 | Vines: keep facing unless you steer the other way | manager | todo | |
-| 8 | Right stick: trigger ring near the stick's edge, Dev padding from the edge | manager | todo | look (small) |
+| 7 | Vines: keep facing unless you steer the other way | manager | ready | branch `list3-small` 7423885 (`W.p.steer`, gun.js facing) |
+| 8 | Right stick: trigger ring near the stick's edge, Dev padding from the edge | manager | review | branch `list3-small`; `triggerRing` in core/consts.js, Dev `aimPad` (10px, Player group); suite `trigring`; screenshot sent |
 | 9 | Collected mods stack, count badge top-right; one per gun slot | agent | todo | after 4 (editor.js) |
 | 10 | Aim Assist mod: pointer snaps to enemies, no trigger line, auto-fires when snapped; own Dev group | agent | todo | after 2 |
 | 11 | Discriminate mod: pointer sets a permanent target (enemy type / player / object) per copy, icon in the tile; its shot only affects that | agent | todo | after 10 |
@@ -39,3 +39,4 @@ Status: `todo` · `agent` (running, branch named) · `review` (screenshots sent,
 
 ## Log (newest last)
 - 2026-10-07: list received, questions answered, tracker made.
+- 2026-10-07: wave 1 agents launched in worktrees (items 1, 2, 3, 4; 20–25 min boxes). Manager did 7 and 8 on branch `list3-small`; #8 screenshot sent.
