@@ -19,7 +19,7 @@ import { darkZones, zoneRock } from './dark.js';
 import { destroyFloor } from './destroy.js';
 import { floorLoot } from './loot.js';
 import { furnishTomb } from './furnish.js';
-import { carveTomb, paintMasonry, tombPlan } from './tomb.js';
+import { carveTomb, paintMasonry, paintTombWall, tombPlan } from './tomb.js';
 import { boxReach } from './zones.js';
 
 // a prize room's half-size in world units, shell included (makeLevel's rx/ry + sh, in pixels)
@@ -529,11 +529,12 @@ export function makeLevel(seed, floor, owned) {
       // big, slow blotches of shadow over the pattern, so the back wall has some depth
       const big = fbm(x / 34 + 700, y / 34 + 500);
       let shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
-      // the tomb's back wall: big dressed blocks, dark joints (a bg pixel is 4 terrain pixels)
-      if (tomb && (y % 4 === 3 || (x + ((y >> 2) & 1) * 3) % 6 === 5)) shade *= 0.7;
       const j = (hash(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
       bgImg.data[k] = c[0] * shade + j; bgImg.data[k + 1] = c[1] * shade + j; bgImg.data[k + 2] = c[2] * shade + j; bgImg.data[k + 3] = 255;
     }
+
+  // the tomb's own back wall: carved stone (tomb.js)
+  if (tomb) paintTombWall(bgImg, seed, fbm);
 
   // the way in near the left of the shop room, under its sign (ARRIVAL_X): you stand on it
   const start = { x: ARRIVAL_X - 6, y: SHOP_FLOOR * CELL - PH };

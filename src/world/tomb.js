@@ -355,3 +355,56 @@ export function paintMasonry(mat, d, T, o) {
     d[i * 4] = c[0] + j; d[i * 4 + 1] = c[1] + j; d[i * 4 + 2] = c[2] + j;
   }
 }
+
+// Glyphs carved in the back wall's friezes (owner: the back wall fits the tomb): 3 × 2 bg px each, '#' cut
+const GLYPHS = [['#.#', '.#.'], ['###', '#.#'], ['.#.', '###'], ['#..', '###'], ['#.#', '###'], ['##.', '.##'], ['.#.', '#.#']];
+
+/**
+ * The tomb's back wall (bg pixels, a bg pixel = 4 terrain px): dressed stone blocks in staggered courses,
+ * dark mortar, each block its own tone with a lit top-left lip and a shadowed bottom-right; now and then a
+ * cracked or fallen block; every so many courses a carved frieze of glyphs; pilasters up the wall at
+ * intervals, with capitals at the friezes; big slow blotches of shadow for depth. Kept dim: it is behind
+ * the hologram and the rock. Pure: the same seed, the same wall.
+ * @param {ImageData} bg @param {number} seed @param {(x: number, y: number) => number} noise 0..1, smooth
+ */
+export function paintTombWall(bg, seed, noise) {
+  const W = bg.width, H = bg.height, d = bg.data, BWK = 6, BHK = 3, FRIEZE = 13, PIL = 34;
+  const hash = (/** @type {number} */ a, /** @type {number} */ b) => {
+    let v = (Math.imul(a, 374761393) + Math.imul(b, 668265263) + Math.imul(seed + 77, 982451653)) | 0;
+    v = Math.imul(v ^ (v >>> 13), 1274126177);
+    return ((v ^ (v >>> 16)) >>> 0) / 4294967296;
+  };
+  const STONE = [[44, 40, 37], [60, 54, 48]], MORTAR = [22, 20, 19], CUT = [26, 23, 21];
+  const pilOff = Math.floor(hash(1, 2) * PIL);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const course = Math.floor(y / BHK), cy = y % BHK, fr = course % FRIEZE === FRIEZE - 1;
+    const px = (x + pilOff) % PIL, pil = px < 4;
+    let c;
+    if (pil) {
+      // a pilaster: a smooth shaft, lit on its left, shadowed on its right; a capital where a frieze crosses
+      const t = hash(Math.floor((x + pilOff) / PIL), 9) * 0.15;
+      c = mix(STONE[0], STONE[1], 0.55 + t);
+      if (px === 0) c = c.map(v => v * 1.18); else if (px === 3) c = c.map(v => v * 0.7);
+      if (fr || course % FRIEZE === 0 && cy === 0) c = c.map(v => v * (cy === 0 ? 1.15 : 0.85));
+    } else if (fr) {
+      // a frieze course: a carved band, glyphs cut into it between plain borders
+      const g = GLYPHS[Math.floor(hash(Math.floor(x / 4), course) * GLYPHS.length)], gx = x % 4;
+      c = mix(STONE[0], STONE[1], 0.7);
+      if (cy === 0) c = c.map(v => v * 1.12);
+      else if (gx < 3 && g[cy - 1] && g[cy - 1][gx] === '#') c = CUT;
+    } else {
+      const off = (course & 1) * (BWK >> 1), bx = Math.floor((x + off) / BWK), cx = (x + off) % BWK;
+      const r = hash(bx, course);
+      if (cx === BWK - 1 || cy === BHK - 1) c = MORTAR;
+      else if (r < 0.025) c = MORTAR.map(v => v * 0.8);                    // a fallen block: the dark behind it
+      else {
+        c = mix(STONE[0], STONE[1], r);
+        if (cx === 0 || cy === 0) c = c.map(v => v * 1.1);                   // the lit lip
+        if (r > 0.94 && (cx + cy * 2 + bx) % 3 === 0) c = MORTAR;            // a crack
+      }
+    }
+    const big = noise(x / 34 + 700, y / 34 + 500), shade = 1 - 0.5 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
+    const j = (hash(x + 900, y + 900) - 0.5) * 4, k = (y * W + x) * 4;
+    d[k] = c[0] * shade + j; d[k + 1] = c[1] * shade + j; d[k + 2] = c[2] * shade + j; d[k + 3] = 255;
+  }
+}
