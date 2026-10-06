@@ -3,6 +3,14 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
+## IN PROGRESS (2026-10-07): the owner's 12-item list — read LIST3.md first
+
+All 12 items are built and merged on branch **`list3-small`** (not on `main`, version still v0.0.148).
+`LIST3.md` has each item's status, files, the owner's decisions and the log. Screenshots of every look
+were sent; waiting on the owner's OK / changes. Then: bump to v0.0.149, CHANGELOG's "Unreleased" →
+v0.0.149, this file, merge `list3-small` to `main`, confirm Pages. Logic run on `list3-small`: only
+rats, spider, strata fail (as before). `interact` suite updated for the new trigger ring.
+
 ## v0.0.148 — SPEED-UPS, FLAMETHROWER, FIRE IMMUNITY: RELEASED on `main` 2026-10-06 (the owner OK'd it; Pages shows `148 v0.0.148`)
 
 The owner played Level 2 on the phone: frames dropped as a dark zone came into view and with the aliens about.
