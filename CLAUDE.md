@@ -53,6 +53,21 @@ on the same network; if it stops answering, `ipconfig` and update this line). Ru
 --watch` alongside so a save in `src/` rebuilds. It answers only for `index.html` — deliberately:
 `.claude/settings.json` holds an API token a general static server would hand to the whole wifi. Don't replace it.
 
+## Subagents: keep them short (the owner's rule)
+
+Runs of 30–50 minutes burned the owner's credits (Level 2, stage 4). The main session manages them:
+- **Do small changes yourself**, in the main session: a tweak, a knob, a feedback round on a stage already
+  built. A fresh agent re-reads the docs and code first, so it costs far more than the change.
+- **Agents are only for a big new stage.** Their brief must include these limits:
+  - a **time box** (about 20 minutes) and a **stop rule**: "stuck, or past the box → commit what passes,
+    stop, report where you got to";
+  - **targeted tests while iterating** (`node tests/run.js <name>`), the full `logic` run **once at the end**,
+    and a browser suite only if it covers the change;
+  - **at most 2 screenshot rounds**.
+- Hand over the facts the agent needs (files, knobs, what was tried), so it doesn't re-explore.
+- **Check on it about every 10 minutes**. Stop it if it loops, or if it is past its box with nothing committed.
+- One agent at a time on the same files.
+
 ## The loop
 
 1. Change `src/` (the folder READMEs say where things are and the rules there).

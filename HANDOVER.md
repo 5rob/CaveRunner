@@ -22,6 +22,8 @@ bump the version, before the next release.
    with skeletons everywhere; listed in `room.kit`. Candles are painted and UNLIT. Owner: "The tombs should be
    dark."
 
+**Stage 4 round 6 (owner):** the look and the doubled size approved; near fire the silk's black lifts too (`render/dark.js`, the plain silk over the multiplied one by the fire's lift; `darkzone` checks it). Waiting on the owner's OK of that shot, then stage 5.
+
 **Stage 4, dark zones** (`src/world/dark.js`, `src/game/render/dark.js`). Round 1: commit 700511b; round 2:
 0845a02; round 3: 84f9121 + e792f9b. **Approved by the owner**, with one change, done in round 5: **zones twice the
 size** (`l2dSize` 120–176 px radius, was 60–88), every transition kept at its old size (the tint fade 12 px, the

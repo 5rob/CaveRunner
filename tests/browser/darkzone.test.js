@@ -270,6 +270,27 @@ fs.mkdirSync(OUT, { recursive: true });
   const byFire = await look(me.x, me.y, 4);
   await shot('7-by-fire');
   check('by a fire your colours come back', byFire !== null && byFire > sil + 25, { byFire, silhouette: sil });
+  // the silk's black lifts near fire too (owner, round 6): silk in open air round the fire, with the lift and
+  // without it (DEV.l2dFireR at its least), the fire's own glow the same in both
+  const silkNear = () => page.evaluate(([tx, ty]) => {
+    const W = window.__lvl, { CW, CELL } = W.world, { cam, s } = W.light, cv = document.querySelector('canvas.game');
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0, sum = 0;
+    for (let y = ty - 30; y <= ty; y++) for (let x = tx - 30; x <= tx + 40; x++) {
+      const i = y * CW + x;
+      if (W.mat[i] || W.webbing[i] < 80 || W.fire.fuel[i]) continue;
+      const px = Math.round(((x + 0.5) * CELL - cam.x) * s), py = Math.round(((y + 0.5) * CELL - cam.y) * s);
+      if (px < 0 || py < 0 || px >= cv.width || py >= cv.height) continue;
+      const k = (py * cv.width + px) * 4; n++; sum += (d[k] + d[k + 1] + d[k + 2]) / 3;
+    }
+    return { n, mean: n ? sum / n : 0 };
+  }, [ch.tx, ch.ty]);
+  const silkLit = await silkNear();
+  await page.evaluate(() => { DEV.l2dFireR = 0; });
+  await page.waitForTimeout(300);
+  const silkUnlit = await silkNear();
+  await page.evaluate(() => { DEV.l2dFireR = DEV_DEFAULTS.l2dFireR; });
+  check('near a fire the silk\'s black lifts too', silkLit.n > 20 && silkLit.mean > silkUnlit.mean + 10, { lit: silkLit, unlit: silkUnlit });
   await page.evaluate(() => { const W = window.__lvl; W.fire.fuel.fill(0); W.fire.list.length = 0; });
   // the torch: walking in it lights you until DEV.l2dTorchDepth, then flickers out; out again it flickers back
   const spots = await page.evaluate(() => {

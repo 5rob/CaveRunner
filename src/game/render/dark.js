@@ -24,7 +24,7 @@ import { BCELL, BH, BW, CELL, CH, CW, FH, FOG_U, FW } from '../../core/consts.js
 import { clamp } from '../../core/util.js';
 import { DEV, kcurve } from '../../dev/knobs.js';
 import { curveFn } from '../../world/byDistance.js';
-import { silkTint, tintRamp } from '../../world/dark.js';
+import { silkColour, silkTint, tintRamp } from '../../world/dark.js';
 import { beamLift } from '../../world/vision.js';
 import { BG_PAR, holoBright, holoGrid, holoLayer, sizedCanvas } from './holo.js';
 
@@ -33,10 +33,12 @@ import { BG_PAR, holoBright, holoGrid, holoLayer, sizedCanvas } from './holo.js'
  *  back: HTMLCanvasElement | null, mt: HTMLCanvasElement | null, on: boolean, fx0: number, fy0: number, fx1: number, fy1: number,
  *  bx0: number, by0: number, bx1: number, by1: number, lift: Float32Array, lut: Float32Array,
  *  zt: Float32Array | null, zd: Float32Array | null, zB: HTMLCanvasElement | null, ztKey: string, ztFor: Uint8Array | null,
- *  beam: { a: number, r: number, n: number, x: number, y: number } }} */
+ *  beam: { a: number, r: number, n: number, x: number, y: number }, webL: HTMLCanvasElement | null,
+ *  lm: HTMLCanvasElement | null, lmImg: ImageData | null, lt: HTMLCanvasElement | null }} */
 const D = { web: null, webC: null, zf: null, zfFor: null, zC: null, m: null, mImg: null, mb: null, back: null, mt: null, on: false,
   fx0: 0, fy0: 0, fx1: 0, fy1: 0, bx0: 0, by0: 0, bx1: 0, by1: 0, lift: new Float32Array(FW * FH), lut: new Float32Array(65),
-  zt: null, zd: null, zB: null, ztKey: '', ztFor: null, beam: { a: 0, r: 0, n: 0, x: 0, y: 0 } };
+  zt: null, zd: null, zB: null, ztKey: '', ztFor: null, beam: { a: 0, r: 0, n: 0, x: 0, y: 0 }, webL: null,
+  lm: null, lmImg: null, lt: null };
 
 /** (light.js drawFog, each frame) the gun light as it is, for the next frame's black: its aim, reach, the glow
  * round you and where you are (world units) @param {number} a @param {number} r @param {number} n @param {number} x @param {number} y */
@@ -71,15 +73,17 @@ export const darkOn = () => D.on;
 /** @param {number} i */
 export const darkFog = i => (D.on && D.zf ? Math.min(1, D.zf[i] * 1.15) * Math.min(1, Math.max(0, DEV.l2dDark)) : 0);
 
-// paint the silk canvas (terrain px) from W.webbing, whole or a box of it: the multiply tint (silkTint)
-/** @param {Uint8Array} web @param {CanvasRenderingContext2D} c @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 */
-function paintSilk(web, c, x0, y0, x1, y1) {
+// paint a silk canvas (terrain px) from W.webbing, whole or a box of it, in col's colours: the multiply tint
+// (silkTint) or the silk seen plainly, as fire lights it (silkColour)
+/** @param {Uint8Array} web @param {CanvasRenderingContext2D} c @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1
+ * @param {(v: number) => number[]} col */
+function paintSilk(web, c, x0, y0, x1, y1, col) {
   x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(CW - 1, x1); y1 = Math.min(CH - 1, y1);
   const w = x1 - x0 + 1, h = y1 - y0 + 1, img = c.createImageData(w, h), d = img.data;
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     const v = web[y * CW + x];
     if (!v) continue;
-    const s = silkTint(v), k = ((y - y0) * w + x - x0) * 4;
+    const s = col(v), k = ((y - y0) * w + x - x0) * 4;
     d[k] = s[0]; d[k + 1] = s[1]; d[k + 2] = s[2]; d[k + 3] = s[3];
   }
   c.putImageData(img, x0, y0);
@@ -122,17 +126,22 @@ export function darkPrep(W, G, F) {
   const { vw, vh } = F, m = 24 + Math.max(0, DEV.l2dFringe) * 2 * CELL;
   if (!W.dark.some(z => z.x1 * CELL + m > W.camX && z.x0 * CELL - m < W.camX + vw && z.y1 * CELL + m > W.camY && z.y0 * CELL - m < W.camY + vh)) return;
   // the silk canvas and the zone field, made per floor; explosions' holes repainted (W.webDirty)
-  if (D.web !== W.webbing || !D.webC) {
-    D.web = W.webbing; D.webC = sizedCanvas(D.webC, CW, CH);
-    const c = D.webC.getContext('2d');
-    if (!c) return;
-    c.clearRect(0, 0, CW, CH);
-    paintSilk(W.webbing, c, 0, 0, CW - 1, CH - 1);
+  if (D.web !== W.webbing || !D.webC || !D.webL) {
+    D.web = W.webbing; D.webC = sizedCanvas(D.webC, CW, CH); D.webL = sizedCanvas(D.webL, CW, CH);
+    const c = D.webC.getContext('2d'), cl = D.webL.getContext('2d');
+    if (!c || !cl) return;
+    c.clearRect(0, 0, CW, CH); cl.clearRect(0, 0, CW, CH);
+    paintSilk(W.webbing, c, 0, 0, CW - 1, CH - 1, silkTint);
+    paintSilk(W.webbing, cl, 0, 0, CW - 1, CH - 1, silkColour);
     W.webDirty.length = 0;
   }
   if (W.webDirty.length) {
-    const c = D.webC.getContext('2d');
-    if (c) for (const b of W.webDirty) { c.clearRect(b.x0, b.y0, b.x1 - b.x0 + 1, b.y1 - b.y0 + 1); paintSilk(W.webbing, c, b.x0, b.y0, b.x1, b.y1); }
+    const c = D.webC.getContext('2d'), cl = D.webL.getContext('2d');
+    /** @type {[CanvasRenderingContext2D, (v: number) => number[]][]} */
+    const both = c && cl ? [[c, silkTint], [cl, silkColour]] : [];
+    for (const b of W.webDirty) for (const [cc, col] of both) {
+      cc.clearRect(b.x0, b.y0, b.x1 - b.x0 + 1, b.y1 - b.y0 + 1); paintSilk(W.webbing, cc, b.x0, b.y0, b.x1, b.y1, col);
+    }
     W.webDirty.length = 0;
   }
   const shade = W.darkShade || W.darkMask;
@@ -229,6 +238,26 @@ export function darkPrep(W, G, F) {
   bc.globalCompositeOperation = 'multiply'; bc.imageSmoothingEnabled = false;
   bc.drawImage(D.webC, tx0, ty0, tw, th, 0, 0, tw, th);
   bc.globalCompositeOperation = 'source-over';
+  // near fire (and the torch while it works) the silk's black lifts like everything else's (owner): the silk seen
+  // plainly, over the multiplied one, by the same lift (per fog cell, smoothed up)
+  let anyLift = false;
+  for (let cy = by0; cy < by1 && !anyLift; cy++) for (let cx = bx0; cx < bx1; cx++) if (D.lift[cy * FW + cx] > 0.01) { anyLift = true; break; }
+  if (anyLift && D.webL) {
+    const LM = D.lm = sizedCanvas(D.lm, FW, FH), lc = LM.getContext('2d');
+    const LT = D.lt = sizedCanvas(D.lt, tw, th), ltc = LT.getContext('2d');
+    if (lc && ltc) {
+      if (!D.lmImg) D.lmImg = lc.createImageData(FW, FH);
+      const ld = D.lmImg.data;
+      for (let cy = by0; cy < by1; cy++) for (let cx = bx0; cx < bx1; cx++) { const i = cy * FW + cx; ld[i * 4 + 3] = Math.round(255 * D.lift[i]); }
+      lc.putImageData(D.lmImg, 0, 0, bx0, by0, bx1 - bx0, by1 - by0);
+      ltc.globalCompositeOperation = 'source-over'; ltc.clearRect(0, 0, tw, th); ltc.imageSmoothingEnabled = false;
+      ltc.drawImage(D.webL, tx0, ty0, tw, th, 0, 0, tw, th);
+      ltc.globalCompositeOperation = 'destination-in'; ltc.imageSmoothingEnabled = true;
+      ltc.drawImage(LM, bx0, by0, bx1 - bx0, by1 - by0, 0, 0, tw, th);
+      ltc.globalCompositeOperation = 'source-over';
+      bc.drawImage(LT, 0, 0);
+    }
+  }
   D.on = true;
   // ---- the zones' backs cut out of the picture so far (by their shade: the fringe a gradual edge) ----
   const ctx = G.ctx;
