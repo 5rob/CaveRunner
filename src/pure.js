@@ -38,6 +38,7 @@ export * from './world/shoplights.js';
 export * from './world/guide.js';
 export * from './world/byDistance.js';
 export * from './world/tomb.js';
+export * from './world/holoflicker.js';
 export * from './world/furnish.js';
 export * from './world/dark.js';
 export * from './world/destroy.js';

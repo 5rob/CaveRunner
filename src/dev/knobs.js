@@ -487,6 +487,14 @@ DEV_META.push(
   { k: 'l2dTintDepth', g: 'l2dark', label: 'Black fades in over this far into a zone (px)', min: 1, max: 160, step: 1 },
   { k: 'l2dTorchDepth', g: 'l2dark', label: 'The torch fails this far in (px; just past the fade\'s end)', min: 0, max: 200, step: 1 },
   { k: 'l2dTorchHyst', g: 'l2dark', label: 'And comes back on this much nearer the edge (px, no strobing)', min: 0, max: 40, step: 1 });
+DEV_DEFAULTS.l2dFlk = 1; DEV_DEFAULTS.l2dFlkRate = 2.5; DEV_DEFAULTS.l2dFlkFlash = 1.6; DEV_DEFAULTS.l2dFlkGlitch = 10; DEV_DEFAULTS.l2dFlkNear = 40; DEV_DEFAULTS.l2dFlkBase = 0.5;
+DEV_META.push(   // the hologram glitching while you're in or near a zone (world/holoflicker.js; owner, after v0.0.148)
+  { k: 'l2dFlk',       g: 'l2dark', label: 'Hologram glitches in the zones (0 off, 1 on)', min: 0, max: 1, step: 1 },
+  { k: 'l2dFlkBase',   g: 'l2dark', label: 'Glitch: the hologram between bursts (× its brightness; 0 = dark till a burst)', min: 0, max: 1, step: 0.05 },
+  { k: 'l2dFlkRate',   g: 'l2dark', label: 'Glitch: how often (bursts a second)', min: 0, max: 8, step: 0.1 },
+  { k: 'l2dFlkFlash',  g: 'l2dark', label: 'Glitch: flash brightness (× the hologram; past 1 brighter than it)', min: 0, max: 3, step: 0.05 },
+  { k: 'l2dFlkGlitch', g: 'l2dark', label: 'Glitch: tearing, how far the slices jump (terrain px; 0 none)', min: 0, max: 60, step: 1 },
+  { k: 'l2dFlkNear',   g: 'l2dark', label: 'Glitch starts this near a zone (px outside its box)', min: 0, max: 200, step: 1 });
 curveKnobs('l2dark', 'l2dFire', 'Fire lifts the black (Y, 1 = full colour) by distance to it (X, 0 to the max)', 0, 1, { y0: 1, x1: 0.35, y1: 1, x2: 0.55, y2: 0.1, y3: 0 });
 // Level 2 stage 7b: the dark zones' aliens (creatures/alien.js alienStep; spawned in world/level.js). World units
 // for reaches and speeds (CELL = 2 a terrain px)

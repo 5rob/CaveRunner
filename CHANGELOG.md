@@ -5,6 +5,15 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## Unreleased
+
+- **Dark zones: the hologram glitches** (owner's list item 1; awaiting their OK on looks). In or near a zone
+  the hologram behind the silk is on (`l2dFlkBase`) and glitches at random: dropouts, strobing flashes
+  brighter than it (`l2dFlkFlash`), torn horizontal slices (`l2dFlkGlitch`), `l2dFlkRate` bursts a second,
+  from `l2dFlkNear` px outside a zone; `l2dFlk` 0 turns it off. Random backlight for the silk, aliens
+  silhouetted. Pure state machine `world/holoflicker.js` (suite `holoflicker`); `holo.js` `holoKeep` makes the
+  layer even while the hologram rests dark. No blur; pictures: `tools/holoflickshots.js`.
+
 ## v0.0.148 — Level 2 speed-ups; Flamethrower; Fire Immunity
 Released 2026-10-06 (the owner OK'd the screenshots; a minor update). The owner's list, after
 playing Level 2 (it dropped frames as a zone came into view and with the aliens about):

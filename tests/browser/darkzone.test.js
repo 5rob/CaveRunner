@@ -20,7 +20,7 @@ fs.mkdirSync(OUT, { recursive: true });
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   for (let i = 0; i < 100 && !(await page.evaluate(() => window.__lvl && window.__lvl.p)); i++) await page.waitForTimeout(50);
   const shot = n => page.screenshot({ path: path.join(OUT, 'dark-' + n + '.png') });
-  await page.evaluate(() => { window.__lvl.guide = null; Math.random = (() => { let s = 11; return () => (s = (s * 16807) % 2147483647) / 2147483647; })(); DEV.l2bCount = 0; window.__in.current.newCave = 2; });   // (no blasts round the zones: destroy's own suites)
+  await page.evaluate(() => { window.__lvl.guide = null; Math.random = (() => { let s = 11; return () => (s = (s * 16807) % 2147483647) / 2147483647; })(); DEV.l2bCount = 0; DEV.l2dFlk = 0; window.__in.current.newCave = 2; });   // (no blasts round the zones: destroy's own suites; no random hologram glitch between two looks: holoflicker's)
   let info = null;
   for (let i = 0; i < 40 && !(info && info.floor === 2); i++) {
     await page.waitForTimeout(100);
