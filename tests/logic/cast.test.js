@@ -37,7 +37,8 @@ check('double cast fires 2', p.shots.length, 2);
 p = planCast(gun(['triple', 'bolt', 'spark', 'slug']));
 check('triple cast fires 3', p.shots.length, 3);
 p = planCast(gun(['double', 'dmg_up', 'bolt', 'bolt']));
-check('mod inside multicast hits both', p.shots[1].dmg, 2.5);
+check('mod inside multicast hits the next spell', p.shots[0].dmg, 2.5);
+check('and only the next spell', p.shots[1].dmg, 1);
 
 // a gun keeps its place across trigger pulls, then recharges
 const g2 = gun(['bolt', 'slug']);

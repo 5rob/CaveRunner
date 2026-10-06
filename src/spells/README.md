@@ -24,8 +24,13 @@ and `game/systems/shotlooks.js`.
   It returns `{ shots, defs, start, cost, delay, acts, hp, wrap }`.
 - **Spell kinds.** `shot` (a projectile) and `static` (a field that stays put) take a cast slot,
   so multicasts gather them. `mod` and `util` don't (`util` also carries an `act` string the game
-  switches on). `passive` works from anywhere on the gun. **A modifier only affects spells drawn
-  after it** — that is the whole game.
+  switches on). `passive` works from anywhere on the gun. **A modifier affects only the NEXT
+  spell drawn after it** (the next `shot`/`static`; owner's rule, replacing Noita's "everything
+  after it"). Modifiers in a row all land on that one spell; the spell after it is bare. In
+  `planCast` the waiting modifiers are handed to each spell as it is drawn (`modsOf`) and
+  cleared; a payload does the same with its own `pm`. Modifiers with nothing after them in the
+  pull are wasted; a multicast that wraps carries them to the first spell at the front. Timing
+  (`d`, `setDelay`), mana, `hp`, `acts`, `multi`, `form` and Add Trigger are unchanged.
 - **Copies (the Greek letters) are fiddly** (they are `off: 1` today, code and `spells.test.js`
   checks kept for bringing them back). They push ids into a queue drawn before the gun's own list,
   and must widen `multi` for themselves *and* their originals or the multicast limit eats them.
