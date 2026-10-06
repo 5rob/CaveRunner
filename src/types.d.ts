@@ -201,6 +201,7 @@ interface AlienBrain {
   rot: number; px: number; py: number; walk: number; black: boolean; z: number; vx: number; vy: number;
   ha: number; on: number; rest: number; spd: number; pt: number; fl: number; fx: number; fy: number;
   sprint: boolean; dodge: number; dA: number; skip?: number; acc?: number;
+  gait?: number;              // the legs' step cycle, run on at its walking speed (radians)
 }
 interface AlienGrid { cell: number; m: Map<number, Enemy[]> }
 /** what alienStep is handed: zone(x, y) the zone number + 1 there (0 none), silk(x, y), the neighbours,

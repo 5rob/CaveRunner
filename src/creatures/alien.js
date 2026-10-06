@@ -13,9 +13,20 @@ import { surfNormal, turnToward } from './common.js';
 export const ALIEN = { r: 2.6, leg: 1.5, knee: 0.55, lift: 0.35 };
 
 // a leg as a ribbon along pts, added to the current path: w0 wide at the first point, narrowing evenly by
-// length to w1 at the last (the bend mitred, the tip rounded)
-/** @param {CanvasRenderingContext2D} ctx @param {number[][]} pts @param {number} w0 @param {number} w1 */
-function taperedLeg(ctx, pts, w0, w1) {
+// length to w1 at the last (the tip rounded). The bend is rounded off (Chaikin, twice) and the width is
+// bumpy along the leg (owner: not hard angles), by seed: each leg its own bumps
+/** @param {CanvasRenderingContext2D} ctx @param {number[][]} raw @param {number} w0 @param {number} w1 @param {number} seed */
+function taperedLeg(ctx, raw, w0, w1, seed) {
+  let pts = raw;
+  for (let it = 0; it < 2; it++) {
+    const o = [pts[0]];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      o.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
+    }
+    o.push(pts[pts.length - 1]);
+    pts = o;
+  }
   const n = pts.length, len = [0];
   for (let i = 1; i < n; i++) len.push(len[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
   const total = len[n - 1] || 1, left = [], right = [];
@@ -24,7 +35,8 @@ function taperedLeg(ctx, pts, w0, w1) {
     const a = pts[Math.max(0, i - 1)], b = pts[Math.min(n - 1, i + 1)];
     let dx = b[0] - a[0], dy = b[1] - a[1];
     const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
-    const hw = (w0 + (w1 - w0) * len[i] / total) / 2;
+    const u = len[i] / total, bump = i === 0 || i === n - 1 ? 1 : 1 + 0.28 * Math.sin(u * 19 + seed * 7.1) * Math.sin(u * 7.3 + seed * 3.7);
+    const hw = (w0 + (w1 - w0) * u) / 2 * bump;
     left.push([pts[i][0] - dy * hw, pts[i][1] + dx * hw]); right.push([pts[i][0] + dy * hw, pts[i][1] - dx * hw]);
   }
   ctx.moveTo(left[0][0], left[0][1]);
@@ -66,7 +78,7 @@ function skinTile() {
  * @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} r @param {number} time
  * @param {number} phase @param {boolean} flash
  * @param {{ a: string, b: string, c: string, eye: string }} col shell a, its shade b, the eye's white c, the pupil eye
- * @param {{ rot?: number, px?: number, py?: number, walk?: number, black?: boolean }} [S]
+ * @param {{ rot?: number, px?: number, py?: number, walk?: number, black?: boolean, gait?: number }} [S]
  */
 export function drawAlien(ctx, x, y, r, time, phase, flash, col, S) {
   const s = S || {}, black = !!s.black, rot = s.rot || 0, walk = s.walk || 0;
@@ -82,13 +94,19 @@ export function drawAlien(ctx, x, y, r, time, phase, flash, col, S) {
   ctx.fillStyle = ink;
   ctx.beginPath();
   for (let i = 0; i < 3; i++) {
-    const a = -Math.PI / 2 + (i - 1) * (Math.PI * 2 / 3), step = walk ? Math.sin(time * 22 * walk + phase + i * 2.1) : 0;
-    const fa = a + step * 0.22, ca = Math.cos(fa), sa = Math.sin(fa);
+    // each alien its own stance (from its phase): the legs splayed a little differently, longer or shorter, and
+    // twitching slowly even at rest; walking, they step in turn on the gait cycle (the brain's, else the clock)
+    const hv = (/** @type {number} */ k) => { const h = Math.sin(phase * 12.9898 + i * 78.233 + k * 37.719) * 43758.5453; return h - Math.floor(h); };
+    const splay = (hv(1) - 0.5) * 0.7, lenK = 0.85 + hv(2) * 0.3, twitch = Math.sin(time * (1.3 + hv(3) * 1.7) + hv(4) * 6.28) * 0.07;
+    const g = s.gait !== undefined ? s.gait : time * 22 * walk, step = walk ? Math.sin(g + phase + i * 2.1) * Math.min(1, walk * 2) : 0;
+    const a = -Math.PI / 2 + (i - 1) * (Math.PI * 2 / 3) + splay + twitch;
+    const fa = a + step * 0.22, ca = Math.cos(fa), sa = Math.sin(fa), Li = L * lenK;
     // the knee bent off the leg's line, upwards (the planted two) or to one side (the one straight up)
     let qx = -sa, qy = ca;
     if (qy > 0.05 || (Math.abs(qy) <= 0.05 && qx < 0)) { qx = -qx; qy = -qy; }
-    const kx = ca * L * ALIEN.knee + qx * L * ALIEN.lift, ky = sa * L * ALIEN.knee + qy * L * ALIEN.lift - Math.max(0, step) * r * 0.6;
-    taperedLeg(ctx, [[0, 0], [kx, ky], [ca * L, sa * L]], r * 2, tip);
+    const lift = ALIEN.lift * (0.75 + hv(5) * 0.5);
+    const kx = ca * Li * ALIEN.knee + qx * Li * lift, ky = sa * Li * ALIEN.knee + qy * Li * lift - Math.max(0, step) * r * 0.6;
+    taperedLeg(ctx, [[0, 0], [kx, ky], [ca * Li, sa * Li]], r * 2, tip, phase * 3.1 + i * 1.9);
   }
   // and the body's round, in the same shape: filled, then the noisy skin laid over all of it
   // (wound the same way as the legs, so where they overlap it stays filled: no seams)
@@ -280,5 +298,7 @@ export function alienStep(e, env, dt) {
   const sn = surfNormal(e.x, e.y, 8, env.solidCell);
   S.rot = turnToward(S.rot, sn ? Math.atan2(sn.x, -sn.y) : 0, 10 * dt);
   S.walk = Math.min(1, Math.hypot(S.vx, S.vy) / 120);
+  // the step cycle runs on with its speed (a sudden speed change doesn't jump the legs)
+  S.gait = ((S.gait || 0) + dt * 22 * S.walk) % (Math.PI * 200);
   return out;
 }
