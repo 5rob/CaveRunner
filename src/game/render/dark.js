@@ -45,16 +45,19 @@ export function darkBeam(a, r, n, x, y) { const b = D.beam; b.a = a; b.r = r; b.
 // the black's ramp in from a zone's edge (round 3), per fog cell (its mean), and how deep each fog cell is (mean
 // px); and at the terrain's pixels, where the torch stops working (its beam cut: from DEV.l2dTorchDepth on,
 // over 16 px). Made per floor and again when a knob it uses changes
-/** @param {Uint8Array} depth */
-function depthField(depth) {
+/** @param {Uint8Array} depth @param {Uint8Array | null} shade */
+function depthField(depth, shade) {
   const zt = new Float32Array(FW * FH), zd = new Float32Array(FW * FH), s = FOG_U / CELL, n = 1 / (s * s), T = DEV.l2dTorchDepth;
   D.zB = sizedCanvas(D.zB, CW, CH);
   const c = D.zB.getContext('2d'), img = c ? c.createImageData(CW, CH) : null;
   for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
-    const v = depth[y * CW + x];
-    if (!v) continue;
+    const v = depth[y * CW + x], sh = shade ? shade[y * CW + x] : 0;
+    if (!v && !sh) continue;
     const j = Math.floor(y / s) * FW + Math.floor(x / s);
-    zt[j] += tintRamp(v) * n; zd[j] += v * n;
+    // the black: half of it across the ragged fringe outside (by its shade), the rest ramping in over the first
+    // DEV.l2dTintDepth px inside: past that, silhouette black (owner: most of a zone dark)
+    zt[j] += (v ? 0.5 + 0.5 * tintRamp(v) : 0.5 * sh / 255) * n; zd[j] += v * n;
+    if (!v) continue;
     if (img) { const u = Math.min(1, Math.max(0, (v - T) / 16)); img.data[(y * CW + x) * 4 + 3] = Math.round(255 * u * u * (3 - 2 * u)); }
   }
   if (c && img) c.putImageData(img, 0, 0);
@@ -136,7 +139,7 @@ export function darkPrep(W, G, F) {
   if (D.zfFor !== shade || !D.zf) { D.zf = zoneField(W.darkShade || W.darkMask.map(v => (v ? 255 : 0))); D.zfFor = shade; }
   if (!D.zC) return;
   const key = DEV.l2dTintDepth + '/' + DEV.l2dTorchDepth;
-  if (W.darkDepth && (D.ztKey !== key || D.ztFor !== W.darkDepth || !D.zt)) { depthField(W.darkDepth); D.ztKey = key; D.ztFor = W.darkDepth; }
+  if (W.darkDepth && (D.ztKey !== key || D.ztFor !== W.darkDepth || !D.zt)) { depthField(W.darkDepth, W.darkShade); D.ztKey = key; D.ztFor = W.darkDepth; }
   if (!D.zt || !D.zd || !D.zB) return;
   // the view's fog-cell slab
   const fx0 = D.fx0 = clamp(Math.floor(W.camX / FOG_U) - 2, 0, FW - 1), fy0 = D.fy0 = clamp(Math.floor(W.camY / FOG_U) - 2, 0, FH - 1);

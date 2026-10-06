@@ -243,6 +243,22 @@ fs.mkdirSync(OUT, { recursive: true });
   await page.evaluate(() => { DEV.l2dDark = DEV_DEFAULTS.l2dDark; });
   // (as black as the fog of war's own colour over it: layer 5)
   check('deep in a zone you are a black silhouette (and not with the black off)', sil !== null && unBlack !== null && sil < 14 && unBlack > sil + 25, { silhouette: sil, blackOff: unBlack });
+  // and the zone's rock is silhouette black too, all of it past the short fade in (owner, round 3): every rock
+  // pixel on screen deeper than l2dTintDepth + 8, sampled on a grid
+  await page.waitForTimeout(400);
+  const rock = await page.evaluate(() => {
+    const W = window.__lvl, { CW, CELL } = W.world, { cam, s } = W.light, cv = document.querySelector('canvas.game');
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data, deep = DEV.l2dTintDepth + 8;
+    let n = 0, dark = 0;
+    for (let py = 12; py < cv.height * 0.62; py += 5) for (let px = 12; px < cv.width - 12; px += 5) {
+      const i = Math.floor((cam.y + py / s) / CELL) * CW + Math.floor((cam.x + px / s) / CELL);
+      if (!W.mat[i] || W.darkDepth[i] < deep) continue;
+      const k = (py * cv.width + px) * 4;
+      n++; if ((d[k] + d[k + 1] + d[k + 2]) / 3 < 16) dark++;
+    }
+    return { n, dark, share: n ? dark / n : 0 };
+  });
+  check('the zone\'s rock past the fade is silhouette black (95% of it near-black)', rock.n > 200 && rock.share >= 0.95, rock);
   // a fire beside you lifts the black off you
   await page.evaluate(([tx, ty]) => {
     const W = window.__lvl, { CW, CELL } = W.world;
@@ -262,7 +278,7 @@ fs.mkdirSync(OUT, { recursive: true });
     const depthAt = (x, y) => dp[(y - 5) * CW + x + 3];
     const ok = (x, y) => !m[y * CW + x] && m[(y + 1) * CW + x] && m[(y + 1) * CW + x + 5] && free(x, y);
     const at = [];
-    for (const [lo, hi] of [[0, 0], [T - 14, T - 2], [T + 8, T + 40]]) {
+    for (const [lo, hi] of [[0, 0], [DEV.l2dTintDepth + 1, T - 1], [T + 8, T + 40]]) {
       let best = null;
       for (const z of W.dark) for (let y = z.y0 - 30; y < z.y1 + 30 && !best; y++) for (let x = z.x0 - 30; x < z.x1 + 30; x++) {
         if (x < 4 || y < 14 || x > CW - 10 || !ok(x, y)) continue;

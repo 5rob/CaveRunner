@@ -163,16 +163,16 @@ require('../tests/build')();
       return best;
     }, [lo, hi, edge.tx, edge.ty]);
     const T = await page.evaluate(() => ({ tint: DEV.l2dTintDepth, torch: DEV.l2dTorchDepth }));
-    const steps = [['w1-fade-start', 3, 9, 'walking in 1: just inside the edge, the black only starting'],
-      ['w2-mid-fade', Math.round(T.tint * 0.4), Math.round(T.tint * 0.6), 'walking in 2: mid-fade, things half black'],
-      ['w3-black-torch-on', T.torch - 8, T.torch - 2, 'walking in 3: fully black but for what the torch still lights']];
+    const steps = [['w1-fade-start', 1, Math.max(1, Math.round(T.tint * 0.25)), 'walking in 1: just inside the edge, the black only starting'],
+      ['w2-mid-fade', Math.round(T.tint * 0.4), Math.round(T.tint * 0.65), 'walking in 2: mid-fade, things half black'],
+      ['w3-black-torch-on', T.tint + 1, T.torch - 1, 'walking in 3: past the fade, fully black but for what the torch still lights']];
     for (const [n, lo, hi, what] of steps) {
       const sp = await atDepth(lo, hi);
       if (!sp) { console.log('no spot at depth', lo, hi); continue; }
       await stand(sp.x, sp.y, edge.dir, 0.15, 900);
       await shot(n, what + ` (${sp.d} px in)`);
     }
-    const blind = await atDepth(T.torch + 6, T.torch + 30);
+    const blind = await atDepth(T.torch + 10, T.torch + 40);
     if (blind) {
       await page.evaluate(([x, y]) => { window.__pin = { x, y }; }, [blind.x, blind.y]);
       // (frames as they come: until there's one with the torch on and one with it off, at most 4)

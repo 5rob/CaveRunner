@@ -466,7 +466,7 @@ DEV_META.push(
   { k: 'l2dFringe', g: 'l2dark', label: 'Ragged fringe round a zone: width (px)', min: 0, max: 120, step: 1 });
 DEV_DEFAULTS.l2dSpace = 120; DEV_DEFAULTS.l2dShop = 140; DEV_DEFAULTS.l2dTop = 120; DEV_DEFAULTS.l2dSilk = 1;
 DEV_DEFAULTS.l2dDark = 1; DEV_DEFAULTS.l2dEdge = 1.2; DEV_DEFAULTS.l2dHolo = 0.8; DEV_DEFAULTS.l2dBack = 0.12; DEV_DEFAULTS.l2dBlur = 5; DEV_DEFAULTS.l2dFireR = 45;
-DEV_DEFAULTS.l2dTintDepth = 40; DEV_DEFAULTS.l2dTorchDepth = 36; DEV_DEFAULTS.l2dTorchHyst = 6;
+DEV_DEFAULTS.l2dTintDepth = 12; DEV_DEFAULTS.l2dTorchDepth = 18; DEV_DEFAULTS.l2dTorchHyst = 4;   // (owner: black a short way in, most of a zone dark; the torch fails just past it)
 DEV_META.push(
   { k: 'l2dSpace', g: 'l2dark', label: 'Zones apart, at least (px, plus half their sizes)', min: 0, max: 800, step: 5 },
   { k: 'l2dShop',  g: 'l2dark', label: 'Kept away from the shop (px above its roof)', min: 0, max: 600, step: 5 },
@@ -479,7 +479,7 @@ DEV_META.push(
   { k: 'l2dBack',  g: 'l2dark', label: 'Back wall brightness behind the silk', min: 0, max: 1, step: 0.01 },
   { k: 'l2dFireR', g: 'l2dark', label: 'Fire lifts the black tint out to (px)', min: 1, max: 200, step: 1 },
   { k: 'l2dTintDepth', g: 'l2dark', label: 'Black fades in over this far into a zone (px)', min: 1, max: 160, step: 1 },
-  { k: 'l2dTorchDepth', g: 'l2dark', label: 'The torch fails this far in (px; near the fade\'s end)', min: 0, max: 200, step: 1 },
+  { k: 'l2dTorchDepth', g: 'l2dark', label: 'The torch fails this far in (px; just past the fade\'s end)', min: 0, max: 200, step: 1 },
   { k: 'l2dTorchHyst', g: 'l2dark', label: 'And comes back on this much nearer the edge (px, no strobing)', min: 0, max: 40, step: 1 });
 curveKnobs('l2dark', 'l2dFire', 'Fire lifts the black (Y, 1 = full colour) by distance to it (X, 0 to the max)', 0, 1, { y0: 1, x1: 0.35, y1: 1, x2: 0.55, y2: 0.1, y3: 0 });
 export const ARCH_KNOBS = rangeKnobs('arch', [

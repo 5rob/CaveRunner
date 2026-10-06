@@ -47,11 +47,12 @@ What it does:
   - In a zone the back wall (`l2dBack`) and the hologram (`l2dHolo`) are **blurred** (`l2dBlur`, frosted glass) and
     the silk **multiplies** over them (`silkTint`: it darkens and tints, never lights). The fringe's silk is in this
     layer too now (no longer painted into the decoration). The hologram's bloom is cut out of the zones.
-  - **Layer 4 goes black** inside, fading in with depth from the zone's edge (`darkDepth`, `tintRamp` over
-    `l2dTintDepth`, 40 px). **Fire** lifts it (`l2dFireR` px, falloff the `l2dFire` curve editor); so does the torch
+  - **Layer 4 goes black**: half black across the ragged fringe (by its shade), then ramping to silhouette black
+    over a short band inside (`darkDepth`, `tintRamp` over `l2dTintDepth`, 12 px; owner after round 3: the 40 px
+    fade left most of a zone's rock visible). **Fire** lifts it (`l2dFireR` px, falloff the `l2dFire` curve editor); so does the torch
     while it works.
-  - **The torch fails**: `l2dTorchDepth` (36 px) in, the gun light and the glow round you flicker for 0.8 s and go out;
-    coming out past `l2dTorchDepth - l2dTorchHyst` (6 px gap) they flicker back on (`torchStep`/`torchLit`,
+  - **The torch fails**: `l2dTorchDepth` (18 px, just past the fade) in, the gun light and the glow round you flicker for 0.8 s and go out;
+    coming out past `l2dTorchDepth - l2dTorchHyst` (4 px gap) they flicker back on (`torchStep`/`torchLit`,
     `W.torchFail`, `W.torchLit`; stepped in `stepTorch`). Its beam is cut where it fails.
 - Tests: logic `dark` (rooms reached, flat chamber floor, tunnels and the open-share knob; the tint ramp, depth,
   the torch's flicker and gap), browser `darkzone` (silhouettes black deep in, colour back by a fire, the torch
