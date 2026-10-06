@@ -1,11 +1,35 @@
 // @ts-check
 // The dark zones' alien (Level 2 stage 7; the owner's brief, LEVEL2.md): a body the size of your helmet,
 // almost all of it one eyeball, its black pupil darting about until it locks onto you; three very thin
-// spider legs, equally spaced and aimed outwards, about three body-widths long. Out of its zone (a stray)
+// spider legs, equally spaced and aimed outwards, about one and a half body-widths long (owner: half of three),
+// tapering from the body's full width at the root to a thin tip. Out of its zone (a stray)
 // it is all black. Sprite only so far: the brain comes after the owner's OK of the look.
 
 // body geometry (world units): r is the body's radius (the helmet is ~5 across: r 2.6)
-export const ALIEN = { r: 2.6, leg: 3, knee: 0.55, lift: 0.35 };
+export const ALIEN = { r: 2.6, leg: 1.5, knee: 0.55, lift: 0.35 };
+
+// a leg as a filled ribbon along pts: w0 wide at the first point, narrowing evenly by length to w1 at the last
+// (the bend mitred, the tip rounded)
+/** @param {CanvasRenderingContext2D} ctx @param {number[][]} pts @param {number} w0 @param {number} w1 */
+function taperedLeg(ctx, pts, w0, w1) {
+  const n = pts.length, len = [0];
+  for (let i = 1; i < n; i++) len.push(len[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const total = len[n - 1] || 1, left = [], right = [];
+  for (let i = 0; i < n; i++) {
+    // the normal here: the segment's, or at a bend the mean of the two
+    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(n - 1, i + 1)];
+    let dx = b[0] - a[0], dy = b[1] - a[1];
+    const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
+    const hw = (w0 + (w1 - w0) * len[i] / total) / 2;
+    left.push([pts[i][0] - dy * hw, pts[i][1] + dx * hw]); right.push([pts[i][0] + dy * hw, pts[i][1] - dx * hw]);
+  }
+  ctx.beginPath();
+  ctx.moveTo(left[0][0], left[0][1]);
+  for (let i = 1; i < n; i++) ctx.lineTo(left[i][0], left[i][1]);
+  for (let i = n - 1; i >= 0; i--) ctx.lineTo(right[i][0], right[i][1]);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.arc(pts[n - 1][0], pts[n - 1][1], w1 / 2, 0, Math.PI * 2); ctx.fill();
+}
 
 /**
  * The alien at (x, y). S: how it stands and looks — `rot` the way its underside faces (radians, 0 = feet
@@ -23,9 +47,11 @@ export function drawAlien(ctx, x, y, r, time, phase, flash, col, S) {
   ctx.translate(x, y);
   ctx.rotate(rot);
   // the legs: three, 120° apart, two planted down and out (a tripod) and one reaching up behind; each a
-  // thin two-part line, the knee lifted outwards, the foot reaching ~3 body-widths; they step in turn
+  // two-part leg, the knee lifted outwards, the foot ~1.5 body-widths out; they step in turn. Each is a filled
+  // ribbon from the body's middle, as wide as the body there, narrowing along its whole length to the tip
   const L = r * 2 * ALIEN.leg;
-  ctx.strokeStyle = ink; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(0.35, r * 0.13);
+  const tip = Math.max(0.35, r * 0.13);
+  ctx.fillStyle = ink;
   for (let i = 0; i < 3; i++) {
     const a = -Math.PI / 2 + (i - 1) * (Math.PI * 2 / 3), step = walk ? Math.sin(time * 22 * walk + phase + i * 2.1) : 0;
     const fa = a + step * 0.22, ca = Math.cos(fa), sa = Math.sin(fa);
@@ -33,11 +59,7 @@ export function drawAlien(ctx, x, y, r, time, phase, flash, col, S) {
     let qx = -sa, qy = ca;
     if (qy > 0.05 || (Math.abs(qy) <= 0.05 && qx < 0)) { qx = -qx; qy = -qy; }
     const kx = ca * L * ALIEN.knee + qx * L * ALIEN.lift, ky = sa * L * ALIEN.knee + qy * L * ALIEN.lift - Math.max(0, step) * r * 0.6;
-    ctx.beginPath();
-    ctx.moveTo(ca * r * 0.7, sa * r * 0.7);
-    ctx.lineTo(kx, ky);
-    ctx.lineTo(ca * L, sa * L);
-    ctx.stroke();
+    taperedLeg(ctx, [[0, 0], [kx, ky], [ca * L, sa * L]], r * 2, tip);
   }
   ctx.restore();
   // the body, upright whatever its legs do: a thin shell round one big eye
