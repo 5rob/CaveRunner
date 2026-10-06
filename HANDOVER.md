@@ -45,6 +45,8 @@ the zones (new knob `l2bBones`, 90). Floor build ~0.75 s average, 1.2 s worst ov
 Open: blasts land in tomb rooms near zones and wipe their kit (by design?); the map's rings are many small ones (60
 default) — the owner may want more/bigger.
 
+**The tomb back wall (owner asked):** it was the plain cave wall with faint joints; now `paintTombWall` (world/tomb.js): staggered dressed courses, mortar, fallen and cracked blocks, a carved glyph frieze every 13 courses, pilasters every 34 bg px, shadow blotches. Waiting on the owner's OK.
+
 **Stage 6 round 2 (owner):** gold as random scatterings of all three nugget sizes (`scatterGold`, `Coin.sz` the drawn size whatever it's worth, kept in saves; 3–7 per wasteland spot, 56 for a stash over the chamber floor), at least one zone's prize green crystals, blasts kept off the chambers. Loot is drawn before the dark pass, so it goes black in zones (lootshots' dark shots now with the hologram up to show the silhouettes). Waiting on the owner's OK.
 
 **Stage 5 round 5 (owner):** wider scorch (`l2bScorch` 1.8 × r) and black streaks straight out from every blast's centre (`l2bStreak`, 7–15 rays, soft across, fading to nothing at the tip; rock and decoration only, the back wall slides with parallax so streaks there pointed off-centre; round 6). `tools/floorshot.js`: the whole floor as the game draws it (back wall, hologram, zones, destruction). Waiting on the owner's OK.
