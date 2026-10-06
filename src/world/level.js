@@ -17,6 +17,7 @@ import { paveWorks, strataCave, timberWorks } from './strata.js';
 import { goldVeins } from './veins.js';
 import { darkZones, zoneRock } from './dark.js';
 import { destroyFloor } from './destroy.js';
+import { floorLoot } from './loot.js';
 import { furnishTomb } from './furnish.js';
 import { carveTomb, paintMasonry, tombPlan } from './tomb.js';
 import { boxReach } from './zones.js';
@@ -562,7 +563,10 @@ export function makeLevel(seed, floor, owned) {
   };
   const enemies = [], rolls = [];
   const roster = rosterFor(floor, rnd);
-  const wanted = Math.min(Math.max(136, DEV.enemies), DEV.enemies + (floor - 1) * DEV.enemiesUp);
+  const wanted0 = Math.min(Math.max(136, DEV.enemies), DEV.enemies + (floor - 1) * DEV.enemiesUp);
+  // (floor 2 with its dark zones: no creatures outside them; loot at half as many of their spots instead, after the destruction: loot.js)
+  const wasteland = !!(tombData && darkData && darkData.zones.length);
+  const wanted = wasteland ? 0 : wanted0;
   // a creature that only lives in the natural zones (the jellies: the built-up corridors are
   // too tight to swim) and was rolled for a built-up spot keeps its turn for the next spot,
   // so the floor's mix stays the same
@@ -606,7 +610,7 @@ export function makeLevel(seed, floor, owned) {
   const pickups = [];
   // the first floor under a spot, so a pickup sits on the ground rather than hanging in
   // the air wherever an open cell happened to be
-  let gunsLeft = GUN_DROPS, modsLeft = MOD_DROPS;
+  let gunsLeft = wasteland ? 0 : GUN_DROPS, modsLeft = wasteland ? 0 : MOD_DROPS;
   for (let a = 0; a < 20000 && gunsLeft + modsLeft > 0; a++) {
     const cx = 8 + Math.floor(rnd() * (CW - 16)), cy = 30 + Math.floor(rnd() * (SHOP_TOP - 60));
     if (!clear(cx, cy, 6) || nearNest(cx, cy)) continue;
@@ -665,6 +669,14 @@ export function makeLevel(seed, floor, owned) {
     for (const r of tombData.rooms) if (r.kit) r.kit = r.kit.filter(k => !hit(k.x, k.y, k.w, k.h) && !hit(2 * Math.round(r.cx) - k.x - k.w, k.y, k.w, k.h));
     tombData.boom = { list: boom.blasts, blasts: boom.blasts.length, fire: boom.blasts.filter(b => b.fire).length, ticks: boom.ticks, bones: boom.bones, gone: boom.gone };
   }
+  // floor 2's loot (Level 2 stage 6, loot.js): on the floor as the blasts left it; each zone's prize on `zone.prize`
+  /** @type {Coin[]} */
+  let coins = [];
+  if (wasteland && darkData) {
+    const loot = floorLoot({ mat, shade: darkData.shade, zones: darkData.zones, start, seed, want: Math.round(wanted0 / 2), roster, floor, reds: GUN_DROPS + MOD_DROPS });
+    coins = loot.coins; pickups.push(...loot.pickups);
+    if (tombData) tombData.loot = loot.spots;
+  }
   // gold seams, painted over whatever the decoration left on the rock
   const ore = goldVeins(mat, seed, floor);
   for (let i = 0; i < ore.length; i++) {
@@ -687,7 +699,7 @@ export function makeLevel(seed, floor, owned) {
     for (const q of n.path) for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) clear(Math.round(q.x) + dx, Math.round(q.y) + dy);
   }
 
-  return { mat, img, bgImg, dimg, ore, fuel, props: deco.props, amb: deco.amb, start, portal, portals, enemies, pickups, stock, shopExit, arrival,
+  return { mat, img, bgImg, dimg, ore, fuel, props: deco.props, amb: deco.amb, start, portal, portals, enemies, pickups, coins, stock, shopExit, arrival,
     rooms, roster, theme: T.name, works, zone, nests, tomb: tombData,
     dark: darkData ? darkData.zones : [], darkMask: darkData && darkData.zones.length ? darkData.mask : null, webbing: darkData && darkData.zones.length ? darkData.web : null,
     darkShade: darkData && darkData.zones.length ? darkData.shade : null, darkDepth: darkData && darkData.zones.length ? darkData.depth : null };

@@ -48,7 +48,8 @@ check('its knobs are on the Dev panel in their own group', G.DEV_GROUPS.some(g =
 check('its colours are tinted, the kind itself untouched', e.col.a !== k.col.a && !k.elite);
 let elites = 0, foes = 0, other = 0, crystals = 0, inRange = 0;
 for (let seed = 1; seed <= 6; seed++) {
-  const lv = makeLevel(seed * 97, 2), n = lv.enemies.filter(x => x.k.elite).length;
+  // (floor 3: floor 2 has no creatures since Level 2 stage 6, loot instead)
+  const lv = makeLevel(seed * 97, 3), n = lv.enemies.filter(x => x.k.elite).length;
   if (n >= G.DEV.elCountLo && n <= G.DEV.elCountHi) inRange++;
   elites += n; foes += lv.enemies.length;
   other += lv.pickups.filter(q => q.kind !== 'crystal').length;

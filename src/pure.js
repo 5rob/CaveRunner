@@ -41,6 +41,7 @@ export * from './world/tomb.js';
 export * from './world/furnish.js';
 export * from './world/dark.js';
 export * from './world/destroy.js';
+export * from './world/loot.js';
 export * from './creatures/common.js';
 export * from './creatures/spider.js';
 export * from './creatures/rat.js';

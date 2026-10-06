@@ -334,6 +334,7 @@ interface Tomb {
   course: number; block: number; mason: number;   // the cut stone's course height, block length, depth (px)
   ledgeGap: number;
   mended: boolean;            // the plan didn't reach the top and a plain shaft was cut (never seen)
+  loot?: { x: number; y: number; gold: number; red: boolean }[];   // Level 2 stage 6's loot spots (world/loot.js): world units, y the ground
   boom?: { list: { x: number; y: number; r: number; fire: boolean; dist: number }[]; blasts: number; fire: number; ticks: number; bones: number; gone: number };   // Level 2 stage 5's wasteland (world/destroy.js), counted
 }
 /** a rat nest as ratNests makes it (world/nests.js) */
@@ -361,6 +362,7 @@ interface Level {
   portals: { x: number; y: number; w: number; h: number }[];   // the exits along the top, left to right (EXIT_X)
   arrival: Pt;
   enemies: Enemy[]; pickups: Pickup[]; stock: StockItem[]; rooms: Room[];
+  coins: Coin[];              // gold lying on the ground at the start (floor 2's loot, world/loot.js); [] elsewhere
   shopExit: number;
   roster: string[];
   theme: string;              // the palette's name
@@ -382,6 +384,7 @@ interface DarkZone {
   cells: number;              // how many terrain cells it covers
   doors: Pt[];                // where the tomb ran into it (each joined to the chamber by a tunnel)
   chamber: { x: number; y: number; rx: number; ry: number; floor: number };   // the open chamber in its middle (Stage 6's prize)
+  prize?: { kind: 'gold' | 'red' | 'green'; n: number; x: number; y: number };   // its prize (world/loot.js): how much, standing at (x, y) world, y the ground
   tunnels: DarkTunnel[];      // the second pass's small winding tunnels (the aliens' ways; a few the runner fits)
   open: number;               // the share of its cells that ended up open (DEV.l2dOpen aims for it)
 }
@@ -427,6 +430,7 @@ interface SavedLevel {
   seed: number; owned: string[]; alive: number[] | null; sold: number[]; rooms: number[]; heals?: number;
   brood?: [number, number][];  // each nest's sid and the rats it still holds (its rats out go back in)
   pickups: Pickup[] | null;
+  coins?: Coin[];             // the gold on the ground (v0.0.147: floor 2's loot); missing in an older save: the floor's own
   pins?: MapPin[];            // the map's pins (v0.0.141)
 }
 

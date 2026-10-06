@@ -22,6 +22,19 @@ bump the version, before the next release.
    with skeletons everywhere; listed in `room.kit`. Candles are painted and UNLIT. Owner: "The tombs should be
    dark."
 
+**Stage 6, loot — BUILT, AWAITING THE OWNER'S OK** (on `level2`, `src/world/loot.js`, wired into `makeLevel` after
+the destruction): floor 2 (with zones) now has **no creatures** (before: the ordinary roster, ~92 of them, anywhere,
+zones included, plus elites); instead `floorLoot` picks half that many spots (46) by the enemies' spawn rules,
+outside the zones and their fringe, drops each to the ground and lays the gold its creature would have dropped as
+nuggets (`level.coins` → `W.coins` at entry; saved/restored as `level.coins` in the autosave); 12 of them (floor 1's
+red crystal count, GUN_DROPS + MOD_DROPS) also get a red crystal; floor 2's old random crystal scatter is off. Each
+zone's chamber gets `zone.prize = { kind, n, x, y }`: 1000–2000 gold (a stash of 30 big nuggets), 4–6 red or 1–3
+green crystals (`rollPrize`, `placePrize`). Own random stream; spots on `tomb.loot`. The "All enemies destroyed"
+line no longer shows on a floor that starts with none. Suite `tests/logic/loot2.test.js`; screenshots `node
+tools/lootshots.js`. Open: the tomb's own altar green crystal (`rooms` kind green) is still there; with the
+darkness on, a chamber prize is invisible without fire (as stage 4 meant?); a stash nugget is worth ~50 but drawn
+the big-nugget size.
+
 **Stage 5, destruction — BUILT, AWAITING THE OWNER'S OK** (on `level2`, `src/world/destroy.js`, wired into
 `makeLevel`): real blast holes scattered out from the dark zones' edges (`scatterByDistance`, Dev "Level 2:
 destruction": count, reach, size × curve, density curve, jitter, clearance), a scorch ring past each lip and soot on
