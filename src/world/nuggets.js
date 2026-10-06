@@ -10,6 +10,9 @@ export const NUG_GRAV = 420, NUG_ROLL = 260, NUG_BOUNCE = 0.35;
 
 // a nugget's radius, from what it is worth
 /** @param {number} amount */
+// a coin's radius: its own size if it has one (sz), else its amount's
+/** @param {Nug} g */
+export const coinR = g => (g.sz !== undefined ? NUGGETS[g.sz].r : nugR(g.amount || 0));
 export const nugR = amount => amount >= NUGGETS[0].v ? NUGGETS[0].r : amount >= NUGGETS[1].v ? NUGGETS[1].r : NUGGETS[2].r;
 
 // split an amount into nuggets that add up to it exactly: as many big ones as fit, less one now
@@ -50,7 +53,7 @@ export function spillGold(list, x, y, amount, kick) {
 // too, with their own radius `rad` (v0.0.138: they're rocks you push about, game/systems/shops.js)
 /** @param {Nug} g @param {number} dt @param {(x: number, y: number) => boolean} solid @param {number} [rad] */
 export function stepNugget(g, dt, solid, rad) {
-  const r = rad || nugR(g.amount || 0);
+  const r = rad || coinR(g);
   g.vx = g.vx || 0; g.vy = g.vy || 0;
   // buried (the rock moved, or it was spilled into a wall): up and out
   for (let k = 0; k < 8 && solid(g.x, g.y); k++) g.y -= 2;
@@ -93,7 +96,7 @@ export function stepNugget(g, dt, solid, rad) {
 // close at, so a heap slumps and spreads instead of piling into one spot
 /** @param {Nug[]} list @param {(x: number, y: number) => boolean} solid @param {(b: Nug) => number} [rOf] a body's radius (crystals) */
 export function collideNuggets(list, solid, rOf) {
-  const rad = rOf || (g => nugR(g.amount || 0));
+  const rad = rOf || coinR;
   const n = list.length;
   if (n < 2) return;
   const ord = list.slice().sort((a, b) => a.x - b.x);

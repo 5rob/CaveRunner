@@ -13,7 +13,7 @@ import { themeFor } from '../../data/themes.js';
 import { gunAccent } from '../../spells/guns.js';
 import { MODS, famCol } from '../../spells/mods.js';
 import { FIRE_COLS } from '../../world/fire.js';
-import { nugR } from '../../world/nuggets.js';
+import { coinR } from '../../world/nuggets.js';
 import { darkPrep } from './dark.js';
 import { BG_PAR, drawHolo } from './holo.js';
 import { exits } from '../world.js';
@@ -241,7 +241,7 @@ export function drawLoot(W, G, F) {
   // gold
   for (const g of W.coins) {
     if (g.y > W.camY + vh + 30 || g.y < W.camY - 30) continue;
-    drawNugget(G.ctx, g.x, g.y, nugR(g.amount), g.t, g.a || 0);
+    drawNugget(G.ctx, g.x, g.y, coinR(g), g.t, g.a || 0);
   }
 
   // pickups

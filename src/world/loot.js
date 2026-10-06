@@ -5,13 +5,14 @@
 
 import { CELL, CH, CW, SHOP_TOP } from '../core/consts.js';
 import { enemyFor } from '../data/creatures.js';
-import { nugR, splitGold } from './nuggets.js';
+import { NUGGETS } from './nuggets.js';
 
 // the prize kinds and their amounts (owner's brief: 1000–2000 gold, 4–6 red, 1–3 green)
 export const PRIZES = { gold: [1000, 2000], red: [4, 6], green: [1, 3] };
 /** @type {('gold' | 'red' | 'green')[]} */
 export const PRIZE_KINDS = ['gold', 'red', 'green'];
-export const STASH_N = 30, STASH_ROW = 8;   // a gold prize: so many nuggets, the bottom row this wide
+export const STASH_N = 56;               // a gold prize: so many nuggets, scattered over the chamber's floor
+export const SIZE_W = [0.3, 0.35, 0.35];  // how often each size (big, medium, small) comes up in a scatter
 export const CRYS_Y = 9;                 // a crystal's middle above the ground (as the cave's pickups)
 
 /** a zone's prize, rolled from a 0..1 pair: which kind, and how much
@@ -30,23 +31,30 @@ export function groundBelow(mat, cx, cy, reach) {
   return gy + 1 < CH && mat[(gy + 1) * CW + cx] ? gy : -1;
 }
 
-/** an amount as nuggets in a heap on the ground at (x, gy): rows of big ones, narrower going up
+/** an amount as a random scattering of nuggets of all three sizes on the ground round (x, gy) (owner: not
+ * piles of one size). n nuggets, each a size rolled by SIZE_W, worth a share of the amount by its size's
+ * worth (adding up exactly), each put on the ground under a spot within ± spread world units
  * @param {Coin[]} out @param {Uint8Array} mat @param {number} x world @param {number} gy the open cell on the ground
- * @param {number[]} vals @param {number} perRow @param {() => number} rnd */
-function heap(out, mat, x, gy, vals, perRow, rnd) {
-  const base = (gy + 1) * CELL;
-  let i = 0;
-  for (let row = 0; i < vals.length; row++) {
-    const n = Math.max(1, Math.min(vals.length - i, perRow - row));
-    for (let k = 0; k < n; k++, i++) {
-      const r = nugR(vals[i]), dx = (k - (n - 1) / 2) * r * 2.05 + (row & 1) * r * 0.5;
-      let open = true;
-      for (let c = Math.floor((x + dx - r) / CELL); c <= Math.floor((x + dx + r) / CELL) && open; c++) if (c < 1 || c > CW - 2 || mat[gy * CW + c]) open = false;
-      if (!mat[(gy + 1) * CW + Math.floor((x + dx) / CELL)]) open = false;      // and the ground under it (not off a ledge)
-      const nx = open ? x + dx : x;
-      out.push({ x: nx, y: base - r - row * r * 1.8, amount: vals[i], t: rnd() * 6.28, a: rnd() * 6.28, vx: 0, vy: 0 });
-    }
+ * @param {number} amount @param {number} n @param {number} spread @param {() => number} rnd */
+export function scatterGold(out, mat, x, gy, amount, n, spread, rnd) {
+  n = Math.max(1, Math.min(n, Math.round(amount)));
+  const sz = [];
+  for (let k = 0; k < n; k++) { const u = rnd(); sz.push(u < SIZE_W[0] ? 0 : u < SIZE_W[0] + SIZE_W[1] ? 1 : 2); }
+  const w = sz.map(s => NUGGETS[s].v), tw = w.reduce((a, b) => a + b, 0);
+  let given = 0, acc = 0;
+  for (let k = 0; k < n; k++) {
+    acc += w[k];
+    const v = Math.max(1, Math.round(amount * acc / tw) - given);
+    given += v;
+    const r = NUGGETS[sz[k]].r;
+    // a spot along the ground: the floor under it within a few cells of the drop's ground (else at the drop)
+    let nx = x + (rnd() * 2 - 1) * spread, c = Math.max(1, Math.min(CW - 2, Math.floor(nx / CELL))), fy = -1;
+    for (let dy = -6; dy <= 6 && fy < 0; dy++) { const y = gy + dy; if (y > 0 && y + 1 < CH && !mat[y * CW + c] && mat[(y + 1) * CW + c]) fy = y; }
+    if (fy < 0) { nx = x; fy = gy; }
+    out.push({ x: nx, y: (fy + 1) * CELL - r, amount: v, sz: sz[k], t: rnd() * 6.28, a: rnd() * 6.28, vx: 0, vy: 0 });
   }
+  // the rounding's change on the last one (the total exact)
+  if (out.length) out[out.length - 1].amount += Math.round(amount) - given;
 }
 
 /**
@@ -101,12 +109,14 @@ export function floorLoot(o) {
   /** @type {Pickup[]} */
   const pickups = [];
   for (const s of spots) {
-    heap(coins, mat, s.x, s.gy, splitGold(s.gold, rnd), 4, rnd);
+    scatterGold(coins, mat, s.x, s.gy, s.gold, 3 + Math.floor(rnd() * 5), 26, rnd);
     const side = [14, -14, 0].find(d => !mat[s.gy * CW + Math.round((s.x + d) / CELL)] && mat[(s.gy + 1) * CW + Math.round((s.x + d) / CELL)]);
     if (s.red) pickups.push({ kind: 'crystal', x: s.x + (side || 0), y: (s.gy + 1) * CELL - CRYS_Y, floor, t: rnd() * 6.28 });
   }
-  // the prizes, on each chamber's floor in the middle
-  for (const z of zones) placePrize(coins, pickups, mat, z, rollPrize(rnd(), rnd()), floor, rnd);
+  // the prizes, on each chamber's floor in the middle; at least one zone's is green crystals (owner)
+  const prizes = zones.map(() => rollPrize(rnd(), rnd())), gv = rnd(), gz = Math.floor(rnd() * zones.length);
+  if (zones.length && !prizes.some(p => p.kind === 'green')) prizes[gz] = rollPrize(0.99, gv);
+  zones.forEach((z, i) => placePrize(coins, pickups, mat, z, prizes[i], floor, rnd));
   return { coins, pickups, spots: spots.map(s => ({ x: s.x, y: (s.gy + 1) * CELL, gold: s.gold, red: s.red })) };
 }
 
@@ -120,10 +130,8 @@ export function placePrize(coins, pickups, mat, z, p, floor, rnd) {
   const fy = gy >= 0 ? gy : Math.round(c.floor) - 1, x = cx * CELL;
   z.prize = { kind: p.kind, n: p.n, x, y: (fy + 1) * CELL };
   if (p.kind === 'gold') {
-    // a stash: STASH_N big nuggets sharing it (worth more than a 25 each: the size doesn't grow), a pyramid on the floor
-    const vals = [];
-    for (let k = 0; k < STASH_N; k++) vals.push(Math.floor(p.n * (k + 1) / STASH_N) - Math.floor(p.n * k / STASH_N));
-    heap(coins, mat, x, fy, vals, STASH_ROW, rnd);
+    // a stash: STASH_N nuggets of all three sizes sharing it, scattered over the middle of the chamber's floor
+    scatterGold(coins, mat, x, fy, p.n, STASH_N, Math.max(12, c.rx * 0.6) * CELL, rnd);
   } else for (let k = 0; k < p.n; k++)
     pickups.push({ kind: 'crystal', green: p.kind === 'green' || undefined, x: x + (k - (p.n - 1) / 2) * 16, y: (fy + 1) * CELL - CRYS_Y, floor, t: rnd() * 6.28 });
 }

@@ -66,6 +66,11 @@ check('rollPrize at the ends', JSON.stringify([rollPrize(0, 0), rollPrize(0.99, 
 console.log('prize kinds over the seeds', JSON.stringify(kinds));
 // floors 1 and 3: no ground gold, their creatures as ever
 const f1 = makeLevel(3, 1), f3 = makeLevel(3, 3);
+// owner, round 2: at least one zone's prize is green crystals; the gold in a mix of all three sizes
+const greens = SEEDS.map(seed => makeLevel(seed, 2)).filter(lv => lv.dark.length);
+check('every floor with zones has a green crystal prize', greens.every(lv => lv.dark.some(z => z.prize && z.prize.kind === 'green')), greens.map(lv => lv.dark.map(z => z.prize && z.prize.kind)));
+const sizes = new Set(greens[0].coins.map(c => c.sz));
+check('the gold lies in all three nugget sizes', sizes.has(0) && sizes.has(1) && sizes.has(2), [...sizes]);
 check('floors 1 and 3: no loot gold, creatures still there', f1.coins.length === 0 && f3.coins.length === 0 && f1.enemies.length > 50 && f3.enemies.length > 50);
 console.log(fails ? `${fails} FAILED` : 'all ok');
 process.exit(fails ? 1 : 0);

@@ -551,11 +551,12 @@ interface Guide { st: 'wait' | 'appear' | 'wave' | 'talk' | 'give' | 'rude' | 'l
 interface MapPin { x: number; y: number; e: string }
 /** gold on the ground */
 /** anything world/nuggets.js moves: gold, and crystals (v0.0.138) */
-interface Nug { x: number; y: number; vx?: number; vy?: number; t?: number; a?: number; ground?: number; fly?: boolean; amount?: number }
+interface Nug { x: number; y: number; vx?: number; vy?: number; t?: number; a?: number; ground?: number; fly?: boolean; amount?: number; sz?: number }
 interface Coin {
   x: number; y: number; amount: number; t: number;
   vx?: number; vy?: number; pop?: number; nopull?: number;
   a?: number; ground?: number; fly?: boolean;   // world/nuggets.js: its turn, resting on rock, being pulled to you
+  sz?: number;                                  // its size (NUGGETS index) when not its amount's (floor 2's loot: world/loot.js)
 }
 /** a line at the bottom of the view */
 interface Toast { text: string; t: number }

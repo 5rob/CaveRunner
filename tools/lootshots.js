@@ -78,10 +78,10 @@ require('../tests/build')();
       let s = 5; placePrize(W.coins, W.pickups, W.mat, z, { kind, n }, 2, () => (s = (s * 16807) % 2147483647) / 2147483647);
       return z.prize;
     }, [kind, n]);
-    await page.evaluate(() => { DEV.l2dDark = 0; });
+    await page.evaluate(() => { DEV.l2dDark = 0; DEV.holoMin = DEV_DEFAULTS.holoMin; DEV.holoMax = DEV_DEFAULTS.holoMax; });
     await hover(z.x, z.y - 60, 1500);
     await shot(`b-${kind}-lit`, `the ${kind} prize (${n}${kind === 'gold' ? ' gold' : ' crystals'}) on a chamber's floor, darkness off`);
-    await page.evaluate(() => { DEV.l2dDark = DEV_DEFAULTS.l2dDark; });
+    await page.evaluate(() => { DEV.l2dDark = DEV_DEFAULTS.l2dDark; DEV.holoMin = DEV.holoMax = 1; });   // (the hologram up: the loot's silhouette shows against it)
     await hover(z.x, z.y - 60, 900);
     await shot(`b-${kind}-dark`, `the same, darkness on (as played)`);
   }
