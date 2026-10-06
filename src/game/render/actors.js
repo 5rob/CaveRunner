@@ -10,6 +10,7 @@ import { COL, PH, PW } from '../../core/consts.js';
 import { hexRgb } from '../../core/util.js';
 import { drawEnemy } from '../../creatures/draw.js';
 import { DEV, carrotAt, jcol, kcol, kru } from '../../dev/knobs.js';
+import { hasAssist } from '../../spells/assist.js';
 import { planCast } from '../../spells/cast.js';
 import { gunAccent } from '../../spells/guns.js';
 import { bhSp, tracePath } from '../../spells/trace.js';
@@ -199,8 +200,9 @@ export function drawPlayer(W, G, F) {
   }
   // a small aim crosshair at DEV.aimDist out, rotating round you with the aim: a "+"
   // with the centre cut out (two short verticals, two short horizontals), drawn as thin
-  // as the thumbstick lines (~1.5 css px, so 1.5/unitPx world units, whatever the zoom)
-  if (!W.p.dead) {
+  // as the thumbstick lines (~1.5 css px, so 1.5/unitPx world units, whatever the zoom).
+  // Not with Aim Assist on the gun in hand: its pointer is the aim (owner)
+  if (!W.p.dead && !hasAssist(held)) {
     const cxp = pcx + ax * DEV.aimDist, cyp = gy + ay * DEV.aimDist;
     const inr = 1.25, outr = 3;            // gap radius, arm end (half the v55 size)
     G.ctx.strokeStyle = 'rgba(255,255,255,0.92)';

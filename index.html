@@ -17292,6 +17292,42 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/spells/assist.js
+  var hasAssist = (g) => !!g && g.slots.includes("aimassist");
+  function assistPointer(gx, gy, nx, ny, mag, view) {
+    const { x, y, w, h: h3 } = view;
+    const far = Math.max(
+      Math.hypot(gx - x, gy - y),
+      Math.hypot(x + w - gx, gy - y),
+      Math.hypot(gx - x, y + h3 - gy),
+      Math.hypot(x + w - gx, y + h3 - gy)
+    );
+    const d = Math.min(1, mag) * far * DEV.aaReach;
+    return { x: Math.max(x, Math.min(x + w, gx + nx * d)), y: Math.max(y, Math.min(y + h3, gy + ny * d)) };
+  }
+  function assistSnap(p, list, sees, held) {
+    let best = null;
+    let bd = Infinity;
+    for (const e of list) {
+      const d = Math.max(0, Math.hypot(e.x - p.x, e.ty - p.y) - (e.r || 0));
+      if (d < bd && d <= Math.max(DEV.aaSnapR, DEV.aaHit * DEV.aaHold) && sees(e)) {
+        bd = d;
+        best = e;
+      }
+    }
+    if (held && list.includes(held)) {
+      const hd = Math.max(0, Math.hypot(held.x - p.x, held.ty - p.y) - (held.r || 0));
+      if (hd <= DEV.aaHit * DEV.aaHold && sees(held)) {
+        best = held;
+        bd = hd;
+      }
+    }
+    if (!best) return { x: p.x, y: p.y, on: null };
+    const R = DEV.aaSnapR, k = R > 0 && bd <= R ? DEV.aaPull * (1 - bd / R) : 0;
+    const on = bd <= DEV.aaHit || best === held && bd <= DEV.aaHit * DEV.aaHold ? best : null;
+    return { x: p.x + (best.x - p.x) * k, y: p.y + (best.ty - p.y) * k, on };
+  }
+
   // src/spells/cast.js
   var MIN_CAST = 0.016;
   var MIN_RECH = 0.05;
@@ -18919,7 +18955,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       } else if (HAND_TORCH) torch(G.ctx);
       if (HAND_TORCH) torchEmbers(G.ctx, W.torchP, px);
     }
-    if (!W.p.dead) {
+    if (!W.p.dead && !hasAssist(held)) {
       const cxp = pcx + ax * DEV.aimDist, cyp = gy + ay * DEV.aimDist;
       const inr = 1.25, outr = 3;
       G.ctx.strokeStyle = "rgba(255,255,255,0.92)";
@@ -24232,42 +24268,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.input.current.sig = "";
     G.input.current.notify();
     return true;
-  }
-
-  // src/spells/assist.js
-  var hasAssist = (g) => !!g && g.slots.includes("aimassist");
-  function assistPointer(gx, gy, nx, ny, mag, view) {
-    const { x, y, w, h: h3 } = view;
-    const far = Math.max(
-      Math.hypot(gx - x, gy - y),
-      Math.hypot(x + w - gx, gy - y),
-      Math.hypot(gx - x, y + h3 - gy),
-      Math.hypot(x + w - gx, y + h3 - gy)
-    );
-    const d = Math.min(1, mag) * far * DEV.aaReach;
-    return { x: Math.max(x, Math.min(x + w, gx + nx * d)), y: Math.max(y, Math.min(y + h3, gy + ny * d)) };
-  }
-  function assistSnap(p, list, sees, held) {
-    let best = null;
-    let bd = Infinity;
-    for (const e of list) {
-      const d = Math.max(0, Math.hypot(e.x - p.x, e.ty - p.y) - (e.r || 0));
-      if (d < bd && d <= Math.max(DEV.aaSnapR, DEV.aaHit * DEV.aaHold) && sees(e)) {
-        bd = d;
-        best = e;
-      }
-    }
-    if (held && list.includes(held)) {
-      const hd = Math.max(0, Math.hypot(held.x - p.x, held.ty - p.y) - (held.r || 0));
-      if (hd <= DEV.aaHit * DEV.aaHold && sees(held)) {
-        best = held;
-        bd = hd;
-      }
-    }
-    if (!best) return { x: p.x, y: p.y, on: null };
-    const R = DEV.aaSnapR, k = R > 0 && bd <= R ? DEV.aaPull * (1 - bd / R) : 0;
-    const on = bd <= DEV.aaHit || best === held && bd <= DEV.aaHit * DEV.aaHold ? best : null;
-    return { x: p.x + (best.x - p.x) * k, y: p.y + (best.ty - p.y) * k, on };
   }
 
   // src/game/systems/gun.js
