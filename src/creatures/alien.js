@@ -5,11 +5,11 @@
 // tapering from the body's full width at the root to a thin tip. Out of its zone (a stray)
 // it is all black. Sprite only so far: the brain comes after the owner's OK of the look.
 
-// body geometry (world units): r is the body's radius (the helmet is ~5 across: r 2.6)
+// body geometry (world units; the skin's noise is skinTile): r is the body's radius (the helmet is ~5 across: r 2.6)
 export const ALIEN = { r: 2.6, leg: 1.5, knee: 0.55, lift: 0.35 };
 
-// a leg as a filled ribbon along pts: w0 wide at the first point, narrowing evenly by length to w1 at the last
-// (the bend mitred, the tip rounded)
+// a leg as a ribbon along pts, added to the current path: w0 wide at the first point, narrowing evenly by
+// length to w1 at the last (the bend mitred, the tip rounded)
 /** @param {CanvasRenderingContext2D} ctx @param {number[][]} pts @param {number} w0 @param {number} w1 */
 function taperedLeg(ctx, pts, w0, w1) {
   const n = pts.length, len = [0];
@@ -23,12 +23,36 @@ function taperedLeg(ctx, pts, w0, w1) {
     const hw = (w0 + (w1 - w0) * len[i] / total) / 2;
     left.push([pts[i][0] - dy * hw, pts[i][1] + dx * hw]); right.push([pts[i][0] + dy * hw, pts[i][1] - dx * hw]);
   }
-  ctx.beginPath();
   ctx.moveTo(left[0][0], left[0][1]);
   for (let i = 1; i < n; i++) ctx.lineTo(left[i][0], left[i][1]);
   for (let i = n - 1; i >= 0; i--) ctx.lineTo(right[i][0], right[i][1]);
-  ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.arc(pts[n - 1][0], pts[n - 1][1], w1 / 2, 0, Math.PI * 2); ctx.fill();
+  ctx.closePath();
+  ctx.moveTo(pts[n - 1][0] + w1 / 2, pts[n - 1][1]); ctx.arc(pts[n - 1][0], pts[n - 1][1], w1 / 2, 0, Math.PI * 2, true);
+}
+
+// the skin: a small tile of dark purple and blue noise (owner), made once, laid over the body and legs at
+// SKIN_U world units a texel
+const SKIN_N = 48, SKIN_U = 0.5;
+/** @type {HTMLCanvasElement | null} */
+let skin = null;
+function skinTile() {
+  if (skin) return skin;
+  const c = document.createElement('canvas'); c.width = c.height = SKIN_N;
+  const g = c.getContext('2d');
+  if (!g) return c;
+  const img = g.createImageData(SKIN_N, SKIN_N), d = img.data;
+  const hv = (/** @type {number} */ x, /** @type {number} */ y) => { const h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return h - Math.floor(h); };
+  // smooth blotches (purple ↔ blue) and a fine grain over them
+  const sm = (/** @type {number} */ x, /** @type {number} */ y) => {
+    const X = Math.floor(x), Y = Math.floor(y), u = x - X, v = y - Y, U = u * u * (3 - 2 * u), V = v * v * (3 - 2 * v);
+    return (hv(X, Y) * (1 - U) + hv(X + 1, Y) * U) * (1 - V) + (hv(X, Y + 1) * (1 - U) + hv(X + 1, Y + 1) * U) * V;
+  };
+  for (let y = 0; y < SKIN_N; y++) for (let x = 0; x < SKIN_N; x++) {
+    const t = sm(x / 6, y / 6), gr = 0.75 + hv(x + 300, y + 700) * 0.5, k = (y * SKIN_N + x) * 4;
+    d[k] = (52 * (1 - t) + 20 * t) * gr; d[k + 1] = (22 * (1 - t) + 30 * t) * gr; d[k + 2] = (74 * (1 - t) + 82 * t) * gr; d[k + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  return (skin = c);
 }
 
 /**
@@ -52,6 +76,7 @@ export function drawAlien(ctx, x, y, r, time, phase, flash, col, S) {
   const L = r * 2 * ALIEN.leg;
   const tip = Math.max(0.35, r * 0.13);
   ctx.fillStyle = ink;
+  ctx.beginPath();
   for (let i = 0; i < 3; i++) {
     const a = -Math.PI / 2 + (i - 1) * (Math.PI * 2 / 3), step = walk ? Math.sin(time * 22 * walk + phase + i * 2.1) : 0;
     const fa = a + step * 0.22, ca = Math.cos(fa), sa = Math.sin(fa);
@@ -61,15 +86,24 @@ export function drawAlien(ctx, x, y, r, time, phase, flash, col, S) {
     const kx = ca * L * ALIEN.knee + qx * L * ALIEN.lift, ky = sa * L * ALIEN.knee + qy * L * ALIEN.lift - Math.max(0, step) * r * 0.6;
     taperedLeg(ctx, [[0, 0], [kx, ky], [ca * L, sa * L]], r * 2, tip);
   }
+  // and the body's round, in the same shape: filled, then the noisy skin laid over all of it
+  // (wound the same way as the legs, so where they overlap it stays filled: no seams)
+  ctx.moveTo(r, 0); ctx.arc(0, 0, r, 0, Math.PI * 2, true);
+  ctx.fill();
+  if (!black && !flash) {
+    ctx.save();
+    ctx.clip();
+    const ext = SKIN_N * SKIN_U, sm = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(skinTile(), -ext / 2, -ext / 2, ext, ext);
+    ctx.imageSmoothingEnabled = sm;
+    ctx.restore();
+  }
   ctx.restore();
   // the body, upright whatever its legs do: a thin shell round one big eye
   ctx.save();
   ctx.translate(x, y);
-  ctx.fillStyle = ink;
-  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
   if (!black) {
-    ctx.fillStyle = flash ? '#ffffff' : col.a;
-    ctx.beginPath(); ctx.arc(0, -r * 0.08, r * 0.92, 0, Math.PI * 2); ctx.fill();
     // the eyeball: almost all of it
     ctx.fillStyle = flash ? '#ffffff' : col.c;
     ctx.beginPath(); ctx.arc(0, 0, r * 0.8, 0, Math.PI * 2); ctx.fill();
