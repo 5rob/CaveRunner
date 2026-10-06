@@ -20,7 +20,7 @@ Status: `todo` · `agent` (running, branch named) · `review` (screenshots sent,
 | # | Item | Who | Status | Notes |
 |---|------|-----|--------|-------|
 | 1 | Dark zone: hologram flickers/glitches on and off in flashes (backlights silk, silhouettes aliens) | agent | agent (worktree) | look → screenshots |
-| 2 | Modifiers affect only the next spell | agent | todo | logic; planCast, tracePath, advisor, bagsim, tests — agent running (worktree) |
+| 2 | Modifiers affect only the next spell | agent | agent (worktree) | logic; planCast, tracePath, advisor, bagsim, tests |
 | 3 | Dev menu: modern, tabbed pages, collapsible groups | agent | agent (worktree) | look → screenshots |
 | 4 | Gun mod screen: gun buttons as a row under the mod grid; live window of the gun firing in time with the pull animation | agent | agent (worktree) | look → screenshots |
 | 5 | Hold a HUD gun slot to equip a pickup there (replaces R/swap menu); hold with nothing to pick up = drag the gun out, drop on release; tap the equipped gun = its info card | agent | todo | after 8 (hud.js) |
