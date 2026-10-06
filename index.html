@@ -197,6 +197,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   padding:7px 12px;border-radius:9px;border:2px solid #ff8a1f;background:var(--btn);
   color:var(--text);font:600 12px system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .gtab.empty{opacity:.4}
+/* the firing window by the stats (GunFire) and the gun buttons' row under the mod grid */
+.btop{align-items:stretch}
+.gfire{flex:1 1 0;min-width:0;align-self:stretch;min-height:110px;border-radius:9px;background:#0b0e14;
+  border:1px solid var(--ring);display:block}
+.gtabs.gunrow{flex:0 0 auto;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:8px}
+.gtabs.gunrow .gtab{aspect-ratio:auto;height:64px;gap:2px}
+.gtabs.gunrow .gicon{width:56px;height:28px}
 .stats{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
 .st{background:var(--pad);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--muted);
   display:flex;gap:5px;align-items:baseline}
@@ -27141,7 +27148,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function fireSimNew(gun) {
     const g = resetGun(Object.assign({}, gun, { slots: gun.slots.slice() }));
     const max = gun.manaMax + gunPassives(gun).manaMax;
-    return { g, max, mana: max, delayT: 0, delayMax: 0, rechT: 0, rechLen: 0, pull: 0, lit: null, fired: 0 };
+    return { g, max, mana: max, delayT: 0, delayMax: 0, rechT: 0, rechLen: 0, pull: 0, lit: null, fired: 0, shots: [] };
   }
   function fireSimStep(S2, dt) {
     const g = S2.g, pas = gunPassives(g);
@@ -27174,6 +27181,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const casts = (id) => MODS[id].kind === "shot" || MODS[id].kind === "static";
     while (slots.length && !casts(g.slots[slots[slots.length - 1]])) slots.pop();
     S2.lit = { slots, pull: S2.pull, t: Math.max(0.1, Math.min(plan.delay, 0.45)) };
+    S2.shots = plan.shots;
     S2.pull++;
     S2.fired++;
     S2.delayT = S2.delayMax = plan.delay;
@@ -27610,6 +27618,150 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     });
     return h("canvas", { ref, className: "gicon" });
   }
+  var GF_ZOOM = 3, GF_SPEED = 0.2, GF_MAX = 90;
+  function GunFire({ gun, sim }) {
+    const ref = useRef(null);
+    const gref = useRef(gun);
+    gref.current = gun;
+    useEffect(() => {
+      let raf, last = performance.now(), seen = -1, seenS = null, flash = 0;
+      let shots = [], beams = [];
+      const fw = { time: 0 };
+      const loop = (now) => {
+        raf = requestAnimationFrame(loop);
+        const c = ref.current, S2 = sim.current, g = gref.current;
+        if (!c) return;
+        const dt = Math.min(0.1, (now - last) / 1e3) * DEV.bagSpeed;
+        last = now;
+        fw.time += dt;
+        const dpr = window.devicePixelRatio || 1, W = c.clientWidth, H = c.clientHeight;
+        if (!W || !H) return;
+        if (c.width !== Math.round(W * dpr) || c.height !== Math.round(H * dpr)) {
+          c.width = Math.round(W * dpr);
+          c.height = Math.round(H * dpr);
+        }
+        const ctx = c.getContext("2d");
+        const sc = Math.min(2.4, W / 60), gx = 6 + 6.5 * sc, gy = H * 0.55;
+        const mx = (gx + 14.2 * sc) / GF_ZOOM, my = (gy - 3.2 * sc) / GF_ZOOM;
+        if (S2 !== seenS) {
+          seenS = S2;
+          seen = S2 ? S2.fired : -1;
+        }
+        if (S2 && S2.fired !== seen) {
+          seen = S2.fired;
+          flash = 0.07;
+          c.dataset.pulls = String(seen);
+          for (const sh of S2.shots) {
+            const n = Math.max(1, sh.count || 1);
+            for (let i = 0; i < n; i++) {
+              const a = (sh.ang || 0) + (Math.random() - 0.5) * (sh.spread || 0) * Math.PI / 180 + (n > 1 ? (i / (n - 1) - 0.5) * 0.12 : 0);
+              if (sh.beam) {
+                beams.push({ a, col: sh.col, w: sh.size || 2, t: 0.15, max: 0.15 });
+                continue;
+              }
+              if (sh.still) {
+                beams.push({ field: 1, r: Math.min(H / GF_ZOOM * 0.4, sh.r || 12), col: sh.col, t: 0.5, max: 0.5 });
+                continue;
+              }
+              const sp = sh.speed * GF_SPEED;
+              shots.push({
+                x: mx,
+                y: my,
+                vx: Math.cos(a) * sp,
+                vy: Math.sin(a) * sp,
+                size: sh.size,
+                col: sh.col,
+                look: sh.look,
+                spin: Math.random() * 6,
+                grav: sh.grav || 0,
+                explode: sh.explode,
+                homing: sh.homing,
+                pull: sh.pull,
+                eat: sh.eat,
+                hidden: sh.hidden,
+                life: 3
+              });
+            }
+          }
+          if (shots.length > GF_MAX) shots.splice(0, shots.length - GF_MAX);
+        }
+        const wW = W / GF_ZOOM, wH = H / GF_ZOOM;
+        for (const b of shots) {
+          b.vy += b.grav * GF_SPEED * GF_SPEED * dt;
+          b.x += b.vx * dt;
+          b.y += b.vy * dt;
+          b.spin += dt * 10;
+          b.life -= dt;
+        }
+        shots = shots.filter((b) => b.life > 0 && b.x > -10 && b.x < wW + 10 && b.y > -10 && b.y < wH + 10);
+        for (const bm of beams) bm.t -= dt;
+        beams = beams.filter((bm) => bm.t > 0);
+        flash -= dt;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "#0b0e14";
+        ctx.fillRect(0, 0, W, H);
+        ctx.save();
+        ctx.scale(GF_ZOOM, GF_ZOOM);
+        const G = { ctx };
+        ctx.lineCap = "round";
+        for (const bm of beams) {
+          ctx.globalAlpha = bm.t / bm.max;
+          if (bm.field) {
+            ctx.fillStyle = bm.col;
+            ctx.globalAlpha *= 0.35;
+            ctx.beginPath();
+            ctx.arc(mx + bm.r + 6, my, bm.r * (1.2 - bm.t / bm.max * 0.4), 0, 6.283);
+            ctx.fill();
+          } else {
+            ctx.strokeStyle = bm.col;
+            ctx.lineWidth = bm.w;
+            ctx.beginPath();
+            ctx.moveTo(mx, my);
+            ctx.lineTo(mx + Math.cos(bm.a) * wW, my + Math.sin(bm.a) * wW);
+            ctx.stroke();
+          }
+        }
+        for (const b of shots) {
+          ctx.globalAlpha = 1;
+          if (b.hidden) continue;
+          if (b.pull) {
+            ctx.fillStyle = "#050208";
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.eat || b.size * 0.78, 0, 6.283);
+            ctx.fill();
+            ctx.strokeStyle = "#b98aff";
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+            continue;
+          }
+          if (b.look && drawLook(fw, G, b)) continue;
+          const sp = Math.hypot(b.vx, b.vy) || 1, len = Math.max(0.5, Math.min(46, sp / GF_SPEED * 0.022));
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = b.col;
+          ctx.lineWidth = b.size * 1.7;
+          ctx.beginPath();
+          ctx.moveTo(b.x - b.vx / sp * len, b.y - b.vy / sp * len);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+        ctx.restore();
+        ctx.globalAlpha = 1;
+        if (g) drawGun(ctx, gx, gy, 0, sc, gunAccent(g));
+        if (flash > 0) {
+          ctx.globalAlpha = Math.min(1, flash / 0.07);
+          ctx.fillStyle = g ? gunAccent(g) : "#fff";
+          ctx.beginPath();
+          ctx.arc(mx * GF_ZOOM + 2, my * GF_ZOOM, 3.5, 0, 6.283);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      };
+      raf = requestAnimationFrame(loop);
+      return () => cancelAnimationFrame(raf);
+    }, []);
+    return h("canvas", { ref, className: "gfire", "data-fire": 1 });
+  }
   function SlotGrid({ gun, tile, sig, sim }) {
     const [lit, setLit] = useState(null);
     const steps = useMemo(() => pullSteps(gun), [sig]);
@@ -27874,6 +28026,44 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       () => gun ? buildAdvice(gun, bagIds, SHOW_TIPS) : null,
       [gsig, SHOW_TIPS ? bagIds.join() : ""]
     );
+    const advice = gun && adv ? (() => {
+      const apply = (t) => (e) => {
+        e.preventDefault();
+        if (t.kind === "move") {
+          const a = gun.slots[t.slot];
+          gun.slots[t.slot] = gun.slots[t.other];
+          gun.slots[t.other] = a;
+        } else {
+          const outgoing = gun.slots[t.slot];
+          const k = bagIds.indexOf(t.id);
+          if (k >= 0) takeFromBag(k);
+          gun.slots[t.slot] = t.id;
+          returnToBag(outgoing);
+        }
+        resetGun(gun);
+        refresh();
+      };
+      return h(
+        "div",
+        { className: "advice" },
+        h(
+          "div",
+          { className: "diag " + adv.limit.key },
+          h("b", null, adv.now.dps.toFixed(1) + " dmg/s"),
+          adv.limit.text
+        ),
+        SHOW_TIPS && canEdit && adv.tips.length ? h(
+          "div",
+          { className: "tips" },
+          adv.tips.map((t, k) => h(
+            "button",
+            { key: k, className: "tip", onPointerDown: apply(t) },
+            t.kind === "move" ? "Swap slots " + (t.slot + 1) + " and " + (t.other + 1) : (gun.slots[t.slot] ? "Replace slot " + (t.slot + 1) + " with " : "Slot " + (t.slot + 1) + ": ") + MODS[t.id].name,
+            h("b", null, "×" + t.gain.toFixed(1) + " dmg")
+          ))
+        ) : null
+      );
+    })() : null;
     const card = shown ? h(
       "div",
       { key: "card" },
@@ -27897,62 +28087,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         "div",
         { className: "btop" },
         gun ? h(GunStats, { gun, sim, sig: gsig }) : h("div", { className: "gstats" }, h("p", { className: "lab" }, "No gun in this slot")),
-        h(
-          "div",
-          { className: "gtabs" },
-          LO.guns.map((g, i) => h(
-            "button",
-            {
-              key: i,
-              "data-gun": i,
-              className: "gtab" + (g ? "" : " empty") + (i === sel ? " on" : "") + (gdrag && gdrag.from === i ? " lifted" : "") + (gdrag && gdrag.over === i && gdrag.from !== i ? " target" : ""),
-              onPointerDown: gunPress(i)
-            },
-            h("span", { className: "gname", style: g ? { color: gunColor(g) } : null }, g ? g.name : "Empty"),
-            g ? h(GunIcon, { gun: g }) : h("span", { className: "gsub" }, "—")
-          ))
-        )
+        h(GunFire, { gun, sim })
       ),
       gun ? h("p", { className: "lab" }, gun.shuffle ? "On the gun — order is shuffled every recharge" : "On the gun — fires left to right, row by row") : null,
       gun ? h(SlotGrid, { gun, tile, sig: gsig, sim }) : null,
-      gun && adv ? (() => {
-        const apply = (t) => (e) => {
-          e.preventDefault();
-          if (t.kind === "move") {
-            const a = gun.slots[t.slot];
-            gun.slots[t.slot] = gun.slots[t.other];
-            gun.slots[t.other] = a;
-          } else {
-            const outgoing = gun.slots[t.slot];
-            const k = bagIds.indexOf(t.id);
-            if (k >= 0) takeFromBag(k);
-            gun.slots[t.slot] = t.id;
-            returnToBag(outgoing);
-          }
-          resetGun(gun);
-          refresh();
-        };
-        return h(
-          "div",
-          { className: "advice" },
-          h(
-            "div",
-            { className: "diag " + adv.limit.key },
-            h("b", null, adv.now.dps.toFixed(1) + " dmg/s"),
-            adv.limit.text
-          ),
-          SHOW_TIPS && canEdit && adv.tips.length ? h(
-            "div",
-            { className: "tips" },
-            adv.tips.map((t, k) => h(
-              "button",
-              { key: k, className: "tip", onPointerDown: apply(t) },
-              t.kind === "move" ? "Swap slots " + (t.slot + 1) + " and " + (t.other + 1) : (gun.slots[t.slot] ? "Replace slot " + (t.slot + 1) + " with " : "Slot " + (t.slot + 1) + ": ") + MODS[t.id].name,
-              h("b", null, "×" + t.gain.toFixed(1) + " dmg")
-            ))
-          ) : null
-        );
-      })() : null,
+      advice,
       h(
         "div",
         { className: "bagHead" },
@@ -27969,6 +28108,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ScrollBox,
         { cls: "bag" + (LO.debug ? " debug" : ""), drop: "bag" },
         h("div", { className: "mgrid" }, bagIds.map((id, i) => tile(id, { type: "bag", i }, "b" + i)))
+      ),
+      // the gun buttons: a row under the mod grid (owner, item 4; they were a 2×2 by the stats)
+      h(
+        "div",
+        { className: "gtabs gunrow" },
+        LO.guns.map((g, i) => h(
+          "button",
+          {
+            key: i,
+            "data-gun": i,
+            className: "gtab" + (g ? "" : " empty") + (i === sel ? " on" : "") + (gdrag && gdrag.from === i ? " lifted" : "") + (gdrag && gdrag.over === i && gdrag.from !== i ? " target" : ""),
+            onPointerDown: gunPress(i)
+          },
+          h("span", { className: "gname", style: g ? { color: gunColor(g) } : null }, g ? g.name : "Empty"),
+          g ? h(GunIcon, { gun: g }) : h("span", { className: "gsub" }, "—")
+        ))
       ),
       h(
         "div",

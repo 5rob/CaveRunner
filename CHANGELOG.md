@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## Unreleased
+
+- **Bag: a firing window** (owner, item 4; waiting on the owner's OK of the screenshots). The gun
+  buttons moved to a row of four under the collected-mods grid; where they were, a small dark window
+  shows the selected gun firing each pull's real shots (the game's own spell looks) in step with the
+  slot lights, and it follows the build live as mods are moved (`ui/editor.js` `GunFire`,
+  `bagsim.js` `S.shots`; suite `gunfire`).
+
 ## v0.0.148 — Level 2 speed-ups; Flamethrower; Fire Immunity
 Released 2026-10-06 (the owner OK'd the screenshots; a minor update). The owner's list, after
 playing Level 2 (it dropped frames as a zone came into view and with the aliens about):
