@@ -23,8 +23,8 @@ check('homing shows up as a gained trait', ['homing', 'bolt'], 0, ['homing 3.5 +
 check('scatter counts the extra pellets', ['scatter', 'bolt'], 0,
   ['shots 3 +2(up)', 'spread 18', 'dmg 1.65 +0.65(up)']);
 check('buckshot damage counts every pellet', ['buck'], 0, ['dmg 3.5', 'shots 5']);
-check('a double cast group totals both shots', ['double', 'dmg_up', 'bolt', 'bolt'], 0,
-  ['dmg 5 +3(up)']);
+check('a double cast group totals both shots (the mod on the first only)', ['double', 'dmg_up', 'bolt', 'bolt'], 0,
+  ['dmg 3.5 +1.5(up)']);
 check('the buzzsaw group shows the delay it wipes', ['double', 'bolt', 'saw'], 0,
   ['delay 0.016s']);
 check('second group is measured on its own', ['dmg_up', 'bolt', 'bolt'], 1, ['dmg 1']);

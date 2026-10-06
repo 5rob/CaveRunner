@@ -17,7 +17,7 @@ export function effRecharge(g) {
 }
 
 // Work out what the next pull of the trigger fires. Walks the slot list from where
-// the gun left off, piling up modifiers and applying them to the shots that follow.
+// the gun left off, piling up modifiers and handing them to the next spell drawn.
 // Advances g.idx; the caller rolls it back if there isn't the mana to pay.
 // Anything that comes out of the barrel: a shot has these and nothing else, so a
 // modifier's f() can only touch fields that exist here.
@@ -49,12 +49,17 @@ export function blankShot(sm, spread) {
 }
 
 // Work out what the next pull of the trigger fires. Walks the slot list from where
-// the gun left off, piling up modifiers and applying them to the spells that follow.
+// the gun left off. A modifier lands only on the NEXT spell that takes a cast slot (a shot
+// or a static): modifiers in a row all pile onto that one spell, and the one after it is
+// bare. Modifiers with no spell after them in the pull are wasted (a multicast that wraps
+// round carries them to the first spell it finds at the front).
 // Advances g.idx; the caller rolls it back if there isn't the mana to pay.
 // `others` is your other guns, which only Zeta looks at.
 /** @param {Gun} g @param {(Gun | null)[]} [others] @returns {Plan} */
 export function planCast(g, others) {
-  const start = g.idx, mods = [], defs = [];
+  const start = g.idx, defs = [];
+  let mods = [];                        // modifiers waiting for the next spell
+  const modsOf = [];                    // the modifiers each cast spell got, by its index in defs
   // what each cast spell is carrying, by its index in defs: a trigger fills this
   // with the payload it drew, and everything else leaves it empty
   const holds = [];
@@ -146,6 +151,7 @@ export function planCast(g, others) {
         continue;
       }
       const sh = dress(m, pm);
+      pm.length = 0;                    // a modifier lands only on the next spell
       if (pAdd && m.kind === 'shot' && !sh.trig) sh.trig = pAdd;
       pAdd = null;
       if (sh.trig) sh.payload = depth < 6 ? payloadOf(m.draw || 1, depth + 1) : [];
@@ -205,6 +211,8 @@ export function planCast(g, others) {
       continue;
     }
     defs.push(m);
+    modsOf.push(mods);
+    mods = [];
     cost += m.mana;
     timing(m);
     // a carrier (a "with Trigger" spell, or any projectile after Add Trigger) draws its
@@ -214,7 +222,7 @@ export function planCast(g, others) {
     if (kind) holds[defs.length - 1] = { kind, list: payloadOf(m.draw || 1, 1) };
   }
   const shots = defs.map((sm, i) => {
-    const sh = dress(sm, mods);
+    const sh = dress(sm, modsOf[i]);
     if (holds[i]) { sh.trig = holds[i].kind; sh.payload = holds[i].list; }
     return sh;
   });

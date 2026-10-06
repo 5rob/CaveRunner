@@ -17103,7 +17103,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
   function planCast(g, others) {
-    const start2 = g.idx, mods = [], defs = [];
+    const start2 = g.idx, defs = [];
+    let mods = [];
+    const modsOf = [];
     const holds = [];
     let addTrig = null;
     let multi = g.multi, cost2 = 0, manaMul = 1, ran = false, wrapped = 0;
@@ -17188,6 +17190,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           continue;
         }
         const sh = dress(m, pm);
+        pm.length = 0;
         if (pAdd && m.kind === "shot" && !sh.trig) sh.trig = pAdd;
         pAdd = null;
         if (sh.trig) sh.payload = depth < 6 ? payloadOf(m.draw || 1, depth + 1) : [];
@@ -17251,6 +17254,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         continue;
       }
       defs.push(m);
+      modsOf.push(mods);
+      mods = [];
       cost2 += m.mana;
       timing(m);
       const kind = m.trig || m.kind === "shot" && addTrig || null;
@@ -17258,7 +17263,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (kind) holds[defs.length - 1] = { kind, list: payloadOf(m.draw || 1, 1) };
     }
     const shots = defs.map((sm, i) => {
-      const sh = dress(sm, mods);
+      const sh = dress(sm, modsOf[i]);
       if (holds[i]) {
         sh.trig = holds[i].kind;
         sh.payload = holds[i].list;

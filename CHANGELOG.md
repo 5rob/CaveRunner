@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## Unreleased
+
+- **A modifier now affects only the next spell** (owner's decision): `[Damage Plus][Bolt][Bolt]`
+  boosts only the first bolt; modifiers in a row all land on the next spell; inside a multicast or a
+  trigger payload each spell gets only the modifiers right before it. Timing and mana unchanged.
+  `planCast` (`spells/cast.js`); the aim line, bag stats and advisor read its shots, so they follow.
+  Tests: new `nextspell`; `cast`, `groupstats`, `advice` updated to the new rule.
+
 ## v0.0.148 — Level 2 speed-ups; Flamethrower; Fire Immunity
 Released 2026-10-06 (the owner OK'd the screenshots; a minor update). The owner's list, after
 playing Level 2 (it dropped frames as a zone came into view and with the aliens about):
