@@ -4,7 +4,8 @@
 
 - `DEV` — the live values; the game reads them every frame, so a change shows at once.
 - `DEV_DEFAULTS` (plain knobs), `DEV_META` (one row each: key, group `g`, label, min/max/step,
-  optional `type: 'color' | 'slider'`), `DEV_GROUPS` (the collapsible sections, in order).
+  optional `type: 'color' | 'slider'`), `DEV_GROUPS` (the collapsible sections, in order), `DEV_TABS` (the panel's tabs: `[id, name, groups]`;
+  `devTabOf(g)` = a group's tab; **a new group goes in a tab too**, `devsettings.test.js` checks it).
 - `devSet(k, v)` writes through to localStorage (`DEV_KEY` = `caverunner-dev`); `devReport()`
   is the text behind **Copy all dev settings to clipboard**.
 - Range knobs: `rangeKnobs(group, rows)` registers `k+'Lo'`/`k+'Hi'` and two rows each; `kr(k, rnd)`
@@ -78,4 +79,4 @@
 - **The knob tables stay in this file** (REFACTOR.md D11): `DEV` is copied from `DEV_DEFAULTS` once,
   right after the tables register, so a table in a creature's own module would register too late.
 - A blank field in the panel restores `DEV_DEFAULTS[k]`. Group open/shut state is localStorage
-  `caverunner-devgroups` (all shut by default).
+  `caverunner-devgroups` (all shut by default), the tab `caverunner-devtab`.

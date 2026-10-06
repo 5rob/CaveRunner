@@ -117,6 +117,17 @@ export const DEV_META = [
 ];
 export const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['fx', 'Hologram & glow'], ['holoflash', 'Hologram flash (on a kill)'], ['guide', 'Guide hologram (new run)'], ['player', 'Player'],
   ['enemy', 'Enemies'], ['elite', 'Elites'], ['elitefx', 'Elites: flames'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['level2', 'Level 2: layout & look'], ['l2dark', 'Level 2: dark zones'], ['l2boom', 'Level 2: destruction'], ['l2alien', 'Level 2: aliens'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
+// The Dev panel's tabs: each a page of DEV_GROUPS, in this order (a group in no tab lands on the last)
+/** @type {[string, string, string[]][]} */
+export const DEV_TABS = [
+  ['look', 'Look', ['view', 'light', 'fx', 'holoflash', 'guide']],
+  ['player', 'Player', ['player', 'carrot', 'bh', 'sound', 'ui', 'menuptr', 'witness']],
+  ['creatures', 'Creatures', ['enemy', 'elite', 'elitefx', 'spider', 'rat', 'jelly', 'jellycol']],
+  ['world', 'World', ['level', 'arch', 'sway', 'fire']],
+  ['level2', 'Level 2', ['level2', 'l2dark', 'l2boom', 'l2alien']],
+];
+/** @param {string} g @returns {string} the tab a group sits on */
+export const devTabOf = g => (DEV_TABS.find(t => t[2].includes(g)) || DEV_TABS[DEV_TABS.length - 1])[0];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults.
 export function devReport() {

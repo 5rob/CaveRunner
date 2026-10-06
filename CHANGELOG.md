@@ -12,6 +12,14 @@ Names are as they were at the time (before the refactor Game's state had loose n
   trigger payload each spell gets only the modifiers right before it. Timing and mana unchanged.
   `planCast` (`spells/cast.js`); the aim line, bag stats and advisor read its shots, so they follow.
   Tests: new `nextspell`; `cast`, `groupstats`, `advice` updated to the new rule.
+- **The Dev panel, tidied** (LIST3 #3, waiting for the owner's OK):
+  - The Dev panel is a dark card with **tabs** (Look, Player, Creatures, World, Level 2: `DEV_TABS` in `dev/knobs.js`),
+  each a page of **collapsible groups**: a **tap** opens/shuts a group (was press-and-hold; a scroll gets no tap).
+  Each header shows its knob count and how many you've changed; a dot on a tab means something on it changed.
+  - The actions (All mods, All perks, Spawn gun, New cave, Floor 2, Restart run, **Copy report**) sit in a grid on top.
+  - A **search box** finds knobs by name on every tab. Open groups and the tab are remembered (localStorage).
+  - Copy report's text is unchanged. New suite `tests/browser/devpanel.test.js` (also takes the screenshots with
+  `CAVERUNNER_SHOTS=<dir>`); `blackhole`, `jelly` updated for tabs and tap.
 
 ## v0.0.148 — Level 2 speed-ups; Flamethrower; Fire Immunity
 Released 2026-10-06 (the owner OK'd the screenshots; a minor update). The owner's list, after
