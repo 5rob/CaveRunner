@@ -14,7 +14,7 @@ import {
 import { gunAccent, gunColor, gunLvCol, resetGun } from '../spells/guns.js';
 import { ALL_IDS, FAMILIES, FAMILY_OF, MODS, famCol } from '../spells/mods.js';
 import { drawLook } from '../game/render/looks.js';
-import { ModCard } from './cards.js';
+import { ModCard, tgtBadge } from './cards.js';
 import { h, useEffect, useMemo, useRef, useState } from './h.js';
 import { GAUGE_COL, healthCol } from './hud.js';
 
@@ -293,7 +293,7 @@ export const SHOW_TIPS = false;
 /** @param {{ input: { current: GameInput }, close: () => void, refresh: () => void, canEdit: boolean, tabs?: any }} props */
 export function Editor({ input, close, refresh, canEdit, tabs }) {
   const LO = input.current.loadout;
-  useEffect(() => { SFX.fx('open'); return () => SFX.fx('close'); }, []);
+  useEffect(() => { SFX.fx('open'); input.current.pickTarget = null; return () => SFX.fx('close'); }, []);   // opening the Bag cancels a Discriminate pick
   const [sel, setSel] = useState(LO.sel);
   const sim = useRef(null);
   const [drag, setDrag] = useState(null);
@@ -430,6 +430,7 @@ export function Editor({ input, close, refresh, canEdit, tabs }) {
         onPointerDown: m ? startDrag(id, from) : undefined,
       },
       m ? h('span', { className: 'tg' }, m.glyph) : h('span', { className: 'tg' }, '+'),
+      tgtBadge(id),
       m ? h('span', { className: 'tn' }, m.name) : null,
       m && m.mark && n < 2 ? h('span', { className: 'tmark' }, m.mark) : null,
       n > 1 ? h('span', { className: 'tcount', 'data-n': n }, h('b', null, n)) : null   // a stack: how many copies
@@ -491,7 +492,10 @@ export function Editor({ input, close, refresh, canEdit, tabs }) {
   const card = shown
     ? h('div', { key: 'card' },
         h('div', { className: 'shade', onPointerDown: behind }),
-        h(ModCard, { id: info, onClose: () => setInfo(null), top: true }))
+        h(ModCard, { id: info, onClose: () => setInfo(null), top: true,
+          // an unset Discriminate in the bag: set its target with the world pointer (game/systems/gun.js)
+          act: info === 'discrim' && !LO.debug && LO.bag.includes('discrim')
+            ? { label: 'Set target', run: () => { input.current.pickTarget = LO.bag.indexOf('discrim'); close(); } } : null }))
     : null;
 
   return h('div', { className: 'sheet' + (shown ? ' withcard' : '') },

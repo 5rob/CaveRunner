@@ -280,6 +280,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   border-radius:8px;background:currentColor;display:flex;align-items:center;justify-content:center;
   pointer-events:none;font:800 9px system-ui,sans-serif;line-height:1}
 .tcount b{color:#111}
+.ttgt{position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:9px;background:rgba(0,0,0,.55);
+  border:1px solid currentColor;display:flex;align-items:center;justify-content:center;pointer-events:none;
+  font:700 10px system-ui,sans-serif;line-height:1;color:#fff;overflow:hidden}
+.pglyph{position:relative}
+.pglyph .ttgt{top:auto;left:auto;right:-6px;bottom:-6px;width:20px;height:20px;border-radius:10px;font-size:12px}
+.pact{margin:8px 0 2px;padding:9px 14px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);
+  color:inherit;font:700 14px system-ui,sans-serif;width:100%;touch-action:manipulation}
 .tn{font:500 8.5px system-ui,sans-serif;color:var(--muted);text-align:center;line-height:1.1;
   max-width:100%;padding:0 2px}
 .ghost{position:fixed;z-index:30;width:60px;height:56px;border-radius:9px;border:2px solid;
@@ -3082,6 +3089,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         s.assist = 1;
       }
     },
+    // Discriminate (LIST3 #11): each copy carries its own target, set once in the Bag with the world pointer
+    // (spells/discrim.js: a targeted copy is its own id, 'discrim:<kind>:<id>', registered by ensureMod).
+    // An unset copy does nothing; a set one makes the next spell touch only that target.
+    discrim: {
+      name: "Discriminate",
+      kind: "mod",
+      glyph: "⌾",
+      col: "#b57cff",
+      mana: 4,
+      d: 0.02,
+      info: "Set its target once in the Bag (a creature, you, or an object): the next spell then only touches that, and passes through everything else",
+      f: () => {
+      }
+    },
     nearhome: {
       name: "Short-range Homing",
       kind: "mod",
@@ -3479,6 +3500,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     orbit: "path",
     autoaim: "path",
     aimassist: "path",
+    discrim: "path",
     nearhome: "path",
     eater: "path",
     split: "pattern",
@@ -3603,6 +3625,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     orbit: 50,
     autoaim: 45,
     aimassist: 40,
+    discrim: 40,
     nearhome: 35,
     flat: 35,
     eater: 60,
@@ -3687,6 +3710,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     pong: 2,
     autoaim: 2,
     aimassist: 2,
+    discrim: 2,
     nearhome: 2,
     flat: 2,
     crit: 2,
@@ -7711,6 +7735,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     orbit: "ORBIT_SHOT",
     autoaim: "AUTOAIM",
     aimassist: "AUTOAIM",
+    discrim: "AUTOAIM",
     nearhome: "HOMING_SHORT",
     flat: "HORIZONTAL_ARC",
     eater: "MATTER_EATER",
@@ -7960,6 +7985,89 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return COL.bullet;
   }
 
+  // src/spells/discrim.js
+  var PRE = "discrim:";
+  function discrimId(t) {
+    const id = PRE + t.kind + ":" + t.id;
+    ensureMod(id);
+    return id;
+  }
+  function ensureMod(id) {
+    if (!id) return false;
+    if (MODS[id]) return true;
+    if (!id.startsWith(PRE)) return false;
+    const [kind, ...rest] = id.slice(PRE.length).split(":");
+    const tid = rest.join(":");
+    if (kind !== "creature" && kind !== "player" && kind !== "object" || !tid) return false;
+    const tgt = { kind, id: tid };
+    const b = MODS.discrim;
+    MODS[id] = Object.assign({}, b, {
+      id,
+      base: "discrim",
+      off: 1,
+      tgt,
+      name: "Discriminate → " + targetName(tgt),
+      info: "The next spell touches only " + targetName(tgt) + ", and passes through everything else (it still stops at rock, without digging or burning it)",
+      f: (s) => {
+        s.only = tgt;
+      }
+    });
+    FAMILY_OF[id] = FAMILY_OF.discrim;
+    MOD_PRICE[id] = MOD_PRICE.discrim;
+    MOD_TIER[id] = MOD_TIER.discrim;
+    return true;
+  }
+  var targetOf = (id) => id && MODS[id] && MODS[id].tgt || null;
+  var isUnsetDiscrim = (id) => id === "discrim";
+  function matchesTarget(t, thing) {
+    if (!t) return true;
+    return t.kind === thing.kind && t.id === thing.id;
+  }
+  var BODY_ICON = {
+    jelly: "🪼",
+    drone: "🤖",
+    spider: "🕷",
+    alien: "👽",
+    rat: "🐀",
+    nest: "🪺",
+    crawler: "🐾",
+    worm: "🪱",
+    blob: "🟢",
+    skull: "💀"
+  };
+  var OBJ_ICON = {
+    barrel: "🛢",
+    pod: "🫛",
+    lamp: "🏮",
+    cover: "🧱",
+    crystal: "💎",
+    mod: "✦",
+    gun: "🔫",
+    heart: "❤",
+    heal: "✚",
+    perk: "★",
+    noise: "🪨",
+    spike: "🔺",
+    drop: "🧊",
+    climb: "🌿"
+  };
+  function targetIcon(t) {
+    if (t.kind === "player") return "👨‍🚀";
+    if (t.kind === "creature") {
+      const c = CREATURES[t.id];
+      return c && BODY_ICON[c.body] || (c ? c.name.slice(0, 2) : "?");
+    }
+    return OBJ_ICON[t.id] || t.id.slice(0, 2);
+  }
+  function targetName(t) {
+    if (t.kind === "player") return "You";
+    if (t.kind === "creature") {
+      const c = CREATURES[t.id];
+      return c ? c.name : t.id;
+    }
+    return t.id.charAt(0).toUpperCase() + t.id.slice(1);
+  }
+
   // src/save/save.js
   var SAVE_KEY = "caverunner-save";
   var GUN_DEFAULTS = {
@@ -7977,7 +8085,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function cleanGun(g) {
     if (!g || typeof g !== "object" || !Array.isArray(g.slots) || !g.slots.length) return null;
     const out = Object.assign({}, GUN_DEFAULTS, g);
-    out.slots = g.slots.map((id) => id && MODS[id] ? id : null);
+    out.slots = g.slots.map((id) => id && ensureMod(id) ? id : null);
     out.cap = out.slots.length;
     out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
     return resetGun(out);
@@ -8012,7 +8120,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return {
       guns,
       sel,
-      bag: (Array.isArray(lo.bag) ? lo.bag : []).filter((id) => MODS[id]),
+      bag: (Array.isArray(lo.bag) ? lo.bag : []).filter((id) => ensureMod(id)),
       // perks carried (LO.perks) and fitted to the Exo Suit (LO.suit). A save from before the suit:
       // its switched-on perks go in the slots, as many as fit, the rest are carried
       ...cleanPerks(lo),
@@ -14444,6 +14552,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const x0 = pr.x + pr.l, x1 = pr.x + pr.r, y0 = pr.y + pr.t0, y1 = pr.y + pr.b;
         for (const b of W.bullets) {
           if (b.life <= 0 || b.x + b.size < x0 || b.x - b.size > x1 || b.y + b.size < y0 || b.y - b.size > y1) continue;
+          if (b.only && !matchesTarget(b.only, { kind: "object", id: pr.k })) continue;
           if (b.pull || b.eat || b.bore) {
             const seen = b.propHit || (b.propHit = /* @__PURE__ */ new Set());
             if (!seen.has(pr)) {
@@ -17216,6 +17325,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       follow: 0,
       autoaim: 0,
       assist: 0,
+      only: null,
       homeR: sm.homeR || 0,
       flat: 0,
       eat: sm.eat || 0,
@@ -24350,7 +24460,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ox: bx,
         oy: by,
         age: 0,
-        born: sh.life
+        born: sh.life,
+        only: sh.only || null
       });
     }
   }
@@ -24374,6 +24485,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var assistOut = false, assistT = 0;
   var assistHeld = null;
+  var pickOut = false, pickHint = false;
+  var pickHeld = null;
+  function pickables(W, v) {
+    const on = (x, y) => x >= v.x && x <= v.x + v.w && y >= v.y && y <= v.y + v.h;
+    const out = [];
+    for (const e of W.enemies) if (e.hp > 0 && on(e.x, e.ty)) out.push({ x: e.x, ty: e.ty, r: e.r, t: { kind: "creature", id: e.k.id } });
+    if (!W.p.dead) out.push({ x: W.p.x + PW / 2, ty: W.p.y + PH / 2, r: 6, t: { kind: "player", id: "player" } });
+    for (const pr of W.props) {
+      const x = pr.x + (pr.l + pr.r) / 2, y = pr.y + (pr.t0 + pr.b) / 2;
+      if (!pr.gone && on(x, y)) out.push({ x, ty: y, r: Math.min(14, Math.max(pr.r - pr.l, pr.b - pr.t0) / 2), t: { kind: "object", id: pr.k } });
+    }
+    for (const it of W.pickups) if (!it.taken && on(it.x, it.y)) out.push({ x: it.x, ty: it.y, r: 5, t: { kind: "object", id: it.kind } });
+    return out;
+  }
   function aimAndCast(W, G, F2) {
     const { dt, LO, pcx } = F2;
     const gx = pcx, gy = W.p.y + PH * 0.4;
@@ -24400,7 +24525,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     const held = LO.guns[LO.sel];
     W.p.assist = void 0;
-    if (hasAssist(held) && !W.p.dead && TR.active && !G.RPV) {
+    const pick = G.input.current.pickTarget;
+    if (pick == null && hasAssist(held) && !W.p.dead && TR.active && !G.RPV) {
       if (TR.mag > DEV.aaStart || assistOut) {
         assistOut = true;
         const view = { x: W.camX, y: W.camY, w: W.viewW || 400, h: W.viewH || 300 };
@@ -24418,6 +24544,37 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     } else if (!TR.active) {
       assistOut = false;
       assistHeld = null;
+    }
+    if (pick != null && !G.RPV) {
+      const IN = G.input.current;
+      if (!pickHint) {
+        pickHint = true;
+        toast(W, "Aim at a target, let go to set it");
+      }
+      if (TR.active) {
+        pickOut = true;
+        const view = { x: W.camX, y: W.camY, w: W.viewW || 400, h: W.viewH || 300 };
+        const raw = assistPointer(gx, gy, TR.nx, TR.ny, TR.mag, view);
+        const s = assistSnap(raw, pickables(W, view), () => true, pickHeld);
+        pickHeld = s.on;
+        W.p.assist = { x: s.x, y: s.y, snap: !!s.on, ex: s.on ? s.on.x : 0, ey: s.on ? s.on.ty : 0, er: s.on ? s.on.r : 0 };
+      } else if (pickOut || W.p.dead) {
+        if (pickHeld && LO.bag[pick] === "discrim") {
+          LO.bag[pick] = discrimId(pickHeld.t);
+          toast(W, "Discriminate → " + targetName(pickHeld.t));
+          SFX.ui("mod");
+        } else toast(W, "Discriminate: no target set");
+        IN.pickTarget = null;
+        pickOut = false;
+        pickHeld = null;
+        pickHint = false;
+        IN.notify();
+      }
+      R = { on: false, show: false, nx: W.p.face, ny: 0 };
+    } else {
+      pickOut = false;
+      pickHeld = null;
+      pickHint = false;
     }
     if (W.p.dead) R.on = false;
     W.p.aim = R;
@@ -24729,6 +24886,33 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/game/systems/bullets.js
+  var mayHit = (b, e) => !b.only || matchesTarget(b.only, { kind: "creature", id: e.k.id });
+  function onlyAt(W, b, x, y, pad) {
+    if (!b.only || b.only.kind !== "creature") return -1;
+    for (let j = 0; j < W.enemies.length; j++) {
+      const e = W.enemies[j];
+      if (mayHit(b, e) && Math.hypot(x - e.x, y - e.ty) < e.r + pad) return j;
+    }
+    return -1;
+  }
+  function onlyBlast(W, G, b, x, y, R) {
+    SFX.boom(x, y, R);
+    W.flashes.push({ x, y, r: R, t: 0 });
+    burst(W, x, y, 8, b.col);
+    for (let j = W.enemies.length - 1; j >= 0; j--) {
+      const e = W.enemies[j], dist = Math.hypot(e.x - x, e.ty - y);
+      if (b.only && b.only.kind === "creature" && mayHit(b, e) && dist < R + e.r) damageEnemy(W, j, dist < R * 0.5 ? 3 : 2);
+    }
+    if (b.only && b.only.kind === "player" && !W.p.dead) {
+      const dist = Math.hypot(W.p.x + PW / 2 - x, W.p.y + PH / 2 - y), reach2 = R + 10;
+      if (dist < reach2) hurt(W, G, Math.round(25 * (1 - dist / reach2)));
+    }
+    if (b.only && b.only.kind === "object") for (const pr of W.props) {
+      if (pr.gone || !matchesTarget(b.only, { kind: "object", id: pr.k })) continue;
+      const bx = clamp(x, pr.x + pr.l, pr.x + pr.r), by = clamp(y, pr.y + pr.t0, pr.y + pr.b);
+      if (Math.hypot(bx - x, by - y) < R + 6) pr.hurt = (pr.hurt || 0) + 2;
+    }
+  }
   function spray(W, b) {
     SFX.fx("cluster", b.x, b.y);
     const n = Math.min(8, b.cluster);
@@ -24805,7 +24989,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         boom = b.explode ? true : false;
         if (!b.explode) dead = true;
         else {
-          explodeCross(W, G, b);
+          if (b.only) onlyBlast(W, G, b, b.x, b.y, b.explode);
+          else explodeCross(W, G, b);
           dead = true;
           boom = false;
         }
@@ -24835,13 +25020,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         [ex, ey] = pathStep(b, dt, pathEnv(W, b, dt));
         if (b.caught) dead = true;
       }
-      if (b.eat) dig(W, G, b.x, b.y, b.eat);
-      if (b.fire) ignite(W, G, b.x, b.y, b.size + 2, 0.5);
+      if (b.eat && !b.only) dig(W, G, b.x, b.y, b.eat);
+      if (b.fire && !b.only) ignite(W, G, b.x, b.y, b.size + 2, 0.5);
       if (b.arc) lightningStep(W, b, dt);
       if (b.payload && b.timer != null && (b.timer -= dt) <= 0) firePayload(W, G, b);
       if (b.pull) {
         const reach2 = DEV.bhPull * b.pull / 70;
         for (const e of W.enemies) {
+          if (!mayHit(b, e)) continue;
           const dx = b.x - e.x, dy = b.y - e.ty, d = Math.hypot(dx, dy) || 1;
           if (d < reach2) {
             const f = Math.min(d / dt, 60 + 420 * (1 - d / reach2));
@@ -24903,6 +25089,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           b.vy = d[1];
           let bd = b.homeR || DRIFT_R;
           for (const e of W.enemies) {
+            if (!mayHit(b, e)) continue;
             const dd = Math.hypot(e.x - b.x, e.ty - b.y);
             if (dd < bd && lineOfSight(W, b.x, b.y, e.x, e.ty)) {
               bd = dd;
@@ -24921,6 +25108,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (b.homing && !b.drift) {
         let best = null, bd = b.homeR || 260;
         for (const e of W.enemies) {
+          if (!mayHit(b, e)) continue;
           const d = Math.hypot(e.x - b.x, e.ty - b.y);
           if (d < bd) {
             bd = d;
@@ -24941,7 +25129,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const sn = Math.max(1, Math.ceil(Math.hypot(b.vx * dt + ex, b.vy * dt + ey) / 2));
       for (let st = 0; st < sn && !dead && !boom; st++) {
         const nx = b.x + (b.vx * dt + ex) / sn, ny = b.y + (b.vy * dt + ey) / sn;
-        const j = enemyAt(W, nx, ny, b.size + 1);
+        const j = b.only ? onlyAt(W, b, nx, ny, b.size + 1) : enemyAt(W, nx, ny, b.size + 1);
         if (j >= 0 && !(b.hit && b.hit.has(W.enemies[j]))) {
           const e = W.enemies[j];
           const sp = Math.hypot(b.vx, b.vy) || 1;
@@ -24957,7 +25145,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             (b.hit || (b.hit = /* @__PURE__ */ new Set())).add(e);
             let best = null, bd = 150;
             for (const o of W.enemies) {
-              if (b.hit.has(o)) continue;
+              if (b.hit.has(o) || !mayHit(b, o)) continue;
               const d = Math.hypot(o.x - nx, o.ty - ny);
               if (d < bd) {
                 bd = d;
@@ -24973,6 +25161,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               b.life = Math.max(b.life, 0.4);
               continue;
             }
+          }
+          if (b.only && (b.cluster || b.pop)) {
+            onlyBlast(W, G, b, nx, ny, b.pop || 12);
+            dead = true;
+            break;
           }
           if (b.cluster) {
             spray(W, b);
@@ -25000,7 +25193,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             break;
           }
         }
-        if (b.friendly && !W.p.dead && nx > W.p.x - 2 && nx < W.p.x + PW + 2 && ny > W.p.y - 2 && ny < W.p.y + PH + 2) {
+        if (b.only && b.only.kind === "player" && b.age > 0.12 && !W.p.dead && nx > W.p.x - 2 && nx < W.p.x + PW + 2 && ny > W.p.y - 2 && ny < W.p.y + PH + 2) {
+          burst(W, nx, ny, 5, b.col);
+          hurt(W, G, Math.max(1, Math.round(b.dmg * 2)));
+          if (b.explode) {
+            b.x = nx;
+            b.y = ny;
+            boom = true;
+          } else dead = true;
+          break;
+        }
+        if (b.friendly && !b.only && !W.p.dead && nx > W.p.x - 2 && nx < W.p.x + PW + 2 && ny > W.p.y - 2 && ny < W.p.y + PH + 2) {
           burst(W, nx, ny, 5, b.col);
           hurt(W, G, Math.round(b.dmg * 2));
           dead = true;
@@ -25020,7 +25223,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             if (slow && b.lifeBoom) b.bounce++;
             if (!slow) SFX.bounce(b.x, b.y);
             if (b.look) shotBounce(W, b);
-            if (b.bounceFx === "explode") explode(W, G, b.x, b.y, Math.max(10, b.explode || 12));
+            if (b.bounceFx === "explode" && !b.only) explode(W, G, b.x, b.y, Math.max(10, b.explode || 12));
+            break;
+          }
+          if (b.only) {
+            burst(W, b.x, b.y, 3, b.col);
+            SFX.rock(b.x, b.y);
+            dead = true;
             break;
           }
           b.x = nx;
@@ -25058,10 +25267,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         b.y = ny;
       }
       if (boom) {
-        explode(W, G, b.x, b.y, b.explode, void 0, b.fire);
+        if (b.only) onlyBlast(W, G, b, b.x, b.y, b.explode);
+        else explode(W, G, b.x, b.y, b.explode, void 0, b.fire);
         dead = true;
       }
-      if (dead && b.fire) ignite(W, G, b.x, b.y, b.size + 6, 0.9);
+      if (dead && b.fire && !b.only) ignite(W, G, b.x, b.y, b.size + 6, 0.9);
       if (dead && b.payload && (b.trig === "expire" || b.struck)) firePayload(W, G, b);
       if (dead && b.tele) teleportTo(W, b);
       if (dead && b.arc && b.trail) {
@@ -26160,7 +26370,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       )
     );
   }
-  function ModCard({ id, onClose, ingame, top, flow }) {
+  var tgtBadge = (id) => id && MODS[id] && MODS[id].tgt ? h("span", { className: "ttgt" }, targetIcon(MODS[id].tgt)) : null;
+  function ModCard({ id, onClose, ingame, top, flow, act }) {
     const m = MODS[id];
     const au = useAudit("mod:" + id);
     const kind = famOf(id).name + (m.kind === "passive" ? " · always on" : "");
@@ -26309,7 +26520,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(
         "div",
         { className: "phead" },
-        h("div", { className: "pglyph", style: { borderColor: famCol(id), color: famCol(id) } }, m.glyph),
+        h("div", { className: "pglyph", style: { borderColor: famCol(id), color: famCol(id) } }, m.glyph, tgtBadge(id)),
         h(
           "div",
           { className: "ptitle" },
@@ -26326,6 +26537,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }, "×") : null
       ),
       m.info ? h("p", { className: "pinfo" }, m.info) : null,
+      act ? h("button", { className: "pact", onPointerDown: (e) => {
+        e.preventDefault();
+        act.run();
+      } }, act.label) : null,
       timing ? h("p", { className: "pnote" }, timing) : null,
       rows.length ? h(
         "div",
@@ -28466,6 +28681,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const LO = input.current.loadout;
     useEffect(() => {
       SFX.fx("open");
+      input.current.pickTarget = null;
       return () => SFX.fx("close");
     }, []);
     const [sel, setSel] = useState(LO.sel);
@@ -28605,6 +28821,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           onPointerDown: m ? startDrag(id, from) : void 0
         },
         m ? h("span", { className: "tg" }, m.glyph) : h("span", { className: "tg" }, "+"),
+        tgtBadge(id),
         m ? h("span", { className: "tn" }, m.name) : null,
         m && m.mark && n < 2 ? h("span", { className: "tmark" }, m.mark) : null,
         n > 1 ? h("span", { className: "tcount", "data-n": n }, h("b", null, n)) : null
@@ -28670,7 +28887,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       "div",
       { key: "card" },
       h("div", { className: "shade", onPointerDown: behind }),
-      h(ModCard, { id: info, onClose: () => setInfo(null), top: true })
+      h(ModCard, {
+        id: info,
+        onClose: () => setInfo(null),
+        top: true,
+        // an unset Discriminate in the bag: set its target with the world pointer (game/systems/gun.js)
+        act: info === "discrim" && !LO.debug && LO.bag.includes("discrim") ? { label: "Set target", run: () => {
+          input.current.pickTarget = LO.bag.indexOf("discrim");
+          close();
+        } } : null
+      })
     ) : null;
     return h(
       "div",

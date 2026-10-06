@@ -8,6 +8,7 @@ import { modPreview } from '../spells/advisor.js';
 import { effRecharge, gunPassives } from '../spells/cast.js';
 import { gunColor, gunLvCol } from '../spells/guns.js';
 import { MODS, famCol, famOf } from '../spells/mods.js';
+import { targetIcon } from '../spells/discrim.js';
 import { auditGet, auditNotes, auditToggle, loadAudit, saveAudit } from '../save/audit.js';
 import { h, useState } from './h.js';
 
@@ -150,8 +151,12 @@ function AuditText({ au, name, glyph, col, cls }) {
       h('button', { className: 'ausave', onPointerDown: e => { e.preventDefault(); au.setNotes(t); } }, 'Save')));
 }
 
-/** @param {{ id: string, onClose?: () => void, ingame?: boolean, top?: boolean, flow?: boolean }} props */
-export function ModCard({ id, onClose, ingame, top, flow }) {
+// A Discriminate copy's target, as a little icon in the corner of its tile (Bag, gun slots, cards)
+/** @param {string | null | undefined} id */
+export const tgtBadge = id => id && MODS[id] && MODS[id].tgt ? h('span', { className: 'ttgt' }, targetIcon(MODS[id].tgt)) : null;
+
+/** @param {{ id: string, onClose?: () => void, ingame?: boolean, top?: boolean, flow?: boolean, act?: { label: string, run: () => void } | null }} props */
+export function ModCard({ id, onClose, ingame, top, flow, act }) {
   const m = MODS[id];
   const au = useAudit('mod:' + id);
   const kind = famOf(id).name + (m.kind === 'passive' ? ' \u00b7 always on' : '');
@@ -230,7 +235,7 @@ export function ModCard({ id, onClose, ingame, top, flow }) {
   if (au.fb && !ingame) return h(AuditText, { au, name: m.name, glyph: m.glyph, col: famCol(id), cls });
   return h('div', { className: 'pop scroll' + cls },
     h('div', { className: 'phead' },
-      h('div', { className: 'pglyph', style: { borderColor: famCol(id), color: famCol(id) } }, m.glyph),
+      h('div', { className: 'pglyph', style: { borderColor: famCol(id), color: famCol(id) } }, m.glyph, tgtBadge(id)),
       h('div', { className: 'ptitle' },
         h('b', null, m.name),
         h('span', null, kind + (m.mana ? ' \u00b7 ' + m.mana + ' mana' : ''))),
@@ -239,6 +244,7 @@ export function ModCard({ id, onClose, ingame, top, flow }) {
         onPointerDown: e => { e.preventDefault(); onClose(); } }, '\u00d7') : null
     ),
     m.info ? h('p', { className: 'pinfo' }, m.info) : null,
+    act ? h('button', { className: 'pact', onPointerDown: e => { e.preventDefault(); act.run(); } }, act.label) : null,
     timing ? h('p', { className: 'pnote' }, timing) : null,
     rows.length ? h('div', { className: 'prows' },
       rows.map((r, i) => h('div', { className: 'prow', key: i },

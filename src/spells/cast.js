@@ -28,7 +28,7 @@ export function blankShot(sm, spread) {
     bounce: sm.bounce || 0, pierce: sm.pierce || 0, explode: sm.explode || 0,
     grav: sm.grav || 0, homing: sm.homing || 0, accel: sm.accel || 0, bore: sm.bore || 0, recoil: sm.recoil || 0,
     col: sm.col, knock: sm.knock || 0, crit: 0, boomer: 0, spiral: 0, pong: 0, orbit: 0, follow: 0,
-    autoaim: 0, assist: 0, homeR: sm.homeR || 0, flat: 0, eat: sm.eat || 0, pull: sm.pull || 0,
+    autoaim: 0, assist: 0, only: null, homeR: sm.homeR || 0, flat: 0, eat: sm.eat || 0, pull: sm.pull || 0,
     split: 0, cluster: 0, bounceFx: null, friendly: 0, chain: sm.chain || 0,
     fuse: sm.fuse || 0, beam: sm.beam || 0, payload: null,
     trig: sm.trig || null, timer: sm.timer != null ? sm.timer : TIMER_ADD,
