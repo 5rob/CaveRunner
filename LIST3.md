@@ -23,12 +23,12 @@ Status: `todo` · `agent` (running, branch named) · `review` (screenshots sent,
 | 2 | Modifiers affect only the next spell | agent | ready | merged into `list3-small` (7661710): only planCast changed; suite `nextspell`. Wrap: a trailing modifier is wasted. Not done: a card example showing the spell after coming out bare (a look) |
 | 3 | Dev menu: modern, tabbed pages, collapsible groups | agent | review (merged into list3-small) | `DEV_TABS` in dev/knobs.js; suite `devpanel`; 4 shots sent |
 | 4 | Gun mod screen: gun buttons as a row under the mod grid; live window of the gun firing in time with the pull animation | agent | review (merged into list3-small) | `GunFire` in ui/editor.js, `bagsim` `S.shots`; suite `gunfire`; 3 shots sent |
-| 5 | Hold a HUD gun slot to equip a pickup there (replaces R/swap menu); hold with nothing to pick up = drag the gun out, drop on release; tap the equipped gun = its info card | agent | todo | after 8 (hud.js) |
+| 5 | Hold a HUD gun slot to equip a pickup there (replaces R/swap menu); hold with nothing to pick up = drag the gun out, drop on release; tap the equipped gun = its info card | agent | agent (worktree, from list3-small) |  |
 | 6 | Audit: pin / trash icons + "Give Feedback" notes on mod & perk cards; Dev button copies all to clipboard for Claude Code | agent | agent (worktree, from list3-small) | after 3 (devpanel) |
 | 7 | Vines: keep facing unless you steer the other way | manager | ready | branch `list3-small` 7423885 (`W.p.steer`, gun.js facing) |
 | 8 | Right stick: trigger ring near the stick's edge, Dev padding from the edge | manager | review | branch `list3-small`; `triggerRing` in core/consts.js, Dev `aimPad` (10px, Player group); suite `trigring`; screenshot sent |
 | 9 | Collected mods stack, count badge top-right; one per gun slot | agent | agent (worktree, from list3-small) | group by a stack key (Discriminate copies differ) |
-| 10 | Aim Assist mod: pointer snaps to enemies, no trigger line, auto-fires when snapped; own Dev group | agent | agent (worktree, from list3-small) | |
+| 10 | Aim Assist mod: pointer snaps to enemies, no trigger line, auto-fires when snapped; own Dev group | agent | review (merged into list3-small) | `spells/assist.js`, gun.js, overlay `drawAssist`; Dev group `aimassist` (Player tab); suites `aimassist` (logic+browser). Whole pull aims at the target (one aim per pull); 2 shots sent |
 | 11 | Discriminate mod: pointer sets a permanent target (enemy type / player / object) per copy, icon in the tile; its shot only affects that | agent | todo | after 10 |
 | 12 | Mini-map perk: box over the gun buttons, terrain/open fill, 3 zoom taps, edge-stuck pins, player arrow, red enemy dots, crystal icons | agent | agent (worktree, from list3-small) |  |
 
@@ -43,3 +43,4 @@ Status: `todo` · `agent` (running, branch named) · `review` (screenshots sent,
 - 2026-10-07: #2 merged into `list3-small`. #10 Aim Assist agent launched.
 - 2026-10-07: #3 merged into list3-small, 4 shots sent. #6 agent launched. #1 agent retaking shots (needs silk + aliens in frame).
 - 2026-10-07: #4 and #1 merged into list3-small, shots sent. #9 and #12 agents launched. Running: #6, #9, #10, #12. Waiting on owner: OKs for #1, #3, #4, #8.
+- 2026-10-07: #10 merged, shots sent. #5 agent launched. Running: #5, #6, #9, #12. Next: #11 after #9.
