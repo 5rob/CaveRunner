@@ -457,7 +457,7 @@ curveKnobs('l2boom', 'l2bScale', 'Size × (Y, 0-2) by distance from a dark zone 
 // for sizes; how many and how big are rolled per floor on the zones' own stream
 export const L2D_KNOBS = rangeKnobs('l2dark', [
   ['l2dCount', 'Dark zones on the floor', 0, 8, 1, 2, 3],
-  ['l2dSize',  'Dark zone size (radius, px)', 20, 160, 1, 60, 88],
+  ['l2dSize',  'Dark zone size (radius, px)', 20, 320, 1, 120, 176],     // (doubled: owner, round 5)
   ['l2dOpen',  'Share of a zone that ends up open (small alien tunnels fill it to this)', 0, 0.9, 0.01, 0.65, 0.75],
 ]);
 DEV_DEFAULTS.l2dRough = 1; DEV_DEFAULTS.l2dFringe = 30;

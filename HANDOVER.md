@@ -23,9 +23,18 @@ bump the version, before the next release.
    dark."
 
 **Stage 4, dark zones** (`src/world/dark.js`, `src/game/render/dark.js`). Round 1: commit 700511b; round 2:
-0845a02. **Round 3 (the owner's compositing spec) is built and tested, waiting on the owner's OK of the
-screenshots** (the PM sends them; `node tools/darkshots.js [dir]`
-retakes them: phone size, the same seed as the `darkzone` suite).
+0845a02; round 3: 84f9121 + e792f9b. **Approved by the owner**, with one change, done in round 5: **zones twice the
+size** (`l2dSize` 120–176 px radius, was 60–88), every transition kept at its old size (the tint fade 12 px, the
+torch 18/4 px, the fringe, the ragged rim (spokes every ~8 px, ±12 px), silk, rough walls, tunnel widths, fire
+radius). The small-tunnel tries and the side pockets scale with the area, so `l2dOpen` still holds (~0.70); the
+chamber keeps round 4's size (`rad × 0.5` in its formula). A big zone no longer has to sit wholly clear of the
+main route etc.: only its middle (70 px) must; it goes round them 22 ± 10 px off (ragged), the bits cut off from its
+middle dropped, and it's skipped if under half its circle is left. It may run up to the floor's side wall (the
+bedrock there joins the zone, so no lit edge seen from inside). Each zone also re-checks every earlier zone's
+chamber is still reached. Result over 20 seeds: 2.5 zones a floor (was 2.1; the 2–3 roll fits more often), ~51k
+cells each (was ~16k), ~13% of tomb rooms swallowed (was ~4%); makeLevel ~460 ms average, ~1 s worst (was ~290).
+`node tools/darkshots.js [dir]` retakes the owner's set (phone size, the darkzone suite's seed; the walk-in
+now hovers you, pinned, if no standing spot is near the edge).
 
 What it does:
 - Zones are placed off the main route, each with its own caves and a centre chamber; a silk layer covers them
@@ -61,7 +70,7 @@ What it does:
   `node tools/darkshots.js` the owner's set (with a walk-in sequence).
 - **Open questions for the owner:**
   - Should the exit pads keep glowing?
-  - A zone on screen costs a few ms a frame (round 3, measured on a Mac: tomb ~25 ms, zone ~24 ms, zone off ~17;
+  - A zone on screen costs a few ms a frame (round 5, on a Mac: tomb ~23 ms, zone ~22 ms, zone off ~17; round 3 the same;
     round 1 measured +25 ms on software rendering elsewhere). Check how it plays on the phone.
   - Round 3 choices to confirm: the back wall in a zone at 0.12 brightness (`l2dBack`; the fog's remembered dim
     is lifted there); explosions count as fire for lifting the black (glowing shots don't).

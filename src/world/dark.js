@@ -23,6 +23,8 @@ import { boxReach } from './zones.js';
  * @returns {{ zones: DarkZone[], mask: Uint8Array, web: Uint8Array, shade: Uint8Array, depth: Uint8Array }}
  */
 export function darkZones(mat, tomb, seed, shopExit) {
+  // (round 5, owner: zones twice the size, every transition kept at the size it had: the rim's raggedness, the
+  // fringe, the rough walls, the tunnels; the chamber keeps round 4's sizes)
   let rs = (Math.imul(seed | 0, 22695477) + 777 >>> 0) % 2147483646 + 1;
   const R = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
   for (let i = 0; i < 9; i++) R();
@@ -56,6 +58,20 @@ export function darkZones(mat, tomb, seed, shopExit) {
   keep.push({ x: shopExit - 40, y: SHOP_TOP - SHOP_ROOF - 120, w: 80, h: 120 });
   const hits = (/** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ rad) =>
     keep.some(b => { const dx = Math.max(b.x - x, 0, x - b.x - b.w), dy = Math.max(b.y - y, 0, y - b.y - b.h); return dx * dx + dy * dy < rad * rad; });
+  // (round 5, zones twice as big: a zone no longer has to keep wholly clear of these; it goes round them, KEEP_M px
+  // off give or take KEEP_RAG (noise ~8 px across, so that side of it is as ragged as its rim), and only its
+  // middle, KEEP_MID px round, must be clear)
+  const KEEP_M = 22, KEEP_RAG = 10, KEEP_MID = 70, nearKeep = new Uint8Array(CW * CH), kd = new Float32Array(CW * CH).fill(1e9);
+  for (const b of keep) {
+    const m = KEEP_M + KEEP_RAG;
+    const bx0 = Math.max(0, Math.floor(b.x - m)), bx1 = Math.min(CW - 1, Math.ceil(b.x + b.w + m));
+    const by0 = Math.max(0, Math.floor(b.y - m)), by1 = Math.min(CH - 1, Math.ceil(b.y + b.h + m));
+    for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) {
+      const dx = Math.max(b.x - x, 0, x - b.x - b.w), dy = Math.max(b.y - y, 0, y - b.y - b.h), d = Math.hypot(dx, dy), i = y * CW + x;
+      if (d < kd[i]) kd[i] = d;
+    }
+  }
+  for (let i = 0; i < CW * CH; i++) if (kd[i] < KEEP_M + KEEP_RAG && kd[i] < KEEP_M + KEEP_RAG * (2 * valueNoise((i % CW) / 8, ((i / CW) | 0) / 8, seed + 41) - 1)) nearKeep[i] = 1;
   // the candidates: rooms (each zone swallows one whole), in a shuffled order
   const cand = rooms.filter(r => !keep.some(b => b.x === r.x && b.y === r.y && b.w === r.w)).map(r => ({ r, k: R() })).sort((a, b) => a.k - b.k).map(o => o.r);
   // a free shop-to-top route, with every zone so far (and this one) solid?
@@ -78,29 +94,46 @@ export function darkZones(mat, tomb, seed, shopExit) {
   for (const room of cand) {
     if (zones.length >= want) break;
     const rad = Math.round(kr('l2dSize', R)), cx = Math.round(room.cx), cy = Math.round(room.y + room.h / 2);
-    if (cx - rad * 1.35 < 6 || cx + rad * 1.35 > CW - 6 || cy - rad * 1.35 < topKeep) continue;
-    if (hits(cx, cy, rad * 1.35)) continue;
+    if (cx < KEEP_MID || cx > CW - KEEP_MID || cy - KEEP_MID < topKeep) continue;
+    if (hits(cx, cy, KEEP_MID)) continue;
     if (zones.some(z => Math.hypot(z.cx - cx, z.cy - cy) < space + (z.r + rad) * 0.5)) continue;
     // the blob: a wobbling circle (two slow waves round it)
     const p1 = R() * 6.28, p2 = R() * 6.28, a1 = 0.18 + R() * 0.12, a2 = 0.08 + R() * 0.1;
-    // and a ragged rim on that: 56 random spokes round it, sharp between, so the edge has fingers and
-    // bites (still one radius per direction, so a tunnel straight to the middle never leaves the zone)
-    const spokes = Array.from({ length: 56 }, () => (R() - 0.5) * 2);
+    // and a ragged rim on that: random spokes round it, one every ~8 px of rim, ±12 px (the same size for any
+    // zone size), sharp between, so the edge has fingers and bites (still one radius per direction, so a
+    // tunnel straight to the middle never leaves the zone)
+    const NS = Math.max(24, Math.round(6.2832 * rad / 8.3)), spokes = Array.from({ length: NS }, () => (R() - 0.5) * 2);
     const rag = (/** @type {number} */ a) => {
-      const f = ((a / 6.2832 + 1) % 1) * 56, k = Math.floor(f), t = f - k, u = spokes[k % 56], v = spokes[(k + 1) % 56];
+      const f = ((a / 6.2832 + 1) % 1) * NS, k = Math.floor(f), t = f - k, u = spokes[k % NS], v = spokes[(k + 1) % NS];
       return u + (v - u) * t * t * (3 - 2 * t);
     };
-    const edge = (/** @type {number} */ a) => rad * (1 + a1 * Math.sin(3 * a + p1) + a2 * Math.sin(5 * a + p2) + 0.16 * rag(a));
+    const edge = (/** @type {number} */ a) => rad * (1 + a1 * Math.sin(3 * a + p1) + a2 * Math.sin(5 * a + p2)) + 12 * rag(a);
     const id = zones.length + 1, x0 = Math.max(3, cx - Math.ceil(rad * 1.4)), x1 = Math.min(CW - 4, cx + Math.ceil(rad * 1.4));
     const y0 = Math.max(3, cy - Math.ceil(rad * 1.4)), y1 = Math.min(SHOP_TOP - SHOP_ROOF - 4, cy + Math.ceil(rad * 1.4));
     const snap = mat.slice(), msnap = mask.slice();
     let n = 0;
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
       const i = y * CW + x;
-      if (mask[i] || mat[i] === BED) continue;
+      if (mask[i] || mat[i] === BED || nearKeep[i]) continue;
       const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
       if (Math.hypot(dx, dy) < edge(Math.atan2(dy, dx))) { mask[i] = id; n++; }
     }
+    // (cut off from its middle by a kept room or a route: those bits aren't the zone's)
+    {
+      const seen = new Uint8Array((x1 - x0 + 1) * (y1 - y0 + 1)), w = x1 - x0 + 1, st = [(cy - y0) * w + cx - x0];
+      seen[st[0]] = 1;
+      while (st.length) {
+        const k = st.pop(), x = k % w + x0, y = ((k / w) | 0) + y0;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + dx, ny = y + dy, nk = (ny - y0) * w + nx - x0;
+          if (nx < x0 || ny < y0 || nx > x1 || ny > y1 || seen[nk] || mask[ny * CW + nx] !== id) continue;
+          seen[nk] = 1; st.push(nk);
+        }
+      }
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (mask[y * CW + x] === id && !seen[(y - y0) * w + x - x0]) { mask[y * CW + x] = 0; n--; }
+    }
+    // too much of it lost round the kept rooms: not here
+    if (n < 0.5 * Math.PI * rad * rad) { mask.set(msnap); continue; }
     // where the tomb runs into it: its ring cells with open tomb just outside, grouped by angle
     const ring = [];
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
@@ -143,7 +176,7 @@ export function darkZones(mat, tomb, seed, shopExit) {
     const dig = (/** @type {number} */ ex, /** @type {number} */ ey, /** @type {number} */ r) => { digN(ex, ey, r); };
     // the chamber's floor and the rock just under it stay whole (the prize stands there): the pockets and the
     // small tunnels keep off it (a tunnel from a door below may still come up through it)
-    const crx0 = Math.max(15, Math.round(rad * 0.38)), fl0 = cy + Math.max(12, Math.round(rad * 0.26));
+    const cr = rad * 0.5, crx0 = Math.max(15, Math.round(cr * 0.38)), fl0 = cy + Math.max(12, Math.round(cr * 0.26));
     const under = (/** @type {number} */ x, /** @type {number} */ y) => x >= cx - crx0 - 2 && x <= cx + crx0 + 2 && y >= fl0 && y <= fl0 + 6;
     const digS = (/** @type {number} */ ex, /** @type {number} */ ey, /** @type {number} */ r, stamp = 0) => {
       let c = 0;
@@ -154,7 +187,7 @@ export function darkZones(mat, tomb, seed, shopExit) {
       return c;
     };
     // the chamber in the middle: a lumpy oval, a flat-ish floor
-    const crx = Math.max(15, Math.round(rad * 0.38)), cry = Math.max(12, Math.round(rad * 0.26));
+    const crx = Math.max(15, Math.round(cr * 0.38)), cry = Math.max(12, Math.round(cr * 0.26));
     for (let y = cy - cry - 3; y <= cy + cry; y++) for (let x = cx - crx - 3; x <= cx + crx + 3; x++) {
       // a lumpy dome over a flat floor (cy + cry), wide enough to stand and fight on
       const dx = (x + 0.5 - cx) / crx, dy = (y + 0.5 - cy) / cry, w = 1 + 0.12 * Math.sin(Math.atan2(dy, dx) * 4 + p1);
@@ -195,7 +228,8 @@ export function darkZones(mat, tomb, seed, shopExit) {
         }
       }
     }
-    const pockets = 2 + Math.floor(R() * 3);
+    const area = Math.max(1, (rad / 74) ** 2);                  // (a zone's area against round 4's: more of everything)
+    const pockets = Math.round((2 + Math.floor(R() * 3)) * area);
     for (let k = 0; k < pockets; k++) {
       const a = R() * 6.28, d = rad * (0.45 + R() * 0.35);
       worm(cx, cy, cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.8, 5 + R() * 2.5, 400, true);
@@ -347,7 +381,7 @@ export function darkZones(mat, tomb, seed, shopExit) {
     /** @type {DarkTunnel[]} */
     const tunnels = [];
     const rockAt = (/** @type {number} */ x, /** @type {number} */ y) => { const i = Math.floor(y) * CW + Math.floor(x); return mask[i] === id && mat[i] !== 0 && !under(Math.floor(x), Math.floor(y)); };
-    for (let t = 0; t < 1500 && open < goal; t++) {
+    for (let t = 0, tries = 1500 * area; t < tries && open < goal; t++) {
       const x = Math.floor(x0 + R() * (x1 - x0)), y = Math.floor(y0 + R() * (y1 - y0)), i = y * CW + x;
       if (mask[i] !== id || mat[i]) continue;
       // start on a wall (open here, rock within 3 px), heading into the rock: the way with most rock ahead
@@ -389,9 +423,12 @@ export function darkZones(mat, tomb, seed, shopExit) {
     // not: no zone here)
     const reachOk = () => {
       const ok = boxReach(mat, 17, SHOP_AT).ok;
-      let got = false;
-      for (let x = cx - crx + 3; x < cx + crx - 6 && !got; x++) for (let y = fl - 12; y >= fl - 16 && !got; y--) if (ok[y * CW + x] === 2) got = true;
-      return got && rooms.every((r, k) => {
+      // (this chamber and every earlier zone's: a big zone may swallow the way into one next to it)
+      const reached = (/** @type {number} */ ccx, /** @type {number} */ crx1, /** @type {number} */ cfl) => {
+        for (let x = ccx - crx1 + 3; x < ccx + crx1 - 6; x++) for (let y = cfl - 12; y >= cfl - 16; y--) if (ok[y * CW + x] === 2) return true;
+        return false;
+      };
+      return reached(cx, crx, fl) && zones.every(z => reached(z.chamber.x, z.chamber.rx, z.chamber.floor)) && rooms.every((r, k) => {
         if (!pre[k] || mask[Math.round(r.y + r.h / 2) * CW + Math.round(r.cx)]) return true;
         const now = roomReach(ok, r);
         return now >= (touched(r) ? 1 : pre[k]);
@@ -427,6 +464,13 @@ export function darkZones(mat, tomb, seed, shopExit) {
         tn.fits = tn.w >= 6 && inn.length > 2 && inn.filter(p => box(p.x, p.y)).length >= inn.length * 0.9;   // (one dug narrower never does: a box standing in the cave beside it isn't in it)
       }
     }
+  }
+  // (round 5: a big zone can run up to the floor's side wall: the bedrock there is the zone's too, so its depth
+  // counts from the tomb side alone and the wall isn't a coloured edge seen from deep inside; all digging is done)
+  for (let y = 3; y < CH - 3; y++) {
+    const l = mask[y * CW + 3], r = mask[y * CW + CW - 4];
+    if (l) mask.fill(l, y * CW, y * CW + 3);
+    if (r) mask.fill(r, y * CW + CW - 3, y * CW + CW);
   }
   // the silk: a sheet thick along every wall, then strands criss-crossing the open air, layered
   const dens = Math.max(0, DEV.l2dSilk);

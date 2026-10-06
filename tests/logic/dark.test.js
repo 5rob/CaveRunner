@@ -99,7 +99,9 @@ check('silkErase blows a hole and says where', box && after < before && box.x0 <
 const src = new Uint8Array(CW * CH);
 for (let i = 0; i < src.length; i++) if (lv.darkMask[i]) src[i] = 1;
 const dist = distField(CW, CH, src, 200);
-check('distField takes the zones as its source (0 inside, growing outside)', dist[z.cy * CW + z.cx] === 0 && dist[(z.cy) * CW + Math.min(CW - 1, z.x1 + 20)] > 0);
+// (outside: 20 px past the zone's side, the side with room: since round 5 a zone can reach the floor's wall)
+const outX = z.x1 + 20 < CW - 3 ? z.x1 + 20 : z.x0 - 20;
+check('distField takes the zones as its source (0 inside, growing outside)', dist[z.cy * CW + z.cx] === 0 && !lv.darkMask[z.cy * CW + outX] && dist[z.cy * CW + outX] > 0, outX);
 
 // deterministic, and only floor 2
 const a = makeLevel(6, 2), b = makeLevel(6, 2);

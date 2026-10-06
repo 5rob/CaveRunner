@@ -101,7 +101,12 @@ All pure: the logic suites call these directly.
   so the kit's centrepiece has a floor; a corridor end goes on into the room it touches (matched by edge, not
   by which room is higher: before stage 3 an L-shaft could miss its room and leave it sealed).
 - **Dark zones** (`dark.js`, Level 2 stage 4; how they look: `game/render/dark.js`). After the tomb is cut, a few
-  organic blobs (two slow waves round a circle, radius `l2dSize`, count `l2dCount`) are centred on tomb rooms,
+  organic blobs (two slow waves round a circle, radius `l2dSize` (120–176 px since round 5, the owner's doubling;
+  the rim's raggedness a fixed ±12 px, a spoke every ~8 px, whatever the size), count `l2dCount`) are centred on
+  tomb rooms; round 5: only the middle (`KEEP_MID`, 70 px) must clear what's kept, the rest goes round it
+  `KEEP_M` ± `KEEP_RAG` (22 ± 10 px, noise) off, cut-off bits dropped, under half a circle left: no zone; a zone
+  may reach the floor's side wall (that bedrock joins its mask after the digging); tunnel tries and side pockets
+  scale with the area (`l2dOpen` holds), the chamber keeps round 4's size (`rad × 0.5`). Kept clear:
   never touching the main route (the rooms and corridors from the vestibule to the nearest exit hall by the
   tomb's links), the exit halls, the vestibule, the prize room, the shop (`l2dShop` px above its roof) or the
   top (`l2dTop`), and `l2dSpace` (+ half their sizes) apart. Inside one the tomb is filled solid, then: a
@@ -115,7 +120,7 @@ All pure: the logic suites call these directly.
   four 9–13 px), each kept on the zone (`tunnels: { pts, w, fits }`, `fits`: a 6 × 11 box gets through; one dug
   narrower never does) with the share in `open`. **The main route never needs a zone**: after each one the shop
   must still reach the top with every zone shut, and every tomb room the shop reached before must still be
-  reached (somewhere in its box) with its chamber: if not the roughness is undone, then the zone. The
+  reached (somewhere in its box) with its chamber and every earlier zone's: if not the roughness is undone, then the zone. The
   level carries `dark` (`DarkZone`: centre, radius, box, the room it swallowed, `cells`, `doors`, `chamber`),
   `darkMask` (per cell: zone + 1) and `webbing` (the silk, per cell, 0 none, 1..255 thickness; open cells only,
   a sheet in slow folds, thicker on the walls, strands two ways, `l2dSilk`). Rooms get `dark` (the zone that took

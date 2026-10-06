@@ -130,8 +130,10 @@ require('../tests/build')();
     return null;
   }, [tx, ty, rmax]);
 
-  // (b) at a zone's edge: on the tomb floor just outside, facing in
-  const edge = await page.evaluate(() => {
+  // (b) at a zone's edge: on the tomb floor just outside, facing in (every such spot, the first with the
+  // walk-in's spots near it chosen below)
+  const edges = await page.evaluate(() => {
+    const out = [];
     const W = window.__lvl, { CW, CELL } = W.world, m = W.mat, k = W.darkMask;
     const free = (x, y) => { for (let j = 0; j < 11; j++) for (let i = 0; i < 6; i++) if (m[(y - j) * CW + x + i]) return false; return true; };
     for (const z of W.dark) for (let y = z.y0; y <= z.y1; y++) for (let x = z.x0 - 12; x <= z.x1 + 12; x++) {
@@ -141,29 +143,40 @@ require('../tests/build')();
         let ok = true;
         for (let s = 8; s <= 30 && ok; s++) { const j = i - 5 * CW + dir * s; if (!k[j] || m[j]) ok = false; }
         for (let s = 4; s <= 30 && ok; s++) { const j = i - 5 * CW - dir * s; if (k[j] || m[j]) ok = false; }
-        if (ok) return { x: x * CELL - 6, y: (y + 1) * CELL - 22 - 0.5, dir, tx: x, ty: y, z: z.id };
+        if (ok && !out.some(e => Math.abs(e.tx - x) + Math.abs(e.ty - y) < 20)) out.push({ x: x * CELL - 6, y: (y + 1) * CELL - 22 - 0.5, dir, tx: x, ty: y, z: z.id });
       }
     }
-    return null;
+    return out;
   });
+  // standing spots at a depth into the zone, nearest (ex, ey) first
+  const atDepthNear = (/** @type {number} */ lo, /** @type {number} */ hi, /** @type {number} */ ex, /** @type {number} */ ey, win = 90, air = false) => page.evaluate(([lo, hi, ex, ey, win, air]) => {
+    const W = window.__lvl, { CW, CELL } = W.world, m = W.mat, dp = W.darkDepth;
+    const free = (x, y) => { for (let j = 0; j < 11; j++) for (let i = 0; i < 6; i++) if (m[(y - j) * CW + x + i]) return false; return true; };
+    let best = null, bd = 1e9;
+    for (let y = Math.max(14, ey - win); y < ey + win; y++) for (let x = Math.max(4, ex - win); x < Math.min(CW - 10, ex + win); x++) {
+      const d = dp[(y - 5) * CW + x + 3];
+      if (d < lo || d > hi || m[y * CW + x] || (!air && (!m[(y + 1) * CW + x] || !m[(y + 1) * CW + x + 5])) || !free(x, y)) continue;
+      const e = (x - ex) ** 2 + (y - ey) ** 2;
+      if (e < bd) { bd = e; best = { x: x * CELL, y: (y + 1) * CELL - 22 - 0.5, d }; }
+    }
+    return best;
+  }, [lo, hi, ex, ey, win, air]);
+  const T = await page.evaluate(() => ({ tint: DEV.l2dTintDepth, torch: DEV.l2dTorchDepth }));
+  const bands = [[1, Math.max(1, Math.round(T.tint * 0.25))], [Math.round(T.tint * 0.4), Math.round(T.tint * 0.65)], [T.tint + 1, T.torch - 1], [T.torch + 10, T.torch + 40]];
+  // (round 5 on: the zones are big, shallow standing spots rare: look further out, then hover there, pinned in
+  // the air, if none has a floor)
+  let edge = edges[0] || null, win = 90, air = false;
+  find: for (const a of [false, true]) for (const w of [90, 160]) for (const e of edges) {
+    let all = true;
+    for (const [lo, hi] of bands) if (!(await atDepthNear(lo, hi, e.tx, e.ty, w, a))) { all = false; break; }
+    if (all) { edge = e; win = w; air = a; break find; }
+  }
   if (edge) {
     await stand(edge.x, edge.y, edge.dir, 0);
     await shot('b-edge', 'at a zone\'s edge, standing in the tomb aiming in: the black fading in with depth, the torch cut where it fails');
     // walking in (round 3): standing spots at growing depth into the same zone, nearest the edge first. The black
     // fades in with depth; the torch cuts through it until l2dTorchDepth, then flickers out
-    const atDepth = (lo, hi) => page.evaluate(([lo, hi, ex, ey]) => {
-      const W = window.__lvl, { CW, CELL } = W.world, m = W.mat, dp = W.darkDepth;
-      const free = (x, y) => { for (let j = 0; j < 11; j++) for (let i = 0; i < 6; i++) if (m[(y - j) * CW + x + i]) return false; return true; };
-      let best = null, bd = 1e9;
-      for (let y = Math.max(14, ey - 90); y < ey + 90; y++) for (let x = Math.max(4, ex - 90); x < Math.min(CW - 10, ex + 90); x++) {
-        const d = dp[(y - 5) * CW + x + 3];
-        if (d < lo || d > hi || m[y * CW + x] || !m[(y + 1) * CW + x] || !m[(y + 1) * CW + x + 5] || !free(x, y)) continue;
-        const e = (x - ex) ** 2 + (y - ey) ** 2;
-        if (e < bd) { bd = e; best = { x: x * CELL, y: (y + 1) * CELL - 22 - 0.5, d }; }
-      }
-      return best;
-    }, [lo, hi, edge.tx, edge.ty]);
-    const T = await page.evaluate(() => ({ tint: DEV.l2dTintDepth, torch: DEV.l2dTorchDepth }));
+    const atDepth = (/** @type {number} */ lo, /** @type {number} */ hi) => atDepthNear(lo, hi, edge.tx, edge.ty, win, air);
     const steps = [['w1-fade-start', 1, Math.max(1, Math.round(T.tint * 0.25)), 'walking in 1: just inside the edge, the black only starting'],
       ['w2-mid-fade', Math.round(T.tint * 0.4), Math.round(T.tint * 0.65), 'walking in 2: mid-fade, things half black'],
       ['w3-black-torch-on', T.tint + 1, T.torch - 1, 'walking in 3: past the fade, fully black but for what the torch still lights']];
