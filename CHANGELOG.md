@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.150 — the Bag's mana bar
+Released 2026-10-07 (owner's ask; a minor update). The thin bar under the Bag's Mana stat now drains and refills
+with the fire preview like cast delay's and recharge's: it read the gauge under the row's key (`manaMax`) instead
+of `mana`, so it always showed full (`ui/editor.js` `GunStats`). New suite `manabar`.
+
 ## v0.0.149 — the owner's 12-item list (LIST3)
 Released 2026-10-07 (the owner OK'd the screenshots and a feedback round; a minor update). Built by time-boxed
 agents on branch `list3-small`, the tracker is `LIST3.md`.
