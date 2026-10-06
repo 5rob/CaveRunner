@@ -4,7 +4,8 @@
 //                     none in a zone, none near the shop, the pads or a prize (`keep`)
 //   blastTerrain      one blast on the floor's layers, as explode (game/systems/terrain.js) does it: the
 //                     disc of rock gone (never BED), its fuel and ore, the decoration and the silk in it;
-//                     then a scorch ring just past the hole (rock, decoration and back wall darkened)
+//                     then a scorch ring past the hole (DEV.l2bScorch × r) and black streaks fanning out of it
+//                     (DEV.l2bStreak: length ×; owner, round 5) on rock, decoration and back wall
 //   settleFire        the fire blasts' fire lit, then run tick by tick until it has burnt out
 //   scatterBones      bones and skulls half sunk in the ground across the wasteland (outside the zones)
 //   destroyFloor      all of it, in that order, on its own random stream
@@ -55,7 +56,7 @@ export function destructionPlan(mat, mask, seed, keep) {
 
 // how far the scorch reaches past a blast's hole (terrain px)
 /** @param {number} r */
-export const scorchWidth = r => Math.max(3, r * 0.45);
+export const scorchWidth = r => Math.max(3, r * Math.max(0, DEV.l2bScorch) * 0.5);
 
 /**
  * One blast on the floor's layers (terrain pixels). Returns how many rock pixels went.
@@ -87,6 +88,30 @@ export function blastTerrain(L, b, rnd) {
     if (dist > ring) continue;
     const f = dist <= b.r ? 0.55 + 0.25 * dist / b.r : 0.8 + 0.2 * (dist - b.r) / sw, k = (y * BWd + x) * 4;
     bd[k] *= f; bd[k + 1] *= f; bd[k + 2] *= f;
+  }
+  // the streaks: black rays out of the hole in varying lengths and widths, darkest at the lip, tapering
+  const SL = Math.max(0, DEV.l2bStreak);
+  if (SL > 0) {
+    const n = 7 + Math.floor(rnd() * 9);
+    for (let s = 0; s < n; s++) {
+      const a = rnd() * Math.PI * 2, len = b.r * SL * (0.5 + rnd() * 1.6) + sw, w0 = 0.8 + rnd() * Math.max(1, b.r * 0.12);
+      const ca = Math.cos(a), sa = Math.sin(a), steps = Math.ceil(len * 2);
+      for (let q = 0; q <= steps; q++) {
+        const u = q / steps, rr = b.r * 0.85 + u * len, cx = b.x + ca * rr, cy = b.y + sa * rr, hw = w0 * (1 - u * 0.85);
+        const f = 1 - (1 - u) * (b.fire ? 0.8 : 0.65);
+        for (let yy = Math.floor(cy - hw); yy <= Math.ceil(cy + hw); yy++) for (let xx = Math.floor(cx - hw); xx <= Math.ceil(cx + hw); xx++) {
+          if (xx < 0 || yy < 0 || xx >= CW || yy >= CH || Math.hypot(xx + 0.5 - cx, yy + 0.5 - cy) > hw) continue;
+          const k = (yy * CW + xx) * 4;
+          if (mat[yy * CW + xx]) { d[k] *= f; d[k + 1] *= f; d[k + 2] *= f; }
+          if (dd[k + 3]) { dd[k] *= f; dd[k + 1] *= f; dd[k + 2] *= f; }
+        }
+        // the back wall too, more faintly (a bg pixel is 4 terrain pixels; once per bg pixel along the ray)
+        if (q % 8 === 0) {
+          const bx = Math.floor(cx / 4), by = Math.floor(cy / 4), bk = (by * BWd + bx) * 4, fb = 1 - (1 - u) * 0.45;
+          if (bx >= 0 && by >= 0 && bx < BWd && by < L.bgImg.height) { bd[bk] *= fb; bd[bk + 1] *= fb; bd[bk + 2] *= fb; }
+        }
+      }
+    }
   }
   if (L.web) silkErase(L.web, b.x, b.y, b.r + 1.5);
   return gone;
