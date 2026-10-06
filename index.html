@@ -500,7 +500,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .devgn{min-width:22px;text-align:center;font:600 11px system-ui,sans-serif;color:var(--muted);
   background:rgba(255,255,255,0.07);padding:3px 6px;border-radius:9px}
 .devvars{display:flex;flex-direction:column;gap:8px;padding:10px 12px 12px}
+.spawnpanel{padding:16px 16px 18px}
 .spawnpanel .spawngo{margin-top:12px;width:100%}
+/* Dev → Spawn level: every floor, two columns; yours lit */
+.lvlpick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.lvlpick .lvlgo{text-align:left;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lvlpick .lvlgo b{opacity:.6;margin-right:2px}
+.lvlpick .lvlgo.on{border-color:#3a8ee0;box-shadow:inset 0 0 0 1px #3a8ee0}
 .devrow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px}
 .devrow label{font-size:13px;color:var(--text);flex:1 1 auto;line-height:1.3}
 .devrow input[type=color]{width:56px;padding:2px 4px}
@@ -27386,7 +27392,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var blurBox = () => {
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   };
-  function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
+  function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel }) {
     const LO = input.current.loadout;
     const [, bump] = useState(0);
     const [copied, setCopied] = useState(null);
@@ -27484,17 +27490,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               bump((n) => n + 1);
             }),
             act("spawngun", "Spawn gun", onSpawnGun),
-            act("newcave", "New cave", () => {
-              input.current.newCave = true;
-              close();
-            }),
-            act("floor2", "Floor 2", () => {
-              input.current.newCave = 2;
-              close();
-            }),
+            act("spawnlevel", "Spawn level", onSpawnLevel),
             act("restart", "Restart run", onRestart),
-            act("devcopy", "Copy report", () => copyText(devReport())),
-            act("devaudit", "Copy audit", () => copyText(auditText(loadAudit()), "audit"))
+            act("devcopy", "Copy Dev settings", () => copyText(devReport())),
+            act("devaudit", "Copy mod & perk audit", () => copyText(auditText(loadAudit()), "audit"))
           ),
           copied ? h("p", { className: "devnote devcopied" + (copied.ok ? " ok" : "") }, copied.empty ? "Nothing audited yet — pin, trash or give feedback on a mod or perk card first." : copied.ok ? copied.what === "audit" ? "Audit copied — paste it into Claude Code." : "Copied — paste it to Claude." : "Could not reach the clipboard — press and hold the text below to copy it.") : null,
           copied && !copied.ok && !copied.empty ? h("textarea", { className: "devcopytext", readOnly: true, value: copied.text }) : null,
@@ -27559,8 +27558,49 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           h(
             "p",
             { className: "devnote" },
-            "Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back; ↺ resets a slider or colour. Copy report sends every change to Claude."
+            "Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back; ↺ resets a slider or colour. Copy Dev settings sends every knob you changed (to make them the defaults); Copy mod & perk audit sends your 📌 / 🗑️ / feedback notes."
           )
+        )
+      )
+    );
+  }
+  function SpawnLevel({ input, close }) {
+    const cur = input.current.floor || 1;
+    const go = (n) => {
+      input.current.newCave = n;
+      close();
+    };
+    return h(
+      "div",
+      { className: "devwrap" },
+      h("div", { className: "devback", onPointerDown: (e) => {
+        e.preventDefault();
+        close();
+      } }),
+      h(
+        "div",
+        { className: "devpanel spawnpanel" },
+        h(
+          "div",
+          { className: "devhead" },
+          h("h2", null, "Spawn level"),
+          h("button", { className: "done", onPointerDown: (e) => {
+            e.preventDefault();
+            close();
+          } }, "Cancel")
+        ),
+        h(
+          "div",
+          { className: "lvlpick" },
+          THEMES.map((t, i) => h("button", {
+            key: i,
+            className: "dbg lvlgo" + (i + 1 === cur ? " on" : ""),
+            "data-floor": i + 1,
+            onPointerDown: (e) => {
+              e.preventDefault();
+              go(i + 1);
+            }
+          }, h("b", null, i + 1), " " + t.name))
         )
       )
     );
@@ -30839,6 +30879,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [edit, setEdit] = useState(false);
     const [devOpen, setDevOpen] = useState(false);
     const [spawnOpen, setSpawnOpen] = useState(false);
+    const [lvlOpen, setLvlOpen] = useState(false);
     const [witnessOpen, setWitnessOpen] = useState(false);
     const [savedClip, setSavedClip] = useState(null);
     const [bagTab, setBagTab] = useState("guns");
@@ -31257,8 +31298,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         onSpawnGun: () => {
           setDevOpen(false);
           setSpawnOpen(true);
+        },
+        onSpawnLevel: () => {
+          setDevOpen(false);
+          setLvlOpen(true);
         }
       }) : null,
+      lvlOpen ? h(SpawnLevel, { input, close: () => setLvlOpen(false) }) : null,
       spawnOpen ? h(SpawnGun, { input, close: () => setSpawnOpen(false) }) : null,
       shopOpen && SHOP_MENUS[shopOpen] ? h(SHOP_MENUS[shopOpen], { key: shopOpen, input, close: closeShop }) : null,
       gunDrag && LO.guns[gunDrag.i] ? h(DragGun, { gun: LO.guns[gunDrag.i], x: gunDrag.x, y: gunDrag.y }) : null,

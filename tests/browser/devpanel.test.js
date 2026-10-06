@@ -21,7 +21,7 @@ const SHOTS = process.env.CAVERUNNER_SHOTS;
   const tabs = await page.$$eval('.devtab', b => b.map(x => x.getAttribute('data-t')));
   check('a tab per DEV_TABS entry', tabs.join() === (await page.evaluate(() => DEV_TABS.map(t => t[0]).join())), tabs);
   check('the actions are all there', (await page.$$eval('.devbtns .dbg', b => b.map(x => x.textContent))).join() ===
-    'All mods,All perks,Spawn gun,New cave,Floor 2,Restart run,Copy report,Copy audit');
+    'All mods,All perks,Spawn gun,Spawn level,Restart run,Copy Dev settings,Copy mod & perk audit');
   check('the first tab shows only its groups, shut', (await page.$$eval('.devghead', b => b.map(x => x.getAttribute('data-g')))).join() ===
     (await page.evaluate(() => DEV_TABS[0][2].join())) && (await page.$$('.devrow')).length === 0);
   // every group of every tab appears on its tab
@@ -86,6 +86,12 @@ const SHOTS = process.env.CAVERUNNER_SHOTS;
   const same = await page.evaluate(async () => (await navigator.clipboard.readText()) === devReport());
   check('Copy report copies devReport()', same);
   await page.evaluate(() => { devSet('zoom', DEV_DEFAULTS.zoom); localStorage.removeItem('caverunner-devgroups'); localStorage.removeItem('caverunner-devtab'); });
+  await shot('item3-5-actions.png');
+  // Spawn level: the floors to pick from (owner: New cave + Floor 2 in one)
+  await page.tap('.dbg.spawnlevel');
+  await page.waitForTimeout(200);
+  check('Spawn level opens a floor picker', (await page.$$('.lvlgo')).length > 2);
+  await shot('item3-6-spawnlevel.png');
 
   await browser.close();
   console.log(fails ? `${fails} failed` : 'all passed');

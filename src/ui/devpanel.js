@@ -13,7 +13,7 @@ import {
   drawJelly, jellyBell, jellyPal, jellyStep, plantGlowFill, plantWhite
 } from '../creatures/jelly.js';
 import { enemyFor } from '../data/creatures.js';
-import { themeFor } from '../data/themes.js';
+import { THEMES, themeFor } from '../data/themes.js';
 import {
   CURVES, DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_META, DEV_TABS, devReport, devSet, devTabOf, kr, kru
 } from '../dev/knobs.js';
@@ -540,8 +540,8 @@ const blurBox = () => {
 // so the look-of-it knobs (zoom, torch, fog) preview live as you type. On top: the actions
 // ("All mods" is the old DEBUG shelf) and Copy report; then a search box and the tabs
 // (DEV_TABS), each a page of collapsible groups of the saved, persisted variables.
-/** @param {{ input: { current: GameInput }, refresh: () => void, close: () => void, onRestart: () => void, onSpawnGun: () => void }} props */
-export function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
+/** @param {{ input: { current: GameInput }, refresh: () => void, close: () => void, onRestart: () => void, onSpawnGun: () => void, onSpawnLevel: () => void }} props */
+export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel }) {
   const LO = input.current.loadout;
   const [, bump] = useState(0);
   const [copied, setCopied] = useState(null);     // null, or the text + whether it copied
@@ -601,11 +601,10 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
           act('toggle' + (LO.debug ? ' on' : ''), 'All mods', () => { LO.debug = !LO.debug; refresh(); bump(n => n + 1); }),
           act('toggle allperks' + (LO.debugPerks ? ' on' : ''), 'All perks', () => { LO.debugPerks = !LO.debugPerks; refresh(); bump(n => n + 1); }),
           act('spawngun', 'Spawn gun', onSpawnGun),
-          act('newcave', 'New cave', () => { input.current.newCave = true; close(); }),
-          act('floor2', 'Floor 2', () => { input.current.newCave = 2; close(); }),
+          act('spawnlevel', 'Spawn level', onSpawnLevel),
           act('restart', 'Restart run', onRestart),
-          act('devcopy', 'Copy report', () => copyText(devReport())),
-          act('devaudit', 'Copy audit', () => copyText(auditText(loadAudit()), 'audit'))),
+          act('devcopy', 'Copy Dev settings', () => copyText(devReport())),
+          act('devaudit', 'Copy mod & perk audit', () => copyText(auditText(loadAudit()), 'audit'))),
         copied ? h('p', { className: 'devnote devcopied' + (copied.ok ? ' ok' : '') }, copied.empty
           ? 'Nothing audited yet — pin, trash or give feedback on a mod or perk card first.'
           : copied.ok ? (copied.what === 'audit' ? 'Audit copied — paste it into Claude Code.' : 'Copied — paste it to Claude.')
@@ -634,9 +633,26 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
               hits.map(m => h(DevRow, { key: m.k, meta: m }))));
         }),
         h('p', { className: 'devnote' },
-          'Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back; ↺ resets a slider or colour. Copy report sends every change to Claude.'))
+          'Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back; ↺ resets a slider or colour. Copy Dev settings sends every knob you changed (to make them the defaults); Copy mod & perk audit sends your 📌 / 🗑️ / feedback notes.'))
     )
   );
+}
+
+// Dev → Spawn level (owner: New cave and Floor 2 in one): every floor's theme, tap one for a fresh
+// cave of that floor (input.current.newCave = its number; game/systems/step.js). Yours is lit.
+/** @param {{ input: { current: GameInput }, close: () => void }} props */
+export function SpawnLevel({ input, close }) {
+  const cur = input.current.floor || 1;
+  const go = (/** @type {number} */ n) => { input.current.newCave = n; close(); };
+  return h('div', { className: 'devwrap' },
+    h('div', { className: 'devback', onPointerDown: e => { e.preventDefault(); close(); } }),
+    h('div', { className: 'devpanel spawnpanel' },
+      h('div', { className: 'devhead' },
+        h('h2', null, 'Spawn level'),
+        h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Cancel')),
+      h('div', { className: 'lvlpick' },
+        THEMES.map((t, i) => h('button', { key: i, className: 'dbg lvlgo' + (i + 1 === cur ? ' on' : ''), 'data-floor': i + 1,
+          onPointerDown: e => { e.preventDefault(); go(i + 1); } }, h('b', null, i + 1), ' ' + t.name)))));
 }
 
 /** @param {{ input: { current: GameInput }, close: () => void }} props */

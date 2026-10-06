@@ -10,7 +10,7 @@ import { Game } from '../game/Game.js';
 import { clipGet } from '../save/clips.js';
 import { clearSave, loadCollection, loadPerkCollection, loadSave, saveCollection } from '../save/save.js';
 import { GunCard, ModCard, PerkCard } from './cards.js';
-import { DevPanel, SpawnGun } from './devpanel.js';
+import { DevPanel, SpawnGun, SpawnLevel } from './devpanel.js';
 import { Bag } from './exosuit.js';
 import { GunIcon } from './editor.js';
 import { h, useEffect, useRef, useState } from './h.js';
@@ -54,6 +54,7 @@ export function App() {
   const [edit, setEdit] = useState(false);
   const [devOpen, setDevOpen] = useState(false);
   const [spawnOpen, setSpawnOpen] = useState(false);
+  const [lvlOpen, setLvlOpen] = useState(false);
   const [witnessOpen, setWitnessOpen] = useState(false);
   const [savedClip, setSavedClip] = useState(null);   // the saved replay playing (its ClipMeta), from the Bag's Witness tab
   const [bagTab, setBagTab] = useState('guns');
@@ -319,7 +320,9 @@ export function App() {
     edit ? h(Bag, { key: bagTab, input, refresh, canEdit, close: () => setEdit(false), tab0: bagTab, play: playClip }) : null,
     devOpen ? h(DevPanel, { input, refresh, close: () => setDevOpen(false),
       onRestart: () => { setDevOpen(false); setConfirmAt(performance.now()); },
-      onSpawnGun: () => { setDevOpen(false); setSpawnOpen(true); } }) : null,
+      onSpawnGun: () => { setDevOpen(false); setSpawnOpen(true); },
+      onSpawnLevel: () => { setDevOpen(false); setLvlOpen(true); } }) : null,
+    lvlOpen ? h(SpawnLevel, { input, close: () => setLvlOpen(false) }) : null,
     spawnOpen ? h(SpawnGun, { input, close: () => setSpawnOpen(false) }) : null,
     shopOpen && SHOP_MENUS[shopOpen] ? h(SHOP_MENUS[shopOpen], { key: shopOpen, input, close: closeShop }) : null,
     gunDrag && LO.guns[gunDrag.i] ? h(DragGun, { gun: LO.guns[gunDrag.i], x: gunDrag.x, y: gunDrag.y }) : null,

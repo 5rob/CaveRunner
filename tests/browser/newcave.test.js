@@ -12,6 +12,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   page.on('pageerror', e => { fails++; console.log('PAGEERROR', e.message); });
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   await page.waitForTimeout(1200);
+  const THEMES_N = await page.evaluate(() => THEMES.length);
   const before = await page.evaluate(() => {
     const L = window.__lvl; L.p.x += 40;
     let open = 0; for (let i = 0; i < L.mat.length; i++) if (!L.mat[i]) open++;
@@ -20,8 +21,11 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
   await page.tap('.devbtn');
   await page.waitForTimeout(150);
-  check('the Dev panel has a New cave button', await page.$('.dbg.newcave') !== null);
-  await page.tap('.dbg.newcave');
+  check('the Dev panel has a Spawn level button', await page.$('.dbg.spawnlevel') !== null);
+  await page.tap('.dbg.spawnlevel');
+  await page.waitForTimeout(150);
+  check('it lists every floor, yours lit', (await page.$$('.lvlgo')).length === THEMES_N && await page.$('.lvlgo.on[data-floor="1"]') !== null);
+  await page.tap('.lvlgo[data-floor="1"]');
   await page.waitForTimeout(400);
   const after = await page.evaluate(() => {
     const L = window.__lvl;
@@ -38,7 +42,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.evaluate(() => { DEV.l2Bg = '#ff00ff'; });
   await page.tap('.devbtn');
   await page.waitForTimeout(150);
-  await page.tap('.dbg.floor2');
+  await page.tap('.dbg.spawnlevel');
+  await page.waitForTimeout(150);
+  await page.tap('.lvlgo[data-floor="2"]');
   await page.waitForTimeout(400);
   const two = await page.evaluate(() => ({ floor: window.__lvl.floor, theme: window.__lvl.theme, bg: themeFor(2).bg.join(),
     dev: !!document.querySelector('.devpanel') }));
