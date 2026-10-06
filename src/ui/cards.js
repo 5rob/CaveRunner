@@ -8,6 +8,7 @@ import { modPreview } from '../spells/advisor.js';
 import { effRecharge, gunPassives } from '../spells/cast.js';
 import { gunColor, gunLvCol } from '../spells/guns.js';
 import { MODS, famCol, famOf } from '../spells/mods.js';
+import { auditGet, auditNotes, auditToggle, loadAudit, saveAudit } from '../save/audit.js';
 import { h, useState } from './h.js';
 
 // The same detail card is used by the build screen and by the shop, so what you
@@ -92,9 +93,67 @@ export function GunCard({ gun, label, onClose, ingame, flow, split, mark, compar
   );
 }
 
+/** @typedef {import('../save/audit.js').Audit} AuditData */
+// The owner's audit (LIST3 #6, save/audit.js): one item's mark and notes, read fresh from storage
+/** @param {string} key */
+function useAudit(key) {
+  // keyed by the item, so a card reused for another mod (the Bag's) reads that one's afresh
+  const [st, setSt] = useState(() => ({ key, e: auditGet(loadAudit(), key), fb: false }));
+  const cur = st.key === key ? st : { key, e: auditGet(loadAudit(), key), fb: false };
+  /** @param {(a: AuditData) => AuditData} fn */
+  const commit = fn => {
+    const a = fn(loadAudit());
+    saveAudit(a); setSt({ key, e: auditGet(a, key), fb: false });
+  };
+  /** @param {'keep' | 'trash'} m */
+  const toggle = m => commit(a => auditToggle(a, key, m));
+  /** @param {string} n */
+  const setNotes = n => commit(a => auditNotes(a, key, n));
+  /** @param {boolean} on */
+  const setFb = on => setSt(Object.assign({}, cur, { fb: on }));
+  return { e: cur.e, fb: cur.fb, setFb, toggle, setNotes };
+}
+/** @typedef {ReturnType<typeof useAudit>} AuditState */
+
+// The pin (keep) and trash (remove) toggles in a card's head; only on cards you can tap (not `ingame`)
+/** @param {{ au: AuditState }} props */
+function AuditMarks({ au }) {
+  const b = (/** @type {'keep' | 'trash'} */ m, /** @type {string} */ icon, /** @type {string} */ label) =>
+    h('button', { className: 'aumark ' + m + (au.e.mark === m ? ' on' : ''), 'data-audit': m, 'aria-label': label,
+      'aria-pressed': au.e.mark === m, onPointerDown: e => { e.preventDefault(); e.stopPropagation(); au.toggle(m); } }, icon);
+  return h('div', { className: 'aumarks' }, b('keep', '📌', 'Pin: keep'), b('trash', '🗑️', 'Trash: remove'));
+}
+
+// "Give Feedback" under the card, with a one-line peek at the saved notes
+/** @param {{ au: AuditState }} props */
+function AuditFoot({ au }) {
+  const n = au.e.notes.trim();
+  return h('div', { className: 'aufoot' },
+    h('button', { className: 'aufb', onPointerDown: e => { e.preventDefault(); e.stopPropagation(); au.setFb(true); } },
+      n ? 'Edit feedback' : 'Give Feedback'),
+    n ? h('span', { className: 'aupeek' }, n) : null);
+}
+
+// The card turned into a text screen: the notes so far in a box near the top (so a phone keyboard
+// leaves Save in view), Save and Cancel
+/** @param {{ au: AuditState, name: string, glyph: string, col: string, cls: string }} props */
+function AuditText({ au, name, glyph, col, cls }) {
+  const [t, setT] = useState(au.e.notes);
+  return h('div', { className: 'pop scroll aufbpop' + cls },
+    h('div', { className: 'phead' },
+      h('div', { className: 'pglyph', style: { borderColor: col, color: col } }, glyph),
+      h('div', { className: 'ptitle' }, h('b', null, name), h('span', null, 'Feedback · your notes'))),
+    h('textarea', { className: 'autext', value: t, autoFocus: true, placeholder: 'What should change about it?',
+      onChange: e => setT(e.target.value) }),
+    h('div', { className: 'aubtns' },
+      h('button', { className: 'aucancel', onPointerDown: e => { e.preventDefault(); au.setFb(false); } }, 'Cancel'),
+      h('button', { className: 'ausave', onPointerDown: e => { e.preventDefault(); au.setNotes(t); } }, 'Save')));
+}
+
 /** @param {{ id: string, onClose?: () => void, ingame?: boolean, top?: boolean, flow?: boolean }} props */
 export function ModCard({ id, onClose, ingame, top, flow }) {
   const m = MODS[id];
+  const au = useAudit('mod:' + id);
   const kind = famOf(id).name + (m.kind === 'passive' ? ' \u00b7 always on' : '');
   const rows = modPreview(id).rows;
   // the examples' mods: the Bag's square tiles too (v0.0.144, owner)
@@ -167,12 +226,15 @@ export function ModCard({ id, onClose, ingame, top, flow }) {
     demo = [drow(true, [dtile(id, 'a'), dtile('bolt', 'b')], 'the bolt gets the effect', 1),
             drow(false, [dtile('bolt', 'c'), dtile(id, 'd', true)], 'too late — the bolt already fired', 2)];
   }
-  return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') + (top ? ' top' : '') + (flow ? ' flow' : '') },
+  const cls = (ingame ? ' ingame' : '') + (top ? ' top' : '') + (flow ? ' flow' : '');
+  if (au.fb && !ingame) return h(AuditText, { au, name: m.name, glyph: m.glyph, col: famCol(id), cls });
+  return h('div', { className: 'pop scroll' + cls },
     h('div', { className: 'phead' },
       h('div', { className: 'pglyph', style: { borderColor: famCol(id), color: famCol(id) } }, m.glyph),
       h('div', { className: 'ptitle' },
         h('b', null, m.name),
         h('span', null, kind + (m.mana ? ' \u00b7 ' + m.mana + ' mana' : ''))),
+      ingame ? null : h(AuditMarks, { au }),
       onClose ? h('button', { className: 'pclose',
         onPointerDown: e => { e.preventDefault(); onClose(); } }, '\u00d7') : null
     ),
@@ -183,7 +245,8 @@ export function ModCard({ id, onClose, ingame, top, flow }) {
         h('span', null, r[0]), h('b', null, r[1])))) : null,
     // the placement use-example is for the editor, where you're deciding where a mod
     // goes — the shop/pickup preview leaves it off and keeps the card compact.
-    ingame ? null : h('div', { className: 'pdemo' }, demo)
+    ingame ? null : h('div', { className: 'pdemo' }, demo),
+    ingame ? null : h(AuditFoot, { au })
   );
 }
 
@@ -192,13 +255,18 @@ export function ModCard({ id, onClose, ingame, top, flow }) {
 /** @param {{ id: string, ingame?: boolean, flow?: boolean, top?: boolean, onClose?: () => void }} props */
 export function PerkCard({ id, ingame, flow, top, onClose }) {
   const pk = PERKS[id];
-  return h('div', { className: 'pop scroll' + (ingame ? ' ingame' : '') + (flow ? ' flow' : '') + (top ? ' top' : '') },
+  const au = useAudit('perk:' + id);
+  const cls = (ingame ? ' ingame' : '') + (flow ? ' flow' : '') + (top ? ' top' : '');
+  if (au.fb && !ingame) return h(AuditText, { au, name: pk.name, glyph: pk.glyph, col: pk.tint, cls });
+  return h('div', { className: 'pop scroll' + cls },
     h('div', { className: 'phead' },
       h('div', { className: 'pglyph', style: { borderColor: pk.tint, color: pk.tint } }, pk.glyph),
       h('div', { className: 'ptitle' },
         h('b', { style: { color: pk.tint } }, pk.name),
         h('span', null, 'Perk · counts while fitted to your Exo Suit')),
+      ingame ? null : h(AuditMarks, { au }),
       onClose ? h('button', { className: 'pclose',
         onPointerDown: e => { e.preventDefault(); onClose(); } }, '×') : null),
-    h('p', { className: 'pinfo' }, pk.info));
+    h('p', { className: 'pinfo' }, pk.info),
+    ingame ? null : h(AuditFoot, { au }));
 }

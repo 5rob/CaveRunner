@@ -7,6 +7,12 @@ Names are as they were at the time (before the refactor Game's state had loose n
 
 ## Unreleased
 
+- **Audit mods and perks** (LIST3 #6, waiting for the owner's OK): every mod and perk card you can tap
+  (Bag, Exo Suit, a gun card's mods) has a 📌 keep and a 🗑️ trash toggle (one or the other) and a
+  Give Feedback button that turns the card into a notes box, prefilled with what you wrote before,
+  with Save / Cancel. Kept on the device across runs and deaths (`caverunner-audit`). Dev → **Copy
+  audit** copies it all as Markdown for a Claude Code session (Remove / Keep / Notes, each with the
+  item's id). `save/audit.js`, `ui/cards.js`, `ui/devpanel.js`. Tests: new `audit` (logic + browser).
 - **A modifier now affects only the next spell** (owner's decision): `[Damage Plus][Bolt][Bolt]`
   boosts only the first bolt; modifiers in a row all land on the next spell; inside a multicast or a
   trigger payload each spell gets only the modifiers right before it. Timing and mana unchanged.
