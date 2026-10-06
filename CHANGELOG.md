@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.151 — a wall in the Bag's firing window
+Released 2026-10-07 (the owner OK'd the screenshot; a minor update). The firing window has an unbreakable stone wall
+at the far right (`GF_WALL`, `ui/editor.js` `GunFire`): shots stop on it or bounce, blasts flash, beams end on
+it, and a trigger's payload goes off on its own moment (hit: the wall; timer: in flight; expire: any death) and
+flies back out, so you can see what trigger builds do. Suite `gunfire` checks a payload goes off.
+
 ## v0.0.150 — the Bag's mana bar
 Released 2026-10-07 (owner's ask; a minor update). The thin bar under the Bag's Mana stat now drains and refills
 with the fire preview like cast delay's and recharge's: it read the gauge under the row's key (`manaMax`) instead
