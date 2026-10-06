@@ -11,8 +11,8 @@ const reset = () => { for (const k in DEV_DEFAULTS) if (/^l2/.test(k)) DEV[k] = 
 reset();
 
 // floor 2 is the tomb since Level 2 stage 2 (world/tomb.js; its layout knobs: tests/logic/tomb.test.js).
-// The palette at its defaults is still Coal seams', and the other floors don't feel floor 2's knobs
-check('defaults: the palette is Coal seams\'',JSON.stringify(themeFor(2)) === JSON.stringify(THEMES[1]));
+// The palette at its defaults is still Tombs', and the other floors don't feel floor 2's knobs
+check('defaults: the palette is Tombs\'',JSON.stringify(themeFor(2)) === JSON.stringify(THEMES[1]));
 const f1 = hashMat(makeLevel(3, 1).mat), f3 = hashMat(makeLevel(3, 3).mat);
 DEV.l2RoomsLo = DEV.l2RoomsHi = 20; DEV.l2GapLo = DEV.l2GapHi = 40;
 check('floor 1 and 3 don\'t feel them', hashMat(makeLevel(3, 1).mat) === f1 && hashMat(makeLevel(3, 3).mat) === f3);
@@ -35,9 +35,9 @@ const T = themeFor(2);
 check('the colour knobs paint floor 2', T.rock[0].join() === '255,0,0' && T.bg.join() === '0,255,0' && T.rock[1].join() === THEMES[1].rock[1].join(), T);
 check('and its rock comes out that colour', (() => { const lv = makeLevel(3, 2); for (let i = 0; i < lv.mat.length; i++) if (lv.mat[i] === 1) { const d = lv.img.data; return d[i * 4] > d[i * 4 + 1] + 40; } return false; })());
 check('other floors keep theirs', themeFor(1) === THEMES[0] && themeFor(3) === THEMES[2]);
-check('the theme keeps its name (its ambience)', T.name === 'Coal seams');
+check('the theme keeps its name (its ambience)', T.name === 'Tombs');
 reset();
-check('the colour defaults are Coal seams\' palette', L2_LOOK.every(([k]) => /^#[0-9a-f]{6}$/.test(DEV_DEFAULTS[k])) &&
+check('the colour defaults are Tombs\' palette', L2_LOOK.every(([k]) => /^#[0-9a-f]{6}$/.test(DEV_DEFAULTS[k])) &&
   hexArr(DEV_DEFAULTS.l2Mortar).join() === THEMES[1].mortar.join() && hexArr(DEV_DEFAULTS.l2Bed2).join() === THEMES[1].bed[1].join());
 
 // on the panel

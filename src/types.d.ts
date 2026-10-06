@@ -146,6 +146,7 @@ interface Enemy {
   sid?: number;               // its index on the floor (the autosave)
   // the reworked creatures' brains, on the creature (made on their first step)
   sp?: SpiderBrain; je?: JellyBrain; ra?: RatBrain;
+  al?: AlienBrain;            // the alien's brain and look (creatures/alien.js)
   aggro?: boolean; aggroT?: number; aggroM?: number; spotted?: boolean;
   dead?: boolean; chill?: number; burn?: number; burnAcc?: number; fuseT?: number;
   // a rat's jobs and fallbacks
@@ -192,6 +193,24 @@ interface SpiderBrain extends RoamState, SurfState {
 interface SpiderEnv {
   solidCell: SolidCell; webs: WebLine[]; goal: Pt; hunting: boolean; rnd: Rnd;
   speed?: number; reach?: number; speedMul?: number;
+}
+/** the alien's brain, `e.al` (alienStep, creatures/alien.js): the look (rot, px, py, walk, black) the sprite reads,
+ * z its zone (number + 1), its velocity, the roam burst (ha heading, on, rest, spd), pt the pupil's dart clock,
+ * fl/fx/fy fleeing fire, sprint (a stray running home), dodge/dA going round something in the way */
+interface AlienBrain {
+  rot: number; px: number; py: number; walk: number; black: boolean; z: number; vx: number; vy: number;
+  ha: number; on: number; rest: number; spd: number; pt: number; fl: number; fx: number; fy: number;
+  sprint: boolean; dodge: number; dA: number; skip?: number; acc?: number;
+  gait?: number;              // the legs' step cycle, run on at its walking speed (radians)
+}
+interface AlienGrid { cell: number; m: Map<number, Enemy[]> }
+/** what alienStep is handed: zone(x, y) the zone number + 1 there (0 none), silk(x, y), the neighbours,
+ * fireNear(x, y, R) the nearest fire within R, home(x, y) the nearest zone's middle, you, look (you in aggro
+ * reach), hunting (it has you), youDark (you in a zone with no fire near you) */
+interface AlienEnv {
+  solidCell: SolidCell; zone: (x: number, y: number) => number; silk: (x: number, y: number) => boolean;
+  near: Enemy[]; fireNear: (x: number, y: number, R: number) => Pt | null; home: (x: number, y: number) => Pt | null;
+  you: Pt; look: boolean; hunting: boolean; youDark: boolean; rnd: Rnd;
 }
 /** the rat's brain, `e.ra` (ratStep, creatures/rat.js) */
 interface RatBrain extends SurfState {
@@ -334,6 +353,8 @@ interface Tomb {
   course: number; block: number; mason: number;   // the cut stone's course height, block length, depth (px)
   ledgeGap: number;
   mended: boolean;            // the plan didn't reach the top and a plain shaft was cut (never seen)
+  loot?: { x: number; y: number; gold: number; red: boolean }[];   // Level 2 stage 6's loot spots (world/loot.js): world units, y the ground
+  boom?: { list: { x: number; y: number; r: number; fire: boolean; dist: number }[]; blasts: number; fire: number; ticks: number; bones: number; gone: number };   // Level 2 stage 5's wasteland (world/destroy.js), counted
 }
 /** a rat nest as ratNests makes it (world/nests.js) */
 interface NestSpot {
@@ -351,7 +372,8 @@ type Noise2 = (x: number, y: number) => number;
 /** a new floor: makeLevel's return (world/level.js) */
 interface Level {
   mat: Uint8Array;            // per terrain cell: open or which rock
-  img: ImageData; bgImg: ImageData; dimg: ImageData;   // made with new ImageData (a stand-in under Node: tests/load.js)
+  img: ImageData; bgImg: ImageData; dimg: ImageData;
+  bgHi?: ImageData | null;     // floor 2: the back wall at terrain resolution (paintTombWall; bgImg its quarter-size copy)   // made with new ImageData (a stand-in under Node: tests/load.js)
   ore: Uint8Array; fuel: Uint8Array;
   props: Prop[];
   amb: string[];              // the theme's ambience particle kinds
@@ -360,6 +382,7 @@ interface Level {
   portals: { x: number; y: number; w: number; h: number }[];   // the exits along the top, left to right (EXIT_X)
   arrival: Pt;
   enemies: Enemy[]; pickups: Pickup[]; stock: StockItem[]; rooms: Room[];
+  coins: Coin[];              // gold lying on the ground at the start (floor 2's loot, world/loot.js); [] elsewhere
   shopExit: number;
   roster: string[];
   theme: string;              // the palette's name
@@ -371,6 +394,7 @@ interface Level {
   darkMask: Uint8Array | null;   // per terrain cell: dark zone number + 1, 0 outside (null: no zones)
   webbing: Uint8Array | null;    // per terrain cell: the zones' silk, 0 none, 1..255 how thick (open cells; the fringe's too)
   darkShade: Uint8Array | null;  // per terrain cell: how dark, 255 in a zone, fading out through its ragged fringe
+  darkDepth: Uint8Array | null;  // per terrain cell: px into a zone from its edge (0 outside; world/dark.js zoneDepth)
 }
 /** a dark zone (world/dark.js darkZones), terrain px */
 interface DarkZone {
@@ -380,7 +404,13 @@ interface DarkZone {
   cells: number;              // how many terrain cells it covers
   doors: Pt[];                // where the tomb ran into it (each joined to the chamber by a tunnel)
   chamber: { x: number; y: number; rx: number; ry: number; floor: number };   // the open chamber in its middle (Stage 6's prize)
+  prize?: { kind: 'gold' | 'red' | 'green'; n: number; x: number; y: number };   // its prize (world/loot.js): how much, standing at (x, y) world, y the ground
+  tunnels: DarkTunnel[];      // the second pass's small winding tunnels (the aliens' ways; a few the runner fits)
+  open: number;               // the share of its cells that ended up open (DEV.l2dOpen aims for it)
 }
+
+/** a dark zone's small tunnel (world/dark.js): its path every few px, how wide it was dug, and whether a 6 x 11 runner box fits through it */
+interface DarkTunnel { pts: Pt[]; w: number; fits: boolean }
 
 /** the fire's state: fireNew (world/fire.js) */
 interface FireState { fuel: Uint8Array; t: Uint16Array; list: number[]; acc: number }
@@ -420,6 +450,7 @@ interface SavedLevel {
   seed: number; owned: string[]; alive: number[] | null; sold: number[]; rooms: number[]; heals?: number;
   brood?: [number, number][];  // each nest's sid and the rats it still holds (its rats out go back in)
   pickups: Pickup[] | null;
+  coins?: Coin[];             // the gold on the ground (v0.0.147: floor 2's loot); missing in an older save: the floor's own
   pins?: MapPin[];            // the map's pins (v0.0.141)
 }
 
@@ -540,11 +571,12 @@ interface Guide { st: 'wait' | 'appear' | 'wave' | 'talk' | 'give' | 'rude' | 'l
 interface MapPin { x: number; y: number; e: string }
 /** gold on the ground */
 /** anything world/nuggets.js moves: gold, and crystals (v0.0.138) */
-interface Nug { x: number; y: number; vx?: number; vy?: number; t?: number; a?: number; ground?: number; fly?: boolean; amount?: number }
+interface Nug { x: number; y: number; vx?: number; vy?: number; t?: number; a?: number; ground?: number; fly?: boolean; amount?: number; sz?: number }
 interface Coin {
   x: number; y: number; amount: number; t: number;
   vx?: number; vy?: number; pop?: number; nopull?: number;
   a?: number; ground?: number; fly?: boolean;   // world/nuggets.js: its turn, resting on rock, being pulled to you
+  sz?: number;                                  // its size (NUGGETS index) when not its amount's (floor 2's loot: world/loot.js)
 }
 /** a line at the bottom of the view */
 interface Toast { text: string; t: number }
@@ -600,7 +632,7 @@ interface World {
   start: Pt; portal: Level['portal']; portals: Level['portals']; arrival: Pt; stock: StockItem[];
   zone: Uint8Array | null; rooms: Room[];
   tomb: Tomb | null;          // floor 2's room list and corridors (Level.tomb); null elsewhere
-  dark: DarkZone[]; darkMask: Uint8Array | null; webbing: Uint8Array | null; darkShade: Uint8Array | null;   // floor 2's dark zones (Level's)
+  dark: DarkZone[]; darkMask: Uint8Array | null; webbing: Uint8Array | null; darkShade: Uint8Array | null; darkDepth: Uint8Array | null;   // floor 2's dark zones (Level's)
   webDirty: { x0: number; y0: number; x1: number; y1: number }[];   // silk blown away since the last frame (render/dark.js repaints)
   sconces: any[];             // Sconce[]: enterLevel builds [x, y] pairs first and maps them after
   levelSeed: number; levelOwned: string[]; roster: string[]; themeName: string; total: number;
@@ -619,7 +651,7 @@ interface World {
   bhLoops: Map<Bullet, SoundLoop>;
   portalLoop: SoundLoop; matterLoop: SoundLoop; wasJet: boolean;
   stepT: number; lastNear: string | number; portalAcc: number;
-  leanVX: number; leanVY: number; flickN: number; torchT: number; torchAcc: number; smokeAcc: number;
+  leanVX: number; leanVY: number; flickN: number; torchT: number; torchAcc: number; torchFail: { inside: boolean; t: number }; torchLit: number; smokeAcc: number;
   webCheck: number; webLetGo: number;
   plantsNow: Set<Prop>; plantsLast: Set<Prop>; rustle: { t: number };
   decoFrame: number; dripHurt: number; oreBank: number;
@@ -748,6 +780,7 @@ interface GameCtx {
   c: HTMLCanvasElement; ctx: CanvasRenderingContext2D;
   terrain: HTMLCanvasElement; tctx: CanvasRenderingContext2D;
   bg: HTMLCanvasElement; bgctx: CanvasRenderingContext2D;
+  bgHi: HTMLCanvasElement; bgHiOn: boolean;   // the back wall at terrain resolution, when the floor has one (bgHi)
   fogC: HTMLCanvasElement; fctx: CanvasRenderingContext2D; fogImg: ImageData;
   fogBlurC: HTMLCanvasElement; fbctx: CanvasRenderingContext2D;
   mapC: HTMLCanvasElement;    // the map's picture: this floor as it was made, rock and decoration (level-entry.js mapPicture)

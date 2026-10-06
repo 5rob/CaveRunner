@@ -114,7 +114,7 @@ export const DEV_META = [
   { k: 'bagSpeed',  g: 'ui',    label: 'Bag fire preview speed (×real time)', min: 0.05, max: 5, step: 0.05 },
 ];
 export const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['fx', 'Hologram & glow'], ['holoflash', 'Hologram flash (on a kill)'], ['guide', 'Guide hologram (new run)'], ['player', 'Player'],
-  ['enemy', 'Enemies'], ['elite', 'Elites'], ['elitefx', 'Elites: flames'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['level2', 'Level 2: layout & look'], ['l2dark', 'Level 2: dark zones'], ['l2boom', 'Level 2: destruction'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
+  ['enemy', 'Enemies'], ['elite', 'Elites'], ['elitefx', 'Elites: flames'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['level2', 'Level 2: layout & look'], ['l2dark', 'Level 2: dark zones'], ['l2boom', 'Level 2: destruction'], ['l2alien', 'Level 2: aliens'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults.
 export function devReport() {
@@ -404,7 +404,7 @@ export const L2_KNOBS = rangeKnobs('level2', [
   ['l2Furn',    'Room kits: furniture amount (×)',           0, 3, 0.05,     1, 1],
   ['l2Bones',   'Room kits: skeletal remains (×)',           0, 3, 0.05,     1, 1],
 ]);
-// and its look: the palette (the Coal seams theme, data/themes.js themeFor) and how much decoration
+// and its look: the palette (the Tombs theme, data/themes.js themeFor) and how much decoration
 /** @type {[key: string, label: string, def: string][]} */
 export const L2_LOOK = [
   ['l2Bg',     'Background (far)',   '#0c0d11'], ['l2Bg2',    'Background (near)', '#1c1e24'],
@@ -439,33 +439,38 @@ export function curveKnobs(g, p, label, lo, hi, def) {
 export const CURVES = [];
 /** @param {string} p @returns {Curve} */
 export const kcurve = p => ({ y0: DEV[p + '0'], x1: DEV[p + 'C1x'], y1: DEV[p + 'C1y'], x2: DEV[p + 'C2x'], y2: DEV[p + 'C2y'], y3: DEV[p + '1'] });
-// Level 2: destruction (world/byDistance.js, not in the cave yet): explosions scattered round the
-// dark zones, denser and bigger near them. Distances in terrain pixels. destructionOpts() reads them.
-DEV_DEFAULTS.l2bMaxDist = 200; DEV_DEFAULTS.l2bCount = 60; DEV_DEFAULTS.l2bFire = 30; DEV_DEFAULTS.l2bJitter = 0; DEV_DEFAULTS.l2bClear = 4;
+// Level 2: destruction (world/destroy.js, Level 2 stage 5): explosions scattered round the
+// dark zones, denser and bigger near them, and bones across the wasteland. Distances in terrain pixels. destructionOpts() reads them.
+DEV_DEFAULTS.l2bMaxDist = 100; DEV_DEFAULTS.l2bCount = 100; DEV_DEFAULTS.l2bFire = 30; DEV_DEFAULTS.l2bJitter = 0; DEV_DEFAULTS.l2bClear = 4; DEV_DEFAULTS.l2bBones = 90; DEV_DEFAULTS.l2bInRock = 1; DEV_DEFAULTS.l2bScorch = 1.8; DEV_DEFAULTS.l2bStreak = 1;
 DEV_META.push(
   { k: 'l2bMaxDist', g: 'l2boom', label: 'Reach: most distance from a dark zone (px)', min: 1, max: 1600, step: 5 },
   { k: 'l2bCount',   g: 'l2boom', label: 'Number of explosions', min: 0, max: 2000, step: 1 },
   { k: 'l2bFire',    g: 'l2boom', label: 'Explosions that cause fire (%)', min: 0, max: 100, step: 1 },
   { k: 'l2bJitter',  g: 'l2boom', label: 'Extra position randomness (± px)', min: 0, max: 100, step: 1 },
-  { k: 'l2bClear',   g: 'l2boom', label: 'Clearance from terrain (px)', min: 0, max: 60, step: 1 });
+  { k: 'l2bInRock',  g: 'l2boom', label: 'Blasts anywhere in the ring, rock too (0: open air only)', min: 0, max: 1, step: 1 },
+  { k: 'l2bScorch',  g: 'l2boom', label: 'Scorch ring width (× the hole\'s radius)', min: 0, max: 4, step: 0.05 },
+  { k: 'l2bStreak',  g: 'l2boom', label: 'Blast streaks: length × (0: none)', min: 0, max: 4, step: 0.05 },
+  { k: 'l2bClear',   g: 'l2boom', label: 'Clearance from terrain, open air only (px)', min: 0, max: 60, step: 1 },
+  { k: 'l2bBones',   g: 'l2boom', label: 'Bones and skulls in the ground, outside the zones', min: 0, max: 600, step: 1 });
 export const L2B_KNOBS = rangeKnobs('l2boom', [
   ['l2bSize', 'Explosion size (px radius)', 1, 120, 1, 6, 18],
 ]);
-curveKnobs('l2boom', 'l2bDen', 'Destruction amount (Y) by distance from a dark zone (X)', 0, 1, { y0: 1, x1: 0.25, y1: 1, x2: 0.5, y2: 0, y3: 0 });
-curveKnobs('l2boom', 'l2bScale', 'Size × (Y, 0-2) by distance from a dark zone (X)', 0, 2, { y0: 1.6, x1: 0.33, y1: 1.3, x2: 0.66, y2: 0.8, y3: 0.5 });
+curveKnobs('l2boom', 'l2bDen', 'Destruction amount (Y) by distance from a dark zone (X)', 0, 1, { y0: 1, x1: 0.33, y1: 0.67, x2: 0.66, y2: 0.33, y3: 0 });
+curveKnobs('l2boom', 'l2bScale', 'Size × (Y, 0-2) by distance from a dark zone (X)', 0, 2, { y0: 2, x1: 0.33, y1: 1.4, x2: 0.66, y2: 0.7, y3: 0.25 });
 // Level 2 stage 4: floor 2's dark zones (world/dark.js darkZones; their look: game/render/dark.js). Terrain px
 // for sizes; how many and how big are rolled per floor on the zones' own stream
 export const L2D_KNOBS = rangeKnobs('l2dark', [
   ['l2dCount', 'Dark zones on the floor', 0, 8, 1, 2, 3],
-  ['l2dSize',  'Dark zone size (radius, px)', 20, 160, 1, 60, 88],
-  ['l2dOpen',  'Share of a zone that ends up open (small alien tunnels fill it to this)', 0, 0.9, 0.01, 0.42, 0.5],
+  ['l2dSize',  'Dark zone size (radius, px)', 20, 320, 1, 120, 176],     // (doubled: owner, round 5)
+  ['l2dOpen',  'Share of a zone that ends up open (small alien tunnels fill it to this)', 0, 0.9, 0.01, 0.65, 0.75],
 ]);
-DEV_DEFAULTS.l2dRough = 0.6; DEV_DEFAULTS.l2dFringe = 30;
+DEV_DEFAULTS.l2dRough = 1; DEV_DEFAULTS.l2dFringe = 30;
 DEV_META.push(
   { k: 'l2dRough',  g: 'l2dark', label: 'Rough cave walls inside (0 = smooth)', min: 0, max: 2, step: 0.05 },
   { k: 'l2dFringe', g: 'l2dark', label: 'Ragged fringe round a zone: width (px)', min: 0, max: 120, step: 1 });
 DEV_DEFAULTS.l2dSpace = 120; DEV_DEFAULTS.l2dShop = 140; DEV_DEFAULTS.l2dTop = 120; DEV_DEFAULTS.l2dSilk = 1;
-DEV_DEFAULTS.l2dDark = 0.94; DEV_DEFAULTS.l2dEdge = 1.2; DEV_DEFAULTS.l2dHolo = 0.4; DEV_DEFAULTS.l2dBack = 0.3;
+DEV_DEFAULTS.l2dDark = 1; DEV_DEFAULTS.l2dEdge = 1.2; DEV_DEFAULTS.l2dHolo = 0.8; DEV_DEFAULTS.l2dBack = 0.12; DEV_DEFAULTS.l2dBlur = 5; DEV_DEFAULTS.l2dFireR = 45;
+DEV_DEFAULTS.l2dTintDepth = 12; DEV_DEFAULTS.l2dTorchDepth = 18; DEV_DEFAULTS.l2dTorchHyst = 4;   // (owner: black a short way in, most of a zone dark; the torch fails just past it)
 DEV_META.push(
   { k: 'l2dSpace', g: 'l2dark', label: 'Zones apart, at least (px, plus half their sizes)', min: 0, max: 800, step: 5 },
   { k: 'l2dShop',  g: 'l2dark', label: 'Kept away from the shop (px above its roof)', min: 0, max: 600, step: 5 },
@@ -474,7 +479,37 @@ DEV_META.push(
   { k: 'l2dDark',  g: 'l2dark', label: 'Darkness (0 = none, 1 = pitch black)', min: 0, max: 1, step: 0.01 },
   { k: 'l2dEdge',  g: 'l2dark', label: 'Edge softness (fog cells of blur)', min: 0, max: 6, step: 0.1 },
   { k: 'l2dHolo',  g: 'l2dark', label: 'Hologram through the silk (0 = hidden, diffused)', min: 0, max: 1, step: 0.01 },
-  { k: 'l2dBack',  g: 'l2dark', label: 'Silk backlight (how much of it shows in the dark)', min: 0, max: 1, step: 0.01 });
+  { k: 'l2dBlur',  g: 'l2dark', label: 'Silk blur: how much it frosts the back wall and hologram behind it (terrain px)', min: 0, max: 12, step: 0.5 },
+  { k: 'l2dBack',  g: 'l2dark', label: 'Back wall brightness behind the silk', min: 0, max: 1, step: 0.01 },
+  { k: 'l2dFireR', g: 'l2dark', label: 'Fire lifts the black tint out to (px)', min: 1, max: 200, step: 1 },
+  { k: 'l2dTintDepth', g: 'l2dark', label: 'Black fades in over this far into a zone (px)', min: 1, max: 160, step: 1 },
+  { k: 'l2dTorchDepth', g: 'l2dark', label: 'The torch fails this far in (px; just past the fade\'s end)', min: 0, max: 200, step: 1 },
+  { k: 'l2dTorchHyst', g: 'l2dark', label: 'And comes back on this much nearer the edge (px, no strobing)', min: 0, max: 40, step: 1 });
+curveKnobs('l2dark', 'l2dFire', 'Fire lifts the black (Y, 1 = full colour) by distance to it (X, 0 to the max)', 0, 1, { y0: 1, x1: 0.35, y1: 1, x2: 0.55, y2: 0.1, y3: 0 });
+// Level 2 stage 7b: the dark zones' aliens (creatures/alien.js alienStep; spawned in world/level.js). World units
+// for reaches and speeds (CELL = 2 a terrain px)
+export const AL_KNOBS = rangeKnobs('l2alien', [
+  ['alCount',   'Aliens per dark zone',                         0, 400, 1,     60, 120],
+  ['alStrays',  'Strays per floor (black, outside the zones)',  0, 20, 1,      2, 4],
+  ['alScale',   'Size × (each one rolled in this range)',        0.2, 5, 0.05,  0.6, 2.4],
+  ['alBias',    'Size: lean to small (1 even; higher = more small, few big)', 1, 8, 0.1, 3, 4],
+  ['alSpeed',   'Roaming: burst speed',                          10, 600, 5,    80, 240],
+  ['alRoamOn',  'Roaming: burst length (s)',                     0.02, 3, 0.01, 0.15, 0.9],
+  ['alRoamOff', 'Roaming: rest between (s)',                     0, 6, 0.05,    0.3, 2],
+  ['alFleeSpd', 'Fleeing (and a stray sprinting home): speed',   10, 800, 5,    220, 320],
+  ['alFleeR',   'Flees from fire within (world units)',          0, 600, 5,     110, 140],
+  ['alHunt',    'Coming for you in the dark: speed',             10, 600, 5,    120, 200],
+  ['alKeep',    'In light: keeps this far from you',             0, 300, 5,     50, 80],
+  ['alAggro',   'Aggro distance (×enemy aggro)',                 0.1, 5, 0.05,  0.9, 1.1],
+  ['alBoidR',   'Pack: neighbours within',                       2, 80, 1,      14, 20],
+  ['alSep',     'Pack: separation weight',                       0, 5, 0.05,    1.2, 1.6],
+  ['alAli',     'Pack: alignment weight',                        0, 5, 0.05,    0.5, 0.8],
+  ['alCoh',     'Pack: cohesion weight',                         0, 5, 0.05,    0.4, 0.6],
+  ['alBite',    'Bite damage',                                   0, 100, 1,     3, 5],
+  ['alBiteCd',  'Secs between bites',                            0.1, 5, 0.05,  0.6, 1.2],
+  ['alGlimpse', 'A bullet lifts the black: strength (0-1)',      0, 1, 0.01,    0.35, 0.5],
+  ['alGlimpseR','A bullet lifts the black: radius (world units)',0, 200, 1,     22, 30],
+]);
 export const ARCH_KNOBS = rangeKnobs('arch', [
   ['arVines',   'Arched vine clusters per floor',      0, 40, 0.5,   9, 13],
   ['arCluster', 'Arches per cluster',                  1, 8, 0.1,    1.5, 3.5],

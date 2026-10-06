@@ -12,6 +12,7 @@ import { approach, clamp } from '../../core/util.js';
 import { activePerks, perkBag } from '../../data/perks.js';
 import { DEV, kr, spr } from '../../dev/knobs.js';
 import { clearSave, saveCollection } from '../../save/save.js';
+import { darkDepthAt, torchStep } from '../../world/dark.js';
 import { archNear } from '../../world/decorate.js';
 import { ragHip, ragNew, ragStep } from '../../world/ragdoll.js';
 import { hangRootX, hangRootY, swings } from '../../world/sway.js';
@@ -334,6 +335,8 @@ export function stepTorch(W, F) {
   // than pulse. It never goes above 1: flicker means the light dipping, and a canvas
   // globalAlpha over 1 is simply ignored.
   W.torchT += dt;
+  // floor 2's dark zones: crossing a zone's edge the gun light fails, flickering (world/dark.js torchStep)
+  W.torchLit = torchStep(W.torchFail, W.p.dead ? 0 : darkDepthAt(W, W.p.x + PW / 2, W.p.y + PH / 2, CELL), dt);
   W.flickN += (Math.random() - 0.5) * 2.6 * dt;
   W.flickN *= 0.94;
   W.flick = clamp(0.94 + W.flickN + 0.04 * Math.sin(W.torchT * 11.3) + 0.025 * Math.sin(W.torchT * 19.7),

@@ -5,6 +5,31 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.147 — Level 2: the Tombs
+Released 2026-10-06 (every stage's look OK'd by the owner from screenshots; a minor update, for testing).
+The owner's brief: LEVEL2.md; the parts and their knobs: HANDOVER.md, "LEVEL 2".
+
+- **Floor 2 is the Tombs** (the theme renamed from Coal seams): an ancient tomb laid out as geometric rooms,
+  galleries and shafts in cut stone (`world/tomb.js`), each room furnished by its type with skeletons and
+  unlit candles (`world/furnish.js`), and its own carved back wall at the rock's brick scale (`paintTombWall`,
+  drawn at terrain resolution: `level.bgHi`).
+- **Dark zones** (`world/dark.js`, `render/dark.js`): 2–3 big zones of rough caves and small tunnels under thick
+  silk. Inside, the hologram and back wall are blurred behind the silk, everything else is a black
+  silhouette past a short fade, your gun light flickers out, and only fire lifts the dark.
+- **A wasteland round them** (`world/destroy.js`, the reusable `world/byDistance.js`): 100 real blast holes in a
+  ring round each zone, with scorch, soft blast streaks and soot, some burnt out; bones and skulls in the floors.
+- **Loot instead of creatures** outside the zones (`world/loot.js`): gold where half a floor's creatures would
+  have stood, in mixed nugget sizes, 12 red crystals; a prize in each zone's chamber (1000–2000 gold, 4–6 red or
+  1–3 green crystals, at least one zone green). Gold on the ground is saved.
+- **The aliens** (`creatures/alien.js`, `game/creatures/alien.js`): hundreds of eyeball creatures on three
+  tapered legs, in packs (boids), mostly small with a few big; they flee fire and attack only in the dark;
+  black strays outside run home. A passing bullet gives a glimpse of them.
+- Dev groups: Level 2: dark zones, destruction, aliens (with bezier curve editors).
+- Tests: logic `tomb furnish dark destroy loot2 alien bydistance`, browser `tomb darkzone darkperf alien
+  alienperf`; `sound` now hops to floor 14 for its minecart (minecarts came only with floor 2's old decoration).
+  Picture tools: `tools/floorshot.js darkshots.js boomshots.js lootshots.js aliensheet.js alienshots.js alienframes.js`.
+- `CLAUDE.md`: "Subagents: keep them short" (the owner's rule after long agent runs).
+
 ## v0.0.146 — a dark shade under the controls
 Released 2026-10-05 (after the owner's OK of the screenshots; a minor update).
 

@@ -7,6 +7,7 @@
 | `jelly.js` | Myrkkymeduusa: `jellyStep` (state `e.je`), `jellyBell`, `segHitsBox`/`tentacleTouch` (stings), `jellyPal`, `drawJelly`, and the plant-glow comp `plantGlowFill`, `plantWhite`, `twinkle`/`twNoise` |
 | `rat.js` | Rotta and its nest: `ratStep` (state `e.ra`, modes `surf`/`air`/`tunnel`/`path`), `ratFooting`, `ratJump`, `ratSpread`, `pathAt`/`pathLen`, `RAT`, `drawRat`, `drawNest` |
 | `classic.js` | Sprites of the bodies not reworked yet: `drawDrone`, `drawCrawler`, `drawBlob`, `drawSkull`, `drawWorm` |
+| `alien.js` | The dark zones' alien: `drawAlien` (the sprite), `ALIEN` (geometry), and the brain `alienStep` (state `e.al`, `AlienBrain`), `alienBrain`, `alienBoids` (the pack's three terms), `alienGrid`/`alienNear` (the once-a-frame neighbour buckets) |
 | `draw.js` | `drawEnemy(ctx, e, time)`: picks the sprite by `e.k.body`, plus the charged-shot ring |
 
 Each creature's Game side (its part of the enemy loop) is in `game/creatures/` — see its README.
@@ -69,3 +70,11 @@ The owner reworks the enemies one at a time. A creature is:
   jump isn't cancelled. Ceilings are judged by the *nearest* rock (`S.py`), not the averaged normal
   (cracks misread). Falling off an overhang bars that side 1.5s. Job rats don't rest. Roaming rats
   spread out (`ratSpread`). Returns `'home' | 'out' | 'jump' | 'land'`.
+- **Alien:** moves only where `walk` allows: open, in its own zone (`S.z` = darkMask value; a stray anywhere),
+  on silk or by rock (`surfNormal` within 8); somewhere it shouldn't be, any open cell until it's back. Priority:
+  a stray that has seen you sprints to `env.home` → fire within `alFleeR` (runs directly away, 0.4–0.8 s after)
+  → in the dark (`env.youDark`) and hunting: comes and bites (`'bite'`, the Game hurts) → hunting in light: backs
+  off inside `alKeep` → roam bursts (`alRoamOn`/`Off`, `alSpeed`; a clock always runs). Boids over `env.near`
+  (`alBoidR`, `alSep`/`alAli`/`alCoh`) are added to every mode but a stray's sprint. Blocked: slide, else turn aside
+  (`dodge`). `rot` = underside to the nearest rock (0 free on silk), `walk` = speed / 120, the pupil darts 0.2–0.8 s
+  or stares at you when `env.look`. A stray turns normal (`'home'`) the moment it's in a zone.

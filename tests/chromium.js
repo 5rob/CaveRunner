@@ -28,7 +28,9 @@ function findChrome() {
     // Windows: an installed Chrome does fine (playwright-core comes from the dev package.json)
     'C:/Program Files/Google/Chrome/Application/chrome.exe',
     'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-    process.env.LOCALAPPDATA && process.env.LOCALAPPDATA + '/Google/Chrome/Application/chrome.exe'];
+    process.env.LOCALAPPDATA && process.env.LOCALAPPDATA + '/Google/Chrome/Application/chrome.exe',
+    // macOS: an installed Chrome
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'];
   for (const t of tries) if (t && fs.existsSync(t)) return t;
   // any chromium- build under the shared browser directory
   const dir = process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/pw-browsers';

@@ -134,7 +134,7 @@ export function drawMessages(W, G, F) {
     G.ctx.fillText('You were shot down', cw / 2, msgY);
     G.ctx.font = '500 14px system-ui, sans-serif';
     G.ctx.fillText('Tap the right stick to restart', cw / 2, msgY + 22);
-  } else if (W.hasLvl && !W.warp && !W.repo && W.enemies.length === 0) {
+  } else if (W.hasLvl && !W.warp && !W.repo && W.enemies.length === 0 && W.total > 0) {   // (not on a floor with none to start with: floor 2's wasteland)
     G.ctx.font = '700 18px system-ui, sans-serif';
     G.ctx.fillText('All enemies destroyed', cw / 2, msgY);
   }

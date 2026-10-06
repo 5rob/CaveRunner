@@ -6,7 +6,8 @@ const { makeLevel, CW, CH, DEV, DEV_DEFAULTS, DEV_META, L2_KNOBS } = G;
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
 const hash = a => { let h = 0; for (let i = 0; i < a.length; i++) h = (Math.imul(h, 31) + a[i]) | 0; return h; };
-const reset = () => { for (const k in DEV_DEFAULTS) if (/^l2/.test(k)) DEV[k] = DEV_DEFAULTS[k]; };
+// (the wasteland's blasts and bones off, Stage 5: they wipe kit and break the mirror; tests/logic/destroy.test.js)
+const reset = () => { for (const k in DEV_DEFAULTS) if (/^l2/.test(k)) DEV[k] = DEV_DEFAULTS[k]; DEV.l2bCount = 0; DEV.l2bBones = 0; };
 reset();
 
 // each type's signature piece (the prize room's altar is the game's own, so its idols)

@@ -53,6 +53,21 @@ on the same network; if it stops answering, `ipconfig` and update this line). Ru
 --watch` alongside so a save in `src/` rebuilds. It answers only for `index.html` — deliberately:
 `.claude/settings.json` holds an API token a general static server would hand to the whole wifi. Don't replace it.
 
+## Subagents: keep them short (the owner's rule)
+
+Runs of 30–50 minutes burned the owner's credits (Level 2, stage 4). The main session manages them:
+- **Do small changes yourself**, in the main session: a tweak, a knob, a feedback round on a stage already
+  built. A fresh agent re-reads the docs and code first, so it costs far more than the change.
+- **Agents are only for a big new stage.** Their brief must include these limits:
+  - a **time box** (about 20 minutes) and a **stop rule**: "stuck, or past the box → commit what passes,
+    stop, report where you got to";
+  - **targeted tests while iterating** (`node tests/run.js <name>`), the full `logic` run **once at the end**,
+    and a browser suite only if it covers the change;
+  - **at most 2 screenshot rounds**.
+- Hand over the facts the agent needs (files, knobs, what was tried), so it doesn't re-explore.
+- **Check on it about every 10 minutes**. Stop it if it loops, or if it is past its box with nothing committed.
+- One agent at a time on the same files.
+
 ## The loop
 
 1. Change `src/` (the folder READMEs say where things are and the rules there).
@@ -67,7 +82,7 @@ on the same network; if it stops answering, `ipconfig` and update this line). Ru
    `https://5rob.github.io/CaveRunner/version.txt` shows the new `<number> vX.Y.Z` and the app offers the update.
    (No artifact publish; `https://claude.ai/artifact/2rarFzJoTseCKXhTPwMyLT` and `serve.js` are fallbacks.)
 
-**Current version: v0.0.146** (release channel `main`). **The version number is not optional.**
+**Current version: v0.0.147** (release channel `main`). **The version number is not optional.**
 It's **major.minor.patch** (since v0.0.132; before it a single `vNN`, up to v131): the owner's
 grouping — a **major release** bumps X, a **major update** Y, a **minor update** Z (reset the parts
 after the one you bump). Ask the owner which kind a release is if it isn't obvious; small fixes and

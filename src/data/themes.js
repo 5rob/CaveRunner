@@ -15,7 +15,7 @@ export const THEMES = [
   { name: 'Mossy caves',    bg: [16, 18, 24],  bg2: [34, 37, 46],
     rock: [[62, 56, 54], [96, 84, 74]],    moss: [[62, 104, 40], [108, 150, 64]],
     brick: [[112, 84, 62], [146, 110, 78]], mortar: [66, 50, 40], bed: [[28, 28, 34], [44, 44, 52]] },
-  { name: 'Coal seams',     bg: [12, 13, 17],  bg2: [28, 30, 36],
+  { name: 'Tombs',     bg: [12, 13, 17],  bg2: [28, 30, 36],
     rock: [[44, 44, 50], [74, 74, 82]],    moss: [[46, 74, 52], [84, 116, 74]],
     brick: [[64, 62, 66], [96, 92, 98]],   mortar: [38, 36, 40], bed: [[24, 24, 28], [40, 40, 46]] },
   { name: 'Frozen deep',    bg: [14, 20, 30],  bg2: [32, 44, 60],
@@ -49,7 +49,7 @@ export const THEMES = [
     rock: [[42, 38, 58], [70, 64, 94]],    moss: [[72, 180, 190], [130, 230, 236]],
     brick: [[56, 48, 78], [88, 76, 116]],  mortar: [32, 28, 46], bed: [[18, 16, 28], [34, 30, 48]] },
 ];
-// Coal seams (floor 2) wears the Dev panel's colours (L2_LOOK, group "Level 2"; their defaults are
+// Tombs (floor 2) wears the Dev panel's colours (L2_LOOK, group "Level 2"; their defaults are
 // its palette above), made into a theme once per change
 /** @type {Record<string, [keyof Theme, number?]>} */
 const L2_FIELD = { l2Bg: ['bg'], l2Bg2: ['bg2'], l2Rock1: ['rock', 0], l2Rock2: ['rock', 1], l2Moss1: ['moss', 0], l2Moss2: ['moss', 1],
@@ -94,7 +94,7 @@ export const DECOR = [
     { id: 'drips',   name: 'Dripping Water',     at: 'ceil',  kind: 'drip',  style: 'water', n: 26 },
     { id: 'spores',  name: 'Luminescent Spores', at: 'air',   kind: 'amb',   style: 'spores' },
     { id: 'moss',    name: 'Soft Moss Patches',  at: 'floor', kind: 'bake',  style: 'moss', n: 80 } ],
-  [ // 2 Coal seams
+  [ // 2 Tombs
     { id: 'beams',   name: 'Wooden Support Beams', at: 'flat',  kind: 'bake',   style: 'beams', w: 9, n: 26 },
     { id: 'carts',   name: 'Explosive Minecarts',  at: 'flat',  kind: 'barrel', style: 'cart', w: 5, n: 12 },
     { id: 'soot',    name: 'Soot Falls',           at: 'ceil',  kind: 'drip',   style: 'soot', n: 22 },
@@ -168,7 +168,7 @@ export const decorFor = (/** @type {number} */ floor) => DECOR[(Math.max(1, floo
 // (`ev`: how many per second, on average). Keyed by theme name, so it follows themeFor.
 export const AMBIENCE = {
   'Mossy caves':   { bed: [420, 0.05], drone: 55, ev: { drip: 0.5, critter: 0.15, wind: 0.06 } },
-  'Coal seams':    { bed: [260, 0.06], drone: 42, ev: { trickle: 0.25, rumble: 0.08, creak: 0.07 } },
+  'Tombs':    { bed: [260, 0.06], drone: 42, ev: { trickle: 0.25, rumble: 0.08, creak: 0.07 } },
   'Frozen deep':   { bed: [1500, 0.035], drone: 0, ev: { wind: 0.18, chime: 0.2, crack: 0.06 } },
   'Ember halls':   { bed: [320, 0.06], drone: 48, ev: { crackle: 1.1, rumble: 0.07, hiss: 0.12 } },
   'Fungal grotto': { bed: [600, 0.04], drone: 62, ev: { puff: 0.3, drip: 0.35, bloop: 0.2 } },

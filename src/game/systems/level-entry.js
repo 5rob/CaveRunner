@@ -46,7 +46,8 @@ export function enterLevel(W, G, back, keep, pre) {
   W.start = level.start; W.portal = level.portal; W.portals = level.portals || [level.portal]; W.arrival = level.arrival;
   W.enemies = level.enemies; W.pickups = level.pickups; W.stock = level.stock;
   W.rooms = level.rooms || []; W.zone = level.zone || null; W.tomb = level.tomb || null;
-  W.dark = level.dark || []; W.darkMask = level.darkMask || null; W.webbing = level.webbing || null; W.darkShade = level.darkShade || null;
+  W.dark = level.dark || []; W.darkMask = level.darkMask || null; W.webbing = level.webbing || null; W.darkShade = level.darkShade || null; W.darkDepth = level.darkDepth || null;
+  W.torchFail = { inside: false, t: 99 }; W.torchLit = 1;
   W.props = level.props || []; W.ambKinds = level.amb || []; W.dimg = level.dimg;
   W.plantW = plantWhite(W.img.data, W.dimg && W.dimg.data);    // the jellies' plant glow keys off this
   mapPicture(W, G);                           // the map: the floor as it is now, before anything digs it
@@ -91,12 +92,16 @@ export function enterLevel(W, G, back, keep, pre) {
   if (W.reveal) putRows(W, G, W.reveal, CH);
   else G.tctx.putImageData(W.img, 0, 0);
   G.bgctx.putImageData(level.bgImg, 0, 0);
+  G.bgHiOn = !!level.bgHi;
+  if (level.bgHi) { G.bgHi.width = level.bgHi.width; G.bgHi.height = level.bgHi.height; const hc = G.bgHi.getContext('2d'); if (hc) hc.putImageData(level.bgHi, 0, 0); }
   if (!keep) {
     W.p.x = W.start.x; W.p.y = W.start.y; W.p.vx = 0; W.p.vy = 0;
     W.p.fuel = 1; W.p.empty = false; W.p.kick = 0;
   }
   W.bullets.length = W.enemyShots.length = W.smoke.length = 0;
   W.sparks.length = W.flashes.length = W.coins.length = W.arcs.length = 0;
+  // gold lying there from the start (floor 2's loot); a saved floor's as it was left
+  for (const c of (back && back.coins) || level.coins || []) W.coins.push({ ...c });
   W.torchP.length = 0; W.motes.length = 0; W.eliteFx.length = 0;
   if (!keep) W.camReady = false;
   W.best = 0;

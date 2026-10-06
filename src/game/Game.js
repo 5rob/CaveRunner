@@ -40,6 +40,7 @@ export function Game({ input }) {
     const bg = document.createElement('canvas');
     bg.width = BW; bg.height = BH;
     const bgctx = bg.getContext('2d');
+    const bgHi = document.createElement('canvas');   // the back wall at terrain resolution (floor 2's tomb)
     // the fog overlay: one pixel per fog cell, drawn scaled up over the world
     const fogC = document.createElement('canvas');
     fogC.width = FW; fogC.height = FH;
@@ -93,7 +94,7 @@ export function Game({ input }) {
     // the fire's dirty boxes, the rats' web test, the plant glow's scratch, the replay's view,
     // the mouse and the aim line's scratch
     /** @type {GameCtx} */
-    const G = { input, c, ctx, terrain, tctx, bg, bgctx, fogC, fctx, fogImg, fogBlurC, fbctx,
+    const G = { input, c, ctx, terrain, tctx, bg, bgctx, bgHi, bgHiOn: false, fogC, fctx, fogImg, fogBlurC, fbctx,
       mapC, decoC, dctx, REC, RT, fireBox, ratOnWeb, mouse, aimPath,
       pgArt: null, pgC: null, pgCtx: null, pgGlow, pgGlowCtx,
       RP_ARR, rid: new WeakMap(), ridN: 0,  // the recorder's lists (W's own arrays) and each thing's replay id

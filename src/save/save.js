@@ -110,6 +110,9 @@ export function readSave(raw) {
         if (q.kind === 'gun') { const gun = cleanGun(q.gun); return gun ? Object.assign({}, q, { gun }) : null; }
         return null;
       }).filter(Boolean) : null,
+      // the gold on the ground (floor 2's loot): a place and a worth
+      coins: Array.isArray(L.coins) ? L.coins.filter(c => c && Number.isFinite(c.x) && Number.isFinite(c.y) && Number.isFinite(c.amount) && c.amount > 0)
+        .map(c => ({ x: c.x, y: c.y, amount: c.amount, t: Number(c.t) || 0, ...(c.sz >= 0 && c.sz <= 2 ? { sz: c.sz } : {}) })) : undefined,
       // the map's pins (v0.0.141): a spot and one character
       pins: Array.isArray(L.pins) ? L.pins.filter(q => q && Number.isFinite(q.x) && Number.isFinite(q.y) && typeof q.e === 'string' && q.e)
         .map(q => ({ x: q.x, y: q.y, e: q.e })) : [],

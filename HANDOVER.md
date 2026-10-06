@@ -3,79 +3,50 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
-## LEVEL 2 PROJECT — IN PROGRESS (read first; stopped mid-work 2026-10-06, out of credits)
+## LEVEL 2 — RELEASED FOR TESTING in v0.0.147 (2026-10-06; read first)
 
-The owner's full brief is in **LEVEL2.md**. The work is in 8 stages: a subagent builds each one, and the main
-session acts as project manager. The owner approves every visual stage from phone-size screenshots before the
-next one starts. All of it is merged to `main` but not released: the version is still v0.0.146, and `index.html`
-on main is still the v0.0.146 build, without the level-2 `src/` work. Run `node tests/run.js` to rebuild, and
-bump the version, before the next release.
+The owner's brief is **LEVEL2.md**. Built in 8 stages on the `level2` branch: the main session as project
+manager, subagents for the big stages (time-boxed, CLAUDE.md "Subagents: keep them short"), the owner approving
+every look from phone-size screenshots. **All 8 stages approved and released as v0.0.147** (a minor update, for
+the owner to test on the phone). Next: the owner's feedback from playing it, and the open questions below.
 
-**Done and approved by the owner (in `src/` on main, not released):**
-1. **Decorate-by-distance tool**, `src/world/byDistance.js`: `distField`, `scatterByDistance`, `curveFn`,
-   `destructionOpts`. Dev group "Level 2: destruction" (`l2b*`), with two bezier curve editors (`CurveEdit`;
-   `curveKnobs` in `dev/knobs.js`). Not wired into level generation yet.
-2. **Tomb layout**, `src/world/tomb.js`. The room list comes first: each room has a type and a mirror-symmetric
-   geometric shape. Straight galleries and shafts join the rooms, with cut-stone lining. Data in `level.tomb` /
-   `W.tomb`; `tombRoomAt` answers which room a point is in. Knobs `l2*`.
-3. **Room furnishing**, `src/world/furnish.js`. Each room type gets a painted kit (pixels, not props), mirrored,
-   with skeletons everywhere; listed in `room.kit`. Candles are painted and UNLIT. Owner: "The tombs should be
-   dark."
+Floor 2 is now **Tombs** (the theme renamed from Coal seams), built in `makeLevel` in this order:
+1. **The tomb** (`world/tomb.js`): a room list first (types, mirror-symmetric geometric shapes), straight galleries
+   and shafts, cut-stone lining; `level.tomb` / `tombRoomAt`. **Its own back wall** `paintTombWall`: courses at the
+   rock's scale (7 × 4 px), glyph friezes, pilasters, painted at terrain resolution (`level.bgHi`, drawn in place of
+   the quarter-size wall: `G.bgHi`/`G.bgHiOn` in `render/cave.js`, `render/dark.js`; `bgImg` its averaged copy).
+2. **Furnishing** (`world/furnish.js`): each room type a painted, mirrored kit, skeletons, unlit candles (owner: dark).
+3. **Dark zones** (`world/dark.js`, look `render/dark.js`; Dev "Level 2: dark zones" `l2d*`): 2–3 zones off the main
+   route (radius `l2dSize` 120–176 px), rough caves, small tunnels (`tunnels: { pts, w, fits }`), a flat-floored
+   chamber, ragged silk-and-dark fringe. Compositing (owner): back wall + hologram blurred, silk multiplied over them,
+   everything in front black past a 12 px fade (`l2dTintDepth`); fire lifts the black, silk included (`l2dFireR`, the
+   `l2dFire` curve); the torch flickers out 18 px in (`l2dTorchDepth`, 4 px gap back).
+4. **Destruction** (`world/destroy.js`, Dev "Level 2: destruction" `l2b*`; the reusable scatter is
+   `world/byDistance.js`): 100 blasts in a 100 px ring round the zones, denser and bigger at the edge, anywhere in
+   the ring (`l2bInRock`), off the chambers; scorch (`l2bScorch`) and soft radial streaks (`l2bStreak`), soot on the
+   back wall, 30% burn and the fire runs out during generation; bones and skulls (`l2bBones`). Pure and seeded.
+5. **Loot** (`world/loot.js`): no ordinary creatures; 46 spots (half the usual enemy count, their spawn rules,
+   outside the zones) with that creature's gold as a scatter of all three nugget sizes (`scatterGold`, `Coin.sz`),
+   12 with a red crystal; each zone's chamber one prize (1000–2000 gold, 4–6 red, 1–3 green; at least one zone green).
+   Ground gold is `level.coins` → `W.coins`, kept in the autosave.
+6. **Aliens** (`creatures/alien.js` sprite + brain, `game/creatures/alien.js`; Dev "Level 2: aliens" `al*`): 60–120
+   per zone plus 2–4 black strays; sizes 0.6–2.4 × leaning small (`alScale`, `alBias`); boids packs on the silk,
+   flee fire (`alFleeR`), bite only when you're in the dark, keep off in light; strays sprint home; pupil darts then
+   locks on; each its own leg stance and twitch, rounded bumpy tapered legs, purple-blue skin. A live bullet in a
+   zone lifts the black a little (`alGlimpse`).
 
-**Stage 4, dark zones** (`src/world/dark.js`, `src/game/render/dark.js`). The first round is built
-(commit 700511b) and the owner sent feedback. **Round 2 was half done when work stopped:** its edits are in
-the last commit, untested and possibly broken. If they're broken, `git diff 700511b` shows them.
+Floor build ~1 s (1.5 s worst, Mac) of the 5 s budget. Pictures: `tools/floorshot.js` (the whole floor as drawn),
+`darkshots.js` (HOLO=1), `boomshots.js`, `lootshots.js`, `aliensheet.js`, `alienshots.js`, `alienframes.js`.
+Suites: logic `tomb furnish dark destroy loot2 alien level2 bydistance`, browser `tomb darkzone darkperf alien alienperf`.
 
-What round 1 does:
-- Zones are placed off the main route, each with its own caves and a centre chamber.
-- A silk layer covers them (`webbing`, `silkErase`).
-- The gun light is off inside, everything shows as a silhouette, and fire still lights it.
-- Wall torches are removed from floor 2.
-- Data: `dark`, `darkMask`, `darkAt`. Dev group "Level 2: dark zones" (`l2d*`).
-- Tests: logic `dark`, browser `darkzone` and `darkperf`.
+**Open questions for the owner** (ask after they've played it):
+- How it runs on the phone with a zone and hundreds of aliens on screen (Mac: zone ~+5 ms, aliens ~+1.3 ms a frame).
+- The bullet glimpse is faint at the defaults (`alGlimpse`); each alien drops a coin (hundreds a floor);
+  strays steer home without pathfinding (one can stick behind a long wall).
+- The tomb's own altar room still holds a green crystal outside the zones; should the exit pads keep glowing.
+- Minecarts only came with floor 2's old decoration, so they're now first seen on floor 14 (the palette wraps).
 
-The owner's round-2 asks, still to finish:
-- **Borders** ragged and gradual: tendrils and patches of silk and darkness reaching into the tomb, the stone
-  near the edge eaten into and webbed, an uneven, wider fade.
-- **The caves cut out inside** rough and irregular, not clean. Keep the chamber floor flat for the prize.
-- **Fill each zone's area:** a second pass of small winding tunnels. They may be narrower than the player (they
-  are for the aliens); note which ones the player fits through. Add a Dev knob for the share of a zone that is
-  open.
-- **Show the diffused hologram through the silk.** The owner asked for:
-  - a shot at an edge, sharp on the tomb side and diffused behind the silk;
-  - a shot inside at full hologram brightness, next to one with `l2dHolo` = 0;
-  - the effect reading as a soft glow, not just dimming;
-  - a browser test that the hologram has lower contrast inside zones.
-- **Retake the screenshots** (whole floor, edge, deep inside, fire, 2–3 border close-ups, the small tunnels,
-  the hologram shots) and send them to the owner for their OK.
-- **Open questions for the owner:**
-  - Should the exit pads keep glowing?
-  - With a zone on screen a frame costs about +25 ms on software rendering. Check how it plays on the phone.
-
-**Still to do (stages 5–8; full detail in LEVEL2.md):**
-
-5. **Destruction.** Run `scatterByDistance` from `darkMask` and set off real explosions at the points:
-   - fire on a share of them, scorch rings just past each blast's radius, bones and skulls across the wasteland;
-   - let it settle, fast-forwarded;
-   - the whole floor built in under 5 s, hidden behind the teleporter arrival.
-6. **Loot.**
-   - Drops go at the spawn points half a level's worth of enemies would use, outside the zones, with no green
-     crystals.
-   - Each zone's centre chamber gets one prize: 1000–2000 gold, 4–6 red crystals, or 1–3 green crystals.
-7. **The aliens.** The owner approves the sprite before anything else.
-   - Look: a body the size of the player's helmet, almost all eye. The pupil darts about, then locks on you
-     within aggro range. Three thin spider legs about 3 body-widths long.
-   - Movement: packs using boids (separation, alignment, cohesion), roaming a bit faster than the spider, able
-     to walk on any silk.
-   - Behaviour: they flee fire within a Dev radius and attack only in darkness. Bullet light shows brief
-     glimpses of the ground moving.
-   - A stray outside its zone is all black and sprints back to the nearest zone.
-   - Explosions destroying silk is already done.
-8. **Tune and release.** Update the docs (CHANGELOG, the folder READMEs, README.md), bump the version,
-   release.
-
-Known failures: the logic suites `rats`, `spider` and `strata` (the "workings" check) fail on this work and
-before it. Not caused by it.
+Known failures (before level 2 too): logic `rats`, `spider`, `strata` ("workings").
 
 ## Where things stand
 
@@ -83,9 +54,10 @@ before it. Not caused by it.
   `src/`, bundled by esbuild into the same `index.html`; every file is type-checked (JSDoc + `tsc`);
   the notes live next to the code (a README per `src/` folder), history in `CHANGELOG.md`.
   `REFACTOR.md` keeps the plan, decisions D1–D21 and the session log.
+- **Released: v0.0.147** on `main`, 2026-10-06 (a minor update, for testing): **Level 2, the Tombs** — see the
+  section above.
 - **Released: v0.0.146** on `main`, 2026-10-05 (the owner OK'd the screenshots; a minor update): a dark
-  shade under the controls (`ui/hud.js` `shadeAt`). **Level 2 work in progress on the `level2` branch**
-  (the tomb, its furnishing, dark zones under way): not released yet; see that branch's HANDOVER.
+  shade under the controls (`ui/hud.js` `shadeAt`).
 - **Released: v0.0.145** on `main`, 2026-10-05 (the owner OK'd the screenshots; a minor update): the
   shop's way up always straight over the buy machine (`world/level.js`, `shopExit`); the hand torch archived
   (`HAND_TORCH`, kept for creatures later) for a light on the gun, a cone the way you aim, only with a gun in

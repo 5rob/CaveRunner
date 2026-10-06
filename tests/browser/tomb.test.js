@@ -22,7 +22,7 @@ fs.mkdirSync(OUT, { recursive: true });
   const shot = n => page.screenshot({ path: path.join(OUT, 'tomb-' + n + '.png') });
 
   // to floor 2, a fixed seed (the Dev button rolls a fresh one: pin it so the shots are the same tomb each run)
-  await page.evaluate(() => { Math.random = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })(); window.__in.current.newCave = 2; });
+  await page.evaluate(() => { Math.random = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })(); DEV.l2bCount = 0; window.__in.current.newCave = 2; });   // (no blasts: they wipe kits; destroy's own suites)
   let lvl = null;
   for (let i = 0; i < 40 && !(lvl && lvl.floor === 2 && lvl.tomb); i++) {
     await page.waitForTimeout(100);
@@ -62,7 +62,7 @@ fs.mkdirSync(OUT, { recursive: true });
   // lift the fog everywhere, clear the creatures, and look about
   await page.evaluate(() => { const W = window.__lvl; W.seen.fill(2); W.fog.paint(); W.enemyShots.length = 0; W.p.hp = 9999;
     // one creature kept, parked in the shop's far corner (none left would put up the all-clear banner)
-    W.enemies.length = 1; const e = W.enemies[0]; e.x = e.hx = 30; e.y = e.hy = e.ty = (W.world.SHOP_FLOOR - 12) * W.world.CELL; });
+    W.enemies.length = Math.min(1, W.enemies.length); const e = W.enemies[0]; if (e) { e.x = e.hx = 30; e.y = e.hy = e.ty = (W.world.SHOP_FLOOR - 12) * W.world.CELL; } });   // (floor 2 has no creatures since stage 6)
   await page.waitForTimeout(3000);   // the floor's name fades
   // the map screen
   await page.tap('.mapbtn');

@@ -13,7 +13,7 @@ import { themeFor } from '../../data/themes.js';
 import { gunAccent } from '../../spells/guns.js';
 import { MODS, famCol } from '../../spells/mods.js';
 import { FIRE_COLS } from '../../world/fire.js';
-import { nugR } from '../../world/nuggets.js';
+import { coinR } from '../../world/nuggets.js';
 import { darkPrep } from './dark.js';
 import { BG_PAR, drawHolo } from './holo.js';
 import { exits } from '../world.js';
@@ -32,7 +32,9 @@ export function drawTerrain(W, G, F) {
   const bcx = W.camX - bgox, bcy = W.camY - bgoy;
   const bx0 = clamp(Math.floor(bcx / BCELL), 0, BW - 1), by0 = clamp(Math.floor(bcy / BCELL), 0, BH - 1);
   const bx1 = clamp(Math.ceil((bcx + vw) / BCELL) + 1, 1, BW), by1 = clamp(Math.ceil((bcy + vh) / BCELL) + 1, 1, BH);
-  G.ctx.drawImage(G.bg, bx0, by0, bx1 - bx0, by1 - by0, bx0 * BCELL + bgox, by0 * BCELL + bgoy, (bx1 - bx0) * BCELL, (by1 - by0) * BCELL);
+  // (floor 2: the back wall at terrain resolution, the same place on screen)
+  const hs = G.bgHiOn ? BCELL / CELL : 1;
+  G.ctx.drawImage(G.bgHiOn ? G.bgHi : G.bg, bx0 * hs, by0 * hs, (bx1 - bx0) * hs, (by1 - by0) * hs, bx0 * BCELL + bgox, by0 * BCELL + bgoy, (bx1 - bx0) * BCELL, (by1 - by0) * BCELL);
   drawHolo(W, G, F);                        // the hologram, halfway back (holo.js)
   darkPrep(W, G, F);                        // floor 2's dark zones: the silk, and their backs cut out (dark.js)
   // the shop's back wall
@@ -241,7 +243,7 @@ export function drawLoot(W, G, F) {
   // gold
   for (const g of W.coins) {
     if (g.y > W.camY + vh + 30 || g.y < W.camY - 30) continue;
-    drawNugget(G.ctx, g.x, g.y, nugR(g.amount), g.t, g.a || 0);
+    drawNugget(G.ctx, g.x, g.y, coinR(g), g.t, g.a || 0);
   }
 
   // pickups

@@ -25,7 +25,7 @@ export const RP_NUMS = ['time', 'flick', 'leanX', 'leanY', 'glowN'];
 // nested state worth copying (creature brains the sprites read, tentacles, lightning trails, the
 // aim, your corpse's ragdoll); any other object inside an entity is shared, not copied
 /** @type {Record<string, number>} */
-export const RP_DEEP = { sp: 1, ra: 1, je: 1, nest: 1, shot: 1, tent: 1, trail: 1, aim: 1, rag: 1, joints: 1 };
+export const RP_DEEP = { sp: 1, ra: 1, je: 1, al: 1, nest: 1, shot: 1, tent: 1, trail: 1, aim: 1, rag: 1, joints: 1 };
 // fields that slide between snapshots; everything else jumps at the halfway point
 /** @type {Record<string, number>} */
 export const RP_LERP = { x: 1, y: 1, ty: 1, lx: 1, ly: 1, vx: 1, vy: 1, nx: 1, ny: 1, jx: 1, jy: 1, ox: 1, oy: 1,

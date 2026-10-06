@@ -15,9 +15,11 @@ import { decorate } from './decorate.js';
 import { ratNests } from './nests.js';
 import { paveWorks, strataCave, timberWorks } from './strata.js';
 import { goldVeins } from './veins.js';
-import { darkZones, silkColour, zoneRock } from './dark.js';
+import { darkZones, zoneRock } from './dark.js';
+import { destroyFloor } from './destroy.js';
+import { floorLoot } from './loot.js';
 import { furnishTomb } from './furnish.js';
-import { carveTomb, paintMasonry, tombPlan } from './tomb.js';
+import { carveTomb, paintMasonry, paintTombWall, tombPlan } from './tomb.js';
 import { boxReach } from './zones.js';
 
 // a prize room's half-size in world units, shell included (makeLevel's rx/ry + sh, in pixels)
@@ -527,11 +529,13 @@ export function makeLevel(seed, floor, owned) {
       // big, slow blotches of shadow over the pattern, so the back wall has some depth
       const big = fbm(x / 34 + 700, y / 34 + 500);
       let shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
-      // the tomb's back wall: big dressed blocks, dark joints (a bg pixel is 4 terrain pixels)
-      if (tomb && (y % 4 === 3 || (x + ((y >> 2) & 1) * 3) % 6 === 5)) shade *= 0.7;
       const j = (hash(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
       bgImg.data[k] = c[0] * shade + j; bgImg.data[k + 1] = c[1] * shade + j; bgImg.data[k + 2] = c[2] * shade + j; bgImg.data[k + 3] = 255;
     }
+
+  // the tomb's own back wall: carved stone (tomb.js)
+  const bgHi = tomb ? new ImageData(CW, CH) : null;
+  if (bgHi) paintTombWall(bgHi, bgImg, seed, fbm);
 
   // the way in near the left of the shop room, under its sign (ARRIVAL_X): you stand on it
   const start = { x: ARRIVAL_X - 6, y: SHOP_FLOOR * CELL - PH };
@@ -561,7 +565,10 @@ export function makeLevel(seed, floor, owned) {
   };
   const enemies = [], rolls = [];
   const roster = rosterFor(floor, rnd);
-  const wanted = Math.min(Math.max(136, DEV.enemies), DEV.enemies + (floor - 1) * DEV.enemiesUp);
+  const wanted0 = Math.min(Math.max(136, DEV.enemies), DEV.enemies + (floor - 1) * DEV.enemiesUp);
+  // (floor 2 with its dark zones: no creatures outside them; loot at half as many of their spots instead, after the destruction: loot.js)
+  const wasteland = !!(tombData && darkData && darkData.zones.length);
+  const wanted = wasteland ? 0 : wanted0;
   // a creature that only lives in the natural zones (the jellies: the built-up corridors are
   // too tight to swim) and was rolled for a built-up spot keeps its turn for the next spot,
   // so the floor's mix stays the same
@@ -599,13 +606,47 @@ export function makeLevel(seed, floor, owned) {
         t: 0.5 + (n.x % 7) * 0.4, stash: 0, max: 0, left: Math.round(kru('raBrood', hash(n.x * 3 + 11, n.y * 5 + 7))) } });
   }
 
+  // floor 2's aliens (Level 2 stage 7b, creatures/alien.js): alCount per dark zone in its open cells (the
+  // chamber, the tunnels), and alStrays black ones loose in the tomb outside every zone. Their own stream
+  // (the seed's), so the rest of the floor stays the same
+  if (wasteland && darkData) {
+    let as = (seed * 7919 + floor * 104729 + 17) % 2147483647 || 1;
+    const ar = () => (as = (as * 16807) % 2147483647) / 2147483647;
+    const ak = enemyFor('alien', floor), mask = darkData.mask;
+    /** @param {number} cx @param {number} cy @param {boolean} black */
+    const alien = (cx, cy, black) => {
+      const x = (cx + 0.5) * CELL, y = (cy + 0.5) * CELL;
+      // its size: rolled in alScale, leaning to the small end (alBias: most small, now and then a big one)
+      const sc = kru('alScale', Math.pow(ar(), kru('alBias', ar())));
+      enemies.push({ x, y, ty: y, r: ak.r * sc, phase: ar() * 6.28, hp: ak.hp, hpMax: ak.hp, cd: 0, flash: 0, lx: 0, ly: 1,
+        hx: x, hy: y, tgt: null, rest: 0, k: ak, touch: 0, charge: 0,
+        al: { rot: 0, px: 0, py: 0, walk: 0, black, z: black ? 0 : mask[cy * CW + cx], vx: 0, vy: 0, ha: ar() * 6.28, on: 0,
+          rest: ar() * 0.6, spd: 0, pt: 0, fl: 0, fx: 0, fy: 0, sprint: false, dodge: 0, dA: 0 } });
+    };
+    /** @type {number[][]} */
+    const zcells = darkData.zones.map(() => []);
+    for (let i = 0; i < CW * CH; i++) if (mask[i] && !mat[i] && mask[i] <= zcells.length) zcells[mask[i] - 1].push(i);
+    for (const cells of zcells) {
+      if (!cells.length) continue;
+      const n = Math.round(kru('alCount', ar()));
+      for (let j = 0; j < n; j++) { const i = cells[Math.floor(ar() * cells.length)]; alien(i % CW, (i / CW) | 0, false); }
+    }
+    // strays: open tomb cells outside every zone, standing on rock, far from the start
+    const ns = Math.round(kru('alStrays', ar()));
+    for (let a = 0, got = 0; a < 4000 && got < ns; a++) {
+      const cx = 4 + Math.floor(ar() * (CW - 8)), cy = 40 + Math.floor(ar() * (SHOP_TOP - 60)), i = cy * CW + cx;
+      if (mat[i] || darkData.shade[i] || !mat[i + CW] || Math.hypot((cx + 0.5) * CELL - start.x, (cy + 0.5) * CELL - start.y) < 300) continue;
+      alien(cx, cy, true); got++;
+    }
+  }
+
   // guns and red crystals to find: the higher up the cave, the better the roll.
   // Half the mods there used to be (crystals now), and they have to sit far enough apart that the
   // few of them are spread over the whole cave rather than bunched in one corner.
   const pickups = [];
   // the first floor under a spot, so a pickup sits on the ground rather than hanging in
   // the air wherever an open cell happened to be
-  let gunsLeft = GUN_DROPS, modsLeft = MOD_DROPS;
+  let gunsLeft = wasteland ? 0 : GUN_DROPS, modsLeft = wasteland ? 0 : MOD_DROPS;
   for (let a = 0; a < 20000 && gunsLeft + modsLeft > 0; a++) {
     const cx = 8 + Math.floor(rnd() * (CW - 16)), cy = 30 + Math.floor(rnd() * (SHOP_TOP - 60));
     if (!clear(cx, cy, 6) || nearNest(cx, cy)) continue;
@@ -636,8 +677,8 @@ export function makeLevel(seed, floor, owned) {
   // (the tomb: none of the theme's decoration; each room's own kit instead, furnish.js)
   const deco = tombData ? { props: [], amb: [] } : decorate(mat, img, dimg, bgImg, floor, seed, keep, fuel, zone);
   if (tombData) furnishTomb(mat, img, dimg, fuel, tombData, seed);
-  // the fringe round a zone: the cut stone overgrown (blended toward the zone's rock, patchily) and its silk
-  // over whatever is painted there, in the decoration layer (so a blast tears it with the rest)
+  // the fringe round a zone: the cut stone overgrown (blended toward the zone's rock, patchily); its silk is
+  // the zones' silk layer (webbing: render/dark.js multiplies it over the back), not painted here
   if (darkData && darkData.zones.length) for (let i = 0; i < CW * CH; i++) {
     const sh = darkData.shade[i];
     if (!sh || darkData.mask[i]) continue;
@@ -645,10 +686,6 @@ export function makeLevel(seed, floor, owned) {
     if (mat[i] === ROCK) {
       const k = Math.min(1, t * (0.3 + 0.9 * hash(x * 3 + 1, y * 7 + 4))), c = zoneRock(at(tintL, x, y));
       for (let n = 0; n < 3; n++) d[i * 4 + n] = d[i * 4 + n] * (1 - k) + c[n] * k;
-    } else if (!mat[i] && darkData.web[i]) {
-      const s = silkColour(darkData.web[i]), a = s[3] / 255, b = dimg.data[i * 4 + 3] / 255, o = a + b * (1 - a);
-      for (let n = 0; n < 3; n++) dimg.data[i * 4 + n] = (s[n] * a + dimg.data[i * 4 + n] * b * (1 - a)) / o;
-      dimg.data[i * 4 + 3] = Math.round(o * 255);
     }
   }
   // inside a dark zone: no kit, no cut stone: raw rock in the zone's colours (and a room's kit list loses what went)
@@ -659,6 +696,24 @@ export function makeLevel(seed, floor, owned) {
     if (mat[i] !== ROCK) { fuel[i] = 0; continue; }
     const c = zoneRock(at(tintL, i % CW, (i / CW) | 0)), j = (hash(i % CW * 3 + 7, ((i / CW) | 0) * 5 + 3) - 0.5) * 8;
     d[i * 4] = c[0] + j; d[i * 4 + 1] = c[1] + j; d[i * 4 + 2] = c[2] + j; fuel[i] = 0;
+  }
+  // the wasteland round the zones (Level 2 stage 5, destroy.js): blasts, their fire burnt out, bones; a kit piece a blast hit is off the list
+  if (tombData && darkData && darkData.zones.length) {
+    // the zones' chambers kept too: a big blast just outside a zone would bite the prize's flat floor
+    const keepB = keep.concat(darkData.zones.map(z => ({ x: z.chamber.x * CELL, y: z.chamber.y * CELL, r: (Math.max(z.chamber.rx, z.chamber.ry) + 6) * CELL })));
+    const boom = destroyFloor({ mat, img, dimg, bgImg, bgHi, fuel, web: darkData.web }, darkData.mask, seed, keepB);
+    /** @param {number} x @param {number} y @param {number} w @param {number} h */
+    const hit = (x, y, w, h) => boom.blasts.some(b => Math.hypot(b.x - Math.max(x, Math.min(b.x, x + w)), b.y - Math.max(y, Math.min(b.y, y + h))) < b.r);
+    for (const r of tombData.rooms) if (r.kit) r.kit = r.kit.filter(k => !hit(k.x, k.y, k.w, k.h) && !hit(2 * Math.round(r.cx) - k.x - k.w, k.y, k.w, k.h));
+    tombData.boom = { list: boom.blasts, blasts: boom.blasts.length, fire: boom.blasts.filter(b => b.fire).length, ticks: boom.ticks, bones: boom.bones, gone: boom.gone };
+  }
+  // floor 2's loot (Level 2 stage 6, loot.js): on the floor as the blasts left it; each zone's prize on `zone.prize`
+  /** @type {Coin[]} */
+  let coins = [];
+  if (wasteland && darkData) {
+    const loot = floorLoot({ mat, shade: darkData.shade, zones: darkData.zones, start, seed, want: Math.round(wanted0 / 2), roster, floor, reds: GUN_DROPS + MOD_DROPS });
+    coins = loot.coins; pickups.push(...loot.pickups);
+    if (tombData) tombData.loot = loot.spots;
   }
   // gold seams, painted over whatever the decoration left on the rock
   const ore = goldVeins(mat, seed, floor);
@@ -682,8 +737,8 @@ export function makeLevel(seed, floor, owned) {
     for (const q of n.path) for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) clear(Math.round(q.x) + dx, Math.round(q.y) + dy);
   }
 
-  return { mat, img, bgImg, dimg, ore, fuel, props: deco.props, amb: deco.amb, start, portal, portals, enemies, pickups, stock, shopExit, arrival,
+  return { mat, img, bgImg, bgHi, dimg, ore, fuel, props: deco.props, amb: deco.amb, start, portal, portals, enemies, pickups, coins, stock, shopExit, arrival,
     rooms, roster, theme: T.name, works, zone, nests, tomb: tombData,
     dark: darkData ? darkData.zones : [], darkMask: darkData && darkData.zones.length ? darkData.mask : null, webbing: darkData && darkData.zones.length ? darkData.web : null,
-    darkShade: darkData && darkData.zones.length ? darkData.shade : null };
+    darkShade: darkData && darkData.zones.length ? darkData.shade : null, darkDepth: darkData && darkData.zones.length ? darkData.depth : null };
 }
