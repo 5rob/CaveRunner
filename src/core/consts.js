@@ -32,12 +32,13 @@ export const KNOB = 0.38;
 // line the knob's *edge* crosses at the exact moment the trigger goes live, which is
 // what makes it worth drawing rather than just being another circle.
 export const AIM_RING = AIM_DEAD * 0.72 + KNOB;
-// The trigger ring (owner, LIST3 #8): out near the stick's edge, `pad` css px in from it (Dev
-// `aimPad`). `ring` is its diameter as a share of the stick, `mag` the push that fires: the knob's
-// edge reaching it. Never inside the tap circle (AIM_RING / AIM_DEAD).
-/** @param {number} size the stick's width (css px) @param {number} pad @returns {{ ring: number, mag: number }} */
-export const triggerRing = (size, pad) => {
-  const ring = Math.max(AIM_RING, Math.min(1, 1 - 2 * pad / Math.max(1, size)));
+// The trigger ring (owner, LIST3 #8): just inside the right stick's gauge rings (`outer`, their inner
+// edge as a share of the stick), `pad` css px in from them (Dev `aimPad`). `ring` is its diameter as a
+// share of the stick, `mag` the push that fires: the knob's edge reaching it. Never inside the tap
+// circle (AIM_RING / AIM_DEAD).
+/** @param {number} size the stick's width (css px) @param {number} pad @param {number} [outer] @returns {{ ring: number, mag: number }} */
+export const triggerRing = (size, pad, outer = 1) => {
+  const ring = Math.max(AIM_RING, Math.min(outer, outer - 2 * pad / Math.max(1, size)));
   return { ring, mag: Math.min(1, (ring - KNOB) / 0.72) };
 };
 export const PW = 12, PH = 22;

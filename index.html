@@ -831,8 +831,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var AIM_DEAD = 0.35;
   var KNOB = 0.38;
   var AIM_RING = AIM_DEAD * 0.72 + KNOB;
-  var triggerRing = (size, pad) => {
-    const ring = Math.max(AIM_RING, Math.min(1, 1 - 2 * pad / Math.max(1, size)));
+  var triggerRing = (size, pad, outer = 1) => {
+    const ring = Math.max(AIM_RING, Math.min(outer, outer - 2 * pad / Math.max(1, size)));
     return { ring, mag: Math.min(1, (ring - KNOB) / 0.72) };
   };
   var PW = 12, PH = 22;
@@ -1033,7 +1033,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     killGrow: 1.35,
     runnerPx: 1,
     runnerLine: 1,
-    aimPad: 10,
+    aimPad: 5,
     ptrStart: 0.12,
     ptrReach: 1,
     ptrSize: 1,
@@ -1117,7 +1117,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "killGrow", g: "level", label: "Kill gold: × each floor up", min: 1, max: 4, step: 0.05 },
     { k: "runnerPx", g: "player", label: "Player pixel size (world units, 0 = smooth)", min: 0, max: 3, step: 0.25 },
     { k: "runnerLine", g: "player", label: "Player dark outline (0 off, 1 on)", min: 0, max: 1, step: 1 },
-    { k: "aimPad", g: "player", label: "Right stick: trigger ring’s gap from the edge (px; bigger = fires sooner)", min: 0, max: 40, step: 1 },
+    { k: "aimPad", g: "player", label: "Right stick: trigger ring’s gap inside the gauge rings (px; bigger = fires sooner)", min: 0, max: 40, step: 1 },
     // the vending menus' right-stick pointer (ui/vendshop.js useMenuNav, menuPointer, snapTo)
     { k: "ptrStart", g: "menuptr", label: "Stick push before the pointer comes out (of its reach)", min: 0, max: 0.9, step: 0.01 },
     { k: "ptrReach", g: "menuptr", label: "Pointer reach (× distance to the far screen corner)", min: 0.2, max: 3, step: 0.05 },
@@ -28110,6 +28110,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
   var GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
+  var GAUGE_RW = 3.2, GAUGE_SW = 1.6;
+  var stickTrigger = (size) => triggerRing(size, DEV.aimPad, (GAUGE_R - 2 * GAUGE_RW - GAUGE_SW) / 50);
   var GAUGE_COL = { mana: "#ffc93c", rech: "#7ad7ff", cast: "#c58cff", fuel: "#ff9a2e" };
   function healthCol(frac) {
     return frac > 0.5 ? mixHex("#e6a52c", "#57d267", (frac - 0.5) * 2) : mixHex("#e24a2c", "#e6a52c", frac * 2);
@@ -28199,7 +28201,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const cl = Math.min(dist, maxD);
       const nx = dist ? dx / dist : 0, ny = dist ? dy / dist : 0;
       const mag = cl / maxD;
-      const thresh = right ? triggerRing(r.width, DEV.aimPad).mag : 0.15;
+      const thresh = right ? stickTrigger(r.width).mag : 0.15;
       if (right && mag > AIM_DEAD) stayed.current = false;
       peak.current = Math.max(peak.current, mag);
       if (right && input.current.confirmAct) {
@@ -28252,7 +28254,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       Object.assign(input.current[kind], { active: false, mag: 0, on: false, dy: 0 });
       setKnob({ x: 0, y: 0, jet: false });
     };
-    const rw = 3.2, sw = 1.6;
+    const rw = GAUGE_RW, sw = GAUGE_SW;
     const wipe = (r, frac, col, track) => [
       h("circle", { key: "t" + r, cx: 50, cy: 50, r, fill: "none", stroke: track || "rgba(0,0,0,0.35)", strokeWidth: sw }),
       h("circle", {
@@ -28309,8 +28311,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       } }),
       // (none with Aim Assist on the gun in hand: the stick is a pointer then, it fires on its own)
       right && !(input.current.loadout && hasAssist(input.current.loadout.guns[input.current.loadout.sel])) && h("div", { className: "deadzone", style: {
-        width: triggerRing(size, DEV.aimPad).ring * 100 + "%",
-        height: triggerRing(size, DEV.aimPad).ring * 100 + "%"
+        width: stickTrigger(size).ring * 100 + "%",
+        height: stickTrigger(size).ring * 100 + "%"
       } }),
       h("span", { className: "lbl top" }, left ? "jet" : "aim"),
       left && h("span", { className: "lbl bot" }, "walk")

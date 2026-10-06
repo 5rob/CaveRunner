@@ -31,9 +31,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       dead: ring(s[1], '.deadzone'), thr: ring(s[1], '.throw'),
       deadStyle: getComputedStyle(s[1].querySelector('.deadzone')).borderStyle,
       leftRings: s[0] ? s[0].querySelectorAll('.deadzone, .throw').length : -1,
-      // where the amber ring ought to be: out near the edge, Dev aimPad px in (LIST3 #8,
+      // where the amber ring ought to be: inside the gauge rings, Dev aimPad px in (LIST3 #8,
       // core/consts.js triggerRing), the knob's EDGE crossing it exactly as the trigger goes live
-      want: triggerRing(w(s[1]), DEV.aimPad).ring * w(s[1]), half,
+      want: stickTrigger(w(s[1])).ring * w(s[1]), half,
       // the panel is see-through now: its background alpha
       alpha: bg.length >= 4 ? +bg[3] : 1,
     };

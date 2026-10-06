@@ -20,7 +20,7 @@ export const DEV_DEFAULTS = { zoom: 1.6, renderScale: 1.5, torch: 0.5, fogDark: 
   holoMin: 0, holoMax: 1, holoFade: 3, holoC1x: 0.25, holoC1y: 1, holoC2x: 0.5, holoC2y: 0,
   guideCps: 30, guideWait: 1.4, guideIn: 50, shopGap: 0.9, shopTorch: 0.45, beamDeg: 50, beamReach: 2.2, beamNear: 0.5, beamGlow: 0.5,
   due1: 60, enemies: ENEMY_COUNT, enemiesUp: 12, lvlBonus: LVL_SELL - LVL_BUY, lvlGrow: 3, rewardGrow: 2, killGrow: 1.35,
-  runnerPx: 1, runnerLine: 1, aimPad: 10,
+  runnerPx: 1, runnerLine: 1, aimPad: 5,
   ptrStart: 0.12, ptrReach: 1, ptrSize: 1, ptrLine: 0.75, snapR: 28, snapPull: 0.3, snapHit: 10,
   witPad: 80, witKbps: 6000,
   webSag: 0.03, bendK: 140, bendDamp: 5, bendPush: 0.3, bendGrab: 0.35, bendDip: 5, bendMax: 14,
@@ -87,7 +87,7 @@ export const DEV_META = [
   { k: 'killGrow',  g: 'level', label: 'Kill gold: × each floor up', min: 1, max: 4, step: 0.05 },
   { k: 'runnerPx',  g: 'player', label: 'Player pixel size (world units, 0 = smooth)', min: 0, max: 3, step: 0.25 },
   { k: 'runnerLine', g: 'player', label: 'Player dark outline (0 off, 1 on)', min: 0, max: 1, step: 1 },
-  { k: 'aimPad',    g: 'player', label: 'Right stick: trigger ring’s gap from the edge (px; bigger = fires sooner)', min: 0, max: 40, step: 1 },
+  { k: 'aimPad',    g: 'player', label: 'Right stick: trigger ring’s gap inside the gauge rings (px; bigger = fires sooner)', min: 0, max: 40, step: 1 },
   // the vending menus' right-stick pointer (ui/vendshop.js useMenuNav, menuPointer, snapTo)
   { k: 'ptrStart',  g: 'menuptr', label: 'Stick push before the pointer comes out (of its reach)', min: 0, max: 0.9, step: 0.01 },
   { k: 'ptrReach',  g: 'menuptr', label: 'Pointer reach (× distance to the far screen corner)', min: 0.2, max: 3, step: 0.05 },

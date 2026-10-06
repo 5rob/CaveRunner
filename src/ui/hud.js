@@ -86,6 +86,11 @@ export function shadeAt(deck, size) {
 // the circumference of the gauge ring (r=46 in a 0..100 viewBox), used to turn a 0..1
 // fraction into a stroke-dasharray so the ring is drawn only as far as the stat reaches
 export const GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
+// the gauge rings' width and line (svg units: the stick is 100 across)
+const GAUGE_RW = 3.2, GAUGE_SW = 1.6;
+// the right stick's trigger ring, inside its three gauge rings (owner): Dev aimPad px in from the innermost
+/** @param {number} size the stick's width (css px) */
+export const stickTrigger = size => triggerRing(size, DEV.aimPad, (GAUGE_R - 2 * GAUGE_RW - GAUGE_SW) / 50);
 // the three gun stats shown as rings on the right stick and colour-coded in the bag, so a
 // ring and its stat read as the same thing: mana gold, recharge blue, cast delay purple
 export const GAUGE_COL = { mana: '#ffc93c', rech: '#7ad7ff', cast: '#c58cff', fuel: '#ff9a2e' };
@@ -175,7 +180,7 @@ export function Stick({ size, kind, input, refresh }) {
     const mag = cl / maxD;
     // the right stick fires at its trigger ring, out near the edge (Dev aimPad); past AIM_DEAD it's
     // already a drag (aiming, the line shows), not a tap
-    const thresh = right ? triggerRing(r.width, DEV.aimPad).mag : 0.15;
+    const thresh = right ? stickTrigger(r.width).mag : 0.15;
     if (right && mag > AIM_DEAD) stayed.current = false;
     peak.current = Math.max(peak.current, mag);
     // A card is up: left picks up, right leaves, and the one you are pointing at is the
@@ -224,7 +229,7 @@ export function Stick({ size, kind, input, refresh }) {
   // Left: health at the edge, jet fuel just inside it (red track when the tank is dry).
   // Right: gold mana at the edge, then recharge and cast delay inside it, so you can see
   // which one is gating your fire.
-  const rw = 3.2, sw = 1.6;
+  const rw = GAUGE_RW, sw = GAUGE_SW;
   const wipe = (r, frac, col, track) => [
     h('circle', { key: 't' + r, cx: 50, cy: 50, r, fill: 'none', stroke: track || 'rgba(0,0,0,0.35)', strokeWidth: sw }),
     h('circle', { key: 'w' + r, cx: 50, cy: 50, r, fill: 'none', stroke: col, strokeWidth: sw,
@@ -256,7 +261,7 @@ export function Stick({ size, kind, input, refresh }) {
       transform: `translate(-50%,-50%) translate(${knob.x}px,${knob.y}px)` } }),
     // (none with Aim Assist on the gun in hand: the stick is a pointer then, it fires on its own)
     right && !(input.current.loadout && hasAssist(input.current.loadout.guns[input.current.loadout.sel])) && h('div', { className: 'deadzone', style: {
-      width: (triggerRing(size, DEV.aimPad).ring * 100) + '%', height: (triggerRing(size, DEV.aimPad).ring * 100) + '%' } }),
+      width: (stickTrigger(size).ring * 100) + '%', height: (stickTrigger(size).ring * 100) + '%' } }),
     h('span', { className: 'lbl top' }, left ? 'jet' : 'aim'),
     left && h('span', { className: 'lbl bot' }, 'walk')
   );
