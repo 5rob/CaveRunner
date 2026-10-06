@@ -20,6 +20,11 @@ Names are as they were at the time (before the refactor Game's state had loose n
   - A **search box** finds knobs by name on every tab. Open groups and the tab are remembered (localStorage).
   - Copy report's text is unchanged. New suite `tests/browser/devpanel.test.js` (also takes the screenshots with
   `CAVERUNNER_SHOTS=<dir>`); `blackhole`, `jelly` updated for tabs and tap.
+- **Bag: a firing window** (owner, item 4; waiting on the owner's OK of the screenshots). The gun
+  buttons moved to a row of four under the collected-mods grid; where they were, a small dark window
+  shows the selected gun firing each pull's real shots (the game's own spell looks) in step with the
+  slot lights, and it follows the build live as mods are moved (`ui/editor.js` `GunFire`,
+  `bagsim.js` `S.shots`; suite `gunfire`).
 
 ## v0.0.148 — Level 2 speed-ups; Flamethrower; Fire Immunity
 Released 2026-10-06 (the owner OK'd the screenshots; a minor update). The owner's list, after

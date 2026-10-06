@@ -188,6 +188,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   padding:7px 12px;border-radius:9px;border:2px solid #ff8a1f;background:var(--btn);
   color:var(--text);font:600 12px system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .gtab.empty{opacity:.4}
+/* the firing window by the stats (GunFire) and the gun buttons' row under the mod grid */
+.btop{align-items:stretch}
+.gfire{flex:1 1 0;min-width:0;align-self:stretch;min-height:110px;border-radius:9px;background:#0b0e14;
+  border:1px solid var(--ring);display:block}
+.gtabs.gunrow{flex:0 0 auto;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:8px}
+.gtabs.gunrow .gtab{aspect-ratio:auto;height:64px;gap:2px}
+.gtabs.gunrow .gicon{width:56px;height:28px}
 .stats{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
 .st{background:var(--pad);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--muted);
   display:flex;gap:5px;align-items:baseline}

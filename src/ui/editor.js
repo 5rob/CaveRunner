@@ -12,6 +12,7 @@ import {
 } from '../spells/bagsim.js';
 import { gunAccent, gunColor, gunLvCol, resetGun } from '../spells/guns.js';
 import { ALL_IDS, FAMILIES, FAMILY_OF, MODS, famCol } from '../spells/mods.js';
+import { drawLook } from '../game/render/looks.js';
 import { ModCard } from './cards.js';
 import { h, useEffect, useMemo, useRef, useState } from './h.js';
 import { GAUGE_COL, healthCol } from './hud.js';
@@ -85,6 +86,114 @@ export function GunIcon({ gun }) {
     drawGun(ctx, W / 2 - 3.85 * sc, H / 2 + 1 * sc, 0, sc, gunAccent(gun));
   });
   return h('canvas', { ref, className: 'gicon' });
+}
+
+// The firing window (owner, item 4): the selected gun, side on, firing what each pull of the
+// fire preview fires, in time with the slot lights (it watches the same sim: S.fired / S.shots).
+// The shots fly in world units at GF_ZOOM px each, slowed to GF_SPEED so they can be seen in
+// the small window, and are drawn with the game's own looks (drawLook) or its streak. One rAF,
+// gone when the Bag closes.
+export const GF_ZOOM = 3, GF_SPEED = 0.2, GF_MAX = 90;
+/** @param {{ gun: Gun, sim: { current: import('../spells/bagsim.js').FireSim | null } }} props */
+export function GunFire({ gun, sim }) {
+  const ref = useRef(null);
+  const gref = useRef(gun);
+  gref.current = gun;
+  useEffect(() => {
+    let raf, last = performance.now(), seen = -1, seenS = null, flash = 0;
+    /** @type {any[]} */
+    let shots = [], beams = [];
+    /** @type {any} */
+    const fw = { time: 0 };
+    const loop = now => {
+      raf = requestAnimationFrame(loop);
+      const c = ref.current, S = sim.current, g = gref.current;
+      if (!c) return;
+      const dt = Math.min(0.1, (now - last) / 1000) * DEV.bagSpeed;
+      last = now; fw.time += dt;
+      const dpr = window.devicePixelRatio || 1, W = c.clientWidth, H = c.clientHeight;
+      if (!W || !H) return;
+      if (c.width !== Math.round(W * dpr) || c.height !== Math.round(H * dpr)) {
+        c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+      }
+      const ctx = c.getContext('2d');
+      const sc = Math.min(2.4, W / 60), gx = 6 + 6.5 * sc, gy = H * 0.55;
+      const mx = (gx + 14.2 * sc) / GF_ZOOM, my = (gy - 3.2 * sc) / GF_ZOOM;   // the muzzle, in world units
+      if (S !== seenS) { seenS = S; seen = S ? S.fired : -1; }
+      if (S && S.fired !== seen) {                    // a pull went off: its shots leave the muzzle
+        seen = S.fired; flash = 0.07;
+        c.dataset.pulls = String(seen);                // for the suite: how many pulls it has shown
+        for (const sh of S.shots) {
+          const n = Math.max(1, sh.count || 1);
+          for (let i = 0; i < n; i++) {
+            const a = (sh.ang || 0) + (Math.random() - 0.5) * (sh.spread || 0) * Math.PI / 180
+              + (n > 1 ? (i / (n - 1) - 0.5) * 0.12 : 0);
+            if (sh.beam) { beams.push({ a, col: sh.col, w: sh.size || 2, t: 0.15, max: 0.15 }); continue; }
+            if (sh.still) { beams.push({ field: 1, r: Math.min(H / GF_ZOOM * 0.4, sh.r || 12), col: sh.col, t: 0.5, max: 0.5 }); continue; }
+            const sp = sh.speed * GF_SPEED;
+            shots.push({ x: mx, y: my, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, size: sh.size, col: sh.col,
+              look: sh.look, spin: Math.random() * 6, grav: sh.grav || 0, explode: sh.explode, homing: sh.homing,
+              pull: sh.pull, eat: sh.eat, hidden: sh.hidden, life: 3 });
+          }
+        }
+        if (shots.length > GF_MAX) shots.splice(0, shots.length - GF_MAX);
+      }
+      // move
+      const wW = W / GF_ZOOM, wH = H / GF_ZOOM;
+      for (const b of shots) {
+        b.vy += b.grav * GF_SPEED * GF_SPEED * dt;
+        b.x += b.vx * dt; b.y += b.vy * dt; b.spin += dt * 10; b.life -= dt;
+      }
+      shots = shots.filter(b => b.life > 0 && b.x > -10 && b.x < wW + 10 && b.y > -10 && b.y < wH + 10);
+      for (const bm of beams) bm.t -= dt;
+      beams = beams.filter(bm => bm.t > 0);
+      flash -= dt;
+      // draw
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#0b0e14';
+      ctx.fillRect(0, 0, W, H);
+      ctx.save(); ctx.scale(GF_ZOOM, GF_ZOOM);
+      /** @type {any} */
+      const G = { ctx };
+      ctx.lineCap = 'round';
+      for (const bm of beams) {
+        ctx.globalAlpha = bm.t / bm.max;
+        if (bm.field) {
+          ctx.fillStyle = bm.col; ctx.globalAlpha *= 0.35;
+          ctx.beginPath(); ctx.arc(mx + bm.r + 6, my, bm.r * (1.2 - bm.t / bm.max * 0.4), 0, 6.283); ctx.fill();
+        } else {
+          ctx.strokeStyle = bm.col; ctx.lineWidth = bm.w;
+          ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(mx + Math.cos(bm.a) * wW, my + Math.sin(bm.a) * wW); ctx.stroke();
+        }
+      }
+      for (const b of shots) {
+        ctx.globalAlpha = 1;
+        if (b.hidden) continue;
+        if (b.pull) {                                  // Black Hole: dark core, purple rim
+          ctx.fillStyle = '#050208'; ctx.beginPath(); ctx.arc(b.x, b.y, b.eat || b.size * 0.78, 0, 6.283); ctx.fill();
+          ctx.strokeStyle = '#b98aff'; ctx.lineWidth = 1.2; ctx.stroke();
+          continue;
+        }
+        if (b.look && drawLook(fw, G, b)) continue;
+        const sp = Math.hypot(b.vx, b.vy) || 1, len = Math.max(0.5, Math.min(46, sp / GF_SPEED * 0.022));
+        ctx.globalAlpha = 1; ctx.strokeStyle = b.col; ctx.lineWidth = b.size * 1.7;
+        ctx.beginPath(); ctx.moveTo(b.x - b.vx / sp * len, b.y - b.vy / sp * len); ctx.lineTo(b.x, b.y); ctx.stroke();
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1;
+      if (g) drawGun(ctx, gx, gy, 0, sc, gunAccent(g));
+      if (flash > 0) {
+        ctx.globalAlpha = Math.min(1, flash / 0.07);
+        ctx.fillStyle = g ? gunAccent(g) : '#fff';
+        ctx.beginPath(); ctx.arc(mx * GF_ZOOM + 2, my * GF_ZOOM, 3.5, 0, 6.283); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return h('canvas', { ref, className: 'gfire', 'data-fire': 1 });
 }
 
 // The gun's slots as a fixed grid: a mod stays exactly where you drop it. The fire preview
@@ -348,6 +457,35 @@ export function Editor({ input, close, refresh, canEdit, tabs }) {
   const adv = useMemo(() => gun ? buildAdvice(gun, bagIds, SHOW_TIPS) : null,
     [gsig, SHOW_TIPS ? bagIds.join() : '']);
 
+  const advice = gun && adv ? (() => {
+    const apply = t => e => {
+      e.preventDefault();
+      if (t.kind === 'move') {
+        const a = gun.slots[t.slot];
+        gun.slots[t.slot] = gun.slots[t.other];
+        gun.slots[t.other] = a;
+      } else {
+        const outgoing = gun.slots[t.slot];
+        const k = bagIds.indexOf(t.id);
+        if (k >= 0) takeFromBag(k);
+        gun.slots[t.slot] = t.id;
+        returnToBag(outgoing);
+      }
+      resetGun(gun);
+      refresh();
+    };
+    return h('div', { className: 'advice' },
+      h('div', { className: 'diag ' + adv.limit.key },
+        h('b', null, adv.now.dps.toFixed(1) + ' dmg/s'), adv.limit.text),
+      SHOW_TIPS && canEdit && adv.tips.length ? h('div', { className: 'tips' },
+        adv.tips.map((t, k) => h('button', { key: k, className: 'tip', onPointerDown: apply(t) },
+          t.kind === 'move'
+            ? 'Swap slots ' + (t.slot + 1) + ' and ' + (t.other + 1)
+            : (gun.slots[t.slot] ? 'Replace slot ' + (t.slot + 1) + ' with ' : 'Slot ' +
+                (t.slot + 1) + ': ') + MODS[t.id].name,
+          h('b', null, '×' + t.gain.toFixed(1) + ' dmg')))) : null);
+  })() : null;
+
   const card = shown
     ? h('div', { key: 'card' },
         h('div', { className: 'shade', onPointerDown: behind }),
@@ -362,7 +500,24 @@ export function Editor({ input, close, refresh, canEdit, tabs }) {
     ),
     h('div', { className: 'btop' },
       gun ? h(GunStats, { gun, sim, sig: gsig }) : h('div', { className: 'gstats' }, h('p', { className: 'lab' }, 'No gun in this slot')),
-      h('div', { className: 'gtabs' },
+      h(GunFire, { gun, sim })
+    ),
+    gun ? h('p', { className: 'lab' }, gun.shuffle
+      ? 'On the gun — order is shuffled every recharge'
+      : 'On the gun — fires left to right, row by row') : null,
+    gun ? h(SlotGrid, { gun, tile, sig: gsig, sim }) : null,
+    advice,
+    h('div', { className: 'bagHead' },
+      h('p', { className: 'lab' }, LO.debug
+        ? 'Debug shelf — one of every mod, never used up'
+        : 'Collected mods' + (LO.bag.length ? '' : ' — none yet, find them in the cave')),
+      canEdit && !LO.debug && LO.bag.length > 1 ? h('button', { className: 'sortBag',
+          onPointerDown: e => { e.preventDefault(); sortBag(); } }, 'Sort') : null),
+    h(ScrollBox, { cls: 'bag' + (LO.debug ? ' debug' : ''), drop: 'bag' },
+      h('div', { className: 'mgrid' }, bagIds.map((id, i) => tile(id, { type: 'bag', i }, 'b' + i)))
+    ),
+    // the gun buttons: a row under the mod grid (owner, item 4; they were a 2×2 by the stats)
+    h('div', { className: 'gtabs gunrow' },
         LO.guns.map((g, i) => h('button', {
             key: i,
             'data-gun': i,
@@ -373,49 +528,7 @@ export function Editor({ input, close, refresh, canEdit, tabs }) {
           },
           h('span', { className: 'gname', style: g ? { color: gunColor(g) } : null }, g ? g.name : 'Empty'),
           g ? h(GunIcon, { gun: g }) : h('span', { className: 'gsub' }, '—')
-        )))
-    ),
-    gun ? h('p', { className: 'lab' }, gun.shuffle
-      ? 'On the gun — order is shuffled every recharge'
-      : 'On the gun — fires left to right, row by row') : null,
-    gun ? h(SlotGrid, { gun, tile, sig: gsig, sim }) : null,
-    gun && adv ? (() => {
-      const apply = t => e => {
-        e.preventDefault();
-        if (t.kind === 'move') {
-          const a = gun.slots[t.slot];
-          gun.slots[t.slot] = gun.slots[t.other];
-          gun.slots[t.other] = a;
-        } else {
-          const outgoing = gun.slots[t.slot];
-          const k = bagIds.indexOf(t.id);
-          if (k >= 0) takeFromBag(k);
-          gun.slots[t.slot] = t.id;
-          returnToBag(outgoing);
-        }
-        resetGun(gun);
-        refresh();
-      };
-      return h('div', { className: 'advice' },
-        h('div', { className: 'diag ' + adv.limit.key },
-          h('b', null, adv.now.dps.toFixed(1) + ' dmg/s'), adv.limit.text),
-        SHOW_TIPS && canEdit && adv.tips.length ? h('div', { className: 'tips' },
-          adv.tips.map((t, k) => h('button', { key: k, className: 'tip', onPointerDown: apply(t) },
-            t.kind === 'move'
-              ? 'Swap slots ' + (t.slot + 1) + ' and ' + (t.other + 1)
-              : (gun.slots[t.slot] ? 'Replace slot ' + (t.slot + 1) + ' with ' : 'Slot ' +
-                  (t.slot + 1) + ': ') + MODS[t.id].name,
-            h('b', null, '\u00d7' + t.gain.toFixed(1) + ' dmg')))) : null);
-    })() : null,
-    h('div', { className: 'bagHead' },
-      h('p', { className: 'lab' }, LO.debug
-        ? 'Debug shelf — one of every mod, never used up'
-        : 'Collected mods' + (LO.bag.length ? '' : ' — none yet, find them in the cave')),
-      canEdit && !LO.debug && LO.bag.length > 1 ? h('button', { className: 'sortBag',
-          onPointerDown: e => { e.preventDefault(); sortBag(); } }, 'Sort') : null),
-    h(ScrollBox, { cls: 'bag' + (LO.debug ? ' debug' : ''), drop: 'bag' },
-      h('div', { className: 'mgrid' }, bagIds.map((id, i) => tile(id, { type: 'bag', i }, 'b' + i)))
-    ),
+        ))),
     h('div', { className: 'info' },
       canEdit
         ? 'Drag a mod to any slot. Tap one to see what it does. Hold a gun to reorder it.'
