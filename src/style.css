@@ -268,6 +268,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   border-radius:8px;background:currentColor;display:flex;align-items:center;justify-content:center;
   pointer-events:none;font:800 9px system-ui,sans-serif;line-height:1}
 .tcount b{color:#111}
+.ttgt{position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:9px;background:rgba(0,0,0,.55);
+  border:1px solid currentColor;display:flex;align-items:center;justify-content:center;pointer-events:none;
+  font:700 10px system-ui,sans-serif;line-height:1;color:#fff;overflow:hidden}
+.pglyph{position:relative}
+.pglyph .ttgt{top:auto;left:auto;right:-6px;bottom:-6px;width:20px;height:20px;border-radius:10px;font-size:12px}
+.pact{margin:8px 0 2px;padding:9px 14px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);
+  color:inherit;font:700 14px system-ui,sans-serif;width:100%;touch-action:manipulation}
 .tn{font:500 8.5px system-ui,sans-serif;color:var(--muted);text-align:center;line-height:1.1;
   max-width:100%;padding:0 2px}
 .ghost{position:fixed;z-index:30;width:60px;height:56px;border-radius:9px;border:2px solid;

@@ -23,6 +23,7 @@ export * from './spells/bagsim.js';
 export * from './spells/collection.js';
 export * from './spells/gunshop.js';
 export * from './spells/assist.js';
+export * from './spells/discrim.js';
 export * from './world/vision.js';
 export * from './world/fire.js';
 export * from './world/nav.js';

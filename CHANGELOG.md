@@ -7,6 +7,14 @@ Names are as they were at the time (before the refactor Game's state had loose n
 
 ## Unreleased
 
+- **Discriminate mod** (`discrim`, LIST3 #11): each copy gets its own permanent target. Tap an unset one in
+  the Bag → "Set target" → the Bag closes and the aim stick drives Aim Assist's pointer, snapping onto any
+  creature, you, or an object (props, pickups); let go on one to set it ("Discriminate → Konna" toast), let go
+  on nothing to cancel. A set copy is its own id (`discrim:<kind>:<id>`, `spells/discrim.js`), so copies with
+  different targets stack apart and saves keep them; its tile shows the target's little icon. The next spell
+  then touches only that kind of thing: it passes through every other creature, you and props, homes/chains/
+  pulls only onto the target, and its blasts hurt only the target. It still stops at rock, but never digs,
+  blasts or burns it. Not covered yet: static fields, beams and a trigger's payload (they act as normal).
 - **Aim Assist mod** (`aimassist`, LIST3 #10): with it on the gun in hand the aim stick drives a thin
   pointer ring out from your gun (like the vending menus' pointer) that snaps onto creatures in sight and on
   screen; on one it turns amber, the gun light swings onto it and the gun fires at it on its own (normal cast

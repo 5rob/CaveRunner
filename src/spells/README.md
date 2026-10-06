@@ -12,6 +12,7 @@
 | `bagsim.js` | The bag screen's pure side: `castGroups`, `pullSteps`, `groupStats`, the trigger-held preview `fireSimNew`/`fireSimStep`/`fireSimGauges` (each pull bumps `S.fired` and leaves its shots in `S.shots`, which the Bag's firing window draws), `statQual`, `gunModDeltas` |
 | `collection.js` | The vending machine's collection: `modTiers` (every `ALL_IDS` mod by `MOD_TIER`, the grid's groups), `crystalRoll(rnd, floor, owned)` (a red crystal's unlock: the floor's `modWeight` table minus what you own, then anything you don't, then null). Stored (emptied when you die) by `save/save.js` (`loadCollection`/`saveCollection`). Also the Bag's stacks: `stackBag(bag)` (one `{ key, id, i, n }` per stack, first-seen order, `i` = its first copy's bag index) and `stackKey(entry)` (what makes copies the same: the id today; add any per-copy data, e.g. a Discriminate target, so those copies stack apart). `LO.bag` stays one entry per copy |
 | `gunshop.js` | The gun machine's offer: `newOffer`/`rollOffer` (`GUN_OFFER` guns), `shopGun` (the floor's `gunLevel`, or boosted: `BOOST_UP` deeper + `boostGun`), `shopGunPrice`, `rerollPrice(floor, n)`, `boostCost(n)` |
+| `discrim.js` | Discriminate (LIST3 #11): a set copy is its own id `discrim:<kind>:<id>` (kind `creature` = a creature kind's id, `player`, `object` = a prop's `k` / a pickup's `kind`), registered into `MODS` on demand by `ensureMod` (like a trigger variant: `base: 'discrim'`, `off: 1`, `tgt`, its `f` sets the shot's `only`). `discrimId(t)`, `targetOf`, `isUnsetDiscrim`, `matchesTarget(t, {kind,id})`, `targetIcon`/`targetName`. **Anything that reads mod ids from outside (a save) calls `ensureMod` first** (`save/save.js` does) |
 | `assist.js` | Aim Assist's pure side (LIST3 #10): `hasAssist(g)` (the gun carries `aimassist`), `assistPointer` (stick push → a world point out from the gun, × `DEV.aaReach` of the far view corner, held in the view), `assistSnap` (the creature nearest the pointer by its edge: pulls within `aaSnapR`, ON within `aaHit`, the one it was on stays on to `aaHit × aaHold`) |
 
 The game side of casting (spawning shots, the bullet loop, fields and beams) is in
@@ -35,6 +36,11 @@ and `game/systems/shotlooks.js`.
 - **Aim Assist** (`aimassist`, a `path`-family modifier; `assist: 1` on the next spell): while the gun in hand carries it
   ANYWHERE, the right stick is a pointer (`aimAndCast`, game/systems/gun.js) and the whole pull aims at the
   creature it's on (one aim per pull, so a spell sharing the pull goes the same way). It does nothing else to a shot.
+- **Discriminate** (`discrim`; LIST3 #11): an unset copy does nothing; a set one gives the next spell `only`
+  (the target), and the bullet loop (`game/systems/bullets.js`: `mayHit`/`onlyAt`/`onlyBlast`) and props
+  (`systems/props.js`) let that shot touch only matching things. It stops at rock without digging/burning it.
+  Its target is picked once in the game (`input.pickTarget` = the bag index; `aimAndCast` reuses Aim Assist's
+  pointer, ring and snap). Not yet: fields, beams, payloads.
 - **Copies (the Greek letters) are fiddly** (they are `off: 1` today, code and `spells.test.js`
   checks kept for bringing them back). They push ids into a queue drawn before the gun's own list,
   and must widen `multi` for themselves *and* their originals or the multicast limit eats them.

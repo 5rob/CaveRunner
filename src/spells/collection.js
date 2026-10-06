@@ -45,8 +45,8 @@ export function perkRoll(rnd, owned) {
 
 // The Bag's "Collected mods" grid shows one tile per stack (owner, item 9): copies that are the same
 // mod share a tile with a count. LO.bag still holds one entry per copy (saves unchanged); this only
-// groups it for display. stackKey is what makes two copies "the same": just the id today; a mod with
-// per-copy data (a later Discriminate's target) adds it to the key so those copies stack apart.
+// groups it for display. stackKey is what makes two copies "the same": the id, which already carries a
+// Discriminate's target ('discrim:creature:konna', spells/discrim.js), so differently-set copies stack apart.
 /** @param {string} entry @returns {string} */
 export function stackKey(entry) { return entry; }
 

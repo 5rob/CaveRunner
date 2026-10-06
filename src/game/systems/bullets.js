@@ -7,6 +7,7 @@ import { CELL, PH, PW, WH, WW } from '../../core/consts.js';
 import { angDiff, clamp, turn } from '../../core/util.js';
 import { DEV } from '../../dev/knobs.js';
 import { hasPath, pathStep } from '../../spells/paths.js';
+import { matchesTarget } from '../../spells/discrim.js';
 import { DRIFT_ACC, DRIFT_CHASE, DRIFT_R, driftStep, wigTurn } from '../../spells/trace.js';
 import { damageEnemy } from './enemies.js';
 import { ignite, setAlight } from './fire.js';
@@ -17,6 +18,41 @@ import { burst } from './particles.js';
 import { hurt } from './player.js';
 import { shotBounce, shotDeath, shotGrind, shotTrail } from './shotlooks.js';
 import { boxHit, dig, enemyAt, explode, lineOfSight, solidAt } from './terrain.js';
+
+// Discriminate (spells/discrim.js): a shot with `only` touches nothing but its target
+/** @param {Bullet} b @param {Enemy} e */
+const mayHit = (b, e) => !b.only || matchesTarget(b.only, { kind: 'creature', id: e.k.id });
+// the creature a targeted shot is touching at x, y (only ones that match), like enemyAt
+/** @param {World} W @param {Bullet} b @param {number} x @param {number} y @param {number} pad */
+function onlyAt(W, b, x, y, pad) {
+  if (!b.only || b.only.kind !== 'creature') return -1;
+  for (let j = 0; j < W.enemies.length; j++) {
+    const e = W.enemies[j];
+    if (mayHit(b, e) && Math.hypot(x - e.x, y - e.ty) < e.r + pad) return j;
+  }
+  return -1;
+}
+// a targeted shot's blast: hurts only its target in reach (creatures as explode() does, you as a
+// blast hurts you, a prop as a blast knocks it), and leaves the rock, fire and everything else alone
+/** @param {World} W @param {GameCtx} G @param {Bullet} b @param {number} x @param {number} y @param {number} R */
+function onlyBlast(W, G, b, x, y, R) {
+  SFX.boom(x, y, R);
+  W.flashes.push({ x, y, r: R, t: 0 });
+  burst(W, x, y, 8, b.col);
+  for (let j = W.enemies.length - 1; j >= 0; j--) {
+    const e = W.enemies[j], dist = Math.hypot(e.x - x, e.ty - y);
+    if (b.only && b.only.kind === 'creature' && mayHit(b, e) && dist < R + e.r) damageEnemy(W, j, dist < R * 0.5 ? 3 : 2);
+  }
+  if (b.only && b.only.kind === 'player' && !W.p.dead) {
+    const dist = Math.hypot(W.p.x + PW / 2 - x, W.p.y + PH / 2 - y), reach = R + 10;
+    if (dist < reach) hurt(W, G, Math.round(25 * (1 - dist / reach)));
+  }
+  if (b.only && b.only.kind === 'object') for (const pr of W.props) {
+    if (pr.gone || !matchesTarget(b.only, { kind: 'object', id: pr.k })) continue;
+    const bx = clamp(x, pr.x + pr.l, pr.x + pr.r), by = clamp(y, pr.y + pr.t0, pr.y + pr.b);
+    if (Math.hypot(bx - x, by - y) < R + 6) pr.hurt = (pr.hurt || 0) + 2;
+  }
+}
 
 // Clusterbolt: the shot bursts into a handful of small explosive bolts
 /** @param {World} W @param {Bullet} b */
@@ -85,7 +121,7 @@ export function stepBullets(W, G, F) {
     let dead = b.life <= 0, boom = false;
     if (dead && b.lifeBoom && b.explode) { dead = false; boom = true; }   // a bomb's fuse burns down
     if (b.fuse && b.age >= b.fuse) { boom = b.explode ? true : false; if (!b.explode) dead = true;
-      else { explodeCross(W, G, b); dead = true; boom = false; } }
+      else { if (b.only) onlyBlast(W, G, b, b.x, b.y, b.explode); else explodeCross(W, G, b); dead = true; boom = false; } }
     if (b.grav) b.vy += b.grav * dt;
     if (b.drag) { const k = Math.exp(-b.drag * dt); b.vx *= k; b.vy *= k; }
     if (b.accel) { const f = 1 + b.accel * dt; b.vx *= f; b.vy *= f; }
@@ -98,8 +134,8 @@ export function stepBullets(W, G, F) {
       [ex, ey] = pathStep(b, dt, pathEnv(W, b, dt));
       if (b.caught) dead = true;                      // a boomerang back in your hand
     }
-    if (b.eat) dig(W, G, b.x, b.y, b.eat);
-    if (b.fire) ignite(W, G, b.x, b.y, b.size + 2, 0.5);     // a fire spell lights what it flies through
+    if (b.eat && !b.only) dig(W, G, b.x, b.y, b.eat);
+    if (b.fire && !b.only) ignite(W, G, b.x, b.y, b.size + 2, 0.5);     // a fire spell lights what it flies through
     if (b.arc) lightningStep(W, b, dt);
     // a timer lets its payload go in mid-air, and the carrier flies on
     if (b.payload && b.timer != null && (b.timer -= dt) <= 0) firePayload(W, G, b);
@@ -109,6 +145,7 @@ export function stepBullets(W, G, F) {
       // swallows enemy shots that come near, and grinds anything in it every 0.3s.
       const reach = DEV.bhPull * b.pull / 70;          // Dev knob: max pull range
       for (const e of W.enemies) {
+        if (!mayHit(b, e)) continue;
         const dx = b.x - e.x, dy = b.y - e.ty, d = Math.hypot(dx, dy) || 1;
         if (d < reach) {
           const f = Math.min(d / dt, 60 + 420 * (1 - d / reach));   // never overshoot the centre
@@ -149,6 +186,7 @@ export function stepBullets(W, G, F) {
         const d = driftStep(b.vx, b.vy, dt); b.vx = d[0]; b.vy = d[1];
         let bd = b.homeR || DRIFT_R;
         for (const e of W.enemies) {
+          if (!mayHit(b, e)) continue;
           const dd = Math.hypot(e.x - b.x, e.ty - b.y);
           if (dd < bd && lineOfSight(W, b.x, b.y, e.x, e.ty)) { bd = dd; b.lock = e; }
         }
@@ -164,6 +202,7 @@ export function stepBullets(W, G, F) {
     if (b.homing && !b.drift) {
       let best = null, bd = b.homeR || 260;
       for (const e of W.enemies) {
+        if (!mayHit(b, e)) continue;
         const d = Math.hypot(e.x - b.x, e.ty - b.y);
         if (d < bd) { bd = d; best = e; }
       }
@@ -180,7 +219,7 @@ export function stepBullets(W, G, F) {
     const sn = Math.max(1, Math.ceil(Math.hypot(b.vx * dt + ex, b.vy * dt + ey) / 2));
     for (let st = 0; st < sn && !dead && !boom; st++) {
       const nx = b.x + (b.vx * dt + ex) / sn, ny = b.y + (b.vy * dt + ey) / sn;
-      const j = enemyAt(W, nx, ny, b.size + 1);
+      const j = b.only ? onlyAt(W, b, nx, ny, b.size + 1) : enemyAt(W, nx, ny, b.size + 1);
       if (j >= 0 && !(b.hit && b.hit.has(W.enemies[j]))) {
         const e = W.enemies[j];
         const sp = Math.hypot(b.vx, b.vy) || 1;
@@ -195,7 +234,7 @@ export function stepBullets(W, G, F) {
           (b.hit || (b.hit = new Set())).add(e);
           let best = null, bd = 150;
           for (const o of W.enemies) {
-            if (b.hit.has(o)) continue;
+            if (b.hit.has(o) || !mayHit(b, o)) continue;
             const d = Math.hypot(o.x - nx, o.ty - ny);
             if (d < bd) { bd = d; best = o; }
           }
@@ -208,6 +247,7 @@ export function stepBullets(W, G, F) {
             continue;
           }
         }
+        if (b.only && (b.cluster || b.pop)) { onlyBlast(W, G, b, nx, ny, b.pop || 12); dead = true; break; }
         if (b.cluster) { spray(W, b); dead = true; break; }
         if (b.explode) { boom = true; break; }
         if (b.pop) { explode(W, G, nx, ny, b.pop, b.dmg * 0.5); dead = true; break; }
@@ -215,7 +255,14 @@ export function stepBullets(W, G, F) {
         if (b.pierce > 0) { b.pierce--; (b.hit || (b.hit = new Set())).add(e); }
         else { dead = true; break; }
       }
-      if (b.friendly && !W.p.dead && nx > W.p.x - 2 && nx < W.p.x + PW + 2 &&
+      // aimed at you (Discriminate): it hits you once it's clear of the muzzle
+      if (b.only && b.only.kind === 'player' && b.age > 0.12 && !W.p.dead && nx > W.p.x - 2 && nx < W.p.x + PW + 2 &&
+          ny > W.p.y - 2 && ny < W.p.y + PH + 2) {
+        burst(W, nx, ny, 5, b.col); hurt(W, G, Math.max(1, Math.round(b.dmg * 2)));
+        if (b.explode) { b.x = nx; b.y = ny; boom = true; } else dead = true;
+        break;
+      }
+      if (b.friendly && !b.only && !W.p.dead && nx > W.p.x - 2 && nx < W.p.x + PW + 2 &&
           ny > W.p.y - 2 && ny < W.p.y + PH + 2) {
         burst(W, nx, ny, 5, b.col); hurt(W, G, Math.round(b.dmg * 2)); dead = true; break;
       }
@@ -232,9 +279,11 @@ export function stepBullets(W, G, F) {
           if (slow && b.lifeBoom) b.bounce++;         // a bomb at rest doesn't use up its bounces
           if (!slow) SFX.bounce(b.x, b.y);
           if (b.look) shotBounce(W, b);
-          if (b.bounceFx === 'explode') explode(W, G, b.x, b.y, Math.max(10, b.explode || 12));
+          if (b.bounceFx === 'explode' && !b.only) explode(W, G, b.x, b.y, Math.max(10, b.explode || 12));
           break;                      // stay put: b.x/b.y are still outside the rock
         }
+        // a targeted shot stops at rock like any other, but never digs, blasts or burns it
+        if (b.only) { burst(W, b.x, b.y, 3, b.col); SFX.rock(b.x, b.y); dead = true; break; }
         b.x = nx; b.y = ny;
         if (b.bore > 0) { if (b.look) shotGrind(W, b, nx, ny); dig(W, G, nx, ny, b.bore); continue; }
         // Matter Eater / Black Hole: eat straight through the rock, digging as it goes,
@@ -251,8 +300,8 @@ export function stepBullets(W, G, F) {
       }
       b.x = nx; b.y = ny;
     }
-    if (boom) { explode(W, G, b.x, b.y, b.explode, undefined, b.fire); dead = true; }
-    if (dead && b.fire) ignite(W, G, b.x, b.y, b.size + 6, 0.9);
+    if (boom) { if (b.only) onlyBlast(W, G, b, b.x, b.y, b.explode); else explode(W, G, b.x, b.y, b.explode, undefined, b.fire); dead = true; }
+    if (dead && b.fire && !b.only) ignite(W, G, b.x, b.y, b.size + 6, 0.9);
     // an expiration trigger goes off however it dies; a trigger stopped by a prop counts as a hit
     if (dead && b.payload && (b.trig === 'expire' || b.struck)) firePayload(W, G, b);
     if (dead && b.tele) teleportTo(W, b);            // Teleport Bolt: you go where it stopped

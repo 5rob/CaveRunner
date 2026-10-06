@@ -7,6 +7,7 @@ import { DEADLINE_MS, OLD_LVL_BUY, START_GOLD } from '../core/consts.js';
 import { PERKS, SUIT_LEN, SUIT_SLOTS, fitsSlot } from '../data/perks.js';
 import { resetGun } from '../spells/guns.js';
 import { MODS } from '../spells/mods.js';
+import { ensureMod } from '../spells/discrim.js';
 
 // ---- autosave ----
 // The run is kept in localStorage under SAVE_KEY and read back on the next launch. In the
@@ -22,7 +23,7 @@ export const GUN_DEFAULTS = { name: 'Gun', castDelay: 0.2, recharge: 0.5, manaMa
 export function cleanGun(g) {
   if (!g || typeof g !== 'object' || !Array.isArray(g.slots) || !g.slots.length) return null;
   const out = Object.assign({}, GUN_DEFAULTS, g);
-  out.slots = g.slots.map(id => (id && MODS[id] ? id : null));
+  out.slots = g.slots.map(id => (id && ensureMod(id) ? id : null));
   out.cap = out.slots.length;
   out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
   return resetGun(out);
@@ -54,7 +55,7 @@ export function cleanLoadout(lo) {
   if (!guns[sel]) sel = Math.max(0, guns.findIndex(Boolean));
   return {
     guns, sel,
-    bag: (Array.isArray(lo.bag) ? lo.bag : []).filter(id => MODS[id]),
+    bag: (Array.isArray(lo.bag) ? lo.bag : []).filter(id => ensureMod(id)),
     // perks carried (LO.perks) and fitted to the Exo Suit (LO.suit). A save from before the suit:
     // its switched-on perks go in the slots, as many as fit, the rest are carried
     ...cleanPerks(lo),

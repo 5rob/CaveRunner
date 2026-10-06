@@ -23,7 +23,10 @@ interface VendLook { hue: string; top: string[]; bot: string[]; deal?: string }
 // ---- spells and guns (spells/) ----
 
 /** what a spell is: one entry of MODS (spells/mods.js). `kind` decides which fields matter */
+/** Discriminate's target (spells/discrim.js): a creature kind's id, you ('player'), or an object (a prop's k, a pickup's kind) */
+interface DiscrimTarget { kind: 'creature' | 'player' | 'object'; id: string }
 interface Mod {
+  tgt?: DiscrimTarget;        // a targeted Discriminate copy (spells/discrim.js)
   id?: string;                // its key in MODS: always there, but filled in after the table
   name: string;
   kind: 'shot' | 'static' | 'mod' | 'util' | 'passive';
@@ -82,7 +85,7 @@ interface Shot {
   dmg: number; speed: number; spread: number; size: number; life: number; count: number;
   bounce: number; pierce: number; explode: number; grav: number; homing: number; accel: number;
   bore: number; recoil: number; col: string; knock: number; crit: number; boomer: number;
-  spiral: number; pong: number; orbit: number; follow: number; autoaim: number; assist: number; homeR: number; flat: number;
+  spiral: number; pong: number; orbit: number; follow: number; autoaim: number; assist: number; only: DiscrimTarget | null; homeR: number; flat: number;
   eat: number; pull: number; split: number; cluster: number;
   bounceFx: any;              // a modifier's (unused today: always null)
   friendly: number; chain: number; fuse: number; beam: number;
@@ -496,6 +499,7 @@ interface DevRow { k: string; g: string; label: string; min?: number; max?: numb
  */
 interface Bullet {
   x: number; y: number; vx: number; vy: number;
+  only?: DiscrimTarget | null; // Discriminate: touches only this (game/systems/bullets.js)
   life: number; dmg: number; size: number; col: string; spin: number;
   homing: number; bounce: number; pierce: number; explode: number; grav: number; accel: number;
   bore: number; hit: Set<Enemy> | null; age: number;   // hit: what it has already struck (pierce)
@@ -739,6 +743,7 @@ interface GameInput {
   saved: SaveData | null;
   paused: boolean; notify: () => void; inShop: boolean;
   prompt: Prompt | null; interact: boolean; sig: string;
+  pickTarget?: number | null;  // Discriminate: the bag index of the copy whose target the world pointer is picking (game/systems/gun.js)
   perksDirty?: boolean;       // a perk was switched: Game re-adds the bag before the next step
   found: Pickup | null;
   // legacy: a two-way confirm the right stick answered by pointing (Stick still reads them; nothing sets them)
