@@ -324,6 +324,17 @@ export const MODS = {
   autoaim: { name: 'Auto-Aim', kind: 'mod', glyph: '✢', col: '#b57cff', mana: 7, d: 0.03,
              info: 'Snaps onto the nearest enemy the moment it leaves the barrel',
              f: s => { s.autoaim = 1; } },
+  // Aim Assist (LIST3 #10): the right stick drives a pointer that snaps onto creatures and fires on its own
+  // once it's on one (game/systems/gun.js aimAndCast, spells/assist.js). The pull aims at the snapped creature.
+  aimassist: { name: 'Aim Assist', kind: 'mod', glyph: '⌖', col: '#b57cff', mana: 3, d: 0.02,
+             info: 'The aim stick becomes a pointer that snaps onto enemies and fires when it\'s on one (no trigger ring)',
+             f: s => { s.assist = 1; } },
+  // Discriminate (LIST3 #11): each copy carries its own target, set once in the Bag with the world pointer
+  // (spells/discrim.js: a targeted copy is its own id, 'discrim:<kind>:<id>', registered by ensureMod).
+  // An unset copy does nothing; a set one makes the next spell touch only that target.
+  discrim: { name: 'Discriminate', kind: 'mod', glyph: '⌾', col: '#b57cff', mana: 4, d: 0.02,
+             info: 'Set its target once in the Bag (a creature, you, or an object): the next spell then only touches that, and passes through everything else',
+             f: () => {} },
   nearhome:{ name: 'Short-range Homing', kind: 'mod', glyph: '⌒', col: '#b57cff', mana: 5, d: 0.02,
              info: 'Only steers once it is already close to something',
              f: s => { s.homing += 7; s.homeR = 70; } },
@@ -429,7 +440,7 @@ export const FAMILY_OF = {
   knock: 'dmg', kick: 'dmg', crit: 'dmg', flat: 'dmg', lust: 'dmg', manapow: 'dmg',
   bboom: 'dmg', bpower: 'dmg', gpower: 'dmg',
   gravmod: 'vel', float: 'vel',
-  boomer: 'path', spiral: 'path', pong: 'path', orbit: 'path', autoaim: 'path',
+  boomer: 'path', spiral: 'path', pong: 'path', orbit: 'path', autoaim: 'path', aimassist: 'path', discrim: 'path',
   nearhome: 'path', eater: 'path',
   split: 'pattern', cluster: 'pattern', oct: 'pattern', myriad: 'pattern', bifur: 'pattern',
   trifur: 'pattern', behind: 'pattern',
@@ -467,7 +478,7 @@ export const MOD_PRICE = {
   glitter: 80, refresh: 55, blood: 90, bpower: 45, gpower: 50,
   farcast: 25, telecast: 65, warpcast: 40, sawstorm: 85, knock: 25, kick: 15, damper: 25,
   crit: 50, gravmod: 15, float: 20, boomer: 40, spiral: 30, pong: 35, orbit: 50,
-  autoaim: 45, nearhome: 35, flat: 35, eater: 60, lust: 55, manapow: 55, split: 50,
+  autoaim: 45, aimassist: 40, discrim: 40, nearhome: 35, flat: 35, eater: 60, lust: 55, manapow: 55, split: 50,
   cluster: 60, bboom: 50, hspread: 30, oct: 110, myriad: 130, bifur: 30, trifur: 45,
   behind: 25, alpha: 45, gamma: 45, tau: 70, omega: 160, phi: 95, sigma: 90, mu: 85,
   zeta: 70, addtrig: 55, addtimer: 60, adddeath: 55,
@@ -484,7 +495,7 @@ export const MOD_TIER = {
   slug: 2, lance: 2, orb: 2, blast: 2, heavy: 2, light: 2, accel: 2, bounce: 2, big: 2,
   range: 2, borer: 2, double: 2, over: 2, trigger: 2, esph: 2, fbolt: 2, flamer: 2, eorb: 2,
   disc: 2, glance: 2, ldrill: 2, crystal: 2, dormant: 2, boomer: 2, spiral: 2,
-  pong: 2, autoaim: 2, nearhome: 2, flat: 2, crit: 2, split: 2, bboom: 2, refresh: 2,
+  pong: 2, autoaim: 2, aimassist: 2, discrim: 2, nearhome: 2, flat: 2, crit: 2, split: 2, bboom: 2, refresh: 2,
   warpcast: 2, trifur: 2, alpha: 2, gamma: 2, scatter: 2, homing: 3, tip: 3, triple: 3,
   over_heat: 3, recharge: 3, battery: 3, auto: 2, saw: 3, missile: 3, fball: 3, zap: 3, chain: 3,
   cross: 3, plasma: 3, boom: 3, stillc: 3, shieldc: 3, vigour: 3, vacfield: 3, orbit: 3,

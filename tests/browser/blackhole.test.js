@@ -78,18 +78,13 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.tap('.devbtn');
   await page.waitForTimeout(250);
   check('knobs start folded away in their groups', (await page.$$('.devrow')).length === 0);
-  // a Dev group header opens on a press-and-hold (DevGroupHead), not a tap
-  const holdHead = async g => {
-    await page.evaluate(g => document.querySelector('.devghead[data-g=' + g + ']').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 50, clientY: 50 })), g);
-    await page.waitForTimeout(await page.evaluate(() => HOLD_MS) + 150);
-    await page.evaluate(g => document.querySelector('.devghead[data-g=' + g + ']').dispatchEvent(new PointerEvent('pointerup', { bubbles: true })), g);
-  };
-  await page.tap('.devghead[data-g=bh]');
-  await page.waitForTimeout(600);
-  check('a quick tap on a group header leaves it shut', (await page.$$('.devrow')).length === 0);
-  await holdHead('bh');
+  // the groups sit on tabs (DEV_TABS); a tap on a group header opens it (DevGroupHead)
+  await page.tap('.devtab[data-t=player]');
   await page.waitForTimeout(150);
-  check('a press-and-hold opens it', (await page.$$('.devrow')).length > 0);
+  check('knobs still folded away on the Player tab', (await page.$$('.devrow')).length === 0);
+  await page.tap('.devghead[data-g=bh]');
+  await page.waitForTimeout(150);
+  check('a tap opens it', (await page.$$('.devrow')).length > 0);
   const labels = await page.$$eval('.devrow label', ls => ls.map(l => l.textContent));
   check('Dev panel has the Black Hole pull range knob', labels.includes('Black Hole max pull range'), labels);
   check('and the travel speed knob', labels.includes('Black Hole travel speed'));

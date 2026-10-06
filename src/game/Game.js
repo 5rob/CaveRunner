@@ -18,6 +18,7 @@ import { applyPerks, hurt, maxHp, refreshBag } from './systems/player.js';
 import {
   clipFromSaved, clipKeep, drawReplay, recFrame, recSample, recSfxHook, recWrap, rpSound, rpSoundOff
 } from './systems/recorder.js';
+import { dropGun, takeGun } from './systems/pickups.js';
 import { saveRun } from './systems/save-run.js';
 import { step } from './systems/step.js';
 import { dig, explode } from './systems/terrain.js';
@@ -56,6 +57,9 @@ export function Game({ input }) {
     // (level-entry.js mapPicture); the map screen (ui/map.js) shows it under the fog memory
     const mapC = document.createElement('canvas');
     mapC.width = CW; mapC.height = CH;
+    // the Mini-map perk's picture of it (ui/minimap.js): rock and air in see-through black and white
+    const miniC = document.createElement('canvas');
+    miniC.width = CW; miniC.height = CH;
 
     // ---- level decoration (see DECOR): the decoration layer's canvas and the plant glow's
     // scratch. The props, their particles, decorStep's counters and what they did to you are in W.
@@ -96,7 +100,7 @@ export function Game({ input }) {
     // the mouse and the aim line's scratch
     /** @type {GameCtx} */
     const G = { input, c, ctx, terrain, tctx, bg, bgctx, bgHi, bgHiOn: false, fogC, fctx, fogImg, fogBlurC, fbctx,
-      mapC, decoC, dctx, REC, RT, fireBox, ratOnWeb, mouse, aimPath,
+      mapC, miniC, mapN: 0, decoC, dctx, REC, RT, fireBox, ratOnWeb, mouse, aimPath,
       pgArt: null, pgC: null, pgCtx: null, pgGlow, pgGlowCtx,
       RP_ARR, rid: new WeakMap(), ridN: 0,  // the recorder's lists (W's own arrays) and each thing's replay id
       RPV: null };                          // while draw() is drawing a replay frame: the view
@@ -106,7 +110,14 @@ export function Game({ input }) {
     input.current.saveClip = C => clipKeep(W, G, C);
     input.current.clipFromSaved = clipFromSaved;
     // the map screen reads the floor through this, and drops its pins with the other
-    input.current.mapView = () => ({ img: mapC, seen: W.seen, x: W.p.x + PW / 2, y: W.p.y + PH / 2, face: W.p.face, pins: W.pins });
+    input.current.mapView = () => ({ img: mapC, seen: W.seen, x: W.p.x + PW / 2, y: W.p.y + PH / 2, face: W.p.face, pins: W.pins,
+      mini: miniC, mapN: G.mapN, aim: W.p.aim, viewW: W.viewW, foes: W.enemies, items: W.pickups });
+    // the HUD gun slots: hold one to take the gun in reach, or drag its gun out onto the ground
+    input.current.takeGun = i => takeGun(W, G, i);
+    input.current.dropGun = (i, sx, sy) => {
+      const r = c.getBoundingClientRect();
+      return dropGun(W, G, i, W.camX + (sx - r.left) / W.unitPx, W.camY + (sy - r.top) / W.unitPx);
+    };
     input.current.dropPin = e => { W.pins.push({ x: W.p.x + PW / 2, y: W.p.y + PH / 2, e }); saveRun(W, G); };
 
     // the browser tests' way in (game/testhook.js): only on the test page, which sets the flag

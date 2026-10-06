@@ -42,3 +42,24 @@ export function perkRoll(rnd, owned) {
     (!PERKS[id].tier || PERKS[id].tier === 1 || owned.includes('st_' + PERKS[id].stat + (PERKS[id].tier - 1))));
   return left.length ? left[Math.floor(rnd() * left.length)] : null;
 }
+
+// The Bag's "Collected mods" grid shows one tile per stack (owner, item 9): copies that are the same
+// mod share a tile with a count. LO.bag still holds one entry per copy (saves unchanged); this only
+// groups it for display. stackKey is what makes two copies "the same": the id, which already carries a
+// Discriminate's target ('discrim:creature:konna', spells/discrim.js), so differently-set copies stack apart.
+/** @param {string} entry @returns {string} */
+export function stackKey(entry) { return entry; }
+
+// The bag as stacks, in the order each stack first appears: `i` = the bag index of its first copy
+// (what a drag takes out), `n` = how many copies
+/** @param {string[]} bag @returns {{ key: string, id: string, i: number, n: number }[]} */
+export function stackBag(bag) {
+  /** @type {Map<string, { key: string, id: string, i: number, n: number }>} */
+  const by = new Map();
+  bag.forEach((id, i) => {
+    const key = stackKey(id);
+    const s = by.get(key);
+    if (s) s.n++; else by.set(key, { key, id, i, n: 1 });
+  });
+  return [...by.values()];
+}

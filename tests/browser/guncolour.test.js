@@ -50,12 +50,12 @@ async function run(scheme) {
   await page.tap('.done');
   await page.waitForTimeout(250);
 
-  // hold slot 0 to open its detail card
+  // tap slot 0, the gun in hand, to open its detail card (a hold lifts it out now: LIST3 #5)
   const slot = (await page.$$('.slots .slot'))[0];
   const bb = await slot.boundingBox();
   await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2);
   await page.mouse.down();
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(60);
   await page.mouse.up();
   await page.waitForTimeout(250);
   const cardCol = await page.evaluate(() =>

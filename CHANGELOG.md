@@ -5,6 +5,86 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.149 — the owner's 12-item list (LIST3)
+Released 2026-10-07 (the owner OK'd the screenshots and a feedback round; a minor update). Built by time-boxed
+agents on branch `list3-small`, the tracker is `LIST3.md`.
+
+- **Vines** (LIST3 #7): swinging on a vine you keep facing the way you were unless you push the other way
+  (`W.p.steer`, `game/systems/gun.js`).
+- **Trigger ring** (LIST3 #8, then the owner's feedback): the right stick fires at a ring just inside its three
+  gauge rings, Dev → Player `aimPad` px in (5) (`triggerRing` in `core/consts.js`, `stickTrigger` in `ui/hud.js`;
+  suite `trigring`; `interact` updated).
+- **Feedback round**: Aim Assist hides the crosshair; Dev's **Spawn level** (any floor, `SpawnLevel`) replaces New
+  cave + Floor 2; the copy buttons read "Copy Dev settings" / "Copy mod & perk audit"; the mini-map's open
+  spaces dark-mid grey at 80% and its creature dots only where explored; the hologram glitch has its own rate
+  for blinking on (`l2dFlkRate`), tearing (`l2dFlkTears`) and cutting out (`l2dFlkDrops`).
+- **Fixed**: Dev's Copy report missed a half-typed box (the report was written before the box committed).
+  Browser suites updated for the batch (the archived gun chooser via `gunMenu`; tiles found by mod id; a tap
+  opens the gun card; Aim Assist exempt in `everymod`). `jelly`, `lightning`, `vendshop` fail on v0.0.148 too.
+- **Guns by holding a HUD slot** (LIST3 #5, `ui/gunhold.js`): by a gun on the ground, hold a gun slot (the
+  empty one too) and a ring fills round it; at full it takes the gun into that slot and your old one lies
+  where it was. With no gun in reach, holding a filled slot lifts its gun out under your finger: drag it and
+  let go to drop it there (settled on the floor; at your feet if the spot is rock or out of sight), out of
+  your guns; let go over its own slot to cancel. Tapping the gun in hand shows its card (was a hold). The
+  right-stick tap → swap chooser is archived (`input.current.gunMenu`). New `gunhold` browser suite;
+  `gunpickup`/`interact` updated, `compare`/`teleport` set the archive flag.
+
+- **Discriminate mod** (`discrim`, LIST3 #11): each copy gets its own permanent target. Tap an unset one in
+  the Bag → "Set target" → the Bag closes and the aim stick drives Aim Assist's pointer, snapping onto any
+  creature, you, or an object (props, pickups); let go on one to set it ("Discriminate → Konna" toast), let go
+  on nothing to cancel. A set copy is its own id (`discrim:<kind>:<id>`, `spells/discrim.js`), so copies with
+  different targets stack apart and saves keep them; its tile shows the target's little icon. The next spell
+  then touches only that kind of thing: it passes through every other creature, you and props, homes/chains/
+  pulls only onto the target, and its blasts hurt only the target. It still stops at rock, but never digs,
+  blasts or burns it. Not covered yet: static fields, beams and a trigger's payload (they act as normal).
+- **Aim Assist mod** (`aimassist`, LIST3 #10): with it on the gun in hand the aim stick drives a thin
+  pointer ring out from your gun (like the vending menus' pointer) that snaps onto creatures in sight and on
+  screen; on one it turns amber, the gun light swings onto it and the gun fires at it on its own (normal cast
+  delay, recharge and mana). No trigger ring on the stick, no aim line; letting go stops. Its own Dev group,
+  **Aim Assist** (reach, snap reach/pull/hit, stickiness, fire delay, ring size/line/dot).
+- **Audit mods and perks** (LIST3 #6): every mod and perk card you can tap
+  (Bag, Exo Suit, a gun card's mods) has a 📌 keep and a 🗑️ trash toggle (one or the other) and a
+  Give Feedback button that turns the card into a notes box, prefilled with what you wrote before,
+  with Save / Cancel. Kept on the device across runs and deaths (`caverunner-audit`). Dev → **Copy
+  audit** copies it all as Markdown for a Claude Code session (Remove / Keep / Notes, each with the
+  item's id). `save/audit.js`, `ui/cards.js`, `ui/devpanel.js`. Tests: new `audit` (logic + browser).
+- **Collected mods stack** (owner, item 9): the Bag's "Collected mods" grid shows one tile per mod,
+  with a small numbered circle top right when you hold 2+ (`.tcount`). Dragging from a stack fits one
+  copy (the count drops; the tile goes at 0); a slot dragged back joins its stack; gun slots still hold
+  one each. Display only: `LO.bag` still holds one entry per copy, so saves are unchanged
+  (`stackBag`/`stackKey` in `spells/collection.js`; the key is the id today, ready for per-copy data
+  like a Discriminate target). Suite: `stacks` (browser), `collection` (logic).
+- **Mini-map perk** (owner, LIST3 item 12): fitted in the Exo Suit, a see-through box with a thin white outline over the
+  gun buttons (their width, from just above them up to half the screen): what you have seen of the floor (rock black 20%,
+  air dark-mid grey 80%, owner's feedback), you as a white arrow along the aim, red dots for creatures in explored parts of it, tiny red/green crystals, your pins (an
+  off-box pin sticks to the edge its way). Tap: zoom out ×2, ×4, back. `ui/minimap.js`; suites `minimap` (logic + browser).
+- **A modifier now affects only the next spell** (owner's decision): `[Damage Plus][Bolt][Bolt]`
+  boosts only the first bolt; modifiers in a row all land on the next spell; inside a multicast or a
+  trigger payload each spell gets only the modifiers right before it. Timing and mana unchanged.
+  `planCast` (`spells/cast.js`); the aim line, bag stats and advisor read its shots, so they follow.
+  Tests: new `nextspell`; `cast`, `groupstats`, `advice` updated to the new rule.
+- **The Dev panel, tidied** (LIST3 #3):
+  - The Dev panel is a dark card with **tabs** (Look, Player, Creatures, World, Level 2: `DEV_TABS` in `dev/knobs.js`),
+  each a page of **collapsible groups**: a **tap** opens/shuts a group (was press-and-hold; a scroll gets no tap).
+  Each header shows its knob count and how many you've changed; a dot on a tab means something on it changed.
+  - The actions (All mods, All perks, Spawn gun, New cave, Floor 2, Restart run, **Copy report**) sit in a grid on top.
+  - A **search box** finds knobs by name on every tab. Open groups and the tab are remembered (localStorage).
+  - Copy report's text is unchanged. New suite `tests/browser/devpanel.test.js` (also takes the screenshots with
+  `CAVERUNNER_SHOTS=<dir>`); `blackhole`, `jelly` updated for tabs and tap.
+- **Bag: a firing window** (owner, LIST3 #4). The gun
+  buttons moved to a row of four under the collected-mods grid; where they were, a small dark window
+  shows the selected gun firing each pull's real shots (the game's own spell looks) in step with the
+  slot lights, and it follows the build live as mods are moved (`ui/editor.js` `GunFire`,
+  `bagsim.js` `S.shots`; suite `gunfire`).
+- **Dark zones: the hologram glitches** (LIST3 #1). In or near a zone
+  the hologram behind the silk is on (`l2dFlkBase`) and glitches at random: dropouts, strobing flashes
+  brighter than it (`l2dFlkFlash`), torn horizontal slices (`l2dFlkGlitch`), `l2dFlkRate` bursts a second,
+  from `l2dFlkNear` px outside a zone; `l2dFlk` 0 turns it off. Random backlight for the silk, aliens
+  silhouetted. Pure state machine `world/holoflicker.js` (suite `holoflicker`); `holo.js` `holoKeep` makes the
+  layer even while the hologram rests dark. No blur; pictures: `tools/holoflickshots.js` (`V2=1`: four frames
+  held by `HoloFlicker.hold`). `darkHides` no longer skips an alien deep in the black while the hologram lights
+  the backdrop: it's drawn, so it shows as a silhouette.
+
 ## v0.0.148 — Level 2 speed-ups; Flamethrower; Fire Immunity
 Released 2026-10-06 (the owner OK'd the screenshots; a minor update). The owner's list, after
 playing Level 2 (it dropped frames as a zone came into view and with the aliens about):

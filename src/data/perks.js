@@ -39,6 +39,8 @@ export const PERKS = {
               info: 'Half again the kick out of every shot — which the jetpack can work with.' },
   lev:      { name: 'Faster Levitation', glyph: '⬆', tint: '#7ad7ff', jet: 1.25,
               info: 'A quarter more thrust out of the jetpack.' },
+  minimap:  { name: 'Mini-map', glyph: '▦', tint: '#e9ecf2', minimap: 1,
+              info: 'A small map of what you have seen, over the gun buttons: you, creatures nearby, crystals and your pins. Tap it to zoom out.' },
   fireimm:  { name: 'Fire Immunity', glyph: '♨', tint: '#ff7a2f', fireImm: 1,
               info: 'Fire never catches on you: walk through flames, burning grass and your own fire spells unhurt. Blasts still hurt.' },
   move:     { name: 'Faster Movement', glyph: '➤', tint: '#6db8ff', walk: 1.3,
@@ -142,7 +144,7 @@ export function perkBag(ids) {
     delay: 1, rech: 1, walk: 1, jet: 1, hpMul: 1, hpAdd: 0, heal: 1, gold: 1, goldPull: 1,
     shield: 0, lives: 0, ghost: 0, homing: 0, trail: 0, contact: 0, close: 0, invis: 0,
     repel: 0, seeAll: 0, radarEnemy: 0, radarItem: 0, radarWand: 0, tinker: 0,
-    extraItem: 0, pinpointer: 0, trajectory: 0, fuel: 1, refuel: 1, carrot: 0, fireImm: 0 };
+    extraItem: 0, pinpointer: 0, trajectory: 0, fuel: 1, refuel: 1, carrot: 0, fireImm: 0, minimap: 0 };
   for (const id of ids || []) {
     const k = PERKS[id];
     if (!k) continue;
@@ -157,7 +159,7 @@ export function perkBag(ids) {
     P.homing = Math.max(P.homing, k.homing || 0);
     P.carrot = Math.max(P.carrot, k.carrot || 0);
     for (const f of ['shield', 'trail', 'contact', 'close', 'invis', 'repel', 'seeAll',
-      'radarEnemy', 'radarItem', 'radarWand', 'tinker', 'extraItem', 'pinpointer', 'trajectory', 'fireImm'])
+      'radarEnemy', 'radarItem', 'radarWand', 'tinker', 'extraItem', 'pinpointer', 'trajectory', 'fireImm', 'minimap'])
       if (k[f]) P[f] = 1;
   }
   P.maxHp = Math.max(10, Math.round((PLAYER_HP + P.hpAdd) * P.hpMul));

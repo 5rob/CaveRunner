@@ -59,7 +59,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     return out;
   }, ids);
   check('every mod can be equipped and fired without throwing', errs.length === 0, errs.slice(0, 4));
-  const silent = report.filter(r => r.made <= 0).map(r => r.id);
+  // Aim Assist fires only once its pointer is snapped onto a creature (none here): its own suite, aimassist
+  const silent = report.filter(r => r.made <= 0 && r.id !== 'aimassist').map(r => r.id);
   console.log(`     ${report.length} mods fired; ${report.length - silent.length} put something into the world`);
   check('every single mod puts something into the world', silent.length === 0, silent);
   // a heavy build with everything expensive on it

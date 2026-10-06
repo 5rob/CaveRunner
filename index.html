@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.148</title>
-<!-- VERSION = 'v148' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.149</title>
+<!-- VERSION = 'v149' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -73,6 +73,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .sticks{display:flex;justify-content:space-evenly;position:relative;z-index:3}
 /* the shade under the controls: shadeAt (ui/hud.js) sets its top and the gradient's stops */
 .ctlshade{position:absolute;left:0;right:0;z-index:-1;pointer-events:none}
+/* the Mini-map perk (ui/minimap.js): see-through, a very thin white outline; a tap zooms out */
+.controls .minimap{position:absolute;box-sizing:border-box;border:0.5px solid rgba(255,255,255,0.85);background:transparent;
+  pointer-events:auto;touch-action:none}
 .app.mapping .ctlshade,.app.pinning .ctlshade{visibility:hidden}
 /* gold readout in the gap between the sticks, level with their top halves. Sits on top
    of the deck (pointer-events:none so a tap still falls to a stick) and reads amber. */
@@ -197,6 +200,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   padding:7px 12px;border-radius:9px;border:2px solid #ff8a1f;background:var(--btn);
   color:var(--text);font:600 12px system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .gtab.empty{opacity:.4}
+/* the firing window by the stats (GunFire) and the gun buttons' row under the mod grid */
+.btop{align-items:stretch}
+.gfire{flex:1 1 0;min-width:0;align-self:stretch;min-height:110px;border-radius:9px;background:#0b0e14;
+  border:1px solid var(--ring);display:block}
+.gtabs.gunrow{flex:0 0 auto;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:8px}
+.gtabs.gunrow .gtab{aspect-ratio:auto;height:64px;gap:2px}
+.gtabs.gunrow .gicon{width:56px;height:28px}
 .stats{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
 .st{background:var(--pad);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--muted);
   display:flex;gap:5px;align-items:baseline}
@@ -266,6 +276,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .tg{font-size:17px;line-height:1}
 .tile{position:relative}
 .tmark{position:absolute;top:2px;right:4px;font:700 9px system-ui,sans-serif;line-height:1}
+.tcount{position:absolute;top:2px;right:2px;min-width:15px;height:15px;padding:0 3px;box-sizing:border-box;
+  border-radius:8px;background:currentColor;display:flex;align-items:center;justify-content:center;
+  pointer-events:none;font:800 9px system-ui,sans-serif;line-height:1}
+.tcount b{color:#111}
+.ttgt{position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:9px;background:rgba(0,0,0,.55);
+  border:1px solid currentColor;display:flex;align-items:center;justify-content:center;pointer-events:none;
+  font:700 10px system-ui,sans-serif;line-height:1;color:#fff;overflow:hidden}
+.pglyph{position:relative}
+.pglyph .ttgt{top:auto;left:auto;right:-6px;bottom:-6px;width:20px;height:20px;border-radius:10px;font-size:12px}
+.pact{margin:8px 0 2px;padding:9px 14px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);
+  color:inherit;font:700 14px system-ui,sans-serif;width:100%;touch-action:manipulation}
 .tn{font:500 8.5px system-ui,sans-serif;color:var(--muted);text-align:center;line-height:1.1;
   max-width:100%;padding:0 2px}
 .ghost{position:fixed;z-index:30;width:60px;height:56px;border-radius:9px;border:2px solid;
@@ -425,37 +446,75 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .devbtn{position:absolute;top:10px;right:10px;z-index:6;border:1px solid rgba(255,255,255,0.25);
   background:rgba(0,0,0,0.35);color:#e9ecf2;border-radius:8px;width:38px;height:38px;padding:0;
   font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center}
-.devcopy{display:block;width:100%;margin-top:10px}
-.devcopytext{width:100%;box-sizing:border-box;height:120px;margin-top:6px;font:12px ui-monospace,monospace;
-  background:var(--pad);color:var(--text);border:1px solid var(--ring);border-radius:8px}
-.dbg.restart{background:#c2401f;border-color:#c2401f;color:#fff}
+/* the Dev panel (v0.0.149): a dark card — actions, search and tabs on top, the tab's groups scrolling below */
 .devwrap{position:fixed;left:0;right:0;top:0;bottom:0;z-index:26;display:flex;
-  align-items:flex-start;justify-content:center;padding:52px 12px 12px}
+  align-items:flex-start;justify-content:center;padding:52px 10px 10px}
 /* a light backdrop so the cave is still visible behind while you tune the look of it */
 .devback{position:absolute;inset:0;background:rgba(0,0,0,0.2)}
-.devpanel{position:relative;z-index:1;width:100%;max-width:360px;max-height:calc(100% - 64px);
-  overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;background:var(--btn);
-  border:1px solid var(--ring);border-radius:14px;padding:14px 16px;box-shadow:0 12px 40px rgba(0,0,0,0.45);color:var(--text)}
-.devhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.devhead h2{margin:0;font-size:17px}
-.devbtns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-.devvars{display:flex;flex-direction:column;gap:10px;padding:4px 0 12px}
-.devgroup{border-top:1px solid var(--ring)}
-.devghead{display:flex;align-items:center;gap:8px;width:100%;height:40px;padding:0;border:0;background:none;
-  color:var(--text);font:700 13px system-ui,sans-serif;text-align:left;position:relative;
-  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-.devghead::after{content:'';position:absolute;left:0;bottom:4px;height:2px;width:0;background:#5ab8ff;opacity:0}
-.devghead.holding::after{opacity:1;width:100%;transition:width var(--hold,400ms) linear}
-.devcaret{width:12px;color:var(--muted)}
+.devpanel{--text:#e6edf5;--muted:rgba(230,237,245,0.55);--pad:rgba(255,255,255,0.06);--ring:rgba(255,255,255,0.14);
+  --acc:#5ab8ff;position:relative;z-index:1;width:100%;max-width:400px;max-height:calc(100% - 4px);display:flex;flex-direction:column;
+  box-sizing:border-box;background:#11151c;border:1px solid var(--ring);border-radius:16px;
+  box-shadow:0 14px 44px rgba(0,0,0,0.55);color:var(--text);overflow:hidden}
+.devtop{flex:0 0 auto;padding:12px 14px 0;border-bottom:1px solid var(--ring);background:rgba(255,255,255,0.02)}
+.devhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.devhead h2{margin:0;font:800 18px system-ui,sans-serif;letter-spacing:.02em}
+.devpanel .done{color:var(--text);border-color:var(--ring);background:var(--pad)}
+.devbtns{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.devbtns .dbg{height:40px;padding:0 4px;border-radius:10px;font:700 11px system-ui,sans-serif;letter-spacing:.02em;
+  color:var(--text);background:var(--pad);border:1px solid var(--ring)}
+.devbtns .dbg.on{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}
+.devbtns .dbg.restart{background:#b8381a;border-color:#b8381a;color:#fff}
+.devbtns .dbg.devaudit{background:#6a4bc4;border-color:#6a4bc4;color:#fff}
+.devbtns .dbg.devcopy{background:#1f6fb8;border-color:#1f6fb8;color:#fff}
+.devcopied{margin:0 0 8px}
+.devcopied.ok{color:#5ad65a}
+.devcopytext{width:100%;box-sizing:border-box;height:120px;margin:0 0 8px;font:12px ui-monospace,monospace;
+  background:var(--pad);color:var(--text);border:1px solid var(--ring);border-radius:8px}
+.devsearchw{position:relative;margin-bottom:8px}
+.devsearch{width:100%;box-sizing:border-box;height:40px;border-radius:10px;border:1px solid var(--ring);
+  background:rgba(0,0,0,0.3);color:var(--text);font:500 15px system-ui,sans-serif;padding:0 40px 0 12px;
+  user-select:text;-webkit-user-select:text;-webkit-appearance:none;appearance:none}
+.devsearch::-webkit-search-cancel-button{display:none}
+.devsearch:focus{outline:none;border-color:var(--acc)}
+.devclear{position:absolute;right:4px;top:4px;width:32px;height:32px;border:0;border-radius:8px;background:none;
+  color:var(--muted);font-size:20px;line-height:1}
+.devtabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin:0 -14px;padding:0 10px}
+.devtabs::-webkit-scrollbar{display:none}
+.devtab{position:relative;flex:1 0 auto;height:42px;padding:0 10px;border:0;border-bottom:3px solid transparent;
+  background:none;color:var(--muted);font:700 13px system-ui,sans-serif;white-space:nowrap}
+.devtab.on{color:var(--text);border-bottom-color:var(--acc)}
+.devdot{display:inline-block;width:6px;height:6px;border-radius:3px;background:#ff8a1f;margin-left:5px;vertical-align:2px}
+.devbody{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 10px 14px}
+.devgroup{margin:0 0 6px;border:1px solid var(--ring);border-radius:12px;background:var(--pad)}
+.devgroup.open{background:rgba(255,255,255,0.035)}
+.devghead{display:flex;align-items:center;gap:8px;width:100%;min-height:48px;padding:0 12px;border:0;background:none;
+  color:var(--text);font:700 14px system-ui,sans-serif;text-align:left;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.devgroup.open .devghead{position:sticky;top:-8px;z-index:3;background:rgb(30,35,43);border-radius:12px 12px 0 0;
+  border-bottom:1px solid var(--ring)}
+.devcaret{width:14px;color:var(--muted);font-size:20px;line-height:1;transition:transform .15s;display:inline-block}
+.devghead.open .devcaret{transform:rotate(90deg);color:var(--acc)}
+.devgname{flex:1 1 auto}
+.devgtab{margin-left:8px;font:600 11px system-ui,sans-serif;color:var(--muted)}
+.devgchg{font:700 10px system-ui,sans-serif;color:#ff8a1f;background:rgba(255,138,31,0.14);padding:3px 7px;border-radius:9px}
+.devgn{min-width:22px;text-align:center;font:600 11px system-ui,sans-serif;color:var(--muted);
+  background:rgba(255,255,255,0.07);padding:3px 6px;border-radius:9px}
+.devvars{display:flex;flex-direction:column;gap:8px;padding:10px 12px 12px}
+.spawnpanel{padding:16px 16px 18px}
 .spawnpanel .spawngo{margin-top:12px;width:100%}
-.devrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.devrow label{font-size:13px;color:var(--text);flex:1 1 auto}
+/* Dev → Spawn level: every floor, two columns; yours lit */
+.lvlpick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.lvlpick .lvlgo{text-align:left;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lvlpick .lvlgo b{opacity:.6;margin-right:2px}
+.lvlpick .lvlgo.on{border-color:#3a8ee0;box-shadow:inset 0 0 0 1px #3a8ee0}
+.devrow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px}
+.devrow label{font-size:13px;color:var(--text);flex:1 1 auto;line-height:1.3}
 .devrow input[type=color]{width:56px;padding:2px 4px}
-.devrow input[type=range]{width:118px;padding:0;border:0;background:none;accent-color:#5ad65a}
-.devval{display:block;font:600 12px system-ui,sans-serif;color:var(--muted)}
-/* the live jellyfish above its colour knobs: stuck to the top of the panel while you
+.devrow input[type=range]{width:132px;height:36px;padding:0;border:0;background:none;accent-color:var(--acc)}
+.devval{display:inline-block;margin-left:8px;font:700 12px ui-monospace,monospace;color:var(--acc)}
+/* the live jellyfish above its colour knobs: stuck under the group's header while you
    scroll through them, so every change shows as you make it */
-.jellyprev{position:sticky;top:-14px;z-index:2;display:block;width:100%;height:200px;margin:4px 0 6px;
+.jellyprev{position:sticky;top:40px;z-index:2;display:block;width:100%;height:200px;margin:4px 0 6px;
   border-radius:10px;border:1px solid var(--ring);background:#0d0f14;box-shadow:0 6px 14px rgba(0,0,0,0.35)}
 /* the hologram flash's fade curve (FadeCurve): drag the handles; touch-action none so a drag
    shapes it instead of scrolling the panel */
@@ -469,21 +528,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .fchandle{fill:#0d0f14;stroke:#5ad65a;stroke-width:1.6}
 .fcreset{display:block;margin:4px 0 0 auto}
 /* Dev → Elites: flames: the live preview, the gradient bar and the opacity ramp */
-.flameprev{position:sticky;top:-14px;z-index:2;display:block;width:100%;height:150px;margin:4px 0 6px;
+.flameprev{position:sticky;top:40px;z-index:2;display:block;width:100%;height:150px;margin:4px 0 6px;
   border-radius:10px;border:1px solid var(--ring);background:#0d0f14}
 .devlbl{margin:8px 0 2px;font:600 12px system-ui,sans-serif;color:var(--text)}
 .gradedit,.rampedit{position:relative;margin:2px 0 8px}
 .gradsel{display:flex;align-items:center;gap:8px;margin-top:4px;font:12px system-ui,sans-serif;color:var(--text)}
 .gradsel span{flex:1}
+.devreset{flex:0 0 auto;width:36px;height:36px;border-radius:8px;border:1px solid var(--ring);
+  background:var(--pad);color:var(--text);font-size:16px}
 .gradsel .devreset{width:auto;min-width:34px;padding:0 10px}
 .gradsel input[type=color]{width:40px;height:28px;padding:0;border:0;background:none}
-.devreset{flex:0 0 auto;width:34px;height:36px;border-radius:8px;border:1px solid var(--ring);
-  background:var(--pad);color:var(--text);font-size:16px}
-.devrow input{width:92px;flex:0 0 auto;box-sizing:border-box;height:36px;border-radius:8px;
-  border:1px solid var(--ring);background:var(--pad);color:var(--text);
+.devrow input{width:92px;flex:0 0 auto;box-sizing:border-box;height:38px;border-radius:8px;
+  border:1px solid var(--ring);background:rgba(0,0,0,0.3);color:var(--text);
   font:600 14px system-ui,sans-serif;padding:0 9px;text-align:right;
   user-select:text;-webkit-user-select:text}
-.devnote{margin:14px 0 0;font-size:11px;color:var(--muted);line-height:1.45}
+.devrow input:focus{outline:none;border-color:var(--acc)}
+.devnote{margin:12px 2px 0;font-size:11px;color:var(--muted);line-height:1.45}
 /* the death replay: a button on the death screen, then the replay's own screen over everything */
 .witnessbtn{position:absolute;left:50%;top:238px;transform:translateX(-50%);z-index:7;white-space:nowrap;
   background:rgba(20,6,6,0.78);border:1.5px solid #ff4a3a;color:#ffd9d4;border-radius:24px;padding:12px 20px;
@@ -714,13 +774,45 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   color:#fff;font-size:18px;padding:0 10px}
 .pinnew button{height:36px;padding:0 14px;border-radius:9px;border:none;background:#ff8a1f;color:#12141a;font:700 13px system-ui,sans-serif}
 .pinhint{margin-top:8px;font-size:11px;color:rgba(233,236,242,0.6);text-align:center}
+
+/* ---- the owner's audit on mod/perk cards (save/audit.js) ---- */
+.aumarks{display:flex;gap:6px;flex:0 0 auto}
+.aumark{width:36px;height:36px;border-radius:10px;border:1px dashed var(--ring);background:transparent;
+  font-size:17px;line-height:1;padding:0;opacity:.45;filter:grayscale(1)}
+.aumark.on{opacity:1;filter:none;border-style:solid;border-width:2px}
+.aumark.keep.on{border-color:#e0b43a;background:rgba(224,180,58,0.2)}
+.aumark.trash.on{border-color:#e05050;background:rgba(224,80,80,0.2)}
+.aufoot{display:flex;align-items:center;gap:9px;margin-top:10px;padding-top:9px;border-top:1px solid var(--pad)}
+.aufb{flex:0 0 auto;height:36px;padding:0 13px;border-radius:10px;border:1px solid var(--ring);
+  background:var(--pad);color:var(--text);font-size:13px;font-weight:600}
+.aupeek{flex:1 1 auto;min-width:0;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.autext{display:block;box-sizing:border-box;width:100%;height:150px;margin-top:10px;padding:9px;border-radius:10px;
+  border:1px solid var(--ring);background:var(--pad);color:var(--text);font-size:14px;line-height:1.4;font-family:inherit;resize:none}
+.aubtns{display:flex;gap:8px;justify-content:flex-end;margin-top:9px}
+.aubtns button{height:40px;min-width:90px;border-radius:10px;border:1px solid var(--ring);font-size:14px;font-weight:600;
+  background:var(--pad);color:var(--text)}
+.aubtns .ausave{background:#2f8f5b;border-color:#2f8f5b;color:#fff}
+/* the HUD gun slots' hold (ui/gunhold.js): a ring fills round the slot over the hold time;
+   orange to take the gun on the ground, pale to lift this one out. The lifted gun follows the finger */
+.slot .holdring{position:absolute;inset:-5px;width:calc(100% + 10px);height:calc(100% + 10px);
+  transform:rotate(-90deg);pointer-events:none;overflow:visible}
+.slot .holdring circle{fill:none;stroke:#ff8a1f;stroke-width:3.5;stroke-linecap:round;
+  stroke-dasharray:100 100;stroke-dashoffset:100;animation:holdring .45s linear forwards}
+.slot.lift .holdring circle{stroke:#e8eef8}
+.slot.ringing.take{box-shadow:0 0 12px rgba(255,138,31,.7)}
+.slot.lifted{opacity:.45;border-style:dashed}
+@keyframes holdring{to{stroke-dashoffset:0}}
+.gundrag{position:fixed;z-index:60;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;
+  pointer-events:none;display:flex;align-items:center;justify-content:center;
+  background:rgba(18,20,26,.75);border:2px solid #ff8a1f;box-shadow:0 4px 14px rgba(0,0,0,.6)}
+.gundrag svg,.gundrag canvas,.gundrag img{max-width:46px;max-height:46px}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.148';</script>
+<script>const VERSION = 'v0.0.149';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -745,6 +837,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var AIM_DEAD = 0.35;
   var KNOB = 0.38;
   var AIM_RING = AIM_DEAD * 0.72 + KNOB;
+  var triggerRing = (size, pad, outer = 1) => {
+    const ring = Math.max(AIM_RING, Math.min(outer, outer - 2 * pad / Math.max(1, size)));
+    return { ring, mag: Math.min(1, (ring - KNOB) / 0.72) };
+  };
   var PW = 12, PH = 22;
   var FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
   var PLAYER_HP = 100;
@@ -943,6 +1039,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     killGrow: 1.35,
     runnerPx: 1,
     runnerLine: 1,
+    aimPad: 5,
     ptrStart: 0.12,
     ptrReach: 1,
     ptrSize: 1,
@@ -1026,6 +1123,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "killGrow", g: "level", label: "Kill gold: × each floor up", min: 1, max: 4, step: 0.05 },
     { k: "runnerPx", g: "player", label: "Player pixel size (world units, 0 = smooth)", min: 0, max: 3, step: 0.25 },
     { k: "runnerLine", g: "player", label: "Player dark outline (0 off, 1 on)", min: 0, max: 1, step: 1 },
+    { k: "aimPad", g: "player", label: "Right stick: trigger ring’s gap inside the gauge rings (px; bigger = fires sooner)", min: 0, max: 40, step: 1 },
     // the vending menus' right-stick pointer (ui/vendshop.js useMenuNav, menuPointer, snapTo)
     { k: "ptrStart", g: "menuptr", label: "Stick push before the pointer comes out (of its reach)", min: 0, max: 0.9, step: 0.01 },
     { k: "ptrReach", g: "menuptr", label: "Pointer reach (× distance to the far screen corner)", min: 0.2, max: 3, step: 0.05 },
@@ -1082,6 +1180,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ["fire", "Fire"],
     ["carrot", "Carrot (suit stat)"]
   ];
+  var DEV_TABS = [
+    ["look", "Look", ["view", "light", "fx", "holoflash", "guide"]],
+    ["player", "Player", ["player", "carrot", "bh", "sound", "ui", "menuptr", "aimassist", "witness"]],
+    ["creatures", "Creatures", ["enemy", "elite", "elitefx", "spider", "rat", "jelly", "jellycol"]],
+    ["world", "World", ["level", "arch", "sway", "fire"]],
+    ["level2", "Level 2", ["level2", "l2dark", "l2boom", "l2alien"]]
+  ];
+  var devTabOf = (g) => (DEV_TABS.find((t) => t[2].includes(g)) || DEV_TABS[DEV_TABS.length - 1])[0];
   function devReport() {
     const changed = DEV_META.filter((m) => DEV[m.k] !== DEV_DEFAULTS[m.k]);
     const lines = ["CaveRunner " + VERSION + " dev settings — please make these the new defaults:", ""];
@@ -1431,6 +1537,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "l2dTorchDepth", g: "l2dark", label: "The torch fails this far in (px; just past the fade's end)", min: 0, max: 200, step: 1 },
     { k: "l2dTorchHyst", g: "l2dark", label: "And comes back on this much nearer the edge (px, no strobing)", min: 0, max: 40, step: 1 }
   );
+  DEV_DEFAULTS.l2dFlk = 1;
+  DEV_DEFAULTS.l2dFlkRate = 0.9;
+  DEV_DEFAULTS.l2dFlkTears = 0.75;
+  DEV_DEFAULTS.l2dFlkDrops = 0.9;
+  DEV_DEFAULTS.l2dFlkFlash = 1.6;
+  DEV_DEFAULTS.l2dFlkGlitch = 10;
+  DEV_DEFAULTS.l2dFlkNear = 40;
+  DEV_DEFAULTS.l2dFlkBase = 0.5;
+  DEV_META.push(
+    // the hologram glitching while you're in or near a zone (world/holoflicker.js; owner, after v0.0.148)
+    { k: "l2dFlk", g: "l2dark", label: "Hologram glitches in the zones (0 off, 1 on)", min: 0, max: 1, step: 1 },
+    { k: "l2dFlkBase", g: "l2dark", label: "Glitch: the hologram between bursts (× its brightness; 0 = dark till a burst)", min: 0, max: 1, step: 0.05 },
+    { k: "l2dFlkRate", g: "l2dark", label: "Glitch: how often it blinks on bright (flashes a second)", min: 0, max: 8, step: 0.05 },
+    { k: "l2dFlkTears", g: "l2dark", label: "Glitch: how often it tears into slices (a second)", min: 0, max: 8, step: 0.05 },
+    { k: "l2dFlkDrops", g: "l2dark", label: "Glitch: how often it cuts out (a second)", min: 0, max: 8, step: 0.05 },
+    { k: "l2dFlkFlash", g: "l2dark", label: "Glitch: flash brightness (× the hologram; past 1 brighter than it)", min: 0, max: 3, step: 0.05 },
+    { k: "l2dFlkGlitch", g: "l2dark", label: "Glitch: tearing, how far the slices jump (terrain px; 0 none)", min: 0, max: 60, step: 1 },
+    { k: "l2dFlkNear", g: "l2dark", label: "Glitch starts this near a zone (px outside its box)", min: 0, max: 200, step: 1 }
+  );
   curveKnobs("l2dark", "l2dFire", "Fire lifts the black (Y, 1 = full colour) by distance to it (X, 0 to the max)", 0, 1, { y0: 1, x1: 0.35, y1: 1, x2: 0.55, y2: 0.1, y3: 0 });
   var AL_KNOBS = rangeKnobs("l2alien", [
     ["alCount", "Aliens per dark zone", 0, 400, 1, 30, 60],
@@ -1486,6 +1611,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ["caAggro", "Enemy aggro distance (×)", 0.3, 4, 0.05, 1, 1.25],
     ["caAim", "Aim line length (×)", 0.3, 4, 0.05, 1, 2]
   ]);
+  Object.assign(DEV_DEFAULTS, {
+    aaStart: 0.12,
+    aaReach: 1,
+    aaSnapR: 40,
+    aaPull: 0.45,
+    aaHit: 10,
+    aaHold: 1.5,
+    aaDelay: 0.08,
+    aaSize: 26,
+    aaLine: 1.25,
+    aaDot: 2
+  });
+  DEV_META.push(
+    { k: "aaStart", g: "aimassist", label: "Stick push before the pointer comes out (of its reach)", min: 0, max: 0.9, step: 0.01 },
+    { k: "aaReach", g: "aimassist", label: "Pointer reach (× distance from the gun to the far screen corner)", min: 0.2, max: 3, step: 0.05 },
+    { k: "aaSnapR", g: "aimassist", label: "Snap reach (world units from a creature’s edge)", min: 0, max: 200, step: 1 },
+    { k: "aaPull", g: "aimassist", label: "Snap pull (0 none, 1 right onto its middle)", min: 0, max: 1, step: 0.01 },
+    { k: "aaHit", g: "aimassist", label: "Counts as on a creature within (world units of its edge)", min: 0, max: 80, step: 1 },
+    { k: "aaHold", g: "aimassist", label: "Stickiness: stays on its creature out to this × the snap-on distance", min: 1, max: 4, step: 0.05 },
+    { k: "aaDelay", g: "aimassist", label: "Fires this long after snapping on (s)", min: 0, max: 1, step: 0.01 },
+    { k: "aaSize", g: "aimassist", label: "Ring size (px across)", min: 6, max: 80, step: 1 },
+    { k: "aaLine", g: "aimassist", label: "Ring line width (px)", min: 0.25, max: 4, step: 0.25 },
+    { k: "aaDot", g: "aimassist", label: "Centre dot when snapped (px, 0 none)", min: 0, max: 6, step: 0.5 }
+  );
+  DEV_GROUPS.push(["aimassist", "Aim Assist"]);
   var DEV_KEY = "caverunner-dev";
   var DEV = Object.assign({}, DEV_DEFAULTS);
   var dueMs = (floor) => floor === 1 ? DEV.due1 * 6e4 : DEADLINE_MS;
@@ -2935,6 +3085,34 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         s.autoaim = 1;
       }
     },
+    // Aim Assist (LIST3 #10): the right stick drives a pointer that snaps onto creatures and fires on its own
+    // once it's on one (game/systems/gun.js aimAndCast, spells/assist.js). The pull aims at the snapped creature.
+    aimassist: {
+      name: "Aim Assist",
+      kind: "mod",
+      glyph: "⌖",
+      col: "#b57cff",
+      mana: 3,
+      d: 0.02,
+      info: "The aim stick becomes a pointer that snaps onto enemies and fires when it's on one (no trigger ring)",
+      f: (s) => {
+        s.assist = 1;
+      }
+    },
+    // Discriminate (LIST3 #11): each copy carries its own target, set once in the Bag with the world pointer
+    // (spells/discrim.js: a targeted copy is its own id, 'discrim:<kind>:<id>', registered by ensureMod).
+    // An unset copy does nothing; a set one makes the next spell touch only that target.
+    discrim: {
+      name: "Discriminate",
+      kind: "mod",
+      glyph: "⌾",
+      col: "#b57cff",
+      mana: 4,
+      d: 0.02,
+      info: "Set its target once in the Bag (a creature, you, or an object): the next spell then only touches that, and passes through everything else",
+      f: () => {
+      }
+    },
     nearhome: {
       name: "Short-range Homing",
       kind: "mod",
@@ -3331,6 +3509,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     pong: "path",
     orbit: "path",
     autoaim: "path",
+    aimassist: "path",
+    discrim: "path",
     nearhome: "path",
     eater: "path",
     split: "pattern",
@@ -3454,6 +3634,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     pong: 35,
     orbit: 50,
     autoaim: 45,
+    aimassist: 40,
+    discrim: 40,
     nearhome: 35,
     flat: 35,
     eater: 60,
@@ -3537,6 +3719,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     spiral: 2,
     pong: 2,
     autoaim: 2,
+    aimassist: 2,
+    discrim: 2,
     nearhome: 2,
     flat: 2,
     crit: 2,
@@ -5411,6 +5595,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       jet: 1.25,
       info: "A quarter more thrust out of the jetpack."
     },
+    minimap: {
+      name: "Mini-map",
+      glyph: "▦",
+      tint: "#e9ecf2",
+      minimap: 1,
+      info: "A small map of what you have seen, over the gun buttons: you, creatures nearby, crystals and your pins. Tap it to zoom out."
+    },
     fireimm: {
       name: "Fire Immunity",
       glyph: "♨",
@@ -5661,7 +5852,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       fuel: 1,
       refuel: 1,
       carrot: 0,
-      fireImm: 0
+      fireImm: 0,
+      minimap: 0
     };
     for (const id of ids || []) {
       const k = PERKS[id];
@@ -5704,7 +5896,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         "extraItem",
         "pinpointer",
         "trajectory",
-        "fireImm"
+        "fireImm",
+        "minimap"
       ])
         if (k[f]) P2[f] = 1;
     }
@@ -7551,6 +7744,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     pong: "PINGPONG_PATH",
     orbit: "ORBIT_SHOT",
     autoaim: "AUTOAIM",
+    aimassist: "AUTOAIM",
+    discrim: "AUTOAIM",
     nearhome: "HOMING_SHORT",
     flat: "HORIZONTAL_ARC",
     eater: "MATTER_EATER",
@@ -7800,6 +7995,89 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return COL.bullet;
   }
 
+  // src/spells/discrim.js
+  var PRE = "discrim:";
+  function discrimId(t) {
+    const id = PRE + t.kind + ":" + t.id;
+    ensureMod(id);
+    return id;
+  }
+  function ensureMod(id) {
+    if (!id) return false;
+    if (MODS[id]) return true;
+    if (!id.startsWith(PRE)) return false;
+    const [kind, ...rest] = id.slice(PRE.length).split(":");
+    const tid = rest.join(":");
+    if (kind !== "creature" && kind !== "player" && kind !== "object" || !tid) return false;
+    const tgt = { kind, id: tid };
+    const b = MODS.discrim;
+    MODS[id] = Object.assign({}, b, {
+      id,
+      base: "discrim",
+      off: 1,
+      tgt,
+      name: "Discriminate → " + targetName(tgt),
+      info: "The next spell touches only " + targetName(tgt) + ", and passes through everything else (it still stops at rock, without digging or burning it)",
+      f: (s) => {
+        s.only = tgt;
+      }
+    });
+    FAMILY_OF[id] = FAMILY_OF.discrim;
+    MOD_PRICE[id] = MOD_PRICE.discrim;
+    MOD_TIER[id] = MOD_TIER.discrim;
+    return true;
+  }
+  var targetOf = (id) => id && MODS[id] && MODS[id].tgt || null;
+  var isUnsetDiscrim = (id) => id === "discrim";
+  function matchesTarget(t, thing) {
+    if (!t) return true;
+    return t.kind === thing.kind && t.id === thing.id;
+  }
+  var BODY_ICON = {
+    jelly: "🪼",
+    drone: "🤖",
+    spider: "🕷",
+    alien: "👽",
+    rat: "🐀",
+    nest: "🪺",
+    crawler: "🐾",
+    worm: "🪱",
+    blob: "🟢",
+    skull: "💀"
+  };
+  var OBJ_ICON = {
+    barrel: "🛢",
+    pod: "🫛",
+    lamp: "🏮",
+    cover: "🧱",
+    crystal: "💎",
+    mod: "✦",
+    gun: "🔫",
+    heart: "❤",
+    heal: "✚",
+    perk: "★",
+    noise: "🪨",
+    spike: "🔺",
+    drop: "🧊",
+    climb: "🌿"
+  };
+  function targetIcon(t) {
+    if (t.kind === "player") return "👨‍🚀";
+    if (t.kind === "creature") {
+      const c = CREATURES[t.id];
+      return c && BODY_ICON[c.body] || (c ? c.name.slice(0, 2) : "?");
+    }
+    return OBJ_ICON[t.id] || t.id.slice(0, 2);
+  }
+  function targetName(t) {
+    if (t.kind === "player") return "You";
+    if (t.kind === "creature") {
+      const c = CREATURES[t.id];
+      return c ? c.name : t.id;
+    }
+    return t.id.charAt(0).toUpperCase() + t.id.slice(1);
+  }
+
   // src/save/save.js
   var SAVE_KEY = "caverunner-save";
   var GUN_DEFAULTS = {
@@ -7817,7 +8095,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function cleanGun(g) {
     if (!g || typeof g !== "object" || !Array.isArray(g.slots) || !g.slots.length) return null;
     const out = Object.assign({}, GUN_DEFAULTS, g);
-    out.slots = g.slots.map((id) => id && MODS[id] ? id : null);
+    out.slots = g.slots.map((id) => id && ensureMod(id) ? id : null);
     out.cap = out.slots.length;
     out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
     return resetGun(out);
@@ -7852,7 +8130,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return {
       guns,
       sel,
-      bag: (Array.isArray(lo.bag) ? lo.bag : []).filter((id) => MODS[id]),
+      bag: (Array.isArray(lo.bag) ? lo.bag : []).filter((id) => ensureMod(id)),
       // perks carried (LO.perks) and fitted to the Exo Suit (LO.suit). A save from before the suit:
       // its switched-on perks go in the slots, as many as fit, the rest are carried
       ...cleanPerks(lo),
@@ -14284,6 +14562,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const x0 = pr.x + pr.l, x1 = pr.x + pr.r, y0 = pr.y + pr.t0, y1 = pr.y + pr.b;
         for (const b of W.bullets) {
           if (b.life <= 0 || b.x + b.size < x0 || b.x - b.size > x1 || b.y + b.size < y0 || b.y - b.size > y1) continue;
+          if (b.only && !matchesTarget(b.only, { kind: "object", id: pr.k })) continue;
           if (b.pull || b.eat || b.bore) {
             const seen = b.propHit || (b.propHit = /* @__PURE__ */ new Set());
             if (!seen.has(pr)) {
@@ -16015,6 +16294,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (W.p.dead) L3 = NO_INPUT;
     W.p.jx = L3.nx;
     W.p.jy = L3.ny;
+    W.p.steer = L3.active ? L3.nx * L3.mag : 0;
     const raw = L3.active ? L3.mag : 0;
     const mag = raw > DEAD ? (raw - DEAD) / (1 - DEAD) : 0;
     const wantJet = mag > 0 && L3.dy < 0;
@@ -17022,6 +17302,42 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/spells/assist.js
+  var hasAssist = (g) => !!g && g.slots.includes("aimassist");
+  function assistPointer(gx, gy, nx, ny, mag, view) {
+    const { x, y, w, h: h3 } = view;
+    const far = Math.max(
+      Math.hypot(gx - x, gy - y),
+      Math.hypot(x + w - gx, gy - y),
+      Math.hypot(gx - x, y + h3 - gy),
+      Math.hypot(x + w - gx, y + h3 - gy)
+    );
+    const d = Math.min(1, mag) * far * DEV.aaReach;
+    return { x: Math.max(x, Math.min(x + w, gx + nx * d)), y: Math.max(y, Math.min(y + h3, gy + ny * d)) };
+  }
+  function assistSnap(p, list, sees, held) {
+    let best = null;
+    let bd = Infinity;
+    for (const e of list) {
+      const d = Math.max(0, Math.hypot(e.x - p.x, e.ty - p.y) - (e.r || 0));
+      if (d < bd && d <= Math.max(DEV.aaSnapR, DEV.aaHit * DEV.aaHold) && sees(e)) {
+        bd = d;
+        best = e;
+      }
+    }
+    if (held && list.includes(held)) {
+      const hd = Math.max(0, Math.hypot(held.x - p.x, held.ty - p.y) - (held.r || 0));
+      if (hd <= DEV.aaHit * DEV.aaHold && sees(held)) {
+        best = held;
+        bd = hd;
+      }
+    }
+    if (!best) return { x: p.x, y: p.y, on: null };
+    const R = DEV.aaSnapR, k = R > 0 && bd <= R ? DEV.aaPull * (1 - bd / R) : 0;
+    const on = bd <= DEV.aaHit || best === held && bd <= DEV.aaHit * DEV.aaHold ? best : null;
+    return { x: p.x + (best.x - p.x) * k, y: p.y + (best.ty - p.y) * k, on };
+  }
+
   // src/spells/cast.js
   var MIN_CAST = 0.016;
   var MIN_RECH = 0.05;
@@ -17054,6 +17370,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       orbit: 0,
       follow: 0,
       autoaim: 0,
+      assist: 0,
+      only: null,
       homeR: sm.homeR || 0,
       flat: 0,
       eat: sm.eat || 0,
@@ -17103,7 +17421,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
   function planCast(g, others) {
-    const start2 = g.idx, mods = [], defs = [];
+    const start2 = g.idx, defs = [];
+    let mods = [];
+    const modsOf = [];
     const holds = [];
     let addTrig = null;
     let multi = g.multi, cost2 = 0, manaMul = 1, ran = false, wrapped = 0;
@@ -17188,6 +17508,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           continue;
         }
         const sh = dress(m, pm);
+        pm.length = 0;
         if (pAdd && m.kind === "shot" && !sh.trig) sh.trig = pAdd;
         pAdd = null;
         if (sh.trig) sh.payload = depth < 6 ? payloadOf(m.draw || 1, depth + 1) : [];
@@ -17251,6 +17572,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         continue;
       }
       defs.push(m);
+      modsOf.push(mods);
+      mods = [];
       cost2 += m.mana;
       timing(m);
       const kind = m.trig || m.kind === "shot" && addTrig || null;
@@ -17258,7 +17581,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (kind) holds[defs.length - 1] = { kind, list: payloadOf(m.draw || 1, 1) };
     }
     const shots = defs.map((sm, i) => {
-      const sh = dress(sm, mods);
+      const sh = dress(sm, modsOf[i]);
       if (holds[i]) {
         sh.trig = holds[i].kind;
         sh.payload = holds[i].list;
@@ -17792,6 +18115,72 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (done) W.shopLit = null;
   }
 
+  // src/world/holoflicker.js
+  function flickerNew() {
+    return { mode: 0, t: 0, mul: 1, tear: 0, seed: 1, rng: 625341585 };
+  }
+  function flickerRnd(s) {
+    let x = s.rng | 0;
+    x ^= x << 13;
+    x ^= x >>> 17;
+    x ^= x << 5;
+    s.rng = x | 0;
+    return (x >>> 0) / 4294967296;
+  }
+  function flickerStep(s, dt, near, k) {
+    const tears = k.glitch > 0 ? Math.max(0, k.tears) : 0, blink = Math.max(0, k.blink), drops = Math.max(0, k.drops);
+    const rate = blink + tears + drops;
+    if (!near || rate <= 0) {
+      s.mode = 0;
+      s.t = 0;
+      s.mul = 1;
+      s.tear = 0;
+      return s;
+    }
+    if (s.hold) {
+      s.mode = s.hold.mode;
+      s.mul = s.hold.mul;
+      s.tear = s.hold.tear;
+      s.seed = s.hold.seed;
+      return s;
+    }
+    const R = () => flickerRnd(s);
+    s.t -= dt;
+    if (s.t <= 0) {
+      if (s.mode !== 0) {
+        s.mode = 0;
+        s.t = (0.3 + R() * 1.4) / Math.max(0.05, rate);
+      } else {
+        const u = R() * rate;
+        s.mode = u < drops ? 1 : u < drops + blink ? 2 : 3;
+        s.t = s.mode === 1 ? 0.04 + R() * 0.35 : s.mode === 2 ? 0.06 + R() * 0.3 : 0.08 + R() * 0.25;
+      }
+    }
+    s.tear = 0;
+    if (s.mode === 0) s.mul = 1;
+    else if (s.mode === 1) s.mul = R() < 0.15 ? 0.5 : 0;
+    else if (s.mode === 2) s.mul = R() < 0.65 ? k.flash * (0.75 + R() * 0.25) : 0.15;
+    else {
+      s.mul = R() < 0.3 ? k.flash * 0.7 : 0.6 + R() * 0.6;
+      s.tear = k.glitch * (0.4 + R() * 0.6);
+      s.seed = 1 + Math.floor(R() * 1e6);
+    }
+    return s;
+  }
+  function flickerSlices(seed, tear, n) {
+    const s = flickerNew();
+    s.rng = seed * 2654435761 | 0 || 1;
+    const out = [];
+    let y = 0;
+    while (y < 1) {
+      const h3 = Math.min(1 - y, (0.3 + flickerRnd(s) * 1.7) / n);
+      const dx = flickerRnd(s) < 0.45 ? (flickerRnd(s) * 2 - 1) * tear : 0;
+      out.push({ y0: y, y1: y + h3, dx });
+      y += h3;
+    }
+    return out;
+  }
+
   // src/game/render/holo.js
   var BG_PAR = 0.6;
   var HOLO_PAR = (1 + BG_PAR) / 2;
@@ -17866,6 +18255,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var holoBright = () => L.bri;
   var holoLayer = () => L.c;
+  var holoKeep = { on: false };
   var LG = { px: CELL, ox: 0, oy: 0, gx0: 0, gy0: 0, lw: 1, lh: 1 };
   function setGrid(W, F2) {
     const P2 = LG.px = clamp(DEV.holoPx || CELL, 0.5, 8);
@@ -17962,8 +18352,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     L.bri = DEV.holoAlpha * (W.repo ? Math.max(DEV.holoMax, DEV.holoMin) : holoLevel(W.time - L.ft));
     if (!(L.bri > 2e-3)) {
       L.bri = 0;
-      L.c = null;
-      return;
+      if (!holoKeep.on) {
+        L.c = null;
+        return;
+      }
     }
     setGrid(W, F2);
     const C = L.c = sizedCanvas(L.c, LG.lw, LG.lh), lc = C.getContext("2d");
@@ -17975,6 +18367,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     holoFill(lc, W, F2, n);
     const g = holoGlitch(W);
     if (g > 0) glitch(lc, C, g, W.time, 1 / (LG.px * W.unitPx));
+    if (!L.bri) return;
     G.ctx.save();
     G.ctx.globalAlpha = L.bri;
     holoGrid.place(G.ctx, C, false);
@@ -18054,8 +18447,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     webL: null,
     lm: null,
     lmImg: null,
-    lt: null
+    lt: null,
+    flk: flickerNew(),
+    flT: 0,
+    hb: 0
   };
+  var holoFlk = () => D.flk;
   function darkBeam(a, r, n, x, y) {
     const b = D.beam;
     b.a = a;
@@ -18091,7 +18488,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var darkOn = () => D.on;
   function darkHides(x, y, R) {
-    if (!D.on || !D.zt || DEV.l2dDark < 1) return false;
+    if (!D.on || !D.zt || DEV.l2dDark < 1 || D.hb > 0.01) return false;
     const cx0 = Math.floor((x - R) / FOG_U) - 1, cx1 = Math.floor((x + R) / FOG_U) + 1;
     const cy0 = Math.floor((y - R) / FOG_U) - 1, cy1 = Math.floor((y + R) / FOG_U) + 1;
     if (cx0 < D.bx0 || cy0 < D.by0 || cx1 >= D.bx1 || cy1 >= D.by1) return false;
@@ -18295,13 +18692,32 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     bc.globalAlpha = clamp(DEV.l2dBack, 0, 1);
     const hs5 = G.bgHiOn ? BCELL / CELL : 1;
     bc.drawImage(D.bb, gx0 * hs5, gy0 * hs5, (gx1 - gx0) * hs5, (gy1 - gy0) * hs5, (gx0 * BCELL + bgox) / CELL - tx0, (gy0 * BCELL + bgoy) / CELL - ty0, (gx1 - gx0) * BCELL / CELL, (gy1 - gy0) * BCELL / CELL);
-    const hl = holoLayer(), hb = holoBright() * DEV.l2dHolo;
+    const dt = clamp(W.time - D.flT, 0, 0.1);
+    D.flT = W.time;
+    const nr = Math.max(0, DEV.l2dFlkNear) * CELL, px = W.p.x + 6, py = W.p.y + 11;
+    const near = !!DEV.l2dFlk && W.dark.some((z) => px > z.x0 * CELL - nr && px < (z.x1 + 1) * CELL + nr && py > z.y0 * CELL - nr && py < (z.y1 + 1) * CELL + nr);
+    const fk = flickerStep(D.flk, dt, near, { blink: DEV.l2dFlkRate, tears: DEV.l2dFlkTears, drops: DEV.l2dFlkDrops, flash: DEV.l2dFlkFlash, glitch: DEV.l2dFlkGlitch });
+    holoKeep.on = near;
+    const h0 = holoBright() * DEV.l2dHolo, hon = near ? Math.max(h0, clamp(DEV.l2dFlkBase, 0, 1) * DEV.l2dHolo) : h0;
+    const hl = holoLayer(), hb = fk.mode === 2 ? Math.max(hon, DEV.l2dHolo) * fk.mul : hon * fk.mul;
+    D.hb = hl ? hb : 0;
     if (hl && hb > 0.01) {
-      const g = holoGrid.rect;
+      const g = holoGrid.rect, dx0 = g.x / CELL - tx0, dy0 = g.y / CELL - ty0, dw = g.w / CELL, dh = g.h / CELL;
       bc.filter = DEV.l2dHoloBlur && bl > 0 ? `blur(${bl}px)` : "none";
-      bc.globalAlpha = clamp(hb, 0, 1);
-      bc.drawImage(hl, 0, 0, hl.width, hl.height, g.x / CELL - tx0, g.y / CELL - ty0, g.w / CELL, g.h / CELL);
+      const sl = fk.tear > 0 ? flickerSlices(fk.seed, fk.tear, 14) : null;
+      for (let pass = 0; pass < 2; pass++) {
+        const a = pass ? hb - 1 : Math.min(1, hb);
+        if (a <= 0.01) break;
+        bc.globalAlpha = Math.min(1, a);
+        bc.globalCompositeOperation = pass ? "lighter" : "source-over";
+        if (!sl) bc.drawImage(hl, 0, 0, hl.width, hl.height, dx0, dy0, dw, dh);
+        else for (const b of sl) {
+          const sy = b.y0 * hl.height, sh = Math.max(1, (b.y1 - b.y0) * hl.height);
+          bc.drawImage(hl, 0, sy, hl.width, sh, dx0 + b.dx, dy0 + b.y0 * dh, dw, (b.y1 - b.y0) * dh);
+        }
+      }
       bc.filter = "none";
+      bc.globalCompositeOperation = "source-over";
     }
     bc.globalAlpha = 1;
     bc.globalCompositeOperation = "multiply";
@@ -18551,7 +18967,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       } else if (HAND_TORCH) torch(G.ctx);
       if (HAND_TORCH) torchEmbers(G.ctx, W.torchP, px);
     }
-    if (!W.p.dead) {
+    if (!W.p.dead && !hasAssist(held)) {
       const cxp = pcx + ax * DEV.aimDist, cyp = gy + ay * DEV.aimDist;
       const inr = 1.25, outr = 3;
       G.ctx.strokeStyle = "rgba(255,255,255,0.92)";
@@ -22076,6 +22492,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     x.fillStyle = "rgb(" + themeFor(W.floor).bg.map((c2) => Math.round(c2 * 1.7)).join(",") + ")";
     x.fillRect(0, 0, CW, CH);
     x.globalCompositeOperation = "source-over";
+    miniPicture(W, G);
+  }
+  function miniPicture(W, G) {
+    G.mapN++;
+    const x = G.miniC.getContext("2d");
+    if (!x) return;
+    const im = x.createImageData(CW, CH), d = new Uint32Array(im.data.buffer);
+    const rock = 51 << 24 >>> 0, air = (204 << 24 | 5263440) >>> 0;
+    for (let i = 0; i < CW * CH; i++) d[i] = W.mat[i] ? rock : air;
+    x.putImageData(im, 0, 0);
   }
 
   // src/game/systems/save-run.js
@@ -22476,6 +22902,39 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
   }
+  function drawAssist(W, G) {
+    const A = W.p.assist;
+    if (!A || G.RPV) return;
+    const u = W.unitPx, x = (A.x - W.camX) * u, y = (A.y - W.camY) * u;
+    const r0 = DEV.aaSize / 2;
+    const c = G.ctx;
+    c.save();
+    if (A.snap) {
+      const ex = (A.ex - W.camX) * u, ey = (A.ey - W.camY) * u, r = Math.max(r0 * 0.7, A.er * u + 5);
+      for (const [w, col] of [[DEV.aaLine + 2, "rgba(0,0,0,0.45)"], [DEV.aaLine, "rgba(255,190,90,0.95)"]]) {
+        c.strokeStyle = String(col);
+        c.lineWidth = Number(w);
+        c.beginPath();
+        c.arc(ex, ey, r, 0, Math.PI * 2);
+        c.stroke();
+      }
+      if (DEV.aaDot > 0) {
+        c.fillStyle = "rgba(255,190,90,0.95)";
+        c.beginPath();
+        c.arc(ex, ey, DEV.aaDot, 0, Math.PI * 2);
+        c.fill();
+      }
+    } else {
+      for (const [w, col] of [[DEV.aaLine + 2, "rgba(0,0,0,0.4)"], [DEV.aaLine, "rgba(255,255,255,0.9)"]]) {
+        c.strokeStyle = String(col);
+        c.lineWidth = Number(w);
+        c.beginPath();
+        c.arc(x, y, r0, 0, Math.PI * 2);
+        c.stroke();
+      }
+    }
+    c.restore();
+  }
 
   // src/spells/collection.js
   function modTiers() {
@@ -22498,6 +22957,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function perkRoll(rnd2, owned) {
     const left = PERK_IDS.filter((id) => !owned.includes(id) && (!PERKS[id].tier || PERKS[id].tier === 1 || owned.includes("st_" + PERKS[id].stat + (PERKS[id].tier - 1))));
     return left.length ? left[Math.floor(rnd2() * left.length)] : null;
+  }
+  function stackKey(entry) {
+    return entry;
+  }
+  function stackBag(bag) {
+    const by = /* @__PURE__ */ new Map();
+    bag.forEach((id, i) => {
+      const key = stackKey(id);
+      const s = by.get(key);
+      if (s) s.n++;
+      else by.set(key, { key, id, i, n: 1 });
+    });
+    return [...by.values()];
   }
 
   // src/game/systems/shops.js
@@ -23544,6 +24016,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     drawMessages(W, G, F2);
     drawGuideTalk(W, G, F2);
     drawReticule(G);
+    drawAssist(W, G);
   }
   function drawCamera(W, G, F2) {
     const dpr = F2.dpr = gameDpr();
@@ -23585,6 +24058,228 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.ctx.setTransform(s, 0, 0, s, -ox2, -oy2);
     F2.snapX = (Math.round((W.p.x - W.camX) * s) + ox2) / s - W.p.x;
     F2.snapY = (Math.round((W.p.y - W.camY) * s) + oy2) / s - W.p.y;
+  }
+
+  // src/game/systems/pickups.js
+  function stepPickups(W, G, F2) {
+    const { dt, LO, MHP, pcx, pcy } = F2;
+    stepShops(W, G, F2);
+    for (let i = W.pickups.length - 1; i >= 0; i--) {
+      const q = W.pickups[i];
+      if (q.taken) {
+        W.pickups.splice(i, 1);
+        continue;
+      }
+      if (q.cool > 0) q.cool -= dt;
+    }
+    const solid = (x, y) => solidAt(W, x, y);
+    for (let i = W.coins.length - 1; i >= 0; i--) {
+      const g = W.coins[i];
+      const dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;
+      const pull2 = COIN_PULL * W.pb.goldPull;
+      if (g.nopull > 0) g.nopull -= dt;
+      g.fly = false;
+      if (d < pull2 && !W.p.dead && !(g.nopull > 0)) {
+        g.fly = true;
+        const grab = 180 + 900 * (1 - d / pull2);
+        g.vx = (g.vx || 0) + dx / d * grab * dt * 6;
+        g.vy += dy / d * grab * dt * 6;
+        g.vx *= 0.88;
+        g.vy *= 0.88;
+        g.x += g.vx * dt;
+        g.y += g.vy * dt;
+        if (d < 12) {
+          LO.gold += g.amount;
+          W.coins.splice(i, 1);
+          SFX.ui("coin");
+          G.input.current.notify();
+        }
+        continue;
+      }
+      if (stepNugget(g, dt, solid)) SFX.fx("coinland", g.x, g.y);
+      if (g.pop && g.ground && !g.vx) g.pop = 0;
+    }
+    collideNuggets(W.coins, solid);
+    const pull = COIN_PULL * W.pb.goldPull;
+    for (const r of W.rooms) {
+      if (r.taken || r.kind !== "green") continue;
+      crystalMotes(W, r.x, r.y, true, dt, 0);
+      if (!W.p.dead && Math.hypot(pcx - r.x, pcy - r.y) < pull) {
+        r.taken = true;
+        W.pickups.push({ kind: "crystal", green: true, x: r.x, y: r.y, floor: W.floor, t: 0 });
+      }
+    }
+    const inShop = W.p.y + PH > SHOP_Y;
+    let near = null;
+    const vend = vendNear(W, pcx, pcy);
+    if (vend) near = { src: "vend", kind: vend };
+    if (!near) for (const it of W.stock) {
+      if (it.sold) continue;
+      if (Math.abs(it.x - pcx) > 15 || Math.abs(it.y - pcy) > 22) continue;
+      near = { src: "shop", it };
+      break;
+    }
+    if (!near) for (const q of W.pickups) {
+      if (q.cool > 0 || q.kind === "crystal") continue;
+      if (Math.abs(q.x - pcx) > 18 || Math.abs(q.y - pcy) > 20) continue;
+      near = { src: "pickup", q };
+      break;
+    }
+    if (!near) {
+      const kind = shopNear(W, pcx, pcy);
+      if (kind) near = { src: "shopvend", kind };
+    }
+    if (!near) for (const r of W.rooms) {
+      if (r.taken || r.kind === "green") continue;
+      if (Math.abs(r.x - pcx) > 20 || Math.abs(r.y - pcy) > 26) continue;
+      near = { src: "room", r };
+      break;
+    }
+    G.input.current.gunNear = near && near.src === "pickup" && near.q.kind === "gun" && !W.p.dead ? near.q : null;
+    const nearKey = !near ? -1 : near.src + ":" + (near.src === "vend" || near.src === "shopvend" ? near.kind : near.src === "shop" ? W.stock.indexOf(near.it) : near.src === "room" ? W.rooms.indexOf(near.r) : W.pickups.indexOf(near.q));
+    const label = !near ? null : near.src === "vend" ? vendLabel(W, near.kind) : near.src === "shopvend" ? { text: SHOPS[near.kind].label, price: 0, can: true, shop: near.kind } : near.src === "shop" ? near.it.kind === "heal" ? { text: "Full heal", price: near.it.price, can: W.p.hp < MHP && LO.gold >= near.it.price } : near.it.kind === "gun" ? {
+      text: near.it.gun.name,
+      gun: near.it.gun,
+      price: near.it.price,
+      can: LO.gold >= near.it.price
+    } : {
+      text: MODS[near.it.id].name,
+      id: near.it.id,
+      price: near.it.price,
+      can: LO.gold >= near.it.price
+    } : near.src === "room" ? near.r.kind === "perk" && near.r.id ? { text: PERKS[near.r.id].name, perk: near.r.id, price: 0, can: true } : { text: "+25 Max Health", heart: true, price: 0, can: true } : near.q.kind === "gun" ? { text: near.q.gun.name, gun: near.q.gun, price: 0, can: true, found: true } : near.q.kind === "perk" ? { text: PERKS[near.q.id].name, perk: near.q.id, price: 0, can: true, found: true } : { text: MODS[near.q.id].name, id: near.q.id, price: 0, can: true, found: true };
+    let pbottom = 12;
+    if (near) {
+      const iy = near.src === "vend" ? VEND_TOP : near.src === "shopvend" ? MACHINE_TOP : near.src === "shop" ? near.it.y : near.src === "room" ? near.r.y : near.q.y;
+      const dprc = gameDpr();
+      pbottom = Math.round(Math.max(10, G.c.height / dprc - (iy - 16 - W.camY) * W.unitPx));
+    }
+    const sig = nearKey + ":" + (label && label.can ? 1 : 0) + ":" + inShop + ":" + Math.round(pbottom / 16);
+    if (nearKey !== -1 && nearKey !== W.lastNear) SFX.fx("prompt");
+    W.lastNear = nearKey;
+    if (sig !== G.input.current.sig) {
+      G.input.current.sig = sig;
+      G.input.current.prompt = label;
+      G.input.current.promptBottom = pbottom;
+      G.input.current.inShop = inShop;
+      G.input.current.notify();
+    }
+    if (W.p.dead && G.input.current.interact) {
+      G.input.current.interact = false;
+      if (G.input.current.requestRestart) G.input.current.requestRestart();
+    }
+    if (G.input.current.interact && near) {
+      G.input.current.interact = false;
+      if (near.src === "vend") vendUse(W, G, near.kind, LO);
+      else if (near.src === "shopvend") shopUse(G, near.kind);
+      else if (near.src === "shop") {
+        const it = near.it;
+        if (it.kind === "heal") {
+          if (W.p.hp >= MHP) {
+            toast(W, "Already at full health");
+            SFX.ui("poor");
+          } else if (LO.gold < it.price) {
+            toast(W, "Not enough gold");
+            SFX.ui("poor");
+          } else {
+            LO.gold -= it.price;
+            W.p.hp = MHP;
+            it.bought = (it.bought || 0) + 1;
+            it.price = healPrice(it.bought, W.floor);
+            toast(W, "Patched up");
+            SFX.ui("heal");
+          }
+        } else if (LO.gold < it.price) {
+          toast(W, "Not enough gold");
+          SFX.ui("poor");
+        } else if (it.kind === "gun") {
+          LO.gold -= it.price;
+          it.sold = true;
+          W.pickups.push({ kind: "gun", x: it.x, y: it.y, gun: it.gun, t: 0 });
+          toast(W, "Bought " + it.gun.name);
+          SFX.ui("buy");
+        } else {
+          LO.gold -= it.price;
+          LO.bag.push(it.id);
+          it.sold = true;
+          toast(W, "Bought " + MODS[it.id].name);
+          SFX.ui("buy");
+        }
+      } else if (near.src === "room") {
+        const r = near.r;
+        if (r.kind === "perk" && r.id) {
+          LO.perks.push(r.id);
+          toast(W, "Perk: " + PERKS[r.id].name);
+          SFX.ui("perk");
+        } else {
+          LO.maxBonus = (LO.maxBonus || 0) + 25;
+          toast(W, "+25 Max Health");
+          SFX.ui("heart");
+        }
+        r.taken = true;
+      } else {
+        const q = near.q;
+        if (q.kind === "mod") {
+          LO.bag.push(q.id);
+          q.taken = true;
+          q.cool = PICKUP_COOL;
+          toast(W, "Picked up " + MODS[q.id].name);
+          SFX.ui("mod");
+        } else if (q.kind === "perk") {
+          LO.perks.push(q.id);
+          q.taken = true;
+          toast(W, "Perk: " + PERKS[q.id].name + " (fit it in the Bag)");
+          SFX.ui("perk");
+        } else if (G.input.current.gunMenu) {
+          G.input.current.found = q;
+        } else {
+          toast(W, "Hold a gun slot to take it");
+        }
+      }
+      G.input.current.sig = "";
+      G.input.current.notify();
+    }
+    G.input.current.interact = false;
+  }
+  function takeGun(W, G, i) {
+    const q = G.input.current.gunNear, LO = G.input.current.loadout;
+    if (!q || q.taken || W.pickups.indexOf(q) < 0 || W.p.dead) return false;
+    const old = LO.guns[i];
+    LO.guns[i] = resetGun(q.gun);
+    if (old) {
+      q.gun = old;
+      q.old = true;
+    } else q.taken = true;
+    if (!LO.guns[LO.sel]) LO.sel = i;
+    toast(W, "Took " + LO.guns[i].name);
+    SFX.ui("gun");
+    G.input.current.gunNear = null;
+    G.input.current.sig = "";
+    G.input.current.notify();
+    return true;
+  }
+  function dropGun(W, G, i, x, y) {
+    const LO = G.input.current.loadout, gun = LO.guns[i];
+    if (!gun || W.p.dead) return false;
+    const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
+    let at = { x: pcx, y: W.p.y + PH - 9 };
+    if (x === x && y === y && !solidAt(W, x, y) && lineOfSight(W, pcx, pcy, x, y)) {
+      for (let d = 0; d < 600; d += 2) if (solidAt(W, x, y + d + 9)) {
+        at = { x, y: y + d };
+        break;
+      }
+    }
+    LO.guns[i] = null;
+    if (LO.sel === i) {
+      const n = LO.guns.findIndex(Boolean);
+      LO.sel = n >= 0 ? n : i;
+    }
+    W.pickups.push({ kind: "gun", x: at.x, y: at.y, gun, t: 0, old: true });
+    toast(W, "Dropped " + gun.name);
+    SFX.fx("place");
+    G.input.current.sig = "";
+    G.input.current.notify();
+    return true;
   }
 
   // src/game/systems/gun.js
@@ -23777,7 +24472,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ox: bx,
         oy: by,
         age: 0,
-        born: sh.life
+        born: sh.life,
+        only: sh.only || null
       });
     }
   }
@@ -23799,12 +24495,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     SFX.cast(list, x0, y0);
     burst(W, x0, y0, 5, col);
   }
+  var assistOut = false, assistT = 0;
+  var assistHeld = null;
+  var pickOut = false, pickHint = false;
+  var pickHeld = null;
+  function pickables(W, v) {
+    const on = (x, y) => x >= v.x && x <= v.x + v.w && y >= v.y && y <= v.y + v.h;
+    const out = [];
+    for (const e of W.enemies) if (e.hp > 0 && on(e.x, e.ty)) out.push({ x: e.x, ty: e.ty, r: e.r, t: { kind: "creature", id: e.k.id } });
+    if (!W.p.dead) out.push({ x: W.p.x + PW / 2, ty: W.p.y + PH / 2, r: 6, t: { kind: "player", id: "player" } });
+    for (const pr of W.props) {
+      const x = pr.x + (pr.l + pr.r) / 2, y = pr.y + (pr.t0 + pr.b) / 2;
+      if (!pr.gone && on(x, y)) out.push({ x, ty: y, r: Math.min(14, Math.max(pr.r - pr.l, pr.b - pr.t0) / 2), t: { kind: "object", id: pr.k } });
+    }
+    for (const it of W.pickups) if (!it.taken && on(it.x, it.y)) out.push({ x: it.x, ty: it.y, r: 5, t: { kind: "object", id: it.kind } });
+    return out;
+  }
   function aimAndCast(W, G, F2) {
     const { dt, LO, pcx } = F2;
     const gx = pcx, gy = W.p.y + PH * 0.4;
     const TR = G.input.current.right;
     let R = { on: false, show: false, nx: W.p.face, ny: 0 };
-    if (TR.active) R = { on: TR.on, show: true, nx: TR.nx, ny: TR.ny, vis: Math.min(1, TR.mag / AIM_DEAD) };
+    if (TR.active) R = { on: TR.on, show: true, nx: TR.nx, ny: TR.ny, vis: Math.min(1, TR.mag / (TR.fire || AIM_DEAD)) };
     else if (G.mouse.inside) {
       const dx = W.camX + G.mouse.x / W.unitPx - gx, dy = W.camY + G.mouse.y / W.unitPx - gy, d = Math.hypot(dx, dy);
       if (d > 1) R = { on: G.mouse.down, show: true, nx: dx / d, ny: dy / d };
@@ -23823,10 +24535,65 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         R = { on: R.on || TR.active && TR.on, show: true, nx: Math.cos(a), ny: Math.sin(a), vis: R.vis };
       }
     }
+    const held = LO.guns[LO.sel];
+    W.p.assist = void 0;
+    const pick = G.input.current.pickTarget;
+    if (pick == null && hasAssist(held) && !W.p.dead && TR.active && !G.RPV) {
+      if (TR.mag > DEV.aaStart || assistOut) {
+        assistOut = true;
+        const view = { x: W.camX, y: W.camY, w: W.viewW || 400, h: W.viewH || 300 };
+        const raw = assistPointer(gx, gy, TR.nx, TR.ny, TR.mag, view);
+        const onScreen = (e) => e.x >= view.x && e.x <= view.x + view.w && e.ty >= view.y && e.ty <= view.y + view.h;
+        const s = assistSnap(raw, W.enemies, (e) => e.hp > 0 && onScreen(e) && lineOfSight(W, gx, gy, e.x, e.ty), assistHeld);
+        if (s.on !== assistHeld) {
+          assistHeld = s.on;
+          assistT = 0;
+        } else assistT += dt;
+        const tx2 = s.on ? s.on.x : s.x, ty = s.on ? s.on.ty : s.y, d = Math.hypot(tx2 - gx, ty - gy);
+        W.p.assist = { x: s.x, y: s.y, snap: !!s.on, ex: s.on ? s.on.x : 0, ey: s.on ? s.on.ty : 0, er: s.on ? s.on.r : 0 };
+        R = { on: !!s.on && assistT >= DEV.aaDelay, show: true, nx: d > 1 ? (tx2 - gx) / d : W.p.face, ny: d > 1 ? (ty - gy) / d : 0, vis: 0 };
+      } else R = { on: false, show: R.show, nx: R.nx, ny: R.ny, vis: 0 };
+    } else if (!TR.active) {
+      assistOut = false;
+      assistHeld = null;
+    }
+    if (pick != null && !G.RPV) {
+      const IN = G.input.current;
+      if (!pickHint) {
+        pickHint = true;
+        toast(W, "Aim at a target, let go to set it");
+      }
+      if (TR.active) {
+        pickOut = true;
+        const view = { x: W.camX, y: W.camY, w: W.viewW || 400, h: W.viewH || 300 };
+        const raw = assistPointer(gx, gy, TR.nx, TR.ny, TR.mag, view);
+        const s = assistSnap(raw, pickables(W, view), () => true, pickHeld);
+        pickHeld = s.on;
+        W.p.assist = { x: s.x, y: s.y, snap: !!s.on, ex: s.on ? s.on.x : 0, ey: s.on ? s.on.ty : 0, er: s.on ? s.on.r : 0 };
+      } else if (pickOut || W.p.dead) {
+        if (pickHeld && LO.bag[pick] === "discrim") {
+          LO.bag[pick] = discrimId(pickHeld.t);
+          toast(W, "Discriminate → " + targetName(pickHeld.t));
+          SFX.ui("mod");
+        } else toast(W, "Discriminate: no target set");
+        IN.pickTarget = null;
+        pickOut = false;
+        pickHeld = null;
+        pickHint = false;
+        IN.notify();
+      }
+      R = { on: false, show: false, nx: W.p.face, ny: 0 };
+    } else {
+      pickOut = false;
+      pickHeld = null;
+      pickHint = false;
+    }
     if (W.p.dead) R.on = false;
     W.p.aim = R;
     if (R.show) W.p.face = R.nx >= 0 ? 1 : -1;
-    else if (Math.abs(W.p.vx) > 10) W.p.face = W.p.vx > 0 ? 1 : -1;
+    else if (W.p.swing) {
+      if (Math.abs(W.p.steer || 0) > 0.1) W.p.face = W.p.steer > 0 ? 1 : -1;
+    } else if (Math.abs(W.p.vx) > 10) W.p.face = W.p.vx > 0 ? 1 : -1;
     for (const g of LO.guns) {
       if (!g) continue;
       const pas = gunPassives(g);
@@ -24131,6 +24898,33 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/game/systems/bullets.js
+  var mayHit = (b, e) => !b.only || matchesTarget(b.only, { kind: "creature", id: e.k.id });
+  function onlyAt(W, b, x, y, pad) {
+    if (!b.only || b.only.kind !== "creature") return -1;
+    for (let j = 0; j < W.enemies.length; j++) {
+      const e = W.enemies[j];
+      if (mayHit(b, e) && Math.hypot(x - e.x, y - e.ty) < e.r + pad) return j;
+    }
+    return -1;
+  }
+  function onlyBlast(W, G, b, x, y, R) {
+    SFX.boom(x, y, R);
+    W.flashes.push({ x, y, r: R, t: 0 });
+    burst(W, x, y, 8, b.col);
+    for (let j = W.enemies.length - 1; j >= 0; j--) {
+      const e = W.enemies[j], dist = Math.hypot(e.x - x, e.ty - y);
+      if (b.only && b.only.kind === "creature" && mayHit(b, e) && dist < R + e.r) damageEnemy(W, j, dist < R * 0.5 ? 3 : 2);
+    }
+    if (b.only && b.only.kind === "player" && !W.p.dead) {
+      const dist = Math.hypot(W.p.x + PW / 2 - x, W.p.y + PH / 2 - y), reach2 = R + 10;
+      if (dist < reach2) hurt(W, G, Math.round(25 * (1 - dist / reach2)));
+    }
+    if (b.only && b.only.kind === "object") for (const pr of W.props) {
+      if (pr.gone || !matchesTarget(b.only, { kind: "object", id: pr.k })) continue;
+      const bx = clamp(x, pr.x + pr.l, pr.x + pr.r), by = clamp(y, pr.y + pr.t0, pr.y + pr.b);
+      if (Math.hypot(bx - x, by - y) < R + 6) pr.hurt = (pr.hurt || 0) + 2;
+    }
+  }
   function spray(W, b) {
     SFX.fx("cluster", b.x, b.y);
     const n = Math.min(8, b.cluster);
@@ -24207,7 +25001,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         boom = b.explode ? true : false;
         if (!b.explode) dead = true;
         else {
-          explodeCross(W, G, b);
+          if (b.only) onlyBlast(W, G, b, b.x, b.y, b.explode);
+          else explodeCross(W, G, b);
           dead = true;
           boom = false;
         }
@@ -24237,13 +25032,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         [ex, ey] = pathStep(b, dt, pathEnv(W, b, dt));
         if (b.caught) dead = true;
       }
-      if (b.eat) dig(W, G, b.x, b.y, b.eat);
-      if (b.fire) ignite(W, G, b.x, b.y, b.size + 2, 0.5);
+      if (b.eat && !b.only) dig(W, G, b.x, b.y, b.eat);
+      if (b.fire && !b.only) ignite(W, G, b.x, b.y, b.size + 2, 0.5);
       if (b.arc) lightningStep(W, b, dt);
       if (b.payload && b.timer != null && (b.timer -= dt) <= 0) firePayload(W, G, b);
       if (b.pull) {
         const reach2 = DEV.bhPull * b.pull / 70;
         for (const e of W.enemies) {
+          if (!mayHit(b, e)) continue;
           const dx = b.x - e.x, dy = b.y - e.ty, d = Math.hypot(dx, dy) || 1;
           if (d < reach2) {
             const f = Math.min(d / dt, 60 + 420 * (1 - d / reach2));
@@ -24305,6 +25101,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           b.vy = d[1];
           let bd = b.homeR || DRIFT_R;
           for (const e of W.enemies) {
+            if (!mayHit(b, e)) continue;
             const dd = Math.hypot(e.x - b.x, e.ty - b.y);
             if (dd < bd && lineOfSight(W, b.x, b.y, e.x, e.ty)) {
               bd = dd;
@@ -24323,6 +25120,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (b.homing && !b.drift) {
         let best = null, bd = b.homeR || 260;
         for (const e of W.enemies) {
+          if (!mayHit(b, e)) continue;
           const d = Math.hypot(e.x - b.x, e.ty - b.y);
           if (d < bd) {
             bd = d;
@@ -24343,7 +25141,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const sn = Math.max(1, Math.ceil(Math.hypot(b.vx * dt + ex, b.vy * dt + ey) / 2));
       for (let st = 0; st < sn && !dead && !boom; st++) {
         const nx = b.x + (b.vx * dt + ex) / sn, ny = b.y + (b.vy * dt + ey) / sn;
-        const j = enemyAt(W, nx, ny, b.size + 1);
+        const j = b.only ? onlyAt(W, b, nx, ny, b.size + 1) : enemyAt(W, nx, ny, b.size + 1);
         if (j >= 0 && !(b.hit && b.hit.has(W.enemies[j]))) {
           const e = W.enemies[j];
           const sp = Math.hypot(b.vx, b.vy) || 1;
@@ -24359,7 +25157,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             (b.hit || (b.hit = /* @__PURE__ */ new Set())).add(e);
             let best = null, bd = 150;
             for (const o of W.enemies) {
-              if (b.hit.has(o)) continue;
+              if (b.hit.has(o) || !mayHit(b, o)) continue;
               const d = Math.hypot(o.x - nx, o.ty - ny);
               if (d < bd) {
                 bd = d;
@@ -24375,6 +25173,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               b.life = Math.max(b.life, 0.4);
               continue;
             }
+          }
+          if (b.only && (b.cluster || b.pop)) {
+            onlyBlast(W, G, b, nx, ny, b.pop || 12);
+            dead = true;
+            break;
           }
           if (b.cluster) {
             spray(W, b);
@@ -24402,7 +25205,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             break;
           }
         }
-        if (b.friendly && !W.p.dead && nx > W.p.x - 2 && nx < W.p.x + PW + 2 && ny > W.p.y - 2 && ny < W.p.y + PH + 2) {
+        if (b.only && b.only.kind === "player" && b.age > 0.12 && !W.p.dead && nx > W.p.x - 2 && nx < W.p.x + PW + 2 && ny > W.p.y - 2 && ny < W.p.y + PH + 2) {
+          burst(W, nx, ny, 5, b.col);
+          hurt(W, G, Math.max(1, Math.round(b.dmg * 2)));
+          if (b.explode) {
+            b.x = nx;
+            b.y = ny;
+            boom = true;
+          } else dead = true;
+          break;
+        }
+        if (b.friendly && !b.only && !W.p.dead && nx > W.p.x - 2 && nx < W.p.x + PW + 2 && ny > W.p.y - 2 && ny < W.p.y + PH + 2) {
           burst(W, nx, ny, 5, b.col);
           hurt(W, G, Math.round(b.dmg * 2));
           dead = true;
@@ -24422,7 +25235,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             if (slow && b.lifeBoom) b.bounce++;
             if (!slow) SFX.bounce(b.x, b.y);
             if (b.look) shotBounce(W, b);
-            if (b.bounceFx === "explode") explode(W, G, b.x, b.y, Math.max(10, b.explode || 12));
+            if (b.bounceFx === "explode" && !b.only) explode(W, G, b.x, b.y, Math.max(10, b.explode || 12));
+            break;
+          }
+          if (b.only) {
+            burst(W, b.x, b.y, 3, b.col);
+            SFX.rock(b.x, b.y);
+            dead = true;
             break;
           }
           b.x = nx;
@@ -24460,10 +25279,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         b.y = ny;
       }
       if (boom) {
-        explode(W, G, b.x, b.y, b.explode, void 0, b.fire);
+        if (b.only) onlyBlast(W, G, b, b.x, b.y, b.explode);
+        else explode(W, G, b.x, b.y, b.explode, void 0, b.fire);
         dead = true;
       }
-      if (dead && b.fire) ignite(W, G, b.x, b.y, b.size + 6, 0.9);
+      if (dead && b.fire && !b.only) ignite(W, G, b.x, b.y, b.size + 6, 0.9);
       if (dead && b.payload && (b.trig === "expire" || b.struck)) firePayload(W, G, b);
       if (dead && b.tele) teleportTo(W, b);
       if (dead && b.arc && b.trail) {
@@ -24474,185 +25294,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (dead) W.bullets.splice(i, 1);
     }
     for (let i = W.arcs.length - 1; i >= 0; i--) if ((W.arcs[i].t += dt) > W.arcs[i].max) W.arcs.splice(i, 1);
-  }
-
-  // src/game/systems/pickups.js
-  function stepPickups(W, G, F2) {
-    const { dt, LO, MHP, pcx, pcy } = F2;
-    stepShops(W, G, F2);
-    for (let i = W.pickups.length - 1; i >= 0; i--) {
-      const q = W.pickups[i];
-      if (q.taken) {
-        W.pickups.splice(i, 1);
-        continue;
-      }
-      if (q.cool > 0) q.cool -= dt;
-    }
-    const solid = (x, y) => solidAt(W, x, y);
-    for (let i = W.coins.length - 1; i >= 0; i--) {
-      const g = W.coins[i];
-      const dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;
-      const pull2 = COIN_PULL * W.pb.goldPull;
-      if (g.nopull > 0) g.nopull -= dt;
-      g.fly = false;
-      if (d < pull2 && !W.p.dead && !(g.nopull > 0)) {
-        g.fly = true;
-        const grab = 180 + 900 * (1 - d / pull2);
-        g.vx = (g.vx || 0) + dx / d * grab * dt * 6;
-        g.vy += dy / d * grab * dt * 6;
-        g.vx *= 0.88;
-        g.vy *= 0.88;
-        g.x += g.vx * dt;
-        g.y += g.vy * dt;
-        if (d < 12) {
-          LO.gold += g.amount;
-          W.coins.splice(i, 1);
-          SFX.ui("coin");
-          G.input.current.notify();
-        }
-        continue;
-      }
-      if (stepNugget(g, dt, solid)) SFX.fx("coinland", g.x, g.y);
-      if (g.pop && g.ground && !g.vx) g.pop = 0;
-    }
-    collideNuggets(W.coins, solid);
-    const pull = COIN_PULL * W.pb.goldPull;
-    for (const r of W.rooms) {
-      if (r.taken || r.kind !== "green") continue;
-      crystalMotes(W, r.x, r.y, true, dt, 0);
-      if (!W.p.dead && Math.hypot(pcx - r.x, pcy - r.y) < pull) {
-        r.taken = true;
-        W.pickups.push({ kind: "crystal", green: true, x: r.x, y: r.y, floor: W.floor, t: 0 });
-      }
-    }
-    const inShop = W.p.y + PH > SHOP_Y;
-    let near = null;
-    const vend = vendNear(W, pcx, pcy);
-    if (vend) near = { src: "vend", kind: vend };
-    if (!near) for (const it of W.stock) {
-      if (it.sold) continue;
-      if (Math.abs(it.x - pcx) > 15 || Math.abs(it.y - pcy) > 22) continue;
-      near = { src: "shop", it };
-      break;
-    }
-    if (!near) for (const q of W.pickups) {
-      if (q.cool > 0 || q.kind === "crystal") continue;
-      if (Math.abs(q.x - pcx) > 18 || Math.abs(q.y - pcy) > 20) continue;
-      near = { src: "pickup", q };
-      break;
-    }
-    if (!near) {
-      const kind = shopNear(W, pcx, pcy);
-      if (kind) near = { src: "shopvend", kind };
-    }
-    if (!near) for (const r of W.rooms) {
-      if (r.taken || r.kind === "green") continue;
-      if (Math.abs(r.x - pcx) > 20 || Math.abs(r.y - pcy) > 26) continue;
-      near = { src: "room", r };
-      break;
-    }
-    const nearKey = !near ? -1 : near.src + ":" + (near.src === "vend" || near.src === "shopvend" ? near.kind : near.src === "shop" ? W.stock.indexOf(near.it) : near.src === "room" ? W.rooms.indexOf(near.r) : W.pickups.indexOf(near.q));
-    const label = !near ? null : near.src === "vend" ? vendLabel(W, near.kind) : near.src === "shopvend" ? { text: SHOPS[near.kind].label, price: 0, can: true, shop: near.kind } : near.src === "shop" ? near.it.kind === "heal" ? { text: "Full heal", price: near.it.price, can: W.p.hp < MHP && LO.gold >= near.it.price } : near.it.kind === "gun" ? {
-      text: near.it.gun.name,
-      gun: near.it.gun,
-      price: near.it.price,
-      can: LO.gold >= near.it.price
-    } : {
-      text: MODS[near.it.id].name,
-      id: near.it.id,
-      price: near.it.price,
-      can: LO.gold >= near.it.price
-    } : near.src === "room" ? near.r.kind === "perk" && near.r.id ? { text: PERKS[near.r.id].name, perk: near.r.id, price: 0, can: true } : { text: "+25 Max Health", heart: true, price: 0, can: true } : near.q.kind === "gun" ? { text: near.q.gun.name, gun: near.q.gun, price: 0, can: true, found: true } : near.q.kind === "perk" ? { text: PERKS[near.q.id].name, perk: near.q.id, price: 0, can: true, found: true } : { text: MODS[near.q.id].name, id: near.q.id, price: 0, can: true, found: true };
-    let pbottom = 12;
-    if (near) {
-      const iy = near.src === "vend" ? VEND_TOP : near.src === "shopvend" ? MACHINE_TOP : near.src === "shop" ? near.it.y : near.src === "room" ? near.r.y : near.q.y;
-      const dprc = gameDpr();
-      pbottom = Math.round(Math.max(10, G.c.height / dprc - (iy - 16 - W.camY) * W.unitPx));
-    }
-    const sig = nearKey + ":" + (label && label.can ? 1 : 0) + ":" + inShop + ":" + Math.round(pbottom / 16);
-    if (nearKey !== -1 && nearKey !== W.lastNear) SFX.fx("prompt");
-    W.lastNear = nearKey;
-    if (sig !== G.input.current.sig) {
-      G.input.current.sig = sig;
-      G.input.current.prompt = label;
-      G.input.current.promptBottom = pbottom;
-      G.input.current.inShop = inShop;
-      G.input.current.notify();
-    }
-    if (W.p.dead && G.input.current.interact) {
-      G.input.current.interact = false;
-      if (G.input.current.requestRestart) G.input.current.requestRestart();
-    }
-    if (G.input.current.interact && near) {
-      G.input.current.interact = false;
-      if (near.src === "vend") vendUse(W, G, near.kind, LO);
-      else if (near.src === "shopvend") shopUse(G, near.kind);
-      else if (near.src === "shop") {
-        const it = near.it;
-        if (it.kind === "heal") {
-          if (W.p.hp >= MHP) {
-            toast(W, "Already at full health");
-            SFX.ui("poor");
-          } else if (LO.gold < it.price) {
-            toast(W, "Not enough gold");
-            SFX.ui("poor");
-          } else {
-            LO.gold -= it.price;
-            W.p.hp = MHP;
-            it.bought = (it.bought || 0) + 1;
-            it.price = healPrice(it.bought, W.floor);
-            toast(W, "Patched up");
-            SFX.ui("heal");
-          }
-        } else if (LO.gold < it.price) {
-          toast(W, "Not enough gold");
-          SFX.ui("poor");
-        } else if (it.kind === "gun") {
-          LO.gold -= it.price;
-          it.sold = true;
-          W.pickups.push({ kind: "gun", x: it.x, y: it.y, gun: it.gun, t: 0 });
-          toast(W, "Bought " + it.gun.name);
-          SFX.ui("buy");
-        } else {
-          LO.gold -= it.price;
-          LO.bag.push(it.id);
-          it.sold = true;
-          toast(W, "Bought " + MODS[it.id].name);
-          SFX.ui("buy");
-        }
-      } else if (near.src === "room") {
-        const r = near.r;
-        if (r.kind === "perk" && r.id) {
-          LO.perks.push(r.id);
-          toast(W, "Perk: " + PERKS[r.id].name);
-          SFX.ui("perk");
-        } else {
-          LO.maxBonus = (LO.maxBonus || 0) + 25;
-          toast(W, "+25 Max Health");
-          SFX.ui("heart");
-        }
-        r.taken = true;
-      } else {
-        const q = near.q;
-        if (q.kind === "mod") {
-          LO.bag.push(q.id);
-          q.taken = true;
-          q.cool = PICKUP_COOL;
-          toast(W, "Picked up " + MODS[q.id].name);
-          SFX.ui("mod");
-        } else if (q.kind === "perk") {
-          LO.perks.push(q.id);
-          q.taken = true;
-          toast(W, "Perk: " + PERKS[q.id].name + " (fit it in the Bag)");
-          SFX.ui("perk");
-        } else {
-          G.input.current.found = q;
-        }
-      }
-      G.input.current.sig = "";
-      G.input.current.notify();
-    }
-    G.input.current.interact = false;
   }
 
   // src/game/systems/step.js
@@ -25001,6 +25642,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const mapC = document.createElement("canvas");
       mapC.width = CW;
       mapC.height = CH;
+      const miniC = document.createElement("canvas");
+      miniC.width = CW;
+      miniC.height = CH;
       const pgGlow = document.createElement("canvas"), pgGlowCtx = pgGlow.getContext("2d");
       const decoC = document.createElement("canvas");
       decoC.width = CW;
@@ -25065,6 +25709,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         fogBlurC,
         fbctx,
         mapC,
+        miniC,
+        mapN: 0,
         decoC,
         dctx,
         REC,
@@ -25088,7 +25734,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       recSfxHook(G);
       input.current.saveClip = (C) => clipKeep(W, G, C);
       input.current.clipFromSaved = clipFromSaved;
-      input.current.mapView = () => ({ img: mapC, seen: W.seen, x: W.p.x + PW / 2, y: W.p.y + PH / 2, face: W.p.face, pins: W.pins });
+      input.current.mapView = () => ({
+        img: mapC,
+        seen: W.seen,
+        x: W.p.x + PW / 2,
+        y: W.p.y + PH / 2,
+        face: W.p.face,
+        pins: W.pins,
+        mini: miniC,
+        mapN: G.mapN,
+        aim: W.p.aim,
+        viewW: W.viewW,
+        foes: W.enemies,
+        items: W.pickups
+      });
+      input.current.takeGun = (i) => takeGun(W, G, i);
+      input.current.dropGun = (i, sx, sy) => {
+        const r = c.getBoundingClientRect();
+        return dropGun(W, G, i, W.camX + (sx - r.left) / W.unitPx, W.camY + (sy - r.top) / W.unitPx);
+      };
       input.current.dropPin = (e) => {
         W.pins.push({ x: W.p.x + PW / 2, y: W.p.y + PH / 2, e });
         saveRun(W, G);
@@ -25458,6 +26122,64 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { now, limit, tips: picked };
   }
 
+  // src/save/audit.js
+  var AUDIT_KEY = "caverunner-audit";
+  function cleanAudit(raw) {
+    const out = {};
+    if (!raw || typeof raw !== "object") return out;
+    for (const k of Object.keys(raw)) {
+      const e = raw[k];
+      if (!/^(mod|perk):/.test(k) || !e || typeof e !== "object") continue;
+      const mark = e.mark === "keep" || e.mark === "trash" ? e.mark : null;
+      const notes = typeof e.notes === "string" ? e.notes : "";
+      if (mark || notes.trim()) out[k] = { mark, notes };
+    }
+    return out;
+  }
+  function loadAudit() {
+    try {
+      return cleanAudit(JSON.parse(localStorage.getItem(AUDIT_KEY) || "null"));
+    } catch (_) {
+      return {};
+    }
+  }
+  function saveAudit(a) {
+    try {
+      localStorage.setItem(AUDIT_KEY, JSON.stringify(cleanAudit(a)));
+    } catch (_) {
+    }
+  }
+  var auditGet = (a, key) => a[key] || { mark: null, notes: "" };
+  function auditToggle(a, key, mark) {
+    const e = auditGet(a, key);
+    return cleanAudit(Object.assign({}, a, { [key]: { mark: e.mark === mark ? null : mark, notes: e.notes } }));
+  }
+  function auditNotes(a, key, notes) {
+    const e = auditGet(a, key);
+    return cleanAudit(Object.assign({}, a, { [key]: { mark: e.mark, notes } }));
+  }
+  var auditName = (key) => {
+    const [kind, id] = key.split(":");
+    const it = kind === "mod" ? MODS[id] : PERKS[id];
+    return it ? it.name : id + " (no longer in the game)";
+  };
+  function auditText(a) {
+    const keys = Object.keys(cleanAudit(a)).sort();
+    if (!keys.length) return "";
+    const line = (k) => {
+      const [kind, id] = k.split(":");
+      const n = a[k].notes.trim().replace(/\s*\n\s*/g, " / ");
+      return "- [" + kind + "] " + auditName(k) + " (`" + id + "`)" + (n ? " — " + n : "");
+    };
+    const sec = (title, ks) => ks.length ? ["", "## " + title, ...ks.map(line)] : [];
+    return [
+      "CaveRunner audit — work through these one at a time; ask me before deleting anything.",
+      ...sec("Remove (trash)", keys.filter((k) => a[k].mark === "trash")),
+      ...sec("Keep (pinned)", keys.filter((k) => a[k].mark === "keep")),
+      ...sec("Notes", keys.filter((k) => !a[k].mark && a[k].notes.trim()))
+    ].join("\n") + "\n";
+  }
+
   // src/ui/cards.js
   var GUN_STATS = [
     { k: "cap", label: "slots", better: 1, get: (g) => g.cap, fmt: (v) => String(v) },
@@ -25584,8 +26306,86 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       info && MODS[info] ? h(ModPop, { id: info, close: () => setInfo(null) }) : null
     );
   }
-  function ModCard({ id, onClose, ingame, top, flow }) {
+  function useAudit(key) {
+    const [st, setSt] = useState(() => ({ key, e: auditGet(loadAudit(), key), fb: false }));
+    const cur = st.key === key ? st : { key, e: auditGet(loadAudit(), key), fb: false };
+    const commit = (fn) => {
+      const a = fn(loadAudit());
+      saveAudit(a);
+      setSt({ key, e: auditGet(a, key), fb: false });
+    };
+    const toggle = (m) => commit((a) => auditToggle(a, key, m));
+    const setNotes = (n) => commit((a) => auditNotes(a, key, n));
+    const setFb = (on) => setSt(Object.assign({}, cur, { fb: on }));
+    return { e: cur.e, fb: cur.fb, setFb, toggle, setNotes };
+  }
+  function AuditMarks({ au }) {
+    const b = (m, icon, label) => h("button", {
+      className: "aumark " + m + (au.e.mark === m ? " on" : ""),
+      "data-audit": m,
+      "aria-label": label,
+      "aria-pressed": au.e.mark === m,
+      onPointerDown: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        au.toggle(m);
+      }
+    }, icon);
+    return h("div", { className: "aumarks" }, b("keep", "📌", "Pin: keep"), b("trash", "🗑️", "Trash: remove"));
+  }
+  function AuditFoot({ au }) {
+    const n = au.e.notes.trim();
+    return h(
+      "div",
+      { className: "aufoot" },
+      h(
+        "button",
+        { className: "aufb", onPointerDown: (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          au.setFb(true);
+        } },
+        n ? "Edit feedback" : "Give Feedback"
+      ),
+      n ? h("span", { className: "aupeek" }, n) : null
+    );
+  }
+  function AuditText({ au, name, glyph, col, cls }) {
+    const [t, setT] = useState(au.e.notes);
+    return h(
+      "div",
+      { className: "pop scroll aufbpop" + cls },
+      h(
+        "div",
+        { className: "phead" },
+        h("div", { className: "pglyph", style: { borderColor: col, color: col } }, glyph),
+        h("div", { className: "ptitle" }, h("b", null, name), h("span", null, "Feedback · your notes"))
+      ),
+      h("textarea", {
+        className: "autext",
+        value: t,
+        autoFocus: true,
+        placeholder: "What should change about it?",
+        onChange: (e) => setT(e.target.value)
+      }),
+      h(
+        "div",
+        { className: "aubtns" },
+        h("button", { className: "aucancel", onPointerDown: (e) => {
+          e.preventDefault();
+          au.setFb(false);
+        } }, "Cancel"),
+        h("button", { className: "ausave", onPointerDown: (e) => {
+          e.preventDefault();
+          au.setNotes(t);
+        } }, "Save")
+      )
+    );
+  }
+  var tgtBadge = (id) => id && MODS[id] && MODS[id].tgt ? h("span", { className: "ttgt" }, targetIcon(MODS[id].tgt)) : null;
+  function ModCard({ id, onClose, ingame, top, flow, act }) {
     const m = MODS[id];
+    const au = useAudit("mod:" + id);
     const kind = famOf(id).name + (m.kind === "passive" ? " · always on" : "");
     const rows = modPreview(id).rows;
     const dtile = (did, key, faded) => h(
@@ -25724,19 +26524,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         drow(false, [dtile("bolt", "c"), dtile(id, "d", true)], "too late — the bolt already fired", 2)
       ];
     }
+    const cls = (ingame ? " ingame" : "") + (top ? " top" : "") + (flow ? " flow" : "");
+    if (au.fb && !ingame) return h(AuditText, { au, name: m.name, glyph: m.glyph, col: famCol(id), cls });
     return h(
       "div",
-      { className: "pop scroll" + (ingame ? " ingame" : "") + (top ? " top" : "") + (flow ? " flow" : "") },
+      { className: "pop scroll" + cls },
       h(
         "div",
         { className: "phead" },
-        h("div", { className: "pglyph", style: { borderColor: famCol(id), color: famCol(id) } }, m.glyph),
+        h("div", { className: "pglyph", style: { borderColor: famCol(id), color: famCol(id) } }, m.glyph, tgtBadge(id)),
         h(
           "div",
           { className: "ptitle" },
           h("b", null, m.name),
           h("span", null, kind + (m.mana ? " · " + m.mana + " mana" : ""))
         ),
+        ingame ? null : h(AuditMarks, { au }),
         onClose ? h("button", {
           className: "pclose",
           onPointerDown: (e) => {
@@ -25746,6 +26549,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }, "×") : null
       ),
       m.info ? h("p", { className: "pinfo" }, m.info) : null,
+      act ? h("button", { className: "pact", onPointerDown: (e) => {
+        e.preventDefault();
+        act.run();
+      } }, act.label) : null,
       timing ? h("p", { className: "pnote" }, timing) : null,
       rows.length ? h(
         "div",
@@ -25759,14 +26566,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ) : null,
       // the placement use-example is for the editor, where you're deciding where a mod
       // goes — the shop/pickup preview leaves it off and keeps the card compact.
-      ingame ? null : h("div", { className: "pdemo" }, demo)
+      ingame ? null : h("div", { className: "pdemo" }, demo),
+      ingame ? null : h(AuditFoot, { au })
     );
   }
   function PerkCard({ id, ingame, flow, top, onClose }) {
     const pk = PERKS[id];
+    const au = useAudit("perk:" + id);
+    const cls = (ingame ? " ingame" : "") + (flow ? " flow" : "") + (top ? " top" : "");
+    if (au.fb && !ingame) return h(AuditText, { au, name: pk.name, glyph: pk.glyph, col: pk.tint, cls });
     return h(
       "div",
-      { className: "pop scroll" + (ingame ? " ingame" : "") + (flow ? " flow" : "") + (top ? " top" : "") },
+      { className: "pop scroll" + cls },
       h(
         "div",
         { className: "phead" },
@@ -25777,6 +26588,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           h("b", { style: { color: pk.tint } }, pk.name),
           h("span", null, "Perk · counts while fitted to your Exo Suit")
         ),
+        ingame ? null : h(AuditMarks, { au }),
         onClose ? h("button", {
           className: "pclose",
           onPointerDown: (e) => {
@@ -25785,7 +26597,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
         }, "×") : null
       ),
-      h("p", { className: "pinfo" }, pk.info)
+      h("p", { className: "pinfo" }, pk.info),
+      ingame ? null : h(AuditFoot, { au })
     );
   }
 
@@ -26541,68 +27354,80 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       })
     );
   }
-  var HOLD_MS = 400, HOLD_SLOP = 10;
-  function DevGroupHead({ g, name, shut, toggle }) {
-    const [held, setHeld] = useState(false);
-    const T = useRef({ id: 0, x: 0, y: 0 });
-    const stop = () => {
-      clearTimeout(T.current.id);
-      T.current.id = 0;
-      setHeld(false);
-    };
-    useEffect(() => () => clearTimeout(T.current.id), []);
+  function DevGroupHead({ g, name, shut, toggle, n, changed, tab }) {
     return h(
       "button",
       {
-        className: "devghead" + (shut ? "" : " open") + (held ? " holding" : ""),
+        className: "devghead" + (shut ? "" : " open"),
         "data-g": g,
-        style: { "--hold": HOLD_MS + "ms" },
-        onPointerDown: (e) => {
-          T.current.x = e.clientX;
-          T.current.y = e.clientY;
-          clearTimeout(T.current.id);
-          setHeld(true);
-          T.current.id = setTimeout(() => {
-            T.current.id = 0;
-            setHeld(false);
-            toggle(g);
-          }, HOLD_MS);
-        },
-        onPointerMove: (e) => {
-          if (T.current.id && Math.hypot(e.clientX - T.current.x, e.clientY - T.current.y) > HOLD_SLOP) stop();
-        },
-        onPointerUp: stop,
-        onPointerCancel: stop,
-        onPointerLeave: stop,
-        onContextMenu: (e) => e.preventDefault()
+        "aria-expanded": !shut,
+        onClick: () => toggle(g)
       },
-      h("span", { className: "devcaret" }, shut ? "▸" : "▾"),
-      name
+      h("span", { className: "devcaret" }, "›"),
+      h("span", { className: "devgname" }, name, tab ? h("span", { className: "devgtab" }, tab) : null),
+      changed ? h("span", { className: "devgchg", title: "changed from default" }, changed + " changed") : null,
+      h("span", { className: "devgn" }, String(n))
     );
   }
-  function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
+  var groupExtras = (g) => [
+    g === "jellycol" ? h(JellyPreview, { key: "jp" }) : null,
+    // the live jelly its colours paint
+    g === "holoflash" ? h(FadeCurve, { key: "fc" }) : null,
+    ...CURVES.filter((c) => c.g === g).map((c) => h(CurveEdit, { key: c.p, p: c.p, label: c.label, lo: c.lo, hi: c.hi })),
+    ...g === "elitefx" ? [
+      h(FlamePreview, { key: "fp" }),
+      h("p", { key: "gl", className: "devlbl" }, "Colour over life"),
+      h(GradEditor, { key: "ge" }),
+      h("p", { key: "rl", className: "devlbl" }, "Opacity over life"),
+      h(RampEditor, { key: "re" })
+    ] : []
+  ];
+  var lsGet = (k) => {
+    try {
+      return JSON.parse(localStorage.getItem(k));
+    } catch (_) {
+      return null;
+    }
+  };
+  var lsSet = (k, v) => {
+    try {
+      localStorage.setItem(k, JSON.stringify(v));
+    } catch (_) {
+    }
+  };
+  var blurBox = () => {
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  };
+  function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel }) {
     const LO = input.current.loadout;
     const [, bump] = useState(0);
     const [copied, setCopied] = useState(null);
-    const [openG, setOpenG] = useState(() => {
-      try {
-        return JSON.parse(localStorage.getItem("caverunner-devgroups")) || {};
-      } catch (_) {
-        return {};
-      }
+    const [q, setQ] = useState("");
+    const [openG, setOpenG] = useState(() => lsGet("caverunner-devgroups") || {});
+    const [tab, setTabS] = useState(() => {
+      const t = lsGet("caverunner-devtab");
+      if (DEV_TABS.some((x) => x[0] === t)) return t;
+      const o = DEV_GROUPS.find(([g]) => openG[g]);
+      return o ? devTabOf(o[0]) : DEV_TABS[0][0];
     });
+    const setTab = (t) => {
+      blurBox();
+      setTabS(t);
+      lsSet("caverunner-devtab", t);
+    };
     const toggleG = (g) => {
-      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      blurBox();
       const o = Object.assign({}, openG, { [g]: !openG[g] });
       setOpenG(o);
-      try {
-        localStorage.setItem("caverunner-devgroups", JSON.stringify(o));
-      } catch (_) {
-      }
+      lsSet("caverunner-devgroups", o);
     };
-    const copyAll = () => {
-      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-      const text = devReport();
+    const copyText = (make, what) => {
+      blurBox();
+      const text = make();
+      if (!text) {
+        setCopied({ text, ok: false, empty: true, what });
+        return;
+      }
       const fallback = () => {
         let ok = false;
         try {
@@ -26616,14 +27441,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ta.remove();
         } catch (_) {
         }
-        setCopied({ text, ok });
+        setCopied({ text, ok, what });
       };
       try {
-        navigator.clipboard.writeText(text).then(() => setCopied({ text, ok: true }), fallback);
+        navigator.clipboard.writeText(text).then(() => setCopied({ text, ok: true, what }), fallback);
       } catch (_) {
         fallback();
       }
     };
+    const act = (cls, label, fn) => h("button", { className: "dbg " + cls, onPointerDown: (e) => {
+      e.preventDefault();
+      fn();
+    } }, label);
+    const needle = q.trim().toLowerCase();
+    const tabName = (t) => (DEV_TABS.find((x) => x[0] === t) || DEV_TABS[0])[1];
+    const shown = DEV_GROUPS.filter(([g]) => needle || devTabOf(g) === tab).map(([g, name]) => {
+      const rows = DEV_META.filter((m) => m.g === g);
+      const nameHit = needle && name.toLowerCase().includes(needle);
+      const hits = needle && !nameHit ? rows.filter((m) => (m.label + " " + m.k).toLowerCase().includes(needle)) : rows;
+      return { g, name, rows, hits, nameHit };
+    }).filter((x) => !needle || x.nameHit || x.hits.length);
     return h(
       "div",
       { className: "devwrap" },
@@ -26636,112 +27473,142 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         { className: "devpanel scroll" },
         h(
           "div",
-          { className: "devhead" },
-          h("h2", null, "Dev"),
-          h("button", { className: "done", onPointerDown: (e) => {
-            e.preventDefault();
-            close();
-          } }, "Done")
+          { className: "devtop" },
+          h(
+            "div",
+            { className: "devhead" },
+            h("h2", null, "Dev"),
+            h("button", { className: "done", onPointerDown: (e) => {
+              e.preventDefault();
+              close();
+            } }, "Done")
+          ),
+          h(
+            "div",
+            { className: "devbtns" },
+            act("toggle" + (LO.debug ? " on" : ""), "All mods", () => {
+              LO.debug = !LO.debug;
+              refresh();
+              bump((n) => n + 1);
+            }),
+            act("toggle allperks" + (LO.debugPerks ? " on" : ""), "All perks", () => {
+              LO.debugPerks = !LO.debugPerks;
+              refresh();
+              bump((n) => n + 1);
+            }),
+            act("spawngun", "Spawn gun", onSpawnGun),
+            act("spawnlevel", "Spawn level", onSpawnLevel),
+            act("restart", "Restart run", onRestart),
+            act("devcopy", "Copy Dev settings", () => copyText(devReport)),
+            act("devaudit", "Copy mod & perk audit", () => copyText(() => auditText(loadAudit()), "audit"))
+          ),
+          copied ? h("p", { className: "devnote devcopied" + (copied.ok ? " ok" : "") }, copied.empty ? "Nothing audited yet — pin, trash or give feedback on a mod or perk card first." : copied.ok ? copied.what === "audit" ? "Audit copied — paste it into Claude Code." : "Copied — paste it to Claude." : "Could not reach the clipboard — press and hold the text below to copy it.") : null,
+          copied && !copied.ok && !copied.empty ? h("textarea", { className: "devcopytext", readOnly: true, value: copied.text }) : null,
+          h(
+            "div",
+            { className: "devsearchw" },
+            h("input", {
+              className: "devsearch",
+              type: "search",
+              placeholder: "Search knobs…",
+              value: q,
+              onChange: (e) => setQ(e.target.value)
+            }),
+            q ? h("button", { className: "devclear", "aria-label": "Clear search", onPointerDown: (e) => {
+              e.preventDefault();
+              setQ("");
+            } }, "×") : null
+          ),
+          needle ? null : h(
+            "div",
+            { className: "devtabs", role: "tablist" },
+            DEV_TABS.map(([t, name, gs]) => {
+              const chg = DEV_META.filter((m) => gs.includes(m.g) && DEV[m.k] !== DEV_DEFAULTS[m.k]).length;
+              return h("button", {
+                key: t,
+                className: "devtab" + (t === tab ? " on" : ""),
+                "data-t": t,
+                role: "tab",
+                "aria-selected": t === tab,
+                onClick: () => setTab(t)
+              }, name, chg ? h("i", { className: "devdot" }) : null);
+            })
+          )
         ),
         h(
           "div",
-          { className: "devbtns" },
-          h(
-            "button",
-            {
-              className: "dbg" + (LO.debug ? " on" : ""),
-              onPointerDown: (e) => {
-                e.preventDefault();
-                LO.debug = !LO.debug;
-                refresh();
-                bump((n) => n + 1);
-              }
-            },
-            "All mods"
-          ),
-          h(
-            "button",
-            {
-              className: "dbg allperks" + (LO.debugPerks ? " on" : ""),
-              onPointerDown: (e) => {
-                e.preventDefault();
-                LO.debugPerks = !LO.debugPerks;
-                refresh();
-                bump((n) => n + 1);
-              }
-            },
-            "All perks"
-          ),
-          h("button", {
-            className: "dbg restart",
-            onPointerDown: (e) => {
-              e.preventDefault();
-              onRestart();
-            }
-          }, "Restart run"),
-          h("button", {
-            className: "dbg spawngun",
-            onPointerDown: (e) => {
-              e.preventDefault();
-              onSpawnGun();
-            }
-          }, "Spawn gun"),
-          h("button", {
-            className: "dbg newcave",
-            onPointerDown: (e) => {
-              e.preventDefault();
-              input.current.newCave = true;
-              close();
-            }
-          }, "New cave"),
-          h("button", {
-            className: "dbg floor2",
-            onPointerDown: (e) => {
-              e.preventDefault();
-              input.current.newCave = 2;
-              close();
-            }
-          }, "Floor 2")
-        ),
-        DEV_GROUPS.map(([g, name]) => {
-          const shut = !openG[g];
-          return h(
-            "div",
-            { key: g, className: "devgroup" },
-            h(DevGroupHead, { g, name, shut, toggle: toggleG }),
-            shut ? null : h(
+          { className: "devbody" },
+          shown.length ? null : h("p", { className: "devnote" }, "No knob matches “" + q.trim() + "”."),
+          shown.map(({ g, name, rows, hits, nameHit }) => {
+            const shut = needle ? false : !openG[g];
+            const changed = rows.filter((m) => DEV[m.k] !== DEV_DEFAULTS[m.k]).length;
+            return h(
               "div",
-              { className: "devvars" },
-              g === "jellycol" ? h(JellyPreview) : null,
-              // the live jelly its colours paint
-              g === "holoflash" ? h(FadeCurve) : null,
-              CURVES.filter((c) => c.g === g).map((c) => h(CurveEdit, { key: c.p, p: c.p, label: c.label, lo: c.lo, hi: c.hi })),
-              g === "elitefx" ? [
-                h(FlamePreview, { key: "fp" }),
-                h("p", { key: "gl", className: "devlbl" }, "Colour over life"),
-                h(GradEditor, { key: "ge" }),
-                h("p", { key: "rl", className: "devlbl" }, "Opacity over life"),
-                h(RampEditor, { key: "re" })
-              ] : null,
-              DEV_META.filter((m) => m.g === g).map((m) => h(DevRow, { key: m.k, meta: m }))
-            )
-          );
-        }),
+              { key: g, className: "devgroup" + (shut ? "" : " open") },
+              h(DevGroupHead, {
+                g,
+                name,
+                shut,
+                toggle: toggleG,
+                n: rows.filter((m) => m.type !== "curve").length,
+                changed,
+                tab: needle ? tabName(devTabOf(g)) : ""
+              }),
+              shut ? null : h(
+                "div",
+                { className: "devvars" },
+                !needle || nameHit ? groupExtras(g) : null,
+                hits.map((m) => h(DevRow, { key: m.k, meta: m }))
+              )
+            );
+          }),
+          h(
+            "p",
+            { className: "devnote" },
+            "Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back; ↺ resets a slider or colour. Copy Dev settings sends every knob you changed (to make them the defaults); Copy mod & perk audit sends your 📌 / 🗑️ / feedback notes."
+          )
+        )
+      )
+    );
+  }
+  function SpawnLevel({ input, close }) {
+    const cur = input.current.floor || 1;
+    const go = (n) => {
+      input.current.newCave = n;
+      close();
+    };
+    return h(
+      "div",
+      { className: "devwrap" },
+      h("div", { className: "devback", onPointerDown: (e) => {
+        e.preventDefault();
+        close();
+      } }),
+      h(
+        "div",
+        { className: "devpanel spawnpanel" },
         h(
-          "p",
-          { className: "devnote" },
-          "Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back."
-        ),
-        h(
-          "button",
-          { className: "dbg devcopy", onPointerDown: (e) => {
+          "div",
+          { className: "devhead" },
+          h("h2", null, "Spawn level"),
+          h("button", { className: "done", onPointerDown: (e) => {
             e.preventDefault();
-            copyAll();
-          } },
-          "Copy all dev settings to clipboard"
+            close();
+          } }, "Cancel")
         ),
-        copied ? h("p", { className: "devnote" }, copied.ok ? "Copied — paste it to Claude." : "Could not reach the clipboard — press and hold the text below to copy it.") : null,
-        copied && !copied.ok ? h("textarea", { className: "devcopytext", readOnly: true, value: copied.text }) : null
+        h(
+          "div",
+          { className: "lvlpick" },
+          THEMES.map((t, i) => h("button", {
+            key: i,
+            className: "dbg lvlgo" + (i + 1 === cur ? " on" : ""),
+            "data-floor": i + 1,
+            onPointerDown: (e) => {
+              e.preventDefault();
+              go(i + 1);
+            }
+          }, h("b", null, i + 1), " " + t.name))
+        )
       )
     );
   }
@@ -27141,7 +28008,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function fireSimNew(gun) {
     const g = resetGun(Object.assign({}, gun, { slots: gun.slots.slice() }));
     const max = gun.manaMax + gunPassives(gun).manaMax;
-    return { g, max, mana: max, delayT: 0, delayMax: 0, rechT: 0, rechLen: 0, pull: 0, lit: null, fired: 0 };
+    return { g, max, mana: max, delayT: 0, delayMax: 0, rechT: 0, rechLen: 0, pull: 0, lit: null, fired: 0, shots: [] };
   }
   function fireSimStep(S2, dt) {
     const g = S2.g, pas = gunPassives(g);
@@ -27174,6 +28041,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const casts = (id) => MODS[id].kind === "shot" || MODS[id].kind === "static";
     while (slots.length && !casts(g.slots[slots[slots.length - 1]])) slots.pop();
     S2.lit = { slots, pull: S2.pull, t: Math.max(0.1, Math.min(plan.delay, 0.45)) };
+    S2.shots = plan.shots;
     S2.pull++;
     S2.fired++;
     S2.delayT = S2.delayMax = plan.delay;
@@ -27289,6 +28157,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
   var GAUGE_R = 46, GAUGE_C = 2 * Math.PI * GAUGE_R;
+  var GAUGE_RW = 3.2, GAUGE_SW = 1.6;
+  var stickTrigger = (size) => triggerRing(size, DEV.aimPad, (GAUGE_R - 2 * GAUGE_RW - GAUGE_SW) / 50);
   var GAUGE_COL = { mana: "#ffc93c", rech: "#7ad7ff", cast: "#c58cff", fuel: "#ff9a2e" };
   function healthCol(frac) {
     return frac > 0.5 ? mixHex("#e6a52c", "#57d267", (frac - 0.5) * 2) : mixHex("#e24a2c", "#e6a52c", frac * 2);
@@ -27378,7 +28248,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const cl = Math.min(dist, maxD);
       const nx = dist ? dx / dist : 0, ny = dist ? dy / dist : 0;
       const mag = cl / maxD;
-      const thresh = right ? AIM_DEAD : 0.15;
+      const thresh = right ? stickTrigger(r.width).mag : 0.15;
       if (right && mag > AIM_DEAD) stayed.current = false;
       peak.current = Math.max(peak.current, mag);
       if (right && input.current.confirmAct) {
@@ -27395,6 +28265,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       st.mag = mag;
       st.dy = dy;
       st.on = mag > thresh;
+      st.fire = thresh;
       st.cx = r.left + rad;
       st.cy = r.top + rad;
       st.size = r.width;
@@ -27430,7 +28301,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       Object.assign(input.current[kind], { active: false, mag: 0, on: false, dy: 0 });
       setKnob({ x: 0, y: 0, jet: false });
     };
-    const rw = 3.2, sw = 1.6;
+    const rw = GAUGE_RW, sw = GAUGE_SW;
     const wipe = (r, frac, col, track) => [
       h("circle", { key: "t" + r, cx: 50, cy: 50, r, fill: "none", stroke: track || "rgba(0,0,0,0.35)", strokeWidth: sw }),
       h("circle", {
@@ -27485,9 +28356,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         height: KNOB * 100 + "%",
         transform: `translate(-50%,-50%) translate(${knob2.x}px,${knob2.y}px)`
       } }),
-      right && h("div", { className: "deadzone", style: {
-        width: AIM_RING * 100 + "%",
-        height: AIM_RING * 100 + "%"
+      // (none with Aim Assist on the gun in hand: the stick is a pointer then, it fires on its own)
+      right && !(input.current.loadout && hasAssist(input.current.loadout.guns[input.current.loadout.sel])) && h("div", { className: "deadzone", style: {
+        width: stickTrigger(size).ring * 100 + "%",
+        height: stickTrigger(size).ring * 100 + "%"
       } }),
       h("span", { className: "lbl top" }, left ? "jet" : "aim"),
       left && h("span", { className: "lbl bot" }, "walk")
@@ -27610,6 +28482,150 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     });
     return h("canvas", { ref, className: "gicon" });
   }
+  var GF_ZOOM = 3, GF_SPEED = 0.2, GF_MAX = 90;
+  function GunFire({ gun, sim }) {
+    const ref = useRef(null);
+    const gref = useRef(gun);
+    gref.current = gun;
+    useEffect(() => {
+      let raf, last = performance.now(), seen = -1, seenS = null, flash = 0;
+      let shots = [], beams = [];
+      const fw = { time: 0 };
+      const loop = (now) => {
+        raf = requestAnimationFrame(loop);
+        const c = ref.current, S2 = sim.current, g = gref.current;
+        if (!c) return;
+        const dt = Math.min(0.1, (now - last) / 1e3) * DEV.bagSpeed;
+        last = now;
+        fw.time += dt;
+        const dpr = window.devicePixelRatio || 1, W = c.clientWidth, H = c.clientHeight;
+        if (!W || !H) return;
+        if (c.width !== Math.round(W * dpr) || c.height !== Math.round(H * dpr)) {
+          c.width = Math.round(W * dpr);
+          c.height = Math.round(H * dpr);
+        }
+        const ctx = c.getContext("2d");
+        const sc = Math.min(2.4, W / 60), gx = 6 + 6.5 * sc, gy = H * 0.55;
+        const mx = (gx + 14.2 * sc) / GF_ZOOM, my = (gy - 3.2 * sc) / GF_ZOOM;
+        if (S2 !== seenS) {
+          seenS = S2;
+          seen = S2 ? S2.fired : -1;
+        }
+        if (S2 && S2.fired !== seen) {
+          seen = S2.fired;
+          flash = 0.07;
+          c.dataset.pulls = String(seen);
+          for (const sh of S2.shots) {
+            const n = Math.max(1, sh.count || 1);
+            for (let i = 0; i < n; i++) {
+              const a = (sh.ang || 0) + (Math.random() - 0.5) * (sh.spread || 0) * Math.PI / 180 + (n > 1 ? (i / (n - 1) - 0.5) * 0.12 : 0);
+              if (sh.beam) {
+                beams.push({ a, col: sh.col, w: sh.size || 2, t: 0.15, max: 0.15 });
+                continue;
+              }
+              if (sh.still) {
+                beams.push({ field: 1, r: Math.min(H / GF_ZOOM * 0.4, sh.r || 12), col: sh.col, t: 0.5, max: 0.5 });
+                continue;
+              }
+              const sp = sh.speed * GF_SPEED;
+              shots.push({
+                x: mx,
+                y: my,
+                vx: Math.cos(a) * sp,
+                vy: Math.sin(a) * sp,
+                size: sh.size,
+                col: sh.col,
+                look: sh.look,
+                spin: Math.random() * 6,
+                grav: sh.grav || 0,
+                explode: sh.explode,
+                homing: sh.homing,
+                pull: sh.pull,
+                eat: sh.eat,
+                hidden: sh.hidden,
+                life: 3
+              });
+            }
+          }
+          if (shots.length > GF_MAX) shots.splice(0, shots.length - GF_MAX);
+        }
+        const wW = W / GF_ZOOM, wH = H / GF_ZOOM;
+        for (const b of shots) {
+          b.vy += b.grav * GF_SPEED * GF_SPEED * dt;
+          b.x += b.vx * dt;
+          b.y += b.vy * dt;
+          b.spin += dt * 10;
+          b.life -= dt;
+        }
+        shots = shots.filter((b) => b.life > 0 && b.x > -10 && b.x < wW + 10 && b.y > -10 && b.y < wH + 10);
+        for (const bm of beams) bm.t -= dt;
+        beams = beams.filter((bm) => bm.t > 0);
+        flash -= dt;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "#0b0e14";
+        ctx.fillRect(0, 0, W, H);
+        ctx.save();
+        ctx.scale(GF_ZOOM, GF_ZOOM);
+        const G = { ctx };
+        ctx.lineCap = "round";
+        for (const bm of beams) {
+          ctx.globalAlpha = bm.t / bm.max;
+          if (bm.field) {
+            ctx.fillStyle = bm.col;
+            ctx.globalAlpha *= 0.35;
+            ctx.beginPath();
+            ctx.arc(mx + bm.r + 6, my, bm.r * (1.2 - bm.t / bm.max * 0.4), 0, 6.283);
+            ctx.fill();
+          } else {
+            ctx.strokeStyle = bm.col;
+            ctx.lineWidth = bm.w;
+            ctx.beginPath();
+            ctx.moveTo(mx, my);
+            ctx.lineTo(mx + Math.cos(bm.a) * wW, my + Math.sin(bm.a) * wW);
+            ctx.stroke();
+          }
+        }
+        for (const b of shots) {
+          ctx.globalAlpha = 1;
+          if (b.hidden) continue;
+          if (b.pull) {
+            ctx.fillStyle = "#050208";
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.eat || b.size * 0.78, 0, 6.283);
+            ctx.fill();
+            ctx.strokeStyle = "#b98aff";
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+            continue;
+          }
+          if (b.look && drawLook(fw, G, b)) continue;
+          const sp = Math.hypot(b.vx, b.vy) || 1, len = Math.max(0.5, Math.min(46, sp / GF_SPEED * 0.022));
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = b.col;
+          ctx.lineWidth = b.size * 1.7;
+          ctx.beginPath();
+          ctx.moveTo(b.x - b.vx / sp * len, b.y - b.vy / sp * len);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+        ctx.restore();
+        ctx.globalAlpha = 1;
+        if (g) drawGun(ctx, gx, gy, 0, sc, gunAccent(g));
+        if (flash > 0) {
+          ctx.globalAlpha = Math.min(1, flash / 0.07);
+          ctx.fillStyle = g ? gunAccent(g) : "#fff";
+          ctx.beginPath();
+          ctx.arc(mx * GF_ZOOM + 2, my * GF_ZOOM, 3.5, 0, 6.283);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      };
+      raf = requestAnimationFrame(loop);
+      return () => cancelAnimationFrame(raf);
+    }, []);
+    return h("canvas", { ref, className: "gfire", "data-fire": 1 });
+  }
   function SlotGrid({ gun, tile, sig, sim }) {
     const [lit, setLit] = useState(null);
     const steps = useMemo(() => pullSteps(gun), [sig]);
@@ -27714,6 +28730,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const LO = input.current.loadout;
     useEffect(() => {
       SFX.fx("open");
+      input.current.pickTarget = null;
       return () => SFX.fx("close");
     }, []);
     const [sel, setSel] = useState(LO.sel);
@@ -27840,7 +28857,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       window.addEventListener("pointerup", up);
       window.addEventListener("pointercancel", up);
     };
-    const tile = (id, from, key) => {
+    const tile = (id, from, key, n = 1) => {
       const m = id ? MODS[id] : null;
       return h(
         "div",
@@ -27853,8 +28870,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           onPointerDown: m ? startDrag(id, from) : void 0
         },
         m ? h("span", { className: "tg" }, m.glyph) : h("span", { className: "tg" }, "+"),
+        tgtBadge(id),
         m ? h("span", { className: "tn" }, m.name) : null,
-        m && m.mark ? h("span", { className: "tmark" }, m.mark) : null
+        m && m.mark && n < 2 ? h("span", { className: "tmark" }, m.mark) : null,
+        n > 1 ? h("span", { className: "tcount", "data-n": n }, h("b", null, n)) : null
+        // a stack: how many copies
       );
     };
     const shown = info && MODS[info];
@@ -27874,11 +28894,58 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       () => gun ? buildAdvice(gun, bagIds, SHOW_TIPS) : null,
       [gsig, SHOW_TIPS ? bagIds.join() : ""]
     );
+    const advice = gun && adv ? (() => {
+      const apply = (t) => (e) => {
+        e.preventDefault();
+        if (t.kind === "move") {
+          const a = gun.slots[t.slot];
+          gun.slots[t.slot] = gun.slots[t.other];
+          gun.slots[t.other] = a;
+        } else {
+          const outgoing = gun.slots[t.slot];
+          const k = bagIds.indexOf(t.id);
+          if (k >= 0) takeFromBag(k);
+          gun.slots[t.slot] = t.id;
+          returnToBag(outgoing);
+        }
+        resetGun(gun);
+        refresh();
+      };
+      return h(
+        "div",
+        { className: "advice" },
+        h(
+          "div",
+          { className: "diag " + adv.limit.key },
+          h("b", null, adv.now.dps.toFixed(1) + " dmg/s"),
+          adv.limit.text
+        ),
+        SHOW_TIPS && canEdit && adv.tips.length ? h(
+          "div",
+          { className: "tips" },
+          adv.tips.map((t, k) => h(
+            "button",
+            { key: k, className: "tip", onPointerDown: apply(t) },
+            t.kind === "move" ? "Swap slots " + (t.slot + 1) + " and " + (t.other + 1) : (gun.slots[t.slot] ? "Replace slot " + (t.slot + 1) + " with " : "Slot " + (t.slot + 1) + ": ") + MODS[t.id].name,
+            h("b", null, "×" + t.gain.toFixed(1) + " dmg")
+          ))
+        ) : null
+      );
+    })() : null;
     const card = shown ? h(
       "div",
       { key: "card" },
       h("div", { className: "shade", onPointerDown: behind }),
-      h(ModCard, { id: info, onClose: () => setInfo(null), top: true })
+      h(ModCard, {
+        id: info,
+        onClose: () => setInfo(null),
+        top: true,
+        // an unset Discriminate in the bag: set its target with the world pointer (game/systems/gun.js)
+        act: info === "discrim" && !LO.debug && LO.bag.includes("discrim") ? { label: "Set target", run: () => {
+          input.current.pickTarget = LO.bag.indexOf("discrim");
+          close();
+        } } : null
+      })
     ) : null;
     return h(
       "div",
@@ -27897,67 +28964,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         "div",
         { className: "btop" },
         gun ? h(GunStats, { gun, sim, sig: gsig }) : h("div", { className: "gstats" }, h("p", { className: "lab" }, "No gun in this slot")),
-        h(
-          "div",
-          { className: "gtabs" },
-          LO.guns.map((g, i) => h(
-            "button",
-            {
-              key: i,
-              "data-gun": i,
-              className: "gtab" + (g ? "" : " empty") + (i === sel ? " on" : "") + (gdrag && gdrag.from === i ? " lifted" : "") + (gdrag && gdrag.over === i && gdrag.from !== i ? " target" : ""),
-              onPointerDown: gunPress(i)
-            },
-            h("span", { className: "gname", style: g ? { color: gunColor(g) } : null }, g ? g.name : "Empty"),
-            g ? h(GunIcon, { gun: g }) : h("span", { className: "gsub" }, "—")
-          ))
-        )
+        h(GunFire, { gun, sim })
       ),
       gun ? h("p", { className: "lab" }, gun.shuffle ? "On the gun — order is shuffled every recharge" : "On the gun — fires left to right, row by row") : null,
       gun ? h(SlotGrid, { gun, tile, sig: gsig, sim }) : null,
-      gun && adv ? (() => {
-        const apply = (t) => (e) => {
-          e.preventDefault();
-          if (t.kind === "move") {
-            const a = gun.slots[t.slot];
-            gun.slots[t.slot] = gun.slots[t.other];
-            gun.slots[t.other] = a;
-          } else {
-            const outgoing = gun.slots[t.slot];
-            const k = bagIds.indexOf(t.id);
-            if (k >= 0) takeFromBag(k);
-            gun.slots[t.slot] = t.id;
-            returnToBag(outgoing);
-          }
-          resetGun(gun);
-          refresh();
-        };
-        return h(
-          "div",
-          { className: "advice" },
-          h(
-            "div",
-            { className: "diag " + adv.limit.key },
-            h("b", null, adv.now.dps.toFixed(1) + " dmg/s"),
-            adv.limit.text
-          ),
-          SHOW_TIPS && canEdit && adv.tips.length ? h(
-            "div",
-            { className: "tips" },
-            adv.tips.map((t, k) => h(
-              "button",
-              { key: k, className: "tip", onPointerDown: apply(t) },
-              t.kind === "move" ? "Swap slots " + (t.slot + 1) + " and " + (t.other + 1) : (gun.slots[t.slot] ? "Replace slot " + (t.slot + 1) + " with " : "Slot " + (t.slot + 1) + ": ") + MODS[t.id].name,
-              h("b", null, "×" + t.gain.toFixed(1) + " dmg")
-            ))
-          ) : null
-        );
-      })() : null,
+      advice,
       h(
         "div",
         { className: "bagHead" },
         h("p", { className: "lab" }, LO.debug ? "Debug shelf — one of every mod, never used up" : "Collected mods" + (LO.bag.length ? "" : " — none yet, find them in the cave")),
-        canEdit && !LO.debug && LO.bag.length > 1 ? h("button", {
+        canEdit && !LO.debug && stackBag(LO.bag).length > 1 ? h("button", {
           className: "sortBag",
           onPointerDown: (e) => {
             e.preventDefault();
@@ -27968,7 +28984,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(
         ScrollBox,
         { cls: "bag" + (LO.debug ? " debug" : ""), drop: "bag" },
-        h("div", { className: "mgrid" }, bagIds.map((id, i) => tile(id, { type: "bag", i }, "b" + i)))
+        h("div", { className: "mgrid" }, LO.debug ? bagIds.map((id, i) => tile(id, { type: "bag", i }, "b" + i)) : stackBag(LO.bag).map((st) => tile(st.id, { type: "bag", i: st.i }, "s" + st.key, st.n)))
+      ),
+      // the gun buttons: a row under the mod grid (owner, item 4; they were a 2×2 by the stats)
+      h(
+        "div",
+        { className: "gtabs gunrow" },
+        LO.guns.map((g, i) => h(
+          "button",
+          {
+            key: i,
+            "data-gun": i,
+            className: "gtab" + (g ? "" : " empty") + (i === sel ? " on" : "") + (gdrag && gdrag.from === i ? " lifted" : "") + (gdrag && gdrag.over === i && gdrag.from !== i ? " target" : ""),
+            onPointerDown: gunPress(i)
+          },
+          h("span", { className: "gname", style: g ? { color: gunColor(g) } : null }, g ? g.name : "Empty"),
+          g ? h(GunIcon, { gun: g }) : h("span", { className: "gsub" }, "—")
+        ))
       ),
       h(
         "div",
@@ -28259,6 +29291,174 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
+  // src/ui/minimap.js
+  var MINI_ZOOMS = [1, 2, 4];
+  var MINI_PAD = 8;
+  var MINI_REACH = 1.3;
+  var MINI_EDGE = 9;
+  var MAP_SPREAD = 2;
+  function spread(seen) {
+    const a = new Uint8Array(FW * FH), b = new Uint8Array(FW * FH), R = MAP_SPREAD;
+    for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+      if (!seen[y * FW + x]) continue;
+      for (let dx = Math.max(0, x - R); dx <= Math.min(FW - 1, x + R); dx++) a[y * FW + dx] = 1;
+    }
+    for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+      if (!a[y * FW + x]) continue;
+      for (let dy = Math.max(0, y - R); dy <= Math.min(FH - 1, y + R); dy++) b[dy * FW + x] = 1;
+    }
+    return b;
+  }
+  function miniBox(deck, top) {
+    const xs = deck.guns.map((g) => g.x), ys = deck.guns.map((g) => g.y), r = deck.btn / 2;
+    const left = Math.min(...xs) - r, right = Math.max(...xs) + r, bottom = Math.min(...ys) - r - MINI_PAD;
+    return { left: Math.round(left), top: Math.round(top), width: Math.round(right - left), height: Math.max(40, Math.round(bottom - top)) };
+  }
+  var miniScale = (bw, viewW, z) => bw / (Math.max(1, viewW) * MINI_REACH) / MINI_ZOOMS[z % MINI_ZOOMS.length];
+  var miniAt = (wx, wy, cx, cy, k, bw, bh) => ({ x: bw / 2 + (wx - cx) * k, y: bh / 2 + (wy - cy) * k });
+  function edgeClamp(x, y, bw, bh, m) {
+    if (x >= m && x <= bw - m && y >= m && y <= bh - m) return { x, y, out: false };
+    const dx = x - bw / 2, dy = y - bh / 2, hx = bw / 2 - m, hy = bh / 2 - m;
+    const t = Math.min(dx ? hx / Math.abs(dx) : Infinity, dy ? hy / Math.abs(dy) : Infinity);
+    return { x: bw / 2 + dx * t, y: bh / 2 + dy * t, out: true };
+  }
+  function arrow(c, x, y, a) {
+    c.save();
+    c.translate(x, y);
+    c.rotate(a);
+    c.fillStyle = "#fff";
+    c.strokeStyle = "rgba(0,0,0,0.7)";
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(7, 0);
+    c.lineTo(-5, -5);
+    c.lineTo(-2.5, 0);
+    c.lineTo(-5, 5);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.restore();
+  }
+  function crystal(c, x, y, green) {
+    c.fillStyle = green ? "#5ef08a" : "#ff4d5e";
+    c.strokeStyle = "rgba(0,0,0,0.6)";
+    c.lineWidth = 0.8;
+    c.beginPath();
+    c.moveTo(x, y - 4);
+    c.lineTo(x + 2.6, y);
+    c.lineTo(x, y + 4);
+    c.lineTo(x - 2.6, y);
+    c.closePath();
+    c.fill();
+    c.stroke();
+  }
+  function MiniMap({ input, box }) {
+    const cv = useRef(null);
+    const [z, setZ] = useState(0);
+    const zr = useRef(0);
+    zr.current = z;
+    useEffect(() => {
+      const c = cv.current;
+      const ctx = c.getContext("2d");
+      const fogC = document.createElement("canvas");
+      fogC.width = FW;
+      fogC.height = FH;
+      const fx = fogC.getContext("2d");
+      const maskC = document.createElement("canvas");
+      maskC.width = CW;
+      maskC.height = CH;
+      const mx = maskC.getContext("2d");
+      if (!ctx || !fx || !mx) return;
+      let raf = 0, alive = true, lastN = -1, lastSeen = -1;
+      const remask = (M) => {
+        const lift = spread(M.seen), im = fx.createImageData(FW, FH), d = im.data;
+        for (let i = 0; i < FW * FH; i++) d[i * 4 + 3] = lift[i] ? 255 : 0;
+        fx.putImageData(im, 0, 0);
+        mx.globalCompositeOperation = "copy";
+        mx.drawImage(M.mini, 0, 0);
+        mx.globalCompositeOperation = "destination-in";
+        mx.imageSmoothingEnabled = true;
+        mx.drawImage(fogC, 0, 0, FW * FOG, FH * FOG);
+        mx.globalCompositeOperation = "source-over";
+      };
+      const frame = () => {
+        if (!alive) return;
+        raf = requestAnimationFrame(frame);
+        const M = input.current.mapView && input.current.mapView();
+        if (!M) return;
+        let n = 0;
+        for (let i = 0; i < M.seen.length; i++) n += M.seen[i] ? 1 : 0;
+        if (M.mapN !== lastN || n !== lastSeen) {
+          remask(M);
+          lastN = M.mapN;
+          lastSeen = n;
+        }
+        const dpr = window.devicePixelRatio || 1, bw = c.clientWidth, bh = c.clientHeight;
+        if (c.width !== Math.round(bw * dpr) || c.height !== Math.round(bh * dpr)) {
+          c.width = Math.round(bw * dpr);
+          c.height = Math.round(bh * dpr);
+        }
+        const k = miniScale(bw, M.viewW, zr.current);
+        c.dataset.k = k.toFixed(5);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, bw, bh);
+        const o = miniAt(0, 0, M.x, M.y, k, bw, bh);
+        ctx.imageSmoothingEnabled = k * CELL < 1;
+        ctx.drawImage(maskC, o.x, o.y, CW * CELL * k, CH * CELL * k);
+        for (const q of M.items) {
+          if (q.kind !== "crystal" || q.taken || q.fly) continue;
+          const cx = Math.floor(q.x / (FOG * CELL)), cy = Math.floor(q.y / (FOG * CELL));
+          if (cx < 0 || cy < 0 || cx >= FW || cy >= FH || !M.seen[cy * FW + cx]) continue;
+          const p = miniAt(q.x, q.y, M.x, M.y, k, bw, bh);
+          if (p.x > -4 && p.y > -4 && p.x < bw + 4 && p.y < bh + 4) crystal(ctx, p.x, p.y, !!q.green);
+        }
+        ctx.fillStyle = "#ff3b3b";
+        let foes = 0;
+        for (const e of M.foes) {
+          if (e.dead) continue;
+          const ex = Math.floor(e.x / (FOG * CELL)), ey = Math.floor(e.y / (FOG * CELL));
+          if (ex < 0 || ey < 0 || ex >= FW || ey >= FH || !M.seen[ey * FW + ex]) continue;
+          const p = miniAt(e.x, e.y, M.x, M.y, k, bw, bh);
+          if (p.x < 0 || p.y < 0 || p.x > bw || p.y > bh) continue;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+          ctx.fill();
+          foes++;
+        }
+        c.dataset.foes = String(foes);
+        arrow(ctx, bw / 2, bh / 2, M.aim.on ? Math.atan2(M.aim.ny, M.aim.nx) : M.face < 0 ? Math.PI : 0);
+        ctx.font = '13px system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const at = [];
+        for (const q of M.pins) {
+          const p = miniAt(q.x, q.y, M.x, M.y, k, bw, bh), e = edgeClamp(p.x, p.y, bw, bh, MINI_EDGE);
+          ctx.globalAlpha = e.out ? 0.8 : 1;
+          ctx.fillText(q.e, e.x, e.y);
+          at.push(Math.round(e.x) + "," + Math.round(e.y) + (e.out ? ",out" : ""));
+        }
+        ctx.globalAlpha = 1;
+        c.dataset.pins = at.join(" ");
+      };
+      frame();
+      return () => {
+        alive = false;
+        cancelAnimationFrame(raf);
+      };
+    }, []);
+    return h("canvas", {
+      ref: cv,
+      className: "minimap",
+      "data-zoom": MINI_ZOOMS[z],
+      style: { left: box.left, top: box.top, width: box.width, height: box.height },
+      onPointerDown: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setZ((v) => (v + 1) % MINI_ZOOMS.length);
+      }
+    });
+  }
+
   // src/ui/map.js
   var PIN_KEY = "caverunner-pins";
   var PIN_DEFAULTS = ["📍", "⭐", "💀", "💰", "❓", "🏠"];
@@ -28306,19 +29506,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { x: VEND_SELL_X, w: MACHINE_W, col: "#b07cff", name: "sell" },
     ...Object.keys(SHOPS).map((k) => ({ x: SHOPS[k].x, w: MACHINE_W, col: SHOPS[k].hue, name: k }))
   ];
-  var MAP_SPREAD = 2;
-  function spread(seen) {
-    const a = new Uint8Array(FW * FH), b = new Uint8Array(FW * FH), R = MAP_SPREAD;
-    for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
-      if (!seen[y * FW + x]) continue;
-      for (let dx = Math.max(0, x - R); dx <= Math.min(FW - 1, x + R); dx++) a[y * FW + dx] = 1;
-    }
-    for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
-      if (!a[y * FW + x]) continue;
-      for (let dy = Math.max(0, y - R); dy <= Math.min(FH - 1, y + R); dy++) b[dy * FW + x] = 1;
-    }
-    return b;
-  }
   function helmet(x, cx, cy, s, face) {
     const r = s / 2, f = face < 0 ? -1 : 1;
     x.save();
@@ -29249,6 +30436,78 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     // the level buy machine's floor menu (not a SHOPS machine: game/systems/vend.js)
   };
 
+  // src/ui/gunhold.js
+  var GUN_HOLD_MS = 450;
+  function gunSlotPress(input, i, on) {
+    return (e) => {
+      e.preventDefault();
+      const btn = e.currentTarget instanceof HTMLElement ? e.currentTarget : null;
+      const sx = e.clientX, sy = e.clientY;
+      const LO = input.current.loadout;
+      const mode = input.current.gunNear ? "take" : LO.guns[i] ? "lift" : null;
+      let fired = false, lifted = false;
+      const done = () => {
+        clearTimeout(timer);
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        window.removeEventListener("pointercancel", cancel);
+        on.setHold(null);
+        on.setDrag(null);
+      };
+      const timer = mode ? setTimeout(() => {
+        fired = true;
+        on.setHold(null);
+        if (mode === "take") {
+          done();
+          if (input.current.takeGun) input.current.takeGun(i);
+          return;
+        }
+        lifted = true;
+        on.setDrag({ i, x: sx, y: sy });
+      }, GUN_HOLD_MS) : 0;
+      const move = (ev) => {
+        if (lifted) {
+          on.setDrag({ i, x: ev.clientX, y: ev.clientY });
+          return;
+        }
+        if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 14) {
+          fired = true;
+          done();
+        }
+      };
+      const up = (ev) => {
+        const tap = !fired;
+        done();
+        if (tap) {
+          on.tap();
+          return;
+        }
+        if (!lifted) return;
+        const r = btn && btn.getBoundingClientRect();
+        if (r && ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom) return;
+        if (input.current.dropGun) input.current.dropGun(i, ev.clientX, ev.clientY);
+      };
+      const cancel = () => {
+        fired = true;
+        done();
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+      window.addEventListener("pointercancel", cancel);
+      if (mode) on.setHold({ i, mode });
+    };
+  }
+  function HoldRing() {
+    return h(
+      "svg",
+      { className: "holdring", viewBox: "0 0 40 40" },
+      h("circle", { cx: 20, cy: 20, r: 18, pathLength: 100 })
+    );
+  }
+  function DragGun({ gun, x, y }) {
+    return h("div", { className: "gundrag", style: { left: x + "px", top: y + "px" } }, h(GunIcon, { gun }));
+  }
+
   // src/ui/swap.js
   function GunSwap({ input, refresh, onDone }) {
     const LO = input.current.loadout;
@@ -29629,11 +30888,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [edit, setEdit] = useState(false);
     const [devOpen, setDevOpen] = useState(false);
     const [spawnOpen, setSpawnOpen] = useState(false);
+    const [lvlOpen, setLvlOpen] = useState(false);
     const [witnessOpen, setWitnessOpen] = useState(false);
     const [savedClip, setSavedClip] = useState(null);
     const [bagTab, setBagTab] = useState("guns");
     const [gunInfo, setGunInfo] = useState(-1);
-    const [held, setHeld] = useState(-1);
+    const [gunHold, setGunHold] = useState(null);
+    const [gunDrag, setGunDrag] = useState(null);
     const [confirmAt, setConfirmAt] = useState(null);
     const [, bump] = useState(0);
     const refresh = () => bump((n) => n + 1);
@@ -29773,6 +31034,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const canEdit = inShop || perkB.tinker || !!LO.debugPerks;
     const heldGun = input.current.loadout.guns[input.current.loadout.sel];
     const deck = deckLayout(vw, size, LO.guns.length);
+    const sticksTop = sticksRef.current ? sticksRef.current.getBoundingClientRect().top : window.innerHeight - size;
+    const mini = perkB.minimap && !mapOpen ? miniBox(deck, window.innerHeight / 2 - sticksTop) : null;
     const btnAt = (pt) => ({
       width: deck.btn,
       height: deck.btn,
@@ -29870,7 +31133,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }) : null,
           // shop stock is "Buy <price>"; anything you pick up for free is just "Take" —
           // the card above already names it, so a nameless item (the heal) shows its name here.
-          h(
+          // a gun on the ground: hold a gun slot to take it (ui/gunhold.js), no right-stick tap
+          prompt.gun && prompt.found && !input.current.gunMenu ? h(
+            "div",
+            { className: "pbuy" },
+            h("b", null, "Hold a gun slot")
+          ) : h(
             "div",
             {
               className: "pbuy" + (prompt.can ? "" : " cant"),
@@ -29943,25 +31211,35 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           // a dark shade under the controls (owner): clear at the map button's top, black by the
           // sticks' middles and on down, so the sticks and buttons stand out from the cave
           h("div", { className: "ctlshade", style: shadeAt(deck, size) }),
+          mini ? h(MiniMap, { input, box: mini }) : null,
           h(Stick, { size, kind: "left", input, refresh }),
           h(Stick, { size, kind: "right", input, refresh }),
-          // the gun buttons ride an arc round the right stick; tap to hold it, hold for its card
+          // the gun buttons ride an arc round the right stick (ui/gunhold.js): tap to hold it (the
+          // one in hand: its card); hold by a gun on the ground to take it into that slot; hold
+          // with none in reach to drag this one out and drop it
           h(
             "div",
             { className: "slots" },
-            LO.guns.map((g, i) => h("button", {
-              key: i,
-              className: "dbtn slot" + (g ? "" : " empty") + (i === LO.sel ? " on" : "") + (held === i ? " holding" : ""),
-              style: btnAt(deck.guns[i]),
-              title: g ? g.name + " — hold for details" : "Empty slot",
-              onPointerDown: holdPress(
-                () => select(i),
-                () => {
-                  if (input.current.loadout.guns[i]) setGunInfo(i);
-                },
-                (on) => setHeld(on ? i : -1)
-              )
-            }, g ? h(GunIcon, { gun: g }) : null))
+            LO.guns.map((g, i) => h(
+              "button",
+              {
+                key: i,
+                className: "dbtn slot" + (g ? "" : " empty") + (i === LO.sel ? " on" : "") + (gunHold && gunHold.i === i ? " ringing " + gunHold.mode : "") + (gunDrag && gunDrag.i === i ? " lifted" : ""),
+                style: btnAt(deck.guns[i]),
+                title: g ? g.name + " — hold to take a gun here, or drag it out" : "Empty slot — hold to take a gun here",
+                onPointerDown: gunSlotPress(input, i, {
+                  tap: () => {
+                    const L3 = input.current.loadout;
+                    if (L3.guns[i] && L3.sel === i) setGunInfo(i);
+                    else select(i);
+                  },
+                  setHold: setGunHold,
+                  setDrag: setGunDrag
+                })
+              },
+              g && !(gunDrag && gunDrag.i === i) ? h(GunIcon, { gun: g }) : null,
+              gunHold && gunHold.i === i ? h(HoldRing) : null
+            ))
           ),
           // the bag mirrors the last gun on the left, and the map toggle sits right above it
           h(
@@ -30029,10 +31307,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         onSpawnGun: () => {
           setDevOpen(false);
           setSpawnOpen(true);
+        },
+        onSpawnLevel: () => {
+          setDevOpen(false);
+          setLvlOpen(true);
         }
       }) : null,
+      lvlOpen ? h(SpawnLevel, { input, close: () => setLvlOpen(false) }) : null,
       spawnOpen ? h(SpawnGun, { input, close: () => setSpawnOpen(false) }) : null,
       shopOpen && SHOP_MENUS[shopOpen] ? h(SHOP_MENUS[shopOpen], { key: shopOpen, input, close: closeShop }) : null,
+      gunDrag && LO.guns[gunDrag.i] ? h(DragGun, { gun: LO.guns[gunDrag.i], x: gunDrag.x, y: gunDrag.y }) : null,
       found ? h(GunSwap, { input, refresh, onDone: () => {
         setGunInfo(-1);
         refresh();

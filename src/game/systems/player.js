@@ -177,6 +177,7 @@ export function movePlayer(W, G, F) {
   }
   if (W.p.dead) L = NO_INPUT;
   W.p.jx = L.nx; W.p.jy = L.ny;
+  W.p.steer = L.active ? L.nx * L.mag : 0;   // how hard you push across (a vine swing keeps your facing without it)
 
   // ---- jetpack and fuel ----
   const raw = L.active ? L.mag : 0;

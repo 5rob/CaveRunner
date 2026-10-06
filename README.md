@@ -78,7 +78,9 @@ all your gear, in a freshly generated cave. Dying or Restart wipes it.
 | Interact: buy, take a gun, mod or perk | Tap the middle of the right stick | F |
 | Restart after dying | Tap the right stick | — |
 | Pick gun | Tap a gun button (the arc round the right stick) | 1 to 4 |
-| Gun details | Hold a gun button | — |
+| Gun details | Tap the gun button in hand | — |
+| Take a gun on the ground | Hold a gun button | — |
+| Drop a gun | Hold a gun button (nothing nearby), drag, let go | — |
 | Reorder guns | Hold and drag a gun button in the build screen | — |
 | Bag: guns & mods screen (open anywhere) | Tap the backpack button | E |
 | Map (pauses the run) | Tap the map button, again to close; on the map drag to pan, pinch to zoom | M |
@@ -186,9 +188,8 @@ tall enough to fill the screen. At the bottom of the card is a small circle with
 in it — tap the right stick — next to the price (or "free").
 
 Once you have read the card, a tap on the right stick takes it. A **mod** goes straight
-into your bag — no second screen, since a mod has no slot to choose. A **gun** opens the
-swap chooser instead (see **Guns and mods** below): a gun goes into one of four slots and
-is worth comparing before you commit.
+into your bag — no second screen, since a mod has no slot to choose. A **gun** is taken by
+holding one of your gun buttons instead (see **Guns and mods** below).
 
 ## The shop
 
@@ -295,7 +296,9 @@ takes only that stat's perks, **six perk slots** for the rest, and every perk in
 carry lit (with how many), the ones you've unlocked but don't carry faded, the rest blank tiles in their place (nothing
 given away until you unlock them).
 Drag a carried perk onto a slot to fit it, a fitted one to another slot to swap, or off the
-slots to take it out again. Each perk fits once: one already fitted shows ticked and faded, and a
+slots to take it out again. The **Mini-map** perk shows a small map over the gun buttons (tap it to
+zoom out twice, a third tap back): you as an arrow, creatures and crystals where you've explored, your
+pins (stuck to the edge when they're off it). Each perk fits once: one already fitted shows ticked and faded, and a
 second copy can't go in another slot. Tap any perk to see its card. The suit is locked outside the
 shop: change it there (or anywhere, with Tinker). The Exo Suit tab is where you see what's fitted
 (there's no perk column on the play screen any more).
@@ -476,14 +479,15 @@ Pistol** (one Bolt) free. Anything you find on floor 1 beats the pistol. (Before
 with the pistol, a **Pick Axe** — one slot, a **Buzzsaw** — and the **Gravity Gun**, Follow Me then a
 White Hole; they're still in the code, `startingGuns`, and the browser tests start with them.)
 
-Standing next to a gun on the ground shows its card. A tap opens the chooser: it pauses the
-game and shows what you found with a big square button for each of your four slots across the
-bottom, and the two guns sharing the rest of the screen, so you can read either one's mods without scrolling. A gun's mods show as the same square tiles as the
-Bag's; tap one (here, at the gun machine or in the Bag) for that mod's card. Tap a slot to compare that gun,
-hold one to swap it out — whatever it replaces is left on the ground where you found the new
-one. The found gun's stats are coloured against whichever of your guns you last tapped (your
-held gun to start with), green for better and red for worse, counting a smaller cast delay,
-recharge or spread as better.
+Standing next to a gun on the ground shows its card, its stats coloured against the gun in your
+hand (green for better, red for worse, counting a smaller cast delay, recharge or spread as better).
+To take it, **hold one of your round gun buttons** (the empty dotted one too): a ring fills round it,
+and when it's full the gun goes into that slot — whatever was there is left on the ground where the
+new one lay. With no gun nearby, holding a gun button lifts that gun out under your finger: drag it
+anywhere and let go to drop it on the ground there (at your feet if that spot is inside rock or out
+of sight); it's no longer yours. Let go back over its button to change your mind. Tap a gun button
+to hold that gun; tap the one already in your hand for its card. A gun's mods show as the same
+square tiles as the Bag's; tap one (on a card, at the gun machine or in the Bag) for that mod's card.
 
 Every gun is given its own colour when it is made, and keeps it for the run, so
 the name reads the same in the build screen and on its card — handy
@@ -496,8 +500,10 @@ Sort button above your collected mods reorders your collection into those same g
 
 Mods are the spells. Some are shots (Bolt, Buckshot, Slug, Blast, Bounce Orb...)
 and the rest are modifiers (Homing, Heavy Shot, Scatter, Double Cast, Borer...).
-A modifier only affects the shots to its **right** on the gun, so the order you
-drag them into matters. Firing walks the list left to right; run off the end and
+A modifier only affects the **next** spell to its right on the gun (several in a row all
+land on that one spell; the spell after it comes out plain), so the order you
+drag them into matters. Mods you collect twice stack in the Bag, with a count in the corner;
+each gun slot still takes one. Firing walks the list left to right; run off the end and
 the gun recharges before starting over.
 
 The build screen (the **Bag**) has four parts. Top left, the selected gun's stats, one
@@ -578,7 +584,11 @@ a cave shooter. They come in a few shapes:
   **White Hole** (Noita's Vacuum Field) is a tiny white-and-blue hole, with specks being drawn
   into it, that pulls every creature, their shots, coins and loose items within reach hard into its
   middle and holds them there, straight through walls, harming nothing. They take a cast slot like a shot does.
-- **Modifiers** change the shots drawn after them, as always. Several bend the flight path,
+- **Modifiers** change the next spell drawn after them (only that one).
+  **Aim Assist** turns the aim stick into a pointer that snaps onto creatures and fires by itself
+  once it's on one (no aim line or crosshair). **Discriminate** is set once per copy: tap it in the
+  Bag, **Set target**, point at a creature, yourself or an object and let go; its shot then passes
+  through everything else and only hits that kind. Several bend the flight path,
   and the aim line draws every one of them properly: **Boomerang** flies out and, halfway through
   its flight, turns and comes back into your hand; **Ping-Pong** snaps back a little and on again;
   **Spiral Arc** swings side to side in a widening wave along its line; **Orbiting Arc** circles
@@ -674,7 +684,7 @@ them if it cannot find either.
 - Recoil that shoves you around, which the jetpack can work with
 - Gold that flies to you once you are close enough (a short range for now); gold just knocked loose by a kill or a dig waits a quarter of a second first, so you see it
 - A black arcade control deck: mono type, scanlines, and two rings on the right stick — the dead zone and the full throw
-- Picking a mod up is one tap — its card shows while you stand next to it, and a tap drops it straight in your bag; a gun opens a compare-and-swap chooser so you can pick which of your four slots it takes
+- Picking a mod up is one tap — its card shows while you stand next to it, and a tap drops it straight in your bag; a gun goes into whichever gun button you hold
 - Jetpack with fuel that refills on the ground; upward thrust is instant
 - 16 creatures in five shapes, each floor owning its own fixed roster: shooters that hover and fire, turrets that wind up a long shot, chasers that come at you and bombers that burst on contact
 - Creature stats and gold scale with the floor they belong to, so the same enemy gets harder as you climb

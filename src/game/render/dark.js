@@ -27,8 +27,9 @@ import { clamp } from '../../core/util.js';
 import { DEV, kcurve, kr } from '../../dev/knobs.js';
 import { curveFn } from '../../world/byDistance.js';
 import { silkColour, silkTint, tintRamp } from '../../world/dark.js';
+import { flickerNew, flickerSlices, flickerStep } from '../../world/holoflicker.js';
 import { beamLift } from '../../world/vision.js';
-import { BG_PAR, holoBright, holoGrid, holoLayer, sizedCanvas } from './holo.js';
+import { BG_PAR, holoBright, holoGrid, holoKeep, holoLayer, sizedCanvas } from './holo.js';
 
 /** @type {{ web: Uint8Array | null, webC: HTMLCanvasElement | null, zf: Float32Array | null, zfFor: Uint8Array | null,
  *  zC: HTMLCanvasElement | null, band: HTMLCanvasElement | null, bb: HTMLCanvasElement | null, bbFor: Uint8Array | null, bbKey: string,
@@ -37,12 +38,16 @@ import { BG_PAR, holoBright, holoGrid, holoLayer, sizedCanvas } from './holo.js'
  *  bx0: number, by0: number, bx1: number, by1: number, lift: Float32Array, lut: Float32Array,
  *  zt: Float32Array | null, zd: Float32Array | null, zB: HTMLCanvasElement | null, ztKey: string, ztFor: Uint8Array | null,
  *  beam: { a: number, r: number, n: number, x: number, y: number }, webL: HTMLCanvasElement | null,
- *  lm: HTMLCanvasElement | null, lmImg: ImageData | null, lt: HTMLCanvasElement | null }} */
+ *  lm: HTMLCanvasElement | null, lmImg: ImageData | null, lt: HTMLCanvasElement | null,
+ *  flk: import('../../world/holoflicker.js').HoloFlicker, flT: number, hb: number }} */
 const D = { web: null, webC: null, zf: null, zfFor: null, zC: null, band: null, bb: null, bbFor: null, bbKey: '', tw: 0, th: 0,
   back: null, mt: null, on: false,
   fx0: 0, fy0: 0, fx1: 0, fy1: 0, bx0: 0, by0: 0, bx1: 0, by1: 0, lift: new Float32Array(FW * FH), lut: new Float32Array(65),
   zt: null, zd: null, zB: null, ztKey: '', ztFor: null, beam: { a: 0, r: 0, n: 0, x: 0, y: 0 }, webL: null,
-  lm: null, lmImg: null, lt: null };
+  lm: null, lmImg: null, lt: null, flk: flickerNew(), flT: 0, hb: 0 };
+
+/** the hologram's glitching in the zones (world/holoflicker.js), for the test hook and probes */
+export const holoFlk = () => D.flk;
 
 /** (light.js drawFog, each frame) the gun light as it is, for the next frame's black: its aim, reach, the glow
  * round you and where you are (world units) @param {number} a @param {number} r @param {number} n @param {number} x @param {number} y */
@@ -81,7 +86,8 @@ export const darkOn = () => D.on;
 // only paint it over, v0.0.148). Per fog cell: the ramp × darkness × (1 - the lift)
 /** @param {number} x @param {number} y @param {number} R */
 export function darkHides(x, y, R) {
-  if (!D.on || !D.zt || DEV.l2dDark < 1) return false;
+  // (not while the hologram lights the zone's backdrop: in front of it the alien is a silhouette, owner's list item 1)
+  if (!D.on || !D.zt || DEV.l2dDark < 1 || D.hb > 0.01) return false;
   const cx0 = Math.floor((x - R) / FOG_U) - 1, cx1 = Math.floor((x + R) / FOG_U) + 1;
   const cy0 = Math.floor((y - R) / FOG_U) - 1, cy1 = Math.floor((y + R) / FOG_U) + 1;
   if (cx0 < D.bx0 || cy0 < D.by0 || cx1 >= D.bx1 || cy1 >= D.by1) return false;
@@ -282,13 +288,33 @@ export function darkPrep(W, G, F) {
   const hs = G.bgHiOn ? BCELL / CELL : 1;
   bc.drawImage(D.bb, gx0 * hs, gy0 * hs, (gx1 - gx0) * hs, (gy1 - gy0) * hs, (gx0 * BCELL + bgox) / CELL - tx0, (gy0 * BCELL + bgoy) / CELL - ty0, (gx1 - gx0) * BCELL / CELL, (gy1 - gy0) * BCELL / CELL);
   // the hologram over it, as bright as it is (× DEV.l2dHolo)
-  const hl = holoLayer(), hb = holoBright() * DEV.l2dHolo;
+  // while you're in or near a zone it glitches (owner): dropouts, strobing flashes, torn slices (world/holoflicker.js,
+  // DEV.l2dFlk*): random backlight for the silk, the aliens silhouetted against it. No blur, a few drawImages
+  const dt = clamp(W.time - D.flT, 0, 0.1); D.flT = W.time;
+  const nr = Math.max(0, DEV.l2dFlkNear) * CELL, px = W.p.x + 6, py = W.p.y + 11;
+  const near = !!DEV.l2dFlk && W.dark.some(z => px > z.x0 * CELL - nr && px < (z.x1 + 1) * CELL + nr && py > z.y0 * CELL - nr && py < (z.y1 + 1) * CELL + nr);
+  const fk = flickerStep(D.flk, dt, near, { blink: DEV.l2dFlkRate, tears: DEV.l2dFlkTears, drops: DEV.l2dFlkDrops, flash: DEV.l2dFlkFlash, glitch: DEV.l2dFlkGlitch });
+  holoKeep.on = near;   // (the layer made next frame even while the hologram is dark)
+  // in or near a zone the hologram is on at DEV.l2dFlkBase between the glitches (or brighter, a kill's flash)
+  const h0 = holoBright() * DEV.l2dHolo, hon = near ? Math.max(h0, clamp(DEV.l2dFlkBase, 0, 1) * DEV.l2dHolo) : h0;
+  const hl = holoLayer(), hb = fk.mode === 2 ? Math.max(hon, DEV.l2dHolo) * fk.mul : hon * fk.mul;
+  D.hb = hl ? hb : 0;
   if (hl && hb > 0.01) {
-    const g = holoGrid.rect;
+    const g = holoGrid.rect, dx0 = g.x / CELL - tx0, dy0 = g.y / CELL - ty0, dw = g.w / CELL, dh = g.h / CELL;
     bc.filter = DEV.l2dHoloBlur && bl > 0 ? `blur(${bl}px)` : 'none';
-    bc.globalAlpha = clamp(hb, 0, 1);
-    bc.drawImage(hl, 0, 0, hl.width, hl.height, g.x / CELL - tx0, g.y / CELL - ty0, g.w / CELL, g.h / CELL);
-    bc.filter = 'none';
+    const sl = fk.tear > 0 ? flickerSlices(fk.seed, fk.tear, 14) : null;
+    // past 1 (a flash brighter than the hologram) the rest goes on again, added (lighter)
+    for (let pass = 0; pass < 2; pass++) {
+      const a = pass ? hb - 1 : Math.min(1, hb);
+      if (a <= 0.01) break;
+      bc.globalAlpha = Math.min(1, a); bc.globalCompositeOperation = pass ? 'lighter' : 'source-over';
+      if (!sl) bc.drawImage(hl, 0, 0, hl.width, hl.height, dx0, dy0, dw, dh);
+      else for (const b of sl) {
+        const sy = b.y0 * hl.height, sh = Math.max(1, (b.y1 - b.y0) * hl.height);
+        bc.drawImage(hl, 0, sy, hl.width, sh, dx0 + b.dx, dy0 + b.y0 * dh, dw, (b.y1 - b.y0) * dh);
+      }
+    }
+    bc.filter = 'none'; bc.globalCompositeOperation = 'source-over';
   }
   bc.globalAlpha = 1;
   // the silk multiplied over both: it darkens and tints what's under it, never lights it

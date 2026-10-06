@@ -18,6 +18,7 @@ import { stepAmbience } from './ambience.js';
 import { damageEnemy } from './enemies.js';
 import { ignite, setAlight, youAlight } from './fire.js';
 import { burst } from './particles.js';
+import { matchesTarget } from '../../spells/discrim.js';
 import { hurt } from './player.js';
 import { explode, lineOfSight, solidAt } from './terrain.js';
 import { webDist } from './webs.js';
@@ -160,6 +161,7 @@ export function decorStep(W, G, dt, pcx, pcy) {
       const x0 = pr.x + pr.l, x1 = pr.x + pr.r, y0 = pr.y + pr.t0, y1 = pr.y + pr.b;
       for (const b of W.bullets) {
         if (b.life <= 0 || b.x + b.size < x0 || b.x - b.size > x1 || b.y + b.size < y0 || b.y - b.size > y1) continue;
+        if (b.only && !matchesTarget(b.only, { kind: 'object', id: pr.k })) continue;   // Discriminate: not this one
         if (b.pull || b.eat || b.bore) {          // rolls on through, but only counts once
           const seen = b.propHit || (b.propHit = new Set());
           if (!seen.has(pr)) { seen.add(pr); pr.hurt = (pr.hurt || 0) + 1; }

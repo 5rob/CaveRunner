@@ -23,7 +23,10 @@ interface VendLook { hue: string; top: string[]; bot: string[]; deal?: string }
 // ---- spells and guns (spells/) ----
 
 /** what a spell is: one entry of MODS (spells/mods.js). `kind` decides which fields matter */
+/** Discriminate's target (spells/discrim.js): a creature kind's id, you ('player'), or an object (a prop's k, a pickup's kind) */
+interface DiscrimTarget { kind: 'creature' | 'player' | 'object'; id: string }
 interface Mod {
+  tgt?: DiscrimTarget;        // a targeted Discriminate copy (spells/discrim.js)
   id?: string;                // its key in MODS: always there, but filled in after the table
   name: string;
   kind: 'shot' | 'static' | 'mod' | 'util' | 'passive';
@@ -82,7 +85,7 @@ interface Shot {
   dmg: number; speed: number; spread: number; size: number; life: number; count: number;
   bounce: number; pierce: number; explode: number; grav: number; homing: number; accel: number;
   bore: number; recoil: number; col: string; knock: number; crit: number; boomer: number;
-  spiral: number; pong: number; orbit: number; follow: number; autoaim: number; homeR: number; flat: number;
+  spiral: number; pong: number; orbit: number; follow: number; autoaim: number; assist: number; only: DiscrimTarget | null; homeR: number; flat: number;
   eat: number; pull: number; split: number; cluster: number;
   bounceFx: any;              // a modifier's (unused today: always null)
   friendly: number; chain: number; fuse: number; beam: number;
@@ -275,6 +278,7 @@ interface PerkBag {
   tinker: number; extraItem: number; pinpointer: number; trajectory: number;
   carrot: number;   // the Carrot stat's level, 0-5 (carrotAt turns it into each multiplier)
   fuel: number; refuel: number;   // the jetpack's tank (drains slower) and how fast it refills (stat perks)
+  minimap: number;                // Mini-map: the small map over the gun buttons (ui/minimap.js)
   fireImm: number;                // Fire Immunity: you never catch fire (youAlight)
   // always there on a bag perkBag returns; optional only because it is filled in after the rest
   maxHp?: number;
@@ -496,6 +500,7 @@ interface DevRow { k: string; g: string; label: string; min?: number; max?: numb
  */
 interface Bullet {
   x: number; y: number; vx: number; vy: number;
+  only?: DiscrimTarget | null; // Discriminate: touches only this (game/systems/bullets.js)
   life: number; dmg: number; size: number; col: string; spin: number;
   homing: number; bounce: number; pierce: number; explode: number; grav: number; accel: number;
   bore: number; hit: Set<Enemy> | null; age: number;   // hit: what it has already struck (pierce)
@@ -669,12 +674,17 @@ interface Player {
   dead: boolean; kick: number; shieldReady: boolean; shieldT: number; jx: number; jy: number;
   aim: { on: boolean; show: boolean; nx: number; ny: number; vis?: number };   // vis: the aim line's fade with the push
   burn?: number; burnAcc?: number;
+  // Aim Assist's pointer this frame (systems/gun.js aimAndCast; drawn by render/overlay.js drawAssist):
+  // where it is, whether it's on a creature, and that creature's middle and radius
+  assist?: { x: number; y: number; snap: boolean; ex: number; ey: number; er: number };
   swing?: number;   // 1 while you swing on a hanging vine this frame (movePlayer): the vine follows you
+  steer?: number;   // the left stick across × its push this frame (movePlayer): turns you on a vine
   rag?: import('./world/ragdoll.js').Ragdoll | null;   // dead: the body (corpseStep)
 }
 
 /** one thumbstick's state, written by the Stick (ui/hud.js), read by step */
 interface StickState { active: boolean; nx: number; ny: number; mag: number; dy: number; on: boolean;
+  fire?: number;   // the right stick: the push that fires (its trigger ring, core/consts.js triggerRing)
   cx?: number; cy?: number; size?: number;   // where the stick sits on screen (css px), for the menus' pointer (useMenuNav)
 }
 /** the gauges draw() hands the sticks each frame (all 0..1) */
@@ -726,14 +736,22 @@ interface ReplayView {
   mute?: boolean;
 }
 /** what the map screen (ui/map.js) draws: the floor's picture, the fog memory, you, the pins */
-interface MapView { img: HTMLCanvasElement; seen: Uint8Array; x: number; y: number; face: number; pins: MapPin[] }
+interface MapView { img: HTMLCanvasElement; seen: Uint8Array; x: number; y: number; face: number; pins: MapPin[];
+  mini: HTMLCanvasElement; mapN: number;   // the mini-map's picture of the floor (rock black, air white) and a count of floors made
+  aim: { on: boolean; nx: number; ny: number }; viewW: number; foes: Enemy[]; items: Pickup[] }
 /** App's input ref: the React bridge (ui/app.js makes it, Game and the systems read and write it) */
+/** a HUD gun slot being held (ui/gunhold.js), and what the hold will do */
+type GunHold = { i: number, mode: 'take' | 'lift' } | null;
+/** a gun lifted out of its slot, under the finger (client px) */
+type GunDrag = { i: number, x: number, y: number } | null;
+
 interface GameInput {
   left: StickState; right: StickState;
   loadout: Loadout;
   saved: SaveData | null;
   paused: boolean; notify: () => void; inShop: boolean;
   prompt: Prompt | null; interact: boolean; sig: string;
+  pickTarget?: number | null;  // Discriminate: the bag index of the copy whose target the world pointer is picking (game/systems/gun.js)
   perksDirty?: boolean;       // a perk was switched: Game re-adds the bag before the next step
   found: Pickup | null;
   // legacy: a two-way confirm the right stick answered by pointing (Stick still reads them; nothing sets them)
@@ -749,6 +767,10 @@ interface GameInput {
   mapOpen?: boolean; floor?: number; saveRun?: () => void;
   mapView?: () => MapView;    // Game: what the map screen draws (ui/map.js)
   dropPin?: (e: string) => void;   // Game: a pin with that emoji where you stand
+  gunNear?: Pickup | null;    // step: the gun on the ground in reach (holding a HUD slot takes it)
+  gunMenu?: boolean;          // archived: true brings back the interact-tap → GunSwap chooser
+  takeGun?: (i: number) => boolean;   // Game: the gun in reach into slot i (systems/pickups.js)
+  dropGun?: (i: number, sx: number, sy: number) => boolean;   // Game: slot i's gun onto the ground under screen point (client px)
   perkCollection: string[];   // the perks unlocked at the perk machine, across runs
   collection: string[];       // the mods unlocked, kept across runs (save/save.js loadCollection)
   shopOpen?: string | null;   // a vending machine's menu is up: its SHOPS key (game/systems/shops.js), or 'levels' (the buy machine)
@@ -788,6 +810,7 @@ interface GameCtx {
   bgHi: HTMLCanvasElement; bgHiOn: boolean;   // the back wall at terrain resolution, when the floor has one (bgHi)
   fogC: HTMLCanvasElement; fctx: CanvasRenderingContext2D; fogImg: ImageData;
   fogBlurC: HTMLCanvasElement; fbctx: CanvasRenderingContext2D;
+  miniC: HTMLCanvasElement; mapN: number;   // the mini-map's picture (level-entry.js miniPicture) and a count of them made
   mapC: HTMLCanvasElement;    // the map's picture: this floor as it was made, rock and decoration (level-entry.js mapPicture)
   decoC: HTMLCanvasElement; dctx: CanvasRenderingContext2D;
   REC: Recorder; RT: ReplayPlayer;

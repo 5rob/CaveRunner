@@ -20,7 +20,7 @@ export const DEV_DEFAULTS = { zoom: 1.6, renderScale: 1.5, torch: 0.5, fogDark: 
   holoMin: 0, holoMax: 1, holoFade: 3, holoC1x: 0.25, holoC1y: 1, holoC2x: 0.5, holoC2y: 0,
   guideCps: 30, guideWait: 1.4, guideIn: 50, shopGap: 0.9, shopTorch: 0.45, beamDeg: 50, beamReach: 2.2, beamNear: 0.5, beamGlow: 0.5,
   due1: 60, enemies: ENEMY_COUNT, enemiesUp: 12, lvlBonus: LVL_SELL - LVL_BUY, lvlGrow: 3, rewardGrow: 2, killGrow: 1.35,
-  runnerPx: 1, runnerLine: 1,
+  runnerPx: 1, runnerLine: 1, aimPad: 5,
   ptrStart: 0.12, ptrReach: 1, ptrSize: 1, ptrLine: 0.75, snapR: 28, snapPull: 0.3, snapHit: 10,
   witPad: 80, witKbps: 6000,
   webSag: 0.03, bendK: 140, bendDamp: 5, bendPush: 0.3, bendGrab: 0.35, bendDip: 5, bendMax: 14,
@@ -87,6 +87,7 @@ export const DEV_META = [
   { k: 'killGrow',  g: 'level', label: 'Kill gold: × each floor up', min: 1, max: 4, step: 0.05 },
   { k: 'runnerPx',  g: 'player', label: 'Player pixel size (world units, 0 = smooth)', min: 0, max: 3, step: 0.25 },
   { k: 'runnerLine', g: 'player', label: 'Player dark outline (0 off, 1 on)', min: 0, max: 1, step: 1 },
+  { k: 'aimPad',    g: 'player', label: 'Right stick: trigger ring’s gap inside the gauge rings (px; bigger = fires sooner)', min: 0, max: 40, step: 1 },
   // the vending menus' right-stick pointer (ui/vendshop.js useMenuNav, menuPointer, snapTo)
   { k: 'ptrStart',  g: 'menuptr', label: 'Stick push before the pointer comes out (of its reach)', min: 0, max: 0.9, step: 0.01 },
   { k: 'ptrReach',  g: 'menuptr', label: 'Pointer reach (× distance to the far screen corner)', min: 0.2, max: 3, step: 0.05 },
@@ -116,6 +117,17 @@ export const DEV_META = [
 ];
 export const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['fx', 'Hologram & glow'], ['holoflash', 'Hologram flash (on a kill)'], ['guide', 'Guide hologram (new run)'], ['player', 'Player'],
   ['enemy', 'Enemies'], ['elite', 'Elites'], ['elitefx', 'Elites: flames'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['level2', 'Level 2: layout & look'], ['l2dark', 'Level 2: dark zones'], ['l2boom', 'Level 2: destruction'], ['l2alien', 'Level 2: aliens'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
+// The Dev panel's tabs: each a page of DEV_GROUPS, in this order (a group in no tab lands on the last)
+/** @type {[string, string, string[]][]} */
+export const DEV_TABS = [
+  ['look', 'Look', ['view', 'light', 'fx', 'holoflash', 'guide']],
+  ['player', 'Player', ['player', 'carrot', 'bh', 'sound', 'ui', 'menuptr', 'aimassist', 'witness']],
+  ['creatures', 'Creatures', ['enemy', 'elite', 'elitefx', 'spider', 'rat', 'jelly', 'jellycol']],
+  ['world', 'World', ['level', 'arch', 'sway', 'fire']],
+  ['level2', 'Level 2', ['level2', 'l2dark', 'l2boom', 'l2alien']],
+];
+/** @param {string} g @returns {string} the tab a group sits on */
+export const devTabOf = g => (DEV_TABS.find(t => t[2].includes(g)) || DEV_TABS[DEV_TABS.length - 1])[0];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults.
 export function devReport() {
@@ -487,6 +499,16 @@ DEV_META.push(
   { k: 'l2dTintDepth', g: 'l2dark', label: 'Black fades in over this far into a zone (px)', min: 1, max: 160, step: 1 },
   { k: 'l2dTorchDepth', g: 'l2dark', label: 'The torch fails this far in (px; just past the fade\'s end)', min: 0, max: 200, step: 1 },
   { k: 'l2dTorchHyst', g: 'l2dark', label: 'And comes back on this much nearer the edge (px, no strobing)', min: 0, max: 40, step: 1 });
+DEV_DEFAULTS.l2dFlk = 1; DEV_DEFAULTS.l2dFlkRate = 0.9; DEV_DEFAULTS.l2dFlkTears = 0.75; DEV_DEFAULTS.l2dFlkDrops = 0.9; DEV_DEFAULTS.l2dFlkFlash = 1.6; DEV_DEFAULTS.l2dFlkGlitch = 10; DEV_DEFAULTS.l2dFlkNear = 40; DEV_DEFAULTS.l2dFlkBase = 0.5;
+DEV_META.push(   // the hologram glitching while you're in or near a zone (world/holoflicker.js; owner, after v0.0.148)
+  { k: 'l2dFlk',       g: 'l2dark', label: 'Hologram glitches in the zones (0 off, 1 on)', min: 0, max: 1, step: 1 },
+  { k: 'l2dFlkBase',   g: 'l2dark', label: 'Glitch: the hologram between bursts (× its brightness; 0 = dark till a burst)', min: 0, max: 1, step: 0.05 },
+  { k: 'l2dFlkRate',   g: 'l2dark', label: 'Glitch: how often it blinks on bright (flashes a second)', min: 0, max: 8, step: 0.05 },
+  { k: 'l2dFlkTears',  g: 'l2dark', label: 'Glitch: how often it tears into slices (a second)', min: 0, max: 8, step: 0.05 },
+  { k: 'l2dFlkDrops',  g: 'l2dark', label: 'Glitch: how often it cuts out (a second)', min: 0, max: 8, step: 0.05 },
+  { k: 'l2dFlkFlash',  g: 'l2dark', label: 'Glitch: flash brightness (× the hologram; past 1 brighter than it)', min: 0, max: 3, step: 0.05 },
+  { k: 'l2dFlkGlitch', g: 'l2dark', label: 'Glitch: tearing, how far the slices jump (terrain px; 0 none)', min: 0, max: 60, step: 1 },
+  { k: 'l2dFlkNear',   g: 'l2dark', label: 'Glitch starts this near a zone (px outside its box)', min: 0, max: 200, step: 1 });
 curveKnobs('l2dark', 'l2dFire', 'Fire lifts the black (Y, 1 = full colour) by distance to it (X, 0 to the max)', 0, 1, { y0: 1, x1: 0.35, y1: 1, x2: 0.55, y2: 0.1, y3: 0 });
 // Level 2 stage 7b: the dark zones' aliens (creatures/alien.js alienStep; spawned in world/level.js). World units
 // for reaches and speeds (CELL = 2 a terrain px)
@@ -547,6 +569,22 @@ export const CARROT_KNOBS = rangeKnobs('carrot', [
   ['caAggro', 'Enemy aggro distance (×)',  0.3, 4, 0.05,  1, 1.25],
   ['caAim',   'Aim line length (×)',       0.3, 4, 0.05,  1, 2],
 ]);
+// Aim Assist (the 'aimassist' mod, LIST3 #10): the right stick drives a pointer out from your gun that
+// snaps onto creatures and fires once it's on one (spells/assist.js, game/systems/gun.js aimAndCast)
+Object.assign(DEV_DEFAULTS, { aaStart: 0.12, aaReach: 1, aaSnapR: 40, aaPull: 0.45, aaHit: 10, aaHold: 1.5,
+  aaDelay: 0.08, aaSize: 26, aaLine: 1.25, aaDot: 2 });
+DEV_META.push(
+  { k: 'aaStart', g: 'aimassist', label: 'Stick push before the pointer comes out (of its reach)', min: 0, max: 0.9, step: 0.01 },
+  { k: 'aaReach', g: 'aimassist', label: 'Pointer reach (× distance from the gun to the far screen corner)', min: 0.2, max: 3, step: 0.05 },
+  { k: 'aaSnapR', g: 'aimassist', label: 'Snap reach (world units from a creature’s edge)', min: 0, max: 200, step: 1 },
+  { k: 'aaPull',  g: 'aimassist', label: 'Snap pull (0 none, 1 right onto its middle)', min: 0, max: 1, step: 0.01 },
+  { k: 'aaHit',   g: 'aimassist', label: 'Counts as on a creature within (world units of its edge)', min: 0, max: 80, step: 1 },
+  { k: 'aaHold',  g: 'aimassist', label: 'Stickiness: stays on its creature out to this × the snap-on distance', min: 1, max: 4, step: 0.05 },
+  { k: 'aaDelay', g: 'aimassist', label: 'Fires this long after snapping on (s)', min: 0, max: 1, step: 0.01 },
+  { k: 'aaSize',  g: 'aimassist', label: 'Ring size (px across)', min: 6, max: 80, step: 1 },
+  { k: 'aaLine',  g: 'aimassist', label: 'Ring line width (px)', min: 0.25, max: 4, step: 0.25 },
+  { k: 'aaDot',   g: 'aimassist', label: 'Centre dot when snapped (px, 0 none)', min: 0, max: 6, step: 0.5 });
+DEV_GROUPS.push(['aimassist', 'Aim Assist']);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);

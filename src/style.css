@@ -64,6 +64,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .sticks{display:flex;justify-content:space-evenly;position:relative;z-index:3}
 /* the shade under the controls: shadeAt (ui/hud.js) sets its top and the gradient's stops */
 .ctlshade{position:absolute;left:0;right:0;z-index:-1;pointer-events:none}
+/* the Mini-map perk (ui/minimap.js): see-through, a very thin white outline; a tap zooms out */
+.controls .minimap{position:absolute;box-sizing:border-box;border:0.5px solid rgba(255,255,255,0.85);background:transparent;
+  pointer-events:auto;touch-action:none}
 .app.mapping .ctlshade,.app.pinning .ctlshade{visibility:hidden}
 /* gold readout in the gap between the sticks, level with their top halves. Sits on top
    of the deck (pointer-events:none so a tap still falls to a stick) and reads amber. */
@@ -188,6 +191,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   padding:7px 12px;border-radius:9px;border:2px solid #ff8a1f;background:var(--btn);
   color:var(--text);font:600 12px system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .gtab.empty{opacity:.4}
+/* the firing window by the stats (GunFire) and the gun buttons' row under the mod grid */
+.btop{align-items:stretch}
+.gfire{flex:1 1 0;min-width:0;align-self:stretch;min-height:110px;border-radius:9px;background:#0b0e14;
+  border:1px solid var(--ring);display:block}
+.gtabs.gunrow{flex:0 0 auto;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:8px}
+.gtabs.gunrow .gtab{aspect-ratio:auto;height:64px;gap:2px}
+.gtabs.gunrow .gicon{width:56px;height:28px}
 .stats{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
 .st{background:var(--pad);border-radius:7px;padding:4px 8px;font-size:11px;color:var(--muted);
   display:flex;gap:5px;align-items:baseline}
@@ -257,6 +267,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .tg{font-size:17px;line-height:1}
 .tile{position:relative}
 .tmark{position:absolute;top:2px;right:4px;font:700 9px system-ui,sans-serif;line-height:1}
+.tcount{position:absolute;top:2px;right:2px;min-width:15px;height:15px;padding:0 3px;box-sizing:border-box;
+  border-radius:8px;background:currentColor;display:flex;align-items:center;justify-content:center;
+  pointer-events:none;font:800 9px system-ui,sans-serif;line-height:1}
+.tcount b{color:#111}
+.ttgt{position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:9px;background:rgba(0,0,0,.55);
+  border:1px solid currentColor;display:flex;align-items:center;justify-content:center;pointer-events:none;
+  font:700 10px system-ui,sans-serif;line-height:1;color:#fff;overflow:hidden}
+.pglyph{position:relative}
+.pglyph .ttgt{top:auto;left:auto;right:-6px;bottom:-6px;width:20px;height:20px;border-radius:10px;font-size:12px}
+.pact{margin:8px 0 2px;padding:9px 14px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);
+  color:inherit;font:700 14px system-ui,sans-serif;width:100%;touch-action:manipulation}
 .tn{font:500 8.5px system-ui,sans-serif;color:var(--muted);text-align:center;line-height:1.1;
   max-width:100%;padding:0 2px}
 .ghost{position:fixed;z-index:30;width:60px;height:56px;border-radius:9px;border:2px solid;
@@ -416,37 +437,75 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .devbtn{position:absolute;top:10px;right:10px;z-index:6;border:1px solid rgba(255,255,255,0.25);
   background:rgba(0,0,0,0.35);color:#e9ecf2;border-radius:8px;width:38px;height:38px;padding:0;
   font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center}
-.devcopy{display:block;width:100%;margin-top:10px}
-.devcopytext{width:100%;box-sizing:border-box;height:120px;margin-top:6px;font:12px ui-monospace,monospace;
-  background:var(--pad);color:var(--text);border:1px solid var(--ring);border-radius:8px}
-.dbg.restart{background:#c2401f;border-color:#c2401f;color:#fff}
+/* the Dev panel (v0.0.149): a dark card — actions, search and tabs on top, the tab's groups scrolling below */
 .devwrap{position:fixed;left:0;right:0;top:0;bottom:0;z-index:26;display:flex;
-  align-items:flex-start;justify-content:center;padding:52px 12px 12px}
+  align-items:flex-start;justify-content:center;padding:52px 10px 10px}
 /* a light backdrop so the cave is still visible behind while you tune the look of it */
 .devback{position:absolute;inset:0;background:rgba(0,0,0,0.2)}
-.devpanel{position:relative;z-index:1;width:100%;max-width:360px;max-height:calc(100% - 64px);
-  overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;background:var(--btn);
-  border:1px solid var(--ring);border-radius:14px;padding:14px 16px;box-shadow:0 12px 40px rgba(0,0,0,0.45);color:var(--text)}
-.devhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.devhead h2{margin:0;font-size:17px}
-.devbtns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-.devvars{display:flex;flex-direction:column;gap:10px;padding:4px 0 12px}
-.devgroup{border-top:1px solid var(--ring)}
-.devghead{display:flex;align-items:center;gap:8px;width:100%;height:40px;padding:0;border:0;background:none;
-  color:var(--text);font:700 13px system-ui,sans-serif;text-align:left;position:relative;
-  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-.devghead::after{content:'';position:absolute;left:0;bottom:4px;height:2px;width:0;background:#5ab8ff;opacity:0}
-.devghead.holding::after{opacity:1;width:100%;transition:width var(--hold,400ms) linear}
-.devcaret{width:12px;color:var(--muted)}
+.devpanel{--text:#e6edf5;--muted:rgba(230,237,245,0.55);--pad:rgba(255,255,255,0.06);--ring:rgba(255,255,255,0.14);
+  --acc:#5ab8ff;position:relative;z-index:1;width:100%;max-width:400px;max-height:calc(100% - 4px);display:flex;flex-direction:column;
+  box-sizing:border-box;background:#11151c;border:1px solid var(--ring);border-radius:16px;
+  box-shadow:0 14px 44px rgba(0,0,0,0.55);color:var(--text);overflow:hidden}
+.devtop{flex:0 0 auto;padding:12px 14px 0;border-bottom:1px solid var(--ring);background:rgba(255,255,255,0.02)}
+.devhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.devhead h2{margin:0;font:800 18px system-ui,sans-serif;letter-spacing:.02em}
+.devpanel .done{color:var(--text);border-color:var(--ring);background:var(--pad)}
+.devbtns{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.devbtns .dbg{height:40px;padding:0 4px;border-radius:10px;font:700 11px system-ui,sans-serif;letter-spacing:.02em;
+  color:var(--text);background:var(--pad);border:1px solid var(--ring)}
+.devbtns .dbg.on{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}
+.devbtns .dbg.restart{background:#b8381a;border-color:#b8381a;color:#fff}
+.devbtns .dbg.devaudit{background:#6a4bc4;border-color:#6a4bc4;color:#fff}
+.devbtns .dbg.devcopy{background:#1f6fb8;border-color:#1f6fb8;color:#fff}
+.devcopied{margin:0 0 8px}
+.devcopied.ok{color:#5ad65a}
+.devcopytext{width:100%;box-sizing:border-box;height:120px;margin:0 0 8px;font:12px ui-monospace,monospace;
+  background:var(--pad);color:var(--text);border:1px solid var(--ring);border-radius:8px}
+.devsearchw{position:relative;margin-bottom:8px}
+.devsearch{width:100%;box-sizing:border-box;height:40px;border-radius:10px;border:1px solid var(--ring);
+  background:rgba(0,0,0,0.3);color:var(--text);font:500 15px system-ui,sans-serif;padding:0 40px 0 12px;
+  user-select:text;-webkit-user-select:text;-webkit-appearance:none;appearance:none}
+.devsearch::-webkit-search-cancel-button{display:none}
+.devsearch:focus{outline:none;border-color:var(--acc)}
+.devclear{position:absolute;right:4px;top:4px;width:32px;height:32px;border:0;border-radius:8px;background:none;
+  color:var(--muted);font-size:20px;line-height:1}
+.devtabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin:0 -14px;padding:0 10px}
+.devtabs::-webkit-scrollbar{display:none}
+.devtab{position:relative;flex:1 0 auto;height:42px;padding:0 10px;border:0;border-bottom:3px solid transparent;
+  background:none;color:var(--muted);font:700 13px system-ui,sans-serif;white-space:nowrap}
+.devtab.on{color:var(--text);border-bottom-color:var(--acc)}
+.devdot{display:inline-block;width:6px;height:6px;border-radius:3px;background:#ff8a1f;margin-left:5px;vertical-align:2px}
+.devbody{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 10px 14px}
+.devgroup{margin:0 0 6px;border:1px solid var(--ring);border-radius:12px;background:var(--pad)}
+.devgroup.open{background:rgba(255,255,255,0.035)}
+.devghead{display:flex;align-items:center;gap:8px;width:100%;min-height:48px;padding:0 12px;border:0;background:none;
+  color:var(--text);font:700 14px system-ui,sans-serif;text-align:left;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.devgroup.open .devghead{position:sticky;top:-8px;z-index:3;background:rgb(30,35,43);border-radius:12px 12px 0 0;
+  border-bottom:1px solid var(--ring)}
+.devcaret{width:14px;color:var(--muted);font-size:20px;line-height:1;transition:transform .15s;display:inline-block}
+.devghead.open .devcaret{transform:rotate(90deg);color:var(--acc)}
+.devgname{flex:1 1 auto}
+.devgtab{margin-left:8px;font:600 11px system-ui,sans-serif;color:var(--muted)}
+.devgchg{font:700 10px system-ui,sans-serif;color:#ff8a1f;background:rgba(255,138,31,0.14);padding:3px 7px;border-radius:9px}
+.devgn{min-width:22px;text-align:center;font:600 11px system-ui,sans-serif;color:var(--muted);
+  background:rgba(255,255,255,0.07);padding:3px 6px;border-radius:9px}
+.devvars{display:flex;flex-direction:column;gap:8px;padding:10px 12px 12px}
+.spawnpanel{padding:16px 16px 18px}
 .spawnpanel .spawngo{margin-top:12px;width:100%}
-.devrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.devrow label{font-size:13px;color:var(--text);flex:1 1 auto}
+/* Dev → Spawn level: every floor, two columns; yours lit */
+.lvlpick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.lvlpick .lvlgo{text-align:left;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lvlpick .lvlgo b{opacity:.6;margin-right:2px}
+.lvlpick .lvlgo.on{border-color:#3a8ee0;box-shadow:inset 0 0 0 1px #3a8ee0}
+.devrow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px}
+.devrow label{font-size:13px;color:var(--text);flex:1 1 auto;line-height:1.3}
 .devrow input[type=color]{width:56px;padding:2px 4px}
-.devrow input[type=range]{width:118px;padding:0;border:0;background:none;accent-color:#5ad65a}
-.devval{display:block;font:600 12px system-ui,sans-serif;color:var(--muted)}
-/* the live jellyfish above its colour knobs: stuck to the top of the panel while you
+.devrow input[type=range]{width:132px;height:36px;padding:0;border:0;background:none;accent-color:var(--acc)}
+.devval{display:inline-block;margin-left:8px;font:700 12px ui-monospace,monospace;color:var(--acc)}
+/* the live jellyfish above its colour knobs: stuck under the group's header while you
    scroll through them, so every change shows as you make it */
-.jellyprev{position:sticky;top:-14px;z-index:2;display:block;width:100%;height:200px;margin:4px 0 6px;
+.jellyprev{position:sticky;top:40px;z-index:2;display:block;width:100%;height:200px;margin:4px 0 6px;
   border-radius:10px;border:1px solid var(--ring);background:#0d0f14;box-shadow:0 6px 14px rgba(0,0,0,0.35)}
 /* the hologram flash's fade curve (FadeCurve): drag the handles; touch-action none so a drag
    shapes it instead of scrolling the panel */
@@ -460,21 +519,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .fchandle{fill:#0d0f14;stroke:#5ad65a;stroke-width:1.6}
 .fcreset{display:block;margin:4px 0 0 auto}
 /* Dev → Elites: flames: the live preview, the gradient bar and the opacity ramp */
-.flameprev{position:sticky;top:-14px;z-index:2;display:block;width:100%;height:150px;margin:4px 0 6px;
+.flameprev{position:sticky;top:40px;z-index:2;display:block;width:100%;height:150px;margin:4px 0 6px;
   border-radius:10px;border:1px solid var(--ring);background:#0d0f14}
 .devlbl{margin:8px 0 2px;font:600 12px system-ui,sans-serif;color:var(--text)}
 .gradedit,.rampedit{position:relative;margin:2px 0 8px}
 .gradsel{display:flex;align-items:center;gap:8px;margin-top:4px;font:12px system-ui,sans-serif;color:var(--text)}
 .gradsel span{flex:1}
+.devreset{flex:0 0 auto;width:36px;height:36px;border-radius:8px;border:1px solid var(--ring);
+  background:var(--pad);color:var(--text);font-size:16px}
 .gradsel .devreset{width:auto;min-width:34px;padding:0 10px}
 .gradsel input[type=color]{width:40px;height:28px;padding:0;border:0;background:none}
-.devreset{flex:0 0 auto;width:34px;height:36px;border-radius:8px;border:1px solid var(--ring);
-  background:var(--pad);color:var(--text);font-size:16px}
-.devrow input{width:92px;flex:0 0 auto;box-sizing:border-box;height:36px;border-radius:8px;
-  border:1px solid var(--ring);background:var(--pad);color:var(--text);
+.devrow input{width:92px;flex:0 0 auto;box-sizing:border-box;height:38px;border-radius:8px;
+  border:1px solid var(--ring);background:rgba(0,0,0,0.3);color:var(--text);
   font:600 14px system-ui,sans-serif;padding:0 9px;text-align:right;
   user-select:text;-webkit-user-select:text}
-.devnote{margin:14px 0 0;font-size:11px;color:var(--muted);line-height:1.45}
+.devrow input:focus{outline:none;border-color:var(--acc)}
+.devnote{margin:12px 2px 0;font-size:11px;color:var(--muted);line-height:1.45}
 /* the death replay: a button on the death screen, then the replay's own screen over everything */
 .witnessbtn{position:absolute;left:50%;top:238px;transform:translateX(-50%);z-index:7;white-space:nowrap;
   background:rgba(20,6,6,0.78);border:1.5px solid #ff4a3a;color:#ffd9d4;border-radius:24px;padding:12px 20px;
@@ -705,3 +765,35 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   color:#fff;font-size:18px;padding:0 10px}
 .pinnew button{height:36px;padding:0 14px;border-radius:9px;border:none;background:#ff8a1f;color:#12141a;font:700 13px system-ui,sans-serif}
 .pinhint{margin-top:8px;font-size:11px;color:rgba(233,236,242,0.6);text-align:center}
+
+/* ---- the owner's audit on mod/perk cards (save/audit.js) ---- */
+.aumarks{display:flex;gap:6px;flex:0 0 auto}
+.aumark{width:36px;height:36px;border-radius:10px;border:1px dashed var(--ring);background:transparent;
+  font-size:17px;line-height:1;padding:0;opacity:.45;filter:grayscale(1)}
+.aumark.on{opacity:1;filter:none;border-style:solid;border-width:2px}
+.aumark.keep.on{border-color:#e0b43a;background:rgba(224,180,58,0.2)}
+.aumark.trash.on{border-color:#e05050;background:rgba(224,80,80,0.2)}
+.aufoot{display:flex;align-items:center;gap:9px;margin-top:10px;padding-top:9px;border-top:1px solid var(--pad)}
+.aufb{flex:0 0 auto;height:36px;padding:0 13px;border-radius:10px;border:1px solid var(--ring);
+  background:var(--pad);color:var(--text);font-size:13px;font-weight:600}
+.aupeek{flex:1 1 auto;min-width:0;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.autext{display:block;box-sizing:border-box;width:100%;height:150px;margin-top:10px;padding:9px;border-radius:10px;
+  border:1px solid var(--ring);background:var(--pad);color:var(--text);font-size:14px;line-height:1.4;font-family:inherit;resize:none}
+.aubtns{display:flex;gap:8px;justify-content:flex-end;margin-top:9px}
+.aubtns button{height:40px;min-width:90px;border-radius:10px;border:1px solid var(--ring);font-size:14px;font-weight:600;
+  background:var(--pad);color:var(--text)}
+.aubtns .ausave{background:#2f8f5b;border-color:#2f8f5b;color:#fff}
+/* the HUD gun slots' hold (ui/gunhold.js): a ring fills round the slot over the hold time;
+   orange to take the gun on the ground, pale to lift this one out. The lifted gun follows the finger */
+.slot .holdring{position:absolute;inset:-5px;width:calc(100% + 10px);height:calc(100% + 10px);
+  transform:rotate(-90deg);pointer-events:none;overflow:visible}
+.slot .holdring circle{fill:none;stroke:#ff8a1f;stroke-width:3.5;stroke-linecap:round;
+  stroke-dasharray:100 100;stroke-dashoffset:100;animation:holdring .45s linear forwards}
+.slot.lift .holdring circle{stroke:#e8eef8}
+.slot.ringing.take{box-shadow:0 0 12px rgba(255,138,31,.7)}
+.slot.lifted{opacity:.45;border-style:dashed}
+@keyframes holdring{to{stroke-dashoffset:0}}
+.gundrag{position:fixed;z-index:60;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;
+  pointer-events:none;display:flex;align-items:center;justify-content:center;
+  background:rgba(18,20,26,.75);border:2px solid #ff8a1f;box-shadow:0 4px 14px rgba(0,0,0,.6)}
+.gundrag svg,.gundrag canvas,.gundrag img{max-width:46px;max-height:46px}

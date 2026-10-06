@@ -97,7 +97,7 @@ export const NOITA_OF = {
   knock: 'KNOCKBACK', kick: 'RECOIL', damper: 'RECOIL_DAMPER', crit: 'CRITICAL_HIT', gravmod: 'GRAVITY',
   float: 'GRAVITY_ANTI', boomer: 'HOMING_SHOOTER', follow: 'HOMING_SHOOTER',
   lifeup: 'LIFETIME', lifedn: 'LIFETIME_DOWN', grow: 'SPEED', shrink: 'SPEED', spiral: 'SPIRALING_SHOT', pong: 'PINGPONG_PATH',
-  orbit: 'ORBIT_SHOT', autoaim: 'AUTOAIM', nearhome: 'HOMING_SHORT', flat: 'HORIZONTAL_ARC',
+  orbit: 'ORBIT_SHOT', autoaim: 'AUTOAIM', aimassist: 'AUTOAIM', discrim: 'AUTOAIM', nearhome: 'HOMING_SHORT', flat: 'HORIZONTAL_ARC',
   eater: 'MATTER_EATER', lust: 'BLOODLUST', manapow: 'DAMAGE_FOREVER', split: 'QUANTUM_SPLIT',
   cluster: 'CLUSTERMOD', bboom: 'BOUNCE_EXPLOSION', hspread: 'HEAVY_SPREAD', oct: 'BURST_8',
   myriad: 'BURST_X', bifur: 'Y_SHAPE', trifur: 'W_SHAPE', behind: 'I_SHAPE',

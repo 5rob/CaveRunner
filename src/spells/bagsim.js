@@ -107,13 +107,13 @@ export function pullSteps(g) {
 // pull and regenerating, a pause when it runs dry. No perks: the gun as it is.
 /**
  * @typedef {{ g: Gun, max: number, mana: number, delayT: number, delayMax: number, rechT: number, rechLen: number,
- *   pull: number, lit: { slots: number[], pull: number, t: number } | null, fired: number }} FireSim
+ *   pull: number, lit: { slots: number[], pull: number, t: number } | null, fired: number, shots: Shot[] }} FireSim
  */
 /** @param {Gun} gun @returns {FireSim} */
 export function fireSimNew(gun) {
   const g = resetGun(Object.assign({}, gun, { slots: gun.slots.slice() }));
   const max = gun.manaMax + gunPassives(gun).manaMax;
-  return { g, max, mana: max, delayT: 0, delayMax: 0, rechT: 0, rechLen: 0, pull: 0, lit: null, fired: 0 };
+  return { g, max, mana: max, delayT: 0, delayMax: 0, rechT: 0, rechLen: 0, pull: 0, lit: null, fired: 0, shots: [] };
 }
 /** @param {FireSim} S @param {number} dt */
 export function fireSimStep(S, dt) {
@@ -136,6 +136,7 @@ export function fireSimStep(S, dt) {
   while (slots.length && !casts(g.slots[slots[slots.length - 1]])) slots.pop();
   // the light holds for the pull's cast delay, but never so briefly you can't see it
   S.lit = { slots, pull: S.pull, t: Math.max(0.1, Math.min(plan.delay, 0.45)) };
+  S.shots = plan.shots;                   // what this pull fires (the Bag's firing window, GunFire)
   S.pull++; S.fired++;
   S.delayT = S.delayMax = plan.delay;
   if (plan.wrap) wrap();

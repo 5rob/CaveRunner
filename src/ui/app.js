@@ -10,13 +10,15 @@ import { Game } from '../game/Game.js';
 import { clipGet } from '../save/clips.js';
 import { clearSave, loadCollection, loadPerkCollection, loadSave, saveCollection } from '../save/save.js';
 import { GunCard, ModCard, PerkCard } from './cards.js';
-import { DevPanel, SpawnGun } from './devpanel.js';
+import { DevPanel, SpawnGun, SpawnLevel } from './devpanel.js';
 import { Bag } from './exosuit.js';
 import { GunIcon } from './editor.js';
 import { h, useEffect, useRef, useState } from './h.js';
 import { CrystalRow, DueClock, RKey, Stick, deckLayout, fmtGold, holdPress, shadeAt } from './hud.js';
 import { MapScreen, PinPicker, loadPins, savePins, usePin } from './map.js';
+import { MiniMap, miniBox } from './minimap.js';
 import { SHOP_MENUS } from './modshop.js';
+import { DragGun, HoldRing, gunSlotPress } from './gunhold.js';
 import { GunSwap } from './swap.js';
 import { Witness } from './witness.js';
 
@@ -52,11 +54,15 @@ export function App() {
   const [edit, setEdit] = useState(false);
   const [devOpen, setDevOpen] = useState(false);
   const [spawnOpen, setSpawnOpen] = useState(false);
+  const [lvlOpen, setLvlOpen] = useState(false);
   const [witnessOpen, setWitnessOpen] = useState(false);
   const [savedClip, setSavedClip] = useState(null);   // the saved replay playing (its ClipMeta), from the Bag's Witness tab
   const [bagTab, setBagTab] = useState('guns');
   const [gunInfo, setGunInfo] = useState(-1);
-  const [held, setHeld] = useState(-1);
+  /** @type {[GunHold, (v: GunHold) => void]} */
+  const [gunHold, setGunHold] = useState(null);
+  /** @type {[GunDrag, (v: GunDrag) => void]} */
+  const [gunDrag, setGunDrag] = useState(null);
   // null when closed; a timestamp (from the tap that opened it) while open, so
   // the Restart button's own tap can't also land on the Yes button underneath —
   // see the guard on the confirm button below
@@ -167,6 +173,9 @@ export function App() {
   const canEdit = inShop || perkB.tinker || !!LO.debugPerks;   // Tinker with Wands Everywhere frees the editor (and Dev → All perks, to test perks anywhere)
   const heldGun = input.current.loadout.guns[input.current.loadout.sel];
   const deck = deckLayout(vw, size, LO.guns.length);
+  // the Mini-map perk's box: over the gun buttons, up to half the screen's height (sticks-row coordinates)
+  const sticksTop = sticksRef.current ? sticksRef.current.getBoundingClientRect().top : window.innerHeight - size;
+  const mini = perkB.minimap && !mapOpen ? miniBox(deck, window.innerHeight / 2 - sticksTop) : null;
   const btnAt = pt => ({ width: deck.btn, height: deck.btn,
     left: Math.round(pt.x - deck.btn / 2), top: Math.round(pt.y - deck.btn / 2) });
 
@@ -224,6 +233,9 @@ export function App() {
           ingame: true, compare: heldGun, compareName: heldGun ? heldGun.name : '' }) : null,
         // shop stock is "Buy <price>"; anything you pick up for free is just "Take" —
         // the card above already names it, so a nameless item (the heal) shows its name here.
+        // a gun on the ground: hold a gun slot to take it (ui/gunhold.js), no right-stick tap
+        prompt.gun && prompt.found && !input.current.gunMenu ? h('div', { className: 'pbuy' },
+          h('b', null, 'Hold a gun slot')) :
         h('div', { className: 'pbuy' + (prompt.can ? '' : ' cant'),
             'aria-label': 'Tap the right stick to ' + (prompt.price ? 'buy for ' + prompt.price + 'g' : 'take') },
           h(RKey),
@@ -263,21 +275,24 @@ export function App() {
         // a dark shade under the controls (owner): clear at the map button's top, black by the
         // sticks' middles and on down, so the sticks and buttons stand out from the cave
         h('div', { className: 'ctlshade', style: shadeAt(deck, size) }),
+        mini ? h(MiniMap, { input, box: mini }) : null,
         h(Stick, { size, kind: 'left', input, refresh }),
         h(Stick, { size, kind: 'right', input, refresh }),
-        // the gun buttons ride an arc round the right stick; tap to hold it, hold for its card
+        // the gun buttons ride an arc round the right stick (ui/gunhold.js): tap to hold it (the
+        // one in hand: its card); hold by a gun on the ground to take it into that slot; hold
+        // with none in reach to drag this one out and drop it
         h('div', { className: 'slots' },
           LO.guns.map((g, i) => h('button', {
               key: i,
               className: 'dbtn slot' + (g ? '' : ' empty') + (i === LO.sel ? ' on' : '') +
-                (held === i ? ' holding' : ''),
+                (gunHold && gunHold.i === i ? ' ringing ' + gunHold.mode : '') + (gunDrag && gunDrag.i === i ? ' lifted' : ''),
               style: btnAt(deck.guns[i]),
-              title: g ? g.name + ' — hold for details' : 'Empty slot',
-              onPointerDown: holdPress(
-                () => select(i),
-                () => { if (input.current.loadout.guns[i]) setGunInfo(i); },
-                on => setHeld(on ? i : -1)),
-            }, g ? h(GunIcon, { gun: g }) : null))),
+              title: g ? g.name + ' — hold to take a gun here, or drag it out' : 'Empty slot — hold to take a gun here',
+              onPointerDown: gunSlotPress(input, i, {
+                tap: () => { const L = input.current.loadout; if (L.guns[i] && L.sel === i) setGunInfo(i); else select(i); },
+                setHold: setGunHold, setDrag: setGunDrag }),
+            }, g && !(gunDrag && gunDrag.i === i) ? h(GunIcon, { gun: g }) : null,
+            gunHold && gunHold.i === i ? h(HoldRing) : null))),
         // the bag mirrors the last gun on the left, and the map toggle sits right above it
         h('button', {
             className: 'dbtn weapon' + (canEdit ? '' : ' locked'), style: btnAt(deck.bag),
@@ -305,9 +320,12 @@ export function App() {
     edit ? h(Bag, { key: bagTab, input, refresh, canEdit, close: () => setEdit(false), tab0: bagTab, play: playClip }) : null,
     devOpen ? h(DevPanel, { input, refresh, close: () => setDevOpen(false),
       onRestart: () => { setDevOpen(false); setConfirmAt(performance.now()); },
-      onSpawnGun: () => { setDevOpen(false); setSpawnOpen(true); } }) : null,
+      onSpawnGun: () => { setDevOpen(false); setSpawnOpen(true); },
+      onSpawnLevel: () => { setDevOpen(false); setLvlOpen(true); } }) : null,
+    lvlOpen ? h(SpawnLevel, { input, close: () => setLvlOpen(false) }) : null,
     spawnOpen ? h(SpawnGun, { input, close: () => setSpawnOpen(false) }) : null,
     shopOpen && SHOP_MENUS[shopOpen] ? h(SHOP_MENUS[shopOpen], { key: shopOpen, input, close: closeShop }) : null,
+    gunDrag && LO.guns[gunDrag.i] ? h(DragGun, { gun: LO.guns[gunDrag.i], x: gunDrag.x, y: gunDrag.y }) : null,
     found ? h(GunSwap, { input, refresh, onDone: () => { setGunInfo(-1); refresh(); } }) : null,
     gunInfo >= 0 && LO.guns[gunInfo]
       ? h('div', null,

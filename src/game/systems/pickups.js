@@ -3,14 +3,15 @@
 // and the interact tap that takes one: a frame of them all (stepPickups, a part of step()).
 
 import { SFX } from '../../audio/sfx.js';
-import { COIN_PULL, PH, PICKUP_COOL, SHOP_Y } from '../../core/consts.js';
+import { COIN_PULL, PH, PICKUP_COOL, PW, SHOP_Y } from '../../core/consts.js';
 import { healPrice } from '../../data/creatures.js';
 import { PERKS } from '../../data/perks.js';
 import { collideNuggets, stepNugget } from '../../world/nuggets.js';
+import { resetGun } from '../../spells/guns.js';
 import { MODS } from '../../spells/mods.js';
 import { gameDpr } from '../dpr.js';
 import { crystalMotes, toast } from './particles.js';
-import { solidAt } from './terrain.js';
+import { lineOfSight, solidAt } from './terrain.js';
 import { MACHINE_TOP, SHOPS, shopNear, shopUse, stepShops } from './shops.js';
 import { VEND_TOP, vendLabel, vendNear, vendUse } from './vend.js';
 
@@ -99,6 +100,8 @@ export function stepPickups(W, G, F) {
     near = { src: 'room', r };
     break;
   }
+  // a gun in reach: holding a HUD gun slot takes it into that slot (takeGun, ui/gunhold.js)
+  G.input.current.gunNear = near && near.src === 'pickup' && near.q.kind === 'gun' && !W.p.dead ? near.q : null;
   const nearKey = !near ? -1 : near.src + ':' +
     (near.src === 'vend' || near.src === 'shopvend' ? near.kind : near.src === 'shop' ? W.stock.indexOf(near.it)
       : near.src === 'room' ? W.rooms.indexOf(near.r) : W.pickups.indexOf(near.q));
@@ -206,13 +209,55 @@ export function stepPickups(W, G, F) {
         q.taken = true;
         toast(W, 'Perk: ' + PERKS[q.id].name + ' (fit it in the Bag)');
         SFX.ui('perk');
-      } else {
-        // a gun opens the chooser: compare it with yours and pick the slot to swap
+      } else if (G.input.current.gunMenu) {
+        // archived (v0.0.149): a gun opened the chooser (ui/swap.js GunSwap). Off unless
+        // input.current.gunMenu is set; a gun is taken by holding a HUD slot now (takeGun)
         G.input.current.found = q;
+      } else {
+        toast(W, 'Hold a gun slot to take it');
       }
     }
     G.input.current.sig = '';
     G.input.current.notify();
   }
   G.input.current.interact = false;
+}
+
+// Hold a HUD gun slot by a gun on the ground: it goes into slot i, and the gun that was there
+// (if any) lies where it was, like the old chooser's swap. False when no gun is in reach.
+/** @param {World} W @param {GameCtx} G @param {number} i */
+export function takeGun(W, G, i) {
+  const q = G.input.current.gunNear, LO = G.input.current.loadout;
+  if (!q || q.taken || W.pickups.indexOf(q) < 0 || W.p.dead) return false;
+  const old = LO.guns[i];
+  LO.guns[i] = resetGun(q.gun);
+  if (old) { q.gun = old; q.old = true; } else q.taken = true;
+  if (!LO.guns[LO.sel]) LO.sel = i;      // empty-handed: hold what you just took
+  toast(W, 'Took ' + LO.guns[i].name);
+  SFX.ui('gun');
+  G.input.current.gunNear = null;
+  G.input.current.sig = '';
+  G.input.current.notify();
+  return true;
+}
+
+// Drop the gun in slot i where the finger let go (world x, y); it's no longer yours. It lands
+// there, settled onto the floor below, when you can see that spot and it isn't in rock; else
+// at your feet. The gun in hand going: hold the next one you have (or none).
+/** @param {World} W @param {GameCtx} G @param {number} i @param {number} x @param {number} y */
+export function dropGun(W, G, i, x, y) {
+  const LO = G.input.current.loadout, gun = LO.guns[i];
+  if (!gun || W.p.dead) return false;
+  const pcx = W.p.x + PW / 2, pcy = W.p.y + PH / 2;
+  let at = { x: pcx, y: W.p.y + PH - 9 };
+  if (x === x && y === y && !solidAt(W, x, y) && lineOfSight(W, pcx, pcy, x, y))
+    for (let d = 0; d < 600; d += 2) if (solidAt(W, x, y + d + 9)) { at = { x, y: y + d }; break; }
+  LO.guns[i] = null;
+  if (LO.sel === i) { const n = LO.guns.findIndex(Boolean); LO.sel = n >= 0 ? n : i; }
+  W.pickups.push({ kind: 'gun', x: at.x, y: at.y, gun, t: 0, old: true });
+  toast(W, 'Dropped ' + gun.name);
+  SFX.fx('place');
+  G.input.current.sig = '';
+  G.input.current.notify();
+  return true;
 }

@@ -1,7 +1,7 @@
 // @ts-check
-// The Dev panel (the gear button): live-tweak knob rows by group (DevRow, DevPanel), the
+// The Dev panel (the gear button): tabs (DEV_TABS) of collapsible groups of live-tweak knob rows (DevRow, DevPanel), the
 // live jellyfish box at the top of the jelly colours group (JellyPreview), the group headers
-// that open and shut on a press-and-hold (DevGroupHead), the hologram flash's fade curve
+// that open and shut on a tap (DevGroupHead), the hologram flash's fade curve
 // (FadeCurve), any curve knob (CurveEdit), the elites' flames (FlamePreview, GradEditor, RampEditor), and the Spawn gun box (SpawnGun).
 
 import { drawProp, rgbA } from '../art/props.js';
@@ -13,10 +13,11 @@ import {
   drawJelly, jellyBell, jellyPal, jellyStep, plantGlowFill, plantWhite
 } from '../creatures/jelly.js';
 import { enemyFor } from '../data/creatures.js';
-import { themeFor } from '../data/themes.js';
+import { THEMES, themeFor } from '../data/themes.js';
 import {
-  CURVES, DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_META, devReport, devSet, kr, kru
+  CURVES, DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_META, DEV_TABS, devReport, devSet, devTabOf, kr, kru
 } from '../dev/knobs.js';
+import { auditText, loadAudit } from '../save/audit.js';
 import { h, useEffect, useRef, useState } from './h.js';
 
 // A live jellyfish for Dev → Jellyfish colours: the real jellyStep and drawJelly in a
@@ -505,51 +506,68 @@ export function DevRow({ meta }) {
   );
 }
 
-// A group's header: press and hold it (HOLD_MS) to open or shut the group, so a finger scrolling
-// the panel can't flip one by landing on it. A bar fills along it while held; moving the finger
-// off (or more than HOLD_SLOP px) lets go without flipping it.
-export const HOLD_MS = 400, HOLD_SLOP = 10;
-/** @param {{ g: string, name: string, shut: boolean, toggle: (g: string) => void }} props */
-export function DevGroupHead({ g, name, shut, toggle }) {
-  const [held, setHeld] = useState(false);
-  const T = useRef({ id: 0, x: 0, y: 0 });
-  const stop = () => { clearTimeout(T.current.id); T.current.id = 0; setHeld(false); };
-  useEffect(() => () => clearTimeout(T.current.id), []);
-  return h('button', { className: 'devghead' + (shut ? '' : ' open') + (held ? ' holding' : ''), 'data-g': g,
-    style: { '--hold': HOLD_MS + 'ms' },
-    onPointerDown: e => {
-      T.current.x = e.clientX; T.current.y = e.clientY;
-      clearTimeout(T.current.id);
-      setHeld(true);
-      T.current.id = setTimeout(() => { T.current.id = 0; setHeld(false); toggle(g); }, HOLD_MS);
-    },
-    onPointerMove: e => { if (T.current.id && Math.hypot(e.clientX - T.current.x, e.clientY - T.current.y) > HOLD_SLOP) stop(); },
-    onPointerUp: stop, onPointerCancel: stop, onPointerLeave: stop,
-    onContextMenu: e => e.preventDefault() },
-    h('span', { className: 'devcaret' }, shut ? '▸' : '▾'), name);
+// A group's header: a tap opens or shuts the group (a finger that scrolls the panel gets no
+// click, so scrolling can't flip one). Shows how many knobs it holds and how many you've changed.
+/** @param {{ g: string, name: string, shut: boolean, toggle: (g: string) => void, n: number, changed: number, tab?: string }} props */
+export function DevGroupHead({ g, name, shut, toggle, n, changed, tab }) {
+  return h('button', { className: 'devghead' + (shut ? '' : ' open'), 'data-g': g, 'aria-expanded': !shut,
+    onClick: () => toggle(g) },
+    h('span', { className: 'devcaret' }, '›'),
+    h('span', { className: 'devgname' }, name, tab ? h('span', { className: 'devgtab' }, tab) : null),
+    changed ? h('span', { className: 'devgchg', title: 'changed from default' }, changed + ' changed') : null,
+    h('span', { className: 'devgn' }, String(n)));
 }
 
+// what a group draws besides its rows: the previews and editors that shape its knobs
+/** @param {string} g */
+const groupExtras = g => [
+  g === 'jellycol' ? h(JellyPreview, { key: 'jp' }) : null,        // the live jelly its colours paint
+  g === 'holoflash' ? h(FadeCurve, { key: 'fc' }) : null,
+  ...CURVES.filter(c => c.g === g).map(c => h(CurveEdit, { key: c.p, p: c.p, label: c.label, lo: c.lo, hi: c.hi })),
+  ...(g === 'elitefx' ? [h(FlamePreview, { key: 'fp' }), h('p', { key: 'gl', className: 'devlbl' }, 'Colour over life'), h(GradEditor, { key: 'ge' }),
+    h('p', { key: 'rl', className: 'devlbl' }, 'Opacity over life'), h(RampEditor, { key: 're' })] : [])];
+
+/** @param {string} k @returns {any} */
+const lsGet = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (_) { return null; } };
+/** @param {string} k @param {any} v */
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} };
+const blurBox = () => {
+  // @ts-expect-error document.activeElement is an Element; the focused box is an HTMLElement (noise)
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // commit a half-typed box
+};
+
 // The dev window: it pauses the run but the game keeps drawing behind a light backdrop,
-// so the look-of-it knobs (zoom, torch, fog) preview live as you type. Holds the toggle
-// buttons — "All mods" is the old DEBUG shelf — and the saved, persisted variables.
-/** @param {{ input: { current: GameInput }, refresh: () => void, close: () => void, onRestart: () => void, onSpawnGun: () => void }} props */
-export function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
+// so the look-of-it knobs (zoom, torch, fog) preview live as you type. On top: the actions
+// ("All mods" is the old DEBUG shelf) and Copy report; then a search box and the tabs
+// (DEV_TABS), each a page of collapsible groups of the saved, persisted variables.
+/** @param {{ input: { current: GameInput }, refresh: () => void, close: () => void, onRestart: () => void, onSpawnGun: () => void, onSpawnLevel: () => void }} props */
+export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel }) {
   const LO = input.current.loadout;
   const [, bump] = useState(0);
   const [copied, setCopied] = useState(null);     // null, or the text + whether it copied
+  const [q, setQ] = useState('');
   // which groups are open: remembered on this device only, all shut the first time
-  const [openG, setOpenG] = useState(() => { try { return JSON.parse(localStorage.getItem('caverunner-devgroups')) || {}; } catch (_) { return {}; } });
+  const [openG, setOpenG] = useState(() => lsGet('caverunner-devgroups') || {});
+  // the tab: the last one used, else the first with an open group, else the first
+  const [tab, setTabS] = useState(() => {
+    const t = lsGet('caverunner-devtab');
+    if (DEV_TABS.some(x => x[0] === t)) return t;
+    const o = DEV_GROUPS.find(([g]) => openG[g]);
+    return o ? devTabOf(o[0]) : DEV_TABS[0][0];
+  });
+  const setTab = t => { blurBox(); setTabS(t); lsSet('caverunner-devtab', t); };
   const toggleG = g => {
-    // @ts-expect-error document.activeElement is an Element; the focused box is an HTMLElement (noise)
-    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // commit a half-typed box
+    blurBox();
     const o = Object.assign({}, openG, { [g]: !openG[g] });
     setOpenG(o);
-    try { localStorage.setItem('caverunner-devgroups', JSON.stringify(o)); } catch (_) {}
+    lsSet('caverunner-devgroups', o);
   };
-  const copyAll = () => {
-    // @ts-expect-error document.activeElement is an Element; the focused box is an HTMLElement (noise)
-    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // commit a half-typed box
-    const text = devReport();
+  // `make` runs after the blur, so a half-typed box is committed before the report is written
+  /** @param {() => string} make @param {string} [what] */
+  const copyText = (make, what) => {
+    blurBox();
+    const text = make();
+    if (!text) { setCopied({ text, ok: false, empty: true, what }); return; }
     const fallback = () => {
       let ok = false;
       try {
@@ -557,54 +575,86 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
         ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
         document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove();
       } catch (_) {}
-      setCopied({ text, ok });
+      setCopied({ text, ok, what });
     };
     try {
-      navigator.clipboard.writeText(text).then(() => setCopied({ text, ok: true }), fallback);
+      navigator.clipboard.writeText(text).then(() => setCopied({ text, ok: true, what }), fallback);
     } catch (_) { fallback(); }
   };
+  const act = (/** @type {string} */ cls, /** @type {string} */ label, /** @type {() => void} */ fn) =>
+    h('button', { className: 'dbg ' + cls, onPointerDown: e => { e.preventDefault(); fn(); } }, label);
+  const needle = q.trim().toLowerCase();
+  const tabName = t => (DEV_TABS.find(x => x[0] === t) || DEV_TABS[0])[1];
+  // the groups to show: this tab's, or with a search, every group holding a match (opened, matches only)
+  const shown = DEV_GROUPS.filter(([g]) => needle || devTabOf(g) === tab).map(([g, name]) => {
+    const rows = DEV_META.filter(m => m.g === g);
+    const nameHit = needle && name.toLowerCase().includes(needle);
+    const hits = needle && !nameHit ? rows.filter(m => (m.label + ' ' + m.k).toLowerCase().includes(needle)) : rows;
+    return { g, name, rows, hits, nameHit };
+  }).filter(x => !needle || x.nameHit || x.hits.length);
   return h('div', { className: 'devwrap' },
     h('div', { className: 'devback', onPointerDown: e => { e.preventDefault(); close(); } }),
     h('div', { className: 'devpanel scroll' },
-      h('div', { className: 'devhead' },
-        h('h2', null, 'Dev'),
-        h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Done')),
-      h('div', { className: 'devbtns' },
-        h('button', { className: 'dbg' + (LO.debug ? ' on' : ''),
-          onPointerDown: e => { e.preventDefault(); LO.debug = !LO.debug; refresh(); bump(n => n + 1); } },
-          'All mods'),
-        h('button', { className: 'dbg allperks' + (LO.debugPerks ? ' on' : ''),
-          onPointerDown: e => { e.preventDefault(); LO.debugPerks = !LO.debugPerks; refresh(); bump(n => n + 1); } },
-          'All perks'),
-        h('button', { className: 'dbg restart',
-          onPointerDown: e => { e.preventDefault(); onRestart(); } }, 'Restart run'),
-        h('button', { className: 'dbg spawngun',
-          onPointerDown: e => { e.preventDefault(); onSpawnGun(); } }, 'Spawn gun'),
-        h('button', { className: 'dbg newcave',
-          onPointerDown: e => { e.preventDefault(); input.current.newCave = true; close(); } }, 'New cave'),
-        h('button', { className: 'dbg floor2',
-          onPointerDown: e => { e.preventDefault(); input.current.newCave = 2; close(); } }, 'Floor 2')),
-      DEV_GROUPS.map(([g, name]) => {
-        const shut = !openG[g];
-        return h('div', { key: g, className: 'devgroup' },
-          h(DevGroupHead, { g, name, shut, toggle: toggleG }),
-          shut ? null : h('div', { className: 'devvars' },
-            g === 'jellycol' ? h(JellyPreview) : null,        // the live jelly its colours paint
-            g === 'holoflash' ? h(FadeCurve) : null,
-            CURVES.filter(c => c.g === g).map(c => h(CurveEdit, { key: c.p, p: c.p, label: c.label, lo: c.lo, hi: c.hi })),
-            g === 'elitefx' ? [h(FlamePreview, { key: 'fp' }), h('p', { key: 'gl', className: 'devlbl' }, 'Colour over life'), h(GradEditor, { key: 'ge' }),
-              h('p', { key: 'rl', className: 'devlbl' }, 'Opacity over life'), h(RampEditor, { key: 're' })] : null,
-            DEV_META.filter(m => m.g === g).map(m => h(DevRow, { key: m.k, meta: m }))));
-      }),
-      h('p', { className: 'devnote' },
-        'Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back.'),
-      h('button', { className: 'dbg devcopy', onPointerDown: e => { e.preventDefault(); copyAll(); } },
-        'Copy all dev settings to clipboard'),
-      copied ? h('p', { className: 'devnote' }, copied.ok ? 'Copied — paste it to Claude.'
-        : 'Could not reach the clipboard — press and hold the text below to copy it.') : null,
-      copied && !copied.ok ? h('textarea', { className: 'devcopytext', readOnly: true, value: copied.text }) : null
+      h('div', { className: 'devtop' },
+        h('div', { className: 'devhead' },
+          h('h2', null, 'Dev'),
+          h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Done')),
+        h('div', { className: 'devbtns' },
+          act('toggle' + (LO.debug ? ' on' : ''), 'All mods', () => { LO.debug = !LO.debug; refresh(); bump(n => n + 1); }),
+          act('toggle allperks' + (LO.debugPerks ? ' on' : ''), 'All perks', () => { LO.debugPerks = !LO.debugPerks; refresh(); bump(n => n + 1); }),
+          act('spawngun', 'Spawn gun', onSpawnGun),
+          act('spawnlevel', 'Spawn level', onSpawnLevel),
+          act('restart', 'Restart run', onRestart),
+          act('devcopy', 'Copy Dev settings', () => copyText(devReport)),
+          act('devaudit', 'Copy mod & perk audit', () => copyText(() => auditText(loadAudit()), 'audit'))),
+        copied ? h('p', { className: 'devnote devcopied' + (copied.ok ? ' ok' : '') }, copied.empty
+          ? 'Nothing audited yet — pin, trash or give feedback on a mod or perk card first.'
+          : copied.ok ? (copied.what === 'audit' ? 'Audit copied — paste it into Claude Code.' : 'Copied — paste it to Claude.')
+          : 'Could not reach the clipboard — press and hold the text below to copy it.') : null,
+        copied && !copied.ok && !copied.empty ? h('textarea', { className: 'devcopytext', readOnly: true, value: copied.text }) : null,
+        h('div', { className: 'devsearchw' },
+          h('input', { className: 'devsearch', type: 'search', placeholder: 'Search knobs…', value: q,
+            onChange: e => setQ(e.target.value) }),
+          q ? h('button', { className: 'devclear', 'aria-label': 'Clear search', onPointerDown: e => { e.preventDefault(); setQ(''); } }, '×') : null),
+        needle ? null : h('div', { className: 'devtabs', role: 'tablist' },
+          DEV_TABS.map(([t, name, gs]) => {
+            const chg = DEV_META.filter(m => gs.includes(m.g) && DEV[m.k] !== DEV_DEFAULTS[m.k]).length;
+            return h('button', { key: t, className: 'devtab' + (t === tab ? ' on' : ''), 'data-t': t, role: 'tab',
+              'aria-selected': t === tab, onClick: () => setTab(t) }, name, chg ? h('i', { className: 'devdot' }) : null);
+          }))),
+      h('div', { className: 'devbody' },
+        shown.length ? null : h('p', { className: 'devnote' }, 'No knob matches “' + q.trim() + '”.'),
+        shown.map(({ g, name, rows, hits, nameHit }) => {
+          const shut = needle ? false : !openG[g];
+          const changed = rows.filter(m => DEV[m.k] !== DEV_DEFAULTS[m.k]).length;
+          return h('div', { key: g, className: 'devgroup' + (shut ? '' : ' open') },
+            h(DevGroupHead, { g, name, shut, toggle: toggleG, n: rows.filter(m => m.type !== 'curve').length, changed,
+              tab: needle ? tabName(devTabOf(g)) : '' }),
+            shut ? null : h('div', { className: 'devvars' },
+              !needle || nameHit ? groupExtras(g) : null,
+              hits.map(m => h(DevRow, { key: m.k, meta: m }))));
+        }),
+        h('p', { className: 'devnote' },
+          'Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back; ↺ resets a slider or colour. Copy Dev settings sends every knob you changed (to make them the defaults); Copy mod & perk audit sends your 📌 / 🗑️ / feedback notes.'))
     )
   );
+}
+
+// Dev → Spawn level (owner: New cave and Floor 2 in one): every floor's theme, tap one for a fresh
+// cave of that floor (input.current.newCave = its number; game/systems/step.js). Yours is lit.
+/** @param {{ input: { current: GameInput }, close: () => void }} props */
+export function SpawnLevel({ input, close }) {
+  const cur = input.current.floor || 1;
+  const go = (/** @type {number} */ n) => { input.current.newCave = n; close(); };
+  return h('div', { className: 'devwrap' },
+    h('div', { className: 'devback', onPointerDown: e => { e.preventDefault(); close(); } }),
+    h('div', { className: 'devpanel spawnpanel' },
+      h('div', { className: 'devhead' },
+        h('h2', null, 'Spawn level'),
+        h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Cancel')),
+      h('div', { className: 'lvlpick' },
+        THEMES.map((t, i) => h('button', { key: i, className: 'dbg lvlgo' + (i + 1 === cur ? ' on' : ''), 'data-floor': i + 1,
+          onPointerDown: e => { e.preventDefault(); go(i + 1); } }, h('b', null, i + 1), ' ' + t.name)))));
 }
 
 /** @param {{ input: { current: GameInput }, close: () => void }} props */

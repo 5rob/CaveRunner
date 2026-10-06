@@ -23,8 +23,13 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   });
   await page.tap('.weapon');
   await page.waitForTimeout(250);
+  // by mod id, not position: the bag stacks and groups its tiles (LIST3 #9)
+  const IDS = ['saw', 'fast', 'cold'];
+  // the card's × closes it (the taller card can cover the tile that opened it)
+  const shut = async () => { const x = await page.$('.pop:not(.ingame) .pclose'); if (x) { await x.tap(); await page.waitForTimeout(200); } };
   const card = async n => {
-    const b = await (await page.$$('.bag .tile'))[n].boundingBox();
+    await shut();
+    const b = await (await page.$(`.bag .tile[data-mod="${IDS[n]}"]`)).boundingBox();
     await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
     await page.waitForTimeout(200);
     return page.evaluate(() => {

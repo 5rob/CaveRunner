@@ -4,12 +4,15 @@
 // each frame's aiming, gun clocks and trigger pull (aimAndCast, a part of step()).
 
 import { SFX } from '../../audio/sfx.js';
-import { AIM_DEAD, PH } from '../../core/consts.js';
+import { AIM_DEAD, PH, PW } from '../../core/consts.js';
 import { effRecharge, gunPassives, planCast } from '../../spells/cast.js';
 import { shuffleOrder } from '../../spells/guns.js';
 import { bhSp } from '../../spells/trace.js';
+import { assistPointer, assistSnap, hasAssist } from '../../spells/assist.js';
+import { discrimId, targetName } from '../../spells/discrim.js';
+import { DEV } from '../../dev/knobs.js';
 import { anchorOf, castField, fireBeam } from './fields.js';
-import { burst } from './particles.js';
+import { burst, toast } from './particles.js';
 import { hurt } from './player.js';
 import { lineOfSight, solidAt } from './terrain.js';
 
@@ -144,7 +147,7 @@ export function spawnShot(W, G, sh, ox, oy, base, bonus, warp, fd, from) {
       drag: sh.drag, bounceE: sh.bounceE, pit: sh.pit, wig: sh.wig, look: sh.look,
       light: sh.light, lightR: sh.lightR, vmax: sh.vmax, lifeBoom: sh.lifeBoom,
       trig: sh.trig, timer: sh.trig === 'timer' ? sh.timer : null,
-      ox: bx, oy: by, age: 0, born: sh.life });
+      ox: bx, oy: by, age: 0, born: sh.life, only: sh.only || null });
   }
 }
 
@@ -171,6 +174,33 @@ export function releaseAt(W, G, list, x, y, nx, ny, col, from) {
   burst(W, x0, y0, 5, col);
 }
 
+// Aim Assist's pointer between frames: out (past DEV.aaStart this touch), the creature it's on, and
+// how long it's been on it (the auto-fire waits DEV.aaDelay)
+let assistOut = false, assistT = 0;
+/** @type {Enemy | null} */
+let assistHeld = null;
+
+// Discriminate's target pick (the Bag's "Set target" sets input.pickTarget to the copy's bag index):
+// the pointer is out this touch, the thing it's on, and whether the hint has shown
+let pickOut = false, pickHint = false;
+/** @type {{ x: number, ty: number, r: number, t: DiscrimTarget } | null} */
+let pickHeld = null;
+// everything on screen a Discriminate can be set on: creatures, you, props, pickups
+/** @param {World} W @param {{ x: number, y: number, w: number, h: number }} v */
+function pickables(W, v) {
+  const on = (/** @type {number} */ x, /** @type {number} */ y) => x >= v.x && x <= v.x + v.w && y >= v.y && y <= v.y + v.h;
+  /** @type {{ x: number, ty: number, r: number, t: DiscrimTarget }[]} */
+  const out = [];
+  for (const e of W.enemies) if (e.hp > 0 && on(e.x, e.ty)) out.push({ x: e.x, ty: e.ty, r: e.r, t: { kind: 'creature', id: e.k.id } });
+  if (!W.p.dead) out.push({ x: W.p.x + PW / 2, ty: W.p.y + PH / 2, r: 6, t: { kind: 'player', id: 'player' } });
+  for (const pr of W.props) {
+    const x = pr.x + (pr.l + pr.r) / 2, y = pr.y + (pr.t0 + pr.b) / 2;
+    if (!pr.gone && on(x, y)) out.push({ x, ty: y, r: Math.min(14, Math.max(pr.r - pr.l, pr.b - pr.t0) / 2), t: { kind: 'object', id: pr.k } });
+  }
+  for (const it of W.pickups) if (!it.taken && on(it.x, it.y)) out.push({ x: it.x, ty: it.y, r: 5, t: { kind: 'object', id: it.kind } });
+  return out;
+}
+
 // ---- aiming and firing (a part of step) ----
 // Where you aim (the right stick, else the mouse; Pinpointer aims for you), which way you
 // face, every gun's clocks and mana, and a pull of the held gun's trigger.
@@ -183,7 +213,7 @@ export function aimAndCast(W, G, F) {
   let R = { on: false, show: false, nx: W.p.face, ny: 0 };
   // line shows as soon as you touch the stick, fading in with the push: 0 at the centre,
   // full at the trigger ring (vis is what the Trajectory Sight line reads)
-  if (TR.active) R = { on: TR.on, show: true, nx: TR.nx, ny: TR.ny, vis: Math.min(1, TR.mag / AIM_DEAD) };
+  if (TR.active) R = { on: TR.on, show: true, nx: TR.nx, ny: TR.ny, vis: Math.min(1, TR.mag / (TR.fire || AIM_DEAD)) };
   else if (G.mouse.inside) {
     const dx = W.camX + G.mouse.x / W.unitPx - gx, dy = W.camY + G.mouse.y / W.unitPx - gy, d = Math.hypot(dx, dy);
     if (d > 1) R = { on: G.mouse.down, show: true, nx: dx / d, ny: dy / d };
@@ -201,10 +231,52 @@ export function aimAndCast(W, G, F) {
       R = { on: R.on || (TR.active && TR.on), show: true, nx: Math.cos(a), ny: Math.sin(a), vis: R.vis };
     }
   }
+  // Aim Assist on the held gun: the right stick is a pointer (no trigger ring) that snaps onto
+  // creatures in sight and on screen; once it's on one for DEV.aaDelay the gun fires at it
+  const held = LO.guns[LO.sel];
+  W.p.assist = undefined;
+  const pick = G.input.current.pickTarget;
+  if (pick == null && hasAssist(held) && !W.p.dead && TR.active && !G.RPV) {
+    if (TR.mag > DEV.aaStart || assistOut) {
+      assistOut = true;
+      const view = { x: W.camX, y: W.camY, w: W.viewW || 400, h: W.viewH || 300 };
+      const raw = assistPointer(gx, gy, TR.nx, TR.ny, TR.mag, view);
+      const onScreen = (/** @type {Enemy} */ e) => e.x >= view.x && e.x <= view.x + view.w && e.ty >= view.y && e.ty <= view.y + view.h;
+      const s = assistSnap(raw, W.enemies, e => e.hp > 0 && onScreen(e) && lineOfSight(W, gx, gy, e.x, e.ty), assistHeld);
+      if (s.on !== assistHeld) { assistHeld = s.on; assistT = 0; } else assistT += dt;
+      const tx = s.on ? s.on.x : s.x, ty = s.on ? s.on.ty : s.y, d = Math.hypot(tx - gx, ty - gy);
+      W.p.assist = { x: s.x, y: s.y, snap: !!s.on, ex: s.on ? s.on.x : 0, ey: s.on ? s.on.ty : 0, er: s.on ? s.on.r : 0 };
+      R = { on: !!s.on && assistT >= DEV.aaDelay, show: true, nx: d > 1 ? (tx - gx) / d : W.p.face, ny: d > 1 ? (ty - gy) / d : 0, vis: 0 };
+    } else R = { on: false, show: R.show, nx: R.nx, ny: R.ny, vis: 0 };
+  } else if (!TR.active) { assistOut = false; assistHeld = null; }
+  // picking a Discriminate's target: the same pointer and ring, snapping onto anything it can be set on;
+  // letting go on a thing sets it (for good), letting go on nothing cancels. Nothing fires meanwhile
+  if (pick != null && !G.RPV) {
+    const IN = G.input.current;
+    if (!pickHint) { pickHint = true; toast(W, 'Aim at a target, let go to set it'); }
+    if (TR.active) {
+      pickOut = true;
+      const view = { x: W.camX, y: W.camY, w: W.viewW || 400, h: W.viewH || 300 };
+      const raw = assistPointer(gx, gy, TR.nx, TR.ny, TR.mag, view);
+      const s = assistSnap(raw, pickables(W, view), () => true, pickHeld);
+      pickHeld = s.on;
+      W.p.assist = { x: s.x, y: s.y, snap: !!s.on, ex: s.on ? s.on.x : 0, ey: s.on ? s.on.ty : 0, er: s.on ? s.on.r : 0 };
+    } else if (pickOut || W.p.dead) {
+      if (pickHeld && LO.bag[pick] === 'discrim') {
+        LO.bag[pick] = discrimId(pickHeld.t);
+        toast(W, 'Discriminate → ' + targetName(pickHeld.t)); SFX.ui('mod');
+      } else toast(W, 'Discriminate: no target set');
+      IN.pickTarget = null; pickOut = false; pickHeld = null; pickHint = false;
+      IN.notify();
+    }
+    R = { on: false, show: false, nx: W.p.face, ny: 0 };
+  } else { pickOut = false; pickHeld = null; pickHint = false; }
   if (W.p.dead) R.on = false;
   W.p.aim = R;
 
   if (R.show) W.p.face = R.nx >= 0 ? 1 : -1;
+  // swinging on a vine you keep facing the way you were, unless you push the other way (owner)
+  else if (W.p.swing) { if (Math.abs(W.p.steer || 0) > 0.1) W.p.face = W.p.steer > 0 ? 1 : -1; }
   else if (Math.abs(W.p.vx) > 10) W.p.face = W.p.vx > 0 ? 1 : -1;
 
   // every gun you carry ticks down and tops up its mana, holstered or not

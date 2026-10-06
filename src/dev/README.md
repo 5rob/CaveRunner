@@ -4,7 +4,8 @@
 
 - `DEV` — the live values; the game reads them every frame, so a change shows at once.
 - `DEV_DEFAULTS` (plain knobs), `DEV_META` (one row each: key, group `g`, label, min/max/step,
-  optional `type: 'color' | 'slider'`), `DEV_GROUPS` (the collapsible sections, in order).
+  optional `type: 'color' | 'slider'`), `DEV_GROUPS` (the collapsible sections, in order), `DEV_TABS` (the panel's tabs: `[id, name, groups]`;
+  `devTabOf(g)` = a group's tab; **a new group goes in a tab too**, `devsettings.test.js` checks it).
 - `devSet(k, v)` writes through to localStorage (`DEV_KEY` = `caverunner-dev`); `devReport()`
   is the text behind **Copy all dev settings to clipboard**.
 - Range knobs: `rangeKnobs(group, rows)` registers `k+'Lo'`/`k+'Hi'` and two rows each; `kr(k, rnd)`
@@ -52,10 +53,16 @@
   and `l2dTop` (120) (kept away from the shop and the exits), `l2dSilk` (× thickness, 1), `l2dDark` (0.94), `l2dBands`
   (v0.0.148, replacing the blurred `l2dEdge`: steps of grey in the edge's ramp, 3), `l2dHoloBlur` (v0.0.148: the silk
   blurs the hologram too, 0 off / 1 on, off: it costs a blur every frame), `l2dHolo` (the hologram's haze through the silk, 0.4), `l2dBack` (how much of
-  the silk shows in the dark, 0.3).
+  the silk shows in the dark, 0.3). The hologram glitching in a zone (`world/holoflicker.js`, render/dark.js): `l2dFlk` (on 1 / off 0), `l2dFlkBase`
+  (the hologram between bursts, × its brightness, 0.5), `l2dFlkRate` (how often it blinks on bright, flashes a second, 0.9), `l2dFlkTears` (torn glitches a second, 0.75), `l2dFlkDrops` (cut-outs a second, 0.9; owner: each its own rate), `l2dFlkFlash` (a flash's
+  brightness × the hologram, 1.6), `l2dFlkGlitch` (how far torn slices jump, terrain px, 10), `l2dFlkNear` (starts this
+  many px outside a zone's box, 40).
 - Level 2: destruction (`g: 'l2boom'`, `world/byDistance.js` `destructionOpts`; not in the cave yet): `l2bMaxDist` (reach from a dark zone, px, 200), `l2bCount` (explosions, 60), `l2bFire` (% that cause fire, 30), `l2bSizeLo`/`Hi` (size range, px radius, 6–18: `L2B_KNOBS`), `l2bJitter` (± px, 0), `l2bClear` (open air round each, px, 4), and two curves: `l2bDen` (destruction amount by distance, 0..1) and `l2bScale` (size × by distance, 0..2).
 - Curve knobs: `curveKnobs(group, p, label, lo, hi, def)` registers `p+'0'` (start y), `p+'C1x'`, `p+'C1y'`, `p+'C2x'`, `p+'C2y'`, `p+'1'` (end y), all `type: 'curve'` (no boxes), and lists it in `CURVES` so the panel draws a `CurveEdit` for it in its group; `kcurve(p)` reads it as a `Curve` (`core/util.js` `bezierAt`). The hologram flash's `holoC*` predate it (fixed ends, `FadeCurve`).
 - Sway also has `vineLinks` (links in a swung vine's tail) and `vineTailDamp`.
+- Aim Assist (`g: 'aimassist'`, LIST3 #10, `spells/assist.js`, its own block above `DEV_KEY`): `aaStart` (push before the
+  pointer comes out, 0.12), `aaReach` (1), `aaSnapR` (40 world units), `aaPull` (0.45), `aaHit` (10), `aaHold` (stickiness, 1.5),
+  `aaDelay` (fires this long after snapping on, 0.08 s), `aaSize` (ring px, 26), `aaLine` (1.25), `aaDot` (2).
 - Carrot (`g: 'carrot'`, `CARROT_KNOBS`): `caCam`, `caTorch`, `caAggro`, `caAim`, each a min (no Carrot
   fitted) / max (Carrot V) multiplier; `carrotAt(k, W.pb.carrot)` is the value at a level.
 - The menus' pointer (`g: 'menuptr'`): `ptrStart`, `ptrReach`, `ptrSize`, `ptrLine`, `snapR`, `snapPull`,
@@ -78,4 +85,4 @@
 - **The knob tables stay in this file** (REFACTOR.md D11): `DEV` is copied from `DEV_DEFAULTS` once,
   right after the tables register, so a table in a creature's own module would register too late.
 - A blank field in the panel restores `DEV_DEFAULTS[k]`. Group open/shut state is localStorage
-  `caverunner-devgroups` (all shut by default).
+  `caverunner-devgroups` (all shut by default), the tab `caverunner-devtab`.
