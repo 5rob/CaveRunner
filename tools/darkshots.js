@@ -1,6 +1,6 @@
 // Screenshots of floor 2's dark zones for the owner (Level 2 stage 4), phone size (412 x 880 @2.625), the
 // real game through the test page. Not a test: it takes the pictures and prints what each shows.
-//   node tools/darkshots.js [outdir]      (default tests/build/darkshots; ONLY_MAP=1: the map shots alone)
+//   node tools/darkshots.js [outdir]      (default tests/build/darkshots; ONLY_MAP=1: the map shots alone; HOLO=1: the hologram at full brightness throughout)
 // Builds index.html and the test page first. Same seed as tests/browser/darkzone.test.js (Math.random
 // seeded 11, then floor 2).
 const { launch } = require('../tests/chromium');
@@ -115,6 +115,7 @@ require('../tests/build')();
   });
   const stand = async (x, y, nx, ny, ms = 1000) => { await page.evaluate(([x, y, nx, ny]) => { window.__pin = { x, y }; window.__aim = { nx, ny }; }, [x, y, nx, ny]); await page.waitForTimeout(ms); };
   const dev = o => page.evaluate(o => Object.assign(DEV, o), o);
+  if (process.env.HOLO) await dev({ holoMin: 1, holoMax: 1 });
   await page.waitForTimeout(3000);           // outlast the floor's name card
   // a place to stand: open box over a floor, from terrain (x, y) searching outward
   const spotNear = (tx, ty, rmax) => page.evaluate(([tx, ty, rmax]) => {
