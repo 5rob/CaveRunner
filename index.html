@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.147</title>
-<!-- VERSION = 'v147' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.148</title>
+<!-- VERSION = 'v148' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -720,7 +720,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.147';</script>
+<script>const VERSION = 'v0.0.148';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -888,6 +888,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   // src/dev/knobs.js
   var DEV_DEFAULTS = {
     zoom: 1.6,
+    renderScale: 1.5,
     torch: 0.5,
     fogDark: 0.99,
     fogDim: 0.85,
@@ -967,6 +968,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
   var DEV_META = [
     { k: "zoom", g: "view", label: "Camera zoom", min: 0.3, max: 3, step: 0.05 },
+    { k: "renderScale", g: "view", label: "Draw sharpness: canvas px per screen px, at most (lower = faster, softer)", min: 0.5, max: 4, step: 0.25 },
     { k: "aimDist", g: "view", label: "Crosshair distance", min: 10, max: 200, step: 2 },
     { k: "torch", g: "light", label: "Torch fall-off distance", min: 0.2, max: 5, step: 0.05 },
     { k: "fogDark", g: "light", label: "Fog of war darkness", min: 0, max: 1, step: 0.01 },
@@ -1404,7 +1406,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   DEV_DEFAULTS.l2dTop = 120;
   DEV_DEFAULTS.l2dSilk = 1;
   DEV_DEFAULTS.l2dDark = 1;
-  DEV_DEFAULTS.l2dEdge = 1.2;
+  DEV_DEFAULTS.l2dBands = 3;
+  DEV_DEFAULTS.l2dHoloBlur = 0;
   DEV_DEFAULTS.l2dHolo = 0.8;
   DEV_DEFAULTS.l2dBack = 0.12;
   DEV_DEFAULTS.l2dBlur = 5;
@@ -1418,9 +1421,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "l2dTop", g: "l2dark", label: "Kept away from the exits (px from the top)", min: 0, max: 600, step: 5 },
     { k: "l2dSilk", g: "l2dark", label: "Silk: how thick (×)", min: 0, max: 4, step: 0.05 },
     { k: "l2dDark", g: "l2dark", label: "Darkness (0 = none, 1 = pitch black)", min: 0, max: 1, step: 0.01 },
-    { k: "l2dEdge", g: "l2dark", label: "Edge softness (fog cells of blur)", min: 0, max: 6, step: 0.1 },
+    { k: "l2dBands", g: "l2dark", label: "Edge: steps of grey from clear to black (owner: 3, no blur)", min: 1, max: 12, step: 1 },
+    { k: "l2dHoloBlur", g: "l2dark", label: "Silk blurs the hologram behind it (0 off: faster, 1 on)", min: 0, max: 1, step: 1 },
     { k: "l2dHolo", g: "l2dark", label: "Hologram through the silk (0 = hidden, diffused)", min: 0, max: 1, step: 0.01 },
-    { k: "l2dBlur", g: "l2dark", label: "Silk blur: how much it frosts the back wall and hologram behind it (terrain px)", min: 0, max: 12, step: 0.5 },
+    { k: "l2dBlur", g: "l2dark", label: "Silk blur: how much it frosts the back wall (and the hologram, if on) behind it (terrain px)", min: 0, max: 12, step: 0.5 },
     { k: "l2dBack", g: "l2dark", label: "Back wall brightness behind the silk", min: 0, max: 1, step: 0.01 },
     { k: "l2dFireR", g: "l2dark", label: "Fire lifts the black tint out to (px)", min: 1, max: 200, step: 1 },
     { k: "l2dTintDepth", g: "l2dark", label: "Black fades in over this far into a zone (px)", min: 1, max: 160, step: 1 },
@@ -1429,7 +1433,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   );
   curveKnobs("l2dark", "l2dFire", "Fire lifts the black (Y, 1 = full colour) by distance to it (X, 0 to the max)", 0, 1, { y0: 1, x1: 0.35, y1: 1, x2: 0.55, y2: 0.1, y3: 0 });
   var AL_KNOBS = rangeKnobs("l2alien", [
-    ["alCount", "Aliens per dark zone", 0, 400, 1, 60, 120],
+    ["alCount", "Aliens per dark zone", 0, 400, 1, 30, 60],
     ["alStrays", "Strays per floor (black, outside the zones)", 0, 20, 1, 2, 4],
     ["alScale", "Size × (each one rolled in this range)", 0.2, 5, 0.05, 0.6, 2.4],
     ["alBias", "Size: lean to small (1 even; higher = more small, few big)", 1, 8, 0.1, 3, 4],
@@ -2166,6 +2170,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       look: "flame",
       light: "255,165,40",
       lightR: 26
+    },
+    // v0.0.148 (owner): a flamethrower. A fast stream of short-lived flames the way you aim: they slow in the air,
+    // rise, lick through creatures and set alight whatever they pass
+    flamer: {
+      name: "Flamethrower",
+      kind: "shot",
+      glyph: "⟴",
+      col: "#ff6a1f",
+      mana: 3,
+      info: "A short spray of fire the way you aim. Slows and rises as it goes, passes through creatures and sets alight whatever it licks",
+      dmg: 0.45,
+      speed: 330,
+      spread: 8,
+      delay: 0.05,
+      size: 2.5,
+      life: 0.45,
+      count: 2,
+      drag: 2.5,
+      grav: -90,
+      pierce: 3,
+      recoil: 2,
+      fire: 1,
+      look: "flame",
+      light: "255,140,40",
+      lightR: 20
     },
     // Noita's Bubble Spark: a slow glowing blue bubble, 20 soft bounces, lights the cave
     // round it, and pops a little hole when it bursts
@@ -3244,6 +3273,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     missile: "shots",
     fball: "shots",
     fbolt: "shots",
+    flamer: "shots",
     bubble: "shots",
     spit: "shots",
     eorb: "shots",
@@ -3376,6 +3406,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     missile: 60,
     fball: 55,
     fbolt: 40,
+    flamer: 45,
     bubble: 15,
     spit: 15,
     eorb: 45,
@@ -3495,6 +3526,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     trigger: 2,
     esph: 2,
     fbolt: 2,
+    flamer: 2,
     eorb: 2,
     disc: 2,
     glance: 2,
@@ -3642,6 +3674,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     missile: "fire",
     fball: "fire",
     fbolt: "fire",
+    flamer: "fire",
     meteor: "fire",
     zap: "thunder",
     chain: "thunder",
@@ -5378,6 +5411,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       jet: 1.25,
       info: "A quarter more thrust out of the jetpack."
     },
+    fireimm: {
+      name: "Fire Immunity",
+      glyph: "♨",
+      tint: "#ff7a2f",
+      fireImm: 1,
+      info: "Fire never catches on you: walk through flames, burning grass and your own fire spells unhurt. Blasts still hurt."
+    },
     move: {
       name: "Faster Movement",
       glyph: "➤",
@@ -5620,7 +5660,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       trajectory: 0,
       fuel: 1,
       refuel: 1,
-      carrot: 0
+      carrot: 0,
+      fireImm: 0
     };
     for (const id of ids || []) {
       const k = PERKS[id];
@@ -5662,7 +5703,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         "tinker",
         "extraItem",
         "pinpointer",
-        "trajectory"
+        "trajectory",
+        "fireImm"
       ])
         if (k[f]) P2[f] = 1;
     }
@@ -7456,6 +7498,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     missile: "ROCKET",
     fball: "FIREBALL",
     fbolt: "GRENADE",
+    flamer: "FIREBALL",
     bubble: "BUBBLESHOT",
     spit: "SPITTER",
     eorb: "SLOW_BULLET",
@@ -7835,7 +7878,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       greens: (Array.isArray(lo.greens) ? lo.greens : []).filter((f) => Number.isInteger(f) && f > 0),
       crystals: (Array.isArray(lo.crystals) ? lo.crystals : []).filter((f) => Number.isInteger(f) && f > 0),
       fed: (Array.isArray(lo.fed) ? lo.fed : []).filter((k) => typeof k === "string"),
-      debug: !!lo.debug
+      debug: !!lo.debug,
+      debugPerks: !!lo.debugPerks
     };
   }
   function readSave(raw) {
@@ -12211,36 +12255,49 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.moveTo(pts[n - 1][0] + w1 / 2, pts[n - 1][1]);
     ctx.arc(pts[n - 1][0], pts[n - 1][1], w1 / 2, 0, Math.PI * 2, true);
   }
-  var SKIN_N = 48, SKIN_U = 0.5;
-  var skin = null;
-  function skinTile() {
-    if (skin) return skin;
+  var EYE_N = 96;
+  var eyes = /* @__PURE__ */ new Map();
+  function eyeArt(white) {
+    const got = eyes.get(white);
+    if (got) return got;
     const c = document.createElement("canvas");
-    c.width = c.height = SKIN_N;
+    c.width = c.height = EYE_N;
+    eyes.set(white, c);
     const g = c.getContext("2d");
     if (!g) return c;
-    const img = g.createImageData(SKIN_N, SKIN_N), d = img.data;
-    const hv = (x, y) => {
-      const h3 = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
-      return h3 - Math.floor(h3);
-    };
-    const sm = (x, y) => {
-      const X = Math.floor(x), Y = Math.floor(y), u = x - X, v = y - Y, U = u * u * (3 - 2 * u), V2 = v * v * (3 - 2 * v);
-      return (hv(X, Y) * (1 - U) + hv(X + 1, Y) * U) * (1 - V2) + (hv(X, Y + 1) * (1 - U) + hv(X + 1, Y + 1) * U) * V2;
-    };
-    for (let y = 0; y < SKIN_N; y++) for (let x = 0; x < SKIN_N; x++) {
-      const t = sm(x / 6, y / 6), gr = 0.75 + hv(x + 300, y + 700) * 0.5, k = (y * SKIN_N + x) * 4;
-      d[k] = (52 * (1 - t) + 20 * t) * gr;
-      d[k + 1] = (22 * (1 - t) + 30 * t) * gr;
-      d[k + 2] = (74 * (1 - t) + 82 * t) * gr;
-      d[k + 3] = 255;
+    g.translate(EYE_N / 2, EYE_N / 2);
+    g.scale(EYE_N / 2, EYE_N / 2);
+    g.fillStyle = white;
+    g.beginPath();
+    g.arc(0, 0, 1, 0, Math.PI * 2);
+    g.fill();
+    g.save();
+    g.beginPath();
+    g.arc(0, 0, 1, 0, Math.PI * 2);
+    g.clip();
+    g.strokeStyle = "rgba(170, 40, 50, 0.6)";
+    g.lineWidth = 0.07;
+    g.lineCap = "round";
+    for (let v = 0; v < 8; v++) {
+      const h3 = Math.sin(v * 78.233 + 4.1) * 43758.5453, u = h3 - Math.floor(h3);
+      const va = v * (Math.PI * 2 / 8) + (u - 0.5) * 0.5;
+      const sx = Math.cos(va) * 1.08, sy = Math.sin(va) * 1.08, ex = Math.cos(va) * 0.4, ey = Math.sin(va) * 0.4;
+      const dx = ex - sx, dy = ey - sy, dl = Math.hypot(dx, dy) || 1, nx = -dy / dl, ny = dx / dl;
+      const amp = 0.025 + u * 0.15, waves = 1 + u * 3;
+      g.beginPath();
+      g.moveTo(sx, sy);
+      for (let q = 1; q <= 10; q++) {
+        const t = q / 10, w = Math.sin(t * Math.PI * waves + v) * amp * Math.sin(t * Math.PI);
+        g.lineTo(sx + dx * t + nx * w, sy + dy * t + ny * w);
+      }
+      g.stroke();
     }
-    g.putImageData(img, 0, 0);
-    return skin = c;
+    g.restore();
+    return c;
   }
   function drawAlien(ctx, x, y, r, time, phase, flash, col, S2) {
     const s = S2 || {}, black = !!s.black, rot = s.rot || 0, walk = s.walk || 0;
-    const ink = black ? "#000000" : flash ? "#ffffff" : col.b;
+    const ink = flash && !black ? "#ffffff" : "#000000";
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(rot);
@@ -12269,58 +12326,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.moveTo(r, 0);
     ctx.arc(0, 0, r, 0, Math.PI * 2, true);
     ctx.fill();
-    if (!black && !flash) {
-      ctx.save();
-      ctx.clip();
-      const ext = SKIN_N * SKIN_U, sm = ctx.imageSmoothingEnabled;
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(skinTile(), -ext / 2, -ext / 2, ext, ext);
-      ctx.imageSmoothingEnabled = sm;
-      ctx.restore();
-    }
     ctx.restore();
-    ctx.save();
-    ctx.translate(x, y);
     if (!black) {
-      ctx.fillStyle = flash ? "#ffffff" : col.c;
-      ctx.beginPath();
-      ctx.arc(0, 0, r * 0.8, 0, Math.PI * 2);
-      ctx.fill();
+      const er = r * 0.8, sm = ctx.imageSmoothingEnabled;
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(eyeArt(flash ? "#ffffff" : col.c), x - er, y - er, er * 2, er * 2);
+      ctx.imageSmoothingEnabled = sm;
       const px = Math.max(-1, Math.min(1, s.px || 0)), py = Math.max(-1, Math.min(1, s.py || 0)), room = r * 0.42;
-      const pcx = px * room, pcy = py * room, pr = r * 0.3;
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(0, 0, r * 0.8, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.strokeStyle = "rgba(170, 40, 50, 0.6)";
-      ctx.lineWidth = Math.max(0.18, r * 0.05);
-      ctx.lineCap = "round";
-      for (let v = 0; v < 8; v++) {
-        const h3 = Math.sin(phase * 12.9898 + v * 78.233) * 43758.5453, u = h3 - Math.floor(h3);
-        const va = phase * 3 + v * (Math.PI * 2 / 8) + (u - 0.5) * 0.5;
-        const sx = Math.cos(va) * r * 0.86, sy = Math.sin(va) * r * 0.86;
-        const ex = pcx + Math.cos(va) * pr * 0.9, ey = pcy + Math.sin(va) * pr * 0.9;
-        const dx = ex - sx, dy = ey - sy, dl = Math.hypot(dx, dy) || 1, nx = -dy / dl, ny = dx / dl;
-        const amp = r * (0.02 + u * 0.12), waves = 1 + u * 3, steps = 10;
-        ctx.beginPath();
-        ctx.moveTo(sx, sy);
-        for (let q = 1; q <= steps; q++) {
-          const t = q / steps, w = Math.sin(t * Math.PI * waves + v) * amp * Math.sin(t * Math.PI);
-          ctx.lineTo(sx + dx * t + nx * w, sy + dy * t + ny * w);
-        }
-        ctx.stroke();
-      }
-      ctx.restore();
       ctx.fillStyle = col.eye;
       ctx.beginPath();
-      ctx.arc(pcx, pcy, pr, 0, Math.PI * 2);
+      ctx.arc(x + px * room, y + py * room, r * 0.3, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
       ctx.beginPath();
-      ctx.arc(-r * 0.32, -r * 0.34, r * 0.13, 0, Math.PI * 2);
+      ctx.arc(x - r * 0.32, y - r * 0.34, r * 0.13, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.restore();
   }
   function alienGrid(list, cell) {
     const m = /* @__PURE__ */ new Map();
@@ -12530,12 +12551,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/game/creatures/alien.js
-  var AL_FAR = 700, FIRE_B = 64;
-  var F = { W: null, t: -1, grid: null, fire: /* @__PURE__ */ new Map(), nf: 0, dark: false, near: [] };
+  var AL_GROUPS = 5, FIRE_B = 64;
+  var grpNext = 0;
+  var F = { W: null, t: -1, n: 0, grid: null, fire: /* @__PURE__ */ new Map(), nf: 0, dark: false, near: [] };
   function frameData(W) {
     if (F.W === W && F.t === W.time) return;
     F.W = W;
     F.t = W.time;
+    F.n++;
     F.grid = alienGrid(W.enemies.filter((e) => e.k.act === "alien"), 24);
     F.fire.clear();
     F.nf = 0;
@@ -12593,14 +12616,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const { dt, dist, sees, hunting, pcx, pcy } = C;
     frameData(W);
     e.chill = 1;
-    const S2 = e.al;
-    if (S2 && dist > AL_FAR) {
+    let S2 = e.al;
+    if (S2) {
       S2.acc = (S2.acc || 0) + dt;
-      S2.skip = ((S2.skip || 0) + 1) % 4;
-      if (S2.skip) return true;
+      if (S2.grp === void 0) S2.grp = grpNext++ % AL_GROUPS;
+      if ((F.n + S2.grp) % AL_GROUPS !== 0) {
+        S2.tt = (S2.tt || 0) + dt;
+        const u = S2.tT ? Math.min(1, S2.tt / S2.tT) : 1;
+        if (S2.tx !== void 0 && S2.sx !== void 0 && S2.ty !== void 0 && S2.sy !== void 0) {
+          e.x = S2.sx + (S2.tx - S2.sx) * u;
+          e.y = S2.sy + (S2.ty - S2.sy) * u;
+        }
+        if (S2.r0 !== void 0 && S2.r1 !== void 0) S2.rot = S2.r0 + angDiff(S2.r1, S2.r0) * u;
+        S2.gait = ((S2.gait || 0) + dt * 22 * S2.walk) % (Math.PI * 200);
+        e.ty = e.y;
+        return true;
+      }
+      if (S2.tx !== void 0 && S2.ty !== void 0) {
+        e.x = S2.tx;
+        e.y = S2.ty;
+      }
+      if (S2.r1 !== void 0) S2.rot = S2.r1;
     }
     const t = S2 && S2.acc ? S2.acc : dt;
     if (S2) S2.acc = 0;
+    const x0 = e.x, y0 = e.y, gait0 = S2 ? S2.gait : 0, rot0 = S2 ? S2.rot : 0;
     ENV.solidCell = (cx, cy) => solidCell(W, cx, cy);
     ENV.zone = (x, y) => zoneAt(W, x, y);
     ENV.silk = (x, y) => {
@@ -12624,7 +12664,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ENV.hunting = hunting;
     ENV.youDark = F.dark;
     ENV.look = hunting || dist < e.k.aggro * sees * (e.aggroM || 1);
-    const r = alienStep(e, ENV, Math.min(t, 0.1));
+    const r = alienStep(e, ENV, Math.min(t, 0.25));
+    S2 = e.al;
+    if (S2) {
+      S2.sx = x0;
+      S2.sy = y0;
+      S2.tx = e.x;
+      S2.ty = e.y;
+      S2.tT = Math.max(dt, t);
+      S2.tt = dt;
+      S2.r0 = rot0;
+      S2.r1 = S2.rot;
+      if (gait0 !== void 0) S2.gait = ((gait0 || 0) + dt * 22 * S2.walk) % (Math.PI * 200);
+      const u = Math.min(1, S2.tt / S2.tT);
+      e.x = x0 + (S2.tx - x0) * u;
+      e.y = y0 + (S2.ty - y0) * u;
+      S2.rot = rot0 + angDiff(S2.r1, rot0) * u;
+    }
     e.ty = e.y;
     if (r === "bite") {
       SFX.creature(e.k, "bite", e.x, e.y);
@@ -14728,7 +14784,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     e.burn = Math.max(e.burn || 0, kr("fireBurn"));
   }
   function youAlight(W) {
-    if (W.p.dead) return;
+    if (W.p.dead || W.pb.fireImm) return;
     if (!(W.p.burn > 0)) {
       SFX.fx("whoosh", W.p.x + PW / 2, W.p.y + PH / 2);
       W.strings.length = 0;
@@ -16686,6 +16742,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return true;
   }
 
+  // src/game/dpr.js
+  var gameDpr = () => Math.min(window.devicePixelRatio || 1, DEV.renderScale > 0 ? DEV.renderScale : 99);
+
   // src/art/ramps.js
   var LUT_N = 64;
   var GRAD_RE = /^(\s*[\d.]+:#[0-9a-f]{6}\s*)+$/i;
@@ -17733,6 +17792,576 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (done) W.shopLit = null;
   }
 
+  // src/game/render/holo.js
+  var BG_PAR = 0.6;
+  var HOLO_PAR = (1 + BG_PAR) / 2;
+  var BOX_W = 96, TOP_H = 66, BOT_H = 60;
+  var PERIOD_X = 150, PERIOD_Y = 171;
+  var PAD = 7.5, TXT_PAD = 7.5;
+  var LINE = 1.5;
+  var SLANT = -0.3;
+  var RES = 1;
+  var cache = { key: "", pat: null };
+  function tilePattern(ctx, n) {
+    const key = String(n);
+    if (cache.key === key && cache.pat) return cache.pat;
+    const zero = n === 0, repo = n < 0, hue = zero ? "#00ff3c" : "#ff0000", bw = repo ? 140 : BOX_W;
+    const c = document.createElement("canvas");
+    c.width = PERIOD_X * RES;
+    c.height = PERIOD_Y * RES;
+    const t = c.getContext("2d");
+    if (!t) return null;
+    t.scale(RES, RES);
+    const x = (PERIOD_X - bw) / 2, y = (PERIOD_Y - TOP_H - BOT_H) / 2, by = y + TOP_H;
+    const box = (yy, hh, solid) => {
+      t.globalCompositeOperation = "source-over";
+      if (solid) {
+        t.fillStyle = hue;
+        t.fillRect(x, yy, bw, hh);
+        return;
+      }
+      t.strokeStyle = hue;
+      t.lineWidth = LINE;
+      t.strokeRect(x + LINE / 2, yy + LINE / 2, bw - LINE, hh - LINE);
+    };
+    const ink = (cut) => {
+      t.globalCompositeOperation = cut ? "destination-out" : "source-over";
+      t.fillStyle = cut ? "#000" : hue;
+    };
+    box(y, TOP_H, !zero);
+    const s = repo ? "REPOSSESSED" : String(n);
+    let fs = Math.min(bw, TOP_H) - PAD * 2;
+    t.font = "900 " + fs + "px system-ui, sans-serif";
+    const w = t.measureText(s).width;
+    if (w > bw - PAD * 2) {
+      fs *= (bw - PAD * 2) / w;
+      t.font = "900 " + fs + "px system-ui, sans-serif";
+    }
+    ink(!zero);
+    t.textBaseline = "middle";
+    t.textAlign = "left";
+    t.fillText(s, x + PAD, y + TOP_H / 2 + fs * 0.05);
+    box(by, BOT_H, zero);
+    const words = repo ? ["debt", "not", "repaid"] : ["biological", "entities", "detected"], lh = (BOT_H - TXT_PAD * 2) / words.length;
+    t.font = "700 " + lh * 0.85 + "px system-ui, sans-serif";
+    t.textBaseline = "top";
+    ink(zero);
+    words.forEach((wd, i) => t.fillText(wd, x + TXT_PAD, by + TXT_PAD + i * lh + lh * 0.08));
+    cache.key = key;
+    cache.pat = ctx.createPattern(c, "repeat");
+    if (cache.pat) cache.pat.setTransform(new DOMMatrix().scale(1 / RES));
+    return cache.pat;
+  }
+  var SCAN_SPEED = 6;
+  var BANDS = 3, BAND_SPEED = 45;
+  var GLITCH_T = 0.45;
+  var hash = (n) => {
+    const v = Math.sin(n * 12.9898) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  var L = { c: null, tmp: null, n: -1, gt: -99, ft: -99, bri: 0 };
+  function holoLevel(since) {
+    const lo = DEV.holoMin, hi = DEV.holoMax, u = since / Math.max(0.01, DEV.holoFade);
+    return clamp(lo + (hi - lo) * bezierFade(u, DEV.holoC1x, DEV.holoC1y, DEV.holoC2x, DEV.holoC2y), 0, 1);
+  }
+  var holoBright = () => L.bri;
+  var holoLayer = () => L.c;
+  var LG = { px: CELL, ox: 0, oy: 0, gx0: 0, gy0: 0, lw: 1, lh: 1 };
+  function setGrid(W, F2) {
+    const P2 = LG.px = clamp(DEV.holoPx || CELL, 0.5, 8);
+    LG.ox = W.camX * (1 - HOLO_PAR);
+    LG.oy = W.camY * (1 - HOLO_PAR);
+    LG.gx0 = Math.floor((W.camX - LG.ox) / P2) - 1;
+    LG.gy0 = Math.floor((W.camY - LG.oy) / P2) - 1;
+    LG.lw = Math.ceil(F2.vw / P2) + 3;
+    LG.lh = Math.ceil(F2.vh / P2) + 3;
+  }
+  var holoGrid = {
+    get w() {
+      return LG.lw;
+    },
+    get h() {
+      return LG.lh;
+    },
+    get px() {
+      return LG.px;
+    },
+    /** where the layer lands, world units (Level 2's dark zones draw a shrunk copy there: render/dark.js) */
+    get rect() {
+      return { x: LG.ox + LG.gx0 * LG.px, y: LG.oy + LG.gy0 * LG.px, w: LG.lw * LG.px, h: LG.lh * LG.px };
+    },
+    /** @param {CanvasRenderingContext2D} x */
+    world: (x) => x.setTransform(1 / LG.px, 0, 0, 1 / LG.px, -LG.ox / LG.px - LG.gx0, -LG.oy / LG.px - LG.gy0),
+    /** @param {CanvasRenderingContext2D} ctx @param {CanvasImageSource} src @param {boolean} smooth */
+    place: (ctx, src, smooth) => {
+      const sm = ctx.imageSmoothingEnabled;
+      ctx.imageSmoothingEnabled = smooth;
+      ctx.drawImage(src, 0, 0, LG.lw, LG.lh, LG.ox + LG.gx0 * LG.px, LG.oy + LG.gy0 * LG.px, LG.lw * LG.px, LG.lh * LG.px);
+      ctx.imageSmoothingEnabled = sm;
+    }
+  };
+  var holoGlitch = (W) => Math.max(0, Math.min(1, 1 - (W.time - L.gt) / GLITCH_T));
+  function holoFill(ctx, W, F2, n) {
+    const pat = tilePattern(ctx, n);
+    if (!pat) return;
+    const ox2 = W.camX * (1 - HOLO_PAR), oy2 = W.camY * (1 - HOLO_PAR);
+    const cx = W.camX + F2.vw / 2, cy = W.camY + F2.vh / 2, R = Math.hypot(F2.vw, F2.vh) / 2 + 10;
+    ctx.save();
+    ctx.translate(ox2, oy2);
+    ctx.rotate(SLANT);
+    const dx = cx - ox2, dy = cy - oy2, c = Math.cos(-SLANT), s = Math.sin(-SLANT);
+    const lx = dx * c - dy * s, ly = dx * s + dy * c;
+    ctx.fillStyle = pat;
+    ctx.fillRect(lx - R, ly - R, R * 2, R * 2);
+    ctx.globalCompositeOperation = "destination-out";
+    const t = W.time, fl = Math.floor(t * 24);
+    ctx.fillStyle = "rgba(0,0,0," + (0.3 + 0.15 * hash(fl)).toFixed(2) + ")";
+    const P2 = LG.px, SCAN = 2 * P2;
+    for (let y = Math.floor((ly - R) / SCAN) * SCAN + t * SCAN_SPEED % SCAN; y < ly + R; y += SCAN) ctx.fillRect(lx - R, y, R * 2, P2);
+    for (let k = 0; k < BANDS; k++) {
+      const y = ly - R + (t * BAND_SPEED * (0.7 + 0.3 * k) + k * 173) % (R * 2), hh = 4 + 10 * hash(k * 7.1);
+      ctx.fillStyle = "rgba(0,0,0," + (0.25 + 0.4 * hash(fl * 3 + k)).toFixed(2) + ")";
+      ctx.fillRect(lx - R, y, R * 2, hh);
+    }
+    if (hash(fl * 0.37 + 11) < 0.07) {
+      ctx.fillStyle = "rgba(0,0,0,0.45)";
+      ctx.fillRect(lx - R, ly - R, R * 2, R * 2);
+    }
+    ctx.restore();
+  }
+  function glitch(lc, C, g, t, dpr) {
+    const T = L.tmp = sizedCanvas(L.tmp, C.width, C.height), tc = T.getContext("2d");
+    if (!tc) return;
+    tc.clearRect(0, 0, T.width, T.height);
+    tc.drawImage(C, 0, 0);
+    const w = C.width, h3 = C.height, f = Math.floor(t * 30);
+    lc.setTransform(1, 0, 0, 1, 0, 0);
+    for (let i = 0; i < 12; i++) {
+      const y = Math.floor(hash(f * 13 + i) * h3), hh = Math.ceil((3 + 40 * hash(f * 7 + i * 3)) * dpr);
+      const dx = Math.round((hash(f * 5 + i * 11) - 0.5) * 80 * dpr * g);
+      lc.clearRect(0, y, w, hh);
+      lc.drawImage(T, 0, y, w, hh, dx, y, w, hh);
+    }
+    lc.globalCompositeOperation = "destination-out";
+    for (let i = 0; i < 18; i++) {
+      const bw = (6 + 50 * hash(f * 3 + i * 17)) * dpr, bh = (2 + 8 * hash(f * 9 + i)) * dpr;
+      lc.fillRect(hash(f + i * 29) * w, hash(f * 2 + i * 31) * h3, bw * g, bh);
+    }
+    lc.globalCompositeOperation = "source-over";
+  }
+  var holoCount = (W) => W.repo ? -2 : bioCount(W.enemies, !W.p.dead && W.p.y + PH <= SHOP_Y);
+  function drawHolo(W, G, F2) {
+    const n = G.RPV && G.RPV.bio != null ? G.RPV.bio : holoCount(W);
+    if (n !== L.n) {
+      if (L.n >= 0) L.gt = W.time;
+      if (L.n > 0 && n < L.n) L.ft = W.time;
+      L.n = n;
+    }
+    if (L.gt > W.time) L.gt = -99;
+    if (L.ft > W.time) L.ft = -99;
+    L.bri = DEV.holoAlpha * (W.repo ? Math.max(DEV.holoMax, DEV.holoMin) : holoLevel(W.time - L.ft));
+    if (!(L.bri > 2e-3)) {
+      L.bri = 0;
+      L.c = null;
+      return;
+    }
+    setGrid(W, F2);
+    const C = L.c = sizedCanvas(L.c, LG.lw, LG.lh), lc = C.getContext("2d");
+    if (!lc) return;
+    lc.setTransform(1, 0, 0, 1, 0, 0);
+    lc.clearRect(0, 0, C.width, C.height);
+    holoGrid.world(lc);
+    lc.imageSmoothingEnabled = true;
+    holoFill(lc, W, F2, n);
+    const g = holoGlitch(W);
+    if (g > 0) glitch(lc, C, g, W.time, 1 / (LG.px * W.unitPx));
+    G.ctx.save();
+    G.ctx.globalAlpha = L.bri;
+    holoGrid.place(G.ctx, C, false);
+    G.ctx.restore();
+  }
+  function drawHoloShop(W, G) {
+    if (!W.repo || !L.c) return;
+    const ctx = G.ctx;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, SHOP_Y, WW, SHOP_FLOOR * CELL - SHOP_Y);
+    ctx.clip();
+    ctx.globalAlpha = 0.3 * L.bri;
+    holoGrid.place(ctx, L.c, false);
+    ctx.restore();
+  }
+  function sizedCanvas(c, w, h3) {
+    const o = c || document.createElement("canvas");
+    if (o.width !== w || o.height !== h3) {
+      o.width = w;
+      o.height = h3;
+    }
+    return o;
+  }
+  function holoMask(a, W, G, F2, alpha) {
+    if (!L.c) return;
+    a.save();
+    a.setTransform(1, 0, 0, 1, 0, 0);
+    a.globalCompositeOperation = "source-over";
+    a.globalAlpha = alpha;
+    a.drawImage(L.c, 0, 0);
+    a.restore();
+    a.globalCompositeOperation = "destination-out";
+    a.imageSmoothingEnabled = false;
+    const tx0 = clamp(Math.floor(W.camX / CELL), 0, CW - 1), ty0 = clamp(Math.floor(W.camY / CELL), 0, CH - 1);
+    const tx1 = clamp(Math.ceil((W.camX + F2.vw) / CELL) + 1, 1, CW), ty1 = clamp(Math.ceil((W.camY + F2.vh) / CELL) + 1, 1, CH);
+    for (const src of G.RPV ? [G.RT.dC, G.RT.tC] : [G.decoC, G.terrain])
+      a.drawImage(src, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
+    a.fillStyle = "#000";
+    a.fillRect(0, SHOP_Y, WW, SHOP_FLOOR * CELL - SHOP_Y);
+    if (W.camY + F2.vh > WH) a.fillRect(W.camX - 10, WH, F2.vw + 20, W.camY + F2.vh - WH + 10);
+    a.globalCompositeOperation = "source-over";
+  }
+
+  // src/game/render/dark.js
+  var D = {
+    web: null,
+    webC: null,
+    zf: null,
+    zfFor: null,
+    zC: null,
+    band: null,
+    bb: null,
+    bbFor: null,
+    bbKey: "",
+    tw: 0,
+    th: 0,
+    back: null,
+    mt: null,
+    on: false,
+    fx0: 0,
+    fy0: 0,
+    fx1: 0,
+    fy1: 0,
+    bx0: 0,
+    by0: 0,
+    bx1: 0,
+    by1: 0,
+    lift: new Float32Array(FW * FH),
+    lut: new Float32Array(65),
+    zt: null,
+    zd: null,
+    zB: null,
+    ztKey: "",
+    ztFor: null,
+    beam: { a: 0, r: 0, n: 0, x: 0, y: 0 },
+    webL: null,
+    lm: null,
+    lmImg: null,
+    lt: null
+  };
+  function darkBeam(a, r, n, x, y) {
+    const b = D.beam;
+    b.a = a;
+    b.r = r;
+    b.n = n;
+    b.x = x;
+    b.y = y;
+  }
+  function depthField(depth, shade) {
+    const zt = new Float32Array(FW * FH), zd = new Float32Array(FW * FH), s = FOG_U / CELL, n = 1 / (s * s), T = DEV.l2dTorchDepth;
+    D.zB = sizedCanvas(D.zB, CW, CH);
+    D.band = sizedCanvas(D.band, CW, CH);
+    const c = D.zB.getContext("2d"), img = c ? c.createImageData(CW, CH) : null;
+    const bc = D.band.getContext("2d"), bimg = bc ? bc.createImageData(CW, CH) : null, nb = Math.max(1, Math.round(DEV.l2dBands));
+    for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
+      const v = depth[y * CW + x], sh = shade ? shade[y * CW + x] : 0;
+      if (!v && !sh) continue;
+      const j = Math.floor(y / s) * FW + Math.floor(x / s);
+      const a = v ? 0.5 + 0.5 * tintRamp(v) : 0.5 * sh / 255;
+      zt[j] += a * n;
+      zd[j] += v * n;
+      if (bimg) bimg.data[(y * CW + x) * 4 + 3] = Math.round(255 * Math.round(a * nb) / nb);
+      if (!v) continue;
+      if (img) {
+        const u = Math.min(1, Math.max(0, (v - T) / 16));
+        img.data[(y * CW + x) * 4 + 3] = Math.round(255 * u * u * (3 - 2 * u));
+      }
+    }
+    if (c && img) c.putImageData(img, 0, 0);
+    if (bc && bimg) bc.putImageData(bimg, 0, 0);
+    D.zt = zt;
+    D.zd = zd;
+  }
+  var darkOn = () => D.on;
+  function darkHides(x, y, R) {
+    if (!D.on || !D.zt || DEV.l2dDark < 1) return false;
+    const cx0 = Math.floor((x - R) / FOG_U) - 1, cx1 = Math.floor((x + R) / FOG_U) + 1;
+    const cy0 = Math.floor((y - R) / FOG_U) - 1, cy1 = Math.floor((y + R) / FOG_U) + 1;
+    if (cx0 < D.bx0 || cy0 < D.by0 || cx1 >= D.bx1 || cy1 >= D.by1) return false;
+    for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
+      const i = cy * FW + cx;
+      if (D.zt[i] < 0.999 || D.lift[i] > 1e-3) return false;
+    }
+    return true;
+  }
+  function grownCanvas(c, w, h3) {
+    const o = c || document.createElement("canvas");
+    if (o.width < w || o.height < h3) {
+      o.width = Math.max(o.width, w);
+      o.height = Math.max(o.height, h3);
+    }
+    return o;
+  }
+  var darkFog = (i) => D.on && D.zf ? Math.min(1, D.zf[i] * 1.15) * Math.min(1, Math.max(0, DEV.l2dDark)) : 0;
+  function paintSilk(web, c, x0, y0, x1, y1, col) {
+    x0 = Math.max(0, x0);
+    y0 = Math.max(0, y0);
+    x1 = Math.min(CW - 1, x1);
+    y1 = Math.min(CH - 1, y1);
+    const w = x1 - x0 + 1, h3 = y1 - y0 + 1, img = c.createImageData(w, h3), d = img.data;
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      const v = web[y * CW + x];
+      if (!v) continue;
+      const s = col(v), k = ((y - y0) * w + x - x0) * 4;
+      d[k] = s[0];
+      d[k + 1] = s[1];
+      d[k + 2] = s[2];
+      d[k + 3] = s[3];
+    }
+    c.putImageData(img, x0, y0);
+  }
+  function zoneField(shade) {
+    const zf = new Float32Array(FW * FH), n = 1 / (FOG_U / CELL) ** 2 / 255, s = FOG_U / CELL;
+    for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
+      const v = shade[y * CW + x];
+      if (v) zf[Math.floor(y / s) * FW + Math.floor(x / s)] += v * n;
+    }
+    D.zC = sizedCanvas(D.zC, CW, CH);
+    const c = D.zC.getContext("2d");
+    if (c) {
+      const img = c.createImageData(CW, CH);
+      for (let i = 0; i < CW * CH; i++) img.data[i * 4 + 3] = shade[i];
+      c.putImageData(img, 0, 0);
+    }
+    return zf;
+  }
+  function addLift(x, y, r, w) {
+    const L3 = D.lift, fx0 = Math.max(D.fx0, Math.floor((x - r) / FOG_U)), fx1 = Math.min(D.fx1 - 1, Math.floor((x + r) / FOG_U));
+    const fy0 = Math.max(D.fy0, Math.floor((y - r) / FOG_U)), fy1 = Math.min(D.fy1 - 1, Math.floor((y + r) / FOG_U));
+    for (let cy = fy0; cy <= fy1; cy++) for (let cx = fx0; cx <= fx1; cx++) {
+      const d = Math.hypot((cx + 0.5) * FOG_U - x, (cy + 0.5) * FOG_U - y);
+      if (d >= r) continue;
+      const v = D.lut[Math.round(d / r * 64)] * w, i = cy * FW + cx;
+      if (v > L3[i]) L3[i] = v;
+    }
+  }
+  function darkPrep(W, G, F2) {
+    D.on = false;
+    if (!W.darkMask || !W.webbing || G.RPV || !W.dark.length) return;
+    if (D.web !== W.webbing || !D.webC || !D.webL) {
+      D.web = W.webbing;
+      D.webC = sizedCanvas(D.webC, CW, CH);
+      D.webL = sizedCanvas(D.webL, CW, CH);
+      const c = D.webC.getContext("2d"), cl = D.webL.getContext("2d");
+      if (!c || !cl) return;
+      c.clearRect(0, 0, CW, CH);
+      cl.clearRect(0, 0, CW, CH);
+      paintSilk(W.webbing, c, 0, 0, CW - 1, CH - 1, silkTint);
+      paintSilk(W.webbing, cl, 0, 0, CW - 1, CH - 1, silkColour);
+      W.webDirty.length = 0;
+    }
+    if (W.webDirty.length) {
+      const c = D.webC.getContext("2d"), cl = D.webL.getContext("2d");
+      const both = c && cl ? [[c, silkTint], [cl, silkColour]] : [];
+      for (const b of W.webDirty) for (const [cc, col] of both) {
+        cc.clearRect(b.x0, b.y0, b.x1 - b.x0 + 1, b.y1 - b.y0 + 1);
+        paintSilk(W.webbing, cc, b.x0, b.y0, b.x1, b.y1, col);
+      }
+      W.webDirty.length = 0;
+    }
+    const shade = W.darkShade || W.darkMask;
+    if (D.zfFor !== shade || !D.zf) {
+      D.zf = zoneField(W.darkShade || W.darkMask.map((v) => v ? 255 : 0));
+      D.zfFor = shade;
+    }
+    if (!D.zC) return;
+    const key = DEV.l2dTintDepth + "/" + DEV.l2dTorchDepth + "/" + DEV.l2dBands;
+    if (W.darkDepth && (D.ztKey !== key || D.ztFor !== W.darkDepth || !D.zt)) {
+      depthField(W.darkDepth, W.darkShade);
+      D.ztKey = key;
+      D.ztFor = W.darkDepth;
+    }
+    if (!D.zt || !D.zd || !D.zB || !D.band) return;
+    const bl = Math.max(0, DEV.l2dBlur), bsrc = G.bgHiOn ? G.bgHi : G.bg, bkey = bl + "/" + G.bgHiOn;
+    if (D.bbFor !== W.webbing || D.bbKey !== bkey || !D.bb) {
+      D.bbFor = W.webbing;
+      D.bbKey = bkey;
+      const B2 = D.bb = sizedCanvas(D.bb, bsrc.width, bsrc.height), c = B2.getContext("2d");
+      if (c) {
+        const r = G.bgHiOn ? bl : bl * CELL / BCELL;
+        c.clearRect(0, 0, B2.width, B2.height);
+        c.filter = r > 0 ? `blur(${r}px)` : "none";
+        c.drawImage(bsrc, 0, 0);
+        c.filter = "none";
+      }
+    }
+    const { vw, vh } = F2, m = 24 + Math.max(0, DEV.l2dFringe) * 2 * CELL;
+    if (!W.dark.some((z) => z.x1 * CELL + m > W.camX && z.x0 * CELL - m < W.camX + vw && z.y1 * CELL + m > W.camY && z.y0 * CELL - m < W.camY + vh)) return;
+    const fx0 = D.fx0 = clamp(Math.floor(W.camX / FOG_U) - 2, 0, FW - 1), fy0 = D.fy0 = clamp(Math.floor(W.camY / FOG_U) - 2, 0, FH - 1);
+    const fx1 = D.fx1 = clamp(Math.ceil((W.camX + vw) / FOG_U) + 3, 1, FW), fy1 = D.fy1 = clamp(Math.ceil((W.camY + vh) / FOG_U) + 3, 1, FH);
+    const s8 = FOG_U / CELL, pad = Math.ceil(Math.max(0, DEV.l2dFringe) * 1.7 / s8) + 1;
+    let bx0 = FW, by0 = FH, bx1 = 0, by1 = 0;
+    for (const z of W.dark) {
+      bx0 = Math.min(bx0, Math.floor(z.x0 / s8) - pad);
+      by0 = Math.min(by0, Math.floor(z.y0 / s8) - pad);
+      bx1 = Math.max(bx1, Math.ceil(z.x1 / s8) + pad);
+      by1 = Math.max(by1, Math.ceil(z.y1 / s8) + pad);
+    }
+    bx0 = D.bx0 = Math.max(bx0, fx0);
+    by0 = D.by0 = Math.max(by0, fy0);
+    bx1 = D.bx1 = Math.min(bx1, fx1);
+    by1 = D.by1 = Math.min(by1, fy1);
+    if (bx1 <= bx0 || by1 <= by0) return;
+    const fc = curveFn(kcurve("l2dFire"));
+    for (let k = 0; k <= 64; k++) D.lut[k] = clamp(fc(k / 64), 0, 1);
+    for (let cy = fy0; cy < fy1; cy++) D.lift.fill(0, cy * FW + fx0, cy * FW + fx1);
+    const R = Math.max(1, DEV.l2dFireR) * CELL, fl = W.fire.list, st = Math.max(1, Math.ceil(fl.length / 300));
+    for (let k = 0; k < fl.length; k += st) {
+      const i = fl[k], x = (i % CW + 0.5) * CELL, y = ((i / CW | 0) + 0.5) * CELL;
+      if (x > W.camX - R && x < W.camX + vw + R && y > W.camY - R && y < W.camY + vh + R) addLift(x, y, R, W.flick);
+    }
+    for (const f of W.flashes) addLift(f.x, f.y, R + f.r * 2, clamp(2 * (1 - f.t / 0.25), 0, 1));
+    for (const e of W.enemies) if (e.burn > 0) addLift(e.x, e.ty, R, W.flick);
+    if (W.p.burn > 0 && !W.p.dead) addLift(W.p.x + 6, W.p.y + 11, R, W.flick);
+    if (W.bullets.length) {
+      const gR = kr("alGlimpseR"), gw = kr("alGlimpse"), mk = W.darkMask;
+      if (gR > 0 && gw > 0) for (const b of W.bullets) {
+        const cx = Math.floor(b.x / CELL), cy = Math.floor(b.y / CELL);
+        if (cx >= 0 && cx < CW && cy >= 0 && cy < CH && mk[cy * CW + cx]) addLift(b.x, b.y, gR, gw);
+      }
+    }
+    const bm = D.beam, zd = D.zd, Tq = DEV.l2dTorchDepth;
+    if (W.torchLit > 0 && !W.p.dead && (bm.r > 0 || bm.n > 0)) {
+      const reach2 = Math.max(bm.r, bm.n);
+      const cx0 = Math.max(bx0, Math.floor((bm.x - reach2) / FOG_U)), cx1 = Math.min(bx1 - 1, Math.floor((bm.x + reach2) / FOG_U));
+      const cy0 = Math.max(by0, Math.floor((bm.y - reach2) / FOG_U)), cy1 = Math.min(by1 - 1, Math.floor((bm.y + reach2) / FOG_U));
+      for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
+        const i = cy * FW + cx;
+        if (W.seen[i] !== 2) continue;
+        const dx = (cx + 0.5) * FOG_U - bm.x, dy = (cy + 0.5) * FOG_U - bm.y, u = Math.min(1, Math.max(0, (zd[i] - Tq) / 16));
+        const v = beamLift(Math.hypot(dx, dy), dx, dy, bm.a, bm.r, bm.n) * (1 - u * u * (3 - 2 * u));
+        if (v > D.lift[i]) D.lift[i] = v;
+      }
+    }
+    let anyLift = false;
+    for (let cy = by0; cy < by1 && !anyLift; cy++) for (let cx = bx0; cx < bx1; cx++) if (D.lift[cy * FW + cx] > 0.01) {
+      anyLift = true;
+      break;
+    }
+    const LM = D.lm = sizedCanvas(D.lm, FW, FH), lc = LM.getContext("2d");
+    if (!lc) return;
+    if (anyLift) {
+      if (!D.lmImg) D.lmImg = lc.createImageData(FW, FH);
+      const ld = D.lmImg.data;
+      for (let cy = by0; cy < by1; cy++) for (let cx = bx0; cx < bx1; cx++) {
+        const i = cy * FW + cx;
+        ld[i * 4 + 3] = Math.round(255 * D.lift[i]);
+      }
+      lc.putImageData(D.lmImg, 0, 0, bx0, by0, bx1 - bx0, by1 - by0);
+    }
+    const tx0 = bx0 * s8, ty0 = by0 * s8, tw = D.tw = (bx1 - bx0) * s8, th = D.th = (by1 - by0) * s8;
+    const T = D.mt = grownCanvas(D.mt, tw, th), tc = T.getContext("2d");
+    if (!tc) return;
+    tc.globalCompositeOperation = "source-over";
+    tc.clearRect(0, 0, tw, th);
+    tc.imageSmoothingEnabled = false;
+    tc.globalAlpha = clamp(DEV.l2dDark, 0, 1);
+    tc.drawImage(D.band, tx0, ty0, tw, th, 0, 0, tw, th);
+    tc.globalAlpha = 1;
+    if (anyLift) {
+      tc.globalCompositeOperation = "destination-out";
+      tc.imageSmoothingEnabled = true;
+      tc.drawImage(LM, bx0, by0, bx1 - bx0, by1 - by0, 0, 0, tw, th);
+      tc.globalCompositeOperation = "source-over";
+    }
+    const B = D.back = grownCanvas(D.back, tw, th), bc = B.getContext("2d");
+    if (!bc) return;
+    bc.setTransform(1, 0, 0, 1, 0, 0);
+    bc.globalCompositeOperation = "source-over";
+    bc.globalAlpha = 1;
+    bc.fillStyle = "#000";
+    bc.fillRect(0, 0, tw, th);
+    const bgox = W.camX * (1 - BG_PAR), bgoy = W.camY * (1 - BG_PAR);
+    const wx0 = tx0 * CELL - bgox, wy0 = ty0 * CELL - bgoy, gx0 = clamp(Math.floor(wx0 / BCELL) - 2, 0, BW - 1), gy0 = clamp(Math.floor(wy0 / BCELL) - 2, 0, BH - 1);
+    const gx1 = clamp(Math.ceil((wx0 + tw * CELL) / BCELL) + 2, 1, BW), gy1 = clamp(Math.ceil((wy0 + th * CELL) / BCELL) + 2, 1, BH);
+    bc.imageSmoothingEnabled = true;
+    bc.globalAlpha = clamp(DEV.l2dBack, 0, 1);
+    const hs5 = G.bgHiOn ? BCELL / CELL : 1;
+    bc.drawImage(D.bb, gx0 * hs5, gy0 * hs5, (gx1 - gx0) * hs5, (gy1 - gy0) * hs5, (gx0 * BCELL + bgox) / CELL - tx0, (gy0 * BCELL + bgoy) / CELL - ty0, (gx1 - gx0) * BCELL / CELL, (gy1 - gy0) * BCELL / CELL);
+    const hl = holoLayer(), hb = holoBright() * DEV.l2dHolo;
+    if (hl && hb > 0.01) {
+      const g = holoGrid.rect;
+      bc.filter = DEV.l2dHoloBlur && bl > 0 ? `blur(${bl}px)` : "none";
+      bc.globalAlpha = clamp(hb, 0, 1);
+      bc.drawImage(hl, 0, 0, hl.width, hl.height, g.x / CELL - tx0, g.y / CELL - ty0, g.w / CELL, g.h / CELL);
+      bc.filter = "none";
+    }
+    bc.globalAlpha = 1;
+    bc.globalCompositeOperation = "multiply";
+    bc.imageSmoothingEnabled = false;
+    bc.drawImage(D.webC, tx0, ty0, tw, th, 0, 0, tw, th);
+    bc.globalCompositeOperation = "source-over";
+    if (anyLift && D.webL) {
+      const LT = D.lt = grownCanvas(D.lt, tw, th), ltc = LT.getContext("2d");
+      if (ltc) {
+        ltc.globalCompositeOperation = "source-over";
+        ltc.clearRect(0, 0, tw, th);
+        ltc.imageSmoothingEnabled = false;
+        ltc.drawImage(D.webL, tx0, ty0, tw, th, 0, 0, tw, th);
+        ltc.globalCompositeOperation = "destination-in";
+        ltc.imageSmoothingEnabled = true;
+        ltc.drawImage(LM, bx0, by0, bx1 - bx0, by1 - by0, 0, 0, tw, th);
+        ltc.globalCompositeOperation = "source-over";
+        bc.drawImage(LT, 0, 0, tw, th, 0, 0, tw, th);
+      }
+    }
+    D.on = true;
+    const ctx = G.ctx;
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(D.zC, tx0, ty0, tw, th, tx0 * CELL, ty0 * CELL, tw * CELL, th * CELL);
+    ctx.restore();
+  }
+  function drawDark(W, G, F2) {
+    if (!D.on || !D.mt || !D.back) return;
+    const ctx = G.ctx, s8 = FOG_U / CELL, tx0 = D.bx0 * s8, ty0 = D.by0 * s8, MT = D.mt, B = D.back;
+    const sx = tx0 * CELL, sy = ty0 * CELL, sw = D.tw * CELL, sh = D.th * CELL;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalCompositeOperation = "source-atop";
+    ctx.drawImage(MT, 0, 0, D.tw, D.th, sx, sy, sw, sh);
+    ctx.globalCompositeOperation = "destination-over";
+    ctx.drawImage(B, 0, 0, D.tw, D.th, sx, sy, sw, sh);
+    ctx.restore();
+  }
+  function darkBloomCut(c) {
+    if (!D.on || !D.zC) return;
+    const s8 = FOG_U / CELL, tx0 = D.bx0 * s8, ty0 = D.by0 * s8, tw = (D.bx1 - D.bx0) * s8, th = (D.by1 - D.by0) * s8;
+    c.save();
+    c.globalCompositeOperation = "destination-out";
+    c.imageSmoothingEnabled = true;
+    c.drawImage(D.zC, tx0, ty0, tw, th, tx0 * CELL, ty0 * CELL, tw * CELL, th * CELL);
+    c.restore();
+  }
+  function darkCut(c) {
+    if (!D.on || !D.zB) return;
+    const s8 = FOG_U / CELL, tx0 = D.bx0 * s8, ty0 = D.by0 * s8, tw = (D.bx1 - D.bx0) * s8, th = (D.by1 - D.by0) * s8;
+    c.save();
+    c.globalCompositeOperation = "destination-out";
+    c.imageSmoothingEnabled = false;
+    c.drawImage(D.zB, tx0, ty0, tw, th, tx0 * CELL, ty0 * CELL, tw * CELL, th * CELL);
+    c.drawImage(D.zB, tx0, ty0, tw, th, tx0 * CELL, ty0 * CELL, tw * CELL, th * CELL);
+    c.restore();
+  }
+
   // src/game/render/actors.js
   function drawEliteFire(W, G, F2) {
     if (!W.eliteFx.length) return;
@@ -17757,6 +18386,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const e of W.enemies) {
       const ey = e.ty;
       if (ey > W.camY + vh + 20 || ey < W.camY - 20 || e.x < W.camX - 20 || e.x > W.camX + vw + 20) continue;
+      if (e.al && darkHides(e.x, ey, e.r * 4)) continue;
       if (e.k.elite) {
         const u = e.k.eu || 0, a = Math.max(0, Math.min(1, kru("elGlow", u) * (1 + 0.45 * Math.sin(W.time * 4 + e.x))));
         const R = e.r + kru("elGlowR", u);
@@ -18075,543 +18705,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.lineWidth = 2;
     paint2(ctx, "TELEPORTER", -tw / 2, -lh / 2, lh, gap);
     ctx.restore();
-  }
-
-  // src/game/render/holo.js
-  var BG_PAR = 0.6;
-  var HOLO_PAR = (1 + BG_PAR) / 2;
-  var BOX_W = 96, TOP_H = 66, BOT_H = 60;
-  var PERIOD_X = 150, PERIOD_Y = 171;
-  var PAD = 7.5, TXT_PAD = 7.5;
-  var LINE = 1.5;
-  var SLANT = -0.3;
-  var RES = 1;
-  var cache = { key: "", pat: null };
-  function tilePattern(ctx, n) {
-    const key = String(n);
-    if (cache.key === key && cache.pat) return cache.pat;
-    const zero = n === 0, repo = n < 0, hue = zero ? "#00ff3c" : "#ff0000", bw = repo ? 140 : BOX_W;
-    const c = document.createElement("canvas");
-    c.width = PERIOD_X * RES;
-    c.height = PERIOD_Y * RES;
-    const t = c.getContext("2d");
-    if (!t) return null;
-    t.scale(RES, RES);
-    const x = (PERIOD_X - bw) / 2, y = (PERIOD_Y - TOP_H - BOT_H) / 2, by = y + TOP_H;
-    const box = (yy, hh, solid) => {
-      t.globalCompositeOperation = "source-over";
-      if (solid) {
-        t.fillStyle = hue;
-        t.fillRect(x, yy, bw, hh);
-        return;
-      }
-      t.strokeStyle = hue;
-      t.lineWidth = LINE;
-      t.strokeRect(x + LINE / 2, yy + LINE / 2, bw - LINE, hh - LINE);
-    };
-    const ink = (cut) => {
-      t.globalCompositeOperation = cut ? "destination-out" : "source-over";
-      t.fillStyle = cut ? "#000" : hue;
-    };
-    box(y, TOP_H, !zero);
-    const s = repo ? "REPOSSESSED" : String(n);
-    let fs = Math.min(bw, TOP_H) - PAD * 2;
-    t.font = "900 " + fs + "px system-ui, sans-serif";
-    const w = t.measureText(s).width;
-    if (w > bw - PAD * 2) {
-      fs *= (bw - PAD * 2) / w;
-      t.font = "900 " + fs + "px system-ui, sans-serif";
-    }
-    ink(!zero);
-    t.textBaseline = "middle";
-    t.textAlign = "left";
-    t.fillText(s, x + PAD, y + TOP_H / 2 + fs * 0.05);
-    box(by, BOT_H, zero);
-    const words = repo ? ["debt", "not", "repaid"] : ["biological", "entities", "detected"], lh = (BOT_H - TXT_PAD * 2) / words.length;
-    t.font = "700 " + lh * 0.85 + "px system-ui, sans-serif";
-    t.textBaseline = "top";
-    ink(zero);
-    words.forEach((wd, i) => t.fillText(wd, x + TXT_PAD, by + TXT_PAD + i * lh + lh * 0.08));
-    cache.key = key;
-    cache.pat = ctx.createPattern(c, "repeat");
-    if (cache.pat) cache.pat.setTransform(new DOMMatrix().scale(1 / RES));
-    return cache.pat;
-  }
-  var SCAN_SPEED = 6;
-  var BANDS = 3, BAND_SPEED = 45;
-  var GLITCH_T = 0.45;
-  var hash = (n) => {
-    const v = Math.sin(n * 12.9898) * 43758.5453;
-    return v - Math.floor(v);
-  };
-  var L = { c: null, tmp: null, n: -1, gt: -99, ft: -99, bri: 0 };
-  function holoLevel(since) {
-    const lo = DEV.holoMin, hi = DEV.holoMax, u = since / Math.max(0.01, DEV.holoFade);
-    return clamp(lo + (hi - lo) * bezierFade(u, DEV.holoC1x, DEV.holoC1y, DEV.holoC2x, DEV.holoC2y), 0, 1);
-  }
-  var holoBright = () => L.bri;
-  var holoLayer = () => L.c;
-  var LG = { px: CELL, ox: 0, oy: 0, gx0: 0, gy0: 0, lw: 1, lh: 1 };
-  function setGrid(W, F2) {
-    const P2 = LG.px = clamp(DEV.holoPx || CELL, 0.5, 8);
-    LG.ox = W.camX * (1 - HOLO_PAR);
-    LG.oy = W.camY * (1 - HOLO_PAR);
-    LG.gx0 = Math.floor((W.camX - LG.ox) / P2) - 1;
-    LG.gy0 = Math.floor((W.camY - LG.oy) / P2) - 1;
-    LG.lw = Math.ceil(F2.vw / P2) + 3;
-    LG.lh = Math.ceil(F2.vh / P2) + 3;
-  }
-  var holoGrid = {
-    get w() {
-      return LG.lw;
-    },
-    get h() {
-      return LG.lh;
-    },
-    get px() {
-      return LG.px;
-    },
-    /** where the layer lands, world units (Level 2's dark zones draw a shrunk copy there: render/dark.js) */
-    get rect() {
-      return { x: LG.ox + LG.gx0 * LG.px, y: LG.oy + LG.gy0 * LG.px, w: LG.lw * LG.px, h: LG.lh * LG.px };
-    },
-    /** @param {CanvasRenderingContext2D} x */
-    world: (x) => x.setTransform(1 / LG.px, 0, 0, 1 / LG.px, -LG.ox / LG.px - LG.gx0, -LG.oy / LG.px - LG.gy0),
-    /** @param {CanvasRenderingContext2D} ctx @param {CanvasImageSource} src @param {boolean} smooth */
-    place: (ctx, src, smooth) => {
-      const sm = ctx.imageSmoothingEnabled;
-      ctx.imageSmoothingEnabled = smooth;
-      ctx.drawImage(src, 0, 0, LG.lw, LG.lh, LG.ox + LG.gx0 * LG.px, LG.oy + LG.gy0 * LG.px, LG.lw * LG.px, LG.lh * LG.px);
-      ctx.imageSmoothingEnabled = sm;
-    }
-  };
-  var holoGlitch = (W) => Math.max(0, Math.min(1, 1 - (W.time - L.gt) / GLITCH_T));
-  function holoFill(ctx, W, F2, n) {
-    const pat = tilePattern(ctx, n);
-    if (!pat) return;
-    const ox2 = W.camX * (1 - HOLO_PAR), oy2 = W.camY * (1 - HOLO_PAR);
-    const cx = W.camX + F2.vw / 2, cy = W.camY + F2.vh / 2, R = Math.hypot(F2.vw, F2.vh) / 2 + 10;
-    ctx.save();
-    ctx.translate(ox2, oy2);
-    ctx.rotate(SLANT);
-    const dx = cx - ox2, dy = cy - oy2, c = Math.cos(-SLANT), s = Math.sin(-SLANT);
-    const lx = dx * c - dy * s, ly = dx * s + dy * c;
-    ctx.fillStyle = pat;
-    ctx.fillRect(lx - R, ly - R, R * 2, R * 2);
-    ctx.globalCompositeOperation = "destination-out";
-    const t = W.time, fl = Math.floor(t * 24);
-    ctx.fillStyle = "rgba(0,0,0," + (0.3 + 0.15 * hash(fl)).toFixed(2) + ")";
-    const P2 = LG.px, SCAN = 2 * P2;
-    for (let y = Math.floor((ly - R) / SCAN) * SCAN + t * SCAN_SPEED % SCAN; y < ly + R; y += SCAN) ctx.fillRect(lx - R, y, R * 2, P2);
-    for (let k = 0; k < BANDS; k++) {
-      const y = ly - R + (t * BAND_SPEED * (0.7 + 0.3 * k) + k * 173) % (R * 2), hh = 4 + 10 * hash(k * 7.1);
-      ctx.fillStyle = "rgba(0,0,0," + (0.25 + 0.4 * hash(fl * 3 + k)).toFixed(2) + ")";
-      ctx.fillRect(lx - R, y, R * 2, hh);
-    }
-    if (hash(fl * 0.37 + 11) < 0.07) {
-      ctx.fillStyle = "rgba(0,0,0,0.45)";
-      ctx.fillRect(lx - R, ly - R, R * 2, R * 2);
-    }
-    ctx.restore();
-  }
-  function glitch(lc, C, g, t, dpr) {
-    const T = L.tmp = sizedCanvas(L.tmp, C.width, C.height), tc = T.getContext("2d");
-    if (!tc) return;
-    tc.clearRect(0, 0, T.width, T.height);
-    tc.drawImage(C, 0, 0);
-    const w = C.width, h3 = C.height, f = Math.floor(t * 30);
-    lc.setTransform(1, 0, 0, 1, 0, 0);
-    for (let i = 0; i < 12; i++) {
-      const y = Math.floor(hash(f * 13 + i) * h3), hh = Math.ceil((3 + 40 * hash(f * 7 + i * 3)) * dpr);
-      const dx = Math.round((hash(f * 5 + i * 11) - 0.5) * 80 * dpr * g);
-      lc.clearRect(0, y, w, hh);
-      lc.drawImage(T, 0, y, w, hh, dx, y, w, hh);
-    }
-    lc.globalCompositeOperation = "destination-out";
-    for (let i = 0; i < 18; i++) {
-      const bw = (6 + 50 * hash(f * 3 + i * 17)) * dpr, bh = (2 + 8 * hash(f * 9 + i)) * dpr;
-      lc.fillRect(hash(f + i * 29) * w, hash(f * 2 + i * 31) * h3, bw * g, bh);
-    }
-    lc.globalCompositeOperation = "source-over";
-  }
-  var holoCount = (W) => W.repo ? -2 : bioCount(W.enemies, !W.p.dead && W.p.y + PH <= SHOP_Y);
-  function drawHolo(W, G, F2) {
-    const n = G.RPV && G.RPV.bio != null ? G.RPV.bio : holoCount(W);
-    if (n !== L.n) {
-      if (L.n >= 0) L.gt = W.time;
-      if (L.n > 0 && n < L.n) L.ft = W.time;
-      L.n = n;
-    }
-    if (L.gt > W.time) L.gt = -99;
-    if (L.ft > W.time) L.ft = -99;
-    L.bri = DEV.holoAlpha * (W.repo ? Math.max(DEV.holoMax, DEV.holoMin) : holoLevel(W.time - L.ft));
-    if (!(L.bri > 2e-3)) {
-      L.bri = 0;
-      L.c = null;
-      return;
-    }
-    setGrid(W, F2);
-    const C = L.c = sizedCanvas(L.c, LG.lw, LG.lh), lc = C.getContext("2d");
-    if (!lc) return;
-    lc.setTransform(1, 0, 0, 1, 0, 0);
-    lc.clearRect(0, 0, C.width, C.height);
-    holoGrid.world(lc);
-    lc.imageSmoothingEnabled = true;
-    holoFill(lc, W, F2, n);
-    const g = holoGlitch(W);
-    if (g > 0) glitch(lc, C, g, W.time, 1 / (LG.px * W.unitPx));
-    G.ctx.save();
-    G.ctx.globalAlpha = L.bri;
-    holoGrid.place(G.ctx, C, false);
-    G.ctx.restore();
-  }
-  function drawHoloShop(W, G) {
-    if (!W.repo || !L.c) return;
-    const ctx = G.ctx;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, SHOP_Y, WW, SHOP_FLOOR * CELL - SHOP_Y);
-    ctx.clip();
-    ctx.globalAlpha = 0.3 * L.bri;
-    holoGrid.place(ctx, L.c, false);
-    ctx.restore();
-  }
-  function sizedCanvas(c, w, h3) {
-    const o = c || document.createElement("canvas");
-    if (o.width !== w || o.height !== h3) {
-      o.width = w;
-      o.height = h3;
-    }
-    return o;
-  }
-  function holoMask(a, W, G, F2, alpha) {
-    if (!L.c) return;
-    a.save();
-    a.setTransform(1, 0, 0, 1, 0, 0);
-    a.globalCompositeOperation = "source-over";
-    a.globalAlpha = alpha;
-    a.drawImage(L.c, 0, 0);
-    a.restore();
-    a.globalCompositeOperation = "destination-out";
-    a.imageSmoothingEnabled = false;
-    const tx0 = clamp(Math.floor(W.camX / CELL), 0, CW - 1), ty0 = clamp(Math.floor(W.camY / CELL), 0, CH - 1);
-    const tx1 = clamp(Math.ceil((W.camX + F2.vw) / CELL) + 1, 1, CW), ty1 = clamp(Math.ceil((W.camY + F2.vh) / CELL) + 1, 1, CH);
-    for (const src of G.RPV ? [G.RT.dC, G.RT.tC] : [G.decoC, G.terrain])
-      a.drawImage(src, tx0, ty0, tx1 - tx0, ty1 - ty0, tx0 * CELL, ty0 * CELL, (tx1 - tx0) * CELL, (ty1 - ty0) * CELL);
-    a.fillStyle = "#000";
-    a.fillRect(0, SHOP_Y, WW, SHOP_FLOOR * CELL - SHOP_Y);
-    if (W.camY + F2.vh > WH) a.fillRect(W.camX - 10, WH, F2.vw + 20, W.camY + F2.vh - WH + 10);
-    a.globalCompositeOperation = "source-over";
-  }
-
-  // src/game/render/dark.js
-  var D = {
-    web: null,
-    webC: null,
-    zf: null,
-    zfFor: null,
-    zC: null,
-    m: null,
-    mImg: null,
-    mb: null,
-    back: null,
-    mt: null,
-    on: false,
-    fx0: 0,
-    fy0: 0,
-    fx1: 0,
-    fy1: 0,
-    bx0: 0,
-    by0: 0,
-    bx1: 0,
-    by1: 0,
-    lift: new Float32Array(FW * FH),
-    lut: new Float32Array(65),
-    zt: null,
-    zd: null,
-    zB: null,
-    ztKey: "",
-    ztFor: null,
-    beam: { a: 0, r: 0, n: 0, x: 0, y: 0 },
-    webL: null,
-    lm: null,
-    lmImg: null,
-    lt: null
-  };
-  function darkBeam(a, r, n, x, y) {
-    const b = D.beam;
-    b.a = a;
-    b.r = r;
-    b.n = n;
-    b.x = x;
-    b.y = y;
-  }
-  function depthField(depth, shade) {
-    const zt = new Float32Array(FW * FH), zd = new Float32Array(FW * FH), s = FOG_U / CELL, n = 1 / (s * s), T = DEV.l2dTorchDepth;
-    D.zB = sizedCanvas(D.zB, CW, CH);
-    const c = D.zB.getContext("2d"), img = c ? c.createImageData(CW, CH) : null;
-    for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
-      const v = depth[y * CW + x], sh = shade ? shade[y * CW + x] : 0;
-      if (!v && !sh) continue;
-      const j = Math.floor(y / s) * FW + Math.floor(x / s);
-      zt[j] += (v ? 0.5 + 0.5 * tintRamp(v) : 0.5 * sh / 255) * n;
-      zd[j] += v * n;
-      if (!v) continue;
-      if (img) {
-        const u = Math.min(1, Math.max(0, (v - T) / 16));
-        img.data[(y * CW + x) * 4 + 3] = Math.round(255 * u * u * (3 - 2 * u));
-      }
-    }
-    if (c && img) c.putImageData(img, 0, 0);
-    D.zt = zt;
-    D.zd = zd;
-  }
-  var darkOn = () => D.on;
-  var darkFog = (i) => D.on && D.zf ? Math.min(1, D.zf[i] * 1.15) * Math.min(1, Math.max(0, DEV.l2dDark)) : 0;
-  function paintSilk(web, c, x0, y0, x1, y1, col) {
-    x0 = Math.max(0, x0);
-    y0 = Math.max(0, y0);
-    x1 = Math.min(CW - 1, x1);
-    y1 = Math.min(CH - 1, y1);
-    const w = x1 - x0 + 1, h3 = y1 - y0 + 1, img = c.createImageData(w, h3), d = img.data;
-    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-      const v = web[y * CW + x];
-      if (!v) continue;
-      const s = col(v), k = ((y - y0) * w + x - x0) * 4;
-      d[k] = s[0];
-      d[k + 1] = s[1];
-      d[k + 2] = s[2];
-      d[k + 3] = s[3];
-    }
-    c.putImageData(img, x0, y0);
-  }
-  function zoneField(shade) {
-    const zf = new Float32Array(FW * FH), n = 1 / (FOG_U / CELL) ** 2 / 255, s = FOG_U / CELL;
-    for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
-      const v = shade[y * CW + x];
-      if (v) zf[Math.floor(y / s) * FW + Math.floor(x / s)] += v * n;
-    }
-    D.zC = sizedCanvas(D.zC, CW, CH);
-    const c = D.zC.getContext("2d");
-    if (c) {
-      const img = c.createImageData(CW, CH);
-      for (let i = 0; i < CW * CH; i++) img.data[i * 4 + 3] = shade[i];
-      c.putImageData(img, 0, 0);
-    }
-    return zf;
-  }
-  function addLift(x, y, r, w) {
-    const L3 = D.lift, fx0 = Math.max(D.fx0, Math.floor((x - r) / FOG_U)), fx1 = Math.min(D.fx1 - 1, Math.floor((x + r) / FOG_U));
-    const fy0 = Math.max(D.fy0, Math.floor((y - r) / FOG_U)), fy1 = Math.min(D.fy1 - 1, Math.floor((y + r) / FOG_U));
-    for (let cy = fy0; cy <= fy1; cy++) for (let cx = fx0; cx <= fx1; cx++) {
-      const d = Math.hypot((cx + 0.5) * FOG_U - x, (cy + 0.5) * FOG_U - y);
-      if (d >= r) continue;
-      const v = D.lut[Math.round(d / r * 64)] * w, i = cy * FW + cx;
-      if (v > L3[i]) L3[i] = v;
-    }
-  }
-  function darkPrep(W, G, F2) {
-    D.on = false;
-    if (!W.darkMask || !W.webbing || G.RPV || !W.dark.length) return;
-    const { vw, vh } = F2, m = 24 + Math.max(0, DEV.l2dFringe) * 2 * CELL;
-    if (!W.dark.some((z) => z.x1 * CELL + m > W.camX && z.x0 * CELL - m < W.camX + vw && z.y1 * CELL + m > W.camY && z.y0 * CELL - m < W.camY + vh)) return;
-    if (D.web !== W.webbing || !D.webC || !D.webL) {
-      D.web = W.webbing;
-      D.webC = sizedCanvas(D.webC, CW, CH);
-      D.webL = sizedCanvas(D.webL, CW, CH);
-      const c = D.webC.getContext("2d"), cl = D.webL.getContext("2d");
-      if (!c || !cl) return;
-      c.clearRect(0, 0, CW, CH);
-      cl.clearRect(0, 0, CW, CH);
-      paintSilk(W.webbing, c, 0, 0, CW - 1, CH - 1, silkTint);
-      paintSilk(W.webbing, cl, 0, 0, CW - 1, CH - 1, silkColour);
-      W.webDirty.length = 0;
-    }
-    if (W.webDirty.length) {
-      const c = D.webC.getContext("2d"), cl = D.webL.getContext("2d");
-      const both = c && cl ? [[c, silkTint], [cl, silkColour]] : [];
-      for (const b of W.webDirty) for (const [cc, col] of both) {
-        cc.clearRect(b.x0, b.y0, b.x1 - b.x0 + 1, b.y1 - b.y0 + 1);
-        paintSilk(W.webbing, cc, b.x0, b.y0, b.x1, b.y1, col);
-      }
-      W.webDirty.length = 0;
-    }
-    const shade = W.darkShade || W.darkMask;
-    if (D.zfFor !== shade || !D.zf) {
-      D.zf = zoneField(W.darkShade || W.darkMask.map((v) => v ? 255 : 0));
-      D.zfFor = shade;
-    }
-    if (!D.zC) return;
-    const key = DEV.l2dTintDepth + "/" + DEV.l2dTorchDepth;
-    if (W.darkDepth && (D.ztKey !== key || D.ztFor !== W.darkDepth || !D.zt)) {
-      depthField(W.darkDepth, W.darkShade);
-      D.ztKey = key;
-      D.ztFor = W.darkDepth;
-    }
-    if (!D.zt || !D.zd || !D.zB) return;
-    const fx0 = D.fx0 = clamp(Math.floor(W.camX / FOG_U) - 2, 0, FW - 1), fy0 = D.fy0 = clamp(Math.floor(W.camY / FOG_U) - 2, 0, FH - 1);
-    const fx1 = D.fx1 = clamp(Math.ceil((W.camX + vw) / FOG_U) + 3, 1, FW), fy1 = D.fy1 = clamp(Math.ceil((W.camY + vh) / FOG_U) + 3, 1, FH);
-    const s8 = FOG_U / CELL, pad = Math.ceil(DEV.l2dEdge * 2 + Math.max(0, DEV.l2dFringe) * 1.7 / s8) + 1;
-    let bx0 = FW, by0 = FH, bx1 = 0, by1 = 0;
-    for (const z of W.dark) {
-      bx0 = Math.min(bx0, Math.floor(z.x0 / s8) - pad);
-      by0 = Math.min(by0, Math.floor(z.y0 / s8) - pad);
-      bx1 = Math.max(bx1, Math.ceil(z.x1 / s8) + pad);
-      by1 = Math.max(by1, Math.ceil(z.y1 / s8) + pad);
-    }
-    bx0 = D.bx0 = Math.max(bx0, fx0);
-    by0 = D.by0 = Math.max(by0, fy0);
-    bx1 = D.bx1 = Math.min(bx1, fx1);
-    by1 = D.by1 = Math.min(by1, fy1);
-    if (bx1 <= bx0 || by1 <= by0) return;
-    const fc = curveFn(kcurve("l2dFire"));
-    for (let k = 0; k <= 64; k++) D.lut[k] = clamp(fc(k / 64), 0, 1);
-    for (let cy = fy0; cy < fy1; cy++) D.lift.fill(0, cy * FW + fx0, cy * FW + fx1);
-    const R = Math.max(1, DEV.l2dFireR) * CELL, fl = W.fire.list, st = Math.max(1, Math.ceil(fl.length / 300));
-    for (let k = 0; k < fl.length; k += st) {
-      const i = fl[k], x = (i % CW + 0.5) * CELL, y = ((i / CW | 0) + 0.5) * CELL;
-      if (x > W.camX - R && x < W.camX + vw + R && y > W.camY - R && y < W.camY + vh + R) addLift(x, y, R, W.flick);
-    }
-    for (const f of W.flashes) addLift(f.x, f.y, R + f.r * 2, clamp(2 * (1 - f.t / 0.25), 0, 1));
-    for (const e of W.enemies) if (e.burn > 0) addLift(e.x, e.ty, R, W.flick);
-    if (W.p.burn > 0 && !W.p.dead) addLift(W.p.x + 6, W.p.y + 11, R, W.flick);
-    if (W.bullets.length) {
-      const gR = kr("alGlimpseR"), gw = kr("alGlimpse"), mk = W.darkMask;
-      if (gR > 0 && gw > 0) for (const b of W.bullets) {
-        const cx = Math.floor(b.x / CELL), cy = Math.floor(b.y / CELL);
-        if (cx >= 0 && cx < CW && cy >= 0 && cy < CH && mk[cy * CW + cx]) addLift(b.x, b.y, gR, gw);
-      }
-    }
-    const bm = D.beam, zd = D.zd, Tq = DEV.l2dTorchDepth;
-    if (W.torchLit > 0 && !W.p.dead && (bm.r > 0 || bm.n > 0)) {
-      const reach2 = Math.max(bm.r, bm.n);
-      const cx0 = Math.max(bx0, Math.floor((bm.x - reach2) / FOG_U)), cx1 = Math.min(bx1 - 1, Math.floor((bm.x + reach2) / FOG_U));
-      const cy0 = Math.max(by0, Math.floor((bm.y - reach2) / FOG_U)), cy1 = Math.min(by1 - 1, Math.floor((bm.y + reach2) / FOG_U));
-      for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
-        const i = cy * FW + cx;
-        if (W.seen[i] !== 2) continue;
-        const dx = (cx + 0.5) * FOG_U - bm.x, dy = (cy + 0.5) * FOG_U - bm.y, u = Math.min(1, Math.max(0, (zd[i] - Tq) / 16));
-        const v = beamLift(Math.hypot(dx, dy), dx, dy, bm.a, bm.r, bm.n) * (1 - u * u * (3 - 2 * u));
-        if (v > D.lift[i]) D.lift[i] = v;
-      }
-    }
-    const M = D.m = sizedCanvas(D.m, FW, FH), mc = M.getContext("2d");
-    D.mb = sizedCanvas(D.mb, FW, FH);
-    const mbc = D.mb.getContext("2d");
-    if (!mc || !mbc) return;
-    if (!D.mImg) D.mImg = mc.createImageData(FW, FH);
-    const md = D.mImg.data, dark = clamp(DEV.l2dDark, 0, 1), zt = D.zt;
-    for (let cy = by0; cy < by1; cy++) for (let cx = bx0; cx < bx1; cx++) {
-      const i = cy * FW + cx, k = i * 4;
-      md[k] = 0;
-      md[k + 1] = 0;
-      md[k + 2] = 0;
-      md[k + 3] = Math.round(255 * Math.min(1, zt[i]) * dark * (1 - D.lift[i]));
-    }
-    mc.putImageData(D.mImg, 0, 0, bx0, by0, bx1 - bx0, by1 - by0);
-    mbc.clearRect(bx0, by0, bx1 - bx0, by1 - by0);
-    mbc.filter = DEV.l2dEdge > 0 ? `blur(${DEV.l2dEdge}px)` : "none";
-    mbc.drawImage(M, bx0, by0, bx1 - bx0, by1 - by0, bx0, by0, bx1 - bx0, by1 - by0);
-    mbc.filter = "none";
-    const tx0 = bx0 * s8, ty0 = by0 * s8, tw = (bx1 - bx0) * s8, th = (by1 - by0) * s8;
-    const T = D.mt = sizedCanvas(D.mt, tw, th), tc = T.getContext("2d");
-    if (!tc) return;
-    tc.clearRect(0, 0, tw, th);
-    tc.imageSmoothingEnabled = true;
-    tc.drawImage(D.mb, bx0, by0, bx1 - bx0, by1 - by0, 0, 0, tw, th);
-    const B = D.back = sizedCanvas(D.back, tw, th), bc = B.getContext("2d");
-    if (!bc) return;
-    const bl = Math.max(0, DEV.l2dBlur), blur = bl > 0 ? `blur(${bl}px)` : "none";
-    bc.setTransform(1, 0, 0, 1, 0, 0);
-    bc.globalCompositeOperation = "source-over";
-    bc.globalAlpha = 1;
-    bc.fillStyle = "#000";
-    bc.fillRect(0, 0, tw, th);
-    const bgox = W.camX * (1 - BG_PAR), bgoy = W.camY * (1 - BG_PAR);
-    const wx0 = tx0 * CELL - bgox, wy0 = ty0 * CELL - bgoy, gx0 = clamp(Math.floor(wx0 / BCELL) - 2, 0, BW - 1), gy0 = clamp(Math.floor(wy0 / BCELL) - 2, 0, BH - 1);
-    const gx1 = clamp(Math.ceil((wx0 + tw * CELL) / BCELL) + 2, 1, BW), gy1 = clamp(Math.ceil((wy0 + th * CELL) / BCELL) + 2, 1, BH);
-    bc.imageSmoothingEnabled = true;
-    bc.filter = blur;
-    bc.globalAlpha = clamp(DEV.l2dBack, 0, 1);
-    const hs5 = G.bgHiOn ? BCELL / CELL : 1;
-    bc.drawImage(G.bgHiOn ? G.bgHi : G.bg, gx0 * hs5, gy0 * hs5, (gx1 - gx0) * hs5, (gy1 - gy0) * hs5, (gx0 * BCELL + bgox) / CELL - tx0, (gy0 * BCELL + bgoy) / CELL - ty0, (gx1 - gx0) * BCELL / CELL, (gy1 - gy0) * BCELL / CELL);
-    const hl = holoLayer(), hb = holoBright() * DEV.l2dHolo;
-    if (hl && hb > 0.01) {
-      const g = holoGrid.rect;
-      bc.globalAlpha = clamp(hb, 0, 1);
-      bc.drawImage(hl, 0, 0, hl.width, hl.height, g.x / CELL - tx0, g.y / CELL - ty0, g.w / CELL, g.h / CELL);
-    }
-    bc.filter = "none";
-    bc.globalAlpha = 1;
-    bc.globalCompositeOperation = "multiply";
-    bc.imageSmoothingEnabled = false;
-    bc.drawImage(D.webC, tx0, ty0, tw, th, 0, 0, tw, th);
-    bc.globalCompositeOperation = "source-over";
-    let anyLift = false;
-    for (let cy = by0; cy < by1 && !anyLift; cy++) for (let cx = bx0; cx < bx1; cx++) if (D.lift[cy * FW + cx] > 0.01) {
-      anyLift = true;
-      break;
-    }
-    if (anyLift && D.webL) {
-      const LM = D.lm = sizedCanvas(D.lm, FW, FH), lc = LM.getContext("2d");
-      const LT = D.lt = sizedCanvas(D.lt, tw, th), ltc = LT.getContext("2d");
-      if (lc && ltc) {
-        if (!D.lmImg) D.lmImg = lc.createImageData(FW, FH);
-        const ld = D.lmImg.data;
-        for (let cy = by0; cy < by1; cy++) for (let cx = bx0; cx < bx1; cx++) {
-          const i = cy * FW + cx;
-          ld[i * 4 + 3] = Math.round(255 * D.lift[i]);
-        }
-        lc.putImageData(D.lmImg, 0, 0, bx0, by0, bx1 - bx0, by1 - by0);
-        ltc.globalCompositeOperation = "source-over";
-        ltc.clearRect(0, 0, tw, th);
-        ltc.imageSmoothingEnabled = false;
-        ltc.drawImage(D.webL, tx0, ty0, tw, th, 0, 0, tw, th);
-        ltc.globalCompositeOperation = "destination-in";
-        ltc.imageSmoothingEnabled = true;
-        ltc.drawImage(LM, bx0, by0, bx1 - bx0, by1 - by0, 0, 0, tw, th);
-        ltc.globalCompositeOperation = "source-over";
-        bc.drawImage(LT, 0, 0);
-      }
-    }
-    D.on = true;
-    const ctx = G.ctx;
-    ctx.save();
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(D.zC, tx0, ty0, tw, th, tx0 * CELL, ty0 * CELL, tw * CELL, th * CELL);
-    ctx.restore();
-  }
-  function drawDark(W, G, F2) {
-    if (!D.on || !D.mt || !D.back) return;
-    const ctx = G.ctx, s8 = FOG_U / CELL, tx0 = D.bx0 * s8, ty0 = D.by0 * s8, MT = D.mt, B = D.back;
-    const sx = tx0 * CELL, sy = ty0 * CELL, sw = MT.width * CELL, sh = MT.height * CELL;
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    ctx.globalCompositeOperation = "source-atop";
-    ctx.drawImage(MT, 0, 0, MT.width, MT.height, sx, sy, sw, sh);
-    ctx.globalCompositeOperation = "destination-over";
-    ctx.drawImage(B, 0, 0, B.width, B.height, sx, sy, sw, sh);
-    ctx.restore();
-  }
-  function darkBloomCut(c) {
-    if (!D.on || !D.zC) return;
-    const s8 = FOG_U / CELL, tx0 = D.bx0 * s8, ty0 = D.by0 * s8, tw = (D.bx1 - D.bx0) * s8, th = (D.by1 - D.by0) * s8;
-    c.save();
-    c.globalCompositeOperation = "destination-out";
-    c.imageSmoothingEnabled = true;
-    c.drawImage(D.zC, tx0, ty0, tw, th, tx0 * CELL, ty0 * CELL, tw * CELL, th * CELL);
-    c.restore();
-  }
-  function darkCut(c) {
-    if (!D.on || !D.zB) return;
-    const s8 = FOG_U / CELL, tx0 = D.bx0 * s8, ty0 = D.by0 * s8, tw = (D.bx1 - D.bx0) * s8, th = (D.by1 - D.by0) * s8;
-    c.save();
-    c.globalCompositeOperation = "destination-out";
-    c.imageSmoothingEnabled = false;
-    c.drawImage(D.zB, tx0, ty0, tw, th, tx0 * CELL, ty0 * CELL, tw * CELL, th * CELL);
-    c.drawImage(D.zB, tx0, ty0, tw, th, tx0 * CELL, ty0 * CELL, tw * CELL, th * CELL);
-    c.restore();
   }
 
   // src/game/systems/lightning.js
@@ -20539,7 +20632,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const g = W.guide;
     if (!g || g.st === "gone") return;
     if (!W.camReady || !W.unitPx) return;
-    const vw = G.c.width / (window.devicePixelRatio || 1) / W.unitPx;
+    const vw = G.c.width / gameDpr() / W.unitPx;
     const cps = DEV.guideCps, before = g.st === "talk" || g.st === "rude" ? typedAt(g.say, g.t, cps) : -1;
     const ev = guideStep(g, F2.dt, { pcx: F2.pcx, camX: W.camX, vw, inShop: W.p.y + PH > SHOP_Y, cps, wait: DEV.guideWait, seen: DEV.guideIn });
     const m = guideMid(W, g);
@@ -23453,7 +23546,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     drawReticule(G);
   }
   function drawCamera(W, G, F2) {
-    const dpr = F2.dpr = window.devicePixelRatio || 1;
+    const dpr = F2.dpr = gameDpr();
     const ctlPx = Math.min(G.c.height * 0.8, (G.RPV ? G.RPV.full ? 0 : G.RPV.panelH || 0 : G.input.current.ctlH || 0) * dpr);
     const playPx = F2.playPx = G.c.height - ctlPx;
     const s = Math.min(G.c.width / VIEW_W, playPx / VIEW_MIN_H) * DEV.zoom * (G.RPV ? G.RPV.zoom : 1 / carrotAt("caCam", W.pb.carrot)), vw = F2.vw = G.c.width / s, vh = F2.vh = G.c.height / s;
@@ -24473,7 +24566,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     let pbottom = 12;
     if (near) {
       const iy = near.src === "vend" ? VEND_TOP : near.src === "shopvend" ? MACHINE_TOP : near.src === "shop" ? near.it.y : near.src === "room" ? near.r.y : near.q.y;
-      const dprc = window.devicePixelRatio || 1;
+      const dprc = gameDpr();
       pbottom = Math.round(Math.max(10, G.c.height / dprc - (iy - 16 - W.camY) * W.unitPx));
     }
     const sig = nearKey + ":" + (label && label.can ? 1 : 0) + ":" + inShop + ":" + Math.round(pbottom / 16);
@@ -24858,7 +24951,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           return { x: W.camX, y: W.camY };
         },
         get s() {
-          return W.unitPx * (window.devicePixelRatio || 1);
+          return W.unitPx * gameDpr();
         },
         get embers() {
           return W.torchP.length;
@@ -25045,7 +25138,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       window.addEventListener("pagehide", saveNow);
       input.current.saveRun = saveNow;
       const resize = () => {
-        const r = c.parentElement.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+        const r = c.parentElement.getBoundingClientRect(), dpr = gameDpr();
         c.width = Math.max(1, Math.round(r.width * dpr));
         c.height = Math.max(1, Math.round(r.height * dpr));
       };
@@ -26566,6 +26659,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             },
             "All mods"
           ),
+          h(
+            "button",
+            {
+              className: "dbg allperks" + (LO.debugPerks ? " on" : ""),
+              onPointerDown: (e) => {
+                e.preventDefault();
+                LO.debugPerks = !LO.debugPerks;
+                refresh();
+                bump((n) => n + 1);
+              }
+            },
+            "All perks"
+          ),
           h("button", {
             className: "dbg restart",
             onPointerDown: (e) => {
@@ -28011,9 +28117,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         setMsg("");
         if (slot < 0 && to >= 0) {
           const k = LO.perks.indexOf(id);
-          if (k < 0) return;
-          LO.perks.splice(k, 1);
-          if (suit[to]) LO.perks.push(suit[to]);
+          if (k < 0 && !LO.debugPerks) return;
+          if (!LO.debugPerks) {
+            LO.perks.splice(k, 1);
+            if (suit[to]) LO.perks.push(suit[to]);
+          }
           suit[to] = id;
           SFX.ui("perk");
         } else if (slot >= 0 && to >= 0 && to !== slot) {
@@ -28022,7 +28130,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           suit[slot] = a;
           SFX.fx("place");
         } else if (slot >= 0 && to < 0) {
-          LO.perks.push(id);
+          if (!LO.debugPerks) LO.perks.push(id);
           suit[slot] = null;
           SFX.fx("place");
         } else return;
@@ -28110,7 +28218,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ScrollBox,
         { cls: "xgrid" },
         PERK_IDS.map((id) => {
-          const n = LO.perks.filter((p) => p === id).length, pk = PERKS[id], on = suit.includes(id);
+          const n = LO.debugPerks ? 1 : LO.perks.filter((p) => p === id).length, pk = PERKS[id], on = suit.includes(id);
           const state = on ? "inuse" : n ? "have" : unlocked.includes(id) ? "none" : "locked";
           const grab = n > 0 && !on && canEdit;
           if (state === "locked") return h("div", { key: id, "data-perk": id, className: "xperk locked" });
@@ -29662,7 +29770,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const prompt = input.current.prompt;
     const inShop = input.current.inShop;
     const perkB = perkBag(activePerks(LO));
-    const canEdit = inShop || perkB.tinker;
+    const canEdit = inShop || perkB.tinker || !!LO.debugPerks;
     const heldGun = input.current.loadout.guns[input.current.loadout.sel];
     const deck = deckLayout(vw, size, LO.guns.length);
     const btnAt = (pt) => ({

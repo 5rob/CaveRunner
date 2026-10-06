@@ -38,7 +38,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   // count flame-coloured pixels, and how many sit in flat blocks (a pixel layer's squares)
   const flamePx = () => page.evaluate(() => {
     const L = window.__lvl, cv = document.querySelector('canvas'), x = cv.getContext('2d');
-    const u = L.unitPx * (window.devicePixelRatio || 1), x0 = Math.round((L.p.x - 30 - L.camX) * u), y0 = Math.round((L.p.y - 40 - L.camY) * u);
+    const u = L.unitPx * (document.querySelector("canvas.game").width / document.querySelector("canvas.game").getBoundingClientRect().width), x0 = Math.round((L.p.x - 30 - L.camX) * u), y0 = Math.round((L.p.y - 40 - L.camY) * u);
     const w = Math.round(72 * u), h = Math.round(90 * u), d = x.getImageData(x0, y0, w, h).data;
     let fire = 0, blocky = 0;
     const hot = i => d[i] > 230 && d[i + 1] > 110 && d[i + 2] < 150;
@@ -75,7 +75,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   // fire under your hips sits on your back's side, facing either way
   const backSide = () => page.evaluate(() => {
     const L = window.__lvl, cv = document.querySelector('canvas'), x = cv.getContext('2d');
-    const u = L.unitPx * (window.devicePixelRatio || 1), mid = L.p.x + PW / 2;
+    const u = L.unitPx * (document.querySelector("canvas.game").width / document.querySelector("canvas.game").getBoundingClientRect().width), mid = L.p.x + PW / 2;
     const x0 = Math.round((L.p.x - 30 - L.camX) * u), y0 = Math.round((L.p.y + 17 - L.camY) * u);
     const w = Math.round(72 * u), h = Math.round(12 * u), d = x.getImageData(x0, y0, w, h).data;
     let sx = 0, n = 0;

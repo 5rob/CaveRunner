@@ -96,7 +96,7 @@ CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).
   preview live. **Copy all dev settings** (`.devcopy`) copies `devReport()`; if the clipboard is
   refused (a WebView can), it shows the text in a box to long-press. **Spawn gun** (`.dbg.spawngun`)
   sets `input.current.spawnGun = level`; step drops `caveGun(level)` in front of you. **New cave**
-  (`.dbg.newcave`) → `input.current.newCave = true`; **Floor 2** (`.dbg.floor2`) → `newCave = 2` (that floor, fresh). **All mods** (`.dbg`) flips `LO.debug`.
+  (`.dbg.newcave`) → `input.current.newCave = true`; **Floor 2** (`.dbg.floor2`) → `newCave = 2` (that floor, fresh). **All mods** (`.dbg`) flips `LO.debug`. **All perks** (`.dbg.allperks`, v0.0.148) flips `LO.debugPerks`: the Exo Suit's grid shows every perk to fit, endless copies (fitting takes none off `LO.perks`, taking one out puts none back), and the suit and editor work anywhere (`canEdit` in `app.js`), to test perks.
   `JellyPreview` sits at the top of the Jellyfish colours group, folded away with it.
 - **Death:** "Tap the right stick to restart"; the **WITNESS YOURSELF** button (`.witnessbtn`) opens
   `Witness`; `.app.witnessing` hides the controls (and the gold). A saved replay (`playClip`: the

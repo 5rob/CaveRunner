@@ -78,6 +78,7 @@ export function cleanLoadout(lo) {
     crystals: (Array.isArray(lo.crystals) ? lo.crystals : []).filter(f => Number.isInteger(f) && f > 0),
     fed: (Array.isArray(lo.fed) ? lo.fed : []).filter(k => typeof k === 'string'),
     debug: !!lo.debug,
+    debugPerks: !!lo.debugPerks,
   };
 }
 // Turn the stored text back into a run, or null if there isn't a usable one.

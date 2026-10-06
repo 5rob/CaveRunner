@@ -3,6 +3,24 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
+## v0.0.148 — SPEED-UPS, FLAMETHROWER, FIRE IMMUNITY: on branch `speed`, WAITING ON THE OWNER'S OK (2026-10-06)
+
+The owner played Level 2 on the phone: frames dropped as a dark zone came into view and with the aliens about.
+Their list, all done (CHANGELOG v0.0.148 has the details): drawn at 1.5× (`renderScale`, `game/dpr.js`); the back
+wall blurred once a floor; the hologram's blur behind the silk a Dev switch (`l2dHoloBlur`, off); the black's edge
+a 3-step banded ramp (`l2dBands`) instead of a per-frame blur; half the aliens (`alCount` 30–60), black with no
+skin, a shared eye picture, thinking in 5 groups with tweened moves. Mine, free: per-floor layers made on the
+floor's first frame (the hitch when a zone appeared), grow-only canvases, aliens deep in the black not drawn.
+Measured at alienperf's spot with the CPU slowed 4×: 114 → 36 ms a frame. Plus the owner's two asks: the
+**Flamethrower** mod (`flamer`) and the **Fire Immunity** perk (`fireimm`); browser suite `flamer`; and a
+**Dev → All perks** button (`LO.debugPerks`: every perk to fit, the suit usable anywhere).
+Known failing, not from this: browser `shop` ("the coin is gone once collected", fails on v0.0.147 too); logic
+`rats`, `spider`, `strata` as before. `vendshop` failed once in the full run and passed alone (chance).
+
+**Waiting on the owner:** the look (screenshots sent: aliens black, the banded edge, the softer 1.5× picture, the
+flamethrower). On their OK: merge `speed` into `main` (the release) and confirm Pages shows v0.0.148. Then: how
+it runs on the phone. If the owner had touched `alCount` in Dev, their saved value overrides the new default.
+
 ## LEVEL 2 — RELEASED FOR TESTING in v0.0.147 (2026-10-06; read first)
 
 The owner's brief is **LEVEL2.md**. Built in 8 stages on the `level2` branch: the main session as project

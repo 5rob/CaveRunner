@@ -28,6 +28,7 @@ import {
   SIGHT, WH, WW
 } from '../core/consts.js';
 import { startingGuns } from '../spells/guns.js';
+import { gameDpr } from './dpr.js';
 import { fogReveal, losClear, visPoly } from '../world/vision.js';
 
 // g: what the suites reach that isn't world state: the two terrain canvases' contexts (the
@@ -84,7 +85,7 @@ export function testHook(W, g) {
     world: { CW, CH, CELL, WW, WH, SHOP_FLOOR, SHOP_TOP, SHOP_Y },
     fog: { get seen() { return W.seen; }, FW, FH, FOG, FOG_U, SIGHT, SHOP_TOP, SHOP_ROOF, reveal: fogReveal, paint: paintFog },
     light: { get flick() { return W.flick; }, get r() { return W.torchR; },
-      get cam() { return { x: W.camX, y: W.camY }; }, get s() { return W.unitPx * (window.devicePixelRatio || 1); },
+      get cam() { return { x: W.camX, y: W.camY }; }, get s() { return W.unitPx * gameDpr(); },
       get embers() { return W.torchP.length; }, get vis() { return W.visPts; }, visPoly, losClear },
   });
   // the old names for three world fields, and the recorder

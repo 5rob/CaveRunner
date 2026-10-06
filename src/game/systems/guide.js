@@ -10,6 +10,7 @@ import { makeGun, resetGun } from '../../spells/guns.js';
 import { guideStep, guideX, typedAt } from '../../world/guide.js';
 import { spillGold } from '../../world/nuggets.js';
 import { lightNear } from '../../world/shoplights.js';
+import { gameDpr } from '../dpr.js';
 import { burst } from './particles.js';
 
 export const GUIDE_FEET = 9;                 // it hovers this far over the shop floor (world units)
@@ -21,7 +22,7 @@ export function stepGuide(W, G, F) {
   const g = W.guide;
   if (!g || g.st === 'gone') return;
   if (!W.camReady || !W.unitPx) return;      // nothing drawn yet: the view isn't known
-  const vw = G.c.width / (window.devicePixelRatio || 1) / W.unitPx;
+  const vw = G.c.width / gameDpr() / W.unitPx;
   const cps = DEV.guideCps, before = g.st === 'talk' || g.st === 'rude' ? typedAt(g.say, g.t, cps) : -1;
   const ev = guideStep(g, F.dt, { pcx: F.pcx, camX: W.camX, vw, inShop: W.p.y + PH > SHOP_Y, cps, wait: DEV.guideWait, seen: DEV.guideIn });
   const m = guideMid(W, g);

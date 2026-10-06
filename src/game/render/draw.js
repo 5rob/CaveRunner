@@ -16,6 +16,7 @@ import { clamp } from '../../core/util.js';
 import { themeFor } from '../../data/themes.js';
 import { DEV, carrotAt } from '../../dev/knobs.js';
 import { drawSilk } from '../creatures/spider.js';
+import { gameDpr } from '../dpr.js';
 import { drawAim, drawEnemies, drawJetFlame, drawPlayer } from './actors.js';
 import {
   drawArrival, drawLoot, drawPortal, drawProps, drawRooms, drawShop, drawTerrain
@@ -89,7 +90,7 @@ export function draw(W, G) {
 // is the viewer's), and the canvas cleared to the floor's colour under the world's transform
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 export function drawCamera(W, G, F) {
-  const dpr = F.dpr = window.devicePixelRatio || 1;
+  const dpr = F.dpr = gameDpr();
   // the controls overlay the bottom of the canvas (see-through), so the play area is the
   // part above them: scale and frame to that, but still draw (and cull) the full canvas
   const ctlPx = Math.min(G.c.height * 0.8, (G.RPV ? (G.RPV.full ? 0 : G.RPV.panelH || 0) : G.input.current.ctlH || 0) * dpr);   // a replay: its panel

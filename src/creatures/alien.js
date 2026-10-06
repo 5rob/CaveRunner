@@ -46,29 +46,42 @@ function taperedLeg(ctx, raw, w0, w1, seed) {
   ctx.moveTo(pts[n - 1][0] + w1 / 2, pts[n - 1][1]); ctx.arc(pts[n - 1][0], pts[n - 1][1], w1 / 2, 0, Math.PI * 2, true);
 }
 
-// the skin: a small tile of dark purple and blue noise (owner), made once, laid over the body and legs at
-// SKIN_U world units a texel
-const SKIN_N = 48, SKIN_U = 0.5;
-/** @type {HTMLCanvasElement | null} */
-let skin = null;
-function skinTile() {
-  if (skin) return skin;
-  const c = document.createElement('canvas'); c.width = c.height = SKIN_N;
+// the eyeball, shared by every alien (v0.0.148, owner: for speed): its white, the red veins and the wet glint,
+// drawn once per colour into EYE_N px and scaled onto each one; only the pupil is drawn per alien. The veins
+// are fixed, reaching in toward the middle (the pupil moves over them)
+const EYE_N = 96;
+/** @type {Map<string, HTMLCanvasElement>} */
+const eyes = new Map();
+/** @param {string} white */
+function eyeArt(white) {
+  const got = eyes.get(white);
+  if (got) return got;
+  const c = document.createElement('canvas'); c.width = c.height = EYE_N;
+  eyes.set(white, c);
   const g = c.getContext('2d');
   if (!g) return c;
-  const img = g.createImageData(SKIN_N, SKIN_N), d = img.data;
-  const hv = (/** @type {number} */ x, /** @type {number} */ y) => { const h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return h - Math.floor(h); };
-  // smooth blotches (purple ↔ blue) and a fine grain over them
-  const sm = (/** @type {number} */ x, /** @type {number} */ y) => {
-    const X = Math.floor(x), Y = Math.floor(y), u = x - X, v = y - Y, U = u * u * (3 - 2 * u), V = v * v * (3 - 2 * v);
-    return (hv(X, Y) * (1 - U) + hv(X + 1, Y) * U) * (1 - V) + (hv(X, Y + 1) * (1 - U) + hv(X + 1, Y + 1) * U) * V;
-  };
-  for (let y = 0; y < SKIN_N; y++) for (let x = 0; x < SKIN_N; x++) {
-    const t = sm(x / 6, y / 6), gr = 0.75 + hv(x + 300, y + 700) * 0.5, k = (y * SKIN_N + x) * 4;
-    d[k] = (52 * (1 - t) + 20 * t) * gr; d[k + 1] = (22 * (1 - t) + 30 * t) * gr; d[k + 2] = (74 * (1 - t) + 82 * t) * gr; d[k + 3] = 255;
+  // in eye radii: the ball is radius 1 (the body's 0.8 r)
+  g.translate(EYE_N / 2, EYE_N / 2); g.scale(EYE_N / 2, EYE_N / 2);
+  g.fillStyle = white;
+  g.beginPath(); g.arc(0, 0, 1, 0, Math.PI * 2); g.fill();
+  g.save();
+  g.beginPath(); g.arc(0, 0, 1, 0, Math.PI * 2); g.clip();
+  g.strokeStyle = 'rgba(170, 40, 50, 0.6)'; g.lineWidth = 0.07; g.lineCap = 'round';
+  for (let v = 0; v < 8; v++) {
+    const h = Math.sin(v * 78.233 + 4.1) * 43758.5453, u = h - Math.floor(h);
+    const va = v * (Math.PI * 2 / 8) + (u - 0.5) * 0.5;
+    const sx = Math.cos(va) * 1.08, sy = Math.sin(va) * 1.08, ex = Math.cos(va) * 0.4, ey = Math.sin(va) * 0.4;
+    const dx = ex - sx, dy = ey - sy, dl = Math.hypot(dx, dy) || 1, nx = -dy / dl, ny = dx / dl;
+    const amp = 0.025 + u * 0.15, waves = 1 + u * 3;
+    g.beginPath(); g.moveTo(sx, sy);
+    for (let q = 1; q <= 10; q++) {
+      const t = q / 10, w = Math.sin(t * Math.PI * waves + v) * amp * Math.sin(t * Math.PI);
+      g.lineTo(sx + dx * t + nx * w, sy + dy * t + ny * w);
+    }
+    g.stroke();
   }
-  g.putImageData(img, 0, 0);
-  return (skin = c);
+  g.restore();
+  return c;
 }
 
 /**
@@ -82,7 +95,7 @@ function skinTile() {
  */
 export function drawAlien(ctx, x, y, r, time, phase, flash, col, S) {
   const s = S || {}, black = !!s.black, rot = s.rot || 0, walk = s.walk || 0;
-  const ink = black ? '#000000' : flash ? '#ffffff' : col.b;
+  const ink = flash && !black ? '#ffffff' : '#000000';     // body and legs black (v0.0.148: the skin went, for speed)
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(rot);
@@ -108,58 +121,24 @@ export function drawAlien(ctx, x, y, r, time, phase, flash, col, S) {
     const kx = ca * Li * ALIEN.knee + qx * Li * lift, ky = sa * Li * ALIEN.knee + qy * Li * lift - Math.max(0, step) * r * 0.6;
     taperedLeg(ctx, [[0, 0], [kx, ky], [ca * Li, sa * Li]], r * 2, tip, phase * 3.1 + i * 1.9);
   }
-  // and the body's round, in the same shape: filled, then the noisy skin laid over all of it
-  // (wound the same way as the legs, so where they overlap it stays filled: no seams)
+  // and the body's round, in the same shape, one fill for it all (wound the same way as the legs, so where
+  // they overlap it stays filled: no seams)
   ctx.moveTo(r, 0); ctx.arc(0, 0, r, 0, Math.PI * 2, true);
   ctx.fill();
-  if (!black && !flash) {
-    ctx.save();
-    ctx.clip();
-    const ext = SKIN_N * SKIN_U, sm = ctx.imageSmoothingEnabled;
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(skinTile(), -ext / 2, -ext / 2, ext, ext);
-    ctx.imageSmoothingEnabled = sm;
-    ctx.restore();
-  }
   ctx.restore();
-  // the body, upright whatever its legs do: a thin shell round one big eye
-  ctx.save();
-  ctx.translate(x, y);
+  // the body, upright whatever its legs do: a thin shell round one big eye (the shared picture), the pupil
+  // where it is looking, and the wet glint over it
   if (!black) {
-    // the eyeball: almost all of it
-    ctx.fillStyle = flash ? '#ffffff' : col.c;
-    ctx.beginPath(); ctx.arc(0, 0, r * 0.8, 0, Math.PI * 2); ctx.fill();
-    // the pupil: where it is looking (the veins reach for it)
+    const er = r * 0.8, sm = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(eyeArt(flash ? '#ffffff' : col.c), x - er, y - er, er * 2, er * 2);
+    ctx.imageSmoothingEnabled = sm;
     const px = Math.max(-1, Math.min(1, s.px || 0)), py = Math.max(-1, Math.min(1, s.py || 0)), room = r * 0.42;
-    const pcx = px * room, pcy = py * room, pr = r * 0.3;
-    // red veins in from the rim to the pupil's edge, eight, each its own squiggle (owner), following the pupil
-    // as it moves; clipped to the eyeball so none shows outside the body
-    ctx.save();
-    ctx.beginPath(); ctx.arc(0, 0, r * 0.8, 0, Math.PI * 2); ctx.clip();
-    ctx.strokeStyle = 'rgba(170, 40, 50, 0.6)'; ctx.lineWidth = Math.max(0.18, r * 0.05); ctx.lineCap = 'round';
-    for (let v = 0; v < 8; v++) {
-      const h = Math.sin(phase * 12.9898 + v * 78.233) * 43758.5453, u = h - Math.floor(h);
-      const va = phase * 3 + v * (Math.PI * 2 / 8) + (u - 0.5) * 0.5;
-      const sx = Math.cos(va) * r * 0.86, sy = Math.sin(va) * r * 0.86;
-      const ex = pcx + Math.cos(va) * pr * 0.9, ey = pcy + Math.sin(va) * pr * 0.9;
-      const dx = ex - sx, dy = ey - sy, dl = Math.hypot(dx, dy) || 1, nx = -dy / dl, ny = dx / dl;
-      const amp = r * (0.02 + u * 0.12), waves = 1 + u * 3, steps = 10;
-      ctx.beginPath(); ctx.moveTo(sx, sy);
-      for (let q = 1; q <= steps; q++) {
-        const t = q / steps, w = Math.sin(t * Math.PI * waves + v) * amp * Math.sin(t * Math.PI);
-        ctx.lineTo(sx + dx * t + nx * w, sy + dy * t + ny * w);
-      }
-      ctx.stroke();
-    }
-    ctx.restore();
-    // the pupil: a black dot
     ctx.fillStyle = col.eye;
-    ctx.beginPath(); ctx.arc(pcx, pcy, pr, 0, Math.PI * 2); ctx.fill();
-    // and the wet glint
+    ctx.beginPath(); ctx.arc(x + px * room, y + py * room, r * 0.3, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.beginPath(); ctx.arc(-r * 0.32, -r * 0.34, r * 0.13, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x - r * 0.32, y - r * 0.34, r * 0.13, 0, Math.PI * 2); ctx.fill();
   }
-  ctx.restore();
 }
 
 // ---- the brain (stage 7b; the owner's brief, LEVEL2.md) ----

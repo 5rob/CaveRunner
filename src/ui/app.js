@@ -164,7 +164,7 @@ export function App() {
   const prompt = input.current.prompt;
   const inShop = input.current.inShop;
   const perkB = perkBag(activePerks(LO));
-  const canEdit = inShop || perkB.tinker;      // Tinker with Wands Everywhere frees the editor
+  const canEdit = inShop || perkB.tinker || !!LO.debugPerks;   // Tinker with Wands Everywhere frees the editor (and Dev → All perks, to test perks anywhere)
   const heldGun = input.current.loadout.guns[input.current.loadout.sel];
   const deck = deckLayout(vw, size, LO.guns.length);
   const btnAt = pt => ({ width: deck.btn, height: deck.btn,

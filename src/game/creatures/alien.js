@@ -3,24 +3,26 @@
 // creatures/alien.js): its part of the enemy loop (alienMove). Once a frame (the first alien to move)
 // it makes the two lookups every alien shares: the bucket grid of aliens (the packs' neighbours) and the
 // fire points (burning cells, sampled; explosions; burning bodies) in buckets, so hundreds stay cheap.
-// Far aliens (past AL_FAR) think every fourth frame.
+// They think in AL_GROUPS groups, a group a frame, and glide between thinks (v0.0.148, owner).
 
 import { SFX } from '../../audio/sfx.js';
 import { CELL, CW, PH, PW } from '../../core/consts.js';
+import { angDiff } from '../../core/util.js';
 import { alienGrid, alienNear, alienStep } from '../../creatures/alien.js';
 import { kr } from '../../dev/knobs.js';
 import { hurt } from '../systems/player.js';
 import { solidCell } from '../systems/terrain.js';
 
-const AL_FAR = 700, FIRE_B = 64;
-/** @type {{ W: World | null, t: number, grid: AlienGrid | null, fire: Map<number, Pt[]>, nf: number, dark: boolean, near: Enemy[] }} */
-const F = { W: null, t: -1, grid: null, fire: new Map(), nf: 0, dark: false, near: [] };
+const AL_GROUPS = 5, FIRE_B = 64;
+let grpNext = 0;
+/** @type {{ W: World | null, t: number, n: number, grid: AlienGrid | null, fire: Map<number, Pt[]>, nf: number, dark: boolean, near: Enemy[] }} */
+const F = { W: null, t: -1, n: 0, grid: null, fire: new Map(), nf: 0, dark: false, near: [] };
 
-// this frame's lookups (made by the first alien to move)
+// this frame's lookups (made by the first alien to move); F.n counts the frames (whose group thinks)
 /** @param {World} W */
 function frameData(W) {
   if (F.W === W && F.t === W.time) return;
-  F.W = W; F.t = W.time;
+  F.W = W; F.t = W.time; F.n++;
   F.grid = alienGrid(W.enemies.filter(e => e.k.act === 'alien'), 24);
   F.fire.clear(); F.nf = 0;
   /** @param {number} x @param {number} y */
@@ -66,14 +68,29 @@ export function alienMove(W, G, e, C) {
   const { dt, dist, sees, hunting, pcx, pcy } = C;
   frameData(W);
   e.chill = 1;
-  // far away: think every fourth frame (the time saved up)
-  const S = e.al;
-  if (S && dist > AL_FAR) {
-    S.acc = (S.acc || 0) + dt; S.skip = ((S.skip || 0) + 1) % 4;
-    if (S.skip) return true;
+  // v0.0.148 (owner, for speed): the aliens are in AL_GROUPS groups, one group thinking a frame. A frame it
+  // doesn't think, one glides on toward where its last think put it (S.tx, S.ty: worked out over the time
+  // saved up, then tweened over the frames to its next think), its legs stepping and its body turning as it goes
+  let S = e.al;
+  if (S) {
+    S.acc = (S.acc || 0) + dt;
+    if (S.grp === undefined) S.grp = grpNext++ % AL_GROUPS;
+    if ((F.n + S.grp) % AL_GROUPS !== 0) {
+      S.tt = (S.tt || 0) + dt;
+      const u = S.tT ? Math.min(1, S.tt / S.tT) : 1;
+      if (S.tx !== undefined && S.sx !== undefined && S.ty !== undefined && S.sy !== undefined) { e.x = S.sx + (S.tx - S.sx) * u; e.y = S.sy + (S.ty - S.sy) * u; }
+      if (S.r0 !== undefined && S.r1 !== undefined) S.rot = S.r0 + angDiff(S.r1, S.r0) * u;
+      S.gait = ((S.gait || 0) + dt * 22 * S.walk) % (Math.PI * 200);
+      e.ty = e.y;
+      return true;
+    }
+    // its turn: it carries on from where the last think put it
+    if (S.tx !== undefined && S.ty !== undefined) { e.x = S.tx; e.y = S.ty; }
+    if (S.r1 !== undefined) S.rot = S.r1;
   }
   const t = S && S.acc ? S.acc : dt;
   if (S) S.acc = 0;
+  const x0 = e.x, y0 = e.y, gait0 = S ? S.gait : 0, rot0 = S ? S.rot : 0;
   ENV.solidCell = (cx, cy) => solidCell(W, cx, cy);
   ENV.zone = (x, y) => zoneAt(W, x, y);
   ENV.silk = (x, y) => { const w = W.webbing, cx = Math.floor(x / CELL), cy = Math.floor(y / CELL); return !!w && cx >= 0 && cx < CW && w[cy * CW + cx] > 0; };
@@ -85,7 +102,16 @@ export function alienMove(W, G, e, C) {
   ENV.near = F.grid ? alienNear(F.grid, e.x, e.y, 24, e, F.near) : [];
   ENV.you.x = pcx; ENV.you.y = pcy; ENV.hunting = hunting; ENV.youDark = F.dark;
   ENV.look = hunting || dist < e.k.aggro * sees * (e.aggroM || 1);
-  const r = alienStep(e, ENV, Math.min(t, 0.1));
+  const r = alienStep(e, ENV, Math.min(t, 0.25));
+  // the think's move, to be tweened over the frames to the next (this frame its first share)
+  S = e.al;
+  if (S) {
+    S.sx = x0; S.sy = y0; S.tx = e.x; S.ty = e.y; S.tT = Math.max(dt, t); S.tt = dt;
+    S.r0 = rot0; S.r1 = S.rot;
+    if (gait0 !== undefined) S.gait = ((gait0 || 0) + dt * 22 * S.walk) % (Math.PI * 200);
+    const u = Math.min(1, S.tt / S.tT);
+    e.x = x0 + (S.tx - x0) * u; e.y = y0 + (S.ty - y0) * u; S.rot = rot0 + angDiff(S.r1, rot0) * u;
+  }
   e.ty = e.y;
   if (r === 'bite') {
     SFX.creature(e.k, 'bite', e.x, e.y);

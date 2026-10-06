@@ -68,7 +68,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     return on;
   });
   check('the hologram layer is the view in rock-sized pixels', Math.abs(sz.w - (Math.ceil(sz.vw / 2) + 3)) <= 1, sz);
-  check('a small part of the canvas', sz.w * sz.h * 20 < sz.cw * sz.ch, sz);
+  // (×8: the canvas is drawn at 1.5× now, v0.0.148, not the phone's 2.6×)
+  check('a small part of the canvas', sz.w * sz.h * 8 < sz.cw * sz.ch, sz);
 
   // the flash (v116): at rest (brightness 0) none of it is drawn; a kill lights it to full and
   // it fades back out over DEV.holoFade seconds

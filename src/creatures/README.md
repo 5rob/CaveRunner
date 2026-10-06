@@ -7,7 +7,7 @@
 | `jelly.js` | Myrkkymeduusa: `jellyStep` (state `e.je`), `jellyBell`, `segHitsBox`/`tentacleTouch` (stings), `jellyPal`, `drawJelly`, and the plant-glow comp `plantGlowFill`, `plantWhite`, `twinkle`/`twNoise` |
 | `rat.js` | Rotta and its nest: `ratStep` (state `e.ra`, modes `surf`/`air`/`tunnel`/`path`), `ratFooting`, `ratJump`, `ratSpread`, `pathAt`/`pathLen`, `RAT`, `drawRat`, `drawNest` |
 | `classic.js` | Sprites of the bodies not reworked yet: `drawDrone`, `drawCrawler`, `drawBlob`, `drawSkull`, `drawWorm` |
-| `alien.js` | The dark zones' alien: `drawAlien` (the sprite), `ALIEN` (geometry), and the brain `alienStep` (state `e.al`, `AlienBrain`), `alienBrain`, `alienBoids` (the pack's three terms), `alienGrid`/`alienNear` (the once-a-frame neighbour buckets) |
+| `alien.js` | The dark zones' alien: `drawAlien` (the sprite: black body and legs in one fill; the eyeball, veins and glint a shared picture per colour, `eyeArt`, made once; only the pupil and glint per alien — v0.0.148, for speed), `ALIEN` (geometry), and the brain `alienStep` (state `e.al`, `AlienBrain`), `alienBrain`, `alienBoids` (the pack's three terms), `alienGrid`/`alienNear` (the once-a-frame neighbour buckets) |
 | `draw.js` | `drawEnemy(ctx, e, time)`: picks the sprite by `e.k.body`, plus the charged-shot ring |
 
 Each creature's Game side (its part of the enemy loop) is in `game/creatures/` — see its README.

@@ -220,10 +220,12 @@ fs.mkdirSync(OUT, { recursive: true });
     // inside: across the chamber, above your head
     const c = ch.c, cy = (c.floor - 17) * CELL;
     await stand(ch.x, ch.y, 1, 0);
+    // (v0.0.148: the hologram's blur behind the silk is a Dev switch, off by default: these check it on)
+    await page.evaluate(() => { DEV.l2dHoloBlur = 1; });
     const inn = await holoLight((c.x - c.rx + 4) * CELL, (c.x + c.rx - 4) * CELL, cy);
     await page.evaluate(() => { DEV.l2dHolo = 0; });
     const none = await holoLight((c.x - c.rx + 4) * CELL, (c.x + c.rx - 4) * CELL, cy);
-    await page.evaluate(() => { DEV.l2dHolo = DEV_DEFAULTS.l2dHolo; DEV.holoMin = DEV_DEFAULTS.holoMin; DEV.holoMax = DEV_DEFAULTS.holoMax; });
+    await page.evaluate(() => { DEV.l2dHoloBlur = DEV_DEFAULTS.l2dHoloBlur; DEV.l2dHolo = DEV_DEFAULTS.l2dHolo; DEV.holoMin = DEV_DEFAULTS.holoMin; DEV.holoMax = DEV_DEFAULTS.holoMax; });
     console.log('hologram light along a strip (red, device px): tomb', JSON.stringify(out), 'zone', JSON.stringify(inn), 'zone with l2dHolo 0', JSON.stringify(none));
     check('the hologram is sharp in the tomb', out.sharp > 40, out);
     check('in a zone it is diffused: far lower contrast than in the tomb', inn.sharp < out.sharp * 0.4, { zone: inn.sharp, tomb: out.sharp });

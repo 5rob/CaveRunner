@@ -129,7 +129,7 @@ check('no silk at silk 0', !makeLevel(6, 2).webbing.some(v => v));
 reset();
 check('the group and its knobs are on the panel', DEV_GROUPS.some(g => g[0] === 'l2dark') &&
   L2D_KNOBS.every(r => DEV_META.some(m => m.k === r[0] + 'Lo' && m.g === 'l2dark')) &&
-  ['l2dSpace', 'l2dShop', 'l2dTop', 'l2dSilk', 'l2dDark', 'l2dEdge', 'l2dHolo', 'l2dBlur', 'l2dBack', 'l2dRough', 'l2dFringe', 'l2dFireR', 'l2dTintDepth', 'l2dTorchDepth', 'l2dTorchHyst', 'l2dFire0', 'l2dFire1'].every(k => DEV_META.some(m => m.k === k && m.g === 'l2dark')));
+  ['l2dSpace', 'l2dShop', 'l2dTop', 'l2dSilk', 'l2dDark', 'l2dBands', 'l2dHoloBlur', 'l2dHolo', 'l2dBlur', 'l2dBack', 'l2dRough', 'l2dFringe', 'l2dFireR', 'l2dTintDepth', 'l2dTorchDepth', 'l2dTorchHyst', 'l2dFire0', 'l2dFire1'].every(k => DEV_META.some(m => m.k === k && m.g === 'l2dark')));
 
 // round 3: the black fades in with depth, the torch fails near the end of the fade (and comes back with a gap)
 const { tintRamp, zoneDepth, darkDepthAt, torchStep, torchLit, TORCH_FLICKER } = G;
