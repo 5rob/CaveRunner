@@ -89,27 +89,27 @@ export function blastTerrain(L, b, rnd) {
     const f = dist <= b.r ? 0.55 + 0.25 * dist / b.r : 0.8 + 0.2 * (dist - b.r) / sw, k = (y * BWd + x) * 4;
     bd[k] *= f; bd[k + 1] *= f; bd[k + 2] *= f;
   }
-  // the streaks: black rays out of the hole in varying lengths and widths, darkest at the lip, tapering
+  // the streaks: black rays straight out from the blast's centre in varying lengths and widths, darkest at the
+  // lip and fading to nothing at the tip, soft across (owner, round 6). On rock and decoration only: the back
+  // wall slides with the camera (parallax), so streaks there would point off-centre
   const SL = Math.max(0, DEV.l2bStreak);
   if (SL > 0) {
-    const n = 7 + Math.floor(rnd() * 9);
+    const n = 7 + Math.floor(rnd() * 9), dark = b.fire ? 0.85 : 0.7;
     for (let s = 0; s < n; s++) {
-      const a = rnd() * Math.PI * 2, len = b.r * SL * (0.5 + rnd() * 1.6) + sw, w0 = 0.8 + rnd() * Math.max(1, b.r * 0.12);
-      const ca = Math.cos(a), sa = Math.sin(a), steps = Math.ceil(len * 2);
-      for (let q = 0; q <= steps; q++) {
-        const u = q / steps, rr = b.r * 0.85 + u * len, cx = b.x + ca * rr, cy = b.y + sa * rr, hw = w0 * (1 - u * 0.85);
-        const f = 1 - (1 - u) * (b.fire ? 0.8 : 0.65);
-        for (let yy = Math.floor(cy - hw); yy <= Math.ceil(cy + hw); yy++) for (let xx = Math.floor(cx - hw); xx <= Math.ceil(cx + hw); xx++) {
-          if (xx < 0 || yy < 0 || xx >= CW || yy >= CH || Math.hypot(xx + 0.5 - cx, yy + 0.5 - cy) > hw) continue;
-          const k = (yy * CW + xx) * 4;
-          if (mat[yy * CW + xx]) { d[k] *= f; d[k + 1] *= f; d[k + 2] *= f; }
-          if (dd[k + 3]) { dd[k] *= f; dd[k + 1] *= f; dd[k + 2] *= f; }
-        }
-        // the back wall too, more faintly (a bg pixel is 4 terrain pixels; once per bg pixel along the ray)
-        if (q % 8 === 0) {
-          const bx = Math.floor(cx / 4), by = Math.floor(cy / 4), bk = (by * BWd + bx) * 4, fb = 1 - (1 - u) * 0.45;
-          if (bx >= 0 && by >= 0 && bx < BWd && by < L.bgImg.height) { bd[bk] *= fb; bd[bk + 1] *= fb; bd[bk + 2] *= fb; }
-        }
+      const a = rnd() * Math.PI * 2, len = b.r * SL * (0.5 + rnd() * 1.6) + sw, w0 = 1.2 + rnd() * Math.max(1, b.r * 0.14);
+      const ca = Math.cos(a), sa = Math.sin(a), r0 = b.r * 0.85, x0s = b.x + ca * r0, y0s = b.y + sa * r0, x1s = b.x + ca * (r0 + len), y1s = b.y + sa * (r0 + len);
+      const bx0 = Math.max(0, Math.floor(Math.min(x0s, x1s) - w0 - 1)), bx1 = Math.min(CW - 1, Math.ceil(Math.max(x0s, x1s) + w0 + 1));
+      const by0 = Math.max(0, Math.floor(Math.min(y0s, y1s) - w0 - 1)), by1 = Math.min(CH - 1, Math.ceil(Math.max(y0s, y1s) + w0 + 1));
+      for (let yy = by0; yy <= by1; yy++) for (let xx = bx0; xx <= bx1; xx++) {
+        // along the ray (u 0 at the lip, 1 at the tip) and across it
+        const px = xx + 0.5 - b.x, py = yy + 0.5 - b.y, along = px * ca + py * sa - r0, across = Math.abs(px * sa - py * ca);
+        if (along < 0 || along > len) continue;
+        const u = along / len, hw = w0 * (1 - u * 0.75) + 0.4;
+        if (across >= hw) continue;
+        const c = 1 - (across / hw) ** 2, f = 1 - dark * c * (1 - u) ** 1.6;
+        const k = (yy * CW + xx) * 4;
+        if (mat[yy * CW + xx]) { d[k] *= f; d[k + 1] *= f; d[k + 2] *= f; }
+        if (dd[k + 3]) { dd[k] *= f; dd[k + 1] *= f; dd[k + 2] *= f; }
       }
     }
   }

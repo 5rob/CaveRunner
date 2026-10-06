@@ -32,7 +32,7 @@ the zones (new knob `l2bBones`, 90). Floor build ~0.75 s average, 1.2 s worst ov
 Open: blasts land in tomb rooms near zones and wipe their kit (by design?); the map's rings are many small ones (60
 default) — the owner may want more/bigger.
 
-**Stage 5 round 5 (owner):** wider scorch (`l2bScorch` 1.8 × r) and black streaks fanning out of every hole (`l2bStreak`, 7–15 rays, on rock, decoration and faintly the back wall). `tools/floorshot.js`: the whole floor as the game draws it (back wall, hologram, zones, destruction). Waiting on the owner's OK.
+**Stage 5 round 5 (owner):** wider scorch (`l2bScorch` 1.8 × r) and black streaks straight out from every blast's centre (`l2bStreak`, 7–15 rays, soft across, fading to nothing at the tip; rock and decoration only, the back wall slides with parallax so streaks there pointed off-centre; round 6). `tools/floorshot.js`: the whole floor as the game draws it (back wall, hologram, zones, destruction). Waiting on the owner's OK.
 
 **Stage 5 round 2 (owner):** the blasts as a ring of damage round each zone: a gradient out 100 px from the zones' edges (owner: 500 was far too much) (`l2bMaxDist`), density 1 at the edge falling to 0 (`l2bDen` linear), size × 2 at the edge down to 0.25 (`l2bScale`), 100 blasts (owner), and blasts anywhere in the ring, rock too (`l2bInRock` 1). ~1 s a floor. `tomb` and `darkzone` browser suites now run with `l2bCount` 0. Waiting on the owner's OK.
 
