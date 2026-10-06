@@ -96,6 +96,9 @@ export function GunIcon({ gun }) {
 // the small window, and are drawn with the game's own looks (drawLook) or its streak. One rAF,
 // gone when the Bag closes.
 export const GF_ZOOM = 3, GF_SPEED = 0.2, GF_MAX = 90;
+// the firing window's wall (owner): a strip of stone at the far right, world units wide, that nothing breaks.
+// Shots stop on it (or bounce off), and a trigger's payload goes off there, so you can see what it does
+export const GF_WALL = 5;
 /** @param {{ gun: Gun, sim: { current: import('../spells/bagsim.js').FireSim | null } }} props */
 export function GunFire({ gun, sim }) {
   const ref = useRef(null);
@@ -107,13 +110,45 @@ export function GunFire({ gun, sim }) {
     let shots = [], beams = [];
     /** @type {any} */
     const fw = { time: 0 };
+    /** @type {any[]} */
+    let booms = [];
+    let H = 0;
+    // one spell out of (x, y) heading `base` (+ its own angle and spread): a shot, a beam or a field. A payload
+    // (`sub`) leaves from where its carrier went off, not the muzzle
+    /** @param {any} sh @param {number} x @param {number} y @param {number} base @param {boolean} sub */
+    const launch = (sh, x, y, base, sub) => {
+      const n = Math.max(1, sh.count || 1);
+      for (let i = 0; i < n; i++) {
+        const a = base + (sh.ang || 0) + (Math.random() - 0.5) * (sh.spread || 0) * Math.PI / 180
+          + (n > 1 ? (i / (n - 1) - 0.5) * (sub ? 0.5 : 0.12) : 0);
+        if (sh.beam) { beams.push({ a, x, y, col: sh.col, w: sh.size || 2, t: 0.15, max: 0.15 }); continue; }
+        if (sh.still) { beams.push({ field: 1, x: sub ? x : x + Math.min(H / GF_ZOOM * 0.4, sh.r || 12) + 6, y, r: Math.min(H / GF_ZOOM * 0.4, sh.r || 12), col: sh.col, t: 0.5, max: 0.5 }); continue; }
+        const sp = sh.speed * GF_SPEED;
+        shots.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, size: sh.size, col: sh.col,
+          look: sh.look, spin: Math.random() * 6, grav: sh.grav || 0, explode: sh.explode, homing: sh.homing,
+          pull: sh.pull, eat: sh.eat, hidden: sh.hidden, life: 3, bounce: sh.bounce || 0,
+          trig: sh.trig, payload: sh.payload, timer: sh.trig === 'timer' ? (sh.timer || 0.5) / GF_SPEED : 0 });
+      }
+    };
+    // a shot's moment: 'wall' (it hit the wall), 'life' (it ran out) or 'timer' (its timer, flying on). A death
+    // blasts; a trigger's payload goes off on its own kind of moment (a hit trigger: the wall; expire: any death)
+    /** @param {any} b @param {string} why @param {number} back the heading its payload leaves on */
+    const burst = (b, why, back) => {
+      if (why !== 'timer' && b.explode) booms.push({ x: b.x, y: b.y, r: Math.min(14, 3 + b.explode * 0.25), col: b.col, t: 0.3, max: 0.3 });
+      const go = b.trig === 'timer' ? why === 'timer' : b.trig === 'hit' ? why === 'wall' : b.trig === 'expire' && why !== 'timer';
+      if (go && b.payload && b.payload.length) {
+        for (const p of b.payload) launch(p, b.x, b.y, back, true);
+        const c = ref.current; if (c) c.dataset.payloads = String(+(c.dataset.payloads || 0) + 1);   // for the suite
+      }
+    };
     const loop = now => {
       raf = requestAnimationFrame(loop);
       const c = ref.current, S = sim.current, g = gref.current;
       if (!c) return;
       const dt = Math.min(0.1, (now - last) / 1000) * DEV.bagSpeed;
       last = now; fw.time += dt;
-      const dpr = window.devicePixelRatio || 1, W = c.clientWidth, H = c.clientHeight;
+      const dpr = window.devicePixelRatio || 1, W = c.clientWidth;
+      H = c.clientHeight;
       if (!W || !H) return;
       if (c.width !== Math.round(W * dpr) || c.height !== Math.round(H * dpr)) {
         c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
@@ -125,30 +160,32 @@ export function GunFire({ gun, sim }) {
       if (S && S.fired !== seen) {                    // a pull went off: its shots leave the muzzle
         seen = S.fired; flash = 0.07;
         c.dataset.pulls = String(seen);                // for the suite: how many pulls it has shown
-        for (const sh of S.shots) {
-          const n = Math.max(1, sh.count || 1);
-          for (let i = 0; i < n; i++) {
-            const a = (sh.ang || 0) + (Math.random() - 0.5) * (sh.spread || 0) * Math.PI / 180
-              + (n > 1 ? (i / (n - 1) - 0.5) * 0.12 : 0);
-            if (sh.beam) { beams.push({ a, col: sh.col, w: sh.size || 2, t: 0.15, max: 0.15 }); continue; }
-            if (sh.still) { beams.push({ field: 1, r: Math.min(H / GF_ZOOM * 0.4, sh.r || 12), col: sh.col, t: 0.5, max: 0.5 }); continue; }
-            const sp = sh.speed * GF_SPEED;
-            shots.push({ x: mx, y: my, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, size: sh.size, col: sh.col,
-              look: sh.look, spin: Math.random() * 6, grav: sh.grav || 0, explode: sh.explode, homing: sh.homing,
-              pull: sh.pull, eat: sh.eat, hidden: sh.hidden, life: 3 });
-          }
-        }
+        for (const sh of S.shots) launch(sh, mx, my, 0, false);
         if (shots.length > GF_MAX) shots.splice(0, shots.length - GF_MAX);
       }
       // move
-      const wW = W / GF_ZOOM, wH = H / GF_ZOOM;
+      const wW = W / GF_ZOOM, wH = H / GF_ZOOM, wallX = wW - GF_WALL;
+      const before = shots.length;
+      /** @type {any[]} */
+      const live = [];
       for (const b of shots) {
         b.vy += b.grav * GF_SPEED * GF_SPEED * dt;
         b.x += b.vx * dt; b.y += b.vy * dt; b.spin += dt * 10; b.life -= dt;
+        const r = Math.max(0.5, (b.size || 1) * 0.5);
+        if (b.x + r >= wallX && b.vx > 0) {              // the wall: bounce off it, or stop there
+          b.x = wallX - r;
+          if (b.bounce > 0) { b.bounce--; b.vx = -b.vx; } else { burst(b, 'wall', Math.PI - Math.atan2(b.vy, b.vx)); continue; }
+        }
+        if (b.timer > 0 && (b.timer -= dt) <= 0) { burst(b, 'timer', Math.atan2(b.vy, b.vx)); b.payload = null; }
+        if (b.life <= 0 || b.x < -10 || b.y < -10 || b.y > wH + 10) { if (b.life <= 0) burst(b, 'life', Math.atan2(b.vy, b.vx)); continue; }
+        live.push(b);
       }
-      shots = shots.filter(b => b.life > 0 && b.x > -10 && b.x < wW + 10 && b.y > -10 && b.y < wH + 10);
+      shots = live.concat(shots.slice(before));          // payloads launched this frame join after
+      if (shots.length > GF_MAX) shots.splice(0, shots.length - GF_MAX);
       for (const bm of beams) bm.t -= dt;
       beams = beams.filter(bm => bm.t > 0);
+      for (const o of booms) o.t -= dt;
+      booms = booms.filter(o => o.t > 0);
       flash -= dt;
       // draw
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -163,11 +200,17 @@ export function GunFire({ gun, sim }) {
         ctx.globalAlpha = bm.t / bm.max;
         if (bm.field) {
           ctx.fillStyle = bm.col; ctx.globalAlpha *= 0.35;
-          ctx.beginPath(); ctx.arc(mx + bm.r + 6, my, bm.r * (1.2 - bm.t / bm.max * 0.4), 0, 6.283); ctx.fill();
-        } else {
+          ctx.beginPath(); ctx.arc(bm.x, bm.y, bm.r * (1.2 - bm.t / bm.max * 0.4), 0, 6.283); ctx.fill();
+        } else {                                       // a beam stops at the wall
+          const ca = Math.cos(bm.a), len = ca > 0.01 ? Math.min(wW, (wallX - bm.x) / ca) : wW;
           ctx.strokeStyle = bm.col; ctx.lineWidth = bm.w;
-          ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(mx + Math.cos(bm.a) * wW, my + Math.sin(bm.a) * wW); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(bm.x, bm.y); ctx.lineTo(bm.x + ca * len, bm.y + Math.sin(bm.a) * len); ctx.stroke();
         }
+      }
+      for (const o of booms) {                          // a blast: a ring growing and fading
+        const u = 1 - o.t / o.max;
+        ctx.globalAlpha = (1 - u) * 0.8; ctx.fillStyle = o.col || '#ffb347';
+        ctx.beginPath(); ctx.arc(o.x, o.y, o.r * (0.4 + u * 0.6), 0, 6.283); ctx.fill();
       }
       for (const b of shots) {
         ctx.globalAlpha = 1;
@@ -182,6 +225,13 @@ export function GunFire({ gun, sim }) {
         ctx.globalAlpha = 1; ctx.strokeStyle = b.col; ctx.lineWidth = b.size * 1.7;
         ctx.beginPath(); ctx.moveTo(b.x - b.vx / sp * len, b.y - b.vy / sp * len); ctx.lineTo(b.x, b.y); ctx.stroke();
       }
+      // the wall: grey stone blocks, offset every other row
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#4a4f5a'; ctx.fillRect(wallX, 0, GF_WALL + 1, wH);
+      ctx.fillStyle = '#5c6270';
+      for (let row = 0, y = 0; y < wH; row++, y += 3)
+        for (let x = wallX + (row % 2 ? 1.5 : 0); x < wW; x += 3) ctx.fillRect(x + 0.25, y + 0.25, 2.5, 2.5);
+      ctx.fillStyle = '#2b2f37'; ctx.fillRect(wallX - 0.4, 0, 0.4, wH);
       ctx.restore();
       ctx.globalAlpha = 1;
       if (g) drawGun(ctx, gx, gy, 0, sc, gunAccent(g));

@@ -3,6 +3,8 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
+## v0.0.151 — a wall at the far right of the Bag's firing window (trigger payloads show): RELEASED on `main` 2026-10-07 (owner OK'd)
+
 ## v0.0.150 — the Bag's mana bar drains with the fire preview: RELEASED on `main` 2026-10-07 (owner's ask; a fix)
 
 ## v0.0.149 — THE OWNER'S 12-ITEM LIST: RELEASED on `main` 2026-10-07 (read LIST3.md for each item)

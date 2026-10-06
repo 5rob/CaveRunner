@@ -70,6 +70,18 @@ const SHOTS = process.env.CAVERUNNER_SHOTS || '';
   check('after a change it still fires', after.pulls >= 1 && after.n > 20, after);
   if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'item4-4.png') });
 
+  // the wall at the far right (owner): a trigger bolt hits it and its payload goes off there
+  await page.evaluate(() => {
+    const LO = window.__in.current.loadout, g = LO.guns[LO.sel];
+    g.slots = ['bolt_t', 'buck', 'bolt_t', 'fball', null, null, null, null]; resetGun(g); window.__in.current.notify();
+    document.querySelector('.gfire').dataset.payloads = '0';
+  });
+  let pays = 0;
+  for (let i = 0; i < 40 && !pays; i++) { await page.waitForTimeout(150); pays = await page.evaluate(() => +(document.querySelector('.gfire').dataset.payloads || 0)); }
+  check('a trigger bolt hitting the wall lets its payload go', pays > 0, pays);
+  await page.waitForTimeout(120);
+  if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'gfwall.png'), clip: { x: 0, y: 0, width: 412, height: 230 } });
+
   // a gun button in the new row still switches gun
   const before = await page.evaluate(() => window.__in.current.loadout.sel);
   const other = await page.evaluate(sel => window.__in.current.loadout.guns.findIndex((g, i) => g && i !== sel), before);
