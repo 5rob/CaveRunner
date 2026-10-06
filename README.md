@@ -78,7 +78,9 @@ all your gear, in a freshly generated cave. Dying or Restart wipes it.
 | Interact: buy, take a gun, mod or perk | Tap the middle of the right stick | F |
 | Restart after dying | Tap the right stick | — |
 | Pick gun | Tap a gun button (the arc round the right stick) | 1 to 4 |
-| Gun details | Hold a gun button | — |
+| Gun details | Tap the gun button in hand | — |
+| Take a gun on the ground | Hold a gun button | — |
+| Drop a gun | Hold a gun button (nothing nearby), drag, let go | — |
 | Reorder guns | Hold and drag a gun button in the build screen | — |
 | Bag: guns & mods screen (open anywhere) | Tap the backpack button | E |
 | Map (pauses the run) | Tap the map button, again to close; on the map drag to pan, pinch to zoom | M |
@@ -186,9 +188,8 @@ tall enough to fill the screen. At the bottom of the card is a small circle with
 in it — tap the right stick — next to the price (or "free").
 
 Once you have read the card, a tap on the right stick takes it. A **mod** goes straight
-into your bag — no second screen, since a mod has no slot to choose. A **gun** opens the
-swap chooser instead (see **Guns and mods** below): a gun goes into one of four slots and
-is worth comparing before you commit.
+into your bag — no second screen, since a mod has no slot to choose. A **gun** is taken by
+holding one of your gun buttons instead (see **Guns and mods** below).
 
 ## The shop
 
@@ -476,14 +477,15 @@ Pistol** (one Bolt) free. Anything you find on floor 1 beats the pistol. (Before
 with the pistol, a **Pick Axe** — one slot, a **Buzzsaw** — and the **Gravity Gun**, Follow Me then a
 White Hole; they're still in the code, `startingGuns`, and the browser tests start with them.)
 
-Standing next to a gun on the ground shows its card. A tap opens the chooser: it pauses the
-game and shows what you found with a big square button for each of your four slots across the
-bottom, and the two guns sharing the rest of the screen, so you can read either one's mods without scrolling. A gun's mods show as the same square tiles as the
-Bag's; tap one (here, at the gun machine or in the Bag) for that mod's card. Tap a slot to compare that gun,
-hold one to swap it out — whatever it replaces is left on the ground where you found the new
-one. The found gun's stats are coloured against whichever of your guns you last tapped (your
-held gun to start with), green for better and red for worse, counting a smaller cast delay,
-recharge or spread as better.
+Standing next to a gun on the ground shows its card, its stats coloured against the gun in your
+hand (green for better, red for worse, counting a smaller cast delay, recharge or spread as better).
+To take it, **hold one of your round gun buttons** (the empty dotted one too): a ring fills round it,
+and when it's full the gun goes into that slot — whatever was there is left on the ground where the
+new one lay. With no gun nearby, holding a gun button lifts that gun out under your finger: drag it
+anywhere and let go to drop it on the ground there (at your feet if that spot is inside rock or out
+of sight); it's no longer yours. Let go back over its button to change your mind. Tap a gun button
+to hold that gun; tap the one already in your hand for its card. A gun's mods show as the same
+square tiles as the Bag's; tap one (on a card, at the gun machine or in the Bag) for that mod's card.
 
 Every gun is given its own colour when it is made, and keeps it for the run, so
 the name reads the same in the build screen and on its card — handy

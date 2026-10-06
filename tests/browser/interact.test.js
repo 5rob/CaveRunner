@@ -148,9 +148,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     return { cardShown, sheetBefore, sheetAfter: !!document.querySelector('.sheet') };
   });
   check('walking onto a gun shows its card, not the chooser', gunRes.cardShown && !gunRes.sheetBefore, gunRes);
-  check('interacting opens the chooser', gunRes.sheetAfter, gunRes);
-  await page.evaluate(() => [...document.querySelectorAll('.done')]
-    .find(x => /Leave/.test(x.textContent)).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
+  check('interacting does not open the chooser (hold a HUD slot now: gunhold.test.js)', !gunRes.sheetAfter, gunRes);
   await page.waitForTimeout(200);
 
   // ---- 6. no Buy button anywhere; the shop's machine opens with an interact ----

@@ -733,6 +733,11 @@ interface ReplayView {
 /** what the map screen (ui/map.js) draws: the floor's picture, the fog memory, you, the pins */
 interface MapView { img: HTMLCanvasElement; seen: Uint8Array; x: number; y: number; face: number; pins: MapPin[] }
 /** App's input ref: the React bridge (ui/app.js makes it, Game and the systems read and write it) */
+/** a HUD gun slot being held (ui/gunhold.js), and what the hold will do */
+type GunHold = { i: number, mode: 'take' | 'lift' } | null;
+/** a gun lifted out of its slot, under the finger (client px) */
+type GunDrag = { i: number, x: number, y: number } | null;
+
 interface GameInput {
   left: StickState; right: StickState;
   loadout: Loadout;
@@ -754,6 +759,10 @@ interface GameInput {
   mapOpen?: boolean; floor?: number; saveRun?: () => void;
   mapView?: () => MapView;    // Game: what the map screen draws (ui/map.js)
   dropPin?: (e: string) => void;   // Game: a pin with that emoji where you stand
+  gunNear?: Pickup | null;    // step: the gun on the ground in reach (holding a HUD slot takes it)
+  gunMenu?: boolean;          // archived: true brings back the interact-tap → GunSwap chooser
+  takeGun?: (i: number) => boolean;   // Game: the gun in reach into slot i (systems/pickups.js)
+  dropGun?: (i: number, sx: number, sy: number) => boolean;   // Game: slot i's gun onto the ground under screen point (client px)
   perkCollection: string[];   // the perks unlocked at the perk machine, across runs
   collection: string[];       // the mods unlocked, kept across runs (save/save.js loadCollection)
   shopOpen?: string | null;   // a vending machine's menu is up: its SHOPS key (game/systems/shops.js), or 'levels' (the buy machine)

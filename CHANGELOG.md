@@ -7,6 +7,14 @@ Names are as they were at the time (before the refactor Game's state had loose n
 
 ## Unreleased
 
+- **Guns by holding a HUD slot** (LIST3 #5, `ui/gunhold.js`): by a gun on the ground, hold a gun slot (the
+  empty one too) and a ring fills round it; at full it takes the gun into that slot and your old one lies
+  where it was. With no gun in reach, holding a filled slot lifts its gun out under your finger: drag it and
+  let go to drop it there (settled on the floor; at your feet if the spot is rock or out of sight), out of
+  your guns; let go over its own slot to cancel. Tapping the gun in hand shows its card (was a hold). The
+  right-stick tap → swap chooser is archived (`input.current.gunMenu`). New `gunhold` browser suite;
+  `gunpickup`/`interact` updated, `compare`/`teleport` set the archive flag.
+
 - **Aim Assist mod** (`aimassist`, LIST3 #10): with it on the gun in hand the aim stick drives a thin
   pointer ring out from your gun (like the vending menus' pointer) that snaps onto creatures in sight and on
   screen; on one it turns amber, the gun light swings onto it and the gun fires at it on its own (normal cast
