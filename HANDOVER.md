@@ -22,6 +22,16 @@ bump the version, before the next release.
    with skeletons everywhere; listed in `room.kit`. Candles are painted and UNLIT. Owner: "The tombs should be
    dark."
 
+**Stage 5, destruction — BUILT, AWAITING THE OWNER'S OK** (on `level2`, `src/world/destroy.js`, wired into
+`makeLevel`): real blast holes scattered out from the dark zones' edges (`scatterByDistance`, Dev "Level 2:
+destruction": count, reach, size × curve, density curve, jitter, clearance), a scorch ring past each lip and soot on
+the back wall, `l2bFire`% light what burns round them and the fire is run to burn-out during generation (pure,
+seeded: no runtime part needed, hidden in the level made ahead), then bones and skulls half sunk in the ground outside
+the zones (new knob `l2bBones`, 90). Floor build ~0.75 s average, 1.2 s worst over 8 seeds (node). Suite
+`tests/logic/destroy.test.js`; `tomb`/`furnish` run with the blasts off. Screenshots: `node tools/boomshots.js`.
+Open: blasts land in tomb rooms near zones and wipe their kit (by design?); the map's rings are many small ones (60
+default) — the owner may want more/bigger.
+
 **Stage 4 round 6 (owner):** the look and the doubled size approved; near fire the silk's black lifts too (`render/dark.js`, the plain silk over the multiplied one by the fire's lift; `darkzone` checks it). Waiting on the owner's OK of that shot, then stage 5.
 
 **Stage 4, dark zones** (`src/world/dark.js`, `src/game/render/dark.js`). Round 1: commit 700511b; round 2:

@@ -16,6 +16,7 @@ import { ratNests } from './nests.js';
 import { paveWorks, strataCave, timberWorks } from './strata.js';
 import { goldVeins } from './veins.js';
 import { darkZones, zoneRock } from './dark.js';
+import { destroyFloor } from './destroy.js';
 import { furnishTomb } from './furnish.js';
 import { carveTomb, paintMasonry, tombPlan } from './tomb.js';
 import { boxReach } from './zones.js';
@@ -655,6 +656,14 @@ export function makeLevel(seed, floor, owned) {
     if (mat[i] !== ROCK) { fuel[i] = 0; continue; }
     const c = zoneRock(at(tintL, i % CW, (i / CW) | 0)), j = (hash(i % CW * 3 + 7, ((i / CW) | 0) * 5 + 3) - 0.5) * 8;
     d[i * 4] = c[0] + j; d[i * 4 + 1] = c[1] + j; d[i * 4 + 2] = c[2] + j; fuel[i] = 0;
+  }
+  // the wasteland round the zones (Level 2 stage 5, destroy.js): blasts, their fire burnt out, bones; a kit piece a blast hit is off the list
+  if (tombData && darkData && darkData.zones.length) {
+    const boom = destroyFloor({ mat, img, dimg, bgImg, fuel, web: darkData.web }, darkData.mask, seed, keep);
+    /** @param {number} x @param {number} y @param {number} w @param {number} h */
+    const hit = (x, y, w, h) => boom.blasts.some(b => Math.hypot(b.x - Math.max(x, Math.min(b.x, x + w)), b.y - Math.max(y, Math.min(b.y, y + h))) < b.r);
+    for (const r of tombData.rooms) if (r.kit) r.kit = r.kit.filter(k => !hit(k.x, k.y, k.w, k.h) && !hit(2 * Math.round(r.cx) - k.x - k.w, k.y, k.w, k.h));
+    tombData.boom = { list: boom.blasts, blasts: boom.blasts.length, fire: boom.blasts.filter(b => b.fire).length, ticks: boom.ticks, bones: boom.bones, gone: boom.gone };
   }
   // gold seams, painted over whatever the decoration left on the rock
   const ore = goldVeins(mat, seed, floor);

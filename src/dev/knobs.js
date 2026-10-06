@@ -439,15 +439,16 @@ export function curveKnobs(g, p, label, lo, hi, def) {
 export const CURVES = [];
 /** @param {string} p @returns {Curve} */
 export const kcurve = p => ({ y0: DEV[p + '0'], x1: DEV[p + 'C1x'], y1: DEV[p + 'C1y'], x2: DEV[p + 'C2x'], y2: DEV[p + 'C2y'], y3: DEV[p + '1'] });
-// Level 2: destruction (world/byDistance.js, not in the cave yet): explosions scattered round the
-// dark zones, denser and bigger near them. Distances in terrain pixels. destructionOpts() reads them.
-DEV_DEFAULTS.l2bMaxDist = 200; DEV_DEFAULTS.l2bCount = 60; DEV_DEFAULTS.l2bFire = 30; DEV_DEFAULTS.l2bJitter = 0; DEV_DEFAULTS.l2bClear = 4;
+// Level 2: destruction (world/destroy.js, Level 2 stage 5): explosions scattered round the
+// dark zones, denser and bigger near them, and bones across the wasteland. Distances in terrain pixels. destructionOpts() reads them.
+DEV_DEFAULTS.l2bMaxDist = 200; DEV_DEFAULTS.l2bCount = 60; DEV_DEFAULTS.l2bFire = 30; DEV_DEFAULTS.l2bJitter = 0; DEV_DEFAULTS.l2bClear = 4; DEV_DEFAULTS.l2bBones = 90;
 DEV_META.push(
   { k: 'l2bMaxDist', g: 'l2boom', label: 'Reach: most distance from a dark zone (px)', min: 1, max: 1600, step: 5 },
   { k: 'l2bCount',   g: 'l2boom', label: 'Number of explosions', min: 0, max: 2000, step: 1 },
   { k: 'l2bFire',    g: 'l2boom', label: 'Explosions that cause fire (%)', min: 0, max: 100, step: 1 },
   { k: 'l2bJitter',  g: 'l2boom', label: 'Extra position randomness (± px)', min: 0, max: 100, step: 1 },
-  { k: 'l2bClear',   g: 'l2boom', label: 'Clearance from terrain (px)', min: 0, max: 60, step: 1 });
+  { k: 'l2bClear',   g: 'l2boom', label: 'Clearance from terrain (px)', min: 0, max: 60, step: 1 },
+  { k: 'l2bBones',   g: 'l2boom', label: 'Bones and skulls in the ground, outside the zones', min: 0, max: 600, step: 1 });
 export const L2B_KNOBS = rangeKnobs('l2boom', [
   ['l2bSize', 'Explosion size (px radius)', 1, 120, 1, 6, 18],
 ]);

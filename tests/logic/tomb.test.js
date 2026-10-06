@@ -4,8 +4,7 @@
 // reach of the shop (a 6 x 11 runner box), the shop reaches the top, it's deterministic, fast, and
 // floor 1 doesn't change.
 const G = require('../load');
-const { makeLevel, tombPlan, roomOpen, roomPillars, tombRoomAt, boxReach, EXIT_X, CW, CH, CELL, SHOP_FLOOR, ROCK, DEV, DEV_DEFAULTS, DEV_META, L2_KNOBS } = G;
-let fails = 0;
+const { makeLevel, tombPlan, roomOpen, roomPillars, tombRoomAt, boxReach, EXIT_X, CW, CH, CELL, SHOP_FLOOR, ROCK, DEV, DEV_DEFAULTS, DEV_META, L2_KNOBS } = G;let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
 const hashMat = m => { let h = 0; for (let i = 0; i < m.length; i++) h = (Math.imul(h, 31) + m[i]) | 0; return h; };
 for (const k in DEV_DEFAULTS) if (/^l2/.test(k)) DEV[k] = DEV_DEFAULTS[k];
@@ -71,7 +70,9 @@ check('one prize, on an altar room\'s floor, in the middle', !noPrize && !prizeO
 check('generation stays quick (makeLevel under 1.5 s average)', ms / SEEDS < 1500, ms / SEEDS);
 
 // deterministic, and only floor 2
+DEV.l2bCount = 0;   // the tomb as planned: no Stage 5 blast holes (they open rock anywhere: tests/logic/destroy.test.js)
 const a = makeLevel(7, 2), b = makeLevel(7, 2);
+DEV.l2bCount = DEV_DEFAULTS.l2bCount;
 check('same seed, same tomb', hashMat(a.mat) === hashMat(b.mat) && JSON.stringify(a.tomb) === JSON.stringify(b.tomb));
 check('another seed, another tomb', hashMat(makeLevel(8, 2).mat) !== hashMat(a.mat));
 check('the plan alone is the same too', JSON.stringify(tombPlan(7, a.shopExit, EXIT_X).rooms.map(r => [r.x, r.y, r.w, r.h, r.type])) ===

@@ -334,6 +334,7 @@ interface Tomb {
   course: number; block: number; mason: number;   // the cut stone's course height, block length, depth (px)
   ledgeGap: number;
   mended: boolean;            // the plan didn't reach the top and a plain shaft was cut (never seen)
+  boom?: { list: { x: number; y: number; r: number; fire: boolean; dist: number }[]; blasts: number; fire: number; ticks: number; bones: number; gone: number };   // Level 2 stage 5's wasteland (world/destroy.js), counted
 }
 /** a rat nest as ratNests makes it (world/nests.js) */
 interface NestSpot {
