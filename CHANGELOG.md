@@ -6,7 +6,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v0.0.148 — Level 2 speed-ups; Flamethrower; Fire Immunity
-(On the `speed` branch, awaiting the owner's OK on the look; then a minor update.) The owner's list, after
+Released 2026-10-06 (the owner OK'd the screenshots; a minor update). The owner's list, after
 playing Level 2 (it dropped frames as a zone came into view and with the aliens about):
 
 - **Drawn at 1.5× and stretched to fit** (`game/dpr.js` `gameDpr`; Dev → Camera & aim, `renderScale`): a phone
