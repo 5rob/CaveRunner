@@ -8,6 +8,8 @@ import { AIM_DEAD, PH } from '../../core/consts.js';
 import { effRecharge, gunPassives, planCast } from '../../spells/cast.js';
 import { shuffleOrder } from '../../spells/guns.js';
 import { bhSp } from '../../spells/trace.js';
+import { assistPointer, assistSnap, hasAssist } from '../../spells/assist.js';
+import { DEV } from '../../dev/knobs.js';
 import { anchorOf, castField, fireBeam } from './fields.js';
 import { burst } from './particles.js';
 import { hurt } from './player.js';
@@ -171,6 +173,12 @@ export function releaseAt(W, G, list, x, y, nx, ny, col, from) {
   burst(W, x0, y0, 5, col);
 }
 
+// Aim Assist's pointer between frames: out (past DEV.aaStart this touch), the creature it's on, and
+// how long it's been on it (the auto-fire waits DEV.aaDelay)
+let assistOut = false, assistT = 0;
+/** @type {Enemy | null} */
+let assistHeld = null;
+
 // ---- aiming and firing (a part of step) ----
 // Where you aim (the right stick, else the mouse; Pinpointer aims for you), which way you
 // face, every gun's clocks and mana, and a pull of the held gun's trigger.
@@ -201,6 +209,23 @@ export function aimAndCast(W, G, F) {
       R = { on: R.on || (TR.active && TR.on), show: true, nx: Math.cos(a), ny: Math.sin(a), vis: R.vis };
     }
   }
+  // Aim Assist on the held gun: the right stick is a pointer (no trigger ring) that snaps onto
+  // creatures in sight and on screen; once it's on one for DEV.aaDelay the gun fires at it
+  const held = LO.guns[LO.sel];
+  W.p.assist = undefined;
+  if (hasAssist(held) && !W.p.dead && TR.active && !G.RPV) {
+    if (TR.mag > DEV.aaStart || assistOut) {
+      assistOut = true;
+      const view = { x: W.camX, y: W.camY, w: W.viewW || 400, h: W.viewH || 300 };
+      const raw = assistPointer(gx, gy, TR.nx, TR.ny, TR.mag, view);
+      const onScreen = (/** @type {Enemy} */ e) => e.x >= view.x && e.x <= view.x + view.w && e.ty >= view.y && e.ty <= view.y + view.h;
+      const s = assistSnap(raw, W.enemies, e => e.hp > 0 && onScreen(e) && lineOfSight(W, gx, gy, e.x, e.ty), assistHeld);
+      if (s.on !== assistHeld) { assistHeld = s.on; assistT = 0; } else assistT += dt;
+      const tx = s.on ? s.on.x : s.x, ty = s.on ? s.on.ty : s.y, d = Math.hypot(tx - gx, ty - gy);
+      W.p.assist = { x: s.x, y: s.y, snap: !!s.on, ex: s.on ? s.on.x : 0, ey: s.on ? s.on.ty : 0, er: s.on ? s.on.r : 0 };
+      R = { on: !!s.on && assistT >= DEV.aaDelay, show: true, nx: d > 1 ? (tx - gx) / d : W.p.face, ny: d > 1 ? (ty - gy) / d : 0, vis: 0 };
+    } else R = { on: false, show: R.show, nx: R.nx, ny: R.ny, vis: 0 };
+  } else if (!TR.active) { assistOut = false; assistHeld = null; }
   if (W.p.dead) R.on = false;
   W.p.aim = R;
 

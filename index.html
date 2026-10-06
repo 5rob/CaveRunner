@@ -1554,6 +1554,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ["caAggro", "Enemy aggro distance (×)", 0.3, 4, 0.05, 1, 1.25],
     ["caAim", "Aim line length (×)", 0.3, 4, 0.05, 1, 2]
   ]);
+  Object.assign(DEV_DEFAULTS, {
+    aaStart: 0.12,
+    aaReach: 1,
+    aaSnapR: 40,
+    aaPull: 0.45,
+    aaHit: 10,
+    aaHold: 1.5,
+    aaDelay: 0.08,
+    aaSize: 26,
+    aaLine: 1.25,
+    aaDot: 2
+  });
+  DEV_META.push(
+    { k: "aaStart", g: "aimassist", label: "Stick push before the pointer comes out (of its reach)", min: 0, max: 0.9, step: 0.01 },
+    { k: "aaReach", g: "aimassist", label: "Pointer reach (× distance from the gun to the far screen corner)", min: 0.2, max: 3, step: 0.05 },
+    { k: "aaSnapR", g: "aimassist", label: "Snap reach (world units from a creature’s edge)", min: 0, max: 200, step: 1 },
+    { k: "aaPull", g: "aimassist", label: "Snap pull (0 none, 1 right onto its middle)", min: 0, max: 1, step: 0.01 },
+    { k: "aaHit", g: "aimassist", label: "Counts as on a creature within (world units of its edge)", min: 0, max: 80, step: 1 },
+    { k: "aaHold", g: "aimassist", label: "Stickiness: stays on its creature out to this × the snap-on distance", min: 1, max: 4, step: 0.05 },
+    { k: "aaDelay", g: "aimassist", label: "Fires this long after snapping on (s)", min: 0, max: 1, step: 0.01 },
+    { k: "aaSize", g: "aimassist", label: "Ring size (px across)", min: 6, max: 80, step: 1 },
+    { k: "aaLine", g: "aimassist", label: "Ring line width (px)", min: 0.25, max: 4, step: 0.25 },
+    { k: "aaDot", g: "aimassist", label: "Centre dot when snapped (px, 0 none)", min: 0, max: 6, step: 0.5 }
+  );
+  DEV_GROUPS.push(["aimassist", "Aim Assist"]);
   var DEV_KEY = "caverunner-dev";
   var DEV = Object.assign({}, DEV_DEFAULTS);
   var dueMs = (floor) => floor === 1 ? DEV.due1 * 6e4 : DEADLINE_MS;
@@ -3003,6 +3028,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         s.autoaim = 1;
       }
     },
+    // Aim Assist (LIST3 #10): the right stick drives a pointer that snaps onto creatures and fires on its own
+    // once it's on one (game/systems/gun.js aimAndCast, spells/assist.js). The pull aims at the snapped creature.
+    aimassist: {
+      name: "Aim Assist",
+      kind: "mod",
+      glyph: "⌖",
+      col: "#b57cff",
+      mana: 3,
+      d: 0.02,
+      info: "The aim stick becomes a pointer that snaps onto enemies and fires when it's on one (no trigger ring)",
+      f: (s) => {
+        s.assist = 1;
+      }
+    },
     nearhome: {
       name: "Short-range Homing",
       kind: "mod",
@@ -3399,6 +3438,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     pong: "path",
     orbit: "path",
     autoaim: "path",
+    aimassist: "path",
     nearhome: "path",
     eater: "path",
     split: "pattern",
@@ -3522,6 +3562,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     pong: 35,
     orbit: 50,
     autoaim: 45,
+    aimassist: 40,
     nearhome: 35,
     flat: 35,
     eater: 60,
@@ -3605,6 +3646,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     spiral: 2,
     pong: 2,
     autoaim: 2,
+    aimassist: 2,
     nearhome: 2,
     flat: 2,
     crit: 2,
@@ -7619,6 +7661,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     pong: "PINGPONG_PATH",
     orbit: "ORBIT_SHOT",
     autoaim: "AUTOAIM",
+    aimassist: "AUTOAIM",
     nearhome: "HOMING_SHORT",
     flat: "HORIZONTAL_ARC",
     eater: "MATTER_EATER",
@@ -17123,6 +17166,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       orbit: 0,
       follow: 0,
       autoaim: 0,
+      assist: 0,
       homeR: sm.homeR || 0,
       flat: 0,
       eat: sm.eat || 0,
@@ -22641,6 +22685,39 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
   }
+  function drawAssist(W, G) {
+    const A = W.p.assist;
+    if (!A || G.RPV) return;
+    const u = W.unitPx, x = (A.x - W.camX) * u, y = (A.y - W.camY) * u;
+    const r0 = DEV.aaSize / 2;
+    const c = G.ctx;
+    c.save();
+    if (A.snap) {
+      const ex = (A.ex - W.camX) * u, ey = (A.ey - W.camY) * u, r = Math.max(r0 * 0.7, A.er * u + 5);
+      for (const [w, col] of [[DEV.aaLine + 2, "rgba(0,0,0,0.45)"], [DEV.aaLine, "rgba(255,190,90,0.95)"]]) {
+        c.strokeStyle = String(col);
+        c.lineWidth = Number(w);
+        c.beginPath();
+        c.arc(ex, ey, r, 0, Math.PI * 2);
+        c.stroke();
+      }
+      if (DEV.aaDot > 0) {
+        c.fillStyle = "rgba(255,190,90,0.95)";
+        c.beginPath();
+        c.arc(ex, ey, DEV.aaDot, 0, Math.PI * 2);
+        c.fill();
+      }
+    } else {
+      for (const [w, col] of [[DEV.aaLine + 2, "rgba(0,0,0,0.4)"], [DEV.aaLine, "rgba(255,255,255,0.9)"]]) {
+        c.strokeStyle = String(col);
+        c.lineWidth = Number(w);
+        c.beginPath();
+        c.arc(x, y, r0, 0, Math.PI * 2);
+        c.stroke();
+      }
+    }
+    c.restore();
+  }
 
   // src/spells/collection.js
   function modTiers() {
@@ -23709,6 +23786,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     drawMessages(W, G, F2);
     drawGuideTalk(W, G, F2);
     drawReticule(G);
+    drawAssist(W, G);
   }
   function drawCamera(W, G, F2) {
     const dpr = F2.dpr = gameDpr();
@@ -23750,6 +23828,42 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     G.ctx.setTransform(s, 0, 0, s, -ox2, -oy2);
     F2.snapX = (Math.round((W.p.x - W.camX) * s) + ox2) / s - W.p.x;
     F2.snapY = (Math.round((W.p.y - W.camY) * s) + oy2) / s - W.p.y;
+  }
+
+  // src/spells/assist.js
+  var hasAssist = (g) => !!g && g.slots.includes("aimassist");
+  function assistPointer(gx, gy, nx, ny, mag, view) {
+    const { x, y, w, h: h3 } = view;
+    const far = Math.max(
+      Math.hypot(gx - x, gy - y),
+      Math.hypot(x + w - gx, gy - y),
+      Math.hypot(gx - x, y + h3 - gy),
+      Math.hypot(x + w - gx, y + h3 - gy)
+    );
+    const d = Math.min(1, mag) * far * DEV.aaReach;
+    return { x: Math.max(x, Math.min(x + w, gx + nx * d)), y: Math.max(y, Math.min(y + h3, gy + ny * d)) };
+  }
+  function assistSnap(p, list, sees, held) {
+    let best = null;
+    let bd = Infinity;
+    for (const e of list) {
+      const d = Math.max(0, Math.hypot(e.x - p.x, e.ty - p.y) - (e.r || 0));
+      if (d < bd && d <= Math.max(DEV.aaSnapR, DEV.aaHit * DEV.aaHold) && sees(e)) {
+        bd = d;
+        best = e;
+      }
+    }
+    if (held && list.includes(held)) {
+      const hd = Math.max(0, Math.hypot(held.x - p.x, held.ty - p.y) - (held.r || 0));
+      if (hd <= DEV.aaHit * DEV.aaHold && sees(held)) {
+        best = held;
+        bd = hd;
+      }
+    }
+    if (!best) return { x: p.x, y: p.y, on: null };
+    const R = DEV.aaSnapR, k = R > 0 && bd <= R ? DEV.aaPull * (1 - bd / R) : 0;
+    const on = bd <= DEV.aaHit || best === held && bd <= DEV.aaHit * DEV.aaHold ? best : null;
+    return { x: p.x + (best.x - p.x) * k, y: p.y + (best.ty - p.y) * k, on };
   }
 
   // src/game/systems/gun.js
@@ -23964,6 +24078,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     SFX.cast(list, x0, y0);
     burst(W, x0, y0, 5, col);
   }
+  var assistOut = false, assistT = 0;
+  var assistHeld = null;
   function aimAndCast(W, G, F2) {
     const { dt, LO, pcx } = F2;
     const gx = pcx, gy = W.p.y + PH * 0.4;
@@ -23987,6 +24103,27 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const a = Math.atan2(best.ty - gy, best.x - gx);
         R = { on: R.on || TR.active && TR.on, show: true, nx: Math.cos(a), ny: Math.sin(a), vis: R.vis };
       }
+    }
+    const held = LO.guns[LO.sel];
+    W.p.assist = void 0;
+    if (hasAssist(held) && !W.p.dead && TR.active && !G.RPV) {
+      if (TR.mag > DEV.aaStart || assistOut) {
+        assistOut = true;
+        const view = { x: W.camX, y: W.camY, w: W.viewW || 400, h: W.viewH || 300 };
+        const raw = assistPointer(gx, gy, TR.nx, TR.ny, TR.mag, view);
+        const onScreen = (e) => e.x >= view.x && e.x <= view.x + view.w && e.ty >= view.y && e.ty <= view.y + view.h;
+        const s = assistSnap(raw, W.enemies, (e) => e.hp > 0 && onScreen(e) && lineOfSight(W, gx, gy, e.x, e.ty), assistHeld);
+        if (s.on !== assistHeld) {
+          assistHeld = s.on;
+          assistT = 0;
+        } else assistT += dt;
+        const tx2 = s.on ? s.on.x : s.x, ty = s.on ? s.on.ty : s.y, d = Math.hypot(tx2 - gx, ty - gy);
+        W.p.assist = { x: s.x, y: s.y, snap: !!s.on, ex: s.on ? s.on.x : 0, ey: s.on ? s.on.ty : 0, er: s.on ? s.on.r : 0 };
+        R = { on: !!s.on && assistT >= DEV.aaDelay, show: true, nx: d > 1 ? (tx2 - gx) / d : W.p.face, ny: d > 1 ? (ty - gy) / d : 0, vis: 0 };
+      } else R = { on: false, show: R.show, nx: R.nx, ny: R.ny, vis: 0 };
+    } else if (!TR.active) {
+      assistOut = false;
+      assistHeld = null;
     }
     if (W.p.dead) R.on = false;
     W.p.aim = R;
@@ -27669,7 +27806,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         height: KNOB * 100 + "%",
         transform: `translate(-50%,-50%) translate(${knob2.x}px,${knob2.y}px)`
       } }),
-      right && h("div", { className: "deadzone", style: {
+      // (none with Aim Assist on the gun in hand: the stick is a pointer then, it fires on its own)
+      right && !(input.current.loadout && hasAssist(input.current.loadout.guns[input.current.loadout.sel])) && h("div", { className: "deadzone", style: {
         width: triggerRing(size, DEV.aimPad).ring * 100 + "%",
         height: triggerRing(size, DEV.aimPad).ring * 100 + "%"
       } }),

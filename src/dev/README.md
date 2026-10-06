@@ -60,6 +60,9 @@
 - Level 2: destruction (`g: 'l2boom'`, `world/byDistance.js` `destructionOpts`; not in the cave yet): `l2bMaxDist` (reach from a dark zone, px, 200), `l2bCount` (explosions, 60), `l2bFire` (% that cause fire, 30), `l2bSizeLo`/`Hi` (size range, px radius, 6–18: `L2B_KNOBS`), `l2bJitter` (± px, 0), `l2bClear` (open air round each, px, 4), and two curves: `l2bDen` (destruction amount by distance, 0..1) and `l2bScale` (size × by distance, 0..2).
 - Curve knobs: `curveKnobs(group, p, label, lo, hi, def)` registers `p+'0'` (start y), `p+'C1x'`, `p+'C1y'`, `p+'C2x'`, `p+'C2y'`, `p+'1'` (end y), all `type: 'curve'` (no boxes), and lists it in `CURVES` so the panel draws a `CurveEdit` for it in its group; `kcurve(p)` reads it as a `Curve` (`core/util.js` `bezierAt`). The hologram flash's `holoC*` predate it (fixed ends, `FadeCurve`).
 - Sway also has `vineLinks` (links in a swung vine's tail) and `vineTailDamp`.
+- Aim Assist (`g: 'aimassist'`, LIST3 #10, `spells/assist.js`, its own block above `DEV_KEY`): `aaStart` (push before the
+  pointer comes out, 0.12), `aaReach` (1), `aaSnapR` (40 world units), `aaPull` (0.45), `aaHit` (10), `aaHold` (stickiness, 1.5),
+  `aaDelay` (fires this long after snapping on, 0.08 s), `aaSize` (ring px, 26), `aaLine` (1.25), `aaDot` (2).
 - Carrot (`g: 'carrot'`, `CARROT_KNOBS`): `caCam`, `caTorch`, `caAggro`, `caAim`, each a min (no Carrot
   fitted) / max (Carrot V) multiplier; `carrotAt(k, W.pb.carrot)` is the value at a level.
 - The menus' pointer (`g: 'menuptr'`): `ptrStart`, `ptrReach`, `ptrSize`, `ptrLine`, `snapR`, `snapPull`,

@@ -27,7 +27,7 @@ import { drawGuide, drawGuideTalk } from './guide.js';
 import { drawDark } from './dark.js';
 import { drawFog, drawGlows } from './light.js';
 import { drawBeams, drawFields, drawShots } from './looks.js';
-import { drawHud, drawMessages, drawRadar, drawReticule } from './overlay.js';
+import { drawAssist, drawHud, drawMessages, drawRadar, drawReticule } from './overlay.js';
 import { drawPads } from './pads.js';
 import { drawDemo, drawShops } from './shops.js';
 import { drawTubes } from './shoplights.js';
@@ -83,6 +83,7 @@ export function draw(W, G) {
   drawMessages(W, G, F);                    // toasts, the floor name, death / all clear (overlay.js)
   drawGuideTalk(W, G, F);                   // the guide's speech box (guide.js)
   drawReticule(G);                          // the mouse reticule (overlay.js)
+  drawAssist(W, G);                         // Aim Assist's pointer ring (overlay.js)
 }
 
 // The view for this frame (F.dpr, F.playPx: the play area above the controls, F.vw/F.vh: the

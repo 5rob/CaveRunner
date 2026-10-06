@@ -7,6 +7,7 @@ import { CRYSTAL_PAL, GREEN_PAL } from '../art/sprites.js';
 import { DEV } from '../dev/knobs.js';
 import { AIM_DEAD, DEAD, KNOB, triggerRing } from '../core/consts.js';
 import { mixHex } from '../core/util.js';
+import { hasAssist } from '../spells/assist.js';
 import { countdown } from '../core/util.js';
 import { h, useEffect, useRef, useState } from './h.js';
 
@@ -253,7 +254,8 @@ export function Stick({ size, kind, input, refresh }) {
     h('div', { className: 'knob', style: {
       width: (KNOB * 100) + '%', height: (KNOB * 100) + '%',
       transform: `translate(-50%,-50%) translate(${knob.x}px,${knob.y}px)` } }),
-    right && h('div', { className: 'deadzone', style: {
+    // (none with Aim Assist on the gun in hand: the stick is a pointer then, it fires on its own)
+    right && !(input.current.loadout && hasAssist(input.current.loadout.guns[input.current.loadout.sel])) && h('div', { className: 'deadzone', style: {
       width: (triggerRing(size, DEV.aimPad).ring * 100) + '%', height: (triggerRing(size, DEV.aimPad).ring * 100) + '%' } }),
     h('span', { className: 'lbl top' }, left ? 'jet' : 'aim'),
     left && h('span', { className: 'lbl bot' }, 'walk')
