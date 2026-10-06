@@ -121,7 +121,7 @@ export const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], [
 /** @type {[string, string, string[]][]} */
 export const DEV_TABS = [
   ['look', 'Look', ['view', 'light', 'fx', 'holoflash', 'guide']],
-  ['player', 'Player', ['player', 'carrot', 'bh', 'sound', 'ui', 'menuptr', 'witness']],
+  ['player', 'Player', ['player', 'carrot', 'bh', 'sound', 'ui', 'menuptr', 'aimassist', 'witness']],
   ['creatures', 'Creatures', ['enemy', 'elite', 'elitefx', 'spider', 'rat', 'jelly', 'jellycol']],
   ['world', 'World', ['level', 'arch', 'sway', 'fire']],
   ['level2', 'Level 2', ['level2', 'l2dark', 'l2boom', 'l2alien']],
