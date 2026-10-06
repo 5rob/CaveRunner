@@ -8,7 +8,8 @@
 // Out, per frame: `mul` (× the hologram's alpha; past 1 the extra is drawn again, lighter) and `tear` (the
 // slice shift in terrain px, 0 = none), `seed` (re-rolled each torn frame: which slices move, how far).
 
-/** @typedef {{ mode: number, t: number, mul: number, tear: number, seed: number, rng: number }} HoloFlicker */
+/** @typedef {{ mode: number, t: number, mul: number, tear: number, seed: number, rng: number,
+ *  hold?: { mode: number, mul: number, tear: number, seed: number } | null }} HoloFlicker  hold: a probe's fixed frame (tools/holoflickshots.js), used while near */
 
 /** @returns {HoloFlicker} */
 export function flickerNew() { return { mode: 0, t: 0, mul: 1, tear: 0, seed: 1, rng: 0x2545f491 }; }
@@ -29,6 +30,7 @@ export function flickerRnd(s) {
  */
 export function flickerStep(s, dt, near, k) {
   if (!near || k.rate <= 0) { s.mode = 0; s.t = 0; s.mul = 1; s.tear = 0; return s; }
+  if (s.hold) { s.mode = s.hold.mode; s.mul = s.hold.mul; s.tear = s.hold.tear; s.seed = s.hold.seed; return s; }
   const R = () => flickerRnd(s);
   s.t -= dt;
   if (s.t <= 0) {

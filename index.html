@@ -17827,6 +17827,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       s.tear = 0;
       return s;
     }
+    if (s.hold) {
+      s.mode = s.hold.mode;
+      s.mul = s.hold.mul;
+      s.tear = s.hold.tear;
+      s.seed = s.hold.seed;
+      return s;
+    }
     const R = () => flickerRnd(s);
     s.t -= dt;
     if (s.t <= 0) {
@@ -18132,7 +18139,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     lmImg: null,
     lt: null,
     flk: flickerNew(),
-    flT: 0
+    flT: 0,
+    hb: 0
   };
   var holoFlk = () => D.flk;
   function darkBeam(a, r, n, x, y) {
@@ -18170,7 +18178,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var darkOn = () => D.on;
   function darkHides(x, y, R) {
-    if (!D.on || !D.zt || DEV.l2dDark < 1) return false;
+    if (!D.on || !D.zt || DEV.l2dDark < 1 || D.hb > 0.01) return false;
     const cx0 = Math.floor((x - R) / FOG_U) - 1, cx1 = Math.floor((x + R) / FOG_U) + 1;
     const cy0 = Math.floor((y - R) / FOG_U) - 1, cy1 = Math.floor((y + R) / FOG_U) + 1;
     if (cx0 < D.bx0 || cy0 < D.by0 || cx1 >= D.bx1 || cy1 >= D.by1) return false;
@@ -18382,6 +18390,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     holoKeep.on = near;
     const h0 = holoBright() * DEV.l2dHolo, hon = near ? Math.max(h0, clamp(DEV.l2dFlkBase, 0, 1) * DEV.l2dHolo) : h0;
     const hl = holoLayer(), hb = fk.mode === 2 ? Math.max(hon, DEV.l2dHolo) * fk.mul : hon * fk.mul;
+    D.hb = hl ? hb : 0;
     if (hl && hb > 0.01) {
       const g = holoGrid.rect, dx0 = g.x / CELL - tx0, dy0 = g.y / CELL - ty0, dw = g.w / CELL, dh = g.h / CELL;
       bc.filter = DEV.l2dHoloBlur && bl > 0 ? `blur(${bl}px)` : "none";

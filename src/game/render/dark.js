@@ -39,12 +39,12 @@ import { BG_PAR, holoBright, holoGrid, holoKeep, holoLayer, sizedCanvas } from '
  *  zt: Float32Array | null, zd: Float32Array | null, zB: HTMLCanvasElement | null, ztKey: string, ztFor: Uint8Array | null,
  *  beam: { a: number, r: number, n: number, x: number, y: number }, webL: HTMLCanvasElement | null,
  *  lm: HTMLCanvasElement | null, lmImg: ImageData | null, lt: HTMLCanvasElement | null,
- *  flk: import('../../world/holoflicker.js').HoloFlicker, flT: number }} */
+ *  flk: import('../../world/holoflicker.js').HoloFlicker, flT: number, hb: number }} */
 const D = { web: null, webC: null, zf: null, zfFor: null, zC: null, band: null, bb: null, bbFor: null, bbKey: '', tw: 0, th: 0,
   back: null, mt: null, on: false,
   fx0: 0, fy0: 0, fx1: 0, fy1: 0, bx0: 0, by0: 0, bx1: 0, by1: 0, lift: new Float32Array(FW * FH), lut: new Float32Array(65),
   zt: null, zd: null, zB: null, ztKey: '', ztFor: null, beam: { a: 0, r: 0, n: 0, x: 0, y: 0 }, webL: null,
-  lm: null, lmImg: null, lt: null, flk: flickerNew(), flT: 0 };
+  lm: null, lmImg: null, lt: null, flk: flickerNew(), flT: 0, hb: 0 };
 
 /** the hologram's glitching in the zones (world/holoflicker.js), for the test hook and probes */
 export const holoFlk = () => D.flk;
@@ -86,7 +86,8 @@ export const darkOn = () => D.on;
 // only paint it over, v0.0.148). Per fog cell: the ramp × darkness × (1 - the lift)
 /** @param {number} x @param {number} y @param {number} R */
 export function darkHides(x, y, R) {
-  if (!D.on || !D.zt || DEV.l2dDark < 1) return false;
+  // (not while the hologram lights the zone's backdrop: in front of it the alien is a silhouette, owner's list item 1)
+  if (!D.on || !D.zt || DEV.l2dDark < 1 || D.hb > 0.01) return false;
   const cx0 = Math.floor((x - R) / FOG_U) - 1, cx1 = Math.floor((x + R) / FOG_U) + 1;
   const cy0 = Math.floor((y - R) / FOG_U) - 1, cy1 = Math.floor((y + R) / FOG_U) + 1;
   if (cx0 < D.bx0 || cy0 < D.by0 || cx1 >= D.bx1 || cy1 >= D.by1) return false;
@@ -297,6 +298,7 @@ export function darkPrep(W, G, F) {
   // in or near a zone the hologram is on at DEV.l2dFlkBase between the glitches (or brighter, a kill's flash)
   const h0 = holoBright() * DEV.l2dHolo, hon = near ? Math.max(h0, clamp(DEV.l2dFlkBase, 0, 1) * DEV.l2dHolo) : h0;
   const hl = holoLayer(), hb = fk.mode === 2 ? Math.max(hon, DEV.l2dHolo) * fk.mul : hon * fk.mul;
+  D.hb = hl ? hb : 0;
   if (hl && hb > 0.01) {
     const g = holoGrid.rect, dx0 = g.x / CELL - tx0, dy0 = g.y / CELL - ty0, dw = g.w / CELL, dh = g.h / CELL;
     bc.filter = DEV.l2dHoloBlur && bl > 0 ? `blur(${bl}px)` : 'none';

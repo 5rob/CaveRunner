@@ -12,7 +12,9 @@ Names are as they were at the time (before the refactor Game's state had loose n
   brighter than it (`l2dFlkFlash`), torn horizontal slices (`l2dFlkGlitch`), `l2dFlkRate` bursts a second,
   from `l2dFlkNear` px outside a zone; `l2dFlk` 0 turns it off. Random backlight for the silk, aliens
   silhouetted. Pure state machine `world/holoflicker.js` (suite `holoflicker`); `holo.js` `holoKeep` makes the
-  layer even while the hologram rests dark. No blur; pictures: `tools/holoflickshots.js`.
+  layer even while the hologram rests dark. No blur; pictures: `tools/holoflickshots.js` (`V2=1`: four frames
+  held by `HoloFlicker.hold`). `darkHides` no longer skips an alien deep in the black while the hologram lights
+  the backdrop: it's drawn, so it shows as a silhouette.
 
 ## v0.0.148 — Level 2 speed-ups; Flamethrower; Fire Immunity
 Released 2026-10-06 (the owner OK'd the screenshots; a minor update). The owner's list, after
