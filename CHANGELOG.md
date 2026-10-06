@@ -5,8 +5,22 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
-## Unreleased
+## v0.0.149 — the owner's 12-item list (LIST3)
+Released 2026-10-07 (the owner OK'd the screenshots and a feedback round; a minor update). Built by time-boxed
+agents on branch `list3-small`, the tracker is `LIST3.md`.
 
+- **Vines** (LIST3 #7): swinging on a vine you keep facing the way you were unless you push the other way
+  (`W.p.steer`, `game/systems/gun.js`).
+- **Trigger ring** (LIST3 #8, then the owner's feedback): the right stick fires at a ring just inside its three
+  gauge rings, Dev → Player `aimPad` px in (5) (`triggerRing` in `core/consts.js`, `stickTrigger` in `ui/hud.js`;
+  suite `trigring`; `interact` updated).
+- **Feedback round**: Aim Assist hides the crosshair; Dev's **Spawn level** (any floor, `SpawnLevel`) replaces New
+  cave + Floor 2; the copy buttons read "Copy Dev settings" / "Copy mod & perk audit"; the mini-map's open
+  spaces dark-mid grey at 80% and its creature dots only where explored; the hologram glitch has its own rate
+  for blinking on (`l2dFlkRate`), tearing (`l2dFlkTears`) and cutting out (`l2dFlkDrops`).
+- **Fixed**: Dev's Copy report missed a half-typed box (the report was written before the box committed).
+  Browser suites updated for the batch (the archived gun chooser via `gunMenu`; tiles found by mod id; a tap
+  opens the gun card; Aim Assist exempt in `everymod`). `jelly`, `lightning`, `vendshop` fail on v0.0.148 too.
 - **Guns by holding a HUD slot** (LIST3 #5, `ui/gunhold.js`): by a gun on the ground, hold a gun slot (the
   empty one too) and a ring fills round it; at full it takes the gun into that slot and your old one lies
   where it was. With no gun in reach, holding a filled slot lifts its gun out under your finger: drag it and
@@ -28,7 +42,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
   screen; on one it turns amber, the gun light swings onto it and the gun fires at it on its own (normal cast
   delay, recharge and mana). No trigger ring on the stick, no aim line; letting go stops. Its own Dev group,
   **Aim Assist** (reach, snap reach/pull/hit, stickiness, fire delay, ring size/line/dot).
-- **Audit mods and perks** (LIST3 #6, waiting for the owner's OK): every mod and perk card you can tap
+- **Audit mods and perks** (LIST3 #6): every mod and perk card you can tap
   (Bag, Exo Suit, a gun card's mods) has a 📌 keep and a 🗑️ trash toggle (one or the other) and a
   Give Feedback button that turns the card into a notes box, prefilled with what you wrote before,
   with Save / Cancel. Kept on the device across runs and deaths (`caverunner-audit`). Dev → **Copy
@@ -49,7 +63,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
   trigger payload each spell gets only the modifiers right before it. Timing and mana unchanged.
   `planCast` (`spells/cast.js`); the aim line, bag stats and advisor read its shots, so they follow.
   Tests: new `nextspell`; `cast`, `groupstats`, `advice` updated to the new rule.
-- **The Dev panel, tidied** (LIST3 #3, waiting for the owner's OK):
+- **The Dev panel, tidied** (LIST3 #3):
   - The Dev panel is a dark card with **tabs** (Look, Player, Creatures, World, Level 2: `DEV_TABS` in `dev/knobs.js`),
   each a page of **collapsible groups**: a **tap** opens/shuts a group (was press-and-hold; a scroll gets no tap).
   Each header shows its knob count and how many you've changed; a dot on a tab means something on it changed.
@@ -57,12 +71,12 @@ Names are as they were at the time (before the refactor Game's state had loose n
   - A **search box** finds knobs by name on every tab. Open groups and the tab are remembered (localStorage).
   - Copy report's text is unchanged. New suite `tests/browser/devpanel.test.js` (also takes the screenshots with
   `CAVERUNNER_SHOTS=<dir>`); `blackhole`, `jelly` updated for tabs and tap.
-- **Bag: a firing window** (owner, item 4; waiting on the owner's OK of the screenshots). The gun
+- **Bag: a firing window** (owner, LIST3 #4). The gun
   buttons moved to a row of four under the collected-mods grid; where they were, a small dark window
   shows the selected gun firing each pull's real shots (the game's own spell looks) in step with the
   slot lights, and it follows the build live as mods are moved (`ui/editor.js` `GunFire`,
   `bagsim.js` `S.shots`; suite `gunfire`).
-- **Dark zones: the hologram glitches** (owner's list item 1; awaiting their OK on looks). In or near a zone
+- **Dark zones: the hologram glitches** (LIST3 #1). In or near a zone
   the hologram behind the silk is on (`l2dFlkBase`) and glitches at random: dropouts, strobing flashes
   brighter than it (`l2dFlkFlash`), torn horizontal slices (`l2dFlkGlitch`), `l2dFlkRate` bursts a second,
   from `l2dFlkNear` px outside a zone; `l2dFlk` 0 turns it off. Random backlight for the silk, aliens

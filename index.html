@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.148</title>
-<!-- VERSION = 'v148' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.149</title>
+<!-- VERSION = 'v149' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -812,7 +812,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.148';</script>
+<script>const VERSION = 'v0.0.149';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -27421,8 +27421,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       setOpenG(o);
       lsSet("caverunner-devgroups", o);
     };
-    const copyText = (text, what) => {
+    const copyText = (make, what) => {
       blurBox();
+      const text = make();
       if (!text) {
         setCopied({ text, ok: false, empty: true, what });
         return;
@@ -27498,8 +27499,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             act("spawngun", "Spawn gun", onSpawnGun),
             act("spawnlevel", "Spawn level", onSpawnLevel),
             act("restart", "Restart run", onRestart),
-            act("devcopy", "Copy Dev settings", () => copyText(devReport())),
-            act("devaudit", "Copy mod & perk audit", () => copyText(auditText(loadAudit()), "audit"))
+            act("devcopy", "Copy Dev settings", () => copyText(devReport)),
+            act("devaudit", "Copy mod & perk audit", () => copyText(() => auditText(loadAudit()), "audit"))
           ),
           copied ? h("p", { className: "devnote devcopied" + (copied.ok ? " ok" : "") }, copied.empty ? "Nothing audited yet — pin, trash or give feedback on a mod or perk card first." : copied.ok ? copied.what === "audit" ? "Audit copied — paste it into Claude Code." : "Copied — paste it to Claude." : "Could not reach the clipboard — press and hold the text below to copy it.") : null,
           copied && !copied.ok && !copied.empty ? h("textarea", { className: "devcopytext", readOnly: true, value: copied.text }) : null,

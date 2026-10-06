@@ -3,13 +3,20 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
-## IN PROGRESS (2026-10-07): the owner's 12-item list — read LIST3.md first
+## v0.0.149 — THE OWNER'S 12-ITEM LIST: RELEASED on `main` 2026-10-07 (read LIST3.md for each item)
 
-All 12 items are built and merged on branch **`list3-small`** (not on `main`, version still v0.0.148).
-`LIST3.md` has each item's status, files, the owner's decisions and the log. Screenshots of every look
-were sent; waiting on the owner's OK / changes. Then: bump to v0.0.149, CHANGELOG's "Unreleased" →
-v0.0.149, this file, merge `list3-small` to `main`, confirm Pages. Logic run on `list3-small`: only
-rats, spider, strata fail (as before). `interact` suite updated for the new trigger ring.
+All 12 built by time-boxed agents (worktrees, merged into `list3-small`), every look OK'd from screenshots, one
+feedback round done by the manager. `LIST3.md` has each item's files, decisions and the log; CHANGELOG v0.0.149.
+In short: dark-zone hologram glitch (3 rates in Dev), modifiers hit only the next spell, Dev panel with tabs +
+Spawn level + audit copy, the Bag's firing window and gun row, hold a HUD gun slot to take/drop guns (R/swap menu
+archived), mod/perk audit (📌/🗑️/notes, Dev → Copy mod & perk audit), vine facing, trigger ring inside the gauges
+(`aimPad`), mod stacks, Aim Assist mod, Discriminate mod, Mini-map perk.
+
+**Waiting on the owner:** playing it on the phone. They said they'll test **Discriminate**, and tune the hologram
+glitch rates (`l2dFlkRate`/`l2dFlkTears`/`l2dFlkDrops`) and may paste a Dev report. Known gaps (told the owner):
+Discriminate doesn't cover fields, beams or trigger payloads, and its icons are emoji; Aim Assist aims the whole
+pull at the target (one aim per pull); the mod card has no example showing the spell *after* the boosted one
+coming out plain. Known failing as before: logic `rats`, `spider`, `strata`.
 
 ## v0.0.148 — SPEED-UPS, FLAMETHROWER, FIRE IMMUNITY: RELEASED on `main` 2026-10-06 (the owner OK'd it; Pages shows `148 v0.0.148`)
 

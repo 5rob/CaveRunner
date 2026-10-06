@@ -10,6 +10,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   page.on('pageerror', e => { fails++; console.log('PAGE ERROR', e.message); });
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   await page.waitForTimeout(1600);
+  await page.evaluate(() => { window.__in.current.gunMenu = true; });   // the archived chooser (gunhold.test.js: the HUD hold)
   // the cave has red crystals, not guns: lay a few guns about for the test
   await page.evaluate(() => { const L = window.__lvl; for (let i = 0; i < 3; i++) L.pickups.push({ kind: 'gun', gun: makeGun(Math.random, 1), x: 300 + i * 300, y: 200, t: 0 }); });
 

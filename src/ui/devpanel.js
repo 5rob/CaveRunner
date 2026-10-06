@@ -562,9 +562,11 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
     setOpenG(o);
     lsSet('caverunner-devgroups', o);
   };
-  /** @param {string} text @param {string} [what] */
-  const copyText = (text, what) => {
+  // `make` runs after the blur, so a half-typed box is committed before the report is written
+  /** @param {() => string} make @param {string} [what] */
+  const copyText = (make, what) => {
     blurBox();
+    const text = make();
     if (!text) { setCopied({ text, ok: false, empty: true, what }); return; }
     const fallback = () => {
       let ok = false;
@@ -603,8 +605,8 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
           act('spawngun', 'Spawn gun', onSpawnGun),
           act('spawnlevel', 'Spawn level', onSpawnLevel),
           act('restart', 'Restart run', onRestart),
-          act('devcopy', 'Copy Dev settings', () => copyText(devReport())),
-          act('devaudit', 'Copy mod & perk audit', () => copyText(auditText(loadAudit()), 'audit'))),
+          act('devcopy', 'Copy Dev settings', () => copyText(devReport)),
+          act('devaudit', 'Copy mod & perk audit', () => copyText(() => auditText(loadAudit()), 'audit'))),
         copied ? h('p', { className: 'devnote devcopied' + (copied.ok ? ' ok' : '') }, copied.empty
           ? 'Nothing audited yet — pin, trash or give feedback on a mod or perk card first.'
           : copied.ok ? (copied.what === 'audit' ? 'Audit copied — paste it into Claude Code.' : 'Copied — paste it to Claude.')

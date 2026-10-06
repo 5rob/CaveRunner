@@ -296,7 +296,9 @@ takes only that stat's perks, **six perk slots** for the rest, and every perk in
 carry lit (with how many), the ones you've unlocked but don't carry faded, the rest blank tiles in their place (nothing
 given away until you unlock them).
 Drag a carried perk onto a slot to fit it, a fitted one to another slot to swap, or off the
-slots to take it out again. Each perk fits once: one already fitted shows ticked and faded, and a
+slots to take it out again. The **Mini-map** perk shows a small map over the gun buttons (tap it to
+zoom out twice, a third tap back): you as an arrow, creatures and crystals where you've explored, your
+pins (stuck to the edge when they're off it). Each perk fits once: one already fitted shows ticked and faded, and a
 second copy can't go in another slot. Tap any perk to see its card. The suit is locked outside the
 shop: change it there (or anywhere, with Tinker). The Exo Suit tab is where you see what's fitted
 (there's no perk column on the play screen any more).
@@ -498,8 +500,10 @@ Sort button above your collected mods reorders your collection into those same g
 
 Mods are the spells. Some are shots (Bolt, Buckshot, Slug, Blast, Bounce Orb...)
 and the rest are modifiers (Homing, Heavy Shot, Scatter, Double Cast, Borer...).
-A modifier only affects the shots to its **right** on the gun, so the order you
-drag them into matters. Firing walks the list left to right; run off the end and
+A modifier only affects the **next** spell to its right on the gun (several in a row all
+land on that one spell; the spell after it comes out plain), so the order you
+drag them into matters. Mods you collect twice stack in the Bag, with a count in the corner;
+each gun slot still takes one. Firing walks the list left to right; run off the end and
 the gun recharges before starting over.
 
 The build screen (the **Bag**) has four parts. Top left, the selected gun's stats, one
@@ -580,7 +584,11 @@ a cave shooter. They come in a few shapes:
   **White Hole** (Noita's Vacuum Field) is a tiny white-and-blue hole, with specks being drawn
   into it, that pulls every creature, their shots, coins and loose items within reach hard into its
   middle and holds them there, straight through walls, harming nothing. They take a cast slot like a shot does.
-- **Modifiers** change the shots drawn after them, as always. Several bend the flight path,
+- **Modifiers** change the next spell drawn after them (only that one).
+  **Aim Assist** turns the aim stick into a pointer that snaps onto creatures and fires by itself
+  once it's on one (no aim line or crosshair). **Discriminate** is set once per copy: tap it in the
+  Bag, **Set target**, point at a creature, yourself or an object and let go; its shot then passes
+  through everything else and only hits that kind. Several bend the flight path,
   and the aim line draws every one of them properly: **Boomerang** flies out and, halfway through
   its flight, turns and comes back into your hand; **Ping-Pong** snaps back a little and on again;
   **Spiral Arc** swings side to side in a widening wave along its line; **Orbiting Arc** circles
@@ -676,7 +684,7 @@ them if it cannot find either.
 - Recoil that shoves you around, which the jetpack can work with
 - Gold that flies to you once you are close enough (a short range for now); gold just knocked loose by a kill or a dig waits a quarter of a second first, so you see it
 - A black arcade control deck: mono type, scanlines, and two rings on the right stick — the dead zone and the full throw
-- Picking a mod up is one tap — its card shows while you stand next to it, and a tap drops it straight in your bag; a gun opens a compare-and-swap chooser so you can pick which of your four slots it takes
+- Picking a mod up is one tap — its card shows while you stand next to it, and a tap drops it straight in your bag; a gun goes into whichever gun button you hold
 - Jetpack with fuel that refills on the ground; upward thrust is instant
 - 16 creatures in five shapes, each floor owning its own fixed roster: shooters that hover and fire, turrets that wind up a long shot, chasers that come at you and bombers that burst on contact
 - Creature stats and gold scale with the floor they belong to, so the same enemy gets harder as you climb
