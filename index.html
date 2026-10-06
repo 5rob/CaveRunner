@@ -745,6 +745,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var AIM_DEAD = 0.35;
   var KNOB = 0.38;
   var AIM_RING = AIM_DEAD * 0.72 + KNOB;
+  var triggerRing = (size, pad) => {
+    const ring = Math.max(AIM_RING, Math.min(1, 1 - 2 * pad / Math.max(1, size)));
+    return { ring, mag: Math.min(1, (ring - KNOB) / 0.72) };
+  };
   var PW = 12, PH = 22;
   var FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
   var PLAYER_HP = 100;
@@ -943,6 +947,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     killGrow: 1.35,
     runnerPx: 1,
     runnerLine: 1,
+    aimPad: 10,
     ptrStart: 0.12,
     ptrReach: 1,
     ptrSize: 1,
@@ -1026,6 +1031,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "killGrow", g: "level", label: "Kill gold: × each floor up", min: 1, max: 4, step: 0.05 },
     { k: "runnerPx", g: "player", label: "Player pixel size (world units, 0 = smooth)", min: 0, max: 3, step: 0.25 },
     { k: "runnerLine", g: "player", label: "Player dark outline (0 off, 1 on)", min: 0, max: 1, step: 1 },
+    { k: "aimPad", g: "player", label: "Right stick: trigger ring’s gap from the edge (px; bigger = fires sooner)", min: 0, max: 40, step: 1 },
     // the vending menus' right-stick pointer (ui/vendshop.js useMenuNav, menuPointer, snapTo)
     { k: "ptrStart", g: "menuptr", label: "Stick push before the pointer comes out (of its reach)", min: 0, max: 0.9, step: 0.01 },
     { k: "ptrReach", g: "menuptr", label: "Pointer reach (× distance to the far screen corner)", min: 0.2, max: 3, step: 0.05 },
@@ -16015,6 +16021,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (W.p.dead) L3 = NO_INPUT;
     W.p.jx = L3.nx;
     W.p.jy = L3.ny;
+    W.p.steer = L3.active ? L3.nx * L3.mag : 0;
     const raw = L3.active ? L3.mag : 0;
     const mag = raw > DEAD ? (raw - DEAD) / (1 - DEAD) : 0;
     const wantJet = mag > 0 && L3.dy < 0;
@@ -23804,7 +23811,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const gx = pcx, gy = W.p.y + PH * 0.4;
     const TR = G.input.current.right;
     let R = { on: false, show: false, nx: W.p.face, ny: 0 };
-    if (TR.active) R = { on: TR.on, show: true, nx: TR.nx, ny: TR.ny, vis: Math.min(1, TR.mag / AIM_DEAD) };
+    if (TR.active) R = { on: TR.on, show: true, nx: TR.nx, ny: TR.ny, vis: Math.min(1, TR.mag / (TR.fire || AIM_DEAD)) };
     else if (G.mouse.inside) {
       const dx = W.camX + G.mouse.x / W.unitPx - gx, dy = W.camY + G.mouse.y / W.unitPx - gy, d = Math.hypot(dx, dy);
       if (d > 1) R = { on: G.mouse.down, show: true, nx: dx / d, ny: dy / d };
@@ -23826,7 +23833,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (W.p.dead) R.on = false;
     W.p.aim = R;
     if (R.show) W.p.face = R.nx >= 0 ? 1 : -1;
-    else if (Math.abs(W.p.vx) > 10) W.p.face = W.p.vx > 0 ? 1 : -1;
+    else if (W.p.swing) {
+      if (Math.abs(W.p.steer || 0) > 0.1) W.p.face = W.p.steer > 0 ? 1 : -1;
+    } else if (Math.abs(W.p.vx) > 10) W.p.face = W.p.vx > 0 ? 1 : -1;
     for (const g of LO.guns) {
       if (!g) continue;
       const pas = gunPassives(g);
@@ -27378,7 +27387,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const cl = Math.min(dist, maxD);
       const nx = dist ? dx / dist : 0, ny = dist ? dy / dist : 0;
       const mag = cl / maxD;
-      const thresh = right ? AIM_DEAD : 0.15;
+      const thresh = right ? triggerRing(r.width, DEV.aimPad).mag : 0.15;
       if (right && mag > AIM_DEAD) stayed.current = false;
       peak.current = Math.max(peak.current, mag);
       if (right && input.current.confirmAct) {
@@ -27395,6 +27404,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       st.mag = mag;
       st.dy = dy;
       st.on = mag > thresh;
+      st.fire = thresh;
       st.cx = r.left + rad;
       st.cy = r.top + rad;
       st.size = r.width;
@@ -27486,8 +27496,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         transform: `translate(-50%,-50%) translate(${knob2.x}px,${knob2.y}px)`
       } }),
       right && h("div", { className: "deadzone", style: {
-        width: AIM_RING * 100 + "%",
-        height: AIM_RING * 100 + "%"
+        width: triggerRing(size, DEV.aimPad).ring * 100 + "%",
+        height: triggerRing(size, DEV.aimPad).ring * 100 + "%"
       } }),
       h("span", { className: "lbl top" }, left ? "jet" : "aim"),
       left && h("span", { className: "lbl bot" }, "walk")

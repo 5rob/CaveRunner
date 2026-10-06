@@ -670,11 +670,13 @@ interface Player {
   aim: { on: boolean; show: boolean; nx: number; ny: number; vis?: number };   // vis: the aim line's fade with the push
   burn?: number; burnAcc?: number;
   swing?: number;   // 1 while you swing on a hanging vine this frame (movePlayer): the vine follows you
+  steer?: number;   // the left stick across × its push this frame (movePlayer): turns you on a vine
   rag?: import('./world/ragdoll.js').Ragdoll | null;   // dead: the body (corpseStep)
 }
 
 /** one thumbstick's state, written by the Stick (ui/hud.js), read by step */
 interface StickState { active: boolean; nx: number; ny: number; mag: number; dy: number; on: boolean;
+  fire?: number;   // the right stick: the push that fires (its trigger ring, core/consts.js triggerRing)
   cx?: number; cy?: number; size?: number;   // where the stick sits on screen (css px), for the menus' pointer (useMenuNav)
 }
 /** the gauges draw() hands the sticks each frame (all 0..1) */

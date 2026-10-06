@@ -183,7 +183,7 @@ export function aimAndCast(W, G, F) {
   let R = { on: false, show: false, nx: W.p.face, ny: 0 };
   // line shows as soon as you touch the stick, fading in with the push: 0 at the centre,
   // full at the trigger ring (vis is what the Trajectory Sight line reads)
-  if (TR.active) R = { on: TR.on, show: true, nx: TR.nx, ny: TR.ny, vis: Math.min(1, TR.mag / AIM_DEAD) };
+  if (TR.active) R = { on: TR.on, show: true, nx: TR.nx, ny: TR.ny, vis: Math.min(1, TR.mag / (TR.fire || AIM_DEAD)) };
   else if (G.mouse.inside) {
     const dx = W.camX + G.mouse.x / W.unitPx - gx, dy = W.camY + G.mouse.y / W.unitPx - gy, d = Math.hypot(dx, dy);
     if (d > 1) R = { on: G.mouse.down, show: true, nx: dx / d, ny: dy / d };
@@ -205,6 +205,8 @@ export function aimAndCast(W, G, F) {
   W.p.aim = R;
 
   if (R.show) W.p.face = R.nx >= 0 ? 1 : -1;
+  // swinging on a vine you keep facing the way you were, unless you push the other way (owner)
+  else if (W.p.swing) { if (Math.abs(W.p.steer || 0) > 0.1) W.p.face = W.p.steer > 0 ? 1 : -1; }
   else if (Math.abs(W.p.vx) > 10) W.p.face = W.p.vx > 0 ? 1 : -1;
 
   // every gun you carry ticks down and tops up its mana, holstered or not

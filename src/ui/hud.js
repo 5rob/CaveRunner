@@ -5,7 +5,7 @@
 
 import { CRYSTAL_PAL, GREEN_PAL } from '../art/sprites.js';
 import { DEV } from '../dev/knobs.js';
-import { AIM_DEAD, AIM_RING, DEAD, KNOB } from '../core/consts.js';
+import { AIM_DEAD, DEAD, KNOB, triggerRing } from '../core/consts.js';
 import { mixHex } from '../core/util.js';
 import { countdown } from '../core/util.js';
 import { h, useEffect, useRef, useState } from './h.js';
@@ -172,7 +172,9 @@ export function Stick({ size, kind, input, refresh }) {
     const cl = Math.min(dist, maxD);
     const nx = dist ? dx / dist : 0, ny = dist ? dy / dist : 0;
     const mag = cl / maxD;
-    const thresh = right ? AIM_DEAD : 0.15;
+    // the right stick fires at its trigger ring, out near the edge (Dev aimPad); past AIM_DEAD it's
+    // already a drag (aiming, the line shows), not a tap
+    const thresh = right ? triggerRing(r.width, DEV.aimPad).mag : 0.15;
     if (right && mag > AIM_DEAD) stayed.current = false;
     peak.current = Math.max(peak.current, mag);
     // A card is up: left picks up, right leaves, and the one you are pointing at is the
@@ -182,7 +184,7 @@ export function Stick({ size, kind, input, refresh }) {
       if (input.current.confirmAim !== side) { input.current.confirmAim = side; refresh(); }
     }
     const st = input.current[kind];
-    st.active = true; st.nx = nx; st.ny = ny; st.mag = mag; st.dy = dy; st.on = mag > thresh;
+    st.active = true; st.nx = nx; st.ny = ny; st.mag = mag; st.dy = dy; st.on = mag > thresh; st.fire = thresh;
     st.cx = r.left + rad; st.cy = r.top + rad; st.size = r.width;
     setKnob({ x: nx * cl, y: ny * cl, jet: kind === 'left' && dy < 0 && mag > DEAD });
   };
@@ -252,7 +254,7 @@ export function Stick({ size, kind, input, refresh }) {
       width: (KNOB * 100) + '%', height: (KNOB * 100) + '%',
       transform: `translate(-50%,-50%) translate(${knob.x}px,${knob.y}px)` } }),
     right && h('div', { className: 'deadzone', style: {
-      width: (AIM_RING * 100) + '%', height: (AIM_RING * 100) + '%' } }),
+      width: (triggerRing(size, DEV.aimPad).ring * 100) + '%', height: (triggerRing(size, DEV.aimPad).ring * 100) + '%' } }),
     h('span', { className: 'lbl top' }, left ? 'jet' : 'aim'),
     left && h('span', { className: 'lbl bot' }, 'walk')
   );
