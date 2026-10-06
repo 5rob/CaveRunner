@@ -46,7 +46,8 @@ export function GunStats({ gun, sim, sig }) {
       const S = sim.current;
       if (S) {
         const gg = fireSimGauges(S);
-        for (const k in LIVE_BAR) if (bars.current[k]) bars.current[k].style.width = (gg[k] * 100).toFixed(1) + '%';
+        // the mana row is `manaMax`, its gauge `mana` (the bar never moved under the old key)
+        for (const k in LIVE_BAR) if (bars.current[k]) bars.current[k].style.width = ((k === 'manaMax' ? gg.mana : gg[k]) * 100).toFixed(1) + '%';
       }
       raf = requestAnimationFrame(loop);
     };
