@@ -5,6 +5,30 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.148 — Level 2 speed-ups; Flamethrower; Fire Immunity
+(On the `speed` branch, awaiting the owner's OK on the look; then a minor update.) The owner's list, after
+playing Level 2 (it dropped frames as a zone came into view and with the aliens about):
+
+- **Drawn at 1.5× and stretched to fit** (`game/dpr.js` `gameDpr`; Dev → Camera & aim, `renderScale`): a phone
+  is ~2.6×, so about a third of the pixels to draw.
+- **Dark zones** (`render/dark.js`): the back wall blurred once a floor (not every frame); the hologram behind
+  the silk blurred only with the new Dev switch `l2dHoloBlur` (off by default); the black's soft edge no longer
+  blurred every frame but a banded ramp in `l2dBands` steps (3), made once a floor, with fire's lift taken out
+  of it; the per-floor layers made on the floor's first frame (they were made the moment a zone came into view:
+  the hitch); the working canvases only grow (a new size every frame was a new canvas every frame).
+- **Aliens**: half as many (`alCount` 30–60 a zone); black, without the skin texture; one shared eye picture
+  (white, veins, made once) with only the pupil and glint drawn per alien; not drawn at all deep in the black;
+  they think in 5 groups, one group a frame, gliding between thinks (`game/creatures/alien.js`).
+- Measured (alienperf's spot, software-drawn, CPU slowed 4×): 114 ms a frame → 36 ms.
+- **Flamethrower** (`flamer`, a shot mod): a fast spray of short flames the way you aim; they slow, rise, pass
+  through creatures and set alight what they touch.
+- **Fire Immunity** (`fireimm`, a perk): you never catch fire (`youAlight`); blasts still hurt.
+- **Dev → All perks** (owner, to playtest perks): like All mods, every perk in the Exo Suit's grid to fit as
+  often as you like, and the suit (and mod editor) usable anywhere while it's on (`LO.debugPerks`, saved).
+- Tests: browser `flamer` (new); `perks` (61 perks, Fire Immunity), `dark` (the new knobs); `camera`, `guide`,
+  `pixelfx`, `holo` read the canvas's real scale (1.5×, not the screen's); `darkzone` checks the hologram blur
+  with its switch on. `shop` ("the coin is gone once collected") fails on v0.0.147 too: not this change.
+
 ## v0.0.147 — Level 2: the Tombs
 Released 2026-10-06 (every stage's look OK'd by the owner from screenshots; a minor update, for testing).
 The owner's brief: LEVEL2.md; the parts and their knobs: HANDOVER.md, "LEVEL 2".

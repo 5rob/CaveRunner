@@ -124,17 +124,18 @@ export function ExoSuit({ input, close, refresh, canEdit, tabs }) {
       if (slot >= 0 && to >= 0 && suit[to] && !fitsSlot(suit[to], slot)) { no(); return; }
       setMsg('');
       if (slot < 0 && to >= 0) {                 // fit it: one off the carried pile, the old one back
+        // (Dev → All perks: every perk is to hand, endless copies; nothing taken off or put back on the pile)
         const k = LO.perks.indexOf(id);
-        if (k < 0) return;
-        LO.perks.splice(k, 1);
-        if (suit[to]) LO.perks.push(suit[to]);
+        if (k < 0 && !LO.debugPerks) return;
+        if (!LO.debugPerks) { LO.perks.splice(k, 1); if (suit[to]) LO.perks.push(suit[to]); }
         suit[to] = id;
         SFX.ui('perk');
       } else if (slot >= 0 && to >= 0 && to !== slot) {   // slot to slot: swap
         const a = suit[to]; suit[to] = suit[slot]; suit[slot] = a;
         SFX.fx('place');
       } else if (slot >= 0 && to < 0) {          // off the slots: taken out, carried again
-        LO.perks.push(id); suit[slot] = null;
+        if (!LO.debugPerks) LO.perks.push(id);
+        suit[slot] = null;
         SFX.fx('place');
       } else return;
       input.current.perksDirty = true;
@@ -193,7 +194,7 @@ export function ExoSuit({ input, close, refresh, canEdit, tabs }) {
     h('p', { className: 'lab' }, 'Perks — drag one you carry onto a slot (one of each)'),
     h(ScrollBox, { cls: 'xgrid' },
       PERK_IDS.map(id => {
-        const n = LO.perks.filter(p => p === id).length, pk = PERKS[id], on = suit.includes(id);
+        const n = LO.debugPerks ? 1 : LO.perks.filter(p => p === id).length, pk = PERKS[id], on = suit.includes(id);
         // fitted already: shown in use, and no second copy can be fitted (v129)
         const state = on ? 'inuse' : n ? 'have' : unlocked.includes(id) ? 'none' : 'locked';
         // one you can drag takes the touch (the bar scrolls); the rest let a swipe scroll the grid

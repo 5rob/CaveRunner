@@ -8,6 +8,7 @@ import { healPrice } from '../../data/creatures.js';
 import { PERKS } from '../../data/perks.js';
 import { collideNuggets, stepNugget } from '../../world/nuggets.js';
 import { MODS } from '../../spells/mods.js';
+import { gameDpr } from '../dpr.js';
 import { crystalMotes, toast } from './particles.js';
 import { solidAt } from './terrain.js';
 import { MACHINE_TOP, SHOPS, shopNear, shopUse, stepShops } from './shops.js';
@@ -126,7 +127,7 @@ export function stepPickups(W, G, F) {
   let pbottom = 12;
   if (near) {
     const iy = near.src === 'vend' ? VEND_TOP : near.src === 'shopvend' ? MACHINE_TOP : near.src === 'shop' ? near.it.y : near.src === 'room' ? near.r.y : near.q.y;
-    const dprc = window.devicePixelRatio || 1;
+    const dprc = gameDpr();
     pbottom = Math.round(Math.max(10, G.c.height / dprc - (iy - 16 - W.camY) * W.unitPx));
   }
   const sig = nearKey + ':' + (label && label.can ? 1 : 0) + ':' + inShop + ':' + Math.round(pbottom / 16);

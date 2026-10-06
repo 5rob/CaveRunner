@@ -279,8 +279,8 @@ Elites drop green crystals too.
 
 Green crystals turn into perks at the **perk machine** in the shop, the one with a green ✦ hologram,
 right of the mod machine: get one near it and it's sucked in, and after the shake it pops out a
-random perk you haven't got (kept for good, across runs). There are 30 perks copied from Noita (200g each) —
-Glass Cannon, Extra Health, Faster Wands, Homing Shots, Unlimited Spells, Permanent Shield,
+random perk you haven't got (kept for good, across runs). There are 31 perks copied from Noita (200g each) —
+Glass Cannon, Fire Immunity (you never catch fire; blasts still hurt), Extra Health, Faster Wands, Homing Shots, Unlimited Spells, Permanent Shield,
 Pinpointer, Trajectory Sight, Angry Ghost, Attract Gold, radars and Invisibility among them —
 and 30 **stat perks**: Max Health, Movement Speed, Jetpack Fuel, Jetpack Recharge, Gold
 Vacuum and **Carrot** (you see further: the camera pulls back, the torch reaches further and the
@@ -365,7 +365,7 @@ Grass, moss, hanging vines and mycelium, and old timber (pit props, the mine's s
 all burn. Fire spreads through them a pixel at a time, climbs faster than it creeps down or
 sideways, eats what it burns (grass and wood are gone, moss leaves the rock scorched), and
 dies out once there's nothing left. Grass goes up in a flash, moss smoulders, timber burns
-long. It's lit by the fire spells (Fireball, Firebolt, Meteor, Magic Missile) wherever they
+long. It's lit by the fire spells (Fireball, Firebolt, Flamethrower, Meteor, Magic Missile) wherever they
 fly, hit or blow up, by other explosions now and then, by exploding minecarts, fire vents,
 the Levitation Trail perk, and by Stendari when it blows itself up. Burning vines burn up to
 the rock and drop, fire races along an arched vine both ways and lights its strands, burning web lines snap, and a fire that reaches a minecart sets it off.
@@ -561,7 +561,8 @@ a cave shooter. They come in a few shapes:
   that bounces and rolls and goes off when the fuse burns down (or at once on a creature);
   **Magic Missile** is a little rocket that leaves slowly in a trail of smoke then roars
   off; **Fireball** is a slow, big, drooping ball of flame; **Firebolt** a lobbed flame that
-  bounces four times; **Energy Orb** a slow blue orb that shoves and blasts a round hole;
+  bounces four times; **Flamethrower** a fast spray of short flames the way you aim, rising as they
+  slow, passing through creatures and setting alight whatever they lick; **Energy Orb** a slow blue orb that shoves and blasts a round hole;
   **Energy Sphere** a blue ball that arcs and bounces; **Chain Bolt** a slow crackling violet
   orb; **Death Cross** a tumbling cyan cross; **Disc Projectile** a spinning sawblade that
   skips along throwing sparks; the **Nuke** droops, drips green and sets the cave alight;

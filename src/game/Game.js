@@ -7,6 +7,7 @@
 import { SFX } from '../audio/sfx.js';
 import { BH, BW, CH, CW, FH, FW, PH, PW } from '../core/consts.js';
 import { onWebIn } from './creatures/rat.js';
+import { gameDpr } from './dpr.js';
 import { draw } from './render/draw.js';
 import { ignite, setAlight, youAlight } from './systems/fire.js';
 import { paintFog } from './systems/fog.js';
@@ -136,7 +137,7 @@ export function Game({ input }) {
     input.current.saveRun = saveNow;
 
     const resize = () => {
-      const r = c.parentElement.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+      const r = c.parentElement.getBoundingClientRect(), dpr = gameDpr();
       c.width = Math.max(1, Math.round(r.width * dpr)); c.height = Math.max(1, Math.round(r.height * dpr));
     };
     resize();

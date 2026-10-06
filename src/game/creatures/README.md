@@ -9,7 +9,7 @@ recipe). Here is what needs the running game (terrain, you, sound, particles).
 | `classic.js` | The acts the not-yet-reworked creatures share, whatever their body: `classicMove` (hunt or patrol: chase, bomb, shoot), `bombFuse` (pre), `bombBurst` (contact), `gunFire` (fire: shoot, turret; a turret has no move) |
 | `spider.js` | `spiderMove` (the crawl, the string shot), `spiderFrame` (once a frame: silk in flight, strings on you, web lines whose rock is gone), `drawSilk` (a part of draw) |
 | `jelly.js` | `jellyMove` (the swim, the tentacles' sting, the spit), `natural` (where a jelly may swim) |
-| `alien.js` | `alienMove` (the brain's env, the bite only in the dark; returns true: no shared bite), plus once a frame the alien bucket grid and the fire points (burning cells sampled to ~400, blasts, burning bodies) and whether you're in the dark; far aliens (>700) think every 4th frame |
+| `alien.js` | `alienMove` (the brain's env, the bite only in the dark; returns true: no shared bite), plus once a frame the alien bucket grid and the fire points (burning cells sampled to ~400, blasts, burning bodies) and whether you're in the dark. **They think in 5 groups, one a frame** (v0.0.148, owner): a think runs `alienStep` over the time saved up and the move it makes (`S.sx/sy` → `S.tx/ty`, the turn `r0` → `r1`) is tweened over the frames to the next think, the legs stepping each frame; so what moves `e.x` outside a think is overwritten by the tween |
 | `rat.js` | `ratFrame` (goal picking + safety nets), `spawnRat`, `navFor`, `unstick`, `ratSolid`, `onWebIn`, and the hooks `ratMove`, `nestMove` (lets rats out), `nestDie` (the gold shower) |
 
 ## How the enemy loop calls them

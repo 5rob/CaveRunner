@@ -202,6 +202,9 @@ interface AlienBrain {
   ha: number; on: number; rest: number; spd: number; pt: number; fl: number; fx: number; fy: number;
   sprint: boolean; dodge: number; dA: number; skip?: number; acc?: number;
   gait?: number;              // the legs' step cycle, run on at its walking speed (radians)
+  // v0.0.148: thinking in groups (game/creatures/alien.js): its group, and the last think's move being tweened
+  // (from sx, sy to tx, ty over tT seconds, tt in; its turn r0 to r1)
+  grp?: number; tt?: number; tT?: number; sx?: number; sy?: number; tx?: number; ty?: number; r0?: number; r1?: number;
 }
 interface AlienGrid { cell: number; m: Map<number, Enemy[]> }
 /** what alienStep is handed: zone(x, y) the zone number + 1 there (0 none), silk(x, y), the neighbours,
@@ -272,6 +275,7 @@ interface PerkBag {
   tinker: number; extraItem: number; pinpointer: number; trajectory: number;
   carrot: number;   // the Carrot stat's level, 0-5 (carrotAt turns it into each multiplier)
   fuel: number; refuel: number;   // the jetpack's tank (drains slower) and how fast it refills (stat perks)
+  fireImm: number;                // Fire Immunity: you never catch fire (youAlight)
   // always there on a bag perkBag returns; optional only because it is filled in after the rest
   maxHp?: number;
 }
@@ -436,6 +440,7 @@ interface Loadout {
   crystals?: number[];        // red crystals carried: the floor each came from (game/systems/shops.js)
   fed?: string[];             // the crystal machines a real crystal has gone into this run (SHOPS keys): no more demo there
   debug: boolean;             // Dev → All mods
+  debugPerks?: boolean;       // Dev → All perks (v0.0.148): every perk in the suit's grid, endless copies
 }
 /** the gun machine's offer (spells/gunshop.js): a sold gun is null; the reroll counts are this floor's */
 interface GunOffer { floor: number; guns: (Gun | null)[]; rerolls: number; boosts: number }

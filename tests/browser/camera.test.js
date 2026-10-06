@@ -34,7 +34,7 @@ async function flight(hz) {
     window.__rec = [];
     const raf = window.requestAnimationFrame;
     const rec = () => {
-      const s = W.unitPx * (window.devicePixelRatio || 1);
+      const s = W.unitPx * (document.querySelector("canvas.game").width / document.querySelector("canvas.game").getBoundingClientRect().width);
       window.__rec.push({ x: W.p.x, cx: W.camX, s, fuel: W.p.fuel });
       if (window.__rec.length < 400) raf(rec);
     };

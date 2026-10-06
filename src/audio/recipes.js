@@ -27,7 +27,7 @@ export const SPELL_VOICE = {
   buck: 'scatter', orb: 'bubble', bubble: 'bubble',
   saw: 'saw', disc: 'saw',
   blast: 'lob', cross: 'lob', nuke: 'lob',
-  missile: 'fire', fball: 'fire', fbolt: 'fire', meteor: 'fire',
+  missile: 'fire', fball: 'fire', fbolt: 'fire', flamer: 'fire', meteor: 'fire',
   zap: 'thunder', chain: 'thunder',
   void: 'void', digbolt: 'dig', plasma: 'beam', ldrill: 'beam', pollen: 'spore',
   tele: 'energy', teleshort: 'energy',

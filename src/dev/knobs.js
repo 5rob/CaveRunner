@@ -14,7 +14,7 @@ import { HEX_RE, hexMix, hsvAdjust } from '../core/util.js';
 // localStorage touch is wrapped: it throws in a private window and does not exist at all
 // under Node (the logic tests eval this file), and a missing store just means "defaults".
 /** @type {DevKnobs} */
-export const DEV_DEFAULTS = { zoom: 1.6, torch: 0.5, fogDark: 0.99, fogDim: 0.85, move: 1, sputDip: 45, aggro: 0.6, loseAggro: 2, aimDist: 44, bhPull: 65, bhSpeed: 50, vol: 1, amb: 0.4, jetVol: 0.2,
+export const DEV_DEFAULTS = { zoom: 1.6, renderScale: 1.5, torch: 0.5, fogDark: 0.99, fogDim: 0.85, move: 1, sputDip: 45, aggro: 0.6, loseAggro: 2, aimDist: 44, bhPull: 65, bhSpeed: 50, vol: 1, amb: 0.4, jetVol: 0.2,
   vSpell: 0.6, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vDrip: 1, vStep: 1, vUi: 1, bagSpeed: 1,
   holoAlpha: 1, bloom: 0.8, bloomBlur: 8, bloomBright: 1.3, pixelFx: 1, holoPx: 2,
   holoMin: 0, holoMax: 1, holoFade: 3, holoC1x: 0.25, holoC1y: 1, holoC2x: 0.5, holoC2y: 0,
@@ -29,6 +29,7 @@ export const DEV_DEFAULTS = { zoom: 1.6, torch: 0.5, fogDark: 0.99, fogDim: 0.85
 /** @type {DevRow[]} */
 export const DEV_META = [
   { k: 'zoom',      g: 'view',  label: 'Camera zoom',                 min: 0.3, max: 3,  step: 0.05 },
+  { k: 'renderScale', g: 'view', label: 'Draw sharpness: canvas px per screen px, at most (lower = faster, softer)', min: 0.5, max: 4, step: 0.25 },
   { k: 'aimDist',   g: 'view',  label: 'Crosshair distance',          min: 10,  max: 200, step: 2 },
   { k: 'torch',     g: 'light', label: 'Torch fall-off distance',     min: 0.2, max: 5,  step: 0.05 },
   { k: 'fogDark',   g: 'light', label: 'Fog of war darkness',         min: 0,   max: 1,  step: 0.01 },
@@ -469,7 +470,7 @@ DEV_META.push(
   { k: 'l2dRough',  g: 'l2dark', label: 'Rough cave walls inside (0 = smooth)', min: 0, max: 2, step: 0.05 },
   { k: 'l2dFringe', g: 'l2dark', label: 'Ragged fringe round a zone: width (px)', min: 0, max: 120, step: 1 });
 DEV_DEFAULTS.l2dSpace = 120; DEV_DEFAULTS.l2dShop = 140; DEV_DEFAULTS.l2dTop = 120; DEV_DEFAULTS.l2dSilk = 1;
-DEV_DEFAULTS.l2dDark = 1; DEV_DEFAULTS.l2dEdge = 1.2; DEV_DEFAULTS.l2dHolo = 0.8; DEV_DEFAULTS.l2dBack = 0.12; DEV_DEFAULTS.l2dBlur = 5; DEV_DEFAULTS.l2dFireR = 45;
+DEV_DEFAULTS.l2dDark = 1; DEV_DEFAULTS.l2dBands = 3; DEV_DEFAULTS.l2dHoloBlur = 0; DEV_DEFAULTS.l2dHolo = 0.8; DEV_DEFAULTS.l2dBack = 0.12; DEV_DEFAULTS.l2dBlur = 5; DEV_DEFAULTS.l2dFireR = 45;
 DEV_DEFAULTS.l2dTintDepth = 12; DEV_DEFAULTS.l2dTorchDepth = 18; DEV_DEFAULTS.l2dTorchHyst = 4;   // (owner: black a short way in, most of a zone dark; the torch fails just past it)
 DEV_META.push(
   { k: 'l2dSpace', g: 'l2dark', label: 'Zones apart, at least (px, plus half their sizes)', min: 0, max: 800, step: 5 },
@@ -477,9 +478,10 @@ DEV_META.push(
   { k: 'l2dTop',   g: 'l2dark', label: 'Kept away from the exits (px from the top)', min: 0, max: 600, step: 5 },
   { k: 'l2dSilk',  g: 'l2dark', label: 'Silk: how thick (×)', min: 0, max: 4, step: 0.05 },
   { k: 'l2dDark',  g: 'l2dark', label: 'Darkness (0 = none, 1 = pitch black)', min: 0, max: 1, step: 0.01 },
-  { k: 'l2dEdge',  g: 'l2dark', label: 'Edge softness (fog cells of blur)', min: 0, max: 6, step: 0.1 },
+  { k: 'l2dBands', g: 'l2dark', label: 'Edge: steps of grey from clear to black (owner: 3, no blur)', min: 1, max: 12, step: 1 },
+  { k: 'l2dHoloBlur', g: 'l2dark', label: 'Silk blurs the hologram behind it (0 off: faster, 1 on)', min: 0, max: 1, step: 1 },
   { k: 'l2dHolo',  g: 'l2dark', label: 'Hologram through the silk (0 = hidden, diffused)', min: 0, max: 1, step: 0.01 },
-  { k: 'l2dBlur',  g: 'l2dark', label: 'Silk blur: how much it frosts the back wall and hologram behind it (terrain px)', min: 0, max: 12, step: 0.5 },
+  { k: 'l2dBlur',  g: 'l2dark', label: 'Silk blur: how much it frosts the back wall (and the hologram, if on) behind it (terrain px)', min: 0, max: 12, step: 0.5 },
   { k: 'l2dBack',  g: 'l2dark', label: 'Back wall brightness behind the silk', min: 0, max: 1, step: 0.01 },
   { k: 'l2dFireR', g: 'l2dark', label: 'Fire lifts the black tint out to (px)', min: 1, max: 200, step: 1 },
   { k: 'l2dTintDepth', g: 'l2dark', label: 'Black fades in over this far into a zone (px)', min: 1, max: 160, step: 1 },
@@ -489,7 +491,7 @@ curveKnobs('l2dark', 'l2dFire', 'Fire lifts the black (Y, 1 = full colour) by di
 // Level 2 stage 7b: the dark zones' aliens (creatures/alien.js alienStep; spawned in world/level.js). World units
 // for reaches and speeds (CELL = 2 a terrain px)
 export const AL_KNOBS = rangeKnobs('l2alien', [
-  ['alCount',   'Aliens per dark zone',                         0, 400, 1,     60, 120],
+  ['alCount',   'Aliens per dark zone',                         0, 400, 1,     30, 60],
   ['alStrays',  'Strays per floor (black, outside the zones)',  0, 20, 1,      2, 4],
   ['alScale',   'Size × (each one rolled in this range)',        0.2, 5, 0.05,  0.6, 2.4],
   ['alBias',    'Size: lean to small (1 even; higher = more small, few big)', 1, 8, 0.1, 3, 4],

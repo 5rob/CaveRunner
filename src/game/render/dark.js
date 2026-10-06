@@ -4,13 +4,15 @@
 // 1-2 and blurring them like frosted glass, 4. the rock, decoration, creatures, loot and you: all black
 // inside a zone (silhouettes), only fire lifting the black, 5. the fog of war. How, a frame:
 //   darkPrep    (drawTerrain, after the hologram) the backdrop for the zones' box in view, small (terrain
-//               pixels): the back wall and the hologram each drawn blurred (DEV.l2dBlur; the wall at
-//               DEV.l2dBack, the hologram at DEV.l2dHolo), the silk multiplied over them. Then the zones'
-//               backs cut out of the picture (destination-out by the zone's shade, its ragged fringe a
-//               gradual edge), so what's drawn next lands on nothing there. And the black mask for
-//               drawDark: per fog cell, the ramp in from the zone's edge (tintRamp over DEV.l2dTintDepth)
-//               × DEV.l2dDark × (1 - the lift: fire's, the DEV.l2dFire curve over the distance to the
-//               nearest fire out to DEV.l2dFireR; and the torch's while it works, darkBeam)
+//               pixels): the back wall (blurred once a floor by DEV.l2dBlur, at DEV.l2dBack) and the hologram
+//               (at DEV.l2dHolo; blurred too only with DEV.l2dHoloBlur on), the silk multiplied over them. Then
+//               the zones' backs cut out of the picture (destination-out by the zone's shade, its ragged
+//               fringe a gradual edge), so what's drawn next lands on nothing there. And the black mask for
+//               drawDark: per terrain pixel, the ramp in from the zone's edge (tintRamp over DEV.l2dTintDepth)
+//               in DEV.l2dBands steps, made once a floor, × DEV.l2dDark, with the lift taken out (fire's, the
+//               DEV.l2dFire curve over the distance to the nearest fire out to DEV.l2dFireR; and the torch's
+//               while it works, darkBeam). v0.0.148 (speed): no blur is made per frame, the working canvases
+//               only grow, and the per-floor layers are made on the floor's first frame
 //   drawDark    (just before drawFog) everything drawn in a zone (layer 4) goes black by the mask
 //               (source-atop: only where something was drawn), then the backdrop behind it
 //               (destination-over)
@@ -29,13 +31,15 @@ import { beamLift } from '../../world/vision.js';
 import { BG_PAR, holoBright, holoGrid, holoLayer, sizedCanvas } from './holo.js';
 
 /** @type {{ web: Uint8Array | null, webC: HTMLCanvasElement | null, zf: Float32Array | null, zfFor: Uint8Array | null,
- *  zC: HTMLCanvasElement | null, m: HTMLCanvasElement | null, mImg: ImageData | null, mb: HTMLCanvasElement | null,
+ *  zC: HTMLCanvasElement | null, band: HTMLCanvasElement | null, bb: HTMLCanvasElement | null, bbFor: Uint8Array | null, bbKey: string,
+ *  tw: number, th: number,
  *  back: HTMLCanvasElement | null, mt: HTMLCanvasElement | null, on: boolean, fx0: number, fy0: number, fx1: number, fy1: number,
  *  bx0: number, by0: number, bx1: number, by1: number, lift: Float32Array, lut: Float32Array,
  *  zt: Float32Array | null, zd: Float32Array | null, zB: HTMLCanvasElement | null, ztKey: string, ztFor: Uint8Array | null,
  *  beam: { a: number, r: number, n: number, x: number, y: number }, webL: HTMLCanvasElement | null,
  *  lm: HTMLCanvasElement | null, lmImg: ImageData | null, lt: HTMLCanvasElement | null }} */
-const D = { web: null, webC: null, zf: null, zfFor: null, zC: null, m: null, mImg: null, mb: null, back: null, mt: null, on: false,
+const D = { web: null, webC: null, zf: null, zfFor: null, zC: null, band: null, bb: null, bbFor: null, bbKey: '', tw: 0, th: 0,
+  back: null, mt: null, on: false,
   fx0: 0, fy0: 0, fx1: 0, fy1: 0, bx0: 0, by0: 0, bx1: 0, by1: 0, lift: new Float32Array(FW * FH), lut: new Float32Array(65),
   zt: null, zd: null, zB: null, ztKey: '', ztFor: null, beam: { a: 0, r: 0, n: 0, x: 0, y: 0 }, webL: null,
   lm: null, lmImg: null, lt: null };
@@ -50,24 +54,50 @@ export function darkBeam(a, r, n, x, y) { const b = D.beam; b.a = a; b.r = r; b.
 /** @param {Uint8Array} depth @param {Uint8Array | null} shade */
 function depthField(depth, shade) {
   const zt = new Float32Array(FW * FH), zd = new Float32Array(FW * FH), s = FOG_U / CELL, n = 1 / (s * s), T = DEV.l2dTorchDepth;
-  D.zB = sizedCanvas(D.zB, CW, CH);
+  D.zB = sizedCanvas(D.zB, CW, CH); D.band = sizedCanvas(D.band, CW, CH);
   const c = D.zB.getContext('2d'), img = c ? c.createImageData(CW, CH) : null;
+  const bc = D.band.getContext('2d'), bimg = bc ? bc.createImageData(CW, CH) : null, nb = Math.max(1, Math.round(DEV.l2dBands));
   for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
     const v = depth[y * CW + x], sh = shade ? shade[y * CW + x] : 0;
     if (!v && !sh) continue;
     const j = Math.floor(y / s) * FW + Math.floor(x / s);
     // the black: half of it across the ragged fringe outside (by its shade), the rest ramping in over the first
     // DEV.l2dTintDepth px inside: past that, silhouette black (owner: most of a zone dark)
-    zt[j] += (v ? 0.5 + 0.5 * tintRamp(v) : 0.5 * sh / 255) * n; zd[j] += v * n;
+    const a = v ? 0.5 + 0.5 * tintRamp(v) : 0.5 * sh / 255;
+    zt[j] += a * n; zd[j] += v * n;
+    // and per terrain pixel in DEV.l2dBands steps (v0.0.148, owner: a banded edge, no blur)
+    if (bimg) bimg.data[(y * CW + x) * 4 + 3] = Math.round(255 * Math.round(a * nb) / nb);
     if (!v) continue;
     if (img) { const u = Math.min(1, Math.max(0, (v - T) / 16)); img.data[(y * CW + x) * 4 + 3] = Math.round(255 * u * u * (3 - 2 * u)); }
   }
   if (c && img) c.putImageData(img, 0, 0);
+  if (bc && bimg) bc.putImageData(bimg, 0, 0);
   D.zt = zt; D.zd = zd;
 }
 
 /** is the dark mask up this frame (a zone in view)? */
 export const darkOn = () => D.on;
+// is everything within R of (x, y) under full black this frame? (drawEnemies skips drawing it: drawDark would
+// only paint it over, v0.0.148). Per fog cell: the ramp × darkness × (1 - the lift)
+/** @param {number} x @param {number} y @param {number} R */
+export function darkHides(x, y, R) {
+  if (!D.on || !D.zt || DEV.l2dDark < 1) return false;
+  const cx0 = Math.floor((x - R) / FOG_U) - 1, cx1 = Math.floor((x + R) / FOG_U) + 1;
+  const cy0 = Math.floor((y - R) / FOG_U) - 1, cy1 = Math.floor((y + R) / FOG_U) + 1;
+  if (cx0 < D.bx0 || cy0 < D.by0 || cx1 >= D.bx1 || cy1 >= D.by1) return false;
+  for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
+    const i = cy * FW + cx;
+    if (D.zt[i] < 0.999 || D.lift[i] > 0.001) return false;
+  }
+  return true;
+}
+// a canvas at least w × h (only ever grown: a new size every frame is a new canvas every frame on a phone)
+/** @param {HTMLCanvasElement | null} c @param {number} w @param {number} h */
+function grownCanvas(c, w, h) {
+  const o = c || document.createElement('canvas');
+  if (o.width < w || o.height < h) { o.width = Math.max(o.width, w); o.height = Math.max(o.height, h); }
+  return o;
+}
 // how much of fog cell i is dark zone, × the darkness (0..1; 0 when no zone is in view): drawFog takes the
 // lamp's light and the remembered dim off there, so in a zone the look is this file's alone
 /** @param {number} i */
@@ -123,9 +153,8 @@ function addLift(x, y, r, w) {
 export function darkPrep(W, G, F) {
   D.on = false;
   if (!W.darkMask || !W.webbing || G.RPV || !W.dark.length) return;
-  const { vw, vh } = F, m = 24 + Math.max(0, DEV.l2dFringe) * 2 * CELL;
-  if (!W.dark.some(z => z.x1 * CELL + m > W.camX && z.x0 * CELL - m < W.camX + vw && z.y1 * CELL + m > W.camY && z.y0 * CELL - m < W.camY + vh)) return;
-  // the silk canvas and the zone field, made per floor; explosions' holes repainted (W.webDirty)
+  // the silk canvas and the zone field, made per floor (on the floor's first frame, wherever you are: made
+  // when a zone first came into view, it was a hitch right then, v0.0.148); explosions' holes repainted (W.webDirty)
   if (D.web !== W.webbing || !D.webC || !D.webL) {
     D.web = W.webbing; D.webC = sizedCanvas(D.webC, CW, CH); D.webL = sizedCanvas(D.webL, CW, CH);
     const c = D.webC.getContext('2d'), cl = D.webL.getContext('2d');
@@ -147,15 +176,29 @@ export function darkPrep(W, G, F) {
   const shade = W.darkShade || W.darkMask;
   if (D.zfFor !== shade || !D.zf) { D.zf = zoneField(W.darkShade || W.darkMask.map(v => (v ? 255 : 0))); D.zfFor = shade; }
   if (!D.zC) return;
-  const key = DEV.l2dTintDepth + '/' + DEV.l2dTorchDepth;
+  const key = DEV.l2dTintDepth + '/' + DEV.l2dTorchDepth + '/' + DEV.l2dBands;
   if (W.darkDepth && (D.ztKey !== key || D.ztFor !== W.darkDepth || !D.zt)) { depthField(W.darkDepth, W.darkShade); D.ztKey = key; D.ztFor = W.darkDepth; }
-  if (!D.zt || !D.zd || !D.zB) return;
+  if (!D.zt || !D.zd || !D.zB || !D.band) return;
+  // the back wall blurred once a floor (and again if the knob moves): it never changes
+  const bl = Math.max(0, DEV.l2dBlur), bsrc = G.bgHiOn ? G.bgHi : G.bg, bkey = bl + '/' + G.bgHiOn;
+  if (D.bbFor !== W.webbing || D.bbKey !== bkey || !D.bb) {
+    D.bbFor = W.webbing; D.bbKey = bkey;
+    const B = D.bb = sizedCanvas(D.bb, bsrc.width, bsrc.height), c = B.getContext('2d');
+    if (c) {
+      // the blur is in terrain px: the quarter-size wall's pixel is BCELL / CELL of them
+      const r = G.bgHiOn ? bl : bl * CELL / BCELL;
+      c.clearRect(0, 0, B.width, B.height); c.filter = r > 0 ? `blur(${r}px)` : 'none';
+      c.drawImage(bsrc, 0, 0); c.filter = 'none';
+    }
+  }
+  const { vw, vh } = F, m = 24 + Math.max(0, DEV.l2dFringe) * 2 * CELL;
+  if (!W.dark.some(z => z.x1 * CELL + m > W.camX && z.x0 * CELL - m < W.camX + vw && z.y1 * CELL + m > W.camY && z.y0 * CELL - m < W.camY + vh)) return;
   // the view's fog-cell slab
   const fx0 = D.fx0 = clamp(Math.floor(W.camX / FOG_U) - 2, 0, FW - 1), fy0 = D.fy0 = clamp(Math.floor(W.camY / FOG_U) - 2, 0, FH - 1);
   const fx1 = D.fx1 = clamp(Math.ceil((W.camX + vw) / FOG_U) + 3, 1, FW), fy1 = D.fy1 = clamp(Math.ceil((W.camY + vh) / FOG_U) + 3, 1, FH);
   // the zones' box in view (fog cells, the fringe and the blur's spill included): every pass keeps to it (on a
   // software-drawn phone each full-screen pass costs ~10 ms)
-  const s8 = FOG_U / CELL, pad = Math.ceil(DEV.l2dEdge * 2 + Math.max(0, DEV.l2dFringe) * 1.7 / s8) + 1;
+  const s8 = FOG_U / CELL, pad = Math.ceil(Math.max(0, DEV.l2dFringe) * 1.7 / s8) + 1;
   let bx0 = FW, by0 = FH, bx1 = 0, by1 = 0;
   for (const z of W.dark) {
     bx0 = Math.min(bx0, Math.floor(z.x0 / s8) - pad); by0 = Math.min(by0, Math.floor(z.y0 / s8) - pad);
@@ -199,73 +242,70 @@ export function darkPrep(W, G, F) {
       if (v > D.lift[i]) D.lift[i] = v;
     }
   }
-  // ---- the black mask: alpha = the ramp in from the edge × darkness × (1 - lift) ----
-  const M = D.m = sizedCanvas(D.m, FW, FH), mc = M.getContext('2d');
-  D.mb = sizedCanvas(D.mb, FW, FH);
-  const mbc = D.mb.getContext('2d');
-  if (!mc || !mbc) return;
-  if (!D.mImg) D.mImg = mc.createImageData(FW, FH);
-  const md = D.mImg.data, dark = clamp(DEV.l2dDark, 0, 1), zt = D.zt;
-  for (let cy = by0; cy < by1; cy++) for (let cx = bx0; cx < bx1; cx++) {
-    const i = cy * FW + cx, k = i * 4;
-    md[k] = 0; md[k + 1] = 0; md[k + 2] = 0;
-    md[k + 3] = Math.round(255 * Math.min(1, zt[i]) * dark * (1 - D.lift[i]));
+  // ---- the lift (fire, the torch, bullets) per fog cell as a mask's alpha, for the black and the silk ----
+  let anyLift = false;
+  for (let cy = by0; cy < by1 && !anyLift; cy++) for (let cx = bx0; cx < bx1; cx++) if (D.lift[cy * FW + cx] > 0.01) { anyLift = true; break; }
+  const LM = D.lm = sizedCanvas(D.lm, FW, FH), lc = LM.getContext('2d');
+  if (!lc) return;
+  if (anyLift) {
+    if (!D.lmImg) D.lmImg = lc.createImageData(FW, FH);
+    const ld = D.lmImg.data;
+    for (let cy = by0; cy < by1; cy++) for (let cx = bx0; cx < bx1; cx++) { const i = cy * FW + cx; ld[i * 4 + 3] = Math.round(255 * D.lift[i]); }
+    lc.putImageData(D.lmImg, 0, 0, bx0, by0, bx1 - bx0, by1 - by0);
   }
-  mc.putImageData(D.mImg, 0, 0, bx0, by0, bx1 - bx0, by1 - by0);
-  mbc.clearRect(bx0, by0, bx1 - bx0, by1 - by0);
-  mbc.filter = DEV.l2dEdge > 0 ? `blur(${DEV.l2dEdge}px)` : 'none';
-  mbc.drawImage(M, bx0, by0, bx1 - bx0, by1 - by0, bx0, by0, bx1 - bx0, by1 - by0);
-  mbc.filter = 'none';
-  // at the rock's pixel size for the box (smoothed up once, small), so the passes over the picture are
-  // crisp (nearest): a smoothed upscale costs far more on a software canvas
-  const tx0 = bx0 * s8, ty0 = by0 * s8, tw = (bx1 - bx0) * s8, th = (by1 - by0) * s8;
-  const T = D.mt = sizedCanvas(D.mt, tw, th), tc = T.getContext('2d');
+  // ---- the black mask (terrain px): the banded ramp in from the edge (D.band, made per floor) × darkness,
+  // the lift taken out of it (smoothed up). v0.0.148: it was built per fog cell and blurred every frame.
+  // The working canvases only ever grow, so a zone sliding into view doesn't make new ones every frame ----
+  const tx0 = bx0 * s8, ty0 = by0 * s8, tw = D.tw = (bx1 - bx0) * s8, th = D.th = (by1 - by0) * s8;
+  const T = D.mt = grownCanvas(D.mt, tw, th), tc = T.getContext('2d');
   if (!tc) return;
-  tc.clearRect(0, 0, tw, th); tc.imageSmoothingEnabled = true;
-  tc.drawImage(D.mb, bx0, by0, bx1 - bx0, by1 - by0, 0, 0, tw, th);
-  // ---- the backdrop (terrain px): 1. the back wall and 2. the hologram, blurred; 3. the silk, multiplied ----
-  const B = D.back = sizedCanvas(D.back, tw, th), bc = B.getContext('2d');
+  tc.globalCompositeOperation = 'source-over'; tc.clearRect(0, 0, tw, th); tc.imageSmoothingEnabled = false;
+  tc.globalAlpha = clamp(DEV.l2dDark, 0, 1);
+  tc.drawImage(D.band, tx0, ty0, tw, th, 0, 0, tw, th);
+  tc.globalAlpha = 1;
+  if (anyLift) {
+    tc.globalCompositeOperation = 'destination-out'; tc.imageSmoothingEnabled = true;
+    tc.drawImage(LM, bx0, by0, bx1 - bx0, by1 - by0, 0, 0, tw, th);
+    tc.globalCompositeOperation = 'source-over';
+  }
+  // ---- the backdrop (terrain px): 1. the back wall (blurred once a floor: D.bb) and 2. the hologram (blurred
+  // only with DEV.l2dHoloBlur on); 3. the silk, multiplied ----
+  const B = D.back = grownCanvas(D.back, tw, th), bc = B.getContext('2d');
   if (!bc) return;
-  const bl = Math.max(0, DEV.l2dBlur), blur = bl > 0 ? `blur(${bl}px)` : 'none';
   bc.setTransform(1, 0, 0, 1, 0, 0); bc.globalCompositeOperation = 'source-over'; bc.globalAlpha = 1;
   bc.fillStyle = '#000'; bc.fillRect(0, 0, tw, th);
-  // the back wall: as drawTerrain lays it (parallax BG_PAR), in this box, blurred, at DEV.l2dBack
+  // the back wall: as drawTerrain lays it (parallax BG_PAR), in this box, at DEV.l2dBack
   const bgox = W.camX * (1 - BG_PAR), bgoy = W.camY * (1 - BG_PAR);
   const wx0 = tx0 * CELL - bgox, wy0 = ty0 * CELL - bgoy, gx0 = clamp(Math.floor(wx0 / BCELL) - 2, 0, BW - 1), gy0 = clamp(Math.floor(wy0 / BCELL) - 2, 0, BH - 1);
   const gx1 = clamp(Math.ceil((wx0 + tw * CELL) / BCELL) + 2, 1, BW), gy1 = clamp(Math.ceil((wy0 + th * CELL) / BCELL) + 2, 1, BH);
-  bc.imageSmoothingEnabled = true; bc.filter = blur; bc.globalAlpha = clamp(DEV.l2dBack, 0, 1);
+  bc.imageSmoothingEnabled = true; bc.globalAlpha = clamp(DEV.l2dBack, 0, 1);
   const hs = G.bgHiOn ? BCELL / CELL : 1;
-  bc.drawImage(G.bgHiOn ? G.bgHi : G.bg, gx0 * hs, gy0 * hs, (gx1 - gx0) * hs, (gy1 - gy0) * hs, (gx0 * BCELL + bgox) / CELL - tx0, (gy0 * BCELL + bgoy) / CELL - ty0, (gx1 - gx0) * BCELL / CELL, (gy1 - gy0) * BCELL / CELL);
-  // the hologram over it, as bright as it is (× DEV.l2dHolo), blurred
+  bc.drawImage(D.bb, gx0 * hs, gy0 * hs, (gx1 - gx0) * hs, (gy1 - gy0) * hs, (gx0 * BCELL + bgox) / CELL - tx0, (gy0 * BCELL + bgoy) / CELL - ty0, (gx1 - gx0) * BCELL / CELL, (gy1 - gy0) * BCELL / CELL);
+  // the hologram over it, as bright as it is (× DEV.l2dHolo)
   const hl = holoLayer(), hb = holoBright() * DEV.l2dHolo;
   if (hl && hb > 0.01) {
     const g = holoGrid.rect;
+    bc.filter = DEV.l2dHoloBlur && bl > 0 ? `blur(${bl}px)` : 'none';
     bc.globalAlpha = clamp(hb, 0, 1);
     bc.drawImage(hl, 0, 0, hl.width, hl.height, g.x / CELL - tx0, g.y / CELL - ty0, g.w / CELL, g.h / CELL);
+    bc.filter = 'none';
   }
-  bc.filter = 'none'; bc.globalAlpha = 1;
+  bc.globalAlpha = 1;
   // the silk multiplied over both: it darkens and tints what's under it, never lights it
   bc.globalCompositeOperation = 'multiply'; bc.imageSmoothingEnabled = false;
   bc.drawImage(D.webC, tx0, ty0, tw, th, 0, 0, tw, th);
   bc.globalCompositeOperation = 'source-over';
   // near fire (and the torch while it works) the silk's black lifts like everything else's (owner): the silk seen
   // plainly, over the multiplied one, by the same lift (per fog cell, smoothed up)
-  let anyLift = false;
-  for (let cy = by0; cy < by1 && !anyLift; cy++) for (let cx = bx0; cx < bx1; cx++) if (D.lift[cy * FW + cx] > 0.01) { anyLift = true; break; }
   if (anyLift && D.webL) {
-    const LM = D.lm = sizedCanvas(D.lm, FW, FH), lc = LM.getContext('2d');
-    const LT = D.lt = sizedCanvas(D.lt, tw, th), ltc = LT.getContext('2d');
-    if (lc && ltc) {
-      if (!D.lmImg) D.lmImg = lc.createImageData(FW, FH);
-      const ld = D.lmImg.data;
-      for (let cy = by0; cy < by1; cy++) for (let cx = bx0; cx < bx1; cx++) { const i = cy * FW + cx; ld[i * 4 + 3] = Math.round(255 * D.lift[i]); }
-      lc.putImageData(D.lmImg, 0, 0, bx0, by0, bx1 - bx0, by1 - by0);
+    const LT = D.lt = grownCanvas(D.lt, tw, th), ltc = LT.getContext('2d');
+    if (ltc) {
       ltc.globalCompositeOperation = 'source-over'; ltc.clearRect(0, 0, tw, th); ltc.imageSmoothingEnabled = false;
       ltc.drawImage(D.webL, tx0, ty0, tw, th, 0, 0, tw, th);
       ltc.globalCompositeOperation = 'destination-in'; ltc.imageSmoothingEnabled = true;
       ltc.drawImage(LM, bx0, by0, bx1 - bx0, by1 - by0, 0, 0, tw, th);
       ltc.globalCompositeOperation = 'source-over';
-      bc.drawImage(LT, 0, 0);
+      bc.drawImage(LT, 0, 0, tw, th, 0, 0, tw, th);
     }
   }
   D.on = true;
@@ -282,15 +322,15 @@ export function darkPrep(W, G, F) {
 export function drawDark(W, G, F) {
   if (!D.on || !D.mt || !D.back) return;
   const ctx = G.ctx, s8 = FOG_U / CELL, tx0 = D.bx0 * s8, ty0 = D.by0 * s8, MT = D.mt, B = D.back;
-  const sx = tx0 * CELL, sy = ty0 * CELL, sw = MT.width * CELL, sh = MT.height * CELL;
+  const sx = tx0 * CELL, sy = ty0 * CELL, sw = D.tw * CELL, sh = D.th * CELL;
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   // 1. whatever was drawn in the zone goes black (only where something was drawn)
   ctx.globalCompositeOperation = 'source-atop';
-  ctx.drawImage(MT, 0, 0, MT.width, MT.height, sx, sy, sw, sh);
+  ctx.drawImage(MT, 0, 0, D.tw, D.th, sx, sy, sw, sh);
   // 2. behind it, the backdrop (the zones' backs were cut out: it shows there, gradually through the fringe)
   ctx.globalCompositeOperation = 'destination-over';
-  ctx.drawImage(B, 0, 0, B.width, B.height, sx, sy, sw, sh);
+  ctx.drawImage(B, 0, 0, D.tw, D.th, sx, sy, sw, sh);
   ctx.restore();
 }
 

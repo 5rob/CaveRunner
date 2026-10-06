@@ -97,7 +97,7 @@ export function setAlight(e) {
 }
 /** @param {World} W */
 export function youAlight(W) {
-  if (W.p.dead) return;
+  if (W.p.dead || W.pb.fireImm) return;           // the Fire Immunity perk: you never catch
   if (!(W.p.burn > 0)) { SFX.fx('whoosh', W.p.x + PW / 2, W.p.y + PH / 2); W.strings.length = 0; }   // spider silk burns off
   W.p.burn = Math.max(W.p.burn || 0, kr('fireYou'));
 }

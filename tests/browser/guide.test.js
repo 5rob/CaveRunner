@@ -41,7 +41,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     s = await g(page);
     // v0.0.142 (owner): it came only ~27 units in from the right edge (the screen 225 wide at Carrot 0),
     // its light mostly off screen: now its dark spot is DEV.guideIn (50) in first
-    const vw = await page.evaluate(() => { const c = document.querySelector('canvas'); return c.width / (window.devicePixelRatio || 1) / window.__lvl.unitPx; });
+    const vw = await page.evaluate(() => { const c = document.querySelector('canvas'); return c.width / (document.querySelector("canvas.game").width / document.querySelector("canvas.game").getBoundingClientRect().width) / window.__lvl.unitPx; });
     check('it jumps out once its dark spot is well on screen', s.st === 'appear' && s.x + 45 <= s.camX + vw, { ...s, vw, inFromEdge: s.camX + vw - s.x });
     check('right in front of you, under the next light, in the empty hall', s.x > s.pcx + 20 && s.x - s.pcx < 100 && s.x < W0.heal - 40, s);
     const litNow = s.on.filter(v => v >= 0).length;

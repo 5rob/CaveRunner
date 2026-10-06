@@ -15,6 +15,7 @@ import { gunAccent } from '../../spells/guns.js';
 import { bhSp, tracePath } from '../../spells/trace.js';
 import { HAND_TORCH, jetNozzle, torchHand } from '../systems/player.js';
 import { introHeld } from '../systems/shoplights.js';
+import { darkHides } from './dark.js';
 import { solidAt } from '../systems/terrain.js';
 
 // The elites' flames (stepEliteFire): each speck a square on the player's pixel grid, its colour
@@ -47,6 +48,7 @@ export function drawEnemies(W, G, F) {
   for (const e of W.enemies) {
     const ey = e.ty;
     if (ey > W.camY + vh + 20 || ey < W.camY - 20 || e.x < W.camX - 20 || e.x > W.camX + vw + 20) continue;
+    if (e.al && darkHides(e.x, ey, e.r * 4)) continue;   // an alien deep in the black: drawDark would only paint it over
     if (e.k.elite) {
       // an elite: a soft glow behind it in its tint (Dev → Elites), strongest at its middle and
       // fading to nothing at its edge (v0.0.137: it was a flat disc with a hard rim)
