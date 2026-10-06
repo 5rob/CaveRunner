@@ -212,11 +212,11 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   // the Dev panel: a colour picker per part, A and B, that sets the knob and resets
   await page.tap('.devbtn');
   await page.waitForTimeout(250);
-  // a Dev group header opens on a press-and-hold (DevGroupHead), not a tap
+  // the groups sit on tabs (DEV_TABS); a tap on a group header opens it (DevGroupHead)
   const holdHead = async g => {
-    await page.evaluate(g => document.querySelector('.devghead[data-g=' + g + ']').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 50, clientY: 50 })), g);
-    await page.waitForTimeout(await page.evaluate(() => HOLD_MS) + 150);
-    await page.evaluate(g => document.querySelector('.devghead[data-g=' + g + ']').dispatchEvent(new PointerEvent('pointerup', { bubbles: true })), g);
+    await page.evaluate(g => document.querySelector('.devtab[data-t=' + devTabOf(g) + ']').click(), g);
+    await page.waitForTimeout(100);
+    await page.evaluate(g => document.querySelector('.devghead[data-g=' + g + ']').click(), g);
   };
   check('the live jellyfish is folded away with its group', !(await page.$('.jellyprev')));
   await holdHead('jellycol');

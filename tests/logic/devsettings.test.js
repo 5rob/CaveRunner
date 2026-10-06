@@ -11,6 +11,10 @@ const check = (name, ok, x) => {
 check('pull range knob exists', DEV_META.some(m => m.k === 'bhPull') && DEV.bhPull === DEV_DEFAULTS.bhPull);
 check('travel speed knob exists', DEV_META.some(m => m.k === 'bhSpeed') && DEV.bhSpeed === DEV_DEFAULTS.bhSpeed);
 check('every knob sits in a Dev panel group', DEV_META.every(m => DEV_GROUPS.some(g => g[0] === m.g)));
+const { DEV_TABS } = require('../load');
+const tabbed = DEV_TABS.flatMap(t => t[2]);
+check('every Dev group sits on exactly one tab', DEV_GROUPS.every(g => tabbed.filter(x => x === g[0]).length === 1),
+  DEV_GROUPS.map(g => g[0]).filter(g => tabbed.filter(x => x === g).length !== 1));
 check('every knob has a default (a number, a #rrggbb colour for a colour knob, a gradient/ramp string for those)', DEV_META.every(m =>
   m.type === 'color' ? /^#[0-9a-f]{6}$/.test(DEV_DEFAULTS[m.k])
     : m.type === 'grad' ? /^(\s*[\d.]+:#[0-9a-f]{6}\s*)+$/i.test(DEV_DEFAULTS[m.k])

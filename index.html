@@ -425,37 +425,68 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .devbtn{position:absolute;top:10px;right:10px;z-index:6;border:1px solid rgba(255,255,255,0.25);
   background:rgba(0,0,0,0.35);color:#e9ecf2;border-radius:8px;width:38px;height:38px;padding:0;
   font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center}
-.devcopy{display:block;width:100%;margin-top:10px}
-.devcopytext{width:100%;box-sizing:border-box;height:120px;margin-top:6px;font:12px ui-monospace,monospace;
-  background:var(--pad);color:var(--text);border:1px solid var(--ring);border-radius:8px}
-.dbg.restart{background:#c2401f;border-color:#c2401f;color:#fff}
+/* the Dev panel (v0.0.149): a dark card — actions, search and tabs on top, the tab's groups scrolling below */
 .devwrap{position:fixed;left:0;right:0;top:0;bottom:0;z-index:26;display:flex;
-  align-items:flex-start;justify-content:center;padding:52px 12px 12px}
+  align-items:flex-start;justify-content:center;padding:52px 10px 10px}
 /* a light backdrop so the cave is still visible behind while you tune the look of it */
 .devback{position:absolute;inset:0;background:rgba(0,0,0,0.2)}
-.devpanel{position:relative;z-index:1;width:100%;max-width:360px;max-height:calc(100% - 64px);
-  overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;background:var(--btn);
-  border:1px solid var(--ring);border-radius:14px;padding:14px 16px;box-shadow:0 12px 40px rgba(0,0,0,0.45);color:var(--text)}
-.devhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.devhead h2{margin:0;font-size:17px}
-.devbtns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-.devvars{display:flex;flex-direction:column;gap:10px;padding:4px 0 12px}
-.devgroup{border-top:1px solid var(--ring)}
-.devghead{display:flex;align-items:center;gap:8px;width:100%;height:40px;padding:0;border:0;background:none;
-  color:var(--text);font:700 13px system-ui,sans-serif;text-align:left;position:relative;
-  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-.devghead::after{content:'';position:absolute;left:0;bottom:4px;height:2px;width:0;background:#5ab8ff;opacity:0}
-.devghead.holding::after{opacity:1;width:100%;transition:width var(--hold,400ms) linear}
-.devcaret{width:12px;color:var(--muted)}
+.devpanel{--text:#e6edf5;--muted:rgba(230,237,245,0.55);--pad:rgba(255,255,255,0.06);--ring:rgba(255,255,255,0.14);
+  --acc:#5ab8ff;position:relative;z-index:1;width:100%;max-width:400px;max-height:calc(100% - 4px);display:flex;flex-direction:column;
+  box-sizing:border-box;background:#11151c;border:1px solid var(--ring);border-radius:16px;
+  box-shadow:0 14px 44px rgba(0,0,0,0.55);color:var(--text);overflow:hidden}
+.devtop{flex:0 0 auto;padding:12px 14px 0;border-bottom:1px solid var(--ring);background:rgba(255,255,255,0.02)}
+.devhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.devhead h2{margin:0;font:800 18px system-ui,sans-serif;letter-spacing:.02em}
+.devpanel .done{color:var(--text);border-color:var(--ring);background:var(--pad)}
+.devbtns{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.devbtns .dbg{height:40px;padding:0 4px;border-radius:10px;font:700 11px system-ui,sans-serif;letter-spacing:.02em;
+  color:var(--text);background:var(--pad);border:1px solid var(--ring)}
+.devbtns .dbg.on{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}
+.devbtns .dbg.restart{background:#b8381a;border-color:#b8381a;color:#fff}
+.devbtns .dbg.devcopy{grid-column:span 2;background:#1f6fb8;border-color:#1f6fb8;color:#fff}
+.devcopied{margin:0 0 8px}
+.devcopied.ok{color:#5ad65a}
+.devcopytext{width:100%;box-sizing:border-box;height:120px;margin:0 0 8px;font:12px ui-monospace,monospace;
+  background:var(--pad);color:var(--text);border:1px solid var(--ring);border-radius:8px}
+.devsearchw{position:relative;margin-bottom:8px}
+.devsearch{width:100%;box-sizing:border-box;height:40px;border-radius:10px;border:1px solid var(--ring);
+  background:rgba(0,0,0,0.3);color:var(--text);font:500 15px system-ui,sans-serif;padding:0 40px 0 12px;
+  user-select:text;-webkit-user-select:text;-webkit-appearance:none;appearance:none}
+.devsearch::-webkit-search-cancel-button{display:none}
+.devsearch:focus{outline:none;border-color:var(--acc)}
+.devclear{position:absolute;right:4px;top:4px;width:32px;height:32px;border:0;border-radius:8px;background:none;
+  color:var(--muted);font-size:20px;line-height:1}
+.devtabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin:0 -14px;padding:0 10px}
+.devtabs::-webkit-scrollbar{display:none}
+.devtab{position:relative;flex:1 0 auto;height:42px;padding:0 10px;border:0;border-bottom:3px solid transparent;
+  background:none;color:var(--muted);font:700 13px system-ui,sans-serif;white-space:nowrap}
+.devtab.on{color:var(--text);border-bottom-color:var(--acc)}
+.devdot{display:inline-block;width:6px;height:6px;border-radius:3px;background:#ff8a1f;margin-left:5px;vertical-align:2px}
+.devbody{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 10px 14px}
+.devgroup{margin:0 0 6px;border:1px solid var(--ring);border-radius:12px;background:var(--pad)}
+.devgroup.open{background:rgba(255,255,255,0.035)}
+.devghead{display:flex;align-items:center;gap:8px;width:100%;min-height:48px;padding:0 12px;border:0;background:none;
+  color:var(--text);font:700 14px system-ui,sans-serif;text-align:left;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.devgroup.open .devghead{position:sticky;top:-8px;z-index:3;background:rgb(30,35,43);border-radius:12px 12px 0 0;
+  border-bottom:1px solid var(--ring)}
+.devcaret{width:14px;color:var(--muted);font-size:20px;line-height:1;transition:transform .15s;display:inline-block}
+.devghead.open .devcaret{transform:rotate(90deg);color:var(--acc)}
+.devgname{flex:1 1 auto}
+.devgtab{margin-left:8px;font:600 11px system-ui,sans-serif;color:var(--muted)}
+.devgchg{font:700 10px system-ui,sans-serif;color:#ff8a1f;background:rgba(255,138,31,0.14);padding:3px 7px;border-radius:9px}
+.devgn{min-width:22px;text-align:center;font:600 11px system-ui,sans-serif;color:var(--muted);
+  background:rgba(255,255,255,0.07);padding:3px 6px;border-radius:9px}
+.devvars{display:flex;flex-direction:column;gap:8px;padding:10px 12px 12px}
 .spawnpanel .spawngo{margin-top:12px;width:100%}
-.devrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.devrow label{font-size:13px;color:var(--text);flex:1 1 auto}
+.devrow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px}
+.devrow label{font-size:13px;color:var(--text);flex:1 1 auto;line-height:1.3}
 .devrow input[type=color]{width:56px;padding:2px 4px}
-.devrow input[type=range]{width:118px;padding:0;border:0;background:none;accent-color:#5ad65a}
-.devval{display:block;font:600 12px system-ui,sans-serif;color:var(--muted)}
-/* the live jellyfish above its colour knobs: stuck to the top of the panel while you
+.devrow input[type=range]{width:132px;height:36px;padding:0;border:0;background:none;accent-color:var(--acc)}
+.devval{display:inline-block;margin-left:8px;font:700 12px ui-monospace,monospace;color:var(--acc)}
+/* the live jellyfish above its colour knobs: stuck under the group's header while you
    scroll through them, so every change shows as you make it */
-.jellyprev{position:sticky;top:-14px;z-index:2;display:block;width:100%;height:200px;margin:4px 0 6px;
+.jellyprev{position:sticky;top:40px;z-index:2;display:block;width:100%;height:200px;margin:4px 0 6px;
   border-radius:10px;border:1px solid var(--ring);background:#0d0f14;box-shadow:0 6px 14px rgba(0,0,0,0.35)}
 /* the hologram flash's fade curve (FadeCurve): drag the handles; touch-action none so a drag
    shapes it instead of scrolling the panel */
@@ -469,21 +500,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .fchandle{fill:#0d0f14;stroke:#5ad65a;stroke-width:1.6}
 .fcreset{display:block;margin:4px 0 0 auto}
 /* Dev → Elites: flames: the live preview, the gradient bar and the opacity ramp */
-.flameprev{position:sticky;top:-14px;z-index:2;display:block;width:100%;height:150px;margin:4px 0 6px;
+.flameprev{position:sticky;top:40px;z-index:2;display:block;width:100%;height:150px;margin:4px 0 6px;
   border-radius:10px;border:1px solid var(--ring);background:#0d0f14}
 .devlbl{margin:8px 0 2px;font:600 12px system-ui,sans-serif;color:var(--text)}
 .gradedit,.rampedit{position:relative;margin:2px 0 8px}
 .gradsel{display:flex;align-items:center;gap:8px;margin-top:4px;font:12px system-ui,sans-serif;color:var(--text)}
 .gradsel span{flex:1}
+.devreset{flex:0 0 auto;width:36px;height:36px;border-radius:8px;border:1px solid var(--ring);
+  background:var(--pad);color:var(--text);font-size:16px}
 .gradsel .devreset{width:auto;min-width:34px;padding:0 10px}
 .gradsel input[type=color]{width:40px;height:28px;padding:0;border:0;background:none}
-.devreset{flex:0 0 auto;width:34px;height:36px;border-radius:8px;border:1px solid var(--ring);
-  background:var(--pad);color:var(--text);font-size:16px}
-.devrow input{width:92px;flex:0 0 auto;box-sizing:border-box;height:36px;border-radius:8px;
-  border:1px solid var(--ring);background:var(--pad);color:var(--text);
+.devrow input{width:92px;flex:0 0 auto;box-sizing:border-box;height:38px;border-radius:8px;
+  border:1px solid var(--ring);background:rgba(0,0,0,0.3);color:var(--text);
   font:600 14px system-ui,sans-serif;padding:0 9px;text-align:right;
   user-select:text;-webkit-user-select:text}
-.devnote{margin:14px 0 0;font-size:11px;color:var(--muted);line-height:1.45}
+.devrow input:focus{outline:none;border-color:var(--acc)}
+.devnote{margin:12px 2px 0;font-size:11px;color:var(--muted);line-height:1.45}
 /* the death replay: a button on the death screen, then the replay's own screen over everything */
 .witnessbtn{position:absolute;left:50%;top:238px;transform:translateX(-50%);z-index:7;white-space:nowrap;
   background:rgba(20,6,6,0.78);border:1.5px solid #ff4a3a;color:#ffd9d4;border-radius:24px;padding:12px 20px;
@@ -1082,6 +1114,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ["fire", "Fire"],
     ["carrot", "Carrot (suit stat)"]
   ];
+  var DEV_TABS = [
+    ["look", "Look", ["view", "light", "fx", "holoflash", "guide"]],
+    ["player", "Player", ["player", "carrot", "bh", "sound", "ui", "menuptr", "witness"]],
+    ["creatures", "Creatures", ["enemy", "elite", "elitefx", "spider", "rat", "jelly", "jellycol"]],
+    ["world", "World", ["level", "arch", "sway", "fire"]],
+    ["level2", "Level 2", ["level2", "l2dark", "l2boom", "l2alien"]]
+  ];
+  var devTabOf = (g) => (DEV_TABS.find((t) => t[2].includes(g)) || DEV_TABS[DEV_TABS.length - 1])[0];
   function devReport() {
     const changed = DEV_META.filter((m) => DEV[m.k] !== DEV_DEFAULTS[m.k]);
     const lines = ["CaveRunner " + VERSION + " dev settings — please make these the new defaults:", ""];
@@ -26541,67 +26581,75 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       })
     );
   }
-  var HOLD_MS = 400, HOLD_SLOP = 10;
-  function DevGroupHead({ g, name, shut, toggle }) {
-    const [held, setHeld] = useState(false);
-    const T = useRef({ id: 0, x: 0, y: 0 });
-    const stop = () => {
-      clearTimeout(T.current.id);
-      T.current.id = 0;
-      setHeld(false);
-    };
-    useEffect(() => () => clearTimeout(T.current.id), []);
+  function DevGroupHead({ g, name, shut, toggle, n, changed, tab }) {
     return h(
       "button",
       {
-        className: "devghead" + (shut ? "" : " open") + (held ? " holding" : ""),
+        className: "devghead" + (shut ? "" : " open"),
         "data-g": g,
-        style: { "--hold": HOLD_MS + "ms" },
-        onPointerDown: (e) => {
-          T.current.x = e.clientX;
-          T.current.y = e.clientY;
-          clearTimeout(T.current.id);
-          setHeld(true);
-          T.current.id = setTimeout(() => {
-            T.current.id = 0;
-            setHeld(false);
-            toggle(g);
-          }, HOLD_MS);
-        },
-        onPointerMove: (e) => {
-          if (T.current.id && Math.hypot(e.clientX - T.current.x, e.clientY - T.current.y) > HOLD_SLOP) stop();
-        },
-        onPointerUp: stop,
-        onPointerCancel: stop,
-        onPointerLeave: stop,
-        onContextMenu: (e) => e.preventDefault()
+        "aria-expanded": !shut,
+        onClick: () => toggle(g)
       },
-      h("span", { className: "devcaret" }, shut ? "▸" : "▾"),
-      name
+      h("span", { className: "devcaret" }, "›"),
+      h("span", { className: "devgname" }, name, tab ? h("span", { className: "devgtab" }, tab) : null),
+      changed ? h("span", { className: "devgchg", title: "changed from default" }, changed + " changed") : null,
+      h("span", { className: "devgn" }, String(n))
     );
   }
+  var groupExtras = (g) => [
+    g === "jellycol" ? h(JellyPreview, { key: "jp" }) : null,
+    // the live jelly its colours paint
+    g === "holoflash" ? h(FadeCurve, { key: "fc" }) : null,
+    ...CURVES.filter((c) => c.g === g).map((c) => h(CurveEdit, { key: c.p, p: c.p, label: c.label, lo: c.lo, hi: c.hi })),
+    ...g === "elitefx" ? [
+      h(FlamePreview, { key: "fp" }),
+      h("p", { key: "gl", className: "devlbl" }, "Colour over life"),
+      h(GradEditor, { key: "ge" }),
+      h("p", { key: "rl", className: "devlbl" }, "Opacity over life"),
+      h(RampEditor, { key: "re" })
+    ] : []
+  ];
+  var lsGet = (k) => {
+    try {
+      return JSON.parse(localStorage.getItem(k));
+    } catch (_) {
+      return null;
+    }
+  };
+  var lsSet = (k, v) => {
+    try {
+      localStorage.setItem(k, JSON.stringify(v));
+    } catch (_) {
+    }
+  };
+  var blurBox = () => {
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  };
   function DevPanel({ input, refresh, close, onRestart, onSpawnGun }) {
     const LO = input.current.loadout;
     const [, bump] = useState(0);
     const [copied, setCopied] = useState(null);
-    const [openG, setOpenG] = useState(() => {
-      try {
-        return JSON.parse(localStorage.getItem("caverunner-devgroups")) || {};
-      } catch (_) {
-        return {};
-      }
+    const [q, setQ] = useState("");
+    const [openG, setOpenG] = useState(() => lsGet("caverunner-devgroups") || {});
+    const [tab, setTabS] = useState(() => {
+      const t = lsGet("caverunner-devtab");
+      if (DEV_TABS.some((x) => x[0] === t)) return t;
+      const o = DEV_GROUPS.find(([g]) => openG[g]);
+      return o ? devTabOf(o[0]) : DEV_TABS[0][0];
     });
+    const setTab = (t) => {
+      blurBox();
+      setTabS(t);
+      lsSet("caverunner-devtab", t);
+    };
     const toggleG = (g) => {
-      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      blurBox();
       const o = Object.assign({}, openG, { [g]: !openG[g] });
       setOpenG(o);
-      try {
-        localStorage.setItem("caverunner-devgroups", JSON.stringify(o));
-      } catch (_) {
-      }
+      lsSet("caverunner-devgroups", o);
     };
     const copyAll = () => {
-      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      blurBox();
       const text = devReport();
       const fallback = () => {
         let ok = false;
@@ -26624,6 +26672,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         fallback();
       }
     };
+    const act = (cls, label, fn) => h("button", { className: "dbg " + cls, onPointerDown: (e) => {
+      e.preventDefault();
+      fn();
+    } }, label);
+    const needle = q.trim().toLowerCase();
+    const tabName = (t) => (DEV_TABS.find((x) => x[0] === t) || DEV_TABS[0])[1];
+    const shown = DEV_GROUPS.filter(([g]) => needle || devTabOf(g) === tab).map(([g, name]) => {
+      const rows = DEV_META.filter((m) => m.g === g);
+      const nameHit = needle && name.toLowerCase().includes(needle);
+      const hits = needle && !nameHit ? rows.filter((m) => (m.label + " " + m.k).toLowerCase().includes(needle)) : rows;
+      return { g, name, rows, hits, nameHit };
+    }).filter((x) => !needle || x.nameHit || x.hits.length);
     return h(
       "div",
       { className: "devwrap" },
@@ -26636,112 +26696,107 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         { className: "devpanel scroll" },
         h(
           "div",
-          { className: "devhead" },
-          h("h2", null, "Dev"),
-          h("button", { className: "done", onPointerDown: (e) => {
-            e.preventDefault();
-            close();
-          } }, "Done")
+          { className: "devtop" },
+          h(
+            "div",
+            { className: "devhead" },
+            h("h2", null, "Dev"),
+            h("button", { className: "done", onPointerDown: (e) => {
+              e.preventDefault();
+              close();
+            } }, "Done")
+          ),
+          h(
+            "div",
+            { className: "devbtns" },
+            act("toggle" + (LO.debug ? " on" : ""), "All mods", () => {
+              LO.debug = !LO.debug;
+              refresh();
+              bump((n) => n + 1);
+            }),
+            act("toggle allperks" + (LO.debugPerks ? " on" : ""), "All perks", () => {
+              LO.debugPerks = !LO.debugPerks;
+              refresh();
+              bump((n) => n + 1);
+            }),
+            act("spawngun", "Spawn gun", onSpawnGun),
+            act("newcave", "New cave", () => {
+              input.current.newCave = true;
+              close();
+            }),
+            act("floor2", "Floor 2", () => {
+              input.current.newCave = 2;
+              close();
+            }),
+            act("restart", "Restart run", onRestart),
+            act("devcopy", "Copy report", copyAll)
+          ),
+          copied ? h("p", { className: "devnote devcopied" + (copied.ok ? " ok" : "") }, copied.ok ? "Copied — paste it to Claude." : "Could not reach the clipboard — press and hold the text below to copy it.") : null,
+          copied && !copied.ok ? h("textarea", { className: "devcopytext", readOnly: true, value: copied.text }) : null,
+          h(
+            "div",
+            { className: "devsearchw" },
+            h("input", {
+              className: "devsearch",
+              type: "search",
+              placeholder: "Search knobs…",
+              value: q,
+              onChange: (e) => setQ(e.target.value)
+            }),
+            q ? h("button", { className: "devclear", "aria-label": "Clear search", onPointerDown: (e) => {
+              e.preventDefault();
+              setQ("");
+            } }, "×") : null
+          ),
+          needle ? null : h(
+            "div",
+            { className: "devtabs", role: "tablist" },
+            DEV_TABS.map(([t, name, gs]) => {
+              const chg = DEV_META.filter((m) => gs.includes(m.g) && DEV[m.k] !== DEV_DEFAULTS[m.k]).length;
+              return h("button", {
+                key: t,
+                className: "devtab" + (t === tab ? " on" : ""),
+                "data-t": t,
+                role: "tab",
+                "aria-selected": t === tab,
+                onClick: () => setTab(t)
+              }, name, chg ? h("i", { className: "devdot" }) : null);
+            })
+          )
         ),
         h(
           "div",
-          { className: "devbtns" },
-          h(
-            "button",
-            {
-              className: "dbg" + (LO.debug ? " on" : ""),
-              onPointerDown: (e) => {
-                e.preventDefault();
-                LO.debug = !LO.debug;
-                refresh();
-                bump((n) => n + 1);
-              }
-            },
-            "All mods"
-          ),
-          h(
-            "button",
-            {
-              className: "dbg allperks" + (LO.debugPerks ? " on" : ""),
-              onPointerDown: (e) => {
-                e.preventDefault();
-                LO.debugPerks = !LO.debugPerks;
-                refresh();
-                bump((n) => n + 1);
-              }
-            },
-            "All perks"
-          ),
-          h("button", {
-            className: "dbg restart",
-            onPointerDown: (e) => {
-              e.preventDefault();
-              onRestart();
-            }
-          }, "Restart run"),
-          h("button", {
-            className: "dbg spawngun",
-            onPointerDown: (e) => {
-              e.preventDefault();
-              onSpawnGun();
-            }
-          }, "Spawn gun"),
-          h("button", {
-            className: "dbg newcave",
-            onPointerDown: (e) => {
-              e.preventDefault();
-              input.current.newCave = true;
-              close();
-            }
-          }, "New cave"),
-          h("button", {
-            className: "dbg floor2",
-            onPointerDown: (e) => {
-              e.preventDefault();
-              input.current.newCave = 2;
-              close();
-            }
-          }, "Floor 2")
-        ),
-        DEV_GROUPS.map(([g, name]) => {
-          const shut = !openG[g];
-          return h(
-            "div",
-            { key: g, className: "devgroup" },
-            h(DevGroupHead, { g, name, shut, toggle: toggleG }),
-            shut ? null : h(
+          { className: "devbody" },
+          shown.length ? null : h("p", { className: "devnote" }, "No knob matches “" + q.trim() + "”."),
+          shown.map(({ g, name, rows, hits, nameHit }) => {
+            const shut = needle ? false : !openG[g];
+            const changed = rows.filter((m) => DEV[m.k] !== DEV_DEFAULTS[m.k]).length;
+            return h(
               "div",
-              { className: "devvars" },
-              g === "jellycol" ? h(JellyPreview) : null,
-              // the live jelly its colours paint
-              g === "holoflash" ? h(FadeCurve) : null,
-              CURVES.filter((c) => c.g === g).map((c) => h(CurveEdit, { key: c.p, p: c.p, label: c.label, lo: c.lo, hi: c.hi })),
-              g === "elitefx" ? [
-                h(FlamePreview, { key: "fp" }),
-                h("p", { key: "gl", className: "devlbl" }, "Colour over life"),
-                h(GradEditor, { key: "ge" }),
-                h("p", { key: "rl", className: "devlbl" }, "Opacity over life"),
-                h(RampEditor, { key: "re" })
-              ] : null,
-              DEV_META.filter((m) => m.g === g).map((m) => h(DevRow, { key: m.k, meta: m }))
-            )
-          );
-        }),
-        h(
-          "p",
-          { className: "devnote" },
-          "Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back."
-        ),
-        h(
-          "button",
-          { className: "dbg devcopy", onPointerDown: (e) => {
-            e.preventDefault();
-            copyAll();
-          } },
-          "Copy all dev settings to clipboard"
-        ),
-        copied ? h("p", { className: "devnote" }, copied.ok ? "Copied — paste it to Claude." : "Could not reach the clipboard — press and hold the text below to copy it.") : null,
-        copied && !copied.ok ? h("textarea", { className: "devcopytext", readOnly: true, value: copied.text }) : null
+              { key: g, className: "devgroup" + (shut ? "" : " open") },
+              h(DevGroupHead, {
+                g,
+                name,
+                shut,
+                toggle: toggleG,
+                n: rows.filter((m) => m.type !== "curve").length,
+                changed,
+                tab: needle ? tabName(devTabOf(g)) : ""
+              }),
+              shut ? null : h(
+                "div",
+                { className: "devvars" },
+                !needle || nameHit ? groupExtras(g) : null,
+                hits.map((m) => h(DevRow, { key: m.k, meta: m }))
+              )
+            );
+          }),
+          h(
+            "p",
+            { className: "devnote" },
+            "Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back; ↺ resets a slider or colour. Copy report sends every change to Claude."
+          )
+        )
       )
     );
   }
