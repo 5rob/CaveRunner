@@ -663,7 +663,9 @@ export function makeLevel(seed, floor, owned) {
   }
   // the wasteland round the zones (Level 2 stage 5, destroy.js): blasts, their fire burnt out, bones; a kit piece a blast hit is off the list
   if (tombData && darkData && darkData.zones.length) {
-    const boom = destroyFloor({ mat, img, dimg, bgImg, fuel, web: darkData.web }, darkData.mask, seed, keep);
+    // the zones' chambers kept too: a big blast just outside a zone would bite the prize's flat floor
+    const keepB = keep.concat(darkData.zones.map(z => ({ x: z.chamber.x * CELL, y: z.chamber.y * CELL, r: (Math.max(z.chamber.rx, z.chamber.ry) + 6) * CELL })));
+    const boom = destroyFloor({ mat, img, dimg, bgImg, fuel, web: darkData.web }, darkData.mask, seed, keepB);
     /** @param {number} x @param {number} y @param {number} w @param {number} h */
     const hit = (x, y, w, h) => boom.blasts.some(b => Math.hypot(b.x - Math.max(x, Math.min(b.x, x + w)), b.y - Math.max(y, Math.min(b.y, y + h))) < b.r);
     for (const r of tombData.rooms) if (r.kit) r.kit = r.kit.filter(k => !hit(k.x, k.y, k.w, k.h) && !hit(2 * Math.round(r.cx) - k.x - k.w, k.y, k.w, k.h));
