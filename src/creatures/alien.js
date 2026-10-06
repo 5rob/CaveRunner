@@ -73,17 +73,32 @@ export function drawAlien(ctx, x, y, r, time, phase, flash, col, S) {
     // the eyeball: almost all of it
     ctx.fillStyle = flash ? '#ffffff' : col.c;
     ctx.beginPath(); ctx.arc(0, 0, r * 0.8, 0, Math.PI * 2); ctx.fill();
-    // a few red veins in from the rim
-    ctx.strokeStyle = 'rgba(170, 40, 50, 0.55)'; ctx.lineWidth = Math.max(0.2, r * 0.06);
-    for (let v = 0; v < 4; v++) {
-      const va = phase * 3 + v * 1.7, vr = r * 0.8;
-      ctx.beginPath(); ctx.moveTo(Math.cos(va) * vr, Math.sin(va) * vr);
-      ctx.lineTo(Math.cos(va + 0.25) * vr * 0.6, Math.sin(va + 0.25) * vr * 0.6); ctx.stroke();
-    }
-    // the pupil: a black dot, wherever it is looking
+    // the pupil: where it is looking (the veins reach for it)
     const px = Math.max(-1, Math.min(1, s.px || 0)), py = Math.max(-1, Math.min(1, s.py || 0)), room = r * 0.42;
+    const pcx = px * room, pcy = py * room, pr = r * 0.3;
+    // red veins in from the rim to the pupil's edge, eight, each its own squiggle (owner), following the pupil
+    // as it moves; clipped to the eyeball so none shows outside the body
+    ctx.save();
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.8, 0, Math.PI * 2); ctx.clip();
+    ctx.strokeStyle = 'rgba(170, 40, 50, 0.6)'; ctx.lineWidth = Math.max(0.18, r * 0.05); ctx.lineCap = 'round';
+    for (let v = 0; v < 8; v++) {
+      const h = Math.sin(phase * 12.9898 + v * 78.233) * 43758.5453, u = h - Math.floor(h);
+      const va = phase * 3 + v * (Math.PI * 2 / 8) + (u - 0.5) * 0.5;
+      const sx = Math.cos(va) * r * 0.86, sy = Math.sin(va) * r * 0.86;
+      const ex = pcx + Math.cos(va) * pr * 0.9, ey = pcy + Math.sin(va) * pr * 0.9;
+      const dx = ex - sx, dy = ey - sy, dl = Math.hypot(dx, dy) || 1, nx = -dy / dl, ny = dx / dl;
+      const amp = r * (0.02 + u * 0.12), waves = 1 + u * 3, steps = 10;
+      ctx.beginPath(); ctx.moveTo(sx, sy);
+      for (let q = 1; q <= steps; q++) {
+        const t = q / steps, w = Math.sin(t * Math.PI * waves + v) * amp * Math.sin(t * Math.PI);
+        ctx.lineTo(sx + dx * t + nx * w, sy + dy * t + ny * w);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+    // the pupil: a black dot
     ctx.fillStyle = col.eye;
-    ctx.beginPath(); ctx.arc(px * room, py * room, r * 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(pcx, pcy, pr, 0, Math.PI * 2); ctx.fill();
     // and the wet glint
     ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.beginPath(); ctx.arc(-r * 0.32, -r * 0.34, r * 0.13, 0, Math.PI * 2); ctx.fill();
