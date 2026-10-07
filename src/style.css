@@ -485,8 +485,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   background:var(--pad);color:var(--muted);font:700 10px system-ui,sans-serif;letter-spacing:.09em}
 .dbg.on{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}
 .bag.debug{box-shadow:inset 0 0 0 1.5px rgba(255,138,31,0.5)}
-/* the dev tools: a gear in the top-right, and the panel it opens (Restart lives inside) */
-.devbtn{position:absolute;top:10px;right:10px;z-index:6;border:1px solid rgba(255,255,255,0.25);
+/* the dev tools: a gear left of ⏸ (dev mode only), and the panel it opens (Restart lives inside) */
+.devbtn{position:absolute;top:10px;right:56px;z-index:6;border:1px solid rgba(255,255,255,0.25);
   background:rgba(0,0,0,0.35);color:#e9ecf2;border-radius:8px;width:38px;height:38px;padding:0;
   font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center}
 /* the Dev panel (v0.0.149): a dark card — actions, search and tabs on top, the tab's groups scrolling below */
@@ -837,8 +837,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   pointer-events:none;display:flex;align-items:center;justify-content:center;
   background:rgba(18,20,26,.75);border:2px solid #ff8a1f;box-shadow:0 4px 14px rgba(0,0,0,.6)}
 .gundrag svg,.gundrag canvas,.gundrag img{max-width:46px;max-height:46px}
-/* the pause menu (LIST4 #3): ⏸ beside the Dev gear (top left has the version); the card over a shade, always dark */
-.pausebtn{position:absolute;top:10px;right:56px;z-index:6;border:1px solid rgba(255,255,255,0.25);
+/* the pause menu (LIST4 #3): ⏸ top right, the Dev gear left of it in dev mode (top left has the version); the card over a shade, always dark */
+.pausebtn{position:absolute;top:10px;right:10px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;z-index:6;border:1px solid rgba(255,255,255,0.25);
   background:rgba(0,0,0,0.35);color:#e9ecf2;border-radius:8px;width:38px;height:38px;padding:0;
   font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center}
 .app.witnessing .pausebtn{visibility:hidden}

@@ -20,6 +20,7 @@ import { holoPass } from '../game/render/guide.js';
 import { FOLLOW_AHEAD, FOLLOW_PULL } from '../spells/paths.js';
 import { drawLook } from '../game/render/looks.js';
 import { ModCard, tgtBadge } from './cards.js';
+import { devShown } from './devmode.js';
 import { GunArtPicker } from './gunart.js';
 import { h, useEffect, useMemo, useRef, useState } from './h.js';
 import { GAUGE_COL, healthCol } from './hud.js';
@@ -474,7 +475,8 @@ export const SHOW_TIPS = false;
 
 /** @param {{ input: { current: GameInput }, close: () => void, refresh: () => void, canEdit: boolean, tabs?: any }} props */
 // The Bag's header (owner, LIST4 #1): the selected gun's name in its colour, ✏️ renames it inline,
-// 💾 saves it with its mods as a preset (save/presets.js; Dev → Spawn gun lists them), then Done.
+// 💾 saves it with its mods as a preset (save/presets.js; Dev → Spawn gun lists them; only in dev mode,
+// ui/devmode.js), then Done.
 // `ed` is the inline box open: 'name' (rename) or 'preset' (the preset's name), for gun slot `sel`.
 /** @param {{ gun: Gun | null, sel: number, refresh: () => void, close: () => void, onArt: () => void }} props */
 export function BagHead({ gun, sel, refresh, close, onArt }) {
@@ -515,7 +517,7 @@ export function BagHead({ gun, sel, refresh, close, onArt }) {
     flash ? h('span', { className: 'hflash' }, flash) : null,
     h('span', { className: 'hgap' }),
     gun ? h('button', { className: 'artbtn', 'aria-label': 'Gun look', onPointerDown: tap(onArt) }, '🖼️') : null,
-    gun ? h('button', { className: 'presetbtn', 'aria-label': 'Save as preset', onPointerDown: tap(() => open('preset')) }, '💾') : null,
+    gun && devShown() ? h('button', { className: 'presetbtn', 'aria-label': 'Save as preset', onPointerDown: tap(() => open('preset')) }, '💾') : null,
     doneBtn);
 }
 
