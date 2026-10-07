@@ -7,14 +7,13 @@ branch **`list4`**, every look goes to the owner as 412×880 screenshots and wai
 Status: `todo` · `agent` (running, branch named) · `review` (screenshots sent) · `ready` · `released vX.Y.Z`.
 
 ## The list (owner's words, shortened)
-
 | # | Item | Who | Status | Notes |
 |---|------|-----|--------|-------|
-| 1 | Bag (gun mod screen): title → the gun's name in its colour + ✏️ rename; gold → 💾 save button: saves gun + mods as a named preset, listed under Dev → Spawn gun (tap = spawn it, can delete) | agent B | todo | |
-| 2 | Pixel-art gun sprites recreated from the owner's picture (~30 guns, many colours); 🖼️ button next to 💾 opens a gallery, the pick becomes that gun's art everywhere | agent A (art + picker), manager wires the button | todo | |
-| 3 | Pause menu in play: Save (this run), Volume slider (whole game), Exit to main menu | agent C | todo | |
-| 4 | Title screen: animated action background ("surprise me"), big fancy title, menu: 3 save slots (each with delete), Start | agent C | todo | |
-| 5 | HUD gun slot circles coloured like their gun's name | agent B | todo | |
+| 1 | Bag (gun mod screen): title → the gun's name in its colour + ✏️ rename; gold → 💾 save button: saves gun + mods as a named preset, listed under Dev → Spawn gun (tap = spawn it, can delete) | agent B | review | merged (0f9093e): `BagHead` in ui/editor.js, `save/presets.js` (`caverunner-gunpresets`), `spawnPreset`; suites `presets` (logic+browser); shots sent. ✏️/💾 work in a view-only Bag too |
+| 2 | Pixel-art gun sprites recreated from the owner's picture (~30 guns, many colours); 🖼️ button next to 💾 opens a gallery, the pick becomes that gun's art everywhere | agent A + manager (header merge) | review | merged (a146479 + 9ab1250): 27 sprites `art/gunart.js` (re-extract: `tools/gunart-extract.js`), `drawGun(…, art)`, `gun.art`, `GunArtPicker` ui/gunart.js; one pixel size `GUN_ART_PX` 0.46; suites `gunart`; shots sent |
+| 3 | Pause menu in play: Save (this run), Volume slider (whole game), Exit to main menu | agent C | agent | |
+| 4 | Title screen: animated action background ("surprise me"), big fancy title, menu: 3 save slots (each with delete), Start | agent C | agent | |
+| 5 | HUD gun slot circles coloured like their gun's name | agent B | review | merged with #1; held slot = thicker ring + glow in its colour (was amber) |
 
 ## Decisions (manager's, tell the owner)
 - Save slots hold the run **and** the slot's mod/perk collections; the old single save becomes slot 1.
@@ -24,3 +23,5 @@ Status: `todo` · `agent` (running, branch named) · `review` (screenshots sent)
 
 ## Log (newest last)
 - 2026-10-07: list received; branch `list4`; agents A, B, C started in parallel.
+- B done (items 1, 5), merged, shots sent. A done (item 2), merged; 🖼️ moved into B's header (name ✏️ … 🖼️ 💾 Done); shots sent.
+  Logic `strata` fails on HEAD too (known); `rats`/`spider` chance.
