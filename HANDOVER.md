@@ -3,6 +3,11 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
+## v0.0.160 — dev mode (hold ⏸ 5 s), ⏸ / ⚙️ swapped: RELEASED on `main` 2026-10-08 (owner OK'd)
+
+⏸ top right, ⚙️ left of it and hidden until you hold ⏸ 5 s (again hides it; remembered). Dev mode off also hides
+the cards' 📌 / 🗑️ / Give Feedback and the Bag's 💾. `ui/devmode.js`; CHANGELOG v0.0.160. Note: the owner's phone starts with dev mode **off** after the update.
+
 ## v0.0.159 — LIST4 (5 items): RELEASED on `main` 2026-10-08 (owner OK'd)
 
 Read `LIST4.md` (items, files, decisions) and CHANGELOG v0.0.159: title screen with 3 save slots, pause menu (⏸:

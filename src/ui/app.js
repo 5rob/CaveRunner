@@ -20,7 +20,8 @@ import { MiniMap, miniBox } from './minimap.js';
 import { SHOP_MENUS } from './modshop.js';
 import { DragGun, HoldRing, gunSlotPress } from './gunhold.js';
 import { GunSwap } from './swap.js';
-import { PauseMenu } from './pause.js';
+import { PauseButton, PauseMenu } from './pause.js';
+import { devShown, setDevShown } from './devmode.js';
 import { Witness } from './witness.js';
 import { gunColor, gunHue } from '../spells/guns.js';
 
@@ -56,6 +57,7 @@ export function App() {
   const [edit, setEdit] = useState(false);
   const [devOpen, setDevOpen] = useState(false);
   const [pauseOpen, setPauseOpen] = useState(false);   // the pause menu (ui/pause.js)
+  const [devOn, setDevOn] = useState(devShown);        // dev mode: the ⚙️ shown (ui/devmode.js)
   const [spawnOpen, setSpawnOpen] = useState(false);
   const [lvlOpen, setLvlOpen] = useState(false);
   const [witnessOpen, setWitnessOpen] = useState(false);
@@ -261,11 +263,11 @@ export function App() {
         h(CrystalRow, { red: (LO.crystals || []).length, green: (LO.greens || []).length }),
         LO.debt > 0 ? h('div', { className: 'debt' }, '-' + Math.trunc(LO.debt).toLocaleString('en-US'), h('span', null, 'g owed')) : null,
         LO.debt > 0 && LO.due ? h(DueClock, { due: LO.due }) : null),
-      h('button', { className: 'devbtn', title: 'Dev tools',
-        onPointerDown: e => { e.preventDefault(); setDevOpen(true); } }, '⚙️'),
-      // the pause menu's button, top left (the Dev gear's mirror)
-      h('button', { className: 'pausebtn', title: 'Pause',
-        onPointerDown: e => { e.preventDefault(); setPauseOpen(true); } }, '⏸'),
+      // the Dev gear, left of ⏸, only in dev mode (hold ⏸ 5 s: ui/devmode.js)
+      devOn ? h('button', { className: 'devbtn', title: 'Dev tools',
+        onPointerDown: e => { e.preventDefault(); setDevOpen(true); } }, '⚙️') : null,
+      // the pause menu's button, top right
+      h(PauseButton, { open: () => setPauseOpen(true), toggleDev: () => { setDevShown(!devOn); setDevOn(!devOn); } }),
       pauseOpen ? h(PauseMenu, { input, close: () => setPauseOpen(false) }) : null,
       confirmAt != null ? h('div', { className: 'confirm' },
         h('div', { className: 'shade', onPointerDown: e => { e.preventDefault(); setConfirmAt(null); } }),

@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.160 — dev mode: hold ⏸ 5 s to show the dev tools; ⏸ and ⚙️ swap places
+Released 2026-10-08 (owner OK'd the screenshots; a minor update).
+- ⏸ is now in the top-right corner, the ⚙️ left of it. ⏸ opens the menu on release; **held 5 s** it toggles dev
+  mode instead (`ui/devmode.js`, `caverunner-devshow`; off by default, on for the browser test page).
+- Dev mode off hides: the ⚙️, the mod/perk cards' 📌 / 🗑️ / Give Feedback, and the Bag's 💾 save-as-preset.
+- `title` suite: ⏸ is pressed down + up now; holding it hides and brings back the ⚙️.
+
 ## v0.0.159 — the owner's LIST4: title screen + save slots, pause menu, gun looks, gun presets, coloured gun slots
 Released 2026-10-08 (the owner OK'd the screenshots; a minor update). Built by three time-boxed agents on `list4`
 (`LIST4.md` has each item's files and decisions).

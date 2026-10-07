@@ -65,8 +65,10 @@ explosions, bullet hits, enemy fire, creature voices, world/props, drips, footst
 and press Start (or Continue). Each slot is its own run with its own unlocked mods and perks; 🗑️
 then "Delete?" wipes a slot. Your run from before this update is slot 1.
 
-**Pause.** ⏸ (top right, by ⚙️) pauses: Resume, Save, a Volume slider for the whole game, and Exit
-to main menu (it saves first).
+**Pause.** ⏸ (top right) pauses: Resume, Save, a Volume slider for the whole game, and Exit
+to main menu (it saves first). **Hold ⏸ for 5 seconds** to show or hide the dev tools: the ⚙️ panel
+(beside ⏸), the 📌 / 🗑️ / Give Feedback on mod and perk cards, and the Bag's 💾 save-as-preset.
+They're hidden until you do.
 
 **Your run saves itself.** Every couple of seconds, and whenever you put the app away, the
 run is saved: floor, guns, bag, perks and suit, gold and health, and the cave itself — what you have

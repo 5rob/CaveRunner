@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.159</title>
-<!-- VERSION = 'v159' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.160</title>
+<!-- VERSION = 'v160' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -494,8 +494,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   background:var(--pad);color:var(--muted);font:700 10px system-ui,sans-serif;letter-spacing:.09em}
 .dbg.on{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}
 .bag.debug{box-shadow:inset 0 0 0 1.5px rgba(255,138,31,0.5)}
-/* the dev tools: a gear in the top-right, and the panel it opens (Restart lives inside) */
-.devbtn{position:absolute;top:10px;right:10px;z-index:6;border:1px solid rgba(255,255,255,0.25);
+/* the dev tools: a gear left of ⏸ (dev mode only), and the panel it opens (Restart lives inside) */
+.devbtn{position:absolute;top:10px;right:56px;z-index:6;border:1px solid rgba(255,255,255,0.25);
   background:rgba(0,0,0,0.35);color:#e9ecf2;border-radius:8px;width:38px;height:38px;padding:0;
   font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center}
 /* the Dev panel (v0.0.149): a dark card — actions, search and tabs on top, the tab's groups scrolling below */
@@ -846,8 +846,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   pointer-events:none;display:flex;align-items:center;justify-content:center;
   background:rgba(18,20,26,.75);border:2px solid #ff8a1f;box-shadow:0 4px 14px rgba(0,0,0,.6)}
 .gundrag svg,.gundrag canvas,.gundrag img{max-width:46px;max-height:46px}
-/* the pause menu (LIST4 #3): ⏸ beside the Dev gear (top left has the version); the card over a shade, always dark */
-.pausebtn{position:absolute;top:10px;right:56px;z-index:6;border:1px solid rgba(255,255,255,0.25);
+/* the pause menu (LIST4 #3): ⏸ top right, the Dev gear left of it in dev mode (top left has the version); the card over a shade, always dark */
+.pausebtn{position:absolute;top:10px;right:10px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;z-index:6;border:1px solid rgba(255,255,255,0.25);
   background:rgba(0,0,0,0.35);color:#e9ecf2;border-radius:8px;width:38px;height:38px;padding:0;
   font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center}
 .app.witnessing .pausebtn{visibility:hidden}
@@ -901,7 +901,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.159';</script>
+<script>const VERSION = 'v0.0.160';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -27260,6 +27260,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { now, limit, tips: picked };
   }
 
+  // src/ui/devmode.js
+  var KEY = "caverunner-devshow";
+  var DEV_HOLD_MS = 5e3;
+  function devShown() {
+    let v = null;
+    try {
+      v = localStorage.getItem(KEY);
+    } catch (_) {
+    }
+    return v == null ? !!window.__TEST : v === "1";
+  }
+  function setDevShown(on) {
+    try {
+      localStorage.setItem(KEY, on ? "1" : "0");
+    } catch (_) {
+    }
+  }
+
   // src/save/audit.js
   var AUDIT_KEY = "caverunner-audit";
   function cleanAudit(raw) {
@@ -27677,7 +27695,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           h("b", null, m.name),
           h("span", null, kind + (m.mana ? " · " + m.mana + " mana" : ""))
         ),
-        ingame ? null : h(AuditMarks, { au }),
+        ingame || !devShown() ? null : h(AuditMarks, { au }),
         onClose ? h("button", {
           className: "pclose",
           onPointerDown: (e) => {
@@ -27705,7 +27723,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       // the placement use-example is for the editor, where you're deciding where a mod
       // goes — the shop/pickup preview leaves it off and keeps the card compact.
       ingame ? null : h("div", { className: "pdemo" }, demo),
-      ingame ? null : h(AuditFoot, { au })
+      ingame || !devShown() ? null : h(AuditFoot, { au })
     );
   }
   function PerkCard({ id, ingame, flow, top, onClose }) {
@@ -27726,7 +27744,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           h("b", { style: { color: pk.tint } }, pk.name),
           h("span", null, "Perk · counts while fitted to your Exo Suit")
         ),
-        ingame ? null : h(AuditMarks, { au }),
+        ingame || !devShown() ? null : h(AuditMarks, { au }),
         onClose ? h("button", {
           className: "pclose",
           onPointerDown: (e) => {
@@ -27736,7 +27754,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }, "×") : null
       ),
       h("p", { className: "pinfo" }, pk.info),
-      ingame ? null : h(AuditFoot, { au })
+      ingame || !devShown() ? null : h(AuditFoot, { au })
     );
   }
 
@@ -30304,7 +30322,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       flash ? h("span", { className: "hflash" }, flash) : null,
       h("span", { className: "hgap" }),
       gun ? h("button", { className: "artbtn", "aria-label": "Gun look", onPointerDown: tap(onArt) }, "🖼️") : null,
-      gun ? h("button", { className: "presetbtn", "aria-label": "Save as preset", onPointerDown: tap(() => open("preset")) }, "💾") : null,
+      gun && devShown() ? h("button", { className: "presetbtn", "aria-label": "Save as preset", onPointerDown: tap(() => open("preset")) }, "💾") : null,
       doneBtn
     );
   }
@@ -32063,6 +32081,37 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/ui/pause.js
+  function PauseButton({ open, toggleDev }) {
+    const timer = useRef(0);
+    useEffect(() => () => clearTimeout(timer.current), []);
+    const stop = () => {
+      const was = timer.current;
+      clearTimeout(timer.current);
+      timer.current = 0;
+      return was;
+    };
+    return h("button", {
+      className: "pausebtn",
+      title: "Pause",
+      onPointerDown: (e) => {
+        e.preventDefault();
+        stop();
+        timer.current = window.setTimeout(() => {
+          timer.current = 0;
+          toggleDev();
+          try {
+            if (navigator.vibrate) navigator.vibrate(60);
+          } catch (_) {
+          }
+        }, DEV_HOLD_MS);
+      },
+      onPointerUp: (e) => {
+        e.preventDefault();
+        if (stop()) open();
+      },
+      onPointerCancel: stop
+    }, "⏸");
+  }
   function PauseMenu({ input, close }) {
     const [vol, setVol] = useState(() => Math.round(SFX.volume * 100));
     const [saved, setSaved] = useState(0);
@@ -32397,6 +32446,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [edit, setEdit] = useState(false);
     const [devOpen, setDevOpen] = useState(false);
     const [pauseOpen, setPauseOpen] = useState(false);
+    const [devOn, setDevOn] = useState(devShown);
     const [spawnOpen, setSpawnOpen] = useState(false);
     const [lvlOpen, setLvlOpen] = useState(false);
     const [witnessOpen, setWitnessOpen] = useState(false);
@@ -32690,23 +32740,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           LO.debt > 0 ? h("div", { className: "debt" }, "-" + Math.trunc(LO.debt).toLocaleString("en-US"), h("span", null, "g owed")) : null,
           LO.debt > 0 && LO.due ? h(DueClock, { due: LO.due }) : null
         ),
-        h("button", {
+        // the Dev gear, left of ⏸, only in dev mode (hold ⏸ 5 s: ui/devmode.js)
+        devOn ? h("button", {
           className: "devbtn",
           title: "Dev tools",
           onPointerDown: (e) => {
             e.preventDefault();
             setDevOpen(true);
           }
-        }, "⚙️"),
-        // the pause menu's button, top left (the Dev gear's mirror)
-        h("button", {
-          className: "pausebtn",
-          title: "Pause",
-          onPointerDown: (e) => {
-            e.preventDefault();
-            setPauseOpen(true);
-          }
-        }, "⏸"),
+        }, "⚙️") : null,
+        // the pause menu's button, top right
+        h(PauseButton, { open: () => setPauseOpen(true), toggleDev: () => {
+          setDevShown(!devOn);
+          setDevOn(!devOn);
+        } }),
         pauseOpen ? h(PauseMenu, { input, close: () => setPauseOpen(false) }) : null,
         confirmAt != null ? h(
           "div",

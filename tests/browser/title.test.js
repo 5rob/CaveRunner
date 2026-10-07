@@ -14,7 +14,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     window.__TEST_TITLE = true;
     if (!sessionStorage.getItem('titletest')) {           // the first load only: slot 3 has a run, the rest are empty
       sessionStorage.setItem('titletest', '1');
-      for (const k of ['caverunner-save', 'caverunner-save-2', 'caverunner-slot', 'caverunner-volume']) localStorage.removeItem(k);
+      for (const k of ['caverunner-save', 'caverunner-save-2', 'caverunner-slot', 'caverunner-volume', 'caverunner-devshow']) localStorage.removeItem(k);
       localStorage.setItem('caverunner-save-3', JSON.stringify({ ver: 'old', floor: 5, hp: 40,
         loadout: { guns: [{ name: 'Pistol', slots: ['bolt'] }, null, null, null], sel: 0, bag: [], gold: 900 } }));
       localStorage.setItem('caverunner-collection-3', '["bolt"]');
@@ -25,6 +25,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   await page.waitForTimeout(600);
   const down = sel => page.locator(sel).first().dispatchEvent('pointerdown');
+  const press = async sel => { await down(sel); await page.locator(sel).first().dispatchEvent('pointerup'); };   // ⏸ opens on release
   const ls = k => page.evaluate(k => localStorage.getItem(k), k);
 
   check('the title shows, three slots', (await page.$$('.title .tslot')).length === 3);
@@ -56,8 +57,25 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.evaluate(() => window.__in.current.saveRun());
   check("the run saves to slot 2's key", !!(await ls('caverunner-save-2')) && !(await ls('caverunner-save')));
 
+  // dev mode: on by default on the test page; holding ⏸ 5 s hides the ⚙️ (and the cards' audit, the
+  // Bag's 💾) and doesn't open the menu; again brings it back
+  const devmode = async () => {
+    await down('.pausebtn');
+    await page.waitForTimeout(DEV_HOLD + 300);
+    await page.locator('.pausebtn').first().dispatchEvent('pointerup');
+    await page.waitForTimeout(100);
+    return { gear: !!(await page.$('.devbtn')), menu: !!(await page.$('.pausecard')), ls: await ls('caverunner-devshow') };
+  };
+  const DEV_HOLD = await page.evaluate(() => DEV_HOLD_MS);
+  check('the ⚙️ shows on the test page', !!(await page.$('.devbtn')));
+  let dm = await devmode();
+  check('holding ⏸ hides the ⚙️, no menu', !dm.gear && !dm.menu && dm.ls === '0', dm);
+  check('dev mode off: devShown() is false', await page.evaluate(() => !devShown()));
+  dm = await devmode();
+  check('holding again brings it back', dm.gear && !dm.menu && dm.ls === '1', dm);
+
   // pause
-  await down('.pausebtn');
+  await press('.pausebtn');
   await page.waitForTimeout(100);
   check('⏸ opens the pause menu', !!(await page.$('.pausecard')));
   check('and pauses the game', await page.evaluate(() => window.__in.current.paused === true));
@@ -78,7 +96,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('Resume closes it', !(await page.$('.pausecard')) && await page.evaluate(() => window.__in.current.paused === false));
 
   // exit to the title
-  await down('.pausebtn');
+  await press('.pausebtn');
   await page.waitForTimeout(80);
   await Promise.all([page.waitForEvent('load', { timeout: 10000 }), down('.pbtn.exit')]);
   await page.waitForTimeout(500);

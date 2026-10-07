@@ -9,6 +9,7 @@ import { effRecharge, gunPassives } from '../spells/cast.js';
 import { gunColor, gunLvCol } from '../spells/guns.js';
 import { MODS, famCol, famOf } from '../spells/mods.js';
 import { targetIcon } from '../spells/discrim.js';
+import { devShown } from './devmode.js';
 import { auditGet, auditNotes, auditToggle, loadAudit, saveAudit } from '../save/audit.js';
 import { h, useState } from './h.js';
 
@@ -116,7 +117,8 @@ function useAudit(key) {
 }
 /** @typedef {ReturnType<typeof useAudit>} AuditState */
 
-// The pin (keep) and trash (remove) toggles in a card's head; only on cards you can tap (not `ingame`)
+// The pin (keep) and trash (remove) toggles in a card's head; only on cards you can tap (not `ingame`),
+// and only in dev mode (ui/devmode.js), like Give Feedback
 /** @param {{ au: AuditState }} props */
 function AuditMarks({ au }) {
   const b = (/** @type {'keep' | 'trash'} */ m, /** @type {string} */ icon, /** @type {string} */ label) =>
@@ -239,7 +241,7 @@ export function ModCard({ id, onClose, ingame, top, flow, act }) {
       h('div', { className: 'ptitle' },
         h('b', null, m.name),
         h('span', null, kind + (m.mana ? ' \u00b7 ' + m.mana + ' mana' : ''))),
-      ingame ? null : h(AuditMarks, { au }),
+      ingame || !devShown() ? null : h(AuditMarks, { au }),
       onClose ? h('button', { className: 'pclose',
         onPointerDown: e => { e.preventDefault(); onClose(); } }, '\u00d7') : null
     ),
@@ -252,7 +254,7 @@ export function ModCard({ id, onClose, ingame, top, flow, act }) {
     // the placement use-example is for the editor, where you're deciding where a mod
     // goes — the shop/pickup preview leaves it off and keeps the card compact.
     ingame ? null : h('div', { className: 'pdemo' }, demo),
-    ingame ? null : h(AuditFoot, { au })
+    ingame || !devShown() ? null : h(AuditFoot, { au })
   );
 }
 
@@ -270,9 +272,9 @@ export function PerkCard({ id, ingame, flow, top, onClose }) {
       h('div', { className: 'ptitle' },
         h('b', { style: { color: pk.tint } }, pk.name),
         h('span', null, 'Perk · counts while fitted to your Exo Suit')),
-      ingame ? null : h(AuditMarks, { au }),
+      ingame || !devShown() ? null : h(AuditMarks, { au }),
       onClose ? h('button', { className: 'pclose',
         onPointerDown: e => { e.preventDefault(); onClose(); } }, '×') : null),
     h('p', { className: 'pinfo' }, pk.info),
-    ingame ? null : h(AuditFoot, { au }));
+    ingame || !devShown() ? null : h(AuditFoot, { au }));
 }
