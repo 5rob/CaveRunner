@@ -26,3 +26,4 @@ Status: `todo` · `agent` (running, branch named) · `review` (screenshots sent)
 - B done (items 1, 5), merged, shots sent. A done (item 2), merged; 🖼️ moved into B's header (name ✏️ … 🖼️ 💾 Done); shots sent.
   Logic `strata` fails on HEAD too (known); `rats`/`spider` chance.
 - C done (items 3, 4), merged (pure.js conflict only), shots sent. All 5 in review; full browser run started.
+- Full browser run: jelly, lightning, nuggets, torch failed; alone all pass except jelly's spit (known flake). Waiting on the owner.
