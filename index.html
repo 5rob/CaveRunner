@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.153</title>
-<!-- VERSION = 'v153' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.154</title>
+<!-- VERSION = 'v154' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -812,7 +812,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.153';</script>
+<script>const VERSION = 'v0.0.154';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -28486,6 +28486,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var GF_SWAY = 0.06, GF_SWAY_S = 4;
   var GF_WALL = 5;
   var GF_DPS_S = 3;
+  var GF_GRAPH_S = 5, GF_GRAPH_DT = 0.1;
   var GF_DUMMY_GAP = 6, GF_DUMMY_K = 2 / 3, DW = PW * GF_DUMMY_K, DH = PH * GF_DUMMY_K;
   function GunFire({ gun, sim }) {
     const ref = useRef(null);
@@ -28499,6 +28500,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       let H = 0;
       const dummy = { x: 0, y: 0, hitT: 0, hits: 0 };
       let dmgLog = [];
+      let graph = [];
+      let graphT = 0, dpsNow = 0;
       const DL2 = document.createElement("canvas"), dlx = DL2.getContext("2d", { willReadFrequently: true }), DLP = 3;
       const DLW = Math.ceil((DW + 8) * DLP), DLH = Math.ceil((DH + 6) * DLP);
       DL2.width = DLW;
@@ -28719,7 +28722,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.drawImage(DL2, dummy.x - 4, dummy.y - 3, DLW / DLP, DLH / DLP);
           ctx.restore();
         }
-        const dps = dmgLog.reduce((t, e) => t + e[1], 0) / GF_DPS_S;
+        const dps = dpsNow = dmgLog.reduce((t, e) => t + e[1], 0) / GF_DPS_S;
         ref.current.dataset.dps = dps.toFixed(1);
         if (dps > 0) {
           ctx.save();
@@ -28755,6 +28758,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.fill();
           ctx.globalAlpha = 1;
         }
+        for (graphT += dt; graphT >= GF_GRAPH_DT; graphT -= GF_GRAPH_DT) graph.push(dpsNow);
+        const keep2 = Math.round(GF_GRAPH_S / GF_GRAPH_DT) + 1;
+        if (graph.length > keep2) graph.splice(0, graph.length - keep2);
+        const peak = Math.max(...graph, 0);
+        if (peak > 0 && graph.length > 1) {
+          const top = 4, bot = H / 3, step2 = W / (keep2 - 1), x0 = W - (graph.length - 1) * step2;
+          ctx.strokeStyle = "#ff4a4a";
+          ctx.lineWidth = 1;
+          ctx.lineJoin = "round";
+          ctx.globalAlpha = 0.9;
+          ctx.beginPath();
+          graph.forEach((v, i) => {
+            const x = x0 + i * step2, y = bot - v / peak * (bot - top);
+            if (i) ctx.lineTo(x, y);
+            else ctx.moveTo(x, y);
+          });
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+        c.dataset.graph = String(graph.length);
       };
       raf = requestAnimationFrame(loop);
       return () => cancelAnimationFrame(raf);
