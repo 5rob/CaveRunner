@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.155</title>
-<!-- VERSION = 'v155' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.156</title>
+<!-- VERSION = 'v156' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -812,7 +812,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.155';</script>
+<script>const VERSION = 'v0.0.156';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -20006,8 +20006,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       G.ctx.stroke();
     } else if (f.field === "shield") {
       G.ctx.strokeStyle = f.col;
-      G.ctx.lineWidth = 1.2;
-      G.ctx.globalAlpha = 0.7 * beat;
+      G.ctx.lineWidth = 0.5;
+      G.ctx.globalAlpha = 0.1;
       for (const [a0, sgn] of [[W.time * 1.3, 1], [-W.time * 1.7, -1]]) {
         G.ctx.beginPath();
         G.ctx.arc(f.x, f.y, f.r * (sgn > 0 ? 0.92 : 0.84), a0, a0 + 2.2);
@@ -20083,6 +20083,32 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     path();
     G.ctx.restore();
   }
+  function drawFieldMotes(W, G, f) {
+    const n = Math.round(6 + f.r * 0.12), seed = f.x * 0.137 + f.y * 0.071;
+    const fade = Math.min(1, (f.max - f.life) * 4, f.life * 2);
+    for (let k = 0; k < n; k++) {
+      const h3 = (v) => {
+        const x2 = Math.sin(seed + k * 12.9898 + v * 78.233) * 43758.5453;
+        return x2 - Math.floor(x2);
+      };
+      const per = 1.1 + h3(1) * 0.9, ph = (W.time + h3(2) * per) / per % 1;
+      const cyc = Math.floor((W.time + h3(2) * per) / per);
+      const a = h3(3 + cyc) * 6.283, rr2 = f.r * 0.85 * Math.sqrt(h3(4 + cyc));
+      const x = f.x + Math.cos(a) * rr2, y = f.y + Math.sin(a) * rr2 - ph * 12;
+      G.ctx.globalAlpha = fade * Math.sin(ph * Math.PI) * 0.9;
+      const plus = f.field === "heal" && k % 3 === 0;
+      G.ctx.fillStyle = k % 2 ? "#ffffff" : f.col;
+      if (plus) {
+        G.ctx.fillStyle = f.col;
+        G.ctx.fillRect(x - 0.6, y - 2.2, 1.2, 4.4);
+        G.ctx.fillRect(x - 2.2, y - 0.6, 4.4, 1.2);
+      } else {
+        const sz = 0.8 + h3(5) * 0.9;
+        G.ctx.fillRect(x - sz / 2, y - sz / 2, sz, sz);
+      }
+    }
+    G.ctx.globalAlpha = 1;
+  }
   function drawFields(W, G, F2) {
     const { vh } = F2;
     for (const f of W.fields) {
@@ -20093,14 +20119,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       const t = f.life / f.max;
       const beat = 0.75 + 0.25 * Math.sin(W.time * (f.field === "mine" ? 7 : 3));
-      G.ctx.globalAlpha = 0.14 * beat * (f.field === "mine" || f.field === "dormant" ? 2 : 1);
-      G.ctx.fillStyle = f.col;
-      G.ctx.beginPath();
-      G.ctx.arc(f.x, f.y, f.r * (f.field === "mine" ? 0.35 : 1), 0, Math.PI * 2);
-      G.ctx.fill();
-      G.ctx.globalAlpha = 0.55 * beat;
+      if (f.field === "mine" || f.field === "dormant") {
+        G.ctx.globalAlpha = 0.28 * beat;
+        G.ctx.fillStyle = f.col;
+        G.ctx.beginPath();
+        G.ctx.arc(f.x, f.y, f.r * (f.field === "mine" ? 0.35 : 1), 0, Math.PI * 2);
+        G.ctx.fill();
+      } else drawFieldMotes(W, G, f);
+      const circle = f.field !== "mine" && f.field !== "dormant";
+      G.ctx.globalAlpha = circle ? 0.1 : 0.55 * beat;
       G.ctx.strokeStyle = f.col;
-      G.ctx.lineWidth = 1.5;
+      G.ctx.lineWidth = circle ? 0.5 : 1.5;
       G.ctx.setLineDash([5, 4]);
       G.ctx.lineDashOffset = -W.time * 14;
       G.ctx.beginPath();

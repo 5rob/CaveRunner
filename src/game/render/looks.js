@@ -225,7 +225,7 @@ export function drawFieldLook(W, G, f, beat) {
     for (let k = 0; k < 3; k++) { const a = k * 1.047 + W.time * 0.4; G.ctx.moveTo(f.x - Math.cos(a) * 4, f.y - Math.sin(a) * 4); G.ctx.lineTo(f.x + Math.cos(a) * 4, f.y + Math.sin(a) * 4); }
     G.ctx.stroke();
   } else if (f.field === 'shield') {      // two shimmering arcs turning against each other
-    G.ctx.strokeStyle = f.col; G.ctx.lineWidth = 1.2; G.ctx.globalAlpha = 0.7 * beat;
+    G.ctx.strokeStyle = f.col; G.ctx.lineWidth = 0.5; G.ctx.globalAlpha = 0.1;   // owner: thin and faint, like the ring
     for (const [a0, sgn] of [[W.time * 1.3, 1], [-W.time * 1.7, -1]]) {
       G.ctx.beginPath(); G.ctx.arc(f.x, f.y, f.r * (sgn > 0 ? 0.92 : 0.84), a0, a0 + 2.2); G.ctx.stroke();
       G.ctx.beginPath(); G.ctx.arc(f.x, f.y, f.r * (sgn > 0 ? 0.92 : 0.84), a0 + 3.14, a0 + 5.3); G.ctx.stroke(); }
@@ -271,6 +271,28 @@ export function drawBolt(G, pts, col, w, alpha) {
   G.ctx.restore();
 }
 
+// A circle field's inside: sparkles (white and its colour) rising and fading, and for Vigour
+// plus signs, so many fields on one spot stay see-through instead of stacking into a blob.
+// Each mote loops on its own clock, seeded by the field's spot, so no state is kept.
+/** @param {World} W @param {GameCtx} G @param {Field} f */
+function drawFieldMotes(W, G, f) {
+  const n = Math.round(6 + f.r * 0.12), seed = f.x * 0.137 + f.y * 0.071;
+  const fade = Math.min(1, (f.max - f.life) * 4, f.life * 2);
+  for (let k = 0; k < n; k++) {
+    const h = (v) => { const x = Math.sin(seed + k * 12.9898 + v * 78.233) * 43758.5453; return x - Math.floor(x); };
+    const per = 1.1 + h(1) * 0.9, ph = ((W.time + h(2) * per) / per) % 1;
+    const cyc = Math.floor((W.time + h(2) * per) / per);   // a fresh spot each loop
+    const a = h(3 + cyc) * 6.283, rr = f.r * 0.85 * Math.sqrt(h(4 + cyc));
+    const x = f.x + Math.cos(a) * rr, y = f.y + Math.sin(a) * rr - ph * 12;
+    G.ctx.globalAlpha = fade * Math.sin(ph * Math.PI) * 0.9;
+    const plus = f.field === 'heal' && k % 3 === 0;
+    G.ctx.fillStyle = k % 2 ? '#ffffff' : f.col;
+    if (plus) { G.ctx.fillStyle = f.col; G.ctx.fillRect(x - 0.6, y - 2.2, 1.2, 4.4); G.ctx.fillRect(x - 2.2, y - 0.6, 4.4, 1.2); }
+    else { const sz = 0.8 + h(5) * 0.9; G.ctx.fillRect(x - sz / 2, y - sz / 2, sz, sz); }
+  }
+  G.ctx.globalAlpha = 1;
+}
+
 // Static fields: a pulsing disc, a dashed ring shrinking as it runs out, and what sits in the
 // middle (drawFieldLook, or a plain dot)
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
@@ -282,12 +304,15 @@ export function drawFields(W, G, F) {
     if (f.field === 'vacuum') { drawWhiteHole(W, G, f); continue; }   // no circle: its motes show its reach
     const t = f.life / f.max;
     const beat = 0.75 + 0.25 * Math.sin(W.time * (f.field === 'mine' ? 7 : 3));
-    G.ctx.globalAlpha = 0.14 * beat * (f.field === 'mine' || f.field === 'dormant' ? 2 : 1);
-    G.ctx.fillStyle = f.col;
-    G.ctx.beginPath(); G.ctx.arc(f.x, f.y, f.r * (f.field === 'mine' ? 0.35 : 1), 0, Math.PI * 2); G.ctx.fill();
-    G.ctx.globalAlpha = 0.55 * beat;
+    if (f.field === 'mine' || f.field === 'dormant') {   // the crystals keep their small disc
+      G.ctx.globalAlpha = 0.28 * beat;
+      G.ctx.fillStyle = f.col;
+      G.ctx.beginPath(); G.ctx.arc(f.x, f.y, f.r * (f.field === 'mine' ? 0.35 : 1), 0, Math.PI * 2); G.ctx.fill();
+    } else drawFieldMotes(W, G, f);         // no disc: stacked circles made a solid blob
+    const circle = f.field !== 'mine' && f.field !== 'dormant';   // owner: a circle's ring faint and thin
+    G.ctx.globalAlpha = circle ? 0.1 : 0.55 * beat;
     G.ctx.strokeStyle = f.col;
-    G.ctx.lineWidth = 1.5;
+    G.ctx.lineWidth = circle ? 0.5 : 1.5;
     G.ctx.setLineDash([5, 4]);
     G.ctx.lineDashOffset = -W.time * 14;
     G.ctx.beginPath(); G.ctx.arc(f.x, f.y, f.r * (0.4 + 0.6 * t), 0, Math.PI * 2); G.ctx.stroke();

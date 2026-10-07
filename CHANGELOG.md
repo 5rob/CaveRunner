@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.156 — circle fields: sparkles instead of a filled disc
+Released 2026-10-07 (the owner OK'd the screenshots; a minor update).
+- Owner: many area fields on one spot stacked into a solid blob. The circle fields (Stillness, Shielding, Vigour,
+  Thundercloud, Glittering Field) lose their filled disc: sparkles (white and the field's colour) rise and fade
+  inside (`drawFieldMotes`, `game/render/looks.js`, no state: seeded by the field's spot), and Vigour adds green
+  plus signs. The dashed ring and Shielding's turning arcs are thin (0.5) at 10% opacity. The crystals keep theirs.
+  Suite `fieldlook` (six Vigours stacked in a sandbox stay see-through).
+
 ## v0.0.155 — Follow Me split, Follow Me as a pull, buffs and nerfs; you in the firing window
 Released 2026-10-07 (the owner OK'd the screenshots; a minor update).
 - **Follow Me** brings shots *and* fields to you; the new **Follow This** (`followaim`, ↬) holds a field just ahead

@@ -580,7 +580,7 @@ a cave shooter. They come in a few shapes:
 - **Static fields** stay where you cast them and work over time. Unstable Crystal is a
   proximity mine; Dormant Crystal sits harmless until another blast reaches it; Circle
   of Stillness leaves enemies crawling; Circle of Shielding swallows their fire; Circle
-  of Vigour heals you while you stand in it; Thundercloud and Glittering Field cover an area.
+  of Vigour heals you while you stand in it (green plus signs rise inside it); Thundercloud and Glittering Field cover an area.
   **White Hole** (Noita's Vacuum Field) is a tiny white-and-blue hole, with specks being drawn
   into it, that pulls every creature, their shots, coins and loose items within reach hard into its
   middle and holds them there, straight through walls, harming nothing. They take a cast slot like a shot does.
