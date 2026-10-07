@@ -189,14 +189,14 @@ export function GunFire({ gun, sim }) {
         c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
       }
       const ctx = c.getContext('2d');
-      // you at the far left (world units): the gun in your hand at the game's height on you (PH × 0.4)
-      const gy = H * 0.55, hW = H / GF_ZOOM, youY = gy / GF_ZOOM - PH * 0.4, youX = GF_YOU_X;
+      // you at the far left (world units), the gun at the window's 0.55 height; home (PH × 0.4) is where Follow Me goes
+      const gy = H * 0.55, hW = H / GF_ZOOM, youY = gy / GF_ZOOM - PH * 0.52, youX = GF_YOU_X;
       const home = { x: youX + PW / 2, y: youY + PH * 0.4 };
       // the aim sways slowly up and down; the hand and the muzzle turn with it round you
       const reach = W / GF_ZOOM - GF_WALL - home.x;
       const aUp = Math.atan2(hW * GF_SWAY - home.y, reach), aDn = Math.atan2(hW * (1 - GF_SWAY) - home.y, reach);
       const aim = (aUp + aDn) / 2 + (aDn - aUp) / 2 * Math.sin(fw.time * 2 * Math.PI / GF_SWAY_S), ca = Math.cos(aim), sa = Math.sin(aim);
-      const hx = home.x + ca * 2.5, hy = home.y;                // the gun hand (as the game holds it)
+      const hx = home.x + ca * 2.5, hy = youY + PH * 0.52;      // the gun hand, at the game's gun height (render/actors.js drawAim)
       const mx = hx + (14.2 * ca + 3.2 * sa) * GF_GUN, my = hy + (14.2 * sa - 3.2 * ca) * GF_GUN;   // the muzzle
       ahead.x = home.x + ca * FOLLOW_AHEAD; ahead.y = home.y + sa * FOLLOW_AHEAD; youAt.x = home.x; youAt.y = home.y;
       if (S !== seenS) { seenS = S; seen = S ? S.fired : -1; }

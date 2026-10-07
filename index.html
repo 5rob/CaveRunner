@@ -28725,12 +28725,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           c.height = Math.round(H * dpr);
         }
         const ctx = c.getContext("2d");
-        const gy = H * 0.55, hW = H / GF_ZOOM, youY = gy / GF_ZOOM - PH * 0.4, youX = GF_YOU_X;
+        const gy = H * 0.55, hW = H / GF_ZOOM, youY = gy / GF_ZOOM - PH * 0.52, youX = GF_YOU_X;
         const home = { x: youX + PW / 2, y: youY + PH * 0.4 };
         const reach2 = W / GF_ZOOM - GF_WALL - home.x;
         const aUp = Math.atan2(hW * GF_SWAY - home.y, reach2), aDn = Math.atan2(hW * (1 - GF_SWAY) - home.y, reach2);
         const aim = (aUp + aDn) / 2 + (aDn - aUp) / 2 * Math.sin(fw.time * 2 * Math.PI / GF_SWAY_S), ca = Math.cos(aim), sa = Math.sin(aim);
-        const hx = home.x + ca * 2.5, hy = home.y;
+        const hx = home.x + ca * 2.5, hy = youY + PH * 0.52;
         const mx = hx + (14.2 * ca + 3.2 * sa) * GF_GUN, my = hy + (14.2 * sa - 3.2 * ca) * GF_GUN;
         ahead.x = home.x + ca * FOLLOW_AHEAD;
         ahead.y = home.y + sa * FOLLOW_AHEAD;
