@@ -61,6 +61,13 @@ recharged, critical hits ring, enemy shots fizzle on rock, and the bag, shop car
 swaps all have small UI sounds. Volume knobs are in the ⚙️ panel under Sound: overall, ambience, jetpack, your spells,
 explosions, bullet hits, enemy fire, creature voices, world/props, drips, footsteps and UI.
 
+**Title screen and save slots.** The game opens on a title screen with **3 save slots**: pick one
+and press Start (or Continue). Each slot is its own run with its own unlocked mods and perks; 🗑️
+then "Delete?" wipes a slot. Your run from before this update is slot 1.
+
+**Pause.** ⏸ (top right, by ⚙️) pauses: Resume, Save, a Volume slider for the whole game, and Exit
+to main menu (it saves first).
+
 **Your run saves itself.** Every couple of seconds, and whenever you put the app away, the
 run is saved: floor, guns, bag, perks and suit, gold and health, and the cave itself — what you have
 killed, bought and picked up stays gone. Close the app and reopen it to carry on where you
@@ -478,6 +485,11 @@ the guide's kit has a gun, and while you have none the gun machine gives away a 
 Pistol** (one Bolt) free. Anything you find on floor 1 beats the pistol. (Before v0.0.142 you started
 with the pistol, a **Pick Axe** — one slot, a **Buzzsaw** — and the **Gravity Gun**, Follow Me then a
 White Hole; they're still in the code, `startingGuns`, and the browser tests start with them.)
+
+**The Bag's header** shows the gun's name in its colour: ✏️ renames it, 🖼️ picks its look from a
+gallery of 27 pixel-art guns (Default is the drawn one), and 💾 saves the gun with its mods as a
+preset you can spawn from ⚙️ → Spawn gun (🗑️ there removes one). The gun buttons round the right
+stick are ringed in each gun's colour.
 
 Standing next to a gun on the ground shows its card, its stats coloured against the gun in your
 hand (green for better, red for worse, counting a smaller cast delay, recharge or spread as better).

@@ -3,12 +3,13 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
-## LIST4 (5 items) — BUILT on branch `list4`, WAITING ON THE OWNER'S OK (screenshots sent 2026-10-07)
+## v0.0.159 — LIST4 (5 items): RELEASED on `main` 2026-10-08 (owner OK'd)
 
-Read `LIST4.md` (items, files, decisions). Bag header (gun name + ✏️ rename, 🖼️ gun look, 💾 preset), presets in
-Dev → Spawn gun, 27 pixel-art gun looks, pause menu (⏸: save, volume, exit), title screen with 3 save slots,
-gun slot circles in their gun's colour. Full browser run green after re-runs (jelly spit: the known flake).
-**Next:** the owner's feedback round, then bump to v0.0.159, CHANGELOG + README.md, merge `list4` into `main`.
+Read `LIST4.md` (items, files, decisions) and CHANGELOG v0.0.159: title screen with 3 save slots, pause menu (⏸:
+save, volume, exit), Bag header (name + ✏️, 🖼️ gun look, 💾 preset), presets in Dev → Spawn gun, 27 pixel-art gun
+looks, gun slots in their gun's colour. **Waiting on the owner:** playing it on the phone. Known: ✏️/💾 also work
+in a view-only Bag; the title's slot summaries read each slot's save; logic `rats`, `spider`, `strata` and browser
+`jelly` spit fail as before.
 
 ## v0.0.158 — the machine hints fit their words, centred over their machines: RELEASED on `main` 2026-10-07 (owner OK'd)
 
