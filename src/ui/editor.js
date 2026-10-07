@@ -108,6 +108,8 @@ export const GF_WALL = 5;
 // homing shots steer for it. World units: GF_DUMMY_K (owner: 2/3) of the real you, GF_DUMMY_GAP in front of the wall
 // GF_DPS_S: the seconds the DPS over the dummy's head averages over (owner: red, hidden at 0)
 export const GF_DPS_S = 3;
+// the running DPS graph across the window's top third (owner): GF_GRAPH_S seconds of history, a sample every GF_GRAPH_DT
+export const GF_GRAPH_S = 5, GF_GRAPH_DT = 0.1;
 export const GF_DUMMY_GAP = 6, GF_DUMMY_K = 2 / 3, DW = PW * GF_DUMMY_K, DH = PH * GF_DUMMY_K;
 /** @param {{ gun: Gun, sim: { current: import('../spells/bagsim.js').FireSim | null } }} props */
 export function GunFire({ gun, sim }) {
@@ -127,6 +129,9 @@ export function GunFire({ gun, sim }) {
     // its damage, for the DPS over its head: [time, dmg] per hit, the last GF_DPS_S seconds (window time)
     /** @type {number[][]} */
     let dmgLog = [];
+    /** @type {number[]} */
+    let graph = [];
+    let graphT = 0, dpsNow = 0;
     // the dummy's own little layer, DLP pixels a world unit (shrunk to 2/3 it would blur at one), made a hologram
     // like the guide's (render/guide.js holoPass)
     const DL = document.createElement('canvas'), dlx = DL.getContext('2d', { willReadFrequently: true }), DLP = 3;
@@ -284,7 +289,7 @@ export function GunFire({ gun, sim }) {
         ctx.restore();
       }
       // its DPS over its head, red; gone while nothing's hitting it
-      const dps = dmgLog.reduce((t, e) => t + e[1], 0) / GF_DPS_S;
+      const dps = dpsNow = dmgLog.reduce((t, e) => t + e[1], 0) / GF_DPS_S;
       ref.current.dataset.dps = dps.toFixed(1);       // for the suite
       if (dps > 0) {
         ctx.save(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -311,6 +316,19 @@ export function GunFire({ gun, sim }) {
         ctx.beginPath(); ctx.arc(mx * GF_ZOOM + 2 * ca, my * GF_ZOOM + 2 * sa, 3.5, 0, 6.283); ctx.fill();
         ctx.globalAlpha = 1;
       }
+      // the DPS graph: a thin red line over everything in the top third, oldest at the left, scaled to its peak
+      for (graphT += dt; graphT >= GF_GRAPH_DT; graphT -= GF_GRAPH_DT) graph.push(dpsNow);
+      const keep = Math.round(GF_GRAPH_S / GF_GRAPH_DT) + 1;
+      if (graph.length > keep) graph.splice(0, graph.length - keep);
+      const peak = Math.max(...graph, 0);
+      if (peak > 0 && graph.length > 1) {
+        const top = 4, bot = H / 3, step = W / (keep - 1), x0 = W - (graph.length - 1) * step;
+        ctx.strokeStyle = '#ff4a4a'; ctx.lineWidth = 1; ctx.lineJoin = 'round'; ctx.globalAlpha = 0.9;
+        ctx.beginPath();
+        graph.forEach((v, i) => { const x = x0 + i * step, y = bot - (v / peak) * (bot - top); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+        ctx.stroke(); ctx.globalAlpha = 1;
+      }
+      c.dataset.graph = String(graph.length);          // for the suite
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
