@@ -586,7 +586,9 @@ a cave shooter. They come in a few shapes:
   middle and holds them there, straight through walls, harming nothing. They take a cast slot like a shot does.
 - **Modifiers** change the next spell drawn after them (only that one).
   **Aim Assist** turns the aim stick into a pointer that snaps onto creatures and fires by itself
-  once it's on one (no aim line or crosshair). **Discriminate** is set once per copy: tap it in the
+  once it's on one (no aim line or crosshair). **Follow Me** pulls a shot back to you (and brings a field to you); **Follow This** holds a field just ahead of
+  your gun (the Gravity Gun's). **Buffs** (×1.5, ×2, ×5) and **nerfs** (×0.75, ×0.5, ×0.2) scale every number of the
+  next mod, a modifier's effect included. **Discriminate** is set once per copy: tap it in the
   Bag, **Set target**, point at a creature, yourself or an object and let go; its shot then passes
   through everything else and only hits that kind. Several bend the flight path,
   and the aim line draws every one of them properly: **Boomerang** flies out and, halfway through

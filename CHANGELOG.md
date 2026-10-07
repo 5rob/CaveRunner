@@ -5,6 +5,19 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.155 — Follow Me split, Follow Me as a pull, buffs and nerfs; you in the firing window
+Released 2026-10-07 (the owner OK'd the screenshots; a minor update).
+- **Follow Me** brings shots *and* fields to you; the new **Follow This** (`followaim`, ↬) holds a field just ahead
+  of your gun. The Gravity Gun uses Follow This now (`cleanGun` switches an old save's). On a shot either is a
+  **pull**, not a turn (owner: no turning circle): `FOLLOW_PULL` × its strength toward the spot, so it slows, stops
+  and comes straight back, never faster than it left (`spells/paths.js`; the aim line follows).
+- **Buffs and nerfs** (`buff15` `buff2` `buff5` `nerf75` `nerf50` `nerf20`): every number of the NEXT mod drawn ×
+  1.5 / 2 / 5 or × 0.75 / 0.5 / 0.2 — a shot's stats with its mana and delay, a modifier's effect, another buff's ×
+  (they multiply); whole-number stats round (`boosted`, `spells/cast.js`). Suite `buffs`.
+- **The firing window**: you at the far left drawn exactly as in the game (pixel look, outline, gun at 0.55 and the
+  game's gun height), holding the gun on the sway; Follow Me shots come back to you (pulled `GF_FOLLOW_K` × harder
+  to fit the window); shots fly their real flight time, slowed.
+
 ## v0.0.154 — a running DPS graph in the firing window
 Released 2026-10-07 (the owner OK'd the screenshot; a minor update). A thin red line across the top third of the
 Bag's firing window, over everything: the dummy's DPS over the last `GF_GRAPH_S` (5) s, a sample every
