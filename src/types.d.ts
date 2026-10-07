@@ -28,6 +28,8 @@ interface DiscrimTarget { kind: 'creature' | 'player' | 'object'; id: string }
 interface Mod {
   tgt?: DiscrimTarget;        // a targeted Discriminate copy (spells/discrim.js)
   id?: string;                // its key in MODS: always there, but filled in after the table
+  boost?: number;             // a buff or nerf: × every number of the next mod drawn (spells/cast.js boosted)
+  boosted?: number;           // a copy made by `boosted`: the × it got
   name: string;
   kind: 'shot' | 'static' | 'mod' | 'util' | 'passive';
   glyph: string;

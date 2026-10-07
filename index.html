@@ -1856,6 +1856,68 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       lightR: 12,
       recoil: 25
     },
+    // Buffs and nerfs (owner, v0.0.155): every number of the NEXT mod drawn × this, whatever it is (a shot's
+    // damage, speed, size, flight, mana and delay; a modifier's effect; another buff's own ×). planCast's `boosted`
+    buff15: {
+      name: "Buff ×1.5",
+      kind: "mod",
+      glyph: "△",
+      col: "#ff7a5a",
+      mana: 6,
+      d: 0,
+      boost: 1.5,
+      info: "Everything about the next mod ×1.5: a shot’s damage, speed, size, flight (and its mana and delay); a modifier’s effect"
+    },
+    buff2: {
+      name: "Buff ×2",
+      kind: "mod",
+      glyph: "▲",
+      col: "#ff7a5a",
+      mana: 12,
+      d: 0,
+      boost: 2,
+      info: "Everything about the next mod ×2: a shot’s damage, speed, size, flight (and its mana and delay); a modifier’s effect"
+    },
+    buff5: {
+      name: "Buff ×5",
+      kind: "mod",
+      glyph: "⏫",
+      col: "#ff7a5a",
+      mana: 30,
+      d: 0,
+      boost: 5,
+      info: "Everything about the next mod ×5: a shot’s damage, speed, size, flight (and its mana and delay); a modifier’s effect"
+    },
+    nerf75: {
+      name: "Nerf ×0.75",
+      kind: "mod",
+      glyph: "▽",
+      col: "#ff7a5a",
+      mana: 1,
+      d: 0,
+      boost: 0.75,
+      info: "Everything about the next mod ×0.75: weaker, but cheaper and quicker too"
+    },
+    nerf50: {
+      name: "Nerf ×0.5",
+      kind: "mod",
+      glyph: "▼",
+      col: "#ff7a5a",
+      mana: 0,
+      d: 0,
+      boost: 0.5,
+      info: "Everything about the next mod ×0.5: weaker, but cheaper and quicker too"
+    },
+    nerf20: {
+      name: "Nerf ×0.2",
+      kind: "mod",
+      glyph: "⏬",
+      col: "#ff7a5a",
+      mana: 0,
+      d: 0,
+      boost: 0.2,
+      info: "Everything about the next mod ×0.2: much weaker, but cheaper and quicker too"
+    },
     dmg_up: {
       name: "Damage Plus",
       kind: "mod",
@@ -3429,6 +3491,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     saw: "shots",
     dmg_up: "dmg",
     heavy: "dmg",
+    buff15: "dmg",
+    buff2: "dmg",
+    buff5: "dmg",
+    nerf75: "dmg",
+    nerf50: "dmg",
+    nerf20: "dmg",
     big: "dmg",
     over: "dmg",
     over_heat: "dmg",
@@ -3570,6 +3638,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     shrink: 20,
     dmg_up: 30,
     heavy: 40,
+    buff15: 35,
+    buff2: 60,
+    buff5: 150,
+    nerf75: 15,
+    nerf50: 15,
+    nerf20: 15,
     light: 30,
     speed: 25,
     accel: 35,
@@ -3684,6 +3758,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     shrink: 1,
     follow: 2,
     followaim: 2,
+    buff15: 1,
+    buff2: 2,
+    buff5: 4,
+    nerf75: 1,
+    nerf50: 1,
+    nerf20: 2,
     bolt: 1,
     spark: 1,
     buck: 1,
@@ -7664,7 +7744,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     // ours alone: no Noita twin
     OURS_COLD: ["3,4,5,6", "0.2,0.3,0.4,0.5"],
     OURS_BATTERY: ["2,3,4,5,6", "0.3,0.4,0.5,0.5,0.5"],
-    OURS_AUTO: ["0,1,2,3,4,5,6", "0.4,0.4,0.4,0.4,0.4,0.4,0.4"]
+    OURS_AUTO: ["0,1,2,3,4,5,6", "0.4,0.4,0.4,0.4,0.4,0.4,0.4"],
+    OURS_BUFF: ["1,2,3,4,5,6", "0.3,0.4,0.4,0.4,0.4,0.4"],
+    OURS_BIGBUFF: ["4,5,6,10", "0.1,0.2,0.3,0.5"]
   };
   var NOITA_OF = {
     bolt: "LIGHT_BULLET",
@@ -7700,6 +7782,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     trigger: "RECHARGE",
     over_heat: "DAMAGE_RANDOM",
     cold: "OURS_COLD",
+    buff15: "OURS_BUFF",
+    buff2: "OURS_BUFF",
+    buff5: "OURS_BIGBUFF",
+    nerf75: "OURS_BUFF",
+    nerf50: "OURS_BUFF",
+    nerf20: "OURS_BUFF",
     recharge: "RECHARGE",
     battery: "OURS_BATTERY",
     auto: "OURS_AUTO",
@@ -17363,6 +17451,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const pas = gunPassives(g);
     return Math.max(MIN_RECH, (g.recharge + pas.rech) * pas.rechMul);
   }
+  var BOOST_INT = /* @__PURE__ */ new Set(["count", "bounce", "pierce", "chain", "split", "cluster", "multi", "draw", "embers"]);
+  var BOOST_KEEP = /* @__PURE__ */ new Set(["manaMul"]);
+  var boostRound = (key, v) => BOOST_INT.has(key) ? Math.round(v) : v;
+  function boosted(m, k) {
+    if (k === 1) return m;
+    const src = m;
+    const o = Object.assign({}, m);
+    for (const key in src) if (typeof src[key] === "number" && !BOOST_KEEP.has(key)) o[key] = boostRound(key, src[key] * k);
+    if (o.count != null && src.count >= 1) o.count = Math.max(1, o.count);
+    if (src.draw >= 1) o.draw = Math.max(1, o.draw);
+    if (m.f) {
+      const f = m.f;
+      o.f = (s) => {
+        const before = {};
+        for (const key in s) if (typeof s[key] === "number") before[key] = s[key];
+        f(s);
+        for (const key in before) if (s[key] !== before[key]) s[key] = boostRound(key, before[key] + (s[key] - before[key]) * k);
+      };
+    }
+    o.boosted = k;
+    return o;
+  }
   function blankShot(sm, spread2) {
     return {
       dmg: sm.dmg || 0,
@@ -17445,6 +17555,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const modsOf = [];
     const holds = [];
     let addTrig = null;
+    let boost = 1;
     let multi = g.multi, cost2 = 0, manaMul = 1, ran = false, wrapped = 0;
     let delay = g.castDelay;
     let form = null, hp = 0;
@@ -17499,7 +17610,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const took = /* @__PURE__ */ new Set();
     const payloadOf = (n, depth) => {
       const pm = [], out = [];
-      let want = n, pform = null, pAdd = null;
+      let want = n, pform = null, pAdd = null, pb = 1;
       while (out.length < want && drawn++ < 96) {
         if (g.idx >= g.order.length) {
           ran = true;
@@ -17513,8 +17624,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         took.add(g.idx);
         const id = g.slots[g.order[g.idx++]];
         if (!id) continue;
-        const m = MODS[id];
-        if (m.kind === "passive") continue;
+        if (MODS[id].kind === "passive") continue;
+        const m = boosted(MODS[id], pb);
+        pb = m.boost ? m.boost : 1;
         cost2 += m.mana || 0;
         if (m.hp) hp += m.hp;
         if (m.manaMul) manaMul *= m.manaMul;
@@ -17554,8 +17666,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         g.idx++;
       }
       if (!id) continue;
-      const m = MODS[id];
-      if (m.kind === "passive") continue;
+      if (MODS[id].kind === "passive") continue;
+      const m = boosted(MODS[id], boost);
+      boost = m.boost ? m.boost : 1;
       if (m.kind === "mod" || m.kind === "util") {
         cost2 += m.mana || 0;
         if (m.hp) hp += m.hp;
@@ -17571,7 +17684,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             multi = Math.min(multi, queued + onGun());
           }
           if (m.copy === "mods") {
-            for (const oid of live()) if (MODS[oid].f && !mods.includes(MODS[oid])) mods.push(MODS[oid]);
+            for (const oid of live()) if (MODS[oid].f && !mods.some((x) => x.id === oid || x === MODS[oid])) mods.push(MODS[oid]);
           } else if (m.copy) {
             let room = 0;
             for (const c of copiesOf(m)) {

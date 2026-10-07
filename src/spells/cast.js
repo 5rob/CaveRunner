@@ -16,6 +16,38 @@ export function effRecharge(g) {
   return Math.max(MIN_RECH, (g.recharge + pas.rech) * pas.rechMul);
 }
 
+// Buffs and nerfs (owner, v0.0.155): a mod drawn after one comes out with every number × k. Whole-number
+// stats (shots in a spread, bounces, pierces, multicast counts…) round; a modifier's effect is scaled
+// (what its f changes on a shot, × k); another buff's own × is too, so they stack. Kept as is: `manaMul`
+// (a factor already) and anything not a number.
+const BOOST_INT = new Set(['count', 'bounce', 'pierce', 'chain', 'split', 'cluster', 'multi', 'draw', 'embers']);
+const BOOST_KEEP = new Set(['manaMul']);
+/** @param {string} key @param {number} v */
+const boostRound = (key, v) => (BOOST_INT.has(key) ? Math.round(v) : v);
+/** @param {Mod} m @param {number} k @returns {Mod} */
+export function boosted(m, k) {
+  if (k === 1) return m;
+  /** @type {any} */
+  const src = m;
+  /** @type {any} */
+  const o = Object.assign({}, m);
+  for (const key in src) if (typeof src[key] === 'number' && !BOOST_KEEP.has(key)) o[key] = boostRound(key, src[key] * k);
+  if (o.count != null && src.count >= 1) o.count = Math.max(1, o.count);
+  if (src.draw >= 1) o.draw = Math.max(1, o.draw);
+  if (m.f) {
+    const f = m.f;
+    o.f = (/** @type {any} */ s) => {
+      /** @type {Record<string, number>} */
+      const before = {};
+      for (const key in s) if (typeof s[key] === 'number') before[key] = s[key];
+      f(s);
+      for (const key in before) if (s[key] !== before[key]) s[key] = boostRound(key, before[key] + (s[key] - before[key]) * k);
+    };
+  }
+  o.boosted = k;
+  return o;
+}
+
 // Work out what the next pull of the trigger fires. Walks the slot list from where
 // the gun left off, piling up modifiers and handing them to the next spell drawn.
 // Advances g.idx; the caller rolls it back if there isn't the mana to pay.
@@ -64,6 +96,7 @@ export function planCast(g, others) {
   // with the payload it drew, and everything else leaves it empty
   const holds = [];
   let addTrig = null;                   // an Add Trigger waiting for the next projectile
+  let boost = 1;                        // a buff or nerf waiting for the next mod drawn
   let multi = g.multi, cost = 0, manaMul = 1, ran = false, wrapped = 0;
   // delay is walked in draw order: most mods nudge it, a few reset it outright,
   // and anything drawn after a reset adds its own delay back on top
@@ -130,15 +163,16 @@ export function planCast(g, others) {
   const took = new Set();
   const payloadOf = (n, depth) => {
     const pm = [], out = [];
-    let want = n, pform = null, pAdd = null;
+    let want = n, pform = null, pAdd = null, pb = 1;
     while (out.length < want && drawn++ < 96) {
       if (g.idx >= g.order.length) { ran = true; if (wrapped++) break; g.idx = 0; }
       if (took.has(g.idx)) { g.idx++; continue; }
       took.add(g.idx);
       const id = g.slots[g.order[g.idx++]];
       if (!id) continue;
-      const m = MODS[id];
-      if (m.kind === 'passive') continue;
+      if (MODS[id].kind === 'passive') continue;
+      const m = boosted(MODS[id], pb);
+      pb = m.boost ? m.boost : 1;
       cost += m.mana || 0;
       if (m.hp) hp += m.hp;
       if (m.manaMul) manaMul *= m.manaMul;
@@ -176,8 +210,9 @@ export function planCast(g, others) {
       g.idx++;
     }
     if (!id) continue;
-    const m = MODS[id];
-    if (m.kind === 'passive') continue;
+    if (MODS[id].kind === 'passive') continue;
+    const m = boosted(MODS[id], boost);
+    boost = m.boost ? m.boost : 1;        // a buff waits for the next mod; a buffed buff hands on its own × scaled
     if (m.kind === 'mod' || m.kind === 'util') {
       cost += m.mana || 0;
       if (m.hp) hp += m.hp;
@@ -193,7 +228,7 @@ export function planCast(g, others) {
         if (m.form) form = m.form;
         if (m.myriad) { multi += rest(); multi = Math.min(multi, queued + onGun()); }
         if (m.copy === 'mods') {
-          for (const oid of live()) if (MODS[oid].f && !mods.includes(MODS[oid])) mods.push(MODS[oid]);
+          for (const oid of live()) if (MODS[oid].f && !mods.some(x => x.id === oid || x === MODS[oid])) mods.push(MODS[oid]);
         } else if (m.copy) {
           let room = 0;
           for (const c of copiesOf(m)) { queue.push(c); if (casts(c)) { room++; queued++; } }

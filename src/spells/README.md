@@ -41,6 +41,11 @@ and `game/systems/shotlooks.js`.
   (`systems/props.js`) let that shot touch only matching things. It stops at rock without digging/burning it.
   Its target is picked once in the game (`input.pickTarget` = the bag index; `aimAndCast` reuses Aim Assist's
   pointer, ring and snap). Not yet: fields, beams, payloads.
+- **Buffs and nerfs** (owner, v0.0.155: `buff15` `buff2` `buff5` `nerf75` `nerf50` `nerf20`, a `boost` field): the
+  NEXT mod drawn, whatever its kind, comes out of `boosted(m, k)` with every number × k (whole-number ones in
+  `BOOST_INT` round, a count or draw never below 1; `manaMul` kept), and a modifier's `f` scaled (what it changes
+  on a shot, × k). A buff after a buff multiplies (×2 then ×2 = ×4). Pending like a modifier: wasted at the end of
+  a pull. Suite `buffs`.
 - **Copies (the Greek letters) are fiddly** (they are `off: 1` today, code and `spells.test.js`
   checks kept for bringing them back). They push ids into a queue drawn before the gun's own list,
   and must widen `multi` for themselves *and* their originals or the multicast limit eats them.
