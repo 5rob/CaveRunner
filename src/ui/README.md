@@ -84,6 +84,12 @@ CSS is `src/style.css` (one block, light and dark via `prefers-color-scheme`).
   right stick) except its stat list `.prows` (max ~3 rows, 60px, scrolls). `.buypanel .pop` strips the
   inner card's frame and wins over `.pop.ingame` on source order: **keep the `.buypanel` block after
   `.pop.ingame` in the CSS**. `ModCard` drops its use-example (`.pdemo`) when `ingame`.
+- **The level machines' hint** (v0.0.157–158, owner's design): `.buypanel.pickpanel`, a small box (0.6×, 25%
+  background, the machine's green outline and words, `.red` on the sell machine while it refuses; R icons stay
+  white), as wide as its words (`max-content`), centred over its machine (`left` from `input.current.promptLeft`,
+  `translateX(-50%)`). Buy: two options, `PickKey` "Select Level" and `RKey` "Tap R to Buy" (`.popt.cant` dims it
+  on a greyed floor); sell: one (`prompt.sell`). It fades up after `PICK_IDLE` (1.5 s) with no stick input
+  (`prompt.idle`) and hides at once on any (`.pickhide`); the machine works the same while it's hidden.
 - **Vending machine menus** (`SHOP_MENUS` in `modshop.js`: `VendShop` for mods and perks, `GunVend` for
   guns) cover the view down to the sticks (`.vshop`, always dark) and pause the game. Every button in
   one has `data-nav`. `useMenuNav`: the right stick is a pointer past `DEV.ptrStart` (a thin `.mptr`

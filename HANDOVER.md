@@ -3,7 +3,7 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
-## v0.0.158 — the machine hints fit their words, centred over their machines: WAITING ON THE OWNER'S OK (branch `buyhint`)
+## v0.0.158 — the machine hints fit their words, centred over their machines: RELEASED on `main` 2026-10-07 (owner OK'd)
 
 ## v0.0.157 — the buy machine: flick the right stick to pick a level (no menu), new machine hints, L/R on the knobs: RELEASED on `main` 2026-10-07 (owner OK'd)
 
