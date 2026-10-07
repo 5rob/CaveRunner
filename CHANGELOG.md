@@ -19,6 +19,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 - **Every gun wears a pixel-art sprite**: the old drawn gun is gone. A gun without a pick gets the `GUN_ART` sprite
   nearest its colour (`gunArtId`, `artForHue`, `artHue` in `art/gunart.js`), so it matches its HUD slot. `drawGun`
   takes the art id (no accent). The 🖼️ gallery's Default tile is gone; the gun machine's hologram is a sprite.
+- Fix: on phones under 400 px wide the red debt line is smaller so it clears the ⚙️ (moved left in v0.0.160; `topgold`).
 
 ## v0.0.160 — dev mode: hold ⏸ 5 s to show the dev tools; ⏸ and ⚙️ swap places
 Released 2026-10-08 (owner OK'd the screenshots; a minor update).
