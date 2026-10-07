@@ -1,6 +1,6 @@
 // Autosave: readSave / cleanLoadout must turn any stored run — including one written by an
 // older version that names mods or perks since removed — into a usable run, or null.
-const { readSave, cleanLoadout, startingGuns, VERSION, MODS } = require('../load');
+const { readSave, cleanLoadout, cleanGun, startingGuns, VERSION, MODS } = require('../load');
 
 let pass = 0, fail = 0;
 const check = (name, ok, got) => {
@@ -63,6 +63,11 @@ check('v106 negative gold becomes gold + debt', s.loadout.gold === 40 && s.loado
 s = readSave(withLo({ gold: 40 }));
 check('no debt by default', s.loadout.debt === 0, s.loadout);
 
+// a Gravity Gun saved before v0.0.155 had Follow Me; its trick is Follow This now (owner split them)
+const oldGrav = Object.assign({}, startingGuns()[2], { slots: ['follow', 'vacfield'] });
+check('an old Gravity Gun gets Follow This', JSON.stringify(cleanGun(JSON.parse(JSON.stringify(oldGrav))).slots) === '["followaim","vacfield"]');
+const otherGun = Object.assign({}, startingGuns()[0], { name: 'Mine', slots: ['follow', 'bolt'] });
+check('any other gun keeps its Follow Me', cleanGun(JSON.parse(JSON.stringify(otherGun))).slots[0] === 'follow');
 check('a fresh loadout round-trips', JSON.stringify(cleanLoadout(JSON.parse(JSON.stringify(lo()))).bag) === '["bolt","homing"]');
 
 console.log(fail ? `\n${fail} failed` : `\n${pass} passed, 0 failed`);

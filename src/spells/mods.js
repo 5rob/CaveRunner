@@ -58,6 +58,20 @@ export const MODS = {
              dmg: 2, speed: 340, spread: 2, delay: 0.5, size: 3.5, life: 1.8, grav: 600,
              explode: 34, bounce: 30, bounceE: 0.4, lifeBoom: 1, look: 'bomb', light: '255,170,60', lightR: 12, recoil: 25 },
 
+  // Buffs and nerfs (owner, v0.0.155): every number of the NEXT mod drawn × this, whatever it is (a shot's
+  // damage, speed, size, flight, mana and delay; a modifier's effect; another buff's own ×). planCast's `boosted`
+  buff15:  { name: 'Buff ×1.5', kind: 'mod', glyph: '△', col: '#ff7a5a', mana: 6, d: 0, boost: 1.5,
+             info: 'Everything about the next mod ×1.5: a shot’s damage, speed, size, flight (and its mana and delay); a modifier’s effect' },
+  buff2:   { name: 'Buff ×2', kind: 'mod', glyph: '▲', col: '#ff7a5a', mana: 12, d: 0, boost: 2,
+             info: 'Everything about the next mod ×2: a shot’s damage, speed, size, flight (and its mana and delay); a modifier’s effect' },
+  buff5:   { name: 'Buff ×5', kind: 'mod', glyph: '⏫', col: '#ff7a5a', mana: 30, d: 0, boost: 5,
+             info: 'Everything about the next mod ×5: a shot’s damage, speed, size, flight (and its mana and delay); a modifier’s effect' },
+  nerf75:  { name: 'Nerf ×0.75', kind: 'mod', glyph: '▽', col: '#ff7a5a', mana: 1, d: 0, boost: 0.75,
+             info: 'Everything about the next mod ×0.75: weaker, but cheaper and quicker too' },
+  nerf50:  { name: 'Nerf ×0.5', kind: 'mod', glyph: '▼', col: '#ff7a5a', mana: 0, d: 0, boost: 0.5,
+             info: 'Everything about the next mod ×0.5: weaker, but cheaper and quicker too' },
+  nerf20:  { name: 'Nerf ×0.2', kind: 'mod', glyph: '⏬', col: '#ff7a5a', mana: 0, d: 0, boost: 0.2,
+             info: 'Everything about the next mod ×0.2: much weaker, but cheaper and quicker too' },
   dmg_up:  { name: 'Damage Plus', kind: 'mod', glyph: '✚', col: '#ff7a5a', mana: 5, d: 0.08,
              info: '+1.5 damage', f: s => { s.dmg += 1.5; s.recoil += 10; } },
   heavy:   { name: 'Heavy Shot', kind: 'mod', glyph: '⬇', col: '#ff7a5a', mana: 7, d: 0.17,
@@ -317,8 +331,12 @@ export const MODS = {
   pong:    { name: 'Ping-Pong Path', kind: 'mod', glyph: '⇄', col: '#b57cff', mana: 6, d: 0.05,
              info: 'Flies out, snaps back a little, and on again', f: s => { s.pong += 4; s.life *= 1.4; } },
   follow:  { name: 'Follow Me', kind: 'mod', glyph: '⇜', col: '#b57cff', mana: 10, d: 0.04,
-             info: 'Homing, but on you: a shot curves back round to you; a field hovers just ahead of your gun',
+             info: 'Pulls it back to you: a shot slows, stops and comes straight back; a field comes to you and stays with you',
              f: s => { s.follow += 4; } },
+  // owner (v0.0.155): Follow Me split in two; this half is the Gravity Gun's, a White Hole held where you aim
+  followaim: { name: 'Follow This', kind: 'mod', glyph: '↬', col: '#b57cff', mana: 10, d: 0.04,
+             info: 'A field hovers just ahead of your gun and goes wherever you aim (the Gravity Gun’s trick); a shot is pulled to that spot',
+             f: s => { s.followAim += 4; } },
   orbit:   { name: 'Orbiting Arc', kind: 'mod', glyph: '◴', col: '#b57cff', mana: 9, d: 0.06,
              info: 'Circles whatever cast it: your gun, or a trigger spell\'s carrier as it flies', f: s => { s.orbit += 3.4; s.life *= 1.6; } },
   autoaim: { name: 'Auto-Aim', kind: 'mod', glyph: '✢', col: '#b57cff', mana: 7, d: 0.03,
@@ -422,9 +440,9 @@ export const FAMILIES = {
 export const FAMILY_OF = {
   bolt: 'shots', spark: 'shots', slug: 'shots', buck: 'shots', lance: 'shots',
   orb: 'shots', blast: 'shots', saw: 'shots',
-  dmg_up: 'dmg', heavy: 'dmg', big: 'dmg', over: 'dmg', over_heat: 'dmg', tip: 'dmg',
+  dmg_up: 'dmg', heavy: 'dmg', buff15: 'dmg', buff2: 'dmg', buff5: 'dmg', nerf75: 'dmg', nerf50: 'dmg', nerf20: 'dmg', big: 'dmg', over: 'dmg', over_heat: 'dmg', tip: 'dmg',
   speed: 'vel', light: 'vel', accel: 'vel', range: 'vel', brief: 'vel',
-  homing: 'path', seeker: 'path', follow: 'path', lifeup: 'vel', lifedn: 'vel', grow: 'pattern', shrink: 'pattern', bounce: 'path', pierce: 'path', borer: 'path',
+  homing: 'path', seeker: 'path', follow: 'path', followaim: 'path', lifeup: 'vel', lifedn: 'vel', grow: 'pattern', shrink: 'pattern', bounce: 'path', pierce: 'path', borer: 'path',
   tight: 'pattern', scatter: 'pattern', double: 'pattern', triple: 'pattern', quad: 'pattern',
   fast: 'upkeep', trigger: 'upkeep', cold: 'upkeep', recharge: 'upkeep',
   cheap: 'upkeep', battery: 'upkeep', auto: 'upkeep',
@@ -466,8 +484,8 @@ export const famCol = (/** @type {string} */ id) => famOf(id).col;
 /** @type {Record<string, number>} */
 export const MOD_PRICE = {
   bolt: 20, spark: 12, slug: 40, buck: 35, lance: 45, orb: 30, blast: 45,
-  follow: 35, lifeup: 25, lifedn: 15, grow: 30, shrink: 20,
-  dmg_up: 30, heavy: 40, light: 30, speed: 25, accel: 35, homing: 70, seeker: 90,
+  follow: 35, followaim: 35, lifeup: 25, lifedn: 15, grow: 30, shrink: 20,
+  dmg_up: 30, heavy: 40, buff15: 35, buff2: 60, buff5: 150, nerf75: 15, nerf50: 15, nerf20: 15, light: 30, speed: 25, accel: 35, homing: 70, seeker: 90,
   bounce: 25, pierce: 85, tight: 15, scatter: 35, big: 30, range: 30, brief: 20,
   tip: 55, borer: 25, fast: 30, over: 45, double: 45, triple: 60, quad: 75, cheap: 40,
   saw: 80, trigger: 35, over_heat: 45, cold: 60, recharge: 50, battery: 50, auto: 70,
@@ -488,7 +506,7 @@ export const MOD_PRICE = {
 // this, so early floors offer workhorses and the Greek letters stay a find.
 /** @type {Record<string, number>} */
 export const MOD_TIER = {
-  lifeup: 1, lifedn: 1, grow: 1, shrink: 1, follow: 2,
+  lifeup: 1, lifedn: 1, grow: 1, shrink: 1, follow: 2, followaim: 2, buff15: 1, buff2: 2, buff5: 4, nerf75: 1, nerf50: 1, nerf20: 2,
   bolt: 1, spark: 1, buck: 1, tight: 1, fast: 1, cheap: 1, spit: 1, bubble: 1, pollen: 1,
   digbolt: 1, arrow: 1, brim: 1, hspread: 1, damper: 1, knock: 1, kick: 1,
   gravmod: 1, float: 1, farcast: 1, bifur: 1, behind: 1, dmg_up: 1, speed: 1, brief: 1,

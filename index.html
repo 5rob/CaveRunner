@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.154</title>
-<!-- VERSION = 'v154' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.155</title>
+<!-- VERSION = 'v155' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -812,7 +812,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.154';</script>
+<script>const VERSION = 'v0.0.155';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -1855,6 +1855,68 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       light: "255,170,60",
       lightR: 12,
       recoil: 25
+    },
+    // Buffs and nerfs (owner, v0.0.155): every number of the NEXT mod drawn × this, whatever it is (a shot's
+    // damage, speed, size, flight, mana and delay; a modifier's effect; another buff's own ×). planCast's `boosted`
+    buff15: {
+      name: "Buff ×1.5",
+      kind: "mod",
+      glyph: "△",
+      col: "#ff7a5a",
+      mana: 6,
+      d: 0,
+      boost: 1.5,
+      info: "Everything about the next mod ×1.5: a shot’s damage, speed, size, flight (and its mana and delay); a modifier’s effect"
+    },
+    buff2: {
+      name: "Buff ×2",
+      kind: "mod",
+      glyph: "▲",
+      col: "#ff7a5a",
+      mana: 12,
+      d: 0,
+      boost: 2,
+      info: "Everything about the next mod ×2: a shot’s damage, speed, size, flight (and its mana and delay); a modifier’s effect"
+    },
+    buff5: {
+      name: "Buff ×5",
+      kind: "mod",
+      glyph: "⏫",
+      col: "#ff7a5a",
+      mana: 30,
+      d: 0,
+      boost: 5,
+      info: "Everything about the next mod ×5: a shot’s damage, speed, size, flight (and its mana and delay); a modifier’s effect"
+    },
+    nerf75: {
+      name: "Nerf ×0.75",
+      kind: "mod",
+      glyph: "▽",
+      col: "#ff7a5a",
+      mana: 1,
+      d: 0,
+      boost: 0.75,
+      info: "Everything about the next mod ×0.75: weaker, but cheaper and quicker too"
+    },
+    nerf50: {
+      name: "Nerf ×0.5",
+      kind: "mod",
+      glyph: "▼",
+      col: "#ff7a5a",
+      mana: 0,
+      d: 0,
+      boost: 0.5,
+      info: "Everything about the next mod ×0.5: weaker, but cheaper and quicker too"
+    },
+    nerf20: {
+      name: "Nerf ×0.2",
+      kind: "mod",
+      glyph: "⏬",
+      col: "#ff7a5a",
+      mana: 0,
+      d: 0,
+      boost: 0.2,
+      info: "Everything about the next mod ×0.2: much weaker, but cheaper and quicker too"
     },
     dmg_up: {
       name: "Damage Plus",
@@ -3055,9 +3117,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       col: "#b57cff",
       mana: 10,
       d: 0.04,
-      info: "Homing, but on you: a shot curves back round to you; a field hovers just ahead of your gun",
+      info: "Pulls it back to you: a shot slows, stops and comes straight back; a field comes to you and stays with you",
       f: (s) => {
         s.follow += 4;
+      }
+    },
+    // owner (v0.0.155): Follow Me split in two; this half is the Gravity Gun's, a White Hole held where you aim
+    followaim: {
+      name: "Follow This",
+      kind: "mod",
+      glyph: "↬",
+      col: "#b57cff",
+      mana: 10,
+      d: 0.04,
+      info: "A field hovers just ahead of your gun and goes wherever you aim (the Gravity Gun’s trick); a shot is pulled to that spot",
+      f: (s) => {
+        s.followAim += 4;
       }
     },
     orbit: {
@@ -3416,6 +3491,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     saw: "shots",
     dmg_up: "dmg",
     heavy: "dmg",
+    buff15: "dmg",
+    buff2: "dmg",
+    buff5: "dmg",
+    nerf75: "dmg",
+    nerf50: "dmg",
+    nerf20: "dmg",
     big: "dmg",
     over: "dmg",
     over_heat: "dmg",
@@ -3428,6 +3509,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     homing: "path",
     seeker: "path",
     follow: "path",
+    followaim: "path",
     lifeup: "vel",
     lifedn: "vel",
     grow: "pattern",
@@ -3549,12 +3631,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     orb: 30,
     blast: 45,
     follow: 35,
+    followaim: 35,
     lifeup: 25,
     lifedn: 15,
     grow: 30,
     shrink: 20,
     dmg_up: 30,
     heavy: 40,
+    buff15: 35,
+    buff2: 60,
+    buff5: 150,
+    nerf75: 15,
+    nerf50: 15,
+    nerf20: 15,
     light: 30,
     speed: 25,
     accel: 35,
@@ -3668,6 +3757,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     grow: 1,
     shrink: 1,
     follow: 2,
+    followaim: 2,
+    buff15: 1,
+    buff2: 2,
+    buff5: 4,
+    nerf75: 1,
+    nerf50: 1,
+    nerf20: 2,
     bolt: 1,
     spark: 1,
     buck: 1,
@@ -7648,7 +7744,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     // ours alone: no Noita twin
     OURS_COLD: ["3,4,5,6", "0.2,0.3,0.4,0.5"],
     OURS_BATTERY: ["2,3,4,5,6", "0.3,0.4,0.5,0.5,0.5"],
-    OURS_AUTO: ["0,1,2,3,4,5,6", "0.4,0.4,0.4,0.4,0.4,0.4,0.4"]
+    OURS_AUTO: ["0,1,2,3,4,5,6", "0.4,0.4,0.4,0.4,0.4,0.4,0.4"],
+    OURS_BUFF: ["1,2,3,4,5,6", "0.3,0.4,0.4,0.4,0.4,0.4"],
+    OURS_BIGBUFF: ["4,5,6,10", "0.1,0.2,0.3,0.5"]
   };
   var NOITA_OF = {
     bolt: "LIGHT_BULLET",
@@ -7684,6 +7782,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     trigger: "RECHARGE",
     over_heat: "DAMAGE_RANDOM",
     cold: "OURS_COLD",
+    buff15: "OURS_BUFF",
+    buff2: "OURS_BUFF",
+    buff5: "OURS_BIGBUFF",
+    nerf75: "OURS_BUFF",
+    nerf50: "OURS_BUFF",
+    nerf20: "OURS_BUFF",
     recharge: "RECHARGE",
     battery: "OURS_BATTERY",
     auto: "OURS_AUTO",
@@ -7736,6 +7840,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     float: "GRAVITY_ANTI",
     boomer: "HOMING_SHOOTER",
     follow: "HOMING_SHOOTER",
+    followaim: "HOMING_SHOOTER",
     lifeup: "LIFETIME",
     lifedn: "LIFETIME_DOWN",
     grow: "SPEED",
@@ -7981,7 +8086,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       shuffle: false,
       mana: 200,
       speedMul: 1,
-      slots: ["follow", "vacfield"],
+      slots: ["followaim", "vacfield"],
       hue: 200
     });
     return [pistol, pickaxe, gravity, null];
@@ -8096,6 +8201,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!g || typeof g !== "object" || !Array.isArray(g.slots) || !g.slots.length) return null;
     const out = Object.assign({}, GUN_DEFAULTS, g);
     out.slots = g.slots.map((id) => id && ensureMod(id) ? id : null);
+    if (out.name === "Gravity Gun") out.slots = out.slots.map((id) => id === "follow" ? "followaim" : id);
     out.cap = out.slots.length;
     out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
     return resetGun(out);
@@ -17345,6 +17451,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const pas = gunPassives(g);
     return Math.max(MIN_RECH, (g.recharge + pas.rech) * pas.rechMul);
   }
+  var BOOST_INT = /* @__PURE__ */ new Set(["count", "bounce", "pierce", "chain", "split", "cluster", "multi", "draw", "embers"]);
+  var BOOST_KEEP = /* @__PURE__ */ new Set(["manaMul"]);
+  var boostRound = (key, v) => BOOST_INT.has(key) ? Math.round(v) : v;
+  function boosted(m, k) {
+    if (k === 1) return m;
+    const src = m;
+    const o = Object.assign({}, m);
+    for (const key in src) if (typeof src[key] === "number" && !BOOST_KEEP.has(key)) o[key] = boostRound(key, src[key] * k);
+    if (o.count != null && src.count >= 1) o.count = Math.max(1, o.count);
+    if (src.draw >= 1) o.draw = Math.max(1, o.draw);
+    if (m.f) {
+      const f = m.f;
+      o.f = (s) => {
+        const before = {};
+        for (const key in s) if (typeof s[key] === "number") before[key] = s[key];
+        f(s);
+        for (const key in before) if (s[key] !== before[key]) s[key] = boostRound(key, before[key] + (s[key] - before[key]) * k);
+      };
+    }
+    o.boosted = k;
+    return o;
+  }
   function blankShot(sm, spread2) {
     return {
       dmg: sm.dmg || 0,
@@ -17369,6 +17497,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       pong: 0,
       orbit: 0,
       follow: 0,
+      followAim: 0,
       autoaim: 0,
       assist: 0,
       only: null,
@@ -17426,6 +17555,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const modsOf = [];
     const holds = [];
     let addTrig = null;
+    let boost = 1;
     let multi = g.multi, cost2 = 0, manaMul = 1, ran = false, wrapped = 0;
     let delay = g.castDelay;
     let form = null, hp = 0;
@@ -17480,7 +17610,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const took = /* @__PURE__ */ new Set();
     const payloadOf = (n, depth) => {
       const pm = [], out = [];
-      let want = n, pform = null, pAdd = null;
+      let want = n, pform = null, pAdd = null, pb = 1;
       while (out.length < want && drawn++ < 96) {
         if (g.idx >= g.order.length) {
           ran = true;
@@ -17494,8 +17624,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         took.add(g.idx);
         const id = g.slots[g.order[g.idx++]];
         if (!id) continue;
-        const m = MODS[id];
-        if (m.kind === "passive") continue;
+        if (MODS[id].kind === "passive") continue;
+        const m = boosted(MODS[id], pb);
+        pb = m.boost ? m.boost : 1;
         cost2 += m.mana || 0;
         if (m.hp) hp += m.hp;
         if (m.manaMul) manaMul *= m.manaMul;
@@ -17535,8 +17666,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         g.idx++;
       }
       if (!id) continue;
-      const m = MODS[id];
-      if (m.kind === "passive") continue;
+      if (MODS[id].kind === "passive") continue;
+      const m = boosted(MODS[id], boost);
+      boost = m.boost ? m.boost : 1;
       if (m.kind === "mod" || m.kind === "util") {
         cost2 += m.mana || 0;
         if (m.hp) hp += m.hp;
@@ -17552,7 +17684,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             multi = Math.min(multi, queued + onGun());
           }
           if (m.copy === "mods") {
-            for (const oid of live()) if (MODS[oid].f && !mods.includes(MODS[oid])) mods.push(MODS[oid]);
+            for (const oid of live()) if (MODS[oid].f && !mods.some((x) => x.id === oid || x === MODS[oid])) mods.push(MODS[oid]);
           } else if (m.copy) {
             let room = 0;
             for (const c of copiesOf(m)) {
@@ -17636,9 +17768,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var ORBIT_IN = 0.2;
   var ORBIT_W = 14;
   var FOLLOW_AHEAD = 34;
+  var FOLLOW_PULL = 250;
   var FIELD_SPEED = 150;
   var SEEK_ACC = 7;
-  var hasPath = (o) => !!(o.boomer || o.pong || o.spiral || o.orbit || o.follow || o.still && o.homing);
+  var hasPath = (o) => !!(o.boomer || o.pong || o.spiral || o.orbit || o.follow || o.followAim || o.still && o.homing);
   var spiralOff = (k, t) => k * SPIRAL_GROW * t * Math.sin(t * SPIRAL_HZ * 2 * Math.PI);
   function pathStep(o, dt, env) {
     let ex = 0, ey = 0;
@@ -17665,10 +17798,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         else if (o.life != null && o.life < 0.05 && age < (o.born || 1) * BOOM_MAX) o.life = 0.05;
       }
     }
-    if (o.follow) {
-      const t = o.still ? env.ahead : env.home;
-      head(t.x, t.y, o.follow);
-    }
+    const pull = (t, k) => {
+      if (o.still) {
+        head(t.x, t.y, k);
+        return;
+      }
+      const dx = t.x - o.x, dy = t.y - o.y, d = Math.hypot(dx, dy) || 1;
+      const sp0 = o.sp0 || (o.sp0 = Math.hypot(o.vx, o.vy) || 1), a = FOLLOW_PULL * k * dt;
+      o.vx += dx / d * a;
+      o.vy += dy / d * a;
+      const sp = Math.hypot(o.vx, o.vy);
+      if (sp > sp0) {
+        o.vx *= sp0 / sp;
+        o.vy *= sp0 / sp;
+      }
+    };
+    if (o.follow) pull(env.home, o.follow);
+    if (o.followAim) pull(env.ahead, o.followAim);
     if (o.still && o.homing && env.enemies) {
       let best = null, bd = o.homeR || 260;
       for (const e of env.enemies) {
@@ -17762,7 +17908,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       pong: sh.pong,
       spiral: sh.spiral,
       orbit: sh.orbit,
-      follow: sh.follow
+      follow: sh.follow,
+      followAim: sh.followAim
     };
     const pathed = hasPath(mv);
     out.length = 0;
@@ -24441,6 +24588,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         pong: sh.pong,
         orbit: sh.orbit,
         follow: sh.follow,
+        followAim: sh.followAim,
         anc: anchorOf(from),
         homeR: sh.homeR,
         eat: sh.eat,
@@ -24699,6 +24847,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       spiral: sh.spiral,
       orbit: sh.orbit,
       follow: sh.follow,
+      followAim: sh.followAim,
       homing: sh.homing,
       homeR: sh.homeR,
       anc: anchorOf(from)
@@ -28486,6 +28635,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var GF_SWAY = 0.06, GF_SWAY_S = 4;
   var GF_WALL = 5;
   var GF_DPS_S = 3;
+  var GF_YOU_X = 3, GF_GUN = 0.55;
+  var GF_FOLLOW_K = 3;
   var GF_GRAPH_S = 5, GF_GRAPH_DT = 0.1;
   var GF_DUMMY_GAP = 6, GF_DUMMY_K = 2 / 3, DW = PW * GF_DUMMY_K, DH = PH * GF_DUMMY_K;
   function GunFire({ gun, sim }) {
@@ -28499,6 +28650,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       let booms = [];
       let H = 0;
       const dummy = { x: 0, y: 0, hitT: 0, hits: 0 };
+      const youAt = { x: 0, y: 0 }, ahead = { x: 0, y: 0 };
       let dmgLog = [];
       let graph = [];
       let graphT = 0, dpsNow = 0;
@@ -28515,7 +28667,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             continue;
           }
           if (sh.still) {
-            beams.push({ field: 1, x: sub ? x : x + Math.min(H / GF_ZOOM * 0.4, sh.r || 12) + 6, y, r: Math.min(H / GF_ZOOM * 0.4, sh.r || 12), col: sh.col, t: 0.5, max: 0.5 });
+            const fr = Math.min(H / GF_ZOOM * 0.4, sh.r || 12), at = sh.follow ? youAt : sh.followAim ? ahead : null;
+            beams.push({ field: 1, x: at ? at.x : sub ? x : x + fr + 6, y: at ? at.y : y, r: Math.min(H / GF_ZOOM * 0.4, sh.r || 12), col: sh.col, t: 0.5, max: 0.5 });
             continue;
           }
           const sp = sh.speed * GF_SPEED;
@@ -28532,10 +28685,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             grav: sh.grav || 0,
             explode: sh.explode,
             homing: sh.homing,
+            follow: sh.follow || 0,
+            followAim: sh.followAim || 0,
             pull: sh.pull,
             eat: sh.eat,
             hidden: sh.hidden,
-            life: 3,
+            life: Math.min(12, (sh.life || 1) / GF_SPEED),
             bounce: sh.bounce || 0,
             pierce: sh.pierce || 0,
             hit: 0,
@@ -28570,11 +28725,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           c.height = Math.round(H * dpr);
         }
         const ctx = c.getContext("2d");
-        const sc = Math.min(2.4, W / 60) * 0.75, gx = 6 + 6.5 * sc, gy = H * 0.55;
-        const reach2 = W / GF_ZOOM - GF_WALL - gx / GF_ZOOM, gyW = gy / GF_ZOOM, hW = H / GF_ZOOM;
-        const aUp = Math.atan2(hW * GF_SWAY - gyW, reach2), aDn = Math.atan2(hW * (1 - GF_SWAY) - gyW, reach2);
+        const gy = H * 0.55, hW = H / GF_ZOOM, youY = gy / GF_ZOOM - PH * 0.52, youX = GF_YOU_X;
+        const home = { x: youX + PW / 2, y: youY + PH * 0.4 };
+        const reach2 = W / GF_ZOOM - GF_WALL - home.x;
+        const aUp = Math.atan2(hW * GF_SWAY - home.y, reach2), aDn = Math.atan2(hW * (1 - GF_SWAY) - home.y, reach2);
         const aim = (aUp + aDn) / 2 + (aDn - aUp) / 2 * Math.sin(fw.time * 2 * Math.PI / GF_SWAY_S), ca = Math.cos(aim), sa = Math.sin(aim);
-        const mx = (gx + (14.2 * ca + 3.2 * sa) * sc) / GF_ZOOM, my = (gy + (14.2 * sa - 3.2 * ca) * sc) / GF_ZOOM;
+        const hx = home.x + ca * 2.5, hy = youY + PH * 0.52;
+        const mx = hx + (14.2 * ca + 3.2 * sa) * GF_GUN, my = hy + (14.2 * sa - 3.2 * ca) * GF_GUN;
+        ahead.x = home.x + ca * FOLLOW_AHEAD;
+        ahead.y = home.y + sa * FOLLOW_AHEAD;
+        youAt.x = home.x;
+        youAt.y = home.y;
         if (S2 !== seenS) {
           seenS = S2;
           seen = S2 ? S2.fired : -1;
@@ -28596,6 +28757,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const live = [];
         for (const b of shots) {
           b.vy += b.grav * GF_SPEED * GF_SPEED * dt;
+          for (const [k, t] of [[b.follow, youAt], [b.followAim, ahead]]) if (k) {
+            const dx = t.x - b.x, dy = t.y - b.y, d = Math.hypot(dx, dy) || 1;
+            const sp0 = b.sp0 || (b.sp0 = Math.hypot(b.vx, b.vy) || 1), a = FOLLOW_PULL * k * GF_FOLLOW_K * GF_SPEED * GF_SPEED * dt;
+            b.vx += dx / d * a;
+            b.vy += dy / d * a;
+            const sp = Math.hypot(b.vx, b.vy);
+            if (sp > sp0) {
+              b.vx *= sp0 / sp;
+              b.vy *= sp0 / sp;
+            }
+          }
+          if (b.follow && !b.back && b.age > 0.5 && Math.hypot(b.x - youAt.x, b.y - youAt.y) < 8) {
+            b.back = 1;
+            ref.current.dataset.back = String(+(ref.current.dataset.back || 0) + 1);
+          }
+          b.age = (b.age || 0) + dt;
           if (b.homing) {
             const sp = Math.hypot(b.vx, b.vy), cur = Math.atan2(b.vy, b.vx);
             let d = Math.atan2(dcy - b.y, dcx - b.x) - cur;
@@ -28740,6 +28917,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.restore();
         }
         ctx.globalAlpha = 1;
+        const hands = { gun: { x: hx, y: hy }, torch: g ? { x: home.x + ca * 7, y: hy + sa * 5 - 0.5 } : null };
+        const body = (c2) => drawRunner(c2, youX, youY, PW, PH, 1, null, false, 0, false, hands);
+        const gunL = (c2) => {
+          if (g) drawGun(c2, hx, hy, aim, GF_GUN, gunAccent(g));
+        };
+        const rpx = DEV.runnerPx, rline = DEV.runnerLine > 0;
+        if (rpx > 0) {
+          pixelSprite(ctx, youX - 14, youY - 8, PW + 28, PH + 16, rpx, rline, body);
+          if (g) pixelSprite(ctx, youX - 14, youY - 8, PW + 28, PH + 16, rpx, false, gunL);
+        } else {
+          body(ctx);
+          gunL(ctx);
+        }
+        ctx.globalAlpha = 1;
         ctx.fillStyle = "#4a4f5a";
         ctx.fillRect(wallX, 0, GF_WALL + 1, wH);
         ctx.fillStyle = "#5c6270";
@@ -28749,12 +28940,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.fillRect(wallX - 0.4, 0, 0.4, wH);
         ctx.restore();
         ctx.globalAlpha = 1;
-        if (g) drawGun(ctx, gx, gy, aim, sc, gunAccent(g));
         if (flash > 0) {
           ctx.globalAlpha = Math.min(1, flash / 0.07);
           ctx.fillStyle = g ? gunAccent(g) : "#fff";
           ctx.beginPath();
-          ctx.arc(mx * GF_ZOOM + 2 * ca, my * GF_ZOOM + 2 * sa, 3.5, 0, 6.283);
+          ctx.arc((mx + ca) * GF_ZOOM, (my + sa) * GF_ZOOM, 2.5, 0, 6.283);
           ctx.fill();
           ctx.globalAlpha = 1;
         }

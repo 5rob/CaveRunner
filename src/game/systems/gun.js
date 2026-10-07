@@ -139,7 +139,7 @@ export function spawnShot(W, G, sh, ox, oy, base, bonus, warp, fd, from) {
       homing: Math.max(sh.homing, W.pb.homing), bounce: sh.bounce + W.pb.bounce, pierce: sh.pierce,
       explode: sh.explode, grav: sh.grav, accel: sh.accel, bore: sh.bore, hit: null,
       knock: sh.knock, crit: sh.crit + pc, boomer: sh.boomer, spiral: sh.spiral,
-      pong: sh.pong, orbit: sh.orbit, follow: sh.follow, anc: anchorOf(from), homeR: sh.homeR, eat: sh.eat, pull: sh.pull,
+      pong: sh.pong, orbit: sh.orbit, follow: sh.follow, followAim: sh.followAim, anc: anchorOf(from), homeR: sh.homeR, eat: sh.eat, pull: sh.pull,
       split: sh.split, cluster: sh.cluster, bounceFx: sh.bounceFx,
       friendly: sh.friendly, chain: sh.chain, fuse: sh.fuse,
       payload: sh.payload && sh.payload.length ? sh.payload : null, hidden: sh.hidden, arc: sh.arc,

@@ -24,6 +24,8 @@ export function cleanGun(g) {
   if (!g || typeof g !== 'object' || !Array.isArray(g.slots) || !g.slots.length) return null;
   const out = Object.assign({}, GUN_DEFAULTS, g);
   out.slots = g.slots.map(id => (id && ensureMod(id) ? id : null));
+  // a Gravity Gun saved before v0.0.155 has Follow Me: its trick (the hole held where you aim) is Follow This now
+  if (out.name === 'Gravity Gun') out.slots = out.slots.map(id => (id === 'follow' ? 'followaim' : id));
   out.cap = out.slots.length;
   out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
   return resetGun(out);
