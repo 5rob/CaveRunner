@@ -20,6 +20,7 @@ import { MiniMap, miniBox } from './minimap.js';
 import { SHOP_MENUS } from './modshop.js';
 import { DragGun, HoldRing, gunSlotPress } from './gunhold.js';
 import { GunSwap } from './swap.js';
+import { PauseMenu } from './pause.js';
 import { Witness } from './witness.js';
 
 
@@ -53,6 +54,7 @@ export function App() {
   const [run, setRun] = useState(0);
   const [edit, setEdit] = useState(false);
   const [devOpen, setDevOpen] = useState(false);
+  const [pauseOpen, setPauseOpen] = useState(false);   // the pause menu (ui/pause.js)
   const [spawnOpen, setSpawnOpen] = useState(false);
   const [lvlOpen, setLvlOpen] = useState(false);
   const [witnessOpen, setWitnessOpen] = useState(false);
@@ -73,7 +75,7 @@ export function App() {
   const found = input.current.found;
   input.current.mapOpen = mapOpen;
   const shopOpen = input.current.shopOpen;
-  input.current.paused = edit || !!found || devOpen || spawnOpen || mapOpen || witnessOpen || !!shopOpen;
+  input.current.paused = edit || !!found || devOpen || pauseOpen || spawnOpen || mapOpen || witnessOpen || !!shopOpen;
   const closeShop = () => { input.current.shopOpen = null; input.current.sig = ''; refresh(); };
 
   const LO = input.current.loadout;
@@ -260,6 +262,10 @@ export function App() {
         LO.debt > 0 && LO.due ? h(DueClock, { due: LO.due }) : null),
       h('button', { className: 'devbtn', title: 'Dev tools',
         onPointerDown: e => { e.preventDefault(); setDevOpen(true); } }, '⚙️'),
+      // the pause menu's button, top left (the Dev gear's mirror)
+      h('button', { className: 'pausebtn', title: 'Pause',
+        onPointerDown: e => { e.preventDefault(); setPauseOpen(true); } }, '⏸'),
+      pauseOpen ? h(PauseMenu, { input, close: () => setPauseOpen(false) }) : null,
       confirmAt != null ? h('div', { className: 'confirm' },
         h('div', { className: 'shade', onPointerDown: e => { e.preventDefault(); setConfirmAt(null); } }),
         h('div', { className: 'confirmCard' },

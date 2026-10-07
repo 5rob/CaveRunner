@@ -1,7 +1,7 @@
 // @ts-check
 // The autosave's Game side (save/save.js reads it back).
 
-import { SAVE_KEY } from '../../save/save.js';
+import { saveKey } from '../../save/save.js';
 
 // ---- autosave: the run as it stands, written every couple of seconds and whenever the
 // app is put away, so closing it mid-floor loses almost nothing. A dead run is wiped. ----
@@ -22,5 +22,5 @@ export function saveRun(W, G) {
       pins: W.pins,
       // each nest's rats still inside, and the ones out (a rat isn't saved: it goes back in)
       brood: W.enemies.filter(e => e.nest).map(e => [e.sid, e.nest.left + W.enemies.filter(r => r.home === e && !r.dead).length]) } };
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (_) {}
+  try { localStorage.setItem(saveKey(),JSON.stringify(data)); } catch (_) {}
 }
