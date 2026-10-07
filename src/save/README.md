@@ -19,6 +19,13 @@ notes } }`. `loadAudit`/`saveAudit` (try/catch), `cleanAudit` (drops junk and em
 then Remove (trash) / Keep (pinned) / Notes, empty sections skipped). Tests: `tests/logic/audit.test.js`,
 `tests/browser/audit.test.js`.
 
+`presets.js` (LIST4 #1): gun presets, localStorage `PRESET_KEY` (`caverunner-gunpresets`), shared across runs and
+save slots, never cleared by the game: `[{ name, gun }]` (`GunPreset`). The Bag's 💾 adds one, Dev → Spawn gun
+lists them. `loadPresets`/`savePresets` (try/catch), `cleanPresets` (junk dropped; each gun through `cleanGun`),
+`addPreset(list, name, gun)` (a new list; a deep copy of the gun through `cleanGun`, full of mana, firing state
+reset; blank name = the gun's), `removePreset(list, i)`, `presetGun` (a fresh copy to drop), `PRESET_NAME_MAX`.
+Tests: `tests/logic/presets.test.js`, `tests/browser/presets.test.js`.
+
 ## Rules
 
 - **Old saves are forgiven**: unknown mod/perk ids are dropped, missing gun fields filled from

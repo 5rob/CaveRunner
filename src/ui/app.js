@@ -21,6 +21,7 @@ import { SHOP_MENUS } from './modshop.js';
 import { DragGun, HoldRing, gunSlotPress } from './gunhold.js';
 import { GunSwap } from './swap.js';
 import { Witness } from './witness.js';
+import { gunColor, gunHue } from '../spells/guns.js';
 
 
 export function App() {
@@ -293,9 +294,10 @@ export function App() {
         h('div', { className: 'slots' },
           LO.guns.map((g, i) => h('button', {
               key: i,
-              className: 'dbtn slot' + (g ? '' : ' empty') + (i === LO.sel ? ' on' : '') +
+              className: 'dbtn slot' + (g ? ' gun' : ' empty') + (i === LO.sel ? ' on' : '') +
                 (gunHold && gunHold.i === i ? ' ringing ' + gunHold.mode : '') + (gunDrag && gunDrag.i === i ? ' lifted' : ''),
-              style: btnAt(deck.guns[i]),
+              // a slot holding a gun: its ring in the gun's name colour, a faint tint of it inside (owner, LIST4 #5)
+              style: g ? Object.assign(btnAt(deck.guns[i]), { borderColor: gunColor(g), '--gh': gunHue(g) }) : btnAt(deck.guns[i]),
               title: g ? g.name + ' — hold to take a gun here, or drag it out' : 'Empty slot — hold to take a gun here',
               onPointerDown: gunSlotPress(input, i, {
                 tap: () => { const L = input.current.loadout; if (L.guns[i] && L.sel === i) setGunInfo(i); else select(i); },
