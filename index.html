@@ -128,7 +128,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .knob{position:absolute;left:50%;top:50%;box-sizing:border-box;border-radius:50%;
   background:none;
   border:2.25px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,0.75);
-  opacity:.95;pointer-events:none}
+  opacity:.95;pointer-events:none;display:flex;align-items:center;justify-content:center}
+/* the knob's letter, L or R: the size of the R on the buy machine's hint (14px × its 0.6 scale) */
+.knob .klet{color:#fff;font:300 8.4px system-ui,sans-serif;line-height:1}
 .lbl{position:absolute;left:50%;transform:translateX(-50%);pointer-events:none;
   font:700 10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;
   text-transform:uppercase;color:var(--ctl-dim);text-shadow:0 1px 2px #000}
@@ -28567,11 +28569,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ring,
       // the right stick's amber ring: the line the knob's edge crosses when the drag starts
       // counting as aiming rather than as a tap on the dead zone
-      h("div", { className: "knob", style: {
-        width: KNOB * 100 + "%",
-        height: KNOB * 100 + "%",
-        transform: `translate(-50%,-50%) translate(${knob2.x}px,${knob2.y}px)`
-      } }),
+      h(
+        "div",
+        { className: "knob", style: {
+          width: KNOB * 100 + "%",
+          height: KNOB * 100 + "%",
+          transform: `translate(-50%,-50%) translate(${knob2.x}px,${knob2.y}px)`
+        } },
+        h("span", { className: "klet" }, left ? "L" : "R")
+      ),
       // (none with Aim Assist on the gun in hand: the stick is a pointer then, it fires on its own)
       right && !(input.current.loadout && hasAssist(input.current.loadout.guns[input.current.loadout.sel])) && h("div", { className: "deadzone", style: {
         width: stickTrigger(size).ring * 100 + "%",

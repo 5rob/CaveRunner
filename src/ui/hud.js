@@ -276,7 +276,8 @@ export function Stick({ size, kind, input, refresh }) {
     // counting as aiming rather than as a tap on the dead zone
     h('div', { className: 'knob', style: {
       width: (KNOB * 100) + '%', height: (KNOB * 100) + '%',
-      transform: `translate(-50%,-50%) translate(${knob.x}px,${knob.y}px)` } }),
+      transform: `translate(-50%,-50%) translate(${knob.x}px,${knob.y}px)` } },
+      h('span', { className: 'klet' }, left ? 'L' : 'R')),
     // (none with Aim Assist on the gun in hand: the stick is a pointer then, it fires on its own)
     right && !(input.current.loadout && hasAssist(input.current.loadout.guns[input.current.loadout.sel])) && h('div', { className: 'deadzone', style: {
       width: (stickTrigger(size).ring * 100) + '%', height: (stickTrigger(size).ring * 100) + '%' } }),
