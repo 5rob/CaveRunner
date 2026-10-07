@@ -91,6 +91,7 @@ const SHOTS = process.env.CAVERUNNER_SHOTS || '';
   let hits = 0;
   for (let i = 0; i < 50 && hits < 2; i++) { await page.waitForTimeout(150); hits = await page.evaluate(() => +(document.querySelector('.gfire').dataset.hits || 0)); }
   check('shots hit the dummy (it never dies)', hits >= 2, hits);
+  check('its DPS shows over its head', await page.evaluate(() => +document.querySelector('.gfire').dataset.dps) > 0);
   if (SHOTS) {
     for (let i = 0; i < 3; i++) { await page.waitForTimeout(700); await page.screenshot({ path: path.join(SHOTS, `gfdummy-${i}.png`), clip: { x: 0, y: 0, width: 412, height: 230 } }); }
   }

@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.153 — DPS over the firing window's dummy
+Released 2026-10-07 (the owner OK'd the screenshot; a minor update). A red "N dps" over the hologram dummy's head
+in the Bag's firing window: the damage of shots that hit it over the last `GF_DPS_S` (3) s, hidden at 0
+(`ui/editor.js` `GunFire`; suite `gunfire`). Blasts near it without a direct hit aren't counted.
+
 ## v0.0.152 — the firing window: sway, room, a hologram dummy
 Released 2026-10-07 (the owner OK'd the screenshots; a minor update). In the Bag's firing window (`ui/editor.js`
 `GunFire`): zoomed out (`GF_ZOOM` 2.2, was 3); the gun sways from aiming near the wall's top to near its bottom every
