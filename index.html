@@ -398,14 +398,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .pbuy.cant b{color:#fff}
 /* the buy machine's two options: flick to select a level (left), tap to buy (right) */
 .buypanel.pickpanel{left:12%;right:12%;padding:4px 8px;background:rgba(18,20,26,0.25);border-color:#00ff3c;
-  box-shadow:none;transform:scale(.8);transform-origin:50% 100%;transition:opacity .2s}
+  box-shadow:none;transform:scale(.6);transform-origin:50% 100%;transition:opacity .2s}
 /* hidden while you're using the sticks (pickups.js: idle after PICK_IDLE); fades up, hides at once */
 .buypanel.pickhide{opacity:0;transition:none}
 .pbuy.pick{height:44px;gap:18px;white-space:nowrap}
 .pbuy.pick .popt{display:flex;align-items:center;gap:5px}
 .pbuy.pick b{font-size:14px;color:#00ff3c}
-.pbuy.pick .rkey circle,.pbuy.pick .rkey polyline{stroke:#00ff3c}
-.pbuy.pick .rkey text{fill:#00ff3c}
 .pbuy.pick .popt.cant{opacity:.45}
 .weapon.locked{opacity:.45}
 .pop.flow{position:static;max-height:none;box-shadow:none;margin-bottom:2px}
