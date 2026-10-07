@@ -107,6 +107,19 @@ export function RKey() {
     h('text', { x: 15, y: 15, textAnchor: 'middle', dominantBaseline: 'central', fill: '#fff',
       fontSize: 14, fontWeight: 300, fontFamily: 'system-ui, sans-serif' }, 'R'));
 }
+// The R icon with thin up and down arrowheads (no stalks) above and below it: flick the right stick
+// up or down (the buy machine's "Select Level")
+export function PickKey() {
+  /** @param {number} y @param {number} d */
+  const head = (y, d) => h('polyline', { points: `9,${y + d * 4} 15,${y} 21,${y + d * 4}`, fill: 'none',
+    stroke: '#fff', strokeWidth: 1, strokeLinecap: 'round', strokeLinejoin: 'round' });
+  return h('svg', { className: 'rkey pickkey', viewBox: '0 0 30 50', width: 28, height: 46, 'aria-hidden': true },
+    head(3, 1),
+    h('circle', { cx: 15, cy: 25, r: 13.5, fill: 'none', stroke: '#fff', strokeWidth: 1 }),
+    h('text', { x: 15, y: 25, textAnchor: 'middle', dominantBaseline: 'central', fill: '#fff',
+      fontSize: 14, fontWeight: 300, fontFamily: 'system-ui, sans-serif' }, 'R'),
+    head(47, -1));
+}
 // A red crystal: gold's lumpy nugget, bigger, dark red, white glints (CRYSTAL_PAL in art/sprites.js)
 /** @param {{ size?: number, green?: boolean }} props */
 export function CrystalIcon({ size, green }) {
@@ -167,6 +180,7 @@ export function Stick({ size, kind, input, refresh }) {
   // centre) sets it false the moment it first crosses AIM_DEAD, and stays false.
   const stayed = useRef(true);
   const peak = useRef(0);               // the furthest this touch has pushed (a menu pointer past DEV.ptrStart)
+  const peakNy = useRef(0);             // and its up/down there (a flick at the buy machine picks the floor)
 
   const right = kind === 'right';
   const update = e => {
@@ -182,6 +196,7 @@ export function Stick({ size, kind, input, refresh }) {
     // already a drag (aiming, the line shows), not a tap
     const thresh = right ? stickTrigger(r.width).mag : 0.15;
     if (right && mag > AIM_DEAD) stayed.current = false;
+    if (mag >= peak.current) peakNy.current = ny;
     peak.current = Math.max(peak.current, mag);
     // A card is up: left picks up, right leaves, and the one you are pointing at is the
     // one lit. Inside the dead zone neither is lit, because you have not chosen yet.
@@ -220,6 +235,9 @@ export function Stick({ size, kind, input, refresh }) {
       if (peak.current <= DEV.ptrStart) input.current.menuTap();   // past it: the pointer (Dev → Menu pointer)
     } else if (right && stayed.current) {
       input.current.interact = true;
+    } else if (right && input.current.lvlPick && Math.abs(peakNy.current) > 0.5) {
+      // at the buy machine: a flick up picks the floor above, down the one below (pickups.js)
+      input.current.lvlStep = peakNy.current < 0 ? 1 : -1;
     }
     Object.assign(input.current[kind], { active: false, mag: 0, on: false, dy: 0 });
     setKnob({ x: 0, y: 0, jet: false });
@@ -258,7 +276,8 @@ export function Stick({ size, kind, input, refresh }) {
     // counting as aiming rather than as a tap on the dead zone
     h('div', { className: 'knob', style: {
       width: (KNOB * 100) + '%', height: (KNOB * 100) + '%',
-      transform: `translate(-50%,-50%) translate(${knob.x}px,${knob.y}px)` } }),
+      transform: `translate(-50%,-50%) translate(${knob.x}px,${knob.y}px)` } },
+      h('span', { className: 'klet' }, left ? 'L' : 'R')),
     // (none with Aim Assist on the gun in hand: the stick is a pointer then, it fires on its own)
     right && !(input.current.loadout && hasAssist(input.current.loadout.guns[input.current.loadout.sel])) && h('div', { className: 'deadzone', style: {
       width: (stickTrigger(size).ring * 100) + '%', height: (stickTrigger(size).ring * 100) + '%' } }),

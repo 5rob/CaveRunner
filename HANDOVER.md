@@ -3,6 +3,13 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
+## v0.0.157 — the buy machine: flick the right stick to pick a level (no menu), new machine hints, L/R on the knobs: RELEASED on `main` 2026-10-07 (owner OK'd)
+
+The floor menu is gone: at the buy machine flick the right stick up/down to pick the floor (one past what's for
+sale shows grey), tap to buy; aiming and firing still work there. Both machines' hints are small green panels
+(red on the sell machine while it refuses) that fade up after 1.5 s with no stick input. CHANGELOG v0.0.157.
+Desktop has no key for the pick (phone only).
+
 ## v0.0.156 — circle fields drawn as rising sparkles (+ plus signs for Vigour), no filled disc; rings thin at 10%: RELEASED on `main` 2026-10-07 (owner OK'd)
 
 ## v0.0.155 — Follow Me (to you) / Follow This (ahead of the gun, the Gravity Gun's) split, Follow Me as a pull; buffs and nerfs; you in the firing window: RELEASED on `main` 2026-10-07 (owner OK'd). Buff/nerf mana and tiers are my guesses: the owner may retune.

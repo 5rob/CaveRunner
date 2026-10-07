@@ -14,7 +14,7 @@ import { DevPanel, SpawnGun, SpawnLevel } from './devpanel.js';
 import { Bag } from './exosuit.js';
 import { GunIcon } from './editor.js';
 import { h, useEffect, useRef, useState } from './h.js';
-import { CrystalRow, DueClock, RKey, Stick, deckLayout, fmtGold, holdPress, shadeAt } from './hud.js';
+import { CrystalRow, DueClock, PickKey, RKey, Stick, deckLayout, fmtGold, holdPress, shadeAt } from './hud.js';
 import { MapScreen, PinPicker, loadPins, savePins, usePin } from './map.js';
 import { MiniMap, miniBox } from './minimap.js';
 import { SHOP_MENUS } from './modshop.js';
@@ -224,7 +224,7 @@ export function App() {
       // buying and taking a mod is a tap on the right stick's dead zone (or the f key),
       // taken straight. A gun on the ground opens the swap chooser instead, so the panel
       // hides while that is up (the game pauses behind it).
-      prompt && !found && !shopOpen ? h('div', { className: 'buypanel',
+      prompt && !found && !shopOpen ? h('div', { className: 'buypanel' + (prompt.pick || prompt.sell ? ' pickpanel' + (prompt.idle ? '' : ' pickhide') + (prompt.sell ? ' one' : '') + (prompt.sell && !prompt.can ? ' red' : '') : ''),
         style: { bottom: (input.current.promptBottom || 12) + 'px',
           maxHeight: 'calc(100% - ' + ((input.current.promptBottom || 12) + 12) + 'px)' } },
         prompt.id ? h(ModCard, { id: prompt.id, ingame: true }) : null,
@@ -236,6 +236,14 @@ export function App() {
         // a gun on the ground: hold a gun slot to take it (ui/gunhold.js), no right-stick tap
         prompt.gun && prompt.found && !input.current.gunMenu ? h('div', { className: 'pbuy' },
           h('b', null, 'Hold a gun slot')) :
+        // the buy machine: flick the right stick up/down to pick the floor (left), tap to buy it (right)
+        prompt.pick ? h('div', { className: 'pbuy pick' },
+          h('div', { className: 'popt' }, h(PickKey), h('b', null, 'Select Level')),
+          h('div', { className: 'popt' + (prompt.can ? '' : ' cant'), 'aria-label': 'Tap the right stick to buy' },
+            h(RKey), h('b', null, prompt.text))) :
+        // the sell machine: the same style, one option (red while biological entities are left)
+        prompt.sell ? h('div', { className: 'pbuy pick' },
+          h('div', { className: 'popt' }, h(RKey), h('b', null, prompt.text))) :
         h('div', { className: 'pbuy' + (prompt.can ? '' : ' cant'),
             'aria-label': 'Tap the right stick to ' + (prompt.price ? 'buy for ' + prompt.price + 'g' : 'take') },
           h(RKey),

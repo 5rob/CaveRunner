@@ -1,7 +1,7 @@
 // @ts-check
-// The level vending machines on the shop's back wall. A level is bought on credit from one: its tap
-// opens the floor menu (ui/levelshop.js; input.current.shopOpen = 'levels'), which hands back
-// input.current.buyFloor, and lvlBuy(floor) goes on your debt (LO.debt, not your gold). It is sold back
+// The level vending machines on the shop's back wall. A level is bought on credit from one: standing
+// at it, a right-stick flick up or down picks the floor (W.pick, input.current.lvlStep; one floor past
+// what's for sale shows greyed), its screens show that floor, and a tap buys it (buyLevel): lvlBuy(floor) goes on your debt (LO.debt, not your gold). It is sold back
 // to the other once no biological entities are left in it (lvlSell(floor): the debt paid off, the
 // reward to you, both climbing exponentially with the floor: data/levels.js). Floor N is for sale only
 // once floor N - 1 has been sold this run (LO.soldTop). It must be repaid by LO.due: an hour
@@ -15,7 +15,7 @@ import {
   BED, BRICK, CELL, CH, CW, SHOP_FLOOR, SHOP_ROOF, SHOP_TOP, SHOP_Y, VEND_BUY_X, VEND_SELL_X
 } from '../../core/consts.js';
 import { bioCount } from '../../creatures/common.js';
-import { LVL_MENU_MAX, canBuyFloor, lvlBuy, lvlReward } from '../../data/levels.js';
+import { LVL_MENU_MAX, canBuyFloor, lvlBuy, lvlReward, pickTop, stepPick } from '../../data/levels.js';
 import { dueMs } from '../../dev/knobs.js';
 import { fireNew } from '../../world/fire.js';
 import { fogStart } from '../../world/vision.js';
@@ -37,6 +37,7 @@ export const WARP_END = 2.4;      // and to the end of the crackle
 export const WARP_WAIT = 6;       // the longest the dark waits for a level still being made (then it's made here)
 export const REVEAL_T = 0.7;      // seconds to draw a bought level's rock in, bottom to top
 export const ROOF_Y = (SHOP_TOP - SHOP_ROOF) * CELL;   // the top of the shop's roof
+export const PICK_IDLE = 1.5;     // seconds with no stick input before the buy machine's hint fades up
 export const VEND_W = 60, VEND_H = 84;                 // a machine's cabinet (world units)
 export const VEND_TOP = SHOP_FLOOR * CELL - VEND_H;    // its top
 
@@ -53,21 +54,35 @@ export function vendNear(W, pcx, pcy) {
 /** @param {World} W */
 export const canSell = W => W.hasLvl && bioCount(W.enemies, false) === 0;
 
-// the prompt line for a machine
-/** @param {World} W @param {'buy' | 'sell'} kind */
-export function vendLabel(W, kind) {
-  if (kind === 'buy') return { text: 'Tap R to buy', price: 0, can: true };
-  return canSell(W) ? { text: 'Tap R to sell', price: 0, can: true }
-    : { text: 'Biological entities detected', price: 0, can: false };
+// the floor the machines' screens show: the level you're in, else the one picked at the buy machine
+/** @param {World} W */
+export const pickedFloor = W => W.hasLvl ? W.floor : (W.pick || W.floor);
+
+// a flick at the buy machine: the pick one floor up (+1) or down (-1), up to one past what's for sale
+/** @param {World} W @param {Loadout} LO @param {number} d */
+export function pickStep(W, LO, d) {
+  const top = LO.soldTop || 0, was = Math.min(pickedFloor(W), pickTop(top));
+  const f = stepPick(was, top, d);
+  W.pick = f;
+  SFX.fx(f === was ? 'prompt' : 'switch');
 }
 
-// a tap at a machine: the buy machine opens its floor menu (App pauses the game), the sell machine sells
+// the prompt line for a machine (the buy machine's is two options: flick to select, tap to buy)
+/** @param {World} W @param {'buy' | 'sell'} kind @param {Loadout} LO */
+export function vendLabel(W, kind, LO) {
+  if (kind === 'buy') return { text: 'Tap R to Buy', price: 0, can: canBuyFloor(LO.soldTop || 0, pickedFloor(W)), pick: true };
+  return canSell(W) ? { text: 'Tap R to sell', price: 0, can: true, sell: true }
+    : { text: 'Biological entities detected', price: 0, can: false, sell: true };
+}
+
+// a tap at a machine: the buy machine buys the floor picked, the sell machine sells
 /** @param {World} W @param {GameCtx} G @param {'buy' | 'sell'} kind @param {Loadout} LO */
 export function vendUse(W, G, kind, LO) {
   if (W.warp) return;
   if (kind === 'buy' && !W.hasLvl) {
-    G.input.current.shopOpen = 'levels';
-    SFX.ui('mod');
+    const f = pickedFloor(W);
+    if (!canBuyFloor(LO.soldTop || 0, f)) { toast(W, 'Sell level ' + (f - 1) + ' first'); SFX.ui('poor'); return; }
+    buyLevel(W, G, f, LO);
   } else if (kind === 'sell' && W.hasLvl) {
     if (!canSell(W)) { toast(W, 'No biological entities accepted'); SFX.ui('poor'); return; }
     // the sale pays the debt off and the rest is yours: the reward (always the reward, so a debt run up
@@ -82,11 +97,12 @@ export function vendUse(W, G, kind, LO) {
   }
 }
 
-// The floor menu's answer (input.current.buyFloor): that floor's level, bought on credit
+// A tap at the buy machine: that floor's level, bought on credit
 /** @param {World} W @param {GameCtx} G @param {number} floor @param {Loadout} LO */
 export function buyLevel(W, G, floor, LO) {
   if (W.warp || W.hasLvl || W.repo || !canBuyFloor(LO.soldTop || 0, floor)) return false;
   if (floor !== W.floor) { W.floor = floor; W.levelSeed = 1 + Math.floor(Math.random() * 2147483000); }
+  W.pick = 0;
   preLevel(W.floor, W.levelSeed);             // already made (or on its way) for the likely floor
   LO.debt = (LO.debt || 0) + lvlBuy(floor);   // your wallet is yours: the level goes on your debt
   LO.due = Date.now() + dueMs(floor);         // an hour to repay it (floor 1: Dev's knob), on the device's clock
@@ -103,8 +119,6 @@ export function buyLevel(W, G, floor, LO) {
 // the roof and up into the cave for a second after
 /** @param {World} W @param {GameCtx} G @param {StepFrame} F */
 export function stepWarp(W, G, F) {
-  const ask = G.input.current.buyFloor;
-  if (ask) { G.input.current.buyFloor = 0; buyLevel(W, G, ask, F.LO); }
   stepReveal(W, G, F);
   const w = W.warp;
   if (!w) return;
@@ -126,6 +140,7 @@ export function stepWarp(W, G, F) {
       enterLevel(W, G, { seed: W.levelSeed, owned: [], alive: null, sold: [], rooms: [], pickups: null }, 'shop', got ? got.level : undefined);
     } else {                                 // sold: the cave goes, and the floor above is up next
       W.floor = Math.min(LVL_MENU_MAX, (G.input.current.loadout.soldTop || 0) + 1);
+      W.pick = 0;
       W.levelSeed = 1 + Math.floor(Math.random() * 2147483000);
       const heal = W.stock.find(it => it.kind === 'heal');
       if (heal) { heal.bought = 0; heal.price = 0; }   // a new floor's shop: the first heal is free again
