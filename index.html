@@ -28485,6 +28485,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var GF_ZOOM = 2.2, GF_SPEED = 0.2, GF_MAX = 90;
   var GF_SWAY = 0.06, GF_SWAY_S = 4;
   var GF_WALL = 5;
+  var GF_DPS_S = 3;
   var GF_DUMMY_GAP = 6, GF_DUMMY_K = 2 / 3, DW = PW * GF_DUMMY_K, DH = PH * GF_DUMMY_K;
   function GunFire({ gun, sim }) {
     const ref = useRef(null);
@@ -28497,6 +28498,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       let booms = [];
       let H = 0;
       const dummy = { x: 0, y: 0, hitT: 0, hits: 0 };
+      let dmgLog = [];
       const DL2 = document.createElement("canvas"), dlx = DL2.getContext("2d", { willReadFrequently: true }), DLP = 3;
       const DLW = Math.ceil((DW + 8) * DLP), DLH = Math.ceil((DH + 6) * DLP);
       DL2.width = DLW;
@@ -28534,6 +28536,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             bounce: sh.bounce || 0,
             pierce: sh.pierce || 0,
             hit: 0,
+            dmg: sh.dmg || 0,
             trig: sh.trig,
             payload: sh.payload,
             timer: sh.trig === "timer" ? (sh.timer || 0.5) / GF_SPEED : 0
@@ -28585,6 +28588,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         dummy.y = gy / GF_ZOOM - DH * 0.55;
         dummy.hitT = Math.max(0, dummy.hitT - dt);
         const dcx = dummy.x + DW / 2, dcy = dummy.y + DH / 2;
+        dmgLog = dmgLog.filter((e) => e[0] > fw.time - GF_DPS_S);
         const before = shots.length;
         const live = [];
         for (const b of shots) {
@@ -28605,6 +28609,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (b.hit <= 0 && b.x + r > dummy.x && b.x - r < dummy.x + DW && b.y + r > dummy.y && b.y - r < dummy.y + DH) {
             dummy.hitT = 0.3;
             dummy.hits++;
+            if (b.dmg) dmgLog.push([fw.time, b.dmg]);
             ref.current.dataset.hits = String(dummy.hits);
             if (b.pierce > 0) {
               b.pierce--;
@@ -28712,6 +28717,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.globalAlpha = 0.85 * (hurt2 && Math.floor(dummy.hitT * 30) % 2 ? 0.45 : 1);
           ctx.imageSmoothingEnabled = false;
           ctx.drawImage(DL2, dummy.x - 4, dummy.y - 3, DLW / DLP, DLH / DLP);
+          ctx.restore();
+        }
+        const dps = dmgLog.reduce((t, e) => t + e[1], 0) / GF_DPS_S;
+        ref.current.dataset.dps = dps.toFixed(1);
+        if (dps > 0) {
+          ctx.save();
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          ctx.font = "700 11px ui-monospace,SFMono-Regular,Menlo,monospace";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "bottom";
+          const txt = (dps >= 10 ? Math.round(dps) : dps.toFixed(1)) + " dps";
+          const tx2 = Math.min(dcx * GF_ZOOM, wallX * GF_ZOOM - ctx.measureText(txt).width / 2 - 2), ty = (dummy.y - 2) * GF_ZOOM;
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = "rgba(0,0,0,0.8)";
+          ctx.strokeText(txt, tx2, ty);
+          ctx.fillStyle = "#ff4a4a";
+          ctx.fillText(txt, tx2, ty);
           ctx.restore();
         }
         ctx.globalAlpha = 1;

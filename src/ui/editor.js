@@ -106,6 +106,8 @@ export const GF_SWAY = 0.06, GF_SWAY_S = 4;
 export const GF_WALL = 5;
 // a dummy you in front of the wall (owner): shots hit it and it flashes like you do when hurt, and never dies;
 // homing shots steer for it. World units: GF_DUMMY_K (owner: 2/3) of the real you, GF_DUMMY_GAP in front of the wall
+// GF_DPS_S: the seconds the DPS over the dummy's head averages over (owner: red, hidden at 0)
+export const GF_DPS_S = 3;
 export const GF_DUMMY_GAP = 6, GF_DUMMY_K = 2 / 3, DW = PW * GF_DUMMY_K, DH = PH * GF_DUMMY_K;
 /** @param {{ gun: Gun, sim: { current: import('../spells/bagsim.js').FireSim | null } }} props */
 export function GunFire({ gun, sim }) {
@@ -122,6 +124,9 @@ export function GunFire({ gun, sim }) {
     let booms = [];
     let H = 0;
     const dummy = { x: 0, y: 0, hitT: 0, hits: 0 };
+    // its damage, for the DPS over its head: [time, dmg] per hit, the last GF_DPS_S seconds (window time)
+    /** @type {number[][]} */
+    let dmgLog = [];
     // the dummy's own little layer, DLP pixels a world unit (shrunk to 2/3 it would blur at one), made a hologram
     // like the guide's (render/guide.js holoPass)
     const DL = document.createElement('canvas'), dlx = DL.getContext('2d', { willReadFrequently: true }), DLP = 3;
@@ -141,7 +146,7 @@ export function GunFire({ gun, sim }) {
         if (shots.length >= GF_MAX * 2) return;
         shots.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, size: sh.size, col: sh.col,
           look: sh.look, spin: Math.random() * 6, grav: sh.grav || 0, explode: sh.explode, homing: sh.homing,
-          pull: sh.pull, eat: sh.eat, hidden: sh.hidden, life: 3, bounce: sh.bounce || 0, pierce: sh.pierce || 0, hit: 0,
+          pull: sh.pull, eat: sh.eat, hidden: sh.hidden, life: 3, bounce: sh.bounce || 0, pierce: sh.pierce || 0, hit: 0, dmg: sh.dmg || 0,
           trig: sh.trig, payload: sh.payload, timer: sh.trig === 'timer' ? (sh.timer || 0.5) / GF_SPEED : 0 });
       }
     };
@@ -186,6 +191,7 @@ export function GunFire({ gun, sim }) {
       const wW = W / GF_ZOOM, wH = H / GF_ZOOM, wallX = wW - GF_WALL;
       dummy.x = wallX - GF_DUMMY_GAP - DW; dummy.y = gy / GF_ZOOM - DH * 0.55; dummy.hitT = Math.max(0, dummy.hitT - dt);
       const dcx = dummy.x + DW / 2, dcy = dummy.y + DH / 2;
+      dmgLog = dmgLog.filter(e => e[0] > fw.time - GF_DPS_S);
       const before = shots.length;
       /** @type {any[]} */
       const live = [];
@@ -202,6 +208,7 @@ export function GunFire({ gun, sim }) {
         const r = Math.max(0.5, (b.size || 1) * 0.5);
         if (b.hit <= 0 && b.x + r > dummy.x && b.x - r < dummy.x + DW && b.y + r > dummy.y && b.y - r < dummy.y + DH) {
           dummy.hitT = 0.3; dummy.hits++;                // it flashes like you do when hurt, and never dies
+          if (b.dmg) dmgLog.push([fw.time, b.dmg]);
           ref.current.dataset.hits = String(dummy.hits);    // for the suite
           if (b.pierce > 0) { b.pierce--; b.hit = 0.25; }
           else { burst(b, 'wall', Math.PI - Math.atan2(b.vy, b.vx)); continue; }
@@ -274,6 +281,18 @@ export function GunFire({ gun, sim }) {
         ctx.globalAlpha = 0.85 * (hurt && Math.floor(dummy.hitT * 30) % 2 ? 0.45 : 1);
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(DL, dummy.x - 4, dummy.y - 3, DLW / DLP, DLH / DLP);
+        ctx.restore();
+      }
+      // its DPS over its head, red; gone while nothing's hitting it
+      const dps = dmgLog.reduce((t, e) => t + e[1], 0) / GF_DPS_S;
+      ref.current.dataset.dps = dps.toFixed(1);       // for the suite
+      if (dps > 0) {
+        ctx.save(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.font = '700 11px ui-monospace,SFMono-Regular,Menlo,monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        const txt = (dps >= 10 ? Math.round(dps) : dps.toFixed(1)) + ' dps';
+        const tx = Math.min(dcx * GF_ZOOM, wallX * GF_ZOOM - ctx.measureText(txt).width / 2 - 2), ty = (dummy.y - 2) * GF_ZOOM;
+        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.strokeText(txt, tx, ty);
+        ctx.fillStyle = '#ff4a4a'; ctx.fillText(txt, tx, ty);
         ctx.restore();
       }
       // the wall: grey stone blocks, offset every other row
