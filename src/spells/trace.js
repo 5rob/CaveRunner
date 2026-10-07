@@ -69,7 +69,7 @@ export function tracePath(sh, x0, y0, nx, ny, solid, enemies, out, home0, far = 
   const env = { home, ahead: { x: home.x + nx * FOLLOW_AHEAD, y: home.y + ny * FOLLOW_AHEAD }, anchor: null };
   /** @type {Mover} */
   const mv = { x, y, vx, vy, age: 0, born: sh.life, boomer: sh.boomer, pong: sh.pong, spiral: sh.spiral,
-    orbit: sh.orbit, follow: sh.follow };
+    orbit: sh.orbit, follow: sh.follow, followAim: sh.followAim };
   const pathed = hasPath(mv);
   out.length = 0;
   out.push(x, y);

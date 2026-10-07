@@ -1,5 +1,5 @@
 // @ts-check
-// Flight paths (v0.0.137): Boomerang, Ping-Pong, Spiral Arc, Orbiting Arc and Follow Me, in one
+// Flight paths (v0.0.137): Boomerang, Ping-Pong, Spiral Arc, Orbiting Arc, Follow Me and Follow This, in one
 // pure function, pathStep, that moves a shot in flight, a static field a path mod set moving, and
 // the aim line's pretend shot (tracePath) the same way, so the three always agree.
 
@@ -14,12 +14,12 @@ export const SPIRAL_GROW = 6;        // ... each swing wider: spiral × this uni
 export const ORBIT_R = 26;           // Orbiting Arc: the circle's radius
 export const ORBIT_IN = 0.2;         // ... seconds to swing out to it
 export const ORBIT_W = 14;           // ... the fastest it goes round, rad/s
-export const FOLLOW_AHEAD = 34;      // Follow Me: a field comes to rest this far ahead of your gun
+export const FOLLOW_AHEAD = 34;      // Follow This: a field comes to rest this far ahead of your gun
 export const FIELD_SPEED = 150;      // a field a path mod moves travels at this
 export const SEEK_ACC = 7;           // ... and steers this hard (1/s) when it heads for something
 
 /** does this shot or field take a path from pathStep? @param {PathMods} o */
-export const hasPath = o => !!(o.boomer || o.pong || o.spiral || o.orbit || o.follow || (o.still && o.homing));
+export const hasPath = o => !!(o.boomer || o.pong || o.spiral || o.orbit || o.follow || o.followAim || (o.still && o.homing));
 
 // Spiral Arc's sideways offset at age t: a sine wave that widens as it goes
 /** @param {number} k the shot's spiral @param {number} t */
@@ -62,10 +62,9 @@ export function pathStep(o, dt, env) {
       else if (o.life != null && o.life < 0.05 && age < (o.born || 1) * BOOM_MAX) o.life = 0.05;   // it isn't back yet
     }
   }
-  if (o.follow) {
-    const t = o.still ? env.ahead : env.home;
-    head(t.x, t.y, o.follow);
-  }
+  // Follow Me: to you, shot or field (owner, v0.0.155); Follow This: to the spot ahead of your gun
+  if (o.follow) head(env.home.x, env.home.y, o.follow);
+  if (o.followAim) head(env.ahead.x, env.ahead.y, o.followAim);
   if (o.still && o.homing && env.enemies) {
     let best = null, bd = o.homeR || 260;
     for (const e of env.enemies) { const d = Math.hypot(e.x - o.x, e.ty - o.y); if (d < bd) { bd = d; best = e; } }

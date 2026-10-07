@@ -95,7 +95,7 @@ export const NOITA_OF = {
   blood: 'BLOOD_MAGIC', bpower: 'BLOOD_TO_POWER', gpower: 'MONEY_MAGIC', farcast: 'LONG_DISTANCE_CAST',
   telecast: 'TELEPORT_CAST', warpcast: 'SUPER_TELEPORT_CAST', sawstorm: 'ALL_DISCS',
   knock: 'KNOCKBACK', kick: 'RECOIL', damper: 'RECOIL_DAMPER', crit: 'CRITICAL_HIT', gravmod: 'GRAVITY',
-  float: 'GRAVITY_ANTI', boomer: 'HOMING_SHOOTER', follow: 'HOMING_SHOOTER',
+  float: 'GRAVITY_ANTI', boomer: 'HOMING_SHOOTER', follow: 'HOMING_SHOOTER', followaim: 'HOMING_SHOOTER',
   lifeup: 'LIFETIME', lifedn: 'LIFETIME_DOWN', grow: 'SPEED', shrink: 'SPEED', spiral: 'SPIRALING_SHOT', pong: 'PINGPONG_PATH',
   orbit: 'ORBIT_SHOT', autoaim: 'AUTOAIM', aimassist: 'AUTOAIM', discrim: 'AUTOAIM', nearhome: 'HOMING_SHORT', flat: 'HORIZONTAL_ARC',
   eater: 'MATTER_EATER', lust: 'BLOODLUST', manapow: 'DAMAGE_FOREVER', split: 'QUANTUM_SPLIT',

@@ -317,8 +317,12 @@ export const MODS = {
   pong:    { name: 'Ping-Pong Path', kind: 'mod', glyph: '⇄', col: '#b57cff', mana: 6, d: 0.05,
              info: 'Flies out, snaps back a little, and on again', f: s => { s.pong += 4; s.life *= 1.4; } },
   follow:  { name: 'Follow Me', kind: 'mod', glyph: '⇜', col: '#b57cff', mana: 10, d: 0.04,
-             info: 'Homing, but on you: a shot curves back round to you; a field hovers just ahead of your gun',
+             info: 'Homing, but on you: a shot curves back round to you; a field comes to you and stays with you',
              f: s => { s.follow += 4; } },
+  // owner (v0.0.155): Follow Me split in two; this half is the Gravity Gun's, a White Hole held where you aim
+  followaim: { name: 'Follow This', kind: 'mod', glyph: '↬', col: '#b57cff', mana: 10, d: 0.04,
+             info: 'A field hovers just ahead of your gun and goes wherever you aim (the Gravity Gun’s trick); a shot homes on that spot',
+             f: s => { s.followAim += 4; } },
   orbit:   { name: 'Orbiting Arc', kind: 'mod', glyph: '◴', col: '#b57cff', mana: 9, d: 0.06,
              info: 'Circles whatever cast it: your gun, or a trigger spell\'s carrier as it flies', f: s => { s.orbit += 3.4; s.life *= 1.6; } },
   autoaim: { name: 'Auto-Aim', kind: 'mod', glyph: '✢', col: '#b57cff', mana: 7, d: 0.03,
@@ -424,7 +428,7 @@ export const FAMILY_OF = {
   orb: 'shots', blast: 'shots', saw: 'shots',
   dmg_up: 'dmg', heavy: 'dmg', big: 'dmg', over: 'dmg', over_heat: 'dmg', tip: 'dmg',
   speed: 'vel', light: 'vel', accel: 'vel', range: 'vel', brief: 'vel',
-  homing: 'path', seeker: 'path', follow: 'path', lifeup: 'vel', lifedn: 'vel', grow: 'pattern', shrink: 'pattern', bounce: 'path', pierce: 'path', borer: 'path',
+  homing: 'path', seeker: 'path', follow: 'path', followaim: 'path', lifeup: 'vel', lifedn: 'vel', grow: 'pattern', shrink: 'pattern', bounce: 'path', pierce: 'path', borer: 'path',
   tight: 'pattern', scatter: 'pattern', double: 'pattern', triple: 'pattern', quad: 'pattern',
   fast: 'upkeep', trigger: 'upkeep', cold: 'upkeep', recharge: 'upkeep',
   cheap: 'upkeep', battery: 'upkeep', auto: 'upkeep',
@@ -466,7 +470,7 @@ export const famCol = (/** @type {string} */ id) => famOf(id).col;
 /** @type {Record<string, number>} */
 export const MOD_PRICE = {
   bolt: 20, spark: 12, slug: 40, buck: 35, lance: 45, orb: 30, blast: 45,
-  follow: 35, lifeup: 25, lifedn: 15, grow: 30, shrink: 20,
+  follow: 35, followaim: 35, lifeup: 25, lifedn: 15, grow: 30, shrink: 20,
   dmg_up: 30, heavy: 40, light: 30, speed: 25, accel: 35, homing: 70, seeker: 90,
   bounce: 25, pierce: 85, tight: 15, scatter: 35, big: 30, range: 30, brief: 20,
   tip: 55, borer: 25, fast: 30, over: 45, double: 45, triple: 60, quad: 75, cheap: 40,
@@ -488,7 +492,7 @@ export const MOD_PRICE = {
 // this, so early floors offer workhorses and the Greek letters stay a find.
 /** @type {Record<string, number>} */
 export const MOD_TIER = {
-  lifeup: 1, lifedn: 1, grow: 1, shrink: 1, follow: 2,
+  lifeup: 1, lifedn: 1, grow: 1, shrink: 1, follow: 2, followaim: 2,
   bolt: 1, spark: 1, buck: 1, tight: 1, fast: 1, cheap: 1, spit: 1, bubble: 1, pollen: 1,
   digbolt: 1, arrow: 1, brim: 1, hspread: 1, damper: 1, knock: 1, kick: 1,
   gravmod: 1, float: 1, farcast: 1, bifur: 1, behind: 1, dmg_up: 1, speed: 1, brief: 1,

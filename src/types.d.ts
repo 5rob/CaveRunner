@@ -85,7 +85,7 @@ interface Shot {
   dmg: number; speed: number; spread: number; size: number; life: number; count: number;
   bounce: number; pierce: number; explode: number; grav: number; homing: number; accel: number;
   bore: number; recoil: number; col: string; knock: number; crit: number; boomer: number;
-  spiral: number; pong: number; orbit: number; follow: number; autoaim: number; assist: number; only: DiscrimTarget | null; homeR: number; flat: number;
+  spiral: number; pong: number; orbit: number; follow: number; followAim: number; autoaim: number; assist: number; only: DiscrimTarget | null; homeR: number; flat: number;
   eat: number; pull: number; split: number; cluster: number;
   bounceFx: any;              // a modifier's (unused today: always null)
   friendly: number; chain: number; fuse: number; beam: number;
@@ -506,7 +506,7 @@ interface Bullet {
   bore: number; hit: Set<Enemy> | null; age: number;   // hit: what it has already struck (pierce)
   // spawnShot's (the ghost's shots have knock, crit and born too)
   knock?: number; crit?: number; boomer?: number; spiral?: number;
-  pong?: number; orbit?: number; follow?: number; anc?: Anchor | null; homeR?: number; eat?: number; pull?: number; split?: number;
+  pong?: number; orbit?: number; follow?: number; followAim?: number; anc?: Anchor | null; homeR?: number; eat?: number; pull?: number; split?: number;
   cluster?: number; bounceFx?: any; friendly?: number; chain?: number; fuse?: number;
   payload?: Shot[] | null; hidden?: number; arc?: number; drift?: number; pop?: number; tele?: number;
   fire?: number; drag?: number; bounceE?: number; pit?: number; wig?: number; look?: string | null;
@@ -552,14 +552,14 @@ interface Field {
   mAcc?: number;              // a White Hole: motes owed
   // moving (a path mod on it, spells/paths.js): as a Mover, plus what an orbit circles
   still?: number; age: number; born?: number; vx: number; vy: number;
-  boomer?: number; pong?: number; spiral?: number; orbit?: number; follow?: number; homing?: number; homeR?: number;
+  boomer?: number; pong?: number; spiral?: number; orbit?: number; follow?: number; followAim?: number; homing?: number; homeR?: number;
   back?: number; pdir?: number; oa?: number; or0?: number; osp?: number; caught?: number; anc?: Anchor | null;
 }
 /** a gradient's stop and a ramp's control point (art/ramps.js) */
 interface GradStop { t: number; c: string }
 interface RampPt { x: number; y: number }
 /** the path mods a shot or field can carry (spells/paths.js) */
-interface PathMods { boomer?: number; pong?: number; spiral?: number; orbit?: number; follow?: number; homing?: number; still?: number }
+interface PathMods { boomer?: number; pong?: number; spiral?: number; orbit?: number; follow?: number; followAim?: number; homing?: number; still?: number }
 /** anything pathStep moves: a shot, a field, the aim line's pretend shot; the rest is its path state */
 interface Mover extends PathMods {
   x: number; y: number; vx: number; vy: number; age: number; born?: number; life?: number; homeR?: number; ang?: number;

@@ -70,7 +70,7 @@ export function castField(W, G, sh, x, y, ang, from) {
   const f = { x, y, r: sh.r, field: sh.field, life: sh.life, max: sh.life,
     col: sh.col, dmg: sh.dmg || 1, tick: 0, payload: pay, ang: ang || 0, trig: sh.trig,
     still: 1, age: 0, born: sh.life, vx: 0, vy: 0, boomer: sh.boomer, pong: sh.pong, spiral: sh.spiral,
-    orbit: sh.orbit, follow: sh.follow, homing: sh.homing, homeR: sh.homeR, anc: anchorOf(from) };
+    orbit: sh.orbit, follow: sh.follow, followAim: sh.followAim, homing: sh.homing, homeR: sh.homeR, anc: anchorOf(from) };
   if (hasPath(f)) { f.vx = Math.cos(ang || 0) * FIELD_SPEED; f.vy = Math.sin(ang || 0) * FIELD_SPEED; }
   W.fields.push(f);
 }

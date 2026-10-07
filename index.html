@@ -3055,9 +3055,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       col: "#b57cff",
       mana: 10,
       d: 0.04,
-      info: "Homing, but on you: a shot curves back round to you; a field hovers just ahead of your gun",
+      info: "Homing, but on you: a shot curves back round to you; a field comes to you and stays with you",
       f: (s) => {
         s.follow += 4;
+      }
+    },
+    // owner (v0.0.155): Follow Me split in two; this half is the Gravity Gun's, a White Hole held where you aim
+    followaim: {
+      name: "Follow This",
+      kind: "mod",
+      glyph: "↬",
+      col: "#b57cff",
+      mana: 10,
+      d: 0.04,
+      info: "A field hovers just ahead of your gun and goes wherever you aim (the Gravity Gun’s trick); a shot homes on that spot",
+      f: (s) => {
+        s.followAim += 4;
       }
     },
     orbit: {
@@ -3428,6 +3441,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     homing: "path",
     seeker: "path",
     follow: "path",
+    followaim: "path",
     lifeup: "vel",
     lifedn: "vel",
     grow: "pattern",
@@ -3549,6 +3563,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     orb: 30,
     blast: 45,
     follow: 35,
+    followaim: 35,
     lifeup: 25,
     lifedn: 15,
     grow: 30,
@@ -3668,6 +3683,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     grow: 1,
     shrink: 1,
     follow: 2,
+    followaim: 2,
     bolt: 1,
     spark: 1,
     buck: 1,
@@ -7736,6 +7752,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     float: "GRAVITY_ANTI",
     boomer: "HOMING_SHOOTER",
     follow: "HOMING_SHOOTER",
+    followaim: "HOMING_SHOOTER",
     lifeup: "LIFETIME",
     lifedn: "LIFETIME_DOWN",
     grow: "SPEED",
@@ -7981,7 +7998,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       shuffle: false,
       mana: 200,
       speedMul: 1,
-      slots: ["follow", "vacfield"],
+      slots: ["followaim", "vacfield"],
       hue: 200
     });
     return [pistol, pickaxe, gravity, null];
@@ -8096,6 +8113,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!g || typeof g !== "object" || !Array.isArray(g.slots) || !g.slots.length) return null;
     const out = Object.assign({}, GUN_DEFAULTS, g);
     out.slots = g.slots.map((id) => id && ensureMod(id) ? id : null);
+    if (out.name === "Gravity Gun") out.slots = out.slots.map((id) => id === "follow" ? "followaim" : id);
     out.cap = out.slots.length;
     out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
     return resetGun(out);
@@ -17369,6 +17387,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       pong: 0,
       orbit: 0,
       follow: 0,
+      followAim: 0,
       autoaim: 0,
       assist: 0,
       only: null,
@@ -17638,7 +17657,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var FOLLOW_AHEAD = 34;
   var FIELD_SPEED = 150;
   var SEEK_ACC = 7;
-  var hasPath = (o) => !!(o.boomer || o.pong || o.spiral || o.orbit || o.follow || o.still && o.homing);
+  var hasPath = (o) => !!(o.boomer || o.pong || o.spiral || o.orbit || o.follow || o.followAim || o.still && o.homing);
   var spiralOff = (k, t) => k * SPIRAL_GROW * t * Math.sin(t * SPIRAL_HZ * 2 * Math.PI);
   function pathStep(o, dt, env) {
     let ex = 0, ey = 0;
@@ -17665,10 +17684,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         else if (o.life != null && o.life < 0.05 && age < (o.born || 1) * BOOM_MAX) o.life = 0.05;
       }
     }
-    if (o.follow) {
-      const t = o.still ? env.ahead : env.home;
-      head(t.x, t.y, o.follow);
-    }
+    if (o.follow) head(env.home.x, env.home.y, o.follow);
+    if (o.followAim) head(env.ahead.x, env.ahead.y, o.followAim);
     if (o.still && o.homing && env.enemies) {
       let best = null, bd = o.homeR || 260;
       for (const e of env.enemies) {
@@ -17762,7 +17779,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       pong: sh.pong,
       spiral: sh.spiral,
       orbit: sh.orbit,
-      follow: sh.follow
+      follow: sh.follow,
+      followAim: sh.followAim
     };
     const pathed = hasPath(mv);
     out.length = 0;
@@ -24441,6 +24459,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         pong: sh.pong,
         orbit: sh.orbit,
         follow: sh.follow,
+        followAim: sh.followAim,
         anc: anchorOf(from),
         homeR: sh.homeR,
         eat: sh.eat,
@@ -24699,6 +24718,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       spiral: sh.spiral,
       orbit: sh.orbit,
       follow: sh.follow,
+      followAim: sh.followAim,
       homing: sh.homing,
       homeR: sh.homeR,
       anc: anchorOf(from)
