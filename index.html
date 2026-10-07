@@ -28483,9 +28483,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return h("canvas", { ref, className: "gicon" });
   }
   var GF_ZOOM = 2.2, GF_SPEED = 0.2, GF_MAX = 90;
-  var GF_SWAY = 0.2, GF_SWAY_S = 4;
+  var GF_SWAY = 0.06, GF_SWAY_S = 4;
   var GF_WALL = 5;
-  var GF_DUMMY_GAP = 6;
+  var GF_DUMMY_GAP = 6, GF_DUMMY_K = 2 / 3, DW = PW * GF_DUMMY_K, DH = PH * GF_DUMMY_K;
   function GunFire({ gun, sim }) {
     const ref = useRef(null);
     const gref = useRef(gun);
@@ -28561,7 +28561,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         const ctx = c.getContext("2d");
         const sc = Math.min(2.4, W / 60) * 0.75, gx = 6 + 6.5 * sc, gy = H * 0.55;
-        const aim = GF_SWAY * Math.sin(fw.time * 2 * Math.PI / GF_SWAY_S), ca = Math.cos(aim), sa = Math.sin(aim);
+        const reach2 = W / GF_ZOOM - GF_WALL - gx / GF_ZOOM, gyW = gy / GF_ZOOM, hW = H / GF_ZOOM;
+        const aUp = Math.atan2(hW * GF_SWAY - gyW, reach2), aDn = Math.atan2(hW * (1 - GF_SWAY) - gyW, reach2);
+        const aim = (aUp + aDn) / 2 + (aDn - aUp) / 2 * Math.sin(fw.time * 2 * Math.PI / GF_SWAY_S), ca = Math.cos(aim), sa = Math.sin(aim);
         const mx = (gx + (14.2 * ca + 3.2 * sa) * sc) / GF_ZOOM, my = (gy + (14.2 * sa - 3.2 * ca) * sc) / GF_ZOOM;
         if (S2 !== seenS) {
           seenS = S2;
@@ -28575,10 +28577,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (shots.length > GF_MAX) shots.splice(0, shots.length - GF_MAX);
         }
         const wW = W / GF_ZOOM, wH = H / GF_ZOOM, wallX = wW - GF_WALL;
-        dummy.x = wallX - GF_DUMMY_GAP - PW;
-        dummy.y = gy / GF_ZOOM - PH * 0.55;
+        dummy.x = wallX - GF_DUMMY_GAP - DW;
+        dummy.y = gy / GF_ZOOM - DH * 0.55;
         dummy.hitT = Math.max(0, dummy.hitT - dt);
-        const dcx = dummy.x + PW / 2, dcy = dummy.y + PH / 2;
+        const dcx = dummy.x + DW / 2, dcy = dummy.y + DH / 2;
         const before = shots.length;
         const live = [];
         for (const b of shots) {
@@ -28596,7 +28598,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           b.spin += dt * 10;
           b.life -= dt;
           const r = Math.max(0.5, (b.size || 1) * 0.5);
-          if (b.hit <= 0 && b.x + r > dummy.x && b.x - r < dummy.x + PW && b.y + r > dummy.y && b.y - r < dummy.y + PH) {
+          if (b.hit <= 0 && b.x + r > dummy.x && b.x - r < dummy.x + DW && b.y + r > dummy.y && b.y - r < dummy.y + DH) {
             dummy.hitT = 0.3;
             dummy.hits++;
             ref.current.dataset.hits = String(dummy.hits);
@@ -28694,7 +28696,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.stroke();
         }
         ctx.globalAlpha = 1;
-        drawRunner(ctx, dummy.x, dummy.y, PW, PH, -1, null, false, 0, dummy.hitT > 0 && Math.floor(dummy.hitT * 30) % 2 === 0);
+        ctx.save();
+        ctx.translate(dummy.x, dummy.y);
+        ctx.scale(GF_DUMMY_K, GF_DUMMY_K);
+        drawRunner(ctx, 0, 0, PW, PH, -1, null, false, 0, dummy.hitT > 0 && Math.floor(dummy.hitT * 30) % 2 === 0);
+        ctx.restore();
         ctx.globalAlpha = 1;
         ctx.fillStyle = "#4a4f5a";
         ctx.fillRect(wallX, 0, GF_WALL + 1, wH);

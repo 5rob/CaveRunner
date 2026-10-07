@@ -97,14 +97,15 @@ export function GunIcon({ gun }) {
 // the small window, and are drawn with the game's own looks (drawLook) or its streak. One rAF,
 // gone when the Bag closes.
 export const GF_ZOOM = 2.2, GF_SPEED = 0.2, GF_MAX = 90;
-// the gun sways up and down (owner: shows bounces and homing off): GF_SWAY radians either way, once every GF_SWAY_S s
-export const GF_SWAY = 0.2, GF_SWAY_S = 4;
+// the gun sways up and down (owner: shows bounces and homing off), once every GF_SWAY_S s, from aiming at the
+// wall's top to its bottom: GF_SWAY of the window's height in from each end (owner: "almost reach" them)
+export const GF_SWAY = 0.06, GF_SWAY_S = 4;
 // the firing window's wall (owner): a strip of stone at the far right, world units wide, that nothing breaks.
 // Shots stop on it (or bounce off), and a trigger's payload goes off there, so you can see what it does
 export const GF_WALL = 5;
 // a dummy you in front of the wall (owner): shots hit it and it flashes like you do when hurt, and never dies;
-// homing shots steer for it. World units: PW × PH like the real you, GF_DUMMY_GAP in front of the wall
-export const GF_DUMMY_GAP = 6;
+// homing shots steer for it. World units: GF_DUMMY_K (owner: 2/3) of the real you, GF_DUMMY_GAP in front of the wall
+export const GF_DUMMY_GAP = 6, GF_DUMMY_K = 2 / 3, DW = PW * GF_DUMMY_K, DH = PH * GF_DUMMY_K;
 /** @param {{ gun: Gun, sim: { current: import('../spells/bagsim.js').FireSim | null } }} props */
 export function GunFire({ gun, sim }) {
   const ref = useRef(null);
@@ -164,7 +165,9 @@ export function GunFire({ gun, sim }) {
       const ctx = c.getContext('2d');
       const sc = Math.min(2.4, W / 60) * 0.75, gx = 6 + 6.5 * sc, gy = H * 0.55;
       // the aim sways slowly up and down; the muzzle turns with it round the grip
-      const aim = GF_SWAY * Math.sin(fw.time * 2 * Math.PI / GF_SWAY_S), ca = Math.cos(aim), sa = Math.sin(aim);
+      const reach = W / GF_ZOOM - GF_WALL - gx / GF_ZOOM, gyW = gy / GF_ZOOM, hW = H / GF_ZOOM;
+      const aUp = Math.atan2(hW * GF_SWAY - gyW, reach), aDn = Math.atan2(hW * (1 - GF_SWAY) - gyW, reach);
+      const aim = (aUp + aDn) / 2 + (aDn - aUp) / 2 * Math.sin(fw.time * 2 * Math.PI / GF_SWAY_S), ca = Math.cos(aim), sa = Math.sin(aim);
       const mx = (gx + (14.2 * ca + 3.2 * sa) * sc) / GF_ZOOM, my = (gy + (14.2 * sa - 3.2 * ca) * sc) / GF_ZOOM;   // the muzzle, in world units
       if (S !== seenS) { seenS = S; seen = S ? S.fired : -1; }
       if (S && S.fired !== seen) {                    // a pull went off: its shots leave the muzzle
@@ -175,8 +178,8 @@ export function GunFire({ gun, sim }) {
       }
       // move
       const wW = W / GF_ZOOM, wH = H / GF_ZOOM, wallX = wW - GF_WALL;
-      dummy.x = wallX - GF_DUMMY_GAP - PW; dummy.y = gy / GF_ZOOM - PH * 0.55; dummy.hitT = Math.max(0, dummy.hitT - dt);
-      const dcx = dummy.x + PW / 2, dcy = dummy.y + PH / 2;
+      dummy.x = wallX - GF_DUMMY_GAP - DW; dummy.y = gy / GF_ZOOM - DH * 0.55; dummy.hitT = Math.max(0, dummy.hitT - dt);
+      const dcx = dummy.x + DW / 2, dcy = dummy.y + DH / 2;
       const before = shots.length;
       /** @type {any[]} */
       const live = [];
@@ -191,7 +194,7 @@ export function GunFire({ gun, sim }) {
         }
         b.x += b.vx * dt; b.y += b.vy * dt; b.spin += dt * 10; b.life -= dt;
         const r = Math.max(0.5, (b.size || 1) * 0.5);
-        if (b.hit <= 0 && b.x + r > dummy.x && b.x - r < dummy.x + PW && b.y + r > dummy.y && b.y - r < dummy.y + PH) {
+        if (b.hit <= 0 && b.x + r > dummy.x && b.x - r < dummy.x + DW && b.y + r > dummy.y && b.y - r < dummy.y + DH) {
           dummy.hitT = 0.3; dummy.hits++;                // it flashes like you do when hurt, and never dies
           ref.current.dataset.hits = String(dummy.hits);    // for the suite
           if (b.pierce > 0) { b.pierce--; b.hit = 0.25; }
@@ -253,7 +256,9 @@ export function GunFire({ gun, sim }) {
       }
       // the dummy you, facing the gun, flashing while hurt (the game's own flicker)
       ctx.globalAlpha = 1;
-      drawRunner(ctx, dummy.x, dummy.y, PW, PH, -1, null, false, 0, dummy.hitT > 0 && Math.floor(dummy.hitT * 30) % 2 === 0);
+      ctx.save(); ctx.translate(dummy.x, dummy.y); ctx.scale(GF_DUMMY_K, GF_DUMMY_K);
+      drawRunner(ctx, 0, 0, PW, PH, -1, null, false, 0, dummy.hitT > 0 && Math.floor(dummy.hitT * 30) % 2 === 0);
+      ctx.restore();
       // the wall: grey stone blocks, offset every other row
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#4a4f5a'; ctx.fillRect(wallX, 0, GF_WALL + 1, wH);
