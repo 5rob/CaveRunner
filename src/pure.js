@@ -58,6 +58,7 @@ export * from './art/pixfont.js';
 export * from './art/sign.js';
 export * from './art/ramps.js';
 export * from './art/gunart.js';
+export * from './art/titlescene.js';
 export * from './audio/recipes.js';
 export * from './audio/sfx.js';
 export * from './save/save.js';

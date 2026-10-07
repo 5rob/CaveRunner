@@ -7,6 +7,15 @@ the suit goes back to the carried ones). The unlock collections have their own k
 `clearSave`: `COLLECTION_KEY` (mods: **emptied on death**, `hurt` in `game/systems/player.js`, v129) and
 `PERK_COLLECTION_KEY` (perks: kept across runs).
 
+**Save slots** (LIST4, three, picked on the title screen): each slot has its own run save and both
+collections; `slotKey(base, slot)` keeps slot 1 on the old keys (the run from before slots is slot 1)
+and adds `-2` / `-3` for the others. The active slot is localStorage `SLOT_KEY` (`caverunner-slot`):
+`getSlot`/`setSlot`; `saveKey()` is where the active slot's run goes (`saveRun`, `loadSave`,
+`clearSave`), and the collections' load/save use the active slot too. `slotSummary(raw)` (pure: floor,
+gold, guns, mods, or null) / `loadSlotSummary(slot)` for the title's slot lines; `deleteSlot(slot)`
+empties a slot's three keys. Shared by every slot: Dev settings, the audit, clips, gun presets, pins,
+the volume. Tests: `tests/logic/slots.test.js`, `tests/browser/title.test.js`.
+
 `clips.js`: the saved death replays, in IndexedDB (`CLIP_DB` = `caverunner-clips`; localStorage is
 far too small): `clipList` (the gallery's `ClipMeta` cards, newest first), `clipGet` (unpacks one),
 `clipPut` (packs it: `clipPack`, gzipped JSON, `replay/clip.js`; `meta.bytes` is the packed size),
