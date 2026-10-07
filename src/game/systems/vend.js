@@ -71,8 +71,8 @@ export function pickStep(W, LO, d) {
 /** @param {World} W @param {'buy' | 'sell'} kind @param {Loadout} LO */
 export function vendLabel(W, kind, LO) {
   if (kind === 'buy') return { text: 'Tap R to Buy', price: 0, can: canBuyFloor(LO.soldTop || 0, pickedFloor(W)), pick: true };
-  return canSell(W) ? { text: 'Tap R to sell', price: 0, can: true }
-    : { text: 'Biological entities detected', price: 0, can: false };
+  return canSell(W) ? { text: 'Tap R to sell', price: 0, can: true, sell: true }
+    : { text: 'Biological entities detected', price: 0, can: false, sell: true };
 }
 
 // a tap at a machine: the buy machine buys the floor picked, the sell machine sells

@@ -17,6 +17,8 @@ Names are as they were at the time (before the refactor Game's state had loose n
   white), less padding, the whole box at 0.6×. It shows only after 1.5 s with no stick input (or move key) (`PICK_IDLE`,
   `W.stickT`, `prompt.idle`), fading up quickly; any input hides it at once (`.pickhide`). The machine works the
   same with it hidden.
+- The sell machine's hint in the same style (one option, `prompt.sell`; red outline and words while it
+  refuses, `.red`), with the same 1.5 s wait.
 - The thumbstick knobs carry a small L and R in their centres (`.klet`, the hint's R size: 8.4px).
 - Tests: `levelpick` (new, logic); `vend` (real stick flicks, grey, limits) and `repo` updated.
 

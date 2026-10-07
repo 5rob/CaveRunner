@@ -407,6 +407,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .pbuy.pick .popt{display:flex;align-items:center;gap:5px}
 .pbuy.pick b{font-size:14px;color:#00ff3c}
 .pbuy.pick .popt.cant{opacity:.45}
+.buypanel.pickpanel.one{left:20%;right:20%}
+.buypanel.pickpanel.red{border-color:#ff0000}
+.buypanel.pickpanel.red .pbuy.pick b{color:#ff0000}
 .weapon.locked{opacity:.45}
 .pop.flow{position:static;max-height:none;box-shadow:none;margin-bottom:2px}
 .spacer{flex:1 1 auto;min-height:6px}
@@ -22722,7 +22725,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function vendLabel(W, kind, LO) {
     if (kind === "buy") return { text: "Tap R to Buy", price: 0, can: canBuyFloor(LO.soldTop || 0, pickedFloor(W)), pick: true };
-    return canSell(W) ? { text: "Tap R to sell", price: 0, can: true } : { text: "Biological entities detected", price: 0, can: false };
+    return canSell(W) ? { text: "Tap R to sell", price: 0, can: true, sell: true } : { text: "Biological entities detected", price: 0, can: false, sell: true };
   }
   function vendUse(W, G, kind, LO) {
     if (W.warp) return;
@@ -31429,7 +31432,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         prompt && !found && !shopOpen ? h(
           "div",
           {
-            className: "buypanel" + (prompt.pick ? " pickpanel" + (prompt.idle ? "" : " pickhide") : ""),
+            className: "buypanel" + (prompt.pick || prompt.sell ? " pickpanel" + (prompt.idle ? "" : " pickhide") + (prompt.sell ? " one" : "") + (prompt.sell && !prompt.can ? " red" : "") : ""),
             style: {
               bottom: (input.current.promptBottom || 12) + "px",
               maxHeight: "calc(100% - " + ((input.current.promptBottom || 12) + 12) + "px)"
@@ -31463,14 +31466,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 h(RKey),
                 h("b", null, prompt.text)
               )
-            ) : h(
-              "div",
-              {
-                className: "pbuy" + (prompt.can ? "" : " cant"),
-                "aria-label": "Tap the right stick to " + (prompt.price ? "buy for " + prompt.price + "g" : "take")
-              },
-              h(RKey),
-              h("b", null, prompt.price ? prompt.price + "g" : prompt.id || prompt.gun || prompt.perk || prompt.heart ? "free" : prompt.text)
+            ) : (
+              // the sell machine: the same style, one option (red while biological entities are left)
+              prompt.sell ? h(
+                "div",
+                { className: "pbuy pick" },
+                h("div", { className: "popt" }, h(RKey), h("b", null, prompt.text))
+              ) : h(
+                "div",
+                {
+                  className: "pbuy" + (prompt.can ? "" : " cant"),
+                  "aria-label": "Tap the right stick to " + (prompt.price ? "buy for " + prompt.price + "g" : "take")
+                },
+                h(RKey),
+                h("b", null, prompt.price ? prompt.price + "g" : prompt.id || prompt.gun || prompt.perk || prompt.heart ? "free" : prompt.text)
+              )
             )
           )
         ) : null,

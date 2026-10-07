@@ -700,6 +700,7 @@ interface Prompt {
   crystal?: number;           // a red crystal: the floor it came from
   green?: number;             // a green crystal (the hidden room's prize): the floor it came from
   shop?: string;              // a vending machine's menu (SHOPS key): no card, just the line
+  sell?: boolean;             // the sell machine: one option in the buy machine's style (red while it refuses)
   idle?: boolean;             // the buy machine: no stick input for PICK_IDLE, so its hint fades up
   pick?: boolean;             // the buy machine: two options, flick the right stick to select a level, tap to buy
 }

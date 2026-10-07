@@ -398,6 +398,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .pbuy.pick .popt{display:flex;align-items:center;gap:5px}
 .pbuy.pick b{font-size:14px;color:#00ff3c}
 .pbuy.pick .popt.cant{opacity:.45}
+.buypanel.pickpanel.one{left:20%;right:20%}
+.buypanel.pickpanel.red{border-color:#ff0000}
+.buypanel.pickpanel.red .pbuy.pick b{color:#ff0000}
 .weapon.locked{opacity:.45}
 .pop.flow{position:static;max-height:none;box-shadow:none;margin-bottom:2px}
 .spacer{flex:1 1 auto;min-height:6px}
