@@ -3,6 +3,14 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
+## v0.0.159 — LIST4 (5 items): RELEASED on `main` 2026-10-08 (owner OK'd)
+
+Read `LIST4.md` (items, files, decisions) and CHANGELOG v0.0.159: title screen with 3 save slots, pause menu (⏸:
+save, volume, exit), Bag header (name + ✏️, 🖼️ gun look, 💾 preset), presets in Dev → Spawn gun, 27 pixel-art gun
+looks, gun slots in their gun's colour. **Waiting on the owner:** playing it on the phone. Known: ✏️/💾 also work
+in a view-only Bag; the title's slot summaries read each slot's save; logic `rats`, `spider`, `strata` and browser
+`jelly` spit fail as before.
+
 ## v0.0.158 — the machine hints fit their words, centred over their machines: RELEASED on `main` 2026-10-07 (owner OK'd)
 
 ## v0.0.157 — the buy machine: flick the right stick to pick a level (no menu), new machine hints, L/R on the knobs: RELEASED on `main` 2026-10-07 (owner OK'd)

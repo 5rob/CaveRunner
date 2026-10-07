@@ -8,6 +8,7 @@ import { PERKS, SUIT_LEN, SUIT_SLOTS, fitsSlot } from '../data/perks.js';
 import { resetGun } from '../spells/guns.js';
 import { MODS } from '../spells/mods.js';
 import { ensureMod } from '../spells/discrim.js';
+import { gunArt } from '../art/gunart.js';
 
 // ---- autosave ----
 // The run is kept in localStorage under SAVE_KEY and read back on the next launch. In the
@@ -17,6 +18,38 @@ import { ensureMod } from '../spells/discrim.js';
 // so an old save always loads. The exact cave is only restored when the version matches —
 // after an update the generator may have changed, so you get a fresh cave on the same floor.
 export const SAVE_KEY = 'caverunner-save';
+
+// ---- save slots (LIST4): three, picked on the title screen. Each holds its own run save and its
+// two collections; slot 1 keeps the old keys unchanged (the run from before slots is slot 1), slots
+// 2 and 3 add '-2' / '-3'. The active slot is in SLOT_KEY. Dev settings, the audit, clips, gun
+// presets, pins and the volume are shared. ----
+export const SLOT_KEY = 'caverunner-slot';
+export const SLOTS = 3;
+/** @param {string} base a key for slot 1 @param {number} slot 1..SLOTS @returns {string} that slot's key */
+export const slotKey = (base, slot) => (slot >= 2 && slot <= SLOTS ? base + '-' + Math.floor(slot) : base);
+/** @returns {number} the active slot, 1..SLOTS */
+export const getSlot = () => {
+  try { const n = parseInt(localStorage.getItem(SLOT_KEY), 10); return n >= 1 && n <= SLOTS ? n : 1; } catch (_) { return 1; }
+};
+/** @param {number} slot */
+export const setSlot = slot => { try { localStorage.setItem(SLOT_KEY, String(slot)); } catch (_) {} };
+/** @param {number} [slot] @returns {string} where that slot's (else the active slot's) run is saved */
+export const saveKey = slot => slotKey(SAVE_KEY, slot || getSlot());
+/** A slot's line on the title screen, from its stored save text: null when there is no run in it.
+ * @param {string | null} raw @returns {{ floor: number, gold: number, guns: number, mods: number } | null} */
+export function slotSummary(raw) {
+  const s = readSave(raw);
+  if (!s) return null;
+  const lo = s.loadout;
+  return { floor: s.floor, gold: Math.floor(lo.gold || 0), guns: lo.guns.filter(Boolean).length,
+    mods: lo.bag.length + lo.guns.reduce((n, g) => n + (g ? g.slots.filter(Boolean).length : 0), 0) };
+}
+/** @param {number} slot @returns {ReturnType<typeof slotSummary>} */
+export const loadSlotSummary = slot => { try { return slotSummary(localStorage.getItem(slotKey(SAVE_KEY, slot))); } catch (_) { return null; } };
+/** Empties a slot: its run and both its collections. @param {number} slot */
+export const deleteSlot = slot => {
+  try { for (const k of [SAVE_KEY, COLLECTION_KEY, PERK_COLLECTION_KEY]) localStorage.removeItem(slotKey(k, slot)); } catch (_) {}
+};
 export const GUN_DEFAULTS = { name: 'Gun', castDelay: 0.2, recharge: 0.5, manaMax: 100, manaRegen: 30,
   spread: 0, multi: 1, shuffle: false, speedMul: 1, hue: 0 };
 /** @param {any} g whatever the store held @returns {Gun | null} */
@@ -26,6 +59,7 @@ export function cleanGun(g) {
   out.slots = g.slots.map(id => (id && ensureMod(id) ? id : null));
   // a Gravity Gun saved before v0.0.155 has Follow Me: its trick (the hole held where you aim) is Follow This now
   if (out.name === 'Gravity Gun') out.slots = out.slots.map(id => (id === 'follow' ? 'followaim' : id));
+  if (!gunArt(out.art)) delete out.art;               // a skin only if it's still one of GUN_ART
   out.cap = out.slots.length;
   out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
   return resetGun(out);
@@ -125,8 +159,8 @@ export function readSave(raw) {
   return out;
 }
 /** @type {() => SaveData | null} */
-export const loadSave = () => { try { return readSave(localStorage.getItem(SAVE_KEY)); } catch (_) { return null; } };
-export const clearSave = () => { try { localStorage.removeItem(SAVE_KEY); } catch (_) {} };
+export const loadSave = () => { try { return readSave(localStorage.getItem(saveKey())); } catch (_) { return null; } };
+export const clearSave = () => { try { localStorage.removeItem(saveKey()); } catch (_) {} };
 
 // ---- the mod collection: the mods you have unlocked this run, under its own key (not cleared by
 // clearSave; a death empties it, game/systems/player.js) ----
@@ -138,9 +172,9 @@ export function readCollection(raw) {
   return Array.isArray(s) ? [...new Set(s.filter(id => typeof id === 'string' && MODS[id]))] : [];
 }
 /** @type {() => string[]} */
-export const loadCollection = () => { try { return readCollection(localStorage.getItem(COLLECTION_KEY)); } catch (_) { return []; } };
+export const loadCollection = () => { try { return readCollection(localStorage.getItem(slotKey(COLLECTION_KEY, getSlot()))); } catch (_) { return []; } };
 /** @param {string[]} ids */
-export const saveCollection = ids => { try { localStorage.setItem(COLLECTION_KEY, JSON.stringify(ids)); } catch (_) {} };
+export const saveCollection = ids => { try { localStorage.setItem(slotKey(COLLECTION_KEY, getSlot()), JSON.stringify(ids)); } catch (_) {} };
 
 // the perks unlocked at the perk machine, kept across runs (a death keeps them)
 export const PERK_COLLECTION_KEY = 'caverunner-perkcollection';
@@ -151,6 +185,6 @@ export function readPerkCollection(raw) {
   return Array.isArray(s) ? [...new Set(s.filter(id => typeof id === 'string' && PERKS[id]))] : [];
 }
 /** @type {() => string[]} */
-export const loadPerkCollection = () => { try { return readPerkCollection(localStorage.getItem(PERK_COLLECTION_KEY)); } catch (_) { return []; } };
+export const loadPerkCollection = () => { try { return readPerkCollection(localStorage.getItem(slotKey(PERK_COLLECTION_KEY, getSlot()))); } catch (_) { return []; } };
 /** @param {string[]} ids */
-export const savePerkCollection = ids => { try { localStorage.setItem(PERK_COLLECTION_KEY, JSON.stringify(ids)); } catch (_) {} };
+export const savePerkCollection = ids => { try { localStorage.setItem(slotKey(PERK_COLLECTION_KEY, getSlot()), JSON.stringify(ids)); } catch (_) {} };

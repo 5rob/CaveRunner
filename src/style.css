@@ -56,6 +56,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   filter:drop-shadow(0 1px 2px rgba(0,0,0,0.7))}
 .dbtn.on{border:2.5px solid var(--ctl-hot)}
 .dbtn.empty{border-style:dotted;opacity:.45;cursor:default}
+/* a slot holding a gun (owner, LIST4 #5): the ring in the gun's colour (inline, gunColor; the deck is
+   dark in both themes, so the dark theme's bright gun colours), a faint tint of its hue (--gh) inside;
+   the gun in hand: a thicker ring, a stronger tint and a glow */
+.slots{--gun-s:65%;--gun-l:72%}
+.dbtn.slot.gun{background-color:hsla(var(--gh),65%,60%,.14)}
+.dbtn.slot.gun.on{border-width:3.5px;border-style:solid;background-color:hsla(var(--gh),65%,60%,.34);
+  box-shadow:0 0 9px hsla(var(--gh),85%,65%,.85)}
 .dbtn .gicon{width:92%;height:auto;pointer-events:none}
 .dbtn .emo{font-size:27px;line-height:1;pointer-events:none}
 .dbtn .badge{position:absolute;right:-4px;top:-4px;margin:0;font:700 10px ui-monospace,monospace;
@@ -164,6 +171,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   padding-top:calc(10px + env(safe-area-inset-top))}
 .shead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 0 8px}
 .shead h2{margin:0;font-size:17px}
+/* the Bag's header (owner, LIST4 #1): gun name ✏️ … 💾 Done on one line; the inline rename / preset box */
+.shead{position:relative}
+.shead h2.bagname{min-width:0;flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shead h2.bagname.none{color:var(--muted)}
+.shead .hgap{flex:1 1 0;min-width:0}
+.renamebtn,.presetbtn,.shead .artbtn{flex:0 0 auto;width:34px;height:34px;padding:0;border-radius:17px;border:1px solid var(--ring);
+  background:var(--btn);font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center}
+.renamebtn{width:28px;height:28px;font-size:13px;margin-left:-4px;border-color:transparent;background:none}
+.shead .done{flex:0 0 auto}
+.hflash{position:absolute;left:0;top:100%;margin-top:-6px;z-index:2;padding:3px 9px;border-radius:10px;
+  background:#1d8a52;color:#fff;font:700 11px system-ui,sans-serif;pointer-events:none;animation:hflash 1.6s ease-out forwards}
+@keyframes hflash{0%{opacity:0}10%{opacity:1}75%{opacity:1}100%{opacity:0}}
+.shead.hedit{justify-content:flex-start;gap:6px}
+.hedlab{flex:0 0 auto;font:700 12px system-ui,sans-serif;color:var(--muted)}
+.hedin{flex:1 1 0;min-width:0;height:34px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);
+  color:var(--text);font:600 15px system-ui,sans-serif;padding:0 9px;box-sizing:border-box}
+.hedok,.hedno{flex:0 0 auto;width:36px;height:34px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);
+  color:var(--text);font:700 16px system-ui,sans-serif;padding:0}
+.hedok{background:#1d8a52;border-color:#1d8a52;color:#fff}
 .done{height:36px;padding:0 16px;border-radius:18px;border:1px solid var(--ring);
   background:var(--btn);color:var(--text);font:600 14px system-ui,sans-serif}
 .btop{display:flex;gap:8px;margin-bottom:8px;align-items:flex-start}
@@ -442,6 +468,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .gtab.holding{background-repeat:no-repeat}
 .slot.holding{background-repeat:no-repeat}
 .purse{font:700 14px system-ui,sans-serif;color:#c08a1f;margin-left:auto;margin-right:10px}
+/* the gun look button (Bag header) and its gallery (ui/gunart.js) */
+.artbtn{margin-left:auto;height:36px;width:40px;padding:0;border-radius:18px;border:1px solid var(--ring);
+  background:var(--btn);font-size:18px;line-height:1}
+.shead .artbtn{margin:0 6px 0 0;font-size:16px}
+.artsheet{position:fixed;inset:0;z-index:40;background:#101319;color:#e6edf3;display:flex;flex-direction:column;
+  padding:calc(10px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom))}
+.artsheet .done{background:#232833;color:#e6edf3;border-color:#3a4150}
+.artgrid{flex:1 1 auto;overflow-y:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;align-content:start;
+  touch-action:pan-y}
+.artpick{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px 5px;border-radius:10px;
+  border:2px solid #2a303c;background:#1a1f28;color:#c9d3de;font:600 11px system-ui,sans-serif;min-width:0}
+.artpick.on{border-color:#ffc93c;background:#2a2716;color:#ffe08a}
+.artpick canvas{max-width:100%;image-rendering:pixelated}
 .dbg{height:28px;padding:0 10px;border-radius:14px;border:1px solid var(--ring);
   background:var(--pad);color:var(--muted);font:700 10px system-ui,sans-serif;letter-spacing:.09em}
 .dbg.on{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}
@@ -506,6 +545,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .devvars{display:flex;flex-direction:column;gap:8px;padding:10px 12px 12px}
 .spawnpanel{padding:16px 16px 18px}
 .spawnpanel .spawngo{margin-top:12px;width:100%}
+/* Spawn gun's presets (save/presets.js): a row each, name in its gun colour, 🗑️ then a red Delete */
+.spawnpanel{overflow:hidden}
+.spawnpanel .presets{--gun-s:65%;--gun-l:72%;margin-top:14px;min-height:0;display:flex;flex-direction:column}
+.spawnpanel .presets .lab{margin:0 0 6px}
+.prelist{display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:46vh;touch-action:pan-y}
+.prerow{display:flex;gap:6px}
+.pregun{flex:1 1 0;min-width:0;height:36px;border-radius:10px;border:1px solid var(--ring);background:var(--pad);
+  font:700 13px system-ui,sans-serif;text-align:left;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.predelask,.predel{flex:0 0 auto;height:36px;border-radius:10px;border:1px solid var(--ring);background:var(--pad);color:var(--text);padding:0 10px}
+.predelask{width:40px;padding:0}
+.predel{background:#c8202c;border-color:#c8202c;color:#fff;font:700 12px system-ui,sans-serif}
+.prenone{margin:0;color:var(--muted);font:500 12px system-ui,sans-serif}
 /* Dev → Spawn level: every floor, two columns; yours lit */
 .lvlpick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .lvlpick .lvlgo{text-align:left;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -786,3 +837,52 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   pointer-events:none;display:flex;align-items:center;justify-content:center;
   background:rgba(18,20,26,.75);border:2px solid #ff8a1f;box-shadow:0 4px 14px rgba(0,0,0,.6)}
 .gundrag svg,.gundrag canvas,.gundrag img{max-width:46px;max-height:46px}
+/* the pause menu (LIST4 #3): ⏸ beside the Dev gear (top left has the version); the card over a shade, always dark */
+.pausebtn{position:absolute;top:10px;right:56px;z-index:6;border:1px solid rgba(255,255,255,0.25);
+  background:rgba(0,0,0,0.35);color:#e9ecf2;border-radius:8px;width:38px;height:38px;padding:0;
+  font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center}
+.app.witnessing .pausebtn{visibility:hidden}
+.pausewrap{position:fixed;inset:0;z-index:29;display:flex;align-items:center;justify-content:center;padding:24px}
+.pausewrap .shade{background:rgba(6,4,14,0.7)}
+.pausecard{position:relative;z-index:30;width:100%;max-width:340px;box-sizing:border-box;padding:18px 16px;
+  display:flex;flex-direction:column;gap:12px;border-radius:16px;background:#14101f;border:2px solid #ff8a1f;
+  box-shadow:0 0 30px rgba(255,138,31,0.35),0 10px 30px rgba(0,0,0,0.7);color:#f1ecff}
+.pausecard .phead{display:flex;align-items:baseline;justify-content:space-between;font:900 26px ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.12em;color:#ffd23a;text-shadow:0 2px 0 #8a2a10}
+.pausecard .phead span{font:700 12px system-ui,sans-serif;letter-spacing:.06em;color:#a99cc8;text-shadow:none}
+.pbtn{height:52px;border-radius:12px;border:1px solid rgba(255,255,255,0.15);background:#251c3a;color:#f1ecff;
+  font:800 17px system-ui,sans-serif;letter-spacing:.03em}
+.pbtn.resume{background:#ff8a1f;border-color:#ff8a1f;color:#1a0f06}
+.pbtn.exit{background:#3a1420;border-color:#8a2a3a;color:#ffc0c8}
+.pbtn .saved{color:#7dff9a;animation:pausesaved .6s ease-out}
+@keyframes pausesaved{from{transform:scale(1.35)}to{transform:scale(1)}}
+.pvol{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:12px;background:#1c1530;font:700 15px system-ui,sans-serif}
+.pvol span{display:flex;justify-content:space-between}
+.pvol b{color:#ffd23a;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.volslider{width:100%;height:32px;accent-color:#ff8a1f;margin:0;touch-action:none}
+/* the title screen (LIST4 #4): the action canvas full screen, the menu window over its lower part */
+.title{position:fixed;inset:0;overflow:hidden;background:#08040f;color:#f1ecff;touch-action:none;user-select:none;-webkit-user-select:none}
+.titlecvs{position:absolute;inset:0;width:100%;height:100%;display:block}
+.titlemenu{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom));
+  width:calc(100% - 32px);max-width:380px;box-sizing:border-box;padding:14px;display:flex;flex-direction:column;gap:9px;
+  border-radius:18px;background:rgba(14,9,26,0.82);border:2px solid #ff8a1f;
+  box-shadow:0 0 28px rgba(255,120,30,0.45),inset 0 0 18px rgba(255,138,31,0.12);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.tmhead{font:900 13px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.3em;color:#ffb35a;text-align:center}
+.tslot{display:flex;align-items:center;gap:10px;height:54px;padding:0 8px 0 10px;border-radius:12px;background:#1d1531;
+  border:2px solid rgba(255,255,255,0.08);box-sizing:border-box}
+.tslot.on{border-color:#ffd23a;background:#2c1f45;box-shadow:0 0 14px rgba(255,210,58,0.35)}
+.tsn{flex:none;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  background:#ff8a1f;color:#1a0f06;font:900 17px ui-monospace,SFMono-Regular,Menlo,monospace}
+.tslot:not(.on) .tsn{background:#3d2f5c;color:#cbbef0}
+.tsinfo{flex:1;display:flex;gap:10px;flex-wrap:wrap;font:700 14px system-ui,sans-serif;color:#e7e0ff}
+.tslot.empty .tsinfo{color:#8f84ad;font-style:italic;font-weight:600}
+.tsgold{color:#ffc93c}
+.tdel{flex:none;height:38px;min-width:42px;padding:0 8px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);
+  background:rgba(0,0,0,0.3);font:800 16px system-ui,sans-serif;color:#fff}
+.tdel.ask{background:#d0282e;border-color:#ff6a6a;font-size:14px;animation:tdelask .5s ease-in-out infinite alternate}
+@keyframes tdelask{from{box-shadow:0 0 0 rgba(255,60,60,0)}to{box-shadow:0 0 14px rgba(255,60,60,0.9)}}
+.tstart{height:60px;margin-top:4px;border-radius:14px;border:none;color:#1a0f06;
+  font:900 24px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;
+  background:linear-gradient(#ffe066,#ff8a1f 60%,#e8461a);box-shadow:0 4px 0 #7a2410,0 0 22px rgba(255,140,40,0.7);
+  animation:tstartpulse 1.1s ease-in-out infinite alternate}
+@keyframes tstartpulse{from{transform:scale(1)}to{transform:scale(1.035);box-shadow:0 4px 0 #7a2410,0 0 34px rgba(255,170,60,0.95)}}

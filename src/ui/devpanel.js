@@ -18,6 +18,8 @@ import {
   CURVES, DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_META, DEV_TABS, devReport, devSet, devTabOf, kr, kru
 } from '../dev/knobs.js';
 import { auditText, loadAudit } from '../save/audit.js';
+import { loadPresets, presetGun, removePreset, savePresets } from '../save/presets.js';
+import { gunColor } from '../spells/guns.js';
 import { h, useEffect, useRef, useState } from './h.js';
 
 // A live jellyfish for Dev → Jellyfish colours: the real jellyStep and drawJelly in a
@@ -674,5 +676,25 @@ export function SpawnGun({ input, close }) {
         h('label', null, 'Level'),
         h('input', { className: 'spawnlvl', type: 'number', min: 1, inputMode: 'numeric', value: lvl,
           onChange: e => setLvl(e.target.value) })),
-      h('button', { className: 'dbg spawngo', onPointerDown: e => { e.preventDefault(); spawn(); } }, 'Spawn')));
+      h('button', { className: 'dbg spawngo', onPointerDown: e => { e.preventDefault(); spawn(); } }, 'Spawn'),
+      h(PresetList, { input, close })));
+}
+
+// The gun presets (save/presets.js; the Bag's 💾 saves one): tap one to drop that exact gun in front
+// of you (input.current.spawnPreset, game/systems/step.js); 🗑️ asks once (it turns into a red Delete).
+/** @param {{ input: { current: GameInput }, close: () => void }} props */
+function PresetList({ input, close }) {
+  const [list, setList] = useState(loadPresets);
+  const [asking, setAsking] = useState(-1);
+  const tap = (/** @type {() => void} */ f) => (/** @type {any} */ e) => { e.preventDefault(); e.stopPropagation(); f(); };
+  const del = (/** @type {number} */ i) => { const next = removePreset(loadPresets(), i); savePresets(next); setList(next); setAsking(-1); };
+  return h('div', { className: 'presets' },
+    h('p', { className: 'lab' }, 'Presets'),
+    list.length ? h('div', { className: 'prelist' }, list.map((p, i) => h('div', { key: i, className: 'prerow', 'data-preset': i },
+      h('button', { className: 'pregun', style: { color: gunColor(p.gun) },
+        onPointerDown: tap(() => { input.current.spawnPreset = presetGun(p); close(); }) }, p.name),
+      asking === i
+        ? h('button', { className: 'predel', onPointerDown: tap(() => del(i)) }, 'Delete')
+        : h('button', { className: 'predelask', 'aria-label': 'Delete preset', onPointerDown: tap(() => setAsking(i)) }, '🗑️'))))
+      : h('p', { className: 'prenone' }, 'No presets yet — 💾 in the Bag saves one'));
 }

@@ -5,6 +5,26 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.159 — the owner's LIST4: title screen + save slots, pause menu, gun looks, gun presets, coloured gun slots
+Released 2026-10-08 (the owner OK'd the screenshots; a minor update). Built by three time-boxed agents on `list4`
+(`LIST4.md` has each item's files and decisions).
+- **Title screen** (`ui/title.js` `Root`, scene `art/titlescene.js`): shows on every load, the game mounts only after
+  Start. A bobbing pixel CAVE RUNNER with a shine sweep over a scrolling cave of jetpackers blasting creatures; a
+  menu of **3 save slots** (Floor · gold · guns, or Empty; 🗑️ then "Delete?") and Continue / Start. Per slot: the
+  run save and both unlock collections (`slotKey`: slot 1 = the old keys, so the old run is slot 1; slots 2/3 add
+  `-2`/`-3`; active slot `caverunner-slot`). Shared: Dev settings, audit, replays, presets. The test page skips it
+  (`window.__TEST_TITLE` shows it).
+- **Pause menu** (`ui/pause.js`, ⏸ beside ⚙️): Resume, Save (now), Volume (whole game: `SFX.setVolume`, kept in
+  `caverunner-volume`), Exit to main menu (saves, reloads onto the title).
+- **Bag header** (`BagHead`, `ui/editor.js`): the gun's name in its colour with ✏️ rename (keeps its hue), 🖼️ gun
+  look, 💾 save as a named preset (`save/presets.js`, `caverunner-gunpresets`); the page title and gold are gone.
+  **Dev → Spawn gun** lists the presets (tap = spawn that gun, `input.current.spawnPreset`; 🗑️ then Delete).
+- **27 pixel-art gun looks** from the owner's picture (`art/gunart.js` `GUN_ART`, re-extract with
+  `tools/gunart-extract.js`); the gallery `ui/gunart.js` `GunArtPicker`; `gun.art` drawn by `drawGun(…, art)`
+  everywhere a gun shows (hand, ground, HUD slots, Bag, firing window), one pixel size `GUN_ART_PX`.
+- **HUD gun slots** ringed and tinted in their gun's colour; the held one thicker with a glow (was amber).
+- Suites: logic `presets gunart slots`, browser `presets gunart title`.
+
 ## v0.0.158 — the machine hints fit their words, centred over their machine
 Released 2026-10-07 (the owner OK'd the screenshots; a minor update).
 - Owner: both level machines' hint boxes are as wide as their content plus padding (`width:max-content`) and sit

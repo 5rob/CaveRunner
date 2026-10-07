@@ -4,20 +4,32 @@
 
 import { COL } from '../core/consts.js';
 import { rr } from '../core/util.js';
+import { gunArt, gunArtCanvas } from './gunart.js';
 
 // ---- sprites ----
 // Everything is drawn from primitives at world scale (the player is 12x22 units),
 // so it stays crisp at any zoom and there are no images to load.
 
 // A gun, grip at the origin, barrel down +x. Scaled so the same drawing works for
-// the one in your hands and the little one lying on the cave floor.
-/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} ang @param {number} sc @param {string} accent */
-export function drawGun(ctx, x, y, ang, sc, accent) {
+// the one in your hands and the little one lying on the cave floor. `art` (a GUN_ART id, the
+// gun's skin picked in the Bag) draws that pixel sprite instead: grip at the origin, every art
+// pixel GUN_ART_PX units at sc 1 (a mid-sized one is about as long as the drawn gun).
+export const GUN_ART_PX = 0.46;
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} ang @param {number} sc @param {string} accent @param {string} [art] */
+export function drawGun(ctx, x, y, ang, sc, accent, art) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(ang);
   if (Math.cos(ang) < 0) ctx.scale(1, -1);     // aiming left: flip, don't hang upside down
   ctx.scale(sc, sc);
+  const a = art ? gunArt(art) : null, im = a ? gunArtCanvas(a.id) : null;
+  if (a && im) {
+    const u = GUN_ART_PX, m = ctx.getTransform(), k = Math.hypot(m.a, m.b) * u;
+    ctx.imageSmoothingEnabled = k < 1.5;        // crisp when big; smoothed when an art pixel is under ~1.5 screen pixels
+    ctx.drawImage(im, -a.grip[0] * u, -a.grip[1] * u, a.w * u, a.h * u);
+    ctx.restore();
+    return;
+  }
   ctx.fillStyle = '#20242c';                    // stock and grip
   rr(ctx, -6.5, -4.6, 4.5, 3.6, 1.2); ctx.fill();
   ctx.beginPath();

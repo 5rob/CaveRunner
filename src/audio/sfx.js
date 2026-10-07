@@ -9,9 +9,13 @@ import { DEV } from '../dev/knobs.js';
 
 // The engine. Nothing in here runs until the game calls it, and every call is wrapped so a
 // browser without Web Audio (or one that refuses it) just plays in silence.
+export const VOL_KEY = 'caverunner-volume';
 export const SFX = (() => {
   let ac = null, master = null, sfxBus = null, ambBus = null, noiseBuf = null, crackBuf = null, comp = null, tap = null;
   let voices = 0, hooked = false;
+  // the whole game's volume (the pause menu's slider), 0..1, kept in localStorage VOL_KEY (shared by the slots)
+  let vol = 1;
+  try { const v = parseFloat(localStorage.getItem(VOL_KEY)); if (Number.isFinite(v)) vol = Math.max(0, Math.min(1, v)); } catch (_) {}
   const MAX_VOICES = 28, HEAR = 650;
   const gates = {};
   const ear = { x: 0, y: 0 };
@@ -38,7 +42,7 @@ export const SFX = (() => {
         comp = ac.createDynamicsCompressor();
         comp.threshold.value = -16; comp.knee.value = 12; comp.ratio.value = 5;
         comp.attack.value = 0.003; comp.release.value = 0.25;
-        master = ac.createGain(); master.gain.value = 1;
+        master = ac.createGain(); master.gain.value = vol;
         sfxBus = ac.createGain(); sfxBus.gain.value = DEV.vol;
         ambBus = ac.createGain(); ambBus.gain.value = DEV.vol * DEV.amb;
         sfxBus.connect(master); ambBus.connect(master);
@@ -854,6 +858,13 @@ export const SFX = (() => {
         return tap.stream;
       } catch (_) { return null; }
     },
+    /** @param {number} v the whole game's volume, 0..1 (kept in localStorage) */
+    setVolume: v => {
+      vol = Math.max(0, Math.min(1, Number(v) || 0));
+      try { if (master) master.gain.value = vol; } catch (_) {}
+      try { localStorage.setItem(VOL_KEY, String(vol)); } catch (_) {}
+    },
+    get volume() { return vol; },
     get ready() { return !!live(); },
     get ambience() { return amb ? amb.name : null; },
     get loops() { return loops.size; },

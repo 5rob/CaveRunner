@@ -5,6 +5,7 @@
 // before the creatures, is drawSilk in game/creatures/spider.js)
 
 import { drawGun, drawRagdoll, drawRunner, drawTorch, jetFlame, pixelSprite, torchEmbers } from '../../art/sprites.js';
+import { gunArt } from '../../art/gunart.js';
 import { gradLut, lutAt, rampLut } from '../../art/ramps.js';
 import { COL, PH, PW } from '../../core/consts.js';
 import { hexRgb } from '../../core/util.js';
@@ -183,10 +184,11 @@ export function drawPlayer(W, G, F) {
     /** @param {CanvasRenderingContext2D} c */
     const body = c => drawRunner(c, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing, hands);
     /** @param {CanvasRenderingContext2D} c */
-    const gun = c => drawGun(c, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held));
+    const gun = c => drawGun(c, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunAccent(held), held && held.art);
     if (px > 0) {
       pixelSprite(G.ctx, W.p.x - 14, W.p.y - 8, PW + 28, PH + 16, px, line, body);
-      if (held) pixelSprite(G.ctx, W.p.x - 14, W.p.y - 8, PW + 28, PH + 16, px, false, gun);
+      if (held && gunArt(held.art)) gun(G.ctx);   // a skin is already pixel art: drawn as it is
+      else if (held) pixelSprite(G.ctx, W.p.x - 14, W.p.y - 8, PW + 28, PH + 16, px, false, gun);
     } else { body(G.ctx); if (held) gun(G.ctx); }   // no gun yet (a new run's empty hands): none drawn
     // the torch (archived: HAND_TORCH), in the hand the gun is not in: on the same pixel grid, its embers loose on it
     /** @param {CanvasRenderingContext2D} c */
