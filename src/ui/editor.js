@@ -15,6 +15,7 @@ import {
 import { gunAccent, gunColor, gunLvCol, resetGun } from '../spells/guns.js';
 import { ALL_IDS, FAMILIES, FAMILY_OF, MODS, famCol } from '../spells/mods.js';
 import { holoPass } from '../game/render/guide.js';
+import { FOLLOW_AHEAD } from '../spells/paths.js';
 import { drawLook } from '../game/render/looks.js';
 import { ModCard, tgtBadge } from './cards.js';
 import { h, useEffect, useMemo, useRef, useState } from './h.js';
@@ -108,6 +109,12 @@ export const GF_WALL = 5;
 // homing shots steer for it. World units: GF_DUMMY_K (owner: 2/3) of the real you, GF_DUMMY_GAP in front of the wall
 // GF_DPS_S: the seconds the DPS over the dummy's head averages over (owner: red, hidden at 0)
 export const GF_DPS_S = 3;
+// you, at the far left, holding the gun as the aim sways (owner: Follow Me has somewhere to come back to): your box
+// GF_YOU_X in from the left; the gun held at GF_GUN (× the game's own 0.55, so it reads in the small window)
+export const GF_YOU_X = 3, GF_GUN = 0.55 * 1.3;
+// Follow Me / Follow This turn this much harder in the window than in the game: the window is ~80 units across,
+// smaller than their turning circle, so without it they'd hit the wall before coming round
+export const GF_FOLLOW_TURN = 3;
 // the running DPS graph across the window's top third (owner): GF_GRAPH_S seconds of history, a sample every GF_GRAPH_DT
 export const GF_GRAPH_S = 5, GF_GRAPH_DT = 0.1;
 export const GF_DUMMY_GAP = 6, GF_DUMMY_K = 2 / 3, DW = PW * GF_DUMMY_K, DH = PH * GF_DUMMY_K;
@@ -126,6 +133,8 @@ export function GunFire({ gun, sim }) {
     let booms = [];
     let H = 0;
     const dummy = { x: 0, y: 0, hitT: 0, hits: 0 };
+    // where Follow Me (you) and Follow This (ahead of the gun) go, set each frame
+    const youAt = { x: 0, y: 0 }, ahead = { x: 0, y: 0 };
     // its damage, for the DPS over its head: [time, dmg] per hit, the last GF_DPS_S seconds (window time)
     /** @type {number[][]} */
     let dmgLog = [];
@@ -146,12 +155,13 @@ export function GunFire({ gun, sim }) {
         const a = base + (sh.ang || 0) + (Math.random() - 0.5) * (sh.spread || 0) * Math.PI / 180
           + (n > 1 ? (i / (n - 1) - 0.5) * (sub ? 0.5 : 0.12) : 0);
         if (sh.beam) { beams.push({ a, x, y, col: sh.col, w: sh.size || 2, t: 0.15, max: 0.15 }); continue; }
-        if (sh.still) { beams.push({ field: 1, x: sub ? x : x + Math.min(H / GF_ZOOM * 0.4, sh.r || 12) + 6, y, r: Math.min(H / GF_ZOOM * 0.4, sh.r || 12), col: sh.col, t: 0.5, max: 0.5 }); continue; }
+        if (sh.still) { const fr = Math.min(H / GF_ZOOM * 0.4, sh.r || 12), at = sh.follow ? youAt : sh.followAim ? ahead : null;
+          beams.push({ field: 1, x: at ? at.x : sub ? x : x + fr + 6, y: at ? at.y : y, r: Math.min(H / GF_ZOOM * 0.4, sh.r || 12), col: sh.col, t: 0.5, max: 0.5 }); continue; }
         const sp = sh.speed * GF_SPEED;
         if (shots.length >= GF_MAX * 2) return;
         shots.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, size: sh.size, col: sh.col,
-          look: sh.look, spin: Math.random() * 6, grav: sh.grav || 0, explode: sh.explode, homing: sh.homing,
-          pull: sh.pull, eat: sh.eat, hidden: sh.hidden, life: 3, bounce: sh.bounce || 0, pierce: sh.pierce || 0, hit: 0, dmg: sh.dmg || 0,
+          look: sh.look, spin: Math.random() * 6, grav: sh.grav || 0, explode: sh.explode, homing: sh.homing, follow: sh.follow || 0, followAim: sh.followAim || 0,
+          pull: sh.pull, eat: sh.eat, hidden: sh.hidden, life: Math.min(12, (sh.life || 1) / GF_SPEED), bounce: sh.bounce || 0, pierce: sh.pierce || 0, hit: 0, dmg: sh.dmg || 0,
           trig: sh.trig, payload: sh.payload, timer: sh.trig === 'timer' ? (sh.timer || 0.5) / GF_SPEED : 0 });
       }
     };
@@ -179,12 +189,16 @@ export function GunFire({ gun, sim }) {
         c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
       }
       const ctx = c.getContext('2d');
-      const sc = Math.min(2.4, W / 60) * 0.75, gx = 6 + 6.5 * sc, gy = H * 0.55;
-      // the aim sways slowly up and down; the muzzle turns with it round the grip
-      const reach = W / GF_ZOOM - GF_WALL - gx / GF_ZOOM, gyW = gy / GF_ZOOM, hW = H / GF_ZOOM;
-      const aUp = Math.atan2(hW * GF_SWAY - gyW, reach), aDn = Math.atan2(hW * (1 - GF_SWAY) - gyW, reach);
+      // you at the far left (world units): the gun in your hand at the game's height on you (PH × 0.4)
+      const gy = H * 0.55, hW = H / GF_ZOOM, youY = gy / GF_ZOOM - PH * 0.4, youX = GF_YOU_X;
+      const home = { x: youX + PW / 2, y: youY + PH * 0.4 };
+      // the aim sways slowly up and down; the hand and the muzzle turn with it round you
+      const reach = W / GF_ZOOM - GF_WALL - home.x;
+      const aUp = Math.atan2(hW * GF_SWAY - home.y, reach), aDn = Math.atan2(hW * (1 - GF_SWAY) - home.y, reach);
       const aim = (aUp + aDn) / 2 + (aDn - aUp) / 2 * Math.sin(fw.time * 2 * Math.PI / GF_SWAY_S), ca = Math.cos(aim), sa = Math.sin(aim);
-      const mx = (gx + (14.2 * ca + 3.2 * sa) * sc) / GF_ZOOM, my = (gy + (14.2 * sa - 3.2 * ca) * sc) / GF_ZOOM;   // the muzzle, in world units
+      const hx = home.x + ca * 2.5, hy = home.y;                // the gun hand (as the game holds it)
+      const mx = hx + (14.2 * ca + 3.2 * sa) * GF_GUN, my = hy + (14.2 * sa - 3.2 * ca) * GF_GUN;   // the muzzle
+      ahead.x = home.x + ca * FOLLOW_AHEAD; ahead.y = home.y + sa * FOLLOW_AHEAD; youAt.x = home.x; youAt.y = home.y;
       if (S !== seenS) { seenS = S; seen = S ? S.fired : -1; }
       if (S && S.fired !== seen) {                    // a pull went off: its shots leave the muzzle
         seen = S.fired; flash = 0.07;
@@ -202,6 +216,18 @@ export function GunFire({ gun, sim }) {
       const live = [];
       for (const b of shots) {
         b.vy += b.grav * GF_SPEED * GF_SPEED * dt;
+        // Follow Me turns it back to you, Follow This to the spot ahead of the gun (spells/paths.js, slowed with the window)
+        for (const [k, t] of [[b.follow, youAt], [b.followAim, ahead]]) if (k) {
+          const sp = Math.hypot(b.vx, b.vy), cur = Math.atan2(b.vy, b.vx);
+          let d = Math.atan2(t.y - b.y, t.x - b.x) - cur;
+          d = Math.atan2(Math.sin(d), Math.cos(d));
+          const turn = k * GF_FOLLOW_TURN * GF_SPEED * dt, na = cur + Math.max(-turn, Math.min(turn, d));
+          b.vx = Math.cos(na) * sp; b.vy = Math.sin(na) * sp;
+        }
+        if (b.follow && !b.back && b.age > 0.5 && Math.hypot(b.x - youAt.x, b.y - youAt.y) < 8) {   // for the suite: one came back to you
+          b.back = 1; ref.current.dataset.back = String(+(ref.current.dataset.back || 0) + 1);
+        }
+        b.age = (b.age || 0) + dt;
         if (b.homing) {                                  // turn toward the dummy, at the shot's turn rate (slowed with the window)
           const sp = Math.hypot(b.vx, b.vy), cur = Math.atan2(b.vy, b.vx);
           let d = Math.atan2(dcy - b.y, dcx - b.x) - cur;
@@ -300,6 +326,10 @@ export function GunFire({ gun, sim }) {
         ctx.fillStyle = '#ff4a4a'; ctx.fillText(txt, tx, ty);
         ctx.restore();
       }
+      // you, at the far left, the gun in hand on the sway (the game's own sprite and hold)
+      ctx.globalAlpha = 1;
+      drawRunner(ctx, youX, youY, PW, PH, 1, null, false, 0, false, { gun: { x: hx, y: hy }, torch: { x: home.x + ca * 7, y: hy + sa * 5 - 0.5 } });
+      if (g) drawGun(ctx, hx, hy, aim, GF_GUN, gunAccent(g));
       // the wall: grey stone blocks, offset every other row
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#4a4f5a'; ctx.fillRect(wallX, 0, GF_WALL + 1, wH);
@@ -309,11 +339,10 @@ export function GunFire({ gun, sim }) {
       ctx.fillStyle = '#2b2f37'; ctx.fillRect(wallX - 0.4, 0, 0.4, wH);
       ctx.restore();
       ctx.globalAlpha = 1;
-      if (g) drawGun(ctx, gx, gy, aim, sc, gunAccent(g));
       if (flash > 0) {
         ctx.globalAlpha = Math.min(1, flash / 0.07);
         ctx.fillStyle = g ? gunAccent(g) : '#fff';
-        ctx.beginPath(); ctx.arc(mx * GF_ZOOM + 2 * ca, my * GF_ZOOM + 2 * sa, 3.5, 0, 6.283); ctx.fill();
+        ctx.beginPath(); ctx.arc((mx + ca) * GF_ZOOM, (my + sa) * GF_ZOOM, 2.5, 0, 6.283); ctx.fill();
         ctx.globalAlpha = 1;
       }
       // the DPS graph: a thin red line over everything in the top third, oldest at the left, scaled to its peak

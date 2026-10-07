@@ -97,6 +97,17 @@ const SHOTS = process.env.CAVERUNNER_SHOTS || '';
     for (let i = 0; i < 3; i++) { await page.waitForTimeout(700); await page.screenshot({ path: path.join(SHOTS, `gfdummy-${i}.png`), clip: { x: 0, y: 0, width: 412, height: 230 } }); }
   }
 
+  // you at the far left, the gun in your hand: Follow Me shots curve back round to you (owner)
+  await page.evaluate(() => {
+    const LO = window.__in.current.loadout, g = LO.guns[LO.sel];
+    g.slots = ['follow', 'bubble', 'follow', 'orb', 'follow', 'bolt', null, null]; resetGun(g); window.__in.current.notify();
+    document.querySelector('.gfire').dataset.back = '0';
+  });
+  let back = 0;
+  for (let i = 0; i < 50 && !back; i++) { await page.waitForTimeout(150); back = await page.evaluate(() => +(document.querySelector('.gfire').dataset.back || 0)); }
+  check('a Follow Me shot comes back to you', back > 0, back);
+  if (SHOTS) for (let i = 0; i < 3; i++) { await page.waitForTimeout(500); await page.screenshot({ path: path.join(SHOTS, `gffollow-${i}.png`), clip: { x: 0, y: 0, width: 412, height: 230 } }); }
+
   // a gun button in the new row still switches gun
   const before = await page.evaluate(() => window.__in.current.loadout.sel);
   const other = await page.evaluate(sel => window.__in.current.loadout.guns.findIndex((g, i) => g && i !== sel), before);
