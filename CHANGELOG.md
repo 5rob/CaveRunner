@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.158 — the machine hints fit their words, centred over their machine
+- Owner: both level machines' hint boxes are as wide as their content plus padding (`width:max-content`) and sit
+  centred above their machine (`input.current.promptLeft`, the machine's middle on screen, from `pickups.js`;
+  `translateX(-50%)`). `vend` checks the centring.
+
 ## v0.0.157 — the buy machine: flick to pick a level, no menu
 - Owner: the buy machine's full-screen floor menu is gone (`ui/levelshop.js` deleted). At the machine the hint shows
   two options: **Select Level** (the R icon with thin up/down arrowheads, `PickKey` in `ui/hud.js`) and **Tap R to

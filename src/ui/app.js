@@ -226,6 +226,7 @@ export function App() {
       // hides while that is up (the game pauses behind it).
       prompt && !found && !shopOpen ? h('div', { className: 'buypanel' + (prompt.pick || prompt.sell ? ' pickpanel' + (prompt.idle ? '' : ' pickhide') + (prompt.sell ? ' one' : '') + (prompt.sell && !prompt.can ? ' red' : '') : ''),
         style: { bottom: (input.current.promptBottom || 12) + 'px',
+          ...(prompt.pick || prompt.sell ? { left: (input.current.promptLeft || 0) + 'px' } : {}),
           maxHeight: 'calc(100% - ' + ((input.current.promptBottom || 12) + 12) + 'px)' } },
         prompt.id ? h(ModCard, { id: prompt.id, ingame: true }) : null,
         prompt.perk ? h(PerkCard, { id: prompt.perk, ingame: true }) : null,

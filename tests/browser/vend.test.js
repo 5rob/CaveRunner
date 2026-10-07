@@ -73,6 +73,16 @@ const DIR = path.join(__dirname, '..', 'build');
   check('the worker made floor 1 ahead of time', made && await page.evaluate(() => LVLGEN.ready.floor === 1 && !LVLGEN.broken),
     await page.evaluate(() => ({ broken: LVLGEN.broken, pend: !!LVLGEN.pend })));
 
+  // the hint sits centred over its machine (pickups.js promptLeft), the box fitting its words
+  const centred = mx => page.evaluate(mx => {
+    const L = window.__lvl, b = document.querySelector('.buypanel.pickpanel'), c = document.querySelector('canvas');
+    if (!b) return { none: true };
+    const r = b.getBoundingClientRect(), cr = c.getBoundingClientRect();
+    return { panel: Math.round(r.left + r.width / 2), machine: Math.round(cr.left + (mx - L.camX) * L.unitPx), left: Math.round(r.left), right: Math.round(r.right) };
+  }, mx);
+  await page.waitForTimeout(800);
+  let cz = await centred(X.buy);
+  check('the buy hint is centred over the buy machine', Math.abs(cz.panel - cz.machine) < 6, cz);
   // the hint is two options: Select Level (the R with arrows) and Tap R to Buy
   let bl = await buyLook();
   check('two options: Select Level and Tap R to Buy', bl.pick && !bl.cant && bl.f === 1, bl);
@@ -151,6 +161,9 @@ const DIR = path.join(__dirname, '..', 'build');
   await standAt(X.sell);
   await page.waitForTimeout(200);
   s = await state();
+  await page.waitForTimeout(800);
+  cz = await centred(X.sell);
+  check('the sell hint is centred over the sell machine', Math.abs(cz.panel - cz.machine) < 6, cz);
   check('the sell machine is locked while creatures live', s.prompt && !s.can, s.prompt);
   await page.screenshot({ path: path.join(DIR, 'vend_locked.png') });
   await tap();
