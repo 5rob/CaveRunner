@@ -1,5 +1,6 @@
-// The gun look gallery (LIST4 item 2, ui/gunart.js): in the Bag, the 🖼️ button opens it; a tap
-// on a skin sets the selected gun's `art`, closes the gallery, and the Default tile takes it off.
+// The gun look gallery (LIST4 item 2, ui/gunart.js): in the Bag, the 🖼️ button opens it; every gun
+// wears a sprite (v0.0.161: no Default, the old drawn gun is gone), so before any pick the one its
+// colour gives it (gunArtId) is lit; a tap on another sets the selected gun's `art` and closes.
 const { launch } = require('../chromium');
 const path = require('path');
 let fails = 0;
@@ -15,26 +16,25 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.tap('.weapon');
   await page.waitForTimeout(250);
   check('the Bag has the look button', await page.$('.sheet .artbtn') !== null);
+  const before = await page.evaluate(() => { const L = window.__in.current.loadout, g = L.guns[L.sel]; return { art: g.art, id: gunArtId(g) }; });
   await page.tap('.artbtn');
   await page.waitForTimeout(250);
   const n = await page.$$eval('.artpick', b => b.length);
-  const want = await page.evaluate(() => window.GUN_ART.length + 1);
-  check('the gallery shows Default and every skin', n === want, { n, want });
-  const pick = await page.evaluate(() => window.GUN_ART[5].id);
+  const want = await page.evaluate(() => window.GUN_ART.length);
+  check('the gallery shows every skin, no Default', n === want && !(await page.$('.artpick[data-art=""]')), { n, want });
+  let on = await page.$eval('.artpick.on', b => b.dataset.art);
+  check('an unpicked gun has its colour\'s sprite lit', !before.art && on === before.id, { before, on });
+  const pick = await page.evaluate(id => window.GUN_ART.find(a => a.id !== id).id, before.id);
   await page.tap(`.artpick[data-art="${pick}"]`);
   await page.waitForTimeout(250);
-  let st = await page.evaluate(() => { const L = window.__in.current.loadout; return { art: L.guns[L.sel].art, open: !!document.querySelector('.artsheet') }; });
+  const st = await page.evaluate(() => { const L = window.__in.current.loadout; return { art: L.guns[L.sel].art, open: !!document.querySelector('.artsheet') }; });
   check('a tap sets the gun\'s skin', st.art === pick, st);
   check('and closes the gallery', !st.open, st);
-  // reopen: the picked one is lit; Default takes it off
+  // reopen: the picked one is lit
   await page.tap('.artbtn');
   await page.waitForTimeout(250);
-  const on = await page.$eval('.artpick.on', b => b.dataset.art);
+  on = await page.$eval('.artpick.on', b => b.dataset.art);
   check('the current skin is highlighted', on === pick, on);
-  await page.tap('.artpick[data-art=""]');
-  await page.waitForTimeout(250);
-  st = await page.evaluate(() => { const L = window.__in.current.loadout; return { art: L.guns[L.sel].art, open: !!document.querySelector('.artsheet') }; });
-  check('Default takes the skin off', st.art === undefined && !st.open, st);
   await browser.close();
   console.log(fails ? `\n${fails} failed` : '\nall good');
   process.exit(fails ? 1 : 0);

@@ -6,13 +6,15 @@
 // (W.machines[k].t). Drawn with the shop's stock, before the fog. drawDemo (v0.0.142): a crystal
 // machine's hologram demo of a crystal going in (W.demo, stepDemo), in the guide's blue (render/guide.js).
 
-import { CRYSTAL_R, drawGun, drawNugget } from '../../art/sprites.js';
+import { gunArtCanvas } from '../../art/gunart.js';
+import { CRYSTAL_R, drawNugget } from '../../art/sprites.js';
 import { CELL, SHOP_FLOOR } from '../../core/consts.js';
 import { DEV } from '../../dev/knobs.js';
 import { CYCLE, MACHINE_H, MACHINE_TOP, MACHINE_W, SHOPS, SLOT_Y, demoAt, demoPos, shakePhase } from '../systems/shops.js';
 import { holoLight, holoPass } from './guide.js';
 
 const ICON = 30, GLOW = 8, RES = 4;        // the hologram's size, its glow, and its pixels per unit
+const SHOP_GUN_ART = 'blueraider';       // the gun machine's hologram: this sprite
 
 // a steady pseudo-random 0..1 for n (draw() mustn't touch Math.random: it's the simulation's)
 /** @param {number} n */
@@ -31,9 +33,11 @@ function holoIcon(icon, hue) {
   const B = document.createElement('canvas'); B.width = B.height = S;
   const a = A.getContext('2d'), b = B.getContext('2d');
   if (!a || !b) return B;
-  if (icon === 'gun') {                    // the gun sprite, filling the icon's width
-    const sc = ICON * RES / 22;
-    drawGun(a, S / 2 - 3.85 * sc, S / 2 + 1 * sc, 0, sc, '#ffffff');
+  const im = icon === 'gun' ? gunArtCanvas(SHOP_GUN_ART) : null;
+  if (im) {                                // a gun sprite, filling the icon's width, crisp
+    const k = ICON * RES / im.width;
+    a.imageSmoothingEnabled = false;
+    a.drawImage(im, (S - im.width * k) / 2, (S - im.height * k) / 2, im.width * k, im.height * k);
   } else {
     a.fillStyle = '#ffffff';                // a plain glyph (not an emoji) takes the hue below
     a.font = ICON * RES * 0.86 + 'px system-ui, "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
