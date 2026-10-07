@@ -4,6 +4,7 @@
 // ScrollBox grab bars both grids scroll with.
 
 import { drawGun, drawRunner, pixelSprite } from '../art/sprites.js';
+import { gunArt, gunArtFit } from '../art/gunart.js';
 import { SFX } from '../audio/sfx.js';
 import { PH, PW } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
@@ -18,6 +19,7 @@ import { holoPass } from '../game/render/guide.js';
 import { FOLLOW_AHEAD, FOLLOW_PULL } from '../spells/paths.js';
 import { drawLook } from '../game/render/looks.js';
 import { ModCard, tgtBadge } from './cards.js';
+import { GunArtPicker } from './gunart.js';
 import { h, useEffect, useMemo, useRef, useState } from './h.js';
 import { GAUGE_COL, healthCol } from './hud.js';
 
@@ -88,6 +90,7 @@ export function GunIcon({ gun }) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
     const sc = 2.7;
+    if (gun.art && gunArtFit(ctx, gun.art, W, H)) return;   // a skin: fitted to the icon, crisp
     drawGun(ctx, W / 2 - 3.85 * sc, H / 2 + 1 * sc, 0, sc, gunAccent(gun));
   });
   return h('canvas', { ref, className: 'gicon' });
@@ -333,11 +336,12 @@ export function GunFire({ gun, sim }) {
       // pixel look (DEV.runnerPx, its outline DEV.runnerLine), smooth at 0
       const hands = { gun: { x: hx, y: hy }, torch: g ? { x: home.x + ca * 7, y: hy + sa * 5 - 0.5 } : null };
       const body = (/** @type {CanvasRenderingContext2D} */ c2) => drawRunner(c2, youX, youY, PW, PH, 1, null, false, 0, false, hands);
-      const gunL = (/** @type {CanvasRenderingContext2D} */ c2) => { if (g) drawGun(c2, hx, hy, aim, GF_GUN, gunAccent(g)); };
+      const gunL = (/** @type {CanvasRenderingContext2D} */ c2) => { if (g) drawGun(c2, hx, hy, aim, GF_GUN, gunAccent(g), g.art); };
       const rpx = DEV.runnerPx, rline = DEV.runnerLine > 0;
       if (rpx > 0) {
         pixelSprite(ctx, youX - 14, youY - 8, PW + 28, PH + 16, rpx, rline, body);
-        if (g) pixelSprite(ctx, youX - 14, youY - 8, PW + 28, PH + 16, rpx, false, gunL);
+        if (g && gunArt(g.art)) gunL(ctx);   // a skin is already pixel art: drawn as it is
+        else if (g) pixelSprite(ctx, youX - 14, youY - 8, PW + 28, PH + 16, rpx, false, gunL);
       } else { body(ctx); gunL(ctx); }
       // the wall: grey stone blocks, offset every other row
       ctx.globalAlpha = 1;
@@ -476,6 +480,7 @@ export function Editor({ input, close, refresh, canEdit, tabs }) {
   const [drag, setDrag] = useState(null);
   const [info, setInfo] = useState(null);
   const [gdrag, setGdrag] = useState(null);
+  const [artOpen, setArtOpen] = useState(false);
   const gun = LO.guns[sel];
 
   // DEBUG swaps your collection for a shelf holding one of every mod, and nothing
@@ -678,6 +683,7 @@ export function Editor({ input, close, refresh, canEdit, tabs }) {
   return h('div', { className: 'sheet' + (shown ? ' withcard' : '') },
     h('div', { className: 'shead' },
       h('h2', null, 'Guns & Mods'),
+      gun ? h('button', { className: 'artbtn', title: 'Gun look', onPointerDown: e => { e.preventDefault(); setArtOpen(true); } }, '🖼️') : null,
       h('span', { className: 'purse' }, LO.gold + 'g'),
       h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Done')
     ),
@@ -725,6 +731,7 @@ export function Editor({ input, close, refresh, canEdit, tabs }) {
       style: { left: drag.x, top: drag.y, borderColor: famCol(drag.id), color: famCol(drag.id) } },
       MODS[drag.id].glyph) : null,
     tabs || null,
-    card
+    card,
+    artOpen && gun ? h(GunArtPicker, { gun, onPick: refresh, close: () => setArtOpen(false) }) : null
   );
 }
