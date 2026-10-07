@@ -1,7 +1,7 @@
 # save/ — layer 4: the autosave
 
 `save.js`: `SAVE_KEY` (`caverunner-save` in localStorage), `GUN_DEFAULTS`, `readSave`,
-`cleanLoadout`, `cleanGun` (pure, tested), `loadSave`, `clearSave`. Writing the save is
+`cleanLoadout`, `cleanGun` (pure, tested; v0.0.155: a gun named Gravity Gun gets `followaim` for an old `follow`), `loadSave`, `clearSave`. Writing the save is
 `saveRun` (`game/systems/save-run.js`). `cleanPerks` fits a perk once at most (v129: a second copy in
 the suit goes back to the carried ones). The unlock collections have their own keys, untouched by
 `clearSave`: `COLLECTION_KEY` (mods: **emptied on death**, `hurt` in `game/systems/player.js`, v129) and

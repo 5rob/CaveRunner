@@ -49,3 +49,6 @@ Status: `todo` · `agent` (running, branch named) · `review` (screenshots sent,
 - 2026-10-07: #5 merged, shots sent; `interact` suite updated for #8's ring. Running: #11.
 - 2026-10-07: #11 merged, shots sent. ALL 12 BUILT on `list3-small` (logic: only rats/spider/strata fail). Waiting on owner OKs, then: version bump (v0.0.149), HANDOVER, merge to main, confirm Pages.
 - 2026-10-07: owner OK'd all with a feedback round (trigger ring inside gauges; Spawn level; copy labels; no crosshair with Aim Assist; mini-map grey 80% + dots only explored; hologram 3 rates). Released as v0.0.149.
+- 2026-10-07: after the list (owner asks, each OK'd from screenshots): v0.0.150 the Bag's mana bar drains; v0.0.151 a wall in
+  the firing window; v0.0.152 sway, zoom, hologram dummy; v0.0.153 DPS over it; v0.0.154 DPS graph; v0.0.155 Follow Me /
+  Follow This split + Follow Me as a pull, buffs and nerfs, you in the firing window. CHANGELOG has each.
