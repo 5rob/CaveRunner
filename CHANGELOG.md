@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.152 — the firing window: sway, room, a hologram dummy
+Released 2026-10-07 (the owner OK'd the screenshots; a minor update). In the Bag's firing window (`ui/editor.js`
+`GunFire`): zoomed out (`GF_ZOOM` 2.2, was 3); the gun sways from aiming near the wall's top to near its bottom every
+4 s (`GF_SWAY`, `GF_SWAY_S`), so bounces show; a dummy you at 2/3 size in front of the wall (`GF_DUMMY_K`,
+`GF_DUMMY_GAP`), a hologram like the guide (`holoPass`), that takes hits (pierce passes on, hit triggers go off) and
+glitches with the guide's tear when hurt, never dying; homing shots steer for it. Suite `gunfire` checks hits.
+
 ## v0.0.151 — a wall in the Bag's firing window
 Released 2026-10-07 (the owner OK'd the screenshot; a minor update). The firing window has an unbreakable stone wall
 at the far right (`GF_WALL`, `ui/editor.js` `GunFire`): shots stop on it or bounce, blasts flash, beams end on
