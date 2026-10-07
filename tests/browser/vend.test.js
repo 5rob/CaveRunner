@@ -38,7 +38,8 @@ const DIR = path.join(__dirname, '..', 'build');
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2, o = { pointerId: 7, bubbles: true, isPrimary: true, pointerType: 'touch' };
     el.dispatchEvent(new PointerEvent('pointerdown', { ...o, clientX: cx, clientY: cy }));
     el.dispatchEvent(new PointerEvent('pointermove', { ...o, clientX: cx + 2, clientY: cy - dir * r.width * 0.4 }));
-    el.dispatchEvent(new PointerEvent('pointerup', { ...o, clientX: cx + 2, clientY: cy - dir * r.width * 0.4 }));
+    // held a few frames, as a thumb would, before letting go
+    return new Promise(res => setTimeout(() => { el.dispatchEvent(new PointerEvent('pointerup', { ...o, clientX: cx + 2, clientY: cy - dir * r.width * 0.4 })); res(); }, 80));
   }, dir);
   const buyLook = () => page.evaluate(() => {
     const L = window.__lvl, f = pickedFloor(L), ok = canBuyFloor(window.__in.current.loadout.soldTop || 0, f);
@@ -75,11 +76,16 @@ const DIR = path.join(__dirname, '..', 'build');
   // the hint is two options: Select Level (the R with arrows) and Tap R to Buy
   let bl = await buyLook();
   check('two options: Select Level and Tap R to Buy', bl.pick && !bl.cant && bl.f === 1, bl);
-  check('the stick does not aim there', await page.evaluate(() => window.__in.current.lvlPick === true));
+  check('the right stick picks the level there', await page.evaluate(() => window.__in.current.lvlPick === true));
   await page.screenshot({ path: path.join(DIR, 'vend_start.png') });
   await flick(1); await page.waitForTimeout(150);
   bl = await buyLook();
-  check('a flick up picks floor 2, greyed (not for sale)', bl.f === 2 && !bl.ok && bl.cant && bl.bullets === 0, bl);
+  check('stick input hides the hint', await page.evaluate(() => !!document.querySelector('.buypanel.pickhide')));
+  await page.waitForTimeout(1000);
+  check('still hidden a second later', await page.evaluate(() => !!document.querySelector('.buypanel.pickhide')));
+  await page.waitForTimeout(900);
+  check('back after 1.5 s without input', await page.evaluate(() => !!document.querySelector('.buypanel.pickpanel:not(.pickhide)')));
+  check('a flick up picks floor 2, greyed (not for sale)', bl.f === 2 && !bl.ok && bl.cant, bl);
   check('the buy screen shows floor 2 in grey', await page.evaluate(() => pickedFloor(window.__lvl) === 2));
   await page.screenshot({ path: path.join(DIR, 'vend_grey.png') });
   await flick(1); await page.waitForTimeout(150);

@@ -664,6 +664,7 @@ interface World {
   bhLoops: Map<Bullet, SoundLoop>;
   portalLoop: SoundLoop; matterLoop: SoundLoop; wasJet: boolean;
   stepT: number; lastNear: string | number; portalAcc: number;
+  stickT?: number;            // W.time of the last directional input on either stick (or a move key): the buy machine's hint waits PICK_IDLE after it
   leanVX: number; leanVY: number; flickN: number; torchT: number; torchAcc: number; torchFail: { inside: boolean; t: number }; torchLit: number; smokeAcc: number;
   webCheck: number; webLetGo: number;
   plantsNow: Set<Prop>; plantsLast: Set<Prop>; rustle: { t: number };
@@ -699,6 +700,7 @@ interface Prompt {
   crystal?: number;           // a red crystal: the floor it came from
   green?: number;             // a green crystal (the hidden room's prize): the floor it came from
   shop?: string;              // a vending machine's menu (SHOPS key): no card, just the line
+  idle?: boolean;             // the buy machine: no stick input for PICK_IDLE, so its hint fades up
   pick?: boolean;             // the buy machine: two options, flick the right stick to select a level, tap to buy
 }
 /** the death replay's span, once recorded: from t0 to t1, the death at `death` (REC's clock): the clip itself */
@@ -778,7 +780,7 @@ interface GameInput {
   perkCollection: string[];   // the perks unlocked at the perk machine, across runs
   collection: string[];       // the mods unlocked, kept across runs (save/save.js loadCollection)
   shopOpen?: string | null;   // a vending machine's menu is up: its SHOPS key (game/systems/shops.js)
-  lvlPick?: boolean;          // you're at the buy machine: a right-stick flick up/down picks the floor, no aiming (pickups.js)
+  lvlPick?: boolean;          // you're at the buy machine: a right-stick flick up/down picks the floor (it still aims and fires) (pickups.js)
   lvlStep?: number;           // that flick: +1 up, -1 down, read by stepPickups
   menuTap?: (() => void) | null;   // a menu is up: a right-stick tap (or r/f/enter) confirms in it
   dispense?: { shop: string, id?: string, gun?: Gun, perk?: string } | null;   // bought: the machine pops it out (stepShops)

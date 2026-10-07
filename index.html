@@ -397,12 +397,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .pbuy.cant{opacity:.45}
 .pbuy.cant b{color:#fff}
 /* the buy machine's two options: flick to select a level (left), tap to buy (right) */
-.buypanel.pickpanel{left:12%;right:12%}
-.pbuy.pick{height:50px;gap:22px;white-space:nowrap}
-.pbuy.pick .popt{display:flex;align-items:center;gap:6px}
-.pbuy.pick b{font-size:14px}
+.buypanel.pickpanel{left:12%;right:12%;padding:4px 8px;background:rgba(18,20,26,0.25);border-color:#00ff3c;
+  box-shadow:none;transform:scale(.8);transform-origin:50% 100%;transition:opacity .2s}
+/* hidden while you're using the sticks (pickups.js: idle after PICK_IDLE); fades up, hides at once */
+.buypanel.pickhide{opacity:0;transition:none}
+.pbuy.pick{height:44px;gap:18px;white-space:nowrap}
+.pbuy.pick .popt{display:flex;align-items:center;gap:5px}
+.pbuy.pick b{font-size:14px;color:#00ff3c}
+.pbuy.pick .rkey circle,.pbuy.pick .rkey polyline{stroke:#00ff3c}
+.pbuy.pick .rkey text{fill:#00ff3c}
 .pbuy.pick .popt.cant{opacity:.45}
-.pbuy.pick .popt.cant b{color:#fff}
 .weapon.locked{opacity:.45}
 .pop.flow{position:static;max-height:none;box-shadow:none;margin-bottom:2px}
 .spacer{flex:1 1 auto;min-height:6px}
@@ -22699,6 +22703,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var WARP_WAIT = 6;
   var REVEAL_T = 0.7;
   var ROOF_Y = (SHOP_TOP - SHOP_ROOF) * CELL;
+  var PICK_IDLE = 1.5;
   var VEND_W = 60, VEND_H = 84;
   var VEND_TOP = SHOP_FLOOR * CELL - VEND_H;
   function vendNear(W, pcx, pcy) {
@@ -24307,6 +24312,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     const picking = !!near && near.src === "vend" && near.kind === "buy" && !W.p.dead;
     G.input.current.lvlPick = picking;
+    const IN = G.input.current, K = IN.keys;
+    if (IN.left.active && IN.left.mag > 0.15 || IN.right.active && IN.right.mag > 0.15 || K.w || K.a || K.s || K.d) W.stickT = W.time;
+    const idle = W.time - (W.stickT ?? -99) > PICK_IDLE;
     const flick = G.input.current.lvlStep;
     if (flick) {
       G.input.current.lvlStep = 0;
@@ -24314,7 +24322,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     G.input.current.gunNear = near && near.src === "pickup" && near.q.kind === "gun" && !W.p.dead ? near.q : null;
     const nearKey = !near ? -1 : near.src + ":" + (near.src === "vend" || near.src === "shopvend" ? near.kind : near.src === "shop" ? W.stock.indexOf(near.it) : near.src === "room" ? W.rooms.indexOf(near.r) : W.pickups.indexOf(near.q));
-    const label = !near ? null : near.src === "vend" ? vendLabel(W, near.kind, LO) : near.src === "shopvend" ? { text: SHOPS[near.kind].label, price: 0, can: true, shop: near.kind } : near.src === "shop" ? near.it.kind === "heal" ? { text: "Full heal", price: near.it.price, can: W.p.hp < MHP && LO.gold >= near.it.price } : near.it.kind === "gun" ? {
+    const label = !near ? null : near.src === "vend" ? { ...vendLabel(W, near.kind, LO), idle } : near.src === "shopvend" ? { text: SHOPS[near.kind].label, price: 0, can: true, shop: near.kind } : near.src === "shop" ? near.it.kind === "heal" ? { text: "Full heal", price: near.it.price, can: W.p.hp < MHP && LO.gold >= near.it.price } : near.it.kind === "gun" ? {
       text: near.it.gun.name,
       gun: near.it.gun,
       price: near.it.price,
@@ -24331,7 +24339,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const dprc = gameDpr();
       pbottom = Math.round(Math.max(10, G.c.height / dprc - (iy - 16 - W.camY) * W.unitPx));
     }
-    const sig = nearKey + ":" + (label && label.can ? 1 : 0) + ":" + inShop + ":" + Math.round(pbottom / 16);
+    const sig = nearKey + ":" + (label && label.can ? 1 : 0) + (near && near.src === "vend" && idle ? "i" : "") + ":" + inShop + ":" + Math.round(pbottom / 16);
     if (nearKey !== -1 && nearKey !== W.lastNear) SFX.fx("prompt");
     W.lastNear = nearKey;
     if (sig !== G.input.current.sig) {
@@ -24692,7 +24700,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function aimAndCast(W, G, F2) {
     const { dt, LO, pcx } = F2;
     const gx = pcx, gy = W.p.y + PH * 0.4;
-    const TR = G.input.current.lvlPick ? { ...G.input.current.right, active: false, on: false } : G.input.current.right;
+    const TR = G.input.current.right;
     let R = { on: false, show: false, nx: W.p.face, ny: 0 };
     if (TR.active) R = { on: TR.on, show: true, nx: TR.nx, ny: TR.ny, vis: Math.min(1, TR.mag / (TR.fire || AIM_DEAD)) };
     else if (G.mouse.inside) {
@@ -31417,7 +31425,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         prompt && !found && !shopOpen ? h(
           "div",
           {
-            className: "buypanel" + (prompt.pick ? " pickpanel" : ""),
+            className: "buypanel" + (prompt.pick ? " pickpanel" + (prompt.idle ? "" : " pickhide") : ""),
             style: {
               bottom: (input.current.promptBottom || 12) + "px",
               maxHeight: "calc(100% - " + ((input.current.promptBottom || 12) + 12) + "px)"

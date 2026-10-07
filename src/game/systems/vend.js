@@ -37,6 +37,7 @@ export const WARP_END = 2.4;      // and to the end of the crackle
 export const WARP_WAIT = 6;       // the longest the dark waits for a level still being made (then it's made here)
 export const REVEAL_T = 0.7;      // seconds to draw a bought level's rock in, bottom to top
 export const ROOF_Y = (SHOP_TOP - SHOP_ROOF) * CELL;   // the top of the shop's roof
+export const PICK_IDLE = 1.5;     // seconds with no stick input before the buy machine's hint fades up
 export const VEND_W = 60, VEND_H = 84;                 // a machine's cabinet (world units)
 export const VEND_TOP = SHOP_FLOOR * CELL - VEND_H;    // its top
 

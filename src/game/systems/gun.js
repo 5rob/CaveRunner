@@ -209,8 +209,7 @@ export function aimAndCast(W, G, F) {
   const { dt, LO, pcx } = F;
   // ---- aiming: thumbstick first, otherwise mouse ----
   const gx = pcx, gy = W.p.y + PH * 0.4;
-  // at the buy machine the right stick picks the floor (pickups.js): it doesn't aim or fire there
-  const TR = G.input.current.lvlPick ? { ...G.input.current.right, active: false, on: false } : G.input.current.right;
+  const TR = G.input.current.right;
   let R = { on: false, show: false, nx: W.p.face, ny: 0 };
   // line shows as soon as you touch the stick, fading in with the push: 0 at the centre,
   // full at the trigger ring (vis is what the Trajectory Sight line reads)

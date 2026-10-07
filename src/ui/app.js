@@ -224,7 +224,7 @@ export function App() {
       // buying and taking a mod is a tap on the right stick's dead zone (or the f key),
       // taken straight. A gun on the ground opens the swap chooser instead, so the panel
       // hides while that is up (the game pauses behind it).
-      prompt && !found && !shopOpen ? h('div', { className: 'buypanel' + (prompt.pick ? ' pickpanel' : ''),
+      prompt && !found && !shopOpen ? h('div', { className: 'buypanel' + (prompt.pick ? ' pickpanel' + (prompt.idle ? '' : ' pickhide') : ''),
         style: { bottom: (input.current.promptBottom || 12) + 'px',
           maxHeight: 'calc(100% - ' + ((input.current.promptBottom || 12) + 12) + 'px)' } },
         prompt.id ? h(ModCard, { id: prompt.id, ingame: true }) : null,
