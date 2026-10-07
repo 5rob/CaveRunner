@@ -176,7 +176,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .shead h2.bagname{min-width:0;flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .shead h2.bagname.none{color:var(--muted)}
 .shead .hgap{flex:1 1 0;min-width:0}
-.renamebtn,.presetbtn{flex:0 0 auto;width:34px;height:34px;padding:0;border-radius:17px;border:1px solid var(--ring);
+.renamebtn,.presetbtn,.shead .artbtn{flex:0 0 auto;width:34px;height:34px;padding:0;border-radius:17px;border:1px solid var(--ring);
   background:var(--btn);font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center}
 .renamebtn{width:28px;height:28px;font-size:13px;margin-left:-4px;border-color:transparent;background:none}
 .shead .done{flex:0 0 auto}
@@ -468,6 +468,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .gtab.holding{background-repeat:no-repeat}
 .slot.holding{background-repeat:no-repeat}
 .purse{font:700 14px system-ui,sans-serif;color:#c08a1f;margin-left:auto;margin-right:10px}
+/* the gun look button (Bag header) and its gallery (ui/gunart.js) */
+.artbtn{margin-left:auto;height:36px;width:40px;padding:0;border-radius:18px;border:1px solid var(--ring);
+  background:var(--btn);font-size:18px;line-height:1}
+.shead .artbtn{margin:0 6px 0 0;font-size:16px}
+.artsheet{position:fixed;inset:0;z-index:40;background:#101319;color:#e6edf3;display:flex;flex-direction:column;
+  padding:calc(10px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom))}
+.artsheet .done{background:#232833;color:#e6edf3;border-color:#3a4150}
+.artgrid{flex:1 1 auto;overflow-y:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;align-content:start;
+  touch-action:pan-y}
+.artpick{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px 5px;border-radius:10px;
+  border:2px solid #2a303c;background:#1a1f28;color:#c9d3de;font:600 11px system-ui,sans-serif;min-width:0}
+.artpick.on{border-color:#ffc93c;background:#2a2716;color:#ffe08a}
+.artpick canvas{max-width:100%;image-rendering:pixelated}
 .dbg{height:28px;padding:0 10px;border-radius:14px;border:1px solid var(--ring);
   background:var(--pad);color:var(--muted);font:700 10px system-ui,sans-serif;letter-spacing:.09em}
 .dbg.on{background:#ff8a1f;border-color:#ff8a1f;color:#12141a}

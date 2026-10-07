@@ -8,6 +8,7 @@ import { PERKS, SUIT_LEN, SUIT_SLOTS, fitsSlot } from '../data/perks.js';
 import { resetGun } from '../spells/guns.js';
 import { MODS } from '../spells/mods.js';
 import { ensureMod } from '../spells/discrim.js';
+import { gunArt } from '../art/gunart.js';
 
 // ---- autosave ----
 // The run is kept in localStorage under SAVE_KEY and read back on the next launch. In the
@@ -26,6 +27,7 @@ export function cleanGun(g) {
   out.slots = g.slots.map(id => (id && ensureMod(id) ? id : null));
   // a Gravity Gun saved before v0.0.155 has Follow Me: its trick (the hole held where you aim) is Follow This now
   if (out.name === 'Gravity Gun') out.slots = out.slots.map(id => (id === 'follow' ? 'followaim' : id));
+  if (!gunArt(out.art)) delete out.art;               // a skin only if it's still one of GUN_ART
   out.cap = out.slots.length;
   out.mana = Math.max(0, Math.min(Number(g.mana) || 0, out.manaMax));
   return resetGun(out);

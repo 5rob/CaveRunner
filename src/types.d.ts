@@ -80,10 +80,13 @@ interface Gun {
   rechLen?: number;           // the recharge last started (the "ready" click)
   skipRech?: boolean;
   old?: boolean;              // swapped out on the ground: no "never held" glow
+  art?: string;               // a GUN_ART sprite id (art/gunart.js), picked in the Bag; none = the drawn gun
 }
 
 /** a saved gun preset (save/presets.js): the Bag's 💾 adds one, Dev → Spawn gun lists them */
 interface GunPreset { name: string; gun: Gun }
+/** a pixel-art gun skin (art/gunart.js): h rows of w palette chars joined by '/', '.' clear */
+interface GunArt { id: string; name: string; w: number; h: number; grip: number[]; pal: string[]; px: string }
 
 /** one shot out of the barrel: blankShot's fields (spells/cast.js), after the modifiers */
 interface Shot {
