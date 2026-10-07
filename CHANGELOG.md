@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.154 — a running DPS graph in the firing window
+Released 2026-10-07 (the owner OK'd the screenshot; a minor update). A thin red line across the top third of the
+Bag's firing window, over everything: the dummy's DPS over the last `GF_GRAPH_S` (5) s, a sample every
+`GF_GRAPH_DT` (0.1 s), newest at the right, scaled to its peak; gone once nothing has hit for 5 s
+(`ui/editor.js` `GunFire`; suite `gunfire`).
+
 ## v0.0.153 — DPS over the firing window's dummy
 Released 2026-10-07 (the owner OK'd the screenshot; a minor update). A red "N dps" over the hologram dummy's head
 in the Bag's firing window: the damage of shots that hit it over the last `GF_DPS_S` (3) s, hidden at 0

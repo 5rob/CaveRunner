@@ -3,6 +3,8 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
+## v0.0.154 — a running DPS graph (5 s, thin red line) across the firing window's top third: RELEASED on `main` 2026-10-07 (owner OK'd)
+
 ## v0.0.153 — a red DPS over the firing window's dummy (direct hits, last 3 s, hidden at 0): RELEASED on `main` 2026-10-07 (owner OK'd)
 
 ## v0.0.152 — the Bag's firing window: gun sway, zoomed out, a hologram dummy you that takes hits (homing shows): RELEASED on `main` 2026-10-07 (owner OK'd)
