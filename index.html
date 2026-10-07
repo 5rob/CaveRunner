@@ -28497,6 +28497,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       let booms = [];
       let H = 0;
       const dummy = { x: 0, y: 0, hitT: 0, hits: 0 };
+      const DL2 = document.createElement("canvas"), dlx = DL2.getContext("2d", { willReadFrequently: true }), DLP = 3;
+      const DLW = Math.ceil((DW + 8) * DLP), DLH = Math.ceil((DH + 6) * DLP);
+      DL2.width = DLW;
+      DL2.height = DLH;
       const launch = (sh, x, y, base, sub) => {
         const n = Math.max(1, sh.count || 1);
         for (let i = 0; i < n; i++) {
@@ -28696,11 +28700,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.stroke();
         }
         ctx.globalAlpha = 1;
-        ctx.save();
-        ctx.translate(dummy.x, dummy.y);
-        ctx.scale(GF_DUMMY_K, GF_DUMMY_K);
-        drawRunner(ctx, 0, 0, PW, PH, -1, null, false, 0, dummy.hitT > 0 && Math.floor(dummy.hitT * 30) % 2 === 0);
-        ctx.restore();
+        if (dlx) {
+          dlx.setTransform(1, 0, 0, 1, 0, 0);
+          dlx.clearRect(0, 0, DLW, DLH);
+          dlx.setTransform(GF_DUMMY_K * DLP, 0, 0, GF_DUMMY_K * DLP, 4 * DLP, 3 * DLP);
+          const hurt2 = dummy.hitT > 0;
+          drawRunner(dlx, 0, 0, PW, PH, -1, null, false, 0, hurt2 && Math.floor(dummy.hitT * 30) % 2 === 0);
+          dlx.setTransform(1, 0, 0, 1, 0, 0);
+          holoPass(dlx, DLW, DLH, fw.time, hurt2 ? 0.4 + dummy.hitT * 2 : 0);
+          ctx.save();
+          ctx.globalAlpha = 0.85 * (hurt2 && Math.floor(dummy.hitT * 30) % 2 ? 0.45 : 1);
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(DL2, dummy.x - 4, dummy.y - 3, DLW / DLP, DLH / DLP);
+          ctx.restore();
+        }
         ctx.globalAlpha = 1;
         ctx.fillStyle = "#4a4f5a";
         ctx.fillRect(wallX, 0, GF_WALL + 1, wH);

@@ -14,6 +14,7 @@ import {
 } from '../spells/bagsim.js';
 import { gunAccent, gunColor, gunLvCol, resetGun } from '../spells/guns.js';
 import { ALL_IDS, FAMILIES, FAMILY_OF, MODS, famCol } from '../spells/mods.js';
+import { holoPass } from '../game/render/guide.js';
 import { drawLook } from '../game/render/looks.js';
 import { ModCard, tgtBadge } from './cards.js';
 import { h, useEffect, useMemo, useRef, useState } from './h.js';
@@ -121,6 +122,11 @@ export function GunFire({ gun, sim }) {
     let booms = [];
     let H = 0;
     const dummy = { x: 0, y: 0, hitT: 0, hits: 0 };
+    // the dummy's own little layer, DLP pixels a world unit (shrunk to 2/3 it would blur at one), made a hologram
+    // like the guide's (render/guide.js holoPass)
+    const DL = document.createElement('canvas'), dlx = DL.getContext('2d', { willReadFrequently: true }), DLP = 3;
+    const DLW = Math.ceil((DW + 8) * DLP), DLH = Math.ceil((DH + 6) * DLP);
+    DL.width = DLW; DL.height = DLH;
     // one spell out of (x, y) heading `base` (+ its own angle and spread): a shot, a beam or a field. A payload
     // (`sub`) leaves from where its carrier went off, not the muzzle
     /** @param {any} sh @param {number} x @param {number} y @param {number} base @param {boolean} sub */
@@ -256,9 +262,20 @@ export function GunFire({ gun, sim }) {
       }
       // the dummy you, facing the gun, flashing while hurt (the game's own flicker)
       ctx.globalAlpha = 1;
-      ctx.save(); ctx.translate(dummy.x, dummy.y); ctx.scale(GF_DUMMY_K, GF_DUMMY_K);
-      drawRunner(ctx, 0, 0, PW, PH, -1, null, false, 0, dummy.hitT > 0 && Math.floor(dummy.hitT * 30) % 2 === 0);
-      ctx.restore();
+      // a hologram like the guide's: blue, scanlines, rolling bars; a hit flickers it and tears it like a glitch
+      if (dlx) {
+        dlx.setTransform(1, 0, 0, 1, 0, 0); dlx.clearRect(0, 0, DLW, DLH);
+        dlx.setTransform(GF_DUMMY_K * DLP, 0, 0, GF_DUMMY_K * DLP, 4 * DLP, 3 * DLP);
+        const hurt = dummy.hitT > 0;
+        drawRunner(dlx, 0, 0, PW, PH, -1, null, false, 0, hurt && Math.floor(dummy.hitT * 30) % 2 === 0);
+        dlx.setTransform(1, 0, 0, 1, 0, 0);
+        holoPass(dlx, DLW, DLH, fw.time, hurt ? 0.4 + dummy.hitT * 2 : 0);
+        ctx.save();
+        ctx.globalAlpha = 0.85 * (hurt && Math.floor(dummy.hitT * 30) % 2 ? 0.45 : 1);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(DL, dummy.x - 4, dummy.y - 3, DLW / DLP, DLH / DLP);
+        ctx.restore();
+      }
       // the wall: grey stone blocks, offset every other row
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#4a4f5a'; ctx.fillRect(wallX, 0, GF_WALL + 1, wH);
