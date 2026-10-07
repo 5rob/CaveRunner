@@ -3,8 +3,9 @@
 // (GunIcon), the slot grid lit by the live fire preview (SlotGrid), the mod bag, and the
 // ScrollBox grab bars both grids scroll with.
 
-import { drawGun } from '../art/sprites.js';
+import { drawGun, drawRunner } from '../art/sprites.js';
 import { SFX } from '../audio/sfx.js';
+import { PH, PW } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
 import { buildAdvice } from '../spells/advisor.js';
 import { stackBag } from '../spells/collection.js';
@@ -95,10 +96,15 @@ export function GunIcon({ gun }) {
 // The shots fly in world units at GF_ZOOM px each, slowed to GF_SPEED so they can be seen in
 // the small window, and are drawn with the game's own looks (drawLook) or its streak. One rAF,
 // gone when the Bag closes.
-export const GF_ZOOM = 3, GF_SPEED = 0.2, GF_MAX = 90;
+export const GF_ZOOM = 2.2, GF_SPEED = 0.2, GF_MAX = 90;
+// the gun sways up and down (owner: shows bounces and homing off): GF_SWAY radians either way, once every GF_SWAY_S s
+export const GF_SWAY = 0.2, GF_SWAY_S = 4;
 // the firing window's wall (owner): a strip of stone at the far right, world units wide, that nothing breaks.
 // Shots stop on it (or bounce off), and a trigger's payload goes off there, so you can see what it does
 export const GF_WALL = 5;
+// a dummy you in front of the wall (owner): shots hit it and it flashes like you do when hurt, and never dies;
+// homing shots steer for it. World units: PW × PH like the real you, GF_DUMMY_GAP in front of the wall
+export const GF_DUMMY_GAP = 6;
 /** @param {{ gun: Gun, sim: { current: import('../spells/bagsim.js').FireSim | null } }} props */
 export function GunFire({ gun, sim }) {
   const ref = useRef(null);
@@ -113,6 +119,7 @@ export function GunFire({ gun, sim }) {
     /** @type {any[]} */
     let booms = [];
     let H = 0;
+    const dummy = { x: 0, y: 0, hitT: 0, hits: 0 };
     // one spell out of (x, y) heading `base` (+ its own angle and spread): a shot, a beam or a field. A payload
     // (`sub`) leaves from where its carrier went off, not the muzzle
     /** @param {any} sh @param {number} x @param {number} y @param {number} base @param {boolean} sub */
@@ -124,9 +131,10 @@ export function GunFire({ gun, sim }) {
         if (sh.beam) { beams.push({ a, x, y, col: sh.col, w: sh.size || 2, t: 0.15, max: 0.15 }); continue; }
         if (sh.still) { beams.push({ field: 1, x: sub ? x : x + Math.min(H / GF_ZOOM * 0.4, sh.r || 12) + 6, y, r: Math.min(H / GF_ZOOM * 0.4, sh.r || 12), col: sh.col, t: 0.5, max: 0.5 }); continue; }
         const sp = sh.speed * GF_SPEED;
+        if (shots.length >= GF_MAX * 2) return;
         shots.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, size: sh.size, col: sh.col,
           look: sh.look, spin: Math.random() * 6, grav: sh.grav || 0, explode: sh.explode, homing: sh.homing,
-          pull: sh.pull, eat: sh.eat, hidden: sh.hidden, life: 3, bounce: sh.bounce || 0,
+          pull: sh.pull, eat: sh.eat, hidden: sh.hidden, life: 3, bounce: sh.bounce || 0, pierce: sh.pierce || 0, hit: 0,
           trig: sh.trig, payload: sh.payload, timer: sh.trig === 'timer' ? (sh.timer || 0.5) / GF_SPEED : 0 });
       }
     };
@@ -154,24 +162,42 @@ export function GunFire({ gun, sim }) {
         c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
       }
       const ctx = c.getContext('2d');
-      const sc = Math.min(2.4, W / 60), gx = 6 + 6.5 * sc, gy = H * 0.55;
-      const mx = (gx + 14.2 * sc) / GF_ZOOM, my = (gy - 3.2 * sc) / GF_ZOOM;   // the muzzle, in world units
+      const sc = Math.min(2.4, W / 60) * 0.75, gx = 6 + 6.5 * sc, gy = H * 0.55;
+      // the aim sways slowly up and down; the muzzle turns with it round the grip
+      const aim = GF_SWAY * Math.sin(fw.time * 2 * Math.PI / GF_SWAY_S), ca = Math.cos(aim), sa = Math.sin(aim);
+      const mx = (gx + (14.2 * ca + 3.2 * sa) * sc) / GF_ZOOM, my = (gy + (14.2 * sa - 3.2 * ca) * sc) / GF_ZOOM;   // the muzzle, in world units
       if (S !== seenS) { seenS = S; seen = S ? S.fired : -1; }
       if (S && S.fired !== seen) {                    // a pull went off: its shots leave the muzzle
         seen = S.fired; flash = 0.07;
         c.dataset.pulls = String(seen);                // for the suite: how many pulls it has shown
-        for (const sh of S.shots) launch(sh, mx, my, 0, false);
+        for (const sh of S.shots) launch(sh, mx, my, aim, false);
         if (shots.length > GF_MAX) shots.splice(0, shots.length - GF_MAX);
       }
       // move
       const wW = W / GF_ZOOM, wH = H / GF_ZOOM, wallX = wW - GF_WALL;
+      dummy.x = wallX - GF_DUMMY_GAP - PW; dummy.y = gy / GF_ZOOM - PH * 0.55; dummy.hitT = Math.max(0, dummy.hitT - dt);
+      const dcx = dummy.x + PW / 2, dcy = dummy.y + PH / 2;
       const before = shots.length;
       /** @type {any[]} */
       const live = [];
       for (const b of shots) {
         b.vy += b.grav * GF_SPEED * GF_SPEED * dt;
+        if (b.homing) {                                  // turn toward the dummy, at the shot's turn rate (slowed with the window)
+          const sp = Math.hypot(b.vx, b.vy), cur = Math.atan2(b.vy, b.vx);
+          let d = Math.atan2(dcy - b.y, dcx - b.x) - cur;
+          d = Math.atan2(Math.sin(d), Math.cos(d));
+          const turn = b.homing * GF_SPEED * dt, na = cur + Math.max(-turn, Math.min(turn, d));
+          b.vx = Math.cos(na) * sp; b.vy = Math.sin(na) * sp;
+        }
         b.x += b.vx * dt; b.y += b.vy * dt; b.spin += dt * 10; b.life -= dt;
         const r = Math.max(0.5, (b.size || 1) * 0.5);
+        if (b.hit <= 0 && b.x + r > dummy.x && b.x - r < dummy.x + PW && b.y + r > dummy.y && b.y - r < dummy.y + PH) {
+          dummy.hitT = 0.3; dummy.hits++;                // it flashes like you do when hurt, and never dies
+          ref.current.dataset.hits = String(dummy.hits);    // for the suite
+          if (b.pierce > 0) { b.pierce--; b.hit = 0.25; }
+          else { burst(b, 'wall', Math.PI - Math.atan2(b.vy, b.vx)); continue; }
+        }
+        if (b.hit > 0) b.hit -= dt;
         if (b.x + r >= wallX && b.vx > 0) {              // the wall: bounce off it, or stop there
           b.x = wallX - r;
           if (b.bounce > 0) { b.bounce--; b.vx = -b.vx; } else { burst(b, 'wall', Math.PI - Math.atan2(b.vy, b.vx)); continue; }
@@ -225,6 +251,9 @@ export function GunFire({ gun, sim }) {
         ctx.globalAlpha = 1; ctx.strokeStyle = b.col; ctx.lineWidth = b.size * 1.7;
         ctx.beginPath(); ctx.moveTo(b.x - b.vx / sp * len, b.y - b.vy / sp * len); ctx.lineTo(b.x, b.y); ctx.stroke();
       }
+      // the dummy you, facing the gun, flashing while hurt (the game's own flicker)
+      ctx.globalAlpha = 1;
+      drawRunner(ctx, dummy.x, dummy.y, PW, PH, -1, null, false, 0, dummy.hitT > 0 && Math.floor(dummy.hitT * 30) % 2 === 0);
       // the wall: grey stone blocks, offset every other row
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#4a4f5a'; ctx.fillRect(wallX, 0, GF_WALL + 1, wH);
@@ -234,11 +263,11 @@ export function GunFire({ gun, sim }) {
       ctx.fillStyle = '#2b2f37'; ctx.fillRect(wallX - 0.4, 0, 0.4, wH);
       ctx.restore();
       ctx.globalAlpha = 1;
-      if (g) drawGun(ctx, gx, gy, 0, sc, gunAccent(g));
+      if (g) drawGun(ctx, gx, gy, aim, sc, gunAccent(g));
       if (flash > 0) {
         ctx.globalAlpha = Math.min(1, flash / 0.07);
         ctx.fillStyle = g ? gunAccent(g) : '#fff';
-        ctx.beginPath(); ctx.arc(mx * GF_ZOOM + 2, my * GF_ZOOM, 3.5, 0, 6.283); ctx.fill();
+        ctx.beginPath(); ctx.arc(mx * GF_ZOOM + 2 * ca, my * GF_ZOOM + 2 * sa, 3.5, 0, 6.283); ctx.fill();
         ctx.globalAlpha = 1;
       }
     };

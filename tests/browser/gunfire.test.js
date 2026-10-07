@@ -82,6 +82,19 @@ const SHOTS = process.env.CAVERUNNER_SHOTS || '';
   await page.waitForTimeout(120);
   if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'gfwall.png'), clip: { x: 0, y: 0, width: 412, height: 230 } });
 
+  // the dummy you in front of the wall (owner): homing bolts steer into it while the gun sways
+  await page.evaluate(() => {
+    const LO = window.__in.current.loadout, g = LO.guns[LO.sel];
+    g.slots = ['homing', 'bolt', 'homing', 'arrow', 'bounce', 'bolt', null, null]; resetGun(g); window.__in.current.notify();
+    document.querySelector('.gfire').dataset.hits = '0';
+  });
+  let hits = 0;
+  for (let i = 0; i < 50 && hits < 2; i++) { await page.waitForTimeout(150); hits = await page.evaluate(() => +(document.querySelector('.gfire').dataset.hits || 0)); }
+  check('shots hit the dummy (it never dies)', hits >= 2, hits);
+  if (SHOTS) {
+    for (let i = 0; i < 3; i++) { await page.waitForTimeout(700); await page.screenshot({ path: path.join(SHOTS, `gfdummy-${i}.png`), clip: { x: 0, y: 0, width: 412, height: 230 } }); }
+  }
+
   // a gun button in the new row still switches gun
   const before = await page.evaluate(() => window.__in.current.loadout.sel);
   const other = await page.evaluate(sel => window.__in.current.loadout.guns.findIndex((g, i) => g && i !== sel), before);

@@ -28482,8 +28482,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     });
     return h("canvas", { ref, className: "gicon" });
   }
-  var GF_ZOOM = 3, GF_SPEED = 0.2, GF_MAX = 90;
+  var GF_ZOOM = 2.2, GF_SPEED = 0.2, GF_MAX = 90;
+  var GF_SWAY = 0.2, GF_SWAY_S = 4;
   var GF_WALL = 5;
+  var GF_DUMMY_GAP = 6;
   function GunFire({ gun, sim }) {
     const ref = useRef(null);
     const gref = useRef(gun);
@@ -28494,6 +28496,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const fw = { time: 0 };
       let booms = [];
       let H = 0;
+      const dummy = { x: 0, y: 0, hitT: 0, hits: 0 };
       const launch = (sh, x, y, base, sub) => {
         const n = Math.max(1, sh.count || 1);
         for (let i = 0; i < n; i++) {
@@ -28507,6 +28510,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             continue;
           }
           const sp = sh.speed * GF_SPEED;
+          if (shots.length >= GF_MAX * 2) return;
           shots.push({
             x,
             y,
@@ -28524,6 +28528,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             hidden: sh.hidden,
             life: 3,
             bounce: sh.bounce || 0,
+            pierce: sh.pierce || 0,
+            hit: 0,
             trig: sh.trig,
             payload: sh.payload,
             timer: sh.trig === "timer" ? (sh.timer || 0.5) / GF_SPEED : 0
@@ -28554,8 +28560,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           c.height = Math.round(H * dpr);
         }
         const ctx = c.getContext("2d");
-        const sc = Math.min(2.4, W / 60), gx = 6 + 6.5 * sc, gy = H * 0.55;
-        const mx = (gx + 14.2 * sc) / GF_ZOOM, my = (gy - 3.2 * sc) / GF_ZOOM;
+        const sc = Math.min(2.4, W / 60) * 0.75, gx = 6 + 6.5 * sc, gy = H * 0.55;
+        const aim = GF_SWAY * Math.sin(fw.time * 2 * Math.PI / GF_SWAY_S), ca = Math.cos(aim), sa = Math.sin(aim);
+        const mx = (gx + (14.2 * ca + 3.2 * sa) * sc) / GF_ZOOM, my = (gy + (14.2 * sa - 3.2 * ca) * sc) / GF_ZOOM;
         if (S2 !== seenS) {
           seenS = S2;
           seen = S2 ? S2.fired : -1;
@@ -28564,19 +28571,44 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           seen = S2.fired;
           flash = 0.07;
           c.dataset.pulls = String(seen);
-          for (const sh of S2.shots) launch(sh, mx, my, 0, false);
+          for (const sh of S2.shots) launch(sh, mx, my, aim, false);
           if (shots.length > GF_MAX) shots.splice(0, shots.length - GF_MAX);
         }
         const wW = W / GF_ZOOM, wH = H / GF_ZOOM, wallX = wW - GF_WALL;
+        dummy.x = wallX - GF_DUMMY_GAP - PW;
+        dummy.y = gy / GF_ZOOM - PH * 0.55;
+        dummy.hitT = Math.max(0, dummy.hitT - dt);
+        const dcx = dummy.x + PW / 2, dcy = dummy.y + PH / 2;
         const before = shots.length;
         const live = [];
         for (const b of shots) {
           b.vy += b.grav * GF_SPEED * GF_SPEED * dt;
+          if (b.homing) {
+            const sp = Math.hypot(b.vx, b.vy), cur = Math.atan2(b.vy, b.vx);
+            let d = Math.atan2(dcy - b.y, dcx - b.x) - cur;
+            d = Math.atan2(Math.sin(d), Math.cos(d));
+            const turn2 = b.homing * GF_SPEED * dt, na = cur + Math.max(-turn2, Math.min(turn2, d));
+            b.vx = Math.cos(na) * sp;
+            b.vy = Math.sin(na) * sp;
+          }
           b.x += b.vx * dt;
           b.y += b.vy * dt;
           b.spin += dt * 10;
           b.life -= dt;
           const r = Math.max(0.5, (b.size || 1) * 0.5);
+          if (b.hit <= 0 && b.x + r > dummy.x && b.x - r < dummy.x + PW && b.y + r > dummy.y && b.y - r < dummy.y + PH) {
+            dummy.hitT = 0.3;
+            dummy.hits++;
+            ref.current.dataset.hits = String(dummy.hits);
+            if (b.pierce > 0) {
+              b.pierce--;
+              b.hit = 0.25;
+            } else {
+              burst2(b, "wall", Math.PI - Math.atan2(b.vy, b.vx));
+              continue;
+            }
+          }
+          if (b.hit > 0) b.hit -= dt;
           if (b.x + r >= wallX && b.vx > 0) {
             b.x = wallX - r;
             if (b.bounce > 0) {
@@ -28621,12 +28653,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             ctx.arc(bm.x, bm.y, bm.r * (1.2 - bm.t / bm.max * 0.4), 0, 6.283);
             ctx.fill();
           } else {
-            const ca = Math.cos(bm.a), len = ca > 0.01 ? Math.min(wW, (wallX - bm.x) / ca) : wW;
+            const ca2 = Math.cos(bm.a), len = ca2 > 0.01 ? Math.min(wW, (wallX - bm.x) / ca2) : wW;
             ctx.strokeStyle = bm.col;
             ctx.lineWidth = bm.w;
             ctx.beginPath();
             ctx.moveTo(bm.x, bm.y);
-            ctx.lineTo(bm.x + ca * len, bm.y + Math.sin(bm.a) * len);
+            ctx.lineTo(bm.x + ca2 * len, bm.y + Math.sin(bm.a) * len);
             ctx.stroke();
           }
         }
@@ -28662,6 +28694,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.stroke();
         }
         ctx.globalAlpha = 1;
+        drawRunner(ctx, dummy.x, dummy.y, PW, PH, -1, null, false, 0, dummy.hitT > 0 && Math.floor(dummy.hitT * 30) % 2 === 0);
+        ctx.globalAlpha = 1;
         ctx.fillStyle = "#4a4f5a";
         ctx.fillRect(wallX, 0, GF_WALL + 1, wH);
         ctx.fillStyle = "#5c6270";
@@ -28671,12 +28705,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.fillRect(wallX - 0.4, 0, 0.4, wH);
         ctx.restore();
         ctx.globalAlpha = 1;
-        if (g) drawGun(ctx, gx, gy, 0, sc, gunAccent(g));
+        if (g) drawGun(ctx, gx, gy, aim, sc, gunAccent(g));
         if (flash > 0) {
           ctx.globalAlpha = Math.min(1, flash / 0.07);
           ctx.fillStyle = g ? gunAccent(g) : "#fff";
           ctx.beginPath();
-          ctx.arc(mx * GF_ZOOM + 2, my * GF_ZOOM, 3.5, 0, 6.283);
+          ctx.arc(mx * GF_ZOOM + 2 * ca, my * GF_ZOOM + 2 * sa, 3.5, 0, 6.283);
           ctx.fill();
           ctx.globalAlpha = 1;
         }
