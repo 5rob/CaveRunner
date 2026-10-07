@@ -6,7 +6,8 @@
 // Root picks the title or the game: the Game is only mounted after Start.
 
 import { SFX } from '../audio/sfx.js';
-import { TITLE_VW, titleBottom, titleDraw, titleScene, titleStep, titleText } from '../art/titlescene.js';
+import { TITLE_VW, titleBottom, titleScene, titleStep, titleText } from '../art/titlescene.js';
+import { titleDraw } from '../game/render/titledraw.js';
 import { SLOTS, deleteSlot, getSlot, loadSlotSummary, setSlot } from '../save/save.js';
 import { App } from './app.js';
 import { h, useEffect, useRef, useState } from './h.js';

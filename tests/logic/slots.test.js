@@ -1,8 +1,11 @@
-// Save slots and the title scene (LIST4 #3, #4): slotKey keeps slot 1 on the old keys and gives
-// slots 2/3 their own, slotSummary reads a run for the title's slot line, and the title's action
-// scene (art/titlescene.js) really kills creatures and sprays gold, within its caps.
+// Save slots and the title scene (LIST4 #3, #4; the scene redone in v0.0.161): slotKey keeps slot 1
+// on the old keys and gives slots 2/3 their own, slotSummary reads a run for the title's slot line,
+// and the title's scene (art/titlescene.js): one runner who runs on the ground and jetpacks, through
+// Mossy Caves' zones, swapping real guns (gun art + shot mods), killing only floor 1's creatures, whose
+// gold he vacuums up; blasts carve the terrain and fire burns moss, timber and plants; all within caps.
 const { slotKey, slotSummary, SAVE_KEY, COLLECTION_KEY, PERK_COLLECTION_KEY, SLOTS,
-  titleScene, titleStep, TITLE_FOES, TITLE_PARTS, TITLE_GOLD } = require('../load');
+  titleScene, titleStep, titleCell, titleZone, titleCarve, titleIgnite, TM, TCELL, TITLE_KITS, TITLE_KINDS, ROSTERS, MODS, gunArt,
+  TITLE_FOES, TITLE_PARTS, TITLE_GOLD, TITLE_FIRE } = require('../load');
 
 let pass = 0, fail = 0;
 const check = (name, ok, got) => {
@@ -22,19 +25,53 @@ const run = JSON.stringify({ ver: 'x', floor: 4, hp: 30, loadout: { guns: [{ nam
 const s = slotSummary(run);
 check('summary: floor, gold, guns, mods', s && s.floor === 4 && s.gold === 1234 && s.guns === 2 && s.mods === 3, s);
 
-const S = titleScene(400, 7);
-let maxFoes = 0, maxParts = 0, maxGold = 0;
-for (let i = 0; i < 60 * 20; i++) {
+// the band a 412x880 phone gives it (ui/title.js)
+const S = titleScene(470, 7, 139, 295);
+let maxFoes = 0, maxParts = 0, maxGold = 0, maxFire = 0, onFloor = 0, feetOff = 0;
+const zones = new Set(), kits = new Set(), seenKinds = new Set();
+for (let i = 0; i < 60 * 40; i++) {
   titleStep(S, 1 / 60);
-  maxFoes = Math.max(maxFoes, S.foes.length); maxParts = Math.max(maxParts, S.parts.length); maxGold = Math.max(maxGold, S.nuggets.length);
+  maxFoes = Math.max(maxFoes, S.foes.length); maxParts = Math.max(maxParts, S.parts.length);
+  maxGold = Math.max(maxGold, S.nuggets.length); maxFire = Math.max(maxFire, S.fire.length);
+  const r = S.runner;
+  zones.add(titleZone(S.scroll + r.x)); kits.add(r.kit);
+  for (const f of S.foes) seenKinds.add(f.k);
+  if (r.mode === 'run' && r.ground) {
+    // feet on the floor: the cell just under his feet is solid, the one at his shins isn't rock
+    onFloor++;
+    const c = Math.floor((S.scroll + r.x + 6) / TCELL), fr = Math.floor((r.y + 22 + 0.5) / TCELL);
+    if (!titleCell(S, c, fr) || titleCell(S, c, fr - 3) === TM.ROCK) feetOff++;
+  }
 }
-check('the title scene kills creatures', S.kills >= 10, S.kills);
-check('and sprays gold', S.gold >= 40, S.gold);
-check('within its caps', maxFoes <= TITLE_FOES && maxParts <= TITLE_PARTS && maxGold <= TITLE_GOLD, { maxFoes, maxParts, maxGold });
-check('the runners stay on screen', S.runners.every(r => r.x > -20 && r.x < 240 && r.y > S.top - 40 && r.y < S.bot + 20), S.runners.map(r => [r.x, r.y]));
-const A = titleScene(400, 3), B = titleScene(400, 3);
-for (let i = 0; i < 300; i++) { titleStep(A, 1 / 60); titleStep(B, 1 / 60); }
-check('same seed, same scene', A.kills === B.kills && A.runners[0].x === B.runners[0].x);
+check('the title scene kills creatures', S.kills >= 15, S.kills);
+check('and drops gold', S.gold >= 30, S.gold);
+check('he vacuums the gold up', S.got >= S.gold * 0.6, { got: S.got, gold: S.gold });
+check("only floor 1's creatures (its roster and its rats)", [...seenKinds].every(k => TITLE_KINDS.includes(k))
+  && TITLE_KINDS.every(k => k === 'rotta' || ROSTERS[0].includes(k)) && seenKinds.has('rotta') && seenKinds.size >= 2, [...seenKinds]);
+check('within its caps', maxFoes <= TITLE_FOES && maxParts <= TITLE_PARTS && maxGold <= TITLE_GOLD && maxFire <= TITLE_FIRE, { maxFoes, maxParts, maxGold, maxFire });
+check('he runs on the ground and he flies', S.groundT > 6 && S.flyT > 6, { ground: S.groundT, fly: S.flyT });
+check('running, his feet are on the floor', onFloor > 200 && feetOff / onFloor < 0.05, { onFloor, feetOff });
+check('he stays on screen', S.runner.x > 0 && S.runner.x < 220 && S.runner.y > S.top - 40 && S.runner.y < S.bot, [S.runner.x, S.runner.y]);
+check('he swaps guns', S.swaps >= 5 && kits.size >= 4, { swaps: S.swaps, kits: kits.size });
+check('every gun is a real gun skin and a real shot', TITLE_KITS.every(K => gunArt(K.art) && MODS[K.mod] && MODS[K.mod].kind === 'shot'));
+check('it travels through the zones', ['moss', 'timber', 'paved', 'grove'].every(z => zones.has(z)), [...zones]);
+check('shots carve the terrain', S.carved > 30, S.carved);
+check('and fire burns', S.burnt > 10, S.burnt);
+// a blast by hand: a hole in the floor where it was
+const B = titleScene(470, 5, 139, 295);
+const floorAt = () => { const c = Math.floor((B.scroll + 100) / TCELL); for (let r = 75; r < B.rows; r++) if (titleCell(B, c, r)) return r * TCELL; return -1; };
+const y0 = floorAt();
+const n = titleCarve(B, 100, y0 + 2, 8);
+check('a blast removes terrain', n > 20 && floorAt() > y0 + 6, { n, y0, y1: floorAt() });
+// a flame on moss: it catches
+const C = titleScene(470, 9, 139, 295);
+let mossAt = null;
+for (let c = C.gen - 100; c < C.gen && !mossAt; c++) for (let r = 100; r < C.rows; r++) if (titleCell(C, c, r) === TM.MOSS) { mossAt = { c, r }; break; }
+if (mossAt) titleIgnite(C, (mossAt.c + 0.5) * TCELL - C.scroll, (mossAt.r + 0.5) * TCELL, 3);
+check('moss catches fire', !!mossAt && C.fire.length > 0, mossAt);
+const A = titleScene(470, 3, 139, 295), A2 = titleScene(470, 3, 139, 295);
+for (let i = 0; i < 300; i++) { titleStep(A, 1 / 60); titleStep(A2, 1 / 60); }
+check('same seed, same scene', A.kills === A2.kills && A.runner.x === A2.runner.x && A.carved === A2.carved);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
