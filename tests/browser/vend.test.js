@@ -1,9 +1,9 @@
 // The level vending machines (src/game/systems/vend.js): a run starts with no level (solid dark
-// over a sealed shop roof, no ambience); the buy machine opens the floor menu (ui/levelshop.js:
-// floor 1 for sale, floor 2 locked), and the level bought on credit teleports in, made ahead by the
+// over a sealed shop roof, no ambience); at the buy machine a right-stick flick up/down picks the
+// floor (floor 1 for sale, floor 2 greyed, no further), its screens follow, a tap buys it, and the level bought on credit teleports in, made ahead by the
 // worker (game/levelgen.js); the exit portal drops you back in the shop; the sell machine is red and
 // refuses while anything biological is left, then pays LVL_SELL and the level teleports away; the
-// menu then sells floor 2 too, its debt the exponential lvlBuy(2). The sell machine is lit from the
+// machine then sells floor 2 too, its debt the exponential lvlBuy(2). The sell machine is lit from the
 // start, green with no "biological" line; half a second after a buy it glitches to red with it.
 const { launch } = require('../chromium');
 const path = require('path');
@@ -32,6 +32,19 @@ const DIR = path.join(__dirname, '..', 'build');
   });
   const standAt = x => page.evaluate(x => { const L = window.__lvl; L.p.x = x - 6; L.p.vx = 0; L.p.hp = 9999; }, x);
   const tap = () => page.evaluate(() => { window.__in.current.interact = true; });
+  // a real flick on the right stick (ui/hud.js): down, out past the trigger ring up or down, let go
+  const flick = dir => page.evaluate(dir => {
+    const el = document.querySelectorAll('.stick')[1], r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2, o = { pointerId: 7, bubbles: true, isPrimary: true, pointerType: 'touch' };
+    el.dispatchEvent(new PointerEvent('pointerdown', { ...o, clientX: cx, clientY: cy }));
+    el.dispatchEvent(new PointerEvent('pointermove', { ...o, clientX: cx + 2, clientY: cy - dir * r.width * 0.4 }));
+    el.dispatchEvent(new PointerEvent('pointerup', { ...o, clientX: cx + 2, clientY: cy - dir * r.width * 0.4 }));
+  }, dir);
+  const buyLook = () => page.evaluate(() => {
+    const L = window.__lvl, f = pickedFloor(L), ok = canBuyFloor(window.__in.current.loadout.soldTop || 0, f);
+    return { f, ok, pick: !!document.querySelector('.pbuy.pick'), cant: !!document.querySelector('.pbuy.pick .popt.cant'),
+      bullets: L.bullets.length };
+  });
   const waitWarp = async () => {
     for (let i = 0; i < 80; i++) { if (!(await state()).warp) return true; await page.waitForTimeout(100); }
     return false;
@@ -49,7 +62,7 @@ const DIR = path.join(__dirname, '..', 'build');
   await standAt(X.buy);
   await page.waitForTimeout(200);
   s = await state();
-  check('the buy machine offers "Tap R to buy"', s.prompt === 'Tap R to buy' && s.can, s.prompt);
+  check('the buy machine offers "Tap R to Buy"', s.prompt === 'Tap R to Buy' && s.can, s.prompt);
   await page.screenshot({ path: path.join(DIR, 'vend_start.png') });
 
   check('no level: no ambience', await page.evaluate(() => SFX.ambience === null), await page.evaluate(() => SFX.ambience));
@@ -59,22 +72,28 @@ const DIR = path.join(__dirname, '..', 'build');
   check('the worker made floor 1 ahead of time', made && await page.evaluate(() => LVLGEN.ready.floor === 1 && !LVLGEN.broken),
     await page.evaluate(() => ({ broken: LVLGEN.broken, pend: !!LVLGEN.pend })));
 
-  await tap();
-  await page.waitForTimeout(300);
-  const menu = () => page.evaluate(() => Array.from(document.querySelectorAll('.lvshop .lvrow')).map(r => ({ f: Number(r.dataset.floor), locked: r.classList.contains('locked') })));
-  let rows = await menu();
-  check('the tap opens the floor menu', rows.length >= 3, rows);
-  check('floor 1 for sale, floor 2 and up locked', rows[0] && !rows[0].locked && rows.slice(1).every(r => r.locked), rows);
-  check('the game pauses under it', await page.evaluate(() => window.__in.current.paused));
-  await page.screenshot({ path: path.join(DIR, 'vend_menu.png') });
-  // a locked floor won't buy
-  await page.locator('.lvshop .lvrow[data-floor="2"]').dispatchEvent('pointerdown');
-  await page.locator('.lvshop .vbuy').dispatchEvent('pointerdown');
-  await page.waitForTimeout(150);
-  check('a locked floor stays unbought', await page.evaluate(() => !!document.querySelector('.lvshop') && !window.__lvl.hasLvl));
-  await page.locator('.lvshop .lvrow[data-floor="1"]').dispatchEvent('pointerdown');
+  // the hint is two options: Select Level (the R with arrows) and Tap R to Buy
+  let bl = await buyLook();
+  check('two options: Select Level and Tap R to Buy', bl.pick && !bl.cant && bl.f === 1, bl);
+  check('the stick does not aim there', await page.evaluate(() => window.__in.current.lvlPick === true));
+  await page.screenshot({ path: path.join(DIR, 'vend_start.png') });
+  await flick(1); await page.waitForTimeout(150);
+  bl = await buyLook();
+  check('a flick up picks floor 2, greyed (not for sale)', bl.f === 2 && !bl.ok && bl.cant && bl.bullets === 0, bl);
+  check('the buy screen shows floor 2 in grey', await page.evaluate(() => pickedFloor(window.__lvl) === 2));
+  await page.screenshot({ path: path.join(DIR, 'vend_grey.png') });
+  await flick(1); await page.waitForTimeout(150);
+  bl = await buyLook();
+  check('no further than one past what is for sale', bl.f === 2, bl);
+  await tap(); await page.waitForTimeout(150);
+  check('a greyed floor will not buy', await page.evaluate(() => !window.__lvl.hasLvl && !window.__lvl.warp));
+  await flick(-1); await page.waitForTimeout(150);
+  bl = await buyLook();
+  check('a flick down: back to floor 1, green', bl.f === 1 && bl.ok && !bl.cant, bl);
+  await flick(-1); await page.waitForTimeout(150);
+  check('and no lower than floor 1', (await buyLook()).f === 1);
   const t0 = await page.evaluate(() => window.__lvl.time);
-  await page.locator('.lvshop .vbuy').dispatchEvent('pointerdown');
+  await tap();
   // the sell screen: still green for SELL_WAIT, glitches, then red with the biological line
   let green = 0, glitched = false, redAt = -1, shot = false;
   for (let i = 0; i < 200 && redAt < 0; i++) {
@@ -88,7 +107,6 @@ const DIR = path.join(__dirname, '..', 'build');
   check('then glitches', glitched);
   check('and lands red, with "no biological entities accepted"', redAt > 0.9 && redAt < 1.6, redAt);
   await page.screenshot({ path: path.join(DIR, 'vend_flash.png') });
-  check('the menu closed', await page.evaluate(() => !document.querySelector('.lvshop')));
   check('the teleport ran out', await waitWarp());
   s = await state();
   check('bought: the level is here', s.has && s.open > 10000 && s.enemies > 20, { open: s.open, enemies: s.enemies });
@@ -152,15 +170,16 @@ const DIR = path.join(__dirname, '..', 'build');
   await standAt(X.buy);
   await page.waitForTimeout(200);
   s = await state();
-  check('the buy machine is back on', s.prompt === 'Tap R to buy', s.prompt);
+  check('the buy machine is back on', s.prompt === 'Tap R to Buy', s.prompt);
   check('sold once: floor 2 is for sale', await page.evaluate(() => window.__in.current.loadout.soldTop === 1));
-  await tap();
-  await page.waitForTimeout(300);
-  rows = await menu();
-  check('the menu sells floors 1 and 2, floor 3 locked', rows.length >= 3 && !rows[0].locked && !rows[1].locked && rows[2].locked, rows);
+  bl = await buyLook();
+  check('floor 2 picked and for sale', bl.f === 2 && bl.ok, bl);
+  await flick(1); await page.waitForTimeout(150);
+  bl = await buyLook();
+  check('a flick up shows floor 3 greyed', bl.f === 3 && !bl.ok && bl.cant, bl);
   await page.screenshot({ path: path.join(DIR, 'vend_next.png') });
-  await page.locator('.lvshop .lvrow[data-floor="2"]').dispatchEvent('pointerdown');
-  await page.locator('.lvshop .vbuy').dispatchEvent('pointerdown');
+  await flick(-1); await page.waitForTimeout(150);
+  await tap();
   await page.waitForTimeout(300);
   check('the teleport ran out (floor 2)', await waitWarp());
   s = await state();

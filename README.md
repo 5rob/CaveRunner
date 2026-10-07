@@ -4,8 +4,8 @@ A jetpack cave platformer prototype that runs in the browser. You play a little
 white-suited astronaut, drawn in crisp chunky pixels, with arms and legs that bend at the
 elbow and knee. You start in a high-tech steel shop room with nothing above it (a new run is met by a
 hologram guide with a starter kit). On its back wall, down the hall past the heal, stand
-two vending machines: the green one opens a full-screen menu of floors, and sells you a freshly
-generated destructible level of the one you pick on credit: floor 1 for 1,000,000,000 gold, each floor
+two vending machines: stand at the green one and flick the right stick up or down to pick a floor (its
+screen shows that floor's price), then tap it to buy a freshly generated destructible level of it on credit: floor 1 for 1,000,000,000 gold, each floor
 up three times the last (it goes on a debt shown in red under
 your gold, and you have one real hour to repay it: the buy machine and the
 "settlement due" clock at the top count it down, even while the game is closed; miss it and the level is
@@ -13,14 +13,14 @@ repossessed, the alarms go off, and ten seconds later the shop floor fills with
 fire), and it
 teleports in over the shop in a flash and a crackle of lightning, drawn in from the bottom up (it was
 built in the background while the shop stood empty, so there's no freeze at the flash). A floor is for
-sale only once you've sold the one below it in this run; the rest show locked. Climb to one of the
+sale only once you've sold the one below it in this run; you can flick one floor past that, shown grey. Climb to one of the
 three exits spread along the top (teleporter pads: blue light rising off them, lightning crackling up
 the moment you use one) and it drops you back in the shop. The other machine (lit green from the start; half a second
 after you buy, its screen glitches to red and adds its fine print) buys
 the level back for its debt plus a reward (1,000 gold on floor 1, doubling each floor up: 2,000, 4,000, 8,000…;
 kills pay more on higher floors too), but its screen stays red until no biological
 entities are left in it (including the rats still inside their nests); sell it and it teleports away, leaving
-your debt paid and the reward in your pocket, and the next floor unlocked in the menu. You keep your
+your debt paid and the reward in your pocket, and the next floor unlocked at the buy machine. You keep your
 guns, mods and gold; the cave and the loot are new every time.
 
 **Every floor keeps its identity.** Floor 3 is always the frozen one and always

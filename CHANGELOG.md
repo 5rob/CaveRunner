@@ -5,6 +5,16 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.157 — the buy machine: flick to pick a level, no menu
+- Owner: the buy machine's full-screen floor menu is gone (`ui/levelshop.js` deleted). At the machine the hint shows
+  two options: **Select Level** (the R icon with thin up/down arrowheads, `PickKey` in `ui/hud.js`) and **Tap R to
+  Buy**. A right-stick flick up/down picks the floor (`input.current.lvlStep` from `Stick`, `pickStep` in
+  `game/systems/vend.js`, `W.pick`); the stick doesn't aim or fire there (`input.current.lvlPick`, `gun.js`). Both
+  machines' screens show the pick (`pickedFloor`). You can pick up to one floor past what's for sale
+  (`pickTop`/`stepPick`, `data/levels.js`): that one is grey (`HOLO_GREY`, "*sell lvl N first"), "Tap R to Buy" dims,
+  and a tap says "Sell level N first". The pick resets after a buy or a sale.
+- Tests: `levelpick` (new, logic); `vend` (real stick flicks, grey, limits) and `repo` updated.
+
 ## v0.0.156 — circle fields: sparkles instead of a filled disc
 Released 2026-10-07 (the owner OK'd the screenshots; a minor update).
 - Owner: many area fields on one spot stacked into a solid blob. The circle fields (Stillness, Shielding, Vigour,

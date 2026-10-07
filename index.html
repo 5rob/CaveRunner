@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.156</title>
-<!-- VERSION = 'v156' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.157</title>
+<!-- VERSION = 'v157' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -396,6 +396,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .pbuy .rkey{flex:0 0 auto;display:block}
 .pbuy.cant{opacity:.45}
 .pbuy.cant b{color:#fff}
+/* the buy machine's two options: flick to select a level (left), tap to buy (right) */
+.buypanel.pickpanel{left:12%;right:12%}
+.pbuy.pick{height:50px;gap:22px;white-space:nowrap}
+.pbuy.pick .popt{display:flex;align-items:center;gap:6px}
+.pbuy.pick b{font-size:14px}
+.pbuy.pick .popt.cant{opacity:.45}
+.pbuy.pick .popt.cant b{color:#fff}
 .weapon.locked{opacity:.45}
 .pop.flow{position:static;max-height:none;box-shadow:none;margin-bottom:2px}
 .spacer{flex:1 1 auto;min-height:6px}
@@ -645,30 +652,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .vbuy.cant{opacity:.45}
 .vcrys{display:inline-flex;align-items:center;gap:3px;font:700 14px system-ui,sans-serif;color:#ff6a78}
 
-/* ---- the level buy machine's floor menu (ui/levelshop.js) ---- */
-.lvlist{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px;border-radius:10px;
-  background:rgba(255,255,255,0.04);padding:6px}
-.lvrow{position:relative;display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;flex:0 0 auto;
-  border:1.5px solid rgba(0,255,60,0.45);background:rgba(0,255,60,0.06);cursor:pointer;touch-action:pan-y}
-.lvrow.sel{background:rgba(0,255,60,0.18);border-color:#00ff3c;box-shadow:inset 0 0 0 1px #00ff3c}
-.lvrow.locked{border-color:rgba(255,255,255,0.14);background:rgba(255,255,255,0.03);border-style:dashed}
-.lvrow.locked .lvn,.lvrow.locked .lvnums{opacity:.45}
-.lvrow.locked.sel{background:rgba(255,255,255,0.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,0.4)}
-.lvn{flex:0 0 72px;display:flex;flex-direction:column;gap:2px}
-.lvn b{font:900 17px system-ui,sans-serif;letter-spacing:.03em;color:#7dffa0}
-.lvn span{font:600 10px system-ui,sans-serif;color:rgba(233,236,242,0.6)}
-.lvnums{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;font:600 11px system-ui,sans-serif}
-.lvnums div{display:flex;align-items:baseline;gap:5px;white-space:nowrap}
-.lvnums span{color:rgba(233,236,242,0.55);font-weight:500}
-.lvnums em{font-style:normal;font-variant-numeric:tabular-nums;color:#e9ecf2;overflow:hidden;text-overflow:ellipsis}
-.lvnums em.lvdebt{color:#ff5a4a}
-.lvnums em.lvgain{color:#ffc93c}
-.lvtag{position:absolute;right:8px;top:6px;display:flex;gap:4px;font-size:11px}
-.lvtag i{font-style:normal}
-.lvsold{font:700 10px system-ui,sans-serif;color:#7dffa0}
-.lvsum{flex:0 0 auto;display:flex;flex-direction:column;gap:7px}
-.lvhint{margin:0;font-size:12px}
-
 /* ---- the gun machine's menu (ui/gunshop.js) ---- */
 .gmid{flex:1;min-height:0;display:flex;gap:10px}
 .greels{position:relative;flex:0 0 38%;display:flex;flex-direction:column;justify-content:space-around;gap:6px}
@@ -812,7 +795,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.156';</script>
+<script>const VERSION = 'v0.0.157';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -10724,7 +10707,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return up <= s || (dx / hw) ** 2 + ((up - s) / dh) ** 2 <= 1;
     }
     if (r.shape === "arch") {
-      const R = hw * 1.6, full2 = Math.sqrt(R * R - (R - hw) ** 2), ah = Math.min(full2, h3 * 0.65), s = h3 - ah, k = ah / full2;
+      const R = hw * 1.6, full = Math.sqrt(R * R - (R - hw) ** 2), ah = Math.min(full, h3 * 0.65), s = h3 - ah, k = ah / full;
       return up <= s || (dx + R - hw) ** 2 + ((up - s) / k) ** 2 <= R * R;
     }
     if (r.shape === "round") {
@@ -21458,10 +21441,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var lvlSell = (floor = 1) => lvlBuy(floor) + Math.round(DEV.lvlBonus * Math.pow(DEV.rewardGrow, Math.max(0, floor - 1)));
   var lvlReward = (floor = 1) => lvlSell(floor) - lvlBuy(floor);
   var canBuyFloor = (soldTop, floor) => floor >= 1 && floor <= (soldTop || 0) + 1;
-  var menuFloors = (soldTop) => {
-    const n = Math.min(LVL_MENU_MAX, Math.max(3, (soldTop || 0) + 2));
-    return Array.from({ length: n }, (_, i) => i + 1);
-  };
+  var pickTop = (soldTop) => Math.min(LVL_MENU_MAX, (soldTop || 0) + 2);
+  var stepPick = (sel, soldTop, d) => Math.max(1, Math.min(pickTop(soldTop), sel + d));
 
   // src/game/levelgen.js
   var LVLGEN = { src: "", worker: null, broken: false, n: 0, pend: null, ready: null, made: 0 };
@@ -22727,15 +22708,27 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return null;
   }
   var canSell = (W) => W.hasLvl && bioCount(W.enemies, false) === 0;
-  function vendLabel(W, kind) {
-    if (kind === "buy") return { text: "Tap R to buy", price: 0, can: true };
+  var pickedFloor = (W) => W.hasLvl ? W.floor : W.pick || W.floor;
+  function pickStep(W, LO, d) {
+    const top = LO.soldTop || 0, was = Math.min(pickedFloor(W), pickTop(top));
+    const f = stepPick(was, top, d);
+    W.pick = f;
+    SFX.fx(f === was ? "prompt" : "switch");
+  }
+  function vendLabel(W, kind, LO) {
+    if (kind === "buy") return { text: "Tap R to Buy", price: 0, can: canBuyFloor(LO.soldTop || 0, pickedFloor(W)), pick: true };
     return canSell(W) ? { text: "Tap R to sell", price: 0, can: true } : { text: "Biological entities detected", price: 0, can: false };
   }
   function vendUse(W, G, kind, LO) {
     if (W.warp) return;
     if (kind === "buy" && !W.hasLvl) {
-      G.input.current.shopOpen = "levels";
-      SFX.ui("mod");
+      const f = pickedFloor(W);
+      if (!canBuyFloor(LO.soldTop || 0, f)) {
+        toast(W, "Sell level " + (f - 1) + " first");
+        SFX.ui("poor");
+        return;
+      }
+      buyLevel(W, G, f, LO);
     } else if (kind === "sell" && W.hasLvl) {
       if (!canSell(W)) {
         toast(W, "No biological entities accepted");
@@ -22758,6 +22751,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       W.floor = floor;
       W.levelSeed = 1 + Math.floor(Math.random() * 2147483e3);
     }
+    W.pick = 0;
     preLevel(W.floor, W.levelSeed);
     LO.debt = (LO.debt || 0) + lvlBuy(floor);
     LO.due = Date.now() + dueMs(floor);
@@ -22769,11 +22763,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return true;
   }
   function stepWarp(W, G, F2) {
-    const ask = G.input.current.buyFloor;
-    if (ask) {
-      G.input.current.buyFloor = 0;
-      buyLevel(W, G, ask, F2.LO);
-    }
     stepReveal(W, G, F2);
     const w = W.warp;
     if (!w) return;
@@ -22798,6 +22787,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         enterLevel(W, G, { seed: W.levelSeed, owned: [], alive: null, sold: [], rooms: [], pickups: null }, "shop", got ? got.level : void 0);
       } else {
         W.floor = Math.min(LVL_MENU_MAX, (G.input.current.loadout.soldTop || 0) + 1);
+        W.pick = 0;
         W.levelSeed = 1 + Math.floor(Math.random() * 2147483e3);
         const heal = W.stock.find((it) => it.kind === "heal");
         if (heal) {
@@ -23781,6 +23771,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/game/render/vend.js
   var HOLO_GREEN = "#00ff3c", HOLO_RED = "#ff0000";
+  var HOLO_GREY = "#8a948c";
   var SW = 72, TOP_H2 = 26, GAP = 2, BOT_H2 = 32, SH = TOP_H2 + GAP + BOT_H2;
   var PAD2 = 4, LINE2 = 1.2, GLOW2 = 6, RES3 = 4;
   var TALL = 1.3;
@@ -23872,8 +23863,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var SELL_WAIT = 0.5, SELL_GLITCH = 0.5;
   var SL = { lvl: null, t: -99, from: null, shown: null };
   var deal = (verb, floor, price, hue, fine) => ({ hue, deal: commas(lvlSell(floor)) + " G.", top: [verb, String(floor).padStart(2, "0")], bot: [commas(price) + " G.", ...fine] });
-  function sellScreen(W) {
-    const lvl = W.hasLvl, look = lvl ? deal("SELL", W.floor, lvlSell(W.floor), canSell(W) ? HOLO_GREEN : HOLO_RED, ["*no biological", "entities accepted"]) : deal("SELL", W.floor, lvlSell(W.floor), HOLO_GREEN, []);
+  function sellScreen(W, soldTop = 1e9) {
+    const lvl = W.hasLvl, look = lvl ? deal("SELL", W.floor, lvlSell(W.floor), canSell(W) ? HOLO_GREEN : HOLO_RED, ["*no biological", "entities accepted"]) : deal("SELL", pickedFloor(W), lvlSell(pickedFloor(W)), canBuyFloor(soldTop, pickedFloor(W)) ? HOLO_GREEN : HOLO_GREY, []);
     if (SL.lvl === null || SL.t > W.time) {
       SL.lvl = lvl;
       SL.t = -99;
@@ -24032,8 +24023,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       !busy,
       { hue: HOLO_RED, top: [countdown(due - Date.now())], bot: ["debt repayment", "deadline", lv] }
     );
-    else machine(G.ctx, W, "buy", VEND_BUY_X, !W.hasLvl && !busy, deal("BUY", W.floor, lvlBuy(W.floor), HOLO_GREEN, ["*credit available"]));
-    const sl = sellScreen(W);
+    else {
+      const f = pickedFloor(W), ok = canBuyFloor(G.input.current.loadout.soldTop || 0, f);
+      machine(G.ctx, W, "buy", VEND_BUY_X, !W.hasLvl && !busy, deal("BUY", f, lvlBuy(f), ok ? HOLO_GREEN : HOLO_GREY, [ok ? "*credit available" : "*sell lvl " + (f - 1) + " first"]));
+    }
+    const sl = sellScreen(W, G.input.current.loadout.soldTop || 0);
     machine(G.ctx, W, "sell", VEND_SELL_X, true, sl, sl.from && { ...sl.from, k: sl.k });
   }
   function drawWarp(W, G, F2) {
@@ -24311,9 +24305,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       near = { src: "room", r };
       break;
     }
+    const picking = !!near && near.src === "vend" && near.kind === "buy" && !W.p.dead;
+    G.input.current.lvlPick = picking;
+    const flick = G.input.current.lvlStep;
+    if (flick) {
+      G.input.current.lvlStep = 0;
+      if (picking) pickStep(W, LO, flick);
+    }
     G.input.current.gunNear = near && near.src === "pickup" && near.q.kind === "gun" && !W.p.dead ? near.q : null;
     const nearKey = !near ? -1 : near.src + ":" + (near.src === "vend" || near.src === "shopvend" ? near.kind : near.src === "shop" ? W.stock.indexOf(near.it) : near.src === "room" ? W.rooms.indexOf(near.r) : W.pickups.indexOf(near.q));
-    const label = !near ? null : near.src === "vend" ? vendLabel(W, near.kind) : near.src === "shopvend" ? { text: SHOPS[near.kind].label, price: 0, can: true, shop: near.kind } : near.src === "shop" ? near.it.kind === "heal" ? { text: "Full heal", price: near.it.price, can: W.p.hp < MHP && LO.gold >= near.it.price } : near.it.kind === "gun" ? {
+    const label = !near ? null : near.src === "vend" ? vendLabel(W, near.kind, LO) : near.src === "shopvend" ? { text: SHOPS[near.kind].label, price: 0, can: true, shop: near.kind } : near.src === "shop" ? near.it.kind === "heal" ? { text: "Full heal", price: near.it.price, can: W.p.hp < MHP && LO.gold >= near.it.price } : near.it.kind === "gun" ? {
       text: near.it.gun.name,
       gun: near.it.gun,
       price: near.it.price,
@@ -24691,7 +24692,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function aimAndCast(W, G, F2) {
     const { dt, LO, pcx } = F2;
     const gx = pcx, gy = W.p.y + PH * 0.4;
-    const TR = G.input.current.right;
+    const TR = G.input.current.lvlPick ? { ...G.input.current.right, active: false, on: false } : G.input.current.right;
     let R = { on: false, show: false, nx: W.p.face, ny: 0 };
     if (TR.active) R = { on: TR.on, show: true, nx: TR.nx, ny: TR.ny, vis: Math.min(1, TR.mag / (TR.fire || AIM_DEAD)) };
     else if (G.mouse.inside) {
@@ -28358,6 +28359,33 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }, "R")
     );
   }
+  function PickKey() {
+    const head = (y, d) => h("polyline", {
+      points: `9,${y + d * 4} 15,${y} 21,${y + d * 4}`,
+      fill: "none",
+      stroke: "#fff",
+      strokeWidth: 1,
+      strokeLinecap: "round",
+      strokeLinejoin: "round"
+    });
+    return h(
+      "svg",
+      { className: "rkey pickkey", viewBox: "0 0 30 50", width: 28, height: 46, "aria-hidden": true },
+      head(3, 1),
+      h("circle", { cx: 15, cy: 25, r: 13.5, fill: "none", stroke: "#fff", strokeWidth: 1 }),
+      h("text", {
+        x: 15,
+        y: 25,
+        textAnchor: "middle",
+        dominantBaseline: "central",
+        fill: "#fff",
+        fontSize: 14,
+        fontWeight: 300,
+        fontFamily: "system-ui, sans-serif"
+      }, "R"),
+      head(47, -1)
+    );
+  }
   function CrystalIcon({ size, green }) {
     const s = size || 26, P2 = green ? GREEN_PAL : CRYSTAL_PAL;
     return h(
@@ -28416,6 +28444,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const pid = useRef(null);
     const stayed = useRef(true);
     const peak = useRef(0);
+    const peakNy = useRef(0);
     const right = kind === "right";
     const update = (e) => {
       const r = ref.current.getBoundingClientRect();
@@ -28428,6 +28457,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const mag = cl / maxD;
       const thresh = right ? stickTrigger(r.width).mag : 0.15;
       if (right && mag > AIM_DEAD) stayed.current = false;
+      if (mag >= peak.current) peakNy.current = ny;
       peak.current = Math.max(peak.current, mag);
       if (right && input.current.confirmAct) {
         const side = mag > AIM_DEAD ? nx < 0 ? "take" : "leave" : null;
@@ -28475,6 +28505,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (peak.current <= DEV.ptrStart) input.current.menuTap();
       } else if (right && stayed.current) {
         input.current.interact = true;
+      } else if (right && input.current.lvlPick && Math.abs(peakNy.current) > 0.5) {
+        input.current.lvlStep = peakNy.current < 0 ? 1 : -1;
       }
       Object.assign(input.current[kind], { active: false, mag: 0, on: false, dy: 0 });
       setKnob({ x: 0, y: 0, jet: false });
@@ -30626,112 +30658,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
-  // src/ui/levelshop.js
-  var full = (n) => Math.round(n).toLocaleString("en-US");
-  var repayText = (floor) => {
-    const m = Math.round(dueMs(floor) / 6e4);
-    return m >= 120 ? Math.round(m / 60) + " hours" : m + " min";
-  };
-  function LevelVend({ input, close }) {
-    const LO = input.current.loadout, top = LO.soldTop || 0;
-    const floors = menuFloors(top);
-    const best = Math.min(top + 1, floors[floors.length - 1]);
-    const [sel, setSel] = useState(() => {
-      const f = input.current.floor || best;
-      return canBuyFloor(top, f) ? f : best;
-    });
-    const [focus, setFocus] = useState("buy");
-    const [msg, setMsg] = useState("");
-    const root = useRef(null);
-    const can = canBuyFloor(top, sel);
-    const buy = () => {
-      if (!can) {
-        SFX.ui("poor");
-        setMsg("Sell level " + (sel - 1) + " first");
-        return;
-      }
-      input.current.buyFloor = sel;
-      close();
-    };
-    const press = (key) => {
-      if (key === "close") close();
-      else if (key === "buy") buy();
-      else if (key.startsWith("f:")) {
-        setSel(Number(key.slice(2)));
-        setMsg("");
-        SFX.fx("switch");
-      }
-    };
-    const ptr = useMenuNav(input, root, focus, setFocus, press);
-    const navCls = (key, cls) => cls + (focus === key ? " navon" : "");
-    const tap = (key) => (e) => {
-      e.preventDefault();
-      setFocus(key);
-      press(key);
-    };
-    return h(
-      "div",
-      { className: "vshop lvshop", ref: root, style: { bottom: (input.current.ctlH || 0) + "px" } },
-      ptr,
-      h(
-        "div",
-        { className: "vhead" },
-        h("b", null, "Levels"),
-        h("span", { className: "vgold" }, fmtGold(LO.gold), h("i", null, "g")),
-        h("button", { className: navCls("close", "vclose"), "data-nav": "close", onPointerDown: tap("close") }, "×")
-      ),
-      h(
-        "div",
-        { className: "lvlist scroll" },
-        floors.map((f) => {
-          const open = canBuyFloor(top, f), key = "f:" + f, T = THEMES[(f - 1) % THEMES.length];
-          return h(
-            "div",
-            {
-              key: f,
-              "data-nav": key,
-              "data-floor": f,
-              className: navCls(key, "lvrow") + (sel === f ? " sel" : "") + (open ? "" : " locked"),
-              onPointerDown: tap(key)
-            },
-            h("div", { className: "lvn" }, h("b", null, "LVL " + f), h("span", null, T.name)),
-            h(
-              "div",
-              { className: "lvnums" },
-              h("div", null, h("span", null, "Debt"), h("em", { className: "lvdebt" }, full(lvlBuy(f)) + "g")),
-              h("div", null, h("span", null, "Sells for"), h("em", null, full(lvlSell(f)) + "g")),
-              h(
-                "div",
-                null,
-                h("span", null, "Reward"),
-                h("em", { className: "lvgain" }, "+" + full(lvlReward(f)) + "g"),
-                h("span", null, "Kills"),
-                h("em", { className: "lvgain" }, "×" + goldScale(f).toFixed(2))
-              )
-            ),
-            h(
-              "div",
-              { className: "lvtag" },
-              f <= top ? h("i", { className: "lvsold" }, "✓ sold") : null,
-              open ? null : h("i", { className: "lvlock" }, "🔒")
-            )
-          );
-        })
-      ),
-      h(
-        "div",
-        { className: "lvsum" },
-        msg ? h("div", { className: "vmsg" }, msg) : h("p", { className: "vhint lvhint" }, can ? "Repay within " + repayText(sel) + ", or it is repossessed. Sell it back once nothing biological is left." : "Locked: sell level " + (sel - 1) + " first to buy level " + sel + " on credit."),
-        h(
-          "button",
-          { className: navCls("buy", "vbuy") + (can ? "" : " cant"), "data-nav": "buy", onPointerDown: tap("buy") },
-          h("b", null, "Buy LVL " + sel + " on credit"),
-          h("span", null, full(lvlBuy(sel)) + "g")
-        )
-      )
-    );
-  }
-
   // src/ui/modshop.js
   var TIER_NAME = ["", "Common", "Uncommon", "Rare", "Legendary"];
   function modShop(input) {
@@ -30808,9 +30734,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var SHOP_MENUS = {
     mods: ({ input, close }) => h(VendShop, { def: modShop(input), input, close }),
     guns: GunVend,
-    perks: ({ input, close }) => h(VendShop, { def: perkShop(input), input, close }),
-    levels: LevelVend
-    // the level buy machine's floor menu (not a SHOPS machine: game/systems/vend.js)
+    perks: ({ input, close }) => h(VendShop, { def: perkShop(input), input, close })
   };
 
   // src/ui/gunhold.js
@@ -31493,7 +31417,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         prompt && !found && !shopOpen ? h(
           "div",
           {
-            className: "buypanel",
+            className: "buypanel" + (prompt.pick ? " pickpanel" : ""),
             style: {
               bottom: (input.current.promptBottom || 12) + "px",
               maxHeight: "calc(100% - " + ((input.current.promptBottom || 12) + 12) + "px)"
@@ -31515,14 +31439,27 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             "div",
             { className: "pbuy" },
             h("b", null, "Hold a gun slot")
-          ) : h(
-            "div",
-            {
-              className: "pbuy" + (prompt.can ? "" : " cant"),
-              "aria-label": "Tap the right stick to " + (prompt.price ? "buy for " + prompt.price + "g" : "take")
-            },
-            h(RKey),
-            h("b", null, prompt.price ? prompt.price + "g" : prompt.id || prompt.gun || prompt.perk || prompt.heart ? "free" : prompt.text)
+          ) : (
+            // the buy machine: flick the right stick up/down to pick the floor (left), tap to buy it (right)
+            prompt.pick ? h(
+              "div",
+              { className: "pbuy pick" },
+              h("div", { className: "popt" }, h(PickKey), h("b", null, "Select Level")),
+              h(
+                "div",
+                { className: "popt" + (prompt.can ? "" : " cant"), "aria-label": "Tap the right stick to buy" },
+                h(RKey),
+                h("b", null, prompt.text)
+              )
+            ) : h(
+              "div",
+              {
+                className: "pbuy" + (prompt.can ? "" : " cant"),
+                "aria-label": "Tap the right stick to " + (prompt.price ? "buy for " + prompt.price + "g" : "take")
+              },
+              h(RKey),
+              h("b", null, prompt.price ? prompt.price + "g" : prompt.id || prompt.gun || prompt.perk || prompt.heart ? "free" : prompt.text)
+            )
           )
         ) : null,
         // one gear in the top-right opens the Dev panel; Restart now lives inside it.

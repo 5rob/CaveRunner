@@ -10,13 +10,14 @@
 
 import { countdown } from '../../core/util.js';
 import { CELL, SHOP_FLOOR, SHOP_Y, VEND_BUY_X, VEND_SELL_X } from '../../core/consts.js';
-import { lvlBuy, lvlSell } from '../../data/levels.js';
+import { canBuyFloor, lvlBuy, lvlSell } from '../../data/levels.js';
 import { pixText, pixWidth } from '../../art/pixfont.js';
 import { drawHoloShop } from './holo.js';
-import { canSell, REPO_ALARM, REPO_FIRE, REPO_JET, ROOF_Y, VEND_H, VEND_TOP, VEND_W, WARP_SWAP } from '../systems/vend.js';
+import { canSell, pickedFloor, REPO_ALARM, REPO_FIRE, REPO_JET, ROOF_Y, VEND_H, VEND_TOP, VEND_W, WARP_SWAP } from '../systems/vend.js';
 import { drawBolt } from './looks.js';
 
 export const HOLO_GREEN = '#00ff3c', HOLO_RED = '#ff0000';   // the background hologram's two hues
+export const HOLO_GREY = '#8a948c';   // a floor picked at the buy machine that isn't for sale yet
 
 // the screen, in world units: its width, the solid box, the gap, the outlined box
 const SW = 72, TOP_H = 26, GAP = 2, BOT_H = 32, SH = TOP_H + GAP + BOT_H;
@@ -123,11 +124,11 @@ const deal = (verb, floor, price, hue, fine) =>
 
 // what the sell machine shows this frame: its look, and while it changes over, the old one (from)
 // with how far through the glitch it is (k, 0..1)
-/** @param {World} W @returns {VendLook & { from: VendLook | null, k: number }} */
-export function sellScreen(W) {
+/** @param {World} W @param {number} [soldTop] the highest floor sold this run (a picked floor past it is grey) @returns {VendLook & { from: VendLook | null, k: number }} */
+export function sellScreen(W, soldTop = 1e9) {
   const lvl = W.hasLvl, look = lvl
     ? deal('SELL', W.floor, lvlSell(W.floor), canSell(W) ? HOLO_GREEN : HOLO_RED, ['*no biological', 'entities accepted'])
-    : deal('SELL', W.floor, lvlSell(W.floor), HOLO_GREEN, []);
+    : deal('SELL', pickedFloor(W), lvlSell(pickedFloor(W)), canBuyFloor(soldTop, pickedFloor(W)) ? HOLO_GREEN : HOLO_GREY, []);
   if (SL.lvl === null || SL.t > W.time) { SL.lvl = lvl; SL.t = -99; }   // the first frame, or a replay: no change shown
   if (SL.lvl !== lvl) { SL.from = SL.shown || look; SL.lvl = lvl; SL.t = W.time; }
   const since = W.time - SL.t;
@@ -252,8 +253,11 @@ export function drawVend(W, G, F) {
   }
   if (W.hasLvl && due) machine(G.ctx, W, 'buy', VEND_BUY_X, !busy,
     { hue: HOLO_RED, top: [countdown(due - Date.now())], bot: ['debt repayment', 'deadline', lv] });
-  else machine(G.ctx, W, 'buy', VEND_BUY_X, !W.hasLvl && !busy, deal('BUY', W.floor, lvlBuy(W.floor), HOLO_GREEN, ['*credit available']));
-  const sl = sellScreen(W);
+  else {                                       // the floor picked (a flick at the machine): grey if it isn't for sale yet
+    const f = pickedFloor(W), ok = canBuyFloor(G.input.current.loadout.soldTop || 0, f);
+    machine(G.ctx, W, 'buy', VEND_BUY_X, !W.hasLvl && !busy, deal('BUY', f, lvlBuy(f), ok ? HOLO_GREEN : HOLO_GREY, [ok ? '*credit available' : '*sell lvl ' + (f - 1) + ' first']));
+  }
+  const sl = sellScreen(W, G.input.current.loadout.soldTop || 0);
   machine(G.ctx, W, 'sell', VEND_SELL_X, true, sl, sl.from && { ...sl.from, k: sl.k });
 }
 

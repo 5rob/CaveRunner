@@ -3,6 +3,11 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
+## v0.0.157 — the buy machine: flick the right stick to pick a level, no menu: WAITING ON THE OWNER'S OK (branch `buypick`, not on `main`)
+
+Screenshots sent (`vend_start.png`, `vend_grey.png` from the `vend` suite). Once OK'd: merge `buypick` into `main`, push,
+confirm `version.txt`. CHANGELOG v0.0.157 has the details. Desktop has no key for the pick (phone only).
+
 ## v0.0.156 — circle fields drawn as rising sparkles (+ plus signs for Vigour), no filled disc; rings thin at 10%: RELEASED on `main` 2026-10-07 (owner OK'd)
 
 ## v0.0.155 — Follow Me (to you) / Follow This (ahead of the gun, the Gravity Gun's) split, Follow Me as a pull; buffs and nerfs; you in the firing window: RELEASED on `main` 2026-10-07 (owner OK'd). Buff/nerf mana and tiers are my guesses: the owner may retune.

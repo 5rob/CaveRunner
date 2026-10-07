@@ -1,6 +1,6 @@
 // @ts-check
 // The level economy: what a floor's level costs on credit, what selling it back pays, and which
-// floors the buy machine's menu will sell you. Every price climbs exponentially floor by floor
+// floors the buy machine will sell you. Every price climbs exponentially floor by floor
 // (Dev → Level: lvlGrow for the debt, rewardGrow for the reward on top, killGrow for the kill gold, data/creatures.js
 // goldScale). Floor 1 is always for sale; floor N only once floor N - 1 has been sold this run
 // (LO.soldTop, the highest floor sold: a death starts a new run, and a new loadout).
@@ -8,7 +8,7 @@
 import { LVL_BUY } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
 
-export const LVL_MENU_MAX = 12;   // the menu lists floors up to this (or the next one locked past what you've sold)
+export const LVL_MENU_MAX = 12;   // the buy machine picks floors up to this
 
 // the debt a floor's level goes on: LVL_BUY (a billion) on floor 1, × lvlGrow (3) each floor up
 /** @param {number} [floor] */
@@ -22,13 +22,15 @@ export const lvlSell = (floor = 1) => lvlBuy(floor) + Math.round(DEV.lvlBonus * 
 /** @param {number} [floor] */
 export const lvlReward = (floor = 1) => lvlSell(floor) - lvlBuy(floor);
 
-// can the menu sell you this floor? Floor 1 always; any other once the one under it was sold this run
+// can the buy machine sell you this floor? Floor 1 always; any other once the one under it was sold this run
 /** @param {number} soldTop the highest floor sold this run (0: none) @param {number} floor */
 export const canBuyFloor = (soldTop, floor) => floor >= 1 && floor <= (soldTop || 0) + 1;
 
-// the floors the menu lists: everything you could buy, and the next one up, locked
+// the highest floor the buy machine lets you pick: everything you could buy, and one more up (greyed,
+// not for sale yet)
 /** @param {number} soldTop */
-export const menuFloors = soldTop => {
-  const n = Math.min(LVL_MENU_MAX, Math.max(3, (soldTop || 0) + 2));
-  return Array.from({ length: n }, (_, i) => i + 1);
-};
+export const pickTop = soldTop => Math.min(LVL_MENU_MAX, (soldTop || 0) + 2);
+
+// the buy machine's pick moved one step (up +1, down -1), kept to floors 1..pickTop
+/** @param {number} sel @param {number} soldTop @param {number} d */
+export const stepPick = (sel, soldTop, d) => Math.max(1, Math.min(pickTop(soldTop), sel + d));

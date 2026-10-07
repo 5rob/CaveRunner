@@ -13,7 +13,7 @@ import { gameDpr } from '../dpr.js';
 import { crystalMotes, toast } from './particles.js';
 import { lineOfSight, solidAt } from './terrain.js';
 import { MACHINE_TOP, SHOPS, shopNear, shopUse, stepShops } from './shops.js';
-import { VEND_TOP, vendLabel, vendNear, vendUse } from './vend.js';
+import { VEND_TOP, pickStep, vendLabel, vendNear, vendUse } from './vend.js';
 
 // ---- pickups, gold and the interact tap (a part of step) ----
 // Pickups' cooldowns, gold flying to you or bouncing, which card (shop plinth, something on
@@ -100,13 +100,18 @@ export function stepPickups(W, G, F) {
     near = { src: 'room', r };
     break;
   }
+  // at the buy machine the right stick picks the floor: a flick up or down (ui/hud.js), no aiming (gun.js)
+  const picking = !!near && near.src === 'vend' && near.kind === 'buy' && !W.p.dead;
+  G.input.current.lvlPick = picking;
+  const flick = G.input.current.lvlStep;
+  if (flick) { G.input.current.lvlStep = 0; if (picking) pickStep(W, LO, flick); }
   // a gun in reach: holding a HUD gun slot takes it into that slot (takeGun, ui/gunhold.js)
   G.input.current.gunNear = near && near.src === 'pickup' && near.q.kind === 'gun' && !W.p.dead ? near.q : null;
   const nearKey = !near ? -1 : near.src + ':' +
     (near.src === 'vend' || near.src === 'shopvend' ? near.kind : near.src === 'shop' ? W.stock.indexOf(near.it)
       : near.src === 'room' ? W.rooms.indexOf(near.r) : W.pickups.indexOf(near.q));
   const label = !near ? null
-    : near.src === 'vend' ? vendLabel(W, near.kind)
+    : near.src === 'vend' ? vendLabel(W, near.kind, LO)
     : near.src === 'shopvend' ? { text: SHOPS[near.kind].label, price: 0, can: true, shop: near.kind }
     : near.src === 'shop'
       ? (near.it.kind === 'heal' ? { text: 'Full heal', price: near.it.price, can: W.p.hp < MHP && LO.gold >= near.it.price }
