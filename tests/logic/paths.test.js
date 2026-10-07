@@ -69,6 +69,19 @@ for (let i = 0; i < 120; i++) {
   o.x += o.vx / 60; o.y += o.vy / 60; if (i > 30) minD = Math.min(minD, Math.hypot(o.x, o.y));
 }
 check('a Follow Me shot turns back and comes past you', minD < 80, Math.round(minD));
+// no turning circle (owner): fired straight out, it slows, stops and comes straight back down the same line
+{
+  const q = { x: 0, y: 0, vx: 500, vy: 0, age: 0, follow: 4 };
+  let maxY = 0, maxSp = 0, far = 0, back = false;
+  for (let i = 0; i < 180; i++) {
+    q.age += 1 / 60; pathStep(q, 1 / 60, { home: { x: 0, y: 0 }, ahead: { x: 30, y: 0 }, anchor: null });
+    q.x += q.vx / 60; q.y += q.vy / 60;
+    maxY = Math.max(maxY, Math.abs(q.y)); maxSp = Math.max(maxSp, Math.hypot(q.vx, q.vy)); far = Math.max(far, q.x);
+    if (far > 20 && q.x < 5) back = true;
+  }
+  check('Follow Me: straight out and straight back, no loop', back && maxY < 0.5, { maxY, far: Math.round(far) });
+  check('... never faster than it left', maxSp <= 500 + 1e-6, maxSp);
+}
 const f = { x: 100, y: -80, vx: 0, vy: 0, age: 0, still: 1, followAim: 4 };
 for (let i = 0; i < 180; i++) {
   f.age += 1 / 60;

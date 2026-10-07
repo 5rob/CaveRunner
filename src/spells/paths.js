@@ -15,6 +15,7 @@ export const ORBIT_R = 26;           // Orbiting Arc: the circle's radius
 export const ORBIT_IN = 0.2;         // ... seconds to swing out to it
 export const ORBIT_W = 14;           // ... the fastest it goes round, rad/s
 export const FOLLOW_AHEAD = 34;      // Follow This: a field comes to rest this far ahead of your gun
+export const FOLLOW_PULL = 250;      // Follow Me/This on a shot: the pull, units/s² per point (Follow Me's 4: 1000)
 export const FIELD_SPEED = 150;      // a field a path mod moves travels at this
 export const SEEK_ACC = 7;           // ... and steers this hard (1/s) when it heads for something
 
@@ -62,9 +63,20 @@ export function pathStep(o, dt, env) {
       else if (o.life != null && o.life < 0.05 && age < (o.born || 1) * BOOM_MAX) o.life = 0.05;   // it isn't back yet
     }
   }
-  // Follow Me: to you, shot or field (owner, v0.0.155); Follow This: to the spot ahead of your gun
-  if (o.follow) head(env.home.x, env.home.y, o.follow);
-  if (o.followAim) head(env.ahead.x, env.ahead.y, o.followAim);
+  // Follow Me: to you, shot or field (owner, v0.0.155); Follow This: to the spot ahead of your gun. A shot isn't
+  // turned (no turning circle, owner): a steady pull toward the spot, FOLLOW_PULL × its strength, overpowers the
+  // speed it left with, so it slows, stops and comes straight back, never faster than it set out. A field steers.
+  /** @param {Pt} t @param {number} k */
+  const pull = (t, k) => {
+    if (o.still) { head(t.x, t.y, k); return; }
+    const dx = t.x - o.x, dy = t.y - o.y, d = Math.hypot(dx, dy) || 1;
+    const sp0 = o.sp0 || (o.sp0 = Math.hypot(o.vx, o.vy) || 1), a = FOLLOW_PULL * k * dt;
+    o.vx += dx / d * a; o.vy += dy / d * a;
+    const sp = Math.hypot(o.vx, o.vy);
+    if (sp > sp0) { o.vx *= sp0 / sp; o.vy *= sp0 / sp; }
+  };
+  if (o.follow) pull(env.home, o.follow);
+  if (o.followAim) pull(env.ahead, o.followAim);
   if (o.still && o.homing && env.enemies) {
     let best = null, bd = o.homeR || 260;
     for (const e of env.enemies) { const d = Math.hypot(e.x - o.x, e.ty - o.y); if (d < bd) { bd = d; best = e; } }

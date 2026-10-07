@@ -3117,7 +3117,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       col: "#b57cff",
       mana: 10,
       d: 0.04,
-      info: "Homing, but on you: a shot curves back round to you; a field comes to you and stays with you",
+      info: "Pulls it back to you: a shot slows, stops and comes straight back; a field comes to you and stays with you",
       f: (s) => {
         s.follow += 4;
       }
@@ -3130,7 +3130,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       col: "#b57cff",
       mana: 10,
       d: 0.04,
-      info: "A field hovers just ahead of your gun and goes wherever you aim (the Gravity Gun’s trick); a shot homes on that spot",
+      info: "A field hovers just ahead of your gun and goes wherever you aim (the Gravity Gun’s trick); a shot is pulled to that spot",
       f: (s) => {
         s.followAim += 4;
       }
@@ -17768,6 +17768,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var ORBIT_IN = 0.2;
   var ORBIT_W = 14;
   var FOLLOW_AHEAD = 34;
+  var FOLLOW_PULL = 250;
   var FIELD_SPEED = 150;
   var SEEK_ACC = 7;
   var hasPath = (o) => !!(o.boomer || o.pong || o.spiral || o.orbit || o.follow || o.followAim || o.still && o.homing);
@@ -17797,8 +17798,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         else if (o.life != null && o.life < 0.05 && age < (o.born || 1) * BOOM_MAX) o.life = 0.05;
       }
     }
-    if (o.follow) head(env.home.x, env.home.y, o.follow);
-    if (o.followAim) head(env.ahead.x, env.ahead.y, o.followAim);
+    const pull = (t, k) => {
+      if (o.still) {
+        head(t.x, t.y, k);
+        return;
+      }
+      const dx = t.x - o.x, dy = t.y - o.y, d = Math.hypot(dx, dy) || 1;
+      const sp0 = o.sp0 || (o.sp0 = Math.hypot(o.vx, o.vy) || 1), a = FOLLOW_PULL * k * dt;
+      o.vx += dx / d * a;
+      o.vy += dy / d * a;
+      const sp = Math.hypot(o.vx, o.vy);
+      if (sp > sp0) {
+        o.vx *= sp0 / sp;
+        o.vy *= sp0 / sp;
+      }
+    };
+    if (o.follow) pull(env.home, o.follow);
+    if (o.followAim) pull(env.ahead, o.followAim);
     if (o.still && o.homing && env.enemies) {
       let best = null, bd = o.homeR || 260;
       for (const e of env.enemies) {
@@ -28620,7 +28636,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var GF_WALL = 5;
   var GF_DPS_S = 3;
   var GF_YOU_X = 3, GF_GUN = 0.55 * 1.3;
-  var GF_FOLLOW_TURN = 3;
+  var GF_FOLLOW_K = 3;
   var GF_GRAPH_S = 5, GF_GRAPH_DT = 0.1;
   var GF_DUMMY_GAP = 6, GF_DUMMY_K = 2 / 3, DW = PW * GF_DUMMY_K, DH = PH * GF_DUMMY_K;
   function GunFire({ gun, sim }) {
@@ -28742,12 +28758,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         for (const b of shots) {
           b.vy += b.grav * GF_SPEED * GF_SPEED * dt;
           for (const [k, t] of [[b.follow, youAt], [b.followAim, ahead]]) if (k) {
-            const sp = Math.hypot(b.vx, b.vy), cur = Math.atan2(b.vy, b.vx);
-            let d = Math.atan2(t.y - b.y, t.x - b.x) - cur;
-            d = Math.atan2(Math.sin(d), Math.cos(d));
-            const turn2 = k * GF_FOLLOW_TURN * GF_SPEED * dt, na = cur + Math.max(-turn2, Math.min(turn2, d));
-            b.vx = Math.cos(na) * sp;
-            b.vy = Math.sin(na) * sp;
+            const dx = t.x - b.x, dy = t.y - b.y, d = Math.hypot(dx, dy) || 1;
+            const sp0 = b.sp0 || (b.sp0 = Math.hypot(b.vx, b.vy) || 1), a = FOLLOW_PULL * k * GF_FOLLOW_K * GF_SPEED * GF_SPEED * dt;
+            b.vx += dx / d * a;
+            b.vy += dy / d * a;
+            const sp = Math.hypot(b.vx, b.vy);
+            if (sp > sp0) {
+              b.vx *= sp0 / sp;
+              b.vy *= sp0 / sp;
+            }
           }
           if (b.follow && !b.back && b.age > 0.5 && Math.hypot(b.x - youAt.x, b.y - youAt.y) < 8) {
             b.back = 1;

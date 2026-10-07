@@ -565,7 +565,7 @@ interface PathMods { boomer?: number; pong?: number; spiral?: number; orbit?: nu
 /** anything pathStep moves: a shot, a field, the aim line's pretend shot; the rest is its path state */
 interface Mover extends PathMods {
   x: number; y: number; vx: number; vy: number; age: number; born?: number; life?: number; homeR?: number; ang?: number;
-  back?: number; pdir?: number; oa?: number; or0?: number; osp?: number; caught?: number;
+  back?: number; pdir?: number; oa?: number; or0?: number; osp?: number; caught?: number; sp0?: number;   // sp0: Follow Me's top speed (what it left with)
 }
 /** what an orbit circles: a trigger's carrier while it lasts (of), then where it had got to, drifting on */
 interface Anchor { x: number; y: number; vx: number; vy: number; of: Bullet | Field | null }

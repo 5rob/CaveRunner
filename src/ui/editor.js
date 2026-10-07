@@ -15,7 +15,7 @@ import {
 import { gunAccent, gunColor, gunLvCol, resetGun } from '../spells/guns.js';
 import { ALL_IDS, FAMILIES, FAMILY_OF, MODS, famCol } from '../spells/mods.js';
 import { holoPass } from '../game/render/guide.js';
-import { FOLLOW_AHEAD } from '../spells/paths.js';
+import { FOLLOW_AHEAD, FOLLOW_PULL } from '../spells/paths.js';
 import { drawLook } from '../game/render/looks.js';
 import { ModCard, tgtBadge } from './cards.js';
 import { h, useEffect, useMemo, useRef, useState } from './h.js';
@@ -112,9 +112,9 @@ export const GF_DPS_S = 3;
 // you, at the far left, holding the gun as the aim sways (owner: Follow Me has somewhere to come back to): your box
 // GF_YOU_X in from the left; the gun held at GF_GUN (× the game's own 0.55, so it reads in the small window)
 export const GF_YOU_X = 3, GF_GUN = 0.55 * 1.3;
-// Follow Me / Follow This turn this much harder in the window than in the game: the window is ~80 units across,
-// smaller than their turning circle, so without it they'd hit the wall before coming round
-export const GF_FOLLOW_TURN = 3;
+// Follow Me / Follow This pull this much harder in the window than in the game: the window is ~80 units across,
+// less than a fast shot travels before the pull stops it, so without it they'd hit the wall before coming back
+export const GF_FOLLOW_K = 3;
 // the running DPS graph across the window's top third (owner): GF_GRAPH_S seconds of history, a sample every GF_GRAPH_DT
 export const GF_GRAPH_S = 5, GF_GRAPH_DT = 0.1;
 export const GF_DUMMY_GAP = 6, GF_DUMMY_K = 2 / 3, DW = PW * GF_DUMMY_K, DH = PH * GF_DUMMY_K;
@@ -216,13 +216,14 @@ export function GunFire({ gun, sim }) {
       const live = [];
       for (const b of shots) {
         b.vy += b.grav * GF_SPEED * GF_SPEED * dt;
-        // Follow Me turns it back to you, Follow This to the spot ahead of the gun (spells/paths.js, slowed with the window)
+        // Follow Me pulls it back to you, Follow This to the spot ahead of the gun: the game's pull (spells/paths.js
+        // FOLLOW_PULL, no turning), in window units (× GF_SPEED²) and GF_FOLLOW_K × harder so it fits the window
         for (const [k, t] of [[b.follow, youAt], [b.followAim, ahead]]) if (k) {
-          const sp = Math.hypot(b.vx, b.vy), cur = Math.atan2(b.vy, b.vx);
-          let d = Math.atan2(t.y - b.y, t.x - b.x) - cur;
-          d = Math.atan2(Math.sin(d), Math.cos(d));
-          const turn = k * GF_FOLLOW_TURN * GF_SPEED * dt, na = cur + Math.max(-turn, Math.min(turn, d));
-          b.vx = Math.cos(na) * sp; b.vy = Math.sin(na) * sp;
+          const dx = t.x - b.x, dy = t.y - b.y, d = Math.hypot(dx, dy) || 1;
+          const sp0 = b.sp0 || (b.sp0 = Math.hypot(b.vx, b.vy) || 1), a = FOLLOW_PULL * k * GF_FOLLOW_K * GF_SPEED * GF_SPEED * dt;
+          b.vx += dx / d * a; b.vy += dy / d * a;
+          const sp = Math.hypot(b.vx, b.vy);
+          if (sp > sp0) { b.vx *= sp0 / sp; b.vy *= sp0 / sp; }
         }
         if (b.follow && !b.back && b.age > 0.5 && Math.hypot(b.x - youAt.x, b.y - youAt.y) < 8) {   // for the suite: one came back to you
           b.back = 1; ref.current.dataset.back = String(+(ref.current.dataset.back || 0) + 1);

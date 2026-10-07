@@ -331,11 +331,11 @@ export const MODS = {
   pong:    { name: 'Ping-Pong Path', kind: 'mod', glyph: '⇄', col: '#b57cff', mana: 6, d: 0.05,
              info: 'Flies out, snaps back a little, and on again', f: s => { s.pong += 4; s.life *= 1.4; } },
   follow:  { name: 'Follow Me', kind: 'mod', glyph: '⇜', col: '#b57cff', mana: 10, d: 0.04,
-             info: 'Homing, but on you: a shot curves back round to you; a field comes to you and stays with you',
+             info: 'Pulls it back to you: a shot slows, stops and comes straight back; a field comes to you and stays with you',
              f: s => { s.follow += 4; } },
   // owner (v0.0.155): Follow Me split in two; this half is the Gravity Gun's, a White Hole held where you aim
   followaim: { name: 'Follow This', kind: 'mod', glyph: '↬', col: '#b57cff', mana: 10, d: 0.04,
-             info: 'A field hovers just ahead of your gun and goes wherever you aim (the Gravity Gun’s trick); a shot homes on that spot',
+             info: 'A field hovers just ahead of your gun and goes wherever you aim (the Gravity Gun’s trick); a shot is pulled to that spot',
              f: s => { s.followAim += 4; } },
   orbit:   { name: 'Orbiting Arc', kind: 'mod', glyph: '◴', col: '#b57cff', mana: 9, d: 0.06,
              info: 'Circles whatever cast it: your gun, or a trigger spell\'s carrier as it flies', f: s => { s.orbit += 3.4; s.life *= 1.6; } },
