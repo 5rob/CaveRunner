@@ -11,8 +11,8 @@ Status: `todo` · `agent` (running, branch named) · `review` (screenshots sent)
 |---|------|-----|--------|-------|
 | 1 | Bag (gun mod screen): title → the gun's name in its colour + ✏️ rename; gold → 💾 save button: saves gun + mods as a named preset, listed under Dev → Spawn gun (tap = spawn it, can delete) | agent B | review | merged (0f9093e): `BagHead` in ui/editor.js, `save/presets.js` (`caverunner-gunpresets`), `spawnPreset`; suites `presets` (logic+browser); shots sent. ✏️/💾 work in a view-only Bag too |
 | 2 | Pixel-art gun sprites recreated from the owner's picture (~30 guns, many colours); 🖼️ button next to 💾 opens a gallery, the pick becomes that gun's art everywhere | agent A + manager (header merge) | review | merged (a146479 + 9ab1250): 27 sprites `art/gunart.js` (re-extract: `tools/gunart-extract.js`), `drawGun(…, art)`, `gun.art`, `GunArtPicker` ui/gunart.js; one pixel size `GUN_ART_PX` 0.46; suites `gunart`; shots sent |
-| 3 | Pause menu in play: Save (this run), Volume slider (whole game), Exit to main menu | agent C | agent | |
-| 4 | Title screen: animated action background ("surprise me"), big fancy title, menu: 3 save slots (each with delete), Start | agent C | agent | |
+| 3 | Pause menu in play: Save (this run), Volume slider (whole game), Exit to main menu | agent C | review | merged (334daca): `ui/pause.js`, ⏸ top right beside ⚙️; `SFX.setVolume`, `caverunner-volume`; Exit = save + reload; suite `title` |
+| 4 | Title screen: animated action background ("surprise me"), big fancy title, menu: 3 save slots (each with delete), Start | agent C | review | merged (334daca): `Root` in `ui/title.js` mounts `App` only after Start; scene `art/titlescene.js` (pure stepper); slots `slotKey` in save.js, `caverunner-slot`; test page skips the title (`__TEST_TITLE` shows it); suites `slots` (logic), `title` (browser) |
 | 5 | HUD gun slot circles coloured like their gun's name | agent B | review | merged with #1; held slot = thicker ring + glow in its colour (was amber) |
 
 ## Decisions (manager's, tell the owner)
@@ -25,3 +25,4 @@ Status: `todo` · `agent` (running, branch named) · `review` (screenshots sent)
 - 2026-10-07: list received; branch `list4`; agents A, B, C started in parallel.
 - B done (items 1, 5), merged, shots sent. A done (item 2), merged; 🖼️ moved into B's header (name ✏️ … 🖼️ 💾 Done); shots sent.
   Logic `strata` fails on HEAD too (known); `rats`/`spider` chance.
+- C done (items 3, 4), merged (pure.js conflict only), shots sent. All 5 in review; full browser run started.
