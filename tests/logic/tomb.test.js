@@ -79,7 +79,13 @@ check('the plan alone is the same too', JSON.stringify(tombPlan(7, a.shopExit, E
   JSON.stringify(tombPlan(7, a.shopExit, EXIT_X).rooms.map(r => [r.x, r.y, r.w, r.h, r.type])));
 check('floor 1 and 3 have no tomb', makeLevel(3, 1).tomb === null && makeLevel(3, 3).tomb === null);
 // v0.0.145's floor 1 and 3 (pinned): untouched by the tomb
-check('floor 1 is the cave it was', hashMat(makeLevel(3, 1).mat) === -726997529, hashMat(makeLevel(3, 1).mat));
+// floor 1 with its layout knobs as they were when pinned (the owner retuned them in v0.0.161)
+const F1_OLD = { lvCavesHi: 3.5, lvCaveWLo: 90, lvCaveWHi: 170, lvCaveHLo: 80, raNestsLo: 14, raNestsHi: 18, enemies: 80, enemiesUp: 12 };
+const f1Was = Object.fromEntries(Object.keys(F1_OLD).map(k => [k, DEV[k]]));
+Object.assign(DEV, F1_OLD);
+const f1mat = hashMat(makeLevel(3, 1).mat);
+Object.assign(DEV, f1Was);
+check('floor 1 is the cave it was', f1mat === -726997529, f1mat);
 check('floor 3 is the cave it was', hashMat(makeLevel(3, 3).mat) === 1829628063, hashMat(makeLevel(3, 3).mat));
 
 // no natural cave: every open pixel above the shop is in a room's shape or a corridor's rect

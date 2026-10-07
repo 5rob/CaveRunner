@@ -49,7 +49,12 @@ check('quick (under 1.5 s average)', ms / SEEDS < 1500, ms / SEEDS);
 const a = makeLevel(4, 2), b = makeLevel(4, 2);
 check('same seed, same furniture', hash(a.dimg.data) === hash(b.dimg.data) && hash(a.img.data) === hash(b.img.data));
 // floors 1 and 3 untouched (v0.0.145's pictures, decoration and all)
+// floor 1 with its layout knobs as they were when pinned (the owner retuned them in v0.0.161)
+const F1_OLD = { lvCavesHi: 3.5, lvCaveWLo: 90, lvCaveWHi: 170, lvCaveHLo: 80, raNestsLo: 14, raNestsHi: 18, enemies: 80, enemiesUp: 12 };
+const f1Was = Object.fromEntries(Object.keys(F1_OLD).map(k => [k, DEV[k]]));
+Object.assign(DEV, F1_OLD);
 const f1 = makeLevel(3, 1), f3 = makeLevel(3, 3);
+Object.assign(DEV, f1Was);
 check('floor 1 is what it was', hash(f1.img.data) === 1936234780 && f1.props.length === 815, [hash(f1.img.data), f1.props.length]);
 check('floor 3 is what it was', hash(f3.img.data) === -672481880 && f3.props.length === 216, [hash(f3.img.data), f3.props.length]);
 

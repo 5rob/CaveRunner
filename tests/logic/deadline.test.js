@@ -8,13 +8,13 @@ const check = (name, ok, got) => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${ok ? '' : ' -> ' + JSON.stringify(got)}`);
 };
 check('an hour', DEADLINE_MS === 3600000, DEADLINE_MS);
-// floor 1's time is a Dev knob (minutes), an hour by default; the other floors keep the hour
+// floor 1's time is a Dev knob (minutes), a day by default (the owner's 1440, v0.0.161); the other floors keep the hour
 {
   const { DEV, dueMs } = require('../load');
-  check('floor 1: an hour by default', dueMs(1) === DEADLINE_MS, dueMs(1));
+  check('floor 1: a day by default', dueMs(1) === 24 * DEADLINE_MS, dueMs(1));
   DEV.due1 = 5;
   check('floor 1 follows the knob', dueMs(1) === 5 * 60000 && dueMs(2) === DEADLINE_MS, [dueMs(1), dueMs(2)]);
-  DEV.due1 = 60;
+  DEV.due1 = 1440;
 }
 check('reads 01:00:00 at the start', countdown(DEADLINE_MS) === '01:00:00', countdown(DEADLINE_MS));
 check('a second later', countdown(DEADLINE_MS - 1000) === '00:59:59', countdown(DEADLINE_MS - 1000));

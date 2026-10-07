@@ -106,7 +106,12 @@ check('distField takes the zones as its source (0 inside, growing outside)', dis
 // deterministic, and only floor 2
 const a = makeLevel(6, 2), b = makeLevel(6, 2);
 check('same seed, same zones', hash(a.darkMask) === hash(b.darkMask) && hash(a.webbing) === hash(b.webbing) && hash(a.mat) === hash(b.mat));
+// floor 1 with its layout knobs as they were when pinned (the owner retuned them in v0.0.161)
+const F1_OLD = { lvCavesHi: 3.5, lvCaveWLo: 90, lvCaveWHi: 170, lvCaveHLo: 80, raNestsLo: 14, raNestsHi: 18, enemies: 80, enemiesUp: 12 };
+const f1Was = Object.fromEntries(Object.keys(F1_OLD).map(k => [k, G.DEV[k]]));
+Object.assign(G.DEV, F1_OLD);
 const f1 = makeLevel(3, 1), f3 = makeLevel(3, 3);
+Object.assign(G.DEV, f1Was);
 check('floor 1 is what it was', hash(f1.img.data) === 1936234780 && f1.dark.length === 0 && f1.darkMask === null);
 check('floor 3 is what it was', hash(f3.img.data) === -672481880 && f3.dark.length === 0 && f3.webbing === null);
 

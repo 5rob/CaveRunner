@@ -14,16 +14,16 @@ import { HEX_RE, hexMix, hsvAdjust } from '../core/util.js';
 // localStorage touch is wrapped: it throws in a private window and does not exist at all
 // under Node (the logic tests eval this file), and a missing store just means "defaults".
 /** @type {DevKnobs} */
-export const DEV_DEFAULTS = { zoom: 1.6, renderScale: 1.5, torch: 0.5, fogDark: 0.99, fogDim: 0.85, move: 1, sputDip: 45, aggro: 0.6, loseAggro: 2, aimDist: 44, bhPull: 65, bhSpeed: 50, vol: 1, amb: 0.4, jetVol: 0.2,
-  vSpell: 0.6, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vDrip: 1, vStep: 1, vUi: 1, bagSpeed: 1,
-  holoAlpha: 1, bloom: 0.8, bloomBlur: 8, bloomBright: 1.3, pixelFx: 1, holoPx: 2,
-  holoMin: 0, holoMax: 1, holoFade: 3, holoC1x: 0.25, holoC1y: 1, holoC2x: 0.5, holoC2y: 0,
+export const DEV_DEFAULTS = { zoom: 1.7, renderScale: 1.5, torch: 0.7, fogDark: 0.99, fogDim: 0.9, move: 1, sputDip: 45, aggro: 0.6, loseAggro: 2, aimDist: 44, bhPull: 65, bhSpeed: 50, vol: 1, amb: 0.4, jetVol: 0.05,
+  vSpell: 0.6, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vDrip: 0.5, vStep: 1, vUi: 1, bagSpeed: 1,
+  holoAlpha: 1, bloom: 2, bloomBlur: 35, bloomBright: 1.3, pixelFx: 1, holoPx: 1.5,
+  holoMin: 0, holoMax: 1, holoFade: 3, holoC1x: 0.41, holoC1y: 0.97, holoC2x: 0.45, holoC2y: -0.02,
   guideCps: 30, guideWait: 1.4, guideIn: 50, shopGap: 0.9, shopTorch: 0.45, beamDeg: 50, beamReach: 2.2, beamNear: 0.5, beamGlow: 0.5,
-  due1: 60, enemies: ENEMY_COUNT, enemiesUp: 12, lvlBonus: LVL_SELL - LVL_BUY, lvlGrow: 3, rewardGrow: 2, killGrow: 1.35,
-  runnerPx: 1, runnerLine: 1, aimPad: 5,
-  ptrStart: 0.12, ptrReach: 1, ptrSize: 1, ptrLine: 0.75, snapR: 28, snapPull: 0.3, snapHit: 10,
-  witPad: 80, witKbps: 6000,
-  webSag: 0.03, bendK: 140, bendDamp: 5, bendPush: 0.3, bendGrab: 0.35, bendDip: 5, bendMax: 14,
+  due1: 1440, enemies: ENEMY_COUNT, enemiesUp: 20, lvlBonus: LVL_SELL - LVL_BUY, lvlGrow: 3, rewardGrow: 2, killGrow: 1.35,
+  runnerPx: 1, runnerLine: 0, aimPad: 5,
+  ptrStart: 0.01, ptrReach: 1, ptrSize: 0.5, ptrLine: 0.75, snapR: 75, snapPull: 0.75, snapHit: 25,
+  witPad: 80, witKbps: 2500,
+  webSag: 0.08, bendK: 140, bendDamp: 5, bendPush: 0.3, bendGrab: 0.35, bendDip: 5, bendMax: 14,
   vineGrav: 1, vineDamp: 1.2, vinePush: 0.6, vineMax: 0.9, vineLinks: 4, vineTailDamp: 1.5 };
 // g: the collapsible group the knob sits in on the Dev panel (DEV_GROUPS gives the order)
 /** @type {DevRow[]} */
@@ -263,7 +263,7 @@ export const RA_KNOBS = rangeKnobs('rat', [
   ['raSpawn',    'Secs between rats from a nest',     0.5, 60, 0.5,  6, 12],
   ['raWake',     'Nests and rats wake within',        100, 2000, 10, 480, 560],
   ['raNestRest', 'Secs a rat stays in the nest',      0, 20, 0.5,    2, 6],
-  ['raNests',    'Nests in the built-up zones',       0, 60, 1,      14, 18],
+  ['raNests',    'Nests in the built-up zones',       0, 60, 1,      4, 8],
   ['raNestsWild', 'Nests in the natural caves',       0, 30, 1,      2, 4],
   ['raNestGold', 'Gold in a nest when it dies',       0, 500, 5,     60, 60],
   ['raSpread',   'Roaming rats keep this far apart',  0, 200, 1,     22, 40],
@@ -337,9 +337,9 @@ export const LV_KNOBS = rangeKnobs('level', [
   ['lvHoles',   'Extra holes per layer (loops)',      0, 8, 0.1,    0.2, 1],
   ['lvHoleW',   'Hole width (px)',                    12, 80, 1,    18, 40],
   ['lvWalls',   'Walls per corridor (dead ends)',     0, 5, 0.1,    0, 1],
-  ['lvCaves',   'Big caverns',                        0, 8, 0.1,    2.5, 3.5],
-  ['lvCaveW',   'Cavern half width (px)',             20, 320, 5,   90, 170],
-  ['lvCaveH',   'Cavern half height (px)',            20, 320, 5,   80, 150],
+  ['lvCaves',   'Big caverns',                        0, 8, 0.1,    2.5, 4.5],
+  ['lvCaveW',   'Cavern half width (px)',             20, 320, 5,   120, 200],
+  ['lvCaveH',   'Cavern half height (px)',            20, 320, 5,   100, 150],
   ['lvWorks',   'Old workings (flattened stretches)', 0, 12, 0.1,   3, 5],
   ['lvWorkW',   'Old workings length (px)',           30, 400, 5,   90, 190],
   ['lvWorkH',   'Old workings headroom (px)',         14, 60, 1,    22, 30],
@@ -363,18 +363,18 @@ export const LV_KNOBS = rangeKnobs('level', [
 // on a floor; the rewards are rolled fresh when one dies.
 export const ELITE_KNOBS = rangeKnobs('elite', [
   ['elCount',   'Elites per floor',                       0, 40, 1,      2, 4],
-  ['elHp',      'Health (× a normal one)',                0.5, 10, 0.1,  2.5, 2.5],
-  ['elDmg',     'Damage (× a normal one)',                0.5, 10, 0.1,  1.5, 1.5],
-  ['elGold',    'Gold reward (× a normal one)',           0, 20, 0.5,    4, 4],
-  ['elRed',     'Red crystals dropped',                   0, 20, 1,      3, 5],
-  ['elGreen',   'Green crystals dropped',                 0, 10, 1,      1, 1],
-  ['elScale',   'Size (× a normal one)',                  0.5, 3, 0.05,  1, 1],
-  ['elTintAmt', 'Tint strength (0 none, 1 all tint)',     0, 1, 0.05,    0.45, 0.45],
-  ['elGlow',    'Highlight glow strength',                0, 1, 0.01,    0.22, 0.22],
-  ['elGlowR',   'Highlight glow size (past its body)',    0, 40, 1,      6, 6],
+  ['elHp',      'Health (× a normal one)',                0.5, 10, 0.1,  2.5, 4],
+  ['elDmg',     'Damage (× a normal one)',                0.5, 10, 0.1,  1.5, 3],
+  ['elGold',    'Gold reward (× a normal one)',           0, 20, 0.5,    4, 5],
+  ['elRed',     'Red crystals dropped',                   0, 20, 1,      3, 6],
+  ['elGreen',   'Green crystals dropped',                 0, 10, 1,      1, 2],
+  ['elScale',   'Size (× a normal one)',                  0.5, 3, 0.05,  1, 3],
+  ['elTintAmt', 'Tint strength (0 none, 1 all tint)',     0, 1, 0.05,    0.45, 0.75],
+  ['elGlow',    'Highlight glow strength',                0, 1, 0.01,    0, 0],
+  ['elGlowR',   'Highlight glow size (past its body)',    0, 40, 1,      2, 7],
 ]);
 export const ELITE_COLS = colourKnobs('elite', [
-  ['elTint', 'Tint and glow colour', '#ffc93c', '#ffc93c', 'tint'],
+  ['elTint', 'Tint and glow colour', '#fff382', '#ffe100', 'tint'],
 ]);
 // The elites' flames (v0.0.137): each elite gives off fire particles from its body, the torch's
 // flame turned into a spawner. Every number a range rolled per particle; the colour over a
@@ -391,8 +391,8 @@ export const ELITE_FX_KNOBS = rangeKnobs('elitefx', [
   ['elFxSize',  'Particle size',                            0.5, 6, 0.1,   1.5, 2.5],
   ['elFxBody',  'Spawn spread (0 middle, 1 its edge)',      0, 1.5, 0.05,  0.7, 1.1],
 ]);
-DEV_DEFAULTS.elFxGrad = '0:#ffffff 0.18:#fff0a0 0.45:#ff9a2a 0.75:#d0301a 1:#401018';
-DEV_DEFAULTS.elFxAlpha = '0:0 0.08:1 0.55:0.85 1:0';
+DEV_DEFAULTS.elFxGrad = '0:#000000 0.384:#000000 0.444:#ffffff 0.483:#c76eff 0.518:#9d57da 0.586:#11095e 0.662:#000000 0.748:#220347 0.852:#b2a6ff 0.941:#000000 1:#230e4f 1:#230e4f';
+DEV_DEFAULTS.elFxAlpha = '0:0 0.078:0.55 0.222:0.662 0.55:0.85 1:1';
 DEV_META.push({ k: 'elFxGrad', g: 'elitefx', label: 'Colour over life (gradient)', type: 'grad' },
   { k: 'elFxAlpha', g: 'elitefx', label: 'Opacity over life (ramp)', type: 'ramp' });
 // Floor 2 (v129; the tomb since Level 2 stage 2, world/tomb.js): its layout's numbers, ranges like
@@ -549,7 +549,7 @@ export const ARCH_KNOBS = rangeKnobs('arch', [
 ]);
 // Fire (v86): see fireStep. Every knob a min/max range like the creatures'.
 export const FIRE_KNOBS = rangeKnobs('fire', [
-  ['fireSpread', 'Spread chance per tick',            0, 1, 0.01,    0.02, 0.2],
+  ['fireSpread', 'Spread chance per tick',            0, 1, 0.01,    0.02, 1],
   ['fireGrass',  'Grass burns for (s)',               0.05, 5, 0.05, 0.4, 1.5],
   ['fireMoss',   'Moss burns for (s)',                0.05, 8, 0.05, 1, 4],
   ['fireWood',   'Timber burns for (s)',              0.1, 20, 0.1,  3, 9],
@@ -564,10 +564,10 @@ export const FIRE_KNOBS = rangeKnobs('fire', [
 // The Carrot stat (an Exo Suit stat perk): one level, 0-5, stretching several reaches at once.
 // Each is a multiplier: min = no Carrot fitted, max = Carrot V, levels in between evenly (carrotAt).
 export const CARROT_KNOBS = rangeKnobs('carrot', [
-  ['caCam',   'Camera distance (×)',       0.3, 3, 0.05,  1, 1.35],
-  ['caTorch', 'Torchlight reach (×)',      0.3, 4, 0.05,  1, 1.5],
-  ['caAggro', 'Enemy aggro distance (×)',  0.3, 4, 0.05,  1, 1.25],
-  ['caAim',   'Aim line length (×)',       0.3, 4, 0.05,  1, 2],
+  ['caCam',   'Camera distance (×)',       0.3, 3, 0.05,  1, 3],
+  ['caTorch', 'Torchlight reach (×)',      0.3, 4, 0.05,  0.4, 1.5],
+  ['caAggro', 'Enemy aggro distance (×)',  0.3, 4, 0.05,  1, 2],
+  ['caAim',   'Aim line length (×)',       0.3, 4, 0.05,  0.5, 1.2],
 ]);
 // Aim Assist (the 'aimassist' mod, LIST3 #10): the right stick drives a pointer out from your gun that
 // snaps onto creatures and fires once it's on one (spells/assist.js, game/systems/gun.js aimAndCast)

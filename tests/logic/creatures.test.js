@@ -168,7 +168,7 @@ for (let seed = 1; seed <= 12; seed++) {
     const ids = lv.enemies.filter(e => !e.nest).map(e => e.k.id);
     if (ids.every(id => lv.roster.includes(id))) spawnOk++;
     if (new Set(ids).size === lv.roster.length || lv.roster.length === 1) mixed++;
-    if (lv.enemies.every(e => e.hp === e.hpMax && e.hpMax === (e.k.elite ? game.eliteOf(enemyFor(e.k.id, f)) : enemyFor(e.k.id, f)).hp)) seeded++;   // elites: boosted
+    if (lv.enemies.every(e => e.hp === e.hpMax && e.hpMax === (e.k.elite ? game.eliteOf(enemyFor(e.k.id, f), e.k.eu) : enemyFor(e.k.id, f)).hp)) seeded++;   // elites: boosted, at their own roll
   }
 }
 check('every enemy on a floor comes off that floor\'s roster', spawnOk === counted, `${spawnOk}/${counted}`);

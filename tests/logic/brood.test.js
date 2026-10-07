@@ -45,7 +45,7 @@ const save = readSave(JSON.stringify({ ver: VERSION, floor: 1, loadout: { guns: 
 check('a save reads back the nests\' broods (and drops junk)', JSON.stringify(save.level.brood) === '[[3,5],[4,0]]', save.level.brood);
 
 // ---- the Dev knobs: how many enemies, and the level's reward ----
-check('enemies on floor 1 defaults to the old count, +12 a floor', DEV_DEFAULTS.enemies === ENEMY_COUNT && DEV_DEFAULTS.enemiesUp === 12);
+check('enemies on floor 1 defaults to the count (the owner\'s 50), +20 a floor', DEV_DEFAULTS.enemies === ENEMY_COUNT && ENEMY_COUNT === 50 && DEV_DEFAULTS.enemiesUp === 20);
 const was = DEV.enemies;
 DEV.enemies = 5;
 const few = makeLevel(4242, 1).enemies.filter(e => !e.nest).length;

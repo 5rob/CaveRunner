@@ -49,7 +49,7 @@ export const START_GOLD = 0;          // a new run starts with no gold and no gu
 export const COIN_PULL = 36;         // gold within this many units flies to you
 // how many enemies a floor gets before the floor lift. What they are and how hard
 // they hit is the roster's business now — see CREATURES.
-export const ENEMY_COUNT = 80;
+export const ENEMY_COUNT = 50;
 export const MOD_DROPS = 7;          // red crystals lying in the cave (they were mods: game/systems/shops.js)
 export const GUN_DROPS = 5;          // guns lying in the cave, unchanged
 export const PICKUP_GAP = 260;       // and no two of them closer than this
