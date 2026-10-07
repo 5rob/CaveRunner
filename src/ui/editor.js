@@ -3,7 +3,7 @@
 // (GunIcon), the slot grid lit by the live fire preview (SlotGrid), the mod bag, and the
 // ScrollBox grab bars both grids scroll with.
 
-import { drawGun, drawRunner } from '../art/sprites.js';
+import { drawGun, drawRunner, pixelSprite } from '../art/sprites.js';
 import { SFX } from '../audio/sfx.js';
 import { PH, PW } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
@@ -110,8 +110,8 @@ export const GF_WALL = 5;
 // GF_DPS_S: the seconds the DPS over the dummy's head averages over (owner: red, hidden at 0)
 export const GF_DPS_S = 3;
 // you, at the far left, holding the gun as the aim sways (owner: Follow Me has somewhere to come back to): your box
-// GF_YOU_X in from the left; the gun held at GF_GUN (× the game's own 0.55, so it reads in the small window)
-export const GF_YOU_X = 3, GF_GUN = 0.55 * 1.3;
+// GF_YOU_X in from the left; the gun held at the game's own size (GF_GUN = actors.js's 0.55)
+export const GF_YOU_X = 3, GF_GUN = 0.55;
 // Follow Me / Follow This pull this much harder in the window than in the game: the window is ~80 units across,
 // less than a fast shot travels before the pull stops it, so without it they'd hit the wall before coming back
 export const GF_FOLLOW_K = 3;
@@ -329,8 +329,16 @@ export function GunFire({ gun, sim }) {
       }
       // you, at the far left, the gun in hand on the sway (the game's own sprite and hold)
       ctx.globalAlpha = 1;
-      drawRunner(ctx, youX, youY, PW, PH, 1, null, false, 0, false, { gun: { x: hx, y: hy }, torch: { x: home.x + ca * 7, y: hy + sa * 5 - 0.5 } });
-      if (g) drawGun(ctx, hx, hy, aim, GF_GUN, gunAccent(g));
+      // exactly as render/actors.js drawPlayer draws you: the body, then the gun on its own layer, both through the
+      // pixel look (DEV.runnerPx, its outline DEV.runnerLine), smooth at 0
+      const hands = { gun: { x: hx, y: hy }, torch: g ? { x: home.x + ca * 7, y: hy + sa * 5 - 0.5 } : null };
+      const body = (/** @type {CanvasRenderingContext2D} */ c2) => drawRunner(c2, youX, youY, PW, PH, 1, null, false, 0, false, hands);
+      const gunL = (/** @type {CanvasRenderingContext2D} */ c2) => { if (g) drawGun(c2, hx, hy, aim, GF_GUN, gunAccent(g)); };
+      const rpx = DEV.runnerPx, rline = DEV.runnerLine > 0;
+      if (rpx > 0) {
+        pixelSprite(ctx, youX - 14, youY - 8, PW + 28, PH + 16, rpx, rline, body);
+        if (g) pixelSprite(ctx, youX - 14, youY - 8, PW + 28, PH + 16, rpx, false, gunL);
+      } else { body(ctx); gunL(ctx); }
       // the wall: grey stone blocks, offset every other row
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#4a4f5a'; ctx.fillRect(wallX, 0, GF_WALL + 1, wH);

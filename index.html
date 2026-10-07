@@ -28635,7 +28635,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var GF_SWAY = 0.06, GF_SWAY_S = 4;
   var GF_WALL = 5;
   var GF_DPS_S = 3;
-  var GF_YOU_X = 3, GF_GUN = 0.55 * 1.3;
+  var GF_YOU_X = 3, GF_GUN = 0.55;
   var GF_FOLLOW_K = 3;
   var GF_GRAPH_S = 5, GF_GRAPH_DT = 0.1;
   var GF_DUMMY_GAP = 6, GF_DUMMY_K = 2 / 3, DW = PW * GF_DUMMY_K, DH = PH * GF_DUMMY_K;
@@ -28917,8 +28917,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.restore();
         }
         ctx.globalAlpha = 1;
-        drawRunner(ctx, youX, youY, PW, PH, 1, null, false, 0, false, { gun: { x: hx, y: hy }, torch: { x: home.x + ca * 7, y: hy + sa * 5 - 0.5 } });
-        if (g) drawGun(ctx, hx, hy, aim, GF_GUN, gunAccent(g));
+        const hands = { gun: { x: hx, y: hy }, torch: g ? { x: home.x + ca * 7, y: hy + sa * 5 - 0.5 } : null };
+        const body = (c2) => drawRunner(c2, youX, youY, PW, PH, 1, null, false, 0, false, hands);
+        const gunL = (c2) => {
+          if (g) drawGun(c2, hx, hy, aim, GF_GUN, gunAccent(g));
+        };
+        const rpx = DEV.runnerPx, rline = DEV.runnerLine > 0;
+        if (rpx > 0) {
+          pixelSprite(ctx, youX - 14, youY - 8, PW + 28, PH + 16, rpx, rline, body);
+          if (g) pixelSprite(ctx, youX - 14, youY - 8, PW + 28, PH + 16, rpx, false, gunL);
+        } else {
+          body(ctx);
+          gunL(ctx);
+        }
         ctx.globalAlpha = 1;
         ctx.fillStyle = "#4a4f5a";
         ctx.fillRect(wallX, 0, GF_WALL + 1, wH);
