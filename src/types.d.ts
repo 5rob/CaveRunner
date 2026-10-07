@@ -770,7 +770,7 @@ interface GameInput {
   hud?: Hud; witness?: Witness | null; replay?: ReplayView | null; spawnGun?: number;
   saveClip?: (C: Clip) => Promise<ClipMeta | null>;   // Game: keep a death replay (systems/recorder.js clipKeep)
   clipFromSaved?: (S: SavedClip) => Clip;            // Game: a stored clip ready to play
-  requestRestart?: () => void; promptBottom?: number; newCave?: boolean | number; ctlH?: number;   // newCave (Dev): true = this floor again, a number = go to that floor
+  requestRestart?: () => void; promptBottom?: number; promptLeft?: number | null; newCave?: boolean | number; ctlH?: number;   // newCave (Dev): true = this floor again, a number = go to that floor
   mapOpen?: boolean; floor?: number; saveRun?: () => void;
   mapView?: () => MapView;    // Game: what the map screen draws (ui/map.js)
   dropPin?: (e: string) => void;   // Game: a pin with that emoji where you stand

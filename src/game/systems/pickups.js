@@ -3,7 +3,7 @@
 // and the interact tap that takes one: a frame of them all (stepPickups, a part of step()).
 
 import { SFX } from '../../audio/sfx.js';
-import { COIN_PULL, PH, PICKUP_COOL, PW, SHOP_Y } from '../../core/consts.js';
+import { COIN_PULL, PH, PICKUP_COOL, PW, SHOP_Y, VEND_BUY_X, VEND_SELL_X } from '../../core/consts.js';
 import { healPrice } from '../../data/creatures.js';
 import { PERKS } from '../../data/perks.js';
 import { collideNuggets, stepNugget } from '../../world/nuggets.js';
@@ -142,13 +142,16 @@ export function stepPickups(W, G, F) {
     const dprc = gameDpr();
     pbottom = Math.round(Math.max(10, G.c.height / dprc - (iy - 16 - W.camY) * W.unitPx));
   }
-  const sig = nearKey + ':' + (label && label.can ? 1 : 0) + (near && near.src === 'vend' && idle ? 'i' : '') + ':' + inShop + ':' + Math.round(pbottom / 16);
+  // a level machine's hint sits centred over its machine: the machine's middle on screen, css px from the left
+  const pleft = near && near.src === 'vend' ? Math.round(((near.kind === 'buy' ? VEND_BUY_X : VEND_SELL_X) - W.camX) * W.unitPx) : null;
+  const sig = nearKey + ':' + (label && label.can ? 1 : 0) + (near && near.src === 'vend' && idle ? 'i' : '') + ':' + inShop + ':' + Math.round(pbottom / 16) + ':' + (pleft == null ? '' : Math.round(pleft / 3));
   if (nearKey !== -1 && nearKey !== W.lastNear) SFX.fx('prompt');   // a soft blip as a card comes up
   W.lastNear = nearKey;
   if (sig !== G.input.current.sig) {
     G.input.current.sig = sig;
     G.input.current.prompt = label;
     G.input.current.promptBottom = pbottom;
+    G.input.current.promptLeft = pleft;
     G.input.current.inShop = inShop;
     G.input.current.notify();
   }

@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.157</title>
-<!-- VERSION = 'v157' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.158</title>
+<!-- VERSION = 'v158' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -399,15 +399,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .pbuy.cant{opacity:.45}
 .pbuy.cant b{color:#fff}
 /* the buy machine's two options: flick to select a level (left), tap to buy (right) */
-.buypanel.pickpanel{left:12%;right:12%;padding:4px 8px;background:rgba(18,20,26,0.25);border-color:#00ff3c;
-  box-shadow:none;transform:scale(.6);transform-origin:50% 100%;transition:opacity .2s}
+.buypanel.pickpanel{right:auto;width:max-content;padding:4px 14px;background:rgba(18,20,26,0.25);border-color:#00ff3c;
+  box-shadow:none;transform:translateX(-50%) scale(.6);transform-origin:50% 100%;transition:opacity .2s}
 /* hidden while you're using the sticks (pickups.js: idle after PICK_IDLE); fades up, hides at once */
 .buypanel.pickhide{opacity:0;transition:none}
 .pbuy.pick{height:44px;gap:18px;white-space:nowrap}
 .pbuy.pick .popt{display:flex;align-items:center;gap:5px}
 .pbuy.pick b{font-size:14px;color:#00ff3c}
 .pbuy.pick .popt.cant{opacity:.45}
-.buypanel.pickpanel.one{left:20%;right:20%}
 .buypanel.pickpanel.red{border-color:#ff0000}
 .buypanel.pickpanel.red .pbuy.pick b{color:#ff0000}
 .weapon.locked{opacity:.45}
@@ -802,7 +801,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.157';</script>
+<script>const VERSION = 'v0.0.158';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -24342,13 +24341,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const dprc = gameDpr();
       pbottom = Math.round(Math.max(10, G.c.height / dprc - (iy - 16 - W.camY) * W.unitPx));
     }
-    const sig = nearKey + ":" + (label && label.can ? 1 : 0) + (near && near.src === "vend" && idle ? "i" : "") + ":" + inShop + ":" + Math.round(pbottom / 16);
+    const pleft = near && near.src === "vend" ? Math.round(((near.kind === "buy" ? VEND_BUY_X : VEND_SELL_X) - W.camX) * W.unitPx) : null;
+    const sig = nearKey + ":" + (label && label.can ? 1 : 0) + (near && near.src === "vend" && idle ? "i" : "") + ":" + inShop + ":" + Math.round(pbottom / 16) + ":" + (pleft == null ? "" : Math.round(pleft / 3));
     if (nearKey !== -1 && nearKey !== W.lastNear) SFX.fx("prompt");
     W.lastNear = nearKey;
     if (sig !== G.input.current.sig) {
       G.input.current.sig = sig;
       G.input.current.prompt = label;
       G.input.current.promptBottom = pbottom;
+      G.input.current.promptLeft = pleft;
       G.input.current.inShop = inShop;
       G.input.current.notify();
     }
@@ -31435,6 +31436,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             className: "buypanel" + (prompt.pick || prompt.sell ? " pickpanel" + (prompt.idle ? "" : " pickhide") + (prompt.sell ? " one" : "") + (prompt.sell && !prompt.can ? " red" : "") : ""),
             style: {
               bottom: (input.current.promptBottom || 12) + "px",
+              ...prompt.pick || prompt.sell ? { left: (input.current.promptLeft || 0) + "px" } : {},
               maxHeight: "calc(100% - " + ((input.current.promptBottom || 12) + 12) + "px)"
             }
           },
