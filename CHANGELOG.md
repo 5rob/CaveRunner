@@ -5,6 +5,21 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.161 — a new title scene; every gun wears pixel art
+2026-10-08 (owner's ask; a minor update).
+- **Title scene** (built by a time-boxed agent): one runner who runs along the floor (steps up ledges, drops into
+  holes) and jetpacks over walls and gaps; the floor raised ~20 units. It scrolls through Mossy Caves' zones in turn
+  (natural moss, timber works, paved brick works with chains, a grove), the theme's colours and the game's plant
+  painters. The terrain is a carveable grid (2-unit cells): blasts blow holes, digging shots nick pits, fire shots
+  and blasts light moss / timber / plants, which spread and burn out (`TITLE_FIRE` cap). He swaps gun every 3.5–6 s:
+  7 real shots (`bolt`, `buck`, `fball`, `zap`, `flamer`, `blast`, `slug`) each with a gun sprite, drawn with the
+  game's `drawLook` / `drawBolt`. Only floor 1's creatures: jellyfish, spiders (floor and roof), rat swarms (3–6,
+  no nests). Kills drop gold that flies to him and is vacuumed up. The pure step stays in `art/titlescene.js`; the
+  drawing moved to `game/render/titledraw.js` (it needs `drawLook`). `slots` suite covers it.
+- **Every gun wears a pixel-art sprite**: the old drawn gun is gone. A gun without a pick gets the `GUN_ART` sprite
+  nearest its colour (`gunArtId`, `artForHue`, `artHue` in `art/gunart.js`), so it matches its HUD slot. `drawGun`
+  takes the art id (no accent). The 🖼️ gallery's Default tile is gone; the gun machine's hologram is a sprite.
+
 ## v0.0.160 — dev mode: hold ⏸ 5 s to show the dev tools; ⏸ and ⚙️ swap places
 Released 2026-10-08 (owner OK'd the screenshots; a minor update).
 - ⏸ is now in the top-right corner, the ⚙️ left of it. ⏸ opens the menu on release; **held 5 s** it toggles dev
