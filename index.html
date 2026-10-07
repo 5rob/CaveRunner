@@ -65,6 +65,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   filter:drop-shadow(0 1px 2px rgba(0,0,0,0.7))}
 .dbtn.on{border:2.5px solid var(--ctl-hot)}
 .dbtn.empty{border-style:dotted;opacity:.45;cursor:default}
+/* a slot holding a gun (owner, LIST4 #5): the ring in the gun's colour (inline, gunColor; the deck is
+   dark in both themes, so the dark theme's bright gun colours), a faint tint of its hue (--gh) inside;
+   the gun in hand: a thicker ring, a stronger tint and a glow */
+.slots{--gun-s:65%;--gun-l:72%}
+.dbtn.slot.gun{background-color:hsla(var(--gh),65%,60%,.14)}
+.dbtn.slot.gun.on{border-width:3.5px;border-style:solid;background-color:hsla(var(--gh),65%,60%,.34);
+  box-shadow:0 0 9px hsla(var(--gh),85%,65%,.85)}
 .dbtn .gicon{width:92%;height:auto;pointer-events:none}
 .dbtn .emo{font-size:27px;line-height:1;pointer-events:none}
 .dbtn .badge{position:absolute;right:-4px;top:-4px;margin:0;font:700 10px ui-monospace,monospace;
@@ -173,6 +180,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   padding-top:calc(10px + env(safe-area-inset-top))}
 .shead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 0 8px}
 .shead h2{margin:0;font-size:17px}
+/* the Bag's header (owner, LIST4 #1): gun name ✏️ … 💾 Done on one line; the inline rename / preset box */
+.shead{position:relative}
+.shead h2.bagname{min-width:0;flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shead h2.bagname.none{color:var(--muted)}
+.shead .hgap{flex:1 1 0;min-width:0}
+.renamebtn,.presetbtn{flex:0 0 auto;width:34px;height:34px;padding:0;border-radius:17px;border:1px solid var(--ring);
+  background:var(--btn);font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center}
+.renamebtn{width:28px;height:28px;font-size:13px;margin-left:-4px;border-color:transparent;background:none}
+.shead .done{flex:0 0 auto}
+.hflash{position:absolute;left:0;top:100%;margin-top:-6px;z-index:2;padding:3px 9px;border-radius:10px;
+  background:#1d8a52;color:#fff;font:700 11px system-ui,sans-serif;pointer-events:none;animation:hflash 1.6s ease-out forwards}
+@keyframes hflash{0%{opacity:0}10%{opacity:1}75%{opacity:1}100%{opacity:0}}
+.shead.hedit{justify-content:flex-start;gap:6px}
+.hedlab{flex:0 0 auto;font:700 12px system-ui,sans-serif;color:var(--muted)}
+.hedin{flex:1 1 0;min-width:0;height:34px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);
+  color:var(--text);font:600 15px system-ui,sans-serif;padding:0 9px;box-sizing:border-box}
+.hedok,.hedno{flex:0 0 auto;width:36px;height:34px;border-radius:9px;border:1px solid var(--ring);background:var(--btn);
+  color:var(--text);font:700 16px system-ui,sans-serif;padding:0}
+.hedok{background:#1d8a52;border-color:#1d8a52;color:#fff}
 .done{height:36px;padding:0 16px;border-radius:18px;border:1px solid var(--ring);
   background:var(--btn);color:var(--text);font:600 14px system-ui,sans-serif}
 .btop{display:flex;gap:8px;margin-bottom:8px;align-items:flex-start}
@@ -515,6 +541,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .devvars{display:flex;flex-direction:column;gap:8px;padding:10px 12px 12px}
 .spawnpanel{padding:16px 16px 18px}
 .spawnpanel .spawngo{margin-top:12px;width:100%}
+/* Spawn gun's presets (save/presets.js): a row each, name in its gun colour, 🗑️ then a red Delete */
+.spawnpanel{overflow:hidden}
+.spawnpanel .presets{--gun-s:65%;--gun-l:72%;margin-top:14px;min-height:0;display:flex;flex-direction:column}
+.spawnpanel .presets .lab{margin:0 0 6px}
+.prelist{display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:46vh;touch-action:pan-y}
+.prerow{display:flex;gap:6px}
+.pregun{flex:1 1 0;min-width:0;height:36px;border-radius:10px;border:1px solid var(--ring);background:var(--pad);
+  font:700 13px system-ui,sans-serif;text-align:left;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.predelask,.predel{flex:0 0 auto;height:36px;border-radius:10px;border:1px solid var(--ring);background:var(--pad);color:var(--text);padding:0 10px}
+.predelask{width:40px;padding:0}
+.predel{background:#c8202c;border-color:#c8202c;color:#fff;font:700 12px system-ui,sans-serif}
+.prenone{margin:0;color:var(--muted);font:500 12px system-ui,sans-serif}
 /* Dev → Spawn level: every floor, two columns; yours lit */
 .lvlpick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .lvlpick .lvlgo{text-align:left;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -25540,6 +25578,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       W.pickups.push({ kind: "gun", x: W.p.x + PW / 2 + W.p.face * 22, y: W.p.y + PH - 9, gun, t: 0 });
       toast(W, "Spawned " + gun.name);
     }
+    const pre = G.input.current.spawnPreset;
+    if (pre) {
+      G.input.current.spawnPreset = null;
+      const gun = resetGun(Object.assign({}, pre, { slots: pre.slots.slice() }));
+      W.pickups.push({ kind: "gun", x: W.p.x + PW / 2 + W.p.face * 22, y: W.p.y + PH - 9, gun, t: 0 });
+      toast(W, "Spawned " + gun.name);
+    }
   }
   function stepPerks(W, G, F2) {
     const { dt } = F2;
@@ -26793,6 +26838,50 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
+  // src/save/presets.js
+  var PRESET_KEY = "caverunner-gunpresets";
+  var PRESET_NAME_MAX = 40;
+  var cleanName = (name, fallback) => {
+    const s = typeof name === "string" ? name.trim().slice(0, PRESET_NAME_MAX) : "";
+    return s || fallback;
+  };
+  function storeGun(gun) {
+    const g = cleanGun(JSON.parse(JSON.stringify(gun)));
+    if (!g) return null;
+    g.mana = g.manaMax;
+    return g;
+  }
+  function cleanPresets(list) {
+    if (!Array.isArray(list)) return [];
+    const out = [];
+    for (const p of list) {
+      if (!p || typeof p !== "object") continue;
+      const gun = storeGun(p.gun);
+      if (gun) out.push({ name: cleanName(p.name, gun.name), gun });
+    }
+    return out;
+  }
+  var loadPresets = () => {
+    try {
+      return cleanPresets(JSON.parse(localStorage.getItem(PRESET_KEY) || "[]"));
+    } catch (_) {
+      return [];
+    }
+  };
+  var savePresets = (list) => {
+    try {
+      localStorage.setItem(PRESET_KEY, JSON.stringify(list));
+    } catch (_) {
+    }
+  };
+  function addPreset(list, name, gun) {
+    const g = gun && storeGun(gun);
+    if (!g) return list.slice();
+    return list.concat([{ name: cleanName(name, g.name), gun: g }]);
+  }
+  var removePreset = (list, i) => list.filter((_, k) => k !== i);
+  var presetGun = (p) => storeGun(p.gun);
+
   // src/ui/devpanel.js
   function JellyPreview() {
     const ref = useRef(null);
@@ -27844,8 +27933,42 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h("button", { className: "dbg spawngo", onPointerDown: (e) => {
           e.preventDefault();
           spawn();
-        } }, "Spawn")
+        } }, "Spawn"),
+        h(PresetList, { input, close })
       )
+    );
+  }
+  function PresetList({ input, close }) {
+    const [list, setList] = useState(loadPresets);
+    const [asking, setAsking] = useState(-1);
+    const tap = (f) => (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      f();
+    };
+    const del = (i) => {
+      const next = removePreset(loadPresets(), i);
+      savePresets(next);
+      setList(next);
+      setAsking(-1);
+    };
+    return h(
+      "div",
+      { className: "presets" },
+      h("p", { className: "lab" }, "Presets"),
+      list.length ? h("div", { className: "prelist" }, list.map((p, i) => h(
+        "div",
+        { key: i, className: "prerow", "data-preset": i },
+        h("button", {
+          className: "pregun",
+          style: { color: gunColor(p.gun) },
+          onPointerDown: tap(() => {
+            input.current.spawnPreset = presetGun(p);
+            close();
+          })
+        }, p.name),
+        asking === i ? h("button", { className: "predel", onPointerDown: tap(() => del(i)) }, "Delete") : h("button", { className: "predelask", "aria-label": "Delete preset", onPointerDown: tap(() => setAsking(i)) }, "🗑️")
+      ))) : h("p", { className: "prenone" }, "No presets yet — 💾 in the Bag saves one")
     );
   }
 
@@ -29151,6 +29274,72 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
   var SHOW_TIPS = false;
+  function BagHead({ gun, sel, refresh, close }) {
+    const [ed, setEd] = useState(null);
+    const [text, setText] = useState("");
+    const [flash, setFlash] = useState("");
+    const timer = useRef(0);
+    useEffect(() => () => clearTimeout(timer.current), []);
+    const tap = (f) => (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      f();
+    };
+    const open = (kind) => {
+      if (gun) {
+        setText(gun.name);
+        setEd({ kind, sel });
+      }
+    };
+    const editing = ed && gun && ed.sel === sel ? ed.kind : "";
+    const ok = () => {
+      const t = text.trim().slice(0, PRESET_NAME_MAX);
+      if (gun && editing === "name" && t) {
+        if (gun.hue == null) gun.hue = gunHue(gun);
+        gun.name = t;
+      }
+      if (gun && editing === "preset") {
+        savePresets(addPreset(loadPresets(), t, gun));
+        setFlash("Saved preset");
+        clearTimeout(timer.current);
+        timer.current = window.setTimeout(() => setFlash(""), 1600);
+      }
+      setEd(null);
+      refresh();
+    };
+    const doneBtn = h("button", { className: "done", onPointerDown: (e) => {
+      e.preventDefault();
+      close();
+    } }, "Done");
+    if (editing) return h(
+      "div",
+      { className: "shead hedit" },
+      h("span", { className: "hedlab" }, editing === "name" ? "Name" : "💾 Preset"),
+      h("input", {
+        className: "hedin",
+        value: text,
+        maxLength: PRESET_NAME_MAX,
+        autoFocus: true,
+        onChange: (e) => setText(e.target.value),
+        onKeyDown: (e) => {
+          if (e.key === "Enter") ok();
+          else if (e.key === "Escape") setEd(null);
+        }
+      }),
+      h("button", { className: "hedok", "aria-label": "Save", onPointerDown: tap(ok) }, "✓"),
+      h("button", { className: "hedno", "aria-label": "Cancel", onPointerDown: tap(() => setEd(null)) }, "✕")
+    );
+    return h(
+      "div",
+      { className: "shead" },
+      h("h2", { className: "bagname" + (gun ? "" : " none"), style: gun ? { color: gunColor(gun) } : null }, gun ? gun.name : "Empty slot"),
+      gun ? h("button", { className: "renamebtn", "aria-label": "Rename gun", onPointerDown: tap(() => open("name")) }, "✏️") : null,
+      flash ? h("span", { className: "hflash" }, flash) : null,
+      h("span", { className: "hgap" }),
+      gun ? h("button", { className: "presetbtn", "aria-label": "Save as preset", onPointerDown: tap(() => open("preset")) }, "💾") : null,
+      doneBtn
+    );
+  }
   function Editor({ input, close, refresh, canEdit, tabs }) {
     const LO = input.current.loadout;
     useEffect(() => {
@@ -29375,16 +29564,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return h(
       "div",
       { className: "sheet" + (shown ? " withcard" : "") },
-      h(
-        "div",
-        { className: "shead" },
-        h("h2", null, "Guns & Mods"),
-        h("span", { className: "purse" }, LO.gold + "g"),
-        h("button", { className: "done", onPointerDown: (e) => {
-          e.preventDefault();
-          close();
-        } }, "Done")
-      ),
+      h(BagHead, { gun, sel, refresh, close }),
       h(
         "div",
         { className: "btop" },
@@ -31562,8 +31742,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               "button",
               {
                 key: i,
-                className: "dbtn slot" + (g ? "" : " empty") + (i === LO.sel ? " on" : "") + (gunHold && gunHold.i === i ? " ringing " + gunHold.mode : "") + (gunDrag && gunDrag.i === i ? " lifted" : ""),
-                style: btnAt(deck.guns[i]),
+                className: "dbtn slot" + (g ? " gun" : " empty") + (i === LO.sel ? " on" : "") + (gunHold && gunHold.i === i ? " ringing " + gunHold.mode : "") + (gunDrag && gunDrag.i === i ? " lifted" : ""),
+                // a slot holding a gun: its ring in the gun's name colour, a faint tint of it inside (owner, LIST4 #5)
+                style: g ? Object.assign(btnAt(deck.guns[i]), { borderColor: gunColor(g), "--gh": gunHue(g) }) : btnAt(deck.guns[i]),
                 title: g ? g.name + " — hold to take a gun here, or drag it out" : "Empty slot — hold to take a gun here",
                 onPointerDown: gunSlotPress(input, i, {
                   tap: () => {

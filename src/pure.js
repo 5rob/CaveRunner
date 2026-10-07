@@ -61,6 +61,7 @@ export * from './audio/recipes.js';
 export * from './audio/sfx.js';
 export * from './save/save.js';
 export * from './save/audit.js';
+export * from './save/presets.js';
 export * from './replay/replay.js';
 export * from './replay/clip.js';
 export * from './ui/h.js';

@@ -9,7 +9,7 @@
 import { jetPitch } from '../../audio/recipes.js';
 import { SFX } from '../../audio/sfx.js';
 import { PH, PW } from '../../core/consts.js';
-import { caveGun } from '../../spells/guns.js';
+import { caveGun, resetGun } from '../../spells/guns.js';
 import { stepBullets } from './bullets.js';
 import { stepEnemies } from './enemies.js';
 import { stepFields } from './fields.js';
@@ -82,6 +82,13 @@ export function stepRequests(W, G, F) {
   if (G.input.current.spawnGun) {               // Dev → Spawn gun: drop one just in front of you
     const gun = caveGun(G.input.current.spawnGun, Math.random);
     G.input.current.spawnGun = 0;
+    W.pickups.push({ kind: 'gun', x: W.p.x + PW / 2 + W.p.face * 22, y: W.p.y + PH - 9, gun, t: 0 });
+    toast(W, 'Spawned ' + gun.name);
+  }
+  const pre = G.input.current.spawnPreset;
+  if (pre) {                                    // Dev → Spawn gun → a preset (save/presets.js): that exact gun
+    G.input.current.spawnPreset = null;
+    const gun = resetGun(Object.assign({}, pre, { slots: pre.slots.slice() }));
     W.pickups.push({ kind: 'gun', x: W.p.x + PW / 2 + W.p.face * 22, y: W.p.y + PH - 9, gun, t: 0 });
     toast(W, 'Spawned ' + gun.name);
   }

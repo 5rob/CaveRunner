@@ -82,6 +82,9 @@ interface Gun {
   old?: boolean;              // swapped out on the ground: no "never held" glow
 }
 
+/** a saved gun preset (save/presets.js): the Bag's 💾 adds one, Dev → Spawn gun lists them */
+interface GunPreset { name: string; gun: Gun }
+
 /** one shot out of the barrel: blankShot's fields (spells/cast.js), after the modifiers */
 interface Shot {
   dmg: number; speed: number; spread: number; size: number; life: number; count: number;
@@ -768,6 +771,7 @@ interface GameInput {
   mouse: { x: number; y: number; inside: boolean; down: boolean };
   // set as it runs
   hud?: Hud; witness?: Witness | null; replay?: ReplayView | null; spawnGun?: number;
+  spawnPreset?: Gun | null;   // Dev → Spawn gun → a preset: step drops this exact gun in front of you
   saveClip?: (C: Clip) => Promise<ClipMeta | null>;   // Game: keep a death replay (systems/recorder.js clipKeep)
   clipFromSaved?: (S: SavedClip) => Clip;            // Game: a stored clip ready to play
   requestRestart?: () => void; promptBottom?: number; promptLeft?: number | null; newCave?: boolean | number; ctlH?: number;   // newCave (Dev): true = this floor again, a number = go to that floor
