@@ -95,6 +95,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .gold span{font-size:15px;font-weight:700;color:#c9a24a}
 .gold .debt{font-size:18px;color:#ff4a4a}
 .gold .debt span{font-size:12px;color:#d06060;margin-left:3px}
+/* narrow phones: the debt shrinks so it clears ⚙️ (left of ⏸ since v0.0.160) */
+@media (max-width:400px){.gold .debt{font-size:14px}.gold .debt span{font-size:10px}}
 .gold .due{white-space:nowrap;font:600 12px system-ui,sans-serif;color:#d06060;letter-spacing:.04em;text-transform:uppercase}
 .gold .due b{font:800 16px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ff4a4a;letter-spacing:0}
 .gold .due.late b{animation:dueblink 1s steps(2) infinite}
