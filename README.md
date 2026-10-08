@@ -63,10 +63,11 @@ explosions, bullet hits, enemy fire, creature voices, world/props, drips, footst
 
 **Title screen and save slots.** The game opens on a title screen with **3 save slots**: pick one
 and press Start (or Continue). Each slot is its own run with its own unlocked mods and perks; 🗑️
-then "Delete?" wipes a slot. Your run from before this update is slot 1. Behind it, a runner tours
-Mossy Caves sideways (its natural caves, spider caves, the built-up layers, brick works and the vine grove),
-fighting the real creatures (he lets them come into view before he shoots), collecting gold and setting
-things alight the way the game does; fire runs along web lines and jumps between vines and webs that nearly touch.
+then "Delete?" wipes a slot. Your run from before this update is slot 1. Behind it, four players (blue, red,
+green, yellow) tour Mossy Caves sideways (its natural caves, spider caves, the built-up layers with the mine
+works' sloping roof, brick works and the vine grove), fighting the real creatures with guns made up at random
+from real shots and modifiers, collecting gold and setting things alight (slowly); vines sway as they pass, and
+a vine or web line burnt or blasted through hangs from its ends, swinging and burning.
 The gun in your hands has the same chunky pixel look as you, in the game, the Bag and the title.
 
 **Pause.** ⏸ (top right) pauses: Resume, Save, a Volume slider for the whole game, and Exit

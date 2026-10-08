@@ -6,7 +6,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v0.0.165 — the title: four players, twice the creatures, random guns with modifiers, a natural mine slope, slower fire, cut vines and webs hang and swing
-Not yet released (on branch `title-players`, waiting on the owner's OK of the screenshots).
+Released 2026-10-08 (owner OK'd the screenshots; a minor update).
 - **Four players** (`TITLE_RUNNERS`, `S.runners`; `S.runner` is player 1): each on its own clock, easing apart when
   side by side, each its colour (`TITLE_COLS`: blue, red, green, yellow) on the backpack and a stripe over the helmet
   (`paintBody`/`drawRunner`'s new `tint`). Creatures go after their nearest player (rats: a nav field each), gold
