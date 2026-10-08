@@ -5,8 +5,8 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
-## v0.0.161 — a new title scene; every gun wears pixel art
-2026-10-08 (owner's ask; a minor update).
+## v0.0.161 — a new title scene (a tour of the real Mossy Caves); every gun wears pixel art; the owner's Dev defaults
+Released 2026-10-08 (owner OK'd the screenshots; a minor update).
 - **Title scene** (built by a time-boxed agent): one runner who runs along the floor (steps up ledges, drops into
   holes) and jetpacks over walls and gaps; the floor raised ~20 units. It scrolls through Mossy Caves' zones in turn
   (natural moss, timber works, paved brick works with chains, a grove), the theme's colours and the game's plant
