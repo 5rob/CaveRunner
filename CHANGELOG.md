@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.173 — the title: the jellyfish glow's twinkle moves with the cave
+Released 2026-10-08 (owner's report; a minor update).
+- `titlePlantGlow` handed `plantGlowFill` screen coordinates, so its twinkle (a pattern by position) stood still on the
+  screen while the cave scrolled under it. Now world coordinates (drawn at the screen's place as before).
+
 ## v0.0.172 — the title: a sixth zone, the winding caves
 Released 2026-10-08 (owner OK'd; a minor update).
 - `winding` in `TITLE_ZONES` (owner: the natural caves that aren't big and open): rock, a narrow tunnel snaking up and down

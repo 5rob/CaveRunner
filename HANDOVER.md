@@ -3,7 +3,9 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
-## NEXT (as of v0.0.172, 2026-10-08)
+## NEXT (as of v0.0.173, 2026-10-08)
+
+- v0.0.173 released: the title's jellyfish plant glow twinkle moves with the cave (was fixed to the screen).
 
 - **v0.0.172 released** (owner OK'd; `node tools/windshots.js`): a sixth title zone, the winding caves.
 

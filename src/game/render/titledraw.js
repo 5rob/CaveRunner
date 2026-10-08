@@ -372,7 +372,8 @@ function titlePlantGlow(ctx, S, e) {
     A[o] = r; A[o + 1] = g; A[o + 2] = b; A[o + 3] = a;
   }
   const out = new ImageData(w, h);
-  if (!plantGlowFill(out.data, A, w, h, { ox, oy, px: TCELL, cx: e.x - S.scroll, cy: e.y, reach, white: C.white,
+  // in world coordinates (the twinkle is a pattern in the world: owner, v0.0.173, it stood still on the screen as the cave went by)
+  if (!plantGlowFill(out.data, A, w, h, { ox: c0 * TCELL, oy, px: TCELL, cx: e.x, cy: e.y, reach, white: C.white,
     top: kru('jePlantTop', u.plant) / 100, strength, t: S.t * kru('jePlantTwinkle', u.plant),
     size: kru('jePlantSize', u.plant), rgb: hexArr(jcol('jeColGlow', u.col)) })) return;
   gx.putImageData(out, 0, 0);

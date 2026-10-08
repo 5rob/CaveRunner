@@ -5,4 +5,4 @@
 // 1000; 0.0.132 is 132), written as `<!-- VERSION = 'v132' -->` near the top of the page: the shape
 // the installed app (and CI's version.txt) has always looked for, so an app from before v0.0.132
 // still sees every update as a bigger number.
-export const VERSION = 'v0.0.172';
+export const VERSION = 'v0.0.173';
