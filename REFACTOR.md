@@ -890,6 +890,14 @@ Catches "wrong field name" and "missing argument" bugs before the phone does.
 Bugs, oddities and "this should be better" spotted mid-move. Don't fix them in a refactor
 commit. List them here for after.
 
+- **v0.0.168–173 (title), found and left:** the brick works' floor levels off over only 36 units (a step of up to 4 a
+  half unit: `slots`' "no steps" check allows 4.5); the players saw more since jetpacks got gravity (v0.0.171, ~120 starts a
+  minute for four, was ~75), mostly running on in tunnels they cut below the floor line; the title's `titleDraw` uses
+  `S.rnd` for its shake, so drawing changes the scene's random stream (a test that draws and steps isn't repeatable).
+- **v0.0.171: `pixelSprite` (art/sprites.js) shares one layer and didn't reset its state between paints** (a paint that set
+  'lighter' leaked into the next: the title's players went white). Fixed: save/restore round each paint (game too).
+- **v0.0.168+: title tests tied to seed 7 broke whenever the zone plan's random stream changed** (a new zone kind, a mine
+  roll). Fixed for the arch, web/vine, vine-swing and fire tests: each searches for a seed that has what it needs.
 - **v0.0.147: browser `nuggets` "they settle on the floor, not in it" flaked** (drift 5–7 vs 1.5 in 2 of 4 runs; passed
   alone otherwise). The nugget physics didn't change; the check counts frames, not seconds. Add to the known flakes;
   making it time-based would settle it.

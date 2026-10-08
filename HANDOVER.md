@@ -3,38 +3,35 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
-## NEXT (as of v0.0.173, 2026-10-08)
+## NEXT (as of v0.0.173, 2026-10-09)
 
-- v0.0.173 released: the title's jellyfish plant glow twinkle moves with the cave (was fixed to the screen).
-
-- **v0.0.172 released** (owner OK'd; `node tools/windshots.js`): a sixth title zone, the winding caves.
-
-- **v0.0.171 released** (owner OK'd; `node tools/pixelshots.js`, `node tools/mineshots.js`): no
-  outline, shots pixelated, jetpack with gravity + bursts, run pace, and the game's dark with the players' gun lights,
-  lanterns, fire and jellyfish lighting it (shadows from the rock; `node tools/mineshots.js` shows it best). Four players'
-  full-length beams light most of an open cave: shorten them for the title if the owner wants more dark. The visible beam
-  is at `TITLE_BEAMA` 0.25. Not timed on a phone (pixel layers + the dark + 4 line-of-sight fans a frame): watch for slowdown. Once OK'd: merge to `main`, confirm Pages. Known: more
-  sawing than before (~120 starts a minute vs ~75).
-
-- **v0.0.170 released** (owner OK'd; `node tools/mineshots.js`, `node tools/pixelshots.js`): rats fixed, random hewn mine
-  layouts, jellyfish glow on vines (reach × `TITLE_PLANTR` 0.25), pixel look on everything (title only). Open question for
-  the owner: the same pixel look in the game too? (not done: cost per frame). Not timed on a phone.
-
-- v0.0.169: the title players' pixel grid now rides with them (owner's bug: it slid over the body and gun). Released.
-
-- **v0.0.168 released** (owner OK'd the screenshots, `node tools/titlecamshots.js`): random zones every visit, pinch
-  zoom / pan / tap a player to follow. Feedback may follow from the app. Decisions they may revisit: letting go keeps the zoom (pinch out); dragging does nothing while following.
-
+- **The title (v0.0.165–173) is all released; the owner is playing it in the app.** Where it lives: `art/titlescene.js`
+  (pure: zones, mines, winding caves, players, camera; its README row in `src/art/README.md`), painter
+  `game/render/titledraw.js` (pixel layers, the dark and lights, the jellyfish plant glow; `src/game/render/README.md`),
+  gestures in `ui/title.js`. Suite `slots` (75 checks; seed-bound checks search for a seed with what they need, the zones
+  being random). Pictures: `tools/titlecamshots.js` (visits, camera), `mineshots.js`, `windshots.js`, `pixelshots.js`
+  (glow, pixel look, a burst flyer), older `playershots.js`, `digshots.js`.
+- **Not timed on a phone**: the title now draws pixel layers (world, creatures, shots), the dark with four players' and the
+  lanterns' line-of-sight fans, and the plant glow every frame. If the owner reports slowdown: fewer fan rays (120 a
+  player, 72 a lantern), shorter beams, or the world pixel layer every other frame.
+- Settings the owner may want to tune: `TITLE_BEAMA` (0.25, the visible beam), `TITLE_PLANTR` (0.25, the glow's reach),
+  `TITLE_LAMPR` (60), `TITLE_EDGE` (6, light into rock), `JET` and the players' `bursty` (0.75, 0.15, 0.5, 0.3).
+- Open questions for the owner: the pixel look in the game too (vines, webs, gold, creatures)? Letting go of a followed
+  player keeps the zoom (pinch out); dragging does nothing while following. The players saw more since v0.0.171 (~120
+  starts a minute for four, was ~75), mostly running in their own tunnels.
 - **Still open from the owner: ground and shop guns in the pixel look** (the gun in hand has it). The brief is under
   v0.0.164 below. Looks: screenshots first.
-- **The title (v0.0.165–167) is waiting on the owner playing it in the app**: feedback may follow. Where it lives:
-  `art/titlescene.js` (pure; its README row in `src/art/README.md`), painter `game/render/titledraw.js`, fire crackle
-  `art/crackle.js` (title and game). Pictures: `tools/playershots.js` (players, mine slope, cut arches / webs),
-  `tools/digshots.js` (sawing, tunnels, burning creatures, the game's burning jelly + vine). Suite `slots` (55
-  checks); a test that measures something the players would saw through or shoot sets `S.still = true`.
+- Title notes kept from v0.0.165–167: fire crackle is `art/crackle.js` (title and game); a `slots` check that measures
+  something the players would saw through or shoot sets `S.still = true`.
 - Open idea the owner hasn't asked for: the game's web lines still flare away at once when lit (the title's cut
   lines hang and swing; the game's don't).
 - Known failing as before: logic `spider` ("every roaming spider moves about": 1 still of 69), browser `vendshop`.
+
+## v0.0.169–173 — the title: RELEASED on `main` 2026-10-08 (owner OK'd each)
+
+CHANGELOG v0.0.169 (pixel grid rides with the players), v0.0.170 (rats out of the rock, random hewn mines, jellyfish glow,
+pixel look on everything), v0.0.171 (no outline, shots pixelated, jetpack gravity + bursts, run pace, the game's dark and
+lights), v0.0.172 (winding caves zone), v0.0.173 (the glow's twinkle moves with the cave).
 
 ## v0.0.168 — title: random zones each visit; pinch zoom, pan, tap to follow: RELEASED on `main` 2026-10-08 (owner OK'd)
 
