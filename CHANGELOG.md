@@ -11,7 +11,10 @@ Waiting on the owner's OK (a minor update).
   can see (`visPoly` from world/vision.js on the title's cells, `titleSolidCell`: the rock throws shadows): each player's gun
   light at the game's sizes (cone `DEV.beamDeg` wide out to the old torch's reach × `DEV.beamReach`, soft sides; the round glow
   `DEV.beamNear`), lanterns (`TITLE_LAMPR` 60, warm pools with shadows), fire (sampled cells), burning creatures and plants,
-  jellyfish. A small layer at the terrain's grid (light added up, cut out of the dark), smoothed up; the glows and shots over it.
+  jellyfish. A small layer at the terrain's grid (lights unioned, source-over, cut out of the dark, blurred 1.5 px), smoothed up;
+  the glows and shots over it. Owner's round 1: light reaches `TITLE_EDGE` (6) into the rock it falls on and the edge is blurred
+  (the dark fades in from the edge); fire lights small pools at up to 80 of its cells (the big summed pools made one disc); the
+  visible beam, the game's `drawBeam` (`titleBeam`: three soft cones from the muzzle, the lens, the spill).
 - No dark outline on the players and creatures (titledraw: `pixelHeld` / `pixelSprite` line off).
 - Shots and lightning in the pixel look: one layer on the world's grid, drawn 'lighter' as before; the Buzzsaw's blade
   its own, pinned to it.

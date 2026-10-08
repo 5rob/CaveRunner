@@ -21085,6 +21085,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     titleDark(ctx, S2);
     ctx.globalCompositeOperation = "lighter";
     for (const f of S2.foes) if (f.je && f.x - S2.scroll > -40 && f.x - S2.scroll < TITLE_VW + 40) titlePlantGlow(ctx, S2, f);
+    for (const r of S2.runners) titleBeam(ctx, r, DK.vis[r.id]);
     if (S2.shots.length || S2.zaps.length) pixelSprite(ctx, gx, 0, TITLE_VW + 100, S2.vh, 1, false, (c) => {
       const G2 = { ctx: c };
       c.globalCompositeOperation = "lighter";
@@ -21325,7 +21326,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.drawImage(gc, 0, 0, w, h4, ox2, oy2, w * TCELL, h4 * TCELL);
     ctx.imageSmoothingEnabled = sm;
   }
-  var DK = { L: null, D: null };
+  var DK = { L: null, D: null, vis: [] };
+  var TITLE_EDGE = 6;
   var TITLE_LAMPR = 60;
   function titleDark(ctx, S2) {
     const x0 = -40, w = Math.ceil((TITLE_VW + 80) / TCELL), h4 = Math.ceil(S2.vh / TCELL);
@@ -21344,14 +21346,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     lc.setTransform(1, 0, 0, 1, 0, 0);
     lc.clearRect(0, 0, w, h4);
     lc.setTransform(1 / TCELL, 0, 0, 1 / TCELL, -x0 / TCELL, 0);
-    lc.globalCompositeOperation = "lighter";
+    lc.globalCompositeOperation = "source-over";
     const solid = titleSolidCell(S2);
     const fan = (x, y, r, rays) => {
-      const p = visPoly(x + S2.scroll, y, r, solid, rays);
+      const p = visPoly(x + S2.scroll, y, r, solid, rays), wx = x + S2.scroll;
+      for (let i = 0; i < p.length; i += 2) {
+        const dx = p[i] - wx, dy = p[i + 1] - y, d = Math.hypot(dx, dy);
+        if (d > 0.01 && d < r - 0.5) {
+          p[i] += dx / d * TITLE_EDGE;
+          p[i + 1] += dy / d * TITLE_EDGE;
+        }
+      }
+      for (let i = 0; i < p.length; i += 2) p[i] -= S2.scroll;
       lc.beginPath();
-      lc.moveTo(p[0] - S2.scroll, p[1]);
-      for (let i = 2; i < p.length; i += 2) lc.lineTo(p[i] - S2.scroll, p[i + 1]);
+      lc.moveTo(p[0], p[1]);
+      for (let i = 2; i < p.length; i += 2) lc.lineTo(p[i], p[i + 1]);
       lc.closePath();
+      return p;
     };
     const pool = (x, y, r, a, full = 0.5) => {
       const g = lc.createRadialGradient(x, y, 0, x, y, r);
@@ -21365,10 +21376,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     const torchR = SIGHT * DEV.torch * LAMP_REACH * 1.05, R = torchR * Math.max(1, DEV.beamReach), N = torchR * DEV.beamNear;
     const half = DEV.beamDeg * Math.PI / 360;
+    DK.vis.length = 0;
     for (const r of S2.runners) {
       const cx = r.x + PW / 2, cy = r.y + PH * 0.45;
       lc.save();
-      fan(cx, cy, R, 120);
+      DK.vis[r.id] = fan(cx, cy, R, 120);
       lc.clip();
       pool(cx, cy, N, 1);
       for (const [k, a] of [[1, 0.6], [1.2, 0.25], [1.4, 0.15]]) {
@@ -21394,10 +21406,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       lc.restore();
     }
     if (S2.fire.length) {
-      const st = Math.max(1, Math.ceil(S2.fire.length / 24));
+      const st = Math.max(1, Math.ceil(S2.fire.length / 80));
       for (let k = 0; k < S2.fire.length; k += st) {
         const f = S2.fire[k];
-        pool((f.c + 0.5) * TCELL - S2.scroll, (f.r + 0.5) * TCELL, 26, 0.7, 0.2);
+        pool((f.c + 0.5) * TCELL - S2.scroll, (f.r + 0.5) * TCELL, 12, 0.45, 0);
       }
     }
     for (const f of S2.foes) {
@@ -21413,12 +21425,43 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     dc.fillStyle = "rgba(9,10,14," + DEV.fogDim + ")";
     dc.fillRect(0, 0, w, h4);
     dc.globalCompositeOperation = "destination-out";
+    dc.filter = "blur(1.5px)";
     dc.drawImage(L3, 0, 0);
+    dc.filter = "none";
     dc.globalCompositeOperation = "source-over";
     const sm = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(D2, 0, 0, w, h4, x0, 0, w * TCELL, h4 * TCELL);
     ctx.imageSmoothingEnabled = sm;
+  }
+  function titleBeam(c, r, pts) {
+    const torchR = SIGHT * DEV.torch * LAMP_REACH * 1.05, R = torchR * Math.max(1, DEV.beamReach), g = DEV.beamGlow;
+    const pcx = r.x + PW / 2, pcy = r.y + PH * 0.45, lower = r.swap > 0 ? Math.sin(r.swap / 0.3 * Math.PI) * 4 : 0;
+    const mz = gunMuzzle(pcx + Math.cos(r.ang) * 2.5, r.y + PH * 0.45 + lower, r.ang, GUN_HELD, r.kit.art), ox2 = mz.x, oy2 = mz.y, a = r.ang;
+    if (g > 0 && pts && pts.length > 4) {
+      c.save();
+      c.beginPath();
+      c.moveTo(pts[0], pts[1]);
+      for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]);
+      c.closePath();
+      c.clip();
+      const half = DEV.beamDeg * Math.PI / 360;
+      for (const k of [1.3, 1, 0.7]) {
+        const gr = c.createRadialGradient(ox2, oy2, 2, ox2, oy2, R);
+        gr.addColorStop(0, "rgba(225,240,255," + 0.16 * g + ")");
+        gr.addColorStop(0.45, "rgba(215,232,255," + 0.07 * g + ")");
+        gr.addColorStop(1, "rgba(210,230,255,0)");
+        c.fillStyle = gr;
+        c.beginPath();
+        c.moveTo(ox2, oy2);
+        c.arc(ox2, oy2, R, a - half * k, a + half * k);
+        c.closePath();
+        c.fill();
+      }
+      c.restore();
+    }
+    glowAt(c, ox2, oy2, 7, 0.5, "230,242,255");
+    glowAt(c, pcx, pcy, torchR * DEV.beamNear, 0.06, "220,235,255");
   }
 
   // src/game/dpr.js

@@ -186,6 +186,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   ctx.globalCompositeOperation = 'lighter';
   // each jellyfish's green glow on the plants and moss round it, as the game's (systems/plantglow.js, plantGlowFill)
   for (const f of S.foes) if (f.je && f.x - S.scroll > -40 && f.x - S.scroll < TITLE_VW + 40) titlePlantGlow(ctx, S, f);
+  for (const r of S.runners) titleBeam(ctx, r, DK.vis[r.id]);
   // the shots and lightning in the pixel look too (owner, v0.0.171): one layer on the world's grid, added as before
   if (S.shots.length || S.zaps.length) pixelSprite(ctx, gx, 0, TITLE_VW + 100, S.vh, 1, false, c => {
     /** @type {any} */
@@ -386,8 +387,9 @@ function titlePlantGlow(ctx, S, e) {
 // every player's gun light (a cone out along the gun, soft at its sides, DEV.beamDeg wide and the game's reach, and
 // the round glow at his feet, DEV.beamNear), the lanterns (warm pools), fire, burning creatures and the jellyfish.
 // Drawn into a small layer at the terrain's grid (the light added up, then cut out of the dark), smoothed up
-/** @type {{ L: HTMLCanvasElement | null, D: HTMLCanvasElement | null }} */
-const DK = { L: null, D: null };
+/** @type {{ L: HTMLCanvasElement | null, D: HTMLCanvasElement | null, vis: number[][] }} */
+const DK = { L: null, D: null, vis: [] };   // vis: this frame's line-of-sight fan of each player (screen x), for the beam
+export const TITLE_EDGE = 6;            // light reaches this far into the rock it falls on (the dark fades in from the edge: owner, v0.0.171)
 export const TITLE_LAMPR = 60;          // a lantern's pool of light (world units)
 /** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S */
 function titleDark(ctx, S) {
@@ -400,14 +402,22 @@ function titleDark(ctx, S) {
   if (!lc || !dc) return;
   lc.setTransform(1, 0, 0, 1, 0, 0); lc.clearRect(0, 0, w, h);
   lc.setTransform(1 / TCELL, 0, 0, 1 / TCELL, -x0 / TCELL, 0);
-  lc.globalCompositeOperation = 'lighter';
+  // lights add up as a union (source-over: a + b - ab), so where they overlap they don't burn out into one big disc
+  lc.globalCompositeOperation = 'source-over';
   const solid = titleSolidCell(S);
   /** the line-of-sight fan from (x, y) (screen x) out to r, as a clip path @param {number} x @param {number} y @param {number} r @param {number} rays */
   const fan = (x, y, r, rays) => {
-    const p = visPoly(x + S.scroll, y, r, solid, rays);
-    lc.beginPath(); lc.moveTo(p[0] - S.scroll, p[1]);
-    for (let i = 2; i < p.length; i += 2) lc.lineTo(p[i] - S.scroll, p[i + 1]);
+    const p = visPoly(x + S.scroll, y, r, solid, rays), wx = x + S.scroll;
+    // a ray that met rock goes TITLE_EDGE on into it: the rock's face it lights
+    for (let i = 0; i < p.length; i += 2) {
+      const dx = p[i] - wx, dy = p[i + 1] - y, d = Math.hypot(dx, dy);
+      if (d > 0.01 && d < r - 0.5) { p[i] += dx / d * TITLE_EDGE; p[i + 1] += dy / d * TITLE_EDGE; }
+    }
+    for (let i = 0; i < p.length; i += 2) p[i] -= S.scroll;
+    lc.beginPath(); lc.moveTo(p[0], p[1]);
+    for (let i = 2; i < p.length; i += 2) lc.lineTo(p[i], p[i + 1]);
     lc.closePath();
+    return p;
   };
   /** a round light: full to a fraction 'full' of r, then fading @param {number} x @param {number} y @param {number} r @param {number} a @param {number} [full] */
   const pool = (x, y, r, a, full = 0.5) => {
@@ -418,10 +428,11 @@ function titleDark(ctx, S) {
   // the players' gun lights, the game's sizes: the old torch's reach (SIGHT × DEV.torch × LAMP_REACH), the cone that × DEV.beamReach
   const torchR = SIGHT * DEV.torch * LAMP_REACH * 1.05, R = torchR * Math.max(1, DEV.beamReach), N = torchR * DEV.beamNear;
   const half = DEV.beamDeg * Math.PI / 360;
+  DK.vis.length = 0;
   for (const r of S.runners) {
     const cx = r.x + PW / 2, cy = r.y + PH * 0.45;
     lc.save();
-    fan(cx, cy, R, 120); lc.clip();
+    DK.vis[r.id] = fan(cx, cy, R, 120); lc.clip();
     pool(cx, cy, N, 1);
     // the cone, its soft sides as the game's beamSide (full to half, fading over 0.4 × half more): three nested wedges
     for (const [k, a] of [[1, 0.6], [1.2, 0.25], [1.4, 0.15]]) {
@@ -438,8 +449,9 @@ function titleDark(ctx, S) {
   }
   // fire (a few of its cells, as the game's glows sample it), burning creatures and plants, and the jellyfish
   if (S.fire.length) {
-    const st = Math.max(1, Math.ceil(S.fire.length / 24));
-    for (let k = 0; k < S.fire.length; k += st) { const f = S.fire[k]; pool((f.c + 0.5) * TCELL - S.scroll, (f.r + 0.5) * TCELL, 26, 0.7, 0.2); }
+    // (owner: the old big pools summed into one disc) a small light at each of up to 80 of its cells, hugging the flames
+    const st = Math.max(1, Math.ceil(S.fire.length / 80));
+    for (let k = 0; k < S.fire.length; k += st) { const f = S.fire[k]; pool((f.c + 0.5) * TCELL - S.scroll, (f.r + 0.5) * TCELL, 12, 0.45, 0); }
   }
   for (const f of S.foes) {
     const fx = f.x - S.scroll;
@@ -451,10 +463,36 @@ function titleDark(ctx, S) {
   // the dark, the light cut out of it, laid over the scene smoothed
   dc.setTransform(1, 0, 0, 1, 0, 0); dc.globalCompositeOperation = 'source-over'; dc.clearRect(0, 0, w, h);
   dc.fillStyle = 'rgba(9,10,14,' + DEV.fogDim + ')'; dc.fillRect(0, 0, w, h);
-  dc.globalCompositeOperation = 'destination-out'; dc.drawImage(L, 0, 0);
+  dc.globalCompositeOperation = 'destination-out'; dc.filter = 'blur(1.5px)'; dc.drawImage(L, 0, 0); dc.filter = 'none';
   dc.globalCompositeOperation = 'source-over';
   const sm = ctx.imageSmoothingEnabled;
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(D, 0, 0, w, h, x0, 0, w * TCELL, h * TCELL);
   ctx.imageSmoothingEnabled = sm;
+}
+
+// A player's gun light as you see it, the game's drawBeam (render/light.js): three soft cones out of the gun's muzzle
+// (DEV.beamDeg wide, DEV.beamGlow bright, a cool white) cut to what the player can see, the lens, the spill round him
+/** @param {CanvasRenderingContext2D} c @param {import('../../art/titlescene.js').TRunner} r @param {number[] | undefined} pts */
+function titleBeam(c, r, pts) {
+  const torchR = SIGHT * DEV.torch * LAMP_REACH * 1.05, R = torchR * Math.max(1, DEV.beamReach), g = DEV.beamGlow;
+  const pcx = r.x + PW / 2, pcy = r.y + PH * 0.45, lower = r.swap > 0 ? Math.sin(r.swap / 0.3 * Math.PI) * 4 : 0;
+  const mz = gunMuzzle(pcx + Math.cos(r.ang) * 2.5, r.y + PH * 0.45 + lower, r.ang, GUN_HELD, r.kit.art), ox = mz.x, oy = mz.y, a = r.ang;
+  if (g > 0 && pts && pts.length > 4) {
+    c.save();
+    c.beginPath(); c.moveTo(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]);
+    c.closePath(); c.clip();
+    const half = DEV.beamDeg * Math.PI / 360;
+    for (const k of [1.3, 1, 0.7]) {
+      const gr = c.createRadialGradient(ox, oy, 2, ox, oy, R);
+      gr.addColorStop(0, 'rgba(225,240,255,' + 0.16 * g + ')'); gr.addColorStop(0.45, 'rgba(215,232,255,' + 0.07 * g + ')');
+      gr.addColorStop(1, 'rgba(210,230,255,0)');
+      c.fillStyle = gr;
+      c.beginPath(); c.moveTo(ox, oy); c.arc(ox, oy, R, a - half * k, a + half * k); c.closePath(); c.fill();
+    }
+    c.restore();
+  }
+  glowAt(c, ox, oy, 7, 0.5, '230,242,255');
+  glowAt(c, pcx, pcy, torchR * DEV.beamNear, 0.06, '220,235,255');
 }
