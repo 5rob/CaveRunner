@@ -2,7 +2,7 @@
 // The player's and the world's sprites, all drawn from canvas primitives at world scale:
 // the runner, guns (and a new gun's glow), the torch flame, wall sconces, glowAt.
 
-import { COL } from '../core/consts.js';
+import { COL, PH, PW } from '../core/consts.js';
 import { rr } from '../core/util.js';
 import { GUN_ART, gunArt, gunArtCanvas } from './gunart.js';
 
@@ -13,7 +13,8 @@ import { GUN_ART, gunArt, gunArtCanvas } from './gunart.js';
 // A gun, grip at the origin, barrel down +x: its pixel sprite (`art`, a GUN_ART id: gunArtId(gun) gives
 // a gun's; owner, v0.0.161: every gun wears one, the old drawn gun is gone; an unknown id draws the
 // first). Scaled so the same call works for the one in your hands and the little one on the cave
-// floor: every art pixel GUN_ART_PX units at sc 1. Already pixel art, so not put through pixelSprite.
+// floor: every art pixel GUN_ART_PX units at sc 1. In his hand it goes through the body's pixelSprite
+// with him (pixelHeld, owner v0.0.164); on the ground and in icons it's drawn as it is.
 export const GUN_ART_PX = 0.46;
 // the gun in his hand, drawGun's scale there: the game, the Bag's firing window, the title (owner,
 // v0.0.163: twice the old 0.55)
@@ -236,6 +237,17 @@ export function pixelSprite(ctx, x0, y0, w, h, px, line, paint) {
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(c, 0, 0, cw, ch, x0, y0, cw * px, ch * px);
   ctx.imageSmoothingEnabled = sm;
+}
+
+// The runner with his gun in hand (x, y his top left), body then gun as one pixelSprite at px (owner,
+// v0.0.164: the gun gets the body's pixel look and outline): the box grows HOLD_PAD each way for the
+// longest gun, in whole pixels so the grid stays the body's. px 0: drawn smooth, as it is
+export const HOLD_PAD = 26;
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} px @param {boolean} line @param {(c: CanvasRenderingContext2D) => void} paint */
+export function pixelHeld(ctx, x, y, px, line, paint) {
+  if (!(px > 0)) { paint(ctx); return; }
+  const e = Math.ceil(HOLD_PAD / px) * px;
+  pixelSprite(ctx, x - 14 - e, y - 8 - e, PW + 28 + 2 * e, PH + 16 + 2 * e, px, line, paint);
 }
 
 // pixelSprite without the cut-off: `paint` drawn small (one canvas pixel per px world units) and

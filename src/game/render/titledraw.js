@@ -12,7 +12,7 @@ import { drawEnemy } from '../../creatures/draw.js';
 import { coinR } from '../../world/nuggets.js';
 import { FIRE_COLS } from '../../world/fire.js';
 import { drawProp, propGlow } from '../../art/props.js';
-import { GUN_HELD, drawGun, drawNugget, glowAt, drawRunner, jetFlame, pixelSprite } from '../../art/sprites.js';
+import { GUN_HELD, drawGun, drawNugget, glowAt, drawRunner, jetFlame, pixelHeld, pixelSprite } from '../../art/sprites.js';
 import { TCELL, TITLE_KITS, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleWebAt } from '../../art/titlescene.js';
 import { drawBolt, drawLook } from './looks.js';
 
@@ -136,10 +136,26 @@ export function titleDraw(ctx, S, cw, ch) {
   ctx.beginPath();
   for (const L of S.webs) {
     if (Math.max(L.a0x, L.b0x) < S.scroll - 10 || Math.min(L.a0x, L.b0x) > S.scroll + TITLE_VW + 10) continue;
-    ctx.moveTo(L.a0x - S.scroll, L.a0y);
-    for (let i = 1; i <= 8; i++) { const p = titleWebAt(L, i / 8); ctx.lineTo(p.x - S.scroll, p.y); }
+    if (!L.fu) {
+      ctx.moveTo(L.a0x - S.scroll, L.a0y);
+      for (let i = 1; i <= 8; i++) { const p = titleWebAt(L, i / 8); ctx.lineTo(p.x - S.scroll, p.y); }
+      continue;
+    }
+    // burning: what's left either side of the burnt span
+    for (const [u0, u1] of [[0, L.fu[0]], [L.fu[1], 1]]) {
+      if (u1 - u0 < 0.01) continue;
+      for (let i = 0; i <= 8; i++) { const p = titleWebAt(L, u0 + (u1 - u0) * i / 8); if (i) ctx.lineTo(p.x - S.scroll, p.y); else ctx.moveTo(p.x - S.scroll, p.y); }
+    }
   }
   ctx.stroke();
+  // a burning line's two fronts: a short glowing stretch of silk either side of the burnt span
+  ctx.globalAlpha = 1; ctx.lineWidth = 1;
+  for (const L of S.webs) if (L.fu) for (const [u, d] of [[L.fu[0], -1], [L.fu[1], 1]]) {
+    if (u <= 0 && d < 0 || u >= 1 && d > 0) continue;
+    const a = titleWebAt(L, u), b = titleWebAt(L, Math.max(0, Math.min(1, u + d * 4 / Math.max(4, Math.hypot(L.b0x - L.a0x, L.b0y - L.a0y)))));
+    ctx.strokeStyle = (S.fireN + Math.round(u * 50)) % 3 ? '#ff9a2e' : '#fff0b0';
+    ctx.beginPath(); ctx.moveTo(a.x - S.scroll, a.y); ctx.lineTo(b.x - S.scroll, b.y); ctx.stroke();
+  }
   // the strings spiders shoot at him (as the game draws W.silk: a line from where it left)
   ctx.globalAlpha = 0.85; ctx.lineWidth = 0.9;
   ctx.beginPath();
@@ -163,7 +179,7 @@ export function titleDraw(ctx, S, cw, ch) {
   ctx.save(); ctx.translate(-S.scroll, 0);
   for (const f of S.foes) drawEnemy(ctx, f, S.t);
   ctx.restore();
-  // the runner: body and jet flame on the 1-unit pixel grid like the game's drawPlayer; his gun's art as it is
+  // the runner: body and jet flame on the 1-unit pixel grid like the game's drawPlayer, his gun in it (pixelHeld)
   const r = S.runner, K = TITLE_KITS[r.kit], pcx = r.x + PW / 2, ax = Math.cos(r.ang), ay = Math.sin(r.ang);
   const lower = r.swap > 0 ? Math.sin(r.swap / 0.3 * Math.PI) * 4 : 0, gy = r.y + PH * 0.45 + lower;
   const hands = { gun: { x: pcx + ax * 2.5, y: gy }, torch: { x: pcx + ax * 7, y: gy + ay * 5 - 0.5 } };
@@ -173,8 +189,10 @@ export function titleDraw(ctx, S, cw, ch) {
     pixelSprite(ctx, ox - 10, oy, PW + 48, PH + 40, 1, false, c => jetFlame(c, bx, by, 0, 1, len, S.t));
   }
   const gait = r.mode === 'run' ? r.gait : null;
-  pixelSprite(ctx, ox, oy, PW + 28, PH + 16, 1, true, c => drawRunner(c, r.x, r.y, PW, PH, r.face, gait, r.mode !== 'run', r.flame, false, hands));
-  drawGun(ctx, pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);
+  pixelHeld(ctx, ox + 14, oy + 8, 1, true, c => {
+    drawRunner(c, r.x, r.y, PW, PH, r.face, gait, r.mode !== 'run', r.flame, false, hands);
+    drawGun(c, pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);
+  });
   // the bright stuff, added light
   ctx.globalCompositeOperation = 'lighter';
   for (const z of S.zaps) drawBolt(G, z.pts, z.col, 1, z.t / 0.16);
@@ -201,6 +219,8 @@ export function titleDraw(ctx, S, cw, ch) {
     const pr = p;
     propGlow(ctx, pr, S.t, T, 0, 1);
   }
+  // a burning web line's fronts glow
+  for (const L of S.webs) if (L.fu) for (const u of L.fu) { const w = titleWebAt(L, u); glowAt(ctx, w.x - S.scroll, w.y, 9, 0.18, '255,140,50'); }
   // fire's light, as render/light.js adds it: the burning cells brighten, a few warm glows
   if (S.fire.length) {
     ctx.fillStyle = 'rgba(255,140,50,0.32)'; ctx.beginPath();

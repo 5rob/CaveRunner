@@ -65,7 +65,9 @@ explosions, bullet hits, enemy fire, creature voices, world/props, drips, footst
 and press Start (or Continue). Each slot is its own run with its own unlocked mods and perks; 🗑️
 then "Delete?" wipes a slot. Your run from before this update is slot 1. Behind it, a runner tours
 Mossy Caves sideways (its natural caves, spider caves, the built-up layers, brick works and the vine grove),
-fighting the real creatures, collecting gold and setting things alight the way the game does.
+fighting the real creatures (he lets them come into view before he shoots), collecting gold and setting
+things alight the way the game does; fire runs along web lines and jumps between vines and webs that nearly touch.
+The gun in your hands has the same chunky pixel look as you, in the game, the Bag and the title.
 
 **Pause.** ⏸ (top right) pauses: Resume, Save, a Volume slider for the whole game, and Exit
 to main menu (it saves first). **Hold ⏸ for 5 seconds** to show or hide the dev tools: the ⚙️ panel

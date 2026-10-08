@@ -3,7 +3,7 @@
 // (GunIcon), the slot grid lit by the live fire preview (SlotGrid), the mod bag, and the
 // ScrollBox grab bars both grids scroll with.
 
-import { GUN_HELD, drawGun, drawRunner, gunMuzzle, pixelSprite } from '../art/sprites.js';
+import { GUN_HELD, drawGun, drawRunner, gunMuzzle, pixelHeld } from '../art/sprites.js';
 import { gunArtFit, gunArtId } from '../art/gunart.js';
 import { SFX } from '../audio/sfx.js';
 import { PH, PW } from '../core/consts.js';
@@ -333,14 +333,12 @@ export function GunFire({ gun, sim }) {
       // you, at the far left, the gun in hand on the sway (the game's own sprite and hold)
       ctx.globalAlpha = 1;
       // exactly as render/actors.js drawPlayer draws you: the body through the pixel look (DEV.runnerPx, its
-      // outline DEV.runnerLine; smooth at 0), then the gun's sprite over it
+      // outline DEV.runnerLine; smooth at 0), the gun's sprite over it in the same pixel look (pixelHeld)
       const hands = { gun: { x: hx, y: hy }, torch: g ? { x: home.x + ca * 7, y: hy + sa * 5 - 0.5 } : null };
       const body = (/** @type {CanvasRenderingContext2D} */ c2) => drawRunner(c2, youX, youY, PW, PH, 1, null, false, 0, false, hands);
       const gunL = (/** @type {CanvasRenderingContext2D} */ c2) => { if (g) drawGun(c2, hx, hy, aim, GF_GUN, gunArtId(g)); };
       const rpx = DEV.runnerPx, rline = DEV.runnerLine > 0;
-      if (rpx > 0) pixelSprite(ctx, youX - 14, youY - 8, PW + 28, PH + 16, rpx, rline, body);
-      else body(ctx);
-      gunL(ctx);   // already pixel art: drawn as it is
+      pixelHeld(ctx, youX, youY, rpx, rline, c2 => { body(c2); gunL(c2); });   // the gun in the body's pixel look too
       // the wall: grey stone blocks, offset every other row
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#4a4f5a'; ctx.fillRect(wallX, 0, GF_WALL + 1, wH);

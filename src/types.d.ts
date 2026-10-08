@@ -187,6 +187,8 @@ interface WebLine {
   slow?: number; grab?: number; climb?: number;
   // giving (world/sway.js): its sag at rest, its bend (wx, wy) peaking at wu, the bend's speed, held last frame
   sag?: number; wx?: number; wy?: number; wvx?: number; wvy?: number; wu?: number; wh?: boolean;
+  // the title scene only (art/titlescene.js): the burnt span [u0, u1] while it burns, out once all burnt
+  fu?: number[] | null; out?: boolean;
 }
 /** a line being shot (e.sp.shot) */
 interface SpiderShot {

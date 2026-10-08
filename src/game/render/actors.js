@@ -4,7 +4,7 @@
 // with the torch, the crosshair, Permanent Shield and Angry Ghost (the spider's silk, drawn just
 // before the creatures, is drawSilk in game/creatures/spider.js)
 
-import { GUN_HELD, drawGun, drawRagdoll, drawRunner, drawTorch, jetFlame, pixelSprite, torchEmbers } from '../../art/sprites.js';
+import { GUN_HELD, drawGun, drawRagdoll, drawRunner, drawTorch, jetFlame, pixelHeld, pixelSprite, torchEmbers } from '../../art/sprites.js';
 import { gunArtId } from '../../art/gunart.js';
 import { gradLut, lutAt, rampLut } from '../../art/ramps.js';
 import { COL, PH, PW } from '../../core/consts.js';
@@ -184,10 +184,8 @@ export function drawPlayer(W, G, F) {
     const body = c => drawRunner(c, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing, hands);
     /** @param {CanvasRenderingContext2D} c */
     const gun = c => drawGun(c, pcx + ax * 2.5, gy, Math.atan2(ay, ax), GUN_HELD, gunArtId(held));
-    // the gun is already pixel art: drawn as it is, over the body. No gun yet (a new run's empty hands): none drawn
-    if (px > 0) pixelSprite(G.ctx, W.p.x - 14, W.p.y - 8, PW + 28, PH + 16, px, line, body);
-    else body(G.ctx);
-    if (held) gun(G.ctx);
+    // the gun over the body, both through the one pixel look (pixelHeld). No gun yet (a new run's empty hands): none drawn
+    pixelHeld(G.ctx, W.p.x, W.p.y, px, line, c => { body(c); if (held) gun(c); });
     // the torch (archived: HAND_TORCH), in the hand the gun is not in: on the same pixel grid, its embers loose on it
     /** @param {CanvasRenderingContext2D} c */
     const torch = c => drawTorch(c, th.x, th.y, ax >= 0 ? -1 : 1, W.flick, W.leanX, W.leanY, W.time);

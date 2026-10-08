@@ -38,6 +38,10 @@ export const TITLE_ZONES = ['moss', 'webs', 'timber', 'paved', 'grove'];
 export const ZBLEND = 28;             // a zone's border frays this far (world units) each way, by noise
 export const TIMBER_H = 38;           // the timber works' height, floor to roof: the mine frames' height
 export const TITLE_WEBS = 60;         // web lines at once
+export const TITLE_JUMP = 5;          // fire jumps from a burning vine, arch or web to one this near (world units)
+export const TITLE_JUMPP = 0.5;       // … at this chance a fire tick
+export const TITLE_WEBFIRE = 3;       // a web line burns along this many times an arch's speed (fireArch)
+export const TITLE_AIM = 90;         // he shoots only at creatures this near (world units; v0.0.164, was the whole screen)
 // cell materials: air (the back wall shows), rock (painted as the game paints it: moss where it faces
 // up), moss (burns, chars), brick, wood (burns away), char (burnt or blasted rock); not solid: beam and
 // beamD (a timber frame's lit and shaded wood, burn away), grass (the bright tufts on a moss patch),
@@ -424,7 +428,12 @@ export function titleIgnite(S, sx, y, r, chance = 0.9) {
     if (p.arc) { const k = archK(p, wx, y, r); if (k >= 0) catchArch(S, p, k / (p.arc.length - 1)); }
     else if (wx > p.ox - 5 - r && wx < p.ox + 5 + r && y > p.y - r && y < p.y + p.len + r) catchPlant(S, p);
   }
-  cutWebs(S, wx, y, r);
+  // web lines in the heat catch where they pass nearest (a blast's own hole cuts them: titleCarve)
+  for (const L of S.webs) if (!L.fu && R() < chance) {
+    const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, ll = vx * vx + vy * vy || 1;
+    const u = Math.max(0, Math.min(1, ((wx - L.a0x) * vx + (y - L.a0y) * vy) / ll)), p = titleWebAt(L, u);
+    if (Math.hypot(p.x - wx, p.y - y) <= r + 1.5) catchWeb(S, L, u);
+  }
 }
 // every fuel cell within r of world point (wx, y) catches at `chance` (world/fire.js fireArea)
 /** @param {TitleScene} S @param {number} wx @param {number} y @param {number} r @param {number} chance */
@@ -461,6 +470,9 @@ function catchPlant(S, p) { if (!p.burn && !p.gone) { p.burn = 1; S.burnt++; } }
 // an arched vine catches at fraction u; the fire runs out both ways from there (catchArch)
 /** @param {TitleScene} S @param {TProp} p @param {number} u */
 function catchArch(S, p, u) { if (!p.burn && !p.gone) { p.burn = 1; p.u0 = p.u1 = u; S.burnt++; } }
+// a web line catches at fraction u; it burns out both ways from there (fu: the burnt span)
+/** @param {TitleScene} S @param {WebLine} L @param {number} u */
+function catchWeb(S, L, u) { if (!L.fu && !L.out) { L.fu = [u, u]; S.burnt++; } }
 
 /** @param {TitleScene} S @param {Enemy} f */
 function killFoe(S, f) {
@@ -648,9 +660,9 @@ function stepRunner(S, dt) {
     r.ground = r.mode === 'run';
   }
   r.x = Math.max(8, Math.min(TITLE_VW * 0.62, r.x));
-  // aim at the nearest creature
-  let best = null, bd = 1e9;
-  for (const f of S.foes) { const fx = f.x - S.scroll, d = Math.hypot(fx - r.x, f.ty - r.y); if (f.hp > 0 && fx < TITLE_VW + 5 && fx > cx() - 30 && d < bd) { bd = d; best = f; } }
+  // aim at the nearest creature within TITLE_AIM, well on screen (owner: they come into view before he blasts them)
+  let best = null, bd = TITLE_AIM;
+  for (const f of S.foes) { const fx = f.x - S.scroll, d = Math.hypot(fx - r.x, f.ty - r.y); if (f.hp > 0 && fx < TITLE_VW - 24 && fx > cx() - 30 && d < bd) { bd = d; best = f; } }
   const gx0 = cx(), gy0 = r.y + PH * 0.45;
   if (best) {
     const want = Math.atan2(best.ty - gy0, best.x - S.scroll - gx0);
@@ -905,7 +917,8 @@ function stepShots(S, dt) {
 // burns its kind's time (fireGrass / fireMoss / fireWood) before it's spent: moss chars, the rest go.
 // Plants beside a fire catch and burn from the tip up at firePlant (lighting what's round the flame);
 // an arched vine burns out both ways from where it caught at fireArch, lighting its strands as it
-// reaches them; a web line near a fire flares and is gone
+// reaches them; a web line near a fire burns out both ways, fast. Any of them burning lights the
+// others it nearly touches (spreadFrom)
 /** @param {TitleScene} S @param {number} dt */
 function stepFire(S, dt) {
   const R = S.rnd;
@@ -944,9 +957,9 @@ function stepFire(S, dt) {
           for (let yy = p.y + 2; yy < p.y + p.len; yy += 8) if (fireNear(S, p.ox, yy, 2)) { catchPlant(S, p); break; }
         }
       }
-      for (const L of S.webs.slice()) for (let u = 0; u <= 1; u += 0.25) {
+      for (const L of S.webs) if (!L.fu) for (let u = 0; u <= 1; u += 0.25) {
         const w = titleWebAt(L, u);
-        if (fireNear(S, w.x, w.y, 2)) { cutWebs(S, w.x, w.y, 1); break; }
+        if (fireNear(S, w.x, w.y, 2)) { catchWeb(S, L, u); break; }
       }
     }
   }
@@ -970,7 +983,7 @@ function stepFire(S, dt) {
         const a = p.arc[Math.round(u * n)], x = p.ox + a[0], y = p.y + a[1];
         if (R() < dt * 30) flameAt(S, x - S.scroll + (R() - 0.5) * 4, y);
         if (R() < dt * 4) fireSmoke(S, x - S.scroll, y);
-        if (ticks) lightArea(S, x, y, 5, 0.3);
+        if (ticks) { lightArea(S, x, y, 5, 0.3); spreadFrom(S, x, y); }
       }
       if (ticks) for (const o of S.props) if (o.host === p && !o.burn && !o.gone && (o.u || 0) >= p.u0 && (o.u || 0) <= p.u1) catchPlant(S, o);
       if (p.u0 <= 0 && p.u1 >= 1) p.gone = true;
@@ -982,9 +995,41 @@ function stepFire(S, dt) {
     if (R() < dt * 4) fireSmoke(S, p.x, ty);
     if (ticks) {
       lightArea(S, p.ox, ty, 5, 0.3);
+      spreadFrom(S, p.ox, ty);
       for (const o of S.props) if (!o.burn && !o.gone && !o.arc && FLAMMABLE[o.st] && Math.abs(o.ox - p.ox) < 10 && ty > o.y - 4 && ty < o.y + o.len + 4 && R() < 0.25) catchPlant(S, o);
     }
     if (p.len < 4) { p.gone = true; lightArea(S, p.ox, p.y, 6, 1); }
+  }
+  // burning web lines: out both ways from where they caught, faster than a vine (silk flares), the
+  // fronts lighting what they nearly touch; all burnt, the line's gone
+  let gone = 0;
+  for (const L of S.webs) {
+    if (!L.fu) continue;
+    const du = kr('fireArch', R) * TITLE_WEBFIRE * dt / Math.max(1, Math.hypot(L.b0x - L.a0x, L.b0y - L.a0y));
+    L.fu[0] = Math.max(0, L.fu[0] - du); L.fu[1] = Math.min(1, L.fu[1] + du);
+    for (const u of L.fu) {
+      const w = titleWebAt(L, u);
+      if (R() < dt * 20) flameAt(S, w.x - S.scroll + (R() - 0.5) * 2, w.y);
+      if (ticks) spreadFrom(S, w.x, w.y);
+    }
+    if (L.fu[0] <= 0 && L.fu[1] >= 1) { L.fu = null; L.out = true; gone++; }
+  }
+  if (gone) { S.webs = S.webs.filter(L => !L.out); S.cut += gone; }
+}
+
+// Fire jumps across (owner, v0.0.164): a flame at world point (wx, y) lights any vine, arch or web line
+// within TITLE_JUMP of it, at TITLE_JUMPP a fire tick
+/** @param {TitleScene} S @param {number} wx @param {number} y */
+function spreadFrom(S, wx, y) {
+  const R = S.rnd, J = TITLE_JUMP;
+  for (const p of S.props) {
+    if (p.burn || p.gone || !FLAMMABLE[p.st] || R() > TITLE_JUMPP) continue;
+    if (p.arc) { const k = archK(p, wx, y, J - 3); if (k >= 0) catchArch(S, p, k / (p.arc.length - 1)); }
+    else if (Math.abs(p.ox - wx) < J + 1 && y > p.y - J && y < p.y + p.len + J) catchPlant(S, p);
+  }
+  for (const L of S.webs) {
+    if (L.fu || R() > TITLE_JUMPP) continue;
+    for (let i = 0; i <= 8; i++) { const w = titleWebAt(L, i / 8); if (Math.hypot(w.x - wx, w.y - y) < J) { catchWeb(S, L, i / 8); break; } }
   }
 }
 
