@@ -4,7 +4,8 @@
 // drawFog is not only a picture: it writes the fog memory (fogReveal), so it keeps its place
 
 import { drawProp, propGlow } from '../../art/props.js';
-import { drawSconce, glowAt } from '../../art/sprites.js';
+import { GUN_HELD, drawSconce, glowAt, gunMuzzle } from '../../art/sprites.js';
+import { gunArtId } from '../../art/gunart.js';
 import { CELL, CW, FH, FOG_U, FW, LAMP_REACH, PH, PW, SHOP_Y, SIGHT } from '../../core/consts.js';
 import { clamp, hexRgb } from '../../core/util.js';
 import { DEV, carrotAt, jcol, kru } from '../../dev/knobs.js';
@@ -315,7 +316,7 @@ export function drawGlows(W, G, F) {
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
 function drawBeam(W, G, F) {
   const c = G.ctx, a = beam.a === null ? Math.atan2(F.ay, F.ax) : beam.a, R = beam.r || W.torchR, g = DEV.beamGlow;
-  const ox = F.pcx + F.ax * 2.5 + Math.cos(a) * 9, oy = F.gy + Math.sin(a) * 9;   // the muzzle (actors.js drawGun)
+  const mz = gunMuzzle(F.pcx + F.ax * 2.5, F.gy, a, GUN_HELD, gunArtId(F.held)), ox = mz.x, oy = mz.y;   // the muzzle of the gun in hand (actors.js drawGun)
   const pts = W.visPts;
   if (!F.held) { glowAt(c, F.pcx, F.pcy, W.torchR * DEV.beamNear, 0.06, '220,235,255'); return; }   // no gun: no cone, only the glow
   if (g > 0 && pts && pts.length > 4) {

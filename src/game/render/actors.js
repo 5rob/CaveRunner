@@ -4,7 +4,7 @@
 // with the torch, the crosshair, Permanent Shield and Angry Ghost (the spider's silk, drawn just
 // before the creatures, is drawSilk in game/creatures/spider.js)
 
-import { drawGun, drawRagdoll, drawRunner, drawTorch, jetFlame, pixelSprite, torchEmbers } from '../../art/sprites.js';
+import { GUN_HELD, drawGun, drawRagdoll, drawRunner, drawTorch, jetFlame, pixelSprite, torchEmbers } from '../../art/sprites.js';
 import { gunArtId } from '../../art/gunart.js';
 import { gradLut, lutAt, rampLut } from '../../art/ramps.js';
 import { COL, PH, PW } from '../../core/consts.js';
@@ -183,7 +183,7 @@ export function drawPlayer(W, G, F) {
     /** @param {CanvasRenderingContext2D} c */
     const body = c => drawRunner(c, W.p.x, W.p.y, PW, PH, W.p.face, gait, !W.p.onGround, W.p.flame, flashing, hands);
     /** @param {CanvasRenderingContext2D} c */
-    const gun = c => drawGun(c, pcx + ax * 2.5, gy, Math.atan2(ay, ax), 0.55, gunArtId(held));
+    const gun = c => drawGun(c, pcx + ax * 2.5, gy, Math.atan2(ay, ax), GUN_HELD, gunArtId(held));
     // the gun is already pixel art: drawn as it is, over the body. No gun yet (a new run's empty hands): none drawn
     if (px > 0) pixelSprite(G.ctx, W.p.x - 14, W.p.y - 8, PW + 28, PH + 16, px, line, body);
     else body(G.ctx);

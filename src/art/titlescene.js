@@ -9,7 +9,7 @@
 // suite runs it); game/render/titledraw.js paints it (it needs the game's bullet looks, layer 5);
 // titleText paints the big CAVE RUNNER. ui/title.js runs it on one requestAnimationFrame.
 
-import { CELL, COIN_PULL, PW, PH } from '../core/consts.js';
+import { CELL, COIN_PULL, GRAVITY, PW, PH } from '../core/consts.js';
 import { ROSTERS, enemyFor } from '../data/creatures.js';
 import { THEMES } from '../data/themes.js';
 import { DEV, carrotAt, kr, kru, spr } from '../dev/knobs.js';
@@ -17,13 +17,14 @@ import { jellyPal, jellyStep } from '../creatures/jelly.js';
 import { ratSpread, ratStep } from '../creatures/rat.js';
 import { spiderStep } from '../creatures/spider.js';
 import { roamStep } from '../creatures/common.js';
-import { FIRE_CATCH, FIRE_KNOB, FIRE_TICK, FIRE_UPW, FLAMMABLE } from '../world/fire.js';
+import { FIRE_CATCH, FIRE_COLS, FIRE_KNOB, FIRE_TICK, FIRE_UPW, FLAMMABLE } from '../world/fire.js';
 import { navField, navWay } from '../world/nav.js';
 import { collideNuggets, spillGold, stepNugget } from '../world/nuggets.js';
 import { losClear } from '../world/vision.js';
 import { archCurve } from '../world/decorate.js';
 import { MODS } from '../spells/mods.js';
 import { pixText, pixWidth } from './pixfont.js';
+import { GUN_HELD, gunMuzzle } from './sprites.js';
 
 export const TITLE_VW = 220;          // world units across the screen
 export const TITLE_FOES = 12;         // at most this many creatures at once (a rat swarm counts each rat)
@@ -83,14 +84,15 @@ export const TITLE_HOME = {
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
 // a prop: `ox` its world x (not `wx`: art/props.js reads that as an arch's or a vine's sideways bend)
 /** @typedef {{ k: string, st: string, ox: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number,
- *   arc?: number[][], thick?: number, t?: number, span?: number, host?: TProp, gone?: boolean, u0?: number, u1?: number, alen?: number, u?: number }} TProp */
+ *   arc?: number[][], thick?: number, t?: number, span?: number, host?: TProp, gone?: boolean, u0?: number, u1?: number, alen?: number, u?: number,
+ *   fall?: boolean, vy?: number }} TProp */
 /** @typedef {{ c: number, r: number, t: number }} TFire */
 /** @typedef {{ t: number, vh: number, top: number, bot: number, seed: number, rnd: () => number, scroll: number, shake: number, spawn: number,
  *   kills: number, gold: number, got: number, runner: TRunner, foes: Enemy[], shots: TShot[], parts: TPart[], coins: Coin[],
  *   booms: TBoom[], zaps: TZap[], flash: number, rows: number, ncol: number, cells: Uint8Array, gen: number, props: TProp[],
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
- *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number }} TitleScene */
+ *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number }} TitleScene */
 
 /** @param {number} seed @returns {() => number} a seeded random 0..1 (mulberry32) */
 export function titleRng(seed) {
@@ -219,12 +221,12 @@ function genCol(S, c) {
   }
   // a lantern hanging on its chain under the layers' roof: between the frames, and some inside them
   if (z === 'timber' && built(wx) > 0.95 && (Math.abs(u - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(u - FRAME_W / 2) < 1) && R() < 0.75)
-    S.props.push({ k: 'lamp', st: 'hanglamp', ox: wx, x: 0, y: cy + 4, len: 4 + R() * 8, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((cy - 1) / TCELL) });
+    lamp(S, c, wx, cy + 10, 4 + R() * 8);
   // and in the band above, and down long chains from the brick works' high roof
   if (shelf && Math.abs(fu - FRAME_W / 2) < 1 && R() < 0.6)
-    S.props.push({ k: 'lamp', st: 'hanglamp', ox: wx, x: 0, y: upTop + 4, len: 3 + R() * 6, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((upTop - 1) / TCELL) });
+    lamp(S, c, wx, upTop + 10, 3 + R() * 6);
   if (z === 'paved' && built(wx) > 0.9 && Math.abs(u - FRAME_GAP / 2) < 1 && R() < 0.8)
-    S.props.push({ k: 'lamp', st: 'hanglamp', ox: wx, x: 0, y: cy, len: 14 + R() * 30, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((cy - 1) / TCELL) });
+    lamp(S, c, wx, cy + 10, 14 + R() * 30);
   // the spiders' zone: web lines everywhere, roof to floor (slanting either way) and roof to roof (sagging)
   if (z === 'webs' && b === 0 && !(c % 4) && R() < 0.42 && S.webs.length < TITLE_WEBS) {
     const down = R() < 0.55, bx = down ? wx + (R() - 0.35) * 70 : wx + 18 + R() * 44;
@@ -288,6 +290,18 @@ function genCol(S, c) {
   }
 }
 
+// a lantern on its chain in column c, hung from whatever is right above (world) y0: straight up from there
+// to the first rock or timber, the roof's underside or a frame's cap beam, so the chain meets it
+/** @param {TitleScene} S @param {number} c @param {number} wx @param {number} y0 @param {number} len */
+function lamp(S, c, wx, y0, len) {
+  const base = ci(S, c, 0);
+  let r = Math.floor(y0 / TCELL);
+  while (r > 0 && !HOLDS[S.cells[base + r]]) r--;
+  S.props.push({ k: 'lamp', st: 'hanglamp', ox: wx, x: 0, y: (r + 1) * TCELL, len, seed: S.rnd(), side: 1, burn: 0, ac: c, ar: r });
+}
+// what a hanging thing can hang from: rock, and a frame's timber (it falls when that's burnt or blown away)
+const HOLDS = TITLE_SOLID.map((v, m) => (v || m === TM.BEAM || m === TM.BEAMD ? 1 : 0));
+
 /** @param {number} vh the view's height in world units @param {number} [seed] @param {number} [top] the action's band (world units) @param {number} [bot] @returns {TitleScene} */
 export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62) {
   const rnd = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, ncol = Math.ceil((TITLE_VW + 90) / TCELL);
@@ -295,7 +309,7 @@ export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62) {
   const S = { t: 0, vh, top, bot, seed, rnd, scroll: 0, shake: 0, spawn: 0, kills: 0, gold: 0, got: 0, runner: null, foes: [], shots: [],
     parts: [], coins: [], booms: [], zaps: [], flash: 0, rows, ncol, cells: new Uint8Array(rows * ncol), gen: -25, props: [],
     fire: [], dirty: [], dirtyAll: true, carved: 0, burnt: 0, swaps: 0, groundT: 0, flyT: 0, kinds: {}, webs: [], cut: 0, lineT: 0,
-    silk: [], nav: { F: null, fx: 0, fy: 0, t: -9 }, fireAcc: 0, fireN: 0, burning: new Set(), gotN: 0 };
+    silk: [], nav: { F: null, fx: 0, fy: 0, t: -9 }, fireAcc: 0, fireN: 0, burning: new Set(), gotN: 0, pops: 0, lampsPopped: 0 };
   genTo(S);
   const x = 60, y = titleSurf(S, x + PW / 2, (top + bot) / 2, 1) - PH;
   S.runner = { x, y, vx: 0, vy: 0, face: 1, ang: 0, cd: 0.5, kit: 0, flame: 0, mode: 'run', modeT: 3, tx: x, ty: y, retarget: 0,
@@ -344,6 +358,42 @@ function burst(S, x, y, n, col, spd, kind, life) {
       r: kind === 'smoke' ? 3 + S.rnd() * 4 : kind === 'fire' ? 1.5 + S.rnd() * 2.5 : 0.6 + S.rnd() * 0.8, col, kind });
   }
 }
+
+// A flame speck off something burning, as game/systems/fire.js flameAt (screen x): it rises, three
+// fire colours, gone in half a second or on rock; and its smoke (fireSmoke): a dark puff, swelling as it rises
+/** @param {TitleScene} S @param {number} x @param {number} y */
+function flameAt(S, x, y) {
+  if (S.parts.length >= TITLE_PARTS) return;
+  const R = S.rnd, l = 0.25 + R() * 0.3;
+  S.parts.push({ x, y, vx: (R() - 0.5) * 16, vy: -30 - R() * 40, life: l, max: 0.55, r: 1 + R() * 1.2,
+    col: R() < 0.4 ? '#ffd35a' : R() < 0.6 ? '#ff8a2a' : '#e8461c', kind: 'flame' });
+}
+/** @param {TitleScene} S @param {number} x @param {number} y */
+function fireSmoke(S, x, y) {
+  if (S.parts.length >= TITLE_PARTS) return;
+  const R = S.rnd;
+  S.parts.push({ x, y, vx: (R() - 0.5) * 12, vy: -25 - R() * 20, life: 1.4, max: 1.4, r: 2 + R() * 2.5, col: '#2a2624', kind: 'fsmoke' });
+}
+
+// A lantern shot, blasted or dropped (game/systems/props.js popLamp): the glass goes in a white spray, its
+// burning oil is thrown out in 16 blobs (embers) that light the fuel they fall through and where they land,
+// and the spot itself catches
+/** @param {TitleScene} S @param {TProp} p */
+function popLamp(S, p) {
+  if (p.gone) return;
+  p.gone = true; S.lampsPopped++;
+  const R = S.rnd, x = p.x, y = p.y + p.len + 4.5;
+  burst(S, x, y, 6, '#fff2c0', 80, 'spark', 0.3);
+  for (let k = 0; k < 16 && S.parts.length < TITLE_PARTS; k++) {
+    const a = -Math.PI / 2 + (R() - 0.5) * 3.4, v = 50 + R() * 120;
+    S.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 20, life: 1.2 + R() * 0.8, max: 2, r: 1.2 + R() * 0.9,
+      col: FIRE_COLS[Math.floor(R() * 3)], kind: 'ember' });
+  }
+  titleIgnite(S, x, y, 6, 0.8);
+}
+// a lantern's body (screen), where a shot or a blast finds it
+/** @param {TProp} p @param {number} x @param {number} y @param {number} r */
+const lampHit = (p, x, y, r) => x > p.x - 3.5 - r && x < p.x + 3.5 + r && y > p.y + p.len - r && y < p.y + p.len + 9 + r;
 
 // blow a hole: every cell within r of (sx, y) goes, the rock round its rim chars, plants on it fall
 /** @param {TitleScene} S @param {number} sx @param {number} y @param {number} r */
@@ -452,6 +502,7 @@ function shotEnd(S, s) {
     S.shake = Math.min(7, S.shake + 2);
     titleCarve(S, s.x, s.y, r);
     for (const g of S.foes) if (Math.hypot(g.x - S.scroll - s.x, g.ty - s.y) < r + g.r) hitFoe(S, g, 4, s.col);
+    for (const p of S.props) if (p.k === 'lamp' && !p.gone && lampHit(p, s.x, s.y, r)) popLamp(S, p);
   } else if (s.pit) titleCarve(S, s.x, s.y, s.pit * 0.7);
   // fire reaches past a blast's charred rim, into the moss, timber and plants round it
   if (s.fire || s.explode) titleIgnite(S, s.x, s.y, (s.fire ? 7 : 0) + (s.explode ? s.explode * 0.42 + 5 : 0));
@@ -493,6 +544,22 @@ export function titleStep(S, dt) {
       if (titleSolid(S, p.x, p.y + 1)) { p.life = 0; burst(S, p.x, p.y, 2, '#7ab8ff', 25, 'spark', 0.2); }
       continue;
     }
+    if (p.kind === 'ember') {
+      p.vy += GRAVITY * 0.45 * dt; p.x += (p.vx - SCROLL) * dt; p.y += p.vy * dt;
+      const c = Math.floor((p.x + S.scroll) / TCELL), r = Math.floor(p.y / TCELL), m = titleCell(S, c, r);
+      if (FUEL[m]) lightArea(S, p.x + S.scroll, p.y, 2, 0.6);
+      if (SOLID[m]) { lightArea(S, p.x + S.scroll - p.vx * dt, p.y - p.vy * dt, 4, 0.85); p.life = 0; }
+      continue;
+    }
+    if (p.kind === 'flame') {          // world/props.js's dparts: GRAVITY × g (-0.03), gone on rock
+      p.vy += GRAVITY * -0.03 * dt; p.x += (p.vx - SCROLL) * dt; p.y += p.vy * dt;
+      if (titleSolid(S, p.x, p.y)) p.life = 0;
+      continue;
+    }
+    if (p.kind === 'fsmoke') {         // game/systems/particles.js smoke
+      p.x += (p.vx - SCROLL) * dt; p.y += p.vy * dt; p.vx *= 1 - 2.5 * dt; p.vy = p.vy * (1 - 2.5 * dt) - 12 * dt; p.r += 5 * dt;
+      continue;
+    }
     if (p.kind === 'spore') { p.x += (p.vx + Math.sin(S.t * 1.7 + p.max * 9) * 3 - SCROLL) * dt; p.y += p.vy * dt; continue; }
     p.x += p.vx * dt; p.y += p.vy * dt;
     const drag = p.kind === 'smoke' ? 1.5 : 3;
@@ -511,6 +578,13 @@ export function titleStep(S, dt) {
   for (const p of S.props) {
     p.x = p.ox - S.scroll;
     if (p.burn || p.gone) continue;
+    if (p.k === 'lamp') {
+      if (p.fall) {
+        p.vy = (p.vy || 0) + GRAVITY * 0.5 * dt; p.y += p.vy * dt;
+        if (titleSolid(S, p.x, p.y + p.len + 9)) popLamp(S, p);
+      } else if (p.x > -10 && p.x < TITLE_VW + 10 && !HOLDS[titleCell(S, p.ac, p.ar)]) { p.fall = true; p.vy = 0; }
+      continue;
+    }
     if ((p.host && p.host.gone && !p.host.burn) || (p.x > -10 && p.x < TITLE_VW + 10 && !SOLID[titleCell(S, p.ac, p.ar)])) {
       p.gone = true; burst(S, p.x, p.y, 3, '#5a8a3a', 40, 'chunk', 0.7);
     }
@@ -522,6 +596,15 @@ export function titleStep(S, dt) {
 /** @param {TitleScene} S @param {number} dt */
 function stepRunner(S, dt) {
   const r = S.runner, R = S.rnd, cx = () => r.x + PW / 2;
+  // first, a safety net (owner saw him stuck under the floor, shooting from inside it): his middle in rock, or
+  // his feet well below the cave's floor line (down a blast hole that closed over him), and he's
+  // popped back up onto the first surface under the roof
+  {
+    const wx = cx() + S.scroll, fl = titleFloor(wx, S);
+    if (titleSolid(S, cx(), r.y + PH * 0.5) || r.y + PH > fl + 16) {
+      r.y = titleSurf(S, cx(), titleCeil(wx, S) + 4, 1) - PH; r.vy = 0; S.pops++;
+    }
+  }
   r.modeT -= dt;
   const ground = titleSurf(S, cx(), r.y + PH - 9, 1);
   if (r.mode === 'run') {
@@ -583,7 +666,7 @@ function stepRunner(S, dt) {
   }
   r.cd -= dt;
   if (!best || r.cd > 0 || r.swap > 0) return;
-  const K = TITLE_KITS[r.kit], M = MODS[K.mod], gx = gx0 + Math.cos(r.ang) * 10, gy = gy0 + Math.sin(r.ang) * 10;
+  const K = TITLE_KITS[r.kit], M = MODS[K.mod], mz = gunMuzzle(gx0 + Math.cos(r.ang) * 2.5, gy0, r.ang, GUN_HELD, K.art), gx = mz.x, gy = mz.y;   // out of its barrel
   r.cd = K.cd * (0.85 + R() * 0.3);
   if (K.mod === 'zap') {
     // lightning: an arc into the creature, and one throwing off into the rock below it
@@ -658,7 +741,8 @@ function stepFoes(S, dt) {
     if (!(e.burn > 0) && S.fire.length && fireNear(S, e.x, e.ty, e.r * 0.7)) e.burn = kr('fireBurn', R);
     if (e.burn > 0) {
       e.burn -= dt;
-      if (R() < dt * 20) burst(S, e.x - S.scroll + (R() - 0.5) * e.r, e.ty + (R() - 0.5) * e.r, 1, '#ff9a2e', 15, 'fire', 0.4);
+      if (R() < dt * 40) flameAt(S, e.x - S.scroll + (R() - 0.5) * e.r, e.ty + (R() - 0.5) * e.r);
+      if (R() < dt * 6) fireSmoke(S, e.x - S.scroll, e.ty - e.r);
       hitFoe(S, e, kr('fireDps', R) * dt, '#ff9a2e');
     }
   }
@@ -789,6 +873,11 @@ function stepShots(S, dt) {
       if (titleSolid(S, s.x, s.y)) { s.life = 0; burst(S, s.x, s.y, 4, s.col, 40, 'spark', 0.3); }
       continue;
     }
+    for (const p of S.props) if (p.k === 'lamp' && !p.gone && lampHit(p, s.x, s.y, s.size)) {
+      popLamp(S, p);
+      if (!s.pierce) { s.life = 0; burst(S, s.x, s.y, 3, s.col, 50, 'spark', 0.2); }
+    }
+    if (s.life <= 0) continue;
     for (const f of S.foes) {
       if (f.hp > 0 && Math.hypot(f.x - S.scroll - s.x, f.ty - s.y) < f.r + s.size) {
         hitFoe(S, f, s.dmg * 1.5, s.col);
@@ -861,12 +950,15 @@ function stepFire(S, dt) {
       }
     }
   }
-  // the cells alight: a flicker of flame and smoke
-  for (const f of S.fire) {
-    if (R() > dt * 6) continue;
-    const x = (f.c + 0.5) * TCELL - S.scroll, y = (f.r + 0.5) * TCELL;
-    burst(S, x, y, 1, '#ff9a2e', 12, 'fire', 0.45);
-    if (R() < 0.15) burst(S, x, y, 1, '#3a3346', 10, 'smoke', 1.2);
+  // flames and smoke off the burning cells, as game/systems/fire.js fireFrame: 2.5 a second a cell (at
+  // most 20 a frame), off random ones, a puff of smoke with one in eight
+  if (S.fire.length) {
+    const want = Math.min(20, Math.ceil(S.fire.length * dt * 2.5));
+    for (let a = 0; a < want; a++) {
+      const f = S.fire[Math.floor(R() * S.fire.length)], x = (f.c + R()) * TCELL - S.scroll, y = f.r * TCELL;
+      flameAt(S, x, y);
+      if (R() < 0.12) fireSmoke(S, x, y - 3);
+    }
   }
   // burning plants: from the tip toward the rock
   for (const p of S.props) {
@@ -876,7 +968,8 @@ function stepFire(S, dt) {
       p.u0 = Math.max(0, (p.u0 || 0) - du); p.u1 = Math.min(1, (p.u1 || 0) + du);
       for (const u of [p.u0, p.u1]) {
         const a = p.arc[Math.round(u * n)], x = p.ox + a[0], y = p.y + a[1];
-        if (R() < dt * 30) burst(S, x - S.scroll + (R() - 0.5) * 4, y, 1, '#ff9a2e', 15, 'fire', 0.45);
+        if (R() < dt * 30) flameAt(S, x - S.scroll + (R() - 0.5) * 4, y);
+        if (R() < dt * 4) fireSmoke(S, x - S.scroll, y);
         if (ticks) lightArea(S, x, y, 5, 0.3);
       }
       if (ticks) for (const o of S.props) if (o.host === p && !o.burn && !o.gone && (o.u || 0) >= p.u0 && (o.u || 0) <= p.u1) catchPlant(S, o);
@@ -885,8 +978,8 @@ function stepFire(S, dt) {
     }
     p.len -= kr('firePlant', R) * dt;
     const ty = p.y + Math.max(0, p.len);
-    if (R() < dt * 30) burst(S, p.x + (R() - 0.5) * 4, ty, 1, '#ff9a2e', 15, 'fire', 0.45);
-    if (R() < dt * 4) burst(S, p.x, ty, 1, '#3a3346', 10, 'smoke', 1.2);
+    if (R() < dt * 30) flameAt(S, p.x + (R() - 0.5) * 4, ty);
+    if (R() < dt * 4) fireSmoke(S, p.x, ty);
     if (ticks) {
       lightArea(S, p.ox, ty, 5, 0.3);
       for (const o of S.props) if (!o.burn && !o.gone && !o.arc && FLAMMABLE[o.st] && Math.abs(o.ox - p.ox) < 10 && ty > o.y - 4 && ty < o.y + o.len + 4 && R() < 0.25) catchPlant(S, o);

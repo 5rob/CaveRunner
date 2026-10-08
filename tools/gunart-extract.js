@@ -25,9 +25,9 @@ const NAMES = {
   24: ['goldpistol', 'Gold Pistol'], 25: ['redrifle', 'Red Rifle'], 26: ['redpistol', 'Red Pistol'],
 };
 // by blob number: quarter turns clockwise to point the barrel right (vertical guns)
-const TURN = { 6: 1, 10: 1, 15: 3 };
+const TURN = { 6: 1, 10: 1, 13: 3, 15: 3, 16: 3 };   // the squirts (13, 16): owner, v0.0.163 (they were mirrored only)
 // by blob number: mirror left-right (barrel pointing left)
-const MIRROR = { 13: true, 16: true };
+const MIRROR = {};
 // by blob number: [x, y] hand point override
 const GRIP = {};
 

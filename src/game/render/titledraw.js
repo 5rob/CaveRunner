@@ -10,8 +10,9 @@ import { PW, PH } from '../../core/consts.js';
 import { THEMES } from '../../data/themes.js';
 import { drawEnemy } from '../../creatures/draw.js';
 import { coinR } from '../../world/nuggets.js';
+import { FIRE_COLS } from '../../world/fire.js';
 import { drawProp, propGlow } from '../../art/props.js';
-import { drawGun, drawNugget, drawRunner, jetFlame, pixelSprite } from '../../art/sprites.js';
+import { GUN_HELD, drawGun, drawNugget, glowAt, drawRunner, jetFlame, pixelSprite } from '../../art/sprites.js';
 import { TCELL, TITLE_KITS, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleWebAt } from '../../art/titlescene.js';
 import { drawBolt, drawLook } from './looks.js';
 
@@ -102,6 +103,23 @@ export function titleDraw(ctx, S, cw, ch) {
     ctx.drawImage(cv, x, 0, w, S.rows, c * TCELL - S.scroll, 0, w * TCELL + 0.6, S.rows * TCELL);   // a hair over: no seam where the pieces meet
     c += w;
   }
+  // the burning cells, over the rock they're eating, as render/cave.js draws them: by the fire's colours,
+  // a new flicker each fire tick, the dying ones as embers
+  if (S.fire.length) {
+    /** @type {number[][]} */
+    const buckets = [[], [], [], []];
+    for (const f of S.fire) {
+      const h = (Math.imul(f.c * 977 + f.r, 2654435761) + S.fireN * 40503) >>> 30;
+      buckets[f.t <= 3 ? 3 : h === 0 ? 0 : h === 3 ? 2 : 1].push(f.c, f.r);
+    }
+    for (let k = 0; k < 4; k++) {
+      const B = buckets[k];
+      if (!B.length) continue;
+      ctx.fillStyle = FIRE_COLS[k]; ctx.beginPath();
+      for (let i = 0; i < B.length; i += 2) ctx.rect(B[i] * TCELL - S.scroll, B[i + 1] * TCELL, TCELL, TCELL);
+      ctx.fill();
+    }
+  }
   /** @type {any} */
   const W = { time: S.t };
   /** @type {any} */
@@ -135,6 +153,10 @@ export function titleDraw(ctx, S, cw, ch) {
     ctx.globalAlpha = 0.5 * (p.life / p.max);
     ctx.fillStyle = p.col;
     ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (2 - p.life / p.max), 0, Math.PI * 2); ctx.fill();
+  } else if (p.kind === 'fsmoke') {   // fire's smoke, as render/effects.js puffs it
+    ctx.globalAlpha = Math.max(0, p.life / p.max) * 0.35;
+    ctx.fillStyle = p.col;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
   }
   ctx.globalAlpha = 1;
   // floor 1's creatures, drawn by the game's own drawEnemy (they live in world coordinates)
@@ -152,7 +174,7 @@ export function titleDraw(ctx, S, cw, ch) {
   }
   const gait = r.mode === 'run' ? r.gait : null;
   pixelSprite(ctx, ox, oy, PW + 28, PH + 16, 1, true, c => drawRunner(c, r.x, r.y, PW, PH, r.face, gait, r.mode !== 'run', r.flame, false, hands));
-  drawGun(ctx, pcx + ax * 2.5, gy, r.ang, 0.55, K.art);
+  drawGun(ctx, pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);
   // the bright stuff, added light
   ctx.globalCompositeOperation = 'lighter';
   for (const z of S.zaps) drawBolt(G, z.pts, z.col, 1, z.t / 0.16);
@@ -179,7 +201,23 @@ export function titleDraw(ctx, S, cw, ch) {
     const pr = p;
     propGlow(ctx, pr, S.t, T, 0, 1);
   }
-  for (const p of S.parts) if (p.kind !== 'smoke') {
+  // fire's light, as render/light.js adds it: the burning cells brighten, a few warm glows
+  if (S.fire.length) {
+    ctx.fillStyle = 'rgba(255,140,50,0.32)'; ctx.beginPath();
+    for (const f of S.fire) ctx.rect(f.c * TCELL - S.scroll, f.r * TCELL, TCELL, TCELL);
+    ctx.fill();
+    const st = Math.max(1, Math.ceil(S.fire.length / 24));
+    for (let k = S.fireN % st; k < S.fire.length; k += st) {
+      const f = S.fire[k];
+      glowAt(ctx, (f.c + 0.5) * TCELL - S.scroll, (f.r + 0.5) * TCELL, 20, Math.min(0.14, 0.03 + S.fire.length / 3000), '255,120,40');
+    }
+  }
+  for (const p of S.parts) if (p.kind !== 'smoke' && p.kind !== 'fsmoke') {
+    if (p.kind === 'flame' || p.kind === 'ember') {   // the game's flame specks and a lantern's burning oil (glowing dparts: bright until their last third)
+      ctx.globalAlpha = Math.min(1, p.life / (p.max * 0.3)); ctx.fillStyle = p.col;
+      ctx.fillRect(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r);
+      continue;
+    }
     const q = p.life / p.max;
     // spores fade in and out (the level's luminescent spores); drips are solid water
     ctx.globalAlpha = p.kind === 'spore' ? Math.sin(Math.PI * q) * 0.8 : p.kind === 'drip' ? 0.8 : q;

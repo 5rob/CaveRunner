@@ -15,6 +15,28 @@ import { GUN_ART, gunArt, gunArtCanvas } from './gunart.js';
 // first). Scaled so the same call works for the one in your hands and the little one on the cave
 // floor: every art pixel GUN_ART_PX units at sc 1. Already pixel art, so not put through pixelSprite.
 export const GUN_ART_PX = 0.46;
+// the gun in his hand, drawGun's scale there: the game, the Bag's firing window, the title (owner,
+// v0.0.163: twice the old 0.55)
+export const GUN_HELD = 1.1;
+/** @type {Map<string, { f: number, s: number }>} */
+const MUZZLE = new Map();
+// Where a gun sprite's barrel ends, held at (hx, hy) aimed at `ang`, drawn at scale sc: the middle of
+// its right-most column of pixels (barrel to +x), turned and flipped as drawGun turns it
+/** @param {number} hx @param {number} hy @param {number} ang @param {number} sc @param {string} art @returns {Pt} */
+export function gunMuzzle(hx, hy, ang, sc, art) {
+  const a = gunArt(art) || GUN_ART[0];
+  let m = MUZZLE.get(a.id);
+  if (!m) {
+    const rows = a.px.split('/');
+    let x1 = 0, ys = [];
+    for (let x = a.w - 1; x >= 0 && !ys.length; x--) { for (let y = 0; y < a.h; y++) if (rows[y][x] !== '.') ys.push(y); x1 = x; }
+    const yc = ys.length ? ys.reduce((p, q) => p + q, 0) / ys.length : a.grip[1];
+    m = { f: (x1 + 1 - a.grip[0]) * GUN_ART_PX, s: (yc + 0.5 - a.grip[1]) * GUN_ART_PX };
+    MUZZLE.set(a.id, m);
+  }
+  const c = Math.cos(ang), s = Math.sin(ang), side = (c < 0 ? -m.s : m.s) * sc, fwd = m.f * sc;
+  return { x: hx + c * fwd - s * side, y: hy + s * fwd + c * side };
+}
 /** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} ang @param {number} sc @param {string} art */
 export function drawGun(ctx, x, y, ang, sc, art) {
   const a = gunArt(art) || GUN_ART[0], im = gunArtCanvas(a.id);

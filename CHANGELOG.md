@@ -5,6 +5,25 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.163 — gun sprites at one scale, the gun in hand twice as big, the squirts turned; the title's fire, runner and lanterns
+Released 2026-10-08 (owner OK'd the screenshots; a minor update).
+- **The two squirts** (Green, Pink) turned a quarter clockwise then mirrored (a transpose of their pixels and hand
+  point); `tools/gunart-extract.js` makes the same (TURN 13/16: 3, no MIRROR) if it's re-run.
+- **One pixel size for every gun sprite** wherever it shows: icons (`gunArtFit`: HUD slots, the Bag's gun row,
+  the gun machine, dragging) and the 🖼️ gallery use the scale that fits the biggest sprite (`GUN_ART_MAXW/MAXH`), so a
+  pistol is small and a sniper long. In the world they were already one scale (`GUN_ART_PX`).
+- **The gun in his hand twice as big** (`GUN_HELD` = 1.1, was 0.55): the game, the Bag's firing window, the title.
+  `gunMuzzle` finds each sprite's barrel tip: the gun light's beam, the Bag window's shots and the title's shots
+  leave from it.
+- **Title**: a safety net pops the runner back onto the floor if his middle ends up in rock or he's well under the
+  floor line (the owner saw him stuck shooting from inside it). The fire is drawn as the game draws it: burning cells
+  in `FIRE_COLS` (a flicker each tick, embers when nearly spent), the warm wash and glows, `flameAt` specks
+  (2.5 a second a burning cell, ≤ 20 a frame) and `fireSmoke` puffs; the old white blobs went.
+- **Title lanterns**: each chain hangs from what's really above it, the roof's underside or a frame's cap (`lamp`,
+  `HOLDS`), no gap. As in the game (game/systems/props.js): a shot or a blast pops one (`popLamp`: a white spray,
+  16 blobs of burning oil that light the fuel they pass through and where they land, the spot itself catches); its
+  hold blasted or burnt away, it falls and pops where it lands.
+
 ## v0.0.162 — the title's creatures, gold and fire are the game's own
 Released 2026-10-08 (owner OK'd the screenshots; a minor update).
 - **Real creatures**: made by `enemyFor` (floor 1's kinds) in world coordinates and moved by their real brains
