@@ -10851,6 +10851,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S2.gen++;
     }
   }
+  var titleSolidCell = (S2) => csolid(S2);
   var csolid = (S2) => (cx, cy) => cy < 0 || cy >= S2.rows || cx < S2.gen - S2.ncol || cx >= S2.gen ? 1 : SOLID[S2.cells[ci(S2, cx, cy)]];
   var wsolid = (S2) => {
     const C = csolid(S2);
@@ -21081,6 +21082,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     for (const r of S2.runners) drawTitleRunner(ctx, S2, r);
+    titleDark(ctx, S2);
     ctx.globalCompositeOperation = "lighter";
     for (const f of S2.foes) if (f.je && f.x - S2.scroll > -40 && f.x - S2.scroll < TITLE_VW + 40) titlePlantGlow(ctx, S2, f);
     if (S2.shots.length || S2.zaps.length) pixelSprite(ctx, gx, 0, TITLE_VW + 100, S2.vh, 1, false, (c) => {
@@ -21321,6 +21323,101 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const sm = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(gc, 0, 0, w, h4, ox2, oy2, w * TCELL, h4 * TCELL);
+    ctx.imageSmoothingEnabled = sm;
+  }
+  var DK = { L: null, D: null };
+  var TITLE_LAMPR = 60;
+  function titleDark(ctx, S2) {
+    const x0 = -40, w = Math.ceil((TITLE_VW + 80) / TCELL), h4 = Math.ceil(S2.vh / TCELL);
+    if (!DK.L) {
+      DK.L = document.createElement("canvas");
+      DK.D = document.createElement("canvas");
+    }
+    const L3 = DK.L, D2 = DK.D;
+    if (!D2) return;
+    for (const c of [L3, D2]) if (c.width !== w || c.height !== h4) {
+      c.width = w;
+      c.height = h4;
+    }
+    const lc = L3.getContext("2d"), dc = D2.getContext("2d");
+    if (!lc || !dc) return;
+    lc.setTransform(1, 0, 0, 1, 0, 0);
+    lc.clearRect(0, 0, w, h4);
+    lc.setTransform(1 / TCELL, 0, 0, 1 / TCELL, -x0 / TCELL, 0);
+    lc.globalCompositeOperation = "lighter";
+    const solid = titleSolidCell(S2);
+    const fan = (x, y, r, rays) => {
+      const p = visPoly(x + S2.scroll, y, r, solid, rays);
+      lc.beginPath();
+      lc.moveTo(p[0] - S2.scroll, p[1]);
+      for (let i = 2; i < p.length; i += 2) lc.lineTo(p[i] - S2.scroll, p[i + 1]);
+      lc.closePath();
+    };
+    const pool = (x, y, r, a, full = 0.5) => {
+      const g = lc.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, "rgba(255,255,255," + a + ")");
+      g.addColorStop(full, "rgba(255,255,255," + a + ")");
+      g.addColorStop(1, "rgba(255,255,255,0)");
+      lc.fillStyle = g;
+      lc.beginPath();
+      lc.arc(x, y, r, 0, Math.PI * 2);
+      lc.fill();
+    };
+    const torchR = SIGHT * DEV.torch * LAMP_REACH * 1.05, R = torchR * Math.max(1, DEV.beamReach), N = torchR * DEV.beamNear;
+    const half = DEV.beamDeg * Math.PI / 360;
+    for (const r of S2.runners) {
+      const cx = r.x + PW / 2, cy = r.y + PH * 0.45;
+      lc.save();
+      fan(cx, cy, R, 120);
+      lc.clip();
+      pool(cx, cy, N, 1);
+      for (const [k, a] of [[1, 0.6], [1.2, 0.25], [1.4, 0.15]]) {
+        const g = lc.createRadialGradient(cx, cy, 0, cx, cy, R);
+        g.addColorStop(0, "rgba(255,255,255," + a + ")");
+        g.addColorStop(0.55, "rgba(255,255,255," + a + ")");
+        g.addColorStop(1, "rgba(255,255,255,0)");
+        lc.fillStyle = g;
+        lc.beginPath();
+        lc.moveTo(cx, cy);
+        lc.arc(cx, cy, R, r.ang - half * k, r.ang + half * k);
+        lc.closePath();
+        lc.fill();
+      }
+      lc.restore();
+    }
+    for (const p of S2.props) if (p.k === "lamp" && !p.gone && !p.fall && p.x > -TITLE_LAMPR - 40 && p.x < TITLE_VW + TITLE_LAMPR + 40) {
+      const ly = p.y + p.len + 3;
+      lc.save();
+      fan(p.x, ly, TITLE_LAMPR, 72);
+      lc.clip();
+      pool(p.x, ly, TITLE_LAMPR, 0.95, 0.25);
+      lc.restore();
+    }
+    if (S2.fire.length) {
+      const st = Math.max(1, Math.ceil(S2.fire.length / 24));
+      for (let k = 0; k < S2.fire.length; k += st) {
+        const f = S2.fire[k];
+        pool((f.c + 0.5) * TCELL - S2.scroll, (f.r + 0.5) * TCELL, 26, 0.7, 0.2);
+      }
+    }
+    for (const f of S2.foes) {
+      const fx = f.x - S2.scroll;
+      if (fx < -60 || fx > TITLE_VW + 60) continue;
+      if (f.burn > 0) pool(fx, f.ty, f.r * 4 + 10, 0.8, 0.3);
+      if (f.je) pool(fx, f.ty, f.r * 3 + 16, 0.55, 0.3);
+    }
+    for (const p of S2.props) if (p.burn && !p.gone && p.x > -30 && p.x < TITLE_VW + 30) pool(p.x, p.y + Math.min(p.len, 20), 20, 0.6, 0.2);
+    dc.setTransform(1, 0, 0, 1, 0, 0);
+    dc.globalCompositeOperation = "source-over";
+    dc.clearRect(0, 0, w, h4);
+    dc.fillStyle = "rgba(9,10,14," + DEV.fogDim + ")";
+    dc.fillRect(0, 0, w, h4);
+    dc.globalCompositeOperation = "destination-out";
+    dc.drawImage(L3, 0, 0);
+    dc.globalCompositeOperation = "source-over";
+    const sm = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(D2, 0, 0, w, h4, x0, 0, w * TCELL, h4 * TCELL);
     ctx.imageSmoothingEnabled = sm;
   }
 

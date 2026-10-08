@@ -533,6 +533,8 @@ function genTo(S) {
 // the terrain as the creatures' brains see it (the game's terrain cells, world coordinates): out
 // of the ring of columns made so far, rock (they keep to the stretch on and near the screen)
 /** @param {TitleScene} S @returns {(cx: number, cy: number) => number} */
+// (exported for the painter's lights: their shadows, v0.0.171)
+export const titleSolidCell = (/** @type {TitleScene} */ S) => csolid(S);
 const csolid = S => (cx, cy) => (cy < 0 || cy >= S.rows || cx < S.gen - S.ncol || cx >= S.gen ? 1 : SOLID[S.cells[ci(S, cx, cy)]]);
 /** @param {TitleScene} S @returns {(x: number, y: number) => boolean} world point in rock */
 const wsolid = S => { const C = csolid(S); return (x, y) => !!C(Math.floor(x / CELL), Math.floor(y / CELL)); };

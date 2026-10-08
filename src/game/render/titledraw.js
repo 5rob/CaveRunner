@@ -6,9 +6,9 @@
 // (drawProp), floor 1's creatures (drawJelly, drawSpider, drawRat), gold, the runner (drawRunner,
 // jetFlame, drawGun with his gun's art), the shots in their game looks, fire, booms.
 
-import { PW, PH } from '../../core/consts.js';
+import { LAMP_REACH, PW, PH, SIGHT } from '../../core/consts.js';
 import { hexArr } from '../../core/util.js';
-import { jcol, kru } from '../../dev/knobs.js';
+import { DEV, jcol, kru } from '../../dev/knobs.js';
 import { plantGlowFill, plantWhite } from '../../creatures/jelly.js';
 import { THEMES } from '../../data/themes.js';
 import { drawEnemy } from '../../creatures/draw.js';
@@ -18,7 +18,8 @@ import { vinePt } from '../../world/sway.js';
 import { crackleAt, crackleBody } from '../../art/crackle.js';
 import { drawProp, propGlow } from '../../art/props.js';
 import { GUN_HELD, gunMuzzle, drawGun, drawNugget, glowAt, drawRunner, jetFlame, pixelHeld, pixelSprite } from '../../art/sprites.js';
-import { TCELL, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleWebAt } from '../../art/titlescene.js';
+import { TCELL, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleSolidCell, titleWebAt } from '../../art/titlescene.js';
+import { visPoly } from '../../world/vision.js';
 import { drawBolt, drawLook } from './looks.js';
 
 const T = THEMES[0];                                   // Mossy caves
@@ -179,6 +180,8 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   // the four players: body and jet flame on the 1-unit pixel grid like the game's drawPlayer, the gun in it
   // (pixelHeld), each with its colour on the backpack and helmet
   for (const r of S.runners) drawTitleRunner(ctx, S, r);
+  // the game's dark over it all, the players' gun lights, the lanterns, fire and the jellyfish cutting through it (v0.0.171)
+  titleDark(ctx, S);
   // the bright stuff, added light
   ctx.globalCompositeOperation = 'lighter';
   // each jellyfish's green glow on the plants and moss round it, as the game's (systems/plantglow.js, plantGlowFill)
@@ -375,5 +378,83 @@ function titlePlantGlow(ctx, S, e) {
   const sm = ctx.imageSmoothingEnabled;
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(gc, 0, 0, w, h, ox, oy, w * TCELL, h * TCELL);
+  ctx.imageSmoothingEnabled = sm;
+}
+
+// The game's dark (owner, v0.0.171): the cave at the game's outside-the-torchlight darkness (DEV.fogDim) and lights
+// cutting it, each only as far as it can see (visPoly: the rock throws shadows), as render/light.js lights the game:
+// every player's gun light (a cone out along the gun, soft at its sides, DEV.beamDeg wide and the game's reach, and
+// the round glow at his feet, DEV.beamNear), the lanterns (warm pools), fire, burning creatures and the jellyfish.
+// Drawn into a small layer at the terrain's grid (the light added up, then cut out of the dark), smoothed up
+/** @type {{ L: HTMLCanvasElement | null, D: HTMLCanvasElement | null }} */
+const DK = { L: null, D: null };
+export const TITLE_LAMPR = 60;          // a lantern's pool of light (world units)
+/** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S */
+function titleDark(ctx, S) {
+  const x0 = -40, w = Math.ceil((TITLE_VW + 80) / TCELL), h = Math.ceil(S.vh / TCELL);
+  if (!DK.L) { DK.L = document.createElement('canvas'); DK.D = document.createElement('canvas'); }
+  const L = DK.L, D = DK.D;
+  if (!D) return;
+  for (const c of [L, D]) if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  const lc = L.getContext('2d'), dc = D.getContext('2d');
+  if (!lc || !dc) return;
+  lc.setTransform(1, 0, 0, 1, 0, 0); lc.clearRect(0, 0, w, h);
+  lc.setTransform(1 / TCELL, 0, 0, 1 / TCELL, -x0 / TCELL, 0);
+  lc.globalCompositeOperation = 'lighter';
+  const solid = titleSolidCell(S);
+  /** the line-of-sight fan from (x, y) (screen x) out to r, as a clip path @param {number} x @param {number} y @param {number} r @param {number} rays */
+  const fan = (x, y, r, rays) => {
+    const p = visPoly(x + S.scroll, y, r, solid, rays);
+    lc.beginPath(); lc.moveTo(p[0] - S.scroll, p[1]);
+    for (let i = 2; i < p.length; i += 2) lc.lineTo(p[i] - S.scroll, p[i + 1]);
+    lc.closePath();
+  };
+  /** a round light: full to a fraction 'full' of r, then fading @param {number} x @param {number} y @param {number} r @param {number} a @param {number} [full] */
+  const pool = (x, y, r, a, full = 0.5) => {
+    const g = lc.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, 'rgba(255,255,255,' + a + ')'); g.addColorStop(full, 'rgba(255,255,255,' + a + ')'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    lc.fillStyle = g; lc.beginPath(); lc.arc(x, y, r, 0, Math.PI * 2); lc.fill();
+  };
+  // the players' gun lights, the game's sizes: the old torch's reach (SIGHT × DEV.torch × LAMP_REACH), the cone that × DEV.beamReach
+  const torchR = SIGHT * DEV.torch * LAMP_REACH * 1.05, R = torchR * Math.max(1, DEV.beamReach), N = torchR * DEV.beamNear;
+  const half = DEV.beamDeg * Math.PI / 360;
+  for (const r of S.runners) {
+    const cx = r.x + PW / 2, cy = r.y + PH * 0.45;
+    lc.save();
+    fan(cx, cy, R, 120); lc.clip();
+    pool(cx, cy, N, 1);
+    // the cone, its soft sides as the game's beamSide (full to half, fading over 0.4 × half more): three nested wedges
+    for (const [k, a] of [[1, 0.6], [1.2, 0.25], [1.4, 0.15]]) {
+      const g = lc.createRadialGradient(cx, cy, 0, cx, cy, R);
+      g.addColorStop(0, 'rgba(255,255,255,' + a + ')'); g.addColorStop(0.55, 'rgba(255,255,255,' + a + ')'); g.addColorStop(1, 'rgba(255,255,255,0)');
+      lc.fillStyle = g; lc.beginPath(); lc.moveTo(cx, cy); lc.arc(cx, cy, R, r.ang - half * k, r.ang + half * k); lc.closePath(); lc.fill();
+    }
+    lc.restore();
+  }
+  // the lanterns (not fallen or popped), their own shadows
+  for (const p of S.props) if (p.k === 'lamp' && !p.gone && !p.fall && p.x > -TITLE_LAMPR - 40 && p.x < TITLE_VW + TITLE_LAMPR + 40) {
+    const ly = p.y + p.len + 3;
+    lc.save(); fan(p.x, ly, TITLE_LAMPR, 72); lc.clip(); pool(p.x, ly, TITLE_LAMPR, 0.95, 0.25); lc.restore();
+  }
+  // fire (a few of its cells, as the game's glows sample it), burning creatures and plants, and the jellyfish
+  if (S.fire.length) {
+    const st = Math.max(1, Math.ceil(S.fire.length / 24));
+    for (let k = 0; k < S.fire.length; k += st) { const f = S.fire[k]; pool((f.c + 0.5) * TCELL - S.scroll, (f.r + 0.5) * TCELL, 26, 0.7, 0.2); }
+  }
+  for (const f of S.foes) {
+    const fx = f.x - S.scroll;
+    if (fx < -60 || fx > TITLE_VW + 60) continue;
+    if (f.burn > 0) pool(fx, f.ty, f.r * 4 + 10, 0.8, 0.3);
+    if (f.je) pool(fx, f.ty, f.r * 3 + 16, 0.55, 0.3);
+  }
+  for (const p of S.props) if (p.burn && !p.gone && p.x > -30 && p.x < TITLE_VW + 30) pool(p.x, p.y + Math.min(p.len, 20), 20, 0.6, 0.2);
+  // the dark, the light cut out of it, laid over the scene smoothed
+  dc.setTransform(1, 0, 0, 1, 0, 0); dc.globalCompositeOperation = 'source-over'; dc.clearRect(0, 0, w, h);
+  dc.fillStyle = 'rgba(9,10,14,' + DEV.fogDim + ')'; dc.fillRect(0, 0, w, h);
+  dc.globalCompositeOperation = 'destination-out'; dc.drawImage(L, 0, 0);
+  dc.globalCompositeOperation = 'source-over';
+  const sm = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(D, 0, 0, w, h, x0, 0, w * TCELL, h * TCELL);
   ctx.imageSmoothingEnabled = sm;
 }

@@ -5,8 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
-## v0.0.171 — the title: no outline on the pixel look, shots in it too; jetpacks against gravity, bursts, varied pace
+## v0.0.171 — the title: the game's dark and lights; no outline on the pixel look, shots in it too; jetpacks against gravity, bursts, varied pace
 Waiting on the owner's OK (a minor update).
+- **The dark** (owner): `titleDark` (titledraw): the cave at the game's `DEV.fogDim`, cut by lights that only reach as far as they
+  can see (`visPoly` from world/vision.js on the title's cells, `titleSolidCell`: the rock throws shadows): each player's gun
+  light at the game's sizes (cone `DEV.beamDeg` wide out to the old torch's reach × `DEV.beamReach`, soft sides; the round glow
+  `DEV.beamNear`), lanterns (`TITLE_LAMPR` 60, warm pools with shadows), fire (sampled cells), burning creatures and plants,
+  jellyfish. A small layer at the terrain's grid (light added up, cut out of the dark), smoothed up; the glows and shots over it.
 - No dark outline on the players and creatures (titledraw: `pixelHeld` / `pixelSprite` line off).
 - Shots and lightning in the pixel look: one layer on the world's grid, drawn 'lighter' as before; the Buzzsaw's blade
   its own, pinned to it.
