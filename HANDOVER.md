@@ -5,9 +5,8 @@ release loop, testing), then the README of the `src/` folder you're working in.
 
 ## NEXT (as of v0.0.168, 2026-10-08)
 
-- **v0.0.168 is on branch `title-cam`, waiting on the owner's OK of the screenshots** (`node tools/titlecamshots.js`):
-  random zones every visit, pinch zoom / pan / tap a player to follow. Once OK'd: merge to `main`, confirm Pages.
-  Decisions to mention if they ask: letting go keeps the zoom (pinch out); dragging does nothing while following.
+- **v0.0.168 released** (owner OK'd the screenshots, `node tools/titlecamshots.js`): random zones every visit, pinch
+  zoom / pan / tap a player to follow. Feedback may follow from the app. Decisions they may revisit: letting go keeps the zoom (pinch out); dragging does nothing while following.
 
 - **Still open from the owner: ground and shop guns in the pixel look** (the gun in hand has it). The brief is under
   v0.0.164 below. Looks: screenshots first.
@@ -20,7 +19,7 @@ release loop, testing), then the README of the `src/` folder you're working in.
   lines hang and swing; the game's don't).
 - Known failing as before: logic `spider` ("every roaming spider moves about": 1 still of 69), browser `vendshop`.
 
-## v0.0.168 — title: random zones each visit; pinch zoom, pan, tap to follow: on branch `title-cam`, WAITING on the owner's OK
+## v0.0.168 — title: random zones each visit; pinch zoom, pan, tap to follow: RELEASED on `main` 2026-10-08 (owner OK'd)
 
 CHANGELOG v0.0.168. Screenshots sent. Logic all pass except the known `spider`; browser `title` passes.
 

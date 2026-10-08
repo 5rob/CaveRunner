@@ -6,7 +6,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v0.0.168 — the title: random zones each visit; pinch zoom, pan, tap a player to follow
-Waiting on the owner's OK (a minor update).
+Released 2026-10-08 (owner OK'd; a minor update).
 - **Zones** (art/titlescene.js `titlePlan`, `S.zp`): made from the scene's seed as it scrolls, each zone a random kind
   (none of the last two again), its own length (`TITLE_ZLEN` 200–360), its own roof and floor (height, hilliness,
   stretch, phase; blended over `ZMIX` 40 at the borders, no steps) and plant/web density. `titleZone`, `titleZoneAt`,
