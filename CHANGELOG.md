@@ -6,7 +6,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v0.0.172 — the title: a sixth zone, the winding caves
-Waiting on the owner's OK (a minor update).
+Released 2026-10-08 (owner OK'd; a minor update).
 - `winding` in `TITLE_ZONES` (owner: the natural caves that aren't big and open): rock, a narrow tunnel snaking up and down
   through it (`windMid`, its half height `windHalf` 15–26: the zone's roof and floor, blended into its neighbours by
   `zoneMix`), now and then a side branch above or below and pockets of air in the rock round it (`windAir`, fading in from the

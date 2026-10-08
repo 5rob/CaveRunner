@@ -5,8 +5,7 @@ release loop, testing), then the README of the `src/` folder you're working in.
 
 ## NEXT (as of v0.0.172, 2026-10-08)
 
-- **v0.0.172 is on branch `title-winding`, waiting on the owner's OK** (`node tools/windshots.js`): a sixth title zone, the
-  winding caves. Once OK'd: merge to `main`, confirm Pages.
+- **v0.0.172 released** (owner OK'd; `node tools/windshots.js`): a sixth title zone, the winding caves.
 
 - **v0.0.171 released** (owner OK'd; `node tools/pixelshots.js`, `node tools/mineshots.js`): no
   outline, shots pixelated, jetpack with gravity + bursts, run pace, and the game's dark with the players' gun lights,
