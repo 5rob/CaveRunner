@@ -5,6 +5,14 @@ release loop, testing), then the README of the `src/` folder you're working in.
 
 ## NEXT (as of v0.0.173, 2026-10-09)
 
+- **WAITING ON THE OWNER (branch `title-settings`, not on `main`, no version bump yet): title sound + new buttons + settings.**
+  Title sounds: the scene queues `S.snd` events (`art/titlescene.js` `snd()`), `ui/titlesound.js` plays them with the game's voices
+  (casts, hits, blasts, creature alert/idle/hurt/die/bite/spit, fire loop + whoosh, lamp shatter, gold, steps, landings, jetpack
+  loop per player, rustles, drips, Mossy caves ambience). Menu: square ⚙ (left) / ▶ (right) (`.tbig`); ⚙ turns the window into
+  Settings: Master / FX / Music sliders (`SFX.setFxVolume`, `setMusicVolume`, keys `caverunner-vol-fx` / `-music`; a music bus
+  exists, nothing plays on it yet). Shots: `node tools/settingsshots.js`, sent. On OK: bump to v0.0.174, CHANGELOG, merge.
+  Open: a synthwave title track on the music bus (discussed with the owner, waiting on their idea of it).
+
 - **The title (v0.0.165–173) is all released; the owner is playing it in the app.** Where it lives: `art/titlescene.js`
   (pure: zones, mines, winding caves, players, camera; its README row in `src/art/README.md`), painter
   `game/render/titledraw.js` (pixel layers, the dark and lights, the jellyfish plant glow; `src/game/render/README.md`),

@@ -892,11 +892,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   background:rgba(0,0,0,0.3);font:800 16px system-ui,sans-serif;color:#fff}
 .tdel.ask{background:#d0282e;border-color:#ff6a6a;font-size:14px;animation:tdelask .5s ease-in-out infinite alternate}
 @keyframes tdelask{from{box-shadow:0 0 0 rgba(255,60,60,0)}to{box-shadow:0 0 14px rgba(255,60,60,0.9)}}
-.tstart{height:60px;margin-top:4px;border-radius:14px;border:none;color:#1a0f06;
-  font:900 24px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;
-  background:linear-gradient(#ffe066,#ff8a1f 60%,#e8461a);box-shadow:0 4px 0 #7a2410,0 0 22px rgba(255,140,40,0.7);
-  animation:tstartpulse 1.1s ease-in-out infinite alternate}
+.tstart{animation:tstartpulse 1.1s ease-in-out infinite alternate}
 @keyframes tstartpulse{from{transform:scale(1)}to{transform:scale(1.035);box-shadow:0 4px 0 #7a2410,0 0 34px rgba(255,170,60,0.95)}}
+/* the title's two square buttons (v0.0.174): ⚙ left, ▶ right; and the settings window */
+.tbtns{display:flex;justify-content:space-between;align-items:center;margin-top:4px}
+.tbig{width:64px;height:64px;padding:0;border-radius:14px;border:none;color:#1a0f06;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(#ffe066,#ff8a1f 60%,#e8461a);box-shadow:0 4px 0 #7a2410,0 0 22px rgba(255,140,40,0.7)}
+.tbig.tgear{animation:none}
+.tbig:active{transform:translateY(2px);box-shadow:0 2px 0 #7a2410,0 0 18px rgba(255,140,40,0.7)}
+.tsethead{position:relative;line-height:38px}
+.tclose{position:absolute;right:-4px;top:0;width:38px;height:38px;padding:0;border-radius:10px;border:1px solid rgba(255,255,255,0.15);
+  background:rgba(0,0,0,0.3);color:#fff;font:700 26px system-ui,sans-serif;line-height:34px}
+.tvol{padding:6px 12px}
 </style>
 </head>
 <body>
@@ -4478,15 +4485,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/audio/sfx.js
   var VOL_KEY = "caverunner-volume";
+  var FXVOL_KEY = "caverunner-vol-fx";
+  var MUSVOL_KEY = "caverunner-vol-music";
   var SFX = (() => {
-    let ac = null, master = null, sfxBus = null, ambBus = null, noiseBuf = null, crackBuf = null, comp = null, tap = null;
+    let ac = null, master = null, sfxBus = null, ambBus = null, musicBus = null, noiseBuf = null, crackBuf = null, comp = null, tap = null;
     let voices = 0, hooked = false;
-    let vol = 1;
-    try {
-      const v = parseFloat(localStorage.getItem(VOL_KEY));
-      if (Number.isFinite(v)) vol = Math.max(0, Math.min(1, v));
-    } catch (_) {
-    }
+    const stored = (key) => {
+      try {
+        const v = parseFloat(localStorage.getItem(key));
+        if (Number.isFinite(v)) return Math.max(0, Math.min(1, v));
+      } catch (_) {
+      }
+      return 1;
+    };
+    let vol = stored(VOL_KEY), fxVol = stored(FXVOL_KEY), musVol = stored(MUSVOL_KEY);
     const MAX_VOICES = 28, HEAR = 650;
     const gates = {};
     const ear = { x: 0, y: 0 };
@@ -4524,11 +4536,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           master = ac.createGain();
           master.gain.value = vol;
           sfxBus = ac.createGain();
-          sfxBus.gain.value = DEV.vol;
+          sfxBus.gain.value = DEV.vol * fxVol;
           ambBus = ac.createGain();
-          ambBus.gain.value = DEV.vol * DEV.amb;
+          ambBus.gain.value = DEV.vol * DEV.amb * fxVol;
+          musicBus = ac.createGain();
+          musicBus.gain.value = musVol;
           sfxBus.connect(master);
           ambBus.connect(master);
+          musicBus.connect(master);
           master.connect(comp);
           comp.connect(ac.destination);
           const n = ac.sampleRate * 2;
@@ -5631,8 +5646,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     function tick() {
       if (!ac) return;
-      sfxBus.gain.value = DEV.vol;
-      ambBus.gain.value = DEV.vol * DEV.amb;
+      sfxBus.gain.value = DEV.vol * fxVol;
+      ambBus.gain.value = DEV.vol * DEV.amb * fxVol;
       if (ambWant && !amb && live()) setAmbience(ambWant);
       const t = now();
       for (const h4 of loops) if (t - h4.last > 100) {
@@ -5695,6 +5710,32 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       },
       get volume() {
         return vol;
+      },
+      /** @param {number} v sound effects' and ambience's volume, 0..1 (kept) */
+      setFxVolume: (v) => {
+        fxVol = Math.max(0, Math.min(1, Number(v) || 0));
+        try {
+          localStorage.setItem(FXVOL_KEY, String(fxVol));
+        } catch (_) {
+        }
+      },
+      get fxVolume() {
+        return fxVol;
+      },
+      /** @param {number} v the music's volume, 0..1 (kept) */
+      setMusicVolume: (v) => {
+        musVol = Math.max(0, Math.min(1, Number(v) || 0));
+        try {
+          if (musicBus) musicBus.gain.value = musVol;
+        } catch (_) {
+        }
+        try {
+          localStorage.setItem(MUSVOL_KEY, String(musVol));
+        } catch (_) {
+        }
+      },
+      get musicVolume() {
+        return musVol;
       },
       get ready() {
         return !!live();
@@ -10810,7 +10851,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       kitNames: /* @__PURE__ */ new Set(),
       digT: 0,
       digs: 0,
-      digWhy: {}
+      digWhy: {},
+      snd: []
     };
     genTo(S2);
     for (let i = 0; i < TITLE_RUNNERS; i++) {
@@ -10861,6 +10903,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return S2;
   }
   var AHEAD = 130;
+  var snd = (S2, k, x, y, a) => {
+    if (S2.snd.length < 80) S2.snd.push({ k, x, y, a });
+  };
   function genTo(S2) {
     while (S2.gen * TCELL < S2.scroll + TITLE_VW + AHEAD) {
       genCol(S2, S2.gen);
@@ -10955,6 +11000,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     p.gone = true;
     S2.lampsPopped++;
     const R = S2.rnd, x = p.x, y = p.y + p.len + 4.5;
+    snd(S2, "lamp", x, y);
     burst(S2, x, y, 6, "#fff2c0", 80, "spark", 0.3);
     for (let k = 0; k < 16 && S2.parts.length < TITLE_PARTS; k++) {
       const a = -Math.PI / 2 + (R() - 0.5) * 3.4, v = 50 + R() * 120;
@@ -11035,17 +11081,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!p.burn && !p.gone) {
       p.burn = 1;
       S2.burnt++;
+      snd(S2, "whoosh", p.x, p.y + p.len);
     }
   }
   function catchArch(S2, p, u) {
     if (!p.burn && !p.gone) {
       S2.burnt++;
+      snd(S2, "whoosh", p.x + (p.span || 0) * u, p.y);
       cutArch(S2, p, u, true, true);
     }
   }
   function catchWeb(S2, L3, u) {
     if (!L3.fu && !L3.out) {
       S2.burnt++;
+      const w = titleWebAt(L3, u);
+      snd(S2, "whoosh", w.x - S2.scroll, w.y);
       cutWeb(S2, L3, u, true);
     }
   }
@@ -11134,6 +11184,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var canSwing = (p) => p.k === "climb" && !p.arc && !!p.len;
   function stepSway(S2, dt) {
+    for (const r of S2.runners) r.rub = "";
     for (const p of S2.props) {
       if (p.gone || p.k !== "climb") continue;
       const x = p.ox - S2.scroll;
@@ -11152,7 +11203,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               best = k;
             }
           }
-          if (best >= 0) bendPush(pa, best / n, r.wvx, r.wvy, DEV.bendPush, dt);
+          if (best >= 0) {
+            bendPush(pa, best / n, r.wvx, r.wvy, DEV.bendPush, dt);
+            r.rub = p.st === "root" ? "root" : "vine";
+          }
         }
         if (bendAwake(pa)) bendStep(pa, 0, 0, DEV.bendK, DEV.bendDamp, DEV.bendMax, dt);
         continue;
@@ -11165,6 +11219,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (Math.abs(x + q.x - (r.x + PW / 2)) < PW / 2 + 1) {
           const k = Math.min(1, 10 * dt);
           p.swv = (p.swv || 0) + (r.wvx * DEV.vinePush / Math.max(12, p.len) - (p.swv || 0)) * k;
+          r.rub = p.st === "silk" ? "myc" : p.st === "root" ? "root" : "vine";
         }
       }
       if (p.sw || p.swv) swingStep(pa, p.len * 0.6, GRAVITY * DEV.vineGrav, DEV.vineDamp, DEV.vineMax, dt);
@@ -11181,15 +11236,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (cx < Math.min(L3.a0x, L3.b0x) - 6 || cx > Math.max(L3.a0x, L3.b0x) + 6) continue;
         const vx = L3.b0x - L3.a0x, vy = L3.b0y - L3.a0y, u = Math.max(0, Math.min(1, ((cx - L3.a0x) * vx + (cy - L3.a0y) * vy) / (vx * vx + vy * vy || 1)));
         const w = titleWebAt(L3, u);
-        if (Math.hypot(w.x - cx, w.y - cy) < 6) bendPush(L3, u, r.wvx, r.wvy, DEV.bendPush, dt);
+        if (Math.hypot(w.x - cx, w.y - cy) < 6) {
+          bendPush(L3, u, r.wvx, r.wvy, DEV.bendPush, dt);
+          r.rub = "myc";
+        }
       }
       if (bendAwake(L3)) bendStep(L3, 0, 0, DEV.bendK, DEV.bendDamp, DEV.bendMax, dt);
+    }
+    for (const r of S2.runners) {
+      const str = rustleStep(r.rst || (r.rst = {}), dt, r.rub, r.rub && !r.rubWas, Math.hypot(r.wvx, r.wvy) * 2, S2.rnd);
+      r.rubWas = !!r.rub;
+      if (str) snd(S2, "rustle", r.x + PW / 2, r.y + PH / 2, { st: r.rub, v: str });
     }
   }
   function killFoe(S2, f) {
     f.hp = 0;
     S2.kills++;
     const big = f.k.id !== "rotta", x = f.x - S2.scroll, y = f.ty;
+    snd(S2, "die", x, y, f.k);
+    if (big) snd(S2, "boom", x, y, f.r * 3);
     S2.booms.push({ x, y, r: f.r * (big ? 3 : 1.6), t: 0, max: 0.4 });
     burst(S2, x, y, big ? 22 : 8, "#ffd27a", 110, "fire", 0.55);
     burst(S2, x, y, 8, "#ffffff", 190, "spark", 0.3);
@@ -11208,6 +11273,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (f.hp <= 0) return;
     f.hp -= dmg;
     f.flash = 0.08;
+    if (f.hp > 0 && dmg >= 0.5) snd(S2, "hurt", f.x - S2.scroll, f.ty, f.k);
     if (f.k.kp) f.aggro = true;
     burst(S2, f.x - S2.scroll, f.ty, 4, col, 80, "spark", 0.25);
     if (f.hp <= 0) killFoe(S2, f);
@@ -11216,6 +11282,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     s.life = 0;
     if (s.explode) {
       const r = s.explode * 0.42;
+      snd(S2, "boom", s.x, s.y, s.explode);
       S2.booms.push({ x: s.x, y: s.y, r: r * 1.6, t: 0, max: 0.38 });
       burst(S2, s.x, s.y, 14, "#ffb02e", 90, "fire", 0.5);
       burst(S2, s.x, s.y, 4, "#3a3346", 25, "smoke", 1.2);
@@ -11223,7 +11290,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       titleCarve(S2, s.x, s.y, r);
       for (const g of S2.foes) if (Math.hypot(g.x - S2.scroll - s.x, g.ty - s.y) < r + g.r) hitFoe(S2, g, 4, s.col);
       for (const p of S2.props) if (p.k === "lamp" && !p.gone && lampHit(p, s.x, s.y, r)) popLamp(S2, p);
-    } else if (s.pit) titleCarve(S2, s.x, s.y, s.pit * 0.7);
+    } else if (s.pit) {
+      titleCarve(S2, s.x, s.y, s.pit * 0.7);
+      snd(S2, "debris", s.x, s.y);
+    } else if (!s.hitFoe) snd(S2, "rock", s.x, s.y);
     if (s.fire || s.explode) titleIgnite(S2, s.x, s.y, (s.fire ? 7 : 0) + (s.explode ? s.explode * 0.42 + 5 : 0));
     burst(S2, s.x, s.y, 3, s.col, 50, "spark", 0.25);
   }
@@ -11276,6 +11346,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (titleSolid(S2, p.x, p.y + 1)) {
           p.life = 0;
           burst(S2, p.x, p.y, 2, "#7ab8ff", 25, "spark", 0.2);
+          snd(S2, "drip", p.x, p.y);
         }
         continue;
       }
@@ -11337,6 +11408,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         else if (titleSolid(S2, p.x, p.y + 1)) {
           p.gone = true;
           burst(S2, p.x, p.y, 3, p.st === "silk" ? "#eef0f6" : "#5a8a3a", 40, "chunk", 0.6);
+          snd(S2, "rustle", p.x, p.y, { st: p.st === "silk" ? "myc" : "vine", v: 0.4 });
           if (p.burn) lightArea(S2, p.ox, p.y, 6, 0.8);
         }
         continue;
@@ -11489,6 +11561,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       r.y += r.vy * dt;
       r.ground = false;
       if (r.y + PH >= ground) {
+        if (r.vy > 100) snd(S2, "land", cx, ground, r.vy * 2);
         r.y = ground - PH;
         r.vy = 0;
         r.ground = true;
@@ -11509,6 +11582,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     r.x += vx * dt;
     r.gait += (SCROLL + vx) * dt * 0.38;
+    if ((r.stepT = (r.stepT || 0) - dt * Math.abs(SCROLL + vx) / 20) <= 0) {
+      r.stepT = 1;
+      snd(S2, "step", cx, r.y + PH);
+    }
     if (r.modeT <= 0) {
       setMode(S2, r, "fly", flyTime(R));
       pickTarget(S2, r);
@@ -11563,6 +11640,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return;
     }
     if (landing && g0 - (r.y + PH) < 1.5) {
+      if (r.vy > 100) snd(S2, "land", cx, g0, r.vy * 2);
       r.y = g0 - PH;
       r.vy = 0;
       setMode(S2, r, "run", runTime(R));
@@ -11641,6 +11719,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       r.sawT -= dt;
       const mz2 = gunMuzzle(cx() + Math.cos(r.ang) * 2.5, r.y + PH * 0.45, r.ang, GUN_HELD, r.kit.art), bx = mz2.x + Math.cos(r.ang) * 3, by = mz2.y + Math.sin(r.ang) * 3;
       if (R() < dt * 25) burst(S2, bx, by, 1, R() < 0.5 ? "#ffd27a" : "#fff2c0", 70, "spark", 0.15);
+      if ((r.sawS = (r.sawS || 0) - dt) <= 0) {
+        r.sawS = r.kit.cd;
+        snd(S2, "cast", bx, by, r.kit);
+      }
       if (r.sawT <= 0) {
         for (const f of S2.foes) if (f.hp > 0 && Math.hypot(f.x - S2.scroll - bx, f.ty - by) < f.r + 6) {
           hitFoe(S2, f, MODS.saw.dmg * 0.5, "#d9dde4");
@@ -11673,6 +11755,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       r.swap = 0.3;
       r.cd = 0.35;
       S2.swaps++;
+      snd(S2, "swap", cx(), r.y + PH / 2);
     }
     r.cd -= dt;
     if (!best || r.cd > 0 || r.swap > 0) return;
@@ -11680,12 +11763,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     r.cd = K.cd * (0.85 + R() * 0.3);
     const n = Math.min(12, K.n);
     if (K.shot === "zap") {
+      snd(S2, "cast", gx, gy, K);
       const near = S2.foes.filter((f) => f.hp > 0 && f.x - S2.scroll < TITLE_VW).sort((a, b) => Math.hypot(a.x - best.x, a.ty - best.ty) - Math.hypot(b.x - best.x, b.ty - best.ty));
       for (const f of near.slice(0, Math.min(4, n))) {
         const bx = f.x - S2.scroll, by = f.ty;
         zapArc(S2, gx, gy, bx, by, K.col);
         const fl = titleSurf(S2, bx, by + f.r, 1);
         if (fl - by < 50 && R() < 0.6) {
+          snd(S2, "arc", bx, fl);
           zapArc(S2, bx, by, bx + (R() - 0.5) * 16, fl + 1, K.col);
           titleCarve(S2, bx, fl + 1, 2.5);
           titleIgnite(S2, bx, fl + 1, 4);
@@ -11725,6 +11810,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       });
     }
     burst(S2, gx, gy, 3, K.col, 40, "spark", 0.12);
+    snd(S2, "cast", gx, gy, K);
   }
   function zapArc(S2, x0, y0, x1, y1, col) {
     const R = S2.rnd, pts = [{ x: x0, y: y0 }];
@@ -11764,18 +11850,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       const reach2 = k.aggro * sees * DEV.aggro * carrotAt("caAggro", 0) * (k.kp ? e.aggroM : 1);
       if (!e.aggro) {
-        if (dist < reach2 && losClear(e.x, e.ty, pcx, pcy, CS)) e.aggro = true;
+        if (dist < reach2 && losClear(e.x, e.ty, pcx, pcy, CS)) {
+          e.aggro = true;
+          snd(S2, "alert", e.x - S2.scroll, e.ty, k);
+        }
       } else if (dist > reach2 * DEV.loseAggro) e.aggro = false;
       const hunting = !!e.aggro;
       if (k.act === "jelly") jellyAct(S2, e, hunting, goal, sees, CS, dt);
       else if (k.act === "spider") spiderAct(S2, e, hunting, goal, sees, dist, dx, dy, CS, dt);
       else if (k.act === "rat") ratAct(S2, e, ru, hunting, CS, dt);
       e.ty = e.y;
+      if (!hunting && R() < 0.07 * dt) snd(S2, "idle", e.x - S2.scroll, e.ty, k);
       if (hunting && dist < e.r + 14 && e.touch <= 0) {
         e.touch = kr(k.kp + "BiteCd", R);
+        snd(S2, "bite", e.x - S2.scroll, e.ty, k);
         burst(S2, ru.x + PW / 2, ru.y + PH / 2, 4, "#ff6a5a", 50, "spark", 0.2);
       }
-      if (!(e.burn > 0) && S2.fire.length && fireNear2(S2, e.x, e.ty, e.r * 0.7)) e.burn = kr("fireBurn", R);
+      if (!(e.burn > 0) && S2.fire.length && fireNear2(S2, e.x, e.ty, e.r * 0.7)) {
+        e.burn = kr("fireBurn", R);
+        snd(S2, "whoosh", e.x - S2.scroll, e.ty);
+      }
       if (e.burn > 0) {
         e.burn -= dt;
         if (R() < dt * 40) flameAt(S2, e.x - S2.scroll + (R() - 0.5) * e.r, e.ty + (R() - 0.5) * e.r);
@@ -11795,7 +11889,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let s = 0; s < n && b.life > 0; s++) {
         b.x += b.vx * dt / n;
         b.y += b.vy * dt / n;
-        if (CS(Math.floor(b.x / CELL), Math.floor(b.y / CELL)) || S2.runners.some((q) => Math.abs(b.x - S2.scroll - q.x - PW / 2) < PW / 2 + 3 && Math.abs(b.y - q.y - PH / 2) < PH / 2 + 3)) b.life = 0;
+        if (CS(Math.floor(b.x / CELL), Math.floor(b.y / CELL))) b.life = 0;
+        else if (S2.runners.some((q) => Math.abs(b.x - S2.scroll - q.x - PW / 2) < PW / 2 + 3 && Math.abs(b.y - q.y - PH / 2) < PH / 2 + 3)) {
+          b.life = 0;
+          snd(S2, "lash", b.x - S2.scroll, b.y);
+        }
       }
     }
     S2.silk = S2.silk.filter((b) => b.life > 0);
@@ -11809,6 +11907,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const hx = e.x + Math.cos(J.hd) * e.r * 0.9, hy = e.y + Math.sin(J.hd) * e.r * 0.9;
       if (losClear(hx, hy, goal.x, goal.y, CS)) {
         e.cd = kr("jeShotCd", R);
+        snd(S2, "fire", hx - S2.scroll, hy, e.k);
         const a = Math.atan2(goal.y - hy, goal.x - hx) + (R() * 2 - 1) * kr("jeSpread", R) * Math.PI / 180, v = kr("jeShotSpd", R), P2 = jellyPal(J.u.col);
         S2.shots.push({
           x: hx - S2.scroll,
@@ -11841,7 +11940,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       e.y -= e.woy || 0;
       e.wox = e.woy = 0;
     }
-    spiderStep(e, { solidCell: CS, webs: S2.webs, hunting, goal, rnd: R, speedMul: 1 }, dt);
+    if (spiderStep(e, { solidCell: CS, webs: S2.webs, hunting, goal, rnd: R, speedMul: 1 }, dt) === "web") snd(S2, "lash", e.x - S2.scroll, e.y);
     const P2 = e.sp;
     if (P2 && P2.mode === "line" && P2.line) {
       S2.lineT += dt;
@@ -11856,6 +11955,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         e.silkT = spr("spSilkCd", R);
         e.silkR = spr("spSilk", R);
         const v = spr("spSilkSpd", R);
+        snd(S2, "fire", e.x - S2.scroll, e.y, e.k);
         S2.silk.push({ x: e.x, y: e.y, ax: e.x, ay: e.y, vx: dx / dist * v, vy: dy / dist * v, life: 400 / v * 1.3 + 0.1 });
       }
     }
@@ -11883,7 +11983,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         air = !!w.air && w.dist > 2;
       }
     }
-    ratStep(e, {
+    if (ratStep(e, {
       solidCell: CS,
       rnd: R,
       goal: way,
@@ -11896,7 +11996,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       speedMul: 1,
       arrive: way === goal && hunting ? e.arrive : 3,
       jump
-    }, dt);
+    }, dt) === "jump") snd(S2, "alert", e.x - S2.scroll, e.y, e.k);
   }
   function navYou(S2, ru, goal, CS) {
     const o = ru.nav;
@@ -11943,10 +12043,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           S2.got += g.amount;
           S2.gotN++;
           S2.coins.splice(i, 1);
+          snd(S2, "coin", g.x - S2.scroll, g.y);
         }
         continue;
       }
-      stepNugget(g, dt, solid);
+      if (stepNugget(g, dt, solid)) snd(S2, "coinland", g.x - S2.scroll, g.y);
       if (g.x - S2.scroll < -30) S2.coins.splice(i, 1);
     }
     collideNuggets(S2.coins, solid);
@@ -11991,10 +12092,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (S2.runners.some((ru) => Math.abs(ru.x + PW / 2 - s.x) < 7 && Math.abs(ru.y + PH / 2 - s.y) < 11)) {
           s.life = 0;
           burst(S2, s.x, s.y, 6, s.col, 60, "spark", 0.25);
-        }
-        if (titleSolid(S2, s.x, s.y)) {
+          snd(S2, "hit", s.x, s.y);
+        } else if (titleSolid(S2, s.x, s.y)) {
           s.life = 0;
           burst(S2, s.x, s.y, 4, s.col, 40, "spark", 0.3);
+          snd(S2, "fizzle", s.x, s.y);
         }
         continue;
       }
@@ -12009,6 +12111,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (const f of S2.foes) {
         if (f.hp > 0 && Math.hypot(f.x - S2.scroll - s.x, f.ty - s.y) < f.r + s.size) {
           hitFoe(S2, f, s.dmg * 1.5, s.col);
+          snd(S2, "hit", s.x, s.y);
           if (s.fire) f.burn = Math.max(f.burn || 0, kr("fireBurn", S2.rnd));
           if (s.chain && !s.explode) {
             let nx = null, nd = 80;
@@ -12027,10 +12130,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               s.x += s.vx * dt * 2;
               s.y += s.vy * dt * 2;
               zapArc(S2, f.x - S2.scroll, f.ty, nx.x - S2.scroll, nx.ty, s.col);
+              snd(S2, "chainhop", s.x, s.y);
               break;
             }
           }
           if (s.explode || s.pierce <= 0) {
+            s.hitFoe = true;
             shotEnd(S2, s);
             break;
           }
@@ -12041,6 +12146,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (titleSolid(S2, s.x, s.y)) {
         if (s.bounce > 0) {
           s.bounce--;
+          snd(S2, "bounce", s.x, s.y);
           s.x -= s.vx * dt;
           s.y -= s.vy * dt;
           if (titleSolid(S2, s.x, s.y + s.vy * dt)) s.vy = -s.vy * s.bounceE;
@@ -35058,6 +35164,108 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
+  // src/ui/titlesound.js
+  var SCALE = 2;
+  function titleSound(S2, C, L3, dt) {
+    const q = S2.snd;
+    S2.snd = [];
+    if (!SFX.ready) return;
+    SFX.ear(0, 0);
+    SFX.tick();
+    if (SFX.ambience !== THEMES[0].name) SFX.setAmbience(THEMES[0].name);
+    SFX.ambTick(dt);
+    const k = SCALE * C.z;
+    const wx = (x) => (x - C.x) * k;
+    const wy = (y) => (y - C.y) * k;
+    for (const e of q) {
+      const x = wx(e.x), y = wy(e.y);
+      switch (e.k) {
+        case "cast": {
+          const K = e.a;
+          const sh = {
+            sid: K.shot,
+            speed: K.speed,
+            size: K.size,
+            dmg: K.dmg,
+            count: K.n,
+            homing: K.homing,
+            explode: K.explode,
+            pierce: K.pierce,
+            bounce: K.bounce
+          };
+          SFX.cast([sh], x, y);
+          break;
+        }
+        case "hit":
+          SFX.hit(x, y);
+          break;
+        case "rock":
+          SFX.rock(x, y);
+          break;
+        case "bounce":
+          SFX.bounce(x, y);
+          break;
+        case "boom":
+          SFX.boom(x, y, e.a * 2.5);
+          break;
+        case "debris":
+          SFX.debris(x, y);
+          break;
+        case "arc":
+          SFX.arc(x, y, false);
+          break;
+        case "lamp":
+          SFX.fx("shatter", x, y, "glass");
+          SFX.fx("whoosh", x, y);
+          break;
+        case "rustle":
+          SFX.rustle(x, y, e.a.v, e.a.st);
+          break;
+        case "die":
+        case "hurt":
+        case "alert":
+        case "idle":
+        case "bite":
+        case "fire":
+          SFX.creature(e.a, e.k, x, y);
+          break;
+        case "step":
+          SFX.fx("step", x, y);
+          break;
+        case "land":
+          SFX.fx("land", x, y, { v: e.a });
+          break;
+        case "swap":
+          SFX.fx("switch", x, y);
+          break;
+        case "coin":
+          SFX.ui("coin");
+          break;
+        default:
+          SFX.fx(e.k, x, y);
+      }
+    }
+    const jets = L3.jets || (L3.jets = []);
+    S2.runners.forEach((r, i) => {
+      if (!jets[i]) jets[i] = SFX.loop("jet");
+      if (jets[i]) jets[i].set(Math.min(1, r.flame) * 0.3, wx(r.x + PW / 2), wy(r.y + PH / 2));
+    });
+    if (S2.fire.length) {
+      let fx = 0, fy = 0;
+      for (const f of S2.fire) {
+        fx += (f.c + 0.5) * TCELL - S2.scroll;
+        fy += (f.r + 0.5) * TCELL;
+      }
+      if (!L3.fire) L3.fire = SFX.loop("fire");
+      if (L3.fire) L3.fire.set(Math.min(1, 0.35 + S2.fire.length / 300) * 0.7, wx(fx / S2.fire.length), wy(fy / S2.fire.length));
+    }
+  }
+  function titleSoundStop(L3) {
+    for (const h4 of [...L3.jets || [], L3.fire]) if (h4) h4.stop();
+    L3.jets = [];
+    L3.fire = null;
+  }
+
   // src/ui/title.js
   var TOP = (hh) => Math.max(28, hh * 0.05);
   function Title({ onStart }) {
@@ -35066,11 +35274,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [slot, setSel] = useState(getSlot);
     const [sums, setSums] = useState(() => Array.from({ length: SLOTS }, (_, i) => loadSlotSummary(i + 1)));
     const [del, setDel] = useState(0);
+    const [setup, setSetup] = useState(false);
     useEffect(() => {
       const c = cvs.current;
       if (!c) return void 0;
       const ctx = c.getContext("2d");
       let S2 = null, C = null, raf = 0, last = performance.now(), cw = 0, chh = 0;
+      const loops = {};
+      SFX.unlock();
       const seed = window.__TEST ? window.__TITLE_SEED || 7 : 1 + Math.floor(Math.random() * 1e6);
       const frame = () => {
         raf = requestAnimationFrame(frame);
@@ -35090,6 +35301,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         last = now;
         titleStep(S2, dt);
         camStep(C, S2, Math.min(dt, 0.1));
+        titleSound(S2, C, loops, Math.min(dt, 0.1));
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         titleDraw(ctx, S2, w, hh, C);
         titleText(ctx, S2.t, w, TOP(hh));
@@ -35102,6 +35314,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const sk = () => cw / TITLE_VW;
       const down = (e) => {
         e.preventDefault();
+        SFX.unlock();
         P2.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t: performance.now() });
         if (P2.size === 1) moved = false;
         if (P2.size === 2 && C) {
@@ -35139,7 +35352,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (P2.size < 2) pinch = null;
         if (p && !moved && !P2.size && C && performance.now() - p.t < 400) {
           const q = camAt(C, p.x / sk(), p.y / sk());
+          const was = C.lock;
           camTap(C, S2, q.x, q.y, 16 / sk());
+          if (C.lock !== was) SFX.fx(C.lock < 0 ? "close" : "open");
         }
       };
       c.addEventListener("pointerdown", down);
@@ -35148,6 +35363,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       c.addEventListener("pointercancel", up);
       return () => {
         cancelAnimationFrame(raf);
+        titleSoundStop(loops);
         c.removeEventListener("pointerdown", down);
         c.removeEventListener("pointermove", move);
         c.removeEventListener("pointerup", up);
@@ -35163,16 +35379,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const trash = (n) => {
       if (del !== n) {
         setDel(n);
+        SFX.ui("poor");
         return;
       }
+      SFX.fx("shatter", null, null, "stone");
       deleteSlot(n);
       setSums((s) => s.map((v, i) => i + 1 === n ? null : v));
       setDel(0);
     };
     const start2 = () => {
       SFX.unlock();
+      SFX.fx("portalIn");
       setSlot(slot);
       onStart();
+    };
+    const gear = (on) => {
+      SFX.unlock();
+      SFX.fx(on ? "open" : "close");
+      setSetup(on);
+      setDel(0);
     };
     const sum = sums[slot - 1];
     const tap = (fn) => (e) => {
@@ -35185,41 +35410,96 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h("canvas", { ref: cvs, className: "titlecvs" }),
       h(
         "div",
-        { className: "titlemenu", ref: menu },
-        h("div", { className: "tmhead" }, "SAVE SLOT"),
-        Array.from({ length: SLOTS }, (_, i) => {
-          const n = i + 1, s = sums[i];
-          return h(
-            "div",
-            {
-              key: n,
-              className: "tslot" + (slot === n ? " on" : "") + (s ? "" : " empty"),
-              "data-slot": n,
-              onPointerDown: tap(() => pick(n))
-            },
-            h("b", { className: "tsn" }, n),
-            h(
+        { className: "titlemenu" + (setup ? " setup" : ""), ref: menu },
+        setup ? h(Settings, { close: () => gear(false) }) : [
+          h("div", { key: "h", className: "tmhead" }, "SAVE SLOT"),
+          ...Array.from({ length: SLOTS }, (_, i) => {
+            const n = i + 1, s = sums[i];
+            return h(
               "div",
-              { className: "tsinfo" },
-              s ? h("span", null, "Floor " + s.floor) : null,
-              s ? h("span", { className: "tsgold" }, fmtGold(s.gold) + "g") : null,
-              s ? h("span", null, s.guns + (s.guns === 1 ? " gun" : " guns")) : null,
-              s ? null : h("span", null, "Empty — new run")
-            ),
-            s ? h("button", {
-              className: "tdel" + (del === n ? " ask" : ""),
-              "data-del": n,
-              onPointerDown: (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                trash(n);
-              }
-            }, del === n ? "Delete?" : "🗑️") : null
-          );
-        }),
-        h("button", { className: "tstart", onPointerDown: tap(start2) }, sum ? "▶ CONTINUE" : "▶ START")
+              {
+                key: n,
+                className: "tslot" + (slot === n ? " on" : "") + (s ? "" : " empty"),
+                "data-slot": n,
+                onPointerDown: tap(() => pick(n))
+              },
+              h("b", { className: "tsn" }, n),
+              h(
+                "div",
+                { className: "tsinfo" },
+                s ? h("span", null, "Floor " + s.floor) : null,
+                s ? h("span", { className: "tsgold" }, fmtGold(s.gold) + "g") : null,
+                s ? h("span", null, s.guns + (s.guns === 1 ? " gun" : " guns")) : null,
+                s ? null : h("span", null, "Empty — new run")
+              ),
+              s ? h("button", {
+                className: "tdel" + (del === n ? " ask" : ""),
+                "data-del": n,
+                onPointerDown: (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  trash(n);
+                }
+              }, del === n ? "Delete?" : "🗑️") : null
+            );
+          }),
+          h(
+            "div",
+            { key: "b", className: "tbtns" },
+            h("button", { className: "tbig tgear", title: "Settings", onPointerDown: tap(() => gear(true)) }, h(Cog)),
+            h("button", { className: "tbig tstart", title: sum ? "Continue" : "Start", "data-new": sum ? "0" : "1", onPointerDown: tap(start2) }, h(PlayIcon))
+          )
+        ]
       )
     );
+  }
+  var PlayIcon = () => h(
+    "svg",
+    { viewBox: "0 0 40 40", width: 38, height: 38, "aria-hidden": true },
+    h("path", { d: "M12 6 L34 20 L12 34 Z", fill: "currentColor", stroke: "currentColor", strokeWidth: 5, strokeLinejoin: "round" })
+  );
+  var Cog = () => h(
+    "svg",
+    { viewBox: "0 0 40 40", width: 38, height: 38, "aria-hidden": true },
+    h(
+      "g",
+      { fill: "currentColor" },
+      ...Array.from({ length: 8 }, (_, i) => h("rect", { key: i, x: 16.5, y: 2, width: 7, height: 10, rx: 1.5, transform: "rotate(" + i * 45 + " 20 20)" }))
+    ),
+    h("circle", { cx: 20, cy: 20, r: 12.5, fill: "currentColor" }),
+    h("circle", { cx: 20, cy: 20, r: 5.5, fill: "#2a1a3e" })
+  );
+  function Settings({ close }) {
+    const [v, setV] = useState(() => ({ master: SFX.volume, fx: SFX.fxVolume, music: SFX.musicVolume }));
+    const SET = { master: SFX.setVolume, fx: SFX.setFxVolume, music: SFX.setMusicVolume };
+    const row = (k, label) => {
+      const slide = (e) => {
+        const x = Number(e.target.value) / 100;
+        SET[k](x);
+        setV((o) => ({ ...o, [k]: x }));
+        if (k !== "music") SFX.fx("reelTick");
+      };
+      return h(
+        "label",
+        { key: k, className: "pvol tvol", "data-vol": k },
+        h("span", null, label, h("b", null, Math.round(v[k] * 100) + "%")),
+        h("input", { type: "range", min: 0, max: 100, step: 1, value: Math.round(v[k] * 100), className: "volslider", onInput: slide, onChange: slide })
+      );
+    };
+    return [
+      h(
+        "div",
+        { key: "h", className: "tmhead tsethead" },
+        "SETTINGS",
+        h("button", { className: "tclose", title: "Close", onPointerDown: (e) => {
+          e.preventDefault();
+          close();
+        } }, "×")
+      ),
+      row("master", "Master"),
+      row("fx", "FX"),
+      row("music", "Music")
+    ];
   }
   function Root() {
     const [play, setPlay] = useState(() => !!window.__TEST && !window.__TEST_TITLE);
