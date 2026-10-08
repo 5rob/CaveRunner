@@ -3,10 +3,9 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
-## v0.0.166 — title players saw tunnels (no teleport), own run/fly clocks; fire crackle on burning creatures + vines (title and game): WAITING ON THE OWNER'S OK
+## v0.0.166 — title players saw tunnels (no teleport), own run/fly clocks; fire crackle on burning creatures + vines (title and game): RELEASED on `main` 2026-10-08 (owner asked to see it in the app; feedback may follow)
 
-Branch `title-dig` (not on `main`; bump to v0.0.166 on release). CHANGELOG v0.0.166. Screenshots sent
-(`node tools/digshots.js`). On OK: bump, merge, confirm. Known: the game's webs still flare away at once (only
+CHANGELOG v0.0.166. Screenshots sent (`node tools/digshots.js`). Known: the game's webs still flare away at once (only
 vines and creatures got the crackle there; the title's cut-and-hang lines are title-only).
 
 ## v0.0.165 — title: 4 players, 2× creatures, random modded guns, mine slope, fire ×0.1, cut vines/webs hang: RELEASED on `main` 2026-10-08 (owner OK'd)

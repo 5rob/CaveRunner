@@ -6,7 +6,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v0.0.166 — title players saw through rock (no teleports), each on its own clock; burning creatures and vines in the fire's crackle (title and game)
-Not yet released (branch `title-dig`, waiting on the owner's OK of the screenshots).
+Released 2026-10-08 (the owner asked to see it in the app; a minor update).
 - **Title movement** (`stepRunnerMove`: `runStep`, `flyStep`, `digStep`): running and flying each last a random
   while per player (`runTime`, `flyTime`; switches in `r.switches`); the mine works no longer force a landing, and
   the safety net that popped a player up through rock (a teleport) is gone. **Rock in the way** (a wall ahead past a
