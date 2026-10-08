@@ -6,7 +6,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v0.0.162 — the title's creatures, gold and fire are the game's own
-2026-10-08 (owner's ask; a minor update).
+Released 2026-10-08 (owner OK'd the screenshots; a minor update).
 - **Real creatures**: made by `enemyFor` (floor 1's kinds) in world coordinates and moved by their real brains
   (`jellyStep`, `spiderStep`, `ratStep`, `roamStep`, the rats' `navField`/`navWay` paths), with the game's aggro
   (reach × zoom × `DEV.aggro` × their own roll, on a sightline, kept until `loseAggro`), jellyfish spit, spider
