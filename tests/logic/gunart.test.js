@@ -31,5 +31,21 @@ check('the save keeps a known skin', kept.art === A[3].id, kept.art);
 const dropped = G.cleanGun(Object.assign({ art: 'not-a-skin' }, base));
 check('the save drops an unknown skin', !('art' in dropped), dropped.art);
 
+// v0.0.161: every gun wears a sprite. Its own pick, else the one nearest its colour
+const hue = id => G.artHue(G.gunArt(id));
+check('artHue reads a sprite\'s colour', Math.abs(hue('limeblaster') - 105) < 40 && (hue('reddrum') < 30 || hue('reddrum') > 330) && Math.abs(hue('blueraider') - 200) < 30,
+  { lime: hue('limeblaster'), red: hue('reddrum'), blue: hue('blueraider') });
+const used = new Set();
+for (let h = 0; h < 360; h += 5) used.add(G.artForHue(h));
+check('the colour wheel spreads over many sprites', used.size >= 8, [...used]);
+const near = h => { const a = hue(G.artForHue(h)); return a == null ? 60 : Math.min(Math.abs(h - a), 360 - Math.abs(h - a)); };
+check('each hue gets a sprite of about its colour', [0, 60, 120, 200, 280, 320].every(h => near(h) <= 40), [0, 60, 120, 200, 280, 320].map(near));
+const g1 = { name: 'Zapper', hue: 120, slots: [] };
+check('a gun without a pick gets its colour\'s sprite', G.gunArtId(g1) === G.artForHue(120), G.gunArtId(g1));
+check('a picked sprite wins', G.gunArtId(Object.assign({ art: 'pinkpistol' }, g1)) === 'pinkpistol');
+check('an unknown pick falls back to the colour', G.gunArtId(Object.assign({ art: 'nope' }, g1)) === G.artForHue(120));
+check('the same gun, the same sprite (its name\'s colour)', G.gunArtId({ name: 'Boomstick', slots: [] }) === G.gunArtId({ name: 'Boomstick', slots: [] }));
+check('drawGun has no drawn-gun fallback left', !/stock and grip|magazine/.test(G.source));
+
 if (fails) { console.log(fails + ' failed'); process.exit(1); }
 console.log('all passed');

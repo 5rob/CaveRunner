@@ -27,7 +27,9 @@ check('carrot: the bag holds the level', perkBag([]).carrot === 0 && perkBag(['s
 const ends = ['caCam', 'caTorch', 'caAggro', 'caAim'].every(k => carrotAt(k, 0) === DEV[k + 'Lo'] && carrotAt(k, 5) === DEV[k + 'Hi']
   && Math.abs(carrotAt(k, 2) - (DEV[k + 'Lo'] + 0.4 * (DEV[k + 'Hi'] - DEV[k + 'Lo']))) < 1e-9);
 check('carrot: min at none, max at V, evenly between', ends);
-check('carrot: the defaults stretch every reach', ['caCam', 'caTorch', 'caAggro', 'caAim'].every(k => DEV[k + 'Lo'] === 1 && DEV[k + 'Hi'] > 1));
+// the owner's ranges (v0.0.161): camera and aggro stretch from 1; torch 0.4–1.5 and aim 0.5–1.2 start short and grow
+check('carrot: every reach grows with the level', ['caCam', 'caTorch', 'caAggro', 'caAim'].every(k => DEV[k + 'Hi'] > DEV[k + 'Lo'] && DEV[k + 'Hi'] > 1),
+  ['caCam', 'caTorch', 'caAggro', 'caAim'].map(k => [DEV[k + 'Lo'], DEV[k + 'Hi']]));
 const shot = { speed: 300, life: 10, bounce: 0 }, line = far => G.tracePath(shot, 0, 0, 1, 0, () => false, null, [], null, far).length;
 check('carrot: a longer aim line', line(2) > line(1) * 1.8, [line(1), line(2)]);
 check('a stat perk stacks with the old ones (Faster Movement)', Math.abs(perkBag(['st_walk1', 'move']).walk - 1.08 * 1.3) < 1e-9);

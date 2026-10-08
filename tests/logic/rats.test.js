@@ -27,6 +27,8 @@ check('the rat and the nest each have a sprite', /function drawRat\(ctx/.test(sr
 // ---- nests on real floor-1 caves ----
 let nb = 0, nw = 0, levels = 0, hidden = 0, total = 0, walled = 0, thin = 0, mounded = 0, enemies = 0, reach = 0;
 let fogged = 0, unpainted = 0, roomsSplit = 0, heartBuilt = 0, lanterns = 0, lampBuilt = 0, apart = 0;
+// these counts were written for 14–18 built-up nests (the owner's v0.0.161 default is 4–8): pinned for the measure
+const unpinNests = pin({ raNestsLo: 14, raNestsHi: 18 });
 for (let seed = 1; seed <= 8; seed++) {
   const lv = makeLevel(seed * 97 + 3, 1);
   levels++;
@@ -90,6 +92,7 @@ for (let seed = 1; seed <= 8; seed++) {
   lampBuilt += lamps.filter(p => builtAt(zone, p.x, p.y)).length;
   if (lamps.every(a => lamps.every(b => a === b || Math.hypot(a.x - b.x, a.y - b.y) > 60))) apart++;
 }
+unpinNests();
 check('most nests are in the built-up zones, a few in the natural caves', nb > nw * 2.5 && nw >= levels, { nb, nw, levels });
 check('about 14-18 built-up nests a floor', nb / levels >= 9, (nb / levels).toFixed(1));
 check('every nest is a creature in the level', enemies === levels);

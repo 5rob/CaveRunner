@@ -10,6 +10,7 @@ import { BCELL, BH, BW, CELL, CH, COL, CW, SHOP_FLOOR, SHOP_Y, WW } from '../../
 import { clamp, mix } from '../../core/util.js';
 import { PERKS } from '../../data/perks.js';
 import { themeFor } from '../../data/themes.js';
+import { gunArtId } from '../../art/gunart.js';
 import { gunAccent } from '../../spells/guns.js';
 import { MODS, famCol } from '../../spells/mods.js';
 import { FIRE_COLS } from '../../world/fire.js';
@@ -205,7 +206,7 @@ export function drawShop(W, G, F) {
       G.ctx.globalAlpha = 0.22; G.ctx.fillStyle = gunAccent(it.gun);
       G.ctx.beginPath(); G.ctx.arc(it.x, it.y + bob, 14, 0, Math.PI * 2); G.ctx.fill();
       G.ctx.globalAlpha = 1;
-      drawGun(G.ctx, it.x - 5, it.y + 1 + bob, -0.22, 0.9, gunAccent(it.gun), it.gun.art);
+      drawGun(G.ctx, it.x - 5, it.y + 1 + bob, -0.22, 0.9, gunArtId(it.gun));
       G.ctx.fillStyle = COL.bullet;
       G.ctx.font = '600 9px system-ui, sans-serif';
       G.ctx.textAlign = 'center';
@@ -254,7 +255,7 @@ export function drawLoot(W, G, F) {
       // a gun you've never held glows, with sparks streaking out of it; one you swapped
       // out and left on the ground doesn't, so you can tell new from discarded at a glance
       if (!q.old) drawGunGlow(G.ctx, q.x, qy, W.time, q.t);
-      drawGun(G.ctx, q.x - 5, qy + 1, -0.22, 0.85, gunAccent(q.gun), q.gun.art);
+      drawGun(G.ctx, q.x - 5, qy + 1, -0.22, 0.85, gunArtId(q.gun));
     } else if (q.kind === 'crystal') {
       // a red crystal: a big dark red nugget shedding sparkles on the breeze (crystalMotes; a green one: green),
       // turned as it rolls

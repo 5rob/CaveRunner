@@ -4,7 +4,9 @@
 // by hand). Each sprite: w × h art pixels, `px` = h rows joined by '/', one palette index (GUN_CH)
 // per pixel, '.' clear; `grip` = the hand point, barrel to +x.
 
-export const GUN_CH = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+import { gunHue } from '../spells/guns.js';
+
+export const GUN_CH ='0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 // ---- GUN_ART (generated) ----
 /** @type {GunArt[]} */
@@ -97,6 +99,42 @@ export const GUN_ART = [
 const BY_ID = new Map(GUN_ART.map(a => [a.id, a]));
 /** @param {string | undefined} id @returns {GunArt | null} */
 export function gunArt(id) { return (id && BY_ID.get(id)) || null; }
+
+// A sprite's own colour: the circular mean hue of its coloured pixels (saturated, not near black or
+// white), weighted by how many there are; null for a grey one
+/** @param {GunArt} a @returns {number | null} degrees 0..360 */
+export function artHue(a) {
+  const n = a.pal.map(() => 0);
+  for (const ch of a.px) { const k = GUN_CH.indexOf(ch); if (k >= 0) n[k]++; }
+  let sx = 0, sy = 0;
+  a.pal.forEach((c, k) => {
+    const r = parseInt(c.slice(1, 3), 16) / 255, g = parseInt(c.slice(3, 5), 16) / 255, b = parseInt(c.slice(5, 7), 16) / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+    if (d < 0.2 || l < 0.15 || l > 0.9) return;
+    const h = mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    sx += Math.cos(h * Math.PI / 3) * n[k] * d; sy += Math.sin(h * Math.PI / 3) * n[k] * d;
+  });
+  return Math.hypot(sx, sy) < 1e-6 ? null : (Math.atan2(sy, sx) * 180 / Math.PI + 360) % 360;
+}
+const HUES = GUN_ART.map(artHue);
+
+// Every gun wears a sprite (owner, v0.0.161: the old drawn gun is gone): its own pick (`art`), else the
+// sprite whose colour is nearest the gun's (`hue`, its name's colour: the HUD slot's), so a gun keeps
+// one look for good. A grey sprite counts as 60° away from every hue.
+/** @param {number} hue degrees @returns {string} */
+export function artForHue(hue) {
+  let best = GUN_ART[0].id, bd = Infinity;
+  GUN_ART.forEach((a, i) => {
+    const h = HUES[i], d = h == null ? 60 : Math.min(Math.abs(hue - h) % 360, 360 - Math.abs(hue - h) % 360);
+    if (d < bd) { bd = d; best = a.id; }
+  });
+  return best;
+}
+/** @param {Gun | null | undefined} gun @returns {string} the sprite it's drawn with */
+export function gunArtId(gun) {
+  const a = gun ? gunArt(gun.art) : null;
+  return a ? a.id : artForHue(gun ? gunHue(gun) : 0);
+}
 
 /** @type {Map<string, HTMLCanvasElement>} */
 const CANVAS = new Map();

@@ -5,6 +5,36 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.161 — a new title scene (a tour of the real Mossy Caves); every gun wears pixel art; the owner's Dev defaults
+Released 2026-10-08 (owner OK'd the screenshots; a minor update).
+- **Title scene** (built by a time-boxed agent): one runner who runs along the floor (steps up ledges, drops into
+  holes) and jetpacks over walls and gaps; the floor raised ~20 units. It scrolls through Mossy Caves' zones in turn
+  (natural moss, timber works, paved brick works with chains, a grove), the theme's colours and the game's plant
+  painters. The terrain is a carveable grid (2-unit cells): blasts blow holes, digging shots nick pits, fire shots
+  and blasts light moss / timber / plants, which spread and burn out (`TITLE_FIRE` cap). He swaps gun every 3.5–6 s:
+  7 real shots (`bolt`, `buck`, `fball`, `zap`, `flamer`, `blast`, `slug`) each with a gun sprite, drawn with the
+  game's `drawLook` / `drawBolt`. Only floor 1's creatures: jellyfish, spiders (floor and roof), rat swarms (3–6,
+  no nests). Kills drop gold that flies to him and is vacuumed up. The pure step stays in `art/titlescene.js`; the
+  drawing moved to `game/render/titledraw.js` (it needs `drawLook`). `slots` suite covers it.
+- **Title, owner's feedback rounds 2–3** ("a sideways tour of our actual Mossy Caves level"; the real floor surveyed
+  first): zone borders fray by noise instead of a cut; zones are natural moss → the spiders' web caves → the built-up
+  layers (low roof, stacked bands, strata.js's timber frames, hanging lanterns) → brick works (lanterns on long chains)
+  → the grove (the level's vine arches from `ARCH_KNOBS`, strands). Painted by the level's rules (rock mottle, moss on
+  upward faces, grass tufts, rubble, brick ledges, dark blotchy back wall), drips and spores. Creatures only in their
+  home zones (`TITLE_HOME`: jellyfish natural only, rats in the works, spiders in the web caves and the layers);
+  spiders walk web lines and rock, blasts and fire cut lines, and drop down on silk threads (hang, climb back);
+  jellyfish tentacles from the jellyfish knobs.
+- **The owner's Dev report (v0.0.159) as the new defaults**: zoom 1.7, torch 0.7, darker outside the torch, quieter
+  jetpack and drips, a bigger hologram glow, floor 1 due in a day, 50 enemies +20 a floor, no player outline, the
+  menu pointer and snap, 2500 kbit/s video, more web sag, 4–8 built-up nests, bigger caverns, tougher/bigger elites
+  in yellow, a dark-violet elite flame, fire spreads faster, the carrot perk's ranges. Tests that measured the old
+  numbers are pinned to them (`rats`, `dark`, `furnish`, `tomb`) or updated (`brood`, `deadline`, `ramps`,
+  `perkstats`; `creatures` now checks each elite at its own roll).
+- **Every gun wears a pixel-art sprite**: the old drawn gun is gone. A gun without a pick gets the `GUN_ART` sprite
+  nearest its colour (`gunArtId`, `artForHue`, `artHue` in `art/gunart.js`), so it matches its HUD slot. `drawGun`
+  takes the art id (no accent). The 🖼️ gallery's Default tile is gone; the gun machine's hologram is a sprite.
+- Fix: on phones under 400 px wide the red debt line is smaller so it clears the ⚙️ (moved left in v0.0.160; `topgold`).
+
 ## v0.0.160 — dev mode: hold ⏸ 5 s to show the dev tools; ⏸ and ⚙️ swap places
 Released 2026-10-08 (owner OK'd the screenshots; a minor update).
 - ⏸ is now in the top-right corner, the ⚙️ left of it. ⏸ opens the menu on release; **held 5 s** it toggles dev

@@ -22,7 +22,10 @@ for (let i = 2; i < s.length; i += 2) if (s[i] < s[i - 2] - 1e-9) fwd = false;
 check('its x only goes forward (so opacity is one value per moment)', fwd);
 check('a flat ramp stays flat', [0, 0.3, 0.7, 1].every(x => Math.abs(rampAt(parseRamp('0:0.5 1:0.5'), x) - 0.5) < 1e-9));
 check('lookup tables: colour strings and opacities', /^rgb\(/.test(lutAt(gradLut(DEV_DEFAULTS.elFxGrad), 0.5)) && lutAt(rampLut(DEV_DEFAULTS.elFxAlpha), 0) < 0.05);
-check('the default flame starts white and fades out', lutAt(gradLut(DEV_DEFAULTS.elFxGrad), 0) === 'rgb(255,255,255)' && lutAt(rampLut(DEV_DEFAULTS.elFxAlpha), 1) < 0.02);
+// the owner's flame (v0.0.161): starts black, white a moment at ~0.44, fully opaque at the end
+check('the default flame reads as the owner set it', lutAt(gradLut(DEV_DEFAULTS.elFxGrad), 0) === 'rgb(0,0,0)'
+  && /^rgb\((2[2-5]\d),\1,\1\)$/.test(lutAt(gradLut(DEV_DEFAULTS.elFxGrad), 0.444)) && lutAt(rampLut(DEV_DEFAULTS.elFxAlpha), 1) > 0.98,
+  [lutAt(gradLut(DEV_DEFAULTS.elFxGrad), 0), lutAt(gradLut(DEV_DEFAULTS.elFxGrad), 0.444), lutAt(rampLut(DEV_DEFAULTS.elFxAlpha), 1)]);
 check('the flames have their Dev rows', ['elFxRateLo', 'elFxLifeHi', 'elFxWaveLo', 'elFxDragHi', 'elFxGrad', 'elFxAlpha'].every(k => DEV[k] !== undefined));
 check('a Dev report prints the strings', (() => { const old = DEV.elFxGrad; DEV.elFxGrad = '0:#000000 1:#ffffff';
   const t = G.devReport(); DEV.elFxGrad = old; return t.includes('0:#000000 1:#ffffff'); })());

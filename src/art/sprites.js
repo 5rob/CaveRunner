@@ -4,50 +4,29 @@
 
 import { COL } from '../core/consts.js';
 import { rr } from '../core/util.js';
-import { gunArt, gunArtCanvas } from './gunart.js';
+import { GUN_ART, gunArt, gunArtCanvas } from './gunart.js';
 
 // ---- sprites ----
 // Everything is drawn from primitives at world scale (the player is 12x22 units),
 // so it stays crisp at any zoom and there are no images to load.
 
-// A gun, grip at the origin, barrel down +x. Scaled so the same drawing works for
-// the one in your hands and the little one lying on the cave floor. `art` (a GUN_ART id, the
-// gun's skin picked in the Bag) draws that pixel sprite instead: grip at the origin, every art
-// pixel GUN_ART_PX units at sc 1 (a mid-sized one is about as long as the drawn gun).
+// A gun, grip at the origin, barrel down +x: its pixel sprite (`art`, a GUN_ART id: gunArtId(gun) gives
+// a gun's; owner, v0.0.161: every gun wears one, the old drawn gun is gone; an unknown id draws the
+// first). Scaled so the same call works for the one in your hands and the little one on the cave
+// floor: every art pixel GUN_ART_PX units at sc 1. Already pixel art, so not put through pixelSprite.
 export const GUN_ART_PX = 0.46;
-/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} ang @param {number} sc @param {string} accent @param {string} [art] */
-export function drawGun(ctx, x, y, ang, sc, accent, art) {
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} ang @param {number} sc @param {string} art */
+export function drawGun(ctx, x, y, ang, sc, art) {
+  const a = gunArt(art) || GUN_ART[0], im = gunArtCanvas(a.id);
+  if (!im) return;
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(ang);
   if (Math.cos(ang) < 0) ctx.scale(1, -1);     // aiming left: flip, don't hang upside down
   ctx.scale(sc, sc);
-  const a = art ? gunArt(art) : null, im = a ? gunArtCanvas(a.id) : null;
-  if (a && im) {
-    const u = GUN_ART_PX, m = ctx.getTransform(), k = Math.hypot(m.a, m.b) * u;
-    ctx.imageSmoothingEnabled = k < 1.5;        // crisp when big; smoothed when an art pixel is under ~1.5 screen pixels
-    ctx.drawImage(im, -a.grip[0] * u, -a.grip[1] * u, a.w * u, a.h * u);
-    ctx.restore();
-    return;
-  }
-  ctx.fillStyle = '#20242c';                    // stock and grip
-  rr(ctx, -6.5, -4.6, 4.5, 3.6, 1.2); ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(-1.4, -1.2); ctx.lineTo(1.8, -1.2); ctx.lineTo(0.9, 4.6); ctx.lineTo(-2.2, 4.2);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#3c424e';                    // magazine
-  ctx.beginPath();
-  ctx.moveTo(2.2, -1); ctx.lineTo(5, -1); ctx.lineTo(4.4, 3.4); ctx.lineTo(1.8, 3.4);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#4a515f';                    // receiver
-  rr(ctx, -4.4, -5.2, 10.5, 4.4, 1.3); ctx.fill();
-  ctx.fillStyle = '#5f6878';                    // barrel
-  rr(ctx, 5.5, -4.4, 7.5, 2.4, 1); ctx.fill();
-  ctx.fillStyle = '#343a45';                    // sight
-  rr(ctx, 0.5, -6.6, 2.4, 1.6, 0.6); ctx.fill();
-  ctx.fillStyle = accent || COL.bullet;         // muzzle and a flash of the gun's colour
-  rr(ctx, 12.4, -5, 1.8, 3.6, 0.7); ctx.fill();
-  rr(ctx, -3.4, -4.4, 2.6, 2.6, 0.8); ctx.fill();
+  const u = GUN_ART_PX, m = ctx.getTransform(), k = Math.hypot(m.a, m.b) * u;
+  ctx.imageSmoothingEnabled = k < 1.5;          // crisp when big; smoothed when an art pixel is under ~1.5 screen pixels
+  ctx.drawImage(im, -a.grip[0] * u, -a.grip[1] * u, a.w * u, a.h * u);
   ctx.restore();
 }
 
