@@ -22,7 +22,8 @@ Names are as they were at the time (before the refactor Game's state had loose n
   → the grove (the level's vine arches from `ARCH_KNOBS`, strands). Painted by the level's rules (rock mottle, moss on
   upward faces, grass tufts, rubble, brick ledges, dark blotchy back wall), drips and spores. Creatures only in their
   home zones (`TITLE_HOME`: jellyfish natural only, rats in the works, spiders in the web caves and the layers);
-  spiders walk web lines and rock, blasts and fire cut lines; jellyfish tentacles from the jellyfish knobs.
+  spiders walk web lines and rock, blasts and fire cut lines, and drop down on silk threads (hang, climb back);
+  jellyfish tentacles from the jellyfish knobs.
 - **The owner's Dev report (v0.0.159) as the new defaults**: zoom 1.7, torch 0.7, darker outside the torch, quieter
   jetpack and drips, a bigger hologram glow, floor 1 due in a day, 50 enemies +20 a floor, no player outline, the
   menu pointer and snap, 2500 kbit/s video, more web sag, 4–8 built-up nests, bigger caverns, tougher/bigger elites

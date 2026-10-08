@@ -125,6 +125,8 @@ export function titleDraw(ctx, S, cw, ch) {
     ctx.moveTo(L.a0x - S.scroll, L.a0y);
     for (let i = 1; i <= 8; i++) { const p = titleWebAt(L, i / 8); ctx.lineTo(p.x - S.scroll, p.y); }
   }
+  // a spider's thread, roof (or web line) down to it
+  for (const f of S.foes) if (f.drop) { ctx.moveTo(f.drop.ax - S.scroll, f.drop.ay); ctx.lineTo(f.x, f.y - f.r * 0.6); }
   ctx.stroke();
   ctx.globalAlpha = 1;
   // gold

@@ -69,7 +69,8 @@ export const TITLE_HOME = {
 /** @typedef {{ x: number, y: number, vx: number, vy: number, face: number, ang: number, cd: number, kit: number, flame: number,
  *   mode: string, modeT: number, tx: number, ty: number, retarget: number, gait: number, ground: boolean, swapT: number, swap: number }} TRunner */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, r: number, hp: number, k: string, flash: number, phase: number, cd: number,
- *   surf: number, br: any, spd?: number, L?: TWeb | null, u?: number, walkT?: number }} TFoe */
+ *   surf: number, br: any, spd?: number, L?: TWeb | null, u?: number, walkT?: number,
+ *   drop?: { ax: number, ay: number, len: number, max: number, hang: number, phase: string, from: string, L: TWeb | null, u: number } | null }} TFoe */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, size: number, col: string, look: string, life: number, foe: boolean, spin: number,
  *   grav: number, drag: number, explode: number, pit: number, fire: number, bounce: number, bounceE: number, pierce: number, dmg: number }} TShot */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string }} TPart */
@@ -84,7 +85,7 @@ export const TITLE_HOME = {
  *   kills: number, gold: number, got: number, runner: TRunner, foes: TFoe[], shots: TShot[], parts: TPart[], nuggets: TGold[],
  *   booms: TBoom[], zaps: TZap[], flash: number, rows: number, ncol: number, cells: Uint8Array, gen: number, props: TProp[],
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
- *   webs: TWeb[], cut: number, lineT: number }} TitleScene */
+ *   webs: TWeb[], cut: number, lineT: number, dropT: number }} TitleScene */
 
 /** @param {number} seed @returns {() => number} a seeded random 0..1 (mulberry32) */
 export function titleRng(seed) {
@@ -285,7 +286,7 @@ export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62) {
   /** @type {TitleScene} */
   const S = { t: 0, vh, top, bot, seed, rnd, scroll: 0, shake: 0, spawn: 0, kills: 0, gold: 0, got: 0, runner: null, foes: [], shots: [],
     parts: [], nuggets: [], booms: [], zaps: [], flash: 0, rows, ncol, cells: new Uint8Array(rows * ncol), gen: -25, props: [],
-    fire: [], dirty: [], dirtyAll: true, carved: 0, burnt: 0, swaps: 0, groundT: 0, flyT: 0, kinds: {}, webs: [], cut: 0, lineT: 0 };
+    fire: [], dirty: [], dirtyAll: true, carved: 0, burnt: 0, swaps: 0, groundT: 0, flyT: 0, kinds: {}, webs: [], cut: 0, lineT: 0, dropT: 0 };
   genTo(S);
   const x = 60, y = titleSurf(S, x + PW / 2, (top + bot) / 2, 1) - PH;
   S.runner = { x, y, vx: 0, vy: 0, face: 1, ang: 0, cd: 0.5, kit: 0, flame: 0, mode: 'run', modeT: 3, tx: x, ty: y, retarget: 0,
@@ -616,6 +617,7 @@ function zapArc(S, x0, y0, x1, y1, col) {
 function stepSpider(S, f, dt) {
   const R = S.rnd, b = f.br, go = Math.sin(S.t * 1.4 + f.phase) > -0.35 ? 1 : 0, spd = (f.spd || 16) * go;
   b.on = go;
+  if (b.mode === 'drop' && f.drop) { dropSpider(S, f, dt); return; }
   if (b.mode === 'line' && f.L && S.webs.indexOf(f.L) < 0) { b.mode = 'fall'; f.L = null; f.vy = 0; }
   if (b.mode === 'line' && f.L) {
     const L = f.L, len = Math.hypot(L.b0x - L.a0x, L.b0y - L.a0y) || 1;
@@ -624,6 +626,8 @@ function stepSpider(S, f, dt) {
     f.x = p.x - S.scroll; f.y = p.y;
     b.line = { ax: L.a0x - S.scroll, ay: L.a0y, bx: L.b0x - S.scroll, by: L.b0y };
     S.lineT += dt;
+    // now and then it lets itself down on a thread from where it is
+    if (f.u > 0.05 && f.u < 0.95 && R() < dt * 0.12 && startDrop(S, f, p.x, p.y)) return;
     if ((f.u >= 1 && b.dir > 0) || (f.u <= 0 && b.dir < 0)) {
       // the end: onto the rock there, the floor or the roof (whichever the end is nearer)
       const ey = f.u >= 1 ? L.b0y : L.a0y;
@@ -647,6 +651,8 @@ function stepSpider(S, f, dt) {
   f.walkT = (f.walkT || 0) - dt;
   if (f.walkT > 0) return;
   const wx = f.x + S.scroll;
+  // on the roof: sometimes down a thread instead
+  if (f.surf < 0 && R() < 0.35 && startDrop(S, f, wx, f.y - f.r * 0.9)) return;   // from the roof's face
   let best = null, bd = 9;
   for (const L of S.webs) for (const end of [0, 1]) {
     const ex = end ? L.b0x : L.a0x, ey = end ? L.b0y : L.a0y, d = Math.abs(ex - wx);
@@ -663,6 +669,43 @@ function stepSpider(S, f, dt) {
     if (tx != null) f.vx = Math.sign(tx - wx) * (f.spd || 16);
     f.walkT = 0.3;
   }
+}
+// A spider letting itself down on a silk thread from (wx, y) (world x): down to somewhere between a
+// third and most of the way to the floor, a hang there (swaying a little), then back up the thread to
+// where it was (the roof, or the web line at the same spot). Its anchor blasted away (rock or line):
+// it falls. False if there's no room under it
+/** @param {TitleScene} S @param {TFoe} f @param {number} wx @param {number} y */
+function startDrop(S, f, wx, y) {
+  const room = titleSurf(S, wx - S.scroll, y + 4, 1) - y - f.r - 10;
+  if (room < 24) return false;
+  const R = S.rnd;
+  f.drop = { ax: wx, ay: y, len: 0, max: room * (0.35 + R() * 0.5), hang: 1 + R() * 1.5, phase: 'down', from: f.br.mode, L: f.L || null, u: f.u || 0 };
+  f.br.mode = 'drop';
+  return true;
+}
+/** @param {TitleScene} S @param {TFoe} f @param {number} dt */
+function dropSpider(S, f, dt) {
+  const D = f.drop, b = f.br;
+  S.dropT += dt;
+  const anchored = D.L ? S.webs.indexOf(D.L) >= 0 : titleSolid(S, D.ax - S.scroll, D.ay - 2);
+  if (!anchored) { f.drop = null; b.mode = 'fall'; f.L = null; f.vy = 0; return; }
+  if (D.phase === 'down') { D.len += 30 * dt; if (D.len >= D.max) { D.len = D.max; D.phase = 'hang'; } }
+  else if (D.phase === 'hang') { D.hang -= dt; if (D.hang <= 0) D.phase = 'up'; }
+  else {
+    D.len -= 22 * dt;
+    if (D.len <= 0) {
+      // back where it was
+      f.drop = null;
+      if (D.from === 'line' && D.L) { b.mode = 'line'; f.L = D.L; f.u = D.u; }
+      else { b.mode = 'surf'; f.surf = -1; f.walkT = 1 + S.rnd() * 2; f.y = D.ay + f.r * 0.9; f.x = D.ax - S.scroll; }
+      return;
+    }
+  }
+  b.on = D.phase === 'hang' ? 0 : 1;
+  const sway = Math.sin(S.t * 2.2 + f.phase) * Math.min(3, D.len / 15);
+  f.x = D.ax - S.scroll + sway; f.y = D.ay + D.len + f.r * 0.6;
+  // drawn hanging under its thread (drawSpider's line mode, the thread straight down)
+  b.line = { ax: D.ax - S.scroll, ay: D.ay, bx: f.x, by: f.y + 0.01 }; b.dir = 1;
 }
 // the floor (surf 1) or roof (-1) under or over a creature at screen x: searched from just inside the
 // cave as made there, so the timber works' low roof doesn't trap it in the rock

@@ -7727,7 +7727,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       kinds: {},
       webs: [],
       cut: 0,
-      lineT: 0
+      lineT: 0,
+      dropT: 0
     };
     genTo(S2);
     const x = 60, y = titleSurf(S2, x + PW / 2, (top + bot) / 2, 1) - PH;
@@ -8242,6 +8243,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function stepSpider(S2, f, dt) {
     const R = S2.rnd, b = f.br, go = Math.sin(S2.t * 1.4 + f.phase) > -0.35 ? 1 : 0, spd = (f.spd || 16) * go;
     b.on = go;
+    if (b.mode === "drop" && f.drop) {
+      dropSpider(S2, f, dt);
+      return;
+    }
     if (b.mode === "line" && f.L && S2.webs.indexOf(f.L) < 0) {
       b.mode = "fall";
       f.L = null;
@@ -8255,6 +8260,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       f.y = p.y;
       b.line = { ax: L3.a0x - S2.scroll, ay: L3.a0y, bx: L3.b0x - S2.scroll, by: L3.b0y };
       S2.lineT += dt;
+      if (f.u > 0.05 && f.u < 0.95 && R() < dt * 0.12 && startDrop(S2, f, p.x, p.y)) return;
       if (f.u >= 1 && b.dir > 0 || f.u <= 0 && b.dir < 0) {
         const ey = f.u >= 1 ? L3.b0y : L3.a0y;
         f.surf = Math.abs(ey - titleFloor(f.x + S2.scroll, S2)) < Math.abs(ey - titleCeil(f.x + S2.scroll, S2)) ? 1 : -1;
@@ -8288,6 +8294,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     f.walkT = (f.walkT || 0) - dt;
     if (f.walkT > 0) return;
     const wx = f.x + S2.scroll;
+    if (f.surf < 0 && R() < 0.35 && startDrop(S2, f, wx, f.y - f.r * 0.9)) return;
     let best = null, bd = 9;
     for (const L3 of S2.webs) for (const end of [0, 1]) {
       const ex = end ? L3.b0x : L3.a0x, ey = end ? L3.b0y : L3.a0y, d = Math.abs(ex - wx);
@@ -8313,6 +8320,59 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (tx2 != null) f.vx = Math.sign(tx2 - wx) * (f.spd || 16);
       f.walkT = 0.3;
     }
+  }
+  function startDrop(S2, f, wx, y) {
+    const room = titleSurf(S2, wx - S2.scroll, y + 4, 1) - y - f.r - 10;
+    if (room < 24) return false;
+    const R = S2.rnd;
+    f.drop = { ax: wx, ay: y, len: 0, max: room * (0.35 + R() * 0.5), hang: 1 + R() * 1.5, phase: "down", from: f.br.mode, L: f.L || null, u: f.u || 0 };
+    f.br.mode = "drop";
+    return true;
+  }
+  function dropSpider(S2, f, dt) {
+    const D2 = f.drop, b = f.br;
+    S2.dropT += dt;
+    const anchored = D2.L ? S2.webs.indexOf(D2.L) >= 0 : titleSolid(S2, D2.ax - S2.scroll, D2.ay - 2);
+    if (!anchored) {
+      f.drop = null;
+      b.mode = "fall";
+      f.L = null;
+      f.vy = 0;
+      return;
+    }
+    if (D2.phase === "down") {
+      D2.len += 30 * dt;
+      if (D2.len >= D2.max) {
+        D2.len = D2.max;
+        D2.phase = "hang";
+      }
+    } else if (D2.phase === "hang") {
+      D2.hang -= dt;
+      if (D2.hang <= 0) D2.phase = "up";
+    } else {
+      D2.len -= 22 * dt;
+      if (D2.len <= 0) {
+        f.drop = null;
+        if (D2.from === "line" && D2.L) {
+          b.mode = "line";
+          f.L = D2.L;
+          f.u = D2.u;
+        } else {
+          b.mode = "surf";
+          f.surf = -1;
+          f.walkT = 1 + S2.rnd() * 2;
+          f.y = D2.ay + f.r * 0.9;
+          f.x = D2.ax - S2.scroll;
+        }
+        return;
+      }
+    }
+    b.on = D2.phase === "hang" ? 0 : 1;
+    const sway = Math.sin(S2.t * 2.2 + f.phase) * Math.min(3, D2.len / 15);
+    f.x = D2.ax - S2.scroll + sway;
+    f.y = D2.ay + D2.len + f.r * 0.6;
+    b.line = { ax: D2.ax - S2.scroll, ay: D2.ay, bx: f.x, by: f.y + 0.01 };
+    b.dir = 1;
   }
   function surfAt(S2, x, surf) {
     const wx = x + S2.scroll;
@@ -19877,6 +19937,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const p = titleWebAt(L3, i / 8);
         ctx.lineTo(p.x - S2.scroll, p.y);
       }
+    }
+    for (const f of S2.foes) if (f.drop) {
+      ctx.moveTo(f.drop.ax - S2.scroll, f.drop.ay);
+      ctx.lineTo(f.x, f.y - f.r * 0.6);
     }
     ctx.stroke();
     ctx.globalAlpha = 1;

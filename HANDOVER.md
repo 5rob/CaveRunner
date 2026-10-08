@@ -9,7 +9,7 @@ CHANGELOG v0.0.161. The owner gave three feedback rounds on the title (zones ble
 tentacles, dense vines, home zones, then "a sideways tour of our actual Mossy Caves level": surveyed the real floor
 (tools: a phone-size shot at a prop / zone, the whole floor zoomed out with the hologram off) and painted it by the
 level's rules). Once OK'd: merge `title2` to `main`, push, confirm `version.txt` shows `161 v0.0.161`.
-Known: the gun is game-size (small); spiders don't drop on silk; fire can burn the layers' frames away quickly;
+Spiders drop on silk (owner's ask). Known: the gun is game-size (small); fire can burn the layers' frames away quickly;
 not yet timed on a phone. The browser suite last ran before rounds 2–3 (logic + `title` + `slots` pass now).
 
 ## v0.0.160 — dev mode (hold ⏸ 5 s), ⏸ / ⚙️ swapped: RELEASED on `main` 2026-10-08 (owner OK'd)

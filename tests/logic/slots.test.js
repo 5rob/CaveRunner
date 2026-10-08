@@ -80,6 +80,23 @@ check('each creature comes only into its own zones', badHome.length === 0 && bor
 check('jellyfish stay out of the works', jellyWorks / jellyIn < 0.02, { jellyWorks, jellyIn });
 check('spiders walk the web lines', S.lineT > 3, S.lineT);
 check('blasts and fire cut web lines', S.cut > 0, S.cut);
+check('spiders let themselves down on silk threads', S.dropT > 1, S.dropT);
+// a thread drop on its own: down, a hang, back up to the roof where it started
+{
+  const T = titleScene(470, 3, 139, 295), spd = T.foes.find(f => f.k === 'hamahakki') || null;
+  const f = spd || { x: 100, y: 0, vx: 0, vy: 0, r: 4, hp: 4, k: 'hamahakki', flash: 0, phase: 0, cd: 0, surf: -1, spd: 16, br: { mode: 'surf', on: 1, nx: 0, ny: 1, side: 1 } };
+  if (!spd) T.foes.push(f);
+  f.hp = 1e9; f.L = null; f.surf = -1; f.br.mode = 'surf'; f.x = 200; f.y = G.titleCeil(T.scroll + 200, T) + f.r * 0.9; f.walkT = 0;   // from the right: the whole drop on screen
+  let deepest = 0, back = false, tries = 0;
+  // force the roll: step until it drops (the roll is 35% per look)
+  for (let i = 0; i < 60 * 30 && !back; i++) {
+    T.foes = T.foes.filter(q => q === f); T.spawn = 99;
+    titleStep(T, 1 / 60);
+    if (f.drop) { if (!tries) f.drop.max = Math.min(f.drop.max, 24); tries++; deepest = Math.max(deepest, f.drop.len); }
+    else if (tries && f.br.mode === 'surf' && f.surf < 0) back = true;
+  }
+  check('a thread drop goes down a way and comes back up to the roof', deepest > 15 && back && f.x > 0, { deepest, back, tries });
+}
 check('shots carve the terrain', S.carved > 30, S.carved);
 check('and fire burns', S.burnt > 10, S.burnt);
 // a blast by hand: a hole in the floor where it was
