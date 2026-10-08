@@ -3,6 +3,12 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
+## v0.0.164 — gun in hand in the body's pixel look, creatures over the shop's machines, title fire jumps + runner waits: RELEASED on `main` 2026-10-08 (owner OK'd)
+
+CHANGELOG v0.0.164. Open with the owner: ground/icon guns kept as plain sprites (asked whether they want the
+pixel look there too); `TITLE_AIM` 90 is a first guess. Known failing as before: logic `spider`; browser `vendshop`
+(fails on v0.0.163 too, different checks each run).
+
 ## v0.0.163 — gun sprites one scale, gun in hand ×2, squirts turned, title fire + runner pop + lanterns: RELEASED on `main` 2026-10-08 (owner OK'd)
 
 CHANGELOG v0.0.163.

@@ -5,6 +5,21 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.164 — the gun in hand in the body's pixel look; creatures over the shop's machines; title fire jumps, the runner waits
+Released 2026-10-08 (owner OK'd the screenshots; a minor update).
+- **The gun in his hand goes through the body's pixel look** (`pixelHeld`, `art/sprites.js`: body then gun as one
+  `pixelSprite`, the box grown `HOLD_PAD` for the longest gun): the game (`DEV.runnerPx`/`runnerLine`), the Bag's
+  firing window, the title (1 unit, outlined). Ground and icon guns are drawn as they are.
+- **Creatures (and shots, beams, silk) drawn over the shop's things**: `drawArrival`, `drawShop`, `drawVend`,
+  `drawShops`, `drawDemo` moved before `drawSilk`/`drawEnemies` in `draw` (none of them touch `Math.random`).
+- **Title fire jumps** (`spreadFrom`): a burning vine's tip, an arch's or a web line's fronts light any vine, arch or
+  web within `TITLE_JUMP` (5) at `TITLE_JUMPP` (0.5) a fire tick. **Web lines burn along** (`catchWeb`, `L.fu` the
+  burnt span, `TITLE_WEBFIRE` × `fireArch`), drawn as the silk left with glowing fronts; heat (`titleIgnite`) lights
+  them, a blast's own hole still cuts them.
+- **The title runner fires only within `TITLE_AIM`** (90 units) at creatures well on screen (`TITLE_VW − 24`):
+  they come into view first.
+- `tools/heldshots.js`: the screenshots. `slots` logic suite: fire jumps, the aim range.
+
 ## v0.0.163 — gun sprites at one scale, the gun in hand twice as big, the squirts turned; the title's fire, runner and lanterns
 Released 2026-10-08 (owner OK'd the screenshots; a minor update).
 - **The two squirts** (Green, Pink) turned a quarter clockwise then mirrored (a transpose of their pixels and hand
