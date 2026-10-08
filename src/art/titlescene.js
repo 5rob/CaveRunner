@@ -114,7 +114,13 @@ export const TITLE_HOME = {
  *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan }} TitleScene */
 // a zone of the plan (titlePlan): its kind, x0..x1, i its place in the plan; its roof's and floor's offset (co, fo), hills' height (ca, fa),
 // stretch (cf, ff) and phases (ph); dens its plants and webs
-/** @typedef {{ z: string, x0: number, x1: number, i: number, ph: number[], ca: number, fa: number, cf: number, ff: number, co: number, fo: number, dens: number }} TZone */
+/** @typedef {{ z: string, x0: number, x1: number, i: number, ph: number[], ca: number, fa: number, cf: number, ff: number, co: number, fo: number, dens: number, mine?: TMine }} TZone */
+// a mine works' own layout (v0.0.170, mkMine): n tunnels stacked (0 the lowest), `ein` the one the cave comes in at, `eout`
+// the one it leaves by; `lf` how high the stack sits (0 low .. 1 high, where there's room); `sh` the rock shelf over each;
+// each tunnel's walled ends `L` / `Rx` (±Infinity: open, the way in or out); `holes` through a shelf (k: over tunnel k), and
+// `steps`: where the way through moves to another tunnel (at a hole)
+/** @typedef {{ n: number, ein: number, eout: number, lf: number, sh: number[], L: number[], Rx: number[], holes: { k: number, x: number, w: number }[],
+ *   steps: { x: number, to: number }[] }} TMine */
 /** @typedef {{ R: () => number, z: TZone[] }} TitlePlan */
 // (still: the players stand where they are, for a test of something they'd otherwise saw through or shoot)
 
@@ -153,8 +159,46 @@ function mkZone(R, x0, Z) {
   const last = Z.slice(-2).map(q => q.z), can = TITLE_ZONES.filter(z => !last.includes(z));
   const z = can[Math.floor(R() * can.length)], len = TITLE_ZLEN[0] + R() * (TITLE_ZLEN[1] - TITLE_ZLEN[0]);
   return { z, x0, x1: x0 + len, i: Z.length, ph: [R() * 99, R() * 99, R() * 99, R() * 99, R() * 99],
-    ca: 0.5 + R() * 0.9, fa: 0.5 + R() * 0.9, cf: 0.6 + R() * 0.8, ff: 0.6 + R() * 0.8, co: -6 + R() * 16, fo: -10 + R() * 16, dens: 0.6 + R() * 0.8 };
+    ca: 0.5 + R() * 0.9, fa: 0.5 + R() * 0.9, cf: 0.6 + R() * 0.8, ff: 0.6 + R() * 0.8, co: -6 + R() * 16, fo: -10 + R() * 16, dens: 0.6 + R() * 0.8,
+    mine: z === 'timber' ? mkMine(R, x0, x0 + len) : undefined };
 }
+// A mine works' layout (owner, v0.0.170: it was always one low tunnel with a closed one over it): 1–3 tunnels,
+// come in at any of them and leave by any (a high way in, a low way out…), the others walled off at that end
+// some way in; holes through the shelves, one at least on the way through (in order along it), more at random
+/** @param {() => number} R @param {number} x0 @param {number} x1 @returns {TMine} */
+function mkMine(R, x0, x1) {
+  const n = R() < 0.3 ? 1 : R() < 0.55 ? 2 : 3, ein = Math.floor(R() * n), eout = Math.floor(R() * n);
+  const sh = Array.from({ length: n - 1 }, () => (n === 3 ? 12 + R() * 5 : 14 + R() * 8));   // three fit under the title
+  const L = Array.from({ length: n }, (_, k) => (k === ein ? -Infinity : x0 + 44 + R() * 60));
+  const Rx = Array.from({ length: n }, (_, k) => (k === eout ? Infinity : x1 - 44 - R() * 60));
+  /** @type {{ k: number, x: number, w: number }[]} */
+  const holes = [], steps = [];
+  // the way through: one hole per shelf between ein and eout, at rising x across the middle of the works
+  const dir = Math.sign(eout - ein), m = Math.abs(eout - ein);
+  for (let i = 0; i < m; i++) {
+    const lo = Math.min(ein + i * dir, ein + (i + 1) * dir), a = x0 + 70 + (x1 - x0 - 140) * (i + 0.2 + R() * 0.6) / m;
+    holes.push({ k: lo, x: a, w: 14 + R() * 10 });
+    steps.push({ x: a, to: ein + (i + 1) * dir });
+  }
+  // and now and then another, anywhere both tunnels are open
+  for (let k = 0; k < n - 1; k++) if (R() < 0.45) {
+    const a0 = Math.max(L[k], L[k + 1], x0 + 50) + 12, a1 = Math.min(Rx[k], Rx[k + 1], x1 - 50) - 12;
+    if (a1 > a0) holes.push({ k, x: a0 + R() * (a1 - a0), w: 12 + R() * 10 });
+  }
+  return { n, ein, eout, lf: R() * 0.6, sh, L, Rx, holes, steps };
+}
+// a mine's tunnels in a band (top, bot): each one's roof c and floor f, the stack set by lf in the room there is
+/** @param {TMine} M @param {{ top: number, bot: number }} B @returns {{ c: number, f: number }[]} */
+export function mineBands(M, B) {
+  const lo = B.bot - 10, hi = B.top - 2, total = M.n * TIMBER_H + M.sh.reduce((a, v) => a + v, 0);
+  let f = lo - M.lf * Math.max(0, lo - hi - total - 10) - (M.n < 3 ? 10 : 0);
+  const out = [];
+  for (let k = 0; k < M.n; k++) { out.push({ c: f - TIMBER_H, f }); f = f - TIMBER_H - (M.sh[k] || 0); }
+  return out;
+}
+// the tunnel the way through is in at x
+/** @param {TMine} M @param {number} wx */
+const mainBand = (M, wx) => M.steps.reduce((b, s) => (wx >= s.x ? s.to : b), M.ein);
 const DEF_PLAN = titlePlan(7);
 /** @param {{ zp?: TitlePlan }} [B] */
 const planOf = B => (B && B.zp) || DEF_PLAN;
@@ -203,12 +247,24 @@ export const titleCeil = (wx, B) => {
   // the layer's roof comes down over a natural slope (owner, v0.0.165: the old short step was too steep and
   // straight): an S-curve about TIMBER_RAMP long, starting a little before the works, where it starts shifted
   // by noise, the rock along it lumpy (big lumps and a fine fray, none once it's down)
+  // (v0.0.170) to whichever tunnel the mine is come into or left by: down, or up to a high one
+  const T = mineNear(wx, B);
+  if (!T) return nat;
+  const lump = Math.sin(Math.PI * T.bt) * ((titleNoise(wx / 16, 47) - 0.5) * 22 + (titleNoise(wx / 6, 40) - 0.5) * 9 + (titleNoise(wx / 2.5, 43) - 0.5) * 3);
+  return Math.min(nat + (T.band.c - nat) * T.bt + lump, titleFloor(wx, B) - 24);
+};
+// the mine works a point is in or near (within TIMBER_RAMP): bt 0..1 how far along the slope into it (1 inside), and
+// the tunnel that slope leads to (the way in at its left end, the way out at its right; inside, the one the way through is in)
+/** @param {number} wx @param {{ top: number, bot: number, zp?: TitlePlan }} B */
+const mineNear = (wx, B) => {
   const d = timberD(wx, B);
-  if (d < -TIMBER_RAMP) return nat;
+  if (d < -TIMBER_RAMP) return null;
   const q = Math.max(0, Math.min(1, (d + TIMBER_RAMP - 30 + (titleNoise(wx / 40, 44) - 0.5) * 20) / TIMBER_RAMP)), bt = q * q * (3 - 2 * q);
-  if (!bt) return nat;
-  const lump = Math.sin(Math.PI * bt) * ((titleNoise(wx / 16, 47) - 0.5) * 22 + (titleNoise(wx / 6, 40) - 0.5) * 9 + (titleNoise(wx / 2.5, 43) - 0.5) * 3);
-  return nat + (Math.max(nat, titleFloor(wx, B) - TIMBER_H) - nat) * bt + lump;
+  if (!bt) return null;
+  const Z = titleZoneSpan(wx, B), T = Z.z === 'timber' ? Z : zoneNext(Z, wx < (Z.x0 + Z.x1) / 2 ? -1 : 1, B), M = T.mine;
+  if (!M) return null;
+  const k = wx < T.x0 ? M.ein : wx >= T.x1 ? M.eout : mainBand(M, wx);
+  return { bt, band: mineBands(M, B)[k], T };
 };
 const TIMBER_RAMP = 120;              // the timber works' roof slope's length (world units; it ends ~30 into the works)
 // how far world x is into a timber works zone (its nearer end; negative before it, -Infinity away from one)
@@ -227,8 +283,8 @@ export const titleWebAt = webAt;   // (and bent where a player pushed through it
 /** @param {number} wx @param {{ top: number, bot: number, zp?: TitlePlan }} B */
 export const titleFloor = (wx, B) => {
   const nat = B.bot - 22 + zoneMix(wx, B, (x, Z) => Z.fo + (Math.sin(x * 0.021 * Z.ff + Z.ph[2]) * 7 + Math.sin(x * 0.057 * Z.ff + Z.ph[3]) * 4) * Z.fa) + Math.sin(wx * 0.13) * 1.5;
-  const b = built(wx, B);
-  return nat * (1 - b) + (B.bot - 20) * b;
+  const b = built(wx, B), base = nat * (1 - b) + (B.bot - 20) * b, T = mineNear(wx, B);
+  return T ? base + (T.band.f - base) * T.bt : base;
 };
 
 /** @param {TitleScene} S @param {number} c @param {number} r */
@@ -263,8 +319,17 @@ function genCol(S, c) {
   // the built-up layers' timber frames, as strata.js timberFrame makes them: two posts (lit on the
   // left), a cap beam two rows deep running a little past them, a knee brace inside each post's top,
   // a footing under each post
-  const u = ((wx % FRAME_GAP) + FRAME_GAP) % FRAME_GAP, uc = u > FRAME_GAP - 5 ? u - FRAME_GAP : u;
-  const frame = z === 'timber' && uc < FRAME_W + 4 && built(wx - uc - 4, S) > 0.95 && built(wx - uc + FRAME_W + 4, S) > 0.95;   // whole frames only
+  const u = ((wx % FRAME_GAP) + FRAME_GAP) % FRAME_GAP;
+  // a mine works (v0.0.170): its tunnels open here (each its frames, staggered tunnel to tunnel; whole frames only,
+  // clear of its walled ends), and the holes through its shelves
+  const M = z === 'timber' ? Zn.mine : undefined, bands = M ? mineBands(M, S) : [];
+  const tun = bands.map((q, k) => {
+    const v = ((wx + k * FRAME_GAP / 2) % FRAME_GAP + FRAME_GAP) % FRAME_GAP, uc = v > FRAME_GAP - 5 ? v - FRAME_GAP : v;
+    const fx0 = wx - uc - 4, fx1 = wx - uc + FRAME_W + 4;
+    const open = M && wx > M.L[k] && wx < M.Rx[k];
+    return { c: q.c, f: q.f, open, uc, v, frame: open && M && uc < FRAME_W + 4 && built(fx0, S) > 0.95 && built(fx1, S) > 0.95 && fx0 > M.L[k] + 4 && fx1 < M.Rx[k] - 4 };
+  });
+  const holes = M ? M.holes.filter(h => Math.abs(wx - h.x) < h.w / 2).map(h => [bands[h.k + 1].f - 0.5, bands[h.k].c + 0.5]) : [];
   // moss patches on the floor (thicker moss, bright grass tufts on top), as decorate.js bakes them
   const patch = titleNoise(wx / 14, 11) > 0.52, tuft = patch && h2(c, 5) < 0.4 ? (h2(c, 6) < 0.4 ? 2 : 1) : 0;
   const mossDeep = 2 + (patch ? 1 + Math.floor(h2(c, 7) * 3) : 0);
@@ -275,13 +340,20 @@ function genCol(S, c) {
   const lk = Math.floor(wx / 90), lx0 = lk * 90 + 15 + h2(lk, 8) * 35, lw = 14 + h2(lk, 9) * 14;
   const lmid = lx0 + lw / 2, lc = titleCeil(lmid, S), lf = titleFloor(lmid, S), ly = lc + 14 + h2(lk, 10) * Math.max(0, lf - lc - 52);
   const ledge = (z === 'moss' || z === 'grove' || z === 'webs') && built(lmid, S) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
-  // the layers stack (strataCave): over the shelf you run under, another open band with its own frames
-  const shelf = z === 'timber' && b > 0.9 ? 18 + titleNoise(wx / 20, 50) * 6 : 0, upBot = cy - shelf, upTop = upBot - 34;
-  const fu = ((wx + FRAME_GAP / 2) % FRAME_GAP + FRAME_GAP) % FRAME_GAP, upPost = shelf && (fu < 4 || (fu >= FRAME_W - 4 && fu < FRAME_W));
   for (let r = 0; r < S.rows; r++) {
     const y = (r + 0.5) * TCELL, zc = titleZoneAt(wx, y, S);   // the skin (moss or bricks) frays at a border
     let m = TM.AIR;
-    if (shelf && y >= upTop && y < upBot) m = upPost || (fu < FRAME_W + 4 && y < upTop + 4) ? TM.BEAMD : TM.AIR;
+    const tk = tun.findIndex(t => t.open && y >= t.c && y < t.f), t = tun[tk];
+    if (M && !t && y < cy && !holes.some(h => y >= h[0] && y < h[1])) m = TM.ROCK;
+    else if (M && t) {
+      if (t.frame) {
+        const uc = t.uc, under = y - t.c, post = (uc >= 0 && uc < 4) || (uc >= FRAME_W - 4 && uc < FRAME_W);
+        if (uc >= -4 && uc < FRAME_W + 4 && under < 4) m = under < 2 ? TM.BEAM : TM.BEAMD;
+        else if (post) m = (uc < 2 || (uc >= FRAME_W - 4 && uc < FRAME_W - 2)) ? TM.BEAM : TM.BEAMD;
+        else if ((uc >= 4 && uc <= 12 && Math.abs(under - 4 - (12 - uc)) < 1) || (uc >= FRAME_W - 12 && uc < FRAME_W - 4 && Math.abs(under - 4 - (uc - (FRAME_W - 12))) < 1)) m = TM.BEAMD;
+        else if (y >= t.f - 2 && ((uc >= -1 && uc < 5) || (uc >= FRAME_W - 5 && uc < FRAME_W + 1))) m = TM.BEAMD;
+      }
+    } else if (M && holes.some(h => y >= h[0] && y < h[1])) m = TM.AIR;
     else if (y < cy) m = TM.ROCK;
     else if (y >= fy) {
       m = TM.ROCK;
@@ -289,23 +361,14 @@ function genCol(S, c) {
       else if (y < fy + mossDeep * TCELL) m = TM.MOSS;
     } else if (ledge && y >= ly && y < ly + 4) m = TM.BRICK;
     else if (ledge && y >= ly - 2 && y < ly && tuft) m = TM.GRASS;
-    else if (frame) {
-      const under = y - cy, post = (uc >= 0 && uc < 4) || (uc >= FRAME_W - 4 && uc < FRAME_W);
-      if (uc >= -4 && uc < FRAME_W + 4 && under < 4) m = under < 2 ? TM.BEAM : TM.BEAMD;
-      else if (post) m = (uc < 2 || (uc >= FRAME_W - 4 && uc < FRAME_W - 2)) ? TM.BEAM : TM.BEAMD;
-      else if ((uc >= 4 && uc <= 12 && Math.abs(under - 4 - (12 - uc)) < 1) || (uc >= FRAME_W - 12 && uc < FRAME_W - 4 && Math.abs(under - 4 - (uc - (FRAME_W - 12))) < 1)) m = TM.BEAMD;
-      else if (y >= fy - 2 && ((uc >= -1 && uc < 5) || (uc >= FRAME_W - 5 && uc < FRAME_W + 1))) m = TM.BEAMD;
-    }
     if (m === TM.AIR && y >= fy - rub && y < fy) m = y < fy - rub + 2 && h2(c, r) < 0.7 ? TM.RUBM : TM.RUB;
     if (m === TM.AIR && y >= fy - tuft * TCELL && y < fy && zc !== 'paved') m = TM.GRASS;
     S.cells[base + r] = m;
   }
-  // a lantern hanging on its chain under the layers' roof: between the frames, and some inside them
-  if (z === 'timber' && b > 0.95 && (Math.abs(u - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(u - FRAME_W / 2) < 1) && R() < 0.75)
-    lamp(S, c, wx, cy + 10, 4 + R() * 8);
-  // and in the band above, and down long chains from the brick works' high roof
-  if (shelf && Math.abs(fu - FRAME_W / 2) < 1 && R() < 0.6)
-    lamp(S, c, wx, upTop + 10, 3 + R() * 6);
+  // a lantern hanging on its chain under each tunnel's roof: between the frames, and some inside them
+  if (b > 0.95) for (const t of tun) if (t.open && (Math.abs(t.v - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(t.v - FRAME_W / 2) < 1) && R() < 0.7)
+    lamp(S, c, wx, t.c + 10, 4 + R() * 8);
+  // and down long chains from the brick works' high roof
   if (z === 'paved' && b > 0.9 && Math.abs(u - FRAME_GAP / 2) < 1 && R() < 0.8)
     lamp(S, c, wx, cy + 10, 14 + R() * 30);
   // the spiders' zone: web lines everywhere, roof to floor (slanting either way) and roof to roof (sagging)
@@ -423,7 +486,7 @@ function kitOf(shot, mods, art) {
 
 /** @param {number} vh the view's height in world units @param {number} [seed] @param {number} [top] the action's band (world units) @param {number} [bot] @returns {TitleScene} */
 export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62) {
-  const rnd = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, ncol = Math.ceil((TITLE_VW + 90) / TCELL);
+  const rnd = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, ncol = Math.ceil((TITLE_VW + 50 + AHEAD) / TCELL);
   /** @type {TitleScene} */
   const S = { t: 0, vh, top, bot, seed, rnd, zp: titlePlan(seed), scroll: 0, shake: 0, spawn: 0, kills: 0, gold: 0, got: 0, runner: null, runners: [], foes: [], shots: [],
     parts: [], coins: [], booms: [], zaps: [], flash: 0, rows, ncol, cells: new Uint8Array(rows * ncol), gen: -25, props: [],
@@ -442,9 +505,12 @@ export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62) {
   for (let i = 0; i < 6; i++) addFoe(S, 130 + rnd() * 90);
   return S;
 }
+// the terrain is made this far past the screen's right edge (v0.0.170: was 40, and a rat swarm coming in
+// at the edge spread past it, into what wasn't made yet, and sank into the rock)
+const AHEAD = 130;
 /** @param {TitleScene} S */
 function genTo(S) {
-  while (S.gen * TCELL < S.scroll + TITLE_VW + 40) { genCol(S, S.gen); S.gen++; }
+  while (S.gen * TCELL < S.scroll + TITLE_VW + AHEAD) { genCol(S, S.gen); S.gen++; }
 }
 
 // the terrain as the creatures' brains see it (the game's terrain cells, world coordinates): out
@@ -469,6 +535,7 @@ function addFoe(S, x) {
   for (let i = 0; i < n && S.foes.length < TITLE_FOES; i++) {
     const ex = wx + i * (8 + R() * 8), k = enemyFor(id, 1), cy = titleCeil(ex, S), fy = titleFloor(ex, S);
     if (i && titleZone(ex, S) !== titleZone(wx, S)) break;          // a swarm stops at its zone's end
+    if (ex >= S.gen * TCELL - 6) break;                               // … and where the terrain isn't made yet
     const ey = id === 'meduusa' ? cy + (fy - cy) * (0.25 + 0.45 * R()) : id === 'hamahakki' && R() < 0.5 ? cy + k.r : fy - k.r - 1;
     S.foes.push({ x: ex, y: ey, ty: ey, r: k.r, phase: R() * 6.28, hp: k.hp, hpMax: k.hp, cd: 1 + R() * 2, flash: 0, lx: 0, ly: 1,
       hx: ex, hy: ey, tgt: null, rest: R() * 3, k, touch: 0, charge: 0 });

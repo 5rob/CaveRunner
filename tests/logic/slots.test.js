@@ -31,7 +31,7 @@ const S = titleScene(470, 7, 139, 295);
 let maxFoes = 0, maxParts = 0, maxGold = 0, maxFire = 0, onFloor = 0, feetOff = 0, brains = 0, noBrain = 0, aggroFar = 0;
 const zones = new Set(), kits = new Set(), seenKinds = new Set(), born = new Set(), badHome = [], spun = new Set();
 let overlap = 0, tight = 0, pairs = 0;
-let jellyIn = 0, jellyWorks = 0, pulledFar = 0, pulled = 0, oddNug = 0, nugs = 0;
+let jellyIn = 0, jellyWorks = 0, pulledFar = 0, pulled = 0, oddNug = 0, nugs = 0, ratSeen = 0, ratRock = 0;
 const flew = new Set();
 for (let i = 0; i < 60 * 40; i++) {
   titleStep(S, 1 / 60);
@@ -54,6 +54,8 @@ for (let i = 0; i < 60 * 40; i++) {
     seenKinds.add(id);
     // where each one first shows: a zone that's home to it (TITLE_HOME); jellyfish stay out of the works
     if (!born.has(f)) { born.add(f); const z = titleZone(f.x, S); if (!G.TITLE_HOME[z].some(h => h[0] === id)) badHome.push([id, z]); }
+    // (v0.0.170) rats on screen are never inside the rock (a swarm used to spread past the terrain made so far, and sink)
+    if (id === 'rotta' && f.x - S.scroll > 0 && f.x - S.scroll < 220) { ratSeen++; if (G.TITLE_SOLID[titleCell(S, Math.floor(f.x / TCELL), Math.floor(f.y / TCELL))]) ratRock++; }
     if (id === 'meduusa' && f.x - S.scroll > 0 && f.x - S.scroll < 220) { jellyIn++; const Z = G.titleZoneSpan(f.x, S); if ((Z.z === 'timber' || Z.z === 'paved') && Math.min(f.x - Z.x0, Z.x1 - f.x) > 60) jellyWorks++; }
     // run by the game's brains: each has its brain state (e.je / e.sp / e.ra) after its first frame
     if (born.has(f) && (id === 'meduusa' ? f.je : id === 'hamahakki' ? f.sp : f.ra)) brains++; else noBrain++;
@@ -147,16 +149,38 @@ check('it travels through the zones', passed.size >= 3 && [...passed].every(z =>
   // two moss zones' roof lines differ (their own hills), and the roof and floor stay joined across every border
   const mz = zs.filter(Z => Z.z === 'moss').slice(0, 2), prof = Z => Array.from({ length: 20 }, (_, i) => titleCeil(Z.x0 + 50 + i * 5, A) - titleCeil(Z.x0 + 50, A));
   const diff = mz.length === 2 ? prof(mz[0]).reduce((a, v, i) => a + Math.abs(v - prof(mz[1])[i]), 0) : 0;
+  // (the way through a mine works steps to another tunnel at a hole: a jump there is meant)
+  const steps = zs.flatMap(Z => (Z.mine ? Z.mine.steps.map(s => s.x) : []));
   let jump = 0, room = Infinity;
   for (let wx = -40; wx < zs[29].x0; wx += 0.5) {
+    if (steps.some(x => Math.abs(wx - x) < 1)) continue;
     jump = Math.max(jump, Math.abs(titleCeil(wx + 0.5, A) - titleCeil(wx, A)), Math.abs(titleFloor(wx + 0.5, A) - titleFloor(wx, A)));
     room = Math.min(room, titleFloor(wx, A) - titleCeil(wx, A));
   }
   check('two moss zones, two roof shapes', diff > 20, diff);
-  check('roof and floor have no steps at the borders, and room to run', jump < 3 && room >= 30, { jump, room });
+  check('roof and floor have no steps at the borders, and room to run', jump < 4.5 &&   // (a brick works' floor levels off over 36: up to 4 a half unit)
+    room >= 30, { jump, room });
 }
 check('each creature comes only into its own zones', badHome.length === 0 && born.size > 20, { bad: badHome.slice(0, 5), born: born.size });
 check('jellyfish stay out of the works', jellyWorks / jellyIn < 0.02, { jellyWorks, jellyIn });
+check('rats on screen are never inside the rock', ratSeen > 500 && ratRock === 0, { ratSeen, ratRock });
+// (v0.0.170, owner) each mine works its own layout: 1–3 tunnels, in and out at different heights, walled ends, holes between
+{
+  const P = titleScene(470, 21, 139, 295), ms = [];
+  for (let Z = G.titleZoneSpan(0, P); ms.length < 40; Z = G.titleZoneSpan(Z.x1 + 1, P)) if (Z.mine) ms.push(Z);
+  const kinds = new Set(ms.map(Z => Z.mine.n + ':' + Z.mine.ein + '>' + Z.mine.eout));
+  check('mine works: 1, 2 and 3 tunnels, many ways in and out', [1, 2, 3].every(n => ms.some(Z => Z.mine.n === n)) && kinds.size >= 7
+    && ms.some(Z => Z.mine.ein > Z.mine.eout) && ms.some(Z => Z.mine.ein < Z.mine.eout) && ms.some(Z => Z.mine.n > 1 && Z.mine.Rx.some(isFinite)), [...kinds]);
+  // the way through: a hole at each step, between the tunnels it steps between; every tunnel fits the band
+  let bad = 0;
+  for (const Z of ms) {
+    const M = Z.mine, bands = G.mineBands(M, P);
+    let k = M.ein;
+    for (const s of M.steps) { if (!M.holes.some(h => h.x === s.x && h.k === Math.min(k, s.to))) bad++; k = s.to; }
+    if (k !== M.eout || bands.some(q => q.c < P.top - 8 || q.f > P.bot)) bad++;
+  }
+  check('…a hole at every step of the way through, the tunnels in the band', bad === 0, bad);
+}
 check('spiders ride web lines', S.lineT > 1, S.lineT);
 check('blasts and fire cut web lines', S.cut > 0, S.cut);
 // fire on plants, the game's way: a vine burns from its tip up at firePlant × TITLE_FIRESPEED (owner, v0.0.165:
