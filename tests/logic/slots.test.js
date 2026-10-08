@@ -328,7 +328,10 @@ check('moss catches fire', !!mossAt && C.fire.length > 0, mossAt);
 }
 // the players push the vines they pass (the game's vinePush, swingStep): a vine one runs through swings
 {
-  const Q = titleScene(470, 7, 139, 295);
+  // (a seed whose first stretch is a vine zone: the zones are random since v0.0.168)
+  let qs = 7;
+  while (!['moss', 'grove'].every(z => [150, 400].some(x => titleZone(x, titleScene(470, qs, 139, 295)) === z))) qs++;
+  const Q = titleScene(470, qs, 139, 295);
   let swung = 0, touched = 0;
   for (let i = 0; i < 60 * 20; i++) {
     titleStep(Q, 1 / 60);

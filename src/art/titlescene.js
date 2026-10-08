@@ -196,6 +196,10 @@ export function mineBands(M, B) {
   for (let k = 0; k < M.n; k++) { out.push({ c: f - TIMBER_H, f }); f = f - TIMBER_H - (M.sh[k] || 0); }
   return out;
 }
+// how far a tunnel is dug past its frames at x: its roof up, its floor down (big lumps and a fine fray)
+/** @param {number} wx @param {number} k */
+const dig = (wx, k) => ({ up: 2 + titleNoise(wx / 11, 31 + k * 5) * 8 + titleNoise(wx / 3, 37 + k * 5) * 4,
+  dn: titleNoise(wx / 9, 61 + k * 5) * 2.5 + titleNoise(wx / 2.5, 67 + k * 5) * 1.5 });
 // the tunnel the way through is in at x
 /** @param {TMine} M @param {number} wx */
 const mainBand = (M, wx) => M.steps.reduce((b, s) => (wx >= s.x ? s.to : b), M.ein);
@@ -326,10 +330,20 @@ function genCol(S, c) {
   const tun = bands.map((q, k) => {
     const v = ((wx + k * FRAME_GAP / 2) % FRAME_GAP + FRAME_GAP) % FRAME_GAP, uc = v > FRAME_GAP - 5 ? v - FRAME_GAP : v;
     const fx0 = wx - uc - 4, fx1 = wx - uc + FRAME_W + 4;
-    const open = M && wx > M.L[k] && wx < M.Rx[k];
-    return { c: q.c, f: q.f, open, uc, v, frame: open && M && uc < FRAME_W + 4 && built(fx0, S) > 0.95 && built(fx1, S) > 0.95 && fx0 > M.L[k] + 4 && fx1 < M.Rx[k] - 4 };
+    // hewn, not cut (owner, v0.0.170): the roof dug up 2–14 past the frames' caps (leaving 4 of the shelf under the
+    // tunnel above), the floor down 0–4, the walled ends crooked (±12 by height); the frames stay straight in it
+    const dn = dig(wx, k).dn, up = Math.min(dig(wx, k).up, k < bands.length - 1 ? M.sh[k] - dig(wx, k + 1).dn - 4 : 99);
+    const open = !!M && wx > M.L[k] - 14 && wx < M.Rx[k] + 14;
+    return { c: q.c, f: q.f, rc: q.c - up, rf: q.f + dn, k, open, uc, v,
+      frame: open && !!M && uc < FRAME_W + 4 && built(fx0, S) > 0.95 && built(fx1, S) > 0.95 && fx0 > M.L[k] + 12 && fx1 < M.Rx[k] - 12 };
   });
-  const holes = M ? M.holes.filter(h => Math.abs(wx - h.x) < h.w / 2).map(h => [bands[h.k + 1].f - 0.5, bands[h.k].c + 0.5]) : [];
+  /** @param {{ k: number }} t @param {number} y the end walls, crooked */
+  const inside = (t, y) => !!M && wx > M.L[t.k] + (titleNoise(y / 9, 71 + t.k * 3) - 0.5) * 18 + (titleNoise(y / 3, 73 + t.k * 3) - 0.5) * 6
+    && wx < M.Rx[t.k] + (titleNoise(y / 9, 79 + t.k * 3) - 0.5) * 18 + (titleNoise(y / 3, 83 + t.k * 3) - 0.5) * 6;
+  // the holes through the shelves, ragged (their width ±4 by height)
+  const near = M ? M.holes.filter(h => Math.abs(wx - h.x) < h.w / 2 + 4) : [];
+  /** @param {number} y */
+  const inHole = y => near.some(h => y >= bands[h.k + 1].f - 0.5 && y < bands[h.k].c + 0.5 && Math.abs(wx - h.x) < h.w / 2 + (titleNoise(y / 5, h.x) - 0.5) * 8);
   // moss patches on the floor (thicker moss, bright grass tufts on top), as decorate.js bakes them
   const patch = titleNoise(wx / 14, 11) > 0.52, tuft = patch && h2(c, 5) < 0.4 ? (h2(c, 6) < 0.4 ? 2 : 1) : 0;
   const mossDeep = 2 + (patch ? 1 + Math.floor(h2(c, 7) * 3) : 0);
@@ -343,17 +357,17 @@ function genCol(S, c) {
   for (let r = 0; r < S.rows; r++) {
     const y = (r + 0.5) * TCELL, zc = titleZoneAt(wx, y, S);   // the skin (moss or bricks) frays at a border
     let m = TM.AIR;
-    const tk = tun.findIndex(t => t.open && y >= t.c && y < t.f), t = tun[tk];
-    if (M && !t && y < cy && !holes.some(h => y >= h[0] && y < h[1])) m = TM.ROCK;
+    const t = tun.find(t => t.open && y >= t.rc && y < t.rf && inside(t, y));
+    if (M && !t && y < cy && !inHole(y)) m = TM.ROCK;
     else if (M && t) {
-      if (t.frame) {
+      if (t.frame && y >= t.c) {
         const uc = t.uc, under = y - t.c, post = (uc >= 0 && uc < 4) || (uc >= FRAME_W - 4 && uc < FRAME_W);
         if (uc >= -4 && uc < FRAME_W + 4 && under < 4) m = under < 2 ? TM.BEAM : TM.BEAMD;
         else if (post) m = (uc < 2 || (uc >= FRAME_W - 4 && uc < FRAME_W - 2)) ? TM.BEAM : TM.BEAMD;
         else if ((uc >= 4 && uc <= 12 && Math.abs(under - 4 - (12 - uc)) < 1) || (uc >= FRAME_W - 12 && uc < FRAME_W - 4 && Math.abs(under - 4 - (uc - (FRAME_W - 12))) < 1)) m = TM.BEAMD;
         else if (y >= t.f - 2 && ((uc >= -1 && uc < 5) || (uc >= FRAME_W - 5 && uc < FRAME_W + 1))) m = TM.BEAMD;
       }
-    } else if (M && holes.some(h => y >= h[0] && y < h[1])) m = TM.AIR;
+    } else if (M && inHole(y)) m = TM.AIR;
     else if (y < cy) m = TM.ROCK;
     else if (y >= fy) {
       m = TM.ROCK;
@@ -366,7 +380,7 @@ function genCol(S, c) {
     S.cells[base + r] = m;
   }
   // a lantern hanging on its chain under each tunnel's roof: between the frames, and some inside them
-  if (b > 0.95) for (const t of tun) if (t.open && (Math.abs(t.v - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(t.v - FRAME_W / 2) < 1) && R() < 0.7)
+  if (b > 0.95) for (const t of tun) if (t.open && inside(t, t.c + 4) && (Math.abs(t.v - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(t.v - FRAME_W / 2) < 1) && R() < 0.7)
     lamp(S, c, wx, t.c + 10, 4 + R() * 8);
   // and down long chains from the brick works' high roof
   if (z === 'paved' && b > 0.9 && Math.abs(u - FRAME_GAP / 2) < 1 && R() < 0.8)

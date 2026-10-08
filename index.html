@@ -10404,6 +10404,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return out;
   }
+  var dig = (wx, k) => ({
+    up: 2 + titleNoise(wx / 11, 31 + k * 5) * 8 + titleNoise(wx / 3, 37 + k * 5) * 4,
+    dn: titleNoise(wx / 9, 61 + k * 5) * 2.5 + titleNoise(wx / 2.5, 67 + k * 5) * 1.5
+  });
   var mainBand = (M, wx) => M.steps.reduce((b, s) => wx >= s.x ? s.to : b, M.ein);
   var DEF_PLAN = titlePlan(7);
   var planOf = (B) => B && B.zp || DEF_PLAN;
@@ -10503,10 +10507,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const tun = bands.map((q, k) => {
       const v = ((wx + k * FRAME_GAP / 2) % FRAME_GAP + FRAME_GAP) % FRAME_GAP, uc = v > FRAME_GAP - 5 ? v - FRAME_GAP : v;
       const fx0 = wx - uc - 4, fx1 = wx - uc + FRAME_W + 4;
-      const open = M && wx > M.L[k] && wx < M.Rx[k];
-      return { c: q.c, f: q.f, open, uc, v, frame: open && M && uc < FRAME_W + 4 && built(fx0, S2) > 0.95 && built(fx1, S2) > 0.95 && fx0 > M.L[k] + 4 && fx1 < M.Rx[k] - 4 };
+      const dn = dig(wx, k).dn, up = Math.min(dig(wx, k).up, k < bands.length - 1 ? M.sh[k] - dig(wx, k + 1).dn - 4 : 99);
+      const open = !!M && wx > M.L[k] - 14 && wx < M.Rx[k] + 14;
+      return {
+        c: q.c,
+        f: q.f,
+        rc: q.c - up,
+        rf: q.f + dn,
+        k,
+        open,
+        uc,
+        v,
+        frame: open && !!M && uc < FRAME_W + 4 && built(fx0, S2) > 0.95 && built(fx1, S2) > 0.95 && fx0 > M.L[k] + 12 && fx1 < M.Rx[k] - 12
+      };
     });
-    const holes = M ? M.holes.filter((h4) => Math.abs(wx - h4.x) < h4.w / 2).map((h4) => [bands[h4.k + 1].f - 0.5, bands[h4.k].c + 0.5]) : [];
+    const inside = (t, y) => !!M && wx > M.L[t.k] + (titleNoise(y / 9, 71 + t.k * 3) - 0.5) * 18 + (titleNoise(y / 3, 73 + t.k * 3) - 0.5) * 6 && wx < M.Rx[t.k] + (titleNoise(y / 9, 79 + t.k * 3) - 0.5) * 18 + (titleNoise(y / 3, 83 + t.k * 3) - 0.5) * 6;
+    const near = M ? M.holes.filter((h4) => Math.abs(wx - h4.x) < h4.w / 2 + 4) : [];
+    const inHole = (y) => near.some((h4) => y >= bands[h4.k + 1].f - 0.5 && y < bands[h4.k].c + 0.5 && Math.abs(wx - h4.x) < h4.w / 2 + (titleNoise(y / 5, h4.x) - 0.5) * 8);
     const patch = titleNoise(wx / 14, 11) > 0.52, tuft = patch && h2(c, 5) < 0.4 ? h2(c, 6) < 0.4 ? 2 : 1 : 0;
     const mossDeep = 2 + (patch ? 1 + Math.floor(h2(c, 7) * 3) : 0);
     const rk = Math.floor(wx / 60), rcx = rk * 60 + 10 + h2(rk, 1) * 40, rw = 6 + h2(rk, 2) * 6, rd = (wx - rcx) / rw;
@@ -10517,17 +10534,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let r = 0; r < S2.rows; r++) {
       const y = (r + 0.5) * TCELL, zc = titleZoneAt(wx, y, S2);
       let m = TM.AIR;
-      const tk = tun.findIndex((t2) => t2.open && y >= t2.c && y < t2.f), t = tun[tk];
-      if (M && !t && y < cy && !holes.some((h4) => y >= h4[0] && y < h4[1])) m = TM.ROCK;
+      const t = tun.find((t2) => t2.open && y >= t2.rc && y < t2.rf && inside(t2, y));
+      if (M && !t && y < cy && !inHole(y)) m = TM.ROCK;
       else if (M && t) {
-        if (t.frame) {
+        if (t.frame && y >= t.c) {
           const uc = t.uc, under = y - t.c, post = uc >= 0 && uc < 4 || uc >= FRAME_W - 4 && uc < FRAME_W;
           if (uc >= -4 && uc < FRAME_W + 4 && under < 4) m = under < 2 ? TM.BEAM : TM.BEAMD;
           else if (post) m = uc < 2 || uc >= FRAME_W - 4 && uc < FRAME_W - 2 ? TM.BEAM : TM.BEAMD;
           else if (uc >= 4 && uc <= 12 && Math.abs(under - 4 - (12 - uc)) < 1 || uc >= FRAME_W - 12 && uc < FRAME_W - 4 && Math.abs(under - 4 - (uc - (FRAME_W - 12))) < 1) m = TM.BEAMD;
           else if (y >= t.f - 2 && (uc >= -1 && uc < 5 || uc >= FRAME_W - 5 && uc < FRAME_W + 1)) m = TM.BEAMD;
         }
-      } else if (M && holes.some((h4) => y >= h4[0] && y < h4[1])) m = TM.AIR;
+      } else if (M && inHole(y)) m = TM.AIR;
       else if (y < cy) m = TM.ROCK;
       else if (y >= fy) {
         m = TM.ROCK;
@@ -10540,7 +10557,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S2.cells[base + r] = m;
     }
     if (b > 0.95) {
-      for (const t of tun) if (t.open && (Math.abs(t.v - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(t.v - FRAME_W / 2) < 1) && R() < 0.7)
+      for (const t of tun) if (t.open && inside(t, t.c + 4) && (Math.abs(t.v - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(t.v - FRAME_W / 2) < 1) && R() < 0.7)
         lamp(S2, c, wx, t.c + 10, 4 + R() * 8);
     }
     if (z === "paved" && b > 0.9 && Math.abs(u - FRAME_GAP / 2) < 1 && R() < 0.8)
@@ -14224,7 +14241,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         return c;
       };
-      const dig2 = (ex, ey, r) => {
+      const dig3 = (ex, ey, r) => {
         digN(ex, ey, r);
       };
       const cr = rad * 0.5, crx0 = Math.max(15, Math.round(cr * 0.38)), fl0 = cy + Math.max(12, Math.round(cr * 0.26));
@@ -14251,7 +14268,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         let x = sx, y = sy, ang = Math.atan2(ty - y, tx2 - x);
         for (let s = 0; s < steps; s++) {
           if (guard) digS(x, y, r);
-          else dig2(x, y, r);
+          else dig3(x, y, r);
           if (Math.hypot(tx2 - x, ty - y) < 2) break;
           let d = Math.atan2(ty - y, tx2 - x) - ang;
           d -= Math.round(d / 6.2832) * 6.2832;
@@ -14261,7 +14278,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           y += Math.sin(ang) * 1.5;
         }
       };
-      for (const p of mouths) dig2(p.x + 0.5, p.y + 0.5, 4.5);
+      for (const p of mouths) dig3(p.x + 0.5, p.y + 0.5, 4.5);
       const aim = (e) => e.y > cy + cry - 4 ? { x: cx + (e.x < cx ? -1 : 1) * (crx + 3), y: cy + cry - 7 } : { x: cx, y: cy };
       for (const e of entries) {
         const t = aim(e);
@@ -18296,7 +18313,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return -1;
   };
-  function dig(W, G, x, y, R) {
+  function dig2(W, G, x, y, R) {
     const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL;
     const minX = Math.max(0, Math.floor(cx0 - rc)), maxX = Math.min(CW - 1, Math.ceil(cx0 + rc));
     const minY = Math.max(0, Math.floor(cy0 - rc)), maxY = Math.min(CH - 1, Math.ceil(cy0 + rc));
@@ -27669,7 +27686,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     let hitAt = sh.beam;
     for (let d = 6; d <= sh.beam; d += 4) {
       const bx = x + nx * d, by = y + ny * d;
-      if (sh.bore) dig(W, G, bx, by, sh.bore);
+      if (sh.bore) dig2(W, G, bx, by, sh.bore);
       else if (solidAt(W, bx, by)) {
         hitAt = d;
         break;
@@ -27699,7 +27716,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         rnd(0.12, 0.3),
         0.3
       );
-      if (sh.pit && hitAt < sh.beam) dig(W, G, ex + nx * 2, ey + ny * 2, sh.pit);
+      if (sh.pit && hitAt < sh.beam) dig2(W, G, ex + nx * 2, ey + ny * 2, sh.pit);
     }
     if (sh.explode) explode(W, G, x + nx * hitAt, y + ny * hitAt, sh.explode);
     if (sh.payload && sh.payload.length) releaseAt(W, G, sh.payload, x + nx * hitAt, y + ny * hitAt, nx, ny, sh.col);
@@ -28087,7 +28104,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         [ex, ey] = pathStep(b, dt, pathEnv(W, b, dt));
         if (b.caught) dead = true;
       }
-      if (b.eat && !b.only) dig(W, G, b.x, b.y, b.eat);
+      if (b.eat && !b.only) dig2(W, G, b.x, b.y, b.eat);
       if (b.fire && !b.only) ignite(W, G, b.x, b.y, b.size + 2, 0.5);
       if (b.arc) lightningStep(W, b, dt);
       if (b.payload && b.timer != null && (b.timer -= dt) <= 0) firePayload(W, G, b);
@@ -28303,11 +28320,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           b.y = ny;
           if (b.bore > 0) {
             if (b.look) shotGrind(W, b, nx, ny);
-            dig(W, G, nx, ny, b.bore);
+            dig2(W, G, nx, ny, b.bore);
             continue;
           }
           if (b.eat > 0) {
-            dig(W, G, nx, ny, b.eat);
+            dig2(W, G, nx, ny, b.eat);
             continue;
           }
           if (b.cluster) {
@@ -28324,7 +28341,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             dead = true;
             break;
           }
-          if (b.pit) dig(W, G, nx, ny, b.pit);
+          if (b.pit) dig2(W, G, nx, ny, b.pit);
           burst2(W, b.x, b.y, 3, b.col);
           SFX.rock(b.x, b.y);
           dead = true;
@@ -28825,7 +28842,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         paintFog: () => paintFog(W, G),
         hurt: (n) => hurt(W, G, n),
         maxHp: () => maxHp(W, G),
-        dig: (x, y, R) => dig(W, G, x, y, R),
+        dig: (x, y, R) => dig2(W, G, x, y, R),
         explode: (x, y, R, splash, hot) => explode(W, G, x, y, R, splash, hot),
         recSample: () => recSample(W, G),
         ignite: (x, y, r, chance) => ignite(W, G, x, y, r, chance),

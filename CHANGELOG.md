@@ -14,7 +14,8 @@ Waiting on the owner's OK (a minor update).
   (`mineBands`), come in at any of them and leave by any (the slope in and out goes to that tunnel, up or down: `mineNear`),
   the others walled off at that end some way in, a hole through the shelf at each step of the way through (`steps`, in
   order) and now and then another; frames and lanterns in every tunnel, staggered. The old closed upper band is gone (one
-  of the layouts covers it). A mine's slope now starts from a brick works' level floor next to it (it ignored it: a step).
+  of the layouts covers it). Hewn, not cut (owner's round 1): each tunnel's roof dug 2–14 past its frames' caps (`dig`,
+  leaving 4 of the shelf), its floor down 0–4, its walled ends crooked (±12), the holes ragged. A mine's slope now starts from a brick works' level floor next to it (it ignored it: a step).
 - **Jellyfish plant glow** (owner): the game's green glow on the vines and moss round each jellyfish, its reach × `TITLE_PLANTR`
   (0.25: the owner's round 1, the game's lit the whole screen) (`titlePlantGlow`:
   the terrain's own pixels + the plants at its grid, through `plantGlowFill`, white point `plantWhite` of the terrain).
