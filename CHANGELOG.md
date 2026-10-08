@@ -5,6 +5,24 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.166 — title players saw through rock (no teleports), each on its own clock; burning creatures and vines in the fire's crackle (title and game)
+Not yet released (branch `title-dig`, waiting on the owner's OK of the screenshots).
+- **Title movement** (`stepRunnerMove`: `runStep`, `flyStep`, `digStep`): running and flying each last a random
+  while per player (`runTime`, `flyTime`; switches in `r.switches`); the mine works no longer force a landing, and
+  the safety net that popped a player up through rock (a teleport) is gone. **Rock in the way** (a wall ahead past a
+  step, a low roof, ground he's aiming into, rock the scroll brings to him) **brings out the Buzzsaw** (`startDig`:
+  the `saw` shot on `TITLE_SAW`'s skin, the gun kept in `r.keep`), cutting a `TITLE_DIGR` tunnel (no charred rim,
+  `titleCarve(…, false)`) at up to `DIGV` until he's been clear a moment; the blade drawn spinning at the barrel (the
+  game's `disc` look); it cuts creatures it reaches. Flying targets (`pickTarget`) are now and then under the floor
+  or up in the roof, so they saw tunnels. Floor bumps under a flying player lift him; landing is when his feet reach
+  the floor. Counted in `S.digs`, `S.digT`, `S.digWhy`. Tests can hold the players still (`S.still`).
+- **Burning creatures in the fire's crackle** (`art/crackle.js` `crackleBody`: about half the burning-pixel squares over
+  the body, tongues above, a new flicker each fire tick): the title and the game (`render/actors.js`). On the title
+  burning hurts in chunks as in the game, so they flash now and then instead of staying white.
+- **Burning vines in the crackle in the game too** (`render/cave.js`, `crackleAt`): a hanging vine's burning tip,
+  an arch's two fronts. The title's vines and silk use the same `crackleAt`.
+- A rat swarm stops at its zone's end. Suite `slots` (53); pictures `tools/digshots.js`.
+
 ## v0.0.165 — the title: four players, twice the creatures, random guns with modifiers, a natural mine slope, slower fire, cut vines and webs hang and swing
 Released 2026-10-08 (owner OK'd the screenshots; a minor update).
 - **Four players** (`TITLE_RUNNERS`, `S.runners`; `S.runner` is player 1): each on its own clock, easing apart when

@@ -4,6 +4,9 @@
 // props, the two portals, the shop's stock, loot, and the hidden rooms' prizes
 
 import { drawProp, rgbA } from '../../art/props.js';
+import { crackleAt } from '../../art/crackle.js';
+import { archAt } from '../../world/decorate.js';
+import { swings, vinePt } from '../../world/sway.js';
 import { drawTeleSign } from '../../art/sign.js';
 import { CRYSTAL_PAL, CRYSTAL_R, GREEN_PAL, drawGun, drawGunGlow, drawNugget } from '../../art/sprites.js';
 import { BCELL, BH, BW, CELL, CH, COL, CW, SHOP_FLOOR, SHOP_Y, WW } from '../../core/consts.js';
@@ -115,6 +118,25 @@ export function drawProps(W, G, F) {
   for (const pr of W.props)
     if (pr.x + pr.r > W.camX - 70 && pr.x + pr.l < W.camX + vw + 70 && pr.y + pr.b > W.camY - 90 && pr.y + pr.t0 < W.camY + vh + 90)
       drawProp(G.ctx, pr, W.time, TH);
+  // a burning vine's burning stretch, square by square in the burning pixels' crackle: a hanging one's tip,
+  // an arch's two fronts (owner, v0.0.166)
+  for (const pr of W.firePlants) {
+    if (!pr.burn || pr.gone || !F.onView(pr.x, pr.y + pr.len, 30)) continue;
+    const bent = swings(pr) && !!(pr.sw || pr.on || pr.tl);
+    for (let k = Math.max(0, pr.len - 7); k <= pr.len; k += CELL * 0.75) {
+      const q = bent ? vinePt(pr, k) : { x: 0, y: k };
+      crackleAt(G.ctx, pr.x + q.x, pr.y + q.y, CELL, W.fireN, pr.len - k < 1.5);
+    }
+  }
+  for (const pr of W.fireArches) {
+    if (!pr.burn || pr.gone || !F.onView(pr.x, pr.y, 140)) continue;
+    const du = 1.5 / Math.max(10, pr.alen || 10);
+    for (let k = 0; k < 5; k++) for (const u of [pr.u0 - k * du, pr.u1 + k * du]) {
+      if (u < 0 || u > 1) continue;
+      const q = archAt(pr, u);
+      crackleAt(G.ctx, q.x, q.y, CELL, W.fireN, k === 0);
+    }
+  }
   for (const q of W.dparts) {
     if (q.glow) continue;
     G.ctx.globalAlpha = Math.min(1, q.life / q.max * 3);

@@ -7,9 +7,10 @@
 import { GUN_HELD, drawGun, drawRagdoll, drawRunner, drawTorch, jetFlame, pixelHeld, pixelSprite, torchEmbers } from '../../art/sprites.js';
 import { gunArtId } from '../../art/gunart.js';
 import { gradLut, lutAt, rampLut } from '../../art/ramps.js';
-import { COL, PH, PW } from '../../core/consts.js';
+import { CELL, COL, PH, PW } from '../../core/consts.js';
 import { hexRgb } from '../../core/util.js';
 import { drawEnemy } from '../../creatures/draw.js';
+import { crackleBody } from '../../art/crackle.js';
 import { DEV, carrotAt, jcol, kcol, kru } from '../../dev/knobs.js';
 import { hasAssist } from '../../spells/assist.js';
 import { planCast } from '../../spells/cast.js';
@@ -65,6 +66,7 @@ export function drawEnemies(W, G, F) {
       }
     }
     drawEnemy(G.ctx, e, W.time);
+    if (e.burn > 0) crackleBody(G.ctx, e.x, ey, e.r * 0.85, CELL, W.fireN);   // on fire: the burning pixels' crackle over it
     if ((e.home || e.nest || e.al) && e.hp >= e.hpMax) continue;   // rats, nests and aliens: a bar only once hurt
     const hw = 20, hx = e.x - hw / 2, hy = ey - e.r - 9;
     G.ctx.fillStyle = COL.barBg; G.ctx.fillRect(hx, hy, hw, 3);

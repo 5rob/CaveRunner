@@ -12,8 +12,9 @@ import { drawEnemy } from '../../creatures/draw.js';
 import { coinR } from '../../world/nuggets.js';
 import { FIRE_COLS } from '../../world/fire.js';
 import { vinePt } from '../../world/sway.js';
+import { crackleAt, crackleBody } from '../../art/crackle.js';
 import { drawProp, propGlow } from '../../art/props.js';
-import { GUN_HELD, drawGun, drawNugget, glowAt, drawRunner, jetFlame, pixelHeld, pixelSprite } from '../../art/sprites.js';
+import { GUN_HELD, gunMuzzle, drawGun, drawNugget, glowAt, drawRunner, jetFlame, pixelHeld, pixelSprite } from '../../art/sprites.js';
 import { TCELL, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleWebAt } from '../../art/titlescene.js';
 import { drawBolt, drawLook } from './looks.js';
 
@@ -146,12 +147,12 @@ export function titleDraw(ctx, S, cw, ch) {
     if (!p.burn || p.gone || p.arc || p.x < -20 || p.x > TITLE_VW + 20) continue;
     /** @type {any} */
     const pr = p, bent = p.sw || p.tl, reach = p.st === 'silk' ? 3 : 7;
+    ctx.save(); ctx.translate(-S.scroll, 0);
     for (let k = Math.max(0, p.len - reach); k <= p.len; k += TCELL * 0.75) {
-      const q = bent ? vinePt(pr, k) : { x: 0, y: k }, c = Math.floor((p.ox + q.x) / TCELL), r = Math.floor((p.y + q.y) / TCELL);
-      const h = (Math.imul(c * 977 + r, 2654435761) + S.fireN * 40503) >>> 30;
-      ctx.fillStyle = FIRE_COLS[p.len - k < 1.5 ? 3 : h === 0 ? 0 : h === 3 ? 2 : 1];
-      ctx.fillRect(c * TCELL - S.scroll, r * TCELL, TCELL, TCELL);
+      const q = bent ? vinePt(pr, k) : { x: 0, y: k };
+      crackleAt(ctx, p.ox + q.x, p.y + q.y, TCELL, S.fireN, p.len - k < 1.5);
     }
+    ctx.restore();
   }
   // the spiders' web lines, silk as the game draws it (render: game/creatures/spider.js drawSilk)
   ctx.strokeStyle = '#eef0f6'; ctx.globalAlpha = 0.55; ctx.lineWidth = 0.7; ctx.lineCap = 'round';
@@ -199,7 +200,10 @@ export function titleDraw(ctx, S, cw, ch) {
   ctx.globalAlpha = 1;
   // floor 1's creatures, drawn by the game's own drawEnemy (they live in world coordinates)
   ctx.save(); ctx.translate(-S.scroll, 0);
-  for (const f of S.foes) drawEnemy(ctx, f, S.t);
+  for (const f of S.foes) {
+    drawEnemy(ctx, f, S.t);
+    if (f.burn > 0) crackleBody(ctx, f.x, f.ty, f.r * 0.85, TCELL, S.fireN);   // on fire: the burning pixels' crackle over it
+  }
   ctx.restore();
   // the four players: body and jet flame on the 1-unit pixel grid like the game's drawPlayer, the gun in it
   // (pixelHeld), each with its colour on the backpack and helmet
@@ -282,4 +286,15 @@ function drawTitleRunner(ctx, S, r) {
     drawRunner(c, r.x, r.y, PW, PH, r.face, gait, r.mode !== 'run', r.flame, false, hands, null, r.col);
     drawGun(c, pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);
   });
+  // sawing through rock: the Buzzsaw's blade spinning off the barrel (the game's sawblade look)
+  if (r.dig) {
+    const mz = gunMuzzle(pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);
+    /** @type {any} */
+    const blade = { look: 'disc', x: mz.x + ax * 3, y: mz.y + ay * 3, vx: ax, vy: ay, size: 3.2, spin: S.t * 9, col: '#d9dde4' };
+    /** @type {any} */
+    const W = { time: S.t };
+    /** @type {any} */
+    const G = { ctx };
+    drawLook(W, G, blade);
+  }
 }
