@@ -179,6 +179,54 @@ let mossAt = null;
 for (let c = C.gen - 100; c < C.gen && !mossAt; c++) for (let r = 100; r < C.rows; r++) if (titleCell(C, c, r) === TM.MOSS) { mossAt = { c, r }; break; }
 if (mossAt) titleIgnite(C, (mossAt.c + 0.5) * TCELL - C.scroll, (mossAt.r + 0.5) * TCELL, 3);
 check('moss catches fire', !!mossAt && C.fire.length > 0, mossAt);
+// fire jumps (owner, v0.0.164): a burning web line lights one it nearly touches, not one further off;
+// a burning vine lights a web along it, and a burning web a vine beside it
+{
+  const quiet = (Q, n) => { for (let i = 0; i < n; i++) { Q.foes.length = 0; Q.spawn = 99; Q.runner.cd = 9; titleStep(Q, 1 / 60); } };
+  const web = (Q, x0, y0, x1, y1) => { const L = { ax: x0, ay: y0, bx: x1, by: y1, a0x: x0, a0y: y0, b0x: x1, b0y: y1, ain: null, bin: { x: x1, y: y1 }, owner: null, sag: 0 }; Q.webs.push(L); return L; };
+  const caught = L => !!(L.fu || L.out);
+  const J = titleScene(470, 7, 139, 295);
+  quiet(J, 30);
+  const wx = J.scroll + 150, y = 220;
+  const L1 = web(J, wx - 20, y, wx + 20, y), L2 = web(J, wx - 20, y + G.TITLE_JUMP - 2, wx + 20, y + G.TITLE_JUMP - 2), L3 = web(J, wx - 20, y + 25, wx + 20, y + 25);
+  L1.fu = [0.5, 0.5];
+  quiet(J, 120);
+  check('a burning web lights the web it nearly touches', caught(L2) && L1.out, { L1: L1.fu || L1.out, L2: L2.fu || L2.out });
+  check('…but not one further off', !caught(L3), L3.fu);
+  // vines: two hanging ones in view, unburnt
+  const V = titleScene(470, 7, 139, 295);
+  let vines = [];
+  for (let i = 0; i < 60 * 20 && vines.length < 2; i++) {
+    quiet(V, 1);
+    vines = V.props.filter(p => p.k === 'climb' && p.st === 'vine' && !p.arc && !p.host && !p.burn && p.len > 20 && p.x > 30 && p.x < 190);
+    vines = vines.filter((p, k) => !vines.some((o, j) => j !== k && Math.abs(o.ox - p.ox) < 30));
+  }
+  const [va, vb] = vines;
+  if (va && vb) {
+    const Wa = web(V, va.ox + 3, va.y + 2, va.ox + 3, va.y + va.len);   // along the burning vine
+    const Wb = web(V, vb.ox + 3, vb.y + 2, vb.ox + 3, vb.y + vb.len);   // along the other: lit by hand
+    va.burn = 1; Wb.fu = [0.5, 0.5];
+    quiet(V, 90);
+    check('a burning vine lights a web along it', caught(Wa), Wa.fu);
+    check('a burning web lights a vine beside it', !!vb.burn || vb.gone, { burn: vb.burn, gone: vb.gone });
+  } else check('two vines in view for the fire test', false, vines.length);
+}
+// he waits for a creature to come near (owner, v0.0.164): none fired at past TITLE_AIM, one fired at inside it
+{
+  const H = titleScene(470, 7, 139, 295);
+  for (let i = 0; i < 600 && !H.foes.length; i++) titleStep(H, 1 / 60);
+  const f = H.foes[0], r = H.runner;
+  H.foes.length = 1;
+  const shotsAt = dx => {
+    r.x = 40; r.cd = 0; r.swap = 0; r.swapT = 9;
+    f.x = H.scroll + r.x + dx; f.y = f.ty = r.y; f.hp = f.hpMax;
+    const n0 = H.shots.length + H.zaps.length;
+    H.spawn = 99; titleStep(H, 1 / 60);
+    return H.shots.length + H.zaps.length - n0;
+  };
+  const far = shotsAt(G.TITLE_AIM + 25), near = shotsAt(G.TITLE_AIM - 30);
+  check('he holds fire on a creature past TITLE_AIM, fires on one inside it', !!f && far <= 0 && near > 0, { far, near });
+}
 const A = titleScene(470, 3, 139, 295), A2 = titleScene(470, 3, 139, 295);
 for (let i = 0; i < 300; i++) { titleStep(A, 1 / 60); titleStep(A2, 1 / 60); }
 check('same seed, same scene', A.kills === A2.kills && A.runner.x === A2.runner.x && A.carved === A2.carved);
