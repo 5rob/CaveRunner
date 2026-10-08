@@ -68,6 +68,7 @@ export const TITLE_SHOTS = ['bolt', 'spark', 'slug', 'buck', 'lance', 'orb', 'bl
 export const TITLE_MODS = ['scatter', 'double', 'triple', 'bounce', 'pierce', 'homing', 'seeker', 'big', 'grow', 'shrink', 'tip',
   'heavy', 'light', 'speed', 'accel', 'range', 'over', 'borer'];
 export const TITLE_RUNNERS = 4;
+export const TITLE_SEP = 24;          // players closer than this (world units, height counted at 0.6) are eased apart
 // each player's colour (backpack and helmet stripe), so they read as four players
 export const TITLE_COLS = ['#3fb8ff', '#ff4f5e', '#5ee05a', '#ffc93a'];
 // floor 1's creatures (its roster, and the rats that live there)
@@ -731,7 +732,7 @@ export function titleStep(S, dt) {
   S.flash = Math.max(0, S.flash - dt * 1.6);
   S.spawn -= dt;
   if (S.spawn <= 0 && S.foes.length < TITLE_FOES - 10) { addFoe(S); S.spawn = 0.4 + R() * 0.6; }
-  if (!S.still) for (const r of S.runners) stepRunner(S, r, dt);
+  if (!S.still) { for (const r of S.runners) stepRunner(S, r, dt); separate(S, dt); }
   stepFoes(S, dt);
   stepShots(S, dt);
   stepFire(S, dt);
@@ -882,13 +883,45 @@ function stepRunnerMove(S, r, dt) {
   if (r.dig) digStep(S, r, dt);
   else if (r.mode === 'run') runStep(S, r, dt);
   else flyStep(S, r, dt);
-  // the players keep out of each other's way: one too close alongside, and they ease apart
-  for (const o of S.runners) if (o !== r && Math.abs(o.x - r.x) < 16 && Math.abs(o.y - r.y) < PH) {
-    const push = (16 - Math.abs(o.x - r.x)) * 3 * dt * (r.x < o.x || (r.x === o.x && r.id < o.id) ? -1 : 1);
-    if (!boxRock(S, r.x + push, r.y)) { r.x += push; if (r.mode === 'run') r.tx += push; }
-  }
   r.x = Math.max(8, Math.min(TITLE_VW * 0.62, r.x));
   r.y = Math.max(S.top - 40, Math.min(S.bot + 10, r.y));
+}
+// The players keep apart (owner, v0.0.167): within TITLE_SEP of each other they're eased apart (sideways on the
+// ground, any way in the air), and they never overlap: two bodies that do are pushed out along the shallower
+// way (sideways for one on the ground), each half, or all of it on the one with room (never into rock)
+/** @param {TitleScene} S @param {number} dt */
+function separate(S, dt) {
+  const P = S.runners;
+  /** @param {TRunner} r @param {number} dx @param {number} dy */
+  const shove = (r, dx, dy) => {
+    if (r.mode === 'run' && !r.dig) dy = 0;
+    if (!dx && !dy) return false;
+    const nx = Math.max(8, Math.min(TITLE_VW * 0.62, r.x + dx)), ny = r.y + dy;
+    if (boxRock(S, nx, ny, !(r.mode === 'run' && !r.dig))) return false;
+    if (r.mode === 'run') r.tx += nx - r.x;
+    r.x = nx; r.y = ny;
+    return true;
+  };
+  for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
+    const a = P[i], b = P[j];
+    let dx = b.x - a.x, dy = b.y - a.y;
+    const d = Math.hypot(dx, dy * 0.6);
+    if (d < TITLE_SEP) {                                   // a gentle push apart
+      const ux = d > 0.01 ? dx / d : (a.id < b.id ? 1 : -1), uy = d > 0.01 ? dy * 0.6 / d : 0, k = (TITLE_SEP - d) * 2.5 * dt;
+      shove(a, -ux * k, -uy * k); shove(b, ux * k, uy * k);
+      dx = b.x - a.x; dy = b.y - a.y;
+    }
+    const ox = PW - Math.abs(dx), oy = PH - Math.abs(dy);
+    if (ox <= 0 || oy <= 0) continue;                      // no overlap
+    const ground = (a.mode === 'run' && !a.dig) || (b.mode === 'run' && !b.dig);
+    if (ox < oy || ground) {
+      const sx = dx > 0 || (dx === 0 && a.id < b.id) ? 1 : -1;
+      if (!(shove(a, -sx * ox / 2, 0) && shove(b, sx * ox / 2, 0))) shove(b, sx * ox, 0) || shove(a, -sx * ox, 0);
+    } else {
+      const sy = dy > 0 ? 1 : -1;
+      if (!(shove(a, 0, -sy * oy / 2) && shove(b, 0, sy * oy / 2))) shove(b, 0, sy * oy) || shove(a, 0, -sy * oy);
+    }
+  }
 }
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
 function runStep(S, r, dt) {

@@ -3,6 +3,10 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
+## v0.0.167 — title players collide + keep apart: RELEASED on `main` 2026-10-08 (owner OK'd)
+
+CHANGELOG v0.0.167. Screenshots: `node tools/playershots.js`.
+
 ## v0.0.166 — title players saw tunnels (no teleport), own run/fly clocks; fire crackle on burning creatures + vines (title and game): RELEASED on `main` 2026-10-08 (owner asked to see it in the app; feedback may follow)
 
 CHANGELOG v0.0.166. Screenshots sent (`node tools/digshots.js`). Known: the game's webs still flare away at once (only
