@@ -18,7 +18,10 @@ Names are as they were at the time (before the refactor Game's state had loose n
   each fuel's burn time); vines and mycelium only (`FLAMMABLE`) burn from the tip at `firePlant`, arches outward at
   `fireArch` lighting their strands. Before, the title faded a whole plant at once (the game was never broken).
 - Found: the owner's v0.0.161 Dev report set `fireSpreadHi` 0.2 → 1, so fire in the game spreads ~3× faster
-  (moss: 83 px in 5 s against 27). Raised with the owner.
+  (moss: 83 px in 5 s against 27). The owner chose to put it back: `fireSpreadHi` 0.2 again.
+- Fix (owner spotted it): the title's vine arches drew as straight lines. A title prop kept its world x in `wx`, which
+  art/props.js reads as an arch's sideways bend (over 1,000 units off); it's `ox` now. Also the arches' clearance no
+  longer flattens them, and their spans are the `arSpan` knob × 0.6 for the narrow screen.
 
 ## v0.0.161 — a new title scene (a tour of the real Mossy Caves); every gun wears pixel art; the owner's Dev defaults
 Released 2026-10-08 (owner OK'd the screenshots; a minor update).

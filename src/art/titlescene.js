@@ -81,7 +81,8 @@ export const TITLE_HOME = {
 /** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string }} TPart */
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number }} TBoom */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
-/** @typedef {{ k: string, st: string, wx: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number,
+// a prop: `ox` its world x (not `wx`: art/props.js reads that as an arch's or a vine's sideways bend)
+/** @typedef {{ k: string, st: string, ox: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number,
  *   arc?: number[][], thick?: number, t?: number, span?: number, host?: TProp, gone?: boolean, u0?: number, u1?: number, alen?: number, u?: number }} TProp */
 /** @typedef {{ c: number, r: number, t: number }} TFire */
 /** @typedef {{ t: number, vh: number, top: number, bot: number, seed: number, rnd: () => number, scroll: number, shake: number, spawn: number,
@@ -218,12 +219,12 @@ function genCol(S, c) {
   }
   // a lantern hanging on its chain under the layers' roof: between the frames, and some inside them
   if (z === 'timber' && built(wx) > 0.95 && (Math.abs(u - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(u - FRAME_W / 2) < 1) && R() < 0.75)
-    S.props.push({ k: 'lamp', st: 'hanglamp', wx, x: 0, y: cy + 4, len: 4 + R() * 8, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((cy - 1) / TCELL) });
+    S.props.push({ k: 'lamp', st: 'hanglamp', ox: wx, x: 0, y: cy + 4, len: 4 + R() * 8, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((cy - 1) / TCELL) });
   // and in the band above, and down long chains from the brick works' high roof
   if (shelf && Math.abs(fu - FRAME_W / 2) < 1 && R() < 0.6)
-    S.props.push({ k: 'lamp', st: 'hanglamp', wx, x: 0, y: upTop + 4, len: 3 + R() * 6, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((upTop - 1) / TCELL) });
+    S.props.push({ k: 'lamp', st: 'hanglamp', ox: wx, x: 0, y: upTop + 4, len: 3 + R() * 6, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((upTop - 1) / TCELL) });
   if (z === 'paved' && built(wx) > 0.9 && Math.abs(u - FRAME_GAP / 2) < 1 && R() < 0.8)
-    S.props.push({ k: 'lamp', st: 'hanglamp', wx, x: 0, y: cy, len: 14 + R() * 30, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((cy - 1) / TCELL) });
+    S.props.push({ k: 'lamp', st: 'hanglamp', ox: wx, x: 0, y: cy, len: 14 + R() * 30, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((cy - 1) / TCELL) });
   // the spiders' zone: web lines everywhere, roof to floor (slanting either way) and roof to roof (sagging)
   if (z === 'webs' && b === 0 && !(c % 4) && R() < 0.42 && S.webs.length < TITLE_WEBS) {
     const down = R() < 0.55, bx = down ? wx + (R() - 0.35) * 70 : wx + 18 + R() * 44;
@@ -245,13 +246,13 @@ function genCol(S, c) {
   if (grove && zu > 20 && zu < TITLE_ZLEN - 90 && ((wx % 80) + 80) % 80 < TCELL) {
     const na = Math.max(1, Math.round(kru('arCluster', R())));
     for (let a = 0; a < na; a++) {
-      const ax = wx + (R() - 0.3) * 60, span = Math.min(170, kru('arSpan', R()) * TCELL), bx = ax + span;
+      const ax = wx + (R() - 0.3) * 60, span = kru('arSpan', R()) * TCELL * 0.6, bx = ax + span;   // the knob's spans, scaled to the title's narrow screen
       const ay = titleCeil(ax, S) + 1, by = titleCeil(bx, S) + 1, n = Math.max(8, Math.min(40, Math.round(span / 6)));
       let slack = kru('arSlack', R()), pts = archCurve(ax, ay, bx, by, slack, n);
       const clear = kru('arClear', R()) * TCELL, low = () => pts.reduce((m, p) => (p.y > m.y ? p : m), pts[0]);
-      for (let k = 0; k < 4 && titleFloor(low().x, S) - low().y < clear + PH; k++) { slack = 1 + (slack - 1) * 0.6; pts = archCurve(ax, ay, bx, by, slack, n); }
+      for (let k = 0; k < 3 && titleFloor(low().x, S) - low().y < clear; k++) { slack = 1 + (slack - 1) * 0.75; pts = archCurve(ax, ay, bx, by, slack, n); }
       if (titleFloor(low().x, S) - low().y < clear) continue;
-      const arch = { k: 'climb', st: 'vine', wx: ax, x: 0, y: ay, len: 0, seed: R(), side: 1, burn: 0, ac: Math.floor(ax / TCELL), ar: Math.floor((ay - 2) / TCELL),
+      const arch = { k: 'climb', st: 'vine', ox: ax, x: 0, y: ay, len: 0, seed: R(), side: 1, burn: 0, ac: Math.floor(ax / TCELL), ar: Math.floor((ay - 2) / TCELL),
         arc: pts.map(p => [p.x - ax, p.y - ay]), thick: Math.round(kru('arThick', R())), t: R() * 10, span };
       S.props.push(arch);
       let alen = 0;
@@ -261,7 +262,7 @@ function genCol(S, c) {
       for (let s = 0; s < ns; s++) {
         const kq = Math.min(n - 1, Math.floor(R() * n)), q = pts[kq], room = titleFloor(q.x, S) - q.y;
         const len = Math.min(kru('arStrandLen', R()) * TCELL, room * 0.7);
-        if (len >= 4) S.props.push({ k: 'climb', st: 'vine', wx: q.x, x: 0, y: q.y, len, seed: R(), side: 1, burn: 0, ac: arch.ac, ar: arch.ar, host: arch, u: kq / n });
+        if (len >= 4) S.props.push({ k: 'climb', st: 'vine', ox: q.x, x: 0, y: q.y, len, seed: R(), side: 1, burn: 0, ac: arch.ac, ar: arch.ar, host: arch, u: kq / n });
       }
     }
   }
@@ -269,7 +270,7 @@ function genCol(S, c) {
     const mid = Math.min(1, Math.min(zu, TITLE_ZLEN - zu) / 70);
     if (R() < 0.12 + 0.2 * mid) {
       const room = fy - cy, st = R() < 0.82 ? 'vine' : R() < 0.5 ? 'root' : 'myc';
-      S.props.push({ k: 'climb', st, wx, x: 0, y: cy, len: room * (0.2 + R() * (0.35 + 0.45 * mid)), seed: R(), side: 1, burn: 0,
+      S.props.push({ k: 'climb', st, ox: wx, x: 0, y: cy, len: room * (0.2 + R() * (0.35 + 0.45 * mid)), seed: R(), side: 1, burn: 0,
         ac: c, ar: Math.floor((cy - 1) / TCELL) });
       return;
     }
@@ -278,12 +279,12 @@ function genCol(S, c) {
   const p = R();
   if (!grove && p < (z === 'moss' ? 0.2 : 0.04) * Math.max(nat, 0.2)) {
     const st = R() < 0.5 ? 'vine' : R() < 0.5 ? 'myc' : 'root';
-    S.props.push({ k: 'climb', st, wx, x: 0, y: cy, len: 10 + R() * (z === 'moss' ? 40 : 24), seed: R(), side: 1, burn: 0,
+    S.props.push({ k: 'climb', st, ox: wx, x: 0, y: cy, len: 10 + R() * (z === 'moss' ? 40 : 24), seed: R(), side: 1, burn: 0,
       ac: c, ar: Math.floor((cy - 1) / TCELL) });
   } else if (z === 'paved' && b > 0.5 && p < 0.08) {
-    S.props.push({ k: 'climb', st: 'chain', wx, x: 0, y: cy, len: 8 + R() * 16, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((cy - 1) / TCELL) });
+    S.props.push({ k: 'climb', st: 'chain', ox: wx, x: 0, y: cy, len: 8 + R() * 16, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((cy - 1) / TCELL) });
   } else if (nat > 0.5 && R() < (grove ? 0.09 : 0.04)) {
-    S.props.push({ k: 'pad', st: '', wx, x: 0, y: fy, len: 0, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((fy + 1) / TCELL) });
+    S.props.push({ k: 'pad', st: '', ox: wx, x: 0, y: fy, len: 0, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((fy + 1) / TCELL) });
   }
 }
 
@@ -371,7 +372,7 @@ export function titleIgnite(S, sx, y, r, chance = 0.9) {
   lightArea(S, wx, y, r, chance);
   for (const p of S.props) if (!p.burn && !p.gone && FLAMMABLE[p.st] && R() < chance) {
     if (p.arc) { const k = archK(p, wx, y, r); if (k >= 0) catchArch(S, p, k / (p.arc.length - 1)); }
-    else if (wx > p.wx - 5 - r && wx < p.wx + 5 + r && y > p.y - r && y < p.y + p.len + r) catchPlant(S, p);
+    else if (wx > p.ox - 5 - r && wx < p.ox + 5 + r && y > p.y - r && y < p.y + p.len + r) catchPlant(S, p);
   }
   cutWebs(S, wx, y, r);
 }
@@ -385,7 +386,7 @@ function lightArea(S, wx, y, r, chance) {
 }
 // the index of the arch's point within r of (wx, y), or -1
 /** @param {TProp} p @param {number} wx @param {number} y @param {number} r */
-const archK = (p, wx, y, r) => (p.arc ? p.arc.findIndex(q => Math.hypot(p.wx + q[0] - wx, p.y + q[1] - y) < r + 3) : -1);
+const archK = (p, wx, y, r) => (p.arc ? p.arc.findIndex(q => Math.hypot(p.ox + q[0] - wx, p.y + q[1] - y) < r + 3) : -1);
 // a fuel cell catches (world/fire.js fireLight): it burns for its kind's time (the fire knobs)
 /** @param {TitleScene} S @param {number} c @param {number} r */
 function light(S, c, r) {
@@ -508,13 +509,13 @@ export function titleStep(S, dt) {
   S.zaps = S.zaps.filter(z => z.t > 0);
   // plants whose rock is gone fall away (and an arch's strands with it)
   for (const p of S.props) {
-    p.x = p.wx - S.scroll;
+    p.x = p.ox - S.scroll;
     if (p.burn || p.gone) continue;
     if ((p.host && p.host.gone && !p.host.burn) || (p.x > -10 && p.x < TITLE_VW + 10 && !SOLID[titleCell(S, p.ac, p.ar)])) {
       p.gone = true; burst(S, p.x, p.y, 3, '#5a8a3a', 40, 'chunk', 0.7);
     }
   }
-  S.props = S.props.filter(p => !p.gone && p.wx + (p.span || 0) - S.scroll > -60);
+  S.props = S.props.filter(p => !p.gone && p.ox + (p.span || 0) - S.scroll > -60);
   S.webs = S.webs.filter(L => Math.max(L.a0x, L.b0x) - S.scroll > -40);
 }
 
@@ -849,9 +850,9 @@ function stepFire(S, dt) {
         if (p.burn || p.gone || !FLAMMABLE[p.st]) continue;
         if (p.arc) {
           const n = p.arc.length - 1;
-          for (let k = 0; k <= n; k += 2) if (fireNear(S, p.wx + p.arc[k][0], p.y + p.arc[k][1], 2)) { catchArch(S, p, k / n); break; }
+          for (let k = 0; k <= n; k += 2) if (fireNear(S, p.ox + p.arc[k][0], p.y + p.arc[k][1], 2)) { catchArch(S, p, k / n); break; }
         } else if ((q++ & 3) === (S.fireN & 3)) {
-          for (let yy = p.y + 2; yy < p.y + p.len; yy += 8) if (fireNear(S, p.wx, yy, 2)) { catchPlant(S, p); break; }
+          for (let yy = p.y + 2; yy < p.y + p.len; yy += 8) if (fireNear(S, p.ox, yy, 2)) { catchPlant(S, p); break; }
         }
       }
       for (const L of S.webs.slice()) for (let u = 0; u <= 1; u += 0.25) {
@@ -874,7 +875,7 @@ function stepFire(S, dt) {
       const du = kr('fireArch', R) * dt / Math.max(1, p.alen || 1), n = p.arc.length - 1;
       p.u0 = Math.max(0, (p.u0 || 0) - du); p.u1 = Math.min(1, (p.u1 || 0) + du);
       for (const u of [p.u0, p.u1]) {
-        const a = p.arc[Math.round(u * n)], x = p.wx + a[0], y = p.y + a[1];
+        const a = p.arc[Math.round(u * n)], x = p.ox + a[0], y = p.y + a[1];
         if (R() < dt * 30) burst(S, x - S.scroll + (R() - 0.5) * 4, y, 1, '#ff9a2e', 15, 'fire', 0.45);
         if (ticks) lightArea(S, x, y, 5, 0.3);
       }
@@ -887,10 +888,10 @@ function stepFire(S, dt) {
     if (R() < dt * 30) burst(S, p.x + (R() - 0.5) * 4, ty, 1, '#ff9a2e', 15, 'fire', 0.45);
     if (R() < dt * 4) burst(S, p.x, ty, 1, '#3a3346', 10, 'smoke', 1.2);
     if (ticks) {
-      lightArea(S, p.wx, ty, 5, 0.3);
-      for (const o of S.props) if (!o.burn && !o.gone && !o.arc && FLAMMABLE[o.st] && Math.abs(o.wx - p.wx) < 10 && ty > o.y - 4 && ty < o.y + o.len + 4 && R() < 0.25) catchPlant(S, o);
+      lightArea(S, p.ox, ty, 5, 0.3);
+      for (const o of S.props) if (!o.burn && !o.gone && !o.arc && FLAMMABLE[o.st] && Math.abs(o.ox - p.ox) < 10 && ty > o.y - 4 && ty < o.y + o.len + 4 && R() < 0.25) catchPlant(S, o);
     }
-    if (p.len < 4) { p.gone = true; lightArea(S, p.wx, p.y, 6, 1); }
+    if (p.len < 4) { p.gone = true; lightArea(S, p.ox, p.y, 6, 1); }
   }
 }
 

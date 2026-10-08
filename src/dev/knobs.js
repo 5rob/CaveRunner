@@ -549,7 +549,7 @@ export const ARCH_KNOBS = rangeKnobs('arch', [
 ]);
 // Fire (v86): see fireStep. Every knob a min/max range like the creatures'.
 export const FIRE_KNOBS = rangeKnobs('fire', [
-  ['fireSpread', 'Spread chance per tick',            0, 1, 0.01,    0.02, 1],
+  ['fireSpread', 'Spread chance per tick',            0, 1, 0.01,    0.02, 0.2],
   ['fireGrass',  'Grass burns for (s)',               0.05, 5, 0.05, 0.4, 1.5],
   ['fireMoss',   'Moss burns for (s)',                0.05, 8, 0.05, 1, 4],
   ['fireWood',   'Timber burns for (s)',              0.1, 20, 0.1,  3, 9],

@@ -5,8 +5,8 @@ release loop, testing), then the README of the `src/` folder you're working in.
 
 ## v0.0.162 — the title's creatures, gold and fire are the game's own: on branch `realfoes`, WAITING ON THE OWNER'S OK (screenshots sent 2026-10-08)
 
-CHANGELOG v0.0.162. Asked the owner: fire spread (`fireSpreadHi`) is 1 since their v0.0.161 report, ~3× faster than
-the old 0.2; back to 0.2? Known: rats have no nests on the title (no gold stealing); nuggets are game-size.
+CHANGELOG v0.0.162. Fire spread (`fireSpreadHi`) back to 0.2 (owner's choice; their v0.0.161 report had set 1, ~3×
+faster). Known: rats have no nests on the title (no gold stealing); nuggets are game-size.
 
 ## v0.0.161 — title scene (a tour of the real floor 1) + pixel-art on every gun + the owner's Dev report as defaults: RELEASED on `main` 2026-10-08 (owner OK'd)
 
