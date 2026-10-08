@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.169</title>
-<!-- VERSION = 'v169' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.170</title>
+<!-- VERSION = 'v170' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -903,7 +903,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.169';</script>
+<script>const VERSION = 'v0.0.170';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -10372,9 +10372,43 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ff: 0.6 + R() * 0.8,
       co: -6 + R() * 16,
       fo: -10 + R() * 16,
-      dens: 0.6 + R() * 0.8
+      dens: 0.6 + R() * 0.8,
+      mine: z === "timber" ? mkMine(R, x0, x0 + len) : void 0
     };
   }
+  function mkMine(R, x0, x1) {
+    const n = R() < 0.3 ? 1 : R() < 0.55 ? 2 : 3, ein = Math.floor(R() * n), eout = Math.floor(R() * n);
+    const sh = Array.from({ length: n - 1 }, () => n === 3 ? 12 + R() * 5 : 14 + R() * 8);
+    const L3 = Array.from({ length: n }, (_, k) => k === ein ? -Infinity : x0 + 44 + R() * 60);
+    const Rx = Array.from({ length: n }, (_, k) => k === eout ? Infinity : x1 - 44 - R() * 60);
+    const holes = [], steps = [];
+    const dir = Math.sign(eout - ein), m = Math.abs(eout - ein);
+    for (let i = 0; i < m; i++) {
+      const lo = Math.min(ein + i * dir, ein + (i + 1) * dir), a = x0 + 70 + (x1 - x0 - 140) * (i + 0.2 + R() * 0.6) / m;
+      holes.push({ k: lo, x: a, w: 14 + R() * 10 });
+      steps.push({ x: a, to: ein + (i + 1) * dir });
+    }
+    for (let k = 0; k < n - 1; k++) if (R() < 0.45) {
+      const a0 = Math.max(L3[k], L3[k + 1], x0 + 50) + 12, a1 = Math.min(Rx[k], Rx[k + 1], x1 - 50) - 12;
+      if (a1 > a0) holes.push({ k, x: a0 + R() * (a1 - a0), w: 12 + R() * 10 });
+    }
+    return { n, ein, eout, lf: R() * 0.6, sh, L: L3, Rx, holes, steps };
+  }
+  function mineBands(M, B) {
+    const lo = B.bot - 10, hi = B.top - 2, total = M.n * TIMBER_H + M.sh.reduce((a, v) => a + v, 0);
+    let f = lo - M.lf * Math.max(0, lo - hi - total - 10) - (M.n < 3 ? 10 : 0);
+    const out = [];
+    for (let k = 0; k < M.n; k++) {
+      out.push({ c: f - TIMBER_H, f });
+      f = f - TIMBER_H - (M.sh[k] || 0);
+    }
+    return out;
+  }
+  var dig = (wx, k) => ({
+    up: 2 + titleNoise(wx / 11, 31 + k * 5) * 8 + titleNoise(wx / 3, 37 + k * 5) * 4,
+    dn: titleNoise(wx / 9, 61 + k * 5) * 2.5 + titleNoise(wx / 2.5, 67 + k * 5) * 1.5
+  });
+  var mainBand = (M, wx) => M.steps.reduce((b, s) => wx >= s.x ? s.to : b, M.ein);
   var DEF_PLAN = titlePlan(7);
   var planOf = (B) => B && B.zp || DEF_PLAN;
   var titleZoneSpan = (wx, B) => zoneIn(planOf(B), wx);
@@ -10415,12 +10449,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var titleZoneAt = (wx, y, B) => titleZone(wx + (titleNoise(wx / 24, y / 14) - 0.5) * 2 * ZBLEND + (titleNoise(wx / 4, y / 4) - 0.5) * 12, B);
   var titleCeil = (wx, B) => {
     const nat = B.top - 4 + zoneMix(wx, B, (x, Z) => Z.co + (Math.sin(x * 0.018 * Z.cf + Z.ph[0]) * 10 + Math.sin(x * 0.049 * Z.cf + Z.ph[1]) * 6) * Z.ca) + Math.sin(wx * 0.11) * 2;
+    const T2 = mineNear(wx, B);
+    if (!T2) return nat;
+    const lump = Math.sin(Math.PI * T2.bt) * ((titleNoise(wx / 16, 47) - 0.5) * 22 + (titleNoise(wx / 6, 40) - 0.5) * 9 + (titleNoise(wx / 2.5, 43) - 0.5) * 3);
+    return Math.min(nat + (T2.band.c - nat) * T2.bt + lump, titleFloor(wx, B) - 24);
+  };
+  var mineNear = (wx, B) => {
     const d = timberD(wx, B);
-    if (d < -TIMBER_RAMP) return nat;
+    if (d < -TIMBER_RAMP) return null;
     const q = Math.max(0, Math.min(1, (d + TIMBER_RAMP - 30 + (titleNoise(wx / 40, 44) - 0.5) * 20) / TIMBER_RAMP)), bt = q * q * (3 - 2 * q);
-    if (!bt) return nat;
-    const lump = Math.sin(Math.PI * bt) * ((titleNoise(wx / 16, 47) - 0.5) * 22 + (titleNoise(wx / 6, 40) - 0.5) * 9 + (titleNoise(wx / 2.5, 43) - 0.5) * 3);
-    return nat + (Math.max(nat, titleFloor(wx, B) - TIMBER_H) - nat) * bt + lump;
+    if (!bt) return null;
+    const Z = titleZoneSpan(wx, B), T2 = Z.z === "timber" ? Z : zoneNext(Z, wx < (Z.x0 + Z.x1) / 2 ? -1 : 1, B), M = T2.mine;
+    if (!M) return null;
+    const k = wx < T2.x0 ? M.ein : wx >= T2.x1 ? M.eout : mainBand(M, wx);
+    return { bt, band: mineBands(M, B)[k], T: T2 };
   };
   var TIMBER_RAMP = 120;
   var timberD = (wx, B) => {
@@ -10434,8 +10476,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var titleWebAt = webAt;
   var titleFloor = (wx, B) => {
     const nat = B.bot - 22 + zoneMix(wx, B, (x, Z) => Z.fo + (Math.sin(x * 0.021 * Z.ff + Z.ph[2]) * 7 + Math.sin(x * 0.057 * Z.ff + Z.ph[3]) * 4) * Z.fa) + Math.sin(wx * 0.13) * 1.5;
-    const b = built(wx, B);
-    return nat * (1 - b) + (B.bot - 20) * b;
+    const b = built(wx, B), base = nat * (1 - b) + (B.bot - 20) * b, T2 = mineNear(wx, B);
+    return T2 ? base + (T2.band.f - base) * T2.bt : base;
   };
   var ci = (S2, c, r) => (c % S2.ncol + S2.ncol) % S2.ncol * S2.rows + r;
   function titleCell(S2, c, r) {
@@ -10460,8 +10502,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function genCol(S2, c) {
     const wx = c * TCELL, Zn = titleZoneSpan(wx, S2), z = Zn.z, b = built(wx, S2), R = S2.rnd;
     const cy = titleCeil(wx, S2), fy = titleFloor(wx, S2), base = ci(S2, c, 0);
-    const u = (wx % FRAME_GAP + FRAME_GAP) % FRAME_GAP, uc = u > FRAME_GAP - 5 ? u - FRAME_GAP : u;
-    const frame = z === "timber" && uc < FRAME_W + 4 && built(wx - uc - 4, S2) > 0.95 && built(wx - uc + FRAME_W + 4, S2) > 0.95;
+    const u = (wx % FRAME_GAP + FRAME_GAP) % FRAME_GAP;
+    const M = z === "timber" ? Zn.mine : void 0, bands = M ? mineBands(M, S2) : [];
+    const tun = bands.map((q, k) => {
+      const v = ((wx + k * FRAME_GAP / 2) % FRAME_GAP + FRAME_GAP) % FRAME_GAP, uc = v > FRAME_GAP - 5 ? v - FRAME_GAP : v;
+      const fx0 = wx - uc - 4, fx1 = wx - uc + FRAME_W + 4;
+      const dn = dig(wx, k).dn, up = Math.min(dig(wx, k).up, k < bands.length - 1 ? M.sh[k] - dig(wx, k + 1).dn - 4 : 99);
+      const open = !!M && wx > M.L[k] - 14 && wx < M.Rx[k] + 14;
+      return {
+        c: q.c,
+        f: q.f,
+        rc: q.c - up,
+        rf: q.f + dn,
+        k,
+        open,
+        uc,
+        v,
+        frame: open && !!M && uc < FRAME_W + 4 && built(fx0, S2) > 0.95 && built(fx1, S2) > 0.95 && fx0 > M.L[k] + 12 && fx1 < M.Rx[k] - 12
+      };
+    });
+    const inside = (t, y) => !!M && wx > M.L[t.k] + (titleNoise(y / 9, 71 + t.k * 3) - 0.5) * 18 + (titleNoise(y / 3, 73 + t.k * 3) - 0.5) * 6 && wx < M.Rx[t.k] + (titleNoise(y / 9, 79 + t.k * 3) - 0.5) * 18 + (titleNoise(y / 3, 83 + t.k * 3) - 0.5) * 6;
+    const near = M ? M.holes.filter((h4) => Math.abs(wx - h4.x) < h4.w / 2 + 4) : [];
+    const inHole = (y) => near.some((h4) => y >= bands[h4.k + 1].f - 0.5 && y < bands[h4.k].c + 0.5 && Math.abs(wx - h4.x) < h4.w / 2 + (titleNoise(y / 5, h4.x) - 0.5) * 8);
     const patch = titleNoise(wx / 14, 11) > 0.52, tuft = patch && h2(c, 5) < 0.4 ? h2(c, 6) < 0.4 ? 2 : 1 : 0;
     const mossDeep = 2 + (patch ? 1 + Math.floor(h2(c, 7) * 3) : 0);
     const rk = Math.floor(wx / 60), rcx = rk * 60 + 10 + h2(rk, 1) * 40, rw = 6 + h2(rk, 2) * 6, rd = (wx - rcx) / rw;
@@ -10469,12 +10531,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const lk = Math.floor(wx / 90), lx0 = lk * 90 + 15 + h2(lk, 8) * 35, lw = 14 + h2(lk, 9) * 14;
     const lmid = lx0 + lw / 2, lc = titleCeil(lmid, S2), lf = titleFloor(lmid, S2), ly = lc + 14 + h2(lk, 10) * Math.max(0, lf - lc - 52);
     const ledge = (z === "moss" || z === "grove" || z === "webs") && built(lmid, S2) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
-    const shelf = z === "timber" && b > 0.9 ? 18 + titleNoise(wx / 20, 50) * 6 : 0, upBot = cy - shelf, upTop = upBot - 34;
-    const fu = ((wx + FRAME_GAP / 2) % FRAME_GAP + FRAME_GAP) % FRAME_GAP, upPost = shelf && (fu < 4 || fu >= FRAME_W - 4 && fu < FRAME_W);
     for (let r = 0; r < S2.rows; r++) {
       const y = (r + 0.5) * TCELL, zc = titleZoneAt(wx, y, S2);
       let m = TM.AIR;
-      if (shelf && y >= upTop && y < upBot) m = upPost || fu < FRAME_W + 4 && y < upTop + 4 ? TM.BEAMD : TM.AIR;
+      const t = tun.find((t2) => t2.open && y >= t2.rc && y < t2.rf && inside(t2, y));
+      if (M && !t && y < cy && !inHole(y)) m = TM.ROCK;
+      else if (M && t) {
+        if (t.frame && y >= t.c) {
+          const uc = t.uc, under = y - t.c, post = uc >= 0 && uc < 4 || uc >= FRAME_W - 4 && uc < FRAME_W;
+          if (uc >= -4 && uc < FRAME_W + 4 && under < 4) m = under < 2 ? TM.BEAM : TM.BEAMD;
+          else if (post) m = uc < 2 || uc >= FRAME_W - 4 && uc < FRAME_W - 2 ? TM.BEAM : TM.BEAMD;
+          else if (uc >= 4 && uc <= 12 && Math.abs(under - 4 - (12 - uc)) < 1 || uc >= FRAME_W - 12 && uc < FRAME_W - 4 && Math.abs(under - 4 - (uc - (FRAME_W - 12))) < 1) m = TM.BEAMD;
+          else if (y >= t.f - 2 && (uc >= -1 && uc < 5 || uc >= FRAME_W - 5 && uc < FRAME_W + 1)) m = TM.BEAMD;
+        }
+      } else if (M && inHole(y)) m = TM.AIR;
       else if (y < cy) m = TM.ROCK;
       else if (y >= fy) {
         m = TM.ROCK;
@@ -10482,21 +10552,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         else if (y < fy + mossDeep * TCELL) m = TM.MOSS;
       } else if (ledge && y >= ly && y < ly + 4) m = TM.BRICK;
       else if (ledge && y >= ly - 2 && y < ly && tuft) m = TM.GRASS;
-      else if (frame) {
-        const under = y - cy, post = uc >= 0 && uc < 4 || uc >= FRAME_W - 4 && uc < FRAME_W;
-        if (uc >= -4 && uc < FRAME_W + 4 && under < 4) m = under < 2 ? TM.BEAM : TM.BEAMD;
-        else if (post) m = uc < 2 || uc >= FRAME_W - 4 && uc < FRAME_W - 2 ? TM.BEAM : TM.BEAMD;
-        else if (uc >= 4 && uc <= 12 && Math.abs(under - 4 - (12 - uc)) < 1 || uc >= FRAME_W - 12 && uc < FRAME_W - 4 && Math.abs(under - 4 - (uc - (FRAME_W - 12))) < 1) m = TM.BEAMD;
-        else if (y >= fy - 2 && (uc >= -1 && uc < 5 || uc >= FRAME_W - 5 && uc < FRAME_W + 1)) m = TM.BEAMD;
-      }
       if (m === TM.AIR && y >= fy - rub && y < fy) m = y < fy - rub + 2 && h2(c, r) < 0.7 ? TM.RUBM : TM.RUB;
       if (m === TM.AIR && y >= fy - tuft * TCELL && y < fy && zc !== "paved") m = TM.GRASS;
       S2.cells[base + r] = m;
     }
-    if (z === "timber" && b > 0.95 && (Math.abs(u - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(u - FRAME_W / 2) < 1) && R() < 0.75)
-      lamp(S2, c, wx, cy + 10, 4 + R() * 8);
-    if (shelf && Math.abs(fu - FRAME_W / 2) < 1 && R() < 0.6)
-      lamp(S2, c, wx, upTop + 10, 3 + R() * 6);
+    if (b > 0.95) {
+      for (const t of tun) if (t.open && inside(t, t.c + 4) && (Math.abs(t.v - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(t.v - FRAME_W / 2) < 1) && R() < 0.7)
+        lamp(S2, c, wx, t.c + 10, 4 + R() * 8);
+    }
     if (z === "paved" && b > 0.9 && Math.abs(u - FRAME_GAP / 2) < 1 && R() < 0.8)
       lamp(S2, c, wx, cy + 10, 14 + R() * 30);
     if (z === "webs" && b === 0 && !(c % 4) && R() < 0.42 * Zn.dens && S2.webs.length < TITLE_WEBS) {
@@ -10676,7 +10739,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
   function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62) {
-    const rnd2 = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, ncol = Math.ceil((TITLE_VW + 90) / TCELL);
+    const rnd2 = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, ncol = Math.ceil((TITLE_VW + 50 + AHEAD) / TCELL);
     const S2 = {
       t: 0,
       vh,
@@ -10771,8 +10834,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let i = 0; i < 6; i++) addFoe(S2, 130 + rnd2() * 90);
     return S2;
   }
+  var AHEAD = 130;
   function genTo(S2) {
-    while (S2.gen * TCELL < S2.scroll + TITLE_VW + 40) {
+    while (S2.gen * TCELL < S2.scroll + TITLE_VW + AHEAD) {
       genCol(S2, S2.gen);
       S2.gen++;
     }
@@ -10798,6 +10862,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let i = 0; i < n && S2.foes.length < TITLE_FOES; i++) {
       const ex = wx + i * (8 + R() * 8), k = enemyFor(id, 1), cy = titleCeil(ex, S2), fy = titleFloor(ex, S2);
       if (i && titleZone(ex, S2) !== titleZone(wx, S2)) break;
+      if (ex >= S2.gen * TCELL - 6) break;
       const ey = id === "meduusa" ? cy + (fy - cy) * (0.25 + 0.45 * R()) : id === "hamahakki" && R() < 0.5 ? cy + k.r : fy - k.r - 1;
       S2.foes.push({
         x: ex,
@@ -14176,7 +14241,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         return c;
       };
-      const dig2 = (ex, ey, r) => {
+      const dig3 = (ex, ey, r) => {
         digN(ex, ey, r);
       };
       const cr = rad * 0.5, crx0 = Math.max(15, Math.round(cr * 0.38)), fl0 = cy + Math.max(12, Math.round(cr * 0.26));
@@ -14203,7 +14268,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         let x = sx, y = sy, ang = Math.atan2(ty - y, tx2 - x);
         for (let s = 0; s < steps; s++) {
           if (guard) digS(x, y, r);
-          else dig2(x, y, r);
+          else dig3(x, y, r);
           if (Math.hypot(tx2 - x, ty - y) < 2) break;
           let d = Math.atan2(ty - y, tx2 - x) - ang;
           d -= Math.round(d / 6.2832) * 6.2832;
@@ -14213,7 +14278,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           y += Math.sin(ang) * 1.5;
         }
       };
-      for (const p of mouths) dig2(p.x + 0.5, p.y + 0.5, 4.5);
+      for (const p of mouths) dig3(p.x + 0.5, p.y + 0.5, 4.5);
       const aim = (e) => e.y > cy + cry - 4 ? { x: cx + (e.x < cx ? -1 : 1) * (crx + 3), y: cy + cry - 7 } : { x: cx, y: cy };
       for (const e of entries) {
         const t = aim(e);
@@ -18248,7 +18313,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return -1;
   };
-  function dig(W, G, x, y, R) {
+  function dig2(W, G, x, y, R) {
     const cx0 = x / CELL, cy0 = y / CELL, rc = R / CELL;
     const minX = Math.max(0, Math.floor(cx0 - rc)), maxX = Math.min(CW - 1, Math.ceil(cx0 + rc));
     const minY = Math.max(0, Math.floor(cy0 - rc)), maxY = Math.min(CH - 1, Math.ceil(cy0 + rc));
@@ -20925,26 +20990,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     const W = { time: S2.t };
     const G = { ctx };
-    ctx.lineCap = "round";
-    for (const p of S2.props) {
-      if (p.gone || p.x + (p.span || 0) < -40 || p.x > TITLE_VW + 40) continue;
-      const pr = p;
-      if (p.st === "silk") {
-        ctx.strokeStyle = "#eef0f6";
-        ctx.globalAlpha = 0.55;
-        ctx.lineWidth = 0.7;
-        ctx.beginPath();
-        ctx.moveTo(p.x, p.y);
-        for (let k2 = 2; k2 <= p.len + 1.9; k2 += 2) {
-          const q = vinePt(pr, Math.min(k2, p.len));
-          ctx.lineTo(p.x + q.x, p.y + q.y);
-        }
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-        continue;
-      }
-      drawProp(ctx, pr, S2.t, T);
-    }
+    const gx = Math.floor(S2.scroll) - S2.scroll - 50;
+    pixelSprite(ctx, gx, 0, TITLE_VW + 100, S2.vh, 1, false, (c) => worldLayer(c, S2));
     for (const p of S2.props) {
       if (!p.burn || p.gone || p.arc || p.x < -20 || p.x > TITLE_VW + 20) continue;
       const pr = p, bent = p.sw || p.tl, reach2 = p.st === "silk" ? 3 : 7;
@@ -20956,31 +21003,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       ctx.restore();
     }
-    ctx.strokeStyle = "#eef0f6";
-    ctx.globalAlpha = 0.55;
-    ctx.lineWidth = 0.7;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    for (const L3 of S2.webs) {
-      if (Math.max(L3.a0x, L3.b0x) < S2.scroll - 10 || Math.min(L3.a0x, L3.b0x) > S2.scroll + TITLE_VW + 10) continue;
-      if (!L3.fu) {
-        ctx.moveTo(L3.a0x - S2.scroll, L3.a0y);
-        for (let i = 1; i <= 8; i++) {
-          const p = titleWebAt(L3, i / 8);
-          ctx.lineTo(p.x - S2.scroll, p.y);
-        }
-        continue;
-      }
-      for (const [u0, u1] of [[0, L3.fu[0]], [L3.fu[1], 1]]) {
-        if (u1 - u0 < 0.01) continue;
-        for (let i = 0; i <= 8; i++) {
-          const p = titleWebAt(L3, u0 + (u1 - u0) * i / 8);
-          if (i) ctx.lineTo(p.x - S2.scroll, p.y);
-          else ctx.moveTo(p.x - S2.scroll, p.y);
-        }
-      }
-    }
-    ctx.stroke();
     ctx.globalAlpha = 1;
     ctx.lineWidth = 1;
     for (const L3 of S2.webs) if (L3.fu) for (const [u, d] of [[L3.fu[0], -1], [L3.fu[1], 1]]) {
@@ -20992,16 +21014,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.lineTo(b.x - S2.scroll, b.y);
       ctx.stroke();
     }
-    ctx.globalAlpha = 0.85;
-    ctx.lineWidth = 0.9;
-    ctx.beginPath();
-    for (const b of S2.silk) {
-      ctx.moveTo(b.ax - S2.scroll, b.ay);
-      ctx.lineTo(b.x - S2.scroll, b.y);
-    }
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-    for (const g of S2.coins) drawNugget(ctx, g.x - S2.scroll, g.y, coinR(g), g.t, g.a || 0);
     for (const p of S2.parts) if (p.kind === "smoke") {
       ctx.globalAlpha = 0.5 * (p.life / p.max);
       ctx.fillStyle = p.col;
@@ -21016,15 +21028,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.fill();
     }
     ctx.globalAlpha = 1;
-    ctx.save();
-    ctx.translate(-S2.scroll, 0);
     for (const f of S2.foes) {
-      drawEnemy(ctx, f, S2.t);
-      if (f.burn > 0) crackleBody(ctx, f.x, f.ty, f.r * 0.85, TCELL, S2.fireN);
+      const sx2 = f.x - S2.scroll;
+      if (sx2 < -60 || sx2 > TITLE_VW + 60) continue;
+      const e = f.r * 3 + 20;
+      pixelSprite(ctx, sx2 - e, f.ty - e, 2 * e, 2 * e + 30, 1, true, (c) => {
+        c.translate(-S2.scroll, 0);
+        drawEnemy(c, f, S2.t);
+      });
+      if (f.burn > 0) {
+        ctx.save();
+        ctx.translate(-S2.scroll, 0);
+        crackleBody(ctx, f.x, f.ty, f.r * 0.85, TCELL, S2.fireN);
+        ctx.restore();
+      }
     }
-    ctx.restore();
     for (const r of S2.runners) drawTitleRunner(ctx, S2, r);
     ctx.globalCompositeOperation = "lighter";
+    for (const f of S2.foes) if (f.je && f.x - S2.scroll > -40 && f.x - S2.scroll < TITLE_VW + 40) titlePlantGlow(ctx, S2, f);
     for (const z of S2.zaps) drawBolt(G, z.pts, z.col, 1, z.t / 0.16);
     for (const s of S2.shots) {
       const b = s;
@@ -21118,6 +21139,145 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const G = { ctx };
       drawLook(W, G, blade);
     }
+  }
+  function worldLayer(c, S2) {
+    const SILK = "#9fa2ad";
+    c.lineCap = "round";
+    for (const p of S2.props) {
+      if (p.gone || p.x + (p.span || 0) < -40 || p.x > TITLE_VW + 40) continue;
+      const pr = p;
+      if (p.st === "silk") {
+        c.strokeStyle = SILK;
+        c.lineWidth = 0.9;
+        c.beginPath();
+        c.moveTo(p.x, p.y);
+        for (let k = 2; k <= p.len + 1.9; k += 2) {
+          const q = vinePt(pr, Math.min(k, p.len));
+          c.lineTo(p.x + q.x, p.y + q.y);
+        }
+        c.stroke();
+        continue;
+      }
+      drawProp(c, pr, S2.t, T);
+    }
+    c.strokeStyle = SILK;
+    c.lineWidth = 0.9;
+    c.globalAlpha = 1;
+    c.beginPath();
+    for (const L3 of S2.webs) {
+      if (Math.max(L3.a0x, L3.b0x) < S2.scroll - 10 || Math.min(L3.a0x, L3.b0x) > S2.scroll + TITLE_VW + 10) continue;
+      if (!L3.fu) {
+        c.moveTo(L3.a0x - S2.scroll, L3.a0y);
+        for (let i = 1; i <= 8; i++) {
+          const p = titleWebAt(L3, i / 8);
+          c.lineTo(p.x - S2.scroll, p.y);
+        }
+        continue;
+      }
+      for (const [u0, u1] of [[0, L3.fu[0]], [L3.fu[1], 1]]) {
+        if (u1 - u0 < 0.01) continue;
+        for (let i = 0; i <= 8; i++) {
+          const p = titleWebAt(L3, u0 + (u1 - u0) * i / 8);
+          if (i) c.lineTo(p.x - S2.scroll, p.y);
+          else c.moveTo(p.x - S2.scroll, p.y);
+        }
+      }
+    }
+    for (const b of S2.silk) {
+      c.moveTo(b.ax - S2.scroll, b.ay);
+      c.lineTo(b.x - S2.scroll, b.y);
+    }
+    c.stroke();
+    for (const g of S2.coins) drawNugget(c, g.x - S2.scroll, g.y, coinR(g), g.t, g.a || 0);
+  }
+  var PG = { c: null, x: null, g: null, gx: null };
+  var TITLE_PLANTR = 0.25;
+  function titlePlantGlow(ctx, S2, e) {
+    const u = e.je.u, reach2 = kru("jeGlowR", u.glowR) * kru("jePlantReach", u.plant) * TITLE_PLANTR, strength = kru("jePlantGlow", u.plant);
+    const C = CACHE.get(S2);
+    if (reach2 < 2 || strength <= 0 || !C) return;
+    if (C.white === void 0 || S2.t - (C.whiteT || 0) > 2) {
+      C.white = plantWhite(C.img.data);
+      C.whiteT = S2.t;
+    }
+    const N = S2.ncol, c0 = Math.max(S2.gen - N, Math.floor((e.x - reach2) / TCELL)), c1 = Math.min(S2.gen, Math.ceil((e.x + reach2) / TCELL));
+    const r0 = Math.max(0, Math.floor((e.y - reach2) / TCELL)), r1 = Math.min(S2.rows, Math.ceil((e.y + reach2) / TCELL));
+    const w = c1 - c0, h4 = r1 - r0;
+    if (w <= 0 || h4 <= 0) return;
+    if (!PG.c) {
+      PG.c = document.createElement("canvas");
+      PG.x = PG.c.getContext("2d", { willReadFrequently: true });
+      PG.g = document.createElement("canvas");
+      PG.gx = PG.g.getContext("2d");
+    }
+    const pc = PG.c, px = PG.x, gc = PG.g, gx = PG.gx;
+    if (!px || !gc || !gx) return;
+    if (pc.width < w || pc.height < h4) {
+      pc.width = Math.max(pc.width, w);
+      pc.height = Math.max(pc.height, h4);
+    }
+    if (gc.width < w || gc.height < h4) {
+      gc.width = Math.max(gc.width, w);
+      gc.height = Math.max(gc.height, h4);
+    }
+    const ox2 = c0 * TCELL - S2.scroll, oy2 = r0 * TCELL;
+    px.setTransform(1, 0, 0, 1, 0, 0);
+    px.clearRect(0, 0, w, h4);
+    px.setTransform(1 / TCELL, 0, 0, 1 / TCELL, -ox2 / TCELL, -oy2 / TCELL);
+    for (const p of S2.props) {
+      if (p.k !== "climb" || p.gone || p.st === "silk" || p.st === "chain" || p.x + (p.span || 0) < ox2 - 20 || p.x > ox2 + w * TCELL + 20) continue;
+      const pr = p;
+      drawProp(px, pr, S2.t, T);
+    }
+    const pd = px.getImageData(0, 0, w, h4).data, D2 = C.img.data, A = new Uint8ClampedArray(w * h4 * 4);
+    for (let y = 0; y < h4; y++) for (let x = 0; x < w; x++) {
+      const si = ((r0 + y) * N + ((c0 + x) % N + N) % N) * 4, o = (y * w + x) * 4, m = S2.cells[((c0 + x) % N + N) % N * S2.rows + r0 + y];
+      let r = 0, g = 0, b = 0, a = 0;
+      if (TITLE_SOLID[m] || m === TM.GRASS || m === TM.RUBM) {
+        r = D2[si];
+        g = D2[si + 1];
+        b = D2[si + 2];
+        a = 255;
+      }
+      if (pd[o + 3]) {
+        const pa = pd[o + 3] / 255;
+        if (a) {
+          r += (pd[o] - r) * pa;
+          g += (pd[o + 1] - g) * pa;
+          b += (pd[o + 2] - b) * pa;
+          a = Math.max(a, pd[o + 3]);
+        } else {
+          r = pd[o];
+          g = pd[o + 1];
+          b = pd[o + 2];
+          a = pd[o + 3];
+        }
+      }
+      A[o] = r;
+      A[o + 1] = g;
+      A[o + 2] = b;
+      A[o + 3] = a;
+    }
+    const out = new ImageData(w, h4);
+    if (!plantGlowFill(out.data, A, w, h4, {
+      ox: ox2,
+      oy: oy2,
+      px: TCELL,
+      cx: e.x - S2.scroll,
+      cy: e.y,
+      reach: reach2,
+      white: C.white,
+      top: kru("jePlantTop", u.plant) / 100,
+      strength,
+      t: S2.t * kru("jePlantTwinkle", u.plant),
+      size: kru("jePlantSize", u.plant),
+      rgb: hexArr(jcol("jeColGlow", u.col))
+    })) return;
+    gx.putImageData(out, 0, 0);
+    const sm = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(gc, 0, 0, w, h4, ox2, oy2, w * TCELL, h4 * TCELL);
+    ctx.imageSmoothingEnabled = sm;
   }
 
   // src/game/dpr.js
@@ -27526,7 +27686,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     let hitAt = sh.beam;
     for (let d = 6; d <= sh.beam; d += 4) {
       const bx = x + nx * d, by = y + ny * d;
-      if (sh.bore) dig(W, G, bx, by, sh.bore);
+      if (sh.bore) dig2(W, G, bx, by, sh.bore);
       else if (solidAt(W, bx, by)) {
         hitAt = d;
         break;
@@ -27556,7 +27716,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         rnd(0.12, 0.3),
         0.3
       );
-      if (sh.pit && hitAt < sh.beam) dig(W, G, ex + nx * 2, ey + ny * 2, sh.pit);
+      if (sh.pit && hitAt < sh.beam) dig2(W, G, ex + nx * 2, ey + ny * 2, sh.pit);
     }
     if (sh.explode) explode(W, G, x + nx * hitAt, y + ny * hitAt, sh.explode);
     if (sh.payload && sh.payload.length) releaseAt(W, G, sh.payload, x + nx * hitAt, y + ny * hitAt, nx, ny, sh.col);
@@ -27944,7 +28104,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         [ex, ey] = pathStep(b, dt, pathEnv(W, b, dt));
         if (b.caught) dead = true;
       }
-      if (b.eat && !b.only) dig(W, G, b.x, b.y, b.eat);
+      if (b.eat && !b.only) dig2(W, G, b.x, b.y, b.eat);
       if (b.fire && !b.only) ignite(W, G, b.x, b.y, b.size + 2, 0.5);
       if (b.arc) lightningStep(W, b, dt);
       if (b.payload && b.timer != null && (b.timer -= dt) <= 0) firePayload(W, G, b);
@@ -28160,11 +28320,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           b.y = ny;
           if (b.bore > 0) {
             if (b.look) shotGrind(W, b, nx, ny);
-            dig(W, G, nx, ny, b.bore);
+            dig2(W, G, nx, ny, b.bore);
             continue;
           }
           if (b.eat > 0) {
-            dig(W, G, nx, ny, b.eat);
+            dig2(W, G, nx, ny, b.eat);
             continue;
           }
           if (b.cluster) {
@@ -28181,7 +28341,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             dead = true;
             break;
           }
-          if (b.pit) dig(W, G, nx, ny, b.pit);
+          if (b.pit) dig2(W, G, nx, ny, b.pit);
           burst2(W, b.x, b.y, 3, b.col);
           SFX.rock(b.x, b.y);
           dead = true;
@@ -28682,7 +28842,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         paintFog: () => paintFog(W, G),
         hurt: (n) => hurt(W, G, n),
         maxHp: () => maxHp(W, G),
-        dig: (x, y, R) => dig(W, G, x, y, R),
+        dig: (x, y, R) => dig2(W, G, x, y, R),
         explode: (x, y, R, splash, hot) => explode(W, G, x, y, R, splash, hot),
         recSample: () => recSample(W, G),
         ignite: (x, y, r, chance) => ignite(W, G, x, y, r, chance),

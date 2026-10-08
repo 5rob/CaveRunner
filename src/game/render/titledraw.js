@@ -7,6 +7,9 @@
 // jetFlame, drawGun with his gun's art), the shots in their game looks, fire, booms.
 
 import { PW, PH } from '../../core/consts.js';
+import { hexArr } from '../../core/util.js';
+import { jcol, kru } from '../../dev/knobs.js';
+import { plantGlowFill, plantWhite } from '../../creatures/jelly.js';
 import { THEMES } from '../../data/themes.js';
 import { drawEnemy } from '../../creatures/draw.js';
 import { coinR } from '../../world/nuggets.js';
@@ -19,7 +22,7 @@ import { TCELL, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleWebAt } from '../../
 import { drawBolt, drawLook } from './looks.js';
 
 const T = THEMES[0];                                   // Mossy caves
-/** @type {WeakMap<object, { cv: HTMLCanvasElement, cx: CanvasRenderingContext2D, img: ImageData, painted: number }>} */
+/** @type {WeakMap<object, { cv: HTMLCanvasElement, cx: CanvasRenderingContext2D, img: ImageData, painted: number, white?: number, whiteT?: number }>} */
 const CACHE = new WeakMap();
 
 /** @param {number} c @param {number} r */
@@ -128,21 +131,10 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   const W = { time: S.t };
   /** @type {any} */
   const G = { ctx };
-  // plants (a burning one is shorter by what's burnt: drawProp draws its len; an arch, its u0..u1 gone)
-  ctx.lineCap = 'round';
-  for (const p of S.props) {
-    if (p.gone || p.x + (p.span || 0) < -40 || p.x > TITLE_VW + 40) continue;
-    /** @type {any} */
-    const pr = p;
-    if (p.st === 'silk') {             // a cut web line's piece: silk hanging from its end, as the lines are drawn
-      ctx.strokeStyle = '#eef0f6'; ctx.globalAlpha = 0.55; ctx.lineWidth = 0.7;
-      ctx.beginPath(); ctx.moveTo(p.x, p.y);
-      for (let k = 2; k <= p.len + 1.9; k += 2) { const q = vinePt(pr, Math.min(k, p.len)); ctx.lineTo(p.x + q.x, p.y + q.y); }
-      ctx.stroke(); ctx.globalAlpha = 1;
-      continue;
-    }
-    drawProp(ctx, pr, S.t, T);
-  }
+  // (v0.0.170, owner) the plants, decorations, web lines, silk and gold in the players' pixel look: one layer at
+  // 1 world unit a pixel, solid or clear, its grid pinned to the world so it rides with the cave as it scrolls
+  const gx = Math.floor(S.scroll) - S.scroll - 50;
+  pixelSprite(ctx, gx, 0, TITLE_VW + 100, S.vh, 1, false, c => worldLayer(c, S));
   // a burning vine or piece of silk: its burning stretch drawn as the burning cells are (the fire's colours in
   // the terrain's grid, a new flicker each fire tick), the very tip as embers
   for (const p of S.props) {
@@ -156,23 +148,6 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     }
     ctx.restore();
   }
-  // the spiders' web lines, silk as the game draws it (render: game/creatures/spider.js drawSilk)
-  ctx.strokeStyle = '#eef0f6'; ctx.globalAlpha = 0.55; ctx.lineWidth = 0.7; ctx.lineCap = 'round';
-  ctx.beginPath();
-  for (const L of S.webs) {
-    if (Math.max(L.a0x, L.b0x) < S.scroll - 10 || Math.min(L.a0x, L.b0x) > S.scroll + TITLE_VW + 10) continue;
-    if (!L.fu) {
-      ctx.moveTo(L.a0x - S.scroll, L.a0y);
-      for (let i = 1; i <= 8; i++) { const p = titleWebAt(L, i / 8); ctx.lineTo(p.x - S.scroll, p.y); }
-      continue;
-    }
-    // burning: what's left either side of the burnt span
-    for (const [u0, u1] of [[0, L.fu[0]], [L.fu[1], 1]]) {
-      if (u1 - u0 < 0.01) continue;
-      for (let i = 0; i <= 8; i++) { const p = titleWebAt(L, u0 + (u1 - u0) * i / 8); if (i) ctx.lineTo(p.x - S.scroll, p.y); else ctx.moveTo(p.x - S.scroll, p.y); }
-    }
-  }
-  ctx.stroke();
   // a burning line's two fronts: a short glowing stretch of silk either side of the burnt span
   ctx.globalAlpha = 1; ctx.lineWidth = 1;
   for (const L of S.webs) if (L.fu) for (const [u, d] of [[L.fu[0], -1], [L.fu[1], 1]]) {
@@ -181,14 +156,6 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     ctx.strokeStyle = (S.fireN + Math.round(u * 50)) % 3 ? '#ff9a2e' : '#fff0b0';
     ctx.beginPath(); ctx.moveTo(a.x - S.scroll, a.y); ctx.lineTo(b.x - S.scroll, b.y); ctx.stroke();
   }
-  // the strings spiders shoot at him (as the game draws W.silk: a line from where it left)
-  ctx.globalAlpha = 0.85; ctx.lineWidth = 0.9;
-  ctx.beginPath();
-  for (const b of S.silk) { ctx.moveTo(b.ax - S.scroll, b.ay); ctx.lineTo(b.x - S.scroll, b.y); }
-  ctx.stroke();
-  ctx.globalAlpha = 1;
-  // gold, the game's nuggets (its size from its amount: coinR), turned as they roll
-  for (const g of S.coins) drawNugget(ctx, g.x - S.scroll, g.y, coinR(g), g.t, g.a || 0);
   // smoke under everything bright
   for (const p of S.parts) if (p.kind === 'smoke') {
     ctx.globalAlpha = 0.5 * (p.life / p.max);
@@ -200,18 +167,22 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
   }
   ctx.globalAlpha = 1;
-  // floor 1's creatures, drawn by the game's own drawEnemy (they live in world coordinates)
-  ctx.save(); ctx.translate(-S.scroll, 0);
+  // floor 1's creatures, drawn by the game's own drawEnemy (they live in world coordinates), each in the players'
+  // pixel look (v0.0.170) on a grid pinned to it, as the players' is
   for (const f of S.foes) {
-    drawEnemy(ctx, f, S.t);
-    if (f.burn > 0) crackleBody(ctx, f.x, f.ty, f.r * 0.85, TCELL, S.fireN);   // on fire: the burning pixels' crackle over it
+    const sx = f.x - S.scroll;
+    if (sx < -60 || sx > TITLE_VW + 60) continue;
+    const e = f.r * 3 + 20;
+    pixelSprite(ctx, sx - e, f.ty - e, 2 * e, 2 * e + 30, 1, true, c => { c.translate(-S.scroll, 0); drawEnemy(c, f, S.t); });
+    if (f.burn > 0) { ctx.save(); ctx.translate(-S.scroll, 0); crackleBody(ctx, f.x, f.ty, f.r * 0.85, TCELL, S.fireN); ctx.restore(); }   // on fire: the burning pixels' crackle over it
   }
-  ctx.restore();
   // the four players: body and jet flame on the 1-unit pixel grid like the game's drawPlayer, the gun in it
   // (pixelHeld), each with its colour on the backpack and helmet
   for (const r of S.runners) drawTitleRunner(ctx, S, r);
   // the bright stuff, added light
   ctx.globalCompositeOperation = 'lighter';
+  // each jellyfish's green glow on the plants and moss round it, as the game's (systems/plantglow.js, plantGlowFill)
+  for (const f of S.foes) if (f.je && f.x - S.scroll > -40 && f.x - S.scroll < TITLE_VW + 40) titlePlantGlow(ctx, S, f);
   for (const z of S.zaps) drawBolt(G, z.pts, z.col, 1, z.t / 0.16);
   for (const s of S.shots) {
     /** @type {any} */
@@ -299,4 +270,104 @@ function drawTitleRunner(ctx, S, r) {
     const G = { ctx };
     drawLook(W, G, blade);
   }
+}
+
+// The plants, decorations, web lines, the spiders' strings and the gold, for the pixel layer (titleDraw): silk drawn
+// solid (the layer is solid or clear), in the grey the see-through silk showed as over the dark
+/** @param {CanvasRenderingContext2D} c @param {import('../../art/titlescene.js').TitleScene} S */
+function worldLayer(c, S) {
+  const SILK = '#9fa2ad';
+  c.lineCap = 'round';
+  // plants (a burning one is shorter by what's burnt: drawProp draws its len; an arch, its u0..u1 gone)
+  for (const p of S.props) {
+    if (p.gone || p.x + (p.span || 0) < -40 || p.x > TITLE_VW + 40) continue;
+    /** @type {any} */
+    const pr = p;
+    if (p.st === 'silk') {             // a cut web line's piece: silk hanging from its end, as the lines are drawn
+      c.strokeStyle = SILK; c.lineWidth = 0.9;
+      c.beginPath(); c.moveTo(p.x, p.y);
+      for (let k = 2; k <= p.len + 1.9; k += 2) { const q = vinePt(pr, Math.min(k, p.len)); c.lineTo(p.x + q.x, p.y + q.y); }
+      c.stroke();
+      continue;
+    }
+    drawProp(c, pr, S.t, T);
+  }
+  // the spiders' web lines, silk as the game draws it (render: game/creatures/spider.js drawSilk)
+  c.strokeStyle = SILK; c.lineWidth = 0.9; c.globalAlpha = 1;
+  c.beginPath();
+  for (const L of S.webs) {
+    if (Math.max(L.a0x, L.b0x) < S.scroll - 10 || Math.min(L.a0x, L.b0x) > S.scroll + TITLE_VW + 10) continue;
+    if (!L.fu) {
+      c.moveTo(L.a0x - S.scroll, L.a0y);
+      for (let i = 1; i <= 8; i++) { const p = titleWebAt(L, i / 8); c.lineTo(p.x - S.scroll, p.y); }
+      continue;
+    }
+    // burning: what's left either side of the burnt span
+    for (const [u0, u1] of [[0, L.fu[0]], [L.fu[1], 1]]) {
+      if (u1 - u0 < 0.01) continue;
+      for (let i = 0; i <= 8; i++) { const p = titleWebAt(L, u0 + (u1 - u0) * i / 8); if (i) c.lineTo(p.x - S.scroll, p.y); else c.moveTo(p.x - S.scroll, p.y); }
+    }
+  }
+  // the strings spiders shoot at him (as the game draws W.silk: a line from where it left)
+  for (const b of S.silk) { c.moveTo(b.ax - S.scroll, b.ay); c.lineTo(b.x - S.scroll, b.y); }
+  c.stroke();
+  // gold, the game's nuggets (its size from its amount: coinR), turned as they roll
+  for (const g of S.coins) drawNugget(c, g.x - S.scroll, g.y, coinR(g), g.t, g.a || 0);
+}
+
+// A jellyfish's green glow on the plants and moss round it (owner, v0.0.170), the game's (systems/plantglow.js): the
+// art in reach (the terrain's own pixels, the plants drawn over them at the terrain's grid and read back) keyed,
+// ramped, twinkled by plantGlowFill and added in the jelly's glow colour. The white point is the cave's brightest
+// green (plantWhite over the painted terrain, every 2 s)
+/** @type {{ c: HTMLCanvasElement | null, x: CanvasRenderingContext2D | null, g: HTMLCanvasElement | null, gx: CanvasRenderingContext2D | null }} */
+const PG = { c: null, x: null, g: null, gx: null };
+// the title's glow reach × the game's (owner, v0.0.170: the game's lit the whole narrow title screen; it's 80–280 there)
+export const TITLE_PLANTR = 0.25;
+/** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S @param {Enemy} e */
+function titlePlantGlow(ctx, S, e) {
+  const u = e.je.u, reach = kru('jeGlowR', u.glowR) * kru('jePlantReach', u.plant) * TITLE_PLANTR, strength = kru('jePlantGlow', u.plant);
+  const C = CACHE.get(S);
+  if (reach < 2 || strength <= 0 || !C) return;
+  if (C.white === undefined || S.t - (C.whiteT || 0) > 2) { C.white = plantWhite(C.img.data); C.whiteT = S.t; }
+  const N = S.ncol, c0 = Math.max(S.gen - N, Math.floor((e.x - reach) / TCELL)), c1 = Math.min(S.gen, Math.ceil((e.x + reach) / TCELL));
+  const r0 = Math.max(0, Math.floor((e.y - reach) / TCELL)), r1 = Math.min(S.rows, Math.ceil((e.y + reach) / TCELL));
+  const w = c1 - c0, h = r1 - r0;
+  if (w <= 0 || h <= 0) return;
+  if (!PG.c) { PG.c = document.createElement('canvas'); PG.x = PG.c.getContext('2d', { willReadFrequently: true }); PG.g = document.createElement('canvas'); PG.gx = PG.g.getContext('2d'); }
+  const pc = PG.c, px = PG.x, gc = PG.g, gx = PG.gx;
+  if (!px || !gc || !gx) return;
+  if (pc.width < w || pc.height < h) { pc.width = Math.max(pc.width, w); pc.height = Math.max(pc.height, h); }
+  if (gc.width < w || gc.height < h) { gc.width = Math.max(gc.width, w); gc.height = Math.max(gc.height, h); }
+  // the plants in reach, at the terrain's grid (screen x: the props' x is on screen)
+  const ox = c0 * TCELL - S.scroll, oy = r0 * TCELL;
+  px.setTransform(1, 0, 0, 1, 0, 0); px.clearRect(0, 0, w, h);
+  px.setTransform(1 / TCELL, 0, 0, 1 / TCELL, -ox / TCELL, -oy / TCELL);
+  for (const p of S.props) {
+    if (p.k !== 'climb' || p.gone || p.st === 'silk' || p.st === 'chain' || p.x + (p.span || 0) < ox - 20 || p.x > ox + w * TCELL + 20) continue;
+    /** @type {any} */
+    const pr = p;
+    drawProp(px, pr, S.t, T);
+  }
+  const pd = px.getImageData(0, 0, w, h).data, D = C.img.data, A = new Uint8ClampedArray(w * h * 4);
+  // the terrain's pixels (rock with its moss; the back wall's dark), the plants over them
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const si = ((r0 + y) * N + (((c0 + x) % N) + N) % N) * 4, o = (y * w + x) * 4, m = S.cells[(((c0 + x) % N) + N) % N * S.rows + r0 + y];
+    let r = 0, g = 0, b = 0, a = 0;
+    if (TITLE_SOLID[m] || m === TM.GRASS || m === TM.RUBM) { r = D[si]; g = D[si + 1]; b = D[si + 2]; a = 255; }
+    if (pd[o + 3]) {
+      const pa = pd[o + 3] / 255;
+      if (a) { r += (pd[o] - r) * pa; g += (pd[o + 1] - g) * pa; b += (pd[o + 2] - b) * pa; a = Math.max(a, pd[o + 3]); }
+      else { r = pd[o]; g = pd[o + 1]; b = pd[o + 2]; a = pd[o + 3]; }
+    }
+    A[o] = r; A[o + 1] = g; A[o + 2] = b; A[o + 3] = a;
+  }
+  const out = new ImageData(w, h);
+  if (!plantGlowFill(out.data, A, w, h, { ox, oy, px: TCELL, cx: e.x - S.scroll, cy: e.y, reach, white: C.white,
+    top: kru('jePlantTop', u.plant) / 100, strength, t: S.t * kru('jePlantTwinkle', u.plant),
+    size: kru('jePlantSize', u.plant), rgb: hexArr(jcol('jeColGlow', u.col)) })) return;
+  gx.putImageData(out, 0, 0);
+  const sm = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(gc, 0, 0, w, h, ox, oy, w * TCELL, h * TCELL);
+  ctx.imageSmoothingEnabled = sm;
 }

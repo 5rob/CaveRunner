@@ -5,6 +5,26 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.170 — the title: rats no longer sink into the rock; every mine works its own layout; jellyfish glow on the vines; the pixel look on everything
+Released 2026-10-08 (owner OK'd; a minor update).
+- **Rats in the rock** (owner): a swarm comes in at the screen's edge and spreads up to ~110 to the right, but the terrain
+  was made only 40 past the edge; rats past it stood in "rock" (the brains see unmade columns as rock) and sank. Now
+  made `AHEAD` (130) past it, and a swarm stops where the terrain isn't made. Measured: on-screen rats in rock 0 (was ~50%).
+- **Mine works** (owner: the layout was always the same): `mkMine` on each timber zone (`TZone.mine`, `TMine`): 1–3 tunnels
+  (`mineBands`), come in at any of them and leave by any (the slope in and out goes to that tunnel, up or down: `mineNear`),
+  the others walled off at that end some way in, a hole through the shelf at each step of the way through (`steps`, in
+  order) and now and then another; frames and lanterns in every tunnel, staggered. The old closed upper band is gone (one
+  of the layouts covers it). Hewn, not cut (owner's round 1): each tunnel's roof dug 2–14 past its frames' caps (`dig`,
+  leaving 4 of the shelf), its floor down 0–4, its walled ends crooked (±12), the holes ragged. A mine's slope now starts from a brick works' level floor next to it (it ignored it: a step).
+- **Jellyfish plant glow** (owner): the game's green glow on the vines and moss round each jellyfish, its reach × `TITLE_PLANTR`
+  (0.25: the owner's round 1, the game's lit the whole screen) (`titlePlantGlow`:
+  the terrain's own pixels + the plants at its grid, through `plantGlowFill`, white point `plantWhite` of the terrain).
+- **Pixel look** (owner): plants, decorations, web lines, silk and gold drawn into one `pixelSprite` layer (1 unit a pixel,
+  no outline, its grid pinned to the world: `worldLayer`); each creature its own `pixelSprite` (outlined, grid pinned to it,
+  as the players'). Silk is drawn solid grey (the layer is solid or clear).
+- Tests: slots (rats never in rock on screen; mine variety; a hole at every step). Screenshots `node tools/mineshots.js`,
+  `node tools/pixelshots.js`. Not timed on a phone (the pixel layer reads back ~170k pixels a frame).
+
 ## v0.0.169 — the title's players: the pixel grid rides with them
 Released 2026-10-08 (owner's bug report; a minor update).
 - `drawTitleRunner` (game/render/titledraw.js) rounded the player's position for the pixel grid while drawing the body
