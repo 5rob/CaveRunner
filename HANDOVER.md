@@ -5,8 +5,15 @@ release loop, testing), then the README of the `src/` folder you're working in.
 
 ## v0.0.164 — gun in hand in the body's pixel look, creatures over the shop's machines, title fire jumps + runner waits: RELEASED on `main` 2026-10-08 (owner OK'd)
 
-CHANGELOG v0.0.164. Open with the owner: ground/icon guns kept as plain sprites (asked whether they want the
-pixel look there too); `TITLE_AIM` 90 is a first guess. Known failing as before: logic `spider`; browser `vendshop`
+CHANGELOG v0.0.164. `TITLE_AIM` 90: the owner's OK.
+
+**NEXT SESSION, from the owner (2026-10-08): give the guns on the ground and in the shop the same pixel look as
+the gun in hand.** Today `pixelHeld` (`art/sprites.js`) does it only for the held gun; the ground guns
+(`render/cave.js` `drawLoot`, `drawGun(…, 0.9, …)`) and the shop's stock (`drawShop`, 0.85) draw the sprite as
+it is. Put them through `pixelSprite` at `DEV.runnerPx` (outline `DEV.runnerLine`) with a grid pinned to the
+gun. Ask the owner whether the HUD/Bag icons (`gunArtFit`) should change too. Looks: screenshots first.
+
+Known failing as before: logic `spider`; browser `vendshop`
 (fails on v0.0.163 too, different checks each run).
 
 ## v0.0.163 — gun sprites one scale, gun in hand ×2, squirts turned, title fire + runner pop + lanterns: RELEASED on `main` 2026-10-08 (owner OK'd)
