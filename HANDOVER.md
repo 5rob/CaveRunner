@@ -5,9 +5,9 @@ release loop, testing), then the README of the `src/` folder you're working in.
 
 ## NEXT (as of v0.0.170, 2026-10-08)
 
-- **v0.0.170 is on branch `title-mine`, waiting on the owner's OK of the screenshots** (`node tools/mineshots.js`,
-  `node tools/pixelshots.js`): rats fixed, random mine layouts, jellyfish glow on vines, pixel look on everything (title
-  only). Once OK'd: merge to `main`, confirm Pages. Ask: the same pixel look in the game too? (not done: cost per frame).
+- **v0.0.170 released** (owner OK'd; `node tools/mineshots.js`, `node tools/pixelshots.js`): rats fixed, random hewn mine
+  layouts, jellyfish glow on vines (reach × `TITLE_PLANTR` 0.25), pixel look on everything (title only). Open question for
+  the owner: the same pixel look in the game too? (not done: cost per frame). Not timed on a phone.
 
 - v0.0.169: the title players' pixel grid now rides with them (owner's bug: it slid over the body and gun). Released.
 

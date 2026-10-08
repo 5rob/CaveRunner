@@ -6,7 +6,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v0.0.170 — the title: rats no longer sink into the rock; every mine works its own layout; jellyfish glow on the vines; the pixel look on everything
-Waiting on the owner's OK (a minor update).
+Released 2026-10-08 (owner OK'd; a minor update).
 - **Rats in the rock** (owner): a swarm comes in at the screen's edge and spreads up to ~110 to the right, but the terrain
   was made only 40 past the edge; rats past it stood in "rock" (the brains see unmade columns as rock) and sank. Now
   made `AHEAD` (130) past it, and a swarm stops where the terrain isn't made. Measured: on-screen rats in rock 0 (was ~50%).
