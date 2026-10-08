@@ -321,9 +321,11 @@ function worldLayer(c, S) {
 // green (plantWhite over the painted terrain, every 2 s)
 /** @type {{ c: HTMLCanvasElement | null, x: CanvasRenderingContext2D | null, g: HTMLCanvasElement | null, gx: CanvasRenderingContext2D | null }} */
 const PG = { c: null, x: null, g: null, gx: null };
+// the title's glow reach × the game's (owner, v0.0.170: the game's lit the whole narrow title screen; it's 80–280 there)
+export const TITLE_PLANTR = 0.25;
 /** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S @param {Enemy} e */
 function titlePlantGlow(ctx, S, e) {
-  const u = e.je.u, reach = kru('jeGlowR', u.glowR) * kru('jePlantReach', u.plant), strength = kru('jePlantGlow', u.plant);
+  const u = e.je.u, reach = kru('jeGlowR', u.glowR) * kru('jePlantReach', u.plant) * TITLE_PLANTR, strength = kru('jePlantGlow', u.plant);
   const C = CACHE.get(S);
   if (reach < 2 || strength <= 0 || !C) return;
   if (C.white === undefined || S.t - (C.whiteT || 0) > 2) { C.white = plantWhite(C.img.data); C.whiteT = S.t; }

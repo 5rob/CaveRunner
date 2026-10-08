@@ -21174,8 +21174,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const g of S2.coins) drawNugget(c, g.x - S2.scroll, g.y, coinR(g), g.t, g.a || 0);
   }
   var PG = { c: null, x: null, g: null, gx: null };
+  var TITLE_PLANTR = 0.25;
   function titlePlantGlow(ctx, S2, e) {
-    const u = e.je.u, reach2 = kru("jeGlowR", u.glowR) * kru("jePlantReach", u.plant), strength = kru("jePlantGlow", u.plant);
+    const u = e.je.u, reach2 = kru("jeGlowR", u.glowR) * kru("jePlantReach", u.plant) * TITLE_PLANTR, strength = kru("jePlantGlow", u.plant);
     const C = CACHE.get(S2);
     if (reach2 < 2 || strength <= 0 || !C) return;
     if (C.white === void 0 || S2.t - (C.whiteT || 0) > 2) {

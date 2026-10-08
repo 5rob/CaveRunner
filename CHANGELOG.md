@@ -15,7 +15,8 @@ Waiting on the owner's OK (a minor update).
   the others walled off at that end some way in, a hole through the shelf at each step of the way through (`steps`, in
   order) and now and then another; frames and lanterns in every tunnel, staggered. The old closed upper band is gone (one
   of the layouts covers it). A mine's slope now starts from a brick works' level floor next to it (it ignored it: a step).
-- **Jellyfish plant glow** (owner): the game's green glow on the vines and moss round each jellyfish (`titlePlantGlow`:
+- **Jellyfish plant glow** (owner): the game's green glow on the vines and moss round each jellyfish, its reach × `TITLE_PLANTR`
+  (0.25: the owner's round 1, the game's lit the whole screen) (`titlePlantGlow`:
   the terrain's own pixels + the plants at its grid, through `plantGlowFill`, white point `plantWhite` of the terrain).
 - **Pixel look** (owner): plants, decorations, web lines, silk and gold drawn into one `pixelSprite` layer (1 unit a pixel,
   no outline, its grid pinned to the world: `worldLayer`); each creature its own `pixelSprite` (outlined, grid pinned to it,
