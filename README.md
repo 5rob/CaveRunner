@@ -63,7 +63,9 @@ explosions, bullet hits, enemy fire, creature voices, world/props, drips, footst
 
 **Title screen and save slots.** The game opens on a title screen with **3 save slots**: pick one
 and press Start (or Continue). Each slot is its own run with its own unlocked mods and perks; 🗑️
-then "Delete?" wipes a slot. Your run from before this update is slot 1.
+then "Delete?" wipes a slot. Your run from before this update is slot 1. Behind it, a runner tours
+Mossy Caves sideways (its natural caves, spider caves, the built-up layers, brick works and the vine grove),
+fighting the real creatures, collecting gold and setting things alight the way the game does.
 
 **Pause.** ⏸ (top right) pauses: Resume, Save, a Volume slider for the whole game, and Exit
 to main menu (it saves first). **Hold ⏸ for 5 seconds** to show or hide the dev tools: the ⚙️ panel
@@ -489,9 +491,10 @@ with the pistol, a **Pick Axe** — one slot, a **Buzzsaw** — and the **Gravit
 White Hole; they're still in the code, `startingGuns`, and the browser tests start with them.)
 
 **The Bag's header** shows the gun's name in its colour: ✏️ renames it, 🖼️ picks its look from a
-gallery of 27 pixel-art guns (Default is the drawn one), and 💾 saves the gun with its mods as a
+gallery of 27 pixel-art guns (a gun you haven't given a look wears the one nearest its colour), and 💾 saves the gun with its mods as a
 preset you can spawn from ⚙️ → Spawn gun (🗑️ there removes one). The gun buttons round the right
-stick are ringed in each gun's colour.
+stick are ringed in each gun's colour. Every gun's pixel art is drawn at the same pixel size everywhere (a pistol
+looks small, a sniper long), and the gun in your hand is drawn at twice its old size.
 
 Standing next to a gun on the ground shows its card, its stats coloured against the gun in your
 hand (green for better, red for worse, counting a smaller cast delay, recharge or spread as better).

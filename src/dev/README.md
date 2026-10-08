@@ -23,9 +23,9 @@
   second, 30), `guideWait` (the pause after each box, s, plus a little per letter, 1.4) and `guideIn` (v0.0.142: how
   far inside the screen's right edge its dark spot must be before its light comes on, world units, 50).
 - Witness (`g: 'witness'`): `witPad` (how far past your path a saved replay keeps, so how far its
-  camera may stray, world units, 80) and `witKbps` (the exported video's bitrate, 6000).
+  camera may stray, world units, 80) and `witKbps` (the exported video's bitrate, 2500).
 - Level (`g: 'level'`): `due1` (floor 1's repay time, minutes), `enemies` (creatures a new level
-  gets on floor 1, `ENEMY_COUNT`) and `enemiesUp` (more each floor, 12), `lvlBonus` (what selling
+  gets on floor 1, `ENEMY_COUNT`, 50) and `enemiesUp` (more each floor, 20), `lvlBonus` (what selling
   floor 1 pays on top of the debt, 1,000; it was `lvlReward`, renamed in v130), `lvlGrow` (the debt × per floor, 3; floor 1's is `LVL_BUY`, a
   billion), `rewardGrow` (the reward × per floor, 2: 1,000, 2,000, 4,000…), `killGrow` (kill gold × per floor, 1.35: `goldScale`). Player: `runnerPx` (the astronaut's pixel size in world units, 1;
   0 smooth), `runnerLine` (its dark outline). Rats: `raBrood` (rats a nest holds in all, 4–6).
@@ -72,6 +72,8 @@
 
 ## Rules
 
+- The last report made defaults: v0.0.159's (applied in v0.0.161; `fireSpreadHi` put back to 0.2 in v0.0.162 at the
+  owner's word). Tests that measured the old numbers pin them (`rats`, `dark`, `furnish`, `tomb`).
 - **The owner pastes a Dev report → those numbers become the new `DEV_DEFAULTS`** (or the range
   table's default min/max). Then check which tests leaned on the old default and pin the knob
   they were written for (`tests/logic/devsettings.test.js` covers the report itself).
