@@ -21085,7 +21085,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     titleDark(ctx, S2);
     ctx.globalCompositeOperation = "lighter";
     for (const f of S2.foes) if (f.je && f.x - S2.scroll > -40 && f.x - S2.scroll < TITLE_VW + 40) titlePlantGlow(ctx, S2, f);
-    for (const r of S2.runners) titleBeam(ctx, r, DK.vis[r.id]);
+    for (const r of S2.runners) titleBeam(ctx, S2, r, DK.vis[r.id]);
     if (S2.shots.length || S2.zaps.length) pixelSprite(ctx, gx, 0, TITLE_VW + 100, S2.vh, 1, false, (c) => {
       const G2 = { ctx: c };
       c.globalCompositeOperation = "lighter";
@@ -21434,8 +21434,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.drawImage(D2, 0, 0, w, h4, x0, 0, w * TCELL, h4 * TCELL);
     ctx.imageSmoothingEnabled = sm;
   }
-  function titleBeam(c, r, pts) {
-    const torchR = SIGHT * DEV.torch * LAMP_REACH * 1.05, R = torchR * Math.max(1, DEV.beamReach), g = DEV.beamGlow;
+  var TITLE_BEAMA = 0.25;
+  function titleBeam(c, S2, r, pts) {
+    const torchR = SIGHT * DEV.torch * LAMP_REACH * 1.05, R = torchR * Math.max(1, DEV.beamReach), g = DEV.beamGlow * TITLE_BEAMA;
     const pcx = r.x + PW / 2, pcy = r.y + PH * 0.45, lower = r.swap > 0 ? Math.sin(r.swap / 0.3 * Math.PI) * 4 : 0;
     const mz = gunMuzzle(pcx + Math.cos(r.ang) * 2.5, r.y + PH * 0.45 + lower, r.ang, GUN_HELD, r.kit.art), ox2 = mz.x, oy2 = mz.y, a = r.ang;
     if (g > 0 && pts && pts.length > 4) {
@@ -21448,7 +21449,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const half = DEV.beamDeg * Math.PI / 360;
       for (const k of [1.3, 1, 0.7]) {
         const gr = c.createRadialGradient(ox2, oy2, 2, ox2, oy2, R);
-        gr.addColorStop(0, "rgba(225,240,255," + 0.16 * g + ")");
+        gr.addColorStop(0, "rgba(225,240,255,0)");
+        gr.addColorStop(0.08, "rgba(225,240,255," + 0.16 * g + ")");
         gr.addColorStop(0.45, "rgba(215,232,255," + 0.07 * g + ")");
         gr.addColorStop(1, "rgba(210,230,255,0)");
         c.fillStyle = gr;
@@ -21460,8 +21462,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       c.restore();
     }
-    glowAt(c, ox2, oy2, 7, 0.5, "230,242,255");
-    glowAt(c, pcx, pcy, torchR * DEV.beamNear, 0.06, "220,235,255");
+    if (!titleSolid(S2, ox2, oy2)) glowAt(c, ox2, oy2, 7, 0.5 * TITLE_BEAMA * 2, "230,242,255");
+    glowAt(c, pcx, pcy, torchR * DEV.beamNear, 0.06 * TITLE_BEAMA, "220,235,255");
   }
 
   // src/game/dpr.js

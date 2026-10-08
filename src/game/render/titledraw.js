@@ -18,7 +18,7 @@ import { vinePt } from '../../world/sway.js';
 import { crackleAt, crackleBody } from '../../art/crackle.js';
 import { drawProp, propGlow } from '../../art/props.js';
 import { GUN_HELD, gunMuzzle, drawGun, drawNugget, glowAt, drawRunner, jetFlame, pixelHeld, pixelSprite } from '../../art/sprites.js';
-import { TCELL, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleSolidCell, titleWebAt } from '../../art/titlescene.js';
+import { TCELL, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleSolid, titleSolidCell, titleWebAt } from '../../art/titlescene.js';
 import { visPoly } from '../../world/vision.js';
 import { drawBolt, drawLook } from './looks.js';
 
@@ -186,7 +186,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   ctx.globalCompositeOperation = 'lighter';
   // each jellyfish's green glow on the plants and moss round it, as the game's (systems/plantglow.js, plantGlowFill)
   for (const f of S.foes) if (f.je && f.x - S.scroll > -40 && f.x - S.scroll < TITLE_VW + 40) titlePlantGlow(ctx, S, f);
-  for (const r of S.runners) titleBeam(ctx, r, DK.vis[r.id]);
+  for (const r of S.runners) titleBeam(ctx, S, r, DK.vis[r.id]);
   // the shots and lightning in the pixel look too (owner, v0.0.171): one layer on the world's grid, added as before
   if (S.shots.length || S.zaps.length) pixelSprite(ctx, gx, 0, TITLE_VW + 100, S.vh, 1, false, c => {
     /** @type {any} */
@@ -472,10 +472,13 @@ function titleDark(ctx, S) {
 }
 
 // A player's gun light as you see it, the game's drawBeam (render/light.js): three soft cones out of the gun's muzzle
-// (DEV.beamDeg wide, DEV.beamGlow bright, a cool white) cut to what the player can see, the lens, the spill round him
-/** @param {CanvasRenderingContext2D} c @param {import('../../art/titlescene.js').TRunner} r @param {number[] | undefined} pts */
-function titleBeam(c, r, pts) {
-  const torchR = SIGHT * DEV.torch * LAMP_REACH * 1.05, R = torchR * Math.max(1, DEV.beamReach), g = DEV.beamGlow;
+// (DEV.beamDeg wide, DEV.beamGlow × TITLE_BEAMA bright, a cool white) cut to what the player can see, the lens, the spill.
+// Owner, v0.0.171: four of them added up to white (TITLE_BEAMA), and the cone fades in from the muzzle (it began at its
+// brightest: against a wall, where the player sees only a sliver, that filled it as a bright square); no lens in the rock
+export const TITLE_BEAMA = 0.25;
+/** @param {CanvasRenderingContext2D} c @param {import('../../art/titlescene.js').TitleScene} S @param {import('../../art/titlescene.js').TRunner} r @param {number[] | undefined} pts */
+function titleBeam(c, S, r, pts) {
+  const torchR = SIGHT * DEV.torch * LAMP_REACH * 1.05, R = torchR * Math.max(1, DEV.beamReach), g = DEV.beamGlow * TITLE_BEAMA;
   const pcx = r.x + PW / 2, pcy = r.y + PH * 0.45, lower = r.swap > 0 ? Math.sin(r.swap / 0.3 * Math.PI) * 4 : 0;
   const mz = gunMuzzle(pcx + Math.cos(r.ang) * 2.5, r.y + PH * 0.45 + lower, r.ang, GUN_HELD, r.kit.art), ox = mz.x, oy = mz.y, a = r.ang;
   if (g > 0 && pts && pts.length > 4) {
@@ -486,13 +489,13 @@ function titleBeam(c, r, pts) {
     const half = DEV.beamDeg * Math.PI / 360;
     for (const k of [1.3, 1, 0.7]) {
       const gr = c.createRadialGradient(ox, oy, 2, ox, oy, R);
-      gr.addColorStop(0, 'rgba(225,240,255,' + 0.16 * g + ')'); gr.addColorStop(0.45, 'rgba(215,232,255,' + 0.07 * g + ')');
+      gr.addColorStop(0, 'rgba(225,240,255,0)'); gr.addColorStop(0.08, 'rgba(225,240,255,' + 0.16 * g + ')'); gr.addColorStop(0.45, 'rgba(215,232,255,' + 0.07 * g + ')');
       gr.addColorStop(1, 'rgba(210,230,255,0)');
       c.fillStyle = gr;
       c.beginPath(); c.moveTo(ox, oy); c.arc(ox, oy, R, a - half * k, a + half * k); c.closePath(); c.fill();
     }
     c.restore();
   }
-  glowAt(c, ox, oy, 7, 0.5, '230,242,255');
-  glowAt(c, pcx, pcy, torchR * DEV.beamNear, 0.06, '220,235,255');
+  if (!titleSolid(S, ox, oy)) glowAt(c, ox, oy, 7, 0.5 * TITLE_BEAMA * 2, '230,242,255');
+  glowAt(c, pcx, pcy, torchR * DEV.beamNear, 0.06 * TITLE_BEAMA, '220,235,255');
 }

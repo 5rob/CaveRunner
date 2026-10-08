@@ -14,7 +14,9 @@ Waiting on the owner's OK (a minor update).
   jellyfish. A small layer at the terrain's grid (lights unioned, source-over, cut out of the dark, blurred 1.5 px), smoothed up;
   the glows and shots over it. Owner's round 1: light reaches `TITLE_EDGE` (6) into the rock it falls on and the edge is blurred
   (the dark fades in from the edge); fire lights small pools at up to 80 of its cells (the big summed pools made one disc); the
-  visible beam, the game's `drawBeam` (`titleBeam`: three soft cones from the muzzle, the lens, the spill).
+  visible beam, the game's `drawBeam` (`titleBeam`: three soft cones from the muzzle, the lens, the spill). Round 2: the beam at
+  `TITLE_BEAMA` (0.25) of the game's (four added up to white), fading in from the muzzle (against a wall, where a player sees
+  only a sliver, its bright start filled that as a square), no lens when the muzzle is in rock.
 - No dark outline on the players and creatures (titledraw: `pixelHeld` / `pixelSprite` line off).
 - Shots and lightning in the pixel look: one layer on the world's grid, drawn 'lighter' as before; the Buzzsaw's blade
   its own, pinned to it.
