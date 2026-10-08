@@ -12,7 +12,8 @@ release loop, testing), then the README of the `src/` folder you're working in.
   Settings: Master / FX / Music sliders (`SFX.setFxVolume`, `setMusicVolume`, keys `caverunner-vol-fx` / `-music`; a music bus
   exists, nothing plays on it yet). Shots: `node tools/settingsshots.js`, sent. On OK: bump to v0.0.174, CHANGELOG, merge.
   Title music (same branch): dark synthwave, `audio/song.js` (data) + `audio/music.js` (synths), plays on the title only.
-  Rough cut sent as `node tools/musicwav.js` (.m4a). Waiting on the owner's feedback on the track too.
+  Rough cut sent as `node tools/musicwav.js` (.m4a); the owner loved it, asked for a more real guitar: now a modelled
+  plucked string (`string()` in music.js) through an amp/cabinet chain (v2 sent). Waiting on the owner's feedback on the track too.
 
 - **The title (v0.0.165–173) is all released; the owner is playing it in the app.** Where it lives: `art/titlescene.js`
   (pure: zones, mines, winding caves, players, camera; its README row in `src/art/README.md`), painter

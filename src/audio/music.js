@@ -3,8 +3,9 @@
 // context (the game's, or an offline one that renders the song to a file: tools/musicwav.js); Music plays the
 // title's track live on the engine's music bus (SFX.musicOut, the settings' Music slider), a few steps ahead.
 // No files: an 80s kick (a falling sine), a snare and hats of noise, a pumping bass (saw + square, a filter
-// snap; the pads and bass duck under every kick), detuned saw pads, a plucked arpeggio, and the guitar: two
-// saws through a hard clip, a mid boost and a speaker's roll-off, bent into some notes, vibrato on long ones.
+// snap; the pads and bass duck under every kick), detuned saw pads, a plucked arpeggio, and the guitar: a modelled
+// plucked string (string()) through an amp (a mid hump, a hard lopsided clip) and a speaker cabinet's roll-off, bent
+// into some notes by pushing the string's pitch, vibrato on long ones.
 // Reverb and a dotted-8th echo, both made here.
 
 import { SFX } from './sfx.js';
@@ -31,7 +32,28 @@ export function makeMusic(ac, dest) {
   const pump = ac.createGain(); pump.connect(mix);
   // the guitar's clip curve
   const curve = new Float32Array(1024);
-  for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; curve[i] = Math.tanh(x * 9) * 0.8; }
+  for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; curve[i] = (Math.tanh(x * 2.5 + 0.25) - Math.tanh(0.25)) * 0.85; }
+  // A plucked string (Karplus–Strong): a burst of noise round a loop one period long, each pass averaged (the
+  // highs die first, as a string's do) and a little lost; the pick's spot notches the burst. Made once a note,
+  // 2.8 s long; played at `rate` to land exactly in tune (the loop's length is whole samples)
+  /** @type {Map<string, { buf: AudioBuffer, rate: number }>} */
+  const strings = new Map();
+  /** @param {number} n midi @param {number} seed which of two plucks */
+  const string = (n, seed) => {
+    const key = n + ':' + seed;
+    let S = strings.get(key);
+    if (S) return S;
+    const sr = ac.sampleRate, f = midiHz(n), N = Math.max(2, Math.round(sr / f - 0.5)), len = Math.floor(sr * 2.8);
+    const buf = ac.createBuffer(1, len, sr), y = buf.getChannelData(0);
+    const loss = Math.pow(0.001, 1 / (f * 4.5)), pick = Math.max(1, Math.round(N * 0.18));
+    let lp = 0;
+    for (let i = 0; i < N; i++) { lp += ((Math.random() * 2 - 1) - lp) * 0.6; y[i] = lp; }
+    for (let i = N - 1; i >= pick; i--) y[i] -= y[i - pick] * 0.9;
+    for (let i = N; i < len; i++) y[i] = loss * 0.5 * (y[i - N] + y[Math.max(0, i - N - 1)]);
+    S = { buf, rate: f / (sr / (N + 0.5)) };
+    strings.set(key, S);
+    return S;
+  };
 
   /** @param {AudioNode} to @param {number} pan */
   const panned = (to, pan) => {
@@ -114,27 +136,37 @@ export function makeMusic(ac, dest) {
     },
     /** @param {number} t @param {any} e */
     gtr(t, e) {
-      const len = e.d * STEP_SEC, end = t + len + 0.12, hz = midiHz(e.n);
-      const pre = ac.createGain(); pre.gain.value = 1.4;
-      const sh = ac.createWaveShaper(); sh.curve = curve; sh.oversample = '2x';
-      const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 150;
-      const mid = ac.createBiquadFilter(); mid.type = 'peaking'; mid.frequency.value = 1100; mid.Q.value = 1; mid.gain.value = 7;
-      const cab = ac.createBiquadFilter(); cab.type = 'lowpass'; cab.frequency.value = 3600; cab.Q.value = 0.9;
+      const len = e.d * STEP_SEC, end = t + len + 0.15;
+      // the amp: a mid hump into a hard, lopsided clip (a tube's), then the speaker cabinet's roll-off
+      const tight = ac.createBiquadFilter(); tight.type = 'highpass'; tight.frequency.value = 280;
+      const hump = ac.createBiquadFilter(); hump.type = 'peaking'; hump.frequency.value = 800; hump.Q.value = 0.8; hump.gain.value = 9;
+      const drive = ac.createGain(); drive.gain.value = 24;
+      const sh = ac.createWaveShaper(); sh.curve = curve; sh.oversample = '4x';
+      const low = ac.createBiquadFilter(); low.type = 'highpass'; low.frequency.value = 85;
+      const body = ac.createBiquadFilter(); body.type = 'peaking'; body.frequency.value = 130; body.Q.value = 1.2; body.gain.value = 3;
+      const pres = ac.createBiquadFilter(); pres.type = 'peaking'; pres.frequency.value = 1800; pres.Q.value = 1.4; pres.gain.value = 4;
+      const cab1 = ac.createBiquadFilter(); cab1.type = 'lowpass'; cab1.frequency.value = 4800; cab1.Q.value = 1.1;
+      const cab2 = ac.createBiquadFilter(); cab2.type = 'lowpass'; cab2.frequency.value = 5200; cab2.Q.value = 0.6;
       const g = ac.createGain();
-      pre.connect(sh); sh.connect(hp); hp.connect(mid); mid.connect(cab); cab.connect(g);
+      tight.connect(hump); hump.connect(drive); drive.connect(sh); sh.connect(low); low.connect(body); body.connect(pres);
+      pres.connect(cab1); cab1.connect(cab2); cab2.connect(g);
       g.connect(panned(mix, e.pan || 0)); g.connect(dl); g.connect(rv);
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16 * e.v, t + 0.006);
-      g.gain.setTargetAtTime(0.11 * e.v, t + 0.02, 0.25);
-      g.gain.setValueAtTime(0.11 * e.v, t + len); g.gain.exponentialRampToValueAtTime(0.0001, end);
-      for (const c of [-7, 7]) {
-        const o = osc('sawtooth', hz, t, end, pre, c);
-        // bent: from a tone below up into the note
-        if (e.bend) { o.frequency.setValueAtTime(hz * Math.pow(2, -2 / 12), t); o.frequency.setTargetAtTime(hz, t + 0.03, 0.05); }
+      g.gain.setValueAtTime(0.16 * e.v, t);
+      g.gain.setValueAtTime(0.16 * e.v, t + len); g.gain.exponentialRampToValueAtTime(0.0001, end);
+      // the string: plucked twice over (a hair apart, a few cents out: two pickups' worth of shimmer)
+      for (const [cents, lag, seed] of [[-4, 0, 0], [4, 0.006, 1]]) {
+        const S = string(e.n, seed), src = ac.createBufferSource();
+        src.buffer = S.buf;
+        const rate = S.rate * Math.pow(2, cents / 1200), p = src.playbackRate;
+        // bent: from a tone below up into the note, as a finger pushes the string
+        if (e.bend) { p.setValueAtTime(rate * Math.pow(2, -2 / 12), t + lag); p.setTargetAtTime(rate, t + lag + 0.04, 0.06); }
+        else p.setValueAtTime(rate, t + lag);
         if (e.vib && len > 0.3) {
-          const l = ac.createOscillator(), lg = ac.createGain(); l.frequency.value = 5.6;
-          lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(hz * 0.014, t + len * 0.8);
-          l.connect(lg); lg.connect(o.frequency); l.start(t + len * 0.3); l.stop(end);
+          const l = ac.createOscillator(), lg = ac.createGain(); l.frequency.value = 5.4;
+          lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(rate * 0.018, t + len * 0.8);
+          l.connect(lg); lg.connect(p); l.start(t + len * 0.25); l.stop(end);
         }
+        src.connect(tight); src.start(t + lag); src.stop(end);
       }
     },
   };
