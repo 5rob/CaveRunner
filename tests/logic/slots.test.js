@@ -28,20 +28,33 @@ check('summary: floor, gold, guns, mods', s && s.floor === 4 && s.gold === 1234 
 
 // the band a 412x880 phone gives it (ui/title.js)
 const S = titleScene(470, 7, 139, 295);
-let maxFoes = 0, maxParts = 0, maxGold = 0, maxFire = 0, onFloor = 0, feetOff = 0;
-const zones = new Set(), kits = new Set(), seenKinds = new Set(), born = new Set(), badHome = [];
-let jellyIn = 0, jellyWorks = 0;
+let maxFoes = 0, maxParts = 0, maxGold = 0, maxFire = 0, onFloor = 0, feetOff = 0, brains = 0, noBrain = 0, aggroFar = 0;
+const zones = new Set(), kits = new Set(), seenKinds = new Set(), born = new Set(), badHome = [], spun = new Set();
+let jellyIn = 0, jellyWorks = 0, pulledFar = 0, pulled = 0, oddNug = 0, nugs = 0;
+const flew = new Set();
 for (let i = 0; i < 60 * 40; i++) {
   titleStep(S, 1 / 60);
   maxFoes = Math.max(maxFoes, S.foes.length); maxParts = Math.max(maxParts, S.parts.length);
-  maxGold = Math.max(maxGold, S.nuggets.length); maxFire = Math.max(maxFire, S.fire.length);
-  const r = S.runner;
+  maxGold = Math.max(maxGold, S.coins.length); maxFire = Math.max(maxFire, S.fire.length);
+  const r = S.runner, pcx = S.scroll + r.x + 6, pcy = r.y + 11;
   zones.add(titleZone(S.scroll + r.x)); kits.add(r.kit);
   for (const f of S.foes) {
-    seenKinds.add(f.k);
+    const id = f.k.id;
+    seenKinds.add(id);
     // where each one first shows: a zone that's home to it (TITLE_HOME); jellyfish stay out of the works
-    if (!born.has(f)) { born.add(f); const z = titleZone(S.scroll + f.x); if (!G.TITLE_HOME[z].some(h => h[0] === f.k)) badHome.push([f.k, z]); }
-    if (f.k === 'meduusa' && f.x > 0 && f.x < 220) { jellyIn++; const z = titleZone(S.scroll + f.x); if ((z === 'timber' || z === 'paved') && Math.min((S.scroll + f.x) % 280, 280 - (S.scroll + f.x) % 280) > 60) jellyWorks++; }
+    if (!born.has(f)) { born.add(f); const z = titleZone(f.x); if (!G.TITLE_HOME[z].some(h => h[0] === id)) badHome.push([id, z]); }
+    if (id === 'meduusa' && f.x - S.scroll > 0 && f.x - S.scroll < 220) { jellyIn++; const z = titleZone(f.x); if ((z === 'timber' || z === 'paved') && Math.min(f.x % 280, 280 - f.x % 280) > 60) jellyWorks++; }
+    // run by the game's brains: each has its brain state (e.je / e.sp / e.ra) after its first frame
+    if (born.has(f) && (id === 'meduusa' ? f.je : id === 'hamahakki' ? f.sp : f.ra)) brains++; else noBrain++;
+    // the game's aggro: never still hunting past its reach × loseAggro
+    if (f.aggro && Math.hypot(pcx - f.x, pcy - f.ty) > f.k.aggro / G.DEV.zoom * G.DEV.aggro * (f.aggroM || 1) * G.DEV.loseAggro + 2) aggroFar++;
+  }
+  for (const L of S.webs) if (L.owner) spun.add(L);
+  // the gold: the game's nuggets (25 / 5 / 1), pulled to him only from within COIN_PULL
+  for (const g of S.coins) {
+    if (!flew.has(g)) { nugs++; if (![25, 5, 1].includes(g.amount)) oddNug++; }
+    if (g.fly && !flew.has(g)) { flew.add(g); pulled++; if (Math.hypot(pcx - g.x, pcy - g.y) > G.COIN_PULL + 6) pulledFar++; }
+    if (!g.fly && !flew.has(g)) flew.add(g), flew.delete(g);
   }
   if (r.mode === 'run' && r.ground) {
     // feet on the floor: the cell just under his feet is solid, the one at his shins isn't rock
@@ -50,11 +63,16 @@ for (let i = 0; i < 60 * 40; i++) {
     if (!titleCell(S, c, fr) || titleCell(S, c, fr - 3) === TM.ROCK) feetOff++;
   }
 }
-check('the title scene kills creatures', S.kills >= 15, S.kills);
-check('and drops gold', S.gold >= 30, S.gold);
-check('he vacuums the gold up', S.got >= S.gold * 0.6, { got: S.got, gold: S.gold });
+check('the title scene kills creatures', S.kills >= 10, S.kills);
+check('and drops gold', S.gold >= 20, S.gold);
+check('he collects the gold that comes near him', S.got > 0 && S.gotN > 3, { got: S.got, n: S.gotN, gold: S.gold });
+check('the gold is the game\'s nuggets (25 / 5 / 1)', nugs > 10 && oddNug === 0, { nugs, oddNug });
+check('gold flies to him only from within the game\'s pull distance', pulled > 3 && pulledFar === 0, { pulled, pulledFar });
 check("only floor 1's creatures (its roster and its rats)", [...seenKinds].every(k => TITLE_KINDS.includes(k))
   && TITLE_KINDS.every(k => k === 'rotta' || ROSTERS[0].includes(k)) && seenKinds.has('rotta') && seenKinds.size >= 2, [...seenKinds]);
+check('they run on the game\'s own brains (jellyStep, spiderStep, ratStep)', brains > 1000 && noBrain < brains * 0.05, { brains, noBrain });
+check('aggro as the game: none hunts him from past its reach × loseAggro', aggroFar === 0, aggroFar);
+check('spiders spin their own lines', spun.size > 0, spun.size);
 check('within its caps', maxFoes <= TITLE_FOES && maxParts <= TITLE_PARTS && maxGold <= TITLE_GOLD && maxFire <= TITLE_FIRE, { maxFoes, maxParts, maxGold, maxFire });
 check('he runs on the ground and he flies', S.groundT > 6 && S.flyT > 6, { ground: S.groundT, fly: S.flyT });
 check('running, his feet are on the floor', onFloor > 200 && feetOff / onFloor < 0.05, { onFloor, feetOff });
@@ -78,24 +96,21 @@ check('it travels through the zones', ['moss', 'webs', 'timber', 'paved', 'grove
 }
 check('each creature comes only into its own zones', badHome.length === 0 && born.size > 20, { bad: badHome.slice(0, 5), born: born.size });
 check('jellyfish stay out of the works', jellyWorks / jellyIn < 0.02, { jellyWorks, jellyIn });
-check('spiders walk the web lines', S.lineT > 3, S.lineT);
+check('spiders ride web lines', S.lineT > 1, S.lineT);
 check('blasts and fire cut web lines', S.cut > 0, S.cut);
-check('spiders let themselves down on silk threads', S.dropT > 1, S.dropT);
-// a thread drop on its own: down, a hang, back up to the roof where it started
+// fire on plants, the game's way: a vine burns from its tip up at firePlant, not all at once;
+// an arch burns out both ways from where it caught at fireArch
 {
-  const T = titleScene(470, 3, 139, 295), spd = T.foes.find(f => f.k === 'hamahakki') || null;
-  const f = spd || { x: 100, y: 0, vx: 0, vy: 0, r: 4, hp: 4, k: 'hamahakki', flash: 0, phase: 0, cd: 0, surf: -1, spd: 16, br: { mode: 'surf', on: 1, nx: 0, ny: 1, side: 1 } };
-  if (!spd) T.foes.push(f);
-  f.hp = 1e9; f.L = null; f.surf = -1; f.br.mode = 'surf'; f.x = 200; f.y = G.titleCeil(T.scroll + 200, T) + f.r * 0.9; f.walkT = 0;   // from the right: the whole drop on screen
-  let deepest = 0, back = false, tries = 0;
-  // force the roll: step until it drops (the roll is 35% per look)
-  for (let i = 0; i < 60 * 30 && !back; i++) {
-    T.foes = T.foes.filter(q => q === f); T.spawn = 99;
-    titleStep(T, 1 / 60);
-    if (f.drop) { if (!tries) f.drop.max = Math.min(f.drop.max, 24); tries++; deepest = Math.max(deepest, f.drop.len); }
-    else if (tries && f.br.mode === 'surf' && f.surf < 0) back = true;
-  }
-  check('a thread drop goes down a way and comes back up to the roof', deepest > 15 && back && f.x > 0, { deepest, back, tries });
+  const P = titleScene(470, 4, 139, 295);
+  for (let i = 0; i < 60 * 34 && !P.props.some(p => p.arc); i++) { P.foes.length = 0; P.spawn = 99; titleStep(P, 1 / 60); }
+  const vine = P.props.find(p => !p.arc && p.st === 'vine' && p.len > 30), arch = P.props.find(p => p.arc);
+  if (vine) { vine.burn = 1; }
+  if (arch) { arch.burn = 1; arch.u0 = arch.u1 = 0.5; }
+  const len0 = vine ? vine.len : 0;
+  for (let i = 0; i < 30; i++) { P.foes.length = 0; titleStep(P, 1 / 60); }
+  check('a burning vine shortens from its tip at firePlant (half a second: still there)', !!vine && !vine.gone && vine.len < len0 - 1 && Math.abs(len0 - vine.len - G.DEV.firePlantLo * 0.5) < (G.DEV.firePlantHi - G.DEV.firePlantLo) * 0.5 + 3,
+    vine && { len0, len: vine.len, gone: vine.gone });
+  check('a burning arch burns out both ways from where it caught', !!arch && arch.u0 < 0.5 && arch.u1 > 0.5 && !(arch.u0 <= 0 && arch.u1 >= 1), arch && { u0: arch.u0, u1: arch.u1 });
 }
 check('shots carve the terrain', S.carved > 30, S.carved);
 check('and fire burns', S.burnt > 10, S.burnt);

@@ -7,11 +7,9 @@
 // jetFlame, drawGun with his gun's art), the shots in their game looks, fire, booms.
 
 import { PW, PH } from '../../core/consts.js';
-import { CREATURES } from '../../data/creatures.js';
 import { THEMES } from '../../data/themes.js';
-import { drawJelly } from '../../creatures/jelly.js';
-import { drawRat } from '../../creatures/rat.js';
-import { drawSpider } from '../../creatures/spider.js';
+import { drawEnemy } from '../../creatures/draw.js';
+import { coinR } from '../../world/nuggets.js';
 import { drawProp, propGlow } from '../../art/props.js';
 import { drawGun, drawNugget, drawRunner, jetFlame, pixelSprite } from '../../art/sprites.js';
 import { TCELL, TITLE_KITS, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleWebAt } from '../../art/titlescene.js';
@@ -108,15 +106,13 @@ export function titleDraw(ctx, S, cw, ch) {
   const W = { time: S.t };
   /** @type {any} */
   const G = { ctx };
-  // plants: burning ones go dark as they burn
+  // plants (a burning one is shorter by what's burnt: drawProp draws its len; an arch, its u0..u1 gone)
   for (const p of S.props) {
-    if (p.x + (p.span || 0) < -40 || p.x > TITLE_VW + 40) continue;
-    ctx.globalAlpha = p.burn > 0 ? Math.max(0.15, p.burn / 1.4) : 1;
+    if (p.gone || p.x + (p.span || 0) < -40 || p.x > TITLE_VW + 40) continue;
     /** @type {any} */
     const pr = p;
     drawProp(ctx, pr, S.t, T);
   }
-  ctx.globalAlpha = 1;
   // the spiders' web lines, silk as the game draws it (render: game/creatures/spider.js drawSilk)
   ctx.strokeStyle = '#eef0f6'; ctx.globalAlpha = 0.55; ctx.lineWidth = 0.7; ctx.lineCap = 'round';
   ctx.beginPath();
@@ -125,12 +121,15 @@ export function titleDraw(ctx, S, cw, ch) {
     ctx.moveTo(L.a0x - S.scroll, L.a0y);
     for (let i = 1; i <= 8; i++) { const p = titleWebAt(L, i / 8); ctx.lineTo(p.x - S.scroll, p.y); }
   }
-  // a spider's thread, roof (or web line) down to it
-  for (const f of S.foes) if (f.drop) { ctx.moveTo(f.drop.ax - S.scroll, f.drop.ay); ctx.lineTo(f.x, f.y - f.r * 0.6); }
+  ctx.stroke();
+  // the strings spiders shoot at him (as the game draws W.silk: a line from where it left)
+  ctx.globalAlpha = 0.85; ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  for (const b of S.silk) { ctx.moveTo(b.ax - S.scroll, b.ay); ctx.lineTo(b.x - S.scroll, b.y); }
   ctx.stroke();
   ctx.globalAlpha = 1;
-  // gold
-  for (const g of S.nuggets) drawNugget(ctx, g.x, g.y, g.r, g.seed, g.ang);
+  // gold, the game's nuggets (its size from its amount: coinR), turned as they roll
+  for (const g of S.coins) drawNugget(ctx, g.x - S.scroll, g.y, coinR(g), g.t, g.a || 0);
   // smoke under everything bright
   for (const p of S.parts) if (p.kind === 'smoke') {
     ctx.globalAlpha = 0.5 * (p.life / p.max);
@@ -138,13 +137,10 @@ export function titleDraw(ctx, S, cw, ch) {
     ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (2 - p.life / p.max), 0, Math.PI * 2); ctx.fill();
   }
   ctx.globalAlpha = 1;
-  // floor 1's creatures, with the game's painters
-  for (const f of S.foes) {
-    const C = CREATURES[f.k], fl = f.flash > 0;
-    if (f.k === 'rotta') drawRat(ctx, f.x, f.y, f.r, S.t, f.phase, fl, C.col, f.br);
-    else if (f.k === 'hamahakki') drawSpider(ctx, f.x, f.y, f.r, S.t, f.phase, fl, C.col, f.br);
-    else drawJelly(ctx, f.x, f.y, f.r, S.t, f.phase, fl, C.col, f.br);
-  }
+  // floor 1's creatures, drawn by the game's own drawEnemy (they live in world coordinates)
+  ctx.save(); ctx.translate(-S.scroll, 0);
+  for (const f of S.foes) drawEnemy(ctx, f, S.t);
+  ctx.restore();
   // the runner: body and jet flame on the 1-unit pixel grid like the game's drawPlayer; his gun's art as it is
   const r = S.runner, K = TITLE_KITS[r.kit], pcx = r.x + PW / 2, ax = Math.cos(r.ang), ay = Math.sin(r.ang);
   const lower = r.swap > 0 ? Math.sin(r.swap / 0.3 * Math.PI) * 4 : 0, gy = r.y + PH * 0.45 + lower;

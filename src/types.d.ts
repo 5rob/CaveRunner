@@ -182,7 +182,7 @@ interface WebLine {
   ax: number; ay: number; bx: number; by: number;
   a0x: number; a0y: number; b0x: number; b0y: number;
   ain: Pt | null; bin: Pt;    // points inside the rock at each end: dig one out and the line comes down
-  owner: Enemy;
+  owner: Enemy | null;          // null: a line the title scene strings itself (art/titlescene.js)
   // rolled once per line when you first touch it (decorStep)
   slow?: number; grab?: number; climb?: number;
   // giving (world/sway.js): its sag at rest, its bend (wx, wy) peaking at wu, the bend's speed, held last frame
