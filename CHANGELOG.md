@@ -6,7 +6,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v0.0.171 — the title: the game's dark and lights; no outline on the pixel look, shots in it too; jetpacks against gravity, bursts, varied pace
-Waiting on the owner's OK (a minor update).
+Released 2026-10-08 (owner OK'd; a minor update).
 - **The dark** (owner): `titleDark` (titledraw): the cave at the game's `DEV.fogDim`, cut by lights that only reach as far as they
   can see (`visPoly` from world/vision.js on the title's cells, `titleSolidCell`: the rock throws shadows): each player's gun
   light at the game's sizes (cone `DEV.beamDeg` wide out to the old torch's reach × `DEV.beamReach`, soft sides; the round glow
