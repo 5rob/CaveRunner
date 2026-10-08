@@ -5,6 +5,30 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.165 — the title: four players, twice the creatures, random guns with modifiers, a natural mine slope, slower fire, cut vines and webs hang and swing
+Released 2026-10-08 (owner OK'd the screenshots; a minor update).
+- **Four players** (`TITLE_RUNNERS`, `S.runners`; `S.runner` is player 1): each on its own clock, easing apart when
+  side by side, each its colour (`TITLE_COLS`: blue, red, green, yellow) on the backpack and a stripe over the helmet
+  (`paintBody`/`drawRunner`'s new `tint`). Creatures go after their nearest player (rats: a nav field each), gold
+  flies to the nearest, any player stops spit and silk.
+- **Twice the creatures** (`TITLE_FOES` 24, spawning twice as often, 6 to start).
+- **Random guns** (`titleKit`): a random skin from all of `GUN_ART`, one of 23 shots (`TITLE_SHOTS`) and 0–2 of 18
+  modifiers (`TITLE_MODS`) worked on it by their own `f` (double / triple: that many at once). Title shots now home,
+  accelerate, and chain bolts leap creature to creature; lightning with more shots arcs to more creatures.
+  `TITLE_KITS` is gone.
+- **The mine works' roof** comes down over a long S-curve (`TIMBER_RAMP` 120, `timberD`) with lumpy rock, not a short
+  straight step.
+- **Fire at a tenth** (`TITLE_FIRESPEED` 0.1): cell-to-cell spread, plants catching beside fire, burning along vines
+  and silk; jumps `TITLE_JUMPP` 0.05 (was 0.5). Burning vines and silk drawn with the burning cells' crackle (the
+  fire colours in the terrain grid, a new flicker each tick).
+- **Cut lines hang** (owner): an arch or web line that catches (or is blasted) is cut there; each side becomes a rope
+  of `TITLE_LINKS` links (`hangPiece`, the game's `tailStep`) swinging down from its end and burning up from the cut;
+  an end that doesn't hold (no rock above or beside) falls, as does anything whose rock is blasted away (`p.drop`);
+  a long piece gathers up off the ground. An arch's strands drop when it's cut.
+- **Players push the vines** as in the game (`stepSway`): hanging vines swing (`vinePush`, `swingStep`), arches
+  and web lines give (`bendPush`/`bendStep`); strands ride their arch's bend (`on`). `titleWebAt` is `webAt`.
+- Suite `slots` reworked (51 checks); pictures `tools/playershots.js`.
+
 ## v0.0.164 — the gun in hand in the body's pixel look; creatures over the shop's machines; title fire jumps, the runner waits
 Released 2026-10-08 (owner OK'd the screenshots; a minor update).
 - **The gun in his hand goes through the body's pixel look** (`pixelHeld`, `art/sprites.js`: body then gun as one

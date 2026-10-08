@@ -22,12 +22,14 @@ import { navField, navWay } from '../world/nav.js';
 import { collideNuggets, spillGold, stepNugget } from '../world/nuggets.js';
 import { losClear } from '../world/vision.js';
 import { archCurve } from '../world/decorate.js';
+import { bendAwake, bendPush, bendStep, swingStep, swings, tailStep, vinePt, webAt } from '../world/sway.js';
 import { MODS } from '../spells/mods.js';
 import { pixText, pixWidth } from './pixfont.js';
 import { GUN_HELD, gunMuzzle } from './sprites.js';
+import { GUN_ART } from './gunart.js';
 
 export const TITLE_VW = 220;          // world units across the screen
-export const TITLE_FOES = 12;         // at most this many creatures at once (a rat swarm counts each rat)
+export const TITLE_FOES = 24;         // at most this many creatures at once (a rat swarm counts each rat; v0.0.165: ×2)
 export const TITLE_PARTS = 320;       // particle cap
 export const TITLE_GOLD = 90;         // nugget cap
 export const TITLE_FIRE = 600;        // burning terrain cells at once
@@ -39,7 +41,9 @@ export const ZBLEND = 28;             // a zone's border frays this far (world u
 export const TIMBER_H = 38;           // the timber works' height, floor to roof: the mine frames' height
 export const TITLE_WEBS = 60;         // web lines at once
 export const TITLE_JUMP = 5;          // fire jumps from a burning vine, arch or web to one this near (world units)
-export const TITLE_JUMPP = 0.5;       // … at this chance a fire tick
+export const TITLE_JUMPP = 0.05;      // … at this chance a fire tick (v0.0.165: ×0.1, was 0.5)
+export const TITLE_FIRESPEED = 0.1;   // the title's fire spreads (cell to cell, onto plants) and burns along vines and silk at this × the game's (owner, v0.0.165)
+export const TITLE_LINKS = 8;         // a cut vine's or web line's piece hangs as this many links (world/sway.js tailStep)
 export const TITLE_WEBFIRE = 3;       // a web line burns along this many times an arch's speed (fireArch)
 export const TITLE_AIM = 90;         // he shoots only at creatures this near (world units; v0.0.164, was the whole screen)
 // cell materials: air (the back wall shows), rock (painted as the game paints it: moss where it faces
@@ -55,16 +59,17 @@ export const FRAME_W = 36;            // its width, post to post
 const SCROLL = 34;                    // the world's scroll speed (world units / s)
 const GRAV = 260;
 const SP = 0.5;                       // the game's shot speeds, scaled to the title's screen
-// the guns he swaps between: a real shot mod (its look, colour, size, speed, how it hits) and a real gun skin
-export const TITLE_KITS = [
-  { mod: 'bolt', art: 'pinkcarbine', cd: 0.13 },
-  { mod: 'buck', art: 'ambershotgun', cd: 0.5 },
-  { mod: 'fball', art: 'greenbazooka', cd: 0.7 },
-  { mod: 'zap', art: 'skyrifle', cd: 0.5 },
-  { mod: 'flamer', art: 'reddrum', cd: 0.06 },
-  { mod: 'blast', art: 'toxiclauncher', cd: 0.9 },
-  { mod: 'slug', art: 'goldblaster', cd: 0.3 },
-];
+// the guns they swap between, made up at each swap (titleKit): a real gun skin, a real shot mod (its look,
+// colour, size, speed, how it hits) and 0–2 real modifiers worked on it by their own `f` (owner, v0.0.165:
+// more variety). The shots that fly (no beams, saw, black hole, teleports; nuke and meteor too big)
+export const TITLE_SHOTS = ['bolt', 'spark', 'slug', 'buck', 'lance', 'orb', 'blast', 'arrow', 'missile', 'fball', 'fbolt', 'flamer',
+  'bubble', 'spit', 'eorb', 'esph', 'zap', 'chain', 'glance', 'cross', 'pollen', 'disc', 'digbolt'];
+// the modifiers a title gun may carry (double / triple: that many of the shot at once)
+export const TITLE_MODS = ['scatter', 'double', 'triple', 'bounce', 'pierce', 'homing', 'seeker', 'big', 'grow', 'shrink', 'tip',
+  'heavy', 'light', 'speed', 'accel', 'range', 'over', 'borer'];
+export const TITLE_RUNNERS = 4;
+// each player's colour (backpack and helmet stripe), so they read as four players
+export const TITLE_COLS = ['#3fb8ff', '#ff4f5e', '#5ee05a', '#ffc93a'];
 // floor 1's creatures (its roster, and the rats that live there)
 export const TITLE_KINDS = [...ROSTERS[0], 'rotta'];
 // who comes into each zone, weighted, as the game spawns them: jellyfish only in the natural caves
@@ -79,24 +84,30 @@ export const TITLE_HOME = {
   grove: [['meduusa', 3], ['rotta', 1]],
 };
 
-/** @typedef {{ x: number, y: number, vx: number, vy: number, face: number, ang: number, cd: number, kit: number, flame: number,
- *   mode: string, modeT: number, tx: number, ty: number, retarget: number, gait: number, ground: boolean, swapT: number, swap: number }} TRunner */
+/** @typedef {{ art: string, shot: string, mods: string[], name: string, cd: number, n: number, dmg: number, speed: number, spread: number, size: number,
+ *   life: number, grav: number, drag: number, explode: number, pit: number, fire: number, bounce: number, bounceE: number, pierce: number, homing: number,
+ *   accel: number, vmax: number, chain: number, col: string, look: string }} TKit */
+/** @typedef {{ x: number, y: number, vx: number, vy: number, face: number, ang: number, cd: number, kit: TKit, flame: number, id: number, col: string,
+ *   mode: string, modeT: number, tx: number, ty: number, retarget: number, gait: number, ground: boolean, swapT: number, swap: number, wvx: number, wvy: number,
+ *   nav: { F: any, fx: number, fy: number, t: number } }} TRunner */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, size: number, col: string, look: string, life: number, foe: boolean, spin: number,
- *   grav: number, drag: number, explode: number, pit: number, fire: number, bounce: number, bounceE: number, pierce: number, dmg: number }} TShot */
+ *   grav: number, drag: number, explode: number, pit: number, fire: number, bounce: number, bounceE: number, pierce: number, dmg: number,
+ *   homing?: number, accel?: number, vmax?: number, chain?: number }} TShot */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string }} TPart */
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number }} TBoom */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
 // a prop: `ox` its world x (not `wx`: art/props.js reads that as an arch's or a vine's sideways bend)
 /** @typedef {{ k: string, st: string, ox: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number,
  *   arc?: number[][], thick?: number, t?: number, span?: number, host?: TProp, gone?: boolean, u0?: number, u1?: number, alen?: number, u?: number,
- *   fall?: boolean, vy?: number }} TProp */
+ *   fall?: boolean, vy?: number, sw?: number, swv?: number, sj?: number, tl?: number[], tq?: number[], wx?: number, wy?: number, wvx?: number,
+ *   wvy?: number, wu?: number, on?: TProp | null, drop?: boolean, links?: number }} TProp */
 /** @typedef {{ c: number, r: number, t: number }} TFire */
 /** @typedef {{ t: number, vh: number, top: number, bot: number, seed: number, rnd: () => number, scroll: number, shake: number, spawn: number,
- *   kills: number, gold: number, got: number, runner: TRunner, foes: Enemy[], shots: TShot[], parts: TPart[], coins: Coin[],
+ *   kills: number, gold: number, got: number, runner: TRunner, runners: TRunner[], foes: Enemy[], shots: TShot[], parts: TPart[], coins: Coin[],
  *   booms: TBoom[], zaps: TZap[], flash: number, rows: number, ncol: number, cells: Uint8Array, gen: number, props: TProp[],
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
- *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number }} TitleScene */
+ *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string> }} TitleScene */
 
 /** @param {number} seed @returns {() => number} a seeded random 0..1 (mulberry32) */
 export function titleRng(seed) {
@@ -139,14 +150,29 @@ export const titleZoneAt = (wx, y) => titleZone(wx + (titleNoise(wx / 24, y / 14
 /** @param {number} wx @param {{ top: number, bot: number }} B */
 export const titleCeil = (wx, B) => {
   const nat = B.top - 4 + Math.sin(wx * 0.018 + 6) * 10 + Math.sin(wx * 0.049 + 3) * 6 + Math.sin(wx * 0.11) * 2;
-  // the layer's roof comes down in a short step, not a long slope (the level's shelves end in a rough edge)
-  const bt = Math.max(0, Math.min(1, (built(wx, 'timber') - 0.2) / 0.35));
-  const edge = bt > 0 && bt < 1 ? (titleNoise(wx / 3, 40) - 0.5) * 6 : 0;
-  return bt ? nat + (Math.max(nat, titleFloor(wx, B) - TIMBER_H) - nat) * bt + edge : nat;
+  // the layer's roof comes down over a natural slope (owner, v0.0.165: the old short step was too steep and
+  // straight): an S-curve about TIMBER_RAMP long, starting a little before the works, where it starts shifted
+  // by noise, the rock along it lumpy (big lumps and a fine fray, none once it's down)
+  const d = timberD(wx);
+  if (d < -TIMBER_RAMP) return nat;
+  const q = Math.max(0, Math.min(1, (d + TIMBER_RAMP - 30 + (titleNoise(wx / 40, 44) - 0.5) * 20) / TIMBER_RAMP)), bt = q * q * (3 - 2 * q);
+  if (!bt) return nat;
+  const lump = Math.sin(Math.PI * bt) * ((titleNoise(wx / 16, 47) - 0.5) * 22 + (titleNoise(wx / 6, 40) - 0.5) * 9 + (titleNoise(wx / 2.5, 43) - 0.5) * 3);
+  return nat + (Math.max(nat, titleFloor(wx, B) - TIMBER_H) - nat) * bt + lump;
+};
+const TIMBER_RAMP = 120;              // the timber works' roof slope's length (world units; it ends ~30 into the works)
+// how far world x is into a timber works zone (its nearer end; negative before it, -Infinity away from one)
+/** @param {number} wx */
+const timberD = wx => {
+  const u = wx - Math.floor(wx / TITLE_ZLEN) * TITLE_ZLEN, z = titleZone(wx);
+  if (z === 'timber') return Math.min(u, TITLE_ZLEN - u);
+  if (titleZone(wx + TITLE_ZLEN) === 'timber') return -(TITLE_ZLEN - u);
+  if (titleZone(wx - TITLE_ZLEN) === 'timber') return -u;
+  return -Infinity;
 };
 // a web line's point at fraction u: straight a0..b0, sagging in the middle (as world/sway.js webAt)
 /** @param {WebLine} L @param {number} u */
-export const titleWebAt = (L, u) => ({ x: L.a0x + (L.b0x - L.a0x) * u, y: L.a0y + (L.b0y - L.a0y) * u + 4 * u * (1 - u) * (L.sag || 0) });
+export const titleWebAt = webAt;   // (and bent where a player pushed through it)
 /** @param {number} wx @param {{ top: number, bot: number }} B */
 export const titleFloor = (wx, B) => {
   const nat = B.bot - 22 + Math.sin(wx * 0.021 + 4) * 7 + Math.sin(wx * 0.057 + 2) * 4 + Math.sin(wx * 0.13) * 1.5;
@@ -268,7 +294,7 @@ function genCol(S, c) {
       for (let s = 0; s < ns; s++) {
         const kq = Math.min(n - 1, Math.floor(R() * n)), q = pts[kq], room = titleFloor(q.x, S) - q.y;
         const len = Math.min(kru('arStrandLen', R()) * TCELL, room * 0.7);
-        if (len >= 4) S.props.push({ k: 'climb', st: 'vine', ox: q.x, x: 0, y: q.y, len, seed: R(), side: 1, burn: 0, ac: arch.ac, ar: arch.ar, host: arch, u: kq / n });
+        if (len >= 4) S.props.push({ k: 'climb', st: 'vine', ox: q.x, x: 0, y: q.y, len, seed: R(), side: 1, burn: 0, ac: arch.ac, ar: arch.ar, host: arch, on: arch, u: kq / n });
       }
     }
   }
@@ -306,19 +332,53 @@ function lamp(S, c, wx, y0, len) {
 // what a hanging thing can hang from: rock, and a frame's timber (it falls when that's burnt or blown away)
 const HOLDS = TITLE_SOLID.map((v, m) => (v || m === TM.BEAM || m === TM.BEAMD ? 1 : 0));
 
+// A gun for the title: a random skin, shot and 0–2 modifiers. The shot's numbers go through each modifier's
+// own f (spells/mods.js) as the game's cast does; double / triple fire that many of it at once. cd: the
+// shot's cast delay (+ the modifiers' d) at the title's pace
+/** @param {() => number} R @returns {TKit} */
+export function titleKit(R) {
+  const pick = (/** @type {string[]} */ a) => a[Math.floor(R() * a.length)];
+  const shot = pick(TITLE_SHOTS), M = MODS[shot], nm = R() < 0.2 ? 0 : R() < 0.55 ? 1 : 2, mods = [];
+  for (let i = 0; i < nm; i++) { const m = pick(TITLE_MODS); if (!mods.includes(m)) mods.push(m); }
+  /** @type {any} */
+  const s = { dmg: M.dmg || 1, speed: M.speed || 300, spread: M.spread || 0, size: M.size || 2, life: M.life || 1, count: M.count || 1, recoil: 0,
+    grav: M.grav || 0, drag: M.drag || 0, explode: M.explode || 0, pit: Math.max(M.pit || 0, M.bore || 0), fire: M.fire || 0,
+    bounce: M.bounce || 0, bounceE: M.bounceE || 0.5, pierce: M.pierce || 0, homing: M.homing || 0, accel: M.accel || 0, vmax: M.vmax || 0,
+    bore: 0, r: 0, pull: 0, eat: 0, pop: M.pop || 0 };
+  let d = M.delay || 0.2, n = 1;
+  for (const k of mods) {
+    const X = MODS[k];
+    if (X.f) X.f(s);
+    if (X.multi) n += X.multi;
+    d += X.d || 0;
+  }
+  if (s.bore) s.pit = Math.max(s.pit, s.bore);
+  if (M.fuse) s.life = Math.min(s.life, M.fuse + 0.5);
+  const art = pick(GUN_ART.map(a => a.id));
+  return { art, shot, mods, name: [shot, ...mods].join('+'), cd: Math.max(0.06, d * 1.7) * (n > 1 ? 1.3 : 1), n: s.count * n,
+    dmg: s.dmg, speed: s.speed, spread: s.spread + (n > 1 ? 6 : 0), size: Math.min(8, s.size), life: Math.min(4, s.life), grav: s.grav, drag: s.drag,
+    explode: Math.min(40, s.explode), pit: Math.min(10, s.pit), fire: s.fire, bounce: s.bounce, bounceE: s.bounceE, pierce: s.pierce, homing: s.homing,
+    accel: s.accel, vmax: s.vmax, chain: M.chain || 0, col: M.col, look: M.look || '' };
+}
+
 /** @param {number} vh the view's height in world units @param {number} [seed] @param {number} [top] the action's band (world units) @param {number} [bot] @returns {TitleScene} */
 export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62) {
   const rnd = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, ncol = Math.ceil((TITLE_VW + 90) / TCELL);
   /** @type {TitleScene} */
-  const S = { t: 0, vh, top, bot, seed, rnd, scroll: 0, shake: 0, spawn: 0, kills: 0, gold: 0, got: 0, runner: null, foes: [], shots: [],
+  const S = { t: 0, vh, top, bot, seed, rnd, scroll: 0, shake: 0, spawn: 0, kills: 0, gold: 0, got: 0, runner: null, runners: [], foes: [], shots: [],
     parts: [], coins: [], booms: [], zaps: [], flash: 0, rows, ncol, cells: new Uint8Array(rows * ncol), gen: -25, props: [],
     fire: [], dirty: [], dirtyAll: true, carved: 0, burnt: 0, swaps: 0, groundT: 0, flyT: 0, kinds: {}, webs: [], cut: 0, lineT: 0,
-    silk: [], nav: { F: null, fx: 0, fy: 0, t: -9 }, fireAcc: 0, fireN: 0, burning: new Set(), gotN: 0, pops: 0, lampsPopped: 0 };
+    silk: [], nav: { F: null, fx: 0, fy: 0, t: -9 }, fireAcc: 0, fireN: 0, burning: new Set(), gotN: 0, pops: 0, lampsPopped: 0, kitNames: new Set() };
   genTo(S);
-  const x = 60, y = titleSurf(S, x + PW / 2, (top + bot) / 2, 1) - PH;
-  S.runner = { x, y, vx: 0, vy: 0, face: 1, ang: 0, cd: 0.5, kit: 0, flame: 0, mode: 'run', modeT: 3, tx: x, ty: y, retarget: 0,
-    gait: 0, ground: true, swapT: 4, swap: 0 };
-  for (let i = 0; i < 3; i++) addFoe(S, 140 + rnd() * 70);
+  // four players, spread along the left side, each on its own clock (S.runner: player 1)
+  for (let i = 0; i < TITLE_RUNNERS; i++) {
+    const x = 18 + i * 30, y = titleSurf(S, x + PW / 2, (top + bot) / 2, 1) - PH;
+    S.runners.push({ x, y, vx: 0, vy: 0, face: 1, ang: 0, cd: 0.5 + i * 0.2, kit: titleKit(rnd), flame: 0, id: i, col: TITLE_COLS[i],
+      mode: 'run', modeT: 1.5 + i * 1.3 + rnd() * 2, tx: x, ty: y, retarget: 0, gait: i * 1.7, ground: true, swapT: 2 + i * 1.2 + rnd() * 2, swap: 0, wvx: 0, wvy: 0,
+      nav: { F: null, fx: 0, fy: 0, t: -9 } });
+  }
+  S.runner = S.runners[0];
+  for (let i = 0; i < 6; i++) addFoe(S, 130 + rnd() * 90);
   return S;
 }
 /** @param {TitleScene} S */
@@ -424,7 +484,7 @@ export function titleCarve(S, sx, y, r) {
 export function titleIgnite(S, sx, y, r, chance = 0.9) {
   const R = S.rnd, wx = sx + S.scroll;
   lightArea(S, wx, y, r, chance);
-  for (const p of S.props) if (!p.burn && !p.gone && FLAMMABLE[p.st] && R() < chance) {
+  for (const p of S.props) if (!p.burn && !p.gone && burns(p) && R() < chance) {
     if (p.arc) { const k = archK(p, wx, y, r); if (k >= 0) catchArch(S, p, k / (p.arc.length - 1)); }
     else if (wx > p.ox - 5 - r && wx < p.ox + 5 + r && y > p.y - r && y < p.y + p.len + r) catchPlant(S, p);
   }
@@ -467,12 +527,138 @@ function fireNear(S, wx, y, r) {
 // a plant catches: it burns up from its tip toward the rock (game/systems/fire.js catchPlant)
 /** @param {TitleScene} S @param {TProp} p */
 function catchPlant(S, p) { if (!p.burn && !p.gone) { p.burn = 1; S.burnt++; } }
-// an arched vine catches at fraction u; the fire runs out both ways from there (catchArch)
+// an arched vine catches at fraction u: it burns through there (owner, v0.0.165), and each side hangs
+// from its end, swinging down, burning up from the cut (cutArch)
 /** @param {TitleScene} S @param {TProp} p @param {number} u */
-function catchArch(S, p, u) { if (!p.burn && !p.gone) { p.burn = 1; p.u0 = p.u1 = u; S.burnt++; } }
-// a web line catches at fraction u; it burns out both ways from there (fu: the burnt span)
+function catchArch(S, p, u) { if (!p.burn && !p.gone) { S.burnt++; cutArch(S, p, u, true, true); } }
+// a web line catches at fraction u: the same, the two halves of silk hanging from its ends (cutWeb)
 /** @param {TitleScene} S @param {WebLine} L @param {number} u */
-function catchWeb(S, L, u) { if (!L.fu && !L.out) { L.fu = [u, u]; S.burnt++; } }
+function catchWeb(S, L, u) { if (!L.fu && !L.out) { S.burnt++; cutWeb(S, L, u, true); } }
+
+// ---- cut lines (owner, v0.0.165): a vine or web line held at both ends, cut, hangs from each end that still
+// holds, a rope of TITLE_LINKS links (world/sway.js tailStep: the game's hanging-vine tail) swinging down from
+// where it lay, burning up from the cut if it was fire; an end that doesn't hold falls
+// a hanging piece: anchored at (ax, ay) (world), first lying along pts (world, from the anchor out)
+/** @param {TitleScene} S @param {string} st @param {number} ax @param {number} ay @param {{ x: number, y: number }[]} pts @param {boolean} burn @param {boolean} holds */
+function hangPiece(S, st, ax, ay, pts, burn, holds) {
+  let len = 0;
+  /** @type {number[]} */
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) { len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); cum.push(len); }
+  if (len < 3) return null;
+  /** @type {number[]} */
+  const tl = [];
+  for (let i = 1, j = 1; i <= TITLE_LINKS; i++) {
+    const want = len * i / TITLE_LINKS;
+    while (j < pts.length - 1 && cum[j] < want) j++;
+    const a = pts[j - 1], b = pts[j], t = Math.max(0, Math.min(1, (want - cum[j - 1]) / ((cum[j] - cum[j - 1]) || 1)));
+    tl.push(a.x + (b.x - a.x) * t - ax, a.y + (b.y - a.y) * t - ay);
+  }
+  /** @type {TProp} */
+  const p = { k: 'climb', st, ox: ax, x: ax - S.scroll, y: ay, len, seed: S.rnd(), side: 1, burn: burn ? 1 : 0, ac: Math.floor(ax / TCELL), ar: Math.floor((ay - 2) / TCELL),
+    sw: 0, swv: 0, sj: 0, tl, tq: tl.slice(), links: TITLE_LINKS, drop: !holds, vy: 0 };
+  S.props.push(p);
+  return p;
+}
+// an arch cut at fraction u (0 or 1: its hold lost at that end); hold0 / hold1: whether each end still holds
+/** @param {TitleScene} S @param {TProp} p @param {number} u @param {boolean} burn @param {boolean} [hold0] @param {boolean} [hold1] */
+function cutArch(S, p, u, burn, hold0 = true, hold1 = true) {
+  if (p.gone || !p.arc) return;
+  p.gone = true;
+  const n = p.arc.length - 1, k = Math.max(0, Math.min(n, Math.round(u * n)));
+  const pt = (/** @type {number} */ i) => ({ x: p.ox + p.arc[i][0], y: p.y + p.arc[i][1] });
+  const left = [], right = [];
+  for (let i = 0; i <= k; i++) left.push(pt(i));
+  for (let i = n; i >= k; i--) right.push(pt(i));
+  if (left.length > 1) hangPiece(S, 'vine', left[0].x, left[0].y, left, burn, hold0);
+  if (right.length > 1) hangPiece(S, 'vine', right[0].x, right[0].y, right, burn, hold1);
+  // the strands hanging off it drop (one by the cut catches)
+  for (const o of S.props) if (o.host === p) {
+    o.host = null; o.on = null; o.drop = true; o.vy = 0;
+    if (burn && Math.abs((o.u || 0) - u) < 0.15) catchPlant(S, o);
+  }
+}
+// a web line cut at fraction u: the two halves hang from its ends where rock above or beside holds them
+// (one stuck to the floor falls away)
+/** @param {TitleScene} S @param {WebLine} L @param {number} u @param {boolean} burn */
+function cutWeb(S, L, u, burn) {
+  L.out = true; L.fu = null; S.cut++;
+  S.webs = S.webs.filter(o => o !== L);
+  const pts = [];
+  for (let i = 0; i <= 8; i++) pts.push(titleWebAt(L, u * i / 8));
+  const qts = [];
+  for (let i = 0; i <= 8; i++) qts.push(titleWebAt(L, 1 - (1 - u) * i / 8));
+  /** @param {number} x @param {number} y @returns {number[] | null} the holding cell */
+  const hold = (x, y) => {
+    for (const [dx, dy] of [[0, -1], [-1, 0], [1, 0], [-1, -1], [1, -1]]) {
+      const c = Math.floor((x + dx * 1.5) / TCELL), r = Math.floor((y + dy * 1.5) / TCELL);
+      if (SOLID[titleCell(S, c, r)]) return [c, r];
+    }
+    return null;
+  };
+  /** @param {number} x @param {number} y @param {Pt[]} P */
+  const piece = (x, y, P) => {
+    const h = hold(x, y), p = hangPiece(S, 'silk', x, y, P, burn, !!h);
+    if (p && h) { p.ac = h[0]; p.ar = h[1]; }
+  };
+  piece(L.a0x, L.a0y, pts);
+  piece(L.b0x, L.b0y, qts);
+}
+// can a title prop swing (a hanging vine, chain, root or strand; a cut piece)?
+/** @param {TProp} p */
+const canSwing = p => p.k === 'climb' && !p.arc && !!p.len;
+
+// The players' push on the vines and webs they pass (game/systems/props.js): a hanging vine swings the way
+// he went (DEV.vinePush), its tail trailing (tailStep); an arch or a web line gives where he goes through it
+// (bendPush) and springs back (bendStep). Cut pieces swing down under their own weight the same way
+/** @param {TitleScene} S @param {number} dt */
+function stepSway(S, dt) {
+  for (const p of S.props) {
+    if (p.gone || p.k !== 'climb') continue;
+    const x = p.ox - S.scroll;
+    if (x + (p.span || 0) < -30 || x > TITLE_VW + 30) continue;
+    /** @type {any} */
+    const pa = p;
+    if (p.arc) {
+      const n = p.arc.length - 1;
+      for (const r of S.runners) {
+        const cx = r.x + PW / 2 + S.scroll, cy = r.y + PH / 2;
+        if (cx < p.ox - 8 || cx > p.ox + (p.span || 0) + 8) continue;
+        let best = -1, bd = 7;
+        for (let k = 0; k <= n; k++) { const d = Math.hypot(p.ox + p.arc[k][0] - cx, p.y + p.arc[k][1] - cy); if (d < bd) { bd = d; best = k; } }
+        if (best >= 0) bendPush(pa, best / n, r.wvx, r.wvy, DEV.bendPush, dt);
+      }
+      if (bendAwake(pa)) bendStep(pa, 0, 0, DEV.bendK, DEV.bendDamp, DEV.bendMax, dt);
+      continue;
+    }
+    if (!canSwing(p) || p.drop || p.host) continue;
+    for (const r of S.runners) {
+      const ry = r.y + PH / 2 - p.y;
+      if (r.y + PH < p.y || r.y > p.y + p.len) continue;
+      const q = vinePt(pa, Math.max(0, Math.min(p.len, ry)));
+      if (Math.abs(x + q.x - (r.x + PW / 2)) < PW / 2 + 1) {
+        const k = Math.min(1, 10 * dt);
+        p.swv = (p.swv || 0) + (r.wvx * DEV.vinePush / Math.max(12, p.len) - (p.swv || 0)) * k;
+      }
+    }
+    if (p.sw || p.swv) swingStep(pa, p.len * 0.6, GRAVITY * DEV.vineGrav, DEV.vineDamp, DEV.vineMax, dt);
+    if (p.sw || p.swv || p.tl) tailStep(pa, p.links || DEV.vineLinks, GRAVITY, DEV.vineTailDamp, dt);
+    // a cut piece long enough to reach the ground rests on it: its end in the rock, it gathers up out of it
+    if (p.links && p.len > 3) { const q = vinePt(pa, p.len); if (titleSolid(S, x + q.x, p.y + q.y)) p.len = Math.max(3, p.len - 60 * dt); }
+  }
+  // web lines: the game's rest sag, pushed where a player goes through
+  for (const L of S.webs) {
+    if (Math.max(L.a0x, L.b0x) < S.scroll - 20 || Math.min(L.a0x, L.b0x) > S.scroll + TITLE_VW + 20) continue;
+    for (const r of S.runners) {
+      const cx = r.x + PW / 2 + S.scroll, cy = r.y + PH / 2;
+      if (cx < Math.min(L.a0x, L.b0x) - 6 || cx > Math.max(L.a0x, L.b0x) + 6) continue;
+      const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, u = Math.max(0, Math.min(1, ((cx - L.a0x) * vx + (cy - L.a0y) * vy) / (vx * vx + vy * vy || 1)));
+      const w = titleWebAt(L, u);
+      if (Math.hypot(w.x - cx, w.y - cy) < 6) bendPush(L, u, r.wvx, r.wvy, DEV.bendPush, dt);
+    }
+    if (bendAwake(L)) bendStep(L, 0, 0, DEV.bendK, DEV.bendDamp, DEV.bendMax, dt);
+  }
+}
 
 /** @param {TitleScene} S @param {Enemy} f */
 function killFoe(S, f) {
@@ -530,8 +716,8 @@ export function titleStep(S, dt) {
   S.shake = Math.max(0, S.shake - dt * 18);
   S.flash = Math.max(0, S.flash - dt * 1.6);
   S.spawn -= dt;
-  if (S.spawn <= 0 && S.foes.length < TITLE_FOES - 5) { addFoe(S); S.spawn = 0.8 + R() * 1.2; }
-  stepRunner(S, dt);
+  if (S.spawn <= 0 && S.foes.length < TITLE_FOES - 10) { addFoe(S); S.spawn = 0.4 + R() * 0.6; }
+  for (const r of S.runners) stepRunner(S, r, dt);
   stepFoes(S, dt);
   stepShots(S, dt);
   stepFire(S, dt);
@@ -586,10 +772,21 @@ export function titleStep(S, dt) {
   S.booms = S.booms.filter(b => b.t < b.max);
   for (const z of S.zaps) z.t -= dt;
   S.zaps = S.zaps.filter(z => z.t > 0);
+  stepSway(S, dt);
   // plants whose rock is gone fall away (and an arch's strands with it)
   for (const p of S.props) {
     p.x = p.ox - S.scroll;
-    if (p.burn || p.gone) continue;
+    if (p.gone) continue;
+    if (p.drop) {                       // falling: down until it hits rock (a burning one lights it) or leaves
+      p.vy = (p.vy || 0) + GRAVITY * 0.5 * dt; p.y += p.vy * dt;
+      if (p.y > S.vh) p.gone = true;
+      else if (titleSolid(S, p.x, p.y + 1)) {
+        p.gone = true; burst(S, p.x, p.y, 3, p.st === 'silk' ? '#eef0f6' : '#5a8a3a', 40, 'chunk', 0.6);
+        if (p.burn) lightArea(S, p.ox, p.y, 6, 0.8);
+      }
+      continue;
+    }
+    if (p.burn && p.k !== 'climb') continue;
     if (p.k === 'lamp') {
       if (p.fall) {
         p.vy = (p.vy || 0) + GRAVITY * 0.5 * dt; p.y += p.vy * dt;
@@ -597,17 +794,36 @@ export function titleStep(S, dt) {
       } else if (p.x > -10 && p.x < TITLE_VW + 10 && !HOLDS[titleCell(S, p.ac, p.ar)]) { p.fall = true; p.vy = 0; }
       continue;
     }
-    if ((p.host && p.host.gone && !p.host.burn) || (p.x > -10 && p.x < TITLE_VW + 10 && !SOLID[titleCell(S, p.ac, p.ar)])) {
-      p.gone = true; burst(S, p.x, p.y, 3, '#5a8a3a', 40, 'chunk', 0.7);
+    if (p.arc) {                        // an arch whose end has lost its rock: cut there, the rest hangs from the other end
+      const n = p.arc.length - 1, bc = Math.floor((p.ox + p.arc[n][0]) / TCELL), br = Math.floor((p.y + p.arc[n][1] - 2) / TCELL);
+      // (an end only once its rock is made: titleCell is air past the columns made so far)
+      const ok0 = p.ac >= S.gen || !!SOLID[titleCell(S, p.ac, p.ar)], ok1 = bc >= S.gen || !!SOLID[titleCell(S, bc, br)];
+      if (p.x + (p.span || 0) > -10 && p.x < TITLE_VW + 10 && (!ok0 || !ok1)) cutArch(S, p, ok0 ? 1 : 0, false, ok0, ok1);
+      continue;
+    }
+    if (p.host && p.host.gone) { p.host = null; p.on = null; p.drop = true; p.vy = 0; continue; }
+    if (!p.host && p.ac != null && p.x > -10 && p.x < TITLE_VW + 10 && !SOLID[titleCell(S, p.ac, p.ar)]) {
+      if (canSwing(p)) { p.drop = true; p.vy = 0; }
+      else { p.gone = true; burst(S, p.x, p.y, 3, '#5a8a3a', 40, 'chunk', 0.7); }
     }
   }
   S.props = S.props.filter(p => !p.gone && p.ox + (p.span || 0) - S.scroll > -60);
   S.webs = S.webs.filter(L => Math.max(L.a0x, L.b0x) - S.scroll > -40);
 }
 
-/** @param {TitleScene} S @param {number} dt */
-function stepRunner(S, dt) {
-  const r = S.runner, R = S.rnd, cx = () => r.x + PW / 2;
+/** @param {TitleScene} S @param {TRunner} r @param {number} dt */
+function stepRunner(S, r, dt) {
+  const x0 = r.x, y0 = r.y;
+  stepRunnerMove(S, r, dt);
+  // how fast he's going through the world (it scrolls under him): what pushes the vines and webs he passes
+  const k = Math.min(1, 12 * dt);
+  r.wvx += (Math.max(-250, Math.min(250, (r.x - x0) / Math.max(dt, 1e-3) + SCROLL)) - r.wvx) * k;
+  r.wvy += (Math.max(-250, Math.min(250, (r.y - y0) / Math.max(dt, 1e-3))) - r.wvy) * k;
+  stepRunnerGun(S, r, dt);
+}
+/** @param {TitleScene} S @param {TRunner} r @param {number} dt */
+function stepRunnerMove(S, r, dt) {
+  const R = S.rnd, cx = () => r.x + PW / 2;
   // first, a safety net (owner saw him stuck under the floor, shooting from inside it): his middle in rock, or
   // his feet well below the cave's floor line (down a blast hole that closed over him), and he's
   // popped back up onto the first surface under the roof
@@ -659,7 +875,16 @@ function stepRunner(S, dt) {
     if (land && r.modeT < -3) { r.mode = 'run'; r.modeT = 2.5 + R() * 2.5; r.y = g2 - PH; }
     r.ground = r.mode === 'run';
   }
+  // the players keep out of each other's way: one too close alongside, and they ease apart
+  for (const o of S.runners) if (o !== r && Math.abs(o.x - r.x) < 16 && Math.abs(o.y - r.y) < PH) {
+    const push = (16 - Math.abs(o.x - r.x)) * 3 * dt * (r.x < o.x || (r.x === o.x && r.id < o.id) ? -1 : 1);
+    r.x += push; if (r.mode === 'run') r.tx += push;
+  }
   r.x = Math.max(8, Math.min(TITLE_VW * 0.62, r.x));
+}
+/** @param {TitleScene} S @param {TRunner} r @param {number} dt */
+function stepRunnerGun(S, r, dt) {
+  const R = S.rnd, cx = () => r.x + PW / 2;
   // aim at the nearest creature within TITLE_AIM, well on screen (owner: they come into view before he blasts them)
   let best = null, bd = TITLE_AIM;
   for (const f of S.foes) { const fx = f.x - S.scroll, d = Math.hypot(fx - r.x, f.ty - r.y); if (f.hp > 0 && fx < TITLE_VW - 24 && fx > cx() - 30 && d < bd) { bd = d; best = f; } }
@@ -673,32 +898,35 @@ function stepRunner(S, dt) {
   // every few seconds: another gun
   r.swapT -= dt; r.swap = Math.max(0, r.swap - dt);
   if (r.swapT <= 0) {
-    r.kit = (r.kit + 1 + Math.floor(R() * (TITLE_KITS.length - 1))) % TITLE_KITS.length;
+    r.kit = titleKit(R); S.kitNames.add(r.kit.name);
     r.swapT = 3.5 + R() * 2.5; r.swap = 0.3; r.cd = 0.35; S.swaps++;
   }
   r.cd -= dt;
   if (!best || r.cd > 0 || r.swap > 0) return;
-  const K = TITLE_KITS[r.kit], M = MODS[K.mod], mz = gunMuzzle(gx0 + Math.cos(r.ang) * 2.5, gy0, r.ang, GUN_HELD, K.art), gx = mz.x, gy = mz.y;   // out of its barrel
+  const K = r.kit, mz = gunMuzzle(gx0 + Math.cos(r.ang) * 2.5, gy0, r.ang, GUN_HELD, K.art), gx = mz.x, gy = mz.y;   // out of its barrel
   r.cd = K.cd * (0.85 + R() * 0.3);
-  if (K.mod === 'zap') {
-    // lightning: an arc into the creature, and one throwing off into the rock below it
-    const bx = best.x - S.scroll, by = best.ty;
-    zapArc(S, gx, gy, bx, by, M.col);
-    const fl = titleSurf(S, bx, by + best.r, 1);
-    if (fl - by < 50 && R() < 0.6) { zapArc(S, bx, by, bx + (R() - 0.5) * 16, fl + 1, M.col); titleCarve(S, bx, fl + 1, 2.5); titleIgnite(S, bx, fl + 1, 4); }
-    hitFoe(S, best, 3, M.col);
+  const n = Math.min(12, K.n);
+  if (K.shot === 'zap') {
+    // lightning: an arc into the creature (more of them: the next nearest), and one throwing off into the rock below it
+    const near = S.foes.filter(f => f.hp > 0 && f.x - S.scroll < TITLE_VW).sort((a, b) => Math.hypot(a.x - best.x, a.ty - best.ty) - Math.hypot(b.x - best.x, b.ty - best.ty));
+    for (const f of near.slice(0, Math.min(4, n))) {
+      const bx = f.x - S.scroll, by = f.ty;
+      zapArc(S, gx, gy, bx, by, K.col);
+      const fl = titleSurf(S, bx, by + f.r, 1);
+      if (fl - by < 50 && R() < 0.6) { zapArc(S, bx, by, bx + (R() - 0.5) * 16, fl + 1, K.col); titleCarve(S, bx, fl + 1, 2.5); titleIgnite(S, bx, fl + 1, 4); }
+      hitFoe(S, f, 3 * K.dmg / 2.2, K.col);
+    }
     return;
   }
-  const n = M.count || 1;
   for (let i = 0; i < n; i++) {
-    const spread = (M.spread || 0) * Math.PI / 180;
+    const spread = K.spread * Math.PI / 180;
     const a = r.ang + (n > 1 ? (i / (n - 1) - 0.5) * spread * 2 : (R() - 0.5) * spread);
-    const v = (M.speed || 300) * SP * (0.9 + R() * 0.2);
-    S.shots.push({ x: gx, y: gy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, size: M.size || 2, col: M.col, look: M.look || '', life: (M.life || 1) * 1.6,
-      foe: false, spin: R() * 6, grav: (M.grav || 0) * SP, drag: M.drag || 0, explode: M.explode || 0, pit: M.pit || 0, fire: M.fire || 0,
-      bounce: M.bounce || 0, bounceE: M.bounceE || 0.5, pierce: M.pierce || 0, dmg: M.dmg || 1 });
+    const v = K.speed * SP * (0.9 + R() * 0.2);
+    S.shots.push({ x: gx, y: gy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, size: K.size, col: K.col, look: K.look, life: K.life * 1.6,
+      foe: false, spin: R() * 6, grav: K.grav * SP, drag: K.drag, explode: K.explode, pit: K.pit, fire: K.fire,
+      bounce: K.bounce, bounceE: K.bounceE, pierce: K.pierce, dmg: K.dmg, homing: K.homing, accel: K.accel, vmax: K.vmax * SP, chain: K.chain });
   }
-  burst(S, gx, gy, 3, M.col, 40, 'spark', 0.12);
+  burst(S, gx, gy, 3, K.col, 40, 'spark', 0.12);
 }
 
 // a lightning arc from one point to another (drawn with the game's drawBolt)
@@ -713,13 +941,13 @@ function zapArc(S, x0, y0, x1, y1, col) {
 // blasts and fire cut the web lines they touch
 /** @param {TitleScene} S @param {number} wx @param {number} y @param {number} r */
 function cutWebs(S, wx, y, r) {
-  const before = S.webs.length;
-  S.webs = S.webs.filter(L => {
+  let n = 0;
+  for (const L of S.webs.slice()) {
     const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, ll = vx * vx + vy * vy || 1;
     const u = Math.max(0, Math.min(1, ((wx - L.a0x) * vx + (y - L.a0y) * vy) / ll)), p = titleWebAt(L, u);
-    return Math.hypot(p.x - wx, p.y - y) > r + 1.5;
-  });
-  if (S.webs.length < before) { S.cut += before - S.webs.length; burst(S, wx - S.scroll, y, 3, '#eef0f6', 40, 'spark', 0.3); }
+    if (Math.hypot(p.x - wx, p.y - y) <= r + 1.5) { cutWeb(S, L, u, false); n++; }
+  }
+  if (n) burst(S, wx - S.scroll, y, 3, '#eef0f6', 40, 'spark', 0.3);
 }
 
 // The creatures' frame, as the game's (game/systems/enemies.js stepEnemies and the acts in
@@ -731,10 +959,10 @@ function cutWebs(S, wx, y, r) {
 // bites. He isn't hurt on the title. Then fire on them (burning hurts) and the ones left behind go
 /** @param {TitleScene} S @param {number} dt */
 function stepFoes(S, dt) {
-  const R = S.rnd, ru = S.runner, CS = csolid(S);
-  const pcx = S.scroll + ru.x + PW / 2, pcy = ru.y + PH / 2, goal = { x: pcx, y: pcy }, sees = 1 / DEV.zoom;
+  const R = S.rnd, CS = csolid(S), sees = 1 / DEV.zoom;
   for (const e of S.foes) {
-    const k = e.k;
+    const k = e.k, ru = nearestRunner(S, e.x - S.scroll, e.ty);
+    const pcx = S.scroll + ru.x + PW / 2, pcy = ru.y + PH / 2, goal = { x: pcx, y: pcy };
     e.flash -= dt; e.cd -= dt; e.touch -= dt;
     const dx = pcx - e.x, dy = pcy - e.ty, dist = Math.hypot(dx, dy) || 1;
     e.lx = dx / dist; e.ly = dy / dist;
@@ -745,7 +973,7 @@ function stepFoes(S, dt) {
     const hunting = !!e.aggro;
     if (k.act === 'jelly') jellyAct(S, e, hunting, goal, sees, CS, dt);
     else if (k.act === 'spider') spiderAct(S, e, hunting, goal, sees, dist, dx, dy, CS, dt);
-    else if (k.act === 'rat') ratAct(S, e, hunting, CS, dt);
+    else if (k.act === 'rat') ratAct(S, e, ru, hunting, CS, dt);
     e.ty = e.y;
     // a bite when it reaches him (he takes no harm here: a puff where it lands)
     if (hunting && dist < e.r + 14 && e.touch <= 0) { e.touch = kr(k.kp + 'BiteCd', R); burst(S, ru.x + PW / 2, ru.y + PH / 2, 4, '#ff6a5a', 50, 'spark', 0.2); }
@@ -765,7 +993,7 @@ function stepFoes(S, dt) {
     const n = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
     for (let s = 0; s < n && b.life > 0; s++) {
       b.x += b.vx * dt / n; b.y += b.vy * dt / n;
-      if (CS(Math.floor(b.x / CELL), Math.floor(b.y / CELL)) || (Math.abs(b.x - pcx) < PW / 2 + 3 && Math.abs(b.y - pcy) < PH / 2 + 3)) b.life = 0;
+      if (CS(Math.floor(b.x / CELL), Math.floor(b.y / CELL)) || S.runners.some(q => Math.abs(b.x - S.scroll - q.x - PW / 2) < PW / 2 + 3 && Math.abs(b.y - q.y - PH / 2) < PH / 2 + 3)) b.life = 0;
     }
   }
   S.silk = S.silk.filter(b => b.life > 0);
@@ -809,9 +1037,9 @@ function spiderAct(S, e, hunting, goal, sees, dist, dx, dy, CS, dt) {
   }
 }
 // a rat (game/creatures/rat.js ratFrame, without a nest or gold to carry home)
-/** @param {TitleScene} S @param {Enemy} e @param {boolean} hunting @param {(cx: number, cy: number) => number} CS @param {number} dt */
-function ratAct(S, e, hunting, CS, dt) {
-  const R = S.rnd, ru = S.runner;
+/** @param {TitleScene} S @param {Enemy} e @param {TRunner} ru the player it's after @param {boolean} hunting @param {(cx: number, cy: number) => number} CS @param {number} dt */
+function ratAct(S, e, ru, hunting, CS, dt) {
+  const R = S.rnd;
   let goal, jump = true;
   if (hunting) goal = { x: S.scroll + ru.x + PW / 2, y: ru.y + PH - 2 };
   else {
@@ -824,21 +1052,28 @@ function ratAct(S, e, hunting, CS, dt) {
   if (!e.arrive || R() < dt) e.arrive = kr('raArrive', R);
   let way = goal, follow = false, air = false;
   if (hunting && e.ra) {
-    const F = navYou(S, goal, CS), w = F && navWay(F, e.x, e.y, 1);
+    const F = navYou(S, ru, goal, CS), w = F && navWay(F, e.x, e.y, 1);
     if (w) { way = w.dist > 2 ? w : goal; follow = true; air = !!w.air && w.dist > 2; }
   }
   ratStep(e, { solidCell: CS, rnd: R, goal: way, hunting, home: false, path: undefined, follow, air, onWeb: onWeb(S),
     speedMul: 1, arrive: way === goal && hunting ? e.arrive : 3, jump }, dt);
 }
-// the way to him, as the rats' distance field (world/nav.js navField), made again when he's moved
-// on or every 0.4 s (game/creatures/rat.js navFor)
-/** @param {TitleScene} S @param {Pt} goal @param {(cx: number, cy: number) => number} CS */
-function navYou(S, goal, CS) {
-  const o = S.nav;
+// the way to a player, as the rats' distance field (world/nav.js navField), made again when he's moved
+// on or every 0.4 s (game/creatures/rat.js navFor); one per player
+/** @param {TitleScene} S @param {TRunner} ru @param {Pt} goal @param {(cx: number, cy: number) => number} CS */
+function navYou(S, ru, goal, CS) {
+  const o = ru.nav;
   if (!o.F || Math.hypot(goal.x - o.fx, goal.y - o.fy) > 12 || S.t - o.t > 0.4) {
     o.F = navField(CS, goal.x, goal.y, 56, onWeb(S)); o.fx = goal.x; o.fy = goal.y; o.t = S.t;
   }
   return o.F;
+}
+// the player nearest a screen point
+/** @param {TitleScene} S @param {number} x @param {number} y */
+function nearestRunner(S, x, y) {
+  let best = S.runners[0], bd = Infinity;
+  for (const r of S.runners) { const d = Math.hypot(r.x + PW / 2 - x, r.y + PH / 2 - y); if (d < bd) { bd = d; best = r; } }
+  return best;
 }
 // a web line under a rat's feet counts as ground (game/creatures/rat.js onWebIn)
 /** @param {TitleScene} S @returns {(x: number, y: number) => boolean} */
@@ -852,9 +1087,10 @@ const onWeb = S => (x, y) => S.webs.some(L => {
 // to him, straight through rock, faster the nearer, and is his at 12. Left behind, it goes
 /** @param {TitleScene} S @param {number} dt */
 function stepGold(S, dt) {
-  const ru = S.runner, pcx = S.scroll + ru.x + PW / 2, pcy = ru.y + PH / 2, solid = wsolid(S);
+  const solid = wsolid(S);
   for (let i = S.coins.length - 1; i >= 0; i--) {
-    const g = S.coins[i], dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;
+    const g = S.coins[i], ru = nearestRunner(S, g.x - S.scroll, g.y), pcx = S.scroll + ru.x + PW / 2, pcy = ru.y + PH / 2;
+    const dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;
     if (g.nopull > 0) g.nopull -= dt;
     g.fly = false;
     if (d < COIN_PULL && !(g.nopull > 0)) {
@@ -874,14 +1110,24 @@ function stepGold(S, dt) {
 
 /** @param {TitleScene} S @param {number} dt */
 function stepShots(S, dt) {
-  const ru = S.runner;
   for (const s of S.shots) {
+    // homing (pollen, Homing, Seeker): turns onto the nearest creature; accelerating ones speed up to their top speed
+    if (s.homing && !s.foe) {
+      let tg = null, td = 90;
+      for (const f of S.foes) { const d = Math.hypot(f.x - S.scroll - s.x, f.ty - s.y); if (f.hp > 0 && d < td) { td = d; tg = f; } }
+      if (tg) {
+        const sp = Math.hypot(s.vx, s.vy) || 1, want = Math.atan2(tg.ty - s.y, tg.x - S.scroll - s.x), a = Math.atan2(s.vy, s.vx);
+        const da = Math.atan2(Math.sin(want - a), Math.cos(want - a)), na = a + Math.max(-1, Math.min(1, da)) * Math.min(1, s.homing * dt);
+        s.vx = Math.cos(na) * sp; s.vy = Math.sin(na) * sp;
+      }
+    }
+    if (s.accel) { const sp = Math.hypot(s.vx, s.vy) || 1, k = Math.min(1 + s.accel * dt, (s.vmax || 600) / sp); if (k > 1) { s.vx *= k; s.vy *= k; } }
     s.vy += s.grav * dt;
     if (s.drag) { const k = Math.exp(-s.drag * dt); s.vx *= k; s.vy *= k; }
     s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; s.spin += dt * 10;
     if (s.look === 'flame' && S.rnd() < dt * 20) burst(S, s.x, s.y, 1, '#ff7a1a', 15, 'fire', 0.3);
     if (s.foe) {
-      if (Math.abs(ru.x + PW / 2 - s.x) < 7 && Math.abs(ru.y + PH / 2 - s.y) < 11) { s.life = 0; burst(S, s.x, s.y, 6, s.col, 60, 'spark', 0.25); }
+      if (S.runners.some(ru => Math.abs(ru.x + PW / 2 - s.x) < 7 && Math.abs(ru.y + PH / 2 - s.y) < 11)) { s.life = 0; burst(S, s.x, s.y, 6, s.col, 60, 'spark', 0.25); }
       if (titleSolid(S, s.x, s.y)) { s.life = 0; burst(S, s.x, s.y, 4, s.col, 40, 'spark', 0.3); }
       continue;
     }
@@ -894,6 +1140,16 @@ function stepShots(S, dt) {
       if (f.hp > 0 && Math.hypot(f.x - S.scroll - s.x, f.ty - s.y) < f.r + s.size) {
         hitFoe(S, f, s.dmg * 1.5, s.col);
         if (s.fire) f.burn = Math.max(f.burn || 0, kr('fireBurn', S.rnd));
+        // a chain bolt leaps on to the next creature
+        if (s.chain && !s.explode) {
+          let nx = null, nd = 80;
+          for (const g of S.foes) { const d = Math.hypot(g.x - S.scroll - s.x, g.ty - s.y); if (g !== f && g.hp > 0 && d < nd) { nd = d; nx = g; } }
+          if (nx) {
+            s.chain--; const sp = Math.hypot(s.vx, s.vy) || 1, a = Math.atan2(nx.ty - s.y, nx.x - S.scroll - s.x);
+            s.vx = Math.cos(a) * sp; s.vy = Math.sin(a) * sp; s.x += s.vx * dt * 2; s.y += s.vy * dt * 2;
+            zapArc(S, f.x - S.scroll, f.ty, nx.x - S.scroll, nx.ty, s.col); break;
+          }
+        }
         if (s.explode || s.pierce <= 0) { shotEnd(S, s); break; }
         s.pierce--;
       }
@@ -926,7 +1182,7 @@ function stepFire(S, dt) {
   let ticks = 0;
   while (S.fireAcc >= FIRE_TICK) {
     S.fireAcc -= FIRE_TICK; ticks++; S.fireN++;
-    const sp = kr('fireSpread', R), keep = [], n0 = S.fire.length;
+    const sp = kr('fireSpread', R) * TITLE_FIRESPEED, keep = [], n0 = S.fire.length;
     for (let k = 0; k < n0; k++) {
       const f = S.fire[k];
       if (f.c < S.gen - S.ncol || !FUEL[S.cells[ci(S, f.c, f.r)]]) { S.burning.delete(f.c * S.rows + f.r); continue; }   // carved away, or scrolled off
@@ -949,7 +1205,7 @@ function stepFire(S, dt) {
     if (S.fire.length) {
       let q = 0;
       for (const p of S.props) {
-        if (p.burn || p.gone || !FLAMMABLE[p.st]) continue;
+        if (p.burn || p.gone || !burns(p) || R() > TITLE_FIRESPEED) continue;
         if (p.arc) {
           const n = p.arc.length - 1;
           for (let k = 0; k <= n; k += 2) if (fireNear(S, p.ox + p.arc[k][0], p.y + p.arc[k][1], 2)) { catchArch(S, p, k / n); break; }
@@ -957,7 +1213,7 @@ function stepFire(S, dt) {
           for (let yy = p.y + 2; yy < p.y + p.len; yy += 8) if (fireNear(S, p.ox, yy, 2)) { catchPlant(S, p); break; }
         }
       }
-      for (const L of S.webs) if (!L.fu) for (let u = 0; u <= 1; u += 0.25) {
+      for (const L of S.webs.slice()) if (!L.fu && R() < TITLE_FIRESPEED) for (let u = 0; u <= 1; u += 0.25) {
         const w = titleWebAt(L, u);
         if (fireNear(S, w.x, w.y, 2)) { catchWeb(S, L, u); break; }
       }
@@ -974,48 +1230,29 @@ function stepFire(S, dt) {
     }
   }
   // burning plants: from the tip toward the rock
-  for (const p of S.props) {
+  for (const p of S.props.slice()) {
     if (!p.burn || p.gone) continue;
-    if (p.arc) {
-      const du = kr('fireArch', R) * dt / Math.max(1, p.alen || 1), n = p.arc.length - 1;
-      p.u0 = Math.max(0, (p.u0 || 0) - du); p.u1 = Math.min(1, (p.u1 || 0) + du);
-      for (const u of [p.u0, p.u1]) {
-        const a = p.arc[Math.round(u * n)], x = p.ox + a[0], y = p.y + a[1];
-        if (R() < dt * 30) flameAt(S, x - S.scroll + (R() - 0.5) * 4, y);
-        if (R() < dt * 4) fireSmoke(S, x - S.scroll, y);
-        if (ticks) { lightArea(S, x, y, 5, 0.3); spreadFrom(S, x, y); }
-      }
-      if (ticks) for (const o of S.props) if (o.host === p && !o.burn && !o.gone && (o.u || 0) >= p.u0 && (o.u || 0) <= p.u1) catchPlant(S, o);
-      if (p.u0 <= 0 && p.u1 >= 1) p.gone = true;
-      continue;
-    }
-    p.len -= kr('firePlant', R) * dt;
-    const ty = p.y + Math.max(0, p.len);
-    if (R() < dt * 30) flameAt(S, p.x + (R() - 0.5) * 4, ty);
-    if (R() < dt * 4) fireSmoke(S, p.x, ty);
+    if (p.arc) { cutArch(S, p, ((p.u0 || 0.5) + (p.u1 || 0.5)) / 2, true); continue; }   // lit by hand: cut there
+    // up from its tip (silk TITLE_WEBFIRE × faster), at TITLE_FIRESPEED × the game's; a swinging one's tip where it hangs
+    p.len -= kr('firePlant', R) * TITLE_FIRESPEED * (p.st === 'silk' ? TITLE_WEBFIRE : 1) * dt;
+    /** @type {any} */
+    const pa = p;
+    const tip = p.sw || p.tl ? vinePt(pa, Math.max(0, p.len)) : { x: 0, y: Math.max(0, p.len) }, tx = p.ox + tip.x, ty = p.y + tip.y;
+    if (R() < dt * 30) flameAt(S, tx - S.scroll + (R() - 0.5) * 4, ty);
+    if (R() < dt * 4) fireSmoke(S, tx - S.scroll, ty);
     if (ticks) {
-      lightArea(S, p.ox, ty, 5, 0.3);
-      spreadFrom(S, p.ox, ty);
-      for (const o of S.props) if (!o.burn && !o.gone && !o.arc && FLAMMABLE[o.st] && Math.abs(o.ox - p.ox) < 10 && ty > o.y - 4 && ty < o.y + o.len + 4 && R() < 0.25) catchPlant(S, o);
+      lightArea(S, tx, ty, 5, 0.3 * TITLE_FIRESPEED);
+      spreadFrom(S, tx, ty);
+      for (const o of S.props) if (!o.burn && !o.gone && !o.arc && burns(o) && Math.abs(o.ox - tx) < 10 && ty > o.y - 4 && ty < o.y + o.len + 4 && R() < 0.25 * TITLE_FIRESPEED) catchPlant(S, o);
     }
-    if (p.len < 4) { p.gone = true; lightArea(S, p.ox, p.y, 6, 1); }
+    if (p.len < 3) { p.gone = true; lightArea(S, tx, ty, 6, 0.5); }
   }
-  // burning web lines: out both ways from where they caught, faster than a vine (silk flares), the
-  // fronts lighting what they nearly touch; all burnt, the line's gone
-  let gone = 0;
-  for (const L of S.webs) {
-    if (!L.fu) continue;
-    const du = kr('fireArch', R) * TITLE_WEBFIRE * dt / Math.max(1, Math.hypot(L.b0x - L.a0x, L.b0y - L.a0y));
-    L.fu[0] = Math.max(0, L.fu[0] - du); L.fu[1] = Math.min(1, L.fu[1] + du);
-    for (const u of L.fu) {
-      const w = titleWebAt(L, u);
-      if (R() < dt * 20) flameAt(S, w.x - S.scroll + (R() - 0.5) * 2, w.y);
-      if (ticks) spreadFrom(S, w.x, w.y);
-    }
-    if (L.fu[0] <= 0 && L.fu[1] >= 1) { L.fu = null; L.out = true; gone++; }
-  }
-  if (gone) { S.webs = S.webs.filter(L => !L.out); S.cut += gone; }
+  // a web line lit by hand (fu): it's cut there
+  for (const L of S.webs.slice()) if (L.fu) cutWeb(S, L, (L.fu[0] + L.fu[1]) / 2, true);
 }
+// what the title's fire burns: the game's flammable plants, and cut silk
+/** @param {TProp} p */
+const burns = p => !!FLAMMABLE[p.st] || p.st === 'silk';
 
 // Fire jumps across (owner, v0.0.164): a flame at world point (wx, y) lights any vine, arch or web line
 // within TITLE_JUMP of it, at TITLE_JUMPP a fire tick
@@ -1023,11 +1260,11 @@ function stepFire(S, dt) {
 function spreadFrom(S, wx, y) {
   const R = S.rnd, J = TITLE_JUMP;
   for (const p of S.props) {
-    if (p.burn || p.gone || !FLAMMABLE[p.st] || R() > TITLE_JUMPP) continue;
+    if (p.burn || p.gone || !burns(p) || R() > TITLE_JUMPP) continue;
     if (p.arc) { const k = archK(p, wx, y, J - 3); if (k >= 0) catchArch(S, p, k / (p.arc.length - 1)); }
     else if (Math.abs(p.ox - wx) < J + 1 && y > p.y - J && y < p.y + p.len + J) catchPlant(S, p);
   }
-  for (const L of S.webs) {
+  for (const L of S.webs.slice()) {
     if (L.fu || R() > TITLE_JUMPP) continue;
     for (let i = 0; i <= 8; i++) { const w = titleWebAt(L, i / 8); if (Math.hypot(w.x - wx, w.y - y) < J) { catchWeb(S, L, i / 8); break; } }
   }
