@@ -30,6 +30,7 @@ check('summary: floor, gold, guns, mods', s && s.floor === 4 && s.gold === 1234 
 const S = titleScene(470, 7, 139, 295);
 let maxFoes = 0, maxParts = 0, maxGold = 0, maxFire = 0, onFloor = 0, feetOff = 0, brains = 0, noBrain = 0, aggroFar = 0;
 const zones = new Set(), kits = new Set(), seenKinds = new Set(), born = new Set(), badHome = [], spun = new Set();
+let overlap = 0, tight = 0, pairs = 0;
 let jellyIn = 0, jellyWorks = 0, pulledFar = 0, pulled = 0, oddNug = 0, nugs = 0;
 const flew = new Set();
 for (let i = 0; i < 60 * 40; i++) {
@@ -40,6 +41,13 @@ for (let i = 0; i < 60 * 40; i++) {
   // the player nearest a world point (each creature hunts, each nugget flies to, its nearest)
   const near = (x, y) => S.runners.reduce((b, q) => (Math.hypot(S.scroll + q.x + 6 - x, q.y + 11 - y) < Math.hypot(S.scroll + b.x + 6 - x, b.y + 11 - y) ? q : b));
   const at = (x, y) => { const q = near(x, y); return [S.scroll + q.x + 6, q.y + 11]; };
+  // the players never overlap, and seldom stand tight together (owner, v0.0.167)
+  for (let a = 0; a < 4; a++) for (let b = a + 1; b < 4; b++) {
+    const A = S.runners[a], B = S.runners[b], dx = Math.abs(A.x - B.x), dy = Math.abs(A.y - B.y);
+    pairs++;
+    if (dx < 12 - 0.5 && dy < 22 - 0.5) overlap++;
+    if (Math.hypot(dx, dy * 0.6) < 14) tight++;
+  }
   zones.add(titleZone(S.scroll + r.x)); for (const q of S.runners) kits.add(q.kit.name);
   for (const f of S.foes) {
     const id = f.k.id;
@@ -79,6 +87,8 @@ check('they run on the game\'s own brains (jellyStep, spiderStep, ratStep)', bra
 check('aggro as the game: none hunts him from past its reach × loseAggro', aggroFar === 0, aggroFar);
 check('spiders spin their own lines', spun.size > 0, spun.size);
 check('within its caps', maxFoes <= TITLE_FOES && maxParts <= TITLE_PARTS && maxGold <= TITLE_GOLD && maxFire <= TITLE_FIRE, { maxFoes, maxParts, maxGold, maxFire });
+check('the players never overlap (they collide)', overlap / pairs < 0.003, { overlap, pairs });
+check('…and keep a little apart (seldom tight together)', tight / pairs < 0.03, { tight, pairs });
 check('they run on the ground and they fly', S.groundT > 6 && S.flyT > 6, { ground: S.groundT, fly: S.flyT });
 check('now and then they saw tunnels through the rock', S.digs >= 3 && S.digT > 2, { digs: S.digs, digT: S.digT });
 {

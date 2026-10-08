@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.167 — the title's players collide and keep a little apart
+Not yet released (branch `title-sep`, waiting on the owner's OK).
+- `separate` (after every player's step): within `TITLE_SEP` (24, height counted at 0.6) they're eased apart (sideways
+  on the ground, any way in the air), and two bodies that overlap are pushed out along the shallower way (sideways
+  for one on the ground), half each, or all on the one with room; never into rock. Replaces the old sideways nudge.
+- Suite `slots` (55): no overlaps, seldom tight together.
+
 ## v0.0.166 — title players saw through rock (no teleports), each on its own clock; burning creatures and vines in the fire's crackle (title and game)
 Released 2026-10-08 (the owner asked to see it in the app; a minor update).
 - **Title movement** (`stepRunnerMove`: `runStep`, `flyStep`, `digStep`): running and flying each last a random

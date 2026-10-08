@@ -10319,6 +10319,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "borer"
   ];
   var TITLE_RUNNERS = 4;
+  var TITLE_SEP = 24;
   var TITLE_COLS = ["#3fb8ff", "#ff4f5e", "#5ee05a", "#ffc93a"];
   var TITLE_KINDS = [...ROSTERS[0], "rotta"];
   var TITLE_HOME = {
@@ -11090,7 +11091,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       addFoe(S2);
       S2.spawn = 0.4 + R() * 0.6;
     }
-    if (!S2.still) for (const r of S2.runners) stepRunner(S2, r, dt);
+    if (!S2.still) {
+      for (const r of S2.runners) stepRunner(S2, r, dt);
+      separate(S2, dt);
+    }
     stepFoes(S2, dt);
     stepShots(S2, dt);
     stepFire(S2, dt);
@@ -11276,15 +11280,43 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (r.dig) digStep(S2, r, dt);
     else if (r.mode === "run") runStep(S2, r, dt);
     else flyStep(S2, r, dt);
-    for (const o of S2.runners) if (o !== r && Math.abs(o.x - r.x) < 16 && Math.abs(o.y - r.y) < PH) {
-      const push = (16 - Math.abs(o.x - r.x)) * 3 * dt * (r.x < o.x || r.x === o.x && r.id < o.id ? -1 : 1);
-      if (!boxRock(S2, r.x + push, r.y)) {
-        r.x += push;
-        if (r.mode === "run") r.tx += push;
-      }
-    }
     r.x = Math.max(8, Math.min(TITLE_VW * 0.62, r.x));
     r.y = Math.max(S2.top - 40, Math.min(S2.bot + 10, r.y));
+  }
+  function separate(S2, dt) {
+    const P2 = S2.runners;
+    const shove2 = (r, dx, dy) => {
+      if (r.mode === "run" && !r.dig) dy = 0;
+      if (!dx && !dy) return false;
+      const nx = Math.max(8, Math.min(TITLE_VW * 0.62, r.x + dx)), ny = r.y + dy;
+      if (boxRock(S2, nx, ny, !(r.mode === "run" && !r.dig))) return false;
+      if (r.mode === "run") r.tx += nx - r.x;
+      r.x = nx;
+      r.y = ny;
+      return true;
+    };
+    for (let i = 0; i < P2.length; i++) for (let j = i + 1; j < P2.length; j++) {
+      const a = P2[i], b = P2[j];
+      let dx = b.x - a.x, dy = b.y - a.y;
+      const d = Math.hypot(dx, dy * 0.6);
+      if (d < TITLE_SEP) {
+        const ux = d > 0.01 ? dx / d : a.id < b.id ? 1 : -1, uy = d > 0.01 ? dy * 0.6 / d : 0, k = (TITLE_SEP - d) * 2.5 * dt;
+        shove2(a, -ux * k, -uy * k);
+        shove2(b, ux * k, uy * k);
+        dx = b.x - a.x;
+        dy = b.y - a.y;
+      }
+      const ox2 = PW - Math.abs(dx), oy2 = PH - Math.abs(dy);
+      if (ox2 <= 0 || oy2 <= 0) continue;
+      const ground = a.mode === "run" && !a.dig || b.mode === "run" && !b.dig;
+      if (ox2 < oy2 || ground) {
+        const sx = dx > 0 || dx === 0 && a.id < b.id ? 1 : -1;
+        if (!(shove2(a, -sx * ox2 / 2, 0) && shove2(b, sx * ox2 / 2, 0))) shove2(b, sx * ox2, 0) || shove2(a, -sx * ox2, 0);
+      } else {
+        const sy = dy > 0 ? 1 : -1;
+        if (!(shove2(a, 0, -sy * oy2 / 2) && shove2(b, 0, sy * oy2 / 2))) shove2(b, 0, sy * oy2) || shove2(a, 0, -sy * oy2);
+      }
+    }
   }
   function runStep(S2, r, dt) {
     const R = S2.rnd, cx = r.x + PW / 2;
