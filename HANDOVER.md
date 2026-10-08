@@ -3,6 +3,16 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
+## v0.0.165 — title: 4 players, 2× creatures, random modded guns, mine slope, fire ×0.1, cut vines/webs hang: WAITING ON THE OWNER'S OK
+
+On branch `title-players` (not on `main`, version not bumped yet: bump to v0.0.165 on release). CHANGELOG v0.0.165.
+Screenshots sent (`node tools/playershots.js`). The owner's asks in this session, all built: double the enemies, 3 more
+players with a colour each, more mod variety in the guns, a natural slope into the mine works, fire at 10% speed,
+burning vines with the cells' crackle look, cut vines/webs fall or hang + swing + burn, players pushing vines.
+Only the title changed (the game's fire knobs are untouched). On OK: bump, merge to `main`, confirm.
+Note: this session's ad-hoc `node -e` / probe commands were blocked by a security hook (approval timeout);
+`node tests/run.js` and tools still ran.
+
 ## v0.0.164 — gun in hand in the body's pixel look, creatures over the shop's machines, title fire jumps + runner waits: RELEASED on `main` 2026-10-08 (owner OK'd)
 
 CHANGELOG v0.0.164. `TITLE_AIM` 90: the owner's OK.

@@ -9832,7 +9832,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return { face: f, head: at(0, 5), chest: at(0, 10), hip: at(0, 15.4), sh, hp, el, ha, kn, ft };
   }
-  function paintBody(ctx, P2, jet, flash, held) {
+  function paintBody(ctx, P2, jet, flash, held, tint) {
     const C = flash ? FLASH : SUIT, f = P2.face;
     ctx.save();
     ctx.lineCap = "round";
@@ -9876,7 +9876,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     arm(0, C.shade, C.dark);
     leg(0, C.shade);
     along(P2.chest, P2.hip, 0, 10, () => {
-      ctx.fillStyle = C.pack;
+      ctx.fillStyle = tint && !flash ? tint : C.pack;
       rr(ctx, -6.4, 7.6, 4, 8.4, 1.2);
       ctx.fill();
       ctx.fillStyle = C.shade;
@@ -9918,6 +9918,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.arc(0, 4.6, 4.9, Math.PI * 0.55, Math.PI * 1.15);
       ctx.lineTo(0, 4.6);
       ctx.fill();
+      if (tint && !flash) {
+        ctx.strokeStyle = tint;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(0, 4.6, 4, Math.PI * 1.05, Math.PI * 1.7);
+        ctx.stroke();
+      }
       ctx.fillStyle = C.rim;
       rr(ctx, -0.4, 1.6, 5, 5.6, 2.2);
       ctx.fill();
@@ -9933,8 +9940,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     arm(1, C.white, C.shade);
     ctx.restore();
   }
-  function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash, hands, held) {
-    paintBody(ctx, runnerPose(x, y, w, face, gait, air, hands), jet, flash, held);
+  function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash, hands, held, tint) {
+    paintBody(ctx, runnerPose(x, y, w, face, gait, air, hands), jet, flash, held, tint);
   }
   function ragPose(R) {
     const J = R.joints;
@@ -10241,7 +10248,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/art/titlescene.js
   var TITLE_VW = 220;
-  var TITLE_FOES = 12;
+  var TITLE_FOES = 24;
   var TITLE_PARTS = 320;
   var TITLE_GOLD = 90;
   var TITLE_FIRE = 600;
@@ -10252,7 +10259,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var TIMBER_H = 38;
   var TITLE_WEBS = 60;
   var TITLE_JUMP = 5;
-  var TITLE_JUMPP = 0.5;
+  var TITLE_JUMPP = 0.05;
+  var TITLE_FIRESPEED = 0.1;
+  var TITLE_LINKS = 8;
   var TITLE_WEBFIRE = 3;
   var TITLE_AIM = 90;
   var TM = { AIR: 0, ROCK: 1, MOSS: 2, BRICK: 3, WOOD: 4, CHAR: 5, BEAM: 6, BEAMD: 7, GRASS: 8, RUB: 9, RUBM: 10 };
@@ -10264,15 +10273,53 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var SCROLL = 34;
   var GRAV = 260;
   var SP = 0.5;
-  var TITLE_KITS = [
-    { mod: "bolt", art: "pinkcarbine", cd: 0.13 },
-    { mod: "buck", art: "ambershotgun", cd: 0.5 },
-    { mod: "fball", art: "greenbazooka", cd: 0.7 },
-    { mod: "zap", art: "skyrifle", cd: 0.5 },
-    { mod: "flamer", art: "reddrum", cd: 0.06 },
-    { mod: "blast", art: "toxiclauncher", cd: 0.9 },
-    { mod: "slug", art: "goldblaster", cd: 0.3 }
+  var TITLE_SHOTS = [
+    "bolt",
+    "spark",
+    "slug",
+    "buck",
+    "lance",
+    "orb",
+    "blast",
+    "arrow",
+    "missile",
+    "fball",
+    "fbolt",
+    "flamer",
+    "bubble",
+    "spit",
+    "eorb",
+    "esph",
+    "zap",
+    "chain",
+    "glance",
+    "cross",
+    "pollen",
+    "disc",
+    "digbolt"
   ];
+  var TITLE_MODS = [
+    "scatter",
+    "double",
+    "triple",
+    "bounce",
+    "pierce",
+    "homing",
+    "seeker",
+    "big",
+    "grow",
+    "shrink",
+    "tip",
+    "heavy",
+    "light",
+    "speed",
+    "accel",
+    "range",
+    "over",
+    "borer"
+  ];
+  var TITLE_RUNNERS = 4;
+  var TITLE_COLS = ["#3fb8ff", "#ff4f5e", "#5ee05a", "#ffc93a"];
   var TITLE_KINDS = [...ROSTERS[0], "rotta"];
   var TITLE_HOME = {
     moss: [["meduusa", 3], ["rotta", 1]],
@@ -10312,11 +10359,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var titleZoneAt = (wx, y) => titleZone(wx + (titleNoise(wx / 24, y / 14) - 0.5) * 2 * ZBLEND + (titleNoise(wx / 4, y / 4) - 0.5) * 12);
   var titleCeil = (wx, B) => {
     const nat = B.top - 4 + Math.sin(wx * 0.018 + 6) * 10 + Math.sin(wx * 0.049 + 3) * 6 + Math.sin(wx * 0.11) * 2;
-    const bt = Math.max(0, Math.min(1, (built(wx, "timber") - 0.2) / 0.35));
-    const edge = bt > 0 && bt < 1 ? (titleNoise(wx / 3, 40) - 0.5) * 6 : 0;
-    return bt ? nat + (Math.max(nat, titleFloor(wx, B) - TIMBER_H) - nat) * bt + edge : nat;
+    const d = timberD(wx);
+    if (d < -TIMBER_RAMP) return nat;
+    const q = Math.max(0, Math.min(1, (d + TIMBER_RAMP - 30 + (titleNoise(wx / 40, 44) - 0.5) * 20) / TIMBER_RAMP)), bt = q * q * (3 - 2 * q);
+    if (!bt) return nat;
+    const lump = Math.sin(Math.PI * bt) * ((titleNoise(wx / 16, 47) - 0.5) * 22 + (titleNoise(wx / 6, 40) - 0.5) * 9 + (titleNoise(wx / 2.5, 43) - 0.5) * 3);
+    return nat + (Math.max(nat, titleFloor(wx, B) - TIMBER_H) - nat) * bt + lump;
   };
-  var titleWebAt = (L3, u) => ({ x: L3.a0x + (L3.b0x - L3.a0x) * u, y: L3.a0y + (L3.b0y - L3.a0y) * u + 4 * u * (1 - u) * (L3.sag || 0) });
+  var TIMBER_RAMP = 120;
+  var timberD = (wx) => {
+    const u = wx - Math.floor(wx / TITLE_ZLEN) * TITLE_ZLEN, z = titleZone(wx);
+    if (z === "timber") return Math.min(u, TITLE_ZLEN - u);
+    if (titleZone(wx + TITLE_ZLEN) === "timber") return -(TITLE_ZLEN - u);
+    if (titleZone(wx - TITLE_ZLEN) === "timber") return -u;
+    return -Infinity;
+  };
+  var titleWebAt = webAt;
   var titleFloor = (wx, B) => {
     const nat = B.bot - 22 + Math.sin(wx * 0.021 + 4) * 7 + Math.sin(wx * 0.057 + 2) * 4 + Math.sin(wx * 0.13) * 1.5;
     const b = built(wx);
@@ -10430,7 +10488,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         for (let s = 0; s < ns; s++) {
           const kq = Math.min(n - 1, Math.floor(R() * n)), q = pts[kq], room = titleFloor(q.x, S2) - q.y;
           const len = Math.min(kru("arStrandLen", R()) * TCELL, room * 0.7);
-          if (len >= 4) S2.props.push({ k: "climb", st: "vine", ox: q.x, x: 0, y: q.y, len, seed: R(), side: 1, burn: 0, ac: arch.ac, ar: arch.ar, host: arch, u: kq / n });
+          if (len >= 4) S2.props.push({ k: "climb", st: "vine", ox: q.x, x: 0, y: q.y, len, seed: R(), side: 1, burn: 0, ac: arch.ac, ar: arch.ar, host: arch, on: arch, u: kq / n });
         }
       }
     }
@@ -10484,6 +10542,76 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S2.props.push({ k: "lamp", st: "hanglamp", ox: wx, x: 0, y: (r + 1) * TCELL, len, seed: S2.rnd(), side: 1, burn: 0, ac: c, ar: r });
   }
   var HOLDS = TITLE_SOLID.map((v, m) => v || m === TM.BEAM || m === TM.BEAMD ? 1 : 0);
+  function titleKit(R) {
+    const pick = (a) => a[Math.floor(R() * a.length)];
+    const shot = pick(TITLE_SHOTS), M = MODS[shot], nm = R() < 0.2 ? 0 : R() < 0.55 ? 1 : 2, mods = [];
+    for (let i = 0; i < nm; i++) {
+      const m = pick(TITLE_MODS);
+      if (!mods.includes(m)) mods.push(m);
+    }
+    const s = {
+      dmg: M.dmg || 1,
+      speed: M.speed || 300,
+      spread: M.spread || 0,
+      size: M.size || 2,
+      life: M.life || 1,
+      count: M.count || 1,
+      recoil: 0,
+      grav: M.grav || 0,
+      drag: M.drag || 0,
+      explode: M.explode || 0,
+      pit: Math.max(M.pit || 0, M.bore || 0),
+      fire: M.fire || 0,
+      bounce: M.bounce || 0,
+      bounceE: M.bounceE || 0.5,
+      pierce: M.pierce || 0,
+      homing: M.homing || 0,
+      accel: M.accel || 0,
+      vmax: M.vmax || 0,
+      bore: 0,
+      r: 0,
+      pull: 0,
+      eat: 0,
+      pop: M.pop || 0
+    };
+    let d = M.delay || 0.2, n = 1;
+    for (const k of mods) {
+      const X = MODS[k];
+      if (X.f) X.f(s);
+      if (X.multi) n += X.multi;
+      d += X.d || 0;
+    }
+    if (s.bore) s.pit = Math.max(s.pit, s.bore);
+    if (M.fuse) s.life = Math.min(s.life, M.fuse + 0.5);
+    const art = pick(GUN_ART.map((a) => a.id));
+    return {
+      art,
+      shot,
+      mods,
+      name: [shot, ...mods].join("+"),
+      cd: Math.max(0.06, d * 1.7) * (n > 1 ? 1.3 : 1),
+      n: s.count * n,
+      dmg: s.dmg,
+      speed: s.speed,
+      spread: s.spread + (n > 1 ? 6 : 0),
+      size: Math.min(8, s.size),
+      life: Math.min(4, s.life),
+      grav: s.grav,
+      drag: s.drag,
+      explode: Math.min(40, s.explode),
+      pit: Math.min(10, s.pit),
+      fire: s.fire,
+      bounce: s.bounce,
+      bounceE: s.bounceE,
+      pierce: s.pierce,
+      homing: s.homing,
+      accel: s.accel,
+      vmax: s.vmax,
+      chain: M.chain || 0,
+      col: M.col,
+      look: M.look || ""
+    };
+  }
   function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62) {
     const rnd2 = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, ncol = Math.ceil((TITLE_VW + 90) / TCELL);
     const S2 = {
@@ -10500,6 +10628,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       gold: 0,
       got: 0,
       runner: null,
+      runners: [],
       foes: [],
       shots: [],
       parts: [],
@@ -10531,31 +10660,40 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       burning: /* @__PURE__ */ new Set(),
       gotN: 0,
       pops: 0,
-      lampsPopped: 0
+      lampsPopped: 0,
+      kitNames: /* @__PURE__ */ new Set()
     };
     genTo(S2);
-    const x = 60, y = titleSurf(S2, x + PW / 2, (top + bot) / 2, 1) - PH;
-    S2.runner = {
-      x,
-      y,
-      vx: 0,
-      vy: 0,
-      face: 1,
-      ang: 0,
-      cd: 0.5,
-      kit: 0,
-      flame: 0,
-      mode: "run",
-      modeT: 3,
-      tx: x,
-      ty: y,
-      retarget: 0,
-      gait: 0,
-      ground: true,
-      swapT: 4,
-      swap: 0
-    };
-    for (let i = 0; i < 3; i++) addFoe(S2, 140 + rnd2() * 70);
+    for (let i = 0; i < TITLE_RUNNERS; i++) {
+      const x = 18 + i * 30, y = titleSurf(S2, x + PW / 2, (top + bot) / 2, 1) - PH;
+      S2.runners.push({
+        x,
+        y,
+        vx: 0,
+        vy: 0,
+        face: 1,
+        ang: 0,
+        cd: 0.5 + i * 0.2,
+        kit: titleKit(rnd2),
+        flame: 0,
+        id: i,
+        col: TITLE_COLS[i],
+        mode: "run",
+        modeT: 1.5 + i * 1.3 + rnd2() * 2,
+        tx: x,
+        ty: y,
+        retarget: 0,
+        gait: i * 1.7,
+        ground: true,
+        swapT: 2 + i * 1.2 + rnd2() * 2,
+        swap: 0,
+        wvx: 0,
+        wvy: 0,
+        nav: { F: null, fx: 0, fy: 0, t: -9 }
+      });
+    }
+    S2.runner = S2.runners[0];
+    for (let i = 0; i < 6; i++) addFoe(S2, 130 + rnd2() * 90);
     return S2;
   }
   function genTo(S2) {
@@ -10692,7 +10830,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function titleIgnite(S2, sx, y, r, chance = 0.9) {
     const R = S2.rnd, wx = sx + S2.scroll;
     lightArea(S2, wx, y, r, chance);
-    for (const p of S2.props) if (!p.burn && !p.gone && FLAMMABLE[p.st] && R() < chance) {
+    for (const p of S2.props) if (!p.burn && !p.gone && burns(p) && R() < chance) {
       if (p.arc) {
         const k = archK(p, wx, y, r);
         if (k >= 0) catchArch(S2, p, k / (p.arc.length - 1));
@@ -10733,15 +10871,151 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function catchArch(S2, p, u) {
     if (!p.burn && !p.gone) {
-      p.burn = 1;
-      p.u0 = p.u1 = u;
       S2.burnt++;
+      cutArch(S2, p, u, true, true);
     }
   }
   function catchWeb(S2, L3, u) {
     if (!L3.fu && !L3.out) {
-      L3.fu = [u, u];
       S2.burnt++;
+      cutWeb(S2, L3, u, true);
+    }
+  }
+  function hangPiece(S2, st, ax, ay, pts, burn, holds) {
+    let len = 0;
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) {
+      len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+      cum.push(len);
+    }
+    if (len < 3) return null;
+    const tl = [];
+    for (let i = 1, j = 1; i <= TITLE_LINKS; i++) {
+      const want = len * i / TITLE_LINKS;
+      while (j < pts.length - 1 && cum[j] < want) j++;
+      const a = pts[j - 1], b = pts[j], t = Math.max(0, Math.min(1, (want - cum[j - 1]) / (cum[j] - cum[j - 1] || 1)));
+      tl.push(a.x + (b.x - a.x) * t - ax, a.y + (b.y - a.y) * t - ay);
+    }
+    const p = {
+      k: "climb",
+      st,
+      ox: ax,
+      x: ax - S2.scroll,
+      y: ay,
+      len,
+      seed: S2.rnd(),
+      side: 1,
+      burn: burn ? 1 : 0,
+      ac: Math.floor(ax / TCELL),
+      ar: Math.floor((ay - 2) / TCELL),
+      sw: 0,
+      swv: 0,
+      sj: 0,
+      tl,
+      tq: tl.slice(),
+      links: TITLE_LINKS,
+      drop: !holds,
+      vy: 0
+    };
+    S2.props.push(p);
+    return p;
+  }
+  function cutArch(S2, p, u, burn, hold0 = true, hold1 = true) {
+    if (p.gone || !p.arc) return;
+    p.gone = true;
+    const n = p.arc.length - 1, k = Math.max(0, Math.min(n, Math.round(u * n)));
+    const pt = (i) => ({ x: p.ox + p.arc[i][0], y: p.y + p.arc[i][1] });
+    const left = [], right = [];
+    for (let i = 0; i <= k; i++) left.push(pt(i));
+    for (let i = n; i >= k; i--) right.push(pt(i));
+    if (left.length > 1) hangPiece(S2, "vine", left[0].x, left[0].y, left, burn, hold0);
+    if (right.length > 1) hangPiece(S2, "vine", right[0].x, right[0].y, right, burn, hold1);
+    for (const o of S2.props) if (o.host === p) {
+      o.host = null;
+      o.on = null;
+      o.drop = true;
+      o.vy = 0;
+      if (burn && Math.abs((o.u || 0) - u) < 0.15) catchPlant(S2, o);
+    }
+  }
+  function cutWeb(S2, L3, u, burn) {
+    L3.out = true;
+    L3.fu = null;
+    S2.cut++;
+    S2.webs = S2.webs.filter((o) => o !== L3);
+    const pts = [];
+    for (let i = 0; i <= 8; i++) pts.push(titleWebAt(L3, u * i / 8));
+    const qts = [];
+    for (let i = 0; i <= 8; i++) qts.push(titleWebAt(L3, 1 - (1 - u) * i / 8));
+    const hold = (x, y) => {
+      for (const [dx, dy] of [[0, -1], [-1, 0], [1, 0], [-1, -1], [1, -1]]) {
+        const c = Math.floor((x + dx * 1.5) / TCELL), r = Math.floor((y + dy * 1.5) / TCELL);
+        if (SOLID[titleCell(S2, c, r)]) return [c, r];
+      }
+      return null;
+    };
+    const piece = (x, y, P2) => {
+      const h4 = hold(x, y), p = hangPiece(S2, "silk", x, y, P2, burn, !!h4);
+      if (p && h4) {
+        p.ac = h4[0];
+        p.ar = h4[1];
+      }
+    };
+    piece(L3.a0x, L3.a0y, pts);
+    piece(L3.b0x, L3.b0y, qts);
+  }
+  var canSwing = (p) => p.k === "climb" && !p.arc && !!p.len;
+  function stepSway(S2, dt) {
+    for (const p of S2.props) {
+      if (p.gone || p.k !== "climb") continue;
+      const x = p.ox - S2.scroll;
+      if (x + (p.span || 0) < -30 || x > TITLE_VW + 30) continue;
+      const pa = p;
+      if (p.arc) {
+        const n = p.arc.length - 1;
+        for (const r of S2.runners) {
+          const cx = r.x + PW / 2 + S2.scroll, cy = r.y + PH / 2;
+          if (cx < p.ox - 8 || cx > p.ox + (p.span || 0) + 8) continue;
+          let best = -1, bd = 7;
+          for (let k = 0; k <= n; k++) {
+            const d = Math.hypot(p.ox + p.arc[k][0] - cx, p.y + p.arc[k][1] - cy);
+            if (d < bd) {
+              bd = d;
+              best = k;
+            }
+          }
+          if (best >= 0) bendPush(pa, best / n, r.wvx, r.wvy, DEV.bendPush, dt);
+        }
+        if (bendAwake(pa)) bendStep(pa, 0, 0, DEV.bendK, DEV.bendDamp, DEV.bendMax, dt);
+        continue;
+      }
+      if (!canSwing(p) || p.drop || p.host) continue;
+      for (const r of S2.runners) {
+        const ry = r.y + PH / 2 - p.y;
+        if (r.y + PH < p.y || r.y > p.y + p.len) continue;
+        const q = vinePt(pa, Math.max(0, Math.min(p.len, ry)));
+        if (Math.abs(x + q.x - (r.x + PW / 2)) < PW / 2 + 1) {
+          const k = Math.min(1, 10 * dt);
+          p.swv = (p.swv || 0) + (r.wvx * DEV.vinePush / Math.max(12, p.len) - (p.swv || 0)) * k;
+        }
+      }
+      if (p.sw || p.swv) swingStep(pa, p.len * 0.6, GRAVITY * DEV.vineGrav, DEV.vineDamp, DEV.vineMax, dt);
+      if (p.sw || p.swv || p.tl) tailStep(pa, p.links || DEV.vineLinks, GRAVITY, DEV.vineTailDamp, dt);
+      if (p.links && p.len > 3) {
+        const q = vinePt(pa, p.len);
+        if (titleSolid(S2, x + q.x, p.y + q.y)) p.len = Math.max(3, p.len - 60 * dt);
+      }
+    }
+    for (const L3 of S2.webs) {
+      if (Math.max(L3.a0x, L3.b0x) < S2.scroll - 20 || Math.min(L3.a0x, L3.b0x) > S2.scroll + TITLE_VW + 20) continue;
+      for (const r of S2.runners) {
+        const cx = r.x + PW / 2 + S2.scroll, cy = r.y + PH / 2;
+        if (cx < Math.min(L3.a0x, L3.b0x) - 6 || cx > Math.max(L3.a0x, L3.b0x) + 6) continue;
+        const vx = L3.b0x - L3.a0x, vy = L3.b0y - L3.a0y, u = Math.max(0, Math.min(1, ((cx - L3.a0x) * vx + (cy - L3.a0y) * vy) / (vx * vx + vy * vy || 1)));
+        const w = titleWebAt(L3, u);
+        if (Math.hypot(w.x - cx, w.y - cy) < 6) bendPush(L3, u, r.wvx, r.wvy, DEV.bendPush, dt);
+      }
+      if (bendAwake(L3)) bendStep(L3, 0, 0, DEV.bendK, DEV.bendDamp, DEV.bendMax, dt);
     }
   }
   function killFoe(S2, f) {
@@ -10794,11 +11068,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S2.shake = Math.max(0, S2.shake - dt * 18);
     S2.flash = Math.max(0, S2.flash - dt * 1.6);
     S2.spawn -= dt;
-    if (S2.spawn <= 0 && S2.foes.length < TITLE_FOES - 5) {
+    if (S2.spawn <= 0 && S2.foes.length < TITLE_FOES - 10) {
       addFoe(S2);
-      S2.spawn = 0.8 + R() * 1.2;
+      S2.spawn = 0.4 + R() * 0.6;
     }
-    stepRunner(S2, dt);
+    for (const r of S2.runners) stepRunner(S2, r, dt);
     stepFoes(S2, dt);
     stepShots(S2, dt);
     stepFire(S2, dt);
@@ -10881,9 +11155,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S2.booms = S2.booms.filter((b) => b.t < b.max);
     for (const z of S2.zaps) z.t -= dt;
     S2.zaps = S2.zaps.filter((z) => z.t > 0);
+    stepSway(S2, dt);
     for (const p of S2.props) {
       p.x = p.ox - S2.scroll;
-      if (p.burn || p.gone) continue;
+      if (p.gone) continue;
+      if (p.drop) {
+        p.vy = (p.vy || 0) + GRAVITY * 0.5 * dt;
+        p.y += p.vy * dt;
+        if (p.y > S2.vh) p.gone = true;
+        else if (titleSolid(S2, p.x, p.y + 1)) {
+          p.gone = true;
+          burst(S2, p.x, p.y, 3, p.st === "silk" ? "#eef0f6" : "#5a8a3a", 40, "chunk", 0.6);
+          if (p.burn) lightArea(S2, p.ox, p.y, 6, 0.8);
+        }
+        continue;
+      }
+      if (p.burn && p.k !== "climb") continue;
       if (p.k === "lamp") {
         if (p.fall) {
           p.vy = (p.vy || 0) + GRAVITY * 0.5 * dt;
@@ -10895,16 +11182,42 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         continue;
       }
-      if (p.host && p.host.gone && !p.host.burn || p.x > -10 && p.x < TITLE_VW + 10 && !SOLID[titleCell(S2, p.ac, p.ar)]) {
-        p.gone = true;
-        burst(S2, p.x, p.y, 3, "#5a8a3a", 40, "chunk", 0.7);
+      if (p.arc) {
+        const n = p.arc.length - 1, bc = Math.floor((p.ox + p.arc[n][0]) / TCELL), br = Math.floor((p.y + p.arc[n][1] - 2) / TCELL);
+        const ok0 = p.ac >= S2.gen || !!SOLID[titleCell(S2, p.ac, p.ar)], ok1 = bc >= S2.gen || !!SOLID[titleCell(S2, bc, br)];
+        if (p.x + (p.span || 0) > -10 && p.x < TITLE_VW + 10 && (!ok0 || !ok1)) cutArch(S2, p, ok0 ? 1 : 0, false, ok0, ok1);
+        continue;
+      }
+      if (p.host && p.host.gone) {
+        p.host = null;
+        p.on = null;
+        p.drop = true;
+        p.vy = 0;
+        continue;
+      }
+      if (!p.host && p.ac != null && p.x > -10 && p.x < TITLE_VW + 10 && !SOLID[titleCell(S2, p.ac, p.ar)]) {
+        if (canSwing(p)) {
+          p.drop = true;
+          p.vy = 0;
+        } else {
+          p.gone = true;
+          burst(S2, p.x, p.y, 3, "#5a8a3a", 40, "chunk", 0.7);
+        }
       }
     }
     S2.props = S2.props.filter((p) => !p.gone && p.ox + (p.span || 0) - S2.scroll > -60);
     S2.webs = S2.webs.filter((L3) => Math.max(L3.a0x, L3.b0x) - S2.scroll > -40);
   }
-  function stepRunner(S2, dt) {
-    const r = S2.runner, R = S2.rnd, cx = () => r.x + PW / 2;
+  function stepRunner(S2, r, dt) {
+    const x0 = r.x, y0 = r.y;
+    stepRunnerMove(S2, r, dt);
+    const k = Math.min(1, 12 * dt);
+    r.wvx += (Math.max(-250, Math.min(250, (r.x - x0) / Math.max(dt, 1e-3) + SCROLL)) - r.wvx) * k;
+    r.wvy += (Math.max(-250, Math.min(250, (r.y - y0) / Math.max(dt, 1e-3))) - r.wvy) * k;
+    stepRunnerGun(S2, r, dt);
+  }
+  function stepRunnerMove(S2, r, dt) {
+    const R = S2.rnd, cx = () => r.x + PW / 2;
     {
       const wx = cx() + S2.scroll, fl = titleFloor(wx, S2);
       if (titleSolid(S2, cx(), r.y + PH * 0.5) || r.y + PH > fl + 16) {
@@ -10999,7 +11312,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       r.ground = r.mode === "run";
     }
+    for (const o of S2.runners) if (o !== r && Math.abs(o.x - r.x) < 16 && Math.abs(o.y - r.y) < PH) {
+      const push = (16 - Math.abs(o.x - r.x)) * 3 * dt * (r.x < o.x || r.x === o.x && r.id < o.id ? -1 : 1);
+      r.x += push;
+      if (r.mode === "run") r.tx += push;
+    }
     r.x = Math.max(8, Math.min(TITLE_VW * 0.62, r.x));
+  }
+  function stepRunnerGun(S2, r, dt) {
+    const R = S2.rnd, cx = () => r.x + PW / 2;
     let best = null, bd = TITLE_AIM;
     for (const f of S2.foes) {
       const fx = f.x - S2.scroll, d = Math.hypot(fx - r.x, f.ty - r.y);
@@ -11019,7 +11340,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     r.swapT -= dt;
     r.swap = Math.max(0, r.swap - dt);
     if (r.swapT <= 0) {
-      r.kit = (r.kit + 1 + Math.floor(R() * (TITLE_KITS.length - 1))) % TITLE_KITS.length;
+      r.kit = titleKit(R);
+      S2.kitNames.add(r.kit.name);
       r.swapT = 3.5 + R() * 2.5;
       r.swap = 0.3;
       r.cd = 0.35;
@@ -11027,48 +11349,55 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     r.cd -= dt;
     if (!best || r.cd > 0 || r.swap > 0) return;
-    const K = TITLE_KITS[r.kit], M = MODS[K.mod], mz = gunMuzzle(gx0 + Math.cos(r.ang) * 2.5, gy0, r.ang, GUN_HELD, K.art), gx = mz.x, gy = mz.y;
+    const K = r.kit, mz = gunMuzzle(gx0 + Math.cos(r.ang) * 2.5, gy0, r.ang, GUN_HELD, K.art), gx = mz.x, gy = mz.y;
     r.cd = K.cd * (0.85 + R() * 0.3);
-    if (K.mod === "zap") {
-      const bx = best.x - S2.scroll, by = best.ty;
-      zapArc(S2, gx, gy, bx, by, M.col);
-      const fl = titleSurf(S2, bx, by + best.r, 1);
-      if (fl - by < 50 && R() < 0.6) {
-        zapArc(S2, bx, by, bx + (R() - 0.5) * 16, fl + 1, M.col);
-        titleCarve(S2, bx, fl + 1, 2.5);
-        titleIgnite(S2, bx, fl + 1, 4);
+    const n = Math.min(12, K.n);
+    if (K.shot === "zap") {
+      const near = S2.foes.filter((f) => f.hp > 0 && f.x - S2.scroll < TITLE_VW).sort((a, b) => Math.hypot(a.x - best.x, a.ty - best.ty) - Math.hypot(b.x - best.x, b.ty - best.ty));
+      for (const f of near.slice(0, Math.min(4, n))) {
+        const bx = f.x - S2.scroll, by = f.ty;
+        zapArc(S2, gx, gy, bx, by, K.col);
+        const fl = titleSurf(S2, bx, by + f.r, 1);
+        if (fl - by < 50 && R() < 0.6) {
+          zapArc(S2, bx, by, bx + (R() - 0.5) * 16, fl + 1, K.col);
+          titleCarve(S2, bx, fl + 1, 2.5);
+          titleIgnite(S2, bx, fl + 1, 4);
+        }
+        hitFoe(S2, f, 3 * K.dmg / 2.2, K.col);
       }
-      hitFoe(S2, best, 3, M.col);
       return;
     }
-    const n = M.count || 1;
     for (let i = 0; i < n; i++) {
-      const spread2 = (M.spread || 0) * Math.PI / 180;
+      const spread2 = K.spread * Math.PI / 180;
       const a = r.ang + (n > 1 ? (i / (n - 1) - 0.5) * spread2 * 2 : (R() - 0.5) * spread2);
-      const v = (M.speed || 300) * SP * (0.9 + R() * 0.2);
+      const v = K.speed * SP * (0.9 + R() * 0.2);
       S2.shots.push({
         x: gx,
         y: gy,
         vx: Math.cos(a) * v,
         vy: Math.sin(a) * v,
-        size: M.size || 2,
-        col: M.col,
-        look: M.look || "",
-        life: (M.life || 1) * 1.6,
+        size: K.size,
+        col: K.col,
+        look: K.look,
+        life: K.life * 1.6,
         foe: false,
         spin: R() * 6,
-        grav: (M.grav || 0) * SP,
-        drag: M.drag || 0,
-        explode: M.explode || 0,
-        pit: M.pit || 0,
-        fire: M.fire || 0,
-        bounce: M.bounce || 0,
-        bounceE: M.bounceE || 0.5,
-        pierce: M.pierce || 0,
-        dmg: M.dmg || 1
+        grav: K.grav * SP,
+        drag: K.drag,
+        explode: K.explode,
+        pit: K.pit,
+        fire: K.fire,
+        bounce: K.bounce,
+        bounceE: K.bounceE,
+        pierce: K.pierce,
+        dmg: K.dmg,
+        homing: K.homing,
+        accel: K.accel,
+        vmax: K.vmax * SP,
+        chain: K.chain
       });
     }
-    burst(S2, gx, gy, 3, M.col, 40, "spark", 0.12);
+    burst(S2, gx, gy, 3, K.col, 40, "spark", 0.12);
   }
   function zapArc(S2, x0, y0, x1, y1, col) {
     const R = S2.rnd, pts = [{ x: x0, y: y0 }];
@@ -11080,22 +11409,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S2.zaps.push({ pts, t: 0.16, col });
   }
   function cutWebs(S2, wx, y, r) {
-    const before = S2.webs.length;
-    S2.webs = S2.webs.filter((L3) => {
+    let n = 0;
+    for (const L3 of S2.webs.slice()) {
       const vx = L3.b0x - L3.a0x, vy = L3.b0y - L3.a0y, ll = vx * vx + vy * vy || 1;
       const u = Math.max(0, Math.min(1, ((wx - L3.a0x) * vx + (y - L3.a0y) * vy) / ll)), p = titleWebAt(L3, u);
-      return Math.hypot(p.x - wx, p.y - y) > r + 1.5;
-    });
-    if (S2.webs.length < before) {
-      S2.cut += before - S2.webs.length;
-      burst(S2, wx - S2.scroll, y, 3, "#eef0f6", 40, "spark", 0.3);
+      if (Math.hypot(p.x - wx, p.y - y) <= r + 1.5) {
+        cutWeb(S2, L3, u, false);
+        n++;
+      }
     }
+    if (n) burst(S2, wx - S2.scroll, y, 3, "#eef0f6", 40, "spark", 0.3);
   }
   function stepFoes(S2, dt) {
-    const R = S2.rnd, ru = S2.runner, CS = csolid(S2);
-    const pcx = S2.scroll + ru.x + PW / 2, pcy = ru.y + PH / 2, goal = { x: pcx, y: pcy }, sees = 1 / DEV.zoom;
+    const R = S2.rnd, CS = csolid(S2), sees = 1 / DEV.zoom;
     for (const e of S2.foes) {
-      const k = e.k;
+      const k = e.k, ru = nearestRunner(S2, e.x - S2.scroll, e.ty);
+      const pcx = S2.scroll + ru.x + PW / 2, pcy = ru.y + PH / 2, goal = { x: pcx, y: pcy };
       e.flash -= dt;
       e.cd -= dt;
       e.touch -= dt;
@@ -11113,7 +11442,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const hunting = !!e.aggro;
       if (k.act === "jelly") jellyAct(S2, e, hunting, goal, sees, CS, dt);
       else if (k.act === "spider") spiderAct(S2, e, hunting, goal, sees, dist, dx, dy, CS, dt);
-      else if (k.act === "rat") ratAct(S2, e, hunting, CS, dt);
+      else if (k.act === "rat") ratAct(S2, e, ru, hunting, CS, dt);
       e.ty = e.y;
       if (hunting && dist < e.r + 14 && e.touch <= 0) {
         e.touch = kr(k.kp + "BiteCd", R);
@@ -11134,7 +11463,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let s = 0; s < n && b.life > 0; s++) {
         b.x += b.vx * dt / n;
         b.y += b.vy * dt / n;
-        if (CS(Math.floor(b.x / CELL), Math.floor(b.y / CELL)) || Math.abs(b.x - pcx) < PW / 2 + 3 && Math.abs(b.y - pcy) < PH / 2 + 3) b.life = 0;
+        if (CS(Math.floor(b.x / CELL), Math.floor(b.y / CELL)) || S2.runners.some((q) => Math.abs(b.x - S2.scroll - q.x - PW / 2) < PW / 2 + 3 && Math.abs(b.y - q.y - PH / 2) < PH / 2 + 3)) b.life = 0;
       }
     }
     S2.silk = S2.silk.filter((b) => b.life > 0);
@@ -11199,8 +11528,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
   }
-  function ratAct(S2, e, hunting, CS, dt) {
-    const R = S2.rnd, ru = S2.runner;
+  function ratAct(S2, e, ru, hunting, CS, dt) {
+    const R = S2.rnd;
     let goal, jump = true;
     if (hunting) goal = { x: S2.scroll + ru.x + PW / 2, y: ru.y + PH - 2 };
     else {
@@ -11215,7 +11544,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!e.arrive || R() < dt) e.arrive = kr("raArrive", R);
     let way = goal, follow = false, air = false;
     if (hunting && e.ra) {
-      const F2 = navYou(S2, goal, CS), w = F2 && navWay(F2, e.x, e.y, 1);
+      const F2 = navYou(S2, ru, goal, CS), w = F2 && navWay(F2, e.x, e.y, 1);
       if (w) {
         way = w.dist > 2 ? w : goal;
         follow = true;
@@ -11237,8 +11566,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       jump
     }, dt);
   }
-  function navYou(S2, goal, CS) {
-    const o = S2.nav;
+  function navYou(S2, ru, goal, CS) {
+    const o = ru.nav;
     if (!o.F || Math.hypot(goal.x - o.fx, goal.y - o.fy) > 12 || S2.t - o.t > 0.4) {
       o.F = navField(CS, goal.x, goal.y, 56, onWeb(S2));
       o.fx = goal.x;
@@ -11247,14 +11576,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return o.F;
   }
+  function nearestRunner(S2, x, y) {
+    let best = S2.runners[0], bd = Infinity;
+    for (const r of S2.runners) {
+      const d = Math.hypot(r.x + PW / 2 - x, r.y + PH / 2 - y);
+      if (d < bd) {
+        bd = d;
+        best = r;
+      }
+    }
+    return best;
+  }
   var onWeb = (S2) => (x, y) => S2.webs.some((L3) => {
     const vx = L3.bx - L3.ax, vy = L3.by - L3.ay, u = Math.max(0, Math.min(1, ((x - L3.ax) * vx + (y - L3.ay) * vy) / (vx * vx + vy * vy || 1)));
     return Math.hypot(L3.ax + vx * u - x, L3.ay + vy * u - y) < 3;
   });
   function stepGold(S2, dt) {
-    const ru = S2.runner, pcx = S2.scroll + ru.x + PW / 2, pcy = ru.y + PH / 2, solid = wsolid(S2);
+    const solid = wsolid(S2);
     for (let i = S2.coins.length - 1; i >= 0; i--) {
-      const g = S2.coins[i], dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;
+      const g = S2.coins[i], ru = nearestRunner(S2, g.x - S2.scroll, g.y), pcx = S2.scroll + ru.x + PW / 2, pcy = ru.y + PH / 2;
+      const dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;
       if (g.nopull > 0) g.nopull -= dt;
       g.fly = false;
       if (d < COIN_PULL && !(g.nopull > 0)) {
@@ -11279,8 +11620,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     collideNuggets(S2.coins, solid);
   }
   function stepShots(S2, dt) {
-    const ru = S2.runner;
     for (const s of S2.shots) {
+      if (s.homing && !s.foe) {
+        let tg = null, td = 90;
+        for (const f of S2.foes) {
+          const d = Math.hypot(f.x - S2.scroll - s.x, f.ty - s.y);
+          if (f.hp > 0 && d < td) {
+            td = d;
+            tg = f;
+          }
+        }
+        if (tg) {
+          const sp = Math.hypot(s.vx, s.vy) || 1, want = Math.atan2(tg.ty - s.y, tg.x - S2.scroll - s.x), a = Math.atan2(s.vy, s.vx);
+          const da = Math.atan2(Math.sin(want - a), Math.cos(want - a)), na = a + Math.max(-1, Math.min(1, da)) * Math.min(1, s.homing * dt);
+          s.vx = Math.cos(na) * sp;
+          s.vy = Math.sin(na) * sp;
+        }
+      }
+      if (s.accel) {
+        const sp = Math.hypot(s.vx, s.vy) || 1, k = Math.min(1 + s.accel * dt, (s.vmax || 600) / sp);
+        if (k > 1) {
+          s.vx *= k;
+          s.vy *= k;
+        }
+      }
       s.vy += s.grav * dt;
       if (s.drag) {
         const k = Math.exp(-s.drag * dt);
@@ -11293,7 +11656,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       s.spin += dt * 10;
       if (s.look === "flame" && S2.rnd() < dt * 20) burst(S2, s.x, s.y, 1, "#ff7a1a", 15, "fire", 0.3);
       if (s.foe) {
-        if (Math.abs(ru.x + PW / 2 - s.x) < 7 && Math.abs(ru.y + PH / 2 - s.y) < 11) {
+        if (S2.runners.some((ru) => Math.abs(ru.x + PW / 2 - s.x) < 7 && Math.abs(ru.y + PH / 2 - s.y) < 11)) {
           s.life = 0;
           burst(S2, s.x, s.y, 6, s.col, 60, "spark", 0.25);
         }
@@ -11315,6 +11678,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (f.hp > 0 && Math.hypot(f.x - S2.scroll - s.x, f.ty - s.y) < f.r + s.size) {
           hitFoe(S2, f, s.dmg * 1.5, s.col);
           if (s.fire) f.burn = Math.max(f.burn || 0, kr("fireBurn", S2.rnd));
+          if (s.chain && !s.explode) {
+            let nx = null, nd = 80;
+            for (const g of S2.foes) {
+              const d = Math.hypot(g.x - S2.scroll - s.x, g.ty - s.y);
+              if (g !== f && g.hp > 0 && d < nd) {
+                nd = d;
+                nx = g;
+              }
+            }
+            if (nx) {
+              s.chain--;
+              const sp = Math.hypot(s.vx, s.vy) || 1, a = Math.atan2(nx.ty - s.y, nx.x - S2.scroll - s.x);
+              s.vx = Math.cos(a) * sp;
+              s.vy = Math.sin(a) * sp;
+              s.x += s.vx * dt * 2;
+              s.y += s.vy * dt * 2;
+              zapArc(S2, f.x - S2.scroll, f.ty, nx.x - S2.scroll, nx.ty, s.col);
+              break;
+            }
+          }
           if (s.explode || s.pierce <= 0) {
             shotEnd(S2, s);
             break;
@@ -11343,7 +11726,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S2.fireAcc -= FIRE_TICK;
       ticks++;
       S2.fireN++;
-      const sp = kr("fireSpread", R), keep2 = [], n0 = S2.fire.length;
+      const sp = kr("fireSpread", R) * TITLE_FIRESPEED, keep2 = [], n0 = S2.fire.length;
       for (let k = 0; k < n0; k++) {
         const f = S2.fire[k];
         if (f.c < S2.gen - S2.ncol || !FUEL[S2.cells[ci(S2, f.c, f.r)]]) {
@@ -11371,7 +11754,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (S2.fire.length) {
         let q = 0;
         for (const p of S2.props) {
-          if (p.burn || p.gone || !FLAMMABLE[p.st]) continue;
+          if (p.burn || p.gone || !burns(p) || R() > TITLE_FIRESPEED) continue;
           if (p.arc) {
             const n = p.arc.length - 1;
             for (let k = 0; k <= n; k += 2) if (fireNear2(S2, p.ox + p.arc[k][0], p.y + p.arc[k][1], 2)) {
@@ -11385,7 +11768,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             }
           }
         }
-        for (const L3 of S2.webs) if (!L3.fu) for (let u = 0; u <= 1; u += 0.25) {
+        for (const L3 of S2.webs.slice()) if (!L3.fu && R() < TITLE_FIRESPEED) for (let u = 0; u <= 1; u += 0.25) {
           const w = titleWebAt(L3, u);
           if (fireNear2(S2, w.x, w.y, 2)) {
             catchWeb(S2, L3, u);
@@ -11402,73 +11785,40 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (R() < 0.12) fireSmoke(S2, x, y - 3);
       }
     }
-    for (const p of S2.props) {
+    for (const p of S2.props.slice()) {
       if (!p.burn || p.gone) continue;
       if (p.arc) {
-        const du = kr("fireArch", R) * dt / Math.max(1, p.alen || 1), n = p.arc.length - 1;
-        p.u0 = Math.max(0, (p.u0 || 0) - du);
-        p.u1 = Math.min(1, (p.u1 || 0) + du);
-        for (const u of [p.u0, p.u1]) {
-          const a = p.arc[Math.round(u * n)], x = p.ox + a[0], y = p.y + a[1];
-          if (R() < dt * 30) flameAt(S2, x - S2.scroll + (R() - 0.5) * 4, y);
-          if (R() < dt * 4) fireSmoke(S2, x - S2.scroll, y);
-          if (ticks) {
-            lightArea(S2, x, y, 5, 0.3);
-            spreadFrom(S2, x, y);
-          }
-        }
-        if (ticks) {
-          for (const o of S2.props) if (o.host === p && !o.burn && !o.gone && (o.u || 0) >= p.u0 && (o.u || 0) <= p.u1) catchPlant(S2, o);
-        }
-        if (p.u0 <= 0 && p.u1 >= 1) p.gone = true;
+        cutArch(S2, p, ((p.u0 || 0.5) + (p.u1 || 0.5)) / 2, true);
         continue;
       }
-      p.len -= kr("firePlant", R) * dt;
-      const ty = p.y + Math.max(0, p.len);
-      if (R() < dt * 30) flameAt(S2, p.x + (R() - 0.5) * 4, ty);
-      if (R() < dt * 4) fireSmoke(S2, p.x, ty);
+      p.len -= kr("firePlant", R) * TITLE_FIRESPEED * (p.st === "silk" ? TITLE_WEBFIRE : 1) * dt;
+      const pa = p;
+      const tip = p.sw || p.tl ? vinePt(pa, Math.max(0, p.len)) : { x: 0, y: Math.max(0, p.len) }, tx2 = p.ox + tip.x, ty = p.y + tip.y;
+      if (R() < dt * 30) flameAt(S2, tx2 - S2.scroll + (R() - 0.5) * 4, ty);
+      if (R() < dt * 4) fireSmoke(S2, tx2 - S2.scroll, ty);
       if (ticks) {
-        lightArea(S2, p.ox, ty, 5, 0.3);
-        spreadFrom(S2, p.ox, ty);
-        for (const o of S2.props) if (!o.burn && !o.gone && !o.arc && FLAMMABLE[o.st] && Math.abs(o.ox - p.ox) < 10 && ty > o.y - 4 && ty < o.y + o.len + 4 && R() < 0.25) catchPlant(S2, o);
+        lightArea(S2, tx2, ty, 5, 0.3 * TITLE_FIRESPEED);
+        spreadFrom(S2, tx2, ty);
+        for (const o of S2.props) if (!o.burn && !o.gone && !o.arc && burns(o) && Math.abs(o.ox - tx2) < 10 && ty > o.y - 4 && ty < o.y + o.len + 4 && R() < 0.25 * TITLE_FIRESPEED) catchPlant(S2, o);
       }
-      if (p.len < 4) {
+      if (p.len < 3) {
         p.gone = true;
-        lightArea(S2, p.ox, p.y, 6, 1);
+        lightArea(S2, tx2, ty, 6, 0.5);
       }
     }
-    let gone = 0;
-    for (const L3 of S2.webs) {
-      if (!L3.fu) continue;
-      const du = kr("fireArch", R) * TITLE_WEBFIRE * dt / Math.max(1, Math.hypot(L3.b0x - L3.a0x, L3.b0y - L3.a0y));
-      L3.fu[0] = Math.max(0, L3.fu[0] - du);
-      L3.fu[1] = Math.min(1, L3.fu[1] + du);
-      for (const u of L3.fu) {
-        const w = titleWebAt(L3, u);
-        if (R() < dt * 20) flameAt(S2, w.x - S2.scroll + (R() - 0.5) * 2, w.y);
-        if (ticks) spreadFrom(S2, w.x, w.y);
-      }
-      if (L3.fu[0] <= 0 && L3.fu[1] >= 1) {
-        L3.fu = null;
-        L3.out = true;
-        gone++;
-      }
-    }
-    if (gone) {
-      S2.webs = S2.webs.filter((L3) => !L3.out);
-      S2.cut += gone;
-    }
+    for (const L3 of S2.webs.slice()) if (L3.fu) cutWeb(S2, L3, (L3.fu[0] + L3.fu[1]) / 2, true);
   }
+  var burns = (p) => !!FLAMMABLE[p.st] || p.st === "silk";
   function spreadFrom(S2, wx, y) {
     const R = S2.rnd, J = TITLE_JUMP;
     for (const p of S2.props) {
-      if (p.burn || p.gone || !FLAMMABLE[p.st] || R() > TITLE_JUMPP) continue;
+      if (p.burn || p.gone || !burns(p) || R() > TITLE_JUMPP) continue;
       if (p.arc) {
         const k = archK(p, wx, y, J - 3);
         if (k >= 0) catchArch(S2, p, k / (p.arc.length - 1));
       } else if (Math.abs(p.ox - wx) < J + 1 && y > p.y - J && y < p.y + p.len + J) catchPlant(S2, p);
     }
-    for (const L3 of S2.webs) {
+    for (const L3 of S2.webs.slice()) {
       if (L3.fu || R() > TITLE_JUMPP) continue;
       for (let i = 0; i <= 8; i++) {
         const w = titleWebAt(L3, i / 8);
@@ -20297,10 +20647,35 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     const W = { time: S2.t };
     const G = { ctx };
+    ctx.lineCap = "round";
     for (const p of S2.props) {
       if (p.gone || p.x + (p.span || 0) < -40 || p.x > TITLE_VW + 40) continue;
       const pr = p;
+      if (p.st === "silk") {
+        ctx.strokeStyle = "#eef0f6";
+        ctx.globalAlpha = 0.55;
+        ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        for (let k2 = 2; k2 <= p.len + 1.9; k2 += 2) {
+          const q = vinePt(pr, Math.min(k2, p.len));
+          ctx.lineTo(p.x + q.x, p.y + q.y);
+        }
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        continue;
+      }
       drawProp(ctx, pr, S2.t, T);
+    }
+    for (const p of S2.props) {
+      if (!p.burn || p.gone || p.arc || p.x < -20 || p.x > TITLE_VW + 20) continue;
+      const pr = p, bent = p.sw || p.tl, reach2 = p.st === "silk" ? 3 : 7;
+      for (let k2 = Math.max(0, p.len - reach2); k2 <= p.len; k2 += TCELL * 0.75) {
+        const q = bent ? vinePt(pr, k2) : { x: 0, y: k2 }, c = Math.floor((p.ox + q.x) / TCELL), r = Math.floor((p.y + q.y) / TCELL);
+        const h4 = Math.imul(c * 977 + r, 2654435761) + S2.fireN * 40503 >>> 30;
+        ctx.fillStyle = FIRE_COLS[p.len - k2 < 1.5 ? 3 : h4 === 0 ? 0 : h4 === 3 ? 2 : 1];
+        ctx.fillRect(c * TCELL - S2.scroll, r * TCELL, TCELL, TCELL);
+      }
     }
     ctx.strokeStyle = "#eef0f6";
     ctx.globalAlpha = 0.55;
@@ -20366,19 +20741,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.translate(-S2.scroll, 0);
     for (const f of S2.foes) drawEnemy(ctx, f, S2.t);
     ctx.restore();
-    const r = S2.runner, K = TITLE_KITS[r.kit], pcx = r.x + PW / 2, ax = Math.cos(r.ang), ay = Math.sin(r.ang);
-    const lower = r.swap > 0 ? Math.sin(r.swap / 0.3 * Math.PI) * 4 : 0, gy = r.y + PH * 0.45 + lower;
-    const hands = { gun: { x: pcx + ax * 2.5, y: gy }, torch: { x: pcx + ax * 7, y: gy + ay * 5 - 0.5 } };
-    const ox2 = Math.round(r.x) - 14, oy2 = Math.round(r.y) - 8;
-    if (r.mode === "fly") {
-      const len = 6 + r.flame * 14 + S2.rnd() * 3, bx = pcx - r.face * 4.5, by = r.y + PH * 0.55;
-      pixelSprite(ctx, ox2 - 10, oy2, PW + 48, PH + 40, 1, false, (c) => jetFlame(c, bx, by, 0, 1, len, S2.t));
-    }
-    const gait = r.mode === "run" ? r.gait : null;
-    pixelHeld(ctx, ox2 + 14, oy2 + 8, 1, true, (c) => {
-      drawRunner(c, r.x, r.y, PW, PH, r.face, gait, r.mode !== "run", r.flame, false, hands);
-      drawGun(c, pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);
-    });
+    for (const r of S2.runners) drawTitleRunner(ctx, S2, r);
     ctx.globalCompositeOperation = "lighter";
     for (const z of S2.zaps) drawBolt(G, z.pts, z.col, 1, z.t / 0.16);
     for (const s of S2.shots) {
@@ -20451,6 +20814,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     vg.addColorStop(1, "rgba(0,0,0,0.6)");
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, cw, ch);
+  }
+  function drawTitleRunner(ctx, S2, r) {
+    const K = r.kit, pcx = r.x + PW / 2, ax = Math.cos(r.ang), ay = Math.sin(r.ang);
+    const lower = r.swap > 0 ? Math.sin(r.swap / 0.3 * Math.PI) * 4 : 0, gy = r.y + PH * 0.45 + lower;
+    const hands = { gun: { x: pcx + ax * 2.5, y: gy }, torch: { x: pcx + ax * 7, y: gy + ay * 5 - 0.5 } };
+    const ox2 = Math.round(r.x) - 14, oy2 = Math.round(r.y) - 8;
+    if (r.mode === "fly") {
+      const len = 6 + r.flame * 14 + S2.rnd() * 3, bx = pcx - r.face * 4.5, by = r.y + PH * 0.55;
+      pixelSprite(ctx, ox2 - 10, oy2, PW + 48, PH + 40, 1, false, (c) => jetFlame(c, bx, by, 0, 1, len, S2.t));
+    }
+    const gait = r.mode === "run" ? r.gait : null;
+    pixelHeld(ctx, ox2 + 14, oy2 + 8, 1, true, (c) => {
+      drawRunner(c, r.x, r.y, PW, PH, r.face, gait, r.mode !== "run", r.flame, false, hands, null, r.col);
+      drawGun(c, pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);
+    });
   }
 
   // src/game/dpr.js

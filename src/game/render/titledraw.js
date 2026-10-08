@@ -11,9 +11,10 @@ import { THEMES } from '../../data/themes.js';
 import { drawEnemy } from '../../creatures/draw.js';
 import { coinR } from '../../world/nuggets.js';
 import { FIRE_COLS } from '../../world/fire.js';
+import { vinePt } from '../../world/sway.js';
 import { drawProp, propGlow } from '../../art/props.js';
 import { GUN_HELD, drawGun, drawNugget, glowAt, drawRunner, jetFlame, pixelHeld, pixelSprite } from '../../art/sprites.js';
-import { TCELL, TITLE_KITS, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleWebAt } from '../../art/titlescene.js';
+import { TCELL, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleWebAt } from '../../art/titlescene.js';
 import { drawBolt, drawLook } from './looks.js';
 
 const T = THEMES[0];                                   // Mossy caves
@@ -125,11 +126,32 @@ export function titleDraw(ctx, S, cw, ch) {
   /** @type {any} */
   const G = { ctx };
   // plants (a burning one is shorter by what's burnt: drawProp draws its len; an arch, its u0..u1 gone)
+  ctx.lineCap = 'round';
   for (const p of S.props) {
     if (p.gone || p.x + (p.span || 0) < -40 || p.x > TITLE_VW + 40) continue;
     /** @type {any} */
     const pr = p;
+    if (p.st === 'silk') {             // a cut web line's piece: silk hanging from its end, as the lines are drawn
+      ctx.strokeStyle = '#eef0f6'; ctx.globalAlpha = 0.55; ctx.lineWidth = 0.7;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y);
+      for (let k = 2; k <= p.len + 1.9; k += 2) { const q = vinePt(pr, Math.min(k, p.len)); ctx.lineTo(p.x + q.x, p.y + q.y); }
+      ctx.stroke(); ctx.globalAlpha = 1;
+      continue;
+    }
     drawProp(ctx, pr, S.t, T);
+  }
+  // a burning vine or piece of silk: its burning stretch drawn as the burning cells are (the fire's colours in
+  // the terrain's grid, a new flicker each fire tick), the very tip as embers
+  for (const p of S.props) {
+    if (!p.burn || p.gone || p.arc || p.x < -20 || p.x > TITLE_VW + 20) continue;
+    /** @type {any} */
+    const pr = p, bent = p.sw || p.tl, reach = p.st === 'silk' ? 3 : 7;
+    for (let k = Math.max(0, p.len - reach); k <= p.len; k += TCELL * 0.75) {
+      const q = bent ? vinePt(pr, k) : { x: 0, y: k }, c = Math.floor((p.ox + q.x) / TCELL), r = Math.floor((p.y + q.y) / TCELL);
+      const h = (Math.imul(c * 977 + r, 2654435761) + S.fireN * 40503) >>> 30;
+      ctx.fillStyle = FIRE_COLS[p.len - k < 1.5 ? 3 : h === 0 ? 0 : h === 3 ? 2 : 1];
+      ctx.fillRect(c * TCELL - S.scroll, r * TCELL, TCELL, TCELL);
+    }
   }
   // the spiders' web lines, silk as the game draws it (render: game/creatures/spider.js drawSilk)
   ctx.strokeStyle = '#eef0f6'; ctx.globalAlpha = 0.55; ctx.lineWidth = 0.7; ctx.lineCap = 'round';
@@ -179,20 +201,9 @@ export function titleDraw(ctx, S, cw, ch) {
   ctx.save(); ctx.translate(-S.scroll, 0);
   for (const f of S.foes) drawEnemy(ctx, f, S.t);
   ctx.restore();
-  // the runner: body and jet flame on the 1-unit pixel grid like the game's drawPlayer, his gun in it (pixelHeld)
-  const r = S.runner, K = TITLE_KITS[r.kit], pcx = r.x + PW / 2, ax = Math.cos(r.ang), ay = Math.sin(r.ang);
-  const lower = r.swap > 0 ? Math.sin(r.swap / 0.3 * Math.PI) * 4 : 0, gy = r.y + PH * 0.45 + lower;
-  const hands = { gun: { x: pcx + ax * 2.5, y: gy }, torch: { x: pcx + ax * 7, y: gy + ay * 5 - 0.5 } };
-  const ox = Math.round(r.x) - 14, oy = Math.round(r.y) - 8;
-  if (r.mode === 'fly') {
-    const len = 6 + r.flame * 14 + S.rnd() * 3, bx = pcx - r.face * 4.5, by = r.y + PH * 0.55;
-    pixelSprite(ctx, ox - 10, oy, PW + 48, PH + 40, 1, false, c => jetFlame(c, bx, by, 0, 1, len, S.t));
-  }
-  const gait = r.mode === 'run' ? r.gait : null;
-  pixelHeld(ctx, ox + 14, oy + 8, 1, true, c => {
-    drawRunner(c, r.x, r.y, PW, PH, r.face, gait, r.mode !== 'run', r.flame, false, hands);
-    drawGun(c, pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);
-  });
+  // the four players: body and jet flame on the 1-unit pixel grid like the game's drawPlayer, the gun in it
+  // (pixelHeld), each with its colour on the backpack and helmet
+  for (const r of S.runners) drawTitleRunner(ctx, S, r);
   // the bright stuff, added light
   ctx.globalCompositeOperation = 'lighter';
   for (const z of S.zaps) drawBolt(G, z.pts, z.col, 1, z.t / 0.16);
@@ -253,4 +264,22 @@ export function titleDraw(ctx, S, cw, ch) {
   const vg = ctx.createRadialGradient(cw / 2, ch * 0.45, Math.min(cw, ch) * 0.3, cw / 2, ch * 0.45, Math.max(cw, ch) * 0.75);
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.6)');
   ctx.fillStyle = vg; ctx.fillRect(0, 0, cw, ch);
+}
+
+// one title player (art/titlescene.js TRunner)
+/** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S @param {import('../../art/titlescene.js').TRunner} r */
+function drawTitleRunner(ctx, S, r) {
+  const K = r.kit, pcx = r.x + PW / 2, ax = Math.cos(r.ang), ay = Math.sin(r.ang);
+  const lower = r.swap > 0 ? Math.sin(r.swap / 0.3 * Math.PI) * 4 : 0, gy = r.y + PH * 0.45 + lower;
+  const hands = { gun: { x: pcx + ax * 2.5, y: gy }, torch: { x: pcx + ax * 7, y: gy + ay * 5 - 0.5 } };
+  const ox = Math.round(r.x) - 14, oy = Math.round(r.y) - 8;
+  if (r.mode === 'fly') {
+    const len = 6 + r.flame * 14 + S.rnd() * 3, bx = pcx - r.face * 4.5, by = r.y + PH * 0.55;
+    pixelSprite(ctx, ox - 10, oy, PW + 48, PH + 40, 1, false, c => jetFlame(c, bx, by, 0, 1, len, S.t));
+  }
+  const gait = r.mode === 'run' ? r.gait : null;
+  pixelHeld(ctx, ox + 14, oy + 8, 1, true, c => {
+    drawRunner(c, r.x, r.y, PW, PH, r.face, gait, r.mode !== 'run', r.flame, false, hands, null, r.col);
+    drawGun(c, pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);
+  });
 }
