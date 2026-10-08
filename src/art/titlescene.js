@@ -11,6 +11,7 @@
 
 import { PW, PH } from '../core/consts.js';
 import { CREATURES, ROSTERS } from '../data/creatures.js';
+import { DEV, kru } from '../dev/knobs.js';
 import { MODS } from '../spells/mods.js';
 import { pixText, pixWidth } from './pixfont.js';
 
@@ -22,7 +23,10 @@ export const TITLE_FIRE = 160;        // burning terrain cells at once
 export const TCELL = 2;               // the terrain grid's cell (world units)
 export const TITLE_ZLEN = 280;        // one zone's length (world units)
 // the zones it travels through, in order (floor 1's natural and built-up looks)
-export const TITLE_ZONES = ['moss', 'timber', 'paved', 'grove'];
+export const TITLE_ZONES = ['moss', 'webs', 'timber', 'paved', 'grove'];
+export const ZBLEND = 28;             // a zone's border frays this far (world units) each way, by noise
+export const TIMBER_H = 38;           // the timber works' height, floor to roof: the mine frames' height
+export const TITLE_WEBS = 60;         // web lines at once
 // cell materials: air (the back wall shows), rock, moss (burns, chars), brick, wood (burns away),
 // char (burnt or blasted rock), beam (timber posts and beams: not solid, burns away)
 export const TM = { AIR: 0, ROCK: 1, MOSS: 2, BRICK: 3, WOOD: 4, CHAR: 5, BEAM: 6 };
@@ -43,11 +47,22 @@ export const TITLE_KITS = [
 ];
 // floor 1's creatures (its roster, and the rats that live there)
 export const TITLE_KINDS = [...ROSTERS[0], 'rotta'];
+// who comes into each zone, weighted, as the game spawns them: jellyfish only in the natural caves
+// (NATURAL_ONLY), rats in the built-up works (their nests; a few stray into the wild), spiders in
+// their own webbed caves
+/** @type {Record<string, [string, number][]>} */
+export const TITLE_HOME = {
+  moss: [['meduusa', 3], ['rotta', 1]],
+  webs: [['hamahakki', 4], ['meduusa', 1]],
+  timber: [['rotta', 1]],
+  paved: [['rotta', 1]],
+  grove: [['meduusa', 3], ['rotta', 1]],
+};
 
 /** @typedef {{ x: number, y: number, vx: number, vy: number, face: number, ang: number, cd: number, kit: number, flame: number,
  *   mode: string, modeT: number, tx: number, ty: number, retarget: number, gait: number, ground: boolean, swapT: number, swap: number }} TRunner */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, r: number, hp: number, k: string, flash: number, phase: number, cd: number,
- *   surf: number, br: any }} TFoe */
+ *   surf: number, br: any, spd?: number, L?: TWeb | null, u?: number, walkT?: number }} TFoe */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, size: number, col: string, look: string, life: number, foe: boolean, spin: number,
  *   grav: number, drag: number, explode: number, pit: number, fire: number, bounce: number, bounceE: number, pierce: number, dmg: number }} TShot */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string }} TPart */
@@ -56,10 +71,12 @@ export const TITLE_KINDS = [...ROSTERS[0], 'rotta'];
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
 /** @typedef {{ k: string, st: string, wx: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number }} TProp */
 /** @typedef {{ c: number, r: number, t: number }} TFire */
+/** @typedef {{ a0x: number, a0y: number, b0x: number, b0y: number, sag: number }} TWeb a web line, world x (the spiders' zone) */
 /** @typedef {{ t: number, vh: number, top: number, bot: number, seed: number, rnd: () => number, scroll: number, shake: number, spawn: number,
  *   kills: number, gold: number, got: number, runner: TRunner, foes: TFoe[], shots: TShot[], parts: TPart[], nuggets: TGold[],
  *   booms: TBoom[], zaps: TZap[], flash: number, rows: number, ncol: number, cells: Uint8Array, gen: number, props: TProp[],
- *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number> }} TitleScene */
+ *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
+ *   webs: TWeb[], cut: number, lineT: number }} TitleScene */
 
 /** @param {number} seed @returns {() => number} a seeded random 0..1 (mulberry32) */
 export function titleRng(seed) {
@@ -76,16 +93,38 @@ export function titleRng(seed) {
 // which zone a world x is in, and how built-up it is there (0 natural .. 1 in a works, ramped at the ends)
 /** @param {number} wx @returns {string} */
 export const titleZone = wx => TITLE_ZONES[((Math.floor(wx / TITLE_ZLEN) % TITLE_ZONES.length) + TITLE_ZONES.length) % TITLE_ZONES.length];
-/** @param {number} wx */
-const built = wx => {
+/** @param {number} wx @param {string} [only] just this zone's (else timber or paved) */
+const built = (wx, only) => {
   const z = titleZone(wx);
-  if (z !== 'timber' && z !== 'paved') return 0;
+  if (only ? z !== only : z !== 'timber' && z !== 'paved') return 0;
   const u = wx - Math.floor(wx / TITLE_ZLEN) * TITLE_ZLEN;
-  return Math.max(0, Math.min(1, Math.min(u, TITLE_ZLEN - u) / 40));
+  return Math.max(0, Math.min(1, Math.min(u, TITLE_ZLEN - u) / 60));
 };
-// the cave's roof and floor as made (world x; B the band: top, bot in world units, under the title, over the menu)
+// smooth value noise, about 0..1, one bump a unit (pure)
+/** @param {number} x @param {number} y */
+const h2 = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
+/** @param {number} x @param {number} y */
+export function titleNoise(x, y) {
+  const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
+  const u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+  const a = h2(xi, yi), b = h2(xi + 1, yi), c = h2(xi, yi + 1), d = h2(xi + 1, yi + 1);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+// the zone at a point, with a ragged border: pushed up to ZBLEND either way by noise (big lumps and a
+// fine fray), so one zone's rock, moss, bricks and back wall break up into the next instead of a cut
+/** @param {number} wx @param {number} y */
+export const titleZoneAt = (wx, y) => titleZone(wx + (titleNoise(wx / 24, y / 14) - 0.5) * 2 * ZBLEND + (titleNoise(wx / 4, y / 4) - 0.5) * 12);
+// the cave's roof and floor as made (world x; B the band: top, bot in world units, under the title, over the menu).
+// The timber works come down to TIMBER_H over the floor, the height of their frames
 /** @param {number} wx @param {{ top: number, bot: number }} B */
-export const titleCeil = (wx, B) => B.top - 4 + Math.sin(wx * 0.018 + 6) * 10 + Math.sin(wx * 0.049 + 3) * 6 + Math.sin(wx * 0.11) * 2;
+export const titleCeil = (wx, B) => {
+  const nat = B.top - 4 + Math.sin(wx * 0.018 + 6) * 10 + Math.sin(wx * 0.049 + 3) * 6 + Math.sin(wx * 0.11) * 2;
+  const bt = built(wx, 'timber');
+  return bt ? nat + (Math.max(nat, titleFloor(wx, B) - TIMBER_H) - nat) * bt : nat;
+};
+// a web line's point at fraction u: straight a0..b0, sagging in the middle (as world/sway.js webAt)
+/** @param {TWeb} L @param {number} u */
+export const titleWebAt = (L, u) => ({ x: L.a0x + (L.b0x - L.a0x) * u, y: L.a0y + (L.b0y - L.a0y) * u + 4 * u * (1 - u) * L.sag });
 /** @param {number} wx @param {{ top: number, bot: number }} B */
 export const titleFloor = (wx, B) => {
   const nat = B.bot - 22 + Math.sin(wx * 0.021 + 4) * 7 + Math.sin(wx * 0.057 + 2) * 4 + Math.sin(wx * 0.13) * 1.5;
@@ -122,29 +161,53 @@ function dirty(S, c0, c1, r0, r1) {
 function genCol(S, c) {
   const wx = c * TCELL, z = titleZone(wx), b = built(wx), R = S.rnd;
   const cy = titleCeil(wx, S), fy = titleFloor(wx, S), base = ci(S, c, 0);
-  const post = z === 'timber' && b > 0.5 && ((wx % 44) + 44) % 44 < 4;
+  // the timber works' mine frames: a post every 40, a cap beam under the roof, a brace each side of a post's top
+  const frame = z === 'timber' && b > 0.5, pd = Math.abs((((wx + 20) % 40) + 40) % 40 - 20);
   for (let r = 0; r < S.rows; r++) {
-    const y = (r + 0.5) * TCELL;
+    const y = (r + 0.5) * TCELL, zc = titleZoneAt(wx, y);   // the skin (moss, bricks, planks) frays at a border
     let m = TM.AIR;
     if (y < cy) {
       m = TM.ROCK;
-      if ((z === 'moss' || z === 'grove') && y > cy - (z === 'grove' ? 5 : 3)) m = TM.MOSS;
-      if (z === 'paved' && b > 0.3 && y > cy - 8) m = TM.BRICK;
+      if ((zc === 'moss' || zc === 'grove') && y > cy - (zc === 'grove' ? 5 : 3)) m = TM.MOSS;
+      if (zc === 'webs' && y > cy - 1.5 && titleNoise(wx / 6, 3) > 0.55) m = TM.MOSS;
+      if (zc === 'paved' && b > 0.3 && y > cy - 8) m = TM.BRICK;
     } else if (y >= fy) {
       m = TM.ROCK;
-      if ((z === 'moss' || z === 'grove') && y < fy + (z === 'grove' ? 6 : 3.5)) m = TM.MOSS;
-      if (z === 'paved' && b > 0.3 && y < fy + 6) m = TM.BRICK;
-      if (z === 'timber' && b > 0.3 && y < fy + 2.5) m = TM.WOOD;
-    } else if (z === 'timber' && b > 0.5 && (post || y < cy + 5)) m = TM.BEAM;
+      if ((zc === 'moss' || zc === 'grove') && y < fy + (zc === 'grove' ? 6 : 3.5)) m = TM.MOSS;
+      if (zc === 'webs' && y < fy + 2 && titleNoise(wx / 6, 7) > 0.5) m = TM.MOSS;
+      if (zc === 'paved' && b > 0.3 && y < fy + 6) m = TM.BRICK;
+      if (zc === 'timber' && b > 0.3 && y < fy + 2.5) m = TM.WOOD;
+    } else if (frame) {
+      const under = y - cy - 4;                              // below the cap beam
+      if (under < 0 || pd < 2 || (pd >= 2 && pd <= 10 && Math.abs(under - (10 - pd)) < 1.4)) m = TM.BEAM;
+    }
     S.cells[base + r] = m;
   }
+  // the spiders' zone: web lines everywhere, roof to floor (slanting either way) and roof to roof (sagging)
+  if (z === 'webs' && b === 0 && !(c % 4) && R() < 0.42 && S.webs.length < TITLE_WEBS) {
+    const down = R() < 0.55, bx = down ? wx + (R() - 0.35) * 70 : wx + 18 + R() * 44;
+    const L = { a0x: wx, a0y: cy + 0.5, b0x: bx, b0y: down ? titleFloor(bx, S) - 0.5 : titleCeil(bx, S) + 0.5, sag: 0 };
+    L.sag = DEV.webSag * Math.abs(L.b0x - L.a0x) * (down ? 1 : 2.5);
+    S.webs.push(L);
+  }
   // plants: vines, mycelium and roots under the roof, bouncy mushrooms on the floor
-  if (c % 3) return;
+  // the grove: a curtain of long vines, every other column, some down near the floor (thick in its
+  // middle, thinning to its ends)
   const nat = 1 - b, grove = z === 'grove';
+  if (grove && !(c % 2)) {
+    const u = wx - Math.floor(wx / TITLE_ZLEN) * TITLE_ZLEN, mid = Math.min(1, Math.min(u, TITLE_ZLEN - u) / 70);
+    if (R() < 0.25 + 0.45 * mid) {
+      const room = fy - cy, st = R() < 0.82 ? 'vine' : R() < 0.5 ? 'root' : 'myc';
+      S.props.push({ k: 'climb', st, wx, x: 0, y: cy, len: room * (0.2 + R() * (0.35 + 0.45 * mid)), seed: R(), side: 1, burn: 0,
+        ac: c, ar: Math.floor((cy - 1) / TCELL) });
+      return;
+    }
+  }
+  if (c % 3) return;
   const p = R();
-  if (p < (grove ? 0.32 : z === 'moss' ? 0.16 : 0.04) * Math.max(nat, 0.2)) {
-    const st = grove ? (R() < 0.75 ? 'vine' : 'root') : (R() < 0.5 ? 'vine' : R() < 0.5 ? 'myc' : 'root');
-    S.props.push({ k: 'climb', st, wx, x: 0, y: cy, len: 10 + R() * (grove ? 34 : 24), seed: R(), side: 1, burn: 0,
+  if (!grove && p < (z === 'moss' ? 0.2 : 0.04) * Math.max(nat, 0.2)) {
+    const st = R() < 0.5 ? 'vine' : R() < 0.5 ? 'myc' : 'root';
+    S.props.push({ k: 'climb', st, wx, x: 0, y: cy, len: 10 + R() * (z === 'moss' ? 40 : 24), seed: R(), side: 1, burn: 0,
       ac: c, ar: Math.floor((cy - 1) / TCELL) });
   } else if (z === 'paved' && b > 0.5 && p < 0.08) {
     S.props.push({ k: 'climb', st: 'chain', wx, x: 0, y: cy, len: 8 + R() * 16, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((cy - 1) / TCELL) });
@@ -159,7 +222,7 @@ export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62) {
   /** @type {TitleScene} */
   const S = { t: 0, vh, top, bot, seed, rnd, scroll: 0, shake: 0, spawn: 0, kills: 0, gold: 0, got: 0, runner: null, foes: [], shots: [],
     parts: [], nuggets: [], booms: [], zaps: [], flash: 0, rows, ncol, cells: new Uint8Array(rows * ncol), gen: -25, props: [],
-    fire: [], dirty: [], dirtyAll: true, carved: 0, burnt: 0, swaps: 0, groundT: 0, flyT: 0, kinds: {} };
+    fire: [], dirty: [], dirtyAll: true, carved: 0, burnt: 0, swaps: 0, groundT: 0, flyT: 0, kinds: {}, webs: [], cut: 0, lineT: 0 };
   genTo(S);
   const x = 60, y = titleSurf(S, x + PW / 2, (top + bot) / 2, 1) - PH;
   S.runner = { x, y, vx: 0, vy: 0, face: 1, ang: 0, cd: 0.5, kit: 0, flame: 0, mode: 'run', modeT: 3, tx: x, ty: y, retarget: 0,
@@ -174,8 +237,12 @@ function genTo(S) {
 
 /** @param {TitleScene} S @param {number} [x] */
 function addFoe(S, x) {
-  const R = S.rnd, k = TITLE_KINDS[Math.floor(R() * TITLE_KINDS.length)], C = CREATURES[k];
-  const sx = x === undefined ? TITLE_VW + 16 : x;
+  const R = S.rnd, sx = x === undefined ? TITLE_VW + 16 : x;
+  // only what lives in the zone it comes into (TITLE_HOME, weighted)
+  const home = TITLE_HOME[titleZone(sx + S.scroll)];
+  let roll = R() * home.reduce((a, h) => a + h[1], 0), k = home[0][0];
+  for (const [q, w] of home) { if (roll < w) { k = q; break; } roll -= w; }
+  const C = CREATURES[k];
   S.kinds[k] = (S.kinds[k] || 0) + 1;
   if (k === 'rotta') {
     // a swarm: several running along the floor together
@@ -187,16 +254,26 @@ function addFoe(S, x) {
     return;
   }
   if (k === 'hamahakki') {
-    const surf = R() < 0.5 ? 1 : -1;
-    S.foes.push({ x: sx, y: 0, vx: -(8 + R() * 20), vy: 0, r: C.r, hp: 4, k, flash: 0, phase: R() * 6.28, cd: 0, surf,
-      br: { mode: 'surf', nx: 0, ny: surf > 0 ? -1 : 1, side: -1, on: 1 } });
+    // two or three, each on a web line near where they come in, else walking the floor or the roof
+    const wx = sx + S.scroll, on = S.webs.filter(L => Math.abs((L.a0x + L.b0x) / 2 - wx) < 50);
+    const n = 2 + Math.floor(R() * 2);
+    for (let i = 0; i < n && S.foes.length < TITLE_FOES; i++) {
+      const L = on.length ? on[Math.floor(R() * on.length)] : null, surf = R() < 0.5 ? 1 : -1;
+      const f = { x: sx + i * 12, y: 0, vx: 0, vy: 0, r: C.r, hp: 4, k, flash: 0, phase: R() * 6.28, cd: 0, surf,
+        spd: 12 + R() * 12, L, u: 0.15 + R() * 0.7, walkT: 1 + R() * 2,
+        br: { mode: L ? 'line' : 'surf', line: null, dir: R() < 0.5 ? 1 : -1, nx: 0, ny: surf > 0 ? -1 : 1, side: -1, on: 1 } };
+      if (!L) f.vx = -f.spd;
+      S.foes.push(f);
+    }
     return;
   }
-  const tent = [];
-  for (let i = 0; i < 4; i++) { const T = []; for (let j = 0; j < 5; j++) T.push({ x: NaN, y: NaN }); tent.push(T); }
-  S.foes.push({ x: sx, y: S.top + (S.bot - S.top) * (0.1 + 0.45 * R()), vx: -(14 + R() * 18), vy: 0, r: C.r * (0.9 + R() * 0.3), hp: 3, k,
+  // a jellyfish: its tentacles as the game makes them (the jellyfish knobs: how many, points, length, sway, droop)
+  const u = { col: R(), sq: R(), len: R(), wave: R(), sag: R(), thin: R(), glow: R(), glowR: R(), flare: R(), plant: R() }, tent = [];
+  const nt = Math.round(kru('jeTents', R())), nv = Math.max(2, Math.round(kru('jeVerts', R())));
+  for (let i = 0; i < nt; i++) { const T = []; for (let j = 0; j < nv; j++) T.push({ x: NaN, y: NaN }); tent.push(T); }
+  S.foes.push({ x: sx, y: S.top + (S.bot - S.top) * (0.1 + 0.4 * R()), vx: -(14 + R() * 18), vy: 0, r: C.r * (0.9 + R() * 0.3), hp: 3, k,
     flash: 0, phase: R() * 6.28, cd: 1 + R() * 2, surf: 0,
-    br: { hd: Math.PI, shape: 0, pulse: R() * 1.2, tent, u: { col: R(), sq: R() } } });
+    br: { hd: Math.PI, shape: 0, pulse: R() * 1.2, tent, u, t: R() * 10 } });
 }
 
 /** @param {TitleScene} S @param {number} x @param {number} y @param {number} n @param {string} col @param {number} spd @param {string} kind @param {number} life */
@@ -224,6 +301,7 @@ export function titleCarve(S, sx, y, r) {
     dirty(S, c0, c1, r0, r1);
     burst(S, sx, y, Math.min(8, n), '#7a6a5a', 70, 'chunk', 0.8);
   }
+  cutWebs(S, wx, y, r);
   return n;
 }
 // set alight everything that burns within r: fuel cells and plants
@@ -234,6 +312,7 @@ export function titleIgnite(S, sx, y, r) {
   for (let c = Math.max(c0, S.gen - S.ncol); c <= Math.min(c1, S.gen - 1); c++) for (let rr = r0; rr <= r1; rr++)
     if (Math.hypot((c + 0.5) * TCELL - wx, (rr + 0.5) * TCELL - y) <= r) light(S, c, rr);
   for (const p of S.props) if (!p.burn && p.st !== 'chain' && near(p, wx, y, r)) { p.burn = 1.4; S.burnt++; }
+  cutWebs(S, wx, y, r);
 }
 /** @param {TProp} p @param {number} wx @param {number} y @param {number} r */
 const near = (p, wx, y, r) => Math.abs(p.wx - wx) < r + 4 && y > Math.min(p.y, p.y + (p.k === 'pad' ? -9 : p.len)) - r && y < Math.max(p.y, p.y + (p.k === 'pad' ? 0 : p.len)) + r;
@@ -287,7 +366,8 @@ function shotEnd(S, s) {
     titleCarve(S, s.x, s.y, r);
     for (const g of S.foes) if (Math.hypot(g.x - s.x, g.y - s.y) < r + g.r) hitFoe(S, g, 4, s.col);
   } else if (s.pit) titleCarve(S, s.x, s.y, s.pit * 0.7);
-  if (s.fire || s.explode) titleIgnite(S, s.x, s.y, s.fire ? 7 + s.explode * 0.3 : 5);
+  // fire reaches past a blast's charred rim, into the moss, timber and plants round it
+  if (s.fire || s.explode) titleIgnite(S, s.x, s.y, (s.fire ? 7 : 0) + (s.explode ? s.explode * 0.42 + 5 : 0));
   burst(S, s.x, s.y, 3, s.col, 50, 'spark', 0.25);
 }
 
@@ -347,6 +427,7 @@ export function titleStep(S, dt) {
     if (p.burn === 0 && p.x > -10 && p.x < TITLE_VW + 10 && !SOLID[titleCell(S, p.ac, p.ar)]) { p.burn = -1; burst(S, p.x, p.y, 3, '#5a8a3a', 40, 'chunk', 0.7); }
   }
   S.props = S.props.filter(p => p.burn !== -1 && p.wx - S.scroll > -60);
+  S.webs = S.webs.filter(L => Math.max(L.a0x, L.b0x) - S.scroll > -40);
 }
 
 /** @param {TitleScene} S @param {number} dt */
@@ -368,15 +449,17 @@ function stepRunner(S, dt) {
       r.vy += GRAV * dt; r.y += r.vy * dt; r.ground = false;
       if (r.y + PH >= ground) { r.y = ground - PH; r.vy = 0; r.ground = true; }
     } else { r.y = ground - PH; r.vy = 0; r.ground = true; }
-    // a wall ahead too tall to step up, a deep hole, or his time's up: up he goes
-    const ahead = titleSurf(S, cx() + 6, r.y + PH - 9, 1);
+    // a wall ahead too tall to step up, a deep hole, or his time's up: up he goes (not on time
+    // under the timber works' low roof: he runs them)
+    const ahead = titleSurf(S, cx() + 6, r.y + PH - 9, 1), low = built(cx() + S.scroll + 40, 'timber') > 0;
+    if (low && r.modeT <= 0) r.modeT = 0.5;
     if (r.modeT <= 0 || ahead < r.y + PH - 7 || ground - (r.y + PH) > 20) {
       r.mode = 'fly'; r.modeT = 2.2 + R() * 2; r.retarget = 0; r.vy = -40; r.ground = false;
     }
   } else {
     S.flyT += dt;
     r.retarget -= dt;
-    const land = r.modeT <= 0;
+    const land = r.modeT <= 0 || built(cx() + S.scroll + 30, 'timber') > 0;   // the timber works coming: down he comes
     if (!land && (r.retarget <= 0 || Math.hypot(r.tx - r.x, r.ty - r.y) < 6)) {
       r.tx = 20 + R() * (TITLE_VW * 0.5); r.ty = S.top + (S.bot - S.top) * (0.02 + R() * 0.45); r.retarget = 0.8 + R() * 1.4;
     }
@@ -442,16 +525,90 @@ function zapArc(S, x0, y0, x1, y1, col) {
   S.zaps.push({ pts, t: 0.16, col });
 }
 
+// a spider: walks its web lines and the rock (floor or roof, upside down), stop-start; at a line's
+// end it steps off onto the rock there, and from the rock onto the next line that starts near it.
+// A cut line drops it: it falls to the floor and walks on
+/** @param {TitleScene} S @param {TFoe} f @param {number} dt */
+function stepSpider(S, f, dt) {
+  const R = S.rnd, b = f.br, go = Math.sin(S.t * 1.4 + f.phase) > -0.35 ? 1 : 0, spd = (f.spd || 16) * go;
+  b.on = go;
+  if (b.mode === 'line' && f.L && S.webs.indexOf(f.L) < 0) { b.mode = 'fall'; f.L = null; f.vy = 0; }
+  if (b.mode === 'line' && f.L) {
+    const L = f.L, len = Math.hypot(L.b0x - L.a0x, L.b0y - L.a0y) || 1;
+    f.u = Math.max(0, Math.min(1, (f.u || 0) + b.dir * spd * dt / len));
+    const p = titleWebAt(L, f.u);
+    f.x = p.x - S.scroll; f.y = p.y;
+    b.line = { ax: L.a0x - S.scroll, ay: L.a0y, bx: L.b0x - S.scroll, by: L.b0y };
+    S.lineT += dt;
+    if ((f.u >= 1 && b.dir > 0) || (f.u <= 0 && b.dir < 0)) {
+      // the end: onto the rock there, the floor or the roof (whichever the end is nearer)
+      const ey = f.u >= 1 ? L.b0y : L.a0y;
+      f.surf = Math.abs(ey - titleFloor(f.x + S.scroll, S)) < Math.abs(ey - titleCeil(f.x + S.scroll, S)) ? 1 : -1;
+      b.mode = 'surf'; f.L = null; f.walkT = 1 + R() * 2;
+      f.vx = (R() < 0.5 ? -1 : 1) * (f.spd || 16);
+    }
+    return;
+  }
+  if (b.mode === 'fall') {
+    f.vy += GRAV * dt; f.y += f.vy * dt; f.x -= SCROLL * dt;
+    const fl = titleSurf(S, f.x, f.y - 2, 1);
+    if (f.y + f.r * 0.9 >= fl) { f.y = fl - f.r * 0.9; b.mode = 'surf'; f.surf = 1; f.vx = -(f.spd || 16); f.walkT = 0.5 + R(); }
+    return;
+  }
+  // on the rock: walk (world-anchored, so the scroll carries it), then look for a line that starts here
+  f.x += (f.vx * go - SCROLL) * dt;
+  const s = surfAt(S, f.x, f.surf);
+  f.y = s - f.surf * f.r * 0.9;
+  b.nx = 0; b.ny = f.surf > 0 ? -1 : 1; b.side = f.vx < 0 ? -1 : 1;
+  f.walkT = (f.walkT || 0) - dt;
+  if (f.walkT > 0) return;
+  const wx = f.x + S.scroll;
+  let best = null, bd = 9;
+  for (const L of S.webs) for (const end of [0, 1]) {
+    const ex = end ? L.b0x : L.a0x, ey = end ? L.b0y : L.a0y, d = Math.abs(ex - wx);
+    if (d < bd && Math.abs(ey - f.y) < f.r + 6) { bd = d; best = { L, end }; }
+  }
+  if (best) { f.L = best.L; f.u = best.end; b.dir = best.end ? -1 : 1; b.mode = 'line'; }
+  else {
+    // none here: head for the nearest one on this side, a little way off
+    let tx = null, td = 70;
+    for (const L of S.webs) for (const end of [0, 1]) {
+      const ex = end ? L.b0x : L.a0x, ey = end ? L.b0y : L.a0y, d = Math.abs(ex - wx);
+      if (d < td && Math.abs(ey - f.y) < f.r + 6) { td = d; tx = ex; }
+    }
+    if (tx != null) f.vx = Math.sign(tx - wx) * (f.spd || 16);
+    f.walkT = 0.3;
+  }
+}
+// the floor (surf 1) or roof (-1) under or over a creature at screen x: searched from just inside the
+// cave as made there, so the timber works' low roof doesn't trap it in the rock
+/** @param {TitleScene} S @param {number} x @param {number} surf */
+function surfAt(S, x, surf) {
+  const wx = x + S.scroll;
+  return surf > 0 ? titleSurf(S, x, titleFloor(wx, S) - 10, 1) : titleSurf(S, x, titleCeil(wx, S) + 10, -1);
+}
+// blasts and fire cut the web lines they touch
+/** @param {TitleScene} S @param {number} wx @param {number} y @param {number} r */
+function cutWebs(S, wx, y, r) {
+  const before = S.webs.length;
+  S.webs = S.webs.filter(L => {
+    const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, ll = vx * vx + vy * vy || 1;
+    const u = Math.max(0, Math.min(1, ((wx - L.a0x) * vx + (y - L.a0y) * vy) / ll)), p = titleWebAt(L, u);
+    return Math.hypot(p.x - wx, p.y - y) > r + 1.5;
+  });
+  if (S.webs.length < before) { S.cut += before - S.webs.length; burst(S, wx - S.scroll, y, 3, '#eef0f6', 40, 'spark', 0.3); }
+}
+
 /** @param {TitleScene} S @param {number} dt */
 function stepFoes(S, dt) {
   const R = S.rnd, ru = S.runner;
   for (const f of S.foes) {
     f.flash = Math.max(0, f.flash - dt);
+    if (f.k === 'hamahakki') { stepSpider(S, f, dt); continue; }
     if (f.surf) {
       // spiders and rats: along the floor (or a spider upside-down on the roof), carried by the scroll
       f.x += (f.vx - SCROLL) * dt;
-      if (f.k === 'hamahakki') f.vx = Math.sin(S.t * 1.3 + f.phase) > 0.2 ? -30 : 4;
-      const s = f.surf > 0 ? titleSurf(S, f.x, S.top + 10, 1) : titleSurf(S, f.x, S.top + 30, -1);
+      const s = surfAt(S, f.x, f.surf);
       f.y = s - f.surf * f.r * (f.k === 'rotta' ? 0.75 : 0.9);
       f.br.on = Math.abs(f.vx) > 5 ? 1 : 0;
       continue;
@@ -459,6 +616,8 @@ function stepFoes(S, dt) {
     // jellyfish: pulse along, head first, trailing tentacles; spit poison at him now and then
     const b = f.br;
     f.x -= SCROLL * 0.35 * dt;
+    // a natural-zone creature (NATURAL_ONLY): drifting into the works, it swims back out
+    if (built(f.x + S.scroll) > 0) f.vx = Math.min(f.vx, -40);
     b.pulse -= dt;
     if (b.pulse <= 0) {
       const tx = ru.x + 40 + R() * 100, ty = S.top + (S.bot - S.top) * (0.05 + R() * 0.5);
@@ -468,16 +627,21 @@ function stepFoes(S, dt) {
     const k = Math.exp(-1.6 * dt);
     f.vx *= k; f.vy = f.vy * k + 6 * dt;
     f.x += f.vx * dt; f.y += f.vy * dt;
-    f.y = Math.max(S.top - 10, Math.min(S.bot - 30, f.y));
+    { const wx = f.x + S.scroll; f.y = Math.max(titleCeil(wx, S) + f.r + 3, Math.min(titleFloor(wx, S) - f.r - 12, f.y)); }   // under this roof, over this floor
     b.shape = Math.min(1, Math.hypot(f.vx, f.vy) / 40);
+    // tentacles as creatures/jelly.js jellyStep lays them: the first point on the rim, the rest
+    // following at the knobs' spacing, swaying and drooping, streaming out behind a push
+    b.t += dt;
     const c = Math.cos(b.hd), sn = Math.sin(b.hd), n = b.tent.length;
+    const len = kru('jeTentLen', b.u.len), wave = kru('jeWave', b.u.wave), sag = kru('jeSag', b.u.sag);
     for (let i = 0; i < n; i++) {
-      const T = b.tent[i], seg = 3.2, lx = (i / (n - 1) - 0.5) * f.r * 1.1;
+      const T = b.tent[i], seg = len / (T.length - 1), lx = n > 1 ? (i / (n - 1) - 0.5) * f.r * 1.1 : 0;
       T[0].x = f.x - lx * sn - f.r * 0.35 * c; T[0].y = f.y + lx * c - f.r * 0.35 * sn;
       for (let j = 1; j < T.length; j++) {
         const q = T[j], pq = T[j - 1];
         if (isNaN(q.x)) { q.x = pq.x - c * seg; q.y = pq.y - sn * seg; }
-        q.y += 14 * dt; q.x += Math.sin(S.t * 3 + i + j) * 4 * dt - SCROLL * 0.35 * dt;
+        const sw = Math.sin(b.t * 3.1 + i * 0.5 - j * 0.9) * wave * dt * j / (T.length - 1);
+        q.x += -sn * sw - SCROLL * 0.35 * dt; q.y += c * sw + sag * dt;
         const dx = q.x - pq.x, dy = q.y - pq.y, d = Math.hypot(dx, dy) || 1;
         q.x = pq.x + dx / d * seg; q.y = pq.y + dy / d * seg;
       }

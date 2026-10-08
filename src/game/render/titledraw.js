@@ -14,7 +14,7 @@ import { drawRat } from '../../creatures/rat.js';
 import { drawSpider } from '../../creatures/spider.js';
 import { drawProp } from '../../art/props.js';
 import { drawGun, drawNugget, drawRunner, jetFlame, pixelSprite } from '../../art/sprites.js';
-import { TCELL, TITLE_KITS, TITLE_VW, TM, titleZone } from '../../art/titlescene.js';
+import { TCELL, TITLE_KITS, TITLE_VW, TM, titleNoise, titleWebAt, titleZoneAt } from '../../art/titlescene.js';
 import { drawBolt, drawLook } from './looks.js';
 
 const T = THEMES[0];                                   // Mossy caves
@@ -39,11 +39,13 @@ function cellRGB(m, c, r) {
   if (m === TM.BRICK) return mortar(c, r) ? T.mortar : mixc(T.brick[0], T.brick[1], hb * 0.8 + h * 0.2);
   if (m === TM.WOOD || m === TM.BEAM) return mixc(WOOD[0], WOOD[1], (c % 3 === 0 ? 0.1 : 0.6) + h * 0.3, m === TM.BEAM ? 0.8 : 1);
   if (m === TM.CHAR) return mixc([30, 26, 26], [52, 44, 40], h);
-  const z = titleZone(c * TCELL);
+  const z = titleZoneAt(c * TCELL, (r + 0.5) * TCELL);   // frays into the next zone's, as the rock does
   if (z === 'paved') return mortar(c, r) ? mixc(T.mortar, T.bg, 0.5) : mixc(T.brick[0], T.bg, 0.62 + hb * 0.12);
   if (z === 'timber') return mixc(T.bg, T.bg2, (c % 5 === 0 ? 0.15 : 0.55) + h * 0.15);
-  const g = z === 'grove' ? 0.18 : 0;
-  return mixc(mixc(T.bg, T.bg2, hash(c >> 3, r >> 3) * 0.6 + h * 0.25), T.moss[0], g);
+  // the natural back wall: soft lumps of shade (noise), a little grain
+  const n = titleNoise(c / 7, r / 7) * 0.45 + titleNoise(c / 2.5, r / 2.5) * 0.2 + h * 0.15;
+  if (z === 'webs') return mixc(mixc(T.bg, T.bg2, n * 0.8), [92, 96, 110], 0.1);   // the spiders' caves: bare, a little grey
+  return mixc(mixc(T.bg, T.bg2, n), T.moss[0], z === 'grove' ? 0.18 : 0);
 }
 
 /** @param {import('../../art/titlescene.js').TitleScene} S */
@@ -88,7 +90,7 @@ export function titleDraw(ctx, S, cw, ch) {
   ctx.imageSmoothingEnabled = false;
   for (let c = c0; c < c0 + n;) {
     const x = ((c % N) + N) % N, w = Math.min(N - x, c0 + n - c);
-    ctx.drawImage(cv, x, 0, w, S.rows, c * TCELL - S.scroll, 0, w * TCELL, S.rows * TCELL);
+    ctx.drawImage(cv, x, 0, w, S.rows, c * TCELL - S.scroll, 0, w * TCELL + 0.6, S.rows * TCELL);   // a hair over: no seam where the pieces meet
     c += w;
   }
   /** @type {any} */
@@ -103,6 +105,16 @@ export function titleDraw(ctx, S, cw, ch) {
     const pr = p;
     drawProp(ctx, pr, S.t, T);
   }
+  ctx.globalAlpha = 1;
+  // the spiders' web lines, silk as the game draws it (render: game/creatures/spider.js drawSilk)
+  ctx.strokeStyle = '#eef0f6'; ctx.globalAlpha = 0.55; ctx.lineWidth = 0.7; ctx.lineCap = 'round';
+  ctx.beginPath();
+  for (const L of S.webs) {
+    if (Math.max(L.a0x, L.b0x) < S.scroll - 10 || Math.min(L.a0x, L.b0x) > S.scroll + TITLE_VW + 10) continue;
+    ctx.moveTo(L.a0x - S.scroll, L.a0y);
+    for (let i = 1; i <= 8; i++) { const p = titleWebAt(L, i / 8); ctx.lineTo(p.x - S.scroll, p.y); }
+  }
+  ctx.stroke();
   ctx.globalAlpha = 1;
   // gold
   for (const g of S.nuggets) drawNugget(ctx, g.x, g.y, g.r, g.seed, g.ang);

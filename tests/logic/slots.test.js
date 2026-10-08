@@ -6,6 +6,7 @@
 const { slotKey, slotSummary, SAVE_KEY, COLLECTION_KEY, PERK_COLLECTION_KEY, SLOTS,
   titleScene, titleStep, titleCell, titleZone, titleCarve, titleIgnite, TM, TCELL, TITLE_KITS, TITLE_KINDS, ROSTERS, MODS, gunArt,
   TITLE_FOES, TITLE_PARTS, TITLE_GOLD, TITLE_FIRE } = require('../load');
+const G = require('../load');
 
 let pass = 0, fail = 0;
 const check = (name, ok, got) => {
@@ -28,14 +29,20 @@ check('summary: floor, gold, guns, mods', s && s.floor === 4 && s.gold === 1234 
 // the band a 412x880 phone gives it (ui/title.js)
 const S = titleScene(470, 7, 139, 295);
 let maxFoes = 0, maxParts = 0, maxGold = 0, maxFire = 0, onFloor = 0, feetOff = 0;
-const zones = new Set(), kits = new Set(), seenKinds = new Set();
+const zones = new Set(), kits = new Set(), seenKinds = new Set(), born = new Set(), badHome = [];
+let jellyIn = 0, jellyWorks = 0;
 for (let i = 0; i < 60 * 40; i++) {
   titleStep(S, 1 / 60);
   maxFoes = Math.max(maxFoes, S.foes.length); maxParts = Math.max(maxParts, S.parts.length);
   maxGold = Math.max(maxGold, S.nuggets.length); maxFire = Math.max(maxFire, S.fire.length);
   const r = S.runner;
   zones.add(titleZone(S.scroll + r.x)); kits.add(r.kit);
-  for (const f of S.foes) seenKinds.add(f.k);
+  for (const f of S.foes) {
+    seenKinds.add(f.k);
+    // where each one first shows: a zone that's home to it (TITLE_HOME); jellyfish stay out of the works
+    if (!born.has(f)) { born.add(f); const z = titleZone(S.scroll + f.x); if (!G.TITLE_HOME[z].some(h => h[0] === f.k)) badHome.push([f.k, z]); }
+    if (f.k === 'meduusa' && f.x > 0 && f.x < 220) { jellyIn++; const z = titleZone(S.scroll + f.x); if ((z === 'timber' || z === 'paved') && Math.min((S.scroll + f.x) % 280, 280 - (S.scroll + f.x) % 280) > 60) jellyWorks++; }
+  }
   if (r.mode === 'run' && r.ground) {
     // feet on the floor: the cell just under his feet is solid, the one at his shins isn't rock
     onFloor++;
@@ -54,7 +61,25 @@ check('running, his feet are on the floor', onFloor > 200 && feetOff / onFloor <
 check('he stays on screen', S.runner.x > 0 && S.runner.x < 220 && S.runner.y > S.top - 40 && S.runner.y < S.bot, [S.runner.x, S.runner.y]);
 check('he swaps guns', S.swaps >= 5 && kits.size >= 4, { swaps: S.swaps, kits: kits.size });
 check('every gun is a real gun skin and a real shot', TITLE_KITS.every(K => gunArt(K.art) && MODS[K.mod] && MODS[K.mod].kind === 'shot'));
-check('it travels through the zones', ['moss', 'timber', 'paved', 'grove'].every(z => zones.has(z)), [...zones]);
+check('it travels through the zones', ['moss', 'webs', 'timber', 'paved', 'grove'].every(z => zones.has(z)), [...zones]);
+// v0.0.161 feedback: ragged zone borders, a low timber works, the spiders' webs
+{
+  const { titleZoneAt, ZBLEND, TITLE_ZLEN, TIMBER_H, titleCeil, titleFloor } = G;
+  let near = 0, frayed = 0, far = 0, wrong = 0;
+  for (let wx = 0; wx < TITLE_ZLEN * 5; wx += 2) for (let y = 140; y < 300; y += 4) {
+    const d = Math.min(wx % TITLE_ZLEN, TITLE_ZLEN - wx % TITLE_ZLEN);
+    if (d < ZBLEND * 0.6) { near++; if (titleZoneAt(wx, y) !== titleZone(wx)) frayed++; }
+    if (d > ZBLEND + 8) { far++; if (titleZoneAt(wx, y) !== titleZone(wx)) wrong++; }
+  }
+  check('zone borders fray (noise), and only near the border', frayed / near > 0.15 && wrong === 0, { frayed, near, wrong, far });
+  const B = { top: 139, bot: 295 }, mid = TITLE_ZLEN * 2.5;
+  check('the timber works are low: the frames\' height', titleZone(mid) === 'timber' && Math.abs(titleFloor(mid, B) - titleCeil(mid, B) - TIMBER_H) < 0.01,
+    titleFloor(mid, B) - titleCeil(mid, B));
+}
+check('each creature comes only into its own zones', badHome.length === 0 && born.size > 20, { bad: badHome.slice(0, 5), born: born.size });
+check('jellyfish stay out of the works', jellyWorks / jellyIn < 0.02, { jellyWorks, jellyIn });
+check('spiders walk the web lines', S.lineT > 3, S.lineT);
+check('blasts and fire cut web lines', S.cut > 0, S.cut);
 check('shots carve the terrain', S.carved > 30, S.carved);
 check('and fire burns', S.burnt > 10, S.burnt);
 // a blast by hand: a hole in the floor where it was
