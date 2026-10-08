@@ -1029,6 +1029,11 @@ commit. List them here for after.
   seen v78/v79, not a spider bug), `torch` "light moves with it" (flicker-range sensitive, v50), `jelly` spit (~1 in 3,
   on v87 and v96 code as well), `perkshop` "tapping a perk shows its card" (once in v0.0.135's run, then passed:
   the carried perk's tile may sit off the grid's scrolled view). All pass alone.
+- **Found in the title work (v0.0.165–167), fixed:** `titleCell` reads air past the columns made so far, so a check of
+  an arch's far end (or anything ahead of `S.gen`) saw "no rock" and cut it at once: hold checks now skip ungenerated
+  columns. A rat swarm spawned near a zone border spread into the next zone (`slots` "each creature comes only into its
+  own zones"): a swarm now stops at its zone's end. The title's burning creatures took damage every frame and so
+  flashed white the whole time they burned: now in chunks, as the game.
 - **Stale code comments found in P5.1** (left, docs-only phase): `game/systems/shotlooks.js`' header says the draw side
   (`drawLook`) "is still in Game's draw()" and `lightning.js`' says the arcs are drawn "in Game's draw()": both are in
   `game/render/looks.js` now. `replay/replay.js`' header says "the recorder and player live in the Game for now" (they're

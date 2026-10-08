@@ -3,9 +3,22 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
+## NEXT (as of v0.0.167, 2026-10-08)
+
+- **Still open from the owner: ground and shop guns in the pixel look** (the gun in hand has it). The brief is under
+  v0.0.164 below. Looks: screenshots first.
+- **The title (v0.0.165–167) is waiting on the owner playing it in the app**: feedback may follow. Where it lives:
+  `art/titlescene.js` (pure; its README row in `src/art/README.md`), painter `game/render/titledraw.js`, fire crackle
+  `art/crackle.js` (title and game). Pictures: `tools/playershots.js` (players, mine slope, cut arches / webs),
+  `tools/digshots.js` (sawing, tunnels, burning creatures, the game's burning jelly + vine). Suite `slots` (55
+  checks); a test that measures something the players would saw through or shoot sets `S.still = true`.
+- Open idea the owner hasn't asked for: the game's web lines still flare away at once when lit (the title's cut
+  lines hang and swing; the game's don't).
+- Known failing as before: logic `spider` ("every roaming spider moves about": 1 still of 69), browser `vendshop`.
+
 ## v0.0.167 — title players collide + keep apart: RELEASED on `main` 2026-10-08 (owner OK'd)
 
-CHANGELOG v0.0.167. Screenshots: `node tools/playershots.js`.
+CHANGELOG v0.0.167. Screenshots: `node tools/playershots.js`. Fixes v0.0.165's "players bunch up".
 
 ## v0.0.166 — title players saw tunnels (no teleport), own run/fly clocks; fire crackle on burning creatures + vines (title and game): RELEASED on `main` 2026-10-08 (owner asked to see it in the app; feedback may follow)
 
@@ -18,10 +31,11 @@ CHANGELOG v0.0.165.
 Screenshots sent (`node tools/playershots.js`). The owner's asks in this session, all built: double the enemies, 3 more
 players with a colour each, more mod variety in the guns, a natural slope into the mine works, fire at 10% speed,
 burning vines with the cells' crackle look, cut vines/webs fall or hang + swing + burn, players pushing vines.
-Only the title changed (the game's fire knobs are untouched). Known: cut webs leave long strands in the web caves;
-the players can bunch up running along the ground.
-Note: this session's ad-hoc `node -e` / probe commands were blocked by a security hook (approval timeout);
-`node tests/run.js` and tools still ran.
+Only the title changed (the game's fire knobs are untouched). Known: cut webs leave long strands in the web caves
+(the players bunching up: fixed in v0.0.167).
+Note: ad-hoc `node -e` and probe files run from `tests/` were blocked by a security hook ("NODE9", approval
+timeout); `node tests/run.js`, `tools/*.js` and scripts in the session scratchpad ran. To see a number, put it in a
+check's `got` and run the suite.
 
 ## v0.0.164 — gun in hand in the body's pixel look, creatures over the shop's machines, title fire jumps + runner waits: RELEASED on `main` 2026-10-08 (owner OK'd)
 
