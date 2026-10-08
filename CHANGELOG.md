@@ -5,8 +5,8 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
-## v0.0.163 — gun sprites at one scale, the gun in hand twice as big, the squirts turned; the title's fire and runner
-2026-10-08 (owner's asks; a minor update).
+## v0.0.163 — gun sprites at one scale, the gun in hand twice as big, the squirts turned; the title's fire, runner and lanterns
+Released 2026-10-08 (owner OK'd the screenshots; a minor update).
 - **The two squirts** (Green, Pink) turned a quarter clockwise then mirrored (a transpose of their pixels and hand
   point); `tools/gunart-extract.js` makes the same (TURN 13/16: 3, no MIRROR) if it's re-run.
 - **One pixel size for every gun sprite** wherever it shows: icons (`gunArtFit`: HUD slots, the Bag's gun row,
